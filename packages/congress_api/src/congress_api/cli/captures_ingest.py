@@ -76,6 +76,35 @@ def _require_stage(manifest,proofs):
     for proof in proofs:proof.require(proof.path)
 
 
+def _backfill(args,engine,qualifications):
+    """Schedule whole receipts, then reuse the same incremental CLI per batch."""
+    from congress_api.lake.capture_backfill import make_plan,execute_batches
+    from congress_api.lake.capture_backfill_proof import prove_equivalence
+    def metadata(path):
+        with path.open('rb') as stream:
+            return json.loads(bounded_control_read(stream,kind='accepted'))
+    files=metadata(args.receipt_inventory)
+    if not isinstance(files,list):raise ValueError('Receipt inventory must be a list')
+    files=[dict(key=row) if isinstance(row,str) else row for row in files]
+    counts=metadata(args.source_counts)
+    if not isinstance(counts,list):raise ValueError('Source counts must be a list')
+    costs=dict(byte_target=args.batch_bytes,item_target=args.batch_items)
+    plan=make_plan(files,counts,**costs)
+    if not args.apply and not args.prove_equivalence:
+        return dict(status='planned',qualified_for_downstream=False,plan=plan)
+    table=dict(namespace=args.table.split('.')[:-1],name=args.table.split('.')[-1])
+    options=dict(engine=engine,engine_config=args.engine_config,work=args.work,
+        table=table,catalog_root=args.catalog_root,location=args.table_location,
+        validated_counter=args.validated_counter,source_qualifications=qualifications,**costs)
+    if args.prove_equivalence:
+        counter=str(args.validated_counter.resolve())
+        options['source_qualifications']={path:authority for path,authority in (qualifications or {}).items()
+            if str(Path(path).resolve())==counter}
+        return prove_equivalence(files,counts,**options,scratch_root=args.scratch_root)
+    return execute_batches(files,counts,**options,create_table=args.create_table,
+        create_namespace=args.create_namespace,scratch_root=args.scratch_root)
+
+
 def main(argv=None,*,engine_factory=None):
     parser=argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--receipt-inventory',type=Path,help='Explicit JSON receipt metadata inventory')
@@ -89,6 +118,12 @@ def main(argv=None,*,engine_factory=None):
         help='Reviewed JSON map of source paths to immutable creation or qualification manifests')
     parser.add_argument('--existing',type=Path)
     parser.add_argument('--append-stage',type=Path,help='Append a pinned accepted direct-receipt stage without reparsing raw')
+    parser.add_argument('--backfill',action='store_true',help='Plan whole-receipt batches; use --apply to append them')
+    parser.add_argument('--source-counts',type=Path,help='Independent source costs and expected capture counts')
+    parser.add_argument('--batch-bytes',type=int,help='Uncompressed receipt bytes per batch (default 256MiB)')
+    parser.add_argument('--batch-items',type=int,help='Source list items per batch (default 200000)')
+    parser.add_argument('--prove-equivalence',action='store_true',help='Compare one-shot and batched original-source generations')
+    parser.add_argument('--scratch-root',type=Path,help='Owned scratch tree, checked against the 5GiB limit')
     parser.add_argument('--old-index',type=Path)
     parser.add_argument('--engine-config',default=os.environ.get('DOCSPEC_JOB_CONFIG'))
     parser.add_argument('--work',type=Path,required=True)
@@ -101,6 +136,22 @@ def main(argv=None,*,engine_factory=None):
         help='Explicitly create the namespace while creating the table; omit for an existing namespace')
     parser.add_argument('--table-location',help='Local table path or exact remote object URI')
     args=parser.parse_args(argv)
+    if args.backfill:
+        args.batch_bytes=256<<20 if args.batch_bytes is None else args.batch_bytes
+        args.batch_items=200000 if args.batch_items is None else args.batch_items
+        if not args.source_counts or not args.receipt_inventory:
+            parser.error('--backfill requires --source-counts and --receipt-inventory')
+        if any((args.existing,args.append_stage,args.old_index,args.receipt_root,args.receipt_family)):
+            parser.error('--backfill uses an explicit inventory without staging or old-index flags')
+        if args.batch_bytes<=0 or args.batch_items<=0:
+            parser.error('Batch byte and item targets must be positive')
+        if args.prove_equivalence and (args.apply or not args.table or not args.table_location
+                or args.catalog_root is None or not args.validated_counter
+                or args.create_table or args.create_namespace):
+            parser.error('--prove-equivalence requires local table, location and counter; omit apply/create flags')
+    elif (args.source_counts or args.prove_equivalence or args.scratch_root
+            or args.batch_bytes is not None or args.batch_items is not None):
+        parser.error('Batch metadata and equivalence flags require --backfill')
     if not args.engine_config:
         parser.error('An explicit pinned engine configuration is required')
     if args.apply and not args.table:
@@ -134,6 +185,9 @@ def main(argv=None,*,engine_factory=None):
                        for k,v in qualifications.items())):
             parser.error('source qualifications must map source paths to manifest paths')
     engine=(engine_factory or NativeDatasets.from_config)(args.engine_config)
+    if args.backfill:
+        print(json.dumps(_backfill(args,engine,qualifications),sort_keys=True))
+        return 0
     existing=args.existing
     if args.apply:
         try:
