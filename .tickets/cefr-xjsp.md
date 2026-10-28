@@ -1,6 +1,6 @@
 ---
 id: cefr-xjsp
-status: closed
+status: in_progress
 deps: []
 links: []
 created: 2026-10-27T18:55:33Z
@@ -54,3 +54,7 @@ Local review fixes complete: af44f627/6f2d9f80, archive-reopen refusal 714966f9/
 **2026-10-28T04:07:16Z**
 
 Actual engine-built real releaseac866cc3 read-only CLI seam passes on9b:129url_state rows→89due/79linked-unfetched, request budget5 selects5queued rows, no seeds/HTTP/apply/storagewrites. The release reader/canary/browser checks also pass under site ownership. First live remains exact README command.
+
+**2026-10-28T10:23:19Z**
+
+Owner urgent display-only seed correction: refuse manifest.origin.kind=seed_v5 or display_only=true before scheduler data downloads, native queue work or capture. Contract-first local/fake-public and hand-built entrypoint fixtures; no live run. CODE review required before re-closing.
