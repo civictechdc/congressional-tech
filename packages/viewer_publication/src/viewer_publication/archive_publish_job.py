@@ -1,7 +1,6 @@
 """Plan or execute the one guarded archive publication path."""
 import argparse
 import json
-import math
 from pathlib import Path
 import re
 import subprocess
@@ -263,16 +262,22 @@ def execute(spec,*,runtime_factory=None,storage_factory=None,process_runner=None
     """Refuse local problems, qualify a remote runtime, then connect the SDK."""
     spec['_model_identity'].require(spec['model_spec']['path'])
     targets,target_identity=_read_metadata(spec['targets'])
-    from viewer_publication.archive_gate import qualified_target_status
-    seed_origin=spec['_model'].get('profile') if spec.get('model_kind')=='seed_v5' else None
-    names=['startupMs','searchMs','detailMs','heapBytes']
-    if (not isinstance(targets,dict) or type(targets.get('version')) is not int or targets.get('version')!=1
-            or not qualified_target_status(targets.get('status'),seed_origin)
-            or (targets.get('status')=='provisional-emulated' and targets.get('basis')!='emulated')
-            or not isinstance(targets.get('ceilings'),dict)
-            or any(type(targets['ceilings'].get(name)) not in (int,float)
-                   or not math.isfinite(targets['ceilings'][name]) or targets['ceilings'][name]<=0 for name in names)):
-        raise ValueError('Publication requires valid measured site targets (owner-approved; provisional-emulated only for a seed)')
+    # The site owns profile, median and run validation. Execute its fixed local
+    # metadata command once, before constructing a runtime or SDK client.
+    target_identity.require(spec['targets']['path'])
+    try:
+        checked=subprocess.run(['npm','run','--silent','targets:archive','--','--check',spec['targets']['path'],
+            '--origin-kind','seed_v5' if spec.get('model_kind')=='seed_v5' else 'model',
+            '--display-only','true' if spec.get('model_kind')=='seed_v5' else 'false'],
+            cwd=SITE,check=True,capture_output=True,text=True,timeout=30)
+        if len(checked.stdout.encode())>METADATA_BYTES:raise ValueError('Target validator output exceeds the metadata allowance')
+        target_metadata=json.loads(checked.stdout)
+    except (subprocess.SubprocessError,ValueError) as error:
+        raise ValueError('Publication requires valid measured site targets (owner-approved; provisional-emulated only for a seed)') from error
+    target_identity.require(spec['targets']['path'])
+    if (not isinstance(target_metadata,dict) or set(target_metadata)!={'status','basis','measured_release_id'}
+            or target_metadata['status']!=targets.get('status') or target_metadata['basis']!=targets.get('basis')):
+        raise ValueError('Shared targets validation differs from the pinned metadata')
     for name in ['work']:
         path=Path(spec[name])
         if path.exists() or path.is_symlink():raise ValueError('Publication work must be fresh')
@@ -331,7 +336,8 @@ def execute(spec,*,runtime_factory=None,storage_factory=None,process_runner=None
             options=dict(client=client,engine=engine,bucket=spec['bucket'],work=spec['work'],run=spec['run'],
                 public_origin=spec['public_origin'],contract=lambda **context:probe('contract',context),
                 canary=lambda **context:probe('canary',context))
-            if spec.get('model_kind')=='seed_v5':result=run_seed_publish(selected_model,**options)
+            if spec.get('model_kind')=='seed_v5':result=run_seed_publish(selected_model,
+                measured_release_id=target_metadata['measured_release_id'],**options)
             else:result=run_publish(selected_model,receipt_keys=keys,provenance=provenance,verified_files=verified,**options)
             spec['_model_identity'].require(spec['model_spec']['path']);require_configuration()
             return dict(result,daily=daily['daily']) if daily is not None else result
