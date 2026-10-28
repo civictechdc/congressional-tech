@@ -1,4 +1,3 @@
-import { filenameManifestUrl } from '../reader/filenames/publication.ts';
 import type { CoverageAspect, EvidenceState } from './kinds.ts';
 
 const calendar = new Intl.DateTimeFormat('en-CA', { timeZone: 'America/New_York', year: 'numeric', month: '2-digit', day: '2-digit' });
@@ -1447,7 +1446,7 @@ export function savedCopyHref(
     content_type?: string | null;
     url?: string | null;
   } | null | undefined,
-  manifestUrl = filenameManifestUrl,
+  manifestUrl = 'https://congressional-data.spicygov.ai/',
 ): string | undefined {
   if (!file || typeof file.saved_copy_sha256 !== 'string' || !/^[a-f0-9]{64}$/.test(file.saved_copy_sha256)) return undefined;
   const hash = file.saved_copy_sha256;

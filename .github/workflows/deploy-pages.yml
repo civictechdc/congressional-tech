@@ -1,7 +1,7 @@
 name: Deploy website to Pages
 
-# Filename data publishes independently to R2. Pages deploys interface changes
-# and the existing Explorer publication.
+# Archive releases publish independently to R2. Pages deploys the archive
+# interface and the retained committee Explorer publication.
 on:
   push:
     branches: [main]
@@ -14,12 +14,8 @@ on:
       - ".github/actions/setup-python-project/**"
       - ".github/actions/setup-node-project/**"
       - ".github/actions/setup-publication-browser/**"
-      - ".github/scripts/verify-built-filename-worker.sh"
       - ".github/workflows/deploy-pages.yml"
       - "packages/congress_shared/**"
-      - "packages/viewer_publication/src/viewer_publication/filename_*.py"
-      - "scripts/publication/filename-test-fixture.py"
-      - "scripts/publication/publish-filename-viewer.py"
   workflow_dispatch:
     inputs:
       code_revision:
@@ -93,32 +89,17 @@ jobs:
           shutil.copytree(source, target, dirs_exist_ok=True)
           PYTHON
       - uses: ./.github/actions/setup-node-project
-      - name: Verify review controls and static reader
+      - name: Verify retained explorer and archive readers
         working-directory: apps/site
         run: npm run test:explorer
       - name: Build Astro site
         working-directory: apps/site
         run: npm run build
-      - name: Smoke test the built filename page
-        working-directory: apps/site
-        run: npm run test:built-filenames
       - uses: ./.github/actions/setup-publication-browser
       - name: Require the archive contract against native hand releases
         env:
           VIEWER_BENCHMARK_MODULES: ${{ env.PUBLICATION_BROWSER_MODULES }}
         run: .venv/bin/python -I .github/scripts/verify-archive-contract.py --work "$RUNNER_TEMP/archive-contract"
-      - name: Require the built filename worker against the real selected native catalog
-        timeout-minutes: 5
-        run: bash .github/scripts/verify-built-filename-worker.sh
-      - name: Retain built-site filename worker verification
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: filename-worker-built-${{ github.run_id }}-${{ github.run_attempt }}
-          path: |
-            ${{ runner.temp }}/filename-worker-built.json
-            ${{ runner.temp }}/filename-worker-server.log
-          if-no-files-found: ignore
       - name: Enforce the Pages publication size limit
         run: python .github/scripts/publication-budget.py apps/site/dist --total-limit 1000000000
       - uses: actions/configure-pages@v5
@@ -133,34 +114,5 @@ jobs:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
     steps:
-      - uses: actions/checkout@v5
-        with:
-          ref: ${{ github.sha }}
-      - uses: ./.github/actions/setup-node-project
-      - uses: ./.github/actions/setup-publication-browser
-      - name: Restore the built-site filename selection
-        uses: actions/download-artifact@v5
-        with:
-          name: filename-worker-built-${{ github.run_id }}-${{ github.run_attempt }}
-          path: ${{ runner.temp }}/filename-worker-built
       - id: deployment
         uses: actions/deploy-pages@v4
-      - name: Require the deployed filename worker and the same selected publication
-        timeout-minutes: 5
-        env:
-          PAGES_BASE: ${{ steps.deployment.outputs.page_url }}
-        run: |
-          node apps/site/scripts/verify-live-publication.mjs \
-            --viewer-url https://congressional-data.spicygov.ai/viewer-publications/manifest.json \
-            --pages-url "${PAGES_BASE%/}/dashboard/" \
-            --review-descriptor apps/site/document-review-publication.json \
-            --require-native-worker true \
-            --expected-observation "$RUNNER_TEMP/filename-worker-built/filename-worker-built.json" \
-            --output "$RUNNER_TEMP/filename-worker-deployed.json"
-      - name: Retain deployed filename worker verification
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: filename-worker-deployed-${{ github.run_id }}-${{ github.run_attempt }}
-          path: ${{ runner.temp }}/filename-worker-deployed.json
-          if-no-files-found: ignore

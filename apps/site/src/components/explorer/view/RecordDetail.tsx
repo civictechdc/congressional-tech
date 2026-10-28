@@ -1,5 +1,4 @@
 import { useEffect, useMemo, useState, type ReactNode } from 'react';
-import { filenameManifestUrl } from '../reader/filenames/publication.ts';
 import { ExternalIcon, ForwardIcon } from './icons';
 import { categoryNote, collapseRepeatedFacts, committeeHierarchyNote, committeeLevelLabel, committeeTypeLabel, congressName, disagreementSummary, distinctRecordedFacts, documentSourceLabel, evidenceStateLabels, factLabel, issueStatusLabel, severityLabel, fileLinkName, filePartNote, listedDocumentType, listTitle, meetingStatusNote, orderRecordedFiles, parentCommitteeId, plainRecordedNote, providerLabel, recordedTitlePreview, recordedWhen, recordingEmbedUrl, recordingIdentity, savedCopyHref, savedOriginalUrl, scheduleNote, sourceFacts, sourceLinks, sourcePageUrl, sourceTypeNote, type SourceLink } from '../browse/record-presentation.ts';
 import type { ExplorerRecordRef, LoadedRecord } from '../reader/data-source.ts';
@@ -94,13 +93,12 @@ export function recordFiles(record: unknown): Fields[] {
   });
   return orderRecordedFiles(listed);
 }
-const savedCopyManifest = import.meta.env.PUBLIC_FILENAME_MANIFEST_URL || filenameManifestUrl;
 
 export function FileLinks({ record }: { record: unknown }) {
   const files = recordFiles(record);
   if (!files.length) return null;
   return <div className="explorer-file-links">{files.map(file => {
-    const saved = savedCopyHref(file, savedCopyManifest);
+    const saved = savedCopyHref(file, import.meta.env.PUBLIC_ARCHIVE_RAW_BASE_URL);
     const label = fileLinkName(file);
     const savedLabel = file.label && file.label !== 'unknown' ? ` (${words(file.label)})` : '';
     const meta = [file.version && file.version !== 'unknown' ? words(file.version) : '', typeof file.published_at === 'string' ? `Published ${file.published_at.slice(0, 10)}` : '', fileTypeNote(typeof file.media_type === 'string' ? file.media_type : '')].filter(Boolean).join(' · ');
@@ -346,7 +344,7 @@ function FactGroups({ facts, eyebrow }: { facts: [unknown, unknown][]; eyebrow: 
 }
 
 /** A short fact sheet; source evidence is an optional disclosure. */
-export function RecordDetail({ record, onSelect, sourceEvidence, catalogEvidence, committeeLabels, affectedAction, meetingAction }: { record: DetailRecord; onSelect: (ref: ExplorerRecordRef) => void; sourceEvidence?: ReactNode; catalogEvidence?: ReactNode; committeeLabels?: Readonly<Record<string, string>>; affectedAction?: ReactNode; meetingAction?: ReactNode }) {
+export function RecordDetail({ record, onSelect, sourceEvidence, committeeLabels, affectedAction, meetingAction }: { record: DetailRecord; onSelect: (ref: ExplorerRecordRef) => void; sourceEvidence?: ReactNode; committeeLabels?: Readonly<Record<string, string>>; affectedAction?: ReactNode; meetingAction?: ReactNode }) {
   const row = fields(record);
   const when = recordedWhen(row);
   const committees = (Array.isArray(row.committee_ids) ? row.committee_ids : []).map(id => committeeLabels?.[String(id)]).filter(Boolean);
@@ -437,7 +435,6 @@ export function RecordDetail({ record, onSelect, sourceEvidence, catalogEvidence
     {record.kind === 'material' && !files.length ? <p className="explorer-note">{row.type === 'recording' ? 'No recording is available in the collected sources.' : 'No file link in the collected sources.'}</p> : null}
     {meetingAction !== undefined ? meetingAction : row.meeting_id && !['meeting', 'material', 'data_issue'].includes(record.kind) ? <p><button className="explorer-text-button" aria-label="Open the meeting this record belongs to" onClick={() => onSelect({ kind: 'meeting', id: String(row.meeting_id) })}>Meeting <ForwardIcon /></button></p> : null}
     {affectedAction !== undefined ? affectedAction : affected ? <p><button className="explorer-text-button" aria-label="Open the record this issue describes" onClick={() => onSelect(affected)}>Affected record <ForwardIcon /></button></p> : null}
-    {catalogEvidence}
     {sourceEvidence}
     <RawRecord key={`${record.kind}/${record.id}`} record={record} />
   </>;

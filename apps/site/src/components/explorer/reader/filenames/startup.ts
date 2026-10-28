@@ -75,13 +75,6 @@ export async function withVerifiedBytes(policy: any, label: string, run: (verifi
   }
 }
 
-// Compare parsed control data independently of object key insertion order.
-export function canonicalJson(value: any): string {
-  const ordered = (val: any): any => Array.isArray(val) ? val.map(ordered) : val && typeof val === 'object'
-    ? Object.fromEntries(Object.keys(val).sort().map(key=>[key,ordered(val[key])])) : val;
-  return JSON.stringify(ordered(value));
-}
-
 
 export function withVerifiedJson(policy: any, label: string, run: (verified: any) => Promise<any>, signal?: AbortSignal): Promise<any> {
   return withVerifiedBytes(policy, label, verified => run(async (...args: any[]) =>

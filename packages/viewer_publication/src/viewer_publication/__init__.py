@@ -14,12 +14,10 @@ from viewer_publication.constants import (
 
 _LAZY_EXPORTS: dict[str, str] = {
     'cli': 'viewer_publication.cli',
-    'CompressionPolicy': 'viewer_publication.filename_compression',
     'ConditionalManifestPublisher': 'viewer_publication.client',
     'Continuation': 'viewer_publication.continuation',
     'ContinuedPublicationClient': 'viewer_publication.client',
     'DEFAULT_CATALOG_ROW_GROUP_SIZE': 'viewer_publication.filename_exports',
-    'DEFAULT_COMPRESSION_POLICY': 'viewer_publication.filename_compression',
     'DEFAULT_READING_ROW_GROUP_SIZE': 'viewer_publication.compact_readings',
     'DEFAULT_REVIEW_ROW_GROUP_SIZE': 'viewer_publication.compact_reviews',
     'DurableJournal': 'viewer_publication.continuation',
@@ -45,7 +43,6 @@ _LAZY_EXPORTS: dict[str, str] = {
     'scalarize_catalog_columns': 'viewer_publication.filename_exports',
     'sha256': 'viewer_publication.continuation',
     'sort_reading_table': 'viewer_publication.compact_readings',
-    'validate_compression': 'viewer_publication.filename_compression',
 }
 
 __all__ = [

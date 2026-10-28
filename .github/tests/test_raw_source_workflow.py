@@ -18,7 +18,7 @@ ROOT = Path(__file__).resolve().parents[2]
 WORKFLOW_PATH = ROOT / ".github/workflows/capture-raw-sources.yml"
 
 
-def test_filename_viewer_trigger_tracks_capture_workflow_name():
+def test_archive_publisher_trigger_tracks_capture_workflow_name():
     capture = yaml.load((WORKFLOW_PATH.parent / "capture-archive.yml").read_text(), Loader=yaml.BaseLoader)
     viewer = yaml.load((WORKFLOW_PATH.parent / "archive-jobs.yml").read_text(),
                        Loader=yaml.BaseLoader)
@@ -328,7 +328,7 @@ def test_shared_writer_lock_revision_credentials_and_single_rebuild():
             writer = yaml.load(path.read_text(), Loader=yaml.BaseLoader)
             # Pages reads a hash-verified immutable generation. It does not
             # write R2 objects or participate in the archive writer lock.
-            # Its read-only client calls are checked in test_filename_publication.
+            # The archive contract checks the retained reader before Pages upload.
             if path.name in {'archive-jobs.yml', 'capture-archive.yml', 'update-data.yml'}:
                 assert 'raw-source-sync' not in path.read_text()
             if path != WORKFLOW_PATH and path.name != 'deploy-pages.yml':
@@ -410,8 +410,8 @@ def test_loopback_tests_run_in_a_native_step():
               if word.startswith('tests/') and word.endswith('.py')}
     assert native == {
         'tests/test_async_capture_native.py', 'tests/test_capture_processes_native.py',
-        'tests/test_r2_body_files_native.py', 'tests/test_document_filename_viewer.py',
-        'tests/test_document_review_viewer.py', 'tests/test_rust_fetch_native.py',
+        'tests/test_r2_body_files_native.py',
+        'tests/test_rust_fetch_native.py',
         'tests/test_rust_fetch_size_admission_native.py',
     }
     lane = tomllib.loads((ROOT / 'test-suites.toml').read_text())['lanes']['native-loopback']
