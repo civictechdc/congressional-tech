@@ -5,19 +5,11 @@ from pathlib import Path
 from congress_api.retention.provenance import (field as _field, list_of as _list,
     struct as _struct)
 from viewer_publication.archive_fixture import build_fixture_release
-from viewer_publication.archive_format import ROOT, EMPTY_STRINGS, _step, _normal, _execute
+from viewer_publication.archive_format import ROOT, EMPTY_STRINGS, _step, _normal, _execute, legacy_meeting_keys
 
 
 def _match(expression, pattern):
     return f"array_element(regexp_match({expression},'{pattern}'),1)"
-
-
-def _meeting_keys(url):
-    key = 'coalesce(' + ','.join(_match(url, pattern) for pattern in [
-        '/meetings/[^/]+/[^/]+/[0-9]{8}/([0-9]+)/', '(?i)[?&]eventid=([0-9]+)',
-        '/(?:house|senate|joint)-event/([0-9]+)']) + ')'
-    numeric = f'try_cast({key} AS BIGINT)'
-    return f'CASE WHEN {numeric} IS NULL THEN {EMPTY_STRINGS} ELSE make_array(cast({numeric} AS VARCHAR)) END'
 
 
 def committee_input(path):
@@ -70,7 +62,7 @@ def convert_catalog(documents, filenames, captures, committees, *, catalog_id, o
             document_date=date, document_date_source=f"CASE WHEN {date} IS NULL THEN NULL ELSE 'filename' END",
             suffix="CASE WHEN regexp_like(d.body_key,'[.]pdf$') THEN '.pdf' WHEN regexp_like(d.body_key,'[.]gz$') THEN '.gz' ELSE '' END",
             media_type="coalesce(b.media_type,CASE WHEN array_element(d.format,1)='pdf' THEN 'application/pdf' ELSE 'application/octet-stream' END)",
-            bytes='b.bytes', meeting_keys=_meeting_keys('d.source_url'), link_bodies='g.bodies'), materialize=True, release_after=['body_metadata', 'body_groups', 'document_bodies', 'committee_groups', 'document_codes', 'committee_aliases']),
+            bytes='b.bytes', meeting_keys=legacy_meeting_keys('d.source_url'), link_bodies='g.bodies'), materialize=True, release_after=['body_metadata', 'body_groups', 'document_bodies', 'committee_groups', 'document_codes', 'committee_aliases']),
         _step('source_candidates', """SELECT f.document_id AS doc_key,f.source_id AS source_key,f.source_url AS url,
             cast(NULL AS VARCHAR) AS member_path,coalesce(f.body_key=d.body_key,false) AS is_saved,
             cast(NULL AS DATE) AS first_seen,
