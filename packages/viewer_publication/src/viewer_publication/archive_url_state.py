@@ -1,0 +1,106 @@
+"""Native line-grain scheduling and scoped discovery for phase-one releases."""
+from pathlib import Path
+
+from viewer_publication.archive_format import TS
+
+ROOT=Path(__file__).parents[4]
+
+
+def url_state_steps(*,root=ROOT):
+    """Use shared good-fetch and URL keys, preserving explicit input diagnostics."""
+    sqls=[('lines',"""SELECT receipt_key,receipt_line,max(requested_url) AS requested_url,max(family) AS family,
+        max(arrow_cast(cast(retrieved_at AS TIMESTAMP WITH TIME ZONE),'Timestamp(Microsecond, Some("UTC"))')) AS retrieved_at,
+        max(http_status) AS http_status,max(outcome) AS outcome,
+        count(DISTINCT json_array(requested_url,family,retrieved_at,http_status,outcome,complete)) AS variants
+        FROM captures WHERE mode='fetch' GROUP BY receipt_key,receipt_line"""),
+        ('good_lines',"SELECT DISTINCT receipt_key,receipt_line FROM good_fetches"),
+        ('latest',"""SELECT * FROM (SELECT *,row_number() OVER(PARTITION BY requested_url ORDER BY
+            retrieved_at DESC NULLS LAST,receipt_key DESC,receipt_line DESC) AS preference FROM url_state_lines
+            WHERE requested_url IS NOT NULL) WHERE preference=1"""),
+        ('ages',"""WITH meetings AS (
+            SELECT requested_url,min(cast(meeting_date AS DATE)) AS meeting_date FROM url_state_meeting_dates GROUP BY requested_url
+            ), dated AS (SELECT l.*,coalesce(m.meeting_date,try_cast(regexp_replace(
+            (regexp_match(l.requested_url,'(?i)^https?://docs[.]house[.]gov/meetings/[^/]+/[^/]+/([0-9]{8})/'))[1],
+            '^([0-9]{4})([0-9]{2})([0-9]{2})$','$1-$2-$3') AS DATE)) AS meeting_date
+            FROM url_state_latest l LEFT JOIN meetings m ON l.requested_url=m.requested_url)
+            SELECT *,cast((date_part('epoch',cast(retrieved_at AS DATE))-date_part('epoch',meeting_date))/86400 AS BIGINT) AS age_days FROM dated"""),
+        ('intervals',"""SELECT * FROM (SELECT a.requested_url,i.interval_seconds,
+            count(*) OVER(PARTITION BY a.requested_url) AS matches,
+            row_number() OVER(PARTITION BY a.requested_url ORDER BY i.interval_seconds,i.id) AS preference
+            FROM url_state_ages a JOIN recheck_intervals i ON a.family=i.family
+            WHERE a.age_days IS NULL OR ((i.min_age_days IS NULL OR a.age_days>=i.min_age_days)
+              AND (i.max_age_days IS NULL OR a.age_days<i.max_age_days))) WHERE preference=1"""),
+        ('page_contexts',"""SELECT DISTINCT encode(g.sha256,'hex') AS page_body,g.context_url,g.member_path
+            FROM good_fetches g JOIN record_roles r USING(receipt_key,receipt_line,capture_index)
+            WHERE g.sha256 IS NOT NULL AND r.record_role IS DISTINCT FROM 'error_response'"""),
+        ('fetched_keys',"""SELECT DISTINCT k.url_key FROM (
+            SELECT requested_url AS url FROM captures WHERE mode='fetch'
+            UNION SELECT url FROM captures WHERE mode='fetch') f JOIN model_url_keys k ON f.url=k.url
+            WHERE k.error IS NULL AND k.url_key IS NOT NULL"""),
+        ('scope_patterns','SELECT family,unnest(patterns) AS pattern FROM capture_scope'),
+        ('scope_exclusions','SELECT family,unnest(exclusions) AS pattern FROM capture_scope'),
+        ('scoped_targets',"""SELECT DISTINCT l.target_url FROM
+            (SELECT DISTINCT target_url FROM resolved_links WHERE target_member_path IS NULL) l
+            JOIN url_state_scope_patterns s ON regexp_like(l.target_url,s.pattern)
+            LEFT JOIN url_state_scope_exclusions e ON e.family=s.family AND regexp_like(l.target_url,e.pattern)
+            WHERE e.family IS NULL"""),
+        ('queue_literals',"""SELECT k.url_key,min(l.target_url) AS url FROM resolved_links l
+            JOIN url_state_page_contexts p ON l.page_body=p.page_body AND l.context_url=p.context_url
+              AND l.member_path IS NOT DISTINCT FROM p.member_path
+            JOIN model_url_keys k ON l.target_url=k.url
+            JOIN url_state_scoped_targets s ON l.target_url=s.target_url
+            WHERE l.target_member_path IS NULL AND k.error IS NULL AND k.url_key IS NOT NULL
+            AND NOT EXISTS(SELECT 1 FROM url_state_fetched_keys f WHERE f.url_key=k.url_key)
+            GROUP BY k.url_key"""),
+        ('public_urls',"""SELECT requested_url AS url FROM url_state_latest UNION SELECT url FROM url_state_queue_literals"""),
+        ('query_parts',"""WITH queries AS (
+            SELECT url,CASE WHEN strpos(split_part(url,'#',1),'?')>0
+            THEN substr(split_part(url,'#',1),strpos(split_part(url,'#',1),'?')+1) END AS query
+            FROM url_state_public_urls)
+            SELECT url,unnest(string_to_array(query,'&')) AS part,
+              unnest(range(0,cast(array_length(string_to_array(query,'&')) AS BIGINT))) AS position FROM queries"""),
+        ('sanitized',"""WITH queries AS (
+            SELECT p.url,string_agg(p.part,'&' ORDER BY p.position) AS query FROM url_state_query_parts p
+            WHERE NOT EXISTS(SELECT 1 FROM credential_parameters c
+                WHERE lower(percent_decode_utf8(replace(split_part(p.part,'=',1),'+',' ')))=lower(c.parameter))
+            GROUP BY p.url)
+            SELECT u.url,split_part(split_part(u.url,'#',1),'?',1)||
+            CASE WHEN q.query IS NOT NULL THEN '?'||q.query ELSE '' END||
+            CASE WHEN strpos(u.url,'#')>0 THEN substr(u.url,strpos(u.url,'#')) ELSE '' END AS public_url
+            FROM url_state_public_urls u LEFT JOIN queries q ON u.url=q.url"""),
+        ('sanitized_inputs',"""SELECT DISTINCT encode(sha256(json_array(s.public_url)),'hex') AS input_id,s.public_url AS url
+            FROM url_state_queue_literals q JOIN url_state_sanitized s ON q.url=s.url""")]
+    steps=[dict(name='url_state_'+name,sql=sql,materialize=True) for name,sql in sqls]
+    # Normalize only newly sanitized spellings with the same maintained policy.
+    normalize=(Path(root)/'model/sql/url-normalized.sql').read_text().replace('url_inputs','url_state_sanitized_inputs')
+    keys=(Path(root)/'model/sql/url-keys.sql').read_text().replace('url_inputs','url_state_sanitized_inputs').replace('url_normalized','url_state_sanitized_normalized')
+    steps += [dict(name='url_state_sanitized_normalized',sql=normalize,materialize=True),
+        dict(name='url_state_sanitized_keys',sql=keys,materialize=True),
+        dict(name='url_state_queue',sql="""SELECT q.url_key AS original_key,s.public_url AS requested_url,k.url_key AS public_key,k.error
+            FROM url_state_queue_literals q JOIN url_state_sanitized s ON q.url=s.url
+            LEFT JOIN url_state_sanitized_keys k ON s.public_url=k.url""",materialize=True),
+        dict(name='url_state',sql=(Path(root)/'model/sql/url-state.sql').read_text().replace('{{TS}}',TS),materialize=True)]
+    releases={'url_state_queue_literals':['url_state_page_contexts','url_state_scope_patterns',
+        'url_state_scope_exclusions','url_state_scoped_targets'],
+        'url_state_sanitized':['url_state_public_urls','url_state_query_parts'],
+        'url_state_queue':['url_state_queue_literals','url_state_sanitized_inputs',
+            'url_state_sanitized_normalized','url_state_sanitized_keys'],
+        'url_state':['url_state_good_lines']}
+    for step in steps:
+        if step['name'] in releases:step['release_after']=releases[step['name']]
+    return steps
+
+
+def url_state_diagnostics():
+    """Return build-blocking counts; callers must check them before publication."""
+    return [dict(name='url_state_invariants',sql="""SELECT
+        (SELECT count(*) FROM url_state_latest l WHERE NOT EXISTS(SELECT 1 FROM url_state_intervals i WHERE i.requested_url=l.requested_url)) AS unknown_families,
+        (SELECT count(*) FROM url_state_lines WHERE variants<>1) AS conflicting_lines,
+        (SELECT count(*) FROM recheck_intervals WHERE interval_seconds IS NULL OR interval_seconds<=0) AS invalid_intervals,
+        (SELECT count(*) FROM url_state_intervals i JOIN url_state_ages a ON i.requested_url=a.requested_url WHERE a.age_days IS NOT NULL AND i.matches<>1) AS overlapping_bands,
+        ((SELECT count(*) FROM (SELECT public_key FROM url_state_queue GROUP BY public_key HAVING count(DISTINCT original_key)>1))
+          +(SELECT count(*) FROM url_state_queue q JOIN url_state_fetched_keys f ON q.public_key=f.url_key)) AS sanitization_collisions,
+        (SELECT count(*) FROM url_state_sanitized s JOIN url_state_latest l ON s.url=l.requested_url WHERE s.public_url<>s.url
+          OR regexp_like(s.url,'(?i)^https?://[^/?#]*@')) AS private_history,
+        (SELECT count(*) FROM url_state_queue WHERE public_key IS NULL OR error IS NOT NULL) AS unusable_queue_keys,
+        (SELECT count(*) FROM (SELECT requested_url FROM url_state GROUP BY requested_url HAVING count(*)>1)) AS duplicate_urls""")]

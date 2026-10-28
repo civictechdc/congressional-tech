@@ -13,9 +13,9 @@ BASE='https://docs.house.gov/meetings/AG/AG03/20261101/123/'
 
 def run_state(tmp_path,change=None):
     from viewer_publication.archive_url_state import url_state_steps,url_state_diagnostics
-    def row(line,url,**extra):
-        return dict(dict(receipt_key='r',receipt_line=line,capture_index=0,mode='fetch',requested_url=url,
-            url=url,context_url=url,member_path=None,family='documents',retrieved_at='2026-11-20T12:00:00Z',
+    def row(line,requested,**extra):
+        return dict(dict(receipt_key='r',receipt_line=line,capture_index=0,mode='fetch',requested_url=requested,
+            url=requested,context_url=requested,member_path=None,family='documents',retrieved_at='2026-11-20T12:00:00Z',
             http_status=200,outcome='stored',complete=True,body_hex='a'*64,record_role='document'),**extra)
     url=BASE+'report.pdf'
     rows=[row(1,url,retrieved_at='2026-11-01T12:00:00Z'),
