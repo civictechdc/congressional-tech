@@ -30,10 +30,11 @@ def test_comparison_completes_with_bounded_native_memory(tmp_path):
     old = tmp_path/'old.parquet'
     new = tmp_path/'new.parquet'
     pq.write_table(pa.Table.from_pylist([
-        dict(row, sha256='a'*64, reference_kind='capture') for row in rows]), old)
+        dict(row, sha256='a'*64, reference_kind='capture') for row in rows]), old,
+        row_group_size=64)
     pq.write_table(pa.Table.from_pylist([
         dict(row, sha256=bytes.fromhex('a'*64), capture_index=0,
-             reference_kind='capture') for row in rows]), new)
+             reference_kind='capture') for row in rows]), new, row_group_size=64)
     result = compare_old(new, old, engine=NativeDatasets.from_config(config_path),
                          work=tmp_path/'comparison')
     assert result['old_rows'] == result['new_rows'] == result['matched'] == count
