@@ -252,6 +252,19 @@
       "expected_causes": [
         "b7_owner_recoveries"
       ]
+    },
+    {
+      "name": "capture_header_names_removed",
+      "field": "filename",
+      "direction": "removed",
+      "value": "legacy.pdf",
+      "fact": {
+        "name_basis": "content_disposition",
+        "header_filename": "Report.pdf"
+      },
+      "expected_causes": [
+        "capture_header_names"
+      ]
     }
   ],
   "expected": {
@@ -799,7 +812,8 @@
         "f0_shared_body_link",
         "f0_display_facts"
       ],
-      "bad_metadata_unexplained": 12
+      "bad_metadata_unexplained": 12,
+      "model_real_bodies": 3
     },
     "note": "F0 native producer preserves source membership; literal ID formula includes a usable PDF with mixed 200.0/404 status history. Corrupt bytes/media_type must produce 12 unexplained atoms; permuted private rows must refuse lineage."
   },

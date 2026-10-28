@@ -371,3 +371,27 @@ def test_native_b7_witness_uses_superseding_kind_and_earliest_fetch_date(tmp_pat
     assert 'b7_owner_recoveries' not in missing
     reports=run_job(tmp_path,engine(),inputs=inputs,steps=steps,outputs=[],queries=[dict(name='b7',sql="SELECT DISTINCT json_get_str(fact,'expected_kind') AS kind,json_get_str(fact,'expected_imported_at') AS imported_at FROM witnesses WHERE json_get_str(fact,'stage')='raw-recoveries-owner-32c13ffa'")])
     assert reports['b7']==[dict(kind=expected['kind'],imported_at=expected['imported_at'])]
+
+
+
+def test_model_body_sets_exclude_nonreal_members_but_keep_their_source_evidence(tmp_path):
+    import pyarrow as pa
+    import pyarrow.parquet as pq
+    from congress_api.retention.provenance import file_pin
+    template=f0_fixture(tmp_path)
+    descriptor=parity.prepare_f0(template,engine=engine(),work=tmp_path/'prepare')
+    loaded=parity.load_descriptor(descriptor)
+    # This checks the projection only. The F0 manifest still cannot qualify as
+    # a model release through load_descriptor/compare_descriptor.
+    loaded['descriptor']['candidate']['kind']='model'
+    files=FIXTURE['f0_catalog']['files']
+    sources=[dict(receipt_key='receipts/test.jsonl',receipt_line=i,capture_index=0,source_id=row['source_id']) for i,row in enumerate(files)]
+    roles=[dict(receipt_key='receipts/test.jsonl',receipt_line=i,capture_index=0,is_real_file=i!=0) for i in range(len(files))]
+    for name,rows in [('capture_sources',sources),('record_roles',roles)]:
+        path=tmp_path/(name+'.parquet');pq.write_table(pa.Table.from_pylist(rows),path)
+        loaded['paths'][name]=str(path)
+        loaded['descriptor']['cause_relations'][name]=dict(path=str(path),**file_pin(path))
+    directory=tmp_path/'normalized';directory.mkdir()
+    inputs,steps=parity.normalization(loaded,directory=directory)
+    result=run_job(directory,engine(),inputs=inputs,steps=steps,outputs=[],queries=[dict(name='counts',sql='SELECT (SELECT count(*) FROM new_bodies) AS bodies,(SELECT count(*) FROM new_anchors) AS anchors')])
+    assert result['counts']==[dict(bodies=FIXTURE['f0_catalog']['expected']['model_real_bodies'],anchors=4)]
