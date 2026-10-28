@@ -33,3 +33,7 @@ Owner-bounded extractor choice: Trafilatura on existing available evidence; no m
 **2026-10-28T05:11:54Z**
 
 Ownership transferred to site by owner decision 20261028T051000Z. Existing S1/E1 fixture and real-slice evidence retained; new feed-context regression fe45f84b/6b8968f6 reuses XML listing role and passes2native checks. Root keeps model SQL/S2 and does not restart S1/E1 fixtures.
+
+**2026-10-28T05:43:27Z**
+
+Site continuation: executable role fixtures now cover all 14 sniff formats, plus METS/PREMIS/House committee metadata roots and the maintenance page at a file-shaped URL (99bab3f2, b090c468). Focused role/sniff/archive-capture 46 passed, role/group 19 passed; merged owned seams 83 passed. Native actual 167c6a78 coverage is 50 HTML bodies/106 captures: 57 real document captures, 43 errors, five wrappers and one non-real file-shaped document. Existing verified House XML readings remain available; valid GovInfo ZIP and EOT envelope semantic slices remain unqualified in the known local inventory. No detector, threshold or model SQL changed.

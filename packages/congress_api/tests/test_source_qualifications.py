@@ -52,7 +52,10 @@ print(json.dumps(pins))
     assert qualification['path'] == str(authority)
     assert qualification['sha256'] == sha256(authority.read_bytes()).hexdigest()
     assert qualification['rows'] == 2 and qualification['note'] == facts['note']
-    assert len(pin['identity']) == len(qualification['identity']) == 5
+    for path, identity in ((source, pin['identity']), (authority, qualification['identity'])):
+        stat = path.stat()
+        assert identity == [stat.st_dev, stat.st_ino, stat.st_size,
+                            stat.st_mtime_ns, stat.st_ctime_ns, stat.st_nlink]
 
 
 @pytest.mark.parametrize('value', [None, [], 'bad', {}, {'sha256':'a'*64},

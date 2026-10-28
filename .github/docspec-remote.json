@@ -1,5 +1,5 @@
 {
-  "owned_prefix": "s3://congressional-tech-raw/__r2_data_catalog/ct-archive-v2",
+  "owned_prefix": "s3://congressional-tech-raw/__r2_data_catalog/ct-archive-v2/",
   "properties": {
     "uri": "https://catalog.cloudflarestorage.com/174055408ff1560e60601c4d12c561c4/congressional-tech-raw",
     "warehouse": "174055408ff1560e60601c4d12c561c4_congressional-tech-raw",

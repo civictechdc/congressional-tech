@@ -78,6 +78,25 @@ try{
     const context=await fixtureContext(),page=await context.newPage();page.setDefaultTimeout(60000);
     try{const before=server.state.pointerReads;await page.goto(server.pageUrl+'?key='+results[0].publicKey);await page.locator(`[data-archive-release="${server.nextManifest.release_id}"]`).waitFor();assert.equal(new URL(page.url()).searchParams.get('key'),results[0].publicKey);assert(server.state.pointerReads>=before+3);results.push({operation:'404-reload',status:'passed'});}finally{await context.close();}
   }
+  {
+    const oldPointer=await readFile(new URL('./fixtures/old-viewer-pointer.json',import.meta.url),'utf8');
+    const context=await fixtureContext({viewport:{width:390,height:844}}),page=await context.newPage();
+    const errors=[],dataRequests=[],legacyRequests=[];page.setDefaultTimeout(60000);
+    page.on('pageerror',error=>errors.push(error.message));
+    context.on('request',request=>{const path=new URL(request.url()).pathname;if(path.includes('/data/archive/'))dataRequests.push(path);});
+    await context.route('**/viewer-publications/**',route=>{legacyRequests.push(route.request().url());return route.abort();});
+    await context.route(server.pointerUrl,route=>route.fulfill({status:200,contentType:'application/json',headers:{'Cache-Control':'no-store','Access-Control-Allow-Origin':'*'},body:oldPointer}));
+    try{
+      await page.goto(server.pageUrl);
+      await page.getByRole('alert').filter({hasText:'Invalid archive release identity.'}).first().waitFor();
+      assert(await page.getByRole('button',{name:'Try loading the archive again'}).isVisible());
+      assert.equal(await page.locator('.archive-document').count(),0);
+      assert.equal(await page.locator('[data-archive-ready="true"]').count(),0);
+      assert(dataRequests.length>0);assert(dataRequests.every(path=>path===new URL(server.pointerUrl).pathname));
+      assert.deepEqual(legacyRequests,[]);assert.deepEqual(errors,[]);
+      results.push({operation:'old-pointer-refusal',status:'passed',pointerRequests:dataRequests.length});
+    }finally{await context.close();}
+  }
   if(args.hand==='true')assert(fixtureBodyReads.some(read=>read.status===404),'Hand saved-copy checks must exercise the local missing-body store');
   const receipt={version:1,status:'passed',releaseId:server.manifest.release_id,targets:targets?'measured':'owner-gated',results,fixtureBodyReads};if(args.output)await writeFile(args.output,JSON.stringify(receipt,null,2)+'\n',{flag:'wx'});console.log(JSON.stringify(receipt));
 }finally{await browser.close();await server.close();}
