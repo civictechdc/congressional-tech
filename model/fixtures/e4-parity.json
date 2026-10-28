@@ -355,5 +355,74 @@
       "invalid_ids": 0,
       "derived_only": 0
     }
-  }
+  },
+  "physical_order": {
+    "rows": 131075,
+    "row_group_rows": 65536,
+    "expected_mismatches": 0
+  },
+  "f0_gaps": [
+    {
+      "cause": "f0_dates",
+      "fields": [
+        "first_captured",
+        "in_archive_since",
+        "date_kind"
+      ]
+    },
+    {
+      "cause": "f0_format_alternates",
+      "fields": [
+        "alternates",
+        "format"
+      ]
+    },
+    {
+      "cause": "f0_recoveries",
+      "fields": [
+        "recoveries",
+        "recovery.kind",
+        "recovery.imported_at"
+      ]
+    },
+    {
+      "cause": "f0_source_context_fold",
+      "fields": [
+        "source.listed_on",
+        "source.link_text",
+        "source.member_path",
+        "source.url"
+      ]
+    },
+    {
+      "cause": "f0_scalar_fold",
+      "fields": [
+        "document_date",
+        "congress",
+        "package_id"
+      ]
+    },
+    {
+      "cause": "f0_display_facts",
+      "fields": [
+        "facts"
+      ]
+    },
+    {
+      "cause": "f0_connections",
+      "fields": [
+        "measure_keys",
+        "bioguide_ids",
+        "witness_keys",
+        "version_keys",
+        "meeting_keys"
+      ]
+    },
+    {
+      "cause": "f0_shared_body_link",
+      "fields": [
+        "body_link"
+      ]
+    }
+  ]
 }

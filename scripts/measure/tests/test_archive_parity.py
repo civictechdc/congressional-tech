@@ -122,6 +122,23 @@ def test_descriptor_requires_the_pinned_pair_and_actual_candidate_files(tmp_path
     path.write_text(json.dumps(dict(version=1,oracle=dict(selector=dict(path='missing',sha256='0'*64,size=0)))))
     with pytest.raises(ValueError,match='missing|Missing'):
         parity.load_descriptor(path)
+
+
+def test_native_physical_ordinals_cross_three_row_groups(tmp_path):
+    import pyarrow.parquet as pq
+    fixture=FIXTURE['physical_order']
+    source=tmp_path/'physical.parquet'
+    output=parity.parquet_output(tmp_path,'physical',
+        f"SELECT unnest(range(0,cast({fixture['rows']} AS BIGINT))) AS value",['value'])
+    output['path']=str(source)
+    output['settings']['row_group_rows']=fixture['row_group_rows']
+    run_job(tmp_path,engine(),inputs=[],steps=[],outputs=[output])
+    assert pq.ParquetFile(source).metadata.num_row_groups==3
+    serial=parity.restricted_runtime(os.environ['DOCSPEC_JOB_CONFIG'],tmp_path/'serial',threads=1)
+    numbered=parity.number_file(source,engine=NativeDatasets.from_config(serial),work=tmp_path/'numbered')
+    result=run_job(tmp_path,engine(),inputs=[dict(name='numbered',kind='parquet',path=str(numbered))],
+        steps=[],outputs=[],queries=[dict(name='count',sql='SELECT count(*) AS n,count(*) FILTER(WHERE list_row<>value) AS mismatches FROM numbered')])
+    assert result['count']==[dict(n=fixture['rows'],mismatches=fixture['expected_mismatches'])]
     path.write_text(json.dumps(dict(version=1,oracle=dict(selector=dict(path='missing',sha256='0'*64,size=0)),candidate=dict(kind='f0'))))
     with pytest.raises(ValueError,match='missing|Missing'):
         parity.load_descriptor(path)
