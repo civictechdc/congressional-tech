@@ -9,7 +9,7 @@ import pyarrow.parquet as pq
 import pytest
 
 ROOT=Path(__file__).parents[3]
-ARRAYS='body_keys format body_format media_type source_link_label document_kind document_family committee_code congress date_token date_token_candidates measure_references member_bioguide_id hearing_package_id source_meeting_id source_meeting_title source_meeting_date source_chamber source_committee_code source_committee_name source_page_url state_retrieved_at source_document_type source_document_added_at'.split()
+ARRAYS='response_format filename_origins recovered_filename body_keys format body_format media_type source_link_label document_kind document_family committee_code congress date_token date_token_candidates measure_references member_bioguide_id hearing_package_id source_meeting_id source_meeting_title source_meeting_date source_chamber source_committee_code source_committee_name source_page_url state_retrieved_at source_document_type source_document_added_at'.split()
 
 
 def compact(value):return json.dumps(value,ensure_ascii=False,separators=(',',':'))
@@ -50,9 +50,9 @@ def test_seed_keeps_real_ids_sizes_recovery_sources_and_reconciles(tmp_path):
     manifest,spec,fixture=build(tmp_path)
     result=json.loads((Path(spec['scratch'])/'result.json').read_text())
     reports={item['name']:item['data'] for item in result['queries']}
-    assert reports['seed_reconciliation']==[dict(input_docs=4,listed=3,excluded=1)]
-    assert sum(row['count'] for row in reports['seed_exclusions'])==1
-    assert reports['seed_exclusions'][0]['reason']=='duplicate_document_identity'
+    assert reports['seed_reconciliation']==[dict(input_docs=4,listed=3,merged_duplicates=1,excluded=0)]
+    assert reports['seed_exclusions']==[]
+    assert reports['seed_merged_duplicates']==[dict(merged_duplicates=1)]
     assert reports['seed_invariants'] and all(type(v) is int and v==0 for v in reports['seed_invariants'][0].values())
     assert len(reports['probe_selectors'])==1
     out=Path(spec['output'])
@@ -143,3 +143,51 @@ def test_seed_refuses_definition_hash_drift_during_native_execution(tmp_path):
                 return result
         with pytest.raises(ValueError,match='[Dd]efinition'):
             build_seed_release(spec,engine=ObservedNative(),output=spec['output'],scratch=spec['scratch'])
+
+
+def mapping_fixture(fixture):
+    fixture['documents'][0]['filename']=None;fixture['documents'][0]['format']=[]
+    for row in fixture['filenames']:
+        row['response_format']=['pdf'] if row['body_key'] else []
+    fixture['filenames'][0]['filename']=None
+    for name,origin,url in [('aaa.pdf','url_path','https://fixture.test/report.pdf'),('header.pdf','content_disposition','https://fixture.test/report.pdf'),('000.pdf','recovery','https://other.test/report.pdf')]:
+        fixture['filenames'].append({**fixture['filenames'][0], 'filename':name,'source_id':'legacy-'+name,'source_url':url,'filename_origins':[origin]})
+    for name,filename,format in [('e',None,['pdf']),('f','unknown.bin',[]),('g','g.pdf',['pdf'])]:
+        row=dict(document_id='old-'+name,filename=filename,format=format,source_url='https://fixture.test/'+name,body_key=None,body_keys=[])
+        fixture['documents'].append(row)
+        fixture['filenames'].append({**row,'filename':None if name=='g' else filename,'source_id':'legacy-'+name})
+
+
+def test_seed_repairs_recorded_names_formats_and_reconciles_explicit_exclusions(tmp_path):
+    expected=json.loads((ROOT/'model/fixtures/seed-v5-mapping.json').read_text())['expected']
+    manifest,spec,_=build(tmp_path,mapping_fixture)
+    reports={q['name']:q['data'] for q in json.loads((Path(spec['scratch'])/'result.json').read_text())['queries']}
+    assert reports['seed_reconciliation']==[{k:expected[k] for k in ['input_docs','listed','merged_duplicates','excluded']}]
+    assert {r['reason']:r['count'] for r in reports['seed_exclusions']}==expected['exclusions']
+    assert {r['reason']:r['count'] for r in reports['seed_source_exclusions']}==expected['source_exclusions']
+    rows=pq.read_table(Path(spec['output'])/'list.parquet').to_pylist()
+    assert any(r['filename']==expected['filename'] and r['format']==expected['format'] for r in rows)
+    assert reports['seed_mapping_choices'][0]['multiple_filename_candidates']>0
+    members=pq.read_table(Path(spec['scratch'])/'seed-members.parquet').to_pylist()
+    assert all(r['filename'] is not None for r in members)
+    assert not any(r['legacy_document_id'] in ['old-e','old-f','old-g'] for r in members)
+    assert len(reports['seed_spot_checks'])==expected['listed']
+    assert all(all(v is True for k,v in row.items() if k!='source_row') for row in reports['seed_spot_checks'])
+
+
+def test_seed_refuses_conflicting_byte_formats(tmp_path):
+    def change(fixture):
+        mapping_fixture(fixture);fixture['filenames'][1]['response_format']=['html']
+    with pytest.raises(ValueError,match='[Ii]nvariant|[Ff]ormat'):
+        build(tmp_path,change)
+
+
+def test_seed_reports_source_rows_outside_documents_and_blank_names(tmp_path):
+    def change(fixture):
+        fixture['filenames'].append(dict(fixture['filenames'][2],document_id='context-only',source_id='legacy-context',filename='context.pdf'))
+        fixture['filenames'].append(dict(fixture['filenames'][2],source_id='legacy-blank',filename='  '))
+    _,spec,_=build(tmp_path,change)
+    reports={q['name']:q['data'] for q in json.loads((Path(spec['scratch'])/'result.json').read_text())['queries']}
+    assert {r['reason']:r['count'] for r in reports['seed_source_exclusions']}=={'seed_source_outside_documents':1,'seed_missing_source_filename':1}
+    assert reports['seed_source_reconciliation']==[dict(input_sources=7,included=5,excluded=2)]
+    assert all(type(v) is int and v==0 for v in reports['seed_invariants'][0].values())

@@ -114,3 +114,16 @@ test('measurement argument errors refuse before opening a release or browser',as
   await assert.rejects(measureArchive({release:'/missing/not-opened',dist:'/missing/not-opened'}),/harness.commit/i);
   await assert.rejects(measureArchive({release:'/missing/not-opened',repeats:'0','harness-commit':'a'.repeat(40)}),/repetitions/i);
 });
+
+test('provisional targets refuse a different seed identity and CLI validation reuses the shared policy',async()=>{
+  const {measurementProfiles,validateTargetFile}=await import('./archive-targets.mjs');
+  const folder=await mkdtemp(join(tmpdir(),'archive-target-identity-'));try{
+    const origin={kind:'seed_v5',display_only:true},harnessCommit='b'.repeat(40),releaseId='cd'.repeat(32);
+    const sample={releaseId,startupMs:10,searchMs:2,detailMs:3,heapBytes:40,workerHeapBytes:20};
+    const measurements=['phone','desktop'].map(kind=>({deviceClass:kind+'-profile',basis:'emulated',profile:measurementProfiles[kind],harnessCommit,origin,samples:Array.from({length:5},()=>({...sample}))}));
+    const output=join(folder,'targets.json'),targets=await writeTargets({measurements,basis:'emulated',harnessCommit,output});
+    assert.throws(()=>checkTargets({...sample,releaseId:'ab'.repeat(32)},targets,origin),/release|identity/i);
+    assert.deepEqual(await validateTargetFile(output,origin),{status:'provisional-emulated',basis:'emulated',measured_release_id:releaseId});
+    await assert.rejects(validateTargetFile(output,{kind:'model'}),/seed/i);
+  }finally{await rm(folder,{recursive:true,force:true});}
+});

@@ -5,7 +5,7 @@ import {pathToFileURL} from 'node:url';
 import {performance} from 'node:perf_hooks';
 import {argumentsMap,checkTargets,readTargets,measurementProfiles} from './archive-targets.mjs';
 import {startArchiveServer} from './archive-server.mjs';
-import {browserDependency,heapSampler,applyMeasurementProfile} from './archive-browser.mjs';
+import {browserDependency,heapSampler} from './archive-browser.mjs';
 export async function measureArchive(args){
   const samples=[],repeats=Number(args.repeats||3),deviceClass=args['device-class']||'desktop-profile';
   if(!Number.isSafeInteger(repeats)||repeats<1||repeats>20)throw new Error('Use between one and twenty repetitions.');
@@ -23,9 +23,9 @@ export async function measureArchive(args){
     for(let i=0;i<repeats;i++){
       const ownedContext=!args.cdp,context=ownedContext?await browser.newContext({viewport:profile.viewport,deviceScaleFactor:profile.deviceScaleFactor,isMobile:profile.isMobile}):browser.contexts()[0];
       const page=await context.newPage();page.setDefaultTimeout(Number(args['timeout-ms']||60000));
-      const policy=emulated?await applyMeasurementProfile(page,profile):null;
-      const sampler=heapSampler(browser,page);
+      const sampler=heapSampler(browser,page,{profile:emulated?profile:undefined});
       try{
+        await sampler.ready;
         let started=performance.now();await page.goto(args.page||server.pageUrl);await page.locator('[data-archive-ready="true"]').waitFor();await page.locator('.archive-document').first().waitFor();const observedReleaseId=await page.locator('[data-archive-ready="true"]').getAttribute('data-archive-release');if(observedReleaseId!==server.manifest.release_id)throw new Error('The measured page selected a different release than its fixture.');const startupMs=performance.now()-started;
         let peak={heapBytes:0,workerHeapBytes:0,pageHeapBytes:0};
         started=performance.now();await page.getByRole('searchbox').fill(args.query||'hearing');await page.getByRole('button',{name:'Search',exact:true}).click();await page.waitForFunction(query=>document.querySelector('[data-archive-query]')?.getAttribute('data-archive-query')===query,args.query||'hearing');const searchMs=performance.now()-started;
@@ -36,7 +36,7 @@ export async function measureArchive(args){
         const sample={releaseId:observedReleaseId,pageUrl:page.url(),startupMs,searchMs,detailMs,...peak};
         if(targets)checkTargets(sample,targets,server.manifest.origin,profileKind);samples.push(sample);
         if(args.screenshot)await page.screenshot({path:args.screenshot,fullPage:true});
-      }finally{try{await sampler.stop();}finally{if(policy)await policy.detach();await page.close();if(ownedContext)await context.close();}}
+      }finally{try{await sampler.stop();}finally{await page.close();if(ownedContext)await context.close();}}
     }
     return {version:1,deviceClass,basis:emulated?'emulated':'real-device',...(emulated?{profile,harnessCommit:args['harness-commit']}:{}),origin:server.manifest.origin,runtime:{node:process.version,browser:browser.version(),platform:process.platform,architecture:process.arch,cdp:Boolean(args.cdp)},heapMethod:'CDP Runtime.getHeapUsage on page and archive worker every50ms through startup/search/detail; includes backing storage and reports sample count',samples};
   }finally{try{if(browser)await browser.close();}finally{await server.close();}}

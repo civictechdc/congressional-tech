@@ -4,7 +4,7 @@ import {resolve} from 'node:path';
 import assert from 'node:assert/strict';
 import {argumentsMap,checkTargets,readTargets,measurementProfiles} from './archive-targets.mjs';
 import {startArchiveServer} from './archive-server.mjs';
-import {browserDependency,heapSampler,applyMeasurementProfile} from './archive-browser.mjs';
+import {browserDependency,heapSampler} from './archive-browser.mjs';
 import {openArchive} from '../src/components/explorer/reader/archive.ts';
 const args=argumentsMap(process.argv.slice(2));if(!args['next-release'])throw new Error('Supply --next-release for the required browser stale-tab check.');const targets=await readTargets(args.targets);
 const {chromium}=browserDependency('playwright');
@@ -33,9 +33,9 @@ try{
     const profile=measurementProfiles[profileKind],viewport=profile.viewport;
     server.state.missingFile=null;server.state.flipOnMissing=null;server.state.releaseId=server.manifest.release_id;
     const context=await fixtureContext({viewport,deviceScaleFactor:profile.deviceScaleFactor,isMobile:profile.isMobile}),page=await context.newPage();page.setDefaultTimeout(60000);
-    const policy=targets?.status==='provisional-emulated'?await applyMeasurementProfile(page,profile):null;
-    const sampler=heapSampler(browser,page);
+    const sampler=heapSampler(browser,page,{profile:targets?.status==='provisional-emulated'?profile:undefined});
     try{
+      await sampler.ready;
       const errors=[];page.on('pageerror',error=>errors.push(error.message));let started=performance.now();
       await page.goto(server.pageUrl);await page.locator('[data-archive-ready="true"]').waitFor();await page.locator('.archive-document').first().waitFor();const observedReleaseId=await page.locator('[data-archive-ready="true"]').getAttribute('data-archive-release');if(observedReleaseId!==server.manifest.release_id)throw new Error('The measured page selected a different release than its fixture.');const startupMs=performance.now()-started;
       const initialTotal=await page.locator('[data-archive-total]').innerText();
@@ -73,7 +73,7 @@ try{
       assert.deepEqual(errors,[]);assert(await page.evaluate(()=>document.documentElement.scrollWidth<=window.innerWidth),'The phone profile must not overflow horizontally');
       if(args.screenshot)await page.screenshot({path:args.screenshot.replace(/(\.[a-z]+)$/i,`-${viewport.width}$1`),fullPage:true});
       results.push({viewport,...sample,publicKey,status:'passed'});
-    }finally{try{await sampler.stop();}finally{if(policy)await policy.detach();await context.close();}}
+    }finally{try{await sampler.stop();}finally{await context.close();}}
   }
   if(server.nextManifest){
     server.state.releaseId=server.manifest.release_id;server.state.missingFile=server.manifest.files.find(file=>file.name==='detail.parquet'||file.shard==='detail').name;server.state.flipOnMissing=server.nextManifest.release_id;

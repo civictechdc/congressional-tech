@@ -131,8 +131,9 @@ def _seed_queries(spec):
     checks=dict(
         source_count_mismatch=f"(SELECT cast(count(*)<>{spec['document_rows']} AS BIGINT) FROM seed_docs)",
         duplicate_legacy_documents="(SELECT count(*) FROM (SELECT legacy_document_id FROM seed_docs GROUP BY legacy_document_id HAVING count(*)<>1))",
-        documents_without_sources="(SELECT count(*) FROM seed_docs d LEFT JOIN seed_identities i USING(legacy_document_id) WHERE i.document_id IS NULL)",
-        orphan_source_rows="(SELECT count(*) FROM seed_members m LEFT JOIN seed_docs d USING(legacy_document_id) WHERE d.legacy_document_id IS NULL)",
+        documents_without_sources="(SELECT count(*) FROM seed_document_admission d LEFT JOIN seed_identities i USING(legacy_document_id) WHERE d.exclusion_reason IS NULL AND i.document_id IS NULL)",
+        unaccounted_source_rows="(SELECT abs((SELECT count(*) FROM seed_file_values)-(SELECT count(*) FROM seed_members)-(SELECT count(*) FROM seed_source_status WHERE exclusion_reason IS NOT NULL)))",
+        conflicting_byte_formats="(SELECT count(*) FROM seed_docs WHERE byte_format_candidates>1)",
         missing_source_filenames="(SELECT count(*) FROM seed_members WHERE filename IS NULL OR trim(filename)='')",
         invalid_body_keys="(SELECT count(*) FROM seed_members WHERE body_key IS NOT NULL AND NOT regexp_like(body_key,'^bodies/sha256/[a-f0-9]{2}/[a-f0-9]{64}([.]gz|[.]pdf)?$'))",
         missing_member_sizes="(SELECT count(*) FROM seed_members m LEFT JOIN seed_sizes s USING(body_key) WHERE m.body_key IS NOT NULL AND s.bytes IS NULL)",
@@ -148,10 +149,13 @@ def _seed_queries(spec):
         bad_accepted_container="(SELECT cast(count(*)<>1 AS BIGINT) FROM accepted_input)",
     )
     guard=dict(name='seed_invariants',sql='SELECT '+','.join(sql+' AS '+name for name,sql in checks.items()))
+    duplicate_sql="SELECT i.document_id,i.legacy_document_id,r.legacy_document_id AS representative FROM seed_identities i JOIN seed_representatives r USING(document_id) WHERE i.legacy_document_id<>r.legacy_document_id"
     reconciliation=dict(name='seed_reconciliation',sql="""SELECT (SELECT count(*) FROM seed_docs) AS input_docs,
-        (SELECT count(*) FROM ordered) AS listed,(SELECT count(*) FROM seed_identities i JOIN seed_representatives r USING(document_id) WHERE i.legacy_document_id<>r.legacy_document_id) AS excluded""")
-    exclusions=dict(name='seed_exclusions',sql="""SELECT 'duplicate_document_identity' AS reason,count(*) AS count FROM seed_identities i
-        JOIN seed_representatives r USING(document_id) WHERE i.legacy_document_id<>r.legacy_document_id HAVING count(*)>0""")
+        (SELECT count(*) FROM ordered) AS listed,(SELECT count(*) FROM ("""+duplicate_sql+""")) AS merged_duplicates,
+        (SELECT count(*) FROM seed_document_admission WHERE exclusion_reason IS NOT NULL) AS excluded""")
+    exclusions=dict(name='seed_exclusions',sql="SELECT exclusion_reason AS reason,count(*) AS count FROM seed_document_admission WHERE exclusion_reason IS NOT NULL GROUP BY exclusion_reason")
+    merged=dict(name='seed_merged_duplicates',sql='SELECT count(*) AS merged_duplicates FROM ('+duplicate_sql+')')
+    merged_examples=dict(name='seed_merged_examples',sql=duplicate_sql+' ORDER BY legacy_document_id LIMIT 10')
     spot_sql="""SELECT s.source_row,d.legacy_document_id,s.document_id,o.list_row,
         d.filename AS old_filename,o.filename AS new_filename,d.format AS old_format,o.format AS new_format,
         d.source_page,d.source_meeting_id,o.meeting_keys,
@@ -170,7 +174,16 @@ def _seed_queries(spec):
     recovery_report=dict(name='seed_recovery_reconciliation',sql="""SELECT (SELECT count(*) FROM seed_recovery_candidates) AS accepted,
         (SELECT count(*) FROM seed_recoveries) AS attached,(SELECT count(*) FROM seed_recovery_candidates r LEFT JOIN seed_recovery_targets t USING(recovery_key)
         WHERE t.recovery_key IS NULL OR (t.targets<>1 AND t.original_targets<>1)) AS without_unique_v5_source""")
-    return guard,[reconciliation,exclusions,spots,examples,probe,recovery_report]
+    source_exclusions=dict(name='seed_source_exclusions',sql="SELECT exclusion_reason AS reason,count(*) AS count FROM seed_source_status WHERE exclusion_reason IS NOT NULL GROUP BY exclusion_reason")
+    source_reconciliation=dict(name='seed_source_reconciliation',sql="""SELECT (SELECT count(*) FROM seed_file_values) AS input_sources,
+        (SELECT count(*) FROM seed_members) AS included,(SELECT count(*) FROM seed_source_status WHERE exclusion_reason IS NOT NULL) AS excluded""")
+    source_examples=dict(name='seed_source_exclusion_examples',sql="SELECT * FROM seed_source_status WHERE exclusion_reason IS NOT NULL ORDER BY legacy_document_id,legacy_source_id LIMIT 10")
+    mapping=dict(name='seed_mapping_choices',sql="""SELECT count(*) FILTER(WHERE filename_candidates>1) AS multiple_filename_candidates,
+        count(*) FILTER(WHERE raw_filename IS NULL AND filename IS NOT NULL) AS repaired_filenames,
+        count(*) FILTER(WHERE raw_format IS NULL AND format IS NOT NULL) AS repaired_formats,
+        count(*) FILTER(WHERE filename IS NULL OR trim(filename)='') AS missing_filenames,
+        count(*) FILTER(WHERE format IS NULL OR trim(format)='') AS missing_formats FROM seed_docs""")
+    return guard,[reconciliation,exclusions,spots,examples,probe,recovery_report,source_exclusions,mapping,merged,merged_examples,source_reconciliation,source_examples]
 
 
 def build_seed_release(spec,*,engine,output,scratch):
@@ -198,7 +211,7 @@ def build_seed_release(spec,*,engine,output,scratch):
         codes=json.loads((ROOT/'model/registries/committee-codes.json').read_text())
         inputs.append(json_input(scratch,'committee_codes',codes,code='Utf8',system_code='Utf8',chamber='Utf8'))
         guard,queries=_seed_queries(spec)
-        private=[parquet_output(scratch,'seed-members','SELECT legacy_document_id,source_id,logical_body_key,filename,source_url FROM seed_members',['legacy_document_id','source_id']),
+        private=[parquet_output(scratch,'seed-members','SELECT DISTINCT legacy_document_id,source_id,logical_body_key,filename,source_url FROM seed_members',['legacy_document_id','source_id']),
             parquet_output(scratch,'seed-identities','SELECT * FROM seed_identities',['legacy_document_id'])]
         origin={name:spec['profile'][name] for name in ORIGIN}
         origin['gaps']=['Display-only v5 seed; capture remains on the old jobs until the raw rebuild',
