@@ -33,10 +33,13 @@ function validateTargets(value){
   return value;
 }
 export async function readTargets(path=defaultTargets){const value=JSON.parse(await readFile(path));if(value.version!==1)throw new Error('Unsupported target schema.');if(value.status==='owner-gated')return undefined;return validateTargets(value);}
-export function checkTargets(sample,targets,origin,profile){
+export function checkTargetRelease(releaseId,targets,origin){
   validateTargets(targets??{});
   if(targets.status==='provisional-emulated'&&!seedOrigin(origin))throw new Error('Provisional emulated targets qualify only a display-only v5 seed.');
-  if(targets.status==='provisional-emulated'&&sample.releaseId!==targets.raw_runs.phone[0].releaseId)throw new Error('Provisional targets measured a different seed release identity.');
+  if(targets.status==='provisional-emulated'&&releaseId!==targets.raw_runs.phone[0].releaseId)throw new Error('Provisional targets measured a different seed release identity.');
+}
+export function checkTargets(sample,targets,origin,profile){
+  checkTargetRelease(sample.releaseId,targets,origin);
   const ceilings=targets.status==='provisional-emulated'&&profile?targets.profile[profile]?.ceilings:targets.ceilings;
   if(!ceilings)throw new Error('Unknown measured target profile.');
   for(const name of targetNames)if(!Number.isFinite(sample[name])||sample[name]<0||sample[name]>ceilings[name])throw new Error(`Archive ${name} exceeds its measured target.`);

@@ -100,6 +100,10 @@ test('provisional targets bind five emulated runs to a seed and keep each profil
     assert.equal(targets.profile.phone.ceilings.startupMs,90);assert.equal(targets.profile.desktop.ceilings.startupMs,45);
     assert.equal(targets.ceilings.startupMs,90);assert.equal(targets.raw_runs.phone.length,5);assert.equal(targets.harness_commit,harnessCommit);
     const sample=measurements[1].samples[2];checkTargets(sample,targets,origin,'desktop');
+    const {checkTargetRelease}=await import('./archive-targets.mjs');
+    checkTargetRelease(sample.releaseId,targets,origin);
+    assert.throws(()=>checkTargetRelease('cd'.repeat(32),targets,origin),/different seed release/);
+    assert.throws(()=>checkTargetRelease(sample.releaseId,targets,{kind:'model'}),/seed/i);
     assert.throws(()=>checkTargets({...sample,startupMs:50},targets,origin,'desktop'),/startup/);
     for(const other of [undefined,{kind:'model'},{kind:'seed_v5',display_only:false}])assert.throws(()=>checkTargets(sample,targets,other),/seed/i);
     assert.throws(()=>checkTargets(sample,{status:'measured',ceilings:targets.ceilings},origin),/target/i);
@@ -126,4 +130,18 @@ test('provisional targets refuse a different seed identity and CLI validation re
     assert.deepEqual(await validateTargetFile(output,origin),{status:'provisional-emulated',basis:'emulated',measured_release_id:releaseId});
     await assert.rejects(validateTargetFile(output,{kind:'model'}),/seed/i);
   }finally{await rm(folder,{recursive:true,force:true});}
+});
+
+
+test('Node canary keeps its decoded budget without applying browser runtime ceilings',async()=>{
+  const server=await startArchiveServer({release:fileURLToPath(new URL('../../../model/fixtures/archive-contract/current',import.meta.url))});
+  const targets={version:1,status:'owner-approved',basis:'real-device',ceilings:{startupMs:1,searchMs:1,detailMs:1,heapBytes:1}};
+  try{
+    const options={pointerUrl:server.pointerUrl,releaseId:server.manifest.release_id,local:true,checkSaved:false,targets};
+    const receipt=await verifyArchive(options);
+    assert.equal(receipt.status,'incomplete');assert.equal(receipt.savedCopyChecked,false);
+    assert(receipt.estimatedListPeakBytes>targets.ceilings.heapBytes);
+    assert.throws(()=>checkTargets({releaseId:server.manifest.release_id,startupMs:2,searchMs:2,detailMs:2,heapBytes:2},targets,server.manifest.origin),/startupMs/);
+    await assert.rejects(verifyArchive({...options,heapBytes:1}),/budget|allowance|limit|bytes/i);
+  }finally{await server.close();}
 });
