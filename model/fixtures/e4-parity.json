@@ -1,0 +1,801 @@
+{
+  "version": 1,
+  "note": "Expected E4 cause outcomes authored before comparison code. Causes apply to a field/subject/direction, never an entire changed document. Synthetic facts represent pinned receipt/read/model observations, not production classification rules.",
+  "causes": [
+    {
+      "name": "non_document_roles",
+      "field": "body_keys",
+      "value": "body:non_document_roles",
+      "direction": "removed",
+      "fact": {
+        "record_role": "caption"
+      },
+      "expected_causes": [
+        "non_document_roles"
+      ]
+    },
+    {
+      "name": "listing_pages",
+      "field": "body_keys",
+      "value": "body:listing_pages",
+      "direction": "removed",
+      "fact": {
+        "record_role": "listing"
+      },
+      "expected_causes": [
+        "listing_pages"
+      ]
+    },
+    {
+      "name": "soft_error_wrapper_senate",
+      "field": "body_keys",
+      "value": "body:soft_error_wrapper_senate",
+      "direction": "removed",
+      "fact": {
+        "record_role": "error_response",
+        "format": "html"
+      },
+      "expected_causes": [
+        "soft_error_wrapper_senate"
+      ]
+    },
+    {
+      "name": "real_web_untyped",
+      "field": "body_keys",
+      "value": "body:real_web_untyped",
+      "direction": "added",
+      "fact": {
+        "record_role": "document",
+        "is_real_file": true,
+        "format": "html"
+      },
+      "expected_causes": [
+        "real_web_untyped"
+      ]
+    },
+    {
+      "name": "incomplete_damaged_failed_feed",
+      "field": "body_keys",
+      "value": "body:incomplete_damaged_failed_feed",
+      "direction": "removed",
+      "fact": {
+        "complete": false,
+        "format": "pdf"
+      },
+      "expected_causes": [
+        "incomplete_damaged_failed_feed"
+      ]
+    },
+    {
+      "name": "recovery_independent_fetch",
+      "field": "body_keys",
+      "value": "body:recovery_independent_fetch",
+      "direction": "added",
+      "fact": {
+        "mode": "fetch",
+        "complete": true,
+        "http_status": 200,
+        "outcome": "stored",
+        "recovery_original_url": "https://fixture.test/original"
+      },
+      "expected_causes": [
+        "recovery_independent_fetch"
+      ]
+    },
+    {
+      "name": "direct_provider_same_text",
+      "field": "body_keys",
+      "value": "body:direct_provider_same_text",
+      "direction": "added",
+      "fact": {
+        "fingerprint": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "other_fingerprint": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "receipt_key": "receipts/fixture/2026-10-01/a.jsonl",
+        "receipt_line": 1,
+        "other_receipt_key": "receipts/fixture/2026-10-01/a.jsonl",
+        "other_receipt_line": 1,
+        "attempt": 1,
+        "other_attempt": 0
+      },
+      "expected_causes": [
+        "direct_provider_same_text"
+      ]
+    },
+    {
+      "name": "eot_webharvest_attachment",
+      "field": "recoveries",
+      "value": "body:eot_webharvest_attachment",
+      "direction": "added",
+      "fact": {
+        "original_url": "https://veterans.house.gov/a.pdf",
+        "recovered_url": "https://www.webharvest.gov/a.pdf"
+      },
+      "expected_causes": [
+        "eot_webharvest_attachment"
+      ]
+    },
+    {
+      "name": "publisher_link_kind",
+      "field": "document_kind",
+      "value": "statement",
+      "direction": "added",
+      "fact": {
+        "filename_kind_count": 0,
+        "publisher_kind": "statement",
+        "link_basis": "saved_page"
+      },
+      "expected_causes": [
+        "publisher_link_kind"
+      ]
+    },
+    {
+      "name": "capture_header_names",
+      "field": "filename",
+      "value": "Report.pdf",
+      "direction": "added",
+      "fact": {
+        "name_basis": "content_disposition",
+        "header_filename": "Report.pdf"
+      },
+      "expected_causes": [
+        "capture_header_names"
+      ]
+    },
+    {
+      "name": "saved_text_exact_twins",
+      "field": "body_keys",
+      "value": "body:saved_text_exact_twins",
+      "direction": "removed",
+      "fact": {
+        "fingerprint": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+        "other_fingerprint": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+        "source_url": "https://fixture.test/twin",
+        "other_source_url": "https://fixture.test/twin",
+        "fidelity": "saved_text",
+        "other_fidelity": "exact"
+      },
+      "expected_causes": [
+        "saved_text_exact_twins"
+      ]
+    },
+    {
+      "name": "govinfo_same_stem_groups",
+      "field": "body_keys",
+      "value": "body:govinfo_same_stem_groups",
+      "direction": "added",
+      "fact": {
+        "group_kind": "publisher",
+        "group_id": "govinfo:fixture",
+        "source_url": "https://www.govinfo.gov/content/pkg/CHRG-118hhrg1.zip"
+      },
+      "expected_causes": [
+        "govinfo_same_stem_groups"
+      ]
+    },
+    {
+      "name": "old_placeholder_xml",
+      "field": "body_keys",
+      "value": "body:old_placeholder_xml",
+      "direction": "removed",
+      "fact": {
+        "record_role": "error_response",
+        "format": "html",
+        "source_url": "https://docs.house.gov/a.xml",
+        "distinct_contexts": 101
+      },
+      "expected_causes": [
+        "old_placeholder_xml",
+        "soft_error_wrapper_senate"
+      ]
+    },
+    {
+      "name": "link_label_provenance",
+      "field": "title",
+      "value": "Published statement",
+      "direction": "added",
+      "fact": {
+        "label_basis": "saved_page",
+        "link_text": "Published statement"
+      },
+      "expected_causes": [
+        "link_label_provenance"
+      ]
+    },
+    {
+      "name": "capture_dates",
+      "field": "first_captured",
+      "value": "body:capture_dates",
+      "direction": "removed",
+      "fact": {
+        "retrieved_at": null,
+        "is_import_run": true,
+        "old_time_basis": "import_run"
+      },
+      "expected_causes": [
+        "capture_dates"
+      ]
+    },
+    {
+      "name": "govinfo123_fetch",
+      "field": "first_captured",
+      "value": "2026-10-16",
+      "direction": "added",
+      "fact": {
+        "match_basis": "direct_official_package",
+        "mode": "fetch",
+        "requested_url": "https://www.govinfo.gov/CHRG.zip",
+        "url": "https://www.govinfo.gov/CHRG.zip",
+        "original_url": "https://www.govinfo.gov/CHRG.zip",
+        "publisher_requested": true,
+        "http_status": 200,
+        "complete": true,
+        "outcome": "stored",
+        "retrieved_at": "2026-10-16T00:00:00Z"
+      },
+      "expected_causes": [
+        "govinfo123_fetch"
+      ]
+    },
+    {
+      "name": "b7_owner_recoveries",
+      "field": "recoveries",
+      "value": "body:b7_owner_recoveries",
+      "direction": "added",
+      "fact": {
+        "decision_id": "owner-b7-57",
+        "kind": "requested_content_in_official_hearing",
+        "stage": "raw-recoveries-owner-32c13ffa",
+        "source_time_basis": "earliest_matching_fetch"
+      },
+      "expected_causes": [
+        "b7_owner_recoveries"
+      ]
+    }
+  ],
+  "expected": {
+    "cause_cases": 17,
+    "unrelated_field_is_unexplained": true,
+    "unclassified_blocks": true,
+    "derived_only_blocks": true
+  },
+  "topology": {
+    "oracle": [
+      {
+        "doc": "old-a",
+        "evidence": [
+          "file-a"
+        ]
+      },
+      {
+        "doc": "old-b",
+        "evidence": [
+          "file-b"
+        ]
+      }
+    ],
+    "candidate": [
+      {
+        "doc": "new-ab",
+        "evidence": [
+          "file-a",
+          "file-b"
+        ]
+      }
+    ],
+    "pairs": [
+      [
+        "old-a",
+        "new-ab"
+      ],
+      [
+        "old-b",
+        "new-ab"
+      ]
+    ]
+  },
+  "classifications": [
+    "rule_change",
+    "old_pipeline_error",
+    "derived_only_fact"
+  ],
+  "integration": {
+    "members": [
+      {
+        "body_key": "bodies/sha256/11/1111111111111111111111111111111111111111111111111111111111111111.gz",
+        "filename": "11.pdf",
+        "source_url": "https://fixture.test/11.pdf",
+        "source_id": "e6821d4b89a53b4b0938f10f93101a33bc8c565e7c1a5a6bbda5c377d895a3ca"
+      },
+      {
+        "body_key": "bodies/sha256/22/2222222222222222222222222222222222222222222222222222222222222222.gz",
+        "filename": "22.pdf",
+        "source_url": "https://fixture.test/22.pdf",
+        "source_id": "2b186fa698330daa2a90075eb38b6f1d56215374fb642a05d9649da4eff577b3"
+      }
+    ],
+    "documents": [
+      {
+        "doc": "old-a",
+        "body_keys": [
+          "bodies/sha256/11/1111111111111111111111111111111111111111111111111111111111111111.gz"
+        ],
+        "source_ids": [
+          "e6821d4b89a53b4b0938f10f93101a33bc8c565e7c1a5a6bbda5c377d895a3ca"
+        ],
+        "document_id": "19d12ebee6a0bc029a78950cf06e18feba7cd53ef6802d39ed20320a8ce51573"
+      },
+      {
+        "doc": "old-b",
+        "body_keys": [
+          "bodies/sha256/22/2222222222222222222222222222222222222222222222222222222222222222.gz"
+        ],
+        "source_ids": [
+          "2b186fa698330daa2a90075eb38b6f1d56215374fb642a05d9649da4eff577b3"
+        ],
+        "document_id": "54886e9ee64d50791952837e119c5396da00a62e12743003da41348101137f1b"
+      },
+      {
+        "doc": "new-ab",
+        "body_keys": [
+          "bodies/sha256/11/1111111111111111111111111111111111111111111111111111111111111111.gz",
+          "bodies/sha256/22/2222222222222222222222222222222222222222222222222222222222222222.gz"
+        ],
+        "source_ids": [
+          "e6821d4b89a53b4b0938f10f93101a33bc8c565e7c1a5a6bbda5c377d895a3ca",
+          "2b186fa698330daa2a90075eb38b6f1d56215374fb642a05d9649da4eff577b3"
+        ],
+        "document_id": "c9dd2279c3496a30414c93069a35b10f891c374999ed4c74e39aa3c83faed71e"
+      }
+    ],
+    "expected": {
+      "aligned_pairs": 2,
+      "differences": 6,
+      "unexplained": 4,
+      "unclassified": 4,
+      "invalid_ids": 0,
+      "derived_only": 0,
+      "id_inputs_changed": 2
+    },
+    "difference_records": [
+      {
+        "difference_id": "c586e9d3659f429a2723427a9210fbfa43dd475e2edf2e31b4d39750045bbdaa",
+        "classification": "rule_change",
+        "note": "Fixture decision: rule_change",
+        "rule_ref": "ARCH 9.4",
+        "raw_signal": "receipts/fixture/2026-10-01/title.jsonl#1"
+      },
+      {
+        "difference_id": "bffc3a0e66e660494b6def88be5a28317d9f0ff811171e4b506afd14a07c379f",
+        "classification": "old_pipeline_error",
+        "note": "Fixture decision: old_pipeline_error",
+        "rule_ref": null,
+        "raw_signal": null
+      },
+      {
+        "difference_id": "c1629152edfd7d9832adf17ee85d0334132e72d070705d7ba7d6fceb41f58c77",
+        "classification": "derived_only_fact",
+        "note": "Fixture decision: derived_only_fact",
+        "rule_ref": null,
+        "raw_signal": null
+      },
+      {
+        "difference_id": "1e67498ad3b8c3a1bcea3e46662b19b6b80a643a9df4a940526413218ad84914",
+        "classification": "old_pipeline_error",
+        "note": "Fixture decision: old_pipeline_error",
+        "rule_ref": null,
+        "raw_signal": null
+      }
+    ]
+  },
+  "f0_gaps": [
+    {
+      "cause": "f0_dates",
+      "fields": [
+        "first_captured",
+        "in_archive_since",
+        "date_kind"
+      ]
+    },
+    {
+      "cause": "f0_format_alternates",
+      "fields": [
+        "alternates",
+        "format"
+      ]
+    },
+    {
+      "cause": "f0_recoveries",
+      "fields": [
+        "recoveries",
+        "recovery.kind",
+        "recovery.imported_at"
+      ]
+    },
+    {
+      "cause": "f0_source_context_fold",
+      "fields": [
+        "source.listed_on",
+        "source.link_text",
+        "source.member_path",
+        "source.url"
+      ]
+    },
+    {
+      "cause": "f0_scalar_fold",
+      "fields": [
+        "document_date",
+        "congress",
+        "package_id"
+      ]
+    },
+    {
+      "cause": "f0_display_facts",
+      "fields": [
+        "facts"
+      ]
+    },
+    {
+      "cause": "f0_connections",
+      "fields": [
+        "measure_keys",
+        "bioguide_ids",
+        "witness_keys",
+        "version_keys",
+        "meeting_keys"
+      ]
+    },
+    {
+      "cause": "f0_shared_body_link",
+      "fields": [
+        "body_link"
+      ]
+    }
+  ],
+  "f0_catalog": {
+    "files": [
+      {
+        "filename": "Alpha.html",
+        "source_url": "https://fixture.test/alpha.html",
+        "body_key": "bodies/sha256/aa/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa.gz",
+        "source_id": "75b613d57b42f656bb47ed7eec4822458e9ca6a30fd3476fcdbd377a77eaf597",
+        "body_format": [
+          "html"
+        ],
+        "format": [
+          "html"
+        ],
+        "media_type": [
+          "text/html"
+        ],
+        "http_status": [
+          "200"
+        ],
+        "capture_outcome": [
+          "saved"
+        ],
+        "response_usable": [
+          "true"
+        ],
+        "response_body_complete": [
+          "true"
+        ],
+        "state_retrieved_at": [
+          "2020-01-02T00:00:00Z"
+        ],
+        "source_page_url": [
+          "https://fixture.test/list1",
+          "https://fixture.test/list2"
+        ],
+        "source_link_label": [
+          "One",
+          "Two"
+        ],
+        "document_id": "a53d6ab2d63a62b98242c300b107473234ccf72537cb38bc4d0f9de399d128cd"
+      },
+      {
+        "filename": "Beta.html",
+        "source_url": "https://fixture.test/beta.html",
+        "body_key": "bodies/sha256/aa/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa.gz",
+        "source_id": "a02b0b6c7c23bce259b9583d187591e5ecc1af03c35ec9ceb5519a76b7939235",
+        "body_format": [
+          "html"
+        ],
+        "format": [
+          "html"
+        ],
+        "media_type": [
+          "text/html"
+        ],
+        "http_status": [
+          "200"
+        ],
+        "capture_outcome": [
+          "saved"
+        ],
+        "response_usable": [
+          "true"
+        ],
+        "response_body_complete": [
+          "true"
+        ],
+        "state_retrieved_at": [
+          "2020-01-02T00:00:00Z"
+        ],
+        "source_page_url": [
+          "https://fixture.test/list1",
+          "https://fixture.test/list2"
+        ],
+        "source_link_label": [
+          "One",
+          "Two"
+        ],
+        "document_id": "9d819fd204268d39b31ef0e0fbee553f65cdb79bf0bfc010eb1b59754b3803fd"
+      },
+      {
+        "filename": "Record.pdf",
+        "source_url": "https://fixture.test/record.pdf",
+        "body_key": "bodies/sha256/22/2222222222222222222222222222222222222222222222222222222222222222.gz",
+        "source_id": "f6f7497aef06e55bc67d54582e1d9d169f60043e9e07473b4171c06467a98f92",
+        "body_format": [
+          "pdf"
+        ],
+        "format": [
+          "pdf"
+        ],
+        "media_type": [
+          "application/pdf"
+        ],
+        "http_status": [
+          "200"
+        ],
+        "capture_outcome": [
+          "saved"
+        ],
+        "response_usable": [
+          "true"
+        ],
+        "response_body_complete": [
+          "true"
+        ],
+        "state_retrieved_at": [
+          "2020-01-02T00:00:00Z"
+        ],
+        "source_page_url": [
+          "https://fixture.test/list1",
+          "https://fixture.test/list2"
+        ],
+        "source_link_label": [
+          "One",
+          "Two"
+        ],
+        "document_id": "fb36fc98a84e76a1ef4c44cbc960623e74de53da86769923876a07204c48f9ae"
+      },
+      {
+        "filename": "Record.xml",
+        "source_url": "https://fixture.test/record.xml",
+        "body_key": "bodies/sha256/33/3333333333333333333333333333333333333333333333333333333333333333.gz",
+        "source_id": "26ba23a7c509aa0a937f3c0716a690ca6a172e29ef2edc2a3645290449397933",
+        "body_format": [
+          "xml"
+        ],
+        "format": [
+          "xml"
+        ],
+        "media_type": [
+          "application/xml"
+        ],
+        "http_status": [
+          "200"
+        ],
+        "capture_outcome": [
+          "saved"
+        ],
+        "response_usable": [
+          "true"
+        ],
+        "response_body_complete": [
+          "true"
+        ],
+        "state_retrieved_at": [
+          "2020-01-02T00:00:00Z"
+        ],
+        "source_page_url": [
+          "https://fixture.test/list1",
+          "https://fixture.test/list2"
+        ],
+        "source_link_label": [
+          "One",
+          "Two"
+        ],
+        "document_id": "fb36fc98a84e76a1ef4c44cbc960623e74de53da86769923876a07204c48f9ae"
+      }
+    ],
+    "documents": [
+      {
+        "filename": "Alpha.html",
+        "source_url": "https://fixture.test/alpha.html",
+        "body_key": "bodies/sha256/aa/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa.gz",
+        "source_id": "75b613d57b42f656bb47ed7eec4822458e9ca6a30fd3476fcdbd377a77eaf597",
+        "body_format": [
+          "html"
+        ],
+        "format": [
+          "html"
+        ],
+        "media_type": [
+          "text/html"
+        ],
+        "http_status": [
+          "200"
+        ],
+        "capture_outcome": [
+          "saved"
+        ],
+        "response_usable": [
+          "true"
+        ],
+        "response_body_complete": [
+          "true"
+        ],
+        "state_retrieved_at": [
+          "2020-01-02T00:00:00Z"
+        ],
+        "source_page_url": [
+          "https://fixture.test/list1",
+          "https://fixture.test/list2"
+        ],
+        "source_link_label": [
+          "One",
+          "Two"
+        ],
+        "document_id": "a53d6ab2d63a62b98242c300b107473234ccf72537cb38bc4d0f9de399d128cd",
+        "body_keys": [
+          "bodies/sha256/aa/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa.gz"
+        ],
+        "document_kind": [
+          "statement"
+        ],
+        "document_family": [
+          "Congressional"
+        ],
+        "congress": [
+          "118"
+        ],
+        "date_token": [
+          "2024-05-01"
+        ],
+        "date_token_candidates": [
+          "2024-05-01"
+        ]
+      },
+      {
+        "filename": "Beta.html",
+        "source_url": "https://fixture.test/beta.html",
+        "body_key": "bodies/sha256/aa/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa.gz",
+        "source_id": "a02b0b6c7c23bce259b9583d187591e5ecc1af03c35ec9ceb5519a76b7939235",
+        "body_format": [
+          "html"
+        ],
+        "format": [
+          "html"
+        ],
+        "media_type": [
+          "text/html"
+        ],
+        "http_status": [
+          "200"
+        ],
+        "capture_outcome": [
+          "saved"
+        ],
+        "response_usable": [
+          "true"
+        ],
+        "response_body_complete": [
+          "true"
+        ],
+        "state_retrieved_at": [
+          "2020-01-02T00:00:00Z"
+        ],
+        "source_page_url": [
+          "https://fixture.test/list1",
+          "https://fixture.test/list2"
+        ],
+        "source_link_label": [
+          "One",
+          "Two"
+        ],
+        "document_id": "9d819fd204268d39b31ef0e0fbee553f65cdb79bf0bfc010eb1b59754b3803fd",
+        "body_keys": [
+          "bodies/sha256/aa/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa.gz"
+        ],
+        "document_kind": [
+          "statement"
+        ],
+        "document_family": [
+          "Congressional"
+        ],
+        "congress": [
+          "118"
+        ],
+        "date_token": [
+          "2024-05-01"
+        ],
+        "date_token_candidates": [
+          "2024-05-01"
+        ]
+      },
+      {
+        "filename": "Record.pdf",
+        "source_url": "https://fixture.test/record.pdf",
+        "body_key": "bodies/sha256/22/2222222222222222222222222222222222222222222222222222222222222222.gz",
+        "source_id": "f6f7497aef06e55bc67d54582e1d9d169f60043e9e07473b4171c06467a98f92",
+        "body_format": [
+          "pdf"
+        ],
+        "format": [
+          "pdf",
+          "xml"
+        ],
+        "media_type": [
+          "application/pdf"
+        ],
+        "http_status": [
+          "200"
+        ],
+        "capture_outcome": [
+          "saved"
+        ],
+        "response_usable": [
+          "true"
+        ],
+        "response_body_complete": [
+          "true"
+        ],
+        "state_retrieved_at": [
+          "2020-01-02T00:00:00Z"
+        ],
+        "source_page_url": [
+          "https://fixture.test/list1",
+          "https://fixture.test/list2"
+        ],
+        "source_link_label": [
+          "One",
+          "Two"
+        ],
+        "document_id": "fb36fc98a84e76a1ef4c44cbc960623e74de53da86769923876a07204c48f9ae",
+        "body_keys": [
+          "bodies/sha256/22/2222222222222222222222222222222222222222222222222222222222222222.gz",
+          "bodies/sha256/33/3333333333333333333333333333333333333333333333333333333333333333.gz"
+        ],
+        "document_kind": [
+          "statement"
+        ],
+        "document_family": [
+          "Congressional"
+        ],
+        "congress": [
+          "118"
+        ],
+        "date_token": [
+          "2024-05-01"
+        ],
+        "date_token_candidates": [
+          "2024-05-01"
+        ]
+      }
+    ],
+    "expected": {
+      "unexplained": 0,
+      "unclassified": 0,
+      "invalid_ids": 0,
+      "required_causes": [
+        "f0_dates",
+        "f0_format_alternates",
+        "f0_source_context_fold",
+        "f0_shared_body_link",
+        "f0_display_facts"
+      ]
+    }
+  }
+}

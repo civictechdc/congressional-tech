@@ -20,5 +20,7 @@ def gate_and_flip(client, *, bucket, release_id, previous_release_id, expected_e
         receipt = check()
         if not isinstance(receipt, dict) or receipt.get('status') != 'passed' or receipt.get('releaseId') != release_id:
             raise ValueError(f'Archive {name} did not pass for the candidate')
+        if receipt.get('targets') != 'measured':
+            raise ValueError(f'Archive {name} requires measured-target qualification')
     return publish_manifest_pointer(client, bucket=bucket,
         pointer={'release_id': release_id, 'previous_release_id': previous_release_id}, expected_etag=expected_etag)

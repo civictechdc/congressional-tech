@@ -1,0 +1,43 @@
+{
+  "version": 1,
+  "note": "Authored packaging fixture, not a real Linux engine or approved deployment artifact. Tests verify installation/pinning/doctor admission, not Linux execution or resource qualification.",
+  "binary_hex": "7f454c46617070726f7665642d6c6f63616c2d72756e74696d652d666978747572650a",
+  "build": {
+    "version": 1,
+    "source_revision": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+    "platform": "linux-amd64",
+    "build_features": [
+      "remote"
+    ],
+    "binary_sha256": "c7e7e589edf2788df6aa3108d81d0c9b401b9010b418348ec5058dd13b03ca74"
+  },
+  "runtime": {
+    "version": 1,
+    "binary": "./docspec",
+    "limits": "./limits.json",
+    "workspace": "./workspace",
+    "source_revision": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+    "platform": "linux-amd64",
+    "build_features": [
+      "remote"
+    ],
+    "binary_sha256": "c7e7e589edf2788df6aa3108d81d0c9b401b9010b418348ec5058dd13b03ca74"
+  },
+  "limits": {
+    "compute_threads": 2,
+    "memory_bytes": 268435456,
+    "scratch_bytes": 67108864,
+    "batch_rows": 1024,
+    "max_batch_bytes": 8388608,
+    "max_metadata_bytes": 1048576
+  },
+  "expected": {
+    "archive_files": [
+      "docspec",
+      "runtime.json",
+      "limits.json",
+      "build.json"
+    ],
+    "owner_gated_pointer_puts": 0
+  }
+}
