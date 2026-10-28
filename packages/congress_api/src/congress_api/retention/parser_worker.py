@@ -201,6 +201,7 @@ class ParserWorkerPool:
         self.args=(parser,version,callable_path);self.limits=limits
         self.workers=workers;self.worker_factory=worker_factory
         self._executor=None;self._local=threading.local();self._started=[];self._lock=threading.Lock()
+        self._contexts=contextlib.ExitStack()
 
     def __enter__(self):
         if self._executor is not None:raise RuntimeError('Parser pool is already open')
@@ -210,9 +211,11 @@ class ParserWorkerPool:
     def _invoke(self,function,item):
         worker=getattr(self._local,'worker',None)
         if worker is None:
-            worker=self.worker_factory(*self.args,**self.limits).__enter__()
+            context=self.worker_factory(*self.args,**self.limits)
+            worker=context.__enter__()
             self._local.worker=worker
-            with self._lock:self._started.append(worker)
+            with self._lock:
+                self._contexts.push(context);self._started.append(context)
         return function(worker,item)
 
     def map(self,function,items):
@@ -235,8 +238,8 @@ class ParserWorkerPool:
             if self._executor is not None:self._executor.shutdown(wait=True,cancel_futures=True)
         finally:
             self._executor=None
-            for worker in reversed(self._started):worker.__exit__(*error)
-            self._started.clear()
+            try:self._contexts.__exit__(*error)
+            finally:self._started.clear()
 
 
 def _child():
