@@ -336,9 +336,10 @@ def test_shared_writer_lock_revision_credentials_and_single_rebuild():
                 assert writer['concurrency']['group'] == 'archive-capture'
                 assert 'raw-source-sync' not in path.read_text()
             elif path.name == 'update-data.yml':
-                # Weekly snapshots write only create-only bodies and run-named
-                # receipts the mirror's download-* scan skips; no index, no lock.
-                assert writer['concurrency']['group'] == 'update-data'
+                # Both legacy snapshot writers join main's queued raw lock.
+                assert writer['concurrency'] == {
+                    'group': 'raw-source-mirror', 'cancel-in-progress': 'false', 'queue': 'max',
+                }
                 assert 'raw-source-sync' not in path.read_text()
             elif path != WORKFLOW_PATH and path.name != 'deploy-pages.yml':
                 assert writer["concurrency"] == {
