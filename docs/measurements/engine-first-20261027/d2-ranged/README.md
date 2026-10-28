@@ -4,7 +4,10 @@ The producer uses the existing `R2Store` and read-once worker. Each GET is
 conditional on the selected physical object's captured stored MD5, or its exact
 listed ETag when captured MD5 is absent. Opaque and multipart ETags remain
 versions, not checksums. Range responses must
-match the requested interval and captured total size. Pages use bounded full
+match the requested interval and the effective stored size: the capture size,
+else the exact-key LIST size with a nonempty LIST ETag. A capture MD5 cannot
+authorize a borrowed size when that listing row lacks an ETag. Present capture
+size or MD5 conflicts with the listing still refuse before any GET. Pages use bounded full
 prefetch or complete the existing disjoint ranges, then verify the decoded
 SHA-256 before parsing. Successful input caches are removed after the readings
 append returns; pending and failed inputs retain their evidence.
@@ -16,10 +19,15 @@ nightly memory use. The five bodies are portable fixtures under
 
 ## Required owner inputs
 
-`codex-raw/run2/d2-ranged/full.spec.json` remains gated on an accepted D1 captures
-pin and the complete native body listing. The stopped D1 proof did not create an
-accepted captures generation. Do not substitute a partial inventory or the old
-readings cache. The engine owner's maintained adapter supplied
+The complete local D1 table passed its public checks, while the old-index field
+differences remain an owner gate. D2 reads its body identities independently,
+as directed by the lead. The first `full.spec.json` execute refused before any
+GET or write: 364,193 historical captures lacked stored size even though every
+selected key had a listed size and ETag. Preserve that failed work directory.
+The corrected fresh specs are `full-listed-size.plan.spec.json` and
+`full-listed-size.spec.json`, with distinct fresh plan and execute directories.
+The exact owner commands are in `full-listed-size-owner-commands.txt` beside
+them in the protocol scratch. The engine owner's complete native listing is
 `$COORD/shared/body-listing-28f59cf4/listing.parquet`: 1,343,571 unique keys,
 with unchanged `key`, `size` and `etag` fields. The producer reads this directly
 through native SQL; it does not parse the original LIST JSON.
@@ -35,15 +43,20 @@ The inventory has one selected physical object per body, with fields
 `stored_bytes: Int64`, and `stored_gzip: Boolean`.
 `stored_gzip` describes actual storage encoding, not the filename suffix.
 Stored MD5 and size come from captures grouped by the exact SHA and suffix.
+A missing size may use the exact listed key's size and ETag without changing
+the original capture. Missing listing size or version leaves that fallback
+unusable. The same effective size reaches copy choice, fallback accounting,
+work-list admission and GET validation.
 Native selection considers only capture-recorded copies, in bare, `.gz`, `.pdf`
 order. An absent or conflicting copy falls back to the next recorded copy,
 using that copy's own size and version. No verifiable copy leaves the body
-pending. A supplied selected inventory remains authoritative; it receives only
-exact-key listing enrichment. No suffix supplies a different suffix's checksum.
+pending. A supplied selected inventory chooses the physical copy; its storage pins
+receive only exact-key listing enrichment. No suffix supplies a different suffix's checksum.
 
 The intended owner catalog is under `codex-raw/run2/rebuild-885/catalog`, with
-the readings location `tables/readings_v1_g20261028_885`. These paths do not
-establish an accepted captures pin or table identifier.
+the empty local table `d2_full_0cb.readings` at
+`tables/readings_full_0cb`. The fresh specs retain the exact D1 snapshot; these
+paths alone do not establish data acceptance.
 
 ## Owner commands
 
@@ -51,9 +64,9 @@ From the raw worktree, with `COORD` and `RAW` set to their protocol scratch
 directories and the accepted spec written, run the metadata-only plan first:
 
 ```sh
-DOCSPEC_JOB_CONFIG="$COORD/shared/engine-885e8c3/narrow.runtime.json" \
-  .venv/bin/python -I -m congress_api.cli.readings \
-  --spec "$RAW/run2/d2-ranged/full.spec.json" \
+.venv/bin/python -I -m congress_api.cli.readings \
+  --engine-config "$RAW/run2/rebuild-885/runtime-domain.json" \
+  --spec "$RAW/run2/d2-ranged/full-listed-size.plan.spec.json" \
   --mode backfill --plan --batch-size 32 \
   --raw-bucket congressional-tech-raw \
   --body-listing "$COORD/shared/body-listing-28f59cf4/listing.parquet" \
@@ -79,9 +92,9 @@ After the owner accepts coverage and supplies a fresh spec work directory,
 the live command is:
 
 ```sh
-DOCSPEC_JOB_CONFIG="$COORD/shared/engine-885e8c3/narrow.runtime.json" \
-  .venv/bin/python -I -m congress_api.cli.readings \
-  --spec "$RAW/run2/d2-ranged/full.spec.json" \
+.venv/bin/python -I -m congress_api.cli.readings \
+  --engine-config "$RAW/run2/rebuild-885/runtime-domain.json" \
+  --spec "$RAW/run2/d2-ranged/full-listed-size.spec.json" \
   --mode backfill --execute --batch-size 32 \
   --raw-bucket congressional-tech-raw \
   --body-listing "$COORD/shared/body-listing-28f59cf4/listing.parquet" \
