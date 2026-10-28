@@ -66,6 +66,20 @@ try{
       await page.locator('.archive-document').first().click();await page.goBack();
       await page.locator('[data-archive-total]').waitFor();await page.waitForTimeout(250);
       assert.equal(await page.locator('[data-archive-detail]').count(),0,'Back cancels an internal row selection');
+      // Exercise the built CSS with a recorded format longer than the narrow grid cell.
+      const formatLayout=await page.locator('.archive-row-format').first().evaluate(cell=>{
+        const original=cell.textContent;
+        try{
+          cell.textContent='HTML_REQUIRES_DOCUMENT_DISCOVERY';
+          const bounds=cell.getBoundingClientRect(),range=document.createRange();
+          range.selectNodeContents(cell);
+          const fragments=[...range.getClientRects()];
+          return {contained:fragments.every(rect=>rect.left>=bounds.left-1&&rect.right<=bounds.right+1),
+            fits:cell.scrollWidth<=cell.clientWidth,label:cell.textContent};
+        }finally{cell.textContent=original;}
+      });
+      assert(formatLayout.contained&&formatLayout.fits,'Long archive formats must stay inside their cell');
+      assert.equal(formatLayout.label,'HTML_REQUIRES_DOCUMENT_DISCOVERY');
       server.state.delayDetailMs=0;
       // Missing public keys have a usable error and retry, including on a phone-sized page.
       await page.goto(server.pageUrl+'?key='+'ff'.repeat(8));await page.getByRole('alert').waitFor();assert((await page.getByRole('alert').innerText()).includes('not found'));
