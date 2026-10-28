@@ -3,6 +3,7 @@ import gzip
 import json
 import os
 
+import pyarrow as pa
 import pyarrow.parquet as pq
 import pytest
 from docspec_client.client import NativeDatasets
@@ -31,6 +32,14 @@ def test_caption_negative_report_preserves_all_655_bodiless_items(tmp_path):
     assert {r['run_id'] for r in rows}=={run} and {r['mode'] for r in rows}=={'fetch'}
     assert all(r[name] is None for r in rows for name in ('http_status','retrieved_at','sha256','url','requested_url'))
     assert json.loads((stage/'ingested-receipts.json').read_text())['source_counts']==dict(rows=1,receipts=1)
+    evidence=pq.read_table(stage/'capture-evidence.parquet')
+    assert evidence['record_is_list'].to_pylist()==[True]*655
+    assert evidence['source_record_count'].to_pylist()==[655]*655
+    assert evidence['source_record_index'].to_pylist()==list(range(655))
+    assert evidence.schema.field('record_is_list').type==pa.bool_()
+    assert evidence.schema.field('source_record_count').type==pa.int64()
+    assert evidence.schema.field('source_record_index').type==pa.int64()
+    assert not {'record_is_list','source_record_count','source_record_index'} & set(rows[0])
     with gzip.open(tmp_path/'input/receipt.gz','rt') as stream:assert json.loads(stream.read())==source
 
 
@@ -102,3 +111,53 @@ def test_expansion_isolation_keeps_members_with_their_selected_record_item(tmp_p
         body(pointer=[0,'archive_members',0,'body'],member_path='inside.pdf'),
         body(pointer=[1,'content','body'])])])
     assert pq.read_table(stage/'captures.parquet')['expansion'].to_pylist()==['expanded',None,None]
+
+
+@pytest.mark.parametrize('primary',['captures','file_references'])
+@pytest.mark.parametrize('counter',[False,True])
+def test_mixed_primary_ordinals_stay_stable_and_bodiless_items_append(tmp_path,primary,counter):
+    from congress_api.lake.captures import stage_captures
+    source=dict(record=[dict(url='https://fixture.test/a',http_status=200,outcome='saved'),
+        dict(url='https://fixture.test/b',http_status=404,outcome='request_or_parse_error')],
+        captures=[],file_references=[])
+    source[primary]=[body(pointer=[0,'content','body']),body(pointer=['0','another','body'])]
+    if counter:
+        key='receipts/documents/2026-10-20/mixed.gz'
+        path=minimal_counter(tmp_path,[(key,source)],False)
+        stage=stage_captures([dict(key=key)],validated_counter=path,
+            source_qualifications=created_qualifications(path),
+            engine=NativeDatasets.from_config(os.environ['DOCSPEC_JOB_CONFIG']),work=tmp_path/'stage')
+    else:stage=ingest(tmp_path,[source])
+    rows=pq.read_table(stage/'captures.parquet').to_pylist()
+    assert [(r['capture_index'],r['url'],r['http_status'],r['outcome'],r['complete']) for r in rows]==[
+        (0,'https://fixture.test/a',200,'stored',True),
+        (1,'https://fixture.test/a',200,'stored',True),
+        (2,'https://fixture.test/b',404,'request_failed',False)]
+    assert rows[0]['sha256']==rows[1]['sha256'] and rows[2]['sha256'] is None
+    evidence=pq.read_table(stage/'capture-evidence.parquet')
+    assert evidence['record_is_list'].to_pylist()==[True]*3
+    assert evidence['source_record_count'].to_pylist()==[2]*3
+    assert evidence['source_record_index'].to_pylist()==[0,0,1]
+    assert evidence['reference_kind'].to_pylist()==['capture' if primary=='captures' else 'file']*2+['line']
+    assert json.loads((stage/'ingested-receipts.json').read_text())['source_counts']==dict(rows=1,receipts=1)
+
+
+def test_multiple_unreferenced_items_append_in_record_order_after_primary_rows(tmp_path):
+    source=dict(record=[dict(url=f'https://fixture.test/{i}') for i in range(4)],captures=[
+        body(pointer=[2,'content','body']),body(pointer=['2','another','body'])])
+    stage=ingest(tmp_path,[source]);rows=pq.read_table(stage/'captures.parquet').to_pylist()
+    assert [r['capture_index'] for r in rows]==[0,1,2,3,4]
+    assert [r['url'] for r in rows]==['https://fixture.test/2']*2+[
+        'https://fixture.test/0','https://fixture.test/1','https://fixture.test/3']
+    assert pq.read_table(stage/'capture-evidence.parquet')['source_record_index'].to_pylist()==[2,2,0,1,3]
+    with gzip.open(tmp_path/'input/receipt.gz','rt') as stream:assert json.loads(stream.read())==source
+
+
+def test_secondary_storage_reference_does_not_replace_an_unreferenced_item_row(tmp_path):
+    stage=ingest(tmp_path,[dict(record=[dict(url='https://fixture.test/a'),dict(url='https://fixture.test/b')],
+        captures=[body(pointer=[0,'content','body'])],
+        file_references=[body(pointer=[1,'content','body'],stored_bytes=42)])])
+    rows=pq.read_table(stage/'captures.parquet').to_pylist()
+    assert [(r['capture_index'],r['url'],r['stored_bytes']) for r in rows]==[
+        (0,'https://fixture.test/a',42),(1,'https://fixture.test/b',None)]
+    assert rows[0]['sha256'] is not None and rows[1]['sha256'] is None
