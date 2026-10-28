@@ -47,6 +47,15 @@ test('the live canary refuses the actual old viewer pointer without reading old 
   assert.deepEqual(requests,[pointerUrl]);
 });
 
+test('the public canary names the explorer origin so the host returns CORS headers',async()=>{
+  const pointer=JSON.parse(await readFile(new URL('./fixtures/old-viewer-pointer.json',import.meta.url),'utf8'));
+  const origins=[];
+  await assert.rejects(verifyArchive({pointerUrl:'https://public.test/viewer-publications/manifest.json',fetcher:async(_address,options)=>{
+    origins.push(options.headers?.Origin);return Response.json(pointer,{headers:{'Cache-Control':'no-store'}});
+  }}),/Invalid live archive pointer/);
+  assert.deepEqual(origins,['https://civictechdc.github.io']);
+});
+
 
 test('an explicit candidate canary crosses the recognized old pointer without reading old assets',async()=>{
   const pointer=JSON.parse(await readFile(new URL('./fixtures/old-viewer-pointer.json',import.meta.url),'utf8'));
