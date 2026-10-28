@@ -103,3 +103,20 @@ def test_retention_keeps_seed_without_reading_present_day_model_definitions(tmp_
     result=maintain_releases(store,now=NOW)
     assert len(result['kept_inputs'])==1 and result['kept_inputs'][0]['snapshots']=={}
     assert store.deleted==[] and all(count==1 for count in store.reads.values())
+
+
+def test_small_seed_samples_each_listed_document_and_keeps_exclusions_separate(tmp_path):
+    artifacts,manifest,record=seed(tmp_path)
+    manifest['files'][0]['rows']=3
+    from viewer_publication.archive_format import release_identity
+    manifest['release_id']=release_identity(1,manifest['files'])
+    path=Path(artifacts['manifest_pin']['path']);path.write_bytes(encoded(manifest));artifacts['manifest_pin']=pin(path)
+    path=Path(artifacts['result_pin']['path']);result=json.loads(path.read_text())
+    result['outputs'][0]['rows']=3
+    for query in result['queries']:
+        if query['name']=='seed_reconciliation':query['data']=[dict(input_docs=54,listed=3,excluded=51)]
+        elif query['name']=='seed_exclusions':query['data']=[dict(reason='duplicate_document_identity',count=51)]
+        elif query['name']=='seed_spot_checks':query['data']=query['data'][:3]
+    path.write_bytes(encoded(result));artifacts['result_pin']=pin(path)
+    published,_,_,_=publish(tmp_path,artifacts,record)
+    assert published['status']=='published' and published['rows']['list.parquet']==3
