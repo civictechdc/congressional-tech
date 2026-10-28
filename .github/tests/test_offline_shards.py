@@ -133,3 +133,20 @@ def test_update_data_installs_node_before_python_reader_regressions():
     node = next(i for i, s in enumerate(steps) if s.get('uses') == './.github/actions/setup-node-project')
     consumer = next(i for i, s in enumerate(steps) if 'production-offline' in s.get('run', ''))
     assert node < consumer
+
+
+@pytest.mark.parametrize('status', range(6))
+def test_actual_shard_shell_records_and_preserves_the_runner_exit(tmp_path, status):
+    steps = workflow('validate-explorer.yml')['jobs']['offline']['steps']
+    shell = next(step['run'] for step in steps if step.get('name') == 'Test the complete offline partition')
+    shell = shell.replace('${{ matrix.shard }}', '1').replace('${{ runner.temp }}', str(tmp_path))
+    binary = tmp_path / '.venv/bin/python'; binary.parent.mkdir(parents=True)
+    binary.write_text('#!/bin/bash\nprintf "%s\\n" "$@" > "$CALLS"\nexit "$RUNNER_EXIT"\n')
+    binary.chmod(0o755)
+    calls = tmp_path / 'calls.txt'
+    result = subprocess.run(['/bin/bash', '-e', '-o', 'pipefail', '-c', shell], cwd=tmp_path,
+        env={**os.environ, 'RUNNER_EXIT': str(status), 'CALLS': str(calls)}, capture_output=True, text=True)
+    assert result.returncode == status
+    assert result.stdout.splitlines() == [f'CT_OFFLINE_EXIT_STATUS={status}']
+    assert calls.read_text().splitlines()[:6] == ['scripts/dev.py', 'test', 'production-offline', '--shard', '1/6', '--']
+    assert '-v' in calls.read_text().splitlines()
