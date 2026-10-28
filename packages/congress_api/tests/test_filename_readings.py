@@ -111,32 +111,28 @@ def test_version_digest_covers_package_nested_vocabularies_and_lock(tmp_path):
     assert version_digest(packages={'parser': package}, files={'lock': lock}, values={'vocab': {'x': ['b']}}) != before_cache
 
 
-def input_tables(tmp_path, rows, *, include_content_disposition=True):
+def input_tables(tmp_path, rows):
     schema = pa.schema([('receipt_key',pa.string()),('receipt_line',pa.int64()),('capture_index',pa.int32()),
         ('mode',pa.string()),('url',pa.string()),('requested_url',pa.string()),('member_path',pa.string()),
-        *([('h_content_disposition',pa.string())] if include_content_disposition else []),
-        ('sha256',pa.binary(32))])
+        ('h_content_disposition',pa.string()),('sha256',pa.binary(32))])
     path=tmp_path/'captures.parquet'; pq.write_table(pa.Table.from_pylist(rows,schema=schema),path)
     return path
 
 
-@pytest.mark.parametrize('legacy_header', [False, True])
-def test_capture_filename_uses_address_without_bulk_headers(tmp_path, legacy_header):
+def test_capture_filename_uses_download_header(tmp_path):
     captures=input_tables(tmp_path,[dict(receipt_key='r',receipt_line=1,capture_index=0,mode='fetch',
-        url='https://a.test/addresspath.pdf',h_content_disposition='attachment; filename=header-only.pdf')],
-        include_content_disposition=legacy_header)
-    assert ('h_content_disposition' in pq.read_schema(captures).names) is legacy_header
+        url='https://a.test/addresspath.pdf',h_content_disposition='attachment; filename=header-only.pdf')])
     result=reader().stage(worker_factory=Worker,decided_at=STAMP,captures=captures,recovery_files=[],
         engine=engine(),work=tmp_path/'job')
     rows=pq.read_table(result['readings']).to_pylist()
     assert [(row['filename'],row['source_url']) for row in rows] == [
-        ('addresspath.pdf','https://a.test/addresspath.pdf')]
+        ('header-only.pdf','https://a.test/addresspath.pdf')]
     assert rows[0]['status']=='completed'
 
 
 def test_native_effective_names_and_work_anti_join(tmp_path):
     cases = [
-        dict(url='https://a.test/addresspath.pdf', h_content_disposition="attachment; filename=old.pdf; filename*=UTF-8''caf%C3%A9.pdf"),
+        dict(url='https://a.test/path.pdf', h_content_disposition="attachment; filename=old.pdf; filename*=UTF-8''caf%C3%A9.pdf"),
         dict(url='https://a.test/path.pdf?name=b.pdf&file=a%2520%2Bb.pdf&file=later.pdf'),
         dict(url='https://a.test/path.pdf?file=%FF.pdf'),
         dict(url='https://a.test/path.pdf', member_path='folder/Member%20.pdf'),
@@ -153,7 +149,7 @@ def test_native_effective_names_and_work_anti_join(tmp_path):
     rows=pq.read_table(result['readings']).to_pylist()
     assert len(rows) == 9  # Same path name at different exact URLs remains separate work.
     names={r['filename'] for r in rows}
-    assert names == {'addresspath.pdf','a%20+b.pdf','%FF.pdf','Member%20.pdf','Requested Name.pdf','source.pdf','path.pdf','question?mark.pdf'}
+    assert names == {'café.pdf','a%20+b.pdf','%FF.pdf','Member%20.pdf','Requested Name.pdf','source.pdf','path.pdf','question?mark.pdf'}
     member=next(r for r in rows if r['filename']=='Member%20.pdf'); assert member['source_url']==''
     second=reader().stage(worker_factory=Worker, decided_at=STAMP, captures=captures,recovery_files=[],existing=result['readings'],engine=engine(),work=tmp_path/'again',catalog_version=version)
     assert pq.read_metadata(second['readings']).num_rows == 0
