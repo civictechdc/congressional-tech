@@ -24,10 +24,14 @@ def _raw_pin(key,expected):
     from congress_api.retention.body_store import validate_key
     from congress_shared.storage import single_put_md5
     validate_key(key)
-    if (not key.startswith('bodies/') or not isinstance(expected,dict) or set(expected)!={'md5','bytes'}
+    if (not key.startswith('bodies/') or not isinstance(expected,dict) or set(expected) not in ({'md5','bytes'},{'etag','md5','bytes'})
             or type(expected['bytes']) is not int or expected['bytes']<0):
-        raise ValueError('Pinned raw read requires a body key, stored MD5 and total bytes')
-    return dict(md5=single_put_md5(expected['md5']),bytes=expected['bytes'])
+        raise ValueError('Pinned raw read requires a body key, conditional version and total bytes')
+    md5=single_put_md5(expected['md5']) if expected.get('md5') is not None else None
+    etag=expected.get('etag',('"'+md5+'"') if md5 is not None else None)
+    if not isinstance(etag,str) or not etag or any(ord(c)<32 or ord(c)==127 for c in etag):
+        raise ValueError('Pinned raw read requires a nonempty conditional ETag or stored MD5')
+    return dict(etag=etag,md5=md5,bytes=expected['bytes'])
 
 
 def _stream_read_attempts(client):
@@ -302,10 +306,11 @@ class R2Store:
             if length==0:return b''
 
         immutable_path = None if ranged else self._immutable_cache_path(key)
-        if immutable_path is not None and immutable_path.is_file():
+        if immutable_path is not None and immutable_path.is_file() and (pin is None or pin['md5'] is not None):
             try:
                 data=immutable_path.read_bytes()
-                if pin is not None and (len(data)!=pin['bytes'] or hashlib.md5(data).hexdigest()!=pin['md5']):
+                if pin is not None and (len(data)!=pin['bytes'] or
+                        pin['md5'] is not None and hashlib.md5(data).hexdigest()!=pin['md5']):
                     raise ValueError('Pinned immutable cache changed')
                 return data
             except OSError:
@@ -329,7 +334,7 @@ class R2Store:
 
         def request():
             try:
-                options={} if pin is None else dict(IfMatch='"'+pin['md5']+'"')
+                options={} if pin is None else dict(IfMatch=pin['etag'])
                 if ranged:options['Range']=f'bytes={start}-{start+length-1}'
                 return self.client.get_object(Bucket=self.bucket, Key=key,**options)
             except ClientError as error:
@@ -342,8 +347,13 @@ class R2Store:
         def consume(response, stream):
             if pin is not None:
                 wanted=length if ranged else pin['bytes']
+                # LIST versions are opaque. A canonical captured-MD5 condition
+                # retains shared quote normalization through prefetch as well.
+                version_matches=(single_put_md5(response.get('ETag'))==pin['md5']
+                    if pin['md5'] is not None and pin['etag']=='"'+pin['md5']+'"' else
+                    response.get('ETag')==pin['etag'])
                 if (type(response.get('ContentLength')) is not int or response['ContentLength']!=wanted
-                        or single_put_md5(response.get('ETag'))!=pin['md5']):
+                        or not version_matches):
                     raise ValueError('Pinned raw response changed')
                 if ranged:
                     match=re.fullmatch(r'bytes (\d+)-(\d+)/(\d+)',response.get('ContentRange',''))
@@ -355,7 +365,7 @@ class R2Store:
                                     etag=response['ETag'])
                 data=stream.read(wanted+1)
                 if len(data)!=wanted:raise ValueError('Incomplete pinned raw response')
-                if not ranged and hashlib.md5(data).hexdigest()!=pin['md5']:
+                if not ranged and pin['md5'] is not None and hashlib.md5(data).hexdigest()!=pin['md5']:
                     raise ValueError('Pinned raw MD5 mismatch')
             elif key == 'indexes/catalog.json':
                 if response['ContentLength'] > 1024**2:

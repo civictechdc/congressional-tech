@@ -114,17 +114,27 @@ def compare_old(evidence, old_index, *, engine, work, receipt_keys=None):
     steps += [dict(name='old_numbered',sql=f'SELECT *,row_number() OVER (ORDER BY {old_order}) AS old_row FROM old_input'),
         dict(name='old_facts',sql=projection(old_schema,True).replace('FROM old_input',',old_row FROM old_numbered')),
         dict(name='new_values',sql=projection(new_schema)),
+        # Filtering only matching views preserves the original '=' treatment of
+        # NULL locators and SHA values. Unmatched source rows remain in the oracle.
+        dict(name='old_secondary_keys',sql='''SELECT * FROM old_facts WHERE receipt_key IS NOT NULL
+            AND receipt_line IS NOT NULL AND body_sha IS NOT NULL'''),
+        dict(name='new_secondary_keys',sql='''SELECT * FROM new_values WHERE receipt_key IS NOT NULL
+            AND receipt_line IS NOT NULL AND body_sha IS NOT NULL'''),
         dict(name='secondary_duplicates',sql='''SELECT o.old_row FROM old_facts o
-            WHERE o.reference_kind IN ('file','retained-file') AND EXISTS (
-              SELECT 1 FROM old_facts c WHERE c.receipt_key=o.receipt_key
-                AND c.receipt_line=o.receipt_line AND c.body_sha=o.body_sha
+            LEFT SEMI JOIN old_secondary_keys c ON
+                (c.receipt_key IS NOT DISTINCT FROM o.receipt_key)
+                AND (c.receipt_line IS NOT DISTINCT FROM o.receipt_line)
+                AND (c.body_sha IS NOT DISTINCT FROM o.body_sha)
                 AND (c.context_url IS NOT DISTINCT FROM o.context_url)
-                AND c.reference_kind IN ('capture','embedded'))
-            AND EXISTS (SELECT 1 FROM new_values n WHERE n.receipt_key=o.receipt_key
-                AND n.receipt_line=o.receipt_line AND n.body_sha=o.body_sha
+                AND c.reference_kind IN ('capture','embedded')
+            LEFT SEMI JOIN new_secondary_keys n ON
+                (n.receipt_key IS NOT DISTINCT FROM o.receipt_key)
+                AND (n.receipt_line IS NOT DISTINCT FROM o.receipt_line)
+                AND (n.body_sha IS NOT DISTINCT FROM o.body_sha)
                 AND (n.context_url IS NOT DISTINCT FROM o.context_url)
                 AND (o.stored_bytes IS NULL OR o.stored_bytes IS NOT DISTINCT FROM n.stored_bytes)
-                AND (o.body_key IS NULL OR o.body_key IS NOT DISTINCT FROM n.body_key))'''),
+                AND (o.body_key IS NULL OR o.body_key IS NOT DISTINCT FROM n.body_key)
+            WHERE o.reference_kind IN ('file','retained-file')'''),
         dict(name='old_values',sql='SELECT * FROM old_facts WHERE old_row NOT IN (SELECT old_row FROM secondary_duplicates)')]
     occurrence_keys='receipt_key,receipt_line,body_sha,pointer'
     occurrence_order='context_url,bytes,media_type,fidelity,http_status,try_cast(retrieved_at AS TIMESTAMP WITH TIME ZONE),stored_bytes,family,run_id,member_path,body_key'
@@ -140,10 +150,18 @@ def compare_old(evidence, old_index, *, engine, work, receipt_keys=None):
             FROM old_values'''),
         dict(name='new_facts',sql=f'''SELECT *,row_number() OVER (
             PARTITION BY {occurrence_keys} ORDER BY {source_item_order},{occurrence_order},capture_index) AS occurrence
-            FROM new_values''')])
-    join = '''o.receipt_key=n.receipt_key AND o.receipt_line=n.receipt_line
+            FROM new_values'''),
+        dict(name='old_matchable',sql='''SELECT * FROM old_normalized
+            WHERE receipt_key IS NOT NULL AND receipt_line IS NOT NULL'''),
+        dict(name='new_matchable',sql='''SELECT * FROM new_facts
+            WHERE receipt_key IS NOT NULL AND receipt_line IS NOT NULL''')])
+    # DataFusion 53 extracts all null-safe hash keys only when no '=' key is
+    # mixed into ON. Non-null locator views retain the former '=' semantics.
+    join = '''(o.receipt_key IS NOT DISTINCT FROM n.receipt_key)
+        AND (o.receipt_line IS NOT DISTINCT FROM n.receipt_line)
         AND (o.body_sha IS NOT DISTINCT FROM n.body_sha)
-        AND (o.pointer IS NOT DISTINCT FROM n.pointer) AND o.occurrence=n.occurrence'''
+        AND (o.pointer IS NOT DISTINCT FROM n.pointer)
+        AND (o.occurrence IS NOT DISTINCT FROM n.occurrence)'''
     stable = ' OR '.join(f'(o."{k}" IS DISTINCT FROM n."{k}")'
                          for k in ('bytes','media_type','fidelity'))
     old_time='try_cast(o.retrieved_at AS TIMESTAMP WITH TIME ZONE)'
@@ -187,9 +205,9 @@ def compare_old(evidence, old_index, *, engine, work, receipt_keys=None):
         cast(n.retrieved_at AS VARCHAR) AS new_retrieved_at,
         {time_reason} AS retrieved_at_reason,
         ({unexpected}) AS unexplained,({expected}) AS expected_change
-        FROM old_normalized o JOIN new_facts n ON {join}'''),
-        dict(name='old_only',sql=f'SELECT o.old_row FROM old_normalized o LEFT ANTI JOIN new_facts n ON {join}'),
-        dict(name='new_only',sql=f'SELECT n.* FROM new_facts n LEFT ANTI JOIN old_normalized o ON {join}')]
+        FROM old_matchable o JOIN new_matchable n ON {join}'''),
+        dict(name='old_only',sql=f'SELECT o.old_row FROM old_normalized o LEFT ANTI JOIN new_matchable n ON {join}'),
+        dict(name='new_only',sql=f'SELECT n.* FROM new_facts n LEFT ANTI JOIN old_matchable o ON {join}')]
     # Source proof is carried only by the receipt-derived private evidence.
     # A key or URL resemblance alone cannot establish a collapsed source item.
     steps.extend([

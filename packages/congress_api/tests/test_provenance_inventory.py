@@ -314,4 +314,6 @@ def test_acknowledged_local_import_custody_matches_current_rows_without_rereadin
         assert snapshot.rows()==[public]
         verified=snapshot.verified()
         assert verified=={public['path']:custody} and verified[public['path']] is custody
-        custody.require(public['path'])
+        assert custody._require_custody(public['path']) is custody
+    # Consuming bytes uses main's stronger check after metadata-only planning.
+    assert custody.require(public['path']) is custody

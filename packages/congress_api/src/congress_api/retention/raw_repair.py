@@ -51,7 +51,7 @@ def prepare_repair(captures,repairs,*,engine,work,expected):
         original="lower(encode(o.sha256,'hex'))" if binary else 'o.sha256'
         key=f"concat('bodies/sha256/',substr({original},1,2),'/',{original},'.gz')"
     match=' AND '.join('('+value+')' for value in
-        [f'{key}=c.key',*[f'o."{name}" IS NOT DISTINCT FROM c."{name}"' for name in LOCATOR]])
+        [f'{key} IS NOT DISTINCT FROM c.key',*[f'o."{name}" IS NOT DISTINCT FROM c."{name}"' for name in LOCATOR]])
     projection=[]
     for name in schema.names:
         expression=(f'coalesce({corrected_sha},o.stored_sha256)' if name=='stored_sha256' else
@@ -75,8 +75,10 @@ def prepare_repair(captures,repairs,*,engine,work,expected):
         sum(invalid_measurement) AS invalid_measurements
         FROM measured_repairs GROUP BY key,receipt_key,receipt_line,pointer_json"""),
         dict(name='fixes',sql="SELECT * FROM evidence WHERE invalid_measurements=0 AND hashes=1 AND sizes=1 AND etags=1"),
-        dict(name='patched',sql='SELECT '+','.join(projection)+' FROM old o LEFT JOIN fixes c ON '+match),
-        dict(name='changed',sql='SELECT '+','.join(projection)+' FROM old o JOIN fixes c ON '+match+
+        dict(name='matching_fixes',sql='SELECT * FROM fixes WHERE key IS NOT NULL'),
+        dict(name='matching_old',sql=f'SELECT * FROM old o WHERE {key} IS NOT NULL'),
+        dict(name='patched',sql='SELECT '+','.join(projection)+' FROM old o LEFT JOIN matching_fixes c ON '+match),
+        dict(name='changed',sql='SELECT '+','.join(projection)+' FROM old o JOIN matching_fixes c ON '+match+
              f' WHERE (o.stored_sha256 IS DISTINCT FROM {corrected_sha}) OR (c.stored_bytes IS NOT NULL AND (o.stored_bytes IS DISTINCT FROM c.stored_bytes))'),
         ]
     exports=[parquet_output(work,'corrected','SELECT * FROM patched',['_capture_order']),
@@ -86,7 +88,7 @@ def prepare_repair(captures,repairs,*,engine,work,expected):
         (SELECT count(*) FROM old) AS before_rows,(SELECT count(*) FROM patched) AS after_rows,
         (SELECT count(*) FROM evidence)-(SELECT count(*) FROM fixes) AS ambiguous,
         (SELECT count(*) FROM changed) AS changed,
-        (SELECT count(*) FROM fixes c LEFT ANTI JOIN old o ON {match}) AS unmatched,
+        (SELECT count(*) FROM fixes c LEFT ANTI JOIN matching_old o ON {match}) AS unmatched,
         (SELECT count(*) FROM old WHERE _capture_order IS NULL OR _capture_order<0) AS invalid_order,
         (SELECT count(DISTINCT _capture_order) FROM old) AS distinct_order,
         (SELECT count(*) FROM (SELECT {fields} FROM old EXCEPT ALL SELECT {fields} FROM patched)) AS lost,

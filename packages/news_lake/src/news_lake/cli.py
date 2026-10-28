@@ -58,7 +58,7 @@ def _cmd_publish(args):
     checkpoints = _load_json_arg(args.checkpoints, [])
 
     control = ControlStore(control_path)
-    with DocSpecClient(workspace, binary=args.binary) as client:
+    with DocSpecClient(workspace, binary=args.binary, limits=args.limits) as client:
         lake = DocSpecLake(
             client,
             lifecycle_compact_interval=args.lifecycle_compact_interval,
@@ -86,7 +86,7 @@ def _cmd_views(args):
     workspace = Path(args.workspace).resolve()
     control_path = Path(args.control).resolve() if args.control else _default_control_path(workspace)
     control = ControlStore(control_path)
-    with DocSpecClient(workspace, binary=args.binary) as client:
+    with DocSpecClient(workspace, binary=args.binary, limits=args.limits) as client:
         lake = DocSpecLake(
             client,
             lifecycle_compact_interval=args.lifecycle_compact_interval,
@@ -138,7 +138,7 @@ def _cmd_export(args):
     control_path = Path(args.control).resolve() if args.control else _default_control_path(workspace)
     destination = Path(args.destination).resolve()
     control = ControlStore(control_path)
-    with DocSpecClient(workspace, binary=args.binary) as client:
+    with DocSpecClient(workspace, binary=args.binary, limits=args.limits) as client:
         lake = DocSpecLake(
             client,
             lifecycle_compact_interval=args.lifecycle_compact_interval,
@@ -167,7 +167,7 @@ def _cmd_export(args):
 
 def _cmd_compact_lifecycle(args):
     workspace = Path(args.workspace).resolve()
-    with DocSpecClient(workspace, binary=args.binary) as client:
+    with DocSpecClient(workspace, binary=args.binary, limits=args.limits) as client:
         lake = DocSpecLake(
             client,
             compact_file_threshold=args.compact_file_threshold,
@@ -216,6 +216,7 @@ def build_parser():
         p.add_argument('--workspace', required=True, help='DocSpec workspace directory')
         p.add_argument('--control', default=None, help='ControlStore SQLite path (default: <workspace>/control.sqlite)')
         p.add_argument('--binary', default=None, help='Explicit docspec binary path')
+        p.add_argument('--limits', default=None, help='Explicit native resource limits JSON file')
         p.add_argument(
             '--lifecycle-compact-interval',
             type=int,
@@ -263,6 +264,7 @@ def build_parser():
     p_comp = sub.add_parser('compact-lifecycle', help='Compact obsolete lifecycle revisions across workspace datasets')
     p_comp.add_argument('--workspace', required=True, help='DocSpec workspace directory')
     p_comp.add_argument('--binary', default=None, help='Explicit docspec binary path')
+    p_comp.add_argument('--limits', default=None, help='Explicit native resource limits JSON file')
     p_comp.add_argument('--compact-tables', action='store_true', help='Also compact undersized Parquet data files')
     p_comp.add_argument(
         '--compact-file-threshold',

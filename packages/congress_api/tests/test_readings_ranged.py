@@ -104,3 +104,22 @@ def test_wrong_decoded_body_identity_remains_pending_instead_of_a_parser_verdict
     with phase(tmp_path):result=readings.parse_once_payload(payload(tmp_path,b'different content',actual),
         body_store=R2Store(client,'bucket'))
     assert result.get('read_error') and result['rows']==[]
+
+
+def test_headerless_gzip_beyond_prefix_stays_pending_without_full_fetch(tmp_path):
+    # Incompressible deterministic payload forces disjoint prefix/completion.
+    entity=b'%PDF-1.7\n'+b''.join(hashlib.sha256(str(i).encode()).digest() for i in range(900))+b'%%EOF'
+    stored=gzip.compress(entity,mtime=0);client=Client(stored,None)
+    with phase(tmp_path):result=readings.parse_once_payload(payload(tmp_path,entity,stored,
+        suffix='.gz',stored_gzip=False),body_store=R2Store(client,'bucket'))
+    assert result['read_error'] and result['ambiguous_gzip'] and result['rows']==[]
+    assert result['read_bytes']==8192
+    assert [r['Range'] for r in client.reads]==['bytes=0-8191']
+
+
+def test_headerless_original_gzip_remains_original_after_identity_proof(tmp_path):
+    entity=gzip.compress(b'WARC/1.1\r\nWARC-Type: response\r\n\r\n',mtime=0)
+    client=Client(entity,None)
+    with phase(tmp_path):result=readings.parse_once_payload(payload(tmp_path,entity,entity,
+        suffix='.gz',stored_gzip=False),body_store=R2Store(client,'bucket'))
+    assert result['rows'][0]['format']=='warc' and result['read_bytes']==len(entity)

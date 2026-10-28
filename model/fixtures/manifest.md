@@ -4,6 +4,7 @@
 
 | Part | Phase | Fixture | Expected outcome |
 |---|---|---|---|
+| D1 | 1 | A list-valued House record contains `kind = vote` with domain outcomes `unknown`, `agreed`, `rejected`, `tied`, `other`, alongside a referenced acquisition sibling; a vote inherits a 404 failure or a 200 body | The vote domain field never supplies acquisition outcome: retain line acquisition facts or existing missing-outcome derivation. Four public rows preserve ordinals, sibling facts and the exact 34-column schema; unknown acquisition outcomes on the line or non-vote items still refuse, and ordinary record behavior stays unchanged. |
 | S1 | 1 | A PDF replaced while its XML stays, with historical pages linking both | Three documents: each PDF edition alone, and the XML alone |
 | S1 | 1 | Two editions served at one address, and two mirrors that each pair one of them with the same XML | No document holds both editions |
 | S1 | 1 | Re-packaged copies of each edition, each paired with one XML, never at a shared address | The known limit: such a copy can join the XML; the edition count measures how often |
@@ -91,6 +92,13 @@ versioned input example is [`e4-parity-inputs.example.json`](e4-parity-inputs.ex
 Unordered SQL row numbering is not a physical Parquet row-position guarantee.
 The comparator uses the producer's explicitly ordered relation and verifies its
 public output bytes and row values instead.
+
+## Native model resource fixtures
+
+| Step | Case | Expected outcome |
+|---|---|---|
+| E2 | Multiple bodies share an endpoint and nullable member; other rows have blank members or absent endpoints | The actual hash plan builds the grouped or two-key endpoint lookup, preserves null matching, and returns exactly the established body/source rows |
+| E2 | The real raw/lake model fixture reaches final exports and guards after link, graph and document helpers have their last materialized consumer | Completed helpers release through C7; public rows, private parity evidence and final guards remain unchanged and available |
 
 ## References
 

@@ -1,6 +1,6 @@
 ---
 id: cefr-ndu5
-status: in_progress
+status: closed
 deps: []
 links: []
 created: 2026-10-28T11:12:40Z
@@ -23,3 +23,7 @@ Fake large-VSZ and inherited-limit fixtures pass; persistent actual worker keeps
 **2026-10-28T11:17:43Z**
 
 Contracts11eeb358:20 expected missing-helper failures/9 existing passes. Behavior focused41PASS5.09s on macOS through project production-offline runner, including actual persistent worker with2GiB untouched mapping, fake3GiB baseline and finite-hard-limit refusal; no monkeypatches. RSS supervisor budget unchanged. Actual Linux AS branch still requires release replay of the same three cases. Fresh CODE review pending.
+
+**2026-10-28T12:18:12Z**
+
+Closed after CODE APPROVE (run2/linux-worker-code-review/review.md), 41 focused macOS checks in 5.09s, and release actual three Linux 885 rechecks passing on a27a3351/raw5b3a16f1 in157.29s. The supervisor RSS limit and finite inherited limit checks remain unchanged. Immutable Linux packet retains pins and replay evidence; unrelated QEMU fanout timeout remains a hosted native gate.

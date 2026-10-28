@@ -107,7 +107,7 @@ class ProvenanceInventory:
             row=known.get(key);custody=supplied.get(key) or (cached[1] if cached else None)
             if row is not None and isinstance(custody,VerifiedFile):
                 try:
-                    custody.require(row['path'])
+                    custody._require_custody(row['path'])
                     self.store.remember_provenance(row,custody)
                     self._keys.add(key)
                     continue
@@ -128,7 +128,7 @@ class ProvenanceInventory:
         rows=[]
         for key in sorted(keys):
             row,custody,_=self.store._provenance_cache[key]
-            custody.require(row['path']);rows.append(dict(row))
+            custody._require_custody(row['path']);rows.append(dict(row))
         return rows
 
     def verified(self):
@@ -140,7 +140,7 @@ class ProvenanceInventory:
         """Use the controller's complete current snapshot without another LIST.
 
         The controller supplies every qualified key and checks concurrency again
-        before publishing. This path checks held local bytes and adds only this
+        before publishing. This path checks held file custody and adds only this
         invocation's acknowledged imports; it never discovers remote state.
         """
         if not isinstance(store,BodyStore) or not isinstance(store.adapter,(LocalAdapter,R2Adapter)):
@@ -164,7 +164,7 @@ class ProvenanceInventory:
             custody=verified.get(row['path']) or (cached[1] if cached else None)
             try:
                 if not isinstance(custody,VerifiedFile):raise ValueError('Unqualified cache')
-                custody.require(row['path'])
+                custody._require_custody(row['path'])
                 if snapshot.remote and custody.get('md5') is None:raise ValueError('Unqualified MD5 cache')
             except (OSError,ValueError):
                 custody=verify_local_file(row['path'],expected_sha256=row['sha256'],expected_size=row['size'],

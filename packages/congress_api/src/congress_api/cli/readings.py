@@ -22,6 +22,7 @@ def main(argv=None,*,read_current=None,body_store=None):
     parser.add_argument('--durable-unreadable-root',type=Path,
                         help='Explicit local durable raw store for unreadable decisions')
     parser.add_argument('--raw-bucket',help='Use pinned raw R2 ranges and bounded page caches; credentials stay in runtime env')
+    parser.add_argument('--body-listing',type=Path,help='Complete native key/size/etag listing for exact-key custody fallback')
     parser.add_argument('--raw-cache-bytes',type=int,help='Per-run body cache bound, at most10GiB (default1GiB)')
     parser.add_argument('--raw-get-workers',type=int,help='Concurrent page-prefetch GETs,1–64 (default64)')
     args=parser.parse_args(argv)
@@ -33,6 +34,7 @@ def main(argv=None,*,read_current=None,body_store=None):
     try:readings._raw_policy(body_store,cache_bytes,get_workers)
     except ValueError as error:parser.error(str(error))
     if args.raw_bucket and not modern:parser.error('--raw-bucket requires --mode and --plan or --execute')
+    if args.body_listing is not None and not args.raw_bucket:parser.error('--body-listing requires --raw-bucket')
     if (body_store is not None or args.raw_cache_bytes is not None or args.raw_get_workers is not None) and not args.raw_bucket:
         parser.error('Raw reader and cache options require --raw-bucket')
     if body_store is not None and body_store.bucket!=args.raw_bucket:
@@ -79,6 +81,7 @@ def main(argv=None,*,read_current=None,body_store=None):
                         if args.durable_unreadable_root is not None else body_store.raw
                         if args.execute and body_store is not None else None,
                     body_store=body_store if args.execute else None,raw_ranges=args.raw_bucket is not None,
+                    body_listing=args.body_listing,
                     max_cache_bytes=cache_bytes,max_get_workers=get_workers,read_current=read_current,**(apply or {}))
             except (readings.BackfillRequired,readings.RawCustodyRequired) as error:
                 print(json.dumps(error.as_dict(),default=str,sort_keys=True))
