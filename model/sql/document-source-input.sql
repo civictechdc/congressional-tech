@@ -19,5 +19,6 @@ WITH addresses AS (
 )
 SELECT a.doc_key,a.source_key,a.url,a.member_path,a.is_saved,a.first_seen,
  l.context_url AS listed_on,l.text AS link_text,l.doc_type,try_cast(l.add_date AS DATE) AS posted
-FROM addresses a LEFT JOIN compatible l ON a.component=l.component AND a.url=l.url
- AND (a.member_path IS NOT DISTINCT FROM l.member_path) AND l.selected=1
+FROM addresses a LEFT JOIN (SELECT * FROM compatible WHERE selected=1 AND component IS NOT NULL AND url IS NOT NULL) l
+ ON (a.component IS NOT DISTINCT FROM l.component) AND (a.url IS NOT DISTINCT FROM l.url)
+ AND (a.member_path IS NOT DISTINCT FROM l.member_path)

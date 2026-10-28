@@ -11,7 +11,7 @@ from congress_api.retention.provenance import file_pin
 
 def publish_spec(tmp_path):
     model=tmp_path/'model.json';model.write_text(json.dumps(model_spec(tmp_path)))
-    targets=tmp_path/'targets.json';targets.write_text(json.dumps(dict(version=1,status='owner-approved',
+    targets=tmp_path/'targets.json';targets.write_text(json.dumps(dict(version=1,status='owner-approved',basis='real-device',
         ceilings=dict(startupMs=100,searchMs=100,detailMs=100,heapBytes=1000000))))
     dist=tmp_path/'site';dist.mkdir()
     return dict(version=1,model_spec=dict(path=str(model),**file_pin(model)),bucket='derived-fixture',
@@ -482,3 +482,29 @@ def test_actual_execute_daily_path_publishes_only_completed_work(tmp_path,outcom
     else:
         assert commands==[] and not Path(model['output']).exists() and not Path(model['scratch']).exists()
         assert not any(key.startswith('viewer-publications/') for key in store.objects)
+
+
+@pytest.mark.parametrize('change',['basis','profile','raw_runs','harness','median'])
+def test_seed_target_metadata_uses_shared_validator_before_runtime(tmp_path,change):
+    import subprocess
+    from viewer_publication.archive_publish_job import execute,load_spec,SITE
+    from test_archive_seed_controller import publication
+    value=publication(tmp_path);target=Path(value['targets']['path'])
+    script="""import {writeTargets,measurementProfiles} from './scripts/archive-targets.mjs';
+const sample={releaseId:'ab'.repeat(32),startupMs:100,searchMs:20,detailMs:30,heapBytes:1000000,workerHeapBytes:100000};
+const measurements=['phone','desktop'].map(kind=>({deviceClass:kind+'-profile',basis:'emulated',origin:{kind:'seed_v5',display_only:true},harnessCommit:'cd'.repeat(20),profile:measurementProfiles[kind],samples:Array.from({length:5},()=>({...sample}))}));
+await writeTargets({measurements,basis:'emulated',harnessCommit:'cd'.repeat(20),output:process.argv[1]});"""
+    target.unlink()
+    subprocess.run(['node','--input-type=module','-e',script,str(target)],cwd=SITE,check=True,capture_output=True,text=True)
+    targets=json.loads(target.read_text())
+    if change=='basis':targets['basis']='real-device'
+    elif change=='profile':targets['profile']['phone']['cpuSlowdown']=1
+    elif change=='raw_runs':targets['raw_runs']['phone'].pop()
+    elif change=='harness':targets['harness_commit']='missing'
+    else:targets['profile']['phone']['medians']['startupMs']=1
+    target.write_text(json.dumps(targets));value['targets']=dict(path=str(target),**file_pin(target))
+    path=tmp_path/'publish.json';path.write_text(json.dumps(value))
+    def never(*args,**kwargs):pytest.fail('Malformed shared target metadata reached runtime or SDK')
+    with pytest.raises(ValueError,match='targets'):
+        execute(load_spec(path),runtime_factory=never,storage_factory=never)
+    assert not Path(value['work']).exists()

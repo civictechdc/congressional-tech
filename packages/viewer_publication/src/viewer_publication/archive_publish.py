@@ -240,15 +240,18 @@ def _seed_evidence(result,manifest,profile,listed):
             or any(type(value) is not int or value!=0 for value in checks[0].values())):
         raise ValueError('Native seed invariants did not pass')
     rows=report('seed_reconciliation')
-    if (len(rows)!=1 or not isinstance(rows[0],dict) or set(rows[0])!={'input_docs','listed','excluded'}
+    if (len(rows)!=1 or not isinstance(rows[0],dict) or set(rows[0])!={'input_docs','listed','merged_duplicates','excluded'}
             or any(type(value) is not int or value<0 for value in rows[0].values())):
         raise ValueError('Invalid native seed reconciliation')
     counts=rows[0]
     if (counts['input_docs']!=profile['document_rows'] or counts['listed']!=listed
-            or counts['listed']+counts['excluded']!=counts['input_docs']):
-        raise ValueError('Seed source documents do not reconcile with its listed and excluded documents')
+            or counts['listed']+counts['merged_duplicates']+counts['excluded']!=counts['input_docs']):
+        raise ValueError('Seed source documents do not reconcile with listed, merged and excluded documents')
+    if counts['excluded']*100>counts['input_docs']*3:
+        raise ValueError('Seed data-gap exclusions exceed three percent of its source documents')
     reasons=set();excluded=0
-    for row in report('seed_exclusions'):
+    exclusion_rows=report('seed_exclusions')
+    for row in exclusion_rows:
         if (not isinstance(row,dict) or set(row)!={'reason','count'}
                 or not isinstance(row['reason'],str) or not row['reason'].strip() or row['reason'] in reasons
                 or type(row['count']) is not int or row['count']<1):
@@ -266,6 +269,7 @@ def _seed_evidence(result,manifest,profile,listed):
             raise ValueError('Native seed spot check did not match its source')
         seen.add(row['source_row'])
     if seen!=set(range(sample_count)):raise ValueError('Seed spot check ordinals are incomplete')
+    return dict(seed_reconciliation=counts,seed_exclusions=exclusion_rows)
 
 
 def _candidate(release,manifest_pin,result_pin,*,input_record,receipt_keys):
@@ -317,12 +321,12 @@ def _candidate(release,manifest_pin,result_pin,*,input_record,receipt_keys):
     if release_identity(manifest['schema_version'],manifest['files'])!=release_id:
         raise ValueError('Candidate release identity differs from its content metadata')
     if listed==0:raise ValueError('An empty document list cannot be published')
-    if seed:_seed_evidence(result,manifest,profile,listed)
-    return manifest,raw,release_id
+    admission=_seed_evidence(result,manifest,profile,listed) if seed else {}
+    return manifest,raw,release_id,admission
 
 
 def publish_candidate(*,client,engine,bucket,work,release,manifest_pin,result_pin,
-                      input_record,receipt_keys,pointer,expected_etag,public_origin,contract,canary):
+                      input_record,receipt_keys,pointer,expected_etag,public_origin,contract,canary,measured_release_id=None):
     """Upload a pinned model candidate and use the existing reader gates and CAS.
 
     The caller owns actual model planning, completeness and early skip. This stage
@@ -347,8 +351,12 @@ def publish_candidate(*,client,engine,bucket,work,release,manifest_pin,result_pi
         digest=input_digest(receipt_keys=receipt_keys,provenance=input_record['provenance'],
             profile=input_record['profile'],entity_digests=input_record['entity_digests'])
         if input_record.get('input_digest')!=digest:raise ValueError('Input record semantic identity differs')
-        manifest,raw,release_id=_candidate(Path(release),manifest_pin,result_pin,
+        manifest,raw,release_id,admission=_candidate(Path(release),manifest_pin,result_pin,
             input_record=input_record,receipt_keys=receipt_keys)
+        if measured_release_id is not None:
+            if input_record['profile'].get('kind')!='seed_v5' or _sha(measured_release_id)!=release_id:
+                raise ValueError('Measured site targets identify a different seed release')
+        status.update(admission)
         if input_record['profile'].get('kind')=='seed_v5':
             status.update(input_kind='seed_v5',label=input_record['profile']['label'],display_only=True)
         status.update(release_id=release_id,rows={item['name']:item['rows'] for item in manifest['files']},

@@ -45,10 +45,11 @@ def url_state_steps(*,root=ROOT):
             LEFT JOIN url_state_scope_exclusions e ON e.family=s.family AND regexp_like(l.target_url,e.pattern)
             WHERE e.family IS NULL"""),
         ('queue_literals',"""SELECT k.url_key,min(l.target_url) AS url FROM resolved_links l
-            JOIN url_state_page_contexts p ON l.page_body=p.page_body AND l.context_url=p.context_url
-              AND l.member_path IS NOT DISTINCT FROM p.member_path
-            JOIN model_url_keys k ON l.target_url=k.url
-            JOIN url_state_scoped_targets s ON l.target_url=s.target_url
+            JOIN (SELECT * FROM url_state_page_contexts WHERE page_body IS NOT NULL AND context_url IS NOT NULL) p
+              ON (l.page_body IS NOT DISTINCT FROM p.page_body) AND (l.context_url IS NOT DISTINCT FROM p.context_url)
+              AND (l.member_path IS NOT DISTINCT FROM p.member_path)
+            JOIN (SELECT * FROM model_url_keys WHERE url IS NOT NULL) k ON (l.target_url IS NOT DISTINCT FROM k.url)
+            JOIN (SELECT * FROM url_state_scoped_targets WHERE target_url IS NOT NULL) s ON (l.target_url IS NOT DISTINCT FROM s.target_url)
             WHERE l.target_member_path IS NULL AND k.error IS NULL AND k.url_key IS NOT NULL
             AND NOT EXISTS(SELECT 1 FROM url_state_fetched_keys f WHERE f.url_key=k.url_key)
             GROUP BY k.url_key"""),

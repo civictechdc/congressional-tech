@@ -10,8 +10,43 @@
   ],
   "steps": [
     {
+      "name": "seed_file_values",
+      "sql_file": "model/sql/seed-v5-file-values.sql",
+      "materialize": true
+    },
+    {
+      "name": "seed_name_body",
+      "sql_file": "model/sql/seed-v5-name-body.sql",
+      "materialize": true
+    },
+    {
+      "name": "seed_name_url",
+      "sql_file": "model/sql/seed-v5-name-url.sql",
+      "materialize": true
+    },
+    {
+      "name": "seed_body_formats",
+      "sql_file": "model/sql/seed-v5-body-formats.sql",
+      "materialize": true
+    },
+    {
       "name": "seed_docs",
       "sql_file": "model/sql/seed-v5-documents.sql",
+      "materialize": true
+    },
+    {
+      "name": "seed_all_members",
+      "sql_file": "model/sql/seed-v5-all-members.sql",
+      "materialize": true
+    },
+    {
+      "name": "seed_document_admission",
+      "sql_file": "model/sql/seed-v5-document-admission.sql",
+      "materialize": true
+    },
+    {
+      "name": "seed_source_status",
+      "sql_file": "model/sql/seed-v5-source-status.sql",
       "materialize": true
     },
     {

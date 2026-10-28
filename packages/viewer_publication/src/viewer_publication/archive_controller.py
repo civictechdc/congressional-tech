@@ -155,7 +155,7 @@ def run_publish(model_spec,*,client,engine,bucket,work,receipt_keys,provenance,r
                 failure.add_note('Archive status update also failed')
 
 
-def run_seed_publish(seed_spec,*,client,engine,bucket,work,run,public_origin,contract,canary):
+def run_seed_publish(seed_spec,*,client,engine,bucket,work,run,public_origin,contract,canary,measured_release_id=None):
     """Run the fixed native seed producer through the common publication effects."""
     from viewer_publication.archive_seed import build_seed_release
     from viewer_publication.archive_seed_profile import validate_seed_inputs
@@ -184,6 +184,7 @@ def run_seed_publish(seed_spec,*,client,engine,bucket,work,run,public_origin,con
         return publish_candidate(client=client,engine=engine,bucket=bucket,work=work/'candidate',
             release=Path(seed_spec['output']),manifest_pin=pin(manifest),result_pin=pin(result),
             input_record=record,receipt_keys=[],pointer=pointer,expected_etag=etag,public_origin=public_origin,
+            measured_release_id=measured_release_id,
             contract=lambda **context:contract(**context,probe_selectors=probes),
             canary=lambda **context:canary(**context,probe_selectors=probes))
     except BaseException as error:
