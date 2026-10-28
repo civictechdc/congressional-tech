@@ -120,3 +120,30 @@ def test_every_observed_recovery_kind_uses_the_model_classifier(tmp_path):
             dict(name='fatal',sql="SELECT c.case_id,d.error FROM recovery_diagnostics d JOIN cases c USING(receipt_key,receipt_line,capture_index) WHERE d.is_fatal ORDER BY c.case_id")])
     assert reports['kinds']==[dict(case_id=case['id'],kind=case['expected_kind']) for case in sorted(cases,key=lambda x:x['id'])]
     assert reports['fatal']==[dict(case_id='unknown',error='unknown_recovery_kind')]
+
+
+def test_model_admission_refuses_bad_recovery_registry_selectors(tmp_path):
+    import json
+    from pathlib import Path
+    from archive_job_fixture import real_model_spec
+    from viewer_publication.archive_model import prepare_model_inputs,admission_checks
+    root=Path(__file__).parents[3]
+    cases=json.loads((root/'model/fixtures/s1-model-cases.json').read_text())['recovery_registry_admission']
+    value,_,_=real_model_spec(tmp_path)
+    engine=NativeDatasets.from_config(value['engine_config'])
+    prepared=prepare_model_inputs(**{name:value[name]['path'] for name in ['captures','readings','filename_readings']},
+        parser_versions=value['parser_versions'],catalog_version=value['catalog_version'],engine=engine,scratch=tmp_path/'prepared')
+    canonical=json.loads((root/'model/registries/recovery-kinds.json').read_text())
+    for case in cases:
+        work=tmp_path/case['id'];work.mkdir()
+        rows=[dict(row) for row in canonical]
+        if case['id']=='duplicate-category':rows.append(dict(rows[0]))
+        if case['id']=='duplicate-basis':rows.append(dict(next(row for row in rows if row['match_basis']=='verified_archive_capture')))
+        if case['id']=='both-selectors':rows[0]['match_basis']='user_accepted_url_variant'
+        if case['id']=='no-selector':rows[0]['category']=None
+        altered=json_input(work,'recovery_kinds',rows,category='Utf8',match_basis='Utf8',kind='Utf8',import_category='Utf8')
+        inputs=[altered if item['name']=='recovery_kinds' else item for item in prepared['inputs']]
+        reports=run_job(work,engine,inputs=inputs,steps=prepared['steps'],outputs=[],
+            queries=admission_checks(parser_versions=value['parser_versions'],catalog_version=value['catalog_version']))
+        assert {name:reports['model_invariants'][0][name] for name in case['expected']}==case['expected']
+        assert not (tmp_path/'release').exists()
