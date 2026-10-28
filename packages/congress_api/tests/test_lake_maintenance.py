@@ -25,8 +25,8 @@ def generation(tmp_path,name,rows):
         ('key',pa.string()),('value',pa.binary())])),source)
     result=append_rows(source,engine=engine,work=tmp_path/(name+'-append'),
         catalog_root=catalog,table=table,keys=['key'],definition='fixture-v1')
-    pin=dict(kind='native_table',**{k:result[k] for k in
-        ('metadata_location','table_uuid','snapshot','schema_id')})
+    pin=dict(kind='native_table',snapshot=result.get('snapshot'),**{k:result[k] for k in
+        ('metadata_location','table_uuid','schema_id')})
     return engine,table,pin
 
 
@@ -83,3 +83,48 @@ def test_native_rebuild_refuses_duplicate_primary_key_before_creation(tmp_path):
             catalog_root=tmp_path/'catalog',table=dict(namespace=['archive'],name='new'),
             schema=SCHEMA,location=tmp_path/'new',keys=['key'],definition='fixture-v1')
     assert not (tmp_path/'refused'/'create').exists()
+
+
+def test_native_empty_generation_rebuild_keeps_typed_schema(tmp_path):
+    from congress_api.lake.maintenance import rebuild_generation
+    engine,_,old=generation(tmp_path,'old',[])
+    new=rebuild_generation(old,engine=engine,work=tmp_path/'empty-rebuild',
+        catalog_root=tmp_path/'catalog',table=dict(namespace=['archive'],name='empty_g1'),
+        schema=SCHEMA,location=tmp_path/'empty_g1',keys=['key'],definition='fixture-v1')
+    assert new['snapshot'] is None and new['table_uuid']!=old['table_uuid']
+
+
+def test_native_purge_rejects_stale_metadata_and_never_deletes_raw(tmp_path):
+    from congress_api.lake.maintenance import purge_generation
+    from congress_api.lake.tables import append_rows
+    from docspec_client.models import DocSpecFailure
+    engine,table,old=generation(tmp_path,'old',[dict(key='a',value=b'one')])
+    raw=tmp_path/'raw';raw.mkdir();(raw/'body').write_bytes(b'raw truth')
+    source=tmp_path/'more.parquet'
+    pq.write_table(pa.table({'key':['b'],'value':[b'two']}),source)
+    current=append_rows(source,engine=engine,work=tmp_path/'more',
+        catalog_root=tmp_path/'catalog',table=table,keys=['key'],definition='fixture-v1')
+    with pytest.raises(DocSpecFailure,match='stale_authority'):
+        purge_generation(old,table=table,kept_inputs=[],engine=engine,
+            work=tmp_path/'stale',catalog_root=tmp_path/'catalog')
+    fresh={**old,**{key:current[key] for key in old if key!='kind'}}
+    purge_generation(fresh,table=table,kept_inputs=[],engine=engine,
+        work=tmp_path/'purge',catalog_root=tmp_path/'catalog')
+    assert (raw/'body').read_bytes()==b'raw truth'
+
+
+def test_native_equality_refuses_schema_coercion(tmp_path):
+    from congress_api.lake.maintenance import verify_generations
+    from congress_api.lake.tables import create_table,append_rows
+    engine,_,old=generation(tmp_path,'old',[dict(key='a',value=b'one')])
+    schema={**SCHEMA,'fields':[SCHEMA['fields'][0],{**SCHEMA['fields'][1],'type':'string'}]}
+    table=dict(namespace=['archive'],name='text')
+    create_table(engine=engine,work=tmp_path/'text-create',catalog_root=tmp_path/'catalog',
+        table=table,schema=schema,location=tmp_path/'text')
+    source=tmp_path/'text.parquet'
+    pq.write_table(pa.table({'key':['a'],'value':['one']}),source)
+    result=append_rows(source,engine=engine,work=tmp_path/'text-append',
+        catalog_root=tmp_path/'catalog',table=table,keys=['key'],definition='fixture-v1')
+    new={**old,**{key:result[key] for key in old if key!='kind'}}
+    with pytest.raises(ValueError,match='typed schema'):
+        verify_generations(old,new,keys=['key'],engine=engine,work=tmp_path/'different')
