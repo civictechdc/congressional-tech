@@ -75,3 +75,17 @@ def test_native_recovery_decisions_and_original_attachment(tmp_path):
     assert reports['fatal']==[dict(receipt_line=4,error='unknown_recovery_kind'),dict(receipt_line=7,error='missing_original_url')]
     assert reports['reviews']==[dict(id='body-edge')]
     assert reports['edges']==[dict(left_node='b:'+'a'*64,right_node='b:'+'b'*64)]
+
+
+def test_provenance_inputs_keep_review_values_as_native_json(tmp_path):
+    import json
+    from viewer_publication.archive_provenance import provenance_inputs,current_steps
+    path=tmp_path/'reviews.jsonl'
+    records=[dict(id='kind',target='a'*16,verdict='kind_override',value=['testimony','letter'],note='retained',reviewer='fixture',decided_at='2026-10-20T12:00:00Z',supersedes=None),
+             dict(id='title',target='a'*16,verdict='title_override',value='Observed title',note=None,reviewer='fixture',decided_at='2026-10-20T12:00:00Z',supersedes=None)]
+    path.write_text('\n'.join(json.dumps(row,separators=(',',':')) for row in records)+'\n')
+    inputs,steps=provenance_inputs(tmp_path/'inputs',review_files=[dict(key='provenance/reviews/fixture.jsonl',path=str(path))])
+    reports=run_job(tmp_path,NativeDatasets.from_config(os.environ['DOCSPEC_JOB_CONFIG']),inputs=inputs,
+        steps=steps+current_steps()[:2],outputs=[],queries=[dict(name='reviews',sql='SELECT id,value_json,value_text,note FROM current_reviews ORDER BY id')])
+    assert reports['reviews']==[dict(id='kind',value_json='["testimony","letter"]',value_text=None,note='retained'),
+                                dict(id='title',value_json='"Observed title"',value_text='Observed title',note=None)]
