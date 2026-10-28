@@ -63,6 +63,35 @@ def completed_daily_inputs(template,production,records):
     return validate_model_spec(value,base=Path.cwd()),list(keys)
 
 
+def produce_daily_inputs(template,daily,*,engine,raw_store):
+    """Run the maintained producer once against one complete raw snapshot."""
+    from congress_api.lake.daily import produce_daily,_validate as validate_daily
+    from congress_api.retention.provenance_inventory import provenance_inventory
+    if not isinstance(daily,dict) or daily.get('provenance')!={kind:[] for kind in ['recoveries','reviews','unreadable']}:
+        raise ValueError('Daily publication selects provenance from the current raw inventory')
+    validate_daily(daily,engine,raw_store)
+    work=Path(daily['work']).resolve()
+    if work.exists() or work.is_symlink():raise ValueError('Daily production work must be fresh')
+    snapshot=provenance_inventory(raw_store,work=work.with_name(work.name+'-provenance'))
+    full={row['key']:row for row in snapshot.metadata()}
+    records=snapshot.qualify([key for key in full if provenance_record_kind(key) is not None])
+    selected=dict(daily,provenance={kind:[row for row in records if provenance_record_kind(row['key'])==kind]
+        for kind in ['recoveries','reviews','unreadable']})
+    production=produce_daily(selected,engine=engine,raw_store=raw_store)
+    summary={key:production.get(key) for key in ['status','pins','receipt_keys','new_receipt_keys','currentversions']}
+    with (work/'daily-summary.json').open('x') as target:json.dump(summary,target,sort_keys=True)
+    if production['status']!='completed':return dict(status=production['status'],daily=summary)
+    records=snapshot.rows()
+    model,keys=completed_daily_inputs(template,production,records)
+    for row in records:
+        if row['key'] not in full:
+            if provenance_record_kind(row['key'])!='unreadable':raise ValueError('Unexpected daily provenance addition')
+            full[row['key']]=dict(key=row['key'],etag=row['etag'],size=row['size'])
+    return dict(status='ready',model=model,receipt_keys=keys,daily=summary,
+        provenance=[dict(key=key,etag=full[key]['etag']) for key in sorted(full)],
+        verified_files=snapshot.verified())
+
+
 def _metadata_pin(value,base):
     _pin(value,{'path','sha256','size'})
     if value['size']>METADATA_BYTES:raise ValueError('Publication metadata exceeds the small JSON allowance')
@@ -92,7 +121,7 @@ def load_spec(path):
         if set(value)!={'status','reason'} or not isinstance(value['reason'],str) or not value['reason'].strip():
             raise ValueError('Blocked publication job requires exactly its reason')
         return value
-    if set(value)-FIELDS-{'site_dist'}:raise ValueError('Publication job has unknown fields')
+    if set(value)-FIELDS-{'site_dist','daily'}:raise ValueError('Publication job has unknown fields')
     if not FIELDS<=value.keys() or type(value['version']) is not int or value['version']!=1:
         raise ValueError('Publication job requires version 1 and all explicit inputs')
     base=path.parent
@@ -126,6 +155,19 @@ def load_spec(path):
     result['_model_identity'].require(result['model_spec']['path'])
     if result['_model'].get('status')=='blocked':return result['_model']
     directories=[Path(result['work']),Path(result['_model']['output']),Path(result['_model']['scratch'])]
+    if 'daily' in value:
+        if value['receipt_keys'] or value['provenance']:
+            raise ValueError('Daily publication derives receipt and provenance identities from production')
+        result['daily']=_metadata_pin(value['daily'],base)
+        daily,result['_daily_identity']=_read_metadata(result['daily'])
+        if (not isinstance(daily,dict) or daily.get('provenance')!={kind:[] for kind in ['recoveries','reviews','unreadable']}):
+            raise ValueError('Daily publication selects provenance from the current raw inventory')
+        if daily.get('catalog_root','missing') is not None:
+            raise ValueError('Daily publisher requires its configured remote lake catalog')
+        for name in ['work','body_inventory','local_root']:
+            daily[name]=_local(daily.get(name),Path(result['daily']['path']).parent)
+        result['_daily']=daily
+        daywork=Path(daily['work']);directories.extend([daywork,daywork.with_name(daywork.name+'-provenance')])
     if any(left.is_relative_to(right) or right.is_relative_to(left)
            for index,left in enumerate(directories) for right in directories[index+1:]):
         raise ValueError('Publication work, model output and model scratch must be separate')
@@ -229,6 +271,11 @@ def execute(spec,*,runtime_factory=None,storage_factory=None,process_runner=None
     for name in ['output','scratch']:
         path=Path(spec['_model'][name])
         if path.exists() or path.is_symlink():raise ValueError('Model output and scratch must be fresh')
+    if '_daily' in spec:
+        spec['_daily_identity'].require(spec['daily']['path'])
+        path=Path(spec['_daily']['work'])
+        if any(p.exists() or p.is_symlink() for p in [path,path.with_name(path.name+'-provenance')]):
+            raise ValueError('Daily production work and provenance cache must be fresh')
     if not Path(spec['site_dist']).is_dir():raise ValueError('Publication site_dist must already exist; build the site first')
     from docspec_client.client import NativeDatasets
     from congress_shared.storage import connect_r2
@@ -253,6 +300,16 @@ def execute(spec,*,runtime_factory=None,storage_factory=None,process_runner=None
             spec['_model_identity'].require(spec['model_spec']['path'])
             target_identity.require(spec['targets']['path'])
             client=storage_factory(bucket=spec['bucket'],endpoint_url=endpoint,retries={'total_max_attempts':1})
+            selected_model=spec['_model'];keys=spec['receipt_keys'];provenance=spec['provenance'];verified=None;daily=None
+            if '_daily' in spec:
+                from congress_api.retention.body_store import BodyStore,R2Adapter
+                spec['_daily_identity'].require(spec['daily']['path'])
+                daily=produce_daily_inputs(selected_model,spec['_daily'],engine=model,
+                    raw_store=BodyStore(R2Adapter(client,spec['bucket'])))
+                spec['_daily_identity'].require(spec['daily']['path'])
+                spec['_model_identity'].require(spec['model_spec']['path']);require_configuration()
+                if daily['status']!='ready':return daily
+                selected_model=daily['model'];keys=daily['receipt_keys'];provenance=daily['provenance'];verified=daily['verified_files']
             def probe(name,context):
                 target_identity.require(spec['targets']['path']);require_configuration()
                 commands=probe_commands(spec,release=context.get('release',spec['_model']['output']),
@@ -263,11 +320,11 @@ def execute(spec,*,runtime_factory=None,storage_factory=None,process_runner=None
                 receipt=json.loads(receipt_path.read_text())
                 target_identity.require(spec['targets']['path']);require_configuration()
                 return receipt
-            result=run_publish(spec['_model'],client=client,engine=engine,bucket=spec['bucket'],work=spec['work'],
-                receipt_keys=spec['receipt_keys'],provenance=spec['provenance'],run=spec['run'],public_origin=spec['public_origin'],
+            result=run_publish(selected_model,client=client,engine=engine,bucket=spec['bucket'],work=spec['work'],
+                receipt_keys=keys,provenance=provenance,verified_files=verified,run=spec['run'],public_origin=spec['public_origin'],
                 contract=lambda **context:probe('contract',context),canary=lambda **context:probe('canary',context))
             spec['_model_identity'].require(spec['model_spec']['path']);require_configuration()
-            return result
+            return dict(result,daily=daily['daily']) if daily is not None else result
 
 
 def main(argv=None):
@@ -281,8 +338,9 @@ def main(argv=None):
         result=execute(spec) if args.execute else dict(status='planned',executed=False,
             model_spec=spec['model_spec'],bucket=spec['bucket'],work=spec['work'],public_origin=spec['public_origin'],
             targets=spec['targets'],site_dist=spec['site_dist'])
+        if not args.execute and 'daily' in spec:result['daily']=spec['daily']
     except (ValueError,OSError,subprocess.SubprocessError) as error:parser.error(str(error))
-    print(json.dumps(result,sort_keys=True));return 0
+    print(json.dumps(result,sort_keys=True));return 2 if result.get('status') in {'pending','backfill_required'} else 0
 
 
 if __name__=='__main__':raise SystemExit(main())
