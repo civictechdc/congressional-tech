@@ -13,6 +13,11 @@ inputs:
 runs:
   using: composite
   steps:
+    - name: Record disk capacity and public native-job limits
+      shell: bash
+      run: |
+        df -B1 "$RUNNER_TEMP" "$GITHUB_WORKSPACE"
+        cat .github/docspec-local-limits.json
     - name: Verify private runtime bytes and offline prerequisites
       shell: bash
       env:
