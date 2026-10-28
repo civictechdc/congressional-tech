@@ -172,7 +172,7 @@ def _work_inputs(captures, recovery_files, unreadable_files, existing, work):
     if len(set(priorities)) != len(params) or len(set(names)) != len(params):
         raise ValueError('Filename parameter registry has duplicate names or priorities')
     inputs.append(json_input(work, 'filename_parameters', params, priority='Int32', parameter='Utf8'))
-    if existing:
+    if existing is not None:
         inputs.append(table_input('existing',existing))
     return inputs
 
@@ -203,7 +203,7 @@ def stage(*, captures, recovery_files, engine, work, decided_at, existing=None, 
     missing = (' WHERE NOT EXISTS (SELECT 1 FROM unreadable u WHERE u.record_sha=p.input_id '
         "AND u.parser='filename' AND u.parser_version=" + version_sql +
         ' AND NOT EXISTS (SELECT 1 FROM unreadable s WHERE s.supersedes=u.id))')
-    if existing:
+    if existing is not None:
         missing += (' AND NOT EXISTS (SELECT 1 FROM existing e WHERE e.filename=p.filename '
                     'AND e.source_url=p.source_url AND e.catalog_version=' + version_sql + ')')
     run_job(work, engine, inputs=inputs, steps=steps,
