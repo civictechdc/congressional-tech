@@ -19,8 +19,9 @@ permissions:
   contents: write
 
 concurrency:
-  group: update-data
+  group: raw-source-mirror
   cancel-in-progress: false
+  queue: max
 
 env:
   CHANNELS_CSV: packages/congress_shared/src/congress_shared/youtube/youtube-accounts.csv
@@ -157,8 +158,11 @@ jobs:
       - uses: ./.github/actions/setup-python-project
       - uses: ./.github/actions/setup-local-job-runtime
         with:
-          url: ${{ vars.DOCSPEC_LOCAL_RUNTIME_URL }}
-          sha256: ${{ vars.DOCSPEC_LOCAL_RUNTIME_SHA256 }}
+          artifact: ${{ vars.DOCSPEC_RUNTIME_ARTIFACT }}
+          credentials: ${{ secrets.DOCSPEC_ENGINE_CREDENTIALS }}
+          account-id: "174055408ff1560e60601c4d12c561c4"
+
+      - uses: ./.github/actions/setup-node-project
 
       - name: Test source parsing and refresh decisions
         env:

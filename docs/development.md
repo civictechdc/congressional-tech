@@ -64,6 +64,14 @@ python scripts/dev.py test production-offline --path tests/test_image_tools.py
 python scripts/dev.py test active-experiment-regression --path docs/experiments/filename-patterns-20261015/test_pilot_evaluate.py -- -x
 ```
 
+Hosted validation splits the complete offline lane into six parallel jobs.
+Reproduce one with `python scripts/dev.py test production-offline --shard 1/6`.
+The index starts at one; all six partitions together cover the full lane once.
+Each keeps the same offline wrapper, marker, native prerequisites and failures.
+An empty partition fails before pytest, and `--shard` cannot combine with `--path`.
+Omit `--shard` to run the full lane. CI installs the locked Node workspace before
+the Python reader tests and requires every partition before `validate` can pass.
+
 The native lane uses the same source-fetch toolchain as the capture workflow:
 
 ```bash

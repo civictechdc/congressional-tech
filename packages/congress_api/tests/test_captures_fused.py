@@ -43,7 +43,11 @@ def test_counter_and_direct_have_equal_rows_and_pinned_inputs(tmp_path):
     steps={step['name']:step for step in job['steps']}
     assert steps['capture_facts']['materialize'] and steps['capture_violations']['materialize']
     assert steps['scalar_rows']['materialize']
-    assert not steps['lines'].get('materialize',False)
+    assert steps['lines']['materialize']
+    # Decode the record array once in shared lines; items reuse that array.
+    assert steps['lines']['sql'].count("json_get_array(__raw_line,'record')")==1
+    assert 'unnest(record_items)' in steps['item_entries']['sql']
+    assert '__raw_line' not in steps['item_entries']['sql']
     public_job=json.loads((fused/'export/job.json').read_text())
     assert public_job['inputs'][0]['path']==str(fused/'capture-evidence.parquet')
     manifest=json.loads((fused/'ingested-receipts.json').read_text())

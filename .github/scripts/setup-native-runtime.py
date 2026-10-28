@@ -7,6 +7,7 @@ import json
 import os
 from pathlib import Path
 import re
+import subprocess
 import sys
 
 from congress_api.retention.derived_files import copy_checked
@@ -76,7 +77,7 @@ def private_write(path, raw):
         os.fsync(target.fileno())
 
 
-def install(artifact, credentials, remote, directory, *, client):
+def install(artifact, credentials, remote, directory, *, client, local_limits=None):
     """Read exactly one selected private object; create no native workspace/provider state."""
     directory = Path(directory)
     if directory.is_symlink() or directory.exists():
@@ -86,22 +87,34 @@ def install(artifact, credentials, remote, directory, *, client):
         raise SetupFailure('Runtime output path cannot contain line breaks')
     # Existing directories, symlinks and interrupted installations require explicit
     # operator reconciliation. Never promote or overwrite a stale executable.
-    remote_raw = Path(remote).read_bytes()
-    remote_value = document(remote_raw, 'DocSpec remote configuration')
-    references = remote_value.get('secret_env') if isinstance(remote_value, dict) else None
-    if not isinstance(references, dict) or set(references.values()) != SECRET_NAMES:
-        raise SetupFailure('DocSpec remote configuration must declare the three engine secret references')
+    remote_raw = None
+    if local_limits is not None:
+        if 'test-util' in artifact.get('build_features', ['remote']):
+            raise SetupFailure('Local jobs require the ordinary runtime without test-util')
+        limits = document(Path(local_limits).read_bytes(), 'Local job limits')
+        fields = {'compute_threads', 'memory_bytes', 'scratch_bytes', 'batch_rows',
+                  'max_batch_bytes', 'max_metadata_bytes'}
+        if (not isinstance(limits, dict) or set(limits) != fields
+                or any(type(value) is not int or value <= 0 for value in limits.values())):
+            raise SetupFailure('Local job limits require six positive integers')
+    else:
+        remote_raw = Path(remote).read_bytes()
+        remote_value = document(remote_raw, 'DocSpec remote configuration')
+        references = remote_value.get('secret_env') if isinstance(remote_value, dict) else None
+        if not isinstance(references, dict) or set(references.values()) != SECRET_NAMES:
+            raise SetupFailure('DocSpec remote configuration must declare the three engine secret references')
     directory.mkdir(mode=0o700, parents=True, exist_ok=False)
-    private_write(directory / 'credentials.json', json.dumps(credentials).encode())
-    private_write(directory / 'remote.json', remote_raw)
+    if local_limits is None:
+        private_write(directory / 'credentials.json', json.dumps(credentials).encode())
+        private_write(directory / 'remote.json', remote_raw)
+    else:
+        private_write(directory / 'limits.json', json.dumps(limits).encode())
     build_features = list(artifact.get('build_features', ['remote']))
     required_capabilities = list(artifact.get('required_capabilities', REQUIRED_LOOPBACK_CAPABILITIES))
     configuration = dict(
         version=1,
         binary='docspec',
         workspace='workspace',
-        remote='remote.json',
-        credentials='credentials.json',
         timeout_seconds=120,
         source_revision=artifact['source_revision'],
         platform=artifact['platform'],
@@ -109,6 +122,8 @@ def install(artifact, credentials, remote, directory, *, client):
         binary_sha256=artifact['sha256'],
         required_capabilities=required_capabilities,
     )
+    configuration.update(dict(remote='remote.json', credentials='credentials.json')
+                         if local_limits is None else dict(limits='limits.json'))
     config = directory / 'runtime.json'
     private_write(config, (json.dumps(configuration, indent=2) + '\n').encode())
     NativeDatasets.from_config(config)  # Existing runtime format and secret validation own this boundary.
@@ -135,7 +150,7 @@ def install(artifact, credentials, remote, directory, *, client):
     report.update(platform=artifact['platform'], source_revision=artifact['source_revision'],
                   build_features=build_features, required_capabilities=required_capabilities,
                   artifact_bytes=artifact['bytes'], artifact_downloaded=True, native_provider_accessed=False,
-                  remote_sha256=sha256(remote_raw).hexdigest())
+                  **({'remote_sha256': sha256(remote_raw).hexdigest()} if remote_raw is not None else {}))
     return config, report
 
 
@@ -157,6 +172,8 @@ def main(argv=None):
     parser.add_argument('--artifact-descriptor', type=Path, help='Local nonsecret descriptor; hosted runs use DOCSPEC_RUNTIME_ARTIFACT JSON.')
     parser.add_argument('--credentials-file', type=Path, help='Local private credentials; hosted runs use DOCSPEC_ENGINE_CREDENTIALS JSON.')
     parser.add_argument('--remote', type=Path, default=Path(__file__).resolve().parents[1] / 'docspec-remote.json')
+    parser.add_argument('--local', action='store_true', help='Install a credential-free local job runtime from the same private binary.')
+    parser.add_argument('--local-limits', type=Path, default=Path(__file__).resolve().parents[1] / 'docspec-local-limits.json')
     parser.add_argument('--directory', type=Path, required=True)
     parser.add_argument('--output', type=Path, required=True)
     parser.add_argument('--github-env', type=Path, help='Export only the installed configuration path and approved binary digest.')
@@ -166,11 +183,18 @@ def main(argv=None):
         credentials = engine_credentials(args.credentials_file.read_text() if args.credentials_file else os.environ.get('DOCSPEC_ENGINE_CREDENTIALS'))
         if args.credentials_file and args.credentials_file.stat().st_mode & 0o077:
             raise SetupFailure('Local DocSpec credentials require private file permissions (0600)')
-        config, report = install(artifact, credentials, args.remote, args.directory, client=make_client(credentials))
+        config, report = install(artifact, credentials, args.remote, args.directory,
+            client=make_client(credentials), local_limits=args.local_limits if args.local else None)
+        if args.local:
+            subprocess.run([sys.executable, str(Path(__file__).resolve().parents[2]/'scripts/dev.py'),
+                'doctor', '--lane', 'production-offline'],
+                env={**os.environ, 'DOCSPEC_JOB_CONFIG': str(config)}, check=True)
         args.output.write_text(json.dumps(report, indent=2) + '\n')
         if args.github_env:
             with args.github_env.open('a') as target:
-                target.write(f"DOCSPEC_RUNTIME_CONFIG={config}\nDOCSPEC_BINARY_SHA256={artifact['sha256']}\n")
+                target.write((f"DOCSPEC_JOB_CONFIG={config}\nDOCSPEC_BINARY={config.parent / 'docspec'}\n"
+                              if args.local else f"DOCSPEC_RUNTIME_CONFIG={config}\n")
+                             + f"DOCSPEC_BINARY_SHA256={artifact['sha256']}\n")
         print(json.dumps({key: report[key] for key in ('verified', 'binary_sha256', 'platform', 'source_revision',
             'artifact_bytes', 'artifact_downloaded', 'native_executed', 'native_provider_accessed', 'workspace_created')}))
         return 0

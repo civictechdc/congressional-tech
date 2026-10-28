@@ -30,7 +30,7 @@ def test_actual_model_publishes_then_checks_admission_before_input_skip(tmp_path
         assert context['probe_selectors']['saved_row']==0
         assert len(context['probe_selectors']['link_key'])==16
         calls.append(context['release_id'])
-        return dict(status='passed',releaseId=context['release_id'],targets='measured')
+        return dict(status='passed',releaseId=context['release_id'],targets='owner-approved')
     with NativeDatasets.from_config(os.environ['DOCSPEC_JOB_CONFIG']) as native:
         engine=Runtime(native,store)
         kwargs=dict(client=store,engine=engine,bucket='derived-fixture',receipt_keys=keys,provenance=[],
@@ -141,7 +141,7 @@ def test_nonrecord_provenance_is_pinned_without_becoming_a_model_input(tmp_path)
             self.events.append(('list',Prefix))
             return dict(Contents=[dict(Key=key,ETag=self.backup_etag)],IsTruncated=False)
     store=MetadataStore();store.objects[key]=b'not a JSONL model record'
-    def passed(**context):return dict(status='passed',releaseId=context['release_id'],targets='measured')
+    def passed(**context):return dict(status='passed',releaseId=context['release_id'],targets='owner-approved')
     provenance=[dict(key=key,etag=etag)]
     with NativeDatasets.from_config(os.environ['DOCSPEC_JOB_CONFIG']) as native:
         engine=Runtime(native,store)
@@ -162,3 +162,22 @@ def test_nonrecord_provenance_is_pinned_without_becoming_a_model_input(tmp_path)
         assert not Path(spec['scratch']).exists()
     assert ('get',key) not in store.events
     assert store.objects[key]==b'not a JSONL model record'
+
+
+def test_record_acknowledgment_md5_matches_list_etag_without_normalizing_backups():
+    from viewer_publication.archive_controller import _provenance_snapshot
+    record='provenance/reviews/fixture.jsonl'
+    backup='provenance/recoveries/accepted-backup.json'
+    current=[dict(key=record,etag='"'+'b'*32+'"'),dict(key=backup,etag='"opaque-backup-2"')]
+    class MetadataStore(Store):
+        def list_objects_v2(self,*,Bucket,Prefix,**kwargs):
+            self.events.append(('list',Prefix))
+            return dict(Contents=[dict(Key=row['key'],ETag=row['etag']) for row in current],IsTruncated=False)
+    store=MetadataStore()
+    expected=[dict(key=record,etag='B'*32),dict(key=backup,etag='"opaque-backup-2"')]
+    assert _provenance_snapshot(store,'derived-fixture',expected)==sorted(current,key=lambda row:row['key'])
+    for changed in [dict(key=record,etag='c'*32),dict(key=backup,etag='opaque-backup-2')]:
+        stale=[changed if row['key']==changed['key'] else row for row in expected]
+        with pytest.raises(ValueError,match='current immutable raw inventory'):
+            _provenance_snapshot(store,'derived-fixture',stale)
+    assert store.events==[('list','provenance/')]*3

@@ -10,6 +10,15 @@ ROOT = Path(__file__).parents[4]
 EMPTY_STRINGS = "arrow_cast(array_slice(make_array(cast(NULL AS VARCHAR)),1,0),'List(Utf8)')"
 
 
+def legacy_meeting_keys(url):
+    """Retain the old catalog URL selector for conversion and parity checks."""
+    key = 'coalesce(' + ','.join(f"array_element(regexp_match({url},'{pattern}'),1)" for pattern in [
+        '/meetings/[^/]+/[^/]+/[0-9]{8}/([0-9]+)/', '(?i)[?&]eventid=([0-9]+)',
+        '/(?:house|senate|joint)-event/([0-9]+)']) + ')'
+    numeric = f'try_cast({key} AS BIGINT)'
+    return f'CASE WHEN {numeric} IS NULL THEN {EMPTY_STRINGS} ELSE make_array(cast({numeric} AS VARCHAR)) END'
+
+
 TS = "arrow_cast(NULL,'Timestamp(Microsecond, Some(\"UTC\"))')"
 
 

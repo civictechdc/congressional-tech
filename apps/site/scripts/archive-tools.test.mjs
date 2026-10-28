@@ -21,7 +21,7 @@ test('targets require both real devices and measured worker heap',async()=>{
     const measurements=['real-phone','real-desktop'].map(deviceClass=>({deviceClass,samples:[sample]}));
     await assert.rejects(writeTargets({measurements,ceilings:{startupMs:1,searchMs:5,detailMs:5,heapBytes:50},output}),/startup/i);
     await writeTargets({measurements,ceilings:{startupMs:25,searchMs:5,detailMs:5,heapBytes:50},output});
-    const targets=JSON.parse(await readFile(output));assert.equal(targets.status,'measured');assert.equal(targets.devices.length,2);
+    const targets=JSON.parse(await readFile(output));assert.equal(targets.status,'owner-approved');assert.equal(targets.devices.length,2);
     assert.throws(()=>checkTargets({...sample,startupMs:26},targets),/startup/i);
     assert.throws(()=>checkTargets(sample,{status:'measured',ceilings:{}}),/target/i);
   }finally{await rm(folder,{recursive:true,force:true});}
@@ -84,4 +84,46 @@ test('a changed old pointer during the stale probe still refuses the candidate',
       fetcher:async(url,options)=>{const response=await fetch(url,options);if(String(url)===server.pointerUrl)server.state.pointerBody=JSON.stringify({...pointer,publisher_version:11});return response;}}),/Invalid archive release identity/);
     assert.equal(server.state.pointerReads,2);
   }finally{await server.close();}
+});
+
+test('provisional targets bind five emulated runs to a seed and keep each profile median',async()=>{
+  const folder=await mkdtemp(join(tmpdir(),'archive-seed-targets-'));try{
+    const {measurementProfiles,readTargets}=await import('./archive-targets.mjs');
+    const origin={kind:'seed_v5',display_only:true},harnessCommit='a'.repeat(40);
+    const measurements=['phone','desktop'].map((kind,index)=>({deviceClass:kind+'-profile',basis:'emulated',profile:measurementProfiles[kind],harnessCommit,origin,
+      samples:[10,20,30,40,100].map(startupMs=>({releaseId:'ab'.repeat(32),startupMs:startupMs*(index?1:2),searchMs:2,detailMs:3,heapBytes:40,workerHeapBytes:20}))}));
+    const output=join(folder,'targets.json');
+    await assert.rejects(writeTargets({measurements:measurements.map(r=>({...r,samples:r.samples.slice(1)})),basis:'emulated',harnessCommit,output}),/five|5/i);
+    await assert.rejects(writeTargets({measurements:measurements.map(r=>({...r,origin:{kind:'model'}})),basis:'emulated',harnessCommit,output}),/seed/i);
+    await writeTargets({measurements,basis:'emulated',harnessCommit,output});
+    const targets=await readTargets(output);assert.equal(targets.status,'provisional-emulated');assert.equal(targets.basis,'emulated');
+    assert.equal(targets.profile.phone.ceilings.startupMs,90);assert.equal(targets.profile.desktop.ceilings.startupMs,45);
+    assert.equal(targets.ceilings.startupMs,90);assert.equal(targets.raw_runs.phone.length,5);assert.equal(targets.harness_commit,harnessCommit);
+    const sample=measurements[1].samples[2];checkTargets(sample,targets,origin,'desktop');
+    assert.throws(()=>checkTargets({...sample,startupMs:50},targets,origin,'desktop'),/startup/);
+    for(const other of [undefined,{kind:'model'},{kind:'seed_v5',display_only:false}])assert.throws(()=>checkTargets(sample,targets,other),/seed/i);
+    assert.throws(()=>checkTargets(sample,{status:'measured',ceilings:targets.ceilings},origin),/target/i);
+    const broken={...targets,raw_runs:{...targets.raw_runs,phone:targets.raw_runs.phone.slice(1)}};
+    const invalid=join(folder,'invalid.json');await (await import('node:fs/promises')).writeFile(invalid,JSON.stringify(broken));
+    await assert.rejects(readTargets(invalid),/five|5/i);
+  }finally{await rm(folder,{recursive:true,force:true});}
+});
+
+test('measurement argument errors refuse before opening a release or browser',async()=>{
+  const {measureArchive}=await import('./measure-archive.mjs');
+  await assert.rejects(measureArchive({release:'/missing/not-opened',dist:'/missing/not-opened'}),/harness.commit/i);
+  await assert.rejects(measureArchive({release:'/missing/not-opened',repeats:'0','harness-commit':'a'.repeat(40)}),/repetitions/i);
+});
+
+test('provisional targets refuse a different seed identity and CLI validation reuses the shared policy',async()=>{
+  const {measurementProfiles,validateTargetFile}=await import('./archive-targets.mjs');
+  const folder=await mkdtemp(join(tmpdir(),'archive-target-identity-'));try{
+    const origin={kind:'seed_v5',display_only:true},harnessCommit='b'.repeat(40),releaseId='cd'.repeat(32);
+    const sample={releaseId,startupMs:10,searchMs:2,detailMs:3,heapBytes:40,workerHeapBytes:20};
+    const measurements=['phone','desktop'].map(kind=>({deviceClass:kind+'-profile',basis:'emulated',profile:measurementProfiles[kind],harnessCommit,origin,samples:Array.from({length:5},()=>({...sample}))}));
+    const output=join(folder,'targets.json'),targets=await writeTargets({measurements,basis:'emulated',harnessCommit,output});
+    assert.throws(()=>checkTargets({...sample,releaseId:'ab'.repeat(32)},targets,origin),/release|identity/i);
+    assert.deepEqual(await validateTargetFile(output,origin),{status:'provisional-emulated',basis:'emulated',measured_release_id:releaseId});
+    await assert.rejects(validateTargetFile(output,{kind:'model'}),/seed/i);
+  }finally{await rm(folder,{recursive:true,force:true});}
 });

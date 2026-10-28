@@ -35,7 +35,7 @@ export function ArchiveDetail({entry,meetings=[],versions=[],rawBase,onSelect,on
       {(detail.alternates??[]).map((alternate:any,i:number)=><li key={i}><CopyLink detail={bodyDetail(alternate,alternate.format)} label={`Open alternate ${text(alternate.format).toUpperCase()}`} rawBase={rawBase} onOpenSaved={onOpenSaved}/></li>)}</ul>:<p>No original saved copy is recorded.</p>}</section>
     {recoveries.length>0&&<section><h3>Recovered and related files</h3><ul>{recoveries.map((recovery:any,i:number)=><li key={i}>
       <CopyLink detail={bodyDetail(recovery,document.format)} label={recoveryLabel(recovery.kind)} rawBase={rawBase} onOpenSaved={onOpenSaved}/>
-      {recovery.identity_note&&<p>{recovery.identity_note}</p>}<p>Added to the archive {day(recovery.imported_at)}{recovery.recovered_url&&<> · <PublicLink url={recovery.recovered_url}>Recovery source</PublicLink></>}</p>
+      {recovery.identity_note&&<p>{recovery.identity_note}</p>}{(recovery.imported_at||recovery.recovered_url)&&<p>{recovery.imported_at&&<>Added to the archive {day(recovery.imported_at)}{recovery.recovered_url&&' · '}</>}{recovery.recovered_url&&<PublicLink url={recovery.recovered_url}>Recovery source</PublicLink>}</p>}
     </li>)}</ul></section>}
     <section><h3>Sources</h3>{sources.length?<ul>{sources.map((source:any,i:number)=><li key={i}>
       <PublicLink url={source.url}>{source.link_text||source.url}</PublicLink>{source.is_saved&&<span> · Saved file</span>}

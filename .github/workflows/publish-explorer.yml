@@ -27,8 +27,9 @@ permissions:
 
 # Matches update-data.yml so publication cannot read a partially saved run.
 concurrency:
-  group: update-data
+  group: raw-source-mirror
   cancel-in-progress: false
+  queue: max
 
 jobs:
   publish:

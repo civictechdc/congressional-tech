@@ -8,7 +8,9 @@ from congress_api.retention.provenance import file_pin,run_job
 from viewer_publication.archive_model import (
     prepare_model_inputs,build_prepared_release,admission_checks,input_receipts_query,
 )
-from viewer_publication.archive_model_job import model_arguments,provenance_record_kind,PROVENANCE
+from viewer_publication.archive_model_job import (
+    model_arguments,provenance_record_kind,provenance_etag_md5,PROVENANCE,
+)
 from viewer_publication.archive_publish import (
     NativeArchiveStore,input_digest,matching_live_input,publish_candidate,read_pointer,write_status,
 )
@@ -56,7 +58,11 @@ def _provenance_snapshot(client,bucket,expected):
         next_token=page.get('NextContinuationToken')
         if not next_token or next_token==token:raise ValueError('Current provenance listing did not advance')
         token=next_token
-    if set(actual)!=set(pinned) or any(actual[key]!=pinned[key] for key in actual):
+    def same_etag(key):
+        if provenance_record_kind(key) is not None:
+            return provenance_etag_md5(actual[key])==provenance_etag_md5(pinned[key])
+        return actual[key]==pinned[key]
+    if set(actual)!=set(pinned) or any(not same_etag(key) for key in actual):
         raise ValueError('Pinned provenance differs from the current immutable raw inventory')
     return [dict(key=key,etag=actual[key]) for key in sorted(actual)]
 
@@ -71,7 +77,7 @@ def _probe_evidence(reports):
 
 
 def run_publish(model_spec,*,client,engine,bucket,work,receipt_keys,provenance,run,
-                public_origin,contract,canary):
+                public_origin,contract,canary,verified_files=None):
     """Prepare once, admit before a skip, otherwise export once and publish.
 
     SQL, graphs, grouping and file writing use the maintained native model.
@@ -91,7 +97,8 @@ def run_publish(model_spec,*,client,engine,bucket,work,receipt_keys,provenance,r
     status=dict(status='failed',input_digest=None,live_release=None,live_release_basis='unknown',rows={},bytes=0)
     started=perf_counter();delegate=False;storage_ready=False;failure=None
     try:
-        with model_arguments(model_spec,provenance_etags={item['key']:item['etag'] for item in provenance if item['key'] in records}) as arguments:
+        with model_arguments(model_spec,provenance_etags={item['key']:item['etag'] for item in provenance if item['key'] in records},
+                             verified_files=verified_files) as arguments:
             engine.verify_runtime()
             storage_ready=True
             provenance=_provenance_snapshot(client,bucket,provenance)
@@ -136,6 +143,50 @@ def run_publish(model_spec,*,client,engine,bucket,work,receipt_keys,provenance,r
             pointer=pointer,expected_etag=etag,public_origin=public_origin,
             contract=lambda **context:contract(**context,probe_selectors=probe_selectors),
             canary=lambda **context:canary(**context,probe_selectors=probe_selectors))
+    except BaseException as error:
+        failure=error;status['error_type']=type(error).__name__
+        raise
+    finally:
+        if storage_ready and not delegate:
+            status['durations']={'total':perf_counter()-started}
+            try:write_status(client,bucket=bucket,status=status)
+            except BaseException:
+                if failure is None:raise
+                failure.add_note('Archive status update also failed')
+
+
+def run_seed_publish(seed_spec,*,client,engine,bucket,work,run,public_origin,contract,canary,measured_release_id=None):
+    """Run the fixed native seed producer through the common publication effects."""
+    from viewer_publication.archive_seed import build_seed_release
+    from viewer_publication.archive_seed_profile import validate_seed_inputs
+    record=dict(profile=seed_spec['profile'],snapshots={},provenance=[],entity_digests={},run=run)
+    profile=validate_seed_inputs(record,[])
+    if not isinstance(run,dict) or not run:raise ValueError('Publication requires explicit run metadata')
+    digest=input_digest(receipt_keys=[],provenance=[],profile=profile,entity_digests={})
+    record['input_digest']=digest
+    work=Path(work).resolve();work.mkdir(parents=True,exist_ok=False)
+    status=dict(status='failed',input_digest=digest,input_kind='seed_v5',label=profile['label'],
+        display_only=True,live_release=None,live_release_basis='unknown',rows={},bytes=0)
+    started=perf_counter();delegate=False;storage_ready=False;failure=None
+    try:
+        engine.verify_runtime()
+        if profile['engine_revision']!=engine.source_revision:
+            raise ValueError('Seed profile engine revision differs from the qualified runtime')
+        storage_ready=True
+        pointer,etag=read_pointer(client,bucket=bucket,evidence=work/'outgoing-pointer.json')
+        status.update(live_release=pointer['release_id'] if pointer else None,live_release_basis='pinned_at_start')
+        build_seed_release(seed_spec,engine=engine,output=Path(seed_spec['output']),scratch=Path(seed_spec['scratch']))
+        result=Path(seed_spec['scratch'])/'result.json'
+        probes=_probe_evidence(_reports(json.loads(result.read_text())))
+        manifest=Path(seed_spec['output'])/'manifest.json'
+        pin=lambda path:dict(path=str(path),**file_pin(path))
+        delegate=True
+        return publish_candidate(client=client,engine=engine,bucket=bucket,work=work/'candidate',
+            release=Path(seed_spec['output']),manifest_pin=pin(manifest),result_pin=pin(result),
+            input_record=record,receipt_keys=[],pointer=pointer,expected_etag=etag,public_origin=public_origin,
+            measured_release_id=measured_release_id,
+            contract=lambda **context:contract(**context,probe_selectors=probes),
+            canary=lambda **context:canary(**context,probe_selectors=probes))
     except BaseException as error:
         failure=error;status['error_type']=type(error).__name__
         raise

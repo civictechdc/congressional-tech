@@ -54,6 +54,7 @@
 | S2 | 2 | A Senate meeting video and a House YouTube video | `video_key`s `senate:{filename}` and `youtube:{id}` |
 | S2 | 2 | A bill with one floor vote naming it and one named only in its actions; a nomination with a hearing, a cloture vote and a confirmation vote; one confirmed by voice vote | Two `floor_votes`, basis `vote_record` then `bill_action`; the nomination's two votes in order; the voice vote only in `latest_action_text` |
 | S2 | 1 | An older recovery line with no category and no `recovery_evidence`, recovering a link a document was fetched from | Kind from its match basis; original link and import date from its fallbacks; one source file for its original link |
+| S2 | 1 | A v5 seed recovery whose input carries no import record | `recoveries.imported_at` is null and displays as unknown; the raw rebuild fills the actual import date |
 | S2 | 1 | A dead link pasted as `http://www.…/a.pdf/` for a document fetched from `https://…/a.pdf`; a published address that redirected to the saved file and later died | One lookup key finds each |
 | S2 | 2 | A committee renamed on a boundary day; two subcommittees sharing a name | The half-open interval gives one name per day; `committee_keys` keep them apart |
 | S2 | 2 | A bill named by a filename and by a meeting's related items | One `bill_id`; both find its title, sponsor and stage in the pinned `congress_bills` |

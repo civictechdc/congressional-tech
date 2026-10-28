@@ -42,3 +42,11 @@ test('new counterpart and related-file claims retain their exact meaning on the 
     assert(!html.includes('Official substitute'),kind+' retains its narrower claim');
   }
 });
+
+test('a recovery with no import record omits the date line and retains its source',()=>{
+  const html=render({document:row,detail:{...detail,saved_body:null},sources:[],recoveries:[{kind:'recovered_document',body:new Uint8Array(32).fill(19),suffix:'.gz',bytes:20,imported_at:null,recovered_url:'https://recovery.test/seed-copy'}]});
+  assert(html.includes('Recovered document'));
+  assert(html.includes('https://recovery.test/seed-copy'));
+  assert(!html.includes('Added to the archive'));
+  assert(!html.includes('unknown'));
+});
