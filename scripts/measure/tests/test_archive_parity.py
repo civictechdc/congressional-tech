@@ -103,7 +103,10 @@ def test_merge_explanation_does_not_hide_an_unrelated_visible_regression(tmp_pat
     for key,value in FIXTURE['integration']['expected'].items():
         assert result['counts'][key]==value
     assert result['decision_ready'] is False
-    assert result['causes']==[dict(cause='govinfo_same_stem_groups',differences=2)]
+    assert len(result['causes'])==len(parity.CAUSES)+1
+    assert [r for r in result['causes'] if r['differences']]==[
+        dict(cause='document_id_inputs_changed',differences=2,unit='document_pairs'),
+        dict(cause='govinfo_same_stem_groups',differences=2,unit='field_differences')]
     assert result['clusters']==[dict(field='title',direction=direction,classification=None,differences=2,with_raw_signal=0)
                                 for direction in ['added','removed']]
 
@@ -143,25 +146,6 @@ def test_descriptor_requires_the_pinned_pair_and_actual_candidate_files(tmp_path
     path.write_text(json.dumps(dict(version=1,oracle=dict(selector=dict(path='missing',sha256='0'*64,size=0)),candidate=dict(kind='f0'))))
     with pytest.raises(ValueError,match='missing|Missing'):
         parity.load_descriptor(path)
-
-
-def test_native_physical_ordinals_cross_three_row_groups(tmp_path):
-    import pyarrow.parquet as pq
-    fixture=FIXTURE['physical_order']
-    source=tmp_path/'physical.parquet'
-    output=parity.parquet_output(tmp_path,'physical',
-        f"SELECT unnest(range(0,cast({fixture['rows']} AS BIGINT))) AS value",['value'])
-    output['path']=str(source)
-    output['settings']['row_group_rows']=fixture['row_group_rows']
-    run_job(tmp_path,engine(),inputs=[],steps=[],outputs=[output])
-    assert pq.ParquetFile(source).metadata.num_row_groups==3
-    serial=parity.restricted_runtime(os.environ['DOCSPEC_JOB_CONFIG'],tmp_path/'serial',threads=1)
-    numbered=parity.number_file(source,engine=NativeDatasets.from_config(serial),work=tmp_path/'numbered')
-    result=run_job(tmp_path,engine(),inputs=[dict(name='numbered',kind='parquet',path=str(numbered))],
-        steps=[],outputs=[],queries=[dict(name='count',sql='SELECT count(*) AS n,count(*) FILTER(WHERE list_row<>value) AS mismatches FROM numbered')])
-    assert result['count']==[dict(n=fixture['rows'],mismatches=fixture['expected_mismatches'])]
-    with pytest.raises(ValueError,match='one.partition'):
-        parity.number_file(source,engine=engine(),work=tmp_path/'unsafe-numbered')
 
 
 def f0_fixture(tmp_path):

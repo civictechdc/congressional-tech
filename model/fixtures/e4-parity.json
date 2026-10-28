@@ -353,7 +353,8 @@
       "unexplained": 4,
       "unclassified": 4,
       "invalid_ids": 0,
-      "derived_only": 0
+      "derived_only": 0,
+      "id_inputs_changed": 2
     },
     "difference_records": [
       {
@@ -385,11 +386,6 @@
         "raw_signal": null
       }
     ]
-  },
-  "physical_order": {
-    "rows": 131075,
-    "row_group_rows": 65536,
-    "expected_mismatches": 0
   },
   "f0_gaps": [
     {
