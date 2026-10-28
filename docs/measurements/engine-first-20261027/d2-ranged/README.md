@@ -67,6 +67,7 @@ source; `missing_pins` counts bodies still requiring custody. `md5_conflicts`
 and `size_conflicts` describe a selected-copy contradiction;
 `fallback_missing`, `fallback_conflict` and `fallback_pin` count rejected copies
 by reason before a usable choice, or all rejected copies if none is usable.
+`capture_conflicts` counts contradictory facts within a selected captured copy.
 The exact native coverage query is the `raw_custody` query in
 `<spec.work>/plan/job.json`; the complete selected facts are in
 `<spec.work>/plan/work-list.parquet`. Execution refuses missing pins before any
@@ -94,6 +95,14 @@ concurrency is capped at 64. This cache limit is distinct from the owner's proce
 The owner must run it under the approved process-memory and disk monitoring.
 Re-entry reads the current readings table and makes a new work list; retained
 cache files are evidence, not a resume journal.
+
+A prefix-only body with gzip bytes and no storage-encoding observation remains
+pending when its full object exceeds the prefix already held. The execution
+report counts these as `ambiguous_gzip`; it emits no settled format or unreadable
+decision and fetches no additional bytes. If the entire object already fits in
+the prefix, its SHA can distinguish original from storage gzip without another
+GET. Resolving larger ambiguous bodies requires an owner-approved fact source
+or additional-read budget. The listing's suffix alone is not that fact.
 
 Main's 491,699 old reading parts are only a format-comparison oracle. They are
 never work-list or readings inputs. Full format comparison remains owner-gated

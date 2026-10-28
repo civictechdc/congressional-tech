@@ -273,7 +273,7 @@ def plan(*,captures,body_inventory,local_root,engine,work,decided_at,parser,
        sp.parsers AS skip_parsers""" if combined else ''
     storage_join=''
     if raw_ranges:
-        extra+=',s.stored_md5,s.captured_stored_bytes,coalesce(s.page_hint,false) AS page_hint'
+        extra+=',s.stored_md5,s.captured_stored_bytes,coalesce(s.page_hint,false) AS page_hint,coalesce(s.conflict,false) AS capture_conflict'
         storage_join=' LEFT JOIN body_storage s ON b.body_sha=s.body_sha AND i.physical_key=s.physical_key'
         if body_listing is not None:
             storage_join+=' LEFT JOIN body_listing l ON i.physical_key=l.key'
@@ -309,9 +309,9 @@ def plan(*,captures,body_inventory,local_root,engine,work,decided_at,parser,
             UNION ALL SELECT key FROM body_listing WHERE key IS NULL OR size IS NULL OR size<0)''')]
             if body_listing is not None else [])+[dict(name='work_items',sql='SELECT count(*) AS n FROM pending_bodies')]+([
         dict(name='invalid_storage_suffix',sql="SELECT count(*) AS n FROM body_storage WHERE stored_suffix NOT IN ('','.gz','.pdf')"),
-        dict(name='storage_conflicts',sql='''SELECT count(*) AS n FROM body_inventory i JOIN body_storage s
+        dict(name='storage_conflicts',sql=f'''SELECT count(*) AS n FROM body_inventory i JOIN body_storage s
             ON i.body_sha=s.body_sha AND i.physical_key=s.physical_key
-            WHERE s.conflict OR i.stored_bytes<>s.captured_stored_bytes'''),
+            WHERE {'i.usable AND' if direct_listing else ''} (s.conflict OR i.stored_bytes<>s.captured_stored_bytes)'''),
         dict(name='raw_custody',sql=f'''SELECT count(*) AS bodies,
             coalesce(sum(CASE WHEN physical_key IS NULL OR conditional_etag IS NULL OR captured_stored_bytes IS NULL OR NOT copy_usable THEN 1 ELSE 0 END),0) AS missing_pins,
             coalesce(sum(CASE WHEN physical_key IS NULL OR listing_missing THEN 1 ELSE 0 END),0) AS missing_physical,
@@ -321,7 +321,8 @@ def plan(*,captures,body_inventory,local_root,engine,work,decided_at,parser,
             coalesce(sum(CASE WHEN stored_md5 IS NULL AND conditional_etag IS NOT NULL THEN 1 ELSE 0 END),0) AS listing_etag,
             coalesce(sum(CASE WHEN md5_conflict THEN 1 ELSE 0 END),0) AS md5_conflicts,
             coalesce(sum(CASE WHEN size_conflict THEN 1 ELSE 0 END),0) AS size_conflicts,
-            coalesce(sum(CASE WHEN md5_conflict OR size_conflict THEN 1 ELSE 0 END),0) AS conflicts,
+            coalesce(sum(CASE WHEN capture_conflict THEN 1 ELSE 0 END),0) AS capture_conflicts,
+            coalesce(sum(CASE WHEN md5_conflict OR size_conflict OR capture_conflict THEN 1 ELSE 0 END),0) AS conflicts,
             coalesce(sum(fallback_missing),0) AS fallback_missing,
             coalesce(sum(fallback_conflict),0) AS fallback_conflict,
             coalesce(sum(fallback_pin),0) AS fallback_pin
@@ -383,7 +384,7 @@ def _execute_plan(planned,*,engine,worker_factory=ParserWorker,unreadable_store=
         cache_use['actual']=sum(_cache_file_bytes(path) for path in prefetched.values())
     parsed=work/'parsed';parsed.mkdir()
     decisions_path=parsed/'unreadable.jsonl'
-    counters=dict(pending_reads=0,read_bytes=0,unreadable=0)
+    counters=dict(pending_reads=0,read_bytes=0,unreadable=0,ambiguous_gzip=0)
     def rows():
         context=(nullcontext(worker) if worker is not None else worker_factory(parser,version,
             'congress_api.lake.readings:'+('parse_once_payload' if combined or body_store is not None else 'parse_payload'),**limits))
@@ -436,6 +437,7 @@ def _execute_plan(planned,*,engine,worker_factory=ParserWorker,unreadable_store=
                         if outcome['status']!='completed':raise ValueError('Invalid reading worker outcome')
                         response=outcome['value'];counters['read_bytes']+=response.get('read_bytes',0)
                         if response.get('read_error'):
+                            counters['ambiguous_gzip']+=int(response.get('ambiguous_gzip',False))
                             counters['pending_reads']+=1;continue
                         value=response.get('rows') if combined or body_store is not None else response['row']
                     values=value if combined or body_store is not None else [value]
@@ -588,7 +590,7 @@ def run(*,engine,work,mode,execute=False,max_work_items=None,batch_size=None,par
     if raw_ranges:report['raw_custody']=planned['raw_custody']
     if not execute:return report
     if raw_ranges and (planned['raw_custody']['missing_pins'] or planned['raw_custody']['conflicts']):raise RawCustodyRequired(planned)
-    report.update(status='completed',pending_reads=0,read_bytes=0,unreadable=0)
+    report.update(status='completed',pending_reads=0,read_bytes=0,unreadable=0,ambiguous_gzip=0)
     if planned['work_items']==0:return report
     size=planned['work_items'] if mode=='daily' else batch_size
     items=iter(parquet_records(planned['work_list']))
@@ -610,7 +612,7 @@ def run(*,engine,work,mode,execute=False,max_work_items=None,batch_size=None,par
                 retained_cache+=_clean_committed_cache(staged) if staged['append'] is not None else staged['cache_bytes']
             report['batches'].append(staged)
             report['applied']|=staged['append'] is not None
-            for key in ('pending_reads','read_bytes','unreadable'):report[key]+=staged[key]
+            for key in ('pending_reads','read_bytes','unreadable','ambiguous_gzip'):report[key]+=staged[key]
     if report['pending_reads']:report['status']='pending'
     return report
 
@@ -743,7 +745,13 @@ def parse_once_payload(payload,*,body_store=None):
             data,source.stored_gzip=_page_entity(source.read(0,source.size),request['body_sha'])
         elif known is None:
             source=open_source()
-            source.read(0,min(source.size,8192))
+            head=source.read(0,min(source.size,8192))
+            # A headerless gzip can be original content or storage encoding.
+            # Only prove from bytes already held; prefix-only bodies stay bounded.
+            if request.get('remote') and not source.stored_gzip and head.startswith(b'\x1f\x8b'):
+                if source.size>len(head):raise OSError('ambiguous_storage_gzip')
+                data,source.stored_gzip=_page_entity(head,request['body_sha'])
+                if data is None:raise OSError('ambiguous_gzip_decoded_size_limit')
         sniff=(dict(status='completed',format=known) if known is not None else
             read_sniff(source.read,stored_size=source.size,stored_gzip=source.stored_gzip))
         if 'sniff' not in skip:
@@ -754,12 +762,13 @@ def parse_once_payload(payload,*,body_store=None):
                 row=dict(status='size_limit',error_type='stored_size_limit')
             else:
                 if source is None:source=open_source()
-                if not request.get('prefetched'):
+                if not request.get('prefetched') and data is None:
                     data,source.stored_gzip=_page_entity(source.read(0,source.size),request['body_sha'])
                 row=(dict(status='error',error_type='decoded_size_limit') if data is None else read_page(data,parser))
             rows.append(dict(row,parser=parser,parser_version=versions[parser]))
         return dict(rows=rows,read_bytes=0 if source is None else source.read_bytes)
     except (OSError,EOFError) as error:
-        return dict(read_error=type(error).__name__,rows=[],read_bytes=0 if source is None else source.read_bytes)
+        return dict(read_error=type(error).__name__,ambiguous_gzip=str(error)=='ambiguous_storage_gzip',
+            rows=[],read_bytes=0 if source is None else source.read_bytes)
     finally:
         if source is not None:source.close()
