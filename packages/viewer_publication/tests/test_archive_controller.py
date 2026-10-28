@@ -1,5 +1,6 @@
 """One real native model feeds publication and the admitted early-skip path."""
 import json
+from hashlib import md5
 import os
 from pathlib import Path
 
@@ -26,6 +27,8 @@ def test_actual_model_publishes_then_checks_admission_before_input_skip(tmp_path
     specpath=tmp_path/'model-spec.json';specpath.write_text(json.dumps(spec))
     store=Store();keys=['receipts/documents/2026-10-27/slice.jsonl.gz'];calls=[]
     def probe(**context):
+        assert context['probe_selectors']['saved_row']==0
+        assert len(context['probe_selectors']['link_key'])==16
         calls.append(context['release_id'])
         return dict(status='passed',releaseId=context['release_id'],targets='measured')
     with NativeDatasets.from_config(os.environ['DOCSPEC_JOB_CONFIG']) as native:
@@ -94,3 +97,31 @@ def test_transport_validation_failure_still_records_one_failed_status(tmp_path):
     assert set(store.objects)=={'viewer-publications/status.json'}
     assert json.loads(store.objects['viewer-publications/status.json'])['status']=='failed'
     assert sum(1 for event in store.events if event==('put','viewer-publications/status.json'))==1
+
+
+def test_provenance_inventory_must_match_the_pinned_current_etags(tmp_path):
+    from congress_api.retention.provenance import file_pin
+    from viewer_publication.archive_controller import run_publish
+    from viewer_publication.archive_model_job import load_spec
+    spec,_,_=real_model_spec(tmp_path)
+    path=tmp_path/'empty-reviews.jsonl';path.write_bytes(b'')
+    key='provenance/reviews/fixture.jsonl'
+    spec['review_files']=[dict(key=key,path=str(path),**file_pin(path))]
+    pin_etag='"'+md5(b'').hexdigest()+'"'
+    model=tmp_path/'model-spec.json';model.write_text(json.dumps(spec))
+    class MetadataStore(Store):
+        def list_objects_v2(self,*,Bucket,Prefix,**kwargs):
+            self.events.append(('list',Prefix))
+            return dict(Contents=[dict(Key=k,ETag='"'+md5(v).hexdigest()+'"')
+                for k,v in self.objects.items() if k.startswith(Prefix)],IsTruncated=False)
+    store=MetadataStore();store.objects[key]=b'changed raw provenance'
+    def never(**_):raise AssertionError('Changed provenance must refuse before probes')
+    with NativeDatasets.from_config(os.environ['DOCSPEC_JOB_CONFIG']) as native:
+        with pytest.raises(ValueError,match='provenance'):
+            run_publish(load_spec(model),work=tmp_path/'publish',client=store,engine=Runtime(native,store),
+                bucket='derived-fixture',receipt_keys=['receipts/documents/2026-10-27/slice.jsonl.gz'],
+                provenance=[dict(key=key,etag=pin_etag)],run={'id':'stale'},
+                public_origin='https://archive.fixture.test',contract=never,canary=never)
+    assert set(store.objects)=={key,'viewer-publications/status.json'}
+    assert ('list','provenance/') in store.events
+    assert not any(event==('get',key) for event in store.events)

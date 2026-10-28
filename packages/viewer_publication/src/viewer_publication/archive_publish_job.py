@@ -6,6 +6,8 @@ from pathlib import Path
 import re
 import subprocess
 from urllib.parse import urlsplit
+from tempfile import TemporaryDirectory
+from uuid import UUID
 
 from congress_api.retention.body_store import validate_key
 from congress_api.retention.derived_files import file_identity,check_identity
@@ -88,17 +90,84 @@ def load_spec(path):
     return result
 
 
-def probe_commands(spec,*,release,release_id):
+def _public_configuration(path):
+    path=Path(path)
+    if path.stat().st_size>METADATA_BYTES:raise ValueError('Publication destination metadata is oversized')
+    identity=file_identity(path);value=json.loads(path.read_text());identity.require(path)
+    if not isinstance(value,dict):raise ValueError('Invalid publication destination configuration')
+    return value,identity
+
+
+def publication_configuration(path,*,bucket):
+    """Read public destination metadata; never read the credential file.
+
+    The model keeps its lake scope. A derived upload runtime changes only the
+    owned object prefix, using the same explicit R2 account/bucket and native pins.
+    """
+    path=Path(path).resolve();settings,runtime_identity=_public_configuration(path)
+    if not settings.get('remote'):raise ValueError('Publication requires an explicitly configured remote native engine')
+    settings=dict(settings)
+    for name in ['binary','workspace','remote','limits','credentials']:
+        if name in settings:settings[name]=_local(settings[name],path.parent)
+    remote,remote_identity=_public_configuration(settings['remote'])
+    properties=remote.get('properties');references=remote.get('secret_env')
+    allowed={'uri','warehouse','s3.endpoint','s3.region','s3.path-style-access',
+             's3.disable-ec2-metadata','s3.disable-config-load','docspec.namespace-generation'}
+    if (set(remote)!={'owned_prefix','properties','secret_env'} or not isinstance(properties,dict)
+            or set(properties)-allowed or any(not isinstance(value,str) for value in properties.values())
+            or not isinstance(references,dict)
+            or not {'token','s3.access-key-id','s3.secret-access-key'}<=references.keys()
+            or references.keys()-{'token','s3.access-key-id','s3.secret-access-key','s3.session-token'}
+            or any(not isinstance(key,str) or not isinstance(value,str)
+                   or re.fullmatch('DOCSPEC_[A-Z0-9_]+',value) is None for key,value in references.items())):
+        raise ValueError('Publication destination requires public properties and explicit secret environment references')
+    endpoint=properties.get('s3.endpoint')
+    account=(re.fullmatch(r'https://([a-f0-9]{32})\.r2\.cloudflarestorage\.com',endpoint)
+             if isinstance(endpoint,str) else None)
+    scope=remote.get('owned_prefix')
+    if (account is None or properties.get('s3.region')!='auto' or not isinstance(scope,str)
+            or re.fullmatch(re.escape('s3://'+bucket+'/__r2_data_catalog/')+r'[A-Za-z0-9][A-Za-z0-9_.-]*/?',scope) is None):
+        raise ValueError('Publication destination must be one explicit R2 account, bucket and lake namespace')
+    account=account[1]
+    if (properties.get('uri')!='https://catalog.cloudflarestorage.com/'+account+'/'+bucket
+            or properties.get('warehouse')!=account+'_'+bucket):
+        raise ValueError('Publication destination catalog and object provider identities differ')
+    try:
+        if UUID(properties.get('docspec.namespace-generation','')).int==0:raise ValueError
+    except (ValueError,TypeError,AttributeError):
+        raise ValueError('Publication destination requires an explicit catalog namespace generation') from None
+    return settings,remote,endpoint,[(path,runtime_identity),(Path(settings['remote']),remote_identity)]
+
+
+class PublicationRuntime:
+    """Use lake SQL and publication uploads through their two explicit scopes."""
+    def __init__(self,model,uploads):self.model,self.uploads=model,uploads
+    def __getattr__(self,name):return getattr(self.model,name)
+    @property
+    def remote(self):return self.uploads.remote
+    def create_file(self,spec):return self.uploads.create_file(spec)
+    def verify_runtime(self):
+        model=self.model.verify_runtime();uploads=self.uploads.verify_runtime()
+        if model!=uploads:raise ValueError('Publication runtime qualification pins differ')
+        return model
+
+
+def probe_commands(spec,*,release,release_id,probe_selectors):
     """Fixed external probes; a job description cannot supply executable commands."""
+    if (not isinstance(probe_selectors,dict) or set(probe_selectors)!={'saved_row','link_key'}
+            or type(probe_selectors['saved_row']) is not int or probe_selectors['saved_row']<0
+            or not isinstance(probe_selectors['link_key'],str)
+            or re.fullmatch('[a-f0-9]{16}',probe_selectors['link_key']) is None):
+        raise ValueError('Publication requires actual native probe selectors')
     targets=spec['targets']['path'];work=Path(spec['work']);origin=spec['public_origin']
     return dict(contract=['npm','run','contract:archive','--','--release',str(release),
         '--next-release',spec['contract_next_release'],'--dist',spec['site_dist'],'--targets',targets,
-        '--output',str(work/'contract.json')],
+        '--output',str(work/'contract.json'),'--link-key',probe_selectors['link_key']],
         canary=['npm','run','canary:archive','--','--pointer',origin+'/viewer-publications/manifest.json',
-        '--release',release_id,'--raw',origin+'/','--targets',targets,'--output',str(work/'canary.json')])
+        '--release',release_id,'--raw',origin+'/','--targets',targets,'--output',str(work/'canary.json'),'--saved-row',str(probe_selectors['saved_row'])])
 
 
-def execute(spec):
+def execute(spec,*,runtime_factory=None,storage_factory=None,process_runner=None):
     """Refuse local problems, qualify a remote runtime, then connect the SDK."""
     spec['_model_identity'].require(spec['model_spec']['path'])
     targets,target_identity=_read_metadata(spec['targets'])
@@ -118,26 +187,41 @@ def execute(spec):
     from docspec_client.client import NativeDatasets
     from congress_shared.storage import connect_r2
     from viewer_publication.archive_controller import run_publish
-    with NativeDatasets.from_config(spec['_model']['engine_config']) as engine:
-        if not engine.remote:raise ValueError('Publication requires an explicitly configured remote native engine')
-        engine.verify_runtime()
-        spec['_model_identity'].require(spec['model_spec']['path'])
-        target_identity.require(spec['targets']['path'])
-        client=connect_r2(bucket=spec['bucket'],retries={'total_max_attempts':1})
-        def probe(name,context):
+    runtime_factory=runtime_factory or NativeDatasets.from_config
+    storage_factory=storage_factory or connect_r2
+    process_runner=process_runner or subprocess.run
+    settings,remote,endpoint,configuration_pins=publication_configuration(spec['_model']['engine_config'],bucket=spec['bucket'])
+    def require_configuration():
+        for path,identity in configuration_pins:identity.require(path)
+    parent=Path(spec['work']).parent;parent.mkdir(parents=True,exist_ok=True)
+    with TemporaryDirectory(prefix='.'+Path(spec['work']).name+'-startup-',dir=parent) as directory:
+        directory=Path(directory)
+        upload_remote=directory/'remote.json';upload_settings=directory/'runtime.json'
+        upload_remote.write_text(json.dumps(dict(remote,owned_prefix='s3://'+spec['bucket']+'/viewer-publications')))
+        upload_settings.write_text(json.dumps(dict(settings,remote=str(upload_remote),workspace=str(directory/'workspace'))))
+        with runtime_factory(spec['_model']['engine_config']) as model, runtime_factory(upload_settings) as uploads:
+            if (Path(model.remote).resolve()!=Path(settings['remote']) or Path(uploads.remote).resolve()!=upload_remote):
+                raise ValueError('Publication destination differs from the loaded runtime')
+            engine=PublicationRuntime(model,uploads)
+            engine.verify_runtime();require_configuration()
+            spec['_model_identity'].require(spec['model_spec']['path'])
             target_identity.require(spec['targets']['path'])
-            commands=probe_commands(spec,release=context.get('release',spec['_model']['output']),release_id=context['release_id'])
-            subprocess.run(commands[name],cwd=SITE,check=True,timeout=180)
-            receipt_path=Path(spec['work'])/(name+'.json')
-            if receipt_path.stat().st_size>METADATA_BYTES:raise ValueError('Site probe receipt exceeds the metadata allowance')
-            receipt=json.loads(receipt_path.read_text())
-            target_identity.require(spec['targets']['path'])
-            return receipt
-        result=run_publish(spec['_model'],client=client,engine=engine,bucket=spec['bucket'],work=spec['work'],
-            receipt_keys=spec['receipt_keys'],provenance=spec['provenance'],run=spec['run'],public_origin=spec['public_origin'],
-            contract=lambda **context:probe('contract',context),canary=lambda **context:probe('canary',context))
-        spec['_model_identity'].require(spec['model_spec']['path'])
-        return result
+            client=storage_factory(bucket=spec['bucket'],endpoint_url=endpoint,retries={'total_max_attempts':1})
+            def probe(name,context):
+                target_identity.require(spec['targets']['path']);require_configuration()
+                commands=probe_commands(spec,release=context.get('release',spec['_model']['output']),
+                    release_id=context['release_id'],probe_selectors=context.get('probe_selectors'))
+                process_runner(commands[name],cwd=SITE,check=True,timeout=180)
+                receipt_path=Path(spec['work'])/(name+'.json')
+                if receipt_path.stat().st_size>METADATA_BYTES:raise ValueError('Site probe receipt exceeds the metadata allowance')
+                receipt=json.loads(receipt_path.read_text())
+                target_identity.require(spec['targets']['path']);require_configuration()
+                return receipt
+            result=run_publish(spec['_model'],client=client,engine=engine,bucket=spec['bucket'],work=spec['work'],
+                receipt_keys=spec['receipt_keys'],provenance=spec['provenance'],run=spec['run'],public_origin=spec['public_origin'],
+                contract=lambda **context:probe('contract',context),canary=lambda **context:probe('canary',context))
+            spec['_model_identity'].require(spec['model_spec']['path']);require_configuration()
+            return result
 
 
 def main(argv=None):

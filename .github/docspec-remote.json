@@ -1,12 +1,12 @@
 {
-  "owned_prefix": "s3://congressional-tech-raw/__r2_data_catalog/docspec-archive-v1",
+  "owned_prefix": "s3://congressional-tech-raw/__r2_data_catalog/ct-archive-v2/",
   "properties": {
     "uri": "https://catalog.cloudflarestorage.com/174055408ff1560e60601c4d12c561c4/congressional-tech-raw",
     "warehouse": "174055408ff1560e60601c4d12c561c4_congressional-tech-raw",
     "s3.endpoint": "https://174055408ff1560e60601c4d12c561c4.r2.cloudflarestorage.com",
     "s3.region": "auto",
     "s3.path-style-access": "true",
-    "docspec.namespace-generation": "3f8427c0-9cdf-476d-a51a-2e9f7dbf0b9a"
+    "docspec.namespace-generation": "65356e21-54d9-42bb-81b6-a4ff6e0ed05b"
   },
   "secret_env": {
     "token": "DOCSPEC_CATALOG_TOKEN",
