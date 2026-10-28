@@ -224,7 +224,11 @@ def _read_pinned_json(pin):
 def _seed_evidence(result,manifest,profile,listed):
     expected={key:profile[key] for key in
         ['kind','label','display_only','catalog_id','generation','input_files']}
-    if manifest.get('origin')!=expected:
+    origin=manifest.get('origin')
+    if (not isinstance(origin,dict) or set(origin)!=set(expected)|{'gaps'}
+            or any(origin.get(key)!=value for key,value in expected.items())
+            or not isinstance(origin['gaps'],list)
+            or any(not isinstance(gap,str) or not gap.strip() for gap in origin['gaps'])):
         raise ValueError('Seed manifest origin differs from its pinned input profile')
     def report(name):
         matches=[query for query in result['queries'] if query['name']==name]
