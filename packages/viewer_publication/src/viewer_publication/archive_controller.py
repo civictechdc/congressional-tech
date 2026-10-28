@@ -93,7 +93,7 @@ def run_publish(model_spec,*,client,engine,bucket,work,receipt_keys,provenance,r
             engine.verify_runtime()
             storage_ready=True
             provenance=_provenance_snapshot(client,bucket,provenance)
-            pointer,etag=read_pointer(client,bucket=bucket)
+            pointer,etag=read_pointer(client,bucket=bucket,evidence=work/'outgoing-pointer.json')
             status.update(live_release=pointer['release_id'] if pointer else None,live_release_basis='pinned_at_start')
             prepared=prepare_model_inputs(**arguments,parser_versions=model_spec['parser_versions'],
                 catalog_version=model_spec['catalog_version'],engine=engine,scratch=model_spec['scratch'])

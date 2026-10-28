@@ -148,17 +148,28 @@ class NativeArchiveStore:
             raise ValueError('Existing '+label+' differs from the requested exact bytes')
 
 
-def read_pointer(client,*,bucket):
+def read_pointer(client,*,bucket,evidence=None):
     """Read the outgoing pointer once; the caller retains both value and ETag."""
     require_publication_client(client)
     try:raw,response=_read(client,bucket,POINTER)
     except Exception as error:
         if _status_code(error)==404:return None,None
         raise
-    value=json.loads(raw);_sha(value['release_id'])
-    if value.get('previous_release_id') is not None:_sha(value['previous_release_id'])
+    if evidence is not None:
+        with Path(evidence).open('xb') as destination:destination.write(raw)
+    value=json.loads(raw)
+    if not isinstance(value,dict):raise ValueError('Invalid archive pointer shape')
     etag=response.get('ETag')
     if not isinstance(etag,str) or not etag.strip():raise ValueError('Live archive pointer has no ETag')
+    legacy=(type(value.get('version')) in (int,str) and str(value['version'])=='1'
+        and type(value.get('publisher_version')) in (int,str) and str(value['publisher_version'])=='10'
+        and isinstance(value.get('catalog_id'),str) and bool(value['catalog_id'])
+        and isinstance(value.get('manifest'),str) and bool(value['manifest'])
+        and 'release_id' not in value and 'previous_release_id' not in value)
+    if legacy:return None,etag
+    if 'release_id' not in value:raise ValueError('Unknown archive pointer shape')
+    _sha(value['release_id'])
+    if value.get('previous_release_id') is not None:_sha(value['previous_release_id'])
     return value,etag
 
 
@@ -270,8 +281,8 @@ def publish_candidate(*,client,engine,bucket,work,release,manifest_pin,result_pi
         if origin.scheme!='https' or not origin.netloc or origin.username or origin.password or origin.query or origin.fragment:
             raise ValueError('Production canary requires an HTTPS public origin without credentials')
         live=_sha(pointer['release_id']) if pointer is not None else None
-        if ((live is None and expected_etag is not None) or
-                (live is not None and (not isinstance(expected_etag,str) or not expected_etag.strip()))):
+        if ((expected_etag is not None and (not isinstance(expected_etag,str) or not expected_etag.strip())) or
+                (live is not None and expected_etag is None)):
             raise ValueError('Outgoing pointer and ETag must be pinned together')
         status.update(live_release=live,live_release_basis='pinned_at_start')
         store=NativeArchiveStore(client=client,engine=engine,bucket=bucket,work=Path(work)/'uploads')

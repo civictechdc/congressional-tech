@@ -396,7 +396,7 @@ Before the flip, the site's own reader module runs in Node against the uploaded 
 
 #### 10.3.6 Flip
 
-The flip writes the candidate as the pointer's `release_id` and the outgoing live release as its `previous_release_id`, with `If-Match` on the pointer's current ETag, or `If-None-Match: *` for the first release. A failed canary or a lost race leaves the previous release live. Release files and manifests are cached as immutable; the pointer is `no-store`.
+The flip writes the candidate as the pointer's `release_id` and the outgoing engine release as its `previous_release_id`, with `If-Match` on an existing pointer's current ETag, or `If-None-Match: *` only when no pointer exists. The recognized old filename-viewer pointer has no previous engine release: the first engine flip retains its exact bytes as private run evidence and replaces it using its observed ETag. A canary given an explicit engine candidate may proceed past that recognized old pointer; it never reads an old release folder. Unknown pointer shapes refuse. A failed canary or a lost race leaves the outgoing pointer unchanged. Release files and manifests are cached as immutable; the pointer is `no-store`.
 
 #### 10.3.7 Concurrency and Retention
 
