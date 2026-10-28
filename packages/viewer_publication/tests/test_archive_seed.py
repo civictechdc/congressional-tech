@@ -207,3 +207,25 @@ def test_seed_releases_finished_bulk_relations_before_the_writer(tmp_path):
     assert steps['seed_members']['release_after']==['seed_all_members','seed_name_url']
     assert set(steps['seed_presented']['release_after'])=={'seed_dates','seed_links','seed_meetings','seed_committees','seed_recovery_choice'}
     assert steps['normalized']['release_after']==['seed_presented']
+
+
+def test_seed_uses_document_filename_only_for_its_exact_body(tmp_path):
+    expected=json.loads((ROOT/'model/fixtures/seed-v5-source-names.json').read_text())['expected']
+    def change(fixture):
+        fixture['filenames'][1]['filename']=None
+        # No same-pair name exists for old-b's URL. Another body's name and a
+        # bodyless document name must not supply the remaining missing names.
+        fixture['filenames'].append(dict(fixture['filenames'][0],source_id='legacy-other-body',filename=None,
+            body_key=fixture['captures'][2]['body_key'],source_url='https://fixture.test/other-body'))
+        fixture['filenames'].append(dict(fixture['filenames'][2],source_id='legacy-bodyless',filename=None,
+            source_url='https://fixture.test/bodyless'))
+    _,spec,_=build(tmp_path,change)
+    reports={q['name']:q['data'] for q in json.loads((Path(spec['scratch'])/'result.json').read_text())['queries']}
+    assert reports['seed_mapping_choices'][0]['seed_source_filename_from_document']==expected['seed_source_filename_from_document']
+    assert reports['seed_reconciliation']==[{k:expected[k] for k in ['input_docs','listed','merged_duplicates','excluded']}]
+    assert {r['reason']:r['count'] for r in reports['seed_source_exclusions']}==expected['source_exclusions']
+    members=pq.read_table(Path(spec['scratch'])/'seed-members.parquet').to_pylist()
+    row=next(r for r in members if r['legacy_document_id']=='old-b')
+    assert row['filename']=='alias.pdf' and row['source_url']=='https://fixture.test/alias.pdf'
+    assert row['source_id']==digest([row['logical_body_key'],'alias.pdf','https://fixture.test/alias.pdf'])
+    assert not any(r['source_url'] in ['https://fixture.test/other-body','https://fixture.test/bodyless'] for r in members)

@@ -170,3 +170,25 @@ def test_rescued_committee_inventory_is_read_by_the_engine(engine, tmp_path):
     rows = engine.run_job(spec)['queries'][0]['data']
     assert rows == [dict(system_code='hsag00', name='Agriculture', chamber='house'),
                     dict(system_code='hsag03', name='Nutrition', chamber='house')]
+
+
+def test_minmax_collision_witness_matches_distinct_with_nulls(engine, tmp_path):
+    from congress_api.retention.provenance import json_input,run_job
+    groups={'one':['a'],'two':['a','b'],'repeat':['a','a'],
+        'one_null':[None,'a',None],'two_null':['a',None,'b'],
+        'all_null':[None,None],'empty':['',None,''],'empty_other':['','a',None]}
+    rows=[dict(group_name=group,label=value,
+        flag=None if value is None else value=='b',
+        amount=None if value is None else (2 if value=='b' else 1))
+        for group,values in groups.items() for value in values]
+    source=json_input(tmp_path,'collision_samples',rows,group_name='Utf8',label='Utf8',flag='Boolean',amount='Int64')
+    fields=['label','flag','amount']
+    sql='SELECT group_name,'+','.join(
+        f'count(DISTINCT {field})>1 AS old_{field},((min({field})<>max({field})) IS TRUE) AS new_{field}'
+        for field in fields)+' FROM collision_samples GROUP BY group_name ORDER BY group_name'
+    result=run_job(tmp_path,engine,inputs=[source],steps=[],outputs=[],queries=[dict(name='collisions',sql=sql)])
+    assert len(result['collisions'])==len(groups)
+    for row in result['collisions']:
+        for field in fields:assert row['old_'+field]==row['new_'+field],(row,field)
+    assert next(row for row in result['collisions'] if row['group_name']=='two_null')['new_label'] is True
+    assert next(row for row in result['collisions'] if row['group_name']=='all_null')['new_label'] is False

@@ -6,7 +6,7 @@ WITH mappings AS (
  JOIN url_normalized c ON p.canonical_url IS NOT DISTINCT FROM c.url
 ), validation AS (
  SELECT CASE WHEN count(*)>0 THEN 1 END AS priority FROM (SELECT input_id FROM url_inputs GROUP BY input_id HAVING count(*)>1)
- UNION ALL SELECT CASE WHEN count(*)>0 THEN 2 END FROM (SELECT variant FROM mappings GROUP BY variant HAVING count(DISTINCT canonical)>1)
+ UNION ALL SELECT CASE WHEN count(*)>0 THEN 2 END FROM (SELECT variant FROM mappings GROUP BY variant HAVING min(canonical)<>max(canonical))
  UNION ALL SELECT CASE WHEN count(*)>0 THEN 3 END FROM mappings a JOIN mappings b ON a.canonical=b.variant
  UNION ALL SELECT CASE WHEN count(*)>0 THEN 4 END FROM mappings WHERE variant_error IS NOT NULL OR canonical_error IS NOT NULL
 ), checks AS (

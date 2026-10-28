@@ -180,8 +180,8 @@ def _execute(inputs, steps, *, output, scratch, engine, origin, auxiliary=None, 
         dict(name='invariants', sql="""SELECT (SELECT count(*) FROM (SELECT doc_key FROM ordered GROUP BY doc_key HAVING count(*)>1)) AS duplicate_documents,
             (SELECT count(*) FROM ordered WHERE body_expected AND (body_hex IS NULL OR length(body_hex)<>64)) AS missing_saved_bodies,
             (SELECT count(*) FROM ordered WHERE body_hex IS NOT NULL AND (bytes IS NULL OR bytes<0)) AS missing_saved_sizes,
-            (SELECT count(*) FROM (SELECT link_key FROM all_links GROUP BY link_key HAVING count(DISTINCT origin)>1)) AS link_collisions,
-            (SELECT count(*) FROM (SELECT lookup_key FROM lookup_keys_full GROUP BY lookup_key HAVING count(DISTINCT lookup_url)>1)) AS lookup_collisions""")]
+            (SELECT count(*) FROM (SELECT link_key FROM all_links GROUP BY link_key HAVING min(origin)<>max(origin))) AS link_collisions,
+            (SELECT count(*) FROM (SELECT lookup_key FROM lookup_keys_full GROUP BY lookup_key HAVING min(lookup_url)<>max(lookup_url))) AS lookup_collisions""")]
     queries.extend(diagnostics)
     queries.extend(metadata_queries)
     coverage_parts = []
