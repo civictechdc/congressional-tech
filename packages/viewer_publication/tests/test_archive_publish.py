@@ -9,6 +9,7 @@ from types import SimpleNamespace
 import pytest
 
 from viewer_publication.archive_publish import NativeArchiveStore,input_digest,publish_candidate,read_pointer,matching_live_input
+from viewer_publication.archive_format import release_identity
 
 
 def encoded(value):
@@ -75,8 +76,7 @@ def candidate(root,*,payload=b'qualified export bytes',rows=1):
     output=root/'release';output.mkdir(parents=True)
     (output/'list.parquet').write_bytes(payload)
     entry=dict(name='list.parquet',sha256=sha256(payload).hexdigest(),md5=md5(payload).hexdigest(),size=len(payload),rows=rows)
-    identity=[1,[[entry['name'],entry['sha256'],entry['size'],entry['rows']]]]
-    release_id=sha256(json.dumps(identity,separators=(',',':')).encode()).hexdigest()
+    release_id=release_identity(1,[entry])
     manifest=dict(schema_version=1,files=[entry],facet_counts=[],release_id=release_id)
     path=output/'manifest.json';path.write_bytes(encoded(manifest))
     result=root/'result.json'
@@ -237,3 +237,13 @@ def test_status_is_conditional_and_failure_keeps_the_original_refusal(tmp_path):
         launch(tmp_path/'failed',store=failed,contract=refused)
     assert 'Archive status update also failed' in error.value.__notes__
     assert 'viewer-publications/manifest.json' not in failed.objects
+
+
+def test_wrong_content_release_identity_refuses_before_upload(tmp_path):
+    artifacts,_=candidate(tmp_path/'run')
+    manifest=Path(artifacts['manifest_pin']['path']);value=json.loads(manifest.read_text())
+    value['release_id']='a'*64;manifest.write_bytes(encoded(value));artifacts['manifest_pin']=pin(manifest)
+    store=Store();native=Native(store)
+    with pytest.raises(ValueError,match='release identity'):
+        launch(tmp_path/'run',store=store,native=native,artifacts=artifacts)
+    assert native.calls==[] and 'viewer-publications/manifest.json' not in store.objects
