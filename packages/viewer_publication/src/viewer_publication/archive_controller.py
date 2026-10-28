@@ -50,8 +50,9 @@ def run_publish(model_spec,*,client,engine,bucket,work,receipt_keys,provenance,r
     keys=sorted(set(receipt_keys))
     if not isinstance(run,dict) or not run:raise ValueError('Publication requires explicit run metadata')
     pinned={item['key'] for item in provenance}
-    selected={item['key'] for name in PROVENANCE for item in model_spec[name]}
-    if not selected<=pinned:raise ValueError('Publication provenance set omits a model input')
+    selected=[item['key'] for name in PROVENANCE for item in model_spec[name]]
+    if len(selected)!=len(set(selected)) or set(selected)!=pinned:
+        raise ValueError('Publication provenance set must equal the actual model input set')
     work=Path(work).resolve();work.mkdir(parents=True,exist_ok=False)
     status=dict(status='failed',input_digest=None,live_release=None,live_release_basis='unknown',rows={},bytes=0)
     started=perf_counter();delegate=False;storage_ready=False;failure=None
@@ -91,10 +92,11 @@ def run_publish(model_spec,*,client,engine,bucket,work,receipt_keys,provenance,r
         record=dict(input_digest=digest,profile=profile['profile'],snapshots=profile['snapshots'],
             provenance=provenance,entity_digests={},run=run)
         pin=lambda path:dict(path=str(path),**file_pin(path))
+        artifacts=dict(manifest_pin=pin(Path(model_spec['output'])/'manifest.json'),
+            result_pin=pin(prepared['scratch']/'result.json'))
         delegate=True
         return publish_candidate(client=client,engine=engine,bucket=bucket,work=work/'candidate',
-            release=Path(model_spec['output']),manifest_pin=pin(Path(model_spec['output'])/'manifest.json'),
-            result_pin=pin(prepared['scratch']/'result.json'),input_record=record,receipt_keys=keys,
+            release=Path(model_spec['output']),**artifacts,input_record=record,receipt_keys=keys,
             pointer=pointer,expected_etag=etag,public_origin=public_origin,contract=contract,canary=canary)
     except BaseException as error:
         failure=error;status['error_type']=type(error).__name__
