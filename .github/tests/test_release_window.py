@@ -8,6 +8,8 @@ import sys
 
 import pytest
 
+from congress_shared.custody import write_atomic_json
+
 ROOT = Path(__file__).resolve().parents[2]
 WINDOW = ROOT / 'codex-release2/window.md'
 
@@ -222,8 +224,8 @@ def test_window_b_requires_acceptance_and_successful_window_a_before_publication
 
 def test_window_a_records_pre_window_pipeline_and_pointer_before_live_effects():
     forward=blocks()[0]
-    assert forward.index('previous-pipeline-revision.txt') < forward.index('gh workflow disable')
-    assert forward.index("evidence=w/'before-A-pointer.json'") < forward.index('gh workflow disable')
+    assert forward.index('previous-pipeline-revision.txt') < forward.index('pause_and_drain "$PREVIOUS_APPLICATION" before-A')
+    assert forward.index("evidence=w/'before-A-pointer.json'") < forward.index('pause_and_drain "$PREVIOUS_APPLICATION" before-A')
     assert 'before-A-pointer.etag.json' in forward
 
 
@@ -406,7 +408,7 @@ def test_local_publish_poll_never_restarts_uncertain_controller(tmp_path,monkeyp
     monkeypatch.setenv('LOCAL_PUBLISH_WINDOW',str(tmp_path))
     def kill(pid,sig):
         assert (pid,sig)==(123,0)
-        if state=='failed':raise ProcessLookupError()
+        if state in ('failed','accepted'):raise ProcessLookupError()
     monkeypatch.setattr(os,'kill',kill)
     if state=='accepted':exec(compile(source[1],str(WINDOW),'exec'),{})
     else:
@@ -483,3 +485,31 @@ def test_local_publish_records_binding_and_requires_controller_and_readback(tmp_
     assert calls.count('controller')==(0 if scenario in ('existing_work','dirty_source') else 1)
     if scenario not in ('existing_work','dirty_source'):
         assert json.loads((tmp_path/'local-publish/exit.json').read_text())['returncode']==(9 if scenario=='controller_failure' else 0)
+
+
+@pytest.mark.parametrize('existing',[False,True])
+def test_detached_launcher_records_owned_pid_and_refuses_repeat(tmp_path,monkeypatch,existing):
+    import types
+    source=re.search(r"<<'PY_LAUNCH'\n(.*?)\nPY_LAUNCH",blocks()[1],re.S)
+    assert source is not None
+    (tmp_path/'local-publish-runner.py').write_text('pass\n')
+    record=tmp_path/'local-publish-launcher.json'
+    if existing:record.write_text('{}')
+    calls=[]
+    def launch(args,**kwargs):
+        calls.append(args)
+        assert args[0]=='/usr/bin/nohup' and args[2:] == ['-I',str(tmp_path/'local-publish-runner.py')]
+        assert kwargs['start_new_session'] is True and kwargs['stdin']==subprocess.DEVNULL
+        assert kwargs['stdout'].name==str(tmp_path/'local-publish-driver.stdout.log')
+        assert kwargs['stderr'].name==str(tmp_path/'local-publish-driver.stderr.log')
+        return types.SimpleNamespace(pid=123)
+    monkeypatch.setattr(subprocess,'Popen',launch)
+    monkeypatch.setenv('LOCAL_PUBLISH_WINDOW',str(tmp_path))
+    if existing:
+        with pytest.raises(ValueError):exec(compile(source[1],str(WINDOW),'exec'),{})
+        assert calls==[]
+    else:
+        exec(compile(source[1],str(WINDOW),'exec'),{})
+        value=json.loads(record.read_text())
+        assert value['pid']==value['pgid']==123 and len(value['script_sha256'])==64
+        assert len(calls)==1
