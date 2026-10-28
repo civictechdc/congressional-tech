@@ -74,6 +74,13 @@ def compare_old(evidence, old_index, *, engine, work, receipt_keys=None):
         steps.append(dict(name='new_selected',sql='''SELECT n.* FROM new_input n
             LEFT SEMI JOIN comparison_receipts s ON n.receipt_key=s.receipt_key'''))
         new_input='new_selected'
+    excluded='''SELECT n.receipt_key,count(*) AS rows FROM new_input n
+        LEFT ANTI JOIN comparison_receipts s ON n.receipt_key=s.receipt_key
+        GROUP BY n.receipt_key ORDER BY n.receipt_key''' if receipt_keys is not None else '''
+        SELECT receipt_key,cast(0 AS BIGINT) AS rows FROM new_input WHERE false'''
+    steps.extend([
+        dict(name='input_totals',sql='SELECT count(*) AS rows FROM new_input',materialize=True),
+        dict(name='excluded_receipts',sql=excluded,materialize=True)])
     def value(schema, name, kind='VARCHAR'):
         return '"'+name+'"' if name in schema.names else f'cast(NULL AS {kind})'
     def projection(schema, old=False):
@@ -111,9 +118,16 @@ def compare_old(evidence, old_index, *, engine, work, receipt_keys=None):
                 cols.append(expression+' AS '+name)
         return 'SELECT '+','.join(cols)+' FROM '+('old_input' if old else new_input)
     old_order = ','.join('"'+f+'"' for f in old_schema.names)
-    steps += [dict(name='old_numbered',sql=f'SELECT *,row_number() OVER (ORDER BY {old_order}) AS old_row FROM old_input'),
+    # Keep the small count/scope results instead of the consumed union. Release
+    # its dependent view too, so no surviving plan holds the original buffers.
+    source_names=['new_input',*('new_part_'+str(i) for i in range(len(paths)))]
+    if receipt_keys is not None:source_names+=['new_selected','comparison_receipts']
+    steps += [dict(name='new_values',sql=projection(new_schema),release_after=source_names),
+        dict(name='new_totals',sql='SELECT count(*) AS rows FROM new_values',materialize=True),
+        dict(name='old_numbered',sql=f'SELECT *,row_number() OVER (ORDER BY {old_order}) AS old_row FROM old_input',
+             release_after=['old_input']),
+        dict(name='old_totals',sql='SELECT count(*) AS rows FROM old_numbered',materialize=True),
         dict(name='old_facts',sql=projection(old_schema,True).replace('FROM old_input',',old_row FROM old_numbered')),
-        dict(name='new_values',sql=projection(new_schema)),
         # Filtering only matching views preserves the original '=' treatment of
         # NULL locators and SHA values. Unmatched source rows remain in the oracle.
         dict(name='old_secondary_keys',sql='''SELECT * FROM old_facts WHERE receipt_key IS NOT NULL
@@ -135,7 +149,11 @@ def compare_old(evidence, old_index, *, engine, work, receipt_keys=None):
                 AND (o.stored_bytes IS NULL OR o.stored_bytes IS NOT DISTINCT FROM n.stored_bytes)
                 AND (o.body_key IS NULL OR o.body_key IS NOT DISTINCT FROM n.body_key)
             WHERE o.reference_kind IN ('file','retained-file')'''),
-        dict(name='old_values',sql='SELECT * FROM old_facts WHERE old_row NOT IN (SELECT old_row FROM secondary_duplicates)')]
+        # Both old_row columns come from row_number(), so neither is NULL.
+        # A normal anti join permits the key-only side to be the build; NOT IN
+        # forces a wide, null-aware build and one oversized unmatched batch.
+        dict(name='old_values',sql='''SELECT o.* FROM secondary_duplicates d RIGHT ANTI JOIN old_facts o
+            ON o.old_row=d.old_row''')]
     occurrence_keys='receipt_key,receipt_line,body_sha,pointer'
     occurrence_order='context_url,bytes,media_type,fidelity,http_status,try_cast(retrieved_at AS TIMESTAMP WITH TIME ZONE),stored_bytes,family,run_id,member_path,body_key'
     # The old list metadata represents item zero. Restored child facts must
@@ -147,10 +165,14 @@ def compare_old(evidence, old_index, *, engine, work, receipt_keys=None):
     steps.extend([
         dict(name='old_normalized',sql=f'''SELECT *,row_number() OVER (
             PARTITION BY {occurrence_keys} ORDER BY {occurrence_order},old_row) AS occurrence
-            FROM old_values'''),
+            FROM old_values''',release_after=['old_values','old_facts','old_secondary_keys','new_secondary_keys']),
+        dict(name='source_ordinals',sql='''SELECT receipt_key AS proof_receipt_key,
+            receipt_line AS proof_receipt_line,source_record_index AS proof_record_index,
+            count(*) AS source_ordinal_occurrences FROM new_values
+            GROUP BY receipt_key,receipt_line,source_record_index''',materialize=True),
         dict(name='new_facts',sql=f'''SELECT *,row_number() OVER (
             PARTITION BY {occurrence_keys} ORDER BY {source_item_order},{occurrence_order},capture_index) AS occurrence
-            FROM new_values'''),
+            FROM new_values''',release_after=['new_values']),
         dict(name='old_matchable',sql='''SELECT * FROM old_normalized
             WHERE receipt_key IS NOT NULL AND receipt_line IS NOT NULL'''),
         dict(name='new_matchable',sql='''SELECT * FROM new_facts
@@ -199,23 +221,24 @@ def compare_old(evidence, old_index, *, engine, work, receipt_keys=None):
         fact_values.extend(f'cast({side}."{name}" AS {kind}) AS "{label}_{name}"'
                            for side,label in [('o','old'),('n','new')])
     fact_values=','.join(fact_values)
-    steps += [dict(name='matched',sql=f'''SELECT o.old_row,n.receipt_key,n.receipt_line,n.capture_index,
+    steps += [dict(name='old_only',sql=f'SELECT o.old_row FROM new_matchable n RIGHT ANTI JOIN old_normalized o ON {join}'),
+        dict(name='old_source_lines',sql='SELECT DISTINCT receipt_key AS old_source_key,receipt_line AS old_source_line FROM old_numbered',materialize=True),
+        # Build the small unmatched-key side; preserve every original column
+        # before releasing the full numbered old population.
+        dict(name='old_only_records',sql='''SELECT o.* FROM old_only m JOIN old_numbered o
+            ON o.old_row=m.old_row''',materialize=True,release_after=['old_numbered','old_only']),
+        dict(name='matched',sql=f'''SELECT o.old_row,n.receipt_key,n.receipt_line,n.capture_index,
         n.body_sha,n.pointer,{fact_values},
         cast(o.retrieved_at AS VARCHAR) AS old_retrieved_at,
         cast(n.retrieved_at AS VARCHAR) AS new_retrieved_at,
         {time_reason} AS retrieved_at_reason,
         ({unexpected}) AS unexplained,({expected}) AS expected_change
         FROM old_matchable o JOIN new_matchable n ON {join}'''),
-        dict(name='old_only',sql=f'SELECT o.old_row FROM old_normalized o LEFT ANTI JOIN new_matchable n ON {join}'),
-        dict(name='new_only',sql=f'SELECT n.* FROM new_facts n LEFT ANTI JOIN old_matchable o ON {join}')]
+        dict(name='new_only',sql=f'SELECT n.* FROM old_matchable o RIGHT ANTI JOIN new_facts n ON {join}',
+             release_after=['old_matchable','new_matchable','old_normalized','new_facts'])]
     # Source proof is carried only by the receipt-derived private evidence.
     # A key or URL resemblance alone cannot establish a collapsed source item.
     steps.extend([
-        dict(name='old_source_lines',sql='SELECT DISTINCT receipt_key AS old_source_key,receipt_line AS old_source_line FROM old_numbered',materialize=True),
-        dict(name='source_ordinals',sql='''SELECT receipt_key AS proof_receipt_key,
-            receipt_line AS proof_receipt_line,source_record_index AS proof_record_index,
-            count(*) AS source_ordinal_occurrences FROM new_values
-            GROUP BY receipt_key,receipt_line,source_record_index''',materialize=True),
         dict(name='new_only_proof',sql='''SELECT n.*,coalesce(
             n.reference_kind='line' AND n.body_sha IS NULL AND n.pointer IS NULL
             AND n.record_is_list IS TRUE AND n.source_record_count>1
@@ -224,17 +247,18 @@ def compare_old(evidence, old_index, *, engine, work, receipt_keys=None):
             AS expected_source_list_item FROM new_only n LEFT JOIN source_ordinals q
             ON n.receipt_key=q.proof_receipt_key AND n.receipt_line=q.proof_receipt_line
             AND n.source_record_index=q.proof_record_index
-            LEFT JOIN old_source_lines o ON n.receipt_key=o.old_source_key AND n.receipt_line=o.old_source_line''',materialize=True),
+            LEFT JOIN old_source_lines o ON n.receipt_key=o.old_source_key AND n.receipt_line=o.old_source_line''',materialize=True,
+             release_after=['new_only','source_ordinals','old_source_lines']),
         dict(name='new_only_classified',sql="""SELECT *,CASE WHEN expected_source_list_item
             THEN 'source_list_item_restored' ELSE 'unexplained_new_row' END AS reason
-            FROM new_only_proof""",materialize=True)])
+            FROM new_only_proof""",materialize=True,release_after=['new_only_proof'])])
     # Shared native sorts and joins execute once for all exports and counts.
     for step in steps:
         if step['name'] in {'old_numbered','old_facts','new_values','secondary_duplicates',
                             'old_normalized','new_facts','matched','old_only','new_only'}:
             step['materialize']=True
     outputs = [parquet_output(work,'old-only',
-        'SELECT o.* FROM old_numbered o JOIN old_only m ON o.old_row=m.old_row',['old_row']),
+        'SELECT * FROM old_only_records',['old_row']),
         parquet_output(work,'new-only','SELECT * FROM new_only_classified',
                        ['receipt_key','receipt_line','capture_index']),
         parquet_output(work,'expected-new-only','SELECT * FROM new_only_classified WHERE expected_source_list_item',
@@ -244,24 +268,20 @@ def compare_old(evidence, old_index, *, engine, work, receipt_keys=None):
         parquet_output(work,'changed-fields',
             'SELECT * FROM matched WHERE unexplained OR expected_change',
             ['old_row','receipt_key','receipt_line','capture_index'])]
-    query = '''SELECT (SELECT count(*) FROM old_numbered) AS old_rows,
-        (SELECT count(*) FROM new_values) AS new_rows,
+    query = '''SELECT (SELECT rows FROM old_totals) AS old_rows,
+        (SELECT rows FROM new_totals) AS new_rows,
         (SELECT count(*) FROM secondary_duplicates) AS secondary_duplicates,
-        (SELECT count(*) FROM old_only) AS old_only,
-        (SELECT count(*) FROM new_only) AS new_only,
+        (SELECT count(*) FROM old_only_records) AS old_only,
+        (SELECT count(*) FROM new_only_classified) AS new_only,
         (SELECT count(*) FROM new_only_classified WHERE expected_source_list_item) AS expected_new_only,
         (SELECT count(*) FROM new_only_classified WHERE NOT expected_source_list_item) AS unexplained_new_only,
         (SELECT count(*) FROM matched WHERE unexplained) AS unexplained,
         (SELECT count(*) FROM matched WHERE expected_change AND NOT unexplained) AS expected_changes,
         (SELECT count(*) FROM matched) AS matched'''
-    excluded='''SELECT n.receipt_key,count(*) AS rows FROM new_input n
-        LEFT ANTI JOIN comparison_receipts s ON n.receipt_key=s.receipt_key
-        GROUP BY n.receipt_key ORDER BY n.receipt_key''' if receipt_keys is not None else '''
-        SELECT receipt_key,cast(0 AS BIGINT) AS rows FROM new_input WHERE false'''
     native=run_job(work,engine,inputs=inputs,steps=steps,outputs=outputs,queries=[
         dict(name='counts',sql=query),
-        dict(name='input_new_rows',sql='SELECT count(*) AS rows FROM new_input'),
-        dict(name='excluded_new_receipts',sql=excluded)])
+        dict(name='input_new_rows',sql='SELECT rows FROM input_totals'),
+        dict(name='excluded_new_receipts',sql='SELECT * FROM excluded_receipts ORDER BY receipt_key')])
     result=native['counts'][0]
     result['owner_gate'] = bool(result['old_only'] or result['unexplained_new_only'] or result['unexplained'])
     result['rules'] = RULES
