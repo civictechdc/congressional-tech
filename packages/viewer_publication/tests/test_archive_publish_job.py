@@ -402,3 +402,83 @@ def test_raw_startup_refuses_targets_without_real_device_approval_before_sdk(tmp
     with pytest.raises(ValueError,match='targets'):
         execute(load_spec(path),runtime_factory=never,storage_factory=never)
     assert not Path(value['work']).exists()
+
+
+@pytest.mark.parametrize('outcome',['completed','pending','backfill_required'])
+def test_actual_execute_daily_path_publishes_only_completed_work(tmp_path,outcome):
+    """Only external catalog storage, SDK and browser execution are adapted."""
+    from copy import deepcopy
+    import pyarrow.parquet as pq
+    from test_daily_producers import native_fixture
+    from docspec_client.client import NativeDatasets
+    from congress_api.lake import tables
+    from test_archive_publish import Store,Native
+    from viewer_publication.archive_publish_job import load_spec,execute
+    count=2 if outcome=='backfill_required' else 1
+    payloads=[b'%PDF-1.7\n% Authored startup report '+str(i).encode()+b'\n%%EOF\n' for i in range(count)]
+    raw=tmp_path/'producer';raw.mkdir()
+    daily,initial,raw_store=native_fixture(raw,count,payloads=payloads)
+    try:heads=tables.resolve_tables(engine=initial,work=tmp_path/'heads',catalog_root=daily['catalog_root'],tables=daily['tables'])
+    finally:initial.close()
+    catalog=daily['catalog_root'];daily['catalog_root']=None
+    if outcome=='pending':
+        row=pq.read_table(daily['body_inventory']).to_pylist()[0]
+        (Path(daily['local_root'])/row['relative_path']).unlink()
+    elif outcome=='backfill_required':daily['max_work_items']=1
+    value=publish_spec(tmp_path);remote=remote_config(tmp_path)
+    runtime=tmp_path/'remote-runtime.json';settings=json.loads(Path(os.environ['DOCSPEC_JOB_CONFIG']).read_text())
+    base=Path(os.environ['DOCSPEC_JOB_CONFIG']).parent
+    for name in ['binary','limits','workspace']:
+        if name in settings:settings[name]=str((base/settings[name]).resolve())
+    settings.update(remote=str(remote),credentials='/unopened/fake-credentials.json')
+    runtime.write_text(json.dumps(settings))
+    from archive_job_fixture import versions
+    parsers,filename_version=versions()
+    model=dict(version=1,engine_config=str(runtime),output=str(tmp_path/'release'),scratch=str(tmp_path/'model'),
+        parser_versions=parsers,catalog_version=filename_version,
+        **{name:dict(kind='native_table',**head) for name,head in heads.items()})
+    path=Path(value['model_spec']['path']);path.write_text(json.dumps(model));value['model_spec']=dict(path=str(path),**file_pin(path))
+    path=tmp_path/'daily.json';path.write_text(json.dumps(daily))
+    value.update(daily=dict(path=str(path),**file_pin(path)),receipt_keys=[],provenance=[])
+    path=tmp_path/'publish.json';path.write_text(json.dumps(value));spec=load_spec(path)
+    assert spec['_daily']['catalog_root'] is None
+    class SDK(Store):
+        def get_paginator(self,operation):
+            from types import SimpleNamespace
+            assert operation=='list_objects_v2'
+            return SimpleNamespace(paginate=lambda **request:[self.list_objects_v2(**request)])
+    store=SDK();commands=[];catalog_calls=[]
+    class Runtime:
+        def __init__(self,configuration):
+            self.native=NativeDatasets.from_config(os.environ['DOCSPEC_JOB_CONFIG'])
+            self.remote=Path(configuration['remote']);self.upload=Native(store)
+        def __enter__(self):return self
+        def __exit__(self,*_):self.native.close()
+        def __getattr__(self,name):return getattr(self.native,name)
+        def create_file(self,request):return self.upload.create_file(request)
+        def run_job(self,path):
+            job=json.loads(Path(path).read_text())
+            if not job.get('table_operations'):return self.native.run_job(path)
+            # Simulate the external catalog with an owned native local catalog.
+            # No SQL, schema, inputs, admission or result is changed.
+            assert 'catalog_root' not in job
+            routed=deepcopy(job);routed['catalog_root']=catalog
+            assert {k:v for k,v in routed.items() if k!='catalog_root'}==job
+            catalog_calls.append(job['table_operations'])
+            target=Path(path).with_name('local-catalog-job.json');target.write_text(json.dumps(routed))
+            return self.native.run_job(target)
+    def runtime_factory(path):return Runtime(json.loads(Path(path).read_text()))
+    def process_runner(command,**kwargs):
+        assert outcome=='completed' and kwargs['check'] is True
+        commands.append(command)
+        manifest=json.loads((Path(model['output'])/'manifest.json').read_text())
+        Path(command[command.index('--output')+1]).write_text(json.dumps(
+            dict(status='passed',releaseId=manifest['release_id'],targets='owner-approved')))
+    result=execute(spec,runtime_factory=runtime_factory,storage_factory=lambda **_:store,process_runner=process_runner)
+    assert catalog_calls and result['status']==('published' if outcome=='completed' else outcome)
+    if outcome=='completed':
+        assert len(commands)==2 and 'viewer-publications/manifest.json' in store.objects
+        assert result['daily']['receipt_keys']==sorted(row['key'] for row in daily['receipt_inventory'])
+    else:
+        assert commands==[] and not Path(model['output']).exists() and not Path(model['scratch']).exists()
+        assert not any(key.startswith('viewer-publications/') for key in store.objects)
