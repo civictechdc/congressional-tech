@@ -85,6 +85,13 @@ def test_strip_scope_has_only_the_eighteen_congressional_tech_groups(inventory):
     assert all(g['repo']=='ct' for g in groups)
 
 
+def test_named_replacement_paths_exist_in_the_production_tree(inventory):
+    root=Path(__file__).resolve().parents[2]
+    for group in inventory.seeds():
+        for name in group['replacement_paths']:
+            assert (root/name.split(':',1)[0]).exists(),(group['id'],name)
+
+
 def test_current_native_cli_adapter_is_not_a_deletion_candidate(inventory):
     for group in inventory.seeds():
         assert not any(fnmatch.fnmatch('src/cli_args.rs',p) for p in group['patterns'])
@@ -117,6 +124,9 @@ def test_inventory_separates_production_users_from_removed_subject_tests(invento
         inventory.CA+'lake/daily.py':
             'from congress_api.retention import catalog_updates\ncatalog_updates.obsolete()\n',
         '.github/workflows/kept.yml':'run: python -m congress_api.retention.catalog_updates\n',
+        inventory.VP+'filename_review_binding.py':'def pinned_reviews(): pass\n',
+        inventory.VP+'data/document-review-publication.json':'{}\n',
+        inventory.VP+'data/document-review-identities.json':'{}\n',
     }
     for path,source in sources.items():
         target=tmp_path/path;target.parent.mkdir(parents=True,exist_ok=True);target.write_text(source)
@@ -125,6 +135,11 @@ def test_inventory_separates_production_users_from_removed_subject_tests(invento
     result=inventory.build(tmp_path,None,tree,None)
     assert len(result['groups'])==18
     assert all(row['repo']=='ct' for row in result['files'].values())
+    for path in ('filename_review_binding.py','data/document-review-publication.json',
+                 'data/document-review-identities.json'):
+        kept=result['files']['ct:'+inventory.VP+path]
+        assert kept['hard_keep_boundary'] is True
+        assert kept['actions']==['preserve_target_or_parked_consumer']
     old=result['files']['ct:'+inventory.RET+'catalog_rows.py']
     assert old['production_callers']==[]
     assert {c['consumer_role'] for c in old['static_callers']}=={'test','measurement'}
