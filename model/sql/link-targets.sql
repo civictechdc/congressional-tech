@@ -5,10 +5,11 @@ WITH instances AS (
  SELECT l.*,p.repair_matches,p.split_position,p.target_literal,c.member_base,
  url_resolve(p.target_literal,c.resolved_base) AS resolved,
  regexp_replace(regexp_replace(p.target_literal,'[\t\n\r]','','g'),'^[\x00-\x20]+','') AS target_spelling
- FROM instances l JOIN link_contexts c ON (l.page_body=c.page_body)
- AND (l.context_url=c.context_url) AND (l.member_path IS NOT DISTINCT FROM c.member_path)
+ FROM instances l JOIN (SELECT * FROM link_contexts WHERE page_body IS NOT NULL AND context_url IS NOT NULL) c
+ ON (l.page_body IS NOT DISTINCT FROM c.page_body)
+ AND (l.context_url IS NOT DISTINCT FROM c.context_url) AND (l.member_path IS NOT DISTINCT FROM c.member_path)
  AND (l.base_href IS NOT DISTINCT FROM c.base_href)
- JOIN link_parts p ON l.href=p.href
+ JOIN (SELECT * FROM link_parts WHERE href IS NOT NULL) p ON (l.href IS NOT DISTINCT FROM p.href)
 ), resolved AS (
  SELECT *,member_base AND regexp_like(resolved,'^https://archive[.]invalid/')
  AND NOT regexp_like(target_spelling,'(?i)^(?:https?:)?[\\/]{2}') AS member_target FROM parsed
