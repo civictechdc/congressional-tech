@@ -268,7 +268,9 @@ class R2Store:
             return None
         return self._immutable_cache_dir / key
 
-    def prefetch_immutable(self, keys, *, max_workers=64,expected=None):
+    def prefetch_immutable(self, keys, *, max_workers=64,expected=None,timings=None):
+        if timings is not None and (not isinstance(timings,list) or expected is None):
+            raise ValueError('Read timings require a list and exact body pins')
         if self._immutable_cache_dir is None:
             if expected is not None:raise ValueError('Pinned prefetch requires a local cache')
             return
@@ -287,12 +289,31 @@ class R2Store:
             return
         def fetch(key):
             if pins is None:self.read(key)
-            else:self.read(key,expected=pins[key])
+            elif timings is None:self.read(key,expected=pins[key])
+            else:
+                timing={}
+                try:self.read(key,expected=pins[key],timing=timing)
+                finally:timings.append(dict(key=key,**timing))
             # Cache the bytes, not a second batch-sized collection of results.
         with ThreadPoolExecutor(max_workers=min(max_workers, len(missing))) as pool:
             list(pool.map(fetch, missing))
 
-    def read(self, key, *, start=None,length=None,expected=None,metadata=None):
+    def read(self, key, *, start=None,length=None,expected=None,metadata=None,timing=None):
+        if timing is not None and (not isinstance(timing,dict) or expected is None):
+            raise ValueError('Read timing requires a mapping and an exact body pin')
+        started=time.monotonic() if timing is not None else None
+        if timing is not None:timing.update(requests=0,bytes=0,cache_hit=False,error_type=None)
+        try:
+            value=self._read(key,start=start,length=length,expected=expected,metadata=metadata,timing=timing)
+            if timing is not None:timing['bytes']=len(value)
+            return value
+        except BaseException as error:
+            if timing is not None:timing['error_type']=type(error).__name__
+            raise
+        finally:
+            if timing is not None:timing['seconds']=time.monotonic()-started
+
+    def _read(self, key, *, start=None,length=None,expected=None,metadata=None,timing=None):
         from botocore.exceptions import ClientError
         from congress_shared.storage import single_put_md5
         ranged=start is not None or length is not None
@@ -312,6 +333,7 @@ class R2Store:
                 if pin is not None and (len(data)!=pin['bytes'] or
                         pin['md5'] is not None and hashlib.md5(data).hexdigest()!=pin['md5']):
                     raise ValueError('Pinned immutable cache changed')
+                if timing is not None:timing['cache_hit']=True
                 return data
             except OSError:
                 pass
@@ -334,6 +356,7 @@ class R2Store:
 
         def request():
             try:
+                if timing is not None:timing['requests']+=1
                 options={} if pin is None else dict(IfMatch=pin['etag'])
                 if ranged:options['Range']=f'bytes={start}-{start+length-1}'
                 return self.client.get_object(Bucket=self.bucket, Key=key,**options)

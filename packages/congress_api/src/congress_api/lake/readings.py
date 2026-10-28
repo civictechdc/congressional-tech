@@ -8,6 +8,8 @@ import stat
 import shutil
 import zlib
 import threading
+import time
+from contextlib import nullcontext
 from itertools import islice
 from functools import lru_cache
 
@@ -349,23 +351,24 @@ def plan(*,captures,body_inventory,local_root,engine,work,decided_at,parser,
 
 def stage(*,worker_factory=ParserWorker,unreadable_store=None,body_store=None,
           max_cache_bytes=RAW_CACHE_BYTES,max_get_workers=64,
-          parser_workers=1,parser_memory_bytes=PARSER_MEMORY_BYTES,**kwargs):
+          parser_workers=1,parser_memory_bytes=PARSER_MEMORY_BYTES,request_timings=False,**kwargs):
     """Use the same admitted plan for legacy single-parser and combined staging."""
     _raw_policy(body_store,max_cache_bytes,max_get_workers)
     ParserWorkerPool.validate_budget(parser_workers,parser_memory_bytes,WORKER_MEMORY_BYTES)
+    if type(request_timings) is not bool:raise ValueError('Request timings must be an explicit boolean')
     if kwargs.get('raw_ranges') and body_store is None:raise ValueError('Ranged staging requires the maintained raw store')
     if body_store is not None:kwargs['raw_ranges']=True
     planned=plan(**kwargs)
     return _execute_plan(planned,engine=kwargs['engine'],worker_factory=worker_factory,
                          unreadable_store=unreadable_store,body_store=body_store,
                          max_cache_bytes=max_cache_bytes,max_get_workers=max_get_workers,
-                         parser_workers=parser_workers,parser_memory_bytes=parser_memory_bytes)
+                         parser_workers=parser_workers,parser_memory_bytes=parser_memory_bytes,request_timings=request_timings)
 
 
 def _execute_plan(planned,*,engine,worker_factory=ParserWorker,unreadable_store=None,
                   work=None,items=None,work_items=None,body_store=None,
                   cache_root=None,max_cache_bytes=RAW_CACHE_BYTES,max_get_workers=64,
-                  parser_workers=1,parser_memory_bytes=PARSER_MEMORY_BYTES):
+                  parser_workers=1,parser_memory_bytes=PARSER_MEMORY_BYTES,request_timings=False):
     ParserWorkerPool.validate_budget(parser_workers,parser_memory_bytes,WORKER_MEMORY_BYTES)
     parser=planned['parser'];version=planned['parser_version'];combined=parser=='readings'
     versions=planned['versions'];limits=planned['limits'];raw=planned['local_root']
@@ -395,13 +398,20 @@ def _execute_plan(planned,*,engine,worker_factory=ParserWorker,unreadable_store=
     parsed=work/'parsed';parsed.mkdir()
     decisions_path=parsed/'unreadable.jsonl'
     counters=dict(pending_reads=0,read_bytes=0,unreadable=0,ambiguous_gzip=0,**dict.fromkeys(GZIP_RULE_FIELDS,0))
+    trace=None;trace_path=work/'read-timings.jsonl.gz' if request_timings else None
+    def record_timing(phase,body,values):
+        if trace is not None:trace.write(json.dumps(dict(phase=phase,body_sha=body,**values),separators=(',',':'))+'\n')
     def jobs():
         source=iter(items)
         while window:=list(islice(source,4*parser_workers)):
             if body_store is not None:
                 selected={item['physical_key']:pins[item['physical_key']] for item in window
                     if item['body_sha'].hex() in prefetched}
-                body_store.prefetch_immutable(list(selected),expected=selected,max_workers=max_get_workers)
+                timings=[] if request_timings else None
+                try:body_store.prefetch_immutable(list(selected),expected=selected,max_workers=max_get_workers,timings=timings)
+                finally:
+                    for timing in timings or ():
+                        key=timing.pop('key');record_timing('prefetch',body_object_digest(key),timing)
                 cache_use['actual']+=sum(_cache_file_bytes(prefetched[item['body_sha'].hex()])
                     for item in window if item['body_sha'].hex() in prefetched)
             for item in window:
@@ -427,6 +437,7 @@ def _execute_plan(planned,*,engine,worker_factory=ParserWorker,unreadable_store=
                             (set(versions)-{parser} if not combined else set())))
                     if body_store is not None:
                         request['original_bytes']=item['captured_bytes']
+                        if request_timings:request['request_timings']=True
                         if body_hex in prefetched:request.update(path=str(prefetched[body_hex]),prefetched=True)
                         else:request['remote']=dict(bucket=body_store.bucket,key=item['physical_key'],
                             etag=item['conditional_etag'],md5=item['stored_md5'])
@@ -434,7 +445,7 @@ def _execute_plan(planned,*,engine,worker_factory=ParserWorker,unreadable_store=
 
     def invoke(worker,job):
         body_hex,cache,request=job
-        actual=ranges=0
+        actual=ranges=0;started=time.monotonic()
         try:
             if not combined and parser!='sniff' and request['stored_bytes']>MAX_STORED_BYTES:
                 value=dict(status='size_limit',error_type='stored_size_limit')
@@ -455,14 +466,17 @@ def _execute_plan(planned,*,engine,worker_factory=ParserWorker,unreadable_store=
                     actual=sum(_cache_file_bytes(p) for p in files)
                     ranges=sum(_cache_file_bytes(p) for p in files if p.name!='identity.json')
                     if not request.get('prefetched'):local.spent=getattr(local,'spent',0)+ranges
-        return body_hex,cache,outcome,actual,ranges
+        return body_hex,cache,outcome,actual,ranges,time.monotonic()-started,threading.get_ident()
 
     def rows():
+        nonlocal trace
         with ParserWorkerPool(parser,version,
                 'congress_api.lake.readings:'+('parse_once_payload' if combined or body_store is not None else 'parse_payload'),
-                workers=parser_workers,memory_budget=parser_memory_bytes,worker_factory=worker_factory,**limits) as pool,decisions_path.open('x') as decisions:
-            for body_hex,cache,outcome,actual,ranges in pool.map(invoke,jobs()):
+                workers=parser_workers,memory_budget=parser_memory_bytes,worker_factory=worker_factory,**limits) as pool,decisions_path.open('x') as decisions,\
+                gzip.open(trace_path,'xt') if trace_path is not None else nullcontext(None) as trace:
+            for body_hex,cache,outcome,actual,ranges,seconds,worker_id in pool.map(invoke,jobs()):
                 cache_use['actual']+=actual;cache_use['ranges']+=ranges
+                record_timing('supervisor',body_hex,dict(seconds=seconds,worker=worker_id,status=outcome['status']))
                 if outcome['status']=='read_error':
                     counters['pending_reads']+=1;continue
                 if outcome['status']=='unreadable':
@@ -475,6 +489,9 @@ def _execute_plan(planned,*,engine,worker_factory=ParserWorker,unreadable_store=
                     counters['unreadable']+=1;continue
                 if outcome['status']!='completed':raise ValueError('Invalid reading worker outcome')
                 response=outcome['value'];counters['read_bytes']+=response.get('read_bytes',0)
+                for timing in response.get('read_timings',()):record_timing('range',body_hex,timing)
+                if response.get('omitted_request_timings'):
+                    record_timing('range_omitted',body_hex,dict(count=response['omitted_request_timings']))
                 rule=response.get('gzip_rule')
                 if type(rule) is int and 1<=rule<=4:counters['gzip_rule'+str(rule)]+=1
                 if response.get('read_error'):
@@ -518,7 +535,8 @@ def _execute_plan(planned,*,engine,worker_factory=ParserWorker,unreadable_store=
         _unreadable_custody=unreadable_custody,
         body_admissions=planned['body_admissions'],
         work_items=planned['work_items'] if work_items is None else work_items,
-        cache_bytes=cache_use['actual'],_cache_cleanup=cleanup,_cache_root=str(cache_root),**counters)
+        cache_bytes=cache_use['actual'],request_timings=trace_path,
+        _cache_cleanup=cleanup,_cache_root=str(cache_root),**counters)
 
 
 def _cache_file_bytes(path):
@@ -565,7 +583,7 @@ def run(*,engine,work,mode,execute=False,max_work_items=None,batch_size=None,par
         table=None,catalog_root=None,read_current=None,existing=None,
         unreadable_store=None,read_unreadable=None,unreadable_snapshot=None,worker_factory=ParserWorker,
         body_store=None,raw_ranges=False,max_cache_bytes=RAW_CACHE_BYTES,max_get_workers=64,
-        parser_workers=1,parser_memory_bytes=PARSER_MEMORY_BYTES,**inputs):
+        parser_workers=1,parser_memory_bytes=PARSER_MEMORY_BYTES,request_timings=False,**inputs):
     """Admit one plan; execute daily once, or stream bounded backfill batches.
 
     The native anti-join runs once per invocation. The sorted metadata work list
@@ -577,6 +595,7 @@ def run(*,engine,work,mode,execute=False,max_work_items=None,batch_size=None,par
     if type(raw_ranges) is not bool:raise ValueError('raw_ranges must be an explicit boolean')
     _raw_policy(body_store,max_cache_bytes,max_get_workers)
     ParserWorkerPool.validate_budget(parser_workers,parser_memory_bytes,WORKER_MEMORY_BYTES)
+    if type(request_timings) is not bool:raise ValueError('Request timings must be an explicit boolean')
     raw_ranges=raw_ranges or body_store is not None
     if execute and raw_ranges and body_store is None:raise ValueError('Ranged execution requires the maintained raw store')
     if mode=='daily':
@@ -638,7 +657,7 @@ def run(*,engine,work,mode,execute=False,max_work_items=None,batch_size=None,par
             items=islice(items,count),worker_factory=worker_factory,work_items=count,
             unreadable_store=unreadable_store,body_store=body_store,cache_root=work,
             max_cache_bytes=max_cache_bytes-retained_cache,max_get_workers=max_get_workers,
-            parser_workers=parser_workers,parser_memory_bytes=parser_memory_bytes)
+            parser_workers=parser_workers,parser_memory_bytes=parser_memory_bytes,request_timings=request_timings)
         import pyarrow.parquet as pq
         staged['append']=(append(staged,engine=engine,work=batch_work/'append',
             catalog_root=catalog_root,table=table) if pq.ParquetFile(staged['readings']).metadata.num_rows else None)
@@ -653,12 +672,13 @@ def run(*,engine,work,mode,execute=False,max_work_items=None,batch_size=None,par
 
 class _ReadOnceBody:
     """Keep disjoint bounded byte ranges for supervised parser retries."""
-    def __init__(self,path,cache,stored_bytes,*,remote=None,body_store=None,stored_gzip=False,max_read_bytes=None):
+    def __init__(self,path,cache,stored_bytes,*,remote=None,body_store=None,stored_gzip=False,max_read_bytes=None,request_timings=False):
         import re
         self.path=Path(path) if remote is None else None
         self.remote,self.body_store,self.stored_gzip=remote,body_store,stored_gzip
         self.encoding=None
         self.max_read_bytes=max_read_bytes
+        self.timings=[] if request_timings else None;self.omitted_timings=0
         self.cache=Path(cache);self.cache.mkdir(parents=True,exist_ok=True)
         self.source=None;self.size=stored_bytes;self.ranges=[]
         if remote is None:
@@ -714,8 +734,14 @@ class _ReadOnceBody:
                         metadata={}
                         try:
                             store=self.body_store or _ranged_store(self.remote['bucket'])
-                            piece=store.read(self.remote['key'],start=cursor,length=stop-cursor,
-                                expected={k:self.identity[k] for k in ('etag','md5','bytes')},metadata=metadata)
+                            timing={} if self.timings is not None else None
+                            try:
+                                piece=store.read(self.remote['key'],start=cursor,length=stop-cursor,
+                                    expected={k:self.identity[k] for k in ('etag','md5','bytes')},metadata=metadata,timing=timing)
+                            finally:
+                                if timing is not None:
+                                    if len(self.timings)<128:self.timings.append(dict(start=cursor,length=stop-cursor,**timing))
+                                    else:self.omitted_timings+=1
                         except (BotoCoreError,ClientError,ValueError) as error:
                             raise OSError('raw_range_'+type(error).__name__) from None
                         encoding=metadata.get('content_encoding') or ''
@@ -765,13 +791,18 @@ def parse_once_payload(payload,*,body_store=None):
     from congress_api.retention.sniff import read_sniff
     from congress_api.parsers.archive_readings import read_page
     request=json.loads(payload);source=None
+    def result(**value):
+        if request.get('request_timings'):
+            value.update(read_timings=[] if source is None else source.timings,
+                omitted_request_timings=0 if source is None else source.omitted_timings)
+        return value
     try:
         versions=request['versions'];skip=set(request['skip_parsers']);rows=[];data=None;gzip_rule=None
         known=request['known_format']
         def open_source():
             return _ReadOnceBody(request['path'],request['cache'],request['stored_bytes'],
                 remote=request.get('remote'),body_store=body_store,stored_gzip=request['stored_gzip'],
-                max_read_bytes=request.get('max_read_bytes'))
+                max_read_bytes=request.get('max_read_bytes'),request_timings=request.get('request_timings',False))
         if request.get('remote') and body_object_digest(request['remote']['key'])!=request['body_sha']:
             raise OSError('body_key_mismatch')
         if request.get('prefetched'):
@@ -810,9 +841,9 @@ def parse_once_payload(payload,*,body_store=None):
                     data,source.stored_gzip=_page_entity(source.read(0,source.size),request['body_sha'])
                 row=(dict(status='error',error_type='decoded_size_limit') if data is None else read_page(data,parser))
             rows.append(dict(row,parser=parser,parser_version=versions[parser]))
-        return dict(rows=rows,gzip_rule=gzip_rule,read_bytes=0 if source is None else source.read_bytes)
+        return result(rows=rows,gzip_rule=gzip_rule,read_bytes=0 if source is None else source.read_bytes)
     except (OSError,EOFError) as error:
-        return dict(read_error=type(error).__name__,gzip_rule=gzip_rule,ambiguous_gzip=str(error)=='ambiguous_storage_gzip',
+        return result(read_error=type(error).__name__,gzip_rule=gzip_rule,ambiguous_gzip=str(error)=='ambiguous_storage_gzip',
             rows=[],read_bytes=0 if source is None else source.read_bytes)
     finally:
         if source is not None:source.close()

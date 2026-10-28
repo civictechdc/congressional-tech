@@ -27,6 +27,7 @@ def main(argv=None,*,read_current=None,body_store=None):
     parser.add_argument('--raw-get-workers',type=int,help='Concurrent page-prefetch GETs,1–64 (default64)')
     parser.add_argument('--parser-workers',type=int,default=16,
                         help='Persistent supervised parsers per batch,1–32 (default16); bounded by native memory limits')
+    parser.add_argument('--request-timings',action='store_true',help='Write owned per-batch pinned-read and supervisor timings')
     args=parser.parse_args(argv)
     try:readings.ParserWorkerPool.validate_budget(args.parser_workers,32*readings.WORKER_MEMORY_BYTES,readings.WORKER_MEMORY_BYTES)
     except ValueError as error:parser.error(str(error))
@@ -93,12 +94,13 @@ def main(argv=None,*,read_current=None,body_store=None):
                     body_listing=args.body_listing,
                     max_cache_bytes=cache_bytes,max_get_workers=get_workers,
                     parser_workers=args.parser_workers,parser_memory_bytes=parser_memory_bytes,
-                    read_current=read_current,**(apply or {}))
+                    request_timings=args.request_timings,read_current=read_current,**(apply or {}))
             except (readings.BackfillRequired,readings.RawCustodyRequired) as error:
                 print(json.dumps(error.as_dict(),default=str,sort_keys=True))
                 return 2
         else:
-            result=readings.stage(**spec,engine=engine,parser_workers=args.parser_workers,parser_memory_bytes=parser_memory_bytes)
+            result=readings.stage(**spec,engine=engine,parser_workers=args.parser_workers,parser_memory_bytes=parser_memory_bytes,
+                request_timings=args.request_timings)
             if apply is not None:
                 result['append']=readings.append(result,engine=engine,
                     work=Path(spec['work'])/'append',**apply)
