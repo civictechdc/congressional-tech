@@ -24,6 +24,8 @@ def accepted(tmp_path_factory):
             key=f'receipts/documents/2026-10-20/{number}.jsonl.gz')
     engine=NativeDatasets.from_config(os.environ['DOCSPEC_JOB_CONFIG'])
     stage=stage_captures(records,engine=engine,work=root/'stage')
+    for row in records:
+        Path(row['path']).unlink();Path(row['qualification']).unlink()
     return stage,[r['key'] for r in records]
 
 
