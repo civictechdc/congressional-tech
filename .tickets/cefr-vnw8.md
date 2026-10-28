@@ -58,3 +58,7 @@ Owner18CT scope3a/4ba contracts precede91c behavior; CODE found canonical review
 **2026-10-28T20:58:15Z**
 
 F5 preparation refreshed at committed raw9030d537:18 CT groups/609 files/128194 population lines; SHAe5c8331f851a28f964f7d8787fc9acdaae76022d617bcd2b07a07ed225ed8f82. Fixed-head regeneration byte-identical; current verify stale=false/changed source0/uncommitted scanned0/generator unchanged. Official runner19focusedPASS. Prior ONECODE findings fixed. Complete per-group paths/symbols/callers/wc-l ready; no deletion. Final combined-head remeasurement and live replacement gates remain switch-owner actions; DS deferred.
+
+**2026-10-28T21:21:28Z**
+
+After the reviewed D2 size fix, refreshed current source47b3b0cf:18CTgroups609files128263populationlines; SHAbc8fcb7a9975d2d9d6e3d3ab843bce14035e226a6edf28f63c66aa269b8d283e. Fixed-head regeneration remains byte-identical and --verify stale=false. Selected immutable shared/switch-inventory-bc8fcb7a. No generator behavior changes;19focused source checks already passed. Final combined-head and actual-cut remeasurements remain switch-owner gates.
