@@ -20,10 +20,9 @@ DC = 'packages/docspec_client/src/docspec_client/'
 SITE = 'apps/site/src/components/explorer/reader/filenames/'
 PUBLICATION_CLIENT_KEEP = ['require_publication_client','publish_manifest_pointer','VerifiedTransfer']
 PUBLICATION_CLIENT_KEEP_IMPORTS = ['dataclasses.dataclass','hashlib']
-SPEED_KEEP = ['scripts/measure/viewer_benchmark_server.py',
-              'scripts/measure/benchmark_viewer_browser.mjs', 'scripts/measure/process_rss.py',
-              'scripts/measure/tests/test_viewer_benchmark.py',
-              'scripts/measure/tests/test_viewer_benchmark_server.py']
+SPEED_KEEP = ['scripts/measure/process_rss.py', 'apps/site/scripts/measure-archive.mjs',
+              'apps/site/scripts/archive-targets.mjs','apps/site/scripts/archive-browser.mjs',
+              'apps/site/scripts/archive-server.mjs','apps/site/scripts/archive-tools.test.mjs']
 HARD_KEEP = [CA+'lake/', CA+'retention/body_store.py', CA+'retention/receipt_writer.py',
     CA+'retention/archive_expander.py', CA+'retention/provenance.py', CA+'retention/raw_verifier.py',
     CA+'retention/derived_files.py', 'packages/congress_shared/src/congress_shared/custody.py',
@@ -94,6 +93,16 @@ def test_file(path):
     p = PurePosixPath(path)
     return (any(x == 'tests' for x in p.parts) or p.name.startswith('test_')
             or '.test.' in p.name or p.name=='tests.rs' or p.name.endswith('_tests.rs'))
+
+
+def consumer_role(path):
+    """Separate production references from evidence about obsolete subjects."""
+    parts=PurePosixPath(path).parts
+    if 'fixtures' in parts:return 'fixture'
+    if test_file(path):return 'test'
+    if path.startswith('scripts/measure/'):return 'measurement'
+    if path.startswith('docs/') or path.endswith('.md'):return 'documentation'
+    return 'production'
 
 
 def expression(node):
@@ -318,7 +327,9 @@ def seeds():
             gate='F2 scheduler active, B9 checks bound and F0 replacement qualified; weekly seed helper lifted; shared engine ExportPin remains until other consumers migrate'),
         group(14,'Old end-to-end tests',['tests/e2e/**'],
             gate='Move surviving behavior/fixtures before tree cut; baseline failures never weakened'),
-        group(15,'Deleted-subject measurement executables',[*['scripts/measure/'+n+'.py' for n in measurement]],
+        group(15,'Deleted-subject measurement executables',[*['scripts/measure/'+n+'.py' for n in measurement],
+            'scripts/measure/viewer_benchmark_server.py','scripts/measure/benchmark_viewer_browser.mjs',
+            'scripts/measure/tests/test_viewer_benchmark.py','scripts/measure/tests/test_viewer_benchmark_server.py'],
             gate='Keep committed measurement reports/evidence and speed harness; only obsolete executables/tests go'),
         group(16,'One-time conversion/copy/receipt tools',[VP+'archive_release.py',VP+'backfill_uncompressed_pdfs.py',
             'scripts/publication/backfill-uncompressed-pdfs.py',RET+'pdf_backfill.py',CA+'cli/receipt_cleanup.py',
@@ -331,26 +342,30 @@ def seeds():
             gate='Partial WAF/planner split only; CORS/cache/CSP/filename Content-Disposition and configuration remain'),
         group(18,'Disabled viewer workflow and cron',['.github/workflows/publish-filename-viewer.yml'],
             gate='Site F1 deletion commit or switch approval; do not remove weekly update job before B14'),
-        group(19,'Engine archive-obsolete lifecycle surfaces',[
-            'src/engine/connected_components/sha256.rs','adapters/dagster/**',
-            'src/engine/remote_build_provider_tests*','src/engine/remote_build_provider_tests/**',
-            'src/engine/remote_query_tests.rs','src/engine/remote_startup_tests.rs',
-            'src/engine/backfill*','src/engine/backfill/**','src/engine/changes/retirement.rs',
-            'src/engine/restore*','src/engine/restore/**','src/restore.rs','src/restore/**',
-            'src/engine/history.rs','src/engine/history/**',
-            'src/engine/retention*','src/engine/retention/**','src/engine/export*','src/engine/export/**',
-            'tests/*backfill*.rs','tests/*retirement*.rs','tests/restore*.rs','tests/succession.rs',
-            'tests/lifecycle.rs','tests/abandonment.rs','tests/evidence_updates*','tests/evidence_updates/**',
-            'tests/dependency_correct*.rs','tests/change*.rs','tests/http*.rs','tests/phase*.rs',
-            'tests/physical_removal*.rs','tests/retention*.rs','tests/cutover_admissions.rs',
-            'tests/schema.rs','tests/refresh.rs','tests/related_refresh*','tests/related_refresh/**',
-            'tests/updates*','tests/updates/**','tests/input_generations.rs','tests/authority.rs'],
-            partial={'src/storage/partitioning.rs':['*manual*'],'src/http.rs':['*manual*'],
-                'src/lib.rs':['*manual*'],'src/engine.rs':['*manual*'],
-                'src/export.rs':['*manual*'],'src/model.rs':['*manual*'],
-                'src/model/operations.rs':['*manual*']},repo='ds',
-            gate='Engine-owned; current lifecycle consumers news_lake/committee explorer WAIT/MIGRATE; spicysearch/spicyengine external UNKNOWN; job/native storage survive'),
     ]
+    replacements={
+        1:[CA+'lake/tables.py',CA+'lake/daily.py'],
+        2:['model/sql/',VP+'archive_model.py'],
+        3:[CA+'lake/captures.py',CA+'lake/tables.py'],
+        4:[CA+'acquisition/fetcher.py',RET+'receipt_writer.py'],
+        5:[RET+'body_store.py'],
+        6:[VP+'archive_controller.py',VP+'archive_publish.py'],
+        7:['apps/site/src/components/explorer/reader/archive/',VP+'archive_seed.py'],
+        8:[RET+'review_provenance.py',VP+'filename_review_binding.py'],
+        9:[CA+'acquisition/capture_scheduler.py'],
+        10:[DC+'client.py:NativeDatasets.run_job'],
+        11:[RET+'review_provenance.py'],
+        12:[RET+'provenance.py',CA+'cli/provenance.py'],
+        13:[CA+'cli/capture_schedule.py',RET+'raw_verifier.py'],
+        14:['packages/congress_api/tests/test_captures_ingest.py','packages/viewer_publication/tests/test_archive_controller.py'],
+        15:['apps/site/scripts/measure-archive.mjs'],
+        16:[VP+'archive_model.py','B0/B13 completed owner migration; keep tool until then'],
+        17:['infra/cloudflare/congressional-data-r2-edge.json'],
+        18:['.github/workflows/archive-jobs.yml','.github/workflows/capture-archive.yml'],
+    }
+    for item in groups:
+        item['replacement_paths']=replacements[item['binding_row']]
+        item['replacement_gate']='Named replacement must be live and every production caller migrated before the cut'
     return groups
 
 
@@ -397,7 +412,7 @@ def historical_mixed(ct, current_paths):
 
 def build(ct, ds, ct_rev, ds_rev):
     repos={}
-    for name,root,rev in [('ct',ct,ct_rev),('ds',ds,ds_rev)]:
+    for name,root,rev in [('ct',ct,ct_rev)]:
         head,entries,bodies=snapshot(root,rev)
         indexes={p:(py_index(p,b) if p.endswith('.py') else other_index(p,b))
                  for p,b in bodies.items() if Path(p).suffix in CODE}
@@ -454,10 +469,13 @@ def build(ct, ds, ct_rev, ds_rev):
                     return None
             index=data['indexes'].get(path,dict(symbols=[],imports=[],calls=[],dynamic=[]))
             callers=list(references.get((repo,module_name(path)),[])) if path.endswith('.py') else []
+            for caller in callers:caller['consumer_role']=consumer_role(caller['path'])
             symbols=[]
             for sym in index['symbols']:
                 s=dict(sym)
                 s['callers']=references.get((repo,module_name(path)+'.'+sym['name']),[])
+                for caller in s['callers']:caller['consumer_role']=consumer_role(caller['path'])
+                s['production_callers']=[c for c in s['callers'] if c['consumer_role']=='production']
                 if '.' in sym['name'] and sym['name'].rsplit('.',1)[-1] not in {
                         '__init__','__enter__','__exit__','get','put','read','write','close','keys'}:
                     name=sym['name'].rsplit('.',1)[-1]
@@ -468,6 +486,8 @@ def build(ct, ds, ct_rev, ds_rev):
                 wc_l=body.count(b'\n'),unterminated_final_line=bool(body and not body.endswith(b'\n')),
                 groups=[],actions=[],symbols=symbols,imports=index['imports'],
                 static_callers=callers,dynamic_uncertainty=index['dynamic'],exports=index.get('exports',[]),
+                consumer_role=consumer_role(path),
+                production_callers=[c for c in callers if c['consumer_role']=='production'],
                 evidence_limits=['Static references do not prove runtime absence.'],
                 category='test' if test_file(path) else 'documentation' if path.endswith('.md') else
                     'data_or_config' if path.endswith(('.json','.toml','.yaml','.yml')) else 'source')
@@ -544,9 +564,10 @@ def build(ct, ds, ct_rev, ds_rev):
     retention_removed={m for m in candidate_modules if m.startswith('congress_api.retention.')}
     retention_kept={m for (repo,m),p in module_paths.items() if repo=='ct'
         and m.startswith('congress_api.retention.') and m not in retention_removed}
-    mixed=[]; historical_reconstructed=[]
+    mixed=[]; historical_reconstructed=[]; nonproduction=[]
     for path,index in repos['ct']['indexes'].items():
-        if not test_file(path):continue
+        role=consumer_role(path)
+        if role not in {'test','fixture','measurement'}:continue
         modules=set()
         for ref in index['imports']:
             child=ref['module']+'.'+ref['name'] if ref['name'] else None
@@ -557,11 +578,14 @@ def build(ct, ds, ct_rev, ds_rev):
         if not removed:continue
         retained=sorted(m for m in modules if ('ct',m) in module_paths and m not in candidate_modules)
         gids=sorted({g for m in removed for g in candidate_modules[m]})
-        action='mixed_test_split_required' if retained else 'candidate_test_remove_after_case_migration'
+        action='mixed_subject_split_required' if retained else 'remove_with_obsolete_subject'
         for gid in gids:
             key=add_file('ct',path,gid,action)
             if key and key not in next(g for g in groups if g['id']==gid)['files']:
                 next(g for g in groups if g['id']==gid)['files'].append(key)
+        nonproduction.append(dict(file='ct:'+path,consumer_role=role,
+            removed_modules=removed,retained_modules=retained,action=action))
+        if role!='test':continue
         if retained:
             mixed.append(dict(file='ct:'+path,removed_modules=removed,retained_modules=retained,
                 test_symbols=[s for s in index['symbols'] if s['name'].split('.')[-1].startswith('test')],
@@ -624,19 +648,23 @@ def build(ct, ds, ct_rev, ds_rev):
                 mixed.append(dict(file=test_key,removed_modules=[],retained_modules=[],test_symbols=[],
                     action='Non-Python runtime caller: classify old and surviving cases before deleting any test.'))
     for key,f in files.items():
+        f['consumer_role']=consumer_role(f['path'])
         for caller in f['static_callers']:
+            caller['consumer_role']=consumer_role(caller['path'])
             caller_key=f['repo']+':'+caller['path']
             caller['inventory_groups']=files.get(caller_key,{}).get('groups',[])
             caller['caller_boundary']='outside_candidate_inventory' if caller_key not in files else 'listed_candidate_or_split'
             if f['repo']=='ct' and any(caller['path']==p or caller['path'].startswith(p) for p in HARD_KEEP):
                 caller['caller_boundary']='surviving_target_or_parked_consumer'
         f['static_callers']=sorted(f['static_callers'],key=lambda x:(x['path'],x['line'],x['kind']))
+        f['production_callers']=[c for c in f['static_callers'] if c['consumer_role']=='production']
+        for symbol in f['symbols']:
+            for caller in symbol['callers']:caller['consumer_role']=consumer_role(caller['path'])
+            symbol['production_callers']=[c for c in symbol['callers'] if c['consumer_role']=='production']
         f['groups']=sorted(f['groups']);f['primary_accounting_group']=f['groups'][0]
         f['hard_keep_boundary']=f['repo']=='ct' and any(f['path']==p or f['path'].startswith(p) for p in HARD_KEEP)
         if f['hard_keep_boundary']:
             f['actions']=['preserve_target_or_parked_consumer']
-        if f['repo']=='ds':
-            f['actions']=['engine_owned_wait_or_migrate_other_consumers']
         if f['path']==RET+'r2.py':
             f['preserve_symbols']=['put_parameters','verify_upload','AsyncBodies','R2Store.put_file',
                 'R2Store.read_file','R2Store.keys']
@@ -674,9 +702,6 @@ def build(ct, ds, ct_rev, ds_rev):
         if f['path']=='apps/site/src/components/explorer/reader/range-file.ts':
             f['preserve_symbols']=['rangeFile (entire shared module)']
             f['evidence_limits'].append('catalog-v6.ts re-exports this shared module; deleting the re-export never authorizes deleting range-file.ts.')
-        if f['repo']=='ds' and f['path']=='src/export.rs':
-            f['preserve_symbols']=['portable_schema','portable_batch']
-            f['evidence_limits'].append('The new native job export calls these helpers; parked lifecycle migration does not remove this target dependency.')
     # Explicit rewrite and speed keep inventories are accounted separately.
     rewrites=[]
     for p in ['apps/site/FILENAME-VIEWER.md','.github/workflows/raw-source-tables.md']:
@@ -706,9 +731,9 @@ def build(ct, ds, ct_rev, ds_rev):
              evidence='Original scripts/JSON were scratch-only; reconstruct the module split at the review source commit, compare its exact count and retain current drift separately.'),
         dict(subject='Site reader split',status='site_owner_keep_boundaries_recorded',
              evidence='New archive readers retain cache/cooperative/range-file modules and worker/verified-byte helpers. Old Explorer, Listing, Evidence, RecordDetail and browse callers still require their legacy files until the switch.'),
-        dict(subject='Legacy ID fixture',status='replace_surviving_test_consumer_before_cut',
+        dict(subject='Legacy ID fixture',status='remove_obsolete_oracle_cases_with_subject',
              path='packages/congress_api/tests/test_id_golden_vectors.py',
-             evidence='The E3 fixture still imports retention.index.bipartite; migrate its consumer before cutting that source module.')]
+             evidence='Tests are not production users. Remove old-only oracle imports/cases with the obsolete module; keep checks of the live model.')]
     verify_docs={'docs/plans/bindings-20261025.md','apps/site/FILENAME-VIEWER.md',
                  '.github/workflows/raw-source-tables.md'}
     scans={repo:{p:digest(b) for p,b in data['bodies'].items()
@@ -720,29 +745,34 @@ def build(ct, ds, ct_rev, ds_rev):
         row['current_retention_import_classification']='mixed' if row['path'] in current_mixed_paths else 'reclassify_from_current_symbols_and_imports'
     attribute_refs={s['possible_attribute_callers_ref'] for f in files.values() for s in f['symbols']
                     if 'possible_attribute_callers_ref' in s}
-    inventory=dict(version=2,scope='F5 preparation only: no deletion or switch authorization',
+    inventory=dict(version=3,scope='CT-only F5 preparation: duplicate or superseded code only; no deletion authorization',
         source_commits={r:d['head'] for r,d in repos.items()},
         binding_sha256=digest(repos['ct']['bodies']['docs/plans/bindings-20261025.md']),
         generator_sha256=digest(Path(__file__).read_bytes()),
         groups=groups,files={k:files[k] for k in sorted(files)},mixed_tests=sorted(mixed,key=lambda x:x['file']),
+        nonproduction_dependents=sorted(nonproduction,key=lambda x:x['file']),
+        production_import_graph={p:index['imports'] for p,index in repos['ct']['indexes'].items()
+            if consumer_role(p)=='production'},
+        deferred_external_audits=[dict(repo='ds',
+            source_commit=git(ds,'rev-parse',ds_rev).decode().strip() if ds is not None else None,
+            status='outside strip scope; separate future audit across every external consumer')],
         possible_attribute_callers={key:attributes[tuple(key.split(':',1))] for key in sorted(attribute_refs)},
         current_retention_mixed_tests=sorted(historical_reconstructed,key=lambda x:x['path']),
         historical_mixed_tests=historical,
         rewrite_documents=rewrites,preserved_speed_tools=keeps,boundary_notes=boundary_notes,
-        external_consumers=[dict(name=n,status=s) for n,s in [('news_lake','WAIT/MIGRATE'),
-            ('committee_explorer','WAIT/MIGRATE'),('spicysearch','UNKNOWN external source'),
-            ('spicyengine','UNKNOWN external source'),('DocSpec lifecycle public API','WAIT/MIGRATE')]],
+        external_consumers=[dict(name=n,status='WAIT/MIGRATE') for n in ('news_lake','committee_explorer')],
         totals=dict(unique_files=len(files),wc_l_population=sum(f['wc_l'] for f in files.values()),
             by_category={category:sum(f['wc_l'] for f in files.values() if f['category']==category)
                 for category in sorted({f['category'] for f in files.values()})},
             mixed_test_files=len(mixed),retention_mixed_test_files=len(historical_reconstructed)),
         scanned_source_hashes=scans,
-        cut_procedure=['Regenerate at final committed CT/DS heads; refuse stale scanned-source hashes.',
-            'Resolve manual ranges and every current caller before applying that group.',
-            'Prepare one deletion commit per group, preserving mixed tests and partial-file keeps.',
+        cut_procedure=['Regenerate at the final committed CT head; refuse stale scanned-source hashes.',
+            'Name each removed file/function replacement and verify that production replacement is live.',
+            'Resolve manual ranges and production callers, workflows and external-consumer references before applying that group.',
+            'Prepare one deletion commit per group; remove obsolete-subject tests/fixtures/measurements with it, retain kept-subject cases and partial-file keeps.',
             'Measure wc -l before/after at cut; run affected surviving consumer project lanes.',
             'Do not delete any raw object, provenance, credential, report or active worktree.'])
-    assert len(groups)==19 and {g['binding_row'] for g in groups}==set(range(1,20))
+    assert len(groups)==18 and {g['binding_row'] for g in groups}==set(range(1,19))
     for g in groups:
         assert g['files'] or g['unresolved'] or g['already_removed']
         for r in g['ranges']:
@@ -756,7 +786,7 @@ def build(ct, ds, ct_rev, ds_rev):
 def main():
     parser=argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--ct',type=Path,required=True)
-    parser.add_argument('--ds',type=Path,required=True)
+    parser.add_argument('--ds',type=Path,help='Optional deferred external-audit source pin; never scanned or stripped')
     parser.add_argument('--ct-head',default='HEAD')
     parser.add_argument('--ds-head',default='HEAD')
     parser.add_argument('--out',type=Path)
@@ -764,8 +794,9 @@ def main():
     args=parser.parse_args()
     if args.verify:
         old=json.loads(args.verify.read_text())
+        if old.get('version')!=3:parser.error('Regenerate the CT-only version3 inventory before verification')
         changes={};uncommitted={}
-        for name,root in [('ct',args.ct),('ds',args.ds)]:
+        for name,root in [('ct',args.ct)]:
             _,_,bodies=snapshot(root,'HEAD')
             verify_docs={'docs/plans/bindings-20261025.md','apps/site/FILENAME-VIEWER.md',
                          '.github/workflows/raw-source-tables.md'}
