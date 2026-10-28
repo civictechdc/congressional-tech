@@ -144,13 +144,13 @@ def test_rollback_is_prepared_locally_before_remote_variables_change():
 @pytest.mark.parametrize('status,expected', [(0,1),(1,0),(2,1)])
 def test_local_v6_publisher_gate_drains_and_refuses_probe_errors(tmp_path, status, expected):
     forward = blocks()[0]
-    gate = re.search(r'# Local v6 publishers[^\n]*\n(.*?)\n# 1\. Private', forward, re.S)
+    gate = re.search(r'assert_no_local_publishers\(\) \{\n.*?\n\}', forward, re.S)
     assert gate is not None
     assert forward.index(gate[0]) < forward.index('--upload --bucket')
     tool = tmp_path / 'pgrep'
     tool.write_text('#!/bin/bash\nif test "$PGREP_STATUS" = 0; then echo 123; fi\nexit "$PGREP_STATUS"\n')
     tool.chmod(0o755)
-    result = subprocess.run(['/bin/bash'], input='set -euo pipefail\n' + gate[1], text=True,
+    result = subprocess.run(['/bin/bash'], input='set -euo pipefail\n' + gate[0] + '\nassert_no_local_publishers test\n', text=True,
         env={**os.environ, 'PATH': str(tmp_path) + os.pathsep + os.environ['PATH'],
              'WINDOW': str(tmp_path), 'PGREP_STATUS': str(status)}, capture_output=True)
     assert (result.returncode == 0) == (expected == 0)
@@ -211,8 +211,8 @@ def test_window_b_requires_acceptance_and_successful_window_a_before_publication
     phase = blocks()[1]
     assert 'WINDOW_B_READY=0' in phase
     gate = 'test -e "$WINDOW/window-a-complete"'
-    assert phase.index(gate) < phase.index('--check-binding')
-    assert phase.index(gate) < phase.index('gh workflow enable archive-jobs.yml')
+    assert phase.index(gate) < phase.index('--execute')
+    assert phase.index(gate) < phase.index('pause_and_drain')
     prefix = phase.split('cd "$LANDING"', 1)[0].replace('WINDOW_B_READY=0', 'WINDOW_B_READY=1')
     result = subprocess.run(['/bin/bash'], input=prefix, text=True, capture_output=True,
         env={**os.environ,'WINDOW':str(tmp_path)})
@@ -227,7 +227,7 @@ def test_window_a_records_pre_window_pipeline_and_pointer_before_live_effects():
     assert 'before-A-pointer.etag.json' in forward
 
 
-@pytest.mark.parametrize('scenario', ['success','cas409','cas412','lost_ack','status_failure','wrong_seed','wrong_status','missing_saved','bad_contract','wrong_binding'])
+@pytest.mark.parametrize('scenario', ['success','cas409','cas412','lost_ack','status_failure','wrong_seed','wrong_status','missing_saved','bad_contract','wrong_binding','bad_response','bad_binding_hash','missing_local_acceptance'])
 def test_after_data_rollback_uses_exact_saved_bytes_and_stops_on_uncertainty(tmp_path, monkeypatch, scenario):
     import types
     import hashlib
@@ -235,12 +235,21 @@ def test_after_data_rollback_uses_exact_saved_bytes_and_stops_on_uncertainty(tmp
     assert source is not None
     seed='a'*64
     (tmp_path/'accepted-seed-manifest.json').write_text(json.dumps(dict(release_id=seed,origin=dict(kind='seed_v5',display_only=True))))
-    (tmp_path/'accepted-publish-spec.json').write_text(json.dumps(dict(bucket='congressional-tech-raw',model_kind='raw' if scenario=='wrong_binding' else 'seed_v5')))
-    work=tmp_path/'post-data-rollback';evidence=work/'publish-evidence';evidence.mkdir(parents=True)
+    (tmp_path/'accepted-publish-spec.json').write_text(json.dumps(dict(bucket='congressional-tech-raw',model_kind='raw' if scenario=='wrong_binding' else 'seed_v5',work=str(tmp_path/'controller-work'))))
+    work=tmp_path/'post-data-rollback';work.mkdir();evidence=tmp_path/'controller-work';evidence.mkdir()
+    (tmp_path/'landed-application-commit.txt').write_text('c'*40)
+    local=tmp_path/'local-publish';local.mkdir()
+    binding=dict(landed_application='c'*40,release_id=seed,work=str(evidence),
+        manifest_sha256=hashlib.sha256((tmp_path/'accepted-seed-manifest.json').read_bytes()).hexdigest(),
+        spec_sha256=hashlib.sha256((tmp_path/'accepted-publish-spec.json').read_bytes()).hexdigest())
+    if scenario=='bad_binding_hash':binding['manifest_sha256']='0'*64
+    (local/'binding.json').write_text(json.dumps(binding))
+    if scenario!='missing_local_acceptance':(local/'accepted.json').write_text(json.dumps(dict(binding,observed_pointer_etag='seed-etag',status='published')))
     for name in ('contract','canary'):
         (evidence/(name+'.json')).write_text(json.dumps(dict(status='failed' if scenario=='bad_contract' else 'passed',releaseId=seed,targets='provisional-emulated')))
     saved=b'{ "version":1, "publisher_version":10, "catalog_id":"prior", "manifest":"old.json" }\n'
     if scenario!='missing_saved':(evidence/'outgoing-pointer.json').write_bytes(saved)
+    (evidence/'outgoing-pointer.response.json').write_text(json.dumps(dict(etag='opaque-original-etag',bytes=len(saved),sha256='0'*64 if scenario=='bad_response' else hashlib.sha256(saved).hexdigest())))
     calls=[]
     client=object()
     def connect_r2(**kwargs):
@@ -289,7 +298,8 @@ def test_after_data_rollback_restores_pair_before_prior_pages_and_workflow_state
     assert rollback.index('git -C "$LANDING" push origin') < rollback.index('dispatch_and_watch deploy-pages.yml')
     assert rollback.index('dispatch_and_watch deploy-pages.yml') < rollback.index('done < <(jq')
     assert 'previous-pipeline-revision.txt' in rollback
-    assert 'archive-publish-evidence-$PUBLISH_RUN_ID-$PUBLISH_ATTEMPT' in rollback
+    assert 'local-publish/binding.json' in rollback
+    assert 'gh run download' not in rollback
 
 
 @pytest.mark.parametrize('scenario',['advanced_main','dirty_checkout','wrong_local_head'])
@@ -337,8 +347,47 @@ def test_hosted_ci_health_is_separate_and_requires_actual_green_with_zero_failur
 
 def test_seed_publication_uses_only_the_local_existing_controller():
     phase=blocks()[1]
-    assert '-m viewer_publication.archive_publish_job' in phase
+    assert 'viewer_publication.archive_publish_job' in phase
     assert '--execute' in phase
     assert 'dispatch_and_watch archive-jobs.yml' not in phase
     assert 'gh workflow enable archive-jobs.yml' not in phase
+    assert phase.index('pause_and_drain') < phase.index('--execute')
     assert phase.index('local-publish/accepted.json') < phase.index('dispatch_and_watch deploy-pages.yml')
+
+
+@pytest.mark.parametrize('scenario',['idle','queued','in_progress','waiting','api_error','missing_revision'])
+def test_shared_pause_and_drain_uses_current_source_and_stops_before_publication(tmp_path,scenario):
+    source=re.search(r'pause_and_drain\(\) \{\n.*?\n\}',blocks()[0],re.S)
+    assert source is not None
+    tools=tmp_path/'bin';tools.mkdir();calls=tmp_path/'calls.jsonl'
+    (tmp_path/'managed-workflows-before.json').write_text(json.dumps([
+        dict(id=7,path='.github/workflows/kept.yml',state='active'),
+        dict(id=8,path='.github/workflows/retired.yml',state='active')]))
+    for name in ('git','gh'):
+        p=tools/name
+        p.write_text('#!'+sys.executable+'\n'+r'''
+import json,os,sys
+name=os.path.basename(sys.argv[0]);a=sys.argv[1:];scenario=os.environ['SCENARIO']
+with open(os.environ['CALLS'],'a') as f:f.write(json.dumps([name,*a])+'\n')
+if name=='git':
+    if 'cat-file' in a:raise SystemExit(8 if scenario=='missing_revision' else 0)
+    if 'ls-tree' in a:print('.github/workflows/kept.yml')
+    else:raise AssertionError(a)
+elif a[:2]==['workflow','list']:
+    print(json.dumps([dict(id=7,path='.github/workflows/kept.yml',state='active')]))
+elif a[:2]==['workflow','disable']:assert a[2]=='7'
+elif a[:2]==['run','list']:
+    if scenario=='api_error':raise SystemExit(9)
+    status=a[a.index('--status')+1]
+    print(json.dumps([dict(databaseId=99,status=status)] if scenario==status else []))
+else:raise AssertionError(a)
+''');p.chmod(0o755)
+    result=subprocess.run(['/bin/bash'],input='set -euo pipefail\n'+source[0]+
+        '\npause_and_drain '+('a'*40)+' test\ntouch "$WINDOW/controller-started"\n',
+        text=True,capture_output=True,env={**os.environ,'PATH':str(tools)+os.pathsep+os.environ['PATH'],
+        'WINDOW':str(tmp_path),'LANDING':str(tmp_path),'REPO':'fixture/repo','SCENARIO':scenario,'CALLS':str(calls)})
+    assert (result.returncode==0)==(scenario=='idle'),result.stderr
+    assert (tmp_path/'controller-started').exists()==(scenario=='idle')
+    invoked=[json.loads(line) for line in calls.read_text().splitlines()]
+    assert not any(row[:3]==['gh','workflow','disable'] and row[3]=='8' for row in invoked)
+    if scenario=='missing_revision':assert not any(row[0]=='gh' for row in invoked)
