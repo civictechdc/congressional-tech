@@ -49,6 +49,18 @@ def test_native_worklist_uses_md5_and_size_for_the_exact_physical_key(tmp_path):
     assert result['raw_custody']['missing_pins']==0
 
 
+def test_absent_physical_inventory_is_not_reported_as_ready_custody(tmp_path):
+    args,stored,_=inputs(tmp_path)
+    inventory=pq.read_table(args['body_inventory'])
+    pq.write_table(inventory.slice(0,0),args['body_inventory'])
+    result=readings.plan(**args,work=tmp_path/'plan',parser=None,raw_ranges=True)
+    assert result['raw_custody']['missing_pins']==1 and result['raw_custody']['missing_physical']==1
+    client=Client(stored,'gzip');work=tmp_path/'stage'
+    with pytest.raises(readings.RawCustodyRequired):
+        readings.stage_once(**args,work=work,body_store=R2Store(client,'bucket',cache_dir=work/'raw-pages'))
+    assert not client.reads
+
+
 @pytest.mark.parametrize('missing',['md5','size'])
 def test_missing_capture_pins_are_reported_and_refused_before_worker_or_get(tmp_path,missing):
     from congress_api.lake.readings import RawCustodyRequired
