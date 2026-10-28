@@ -148,3 +148,25 @@ def test_cleanup_signal_records_exited_group_errors_without_hiding_live_errors(c
     note=_signal_group(123,signal.SIGKILL,denied,lambda _group:False)
     assert note['errno']==code and note['group_exited'] is True
     with pytest.raises(OSError):_signal_group(123,signal.SIGKILL,denied,lambda _group:True)
+
+
+def test_cleanup_records_ps_and_wait_errors_and_still_attempts_kill():
+    import signal
+    import subprocess
+    from congress_api.lake.capture_backfill import _cleanup_child
+    class Child:
+        waits=0
+        def poll(self):return None
+        def wait(self,timeout):
+            assert timeout==5
+            self.waits+=1
+            if self.waits==1:raise InterruptedError('cancelled during cleanup wait')
+            return 0
+    sent=[]
+    def send(number):
+        sent.append(number)
+        if number==signal.SIGTERM:raise subprocess.CalledProcessError(1,['ps'])
+        raise subprocess.TimeoutExpired(['ps'],5)
+    errors=_cleanup_child(Child(),send)
+    assert sent==[signal.SIGTERM,signal.SIGKILL]
+    assert [row['type'] for row in errors]==['CalledProcessError','InterruptedError','TimeoutExpired']
