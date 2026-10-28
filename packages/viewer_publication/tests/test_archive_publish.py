@@ -23,7 +23,7 @@ class StorageError(RuntimeError):
 
 class Store:
     def __init__(self):
-        self.objects={};self.events=[];self.etag='initial';self.pointer_gets=0
+        self.objects={};self.events=[];self.etag='initial';self.pointer_gets=0;self.requests=[]
         self.meta=SimpleNamespace(config=SimpleNamespace(retries={'total_max_attempts':1}))
     def get_object(self,*,Bucket,Key):
         self.events.append(('get',Key))
@@ -32,7 +32,7 @@ class Store:
         body=self.objects[Key]
         return dict(Body=BytesIO(body),ContentLength=len(body),ETag=self.etag)
     def put_object(self,**request):
-        key=request['Key'];self.events.append(('put',key))
+        key=request['Key'];self.events.append(('put',key));self.requests.append(request)
         if key=='viewer-publications/manifest.json':
             if request.get('IfMatch') is not None and request['IfMatch']!=self.etag:raise StorageError(412)
             if request.get('IfNoneMatch')=='*' and key in self.objects:raise StorageError(412)
@@ -216,3 +216,23 @@ def test_local_contract_refuses_before_any_release_or_input_upload(tmp_path):
     assert native.calls==[] and 'viewer-publications/manifest.json' not in store.objects
     assert [key for action,key in store.events if action=='put']==['viewer-publications/status.json']
     assert json.loads(store.objects['viewer-publications/status.json'])['status']=='failed'
+
+
+def test_status_is_conditional_and_failure_keeps_the_original_refusal(tmp_path):
+    _,store,native=launch(tmp_path/'first')
+    writes=[request for request in store.requests if request['Key']=='viewer-publications/status.json']
+    assert writes[-1].get('IfNoneMatch')=='*'
+    changed,_=record(profile={'sql':'new','parser':'pinned'})
+    launch(tmp_path/'second',store=store,native=native,input_record=changed)
+    writes=[request for request in store.requests if request['Key']=='viewer-publications/status.json']
+    assert writes[-1].get('IfMatch') and 'IfNoneMatch' not in writes[-1]
+    class StatusRefusal(Store):
+        def put_object(self,**request):
+            if request['Key']=='viewer-publications/status.json':raise StorageError(503)
+            return super().put_object(**request)
+    failed=StatusRefusal()
+    def refused(**context):return dict(status='failed',releaseId=context['release_id'],targets='measured')
+    with pytest.raises(ValueError,match='contract') as error:
+        launch(tmp_path/'failed',store=failed,contract=refused)
+    assert 'Archive status update also failed' in error.value.__notes__
+    assert 'viewer-publications/manifest.json' not in failed.objects
