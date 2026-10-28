@@ -30,3 +30,7 @@ Local F1 acceptance complete. Final c1713681 full production-offline with approv
 **2026-10-28T04:33:49Z**
 
 F1 owner CLI seam: 25eb548e requires argv [--execute] before active preflight and dispatches the owner module once. Pending specs still refuse. Nine focused workflow tests passed; static CODE review APPROVE e27fef70^..506f8ecf, no findings. Owner installs actual specs and bindings at switch; no workflow dispatched.
+
+**2026-10-28 final local workflow wiring**
+
+519ee332/e265a811 bind the actual owner archive_publish_job, read-only --plan work export and one site build before the single --execute invocation. Only outgoing-pointer.json, contract.json and canary.json are retained after success/failure; access follows repository policy as engine clarified. Pending specs emit no metadata and refuse before runtime/storage access. Fourteen workflow checks pass; latest normal merge a4a4bc5d passes 92 focused workflow/gate/receipt/maintenance checks in 2.57s. Root's publisher CODE review covers this final seam; keep open until that review. Active job specs, pinned Linux runtime, measured targets and secret wiring remain owner activation steps. No workflow dispatched.
