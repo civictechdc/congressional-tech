@@ -6,6 +6,14 @@ The switch is **blocked: owner**. This checklist prepares the change; it does no
 2. Accept the full narrow D1 comparison and E4 comparison against the pinned old catalogs. The owner must decide each fact present only in derived tables. Complete current-version D2 and D3 backfills, the maintained-lake versus clean-rebuild byte comparison, and C6's full graph and join measurements within the 4-CPU/16-GB runner. A partial slice does not meet these gates.
 3. Before changing main, the lead records the enabled states of Pages, `publish-explorer` and the old publish, update and capture workflows, then pauses them and waits until no relevant queued, in-progress or waiting runs remain. Disabling a workflow does not drain its existing runs; never automatically cancel a job that may hold acquired data. The main push changes `apps/site` and `congress_shared`, which otherwise triggers Pages before publication. Keep Pages paused through runtime CI and the pointer flip. Leave the weekly meeting inventory job enabled until B14.
 
+   Confirm that no local v6 publish is running, using the lead's owned-run records and a PID-only check of its known entry points:
+
+   ```sh
+   pgrep -f 'publish-filename-viewer[.]py|viewer_publication[.]publish_filename_viewer'
+   ```
+
+   Any matching PID must be identified and drained before the switch. Preserve acquired data and preparation checkpoints; never automatically kill an unknown or acquiring process. Workflow pauses do not stop a local publisher. Every R2-writing workflow must use the shared `raw-source-mirror` lock with `queue: max`.
+
    Install the approved Linux runtime artifact and role-specific secrets through the existing environment bindings. Bind the public `CLOUDFLARE_ACCOUNT_ID` repository variable to `174055408ff1560e60601c4d12c561c4` before remote archive jobs; `archive-jobs.yml` reads this variable. Run the site speed harness on real devices and commit the approved targets. Install active publish, backfill and maintenance specs only after their dry runs pass. Pending specs deliberately refuse:
 
    ```sh
