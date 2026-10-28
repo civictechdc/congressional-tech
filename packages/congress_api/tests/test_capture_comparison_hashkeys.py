@@ -22,22 +22,48 @@ def explain_step(spec,name,*,native,work):
     return next(row['plan'] for row in result['plan'] if row['plan_type']=='physical_plan')
 
 
-@pytest.mark.parametrize('step_name',['matched','old_only','new_only'])
-def test_actual_comparison_plan_hashes_every_identity_without_key_residuals(tmp_path,step_name):
+@pytest.mark.parametrize('scoped',[False,True])
+def test_actual_comparison_pivot_groups_nullable_identities_without_wide_builds(tmp_path,scoped):
     old,parts=batch_fixture(tmp_path)
     native=NativeDatasets.from_config(os.environ['DOCSPEC_JOB_CONFIG'])
-    compare_old(parts,old,engine=native,work=tmp_path/'comparison')
+    compare_old(parts,old,engine=native,work=tmp_path/'comparison',receipt_keys=[KEY] if scoped else None)
+    spec=json.loads((tmp_path/'comparison/job.json').read_text())
+    retained={step['name'] for step in spec['steps'] if step.get('materialize',False)}
+    assert 'old_numbered' in retained and 'old_facts' not in retained
+    assert len(retained & {'new_input','new_values'})==1
+    work=tmp_path/'explain';work.mkdir()
+    physical=explain_step(spec,'paired',native=native,work=work)
+    aggregates=[line for line in physical.splitlines() if 'AggregateExec:' in line]
+    assert any('mode=Partial' in line for line in aggregates),physical
+    assert any('mode=FinalPartitioned' in line for line in aggregates),physical
+    assert 'RepartitionExec: partitioning=Hash' in physical,physical
+    for key in ('receipt_key','receipt_line','body_sha','pointer','occurrence','invalid_side'):
+        assert any(re.search(r'\b'+key+r'@',line) for line in aggregates),physical
+    # The surviving identity anti-join builds only secondary old-row IDs.
+    joins=[line for line in physical.splitlines() if 'HashJoinExec:' in line]
+    assert len(joins)==1+int(scoped),physical
+    [join]=[line for line in joins if 'join_type=RightAnti' in line]
+    assert 'old_row@' in join and 'filter=' not in join,physical
+    scope_joins=[line for line in joins if 'join_type=RightSemi' in line]
+    assert len(scope_joins)==int(scoped),physical
+    assert all('receipt_key@' in line and 'filter=' not in line for line in scope_joins),physical
+    assert 'projection=[old_row]' in physical,physical
+
+
+@pytest.mark.parametrize('step_name',['new_selected','excluded_receipts'])
+def test_comparison_scope_builds_only_the_small_receipt_key_set(tmp_path,step_name):
+    old,parts=batch_fixture(tmp_path)
+    native=NativeDatasets.from_config(os.environ['DOCSPEC_JOB_CONFIG'])
+    compare_old(parts,old,engine=native,work=tmp_path/'comparison',receipt_keys=[KEY])
     spec=json.loads((tmp_path/'comparison/job.json').read_text())
     work=tmp_path/'explain';work.mkdir()
     physical=explain_step(spec,step_name,native=native,work=work)
-    joins=[line for line in physical.splitlines() if 'HashJoinExec:' in line]
-    assert len(joins)==1,physical
-    [join]=joins
-    keys=join.split('on=[',1)[1].split(']',1)[0]
-    for key in ('receipt_key','receipt_line','body_sha','pointer','occurrence'):
-        assert len(re.findall(r'\b'+key+r'@',keys))==2,physical
-    assert 'NullsEqual: true' in join,physical
-    assert 'filter=' not in join,physical
+    join=next(line for line in physical.splitlines() if 'HashJoinExec:' in line)
+    assert ('join_type=RightSemi' if step_name=='new_selected' else 'join_type=RightAnti') in join,physical
+    # The first leaf below the join is the one-column explicit scope inventory.
+    leaves=[line for line in physical.splitlines()[physical.splitlines().index(join)+1:]
+            if 'DataSourceExec:' in line or 'StreamingTableExec:' in line]
+    assert leaves and 'receipt_key' in leaves[0] and 'projection=[receipt_key]' in leaves[0],physical
 
 
 @pytest.mark.parametrize('null_context',[False,True])
@@ -103,3 +129,25 @@ def test_former_equal_secondary_keys_still_never_normalize_null_facts(tmp_path,n
     assert report['secondary_duplicates']==0 and report['old_only']>=1 and report['owner_gate'] is True
     lost=pq.read_table(tmp_path/'comparison/old-only.parquet').to_pylist()
     assert any(row['reference_kind']=='file' and row[null_key] is None for row in lost)
+
+
+def test_new_only_proof_builds_only_ordinal_and_source_line_keys(tmp_path):
+    old,parts=batch_fixture(tmp_path)
+    native=NativeDatasets.from_config(os.environ['DOCSPEC_JOB_CONFIG'])
+    compare_old(parts,old,engine=native,work=tmp_path/'comparison')
+    spec=json.loads((tmp_path/'comparison/job.json').read_text())
+    work=tmp_path/'explain';work.mkdir()
+    physical=explain_step(spec,'new_only_proof',native=native,work=work)
+    lines=physical.splitlines()
+    joins=[line for line in lines if 'HashJoinExec:' in line]
+    assert len(joins)==2,physical
+    assert all('join_type=Right' in line and 'filter=' not in line for line in joins),physical
+    builds=[]
+    for join in joins:
+        leaves=[line for line in lines[lines.index(join)+1:]
+                if 'DataSourceExec:' in line or 'StreamingTableExec:' in line]
+        assert leaves,physical
+        builds.append(leaves[0])
+    assert any('projection=[old_source_key, old_source_line]' in line for line in builds),physical
+    assert any('projection=[proof_receipt_key, proof_receipt_line, proof_record_index, source_ordinal_occurrences]'
+               in line for line in builds),physical

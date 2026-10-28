@@ -60,6 +60,14 @@ def compare_old(evidence, old_index, *, engine, work, receipt_keys=None):
         for key in receipt_keys:validate_key(key)
         receipt_keys=sorted(receipt_keys)
     old_schema=pq.read_schema(old_index)
+    common_names=['receipt_key','receipt_line','body_sha','pointer','reference_kind','qualified_bodiless',
+        'family','run_id','member_path','body_key','original_path','resolution','outcome',
+        'context_url','bytes','stored_bytes','media_type','fidelity','http_status','retrieved_at']
+    new_names=common_names+['capture_index','record_is_list','source_record_count','source_record_index','occurrence']
+    integers={'receipt_line','bytes','stored_bytes','http_status','old_row','capture_index',
+              'source_record_count','source_record_index'}
+    booleans={'qualified_bodiless','record_is_list'}
+    strings=set(common_names)-integers-booleans
     work = Path(work).resolve()
     work.mkdir(parents=True, exist_ok=False)
     inputs=[dict(name='old_input',kind='parquet',path=str(Path(old_index).resolve()))]
@@ -71,11 +79,11 @@ def compare_old(evidence, old_index, *, engine, work, receipt_keys=None):
     if receipt_keys is not None:
         inputs.append(json_input(work,'comparison_receipts',
             [dict(receipt_key=key) for key in receipt_keys],receipt_key='Utf8'))
-        steps.append(dict(name='new_selected',sql='''SELECT n.* FROM new_input n
-            LEFT SEMI JOIN comparison_receipts s ON n.receipt_key=s.receipt_key'''))
+        steps.append(dict(name='new_selected',sql='''SELECT n.* FROM comparison_receipts s
+            RIGHT SEMI JOIN new_input n ON n.receipt_key=s.receipt_key'''))
         new_input='new_selected'
-    excluded='''SELECT n.receipt_key,count(*) AS rows FROM new_input n
-        LEFT ANTI JOIN comparison_receipts s ON n.receipt_key=s.receipt_key
+    excluded='''SELECT n.receipt_key,count(*) AS rows FROM comparison_receipts s
+        RIGHT ANTI JOIN new_input n ON n.receipt_key=s.receipt_key
         GROUP BY n.receipt_key ORDER BY n.receipt_key''' if receipt_keys is not None else '''
         SELECT receipt_key,cast(0 AS BIGINT) AS rows FROM new_input WHERE false'''
     steps.extend([
@@ -108,7 +116,8 @@ def compare_old(evidence, old_index, *, engine, work, receipt_keys=None):
         for name in ('context_url','bytes','stored_bytes','media_type','fidelity','http_status','retrieved_at'):
             kind = 'BIGINT' if name in {'bytes','stored_bytes','http_status'} else 'VARCHAR'
             cols.append(value(schema,name,kind)+' AS "'+name+'"')
-        if not old:
+        if old:cols.append('old_row')
+        else:
             cols.append('capture_index')
             for name,kind,valid in [('record_is_list','BOOLEAN',pa.types.is_boolean),
                     ('source_record_count','BIGINT',pa.types.is_integer),
@@ -116,7 +125,10 @@ def compare_old(evidence, old_index, *, engine, work, receipt_keys=None):
                 expression=(value(schema,name,kind) if name in schema.names and valid(schema.field(name).type)
                             else f'cast(NULL AS {kind})')
                 cols.append(expression+' AS '+name)
-        return 'SELECT '+','.join(cols)+' FROM '+('old_input' if old else new_input)
+        names=common_names+(['old_row'] if old else new_names[len(common_names):-1])
+        plain=[f'arrow_cast(cast("{name}" AS VARCHAR),\'Utf8\') AS "{name}"' if name in strings
+               else '"'+name+'"' for name in names]
+        return 'SELECT '+','.join(plain)+' FROM (SELECT '+','.join(cols)+' FROM '+('old_numbered' if old else new_input)+')'
     old_order = ','.join('"'+f+'"' for f in old_schema.names)
     # Keep the small count/scope results instead of the consumed union. Release
     # its dependent view too, so no surviving plan holds the original buffers.
@@ -124,31 +136,38 @@ def compare_old(evidence, old_index, *, engine, work, receipt_keys=None):
     if receipt_keys is not None:source_names+=['new_selected','comparison_receipts']
     steps += [dict(name='new_values',sql=projection(new_schema),release_after=source_names),
         dict(name='new_totals',sql='SELECT count(*) AS rows FROM new_values',materialize=True),
-        dict(name='old_numbered',sql=f'SELECT *,row_number() OVER (ORDER BY {old_order}) AS old_row FROM old_input',
-             release_after=['old_input']),
+        dict(name='old_plain',sql='SELECT '+','.join(
+            f'arrow_cast("{f.name}",\'Utf8\') AS "{f.name}"' if pa.types.is_string(f.type) or pa.types.is_large_string(f.type)
+            else '"'+f.name+'"' for f in old_schema)+' FROM old_input'),
+        dict(name='old_numbered',sql=f'SELECT *,row_number() OVER (ORDER BY {old_order}) AS old_row FROM old_plain',
+             release_after=['old_input','old_plain']),
         dict(name='old_totals',sql='SELECT count(*) AS rows FROM old_numbered',materialize=True),
-        dict(name='old_facts',sql=projection(old_schema,True).replace('FROM old_input',',old_row FROM old_numbered')),
+        dict(name='old_facts',sql=projection(old_schema,True)),
         # Filtering only matching views preserves the original '=' treatment of
         # NULL locators and SHA values. Unmatched source rows remain in the oracle.
-        dict(name='old_secondary_keys',sql='''SELECT * FROM old_facts WHERE receipt_key IS NOT NULL
+        dict(name='old_file_keys',sql='''SELECT old_row,receipt_key,receipt_line,body_sha,context_url,stored_bytes,body_key
+            FROM old_facts WHERE reference_kind IN ('file','retained-file')
+            AND receipt_key IS NOT NULL AND receipt_line IS NOT NULL AND body_sha IS NOT NULL''',materialize=True),
+        dict(name='old_secondary_keys',sql='''SELECT receipt_key,receipt_line,body_sha,context_url FROM old_facts
+            WHERE reference_kind IN ('capture','embedded') AND receipt_key IS NOT NULL
             AND receipt_line IS NOT NULL AND body_sha IS NOT NULL'''),
-        dict(name='new_secondary_keys',sql='''SELECT * FROM new_values WHERE receipt_key IS NOT NULL
+        dict(name='new_secondary_keys',sql='''SELECT receipt_key,receipt_line,body_sha,context_url,stored_bytes,body_key
+            FROM new_values WHERE receipt_key IS NOT NULL
             AND receipt_line IS NOT NULL AND body_sha IS NOT NULL'''),
-        dict(name='secondary_duplicates',sql='''SELECT o.old_row FROM old_facts o
+        dict(name='secondary_duplicates',sql='''SELECT o.old_row FROM old_file_keys o
             LEFT SEMI JOIN old_secondary_keys c ON
                 (c.receipt_key IS NOT DISTINCT FROM o.receipt_key)
                 AND (c.receipt_line IS NOT DISTINCT FROM o.receipt_line)
                 AND (c.body_sha IS NOT DISTINCT FROM o.body_sha)
                 AND (c.context_url IS NOT DISTINCT FROM o.context_url)
-                AND c.reference_kind IN ('capture','embedded')
             LEFT SEMI JOIN new_secondary_keys n ON
                 (n.receipt_key IS NOT DISTINCT FROM o.receipt_key)
                 AND (n.receipt_line IS NOT DISTINCT FROM o.receipt_line)
                 AND (n.body_sha IS NOT DISTINCT FROM o.body_sha)
                 AND (n.context_url IS NOT DISTINCT FROM o.context_url)
                 AND (o.stored_bytes IS NULL OR o.stored_bytes IS NOT DISTINCT FROM n.stored_bytes)
-                AND (o.body_key IS NULL OR o.body_key IS NOT DISTINCT FROM n.body_key)
-            WHERE o.reference_kind IN ('file','retained-file')'''),
+                AND (o.body_key IS NULL OR o.body_key IS NOT DISTINCT FROM n.body_key)''',
+             release_after=['old_file_keys','old_secondary_keys','new_secondary_keys']),
         # Both old_row columns come from row_number(), so neither is NULL.
         # A normal anti join permits the key-only side to be the build; NOT IN
         # forces a wide, null-aware build and one oversized unmatched batch.
@@ -165,25 +184,51 @@ def compare_old(evidence, old_index, *, engine, work, receipt_keys=None):
     steps.extend([
         dict(name='old_normalized',sql=f'''SELECT *,row_number() OVER (
             PARTITION BY {occurrence_keys} ORDER BY {occurrence_order},old_row) AS occurrence
-            FROM old_values''',release_after=['old_values','old_facts','old_secondary_keys','new_secondary_keys']),
+            FROM old_values'''),
         dict(name='source_ordinals',sql='''SELECT receipt_key AS proof_receipt_key,
             receipt_line AS proof_receipt_line,source_record_index AS proof_record_index,
             count(*) AS source_ordinal_occurrences FROM new_values
             GROUP BY receipt_key,receipt_line,source_record_index''',materialize=True),
         dict(name='new_facts',sql=f'''SELECT *,row_number() OVER (
             PARTITION BY {occurrence_keys} ORDER BY {source_item_order},{occurrence_order},capture_index) AS occurrence
-            FROM new_values''',release_after=['new_values']),
-        dict(name='old_matchable',sql='''SELECT * FROM old_normalized
-            WHERE receipt_key IS NOT NULL AND receipt_line IS NOT NULL'''),
-        dict(name='new_matchable',sql='''SELECT * FROM new_facts
-            WHERE receipt_key IS NOT NULL AND receipt_line IS NOT NULL''')])
-    # DataFusion 53 extracts all null-safe hash keys only when no '=' key is
-    # mixed into ON. Non-null locator views retain the former '=' semantics.
-    join = '''(o.receipt_key IS NOT DISTINCT FROM n.receipt_key)
-        AND (o.receipt_line IS NOT DISTINCT FROM n.receipt_line)
-        AND (o.body_sha IS NOT DISTINCT FROM n.body_sha)
-        AND (o.pointer IS NOT DISTINCT FROM n.pointer)
-        AND (o.occurrence IS NOT DISTINCT FROM n.occurrence)'''
+            FROM new_values''')])
+    # The retained fact Parquets are not lifecycle ReleasePins, so the native
+    # changes endpoint cannot address them. Use its signed-grouping shape in
+    # this job, with application-only restoration classification afterward.
+    # Invalid locators stay separate across sides, preserving unmatched NULLs.
+    keys=occurrence_keys+',occurrence,invalid_side'
+    payload=[n for n in common_names if n not in occurrence_keys.split(',')]+[
+        'old_row','capture_index','record_is_list','source_record_count','source_record_index']
+    def tagged(side,table):
+        available=set(common_names+(['old_row'] if side=='old' else new_names[len(common_names):]))
+        columns=[]
+        for name in payload:
+            kind='BIGINT' if name in integers else 'BOOLEAN' if name in booleans else 'VARCHAR'
+            expression=f'cast("{name}" AS {kind})' if name in available else f'cast(NULL AS {kind})'
+            if name not in integers|booleans:expression=f'arrow_cast({expression},\'Utf8\')'
+            columns.append(expression+' AS "'+name+'"')
+        return f'''SELECT {occurrence_keys},occurrence,
+            CASE WHEN receipt_key IS NULL OR receipt_line IS NULL THEN '{side}' END AS invalid_side,
+            '{side}' AS side,'''+','.join(columns)+' FROM '+table
+    def record(side,names):
+        fields=[]
+        for name in names:
+            if name in occurrence_keys.split(',') or name=='occurrence':expression=name
+            else:
+                aggregate='bool_or' if name in booleans else 'max'
+                expression=f'{aggregate}(CASE WHEN side=\'{side}\' THEN "{name}" END)'
+            fields.extend(["'"+name+"'",expression])
+        return 'named_struct('+','.join(fields)+')'
+    steps.extend([
+        dict(name='tagged_facts',sql=tagged('old','old_normalized')+' UNION ALL '+tagged('new','new_facts')),
+        dict(name='paired',sql=f'''SELECT {keys},
+            sum(CASE WHEN side='old' THEN 1 ELSE 0 END) AS old_n,
+            sum(CASE WHEN side='new' THEN 1 ELSE 0 END) AS new_n,
+            {record('old',common_names+['old_row','occurrence'])} AS o,
+            {record('new',new_names)} AS n FROM tagged_facts GROUP BY {keys}''',materialize=True,
+            release_after=['tagged_facts','old_normalized','new_facts','old_values','old_facts','new_values']),
+        dict(name='paired_totals',sql='''SELECT coalesce(sum(CASE WHEN old_n>0 AND new_n>0 THEN 1 ELSE 0 END),0)
+            AS matched FROM paired''',materialize=True)])
     stable = ' OR '.join(f'(o."{k}" IS DISTINCT FROM n."{k}")'
                          for k in ('bytes','media_type','fidelity'))
     old_time='try_cast(o.retrieved_at AS TIMESTAMP WITH TIME ZONE)'
@@ -221,21 +266,24 @@ def compare_old(evidence, old_index, *, engine, work, receipt_keys=None):
         fact_values.extend(f'cast({side}."{name}" AS {kind}) AS "{label}_{name}"'
                            for side,label in [('o','old'),('n','new')])
     fact_values=','.join(fact_values)
-    steps += [dict(name='old_only',sql=f'SELECT o.old_row FROM new_matchable n RIGHT ANTI JOIN old_normalized o ON {join}'),
+    steps += [dict(name='old_only',sql='SELECT o.old_row AS old_row FROM paired WHERE old_n>0 AND new_n=0'),
         dict(name='old_source_lines',sql='SELECT DISTINCT receipt_key AS old_source_key,receipt_line AS old_source_line FROM old_numbered',materialize=True),
         # Build the small unmatched-key side; preserve every original column
         # before releasing the full numbered old population.
         dict(name='old_only_records',sql='''SELECT o.* FROM old_only m JOIN old_numbered o
             ON o.old_row=m.old_row''',materialize=True,release_after=['old_numbered','old_only']),
-        dict(name='matched',sql=f'''SELECT o.old_row,n.receipt_key,n.receipt_line,n.capture_index,
-        n.body_sha,n.pointer,{fact_values},
+        dict(name='matched_all',sql=f'''SELECT o.old_row AS old_row,n.receipt_key AS receipt_key,
+        n.receipt_line AS receipt_line,n.capture_index AS capture_index,
+        n.body_sha AS body_sha,n.pointer AS pointer,{fact_values},
         cast(o.retrieved_at AS VARCHAR) AS old_retrieved_at,
         cast(n.retrieved_at AS VARCHAR) AS new_retrieved_at,
         {time_reason} AS retrieved_at_reason,
         ({unexpected}) AS unexplained,({expected}) AS expected_change
-        FROM old_matchable o JOIN new_matchable n ON {join}'''),
-        dict(name='new_only',sql=f'SELECT n.* FROM old_matchable o RIGHT ANTI JOIN new_facts n ON {join}',
-             release_after=['old_matchable','new_matchable','old_normalized','new_facts'])]
+        FROM paired WHERE old_n>0 AND new_n>0'''),
+        dict(name='matched',sql='SELECT * FROM matched_all WHERE unexplained OR expected_change',
+             release_after=['matched_all']),
+        dict(name='new_only',sql='SELECT '+','.join('n."'+name+'" AS "'+name+'"' for name in new_names)+
+             ' FROM paired WHERE new_n>0 AND old_n=0',release_after=['paired'])]
     # Source proof is carried only by the receipt-derived private evidence.
     # A key or URL resemblance alone cannot establish a collapsed source item.
     steps.extend([
@@ -244,10 +292,11 @@ def compare_old(evidence, old_index, *, engine, work, receipt_keys=None):
             AND n.record_is_list IS TRUE AND n.source_record_count>1
             AND n.source_record_index>=0 AND n.source_record_index<n.source_record_count
             AND q.source_ordinal_occurrences=1 AND o.old_source_key IS NOT NULL,false)
-            AS expected_source_list_item FROM new_only n LEFT JOIN source_ordinals q
+            AS expected_source_list_item FROM old_source_lines o RIGHT JOIN (
+            source_ordinals q RIGHT JOIN new_only n
             ON n.receipt_key=q.proof_receipt_key AND n.receipt_line=q.proof_receipt_line
-            AND n.source_record_index=q.proof_record_index
-            LEFT JOIN old_source_lines o ON n.receipt_key=o.old_source_key AND n.receipt_line=o.old_source_line''',materialize=True,
+            AND n.source_record_index=q.proof_record_index)
+            ON n.receipt_key=o.old_source_key AND n.receipt_line=o.old_source_line''',materialize=True,
              release_after=['new_only','source_ordinals','old_source_lines']),
         dict(name='new_only_classified',sql="""SELECT *,CASE WHEN expected_source_list_item
             THEN 'source_list_item_restored' ELSE 'unexplained_new_row' END AS reason
@@ -255,8 +304,17 @@ def compare_old(evidence, old_index, *, engine, work, receipt_keys=None):
     # Shared native sorts and joins execute once for all exports and counts.
     for step in steps:
         if step['name'] in {'old_numbered','old_facts','new_values','secondary_duplicates',
-                            'old_normalized','new_facts','matched','old_only','new_only'}:
+                            'matched','old_only','new_only'}:
             step['materialize']=True
+    # Retain one wide input per side; plain projections stay as views.
+    # Single-use views consume their producer once.
+    # Number and narrow the old oracle before retaining the new-side payload.
+    first_names={'old_plain','old_numbered','old_totals','old_facts'}
+    steps=[step for step in steps if step['name'] in first_names]+[
+        step for step in steps if step['name'] not in first_names]
+    for step in steps:
+        if step['name'] in {'old_facts','new_values','old_file_keys','old_only','new_only'}:
+            step['materialize']=False
     outputs = [parquet_output(work,'old-only',
         'SELECT * FROM old_only_records',['old_row']),
         parquet_output(work,'new-only','SELECT * FROM new_only_classified',
@@ -277,7 +335,7 @@ def compare_old(evidence, old_index, *, engine, work, receipt_keys=None):
         (SELECT count(*) FROM new_only_classified WHERE NOT expected_source_list_item) AS unexplained_new_only,
         (SELECT count(*) FROM matched WHERE unexplained) AS unexplained,
         (SELECT count(*) FROM matched WHERE expected_change AND NOT unexplained) AS expected_changes,
-        (SELECT count(*) FROM matched) AS matched'''
+        (SELECT matched FROM paired_totals) AS matched'''
     native=run_job(work,engine,inputs=inputs,steps=steps,outputs=outputs,queries=[
         dict(name='counts',sql=query),
         dict(name='input_new_rows',sql='SELECT rows FROM input_totals'),

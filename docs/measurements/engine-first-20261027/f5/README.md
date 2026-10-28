@@ -6,6 +6,8 @@ The version3 inventory reads committed CT blobs, records hashes and `wc -l`, and
 
 The raw writer, body store, provenance, shared custody and `derived_files.copy_checked`, weekly meeting tables, news_lake, committee explorer, called docspec_client paths, review binding APIs and canonical review data stay. The active publication pointer writer, `VerifiedTransfer`, namespace checks and their imports remain explicit keeps. Phase-2 PDF copying, receipt rewriting and review import gates remain visible. The retired v6 benchmark and its old-only tests are superseded by `apps/site/scripts/measure-archive.mjs`; the active target/browser harness and process-memory sampler stay.
 
+The CT-only snapshot at `a3547a18` has SHA-256 `4fe18d00ad4de1487d5787ef2c47b0184174d68bb1c732a007e0bf50e6ff144f`: 609 files and 128,077 population lines, including 51,162 source, 74,502 test, 1,814 configuration and 599 document lines. Fixed-head regeneration is byte-identical. Nineteen focused checks pass in 2.62 seconds. The single code review's two findings were reproduced and fixed: canonical review keeps and replacement-path accuracy. Current verification correctly refuses the uncommitted comparator scale probe; this snapshot is preparation evidence, not a clean final switch inventory.
+
 The earlier inventory `3df1f981` covered 19 groups and included engine files. It is historical and must not be used for the current strip. The selected JSON is `codex-raw/cxb_switch_deletions.json` in the protocol scratch directory; immutable prior selections remain under `run2/f5/`. Regenerate from the final combined CT head after all source changes land. Candidate population counts include shared and gated files and are not deletion estimates.
 
 ```sh
