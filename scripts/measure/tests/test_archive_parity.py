@@ -115,3 +115,13 @@ def test_missing_identity_and_invalid_classification_records_refuse_completion(t
     assert result['counts']['invalid_ids']==1
     assert result['counts']['invalid_records']>=1
     assert result['decision_ready'] is False
+
+
+def test_descriptor_requires_the_pinned_pair_and_actual_candidate_files(tmp_path):
+    path=tmp_path/'parity-inputs.json'
+    path.write_text(json.dumps(dict(version=1,oracle=dict(selector=dict(path='missing',sha256='0'*64,size=0)))))
+    with pytest.raises(ValueError,match='missing|Missing'):
+        parity.load_descriptor(path)
+    path.write_text(json.dumps(dict(version=1,oracle=dict(selector=dict(path='missing',sha256='0'*64,size=0)),candidate=dict(kind='f0'))))
+    with pytest.raises(ValueError,match='missing|Missing'):
+        parity.load_descriptor(path)
