@@ -145,7 +145,8 @@
         "context",
         "text",
         "doc_type",
-        "link_index"
+        "link_index",
+        "context_url"
       ]
     },
     "current_recoveries": {
@@ -159,7 +160,37 @@
         "kind",
         "recovered_url",
         "recovered_filename",
-        "decided_at"
+        "decided_at",
+        "identity_note"
+      ]
+    },
+    "source_filename_readings": {
+      "path": "parity/source_filename_readings.parquet",
+      "sha256": "0000000000000000000000000000000000000000000000000000000000000000",
+      "size": 0,
+      "required_columns": [
+        "source_id",
+        "status",
+        "document_kind"
+      ]
+    },
+    "source_annotation_publisher": {
+      "path": "parity/source_annotation_publisher.parquet",
+      "sha256": "0000000000000000000000000000000000000000000000000000000000000000",
+      "size": 0,
+      "required_columns": [
+        "source_id",
+        "document_kind",
+        "listing_title"
+      ]
+    },
+    "source_annotations": {
+      "path": "parity/source_annotations.parquet",
+      "sha256": "0000000000000000000000000000000000000000000000000000000000000000",
+      "size": 0,
+      "required_columns": [
+        "source_id",
+        "title"
       ]
     }
   },

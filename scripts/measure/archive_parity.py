@@ -595,7 +595,7 @@ CAUSES = {
     'real_web_untyped': (['body_keys','files'], 'added',
         f"{_text('record_role')}='document' AND {_bool('is_real_file')} AND ({_text('format')}='html' OR {_text('format')} IS NULL)"),
     'incomplete_damaged_failed_feed': (['body_keys','files'], 'removed',
-        f"({_bool('complete')}=false OR {_text('record_role')}='damaged' OR {_text('reading_status')} IN ('failed','missing') OR {_text('xml_kind')}='feed')"),
+        f"({_bool('complete')}=false OR {_text('record_role')}='damaged' OR {_text('reading_status')} IN ('failed','missing','error','size_limit','unreadable') OR {_text('xml_kind')}='feed')"),
     'recovery_independent_fetch': (['body_keys','files'], 'added',
         f"{_text('mode')}='fetch' AND {_bool('complete')} AND {_int('http_status')} BETWEEN 200 AND 299 AND {_text('outcome')} IN ('stored','unchanged') AND {_text('recovery_original_url')} IS NOT NULL"),
     'direct_provider_same_text': (['body_keys','files'], 'added',
@@ -607,13 +607,13 @@ CAUSES = {
     'capture_header_names': (['filename','files'], ['added','removed'],
         f"{_text('name_basis')}='content_disposition' AND ((direction='added' AND {_text('header_filename')}=value) OR (direction='removed' AND {_text('header_filename')}<>value))"),
     'saved_text_exact_twins': (['body_keys','files','saved_body'], 'removed',
-        f"{_text('fingerprint')} IS NOT NULL AND {_text('fingerprint')}={_text('other_fingerprint')} AND {_text('source_url')}={_text('other_source_url')} AND {_text('fidelity')}='saved_text' AND {_text('other_fidelity')}='exact'"),
+        f"{_text('fingerprint')} IS NOT NULL AND {_text('fingerprint')}={_text('other_fingerprint')} AND {_text('source_url')}={_text('other_source_url')} AND {_text('fidelity')}='saved-text' AND {_text('other_fidelity')}='exact-bytes'"),
     'govinfo_same_stem_groups': (['body_keys','files'], 'added',
         f"{_text('group_id')} IS NOT NULL AND ({_text('group_kind')}='same_stem' OR ({_text('group_kind')}='publisher' AND regexp_like({_text('source_url')},'^https?://([^/]+[.])?govinfo[.]gov/')))"),
     'old_placeholder_xml': (['body_keys','files'], 'removed',
         f"{_text('record_role')}='error_response' AND {_text('format')}='html' AND {_int('distinct_contexts')}>100 AND regexp_like({_text('source_url')},'^https?://docs[.]house[.]gov/.*[.]xml([?#]|$)')"),
     'link_label_provenance': (['title','source.link_text','source.listed_on'], 'added',
-        f"{_text('label_basis')}='saved_page' AND {_text('link_text')}=value"),
+        f"{_text('label_basis')}='saved_page' AND ((field='source.listed_on' AND {_text('listed_on')}=value) OR (field<>'source.listed_on' AND {_text('link_text')}=value))"),
     'capture_dates': (['first_captured','in_archive_since','date_kind'], 'removed',
         f"{_text('retrieved_at')} IS NULL AND {_bool('is_import_run')} AND {_text('old_time_basis')}='import_run'"),
     'govinfo123_fetch': (['first_captured','body_keys','files'], 'added',
@@ -679,7 +679,7 @@ def model_witness_steps(available, *, restrict_differences=False):
         missing.remove('govinfo_same_stem_groups')
     steps.append(dict(name='e4_twin_observations',sql="""SELECT a.*,b.fingerprint AS other_fingerprint,b.source_url AS other_source_url,b.fidelity AS other_fidelity
         FROM e4_observations a JOIN e4_source_observations b ON a.source_url=b.source_url AND a.fingerprint=b.fingerprint
-        WHERE a.fidelity='saved_text' AND b.fidelity='exact' AND a.body_sha<>b.body_sha""",materialize=True))
+        WHERE a.fidelity='saved-text' AND b.fidelity='exact-bytes' AND a.body_sha<>b.body_sha""",materialize=True))
     for subject in ['body_key','json_array(body_key,source_url)',"''"]:
         branch('e4_twin_observations',{key:key for key in ['fingerprint','source_url','fidelity','other_fingerprint','other_source_url','other_fidelity']},subject=subject)
     missing.remove('saved_text_exact_twins')
@@ -706,13 +706,28 @@ def model_witness_steps(available, *, restrict_differences=False):
                 **{'expected_'+name:'CASE WHEN approved_'+name+' IS NOT NULL THEN json_array(approved_'+name+') END' for name in ['imported_at','suffix','bytes']}),
                 subject='body_sha256',evidence="'raw-recoveries-owner-32c13ffa:'||id")
             missing.remove('b7_owner_recoveries')
-    if {'source_id','page_body','context','text','doc_type','link_index'}<=available.get('publisher_links',set()):
-        steps.append(dict(name='e4_link_observations',sql='SELECT o.*,p.page_body,p.context,p.text AS link_text,p.doc_type AS publisher_kind,p.link_index FROM e4_observations o JOIN publisher_links p USING(source_id)',materialize=True))
-        for subject in ["''","source_url"]:
-            branch('e4_link_observations',dict(label_basis="'saved_page'",link_text='link_text'),subject=subject,evidence="'page:'||page_body||':'||cast(link_index AS VARCHAR)")
+    if {'source_id','page_body','context_url','text','doc_type','link_index'}<=available.get('publisher_links',set()):
+        steps.append(dict(name='e4_link_observations',sql='SELECT o.*,p.page_body,p.context_url AS listed_on,p.text AS link_text,p.link_index FROM e4_observations o JOIN publisher_links p USING(source_id)',materialize=True))
+        branch('e4_link_observations',dict(label_basis="'saved_page'",link_text='link_text',listed_on='listed_on'),subject='source_url',evidence="'page:'||page_body||':'||cast(link_index AS VARCHAR)")
         missing.remove('link_label_provenance')
-        # Raw doc_type is attribution, not a registry-mapped document kind.
-        # The model's canonical kind evidence is a producer dependency.
+    annotations={'source_filename_readings':{'source_id','status','document_kind'},
+        'source_annotation_publisher':{'source_id','document_kind','listing_title'},
+        'new_wide':{'doc','list_row','filename','saved_body'},
+        'release_sources':{'list_row','url','member_path','is_saved'}}
+    if all(fields<=available.get(name,set()) for name,fields in annotations.items()):
+        steps.append(dict(name='e4_saved_annotations',sql="""SELECT o.*,p.document_kind AS publisher_kinds,p.listing_title,
+            cast(CASE WHEN f.status='completed' THEN coalesce(cardinality(f.document_kind),0) ELSE 0 END AS BIGINT) AS filename_kind_count
+            FROM e4_observations o JOIN new_wide n ON o.side='new' AND o.doc=n.doc
+            JOIN release_sources a ON a.list_row=n.list_row AND a.is_saved AND a.url=o.source_url
+                AND (a.member_path IS NOT DISTINCT FROM o.member_path)
+            JOIN source_filename_readings f ON o.source_id=f.source_id JOIN source_annotation_publisher p ON o.source_id=p.source_id
+            WHERE o.body_sha=encode(n.saved_body,'hex') AND o.filename=n.filename""",materialize=True))
+        steps.append(dict(name='e4_publisher_kinds',sql='SELECT *,unnest(publisher_kinds) AS publisher_kind FROM e4_saved_annotations',materialize=True))
+        branch('e4_publisher_kinds',dict(filename_kind_count='filename_kind_count',publisher_kind='publisher_kind',link_basis="'saved_page'"),subject="''",evidence="'model:source_annotation_publisher:'||source_id")
+        missing.remove('publisher_link_kind')
+        if {'source_id','title'}<=available.get('source_annotations',set()):
+            steps.append(dict(name='e4_publisher_titles',sql='SELECT o.*,a.title AS effective_title FROM e4_saved_annotations o JOIN source_annotations a USING(source_id)',materialize=True))
+            branch('e4_publisher_titles',dict(label_basis="'saved_page'",link_text='listing_title'),subject="''",condition='listing_title=effective_title',evidence="'model:source_annotation_publisher:'||source_id")
     # The official-package proof needs its retained raw association flag; no URL
     # inference substitutes for the owner's publisher_requested condition.
     official={'publisher_requested','match_basis','original_url'}
@@ -916,6 +931,8 @@ def compare_descriptor(descriptor, *, engine_config, work):
     if kind=='model':
         import pyarrow.parquet as pq
         available={name:set(pq.read_schema(path).names) for name,path in loaded['paths'].items() if name in loaded['descriptor'].get('cause_relations',{}) or name.startswith('b7_')}
+        available['new_wide']=set(pq.read_schema(loaded['paths']['document_rows']).names)|{'doc'}
+        available['release_sources']=set(pq.read_schema(loaded['paths']['release_sources']).names)
         witness_steps,missing=model_witness_steps(available,restrict_differences=True)
         witness=witness_steps.pop()
         steps+=witness_steps
