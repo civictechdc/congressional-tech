@@ -16,6 +16,7 @@ import sys
 import time
 
 from congress_api.retention.body_store import validate_key
+from congress_api.retention.provenance import file_pin
 
 
 CHECK_SCOPES={
@@ -193,3 +194,144 @@ raise SystemExit(process.returncode)
     if failure:raise RuntimeError(failure['message'])
     if result['returncode']!=0:raise RuntimeError('Batch exited '+str(result['returncode'])+'; see '+str(log))
     return result
+
+
+def runtime_identity(engine,engine_config):
+    """Bind the CLI subprocesses to the same explicit native runtime."""
+    from docspec_client.client import NativeDatasets
+    configured=NativeDatasets.from_config(engine_config)
+    fields=('source_revision','binary_sha256','remote','limits','binary')
+    if any(getattr(engine,name)!=getattr(configured,name) for name in fields):
+        raise ValueError('Batch CLI configuration differs from the admitted native runtime')
+    configured.verify_runtime()
+    if configured.limits is None:raise ValueError('Backfill requires explicit native limits')
+    limits=json.loads(configured.limits.read_text())
+    for name,maximum in (('compute_threads',4),('memory_bytes',14<<30),('scratch_bytes',6<<30)):
+        if type(limits.get(name)) is not int or not 0<limits[name]<=maximum:
+            raise ValueError('Backfill native '+name+' exceeds the qualified runner budget')
+    return dict(source_revision=engine.source_revision,binary_sha256=engine.binary_sha256,
+        config=file_pin(engine_config),limits=file_pin(configured.limits))
+
+
+def execute_batches(files,counts,*,engine,engine_config,work,table,catalog_root,location=None,
+                    create_table=False,create_namespace=False,byte_target=256<<20,item_target=200000,
+                    validated_counter=None,source_qualifications=None):
+    """Call the incremental CLI once per whole batch; never run downstream jobs.
+
+    A fresh invocation replans from the pinned inputs. Each child resolves fresh
+    native heads and skips committed receipt keys before source admission. No
+    local journal decides which keys exist. Accepted complete-file stages use
+    the same CLI append writer and retain their earlier mandatory source checks.
+    """
+    from congress_api.lake import captures,tables
+    from congress_shared.custody import custody_identity
+    plan=make_plan(files,counts,byte_target=byte_target,item_target=item_target)
+    scopes=receipt_local_check_scopes(captures.capture_checks())
+    if any(b['source_kind']=='counter' for b in plan['batches']) and validated_counter is None:
+        raise ValueError('Counter batches require the qualified original counter')
+    if create_namespace and not create_table:raise ValueError('Namespace creation requires explicit table creation')
+    if create_table and location is None:raise ValueError('Table creation requires an explicit fresh location')
+    if (not isinstance(table,dict) or set(table)!={'namespace','name'}
+            or not isinstance(table['namespace'],list) or not table['namespace']):
+        raise ValueError('Backfill requires an explicit generation table')
+    for name in [*table['namespace'],table['name']]:tables._identifier(name)
+    tables.validate_catalog_authority(engine,catalog_root)
+    runtime=runtime_identity(engine,engine_config)
+    runtime_custody={str(path):custody_identity(path) for path in (Path(engine_config),engine.limits)}
+    definition=captures.current_version()
+    work=Path(work).resolve();work.mkdir(parents=True,exist_ok=False)
+    (work/'plan.json').write_text(json.dumps(dict(plan,mapping_digest=definition,runtime=runtime),indent=2)+'\n')
+    counts_path=work/'source-counts.json';counts_path.write_text(json.dumps(counts,indent=2)+'\n')
+    if create_table:
+        schema=json.loads((Path(__file__).resolve().parents[5]/'model/lake/captures.schema.json').read_text())
+        tables.create_table(engine=engine,work=work/'create',catalog_root=catalog_root,table=table,
+            schema=schema,location=location,create_namespace=create_namespace)
+    else:
+        tables.resolve_tables(engine=engine,work=work/'preflight',catalog_root=catalog_root,tables={'captures':table})
+    inventory={row['key']:row for row in files};reports=[]
+    result=dict(status='running',qualified_for_downstream=False,mapping_digest=definition,
+        engine=runtime,plan=plan,batches=reports,receipt_local_checks=scopes)
+    def unchanged():
+        if captures.current_version()!=definition or any(custody_identity(path)!=identity
+                for path,identity in runtime_custody.items()):
+            raise ValueError('Backfill producer/runtime changed; rebuild an unpublished generation')
+    try:
+        for batch in plan['batches']:
+            unchanged()
+            directory=work/('batch-'+str(batch['ordinal']).zfill(4)+'-'+batch['id'][:8]);directory.mkdir()
+            selected=[inventory[key] for key in batch['receipt_keys']]
+            if batch['source_kind']=='prepared-stage':selected=[dict(key=row['key']) for row in selected]
+            input_path=directory/'receipts.json';input_path.write_text(json.dumps(selected,indent=2)+'\n')
+            command=[sys.executable,'-I','-m','congress_api.cli.captures_ingest',
+                '--receipt-inventory',str(input_path),'--engine-config',str(Path(engine_config).resolve()),
+                '--work',str(directory/'stage'),'--apply','--table','.'.join([*table['namespace'],table['name']])]
+            if catalog_root is not None:command+=['--catalog-root',str(Path(catalog_root).resolve())]
+            kind=batch['source_kind']
+            if kind=='prepared-stage':command+=['--append-stage',batch['prepared_stage']]
+            else:
+                if kind=='counter':command+=['--validated-counter',str(Path(validated_counter).resolve())]
+                if source_qualifications is not None:
+                    paths=({str(Path(validated_counter).resolve())} if kind=='counter' else
+                           {str(Path(row['path']).resolve()) for row in selected})
+                    bindings={str(path):str(authority) for path,authority in source_qualifications.items()
+                              if str(Path(path).resolve()) in paths}
+                    qualification=directory/'qualifications.json';qualification.write_text(json.dumps(bindings)+'\n')
+                    command+=['--source-qualifications',str(qualification)]
+            measured=monitor_command(command,work=directory/'monitor')
+            unchanged()
+            outcome=None
+            for line in reversed((directory/'monitor/process.log').read_text().splitlines()):
+                try:value=json.loads(line)
+                except json.JSONDecodeError:continue
+                if isinstance(value,dict) and ('applied' in value or value.get('no_work')):outcome=value;break
+            if outcome is None:raise ValueError('Capture CLI supplied no accepted batch outcome')
+            reports.append(dict(id=batch['id'],receipt_keys=batch['receipt_keys'],outcome=outcome,
+                measurement=measured,source_guard='accepted-stage-proof' if kind=='prepared-stage' else 'mandatory-capture-checks'))
+            (work/'backfill.json').write_text(json.dumps(result,indent=2)+'\n')
+        unchanged()
+        acceptance=work/'acceptance';acceptance.mkdir()
+        spec=acceptance/'spec.json';spec.write_text(json.dumps(dict(engine_config=str(Path(engine_config).resolve()),
+            catalog_root=str(Path(catalog_root).resolve()) if catalog_root is not None else None,
+            table=table,counts=str(counts_path),work=str(acceptance/'jobs'),mapping_digest=definition),indent=2)+'\n')
+        result['acceptance_measurement']=monitor_command([sys.executable,'-I','-m',
+            'congress_api.lake.capture_backfill','--validate-spec',str(spec)],work=acceptance/'monitor')
+        accepted=json.loads((acceptance/'accepted.json').read_text())
+        unchanged();result.update(status='public_guard_passed',pin=accepted['pin'],guard=accepted['guard'])
+        return result
+    except BaseException as error:
+        result.update(status='rejected',error_type=type(error).__name__)
+        raise
+    finally:
+        (work/'backfill.json').write_text(json.dumps(result,indent=2)+'\n')
+
+
+def validate_spec(path):
+    """Read-only whole-generation validation in its separately measured process."""
+    from docspec_client.client import NativeDatasets
+    from congress_api.lake import captures,tables
+    from congress_api.lake.capture_backfill_guard import validate_generation
+    path=Path(path);spec=json.loads(path.read_text())
+    required={'engine_config','catalog_root','table','counts','work','mapping_digest'}
+    if not isinstance(spec,dict) or set(spec)!=required:raise ValueError('Invalid backfill validation spec')
+    if captures.current_version()!=spec['mapping_digest']:raise ValueError('Backfill mapping changed before validation')
+    engine=NativeDatasets.from_config(spec['engine_config'])
+    pin=tables.resolve_tables(engine=engine,work=Path(spec['work'])/'head',catalog_root=spec['catalog_root'],
+        tables={'captures':spec['table']})['captures']
+    guard=validate_generation(engine=engine,work=Path(spec['work'])/'guard',pin=pin,
+        counts=json.loads(Path(spec['counts']).read_text()))
+    if captures.current_version()!=spec['mapping_digest']:raise ValueError('Backfill mapping changed during validation')
+    result=dict(pin=pin,guard=guard,mapping_digest=spec['mapping_digest'])
+    (path.parent/'accepted.json').write_text(json.dumps(result,indent=2)+'\n')
+    return result
+
+
+def main(argv=None):
+    import argparse
+    parser=argparse.ArgumentParser(description=__doc__)
+    parser.add_argument('--validate-spec',type=Path,required=True)
+    args=parser.parse_args(argv)
+    print(json.dumps(validate_spec(args.validate_spec),sort_keys=True))
+    return 0
+
+
+if __name__=='__main__':raise SystemExit(main())
