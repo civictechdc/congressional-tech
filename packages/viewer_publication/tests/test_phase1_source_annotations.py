@@ -1,7 +1,6 @@
 """Per-source metadata comes from pinned typed readings and attributed links."""
 from datetime import date
 import os
-from pathlib import Path
 
 import pyarrow as pa
 import pyarrow.parquet as pq
@@ -14,7 +13,7 @@ from viewer_publication.archive_model import registry_inputs
 
 def test_source_annotations_keep_pins_names_keys_and_publisher_priority(tmp_path):
     from viewer_publication.archive_annotations import annotation_steps
-    urls=['https://docs.house.gov/meetings/AG/AG03/20261020/HHRG123/a.pdf',
+    urls=['https://docs.house.gov/meetings/AG/AG03/20261020/HHRG00123/a.pdf',
           'https://www.govinfo.gov/content/pkg/CHRG-119hhrg55555/html/report.htm',None,
           'https://www.congress.gov/119/meeting/senate/777/dead.pdf']
     sources=[dict(source_id='s'+str(i+1),filename=name,source_url=url,body_sha=body)
@@ -26,7 +25,7 @@ def test_source_annotations_keep_pins_names_keys_and_publisher_priority(tmp_path
             row.update(document_kind=['committee-report'],document_family=['hearings'],committee_code=['AG03','UNKNOWN'],
                 congress=119,filename_date=date(2026,10,20),measure_keys=['119-hr-7'],bioguide_ids=['A000001'],
                 package_id='CHRG-119hhrg11111',fields=[dict(field='document_kind',value='committee-report'),
-                    dict(field='private_field',value='not public'),dict(field='congress',value='119'),
+                    dict(field='private_field',value='not public'),dict(field='date_token_candidates',value='20261020'),dict(field='congress',value='119'),
                     dict(field='congress',value='119')])
         rows.append(row)
     rows.append(dict(rows[0],catalog_version='old',document_kind=['wrong-old-kind']))
@@ -47,7 +46,8 @@ def test_source_annotations_keep_pins_names_keys_and_publisher_priority(tmp_path
            dict(source_id='s2',doc_type='br',text='Hearing transcript',page_body='page',context='https://publisher.test/index',first_good_at='2026-10-21T12:00:00Z',link_index=1,split_position=0),
            dict(source_id='s3',doc_type=None,text='Hearing transcript',page_body='page',context='https://www.congress.gov/119/meeting/house/888',first_good_at='2026-10-21T12:00:00Z',link_index=2,split_position=0),
            dict(source_id='s3',doc_type=None,text='Later label',page_body='other',context='https://publisher.test/later',first_good_at='2026-10-22T12:00:00Z',link_index=0,split_position=0)]
-    inputs.append(json_input(tmp_path,'publisher_links',links,source_id='Utf8',doc_type='Utf8',text='Utf8',page_body='Utf8',context='Utf8',first_good_at='Utf8',link_index='Int64',split_position='Int64'))
+    for row in links:row['context_url']=row['context'];row['context']='endpoint:'+row['context']
+    inputs.append(json_input(tmp_path,'publisher_links',links,source_id='Utf8',doc_type='Utf8',text='Utf8',page_body='Utf8',context='Utf8',context_url='Utf8',first_good_at='Utf8',link_index='Int64',split_position='Int64'))
     steps=[dict(name='page_facts',sql="SELECT decode(body_hex,'hex') AS body_sha,* EXCLUDE(body_hex),cast(content_date AS DATE) AS day FROM page_inputs")]
     result=run_job(tmp_path,NativeDatasets.from_config(os.environ['DOCSPEC_JOB_CONFIG']),inputs=inputs,
         steps=steps+annotation_steps('current'),outputs=[],queries=[
@@ -57,7 +57,7 @@ def test_source_annotations_keep_pins_names_keys_and_publisher_priority(tmp_path
     assert one==dict(source_id='s1',document_kind=['committee-report'],document_family=['hearings'],congress=119,
         package_id='CHRG-119hhrg11111',filename_date='2026-10-20',content_date='2026-10-18',title='Reading title',
         meeting_keys=['123'],measure_keys=['119-hr-7'],bioguide_ids=['A000001'],committee_keys=['hsag03'],chambers=['house'],
-        facts=[dict(field='congress',value='119'),dict(field='document_kind',value='committee-report')])
+        facts=[dict(field='congress',value='119'),dict(field='date_token_candidates',value='2026-10-20'),dict(field='document_kind',value='committee-report')])
     assert two['document_kind']==['legislative-text'] and two['title']=='Heading B'
     assert two['package_id']=='CHRG-119hhrg55555' and two['meeting_keys']==['999']
     assert three['document_kind']==['transcript'] and three['title']=='Hearing transcript'
