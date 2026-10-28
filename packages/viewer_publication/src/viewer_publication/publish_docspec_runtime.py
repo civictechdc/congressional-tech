@@ -16,11 +16,12 @@ import re
 import sys
 from typing import Any
 
-from congress_shared.custody import write_atomic_bytes
+from congress_shared.custody import canonical_json_bytes, write_atomic_bytes
 from congress_shared.storage import connect_r2
 from docspec_client.docspec import QUALIFIED_DOCSPEC_RUNTIME, REQUIRED_LOOPBACK_CAPABILITIES
 
 MAX_BINARY_BYTES = 1024**3
+MAX_DESCRIPTOR_BYTES = 1024**2
 SUPPORTED_ARTIFACT_PLATFORMS = ("linux-amd64", "darwin-arm64")
 
 
@@ -175,14 +176,30 @@ def main(argv: list[str] | None = None, *, client: Any | None = None) -> int:
         type=Path,
         help="Optional path to write the DOCSPEC_RUNTIME_ARTIFACT JSON descriptor",
     )
+    parser.add_argument(
+        "--expected-descriptor", type=Path,
+        help="Require this approved descriptor to match the local binary before upload",
+    )
     args = parser.parse_args(argv)
 
+    expected = None
+    if args.expected_descriptor is not None:
+        with args.expected_descriptor.open("rb") as stream:
+            data = stream.read(MAX_DESCRIPTOR_BYTES + 1)
+        if len(data) > MAX_DESCRIPTOR_BYTES:
+            raise ValueError("Expected runtime descriptor exceeds the metadata size limit")
+        expected = json.loads(data)
     descriptor = build_runtime_descriptor(
         args.binary,
         source_revision=args.source_revision,
         platform=args.platform,
         bucket=args.bucket,
     )
+    if args.expected_descriptor is not None and (
+        canonical_json_bytes(expected, allow_nan=False)
+        != canonical_json_bytes(descriptor, allow_nan=False)
+    ):
+        raise ValueError("Expected runtime descriptor differs from the local binary identity")
     if args.upload:
         upload_runtime_binary(args.binary, descriptor, client=client)
     rendered = json.dumps(descriptor, indent=2) + "\n"
