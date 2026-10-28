@@ -53,9 +53,14 @@ def test_native_counter_plan_scans_once_and_joins_only_materialized_scalars(tmp_
     first = tmp_path/'before-scalar'; first.mkdir()
     item_steps=plan['steps']+[dict(step,materialize=False) for step in definitions[:item_end+1]]
     result = run_job(first, native, inputs=plan['inputs'], steps=item_steps, outputs=[],
-        queries=[dict(name='plan', sql='EXPLAIN SELECT * FROM items')])
+        queries=[dict(name='source_plan',sql='EXPLAIN '+plan['steps'][0]['sql']),
+                 dict(name='plan', sql='EXPLAIN SELECT * FROM items')])
     physical = next(row['plan'] for row in result['plan'] if row['plan_type'] == 'physical_plan')
-    assert physical.count('DataSourceExec') == 1
+    source_physical=next(row['plan'] for row in result['source_plan'] if row['plan_type']=='physical_plan')
+    assert source_physical.count('DataSourceExec') == 1
+    assert 'UnnestExec' not in source_physical and 'row_number' in source_physical.lower()
+    assert physical.count('StreamingTableExec') == 1
+    assert 'DataSourceExec' not in physical
     assert physical.count('UnnestExec') == 1
     assert physical.count('json_get_many(') == 1
     assert 'JoinExec' not in physical
