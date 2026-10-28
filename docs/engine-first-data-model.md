@@ -174,14 +174,14 @@ Iceberg tables in Basin Catalog, append-only ([[ARCHITECTURE]] §8).
 
 ### 6.1 `captures`
 
-One row per body a line references (each `captures[]` entry or, on an older line whose `captures[]` is empty, each `file_references[]` entry), plus one row per line that references none. A receipt field is kept only when a rule, an invariant or a job reads it. In phase 1 the table is a narrow index of the fields read in bulk by every release; other evidence stays in raw behind `(receipt_key, receipt_line, capture_index)` and is read when a case needs it. The ingest mapping is versioned with the table (§6) and reads every older receipt shape.
+One row per body a line references (each `captures[]` entry or, on an older line whose `captures[]` is empty, each `file_references[]` entry), plus one row for each list-valued `record` item without a primary reference. An ordinary bodiless line has one row. A receipt field is kept only when a rule, an invariant or a job reads it. In phase 1 the table is a narrow index of the fields read in bulk by every release; other evidence stays in raw behind `(receipt_key, receipt_line, capture_index)` and is read when a case needs it. The ingest mapping is versioned with the table (§6) and reads every older receipt shape.
 
 | Phase-1 column | Type | Notes |
 |---|---|---|
 | `receipt_key` | string | Immutable raw receipt key. |
 | `receipt_line` | int | Source line, starting at 1. |
-| `capture_index` | int | Position in the primary capture or file-reference list; on a bodiless list-valued `record`, the record item's position with null `sha256`. An ordinary bodiless line uses 0. A file reference retained without a body also has null `sha256`. |
-| `run_id`, `mode`, `outcome` | string | The producing run and final line facts; the mapping translates the older vocabulary. |
+| `capture_index` | int | Primary capture/file-reference positions stay unchanged. Items of a list-valued `record` without a primary reference append after them in record order, with null `sha256`; without references, their positions start at 0. An ordinary bodiless line uses 0. A file reference retained without a body also has null `sha256`. |
+| `run_id`, `mode`, `outcome` | string | The producing run and final item facts. Ordinary records use line facts; list items use their own values, with line fallback only when absent. The mapping translates the older vocabulary. |
 | `family` | string | The entry's family, else the line's, else the receipt key's `<family>` segment. |
 | `requested_url`, `url` | string, nullable | Older lines take `_url`, `final_url`, `resolved_url` or `source_url`, the first present, when their ordinary address fields are absent. |
 | `context_url` | string, nullable | The source endpoint for this body. |
@@ -211,7 +211,7 @@ Everything else stays in raw and is read **on demand**; this table is the single
 | Other writer metadata and supplements, and `links` | Raw receipts and pinned producer/profile metadata retain these facts. |
 
 - **PK:** `(receipt_key, receipt_line, capture_index)`.
-- The line's final status, mode and outcome accompany its referenced bodies. Completeness uses the entry's recorded value, else the final line's value only for the final response, else its legacy derivation. No bulk prior-attempt lookup fills a missing fact.
+- For an ordinary record, the line's final status, mode and outcome accompany its referenced bodies; a list item keeps its own final facts with line fallbacks only when absent. Completeness uses the entry's recorded value, else the referenced item's final value only for the final response, else its legacy derivation. No bulk prior-attempt lookup fills a missing fact.
 - **Older lines** keep their fields under `record`, in shapes the mapping reads individually; §5.2 binds new lines. The narrow mapping:
   - uses `captures[]` for row grain when both lists exist, filling missing storage metadata only from `file_references[]` with the same body key and digest. A secondary non-null body absent from the primary list refuses ingest with its receipt and line. Conflicting storage facts also refuse; the 285 duplicate-reference lines in the pinned input do not create extra capture rows;
   - takes `run_id` from `source_file` and defaults the older stored suffix to `.gz`;
@@ -223,7 +223,7 @@ Everything else stays in raw and is read **on demand**; this table is the single
   - maps a confirmed legacy final response at its writer's 64 MiB cap with explicit `complete = false` to outcome `size_limit`, preserving an explicit more-specific outcome or error. Incomplete prior attempts and archive members do not trigger that inference when the final response completed;
   - keeps `expansion` and records `expanded` on an archive line whose members were captured; it keeps `writer_job` and `writer_commit` from the line's writer identity for invariant 3;
   - takes fetch time from the row's entry, then its line: `retrieved_at`, `captured_at`, `observed_at`, `parent_retrieved_at` or `_retrieved_at`, then `capture_date` at the start of its day, else null. `started_at`, `checked_at` and content dates are not fetch times. End of Term times remain the archive capture times;
-  - accepts pointer elements as strings or integers and selects each referenced item's own narrow facts from a list-valued `record`, preserving primary capture/file-reference ordinals. Without body references, every record item has its own row and `capture_index`; item facts precede line fallbacks, while entry facts still lead where applicable. Contradictions within one item refuse ingest; differences between items remain separate, including their outcomes, completeness, status, time and URLs. No first-item selection or global fold combines them.
+  - accepts pointer elements as strings or integers and selects each referenced item's own narrow facts from a list-valued `record`, preserving primary capture/file-reference ordinals. Each item without a primary reference appends after those ordinals in record order; without references, every record item has its own row starting at `capture_index = 0`. The item's own field wins, with a line fallback only when absent; entry facts still lead where applicable. Contradictions within one item refuse ingest; differences between items remain separate, including their outcomes, completeness, status, time and URLs. No first-item selection or global fold combines them.
 - **Read once:** each consumer reads a raw object at most once, selecting only its needed fields ([[ARCHITECTURE]] §4, principle 3). D1 reads every receipt line once; D4 reads the four meeting files once in phase 2.
 - Not partitioned.
 - **Work list:** receipt keys not yet ingested, listed from date-shaped prefixes ([[ARCHITECTURE]] §8.2). The backfill also reads non-date segments.

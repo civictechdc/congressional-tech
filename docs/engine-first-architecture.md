@@ -281,7 +281,7 @@ Every lake commit MUST assert the table UUID and the snapshot its work list was 
 
 ### 8.2 `captures`
 
-One row per body a receipt line references, plus one per line that references none, so no fetch loses its status ([[DATA-MODEL]] §6.1).
+One row per primary body reference or bodiless record item, so no fetch item loses its status ([[DATA-MODEL]] §6.1). Existing primary capture/file-reference ordinals stay unchanged; list-valued `record` items without a primary reference append after them in record order. An ordinary bodiless line keeps one row.
 
 **Ingest.** Rebuilding from all receipts MUST reproduce the same rows. For each receipt family, ingest lists only date-shaped prefixes from the newest date already ingested, anti-joins against ingested receipt keys, and appends the missing receipts in one commit, so listing cost grows with new receipts. The backfill reads the non-date segments once; the raw check lists everything and appends what a late receipt left behind.
 
