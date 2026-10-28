@@ -83,6 +83,94 @@ def test_local_unreadable_inventory_reuses_exact_imported_records(tmp_path):
     assert hashlib.sha256((tmp_path/'raw'/imported['key']).read_bytes()).hexdigest()==imported['sha256']
 
 
+def acknowledged_import(tmp_path,adapter_type=LocalAdapter):
+    from congress_api.retention.provenance import import_unreadable
+    source=tmp_path/'decisions.jsonl'
+    source.write_text(json.dumps(dict(id='a',body_sha256='a'*64,parser='readings',parser_version='v1',
+        reason='timeout',decided_by='readings',decided_at=STAMP,supersedes=None))+'\n')
+    store=BodyStore(adapter_type(tmp_path/'raw'))
+    imported=import_unreadable(store,source,decided_at=STAMP)
+    row=dict(key=imported['key'],path=str(tmp_path/'raw'/imported['key']),
+             sha256=imported['sha256'],size=imported['size'],etag=None)
+    return store,imported,row
+
+
+def test_acknowledged_import_missing_from_inventory_cannot_disappear_from_inputs(tmp_path):
+    from congress_api.lake.daily import _final_provenance
+    store,_,row=acknowledged_import(tmp_path)
+    Path(row['path']).unlink()
+    with pytest.raises(ValueError,match='[Aa]cknowledged|custody|changed'):
+        _final_provenance({k:[] for k in ['recoveries','reviews','unreadable']},store,[row],{})
+
+
+def test_acknowledged_import_same_size_replacement_cannot_reuse_its_old_digest(tmp_path):
+    from congress_api.lake.daily import _final_provenance
+    store,_,row=acknowledged_import(tmp_path)
+    Path(row['path']).write_bytes(b'x'*row['size'])
+    with pytest.raises(ValueError,match='[Aa]cknowledged|custody|changed'):
+        _final_provenance({k:[] for k in ['recoveries','reviews','unreadable']},store,[row],{})
+
+
+def test_import_custody_is_verified_immediately_after_the_durable_acknowledgment(tmp_path):
+    from congress_api.retention.provenance import imported_unreadable_provenance
+    class ReplacedAfterCreate(LocalAdapter):
+        def create(self,key,source,**kwargs):
+            created=super().create(key,source,**kwargs)
+            if created and key.startswith('provenance/unreadable/'):
+                (self.root/key).write_bytes(b'x'*kwargs['size'])
+            return created
+    store,imported,row=acknowledged_import(tmp_path,ReplacedAfterCreate)
+    with pytest.raises(ValueError,match='[Aa]cknowledged|SHA-256|changed'):
+        imported_unreadable_provenance(imported,store,row['path'])
+
+
+def test_acknowledged_import_keeps_private_custody_and_the_five_public_fields(tmp_path):
+    from congress_api.lake.daily import _final_provenance
+    from congress_api.retention.provenance import imported_unreadable_provenance
+    store,imported,row=acknowledged_import(tmp_path)
+    public,custody=imported_unreadable_provenance(imported,store,row['path'])
+    assert public==row and set(public)=={'key','path','etag','sha256','size'}
+    custody.require(row['path'])
+    final=_final_provenance({k:[] for k in ['recoveries','reviews','unreadable']},store,[public],{},
+                            acknowledgements={row['key']:custody})
+    assert final['unreadable']==[row]
+
+
+def test_private_ack_custody_rejects_replacement_even_with_a_valid_initial_alias(tmp_path):
+    from congress_api.lake.daily import _final_provenance
+    from congress_api.retention.provenance import imported_unreadable_provenance
+    from congress_shared.custody import custody_identity
+    store,imported,row=acknowledged_import(tmp_path)
+    alias=tmp_path/'initial-copy.jsonl';alias.write_bytes(Path(row['path']).read_bytes())
+    initial=dict(row,path=str(alias),etag='initial-qualification')
+    public,custody=imported_unreadable_provenance(imported,store,row['path'])
+    Path(row['path']).write_bytes(b'x'*row['size'])
+    with pytest.raises(ValueError,match='[Aa]cknowledged|custody|changed'):
+        _final_provenance(dict(recoveries=[],reviews=[],unreadable=[initial]),store,[public],
+            {str(alias):custody_identity(alias)},acknowledgements={row['key']:custody})
+
+
+def test_initial_same_key_qualification_is_checked_before_any_path_preference(tmp_path):
+    from congress_api.lake.daily import _final_provenance
+    store,_,row=acknowledged_import(tmp_path)
+    initial=dict(row,sha256='0'*64)
+    with pytest.raises(ValueError,match='[Cc]onflicting|[Aa]cknowledged|custody'):
+        _final_provenance(dict(recoveries=[],reviews=[],unreadable=[initial]),store,[row],{})
+
+
+def test_matching_ack_keeps_the_initial_same_key_qualification(tmp_path):
+    from congress_api.lake.daily import _final_provenance
+    from congress_api.retention.provenance import imported_unreadable_provenance
+    from congress_shared.custody import custody_identity
+    store,imported,row=acknowledged_import(tmp_path)
+    alias=tmp_path/'initial-copy.jsonl';alias.write_bytes(Path(row['path']).read_bytes())
+    initial=dict(row,path=str(alias),etag='initial-qualification')
+    public,custody=imported_unreadable_provenance(imported,store,row['path'])
+    final=_final_provenance(dict(recoveries=[],reviews=[],unreadable=[initial]),store,[public],
+        {str(alias):custody_identity(alias)},acknowledgements={row['key']:custody})
+    assert final['unreadable']==[initial]
+
+
 def native_fixture(tmp_path,count=1):
     from capture_qualification_helpers import write_qualified_bytes
     from congress_api.models.raw_fetch import BodyFile,FetchAttempt,FetchResult
