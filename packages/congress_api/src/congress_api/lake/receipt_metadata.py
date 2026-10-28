@@ -124,7 +124,11 @@ def source_plan(*,counter=None,files=None,receipt_keys=None):
     # its shape without selecting an ordinary object's potentially huge body.
     is_list=("__line_shape='record:array'" if '__line_shape' in root_names else
         "record IS NULL AND json_get_str(__raw_line,'record') IS NULL AND json_length(__raw_line,'record') IS NOT NULL")
+    invalid_lists=' OR '.join(
+        '('+slots[(name,)]+" IS NOT NULL AND "+slots[(name,)]+"<>'null' AND "+
+        get(slots[(name,)],kind='array')+' IS NULL)' for name in ('captures','file_references'))
     sql=f"""SELECT {locator},{obj(roots)} AS line,{obj(records)} AS record,
+        ({invalid_lists}) AS invalid_lists,
         {get(slots[('captures',)],kind='array')} AS caps,
         {get(slots[('file_references',)],kind='array')} AS refs,
         {is_list} AS record_is_list,

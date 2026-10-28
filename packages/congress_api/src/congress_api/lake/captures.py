@@ -79,7 +79,7 @@ def mapping_steps():
     step('reference_counts', """SELECT * EXCEPT(caps,refs),array_length(primary_refs) AS primary_count,
         CASE WHEN coalesce(array_length(caps),0)>0 THEN coalesce(array_length(refs),0) ELSE 0 END AS storage_count
         FROM reference_lists""")
-    step('entries', """SELECT receipt_key,receipt_line,line,record,record_is_list,list_raw,reference_kind,primary_count,
+    step('entries', """SELECT receipt_key,receipt_line,line,record,record_is_list,list_raw,reference_kind,primary_count,invalid_lists,
         unnest(array_concat(primary_refs,CASE WHEN storage_count>0 THEN storage_refs ELSE make_array() END)) AS entry,
         unnest(range(0,cast(primary_count+storage_count AS BIGINT))) AS ordinal FROM reference_counts""")
     pointer_index=first(get('entry','pointer',0,kind='int'),f'try_cast({get("entry","pointer",0)} AS BIGINT)',
@@ -146,7 +146,7 @@ def mapping_steps():
     # Pointers can prefix a source record number before the attempt path.
     prior_index=first(*(f"CASE WHEN json_get_str(pointer_json,{i})='prior_attempts' THEN coalesce(json_get_int(pointer_json,{i+1}),try_cast(json_get_str(pointer_json,{i+1}) AS BIGINT),0)+1 END" for i in (0,1,2)),'0')
     step('attempts',f"""SELECT *,coalesce(e_attempt,{prior_index}) AS attempt,
-        e_member_path IS NULL AND position('archive_members' IN coalesce(pointer_json,''))=0 AS top_level
+        e_member_path IS NULL AND NOT coalesce(array_has(json_get_array(pointer_json),'\"archive_members\"'),false) AS top_level
         FROM mapped""")
     recorded=first('e_complete',"CASE WHEN attempt=0 THEN "+both('complete')+' END')
     step('decisions',f"""SELECT *,{recorded} AS recorded_complete,
@@ -166,7 +166,7 @@ def mapping_steps():
         http_status='cast(line_status AS INT)',complete='capture_complete',retrieved_at='fetched',
         sha256="arrow_cast(decode(body_sha,'hex'),'FixedSizeBinary(32)')",bytes='body_bytes',
         media_type='e_media_type',fidelity='e_fidelity',sniffed_format='e_sniffed_format',
-        sniff_version='e_sniff_version',intact='e_intact',expansion='e_expansion',
+        sniff_version='e_sniff_version',intact="CASE WHEN get_field(line,'writer_job') IS NOT NULL AND get_field(line,'writer_commit') IS NOT NULL THEN e_intact END",expansion='e_expansion',
         stored_suffix='e_stored_suffix',stored_bytes='e_stored_bytes',stored_md5='e_stored_md5',
         recovery_category=both('recovery_category'),
         original_url="CASE WHEN capture_mode='retained_import' THEN "+first(both('recovery_original'),both('association_original'))+' END',
@@ -176,18 +176,18 @@ def mapping_steps():
         imported_at="CASE WHEN capture_mode='retained_import' THEN coalesce(try_cast("+both('recovery_imported')+" AS TIMESTAMP WITH TIME ZONE),try_cast(array_element(regexp_match(receipt_key,'/(\\d{4}-\\d{2}-\\d{2})/'),1) AS TIMESTAMP WITH TIME ZONE)) END",
         writer_job=metadata_field('line','writer_job'),writer_commit=metadata_field('line','writer_commit'))
     diagnostics=['reference_kind','pointer_json','body_key','unknown_mode','unknown_outcome',
-                 'is_secondary','list_ordinal','body_sha','attempt','top_level','cutoff_eligible']
+                 'is_secondary','list_ordinal','body_sha','attempt','top_level','cutoff_eligible','invalid_lists']
     flags=dict(cutoff_candidate='attempt=0 AND top_level AND body_bytes=67108864 AND recorded_complete IS FALSE',
         completed_final='attempt=0 AND top_level AND recorded_complete IS TRUE')
     step('scalar_rows','SELECT '+','.join(f'{columns[name]} AS "{name}"' for name in COLUMNS)+
          ','+','.join(diagnostics)+','+','.join(value+' AS '+name for name,value in flags.items())+' FROM decisions',materialize=True)
     step('secondary',"""SELECT receipt_key,receipt_line,body_key,body_sha,
-        max(stored_bytes) AS stored_bytes,max(stored_md5) AS stored_md5,max(stored_suffix) AS stored_suffix,
+        max(stored_bytes) AS secondary_bytes,max(stored_md5) AS secondary_md5,max(stored_suffix) AS secondary_suffix,
         count(DISTINCT stored_bytes) AS size_variants,count(DISTINCT stored_md5) AS md5_variants,
         count(DISTINCT stored_suffix) AS suffix_variants
         FROM scalar_rows WHERE is_secondary GROUP BY receipt_key,receipt_line,body_key,body_sha""")
-    step('enriched',"""SELECT p.*,s.stored_bytes AS secondary_bytes,s.stored_md5 AS secondary_md5,
-        s.stored_suffix AS secondary_suffix FROM secondary s RIGHT JOIN scalar_rows p
+    step('enriched',"""SELECT p.*,s.secondary_bytes,s.secondary_md5,s.secondary_suffix
+        FROM secondary s RIGHT JOIN scalar_rows p
         ON p.receipt_key=s.receipt_key AND p.receipt_line=s.receipt_line
         AND p.body_key=s.body_key AND p.body_sha=s.body_sha
         WHERE NOT p.is_secondary AND p.list_ordinal=0""")
@@ -217,6 +217,8 @@ def capture_checks():
     narrow=','.join('"'+name+'"' for name in COLUMNS if name not in PK)
     return [dict(name='positions',sql="""SELECT receipt_key,receipt_line,'invalid source locator' AS reason
         FROM scalar_rows WHERE receipt_key IS NULL OR receipt_line IS NULL OR receipt_line<1 LIMIT 1"""),
+        dict(name='reference_shapes',sql="""SELECT receipt_key,receipt_line,'unsupported reference list shape' AS reason
+        FROM scalar_rows WHERE invalid_lists LIMIT 1"""),
         dict(name='invalid',sql="""SELECT receipt_key,receipt_line,
         CASE WHEN unknown_mode THEN 'unknown mode' ELSE 'unknown outcome' END AS reason
         FROM scalar_rows WHERE NOT is_secondary AND (unknown_mode OR unknown_outcome) LIMIT 1"""),
@@ -225,7 +227,13 @@ def capture_checks():
         AND s.receipt_key=p.receipt_key AND s.receipt_line=p.receipt_line
         AND s.body_key=p.body_key AND s.body_sha=p.body_sha WHERE s.body_sha IS NOT NULL
         UNION ALL SELECT receipt_key,receipt_line,'secondary storage conflict' AS reason FROM secondary
-        WHERE size_variants>1 OR md5_variants>1 OR suffix_variants>1 LIMIT 1"""),
+        WHERE size_variants>1 OR md5_variants>1 OR suffix_variants>1
+        UNION ALL SELECT receipt_key,receipt_line,'primary and secondary storage conflict' AS reason
+        FROM enriched WHERE
+            (stored_bytes IS NOT NULL AND secondary_bytes IS NOT NULL AND stored_bytes<>secondary_bytes)
+            OR (stored_md5 IS NOT NULL AND secondary_md5 IS NOT NULL AND lower(stored_md5)<>lower(secondary_md5))
+            OR (stored_suffix IS NOT NULL AND secondary_suffix IS NOT NULL AND stored_suffix<>secondary_suffix)
+        LIMIT 1"""),
         dict(name='list_facts',sql=f"""SELECT receipt_key,receipt_line,'list record conflicting facts' AS reason
         FROM (SELECT DISTINCT receipt_key,receipt_line,{narrow} FROM scalar_rows
               WHERE reference_kind='line' AND NOT is_secondary)
