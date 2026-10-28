@@ -107,5 +107,11 @@
     "url": "https://urldefense.proofpoint.com/v2/url?u=https-3A__media.mnn.com_assets_images_2016_06_jupiter-2Dnasa.jpg.638x0-5Fq80-5Fcrop-2Dsmart.jpg&d=DwMBaQ&c=Vxt5e0Osvvt2gflwSlsJ5DmPGcPvTRKLJyp031rXjhg&r=BTD8MPjq1qSLi0tGKaB5H6aCJZZBjwYkLyorZdRQrnY&m=iKjixvaJuqvmReS78AB0JiActTrR_liSq7lDRjEQ9DE&s=-M8Vz-GV-kqkNVf1BAtv38DdudAHVDAI6_jQQLVmleE&e=",
     "key": "media.mnn.com/assets/images/2016/06/jupiter-nasa.jpg.638x0_q80_crop-smart.jpg",
     "source": "https://help.proofpoint.com/Threat_Insight_Dashboard/API_Documentation/URL_Decoder_API"
+  },
+  {
+    "id": "retained-lis-gpo",
+    "url": "https://www.lis.gov/cgi-lis/t2GPO/https://www.gpo.gov/fdsys/pkg/BILLS-114hr456ih/pdf/BILLS-114hr456ih.pdf",
+    "key": "gpo.gov/fdsys/pkg/BILLS-114hr456ih/pdf/BILLS-114hr456ih.pdf",
+    "source": "test_capture_url_admission.py literals from failed CI37420553827"
   }
 ]
