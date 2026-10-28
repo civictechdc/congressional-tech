@@ -66,6 +66,14 @@ def test_body_reference_ordinals_and_entry_facts_keep_selected_item_binding(tmp_
     assert rows[0]['retrieved_at'].isoformat()=='2026-10-20T12:34:56+00:00'
 
 
+def test_qualified_new_writer_header_precedence_stays_line_owned(tmp_path):
+    stage=ingest(tmp_path,[dict(writer=dict(job='capture',commit='a'*40),
+        response_headers={'content-disposition':'qualified-root'},record=[
+            dict(response_headers={'content-disposition':'legacy-a'}),
+            dict(response_headers={'content-disposition':'legacy-b'})])])
+    assert pq.read_table(stage/'captures.parquet')['h_content_disposition'].to_pylist()==['qualified-root']*2
+
+
 def test_conflicting_duplicate_counter_facts_within_one_list_item_still_refuse(tmp_path):
     from congress_api.lake.captures import stage_captures
     key='receipts/documents/2026-10-20/duplicate.gz'

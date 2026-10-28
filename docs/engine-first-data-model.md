@@ -180,7 +180,7 @@ One row per body a line references (each `captures[]` entry or, on an older line
 |---|---|---|
 | `receipt_key` | string | Immutable raw receipt key. |
 | `receipt_line` | int | Source line, starting at 1. |
-| `capture_index` | int | Position in the primary list; 0, with null `sha256`, on a line without a body. A file reference retained without a body also has null `sha256`. |
+| `capture_index` | int | Position in the primary capture or file-reference list; on a bodiless list-valued `record`, the record item's position with null `sha256`. An ordinary bodiless line uses 0. A file reference retained without a body also has null `sha256`. |
 | `run_id`, `mode`, `outcome` | string | The producing run and final line facts; the mapping translates the older vocabulary. |
 | `family` | string | The entry's family, else the line's, else the receipt key's `<family>` segment. |
 | `requested_url`, `url` | string, nullable | Older lines take `_url`, `final_url`, `resolved_url` or `source_url`, the first present, when their ordinary address fields are absent. |
@@ -223,7 +223,7 @@ Everything else stays in raw and is read **on demand**; this table is the single
   - maps a confirmed legacy final response at its writer's 64 MiB cap with explicit `complete = false` to outcome `size_limit`, preserving an explicit more-specific outcome or error. Incomplete prior attempts and archive members do not trigger that inference when the final response completed;
   - keeps `expansion` and records `expanded` on an archive line whose members were captured; it keeps `writer_job` and `writer_commit` from the line's writer identity for invariant 3;
   - takes fetch time from the row's entry, then its line: `retrieved_at`, `captured_at`, `observed_at`, `parent_retrieved_at` or `_retrieved_at`, then `capture_date` at the start of its day, else null. `started_at`, `checked_at` and content dates are not fetch times. End of Term times remain the archive capture times;
-  - accepts pointer elements as strings or integers and selects the corresponding narrow facts from a list-valued `record` (99 pinned lines), without changing primary row ordinals.
+  - accepts pointer elements as strings or integers and selects each referenced item's own narrow facts from a list-valued `record`, preserving primary capture/file-reference ordinals. Without body references, every record item has its own row and `capture_index`; item facts precede line fallbacks, while entry facts still lead where applicable. Contradictions within one item refuse ingest; differences between items remain separate, including their outcomes, completeness, status, time and URLs. No first-item selection or global fold combines them.
 - **Read once:** each consumer reads a raw object at most once, selecting only its needed fields ([[ARCHITECTURE]] §4, principle 3). D1 reads every receipt line once; D4 reads the four meeting files once in phase 2.
 - Not partitioned.
 - **Work list:** receipt keys not yet ingested, listed from date-shaped prefixes ([[ARCHITECTURE]] §8.2). The backfill also reads non-date segments.

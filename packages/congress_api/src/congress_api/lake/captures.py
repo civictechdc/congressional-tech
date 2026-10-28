@@ -66,8 +66,7 @@ def mapping_steps():
     def step(name,sql,**options):
         steps.append(dict(name=name,sql=sql,**options))
     # Secondary storage references share the source pass and become scalar rows
-    # immediately. Bodiless record lists fan out only for retained-fact refusal;
-    # their first ordinal is the one public line row.
+    # immediately. Each bodiless list item retains its own source ordinal.
     step('reference_lists', """SELECT *,
         CASE WHEN coalesce(array_length(caps),0)>0 THEN 'capture'
              WHEN coalesce(array_length(refs),0)>0 THEN 'file' ELSE 'line' END AS reference_kind,
@@ -87,7 +86,9 @@ def mapping_steps():
     step('selected_records',f"""SELECT * EXCEPT(list_raw),
         ordinal>=primary_count AS is_secondary,
         CASE WHEN reference_kind='line' THEN ordinal ELSE 0 END AS list_ordinal,
-        CASE WHEN reference_kind='line' THEN cast(0 AS BIGINT) ELSE ordinal END AS capture_index,
+        ordinal AS capture_index,
+        CASE WHEN record_is_list THEN CASE WHEN reference_kind='line' THEN ordinal
+            ELSE cast({pointer_index} AS BIGINT) END ELSE 0 END AS selected_record_index,
         CASE WHEN record_is_list AND ordinal<primary_count THEN json_get_json(list_raw,
             CASE WHEN reference_kind='line' THEN ordinal ELSE cast({pointer_index} AS BIGINT) END) END AS selected_record
         FROM entries""")
@@ -115,15 +116,18 @@ def mapping_steps():
     entry_slots=projection('entry',[(name,) for name in kinds])
     step('entry_facts','SELECT * EXCEPT(entry),'+','.join(
         scalar(entry_slots[(name,)],kind)+' AS e_'+name for name,kind in kinds.items())+' FROM records')
+    def item_first(line,record):
+        return f'CASE WHEN record_is_list THEN {first(record,line)} ELSE {line} END'
     def both(name):
-        return first(metadata_field('line',name),metadata_field('record',name))
+        line,record=metadata_field('line',name),metadata_field('record',name)
+        return item_first(first(line,record),record)
     step('facts',f"""SELECT *,{both('mode')} AS raw_mode,{both('outcome')} AS raw_outcome,
-        {first(metadata_field('line','http_status'),metadata_field('line','status_code'),metadata_field('record','http_status'),metadata_field('record','status_code'))} AS line_status,
-        {first(fetch_time('',lambda _,p:'e_'+p),fetch_time('line',metadata_field),fetch_time('record',metadata_field))} AS fetched,
-        {first('e_family',metadata_field('line','family'),metadata_field('record','family'),"regexp_replace(receipt_key,'^receipts/(.*)/[^/]+/[^/]+$','\\1')")} AS entry_family,
-        {first(metadata_field('line','run_id'),metadata_field('line','source_file'),metadata_field('record','source_file'))} AS source_run,
-        {first(metadata_field('line','requested_url'),metadata_field('record','requested_url'),metadata_field('record','_url'),metadata_field('record','url'),metadata_field('line','url'),metadata_field('record','final_url'),metadata_field('record','resolved_url'),metadata_field('record','source_url'))} AS requested,
-        {first(metadata_field('line','url'),metadata_field('record','url'),metadata_field('record','_url'),metadata_field('record','final_url'),metadata_field('record','resolved_url'),metadata_field('record','source_url'))} AS final_url
+        {item_first(first(metadata_field('line','http_status'),metadata_field('line','status_code'),metadata_field('record','http_status'),metadata_field('record','status_code')),first(metadata_field('record','http_status'),metadata_field('record','status_code')))} AS line_status,
+        {first(fetch_time('',lambda _,p:'e_'+p),item_first(first(fetch_time('line',metadata_field),fetch_time('record',metadata_field)),fetch_time('record',metadata_field)))} AS fetched,
+        {first('e_family',both('family'),"regexp_replace(receipt_key,'^receipts/(.*)/[^/]+/[^/]+$','\\1')")} AS entry_family,
+        {item_first(first(metadata_field('line','run_id'),metadata_field('line','source_file'),metadata_field('record','source_file')),first(metadata_field('record','run_id'),metadata_field('record','source_file')))} AS source_run,
+        {item_first(first(metadata_field('line','requested_url'),metadata_field('record','requested_url'),metadata_field('record','_url'),metadata_field('record','url'),metadata_field('line','url'),metadata_field('record','final_url'),metadata_field('record','resolved_url'),metadata_field('record','source_url')),first(metadata_field('record','requested_url'),metadata_field('record','_url'),metadata_field('record','url'),metadata_field('record','final_url'),metadata_field('record','resolved_url'),metadata_field('record','source_url')))} AS requested,
+        {item_first(first(metadata_field('line','url'),metadata_field('record','url'),metadata_field('record','_url'),metadata_field('record','final_url'),metadata_field('record','resolved_url'),metadata_field('record','source_url')),first(metadata_field('record','url'),metadata_field('record','_url'),metadata_field('record','final_url'),metadata_field('record','resolved_url'),metadata_field('record','source_url')))} AS final_url
         FROM entry_facts""")
     modes=','.join(literal(v) for v in sorted(LEGACY_MODES))
     outcomes=','.join(literal(v) for v in sorted(LEGACY_OUTCOMES))
@@ -162,7 +166,7 @@ def mapping_steps():
         family='entry_family',requested_url='requested',url='final_url',
         context_url=first('e_context_url','final_url'),
         member_path=first('e_member_path',"CASE WHEN NOT top_level AND reference_kind='capture' THEN e_original_path END"),
-        h_content_disposition=both('h_content_disposition'),
+        h_content_disposition=first(metadata_field('line','h_content_disposition'),metadata_field('record','h_content_disposition')),
         http_status='cast(line_status AS INT)',complete='capture_complete',retrieved_at='fetched',
         sha256="arrow_cast(decode(body_sha,'hex'),'FixedSizeBinary(32)')",bytes='body_bytes',
         media_type='e_media_type',fidelity='e_fidelity',sniffed_format='e_sniffed_format',
@@ -176,7 +180,7 @@ def mapping_steps():
         imported_at="CASE WHEN capture_mode='retained_import' THEN coalesce(try_cast("+both('recovery_imported')+" AS TIMESTAMP WITH TIME ZONE),try_cast(array_element(regexp_match(receipt_key,'/(\\d{4}-\\d{2}-\\d{2})/'),1) AS TIMESTAMP WITH TIME ZONE)) END",
         writer_job=metadata_field('line','writer_job'),writer_commit=metadata_field('line','writer_commit'))
     diagnostics=['reference_kind','pointer_json','body_key','unknown_mode','unknown_outcome',
-                 'is_secondary','list_ordinal','body_sha','attempt','top_level','cutoff_eligible','invalid_lists']
+                 'is_secondary','list_ordinal','selected_record_index','body_sha','attempt','top_level','cutoff_eligible','invalid_lists']
     flags=dict(cutoff_candidate='attempt=0 AND top_level AND body_bytes=67108864 AND recorded_complete IS FALSE',
         completed_final='attempt=0 AND top_level AND recorded_complete IS TRUE')
     step('scalar_rows','SELECT '+','.join(f'{columns[name]} AS "{name}"' for name in COLUMNS)+
@@ -190,12 +194,12 @@ def mapping_steps():
         FROM secondary s RIGHT JOIN scalar_rows p
         ON p.receipt_key=s.receipt_key AND p.receipt_line=s.receipt_line
         AND p.body_key=s.body_key AND p.body_sha=s.body_sha
-        WHERE NOT p.is_secondary AND p.list_ordinal=0""")
+        WHERE NOT p.is_secondary""")
     step('windowed',"""SELECT *,
-        bool_or(cutoff_candidate) OVER (PARTITION BY receipt_key,receipt_line) AS has_cutoff,
-        bool_or(completed_final) OVER (PARTITION BY receipt_key,receipt_line) AS has_completed_final,
+        bool_or(cutoff_candidate) OVER (PARTITION BY receipt_key,receipt_line,selected_record_index) AS has_cutoff,
+        bool_or(completed_final) OVER (PARTITION BY receipt_key,receipt_line,selected_record_index) AS has_completed_final,
         bool_or(body_sha IS NOT NULL AND NOT top_level) OVER
-            (PARTITION BY receipt_key,receipt_line,attempt,context_url) AS has_member FROM enriched""")
+            (PARTITION BY receipt_key,receipt_line,selected_record_index,attempt,context_url) AS has_member FROM enriched""")
     final={name:name for name in COLUMNS}
     final.update(stored_suffix="coalesce(stored_suffix,secondary_suffix,'.gz')",
         stored_bytes='coalesce(stored_bytes,secondary_bytes)',
@@ -235,9 +239,9 @@ def capture_checks():
             OR (stored_suffix IS NOT NULL AND secondary_suffix IS NOT NULL AND stored_suffix<>secondary_suffix)
         LIMIT 1"""),
         dict(name='list_facts',sql=f"""SELECT receipt_key,receipt_line,'list record conflicting facts' AS reason
-        FROM (SELECT DISTINCT receipt_key,receipt_line,{narrow} FROM scalar_rows
+        FROM (SELECT DISTINCT receipt_key,receipt_line,list_ordinal,{narrow} FROM scalar_rows
               WHERE reference_kind='line' AND NOT is_secondary)
-        GROUP BY receipt_key,receipt_line HAVING count(*)>1 LIMIT 1"""),
+        GROUP BY receipt_key,receipt_line,list_ordinal HAVING count(*)>1 LIMIT 1"""),
         dict(name='missing',sql="""SELECT r.receipt_key,cast(0 AS BIGINT) AS receipt_line,
         'selected receipt not present' AS reason FROM selected_receipts r LEFT ANTI JOIN scalar_rows s
         ON r.receipt_key=s.receipt_key LIMIT 1""")]
@@ -288,7 +292,8 @@ def stage_captures(files, *, engine, work, existing=None, validated_counter=None
     steps.append(dict(name='capture_violations',sql=violations,materialize=True,release_after=stale))
     results = run_job(work, engine, inputs=inputs,
         steps=steps,
-        outputs=[parquet_output(work, 'capture-evidence', 'SELECT * FROM capture_facts', PK)],
+        outputs=[parquet_output(work, 'capture-evidence',
+            'SELECT * FROM capture_facts WHERE NOT EXISTS (SELECT 1 FROM capture_violations)', PK)],
         queries=[dict(name='violations',sql='''SELECT * FROM capture_violations
             ORDER BY check_order,receipt_key,receipt_line LIMIT 1'''),
             dict(name='source_counts',sql='SELECT * FROM source_counts')])
