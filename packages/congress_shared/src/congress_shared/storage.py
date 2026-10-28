@@ -9,7 +9,17 @@ from __future__ import annotations
 from collections.abc import Mapping
 from dataclasses import dataclass
 import os
+import re
 from typing import Any
+
+
+def single_put_md5(etag):
+    """Normalize the stored-byte checksum of a single-PUT object."""
+    if isinstance(etag,str) and etag.startswith('"') and etag.endswith('"'):
+        etag=etag[1:-1]
+    if not isinstance(etag,str) or re.fullmatch('[a-fA-F0-9]{32}',etag) is None:
+        raise ValueError('ETag must be a single-PUT MD5')
+    return etag.lower()
 
 
 @dataclass(frozen=True)

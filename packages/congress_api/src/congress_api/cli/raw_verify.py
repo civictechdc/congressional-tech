@@ -7,24 +7,12 @@ from tempfile import TemporaryDirectory
 
 from congress_shared.custody import copy_checked
 
-from congress_api.retention.body_store import BodyStore,R2Adapter
+from congress_api.retention.body_store import BodyStore,R2Adapter,R2Source
 from congress_api.retention.raw_verifier import selected_captures,verify
 from congress_api.retention.writer_identity import writer_identity
 from docspec_client.client import NativeDatasets
 
 ROOT=Path(__file__).resolve().parents[5]
-
-
-class R2Source:
-    def __init__(self,client,bucket):self.client,self.bucket=client,bucket
-
-    def listing(self):
-        pages=self.client.get_paginator('list_objects_v2').paginate(Bucket=self.bucket,Prefix='bodies/')
-        for page in pages:
-            for obj in page.get('Contents',[]):
-                yield dict(key=obj['Key'],size=obj['Size'],etag=obj['ETag'].strip('"'))
-
-    def get(self,key):return self.client.get_object(Bucket=self.bucket,Key=key)
 
 
 def apply_staged(work,store):
