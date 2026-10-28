@@ -536,8 +536,8 @@ def test_model_profile_is_pinned_and_the_same_producer_has_zero_completeness_err
 
 
 def test_cause_metadata_cannot_replace_the_pinned_oracle_or_public_candidate(tmp_path):
-    from congress_api.retention.provenance import file_pin
-    template=f0_fixture(tmp_path);value=json.loads(template.read_text())
+    template=parity.prepare_f0(f0_fixture(tmp_path),engine=engine(),work=tmp_path/'prepare')
+    value=json.loads(template.read_text())
     value['cause_relations']={'oracle_documents':dict(value['oracle']['filenames'],required_columns=[])}
     template.write_text(json.dumps(value))
     with pytest.raises(ValueError,match='replace|reserved'):

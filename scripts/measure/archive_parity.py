@@ -119,6 +119,8 @@ def load_descriptor(path):
     paths['source_members']=str(members)
     paths['document_rows']=str(pinned_file(base,candidate.get('document_rows')))
     for name,pin in value.get('cause_relations',{}).items():
+        if name in paths or name.startswith('b7_'):
+            raise ValueError('Cause metadata cannot replace a reserved input: '+name)
         source=pinned_file(base,pin)
         if not set(pin.get('required_columns',[]))<=set(pq.read_schema(source).names):
             raise ValueError('Cause relation lacks its declared columns: '+name)
@@ -181,6 +183,16 @@ def producer_inputs(base, candidate, manifest):
     job_path=pinned_file(base,candidate.get('build_job'))
     result_path=pinned_file(base,candidate.get('build_result'))
     job=json.loads(job_path.read_text());result=json.loads(result_path.read_text())
+    if candidate['kind']=='model':
+        pinned_file(base,candidate.get('producer_profile'))
+        checks=[query for query in job.get('queries',[]) if query.get('name')=='profile_completeness']
+        reports=[query for query in result.get('queries',[]) if query.get('name')=='profile_completeness']
+        if len(checks)!=1 or len(reports)!=1:
+            raise ValueError('Model producer requires its native profile completeness check')
+        rows=reports[0].get('data')
+        if (not isinstance(rows,list) or len(rows)!=1 or not isinstance(rows[0],dict) or not rows[0]
+                or any(type(count) is not int or count!=0 for count in rows[0].values())):
+            raise ValueError('Model producer profile completeness counts must all be zero integers')
     specs={item['name']:item for item in job['outputs']}
     actual={item['name']:item for item in result['outputs']}
     for item in manifest['files']:
