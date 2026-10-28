@@ -51,7 +51,7 @@ From the raw worktree, with `COORD` and `RAW` set to their protocol scratch
 directories and the accepted spec written, run the metadata-only plan first:
 
 ```sh
-DOCSPEC_JOB_CONFIG="$COORD/shared/engine-b2fd2d8/narrow.runtime.json" \
+DOCSPEC_JOB_CONFIG="$COORD/shared/engine-885e8c3/narrow.runtime.json" \
   .venv/bin/python -I -m congress_api.cli.readings \
   --spec "$RAW/run2/d2-ranged/full.spec.json" \
   --mode backfill --plan --batch-size 32 \
@@ -79,7 +79,7 @@ After the owner accepts coverage and supplies a fresh spec work directory,
 the live command is:
 
 ```sh
-DOCSPEC_JOB_CONFIG="$COORD/shared/engine-b2fd2d8/narrow.runtime.json" \
+DOCSPEC_JOB_CONFIG="$COORD/shared/engine-885e8c3/narrow.runtime.json" \
   .venv/bin/python -I -m congress_api.cli.readings \
   --spec "$RAW/run2/d2-ranged/full.spec.json" \
   --mode backfill --execute --batch-size 32 \
@@ -96,13 +96,20 @@ The owner must run it under the approved process-memory and disk monitoring.
 Re-entry reads the current readings table and makes a new work list; retained
 cache files are evidence, not a resume journal.
 
-A prefix-only body with gzip bytes and no storage-encoding observation remains
-pending when its full object exceeds the prefix already held. The execution
-report counts these as `ambiguous_gzip`; it emits no settled format or unreadable
-decision and fetches no additional bytes. If the entire object already fits in
-the prefix, its SHA can distinguish original from storage gzip without another
-GET. Resolving larger ambiguous bodies requires an owner-approved fact source
-or additional-read budget. The listing's suffix alone is not that fact.
+For prefix-only bodies without an authoritative storage-encoding fact, the
+amended owner rule uses the held prefix and at most one conditional four-byte
+trailer read. No gzip magic means raw bytes (`gzip_rule1`). Differing captured
+original/stored sizes plus an exact capture-recorded `.gz` key and a trailer
+ISIZE equal to original size modulo 2³² prove storage gzip (`gzip_rule2`).
+Equality alone proves neither interpretation: the 16,461-byte regression is
+storage gzip with equal original/stored sizes and equal ISIZE. Historical
+single-member writer scope is unavailable, so rule 3 is not applied
+(`gzip_rule3` stays zero). Unresolved cases remain pending (`gzip_rule4` and
+`ambiguous_gzip`), with no format or unreadable decision and no whole-body fetch.
+The trailer uses the same ETag/size pin and disjoint cache; a retry reuses it.
+If the entire object already fits in the held prefix, its SHA can distinguish
+original from storage gzip without another GET. Already-admitted full pages
+retain decoded SHA proof. Missing original size is not inferred from the key.
 
 Main's 491,699 old reading parts are only a format-comparison oracle. They are
 never work-list or readings inputs. Full format comparison remains owner-gated
