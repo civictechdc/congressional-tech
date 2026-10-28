@@ -100,6 +100,10 @@ test('provisional targets bind five emulated runs to a seed and keep each profil
     assert.equal(targets.profile.phone.ceilings.startupMs,90);assert.equal(targets.profile.desktop.ceilings.startupMs,45);
     assert.equal(targets.ceilings.startupMs,90);assert.equal(targets.raw_runs.phone.length,5);assert.equal(targets.harness_commit,harnessCommit);
     const sample=measurements[1].samples[2];checkTargets(sample,targets,origin,'desktop');
+    const {checkTargetRelease}=await import('./archive-targets.mjs');
+    checkTargetRelease(sample.releaseId,targets,origin);
+    assert.throws(()=>checkTargetRelease('cd'.repeat(32),targets,origin),/different seed release/);
+    assert.throws(()=>checkTargetRelease(sample.releaseId,targets,{kind:'model'}),/seed/i);
     assert.throws(()=>checkTargets({...sample,startupMs:50},targets,origin,'desktop'),/startup/);
     for(const other of [undefined,{kind:'model'},{kind:'seed_v5',display_only:false}])assert.throws(()=>checkTargets(sample,targets,other),/seed/i);
     assert.throws(()=>checkTargets(sample,{status:'measured',ceilings:targets.ceilings},origin),/target/i);
