@@ -71,6 +71,21 @@ def test_daily_preflights_all_heads_without_creating_a_missing_table(tmp_path):
     assert not (tmp_path/'work/captures').exists()
 
 
+def test_complete_receipt_identity_reads_the_final_native_pin_only(tmp_path):
+    from congress_api.lake.daily import _complete_receipt_keys
+    pin=dict(metadata_location='file:///fixed.metadata.json',table_uuid='a'*32,snapshot=7,schema_id=0)
+    class Native:
+        def run_job(self,path):
+            job=json.loads(path.read_text())
+            assert job['inputs']==[dict(name='current_captures',kind='native_table',**pin)]
+            assert job['outputs']==[]
+            assert job['queries']==[dict(name='receipt_keys',sql='SELECT DISTINCT receipt_key FROM current_captures ORDER BY receipt_key')]
+            return dict(queries=[dict(name='receipt_keys',data=[dict(receipt_key='receipts/a/one.jsonl.gz'),
+                dict(receipt_key='receipts/a/two.jsonl.gz')])])
+    assert _complete_receipt_keys(pin,engine=Native(),work=tmp_path/'identity')==[
+        'receipts/a/one.jsonl.gz','receipts/a/two.jsonl.gz']
+
+
 def test_local_unreadable_inventory_reuses_exact_imported_records(tmp_path):
     from congress_api.retention.provenance import import_unreadable,local_unreadable_inventory
     path=tmp_path/'decisions.jsonl'
@@ -230,17 +245,31 @@ def test_native_daily_producer_returns_fresh_three_pins_and_reuses_current_work(
     first=produce_daily(value,engine=engine,raw_store=store)
     assert first['status']=='completed' and set(first['pins'])==set(TABLES)
     assert first['receipt_keys']==[value['receipt_inventory'][0]['key']]
+    assert first['new_receipt_keys']==first['receipt_keys']
     assert all(p['snapshot'] is not None for p in first['pins'].values())
     assert first['producerreports']['readings']['work_items']==1
     assert first['producerreports']['readings']['read_bytes']>0
     assert first['currentversions']['filename_readings']
     value=replace_spec(value,work=str(tmp_path/'second'))
     second=produce_daily(value,engine=engine,raw_store=store)
-    assert second['status']=='completed' and second['receipt_keys']==[]
+    assert second['status']=='completed' and second['receipt_keys']==first['receipt_keys']
+    assert second['new_receipt_keys']==[]
     assert second['producerreports']['readings']['work_items']==0
     assert second['producerreports']['readings']['read_bytes']==0
     final=json.loads((tmp_path/'second/final-heads/job.json').read_text())
     assert final['table_operations']==[dict(kind='resolve',name=n,table=t) for n,t in TABLES.items()]
+
+
+def test_native_daily_identity_includes_existing_and_new_receipts(tmp_path):
+    from congress_api.lake.daily import produce_daily
+    value,engine,store=native_fixture(tmp_path,2)
+    first=produce_daily(dict(value,receipt_inventory=value['receipt_inventory'][:1]),engine=engine,raw_store=store)
+    second=produce_daily(dict(value,work=str(tmp_path/'second')),engine=engine,raw_store=store)
+    keys=sorted(row['key'] for row in value['receipt_inventory'])
+    assert first['receipt_keys']==keys[:1]
+    assert second['receipt_keys']==keys and second['new_receipt_keys']==keys[1:]
+    third=produce_daily(dict(value,work=str(tmp_path/'third')),engine=engine,raw_store=store)
+    assert third['receipt_keys']==keys and third['new_receipt_keys']==[]
 
 
 def replace_spec(value,**changes):
