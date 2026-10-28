@@ -63,7 +63,7 @@ def test_native_once_worklist_reuses_writer_facts_and_parses_duplicate_body_once
     path=raw/key;path.parent.mkdir(parents=True);path.write_bytes(body)
     caption=bytes.fromhex('e'*64)
     captures=tmp_path/'captures.parquet'
-    schema=pa.schema([('sha256',pa.binary(32)),('bytes',pa.int64()),('media_type',pa.string()),('fidelity',pa.string())])
+    schema=pa.schema([('sha256',pa.binary(32)),('bytes',pa.int64()),('media_type',pa.string()),('fidelity',pa.string()),('sniffed_format',pa.string()),('sniff_version',pa.string()),('intact',pa.bool_())])
     pq.write_table(pa.Table.from_pylist([dict(sha256=digest,bytes=len(body),media_type='application/pdf',fidelity='exact-bytes')]*2+
         [dict(sha256=caption,bytes=100,media_type='text/vtt',fidelity='saved-text')],schema=schema),captures)
     inventory=tmp_path/'inventory.parquet'
