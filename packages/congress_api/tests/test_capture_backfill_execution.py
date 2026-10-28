@@ -40,11 +40,11 @@ def test_real_two_batch_append_then_fresh_retry_never_reopens_raw(tmp_path):
     assert all(batch['outcome']['no_work'] for batch in second['batches'])
 
 
-def test_driver_refuses_missing_counter_before_any_catalog_effect(tmp_path):
+def test_driver_refuses_counter_source_before_any_catalog_effect(tmp_path):
     key='receipts/documents/2026-10-28/no-counter.gz'
     counts=[dict(key=key,source_rows=1,expected_captures=1,uncompressed_bytes=1,list_items=1,
         max_line_bytes=1,max_line_items=1)]
-    with pytest.raises(ValueError,match='counter'):
+    with pytest.raises(ValueError,match='source'):
         capture_backfill.execute_batches([dict(key=key)],counts,
             engine=NativeDatasets.from_config(os.environ['DOCSPEC_JOB_CONFIG']),
             engine_config=os.environ['DOCSPEC_JOB_CONFIG'],work=tmp_path/'work',
@@ -91,3 +91,12 @@ def test_failed_batch_status_keeps_the_measured_failed_process_peak(tmp_path):
     last=json.loads((tmp_path/'status.jsonl').read_text().splitlines()[-1])
     assert actual>0 and last['status']=='fail'
     assert last['peak_phys_gb']==actual/1e9
+
+
+def test_driver_rejects_historical_counter_flag_even_with_direct_files(tmp_path):
+    files,counts=inputs(tmp_path/'raw')
+    with pytest.raises(ValueError,match='counter'):
+        capture_backfill.execute_batches(files,counts,engine=None,engine_config='unopened',
+            work=tmp_path/'work',table={},catalog_root=tmp_path/'catalog',
+            validated_counter=tmp_path/'historical.parquet')
+    assert not (tmp_path/'catalog').exists()
