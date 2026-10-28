@@ -584,12 +584,12 @@ One row per source file: 1,683,430 today.
 - **Effective filename:** the first non-empty name in this order, else `''`, by one SQL definition that the filename producer (§6.3) and the model share:
   1. the `recovered_filename` of the row's recovery decision (§7.8), unless the decision rejects it;
   2. the member basename, for an archive member;
-  3. the `h_content_disposition` filename, `filename*` [[RFC6266]] first;
+  3. the `h_content_disposition` filename, `filename*` [[RFC6266]] first, when the profile admits that header; phase 1 does not ingest download headers and proceeds to the address-based fallbacks;
   4. the value of the first filename-parameter registry entry present in the source URL's query, else the requested URL's, at its first occurrence;
   5. the source URL's last path segment;
   6. the requested URL's last path segment.
 - **Decoding:** URL segments and query values are percent-decoded once as strict UTF-8, `+` kept literal; an invalid sequence stays encoded.
-- **One name per capture row.** When fetches of one body at one URL offered different names, each name is its own source file, joined by the same-body edge; the other names a row was offered stay in its receipt, and the document shows the saved file's name.
+- **One name per capture row.** Each admitted effective name is its own source file, joined by the same-body edge. Phase 1 does not distinguish names offered only in headers at one address; those names stay in raw behind the capture pointer. The document shows the saved file's effective name.
 - **Grain:** two archive members with the same body and name at different paths are one source file; `sources` keeps each path.
 
 ### 7.5 Edges and Documents
@@ -721,8 +721,7 @@ One row per requested URL, plus the queue: `requested_url` string, `attempts` in
 - Aggregated over distinct `(receipt_key, receipt_line)`, so a fetch line counts once however many bodies it references.
 - The latest `mode = fetch` line wins, in the order `(retrieved_at nulls first, receipt_key, receipt_line)`, and gives `last_status` from its `http_status`; `last_good_at` is the `retrieved_at` of its latest good fetch (§7.3). Recovery rows MUST NOT appear.
 - **`next_attempt_at`:**
-  - for a retryable outcome (`retry_later`, `size_limit`, `request_failed`), the later of `last_attempt` and the line's `retry_after`, but no later than `last_attempt` plus the family's recheck interval;
-  - for any other outcome, `last_attempt` plus that interval; for a banded family, the band is the age at `last_attempt` of the URL's earliest meeting date (§7.5), else of the date in its docs.house.gov `/meetings/` path, else the family's shortest band applies, so the job's clock never enters.
+  - in phase 1, `last_attempt` plus the family's recheck interval for every outcome; `Retry-After` stays in raw and is not a bulk model input; for a banded family, the band is the age at `last_attempt` of the URL's earliest meeting date (§7.5), else of the date in its docs.house.gov `/meetings/` path, else the family's shortest band applies, so the job's clock never enters.
   - null, and so due now, when `last_attempt` is null (about 25,500 requested URLs today, nearly all from two undated backfill shapes).
 - **The queue:** every resolved URL target from a good-fetched page that is not an `error_response` (wrapper pages included), that matches the capture-scope registry, and whose `url_key` matches no `mode = fetch` row's requested or final URL (archive-member targets are not fetchable).
   - Each `url_key` adds one row under its byte-wise least target, with its credential parameters removed (`url_state` is public), `attempts = 0` and a null `next_attempt_at`.
