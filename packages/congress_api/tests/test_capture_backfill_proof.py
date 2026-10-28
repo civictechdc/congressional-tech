@@ -153,3 +153,17 @@ def test_proof_identity_binds_selected_raw_authorities_without_counter(tmp_path)
     assert len(identity['sources'])==1
     assert identity['sources'][0]['path']==files[0]['path']
     assert identity['sources'][0]['qualification']['path']==files[0]['qualification']
+
+
+@pytest.mark.parametrize('kind',['relative','traversal','duplicate_alias'])
+def test_proof_external_qualification_keys_preserve_path_guards(tmp_path,kind):
+    from congress_api.lake.capture_backfill_proof import proof_identity
+    from test_captures_ingest import files as receipt_files
+    files=receipt_files(tmp_path/'raw',[dict(record={})])
+    path=files[0]['path'];authority=files[0]['qualification']
+    if kind=='relative':bindings={'relative/receipt.gz':authority}
+    elif kind=='traversal':bindings={str(tmp_path/'raw'/'..'/'raw'/'receipt.gz'):authority}
+    else:bindings={path:authority,str(Path(path).parent)+'/./'+Path(path).name:authority}
+    with pytest.raises(ValueError,match='absolute|Duplicate'):
+        proof_identity(engine=NativeDatasets.from_config(os.environ['DOCSPEC_JOB_CONFIG']),
+            engine_config=os.environ['DOCSPEC_JOB_CONFIG'],files=files,source_qualifications=bindings)
