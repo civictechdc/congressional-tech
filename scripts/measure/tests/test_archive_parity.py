@@ -148,7 +148,7 @@ def test_descriptor_requires_the_pinned_pair_and_actual_candidate_files(tmp_path
         parity.load_descriptor(path)
 
 
-def f0_fixture(tmp_path, *, bad_filename=False, bad_metadata=False, bad_ranges=False, bad_lookup=False):
+def f0_fixture(tmp_path, *, bad_filename=False, bad_metadata=False, bad_ranges=False, bad_lookup=False, bad_sort=None):
     import pyarrow as pa
     import pyarrow.parquet as pq
     from congress_api.retention.provenance import file_pin
@@ -168,7 +168,7 @@ def f0_fixture(tmp_path, *, bad_filename=False, bad_metadata=False, bad_ranges=F
     manifest=convert_catalog(tmp_path/'documents.parquet',tmp_path/'filenames.parquet',tmp_path/'captures.parquet',tmp_path/'committees.parquet',
         catalog_id=parity.ORACLE_GENERATION,output=tmp_path/'release',scratch=tmp_path/'converter',engine=engine())
     release=tmp_path/'release';producer=tmp_path/'converter'
-    if bad_filename or bad_metadata or bad_ranges or bad_lookup:
+    if bad_filename or bad_metadata or bad_ranges or bad_lookup or bad_sort:
         # This is an authored bad native job, not a patch to production code.
         from hashlib import sha256
         job=json.loads((producer/'job.json').read_text())
@@ -187,6 +187,9 @@ def f0_fixture(tmp_path, *, bad_filename=False, bad_metadata=False, bad_ranges=F
         if bad_lookup:
             lookup=next(step for step in job['steps'] if step['name']=='url_keys')
             lookup['sql']+=' WHERE false'
+        if bad_sort:
+            output=next(o for o in job['outputs'] if o['name']==bad_sort)
+            output['settings']['order_by'][0]['direction']='desc'
         release=tmp_path/'bad-release';release.mkdir()
         producer=tmp_path/'bad-producer';producer.mkdir()
         job['scratch']=str(producer/'native')
@@ -325,9 +328,9 @@ def test_native_private_mapping_permutation_is_not_public_row_evidence(tmp_path)
 def test_recovery_causes_bind_each_visible_value_to_retained_evidence(tmp_path):
     rows=[]
     for case in FIXTURE['recovery_values']:
-        for variant in ['correct','wrong']:
+        for variant in ['correct','wrong','null']:
             rows.append(dict(difference_id=case['field']+':'+variant,field=case['field'],subject=case['fact']['body_sha'],
-                value=case['value'] if variant=='correct' else case['wrong'],direction='added',old_doc='old',new_doc='new',
+                value=case['value'] if variant=='correct' else case['wrong'] if variant=='wrong' else '[null]',direction='added',old_doc='old',new_doc='new',
                 fact=json.dumps(case['fact']),evidence_ref='fixture:retained-stage'))
     inputs=[json_input(tmp_path,'observed_differences',rows,**{k:'Utf8' for k in rows[0]})]
     result=run_job(tmp_path,engine(),inputs=inputs,steps=parity.cause_steps(),outputs=[],queries=[dict(name='causes',sql='SELECT difference_id,cause FROM known_causes ORDER BY difference_id')])
@@ -370,7 +373,7 @@ def test_native_b7_witness_uses_superseding_kind_and_earliest_fetch_date(tmp_pat
     steps,missing=parity.model_witness_steps(available)
     assert 'b7_owner_recoveries' not in missing
     reports=run_job(tmp_path,engine(),inputs=inputs,steps=steps,outputs=[],queries=[dict(name='b7',sql="SELECT DISTINCT json_get_str(fact,'expected_kind') AS kind,json_get_str(fact,'expected_imported_at') AS imported_at FROM witnesses WHERE json_get_str(fact,'stage')='raw-recoveries-owner-32c13ffa'")])
-    assert reports['b7']==[dict(kind=expected['kind'],imported_at=expected['imported_at'])]
+    assert reports['b7']==[dict(kind=json.dumps([expected['kind']]),imported_at=json.dumps([expected['imported_at']]))]
 
 
 
@@ -395,3 +398,28 @@ def test_model_body_sets_exclude_nonreal_members_but_keep_their_source_evidence(
     inputs,steps=parity.normalization(loaded,directory=directory)
     result=run_job(directory,engine(),inputs=inputs,steps=steps,outputs=[],queries=[dict(name='counts',sql='SELECT (SELECT count(*) FROM new_bodies) AS bodies,(SELECT count(*) FROM new_anchors) AS anchors')])
     assert result['counts']==[dict(bodies=FIXTURE['f0_catalog']['expected']['model_real_bodies'],anchors=4)]
+
+
+@pytest.mark.parametrize('table',['list.parquet','detail.parquet','sources.parquet','recoveries.parquet'])
+def test_native_descending_public_writer_cannot_authenticate_ascending_private_rows(tmp_path,table):
+    template=f0_fixture(tmp_path,bad_sort=table)
+    with pytest.raises(ValueError,match='sort|order'):
+        parity.prepare_f0(template,engine=engine(),work=tmp_path/'prepare')
+
+
+def test_null_recovery_values_remain_observable_before_cause_classification(tmp_path):
+    import pyarrow as pa
+    import pyarrow.parquet as pq
+    template=f0_fixture(tmp_path)
+    descriptor=parity.prepare_f0(template,engine=engine(),work=tmp_path/'prepare')
+    loaded=parity.load_descriptor(descriptor)
+    schema=pq.read_schema(loaded['paths']['release_recoveries'])
+    row=dict(list_row=0,ordinal=0,kind=None,body=bytes.fromhex('d'*64),suffix='.gz',bytes=100,imported_at=None,recovered_url='https://www.govinfo.gov/hearing.htm',identity_note=None)
+    path=tmp_path/'null-recoveries.parquet';pq.write_table(pa.Table.from_pylist([row],schema=schema),path)
+    # Exercise value projection of this deliberately bad public row; the full
+    # descriptor path independently checks native production and range custody.
+    loaded['paths']['release_recoveries']=str(path)
+    directory=tmp_path/'normalized';directory.mkdir()
+    inputs,steps=parity.normalization(loaded,directory=directory)
+    reports=run_job(directory,engine(),inputs=inputs,steps=steps,outputs=[],queries=[dict(name='values',sql="SELECT field,value FROM new_fields WHERE field IN ('recovery.kind','recovery.imported_at') ORDER BY field")])
+    assert reports['values']==[dict(field=field,value=value) for field,value in sorted(FIXTURE['f0_catalog']['expected']['null_recovery_values'].items())]

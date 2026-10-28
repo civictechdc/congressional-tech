@@ -813,7 +813,11 @@
         "f0_display_facts"
       ],
       "bad_metadata_unexplained": 12,
-      "model_real_bodies": 3
+      "model_real_bodies": 3,
+      "null_recovery_values": {
+        "recovery.kind": "[null]",
+        "recovery.imported_at": "[null]"
+      }
     },
     "note": "F0 native producer preserves source membership; literal ID formula includes a usable PDF with mixed 200.0/404 status history. Corrupt bytes/media_type must produce 12 unexplained atoms; permuted private rows must refuse lineage."
   },
@@ -821,25 +825,25 @@
     {
       "cause": "b7_owner_recoveries",
       "field": "recovery.kind",
-      "value": "requested_content_in_official_hearing",
-      "wrong": "recovered_document",
+      "value": "[\"requested_content_in_official_hearing\"]",
+      "wrong": "[\"recovered_document\"]",
       "fact": {
         "stage": "raw-recoveries-owner-32c13ffa",
         "decision_id": "owner-57",
         "body_sha": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
-        "expected_kind": "requested_content_in_official_hearing"
+        "expected_kind": "[\"requested_content_in_official_hearing\"]"
       }
     },
     {
       "cause": "b7_owner_recoveries",
       "field": "recovery.imported_at",
-      "value": "2026-10-05",
-      "wrong": "2026-10-27",
+      "value": "[\"2026-10-05\"]",
+      "wrong": "[\"2026-10-27\"]",
       "fact": {
         "stage": "raw-recoveries-owner-32c13ffa",
         "decision_id": "earliest-24",
         "body_sha": "eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
-        "expected_imported_at": "2026-10-05"
+        "expected_imported_at": "[\"2026-10-05\"]"
       }
     }
   ],
