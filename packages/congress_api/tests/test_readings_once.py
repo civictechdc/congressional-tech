@@ -79,3 +79,107 @@ def test_native_once_worklist_reuses_writer_facts_and_parses_duplicate_body_once
     assert admitted==[dict(body_sha=caption,format='vtt',basis='writer_format')]
     assert result['read_bytes']==len(body) and result['pending_reads']==0
     assert not any((tmp_path/'stage/body-bytes').iterdir())
+
+
+def _review_inputs(tmp_path,*,available=True,metadata=None):
+    body=b'<html><body><p>'+b'Evidence '*2000+b'</p></body></html>'
+    digest=hashlib.sha256(body).digest();key='bodies/sha256/'+digest.hex()[:2]+'/'+digest.hex()
+    raw=tmp_path/'raw';raw.mkdir()
+    source=raw/key
+    if available:source.parent.mkdir(parents=True);source.write_bytes(body)
+    captures=tmp_path/'captures.parquet'
+    schema=pa.schema([('sha256',pa.binary(32)),('bytes',pa.int64()),('media_type',pa.string()),('fidelity',pa.string()),
+        ('sniffed_format',pa.string()),('sniff_version',pa.string()),('intact',pa.bool_())])
+    values=metadata or [dict(bytes=len(body),media_type='text/html',fidelity='exact-bytes')]
+    pq.write_table(pa.Table.from_pylist([dict(sha256=digest,**row) for row in values],schema=schema),captures)
+    inventory=tmp_path/'inventory.parquet'
+    items=[dict(body_sha=digest,physical_key=key,relative_path=key,stored_bytes=len(body),stored_gzip=False)] if available else []
+    pq.write_table(pa.Table.from_pylist(items,schema=pa.schema([('body_sha',pa.binary(32)),('physical_key',pa.string()),
+        ('relative_path',pa.string()),('stored_bytes',pa.int64()),('stored_gzip',pa.bool_())])),inventory)
+    return dict(captures=captures,body_inventory=inventory,local_root=raw,
+        decided_at='2026-10-27T12:00:00Z',engine=NativeDatasets.from_config(os.environ['DOCSPEC_JOB_CONFIG'])),source,len(body)
+
+
+@pytest.mark.parametrize(('outcome','durable'),[('crash',False),('crash',True),('read_exit',False),('response_error',False)])
+def test_combined_stage_cleans_actual_cached_bytes_after_final_failure(tmp_path,outcome,durable):
+    from congress_api.retention.body_store import BodyStore,LocalAdapter
+    args,source,stored_size=_review_inputs(tmp_path)
+    wrapper=tmp_path/'terminal.py'
+    wrapper.write_text('''import json,os,sys
+from pathlib import Path
+from congress_api.lake.readings import parse_once_payload
+from congress_api.retention.parser_worker import reading_input
+def run(payload,mode):
+    request=json.loads(payload);source=request['path'];log=Path(source+'.opens')
+    def observe(event,args):
+        if event=='open' and str(args[0])==source:
+            with log.open('a') as stream:stream.write('open\\n')
+    sys.addaudithook(observe)
+    result=parse_once_payload(payload)
+    size=sum(path.stat().st_size for path in Path(request['cache']).glob('*.bin'))
+    with Path(source+'.cached').open('a') as stream:stream.write(str(size)+'\\n')
+    if mode=='crash':raise RuntimeError('fixture crash after filling the cache')
+    if mode=='read_exit':
+        with reading_input():os._exit(12)
+    return dict(result,read_error='fixture_pending',rows=[])
+def crash(payload):return run(payload,'crash')
+def read_exit(payload):return run(payload,'read_exit')
+def response_error(payload):return run(payload,'response_error')
+''')
+    def worker(parser,version,callable_path,**bounds):
+        return ParserWorker(parser,version,str(wrapper)+':'+outcome,**bounds)
+    raw=tmp_path/'durable'
+    extra=dict(unreadable_store=BodyStore(LocalAdapter(raw))) if durable else {}
+    result=readings.stage_once(**args,work=tmp_path/'stage',worker_factory=worker,**extra)
+    cache=tmp_path/'stage/body-bytes'
+    assert cache.exists() and list(cache.iterdir())==[]
+    cached=[int(value) for value in Path(str(source)+'.cached').read_text().splitlines()]
+    assert cached==[stored_size]*(2 if outcome=='crash' else 1)
+    assert Path(str(source)+'.opens').read_text().splitlines()==['open']
+    assert pq.ParquetFile(result['readings']).metadata.num_rows==0
+    if outcome=='crash':
+        assert result['unreadable']==1 and result['pending_reads']==0
+        assert result['unreadable_pending'] is not durable
+        path=raw/result['unreadable_key'] if durable else Path(result['unreadable_path'])
+        record=json.loads(path.read_text())
+        assert record['parser']=='readings' and record['parser_version']==result['parser_version']
+        if not durable:
+            with pytest.raises(ValueError,match='unreadable.*import'):
+                readings.append(result,engine=object(),work=tmp_path/'append',catalog_root=tmp_path/'catalog',table={})
+            assert not (tmp_path/'append').exists() and not (tmp_path/'catalog').exists()
+    else:
+        assert result['pending_reads']==1 and result['unreadable']==0
+        assert result['unreadable_key'] is None
+
+
+def test_combined_failure_version_covers_explicit_worker_policy_not_leaf_facts():
+    versions={parser:readings.current_version(parser) for parser in ['sniff','html','xml','json']}
+    policy=readings.worker_limits()
+    baseline=readings.bundle_version(versions,policy=policy)
+    for name in ['memory_bytes','timeout_seconds','max_input_bytes','max_output_bytes']:
+        changed=dict(policy);changed[name]=policy[name]*2
+        assert readings.bundle_version(versions,policy=changed)!=baseline
+    assert {parser:readings.current_version(parser) for parser in versions}==versions
+    assert readings.bundle_version(dict(reversed(list(versions.items()))),policy=policy)==baseline
+
+
+def test_combined_stage_refuses_a_mixed_sniff_pin_before_creating_work(tmp_path):
+    work=tmp_path/'must-not-exist'
+    with pytest.raises(ValueError,match='sniff.*version|version.*sniff'):
+        readings.stage_once(captures=tmp_path/'unused',body_inventory=tmp_path/'unused',local_root=tmp_path,
+            work=work,decided_at='2026-10-27T12:00:00Z',engine=object(),sniff_version='old')
+    assert not work.exists()
+
+
+@pytest.mark.parametrize('proof',['fidelity','bytes'])
+def test_writer_admission_requires_nonnull_proof_on_every_capture(tmp_path,proof):
+    rows=([dict(bytes=100,media_type='text/vtt',fidelity='saved-text'),
+           dict(bytes=100,media_type='text/vtt',fidelity=None)] if proof=='fidelity' else
+          [dict(bytes=0,media_type='application/octet-stream',fidelity=None),
+           dict(bytes=None,media_type='application/octet-stream',fidelity=None)])
+    args,_,_=_review_inputs(tmp_path,available=False,metadata=rows)
+    result=readings.stage_once(**args,work=tmp_path/'stage')
+    assert pq.ParquetFile(result['body_admissions']).metadata.num_rows==0
+    assert pq.ParquetFile(result['work_list']).metadata.num_rows==1
+    assert pq.ParquetFile(result['readings']).metadata.num_rows==0
+    assert result['pending_reads']==1 and result['unreadable']==0
