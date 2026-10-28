@@ -1,6 +1,6 @@
 ---
 id: cefr-vnw8
-status: in_progress
+status: closed
 deps: []
 links: []
 created: 2026-10-27T19:00:52Z
@@ -30,3 +30,11 @@ Final candidate switch-deletions-candidate-final.json SHA256 91e2d900d4df332abb1
 **2026-10-27T19:36:41Z**
 
 Review findings reproduced by six focused contracts on the frozen baseline generator; fixed scoped import/definition resolution, tracked src/.../target inclusion, explicit engine lifecycle integration-test paths and exact BLAKE3 fallback boundaries. Six focused production-offline contracts pass in0.13s. Canonical generator moved to scripts/measure/cxb_switch_deletions.py; scratch cxb_inventory_switch.py is only a launcher. Old candidate-final.json remains immutable; corrected candidate is generated separately.
+
+**2026-10-27T19:40:23Z**
+
+Confirmed reviewer concerns fixed in840977d9 after contracts e9d1e1cb/402e9f89. Corrected immutable candidate run2/f5/switch-deletions-candidate-fixed.json SHA256 b4627528edd96e2edacafa89d397b80f5c50b1b778eb3293e39d9b45fab00e7b, CT840977d9/DS4aa75aa6:19groups,683files,0unresolved paths,32explicitmanual/sharedranges. src/engine/history/target/tests.rs551linesincluded; native lifecycle integrationtests listed WAIT/MIGRATE; six focused contracts pass. Fixed-head reproduction byte-identical. Old candidate-final retained for review. Parent owns final-head regeneration, reviewed selection and README commit.
+
+**2026-10-28T00:08:56Z**
+
+Local F5 preparation complete at CT572ccb64/DS48636e5. Selected codex-raw/cxb_switch_deletions.json SHAa9db01c4d19c0a4e2a28abbe4ae685ae7aa1b67f22fdf4951049499f87b173c1:19groups/697unique files/193399population lines/19open manual ranges; not a deletion estimate. Historical27mixedtests/5948lines reproduced; currentretention28. Six focused runner checks pass0.09s, CODE/ARCH APPROVE preparation only. Fixed-head regeneration byte-identical; --verify stale=false with no changed/uncommitted scanned source. Shared keep boundaries/callers/phase2/live-import gates explicit. Regenerate at final combined heads and remeasure each group at switch; no source deletion or live action.

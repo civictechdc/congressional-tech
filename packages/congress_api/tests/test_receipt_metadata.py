@@ -117,3 +117,79 @@ def test_metadata_validation_refuses_changed_parts_definition_and_runtime(tmp_pa
         output.write(b'changed')
     with pytest.raises(ValueError,match='pin'):
         validate_metadata(parts)
+
+
+def test_prior_metadata_contains_only_real_array_attempts(tmp_path):
+    from congress_api.lake.receipt_metadata import metadata_plan
+    from congress_api.retention.provenance import run_job
+    counter,files=counter_fixture(tmp_path)
+    table=pq.read_table(counter);rows=table.to_pylist()
+    # Absent, null, empty and object-shaped values contain no array attempts.
+    # Explicit null elements of a real array still occupy their source slot.
+    values=[None,None,[],dict(http_status=200,complete=False),
+            [dict(http_status=206,complete=False)],[None,dict(http_status=503,complete=False)]]
+    for index,(row,value) in enumerate(zip(rows,values)):
+        source=json.loads(row['__raw_line']);source['record'].pop('prior_attempts',None)
+        if index:
+            source['record']['prior_attempts']=value
+            source['prior_attempts']=value
+        row['__raw_line']=json.dumps(source)
+    pq.write_table(pa.Table.from_pylist(rows,schema=table.schema),counter)
+    plan=metadata_plan(counter=counter)
+    boundary=next(index for index,step in enumerate(plan['steps']) if step['name']=='prior_metadata')
+    steps=plan['steps'][:boundary+1]
+    work=tmp_path/'prior';work.mkdir()
+    result=run_job(work,engine(),inputs=plan['inputs'],steps=steps,outputs=[],queries=[
+        dict(name='prior',sql='''SELECT receipt_key,receipt_line,record_index,
+            cast(prior_json AS VARCHAR) AS value FROM prior_metadata
+            ORDER BY receipt_key,receipt_line,record_index''')])['prior']
+    assert [(row['receipt_key'],row['receipt_line'],row['record_index']) for row in result]==[
+        (files[2]['key'],1,-1),(files[2]['key'],1,0),(files[2]['key'],2,-1),(files[2]['key'],2,0)]
+    for row in result:
+        attempts=json.loads(row['value'])
+        if row['receipt_line']==1:
+            assert len(attempts)==1 and attempts[0]['http_status']==206 and attempts[0]['complete'] is False
+        else:
+            assert len(attempts)==2 and all(value is None for value in attempts[0].values())
+            assert attempts[1]['http_status']==503 and attempts[1]['complete'] is False
+
+
+def test_prior_materialization_keeps_sparse_root_list_slots_and_public_facts(tmp_path):
+    from congress_api.lake.receipt_metadata import compact
+    from congress_api.lake.captures import stage_captures
+    from test_captures_ingest import body,STAMP
+    counter,files=counter_fixture(tmp_path)
+    table=pq.read_table(counter);rows=table.to_pylist()
+    source=[dict(record=dict(row['record'],complete=True),captures=[body()]) for row in rows]
+    for index,value in [(1,None),(2,[]),(3,dict(http_status=200,complete=False))]:
+        source[index]['record']['prior_attempts']=value
+        source[index]['prior_attempts']=value
+    source[4]['prior_attempts']=[dict(http_status=206,complete=False,content=dict(body='ignored-prior-body'*3000))]
+    source[4]['record']['prior_attempts']=[dict(http_status=208,complete=True)]
+    source[4]['captures']=[body(attempt=1),body(attempt=0)]
+    source[5]['record']=[dict(url='https://example.test/list/a',http_status=200,retrieved_at=STAMP,
+        prior_attempts=[None,dict(http_status=201,complete=True),dict(http_status=202,complete=False)]),
+        dict(url='https://example.test/list/b',http_status=200,retrieved_at=STAMP,
+        prior_attempts=[dict(http_status=203,complete=True)])]
+    source[5]['captures']=[body(attempt=1,pointer=[0,'content','body']),
+        body(attempt=2,pointer=['0','content','body']),body(attempt=3,pointer=[0,'content','body']),
+        body(attempt=1,pointer=[1,'content','body'])]
+    for row,raw in zip(rows,source):
+        row['__raw_line']=json.dumps(raw);row['captures']=raw['captures']
+    rows[5]['record']=None
+    pq.write_table(pa.Table.from_pylist(rows,schema=table.schema),counter)
+    native=engine()
+    metadata=compact(counter=counter,engine=native,work=tmp_path/'metadata')
+    narrow=pq.read_table(metadata).to_pylist()
+    assert all(row['line']['_ingest_prior_attempts_json'] is None for row in narrow[:4])
+    assert len(json.loads(narrow[4]['line']['_ingest_prior_attempts_json']))==1
+    assert [len(json.loads(record['_ingest_prior_attempts_json'])) for record in narrow[5]['record_values']]==[3,1]
+    assert all(value is None for value in json.loads(narrow[5]['record_values'][0]['_ingest_prior_attempts_json'])[0].values())
+    assert 'ignored-prior-body' not in str(narrow)
+    stage=stage_captures([dict(key=row['key']) for row in files],engine=native,work=tmp_path/'stage',counter=metadata)
+    actual=pq.read_table(stage/'captures.parquet')
+    assert actual.num_rows==10
+    assert actual['attempt_status'].to_pylist()==[200,200,200,200,206,200,None,201,202,203]
+    assert actual['complete'].to_pylist()==[True,True,True,True,False,True,True,True,False,True]
+    assert actual['http_status'].to_pylist()==[200]*10
+    assert actual['url'].to_pylist()[-4:]==['https://example.test/list/a']*3+['https://example.test/list/b']

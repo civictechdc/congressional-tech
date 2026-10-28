@@ -14,7 +14,7 @@ import pyarrow.parquet as pq
 
 from congress_api.lake.versions import version_digest
 from congress_api.retention.body_store import BodyStore, LocalAdapter
-from congress_api.retention.provenance import field, json_input, list_of, struct, parquet_output, run_job, timestamp_key, instant, file_pin
+from congress_api.retention.provenance import field, json_input, list_of, struct, parquet_output, run_job, instant, import_unreadable, finish_stage
 
 
 ROOT = Path(__file__).resolve().parents[6]
@@ -173,7 +173,7 @@ def _work_inputs(captures, recovery_files, unreadable_files, existing, work):
 
 
 def stage(*, captures, recovery_files, engine, work, decided_at, existing=None, catalog_version=None,
-          vocabularies=None, unreadable_files=(), worker_factory=None):
+          vocabularies=None, unreadable_files=(), worker_factory=None, unreadable_store=None):
     """Stage native missing pairs and local parser rows; does not commit a lake table."""
     instant(decided_at)
     version = current_version(vocabularies=vocabularies)
@@ -260,14 +260,21 @@ def stage(*, captures, recovery_files, engine, work, decided_at, existing=None, 
                else name for name in SCHEMA.names]
     run_job(parsed, engine, inputs=[source], steps=[], outputs=[parquet_output(work,
         'filename-readings', 'SELECT ' + ','.join(columns) + ' FROM parsed_readings', PK)])
-    unreadable_key = unreadable_path = None
+    unreadable_key = unreadable_path = unreadable_stage = None
+    pending = bool(decision_count and unreadable_store is None)
     if decision_count:
-        unreadable_key = ('provenance/unreadable/' + timestamp_key(decided_at) + '-'
-                          + file_pin(decisions_path)['sha256'] + '.jsonl')
-        BodyStore(LocalAdapter(work/'raw')).put(unreadable_key,decisions_path,'application/x-ndjson')
-        unreadable_path = str(work/'raw'/unreadable_key)
+        if pending:
+            unreadable_stage=work/'unreadable-stage';unreadable_stage.mkdir()
+            imported=import_unreadable(BodyStore(LocalAdapter(unreadable_stage)),decisions_path,decided_at=decided_at)
+            unreadable_path=str(unreadable_stage/imported['key'])
+            finish_stage(unreadable_stage,kind='unreadable',provenance=imported['key'],
+                records=decision_count,inputs={},extra=dict(decided_at=decided_at))
+        else:
+            imported=import_unreadable(unreadable_store,decisions_path,decided_at=decided_at)
+        unreadable_key=imported['key']
     return dict(readings=work/'filename-readings.parquet', work_list=work/'work-list.parquet',
-                catalog_version=version,unreadable_key=unreadable_key,unreadable_path=unreadable_path)
+        catalog_version=version,unreadable_key=unreadable_key,unreadable_path=unreadable_path,
+        unreadable_stage=unreadable_stage,unreadable_pending=pending)
 
 def create_table(*, engine, work, catalog_root, table, location, create_namespace=False):
     from congress_api.lake.tables import create_table as native_create
@@ -277,6 +284,9 @@ def create_table(*, engine, work, catalog_root, table, location, create_namespac
 
 
 def append(staged, *, engine, work, catalog_root, table):
+    if staged.get('unreadable_pending'):
+        raise ValueError('Pending unreadable decisions require durable import: '
+            '.venv/bin/python -I -m congress_api.cli.provenance --stage '+str(staged['unreadable_stage'])+' --apply --bucket congressional-tech-raw')
     from congress_api.lake.tables import append_rows
     version = staged['catalog_version']
     # The staged content version is part of every work key and writer identity.
@@ -333,6 +343,9 @@ def main(argv=None, *, worker_factory=None,engine_factory=None):
         unreadable_files=json.loads(args.unreadable_inventory.read_text()) if args.unreadable_inventory else [],
         worker_factory=worker_factory)
     if args.apply:
+        if result['unreadable_pending']:
+            parser.error('Pending unreadable decisions require durable import: '
+                '.venv/bin/python -I -m congress_api.cli.provenance --stage '+str(result['unreadable_stage'])+' --apply --bucket congressional-tech-raw')
         if args.create_table:
             create_table(engine=engine,
                 work=args.work/'create', catalog_root=args.catalog_root, table=table,

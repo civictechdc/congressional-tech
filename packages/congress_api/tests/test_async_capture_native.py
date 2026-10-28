@@ -17,6 +17,10 @@ from historical_raw_archive import LegacyArchiveSeed as Archive
 from congress_api.retention.r2 import AsyncBodies
 from testing_fakes import MemoryStore, response, receipts
 
+UPLOAD_DATA = b'data'
+UPLOAD_SHA = hashlib.sha256(UPLOAD_DATA).hexdigest()
+UPLOAD_KEY = f'bodies/sha256/{UPLOAD_SHA[:2]}/{UPLOAD_SHA}'
+
 pytestmark = pytest.mark.loopback
 
 
@@ -203,7 +207,9 @@ def test_r2_stream_read_backoff_is_async_and_cancellable(monkeypatch):
 def test_r2_429_retries_with_real_sdk_and_preserves_upload(transport, code, caplog):
     from congress_api.retention.r2 import R2Store
     import json
-    data, key = b'compressed', 'bodies/sha256/test.gz'
+    data = b'compressed'
+    digest = hashlib.sha256(data).hexdigest()
+    key = f'bodies/sha256/{digest[:2]}/{digest}'
     with s3_responses([(429, code, {'Retry-After': '1'}), (200, '', {})]) as (options, calls):
         if transport == 'sync':
             with closing(boto3.client('s3', **options)) as client:
@@ -232,7 +238,7 @@ def test_r2_throttle_and_sdk_errors_share_one_attempt_budget(sequence):
         async def run():
             async with get_session().create_client('s3', **options) as client:
                 with pytest.raises(ClientError) as caught:
-                    await AsyncBodies(client, 'archive').put('bodies/test.gz', b'data')
+                    await AsyncBodies(client, 'archive').put(UPLOAD_KEY, UPLOAD_DATA)
                 assert caught.value.response['ResponseMetadata']['RetryAttempts'] == 2
         asyncio.run(run())
         assert len(calls) == 3
@@ -248,7 +254,7 @@ def test_r2_refuses_permanent_errors_and_excessive_waits(status, code, headers):
         async def run():
             async with get_session().create_client('s3', **options) as client:
                 with pytest.raises(ClientError):
-                    await AsyncBodies(client, 'archive').put('bodies/test.gz', b'data')
+                    await AsyncBodies(client, 'archive').put(UPLOAD_KEY, UPLOAD_DATA)
         asyncio.run(run())
         assert len(calls) == 1
 
@@ -258,7 +264,7 @@ def test_r2_retry_does_not_overwrite_existing_body_or_add_retries_when_disabled(
     with s3_responses([(429, 'ServiceUnavailable', {}), (412, 'PreconditionFailed', {})]) as (options, calls):
         async def run():
             async with get_session().create_client('s3', **options) as client:
-                assert await AsyncBodies(client, 'archive').put('bodies/test.gz', b'data') is False
+                assert await AsyncBodies(client, 'archive').put(UPLOAD_KEY, UPLOAD_DATA) is False
         asyncio.run(run())
         assert len(calls) == 2
     with s3_responses([(429, 'ServiceUnavailable', {})]) as (options, calls):
@@ -266,7 +272,7 @@ def test_r2_retry_does_not_overwrite_existing_body_or_add_retries_when_disabled(
         async def run():
             async with get_session().create_client('s3', **options) as client:
                 with pytest.raises(ClientError):
-                    await AsyncBodies(client, 'archive').put('bodies/test.gz', b'data')
+                    await AsyncBodies(client, 'archive').put(UPLOAD_KEY, UPLOAD_DATA)
         asyncio.run(run())
         assert len(calls) == 1
 
@@ -275,7 +281,7 @@ def test_r2_backoff_is_async_and_cancellable():
     with s3_responses([(429, 'ServiceUnavailable', {})]) as (options, calls):
         async def run():
             async with get_session().create_client('s3', **options) as client:
-                task = asyncio.create_task(AsyncBodies(client, 'archive').put('bodies/test.gz', b'data'))
+                task = asyncio.create_task(AsyncBodies(client, 'archive').put(UPLOAD_KEY, UPLOAD_DATA))
                 try:
                     async with asyncio.timeout(3):
                         while not calls:

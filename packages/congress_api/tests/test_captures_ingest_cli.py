@@ -75,3 +75,28 @@ def test_obsolete_receipt_batch_flag_is_refused_before_input_reads(tmp_path,size
             '--engine-config',os.environ['DOCSPEC_JOB_CONFIG'],'--work',str(tmp_path/'work'),
             '--receipt-batch-size',size])
     assert error.value.code==2
+
+
+def test_narrow_cli_refuses_retired_metadata_cache_before_input_reads(tmp_path):
+    from congress_api.cli.captures_ingest import main
+    with pytest.raises(SystemExit) as error:
+        main(['--receipt-inventory',str(tmp_path/'unopened.json'),
+              '--metadata',str(tmp_path/'retired-cache.parquet'),
+              '--engine-config',os.environ['DOCSPEC_JOB_CONFIG'],
+              '--work',str(tmp_path/'work')])
+    assert error.value.code==2
+    assert not (tmp_path/'work').exists()
+
+
+def test_source_qualification_map_is_validated_before_configuration_or_inventory(tmp_path,capsys):
+    from congress_api.cli.captures_ingest import main
+    qualification=tmp_path/'qualifications.json'
+    qualification.write_text('[]')
+    with pytest.raises(SystemExit) as error:
+        main(['--receipt-inventory',str(tmp_path/'unopened.json'),
+              '--source-qualifications',str(qualification),
+              '--engine-config',str(tmp_path/'unopened-config.json'),
+              '--work',str(tmp_path/'work')])
+    assert error.value.code==2
+    assert 'source qualifications must map source paths to manifest paths' in capsys.readouterr().err
+    assert not (tmp_path/'work').exists()

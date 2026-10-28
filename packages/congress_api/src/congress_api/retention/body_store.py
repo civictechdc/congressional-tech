@@ -30,13 +30,13 @@ class WriteResult:
     size: int | None = None
 
 
-def validate_key(key, operation='create', *, body_identity=True):
+def validate_key(key, operation='create'):
     if operation != 'create':
         raise ValueError('Raw storage is create-only')
     if (not isinstance(key, str) or not key.startswith(RAW_PREFIXES) or '\\' in key
             or any(p in {'', '.', '..'} for p in key.split('/'))):
         raise ValueError('Invalid raw key')
-    if body_identity and key.startswith('bodies/'):
+    if key.startswith('bodies/'):
         match = BODY.fullmatch(key)
         if not match or match[1] != match[2][:2]:
             raise ValueError('Invalid body shard or SHA-256')
@@ -65,9 +65,9 @@ def validate_record(value):
     walk(value)
 
 
-def prepare_stored(key, source, *, operation='create', body_identity=True):
+def prepare_stored(key, source, *, operation='create'):
     """Validate and hash already prepared bytes before storage I/O."""
-    validate_key(key, operation, body_identity=body_identity)
+    validate_key(key, operation)
     if key.startswith(('receipts/', 'provenance/')):
         source.seek(0)
         encoded = source.read(2) == b'\x1f\x8b'
@@ -99,9 +99,9 @@ def write_result(key, created, *, md5, size):
                        md5 if created else None, size if created else None)
 
 
-def create_stored(adapter, key, source, media, *, encoding=None, operation='create', body_identity=True,
+def create_stored(adapter, key, source, media, *, encoding=None, operation='create',
                   expected_md5=None, expected_size=None):
-    facts = prepare_stored(key, source, operation=operation, body_identity=body_identity)
+    facts = prepare_stored(key, source, operation=operation)
     if ((expected_md5 is not None and facts['md5'] != expected_md5)
             or (expected_size is not None and facts['size'] != expected_size)):
         raise ValueError('Prepared bytes differ from their qualified checksum or size')
@@ -110,7 +110,7 @@ def create_stored(adapter, key, source, media, *, encoding=None, operation='crea
 
 
 async def create_stored_async(adapter, key, source, media):
-    facts = prepare_stored(key, source, body_identity=False)
+    facts = prepare_stored(key, source)
     created = await adapter.create(key, source, media=media, encoding=None, **facts)
     return write_result(key, created, **facts)
 

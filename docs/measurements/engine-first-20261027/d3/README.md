@@ -31,4 +31,11 @@ After owner qualification, the first remote append command is:
 
 The live configuration supplies the explicit engine remote authority; omit `--catalog-root`. For a reviewed new table, add `--create-table --table-location "$REVIEWED_TABLE_URI"`; add `--create-namespace` only for a new namespace. For subsequent work, supply `--existing "$PINNED_FILENAME_READINGS"`. Local catalog runs instead supply `--catalog-root "$LOCAL_CATALOG_ROOT"` with a local engine configuration.
 
-New unreadable decisions are staged under the returned `unreadable_key` and `unreadable_path`. Their durable raw import is a separate live backfill gate; a lake append alone does not persist them. The common D2/D3 backfill integration must retain those bytes through the body store before claiming a rebuildable live backfill. No live append, unreadable import or production qualification is claimed here.
+New unreadable decisions use the shared `retention.provenance.import_unreadable` helper and a timestamp plus content SHA key. Component callers supply an explicit durable body store. Stage-only commands return `unreadable_pending=true` and an `unreadable_stage`; append refuses before any catalog effect while that import is pending. Import the reviewed stage with the existing provenance command, refresh `UNREADABLE_INVENTORY` from durable raw, then rerun the producer and append:
+
+```sh
+.venv/bin/python -I -m congress_api.cli.provenance \
+  --stage "$UNREADABLE_STAGE" --apply --bucket congressional-tech-raw
+```
+
+The first live import and append remain owner gates. Local tests import into a raw store outside the producer work, delete all stages, and rebuild from raw alone: unreadable inputs stay excluded, unavailable inputs remain pending, and new versions retry. No live append, unreadable import or production qualification is claimed here.

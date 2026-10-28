@@ -119,6 +119,17 @@ def input_tables(tmp_path, rows):
     return path
 
 
+def test_capture_filename_uses_download_header(tmp_path):
+    captures=input_tables(tmp_path,[dict(receipt_key='r',receipt_line=1,capture_index=0,mode='fetch',
+        url='https://a.test/addresspath.pdf',h_content_disposition='attachment; filename=header-only.pdf')])
+    result=reader().stage(worker_factory=Worker,decided_at=STAMP,captures=captures,recovery_files=[],
+        engine=engine(),work=tmp_path/'job')
+    rows=pq.read_table(result['readings']).to_pylist()
+    assert [(row['filename'],row['source_url']) for row in rows] == [
+        ('header-only.pdf','https://a.test/addresspath.pdf')]
+    assert rows[0]['status']=='completed'
+
+
 def test_native_effective_names_and_work_anti_join(tmp_path):
     cases = [
         dict(url='https://a.test/path.pdf', h_content_disposition="attachment; filename=old.pdf; filename*=UTF-8''caf%C3%A9.pdf"),
