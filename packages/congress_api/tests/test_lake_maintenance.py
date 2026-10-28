@@ -128,3 +128,18 @@ def test_native_equality_refuses_schema_coercion(tmp_path):
     new={**old,**{key:result[key] for key in old if key!='kind'}}
     with pytest.raises(ValueError,match='typed schema'):
         verify_generations(old,new,keys=['key'],engine=engine,work=tmp_path/'different')
+
+
+@pytest.mark.parametrize('uppercase_on',['selected','kept'])
+def test_purge_protects_equivalent_uuid_spellings_before_effects(tmp_path,uppercase_on):
+    from congress_api.lake.maintenance import purge_generation
+    engine,table,selected=generation(tmp_path,'old',[dict(key='a',value=b'one')])
+    kept={**selected,'metadata_location':'/earlier.metadata.json'}
+    if uppercase_on=='selected':
+        selected={**selected,'table_uuid':selected['table_uuid'].upper()}
+    else:
+        kept={**kept,'table_uuid':kept['table_uuid'].upper()}
+    with pytest.raises(ValueError,match='kept release'):
+        purge_generation(selected,table=table,kept_inputs=[{'tables':{'old':kept}}],
+            engine=engine,work=tmp_path/'refused',catalog_root=tmp_path/'catalog')
+    assert not (tmp_path/'refused').exists()
