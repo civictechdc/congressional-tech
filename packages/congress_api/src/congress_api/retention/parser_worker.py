@@ -5,6 +5,9 @@ parser result, including a rejection row, completes its input. Only process or
 resource failures trigger the single retry. This is resource control, not a sandbox.
 """
 import contextlib
+from collections import deque
+from concurrent.futures import ThreadPoolExecutor
+import threading
 import importlib
 import importlib.util
 import json
@@ -176,6 +179,64 @@ class ParserWorker:
             raise
         finally:
             path.unlink(missing_ok=True)
+
+
+
+class ParserWorkerPool:
+    """Bounded ordered calls through independent maintained parser supervisors."""
+
+    @staticmethod
+    def validate_budget(workers,memory_budget,memory_bytes):
+        if (type(workers) is not int or not 1<=workers<=32
+                or type(memory_budget) is not int or memory_budget<=0
+                or type(memory_bytes) is not int or memory_bytes<=0
+                or workers*memory_bytes>memory_budget):
+            raise ValueError('Parser workers1–32 and their combined memory must fit the explicit budget')
+
+    def __init__(self,parser,version,callable_path,*,workers,memory_budget,
+                 worker_factory=ParserWorker,**limits):
+        self.validate_budget(workers,memory_budget,limits.get('memory_bytes'))
+        # Reuse admission without starting a subprocess.
+        ParserWorker(parser,version,callable_path,**limits)
+        self.args=(parser,version,callable_path);self.limits=limits
+        self.workers=workers;self.worker_factory=worker_factory
+        self._executor=None;self._local=threading.local();self._started=[];self._lock=threading.Lock()
+
+    def __enter__(self):
+        if self._executor is not None:raise RuntimeError('Parser pool is already open')
+        self._executor=ThreadPoolExecutor(max_workers=self.workers,thread_name_prefix='parser')
+        return self
+
+    def _invoke(self,function,item):
+        worker=getattr(self._local,'worker',None)
+        if worker is None:
+            worker=self.worker_factory(*self.args,**self.limits).__enter__()
+            self._local.worker=worker
+            with self._lock:self._started.append(worker)
+        return function(worker,item)
+
+    def map(self,function,items):
+        """Keep at most4N futures; only the caller consumes ordered outcomes."""
+        if self._executor is None:raise RuntimeError('Parser pool requires an open context')
+        source=iter(items);pending=deque()
+        for _ in range(4*self.workers):
+            try:item=next(source)
+            except StopIteration:break
+            pending.append(self._executor.submit(self._invoke,function,item))
+        while pending:
+            result=pending.popleft().result()
+            yield result
+            try:item=next(source)
+            except StopIteration:continue
+            pending.append(self._executor.submit(self._invoke,function,item))
+
+    def __exit__(self,*error):
+        try:
+            if self._executor is not None:self._executor.shutdown(wait=True,cancel_futures=True)
+        finally:
+            self._executor=None
+            for worker in reversed(self._started):worker.__exit__(*error)
+            self._started.clear()
 
 
 def _child():
