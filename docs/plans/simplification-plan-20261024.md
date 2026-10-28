@@ -250,6 +250,8 @@ Each producer is built to [[ARCHITECTURE]] §8 and [[DATA-MODEL]] §6.
 4. **Pins:** publish and the maintenance job keep the receipt-key lists and, in phase 2, `pins/spicy-generations.json` ([[ARCHITECTURE]] §10.3.4, §10.3.7). The spicy-regs side (its retention reading that list, `nomination_id`, the nominations backfill, and reading the archive's releases instead of capturing meetings) is spicy-stack ss-vhi2.
 5. **Delete what is bound to nothing,** one PR per group as [[BINDINGS]] §6 lists them, measured again at cut.
 
+The first engine-era release may be seeded by an engine SQL conversion of the pinned live v5 catalog `596f08fa`, with its seed origin and input hashes recorded; the raw rebuild replaces it after its E4 comparison passes. This seed is display-only: its `url_state` does not drive capture, and the old capture and update workflows continue until the rebuild cut-over.
+
 **Phase-1 exit checklist.** The switch is done when all of these hold; phase 2's additions are in [[PHASE-2]] §4.1:
 - tracks A to E meet their done-when;
 - the cut-over ran in order: old capture disabled; a final ingest and publish; the flip; the new capture's first run on the target writers, whose `stored` lines carry MD5s matching their ETags and every line its stored suffix;
