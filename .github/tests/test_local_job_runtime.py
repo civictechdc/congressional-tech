@@ -86,11 +86,12 @@ def test_config_or_build_contradictions_refuse_before_install(tmp_path,case,inst
 
 
 def test_local_archive_bootstrap_precedes_each_offline_ci_consumer():
-    for workflow,job in [('validate-explorer.yml','validate'),('update-data.yml','meetings'),('capture-archive.yml','capture')]:
+    for workflow,job in [('validate-explorer.yml','offline'),('validate-explorer.yml','validate'),('update-data.yml','meetings'),('capture-archive.yml','capture')]:
         value=yaml.load((ROOT/'.github/workflows'/workflow).read_text(),Loader=yaml.BaseLoader)
         steps=value['jobs'][job]['steps']
         setup=next(i for i,s in enumerate(steps) if s.get('uses')=='./.github/actions/setup-local-job-runtime')
-        consumer=next(i for i,s in enumerate(steps) if 'production-offline' in s.get('run','') or 'capture_schedule' in s.get('run',''))
+        consumer=next(i for i,s in enumerate(steps) if any(command in s.get('run','')
+            for command in ('production-offline','active-experiment-regression','capture_schedule')))
         assert setup<consumer
         assert steps[setup]['with']=={'artifact':'${{ vars.DOCSPEC_RUNTIME_ARTIFACT }}',
             'credentials':'${{ secrets.DOCSPEC_ENGINE_CREDENTIALS }}',

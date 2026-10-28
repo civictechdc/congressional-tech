@@ -164,6 +164,8 @@ jobs:
           credentials: ${{ secrets.DOCSPEC_ENGINE_CREDENTIALS }}
           account-id: "174055408ff1560e60601c4d12c561c4"
 
+      - uses: ./.github/actions/setup-node-project
+
       - name: Test source parsing and refresh decisions
         env:
           CORE_BENCHMARK_REPORT: core-benchmark-smoke.json

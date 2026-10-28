@@ -46,9 +46,14 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  validate:
+  offline:
+    name: Offline regressions (${{ matrix.shard }}/6)
     runs-on: ubuntu-24.04
     timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: [1, 2, 3, 4, 5, 6]
     steps:
       - uses: actions/checkout@v5
         with:
@@ -60,8 +65,37 @@ jobs:
           artifact: ${{ vars.DOCSPEC_RUNTIME_ARTIFACT }}
           credentials: ${{ secrets.DOCSPEC_ENGINE_CREDENTIALS }}
           account-id: "174055408ff1560e60601c4d12c561c4"
-      - name: Test models, retained-source adapters and publication offline
-        run: python scripts/dev.py test production-offline
+      - uses: ./.github/actions/setup-node-project
+      - name: Test the complete offline partition
+        run: >-
+          .venv/bin/python scripts/dev.py test production-offline --shard ${{ matrix.shard }}/6 --
+          --junitxml=${{ runner.temp }}/offline-${{ matrix.shard }}.xml
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: offline-${{ matrix.shard }}
+          path: ${{ runner.temp }}/offline-${{ matrix.shard }}.xml
+
+  validate:
+    needs: offline
+    if: always()
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - name: Require every offline shard to pass
+        env:
+          OFFLINE_RESULT: ${{ needs.offline.result }}
+        run: test "$OFFLINE_RESULT" = success
+      - uses: actions/checkout@v5
+        with:
+          persist-credentials: false
+      - uses: ./.github/actions/setup-python-project
+      - uses: ./.github/actions/setup-local-job-runtime
+        if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
+        with:
+          artifact: ${{ vars.DOCSPEC_RUNTIME_ARTIFACT }}
+          credentials: ${{ secrets.DOCSPEC_ENGINE_CREDENTIALS }}
+          account-id: "174055408ff1560e60601c4d12c561c4"
       - name: Test active experiment fixtures and historical PDF worker
         run: python scripts/dev.py test active-experiment-regression
       - name: Build the native loopback transport

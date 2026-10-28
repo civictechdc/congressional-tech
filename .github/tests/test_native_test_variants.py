@@ -102,13 +102,17 @@ def test_validation_installs_private_runtime_only_for_trusted_sources(tmp_path, 
     import yaml
     root = Path(__file__).resolve().parents[2]
     workflow = yaml.load((root / '.github/workflows/validate-explorer.yml').read_text(), Loader=yaml.BaseLoader)
-    steps = workflow['jobs']['validate']['steps']
-    install = next(step for step in steps if step.get('uses') == './.github/actions/setup-local-job-runtime')
-    assert install['if'] == "github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository"
-    assert install['with']['artifact'] == '${{ vars.DOCSPEC_RUNTIME_ARTIFACT }}'
+    for job in ('validate', 'offline'):
+        steps = workflow['jobs'][job]['steps']
+        install = next(step for step in steps if step.get('uses') == './.github/actions/setup-local-job-runtime')
+        assert install['if'] == "github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository"
+        assert install['with']['artifact'] == '${{ vars.DOCSPEC_RUNTIME_ARTIFACT }}'
     action = yaml.load((root / '.github/actions/setup-local-job-runtime/action.yml').read_text(), Loader=yaml.BaseLoader)
     assert '--local' in action['runs']['steps'][0]['run']
-    assert any(step.get('run') == 'python scripts/dev.py test production-offline' for step in steps)
+    assert any(step.get('run') == (
+        '.venv/bin/python scripts/dev.py test production-offline --shard ${{ matrix.shard }}/6 -- '
+        '--junitxml=${{ runner.temp }}/offline-${{ matrix.shard }}.xml')
+        for step in workflow['jobs']['offline']['steps'])
     # Exercise the maintained missing-artifact refusal before any download or export.
     spec = importlib.util.spec_from_file_location('landing_native_setup', root/'.github/scripts/setup-native-runtime.py')
     helper = importlib.util.module_from_spec(spec); spec.loader.exec_module(helper)

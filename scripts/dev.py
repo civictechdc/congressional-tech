@@ -53,7 +53,7 @@ def baseline(config, *, fetch=False):
 def inventory(config):
     """Include untracked, nonignored tests so new files cannot evade enrollment."""
     names = run(['git', 'ls-files', '--cached', '--others', '--exclude-standard', '-z']).stdout.split('\0')
-    tests = {name for name in names if Path(name).name.startswith('test_') and name.endswith('.py')}
+    tests = {name for name in names if Path(name).match('test_*.py') or Path(name).match('*_test.py')}
     assigned = set()
     errors = []
     for name, lane in config['lanes'].items():
@@ -70,6 +70,7 @@ def inventory(config):
     if errors:
         raise ValueError('\n'.join(errors))
     print(f'Inventory complete: {len(tests)} test files assigned (marker lanes may share files).')
+    return tests
 
 
 def doctor(config, lane_name=None):
@@ -159,14 +160,40 @@ def job_runtime(config, lane_name):
         raise ValueError(f'{remedy}: {error}') from None
 
 
-def test(config, name, paths, pytest_args):
+def parse_shard(value):
+    """Parse a one-based INDEX/COUNT without starting prerequisites or tests."""
+    try:
+        index, count = map(int, value.split('/'))
+        if not 1 <= index <= count:
+            raise ValueError
+    except ValueError:
+        raise argparse.ArgumentTypeError('shard must be INDEX/COUNT with 1 <= INDEX <= COUNT') from None
+    return index, count
+
+
+def shard_files(files, roots, shard):
+    """Sort T enrolled files in O(T log T), retaining the lane's pytest filters."""
+    index, count = shard
+    if not 1 <= index <= count:
+        raise ValueError('shard must satisfy 1 <= INDEX <= COUNT')
+    candidates = sorted({path for path in files if any(
+        path == root or path.startswith(root.rstrip('/') + '/') for root in roots)})
+    selected = candidates[index - 1::count]
+    if not selected:
+        raise ValueError(f'shard {index}/{count} is empty; no tests were started')
+    return selected
+
+
+def test(config, name, paths, pytest_args, *, shard=None):
     """Execute pytest against the selected test lane with environment tripwires."""
     lane = config['lanes'][name]
     if not lane['roots']:
         raise ValueError(f'{name}: {lane["rationale"]} Requirements: {lane["requirements"]}')
-    inventory(config)
+    if shard is not None and paths:
+        raise ValueError('--path and --shard cannot be combined')
+    files = inventory(config)
+    selected = shard_files(files, lane['roots'], shard) if shard is not None else paths or lane['roots']
     doctor(config, name)
-    selected = paths or lane['roots']
     for path in selected:
         resolved = (ROOT / path.split('::', 1)[0]).resolve()
         if not any(resolved == (ROOT / root).resolve() or resolved.is_relative_to((ROOT / root).resolve())
@@ -258,6 +285,8 @@ def main(argv=None):
     tests = sub.add_parser('test')
     tests.add_argument('lane', choices=config['lanes'], nargs='?', default='production-offline')
     tests.add_argument('--path', action='append', default=[], help='Restrict to a path or node within this lane (repeatable)')
+    tests.add_argument('--shard', type=parse_shard, metavar='INDEX/COUNT',
+                       help='Run one disjoint partition of the full lane (one-based; cannot combine with --path)')
     values = list(sys.argv[1:] if argv is None else argv)
     extra = []
     if '--' in values:
@@ -278,7 +307,7 @@ def main(argv=None):
         elif args.command == 'prepare-baseline':
             print('Baseline verified: ' + baseline(config, fetch=True))
         else:
-            return test(config, args.lane, args.path, extra)
+            return test(config, args.lane, args.path, extra, shard=args.shard)
     except (OSError, ValueError, subprocess.SubprocessError) as error:
         print(f'ERROR: {error}', file=sys.stderr)
         return 1
