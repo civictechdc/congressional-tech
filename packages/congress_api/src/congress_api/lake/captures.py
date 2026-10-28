@@ -255,8 +255,15 @@ def capture_checks():
             OR (stored_suffix IS NOT NULL AND secondary_suffix IS NOT NULL AND stored_suffix<>secondary_suffix)
         LIMIT 1"""),
         dict(name='list_facts',sql=f"""SELECT receipt_key,receipt_line,'list record conflicting facts' AS reason
-        FROM (SELECT DISTINCT receipt_key,receipt_line,list_ordinal,{narrow} FROM scalar_rows
-              WHERE reference_kind='line' AND NOT is_secondary)
+        FROM (SELECT DISTINCT s.receipt_key,s.receipt_line,s.list_ordinal,{','.join('s.'+c for c in narrow.split(','))}
+              FROM scalar_rows s JOIN (
+                  SELECT receipt_key,receipt_line,list_ordinal FROM scalar_rows
+                  WHERE reference_kind='line' AND NOT is_secondary
+                  GROUP BY receipt_key,receipt_line,list_ordinal HAVING count(*)>1
+              ) repeated ON (s.receipt_key IS NOT DISTINCT FROM repeated.receipt_key)
+                  AND (s.receipt_line IS NOT DISTINCT FROM repeated.receipt_line)
+                  AND (s.list_ordinal IS NOT DISTINCT FROM repeated.list_ordinal)
+              WHERE s.reference_kind='line' AND NOT s.is_secondary)
         GROUP BY receipt_key,receipt_line,list_ordinal HAVING count(*)>1 LIMIT 1"""),
         dict(name='missing',sql="""SELECT r.receipt_key,cast(0 AS BIGINT) AS receipt_line,
         'selected receipt not present' AS reason FROM selected_receipts r LEFT ANTI JOIN scalar_rows s
