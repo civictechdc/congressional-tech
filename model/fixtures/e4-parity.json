@@ -184,7 +184,8 @@
         "distinct_contexts": 101
       },
       "expected_causes": [
-        "old_placeholder_xml"
+        "old_placeholder_xml",
+        "soft_error_wrapper_senate"
       ]
     },
     {
@@ -296,5 +297,63 @@
     "rule_change",
     "old_pipeline_error",
     "derived_only_fact"
-  ]
+  ],
+  "integration": {
+    "members": [
+      {
+        "body_key": "bodies/sha256/11/1111111111111111111111111111111111111111111111111111111111111111.gz",
+        "filename": "11.pdf",
+        "source_url": "https://fixture.test/11.pdf",
+        "source_id": "e6821d4b89a53b4b0938f10f93101a33bc8c565e7c1a5a6bbda5c377d895a3ca"
+      },
+      {
+        "body_key": "bodies/sha256/22/2222222222222222222222222222222222222222222222222222222222222222.gz",
+        "filename": "22.pdf",
+        "source_url": "https://fixture.test/22.pdf",
+        "source_id": "2b186fa698330daa2a90075eb38b6f1d56215374fb642a05d9649da4eff577b3"
+      }
+    ],
+    "documents": [
+      {
+        "doc": "old-a",
+        "body_keys": [
+          "bodies/sha256/11/1111111111111111111111111111111111111111111111111111111111111111.gz"
+        ],
+        "source_ids": [
+          "e6821d4b89a53b4b0938f10f93101a33bc8c565e7c1a5a6bbda5c377d895a3ca"
+        ],
+        "document_id": "19d12ebee6a0bc029a78950cf06e18feba7cd53ef6802d39ed20320a8ce51573"
+      },
+      {
+        "doc": "old-b",
+        "body_keys": [
+          "bodies/sha256/22/2222222222222222222222222222222222222222222222222222222222222222.gz"
+        ],
+        "source_ids": [
+          "2b186fa698330daa2a90075eb38b6f1d56215374fb642a05d9649da4eff577b3"
+        ],
+        "document_id": "54886e9ee64d50791952837e119c5396da00a62e12743003da41348101137f1b"
+      },
+      {
+        "doc": "new-ab",
+        "body_keys": [
+          "bodies/sha256/11/1111111111111111111111111111111111111111111111111111111111111111.gz",
+          "bodies/sha256/22/2222222222222222222222222222222222222222222222222222222222222222.gz"
+        ],
+        "source_ids": [
+          "e6821d4b89a53b4b0938f10f93101a33bc8c565e7c1a5a6bbda5c377d895a3ca",
+          "2b186fa698330daa2a90075eb38b6f1d56215374fb642a05d9649da4eff577b3"
+        ],
+        "document_id": "c9dd2279c3496a30414c93069a35b10f891c374999ed4c74e39aa3c83faed71e"
+      }
+    ],
+    "expected": {
+      "aligned_pairs": 2,
+      "differences": 6,
+      "unexplained": 4,
+      "unclassified": 4,
+      "invalid_ids": 0,
+      "derived_only": 0
+    }
+  }
 }
