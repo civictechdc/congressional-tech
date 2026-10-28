@@ -144,6 +144,7 @@ def restricted_runtime(config, directory, *, threads):
         raise ValueError('Comparison cannot widen compute admission')
     limits['compute_threads']=threads
     limits['scratch_bytes']=min(limits['scratch_bytes'],2<<30)
+    limits['batch_rows']=min(limits['batch_rows'],1024)
     directory=Path(directory).resolve()
     directory.mkdir(parents=True,exist_ok=False)
     (directory/'limits.json').write_text(json.dumps(limits,indent=2)+'\n')
@@ -180,6 +181,9 @@ def producer_inputs(base, candidate, manifest):
             raise ValueError('Public rows need the explicit document sort')
         if spec['sql'].strip().lower()!='select * from '+relation:
             raise ValueError('Public writer must consume the agreed ordered relation')
+    for name in ['sources.parquet','recoveries.parquet']:
+        if [item['field'] for item in specs[name]['settings']['order_by']]!=['list_row','ordinal']:
+            raise ValueError('Attachment writer order differs from its public ranges')
     ordered=next((item for item in job['steps'] if item['name']=='ordered'),{})
     compact=re.sub(r'\s+','',ordered.get('sql','')).lower()
     last=specs['list.parquet']['settings']['order_by'][-1]['field']
@@ -217,7 +221,9 @@ def prepare_f0(template, *, engine, work):
     value['candidate']=dict(candidate,release=str((template.parent/candidate['release']).resolve()),
         source_members=pin(work/'source_members.parquet'),document_rows=pin(work/'document_rows.parquet'),
         layout_job=pin(work/'job.json'),layout_result=pin(work/'result.json'))
-    value['cause_relations']={}
+    captures=next(item for item in job['inputs'] if item['name']=='legacy_captures')
+    capture_path=Path(captures['path']).resolve()
+    value['cause_relations']=dict(catalog_capture_metadata=dict(pin(capture_path),required_columns=['body_key','bytes','media_type']))
     for group in ['oracle','provenance']:
         for item in value[group].values():item['path']=str((template.parent/item['path']).resolve())
     output=work/'parity-inputs.json';output.write_text(json.dumps(value,indent=2)+'\n')
@@ -252,8 +258,21 @@ def validate_layout(loaded, *, engine, work):
         source=Path(paths[key]);spec=specs.get(source.name)
         if spec is None or spec['name'] not in actual or any(actual[spec['name']][k]!=candidate[key][k] for k in ['sha256','size']):
             raise ValueError('Private evidence differs from its pinned native producer')
+    row_spec=specs[rows.name]
+    columns=','.join('"'+name+'"' for name in LIST_COLUMNS+DETAIL_COLUMNS)
+    expected=[f'SELECT list_row,doc_key AS document_id,{columns} FROM details',
+              f"SELECT list_row,encode(document_id,'hex') AS document_id,{columns} FROM details"]
+    compact=lambda sql:re.sub(r'\s+','',sql).lower()
+    if compact(row_spec['sql']) not in {compact(sql) for sql in expected} or row_spec['settings']['order_by']!=[dict(field='list_row')]:
+        raise ValueError('Private document projection lineage must preserve the ordered details row')
+    if candidate['kind']=='f0':
+        member_spec=specs[Path(paths['source_members']).name]
+        expected='SELECT f.document_id,o.list_row,f.source_id,f.body_key,f.filename AS effective_filename,f.source_url,cast(NULL AS VARCHAR) AS member_path FROM e4_source_evidence f JOIN ordered o ON f.document_id=o.doc_key'
+        if compact(member_spec['sql'])!=compact(expected):
+            raise ValueError('F0 source projection lineage differs from ordered documents')
     work=Path(work);work.mkdir(parents=True,exist_ok=False)
-    inputs=[dict(name=name,kind='parquet',path=paths[name]) for name in ['release_list','release_detail','source_members','document_rows']]
+    inputs=[dict(name='input_'+name if name in {'source_members','document_rows'} else name,kind='parquet',path=paths[name]) for name in ['release_list','release_detail','release_sources','release_recoveries','source_members','document_rows']]
+    steps=[dict(name=name,sql='SELECT * FROM input_'+name,materialize=True,release_after=['input_'+name]) for name in ['source_members','document_rows']]
     checks=[]
     for table,cols in [('list',LIST_COLUMNS),('detail',DETAIL_COLUMNS)]:
         columns=','.join('"'+name+'"' for name in cols)
@@ -266,9 +285,14 @@ def validate_layout(loaded, *, engine, work):
         "SELECT count(*) AS errors FROM source_members WHERE source_id IS NULL OR NOT regexp_like(source_id,'^[0-9a-f]{64}$') OR (body_key IS NOT NULL AND NOT regexp_like(body_key,'^bodies/sha256/[0-9a-f]{2}/[0-9a-f]{64}[.]gz$'))",
         "SELECT count(*) AS errors FROM (SELECT source_id FROM source_members GROUP BY source_id HAVING count(*)<>1)",
         "SELECT CASE WHEN count(*)=0 OR min(list_row)=0 AND max(list_row)=count(*)-1 THEN 0 ELSE 1 END AS errors FROM document_rows"]
-    reports=run_job(work,engine,inputs=inputs,steps=[],outputs=[],queries=[dict(name='checks',sql=' UNION ALL '.join(checks))])
-    if any(row['errors'] for row in reports['checks']):
-        raise ValueError('Public/private row values, multiplicity or source membership disagree')
+    for table,prefix in [('sources','src'),('recoveries','rec')]:
+        steps.append(dict(name=table+'_counts',sql=f"SELECT list_row,count(*) AS n,min(ordinal) AS lo,max(ordinal) AS hi,count(DISTINCT ordinal) AS unique_ordinals FROM release_{table} GROUP BY list_row",materialize=True))
+        steps.append(dict(name=table+'_bounds',sql=f'SELECT *,sum(n) OVER(ORDER BY list_row ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW)-n AS start FROM {table}_counts',materialize=True))
+        checks.append(f"SELECT count(*) AS errors FROM document_rows d LEFT JOIN {table}_bounds b USING(list_row) WHERE d.{prefix}_len<>coalesce(b.n,0) OR d.{prefix}_start<>coalesce(b.start,0) OR coalesce(b.lo,0)<>0 OR coalesce(b.hi,-1)<>coalesce(b.n,0)-1 OR coalesce(b.unique_ordinals,0)<>coalesce(b.n,0)")
+        checks.append(f'SELECT count(*) AS errors FROM {table}_counts c LEFT ANTI JOIN document_rows d USING(list_row)')
+    reports=run_job(work,engine,inputs=inputs,steps=steps,outputs=[],queries=[dict(name='check_'+str(i),sql=sql) for i,sql in enumerate(checks)])
+    if any(row['errors'] for rows in reports.values() for row in rows):
+        raise ValueError('Public/private row values, membership or attachment ranges disagree')
 
 
 def field_rows(table, doc, scalars, arrays=(), *, subject="''"):
@@ -296,8 +320,9 @@ def normalization(loaded, *, directory):
         AND NOT (coalesce(cardinality(f.response_body_complete),0)=1 AND f.response_body_complete[1]='false')
         AND (coalesce(cardinality(f.capture_outcome),0)=0 OR (cardinality(f.capture_outcome)=1 AND f.capture_outcome[1]='saved'))
         AND cardinality(formats)>0 AND cardinality(array_except(formats,make_array({allowed})))=0
-        AND ((regexp_like({status},'(^|,)2') AND (NOT regexp_like({status},'(^|,)[0-9]{{3}}(,|$)') OR regexp_like({status},'(^|,)2[0-9]{{2}}(,|$)'))
+        AND ((regexp_like({status},'(^|,)2') AND (array_has(f.response_usable,'true') OR NOT regexp_like({status},'(^|,)[0-9]{{3}}(,|$)') OR regexp_like({status},'(^|,)2[0-9]{{2}}(,|$)'))
              OR (coalesce(cardinality(f.http_status),0)=0 AND f.body_format=make_array('pdf'))))"""
+    metadata='catalog_capture_metadata' in loaded['paths']
     steps=[
         dict(name='old_media',sql="""SELECT source_id,array_agg(DISTINCT coalesce(m.format,lower(trim(split_part(f.media,';',1))))) AS media_formats
             FROM (SELECT source_id,unnest(media_type) AS media FROM oracle_filenames) f
@@ -328,6 +353,11 @@ def normalization(loaded, *, directory):
         dict(name='identity_sources',sql="""SELECT 'old' AS side,document_id AS doc,source_id,body_key,filename,source_url FROM oracle_filenames
             UNION ALL SELECT 'new',cast(list_row AS VARCHAR),source_id,body_key,effective_filename,source_url FROM source_members""",materialize=True),
     ]
+    if metadata:
+        steps.insert(0,dict(name='old_capture_metadata',sql='SELECT body_key,max(bytes) AS bytes,max(media_type) AS media_type FROM catalog_capture_metadata WHERE body_key IS NOT NULL GROUP BY body_key',materialize=True))
+        wide=next(step for step in steps if step['name']=='old_wide')
+        wide['sql']=wide['sql'].replace('t.first_captured FROM',"t.first_captured,m.bytes AS saved_bytes,coalesce(m.media_type,CASE WHEN d.format[1]='pdf' THEN 'application/pdf' ELSE 'application/octet-stream' END) AS saved_media_type FROM")
+        wide['sql']+=' LEFT JOIN old_capture_metadata m ON d.body_key=m.body_key'
     from viewer_publication.archive_format import LIST_COLUMNS,DETAIL_COLUMNS
     from viewer_publication.archive_release import _meeting_keys
     steps.append(dict(name='new_wide',sql='SELECT cast(list_row AS VARCHAR) AS doc,* FROM document_rows',materialize=True))
@@ -351,7 +381,8 @@ def normalization(loaded, *, directory):
         first_captured='first_captured',
         date_kind="CASE WHEN cardinality(state_retrieved_at)>0 THEN 'captured' ELSE 'unknown' END",
         document_date=legacy_date('old_wide'),document_date_source=f"CASE WHEN {legacy_date('old_wide')} IS NOT NULL THEN 'filename' END",
-        saved_kind="'original'",hidden="'false'")
+        saved_kind="'original'",hidden="'false'",saved_suffix="CASE WHEN body_key IS NULL THEN NULL WHEN regexp_like(body_key,'[.]pdf$') THEN '.pdf' WHEN regexp_like(body_key,'[.]gz$') THEN '.gz' ELSE '' END")
+    if metadata:scalar_old.update(saved_bytes='saved_bytes',saved_media_type='saved_media_type')
     old_arrays=[(name,name) for name in ['document_kind','document_family','congress','format','measure_references','member_bioguide_id','hearing_package_id']]
     old_arrays=[({'measure_references':'measure_keys','member_bioguide_id':'bioguide_ids','hearing_package_id':'package_id'}.get(k,k),v) for k,v in old_arrays]
     old_parts=[field_rows('old_wide','document_id',scalar_old,old_arrays),
@@ -362,14 +393,15 @@ def normalization(loaded, *, directory):
         field_rows('oracle_filenames','document_id',dict(**{'source.url':'source_url'}),
             [('source.listed_on','source_page_url'),('source.link_text','source_link_label'),('source.member_path','source_paths')],subject="coalesce(source_url,'')")]
     new_scalars={name:name for name in ['filename','title','format','congress','document_date','first_captured','date_kind','saved_kind','hidden',
-        'document_date_source','in_archive_since','removed_on','review_note','review_decided_at','package_id']}
+        'document_date_source','in_archive_since','removed_on','review_note','review_decided_at','package_id','saved_suffix','saved_media_type','saved_bytes']}
     new_scalars['saved_body']="CASE WHEN saved_body IS NOT NULL THEN 'bodies/sha256/'||substr(encode(saved_body,'hex'),1,2)||'/'||encode(saved_body,'hex')||'.gz' END"
     new_arrays=[(name,name) for name in ['document_kind','document_family','committee_keys','chambers','meeting_keys','measure_keys','bioguide_ids','witness_keys','version_keys']]
     new_parts=[field_rows('new_wide','doc',new_scalars,new_arrays),
         field_rows('new_bodies','doc',dict(body_keys='body_key'),subject='body_key'),
         field_rows('public_body_links','doc',dict(body_link='body_key'),subject='body_key'),
         field_rows('source_members','cast(list_row AS VARCHAR)',dict(files='effective_filename'),subject='json_array(body_key,source_url)'),
-        field_rows('release_sources','cast(list_row AS VARCHAR)',{'source.url':'url','source.listed_on':'listed_on','source.link_text':'link_text','source.member_path':'member_path','source.doc_type':'doc_type','source.posted':'posted','source.first_seen':'first_seen'},subject='url')]
+        field_rows('release_sources','cast(list_row AS VARCHAR)',{'source.url':'url','source.listed_on':'listed_on','source.link_text':'link_text','source.member_path':'member_path','source.doc_type':'doc_type','source.posted':'posted','source.first_seen':'first_seen','source.is_saved':'is_saved'},subject='url')]
+    old_parts.append(field_rows('oracle_filenames f JOIN old_wide d ON f.document_id=d.document_id','f.document_id',{'source.is_saved':'f.source_url=d.source_url'},subject="coalesce(f.source_url,'')"))
     # Display folds compare the maintained registry's facts, not private parser
     # internals the new site never receives.
     display=json.loads((ROOT/'model/registries/display-facts.json').read_text())
@@ -379,10 +411,25 @@ def normalization(loaded, *, directory):
     old_parts += ["""SELECT d.document_id AS doc,'alternates' AS field,(regexp_match(f.body_key,'([a-f0-9]{64})'))[1] AS subject,f.format[1] AS value
         FROM oracle_documents d JOIN oracle_filenames f USING(document_id)
         WHERE f.body_key IS NOT NULL AND f.body_key<>d.body_key AND f.format[1]<>d.format[1]"""]
+    if metadata:
+        old_parts.extend([f"SELECT d.document_id AS doc,'{field}' AS field,(regexp_match(f.body_key,'([a-f0-9]{{64}})'))[1] AS subject,cast({expression} AS VARCHAR) AS value FROM oracle_documents d JOIN oracle_filenames f USING(document_id) LEFT JOIN old_capture_metadata m ON f.body_key=m.body_key WHERE f.body_key IS NOT NULL AND f.body_key<>d.body_key AND f.format[1]<>d.format[1]"
+            for field,expression in [('alternate.suffix',"CASE WHEN regexp_like(f.body_key,'[.]pdf$') THEN '.pdf' WHEN regexp_like(f.body_key,'[.]gz$') THEN '.gz' ELSE '' END"),('alternate.bytes','m.bytes')]])
+    new_parts.extend([f"SELECT doc,'{field}' AS field,encode(a['body'],'hex') AS subject,cast(a['{column}'] AS VARCHAR) AS value FROM (SELECT doc,unnest(alternates) AS a FROM new_wide)" for field,column in [('alternate.suffix','suffix'),('alternate.bytes','size')]])
+    new_parts.extend([f"SELECT cast(list_row AS VARCHAR) AS doc,'recovery.{column}' AS field,encode(body,'hex') AS subject,cast({column} AS VARCHAR) AS value FROM release_recoveries" for column in ['kind','recovered_url','imported_at','identity_note','suffix','bytes']])
     new_parts += ["SELECT doc,'facts' AS field,f['field'] AS subject,f['value'] AS value FROM (SELECT doc,unnest(facts) AS f FROM new_wide)",
         "SELECT doc,'alternates' AS field,encode(a['body'],'hex') AS subject,a['format'] AS value FROM (SELECT doc,unnest(alternates) AS a FROM new_wide)",
-        "SELECT cast(list_row AS VARCHAR) AS doc,'recoveries' AS field,encode(body,'hex') AS subject,json_array(kind,encode(body,'hex'),recovered_url,cast(imported_at AS VARCHAR),identity_note) AS value FROM release_recoveries"]
-    steps += [dict(name='old_fields',sql=' UNION '.join(old_parts)),dict(name='new_fields',sql=' UNION '.join(new_parts))]
+        "SELECT cast(list_row AS VARCHAR) AS doc,'recoveries' AS field,encode(body,'hex') AS subject,encode(body,'hex') AS value FROM release_recoveries"]
+    from viewer_publication.archive_format import _lookup_steps
+    steps.append(dict(name='old_lookup_sources',sql='SELECT DISTINCT document_id AS list_row,source_url AS url FROM oracle_filenames WHERE source_url IS NOT NULL',materialize=True))
+    lookup=_lookup_steps('old_lookup_sources')
+    names={step['name']:'old_'+step['name'] for step in lookup}
+    for step in lookup:
+        for before,after in names.items():step['sql']=re.sub(r'\b'+before+r'\b',after,step['sql'])
+        step['name']=names[step['name']]
+    steps+=lookup
+    old_parts.append(field_rows('old_url_keys','list_row',dict(url_lookup="encode(lookup_key,'hex')")))
+    new_parts.append(field_rows('release_urls','cast(list_row AS VARCHAR)',dict(url_lookup="encode(lookup_key,'hex')")))
+    steps += [dict(name='old_fields',sql='SELECT * FROM ('+' UNION '.join(old_parts)+') WHERE value IS NOT NULL'),dict(name='new_fields',sql='SELECT * FROM ('+' UNION '.join(new_parts)+') WHERE value IS NOT NULL')]
     steps += [dict(name='old_evidence_sources',sql='SELECT document_id AS doc,source_id,body_key,filename,source_url FROM oracle_filenames',materialize=True),
         dict(name='new_evidence_sources',sql='SELECT cast(list_row AS VARCHAR) AS doc,source_id,body_key,effective_filename AS filename,source_url FROM source_members',materialize=True)]
     if kind=='f0':
@@ -397,7 +444,7 @@ def normalization(loaded, *, directory):
         'response_usable','response_body_complete','body_format','format','media_type','source_page_url','source_link_label','source_paths'}
     for step in steps:
         step['sql']=step['sql'].replace('oracle_documents','old_catalog').replace('oracle_filenames','old_file_rows')
-    steps=[dict(name=name,sql='SELECT '+','.join('"'+c+'"' for c in sorted(columns))+' FROM '+source,materialize=True,release_after=[source])
+    steps=[dict(name=name,sql='SELECT '+','.join(('array_slice("source_link_label",1,1) AS "source_link_label"' if name=='old_catalog' and c=='source_link_label' else '"'+c+'"') for c in sorted(columns))+' FROM '+source,materialize=True,release_after=[source])
         for name,source,columns in [('old_catalog','oracle_documents',document_columns),('old_file_rows','oracle_filenames',file_columns)]]+steps
     return inputs,steps
 
@@ -407,7 +454,7 @@ F0_PREDICATES={
         OR (d.field='date_kind' AND n.date_kind='unknown' AND d.value IN ('captured','unknown'))
         OR (d.field='in_archive_since' AND d.direction='removed' AND n.in_archive_since IS NULL)""",
     'f0_format_alternates': """d.direction='removed' AND ((d.field='format' AND d.value<>lower(o.format[1]) AND n.format=lower(o.format[1]))
-        OR (d.field='alternates' AND coalesce(cardinality(n.alternates),0)=0))""",
+        OR (d.field IN ('alternates','alternate.suffix','alternate.bytes') AND coalesce(cardinality(n.alternates),0)=0))""",
     'f0_recoveries': "d.direction='removed' AND d.field IN ('recoveries','recovery.kind','recovery.imported_at') AND n.rec_len=0",
     'f0_source_context_fold': """d.direction='removed' AND (
         (d.field='source.member_path' AND NOT EXISTS(SELECT 1 FROM release_sources s WHERE cast(s.list_row AS VARCHAR)=d.new_doc AND s.member_path IS NOT NULL))
@@ -455,6 +502,14 @@ def _int(key):
     return "json_get_int(fact,'" + key + "')"
 
 
+RECOVERY_FIELDS=['recoveries','recovery.kind','recovery.recovered_url','recovery.imported_at','recovery.identity_note','recovery.suffix','recovery.bytes']
+
+
+def recovery_value_matches():
+    values={'recoveries':'body_sha',**{'recovery.'+name:'expected_'+name for name in ['kind','recovered_url','imported_at','identity_note','suffix','bytes']}}
+    return '('+' OR '.join("(field='"+field+"' AND value="+_text(key)+')' for field,key in values.items())+')'
+
+
 # These are explanations of observed changes, not admission/grouping rules.
 # Every branch has an explicit field scope and direction. A receipt/reading or
 # canonical model witness is required; a changed document alone proves nothing.
@@ -472,8 +527,8 @@ CAUSES = {
         f"{_text('mode')}='fetch' AND {_bool('complete')} AND {_int('http_status')} BETWEEN 200 AND 299 AND {_text('outcome')} IN ('stored','unchanged') AND {_text('recovery_original_url')} IS NOT NULL"),
     'direct_provider_same_text': (['body_keys','files'], 'added',
         f"{_text('fingerprint')} IS NOT NULL AND {_text('fingerprint')}={_text('other_fingerprint')} AND {_text('receipt_key')}={_text('other_receipt_key')} AND {_int('receipt_line')}={_int('other_receipt_line')} AND {_int('attempt')}<>{_int('other_attempt')}"),
-    'eot_webharvest_attachment': (['recoveries'], 'added',
-        f"regexp_like({_text('original_url')},'^https?://([^/]+[.])?veterans[.]house[.]gov/') AND regexp_like({_text('recovered_url')},'^https?://([^/]+[.])?webharvest[.]gov/')"),
+    'eot_webharvest_attachment': (RECOVERY_FIELDS, 'added',
+        f"regexp_like({_text('original_url')},'^https?://([^/]+[.])?veterans[.]house[.]gov/') AND regexp_like({_text('recovered_url')},'^https?://([^/]+[.])?webharvest[.]gov/') AND {recovery_value_matches()}"),
     'publisher_link_kind': (['document_kind'], 'added',
         f"{_int('filename_kind_count')}=0 AND {_text('publisher_kind')}=value AND {_text('link_basis')}='saved_page'"),
     'capture_header_names': (['filename','files'], 'added',
@@ -490,8 +545,8 @@ CAUSES = {
         f"{_text('retrieved_at')} IS NULL AND {_bool('is_import_run')} AND {_text('old_time_basis')}='import_run'"),
     'govinfo123_fetch': (['first_captured','body_keys','files'], 'added',
         f"{_text('match_basis')}='direct_official_package' AND {_text('mode')}='fetch' AND {_text('requested_url')}={_text('url')} AND {_text('url')}={_text('original_url')} AND regexp_like({_text('url')},'^https?://([^/]+[.])?govinfo[.]gov/') AND {_bool('publisher_requested')} AND {_int('http_status')}=200 AND {_bool('complete')} AND {_text('outcome')}='stored' AND {_text('retrieved_at')} IS NOT NULL"),
-    'b7_owner_recoveries': (['recoveries','recovery.kind','recovery.imported_at'], 'added',
-        f"{_text('stage')}='raw-recoveries-owner-32c13ffa' AND {_text('decision_id')} IS NOT NULL AND ({_text('owner_decision')} IS NOT NULL OR {_text('source_time_basis')}='earliest_matching_fetch')"),
+    'b7_owner_recoveries': (RECOVERY_FIELDS, 'added',
+        f"{_text('stage')}='raw-recoveries-owner-32c13ffa' AND {_text('decision_id')} IS NOT NULL AND {recovery_value_matches()}"),
 }
 
 
@@ -516,9 +571,9 @@ def model_witness_steps(available, *, restrict_differences=False):
         dict(name='e4_source_contexts',sql='SELECT body_sha,count(DISTINCT source_url) AS distinct_contexts FROM e4_source_observations GROUP BY body_sha',materialize=True),
         dict(name='e4_evidence_sources',sql="SELECT 'old' AS side,* FROM old_evidence_sources UNION ALL SELECT 'new',* FROM new_evidence_sources",materialize=True),
         dict(name='e4_observations',sql="""SELECT m.side,m.doc,m.body_key,c.*,x.distinct_contexts FROM e4_evidence_sources m
-            JOIN e4_source_observations c ON c.body_sha=(regexp_match(m.body_key,'([0-9a-f]{64})'))[1]
+            LEFT JOIN e4_source_observations c ON c.body_sha=(regexp_match(m.body_key,'([0-9a-f]{64})'))[1]
             AND c.source_url IS NOT DISTINCT FROM m.source_url
-            JOIN e4_source_contexts x USING(body_sha)""",materialize=True)]
+            LEFT JOIN e4_source_contexts x USING(body_sha)""",materialize=True)]
     branches=[]
     def branch(table, facts, *, subject, condition='true', evidence="receipt_key||':'||cast(receipt_line AS VARCHAR)||':'||cast(capture_index AS VARCHAR)"):
         # json_array uses the maintained engine encoder once; strip only its
@@ -528,7 +583,7 @@ def model_witness_steps(available, *, restrict_differences=False):
         if restrict_differences:
             selected+=f" JOIN differences ON ((side='old' AND doc=differences.old_doc) OR (side='new' AND doc=differences.new_doc)) AND differences.subject=({subject})"
         branches.append(f"SELECT CASE WHEN side='old' THEN doc END AS old_doc,CASE WHEN side='new' THEN doc END AS new_doc,subject,substr(encoded,2,length(encoded)-2) AS fact,evidence_ref FROM (SELECT side,doc,{subject} AS subject,json_array(named_struct({fields})) AS encoded,{evidence} AS evidence_ref FROM {selected} WHERE {condition})")
-    facts={k:k for k in ['record_role','is_real_file','format','mode','complete','http_status','outcome','url','requested_url','fidelity','source_url','receipt_key','receipt_line','reading_status','distinct_contexts','error_type']}
+    facts={k:k for k in ['record_role','is_real_file','format','mode','complete','http_status','outcome','url','requested_url','fidelity','source_url','receipt_key','receipt_line','reading_status','distinct_contexts','error_type','fingerprint']}
     facts.update(retrieved_at='cast(retrieved_at AS VARCHAR)',is_import_run='import_date IS NOT NULL',
         old_time_basis="CASE WHEN import_date IS NOT NULL AND retrieved_at IS NULL THEN 'import_run' END",
         xml_kind="CASE WHEN format='xml' AND record_role='listing' THEN 'feed' END",
@@ -547,31 +602,34 @@ def model_witness_steps(available, *, restrict_differences=False):
     if {'source_id','body_sha','format','group_kind','group_id'}<=available.get('valid_rendition_members',set()):
         steps.append(dict(name='e4_group_observations',sql='SELECT o.*,g.group_kind,g.group_id FROM e4_observations o JOIN valid_rendition_members g ON o.source_id=g.source_id AND o.body_sha=g.body_sha',materialize=True))
         for subject in ['body_key','json_array(body_key,source_url)']:
-            branch('e4_group_observations',dict(facts,group_kind='group_kind',group_id='group_id'),subject=subject)
+            branch('e4_group_observations',dict(source_url='source_url',group_kind='group_kind',group_id='group_id'),subject=subject)
         missing.remove('govinfo_same_stem_groups')
     steps.append(dict(name='e4_twin_observations',sql="""SELECT a.*,b.fingerprint AS other_fingerprint,b.source_url AS other_source_url,b.fidelity AS other_fidelity
         FROM e4_observations a JOIN e4_source_observations b ON a.source_url=b.source_url AND a.fingerprint=b.fingerprint
         WHERE a.fidelity='saved_text' AND b.fidelity='exact' AND a.body_sha<>b.body_sha""",materialize=True))
     for subject in ['body_key','json_array(body_key,source_url)',"''"]:
-        branch('e4_twin_observations',dict(facts,other_fingerprint='other_fingerprint',other_source_url='other_source_url',other_fidelity='other_fidelity'),subject=subject)
+        branch('e4_twin_observations',{key:key for key in ['fingerprint','source_url','fidelity','other_fingerprint','other_source_url','other_fidelity']},subject=subject)
     missing.remove('saved_text_exact_twins')
-    recovery_cols={'id','original_url','body_sha256','kind','recovered_url','recovered_filename','decided_at'}
+    recovery_cols={'id','original_url','body_sha256','kind','recovered_url','recovered_filename','decided_at','identity_note'}
     if recovery_cols<=available.get('current_recoveries',set()):
         steps.append(dict(name='e4_recovery_observations',sql="""SELECT o.*,r.original_url AS recovery_original_url,r.recovered_url,r.kind,r.id AS decision_id,r.body_sha256
             FROM e4_observations o JOIN current_recoveries r ON o.source_url=r.original_url AND o.body_sha=r.body_sha256""",materialize=True))
         for subject in ['body_key','json_array(body_key,source_url)']:
-            branch('e4_recovery_observations',dict(facts,recovery_original_url='recovery_original_url'),subject=subject)
+            branch('e4_recovery_observations',{key:key for key in ['mode','complete','http_status','outcome','recovery_original_url']},subject=subject)
         missing.remove('recovery_independent_fetch')
         steps.append(dict(name='e4_recovery_documents',sql="""SELECT m.side,m.doc,r.* FROM e4_evidence_sources m JOIN current_recoveries r ON m.source_url=r.original_url""",materialize=True))
-        branch('e4_recovery_documents',dict(original_url='original_url',recovered_url='recovered_url'),subject='body_sha256',evidence="'provenance/recoveries:'||id")
+        branch('e4_recovery_documents',dict(original_url='original_url',recovered_url='recovered_url',body_sha='body_sha256',expected_kind='kind',expected_recovered_url='recovered_url',expected_identity_note='identity_note'),subject='body_sha256',evidence="'provenance/recoveries:'||id")
         missing.remove('eot_webharvest_attachment')
-        if 'b7_owner_records' in available and 'b7_source_time_minima' in available:
-            steps.append(dict(name='e4_b7_recoveries',sql="""SELECT r.*,o.id AS owner_decision,t.original_url AS timed_url FROM e4_recovery_documents r
-                LEFT JOIN b7_owner_records o ON r.id=o.id AND r.original_url=o.original_url AND r.body_sha256=o.body_sha256 AND r.kind=o.kind AND r.recovered_url=o.recovered_url
-                LEFT JOIN b7_source_time_minima t ON r.original_url=t.original_url AND r.body_sha256=t.body_sha256
-                WHERE o.id IS NOT NULL OR t.original_url IS NOT NULL""",materialize=True))
-            branch('e4_b7_recoveries',dict(stage="'raw-recoveries-owner-32c13ffa'",decision_id='id',kind='kind',
-                owner_decision='owner_decision',source_time_basis="CASE WHEN timed_url IS NOT NULL THEN 'earliest_matching_fetch' END"),
+        if {'b7_recovery_decisions','b7_ready_imports','b7_source_time_minima'}<=set(available):
+            steps.append(dict(name='e4_b7_active',sql='SELECT a.* FROM b7_recovery_decisions a LEFT ANTI JOIN b7_recovery_decisions b ON a.id=b.supersedes',materialize=True))
+            steps.append(dict(name='e4_b7_recoveries',sql="""SELECT r.*,a.kind AS approved_kind,a.recovered_url AS approved_recovered_url,a.identity_note AS approved_identity_note,
+                cast(cast(try_cast(coalesce(t.retrieved_at,i.retrieved_at) AS TIMESTAMP WITH TIME ZONE) AT TIME ZONE 'America/New_York' AS DATE) AS VARCHAR) AS approved_imported_at,
+                i.stored_suffix AS approved_suffix,cast(i.bytes AS VARCHAR) AS approved_bytes
+                FROM e4_recovery_documents r JOIN e4_b7_active a ON r.id=a.id AND r.original_url=a.original_url AND r.body_sha256=a.body_sha256
+                LEFT JOIN b7_ready_imports i ON r.original_url=i.original_url AND r.body_sha256=i.body_sha256
+                LEFT JOIN b7_source_time_minima t ON r.original_url=t.original_url AND r.body_sha256=t.body_sha256""",materialize=True))
+            branch('e4_b7_recoveries',dict(stage="'raw-recoveries-owner-32c13ffa'",decision_id='id',body_sha='body_sha256',
+                **{'expected_'+name:'approved_'+name for name in ['kind','recovered_url','identity_note','imported_at','suffix','bytes']}),
                 subject='body_sha256',evidence="'raw-recoveries-owner-32c13ffa:'||id")
             missing.remove('b7_owner_recoveries')
     if {'source_id','page_body','context','text','doc_type','link_index'}<=available.get('publisher_links',set()):
@@ -589,7 +647,7 @@ def model_witness_steps(available, *, restrict_differences=False):
     if official<=available.get('capture_evidence',set()):
         steps.append(dict(name='e4_official_observations',sql='SELECT o.*,c.publisher_requested,c.match_basis,c.original_url FROM e4_observations o JOIN capture_evidence c USING(receipt_key,receipt_line,capture_index)',materialize=True))
         for subject in ['body_key','json_array(body_key,source_url)',"''"]:
-            branch('e4_official_observations',dict(facts,publisher_requested='publisher_requested',match_basis='match_basis',original_url='original_url'),subject=subject)
+            branch('e4_official_observations',{key:key for key in ['publisher_requested','match_basis','original_url','mode','complete','http_status','outcome','url','requested_url','retrieved_at']},subject=subject)
         missing.remove('govinfo123_fetch')
     # D1's narrowed surface deliberately has no provider-attempt history. The
     # cause stays visible as unavailable instead of fabricating retry matches.
@@ -617,10 +675,11 @@ def alignment_steps():
         dict(name='old_signatures',sql="SELECT doc,json_array(array_sort(array_agg(DISTINCT identity_anchor))) AS signature FROM old_anchors GROUP BY doc",materialize=True),
         dict(name='new_signatures',sql="SELECT doc,json_array(array_sort(array_agg(DISTINCT identity_anchor))) AS signature FROM new_anchors GROUP BY doc",materialize=True),
         dict(name='exact_pairs',sql='SELECT o.doc AS old_doc,n.doc AS new_doc FROM old_signatures o JOIN new_signatures n ON o.signature=n.signature',materialize=True),
+        dict(name='unmatched_old_anchors',sql='SELECT o.* FROM old_anchors o LEFT ANTI JOIN exact_pairs p ON p.old_doc=o.doc',materialize=True),
+        dict(name='unmatched_new_anchors',sql='SELECT n.* FROM new_anchors n LEFT ANTI JOIN exact_pairs p ON p.new_doc=n.doc',materialize=True),
         dict(name='aligned_pairs',sql='''SELECT old_doc,new_doc FROM exact_pairs UNION
-            SELECT o.doc,n.doc FROM old_anchors o JOIN new_anchors n ON o.anchor=n.anchor
-            WHERE NOT EXISTS(SELECT 1 FROM exact_pairs p WHERE p.old_doc=o.doc)
-               OR NOT EXISTS(SELECT 1 FROM exact_pairs p WHERE p.new_doc=n.doc)''',materialize=True),
+            SELECT o.doc,n.doc FROM unmatched_old_anchors o JOIN new_anchors n ON o.anchor=n.anchor
+            UNION SELECT o.doc,n.doc FROM old_anchors o JOIN unmatched_new_anchors n ON o.anchor=n.anchor''',materialize=True),
     ]
 
 
@@ -736,6 +795,7 @@ def compare_descriptor(descriptor, *, engine_config, work):
     inputs,steps=normalization(loaded,directory=staging)
     kind=loaded['descriptor']['candidate']['kind']
     missing=[];witness=None
+    missing_coverage=[] if 'catalog_capture_metadata' in loaded['paths'] else ['saved_bytes','saved_media_type','alternate.bytes']
     if kind=='model':
         import pyarrow.parquet as pq
         available={name:set(pq.read_schema(path).names) for name,path in loaded['paths'].items() if name in loaded['descriptor'].get('cause_relations',{}) or name.startswith('b7_')}
@@ -743,11 +803,11 @@ def compare_descriptor(descriptor, *, engine_config, work):
         witness=witness_steps.pop()
         steps+=witness_steps
     result=compare_relations(inputs,engine=parallel,work=work/'result',prelude=steps,
-        missing_evidence=len(missing),f0_release=loaded['manifest']['release_id'] if kind=='f0' else None,witness_step=witness)
+        missing_evidence=len(missing)+len(missing_coverage),f0_release=loaded['manifest']['release_id'] if kind=='f0' else None,witness_step=witness)
     for row in result['causes']:
         row['evidence_status']='unavailable' if row['cause'] in missing else 'available'
         if row['cause'] in missing:row['differences']=None
-    result.update(candidate_kind=kind,model_qualified=kind=='model' and result['decision_ready'],missing_causes=missing,release_id=loaded['manifest']['release_id'],
+    result.update(candidate_kind=kind,model_qualified=kind=='model' and result['decision_ready'],missing_causes=missing,missing_coverage=missing_coverage,release_id=loaded['manifest']['release_id'],
         oracle=loaded['selector'],descriptor_sha256=loaded['descriptor_sha256'])
     (work/'comparison.json').write_text(json.dumps(result,indent=2)+'\n')
     return result
