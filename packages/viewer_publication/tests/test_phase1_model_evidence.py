@@ -10,7 +10,7 @@ def test_pinned_evidence_and_page_contexts_do_not_borrow_capture_parser_fields(t
     capture_fields=dict(receipt_key='Utf8',receipt_line='Int32',capture_index='Int32',run_id='Utf8',mode='Utf8',
         outcome='Utf8',family='Utf8',requested_url='Utf8',url='Utf8',context_url='Utf8',member_path='Utf8',
         http_status='Int32',complete='Boolean',retrieved_at='Utf8',body_hex='Utf8',bytes='Int64',media_type='Utf8',
-        fidelity='Utf8',stored_suffix='Utf8',stored_bytes='Int64',stored_md5='Utf8')
+        fidelity='Utf8',sniffed_format='Utf8',sniff_version='Utf8',intact='Boolean',stored_suffix='Utf8',stored_bytes='Int64',stored_md5='Utf8')
     def capture(index,body,url,**changes):
         return dict(dict(receipt_key='receipt',receipt_line=index,capture_index=0,run_id='run',mode='fetch',outcome='stored',
             family='documents',requested_url=url,url=url,context_url=url,member_path=None,http_status=200,complete=True,
@@ -22,7 +22,9 @@ def test_pinned_evidence_and_page_contexts_do_not_borrow_capture_parser_fields(t
         capture(7,'d','https://fixture.test/failed-reading'),
         capture(8,'e','https://fixture.test/old-gzip.pdf',stored_bytes=None),
         capture(9,'f','https://fixture.test/old-bare.pdf',stored_suffix='',stored_bytes=None),
-        capture(10,'0','https://fixture.test/damaged-copy.pdf')]
+        capture(10,'0','https://fixture.test/damaged-copy.pdf'),
+        capture(11,'2','https://fixture.test/new.pdf',sniffed_format='pdf',sniff_version='sniff-1',intact=True,stored_suffix='',stored_bytes=1000),
+        capture(12,'3','https://fixture.test/stale.pdf',sniffed_format='pdf',sniff_version='old',intact=True,stored_suffix='',stored_bytes=1000)]
     links_type=list_of(struct(**{name:'Utf8' for name in ['href','text','tag','basis','group_path','doc_type','add_date','publish_date','remove_date']}))
     reading_fields=dict(body_hex='Utf8',parser='Utf8',parser_version='Utf8',status='Utf8',error_type='Utf8',format='Utf8',
         intact='Boolean',xml_root='Utf8',title='Utf8',heading='Utf8',text_head='Utf8',text_bytes='Int32',link_count='Int32',
@@ -54,6 +56,8 @@ def test_pinned_evidence_and_page_contexts_do_not_borrow_capture_parser_fields(t
             dict(name='contexts',sql='SELECT context_url,cast(cast(first_good_at AS DATE) AS VARCHAR) AS first_good_date FROM page_contexts ORDER BY context_url'),
             dict(name='links',sql='SELECT context_url,href,link_index FROM link_inputs ORDER BY context_url')])
     assert reports['bodies']==[dict(body_sha='0'*64,format='pdf',intact_basis='copy',suffix='.pdf',stored_size=1000),
+        dict(body_sha='2'*64,format='pdf',intact_basis='capture',suffix='',stored_size=1000),
+        dict(body_sha='3'*64,format=None,intact_basis='unchecked',suffix='',stored_size=1000),
         dict(body_sha='a'*64,format='pdf',intact_basis='copy',suffix='.pdf',stored_size=1000),
         dict(body_sha='b'*64,format='pdf',intact_basis='unchecked',suffix='.gz',stored_size=100),
         dict(body_sha='c'*64,format='html',intact_basis='unchecked',suffix='.gz',stored_size=100),
@@ -61,7 +65,8 @@ def test_pinned_evidence_and_page_contexts_do_not_borrow_capture_parser_fields(t
         dict(body_sha='e'*64,format='pdf',intact_basis='unchecked',suffix='.gz',stored_size=90),
         dict(body_sha='f'*64,format='pdf',intact_basis='unchecked',suffix='',stored_size=1000)]
     assert reports['roles']==[dict(receipt_line=i,record_role='document' if i<7 else None,is_real_file=i<6) for i in range(1,8)]+[dict(receipt_line=8,record_role='document',is_real_file=True),
-        dict(receipt_line=9,record_role='document',is_real_file=True),dict(receipt_line=10,record_role='damaged',is_real_file=False)]
+        dict(receipt_line=9,record_role='document',is_real_file=True),dict(receipt_line=10,record_role='damaged',is_real_file=False),
+        dict(receipt_line=11,record_role='document',is_real_file=True),dict(receipt_line=12,record_role=None,is_real_file=False)]
     assert reports['contexts']==[dict(context_url='https://fixture.test/'+part+'/page',first_good_date='2026-10-20') for part in ['one','two']]
     assert reports['links']==[dict(context_url='https://fixture.test/'+part+'/page',href='report.pdf',link_index=0) for part in ['one','two']]
     # Contradictory observations at one key/time have no latest authority.

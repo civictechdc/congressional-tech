@@ -1,15 +1,15 @@
 # Congressional Document Archive: Implementation Plan
 
-**Note, 2026-10-24.** Not a specification: it carries no normative requirements, cites contracts rather than restating them, and names no existing files.
+**Note, 2026-10-24.** Not a specification: it carries no normative requirements and cites contracts rather than restating them.
 
 ## Abstract
 
 - **Goal:** build the system of [[ARCHITECTURE]] and [[DATA-MODEL]] from today's congressional-tech and docspec-rs code, beside the old pipeline, then switch and delete what is bound to nothing (§2). Work runs in dependency order, with no schedule or effort estimates.
-- **Two phases (§4):** phase 1 switches the site to an engine-built release of documents, rebuilt from raw, reusing every per-item result raw or legacy data already settles; phase 2 adds hearings, witnesses, the spicy-regs entities and the large one-time raw jobs.
-- **First:** B15 (the weekly job's records into raw), the lock probe, the lock on `bodies/` and `provenance/`, B0, then the lock on `receipts/`; M1, M2 and S1 run beside them, since they touch no raw (§4–5).
-- **Open (§8):** Basin file growth (M1); memory and the older receipts (M2); the rules on real data (S1); the widest is the model (track E).
-- **Owner actions,** each before the step it blocks: the rescued batch's import and the weekly job's raw token (B15); the bucket lock (B1); B0's two patterns and scan report; the credentials (B0's rewriter; the capture, publish and maintenance tokens before F1); facts only derived tables hold (D1, E4), before the switch; the real-device speed runs (A11); widening fingerprint candidates (S2).
-- **Detail:** behavior in [[ARCHITECTURE]]; schemas, derivations, registries and invariants in [[DATA-MODEL]]; code in [[BINDINGS]].
+- **Two phases:** phase 1 is the documents-only switch; phase 2 adds hearings, witnesses, the spicy-regs entities and the large one-time raw jobs. §4 scopes both; [[PHASE-2]] holds phase 2's rules and gates.
+- **First:** B15 (the weekly job's records into raw), the lock probe, the lock on `bodies/` and `provenance/`, B0, then the lock on `receipts/`; the Basin smoke check and S1 run beside them, since they touch no raw (§4–5).
+- **Open (§8):** the rules on real data (S1, S2); the widest is the model (track E).
+- **Owner actions,** each before the step it blocks: the rescued batch's import and the weekly job's raw token (B15); the bucket lock (B1); B0's two patterns and scan report, and its live run; the Basin smoke check (§5.1); the credentials (B0's rewriter; the capture, publish and maintenance tokens before F1); facts only derived tables hold (D1, E4), before the switch; the real-device speed runs (A11); widening fingerprint candidates (S2).
+- **Detail:** behavior in [[ARCHITECTURE]]; schemas, derivations, registries and invariants in [[DATA-MODEL]] and, for phase 2, [[PHASE-2]]; code and its state in [[BINDINGS]].
 
 ## 1. Introduction
 
@@ -25,11 +25,7 @@ Already in place: the hosted setup refuses an engine revision other than the qua
 
 **One implementation per component** ([[BINDINGS]] §2, rule 1): where today has several, the binding picks one and the rest are deleted. External systems are the only variation, injected as adapters ([[ARCHITECTURE]] §4, principle 8).
 
-**Reuse before re-reading.** A per-item result that raw or legacy data already settles is borrowed, with its basis recorded, and only the gaps are read; an old decision across items (grouping, matching, roles) is never borrowed, only used as a parity oracle. Measured on the 2026-10-16 snapshot (`measurements/phase1-inventory-20261026/`):
-- PDF integrity: phase 1 reads pinned sniff and copy verification, leaving older capture checks in raw behind their pointers and listing other PDFs unchecked until B13's whole read ([[DATA-MODEL]] §7.3); no PDF is read whole in phase 1 beyond §8's sample, and the copies wait;
-- ZIP fingerprints: the member hashes are in `captures`;
-- run fresh because they are small or the old data cannot serve: `sniff` and the page readings in one pass that opens each body once (673,094 opens instead of 1,324,479; old formats cover 36% in other categories, and old readings hold no titles, text sizes or links), the filename readings (7–18 minutes; parser changed since the old catalog, which becomes their diff oracle) and the receipt ingest (all local, about a minute);
-- deferred: the full re-hash (until then B9's listing baseline checks each older body's size against its recorded stored size) and the PDF copies.
+**Reuse before re-reading.** A per-item result that raw or legacy data already settles is borrowed, with its basis recorded, and only the gaps are read; an old decision across items (grouping, matching, roles) is never borrowed, only used as a parity oracle. [[DATA-MODEL]] §6 and §7.3 say what each table reuses and what it reads, and §6.4 item 2 below gives D2's read counts (measured on the 2026-10-16 snapshot, `measurements/phase1-inventory-20261026/`).
 
 **Switch, then delete.** The target components are built beside the old pipeline. At the switch the publish path binds to them; the old layers are then bound to nothing and are deleted whole, as [[BINDINGS]] §6 lists them. Until the switch, the old capture job keeps writing raw data and reading the raw index, and gets raw-safety fixes only; its whole-leaf index rewrites continue until then, which is accepted.
 
@@ -54,25 +50,23 @@ Already in place: the hosted setup refuses an engine revision other than the qua
 
 ## 4. Order of Work
 
-**Phase 1, the documents-only switch:** the site serves an engine-built release of documents, saved copies, sources, recoveries and dead-link lookups, rebuilt from raw; capture runs from it; the old pipeline is deleted, except the weekly meeting job, whose inventories seed capture until B14.
-1. B15 first, since each weekly run overwrites another version. On a scratch bucket with the same lock rule, record the status of a create-only PUT to an existing key, an unconditional PUT, a DELETE and a multipart create; if the first is not 412, B3 and [[ARCHITECTURE]] §7.1 change before any lock. List `provenance/` and record each object that is not a `<kind>/<ts>.jsonl` record. Then the owner locks `bodies/` and `provenance/` (B1); the old writers are patched and B0 runs; then `receipts/` is locked.
-2. M1, M2 and S1, beside item 1; S2's document fixtures and the labeled sample beside track C.
-3. F0 and the hand-built fixture; C0; track A and track B's items 2–9 (item 8 as its one-time script), 11 and 12.
-4. Track C, then D (items 1–3 and 5), then E (the document core, [[DATA-MODEL]] §7.1–7.10, and `urls`), then F (items 1, 2, 4 and 5).
-
-Phase 1's model reads `captures`, the document `readings`, `filename_readings`, provenance and the document registries. Its releases carry `meetings.parquet` with keys only, omit the other entity files, and from the first carry `schema.json` and each file's producer and coverage in the manifest ([[DATA-MODEL]] §8.1): hearing keys come from document evidence, chambers from committee codes, `witness_keys` and transcript links are empty, a document dated only by its meeting shows no date, and an undated banded URL takes its family's shortest recheck band ([[DATA-MODEL]] §7.5, §7.7).
+**Phase 1, the documents-only switch:** the site serves an engine-built release of documents, saved copies, sources, recoveries and dead-link lookups, rebuilt from raw and reusing every per-item result raw or legacy data already settles; capture runs from it; the old pipeline is deleted, except the weekly meeting job, whose inventories seed capture until B14. Phase 1's model reads `captures`, the document `readings`, `filename_readings`, provenance and the document registries. Its releases carry `meetings.parquet` with keys only, omit the other entity files, and from the first carry `schema.json` and each file's producer and coverage in the manifest ([[DATA-MODEL]] §8.1): hearing keys come from document evidence, chambers from committee codes, `witness_keys` and transcript links are empty, a document dated only by its meeting shows no date, and an undated banded URL takes its family's shortest recheck band ([[DATA-MODEL]] §7.5, §7.7).
+1. B15 first, since each weekly run overwrites another version; it ships to main as its own release, ahead of the switch. On a scratch bucket with the same lock rule, record the status of a create-only PUT to an existing key, an unconditional PUT, a DELETE and a multipart create; if the first is not 412, B3 and [[ARCHITECTURE]] §7.1 change before any lock. List `provenance/` and record each object that is not a `<kind>/<ts>.jsonl` record. Then the owner locks `bodies/` and `provenance/` (B1); the old writers are patched and B0 runs; then `receipts/` is locked.
+2. The Basin smoke check (§5.1) and S1, beside item 1; S2's document fixtures and the labeled sample beside track C.
+3. C0; track A and track B's items 2–9 (item 8 as its one-time script), 11 and 12. F0 and the hand-built fixture exist (§5.4).
+4. Track C, then D (items 1–3), then E (the document core, [[DATA-MODEL]] §7.1–7.10, and `urls`), then F (items 1, 2, 4 and 5).
 
 **Phase 2, connections and one-time raw jobs,** adding files and facts. Three items can also change the document core: B13 (an unchecked PDF found broken leaves the list, and its links open the not-found notice), S2's widening and a fingerprint parser (editions can split).
-- hearings, witnesses and recordings: B14, D4, and the meeting, appearance and recording relations ([[DATA-MODEL]] §7.11), cheap: about 60k bodies (9 GB) plus the 199,156 inline records already in the receipts;
+- hearings, witnesses and recordings: B14, D4, and the meeting, appearance and recording relations ([[PHASE-2]] §2), cheap: about 60k bodies (9 GB) plus the 199,156 inline records already in the receipts;
 - the spicy-regs entities (committees, members, rosters, bills, CBO estimates, floor votes, amendments, committee activities, nominations), with their pin lists and the committee explorer's move (F3–F4), after spicy-stack ss-vhi2's retention change;
 - the large raw jobs: B13 (PDF copies), B10 (full re-hash), S2's edition-count widening, and C4's dense IDs (ss-6jg6);
 - engine and tooling: export bytes independent of the runner class (ss-iwqu; phase 1 pins the runner class and limits instead), a `fingerprint` parser only if a PDF or unexpanded-ZIP candidate appears, and the review forms (B8).
 
 | Track | Components | Depends on |
 |---|---|---|
-| A | Reader, canary and contract test, site | F0 and the hand-built fixture |
+| A | Reader, canary and contract test, site | F0 and the hand-built fixture (done) |
 | B | Raw-writer components | §4, item 1; B13 after B1 and B3 |
-| C | Engine | M1, M2, S1 |
+| C | Engine | The Basin smoke check, S1 |
 | D | Lake producers | C2, B2, S1's parsers; B14 for D4 |
 | E | Model | S1, S2, C1, C3, C4, D |
 | F | Publish job, capture scheduler, switch | A, B2–B9, E |
@@ -81,49 +75,25 @@ A and B can run beside C.
 
 ## 5. First Steps
 
-M1, M2 and S settle the lake format, the receipt reader, the model's memory and step form, and the rules; F0 gives the reader its fixture.
+S settles the rules; the smoke check confirms the lake format. M2 and F0 are done.
 
-### 5.1 M1: Basin Catalog Under Maintenance
+### 5.1 M1: Basin Smoke Check
 
-**Decides:** Iceberg stays if the rows read back unchanged and the file and manifest counts, projected to ten years at the measured growth, keep a full scan of `captures` under a minute on the smallest runner. Otherwise the lake tables move to dated Parquet files with an `If-Match` manifest per table: the same atomicity, without time travel. The fallback changes the scope of C1, C2 and D.
+Iceberg on Basin Catalog stays, and no table depends on Basin's managed maintenance ([[ARCHITECTURE]] §8.6). The owner runs the existing probe once with their own credentials, in the dedicated scratch bucket the probe requires (`cx-engine-first-lock-probe-…`), under the same lock rules as the real bucket: create a scratch table, append three days and read them back unchanged, run its race step (the catalog must reject a stale commit, which exactly-once rows depend on), then purge it and list what remains. A failure goes to the owner before track C's table work. The engine's remote write caps go ([[DATA-MODEL]] §6). The earlier experiment's ten-year projection, race and cap trials are dropped; `docs/measurements/engine-first-20261027/m1.md` keeps it as history, with the probe's build and run commands.
 
-All three tests run on scratch tables, with Basin's catalog-level compaction and snapshot expiration on. The precommitted workload, conservative growth projection, paired cap-cost rule and prepared owner commands are in `docs/measurements/engine-first-20261027/m1.md`; missing evidence makes the result incomplete, never a format decision.
+### 5.2 M2: Done
 
-1. **Guarded commits.** An append whose base snapshot a second client's commit has moved fails rather than being rebased, recomputes its work list and lands within three retries; two ingest runs on the same receipts leave exactly one copy of each row. A second client's commit stands in for Basin's maintenance, which cannot be timed.
-2. **Growth, expiration and drops.** With snapshot expiration at its shortest age, append day-sized batches (about 315 KB) across at least ten Basin maintenance runs.
-   - After each run, count the current snapshot's data files, manifests and `metadata.json` files and the bytes expiration removed, check that the rows read back equal those appended, and read a compacted file's footer for its codec.
-   - Read the table through iceberg-datafusion 0.10.1's static provider with a partition filter, and confirm the filter reaches scan planning.
-   - Then time a full scan of a scratch table holding the projected ten-year file and manifest counts, through the static provider at the runner's scan concurrency; drop the tables with purge and list what remains.
-3. **The engine's remote write caps.** Measure scan and commit cost with and without the engine's 2 MiB file and 2,048-row group caps. [[DATA-MODEL]] §6 assumes they go; if they measurably help, that section changes instead.
-
-### 5.2 M2: Wide Joins and Grouping in a Throwaway DataFusion Harness
-
-**Decides:** the receipt reader, the size of track C, the model's step form, and whether DataFusion handles the wide joins within the pool. The harness is deleted afterwards.
-
-**Decides by,** committed before it runs: every step within the pool limit and scratch ceiling set for the 16 GB runner, peak RSS included; named steps win if they cut peak memory or time by a fifth.
-
-The engine cannot run the full export until C1, C3 and C4 exist, so a short standalone DataFusion program measures first, using S's draft rules.
-
-- **Inputs:**
-  - all 2,289 receipts, read with the receipt reader of [[ARCHITECTURE]] §13 and the draft ingest mapping, with a sample of each older shape ([[DATA-MODEL]] §6.1), and its rows compared with the pinned capture index (`db033173…`, 3,909,134 rows). The reader extracts each line's fallback fields once, before expanding its capture entries (the 188 MB line references 196). Record its time, its peak memory on that line, and the conflicts it nulls per receipt, and commit a field-presence census (each field's line count per receipt family and shape) that the ingest mapping must cover: review 8 found rules written against shapes the receipts do not have;
-  - the pinned catalog generation `596f08fa…`, with today's filename readings;
-  - links parsed by S1's parsers from a stratified sample of at least 2,000 pages.
-- **Joins:** run the model's joins, including `url_key`, link resolution and the link join (about 4.2M links, scaled from the sample, against 1.31M source URLs), filename readings, `detail` and `sources` (up to 1.7M rows).
-  - Report every intermediate join's row count and bytes and every hash-join build's size, as well as time and peak memory.
-  - The links are sampled, so this tests mechanisms and memory; D2's full link backfill repeats the join on real data.
-- **Step form:** run the model twice, as inlined steps and as named steps with the components and documents materialized once. Compare `EXPLAIN ANALYZE`, time and peak memory, including memory the pool does not account for.
-- **Grouping:** group the graph with the specified rule, using the sampled links; D2 repeats the grouping on real links. Record time, peak memory and the largest components.
-- **Runner:** `ubuntu-24.04` (4 vCPU, 16 GB), the smallest runner class.
+The owner ended M2 and directed implementation: the nullable receipt reader is usable, the model uses named steps, and the full join, graph and memory acceptance moves to C6 and D2 (`docs/measurements/engine-first-20261027/m2-reader.md`).
 
 ### 5.3 S: The Semantic Checkpoint
 
 S writes every rule as SQL with its fixtures (E1), in two parts:
 
-- **S1, before track C** (M2 and the engine depend on it): the real-file and grouping SQL with their fixtures, marked S1 below, and the `sniff`, `html`, `xml` and `json` parsers (D2's code, not yet writing to the lake), with the main-content extractor chosen on the ~2,250 pages saved twice in one fetch and its time per page recorded; S1's real slices and M2's links run on them;
+- **S1, before track C** (the engine depends on it): the real-file and grouping SQL with their fixtures, marked S1 below, and the `sniff`, `html`, `xml` and `json` parsers (D2's code, not yet writing to the lake), with Trafilatura 2.0.0 as the main-content extractor (`docs/measurements/engine-first-20261027/s1-pages.md`); S1's real slices run on them;
 - **S2, beside track C:** the rest of the SQL and fixtures, the labeled sample, the edition count and the raw-only check; its meeting, witness and spicy-regs rows wait for phase 2.
 
 - **What S writes (E1):** the reference model profile; every registry as a versioned file with its first contents and sample tests, seeded as [[BINDINGS]] §4 lists.
-- **Fixtures first:** each fixture of [[FIXTURES]], the acceptance sheet, is written with its expected outcome before any SQL. S adds a row for each format of [[DATA-MODEL]] §6.2 the sheet does not yet name.
+- **Fixtures first:** each fixture of the acceptance sheet, `model/fixtures/manifest.md` ([[FIXTURES]]), is written with its expected outcome before any SQL. S adds a row for each format of [[DATA-MODEL]] §6.2 the sheet does not yet name.
 - **An executable model:** S1's fixtures run as the draft SQL over fixture tables and over real slices (the GovInfo ZIPs, the End of Term lines, docs.house.gov's `.xml` URLs, the pages saved twice in one fetch and the short-page sample), before any further change to the rules they cover.
 
 - **The labeled sample** sets the page thresholds and the final file-shape list. It is the sample of [[ARCHITECTURE]] §15, item 2, and its rubric is [[ARCHITECTURE]] §9.2–9.3.
@@ -135,14 +105,9 @@ S writes every rule as SQL with its fixtures (E1), in two parts:
   - S reports the count with examples; the owner then decides whether to widen the candidates to every rendition-group member (*est.* 8–45 GB of reads once).
 - **The raw-only check:** every rule can be computed from raw, with nothing borrowed from the old derived tables.
 
-### 5.4 F0: The First Release, Converted From the Pinned Catalog
+### 5.4 F0: Done
 
-- A converter writes the pinned catalog pair in the release format ([[DATA-MODEL]] §8.1) with the final writer settings. It uses the engine's RunSpec where it can.
-- This release is the reader's fixture (track A). Its manifest records that it came from the pinned catalog. It does not go live: the explorer waits for the engine-built release.
-- **It fills what it can:** meeting keys from URLs, unambiguous document dates from the old metadata, link labels from the old occurrences, and committee names from today's committee file. Capture and import dates stay unknown where legacy timestamps do not distinguish them. It keeps all 1.24M of today's catalog rows, so it is about twice the target `list`.
-- **It cannot show** format groups, meeting titles, other versions or the new recovery kinds, so a small hand-built fixture release covers them: one document with PDF and XML alternates, one titled hearing in `meetings`, two versions of one address, one of each recovery kind and one hidden document. The contract test runs both.
-- **It assumes nothing unique about old bodies:** 141,762 body keys appear in several old documents, so F0 resolves each link key to the first document in list order.
-- The converter is a migration tool, deleted at the switch.
+The pinned catalog pair is converted to the release format as release `62bddc63…`, keeping all 1,241,157 catalog documents, beside a seven-row hand-built fixture for what F0 cannot show (format groups, a titled hearing, versions, recovery kinds, a hidden document) (`docs/measurements/engine-first-20261027/f0.md`). Both serve the reader's development; neither is published, and the converter is deleted at the switch.
 
 ## 6. Tracks
 
@@ -153,14 +118,14 @@ S writes every rule as SQL with its fixtures (E1), in two parts:
 1. **Reader** to [[ARCHITECTURE]] §11, with hyparquet's `useOffsetIndex` for `detail` ([[ARCHITECTURE]] §11.1) and `usePageIndex` for `links`.
 2. **Links** resolve through `links` ([[ARCHITECTURE]] §10.1).
 3. **Canary** ([[ARCHITECTURE]] §10.3.5), run by the publish job against the uploaded candidate.
-4. **Contract test** ([[ARCHITECTURE]] §15, item 5), against F0 and the hand-built fixture until track E exists.
+4. **Contract test** ([[ARCHITECTURE]] §15, item 5), run on the first engine-built release; F0 and the hand-built fixture serve development until then.
 5. **Saved copies** ([[ARCHITECTURE]] §11.5).
 6. **Dates:** the document date and capture date in list rows, so same-filename editions read apart; on the document page, the labels of [[ARCHITECTURE]] §11.6.
 7. **Recoveries** ([[ARCHITECTURE]] §11.5; [[DATA-MODEL]] §8.1), each on the page the attachment rule gives it.
 8. **Sources:** where the document was published and which page listed it, from `sources`.
 9. **Connections** (phase 2, except hearing keys and versions): filter by hearing, bill, member and witness, and sort by document date; a hearing's witnesses with what each submitted, its status, sittings and recordings; a document's other versions; a member's terms, committees, appearances and documents; a committee's current roster, hearings and documents; a bill's title, sponsor, status, hearings and documents; link out to the GPO record, the bill and the member.
 10. **Removed by review** ([[DATA-MODEL]] §7.9).
-11. **Speed, measured then fixed:** measure startup, search, detail and heap on real phones and desktops with F0, then write those targets into the canary and contract test. F0's size makes these targets conservative; re-measure on the first engine-built release.
+11. **Speed, measured then fixed:** measure startup, search, detail and heap once on real phones and desktops against the first engine-built release, then write those targets into the canary and contract test. F0 gives provisional numbers for development.
 
 **Done when:** the site loads F0 locally on desktop and in a phone-sized profile, and the canary passes against F0 in under a minute.
 
@@ -168,19 +133,7 @@ S writes every rule as SQL with its fixtures (E1), in two parts:
 
 These components survive, so they are bound now.
 
-0. **Clean the older receipts, once, before `receipts/` is locked** ([[DATA-MODEL]] §5.2). The full 2026-10-27 scan and scratch-copy rewrite (`docs/measurements/engine-first-20261027/b0/`) verified all 2,289 receipts and 2,596,054 lines: 1,138,754 header removals and 1,549,970 path removals across 887 receipts; the final rescan found no remaining match. The owner reviews the report before the live rewrite.
-   - **First, stop the old writers adding more:** today's capture and import writers drop cookies, credential parameters and local paths, and their running revisions are drained. No import runs between the cleanup and the lock on `receipts/`.
-   - **What is cut,** by two patterns the owner confirms with the scan's report (each JSON path, with counts and examples): every value of a recorded header named `authorization` or ending in `cookie`, in either shape, anywhere in a line; and every absolute local path, as a value, a key name or a substring, cut to its last segment, never in a key a `pointer` passes through or in a URL (the 160 `/home/` hits are URL paths in error text).
-   - **The tool** is a one-off rewriter outside the body store, with its own credential, deleted once B0 is verified. The body store stays create-only throughout.
-   - **The run,** over the receipt keys in the 2026-10-24 backup plus any written since, for each receipt without a verification record:
-     1. if nothing matches, record that and write nothing;
-     2. confirm the backup holds the live object's size and MD5, copying it there if not;
-     3. write the cleaned bytes to the same key with `If-Match` on the original ETag and `Content-MD5`;
-     4. re-read it and check that each line parses to the original minus exactly the cut items, that uncut lines keep their bytes, that no recorded URL or `links[]` value changed, and that every `pointer` still resolves to the same entry;
-     5. record the result, with the fields [[DATA-MODEL]] §5.3 lists, in batched verification files.
-
-     A rerun skips receipts already recorded, and after a crash it verifies against the backup's original.
-   - **Done when:** immediately before the owner locks `receipts/`, with capture paused until the lock, a re-scan applying both patterns to every string and key of every receipt, those written since the cleanup included, finds nothing, and every receipt has a verification record.
+0. **Clean the older receipts, once, before `receipts/` is locked**, by the patterns of [[DATA-MODEL]] §5.2. The one-off rewriter is built and qualified on scratch copies of all 2,289 receipts, with zero matches left; the owner confirms the two patterns from its scan report, patches and drains the old writers, then runs it live and locks `receipts/` by the procedure in `docs/measurements/engine-first-20261027/b0/`.
 1. **Bucket lock** (owner), per prefix, in §4 item 1's order.
 2. **Fetcher, receipt writer and archive expander** to [[ARCHITECTURE]] §7.1–7.2 and [[DATA-MODEL]] §5.2, proven by their contract suites.
 3. **One body store.**
@@ -198,48 +151,47 @@ These components survive, so they are bound now.
 11. **A ratchet test:** no test-only branch or test-only input substitution may appear in a surviving component; tests inject adapters instead ([[ARCHITECTURE]] §15, item 7).
 12. **Owed while the old capture path runs,** which skips the upload of any digest its index holds: B9's first run also reports index rows whose object is missing, and they are repaired; wrong `stored_sha256` rows are repaired in place; and the daily capture is confirmed to write correct values. These matter only until the switch.
 13. **Uncompressed copies of older gzip PDFs** (phase 2; after B1 and B3), by the PDF copier of [[BINDINGS]] §3.1. Running it before B10 saves B10 about 365 GB of reads.
-    - **Candidates:** older `.gz` bodies that phase 1's `sniff` reads as `pdf`. Each whole read checks the bytes against their key, recording a mismatch and going on, and re-checks the end marker; the copy's verification record carries the result, which the model reads in place of any borrowed check ([[DATA-MODEL]] §7.3).
+    - **Candidates:** older `.gz` bodies that phase 1's `sniff` reads as `pdf`. Each whole read checks the bytes against their key, recording a mismatch and going on, and re-checks the end marker; the copy's verification record carries the result, which the model reads ([[DATA-MODEL]] §7.3).
     - **Size:** the largest raw write in the plan, so the lock and the refusal matrix come first: about 260,175 uploads and 403 GB once decompressed (about $72 a year of storage under the lock).
-14. **Meeting fetches through the fetcher** (phase 2) like every other fetch: the Congress.gov meeting API, the House meeting and witness-list XML, Senate committee hearing pages and the meeting inventories; committees come from spicy-regs ([[DATA-MODEL]] §6.4) ([[ARCHITECTURE]] §7.2, §8.5; [[DATA-MODEL]] §6.5).
+14. **Meeting fetches through the fetcher** (phase 2) like every other fetch: the Congress.gov meeting API, the House meeting and witness-list XML, Senate committee hearing pages and the meeting inventories; committees come from spicy-regs ([[ARCHITECTURE]] §7.2, §8.5; [[PHASE-2]] §1.1–1.2).
     - An incremental relist is keyed by its API endpoint and time window, and the window advances only when every page through the last has a good fetch, so a partial run repeats it; the old pending-state path goes only after S2's later-page-failure fixture passes.
     - Once it runs, the weekly job and capture's inventory seeds stop; their records are already in raw (B15).
-15. **The weekly meeting job's records into raw** (phase 1, first; [[ARCHITECTURE]] §7.2): each run also writes every source record it saves as bodies and `mode = fetch` receipts at the snapshot's real time ([[DATA-MODEL]] §5.2), through the existing raw writer, keeping its branch as it is. The rescued batch (§1) is imported once the same way, with `mode = fetch` and its original snapshot times; only its run ID enters the import-run registry, so the model does not treat those times as capture dates (§7.4). Its runs pause with capture during B0's window. B14 replaces it.
+15. **The weekly meeting job's records into raw** (phase 1, first; [[ARCHITECTURE]] §7.2): each run also writes every source record it saves as bodies and `mode = fetch` receipts at the snapshot's real time ([[DATA-MODEL]] §5.2), through the existing raw writer, keeping its branch as it is. The rescued batch (§1) is imported once the same way, with `mode = fetch` and its original snapshot times; only its run ID enters the import-run registry, so the model does not treat those times as capture dates ([[DATA-MODEL]] §7.4). Its runs pause with capture during B0's window. B14 replaces it.
 
 **Done when:**
 - every weekly run since B15, and the rescued batch, is in raw;
 - every older receipt is cleaned and verified;
 - the refusal matrix passes;
 - the lock is on all three prefixes;
-- every older body has a verification record, a listing baseline at least;
-- in phase 2, every older gzip PDF has a recorded copy.
+- every older body has a verification record, a listing baseline at least.
 
 ### 6.3 Track C: Engine
 
-**C0, first moves on engine main** (beside M1): the C0 cleanup of [[BINDINGS]] §3.3. The engine's digest for every runner OS, Linux included, is recorded and checked as [[ARCHITECTURE]] §12 says.
+**C0, first moves on engine main** (beside the smoke check): the C0 cleanup of [[BINDINGS]] §3.3. The engine's digest for every runner OS, Linux included, is recorded and checked as [[ARCHITECTURE]] §12 says.
 
 **Then the capabilities of [[ARCHITECTURE]] §13, C*n* being its item *n*, each with its contract test:**
 
 | # | Capability | Contract test |
 |---|---|---|
 | C1 | Multi-input SQL jobs | A job joining two tables, a file and a receipt holding a type conflict, read whole with the value nulled and its raw line kept; a partition filter visible in the Iceberg scan |
-| C2 | Table operations | M1's commit and drop tests |
+| C2 | Table operations | Guarded commits that fail rather than rebase, three retries, two ingests of the same receipts leaving one copy of each row, and drop with purge, on local tables; the smoke check (§5.1) on Basin |
 | C3 | Deterministic export (spicy-stack ss-iwqu) | Phase 1: byte equality across reruns and input orders on the pinned runner class and limits; phase 2: across threads, batch sizes and a forced spill; after a row group's first view through the reader's byte cache, a `detail` view is one round trip |
-| C4 | Connected components (ss-6jg6; phase 1 without the dense IDs) | M2's graph within its heap budget, labels equal across threads and input orders; a refusal test |
+| C4 | Connected components (ss-6jg6; phase 1 without the dense IDs) | D2's real graph within its heap budget, labels equal across threads and input orders; a refusal test |
 | C5 | Streaming I/O | Request counts, peak memory, and no multipart upload or read-back, in a test |
-| C6 | Bounded resources | A join at the pool limit fails clearly; M2's build sizes; every hash-join build `EXPLAIN` shows is the smaller input and carries no wide column |
-| C7 | Thin interface | The M2 export as a job spec |
-| C8 | URL, filename and JSON functions (ss-7qz3, ss-e53d, ss-1pg7) | The WHATWG URL test suite and golden vectors from today's fetcher's URL handling and its filename code, for strict-UTF-8 percent-decoding and the RFC 6266 name; `json_array` against Python `json.dumps`; M2's `url_key` timing |
+| C6 | Bounded resources | A join at the pool limit fails clearly; D2's build sizes on real links; every hash-join build `EXPLAIN` shows is the smaller input and carries no wide column |
+| C7 | Thin interface | The model's export as a job spec |
+| C8 | URL, filename and JSON functions (ss-7qz3, ss-e53d, ss-1pg7) | The WHATWG URL test suite and golden vectors from today's fetcher's URL handling and its filename code, for strict-UTF-8 percent-decoding and the RFC 6266 name; `json_array` against Python `json.dumps`; `url_key` timing on the real links |
 
 **Not needed any more:** the lifecycle store's commit requirements, lifecycle-store compaction on R2, copy-on-write measurement and insert-if-absent. Close them unless another consumer needs them.
 
-**Done when:** M2's export runs as a CLI job spec (C7) from Basin tables on the smallest runner and passes C3's test; the full export closes with E.
+**Done when:** the model's export runs as a CLI job spec (C7) from Basin tables on the smallest runner (`ubuntu-24.04`, 4 vCPU, 16 GB) and passes C3's test; the full export closes with E.
 
 ### 6.4 Track D: Lake Producers
 
 Each producer is built to [[ARCHITECTURE]] §8 and [[DATA-MODEL]] §6.
 
 1. **Captures ingest:**
-   - backfill the narrow phase-1 index ([[DATA-MODEL]] §6.1) from all 2,289 receipts (1.08 GB compressed) in one read, including the non-date segments ([[ARCHITECTURE]] §7.2), with a test sample of each older receipt shape. Earlier attempts, other headers, `Retry-After` and inline meeting records are not ingested; they stay in raw behind each row's pointer;
+   - backfill the narrow phase-1 index ([[DATA-MODEL]] §6.1, which lists what stays in raw) from all 2,289 receipts (1.08 GB compressed) in one read, including the non-date segments ([[ARCHITECTURE]] §7.2), with a test sample of each older receipt shape;
    - the backfill restores the HTTP status on the about 37,000 bodiless lines that record one (`http_status` or `status_code`; `capture_status` and `meetingStatus` are not HTTP statuses);
    - it maps a fetch time from every receipt shape: 522,448 rows in dated receipts have no time in the snapshot, and 500,689 of them carry one on their own entry or line;
    - the rebuild-equivalence test;
@@ -255,12 +207,11 @@ Each producer is built to [[ARCHITECTURE]] §8 and [[DATA-MODEL]] §6.
    - one full read of each page body the media type routes to HTML, XML or JSON (288,223 bodies, 4.98 GB), sniffed from those bytes and parsed in the same pass; a body whose bytes say otherwise is sniffed as what it is;
    - a bounded prefix read for the other 384,871 bodies, mostly PDFs and ZIPs, whose media type proves nothing;
    - 673,094 object opens instead of 1,324,479, and a byte floor of 8.0 GB instead of 9.7 GB; page fingerprints and the readings table's size (links and `text_head` included) are measured in the run. There is no PDF parser and no fingerprint parser for now;
-   - then M2's link join and grouping, repeated on the real links and fingerprints.
-3. **Filename reader:** a producer that runs the filename parser over its work list and appends through the engine.
-4. **Meeting parsers** (phase 2; needs B14): one row per input and version, over the meeting-source registry's work list ([[DATA-MODEL]] §6):
+   - then the link join and grouping on the real links and fingerprints, every step within the pool limit and scratch ceiling of the 16 GB runner, peak RSS included (C6).
+3. **Filename reader:** a producer that runs the filename parser over its work list and appends through the engine; the parser changed since the old catalog, which is its diff oracle.
+4. **Meeting parsers** (phase 2; needs B14): one row per input and version, over the meeting-source registry's work list ([[PHASE-2]] §1.2–1.3):
    - Congress.gov records, the 199,156 inline receipt records (18,140 meetings; read once from the four `congress/meetings` receipt files, 77 MB, by their D1 pointers, with `record_sha` computed here) and response bodies alike, and House `committee-meeting` XML, into `meeting_records`;
    - House witness lists, Congress.gov records, Senate hearing page cards and the `mods.xml` records already in raw into `appearance_records`, each witness with its name key and document links.
-5. Enable Basin's catalog-level compaction and snapshot expiration.
 
 **Done when:** each phase's lake tables (phase 1: `captures`, `readings`, `filename_readings`) exist with complete backfills at the pinned versions, and both `captures` comparisons pass.
 
@@ -291,21 +242,22 @@ Each producer is built to [[ARCHITECTURE]] §8 and [[DATA-MODEL]] §6.
 
 ### 6.6 Track F: Publish Job, Capture Scheduler and Switch
 
-1. **Workflows** ([[ARCHITECTURE]] §12): the capture job; the publish job, backfills and the maintenance job in one CI concurrency group. The disabled viewer workflow and its 30-minute cron are deleted.
+1. **Workflows** ([[ARCHITECTURE]] §12): the capture job; the publish job, backfills and the maintenance job, with its monthly table rebuild ([[ARCHITECTURE]] §8.6), in one CI concurrency group. The disabled viewer workflow and its 30-minute cron are deleted.
 2. **Capture scheduler:** capture reads `url_state` from the live release, including its queue of linked-but-unfetched URLs, stops reading the raw index and drops its replay mode; until B14 it also takes the weekly job's inventory files as seeds.
    - Each run works within a request, byte and spool budget sized from the first engine-built `url_state`'s due rows (1,298,420 URLs today; the old capture caps a run at 20,000), taking the queue first, which holds the wrapped files (*est.* 8,800 never fetched), then the cut-off URLs (62 to 64, whose cut-off copies stay in raw), then the oldest `next_attempt_at`.
 3. **The committee explorer** (phase 2) reads meeting and witness records from the lake and committees, members and rosters from the pinned spicy-regs generations ([[ARCHITECTURE]] §8.5), not from the fetchers' state files.
 4. **Pins:** publish and the maintenance job keep the receipt-key lists and, in phase 2, `pins/spicy-generations.json` ([[ARCHITECTURE]] §10.3.4, §10.3.7). The spicy-regs side (its retention reading that list, `nomination_id`, the nominations backfill, and reading the archive's releases instead of capturing meetings) is spicy-stack ss-vhi2.
 5. **Delete what is bound to nothing,** one PR per group as [[BINDINGS]] §6 lists them, measured again at cut.
 
-**Done when** the switch checklist holds:
+**Phase-1 exit checklist.** The switch is done when all of these hold; phase 2's additions are in [[PHASE-2]] §4.1:
+- tracks A to E meet their done-when;
 - the cut-over ran in order: old capture disabled; a final ingest and publish; the flip; the new capture's first run on the target writers, whose `stored` lines carry MD5s matching their ETags and every line its stored suffix;
 - the explorer serves an engine-built release, and the reader opens saved files, alternates and recoveries from it;
-- the canary and contract test pass the speed targets set on real devices, against that release;
+- the canary and contract test pass on that release, with the speed targets set on real devices against it (A11);
+- C3's export is byte-identical across reruns and input orders on the pinned runner class and limits;
 - a failed canary is shown to leave the previous release live;
 - capture runs from `url_state` with no raw-index read, and every cut-off URL has a complete copy or a recorded reason;
-- in phase 2, the committee explorer reads the lake, every older gzip PDF's copy is recorded (B13), and spicy-regs' retention plan keeps every generation a kept release pins;
-- the old workflows are gone, the weekly meeting job after B14, and the deleted line counts are recorded.
+- the old workflows are gone, except the weekly meeting job until B14, and the deleted line counts are recorded.
 
 ## 7. Parked
 
@@ -313,56 +265,33 @@ Each producer is built to [[ARCHITECTURE]] §8 and [[DATA-MODEL]] §6.
 - **The freeze:** no browser or engine performance work beyond this plan until there is a user or a measured failure on real data.
 - **Committee explorer and weekly retention onto incremental tables:** the approach conflicts with the design. Re-scope it before starting.
 - **Considered, not chosen,** so not re-proposed without new information: showing the original link's last status (36,768 documents' URLs last returned 404 or 410), showing saved-file size (2,467 files over 50 MB), and saving resolved links between publishes (revisit only if a measured reprint shows link resolution is the slow step).
-- **The MCP coverage tasks** (`docs/youtube-coverage/congressional-explorer-mcp-data-coverage-tasks.md`, a proposal): its producer fixes (tasks 1–10) may land on today's exporter so the MCP gains them before the switch, as work the switch deletes; the target covers each, and the switch checks it does:
-
-  | Task | Covered by |
-  |---|---|
-  | 1 identifiers, 9 coverage | [[DATA-MODEL]] §8–9: native keys, `schema.json`, the manifest's producer and coverage |
-  | 2–3 participants, ownership | D4 and [[DATA-MODEL]] §7.11, unnamed witnesses kept apart |
-  | 4 legislative items | `subject_keys`; spicy-regs amendments and committee activities; markup votes parked below |
-  | 5 committee history | spicy-regs `committees`; its other fields are spicy-regs' to add |
-  | 6 sittings, versions | `sittings`, editions, `version_keys`, alternates |
-  | 7 file and text catalog | `recordings`; recoveries and reviews in the same release |
-  | 8 reference data | Not covered: archive routes, session dates and chamber control, channel mappings |
-  | 10 replay and rebuild | The switch: everything rebuilt from raw, parity by cause |
-  | 11–15 the two MCP servers | Their own plan, reading release manifests; full research tables are decided then |
-
+- **The MCP coverage tasks** (`docs/youtube-coverage/congressional-explorer-mcp-data-coverage-tasks.md`, a proposal): what the target covers is in [[PHASE-2]] §4.3.
 - **Parquet variant for the folds:** revisit when all three hold:
   - an iceberg-rust release writes variant through its Parquet writer (0.10.1, the pinned release, has none; 0.11 is expected to add it);
   - Basin Catalog accepts format-version 3 tables;
   - DataFusion core or a maintained crate can query variant.
 
   The candidates are nested, mixed-type readings such as Congress.gov API JSON and MODS or meeting XML trees.
-- **Structured transcripts:** the captions and subtitles are held in raw and, in phase 2, listed per recording (99% of Senate meeting videos in the 118th–119th Congresses have them); turning them and the printed transcripts (`pdf_text`) into timed speaker turns is full-text work. Such a reading can also name witnesses a source left unnamed, as attributes that never move a `witness_key` ([[DATA-MODEL]] §7.11).
+- **Structured transcripts:** the captions and subtitles are held in raw and, in phase 2, listed per recording (99% of Senate meeting videos in the 118th–119th Congresses have them); turning them and the printed transcripts (`pdf_text`) into timed speaker turns is full-text work. Such a reading can also name witnesses a source left unnamed, as attributes that never move a `witness_key` ([[PHASE-2]] §2).
 - **Committee markup votes:** spicy-regs has amendments and committee activities but no committee vote tallies; the House committee repository is the source if one is needed.
 - **Full-text extraction of every PDF:** one later read of about 403 GB into `pdf_text` ([[DATA-MODEL]] §6.6). It gives page counts and text fingerprints for every PDF, which makes dedupe across sites cheap to revisit.
 
 ## 8. Uncertainties and Tests
 
-Each row names an unknown, the step that settles it and what it decides, and closes only with its measurement. The widest is the model (track E), bounded unless parity finds facts only derived tables hold.
+Each row names an unknown, the step that settles it and what it decides, and closes only with its measurement. The widest is the model (track E), bounded unless parity finds facts only derived tables hold. Phase 2's rows are in [[PHASE-2]] §4.2.
 
 | Uncertainty | Settled by | Decides |
 |---|---|---|
-| Basin compacts only files not yet compacted, so a table's file and manifest counts may grow with every run | M1 | Iceberg, or dated Parquet files with an `If-Match` manifest |
-| DataFusion's wide joins, grouping and named steps fit the smallest runner's memory pool | M2, then D2 on real links | The model's step form and the size of track C |
-| The receipt reader and ingest mapping read every older shape: 2.96M of 3.9M rows carry no outcome, 1,420 receipts mix types on a path, one line is 188 MB | M2's receipt step, then D1's comparison with the old index | The reader, the outcome and mode table, and any fact that exists only in derived tables (the owner records it as provenance or accepts losing it) |
+| The ingest mapping reads every older shape: 2.96M of 3.9M rows carry no outcome, 1,420 receipts mix types on a path, one line is 188 MB | D1's comparison with the old index | The outcome and mode table, and any fact that exists only in derived tables (the owner records it as provenance or accepts losing it) |
 | The rules give the right documents on real data, not only on fixtures and proxies | S1 on real slices; the labeled sample (S2) | Rule changes, the page thresholds and the final file-shape list |
 | Re-packaged editions join the wrong XML | S2's edition count | The owner widens fingerprint candidates, or not |
-| Which maintained extractor gives stable main content | S1, on the pages saved twice in one fetch | The page fingerprint |
-| How many links pages hold (*est.* 4.2M, from 80 pages) and how large the link join is | M2's sample of at least 2,000 pages; D2's link backfill confirms | The link-join budget and M2's memory verdict |
+| How many links pages hold (*est.* 4.2M, from 80 pages) and how large the link join is | D2's link backfill | The link-join budget (C6) |
 | The 33,369 never-sniffed PDF candidates are PDFs | Phase 1's `sniff` | The copy count |
-| Borrowed PDF checks agree with a fresh read (198,676 agree today, 3 disagree), and how many unchecked PDFs are broken | A whole read in phase 1 of 1,000 capture-checked PDFs, stratified by line date (2026-10-01 alone, or later), and 100 unchecked ones (*est.* 3 GB), each checked against its key | The borrowed basis stands if at most one of the 1,000 disagrees; the owner revisits the unchecked listing if more than 5 of the 100 are broken |
 | No older body beyond the 61 known has a multipart ETag | B9's first run | Nothing, unless the count changes |
 | The numbers in the specifications reproduce: each review round found 10–20 of about 370 wrong | Each load-bearing number re-derived from its committed script before a rule relies on it | Corrections in place |
-| Speed and heap targets on real phones and desktops | A11 | The canary's and contract test's thresholds |
-| Whether `list` with titles fits the phone heap budget (*est.* 17–30 MB more; 46% of documents have a publisher label) | A11 on the first engine-built release; F0 sets a provisional budget | Titles stay in `list`, or move back to `detail` |
-| Roster history: spicy-regs keeps the current Congress only | A spicy-regs change publishing its captured rosters as dated history | Rosters show current seats until then |
-| How often one printed hearing covers several meetings, leaving its MODS witnesses on the package | D4, counting packages that more than one meeting's jackets resolve to | Whether multi-day hearings need a per-day rule |
+| Speed and heap targets on real phones and desktops | A11, on the first engine-built release | The canary's and contract test's thresholds |
+| Whether `list` with titles fits the phone heap budget (*est.* 17–30 MB more; 46% of documents have a publisher label) | A11 on the first engine-built release; F0 gives a provisional budget | Titles stay in `list`, or move back to `detail` |
 | How many House event pages only the committee explorer's POST calendar API finds, which capture's scope drops ([[BINDINGS]] §3.1) | A count from the explorer's discovery before the switch | Whether capture needs that API as a seed |
-| Senate card coverage by committee site (judiciary 98.6%, hsgac 64.8%, indian 54.8%, jec 0%) | D4, on every Senate hearing page | Which sites need a second page layout |
-| Event IDs never name two chambers (observed on 18,140, not promised by the publishers) | Invariant 15 at every publish | The meeting key, if one ever does |
-| Nominations before the 119th Congress | spicy-stack ss-vhi2's backfill | How far back nomination pages reach |
-| How often one witness gets two keys at one meeting (spelling, titles, initials) | A sample of House and Congress.gov witness lists in S2 | What the later witness table must match |
 
 ## 9. References
 
@@ -376,4 +305,7 @@ Each row names an unknown, the step that settles it and what it decides, and clo
 : *Congressional Document Archive: Implementation Bindings.* Note, 2026-10-25. `docs/plans/bindings-20261025.md`.
 
 **[FIXTURES]**
-: *Congressional Document Archive: Acceptance Fixtures.* Note, 2026-10-26. `docs/plans/fixtures-20261026.md`.
+: *Congressional Document Archive: Acceptance Fixtures.* Note, 2026-10-26. `model/fixtures/manifest.md`.
+
+**[PHASE-2]**
+: *Congressional Document Archive: Phase-2 Annex.* Note, 2026-10-28. `docs/plans/phase-2-annex-20261028.md`.
