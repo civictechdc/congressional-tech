@@ -4,7 +4,7 @@ Status: waiting for the qualified combined engine pin and final full-run proof. 
 
 Only the lead executes these outward commands. B0 receipt rewriting and R2 bucket locks remain deferred to a supervised owner window; this block runs neither. The artifact is an ordinary `linux-amd64` build from `@SOURCE_REVISION@`: @BINARY_BYTES@ bytes, SHA-256 `@LINUX_SHA256@`. It passed @LINUX_TEST_COUNT@ project-runner checks inside amd64 Python 3.12.13, including real native model/group/export and runtime setup. The immutable packet includes the exact descriptor, rollback descriptor, cross recipe and qualification evidence.
 
-Current variable readback is the previous `c949c6762f001845d2933e55cb9d7cf237e80810` runtime: 220,185,776 bytes, SHA-256 `c14bfbd12b6ad958e9fa8cd8d2bc57feb014ef12431a9826ec078c631fdafd33`, bucket `congressional-tech-runtime`. Its complete JSON is in `rollback-runtime-artifact.json` in the packet. The application pin and variable must change together. Keep publishing, capture and Pages workflows paused during the window. Disabling a workflow preserves running jobs; the drain check below stops until every existing job finishes. Keep them paused through hosted validation and use engine's switch checklist to activate the new pipeline and deploy after the pointer flip. A hosted check queued before the variable changes may need a rerun afterwards.
+Current variable readback is the previous `c949c6762f001845d2933e55cb9d7cf237e80810` runtime: 220,185,776 bytes, SHA-256 `c14bfbd12b6ad958e9fa8cd8d2bc57feb014ef12431a9826ec078c631fdafd33`, bucket `congressional-tech-runtime`. Its complete JSON is in `rollback-runtime-artifact.json` in the packet. The application pin and variable must change together. Keep publishing, capture and Pages workflows paused during the window. Disabling a workflow preserves running jobs; the drain check below stops until every existing job finishes. Keep them paused through hosted validation and seed publication, then restore the old capture and update jobs after Pages succeeds. The new capture stays disabled until the raw rebuild passes its release checks. A hosted check queued before the variable changes may need a rerun afterwards.
 
 B15 must already be on main before recording the rollback application commit. That preserves raw-before-push behavior even if the integration landing is rolled back. All Git operations below use the landing worktree, never the pinned rescue worktree.
 
@@ -151,7 +151,7 @@ The push is normal and fast-forward only; it never forces main. If main changed 
 
 ## Hosted validation, controller, then Pages
 
-Keep the same shell so `dispatch_and_watch`, `WINDOW`, `REPO` and `LANDED_APPLICATION` stay defined. Engine must announce accepted full D1/model/E4 and the committed publish binding before the controller step. The switch checklist is `docs/plans/engine-first-switch.md`; its accepted release/pins and selective workflow restoration govern this phase.
+Keep the same shell so `dispatch_and_watch`, `WINDOW`, `REPO` and `LANDED_APPLICATION` stay defined. Engine must announce the accepted seed and committed publish binding before the controller step. The first release records `seed: v5 catalog 596f08fa` and its pinned input SHA-256s. Its schema, reader, canary, desktop/phone/404 checks, count reconciliation and 50-document comparison must pass. The raw rebuild continues separately; seed `url_state` never drives capture. The switch checklist is `docs/plans/engine-first-switch.md`; its seed release and publish pins govern this phase.
 
 ```sh
 # 3. A real hosted green check follows the coherent application/runtime pair.
@@ -175,12 +175,15 @@ gh workflow enable deploy-pages.yml --repo "$REPO"
 dispatch_and_watch deploy-pages.yml --raw-field code_revision="$LANDED_APPLICATION" \
   --raw-field pipeline_revision="$PIPELINE_REVISION"
 
-# Keep the old raw capture and retired filename publisher off.
-# Restore the meeting inventory and remaining workflows only per the switch plan.
+# The seed is display-only: preserve existing acquisition until the raw rebuild.
+# Disable automatic archive publication after this one accepted seed publish.
+gh workflow disable archive-jobs.yml --repo "$REPO"
+gh workflow enable capture-raw-sources.yml --repo "$REPO"
 gh workflow enable update-data.yml --repo "$REPO"
+# capture-archive.yml and the retired filename publisher remain disabled.
 ```
 
-The first hosted check verifies private download credentials and Ubuntu execution; local Linux checks do not claim that boundary. If `gh workflow run` does not return the new run URL, the function stops and lists matching runs. Select the just-dispatched run using its URL/creation time, record its ID in the corresponding `run-*-id.txt`, verify its exact head and watch it; do not dispatch a duplicate controller job. Keep old capture and the retired filename publisher disabled. The meeting inventory stays enabled after the switch; other workflow states follow engine's switch checklist.
+The first hosted check verifies private download credentials and Ubuntu execution; local Linux checks do not claim that boundary. If `gh workflow run` does not return the new run URL, the function stops and lists matching runs. Select the just-dispatched run using its URL/creation time, record its ID in the corresponding `run-*-id.txt`, verify its exact head and watch it; do not dispatch a duplicate controller job. Keep new archive capture, automated archive publication and the retired filename publisher disabled. The old raw capture and meeting updates stay enabled until the accepted raw rebuild replaces the seed; the owner will then use engine's rebuild switch checklist.
 
 ## Paired rollback: variable and previous application tree
 
