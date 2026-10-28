@@ -4,12 +4,12 @@ from hashlib import file_digest, sha256
 import json
 from pathlib import Path
 import re
-from tempfile import TemporaryDirectory
+from tempfile import TemporaryDirectory,mkdtemp
 from urllib.parse import urlsplit
 
-from congress_shared.custody import verify_local_file
+from congress_shared.custody import custody_identity,issue_verified_file,verify_local_file
 
-from congress_api.retention.body_store import BodyStore,LocalAdapter,validate_record
+from congress_api.retention.body_store import BodyStore,LocalAdapter,R2Adapter,validate_record
 from congress_api.retention.receipt_privacy import cut_paths
 
 
@@ -130,7 +130,7 @@ def write_records(store,kind,records,*,timestamp):
 
 
 
-def import_unreadable(store, decisions_path, *, decided_at, expected=None):
+def import_unreadable(store, decisions_path, *, decided_at, expected=None,cache=None):
     """Validate and freeze producer decisions, then import exact bytes create-only."""
     stamp=timestamp_key(decided_at)
     with TemporaryDirectory(prefix='raw-unreadable-') as temporary:
@@ -146,8 +146,24 @@ def import_unreadable(store, decisions_path, *, decided_at, expected=None):
         if expected is not None and expected!=dict(sha256=digest.hexdigest(),size=size):
             raise ValueError('Reviewed unreadable decisions changed before import')
         key='provenance/unreadable/'+stamp+'-'+digest.hexdigest()+'.jsonl'
-        store.put(key,frozen,'application/x-ndjson')
-    return dict(key=key,records=count,sha256=digest.hexdigest(),size=size)
+        remote=isinstance(getattr(store,'adapter',None),R2Adapter)
+        if remote:
+            root=Path(cache) if cache is not None else Path(decisions_path).resolve().parent/'unreadable-cache'
+            root.mkdir(parents=True,exist_ok=True)
+            persistent=Path(mkdtemp(prefix='ack-',dir=root))/'decisions.jsonl'
+            frozen.replace(persistent);frozen=persistent
+        before=custody_identity(frozen)
+        result=store.put(key,frozen,'application/x-ndjson')
+        if custody_identity(frozen)!=before:
+            raise ValueError('Unreadable decisions changed during durable import')
+        if remote:
+            # These exact frozen bytes were validated above and acknowledged by
+            # the single-PUT boundary. No GET or post-write reread is required.
+            custody=issue_verified_file(frozen,dict(sha256=digest.hexdigest(),bytes=size,md5=result.md5))
+            public=dict(key=key,path=str(frozen),sha256=digest.hexdigest(),size=size,etag=result.md5)
+            store.remember_provenance(public,custody)
+    return dict(key=key,records=count,sha256=digest.hexdigest(),size=size,
+                **(dict(etag=result.md5) if remote else {}))
 
 
 def local_unreadable_inventory(store):
@@ -161,6 +177,13 @@ def local_unreadable_inventory(store):
 
 def imported_unreadable_provenance(imported,store,path):
     """Bind the acknowledged import to verified local bytes and private custody."""
+    if isinstance(getattr(store,'adapter',None),R2Adapter):
+        try:public,custody,_=store._provenance_cache[imported['key']]
+        except KeyError:raise ValueError('Acknowledged unreadable import lacks frozen cache custody') from None
+        if any(public[k]!=imported[k] for k in ('sha256','size','etag')):
+            raise ValueError('Acknowledged unreadable provenance differs from import')
+        custody.require(public['path'])
+        return dict(public),custody
     if isinstance(getattr(store,'adapter',None),LocalAdapter):
         path=store.adapter.root/imported['key']
     try:
@@ -169,6 +192,7 @@ def imported_unreadable_provenance(imported,store,path):
         raise ValueError('Acknowledged unreadable provenance changed or disappeared') from None
     public=dict(key=imported['key'],sha256=imported['sha256'],size=imported['size'],
                 path=str(custody.path),etag=None)
+    store.remember_provenance(public,custody)
     return public,custody
 
 
