@@ -84,6 +84,19 @@ def test_incremental_listing_is_inclusive_per_family_and_bootstraps_new_family(t
         'receipts/documents/2026-10-21/a.gz']
 
 
+def test_watermarks_group_by_receipt_key_family_when_full_capture_schema_also_has_family(tmp_path):
+    from congress_api.lake.receipt_inventory import discover_receipts
+    prior=tmp_path/'captures.parquet'
+    pq.write_table(pa.table(dict(receipt_key=['receipts/documents/2026-10-20/a.gz',
+        'receipts/congress/meetings/2026-10-21/a.gz'],family=['other-physical-family','other-physical-family'])),prior)
+    adapter=Listing()
+    rows=discover_receipts(adapter,['documents','congress/meetings'],existing=prior,
+        engine=engine(),work=tmp_path/'discover')
+    assert adapter.listed==['receipts/congress/meetings/2026-10-21/',
+        'receipts/documents/2026-10-20/','receipts/documents/2026-10-21/']
+    assert [row['key'] for row in rows]==['receipts/documents/2026-10-21/a.gz']
+
+
 def test_local_listing_read_adapter_is_read_only_and_stays_inside_root(tmp_path):
     from congress_api.lake.receipt_inventory import LocalReceiptStore
     root=tmp_path/'raw';path=root/'receipts/f/2026-10-20/a.gz'
