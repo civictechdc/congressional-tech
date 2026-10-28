@@ -3,4 +3,4 @@ WITH bodies AS (
  FROM endpoint_bodies e LEFT JOIN fingerprints f USING(body_sha)
 )
 SELECT endpoint_key,member_path FROM bodies GROUP BY endpoint_key,member_path
-HAVING count(*)>=2 AND (count(fingerprint)<count(*) OR count(DISTINCT fingerprint)>1)
+HAVING count(*)>=2 AND (count(fingerprint)<count(*) OR min(fingerprint)<>max(fingerprint))
