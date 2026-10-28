@@ -119,6 +119,7 @@ def test_receipts_then_input_contract_upload_canary_and_single_flip(tmp_path):
     assert '/inputs/receipts/' in keys[0] and keys[1].endswith('/inputs/'+result['input_digest']+'.json')
     assert keys[-1].endswith('/manifest.json')
     assert store.events.index(('contract',release))<next(i for i,event in enumerate(store.events) if event[0]=='native')
+    assert store.events.count(('contract',release))==1
     assert store.events.index(('canary',release))<store.events.index(('put','viewer-publications/manifest.json'))
     assert json.loads(store.objects['viewer-publications/status.json'])['status']=='published'
     assert all(call['destination'].startswith('s3://derived-fixture/viewer-publications/releases/') for call in native.calls)
