@@ -110,3 +110,63 @@ def test_status_log_appends_owner_fields_without_replacing_prior_events(tmp_path
     assert rows[0]['ts'].endswith('Z')
     with pytest.raises(ValueError):log_status(path,**dict(first,status='accepted'))
     assert len(path.read_text().splitlines())==2
+
+
+def test_whole_tree_sample_requires_three_consecutive_failures_and_resets():
+    import errno
+    from congress_api.lake.capture_backfill import _MemorySamples
+    class Sampler:
+        remaining=2
+        def resident_tree(self,_pid):return 7
+        def physical_tree(self,_pid):
+            if self.remaining:
+                self.remaining-=1;raise PermissionError(errno.EPERM,'sampling gap')
+            return 11
+    fake=Sampler();samples=_MemorySamples(fake)
+    assert samples.sample(1) is None and samples.sample(1) is None
+    assert samples.sample(1)==(7,11) and samples.consecutive_failures==0
+    fake.remaining=3
+    assert samples.sample(1) is None and samples.sample(1) is None
+    with pytest.raises(RuntimeError,match='Three consecutive'):samples.sample(1)
+
+
+def test_operator_cancellation_is_never_a_transient_memory_sample_gap():
+    from congress_api.lake.capture_backfill import _MemorySamples
+    class Sampler:
+        def resident_tree(self,_pid):raise InterruptedError('operator cancellation')
+    samples=_MemorySamples(Sampler())
+    with pytest.raises(InterruptedError,match='operator cancellation'):samples.sample(1)
+    assert samples.consecutive_failures==0
+
+
+@pytest.mark.parametrize('code',[1,3])
+def test_cleanup_signal_records_exited_group_errors_without_hiding_live_errors(code):
+    import os
+    import signal
+    from congress_api.lake.capture_backfill import _signal_group
+    def denied(_group,_signal):raise OSError(code,'group already exited')
+    note=_signal_group(123,signal.SIGKILL,denied,lambda _group:False)
+    assert note['errno']==code and note['group_exited'] is True
+    with pytest.raises(OSError):_signal_group(123,signal.SIGKILL,denied,lambda _group:True)
+
+
+def test_cleanup_records_ps_and_wait_errors_and_still_attempts_kill():
+    import signal
+    import subprocess
+    from congress_api.lake.capture_backfill import _cleanup_child
+    class Child:
+        waits=0
+        def poll(self):return None
+        def wait(self,timeout):
+            assert timeout==5
+            self.waits+=1
+            if self.waits==1:raise InterruptedError('cancelled during cleanup wait')
+            return 0
+    sent=[]
+    def send(number):
+        sent.append(number)
+        if number==signal.SIGTERM:raise subprocess.CalledProcessError(1,['ps'])
+        raise subprocess.TimeoutExpired(['ps'],5)
+    errors=_cleanup_child(Child(),send)
+    assert sent==[signal.SIGTERM,signal.SIGKILL]
+    assert [row['type'] for row in errors]==['CalledProcessError','InterruptedError','TimeoutExpired']

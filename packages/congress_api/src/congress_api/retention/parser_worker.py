@@ -17,11 +17,24 @@ import sys
 from tempfile import TemporaryDirectory
 import time
 
-from congress_api.retention.process_resources import resident_bytes
+from congress_api.retention.process_resources import resident_bytes,virtual_bytes
 
 
 class _Failure(Exception):
     pass
+
+
+def _address_space_limits(current_virtual_bytes,memory_bytes,hard_limit,*,infinity):
+    """Leave one configured growth allowance above the initialized process."""
+    if (type(current_virtual_bytes) is not int or current_virtual_bytes<=0
+            or type(memory_bytes) is not int or memory_bytes<=0
+            or type(hard_limit) is not int or type(infinity) is not int
+            or (hard_limit<0 and hard_limit!=infinity)):
+        raise ValueError('Address-space baseline, budget and inherited limit must be valid bytes')
+    ceiling=current_virtual_bytes+memory_bytes
+    if hard_limit!=infinity and ceiling>hard_limit:
+        raise ValueError('The inherited address-space hard limit cannot fit the parser baseline and budget')
+    return ceiling,ceiling
 
 
 @contextlib.contextmanager
@@ -178,9 +191,6 @@ def _child():
     function = getattr(loaded, name)
     if not callable(function):
         raise TypeError('Parser callable required')
-    if sys.platform == 'linux':
-        import resource
-        resource.setrlimit(resource.RLIMIT_AS, (int(memory), int(memory)))
     protocol = sys.stdout
     def send(value):
         encoded = json.dumps(value, ensure_ascii=False, separators=(',', ':'), allow_nan=False).encode()
@@ -188,6 +198,13 @@ def _child():
             encoded = b'{"failure":"output_limit"}'
         protocol.buffer.write(encoded + b'\n')
         protocol.buffer.flush()
+    # Imports and protocol initialization can reserve large virtual ranges.
+    # Establish headroom once; persistent inputs must never raise a hard limit.
+    if sys.platform.startswith('linux'):
+        import resource
+        limits=_address_space_limits(virtual_bytes(os.getpid()),int(memory),
+            resource.getrlimit(resource.RLIMIT_AS)[1],infinity=resource.RLIM_INFINITY)
+        resource.setrlimit(resource.RLIMIT_AS,limits)
     send({'ready': True})
     for command in sys.stdin:
         if command != 'parse\n':
