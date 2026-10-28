@@ -2098,5 +2098,42 @@
         "resolved_links": 0
       }
     }
+  ],
+  "recovery_registry_admission": [
+    {
+      "id": "valid",
+      "expected": {
+        "duplicate_recovery_kind_selectors": 0,
+        "invalid_recovery_kind_selectors": 0
+      }
+    },
+    {
+      "id": "duplicate-category",
+      "expected": {
+        "duplicate_recovery_kind_selectors": 1,
+        "invalid_recovery_kind_selectors": 0
+      }
+    },
+    {
+      "id": "duplicate-basis",
+      "expected": {
+        "duplicate_recovery_kind_selectors": 1,
+        "invalid_recovery_kind_selectors": 0
+      }
+    },
+    {
+      "id": "both-selectors",
+      "expected": {
+        "duplicate_recovery_kind_selectors": 0,
+        "invalid_recovery_kind_selectors": 1
+      }
+    },
+    {
+      "id": "no-selector",
+      "expected": {
+        "duplicate_recovery_kind_selectors": 0,
+        "invalid_recovery_kind_selectors": 1
+      }
+    }
   ]
 }

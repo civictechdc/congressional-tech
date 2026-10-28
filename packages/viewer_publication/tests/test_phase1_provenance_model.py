@@ -89,3 +89,61 @@ def test_provenance_inputs_keep_review_values_as_native_json(tmp_path):
         steps=steps+current_steps()[:2],outputs=[],queries=[dict(name='reviews',sql='SELECT id,value_json,value_text,note FROM current_reviews ORDER BY id')])
     assert reports['reviews']==[dict(id='kind',value_json='["testimony","letter"]',value_text=None,note='retained'),
                                 dict(id='title',value_json='"Observed title"',value_text='Observed title',note=None)]
+
+
+def test_every_observed_recovery_kind_uses_the_model_classifier(tmp_path):
+    """Retained category/basis samples exercise production SQL, including refusal."""
+    import hashlib
+    import json
+    from pathlib import Path
+    from viewer_publication.archive_model import registry_inputs
+    from viewer_publication.archive_provenance import provenance_inputs,current_steps
+    root=Path(__file__).parents[3]
+    cases=json.loads((root/'model/fixtures/recovery-kind-cases.json').read_text())
+    # Keep observed receipt identities and classification facts. Addresses and
+    # the unknown-kind row are authored inputs, not evidence of a raw capture.
+    rows=[dict(case_id=case['id'],receipt_key=case.get('receipt_key','receipts/fixtures/recovery-kinds.jsonl'),
+        receipt_line=case.get('receipt_line',1),capture_index=case.get('capture_index',0),
+        body_hex=case.get('body_hex') or hashlib.sha256(case['id'].encode()).hexdigest(),
+        recovery_category=case['category'],match_basis=case['match_basis'],
+        original_url='https://fixture.test/recovery/'+case['id'],recovered_url='https://fixture.test/copy/'+case['id'],
+        imported_at='2026-10-20T12:00:00Z',bytes=case.get('bytes',1),mode='retained_import') for case in cases]
+    inputs=registry_inputs(tmp_path/'registries')
+    records,steps=provenance_inputs(tmp_path/'decisions');inputs+=records
+    inputs.append(json_input(tmp_path,'cases',rows,**{name:'Utf8' for name in ['case_id','receipt_key','body_hex',
+        'recovery_category','match_basis','original_url','recovered_url','imported_at','mode']},
+        receipt_line='Int32',capture_index='Int32',bytes='Int64'))
+    steps+=[dict(name='captures',sql="SELECT *,decode(body_hex,'hex') AS sha256 FROM cases")]
+    reports=run_job(tmp_path,NativeDatasets.from_config(os.environ['DOCSPEC_JOB_CONFIG']),inputs=inputs,
+        steps=steps+current_steps(),outputs=[],queries=[
+            dict(name='kinds',sql="SELECT c.case_id,r.kind FROM model_recovery_rows r JOIN cases c USING(receipt_key,receipt_line,capture_index) ORDER BY c.case_id"),
+            dict(name='fatal',sql="SELECT c.case_id,d.error FROM recovery_diagnostics d JOIN cases c USING(receipt_key,receipt_line,capture_index) WHERE d.is_fatal ORDER BY c.case_id")])
+    assert reports['kinds']==[dict(case_id=case['id'],kind=case['expected_kind']) for case in sorted(cases,key=lambda x:x['id'])]
+    assert reports['fatal']==[dict(case_id='unknown',error='unknown_recovery_kind')]
+
+
+def test_model_admission_refuses_bad_recovery_registry_selectors(tmp_path):
+    import json
+    from pathlib import Path
+    from archive_job_fixture import real_model_spec
+    from viewer_publication.archive_model import prepare_model_inputs,admission_checks
+    root=Path(__file__).parents[3]
+    cases=json.loads((root/'model/fixtures/s1-model-cases.json').read_text())['recovery_registry_admission']
+    value,_,_=real_model_spec(tmp_path)
+    engine=NativeDatasets.from_config(value['engine_config'])
+    prepared=prepare_model_inputs(**{name:value[name]['path'] for name in ['captures','readings','filename_readings']},
+        parser_versions=value['parser_versions'],catalog_version=value['catalog_version'],engine=engine,scratch=tmp_path/'prepared')
+    canonical=json.loads((root/'model/registries/recovery-kinds.json').read_text())
+    for case in cases:
+        work=tmp_path/case['id'];work.mkdir()
+        rows=[dict(row) for row in canonical]
+        if case['id']=='duplicate-category':rows.append(dict(rows[0]))
+        if case['id']=='duplicate-basis':rows.append(dict(next(row for row in rows if row['match_basis']=='verified_archive_capture')))
+        if case['id']=='both-selectors':rows[0]['match_basis']='user_accepted_url_variant'
+        if case['id']=='no-selector':rows[0]['category']=None
+        altered=json_input(work,'recovery_kinds',rows,category='Utf8',match_basis='Utf8',kind='Utf8',import_category='Utf8')
+        inputs=[altered if item['name']=='recovery_kinds' else item for item in prepared['inputs']]
+        reports=run_job(work,engine,inputs=inputs,steps=prepared['steps'],outputs=[],
+            queries=admission_checks(parser_versions=value['parser_versions'],catalog_version=value['catalog_version']))
+        assert {name:reports['model_invariants'][0][name] for name in case['expected']}==case['expected']
+        assert not (tmp_path/'release').exists()
