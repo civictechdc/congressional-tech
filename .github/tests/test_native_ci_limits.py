@@ -10,7 +10,7 @@ from congress_api.retention.docspec import NativeDatasets
 from news_lake.storage.docspec import DocSpecClient
 
 PROFILE = dict(compute_threads=2, memory_bytes=2 << 30, scratch_bytes=2 << 30,
-               batch_rows=8192, max_batch_bytes=64 << 20, max_metadata_bytes=32 << 20)
+               batch_rows=8192, max_batch_bytes=8 << 20, max_metadata_bytes=32 << 20)
 
 
 @pytest.fixture
