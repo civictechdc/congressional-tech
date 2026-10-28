@@ -96,3 +96,17 @@ def test_lost_monitor_watchdog_kills_a_term_ignoring_command(tmp_path):
         if group is not None:
             try:os.killpg(group,signal.SIGKILL)
             except ProcessLookupError:pass
+
+
+def test_status_log_appends_owner_fields_without_replacing_prior_events(tmp_path):
+    path=tmp_path/'rebuild-status.jsonl'
+    from congress_api.lake.capture_backfill import log_status
+    first=dict(step='d1',batch=1,of=2,receipts=1,rows=2,secs=1.2,peak_phys_gb=.1,status='ok',note='complete')
+    log_status(path,**first);log_status(path,**dict(first,batch=2,status='running'))
+    rows=[json.loads(line) for line in path.read_text().splitlines()]
+    assert len(rows)==2
+    assert all(set(row)==set(first)|{'ts'} for row in rows)
+    assert rows[0].items()>=first.items() and rows[1]['batch']==2
+    assert rows[0]['ts'].endswith('Z')
+    with pytest.raises(ValueError):log_status(path,**dict(first,status='accepted'))
+    assert len(path.read_text().splitlines())==2
