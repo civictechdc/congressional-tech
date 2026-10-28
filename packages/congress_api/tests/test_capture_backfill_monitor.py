@@ -110,3 +110,21 @@ def test_status_log_appends_owner_fields_without_replacing_prior_events(tmp_path
     assert rows[0]['ts'].endswith('Z')
     with pytest.raises(ValueError):log_status(path,**dict(first,status='accepted'))
     assert len(path.read_text().splitlines())==2
+
+
+def test_whole_tree_sample_requires_three_consecutive_failures_and_resets():
+    import errno
+    from congress_api.lake.capture_backfill import _MemorySamples
+    class Sampler:
+        remaining=2
+        def resident_tree(self,_pid):return 7
+        def physical_tree(self,_pid):
+            if self.remaining:
+                self.remaining-=1;raise PermissionError(errno.EPERM,'sampling gap')
+            return 11
+    fake=Sampler();samples=_MemorySamples(fake)
+    assert samples.sample(1) is None and samples.sample(1) is None
+    assert samples.sample(1)==(7,11) and samples.consecutive_failures==0
+    fake.remaining=3
+    assert samples.sample(1) is None and samples.sample(1) is None
+    with pytest.raises(RuntimeError,match='Three consecutive'):samples.sample(1)
