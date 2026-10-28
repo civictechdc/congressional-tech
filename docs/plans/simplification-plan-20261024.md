@@ -79,7 +79,7 @@ S settles the rules; the smoke check confirms the lake format. M2 and F0 are don
 
 ### 5.1 M1: Basin Smoke Check
 
-Iceberg on Basin Catalog stays, and no table depends on Basin's managed maintenance ([[ARCHITECTURE]] §8.6). The owner runs the existing probe once with their own credentials, in a scratch namespace of the real bucket after the locks are on: create a scratch table, append three days and read them back unchanged, run its race step (the catalog must reject a stale commit, which exactly-once rows depend on), then purge it and list what remains. A failure goes to the owner before track C's table work. The engine's remote write caps go ([[DATA-MODEL]] §6). The earlier experiment's ten-year projection, race and cap trials are dropped; `docs/measurements/engine-first-20261027/m1.md` keeps it as history, with the probe's build and run commands.
+Iceberg on Basin Catalog stays, and no table depends on Basin's managed maintenance ([[ARCHITECTURE]] §8.6). The owner runs the existing probe once with their own credentials, in the dedicated scratch bucket the probe requires (`cx-engine-first-lock-probe-…`), under the same lock rules as the real bucket: create a scratch table, append three days and read them back unchanged, run its race step (the catalog must reject a stale commit, which exactly-once rows depend on), then purge it and list what remains. A failure goes to the owner before track C's table work. The engine's remote write caps go ([[DATA-MODEL]] §6). The earlier experiment's ten-year projection, race and cap trials are dropped; `docs/measurements/engine-first-20261027/m1.md` keeps it as history, with the probe's build and run commands.
 
 ### 5.2 M2: Done
 
