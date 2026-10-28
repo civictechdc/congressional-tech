@@ -78,17 +78,64 @@ def test_tracked_target_source_is_read_and_build_target_is_excluded(inventory,tm
     assert not inventory.safe('../outside.py')
 
 
-def test_engine_lifecycle_integration_tests_are_in_the_deferred_group(inventory):
-    group=next(g for g in inventory.seeds() if g['binding_row']==19)
-    for path in ('tests/backfill.rs','tests/continuous_backfill.rs',
-                 'tests/availability_retirement.rs','tests/restore.rs','tests/succession.rs'):
-        assert any(fnmatch.fnmatch(path,p) for p in group['patterns']),path
-    assert not any(fnmatch.fnmatch('tests/sql_jobs.rs',p) for p in group['patterns'])
+def test_strip_scope_has_only_the_eighteen_congressional_tech_groups(inventory):
+    groups=inventory.seeds()
+    assert len(groups)==18
+    assert {g['binding_row'] for g in groups}==set(range(1,19))
+    assert all(g['repo']=='ct' for g in groups)
 
 
 def test_current_native_cli_adapter_is_not_a_deletion_candidate(inventory):
-    group=next(g for g in inventory.seeds() if g['binding_row']==19)
-    assert not any(fnmatch.fnmatch('src/cli_args.rs',p) for p in group['patterns'])
+    for group in inventory.seeds():
+        assert not any(fnmatch.fnmatch('src/cli_args.rs',p) for p in group['patterns'])
+
+
+@pytest.mark.parametrize('path,role',[
+    ('packages/example/tests/test_old.py','test'),
+    ('tests/fixtures/old.py','fixture'),
+    ('model/fixtures/old.json','fixture'),
+    ('scripts/measure/old.py','measurement'),
+    ('scripts/measure/tests/test_old.py','test'),
+    ('docs/old.md','documentation'),
+    ('.github/workflows/capture.yml','production'),
+    ('packages/congress_api/src/congress_api/lake/daily.py','production'),
+])
+def test_test_fixture_and_measurement_references_are_not_production_users(inventory,path,role):
+    assert inventory.consumer_role(path)==role
+
+
+def test_inventory_separates_production_users_from_removed_subject_tests(inventory,tmp_path):
+    subprocess.run(['git','init','-q',str(tmp_path)],check=True)
+    sources={
+        'docs/plans/bindings-20261025.md':'# Binding\n',
+        inventory.RET+'catalog_rows.py':'def obsolete(): pass\n',
+        inventory.RET+'catalog_updates.py':'def obsolete(): pass\n',
+        'packages/congress_api/tests/test_old.py':
+            'from congress_api.retention import catalog_rows\ncatalog_rows.obsolete()\n',
+        'scripts/measure/old.py':
+            'from congress_api.retention import catalog_rows\ncatalog_rows.obsolete()\n',
+        inventory.CA+'lake/daily.py':
+            'from congress_api.retention import catalog_updates\ncatalog_updates.obsolete()\n',
+        '.github/workflows/kept.yml':'run: python -m congress_api.retention.catalog_updates\n',
+    }
+    for path,source in sources.items():
+        target=tmp_path/path;target.parent.mkdir(parents=True,exist_ok=True);target.write_text(source)
+    subprocess.run(['git','-C',str(tmp_path),'add','.'],check=True)
+    tree=subprocess.check_output(['git','-C',str(tmp_path),'write-tree']).decode().strip()
+    result=inventory.build(tmp_path,None,tree,None)
+    assert len(result['groups'])==18
+    assert all(row['repo']=='ct' for row in result['files'].values())
+    old=result['files']['ct:'+inventory.RET+'catalog_rows.py']
+    assert old['production_callers']==[]
+    assert {c['consumer_role'] for c in old['static_callers']}=={'test','measurement'}
+    live=result['files']['ct:'+inventory.RET+'catalog_updates.py']
+    assert {c['path'] for c in live['production_callers']}=={
+        inventory.CA+'lake/daily.py','.github/workflows/kept.yml'}
+    graph=result['production_import_graph']
+    assert inventory.CA+'lake/daily.py' in graph
+    assert 'packages/congress_api/tests/test_old.py' not in graph
+    assert 'scripts/measure/old.py' not in graph
+    assert 'ct:packages/congress_api/tests/test_old.py' in result['files']
 
 
 def test_shared_client_fallback_has_exact_path_and_preserved_public_api(inventory):
