@@ -16,7 +16,8 @@ def workflow(name):
 
 def test_publish_backfill_maintenance_share_one_non_canceling_group():
     value = workflow('archive-jobs.yml')
-    assert value['concurrency'] == {'group': 'archive-lake-and-publication', 'cancel-in-progress': 'false', 'queue': 'max'}
+    for name in ['archive-jobs.yml','update-data.yml','publish-explorer.yml']:
+        assert workflow(name)['concurrency'] == {'group': 'raw-source-mirror', 'cancel-in-progress': 'false', 'queue': 'max'}
     assert set(value['jobs']) == {'publish', 'backfill', 'maintenance'}
     assert value['permissions'] == {'contents': 'read'}
     for operation, job in value['jobs'].items():
@@ -30,10 +31,9 @@ def test_publish_backfill_maintenance_share_one_non_canceling_group():
     assert invocation['env']['VIEWER_BENCHMARK_MODULES'] == '${{ env.PUBLICATION_BROWSER_MODULES }}'
 
 
-def test_new_capture_uses_scheduler_and_separate_lock_with_explicit_switch():
+def test_new_capture_uses_scheduler_and_common_lock_with_explicit_switch():
     value = workflow('capture-archive.yml')
-    assert value['concurrency']['group'] == 'archive-capture'
-    assert value['concurrency']['cancel-in-progress'] == 'false'
+    assert value['concurrency'] == {'group': 'raw-source-mirror', 'cancel-in-progress': 'false', 'queue': 'max'}
     job = value['jobs']['capture']
     assert "vars.ARCHIVE_CAPTURE_ENABLED == 'true'" in job['if']
     assert value['permissions'] == {'contents': 'read'}
