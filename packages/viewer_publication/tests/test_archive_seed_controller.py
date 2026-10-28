@@ -55,7 +55,7 @@ def test_actual_native_seed_publishes_through_existing_transport(tmp_path):
         assert context['manifest']['origin']['display_only'] is True
         assert type(context['probe_selectors']['saved_row']) is int
         contexts.append(context)
-        return dict(status='passed',releaseId=context['release_id'],targets='measured')
+        return dict(status='passed',releaseId=context['release_id'],targets='owner-approved')
     with NativeDatasets.from_config(os.environ['DOCSPEC_JOB_CONFIG']) as native:
         result=run_seed_publish(spec,client=store,engine=Runtime(native,store),bucket='derived-fixture',
             work=tmp_path/'publish',run={'id':'seed-fixture'},public_origin='https://archive.fixture.test',

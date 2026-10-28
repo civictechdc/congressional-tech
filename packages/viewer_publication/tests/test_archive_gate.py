@@ -19,11 +19,11 @@ class Pointer:
         self.value = json.loads(args['Body']); self.etag = 'next'; return {'ETag': self.etag}
 
 
-def passed(): return {'status': 'passed', 'releaseId': 'b' * 64, 'targets': 'measured'}
+def passed(): return {'status': 'passed', 'releaseId': 'b' * 64, 'targets': 'owner-approved'}
 
 
 @pytest.mark.parametrize('which',['contract','canary'])
-@pytest.mark.parametrize('qualification',['owner-gated',None,'estimated'])
+@pytest.mark.parametrize('qualification',['owner-gated',None,'estimated','measured','provisional-emulated'])
 def test_unqualified_target_receipt_makes_zero_pointer_puts(which,qualification):
     store=Pointer({'release_id':'a'*64,'previous_release_id':None})
     receipt=dict(passed(),targets=qualification)
@@ -107,7 +107,7 @@ def test_real_canary_failure_against_hand_candidate_does_not_flip(tmp_path):
     with pytest.raises(RuntimeError, match='actual canary refused'):
         gate_and_flip(store, bucket='fake', release_id=manifest['release_id'], previous_release_id='a' * 64,
                       expected_etag='original', canary=canary,
-                      contract=lambda: {'status': 'passed', 'releaseId': manifest['release_id'], 'targets':'measured'})
+                      contract=lambda: {'status': 'passed', 'releaseId': manifest['release_id'], 'targets':'owner-approved'})
     assert store.etag == 'original' and not store.puts
     assert store.value == {'release_id': 'a' * 64, 'previous_release_id': None}
 
@@ -116,7 +116,7 @@ def test_real_canary_failure_against_hand_candidate_does_not_flip(tmp_path):
 @pytest.mark.parametrize('receipt,message',[
     (None,'did not pass for the candidate'),
     ({'status':'incomplete'},'did not pass for the candidate'),
-    ({'status':'passed','releaseId':'c'*64,'targets':'measured'},'did not pass for the candidate'),
+    ({'status':'passed','releaseId':'c'*64,'targets':'owner-approved'},'did not pass for the candidate'),
     (dict(passed(),targets='owner-gated'),'requires measured-target qualification'),
     (dict(passed(),targets=None),'requires measured-target qualification'),
     (dict(passed(),targets='estimated'),'requires measured-target qualification'),
@@ -176,3 +176,17 @@ def test_existing_engine_release_requires_the_observed_etag_before_reader_checks
         gate_and_flip(store,bucket='fake',release_id='b'*64,previous_release_id='a'*64,
             expected_etag=None,contract=reached,canary=reached)
     assert store.puts==[]
+
+
+@pytest.mark.parametrize('origin',[None,{'kind':'model'},dict(kind='seed_v5',display_only=False),
+                                  dict(kind='seed_v5',display_only=True)])
+def test_emulated_target_receipts_only_flip_an_explicit_display_only_seed(origin):
+    store=Pointer();receipt=dict(passed(),targets='provisional-emulated')
+    def flip():
+        return gate_and_flip(store,bucket='fake',release_id='b'*64,previous_release_id=None,
+            expected_etag=None,manifest_origin=origin,contract=lambda:receipt,canary=lambda:receipt)
+    if origin==dict(kind='seed_v5',display_only=True):
+        flip();assert len(store.puts)==1
+    else:
+        with pytest.raises(ValueError,match='qualification'):flip()
+        assert store.puts==[]

@@ -30,7 +30,7 @@ def test_actual_model_publishes_then_checks_admission_before_input_skip(tmp_path
         assert context['probe_selectors']['saved_row']==0
         assert len(context['probe_selectors']['link_key'])==16
         calls.append(context['release_id'])
-        return dict(status='passed',releaseId=context['release_id'],targets='measured')
+        return dict(status='passed',releaseId=context['release_id'],targets='owner-approved')
     with NativeDatasets.from_config(os.environ['DOCSPEC_JOB_CONFIG']) as native:
         engine=Runtime(native,store)
         kwargs=dict(client=store,engine=engine,bucket='derived-fixture',receipt_keys=keys,provenance=[],
@@ -141,7 +141,7 @@ def test_nonrecord_provenance_is_pinned_without_becoming_a_model_input(tmp_path)
             self.events.append(('list',Prefix))
             return dict(Contents=[dict(Key=key,ETag=self.backup_etag)],IsTruncated=False)
     store=MetadataStore();store.objects[key]=b'not a JSONL model record'
-    def passed(**context):return dict(status='passed',releaseId=context['release_id'],targets='measured')
+    def passed(**context):return dict(status='passed',releaseId=context['release_id'],targets='owner-approved')
     provenance=[dict(key=key,etag=etag)]
     with NativeDatasets.from_config(os.environ['DOCSPEC_JOB_CONFIG']) as native:
         engine=Runtime(native,store)

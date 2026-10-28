@@ -35,7 +35,7 @@ def publish(root,artifacts,record,*,keys=()):
     store=Store();native=Native(store);contexts=[]
     def passed(**context):
         contexts.append(context)
-        return dict(status='passed',releaseId=context['release_id'],targets='measured')
+        return dict(status='passed',releaseId=context['release_id'],targets='owner-approved')
     result=publish_candidate(client=store,engine=native,bucket='derived-fixture',work=root/'publish',
         **artifacts,input_record=record,receipt_keys=list(keys),pointer=None,expected_etag=None,
         public_origin='https://archive.example.test',contract=passed,canary=passed)

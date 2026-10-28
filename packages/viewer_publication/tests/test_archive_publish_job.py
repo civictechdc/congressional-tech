@@ -11,7 +11,7 @@ from congress_api.retention.provenance import file_pin
 
 def publish_spec(tmp_path):
     model=tmp_path/'model.json';model.write_text(json.dumps(model_spec(tmp_path)))
-    targets=tmp_path/'targets.json';targets.write_text(json.dumps(dict(version=1,status='measured',
+    targets=tmp_path/'targets.json';targets.write_text(json.dumps(dict(version=1,status='owner-approved',
         ceilings=dict(startupMs=100,searchMs=100,detailMs=100,heapBytes=1000000))))
     dist=tmp_path/'site';dist.mkdir()
     return dict(version=1,model_spec=dict(path=str(model),**file_pin(model)),bucket='derived-fixture',
@@ -124,7 +124,7 @@ def test_native_daily_inputs_feed_the_same_guarded_publisher(tmp_path):
     store=PaginatedStore();probes=[]
     def probe(**context):
         probes.append(context['release_id'])
-        return dict(status='passed',releaseId=context['release_id'],targets='measured')
+        return dict(status='passed',releaseId=context['release_id'],targets='owner-approved')
     with NativeDatasets.from_config(os.environ['DOCSPEC_JOB_CONFIG']) as native:
         daily=native_daily_spec(tmp_path,model,native)
         result=produce_daily_inputs(model,daily,engine=native,raw_store=BodyStore(R2Adapter(store,'derived-fixture')))
@@ -218,8 +218,8 @@ def test_blocked_jobs_refuse_without_runtime(tmp_path,capsys,which):
 
 
 @pytest.mark.parametrize('change,match',[
-    ('model_pin','checksum mismatch'),('target_pin','checksum mismatch'),('pending','measured'),
-    ('invalid_ceiling','measured'),('existing_work','fresh'),('missing_dist','site_dist'),
+    ('model_pin','checksum mismatch'),('target_pin','checksum mismatch'),('pending','owner-approved'),
+    ('invalid_ceiling','owner-approved'),('existing_work','fresh'),('missing_dist','site_dist'),
 ])
 def test_execute_checks_local_pins_targets_and_work_before_runtime(tmp_path,capsys,change,match):
     value=publish_spec(tmp_path)
@@ -349,7 +349,7 @@ def test_execute_binds_matching_destination_and_records_actual_native_probe_comm
         # External browser execution is recorded; native model and publisher remain actual.
         manifest=json.loads((Path(model['output'])/'manifest.json').read_text())
         output=Path(command[command.index('--output')+1])
-        output.write_text(json.dumps(dict(status='passed',releaseId=manifest['release_id'],targets='measured')))
+        output.write_text(json.dumps(dict(status='passed',releaseId=manifest['release_id'],targets='owner-approved')))
     result=execute(spec,runtime_factory=runtime_factory,storage_factory=storage_factory,process_runner=process_runner)
     assert result['status']=='published' and len(commands)==2 and events.index('sdk')>events.index('qualified')
     native=json.loads((Path(model['scratch'])/'result.json').read_text())
