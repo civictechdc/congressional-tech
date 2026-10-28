@@ -274,18 +274,20 @@ def publish_candidate(*,client,engine,bucket,work,release,manifest_pin,result_pi
     status=dict(status='failed',input_digest=input_record.get('input_digest'),release_id=None,
         live_release=live,live_release_basis='pinned_at_start',rows={},bytes=0,durations={})
     try:
+        receipt_keys=sorted(set(receipt_keys))
         digest=input_digest(receipt_keys=receipt_keys,provenance=input_record['provenance'],
             profile=input_record['profile'],entity_digests=input_record['entity_digests'])
         if input_record.get('input_digest')!=digest:raise ValueError('Input record semantic identity differs')
         manifest,raw,release_id=_candidate(Path(release),manifest_pin,result_pin)
         status.update(release_id=release_id,rows={item['name']:item['rows'] for item in manifest['files']},
             bytes=sum(item['size'] for item in manifest['files']))
+        if release_id==live:
+            write_input_receipts(store,release_id,digest,input_record,receipt_keys)
+            status['status']='release_unchanged'
+            return dict(status)
         contract_receipt=contract(release_id=release_id,release=Path(release),manifest=manifest)
         validate_receipt(contract_receipt,release_id=release_id,name='contract')
         write_input_receipts(store,release_id,digest,input_record,receipt_keys)
-        if release_id==live:
-            status['status']='release_unchanged'
-            return dict(status)
         def uploaded_canary():
             begin=perf_counter();prefix=PREFIX+release_id+'/'
             for item in manifest['files']:
@@ -296,8 +298,11 @@ def publish_candidate(*,client,engine,bucket,work,release,manifest_pin,result_pi
             status['durations']['upload']=perf_counter()-begin
             return canary(release_id=release_id,public_origin=public_origin.rstrip('/'),manifest=manifest)
         begin=perf_counter()
-        gate_and_flip(client,bucket=bucket,release_id=release_id,previous_release_id=live,expected_etag=expected_etag,
+        transfer=gate_and_flip(client,bucket=bucket,release_id=release_id,previous_release_id=live,expected_etag=expected_etag,
             contract=lambda:contract_receipt,canary=uploaded_canary)
+        if not isinstance(transfer.etag,str) or not transfer.etag.strip():
+            status.update(live_release=None,live_release_basis='unacknowledged_pointer_write')
+            raise ValueError('Publication requires an acknowledged pointer ETag')
         status['durations']['gates_and_flip']=perf_counter()-begin
         status.update(status='published',live_release=release_id,live_release_basis='conditional_flip_acknowledged')
         return dict(status)
