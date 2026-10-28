@@ -53,3 +53,20 @@ else:raise AssertionError('An unavailable sampler must refuse')
     result=subprocess.run([sys.executable,'-I','-c',script],capture_output=True,text=True,timeout=10)
     assert result.returncode==0,result.stderr
     assert result.stdout=='refused\n'
+
+
+def test_direct_virtual_size_includes_an_untouched_mapping_without_a_subprocess():
+    import mmap
+    import os
+    from congress_api.retention.process_resources import virtual_bytes
+    pid=os.getpid();before=virtual_bytes(pid)
+    with mmap.mmap(-1,64<<20):
+        assert virtual_bytes(pid)>=before+(64<<20)
+        assert resident_bytes(pid)<virtual_bytes(pid)
+    assert virtual_bytes(pid)>0
+
+
+@pytest.mark.parametrize('pid',[None,True,'1',1.0,0,-1,1<<31])
+def test_virtual_size_rejects_invalid_process_identifiers(pid):
+    from congress_api.retention.process_resources import virtual_bytes
+    with pytest.raises(ProcessResourceError):virtual_bytes(pid)

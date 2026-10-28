@@ -9,6 +9,7 @@ from datetime import datetime,timezone
 import json
 from pathlib import Path
 import importlib.util
+import errno
 import os
 import shutil
 import signal
@@ -78,6 +79,8 @@ def make_plan(files,counts,*,byte_target,item_target):
             if row.get(name) is not None and (not isinstance(row[name],str)
                     or not Path(row[name]).is_absolute() or '..' in Path(row[name]).parts):
                 raise ValueError('Receipt source paths must be absolute')
+        if not row.get('path') and not row.get('prepared_stage'):
+            raise ValueError('Backfill source requires original receipt files or an accepted stage')
         inventory[key]=dict(row)
     fields=('source_rows','uncompressed_bytes','list_items','expected_captures',
             'max_line_bytes','max_line_items')
@@ -95,8 +98,7 @@ def make_plan(files,counts,*,byte_target,item_target):
         raise ValueError('Source counts must equal the complete pinned receipt inventory')
     units={}
     for key,row in inventory.items():
-        kind=('prepared-stage' if row.get('prepared_stage') else
-              'receipt-files' if row.get('path') else 'counter')
+        kind='prepared-stage' if row.get('prepared_stage') else 'receipt-files'
         identity=(kind,row['prepared_stage'] if kind=='prepared-stage' else key)
         unit=units.setdefault(identity,dict(source_kind=kind,receipt_keys=[],
             uncompressed_bytes=0,list_items=0,expected_captures=0,source_rows=0))
@@ -159,6 +161,58 @@ def check_scratch(root,*outputs,min_free_bytes=15<<30):
     return root
 
 
+class _MemorySamples:
+    """Tolerate two transient tree-sampling gaps, retaining the last valid peak."""
+    def __init__(self,sampler):
+        self.sampler=sampler
+        self.consecutive_failures=0
+
+    def sample(self,pid):
+        try:
+            rss=self.sampler.resident_tree(pid);physical=self.sampler.physical_tree(pid)
+            if physical is None:raise RuntimeError('Missing process memory sample')
+        except InterruptedError:
+            raise
+        except (OSError,RuntimeError,subprocess.SubprocessError) as error:
+            self.consecutive_failures+=1
+            if self.consecutive_failures>=3:
+                raise RuntimeError('Three consecutive whole-tree memory samples failed') from error
+            return None
+        self.consecutive_failures=0
+        return rss,physical
+
+
+def _group_is_live(group):
+    result=subprocess.run(['ps','-axo','pgid=,stat='],capture_output=True,text=True,check=True,timeout=5)
+    return any(int(parts[0])==group and not parts[1].startswith('Z')
+        for line in result.stdout.splitlines() if len(parts:=line.split())==2)
+
+
+def _signal_group(group,number,send,is_live):
+    try:send(group,number)
+    except OSError as error:
+        if error.errno in (errno.EPERM,errno.ESRCH) and not is_live(group):
+            return dict(signal=number,errno=error.errno,group_exited=True)
+        raise
+
+
+def _cleanup_child(child,send):
+    errors=[]
+    def attempt(operation):
+        try:
+            note=operation()
+            if isinstance(note,dict):errors.append(note)
+        except Exception as error:
+            errors.append(dict(type=type(error).__name__,message=str(error)))
+    if child.poll() is None:
+        attempt(lambda:send(signal.SIGTERM))
+        attempt(lambda:child.wait(timeout=5))
+    # A TERM-ignoring descendant may outlive the already-exited leader.
+    attempt(lambda:send(signal.SIGKILL))
+    attempt(lambda:child.wait(timeout=5))
+    return errors
+
+
 def monitor_command(command,*,work,physical_limit=16<<30,timeout=2700,min_free_bytes=15<<30,
                     scratch_root=None):
     """Run one owned batch process and record sampled RSS/physical footprint.
@@ -181,6 +235,7 @@ def monitor_command(command,*,work,physical_limit=16<<30,timeout=2700,min_free_b
     path=Path(__file__).resolve().parents[5]/'scripts/measure/process_rss.py'
     spec=importlib.util.spec_from_file_location('backfill_memory_sampler',path)
     sampler=importlib.util.module_from_spec(spec);spec.loader.exec_module(sampler)
+    memory=_MemorySamples(sampler)
     watchdog='''import os,signal,subprocess,sys,time
 parent=int(sys.argv[1])
 process=subprocess.Popen(sys.argv[2:])
@@ -197,20 +252,24 @@ raise SystemExit(process.returncode)
     old={number:signal.getsignal(number) for number in (signal.SIGTERM,signal.SIGINT,signal.SIGHUP)}
     for number in old:signal.signal(number,interrupted)
     started=time.monotonic();peak=0;physical_peak=0;samples=0;failure=None;child=None;disk_next=started
+    primary_error=None;cleanup_errors=[]
     try:
         with log.open('x') as output:
             child=subprocess.Popen([sys.executable,'-I','-c',watchdog,str(os.getpid()),*command],
                 stdout=output,stderr=subprocess.STDOUT,start_new_session=True)
             try:
                 while child.poll() is None:
-                    rss=sampler.resident_tree(child.pid);physical=sampler.physical_tree(child.pid)
-                    if physical is None:raise RuntimeError('Missing process memory sample')
-                    peak=max(peak,rss);physical_peak=max(physical_peak,physical);samples+=1
+                    observed=memory.sample(child.pid)
+                    if observed is not None:
+                        rss,physical=observed
+                        peak=max(peak,rss);physical_peak=max(physical_peak,physical);samples+=1
                     value=dict(status='running_unaccepted',monitor_pid=os.getpid(),owned_pgid=child.pid,
                         seconds=time.monotonic()-started,samples=samples,sampled_peak_tree_rss=peak,
-                        sampled_peak_tree_physical_footprint=physical_peak)
+                        sampled_peak_tree_physical_footprint=physical_peak,
+                        consecutive_sample_failures=memory.consecutive_failures)
                     temporary=partial.with_suffix('.tmp');temporary.write_text(json.dumps(value)+'\n');temporary.replace(partial)
-                    if physical>physical_limit:raise RuntimeError('Batch exceeded its physical memory limit')
+                    if observed is not None and physical>physical_limit:
+                        raise RuntimeError('Batch exceeded its physical memory limit')
                     if shutil.disk_usage(work).free<min_free_bytes:raise RuntimeError('Free disk dropped below the backfill floor')
                     if time.monotonic()>=disk_next:
                         check_scratch(scratch_root,work,min_free_bytes=min_free_bytes)
@@ -218,26 +277,21 @@ raise SystemExit(process.returncode)
                     if time.monotonic()-started>timeout:raise RuntimeError('Batch exceeded its time limit')
                     time.sleep(.5)
             except Exception as error:
+                primary_error=error
                 failure=dict(type=type(error).__name__,message=str(error))
-                if child.poll() is None:
-                    try:os.killpg(child.pid,signal.SIGTERM)
-                    except ProcessLookupError:pass
-                    try:child.wait(timeout=5)
-                    except subprocess.TimeoutExpired:pass
-                # The group can outlive its leader when a descendant ignores TERM.
-                try:os.killpg(child.pid,signal.SIGKILL)
-                except ProcessLookupError:pass
-                child.wait()
-            result=dict(returncode=child.wait(),seconds=time.monotonic()-started,
+                cleanup_errors=_cleanup_child(child,
+                    lambda number:_signal_group(child.pid,number,os.killpg,_group_is_live))
+            result=dict(returncode=child.poll(),seconds=time.monotonic()-started,
                 monitor_pid=os.getpid(),owned_pgid=child.pid,samples=samples,
                 sampled_peak_tree_rss=peak,sampled_peak_tree_physical_footprint=physical_peak,
                 physical_limit=physical_limit,failure=failure,
+                cleanup_errors=cleanup_errors,
                 physical_basis='macOS charged physical footprint' if sys.platform=='darwin' else 'Linux RSS plus swap conservative proxy',
                 qualification='sampled owned tree; not continuous or a Linux production bound')
             report.write_text(json.dumps(result,indent=2)+'\n')
     finally:
         for number,handler in old.items():signal.signal(number,handler)
-    if failure:raise RuntimeError(failure['message'])
+    if primary_error is not None:raise primary_error
     if result['returncode']!=0:raise RuntimeError('Batch exited '+str(result['returncode'])+'; see '+str(log))
     return result
 
@@ -272,10 +326,10 @@ def execute_batches(files,counts,*,engine,engine_config,work,table,catalog_root,
     """
     from congress_api.lake import captures,tables
     from congress_shared.custody import custody_identity
+    if validated_counter is not None:
+        raise ValueError('A historical counter is not a backfill input')
     plan=make_plan(files,counts,byte_target=byte_target,item_target=item_target)
     scopes=receipt_local_check_scopes(captures.capture_checks())
-    if any(b['source_kind']=='counter' for b in plan['batches']) and validated_counter is None:
-        raise ValueError('Counter batches require the qualified original counter')
     if create_namespace and not create_table:raise ValueError('Namespace creation requires explicit table creation')
     if create_table and location is None:raise ValueError('Table creation requires an explicit fresh location')
     if (not isinstance(table,dict) or set(table)!={'namespace','name'}
@@ -336,10 +390,8 @@ def execute_batches(files,counts,*,engine,engine_config,work,table,catalog_root,
             kind=batch['source_kind']
             if kind=='prepared-stage':command+=['--append-stage',batch['prepared_stage']]
             else:
-                if kind=='counter':command+=['--validated-counter',str(Path(validated_counter).resolve())]
                 if source_qualifications is not None:
-                    paths=({str(Path(validated_counter).resolve())} if kind=='counter' else
-                           {str(Path(row['path']).resolve()) for row in selected})
+                    paths={str(Path(row['path']).resolve()) for row in selected}
                     bindings={str(path):str(authority) for path,authority in source_qualifications.items()
                               if str(Path(path).resolve()) in paths}
                     qualification=directory/'qualifications.json';qualification.write_text(json.dumps(bindings)+'\n')
