@@ -51,7 +51,7 @@ def _linux_resident_bytes(pid):
     try:
         with Path(f'/proc/{pid}/statm').open(encoding='ascii') as source:
             fields=source.read(256).split()
-    except FileNotFoundError:
+    except (FileNotFoundError,ProcessLookupError):
         # Missing procfs or a denied namespace is not an exited process.
         if _exited(pid):return 0
         raise ProcessResourceError('Process memory measurement unavailable') from None
