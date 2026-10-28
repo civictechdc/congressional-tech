@@ -478,6 +478,7 @@ One row per source file: 1,683,430 today.
 - **Decoding:** URL segments and query values are percent-decoded once as strict UTF-8, `+` kept literal; an invalid sequence stays encoded.
 - **One name per capture row.** Each admitted effective name is its own source file, joined by the same-body edge. Other header copies stay in raw behind the capture pointer. The document shows the saved file's effective name.
 - **Grain:** two archive members with the same body and name at different paths are one source file; `sources` keeps each path.
+- **Temporary v5 seed:** when a source has no filename for its exact `(body_key, source_url)` pair in the pinned v5 filename table, use its own document's resolved filename only when the source and document have the same non-null body key. Count each use as `seed_source_filename_from_document`. Keep the exact `source_id` formula and URL; never substitute another body's name, a URL path or a default. The raw rebuild derives filenames by the effective-filename rule above and may therefore change these seed source IDs.
 
 ### 7.5 Edges and Documents
 
