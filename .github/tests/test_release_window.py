@@ -226,7 +226,7 @@ def test_window_a_records_pre_window_pipeline_and_pointer_before_live_effects():
     assert 'before-A-pointer.etag.json' in forward
 
 
-@pytest.mark.parametrize('scenario', ['success','cas409','cas412','lost_ack','status_failure','wrong_seed','wrong_status','missing_saved','bad_contract'])
+@pytest.mark.parametrize('scenario', ['success','cas409','cas412','lost_ack','status_failure','wrong_seed','wrong_status','missing_saved','bad_contract','wrong_binding'])
 def test_after_data_rollback_uses_exact_saved_bytes_and_stops_on_uncertainty(tmp_path, monkeypatch, scenario):
     import types
     import hashlib
@@ -234,7 +234,7 @@ def test_after_data_rollback_uses_exact_saved_bytes_and_stops_on_uncertainty(tmp
     assert source is not None
     seed='a'*64
     (tmp_path/'accepted-seed-manifest.json').write_text(json.dumps(dict(release_id=seed,origin=dict(kind='seed_v5',display_only=True))))
-    (tmp_path/'accepted-publish-spec.json').write_text(json.dumps(dict(bucket='congressional-tech-raw')))
+    (tmp_path/'accepted-publish-spec.json').write_text(json.dumps(dict(bucket='congressional-tech-raw',model_kind='raw' if scenario=='wrong_binding' else 'seed_v5')))
     work=tmp_path/'post-data-rollback';evidence=work/'publish-evidence';evidence.mkdir(parents=True)
     for name in ('contract','canary'):
         (evidence/(name+'.json')).write_text(json.dumps(dict(status='failed' if scenario=='bad_contract' else 'passed',releaseId=seed,targets='provisional-emulated')))
