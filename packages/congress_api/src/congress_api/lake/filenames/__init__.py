@@ -12,6 +12,7 @@ from house_naming.errors import NamingError
 import pyarrow as pa
 import pyarrow.parquet as pq
 
+from congress_api.lake.tables import table_input
 from congress_api.lake.versions import version_digest
 from congress_api.retention.body_store import BodyStore, LocalAdapter
 from congress_api.retention.provenance import field, json_input, list_of, struct, parquet_output, run_job, instant, import_unreadable, finish_stage
@@ -150,7 +151,7 @@ def read_filename(filename, source_url, *, catalog_version, parser=None, vocabul
 
 
 def _work_inputs(captures, recovery_files, unreadable_files, existing, work):
-    inputs = [dict(name='captures', kind='parquet', path=str(Path(captures).resolve()))]
+    inputs = [table_input('captures',captures)]
     if recovery_files:
         inputs.append(dict(name='recoveries', kind='json_lines', files=recovery_files,
             schema=dict(fields=[field(name, 'Utf8') for name in
@@ -172,7 +173,7 @@ def _work_inputs(captures, recovery_files, unreadable_files, existing, work):
         raise ValueError('Filename parameter registry has duplicate names or priorities')
     inputs.append(json_input(work, 'filename_parameters', params, priority='Int32', parameter='Utf8'))
     if existing:
-        inputs.append(dict(name='existing', kind='parquet', path=str(Path(existing).resolve())))
+        inputs.append(table_input('existing',existing))
     return inputs
 
 

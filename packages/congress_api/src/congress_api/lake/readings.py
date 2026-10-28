@@ -9,6 +9,7 @@ import shutil
 from contextlib import nullcontext
 from itertools import islice
 
+from congress_api.lake.tables import table_input
 from congress_api.retention.body_store import BodyStore, LocalAdapter, validate_key
 from congress_api.retention.body_keys import body_object_digest
 from congress_api.retention.parser_worker import ParserWorker, reading_input
@@ -159,19 +160,15 @@ def plan(*,captures,body_inventory,local_root,engine,work,decided_at,parser,
     work=Path(work).resolve();work.mkdir(parents=True,exist_ok=False)
     raw=Path(local_root).resolve()
     inputs=[json_input(work,'parser_versions',[dict(parser=p,version=v) for p,v in ({**versions,'sniff':sniff_version} if combined else {'sniff':sniff_version}).items()],parser='Utf8',version='Utf8'),
-            dict(name='captures',kind='parquet',path=str(Path(captures).resolve())),
+            table_input('captures',captures),
             dict(name='body_inventory',kind='parquet',path=str(Path(body_inventory).resolve()))]
     unreadable_schema=dict(id='Utf8',body_sha256='Utf8',parser='Utf8',parser_version='Utf8',supersedes='Utf8')
     if unreadable_files:
         inputs.append(dict(name='unreadable',kind='json_lines',files=list(unreadable_files),
             schema=dict(fields=[field(k,v) for k,v in unreadable_schema.items()],metadata={})))
     else:inputs.append(json_input(work,'unreadable',[],**unreadable_schema))
-    if isinstance(existing,dict):
-        if set(existing)!={'metadata_location','table_uuid','snapshot','schema_id'}:
-            raise ValueError('Existing native readings require an exact immutable table pin')
-        inputs.append(dict(name='existing',kind='native_table',**existing))
-    elif existing:
-        inputs.append(dict(name='existing',kind='parquet',path=str(Path(existing).resolve())))
+    if isinstance(existing,dict) or existing:
+        inputs.append(table_input('existing',existing))
     else:
         empty=json_input(work,'existing',[],**_reading_fields())
         empty['name']='existing_json';inputs.append(empty)
@@ -380,10 +377,11 @@ def run(*,engine,work,mode,execute=False,max_work_items=None,batch_size=None,par
         validate_catalog_authority(engine,catalog_root)
         if not table:raise ValueError('Current readings require an explicit table identifier')
         if read_current is None:
-            raise RuntimeError('Native current-table lookup is required for readings execution')
-        # A caller-supplied reader must use the configured native catalog owner.
-        # No empty append or direct metadata/catalog parsing substitutes for it.
-        existing=read_current(engine=engine,work=work/'current',catalog_root=catalog_root,table=table)
+            from congress_api.lake.tables import resolve_tables
+            existing=resolve_tables(engine=engine,work=work/'current',catalog_root=catalog_root,
+                tables={'readings':table})['readings']
+        else:
+            existing=read_current(engine=engine,work=work/'current',catalog_root=catalog_root,table=table)
     if execute:
         # Refresh filenames once per invocation, before the native anti-join.
         # Raw decisions are append-only; the original spec cannot know later batches.

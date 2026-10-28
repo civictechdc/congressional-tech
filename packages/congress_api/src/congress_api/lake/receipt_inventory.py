@@ -3,6 +3,7 @@ from datetime import date
 import json
 from pathlib import Path
 
+from congress_api.lake.tables import table_input
 from congress_api.retention.body_store import validate_key
 from congress_api.retention.provenance import json_input, run_job
 
@@ -20,7 +21,7 @@ def _receipt_key(key):
 
 def _existing(work,existing):
     if existing is not None:
-        return dict(name='existing',kind='parquet',path=str(Path(existing).resolve()))
+        return table_input('existing',existing)
     return json_input(work,'existing',[],receipt_key='Utf8')
 
 
