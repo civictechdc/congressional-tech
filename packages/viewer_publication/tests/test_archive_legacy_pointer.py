@@ -14,7 +14,7 @@ from test_archive_publish import Store
 OLD=Path(__file__).parents[3]/'apps/site/scripts/fixtures/old-viewer-pointer.json'
 
 
-@pytest.mark.parametrize('raw',[OLD.read_bytes(),b'{"release_id":"'+b'a'*64+b'","previous_release_id":null}'])
+@pytest.mark.parametrize('raw',[OLD.read_bytes(),b'{"release_id":"'+b'a'*64+b'","previous_release_id":null}'],ids=['legacy','engine'])
 def test_outgoing_pointer_retains_opaque_etag_bound_to_exact_bytes(tmp_path,raw):
     from viewer_publication.archive_publish import read_pointer
     store=Store();store.etag='"opaque-v42/abcdef=="';store.objects['viewer-publications/manifest.json']=raw

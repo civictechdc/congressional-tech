@@ -7,6 +7,7 @@ flag or an injectable model-policy implementation. Reader probes are external.
 from base64 import b64decode
 from hashlib import md5,sha256
 import json
+import os
 from pathlib import Path
 import re
 from time import perf_counter
@@ -156,11 +157,16 @@ def read_pointer(client,*,bucket,evidence=None):
         if _status_code(error)==404:return None,None
         raise
     if evidence is not None:
-        with Path(evidence).open('xb') as destination:destination.write(raw)
-    value=json.loads(raw)
-    if not isinstance(value,dict):raise ValueError('Invalid archive pointer shape')
+        with Path(evidence).open('xb') as destination:
+            destination.write(raw);destination.flush();os.fsync(destination.fileno())
     etag=response.get('ETag')
     if not isinstance(etag,str) or not etag.strip():raise ValueError('Live archive pointer has no ETag')
+    if evidence is not None:
+        proof=dict(etag=etag,sha256=sha256(raw).hexdigest(),bytes=len(raw))
+        with Path(evidence).with_suffix('.response.json').open('xb') as destination:
+            destination.write(_encoded(proof));destination.flush();os.fsync(destination.fileno())
+    value=json.loads(raw)
+    if not isinstance(value,dict):raise ValueError('Invalid archive pointer shape')
     legacy=(type(value.get('version')) in (int,str) and str(value['version'])=='1'
         and type(value.get('publisher_version')) in (int,str) and str(value['publisher_version'])=='10'
         and isinstance(value.get('catalog_id'),str) and bool(value['catalog_id'])
