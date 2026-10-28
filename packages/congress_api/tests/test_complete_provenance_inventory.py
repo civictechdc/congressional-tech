@@ -1,5 +1,6 @@
 """Complete provider metadata and selected opaque record caches share one LIST."""
 import hashlib
+import io
 from pathlib import Path
 
 import pytest
@@ -97,3 +98,19 @@ def test_selected_file_and_total_bounds_refuse_before_get(tmp_path,limits):
     snapshot=provenance_inventory(BodyStore(R2Adapter(client,'bucket')),work=tmp_path/'snapshot',**limits)
     with pytest.raises(ValueError,match='limit|bound'):snapshot.qualify(sorted(records))
     assert len(client.list_calls)==1 and not client.get_calls and not client.head_calls
+
+
+def test_conditional_get_keeps_the_exact_listed_etag_representation(tmp_path):
+    from congress_api.retention.provenance_inventory import provenance_inventory
+    key='provenance/reviews/one.jsonl';payload=b'opaque';etag='"'+hashlib.md5(payload).hexdigest().upper()+'"'
+    class ExactConditionalR2(R2):
+        def get_object(self,**kwargs):
+            self.get_calls.append(kwargs)
+            assert kwargs==dict(Bucket='bucket',Key=key,IfMatch=etag)
+            return dict(Body=io.BytesIO(payload),ContentLength=len(payload),ETag=etag)
+    client=ExactConditionalR2([(key,payload)])
+    client.list_override=[dict(Key=key,Size=len(payload),ETag=etag)]
+    inventory=provenance_inventory(BodyStore(R2Adapter(client,'bucket')),work=tmp_path/'snapshot')
+    [qualified]=inventory.qualify([key])
+    assert inventory.metadata()==[dict(key=key,size=len(payload),etag=etag)]
+    assert qualified['etag']==hashlib.md5(payload).hexdigest()
