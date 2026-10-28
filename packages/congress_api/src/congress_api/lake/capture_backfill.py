@@ -141,15 +141,19 @@ def make_plan(files,counts,*,byte_target,item_target):
 
 
 def _allocated_bytes(root,*,scan=os.scandir):
-    """Count the existing walk's allocated blocks without following symlinks."""
+    """Count allocated blocks without following links; tolerate vanished paths."""
     total=0;pending=[root] if root.exists() else []
     while pending:
-        with scan(pending.pop()) as entries:
-            for entry in entries:
-                try:
-                    if entry.is_dir(follow_symlinks=False):pending.append(entry.path)
-                    else:total+=entry.stat(follow_symlinks=False).st_blocks*512
-                except FileNotFoundError:pass
+        try:
+            with scan(pending.pop()) as entries:
+                for entry in entries:
+                    try:
+                        if entry.is_dir(follow_symlinks=False):pending.append(entry.path)
+                        else:total+=entry.stat(follow_symlinks=False).st_blocks*512
+                    except OSError as error:
+                        if not isinstance(error,FileNotFoundError) and error.errno!=errno.ENOENT:raise
+        except OSError as error:
+            if not isinstance(error,FileNotFoundError) and error.errno!=errno.ENOENT:raise
     return total
 
 
