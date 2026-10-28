@@ -126,7 +126,7 @@ def _seed_queries(spec):
         missing_member_sizes="(SELECT count(*) FROM seed_members m LEFT JOIN seed_sizes s USING(body_key) WHERE m.body_key IS NOT NULL AND s.bytes IS NULL)",
         conflicting_member_sizes="(SELECT count(*) FROM seed_members m JOIN seed_sizes s USING(body_key) WHERE s.bytes<>s.max_bytes OR s.null_bytes<>0 OR s.bytes<0)",
         unknown_recovery_kinds="(SELECT count(*) FROM seed_recovery_candidates WHERE kind IS NULL)",
-        bad_recovery_records="(SELECT count(*) FROM seed_recovery_candidates WHERE body_hex IS NULL OR original_url IS NULL OR recovered_url IS NULL OR recovery_status<>'recovered')",
+        bad_recovery_records="(SELECT count(*) FROM seed_recovery_candidates WHERE body_hex IS NULL OR original_url IS NULL OR recovered_url IS NULL OR recovery_status IS DISTINCT FROM 'recovered')",
         missing_recovery_sizes="(SELECT count(*) FROM seed_recoveries WHERE bytes IS NULL OR bytes<0)",
         conflicting_recovery_sizes="(SELECT count(*) FROM seed_recoveries r JOIN seed_sizes s USING(body_key) WHERE s.bytes<>s.max_bytes OR s.null_bytes<>0)",
         required_document_values="(SELECT count(*) FROM ordered WHERE filename IS NULL OR trim(filename)='' OR format IS NULL OR trim(format)='')",
