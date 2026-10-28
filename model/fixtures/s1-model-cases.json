@@ -784,6 +784,238 @@
         "record_role": "document",
         "real_file": true
       }
+    },
+    {
+      "id": "format-zip-document",
+      "input": {
+        "mode": "fetch",
+        "outcome": "stored",
+        "complete": true,
+        "sha256": "format-zip-document",
+        "bytes": 1000,
+        "context_url": "https://fixture.test/format-zip-document",
+        "url": "https://fixture.test/format-zip-document",
+        "member_path": null,
+        "format": "zip",
+        "intact": null,
+        "intact_basis": "unchecked",
+        "reading_status": "completed",
+        "xml_root": null,
+        "title": "",
+        "heading": "",
+        "text_head": "A substantive committee hearing page with an agenda and testimony.",
+        "text_bytes": 400,
+        "link_count": 1,
+        "link_text_bytes": 12,
+        "http_status": 200
+      },
+      "expected": {
+        "record_role": "document",
+        "real_file": true
+      }
+    },
+    {
+      "id": "format-docx-document",
+      "input": {
+        "mode": "fetch",
+        "outcome": "stored",
+        "complete": true,
+        "sha256": "format-docx-document",
+        "bytes": 1000,
+        "context_url": "https://fixture.test/format-docx-document",
+        "url": "https://fixture.test/format-docx-document",
+        "member_path": null,
+        "format": "docx",
+        "intact": null,
+        "intact_basis": "unchecked",
+        "reading_status": "completed",
+        "xml_root": null,
+        "title": "",
+        "heading": "",
+        "text_head": "A substantive committee hearing page with an agenda and testimony.",
+        "text_bytes": 400,
+        "link_count": 1,
+        "link_text_bytes": 12,
+        "http_status": 200
+      },
+      "expected": {
+        "record_role": "document",
+        "real_file": true
+      }
+    },
+    {
+      "id": "format-doc-document",
+      "input": {
+        "mode": "fetch",
+        "outcome": "stored",
+        "complete": true,
+        "sha256": "format-doc-document",
+        "bytes": 1000,
+        "context_url": "https://fixture.test/format-doc-document",
+        "url": "https://fixture.test/format-doc-document",
+        "member_path": null,
+        "format": "doc",
+        "intact": null,
+        "intact_basis": "unchecked",
+        "reading_status": "completed",
+        "xml_root": null,
+        "title": "",
+        "heading": "",
+        "text_head": "A substantive committee hearing page with an agenda and testimony.",
+        "text_bytes": 400,
+        "link_count": 1,
+        "link_text_bytes": 12,
+        "http_status": 200
+      },
+      "expected": {
+        "record_role": "document",
+        "real_file": true
+      }
+    },
+    {
+      "id": "format-text-document",
+      "input": {
+        "mode": "fetch",
+        "outcome": "stored",
+        "complete": true,
+        "sha256": "format-text-document",
+        "bytes": 1000,
+        "context_url": "https://fixture.test/format-text-document",
+        "url": "https://fixture.test/format-text-document",
+        "member_path": null,
+        "format": "text",
+        "intact": null,
+        "intact_basis": "unchecked",
+        "reading_status": "completed",
+        "xml_root": null,
+        "title": "",
+        "heading": "",
+        "text_head": "A substantive committee hearing page with an agenda and testimony.",
+        "text_bytes": 400,
+        "link_count": 1,
+        "link_text_bytes": 12,
+        "http_status": 200
+      },
+      "expected": {
+        "record_role": "document",
+        "real_file": true
+      }
+    },
+    {
+      "id": "format-image-document",
+      "input": {
+        "mode": "fetch",
+        "outcome": "stored",
+        "complete": true,
+        "sha256": "format-image-document",
+        "bytes": 1000,
+        "context_url": "https://fixture.test/format-image-document",
+        "url": "https://fixture.test/format-image-document",
+        "member_path": null,
+        "format": "image",
+        "intact": null,
+        "intact_basis": "unchecked",
+        "reading_status": "completed",
+        "xml_root": null,
+        "title": "",
+        "heading": "",
+        "text_head": "A substantive committee hearing page with an agenda and testimony.",
+        "text_bytes": 400,
+        "link_count": 1,
+        "link_text_bytes": 12,
+        "http_status": 200
+      },
+      "expected": {
+        "record_role": "document",
+        "real_file": true
+      }
+    },
+    {
+      "id": "format-other-document",
+      "input": {
+        "mode": "fetch",
+        "outcome": "stored",
+        "complete": true,
+        "sha256": "format-other-document",
+        "bytes": 1000,
+        "context_url": "https://fixture.test/format-other-document",
+        "url": "https://fixture.test/format-other-document",
+        "member_path": null,
+        "format": "other",
+        "intact": null,
+        "intact_basis": "unchecked",
+        "reading_status": "completed",
+        "xml_root": null,
+        "title": "",
+        "heading": "",
+        "text_head": "A substantive committee hearing page with an agenda and testimony.",
+        "text_bytes": 400,
+        "link_count": 1,
+        "link_text_bytes": 12,
+        "http_status": 200
+      },
+      "expected": {
+        "record_role": "document",
+        "real_file": true
+      }
+    },
+    {
+      "id": "format-empty-document",
+      "input": {
+        "mode": "fetch",
+        "outcome": "stored",
+        "complete": true,
+        "sha256": "format-empty-document",
+        "bytes": 0,
+        "context_url": "https://fixture.test/format-empty-document",
+        "url": "https://fixture.test/format-empty-document",
+        "member_path": null,
+        "format": "empty",
+        "intact": null,
+        "intact_basis": "unchecked",
+        "reading_status": "completed",
+        "xml_root": null,
+        "title": "",
+        "heading": "",
+        "text_head": "A substantive committee hearing page with an agenda and testimony.",
+        "text_bytes": 400,
+        "link_count": 1,
+        "link_text_bytes": 12,
+        "http_status": 200
+      },
+      "expected": {
+        "record_role": "document",
+        "real_file": false
+      }
+    },
+    {
+      "id": "format-json-document",
+      "input": {
+        "mode": "fetch",
+        "outcome": "stored",
+        "complete": true,
+        "sha256": "format-json-document",
+        "bytes": 1000,
+        "context_url": "https://fixture.test/format-json-document",
+        "url": "https://fixture.test/format-json-document",
+        "member_path": null,
+        "format": "json",
+        "intact": null,
+        "intact_basis": "unchecked",
+        "reading_status": "completed",
+        "xml_root": null,
+        "title": "",
+        "heading": "",
+        "text_head": "A substantive committee hearing page with an agenda and testimony.",
+        "text_bytes": 400,
+        "link_count": 1,
+        "link_text_bytes": 12,
+        "http_status": 200
+      },
+      "expected": {
+        "record_role": "document",
+        "real_file": true
+      }
     }
   ],
   "groups": [

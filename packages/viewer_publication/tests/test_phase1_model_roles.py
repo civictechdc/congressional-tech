@@ -31,3 +31,9 @@ def test_s1_role_cases_use_production_registries(tmp_path):
     result=run_job(tmp_path,NativeDatasets.from_config(os.environ['DOCSPEC_JOB_CONFIG']),inputs=inputs,steps=steps,outputs=[],
         queries=[dict(name='roles',sql='SELECT receipt_key AS id,record_role,is_real_file AS real_file FROM record_roles ORDER BY receipt_key')])
     assert result['roles']==[dict(id=c['id'],**c['expected']) for c in sorted(cases,key=lambda x:x['id'])]
+
+
+def test_s1_role_fixtures_cover_every_sniff_format():
+    cases=json.loads((ROOT/'model/fixtures/s1-model-cases.json').read_text())['roles']
+    assert {case['input']['format'] for case in cases if case['input']['format'] is not None}=={
+        'pdf','zip','xml','html','json','vtt','m3u8','docx','doc','text','image','warc','other','empty'}
