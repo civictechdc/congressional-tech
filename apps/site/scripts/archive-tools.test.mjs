@@ -108,3 +108,9 @@ test('provisional targets bind five emulated runs to a seed and keep each profil
     await assert.rejects(readTargets(invalid),/five|5/i);
   }finally{await rm(folder,{recursive:true,force:true});}
 });
+
+test('measurement argument errors refuse before opening a release or browser',async()=>{
+  const {measureArchive}=await import('./measure-archive.mjs');
+  await assert.rejects(measureArchive({release:'/missing/not-opened',dist:'/missing/not-opened'}),/harness.commit/i);
+  await assert.rejects(measureArchive({release:'/missing/not-opened',repeats:'0','harness-commit':'a'.repeat(40)}),/repetitions/i);
+});
