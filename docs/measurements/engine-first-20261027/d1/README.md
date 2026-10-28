@@ -56,6 +56,18 @@ Omit `--create-namespace` when the namespace exists. After a lost acknowledgment
 
 The final `public_guard_passed` report proves the public checks and exact independent per-receipt counts. `qualified_for_downstream` deliberately remains false: the caller must also retain the successful rebuild proof, review the complete old-index comparison and its owner gates, and record native file and manifest counts against the maintenance threshold. The old comparison covers the original 2,289 receipt keys; the three later qualified receipts are reported separately.
 
+Compare the retained private batch evidence against the complete old index:
+
+```sh
+.venv/bin/python -I -m congress_api.cli.capture_compare \
+  --evidence-inventory "$D1_PRIVATE_EVIDENCE_PATHS" \
+  --receipt-keys "$ORIGINAL_RECEIPT_KEYS" \
+  --old-index "$PINNED_OLD_CAPTURE_INDEX" \
+  --engine-config "$DOCSPEC_JOB_CONFIG" --work "$D1_OLD_COMPARISON_WORK"
+```
+
+The evidence inventory is a JSON list of absolute Parquet paths; the receipt selection is a JSON list of the original keys. One native union preserves global occurrence matching across batches. The selection filters only new evidence; the old index remains complete. Exit status 2 preserves every old-only, unexplained new-only and unexplained changed row for the owner. The report also lists excluded new receipt keys and row counts.
+
 ## Owner: first live append
 
 Finish the local acceptance checks, resolve comparison gates, and qualify the Linux engine and explicit remote catalog authority first. Supply credentials externally. From clean committed code and a fresh work directory, the owner runs the same bounded path:
