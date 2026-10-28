@@ -50,7 +50,7 @@ cf_locks() {
 
 ## 1. Rescue import, or copy off this disk first
 
-**Changes:** the import only creates missing bodies and its registered receipt. A copy only writes the independent destination. Neither changes the original rescue batch.
+**Changes:** the import only creates missing bodies and its registered receipt. Let any running rescue pass finish and pause its scheduler so the batch stays fixed during copying/import; the count guard stops on a changed batch. A copy only writes the independent destination. Neither changes the original rescue batch.
 
 ```sh
 cd "$B15"
