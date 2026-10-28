@@ -897,5 +897,28 @@
       "partial_documents": 0,
       "missing_files": 0
     }
+  ],
+  "member_contexts_expected": [
+    {
+      "case": "two-paths",
+      "errors": [
+        0,
+        0
+      ]
+    },
+    {
+      "case": "two-documents",
+      "errors": [
+        1,
+        0
+      ]
+    },
+    {
+      "case": "duplicate-context",
+      "errors": [
+        0,
+        1
+      ]
+    }
   ]
 }

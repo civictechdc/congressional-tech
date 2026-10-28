@@ -454,3 +454,16 @@ def test_slice_oracle_keeps_full_components_and_reports_missing_evidence(tmp_pat
     assert pq.ParquetFile(loaded['paths']['oracle_filenames']).metadata.num_rows==case['selected_files']
     assert pq.ParquetFile(loaded['paths']['oracle_documents']).metadata.num_rows==case['selected_documents']
     assert pq.ParquetFile(tmp_path/'scope/scope-gaps.parquet').metadata.num_rows==case['missing_files']
+
+
+@pytest.mark.parametrize('case',FIXTURE['member_contexts_expected'],ids=lambda case:case['case'])
+def test_source_members_have_one_identity_but_preserve_distinct_member_paths(tmp_path,case):
+    member=FIXTURE['integration']['members'][0];doc=FIXTURE['integration']['documents'][0]['document_id']
+    row=dict(document_id=doc,list_row=0,source_id=member['source_id'],body_key=member['body_key'],effective_filename=member['filename'],source_url=member['source_url'],member_path='one/'+member['filename'])
+    second=dict(row,member_path='two/'+member['filename'])
+    if case['case']=='two-documents':second.update(document_id='e'*64,list_row=1)
+    if case['case']=='duplicate-context':second=dict(row)
+    fields={name:'Utf8' for name in row};fields['list_row']='Int32'
+    inputs=[json_input(tmp_path,'source_members',[row,second],**fields)]
+    reports=run_job(tmp_path,engine(),inputs=inputs,steps=[],outputs=[],queries=[dict(name='check_'+str(i),sql=sql) for i,sql in enumerate(parity.MEMBER_CHECKS)])
+    assert [reports['check_'+str(i)][0]['errors'] for i in range(2)]==case['errors']
