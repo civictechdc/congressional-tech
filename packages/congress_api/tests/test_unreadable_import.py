@@ -1,5 +1,6 @@
 """Unreadable decisions survive deleting every local producer stage."""
 import hashlib
+import gzip
 import json
 import shutil
 from pathlib import Path
@@ -39,24 +40,39 @@ def test_invalid_decisions_refuse_before_storage(tmp_path):
 
 def test_raw_only_rebuild_excludes_unreadable_and_retries_unavailable(tmp_path):
     raw=tmp_path/'raw'; store=BodyStore(LocalAdapter(raw))
-    source=tmp_path/'source'; source.mkdir()
     bad=dict(receipt_key='r',receipt_line=1,capture_index=0,mode='fetch',url='https://a.test/Bad.pdf')
     pending=dict(receipt_key='r',receipt_line=2,capture_index=0,mode='fetch',url='https://a.test/Later.pdf')
-    captures=input_tables(source,[bad])
+    from congress_api.lake.captures import stage_captures
+    def retain_receipt(row):
+        key='receipts/documents/2026-10-27/'+str(row['receipt_line'])+'.jsonl.gz'
+        record=dict(run_id='fixture',mode='fetch',outcome='failed',family='documents',
+            requested_url=row['url'],url=row['url'],retrieved_at=STAMP,http_status=500,captures=[])
+        payload=gzip.compress((json.dumps(record)+'\n').encode(),mtime=0)
+        source=tmp_path/('source-'+str(row['receipt_line']));source.write_bytes(payload)
+        store.put(key,source,'application/x-ndjson');source.unlink()
+        authority=tmp_path/('qualified-'+str(row['receipt_line'])+'.json')
+        authority.write_text(json.dumps(dict(path=str((raw/key).resolve()),size=len(payload),
+            sha256=hashlib.sha256(payload).hexdigest(),producer='fixture creation')))
+        return dict(key=key,path=str(raw/key),qualification=str(authority))
+    raw_bad=retain_receipt(bad);raw_pending=retain_receipt(pending)
+    def rebuild(files,name):
+        return stage_captures(files,engine=engine(),work=tmp_path/name)/'captures.parquet'
+    captures=rebuild([raw_bad],'old-captures')
     staged=reader().stage(captures=captures,recovery_files=[],engine=engine(),work=tmp_path/'old-stage',
         worker_factory=TerminalWorker,decided_at=STAMP,unreadable_store=store)
     assert staged['unreadable_pending'] is False and staged['unreadable_key']
     assert (raw/staged['unreadable_key']).is_file()
     class Unavailable(Worker):
         def parse(self,*args):raise OSError('input unavailable')
-    captures=input_tables(source,[pending])
+    captures=rebuild([raw_pending],'pending-captures')
     with pytest.raises(OSError,match='unavailable'):
         reader().stage(captures=captures,recovery_files=[],engine=engine(),work=tmp_path/'unavailable-stage',
             worker_factory=Unavailable,decided_at=STAMP,unreadable_store=store)
     inventory=[dict(key=str(path.relative_to(raw)),path=str(path)) for path in raw.rglob('*.jsonl')]
     assert len(inventory)==1
-    shutil.rmtree(tmp_path/'old-stage'); shutil.rmtree(tmp_path/'unavailable-stage')
-    captures=input_tables(source,[bad,pending])
+    for name in ('old-stage','unavailable-stage','old-captures','pending-captures'):
+        shutil.rmtree(tmp_path/name)
+    captures=rebuild([raw_bad,raw_pending],'rebuilt-captures')
     rebuilt=reader().stage(captures=captures,recovery_files=[],engine=engine(),work=tmp_path/'rebuilt',
         worker_factory=Worker,decided_at=STAMP,unreadable_files=inventory,unreadable_store=store)
     assert pq.read_table(rebuilt['work_list'])['filename'].to_pylist()==['Later.pdf']
