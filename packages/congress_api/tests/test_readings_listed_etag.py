@@ -120,3 +120,14 @@ def test_unknown_capture_suffix_refuses_before_reads(tmp_path):
     with pytest.raises(ValueError,match='Conflicting or incomplete'):
         readings.plan(**args,work=tmp_path/'plan',parser=None,raw_ranges=True,
             body_listing=listing(tmp_path,key,stored))
+
+
+def test_all_copy_capture_conflicts_remain_reported_pending(tmp_path):
+    args,stored,key=inputs(tmp_path);captures=pq.read_table(args['captures']);rows=captures.to_pylist()
+    rows=[rows[0],dict(rows[0],stored_md5=b'z'*16)]
+    pq.write_table(pa.Table.from_pylist(rows,schema=captures.schema),args['captures'])
+    args['body_inventory']=None
+    result=readings.plan(**args,work=tmp_path/'plan',parser=None,raw_ranges=True,
+        body_listing=listing(tmp_path,key,stored))
+    assert result['raw_custody']['conflicts']==1
+    assert result['raw_custody']['missing_pins']==1 and result['raw_custody']['fallback_conflict']==1
