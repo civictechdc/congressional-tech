@@ -20,22 +20,25 @@ def setup(tmp_path, body=b'<html><body><p>Evidence</p><a href="a.pdf">PDF</a></b
     path=raw/key;path.parent.mkdir(parents=True)
     if not missing:path.write_bytes(body)
     captures=tmp_path/'captures.parquet'
-    schema=pa.schema([('sha256',pa.binary(32)),('stored_bytes',pa.int64()),('stored_suffix',pa.string()),
-        ('sniffed_format',pa.string()),('sniff_version',pa.string())])
+    schema=pa.schema([('sha256',pa.binary(32)),('stored_bytes',pa.int64()),('stored_suffix',pa.string())])
     pq.write_table(pa.Table.from_pylist([dict(sha256=digest,stored_bytes=len(body) if size is None else size,
-        stored_suffix='',sniffed_format=body_format,sniff_version='sniff-fixture')]*copies,schema=schema),captures)
+        stored_suffix='')]*copies,schema=schema),captures)
+    existing=tmp_path/'sniff.parquet'
+    pq.write_table(pa.Table.from_pylist([dict(body_sha=digest,parser='sniff',parser_version='sniff-fixture',
+        status='completed',format=body_format)],schema=pa.schema([('body_sha',pa.binary(32)),
+        ('parser',pa.string()),('parser_version',pa.string()),('status',pa.string()),('format',pa.string())])),existing)
     inventory=tmp_path/'bodies.parquet'
     pq.write_table(pa.Table.from_pylist([dict(body_sha=digest,physical_key=key,relative_path=key,
         stored_bytes=len(body) if size is None else size,stored_gzip=False)],schema=pa.schema([
         ('body_sha',pa.binary(32)),('physical_key',pa.string()),('relative_path',pa.string()),('stored_bytes',pa.int64()),
         ('stored_gzip',pa.bool_())])),inventory)
-    return dict(captures=captures,body_inventory=inventory,local_root=raw,
+    return dict(captures=captures,body_inventory=inventory,local_root=raw,existing=existing,
                 engine=NativeDatasets.from_config(os.environ['DOCSPEC_JOB_CONFIG']),
                 decided_at='2026-10-27T12:00:00Z'),digest
 
 
 def stage(args,tmp_path,**kwargs):
-    return readings.stage(**args,work=tmp_path,parser='html',sniff_version='sniff-fixture',**kwargs)
+    return readings.stage(**{**args,**kwargs},work=tmp_path,parser='html',sniff_version='sniff-fixture')
 
 
 def test_duplicate_captures_parse_once_and_nested_links_survive_native_export(tmp_path):
@@ -174,3 +177,20 @@ def test_unreadable_batches_from_one_run_use_distinct_stable_raw_keys(tmp_path):
     assert page['unreadable_key']!=sniff['unreadable_key']
     assert page['unreadable_key']==repeated['unreadable_key']
     assert Path(page['unreadable_path']).read_bytes()==Path(repeated['unreadable_path']).read_bytes()
+
+
+@pytest.mark.parametrize('sniff_state', ['current','missing','old','failed'])
+def test_page_work_requires_a_completed_pinned_sniff_reading(tmp_path,sniff_state):
+    args,_=setup(tmp_path)
+    table=pq.read_table(args['existing'])
+    if sniff_state=='missing':table=table.slice(0,0)
+    elif sniff_state in {'old','failed'}:
+        row=table.to_pylist()[0]
+        row['parser_version']='old' if sniff_state=='old' else 'sniff-fixture'
+        row['status']='error' if sniff_state=='failed' else 'completed'
+        table=pa.Table.from_pylist([row],schema=table.schema)
+    pq.write_table(table,args['existing'])
+    result=stage(args,tmp_path/'stage')
+    expected=1 if sniff_state=='current' else 0
+    assert pq.ParquetFile(result['work_list']).metadata.num_rows==expected
+    assert pq.ParquetFile(result['readings']).metadata.num_rows==expected
