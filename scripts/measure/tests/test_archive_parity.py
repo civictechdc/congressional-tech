@@ -192,3 +192,30 @@ def test_actual_f0_candidate_has_only_converter_gaps(tmp_path):
     assert set(FIXTURE['f0_catalog']['expected']['required_causes'])<={row['cause'] for row in result['causes']}
     assert result['candidate_kind']=='f0'
     assert result['model_qualified'] is False
+    assert result['decision_ready'] is True
+
+
+def test_f0_conversion_proofs_do_not_excuse_a_corrupt_visible_filename(tmp_path):
+    from hashlib import sha256,md5
+    import pyarrow as pa
+    import pyarrow.parquet as pq
+    from congress_api.retention.provenance import file_pin
+    template=f0_fixture(tmp_path)
+    descriptor=parity.prepare_f0(template,engine=engine(),work=tmp_path/'prepare')
+    path=tmp_path/'release/list.parquet';table=pq.read_table(path)
+    index=table.schema.get_field_index('filename')
+    table=table.set_column(index,'filename',pa.array(['Wrong.html' if x=='Beta.html' else x
+        for x in table.column('filename').to_pylist()],type=table.schema.field(index).type))
+    pq.write_table(table,path,compression='zstd',data_page_version='2.0')
+    manifest_path=tmp_path/'release/manifest.json';manifest=json.loads(manifest_path.read_text())
+    entry=next(r for r in manifest['files'] if r['name']=='list.parquet')
+    entry.update(sha256=file_pin(path)['sha256'],size=path.stat().st_size,md5=md5(path.read_bytes()).hexdigest())
+    identity=[manifest['schema_version'],[[f['name'],f['sha256'],f['size'],f['rows']] for f in manifest['files']]]
+    manifest['release_id']=sha256(json.dumps(identity,ensure_ascii=False,separators=(',',':')).encode()).hexdigest()
+    manifest_path.write_text(json.dumps(manifest))
+    value=json.loads(descriptor.read_text());value['candidate']['manifest_sha256']=file_pin(manifest_path)['sha256']
+    descriptor.write_text(json.dumps(value))
+    result=parity.compare_descriptor(descriptor,engine_config=os.environ['DOCSPEC_JOB_CONFIG'],work=tmp_path/'comparison')
+    assert result['counts']['unexplained']==2
+    assert result['counts']['invalid_ids']==0
+    assert result['decision_ready'] is False
