@@ -45,3 +45,54 @@ def test_failed_batch_has_no_success_result(tmp_path):
     with pytest.raises(RuntimeError,match='exit'):
         run(tmp_path,'raise SystemExit(7)')
     assert json.loads((tmp_path/'measurement.json').read_text())['returncode']==7
+
+
+def _live_group(group):
+    import subprocess
+    output=subprocess.run(['ps','-axo','pgid=,stat='],capture_output=True,text=True,check=True).stdout
+    return any(int(parts[0])==group and not parts[1].startswith('Z')
+        for line in output.splitlines() if len(parts:=line.split())==2)
+
+
+def test_rejection_kills_descendant_even_after_watchdog_exits(tmp_path):
+    if sys.platform not in {'darwin','linux'}:pytest.skip('Supported process accounting platform')
+    code='import signal,time;signal.signal(signal.SIGTERM,signal.SIG_IGN);print("ready",flush=True);time.sleep(60)'
+    with pytest.raises(RuntimeError,match='time limit'):
+        run(tmp_path,code,timeout=1)
+    result=json.loads((tmp_path/'measurement.json').read_text())
+    assert 'ready' in (tmp_path/'process.log').read_text()
+    try:assert not _live_group(result['owned_pgid'])
+    finally:
+        import os
+        import signal
+        try:os.killpg(result['owned_pgid'],signal.SIGKILL)
+        except ProcessLookupError:pass
+
+
+def test_lost_monitor_watchdog_kills_a_term_ignoring_command(tmp_path):
+    import os
+    import signal
+    import subprocess
+    import time
+    if sys.platform not in {'darwin','linux'}:pytest.skip('Supported process accounting platform')
+    work=tmp_path/'monitor'
+    code='import signal,time;signal.signal(signal.SIGTERM,signal.SIG_IGN);print("ready",flush=True);time.sleep(60)'
+    wrapper='from congress_api.lake.capture_backfill import monitor_command;import sys;monitor_command([sys.executable,"-I","-c",sys.argv[2]],work=sys.argv[1])'
+    process=subprocess.Popen([sys.executable,'-I','-c',wrapper,str(work),code])
+    group=None
+    try:
+        deadline=time.monotonic()+10
+        while time.monotonic()<deadline:
+            if (work/'measurement.json.partial').exists() and 'ready' in (work/'process.log').read_text():
+                group=json.loads((work/'measurement.json.partial').read_text())['owned_pgid'];break
+            time.sleep(.05)
+        assert group is not None,'The owned command did not become ready'
+        process.kill();process.wait(timeout=5)
+        deadline=time.monotonic()+5
+        while _live_group(group) and time.monotonic()<deadline:time.sleep(.05)
+        assert not _live_group(group)
+    finally:
+        if process.poll() is None:process.kill();process.wait(timeout=5)
+        if group is not None:
+            try:os.killpg(group,signal.SIGKILL)
+            except ProcessLookupError:pass

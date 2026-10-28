@@ -58,3 +58,15 @@ def test_validation_child_rejects_unbound_job_shape_before_catalog(tmp_path):
     spec=tmp_path/'spec.json';spec.write_text(json.dumps(dict(arbitrary='callback')))
     with pytest.raises(ValueError,match='validation spec'):
         capture_backfill.validate_spec(spec)
+
+
+def test_driver_refuses_unowned_outputs_before_any_catalog_effect(tmp_path):
+    files,counts=inputs(tmp_path/'input')
+    with pytest.raises(ValueError,match='Owned scratch'):
+        capture_backfill.execute_batches(files,counts,
+            engine=NativeDatasets.from_config(os.environ['DOCSPEC_JOB_CONFIG']),
+            engine_config=os.environ['DOCSPEC_JOB_CONFIG'],work=tmp_path/'work',
+            table=dict(namespace=['must_not_exist'],name='captures_gtest'),
+            catalog_root=tmp_path/'catalog',location=tmp_path/'table',create_table=True,
+            create_namespace=True,scratch_root=tmp_path/'different-owned-root')
+    assert not (tmp_path/'catalog').exists() and not (tmp_path/'table').exists()
