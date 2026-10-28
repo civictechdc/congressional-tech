@@ -248,3 +248,27 @@ def test_cli_invalid_modes_and_budgets_refuse_before_spec_read(tmp_path,argument
     with pytest.raises(SystemExit) as error:
         main(['--spec',str(tmp_path/'unopened'),*arguments])
     assert error.value.code==2
+
+
+def test_resumed_terminal_unreadable_refreshes_durable_raw_inventory(tmp_path):
+    args=inputs(tmp_path/'source',2);target=local_table(args,tmp_path);parsed=[]
+    store=BodyStore(LocalAdapter(tmp_path/'durable'))
+    class Terminal:
+        def __init__(self,*args,**kwargs):pass
+        def __enter__(self):return self
+        def __exit__(self,*args):pass
+        def parse(self,key,payload):
+            parsed.append(key);return dict(status='unreadable',attempts=2,reason='timeout')
+    first=readings.run(**args,**target,work=tmp_path/'first',mode='backfill',execute=True,
+        batch_size=1,read_current=lambda **kwargs:None,worker_factory=Terminal,
+        unreadable_store=store,unreadable_files=[])
+    assert first['unreadable']==2 and len(parsed)==2
+    assert len(list((tmp_path/'durable/provenance/unreadable').glob('*.jsonl')))==2
+    # The original spec is deliberately reused: it contains no refreshed files.
+    second=readings.run(**args,**target,work=tmp_path/'second',mode='backfill',execute=True,
+        batch_size=1,read_current=lambda **kwargs:None,worker_factory=NeverWorker,
+        unreadable_store=store,unreadable_files=[])
+    assert second['work_items']==0 and second['batches']==[] and len(parsed)==2
+    files=next(i for i in json.loads((tmp_path/'second/plan/job.json').read_text())['inputs']
+               if i['name']=='unreadable')['files']
+    assert len(files)==2 and all(i['key'].startswith('provenance/unreadable/') for i in files)
