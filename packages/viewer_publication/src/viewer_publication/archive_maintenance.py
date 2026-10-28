@@ -5,6 +5,7 @@ never lists or deletes raw keys and never selects a lake generation to purge.
 """
 from datetime import datetime,timedelta
 import json
+from pathlib import Path
 import re
 
 from viewer_publication.archive_publish import NativeArchiveStore,_read,input_digest,read_pointer
@@ -88,12 +89,36 @@ class _InventoryEvidence:
         return self.cache[key]
 
 
+def _validate_kept_model(record):
+    from viewer_publication.archive_model_job import TABLES,_selector
+    from viewer_publication.archive_model_profile import profile_record
+    snapshots=record['snapshots']
+    if not isinstance(snapshots,dict) or set(snapshots)!=set(TABLES):
+        raise ValueError('Kept input requires the complete model table selectors')
+    selected={}
+    for name,value in snapshots.items():
+        if isinstance(value,dict) and value.get('kind')=='native_table' and 'name' in value:
+            if value['name']!=name:
+                raise ValueError('Kept native selector name differs from its table key')
+            value={key:item for key,item in value.items() if key!='name'}
+        selected[name]=_selector(value,Path('/'))
+    profile=record['profile']
+    # None invokes definition hashing in the producer helper. Maintenance must
+    # validate recorded definitions, never read the current filesystem instead.
+    if not isinstance(profile,dict) or profile.get('file_hashes') is None:
+        raise ValueError('Kept model profile requires explicit definition hashes')
+    rebuilt=profile_record(**profile,snapshots=selected)
+    if rebuilt['profile']!=profile:
+        raise ValueError('Kept model profile has unsupported fields')
+
+
 def maintain_releases(store,*,now,external_pins=(),execute=False):
     """Collect all kept inputs before planning or deleting unkept release keys.
 
-    Inventory/metadata work is O(objects + kept inputs), plus sorting the final
-    delete keys. No release assets, raw bodies or lake rows are read. The caller
-    supplies explicit external pins and passes returned kept_inputs to D5 guards.
+    Inventory work is linear in object count; input identity canonicalizes each
+    receipt set in O(R log R), and final deletion sorting costs O(D log D). No
+    release assets, raw bodies or lake rows are read. The caller supplies explicit
+    external pins and passes returned kept_inputs to D5 guards.
     """
     now=_time(now)
     if isinstance(external_pins,str):raise ValueError('External pins must be release IDs')
@@ -126,6 +151,7 @@ def maintain_releases(store,*,now,external_pins=(),execute=False):
                 profile=record['profile'],entity_digests=record['entity_digests'])
             if actual!=record['input_digest']:
                 raise ValueError('Kept input record differs from its semantic identity')
+            _validate_kept_model(record)
         except (KeyError,TypeError) as error:
             raise ValueError('Kept input record has an invalid identity shape') from error
         records.append(record)
