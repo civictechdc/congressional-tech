@@ -312,7 +312,8 @@
         {
           "name": "imported_at",
           "type": "date32",
-          "meaning": "Recovery import date"
+          "nullable": true,
+          "meaning": "Recovery import date; unknown when the input has no import record, as in the v5 seed"
         },
         {
           "name": "recovered_url",

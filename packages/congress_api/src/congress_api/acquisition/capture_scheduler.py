@@ -104,6 +104,14 @@ def _safe_reference(value):
         return False
 
 
+def _require_capture_authority(release):
+    """Display-only releases never authorize queue work or network capture."""
+    origins=(release,release.get('origin'),release.get('manifest_origin'))
+    if any(isinstance(origin,dict) and (origin.get('kind')=='seed_v5'
+            or origin.get('display_only') is True) for origin in origins):
+        raise ValueError('A display-only release cannot authorize capture')
+
+
 def _identity(path,entry):
     with Path(path).open('rb') as source:
         digest=hashlib.file_digest(source,'sha256').hexdigest()
@@ -148,6 +156,7 @@ def load_release(*,work,release_root=None,pointer=None,session=None):
         release_id=manifest.get('release_id')
     if not isinstance(manifest,dict) or manifest.get('schema_version')!=1 or manifest.get('release_id')!=release_id or not HEX.fullmatch(release_id or ''):
         raise ValueError('Unsupported release manifest or identity')
+    _require_capture_authority(manifest)
     files=manifest.get('files')
     if not isinstance(files,list) or any(not isinstance(row,dict) or not all(key in row for key in ('name','sha256','size','rows')) for row in files):
         raise ValueError('Invalid release file manifest')
@@ -169,7 +178,7 @@ def load_release(*,work,release_root=None,pointer=None,session=None):
     CapturePolicy(selected['capture_scope.json'])
     return dict(release_id=release_id,state=selected['url_state.parquet'],scope=selected['capture_scope.json'],
         profile=selected['capture_profile.json'],variants=selected['url_variants.parquet'],
-        origin='public' if pointer else 'local',
+        origin='public' if pointer else 'local',manifest_origin=manifest.get('origin'),
         identities={name:next(row for row in files if row['name']==name) for name in selected})
 
 
@@ -181,6 +190,7 @@ def _records(path):
 
 def _url_binding(release,engine):
     """Bind SQL, rules, variants and engine to the selected immutable release."""
+    _require_capture_authority(release)
     for key,name in [('state','url_state.parquet'),('scope','capture_scope.json'),
                      ('profile','capture_profile.json'),('variants','url_variants.parquet')]:
         _identity(release[key],release['identities'][name])
@@ -239,6 +249,7 @@ def _record_attempt(path,url,*,attempted,complete=None,outcome=None,http_status=
 
 def cutoff_report(release,*,urls,attempted,engine,work,as_of,stop_reason):
     """Account for every reviewed URL, including deadline/budget/scope deferrals."""
+    _require_capture_authority(release)
     urls=_reviewed_cutoffs(urls)
     if not urls:return []
     binding,_=_url_binding(release,engine)
@@ -282,6 +293,7 @@ def cutoff_report(release,*,urls,attempted,engine,work,as_of,stop_reason):
 def plan_queue(release,*,engine,work,as_of,request_budget,seed_inventories=(),
                seed_files=(),discovery_files=(),attempted=None,cutoff_urls=()):
     """Use shared URL keys for matching, retaining literal requested URL outputs."""
+    _require_capture_authority(release)
     _positive(request_budget,'request budget');as_of=_utc(as_of)
     cutoff_urls=_reviewed_cutoffs(cutoff_urls)
     binding,definition_sha256=_url_binding(release,engine)
@@ -388,6 +400,7 @@ def run_capture(release,*,engine,work,as_of,request_budget,byte_budget,spool_bud
                 archive_limits=None,seed_inventories=(),cutoff_urls=(),
                 discover=None,max_discovery_jobs=8,headers=None,worker_factory=None):
     """One sequential raw writer. No state/index or table writes occur here."""
+    _require_capture_authority(release)
     for name,value in [('request budget',request_budget),('byte budget',byte_budget),('spool budget',spool_budget),('discovery jobs',max_discovery_jobs)]:
         _positive(value,name)
     _,url_key_digest=_url_binding(release,engine)

@@ -77,7 +77,7 @@ def _probe_evidence(reports):
 
 
 def run_publish(model_spec,*,client,engine,bucket,work,receipt_keys,provenance,run,
-                public_origin,contract,canary):
+                public_origin,contract,canary,verified_files=None):
     """Prepare once, admit before a skip, otherwise export once and publish.
 
     SQL, graphs, grouping and file writing use the maintained native model.
@@ -97,7 +97,8 @@ def run_publish(model_spec,*,client,engine,bucket,work,receipt_keys,provenance,r
     status=dict(status='failed',input_digest=None,live_release=None,live_release_basis='unknown',rows={},bytes=0)
     started=perf_counter();delegate=False;storage_ready=False;failure=None
     try:
-        with model_arguments(model_spec,provenance_etags={item['key']:item['etag'] for item in provenance if item['key'] in records}) as arguments:
+        with model_arguments(model_spec,provenance_etags={item['key']:item['etag'] for item in provenance if item['key'] in records},
+                             verified_files=verified_files) as arguments:
             engine.verify_runtime()
             storage_ready=True
             provenance=_provenance_snapshot(client,bucket,provenance)

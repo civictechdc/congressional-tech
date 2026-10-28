@@ -27,7 +27,8 @@ def test_capture_join_boundary_contains_only_scalar_facts(tmp_path):
     assert steps['scalar_rows']['materialize'] is True
     for step in job['steps']:
         if 'JOIN' in step['sql']:
-            assert all(name not in step['sql'] for name in ('__raw_line','list_raw','selected_record','entry'))
+            assert all(re.search(r'\b'+name+r'\b',step['sql']) is None
+                       for name in ('__raw_line','list_raw','selected_record','entry','item'))
     assert ' FROM decisions' in steps['scalar_rows']['sql']
     assert 'line' not in evidence.column_names and 'record' not in evidence.column_names
 
@@ -45,18 +46,23 @@ def test_native_counter_plan_scans_once_and_joins_only_materialized_scalars(tmp_
     write_qualified_parquet(pa.Table.from_pylist(rows, schema=table.schema), counter)
     native = NativeDatasets.from_config(os.environ['DOCSPEC_JOB_CONFIG'])
     plan = source_plan(counter=counter, receipt_keys=[row['key'] for row in files])
-    steps = list(plan['steps'])
-    for definition in mapping_steps():
-        steps.append(dict(definition, materialize=False))
-        if definition['name'] == 'scalar_rows':
-            break
+    # The source list is shredded once, then the items side is materialized as
+    # scalars before reference fanout joins it. Inspect that real item projection.
+    definitions=mapping_steps()
+    item_end=next(i for i,step in enumerate(definitions) if step['name']=='items')
     first = tmp_path/'before-scalar'; first.mkdir()
-    result = run_job(first, native, inputs=plan['inputs'], steps=steps, outputs=[],
-        queries=[dict(name='plan', sql='EXPLAIN SELECT * FROM scalar_rows')])
+    item_steps=plan['steps']+[dict(step,materialize=False) for step in definitions[:item_end+1]]
+    result = run_job(first, native, inputs=plan['inputs'], steps=item_steps, outputs=[],
+        queries=[dict(name='source_plan',sql='EXPLAIN '+plan['steps'][0]['sql']),
+                 dict(name='plan', sql='EXPLAIN SELECT * FROM items')])
     physical = next(row['plan'] for row in result['plan'] if row['plan_type'] == 'physical_plan')
-    assert physical.count('DataSourceExec') == 1
+    source_physical=next(row['plan'] for row in result['source_plan'] if row['plan_type']=='physical_plan')
+    assert source_physical.count('DataSourceExec') == 1
+    assert 'UnnestExec' not in source_physical and 'row_number' in source_physical.lower()
+    assert physical.count('StreamingTableExec') == 1
+    assert 'DataSourceExec' not in physical
     assert physical.count('UnnestExec') == 1
-    assert physical.count('json_get_many(') == 3
+    assert physical.count('json_get_many(') == 1
     assert 'JoinExec' not in physical
     second = tmp_path/'after-scalar'; second.mkdir()
     result = run_job(second, native, inputs=plan['inputs'],

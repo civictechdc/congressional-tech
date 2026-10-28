@@ -44,10 +44,11 @@ def test_source_projection_selects_disjoint_bulk_leaves(tmp_path):
     plan=source_plan(counter=counter)
     assert len(plan['inputs'])==1 and plan['inputs'][0]['path']==str(counter)
     sql=plan['steps'][0]['sql']
-    assert 'json_get_many' in sql and "arrow_cast(json_get_json(__raw_line,'record'),'Utf8View')" in sql
+    assert 'json_get_many' in sql and "json_get_array(__raw_line,'record')" in sql
+    assert 'list_raw' not in sql and 'source_row_id' in sql
     for excluded in ('prior_attempts','response_header_items','lockfile_digest','record_sha'):
         assert excluded not in sql
-    assert not plan['steps'][0].get('materialize',False)
+    assert plan['steps'][0]['materialize'] is True
 
 
 @pytest.mark.parametrize('operation',['plan','pins'])

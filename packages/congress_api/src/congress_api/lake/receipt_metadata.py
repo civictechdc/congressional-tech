@@ -72,7 +72,7 @@ def scalar(slot,kind):
 
 
 def source_plan(*,counter=None,files=None,receipt_keys=None):
-    """Register one source, retaining only scalar facts and the rare list locator."""
+    """Materialize one source projection, retaining list items once before shredding."""
     if counter is not None:
         counter=counter_file(counter)
         schema=pq.read_schema(counter)
@@ -129,15 +129,15 @@ def source_plan(*,counter=None,files=None,receipt_keys=None):
     invalid_lists=' OR '.join(
         '('+slots[(name,)]+" IS NOT NULL AND "+slots[(name,)]+"<>'null' AND "+
         get(slots[(name,)],kind='array')+' IS NULL)' for name in ('captures','file_references'))
-    sql=f"""SELECT {locator},{obj(roots)} AS line,{obj(records)} AS record,
+    sql=f"""SELECT {locator},row_number() OVER () AS source_row_id,{obj(roots)} AS line,{obj(records)} AS record,
         ({invalid_lists}) AS invalid_lists,
         {get(slots[('captures',)],kind='array')} AS caps,
         {get(slots[('file_references',)],kind='array')} AS refs,
         {is_list} AS record_is_list,
-        CASE WHEN {is_list} THEN arrow_cast(json_get_json(__raw_line,'record'),'Utf8View') END AS list_raw,
-        CASE WHEN {is_list} THEN json_length(__raw_line,'record') ELSE 0 END AS record_count
+        CASE WHEN {is_list} THEN json_get_array(__raw_line,'record') ELSE make_array() END AS record_items
         FROM source WHERE {selected}"""
-    return dict(inputs=inputs,steps=[dict(name='lines',sql=sql)])
+    sql='SELECT *,array_length(record_items) AS record_count FROM ('+sql+')'
+    return dict(inputs=inputs,steps=[dict(name='lines',sql=sql,materialize=True)])
 
 
 def producer(engine):
