@@ -4,7 +4,7 @@ import {resolve} from 'node:path';
 import assert from 'node:assert/strict';
 import {argumentsMap,checkTargets,readTargets,measurementProfiles} from './archive-targets.mjs';
 import {startArchiveServer} from './archive-server.mjs';
-import {browserDependency,heapSampler} from './archive-browser.mjs';
+import {ARCHIVE_ORIGIN,browserDependency,heapSampler,routeArchiveOrigin} from './archive-browser.mjs';
 import {openArchive} from '../src/components/explorer/reader/archive.ts';
 const args=argumentsMap(process.argv.slice(2));if(!args['next-release'])throw new Error('Supply --next-release for the required browser stale-tab check.');const targets=await readTargets(args.targets);
 const {chromium}=browserDependency('playwright');
@@ -22,6 +22,7 @@ async function fixtureContext(options={}){
     fixtureBodyReads.push({path:url.pathname,status:response.status()});
     await route.fulfill({response});
   });
+  await routeArchiveOrigin(context,server);
   return context;
 }
 const results=[];
@@ -85,16 +86,18 @@ try{
     const context=await fixtureContext({viewport:{width:390,height:844}}),page=await context.newPage();
     const errors=[],dataRequests=[],legacyRequests=[];page.setDefaultTimeout(60000);
     page.on('pageerror',error=>errors.push(error.message));
-    context.on('request',request=>{const path=new URL(request.url()).pathname;if(path.includes('/data/archive/'))dataRequests.push(path);});
-    await context.route('**/viewer-publications/**',route=>{legacyRequests.push(route.request().url());return route.abort();});
-    await context.route(server.pointerUrl,route=>route.fulfill({status:200,contentType:'application/json',headers:{'Cache-Control':'no-store','Access-Control-Allow-Origin':'*'},body:oldPointer}));
+    // The new pointer shares the legacy key, so only the old layout's folders count as legacy reads.
+    const pointerPath='/viewer-publications/manifest.json',isPointer=url=>url.origin===ARCHIVE_ORIGIN&&url.pathname===pointerPath;
+    context.on('request',request=>{const url=new URL(request.url());if(url.origin===ARCHIVE_ORIGIN&&url.pathname.startsWith('/viewer-publications/'))dataRequests.push(url.pathname);});
+    await context.route(url=>/\/viewer-publications\/releases\/[a-f0-9]{32}\/|\/catalog-generations\//.test(url.pathname),route=>{legacyRequests.push(route.request().url());return route.abort();});
+    await context.route(isPointer,route=>route.fulfill({status:200,contentType:'application/json',headers:{'Cache-Control':'no-store','Access-Control-Allow-Origin':'*'},body:oldPointer}));
     try{
       await page.goto(server.pageUrl);
       await page.getByRole('alert').filter({hasText:'Invalid archive release identity.'}).first().waitFor();
       assert(await page.getByRole('button',{name:'Try loading the archive again'}).isVisible());
       assert.equal(await page.locator('.archive-document').count(),0);
       assert.equal(await page.locator('[data-archive-ready="true"]').count(),0);
-      assert(dataRequests.length>0);assert(dataRequests.every(path=>path===new URL(server.pointerUrl).pathname));
+      assert(dataRequests.length>0);assert(dataRequests.every(path=>path===pointerPath));
       assert.deepEqual(legacyRequests,[]);assert.deepEqual(errors,[]);
       results.push({operation:'old-pointer-refusal',status:'passed',pointerRequests:dataRequests.length});
     }finally{await context.close();}
