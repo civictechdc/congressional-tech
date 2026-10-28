@@ -134,7 +134,7 @@ def probe_selectors_query(*,root=ROOT):
     limit=json.loads((Path(root)/'model/registries/reader-limits.json').read_text())['max_unpacked_bytes']
     if type(limit) is not int or limit<=0:raise ValueError('Invalid reader unpacking limit')
     return dict(name='probe_selectors',sql=f"""SELECT list_row AS saved_row,encode(link_key,'hex') AS link_key
-        FROM details WHERE saved_body IS NOT NULL AND NOT hidden
+        FROM details WHERE saved_body IS NOT NULL AND saved_bytes>0 AND NOT hidden
         AND (saved_suffix<>'.gz' OR saved_bytes<={limit})
         ORDER BY saved_bytes NULLS LAST,list_row LIMIT 1""")
 
