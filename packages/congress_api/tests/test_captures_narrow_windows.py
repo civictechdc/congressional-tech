@@ -71,7 +71,7 @@ def test_native_narrow_flags_and_ranks_equal_legacy_multiset_with_nullable_dupli
     final='CASE WHEN is_placeholder THEN primary_count+appended_index-1 ELSE capture_index END AS final_index'
     for name,origin in [('before','legacy_windowed'),('after','windowed')]:
         steps.append(dict(name=name,sql=f'SELECT {fields},{final} FROM {origin}'))
-        steps.append(dict(name=name+'_multiset',sql=f'SELECT *,count(*) AS occurrences FROM {name} GROUP BY ALL'))
+        steps.append(dict(name=name+'_multiset',sql=f'SELECT *,count(*) AS occurrences FROM {name} GROUP BY {fields},final_index'))
     result=run_job(tmp_path,NativeDatasets.from_config(os.environ['DOCSPEC_JOB_CONFIG']),
         inputs=[dict(name='scalar_rows',kind='parquet',path=str(source))],steps=steps,outputs=[],queries=[
             dict(name='left_only',sql='SELECT * FROM before_multiset EXCEPT SELECT * FROM after_multiset'),
