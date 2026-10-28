@@ -89,6 +89,8 @@ def install(artifact, credentials, remote, directory, *, client, local_limits=No
     # operator reconciliation. Never promote or overwrite a stale executable.
     remote_raw = None
     if local_limits is not None:
+        if 'test-util' in artifact.get('build_features', ['remote']):
+            raise SetupFailure('Local jobs require the ordinary runtime without test-util')
         limits = document(Path(local_limits).read_bytes(), 'Local job limits')
         fields = {'compute_threads', 'memory_bytes', 'scratch_bytes', 'batch_rows',
                   'max_batch_bytes', 'max_metadata_bytes'}

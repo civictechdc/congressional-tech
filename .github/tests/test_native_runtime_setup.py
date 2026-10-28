@@ -281,3 +281,17 @@ def test_local_cli_exports_only_local_paths_after_offline_doctor(tmp_path, input
         assert set(exported)=={'DOCSPEC_JOB_CONFIG','DOCSPEC_BINARY','DOCSPEC_BINARY_SHA256'}
     output=capsys.readouterr()
     assert all(secret not in output.out+output.err+envfile.read_text() for secret in credentials.values())
+
+
+def test_local_private_runtime_rejects_test_util_before_download(tmp_path, inputs):
+    value=module()
+    binary,descriptor,credentials=inputs
+    descriptor=dict(descriptor,build_features=['remote','test-util'])
+    policy=tmp_path/'limits.json'
+    policy.write_text(json.dumps(dict(compute_threads=4,memory_bytes=14*1024**3,
+        scratch_bytes=6*1024**3,batch_rows=8192,max_batch_bytes=64*1024**2,max_metadata_bytes=32*1024**2)))
+    client=ArtifactClient(binary)
+    with pytest.raises(ValueError,match='test-util|ordinary'):
+        value.install(descriptor,credentials,tmp_path/'absent',tmp_path/'installed',
+                      client=client,local_limits=policy)
+    assert client.calls==[] and not (tmp_path/'installed').exists()
