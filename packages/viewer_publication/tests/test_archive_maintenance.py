@@ -103,6 +103,8 @@ def test_sdk_adapter_lists_only_release_inventory_and_guards_delete_keys():
     class SDK:
         meta=SimpleNamespace(config=SimpleNamespace(retries={'total_max_attempts':1}))
         def __init__(self):self.calls=[]
+        def get_object(self,**request):raise AssertionError('Unexpected SDK GET')
+        def put_object(self,**request):raise AssertionError('Maintenance must not PUT')
         def list_objects_v2(self,**request):
             self.calls.append(('list',request))
             return dict(Contents=[dict(Key=PREFIX+OLD+'/list.parquet',LastModified=NOW)],IsTruncated=False)
@@ -117,3 +119,20 @@ def test_sdk_adapter_lists_only_release_inventory_and_guards_delete_keys():
     assert client.calls[-1]==('delete',dict(Bucket='archive-fixture',Key=PREFIX+OLD+'/list.parquet'))
     client.meta=SimpleNamespace(config=SimpleNamespace(retries={'total_max_attempts':2}))
     with pytest.raises(ValueError):ArchiveMaintenanceStore(client=client,bucket='archive-fixture')
+
+
+def test_legacy_release_objects_are_preserved_without_reading_or_deleting():
+    from viewer_publication.archive_maintenance import maintain_releases
+    store,_=fixture();legacy=PREFIX+'filename-viewer-v4-old/list.parquet'
+    store.create(legacy,b'legacy');store.times[legacy]=NOW-timedelta(days=100)
+    result=maintain_releases(store,now=NOW,external_pins=[PINNED],execute=True)
+    assert legacy not in store.deleted and legacy not in store.reads
+    assert result['ignored_legacy_objects']==1
+    assert all(key.startswith(PREFIX+OLD+'/') for key in store.deleted)
+
+
+def test_legacy_live_pointer_refuses_before_inventory_or_deletion():
+    from viewer_publication.archive_maintenance import maintain_releases
+    store,_=fixture();store.live=dict(release_id='filename-viewer-v4-old',previous_release_id=None)
+    with pytest.raises(ValueError):maintain_releases(store,now=NOW,execute=True)
+    assert store.list_calls==0 and store.deleted==[]
