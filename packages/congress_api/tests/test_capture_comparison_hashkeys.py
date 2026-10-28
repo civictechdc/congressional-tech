@@ -129,3 +129,25 @@ def test_former_equal_secondary_keys_still_never_normalize_null_facts(tmp_path,n
     assert report['secondary_duplicates']==0 and report['old_only']>=1 and report['owner_gate'] is True
     lost=pq.read_table(tmp_path/'comparison/old-only.parquet').to_pylist()
     assert any(row['reference_kind']=='file' and row[null_key] is None for row in lost)
+
+
+def test_new_only_proof_builds_only_ordinal_and_source_line_keys(tmp_path):
+    old,parts=batch_fixture(tmp_path)
+    native=NativeDatasets.from_config(os.environ['DOCSPEC_JOB_CONFIG'])
+    compare_old(parts,old,engine=native,work=tmp_path/'comparison')
+    spec=json.loads((tmp_path/'comparison/job.json').read_text())
+    work=tmp_path/'explain';work.mkdir()
+    physical=explain_step(spec,'new_only_proof',native=native,work=work)
+    lines=physical.splitlines()
+    joins=[line for line in lines if 'HashJoinExec:' in line]
+    assert len(joins)==2,physical
+    assert all('join_type=Right' in line and 'filter=' not in line for line in joins),physical
+    builds=[]
+    for join in joins:
+        leaves=[line for line in lines[lines.index(join)+1:]
+                if 'DataSourceExec:' in line or 'StreamingTableExec:' in line]
+        assert leaves,physical
+        builds.append(leaves[0])
+    assert any('projection=[old_source_key, old_source_line]' in line for line in builds),physical
+    assert any('projection=[proof_receipt_key, proof_receipt_line, proof_record_index, source_ordinal_occurrences]'
+               in line for line in builds),physical
