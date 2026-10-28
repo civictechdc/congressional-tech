@@ -47,7 +47,10 @@ def test_mutable_selectors_or_noncurrent_definitions_refuse_before_runtime(tmp_p
     else:value['unexpected_option']=True
     with pytest.raises(SystemExit) as error:main(['--spec',write_spec(tmp_path,value),'--execute'])
     assert error.value.code==2
-    assert any(word in capsys.readouterr().err for word in ['selector','current','unknown'])
+    message=capsys.readouterr().err
+    expected={'mutable':'Native input selector requires exact metadata','old_parser':'Parser versions must match the current definitions',
+              'old_catalog':'Catalog version must match the current definition','unknown':'Model job has unknown fields'}
+    assert expected[change] in message
     assert not (tmp_path/'release').exists() and not (tmp_path/'model').exists()
 
 
@@ -57,7 +60,7 @@ def test_changed_local_pin_refuses_before_runtime_creation(tmp_path,capsys):
     for name in ['captures','readings','filename_readings']:
         path=Path(value[name]['path']);path.write_bytes(b'changed')
     with pytest.raises(SystemExit) as error:main(['--spec',write_spec(tmp_path,value),'--execute'])
-    assert error.value.code==2 and 'pin' in capsys.readouterr().err
+    assert error.value.code==2 and 'Pinned model input changed' in capsys.readouterr().err
     assert not (tmp_path/'release').exists() and not (tmp_path/'model').exists()
 
 
@@ -111,3 +114,11 @@ def test_model_cli_executes_real_raw_lake_fixture(tmp_path,capsys):
     detail=pq.read_table(tmp_path/'release/detail.parquet').to_pylist()
     assert len(listed)==len(detail)==1 and listed[0]['title']=='Retained CLI report'
     assert detail[0]['saved_body']==bytes.fromhex(digest) and detail[0]['saved_suffix']=='.gz'
+
+
+def test_existing_output_refuses_before_input_or_runtime_access(tmp_path,capsys):
+    from viewer_publication.archive_model_job import main
+    value=spec(tmp_path);Path(value['output']).mkdir()
+    with pytest.raises(SystemExit) as error:main(['--spec',write_spec(tmp_path,value),'--execute'])
+    assert error.value.code==2 and 'must be fresh' in capsys.readouterr().err
+    assert not Path(value['scratch']).exists()
