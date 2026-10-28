@@ -7,14 +7,14 @@ from pathlib import Path
 import stat
 import shutil
 import zlib
-from contextlib import nullcontext
+import threading
 from itertools import islice
 from functools import lru_cache
 
 from congress_api.lake.tables import table_input
 from congress_api.retention.body_store import BodyStore, LocalAdapter, validate_key
 from congress_api.retention.body_keys import body_object_digest
-from congress_api.retention.parser_worker import ParserWorker, reading_input
+from congress_api.retention.parser_worker import ParserWorker, ParserWorkerPool, reading_input
 from congress_api.retention.provenance import (field, instant, json_input, list_of,
     parquet_output, parquet_records, run_job, struct, finish_stage, import_unreadable,
     imported_unreadable_provenance)
@@ -27,6 +27,7 @@ RAW_CACHE_BYTES=1<<30
 RAW_CACHE_CEILING=10<<30
 GZIP_RULE_FIELDS=tuple('gzip_rule'+str(n) for n in range(1,5))
 WORKER_MEMORY_BYTES=512<<20
+PARSER_MEMORY_BYTES=10<<30
 WORKER_TIMEOUT_SECONDS=15
 LINK_FIELDS=('href','text','tag','basis','group_path','doc_type','add_date','publish_date','remove_date')
 STRINGS=('parser','parser_version','status','error_type','format','xml_root','title','heading',
@@ -347,20 +348,25 @@ def plan(*,captures,body_inventory,local_root,engine,work,decided_at,parser,
 
 
 def stage(*,worker_factory=ParserWorker,unreadable_store=None,body_store=None,
-          max_cache_bytes=RAW_CACHE_BYTES,max_get_workers=64,**kwargs):
+          max_cache_bytes=RAW_CACHE_BYTES,max_get_workers=64,
+          parser_workers=1,parser_memory_bytes=PARSER_MEMORY_BYTES,**kwargs):
     """Use the same admitted plan for legacy single-parser and combined staging."""
     _raw_policy(body_store,max_cache_bytes,max_get_workers)
+    ParserWorkerPool.validate_budget(parser_workers,parser_memory_bytes,WORKER_MEMORY_BYTES)
     if kwargs.get('raw_ranges') and body_store is None:raise ValueError('Ranged staging requires the maintained raw store')
     if body_store is not None:kwargs['raw_ranges']=True
     planned=plan(**kwargs)
     return _execute_plan(planned,engine=kwargs['engine'],worker_factory=worker_factory,
                          unreadable_store=unreadable_store,body_store=body_store,
-                         max_cache_bytes=max_cache_bytes,max_get_workers=max_get_workers)
+                         max_cache_bytes=max_cache_bytes,max_get_workers=max_get_workers,
+                         parser_workers=parser_workers,parser_memory_bytes=parser_memory_bytes)
 
 
 def _execute_plan(planned,*,engine,worker_factory=ParserWorker,unreadable_store=None,
-                  work=None,items=None,worker=None,work_items=None,body_store=None,
-                  cache_root=None,max_cache_bytes=RAW_CACHE_BYTES,max_get_workers=64):
+                  work=None,items=None,work_items=None,body_store=None,
+                  cache_root=None,max_cache_bytes=RAW_CACHE_BYTES,max_get_workers=64,
+                  parser_workers=1,parser_memory_bytes=PARSER_MEMORY_BYTES):
+    ParserWorkerPool.validate_budget(parser_workers,parser_memory_bytes,WORKER_MEMORY_BYTES)
     parser=planned['parser'];version=planned['parser_version'];combined=parser=='readings'
     versions=planned['versions'];limits=planned['limits'];raw=planned['local_root']
     decided_at=planned['decided_at']
@@ -383,17 +389,22 @@ def _execute_plan(planned,*,engine,worker_factory=ParserWorker,unreadable_store=
         if cache_use['prefetched']*2+cache_use['reserve']>max_cache_bytes:
             raise ValueError('Ranged page prefetch exceeds the cache budget')
         pins={item['physical_key']:dict(etag=item['conditional_etag'],md5=item['stored_md5'],bytes=item['captured_stored_bytes']) for item in candidates}
-        body_store.prefetch_immutable(list(pins),expected=pins,max_workers=max_get_workers)
         prefetched={item['body_sha'].hex():body_store._immutable_cache_path(item['physical_key']) for item in candidates}
-        cache_use['actual']=sum(_cache_file_bytes(path) for path in prefetched.values())
+    quota=(max_cache_bytes-2*cache_use['prefetched']-cache_use['reserve'])//parser_workers
+    local=threading.local()
     parsed=work/'parsed';parsed.mkdir()
     decisions_path=parsed/'unreadable.jsonl'
     counters=dict(pending_reads=0,read_bytes=0,unreadable=0,ambiguous_gzip=0,**dict.fromkeys(GZIP_RULE_FIELDS,0))
-    def rows():
-        context=(nullcontext(worker) if worker is not None else worker_factory(parser,version,
-            'congress_api.lake.readings:'+('parse_once_payload' if combined or body_store is not None else 'parse_payload'),**limits))
-        with context as active_worker,decisions_path.open('x') as decisions:
-            for item in items:
+    def jobs():
+        source=iter(items)
+        while window:=list(islice(source,4*parser_workers)):
+            if body_store is not None:
+                selected={item['physical_key']:pins[item['physical_key']] for item in window
+                    if item['body_sha'].hex() in prefetched}
+                body_store.prefetch_immutable(list(selected),expected=selected,max_workers=max_get_workers)
+                cache_use['actual']+=sum(_cache_file_bytes(prefetched[item['body_sha'].hex()])
+                    for item in window if item['body_sha'].hex() in prefetched)
+            for item in window:
                 if item['physical_key'] is None:
                     counters['pending_reads']+=1;continue
                 validate_key(item['physical_key'])
@@ -406,64 +417,80 @@ def _execute_plan(planned,*,engine,worker_factory=ParserWorker,unreadable_store=
                 if body_object_digest(item['physical_key'])!=body_hex:
                     raise ValueError('Pinned physical key names a different body')
                 cache=work/'body-bytes'/body_hex if combined or body_store is not None else None
-                try:
-                    if not combined and parser!='sniff' and item['stored_bytes']>MAX_STORED_BYTES:
-                        value=dict(status='size_limit',error_type='stored_size_limit')
-                        if body_store is not None:value=[value]
-                    else:
-                        payload=json.dumps(dict(path=str(path),body_sha=body_hex,parser=parser,stored_bytes=item['stored_bytes'],
-                            stored_gzip=item['stored_gzip']),separators=(',',':')).encode()
-                        if combined or body_store is not None:
-                            payload=json.dumps(dict(path=str(path),body_sha=body_hex,cache=str(cache),stored_bytes=item['stored_bytes'],
-                                stored_gzip=item['stored_gzip'],versions=versions,
-                                known_format=item['known_format'] if combined else None if parser=='sniff' else parser,
-                                skip_parsers=sorted(set(item.get('skip_parsers') or []) |
-                                    ({'sniff'} if item.get('known_format') is not None else set()) |
-                                    (set(versions)-{parser} if not combined else set()))),separators=(',',':')).encode()
-                            if body_store is not None:
-                                request=json.loads(payload)
-                                request['original_bytes']=item['captured_bytes']
-                                request['max_read_bytes']=max_cache_bytes-cache_use['prefetched']-cache_use['ranges']-cache_use['reserve']
-                                if body_hex in prefetched:request.update(path=str(prefetched[body_hex]),prefetched=True)
-                                else:request['remote']=dict(bucket=body_store.bucket,key=item['physical_key'],
-                                    etag=item['conditional_etag'],md5=item['stored_md5'])
-                                payload=json.dumps(request,separators=(',',':')).encode()
-                        outcome=active_worker.parse(body_hex,payload)
-                        if outcome['status']=='read_error':
-                            counters['pending_reads']+=1;continue
-                        if outcome['status']=='unreadable':
-                            identity=json.dumps([body_hex,parser,version,decided_at],separators=(',',':'))
-                            record=dict(id=sha256(identity.encode()).hexdigest(),body_sha256=body_hex,
-                                parser=parser,parser_version=version,reason=outcome['reason'],
-                                decided_by='readings',decided_at=decided_at,supersedes=None)
-                            encoded=json.dumps(record,separators=(',',':'))+'\n'
-                            decisions.write(encoded)
-                            counters['unreadable']+=1;continue
-                        if outcome['status']!='completed':raise ValueError('Invalid reading worker outcome')
-                        response=outcome['value'];counters['read_bytes']+=response.get('read_bytes',0)
-                        rule=response.get('gzip_rule')
-                        if type(rule) is int and 1<=rule<=4:counters['gzip_rule'+str(rule)]+=1
-                        if response.get('read_error'):
-                            counters['ambiguous_gzip']+=int(response.get('ambiguous_gzip',False))
-                            counters['pending_reads']+=1;continue
-                        value=response.get('rows') if combined or body_store is not None else response['row']
-                    values=value if combined or body_store is not None else [value]
-                    if body_store is not None and values:
-                        cleanup.append(str(cache))
-                        if body_hex in prefetched:cleanup.append(str(prefetched[body_hex]))
-                    for value in values:
-                        value=dict(value,body_hex=body_hex,parser=value.get('parser',parser),parser_version=value.get('parser_version',version),
-                            fingerprint_hex=value.get('fingerprint'),named_meetings=value.get('named_meetings',[]),
-                            links=value.get('links',[]),fields=value.get('fields',[]))
-                        value.pop('fingerprint',None)
-                        yield value
-                finally:
-                    if cache is not None and cache.exists():
-                        if body_store is None:shutil.rmtree(cache)
-                        else:
-                            files=[p for p in cache.iterdir() if p.is_file()]
-                            cache_use['ranges']+=sum(p.stat().st_size for p in files if p.name!='identity.json')
-                            cache_use['actual']+=sum(_cache_file_bytes(p) for p in files)
+                request=dict(path=str(path),body_sha=body_hex,parser=parser,stored_bytes=item['stored_bytes'],
+                    stored_gzip=item['stored_gzip'])
+                if combined or body_store is not None:
+                    request.update(cache=str(cache),versions=versions,
+                        known_format=item['known_format'] if combined else None if parser=='sniff' else parser,
+                        skip_parsers=sorted(set(item.get('skip_parsers') or []) |
+                            ({'sniff'} if item.get('known_format') is not None else set()) |
+                            (set(versions)-{parser} if not combined else set())))
+                    if body_store is not None:
+                        request['original_bytes']=item['captured_bytes']
+                        if body_hex in prefetched:request.update(path=str(prefetched[body_hex]),prefetched=True)
+                        else:request['remote']=dict(bucket=body_store.bucket,key=item['physical_key'],
+                            etag=item['conditional_etag'],md5=item['stored_md5'])
+                yield body_hex,cache,request
+
+    def invoke(worker,job):
+        body_hex,cache,request=job
+        actual=ranges=0
+        try:
+            if not combined and parser!='sniff' and request['stored_bytes']>MAX_STORED_BYTES:
+                value=dict(status='size_limit',error_type='stored_size_limit')
+                value=dict(rows=[value]) if body_store is not None else dict(row=value)
+                outcome=dict(status='completed',value=value)
+            else:
+                if body_store is not None:
+                    remaining=quota-getattr(local,'spent',0)
+                    # Whole-page bytes and their local range copies are already
+                    # reserved by the actual-size preflight, twice, for this batch.
+                    request['max_read_bytes']=request['stored_bytes'] if request.get('prefetched') else max(0,remaining)
+                outcome=worker.parse(body_hex,json.dumps(request,separators=(',',':')).encode())
+        finally:
+            if cache is not None and cache.exists():
+                if body_store is None:shutil.rmtree(cache)
+                else:
+                    files=[p for p in cache.iterdir() if p.is_file()]
+                    actual=sum(_cache_file_bytes(p) for p in files)
+                    ranges=sum(_cache_file_bytes(p) for p in files if p.name!='identity.json')
+                    if not request.get('prefetched'):local.spent=getattr(local,'spent',0)+ranges
+        return body_hex,cache,outcome,actual,ranges
+
+    def rows():
+        with ParserWorkerPool(parser,version,
+                'congress_api.lake.readings:'+('parse_once_payload' if combined or body_store is not None else 'parse_payload'),
+                workers=parser_workers,memory_budget=parser_memory_bytes,worker_factory=worker_factory,**limits) as pool,decisions_path.open('x') as decisions:
+            for body_hex,cache,outcome,actual,ranges in pool.map(invoke,jobs()):
+                cache_use['actual']+=actual;cache_use['ranges']+=ranges
+                if outcome['status']=='read_error':
+                    counters['pending_reads']+=1;continue
+                if outcome['status']=='unreadable':
+                    identity=json.dumps([body_hex,parser,version,decided_at],separators=(',',':'))
+                    record=dict(id=sha256(identity.encode()).hexdigest(),body_sha256=body_hex,
+                        parser=parser,parser_version=version,reason=outcome['reason'],
+                        decided_by='readings',decided_at=decided_at,supersedes=None)
+                    encoded=json.dumps(record,separators=(',',':'))+'\n'
+                    decisions.write(encoded)
+                    counters['unreadable']+=1;continue
+                if outcome['status']!='completed':raise ValueError('Invalid reading worker outcome')
+                response=outcome['value'];counters['read_bytes']+=response.get('read_bytes',0)
+                rule=response.get('gzip_rule')
+                if type(rule) is int and 1<=rule<=4:counters['gzip_rule'+str(rule)]+=1
+                if response.get('read_error'):
+                    counters['ambiguous_gzip']+=int(response.get('ambiguous_gzip',False))
+                    counters['pending_reads']+=1;continue
+                value=response.get('rows') if combined or body_store is not None else response['row']
+                values=value if combined or body_store is not None else [value]
+                if body_store is not None and values:
+                    cleanup.append(str(cache))
+                    if body_hex in prefetched:cleanup.append(str(prefetched[body_hex]))
+                for value in values:
+                    value=dict(value,body_hex=body_hex,parser=value.get('parser',parser),parser_version=value.get('parser_version',version),
+                        fingerprint_hex=value.get('fingerprint'),named_meetings=value.get('named_meetings',[]),
+                        links=value.get('links',[]),fields=value.get('fields',[]))
+                    value.pop('fingerprint',None)
+                    yield value
     source=json_input(parsed,'parsed_readings',rows(),**_reading_fields())
     columns=["arrow_cast(decode(body_hex,'hex'),'FixedSizeBinary(32)') AS body_sha",
              *[f'cast({name} AS DATE) AS {name}' if name=='content_date' else name for name in STRINGS],
@@ -537,17 +564,19 @@ def append(staged,**kwargs):
 def run(*,engine,work,mode,execute=False,max_work_items=None,batch_size=None,parser=None,
         table=None,catalog_root=None,read_current=None,existing=None,
         unreadable_store=None,read_unreadable=None,unreadable_snapshot=None,worker_factory=ParserWorker,
-        body_store=None,raw_ranges=False,max_cache_bytes=RAW_CACHE_BYTES,max_get_workers=64,**inputs):
+        body_store=None,raw_ranges=False,max_cache_bytes=RAW_CACHE_BYTES,max_get_workers=64,
+        parser_workers=1,parser_memory_bytes=PARSER_MEMORY_BYTES,**inputs):
     """Admit one plan; execute daily once, or stream bounded backfill batches.
 
     The native anti-join runs once per invocation. The sorted metadata work list
-    is consumed once, O(N), with one persistent worker. Resuming means a fresh
+    is consumed once, O(N), with bounded persistent workers per batch. Resuming means a fresh
     current-table read and anti-join, never a local journal or stale saved plan.
     """
     if mode not in {'daily','backfill'}:raise ValueError('mode must be daily or backfill')
     if type(execute) is not bool:raise ValueError('execute must be boolean')
     if type(raw_ranges) is not bool:raise ValueError('raw_ranges must be an explicit boolean')
     _raw_policy(body_store,max_cache_bytes,max_get_workers)
+    ParserWorkerPool.validate_budget(parser_workers,parser_memory_bytes,WORKER_MEMORY_BYTES)
     raw_ranges=raw_ranges or body_store is not None
     if execute and raw_ranges and body_store is None:raise ValueError('Ranged execution requires the maintained raw store')
     if mode=='daily':
@@ -601,25 +630,23 @@ def run(*,engine,work,mode,execute=False,max_work_items=None,batch_size=None,par
     if planned['work_items']==0:return report
     size=planned['work_items'] if mode=='daily' else batch_size
     items=iter(parquet_records(planned['work_list']))
-    callable_name='parse_once_payload' if parser is None or body_store is not None else 'parse_payload'
     retained_cache=0
-    with worker_factory(planned['parser'],planned['parser_version'],
-            'congress_api.lake.readings:'+callable_name,**planned['limits']) as worker:
-        for number,start in enumerate(range(0,planned['work_items'],size)):
-            count=min(size,planned['work_items']-start)
-            batch_work=work/('batch-'+str(number).zfill(6))
-            staged=_execute_plan(planned,engine=engine,work=batch_work,
-                items=islice(items,count),worker=worker,work_items=count,
-                unreadable_store=unreadable_store,body_store=body_store,cache_root=work,
-                max_cache_bytes=max_cache_bytes-retained_cache,max_get_workers=max_get_workers)
-            import pyarrow.parquet as pq
-            staged['append']=(append(staged,engine=engine,work=batch_work/'append',
-                catalog_root=catalog_root,table=table) if pq.ParquetFile(staged['readings']).metadata.num_rows else None)
-            if body_store is not None:
-                retained_cache+=_clean_committed_cache(staged) if staged['append'] is not None else staged['cache_bytes']
-            report['batches'].append(staged)
-            report['applied']|=staged['append'] is not None
-            for key in ('pending_reads','read_bytes','unreadable','ambiguous_gzip')+GZIP_RULE_FIELDS:report[key]+=staged[key]
+    for number,start in enumerate(range(0,planned['work_items'],size)):
+        count=min(size,planned['work_items']-start)
+        batch_work=work/('batch-'+str(number).zfill(6))
+        staged=_execute_plan(planned,engine=engine,work=batch_work,
+            items=islice(items,count),worker_factory=worker_factory,work_items=count,
+            unreadable_store=unreadable_store,body_store=body_store,cache_root=work,
+            max_cache_bytes=max_cache_bytes-retained_cache,max_get_workers=max_get_workers,
+            parser_workers=parser_workers,parser_memory_bytes=parser_memory_bytes)
+        import pyarrow.parquet as pq
+        staged['append']=(append(staged,engine=engine,work=batch_work/'append',
+            catalog_root=catalog_root,table=table) if pq.ParquetFile(staged['readings']).metadata.num_rows else None)
+        if body_store is not None:
+            retained_cache+=_clean_committed_cache(staged) if staged['append'] is not None else staged['cache_bytes']
+        report['batches'].append(staged)
+        report['applied']|=staged['append'] is not None
+        for key in ('pending_reads','read_bytes','unreadable','ambiguous_gzip')+GZIP_RULE_FIELDS:report[key]+=staged[key]
     if report['pending_reads']:report['status']='pending'
     return report
 

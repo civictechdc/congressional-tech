@@ -25,7 +25,11 @@ def main(argv=None,*,read_current=None,body_store=None):
     parser.add_argument('--body-listing',type=Path,help='Complete native key/size/etag listing for exact-key custody fallback')
     parser.add_argument('--raw-cache-bytes',type=int,help='Per-run body cache bound, at most10GiB (default1GiB)')
     parser.add_argument('--raw-get-workers',type=int,help='Concurrent page-prefetch GETs,1–64 (default64)')
+    parser.add_argument('--parser-workers',type=int,default=16,
+                        help='Persistent supervised parsers per batch,1–32 (default16); bounded by native memory limits')
     args=parser.parse_args(argv)
+    try:readings.ParserWorkerPool.validate_budget(args.parser_workers,32*readings.WORKER_MEMORY_BYTES,readings.WORKER_MEMORY_BYTES)
+    except ValueError as error:parser.error(str(error))
     if not args.engine_config:
         parser.error('An explicit pinned engine configuration is required')
     modern=args.plan or args.execute
@@ -65,14 +69,19 @@ def main(argv=None,*,read_current=None,body_store=None):
         parser.error('Apply requires an explicit local catalog_root and table identifier')
     if modern and (args.execute or args.mode=='backfill') and apply is None:
         parser.error('Execution and backfill planning require an explicit apply table authority')
-    if args.raw_bucket and args.execute and body_store is None:
-        from congress_api.retention.r2 import R2Store
-        from congress_shared.storage import R2Config,connect_r2
-        body_store=R2Store(connect_r2(R2Config.from_env(bucket=args.raw_bucket,max_pool_connections=get_workers)),
-            args.raw_bucket,cache_dir=Path(spec['work'])/'raw-pages')
     with NativeDatasets.from_config(args.engine_config) as engine:
         if engine.remote is not None:
             parser.error('This local readings command requires a local-only engine configuration')
+        if engine.limits is None:
+            parser.error('Parser workers require an explicit pinned native memory limit')
+        parser_memory_bytes=json.loads(engine.limits.read_text()).get('memory_bytes')
+        try:readings.ParserWorkerPool.validate_budget(args.parser_workers,parser_memory_bytes,readings.WORKER_MEMORY_BYTES)
+        except ValueError as error:parser.error(str(error))
+        if args.raw_bucket and args.execute and body_store is None:
+            from congress_api.retention.r2 import R2Store
+            from congress_shared.storage import R2Config,connect_r2
+            body_store=R2Store(connect_r2(R2Config.from_env(bucket=args.raw_bucket,max_pool_connections=get_workers)),
+                args.raw_bucket,cache_dir=Path(spec['work'])/'raw-pages')
         if modern:
             try:
                 result=readings.run(**spec,engine=engine,mode=args.mode,execute=args.execute,
@@ -82,12 +91,14 @@ def main(argv=None,*,read_current=None,body_store=None):
                         if args.execute and body_store is not None else None,
                     body_store=body_store if args.execute else None,raw_ranges=args.raw_bucket is not None,
                     body_listing=args.body_listing,
-                    max_cache_bytes=cache_bytes,max_get_workers=get_workers,read_current=read_current,**(apply or {}))
+                    max_cache_bytes=cache_bytes,max_get_workers=get_workers,
+                    parser_workers=args.parser_workers,parser_memory_bytes=parser_memory_bytes,
+                    read_current=read_current,**(apply or {}))
             except (readings.BackfillRequired,readings.RawCustodyRequired) as error:
                 print(json.dumps(error.as_dict(),default=str,sort_keys=True))
                 return 2
         else:
-            result=readings.stage(**spec,engine=engine)
+            result=readings.stage(**spec,engine=engine,parser_workers=args.parser_workers,parser_memory_bytes=parser_memory_bytes)
             if apply is not None:
                 result['append']=readings.append(result,engine=engine,
                     work=Path(spec['work'])/'append',**apply)
