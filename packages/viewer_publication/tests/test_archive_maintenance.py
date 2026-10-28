@@ -2,6 +2,7 @@
 from copy import deepcopy
 from datetime import datetime,timedelta,timezone
 import json
+from uuid import NAMESPACE_URL,uuid5
 
 import pytest
 
@@ -33,8 +34,16 @@ class Store:
 
 def add_input(store,release,identity):
     keys=['receipts/documents/'+identity+'.jsonl.gz']
-    record=dict(profile={'model':identity},provenance=[],entity_digests={},
-        snapshots={'captures':{'table_uuid':identity,'snapshot':1}})
+    from viewer_publication.archive_model_profile import profile_record
+    snapshots={name:dict(kind='native_table',name=name,
+        metadata_location='s3://fixture-lake/'+identity+'/'+name+'/metadata/00001.json',
+        table_uuid=str(uuid5(NAMESPACE_URL,identity+'/'+name)),snapshot=1,schema_id=0)
+        for name in ['captures','readings','filename_readings']}
+    profile=profile_record(parser_versions={name:'fixture-'+identity for name in ['sniff','html','xml','json']},
+        catalog_version='fixture-catalog',engine_revision='a'*40,runtime_pins={'platform':'fixture'},
+        lake_versions={name:{'schema_sha256':'b'*64} for name in snapshots},
+        writer_settings={'whole':{'compression':'zstd'}},snapshots=snapshots,file_hashes={'fixture.sql':'c'*64})['profile']
+    record=dict(profile=profile,provenance=[],entity_digests={},snapshots=snapshots)
     record['input_digest']=input_digest(receipt_keys=keys,**{k:record[k] for k in ['profile','provenance','entity_digests']})
     return write_input_receipts(store,release,record['input_digest'],record,keys)
 
@@ -136,3 +145,65 @@ def test_legacy_live_pointer_refuses_before_inventory_or_deletion():
     store,_=fixture();store.live=dict(release_id='filename-viewer-v4-old',previous_release_id=None)
     with pytest.raises(ValueError):maintain_releases(store,now=NOW,execute=True)
     assert store.list_calls==0 and store.deleted==[]
+
+
+@pytest.mark.parametrize('failure',['missing_snapshots','empty_snapshots','incomplete_tables','unknown_tables',
+    'native_uuid','native_schema','native_snapshot','native_metadata','wrong_name','parquet_digest',
+    'missing_profile','profile_field','profile_file_hashes','profile_null_file_hashes'])
+def test_unusable_kept_model_pins_refuse_before_deletes_or_purge_evidence(failure):
+    from viewer_publication.archive_maintenance import maintain_releases
+    store,_=fixture()
+    key=next(key for key in store.objects if key.startswith(PREFIX+LIVE+'/inputs/') and key.endswith('.json'))
+    record=json.loads(store.objects[key])
+    if failure=='missing_snapshots':del record['snapshots']
+    elif failure=='empty_snapshots':record['snapshots']={}
+    elif failure=='incomplete_tables':del record['snapshots']['filename_readings']
+    elif failure=='unknown_tables':record['snapshots']['unrecognized']=record['snapshots']['captures']
+    elif failure=='native_uuid':record['snapshots']['captures']['table_uuid']='invalid'
+    elif failure=='native_schema':del record['snapshots']['readings']['schema_id']
+    elif failure=='native_snapshot':record['snapshots']['captures']['snapshot']='latest'
+    elif failure=='native_metadata':record['snapshots']['captures']['metadata_location']=''
+    elif failure=='wrong_name':record['snapshots']['readings']['name']='captures'
+    elif failure=='parquet_digest':record['snapshots']['captures']=dict(kind='parquet',path='/not-opened/table.parquet',sha256='bad',size=1)
+    elif failure=='missing_profile':del record['profile']
+    elif failure=='profile_field':del record['profile']['runtime_pins']
+    elif failure=='profile_file_hashes':record['profile']['file_hashes']={}
+    else:record['profile']['file_hashes']=None
+    if 'profile' in record:
+        # Profiles are semantic: keep the mutated record's digest self-consistent,
+        # so shape checks rather than a stale digest must protect the purge seam.
+        from viewer_publication.receipt_pins import read_receipt_list
+        keys=read_receipt_list(record['receipt_keys_sha256'],store.objects[
+            PREFIX+LIVE+'/inputs/receipts/'+record['receipt_keys_sha256']+'.json.gz'])
+        record['input_digest']=input_digest(receipt_keys=keys,**{k:record[k] for k in ['profile','provenance','entity_digests']})
+        key=PREFIX+LIVE+'/inputs/'+record['input_digest']+'.json'
+    store.create(key,json.dumps(record).encode())
+    for execute in [False,True]:
+        with pytest.raises(ValueError):maintain_releases(store,now=NOW,external_pins=[PINNED],execute=execute)
+        assert store.deleted==[]
+
+
+def test_every_historical_kept_native_selector_protects_its_generation(tmp_path):
+    from congress_api.lake.maintenance import PIN_FIELDS,purge_generation
+    from viewer_publication.archive_maintenance import maintain_releases
+    store,records=fixture();result=maintain_releases(store,now=NOW,external_pins=[PINNED])
+    for record in records:
+        for selector in record['snapshots'].values():
+            selected={key:selector[key] for key in PIN_FIELDS}
+            with pytest.raises(ValueError,match='kept release pins'):
+                purge_generation(selected,table='fixture_generation',kept_inputs=result['kept_inputs'],
+                    engine=object(),work=tmp_path/'not-created',catalog_root='/not-opened')
+    assert not (tmp_path/'not-created').exists() and store.deleted==[]
+
+
+def test_valid_kept_parquet_selectors_require_no_local_payload_reads():
+    from viewer_publication.archive_maintenance import maintain_releases
+    store,_=fixture()
+    for key in list(store.objects):
+        if '/inputs/' in key and key.endswith('.json'):
+            record=json.loads(store.objects[key]);record['snapshots']={name:dict(kind='parquet',
+                path='/not-opened/'+name+'.parquet',sha256='a'*64,size=17)
+                for name in ['captures','readings','filename_readings']}
+            store.objects[key]=json.dumps(record).encode()
+    result=maintain_releases(store,now=NOW,external_pins=[PINNED])
+    assert len(result['kept_inputs'])==4 and store.deleted==[]

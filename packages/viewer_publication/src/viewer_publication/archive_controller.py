@@ -8,7 +8,7 @@ from congress_api.retention.provenance import file_pin,run_job
 from viewer_publication.archive_model import (
     prepare_model_inputs,build_prepared_release,admission_checks,input_receipts_query,
 )
-from viewer_publication.archive_model_job import model_arguments,provenance_etag_md5,PROVENANCE
+from viewer_publication.archive_model_job import model_arguments,provenance_record_kind,PROVENANCE
 from viewer_publication.archive_publish import (
     NativeArchiveStore,input_digest,matching_live_input,publish_candidate,read_pointer,write_status,
 )
@@ -48,14 +48,15 @@ def _provenance_snapshot(client,bucket,expected):
         page=client.list_objects_v2(**request)
         for item in page.get('Contents',[]):
             key,etag=item['Key'],item['ETag']
-            if not isinstance(key,str) or not key.startswith('provenance/') or key in actual:
+            if (not isinstance(key,str) or not key.startswith('provenance/') or key in actual
+                    or not isinstance(etag,str) or not etag.strip()):
                 raise ValueError('Invalid current provenance inventory')
             actual[key]=etag
         if not page.get('IsTruncated'):break
         next_token=page.get('NextContinuationToken')
         if not next_token or next_token==token:raise ValueError('Current provenance listing did not advance')
         token=next_token
-    if set(actual)!=set(pinned) or any(provenance_etag_md5(actual[key])!=provenance_etag_md5(pinned[key]) for key in actual):
+    if set(actual)!=set(pinned) or any(actual[key]!=pinned[key] for key in actual):
         raise ValueError('Pinned provenance differs from the current immutable raw inventory')
     return [dict(key=key,etag=actual[key]) for key in sorted(actual)]
 
@@ -82,14 +83,15 @@ def run_publish(model_spec,*,client,engine,bucket,work,receipt_keys,provenance,r
     keys=sorted(set(receipt_keys))
     if not isinstance(run,dict) or not run:raise ValueError('Publication requires explicit run metadata')
     pinned={item['key'] for item in provenance}
+    records={key for key in pinned if provenance_record_kind(key) is not None}
     selected=[item['key'] for name in PROVENANCE for item in model_spec[name]]
-    if len(selected)!=len(set(selected)) or set(selected)!=pinned:
-        raise ValueError('Publication provenance set must equal the actual model input set')
+    if len(selected)!=len(set(selected)) or set(selected)!=records:
+        raise ValueError('Publication provenance records must equal the actual model input set')
     work=Path(work).resolve();work.mkdir(parents=True,exist_ok=False)
     status=dict(status='failed',input_digest=None,live_release=None,live_release_basis='unknown',rows={},bytes=0)
     started=perf_counter();delegate=False;storage_ready=False;failure=None
     try:
-        with model_arguments(model_spec,provenance_etags={item['key']:item['etag'] for item in provenance}) as arguments:
+        with model_arguments(model_spec,provenance_etags={item['key']:item['etag'] for item in provenance if item['key'] in records}) as arguments:
             engine.verify_runtime()
             storage_ready=True
             provenance=_provenance_snapshot(client,bucket,provenance)

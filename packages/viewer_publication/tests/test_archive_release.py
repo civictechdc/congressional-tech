@@ -36,7 +36,7 @@ def checked_manifest(root, manifest):
 
 
 def test_hand_release_covers_the_reader_outcomes(engine, tmp_path):
-    from viewer_publication.archive_release import build_fixture_release
+    from viewer_publication.archive_fixture import build_fixture_release
 
     fixture = ROOT / 'model/fixtures/hand-release.json'
     expected = json.loads(fixture.read_text())['expected']
