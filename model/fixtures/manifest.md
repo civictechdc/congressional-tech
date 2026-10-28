@@ -103,6 +103,8 @@ D1 line kinds: `receipt-line-kinds.json` supplies one expected outcome per enume
 
 D1 audit regressions: direct `pointer`, serialized `pointer_json`, numeric-string prefix and both-field forms select the referenced list item before coverage; two references to items1/2 of three yield exactly those bodies plus one bodiless item0. Every explicit failure dictionary translation remains failed even with HTTP202 and a complete body; none passes the actual good-fetch SQL. The independent counter expects the same grain. The comparator refuses a claimed restored item already named by a primary pointer even if a buggy producer reports a different selected index.
 
+D2 parser pool: two workers execute concurrently while the producer consumes at most four times the worker count before the first result; result order matches input order. Invalid worker counts or aggregate memory refuse before allocation. A task failure preserves its error and closes every started supervisor. Producer fixtures will keep unreadable decisions and counters on the main thread and preserve actual-size cache refusal.
+
 ## References
 
 **[IMPLEMENTATION-PLAN]**
