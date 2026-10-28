@@ -188,6 +188,7 @@ def _seed_queries(spec):
         (SELECT count(*) FROM seed_members) AS included,(SELECT count(*) FROM seed_source_status WHERE exclusion_reason IS NOT NULL) AS excluded""")
     source_examples=dict(name='seed_source_exclusion_examples',sql="SELECT * FROM seed_source_status WHERE exclusion_reason IS NOT NULL ORDER BY legacy_document_id,legacy_source_id LIMIT 10")
     mapping=dict(name='seed_mapping_choices',sql="""SELECT count(*) FILTER(WHERE filename_candidates>1) AS multiple_filename_candidates,
+        (SELECT count(*) FROM seed_source_status WHERE seed_source_filename_from_document) AS seed_source_filename_from_document,
         count(*) FILTER(WHERE raw_filename IS NULL AND filename IS NOT NULL) AS repaired_filenames,
         count(*) FILTER(WHERE raw_format IS NULL AND format IS NOT NULL) AS repaired_formats,
         count(*) FILTER(WHERE filename IS NULL OR trim(filename)='') AS missing_filenames,
