@@ -251,3 +251,22 @@ def test_daily_r2_decision_store_accepts_complete_qualified_snapshot_without_lis
     with pytest.raises(ValueError,match='table does not exist'):
         produce_daily(spec,engine=MissingNative(),raw_store=BodyStore(R2Adapter(client,'bucket')))
     assert len(jobs)==1 and not client.list_calls and not client.get_calls and not client.head_calls
+
+
+def test_oversized_unreadable_import_refuses_before_put_or_acknowledgment(tmp_path):
+    from congress_api.retention.provenance import import_unreadable
+    from congress_api.retention.provenance_inventory import MAX_OBJECT_BYTES
+    source=tmp_path/'oversized.jsonl'
+    # Valid input exceeds the supported next-run inventory bound. Build its
+    # padding in chunks so the fixture itself needs no oversized allocation.
+    with source.open('wb') as out:
+        out.write(b'{"id":"')
+        for _ in range(MAX_OBJECT_BYTES//65536):out.write(b'x'*65536)
+        out.write(b'","body_sha256":"'+b'a'*64+b'","parser":"readings","parser_version":"v1",'
+            b'"reason":"timeout","decided_by":"readings","decided_at":"2026-10-28T12:00:00Z",'
+            b'"supersedes":null}\n')
+    client=R2();store=BodyStore(R2Adapter(client,'bucket'))
+    with pytest.raises(ValueError,match='limit'):
+        import_unreadable(store,source,decided_at='2026-10-28T12:00:00Z',cache=tmp_path/'cache')
+    assert not client.put_calls and not client.get_calls and not client.head_calls
+    assert not store._provenance_acks and source.is_file()
