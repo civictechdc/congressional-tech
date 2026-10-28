@@ -48,7 +48,7 @@ def run_state(tmp_path,change=None):
     inputs.append(json_input(tmp_path,'resolved_links',links,target_url='Utf8',target_member_path='Utf8',page_body='Utf8',context_url='Utf8',member_path='Utf8'))
     inputs.append(json_input(tmp_path,'url_state_meeting_dates',[dict(requested_url=url,meeting_date='2026-10-10')],requested_url='Utf8',meeting_date='Utf8'))
     inputs.append(json_input(tmp_path,'url_variants',[],canonical_url='Utf8',variant_url='Utf8'))
-    steps=[dict(name='captures',sql="SELECT * EXCLUDE(body_hex,record_role),decode(body_hex,'hex') AS sha256 FROM fixture_captures"),
+    steps=[dict(name='captures',sql="SELECT * EXCLUDE(body_hex,record_role,retrieved_at),decode(body_hex,'hex') AS sha256,arrow_cast(cast(retrieved_at AS TIMESTAMP WITH TIME ZONE),'Timestamp(Microsecond, Some(\"UTC\"))') AS retrieved_at FROM fixture_captures"),
         dict(name='record_roles',sql='SELECT receipt_key,receipt_line,capture_index,record_role FROM fixture_captures'),
         dict(name='capture_evidence',sql='SELECT * FROM captures'),
         dict(name='good_fetches',sql=(ROOT/'model/sql/good-fetches.sql').read_text()),
