@@ -140,6 +140,19 @@ def make_plan(files,counts,*,byte_target,item_target):
         expected_captures=sum(row['expected_captures'] for row in metrics.values()),batches=batches)
 
 
+def _allocated_bytes(root,*,scan=os.scandir):
+    """Count the existing walk's allocated blocks without following symlinks."""
+    total=0;pending=[root] if root.exists() else []
+    while pending:
+        with scan(pending.pop()) as entries:
+            for entry in entries:
+                try:
+                    if entry.is_dir(follow_symlinks=False):pending.append(entry.path)
+                    else:total+=entry.stat(follow_symlinks=False).st_blocks*512
+                except FileNotFoundError:pass
+    return total
+
+
 def check_scratch(root,*outputs,min_free_bytes=15<<30):
     """Refuse unowned local outputs and resource exhaustion before an effect."""
     root=Path(root).resolve()
@@ -149,14 +162,7 @@ def check_scratch(root,*outputs,min_free_bytes=15<<30):
     while not existing.exists():existing=existing.parent
     if shutil.disk_usage(existing).free<min_free_bytes:
         raise RuntimeError('Free disk is below the backfill floor')
-    total=0;pending=[root] if root.exists() else []
-    while pending:
-        with os.scandir(pending.pop()) as entries:
-            for entry in entries:
-                try:
-                    if entry.is_dir(follow_symlinks=False):pending.append(entry.path)
-                    else:total+=entry.stat(follow_symlinks=False).st_blocks*512
-                except FileNotFoundError:pass
+    total=_allocated_bytes(root)
     if total>5<<30:raise RuntimeError('Owned backfill scratch exceeds 5GiB')
     return root
 
