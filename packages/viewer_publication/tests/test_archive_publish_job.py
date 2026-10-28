@@ -26,6 +26,151 @@ def invoke(tmp_path,value,*args):
     return main(['--spec',str(path),*args])
 
 
+def daily_report(tmp_path):
+    from archive_job_fixture import versions
+    parsers,catalog=versions()
+    pins={name:dict(metadata_location='s3://derived-fixture/lake/'+name+'/metadata/00001.json',
+        table_uuid='00000000-0000-4000-8000-000000000001',snapshot=i+1,schema_id=0)
+        for i,name in enumerate(['captures','readings','filename_readings'])}
+    row=dict(key='provenance/unreadable/new.jsonl',etag='a'*32,path=str(tmp_path/'checked.jsonl'),sha256='b'*64,size=17)
+    return dict(status='completed',pins=pins,receipt_keys=['receipts/a.jsonl.gz','receipts/old.jsonl.gz'],
+        new_receipt_keys=['receipts/a.jsonl.gz'],currentversions=dict(parsers=parsers,filename_readings=catalog),
+        provenance=dict(recoveries=[],reviews=[],unreadable=[row])),[row]
+
+
+def with_daily(tmp_path,value):
+    daily=tmp_path/'daily.json'
+    daily.write_text(json.dumps(dict(work=str(tmp_path/'daily-work'),catalog_root=None,
+        body_inventory=str(tmp_path/'body-inventory.parquet'),local_root=str(tmp_path/'raw'),
+        provenance={kind:[] for kind in ['recoveries','reviews','unreadable']})))
+    return dict(value,daily=dict(path=str(daily),**file_pin(daily)),receipt_keys=[],provenance=[])
+
+
+def test_daily_plan_checks_its_pinned_description_without_opening_raw_or_runtime(tmp_path,capsys):
+    value=with_daily(tmp_path,publish_spec(tmp_path))
+    assert invoke(tmp_path,value,'--plan')==0
+    plan=json.loads(capsys.readouterr().out)
+    assert plan['daily']==value['daily'] and plan['executed'] is False
+    assert not (tmp_path/'daily-work').exists() and not (tmp_path/'raw').exists()
+
+
+@pytest.mark.parametrize('change',['checksum','overlap','stale_receipts','stale_provenance','qualified_override'])
+def test_daily_description_refuses_before_runtime_or_storage(tmp_path,capsys,change):
+    value=with_daily(tmp_path,publish_spec(tmp_path));daily=json.loads(Path(value['daily']['path']).read_text())
+    if change=='checksum':value['daily']['sha256']='0'*64
+    elif change=='overlap':daily['work']=value['work']
+    elif change=='stale_receipts':value['receipt_keys']=['receipts/stale.jsonl.gz']
+    elif change=='stale_provenance':value['provenance']=[dict(key='provenance/backups/a.json',etag='opaque')]
+    elif change=='qualified_override':daily['provenance']['reviews']=[{'key':'provenance/reviews/stale.jsonl'}]
+    if change!='checksum':
+        Path(value['daily']['path']).write_text(json.dumps(daily))
+        value['daily']=dict(path=value['daily']['path'],**file_pin(value['daily']['path']))
+    with pytest.raises(SystemExit) as error:invoke(tmp_path,value,'--execute')
+    assert error.value.code==2
+    assert {'checksum':'checksum mismatch','overlap':'separate','stale_receipts':'Daily publication',
+            'stale_provenance':'Daily publication','qualified_override':'current raw inventory'}[change] in capsys.readouterr().err
+    assert not (tmp_path/'daily-work').exists() and not Path(value['work']).exists()
+
+
+def test_daily_handoff_uses_completed_heads_full_receipts_and_acknowledged_records(tmp_path):
+    from viewer_publication.archive_publish_job import completed_daily_inputs
+    from viewer_publication.archive_model_job import load_spec
+    template=model_spec(tmp_path);path=tmp_path/'template.json';path.write_text(json.dumps(template))
+    report,records=daily_report(tmp_path)
+    selected,receipts=completed_daily_inputs(load_spec(path),report,records)
+    assert receipts==report['receipt_keys'] and receipts!=report['new_receipt_keys']
+    for name,pin in report['pins'].items():assert selected[name]==dict(kind='native_table',**pin)
+    assert selected['unreadable_files']==[{k:v for k,v in records[0].items() if k!='etag'}]
+    assert selected['parser_versions']==report['currentversions']['parsers']
+    assert selected['catalog_version']==report['currentversions']['filename_readings']
+    assert template['captures']['kind']=='parquet' and not (tmp_path/'release').exists()
+    assert not Path(records[0]['path']).exists()  # Handoff consumes metadata only.
+
+
+@pytest.mark.parametrize('change',['pending','backfill_required','missing_pin','old_parser',
+                                  'receipt_delta','duplicate_record','backup','missing_ack'])
+def test_daily_handoff_refuses_incomplete_or_inconsistent_evidence(tmp_path,change):
+    from viewer_publication.archive_publish_job import completed_daily_inputs
+    from viewer_publication.archive_model_job import load_spec
+    template=model_spec(tmp_path);path=tmp_path/'template.json';path.write_text(json.dumps(template))
+    report,records=daily_report(tmp_path)
+    if change in {'pending','backfill_required'}:report['status']=change
+    elif change=='missing_pin':del report['pins']['readings']
+    elif change=='old_parser':report['currentversions']['parsers']['html']='old'
+    elif change=='receipt_delta':report['receipt_keys']=None
+    elif change=='duplicate_record':records.append(dict(records[0]))
+    elif change=='backup':records.append(dict(records[0],key='provenance/unreadable/accepted-backup.json'))
+    elif change=='missing_ack':records=[]
+    with pytest.raises(ValueError):completed_daily_inputs(load_spec(path),report,records)
+    assert not (tmp_path/'release').exists() and not (tmp_path/'publish').exists()
+
+
+def test_native_daily_inputs_feed_the_same_guarded_publisher(tmp_path):
+    from archive_job_fixture import real_model_spec,native_daily_spec
+    from docspec_client.client import NativeDatasets
+    from congress_api.retention.body_store import BodyStore,R2Adapter
+    from viewer_publication.archive_model_job import load_spec
+    from viewer_publication.archive_publish_job import produce_daily_inputs
+    from viewer_publication.archive_controller import run_publish
+    from test_archive_controller import Runtime
+    from test_archive_publish import Store
+    model,_,_=real_model_spec(tmp_path)
+    path=tmp_path/'template.json';path.write_text(json.dumps(model));model=load_spec(path)
+    class PaginatedStore(Store):
+        def get_paginator(self,operation):
+            assert operation=='list_objects_v2'
+            from types import SimpleNamespace
+            return SimpleNamespace(paginate=lambda **request:[self.list_objects_v2(**request)])
+    store=PaginatedStore();probes=[]
+    def probe(**context):
+        probes.append(context['release_id'])
+        return dict(status='passed',releaseId=context['release_id'],targets='measured')
+    with NativeDatasets.from_config(os.environ['DOCSPEC_JOB_CONFIG']) as native:
+        daily=native_daily_spec(tmp_path,model,native)
+        result=produce_daily_inputs(model,daily,engine=native,raw_store=BodyStore(R2Adapter(store,'derived-fixture')))
+        assert result['status']=='ready' and result['receipt_keys']==['receipts/documents/2026-10-27/slice.jsonl.gz']
+        assert all(result['model'][name]['kind']=='native_table' for name in ['captures','readings','filename_readings'])
+        published=run_publish(result['model'],client=store,engine=Runtime(native,store),bucket='derived-fixture',
+            work=tmp_path/'publish',receipt_keys=result['receipt_keys'],provenance=result['provenance'],
+            verified_files=result['verified_files'],run={'id':'daily'},public_origin='https://archive.fixture.test',
+            contract=probe,canary=probe)
+    assert published['status']=='published' and len(probes)==2
+    assert 'viewer-publications/manifest.json' in store.objects
+
+
+def test_daily_budget_refuses_before_raw_inventory_or_cache_effects(tmp_path):
+    from congress_api.retention.body_store import BodyStore,R2Adapter
+    from viewer_publication.archive_publish_job import produce_daily_inputs
+    class NeverStorage:
+        def get_paginator(self,*_):raise AssertionError('Raw LIST before budget admission')
+    class NeverNative:
+        remote=None
+        def run_job(self,*_):raise AssertionError('Native work before budget admission')
+    daily=dict(work=str(tmp_path/'daily'),decided_at='2026-10-28T12:00:00Z',catalog_root=str(tmp_path/'catalog'),
+        tables={name:dict(namespace=['archive'],name=name) for name in ['captures','readings','filename_readings']},
+        receipt_inventory=[],body_inventory=str(tmp_path/'unopened.parquet'),local_root=str(tmp_path/'raw'),
+        max_work_items=0,provenance={kind:[] for kind in ['recoveries','reviews','unreadable']})
+    with pytest.raises(ValueError,match='max_work_items'):
+        produce_daily_inputs(model_spec(tmp_path),daily,engine=NeverNative(),raw_store=BodyStore(R2Adapter(NeverStorage(),'bucket')))
+    assert not (tmp_path/'daily-provenance').exists() and not (tmp_path/'daily').exists()
+
+
+def test_daily_snapshot_supplies_custody_for_new_acknowledged_decisions(tmp_path):
+    from congress_api.retention.body_store import BodyStore,LocalAdapter
+    from congress_api.retention.provenance import import_unreadable,imported_unreadable_provenance
+    from congress_api.retention.provenance_inventory import provenance_inventory
+    store=BodyStore(LocalAdapter(tmp_path/'durable'))
+    snapshot=provenance_inventory(store,work=tmp_path/'snapshot')
+    decisions=tmp_path/'decision.jsonl'
+    decisions.write_text(json.dumps(dict(id='d'*64,body_sha256='b'*64,parser='html',parser_version='v1',
+        reason='timeout',decided_by='readings',decided_at='2026-10-28T12:00:00Z',supersedes=None))+'\n')
+    imported=import_unreadable(store,decisions,decided_at='2026-10-28T12:00:00Z')
+    public,custody=imported_unreadable_provenance(imported,store,decisions)
+    assert snapshot.rows()==[public]
+    assert snapshot.verified()=={public['path']:custody}
+    snapshot.verified()[public['path']].require(public['path'])
+
+
 def test_default_plan_never_opens_runtime_targets_or_data_or_creates_work(tmp_path,capsys):
     value=publish_spec(tmp_path)
     Path(value['targets']['path']).unlink()

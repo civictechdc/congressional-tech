@@ -112,8 +112,9 @@ def test_bodiless_list_ignores_differences_in_on_demand_evidence(tmp_path):
         dict(url='https://example.test/a', complete=True,
              prior_attempts=[dict(complete=False)], response_headers={'X-Padding': 'second'}),
     ])])
-    [row] = pq.read_table(stage/'captures.parquet').to_pylist()
-    assert row['complete'] is True and row['url'] == 'https://example.test/a'
+    rows = pq.read_table(stage/'captures.parquet').to_pylist()
+    assert [r['capture_index'] for r in rows]==[0,1]
+    assert all(r['complete'] is True and r['url']=='https://example.test/a' for r in rows)
 
 
 @pytest.mark.parametrize('name', ['content-disposition', 'Content-Disposition'])

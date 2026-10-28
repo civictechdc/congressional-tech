@@ -43,6 +43,11 @@ COLUMNS = [*PK, 'run_id', 'mode', 'outcome', 'family', 'requested_url', 'url',
     'evidence_sha256', 'imported_at', 'writer_job', 'writer_commit']
 
 
+def current_version():
+    """The existing mapping identity shared by ingest and daily admission."""
+    return sha256(Path(__file__).read_bytes()+(Path(__file__).parent/'receipt_metadata.py').read_bytes()).hexdigest()
+
+
 def first(*values):
     return 'coalesce(' + ','.join(values) + ')'
 
@@ -66,8 +71,7 @@ def mapping_steps():
     def step(name,sql,**options):
         steps.append(dict(name=name,sql=sql,**options))
     # Secondary storage references share the source pass and become scalar rows
-    # immediately. Bodiless record lists fan out only for retained-fact refusal;
-    # their first ordinal is the one public line row.
+    # immediately. Each bodiless list item retains its own source ordinal.
     step('reference_lists', """SELECT *,
         CASE WHEN coalesce(array_length(caps),0)>0 THEN 'capture'
              WHEN coalesce(array_length(refs),0)>0 THEN 'file' ELSE 'line' END AS reference_kind,
@@ -77,20 +81,27 @@ def mapping_steps():
         CASE WHEN coalesce(array_length(caps),0)>0 THEN refs ELSE make_array(cast(NULL AS VARCHAR)) END AS storage_refs
         FROM lines""")
     step('reference_counts', """SELECT * EXCEPT(caps,refs),array_length(primary_refs) AS primary_count,
+        CASE WHEN record_is_list AND reference_kind<>'line' THEN coalesce(record_count,0) ELSE 0 END AS placeholder_count,
         CASE WHEN coalesce(array_length(caps),0)>0 THEN coalesce(array_length(refs),0) ELSE 0 END AS storage_count
         FROM reference_lists""")
-    step('entries', """SELECT receipt_key,receipt_line,line,record,record_is_list,list_raw,reference_kind,primary_count,invalid_lists,
-        unnest(array_concat(primary_refs,CASE WHEN storage_count>0 THEN storage_refs ELSE make_array() END)) AS entry,
-        unnest(range(0,cast(primary_count+storage_count AS BIGINT))) AS ordinal FROM reference_counts""")
+    step('entries', """SELECT receipt_key,receipt_line,line,record,record_is_list,list_raw,reference_kind,
+        primary_count,placeholder_count,cast(record_count AS BIGINT) AS source_record_count,invalid_lists,
+        unnest(array_concat(array_concat(primary_refs,array_repeat(cast(NULL AS VARCHAR),cast(placeholder_count AS BIGINT))),
+            CASE WHEN storage_count>0 THEN storage_refs ELSE make_array() END)) AS entry,
+        unnest(range(0,cast(primary_count+placeholder_count+storage_count AS BIGINT))) AS ordinal FROM reference_counts""")
     pointer_index=first(get('entry','pointer',0,kind='int'),f'try_cast({get("entry","pointer",0)} AS BIGINT)',
         get('entry','pointer',1,kind='int'),f'try_cast({get("entry","pointer",1)} AS BIGINT)','0')
-    step('selected_records',f"""SELECT * EXCEPT(list_raw),
-        ordinal>=primary_count AS is_secondary,
-        CASE WHEN reference_kind='line' THEN ordinal ELSE 0 END AS list_ordinal,
-        CASE WHEN reference_kind='line' THEN cast(0 AS BIGINT) ELSE ordinal END AS capture_index,
-        CASE WHEN record_is_list AND ordinal<primary_count THEN json_get_json(list_raw,
-            CASE WHEN reference_kind='line' THEN ordinal ELSE cast({pointer_index} AS BIGINT) END) END AS selected_record
-        FROM entries""")
+    step('entry_positions',f"""SELECT *,ordinal>=primary_count+placeholder_count AS is_secondary,
+        ordinal>=primary_count AND ordinal<primary_count+placeholder_count AS is_placeholder,
+        cast(CASE WHEN record_is_list THEN CASE WHEN ordinal>=primary_count AND ordinal<primary_count+placeholder_count
+            THEN ordinal-primary_count WHEN reference_kind='line' THEN ordinal
+            ELSE cast({pointer_index} AS BIGINT) END ELSE 0 END AS BIGINT) AS selected_record_index FROM entries""")
+    step('selected_records',"""SELECT * EXCEPT(list_raw,reference_kind),
+        CASE WHEN is_placeholder THEN 'line' ELSE reference_kind END AS reference_kind,
+        CASE WHEN is_placeholder OR reference_kind='line' THEN selected_record_index ELSE 0 END AS list_ordinal,
+        ordinal AS capture_index,
+        CASE WHEN record_is_list AND NOT is_secondary THEN json_get_json(list_raw,selected_record_index) END AS selected_record
+        FROM entry_positions""")
     paths=[(name,) for name in SCALARS]+list(RECOVERY.values())+DOWNLOAD_HEADERS+[('error',)]
     slots=projection('selected_record',paths)
     list_record={name:first(scalar(slots[(name,)],kind),metadata_field('record',name))
@@ -115,15 +126,18 @@ def mapping_steps():
     entry_slots=projection('entry',[(name,) for name in kinds])
     step('entry_facts','SELECT * EXCEPT(entry),'+','.join(
         scalar(entry_slots[(name,)],kind)+' AS e_'+name for name,kind in kinds.items())+' FROM records')
+    def item_first(line,record):
+        return f'CASE WHEN record_is_list THEN {first(record,line)} ELSE {line} END'
     def both(name):
-        return first(metadata_field('line',name),metadata_field('record',name))
+        line,record=metadata_field('line',name),metadata_field('record',name)
+        return item_first(first(line,record),record)
     step('facts',f"""SELECT *,{both('mode')} AS raw_mode,{both('outcome')} AS raw_outcome,
-        {first(metadata_field('line','http_status'),metadata_field('line','status_code'),metadata_field('record','http_status'),metadata_field('record','status_code'))} AS line_status,
-        {first(fetch_time('',lambda _,p:'e_'+p),fetch_time('line',metadata_field),fetch_time('record',metadata_field))} AS fetched,
-        {first('e_family',metadata_field('line','family'),metadata_field('record','family'),"regexp_replace(receipt_key,'^receipts/(.*)/[^/]+/[^/]+$','\\1')")} AS entry_family,
-        {first(metadata_field('line','run_id'),metadata_field('line','source_file'),metadata_field('record','source_file'))} AS source_run,
-        {first(metadata_field('line','requested_url'),metadata_field('record','requested_url'),metadata_field('record','_url'),metadata_field('record','url'),metadata_field('line','url'),metadata_field('record','final_url'),metadata_field('record','resolved_url'),metadata_field('record','source_url'))} AS requested,
-        {first(metadata_field('line','url'),metadata_field('record','url'),metadata_field('record','_url'),metadata_field('record','final_url'),metadata_field('record','resolved_url'),metadata_field('record','source_url'))} AS final_url
+        {item_first(first(metadata_field('line','http_status'),metadata_field('line','status_code'),metadata_field('record','http_status'),metadata_field('record','status_code')),first(metadata_field('record','http_status'),metadata_field('record','status_code')))} AS line_status,
+        {first(fetch_time('',lambda _,p:'e_'+p),item_first(first(fetch_time('line',metadata_field),fetch_time('record',metadata_field)),fetch_time('record',metadata_field)))} AS fetched,
+        {first('e_family',both('family'),"regexp_replace(receipt_key,'^receipts/(.*)/[^/]+/[^/]+$','\\1')")} AS entry_family,
+        {item_first(first(metadata_field('line','run_id'),metadata_field('line','source_file'),metadata_field('record','source_file')),first(metadata_field('record','run_id'),metadata_field('record','source_file')))} AS source_run,
+        {item_first(first(metadata_field('line','requested_url'),metadata_field('record','requested_url'),metadata_field('record','_url'),metadata_field('record','url'),metadata_field('line','url'),metadata_field('record','final_url'),metadata_field('record','resolved_url'),metadata_field('record','source_url')),first(metadata_field('record','requested_url'),metadata_field('record','_url'),metadata_field('record','url'),metadata_field('record','final_url'),metadata_field('record','resolved_url'),metadata_field('record','source_url')))} AS requested,
+        {item_first(first(metadata_field('line','url'),metadata_field('record','url'),metadata_field('record','_url'),metadata_field('record','final_url'),metadata_field('record','resolved_url'),metadata_field('record','source_url')),first(metadata_field('record','url'),metadata_field('record','_url'),metadata_field('record','final_url'),metadata_field('record','resolved_url'),metadata_field('record','source_url')))} AS final_url
         FROM entry_facts""")
     modes=','.join(literal(v) for v in sorted(LEGACY_MODES))
     outcomes=','.join(literal(v) for v in sorted(LEGACY_OUTCOMES))
@@ -162,7 +176,7 @@ def mapping_steps():
         family='entry_family',requested_url='requested',url='final_url',
         context_url=first('e_context_url','final_url'),
         member_path=first('e_member_path',"CASE WHEN NOT top_level AND reference_kind='capture' THEN e_original_path END"),
-        h_content_disposition=both('h_content_disposition'),
+        h_content_disposition=first(metadata_field('line','h_content_disposition'),metadata_field('record','h_content_disposition')),
         http_status='cast(line_status AS INT)',complete='capture_complete',retrieved_at='fetched',
         sha256="arrow_cast(decode(body_sha,'hex'),'FixedSizeBinary(32)')",bytes='body_bytes',
         media_type='e_media_type',fidelity='e_fidelity',sniffed_format='e_sniffed_format',
@@ -176,7 +190,8 @@ def mapping_steps():
         imported_at="CASE WHEN capture_mode='retained_import' THEN coalesce(try_cast("+both('recovery_imported')+" AS TIMESTAMP WITH TIME ZONE),try_cast(array_element(regexp_match(receipt_key,'/(\\d{4}-\\d{2}-\\d{2})/'),1) AS TIMESTAMP WITH TIME ZONE)) END",
         writer_job=metadata_field('line','writer_job'),writer_commit=metadata_field('line','writer_commit'))
     diagnostics=['reference_kind','pointer_json','body_key','unknown_mode','unknown_outcome',
-                 'is_secondary','list_ordinal','body_sha','attempt','top_level','cutoff_eligible','invalid_lists']
+                 'is_secondary','list_ordinal','selected_record_index','body_sha','attempt','top_level','cutoff_eligible','invalid_lists',
+                 'record_is_list','source_record_count','is_placeholder','primary_count']
     flags=dict(cutoff_candidate='attempt=0 AND top_level AND body_bytes=67108864 AND recorded_complete IS FALSE',
         completed_final='attempt=0 AND top_level AND recorded_complete IS TRUE')
     step('scalar_rows','SELECT '+','.join(f'{columns[name]} AS "{name}"' for name in COLUMNS)+
@@ -190,26 +205,31 @@ def mapping_steps():
         FROM secondary s RIGHT JOIN scalar_rows p
         ON p.receipt_key=s.receipt_key AND p.receipt_line=s.receipt_line
         AND p.body_key=s.body_key AND p.body_sha=s.body_sha
-        WHERE NOT p.is_secondary AND p.list_ordinal=0""")
+        WHERE NOT p.is_secondary""")
+    step('item_references',"""SELECT *,bool_or(NOT is_placeholder AND reference_kind IN ('capture','file'))
+        OVER (PARTITION BY receipt_key,receipt_line,selected_record_index) AS has_primary_reference FROM enriched""")
+    step('retained_items',"""SELECT * FROM item_references WHERE NOT is_placeholder OR NOT has_primary_reference""")
     step('windowed',"""SELECT *,
-        bool_or(cutoff_candidate) OVER (PARTITION BY receipt_key,receipt_line) AS has_cutoff,
-        bool_or(completed_final) OVER (PARTITION BY receipt_key,receipt_line) AS has_completed_final,
+        sum(CASE WHEN is_placeholder THEN 1 ELSE 0 END) OVER (PARTITION BY receipt_key,receipt_line
+            ORDER BY selected_record_index,capture_index ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW) AS appended_index,
+        bool_or(cutoff_candidate) OVER (PARTITION BY receipt_key,receipt_line,selected_record_index) AS has_cutoff,
+        bool_or(completed_final) OVER (PARTITION BY receipt_key,receipt_line,selected_record_index) AS has_completed_final,
         bool_or(body_sha IS NOT NULL AND NOT top_level) OVER
-            (PARTITION BY receipt_key,receipt_line,attempt,context_url) AS has_member FROM enriched""")
+            (PARTITION BY receipt_key,receipt_line,selected_record_index,attempt,context_url) AS has_member FROM retained_items""")
     final={name:name for name in COLUMNS}
     final.update(stored_suffix="coalesce(stored_suffix,secondary_suffix,'.gz')",
         stored_bytes='coalesce(stored_bytes,secondary_bytes)',
         stored_md5="arrow_cast(decode(coalesce(stored_md5,secondary_md5),'hex'),'FixedSizeBinary(16)')",
         outcome="CASE WHEN cutoff_eligible AND has_cutoff AND NOT coalesce(has_completed_final,false) AND outcome NOT IN ('retry_later','unchanged') THEN 'size_limit' ELSE outcome END",
         expansion="coalesce(expansion,CASE WHEN top_level AND has_member THEN 'expanded' END)")
-    locator='arrow_cast(named_struct(\'key\',receipt_key,\'line\',cast(receipt_line AS INT),\n        \'index\',cast(capture_index AS INT)), \'Struct("key": Utf8, "line": Int32, "index": Int32)\')'
+    locator='arrow_cast(named_struct(\'key\',receipt_key,\'line\',cast(receipt_line AS INT),\n        \'index\',cast(CASE WHEN is_placeholder THEN primary_count+appended_index-1 ELSE capture_index END AS INT)), \'Struct("key": Utf8, "line": Int32, "index": Int32)\')'
     for name,member in zip(PK,['key','line','index']):
         final[name]=f"get_field({locator},'{member}')"
     for name in ('retrieved_at','imported_at'):
         final[name]=f"arrow_cast({final[name]}, 'Timestamp(Microsecond, Some(\"UTC\"))')"
     public_diagnostics=['reference_kind','pointer_json','body_key','unknown_mode','unknown_outcome']
     step('capture_facts','SELECT '+','.join(f'{final[name]} AS "{name}"' for name in COLUMNS)+
-        ','+','.join(public_diagnostics)+' FROM windowed',materialize=True)
+        ','+','.join(public_diagnostics)+',record_is_list,source_record_count,selected_record_index AS source_record_index FROM windowed',materialize=True)
     return steps
 
 
@@ -235,9 +255,16 @@ def capture_checks():
             OR (stored_suffix IS NOT NULL AND secondary_suffix IS NOT NULL AND stored_suffix<>secondary_suffix)
         LIMIT 1"""),
         dict(name='list_facts',sql=f"""SELECT receipt_key,receipt_line,'list record conflicting facts' AS reason
-        FROM (SELECT DISTINCT receipt_key,receipt_line,{narrow} FROM scalar_rows
-              WHERE reference_kind='line' AND NOT is_secondary)
-        GROUP BY receipt_key,receipt_line HAVING count(*)>1 LIMIT 1"""),
+        FROM (SELECT DISTINCT s.receipt_key,s.receipt_line,s.list_ordinal,{','.join('s.'+c for c in narrow.split(','))}
+              FROM scalar_rows s JOIN (
+                  SELECT receipt_key,receipt_line,list_ordinal FROM scalar_rows
+                  WHERE reference_kind='line' AND NOT is_secondary
+                  GROUP BY receipt_key,receipt_line,list_ordinal HAVING count(*)>1
+              ) repeated ON (s.receipt_key IS NOT DISTINCT FROM repeated.receipt_key)
+                  AND (s.receipt_line IS NOT DISTINCT FROM repeated.receipt_line)
+                  AND (s.list_ordinal IS NOT DISTINCT FROM repeated.list_ordinal)
+              WHERE s.reference_kind='line' AND NOT s.is_secondary)
+        GROUP BY receipt_key,receipt_line,list_ordinal HAVING count(*)>1 LIMIT 1"""),
         dict(name='missing',sql="""SELECT r.receipt_key,cast(0 AS BIGINT) AS receipt_line,
         'selected receipt not present' AS reason FROM selected_receipts r LEFT ANTI JOIN scalar_rows s
         ON r.receipt_key=s.receipt_key LIMIT 1""")]
@@ -255,7 +282,7 @@ def stage_captures(files, *, engine, work, existing=None, validated_counter=None
         counter_file(validated_counter)
     work = Path(work).resolve()
     work.mkdir(parents=True, exist_ok=False)
-    mapping_digest = sha256(Path(__file__).read_bytes()+(Path(__file__).parent/'receipt_metadata.py').read_bytes()).hexdigest()
+    mapping_digest = current_version()
     keys = [f['key'] for f in files]
     if len(keys) != len(set(keys)) or any(not k.startswith('receipts/') for k in keys):
         raise ValueError('Receipt inventory needs unique raw receipt keys')
@@ -288,7 +315,8 @@ def stage_captures(files, *, engine, work, existing=None, validated_counter=None
     steps.append(dict(name='capture_violations',sql=violations,materialize=True,release_after=stale))
     results = run_job(work, engine, inputs=inputs,
         steps=steps,
-        outputs=[parquet_output(work, 'capture-evidence', 'SELECT * FROM capture_facts', PK)],
+        outputs=[parquet_output(work, 'capture-evidence',
+            'SELECT * FROM capture_facts WHERE NOT EXISTS (SELECT 1 FROM capture_violations)', PK)],
         queries=[dict(name='violations',sql='''SELECT * FROM capture_violations
             ORDER BY check_order,receipt_key,receipt_line LIMIT 1'''),
             dict(name='source_counts',sql='SELECT * FROM source_counts')])
@@ -304,7 +332,7 @@ def stage_captures(files, *, engine, work, existing=None, validated_counter=None
             'SELECT '+','.join('"'+c+'"' for c in COLUMNS)+' FROM facts', PK)],
         queries=[dict(name='counts', sql='SELECT count(*) AS rows,count(DISTINCT receipt_key) AS receipts FROM facts'),
                  dict(name='receipts',sql='SELECT DISTINCT receipt_key FROM facts ORDER BY receipt_key')])
-    if mapping_digest != sha256(Path(__file__).read_bytes()+(Path(__file__).parent/'receipt_metadata.py').read_bytes()).hexdigest():
+    if mapping_digest != current_version():
         raise ValueError('Receipt mapping changed while staging; accepted inventory was not written')
     input_pin['job']=file_pin(work/'job.json')
     input_pin['selection']=file_pin(work/'selected_receipts.jsonl.gz')

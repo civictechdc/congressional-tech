@@ -2,7 +2,7 @@
 
 import gzip
 from io import BytesIO
-from zipfile import ZipFile
+from zipfile import ZIP_STORED, ZipFile, ZipInfo
 
 import pytest
 
@@ -11,7 +11,9 @@ def office(entries):
     out = BytesIO()
     with ZipFile(out, 'w') as archive:
         for name, data in entries:
-            archive.writestr(name, data)
+            entry = ZipInfo(name, date_time=(2000, 1, 1, 0, 0, 0))
+            entry.compress_type = ZIP_STORED
+            archive.writestr(entry, data)
     return out.getvalue()
 
 

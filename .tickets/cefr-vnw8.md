@@ -46,3 +46,7 @@ Final reviewed-generator refresh at CT7a1f5453/DS9b59263:19groups706files194221p
 **2026-10-28T04:14:12Z**
 
 Updated consolidated-BIND keep boundary b258f488/d156a6ff: active cli_args.rs excluded. Final-current selection CTd156a6ff/DS9b59263 SHA0cdcade164547350c2da4b31bcea7feb1dd73917362e7fedfbe5cf122bf24edd:19groups714files194822populationlines,19manualranges13branchsplits. Fixed-head regeneration byte-identical/verify stale=false;7runner checks PASS0.22s. Source artifacts remain preparation only; remeasure at next qualified engine head and actual switch. No cuts.
+
+**2026-10-28T08:01:46Z**
+
+Refreshed preparation at CT53e4df39/DS71cc6eb: all19groups/731files/197241populationlines, SHA303de208ccfef01cbb84a5d9a6ce7d69ab57dee3612efc8a26791f6352ae198d. Fixed-head reproduction byte-identical; verify stale=false/no scanned dirty sources. Keep correction83eb8ef3→70406b41 passes9runner checks0.20s, first-flip writer/VerifiedTransfer/dataclasses/hashlib retained.19manualranges/13branchsplits remain switch gates. No source deletion; regenerate at final combined heads.

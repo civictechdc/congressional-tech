@@ -35,6 +35,27 @@ def checked_manifest(root, manifest):
     assert manifest['origin']['kind'] in {'converted_catalog', 'hand_fixture'}
 
 
+def test_shared_legacy_meeting_selector_keeps_url_variants(engine, tmp_path):
+    from congress_api.retention.provenance import json_input, run_job
+    from viewer_publication.archive_format import legacy_meeting_keys
+
+    urls = [
+        'https://docs.house.gov/meetings/AG/AG00/20261020/000123/a.pdf?eventID=999',
+        'https://publisher.test/a?EVENTID=000456',
+        'https://publisher.test/house-event/789/a.pdf',
+        'https://publisher.test/senate-event/790/a.pdf',
+        'https://publisher.test/joint-event/791/a.pdf',
+        'https://publisher.test/unrelated.pdf', None,
+        'https://publisher.test/a?eventid=999999999999999999999999999999',
+    ]
+    source = json_input(tmp_path, 'urls', [dict(ordinal=i, url=url) for i, url in enumerate(urls)],
+                        ordinal='Int64', url='Utf8')
+    result = run_job(tmp_path, engine, inputs=[source], steps=[], outputs=[], queries=[
+        dict(name='meetings', sql=f'SELECT {legacy_meeting_keys("url")} AS keys FROM urls ORDER BY ordinal')])
+    assert [row['keys'] for row in result['meetings']] == [
+        ['123'], ['456'], ['789'], ['790'], ['791'], [], [], []]
+
+
 def test_hand_release_covers_the_reader_outcomes(engine, tmp_path):
     from viewer_publication.archive_fixture import build_fixture_release
 

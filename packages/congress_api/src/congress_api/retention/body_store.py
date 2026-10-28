@@ -12,6 +12,9 @@ import shutil
 import tempfile
 from urllib.parse import parse_qsl, urlsplit
 
+from congress_shared.custody import VerifiedFile
+from congress_shared.storage import single_put_md5
+
 from congress_api.retention.receipt_privacy import credential_parameters
 
 RAW_PREFIXES = ('bodies/', 'receipts/', 'provenance/')
@@ -124,6 +127,25 @@ def compressible(media):
 class BodyStore:
     def __init__(self, adapter):
         self.adapter, self.known = adapter, {}
+        self._provenance_cache,self._provenance_acks,self._provenance_epoch={},{},0
+
+    def remember_provenance(self,public,custody):
+        """Keep checked opaque cache metadata; each inventory still lists afresh."""
+        if (not isinstance(custody,VerifiedFile) or custody.sha256!=public['sha256']
+                or custody.size_bytes!=public['size']):
+            raise ValueError('Provenance cache requires checked byte identity')
+        custody.require(public['path'])
+        if isinstance(self.adapter,R2Adapter) and custody.get('md5')!=single_put_md5(public['etag']):
+            raise ValueError('Provenance cache differs from its listed MD5')
+        previous=self._provenance_cache.get(public['key'])
+        if previous and any(previous[0][k]!=public[k] for k in ('sha256','size','etag')):
+            raise ValueError('Previously checked raw provenance changed')
+        acknowledgement=self._provenance_acks.get(public['key'])
+        epoch=acknowledgement[2] if acknowledgement else 0
+        if acknowledgement and (acknowledgement[1]!=public['size'] or
+                (public['etag'] is not None and acknowledgement[0]!=public['etag'])):
+            raise ValueError('Provenance cache differs from its durable acknowledgment')
+        self._provenance_cache[public['key']]=(dict(public),custody,epoch)
 
     def reference(self, key, *, stored_suffix):
         """Verify an existing raw reference; recovery imports need no whole reread."""
@@ -165,7 +187,11 @@ class BodyStore:
         validate_key(key, operation)
         if not key.startswith('bodies/'):
             with Path(file).open('rb') as source:
-                return create_stored(self.adapter, key, source, media)
+                result=create_stored(self.adapter, key, source, media)
+            if key.startswith('provenance/unreadable/'):
+                self._provenance_epoch+=1
+                self._provenance_acks[key]=(result.md5,result.size,self._provenance_epoch)
+            return result
         if key.endswith(('.gz', '.pdf')):
             raise ValueError('New body writes require a suffix-free identity')
         result = self.existing(key)
@@ -190,10 +216,24 @@ class BodyStore:
         return result
 
 
-class R2Adapter:
+class R2Source:
     def __init__(self, client, bucket):
         self.client, self.bucket = client, bucket
 
+    def listing(self,prefix='bodies/',*,preserve_etags=False):
+        pages=self.client.get_paginator('list_objects_v2').paginate(Bucket=self.bucket,Prefix=prefix)
+        for page in pages:
+            for obj in page.get('Contents',[]):
+                yield dict(key=obj['Key'],size=obj['Size'],
+                    etag=obj['ETag'] if preserve_etags else obj['ETag'].strip('"'))
+
+    def get(self,key,*,if_match=None):
+        options={} if if_match is None else dict(IfMatch=if_match if if_match.startswith('"')
+            and if_match.endswith('"') else '"'+if_match+'"')
+        return self.client.get_object(Bucket=self.bucket,Key=key,**options)
+
+
+class R2Adapter(R2Source):
     def head(self, key):
         from botocore.exceptions import ClientError
         try:

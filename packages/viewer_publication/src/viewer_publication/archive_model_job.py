@@ -12,7 +12,8 @@ from uuid import UUID
 
 from congress_api.retention.body_store import validate_key
 from congress_api.retention.derived_files import file_identity, check_identity, retain_verified_file
-from congress_shared.custody import custody_identity
+from congress_shared.custody import custody_identity,VerifiedFile
+from congress_shared.storage import single_put_md5 as provenance_etag_md5
 
 TABLES=('captures','readings','filename_readings')
 PROVENANCE={'recovery_files':'recoveries','review_files':'reviews','verification_files':'verification',
@@ -69,6 +70,11 @@ def _selector(value,base):
 def load_spec(path):
     """Read only the job description and current definitions, never input payloads."""
     path=Path(path).resolve();value=json.loads(path.read_text())
+    return validate_spec(value,base=path.parent)
+
+
+def validate_spec(value,*,base):
+    """Apply the same selector and definition checks to file or daily inputs."""
     if not isinstance(value,dict):raise ValueError('Model job spec must be an object')
     if value.get('status')=='blocked':
         if not isinstance(value.get('reason'),str) or not value['reason']:
@@ -77,7 +83,6 @@ def load_spec(path):
     if set(value)-REQUIRED-PROVENANCE.keys():raise ValueError('Model job has unknown fields')
     if not REQUIRED<=value.keys() or type(value['version']) is not int or value['version']!=1:
         raise ValueError('Model job requires version 1 and all explicit inputs')
-    base=path.parent
     result=dict(value,**{name:_selector(value[name],base) for name in TABLES})
     for name in ['engine_config','output','scratch']:result[name]=_local(value[name],base)
     output,scratch=Path(result['output']),Path(result['scratch'])
@@ -103,17 +108,8 @@ def load_spec(path):
     return result
 
 
-def provenance_etag_md5(etag):
-    """Normalize the stored-byte checksum of a single-PUT provenance object."""
-    if isinstance(etag,str) and etag.startswith('"') and etag.endswith('"'):
-        etag=etag[1:-1]
-    if not isinstance(etag,str) or re.fullmatch('[a-fA-F0-9]{32}',etag) is None:
-        raise ValueError('Provenance ETag must be a single-PUT MD5')
-    return etag.lower()
-
-
 @contextmanager
-def model_arguments(spec, *, provenance_etags=None):
+def model_arguments(spec, *, provenance_etags=None,verified_files=None):
     """Hold verified local inputs until native consumption completes successfully.
 
     The retained names prevent original-path replacement from selecting new bytes.
@@ -123,6 +119,8 @@ def model_arguments(spec, *, provenance_etags=None):
     for name in ['output','scratch']:
         path=Path(spec[name])
         if path.exists() or path.is_symlink():raise ValueError('Model output and scratch must be fresh')
+    if verified_files is None:verified_files={}
+    if not isinstance(verified_files,Mapping):raise ValueError('Verified input custody must be a path mapping')
     etags=None
     if provenance_etags is not None:
         keys={value['key'] for name in PROVENANCE for value in spec[name]}
@@ -151,9 +149,14 @@ def model_arguments(spec, *, provenance_etags=None):
                 if expected_md5 is not None and source.get('md5')!=expected_md5:
                     raise ValueError('Local provenance bytes differ from the selected ETag')
                 return str(verified.path)
-            verified=file_identity(path,additional_hashes={'md5':md5} if expected_md5 is not None else None)
+            verified=verified_files.get(str(path))
+            if verified is not None:
+                if not isinstance(verified,VerifiedFile):raise ValueError('Expected process-local verified input custody')
+                verified.require(path)
+            else:
+                verified=file_identity(path,additional_hashes={'md5':md5} if expected_md5 is not None else None)
             check_identity(verified,expected,key)
-            if expected_md5 is not None and verified['md5']!=expected_md5:
+            if expected_md5 is not None and verified.get('md5')!=expected_md5:
                 raise ValueError('Local provenance bytes differ from the selected ETag')
             destination=Path(directory)/(str(len(retained))+'-'+path.name)
             owned=retain_verified_file(path,destination,expected=verified,key=key)
