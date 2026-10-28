@@ -6,6 +6,7 @@ import os
 from pathlib import Path
 
 import pyarrow.parquet as pq
+import pytest
 
 from congress_api.lake import readings,filenames
 from congress_api.lake.captures import stage_captures
@@ -59,3 +60,18 @@ def test_raw_lake_model_exports_one_group_and_keeps_download_names(tmp_path):
     assert (tmp_path/'model/evidence/document_rows.parquet').is_file()
     lookups=pq.read_table(tmp_path/'release/urls.parquet').to_pylist()
     assert hashlib.sha256(b'lookup:fixture.test/redirect/report.pdf').digest()[:8] in {r['lookup_key'] for r in lookups}
+
+    # Identical pinned inputs must produce byte-identical content at a fresh path.
+    arguments=dict(captures=captures,readings=pages['readings'],filename_readings=names['readings'],
+        parser_versions={p:readings.current_version(p) for p in ['sniff','html','xml','json']},
+        catalog_version=names['catalog_version'],engine=engine)
+    repeated=build_release(**arguments,output=tmp_path/'repeat-release',scratch=tmp_path/'repeat-model')
+    assert repeated==manifest
+    for item in manifest['files']:
+        assert (tmp_path/'release'/item['name']).read_bytes()==(tmp_path/'repeat-release'/item['name']).read_bytes()
+    for missing,column in [('page','readings'),('filename','filename_readings')]:
+        source=arguments[column];empty=tmp_path/(missing+'-empty.parquet')
+        pq.write_table(pq.read_table(source).slice(0,0),empty)
+        with pytest.raises(ValueError,match='invariant'):
+            build_release(**dict(arguments,**{column:empty}),output=tmp_path/(missing+'-release'),scratch=tmp_path/(missing+'-model'))
+        assert not (tmp_path/(missing+'-release')/'manifest.json').exists()
