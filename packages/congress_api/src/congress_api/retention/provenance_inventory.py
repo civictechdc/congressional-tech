@@ -109,6 +109,7 @@ class ProvenanceInventory:
                 try:
                     custody.require(row['path'])
                     self.store.remember_provenance(row,custody)
+                    self._keys.add(key)
                     continue
                 except (OSError,ValueError):
                     pass
@@ -120,7 +121,7 @@ class ProvenanceInventory:
                     expected_size=metadata[key]['size'])
                 row=dict(key=key,path=path,etag=None,sha256=custody.sha256,size=custody.size_bytes)
             self.store.remember_provenance(row,custody)
-        self._keys=selected
+            self._keys.add(key)
         return self._cache_rows(keys)
 
     def _cache_rows(self,keys):
