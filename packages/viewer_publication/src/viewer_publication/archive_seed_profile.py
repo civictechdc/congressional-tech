@@ -51,3 +51,12 @@ def validate_seed_profile(value):
     if value!=expected or type(value['version']) is not int or value['display_only'] is not True:
         raise ValueError('Seed profile must identify a display-only v5 catalog')
     return expected
+
+
+def validate_seed_inputs(record,receipt_keys):
+    """Keep seed provenance distinct from the receipts and pins of a raw rebuild."""
+    profile=validate_seed_profile(record['profile'])
+    if (record.get('snapshots')!={} or record.get('provenance')!=[]
+            or record.get('entity_digests')!={} or list(receipt_keys)!=[]):
+        raise ValueError('A display-only seed cannot claim raw receipts, provenance or lake snapshots')
+    return profile

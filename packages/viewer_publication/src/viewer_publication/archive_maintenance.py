@@ -89,7 +89,11 @@ class _InventoryEvidence:
         return self.cache[key]
 
 
-def _validate_kept_model(record):
+def _validate_kept_model(record,receipt_keys):
+    if isinstance(record.get('profile'),dict) and record['profile'].get('kind')=='seed_v5':
+        from viewer_publication.archive_seed_profile import validate_seed_inputs
+        validate_seed_inputs(record,receipt_keys)
+        return
     from viewer_publication.archive_model_job import TABLES,_selector
     from viewer_publication.archive_model_profile import profile_record
     snapshots=record['snapshots']
@@ -151,7 +155,7 @@ def maintain_releases(store,*,now,external_pins=(),execute=False):
                 profile=record['profile'],entity_digests=record['entity_digests'])
             if actual!=record['input_digest']:
                 raise ValueError('Kept input record differs from its semantic identity')
-            _validate_kept_model(record)
+            _validate_kept_model(record,entry['receipt_keys'])
         except (KeyError,TypeError) as error:
             raise ValueError('Kept input record has an invalid identity shape') from error
         records.append(record)

@@ -221,7 +221,48 @@ def _read_pinned_json(pin):
     return json.loads(raw),raw
 
 
-def _candidate(release,manifest_pin,result_pin):
+def _seed_evidence(result,manifest,profile,listed):
+    expected={key:profile[key] for key in
+        ['kind','label','display_only','catalog_id','generation','input_files']}
+    if manifest.get('origin')!=expected:
+        raise ValueError('Seed manifest origin differs from its pinned input profile')
+    def report(name):
+        matches=[query for query in result['queries'] if query['name']==name]
+        if len(matches)!=1 or not isinstance(matches[0].get('data'),list):
+            raise ValueError('Missing or duplicate native seed evidence: '+name)
+        return matches[0]['data']
+    checks=report('seed_invariants')
+    if (len(checks)!=1 or not isinstance(checks[0],dict) or not checks[0]
+            or any(type(value) is not int or value!=0 for value in checks[0].values())):
+        raise ValueError('Native seed invariants did not pass')
+    rows=report('seed_reconciliation')
+    if (len(rows)!=1 or not isinstance(rows[0],dict) or set(rows[0])!={'input_docs','listed','excluded'}
+            or any(type(value) is not int or value<0 for value in rows[0].values())):
+        raise ValueError('Invalid native seed reconciliation')
+    counts=rows[0]
+    if (counts['input_docs']!=profile['document_rows'] or counts['listed']!=listed
+            or counts['listed']+counts['excluded']!=counts['input_docs']):
+        raise ValueError('Seed source documents do not reconcile with its listed and excluded documents')
+    reasons=set();excluded=0
+    for row in report('seed_exclusions'):
+        if (not isinstance(row,dict) or set(row)!={'reason','count'}
+                or not isinstance(row['reason'],str) or not row['reason'].strip() or row['reason'] in reasons
+                or type(row['count']) is not int or row['count']<1):
+            raise ValueError('Invalid native seed exclusion reason counts')
+        reasons.add(row['reason']);excluded+=row['count']
+    if excluded!=counts['excluded']:raise ValueError('Seed exclusion reasons do not reconcile')
+    samples=report('seed_spot_checks');seen=set()
+    fields={'filename_matches','format_matches','source_page_matches','meeting_matches'}
+    if len(samples)!=min(50,profile['document_rows']):raise ValueError('Seed requires fifty native spot checks')
+    for row in samples:
+        if (not isinstance(row,dict) or set(row)!=fields|{'source_row'}
+                or type(row['source_row']) is not int or not 0<=row['source_row']<profile['document_rows']
+                or row['source_row'] in seen or any(row[name] is not True for name in fields)):
+            raise ValueError('Native seed spot check did not match its source')
+        seen.add(row['source_row'])
+
+
+def _candidate(release,manifest_pin,result_pin,*,input_record,receipt_keys):
     """Check actual model metadata; C5 verifies each transferred asset in one read.
 
     Release identity remains the archive_format producer's identity. This stage
@@ -233,10 +274,19 @@ def _candidate(release,manifest_pin,result_pin):
     result,_=_read_pinned_json(result_pin)
     if 'error' in result or not isinstance(result.get('outputs'),list) or not isinstance(result.get('queries'),list):
         raise ValueError('Native model result is incomplete or failed')
-    for name in ['invariants','model_invariants','url_state_invariants','profile_completeness']:
-        checks=[entry for entry in result['queries'] if entry['name']==name]
-        if len(checks)!=1 or len(checks[0]['data'])!=1 or not checks[0]['data'][0] or any(value!=0 for value in checks[0]['data'][0].values()):
-            raise ValueError('Native model check did not pass: '+name)
+    seed=input_record['profile'].get('kind')=='seed_v5'
+    if seed:
+        from viewer_publication.archive_seed_profile import validate_seed_inputs
+        profile=validate_seed_inputs(input_record,receipt_keys)
+    else:
+        if isinstance(manifest.get('origin'),dict) and (manifest['origin'].get('kind')=='seed_v5'
+                or manifest['origin'].get('display_only') is True):
+            raise ValueError('Seed manifest requires its pinned seed profile')
+        for name in ['invariants','model_invariants','url_state_invariants','profile_completeness']:
+            checks=[entry for entry in result['queries'] if entry['name']==name]
+            if (len(checks)!=1 or len(checks[0]['data'])!=1 or not checks[0]['data'][0]
+                    or any(type(value) is not int or value!=0 for value in checks[0]['data'][0].values())):
+                raise ValueError('Native model check did not pass: '+name)
     release_id=_sha(manifest['release_id'])
     if manifest.get('schema_version')!=1 or not isinstance(manifest.get('files'),list):
         raise ValueError('Invalid archive manifest')
@@ -261,6 +311,7 @@ def _candidate(release,manifest_pin,result_pin):
     if release_identity(manifest['schema_version'],manifest['files'])!=release_id:
         raise ValueError('Candidate release identity differs from its content metadata')
     if listed==0:raise ValueError('An empty document list cannot be published')
+    if seed:_seed_evidence(result,manifest,profile,listed)
     return manifest,raw,release_id
 
 
@@ -290,7 +341,10 @@ def publish_candidate(*,client,engine,bucket,work,release,manifest_pin,result_pi
         digest=input_digest(receipt_keys=receipt_keys,provenance=input_record['provenance'],
             profile=input_record['profile'],entity_digests=input_record['entity_digests'])
         if input_record.get('input_digest')!=digest:raise ValueError('Input record semantic identity differs')
-        manifest,raw,release_id=_candidate(Path(release),manifest_pin,result_pin)
+        manifest,raw,release_id=_candidate(Path(release),manifest_pin,result_pin,
+            input_record=input_record,receipt_keys=receipt_keys)
+        if input_record['profile'].get('kind')=='seed_v5':
+            status.update(input_kind='seed_v5',label=input_record['profile']['label'],display_only=True)
         status.update(release_id=release_id,rows={item['name']:item['rows'] for item in manifest['files']},
             bytes=sum(item['size'] for item in manifest['files']))
         if release_id==live:
