@@ -74,7 +74,7 @@ def link_steps(*,root=ROOT):
 
 def evidence_steps(*,root=ROOT):
     """Join pinned parser facts and physical evidence before source/link expansion."""
-    names=['pinned-readings','sniff-facts','page-facts','copy-verifications','body-evidence','capture-evidence',
+    names=['pinned-readings','sniff-facts','page-facts','verification-conflicts','storage-verifications','copy-verifications','body-evidence','capture-evidence',
         'good-fetches','capture-locators','body-signals','locator-signals','placeholders','record-roles',
         'page-contexts','link-inputs']
     return [dict(name=name.replace('-','_'),sql=(Path(root)/'model/sql'/(name+'.sql')).read_text(),materialize=True)
