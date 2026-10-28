@@ -2,6 +2,7 @@
 from contextlib import contextmanager
 import errno
 import os
+import shutil
 from pathlib import Path
 
 import pytest
@@ -97,3 +98,47 @@ def test_existing_ownership_and_free_space_refusals_stay_enforced(tmp_path):
         check_scratch(tmp_path,tmp_path.parent/'unowned',min_free_bytes=0)
     with pytest.raises(RuntimeError,match='Free disk'):
         check_scratch(tmp_path,min_free_bytes=1<<100)
+
+
+@pytest.fixture
+def over_default_allocated_root(tmp_path):
+    """Exercise block accounting above 5 GiB without writing 5 GiB of test data."""
+    root=tmp_path/'allocation';root.mkdir()
+    payload=root/'payload';payload.write_bytes(b'x'*(1<<20))
+    # The guard counts allocated blocks per directory entry, conservatively
+    # including hard-link aliases. One MiB physically backs these cheap entries.
+    for index in range(5120):os.link(payload,root/str(index))
+    try:
+        assert _allocated_bytes(root)>5<<30
+        yield root
+    finally:
+        shutil.rmtree(root)
+
+
+def test_default_scratch_refuses_and_explicit_owned_allowance_preserves_other_guards(over_default_allocated_root):
+    root=over_default_allocated_root
+    with pytest.raises(RuntimeError,match='scratch exceeds'):check_scratch(root,min_free_bytes=0)
+    assert check_scratch(root,min_free_bytes=0,max_owned_scratch_bytes=17<<30)==root
+    with pytest.raises(ValueError,match='Owned scratch'):
+        check_scratch(root,root.parent/'outside',min_free_bytes=0,max_owned_scratch_bytes=17<<30)
+    with pytest.raises(RuntimeError,match='Free disk'):
+        check_scratch(root,min_free_bytes=1<<100,max_owned_scratch_bytes=17<<30)
+
+
+@pytest.mark.parametrize('limit',[0,-1,True,1.5,None])
+def test_explicit_owned_allowance_must_be_a_positive_integer(tmp_path,limit):
+    with pytest.raises(ValueError,match='max_owned_scratch_bytes'):
+        check_scratch(tmp_path,min_free_bytes=0,max_owned_scratch_bytes=limit)
+
+
+def test_monitor_applies_explicit_allowance_at_admission_and_periodic_checks(over_default_allocated_root):
+    from congress_api.lake.capture_backfill import monitor_command
+    import sys
+    root=over_default_allocated_root;work=root/'monitor'
+    command=[sys.executable,'-I','-c','import time;time.sleep(.7)']
+    with pytest.raises(RuntimeError,match='scratch exceeds'):
+        monitor_command(command,work=work,scratch_root=root,min_free_bytes=0)
+    assert not work.exists()
+    result=monitor_command(command,work=work,scratch_root=root,min_free_bytes=0,
+                           max_owned_scratch_bytes=17<<30)
+    assert result['returncode']==0 and result['samples']>0
