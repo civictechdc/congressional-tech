@@ -286,7 +286,7 @@ One row per `(body, parser, parser_version)`; a reading depends only on its body
     For markup in a JSON string, its path is prefixed by the script's element path, `@`, and the compact JSON key path, so different strings cannot share a group.
   - An XML document list's link `text` is its entry's description.
   - `doc_type` and the three dates are kept as the publisher wrote them; `remove_date` marks a committee's removal of the document from its hearing page.
-- `sniff` reads every body whose capture rows carry no sniff at the pinned version, with one ranged read of its first bytes, decompressing the start of a gzip-stored body (a gzip original whose first member is a WARC or ARC record sniffs as `warc`). For a bare PDF it also reads the last 8 KB, and runs the bounded reader only when that finds no `%%EOF`; borrowed PDF checks join in the model (§7.3).
+- `sniff` reads every body with no completed sniff reading at the pinned version, with one ranged read of its first bytes, decompressing the start of a gzip-stored body (a gzip original whose first member is a WARC or ARC record sniffs as `warc`). For a bare PDF it also reads the last 8 KB, and runs the bounded reader only when that finds no `%%EOF`; borrowed PDF checks join in the model (§7.3).
   - Only WARC/ARC is recognized through an original gzip layer; other gzip originals remain `other`. Storage compression is removed separately, so an older gzip-stored PDF still sniffs as `pdf`, with its integrity deferred or borrowed.
   - ZIP package detection shares the archive reader's bounds (64 MiB archive, 1 MiB directory, 1,024 entries). It currently reads the bounded archive to inspect root `[Content_Types].xml` or a bounded `mimetype` member naming an OpenDocument type; these packages sniff as `docx`, never from a URL or media type. An unsupported or over-limit ZIP is a failed reading, not an assumed generic archive. Stored gzip ZIPs obey the same decompressed limit.
   - a new sniff version re-reads about 1.04M bodies and can change the format parsers' work lists, so the profile moves them together.
@@ -429,7 +429,7 @@ The model is one engine job of named steps ([[ARCHITECTURE]] §9.1) over `captur
 
 ### 7.1 Model Profile and Registries
 
-The **model profile** is the set of versions one publish reads. Publish MUST refuse when a pinned version's work list is not empty, or a lake PK is duplicated, at the pinned snapshot, and the refusal names the inputs. An input that crashes its parser twice, or whose read always fails, is settled by a provenance `unreadable` decision (§5.3, §6), which removes it from that parser's work list.
+The **model profile** is the set of versions one publish reads. Publish MUST refuse when a pinned version's work list is not empty, or a lake PK is duplicated, at the pinned snapshot, and the refusal names the inputs. An input that crashes its parser twice is settled by a provenance `unreadable` decision (§5.3, §6), which removes it from that parser's work list. A missing or failed raw read stays pending; it never creates an unreadable decision.
 
 - It pins: the model SQL (the SHA-256 of its files), the engine revision, each lake table version (§6), each parser, the catalog, each registry the model or a producer reads, and the release writer settings (§8.1); until the engine's export meets [[ARCHITECTURE]] §10.2 by itself (spicy-stack ss-iwqu), also the runner class and the engine's limits (threads, batch rows, batch bytes).
 - A parser or catalog version is the SHA-256 of its source files, the vocabularies it reads and its locked dependencies.
@@ -508,14 +508,13 @@ Each capture row takes one record role; a real file is a good fetch whose role i
 
 ```
 good_fetch  := rows of c where mode = 'fetch' and complete
-               and outcome in ('stored', 'unchanged') and attempt_status between 200 and 299
+               and outcome in ('stored', 'unchanged') and http_status between 200 and 299
                (import-run rows included; capture dates exclude them, §7.4)
-format      := r[sniff].format at the pinned sniff version,
-               else c.sniffed_format when c.sniff_version is that version
+format      := r[sniff].format from a completed reading at the pinned sniff version
 intact      := for a PDF, the first set of: its .pdf copy's verification record (§5.3);
-               r[sniff].intact at the pinned sniff version; c.intact when
-               c.sniff_version is that version, or on an older row (§6.1)
-intact_basis := 'copy', 'read' or 'capture', by which gave intact;
+               r[sniff].intact at the pinned sniff version; phase 1 does not bulk-read
+               older capture integrity checks, which stay in raw behind the pointer
+intact_basis := 'copy' or 'read', by which gave intact;
                'unchecked' when none did
 reading     := the body's html, xml or json reading at the pinned version
 record_role := per capture row, the first that applies:

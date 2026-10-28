@@ -3,7 +3,7 @@
 -- heads remain inside the once-per-body signal step.
 WITH roles AS (
     SELECT c.receipt_key, c.receipt_line, c.capture_index, c.sha256, c.format,
-        c.intact_basis, c.error_type, c.mode, c.outcome, c.attempt_status,
+        c.intact_basis, c.error_type, c.mode, c.outcome, c.http_status,
         c.complete, c.bytes, p.sha256 AS placeholder_body, l.file_shaped,
         CASE
             WHEN c.format IS NULL THEN NULL
@@ -33,7 +33,7 @@ SELECT receipt_key, receipt_line, capture_index, sha256, format, intact_basis,
     error_type, record_role,
     coalesce(
         mode = 'fetch' AND complete AND outcome IN ('stored', 'unchanged')
-        AND attempt_status BETWEEN 200 AND 299
+        AND http_status BETWEEN 200 AND 299
         AND sha256 IS NOT NULL AND bytes > 0 AND placeholder_body IS NULL
         AND record_role = 'document'
         AND (format <> 'html' OR NOT file_shaped), false

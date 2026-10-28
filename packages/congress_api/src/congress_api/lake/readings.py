@@ -123,9 +123,7 @@ def stage(*,captures,body_inventory,local_root,engine,work,decided_at,parser,
         steps.append(dict(name='existing',sql='SELECT decode(body_hex,\'hex\') AS body_sha,* FROM existing_json'))
     steps.extend([
         dict(name='bodies',sql='SELECT DISTINCT sha256 AS body_sha FROM captures WHERE sha256 IS NOT NULL',materialize=True),
-        dict(name='known_formats',sql=f'''SELECT sha256 AS body_sha,sniffed_format AS format FROM captures
-            WHERE sniff_version={quote(sniff_version)} AND sniffed_format IS NOT NULL
-            UNION SELECT body_sha,format FROM existing WHERE parser='sniff'
+        dict(name='known_formats',sql=f'''SELECT body_sha,format FROM existing WHERE parser='sniff'
             AND parser_version={quote(sniff_version)} AND status='completed' '''),
         dict(name='active_unreadable',sql='''SELECT u.* FROM unreadable u
             WHERE NOT EXISTS (SELECT 1 FROM unreadable s WHERE s.supersedes=u.id)''')])
