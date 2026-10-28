@@ -76,11 +76,18 @@ def link_steps(*,root=ROOT):
 
 def evidence_steps(*,root=ROOT):
     """Join pinned parser facts and physical evidence before source/link expansion."""
+    from congress_api.lake.readings import writer_admission_step
     names=['pinned-readings','sniff-observations','sniff-conflicts','sniff-facts','page-facts','verification-conflicts','storage-verifications','copy-verifications','body-evidence','capture-evidence',
         'good-fetches','capture-locators','body-signals','locator-signals','placeholders','record-roles',
         'page-contexts','link-inputs']
-    return [dict(name=name.replace('-','_'),sql=(Path(root)/'model/sql'/(name+'.sql')).read_text(),materialize=True)
+    return [writer_admission_step(root=root)]+[dict(name=name.replace('-','_'),sql=(Path(root)/'model/sql'/(name+'.sql')).read_text(),materialize=True)
         for name in names]
+
+
+def evidence_checks():
+    """Expose scalar checks for the model's existing invariant report."""
+    from congress_api.lake.readings import writer_admission_conflict_sql
+    return dict(conflicting_writer_formats='(SELECT n FROM ('+writer_admission_conflict_sql()+') writer_conflicts)')
 
 
 def _sql_steps(names,*,root=ROOT):
@@ -89,7 +96,7 @@ def _sql_steps(names,*,root=ROOT):
 
 def build_release(*,captures,readings,filename_readings,parser_versions,catalog_version,
                   engine,output,scratch,recovery_files=(),review_files=(),verification_files=(),
-                  unreadable_files=(),body_admissions=None,variant_files=(),root=ROOT):
+                  unreadable_files=(),variant_files=(),root=ROOT):
     """Run the document model and shared native exporter over pinned local inputs."""
     from viewer_publication.archive_format import _execute,_settings,EMPTY_STRINGS,TS,_empty_struct,LIST_COLUMNS,DETAIL_COLUMNS
     from viewer_publication.archive_annotations import annotation_steps
@@ -125,11 +132,6 @@ def build_release(*,captures,readings,filename_readings,parser_versions,catalog_
         inputs.append(dict(name='unreadable_records',kind='json_lines',files=list(unreadable_files),schema=dict(fields=[field(k,v) for k,v in unreadable_fields.items()],metadata={})))
     else:inputs.append(json_input(scratch,'unreadable_records',[],**unreadable_fields))
     prelude += [dict(name='active_unreadable',sql='SELECT u.* FROM unreadable_records u WHERE NOT EXISTS(SELECT 1 FROM unreadable_records s WHERE s.supersedes=u.id)',materialize=True)]
-    if body_admissions is not None:
-        inputs.append(dict(name='body_admissions',kind='parquet',path=str(Path(body_admissions).resolve())))
-    else:
-        inputs.append(json_input(scratch,'body_admission_rows',[],body_hex='Utf8',format='Utf8',basis='Utf8'))
-        prelude.append(dict(name='body_admissions',sql="SELECT decode(body_hex,'hex') AS body_sha,format,basis FROM body_admission_rows"))
     steps=prelude+current_steps()+evidence_steps(root=root)+source_steps(root=root)+link_steps(root=root)
     steps += _sql_steps(['source-addresses'],root=root)
     steps += [dict(name='url_inputs',sql=(Path(root)/'model/sql/model-url-inputs.sql').read_text(),materialize=True)]
@@ -194,7 +196,7 @@ def build_release(*,captures,readings,filename_readings,parser_versions,catalog_
         'fingerprint_candidates':['body_sha'],
         'fingerprints':['body_sha']}
     extra += [dict(name=name+'.parquet',path=str(evidence/(name+'.parquet')),
-        sql=("SELECT r.*,r.body_sha AS body_sha256,d.decided_at FROM current_recoveries r LEFT JOIN remaining_recovery_decisions d ON r.decision_id=d.id" if name=='current_recoveries' else 'SELECT * FROM '+name),settings=_settings('whole',keys)) for name,keys in causes.items()]
+        sql=("SELECT r.*,r.body_sha AS body_sha256,d.decided_at,d.recovered_url,d.identity_note FROM current_recoveries r LEFT JOIN remaining_recovery_decisions d ON r.decision_id=d.id" if name=='current_recoveries' else 'SELECT * FROM '+name),settings=_settings('whole',keys)) for name,keys in causes.items()]
     from congress_api.models.archive_profile import build_capture_profile
     capture_profile=build_capture_profile(engine_revision=engine.source_revision,
         url_normalized_sql=(Path(root)/'model/sql/url-normalized.sql').read_text(),
@@ -213,7 +215,8 @@ def build_release(*,captures,readings,filename_readings,parser_versions,catalog_
         lookup_extra="SELECT o.list_row,a.url FROM source_addresses a JOIN document_members m ON a.source_id=m.source_id JOIN document_identities d ON m.component=d.component JOIN ordered o ON d.document_id=o.doc_key WHERE m.is_real_file",
         origin=dict(kind='model',gaps=[]),content_files={'capture_profile.json':capture_profile},auxiliary=auxiliary,extra_outputs=extra,
         capture_scope=json.loads((Path(root)/'model/registries/capture-scope.json').read_text()),
-        diagnostics=[dict(name='model_invariants',sql="""SELECT (SELECT count(*) FROM sniff_conflicts) AS conflicting_sniffs,
+        diagnostics=[dict(name='model_invariants',sql=f"""SELECT {evidence_checks()['conflicting_writer_formats']} AS conflicting_writer_formats,
+            (SELECT count(*) FROM sniff_conflicts) AS conflicting_sniffs,
             (SELECT count(*) FROM (SELECT sha256 FROM captures WHERE sha256 IS NOT NULL GROUP BY sha256 HAVING count(DISTINCT bytes)>1)) AS conflicting_original_sizes,
             (SELECT count(*) FROM verification_conflicts) AS conflicting_verifications,
             (SELECT count(*) FROM model_url_keys WHERE error IS NOT NULL) AS invalid_url_keys,

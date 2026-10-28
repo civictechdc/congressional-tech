@@ -113,6 +113,12 @@ def writer_admission_step(*,root=ROOT):
     return dict(name='body_admissions',sql=(Path(root)/'model/sql/body-admissions.sql').read_text(),materialize=True)
 
 
+def writer_admission_conflict_sql():
+    """Count contradictions between current writer proof and current byte facts."""
+    return """SELECT count(*) AS n FROM body_admissions a
+        JOIN sniff_facts s ON a.body_sha=s.body_sha WHERE a.format IS DISTINCT FROM s.format"""
+
+
 def stage(*,captures,body_inventory,local_root,engine,work,decided_at,parser,
           sniff_version=None,parser_version=None,existing=None,unreadable_files=(),
           worker_factory=ParserWorker,unreadable_store=None):
@@ -191,8 +197,7 @@ def stage(*,captures,body_inventory,local_root,engine,work,decided_at,parser,
         dict(name='invalid_inventory',sql='''SELECT count(*) AS n FROM body_inventory
             WHERE body_sha IS NULL OR physical_key IS NULL OR relative_path IS NULL
                OR stored_bytes IS NULL OR stored_bytes<0 OR stored_gzip IS NULL''')]+([
-        dict(name='writer_admission_conflicts',sql='''SELECT count(*) AS n FROM body_admissions a
-            JOIN sniff_facts s ON a.body_sha=s.body_sha WHERE a.format IS DISTINCT FROM s.format''')]
+        dict(name='writer_admission_conflicts',sql=writer_admission_conflict_sql())]
         if combined else []))
     if any(rows[0]['n'] for rows in checks.values()):
         raise ValueError('Conflicting or incomplete pinned body metadata')
