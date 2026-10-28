@@ -1,7 +1,7 @@
 SELECT d.document_id AS doc_key,true AS body_expected,s.filename,a.title,
  a.document_kind,a.document_family,m.committee_keys,m.chambers,cast(a.congress AS SMALLINT) AS congress,s.format,
  coalesce(a.filename_date,a.content_date) AS document_date,cast(m.first_fetched AS DATE) AS first_captured,
- CASE WHEN m.first_fetched IS NOT NULL THEN 'captured' ELSE 'unknown' END AS date_kind,
+ CASE WHEN m.first_fetched IS NOT NULL THEN 'captured' WHEN m.in_archive_since IS NOT NULL THEN 'import_day' ELSE 'unknown' END AS date_kind,
  'original' AS saved_kind,false AS hidden,m.meeting_keys,m.measure_keys,m.bioguide_ids,
  arrow_cast(array_slice(make_array(cast(NULL AS VARCHAR)),1,0),'List(Utf8)') AS witness_keys,
  coalesce(v.version_keys,arrow_cast(array_slice(make_array(cast(NULL AS VARCHAR)),1,0),'List(Utf8)')) AS version_keys,
