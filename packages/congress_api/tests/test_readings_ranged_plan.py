@@ -149,3 +149,28 @@ def test_full_page_cache_is_removed_only_after_successful_readings_append(tmp_pa
         assert not store._immutable_cache_path(key).exists()
         assert not list((work/'batch-000000/body-bytes').rglob('*.bin'))
     assert len(client.reads)==1
+
+
+def test_malformed_storage_deflate_stays_pending_without_durable_parser_decision(tmp_path):
+    args,_,key=inputs(tmp_path)
+    stored=b'\x1f\x8b\x08\x00'+b'\x00'*6+b'\x07'+b'\x00'*8
+    values=pq.read_table(args['captures']).to_pylist()
+    values[0].update(stored_bytes=len(stored),stored_md5=hashlib.md5(stored).digest())
+    pq.write_table(pa.Table.from_pylist(values,schema=pq.read_schema(args['captures'])),args['captures'])
+    inventory=pq.read_table(args['body_inventory']);values=inventory.to_pylist()
+    values[0]['stored_bytes']=len(stored)
+    pq.write_table(pa.Table.from_pylist(values,schema=inventory.schema),args['body_inventory'])
+    class CorruptClient(Client):
+        def get_object(self,**kwargs):
+            self.reads.append(kwargs)
+            assert kwargs==dict(Bucket='bucket',Key=key,IfMatch='"'+hashlib.md5(stored).hexdigest()+'"')
+            return dict(Body=io.BytesIO(stored),ContentLength=len(stored),ContentEncoding='gzip',
+                ETag='"'+hashlib.md5(stored).hexdigest()+'"')
+    client=CorruptClient(stored,'gzip');work=tmp_path/'stage'
+    store=R2Store(client,'bucket',cache_dir=work/'raw-pages')
+    result=readings.stage_once(**args,work=work,body_store=store,
+        unreadable_store=BodyStore(LocalAdapter(tmp_path/'durable')))
+    assert result['pending_reads']==1 and result['unreadable']==0
+    assert result['unreadable_key'] is None and not (tmp_path/'durable').exists()
+    assert pq.read_metadata(result['readings']).num_rows==0
+    assert store._immutable_cache_path(key).is_file() and len(client.reads)==1
