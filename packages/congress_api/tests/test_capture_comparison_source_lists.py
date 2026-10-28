@@ -110,3 +110,23 @@ def test_raw_source_list_proof_comes_from_the_actual_ingest_not_a_guessed_index(
     restored=pq.read_table(tmp_path/'comparison/expected-new-only.parquet').to_pylist()
     assert [r['source_record_index'] for r in restored]==([1] if mixed else [1,2])
     assert all(r['reference_kind']=='line' and r['body_sha'] is None and r['pointer'] is None for r in restored)
+
+
+def test_primary_pointer_coverage_prevents_false_restoration_of_an_item(tmp_path):
+    old=tmp_path/'old.parquet';new=tmp_path/'new.parquet';sha='a'*64
+    common=dict(receipt_key=KEY,receipt_line=1,context_url=None,bytes=None,stored_bytes=None,
+        media_type=None,fidelity=None,http_status=None,retrieved_at=None)
+    old_rows=[dict(common,sha256=sha,reference_kind='capture',pointer_json='[1,"body"]')]
+    old_schema=pa.schema([(name,pa.int64() if name in {'receipt_line','bytes','stored_bytes','http_status'} else pa.string()) for name in old_rows[0]])
+    pq.write_table(pa.Table.from_pylist(old_rows,schema=old_schema),old)
+    # Reproduce the mapper bug independently: body pointer names item1, but its
+    # recorded selected index is0 and a spurious bodiless item1 was appended.
+    rows=[dict(common,sha256=bytes.fromhex(sha),reference_kind='capture',pointer_json='[1,"body"]',
+        capture_index=0,record_is_list=True,source_record_count=2,source_record_index=0),
+        dict(common,sha256=None,reference_kind='line',pointer_json=None,capture_index=1,
+        record_is_list=True,source_record_count=2,source_record_index=1)]
+    schema=pa.schema([(name,pa.binary(32) if name=='sha256' else pa.bool_() if name=='record_is_list' else pa.int64() if name in {'receipt_line','bytes','stored_bytes','http_status','capture_index','source_record_count','source_record_index'} else pa.string()) for name in rows[0]])
+    pq.write_table(pa.Table.from_pylist(rows,schema=schema),new)
+    result=compare_old(new,old,engine=NativeDatasets.from_config(os.environ['DOCSPEC_JOB_CONFIG']),work=tmp_path/'comparison')
+    assert result['new_only']==1 and result['expected_new_only']==0
+    assert result['unexplained_new_only']==1 and result['owner_gate'] is True

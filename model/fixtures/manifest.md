@@ -101,6 +101,8 @@ D2 exact listing size cases: a capture lacking stored size and MD5 takes both pi
 
 D1 line kinds: `receipt-line-kinds.json` supplies one expected outcome per enumerated registry kind. References and saved inline records do not count as fetch attempts or shadow a real fetch. Explicit acquisition facts remain acquisition rows; array items stay separate; an unknown family, scalar shape, API shape or unreviewed producer refuses. A primary entry status_code fills only a missing final status.
 
+D1 audit regressions: direct `pointer`, serialized `pointer_json`, numeric-string prefix and both-field forms select the referenced list item before coverage; two references to items1/2 of three yield exactly those bodies plus one bodiless item0. Every explicit failure dictionary translation remains failed even with HTTP202 and a complete body; none passes the actual good-fetch SQL. The independent counter expects the same grain. The comparator refuses a claimed restored item already named by a primary pointer even if a buggy producer reports a different selected index.
+
 ## References
 
 **[IMPLEMENTATION-PLAN]**
