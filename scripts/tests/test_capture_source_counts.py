@@ -124,3 +124,14 @@ def test_new_qualified_gzip_source_establishes_its_own_count_without_a_prior_row
         receipt_keys=['receipts/fixture/source.jsonl.gz','receipts/fixture/new.jsonl.gz'],work=tmp_path/'work',
         source_qualifications={str(path):str(pin),str(direct):str(direct_pin)})
     assert sum(r['source_rows'] for r in result)==2 and sum(r['expected_captures'] for r in result)==2
+
+
+def test_direct_receipt_line_capacity_refuses_an_oversized_line_explicitly(counts,tmp_path):
+    path,pin,_=counter(tmp_path,[{}]);direct=tmp_path/'large-line.jsonl.gz'
+    direct.write_bytes(gzip.compress(b'{"large":"'+b'x'*(9<<20)+b'"}\n',mtime=0))
+    direct_pin=authority(direct,1)
+    with pytest.raises(ValueError,match='invalid|resource'):
+        counts.count_sources(counter=path,files=[dict(key='receipts/fixture/new.jsonl.gz',path=str(direct))],
+            receipt_keys=['receipts/fixture/source.jsonl.gz','receipts/fixture/new.jsonl.gz'],work=tmp_path/'work',
+            source_qualifications={str(path):str(pin),str(direct):str(direct_pin)})
+    assert not (tmp_path/'work/counts.json').exists()
