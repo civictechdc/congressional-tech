@@ -6,6 +6,7 @@ import os
 from pathlib import Path
 import stat
 import shutil
+import zlib
 from contextlib import nullcontext
 from itertools import islice
 from functools import lru_cache
@@ -658,7 +659,7 @@ def _page_entity(stored,body_sha):
         import io
         try:
             with gzip.GzipFile(fileobj=io.BytesIO(stored)) as stream:data=stream.read(MAX_DECODED_BYTES+1)
-        except (OSError,EOFError):raise OSError('invalid_storage_gzip') from None
+        except (OSError,EOFError,zlib.error):raise OSError('invalid_storage_gzip') from None
         if len(data)>MAX_DECODED_BYTES:return None,True
         if sha256(data).hexdigest()==body_sha:return data,True
     raise OSError('decoded_sha_mismatch')
