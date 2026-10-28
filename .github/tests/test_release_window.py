@@ -289,3 +289,37 @@ def test_after_data_rollback_restores_pair_before_prior_pages_and_workflow_state
     assert rollback.index('dispatch_and_watch deploy-pages.yml') < rollback.index('done < <(jq')
     assert 'previous-pipeline-revision.txt' in rollback
     assert 'archive-publish-evidence-$PUBLISH_RUN_ID-$PUBLISH_ATTEMPT' in rollback
+
+
+@pytest.mark.parametrize('scenario',['advanced_main','dirty_checkout','wrong_local_head'])
+def test_after_data_rollback_refuses_changed_source_before_any_write(tmp_path,scenario):
+    rollback=blocks()[3]
+    guard='test "$(gh api "repos/$REPO/git/ref/heads/main" --jq .object.sha)" = "$LANDED_APPLICATION"'
+    assert rollback.index(guard) < rollback.index("<<'PY_ROLLBACK'")
+    assert rollback.index('test -z "$(git -C "$LANDING" status --porcelain)"') < rollback.index("<<'PY_ROLLBACK'")
+    assert 'test "$(git -C "$LANDING" rev-parse HEAD)" = "$LANDED_APPLICATION"' in rollback
+    (tmp_path/'landed-application-commit.txt').write_text('a'*40)
+    tools=tmp_path/'bin';tools.mkdir()
+    calls=tmp_path/'calls.jsonl'
+    for name in ('git','gh'):
+        tool=tools/name
+        tool.write_text('#!'+sys.executable+'\n'+r'''
+import json,os,sys
+name=os.path.basename(sys.argv[0]);args=sys.argv[1:]
+with open(os.environ['CALLS'],'a') as f:f.write(json.dumps([name,*args])+'\n')
+scenario=os.environ['SCENARIO']
+if name=='git' and args[-2:]==['status','--porcelain']:
+    print(' M changed.py' if scenario=='dirty_checkout' else '')
+elif name=='git' and args[-2:]==['rev-parse','HEAD']:
+    print(('b' if scenario=='wrong_local_head' else 'a')*40)
+elif name=='gh' and args[0]=='api':print('b'*40)
+else:raise AssertionError('Unexpected effect: '+repr(args))
+''');tool.chmod(0o755)
+    prefix=rollback.split(".venv/bin/python -I - <<'PY_ROLLBACK'",1)[0]
+    result=subprocess.run(['/bin/bash'],input=prefix,text=True,capture_output=True,
+        env={**os.environ,'PATH':str(tools)+os.pathsep+os.environ['PATH'],'WINDOW':str(tmp_path),
+            'LANDING':str(tmp_path),'REPO':'civictechdc/congressional-tech','SCENARIO':scenario,'CALLS':str(calls)})
+    assert result.returncode != 0
+    invoked=[json.loads(line) for line in calls.read_text().splitlines()]
+    assert all(call[0]=='git' or call[1]=='api' for call in invoked)
+    assert not (tmp_path/'post-data-rollback').exists()
