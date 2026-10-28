@@ -120,7 +120,7 @@ def test_accepted_stage_append_survives_lost_ack_then_skips_a_missing_artifact(t
     assert main(['--append-stage',str(stage),'--receipt-inventory',str(inventory),
         '--engine-config',os.environ['DOCSPEC_JOB_CONFIG'],'--work',str(tmp_path/'retry'),
         '--apply','--catalog-root',str(tmp_path/'catalog'),'--table','archive.captures_v1'])==0
-    assert json.loads(capsys.readouterr().out)==dict(stage=None,applied=False,no_work=True,receipts=0)
+    assert json.loads(capsys.readouterr().out)==dict(stage=None,applied=False,no_work=True,receipts=0,rows=0)
     assert not stage.exists() and not (tmp_path/'retry').exists()
 
 

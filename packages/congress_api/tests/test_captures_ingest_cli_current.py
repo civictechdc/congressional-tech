@@ -81,7 +81,7 @@ def test_lost_append_ack_retry_skips_unavailable_raw_and_later_appends_only_new_
     retry=tmp_path/'retry'
     assert main(arguments(tmp_path,inventory,retry),engine_factory=lambda _:engine)==0
     summary=json.loads(capsys.readouterr().out)
-    assert summary==dict(stage=None,applied=False,no_work=True,receipts=0)
+    assert summary==dict(stage=None,applied=False,no_work=True,receipts=0,rows=0)
     assert not retry.exists() and not (retry/'append').exists()
     selection=json.loads((tmp_path/'retry-inventory/job.json').read_text())
     assert next(i for i in selection['inputs'] if i['name']=='existing')['kind']=='native_table'
