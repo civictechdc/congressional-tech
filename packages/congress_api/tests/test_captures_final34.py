@@ -73,3 +73,12 @@ def test_expansion_inference_is_local_to_retained_member_attempt_and_context(tmp
         body(attempt=0,context_url='a',expansion='encrypted_member')])
     stage=ingest(tmp_path,[source]);rows=pq.read_table(stage/'captures.parquet').to_pylist()
     assert [r['expansion'] for r in rows]==['expanded',None,None,None,None,'expanded',None,'encrypted_member']
+
+
+@pytest.mark.parametrize('verdict',[True,False])
+def test_older_explicit_pdf_checks_stay_unchecked_without_new_writer_identity(tmp_path,verdict):
+    stage=ingest(tmp_path,[dict(record=dict(http_status=200,outcome='saved',retrieved_at='2026-10-02T00:00:00Z'),
+        captures=[body(sniffed_format='pdf',sniff_version='old',intact=verdict)])])
+    [row]=pq.read_table(stage/'captures.parquet').to_pylist()
+    assert row['intact'] is None
+    assert row['writer_job'] is None and row['writer_commit'] is None
