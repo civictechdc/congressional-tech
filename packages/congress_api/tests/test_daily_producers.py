@@ -167,3 +167,26 @@ def test_native_daily_pending_body_stops_before_filename_or_publisher_pins(tmp_p
     assert result['status']=='pending' and result['pins'] is None
     assert result['producerreports']['readings']['pending_reads']==1
     assert not (tmp_path/'work/filenames').exists() and not (tmp_path/'work/final-heads').exists()
+
+
+def test_native_daily_refuses_captures_committed_after_its_parser_work(tmp_path):
+    from congress_api.lake import captures,tables
+    from congress_api.lake.daily import produce_daily
+    value,engine,store=native_fixture(tmp_path,2)
+    late=value['receipt_inventory'][1]
+    first=produce_daily(dict(value,receipt_inventory=value['receipt_inventory'][:1]),engine=engine,raw_store=store)
+    assert first['status']=='completed'
+    staged=captures.stage_captures([late],engine=engine,work=tmp_path/'late-captures')
+    manifest=json.loads((staged/'ingested-receipts.json').read_text())
+    class ConcurrentNative:
+        def __getattr__(self,name):return getattr(engine,name)
+        def run_job(self,path):
+            if path.parent.name=='final-heads':
+                tables.append_rows(staged/'captures.parquet',engine=engine,
+                    work=tmp_path/'late-append',catalog_root=value['catalog_root'],
+                    table=TABLES['captures'],keys=['receipt_key'],definition=manifest['mapping_digest'])
+            return engine.run_job(path)
+    with pytest.raises(ValueError,match='captures.*changed'):
+        produce_daily(dict(value,receipt_inventory=value['receipt_inventory'][:1],work=str(tmp_path/'second')),
+            engine=ConcurrentNative(),raw_store=store)
+    assert (tmp_path/'late-append/result.json').exists()
