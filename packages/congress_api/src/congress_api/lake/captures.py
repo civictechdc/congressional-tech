@@ -94,10 +94,18 @@ def mapping_steps():
         AND {item_fields['outcome']} IN ({values(provider['outcomes'])})))"""
     # Only enumerated domain items select the nested fetch receipt. Unknown
     # outcomes remain visible to the existing guard, including on Vote items.
+    alias_groups=[('http_status','status_code'),
+        ('retrieved_at','captured_at','observed_at','parent_retrieved_at','_retrieved_at','capture_date'),
+        ('requested_url','url','_url','final_url','resolved_url','source_url'),('run_id','source_file')]
+    aliases={name:group for group in alias_groups for name in group}
     for name,kind in SCALARS.items():
         nested=scalar(slots[('receipt',name)],kind)
         if name=='complete':nested=first(nested,scalar(slots[('receipt','body_complete')],'bool'))
         selected=nested if name=='outcome' else first(nested,item_fields[name])
+        if name in aliases:
+            present=' OR '.join(scalar(slots[('receipt',alias)],SCALARS[alias])+' IS NOT NULL'
+                                for alias in aliases[name])
+            selected=f'CASE WHEN {present} THEN {nested} ELSE {item_fields[name]} END'
         item_fields[name]=f'CASE WHEN {domain} THEN {selected} ELSE {item_fields[name]} END'
     item_fields['kind']=scalar(slots[('kind',)],'str')
     item_fields.update({name:scalar(slots[path],'str') for name,path in RECOVERY.items()})
