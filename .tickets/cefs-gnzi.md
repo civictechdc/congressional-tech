@@ -1,6 +1,6 @@
 ---
 id: cefs-gnzi
-status: in_progress
+status: closed
 deps: []
 links: []
 created: 2026-10-28T10:21:44Z
@@ -17,3 +17,9 @@ Owner/lead092220: exact main raw-source-mirror concurrency queue:max for archive
 
 All writer workflows use exact main common group/noncanceling/maxqueue; strict workflow fixture enforces it without old exceptions; focused local workflow checks pass and no live action.
 
+
+## Notes
+
+**2026-10-28T11:34:15Z**
+
+Local done-when met: exact shared main raw-source-mirror concurrency/max queue enforced for every raw/archive/legacy writer; 61 focused checks pass in 2.94s; ONE CODE review APPROVE with no findings (codex-site/review-writer-lock/review.md). No workflows dispatched; hosted scheduling/live activation remain owner gates.

@@ -5,7 +5,7 @@ import re
 from tempfile import TemporaryDirectory
 
 from congress_api.retention.derived_files import file_identity,check_identity,retain_verified_file
-from congress_api.retention.provenance import json_input,field,list_of,struct,parquet_output,file_pin
+from congress_api.retention.provenance import json_input,field,list_of,struct,parquet_output
 from viewer_publication.archive_model_job import _local,_pin
 from viewer_publication.archive_format import (ROOT,EMPTY_STRINGS,_step,_normal,_execute,legacy_meeting_keys)
 from viewer_publication.archive_model import probe_selectors_query
@@ -16,12 +16,12 @@ REQUIRED={'version','kind','display_only','catalog_id','generation','document_ro
           'engine_config','output','scratch','input_files'}
 
 
-def _definition_paths():
-    job=json.loads((ROOT/'model/jobs/seed-v5.json').read_text())
+def _definition_paths(job):
     paths=['model/jobs/seed-v5.json','model/registries/release-schema.json','model/registries/recovery-kinds.json',
-        'model/registries/committee-codes.json','model/fixtures/id-golden-vectors.json',
+        'model/registries/committee-codes.json','model/registries/reader-limits.json','model/fixtures/id-golden-vectors.json',
         'packages/viewer_publication/src/viewer_publication/archive_seed.py',
-        'packages/viewer_publication/src/viewer_publication/archive_format.py']
+        'packages/viewer_publication/src/viewer_publication/archive_format.py',
+        'packages/viewer_publication/src/viewer_publication/archive_model.py']
     return sorted(set(paths+[step['sql_file'] for step in job['steps']]))
 
 
@@ -44,12 +44,24 @@ def load_seed_spec(path):
         item=value['input_files'][name];_pin(item,{'path','sha256','size'})
         result['input_files'][name]=dict(item,path=_local(item['path'],path.parent))
     for name in ['engine_config','output','scratch']:result[name]=_local(value[name],path.parent)
+    job_path=ROOT/'model/jobs/seed-v5.json';job_identity=file_identity(job_path)
+    job=json.loads(job_path.read_text());job_identity.require(job_path)
+    identities={name:(job_identity if name=='model/jobs/seed-v5.json' else file_identity(ROOT/name))
+        for name in _definition_paths(job)}
     profile={name:value[name] for name in ['version','kind','display_only','catalog_id','generation','document_rows','engine_revision']}
     profile.update(label='seed: v5 catalog '+value['generation'][:8],
         input_files={name:{key:result['input_files'][name][key] for key in ['sha256','size']} for name in INPUTS},
-        definition_hashes={name:file_pin(ROOT/name)['sha256'] for name in _definition_paths()})
+        definition_hashes={name:identity['sha256'] for name,identity in identities.items()})
     result['profile']=profile
+    result['_definition_identities']=identities
     return result
+
+
+def _require_definitions(spec):
+    identities=spec['_definition_identities']
+    if spec['profile']['definition_hashes']!={name:identity['sha256'] for name,identity in identities.items()}:
+        raise ValueError('Seed definition hashes differ from their verified custody')
+    for name,identity in identities.items():identity.require(ROOT/name)
 
 
 def _sql_steps():
@@ -126,7 +138,7 @@ def _seed_queries(spec):
         missing_member_sizes="(SELECT count(*) FROM seed_members m LEFT JOIN seed_sizes s USING(body_key) WHERE m.body_key IS NOT NULL AND s.bytes IS NULL)",
         conflicting_member_sizes="(SELECT count(*) FROM seed_members m JOIN seed_sizes s USING(body_key) WHERE s.bytes<>s.max_bytes OR s.null_bytes<>0 OR s.bytes<0)",
         unknown_recovery_kinds="(SELECT count(*) FROM seed_recovery_candidates WHERE kind IS NULL)",
-        bad_recovery_records="(SELECT count(*) FROM seed_recovery_candidates WHERE body_hex IS NULL OR original_url IS NULL OR recovered_url IS NULL OR recovery_status<>'recovered')",
+        bad_recovery_records="(SELECT count(*) FROM seed_recovery_candidates WHERE body_hex IS NULL OR original_url IS NULL OR recovered_url IS NULL OR recovery_status IS DISTINCT FROM 'recovered')",
         missing_recovery_sizes="(SELECT count(*) FROM seed_recoveries WHERE bytes IS NULL OR bytes<0)",
         conflicting_recovery_sizes="(SELECT count(*) FROM seed_recoveries r JOIN seed_sizes s USING(body_key) WHERE s.bytes<>s.max_bytes OR s.null_bytes<>0)",
         required_document_values="(SELECT count(*) FROM ordered WHERE filename IS NULL OR trim(filename)='' OR format IS NULL OR trim(format)='')",
@@ -163,6 +175,7 @@ def _seed_queries(spec):
 
 def build_seed_release(spec,*,engine,output,scratch):
     """Bind approved files and shared writer; every join/group/export is native."""
+    _require_definitions(spec)
     output,scratch=Path(output),Path(scratch)
     if output.exists() or scratch.exists() or output.is_symlink() or scratch.is_symlink():
         raise ValueError('Seed output and scratch must be fresh')
@@ -196,4 +209,5 @@ def build_seed_release(spec,*,engine,output,scratch):
         manifest=_execute(inputs,_seed_steps(),output=output,scratch=scratch,engine=engine,origin=origin,
             auxiliary=auxiliaries,extra_outputs=private,diagnostics=[guard],metadata_queries=queries)
         for owned in held.values():owned.require(owned.path)
+        _require_definitions(spec)
         return manifest
