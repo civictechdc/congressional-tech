@@ -281,10 +281,12 @@ def test_model_witnesses_use_native_receipt_keys_and_match_only_source_evidence(
             **{k:'Utf8' for k in ['format','mode','outcome','url','requested_url','retrieved_at','fidelity','member_path','h_content_disposition','match_basis','original_url','recovered_url']},
             complete='Boolean',http_status='Int64',publisher_requested='Boolean'),
         json_input(tmp_path,'record_roles',roles,receipt_key='Utf8',receipt_line='Int64',capture_index='Int64',record_role='Utf8',is_real_file='Boolean'),
-        json_input(tmp_path,'page_facts',[dict(body_sha=r['body_sha'],status='completed',fingerprint='9'*64,error_type=None) for r in sources[1:]],body_sha='Utf8',status='Utf8',fingerprint='Utf8',error_type='Utf8'),
+        json_input(tmp_path,'page_facts_rows',[dict(body_sha=r['body_sha'],status='completed',fingerprint='9'*64,error_type=None) for r in sources[1:]],body_sha='Utf8',status='Utf8',fingerprint='Utf8',error_type='Utf8'),
         *[json_input(tmp_path,name,rows,doc='Utf8',source_id='Utf8',body_key='Utf8',filename='Utf8',source_url='Utf8') for name,rows in [('old_evidence_sources',old),('new_evidence_sources',new)]]]
     available={item['name']:set(f['name'] for f in item['schema']['fields']) for item in inputs}
+    available['page_facts']=available.pop('page_facts_rows')
     steps,missing=parity.model_witness_steps(available)
+    steps.insert(0,dict(name='page_facts',sql="SELECT decode(body_sha,'hex') AS body_sha,status,decode(fingerprint,'hex') AS fingerprint,error_type FROM page_facts_rows"))
     assert 'direct_provider_same_text' in missing  # No retry attempt was invented.
     (tmp_path/'native').mkdir()
     reports=run_job(tmp_path/'native',engine(),inputs=inputs,steps=steps,outputs=[],queries=[dict(name='witnesses',
@@ -423,3 +425,13 @@ def test_null_recovery_values_remain_observable_before_cause_classification(tmp_
     inputs,steps=parity.normalization(loaded,directory=directory)
     reports=run_job(directory,engine(),inputs=inputs,steps=steps,outputs=[],queries=[dict(name='values',sql="SELECT field,value FROM new_fields WHERE field IN ('recovery.kind','recovery.imported_at') ORDER BY field")])
     assert reports['values']==[dict(field=field,value=value) for field,value in sorted(FIXTURE['f0_catalog']['expected']['null_recovery_values'].items())]
+
+
+def test_raw_link_type_is_not_a_registry_mapped_publisher_kind():
+    pk={'receipt_key','receipt_line','capture_index'}
+    available={'capture_sources':pk|{'source_id','body_sha','filename','source_url','import_date','document_kind'},
+        'capture_evidence':pk|{'format','mode','complete','http_status','outcome','url','requested_url','retrieved_at','fidelity','member_path','h_content_disposition'},
+        'record_roles':pk|{'record_role','is_real_file'},'page_facts':{'body_sha','status','fingerprint','error_type'},
+        'publisher_links':{'source_id','page_body','context','text','doc_type','link_index'}}
+    _,missing=parity.model_witness_steps(available)
+    assert 'publisher_link_kind' in missing
