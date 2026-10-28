@@ -1,6 +1,6 @@
 ---
 id: cefr-vnw8
-status: in_progress
+status: closed
 deps: []
 links: []
 created: 2026-10-27T19:00:52Z
@@ -54,3 +54,7 @@ Refreshed preparation at CT53e4df39/DS71cc6eb: all19groups/731files/197241popula
 **2026-10-28T17:27:02Z**
 
 Owner18CT scope3a/4ba contracts precede91c behavior; CODE found canonical review keeps and bad replacement paths, fixed0dc/a354 with19focusedPASS2.62s. Generator wc-l796→827 (91c body828 typo). New immutable shared/switch-inventory-4fe18d00 has18CTgroups609files128077populationlines, byte-identical fixed-head reproduction. Currentverify refuses only uncommitted4xdiagnostic test; no cleanfinalswitch claim. No DS files, cuts or live changes; old benchmark retired for active measure-archive.
+
+**2026-10-28T20:58:15Z**
+
+F5 preparation refreshed at committed raw9030d537:18 CT groups/609 files/128194 population lines; SHAe5c8331f851a28f964f7d8787fc9acdaae76022d617bcd2b07a07ed225ed8f82. Fixed-head regeneration byte-identical; current verify stale=false/changed source0/uncommitted scanned0/generator unchanged. Official runner19focusedPASS. Prior ONECODE findings fixed. Complete per-group paths/symbols/callers/wc-l ready; no deletion. Final combined-head remeasurement and live replacement gates remain switch-owner actions; DS deferred.
