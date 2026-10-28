@@ -43,9 +43,13 @@ COLUMNS = [*PK, 'run_id', 'mode', 'outcome', 'family', 'requested_url', 'url',
     'evidence_sha256', 'imported_at', 'writer_job', 'writer_commit']
 
 
+DOMAIN_OUTCOMES = Path(__file__).resolve().parents[5]/'model/registries/receipt-domain-outcomes.json'
+
+
 def current_version():
     """The existing mapping identity shared by ingest and daily admission."""
-    return sha256(Path(__file__).read_bytes()+(Path(__file__).parent/'receipt_metadata.py').read_bytes()).hexdigest()
+    return sha256(Path(__file__).read_bytes()+(Path(__file__).parent/'receipt_metadata.py').read_bytes()
+                  +DOMAIN_OUTCOMES.read_bytes()).hexdigest()
 
 
 def first(*values):
@@ -77,12 +81,36 @@ def mapping_steps():
         unnest(range(0,cast(record_count AS BIGINT))) AS item_index
         FROM lines WHERE record_is_list""")
     paths=[(name,) for name in SCALARS]+list(RECOVERY.values())+DOWNLOAD_HEADERS+[('error',),('kind',)]
+    paths += [('receipt',name) for name in SCALARS]+[('receipt','body_complete'),('receipt','error')]
     slots=projection('item',paths)
     item_fields={name:scalar(slots[(name,)],kind) for name,kind in SCALARS.items()}
+    registry=json.loads(DOMAIN_OUTCOMES.read_bytes())
+    values=lambda mapping:','.join(literal(v) for v in sorted(mapping))
+    provider=registry['external_provider']
+    domain=f"""((json_get_str(item,'kind')={literal(registry['vote']['kind'])}
+        AND {item_fields['outcome']} IN ({values(registry['vote']['outcomes'])}))
+        OR (starts_with(receipt_key,{literal(provider['receipt_key_prefix'])})
+        AND starts_with(array_element(string_to_array(receipt_key,'/'),-1),{literal(provider['filename_prefix'])})
+        AND {item_fields['outcome']} IN ({values(provider['outcomes'])})))"""
+    # Only enumerated domain items select the nested fetch receipt. Unknown
+    # outcomes remain visible to the existing guard, including on Vote items.
+    alias_groups=[('http_status','status_code'),
+        ('retrieved_at','captured_at','observed_at','parent_retrieved_at','_retrieved_at','capture_date'),
+        ('requested_url','url','_url','final_url','resolved_url','source_url'),('run_id','source_file')]
+    aliases={name:group for group in alias_groups for name in group}
+    for name,kind in SCALARS.items():
+        nested=scalar(slots[('receipt',name)],kind)
+        if name=='complete':nested=first(nested,scalar(slots[('receipt','body_complete')],'bool'))
+        selected=nested if name=='outcome' else first(nested,item_fields[name])
+        if name in aliases:
+            present=' OR '.join(scalar(slots[('receipt',alias)],SCALARS[alias])+' IS NOT NULL'
+                                for alias in aliases[name])
+            selected=f'CASE WHEN {present} THEN {nested} ELSE {item_fields[name]} END'
+        item_fields[name]=f'CASE WHEN {domain} THEN {selected} ELSE {item_fields[name]} END'
     item_fields['kind']=scalar(slots[('kind',)],'str')
     item_fields.update({name:scalar(slots[path],'str') for name,path in RECOVERY.items()})
     item_fields['h_content_disposition']=first(*(scalar(slots[path],'str') for path in DOWNLOAD_HEADERS))
-    item_fields['error_present']=get(slots[('error',)],kind='json')+' IS NOT NULL'
+    item_fields['error_present']='('+get(slots[('error',)],kind='json')+' IS NOT NULL OR ('+domain+' AND '+get(slots[('receipt','error')],kind='json')+' IS NOT NULL))'
     step('items','SELECT source_row_id,receipt_key,receipt_line,item_index,'+
         ','.join(value+' AS i_'+name for name,value in item_fields.items())+' FROM item_entries',materialize=True)
     step('reference_lists', """SELECT * EXCEPT(record_items),
@@ -142,9 +170,6 @@ def mapping_steps():
     def both(name):
         line,record=metadata_field('line',name),metadata_field('record',name)
         ordinary=item_first(first(line,record),record)
-        if name=='outcome':
-            # Vote.outcome names a committee action, never a fetch result.
-            return f"CASE WHEN record_is_list AND {metadata_field('record','kind')}='vote' THEN {line} ELSE {ordinary} END"
         return ordinary
     step('facts',f"""SELECT *,{both('mode')} AS raw_mode,{both('outcome')} AS raw_outcome,
         {item_first(first(metadata_field('line','http_status'),metadata_field('line','status_code'),metadata_field('record','http_status'),metadata_field('record','status_code')),first(metadata_field('record','http_status'),metadata_field('record','status_code')))} AS line_status,
