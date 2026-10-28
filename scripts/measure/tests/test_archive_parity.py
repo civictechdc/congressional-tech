@@ -148,7 +148,7 @@ def test_descriptor_requires_the_pinned_pair_and_actual_candidate_files(tmp_path
         parity.load_descriptor(path)
 
 
-def f0_fixture(tmp_path):
+def f0_fixture(tmp_path, *, bad_filename=False):
     import pyarrow as pa
     import pyarrow.parquet as pq
     from congress_api.retention.provenance import file_pin
@@ -167,6 +167,34 @@ def f0_fixture(tmp_path):
     pq.write_table(pa.table(dict(system_code=['hsag00'],name=['Agriculture'],chamber=['house'])),tmp_path/'committees.parquet')
     manifest=convert_catalog(tmp_path/'documents.parquet',tmp_path/'filenames.parquet',tmp_path/'captures.parquet',tmp_path/'committees.parquet',
         catalog_id=parity.ORACLE_GENERATION,output=tmp_path/'release',scratch=tmp_path/'converter',engine=engine())
+    release=tmp_path/'release';producer=tmp_path/'converter'
+    if bad_filename:
+        # This is an authored bad native job, not a patch to production code.
+        from hashlib import sha256
+        job=json.loads((producer/'job.json').read_text())
+        normalized=next(s for s in job['steps'] if s['name']=='normalized')
+        before='d.filename AS "filename"'
+        assert before in normalized['sql']
+        normalized['sql']=normalized['sql'].replace(before,
+            "CASE WHEN d.filename='Beta.html' THEN 'Wrong.html' ELSE d.filename END AS \"filename\"",1)
+        release=tmp_path/'bad-release';release.mkdir()
+        producer=tmp_path/'bad-producer';producer.mkdir()
+        job['scratch']=str(producer/'native')
+        for output in job['outputs']:
+            output['path']=str(release/output['name'])
+        (producer/'job.json').write_text(json.dumps(job))
+        result=engine().run_job(producer/'job.json')
+        (producer/'result.json').write_text(json.dumps(result))
+        for item in manifest['files']:
+            if item['name'].endswith('.parquet'):
+                actual=next(r for r in result['outputs'] if r['name']==item['name'])
+                for name in ['sha256','md5','size','rows']:
+                    item[name]=actual[name]
+            else:
+                (release/item['name']).write_bytes((tmp_path/'release'/item['name']).read_bytes())
+        identity=[manifest['schema_version'],[[f['name'],f['sha256'],f['size'],f['rows']] for f in manifest['files']]]
+        manifest['release_id']=sha256(json.dumps(identity,ensure_ascii=False,separators=(',',':')).encode()).hexdigest()
+        (release/'manifest.json').write_text(json.dumps(manifest))
     selector=dict(version=1,catalog_id=parity.ORACLE_CATALOG,generation=parity.ORACLE_GENERATION,files={})
     for name,key in [('documents','documents.parquet'),('filenames','document-filenames.parquet')]:
         pin=file_pin(tmp_path/(name+'.parquet'))
@@ -179,7 +207,9 @@ def f0_fixture(tmp_path):
         return dict(path=str(path),**file_pin(path))
     example['oracle']=dict(selector=pin('selector.json'),documents=pin('documents.parquet'),filenames=pin('filenames.parquet'),
         documents_receipt=pin('documents-receipt.json'),filenames_receipt=pin('filenames-receipt.json'))
-    example['candidate']=dict(kind='f0',release=str(tmp_path/'release'),manifest_sha256=file_pin(tmp_path/'release/manifest.json')['sha256'])
+    example['candidate']=dict(kind='f0',release=str(release),manifest_sha256=file_pin(release/'manifest.json')['sha256'],
+        build_job=dict(path=str(producer/'job.json'),**file_pin(producer/'job.json')),
+        build_result=dict(path=str(producer/'result.json'),**file_pin(producer/'result.json')))
     example['cause_relations']={}
     path=tmp_path/'f0-template.json';path.write_text(json.dumps(example))
     return path
@@ -198,26 +228,18 @@ def test_actual_f0_candidate_has_only_converter_gaps(tmp_path):
 
 
 def test_f0_conversion_proofs_do_not_excuse_a_corrupt_visible_filename(tmp_path):
-    from hashlib import sha256,md5
-    import pyarrow as pa
-    import pyarrow.parquet as pq
-    from congress_api.retention.provenance import file_pin
-    template=f0_fixture(tmp_path)
+    template=f0_fixture(tmp_path,bad_filename=True)
     descriptor=parity.prepare_f0(template,engine=engine(),work=tmp_path/'prepare')
-    path=tmp_path/'release/list.parquet';table=pq.read_table(path)
-    index=table.schema.get_field_index('filename')
-    table=table.set_column(index,'filename',pa.array(['Wrong.html' if x=='Beta.html' else x
-        for x in table.column('filename').to_pylist()],type=table.schema.field(index).type))
-    pq.write_table(table,path,compression='zstd',data_page_version='2.0')
-    manifest_path=tmp_path/'release/manifest.json';manifest=json.loads(manifest_path.read_text())
-    entry=next(r for r in manifest['files'] if r['name']=='list.parquet')
-    entry.update(sha256=file_pin(path)['sha256'],size=path.stat().st_size,md5=md5(path.read_bytes()).hexdigest())
-    identity=[manifest['schema_version'],[[f['name'],f['sha256'],f['size'],f['rows']] for f in manifest['files']]]
-    manifest['release_id']=sha256(json.dumps(identity,ensure_ascii=False,separators=(',',':')).encode()).hexdigest()
-    manifest_path.write_text(json.dumps(manifest))
-    value=json.loads(descriptor.read_text());value['candidate']['manifest_sha256']=file_pin(manifest_path)['sha256']
-    descriptor.write_text(json.dumps(value))
     result=parity.compare_descriptor(descriptor,engine_config=os.environ['DOCSPEC_JOB_CONFIG'],work=tmp_path/'comparison')
     assert result['counts']['unexplained']==2
     assert result['counts']['invalid_ids']==0
     assert result['decision_ready'] is False
+
+
+def test_public_bytes_cannot_change_after_the_pinned_producer_result(tmp_path):
+    template=f0_fixture(tmp_path)
+    descriptor=parity.prepare_f0(template,engine=engine(),work=tmp_path/'prepare')
+    path=tmp_path/'release/list.parquet'
+    path.write_bytes(path.read_bytes()+b'tampered')
+    with pytest.raises(ValueError,match='size differs|digest differs'):
+        parity.compare_descriptor(descriptor,engine_config=os.environ['DOCSPEC_JOB_CONFIG'],work=tmp_path/'comparison')

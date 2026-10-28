@@ -35,6 +35,21 @@
       "path": "source_members.parquet",
       "sha256": "0000000000000000000000000000000000000000000000000000000000000000",
       "size": 0
+    },
+    "document_rows": {
+      "path": "document_rows.parquet",
+      "sha256": "0000000000000000000000000000000000000000000000000000000000000000",
+      "size": 0
+    },
+    "build_job": {
+      "path": "job.json",
+      "sha256": "0000000000000000000000000000000000000000000000000000000000000000",
+      "size": 0
+    },
+    "build_result": {
+      "path": "result.json",
+      "sha256": "0000000000000000000000000000000000000000000000000000000000000000",
+      "size": 0
     }
   },
   "cause_relations": {
@@ -51,7 +66,7 @@
         "error_type",
         "mode",
         "complete",
-        "attempt_status",
+        "http_status",
         "outcome",
         "url",
         "requested_url",
