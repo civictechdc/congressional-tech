@@ -93,7 +93,7 @@ def test_real_canary_failure_against_hand_candidate_does_not_flip(tmp_path):
     """Synthetic hand fixture references absent saved bodies; real reader must refuse."""
     import os
     from docspec_client.client import NativeDatasets
-    from viewer_publication.archive_release import build_fixture_release
+    from viewer_publication.archive_fixture import build_fixture_release
     release = tmp_path / 'release'
     manifest = build_fixture_release(ROOT / 'model/fixtures/hand-release.json', output=release,
         scratch=tmp_path / 'job', engine=NativeDatasets.from_config(os.environ['DOCSPEC_JOB_CONFIG']))

@@ -56,6 +56,22 @@ def test_shared_legacy_meeting_selector_keeps_url_variants(engine, tmp_path):
         ['123'], ['456'], ['789'], ['790'], ['791'], [], [], []]
 
 
+def test_recovery_without_an_import_record_keeps_an_unknown_date(engine, tmp_path):
+    from viewer_publication.archive_fixture import build_fixture_release
+    value=json.loads((ROOT/'model/fixtures/hand-release.json').read_text())
+    for document in value['documents']:
+        if document.get('recovery'):document['recovery']['imported_at']=None
+    fixture=tmp_path/'unknown-recovery-date.json';fixture.write_text(json.dumps(value))
+    output=tmp_path/'release'
+    build_fixture_release(fixture,output=output,scratch=tmp_path/'jobs',engine=engine)
+    recovered=pq.read_table(output/'recoveries.parquet').to_pylist()
+    assert len(recovered)==3 and all(row['imported_at'] is None for row in recovered)
+    registry=json.loads((output/'schema.json').read_text())
+    recovery=next(entry for entry in registry['files'] if entry['name']=='recoveries.parquet')
+    imported=next(column for column in recovery['columns'] if column['name']=='imported_at')
+    assert imported['type']=='date32' and imported['nullable'] is True
+
+
 def test_hand_release_covers_the_reader_outcomes(engine, tmp_path):
     from viewer_publication.archive_fixture import build_fixture_release
 
