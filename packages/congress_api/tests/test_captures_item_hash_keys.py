@@ -45,6 +45,6 @@ def test_item_lookup_hashes_every_identity_and_preserves_original_nonnull_keys(t
     line=joins[0];on=line.split('on=[',1)[1].split(']',1)[0]
     for field in ('source_row_id','receipt_key','receipt_line','selected_record_index','item_index'):
         assert field in on,line
-    assert 'NullEqualsNull' in line
+    assert 'NullsEqual: true' in line
     residual=line.split('filter=',1)[1] if 'filter=' in line else ''
     assert all(field not in residual for field in ('source_row_id','receipt_key','receipt_line','selected_record_index','item_index'))
