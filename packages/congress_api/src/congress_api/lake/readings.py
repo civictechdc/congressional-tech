@@ -6,6 +6,8 @@ import os
 from pathlib import Path
 import stat
 import shutil
+from contextlib import nullcontext
+from itertools import islice
 
 from congress_api.retention.body_store import BodyStore, LocalAdapter, validate_key
 from congress_api.retention.body_keys import body_object_digest
@@ -119,10 +121,29 @@ def writer_admission_conflict_sql():
         JOIN sniff_facts s ON a.body_sha=s.body_sha WHERE a.format IS DISTINCT FROM s.format"""
 
 
-def stage(*,captures,body_inventory,local_root,engine,work,decided_at,parser,
-          sniff_version=None,parser_version=None,existing=None,unreadable_files=(),
-          worker_factory=ParserWorker,unreadable_store=None):
-    """Stage missing readings; raw decisions require an explicitly supplied store."""
+class BackfillRequired(ValueError):
+    """A daily plan exceeded its runner budget before any body was opened."""
+    def __init__(self,planned,max_work_items):
+        self.report={name:planned[name] for name in
+            ('work_items','work_list','parser','parser_version')}
+        self.report['work_list']=str(self.report['work_list'])
+        self.report.update(status='backfill_required',max_work_items=max_work_items)
+        super().__init__('Reading work list exceeds daily budget; backfill required')
+
+    def as_dict(self):
+        return dict(self.report)
+
+
+def _positive(value,name):
+    if type(value) is not int or value<=0:
+        raise ValueError(name+' must be a positive integer')
+    return value
+
+
+def plan(*,captures,body_inventory,local_root,engine,work,decided_at,parser,
+         sniff_version=None,parser_version=None,existing=None,unreadable_files=(),max_work_items=None):
+    """Materialize one native missing-body work list, without opening raw bodies."""
+    if max_work_items is not None:_positive(max_work_items,'max_work_items')
     instant(decided_at)
     combined=parser is None
     versions={p:current_version(p) for p in ['sniff','html','xml','json']}
@@ -145,7 +166,11 @@ def stage(*,captures,body_inventory,local_root,engine,work,decided_at,parser,
         inputs.append(dict(name='unreadable',kind='json_lines',files=list(unreadable_files),
             schema=dict(fields=[field(k,v) for k,v in unreadable_schema.items()],metadata={})))
     else:inputs.append(json_input(work,'unreadable',[],**unreadable_schema))
-    if existing:
+    if isinstance(existing,dict):
+        if set(existing)!={'metadata_location','table_uuid','snapshot','schema_id'}:
+            raise ValueError('Existing native readings require an exact immutable table pin')
+        inputs.append(dict(name='existing',kind='native_table',**existing))
+    elif existing:
         inputs.append(dict(name='existing',kind='parquet',path=str(Path(existing).resolve())))
     else:
         empty=json_input(work,'existing',[],**_reading_fields())
@@ -189,8 +214,9 @@ def stage(*,captures,body_inventory,local_root,engine,work,decided_at,parser,
           AND e.parser={quote(parser)} AND e.parser_version={quote(version)})
         AND NOT EXISTS(SELECT 1 FROM active_unreadable u WHERE u.body_sha256=encode(b.body_sha,'hex')
           AND u.parser={quote(parser)} AND u.parser_version={quote(version)})'''
+    steps.append(dict(name='pending_bodies',sql=sql,materialize=True))
     checks=run_job(work,engine,inputs=inputs,steps=steps,
-        outputs=[parquet_output(work,'work-list',sql,['body_sha'])]+([parquet_output(work,'body-admissions','SELECT * FROM body_admissions',['body_sha'])] if combined else []),queries=[
+        outputs=[parquet_output(work,'work-list','SELECT * FROM pending_bodies',['body_sha'])]+([parquet_output(work,'body-admissions','SELECT * FROM body_admissions',['body_sha'])] if combined else []),queries=[
         dict(name='conflicts',sql='''SELECT count(*) AS n FROM (
             SELECT body_sha FROM body_inventory GROUP BY body_sha HAVING count(*)>1
             UNION ALL SELECT body_sha FROM sniff_conflicts)'''),
@@ -198,16 +224,41 @@ def stage(*,captures,body_inventory,local_root,engine,work,decided_at,parser,
             WHERE body_sha IS NULL OR physical_key IS NULL OR relative_path IS NULL
                OR stored_bytes IS NULL OR stored_bytes<0 OR stored_gzip IS NULL''')]+([
         dict(name='writer_admission_conflicts',sql=writer_admission_conflict_sql())]
-        if combined else []))
-    if any(rows[0]['n'] for rows in checks.values()):
+        if combined else [])+[dict(name='work_items',sql='SELECT count(*) AS n FROM pending_bodies')])
+    if any(rows[0]['n'] for name,rows in checks.items() if name!='work_items'):
         raise ValueError('Conflicting or incomplete pinned body metadata')
+    planned=dict(status='planned',work=work,work_list=work/'work-list.parquet',
+        body_admissions=work/'body-admissions.parquet' if combined else None,
+        parser=parser,parser_version=version,versions=versions,limits=limits,
+        local_root=raw,decided_at=decided_at,work_items=checks['work_items'][0]['n'])
+    if max_work_items is not None and planned['work_items']>max_work_items:
+        raise BackfillRequired(planned,max_work_items)
+    return planned
+
+
+def stage(*,worker_factory=ParserWorker,unreadable_store=None,**kwargs):
+    """Use the same admitted plan for legacy single-parser and combined staging."""
+    planned=plan(**kwargs)
+    return _execute_plan(planned,engine=kwargs['engine'],worker_factory=worker_factory,
+                         unreadable_store=unreadable_store)
+
+
+def _execute_plan(planned,*,engine,worker_factory=ParserWorker,unreadable_store=None,
+                  work=None,items=None,worker=None,work_items=None):
+    parser=planned['parser'];version=planned['parser_version'];combined=parser=='readings'
+    versions=planned['versions'];limits=planned['limits'];raw=planned['local_root']
+    decided_at=planned['decided_at']
+    if work is None:work=planned['work']
+    else:work=Path(work);work.mkdir(parents=True,exist_ok=False)
+    if items is None:items=parquet_records(planned['work_list'])
     parsed=work/'parsed';parsed.mkdir()
     decisions_path=parsed/'unreadable.jsonl'
     counters=dict(pending_reads=0,read_bytes=0,unreadable=0)
     def rows():
-        with worker_factory(parser,version,'congress_api.lake.readings:'+('parse_once_payload' if combined else 'parse_payload'),
-                **limits) as worker,decisions_path.open('x') as decisions:
-            for item in parquet_records(work/'work-list.parquet'):
+        context=(nullcontext(worker) if worker is not None else worker_factory(parser,version,
+            'congress_api.lake.readings:'+('parse_once_payload' if combined else 'parse_payload'),**limits))
+        with context as active_worker,decisions_path.open('x') as decisions:
+            for item in items:
                 if item['physical_key'] is None:
                     counters['pending_reads']+=1;continue
                 validate_key(item['physical_key'])
@@ -230,7 +281,7 @@ def stage(*,captures,body_inventory,local_root,engine,work,decided_at,parser,
                             payload=json.dumps(dict(path=str(path),cache=str(cache),stored_bytes=item['stored_bytes'],
                                 stored_gzip=item['stored_gzip'],versions=versions,known_format=item['known_format'],
                                 skip_parsers=sorted(set(item['skip_parsers'] or []) | ({'sniff'} if item['known_format'] is not None else set()))),separators=(',',':')).encode()
-                        outcome=worker.parse(body_hex,payload)
+                        outcome=active_worker.parse(body_hex,payload)
                         if outcome['status']=='read_error':
                             counters['pending_reads']+=1;continue
                         if outcome['status']=='unreadable':
@@ -273,10 +324,11 @@ def stage(*,captures,body_inventory,local_root,engine,work,decided_at,parser,
         else:
             imported=import_unreadable(unreadable_store,decisions_path,decided_at=decided_at)
         key=imported['key']
-    return dict(readings=work/'readings.parquet',work_list=work/'work-list.parquet',
+    return dict(readings=work/'readings.parquet',work_list=planned['work_list'],
         parser=parser,parser_version=version,unreadable_key=key,unreadable_path=path,
         unreadable_stage=unreadable_stage,unreadable_pending=pending,
-        body_admissions=work/'body-admissions.parquet' if combined else None,**counters)
+        body_admissions=planned['body_admissions'],
+        work_items=planned['work_items'] if work_items is None else work_items,**counters)
 
 
 def stage_once(**kwargs):
@@ -299,6 +351,65 @@ def append(staged,**kwargs):
     from congress_api.lake.tables import append_rows
     return append_rows(staged['readings'],**kwargs,keys=PK,
         definition='readings:'+staged['parser']+':'+staged['parser_version'])
+
+
+def run(*,engine,work,mode,execute=False,max_work_items=None,batch_size=None,parser=None,
+        table=None,catalog_root=None,read_current=None,existing=None,
+        unreadable_store=None,worker_factory=ParserWorker,**inputs):
+    """Admit one plan; execute daily once, or stream bounded backfill batches.
+
+    The native anti-join runs once per invocation. The sorted metadata work list
+    is consumed once, O(N), with one persistent worker. Resuming means a fresh
+    current-table read and anti-join, never a local journal or stale saved plan.
+    """
+    if mode not in {'daily','backfill'}:raise ValueError('mode must be daily or backfill')
+    if type(execute) is not bool:raise ValueError('execute must be boolean')
+    if mode=='daily':
+        _positive(max_work_items,'max_work_items')
+        if batch_size is not None:raise ValueError('batch_size is only for backfill')
+    else:
+        _positive(batch_size,'batch_size')
+        if max_work_items is not None:raise ValueError('max_work_items is only for daily')
+    if existing is not None and (mode=='backfill' or execute):
+        raise ValueError('Execution and backfill require current lake readings, not existing pins')
+    if execute and unreadable_store is None:
+        raise ValueError('Execution requires an explicit durable unreadable store')
+    work=Path(work).resolve()
+    if execute or mode=='backfill':
+        from congress_api.lake.tables import validate_catalog_authority
+        validate_catalog_authority(engine,catalog_root)
+        if not table:raise ValueError('Current readings require an explicit table identifier')
+        if read_current is None:
+            raise RuntimeError('Native current-table lookup is required for readings execution')
+        # A caller-supplied reader must use the configured native catalog owner.
+        # No empty append or direct metadata/catalog parsing substitutes for it.
+        existing=read_current(engine=engine,work=work/'current',catalog_root=catalog_root,table=table)
+    planned=plan(engine=engine,work=work/'plan',parser=parser,existing=existing,
+        max_work_items=max_work_items if mode=='daily' else None,**inputs)
+    report={name:planned[name] for name in ('status','work_items','work_list','body_admissions','parser','parser_version')}
+    report.update(mode=mode,applied=False,batches=[])
+    if not execute:return report
+    report.update(status='completed',pending_reads=0,read_bytes=0,unreadable=0)
+    if planned['work_items']==0:return report
+    size=planned['work_items'] if mode=='daily' else batch_size
+    items=iter(parquet_records(planned['work_list']))
+    callable_name='parse_once_payload' if parser is None else 'parse_payload'
+    with worker_factory(planned['parser'],planned['parser_version'],
+            'congress_api.lake.readings:'+callable_name,**planned['limits']) as worker:
+        for number,start in enumerate(range(0,planned['work_items'],size)):
+            count=min(size,planned['work_items']-start)
+            batch_work=work/('batch-'+str(number).zfill(6))
+            staged=_execute_plan(planned,engine=engine,work=batch_work,
+                items=islice(items,count),worker=worker,work_items=count,
+                unreadable_store=unreadable_store)
+            import pyarrow.parquet as pq
+            staged['append']=(append(staged,engine=engine,work=batch_work/'append',
+                catalog_root=catalog_root,table=table) if pq.ParquetFile(staged['readings']).metadata.num_rows else None)
+            report['batches'].append(staged)
+            report['applied']|=staged['append'] is not None
+            for key in ('pending_reads','read_bytes','unreadable'):report[key]+=staged[key]
+    if report['pending_reads']:report['status']='pending'
+    return report
 
 
 class _ReadOnceBody:
