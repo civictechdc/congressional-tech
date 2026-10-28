@@ -7,6 +7,15 @@ Source parsing, guards, key anti-joins, table appends and acceptance use DocSpec
 from hashlib import sha256
 import json
 from pathlib import Path
+import importlib.util
+import os
+import shutil
+import signal
+import subprocess
+import sys
+import time
+
+from congress_api.retention.body_store import validate_key
 
 
 CHECK_SCOPES={
@@ -50,6 +59,7 @@ def make_plan(files,counts,*,byte_target,item_target):
         key=row.get('key')
         if not isinstance(key,str) or not key.startswith('receipts/') or key in inventory:
             raise ValueError('Inventory needs unique original receipt keys')
+        validate_key(key)
         if row.get('path') is not None and row.get('prepared_stage') is not None:
             raise ValueError('A receipt needs one source backend')
         for name in ('path','prepared_stage'):
@@ -61,6 +71,7 @@ def make_plan(files,counts,*,byte_target,item_target):
             'max_line_bytes','max_line_items')
     for row in counts:
         key=row.get('key')
+        if not isinstance(key,str):raise ValueError('Source-count keys must be strings')
         if key in metrics:raise ValueError('Duplicate source-count key')
         for name in fields:_positive(row.get(name),name)
         if (row['expected_captures']>row['list_items']
@@ -113,3 +124,72 @@ def make_plan(files,counts,*,byte_target,item_target):
     return dict(version=1,byte_target=byte_target,item_target=item_target,
         receipt_keys=sorted(inventory),source_counts=[dict(key=key,**metrics[key]) for key in sorted(metrics)],
         expected_captures=sum(row['expected_captures'] for row in metrics.values()),batches=batches)
+
+
+def monitor_command(command,*,work,physical_limit=16<<30,timeout=2700,min_free_bytes=15<<30):
+    """Run one owned batch process and record sampled RSS/physical footprint.
+
+    The separate process group watches this monitor too: losing the tool session
+    cannot leave an unbounded batch behind. Partial evidence is written at every
+    sample. This one-time backfill qualification uses macOS physical accounting;
+    it makes no Linux or continuous-memory qualification claim.
+    """
+    if sys.platform!='darwin':raise RuntimeError('Backfill physical qualification requires macOS')
+    _positive(physical_limit,'physical_limit');_positive(timeout,'timeout')
+    if not isinstance(command,list) or not command or any(not isinstance(v,str) for v in command):
+        raise ValueError('A concrete batch command is required')
+    work=Path(work);work.mkdir(parents=True,exist_ok=True)
+    report=work/'measurement.json';partial=work/'measurement.json.partial';log=work/'process.log'
+    if any(p.exists() for p in (report,partial,log)):raise FileExistsError('Batch measurement paths must be fresh')
+    path=Path(__file__).resolve().parents[5]/'scripts/measure/process_rss.py'
+    spec=importlib.util.spec_from_file_location('backfill_memory_sampler',path)
+    sampler=importlib.util.module_from_spec(spec);spec.loader.exec_module(sampler)
+    if shutil.disk_usage(work).free<min_free_bytes:raise RuntimeError('Free disk is below the backfill floor')
+    watchdog='''import os,signal,subprocess,sys,time
+parent=int(sys.argv[1])
+process=subprocess.Popen(sys.argv[2:])
+while process.poll() is None:
+ if os.getppid()!=parent:
+  os.killpg(os.getpgrp(),signal.SIGTERM)
+  raise SystemExit(125)
+ time.sleep(.1)
+raise SystemExit(process.returncode)
+'''
+    def interrupted(number,_frame):raise InterruptedError('Batch monitor received signal '+str(number))
+    old={number:signal.getsignal(number) for number in (signal.SIGTERM,signal.SIGINT,signal.SIGHUP)}
+    for number in old:signal.signal(number,interrupted)
+    started=time.monotonic();peak=0;physical_peak=0;samples=0;failure=None;child=None
+    try:
+        with log.open('x') as output:
+            child=subprocess.Popen([sys.executable,'-I','-c',watchdog,str(os.getpid()),*command],
+                stdout=output,stderr=subprocess.STDOUT,start_new_session=True)
+            try:
+                while child.poll() is None:
+                    rss=sampler.resident_tree(child.pid);physical=sampler.physical_tree(child.pid)
+                    if physical is None:raise RuntimeError('Missing macOS physical footprint sample')
+                    peak=max(peak,rss);physical_peak=max(physical_peak,physical);samples+=1
+                    value=dict(status='running_unaccepted',monitor_pid=os.getpid(),owned_pgid=child.pid,
+                        seconds=time.monotonic()-started,samples=samples,sampled_peak_tree_rss=peak,
+                        sampled_peak_tree_physical_footprint=physical_peak)
+                    temporary=partial.with_suffix('.tmp');temporary.write_text(json.dumps(value)+'\n');temporary.replace(partial)
+                    if physical>physical_limit:raise RuntimeError('Batch exceeded its physical memory limit')
+                    if shutil.disk_usage(work).free<min_free_bytes:raise RuntimeError('Free disk dropped below the backfill floor')
+                    if time.monotonic()-started>timeout:raise RuntimeError('Batch exceeded its time limit')
+                    time.sleep(.5)
+            except Exception as error:
+                failure=dict(type=type(error).__name__,message=str(error))
+                if child.poll() is None:
+                    os.killpg(child.pid,signal.SIGTERM)
+                    try:child.wait(timeout=5)
+                    except subprocess.TimeoutExpired:os.killpg(child.pid,signal.SIGKILL);child.wait()
+            result=dict(returncode=child.wait(),seconds=time.monotonic()-started,
+                monitor_pid=os.getpid(),owned_pgid=child.pid,samples=samples,
+                sampled_peak_tree_rss=peak,sampled_peak_tree_physical_footprint=physical_peak,
+                physical_limit=physical_limit,failure=failure,
+                qualification='sampled owned tree; not continuous or a Linux production bound')
+            report.write_text(json.dumps(result,indent=2)+'\n')
+    finally:
+        for number,handler in old.items():signal.signal(number,handler)
+    if failure:raise RuntimeError(failure['message'])
+    if result['returncode']!=0:raise RuntimeError('Batch exited '+str(result['returncode'])+'; see '+str(log))
+    return result
