@@ -3,13 +3,77 @@ import argparse
 import json
 import os
 from pathlib import Path
+import re
 
+from congress_shared.custody import custody_identity,verify_local_file
 from docspec_client.client import NativeDatasets
-from congress_api.lake.captures import stage_captures
+from congress_api.lake.captures import current_version,stage_captures
 from congress_api.lake.capture_comparison import compare_old
 from congress_api.lake.daily import _source_qualifications
 from congress_api.lake.tables import append_rows, create_table, resolve_tables, validate_catalog_authority
 from congress_api.lake.receipt_inventory import LocalReceiptStore, discover_receipts, select_receipts
+from congress_api.retention.control_documents import CONTROL_LIMITS,bounded_control_read
+from congress_api.retention.provenance import run_job
+
+
+def _accepted_stage(stage,keys,*,engine,work,evidence=False):
+    """Admit one immutable direct-source output without reopening its raw input."""
+    stage=Path(stage).resolve()
+    manifest_path=stage/'ingested-receipts.json'
+    if custody_identity(manifest_path)[2]>CONTROL_LIMITS['accepted']:
+        raise ValueError('Accepted stage manifest exceeds its metadata limit')
+    proofs=[verify_local_file(manifest_path)]
+    with manifest_path.open('rb') as stream:
+        manifest=json.loads(bounded_control_read(stream,kind='accepted',expected=proofs[0].size_bytes))
+    proofs[0].require(manifest_path)
+    if (not isinstance(manifest,dict) or type(manifest.get('version')) is not int or manifest['version']!=2
+            or manifest.get('mapping_digest')!=current_version()
+            or not isinstance(manifest.get('input'),dict) or manifest['input'].get('kind')!='receipt-files'):
+        raise ValueError('Accepted stage requires current version2 direct-receipt mapping')
+    recorded=manifest.get('receipt_keys')
+    if (not isinstance(recorded,list) or any(not isinstance(k,str) for k in recorded)
+            or len(recorded)!=len(set(recorded)) or sorted(recorded)!=sorted(keys)):
+        raise ValueError('Accepted stage receipt keys must exactly equal the full batch inventory')
+    outputs=manifest.get('outputs')
+    if not isinstance(outputs,list) or any(not isinstance(o,dict) for o in outputs):
+        raise ValueError('Accepted stage requires native output pins')
+    def hold(path,pin):
+        if (not isinstance(pin,dict) or not isinstance(pin.get('sha256'),str)
+                or re.fullmatch('[0-9a-f]{64}',pin['sha256']) is None
+                or type(pin.get('size')) is not int or pin['size']<0):
+            raise ValueError('Accepted stage requires exact SHA-256 and byte size pins')
+        if custody_identity(path)[2]!=pin['size']:raise ValueError('Accepted stage file size changed')
+        proofs.append(verify_local_file(path,expected_sha256=pin['sha256'],expected_size=pin['size']))
+    captured=[o for o in outputs if o.get('name')=='captures']
+    if len(captured)!=1 or type(captured[0].get('rows')) is not int or captured[0]['rows']<0:
+        raise ValueError('Accepted stage requires one native captures output with a row count')
+    hold(stage/'captures.parquet',captured[0])
+    hold(stage/'job.json',manifest['input'].get('job'))
+    if evidence:
+        private=[o for o in outputs if o.get('name')=='capture-evidence']
+        if len(private)!=1:raise ValueError('Accepted stage comparison requires a private evidence pin')
+        hold(stage/'capture-evidence.parquet',private[0])
+    admission=work/'admission';admission.mkdir(parents=True,exist_ok=False)
+    actual=run_job(admission,engine,inputs=[dict(name='accepted',kind='parquet',path=str(stage/'captures.parquet'))],
+        steps=[],outputs=[],queries=[
+            dict(name='counts',sql='''SELECT count(*) AS rows,coalesce(sum(CASE WHEN receipt_key IS NULL
+                OR receipt_line IS NULL OR capture_index IS NULL THEN 1 ELSE 0 END),0) AS null_keys FROM accepted'''),
+            dict(name='primary_keys',sql='''SELECT count(*) AS n FROM (SELECT receipt_key,receipt_line,capture_index
+                FROM accepted GROUP BY receipt_key,receipt_line,capture_index)'''),
+            dict(name='receipts',sql='SELECT DISTINCT receipt_key FROM accepted ORDER BY receipt_key')])
+    counts=actual['counts'][0]
+    if counts['rows']!=captured[0]['rows'] or counts['null_keys'] or actual['primary_keys'][0]['n']!=counts['rows']:
+        raise ValueError('Accepted stage native row count or primary keys differ from its manifest')
+    if [r['receipt_key'] for r in actual['receipts']]!=sorted(recorded):
+        raise ValueError('Accepted stage native receipt keys differ from its manifest')
+    _require_stage(manifest,proofs)
+    return stage,manifest,proofs
+
+
+def _require_stage(manifest,proofs):
+    if manifest['mapping_digest']!=current_version():
+        raise ValueError('Accepted stage mapping changed before append')
+    for proof in proofs:proof.require(proof.path)
 
 
 def main(argv=None,*,engine_factory=None):
@@ -24,6 +88,7 @@ def main(argv=None,*,engine_factory=None):
     parser.add_argument('--source-qualifications',type=Path,
         help='Reviewed JSON map of source paths to immutable creation or qualification manifests')
     parser.add_argument('--existing',type=Path)
+    parser.add_argument('--append-stage',type=Path,help='Append a pinned accepted direct-receipt stage without reparsing raw')
     parser.add_argument('--old-index',type=Path)
     parser.add_argument('--engine-config',default=os.environ.get('DOCSPEC_JOB_CONFIG'))
     parser.add_argument('--work',type=Path,required=True)
@@ -42,6 +107,11 @@ def main(argv=None,*,engine_factory=None):
         parser.error('--apply requires an explicit versioned table')
     if args.apply and args.existing is not None:
         parser.error('--existing is staging-only and cannot be combined with --apply')
+    if args.append_stage:
+        if not args.apply or not args.receipt_inventory:
+            parser.error('--append-stage requires --apply and --receipt-inventory')
+        if args.validated_counter or args.receipt_root or args.receipt_family or args.source_qualifications:
+            parser.error('--append-stage conflicts with raw source selection and qualification flags')
     table=None
     if args.apply:
         parts=args.table.split('.')
@@ -90,9 +160,10 @@ def main(argv=None,*,engine_factory=None):
             if relative.is_absolute() or '..' in relative.parts:
                 parser.error('Receipt keys must be relative raw keys')
             item['path']=str((args.receipt_root/relative).resolve())
-        if 'path' not in item and not args.validated_counter:
+        if 'path' not in item and not args.validated_counter and not args.append_stage:
             parser.error('Local receipt inputs require --receipt-root or inventory paths')
         normalized.append(item)
+    batch_keys=[item['key'] for item in normalized]
     if args.receipt_inventory:
         normalized=select_receipts(normalized,existing,engine=engine,work=selection_work)
     if not normalized:
@@ -100,25 +171,36 @@ def main(argv=None,*,engine_factory=None):
         return 0
     # Keep explicit qualification references for admission; the stage passes
     # only source keys and paths to the native receipt reader.
-    stage=stage_captures(normalized,engine=engine,work=args.work,
-                         validated_counter=args.validated_counter,
-                         source_qualifications=_source_qualifications(dict(
-                             source_qualifications=qualifications,validated_counter=args.validated_counter),normalized))
+    proofs=[]
+    if args.append_stage:
+        if args.work.resolve()==args.append_stage.resolve():
+            parser.error('--append-stage requires a separate fresh --work directory')
+        args.work.mkdir(parents=True,exist_ok=False)
+        stage,manifest,proofs=_accepted_stage(args.append_stage,batch_keys,engine=engine,
+            work=args.work,evidence=args.old_index is not None)
+    else:
+        stage=stage_captures(normalized,engine=engine,work=args.work,
+                             validated_counter=args.validated_counter,
+                             source_qualifications=_source_qualifications(dict(
+                                 source_qualifications=qualifications,validated_counter=args.validated_counter),normalized))
+        manifest=json.loads((stage/'ingested-receipts.json').read_text())
     comparison=None
     if args.old_index:
         comparison=compare_old(stage/'capture-evidence.parquet',args.old_index,
-                               engine=engine,work=stage/'comparison')
+                               engine=engine,work=args.work/'comparison')
         if comparison['owner_gate']:
             print(json.dumps(dict(stage=str(stage),comparison=comparison),sort_keys=True))
             return 2
     if args.apply:
+        _require_stage(manifest,proofs)
         if args.create_table:
             schema=Path(__file__).resolve().parents[5]/'model/lake/captures.schema.json'
-            create_table(engine=engine,work=stage/'create',catalog_root=args.catalog_root,
+            create_table(engine=engine,work=args.work/'create',catalog_root=args.catalog_root,
                 table=table,schema=json.loads(schema.read_text()),location=args.table_location,
                 create_namespace=args.create_namespace)
-        identity=json.loads((stage/'ingested-receipts.json').read_text())['mapping_digest']
-        append_rows(stage/'captures.parquet',engine=engine,work=stage/'append',
+        _require_stage(manifest,proofs)
+        identity=manifest['mapping_digest']
+        append_rows(stage/'captures.parquet',engine=engine,work=args.work/'append',
             catalog_root=args.catalog_root,table=table,keys=['receipt_key'],definition=identity)
     print(json.dumps(dict(stage=str(stage),applied=args.apply),sort_keys=True))
     return 0
