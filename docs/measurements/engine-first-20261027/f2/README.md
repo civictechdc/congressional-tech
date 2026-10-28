@@ -8,6 +8,8 @@ The initial review correction passed 84 focused checks in 15.44 seconds with eng
 
 Earlier integration evidence used engine `3746f22`: 69 checks in 18.32 seconds (33 scheduler, ten shared-profile and 26 import-boundary checks), with independent approval of that earlier integration. That result does not qualify the later review correction.
 
+The actual first engine-built real release, `ac866cc3f634249a786eea983b8cb3ef996ead48b26a4f227dea46794bbb23cf`, also passed the maintained CLI's read-only local planning path on engine `9b59263`. At `2026-10-28T00:00:00Z`, its 129 URL-state rows produced 89 due URLs, including 79 linked-but-unfetched URLs; the request budget selected five queued rows. No inventory seeds, HTTP requests, storage writes or apply operation ran. This checks the real release/profile seam; first live capture and production budget qualification remain owner gates.
+
 ## Owner gate
 
 First publish an engine-built release with all four inputs, supply the approved Linux runtime whose source revision matches its capture profile, and size request, byte and spool budgets from that release's due rows. Supply writer credentials externally and run from a clean pinned checkout after the switch checklist permits capture. `ARCHIVE_CUTOFF_URLS` names the reviewed cut-off URL JSON list. Keep work outside the checkout; its path must be new.

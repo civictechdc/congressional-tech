@@ -50,3 +50,7 @@ Review correction implemented locally after contract af44f627: writer-enriched r
 **2026-10-28T03:34:02Z**
 
 Local review fixes complete: af44f627/6f2d9f80, archive-reopen refusal 714966f9/2f060977, completed-inspection facts 32ae2804/0e0ab719. Confirmed CODE/ARCH findings fixed forward; latest raw-writing correction CODE APPROVE. Combined real-profile scheduler/verifier/repair/fetcher/writer/archive group104PASS19.25s on approved9b59263 at9d250ef5, local fakes/stores only. Exact first-live owner command and Linux/release/budget gates remain README; no live run.
+
+**2026-10-28T04:07:16Z**
+
+Actual engine-built real releaseac866cc3 read-only CLI seam passes on9b:129url_state rows→89due/79linked-unfetched, request budget5 selects5queued rows, no seeds/HTTP/apply/storagewrites. The release reader/canary/browser checks also pass under site ownership. First live remains exact README command.
