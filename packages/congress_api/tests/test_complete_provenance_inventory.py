@@ -114,3 +114,24 @@ def test_conditional_get_keeps_the_exact_listed_etag_representation(tmp_path):
     [qualified]=inventory.qualify([key])
     assert inventory.metadata()==[dict(key=key,size=len(payload),etag=etag)]
     assert qualified['etag']==hashlib.md5(payload).hexdigest()
+
+
+def test_partial_download_failure_keeps_successful_bytes_in_the_total_budget(tmp_path):
+    from congress_api.retention.provenance_inventory import provenance_inventory
+    first='provenance/reviews/a.jsonl';failed='provenance/reviews/b.jsonl';third='provenance/reviews/c.jsonl'
+    class FailingR2(R2):
+        def get_object(self,**kwargs):
+            if kwargs['Key']==failed:
+                self.get_calls.append(kwargs)
+                raise OSError('second GET failed')
+            return super().get_object(**kwargs)
+    client=FailingR2([(first,b'aaa'),(failed,b'b'),(third,b'cc')])
+    store=BodyStore(R2Adapter(client,'bucket'))
+    snapshot=provenance_inventory(store,work=tmp_path/'snapshot',max_file_bytes=4,max_total_bytes=4)
+    with pytest.raises(OSError,match='second GET failed'):snapshot.qualify([first,failed])
+    row,custody,_=store._provenance_cache[first]
+    assert Path(row['path']).read_bytes()==b'aaa'
+    custody.require(row['path'])
+    with pytest.raises(ValueError,match='total byte limit'):snapshot.qualify([third])
+    assert [call['Key'] for call in client.get_calls]==[first,failed]
+    assert snapshot.verified()=={row['path']:custody}
