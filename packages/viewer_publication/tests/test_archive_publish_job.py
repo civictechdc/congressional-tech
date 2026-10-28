@@ -155,6 +155,22 @@ def test_daily_budget_refuses_before_raw_inventory_or_cache_effects(tmp_path):
     assert not (tmp_path/'daily-provenance').exists() and not (tmp_path/'daily').exists()
 
 
+def test_daily_snapshot_supplies_custody_for_new_acknowledged_decisions(tmp_path):
+    from congress_api.retention.body_store import BodyStore,LocalAdapter
+    from congress_api.retention.provenance import import_unreadable,imported_unreadable_provenance
+    from congress_api.retention.provenance_inventory import provenance_inventory
+    store=BodyStore(LocalAdapter(tmp_path/'durable'))
+    snapshot=provenance_inventory(store,work=tmp_path/'snapshot')
+    decisions=tmp_path/'decision.jsonl'
+    decisions.write_text(json.dumps(dict(id='d'*64,body_sha256='b'*64,parser='html',parser_version='v1',
+        reason='timeout',decided_by='readings',decided_at='2026-10-28T12:00:00Z',supersedes=None))+'\n')
+    imported=import_unreadable(store,decisions,decided_at='2026-10-28T12:00:00Z')
+    public,custody=imported_unreadable_provenance(imported,store,decisions)
+    assert snapshot.rows()==[public]
+    assert snapshot.verified()=={public['path']:custody}
+    snapshot.verified()[public['path']].require(public['path'])
+
+
 def test_default_plan_never_opens_runtime_targets_or_data_or_creates_work(tmp_path,capsys):
     value=publish_spec(tmp_path)
     Path(value['targets']['path']).unlink()
