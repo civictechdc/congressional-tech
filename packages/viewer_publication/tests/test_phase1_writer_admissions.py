@@ -72,3 +72,26 @@ def test_model_refuses_a_current_byte_fact_that_conflicts_with_writer_proof(tmp_
     with pytest.raises(ValueError,match='invariant'):
         build_release(**arguments,output=tmp_path/'release',scratch=tmp_path/'model')
     assert not (tmp_path/'release/manifest.json').exists()
+
+
+def test_prepared_admission_checks_current_pins_without_public_artifacts(tmp_path):
+    from viewer_publication.archive_model import prepare_model_inputs,admission_checks
+    arguments=model_inputs(tmp_path)
+    prepared=prepare_model_inputs(**arguments,scratch=tmp_path/'admission')
+    assert (prepared['scratch']/'profile.json').is_file()
+    assert json.loads((prepared['scratch']/'profile.json').read_text())==prepared['profile']
+    assert not (tmp_path/'release').exists()
+    check=prepared['scratch']/'check';check.mkdir()
+    reports=run_job(check,arguments['engine'],inputs=prepared['inputs'],steps=prepared['steps'],outputs=[],
+        queries=admission_checks(parser_versions=arguments['parser_versions'],catalog_version=arguments['catalog_version']))
+    assert set(reports)=={'model_invariants','profile_completeness'}
+    assert not any(value for rows in reports.values() for row in rows for value in row.values())
+    with pytest.raises(FileExistsError):prepare_model_inputs(**arguments,scratch=prepared['scratch'])
+    empty=tmp_path/'missing-filenames.parquet'
+    pq.write_table(pq.read_table(arguments['filename_readings']).slice(0,0),empty)
+    incomplete=prepare_model_inputs(**dict(arguments,filename_readings=empty),scratch=tmp_path/'incomplete')
+    check=incomplete['scratch']/'check';check.mkdir()
+    refused=run_job(check,arguments['engine'],inputs=incomplete['inputs'],steps=incomplete['steps'],outputs=[],
+        queries=admission_checks(parser_versions=arguments['parser_versions'],catalog_version=arguments['catalog_version']))
+    assert refused['profile_completeness'][0]['missing_filenames']>0
+    assert not (tmp_path/'release').exists()
