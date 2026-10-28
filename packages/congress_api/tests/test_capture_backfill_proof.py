@@ -85,3 +85,40 @@ def test_native_comparison_row_counts_prevent_distinct_only_false_equivalence(tm
             engine=NativeDatasets.from_config(os.environ['DOCSPEC_JOB_CONFIG']),work=tmp_path/'compare')
     assert error.value.report['left_only']==error.value.report['right_only']==0
     assert (error.value.report['left_rows'],error.value.report['right_rows'])==(2,3)
+
+
+def test_three_original_counter_receipts_rebuild_equally_in_fresh_native_generations(tmp_path):
+    from congress_api.lake.capture_backfill_proof import prove_equivalence
+    from test_captures_root_objects import minimal_counter
+    from test_captures_ingest import body
+    from capture_qualification_helpers import created_qualifications
+    keys=['receipts/documents/2026-10-28/'+name+'.gz' for name in ('a','b','c')]
+    records=[dict(run_id='proof',record=dict(url='https://example.org/a',http_status=200),captures=[body()]),
+        dict(run_id='proof',record=[dict(url='https://example.org/b',status_code=404),
+            dict(url='https://example.org/b2',status_code=404)],captures=[]),
+        dict(run_id='proof',record=dict(url='https://example.org/c',http_status=503),captures=[body()])]
+    counter=minimal_counter(tmp_path,list(zip(keys,records)),False)
+    counts=[]
+    for key,record,items in zip(keys,records,[1,2,1]):
+        size=len(json.dumps(record).encode())
+        counts.append(dict(key=key,source_rows=1,uncompressed_bytes=size,list_items=items,
+            expected_captures=items,max_line_bytes=size,max_line_items=items))
+    report=prove_equivalence([dict(key=key) for key in keys],counts,
+        engine=NativeDatasets.from_config(os.environ['DOCSPEC_JOB_CONFIG']),
+        engine_config=os.environ['DOCSPEC_JOB_CONFIG'],work=tmp_path/'proof',
+        table=dict(namespace=['archive'],name='captures'),catalog_root=tmp_path/'catalog',
+        location=tmp_path/'tables/captures',byte_target=1,item_target=1,
+        validated_counter=counter,source_qualifications=created_qualifications(counter))
+    assert report['status']=='equivalent' and report['qualified_for_downstream'] is False
+    assert len(report['generations']['one_shot']['batches'])==1
+    assert len(report['generations']['batched']['batches'])==3
+    assert report['comparison']['left_rows']==report['comparison']['right_rows']==4
+    assert report['comparison']['left_only']==report['comparison']['right_only']==0
+    pins=[value['pin'] for value in report['generations'].values()]
+    assert pins[0]['table_uuid']!=pins[1]['table_uuid']
+    compare=json.loads((tmp_path/'proof/comparison/job.json').read_text())
+    assert len(compare['inputs'])==2 and all(v['kind']=='native_table' for v in compare['inputs'])
+    identity=report['identity']
+    assert identity['mapping_digest'] and identity['proof_definition'] and len(identity['sources'])==1
+    assert identity['engine']['binary_sha256'] and identity['sources'][0]['qualification']['sha256']
+    assert json.loads((tmp_path/'proof/proof.json').read_text())['status']=='equivalent'
