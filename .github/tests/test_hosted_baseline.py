@@ -38,6 +38,8 @@ def build_evidence(remaining=None):
                                  ('Run actions/upload-artifact@v4','success'), ('Post actions/checkout@v5','success')]]))
         prefix = name + '\tUNKNOWN STEP\t2026-10-28T10:04:59.1234567Z '
         lines.extend(prefix + case + ' - fixture failure' for case in cases)
+        lines.extend(prefix + '________ ERROR at setup of ' + case.rsplit('::', 1)[-1] + ' ________'
+                     for case in cases if case.startswith('ERROR '))
         failed = sum(case.startswith(('FAILED ', 'SUBFAILED(')) for case in cases)
         errors = sum(case.startswith('ERROR ') for case in cases)
         lines.append(prefix + f'{failed} failed, 100 passed, {errors} errors, 5 skipped in 299.00s')
@@ -84,7 +86,7 @@ def test_partial_stale_changed_or_infrastructure_failures_never_pass(verifier, e
     elif change == 'wrong_counts': lines = [line.replace('100 passed', '100 passed, 1 failed') for line in lines]
     elif change == 'infrastructure_failure':
         run['jobs'][0]['conclusion'] = 'success'
-    elif change == 'duplicate_summary': lines.append(lines[6])
+    elif change == 'duplicate_summary': lines.append(next(line for line in lines if '100 passed' in line))
     elif change == 'empty_baseline': baseline = []
     assert verifier.verify(run, lines, baseline, HEAD)['accepted'] is False
 
@@ -213,3 +215,18 @@ def test_all_resolved_requires_actual_workflow_success(verifier):
     assert result['hosted_status'] == 'green: no failures; 36 baseline identities resolved'
     run['conclusion'] = 'failure'
     assert verifier.verify(run, lines, baseline, HEAD)['accepted'] is False
+
+
+@pytest.mark.parametrize('change', ['teardown_collision', 'missing_setup_phase'])
+def test_error_report_cannot_double_count_a_completed_node(verifier, evidence, change):
+    run, lines, baseline = evidence
+    assert any(case.startswith('ERROR ') for case in baseline[::6])
+    if change == 'teardown_collision':
+        # A passing call + teardown error can mask one unrun node in an exit1 session.
+        lines = [line.replace('ERROR at setup of', 'ERROR at teardown of')
+                 if line.startswith('Offline regressions (1/6)') else line for line in lines]
+    else:
+        lines = [line for line in lines if not (line.startswith('Offline regressions (1/6)') and 'ERROR at setup of' in line)]
+    result = verifier.verify(run, lines, baseline, HEAD)
+    assert result['baseline'] == result['observed'] == sorted(baseline)
+    assert result['accepted'] is False
