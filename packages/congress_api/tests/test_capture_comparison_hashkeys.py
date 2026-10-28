@@ -28,6 +28,9 @@ def test_actual_comparison_pivot_groups_nullable_identities_without_wide_builds(
     native=NativeDatasets.from_config(os.environ['DOCSPEC_JOB_CONFIG'])
     compare_old(parts,old,engine=native,work=tmp_path/'comparison',receipt_keys=[KEY] if scoped else None)
     spec=json.loads((tmp_path/'comparison/job.json').read_text())
+    retained={step['name'] for step in spec['steps'] if step.get('materialize',False)}
+    assert 'old_numbered' in retained and 'old_facts' not in retained
+    assert len(retained & {'new_input','new_values'})==1
     work=tmp_path/'explain';work.mkdir()
     physical=explain_step(spec,'paired',native=native,work=work)
     aggregates=[line for line in physical.splitlines() if 'AggregateExec:' in line]
