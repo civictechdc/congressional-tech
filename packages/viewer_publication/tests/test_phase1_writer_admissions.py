@@ -51,10 +51,14 @@ def model_inputs(tmp_path,*,conflict=False):
 
 
 def test_metadata_only_writer_caption_never_becomes_a_public_source(tmp_path):
-    from viewer_publication.archive_model import build_release
+    from viewer_publication.archive_model import prepare_model_inputs,build_prepared_release
     arguments=model_inputs(tmp_path)
     assert pq.ParquetFile(arguments['readings']).metadata.num_rows==0
-    build_release(**arguments,output=tmp_path/'release',scratch=tmp_path/'model')
+    prepared=prepare_model_inputs(**arguments,scratch=tmp_path/'model')
+    build_prepared_release(prepared,engine=arguments['engine'],output=tmp_path/'release')
+    reports=json.loads((tmp_path/'model/result.json').read_text())
+    receipts=next(query['data'] for query in reports['queries'] if query['name']=='input_receipts')
+    assert receipts==[dict(receipt_key='receipts/documents/2026-10-27/writer.jsonl.gz')]
     listed=pq.read_table(tmp_path/'release/list.parquet').to_pylist()
     assert len(listed)==1 and listed[0]['format']=='pdf'
     sources=pq.read_table(tmp_path/'release/sources.parquet').to_pylist()
@@ -75,7 +79,7 @@ def test_model_refuses_a_current_byte_fact_that_conflicts_with_writer_proof(tmp_
 
 
 def test_prepared_admission_checks_current_pins_without_public_artifacts(tmp_path):
-    from viewer_publication.archive_model import prepare_model_inputs,admission_checks
+    from viewer_publication.archive_model import prepare_model_inputs,admission_checks,input_receipts_query
     arguments=model_inputs(tmp_path)
     prepared=prepare_model_inputs(**arguments,scratch=tmp_path/'admission')
     assert (prepared['scratch']/'profile.json').is_file()
@@ -83,9 +87,10 @@ def test_prepared_admission_checks_current_pins_without_public_artifacts(tmp_pat
     assert not (tmp_path/'release').exists()
     check=prepared['scratch']/'check';check.mkdir()
     reports=run_job(check,arguments['engine'],inputs=prepared['inputs'],steps=prepared['steps'],outputs=[],
-        queries=admission_checks(parser_versions=arguments['parser_versions'],catalog_version=arguments['catalog_version']))
-    assert set(reports)=={'model_invariants','profile_completeness'}
-    assert not any(value for rows in reports.values() for row in rows for value in row.values())
+        queries=admission_checks(parser_versions=arguments['parser_versions'],catalog_version=arguments['catalog_version'])+[input_receipts_query()])
+    assert set(reports)=={'model_invariants','profile_completeness','input_receipts'}
+    assert reports['input_receipts']==[dict(receipt_key='receipts/documents/2026-10-27/writer.jsonl.gz')]
+    assert not any(value for name,rows in reports.items() if name!='input_receipts' for row in rows for value in row.values())
     with pytest.raises(FileExistsError):prepare_model_inputs(**arguments,scratch=prepared['scratch'])
     empty=tmp_path/'missing-filenames.parquet'
     pq.write_table(pq.read_table(arguments['filename_readings']).slice(0,0),empty)
