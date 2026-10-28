@@ -67,3 +67,30 @@ def test_receipt_identity_must_equal_actual_native_model_keys(tmp_path):
                 bucket='derived-fixture',receipt_keys=['receipts/wrong.jsonl.gz'],provenance=[],run={'id':'bad'},
                 public_origin='https://archive.fixture.test',contract=never,canary=never)
     assert set(store.objects)=={'viewer-publications/status.json'}
+
+
+def test_identity_cannot_pin_a_provenance_file_omitted_from_the_model(tmp_path):
+    from archive_job_fixture import model_spec
+    from viewer_publication.archive_model_job import load_spec
+    from viewer_publication.archive_controller import run_publish
+    value=model_spec(tmp_path);path=tmp_path/'model-spec.json';path.write_text(json.dumps(value))
+    with pytest.raises(ValueError,match='provenance'):
+        run_publish(load_spec(path),client=None,engine=None,bucket='derived-fixture',work=tmp_path/'publish',
+            receipt_keys=[],provenance=[dict(key='provenance/reviews/omitted.jsonl',etag='etag')],run={'id':'bad'},
+            public_origin='https://archive.fixture.test',contract=None,canary=None)
+    assert not (tmp_path/'publish').exists()
+
+
+def test_transport_validation_failure_still_records_one_failed_status(tmp_path):
+    from viewer_publication.archive_controller import run_publish
+    from viewer_publication.archive_model_job import load_spec
+    spec,_,_=real_model_spec(tmp_path);path=tmp_path/'model-spec.json';path.write_text(json.dumps(spec));store=Store()
+    def never(**_):raise AssertionError('Invalid origin must refuse before probes')
+    with NativeDatasets.from_config(os.environ['DOCSPEC_JOB_CONFIG']) as native:
+        with pytest.raises(ValueError,match='HTTPS'):
+            run_publish(load_spec(path),work=tmp_path/'publish',client=store,engine=Runtime(native,store),
+                bucket='derived-fixture',receipt_keys=['receipts/documents/2026-10-27/slice.jsonl.gz'],provenance=[],
+                run={'id':'invalid-origin'},public_origin='http://archive.fixture.test',contract=never,canary=never)
+    assert set(store.objects)=={'viewer-publications/status.json'}
+    assert json.loads(store.objects['viewer-publications/status.json'])['status']=='failed'
+    assert sum(1 for event in store.events if event==('put','viewer-publications/status.json'))==1
