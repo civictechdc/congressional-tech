@@ -16,6 +16,8 @@ from uuid import NAMESPACE_URL, uuid5
 import pyarrow as pa
 import pytest
 
+from native_test_helpers import NewsCITestClient as DocSpecClient
+
 from news_lake.analysis import bridges, coverage_daily
 from news_lake.analysis.views import politician_articles as politician_articles_views
 from news_lake.contract import check_corpus
@@ -23,7 +25,6 @@ from news_lake.contract.records import KIND_TABLES
 from news_lake.storage.coordinator import _merge_upsert
 from news_lake.storage.docspec_backend import (
     AppendCollisionError,
-    DocSpecClient,
     DocSpecFailure,
     DocSpecLake,
     DocSpecNewsViews,
