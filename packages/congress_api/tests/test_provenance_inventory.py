@@ -294,3 +294,24 @@ def test_exact_inventory_byte_limit_is_accepted_by_writer_and_next_inventory(tmp
         assert snapshot.rows()==[public] and public['size']==MAX_OBJECT_BYTES
         custody.require(public['path'])
     assert len(client.put_calls)==1 and len(client.list_calls)==1 and not client.get_calls and not client.head_calls
+
+
+@pytest.mark.parametrize('complete',[False,True])
+def test_acknowledged_local_import_custody_matches_current_rows_without_rereading(tmp_path,complete):
+    from congress_api.retention.body_store import LocalAdapter
+    from congress_api.retention.provenance import import_unreadable,imported_unreadable_provenance
+    from congress_api.retention.provenance_inventory import provenance_inventory,unreadable_inventory
+    from test_readings_budget_backfill import forbid_body_reads
+    store=BodyStore(LocalAdapter(tmp_path/'raw'))
+    factory=provenance_inventory if complete else unreadable_inventory
+    snapshot=factory(store,work=tmp_path/'snapshot')
+    source=tmp_path/'decision.jsonl';source.write_text(json.dumps(dict(id='ack',body_sha256='a'*64,
+        parser='readings',parser_version='v1',reason='timeout',decided_by='readings',
+        decided_at='2026-10-28T12:00:00Z',supersedes=None))+'\n')
+    imported=import_unreadable(store,source,decided_at='2026-10-28T12:00:00Z')
+    public,custody=imported_unreadable_provenance(imported,store,source)
+    with forbid_body_reads(tmp_path/'raw'):
+        assert snapshot.rows()==[public]
+        verified=snapshot.verified()
+        assert verified=={public['path']:custody} and verified[public['path']] is custody
+        custody.require(public['path'])

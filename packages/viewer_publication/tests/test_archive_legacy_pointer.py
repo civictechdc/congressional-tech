@@ -30,7 +30,7 @@ def test_actual_model_first_flip_uses_old_etag_and_no_old_release(tmp_path):
     spec,_,_=real_model_spec(tmp_path);path=tmp_path/'model.json';path.write_text(json.dumps(spec))
     store=Store();raw=OLD.read_bytes();store.objects['viewer-publications/manifest.json']=raw
     legacy_key='viewer-publications/releases/old-filename-viewer/index.html';store.objects[legacy_key]=b'legacy'
-    def passed(**context):return dict(status='passed',releaseId=context['release_id'],targets='measured')
+    def passed(**context):return dict(status='passed',releaseId=context['release_id'],targets='owner-approved')
     with NativeDatasets.from_config(os.environ['DOCSPEC_JOB_CONFIG']) as native:
         result=run_publish(load_spec(path),work=tmp_path/'publish',client=store,engine=Runtime(native,store),
             bucket='derived-fixture',receipt_keys=['receipts/documents/2026-10-27/slice.jsonl.gz'],provenance=[],

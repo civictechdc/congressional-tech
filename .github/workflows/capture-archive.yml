@@ -9,7 +9,7 @@ permissions:
   contents: read
 
 concurrency:
-  group: archive-capture
+  group: raw-source-mirror
   cancel-in-progress: false
   queue: max
 

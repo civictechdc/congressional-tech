@@ -11,7 +11,7 @@ from congress_api.retention.provenance import file_pin
 
 def publish_spec(tmp_path):
     model=tmp_path/'model.json';model.write_text(json.dumps(model_spec(tmp_path)))
-    targets=tmp_path/'targets.json';targets.write_text(json.dumps(dict(version=1,status='measured',
+    targets=tmp_path/'targets.json';targets.write_text(json.dumps(dict(version=1,status='owner-approved',
         ceilings=dict(startupMs=100,searchMs=100,detailMs=100,heapBytes=1000000))))
     dist=tmp_path/'site';dist.mkdir()
     return dict(version=1,model_spec=dict(path=str(model),**file_pin(model)),bucket='derived-fixture',
@@ -124,7 +124,7 @@ def test_native_daily_inputs_feed_the_same_guarded_publisher(tmp_path):
     store=PaginatedStore();probes=[]
     def probe(**context):
         probes.append(context['release_id'])
-        return dict(status='passed',releaseId=context['release_id'],targets='measured')
+        return dict(status='passed',releaseId=context['release_id'],targets='owner-approved')
     with NativeDatasets.from_config(os.environ['DOCSPEC_JOB_CONFIG']) as native:
         daily=native_daily_spec(tmp_path,model,native)
         result=produce_daily_inputs(model,daily,engine=native,raw_store=BodyStore(R2Adapter(store,'derived-fixture')))
@@ -218,8 +218,8 @@ def test_blocked_jobs_refuse_without_runtime(tmp_path,capsys,which):
 
 
 @pytest.mark.parametrize('change,match',[
-    ('model_pin','checksum mismatch'),('target_pin','checksum mismatch'),('pending','measured'),
-    ('invalid_ceiling','measured'),('existing_work','fresh'),('missing_dist','site_dist'),
+    ('model_pin','checksum mismatch'),('target_pin','checksum mismatch'),('pending','owner-approved'),
+    ('invalid_ceiling','owner-approved'),('existing_work','fresh'),('missing_dist','site_dist'),
 ])
 def test_execute_checks_local_pins_targets_and_work_before_runtime(tmp_path,capsys,change,match):
     value=publish_spec(tmp_path)
@@ -349,7 +349,7 @@ def test_execute_binds_matching_destination_and_records_actual_native_probe_comm
         # External browser execution is recorded; native model and publisher remain actual.
         manifest=json.loads((Path(model['output'])/'manifest.json').read_text())
         output=Path(command[command.index('--output')+1])
-        output.write_text(json.dumps(dict(status='passed',releaseId=manifest['release_id'],targets='measured')))
+        output.write_text(json.dumps(dict(status='passed',releaseId=manifest['release_id'],targets='owner-approved')))
     result=execute(spec,runtime_factory=runtime_factory,storage_factory=storage_factory,process_runner=process_runner)
     assert result['status']=='published' and len(commands)==2 and events.index('sdk')>events.index('qualified')
     native=json.loads((Path(model['scratch'])/'result.json').read_text())
@@ -375,3 +375,110 @@ def test_destination_description_cannot_select_another_account_or_persist_secret
     path.write_text(json.dumps(remote));runtime=tmp_path/'runtime.json'
     runtime.write_text(json.dumps(dict(version=1,remote=str(path))))
     with pytest.raises(ValueError,match='destination'):publication_configuration(runtime,bucket='derived-fixture')
+
+
+def test_shared_native_probe_skips_empty_hidden_and_unreadable_saved_bodies(tmp_path):
+    from docspec_client.client import NativeDatasets
+    from congress_api.retention.provenance import run_job
+    from viewer_publication.archive_model import probe_selectors_query
+    details="""SELECT list_row,decode(repeat('01',32),'hex') AS saved_body,
+        decode('0123456789abcdef','hex') AS link_key,hidden,saved_suffix,saved_bytes
+        FROM (VALUES (0,false,'',0),(1,true,'',1),(2,false,'.gz',1125899906842624),
+            (3,false,'.gz',20),(4,false,'',30)) AS t(list_row,hidden,saved_suffix,saved_bytes)"""
+    with NativeDatasets.from_config(os.environ['DOCSPEC_JOB_CONFIG']) as engine:
+        reports=run_job(tmp_path,engine,inputs=[],steps=[dict(name='details',sql=details)],
+            outputs=[],queries=[probe_selectors_query()])
+    assert reports['probe_selectors']==[dict(saved_row=3,link_key='0123456789abcdef')]
+
+
+@pytest.mark.parametrize('status',['measured','provisional-emulated','owner-gated'])
+def test_raw_startup_refuses_targets_without_real_device_approval_before_sdk(tmp_path,status):
+    from viewer_publication.archive_publish_job import load_spec,execute
+    value=publish_spec(tmp_path);target=Path(value['targets']['path']);targets=json.loads(target.read_text())
+    targets.update(status=status,basis='emulated' if status=='provisional-emulated' else 'unknown')
+    target.write_text(json.dumps(targets));value['targets']=dict(path=str(target),**file_pin(target))
+    path=tmp_path/'publish.json';path.write_text(json.dumps(value))
+    def never(*args,**kwargs):pytest.fail('Unqualified raw targets reached runtime or SDK')
+    with pytest.raises(ValueError,match='targets'):
+        execute(load_spec(path),runtime_factory=never,storage_factory=never)
+    assert not Path(value['work']).exists()
+
+
+@pytest.mark.parametrize('outcome',['completed','pending','backfill_required'])
+def test_actual_execute_daily_path_publishes_only_completed_work(tmp_path,outcome):
+    """Only external catalog storage, SDK and browser execution are adapted."""
+    from copy import deepcopy
+    import pyarrow.parquet as pq
+    from test_daily_producers import native_fixture
+    from docspec_client.client import NativeDatasets
+    from congress_api.lake import tables
+    from test_archive_publish import Store,Native
+    from viewer_publication.archive_publish_job import load_spec,execute
+    count=2 if outcome=='backfill_required' else 1
+    payloads=([b'%PDF-1.7\n% Authored startup report\n%%EOF\n'] if outcome=='completed' else None)
+    raw=tmp_path/'producer';raw.mkdir()
+    daily,initial,raw_store=native_fixture(raw,count,payloads=payloads)
+    try:heads=tables.resolve_tables(engine=initial,work=tmp_path/'heads',catalog_root=daily['catalog_root'],tables=daily['tables'])
+    finally:initial.close()
+    catalog=daily['catalog_root'];daily['catalog_root']=None
+    if outcome=='pending':
+        row=pq.read_table(daily['body_inventory']).to_pylist()[0]
+        (Path(daily['local_root'])/row['relative_path']).unlink()
+    elif outcome=='backfill_required':daily['max_work_items']=1
+    value=publish_spec(tmp_path);remote=remote_config(tmp_path)
+    runtime=tmp_path/'remote-runtime.json';settings=json.loads(Path(os.environ['DOCSPEC_JOB_CONFIG']).read_text())
+    base=Path(os.environ['DOCSPEC_JOB_CONFIG']).parent
+    for name in ['binary','limits','workspace']:
+        if name in settings:settings[name]=str((base/settings[name]).resolve())
+    settings.update(remote=str(remote),credentials='/unopened/fake-credentials.json')
+    runtime.write_text(json.dumps(settings))
+    from archive_job_fixture import versions
+    parsers,filename_version=versions()
+    model=dict(version=1,engine_config=str(runtime),output=str(tmp_path/'release'),scratch=str(tmp_path/'model'),
+        parser_versions=parsers,catalog_version=filename_version,
+        **{name:dict(kind='native_table',**head) for name,head in heads.items()})
+    path=Path(value['model_spec']['path']);path.write_text(json.dumps(model));value['model_spec']=dict(path=str(path),**file_pin(path))
+    path=tmp_path/'daily.json';path.write_text(json.dumps(daily))
+    value.update(daily=dict(path=str(path),**file_pin(path)),receipt_keys=[],provenance=[])
+    path=tmp_path/'publish.json';path.write_text(json.dumps(value));spec=load_spec(path)
+    assert spec['_daily']['catalog_root'] is None
+    class SDK(Store):
+        def get_paginator(self,operation):
+            from types import SimpleNamespace
+            assert operation=='list_objects_v2'
+            return SimpleNamespace(paginate=lambda **request:[self.list_objects_v2(**request)])
+    store=SDK();commands=[];catalog_calls=[]
+    class Runtime:
+        def __init__(self,configuration):
+            self.native=NativeDatasets.from_config(os.environ['DOCSPEC_JOB_CONFIG'])
+            self.remote=Path(configuration['remote']);self.upload=Native(store)
+        def __enter__(self):return self
+        def __exit__(self,*_):self.native.close()
+        def __getattr__(self,name):return getattr(self.native,name)
+        def create_file(self,request):return self.upload.create_file(request)
+        def run_job(self,path):
+            job=json.loads(Path(path).read_text())
+            if not job.get('table_operations'):return self.native.run_job(path)
+            # Simulate the external catalog with an owned native local catalog.
+            # No SQL, schema, inputs, admission or result is changed.
+            assert 'catalog_root' not in job
+            routed=deepcopy(job);routed['catalog_root']=catalog
+            assert {k:v for k,v in routed.items() if k!='catalog_root'}==job
+            catalog_calls.append(job['table_operations'])
+            target=Path(path).with_name('local-catalog-job.json');target.write_text(json.dumps(routed))
+            return self.native.run_job(target)
+    def runtime_factory(path):return Runtime(json.loads(Path(path).read_text()))
+    def process_runner(command,**kwargs):
+        assert outcome=='completed' and kwargs['check'] is True
+        commands.append(command)
+        manifest=json.loads((Path(model['output'])/'manifest.json').read_text())
+        Path(command[command.index('--output')+1]).write_text(json.dumps(
+            dict(status='passed',releaseId=manifest['release_id'],targets='owner-approved')))
+    result=execute(spec,runtime_factory=runtime_factory,storage_factory=lambda **_:store,process_runner=process_runner)
+    assert catalog_calls and result['status']==('published' if outcome=='completed' else outcome)
+    if outcome=='completed':
+        assert len(commands)==2 and 'viewer-publications/manifest.json' in store.objects
+        assert result['daily']['receipt_keys']==sorted(row['key'] for row in daily['receipt_inventory'])
+    else:
+        assert commands==[] and not Path(model['output']).exists() and not Path(model['scratch']).exists()
+        assert not any(key.startswith('viewer-publications/') for key in store.objects)

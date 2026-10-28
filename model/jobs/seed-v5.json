@@ -1,0 +1,63 @@
+{
+  "version": 1,
+  "kind": "seed_v5",
+  "display_only": true,
+  "input_files": [
+    "documents",
+    "filenames",
+    "captures",
+    "accepted"
+  ],
+  "steps": [
+    {
+      "name": "seed_docs",
+      "sql_file": "model/sql/seed-v5-documents.sql",
+      "materialize": true
+    },
+    {
+      "name": "seed_members",
+      "sql_file": "model/sql/seed-v5-members.sql",
+      "materialize": true
+    },
+    {
+      "name": "seed_sizes",
+      "sql_file": "model/sql/seed-v5-sizes.sql",
+      "materialize": true
+    },
+    {
+      "name": "seed_identities",
+      "sql_file": "model/sql/seed-v5-identities.sql",
+      "materialize": true
+    },
+    {
+      "name": "seed_representatives",
+      "sql_file": "model/sql/seed-v5-representatives.sql",
+      "materialize": true
+    },
+    {
+      "name": "seed_dates",
+      "sql_file": "model/sql/seed-v5-dates.sql",
+      "materialize": true
+    },
+    {
+      "name": "seed_recovery_candidates",
+      "sql_file": "model/sql/seed-v5-recovery-candidates.sql",
+      "materialize": true
+    },
+    {
+      "name": "seed_recovery_targets",
+      "sql_file": "model/sql/seed-v5-recovery-targets.sql",
+      "materialize": true
+    },
+    {
+      "name": "seed_recoveries",
+      "sql_file": "model/sql/seed-v5-recovery-input.sql",
+      "materialize": true
+    },
+    {
+      "name": "source_input",
+      "sql_file": "model/sql/seed-v5-source-input.sql",
+      "materialize": true
+    }
+  ]
+}

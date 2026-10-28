@@ -329,19 +329,9 @@ def test_shared_writer_lock_revision_credentials_and_single_rebuild():
             # Pages reads a hash-verified immutable generation. It does not
             # write R2 objects or participate in the archive writer lock.
             # Its read-only client calls are checked in test_filename_publication.
-            if path.name == 'archive-jobs.yml':
-                assert writer['concurrency']['group'] == 'archive-lake-and-publication'
+            if path.name in {'archive-jobs.yml', 'capture-archive.yml', 'update-data.yml'}:
                 assert 'raw-source-sync' not in path.read_text()
-            elif path.name == 'capture-archive.yml':
-                assert writer['concurrency']['group'] == 'archive-capture'
-                assert 'raw-source-sync' not in path.read_text()
-            elif path.name == 'update-data.yml':
-                # Both legacy snapshot writers join main's queued raw lock.
-                assert writer['concurrency'] == {
-                    'group': 'raw-source-mirror', 'cancel-in-progress': 'false', 'queue': 'max',
-                }
-                assert 'raw-source-sync' not in path.read_text()
-            elif path != WORKFLOW_PATH and path.name != 'deploy-pages.yml':
+            if path != WORKFLOW_PATH and path.name != 'deploy-pages.yml':
                 assert writer["concurrency"] == {
                     "group": "raw-source-mirror", "cancel-in-progress": "false", "queue": "max",
                 }, path

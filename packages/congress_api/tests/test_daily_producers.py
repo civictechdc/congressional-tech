@@ -224,8 +224,10 @@ def native_fixture(tmp_path,count=1,*,payloads=None):
         key,line=writer.write(FetchResult(attempt),family='documents')
         files.append(dict(key=key,path=str(root/key),qualification=qualifications[key]))
         capture=line['captures'][0];physical='bodies/sha256/'+digest[:2]+'/'+digest+capture['stored_suffix']
+        # Canonical gzip bodies have no suffix. Inventory records byte facts.
+        with (root/physical).open('rb') as stored:stored_gzip=stored.read(2)==b'\x1f\x8b'
         inventory.append(dict(body_sha=bytes.fromhex(digest),physical_key=physical,relative_path=physical,
-            stored_bytes=capture['stored_bytes'],stored_gzip=capture['stored_suffix']=='.gz'))
+            stored_bytes=capture['stored_bytes'],stored_gzip=stored_gzip))
     value=spec(tmp_path);value['receipt_inventory']=files
     pq.write_table(pa.Table.from_pylist(inventory,schema=pa.schema([('body_sha',pa.binary(32)),
         ('physical_key',pa.string()),('relative_path',pa.string()),('stored_bytes',pa.int64()),
@@ -329,11 +331,17 @@ def test_native_daily_r2_imports_and_resume_reuse_complete_qualified_inputs(tmp_
         reason='timeout',decided_by='readings',decided_at=STAMP,supersedes=None)).encode()+b'\n'
     public,_=known_cache(tmp_path,prior);client=R2([(KEY,prior)])
     decision_store=BodyStore(R2Adapter(client,'bucket'))
-    value,engine,_=native_fixture(tmp_path,payloads=[b'{"unfinished":'])
+    # Malformed JSON is a completed input rejection. A valid page with more
+    # than the worker's 8MiB output budget exercises real failure settlement.
+    payload=json.dumps(dict(urls=['https://fixture.test/'+('a'*2200)]*4096)).encode()
+    value,engine,_=native_fixture(tmp_path,payloads=[payload])
     value['provenance']['unreadable']=[public]
     first=produce_daily(value,engine=engine,raw_store=decision_store)
     assert first['status']=='completed' and first['producerreports']['readings']['unreadable']>=1
     assert len(first['provenance']['unreadable'])>=2 and client.put_calls
+    decisions=[json.loads(line) for row in first['provenance']['unreadable']
+        if row['key']!=KEY for line in Path(row['path']).read_text().splitlines()]
+    assert decisions and all(row['reason']=='output_limit' for row in decisions)
     for row in first['provenance']['unreadable']:
         payload=client.objects[row['key']]
         assert row['etag']==hashlib.md5(payload).hexdigest()

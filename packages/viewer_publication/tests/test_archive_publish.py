@@ -90,7 +90,7 @@ def launch(root,*,store=None,native=None,input_record=None,artifacts=None,canary
     default,keys=record();input_record=input_record or default
     if artifacts is None:artifacts,_=candidate(root)
     pointer,etag=read_pointer(store,bucket='derived-fixture')
-    def passed(**context):return dict(status='passed',releaseId=context['release_id'],targets='measured')
+    def passed(**context):return dict(status='passed',releaseId=context['release_id'],targets='owner-approved')
     result=publish_candidate(client=store,engine=native,bucket='derived-fixture',work=root/'publish',
         **artifacts,input_record=input_record,receipt_keys=keys,pointer=pointer,expected_etag=etag,
         public_origin='https://archive.example.test',canary=canary or passed,contract=contract or passed)
@@ -107,11 +107,11 @@ def test_input_identity_excludes_run_and_snapshot_metadata():
 
 def test_receipts_then_input_contract_upload_canary_and_single_flip(tmp_path):
     store=Store()
-    def contract(**context):store.events.append(('contract',context['release_id']));return dict(status='passed',releaseId=context['release_id'],targets='measured')
+    def contract(**context):store.events.append(('contract',context['release_id']));return dict(status='passed',releaseId=context['release_id'],targets='owner-approved')
     def canary(**context):
         assert context['public_origin'].startswith('https://')
         release=context['release_id'];assert 'viewer-publications/releases/'+release+'/manifest.json' in store.objects
-        store.events.append(('canary',release));return dict(status='passed',releaseId=release,targets='measured')
+        store.events.append(('canary',release));return dict(status='passed',releaseId=release,targets='owner-approved')
     result,store,native=launch(tmp_path/'run',store=store,contract=contract,canary=canary)
     release=result['release_id'];assert result['status']=='published' and store.pointer_gets==1
     assert json.loads(store.objects['viewer-publications/manifest.json'])==dict(release_id=release,previous_release_id=None)
@@ -186,13 +186,13 @@ def test_native_409_is_not_a_412_success(tmp_path):
 def test_failed_canary_and_lost_pointer_race_do_not_replace_live(tmp_path):
     first,store,native=launch(tmp_path/'first');changed,_=record(profile={'sql':'new','parser':'pinned'})
     artifacts,_=candidate(tmp_path/'failed',payload=b'new export bytes')
-    def failed(**context):return dict(status='failed',releaseId=context['release_id'],targets='measured')
+    def failed(**context):return dict(status='failed',releaseId=context['release_id'],targets='owner-approved')
     with pytest.raises(ValueError,match='canary'):launch(tmp_path/'failed',store=store,native=native,input_record=changed,artifacts=artifacts,canary=failed)
     assert json.loads(store.objects['viewer-publications/manifest.json'])['release_id']==first['release_id']
     changed,_=record(profile={'sql':'another','parser':'pinned'});artifacts,_=candidate(tmp_path/'race',payload=b'new export bytes')
     def race(**context):
         store.objects['viewer-publications/manifest.json']=encoded(dict(release_id='c'*64,previous_release_id=first['release_id']));store.etag='competing'
-        return dict(status='passed',releaseId=context['release_id'],targets='measured')
+        return dict(status='passed',releaseId=context['release_id'],targets='owner-approved')
     with pytest.raises(StorageError):launch(tmp_path/'race',store=store,native=native,input_record=changed,artifacts=artifacts,canary=race)
     assert json.loads(store.objects['viewer-publications/manifest.json'])['release_id']=='c'*64
 
@@ -211,7 +211,7 @@ def test_raw_prefix_and_sdk_retry_refuse_before_effects(tmp_path):
 
 def test_local_contract_refuses_before_any_release_or_input_upload(tmp_path):
     store=Store();native=Native(store)
-    def refused(**context):return dict(status='failed',releaseId=context['release_id'],targets='measured')
+    def refused(**context):return dict(status='failed',releaseId=context['release_id'],targets='owner-approved')
     with pytest.raises(ValueError,match='contract'):
         launch(tmp_path/'run',store=store,native=native,contract=refused)
     assert native.calls==[] and 'viewer-publications/manifest.json' not in store.objects
@@ -232,7 +232,7 @@ def test_status_is_conditional_and_failure_keeps_the_original_refusal(tmp_path):
             if request['Key']=='viewer-publications/status.json':raise StorageError(503)
             return super().put_object(**request)
     failed=StatusRefusal()
-    def refused(**context):return dict(status='failed',releaseId=context['release_id'],targets='measured')
+    def refused(**context):return dict(status='failed',releaseId=context['release_id'],targets='owner-approved')
     with pytest.raises(ValueError,match='contract') as error:
         launch(tmp_path/'failed',store=failed,contract=refused)
     assert 'Archive status update also failed' in error.value.__notes__
@@ -251,7 +251,7 @@ def test_wrong_content_release_identity_refuses_before_upload(tmp_path):
 
 def test_generator_receipt_keys_keep_replay_evidence(tmp_path):
     artifacts,manifest=candidate(tmp_path/'run');entry,keys=record();store=Store();native=Native(store)
-    def passed(**context):return dict(status='passed',releaseId=context['release_id'],targets='measured')
+    def passed(**context):return dict(status='passed',releaseId=context['release_id'],targets='owner-approved')
     result=publish_candidate(client=store,engine=native,bucket='derived-fixture',work=tmp_path/'publish',
         **artifacts,input_record=entry,receipt_keys=(key for key in keys),pointer=None,expected_etag=None,
         public_origin='https://archive.example.test',contract=passed,canary=passed)

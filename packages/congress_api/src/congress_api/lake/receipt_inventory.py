@@ -102,7 +102,7 @@ def discover_receipts(adapter,families,*,existing,engine,work,mode='incremental'
             SELECT regexp_replace(receipt_key,'^receipts/(.*)/[^/]+/[^/]+$','\1') AS family,
                 max(try_cast(regexp_replace(receipt_key,'^.*/([^/]+)/[^/]+$','\1') AS DATE)) AS newest
             FROM existing WHERE regexp_like(receipt_key,'^receipts/.*/[0-9]{4}-[0-9]{2}-[0-9]{2}/[^/]+$')
-            GROUP BY family''')],outputs=[],queries=[dict(name='prefixes',sql=f'''
+            GROUP BY regexp_replace(receipt_key,'^receipts/(.*)/[^/]+/[^/]+$','\1')''')],outputs=[],queries=[dict(name='prefixes',sql=f'''
             SELECT DISTINCT p.prefix FROM prefixes p LEFT JOIN watermarks w ON p.family=w.family
             WHERE {full} OR (p.day IS NOT NULL AND
                 (w.newest IS NULL OR cast(p.day AS DATE)>=w.newest)) ORDER BY p.prefix''')])
