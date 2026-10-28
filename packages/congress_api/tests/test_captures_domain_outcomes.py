@@ -58,7 +58,7 @@ def test_unrecognized_values_outside_the_named_domain_scope_refuse(tmp_path,case
 
 
 def test_known_acquisition_outcome_keeps_its_priority_even_for_vote_items(tmp_path):
-    stage=ingest(tmp_path,[dict(outcome='http_error',http_status=404,record=[dict(
+    stage=ingest(tmp_path,[dict(outcome='failed',http_status=404,record=[dict(
         kind='vote',outcome='stored',http_status=200,url='https://fixture.test/acquired',
         receipt=dict(outcome='failed',http_status=503))],captures=[body(pointer=[0,'body'])])])
     [row]=pq.read_table(stage/'captures.parquet').to_pylist()
