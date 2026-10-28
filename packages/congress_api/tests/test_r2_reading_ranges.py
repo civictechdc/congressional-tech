@@ -124,3 +124,11 @@ def test_opaque_version_cache_without_checksum_is_requalified_conditionally(tmp_
     cache.write_bytes(b'wrong'+b'x'*(len(DATA)-5))
     assert store.read(KEY,expected=dict(etag='"opaque"',md5=None,bytes=len(DATA)))==DATA
     assert len(client.reads)==1 and cache.read_bytes()==DATA
+
+
+def test_captured_md5_prefetch_preserves_single_put_quote_normalization(tmp_path):
+    client=Client();client.change={'ETag':PIN['md5']}
+    store=R2Store(client,'bucket',cache_dir=tmp_path/'cache')
+    store.prefetch_immutable([KEY],expected={KEY:PIN})
+    assert store._immutable_cache_path(KEY).read_bytes()==DATA
+    assert client.reads[0]['IfMatch']=='"'+PIN['md5']+'"'
