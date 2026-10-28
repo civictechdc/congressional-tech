@@ -138,6 +138,23 @@ def test_native_daily_inputs_feed_the_same_guarded_publisher(tmp_path):
     assert 'viewer-publications/manifest.json' in store.objects
 
 
+def test_daily_budget_refuses_before_raw_inventory_or_cache_effects(tmp_path):
+    from congress_api.retention.body_store import BodyStore,R2Adapter
+    from viewer_publication.archive_publish_job import produce_daily_inputs
+    class NeverStorage:
+        def get_paginator(self,*_):raise AssertionError('Raw LIST before budget admission')
+    class NeverNative:
+        remote=None
+        def run_job(self,*_):raise AssertionError('Native work before budget admission')
+    daily=dict(work=str(tmp_path/'daily'),decided_at='2026-10-28T12:00:00Z',catalog_root=str(tmp_path/'catalog'),
+        tables={name:dict(namespace=['archive'],name=name) for name in ['captures','readings','filename_readings']},
+        receipt_inventory=[],body_inventory=str(tmp_path/'unopened.parquet'),local_root=str(tmp_path/'raw'),
+        max_work_items=0,provenance={kind:[] for kind in ['recoveries','reviews','unreadable']})
+    with pytest.raises(ValueError,match='max_work_items'):
+        produce_daily_inputs(model_spec(tmp_path),daily,engine=NeverNative(),raw_store=BodyStore(R2Adapter(NeverStorage(),'bucket')))
+    assert not (tmp_path/'daily-provenance').exists() and not (tmp_path/'daily').exists()
+
+
 def test_default_plan_never_opens_runtime_targets_or_data_or_creates_work(tmp_path,capsys):
     value=publish_spec(tmp_path)
     Path(value['targets']['path']).unlink()
