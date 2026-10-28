@@ -70,3 +70,12 @@ def link_steps(*,root=ROOT):
     """Resolve each literal href once per body/address context, retaining attribution."""
     return [dict(name=name.replace('-','_'),sql=(Path(root)/'model/sql'/(name+'.sql')).read_text(),materialize=True)
         for name in ['link-contexts','link-literals','link-parts','link-targets','link-errors','resolved-links']]
+
+
+def evidence_steps(*,root=ROOT):
+    """Join pinned parser facts and physical evidence before source/link expansion."""
+    names=['pinned-readings','sniff-facts','page-facts','copy-verifications','body-evidence','capture-evidence',
+        'good-fetches','capture-locators','body-signals','locator-signals','placeholders','record-roles',
+        'page-contexts','link-inputs']
+    return [dict(name=name.replace('-','_'),sql=(Path(root)/'model/sql'/(name+'.sql')).read_text(),materialize=True)
+        for name in names]
