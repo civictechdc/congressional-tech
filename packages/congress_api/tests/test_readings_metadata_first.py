@@ -24,7 +24,9 @@ def missing_inputs(tmp_path,*,format,size,proof='capture',settled=False):
         ('sniffed_format',pa.string()),('sniff_version',pa.string()),('intact',pa.bool_())])),captures)
     inventory=tmp_path/'inventory.parquet'
     pq.write_table(pa.Table.from_pylist([dict(body_sha=digest,physical_key=key,relative_path=key,
-        stored_bytes=size,stored_gzip=False)]),inventory)
+        stored_bytes=size,stored_gzip=False)],schema=pa.schema([('body_sha',pa.binary(32)),
+        ('physical_key',pa.string()),('relative_path',pa.string()),('stored_bytes',pa.int64()),
+        ('stored_gzip',pa.bool_())])),inventory)
     existing=tmp_path/'existing.parquet';rows=[]
     if proof=='reading' and format is not None:
         rows.append(dict(body_sha=digest,parser='sniff',parser_version=readings.current_version('sniff'),

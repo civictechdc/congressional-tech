@@ -366,18 +366,20 @@ def parse_once_payload(payload):
     from congress_api.parsers.archive_readings import read_page
     request=json.loads(payload);source=None
     try:
-        source=_ReadOnceBody(request['path'],request['cache'],request['stored_bytes'])
         versions=request['versions'];skip=set(request['skip_parsers']);rows=[]
         known=request['known_format']
+        if known is None:
+            source=_ReadOnceBody(request['path'],request['cache'],request['stored_bytes'])
         sniff=(dict(status='completed',format=known) if known is not None else
             read_sniff(source.read,stored_size=source.size,stored_gzip=request['stored_gzip']))
         if 'sniff' not in skip:
             rows.append(dict(sniff,parser='sniff',parser_version=versions['sniff']))
         parser=sniff.get('format')
         if sniff['status']=='completed' and parser in {'html','xml','json'} and parser not in skip:
-            if source.size>MAX_STORED_BYTES:
+            if request['stored_bytes']>MAX_STORED_BYTES:
                 row=dict(status='size_limit',error_type='stored_size_limit')
             else:
+                if source is None:source=_ReadOnceBody(request['path'],request['cache'],request['stored_bytes'])
                 stored=source.read(0,source.size)
                 if request['stored_gzip']:
                     try:
@@ -390,7 +392,7 @@ def parse_once_payload(payload):
                     row=(dict(status='error',error_type='decoded_size_limit') if len(data)>MAX_DECODED_BYTES else
                          read_page(data,parser))
             rows.append(dict(row,parser=parser,parser_version=versions[parser]))
-        return dict(rows=rows,read_bytes=source.read_bytes)
+        return dict(rows=rows,read_bytes=0 if source is None else source.read_bytes)
     except (OSError,EOFError) as error:
         return dict(read_error=type(error).__name__,rows=[],read_bytes=0 if source is None else source.read_bytes)
     finally:
