@@ -30,3 +30,7 @@ Confirmed CODE findings fixed in 2916f16a/fba99d79 with real worker integration.
 **2026-10-27T20:50:50Z**
 
 Bounded fix followup CODE APPROVE and ARCH APPROVE, no remaining concern (run2/d3-followup/review.md). Actual engine-1c2473b runner test_filename_readings.py:26 passed33.38s; full D3/golden group141 passed on preceding snapshot. Local producer, native append and version isolation complete. Live backfill, Linux runtime and full E profile qualification remain owner/engine gates with exact command in run2 report.
+
+**2026-10-28T02:10:33Z**
+
+Shared filename input/supervisor version correction: fixtures committed before source change. Expected-red approved486 project runner: 5 failed / 4 passed in1.25s, precisely missing canonical SQL load/refusal and canonical SQL/parser_worker/process_resources version coverage. Isolated version fixture copies complete producer package and every listed dependency. Engine parity extension requested via COORD/mailbox/engine/20261028T020904Z-raw-filename-input-parity.md; engine owns model tests and canonical SQL.

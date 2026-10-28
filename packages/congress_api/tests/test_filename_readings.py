@@ -372,7 +372,15 @@ def test_actual_worker_startup_failure_propagates_without_unreadable_decision(tm
     assert not (tmp_path/'stage/raw').exists()
 
 
-def test_filename_version_tracks_its_package_and_inputs_without_sibling_d1_changes(tmp_path):
+VERSION_INPUTS = (
+    'uv.lock', 'model/sql/effective-filenames.sql', 'model/sql/filename-inputs.sql',
+    'model/registries/filename-parameters.json', 'model/lake/filename-readings.schema.json',
+    'packages/congress_api/src/congress_api/retention/parser_worker.py',
+    'packages/congress_api/src/congress_api/retention/process_resources.py',
+)
+
+
+def version_fixture(tmp_path):
     import importlib.util
     import shutil
     module=reader()
@@ -381,12 +389,16 @@ def test_filename_version_tracks_its_package_and_inputs_without_sibling_d1_chang
     relative=original.relative_to(module.ROOT)
     destination=fixture/relative
     shutil.copytree(original.parent,destination.parent,ignore=shutil.ignore_patterns('__pycache__'))
-    for relative_input in ('uv.lock','model/sql/effective-filenames.sql',
-        'model/registries/filename-parameters.json','model/lake/filename-readings.schema.json'):
+    for relative_input in VERSION_INPUTS:
         target=fixture/relative_input; target.parent.mkdir(parents=True,exist_ok=True)
         shutil.copyfile(module.ROOT/relative_input,target)
     spec=importlib.util.spec_from_file_location('filename_version_fixture',destination)
     loaded=importlib.util.module_from_spec(spec); spec.loader.exec_module(loaded)
+    return loaded,fixture,destination
+
+
+def test_filename_version_tracks_its_package_and_inputs_without_sibling_d1_changes(tmp_path):
+    loaded,fixture,destination=version_fixture(tmp_path)
     baseline=loaded.current_version()
     sibling=fixture/'packages/congress_api/src/congress_api/lake/captures.py'
     sibling.parent.mkdir(parents=True,exist_ok=True)
@@ -398,13 +410,43 @@ def test_filename_version_tracks_its_package_and_inputs_without_sibling_d1_chang
     (nested/'rule.py').unlink(); nested.rmdir()
     assert loaded.current_version()==baseline
     assert loaded.current_version(vocabularies={'member_surnames':{'119':['Changed']}})!=baseline
-    for relative_input in ('uv.lock','model/sql/effective-filenames.sql',
-        'model/registries/filename-parameters.json','model/lake/filename-readings.schema.json'):
-        target=fixture/relative_input; data=target.read_bytes()
-        target.write_bytes(data+b'\n')
-        assert loaded.current_version()!=baseline
-        target.write_bytes(data)
-        assert loaded.current_version()==baseline
+
+
+@pytest.mark.parametrize('relative_input', VERSION_INPUTS)
+def test_filename_version_covers_each_sql_schema_registry_and_worker_dependency(tmp_path, relative_input):
+    loaded,fixture,_=version_fixture(tmp_path)
+    baseline=loaded.current_version()
+    target=fixture/relative_input; data=target.read_bytes()
+    target.write_bytes(data+b'\n')
+    assert loaded.current_version()!=baseline
+    target.write_bytes(data)
+    assert loaded.current_version()==baseline
+
+
+def test_producer_loads_the_canonical_filename_input_asset(tmp_path):
+    loaded,fixture,_=version_fixture(tmp_path)
+    canonical=fixture/'model/sql/filename-inputs.sql'
+    canonical.write_text(canonical.read_text()+'\n-- fixture observes the shared input asset\n')
+    captures=input_tables(tmp_path,[dict(receipt_key='r',receipt_line=1,capture_index=0,mode='fetch',
+        url='https://a.test/address.pdf',h_content_disposition='attachment; filename=header.pdf')])
+    result=loaded.stage(worker_factory=Worker,decided_at=STAMP,captures=captures,recovery_files=[],
+        engine=engine(),work=tmp_path/'stage')
+    job=json.loads((tmp_path/'stage/job.json').read_text())
+    steps={step['name']:step for step in job['steps']}
+    assert steps['filename_inputs']['sql']==canonical.read_text()
+    assert steps['filename_captures']['sql']=='SELECT * FROM captures'
+    assert pq.read_table(result['work_list']).select(['filename','source_url']).to_pylist()==[
+        dict(filename='header.pdf',source_url='https://a.test/address.pdf')]
+
+
+def test_missing_canonical_filename_input_refuses_before_staging(tmp_path):
+    loaded,fixture,_=version_fixture(tmp_path)
+    (fixture/'model/sql/filename-inputs.sql').unlink()
+    captures=input_tables(tmp_path,[])
+    with pytest.raises(FileNotFoundError):
+        loaded.stage(worker_factory=Worker,decided_at=STAMP,captures=captures,recovery_files=[],
+            engine=engine(),work=tmp_path/'stage')
+    assert not (tmp_path/'stage').exists()
 
 
 def test_module_cli_and_worker_callback_keep_the_public_package_path(tmp_path):
