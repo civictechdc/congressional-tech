@@ -78,3 +78,4 @@ def test_native_once_worklist_reuses_writer_facts_and_parses_duplicate_body_once
     admitted=pq.read_table(result['body_admissions']).to_pylist()
     assert admitted==[dict(body_sha=caption,format='vtt',basis='writer_format')]
     assert result['read_bytes']==len(body) and result['pending_reads']==0
+    assert not any((tmp_path/'stage/body-bytes').iterdir())
