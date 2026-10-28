@@ -159,6 +159,25 @@ def check_scratch(root,*outputs,min_free_bytes=15<<30):
     return root
 
 
+class _MemorySamples:
+    """Tolerate two transient tree-sampling gaps, retaining the last valid peak."""
+    def __init__(self,sampler):
+        self.sampler=sampler
+        self.consecutive_failures=0
+
+    def sample(self,pid):
+        try:
+            rss=self.sampler.resident_tree(pid);physical=self.sampler.physical_tree(pid)
+            if physical is None:raise RuntimeError('Missing process memory sample')
+        except (OSError,RuntimeError,subprocess.SubprocessError) as error:
+            self.consecutive_failures+=1
+            if self.consecutive_failures>=3:
+                raise RuntimeError('Three consecutive whole-tree memory samples failed') from error
+            return None
+        self.consecutive_failures=0
+        return rss,physical
+
+
 def monitor_command(command,*,work,physical_limit=16<<30,timeout=2700,min_free_bytes=15<<30,
                     scratch_root=None):
     """Run one owned batch process and record sampled RSS/physical footprint.
@@ -181,6 +200,7 @@ def monitor_command(command,*,work,physical_limit=16<<30,timeout=2700,min_free_b
     path=Path(__file__).resolve().parents[5]/'scripts/measure/process_rss.py'
     spec=importlib.util.spec_from_file_location('backfill_memory_sampler',path)
     sampler=importlib.util.module_from_spec(spec);spec.loader.exec_module(sampler)
+    memory=_MemorySamples(sampler)
     watchdog='''import os,signal,subprocess,sys,time
 parent=int(sys.argv[1])
 process=subprocess.Popen(sys.argv[2:])
@@ -203,14 +223,17 @@ raise SystemExit(process.returncode)
                 stdout=output,stderr=subprocess.STDOUT,start_new_session=True)
             try:
                 while child.poll() is None:
-                    rss=sampler.resident_tree(child.pid);physical=sampler.physical_tree(child.pid)
-                    if physical is None:raise RuntimeError('Missing process memory sample')
-                    peak=max(peak,rss);physical_peak=max(physical_peak,physical);samples+=1
+                    observed=memory.sample(child.pid)
+                    if observed is not None:
+                        rss,physical=observed
+                        peak=max(peak,rss);physical_peak=max(physical_peak,physical);samples+=1
                     value=dict(status='running_unaccepted',monitor_pid=os.getpid(),owned_pgid=child.pid,
                         seconds=time.monotonic()-started,samples=samples,sampled_peak_tree_rss=peak,
-                        sampled_peak_tree_physical_footprint=physical_peak)
+                        sampled_peak_tree_physical_footprint=physical_peak,
+                        consecutive_sample_failures=memory.consecutive_failures)
                     temporary=partial.with_suffix('.tmp');temporary.write_text(json.dumps(value)+'\n');temporary.replace(partial)
-                    if physical>physical_limit:raise RuntimeError('Batch exceeded its physical memory limit')
+                    if observed is not None and physical>physical_limit:
+                        raise RuntimeError('Batch exceeded its physical memory limit')
                     if shutil.disk_usage(work).free<min_free_bytes:raise RuntimeError('Free disk dropped below the backfill floor')
                     if time.monotonic()>=disk_next:
                         check_scratch(scratch_root,work,min_free_bytes=min_free_bytes)
