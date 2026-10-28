@@ -93,8 +93,8 @@ def test_empty_list_duplicate_list_and_object_pointer_preserve_grain(tmp_path):
         dict(record=[dict(url='https://example.test/same',http_status=404)]*2)])
     stage=stage_captures(source,engine=native,work=tmp_path/'stage')
     rows=pq.read_table(stage/'captures.parquet').to_pylist()
-    assert len(rows)==3
-    assert [row['capture_index'] for row in rows]==[0,0,0]
-    assert [row['url'] for row in rows]==[None,'https://example.test/object','https://example.test/same']
-    assert [row['http_status'] for row in rows]==[None,206,404]
-    assert [row['sha256'] is None for row in rows]==[True,False,True]
+    assert len(rows)==4
+    assert [row['capture_index'] for row in rows]==[0,0,0,1]
+    assert [row['url'] for row in rows]==[None,'https://example.test/object','https://example.test/same','https://example.test/same']
+    assert [row['http_status'] for row in rows]==[None,206,404,404]
+    assert [row['sha256'] is None for row in rows]==[True,False,True,True]

@@ -1,6 +1,7 @@
 """Only scalar facts cross the narrow producer's joins and materializations."""
 import json
 import os
+import re
 
 import pyarrow as pa
 import pyarrow.parquet as pq
@@ -65,5 +66,8 @@ def test_native_counter_plan_scans_once_and_joins_only_materialized_scalars(tmp_
     physical = next(row['plan'] for row in result['plan'] if row['plan_type'] == 'physical_plan')
     assert 'JoinExec' in physical
     assert 'WindowAggExec' in physical
-    assert all(name not in physical for name in ('__raw_line', 'list_raw', 'selected_record', 'json_get_many('))
-    assert all(not pa.types.is_nested(field.type) for field in pq.read_schema(second/'scalars.parquet'))
+    assert all(name not in physical for name in ('__raw_line', 'list_raw', 'json_get_many('))
+    assert re.search(r'\bselected_record\b',physical) is None
+    schema=pq.read_schema(second/'scalars.parquet')
+    assert schema.field('selected_record_index').type==pa.int64()
+    assert all(not pa.types.is_nested(field.type) for field in schema)

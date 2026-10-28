@@ -165,10 +165,11 @@ def test_list_record_pointer_selects_its_own_response(tmp_path):
     assert (b['url'], b['http_status']) == ('https://example.org/b', 200)
 
 
-def test_list_bodiless_conflicting_facts_refuse(tmp_path):
-    with pytest.raises(ValueError, match='list.*facts'):
-        ingest(tmp_path, [dict(record=[dict(url='https://example.org/a'),
-                                        dict(url='https://example.org/b')])])
+def test_list_bodiless_items_keep_their_own_urls_and_primary_keys(tmp_path):
+    source=dict(record=[dict(url='https://example.org/a'),dict(url='https://example.org/b')])
+    stage=ingest(tmp_path,[source]);rows=pq.read_table(stage/'captures.parquet').to_pylist()
+    assert [(r['capture_index'],r['url']) for r in rows]==[(0,'https://example.org/a'),(1,'https://example.org/b')]
+    with gzip.open(tmp_path/'input/receipt.gz','rt') as stream:assert json.loads(stream.read())==source
 
 
 def test_secondary_storage_conflicts_and_unknown_mode_refuse(tmp_path):
@@ -274,16 +275,13 @@ def test_prior_body_does_not_borrow_recorded_final_completeness(tmp_path):
 
 
 
-def test_sparse_bodiless_record_list_never_silently_loses_later_facts(tmp_path):
-    # A single line cannot choose the first sparse element and discard the
-    # only recorded HTTP status/time. Refusal keeps the receipt pending.
-    with pytest.raises(ValueError,match='list.*facts'):
-        ingest(tmp_path,[dict(record=[dict(url='https://example.org/a'),
-            dict(url='https://example.org/a',status_code=404,observed_at=STAMP)])])
-
-
-
-
+def test_sparse_bodiless_record_list_keeps_later_facts_on_their_own_item(tmp_path):
+    source=dict(record=[dict(url='https://example.org/a'),
+        dict(url='https://example.org/a',status_code=404,observed_at=STAMP)])
+    stage=ingest(tmp_path,[source]);a,b=pq.read_table(stage/'captures.parquet').to_pylist()
+    assert (a['capture_index'],a['http_status'],a['retrieved_at'])==(0,None,None)
+    assert (b['capture_index'],b['http_status'],b['retrieved_at'].isoformat())==(1,404,'2026-10-20T12:34:56+00:00')
+    with gzip.open(tmp_path/'input/receipt.gz','rt') as stream:assert json.loads(stream.read())==source
 
 
 @pytest.mark.parametrize('same_url',[True,False])

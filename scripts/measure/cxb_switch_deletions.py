@@ -18,12 +18,15 @@ VP = 'packages/viewer_publication/src/viewer_publication/'
 CR = 'packages/corpus_recovery/src/corpus_recovery/'
 DC = 'packages/docspec_client/src/docspec_client/'
 SITE = 'apps/site/src/components/explorer/reader/filenames/'
+PUBLICATION_CLIENT_KEEP = ['require_publication_client','publish_manifest_pointer','VerifiedTransfer']
+PUBLICATION_CLIENT_KEEP_IMPORTS = ['dataclasses.dataclass','hashlib']
 SPEED_KEEP = ['scripts/measure/viewer_benchmark_server.py',
               'scripts/measure/benchmark_viewer_browser.mjs', 'scripts/measure/process_rss.py',
               'scripts/measure/tests/test_viewer_benchmark.py',
               'scripts/measure/tests/test_viewer_benchmark_server.py']
 HARD_KEEP = [CA+'lake/', CA+'retention/body_store.py', CA+'retention/receipt_writer.py',
     CA+'retention/archive_expander.py', CA+'retention/provenance.py', CA+'retention/raw_verifier.py',
+    CA+'retention/derived_files.py', 'packages/congress_shared/src/congress_shared/custody.py',
     CA+'retention/raw_repair.py', CA+'acquisition/fetcher.py', CA+'acquisition/capture_scheduler.py',
     CA+'transport/raw_adapters.py', CA+'parsers/archive_readings.py', CA+'parsers/sniff.py',
     'packages/house-naming/', 'packages/news_lake/', 'apps/committee_youtube/',
@@ -646,6 +649,9 @@ def build(ct, ds, ct_rev, ds_rev):
             f['preserve_symbols']=['blake3_hex public API and maintained-library branch',
                 'encode_arrow_ipc_stream','_write_producer_parquet','producer_input_entry']
             f['fallback_cut_gate']='Maintained blake3 declared and locked before deleting only the Python fallback.'
+        if f['path']==VP+'client.py':
+            f['preserve_symbols']=list(PUBLICATION_CLIENT_KEEP)
+            f['preserve_imports']=list(PUBLICATION_CLIENT_KEEP_IMPORTS)
         if f['path']==RET+'raw_storage.py':
             f['preserve_until_lifted']=['migrate_pdf_bodies_to_uncompressed (B13 actual phase2 job)']
         if f['path'].startswith(RET+'document_review') or f['path'].startswith(RET+'review/'):

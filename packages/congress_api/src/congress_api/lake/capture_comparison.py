@@ -2,6 +2,7 @@
 import json
 from pathlib import Path
 
+import pyarrow as pa
 import pyarrow.parquet as pq
 
 from congress_api.retention.provenance import parquet_output, run_job
@@ -16,6 +17,7 @@ RULES = {
     'body_location': 'Compare each recorded old physical body_key with the key derived from the new body SHA and stored_suffix, defaulting the legacy suffix to .gz. Noncanonical or conflicting locations are not normalized away.',
     'storage': 'Missing stored_bytes may be enriched. Non-null sizes must survive. Stored SHA-256 is distinct from MD5 and is not a target column.',
     'bodiless_pointer': 'Only old metadata plus null body SHA plus pointer [] maps to the new no-body null pointer. Missing context restoration is qualified by that same source shape.',
+    'source_list_items': 'Only a new bodiless line row with a true source-list proof, list length greater than one, a valid distinct item ordinal appearing once, and an old row on the same receipt line is an expected restoration. Preserve and gate every unproved new-only row.',
     'old_only': 'Every remaining old-only row is an owner gate; preserve all original columns. No automatic dismissal or invented capture row.',
     'occurrences': 'Match repeated receipt/body/pointer facts one-to-one; keep multiplicity after qualified secondary normalization.',
     'coverage': 'The oracle does not independently establish new mode, completeness, outcome priorities, endpoint/header/sniff/writer facts or recovery fields. Report those gaps; qualify them with receipt and rebuild tests.',
@@ -65,6 +67,12 @@ def compare_old(evidence, old_index, *, engine, work):
             cols.append(value(schema,name,kind)+' AS "'+name+'"')
         if not old:
             cols.append('capture_index')
+            for name,kind,valid in [('record_is_list','BOOLEAN',pa.types.is_boolean),
+                    ('source_record_count','BIGINT',pa.types.is_integer),
+                    ('source_record_index','BIGINT',pa.types.is_integer)]:
+                expression=(value(schema,name,kind) if name in schema.names and valid(schema.field(name).type)
+                            else f'cast(NULL AS {kind})')
+                cols.append(expression+' AS '+name)
         return 'SELECT '+','.join(cols)+' FROM '+('old_input' if old else 'new_input')
     old_order = ','.join('"'+f+'"' for f in old_schema.names)
     steps = [dict(name='old_numbered',sql=f'SELECT *,row_number() OVER (ORDER BY {old_order}) AS old_row FROM old_input'),
@@ -84,12 +92,18 @@ def compare_old(evidence, old_index, *, engine, work):
         dict(name='old_values',sql='SELECT * FROM old_facts WHERE old_row NOT IN (SELECT old_row FROM secondary_duplicates)')]
     occurrence_keys='receipt_key,receipt_line,body_sha,pointer'
     occurrence_order='context_url,bytes,media_type,fidelity,http_status,try_cast(retrieved_at AS TIMESTAMP WITH TIME ZONE),stored_bytes,family,run_id,member_path,body_key'
+    # The old list metadata represents item zero. Restored child facts must
+    # follow that item even when their URLs sort before its URL.
+    source_item_order="""CASE WHEN reference_kind='line' AND body_sha IS NULL AND pointer IS NULL
+        AND record_is_list IS TRUE AND source_record_count>1
+        AND source_record_index>=0 AND source_record_index<source_record_count
+        THEN source_record_index END"""
     steps.extend([
         dict(name='old_normalized',sql=f'''SELECT *,row_number() OVER (
             PARTITION BY {occurrence_keys} ORDER BY {occurrence_order},old_row) AS occurrence
             FROM old_values'''),
         dict(name='new_facts',sql=f'''SELECT *,row_number() OVER (
-            PARTITION BY {occurrence_keys} ORDER BY {occurrence_order},capture_index) AS occurrence
+            PARTITION BY {occurrence_keys} ORDER BY {source_item_order},{occurrence_order},capture_index) AS occurrence
             FROM new_values''')])
     join = '''o.receipt_key=n.receipt_key AND o.receipt_line=n.receipt_line
         AND (o.body_sha IS NOT DISTINCT FROM n.body_sha)
@@ -140,6 +154,26 @@ def compare_old(evidence, old_index, *, engine, work):
         FROM old_normalized o JOIN new_facts n ON {join}'''),
         dict(name='old_only',sql=f'SELECT o.old_row FROM old_normalized o LEFT ANTI JOIN new_facts n ON {join}'),
         dict(name='new_only',sql=f'SELECT n.* FROM new_facts n LEFT ANTI JOIN old_normalized o ON {join}')]
+    # Source proof is carried only by the receipt-derived private evidence.
+    # A key or URL resemblance alone cannot establish a collapsed source item.
+    steps.extend([
+        dict(name='old_source_lines',sql='SELECT DISTINCT receipt_key AS old_source_key,receipt_line AS old_source_line FROM old_numbered',materialize=True),
+        dict(name='source_ordinals',sql='''SELECT receipt_key AS proof_receipt_key,
+            receipt_line AS proof_receipt_line,source_record_index AS proof_record_index,
+            count(*) AS source_ordinal_occurrences FROM new_values
+            GROUP BY receipt_key,receipt_line,source_record_index''',materialize=True),
+        dict(name='new_only_proof',sql='''SELECT n.*,coalesce(
+            n.reference_kind='line' AND n.body_sha IS NULL AND n.pointer IS NULL
+            AND n.record_is_list IS TRUE AND n.source_record_count>1
+            AND n.source_record_index>=0 AND n.source_record_index<n.source_record_count
+            AND q.source_ordinal_occurrences=1 AND o.old_source_key IS NOT NULL,false)
+            AS expected_source_list_item FROM new_only n LEFT JOIN source_ordinals q
+            ON n.receipt_key=q.proof_receipt_key AND n.receipt_line=q.proof_receipt_line
+            AND n.source_record_index=q.proof_record_index
+            LEFT JOIN old_source_lines o ON n.receipt_key=o.old_source_key AND n.receipt_line=o.old_source_line''',materialize=True),
+        dict(name='new_only_classified',sql="""SELECT *,CASE WHEN expected_source_list_item
+            THEN 'source_list_item_restored' ELSE 'unexplained_new_row' END AS reason
+            FROM new_only_proof""",materialize=True)])
     # Shared native sorts and joins execute once for all exports and counts.
     for step in steps:
         if step['name'] in {'old_numbered','old_facts','new_values','secondary_duplicates',
@@ -147,7 +181,11 @@ def compare_old(evidence, old_index, *, engine, work):
             step['materialize']=True
     outputs = [parquet_output(work,'old-only',
         'SELECT o.* FROM old_numbered o JOIN old_only m ON o.old_row=m.old_row',['old_row']),
-        parquet_output(work,'new-only','SELECT * FROM new_only',
+        parquet_output(work,'new-only','SELECT * FROM new_only_classified',
+                       ['receipt_key','receipt_line','capture_index']),
+        parquet_output(work,'expected-new-only','SELECT * FROM new_only_classified WHERE expected_source_list_item',
+                       ['receipt_key','receipt_line','capture_index']),
+        parquet_output(work,'unexplained-new-only','SELECT * FROM new_only_classified WHERE NOT expected_source_list_item',
                        ['receipt_key','receipt_line','capture_index']),
         parquet_output(work,'changed-fields',
             'SELECT * FROM matched WHERE unexplained OR expected_change',
@@ -157,6 +195,8 @@ def compare_old(evidence, old_index, *, engine, work):
         (SELECT count(*) FROM secondary_duplicates) AS secondary_duplicates,
         (SELECT count(*) FROM old_only) AS old_only,
         (SELECT count(*) FROM new_only) AS new_only,
+        (SELECT count(*) FROM new_only_classified WHERE expected_source_list_item) AS expected_new_only,
+        (SELECT count(*) FROM new_only_classified WHERE NOT expected_source_list_item) AS unexplained_new_only,
         (SELECT count(*) FROM matched WHERE unexplained) AS unexplained,
         (SELECT count(*) FROM matched WHERE expected_change AND NOT unexplained) AS expected_changes,
         (SELECT count(*) FROM matched) AS matched'''
@@ -164,7 +204,7 @@ def compare_old(evidence, old_index, *, engine, work):
         dict(name='old_input',kind='parquet',path=str(Path(old_index).resolve())),
         dict(name='new_input',kind='parquet',path=str(Path(evidence).resolve()))],
         steps=steps,outputs=outputs,queries=[dict(name='counts',sql=query)])['counts'][0]
-    result['owner_gate'] = bool(result['old_only'] or result['new_only'] or result['unexplained'])
+    result['owner_gate'] = bool(result['old_only'] or result['unexplained_new_only'] or result['unexplained'])
     result['rules'] = RULES
     result['coverage'] = dict(COVERAGE,available_old_fields=old_schema.names)
     (work/'comparison.json').write_text(json.dumps(result,indent=2,sort_keys=True)+'\n')

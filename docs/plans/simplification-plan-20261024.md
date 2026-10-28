@@ -200,6 +200,7 @@ Each producer is built to [[ARCHITECTURE]] §8 and [[DATA-MODEL]] §6.
      - the 5,587 lines of the 2026-10-15 recovery run read as recoveries rather than fetches;
      - the final response's completeness (per-attempt completeness stays in raw);
      - `stored_md5` and `stored_suffix` new, `stored_sha256` gone.
+     - new-only rows from record-list items the old index collapsed: source evidence must prove the list and the distinct item's ordinal; count and report those rows as expected. Unproved new-only rows remain owner gates.
 
      A row that exists only in the old index is a fact raw does not hold, and it blocks the switch until the owner decides (§8).
 2. **Parsers,** written in S1, appending through the engine, each body opened once (counts from the pinned index's metadata, before any body read):

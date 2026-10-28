@@ -12,9 +12,10 @@ from house_naming.errors import NamingError
 import pyarrow as pa
 import pyarrow.parquet as pq
 
+from congress_api.lake.tables import table_input
 from congress_api.lake.versions import version_digest
 from congress_api.retention.body_store import BodyStore, LocalAdapter
-from congress_api.retention.provenance import field, json_input, list_of, struct, parquet_output, run_job, instant, import_unreadable, finish_stage
+from congress_api.retention.provenance import field, json_input, list_of, struct, parquet_output, run_job, instant, import_unreadable, finish_stage, imported_unreadable_provenance
 
 
 ROOT = Path(__file__).resolve().parents[6]
@@ -150,7 +151,7 @@ def read_filename(filename, source_url, *, catalog_version, parser=None, vocabul
 
 
 def _work_inputs(captures, recovery_files, unreadable_files, existing, work):
-    inputs = [dict(name='captures', kind='parquet', path=str(Path(captures).resolve()))]
+    inputs = [table_input('captures',captures)]
     if recovery_files:
         inputs.append(dict(name='recoveries', kind='json_lines', files=recovery_files,
             schema=dict(fields=[field(name, 'Utf8') for name in
@@ -171,8 +172,8 @@ def _work_inputs(captures, recovery_files, unreadable_files, existing, work):
     if len(set(priorities)) != len(params) or len(set(names)) != len(params):
         raise ValueError('Filename parameter registry has duplicate names or priorities')
     inputs.append(json_input(work, 'filename_parameters', params, priority='Int32', parameter='Utf8'))
-    if existing:
-        inputs.append(dict(name='existing', kind='parquet', path=str(Path(existing).resolve())))
+    if existing is not None:
+        inputs.append(table_input('existing',existing))
     return inputs
 
 
@@ -202,7 +203,7 @@ def stage(*, captures, recovery_files, engine, work, decided_at, existing=None, 
     missing = (' WHERE NOT EXISTS (SELECT 1 FROM unreadable u WHERE u.record_sha=p.input_id '
         "AND u.parser='filename' AND u.parser_version=" + version_sql +
         ' AND NOT EXISTS (SELECT 1 FROM unreadable s WHERE s.supersedes=u.id))')
-    if existing:
+    if existing is not None:
         missing += (' AND NOT EXISTS (SELECT 1 FROM existing e WHERE e.filename=p.filename '
                     'AND e.source_url=p.source_url AND e.catalog_version=' + version_sql + ')')
     run_job(work, engine, inputs=inputs, steps=steps,
@@ -257,7 +258,7 @@ def stage(*, captures, recovery_files, engine, work, decided_at, existing=None, 
                else name for name in SCHEMA.names]
     run_job(parsed, engine, inputs=[source], steps=[], outputs=[parquet_output(work,
         'filename-readings', 'SELECT ' + ','.join(columns) + ' FROM parsed_readings', PK)])
-    unreadable_key = unreadable_path = unreadable_stage = None
+    unreadable_key = unreadable_path = unreadable_stage = unreadable_provenance = unreadable_custody = None
     pending = bool(decision_count and unreadable_store is None)
     if decision_count:
         if pending:
@@ -268,10 +269,12 @@ def stage(*, captures, recovery_files, engine, work, decided_at, existing=None, 
                 records=decision_count,inputs={},extra=dict(decided_at=decided_at))
         else:
             imported=import_unreadable(unreadable_store,decisions_path,decided_at=decided_at)
+            unreadable_provenance,unreadable_custody=imported_unreadable_provenance(imported,unreadable_store,decisions_path)
         unreadable_key=imported['key']
     return dict(readings=work/'filename-readings.parquet', work_list=work/'work-list.parquet',
         catalog_version=version,unreadable_key=unreadable_key,unreadable_path=unreadable_path,
-        unreadable_stage=unreadable_stage,unreadable_pending=pending)
+        unreadable_stage=unreadable_stage,unreadable_pending=pending,
+        unreadable_provenance=unreadable_provenance,_unreadable_custody=unreadable_custody)
 
 def create_table(*, engine, work, catalog_root, table, location, create_namespace=False):
     from congress_api.lake.tables import create_table as native_create

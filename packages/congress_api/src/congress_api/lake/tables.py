@@ -44,6 +44,47 @@ def _job(engine, work, *, catalog_root, inputs=(), operations=()):
     return result
 
 
+def table_input(name,source):
+    """Bind a local stage or exact immutable native table, without exporting it."""
+    _identifier(name)
+    if isinstance(source,dict):
+        fields={'metadata_location','table_uuid','snapshot','schema_id'}
+        if (set(source)!=fields or any(not isinstance(source[k],str) or not source[k]
+                for k in ('metadata_location','table_uuid'))
+                or type(source['schema_id']) is not int or source['schema_id']<0
+                or (source['snapshot'] is not None and
+                    (type(source['snapshot']) is not int or source['snapshot']<0))):
+            raise ValueError('Native input requires an exact immutable table pin')
+        return dict(name=name,kind='native_table',**source)
+    return dict(name=name,kind='parquet',path=str(Path(source).resolve()))
+
+
+def resolve_tables(*,engine,work,catalog_root,tables):
+    """Resolve current immutable pins in one read-only native catalog job."""
+    if not isinstance(tables,dict) or not tables:
+        raise ValueError('Resolve requires explicit named tables')
+    for name in tables:_identifier(name)
+    result=_job(engine,work,catalog_root=catalog_root,operations=[
+        dict(kind='resolve',name=name,table=table) for name,table in tables.items()])
+    rows=result.get('table_operations')
+    if (not isinstance(rows,list) or len(rows)!=len(tables)
+            or any(not isinstance(r,dict) or r.get('name') not in tables for r in rows)
+            or len({r['name'] for r in rows})!=len(tables)):
+        raise ValueError('Malformed native table head results')
+    pins={}
+    for row in rows:
+        name=row['name']
+        if row.get('exists') is False:
+            raise ValueError(name+' table does not exist')
+        if row.get('exists') is not True:
+            raise ValueError('Malformed native table head for '+name)
+        pin={key:row.get(key) for key in ('metadata_location','table_uuid','snapshot','schema_id')}
+        try:table_input(name,pin)
+        except ValueError:raise ValueError('Malformed native table head for '+name) from None
+        pins[name]=pin
+    return pins
+
+
 def create_table(*,engine,work,catalog_root,table,schema,location,create_namespace=False,
                  partition_spec=None):
     """Explicit creation, never treating an existing table as successful create."""
