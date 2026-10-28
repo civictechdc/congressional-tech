@@ -107,3 +107,39 @@ def test_seed_plan_reads_no_inputs_or_runtime(tmp_path):
     raw['engine_config']=str(tmp_path/'unopened-runtime.json');path.write_text(compact(raw))
     spec=load_seed_spec(path)
     assert spec['kind']=='seed_v5' and not Path(spec['output']).exists()
+
+@pytest.mark.parametrize('name',[
+    'model/jobs/seed-v5.json','model/sql/seed-v5-documents.sql',
+    'model/registries/recovery-kinds.json','model/registries/reader-limits.json'])
+def test_seed_refuses_definition_drift_before_native_effects(tmp_path,name):
+    from viewer_publication.archive_seed import load_seed_spec,build_seed_release
+    from congress_api.retention.derived_files import file_identity
+    path,_=seed_spec(tmp_path);spec=load_seed_spec(path)
+    assert name in spec['profile']['definition_hashes']
+    # An owned copy can have the same declared bytes, but it cannot replace
+    # custody of the definition the loader actually inspected.
+    owned=tmp_path/'definition';owned.write_bytes((ROOT/name).read_bytes())
+    proof=file_identity(owned);owned.write_bytes(owned.read_bytes()+b'\n')
+    spec['_definition_identities'][name]=proof
+    class NeverRun:
+        source_revision=spec['engine_revision']
+        def run_job(self,*args):pytest.fail('Drift must refuse before native execution')
+    with pytest.raises(ValueError,match='[Cc]ustody|[Dd]efinition'):
+        build_seed_release(spec,engine=NeverRun(),output=spec['output'],scratch=spec['scratch'])
+    assert not Path(spec['output']).exists() and not Path(spec['scratch']).exists()
+
+
+def test_seed_refuses_definition_hash_drift_during_native_execution(tmp_path):
+    from docspec_client.client import NativeDatasets
+    from viewer_publication.archive_seed import load_seed_spec,build_seed_release
+    path,_=seed_spec(tmp_path);spec=load_seed_spec(path)
+    name='model/jobs/seed-v5.json'
+    with NativeDatasets.from_config(spec['engine_config']) as native:
+        class ObservedNative:
+            source_revision=native.source_revision
+            def run_job(self,*args,**kwargs):
+                result=native.run_job(*args,**kwargs)
+                spec['profile']['definition_hashes'][name]='0'*64
+                return result
+        with pytest.raises(ValueError,match='[Dd]efinition'):
+            build_seed_release(spec,engine=ObservedNative(),output=spec['output'],scratch=spec['scratch'])
