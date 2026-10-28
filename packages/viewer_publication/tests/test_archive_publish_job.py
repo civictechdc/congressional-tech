@@ -415,7 +415,7 @@ def test_actual_execute_daily_path_publishes_only_completed_work(tmp_path,outcom
     from test_archive_publish import Store,Native
     from viewer_publication.archive_publish_job import load_spec,execute
     count=2 if outcome=='backfill_required' else 1
-    payloads=[b'%PDF-1.7\n% Authored startup report '+str(i).encode()+b'\n%%EOF\n' for i in range(count)]
+    payloads=([b'%PDF-1.7\n% Authored startup report\n%%EOF\n'] if outcome=='completed' else None)
     raw=tmp_path/'producer';raw.mkdir()
     daily,initial,raw_store=native_fixture(raw,count,payloads=payloads)
     try:heads=tables.resolve_tables(engine=initial,work=tmp_path/'heads',catalog_root=daily['catalog_root'],tables=daily['tables'])
