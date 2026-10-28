@@ -107,3 +107,25 @@ def test_content_key_and_uploaded_bytes_share_one_frozen_source(tmp_path):
             assert key.endswith(hashlib.sha256(payload).hexdigest()+'.jsonl')
     result=provenance.import_unreadable(ReplacedSource(),path,decided_at=STAMP)
     assert result['sha256']==hashlib.sha256(payload).hexdigest()
+
+
+
+def test_reviewed_import_refuses_source_replacement_before_create(tmp_path):
+    import sys
+    stage=tmp_path/'stage';stage.mkdir()
+    path=tmp_path/'records.jsonl';path.write_text(json.dumps(decision())+'\n')
+    imported=provenance.import_unreadable(BodyStore(LocalAdapter(stage)),path,decided_at=STAMP)
+    provenance.finish_stage(stage,kind='unreadable',provenance=imported['key'],records=1,
+        inputs={},extra=dict(decided_at=STAMP))
+    reviewed=stage/imported['key']; changed=dict(decision(),reason='parser_crash')
+    class Never:
+        def put(self,*args,**kwargs):raise AssertionError('unreviewed bytes reached storage')
+    def replace_on_import(frame,event,arg):
+        if event=='call' and frame.f_code is provenance.import_unreadable.__code__:
+            reviewed.write_text(json.dumps(changed)+'\n')
+    previous=sys.getprofile();sys.setprofile(replace_on_import)
+    try:
+        with pytest.raises(ValueError,match='changed'):
+            provenance.apply_staged(stage,Never())
+    finally:
+        sys.setprofile(previous)
