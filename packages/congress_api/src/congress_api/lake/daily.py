@@ -98,7 +98,7 @@ def _validate(spec,engine,raw_store):
                     raise ValueError('Cached daily provenance ETag changed')
                 if identity.sha256!=row['sha256'] or identity.size_bytes!=row['size']:
                     raise ValueError('Cached daily provenance byte identity changed')
-                identity.require(row['path'])
+                identity._require_custody(row['path'])
             else:
                 row,identity=_qualified(row,kind,check_file=kind!='unreadable')
             if row['key'] in keys:raise ValueError('Duplicate daily provenance key')
@@ -135,7 +135,7 @@ def _final_provenance(initial,raw_store,imported,identities,*,acknowledgements=N
         if (not isinstance(custody,VerifiedFile) or custody.sha256!=row['sha256']
                 or custody.size_bytes!=row['size']):
             raise ValueError('Acknowledged unreadable provenance requires import-bound custody')
-        try:custody.require(row['path'])
+        try:custody._require_custody(row['path'])
         except (OSError,ValueError):
             raise ValueError('Acknowledged unreadable provenance changed or disappeared') from None
     for row in imported:
@@ -169,7 +169,7 @@ def _final_provenance(initial,raw_store,imported,identities,*,acknowledgements=N
         if ref['key'] not in known:known[ref['key']]=row
     result['unreadable']=sorted(known.values(),key=lambda r:r['key'])
     for path,identity in identities.items():
-        if isinstance(identity,VerifiedFile):identity.require(path)
+        if isinstance(identity,VerifiedFile):identity._require_custody(path)
         elif custody_identity(path)!=identity:raise ValueError('Daily provenance changed while producing')
     for key,row in required.items():require_ack(row,acknowledgements[key])
     if unreadable_snapshot is not None:unreadable_snapshot.rows()

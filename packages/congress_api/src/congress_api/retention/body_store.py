@@ -134,7 +134,7 @@ class BodyStore:
         if (not isinstance(custody,VerifiedFile) or custody.sha256!=public['sha256']
                 or custody.size_bytes!=public['size']):
             raise ValueError('Provenance cache requires checked byte identity')
-        custody.require(public['path'])
+        custody._require_custody(public['path'])
         if isinstance(self.adapter,R2Adapter) and custody.get('md5')!=single_put_md5(public['etag']):
             raise ValueError('Provenance cache differs from its listed MD5')
         previous=self._provenance_cache.get(public['key'])
