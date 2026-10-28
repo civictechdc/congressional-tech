@@ -299,7 +299,7 @@ def validate_layout(loaded, *, engine, work):
 def field_rows(table, doc, scalars, arrays=(), *, subject="''"):
     branches=[f"SELECT {doc} AS doc,'{field}' AS field,{subject} AS subject,cast({value} AS VARCHAR) AS value FROM {table}" for field,value in scalars.items()]
     branches += [f"SELECT {doc} AS doc,'{field}' AS field,{subject} AS subject,cast(unnest({value}) AS VARCHAR) AS value FROM {table}" for field,value in arrays]
-    return 'SELECT DISTINCT * FROM ('+' UNION ALL '.join(branches)+') WHERE value IS NOT NULL'
+    return 'SELECT * FROM ('+' UNION ALL '.join(branches)+') WHERE value IS NOT NULL'
 
 
 def normalization(loaded, *, directory):
@@ -411,12 +411,12 @@ def normalization(loaded, *, directory):
     display=json.loads((ROOT/'model/registries/display-facts.json').read_text())
     for row in display:
         name=row['field']
-        old_parts.append(field_rows('oracle_documents','document_id',{},[('facts',name)],subject="'"+name+"'"))
+        old_parts.append(field_rows('old_wide','document_id',{},[('facts',name)],subject="'"+name+"'"))
     old_parts += ["""SELECT d.document_id AS doc,'alternates' AS field,(regexp_match(f.body_key,'([a-f0-9]{64})'))[1] AS subject,f.format[1] AS value
-        FROM oracle_documents d JOIN oracle_filenames f USING(document_id)
+        FROM old_wide d JOIN oracle_filenames f USING(document_id)
         WHERE f.body_key IS NOT NULL AND f.body_key<>d.body_key AND f.format[1]<>d.format[1]"""]
     if metadata:
-        old_parts.extend([f"SELECT d.document_id AS doc,'{field}' AS field,(regexp_match(f.body_key,'([a-f0-9]{{64}})'))[1] AS subject,cast({expression} AS VARCHAR) AS value FROM oracle_documents d JOIN oracle_filenames f USING(document_id) LEFT JOIN old_capture_metadata m ON f.body_key=m.body_key WHERE f.body_key IS NOT NULL AND f.body_key<>d.body_key AND f.format[1]<>d.format[1]"
+        old_parts.extend([f"SELECT d.document_id AS doc,'{field}' AS field,(regexp_match(f.body_key,'([a-f0-9]{{64}})'))[1] AS subject,cast({expression} AS VARCHAR) AS value FROM old_wide d JOIN oracle_filenames f USING(document_id) LEFT JOIN old_capture_metadata m ON f.body_key=m.body_key WHERE f.body_key IS NOT NULL AND f.body_key<>d.body_key AND f.format[1]<>d.format[1]"
             for field,expression in [('alternate.suffix',"CASE WHEN regexp_like(f.body_key,'[.]pdf$') THEN '.pdf' WHEN regexp_like(f.body_key,'[.]gz$') THEN '.gz' ELSE '' END"),('alternate.bytes','m.bytes')]])
     new_parts.extend([f"SELECT doc,'{field}' AS field,encode(a['body'],'hex') AS subject,cast(a['{column}'] AS VARCHAR) AS value FROM (SELECT doc,unnest(alternates) AS a FROM new_wide)" for field,column in [('alternate.suffix','suffix'),('alternate.bytes','size')]])
     new_parts.extend([f"SELECT cast(list_row AS VARCHAR) AS doc,'recovery.{column}' AS field,encode(body,'hex') AS subject,cast({column} AS VARCHAR) AS value FROM release_recoveries" for column in ['kind','recovered_url','imported_at','identity_note','suffix','bytes']])
@@ -433,9 +433,11 @@ def normalization(loaded, *, directory):
     steps+=lookup
     old_parts.append(field_rows('old_url_keys','list_row',dict(url_lookup="encode(lookup_key,'hex')")))
     new_parts.append(field_rows('release_urls','cast(list_row AS VARCHAR)',dict(url_lookup="encode(lookup_key,'hex')")))
-    steps += [dict(name='old_fields',sql='SELECT * FROM ('+' UNION '.join(old_parts)+') WHERE value IS NOT NULL'),dict(name='new_fields',sql='SELECT * FROM ('+' UNION '.join(new_parts)+') WHERE value IS NOT NULL')]
-    steps += [dict(name='old_evidence_sources',sql='SELECT document_id AS doc,source_id,body_key,filename,source_url FROM oracle_filenames',materialize=True),
-        dict(name='new_evidence_sources',sql='SELECT cast(list_row AS VARCHAR) AS doc,source_id,body_key,effective_filename AS filename,source_url FROM source_members',materialize=True)]
+    if kind=='f0':steps+=f0_proof_steps(loaded['manifest']['release_id'])[:-1]
+    steps += [dict(name='old_fields',sql='SELECT * FROM ('+' UNION ALL '.join(old_parts)+') WHERE value IS NOT NULL'),dict(name='new_fields',sql='SELECT * FROM ('+' UNION ALL '.join(new_parts)+') WHERE value IS NOT NULL')]
+    if kind=='model':
+        steps += [dict(name='old_evidence_sources',sql='SELECT document_id AS doc,source_id,body_key,filename,source_url FROM oracle_filenames',materialize=True),
+            dict(name='new_evidence_sources',sql='SELECT cast(list_row AS VARCHAR) AS doc,source_id,body_key,effective_filename AS filename,source_url FROM source_members',materialize=True)]
     if kind=='f0':
         steps.append(dict(name='witnesses',sql="SELECT cast(NULL AS VARCHAR) AS old_doc,cast(NULL AS VARCHAR) AS new_doc,cast(NULL AS VARCHAR) AS subject,cast(NULL AS VARCHAR) AS fact,cast(NULL AS VARCHAR) AS evidence_ref WHERE false"))
     # Each original wide file is parsed once by this consumer. All downstream
@@ -728,7 +730,7 @@ def comparison_steps(*, f0_release=None, witness_step=None):
         index=next(i for i,step in enumerate(steps) if step['name']=='observed_differences')
         steps.insert(index,witness_step)
     if f0_release:
-        steps += f0_proof_steps(f0_release)
+        steps += f0_proof_steps(f0_release)[-1:]
     steps += cause_steps(f0=bool(f0_release))
     steps += [
         dict(name='unexplained',sql='SELECT d.* FROM differences d LEFT ANTI JOIN known_causes c ON d.difference_id=c.difference_id',materialize=True),
@@ -744,6 +746,26 @@ def comparison_steps(*, f0_release=None, witness_step=None):
             ELSE json_array('sources',array_sort(array_distinct(source_ids))) END),'hex')""",materialize=True),
     ]
     return steps
+
+
+RELEASE_AFTER={
+    'old_source_formats':['old_media'],
+    'old_identity_sources':['old_source_formats'],
+    'old_identity_groups':['old_identity_sources'],
+    'old_meetings':['old_catalog'],
+    'identity_documents':['old_identity_groups'],
+    'public_body_links':['body_map'],
+    'aligned_pairs':['old_signatures','new_signatures','exact_pairs','unmatched_old_anchors','unmatched_new_anchors','old_anchors','new_anchors'],
+    'source_identity_errors':['identity_sources'],
+    'document_identity_errors':['identity_documents','model_real_sources'],
+    'old_values':['old_fields','old_file_rows','old_committees','old_bodies','old_times','old_meetings','old_capture_metadata','old_url_keys','old_lookup_keys_full','old_lookup_sources','old_lookup_parts','old_lookup_hosts','old_lookup_paths','old_lookup_values'],
+    'new_values':['new_fields','new_bodies','source_members'],
+    'delta_values':['old_values','new_values','old_documents','new_documents'],
+    'differences':['delta_values'],
+    'observed_differences':['witnesses'],
+    'f0_cause_proofs':['old_wide','new_wide','f0_first_context','f0_body_target','public_body_links'],
+    'known_causes':['f0_cause_proofs'],
+}
 
 
 def compare_relations(inputs, *, engine, work, missing_evidence=0, prelude=(), f0_release=None, witness_step=None):
@@ -782,7 +804,18 @@ def compare_relations(inputs, *, engine, work, missing_evidence=0, prelude=(), f
     queries.append(dict(name='causes',sql=f'''SELECT r.cause,coalesce(c.differences,0) AS differences,'field_differences' AS unit FROM ({registry}) r
         LEFT JOIN (SELECT cause,count(DISTINCT difference_id) AS differences FROM known_causes GROUP BY cause) c USING(cause)
         UNION ALL SELECT 'document_id_inputs_changed',count(*),'document_pairs' FROM identity_input_changes ORDER BY cause'''))
-    reports = run_job(work,engine,inputs=inputs,steps=[*prelude,*comparison_steps(f0_release=f0_release,witness_step=witness_step)],outputs=outputs,queries=queries)
+    core=comparison_steps(f0_release=f0_release,witness_step=witness_step)
+    # ID checks consume wide source evidence before the large field comparison.
+    errors=[step for step in core if step['name'] in {'source_identity_errors','document_identity_errors'}]
+    core=[step for step in core if step not in errors]
+    index=next(i for i,step in enumerate(core) if step['name']=='identity_input_changes')+1
+    core[index:index]=errors
+    job_steps=[*prelude,*core]
+    names={item['name'] for item in [*inputs,*job_steps]}
+    for step in job_steps:
+        released=set(step.get('release_after',[]))|set(RELEASE_AFTER.get(step['name'],[]))
+        if released:step['release_after']=sorted(released&names)
+    reports=run_job(work,engine,inputs=inputs,steps=job_steps,outputs=outputs,queries=queries)
     counts=reports['counts'][0]
     ready=decision_ready(**{key:counts[key] for key in ['unclassified','derived_only','invalid_ids','invalid_records']},missing_evidence=missing_evidence)
     result=dict(version=1,status='complete' if ready else 'incomplete',decision_ready=ready,
