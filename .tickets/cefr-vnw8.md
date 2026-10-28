@@ -38,3 +38,7 @@ Confirmed reviewer concerns fixed in840977d9 after contracts e9d1e1cb/402e9f89. 
 **2026-10-28T00:08:56Z**
 
 Local F5 preparation complete at CT572ccb64/DS48636e5. Selected codex-raw/cxb_switch_deletions.json SHAa9db01c4d19c0a4e2a28abbe4ae685ae7aa1b67f22fdf4951049499f87b173c1:19groups/697unique files/193399population lines/19open manual ranges; not a deletion estimate. Historical27mixedtests/5948lines reproduced; currentretention28. Six focused runner checks pass0.09s, CODE/ARCH APPROVE preparation only. Fixed-head regeneration byte-identical; --verify stale=false with no changed/uncommitted scanned source. Shared keep boundaries/callers/phase2/live-import gates explicit. Regenerate at final combined heads and remeasure each group at switch; no source deletion or live action.
+
+**2026-10-28T03:35:54Z**
+
+Final reviewed-generator refresh at CT7a1f5453/DS9b59263:19groups706files194221population lines, SHA9ec321ed588350719c2ef434dff3ced242081fb31ad788e8082bde4a41c699b5. Fixed-head regeneration byte-identical; verify stale=false/no scanned dirty source;6runner checks PASS0.13s. Selected scratch cxb_switch_deletions.json refreshed, old selections retained.19manual ranges/13manual branch splits remain switch gates, not authorized deletions. Engine must regenerate at final integration heads and measure actual cuts.
