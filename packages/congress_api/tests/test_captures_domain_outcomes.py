@@ -81,7 +81,7 @@ def test_nested_receipt_aliases_precede_top_level_item_aliases(tmp_path):
 def test_domain_registry_bytes_are_part_of_the_mapping_identity(tmp_path):
     root=Path(captures.__file__).resolve().parents[5]
     relative=Path('model/registries/receipt-domain-outcomes.json')
-    for source in (Path(captures.__file__),Path(receipt_metadata.__file__),root/relative):
+    for source in (Path(captures.__file__),Path(receipt_metadata.__file__),root/relative,root/'model/registries/receipt-line-kinds.json'):
         target=tmp_path/source.resolve().relative_to(root)
         target.parent.mkdir(parents=True,exist_ok=True);shutil.copyfile(source,target)
     copied=tmp_path/Path(captures.__file__).resolve().relative_to(root)

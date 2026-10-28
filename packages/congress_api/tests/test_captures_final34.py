@@ -36,7 +36,7 @@ def test_legacy_completeness_boundary_and_explicit_entry_precedence(tmp_path):
         for outcome,size,entry in [('saved',123,{}),('saved',62<<20,{}),('saved',64<<20,{}),
         ('request_failed',123,{}),('resource_limit',123,{}),('saved',64<<20,dict(complete=True)),
         ('saved',123,dict(complete=False))]]
-    stage=ingest(tmp_path,rows+[dict(record={})])
+    stage=ingest(tmp_path,rows+[dict(mode='fetch',record={})])
     assert pq.read_table(stage/'captures.parquet')['complete'].to_pylist()==[
         True,True,False,False,False,True,False,True]
 
