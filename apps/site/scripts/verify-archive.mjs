@@ -7,7 +7,7 @@ import {createHash} from 'node:crypto';
 import {promisify} from 'node:util';
 import {fileURLToPath} from 'node:url';
 import {openArchive} from '../src/components/explorer/reader/archive.ts';
-import {argumentsMap,checkTargets,readTargets} from './archive-targets.mjs';
+import {argumentsMap,checkTargetRelease,readTargets} from './archive-targets.mjs';
 const hex=value=>typeof value==='string'?value:Buffer.from(value).toString('hex');
 function legacyPointer(value){
   return value&&typeof value==='object'&&!Array.isArray(value)
@@ -86,7 +86,9 @@ export async function verifyArchive({pointerUrl,releaseId,rawBase,local=false,fe
     const stale=await timed('stale',()=>promisify(execFile)(process.execPath,[fileURLToPath(new URL('./archive-stale.mjs',import.meta.url)),JSON.stringify({pointerUrl:pointer.href,releaseId:reader.releaseId,heapBytes,missingFile,timeout:remaining,legacyPointerSha256})],{timeout:remaining,maxBuffer:1024*1024,signal:controller.signal}));
     const staleResult=JSON.parse(stale.stdout);if(staleResult.status!=='passed')throw new Error('Stale release probe failed.');
     const metrics={releaseId:reader.releaseId,startupMs:operations.startup,searchMs:operations.search,detailMs:Math.max(...[0,1,2].map(i=>operations['detail'+i])),heapBytes:peak,workerHeapBytes:0};
-    if(targets)checkTargets(metrics,targets,reader.manifest.origin);
+    // Browser timings and V8 heap have a different measurement basis. The
+    // Node canary keeps its decoded-list budget and global deadline above.
+    if(targets)checkTargetRelease(reader.releaseId,targets,reader.manifest.origin);
     const elapsedMs=performance.now()-started;if(elapsedMs>=deadlineMs)throw new Error('Archive canary exceeded its deadline.');
     return {version:1,status:checkSaved?'passed':'incomplete',targets:targets?.status??'owner-gated',savedCopyChecked:checkSaved,elapsedMs,...metrics,operations,estimatedListBytes:reader.metrics.decodedBytes,estimatedListPeakBytes:reader.metrics.decodedPeak,memory,transport:{requests:headers.length,ranges:headers.filter(item=>item.range).length}};
   }catch(error){error.message+=` (elapsed ${Math.round(performance.now()-started)}ms; operations ${JSON.stringify(operations)})`;throw error;}finally{clearTimeout(timer);clearInterval(sampler);controller.abort();}

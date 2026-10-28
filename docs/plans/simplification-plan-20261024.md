@@ -125,7 +125,7 @@ The pinned catalog pair is converted to the release format as release `62bddc63�
 8. **Sources:** where the document was published and which page listed it, from `sources`.
 9. **Connections** (phase 2, except hearing keys and versions): filter by hearing, bill, member and witness, and sort by document date; a hearing's witnesses with what each submitted, its status, sittings and recordings; a document's other versions; a member's terms, committees, appearances and documents; a committee's current roster, hearings and documents; a bill's title, sponsor, status, hearings and documents; link out to the GPO record, the bill and the member.
 10. **Removed by review** ([[DATA-MODEL]] §7.9).
-11. **Speed, measured then fixed:** measure startup, search, detail and heap once on real phones and desktops against the first engine-built release, then write those targets into the canary and contract test. F0 gives provisional numbers for development.
+11. **Speed, measured then fixed:** measure browser startup, search, detail and heap once on real phones and desktops against the first engine-built release, then write those targets into the browser contract test. The Node canary validates their candidate binding and keeps its decoded-list budget and deadline ([[ARCHITECTURE]] §10.3.5, §11.2). F0 gives provisional numbers for development.
 
 **Done when:** the site loads F0 locally on desktop and in a phone-sized profile, and the canary passes against F0 in under a minute.
 

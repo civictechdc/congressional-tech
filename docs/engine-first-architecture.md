@@ -414,7 +414,7 @@ The site reads pointer → release manifest → `list`, then the other release f
 
 ### 11.2 Devices and Speed
 
-The site targets desktop and mid-range phones. Speed targets (startup, search and detail times, and the heap budget) are measured on real phones and desktops, then fixed as owner-approved targets the canary and contract test check. Only the display-only v5 seed may use provisional-emulated targets: five runs each on a Moto G Power-class profile (4× CPU slowdown and Slow 4G) and an unthrottled desktop, with each ceiling equal to ceil(1.5 × that profile’s median), retaining the profiles, harness commit and raw runs. The raw rebuild requires real-device targets. There is no per-view byte budget.
+The site targets desktop and mid-range phones. Browser speed targets (startup, search and detail times, and the heap budget) are measured on real phones and desktops, then fixed as owner-approved targets the browser contract test checks. The Node canary validates the candidate's target-file binding and enforces its decoded-list budget and deadline (§10.3.5); it records Node heap separately, without comparing that different measurement basis to browser ceilings. Only the display-only v5 seed may use provisional-emulated targets: five runs each on a Moto G Power-class profile (4× CPU slowdown and Slow 4G) and an unthrottled desktop, with each ceiling equal to ceil(1.5 × that profile’s median), retaining the profiles, harness commit and raw runs. The raw rebuild requires real-device targets. There is no per-view byte budget.
 
 ### 11.3 Stale Tabs
 
