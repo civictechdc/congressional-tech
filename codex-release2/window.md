@@ -290,15 +290,23 @@ def durable(path,value):
     write_atomic_json(path,value,fsync=True,fsync_dir=True)
 durable(evidence/'process.json',dict(pid=os.getpid(),pgid=os.getpgrp()))
 durable(evidence/'binding.json',binding)
-with (evidence/'stdout.json').open('xb') as out,(evidence/'stderr.log').open('xb') as err:
-    completed=subprocess.run(['.venv/bin/python','-I','-m','viewer_publication.archive_publish_job',
-        '--spec',str(spec_path),'--execute'],stdout=out,stderr=err,check=False)
+# This is the maintained --execute implementation. Probe stdout remains diagnostic.
+controller_code='''import sys
+from viewer_publication.archive_publish_job import execute,load_spec
+from congress_shared.custody import write_atomic_json
+result=execute(load_spec(sys.argv[1]))
+write_atomic_json(sys.argv[2],result,fsync=True,fsync_dir=True)
+raise SystemExit(2 if result.get('status') in {'pending','backfill_required'} else 0)
+'''
+with (evidence/'controller.stdout.log').open('xb') as out,(evidence/'stderr.log').open('xb') as err:
+    completed=subprocess.run(['.venv/bin/python','-I','-c',controller_code,
+        str(spec_path),str(evidence/'controller-result.json')],stdout=out,stderr=err,check=False)
     out.flush();os.fsync(out.fileno());err.flush();os.fsync(err.fileno())
 durable(evidence/'exit.json',dict(returncode=completed.returncode))
 if completed.returncode:raise SystemExit('Controller failed; retain evidence and inspect before any further effect')
 if spec_path.read_bytes()!=spec_raw or manifest_path.read_bytes()!=manifest_raw:
     raise ValueError('Approved local binding changed during publication')
-result=json.loads((evidence/'stdout.json').read_text())
+result=json.loads((evidence/'controller-result.json').read_text())
 if (result.get('status')!='published' or result.get('release_id')!=expected
         or result.get('live_release')!=expected
         or result.get('live_release_basis')!='conditional_flip_acknowledged'):
@@ -459,7 +467,7 @@ test -f "$WINDOW/local-publish/accepted.json"
 source "$WINDOW/operator-functions.sh"
 pause_and_drain "$LANDED_APPLICATION" before-rollback
 assert_no_local_publishers before-rollback
-mkdir "$WINDOW/post-data-rollback"
+"$LANDING/.venv/bin/python" -I -c 'import os;from pathlib import Path;from viewer_publication.archive_controller import _publication_directory;_publication_directory(Path(os.environ["ROLLBACK_WINDOW"])/"post-data-rollback",fresh=True)'
 cd "$LANDING"
 # Existing publisher token, supplied by the lead: R2_ACCESS_KEY_ID,
 # R2_SECRET_ACCESS_KEY and CLOUDFLARE_ACCOUNT_ID. Do not echo their values.
