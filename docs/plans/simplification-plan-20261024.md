@@ -203,7 +203,7 @@ Each producer is built to [[ARCHITECTURE]] §8 and [[DATA-MODEL]] §6.
      - new-only rows from record-list items the old index collapsed: source evidence must prove the list and the distinct item's ordinal; count and report those rows as expected. Unproved new-only rows remain owner gates.
 
      A row that exists only in the old index is a fact raw does not hold, and it blocks the switch until the owner decides (§8).
-2. **Parsers,** written in S1, appending through the engine, each body opened once (counts from the pinned index's metadata, before any body read):
+2. **Parsers,** written in S1, appending through the engine, each body read once through the existing adapter: remote reads use captured stored-MD5/size-pinned ranges, declared or known pages use bounded per-batch `R2Store.prefetch_immutable` caches, unknown pages complete through disjoint cached ranges, and every full page's decoded SHA-256 is checked against its body key before parsing; caches stay below 10 GB with at most 64 concurrent GETs and are removed only after their readings commit. Main's 491,699 local readings are a format-comparison oracle, never inputs (counts below come from the pinned index's metadata, before any body read):
    - no read where the writer's facts settle the format: 362,208 captions, 953 playlists and one empty body;
    - one full read of each page body the media type routes to HTML, XML or JSON (288,223 bodies, 4.98 GB), sniffed from those bytes and parsed in the same pass; a body whose bytes say otherwise is sniffed as what it is;
    - a bounded prefix read for the other 384,871 bodies, mostly PDFs and ZIPs, whose media type proves nothing;

@@ -288,11 +288,13 @@ class R2Store:
         with ThreadPoolExecutor(max_workers=min(max_workers, len(missing))) as pool:
             list(pool.map(fetch, missing))
 
-    def read(self, key, *, start=None,length=None,expected=None):
+    def read(self, key, *, start=None,length=None,expected=None,metadata=None):
         from botocore.exceptions import ClientError
         from congress_shared.storage import single_put_md5
         ranged=start is not None or length is not None
         pin=_raw_pin(key,expected) if expected is not None else None
+        if metadata is not None and (not isinstance(metadata,dict) or pin is None):
+            raise ValueError('Response metadata requires a pinned raw read and an output mapping')
         if ranged:
             if (pin is None or type(start) is not int or type(length) is not int or start<0 or length<0
                     or start+length>pin['bytes']):
@@ -348,6 +350,9 @@ class R2Store:
                     if (match is None or tuple(map(int,match.groups()))!=(start,start+length-1,pin['bytes'])
                             or response.get('ResponseMetadata',{}).get('HTTPStatusCode')!=206):
                         raise ValueError('Pinned raw range or total size changed')
+                if metadata is not None:
+                    metadata.update(content_encoding=response.get('ContentEncoding'),bytes=pin['bytes'],
+                                    etag=response['ETag'])
                 data=stream.read(wanted+1)
                 if len(data)!=wanted:raise ValueError('Incomplete pinned raw response')
                 if not ranged and hashlib.md5(data).hexdigest()!=pin['md5']:
