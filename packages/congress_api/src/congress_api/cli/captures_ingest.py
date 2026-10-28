@@ -95,7 +95,8 @@ def _backfill(args,engine,qualifications):
     table=dict(namespace=args.table.split('.')[:-1],name=args.table.split('.')[-1])
     options=dict(engine=engine,engine_config=args.engine_config,work=args.work,
         table=table,catalog_root=args.catalog_root,location=args.table_location,
-        validated_counter=args.validated_counter,source_qualifications=qualifications,**costs)
+        validated_counter=args.validated_counter,source_qualifications=qualifications,
+        progress_log=args.progress_log,**costs)
     if args.prove_equivalence:
         counter=str(args.validated_counter.resolve())
         options['source_qualifications']={path:authority for path,authority in (qualifications or {}).items()
@@ -124,6 +125,7 @@ def main(argv=None,*,engine_factory=None):
     parser.add_argument('--batch-items',type=int,help='Source list items per batch (default 200000)')
     parser.add_argument('--prove-equivalence',action='store_true',help='Compare one-shot and batched original-source generations')
     parser.add_argument('--scratch-root',type=Path,help='Owned scratch tree, checked against the 5GiB limit')
+    parser.add_argument('--progress-log',type=Path,help='Append per-batch rebuild status records to this JSONL file')
     parser.add_argument('--old-index',type=Path)
     parser.add_argument('--engine-config',default=os.environ.get('DOCSPEC_JOB_CONFIG'))
     parser.add_argument('--work',type=Path,required=True)
@@ -149,7 +151,7 @@ def main(argv=None,*,engine_factory=None):
                 or args.catalog_root is None or not args.validated_counter
                 or args.create_table or args.create_namespace):
             parser.error('--prove-equivalence requires local table, location and counter; omit apply/create flags')
-    elif (args.source_counts or args.prove_equivalence or args.scratch_root
+    elif (args.source_counts or args.prove_equivalence or args.scratch_root or args.progress_log
             or args.batch_bytes is not None or args.batch_items is not None):
         parser.error('Batch metadata and equivalence flags require --backfill')
     if not args.engine_config:
@@ -221,7 +223,7 @@ def main(argv=None,*,engine_factory=None):
     if args.receipt_inventory:
         normalized=select_receipts(normalized,existing,engine=engine,work=selection_work)
     if not normalized:
-        print(json.dumps(dict(stage=None,applied=False,no_work=True,receipts=0),sort_keys=True))
+        print(json.dumps(dict(stage=None,applied=False,no_work=True,receipts=0,rows=0),sort_keys=True))
         return 0
     # Keep explicit qualification references for admission; the stage passes
     # only source keys and paths to the native receipt reader.
@@ -256,7 +258,9 @@ def main(argv=None,*,engine_factory=None):
         identity=manifest['mapping_digest']
         append_rows(stage/'captures.parquet',engine=engine,work=args.work/'append',
             catalog_root=args.catalog_root,table=table,keys=['receipt_key'],definition=identity)
-    print(json.dumps(dict(stage=str(stage),applied=args.apply),sort_keys=True))
+    rows=next(row['rows'] for row in manifest['outputs'] if row['name']=='captures')
+    print(json.dumps(dict(stage=str(stage),applied=args.apply,
+        receipts=len(manifest['receipt_keys']),rows=rows),sort_keys=True))
     return 0
 
 

@@ -33,7 +33,7 @@ def test_batch_plan_reads_only_metadata_and_does_not_create_catalog(tmp_path,cap
 def test_public_batch_cli_applies_two_native_commits_and_reports_guard_only(tmp_path,capsys):
     args=arguments(tmp_path)+['--apply','--table','archive.captures_generation',
         '--catalog-root',str(tmp_path/'catalog'),'--table-location',str(tmp_path/'data'),
-        '--create-table','--create-namespace']
+        '--create-table','--create-namespace','--progress-log',str(tmp_path/'status.jsonl')]
     assert main(args)==0
     report=json.loads(capsys.readouterr().out)
     assert report['status']=='public_guard_passed' and report['guard']['rows']==2
@@ -41,6 +41,9 @@ def test_public_batch_cli_applies_two_native_commits_and_reports_guard_only(tmp_
     assert len(report['batches'])==2
     assert all(row['outcome']['applied'] for row in report['batches'])
     assert report['engine']['config']['sha256']
+    events=[json.loads(line) for line in (tmp_path/'status.jsonl').read_text().splitlines()]
+    assert [(row['batch'],row['rows']) for row in events if row['status']=='ok']==[(1,1),(2,2),(2,2)]
+    assert events[-1]['receipts']==2 and 'guard passed' in events[-1]['note']
 
 
 @pytest.mark.parametrize('extra',[

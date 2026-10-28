@@ -5,6 +5,7 @@ sorts O(R log R), packs in O(R), and never moves or interprets receipt payloads.
 Source parsing, guards, key anti-joins, table appends and acceptance use DocSpec.
 """
 from hashlib import sha256
+from datetime import datetime,timezone
 import json
 from pathlib import Path
 import importlib.util
@@ -27,6 +28,16 @@ CHECK_SCOPES={
     'list_facts':('receipt_key','receipt_line','list_ordinal'),
     'missing':('receipt_key',),
 }
+
+
+def log_status(path,*,step,batch,of,receipts,rows,secs,peak_phys_gb,status,note):
+    """Append the owner's small progress record; never replace earlier evidence."""
+    if status not in {'running','ok','fail'}:raise ValueError('Invalid rebuild progress status')
+    value=dict(ts=datetime.now(timezone.utc).isoformat().replace('+00:00','Z'),
+        step=step,batch=batch,of=of,receipts=receipts,rows=rows,secs=secs,
+        peak_phys_gb=peak_phys_gb,status=status,note=note)
+    encoded=json.dumps(value,allow_nan=False,separators=(',',':'))+'\n'
+    with Path(path).open('a',encoding='utf-8') as stream:stream.write(encoded)
 
 
 def receipt_local_check_scopes(checks):
@@ -250,7 +261,8 @@ def runtime_identity(engine,engine_config):
 
 def execute_batches(files,counts,*,engine,engine_config,work,table,catalog_root,location=None,
                     create_table=False,create_namespace=False,byte_target=256<<20,item_target=200000,
-                    validated_counter=None,source_qualifications=None,scratch_root=None):
+                    validated_counter=None,source_qualifications=None,scratch_root=None,
+                    progress_log=None,progress_step='d1_backfill'):
     """Call the incremental CLI once per whole batch; never run downstream jobs.
 
     A fresh invocation replans from the pinned inputs. Each child resolves fresh
@@ -274,6 +286,13 @@ def execute_batches(files,counts,*,engine,engine_config,work,table,catalog_root,
     runtime=runtime_identity(engine,engine_config)
     runtime_custody={str(path):custody_identity(path) for path in (Path(engine_config),engine.limits)}
     definition=captures.current_version()
+    started=time.monotonic();completed_receipts=0;completed_rows=0;peak=0
+    def progress(status,*,batch=0,note=''):
+        if progress_log is not None:
+            log_status(progress_log,step=progress_step,batch=batch,of=len(plan['batches']),
+                receipts=completed_receipts,rows=completed_rows,secs=time.monotonic()-started,
+                peak_phys_gb=peak/1e9,status=status,note=note)
+    progress('running',note='Starting a fresh unpublished backfill invocation')
     work=Path(work).resolve()
     local_outputs=[work]
     if catalog_root is not None:
@@ -283,13 +302,17 @@ def execute_batches(files,counts,*,engine,engine_config,work,table,catalog_root,
     work.mkdir(parents=True,exist_ok=False)
     (work/'plan.json').write_text(json.dumps(dict(plan,mapping_digest=definition,runtime=runtime),indent=2)+'\n')
     counts_path=work/'source-counts.json';counts_path.write_text(json.dumps(counts,indent=2)+'\n')
-    if create_table:
-        schema=json.loads((Path(__file__).resolve().parents[5]/'model/lake/captures.schema.json').read_text())
-        tables.create_table(engine=engine,work=work/'create',catalog_root=catalog_root,table=table,
-            schema=schema,location=location,create_namespace=create_namespace)
-    else:
-        pin=tables.resolve_tables(engine=engine,work=work/'preflight',catalog_root=catalog_root,tables={'captures':table})['captures']
-        if catalog_root is not None:check_scratch(scratch_root,pin['metadata_location'])
+    try:
+        if create_table:
+            schema=json.loads((Path(__file__).resolve().parents[5]/'model/lake/captures.schema.json').read_text())
+            tables.create_table(engine=engine,work=work/'create',catalog_root=catalog_root,table=table,
+                schema=schema,location=location,create_namespace=create_namespace)
+        else:
+            pin=tables.resolve_tables(engine=engine,work=work/'preflight',catalog_root=catalog_root,tables={'captures':table})['captures']
+            if catalog_root is not None:check_scratch(scratch_root,pin['metadata_location'])
+    except BaseException as error:
+        progress('fail',note=type(error).__name__+' during catalog preflight')
+        raise
     inventory={row['key']:row for row in files};reports=[]
     result=dict(status='running',qualified_for_downstream=False,mapping_digest=definition,
         engine=runtime,plan=plan,batches=reports,receipt_local_checks=scopes)
@@ -300,6 +323,7 @@ def execute_batches(files,counts,*,engine,engine_config,work,table,catalog_root,
     try:
         for batch in plan['batches']:
             unchanged()
+            progress('running',batch=batch['ordinal']+1,note='Batch '+batch['id'])
             directory=work/('batch-'+str(batch['ordinal']).zfill(4)+'-'+batch['id'][:8]);directory.mkdir()
             selected=[inventory[key] for key in batch['receipt_keys']]
             if batch['source_kind']=='prepared-stage':selected=[dict(key=row['key']) for row in selected]
@@ -327,9 +351,14 @@ def execute_batches(files,counts,*,engine,engine_config,work,table,catalog_root,
                 except json.JSONDecodeError:continue
                 if isinstance(value,dict) and ('applied' in value or value.get('no_work')):outcome=value;break
             if outcome is None:raise ValueError('Capture CLI supplied no accepted batch outcome')
+            completed_receipts+=len(batch['receipt_keys'])
+            completed_rows+=outcome['rows']
+            peak=max(peak,measured['sampled_peak_tree_physical_footprint'])
             reports.append(dict(id=batch['id'],receipt_keys=batch['receipt_keys'],outcome=outcome,
                 measurement=measured,source_guard='accepted-stage-proof' if kind=='prepared-stage' else 'mandatory-capture-checks'))
             (work/'backfill.json').write_text(json.dumps(result,indent=2)+'\n')
+            progress('ok',batch=batch['ordinal']+1,
+                note='Batch committed or already present; rows count native stage outputs in this invocation')
         unchanged()
         acceptance=work/'acceptance';acceptance.mkdir()
         spec=acceptance/'spec.json';spec.write_text(json.dumps(dict(engine_config=str(Path(engine_config).resolve()),
@@ -339,9 +368,13 @@ def execute_batches(files,counts,*,engine,engine_config,work,table,catalog_root,
             'congress_api.lake.capture_backfill','--validate-spec',str(spec)],work=acceptance/'monitor',scratch_root=scratch_root or work)
         accepted=json.loads((acceptance/'accepted.json').read_text())
         unchanged();result.update(status='public_guard_passed',pin=accepted['pin'],guard=accepted['guard'])
+        completed_rows=accepted['guard']['rows']
+        peak=max(peak,result['acceptance_measurement']['sampled_peak_tree_physical_footprint'])
+        progress('ok',batch=len(plan['batches']),note='Whole-generation public guard passed; downstream acceptance remains pending')
         return result
     except BaseException as error:
         result.update(status='rejected',error_type=type(error).__name__)
+        progress('fail',batch=len(reports)+1,note=type(error).__name__+'; see '+str(work/'backfill.json'))
         raise
     finally:
         (work/'backfill.json').write_text(json.dumps(result,indent=2)+'\n')
