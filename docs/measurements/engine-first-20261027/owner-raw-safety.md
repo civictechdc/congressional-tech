@@ -6,7 +6,7 @@ Packages start from shared `origin/main` `7411f5b7`, with separate branches/work
 
 ## Prepare one owner shell and private evidence directory
 
-Use `bash`, with credentials already exported by the owner. Do not enable shell tracing. Supply raw-object `R2_ACCESS_KEY_ID`, `R2_SECRET_ACCESS_KEY`, and `CLOUDFLARE_ACCOUNT_ID` (`R2_ENDPOINT_URL` may override the object endpoint). Lock configuration additionally needs `CLOUDFLARE_API_TOKEN` with R2 bucket-configuration edit permission. Supply `B1_R2_ACCESS_KEY_ID` and `B1_R2_SECRET_ACCESS_KEY` for B1 scratch-only object access, and the separate `DOCSPEC_M1_*` credentials for M1. No command below opens a credential file.
+Use `bash`, with credentials already exported by the owner. Set `SAFE_WORK` outside all release worktrees so evidence cannot dirty the application identity; use durable storage. Do not enable shell tracing. Supply raw-object `R2_ACCESS_KEY_ID`, `R2_SECRET_ACCESS_KEY`, and `CLOUDFLARE_ACCOUNT_ID` (`R2_ENDPOINT_URL` may override the object endpoint). Lock configuration additionally needs `CLOUDFLARE_API_TOKEN` with R2 bucket-configuration edit permission. Supply `B1_R2_ACCESS_KEY_ID` and `B1_R2_SECRET_ACCESS_KEY` for B1 scratch-only object access, and the separate `DOCSPEC_M1_*` credentials for M1. No command below opens a credential file.
 
 ```sh
 set +x
@@ -364,18 +364,21 @@ PY
 
 **Changes:** only the dedicated Basin scratch bucket/catalog: create `growth`, append days 0–2, verify all columns/rows, race on empty days 3–4, purge the scratch table, and list remaining objects. The `cx-engine-first-lock-probe-` bucket guard stays. Use a **different unlocked scratch bucket** from B1; no raw storage or managed-maintenance trial is involved.
 
-The owner supplies `DOCSPEC_M1_BUCKET`, `DOCSPEC_M1_CATALOG_URI` (ending in that bucket), `DOCSPEC_M1_WAREHOUSE`, `DOCSPEC_M1_S3_ENDPOINT`, `DOCSPEC_M1_CATALOG_TOKEN`, `DOCSPEC_M1_ACCESS_KEY_ID`, `DOCSPEC_M1_SECRET_ACCESS_KEY` in the environment. The script never reads credential values or passes them as command arguments.
+The owner supplies `DOCSPEC_M1_BUCKET`, `DOCSPEC_M1_CATALOG_URI` (ending in that bucket), `DOCSPEC_M1_WAREHOUSE`, `DOCSPEC_M1_S3_ENDPOINT`, `DOCSPEC_M1_CATALOG_TOKEN`, `DOCSPEC_M1_ACCESS_KEY_ID`, `DOCSPEC_M1_SECRET_ACCESS_KEY` in the environment. The script never reads credential values or passes them as command arguments. Provision that scratch bucket and its Basin catalog before the run; the catalog URI must end in the scratch bucket name. Read its lock rules back below and require no enabled rule, so purge can complete.
 
 ```sh
 cd "$M1"
 uv sync --locked
+cf_locks "$DOCSPEC_M1_BUCKET" > "$SAFE_WORK/m1-bucket-locks.json"
+jq -e '.success and all(.result.rules[]; .enabled | not)' "$SAFE_WORK/m1-bucket-locks.json"
 # Set M1_PROBE and M1_PROBE_SHA256 from m1/RELEASE.md's immutable artifact pin.
 : "${M1_PROBE:?Set the optimized probe binary path}"
 : "${M1_PROBE_SHA256:?Set the artifact SHA-256}"
+M1_NS="docspec_m1_$(.venv/bin/python -I -c 'import uuid; print(uuid.uuid4().hex)')"
 .venv/bin/python -I scripts/m1_smoke.py --binary "$M1_PROBE" \
-  --binary-sha256 "$M1_PROBE_SHA256" --work "$SAFE_WORK/m1-plan"
+  --binary-sha256 "$M1_PROBE_SHA256" --namespace "$M1_NS" --work "$SAFE_WORK/m1-plan"
 .venv/bin/python -I scripts/m1_smoke.py --binary "$M1_PROBE" \
-  --binary-sha256 "$M1_PROBE_SHA256" --work "$SAFE_WORK/m1-live" --execute
+  --binary-sha256 "$M1_PROBE_SHA256" --namespace "$M1_NS" --work "$SAFE_WORK/m1-live" --execute
 cat "$SAFE_WORK/m1-live/summary.json" "$SAFE_WORK/m1-live/remaining.json"
 ```
 
