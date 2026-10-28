@@ -63,7 +63,7 @@ def test_pending_model_spec_refuses_before_importing_publisher_or_accessing_stor
     assert 'Track E' in result.stderr and 'refused' in result.stderr
     assert not list(tmp_path.iterdir())
     config = json.loads((ROOT / '.github/archive-jobs.json').read_text())
-    assert config['publish']['module'] == 'viewer_publication.archive_publish'
+    assert config['publish']['module'] == 'viewer_publication.archive_publish_job'
     assert config['publish']['spec'] == 'model/jobs/publish.pending.json'
 
 
@@ -137,6 +137,67 @@ def test_workflow_command_invokes_the_owner_module_once_in_execute_mode():
     import importlib.util
     spec=importlib.util.spec_from_file_location('archive_job',ROOT/'.github/scripts/run-archive-job.py')
     runner=importlib.util.module_from_spec(spec);spec.loader.exec_module(runner)
-    binding=dict(module='viewer_publication.archive_publish',argv=['--execute'])
+    binding=dict(module='viewer_publication.archive_publish_job',argv=['--execute'])
     path=Path('/local/owner-job.json')
-    assert runner.binding_command(binding,path)==[sys.executable,'-I','-m','viewer_publication.archive_publish','--spec',str(path),'--execute']
+    assert runner.binding_command(binding,path)==[sys.executable,'-I','-m','viewer_publication.archive_publish_job','--spec',str(path),'--execute']
+
+
+def active_publisher_fixture(tmp_path,work='private-evidence'):
+    import importlib.util
+    from congress_api.retention.provenance import file_pin
+    helper=ROOT/'packages/viewer_publication/tests/archive_job_fixture.py'
+    spec=importlib.util.spec_from_file_location('archive_job_fixture',helper)
+    fixtures=importlib.util.module_from_spec(spec);spec.loader.exec_module(fixtures)
+    scripts=tmp_path/'.github/scripts';scripts.mkdir(parents=True)
+    runner=scripts/'run-archive-job.py';runner.write_bytes((ROOT/'.github/scripts/run-archive-job.py').read_bytes())
+    model=tmp_path/'model.json';model.write_text(json.dumps(fixtures.model_spec(tmp_path)))
+    value=dict(version=1,model_spec=dict(path=str(model),**file_pin(model)),bucket='derived-fixture',work=work,
+        public_origin='https://archive.fixture.test',receipt_keys=['receipts/documents/fixture.jsonl.gz'],
+        provenance=[],run={'id':'fixture'},contract_next_release=str(tmp_path/'next'),
+        targets=dict(path=str(tmp_path/'unopened-targets.json'),sha256='a'*64,size=17))
+    (tmp_path/'publish.json').write_text(json.dumps(value))
+    (tmp_path/'.github/archive-jobs.json').write_text(json.dumps(dict(publish=dict(
+        module='viewer_publication.archive_publish_job',spec='publish.json',argv=['--execute']))))
+    return runner
+
+
+def test_github_output_uses_the_owner_plan_without_running_or_opening_runtime(tmp_path):
+    runner=active_publisher_fixture(tmp_path);output=tmp_path/'github-output'
+    output.write_text('existing=value\n')
+    result=subprocess.run([sys.executable,'-I',str(runner),'publish','--check-binding','--github-output',str(output)],
+        cwd=tmp_path,capture_output=True,text=True,timeout=15,env={'PATH':'/usr/bin:/bin'})
+    assert result.returncode==0,result.stderr
+    assert output.read_text()=='existing=value\npublisher_work='+str(tmp_path/'private-evidence')+'\n'
+    assert result.stdout==''
+    for name in ['private-evidence','model','release','unopened-runtime.json','unopened-targets.json']:
+        assert not (tmp_path/name).exists()
+
+
+def test_pending_binding_exports_no_github_metadata(tmp_path):
+    output=tmp_path/'github-output'
+    result=subprocess.run([sys.executable,'-I',str(ROOT/'.github/scripts/run-archive-job.py'),'publish',
+        '--check-binding','--github-output',str(output)],cwd=tmp_path,capture_output=True,text=True,timeout=10,env={'PATH':'/usr/bin:/bin'})
+    assert result.returncode==2 and 'Track E' in result.stderr
+    assert not output.exists()
+
+
+def test_control_characters_in_planned_work_never_reach_github_output(tmp_path):
+    for index,character in enumerate(['\n','\r','\0']):
+        root=tmp_path/str(index);root.mkdir();runner=active_publisher_fixture(root,work='private'+character+'evidence')
+        output=root/'github-output'
+        result=subprocess.run([sys.executable,'-I',str(runner),'publish','--check-binding','--github-output',str(output)],
+            cwd=root,capture_output=True,text=True,timeout=15,env={'PATH':'/usr/bin:/bin'})
+        assert result.returncode!=0
+        assert not output.exists()
+
+
+def test_publish_builds_once_after_node_and_before_the_single_publisher():
+    steps=workflow('archive-jobs.yml')['jobs']['publish']['steps']
+    admission=next(step for step in steps if '--check-binding' in step.get('run',''))
+    assert admission['id']=='publisher_binding' and '--github-output "$GITHUB_OUTPUT"' in admission['run']
+    builds=[i for i,step in enumerate(steps) if step.get('run','').strip()=='npm run build']
+    assert len(builds)==1
+    node=next(i for i,step in enumerate(steps) if step.get('uses')=='./.github/actions/setup-node-project')
+    publish=next(i for i,step in enumerate(steps) if step.get('run','').endswith('run-archive-job.py publish'))
+    assert node<builds[0]<publish
+    assert steps[builds[0]]['working-directory']=='apps/site' and 'env' not in steps[builds[0]]
