@@ -80,3 +80,30 @@ def test_stage_only_pending_decisions_refuse_append_before_catalog_effect(tmp_pa
     result=provenance.apply_staged(staged['unreadable_stage'],BodyStore(LocalAdapter(tmp_path/'raw')))
     assert result['records']==1
     assert (tmp_path/'raw'/staged['unreadable_key']).is_file()
+
+
+@pytest.mark.parametrize('identity', ['body_sha256', 'record_sha'])
+def test_shared_import_accepts_body_or_record_identity(tmp_path,identity):
+    row=decision();row[identity]=row.pop('record_sha')
+    path=tmp_path/'decisions.jsonl';path.write_text(json.dumps(row)+'\n')
+    result=provenance.import_unreadable(BodyStore(LocalAdapter(tmp_path/'raw')),path,decided_at=STAMP)
+    assert result['records']==1
+
+
+def test_import_failure_does_not_claim_durability(tmp_path):
+    class Refused:
+        def put(self,*args,**kwargs):raise OSError('raw unavailable')
+    path=tmp_path/'decisions.jsonl';path.write_text(json.dumps(decision())+'\n')
+    with pytest.raises(OSError,match='raw unavailable'):
+        provenance.import_unreadable(Refused(),path,decided_at=STAMP)
+
+
+def test_content_key_and_uploaded_bytes_share_one_frozen_source(tmp_path):
+    path=tmp_path/'decisions.jsonl';payload=(json.dumps(decision())+'\n').encode();path.write_bytes(payload)
+    class ReplacedSource:
+        def put(self,key,frozen,media):
+            path.write_text('{}\n')
+            assert Path(frozen).read_bytes()==payload
+            assert key.endswith(hashlib.sha256(payload).hexdigest()+'.jsonl')
+    result=provenance.import_unreadable(ReplacedSource(),path,decided_at=STAMP)
+    assert result['sha256']==hashlib.sha256(payload).hexdigest()
