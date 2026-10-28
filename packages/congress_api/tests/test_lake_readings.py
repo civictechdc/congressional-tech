@@ -202,3 +202,52 @@ def test_page_work_requires_a_completed_pinned_sniff_reading(tmp_path,sniff_stat
     expected=1 if sniff_state=='current' else 0
     assert pq.ParquetFile(result['work_list']).metadata.num_rows==expected
     assert pq.ParquetFile(result['readings']).metadata.num_rows==expected
+
+
+class _TerminalReadingWorker:
+    def __init__(self,*args,**kwargs):pass
+    def __enter__(self):return self
+    def __exit__(self,*args):pass
+    def parse(self,*args):return dict(status='unreadable',reason='parser_crash',attempts=2)
+
+
+def test_reading_failure_decisions_survive_deleting_all_stages(tmp_path):
+    import shutil
+    from congress_api.retention.body_store import BodyStore,LocalAdapter
+    args,_=setup(tmp_path)
+    durable=tmp_path/'durable-raw'
+    first=stage(args,tmp_path/'first',worker_factory=_TerminalReadingWorker,
+        unreadable_store=BodyStore(LocalAdapter(durable)))
+    assert first['unreadable_pending'] is False
+    records=list(durable.glob('provenance/unreadable/*.jsonl'))
+    assert len(records)==1 and first['unreadable_key']==records[0].relative_to(durable).as_posix()
+    shutil.rmtree(tmp_path/'first')
+    pins=[dict(key=p.relative_to(durable).as_posix(),path=str(p)) for p in records]
+    rebuilt=stage(args,tmp_path/'rebuilt',unreadable_files=pins)
+    assert pq.ParquetFile(rebuilt['work_list']).metadata.num_rows==0
+    assert pq.ParquetFile(rebuilt['readings']).metadata.num_rows==0
+    assert rebuilt['pending_reads']==0
+    absent=tmp_path/'absent';absent.mkdir()
+    other,_=setup(absent,body=b'<html><body>Different unavailable body</body></html>',missing=True)
+    pending=stage(other,absent/'stage',unreadable_files=pins)
+    assert pending['pending_reads']==1 and pending['unreadable_key'] is None
+    assert len(list(durable.glob('provenance/unreadable/*.jsonl')))==1
+
+
+def test_reading_unreadable_stage_refuses_append_before_catalog_effects(tmp_path):
+    args,_=setup(tmp_path)
+    staged=stage(args,tmp_path/'stage',worker_factory=_TerminalReadingWorker)
+    assert staged['unreadable_pending'] is True
+    assert (Path(staged['unreadable_stage'])/'manifest.json').is_file()
+    with pytest.raises(ValueError,match='unreadable.*import'):
+        readings.append(staged,engine=object(),work=tmp_path/'append',catalog_root=tmp_path/'catalog',
+            table=dict(namespace=['archive'],name='readings'))
+    assert not (tmp_path/'catalog').exists() and not (tmp_path/'append').exists()
+
+
+def test_reading_import_failure_never_claims_durability(tmp_path):
+    class Refused:
+        def put(self,*args,**kwargs):raise OSError('raw unavailable')
+    args,_=setup(tmp_path)
+    with pytest.raises(OSError,match='raw unavailable'):
+        stage(args,tmp_path/'stage',worker_factory=_TerminalReadingWorker,unreadable_store=Refused())
