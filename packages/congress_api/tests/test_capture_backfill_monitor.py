@@ -137,3 +137,14 @@ def test_operator_cancellation_is_never_a_transient_memory_sample_gap():
     samples=_MemorySamples(Sampler())
     with pytest.raises(InterruptedError,match='operator cancellation'):samples.sample(1)
     assert samples.consecutive_failures==0
+
+
+@pytest.mark.parametrize('code',[1,3])
+def test_cleanup_signal_records_exited_group_errors_without_hiding_live_errors(code):
+    import os
+    import signal
+    from congress_api.lake.capture_backfill import _signal_group
+    def denied(_group,_signal):raise OSError(code,'group already exited')
+    note=_signal_group(123,signal.SIGKILL,denied,lambda _group:False)
+    assert note['errno']==code and note['group_exited'] is True
+    with pytest.raises(OSError):_signal_group(123,signal.SIGKILL,denied,lambda _group:True)
