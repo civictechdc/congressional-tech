@@ -40,7 +40,7 @@ def registry_inputs(directory,*,root=ROOT):
     return inputs
 
 
-def grouping_steps(*,node_limit=10_000_000,root=ROOT):
+def grouping_steps(*,node_limit=10_000_000,root=ROOT,review_edges=False):
     """Join narrow source/body memberships through the one native graph step.
 
     Inputs are source_files, source_endpoints (with the shared normalized
@@ -50,6 +50,8 @@ def grouping_steps(*,node_limit=10_000_000,root=ROOT):
     for name in ['endpoint-bodies','fingerprint-candidates','ambiguous-endpoints','edition-bodies',
                  'rendition-members','valid-rendition-members','source-edges']:
         steps.append(dict(name=name.replace('-','_'),sql=(Path(root)/'model/sql'/(name+'.sql')).read_text(),materialize=True))
+    if review_edges:
+        steps[-1]['sql']+=' UNION SELECT left_node,right_node FROM body_review_edges'
     steps.append(dict(name='source_components',components=dict(sql='SELECT left_node,right_node FROM source_edges',
         left='left_node',right='right_node',node_limit=node_limit)))
     steps.append(dict(name='source_labels',sql="SELECT f.source_id,c.component FROM source_files f JOIN source_components c ON c.node='s:'||f.source_id",materialize=True))
@@ -79,3 +81,141 @@ def evidence_steps(*,root=ROOT):
         'page-contexts','link-inputs']
     return [dict(name=name.replace('-','_'),sql=(Path(root)/'model/sql'/(name+'.sql')).read_text(),materialize=True)
         for name in names]
+
+
+def _sql_steps(names,*,root=ROOT):
+    return [dict(name=name.replace('-','_'),sql=(Path(root)/'model/sql'/(name+'.sql')).read_text(),materialize=True) for name in names]
+
+
+def build_release(*,captures,readings,filename_readings,parser_versions,catalog_version,
+                  engine,output,scratch,recovery_files=(),review_files=(),verification_files=(),
+                  unreadable_files=(),body_admissions=None,root=ROOT):
+    """Run the document model and shared native exporter over pinned local inputs."""
+    from viewer_publication.archive_format import _execute,_settings,EMPTY_STRINGS,TS,_empty_struct,LIST_COLUMNS,DETAIL_COLUMNS
+    from viewer_publication.archive_annotations import annotation_steps
+    from viewer_publication.archive_provenance import current_steps,attachment_steps,body_review_steps
+    scratch=Path(scratch).resolve();output=Path(output).resolve();scratch.mkdir(parents=True,exist_ok=False)
+    evidence=scratch/'evidence';evidence.mkdir()
+    inputs=registry_inputs(scratch/'registries',root=root)
+    data_inputs=[dict(value,name=name) if isinstance(value,dict) else
+        dict(name=name,kind='parquet',path=str(Path(value).resolve())) for name,value in
+        [('captures',captures),('readings',readings),('filename_readings',filename_readings)]]
+    inputs += data_inputs
+    inputs.append(json_input(scratch,'parser_versions',[dict(parser=p,version=v) for p,v in sorted(parser_versions.items())],parser='Utf8',version='Utf8'))
+    # Provenance is immutable input data; JSON columns with heterogeneous values
+    # are projected once by the native reader before policy joins.
+    from viewer_publication.archive_provenance import provenance_inputs
+    provenance,prelude=provenance_inputs(scratch/'provenance',recovery_files=recovery_files,review_files=review_files)
+    inputs += provenance
+    verification_schema=dict(key='Utf8',size='Int64',intact='Boolean',sha256_verified='Boolean',checked_at='Utf8')
+    if verification_files:
+        from congress_api.retention.provenance import field
+        inputs.append(dict(name='verification_records',kind='json_lines',files=list(verification_files),schema=dict(fields=[field(k,v) for k,v in verification_schema.items()],metadata={})))
+    else:inputs.append(json_input(scratch,'verification_records',[],**verification_schema))
+    inputs.append(json_input(scratch,'url_state_meeting_dates',[],requested_url='Utf8',meeting_date='Date32'))
+    inputs.append(json_input(scratch,'url_variants',[],canonical_url='Utf8',variant_url='Utf8'))
+    unreadable_fields=dict(id='Utf8',body_sha256='Utf8',record_sha='Utf8',parser='Utf8',parser_version='Utf8',supersedes='Utf8')
+    if unreadable_files:
+        from congress_api.retention.provenance import field
+        inputs.append(dict(name='unreadable_records',kind='json_lines',files=list(unreadable_files),schema=dict(fields=[field(k,v) for k,v in unreadable_fields.items()],metadata={})))
+    else:inputs.append(json_input(scratch,'unreadable_records',[],**unreadable_fields))
+    prelude += [dict(name='active_unreadable',sql='SELECT u.* FROM unreadable_records u WHERE NOT EXISTS(SELECT 1 FROM unreadable_records s WHERE s.supersedes=u.id)',materialize=True)]
+    if body_admissions is not None:
+        inputs.append(dict(name='body_admissions',kind='parquet',path=str(Path(body_admissions).resolve())))
+    else:
+        inputs.append(json_input(scratch,'body_admission_rows',[],body_hex='Utf8',format='Utf8',basis='Utf8'))
+        prelude.append(dict(name='body_admissions',sql="SELECT decode(body_hex,'hex') AS body_sha,format,basis FROM body_admission_rows"))
+    steps=prelude+current_steps()+evidence_steps(root=root)+source_steps(root=root)+link_steps(root=root)
+    steps += _sql_steps(['source-addresses'],root=root)
+    steps += [dict(name='url_inputs',sql=(Path(root)/'model/sql/model-url-inputs.sql').read_text(),materialize=True)]
+    steps += _sql_steps(['url-normalized'],root=root)
+    steps += [dict(name='model_url_keys',sql=(Path(root)/'model/sql/url-keys.sql').read_text(),materialize=True)]
+    steps += _sql_steps(['source-endpoints','copy-url-keys','publisher-links'],root=root)
+    steps += [dict(name='body_fingerprints',sql="SELECT encode(body_sha,'hex') AS body_sha,encode(fingerprint,'hex') AS fingerprint FROM page_facts WHERE status='completed'",materialize=True)]
+    steps += body_review_steps(root=root)+grouping_steps(root=root,review_edges=True)
+    steps += [dict(name='recovery_original_keys',sql="SELECT r.recovery_id,k.url_key FROM model_recovery_rows r JOIN model_url_keys k ON r.original_url=k.url WHERE k.error IS NULL",materialize=True),
+        dict(name='component_members',sql='SELECT l.component,f.* FROM source_files f JOIN source_labels l USING(source_id)',materialize=True)]
+    steps += attachment_steps(root=root)+_sql_steps(['initial-document-link-keys'],root=root)
+    from viewer_publication.archive_reviews import duplicate_steps,application_steps
+    steps += duplicate_steps(root=root)
+    steps += [dict(name='review_components',components=dict(sql='SELECT left_node,right_node FROM duplicate_component_edges',left='left_node',right='right_node',node_limit=10_000_000))]
+    steps += _sql_steps(['final-source-labels','final-recovery-attachments','document-link-keys'],root=root)
+    steps += annotation_steps(catalog_version=catalog_version,root=root)
+    steps += _sql_steps(['document-members','document-bodies','document-identities','saved-files','document-alternates',
+        'document-version-keys','document-versions','document-metadata','document-addresses','saved-recoveries','document-removals'],root=root)
+    steps += [dict(name='base_normalized',sql=(Path(root)/'model/sql/document-normalized.sql').read_text()+' UNION ALL '+(Path(root)/'model/sql/document-recovery-normalized.sql').read_text(),materialize=True)]
+    from viewer_publication.archive_model_profile import completeness_steps,completeness_checks,profile_record
+    from congress_api.lake.readings import bundle_version
+    steps += completeness_steps(root=root)+application_steps(root=root)
+    steps += [dict(name='normalized',sql="""SELECT n.* EXCLUDE(title,document_kind,hidden,review_note,review_decided_at,removed_on),
+        coalesce(r.title_override,n.title) AS title,coalesce(r.kind_override,n.document_kind) AS document_kind,
+        coalesce(r.hidden,false) AS hidden,r.note AS review_note,r.decided_at AS review_decided_at,x.removed_on
+        FROM base_normalized n JOIN document_identities d ON n.doc_key=d.document_id
+        LEFT JOIN review_overrides r ON d.component=r.component LEFT JOIN document_removals x ON d.component=x.component""",materialize=True),
+        dict(name='source_input',sql=(Path(root)/'model/sql/document-source-input.sql').read_text(),materialize=True),
+        dict(name='recovery_input',sql=(Path(root)/'model/sql/document-recovery-input.sql').read_text(),materialize=True)]
+    empty_meetings=f"""WITH keys AS (SELECT try_cast(unnest(meeting_keys) AS BIGINT) AS event_id FROM ordered)
+        SELECT DISTINCT event_id,cast(NULL AS VARCHAR) AS chamber,cast(NULL AS VARCHAR) AS title,cast(NULL AS DATE) AS meeting_date,
+        cast(NULL AS VARCHAR) AS meeting_type,cast(NULL AS SMALLINT) AS session,cast(NULL AS VARCHAR) AS status,
+        {_empty_struct(start=TS,end=TS,place='cast(NULL AS VARCHAR)')} AS sittings,
+        {_empty_struct(system_code='cast(NULL AS VARCHAR)',role='cast(NULL AS VARCHAR)')} AS committees,
+        {EMPTY_STRINGS} AS subject_keys,{_empty_struct(package_id='cast(NULL AS VARCHAR)',list_row='cast(NULL AS INT)')} AS transcripts,
+        {_empty_struct(name='cast(NULL AS VARCHAR)',url='cast(NULL AS VARCHAR)',video_key='cast(NULL AS VARCHAR)')} AS videos
+        FROM keys WHERE event_id IS NOT NULL"""
+    from viewer_publication.archive_url_state import url_state_steps,url_state_diagnostics
+    steps += url_state_steps(root=root)
+    auxiliary=[('meetings',empty_meetings,['event_id'],['chamber','meeting_type','status']),
+        ('url_state','SELECT * FROM url_state',['requested_url'],['last_outcome']),
+        ('url_variants','SELECT * FROM url_variants',['canonical_url','variant_url'],[])]
+    extra=[dict(name='document_rows.parquet',path=str(evidence/'document_rows.parquet'),sql='SELECT list_row,doc_key AS document_id,'+','.join(LIST_COLUMNS+DETAIL_COLUMNS)+' FROM details',settings=_settings('whole',['list_row'])),
+        dict(name='source_members.parquet',path=str(evidence/'source_members.parquet'),sql="""SELECT DISTINCT o.doc_key AS document_id,o.list_row,
+        m.source_id,CASE WHEN m.body_sha IS NOT NULL THEN 'bodies/sha256/'||substr(m.body_sha,1,2)||'/'||m.body_sha||'.gz' END AS body_key,
+        m.filename AS effective_filename,m.source_url,c.member_path
+        FROM document_members m JOIN document_identities d ON m.component=d.component JOIN ordered o ON d.document_id=o.doc_key
+        LEFT JOIN capture_sources c ON m.source_id=c.source_id""",settings=_settings('whole',['document_id','source_id','member_path']))]
+    causes={
+        'capture_evidence':['receipt_key','receipt_line','capture_index'],
+        'record_roles':['receipt_key','receipt_line','capture_index'],
+        'capture_sources':['source_id','receipt_key','receipt_line','capture_index'],
+        'page_facts':['body_sha'],
+        'valid_rendition_members':['group_kind','group_id','source_id','body_sha'],
+        'publisher_links':['source_id','page_body','context','link_index','split_position','target_member_path'],
+        'current_recoveries':['id','original_url','recovered_filename'],
+        'source_filename_readings':['source_id'],
+        'source_annotation_publisher':['source_id'],
+        'source_annotations':['source_id'],
+        'rendition_members':['group_kind','group_id','source_id','body_sha'],
+        'edition_bodies':['body_sha'],
+        'fingerprint_candidates':['body_sha'],
+        'fingerprints':['body_sha']}
+    extra += [dict(name=name+'.parquet',path=str(evidence/(name+'.parquet')),
+        sql='SELECT * FROM '+name,settings=_settings('whole',keys)) for name,keys in causes.items()]
+    from congress_api.models.archive_profile import build_capture_profile
+    capture_profile=build_capture_profile(engine_revision=engine.source_revision,
+        url_normalized_sql=(Path(root)/'model/sql/url-normalized.sql').read_text(),
+        url_keys_sql=(Path(root)/'model/sql/url-keys.sql').read_text(),
+        url_rules=json.loads((Path(root)/'model/registries/url-rules.json').read_text()))
+    from congress_api.retention.provenance import file_pin
+    selectors={item['name']:dict(item) if item['kind']=='native_table' else dict(kind='parquet',path=item['path'],**file_pin(item['path'])) for item in data_inputs}
+    model_profile=profile_record(parser_versions=parser_versions,catalog_version=catalog_version,
+        engine_revision=engine.source_revision,runtime_pins=dict(platform=engine.platform,build_features=list(engine.build_features),
+            binary_sha256=engine.binary_sha256,limits=json.loads(engine.limits.read_text())),
+        lake_versions={name:dict(schema_sha256=file_pin(Path(root)/'model/lake'/(name.replace('_','-')+'.schema.json'))['sha256']) for name in ['captures','readings','filename_readings']},
+        snapshots=selectors,writer_settings=dict(schema_version=1,whole=_settings('whole',['list_row']),
+            ranged=_settings('ranged',['list_row']),lookup=_settings('lookup',['link_key'])),root=root)
+    (scratch/'profile.json').write_text(json.dumps(model_profile,ensure_ascii=False,sort_keys=True,separators=(',',':'))+'\n')
+    manifest=_execute(inputs,steps,output=output,scratch=scratch,engine=engine,
+        lookup_extra="SELECT o.list_row,a.url FROM source_addresses a JOIN document_members m ON a.source_id=m.source_id JOIN document_identities d ON m.component=d.component JOIN ordered o ON d.document_id=o.doc_key WHERE m.is_real_file",
+        origin=dict(kind='model',gaps=[]),content_files={'capture_profile.json':capture_profile},auxiliary=auxiliary,extra_outputs=extra,
+        capture_scope=json.loads((Path(root)/'model/registries/capture-scope.json').read_text()),
+        diagnostics=[dict(name='model_invariants',sql="""SELECT (SELECT count(*) FROM sniff_conflicts) AS conflicting_sniffs,
+            (SELECT count(*) FROM verification_conflicts) AS conflicting_verifications,
+            (SELECT count(*) FROM model_url_keys WHERE error IS NOT NULL) AS invalid_url_keys,
+            (SELECT count(*) FROM recovery_diagnostics WHERE is_fatal) AS invalid_recoveries,
+            (SELECT count(*) FROM recovery_attachment_diagnostics) AS invalid_recovery_attachments,
+            (SELECT count(*) FROM body_review_key_conflicts) AS body_key_collisions,
+            (SELECT count(*) FROM document_link_key_conflicts) AS review_key_collisions,
+            (SELECT count(*) FROM review_value_diagnostics) AS invalid_review_values,
+            (SELECT CASE WHEN count(*)=0 THEN 1 ELSE 0 END FROM ordered) AS empty_document_list,
+            (SELECT count(*) FROM (SELECT unnest(alternates) AS alt FROM document_alternates) WHERE alt['size'] IS NULL) AS missing_alternate_sizes""")]+url_state_diagnostics()+completeness_checks(catalog_version=catalog_version,readings_version=bundle_version(parser_versions),root=root))
+    return manifest

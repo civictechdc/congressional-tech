@@ -76,7 +76,7 @@ def _settings(profile, order, *, columns=None, dictionary=(), delta=()):
         key_column=order[0] if profile == 'lookup' else None, created_by='docspec archive release v1', footer_limit=512 << 10)
 
 
-def _core(steps, output):
+def _core(steps, output,*,lookup_extra=None):
     order = ['filename', 'document_date', 'first_captured', 'doc_key']
     steps += [_step('ordered', "SELECT *,cast(row_number() OVER(ORDER BY filename,document_date NULLS LAST,first_captured NULLS LAST,doc_key)-1 AS INT) AS list_row FROM normalized", materialize=True, release_after=["normalized"]),
         _step('source_rows', """SELECT o.list_row,s.*,cast(row_number() OVER(PARTITION BY o.list_row ORDER BY s.is_saved DESC,s.first_seen NULLS LAST,s.url,s.member_path NULLS LAST)-1 AS INT) AS ordinal,
@@ -92,12 +92,12 @@ def _core(steps, output):
             {_binary('body_hex', 32)} AS saved_body,CASE WHEN body_hex IS NOT NULL THEN suffix END AS saved_suffix,CASE WHEN body_hex IS NOT NULL THEN media_type END AS saved_media_type,bytes AS saved_bytes,
             coalesce(s.src_start,cast(0 AS INT)) AS src_start,coalesce(s.src_len,cast(0 AS INT)) AS src_len,
             coalesce(r.rec_start,cast(0 AS INT)) AS rec_start,coalesce(r.rec_len,cast(0 AS INT)) AS rec_len
-            FROM ordered o LEFT JOIN source_ranges s ON o.doc_key=s.doc_key LEFT JOIN recovery_ranges r ON o.doc_key=r.doc_key"""),
+            FROM ordered o LEFT JOIN source_ranges s ON o.doc_key=s.doc_key LEFT JOIN recovery_ranges r ON o.doc_key=r.doc_key""", materialize=True),
         _step('body_links', "SELECT list_row,unnest(link_bodies) AS body_hex FROM ordered"),
         _step('all_links', f"""SELECT {_binary('substr(body_hex,1,16)', 8)} AS link_key,list_row,'body:' || body_hex AS origin FROM body_links
             UNION ALL SELECT {_hash_key('original_url', 'url:')},list_row,'url:' || original_url FROM recovery_rows"""),
         _step('links', 'SELECT link_key,min(list_row) AS list_row FROM all_links GROUP BY link_key'),
-        _step('lookup_sources', 'SELECT DISTINCT list_row,url FROM source_rows UNION SELECT DISTINCT list_row,original_url AS url FROM recovery_rows'),
+        _step('lookup_sources', "SELECT DISTINCT list_row,url FROM source_rows UNION SELECT DISTINCT list_row,original_url AS url FROM recovery_rows"+((' UNION '+lookup_extra) if lookup_extra else '')),
     ]
     steps += _lookup_steps('lookup_sources')
     specs = [
@@ -145,15 +145,16 @@ def _normal(table, **values):
 
 
 
-def _execute(inputs, steps, *, output, scratch, engine, origin):
+def _execute(inputs, steps, *, output, scratch, engine, origin, auxiliary=None, capture_scope=None, extra_outputs=(), diagnostics=(), content_files=None,lookup_extra=None):
     output.mkdir(parents=True, exist_ok=False)
-    outputs = _core(steps, output)
+    outputs = _core(steps, output,lookup_extra=lookup_extra)
     # Entity files and the capture fixture have their full declared schema,
     # including when this documents-only input provides no rows for them.
-    for name, sql, keys, dictionary in _auxiliary():
+    for name, sql, keys, dictionary in (_auxiliary() if auxiliary is None else auxiliary):
         steps.append(_step(name + '_export', sql, materialize=True))
         outputs.append(dict(name=name + '.parquet', path=str(output / (name + '.parquet')), sql='SELECT * FROM ' + name + '_export',
             settings=_settings('whole', keys, dictionary=dictionary)))
+    outputs.extend(extra_outputs)
     facets = [f"SELECT '{name}' AS facet,cast({name} AS VARCHAR) AS value,count(*) AS count FROM ordered WHERE NOT hidden GROUP BY {name}" for name in ['format', 'congress', 'saved_kind']]
     facets += [f"SELECT '{name}' AS facet,value,count(*) AS count FROM (SELECT unnest({name}) AS value FROM ordered WHERE NOT hidden) GROUP BY value" for name in ['document_kind', 'document_family', 'committee_keys', 'chambers', 'meeting_keys']]
     facets = ' UNION ALL '.join(facets)
@@ -163,6 +164,7 @@ def _execute(inputs, steps, *, output, scratch, engine, origin):
             (SELECT count(*) FROM ordered WHERE body_hex IS NOT NULL AND (bytes IS NULL OR bytes<0)) AS missing_saved_sizes,
             (SELECT count(*) FROM (SELECT link_key FROM all_links GROUP BY link_key HAVING count(DISTINCT origin)>1)) AS link_collisions,
             (SELECT count(*) FROM (SELECT lookup_key FROM lookup_keys_full GROUP BY lookup_key HAVING count(DISTINCT lookup_url)>1)) AS lookup_collisions""")]
+    queries.extend(diagnostics)
     coverage_parts = []
     for name, relation in [('list', None), ('detail', None), ('links', 'links'), ('urls', 'url_keys'), ('sources', 'source_rows'), ('recoveries', 'recovery_rows')]:
         source = 'ordered o' if relation is None else f'ordered o JOIN (SELECT DISTINCT list_row FROM {relation}) r ON o.list_row=r.list_row'
@@ -181,15 +183,17 @@ def _execute(inputs, steps, *, output, scratch, engine, origin):
         raise
     (scratch / 'result.json').write_text(json.dumps(result, ensure_ascii=False, separators=(',', ':')))
     reports = {query['name']: query['data'] for query in result['queries']}
-    if any(reports['invariants'][0].values()):
+    if any(reports['invariants'][0].values()) or any(any(row.values()) for query in diagnostics for row in reports[query['name']]):
         raise ValueError('Release key invariant failed; native results retained in scratch')
     coverage = {row['file']: {key: value for key, value in row.items() if key != 'file'} for row in reports['coverage']}
     files = [dict(entry, row_range=None, shard=None, producer='archive',
-        coverage=dict(coverage.get(entry['name'], dict(congress_start=None, congress_end=None, date_start=None, date_end=None)), gaps=origin['gaps'])) for entry in result['outputs']]
+        coverage=dict(coverage.get(entry['name'], dict(congress_start=None, congress_end=None, date_start=None, date_end=None)), gaps=origin['gaps'])) for entry in result['outputs'] if entry['name'] not in {item['name'] for item in extra_outputs}]
     for entry in files:
         entry.pop('footer_bytes', None)
     files.append(_content(output / 'schema.json', _release_schema()))
-    files.append(_content(output / 'capture_scope.json', dict(version=1, entries=[])))
+    files.append(_content(output / 'capture_scope.json', dict(version=1, entries=[]) if capture_scope is None else capture_scope))
+    for name,value in (content_files or {}).items():
+        files.append(_content(output/name,value))
     identity = [1, [[item['name'], item['sha256'], item['size'], item['rows']] for item in files]]
     release_id = sha256(json.dumps(identity, ensure_ascii=False, separators=(',', ':')).encode()).hexdigest()
     manifest = dict(schema_version=1, files=files, facet_counts=reports['facets'], release_id=release_id, origin=origin)
