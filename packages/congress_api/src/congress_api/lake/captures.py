@@ -4,7 +4,7 @@ import json
 from pathlib import Path
 
 from congress_api.retention.provenance import parquet_output, run_job, json_input, file_pin
-from congress_api.lake.receipt_metadata import get, lit as literal, obj, projection, scalar, SCALARS, RECOVERY, DOWNLOAD_HEADERS
+from congress_api.lake.receipt_metadata import get, lit as literal, obj, projection, scalar, SCALARS, RECOVERY, DOWNLOAD_HEADERS, record_pointer_index
 
 
 LEGACY_OUTCOMES = {
@@ -157,21 +157,22 @@ def mapping_steps():
         unnest(array_concat(array_concat(primary_refs,array_repeat(cast(NULL AS VARCHAR),cast(placeholder_count AS BIGINT))),
             CASE WHEN storage_count>0 THEN storage_refs ELSE make_array() END)) AS entry,
         unnest(range(0,cast(primary_count+placeholder_count+storage_count AS BIGINT))) AS ordinal FROM reference_counts""")
-    pointer_index=first(get('entry','pointer',0,kind='int'),f'try_cast({get("entry","pointer",0)} AS BIGINT)',
-        get('entry','pointer',1,kind='int'),f'try_cast({get("entry","pointer",1)} AS BIGINT)','0')
+    pointer=first(get('entry','pointer'),get('entry','pointer',kind='json'),get('entry','pointer_json'),get('entry','pointer_json',kind='json'))
+    step('entry_pointers',"SELECT *,json_canonical("+pointer+") AS reference_pointer FROM entries")
+    pointer_index=record_pointer_index('reference_pointer')
     step('entry_positions',f"""SELECT *,ordinal>=primary_count+placeholder_count AS is_secondary,
         ordinal>=primary_count AND ordinal<primary_count+placeholder_count AS is_placeholder,
         cast(CASE WHEN record_is_list THEN CASE WHEN ordinal>=primary_count AND ordinal<primary_count+placeholder_count
             THEN ordinal-primary_count WHEN reference_kind='line' THEN ordinal
-            ELSE cast({pointer_index} AS BIGINT) END ELSE 0 END AS BIGINT) AS selected_record_index FROM entries""")
+            ELSE cast({pointer_index} AS BIGINT) END ELSE 0 END AS BIGINT) AS selected_record_index FROM entry_pointers""")
     # One shared literal entry bundle; only scalar values and its small pointer
     # remain after this step. No original body, prior or header object is read.
     strings=('sha256','body_key','family','context_url','member_path','original_path',
         'media_type','fidelity','sniffed_format','sniff_version','expansion','stored_suffix',
-        'stored_md5','pointer_json','retrieved_at','captured_at','observed_at',
+        'stored_md5','retrieved_at','captured_at','observed_at',
         'parent_retrieved_at','_retrieved_at','capture_date')
     kinds={**dict.fromkeys(strings,'str'),**dict.fromkeys(('bytes','size','attempt','stored_bytes','status_code'),'int'),
-           **dict.fromkeys(('complete','intact'),'bool'),'pointer':'json'}
+           **dict.fromkeys(('complete','intact'),'bool')}
     entry_slots=projection('entry',[(name,) for name in kinds])
     step('entry_facts','SELECT * EXCEPT(entry),'+','.join(
         scalar(entry_slots[(name,)],kind)+' AS e_'+name for name,kind in kinds.items())+' FROM entry_positions')
@@ -208,9 +209,7 @@ def mapping_steps():
         FROM records""")
     modes=','.join(literal(v) for v in sorted(LEGACY_MODES))
     outcomes=','.join(literal(v) for v in sorted(LEGACY_OUTCOMES))
-    transfer={'retry_later','request_failed','size_limit','stored','unchanged','failed',
-              'archive_throttled','exception','request_or_parse_error','resource_limit','timeout'}
-    cases=' '.join('WHEN '+literal(k)+' THEN '+literal(v if k in transfer else 'derive') for k,v in LEGACY_OUTCOMES.items())
+    cases=' '.join('WHEN '+literal(k)+' THEN '+literal(v) for k,v in LEGACY_OUTCOMES.items())
     recovery_names=[name for name in RECOVERY if name.startswith('recovery_')]
     recovery_present=' OR '.join(both(name)+' IS NOT NULL' for name in recovery_names)
     step('mapped',f"""SELECT *,
@@ -222,7 +221,7 @@ def mapping_steps():
         raw_mode IS NOT NULL AND raw_mode NOT IN ({modes}) AS unknown_mode,
         raw_outcome IS NOT NULL AND raw_outcome NOT IN ({outcomes}) AS unknown_outcome,
         e_sha256 AS body_sha,coalesce(e_bytes,e_size) AS body_bytes,
-        json_canonical(coalesce(e_pointer,e_pointer_json)) AS pointer_json,
+        reference_pointer AS pointer_json,
         e_body_key AS body_key FROM facts""")
     record_only="""body_sha IS NULL AND reference_kind='line' AND raw_mode IS NULL AND raw_outcome IS NULL
         AND line_status IS NULL AND NOT coalesce(get_field(line,'error_present'),false)

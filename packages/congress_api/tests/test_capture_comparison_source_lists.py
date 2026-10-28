@@ -86,7 +86,8 @@ def test_raw_source_list_proof_comes_from_the_actual_ingest_not_a_guessed_index(
             dict(body(pointer=[0,'another','body']),sha256='b'*64,
                  body_key='bodies/sha256/bb/'+'b'*64+'.gz')]
     else:records.append(dict(url='https://fixture.test/third',status_code=503))
-    staged=ingest(tmp_path/'source',[dict(source_file='owner-list',record=records,captures=captures)])
+    staged=ingest(tmp_path/'source',[dict(source_file='owner-list',record=records,captures=captures)],
+        key='receipts/documents/2026-10-20/assemble-source-list.jsonl.gz')
     evidence=staged/'capture-evidence.parquet'
     derived=pq.read_table(evidence).to_pylist()
     assert all(r['record_is_list'] is True and r['source_record_count']==len(records) for r in derived)

@@ -40,6 +40,14 @@ def get(value,*path,kind='str'):
     return f"nullif({expression},'null')" if kind=='json' else expression
 
 
+
+def record_pointer_index(pointer):
+    """The first numeric token in the first two canonical pointer components."""
+    values=[value for index in (0,1) for value in
+        (get(pointer,index,kind='int'),'try_cast('+get(pointer,index)+' AS BIGINT)')]
+    return 'coalesce('+','.join(values+['0'])+')'
+
+
 def obj(fields):
     return 'named_struct('+','.join(lit(k)+','+(f'cast({v} AS VARCHAR)'
         if SCALARS.get(k,'str')=='str' and k!='error_present' else v) for k,v in fields.items())+')'

@@ -6,6 +6,7 @@ import pyarrow as pa
 import pyarrow.parquet as pq
 
 from congress_api.retention.body_store import validate_key
+from congress_api.lake.receipt_metadata import record_pointer_index
 from congress_api.retention.provenance import json_input,parquet_output,run_job
 
 
@@ -18,7 +19,7 @@ RULES = {
     'body_location': 'Compare each recorded old physical body_key with the key derived from the new body SHA and stored_suffix, defaulting the legacy suffix to .gz. Noncanonical or conflicting locations are not normalized away.',
     'storage': 'Missing stored_bytes may be enriched. Non-null sizes must survive. Stored SHA-256 is distinct from MD5 and is not a target column.',
     'bodiless_pointer': 'Only old metadata plus null body SHA plus pointer [] maps to the new no-body null pointer. Missing context restoration is qualified by that same source shape.',
-    'source_list_items': 'Only a new bodiless line row with a true source-list proof, list length greater than one, a valid distinct item ordinal appearing once, and an old row on the same receipt line is an expected restoration. Preserve and gate every unproved new-only row.',
+    'source_list_items': 'Only a new bodiless line row with a true source-list proof, list length greater than one, a valid distinct item ordinal appearing once after independently decoding primary pointer coverage, and an old row on the same receipt line is an expected restoration. Preserve and gate every unproved new-only row.',
     'old_only': 'Every remaining old-only row is an owner gate; preserve all original columns. No automatic dismissal or invented capture row.',
     'occurrences': 'Match repeated receipt/body/pointer facts one-to-one; keep multiplicity after qualified secondary normalization.',
     'coverage': 'The oracle does not independently establish new mode, completeness, outcome priorities, endpoint/header/sniff/writer facts or recovery fields. Report those gaps; qualify them with receipt and rebuild tests.',
@@ -181,14 +182,15 @@ def compare_old(evidence, old_index, *, engine, work, receipt_keys=None):
         AND record_is_list IS TRUE AND source_record_count>1
         AND source_record_index>=0 AND source_record_index<source_record_count
         THEN source_record_index END"""
+    checked_index="CASE WHEN record_is_list IS TRUE AND reference_kind IN ('capture','embedded','file','retained-file') THEN "+record_pointer_index('pointer')+" ELSE source_record_index END"
     steps.extend([
         dict(name='old_normalized',sql=f'''SELECT *,row_number() OVER (
             PARTITION BY {occurrence_keys} ORDER BY {occurrence_order},old_row) AS occurrence
             FROM old_values'''),
-        dict(name='source_ordinals',sql='''SELECT receipt_key AS proof_receipt_key,
-            receipt_line AS proof_receipt_line,source_record_index AS proof_record_index,
+        dict(name='source_ordinals',sql=f'''SELECT receipt_key AS proof_receipt_key,
+            receipt_line AS proof_receipt_line,{checked_index} AS proof_record_index,
             count(*) AS source_ordinal_occurrences FROM new_values
-            GROUP BY receipt_key,receipt_line,source_record_index''',materialize=True),
+            GROUP BY receipt_key,receipt_line,{checked_index}''',materialize=True),
         dict(name='new_facts',sql=f'''SELECT *,row_number() OVER (
             PARTITION BY {occurrence_keys} ORDER BY {source_item_order},{occurrence_order},capture_index) AS occurrence
             FROM new_values''')])
