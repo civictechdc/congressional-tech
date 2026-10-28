@@ -90,6 +90,11 @@ def _reading_fields():
     return result
 
 
+def bundle_version(versions):
+    """Name the combined producer from its pinned leaf parser definitions."""
+    return sha256(json.dumps(versions,sort_keys=True,separators=(',',':')).encode()).hexdigest()
+
+
 def stage(*,captures,body_inventory,local_root,engine,work,decided_at,parser,
           sniff_version=None,parser_version=None,existing=None,unreadable_files=(),
           worker_factory=ParserWorker,unreadable_store=None):
