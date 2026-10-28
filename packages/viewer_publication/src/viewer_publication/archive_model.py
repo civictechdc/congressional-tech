@@ -223,7 +223,7 @@ def build_prepared_release(prepared,*,engine,output,root=ROOT):
     steps += [dict(name='body_fingerprints',sql="SELECT encode(body_sha,'hex') AS body_sha,encode(fingerprint,'hex') AS fingerprint FROM page_facts WHERE status='completed'",materialize=True)]
     steps += body_review_steps(root=root)+grouping_steps(root=root,review_edges=True)
     steps += [dict(name='recovery_original_keys',sql="SELECT r.recovery_id,k.url_key FROM model_recovery_rows r JOIN model_url_keys k ON r.original_url=k.url WHERE k.error IS NULL",materialize=True),
-        dict(name='component_members',sql='SELECT l.component,f.* FROM source_files f JOIN source_labels l USING(source_id)',materialize=True)]
+        dict(name='component_members',sql='SELECT l.component,f.* FROM source_labels l JOIN source_files f USING(source_id)',materialize=True)]
     steps += attachment_steps(root=root)+_sql_steps(['initial-document-link-keys'],root=root)
     from viewer_publication.archive_reviews import duplicate_steps,application_steps
     steps += duplicate_steps(root=root)
@@ -239,8 +239,9 @@ def build_prepared_release(prepared,*,engine,output,root=ROOT):
     steps += [dict(name='normalized',sql="""SELECT n.* EXCLUDE(title,document_kind,hidden,review_note,review_decided_at,removed_on),
         coalesce(r.title_override,n.title) AS title,coalesce(r.kind_override,n.document_kind) AS document_kind,
         coalesce(r.hidden,false) AS hidden,r.note AS review_note,r.decided_at AS review_decided_at,x.removed_on
-        FROM base_normalized n JOIN document_identities d ON n.doc_key=d.document_id
-        LEFT JOIN review_overrides r ON d.component=r.component LEFT JOIN document_removals x ON d.component=x.component""",materialize=True),
+        FROM document_removals x RIGHT JOIN (review_overrides r RIGHT JOIN
+            (document_identities d JOIN base_normalized n ON n.doc_key=d.document_id)
+            ON d.component=r.component) ON d.component=x.component""",materialize=True),
         dict(name='source_input',sql=(Path(root)/'model/sql/document-source-input.sql').read_text(),materialize=True),
         dict(name='recovery_input',sql=(Path(root)/'model/sql/document-recovery-input.sql').read_text(),materialize=True)]
     empty_meetings=f"""WITH keys AS (SELECT try_cast(unnest(meeting_keys) AS BIGINT) AS event_id FROM ordered)
@@ -279,6 +280,23 @@ def build_prepared_release(prepared,*,engine,output,root=ROOT):
         'fingerprints':['body_sha']}
     extra += [dict(name=name+'.parquet',path=str(evidence/(name+'.parquet')),
         sql=("SELECT r.*,r.body_sha AS body_sha256,d.decided_at,d.recovered_url,d.identity_note FROM current_recoveries r LEFT JOIN remaining_recovery_decisions d ON r.decision_id=d.id" if name=='current_recoveries' else 'SELECT * FROM '+name),settings=_settings('whole',keys)) for name,keys in causes.items()]
+    # These successors are materialized before C7 releases their final inputs.
+    # Relations exported as E4 evidence or used by final guards remain registered.
+    last_inputs={
+        'fingerprints':['body_fingerprints'],
+        'source_components':['source_edges'],
+        'source_labels':['source_components'],
+        'duplicate_component_edges':['component_members'],
+        'final_recovery_attachments':['review_components'],
+        'resolved_links':['link_inputs','link_contexts','link_literals','link_parts','link_targets','link_errors'],
+        'document_version_keys':['endpoint_bodies','ambiguous_endpoints'],
+        'document_versions':['document_version_keys'],
+        'normalized':['base_normalized','document_bodies','document_versions','source_files'],
+        'url_state_queue_literals':['resolved_links'],
+    }
+    for index,step in enumerate(steps):
+        if retired:=last_inputs.get(step['name']):
+            steps[index]=dict(step,release_after=[*step.get('release_after',()),*retired])
     prefix_checks=','.join(sql+' AS '+name for name,sql in evidence_checks().items())
     manifest=_execute(inputs,steps,output=output,scratch=scratch,engine=engine,
         lookup_extra="SELECT o.list_row,a.url FROM source_addresses a JOIN document_members m ON a.source_id=m.source_id JOIN document_identities d ON m.component=d.component JOIN ordered o ON d.document_id=o.doc_key WHERE m.is_real_file",

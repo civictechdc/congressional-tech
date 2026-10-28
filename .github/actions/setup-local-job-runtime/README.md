@@ -5,3 +5,5 @@ Offline CI consumers use the approved private `DOCSPEC_RUNTIME_ARTIFACT` binary 
 The ordinary runtime is built with `remote`, without `test-util`. The six committed local limits use four compute threads, 14 GiB pool memory, 6 GiB scratch, 8,192 batch rows, 64 MiB batch bytes and 32 MiB metadata bytes. These are explicit CI ceilings; source admission and runtime tests enforce them. They are not a full-corpus memory qualification.
 
 The former public archive installer remains intact for its existing packaging callers until legacy cleanup. CI no longer needs `DOCSPEC_LOCAL_RUNTIME_URL` or `DOCSPEC_LOCAL_RUNTIME_SHA256`. The lead uploads the tested private binary and sets `DOCSPEC_RUNTIME_ARTIFACT`; release performs no upload, variable write or hosted run.
+
+The first step records `df -B1` for the runner's temporary directory and checkout, followed by the public local-job limits. It runs before private runtime installation. These logs show the hosted capacity directly; the configured job limits do not automatically apply to legacy clients constructed without an explicit limits file.

@@ -76,9 +76,10 @@ def mapping_steps():
         unnest(record_items) AS item,
         unnest(range(0,cast(record_count AS BIGINT))) AS item_index
         FROM lines WHERE record_is_list""")
-    paths=[(name,) for name in SCALARS]+list(RECOVERY.values())+DOWNLOAD_HEADERS+[('error',)]
+    paths=[(name,) for name in SCALARS]+list(RECOVERY.values())+DOWNLOAD_HEADERS+[('error',),('kind',)]
     slots=projection('item',paths)
     item_fields={name:scalar(slots[(name,)],kind) for name,kind in SCALARS.items()}
+    item_fields['kind']=scalar(slots[('kind',)],'str')
     item_fields.update({name:scalar(slots[path],'str') for name,path in RECOVERY.items()})
     item_fields['h_content_disposition']=first(*(scalar(slots[path],'str') for path in DOWNLOAD_HEADERS))
     item_fields['error_present']=get(slots[('error',)],kind='json')+' IS NOT NULL'
@@ -130,7 +131,9 @@ def mapping_steps():
         AND (e.receipt_line IS NOT DISTINCT FROM i.receipt_line)
         AND (e.selected_record_index IS NOT DISTINCT FROM i.item_index)
         AND e.record_is_list AND NOT e.is_secondary""")
-    list_record={name:first('i_'+name,metadata_field('record',name)) for name in item_fields}
+    list_record={name:first('i_'+name,metadata_field('record',name))
+        for name in item_fields if name!='kind'}
+    list_record['kind']='i_kind'
     list_record['error_present']="(coalesce(i_error_present,false) OR "+metadata_field('record','error_present')+')'
     step('records','SELECT * EXCEPT(record,'+','.join('i_'+name for name in item_fields)+'),'+
         obj(list_record)+' AS record FROM selected_records')
@@ -138,7 +141,11 @@ def mapping_steps():
         return f'CASE WHEN record_is_list THEN {first(record,line)} ELSE {line} END'
     def both(name):
         line,record=metadata_field('line',name),metadata_field('record',name)
-        return item_first(first(line,record),record)
+        ordinary=item_first(first(line,record),record)
+        if name=='outcome':
+            # Vote.outcome names a committee action, never a fetch result.
+            return f"CASE WHEN record_is_list AND {metadata_field('record','kind')}='vote' THEN {line} ELSE {ordinary} END"
+        return ordinary
     step('facts',f"""SELECT *,{both('mode')} AS raw_mode,{both('outcome')} AS raw_outcome,
         {item_first(first(metadata_field('line','http_status'),metadata_field('line','status_code'),metadata_field('record','http_status'),metadata_field('record','status_code')),first(metadata_field('record','http_status'),metadata_field('record','status_code')))} AS line_status,
         {first(fetch_time('',lambda _,p:'e_'+p),item_first(first(fetch_time('line',metadata_field),fetch_time('record',metadata_field)),fetch_time('record',metadata_field)))} AS fetched,

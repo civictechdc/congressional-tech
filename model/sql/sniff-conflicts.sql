@@ -1,2 +1,2 @@
 SELECT body_sha FROM sniff_observations GROUP BY body_sha
-HAVING count(DISTINCT format)>1 OR count(DISTINCT intact)>1
+HAVING min(format)<>max(format) OR min(intact)<>max(intact)

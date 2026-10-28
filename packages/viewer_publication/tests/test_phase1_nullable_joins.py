@@ -34,6 +34,15 @@ def test_endpoint_member_joins_hash_every_key_without_matching_missing_endpoints
         assert 'member_path' in join.split('filter=')[0],physical
         assert 'filter=' not in join,physical
         assert 'NullsEqual: true' in join,physical
+    lines=physical.splitlines()
+    index=next(i for i,line in enumerate(lines) if 'HashJoinExec' in line and 'endpoint_key' in line)
+    first=index+1;depth=len(lines[first])-len(lines[first].lstrip())
+    end=next((i for i in range(first+1,len(lines)) if len(lines[i])-len(lines[i].lstrip())<=depth),len(lines))
+    build='\n'.join(lines[first:end])
+    if name=='fingerprint-candidates':
+        assert 'AggregateExec' in build,physical
+    else:
+        assert 'projection=[endpoint_key, member_path]' in build,physical
 
 
 def test_adjacent_link_join_keeps_null_context_keys_in_hash_plan(tmp_path):

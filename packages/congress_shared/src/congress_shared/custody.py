@@ -116,8 +116,8 @@ class VerifiedFile(dict):
         object.__setattr__(self, "identity", identity)
         object.__setattr__(self, "custody", identity)
 
-    def require(self, path: Path | str) -> VerifiedFile:
-        """Require that ``path`` is the unchanged file verified by this process."""
+    def _require_custody(self, path: Path | str) -> VerifiedFile:
+        """Check metadata only; callers must independently verify consumed bytes."""
         if (
             self._issued.get(id(self)) is not self
             or self.process != os.getpid()
@@ -126,6 +126,19 @@ class VerifiedFile(dict):
             or custody_identity(path) != self.custody
             or (self.get("bytes"), self.get("sha256")) != self.facts
         ):
+            raise ValueError(f"Verified catalog file custody changed: {path}")
+        return self
+
+
+    def require(self, path: Path | str) -> VerifiedFile:
+        """Verify current bytes as well as process, path and file metadata."""
+        self._require_custody(path)
+        try:
+            current = verify_local_file(path, expected_sha256=self["sha256"],
+                expected_size=self["bytes"], sha256_factory=sha256, identity_fn=custody_identity)
+        except ValueError as error:
+            raise ValueError(f"Verified catalog file custody or bytes changed: {path}") from error
+        if current.custody != self.custody:
             raise ValueError(f"Verified catalog file custody changed: {path}")
         return self
 
