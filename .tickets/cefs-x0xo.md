@@ -16,3 +16,9 @@ Owner run4: native SQL many-to-many comparison against exact pinned documents/fi
 
 Expected fixture and native tests bind evidence alignment, IDs, each known cause, unexplained rows and owner blockers; full F0 run shows only demonstrated conversion gaps; real E2 parity runs when first candidate exists.
 
+
+## Notes
+
+**2026-10-28T04:34:52Z**
+
+Native parity comparison and focused fixtures implemented through 506f8ecf; final combined E4/workflow/gate lane 65 passed on ordinary engine-9b59263. CODE reviews approved after forward fixes. Actual model slice ac866cc3 passed reader/canary and desktop/phone browser checks. Actual E4 invoked and refused current_recoveries missing agreed body_sha256/recovered_url/decided_at/identity_note aliases before SQL. Blocked: engine must publish corrected immutable evidence plus descriptor/profile pins, then run DOCSPEC_JOB_CONFIG=$COORD/shared/engine-9b59263/runtime.json .venv/bin/python -I scripts/measure/archive_parity.py compare --inputs <engine-descriptor> --work <fresh-owned-directory>. Full F0 comparison not qualified (2 GiB scratch cap); owner stopped full F0 runs for the real vertical slice. Ticket remains open; no full parity or cause counts claimed.

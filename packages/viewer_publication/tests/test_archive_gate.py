@@ -110,3 +110,34 @@ def test_real_canary_failure_against_hand_candidate_does_not_flip(tmp_path):
                       contract=lambda: {'status': 'passed', 'releaseId': manifest['release_id'], 'targets':'measured'})
     assert store.etag == 'original' and not store.puts
     assert store.value == {'release_id': 'a' * 64, 'previous_release_id': None}
+
+
+@pytest.mark.parametrize('name',['contract','canary'])
+@pytest.mark.parametrize('receipt,message',[
+    (None,'did not pass for the candidate'),
+    ({'status':'incomplete'},'did not pass for the candidate'),
+    ({'status':'passed','releaseId':'c'*64,'targets':'measured'},'did not pass for the candidate'),
+    (dict(passed(),targets='owner-gated'),'requires measured-target qualification'),
+    (dict(passed(),targets=None),'requires measured-target qualification'),
+    (dict(passed(),targets='estimated'),'requires measured-target qualification'),
+    (passed(),None),
+])
+def test_shared_receipt_validator_and_final_gate_have_the_same_policy(name,receipt,message):
+    from viewer_publication.archive_gate import validate_receipt
+    original=dict(receipt) if isinstance(receipt,dict) else receipt
+    store=Pointer()
+    def standalone():return validate_receipt(receipt,release_id='b'*64,name=name)
+    def final_gate():return gate_and_flip(store,bucket='fake',release_id='b'*64,
+        previous_release_id=None,expected_etag=None,
+        contract=(lambda:receipt) if name=='contract' else passed,
+        canary=(lambda:receipt) if name=='canary' else passed)
+    if message:
+        for check in [standalone,final_gate]:
+            with pytest.raises(ValueError) as error:check()
+            assert str(error.value)==f'Archive {name} {message}'
+        assert store.puts==[]
+    else:
+        assert standalone() is None
+        final_gate()
+        assert len(store.puts)==1
+    assert receipt==original

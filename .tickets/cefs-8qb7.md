@@ -26,3 +26,7 @@ Site wrapper scope implemented at547f18e6 plus local native admission. Full11612
 **2026-10-27T20:11:05Z**
 
 Local F1 acceptance complete. Final c1713681 full production-offline with approved656runtime:11672passed/33failed/3errors/117skipped/50deselected/33subtests in1024.62s; exact36baseline identities NEW0/MISSING0. 91merged focused checks pass. Actual failed local reader canary preserves outgoing pointer/ETag; hand/F0 browser and canary evidence retained. Engine merged reviewedhead5eb98218. Real job binding, Linux runtime/secrets, uploadedHTTPS and device/switch actions remain stated engine/owner gates; intentional placeholders refuse.
+
+**2026-10-28T04:33:49Z**
+
+F1 owner CLI seam: 25eb548e requires argv [--execute] before active preflight and dispatches the owner module once. Pending specs still refuse. Nine focused workflow tests passed; static CODE review APPROVE e27fef70^..506f8ecf, no findings. Owner installs actual specs and bindings at switch; no workflow dispatched.

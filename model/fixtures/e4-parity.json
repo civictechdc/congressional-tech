@@ -104,11 +104,12 @@
     {
       "name": "eot_webharvest_attachment",
       "field": "recoveries",
-      "value": "body:eot_webharvest_attachment",
+      "value": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
       "direction": "added",
       "fact": {
         "original_url": "https://veterans.house.gov/a.pdf",
-        "recovered_url": "https://www.webharvest.gov/a.pdf"
+        "recovered_url": "https://www.webharvest.gov/a.pdf",
+        "body_sha": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd"
       },
       "expected_causes": [
         "eot_webharvest_attachment"
@@ -151,8 +152,8 @@
         "other_fingerprint": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
         "source_url": "https://fixture.test/twin",
         "other_source_url": "https://fixture.test/twin",
-        "fidelity": "saved_text",
-        "other_fidelity": "exact"
+        "fidelity": "saved-text",
+        "other_fidelity": "exact-bytes"
       },
       "expected_causes": [
         "saved_text_exact_twins"
@@ -239,16 +240,59 @@
     {
       "name": "b7_owner_recoveries",
       "field": "recoveries",
-      "value": "body:b7_owner_recoveries",
+      "value": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
       "direction": "added",
       "fact": {
         "decision_id": "owner-b7-57",
         "kind": "requested_content_in_official_hearing",
         "stage": "raw-recoveries-owner-32c13ffa",
-        "source_time_basis": "earliest_matching_fetch"
+        "source_time_basis": "earliest_matching_fetch",
+        "body_sha": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd"
       },
       "expected_causes": [
         "b7_owner_recoveries"
+      ]
+    },
+    {
+      "name": "capture_header_names_removed",
+      "field": "filename",
+      "direction": "removed",
+      "value": "legacy.pdf",
+      "fact": {
+        "name_basis": "content_disposition",
+        "header_filename": "Report.pdf"
+      },
+      "expected_causes": [
+        "capture_header_names"
+      ]
+    },
+    {
+      "name": "reading_size_limit",
+      "field": "body_keys",
+      "direction": "removed",
+      "value": "body",
+      "fact": {
+        "complete": true,
+        "format": "html",
+        "reading_status": "size_limit",
+        "error_type": "stored_size_limit"
+      },
+      "expected_causes": [
+        "incomplete_damaged_failed_feed"
+      ]
+    },
+    {
+      "name": "link_label_page",
+      "field": "source.listed_on",
+      "direction": "added",
+      "value": "https://fixture.test/listing",
+      "fact": {
+        "label_basis": "saved_page",
+        "listed_on": "https://fixture.test/listing",
+        "link_text": "Other text"
+      },
+      "expected_causes": [
+        "link_label_provenance"
       ]
     }
   ],
@@ -546,7 +590,8 @@
           "application/pdf"
         ],
         "http_status": [
-          "200"
+          "200.0",
+          "404"
         ],
         "capture_outcome": [
           "saved"
@@ -795,7 +840,155 @@
         "f0_source_context_fold",
         "f0_shared_body_link",
         "f0_display_facts"
+      ],
+      "bad_metadata_unexplained": 12,
+      "model_real_bodies": 3,
+      "null_recovery_values": {
+        "recovery.kind": "[null]",
+        "recovery.imported_at": "[null]"
+      }
+    },
+    "note": "F0 native producer preserves source membership; literal ID formula includes a usable PDF with mixed 200.0/404 status history. Corrupt bytes/media_type must produce 12 unexplained atoms; permuted private rows must refuse lineage."
+  },
+  "recovery_values": [
+    {
+      "cause": "b7_owner_recoveries",
+      "field": "recovery.kind",
+      "value": "[\"requested_content_in_official_hearing\"]",
+      "wrong": "[\"recovered_document\"]",
+      "fact": {
+        "stage": "raw-recoveries-owner-32c13ffa",
+        "decision_id": "owner-57",
+        "body_sha": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+        "expected_kind": "[\"requested_content_in_official_hearing\"]"
+      }
+    },
+    {
+      "cause": "b7_owner_recoveries",
+      "field": "recovery.imported_at",
+      "value": "[\"2026-10-05\"]",
+      "wrong": "[\"2026-10-27\"]",
+      "fact": {
+        "stage": "raw-recoveries-owner-32c13ffa",
+        "decision_id": "earliest-24",
+        "body_sha": "eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
+        "expected_imported_at": "[\"2026-10-05\"]"
+      }
+    }
+  ],
+  "witness_twin": {
+    "body_key": "bodies/sha256/ff/ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff.gz",
+    "filename": "saved-twin.html",
+    "source_url": "https://fixture.test/22.pdf",
+    "source_id": "c3a17177043f8de4143185391352767d8bfcdca0ea7c6e09d36625df1c416393"
+  },
+  "b7_native_expected": {
+    "original_url": "https://veterans.house.gov/node/50092/",
+    "body_sha": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+    "kind": "requested_content_in_official_hearing",
+    "source_minimum": "2026-10-06T01:00:00Z",
+    "imported_at": "2026-10-05",
+    "superseded_kind": "recovered_document",
+    "ready_time": "2026-10-08T12:00:00Z"
+  },
+  "oracle_scope_cases": [
+    {
+      "name": "closed-html",
+      "source_indexes": [
+        0
+      ],
+      "selected_documents": 1,
+      "selected_files": 1,
+      "outside_documents": 2,
+      "partial_documents": 0,
+      "missing_files": 0
+    },
+    {
+      "name": "partial-rendition",
+      "source_indexes": [
+        2
+      ],
+      "selected_documents": 1,
+      "selected_files": 2,
+      "outside_documents": 2,
+      "partial_documents": 1,
+      "missing_files": 1
+    },
+    {
+      "name": "closed-rendition",
+      "source_indexes": [
+        2,
+        3
+      ],
+      "selected_documents": 1,
+      "selected_files": 2,
+      "outside_documents": 2,
+      "partial_documents": 0,
+      "missing_files": 0
+    }
+  ],
+  "member_contexts_expected": [
+    {
+      "case": "two-paths",
+      "errors": [
+        0,
+        0
+      ]
+    },
+    {
+      "case": "two-documents",
+      "errors": [
+        1,
+        0
+      ]
+    },
+    {
+      "case": "duplicate-context",
+      "errors": [
+        0,
+        1
       ]
     }
-  }
+  ],
+  "publisher_witness_expected": {
+    "kind": "committee-vote",
+    "listing_title": "Chosen title",
+    "listed_on": "https://fixture.test/listing",
+    "raw_type": "CV",
+    "late_text": "Late label"
+  },
+  "producer_profile_cases": [
+    {
+      "case": "clean",
+      "accepted": true
+    },
+    {
+      "case": "missing-pin",
+      "accepted": false
+    },
+    {
+      "case": "changed-profile",
+      "accepted": false
+    },
+    {
+      "case": "missing-check",
+      "accepted": false
+    },
+    {
+      "case": "empty-check",
+      "accepted": false
+    },
+    {
+      "case": "positive-count",
+      "accepted": false
+    },
+    {
+      "case": "null-count",
+      "accepted": false
+    },
+    {
+      "case": "boolean-count",
+      "accepted": false
+    }
+  ]
 }

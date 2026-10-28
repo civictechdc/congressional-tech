@@ -116,3 +116,27 @@ def test_deploy_and_validation_add_local_archive_contract_before_upload():
         if name == 'deploy-pages.yml':
             upload = next(i for i, step in enumerate(steps) if step.get('uses') == 'actions/upload-pages-artifact@v3')
             assert contract < upload
+
+
+def test_active_workflow_binding_requires_explicit_execute_before_preflight(tmp_path):
+    cases=[(None,2),([],2),(['--plan'],2),('--execute',2),(['--execute'],0)]
+    for index,(argv,expected) in enumerate(cases):
+        root=tmp_path/str(index);scripts=root/'.github/scripts';scripts.mkdir(parents=True)
+        script=scripts/'run-archive-job.py';script.write_bytes((ROOT/'.github/scripts/run-archive-job.py').read_bytes())
+        spec=root/'owner-job.json';spec.write_text(json.dumps({'version':1}))
+        binding=dict(module='viewer_publication.archive_publish',spec='owner-job.json')
+        if argv is not None:binding['argv']=argv
+        (root/'.github/archive-jobs.json').write_text(json.dumps({'publish':binding}))
+        result=subprocess.run([sys.executable,'-I',str(script),'publish','--check-binding'],
+            cwd=tmp_path,capture_output=True,text=True,timeout=10,env={'PATH':'/usr/bin:/bin'})
+        assert result.returncode==expected,result.stderr
+        if expected:assert 'explicit --execute' in result.stderr
+
+
+def test_workflow_command_invokes_the_owner_module_once_in_execute_mode():
+    import importlib.util
+    spec=importlib.util.spec_from_file_location('archive_job',ROOT/'.github/scripts/run-archive-job.py')
+    runner=importlib.util.module_from_spec(spec);spec.loader.exec_module(runner)
+    binding=dict(module='viewer_publication.archive_publish',argv=['--execute'])
+    path=Path('/local/owner-job.json')
+    assert runner.binding_command(binding,path)==[sys.executable,'-I','-m','viewer_publication.archive_publish','--spec',str(path),'--execute']
