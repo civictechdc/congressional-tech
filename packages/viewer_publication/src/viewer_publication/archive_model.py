@@ -85,23 +85,47 @@ def evidence_steps(*,root=ROOT):
 
 
 def evidence_checks():
-    """Expose scalar checks for the model's existing invariant report."""
+    """Expose current prefix checks for admission and the full invariant report."""
     from congress_api.lake.readings import writer_admission_conflict_sql
-    return dict(conflicting_writer_formats='(SELECT n FROM ('+writer_admission_conflict_sql()+') writer_conflicts)')
+    return dict(conflicting_writer_formats='(SELECT n FROM ('+writer_admission_conflict_sql()+') writer_conflicts)',
+        conflicting_sniffs='(SELECT count(*) FROM sniff_conflicts)',
+        conflicting_original_sizes='(SELECT count(*) FROM (SELECT sha256 FROM captures WHERE sha256 IS NOT NULL GROUP BY sha256 HAVING count(DISTINCT bytes)>1))',
+        conflicting_verifications='(SELECT count(*) FROM verification_conflicts)',
+        invalid_recoveries='(SELECT count(*) FROM recovery_diagnostics WHERE is_fatal)')
 
 
 def _sql_steps(names,*,root=ROOT):
     return [dict(name=name.replace('-','_'),sql=(Path(root)/'model/sql'/(name+'.sql')).read_text(),materialize=True) for name in names]
 
 
-def build_release(*,captures,readings,filename_readings,parser_versions,catalog_version,
-                  engine,output,scratch,recovery_files=(),review_files=(),verification_files=(),
-                  unreadable_files=(),variant_files=(),root=ROOT):
-    """Run the document model and shared native exporter over pinned local inputs."""
-    from viewer_publication.archive_format import _execute,_settings,EMPTY_STRINGS,TS,_empty_struct,LIST_COLUMNS,DETAIL_COLUMNS
-    from viewer_publication.archive_annotations import annotation_steps
-    from viewer_publication.archive_provenance import current_steps,attachment_steps,body_review_steps
-    scratch=Path(scratch).resolve();output=Path(output).resolve();scratch.mkdir(parents=True,exist_ok=False)
+def admission_steps(*,prelude=(),root=ROOT):
+    """Use the full model's maintained input prefix before accepting a skip."""
+    from viewer_publication.archive_provenance import current_steps
+    from viewer_publication.archive_model_profile import completeness_steps
+    return list(prelude)+current_steps(root=root)+evidence_steps(root=root)+source_steps(root=root)+completeness_steps(root=root)
+
+
+def admission_checks(*,parser_versions,catalog_version,root=ROOT):
+    """Check current pinned inputs without exporting public release files."""
+    from viewer_publication.archive_model_profile import completeness_checks
+    from congress_api.lake.readings import bundle_version,worker_limits
+    checks=','.join(sql+' AS '+name for name,sql in evidence_checks().items())
+    return [dict(name='model_invariants',sql='SELECT '+checks)]+completeness_checks(
+        catalog_version=catalog_version,readings_version=bundle_version(parser_versions,policy=worker_limits()),root=root)
+
+
+def input_receipts_query():
+    """Return actual receipt keys as metadata, never as a zero-count assertion."""
+    return dict(name='input_receipts',sql='SELECT DISTINCT receipt_key FROM captures ORDER BY receipt_key')
+
+
+def prepare_model_inputs(*,captures,readings,filename_readings,parser_versions,catalog_version,
+                         engine,scratch,recovery_files=(),review_files=(),verification_files=(),
+                         unreadable_files=(),variant_files=(),root=ROOT):
+    """Freeze current input selectors and the shared prefix in fresh private scratch."""
+    from viewer_publication.archive_format import _settings
+    from viewer_publication.archive_model_profile import profile_record
+    scratch=Path(scratch).resolve();scratch.mkdir(parents=True,exist_ok=False)
     evidence=scratch/'evidence';evidence.mkdir()
     inputs=registry_inputs(scratch/'registries',root=root)
     data_inputs=[dict(value,name=name) if isinstance(value,dict) else
@@ -132,7 +156,45 @@ def build_release(*,captures,readings,filename_readings,parser_versions,catalog_
         inputs.append(dict(name='unreadable_records',kind='json_lines',files=list(unreadable_files),schema=dict(fields=[field(k,v) for k,v in unreadable_fields.items()],metadata={})))
     else:inputs.append(json_input(scratch,'unreadable_records',[],**unreadable_fields))
     prelude += [dict(name='active_unreadable',sql='SELECT u.* FROM unreadable_records u WHERE NOT EXISTS(SELECT 1 FROM unreadable_records s WHERE s.supersedes=u.id)',materialize=True)]
-    steps=prelude+current_steps()+evidence_steps(root=root)+source_steps(root=root)+link_steps(root=root)
+    from congress_api.models.archive_profile import build_capture_profile
+    capture_profile=build_capture_profile(engine_revision=engine.source_revision,
+        url_normalized_sql=(Path(root)/'model/sql/url-normalized.sql').read_text(),
+        url_keys_sql=(Path(root)/'model/sql/url-keys.sql').read_text(),
+        url_rules=json.loads((Path(root)/'model/registries/url-rules.json').read_text()))
+    from congress_api.retention.provenance import file_pin
+    selectors={item['name']:dict(item) if item['kind']=='native_table' else dict(kind='parquet',path=item['path'],**file_pin(item['path'])) for item in data_inputs}
+    model_profile=profile_record(parser_versions=parser_versions,catalog_version=catalog_version,
+        engine_revision=engine.source_revision,runtime_pins=dict(platform=engine.platform,build_features=list(engine.build_features),
+            binary_sha256=engine.binary_sha256,limits=json.loads(engine.limits.read_text())),
+        lake_versions={name:dict(schema_sha256=file_pin(Path(root)/'model/lake'/(name.replace('_','-')+'.schema.json'))['sha256']) for name in ['captures','readings','filename_readings']},
+        snapshots=selectors,writer_settings=dict(schema_version=1,whole=_settings('whole',['list_row']),
+            ranged=_settings('ranged',['list_row']),lookup=_settings('lookup',['link_key'])),root=root)
+    (scratch/'profile.json').write_text(json.dumps(model_profile,ensure_ascii=False,sort_keys=True,separators=(',',':'))+'\n')
+    return dict(inputs=inputs,prelude=prelude,steps=admission_steps(prelude=prelude,root=root),
+        profile=model_profile,capture_profile=capture_profile,scratch=scratch,evidence=evidence,
+        parser_versions=dict(parser_versions),catalog_version=catalog_version)
+
+
+def build_release(*,captures,readings,filename_readings,parser_versions,catalog_version,
+                  engine,output,scratch,recovery_files=(),review_files=(),verification_files=(),
+                  unreadable_files=(),variant_files=(),root=ROOT):
+    """Prepare inputs once and run the document model's maintained full job."""
+    prepared=prepare_model_inputs(captures=captures,readings=readings,filename_readings=filename_readings,
+        parser_versions=parser_versions,catalog_version=catalog_version,engine=engine,scratch=scratch,
+        recovery_files=recovery_files,review_files=review_files,verification_files=verification_files,
+        unreadable_files=unreadable_files,variant_files=variant_files,root=root)
+    return build_prepared_release(prepared,engine=engine,output=output,root=root)
+
+
+def build_prepared_release(prepared,*,engine,output,root=ROOT):
+    """Continue one prepared plan through grouping and the shared native exporter."""
+    from viewer_publication.archive_format import _execute,_settings,EMPTY_STRINGS,TS,_empty_struct,LIST_COLUMNS,DETAIL_COLUMNS
+    from viewer_publication.archive_annotations import annotation_steps
+    from viewer_publication.archive_provenance import attachment_steps,body_review_steps
+    scratch=prepared['scratch'];evidence=prepared['evidence'];output=Path(output).resolve()
+    inputs=prepared['inputs'];capture_profile=prepared['capture_profile']
+    parser_versions=prepared['parser_versions'];catalog_version=prepared['catalog_version']
+    steps=list(prepared['steps'])+link_steps(root=root)
     steps += _sql_steps(['source-addresses'],root=root)
     steps += [dict(name='url_inputs',sql=(Path(root)/'model/sql/model-url-inputs.sql').read_text(),materialize=True)]
     steps += _sql_steps(['url-normalized'],root=root)
@@ -151,9 +213,9 @@ def build_release(*,captures,readings,filename_readings,parser_versions,catalog_
     steps += _sql_steps(['document-members','document-bodies','document-identities','saved-files','document-alternates',
         'document-version-keys','document-versions','document-metadata','document-addresses','saved-recoveries','document-removals','document-packages'],root=root)
     steps += [dict(name='base_normalized',sql=(Path(root)/'model/sql/document-normalized.sql').read_text()+' UNION ALL '+(Path(root)/'model/sql/document-recovery-normalized.sql').read_text(),materialize=True)]
-    from viewer_publication.archive_model_profile import completeness_steps,completeness_checks,profile_record
+    from viewer_publication.archive_model_profile import completeness_checks
     from congress_api.lake.readings import bundle_version,worker_limits
-    steps += completeness_steps(root=root)+application_steps(root=root)
+    steps += application_steps(root=root)
     steps += [dict(name='normalized',sql="""SELECT n.* EXCLUDE(title,document_kind,hidden,review_note,review_decided_at,removed_on),
         coalesce(r.title_override,n.title) AS title,coalesce(r.kind_override,n.document_kind) AS document_kind,
         coalesce(r.hidden,false) AS hidden,r.note AS review_note,r.decided_at AS review_decided_at,x.removed_on
@@ -197,30 +259,13 @@ def build_release(*,captures,readings,filename_readings,parser_versions,catalog_
         'fingerprints':['body_sha']}
     extra += [dict(name=name+'.parquet',path=str(evidence/(name+'.parquet')),
         sql=("SELECT r.*,r.body_sha AS body_sha256,d.decided_at,d.recovered_url,d.identity_note FROM current_recoveries r LEFT JOIN remaining_recovery_decisions d ON r.decision_id=d.id" if name=='current_recoveries' else 'SELECT * FROM '+name),settings=_settings('whole',keys)) for name,keys in causes.items()]
-    from congress_api.models.archive_profile import build_capture_profile
-    capture_profile=build_capture_profile(engine_revision=engine.source_revision,
-        url_normalized_sql=(Path(root)/'model/sql/url-normalized.sql').read_text(),
-        url_keys_sql=(Path(root)/'model/sql/url-keys.sql').read_text(),
-        url_rules=json.loads((Path(root)/'model/registries/url-rules.json').read_text()))
-    from congress_api.retention.provenance import file_pin
-    selectors={item['name']:dict(item) if item['kind']=='native_table' else dict(kind='parquet',path=item['path'],**file_pin(item['path'])) for item in data_inputs}
-    model_profile=profile_record(parser_versions=parser_versions,catalog_version=catalog_version,
-        engine_revision=engine.source_revision,runtime_pins=dict(platform=engine.platform,build_features=list(engine.build_features),
-            binary_sha256=engine.binary_sha256,limits=json.loads(engine.limits.read_text())),
-        lake_versions={name:dict(schema_sha256=file_pin(Path(root)/'model/lake'/(name.replace('_','-')+'.schema.json'))['sha256']) for name in ['captures','readings','filename_readings']},
-        snapshots=selectors,writer_settings=dict(schema_version=1,whole=_settings('whole',['list_row']),
-            ranged=_settings('ranged',['list_row']),lookup=_settings('lookup',['link_key'])),root=root)
-    (scratch/'profile.json').write_text(json.dumps(model_profile,ensure_ascii=False,sort_keys=True,separators=(',',':'))+'\n')
+    prefix_checks=','.join(sql+' AS '+name for name,sql in evidence_checks().items())
     manifest=_execute(inputs,steps,output=output,scratch=scratch,engine=engine,
         lookup_extra="SELECT o.list_row,a.url FROM source_addresses a JOIN document_members m ON a.source_id=m.source_id JOIN document_identities d ON m.component=d.component JOIN ordered o ON d.document_id=o.doc_key WHERE m.is_real_file",
-        origin=dict(kind='model',gaps=[]),content_files={'capture_profile.json':capture_profile},auxiliary=auxiliary,extra_outputs=extra,
+        metadata_queries=[input_receipts_query()],origin=dict(kind='model',gaps=[]),content_files={'capture_profile.json':capture_profile},auxiliary=auxiliary,extra_outputs=extra,
         capture_scope=json.loads((Path(root)/'model/registries/capture-scope.json').read_text()),
-        diagnostics=[dict(name='model_invariants',sql=f"""SELECT {evidence_checks()['conflicting_writer_formats']} AS conflicting_writer_formats,
-            (SELECT count(*) FROM sniff_conflicts) AS conflicting_sniffs,
-            (SELECT count(*) FROM (SELECT sha256 FROM captures WHERE sha256 IS NOT NULL GROUP BY sha256 HAVING count(DISTINCT bytes)>1)) AS conflicting_original_sizes,
-            (SELECT count(*) FROM verification_conflicts) AS conflicting_verifications,
+        diagnostics=[dict(name='model_invariants',sql=f"""SELECT {prefix_checks},
             (SELECT count(*) FROM model_url_keys WHERE error IS NOT NULL) AS invalid_url_keys,
-            (SELECT count(*) FROM recovery_diagnostics WHERE is_fatal) AS invalid_recoveries,
             (SELECT count(*) FROM recovery_attachment_diagnostics) AS invalid_recovery_attachments,
             (SELECT count(*) FROM body_review_key_conflicts) AS body_key_collisions,
             (SELECT count(*) FROM document_link_key_conflicts) AS review_key_collisions,
