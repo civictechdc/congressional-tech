@@ -67,7 +67,7 @@ def test_pinned_evidence_and_page_contexts_do_not_borrow_capture_parser_fields(t
     # Contradictory observations at one key/time have no latest authority.
     conflict=json_input(tmp_path,'conflicting_verifications',[
         dict(key='bodies/sha256/aa/'+'a'*64+'.pdf',size=1000,intact=state,
-            sha256_verified=True,checked_at='2026-10-21T12:00:00Z') for state in [True,False]],
+            sha256_verified=True,checked_at='2026-10-21T12:00:00Z' if state else '2026-10-21T08:00:00-04:00') for state in [True,False]],
         key='Utf8',size='Int64',intact='Boolean',sha256_verified='Boolean',checked_at='Utf8')
     conflict['name']='verification_records'
     other=tmp_path/'conflicting';other.mkdir()
