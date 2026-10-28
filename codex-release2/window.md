@@ -1,8 +1,8 @@
 # Lead runtime, main and data switch window
 
-Status: waiting for the qualified combined engine pin and final full-run proof. The forward block stops at its readiness guard until release fills every pin and marks it ready.
+Status: engine885 is approved; waiting for the three affected Linux application checks and final full-run proof. The forward block stops at its readiness guard until release fills every pin and marks it ready.
 
-Only the lead executes these outward commands. B0 receipt rewriting and R2 bucket locks remain deferred to a supervised owner window; this block runs neither. The artifact is an ordinary `linux-amd64` build from `@SOURCE_REVISION@`: @BINARY_BYTES@ bytes, SHA-256 `@LINUX_SHA256@`. It passed @LINUX_TEST_COUNT@ project-runner checks inside amd64 Python 3.12.13, including real native model/group/export and runtime setup. The immutable packet includes the exact descriptor, rollback descriptor, cross recipe and qualification evidence.
+Only the lead executes these outward commands. B0 receipt rewriting and R2 bucket locks remain deferred to a supervised owner window; this block runs neither. The artifact is an ordinary `linux-amd64` build from `885e8c3c2a971a0c11b16ff9ca5a69e8ecb79c26`: 227161600 bytes, SHA-256 `bd337f62a9f98e23da834a04159d59b41860a14a718e91dc8728480cc1094edd`. Linux qualification evidence: @LINUX_TEST_COUNT@. The checks use amd64 Python 3.12.13 and real native model/group/export plus runtime setup. The unchanged 120-second bounded-metadata fanout assertion timed out under QEMU; it must pass on the hosted native amd64 runner. If it fails there, stop before data activation and use the paired rollback below; never raise its timeout. The immutable packet includes the exact descriptor, rollback descriptor, cross recipe and qualification evidence.
 
 Current variable readback is the previous `c949c6762f001845d2933e55cb9d7cf237e80810` runtime: 220,185,776 bytes, SHA-256 `c14bfbd12b6ad958e9fa8cd8d2bc57feb014ef12431a9826ec078c631fdafd33`, bucket `congressional-tech-runtime`. Its complete JSON is in `rollback-runtime-artifact.json` in the packet. The application pin and variable must change together. Keep publishing, capture and Pages workflows paused during the window. Disabling a workflow preserves running jobs; the drain check below stops until every existing job finishes. Keep them paused through hosted validation and seed publication, then restore the old capture and update jobs after Pages succeeds. The new capture stays disabled until the raw rebuild passes its release checks. A hosted check queued before the variable changes may need a rerun afterwards.
 
@@ -22,7 +22,7 @@ test "$WINDOW_READY" -eq 1
 export REPO=civictechdc/congressional-tech
 export CLOUDFLARE_ACCOUNT_ID=174055408ff1560e60601c4d12c561c4
 export LANDING=/Users/mikewolfd/Work/wt/ct-landing-engine-first-20261028
-export RUNTIME_PACKET=/private/tmp/claude-501/-Users-mikewolfd-Work/71969fc5-4a0f-4f4e-aa49-d2dd9f4c2272/scratchpad/codex-coord/shared/@RUNTIME_PACKET_NAME@
+export RUNTIME_PACKET=/private/tmp/claude-501/-Users-mikewolfd-Work/71969fc5-4a0f-4f4e-aa49-d2dd9f4c2272/scratchpad/codex-coord/shared/linux-runtime-885e8c3
 export WINDOW=/private/tmp/claude-501/-Users-mikewolfd-Work/71969fc5-4a0f-4f4e-aa49-d2dd9f4c2272/scratchpad/codex-release2/lead-window
 mkdir "$WINDOW"
 
@@ -135,7 +135,7 @@ cd "$LANDING"
 .venv/bin/python -I -m viewer_publication.publish_docspec_runtime \
   --upload --bucket congressional-tech-runtime --binary "$RUNTIME_PACKET/docspec" \
   --expected-descriptor "$RUNTIME_PACKET/runtime-artifact.json" \
-  --source-revision @SOURCE_REVISION@ --platform linux-amd64 \
+  --source-revision 885e8c3c2a971a0c11b16ff9ca5a69e8ecb79c26 --platform linux-amd64 \
   --output "$WINDOW/uploaded-runtime-artifact.json"
 jq -S . "$WINDOW/uploaded-runtime-artifact.json" > "$WINDOW/uploaded-canonical.json"
 jq -S . "$RUNTIME_PACKET/runtime-artifact.json" > "$WINDOW/approved-canonical.json"
