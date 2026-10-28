@@ -91,9 +91,21 @@ def _reading_fields():
     return result
 
 
-def bundle_version(versions):
-    """Name the combined producer from its pinned leaf parser definitions."""
-    return sha256(json.dumps(versions,sort_keys=True,separators=(',',':')).encode()).hexdigest()
+def worker_limits():
+    """Name the exact resource policy passed to the supervised producer."""
+    return dict(timeout_seconds=WORKER_TIMEOUT_SECONDS,memory_bytes=WORKER_MEMORY_BYTES,
+                max_input_bytes=65536,max_output_bytes=8<<20)
+
+
+def bundle_version(versions,*,policy):
+    """Pin combined failure authority without invalidating completed leaf facts."""
+    from congress_api.lake.versions import version_digest
+    files={'producer':Path(__file__),
+        'supervisor':Path(__file__).parents[1]/'retention/parser_worker.py',
+        'resources':Path(__file__).parents[1]/'retention/process_resources.py'}
+    files.update({name:ROOT/'model/sql'/(name+'.sql') for name in
+        ['pinned-readings','sniff-observations','sniff-conflicts','sniff-facts']})
+    return version_digest(packages={},files=files,values=dict(leaf_versions=versions,policy=policy))
 
 
 def stage(*,captures,body_inventory,local_root,engine,work,decided_at,parser,
@@ -103,12 +115,15 @@ def stage(*,captures,body_inventory,local_root,engine,work,decided_at,parser,
     instant(decided_at)
     combined=parser is None
     versions={p:current_version(p) for p in ['sniff','html','xml','json']}
-    version=(bundle_version(versions) if combined else versions[parser])
+    limits=worker_limits()
+    version=(bundle_version(versions,policy=limits) if combined else versions[parser])
     parser='readings' if combined else parser
     if parser_version is not None and parser_version!=version:
         raise ValueError('Parser version does not match its current definition')
+    if combined and sniff_version is not None and sniff_version!=versions['sniff']:
+        raise ValueError('Combined sniff version must match the current definition')
     if sniff_version is None:
-        sniff_version=current_version('sniff')
+        sniff_version=versions['sniff']
     work=Path(work).resolve();work.mkdir(parents=True,exist_ok=False)
     raw=Path(local_root).resolve()
     inputs=[json_input(work,'parser_versions',[dict(parser=p,version=v) for p,v in ({**versions,'sniff':sniff_version} if combined else {'sniff':sniff_version}).items()],parser='Utf8',version='Utf8'),
@@ -138,10 +153,10 @@ def stage(*,captures,body_inventory,local_root,engine,work,decided_at,parser,
             WHERE NOT EXISTS (SELECT 1 FROM unreadable s WHERE s.supersedes=u.id)''')])
     if combined:
         steps.append(dict(name='body_admissions',sql="""SELECT sha256 AS body_sha,
-            CASE WHEN max(bytes)=0 THEN 'empty' WHEN min(media_type)='text/vtt' THEN 'vtt' ELSE 'm3u8' END AS format,
+            CASE WHEN bool_and(coalesce(bytes=0,false)) THEN 'empty' WHEN min(media_type)='text/vtt' THEN 'vtt' ELSE 'm3u8' END AS format,
             'writer_format' AS basis FROM captures WHERE sha256 IS NOT NULL GROUP BY sha256
-            HAVING (min(bytes)=0 AND max(bytes)=0) OR
-              (bool_and(fidelity='saved-text') AND count(media_type)=count(*) AND count(DISTINCT media_type)=1
+            HAVING bool_and(coalesce(bytes=0,false)) OR
+              (bool_and(coalesce(fidelity='saved-text',false)) AND count(media_type)=count(*) AND count(DISTINCT media_type)=1
                AND min(media_type) IN ('text/vtt','application/vnd.apple.mpegurl','application/x-mpegurl'))""",materialize=True))
     candidate=(f"NOT EXISTS(SELECT 1 FROM known_formats f WHERE f.body_sha=b.body_sha)" if parser=='sniff' else
                f"EXISTS(SELECT 1 FROM known_formats f WHERE f.body_sha=b.body_sha AND f.format={quote(parser)})")
@@ -183,8 +198,7 @@ def stage(*,captures,body_inventory,local_root,engine,work,decided_at,parser,
     counters=dict(pending_reads=0,read_bytes=0,unreadable=0)
     def rows():
         with worker_factory(parser,version,'congress_api.lake.readings:'+('parse_once_payload' if combined else 'parse_payload'),
-                timeout_seconds=WORKER_TIMEOUT_SECONDS,memory_bytes=WORKER_MEMORY_BYTES,
-                max_input_bytes=65536) as worker,decisions_path.open('x') as decisions:
+                **limits) as worker,decisions_path.open('x') as decisions:
             for item in parquet_records(work/'work-list.parquet'):
                 if item['physical_key'] is None:
                     counters['pending_reads']+=1;continue
@@ -197,40 +211,41 @@ def stage(*,captures,body_inventory,local_root,engine,work,decided_at,parser,
                 body_hex=item['body_sha'].hex()
                 if body_object_digest(item['physical_key'])!=body_hex:
                     raise ValueError('Pinned physical key names a different body')
-                if not combined and parser!='sniff' and item['stored_bytes']>MAX_STORED_BYTES:
-                    value=dict(status='size_limit',error_type='stored_size_limit')
-                else:
-                    payload=json.dumps(dict(path=str(path),parser=parser,stored_bytes=item['stored_bytes'],
-                        stored_gzip=item['stored_gzip']),separators=(',',':')).encode()
-                    if combined:
-                        payload=json.dumps(dict(path=str(path),cache=str(work/'body-bytes'/body_hex),stored_bytes=item['stored_bytes'],
-                            stored_gzip=item['stored_gzip'],versions=versions,known_format=item['known_format'],
-                            skip_parsers=sorted(set(item['skip_parsers'] or []) | ({'sniff'} if item['known_format'] is not None else set()))),separators=(',',':')).encode()
-                    outcome=worker.parse(body_hex,payload)
-                    if outcome['status']=='read_error':
-                        counters['pending_reads']+=1;continue
-                    if outcome['status']=='unreadable':
-                        identity=json.dumps([body_hex,parser,version,decided_at],separators=(',',':'))
-                        record=dict(id=sha256(identity.encode()).hexdigest(),body_sha256=body_hex,
-                            parser=parser,parser_version=version,reason=outcome['reason'],
-                            decided_by='readings',decided_at=decided_at,supersedes=None)
-                        encoded=json.dumps(record,separators=(',',':'))+'\n'
-                        decisions.write(encoded)
-                        counters['unreadable']+=1;continue
-                    if outcome['status']!='completed':raise ValueError('Invalid reading worker outcome')
-                    response=outcome['value'];counters['read_bytes']+=response.get('read_bytes',0)
-                    if response.get('read_error'):
-                        counters['pending_reads']+=1;continue
-                    value=response.get('rows') if combined else response['row']
-                for value in (value if combined else [value]):
-                    value=dict(value,body_hex=body_hex,parser=value.get('parser',parser),parser_version=value.get('parser_version',version),
-                        fingerprint_hex=value.get('fingerprint'),named_meetings=value.get('named_meetings',[]),
-                        links=value.get('links',[]),fields=value.get('fields',[]))
-                    value.pop('fingerprint',None)
-                    yield value
-                if combined:
-                    cache=work/'body-bytes'/body_hex
-                    if cache.exists():shutil.rmtree(cache)
+                cache=work/'body-bytes'/body_hex if combined else None
+                try:
+                    if not combined and parser!='sniff' and item['stored_bytes']>MAX_STORED_BYTES:
+                        value=dict(status='size_limit',error_type='stored_size_limit')
+                    else:
+                        payload=json.dumps(dict(path=str(path),parser=parser,stored_bytes=item['stored_bytes'],
+                            stored_gzip=item['stored_gzip']),separators=(',',':')).encode()
+                        if combined:
+                            payload=json.dumps(dict(path=str(path),cache=str(cache),stored_bytes=item['stored_bytes'],
+                                stored_gzip=item['stored_gzip'],versions=versions,known_format=item['known_format'],
+                                skip_parsers=sorted(set(item['skip_parsers'] or []) | ({'sniff'} if item['known_format'] is not None else set()))),separators=(',',':')).encode()
+                        outcome=worker.parse(body_hex,payload)
+                        if outcome['status']=='read_error':
+                            counters['pending_reads']+=1;continue
+                        if outcome['status']=='unreadable':
+                            identity=json.dumps([body_hex,parser,version,decided_at],separators=(',',':'))
+                            record=dict(id=sha256(identity.encode()).hexdigest(),body_sha256=body_hex,
+                                parser=parser,parser_version=version,reason=outcome['reason'],
+                                decided_by='readings',decided_at=decided_at,supersedes=None)
+                            encoded=json.dumps(record,separators=(',',':'))+'\n'
+                            decisions.write(encoded)
+                            counters['unreadable']+=1;continue
+                        if outcome['status']!='completed':raise ValueError('Invalid reading worker outcome')
+                        response=outcome['value'];counters['read_bytes']+=response.get('read_bytes',0)
+                        if response.get('read_error'):
+                            counters['pending_reads']+=1;continue
+                        value=response.get('rows') if combined else response['row']
+                    for value in (value if combined else [value]):
+                        value=dict(value,body_hex=body_hex,parser=value.get('parser',parser),parser_version=value.get('parser_version',version),
+                            fingerprint_hex=value.get('fingerprint'),named_meetings=value.get('named_meetings',[]),
+                            links=value.get('links',[]),fields=value.get('fields',[]))
+                        value.pop('fingerprint',None)
+                        yield value
+                finally:
+                    if cache is not None and cache.exists():shutil.rmtree(cache)
     source=json_input(parsed,'parsed_readings',rows(),**_reading_fields())
     columns=["arrow_cast(decode(body_hex,'hex'),'FixedSizeBinary(32)') AS body_sha",
              *[f'cast({name} AS DATE) AS {name}' if name=='content_date' else name for name in STRINGS],
