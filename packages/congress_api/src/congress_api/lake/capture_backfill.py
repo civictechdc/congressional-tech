@@ -127,6 +127,27 @@ def make_plan(files,counts,*,byte_target,item_target):
         expected_captures=sum(row['expected_captures'] for row in metrics.values()),batches=batches)
 
 
+def check_scratch(root,*outputs,min_free_bytes=15<<30):
+    """Refuse unowned local outputs and resource exhaustion before an effect."""
+    root=Path(root).resolve()
+    if any(not Path(path).resolve().is_relative_to(root) for path in outputs):
+        raise ValueError('Owned scratch root must contain every local backfill output')
+    existing=root
+    while not existing.exists():existing=existing.parent
+    if shutil.disk_usage(existing).free<min_free_bytes:
+        raise RuntimeError('Free disk is below the backfill floor')
+    total=0;pending=[root] if root.exists() else []
+    while pending:
+        with os.scandir(pending.pop()) as entries:
+            for entry in entries:
+                try:
+                    if entry.is_dir(follow_symlinks=False):pending.append(entry.path)
+                    else:total+=entry.stat(follow_symlinks=False).st_blocks*512
+                except FileNotFoundError:pass
+    if total>5<<30:raise RuntimeError('Owned backfill scratch exceeds 5GiB')
+    return root
+
+
 def monitor_command(command,*,work,physical_limit=16<<30,timeout=2700,min_free_bytes=15<<30,
                     scratch_root=None):
     """Run one owned batch process and record sampled RSS/physical footprint.
@@ -140,34 +161,24 @@ def monitor_command(command,*,work,physical_limit=16<<30,timeout=2700,min_free_b
     _positive(physical_limit,'physical_limit');_positive(timeout,'timeout')
     if not isinstance(command,list) or not command or any(not isinstance(v,str) for v in command):
         raise ValueError('A concrete batch command is required')
-    work=Path(work);work.mkdir(parents=True,exist_ok=True)
-    scratch_root=work if scratch_root is None else Path(scratch_root).resolve()
-    if not work.resolve().is_relative_to(scratch_root.resolve()):
-        raise ValueError('Owned scratch root must contain the batch work')
+    work=Path(work)
+    scratch_root=check_scratch(work if scratch_root is None else scratch_root,work,
+        min_free_bytes=min_free_bytes)
+    work.mkdir(parents=True,exist_ok=True)
     report=work/'measurement.json';partial=work/'measurement.json.partial';log=work/'process.log'
     if any(p.exists() for p in (report,partial,log)):raise FileExistsError('Batch measurement paths must be fresh')
     path=Path(__file__).resolve().parents[5]/'scripts/measure/process_rss.py'
     spec=importlib.util.spec_from_file_location('backfill_memory_sampler',path)
     sampler=importlib.util.module_from_spec(spec);spec.loader.exec_module(sampler)
-    if shutil.disk_usage(work).free<min_free_bytes:raise RuntimeError('Free disk is below the backfill floor')
-    def allocated():
-        total=0;pending=[scratch_root]
-        while pending:
-            with os.scandir(pending.pop()) as entries:
-                for entry in entries:
-                    try:
-                        if entry.is_dir(follow_symlinks=False):pending.append(entry.path)
-                        else:total+=entry.stat(follow_symlinks=False).st_blocks*512
-                    except FileNotFoundError:pass
-        return total
-    if allocated()>5<<30:raise RuntimeError('Owned backfill scratch exceeds 5GiB')
     watchdog='''import os,signal,subprocess,sys,time
 parent=int(sys.argv[1])
 process=subprocess.Popen(sys.argv[2:])
 while process.poll() is None:
  if os.getppid()!=parent:
+  signal.signal(signal.SIGTERM,signal.SIG_IGN)
   os.killpg(os.getpgrp(),signal.SIGTERM)
-  raise SystemExit(125)
+  time.sleep(2)
+  os.killpg(os.getpgrp(),signal.SIGKILL)
  time.sleep(.1)
 raise SystemExit(process.returncode)
 '''
@@ -191,16 +202,21 @@ raise SystemExit(process.returncode)
                     if physical>physical_limit:raise RuntimeError('Batch exceeded its physical memory limit')
                     if shutil.disk_usage(work).free<min_free_bytes:raise RuntimeError('Free disk dropped below the backfill floor')
                     if time.monotonic()>=disk_next:
-                        if allocated()>5<<30:raise RuntimeError('Owned backfill scratch exceeds 5GiB')
+                        check_scratch(scratch_root,work,min_free_bytes=min_free_bytes)
                         disk_next=time.monotonic()+5
                     if time.monotonic()-started>timeout:raise RuntimeError('Batch exceeded its time limit')
                     time.sleep(.5)
             except Exception as error:
                 failure=dict(type=type(error).__name__,message=str(error))
                 if child.poll() is None:
-                    os.killpg(child.pid,signal.SIGTERM)
+                    try:os.killpg(child.pid,signal.SIGTERM)
+                    except ProcessLookupError:pass
                     try:child.wait(timeout=5)
-                    except subprocess.TimeoutExpired:os.killpg(child.pid,signal.SIGKILL);child.wait()
+                    except subprocess.TimeoutExpired:pass
+                # The group can outlive its leader when a descendant ignores TERM.
+                try:os.killpg(child.pid,signal.SIGKILL)
+                except ProcessLookupError:pass
+                child.wait()
             result=dict(returncode=child.wait(),seconds=time.monotonic()-started,
                 monitor_pid=os.getpid(),owned_pgid=child.pid,samples=samples,
                 sampled_peak_tree_rss=peak,sampled_peak_tree_physical_footprint=physical_peak,
@@ -258,7 +274,13 @@ def execute_batches(files,counts,*,engine,engine_config,work,table,catalog_root,
     runtime=runtime_identity(engine,engine_config)
     runtime_custody={str(path):custody_identity(path) for path in (Path(engine_config),engine.limits)}
     definition=captures.current_version()
-    work=Path(work).resolve();work.mkdir(parents=True,exist_ok=False)
+    work=Path(work).resolve()
+    local_outputs=[work]
+    if catalog_root is not None:
+        local_outputs.append(catalog_root)
+        if location is not None:local_outputs.append(location)
+    scratch_root=check_scratch(scratch_root or work.parent,*local_outputs)
+    work.mkdir(parents=True,exist_ok=False)
     (work/'plan.json').write_text(json.dumps(dict(plan,mapping_digest=definition,runtime=runtime),indent=2)+'\n')
     counts_path=work/'source-counts.json';counts_path.write_text(json.dumps(counts,indent=2)+'\n')
     if create_table:
@@ -266,7 +288,8 @@ def execute_batches(files,counts,*,engine,engine_config,work,table,catalog_root,
         tables.create_table(engine=engine,work=work/'create',catalog_root=catalog_root,table=table,
             schema=schema,location=location,create_namespace=create_namespace)
     else:
-        tables.resolve_tables(engine=engine,work=work/'preflight',catalog_root=catalog_root,tables={'captures':table})
+        pin=tables.resolve_tables(engine=engine,work=work/'preflight',catalog_root=catalog_root,tables={'captures':table})['captures']
+        if catalog_root is not None:check_scratch(scratch_root,pin['metadata_location'])
     inventory={row['key']:row for row in files};reports=[]
     result=dict(status='running',qualified_for_downstream=False,mapping_digest=definition,
         engine=runtime,plan=plan,batches=reports,receipt_local_checks=scopes)

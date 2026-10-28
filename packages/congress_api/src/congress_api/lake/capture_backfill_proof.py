@@ -128,7 +128,7 @@ def prove_equivalence(files,counts,*,engine,engine_config,work,table,catalog_roo
                 work=work/name,table=target,catalog_root=catalog_root,location=target_location,
                 create_table=True,create_namespace=index==0,byte_target=byte_cost,item_target=item_cost,
                 validated_counter=validated_counter,source_qualifications=source_qualifications,
-                scratch_root=scratch_root or work)
+                scratch_root=scratch_root or work.parent)
             if value.get('status')!='public_guard_passed' or value.get('mapping_digest')!=identity['mapping_digest'] or value.get('engine')!=identity['engine']:
                 raise ValueError('Equivalence producer did not return guarded rows from the pinned definition/runtime')
             if name=='one_shot' and len(value['batches'])!=1:
