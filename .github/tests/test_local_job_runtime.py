@@ -94,7 +94,7 @@ def test_local_archive_bootstrap_precedes_each_offline_ci_consumer():
         assert setup<consumer
         assert steps[setup]['with']=={'artifact':'${{ vars.DOCSPEC_RUNTIME_ARTIFACT }}',
             'credentials':'${{ secrets.DOCSPEC_ENGINE_CREDENTIALS }}',
-            'account-id':'${{ vars.CLOUDFLARE_ACCOUNT_ID }}'}
+            'account-id':'174055408ff1560e60601c4d12c561c4'}
     action=(ROOT/'.github/actions/setup-local-job-runtime/action.yml').read_text()
     assert 'secrets.' not in action and 'setup-native-runtime.py' in action
     assert '--local' in action
@@ -132,3 +132,10 @@ def test_actual_browser_wrapper_runs_checked_children_and_stops_at_failure(tmp_p
     else:
         assert result.returncode==0 and len(commands)==3
         assert 'test:archive-heap-browser' in commands[2]
+
+
+def test_private_validation_runtime_keeps_main_trusted_source_boundary():
+    value=yaml.load((ROOT/'.github/workflows/validate-explorer.yml').read_text(),Loader=yaml.BaseLoader)
+    setup=next(step for step in value['jobs']['validate']['steps']
+               if step.get('uses')=='./.github/actions/setup-local-job-runtime')
+    assert setup['if'] == "github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository"

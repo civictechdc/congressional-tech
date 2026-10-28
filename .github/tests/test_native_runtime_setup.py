@@ -252,3 +252,32 @@ def test_local_limits_refuse_before_download_or_secret_file_creation(tmp_path, i
                       client=client,local_limits=policy)
     assert client.calls == []
     assert not (tmp_path/'installed').exists()
+
+
+@pytest.mark.parametrize('doctor_fails', [False, True])
+def test_local_cli_exports_only_local_paths_after_offline_doctor(tmp_path, inputs, monkeypatch, capsys, doctor_fails):
+    value = module()
+    binary, descriptor, credentials = inputs
+    monkeypatch.setenv('DOCSPEC_RUNTIME_ARTIFACT', json.dumps(descriptor))
+    monkeypatch.setenv('DOCSPEC_ENGINE_CREDENTIALS', json.dumps(credentials))
+    monkeypatch.setattr(value, 'make_client', lambda creds: ArtifactClient(binary))
+    calls=[]
+    def doctor(command, **kwargs):
+        calls.append((command, kwargs))
+        assert command[-3:] == ['doctor','--lane','production-offline']
+        local=json.loads(Path(kwargs['env']['DOCSPEC_JOB_CONFIG']).read_text())
+        assert 'remote' not in local and 'credentials' not in local
+        if doctor_fails:
+            raise subprocess.CalledProcessError(1, command)
+    monkeypatch.setattr(subprocess,'run',doctor)
+    envfile=tmp_path/'github-env';envfile.touch()
+    result=value.main(['--local','--directory',str(tmp_path/'runtime'),
+        '--output',str(tmp_path/'report.json'),'--github-env',str(envfile)])
+    assert calls and result == (1 if doctor_fails else 0)
+    if doctor_fails:
+        assert envfile.read_text() == ''
+    else:
+        exported=dict(line.split('=',1) for line in envfile.read_text().splitlines())
+        assert set(exported)=={'DOCSPEC_JOB_CONFIG','DOCSPEC_BINARY','DOCSPEC_BINARY_SHA256'}
+    output=capsys.readouterr()
+    assert all(secret not in output.out+output.err+envfile.read_text() for secret in credentials.values())
