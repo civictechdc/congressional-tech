@@ -583,12 +583,12 @@ One row per source file: 1,683,430 today.
 - **Effective filename:** the first non-empty name in this order, else `''`, by one SQL definition that the filename producer (§6.3) and the model share:
   1. the `recovered_filename` of the row's recovery decision (§7.8), unless the decision rejects it;
   2. the member basename, for an archive member;
-  3. the `h_content_disposition` filename, `filename*` [[RFC6266]] first, when the profile admits that header; phase 1 does not ingest download headers and proceeds to the address-based fallbacks;
+  3. the admitted flat `h_content_disposition` filename, `filename*` [[RFC6266]] first; no header arrays or prior-attempt copies are read;
   4. the value of the first filename-parameter registry entry present in the source URL's query, else the requested URL's, at its first occurrence;
   5. the source URL's last path segment;
   6. the requested URL's last path segment.
 - **Decoding:** URL segments and query values are percent-decoded once as strict UTF-8, `+` kept literal; an invalid sequence stays encoded.
-- **One name per capture row.** Each admitted effective name is its own source file, joined by the same-body edge. Phase 1 does not distinguish names offered only in headers at one address; those names stay in raw behind the capture pointer. The document shows the saved file's effective name.
+- **One name per capture row.** Each admitted effective name is its own source file, joined by the same-body edge. Other header copies stay in raw behind the capture pointer. The document shows the saved file's effective name.
 - **Grain:** two archive members with the same body and name at different paths are one source file; `sources` keeps each path.
 
 ### 7.5 Edges and Documents
