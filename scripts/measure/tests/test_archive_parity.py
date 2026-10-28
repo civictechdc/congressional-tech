@@ -243,3 +243,37 @@ def test_public_bytes_cannot_change_after_the_pinned_producer_result(tmp_path):
     path.write_bytes(path.read_bytes()+b'tampered')
     with pytest.raises(ValueError,match='size differs|digest differs'):
         parity.compare_descriptor(descriptor,engine_config=os.environ['DOCSPEC_JOB_CONFIG'],work=tmp_path/'comparison')
+
+
+def test_model_witnesses_use_native_receipt_keys_and_match_only_source_evidence(tmp_path):
+    """Caption loss, HTML addition and header names use actual capture facts."""
+    data=FIXTURE['integration']['members']
+    sources=[dict(receipt_key='receipts/a.jsonl',receipt_line=i,capture_index=0,source_id=m['source_id'],
+        body_sha=m['body_key'].split('/')[-1][:-3],filename=m['filename'],source_url=m['source_url'],import_date=None)
+        for i,m in enumerate(data)]
+    captures=[dict(receipt_key=s['receipt_key'],receipt_line=s['receipt_line'],capture_index=0,
+        format='vtt' if i==0 else 'html',mode='fetch',complete=True,http_status=200,outcome='stored',
+        url=s['source_url'],requested_url=s['source_url'],retrieved_at='2026-10-27T00:00:00Z',
+        fidelity='exact',member_path=None,h_content_disposition='attachment; filename="capture.txt"',
+        match_basis=None,original_url=None,recovered_url=None,publisher_requested=True)
+        for i,s in enumerate(sources)]
+    roles=[dict(receipt_key=s['receipt_key'],receipt_line=s['receipt_line'],capture_index=0,
+        record_role='caption' if i==0 else 'document',is_real_file=i!=0) for i,s in enumerate(sources)]
+    old=[dict(doc='old-'+str(i),source_id=s['source_id'],body_key=data[i]['body_key'],filename=s['filename'],source_url=s['source_url']) for i,s in enumerate(sources)]
+    new=[dict(doc='new-'+str(i),**{k:v for k,v in r.items() if k!='doc'}) for i,r in enumerate(old)]
+    inputs=[json_input(tmp_path,'capture_sources',sources,receipt_key='Utf8',receipt_line='Int64',capture_index='Int64',
+        source_id='Utf8',body_sha='Utf8',filename='Utf8',source_url='Utf8',import_date='Utf8'),
+        json_input(tmp_path,'capture_evidence',captures,receipt_key='Utf8',receipt_line='Int64',capture_index='Int64',
+            **{k:'Utf8' for k in ['format','mode','outcome','url','requested_url','retrieved_at','fidelity','member_path','h_content_disposition','match_basis','original_url','recovered_url']},
+            complete='Boolean',http_status='Int64',publisher_requested='Boolean'),
+        json_input(tmp_path,'record_roles',roles,receipt_key='Utf8',receipt_line='Int64',capture_index='Int64',record_role='Utf8',is_real_file='Boolean'),
+        json_input(tmp_path,'page_facts',[],body_sha='Utf8',status='Utf8',fingerprint='Utf8',error_type='Utf8'),
+        *[json_input(tmp_path,name,rows,doc='Utf8',source_id='Utf8',body_key='Utf8',filename='Utf8',source_url='Utf8') for name,rows in [('old_evidence_sources',old),('new_evidence_sources',new)]]
+    available={item['name']:set(f['name'] for f in item['schema']['fields']) for item in inputs}
+    steps,missing=parity.model_witness_steps(available)
+    assert 'direct_provider_same_text' in missing  # No retry attempt was invented.
+    reports=run_job(tmp_path/'native',engine(),inputs=inputs,steps=steps,outputs=[],queries=[dict(name='witnesses',
+        sql="SELECT old_doc,new_doc,subject,json_get_str(fact,'record_role') AS role,json_get_str(fact,'header_filename') AS header,evidence_ref FROM witnesses ORDER BY old_doc,new_doc,subject")])
+    assert any(r['old_doc']=='old-0' and r['role']=='caption' for r in reports['witnesses'])
+    assert any(r['new_doc']=='new-1' and r['role']=='document' and r['header']=='capture.txt' for r in reports['witnesses'])
+    assert all(r['evidence_ref'].startswith('receipts/a.jsonl:') for r in reports['witnesses'])
