@@ -92,9 +92,15 @@ def test_local_archive_bootstrap_precedes_each_offline_ci_consumer():
         setup=next(i for i,s in enumerate(steps) if s.get('uses')=='./.github/actions/setup-local-job-runtime')
         consumer=next(i for i,s in enumerate(steps) if 'production-offline' in s.get('run','') or 'capture_schedule' in s.get('run',''))
         assert setup<consumer
-        assert steps[setup]['with']==dict(url='${{ vars.DOCSPEC_LOCAL_RUNTIME_URL }}',sha256='${{ vars.DOCSPEC_LOCAL_RUNTIME_SHA256 }}')
+        assert steps[setup]['with']=={'artifact':'${{ vars.DOCSPEC_RUNTIME_ARTIFACT }}',
+            'credentials':'${{ secrets.DOCSPEC_ENGINE_CREDENTIALS }}',
+            'account-id':'${{ vars.CLOUDFLARE_ACCOUNT_ID }}'}
     action=(ROOT/'.github/actions/setup-local-job-runtime/action.yml').read_text()
-    assert 'secrets.' not in action and 'setup-local-job-runtime.py' in action
+    assert 'secrets.' not in action and 'setup-native-runtime.py' in action
+    assert '--local' in action
+    helper=(ROOT/'.github/scripts/setup-native-runtime.py').read_text()
+    assert 'DOCSPEC_JOB_CONFIG=' in helper
+    assert 'DOCSPEC_BINARY=' in helper
 
 
 def test_existing_ci_commands_enroll_all_site_mechanism_checks():

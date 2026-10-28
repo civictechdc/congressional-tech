@@ -207,3 +207,48 @@ def test_artifact_client_uses_only_declared_engine_s3_credentials(inputs, monkey
     assert captured['aws_access_key_id'] == inputs[2]['DOCSPEC_S3_ACCESS_KEY_ID']
     assert captured['aws_secret_access_key'] == inputs[2]['DOCSPEC_S3_SECRET_ACCESS_KEY']
     assert captured['config'].retries['total_max_attempts'] == 1
+
+
+def test_local_install_uses_private_binary_without_persisting_credentials(tmp_path, inputs, monkeypatch):
+    value = module()
+    binary, descriptor, credentials = inputs
+    client = ArtifactClient(binary)
+    monkeypatch.setattr(subprocess, 'run', lambda *a, **k: pytest.fail('Native process started'))
+    limits = dict(compute_threads=4, memory_bytes=14*1024**3, scratch_bytes=6*1024**3,
+                  batch_rows=8192, max_batch_bytes=64*1024**2, max_metadata_bytes=32*1024**2)
+    limits_file = tmp_path/'limits.json'
+    limits_file.write_text(json.dumps(limits))
+    directory = tmp_path/'runtime'
+    config, result = value.install(descriptor, credentials, tmp_path/'must-not-read-remote.json',
+        directory, client=client, local_limits=limits_file)
+    settings = json.loads(config.read_text())
+    assert 'remote' not in settings and 'credentials' not in settings
+    assert json.loads((directory/'limits.json').read_text()) == limits
+    assert set(p.name for p in directory.iterdir()) == {'docspec','runtime.json','limits.json'}
+    assert client.calls == [dict(Bucket=descriptor['bucket'], Key=descriptor['key'])]
+    assert client.body.closed
+    assert (directory/'docspec').read_bytes() == binary
+    assert settings['binary_sha256'] == descriptor['sha256']
+    assert result['verified'] and not result['native_provider_accessed']
+    assert all(secret not in config.read_text()+json.dumps(result) for secret in credentials.values())
+    from docspec_client import NativeDatasets
+    with NativeDatasets.from_config(config) as native:
+        assert native._remote_secrets == {}
+        assert native.limits == directory/'limits.json'
+    assert not (directory/'workspace').exists()
+
+
+@pytest.mark.parametrize('change', [{'compute_threads': True}, {'memory_bytes': 0}, {'extra':1}])
+def test_local_limits_refuse_before_download_or_secret_file_creation(tmp_path, inputs, change):
+    value = module()
+    binary, descriptor, credentials = inputs
+    limits = dict(compute_threads=4, memory_bytes=14*1024**3, scratch_bytes=6*1024**3,
+                  batch_rows=8192, max_batch_bytes=64*1024**2, max_metadata_bytes=32*1024**2)
+    limits.update(change)
+    policy=tmp_path/'limits.json';policy.write_text(json.dumps(limits))
+    client=ArtifactClient(binary)
+    with pytest.raises(ValueError,match='limits'):
+        value.install(descriptor,credentials,tmp_path/'absent',tmp_path/'installed',
+                      client=client,local_limits=policy)
+    assert client.calls == []
+    assert not (tmp_path/'installed').exists()
