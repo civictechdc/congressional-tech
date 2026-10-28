@@ -84,3 +84,34 @@ def test_prefetch_discards_returned_payloads_after_each_cache_write(tmp_path):
     keys=[KEY+str(i) for i in range(8)]
     store.prefetch_immutable(keys,max_workers=2)
     assert live==0 and peak<=2
+
+
+@pytest.mark.parametrize('etag',['"opaque-version-7"','multipart-version-7-12'])
+@pytest.mark.parametrize('ranged',[False,True])
+def test_listed_opaque_etag_is_exact_condition_not_md5(tmp_path,etag,ranged):
+    client=Client();client.change={'ETag':etag}
+    store=R2Store(client,'bucket',cache_dir=tmp_path/'cache')
+    pin=dict(etag=etag,md5=None,bytes=len(DATA))
+    options=dict(start=0,length=8192) if ranged else {}
+    result=store.read(KEY,expected=pin,**options)
+    assert result==(DATA[:8192] if ranged else DATA)
+    assert client.reads[0]['IfMatch']==etag
+    assert client.streams[0].closed
+
+
+def test_listed_etag_cannot_hide_captured_md5_mismatch(tmp_path):
+    client=Client();client.change={'ETag':'"opaque"'}
+    with pytest.raises(ValueError,match='MD5'):
+        R2Store(client,'bucket',cache_dir=tmp_path/'cache').read(KEY,
+            expected=dict(etag='"opaque"',md5='0'*32,bytes=len(DATA)))
+    assert len(client.reads)==1
+
+
+def test_listed_opaque_etag_drift_refuses_before_body_consumption(tmp_path):
+    class Untouched(io.BytesIO):
+        def read(self,*args):raise AssertionError('Changed object must not be consumed')
+    client=Client();client.change={'ETag':'"changed"','Body':Untouched(DATA)}
+    with pytest.raises(ValueError):
+        R2Store(client,'bucket',cache_dir=tmp_path/'cache').read(KEY,start=0,length=8192,
+            expected=dict(etag='"listed"',md5=None,bytes=len(DATA)))
+    assert client.streams[0].closed
