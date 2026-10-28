@@ -1,6 +1,6 @@
 ---
 id: cefr-xjsp
-status: closed
+status: in_progress
 deps: []
 links: []
 created: 2026-10-27T18:55:33Z
@@ -38,3 +38,7 @@ Shared seam adapters now fail closed: missing model/sql/url-keys.sql or default 
 **2026-10-27T21:48:25Z**
 
 Local scope complete: CODE/ARCH APPROVE including bounded shared-validator followup98abd12f; models-path bindingd64aecc3 passes69 focused checks18.32s (33scheduler/10profile/26import). Actual shared SQL/variants and persistent worker exercised with fake HTTP/local stores. Exact first-live command and release/Linux/budget prerequisites in docs/measurements/engine-first-20261027/f2/README.md; no live action ran.
+
+**2026-10-28T01:49:38Z**
+
+Owner retro-review reopened F2: contract-first fixtures require persist-before-inspection, capture-time sniff facts on returned receipt, drain queued work after discovery replan bound, and remove authored identity overrides. Local synthetic expected-red runner: 14 failed in 3.30s. No live HTTP/storage action, credentials, production branches or monkeypatch. Root retains review and live-run authority.
