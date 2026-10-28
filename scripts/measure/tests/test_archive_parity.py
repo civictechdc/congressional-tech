@@ -498,7 +498,7 @@ def test_publisher_witness_uses_canonical_kind_and_the_saved_source(tmp_path,eff
     steps,missing=parity.model_witness_steps(available)
     assert 'publisher_link_kind' not in missing
     steps.insert(0,dict(name='new_wide',sql="SELECT doc,list_row,filename,decode(body_hex,'hex') AS saved_body FROM new_wide_rows",materialize=True))
-    steps.append(dict(name='observed_differences',sql='SELECT d.*,w.fact,w.evidence_ref FROM case_differences d JOIN witnesses w ON d.new_doc=w.new_doc AND d.subject=w.subject'))
+    steps.append(dict(name='observed_differences',sql='SELECT d.*,w.fact,w.evidence_ref FROM case_differences d JOIN witnesses w ON d.new_doc=w.new_doc AND d.subject=w.subject',materialize=True))
     steps+=parity.cause_steps()
     reports=run_job(tmp_path,engine(),inputs=inputs,steps=steps,outputs=[],queries=[dict(name='causes',sql='SELECT DISTINCT difference_id,cause FROM known_causes ORDER BY difference_id')])
     wanted=[dict(difference_id='canonical-kind',cause='publisher_link_kind'),dict(difference_id='page-url',cause='link_label_provenance')]
