@@ -65,6 +65,19 @@ def test_known_acquisition_outcome_keeps_its_priority_even_for_vote_items(tmp_pa
     assert (row['outcome'],row['http_status'],row['url'])==('stored',200,'https://fixture.test/acquired')
 
 
+def test_nested_receipt_aliases_precede_top_level_item_aliases(tmp_path):
+    item=provider_item(0,'captured_original_page')
+    item.update(http_status=404,retrieved_at='2020-01-01T00:00:00Z',
+        requested_url='https://fixture.test/lookup',url='https://fixture.test/lookup')
+    item['receipt']=dict(status_code=200,observed_at=TIMES[0],
+        final_url='https://fixture.test/source',body_complete=True)
+    stage=ingest(tmp_path,[dict(record=[item],captures=[body(pointer=[0,'receipt','body'])])],key=PROVIDER)
+    [row]=pq.read_table(stage/'captures.parquet').to_pylist()
+    assert (row['http_status'],row['outcome'])==(200,'stored')
+    assert row['retrieved_at'].isoformat()==TIMES[0]
+    assert row['requested_url']==row['url']=='https://fixture.test/source'
+
+
 def test_domain_registry_bytes_are_part_of_the_mapping_identity(tmp_path):
     root=Path(captures.__file__).resolve().parents[5]
     relative=Path('model/registries/receipt-domain-outcomes.json')
