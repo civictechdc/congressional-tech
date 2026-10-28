@@ -19,8 +19,11 @@ permissions:
   contents: write
 
 concurrency:
-  group: update-data
+  # Saves pipeline-data to raw, so it joins the shared R2 writer lock; this also
+  # keeps the two pipeline-data writers (update and publish) from overlapping.
+  group: raw-source-mirror
   cancel-in-progress: false
+  queue: max
 
 env:
   CHANNELS_CSV: packages/congress_shared/src/congress_shared/youtube/youtube-accounts.csv
