@@ -73,16 +73,16 @@ def _sql_steps():
 def _seed_steps():
     return _sql_steps()+[
         _step('seed_old_meeting_values',"SELECT legacy_document_id,cast(try_cast(regexp_replace(unnest(source_meeting_id),'^(HHRG|HMKP|HMTG)-?','') AS BIGINT) AS VARCHAR) AS meeting_key FROM seed_docs"),
-        _step('seed_old_meetings',"SELECT legacy_document_id,array_agg(DISTINCT meeting_key ORDER BY meeting_key) AS meeting_keys FROM seed_old_meeting_values WHERE meeting_key IS NOT NULL GROUP BY legacy_document_id",materialize=True),
+        _step('seed_old_meetings',"SELECT legacy_document_id,array_agg(DISTINCT meeting_key ORDER BY meeting_key) AS meeting_keys FROM seed_old_meeting_values WHERE meeting_key IS NOT NULL GROUP BY legacy_document_id",materialize=True,release_after=["seed_old_meeting_values"]),
         _step('seed_links',"""SELECT i.document_id,array_agg(DISTINCT m.body_hex ORDER BY m.body_hex) FILTER(WHERE m.body_hex IS NOT NULL) AS link_bodies
             FROM seed_members m JOIN seed_identities i USING(legacy_document_id) GROUP BY i.document_id""",materialize=True),
         _step('seed_meeting_values',f"""SELECT i.document_id,cast(try_cast(regexp_replace(unnest(d.source_meeting_id),'^(HHRG|HMKP|HMTG)-?','') AS BIGINT) AS VARCHAR) AS meeting_key
             FROM seed_docs d JOIN seed_identities i USING(legacy_document_id)
             UNION SELECT i.document_id,unnest({legacy_meeting_keys('m.source_url')}) FROM seed_members m JOIN seed_identities i USING(legacy_document_id)"""),
-        _step('seed_meetings',"SELECT document_id,array_agg(DISTINCT meeting_key ORDER BY meeting_key) AS meeting_keys FROM seed_meeting_values WHERE meeting_key IS NOT NULL GROUP BY document_id",materialize=True),
+        _step('seed_meetings',"SELECT document_id,array_agg(DISTINCT meeting_key ORDER BY meeting_key) AS meeting_keys FROM seed_meeting_values WHERE meeting_key IS NOT NULL GROUP BY document_id",materialize=True,release_after=["seed_meeting_values"]),
         _step('seed_codes',"SELECT i.document_id,unnest(d.committee_code) AS code FROM seed_docs d JOIN seed_identities i USING(legacy_document_id)"),
         _step('seed_committees',"""SELECT d.document_id,array_agg(DISTINCT c.system_code ORDER BY c.system_code) AS committee_keys,
-            array_agg(DISTINCT c.chamber ORDER BY c.chamber) AS chambers FROM seed_codes d JOIN committee_codes c ON upper(d.code)=upper(c.code) GROUP BY d.document_id""",materialize=True),
+            array_agg(DISTINCT c.chamber ORDER BY c.chamber) AS chambers FROM seed_codes d JOIN committee_codes c ON upper(d.code)=upper(c.code) GROUP BY d.document_id""",materialize=True,release_after=["seed_codes"]),
         _step('recovery_input',"SELECT doc_key,recovery_key,original_url,kind,body,suffix,bytes,imported_at,recovered_url,identity_note FROM seed_recoveries"),
         _step('seed_recovery_choice',"SELECT *,row_number() OVER(PARTITION BY doc_key ORDER BY kind,recovered_url,body_hex,recovery_key) AS preference FROM seed_recoveries",materialize=True),
         _step('seed_presented',"""SELECT r.document_id,d.*,i.body_keys,i.source_ids,
@@ -100,7 +100,8 @@ def _seed_steps():
             LEFT JOIN seed_recovery_choice a ON r.document_id=a.doc_key AND a.preference=1
             LEFT JOIN seed_meetings m ON r.document_id=m.document_id
             LEFT JOIN seed_committees c ON r.document_id=c.document_id
-            LEFT JOIN seed_links l ON r.document_id=l.document_id""",materialize=True),
+            LEFT JOIN seed_links l ON r.document_id=l.document_id""",materialize=True,
+            release_after=["seed_dates","seed_links","seed_meetings","seed_committees","seed_recovery_choice"]),
         _step('normalized',_normal('seed_presented p',doc_key='p.document_id',filename='p.filename',title='p.title',
             source_url='p.source_url',body_expected='p.body_key IS NOT NULL',body_hex='p.saved_hex',
             format='p.saved_format',document_kind='p.document_kind',document_family='p.document_family',
@@ -110,7 +111,7 @@ def _seed_steps():
             suffix="CASE WHEN regexp_like(p.saved_physical,'[.]pdf$') THEN '.pdf' WHEN regexp_like(p.saved_physical,'[.]gz$') THEN '.gz' ELSE '' END",
             media_type="coalesce(p.media_type,CASE WHEN p.saved_format='pdf' THEN 'application/pdf' ELSE 'application/octet-stream' END)",
             bytes='p.saved_size',document_date_source="CASE WHEN p.document_date IS NOT NULL THEN 'filename' END",link_bodies='p.link_bodies',
-            package_id='array_element(p.hearing_package_id,1)'),materialize=True),
+            package_id='array_element(p.hearing_package_id,1)'),materialize=True,release_after=['seed_presented']),
         _step('meeting_input',"""WITH candidates AS (SELECT try_cast(regexp_replace(d.source_meeting_id[1],'^(HHRG|HMKP|HMTG)-?','') AS BIGINT) AS event_id,
             CASE WHEN cardinality(d.source_chamber)=1 THEN lower(d.source_chamber[1]) END AS chamber,
             CASE WHEN cardinality(d.source_meeting_title)=1 THEN d.source_meeting_title[1] END AS title,

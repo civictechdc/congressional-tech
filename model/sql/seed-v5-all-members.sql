@@ -6,7 +6,7 @@ WITH base AS (
  try_cast(array_element(source_document_added_at,1) AS DATE) AS posted,
  lower(coalesce(array_element(format,1),array_element(body_format,1))) AS format,
  array_element(media_type,1) AS media_type
- FROM seed_file_values f LEFT JOIN seed_name_url n ON (f.body_key IS NOT DISTINCT FROM n.body_key) AND (f.source_url IS NOT DISTINCT FROM n.source_url)
+ FROM seed_name_url n RIGHT JOIN seed_file_values f ON (f.body_key IS NOT DISTINCT FROM n.body_key) AND (f.source_url IS NOT DISTINCT FROM n.source_url)
 ), logical AS (
  SELECT *,CASE WHEN body_hex IS NOT NULL THEN 'bodies/sha256/'||substr(body_hex,1,2)||'/'||body_hex||'.gz' END AS logical_body_key
  FROM base
