@@ -170,12 +170,12 @@ def test_unreadable_import_failure_stops_before_append_and_next_batch(tmp_path):
         def __enter__(self):return self
         def __exit__(self,*args):pass
         def parse(self,key,payload):parsed.append(key);return dict(status='unreadable',attempts=2,reason='timeout')
-    class UnavailableStore:
+    class UnavailableStore(BodyStore):
         def put(self,key,path,media):raise OSError('durable raw unavailable')
     with pytest.raises(OSError,match='durable raw unavailable'):
         readings.run(**args,**target,work=tmp_path/'backfill',mode='backfill',execute=True,
             batch_size=2,read_current=lambda **kwargs:None,worker_factory=Terminal,
-            unreadable_store=UnavailableStore())
+            unreadable_store=UnavailableStore(LocalAdapter(tmp_path/'durable')))
     assert len(parsed)==2 and not list((tmp_path/'backfill').rglob('append'))
     assert not (tmp_path/'backfill/batch-000001').exists()
 

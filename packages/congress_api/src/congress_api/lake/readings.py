@@ -355,7 +355,7 @@ def append(staged,**kwargs):
 
 def run(*,engine,work,mode,execute=False,max_work_items=None,batch_size=None,parser=None,
         table=None,catalog_root=None,read_current=None,existing=None,
-        unreadable_store=None,worker_factory=ParserWorker,**inputs):
+        unreadable_store=None,read_unreadable=None,worker_factory=ParserWorker,**inputs):
     """Admit one plan; execute daily once, or stream bounded backfill batches.
 
     The native anti-join runs once per invocation. The sorted metadata work list
@@ -384,6 +384,20 @@ def run(*,engine,work,mode,execute=False,max_work_items=None,batch_size=None,par
         # A caller-supplied reader must use the configured native catalog owner.
         # No empty append or direct metadata/catalog parsing substitutes for it.
         existing=read_current(engine=engine,work=work/'current',catalog_root=catalog_root,table=table)
+    if execute:
+        # Refresh filenames once per invocation, before the native anti-join.
+        # Raw decisions are append-only; the original spec cannot know later batches.
+        if read_unreadable is not None:
+            fresh=read_unreadable(store=unreadable_store)
+        elif isinstance(unreadable_store,BodyStore) and isinstance(unreadable_store.adapter,LocalAdapter):
+            root=unreadable_store.adapter.root.resolve()
+            fresh=[dict(key=p.relative_to(root).as_posix(),path=str(p))
+                   for p in sorted((root/'provenance/unreadable').glob('*.jsonl'))]
+        else:
+            raise ValueError('Execution requires a current unreadable inventory reader')
+        inventory={(r['key'],r['path']):r for r in inputs.get('unreadable_files',())}
+        inventory.update({(r['key'],r['path']):r for r in fresh})
+        inputs['unreadable_files']=list(inventory.values())
     planned=plan(engine=engine,work=work/'plan',parser=parser,existing=existing,
         max_work_items=max_work_items if mode=='daily' else None,**inputs)
     report={name:planned[name] for name in ('status','work_items','work_list','body_admissions','parser','parser_version')}
