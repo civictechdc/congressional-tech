@@ -14,7 +14,9 @@ SELECT d.document_id AS legacy_document_id,coalesce(CASE WHEN trim(d.filename)<>
  measure_references,member_bioguide_id,hearing_package_id,
  source_meeting_id,source_meeting_title,source_meeting_date,source_chamber,
  source_committee_code,source_committee_name,array_element(source_page_url,1) AS source_page
-FROM v5_documents d
-LEFT JOIN seed_name_url u ON d.body_key=u.body_key AND d.source_url IS NOT NULL AND d.source_url=u.source_url
-LEFT JOIN seed_name_body b ON d.body_key=b.body_key
-LEFT JOIN seed_body_formats f ON d.body_key=f.body_key
+FROM seed_body_formats f RIGHT JOIN (
+ seed_name_body b RIGHT JOIN (
+  seed_name_url u RIGHT JOIN v5_documents d
+  ON d.body_key=u.body_key AND d.source_url IS NOT NULL AND d.source_url=u.source_url
+ ) ON d.body_key=b.body_key
+) ON d.body_key=f.body_key
