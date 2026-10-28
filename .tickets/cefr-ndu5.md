@@ -17,3 +17,9 @@ Owner portability correction: set the persistent parser child address-space ceil
 
 Fake large-VSZ and inherited-limit fixtures pass; persistent actual worker keeps one ceiling across inputs; existing parser/resource focused tests pass; fresh CODE review; release reruns the named Linux cases.
 
+
+## Notes
+
+**2026-10-28T11:17:43Z**
+
+Contracts11eeb358:20 expected missing-helper failures/9 existing passes. Behavior focused41PASS5.09s on macOS through project production-offline runner, including actual persistent worker with2GiB untouched mapping, fake3GiB baseline and finite-hard-limit refusal; no monkeypatches. RSS supervisor budget unchanged. Actual Linux AS branch still requires release replay of the same three cases. Fresh CODE review pending.
