@@ -116,8 +116,10 @@ def test_fixed_site_probe_arguments_use_one_publisher_and_declared_paths(tmp_pat
 
 def remote_config(tmp_path,*,endpoint=None,owned_prefix=None):
     path=tmp_path/'public-remote.json'
-    path.write_text(json.dumps(dict(owned_prefix=owned_prefix or 's3://derived-fixture/viewer-publications',
-        properties={'s3.endpoint':endpoint or 'https://'+'a'*32+'.r2.cloudflarestorage.com','s3.region':'auto'},
+    path.write_text(json.dumps(dict(owned_prefix=owned_prefix or 's3://derived-fixture/__r2_data_catalog/ct-archive-v2',
+        properties={'s3.endpoint':endpoint or 'https://'+'a'*32+'.r2.cloudflarestorage.com','s3.region':'auto',
+                    'uri':'https://catalog.cloudflarestorage.com/'+'a'*32+'/derived-fixture',
+                    'warehouse':'a'*32+'_derived-fixture','docspec.namespace-generation':'00000000-0000-4000-8000-000000000001'},
         secret_env={'s3.access-key-id':'DOCSPEC_R2_ACCESS','s3.secret-access-key':'DOCSPEC_R2_SECRET'})))
     return path
 
@@ -132,6 +134,10 @@ def test_destination_refuses_provider_bucket_or_namespace_before_any_native_or_s
     from viewer_publication.archive_publish_job import execute,load_spec
     value=publish_spec(tmp_path);path=tmp_path/'publish.json';path.write_text(json.dumps(value))
     remote=remote_config(tmp_path,endpoint=endpoint,owned_prefix=prefix);events=[]
+    runtime=tmp_path/'public-runtime.json';runtime.write_text(json.dumps(dict(version=1,binary='/unopened/binary',
+        workspace=str(tmp_path/'workspace'),remote=str(remote),credentials='/unopened/credentials.json')))
+    modelpath=Path(value['model_spec']['path']);model=json.loads(modelpath.read_text());model['engine_config']=str(runtime)
+    modelpath.write_text(json.dumps(model));value['model_spec']=dict(path=str(modelpath),**file_pin(modelpath));path.write_text(json.dumps(value))
     class Runtime:
         def __init__(self):self.remote=remote
         def __enter__(self):return self
@@ -167,13 +173,26 @@ def test_execute_binds_matching_destination_and_records_actual_native_probe_comm
     value=publish_spec(tmp_path);model,_,_=real_model_spec(tmp_path)
     path=Path(value['model_spec']['path']);path.write_text(json.dumps(model));value['model_spec']=dict(path=str(path),**file_pin(path))
     specpath=tmp_path/'publish.json';specpath.write_text(json.dumps(value));spec=load_spec(specpath)
-    remote=remote_config(tmp_path);store=Store();events=[];commands=[]
+    remote=remote_config(tmp_path);store=Store();events=[];commands=[];configs=[]
+    runtime=tmp_path/'public-runtime.json';settings=json.loads(Path(os.environ['DOCSPEC_JOB_CONFIG']).read_text())
+    # Fake transport owns its credentials; these public references are never opened.
+    original=Path(os.environ['DOCSPEC_JOB_CONFIG']).parent
+    for field in ['binary','limits','workspace']:
+        if field in settings:settings[field]=str((original/settings[field]).resolve())
+    settings.update(remote=str(remote),credentials='/unopened/fake-credentials.json')
+    runtime.write_text(json.dumps(settings));model['engine_config']=str(runtime)
+    Path(value['model_spec']['path']).write_text(json.dumps(model))
+    value['model_spec']=dict(path=value['model_spec']['path'],**file_pin(value['model_spec']['path']))
+    value['receipt_keys']=['receipts/documents/2026-10-27/slice.jsonl.gz']
+    specpath.write_text(json.dumps(value));spec=load_spec(specpath)
     class Runtime(NativeTransport):
-        def __init__(self,native):super().__init__(native,store);self.remote=remote
+        def __init__(self,native,configuration):super().__init__(native,store);self.remote=Path(configuration['remote'])
         def __enter__(self):return self
         def __exit__(self,*_):self.native.close()
         def verify_runtime(self):events.append('qualified');return self.native.verify_runtime()
-    def runtime_factory(_):return Runtime(NativeDatasets.from_config(os.environ['DOCSPEC_JOB_CONFIG']))
+    def runtime_factory(path):
+        configuration=json.loads(Path(path).read_text());configs.append(configuration)
+        return Runtime(NativeDatasets.from_config(os.environ['DOCSPEC_JOB_CONFIG']),configuration)
     def storage_factory(**kwargs):
         assert events and events[0]=='qualified'
         assert kwargs==dict(bucket='derived-fixture',endpoint_url='https://'+'a'*32+'.r2.cloudflarestorage.com',retries={'total_max_attempts':1})
@@ -193,3 +212,6 @@ def test_execute_binds_matching_destination_and_records_actual_native_probe_comm
     assert commands[0][-2:]==['--link-key',selectors['link_key']]
     assert commands[1][-2:]==['--saved-row',str(selectors['saved_row'])]
     assert spec['provenance']==value['provenance']
+    assert len(configs)==2 and configs[0]['remote']!=configs[1]['remote']
+    assert all(configs[0][name]==configs[1][name] for name in ['binary','limits','binary_sha256','source_revision'])
+    assert not Path(configs[1]['remote']).exists()  # Owned startup metadata was cleaned up.
