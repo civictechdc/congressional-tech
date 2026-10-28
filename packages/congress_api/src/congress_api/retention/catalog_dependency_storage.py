@@ -316,12 +316,23 @@ class CatalogDependencyStorage:
         logical=dependency_schema(pa.schema([self.source_schema.field(name)for name in source_columns]))
         return table if physical.equals(logical,check_metadata=True) else pa.Table.from_pylist(table.to_pylist(),schema=logical)
 
-    def source_occurrences(self, selection, value, source_id):
+    def source_occurrence_reader(self, selection, value):
+        """Bind one selected leaf for repeated owner reads without schema decoding.
+
+        Keep a private copy of the reference so caller mutations cannot change an
+        already bound reader. CatalogRows still admits its exact descriptor and
+        checks child ownership and ordinal coverage.
+        """
         basis=self._selection(selection)
-        reference=self._source_reference(value,basis)
-        if 'source_occurrences' not in self._source_leaf_schema(reference).names:
-            return None
-        return self.row_owner.occurrences(reference['release'],schema=dependency_schema(self._source_leaf_schema(reference)),owner_id=source_id)
+        reference=deepcopy(self._source_reference(value,basis))
+        source_schema=self._source_leaf_schema(reference)
+        if 'source_occurrences' not in source_schema.names:
+            return lambda source_id: None
+        schema=dependency_schema(source_schema)
+        return lambda source_id: self.row_owner.occurrences(reference['release'],schema=schema,owner_id=source_id)
+
+    def source_occurrences(self, selection, value, source_id):
+        return self.source_occurrence_reader(selection,value)(source_id)
 
     def selected(self, selection):
         basis = self._selection(selection)

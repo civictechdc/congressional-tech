@@ -108,9 +108,14 @@ def prepare(batch, captures, timestamp_aliases=None):
     inputs[str(captures)] = digest(captures)
     needed = {(row['recovered_url'], row['body_key']) for row in rows if row.get('reused_retained_body')}
     prior = {}
-    columns = ['context_url', 'body_key', 'retrieved_at', 'receipt_key', 'receipt_line']
+    columns = ['context_url', 'sha256', 'retrieved_at', 'receipt_key', 'receipt_line']
     for part in pq.ParquetFile(captures).iter_batches(columns=columns, batch_size=32768):
         for row in part.to_pylist():
+            # Capture indexes store the digest and UTC instant; JSON evidence
+            # retains the derived logical key and their portable string forms.
+            row['body_key'] = raw_archive.derive_body_key(row['sha256'])
+            row['sha256'] = raw_archive.format_sha256(row['sha256'])
+            row['retrieved_at'] = raw_archive.format_timestamp(row['retrieved_at'])
             key = row['context_url'], row['body_key']
             at = instant(row['retrieved_at'])
             if key in needed and at is not None and (key not in prior or at > instant(prior[key]['retrieved_at'])):

@@ -1,0 +1,829 @@
+{
+  "version": 1,
+  "scope": "Offline generated native fixture and isolated 1000 one-byte payload journal fixture; real local persistence; modeled 1 ms SDK latency; no production service",
+  "runtime_source": "7145114742d2915e6bf1757c86039e31e3254884",
+  "baseline_runtime": "0bfeb21e84b73a9637713a3673d61dc97beb53be",
+  "baseline_with_identical_telemetry": "5554fd0bc5d09db69e5319bb6ebe56eb187c0448",
+  "journal_observations": {
+    "journal-candidate-2.json": {
+      "source": "d08dbd117ac65ac87c62165246d21d78f3de65ea",
+      "outcomes": {
+        "payload_writes": 1000,
+        "journal_events": 1669,
+        "journal_bytes": 865151,
+        "payload_replays": 1000,
+        "max_upload_window": 6,
+        "max_replay_window": 6,
+        "replay_payload_put_get_head_delta": [
+          0,
+          0,
+          0
+        ],
+        "uncertain_payload_reads": 0,
+        "total_wall_seconds": 6.859743
+      },
+      "stages": [
+        {
+          "stage": "upload",
+          "seconds": 4.726209832995664,
+          "counts": {
+            "json_dumps_calls": 9673,
+            "json_serialized_characters": 3593361,
+            "json_serialization_seconds": 0.050018461188301444,
+            "state_json_dump_calls": 4,
+            "state_json_serialized_characters": 742210,
+            "state_json_serialization_seconds": 0.002148417988792062,
+            "fsync_calls": 1677,
+            "fsync_seconds": 0.06762707961024716,
+            "journal_get_requests": 1,
+            "journal_get_seconds": 0.0015638339682482183,
+            "journal_get_failures": 1,
+            "put_body_bytes": 866151,
+            "journal_put_requests": 1669,
+            "journal_put_seconds": 2.482528143853415,
+            "journal_record_calls": 2002,
+            "journal_lock_wait_seconds": 21.869338794786017,
+            "journal_lock_held_seconds": 4.655984770623036,
+            "payload_put_requests": 1000,
+            "payload_put_seconds": 1.525126388296485
+          },
+          "memory_samples": 0
+        },
+        {
+          "stage": "restore_fresh_local_state",
+          "seconds": 1.877294709032867,
+          "counts": {
+            "json_dumps_calls": 4,
+            "json_serialized_characters": 1377757,
+            "json_serialization_seconds": 0.004306459042709321,
+            "state_json_dump_calls": 4,
+            "state_json_serialized_characters": 1377757,
+            "state_json_serialization_seconds": 0.004323875007685274,
+            "fsync_calls": 1675,
+            "fsync_seconds": 0.008542548981495202,
+            "journal_get_requests": 1669,
+            "journal_get_seconds": 2.4399287982378155,
+            "journal_list_requests": 2,
+            "journal_list_seconds": 0.0030409160535782576,
+            "get_body_bytes": 865151,
+            "journal_restore_calls": 1,
+            "journal_restore_seconds": 1.8671977079939097
+          },
+          "memory_samples": 0
+        },
+        {
+          "stage": "replay_acknowledged_payloads",
+          "seconds": 0.016555165988393128,
+          "counts": {},
+          "memory_samples": 0
+        }
+      ],
+      "memory_sampling_available": false
+    },
+    "journal-sequential-baseline.json": {
+      "source": "5554fd0bc5d09db69e5319bb6ebe56eb187c0448",
+      "outcomes": {
+        "payload_writes": 1000,
+        "journal_events": 1549,
+        "journal_bytes": 843791,
+        "payload_replays": 1000,
+        "max_upload_window": 6,
+        "max_replay_window": 6,
+        "replay_payload_put_get_head_delta": [
+          0,
+          0,
+          0
+        ],
+        "uncertain_payload_reads": 0,
+        "total_wall_seconds": 41.445895
+      },
+      "stages": [
+        {
+          "stage": "upload",
+          "seconds": 26.11661883397028,
+          "counts": {
+            "json_dumps_calls": 9553,
+            "json_serialized_characters": 3592583,
+            "json_serialization_seconds": 0.3870581262744963,
+            "state_json_dump_calls": 4,
+            "state_json_serialized_characters": 762792,
+            "state_json_serialization_seconds": 0.011330417997669429,
+            "fsync_calls": 1557,
+            "fsync_seconds": 1.688915446633473,
+            "journal_get_requests": 1,
+            "journal_get_seconds": 0.0016909170080907643,
+            "journal_get_failures": 1,
+            "put_body_bytes": 844791,
+            "journal_put_requests": 1549,
+            "journal_put_seconds": 6.736110215191729,
+            "journal_record_calls": 2002,
+            "journal_lock_wait_seconds": 117.40690854971763,
+            "journal_lock_held_seconds": 20.910180447914172,
+            "payload_put_requests": 1000,
+            "payload_put_seconds": 6.271956441923976
+          },
+          "memory_samples": 49
+        },
+        {
+          "stage": "restore_fresh_local_state",
+          "seconds": 12.753555624978617,
+          "counts": {
+            "json_dumps_calls": 4,
+            "json_serialized_characters": 1377757,
+            "json_serialization_seconds": 0.01959670800715685,
+            "state_json_dump_calls": 4,
+            "state_json_serialized_characters": 1377757,
+            "state_json_serialization_seconds": 0.021222540992312133,
+            "fsync_calls": 1555,
+            "fsync_seconds": 1.2245674903388135,
+            "journal_get_requests": 1549,
+            "journal_get_seconds": 4.792474715621211,
+            "journal_list_requests": 2,
+            "journal_list_seconds": 0.023955874959938228,
+            "get_body_bytes": 843791,
+            "journal_restore_calls": 1,
+            "journal_restore_seconds": 12.056825208012015
+          },
+          "memory_samples": 45
+        },
+        {
+          "stage": "replay_acknowledged_payloads",
+          "seconds": 0.645596457994543,
+          "counts": {},
+          "memory_samples": 3
+        }
+      ],
+      "memory_sampling_available": true
+    },
+    "journal-candidate-3.json": {
+      "source": "d08dbd117ac65ac87c62165246d21d78f3de65ea",
+      "outcomes": {
+        "payload_writes": 1000,
+        "journal_events": 1669,
+        "journal_bytes": 865151,
+        "payload_replays": 1000,
+        "max_upload_window": 6,
+        "max_replay_window": 6,
+        "replay_payload_put_get_head_delta": [
+          0,
+          0,
+          0
+        ],
+        "uncertain_payload_reads": 0,
+        "total_wall_seconds": 5.693002
+      },
+      "stages": [
+        {
+          "stage": "upload",
+          "seconds": 3.8211939159664325,
+          "counts": {
+            "json_dumps_calls": 9673,
+            "json_serialized_characters": 3593361,
+            "json_serialization_seconds": 0.03546614310471341,
+            "state_json_dump_calls": 4,
+            "state_json_serialized_characters": 742210,
+            "state_json_serialization_seconds": 0.0021027499460615218,
+            "fsync_calls": 1677,
+            "fsync_seconds": 0.04891634447267279,
+            "journal_get_requests": 1,
+            "journal_get_seconds": 0.0015227499534375966,
+            "journal_get_failures": 1,
+            "put_body_bytes": 866151,
+            "journal_put_requests": 1669,
+            "journal_put_seconds": 2.3854335465002805,
+            "journal_record_calls": 2002,
+            "journal_lock_wait_seconds": 17.39503877045354,
+            "journal_lock_held_seconds": 3.7693717987276614,
+            "payload_put_requests": 1000,
+            "payload_put_seconds": 1.5007195225334726
+          },
+          "memory_samples": 0
+        },
+        {
+          "stage": "restore_fresh_local_state",
+          "seconds": 1.623921624966897,
+          "counts": {
+            "json_dumps_calls": 4,
+            "json_serialized_characters": 1377757,
+            "json_serialization_seconds": 0.00390920793870464,
+            "state_json_dump_calls": 4,
+            "state_json_serialized_characters": 1377757,
+            "state_json_serialization_seconds": 0.003926415927708149,
+            "fsync_calls": 1675,
+            "fsync_seconds": 0.012570958177093416,
+            "journal_get_requests": 1669,
+            "journal_get_seconds": 2.4433439601561986,
+            "journal_list_requests": 2,
+            "journal_list_seconds": 0.0030125839984975755,
+            "get_body_bytes": 865151,
+            "journal_restore_calls": 1,
+            "journal_restore_seconds": 1.6162300420110114
+          },
+          "memory_samples": 0
+        },
+        {
+          "stage": "replay_acknowledged_payloads",
+          "seconds": 0.014953834004700184,
+          "counts": {},
+          "memory_samples": 0
+        }
+      ],
+      "memory_sampling_available": false
+    },
+    "journal-baseline-3.json": {
+      "source": "5554fd0bc5d09db69e5319bb6ebe56eb187c0448",
+      "outcomes": {
+        "payload_writes": 1000,
+        "journal_events": 1669,
+        "journal_bytes": 865151,
+        "payload_replays": 1000,
+        "max_upload_window": 6,
+        "max_replay_window": 6,
+        "replay_payload_put_get_head_delta": [
+          0,
+          0,
+          0
+        ],
+        "uncertain_payload_reads": 0,
+        "total_wall_seconds": 7.986261
+      },
+      "stages": [
+        {
+          "stage": "upload",
+          "seconds": 4.542545708012767,
+          "counts": {
+            "json_dumps_calls": 9673,
+            "json_serialized_characters": 3593361,
+            "json_serialization_seconds": 0.04677704849746078,
+            "state_json_dump_calls": 4,
+            "state_json_serialized_characters": 742210,
+            "state_json_serialization_seconds": 0.002090666035655886,
+            "fsync_calls": 1677,
+            "fsync_seconds": 0.06610584334703162,
+            "journal_get_requests": 1,
+            "journal_get_seconds": 0.0015674589667469263,
+            "journal_get_failures": 1,
+            "put_body_bytes": 866151,
+            "journal_put_requests": 1669,
+            "journal_put_seconds": 2.46274217084283,
+            "journal_record_calls": 2002,
+            "journal_lock_wait_seconds": 20.941678741946816,
+            "journal_lock_held_seconds": 4.454466674826108,
+            "payload_put_requests": 1000,
+            "payload_put_seconds": 1.537855746515561
+          },
+          "memory_samples": 0
+        },
+        {
+          "stage": "restore_fresh_local_state",
+          "seconds": 3.21409412502544,
+          "counts": {
+            "json_dumps_calls": 4,
+            "json_serialized_characters": 1377757,
+            "json_serialization_seconds": 0.003401248948648572,
+            "state_json_dump_calls": 4,
+            "state_json_serialized_characters": 1377757,
+            "state_json_serialization_seconds": 0.003412791993469,
+            "fsync_calls": 1675,
+            "fsync_seconds": 0.035606685385573655,
+            "journal_get_requests": 1669,
+            "journal_get_seconds": 2.6057619589264505,
+            "journal_list_requests": 2,
+            "journal_list_seconds": 0.003035707981325686,
+            "get_body_bytes": 865151,
+            "journal_restore_calls": 1,
+            "journal_restore_seconds": 3.2071078330045566
+          },
+          "memory_samples": 0
+        },
+        {
+          "stage": "replay_acknowledged_payloads",
+          "seconds": 0.01689733297098428,
+          "counts": {},
+          "memory_samples": 0
+        }
+      ],
+      "memory_sampling_available": false
+    },
+    "journal-baseline-2.json": {
+      "source": "5554fd0bc5d09db69e5319bb6ebe56eb187c0448",
+      "outcomes": {
+        "payload_writes": 1000,
+        "journal_events": 1669,
+        "journal_bytes": 865151,
+        "payload_replays": 1000,
+        "max_upload_window": 6,
+        "max_replay_window": 6,
+        "replay_payload_put_get_head_delta": [
+          0,
+          0,
+          0
+        ],
+        "uncertain_payload_reads": 0,
+        "total_wall_seconds": 7.840023
+      },
+      "stages": [
+        {
+          "stage": "upload",
+          "seconds": 4.507025166996755,
+          "counts": {
+            "json_dumps_calls": 9673,
+            "json_serialized_characters": 3593361,
+            "json_serialization_seconds": 0.04671929805772379,
+            "state_json_dump_calls": 4,
+            "state_json_serialized_characters": 742210,
+            "state_json_serialization_seconds": 0.002715208102017641,
+            "fsync_calls": 1677,
+            "fsync_seconds": 0.05661819805391133,
+            "journal_get_requests": 1,
+            "journal_get_seconds": 0.0015290000010281801,
+            "journal_get_failures": 1,
+            "put_body_bytes": 866151,
+            "journal_put_requests": 1669,
+            "journal_put_seconds": 2.472162026388105,
+            "journal_record_calls": 2002,
+            "journal_lock_wait_seconds": 20.766763252438977,
+            "journal_lock_held_seconds": 4.440445098502096,
+            "payload_put_requests": 1000,
+            "payload_put_seconds": 1.5236501177423634
+          },
+          "memory_samples": 0
+        },
+        {
+          "stage": "restore_fresh_local_state",
+          "seconds": 3.099943249952048,
+          "counts": {
+            "json_dumps_calls": 4,
+            "json_serialized_characters": 1377757,
+            "json_serialization_seconds": 0.0034858749713748693,
+            "state_json_dump_calls": 4,
+            "state_json_serialized_characters": 1377757,
+            "state_json_serialization_seconds": 0.0034975409507751465,
+            "fsync_calls": 1675,
+            "fsync_seconds": 0.033168279682286084,
+            "journal_get_requests": 1669,
+            "journal_get_seconds": 2.5739001633482985,
+            "journal_list_requests": 2,
+            "journal_list_seconds": 0.0030416669324040413,
+            "get_body_bytes": 865151,
+            "journal_restore_calls": 1,
+            "journal_restore_seconds": 3.092703166010324
+          },
+          "memory_samples": 0
+        },
+        {
+          "stage": "replay_acknowledged_payloads",
+          "seconds": 0.014474791998509318,
+          "counts": {},
+          "memory_samples": 0
+        }
+      ],
+      "memory_sampling_available": false
+    },
+    "journal-grouped-1.json": {
+      "source": "e47d0384c6ba4aaa05df272402edc57d6a739c92",
+      "outcomes": {
+        "payload_writes": 1000,
+        "journal_events": 1002,
+        "journal_bytes": 740025,
+        "payload_replays": 1000,
+        "max_upload_window": 6,
+        "max_replay_window": 6,
+        "replay_payload_put_get_head_delta": [
+          0,
+          0,
+          0
+        ],
+        "uncertain_payload_reads": 0,
+        "total_wall_seconds": 14.884125
+      },
+      "stages": [
+        {
+          "stage": "upload",
+          "seconds": 8.51421258301707,
+          "counts": {
+            "json_dumps_calls": 11535,
+            "json_serialized_characters": 4935777,
+            "json_serialization_seconds": 0.23161738278577104,
+            "state_json_dump_calls": 3,
+            "state_json_serialized_characters": 459569,
+            "state_json_serialization_seconds": 0.008055374957621098,
+            "fsync_calls": 1008,
+            "fsync_seconds": 0.3180373925715685,
+            "journal_get_requests": 1,
+            "journal_get_seconds": 0.0016171250026673079,
+            "journal_get_failures": 1,
+            "put_body_bytes": 741025,
+            "journal_put_requests": 1002,
+            "journal_put_seconds": 2.2573901574942283,
+            "journal_record_calls": 2002,
+            "journal_lock_wait_seconds": 37.70587437116774,
+            "journal_lock_held_seconds": 7.318047448992729,
+            "payload_put_requests": 1000,
+            "payload_put_seconds": 2.7447964492603205
+          },
+          "memory_samples": 0
+        },
+        {
+          "stage": "restore_fresh_local_state",
+          "seconds": 5.139842375006992,
+          "counts": {
+            "json_dumps_calls": 4,
+            "json_serialized_characters": 1377757,
+            "json_serialization_seconds": 0.03576408402295783,
+            "state_json_dump_calls": 4,
+            "state_json_serialized_characters": 1377757,
+            "state_json_serialization_seconds": 0.03590300097130239,
+            "fsync_calls": 1008,
+            "fsync_seconds": 0.08052917430177331,
+            "journal_get_requests": 1002,
+            "journal_get_seconds": 3.5575363800744526,
+            "journal_list_requests": 2,
+            "journal_list_seconds": 0.0063502080156467855,
+            "get_body_bytes": 740025,
+            "journal_restore_calls": 1,
+            "journal_restore_seconds": 4.926249582960736
+          },
+          "memory_samples": 0
+        },
+        {
+          "stage": "replay_acknowledged_payloads",
+          "seconds": 0.22714516700943932,
+          "counts": {},
+          "memory_samples": 0
+        }
+      ],
+      "memory_sampling_available": false
+    },
+    "journal-sequential-grouped.json": {
+      "source": "7145114742d2915e6bf1757c86039e31e3254884",
+      "outcomes": {
+        "payload_writes": 1000,
+        "journal_events": 1002,
+        "journal_bytes": 740005,
+        "payload_replays": 1000,
+        "max_upload_window": 6,
+        "max_replay_window": 6,
+        "replay_payload_put_get_head_delta": [
+          0,
+          0,
+          0
+        ],
+        "uncertain_payload_reads": 0,
+        "total_wall_seconds": 17.985096
+      },
+      "stages": [
+        {
+          "stage": "upload",
+          "seconds": 11.094894208014011,
+          "counts": {
+            "json_dumps_calls": 11534,
+            "json_serialized_characters": 4930740,
+            "json_serialization_seconds": 0.2469840565463528,
+            "state_json_dump_calls": 3,
+            "state_json_serialized_characters": 459569,
+            "state_json_serialization_seconds": 0.005585041013546288,
+            "fsync_calls": 1008,
+            "fsync_seconds": 0.563988596200943,
+            "journal_get_requests": 1,
+            "journal_get_seconds": 0.0019167080172337592,
+            "journal_get_failures": 1,
+            "put_body_bytes": 741005,
+            "journal_put_requests": 1002,
+            "journal_put_seconds": 3.108902272710111,
+            "journal_record_calls": 2002,
+            "journal_lock_wait_seconds": 47.19541142950766,
+            "journal_lock_held_seconds": 8.644090389483608,
+            "payload_put_requests": 1000,
+            "payload_put_seconds": 3.9824185944744386
+          },
+          "memory_samples": 46
+        },
+        {
+          "stage": "restore_fresh_local_state",
+          "seconds": 4.447067875007633,
+          "counts": {
+            "json_dumps_calls": 4,
+            "json_serialized_characters": 1377757,
+            "json_serialization_seconds": 0.02521699998760596,
+            "state_json_dump_calls": 4,
+            "state_json_serialized_characters": 1377757,
+            "state_json_serialization_seconds": 0.025276291999034584,
+            "fsync_calls": 1008,
+            "fsync_seconds": 0.03340742539148778,
+            "journal_get_requests": 1002,
+            "journal_get_seconds": 3.1350486541050486,
+            "journal_list_requests": 2,
+            "journal_list_seconds": 0.0030425830045714974,
+            "get_body_bytes": 740005,
+            "journal_restore_calls": 1,
+            "journal_restore_seconds": 3.9477197500527836
+          },
+          "memory_samples": 19
+        },
+        {
+          "stage": "replay_acknowledged_payloads",
+          "seconds": 1.0995337499771267,
+          "counts": {},
+          "memory_samples": 3
+        }
+      ],
+      "memory_sampling_available": true
+    },
+    "journal-baseline-1.json": {
+      "source": "5554fd0bc5d09db69e5319bb6ebe56eb187c0448",
+      "outcomes": {
+        "payload_writes": 1000,
+        "journal_events": 1669,
+        "journal_bytes": 865151,
+        "payload_replays": 1000,
+        "max_upload_window": 6,
+        "max_replay_window": 6,
+        "replay_payload_put_get_head_delta": [
+          0,
+          0,
+          0
+        ],
+        "uncertain_payload_reads": 0,
+        "total_wall_seconds": 7.813467
+      },
+      "stages": [
+        {
+          "stage": "upload",
+          "seconds": 4.337178458983544,
+          "counts": {
+            "json_dumps_calls": 9673,
+            "json_serialized_characters": 3593361,
+            "json_serialization_seconds": 0.043633766821585596,
+            "state_json_dump_calls": 4,
+            "state_json_serialized_characters": 742210,
+            "state_json_serialization_seconds": 0.002545083058066666,
+            "fsync_calls": 1677,
+            "fsync_seconds": 0.05894440656993538,
+            "journal_get_requests": 1,
+            "journal_get_seconds": 0.0015233339508995414,
+            "journal_get_failures": 1,
+            "put_body_bytes": 866151,
+            "journal_put_requests": 1669,
+            "journal_put_seconds": 2.4363187904818915,
+            "journal_record_calls": 2002,
+            "journal_lock_wait_seconds": 19.907536108861677,
+            "journal_lock_held_seconds": 4.270304048084654,
+            "payload_put_requests": 1000,
+            "payload_put_seconds": 1.524580540775787
+          },
+          "memory_samples": 0
+        },
+        {
+          "stage": "restore_fresh_local_state",
+          "seconds": 3.1641721249907278,
+          "counts": {
+            "json_dumps_calls": 4,
+            "json_serialized_characters": 1377757,
+            "json_serialization_seconds": 0.005505041975993663,
+            "state_json_dump_calls": 4,
+            "state_json_serialized_characters": 1377757,
+            "state_json_serialization_seconds": 0.005523333966266364,
+            "fsync_calls": 1675,
+            "fsync_seconds": 0.04224457958480343,
+            "journal_get_requests": 1669,
+            "journal_get_seconds": 2.5303316644276492,
+            "journal_list_requests": 2,
+            "journal_list_seconds": 0.0030474590021185577,
+            "get_body_bytes": 865151,
+            "journal_restore_calls": 1,
+            "journal_restore_seconds": 3.153536540979985
+          },
+          "memory_samples": 0
+        },
+        {
+          "stage": "replay_acknowledged_payloads",
+          "seconds": 0.021794792031869292,
+          "counts": {},
+          "memory_samples": 0
+        }
+      ],
+      "memory_sampling_available": false
+    },
+    "journal-grouped-2.json": {
+      "source": "e47d0384c6ba4aaa05df272402edc57d6a739c92",
+      "outcomes": {
+        "payload_writes": 1000,
+        "journal_events": 1002,
+        "journal_bytes": 741045,
+        "payload_replays": 1000,
+        "max_upload_window": 6,
+        "max_replay_window": 6,
+        "replay_payload_put_get_head_delta": [
+          0,
+          0,
+          0
+        ],
+        "uncertain_payload_reads": 0,
+        "total_wall_seconds": 17.391683
+      },
+      "stages": [
+        {
+          "stage": "upload",
+          "seconds": 5.908521624980494,
+          "counts": {
+            "json_dumps_calls": 11586,
+            "json_serialized_characters": 4927695,
+            "json_serialization_seconds": 0.18754220299888402,
+            "state_json_dump_calls": 3,
+            "state_json_serialized_characters": 459569,
+            "state_json_serialization_seconds": 0.005782457999885082,
+            "fsync_calls": 1008,
+            "fsync_seconds": 0.11717924621189013,
+            "journal_get_requests": 1,
+            "journal_get_seconds": 0.0016107079572975636,
+            "journal_get_failures": 1,
+            "put_body_bytes": 742045,
+            "journal_put_requests": 1002,
+            "journal_put_seconds": 1.7022912002285011,
+            "journal_record_calls": 2002,
+            "journal_lock_wait_seconds": 26.742500021355227,
+            "journal_lock_held_seconds": 5.503375848173164,
+            "payload_put_requests": 1000,
+            "payload_put_seconds": 1.8266218337230384
+          },
+          "memory_samples": 0
+        },
+        {
+          "stage": "restore_fresh_local_state",
+          "seconds": 5.438646708033048,
+          "counts": {
+            "json_dumps_calls": 4,
+            "json_serialized_characters": 1377757,
+            "json_serialization_seconds": 0.02819124999223277,
+            "state_json_dump_calls": 4,
+            "state_json_serialized_characters": 1377757,
+            "state_json_serialization_seconds": 0.028259749058634043,
+            "fsync_calls": 1008,
+            "fsync_seconds": 0.06224741833284497,
+            "journal_get_requests": 1002,
+            "journal_get_seconds": 3.0492060494725592,
+            "journal_list_requests": 2,
+            "journal_list_seconds": 0.0030312080052681267,
+            "get_body_bytes": 741045,
+            "journal_restore_calls": 1,
+            "journal_restore_seconds": 5.263470000005327
+          },
+          "memory_samples": 0
+        },
+        {
+          "stage": "replay_acknowledged_payloads",
+          "seconds": 2.1926350420108065,
+          "counts": {},
+          "memory_samples": 0
+        }
+      ],
+      "memory_sampling_available": false
+    },
+    "journal-candidate-1.json": {
+      "source": "d08dbd117ac65ac87c62165246d21d78f3de65ea",
+      "outcomes": {
+        "payload_writes": 1000,
+        "journal_events": 1669,
+        "journal_bytes": 865151,
+        "payload_replays": 1000,
+        "max_upload_window": 6,
+        "max_replay_window": 6,
+        "replay_payload_put_get_head_delta": [
+          0,
+          0,
+          0
+        ],
+        "uncertain_payload_reads": 0,
+        "total_wall_seconds": 6.971752
+      },
+      "stages": [
+        {
+          "stage": "upload",
+          "seconds": 5.011323583021294,
+          "counts": {
+            "json_dumps_calls": 9673,
+            "json_serialized_characters": 3593361,
+            "json_serialization_seconds": 0.05871879309415817,
+            "state_json_dump_calls": 4,
+            "state_json_serialized_characters": 742210,
+            "state_json_serialization_seconds": 0.003984126029536128,
+            "fsync_calls": 1677,
+            "fsync_seconds": 0.07631245709490031,
+            "journal_get_requests": 1,
+            "journal_get_seconds": 0.0015409580082632601,
+            "journal_get_failures": 1,
+            "put_body_bytes": 866151,
+            "journal_put_requests": 1669,
+            "journal_put_seconds": 2.531130272662267,
+            "journal_record_calls": 2002,
+            "journal_lock_wait_seconds": 23.20113427232718,
+            "journal_lock_held_seconds": 4.930186685582157,
+            "payload_put_requests": 1000,
+            "payload_put_seconds": 1.5413289336138405
+          },
+          "memory_samples": 0
+        },
+        {
+          "stage": "restore_fresh_local_state",
+          "seconds": 1.698329749982804,
+          "counts": {
+            "json_dumps_calls": 4,
+            "json_serialized_characters": 1377757,
+            "json_serialization_seconds": 0.003988334035966545,
+            "state_json_dump_calls": 4,
+            "state_json_serialized_characters": 1377757,
+            "state_json_serialization_seconds": 0.004004332993645221,
+            "fsync_calls": 1675,
+            "fsync_seconds": 0.004510787257459015,
+            "journal_get_requests": 1669,
+            "journal_get_seconds": 2.530757946835365,
+            "journal_list_requests": 2,
+            "journal_list_seconds": 0.003043126023840159,
+            "get_body_bytes": 865151,
+            "journal_restore_calls": 1,
+            "journal_restore_seconds": 1.690368166018743
+          },
+          "memory_samples": 0
+        },
+        {
+          "stage": "replay_acknowledged_payloads",
+          "seconds": 0.01591245795134455,
+          "counts": {},
+          "memory_samples": 0
+        }
+      ],
+      "memory_sampling_available": false
+    }
+  },
+  "receipts": {
+    "journal-candidate-2.json": "d06b0d4d5ac01b88f1cfe15ed9aec78a708a8d59a71f5e56cde3a7d73f9dd493",
+    "journal-sequential-baseline.json": "03d12244e2a827b1b6cae1f5e1692a1186a82a0ddf8807f6f1be32961dc030ce",
+    "native-baseline-1.json": "e3ff98fc27e1c7361821641a8a140b2dc53e63b0fcd00afba42734220e704850",
+    "journal-candidate-3.json": "11462957892bc01a54cbb3eb7614d29959b5de761d886f462031aad7c904b4c7",
+    "native-reader-and-restore-2.json": "021d5204f88ea9eaf5637cf9bbca993d4ed1c01c03566df9690cb582bf581a93",
+    "journal-baseline-3.json": "8e45cc304ba48b98e8bcb631fcf259825ea65f1e6ccac8287c7efb6ac395da56",
+    "journal-baseline-2.json": "bafe186a044044b50329ad16183b9f25a43f425b045499cb0c269f6d27d510fe",
+    "journal-grouped-1.json": "9934822e3d18ac743fa3de3466eb81b6927f8f068c4688a200a11e4564bc3255",
+    "native-reader-and-restore-3.json": "04b825cb1fe576484ae3f2f1d7713f1979374791c8c1abd937f2ec1dfcd90153",
+    "journal-sequential-grouped.json": "f437dbed2a6de2ddca7921b5ed284ac32573ebc3d399153dd3fef391f2838277",
+    "journal-baseline-1.json": "acdcdb3de464ca387906db8ed1903a064a0b1170457452cd96832384061f8f85",
+    "journal-grouped-2.json": "81aaebf3ba55e46b5bbfba3087370a48890b030eb8a27ca1c06d2bf963d107eb",
+    "native-reader-and-restore-1.json": "018ef53491f6792a790cae1afe04de8f1f2faaa0e0f44169188941978511a02c",
+    "native-baseline-2.json": "56f15160f0fb8ba31f5fd1e0a4aa38dbb8266bc6ca77153be86ed90ca0ddec04",
+    "journal-candidate-1.json": "8d4f98c6f7117f1058c7ec78cf7579b818706282bdf9cb4e4588591e16b09059",
+    "native-baseline-3.json": "ef83a95bf03780bccdeb3cf01825df020edd6c4772ee498b2121b9dd7e42d58e",
+    "native-final-1.json": "e498cb7cbb1ea3844c554d242aadf3e21e1e3842fb8f0c2db00935fe34e7b120"
+  },
+  "limitations": [
+    "Fixture request counts depend on completion scheduling; not a fixed production reduction.",
+    "Concurrent host load prevents a stable wall-time or CPU claim. The final sequential pair is one descriptive observation.",
+    "RSS was unavailable in the original scale arms; no process-memory reduction claim. Restore buffers are structurally bounded, while keys/state/file receipts still scale with event count.",
+    "Third grouped trial was interrupted; only its two completed trials are results.",
+    "Acknowledgment-group byte admission increases small JSON encodings while reducing journal requests.",
+    "No production preparation, cloud request, deployment or publication was performed."
+  ],
+  "native_final_smoke": {
+    "outcomes": {
+      "successful_publication": {
+        "catalog_id": "seed",
+        "bytes": 79047,
+        "files": 10,
+        "manifest": "releases/d79e1c3896a441b6bbe151c2eaeeb7da/manifest.json",
+        "status": "published",
+        "attempt": "123-1-2df07d82e6a6d2fb7e01bc429a53a6e27ec49065ad9b5edc839b53d88cc53f05",
+        "preparation_reused": false
+      },
+      "unchanged_poll": {
+        "status": "unchanged",
+        "catalog_id": "seed",
+        "accepted_recoveries": 0,
+        "affected_sources": 0,
+        "affected_groups": 0,
+        "recovery": {
+          "bytes": 446,
+          "path": "releases/f71a1fd6d1ac69e0bd4a81ed098cb941/93d611d8c7a67c35f1a6e77525bbcb00/viewer-v2/recovery-status.json",
+          "sha256": "f71a1fd6d1ac69e0bd4a81ed098cb94193d611d8c7a67c35f1a6e77525bbcb00"
+        },
+        "catalog_payloads_reused": true,
+        "raw_catalog_unchanged": true
+      },
+      "explicit_resume_failure": {
+        "status": "failed",
+        "error_type": "RuntimeError",
+        "error": "Explicit bounded fixture probe failure"
+      },
+      "explicit_resume": {
+        "catalog_id": "seed",
+        "bytes": 79047,
+        "files": 10,
+        "manifest": "releases/d79e1c3896a441b6bbe151c2eaeeb7da/manifest.json",
+        "status": "published",
+        "attempt": "123-1-2df07d82e6a6d2fb7e01bc429a53a6e27ec49065ad9b5edc839b53d88cc53f05",
+        "preparation_reused": true
+      }
+    },
+    "parquet_files_byte_identical": 3,
+    "source": "7145114742d2915e6bf1757c86039e31e3254884"
+  }
+}

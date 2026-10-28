@@ -113,7 +113,8 @@ function OpenIssueList({ reader, record, onSelect }: { reader: ExplorerReader; r
   return <>
     <p className="explorer-field-reason">The count is the issues still open. Dismissed issues are included here.</p>
     <ul className="explorer-values">{state.value.records.map(issue => {
-      const status = issueStatusLabel(fields(issue).status) || enumLabel(fields(issue).status);
+      const recordedStatus = fields(issue).status;
+      const status = issueStatusLabel(typeof recordedStatus === 'string' ? recordedStatus : undefined) || enumLabel(recordedStatus);
       const notes = issueNotes(fields(issue)).slice(0, 2);
       return <li key={issue.id}><button className="explorer-text-button" aria-label={`Open the issue ${recordTitle(issue)}`} onClick={() => onSelect(issue)}>{recordTitle(issue)}</button>{status ? <span className="explorer-row-meta">{status}</span> : null}{notes.map(note => <span className="explorer-row-meta" key={note}>{note}</span>)}</li>;
     })}</ul>

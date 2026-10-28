@@ -89,7 +89,6 @@ class RecoveryGuard:
         self.local_check, self.cloud_check = local_check, cloud_check
         self.protected_check, self.clock = protected_check, clock
         self.max_cloud_age = max_cloud_age
-        self._identities = {}
         self._cloud_at = None
         self._lock = threading.RLock()
         self.counts = dict(local=0, hashed_files=0, cloud=0, protected=0)
@@ -98,15 +97,15 @@ class RecoveryGuard:
         self.local_check()
         self.counts['local'] += 1
 
-    def _pins(self, *, full):
+    def _pins(self):
+        # Same-tick rewrites can preserve every stat field. Local metadata is
+        # only a concurrent-read check, never proof that pin bytes are unchanged.
         for path, expected in self.pins.items():
             before = _identity(path)
-            if full or self._identities.get(path) != before:
-                actual = _digest(path)
-                self.counts['hashed_files'] += 1
-                if actual != expected or _identity(path) != before:
-                    raise RuntimeError(f'Pinned input changed: {path}')
-                self._identities[path] = before
+            actual = _digest(path)
+            self.counts['hashed_files'] += 1
+            if actual != expected or _identity(path) != before:
+                raise RuntimeError(f'Pinned input changed: {path}')
 
     def _cloud(self, *, fresh):
         now = self.clock()
@@ -123,7 +122,7 @@ class RecoveryGuard:
         """For immutable content writes only; content remains unselected."""
         with self._lock:
             self._local()
-            self._pins(full=False)
+            self._pins()
             self._cloud(fresh=False)
 
     __call__ = check
@@ -131,17 +130,17 @@ class RecoveryGuard:
     def boundary(self):
         """Check exact local custody and fresh protected versions at a phase seam.
 
-        A new guard hashes every pin. The same process reuses only unchanged
-        device/inode/size/mtime/ctime identities, including across phase seams.
+        Every check hashes pinned inputs. Recheck them after remote observations
+        too: metadata alone cannot prove unchanged bytes across phase seams.
         """
         with self._lock:
             self._local()
-            self._pins(full=False)
+            self._pins()
             self._cloud(fresh=True)
             self.protected_check()
             self.counts['protected'] += 1
             self._local()
-            self._pins(full=False)
+            self._pins()
             if self.clock() - self._cloud_at > 30:
                 self._cloud_at = None
                 raise RuntimeError('Shared commit checks exceeded freshness window')

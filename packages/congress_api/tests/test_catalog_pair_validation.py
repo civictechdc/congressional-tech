@@ -10,6 +10,16 @@ import pyarrow as pa
 import pyarrow.parquet as pq
 from congress_api.retention.catalog_validation import validate_catalog_pair
 
+def replace_with_identical_bytes(path):
+    """Change custody deterministically, even within one filesystem clock tick."""
+    before = path.stat()
+    replacement = path.with_suffix('.replacement')
+    replacement.write_bytes(path.read_bytes())
+    os.utime(replacement, ns=(before.st_atime_ns, before.st_mtime_ns))
+    replacement.replace(path)
+    assert path.stat().st_ino != before.st_ino
+
+
 class PairValidationTests(unittest.TestCase):
     def setUp(self):
         self.temp = tempfile.TemporaryDirectory(); self.addCleanup(self.temp.cleanup)
@@ -114,7 +124,7 @@ def test_local_catalog_handoff_does_not_trust_restored_or_changed_proofs(tmp_pat
     if proof_kind == 'serialized':
         result = __import__('json').loads(__import__('json').dumps(result))
     else:
-        paths[0].write_bytes(paths[0].read_bytes())
+        replace_with_identical_bytes(paths[0])
     with read_catalog(LocalStore(tmp_path)) as snapshot:
         if proof_kind == 'changed':
             with pytest.raises(ValueError, match='no longer applies'):
@@ -153,8 +163,6 @@ def test_reference_content_proof_reuses_one_scan_across_owned_copy_and_rejects_f
         copy.copy(content).require(manifest, validator=validator)
     with pytest.raises(ValueError, match='no longer applies'):
         reference.require(*paths, validator=lambda *_: None)
-    paths[0].write_bytes(paths[0].read_bytes())
+    replace_with_identical_bytes(paths[0])
     with pytest.raises(ValueError, match='no longer applies'):
         reference.require(*paths, validator=validator)
-
-

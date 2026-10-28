@@ -2,8 +2,11 @@
 
 The large test runs real client, journal, transition and restore paths. Only
 per-event evidence saves and periodic cache writes are counted instead of doing
-100K fsyncs; initial/final checkpoint serialization and restore stay real.
+100K fsyncs; initial/final checkpoint serialization and restore stay real. Counted append
+receipts check exact saved/remote bytes; staged restore receipts retain real
+file-custody checks. Disk persistence is qualified by the small fixture suite.
 """
+from dataclasses import dataclass
 import hashlib
 import io
 import json
@@ -13,7 +16,7 @@ import time
 
 import pytest
 from botocore.exceptions import ClientError
-from congress_shared.custody import canonical_json_bytes
+from congress_shared.custody import VerifiedFile, canonical_json_bytes
 from viewer_publication import continuation as state
 from viewer_publication.client import ContinuedPublicationClient
 
@@ -71,6 +74,73 @@ def write_fact(key):
                 expected_etag=None, if_none_match='*')
 
 
+@dataclass(frozen=True)
+class CountedRequest:
+    name: str
+    raw: bytes
+    sha256: str
+    size_bytes: int
+
+
+class CountedEvidence:
+    """Model one append receipt without retaining per-event disk files."""
+    def __init__(self, run, remote, prefix, saves):
+        self.run, self.remote, self.prefix, self.saves = run, remote, prefix, saves
+        self.pending = None
+
+    def save(self, name, raw, **kwargs):
+        assert isinstance(raw, bytes)
+        assert self.pending is None, 'Counted journal request is still unaccepted'
+        self.saves[0] += 1
+        self.saves[1] += len(raw)
+        self.pending = CountedRequest(name, raw, hashlib.sha256(raw).hexdigest(), len(raw))
+        return self.pending
+
+    def accept(self, source, target, *, proof, **kwargs):
+        remote_body = self.remote.objects[self.prefix + target.rsplit('/', 1)[-1]]
+        if isinstance(proof, VerifiedFile):
+            # Restore still stages real files; preserve the exact-file custody check.
+            proof.require(self.run.saved_path(source))
+            assert target == 'journal/' + source.rsplit('/', 1)[-1]
+            assert proof.sha256 == hashlib.sha256(remote_body).hexdigest()
+            assert proof.size_bytes == len(remote_body)
+            return
+        assert proof is self.pending, 'Counted journal request proof changed'
+        assert proof.name == source
+        assert source.startswith('journal-intents/')
+        sequence = source.rsplit('/', 1)[-1].split('-', 1)[0]
+        assert target == f'journal/{sequence}.json'
+        assert proof.raw == remote_body, 'Counted journal request body changed'
+        assert proof.size_bytes == len(remote_body)
+        self.pending = None
+
+
+def count_evidence(monkeypatch, run, remote, prefix, saves=None):
+    counted = CountedEvidence(run, remote, prefix, saves if saves is not None else [0, 0])
+    monkeypatch.setattr(run, 'save', counted.save)
+    monkeypatch.setattr(run, 'accept_saved', counted.accept)
+    return counted
+
+
+@pytest.mark.parametrize('damage', ['receipt', 'body'])
+def test_counted_evidence_refuses_changed_append_without_advancing(tmp_path, monkeypatch, damage):
+    run, remote = state.Continuation(tmp_path / 'attempt', {}), Remote()
+    log = state.DurableJournal(remote, 'bucket', run, 'counted-proof', {})
+    counted = count_evidence(monkeypatch, run, remote, log.prefix)
+    before = log.sequence, log.previous, log.total_bytes, canonical_json_bytes(run.value)
+    def changed(source, target, *, proof):
+        if damage == 'receipt':
+            proof = CountedRequest(proof.name, proof.raw, proof.sha256, proof.size_bytes)
+        else:
+            remote.objects[log.prefix + target.rsplit('/', 1)[-1]] = b'changed'
+        counted.accept(source, target, proof=proof)
+    monkeypatch.setattr(run, 'accept_saved', changed)
+    with pytest.raises(AssertionError, match='Counted journal request (proof|body) changed'):
+        log.record('publication_write_intent', write_fact('viewer-publications/' + asset_name(0)))
+    assert (log.sequence, log.previous, log.total_bytes, canonical_json_bytes(run.value)) == before
+    assert counted.pending is not None
+
+
 def test_full_release_inventory_upload_interrupt_restore_and_replay(tmp_path, monkeypatch):
     count = 100_000
     started = time.monotonic()
@@ -90,12 +160,8 @@ def test_full_release_inventory_upload_interrupt_restore_and_replay(tmp_path, mo
     checkpoints, saves = [], [0, 0]
     def counted_flush():
         checkpoints.append(len(run.value['writes']))
-    def counted_save(name, raw, **kwargs):
-        saves[0] += 1
-        saves[1] += len(raw)
     monkeypatch.setattr(run, 'flush', counted_flush)
-    monkeypatch.setattr(run, 'save', counted_save)
-    monkeypatch.setattr(run, 'accept_saved', lambda *args, **kwargs: None)
+    count_evidence(monkeypatch, run, remote, log.prefix, saves)
     def proxy(log):
         return ContinuedPublicationClient(remote, continuation=run, guard=lambda: None,
             journal=log.record, after_write=lambda *args: None)
@@ -107,8 +173,7 @@ def test_full_release_inventory_upload_interrupt_restore_and_replay(tmp_path, mo
     # from accepted preparation (no writes), never the current in-memory cache.
     fresh = state.Continuation(run.root, binding, resume=True)
     assert fresh.value['writes'] == {}
-    monkeypatch.setattr(fresh, 'save', counted_save)
-    monkeypatch.setattr(fresh, 'accept_saved', lambda *args, **kwargs: None)
+    count_evidence(monkeypatch, fresh, remote, log.prefix, saves)
     fresh_flush = fresh.flush
     log = state.DurableJournal(remote, 'bucket', fresh, 'capacity-fixture', log_binding, resume=True)
     run = fresh
@@ -241,8 +306,7 @@ def test_noncoalesced_journal_accepts_write_capacity(tmp_path, monkeypatch):
     log = state.DurableJournal(remote, 'bucket', run, 'uncoalesced', {})
     # Exercise worst-case completion ordering without a network, per-event
     # local files or serializing the full cache every 1024 events.
-    monkeypatch.setattr(run, 'save', lambda *args, **kwargs: None)
-    monkeypatch.setattr(run, 'accept_saved', lambda *args, **kwargs: None)
+    count_evidence(monkeypatch, run, remote, log.prefix)
     monkeypatch.setattr(run, 'flush', lambda: None)
     for n in range(state.MAX_WRITES):
         log.record('publication_write_intent', write_fact('viewer-publications/' + asset_name(n)))
@@ -250,7 +314,7 @@ def test_noncoalesced_journal_accepts_write_capacity(tmp_path, monkeypatch):
         fact = write_fact('viewer-publications/' + asset_name(n))
         log.record('publication_write_verified', dict(key=fact['key'], bytes=1, sha256=fact['sha256'], etag='"' + 'a' * 32 + '"'))
     log.record('publication_completed', {})
-    assert log.sequence == 2 * state.MAX_WRITES + 1 < state.MAX_EVENTS
+    assert log.sequence == state.MAX_WRITES + (state.MAX_WRITES - 1) // state.MAX_PENDING_ACKS + 2 < state.MAX_EVENTS
     assert log.total_bytes < state.MAX_JOURNAL_BYTES
     state.validate_state(run.value)
     assert run._state_bytes == len(canonical_json_bytes(run.value, ensure_ascii=True)) + 1

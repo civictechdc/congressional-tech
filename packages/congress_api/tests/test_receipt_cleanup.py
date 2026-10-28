@@ -254,3 +254,48 @@ def test_owner_final_rescan_reads_every_live_receipt_through_local_copies(tmp_pa
     assert report['receipts'] == 1 and report['lines'] == 1 and report['counts'] == {}
     assert (tmp_path / 'mirror' / key).read_bytes() == store.objects[key]
     assert store.puts == []
+
+
+def test_backup_directory_durability_precedes_live_replacement(tmp_path, monkeypatch):
+    from congress_api.retention.receipt_cleanup import rewrite_receipt
+    from congress_api.retention.receipt_cleanup_stores import DirectoryFiles
+    import os
+    import stat
+    key = 'receipts/family/undated/run.jsonl.gz'
+    backup = DirectoryFiles(tmp_path/'new'/'backup')
+    events = []
+    real_sync = os.fsync
+    def sync(fd):
+        if stat.S_ISDIR(os.fstat(fd).st_mode):
+            events.append(('directory', os.fstat(fd).st_ino))
+        real_sync(fd)
+    monkeypatch.setattr(os, 'fsync', sync)
+    class Live(Files):
+        def put_file(self, *args, **kwargs):
+            required = [backup.path(key).parent, *backup.path(key).parent.parents]
+            assert all(('directory', p.stat().st_ino) in events for p in required)
+            super().put_file(*args, **kwargs)
+    live = Live({key: encode([{'path':'/tmp/original'}])})
+    result = rewrite_receipt(live, backup, key, scratch=tmp_path)
+    assert result['verified'] and len(live.puts) == 1
+
+
+def test_failed_backup_directory_sync_blocks_rewrite_and_retry(tmp_path, monkeypatch):
+    from congress_api.retention.receipt_cleanup import rewrite_receipt
+    from congress_api.retention.receipt_cleanup_stores import DirectoryFiles
+    import os
+    import stat
+    key = 'receipts/family/undated/run.jsonl.gz'
+    live = Files({key: encode([{'path':'/tmp/original'}])})
+    before = dict(live.objects)
+    backup = DirectoryFiles(tmp_path/'new'/'backup')
+    real_sync = os.fsync
+    def fail_directory(fd):
+        if stat.S_ISDIR(os.fstat(fd).st_mode):
+            raise OSError('fixture directory durability failure')
+        real_sync(fd)
+    monkeypatch.setattr(os, 'fsync', fail_directory)
+    for _ in range(2):
+        with pytest.raises(OSError, match='durability failure'):
+            rewrite_receipt(live, backup, key, scratch=tmp_path)
+        assert live.objects == before and live.puts == []

@@ -1,0 +1,10 @@
+{
+  "baseline": {
+    "packages/congress_api/src/congress_api/retention/catalog_batches.py": "dfce57964270e172b1fb26c42ca3d97cf5e6f8e4e9d0cb9b642cefad2f72a8ee",
+    "packages/docspec_client/src/docspec_client/client.py": "3a759c3bb94d0d8640246a258610f1aab8a0a5e356ff2af7cefc6ff8478cbd01"
+  },
+  "candidate": {
+    "packages/congress_api/src/congress_api/retention/catalog_batches.py": "ae9e8e61e4ece71b861058748fcd53962bdff58d40642023632460c19f1a1f00",
+    "packages/docspec_client/src/docspec_client/client.py": "e1b78c57e2b3f4e8ba2784719397f1856073209f284e7429b5ffd4636a798e11"
+  }
+}

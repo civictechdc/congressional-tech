@@ -22,6 +22,7 @@ from congress_api.cli.raw_progress import ProgressLog
 from congress_api.parsers.archive_links import json_links
 from congress_api.retention.raw_archive import Archive
 from congress_api.retention.raw_catalog import update_from_raw
+from congress_api.retention.source_update_proof import source_update_operation
 from congress_api.retention import raw_progress as progress
 from congress_api.retention.r2 import R2Store
 from congress_api.transport.rust_fetch import RustFetcher
@@ -337,6 +338,7 @@ def connect_storage(args, log):
     return store
 
 
+@source_update_operation()
 def run(args, log, *, store=None, raw_storage=None):
     mode = operation_mode(args)
     if args.retained_catalog is not None and mode != 'adopt-catalog':

@@ -199,7 +199,41 @@ def plan(files):
                 body_keys=sorted(map(body_key, bodies)))
 
 
-def archive(store, files, *, writer, run_id=None, day=None):
+def rescue_receipts(store, files, writer, run_id, day):
+    """Read each completed rescue receipt once; refuse any different input or writer."""
+    saved = {}
+    for index, key in enumerate(receipt_keys(run_id, len(files), day)):
+        payload = store.read(key)
+        if payload is None:
+            continue
+        try:
+            lines = [json.loads(line) for line in gzip.decompress(payload).splitlines()]
+            items = files[index * RECEIPT_LINES:(index + 1) * RECEIPT_LINES]
+            if len(lines) != len(items):
+                raise ValueError('line count')
+            for line, item in zip(lines, items):
+                capture, = line['captures']
+                if (item.sha256 is None or line['outcome'] not in {'stored', 'unchanged'}
+                        or capture['stored_suffix'] not in {'', '.gz'}):
+                    raise ValueError('capture identity')
+                stored = None
+                if 'stored_md5' in capture or 'stored_bytes' in capture:
+                    stored = (capture['stored_md5'], capture['stored_bytes'])
+                    if (line['outcome'] != 'stored' or not re.fullmatch(r'[0-9a-f]{32}', stored[0])
+                            or type(stored[1]) is not int or stored[1] < 0):
+                        raise ValueError('stored identity')
+                expected = receipt_line(item, run_id=run_id, writer=writer,
+                    sha256=item.sha256, outcome=line['outcome'], stored=stored,
+                    suffix=capture['stored_suffix'])
+                if line != expected:
+                    raise ValueError('source identity')
+        except (ValueError, KeyError, TypeError, OSError) as error:
+            raise ValueError(f'Conflicting rescue receipt: {key}') from error
+        saved[key] = lines
+    return saved
+
+
+def archive(store, files, *, writer, run_id=None, day=None, resume=False):
     """Store each distinct body once, then the run's receipt; returns a summary."""
     if (set(writer) != {'job', 'commit', 'lockfile_digest'}
             or any(not isinstance(value, str) for value in writer.values())
@@ -207,9 +241,13 @@ def archive(store, files, *, writer, run_id=None, day=None):
             or not re.fullmatch(r'[0-9a-f]{40}', writer['commit'])
             or not re.fullmatch(r'[0-9a-f]{64}', writer['lockfile_digest'])):
         raise ValueError('Invalid public receipt writer identity')
+    if resume and (run_id != RESCUE_RUN_ID or day is None):
+        raise ValueError('Only the registered rescue run can resume')
     run_id = run_id or new_run_id()
+    day = day or datetime.now(timezone.utc).date().isoformat()
     kept, skipped = selected(files)
-    lines, known, created = [], {}, 0
+    saved = rescue_receipts(store, kept, writer, run_id, day) if resume else {}
+    lines, known, created, prepared = [], {}, 0, {}
     with tempfile.TemporaryDirectory(prefix='pipeline-raw-') as scratch:
         scratch = Path(scratch) / 'body'
         for item in kept:
@@ -219,6 +257,7 @@ def archive(store, files, *, writer, run_id=None, day=None):
                                           suffix=known[item.sha256].suffix))
                 continue
             sha256, md5, stored_path, stored_bytes, encoded = stored_body(item, scratch)
+            prepared[sha256] = (md5.hexdigest(), stored_bytes)
             if sha256 in known:
                 outcome, stored = 'unchanged', None
             else:
@@ -234,11 +273,20 @@ def archive(store, files, *, writer, run_id=None, day=None):
             lines.append(receipt_line(item, run_id=run_id, writer=writer, sha256=sha256,
                                       outcome=outcome, stored=stored, suffix=known[sha256].suffix))
             scratch.unlink(missing_ok=True)
-    day = day or datetime.now(timezone.utc).date().isoformat()
     keys = receipt_keys(run_id, len(lines), day)
     for index, key in enumerate(keys):
+        current = lines[index * RECEIPT_LINES:(index + 1) * RECEIPT_LINES]
+        if key in saved:
+            for old, new in zip(saved[key], current):
+                old_capture, new_capture = old['captures'][0], new['captures'][0]
+                if (old_capture['stored_suffix'] != new_capture['stored_suffix']
+                        or ('stored_md5' in old_capture and
+                            (old_capture['stored_md5'], old_capture['stored_bytes'])
+                            != prepared[old_capture['sha256']])):
+                    raise ValueError(f'Conflicting rescue receipt storage: {key}')
+            continue
         payload = ''.join(json.dumps(line, ensure_ascii=False, separators=(',', ':')) + '\n'
-                          for line in lines[index * RECEIPT_LINES:(index + 1) * RECEIPT_LINES])
+                          for line in current)
         # A 412 here means a reused run ID: R2Store.put raises, failing the run.
         store.put(key, gzip.compress(payload.encode(), mtime=0), immutable=True)
     return dict(run_id=run_id, files=len(lines), skipped=skipped, bodies=len(known),

@@ -71,3 +71,26 @@ def test_probe_refuses_every_non_probe_bucket_before_io(bucket):
     with pytest.raises(ValueError, match='scratch bucket'):
         probe(client, bucket)
     assert client.calls == []
+
+
+def test_cli_dry_run_does_not_connect(monkeypatch, capsys):
+    import json
+    from congress_api.cli.raw_lock_probe import main
+    def refuse(**args):
+        raise AssertionError('dry run connected')
+    monkeypatch.setattr('congress_shared.storage.connect_r2', refuse)
+    assert main(['--bucket', 'cx-engine-first-lock-probe-test']) == 0
+    assert json.loads(capsys.readouterr().out)['dry_run'] is True
+
+
+@pytest.mark.parametrize('conditional,exit_code', [(412, 0), (403, 1), (409, 1)])
+def test_cli_requires_every_expected_result(monkeypatch, capsys, conditional, exit_code):
+    import json
+    from congress_api.cli.raw_lock_probe import main
+    client = LockedBucket(conditional_status=conditional)
+    monkeypatch.setattr('congress_shared.storage.connect_r2', lambda **args: client)
+    assert main(['--bucket', 'cx-engine-first-lock-probe-test', '--execute']) == exit_code
+    result = json.loads(capsys.readouterr().out)
+    assert result['statuses']['create_existing'] == conditional
+    assert result['safe_to_lock'] == (conditional == 412)
+    assert client.calls.count('multipart_abort') == 1

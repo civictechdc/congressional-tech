@@ -45,6 +45,24 @@ def test_pages_uses_declared_locked_environments_and_checks_built_reader():
     assert lock['packages']['']['devDependencies'] == package['devDependencies']
 
 
+def test_archive_contract_gates_the_pages_upload_without_the_legacy_filename_worker():
+    # The archive pointer switch made the legacy filename worker unable to load
+    # the live pointer, so its live checks were removed; the archive contract
+    # (and the publisher's live canary) cover the reader that replaced it.
+    workflow = yaml.load((ROOT / '.github/workflows/deploy-pages.yml').read_text(), Loader=yaml.BaseLoader)
+    build = workflow['jobs']['build']['steps']
+    gate = next(i for i, step in enumerate(build) if step.get('name', '').startswith('Require the archive contract'))
+    upload = next(i for i, step in enumerate(build) if step.get('uses') == 'actions/upload-pages-artifact@v3')
+    assert gate < upload
+    assert 'verify-archive-contract.py' in build[gate]['run']
+    assert any(step.get('uses') == './.github/actions/setup-publication-browser' for step in build[:gate])
+    deploy = workflow['jobs']['deploy']['steps']
+    assert any(step.get('id') == 'deployment' for step in deploy)
+    runs = '\n'.join(step.get('run', '') for job in workflow['jobs'].values() for step in job.get('steps', []))
+    assert 'verify-built-filename-worker' not in runs and 'verify-live-publication' not in runs
+    assert not (ROOT / '.github/scripts/verify-built-filename-worker.sh').exists()
+
+
 def bootstrap(tmp_path, *, node_version='22.22.2', package_manager='npm@11.19.1', installed_version='11.19.1', fail=False):
     project = tmp_path / 'checkout'; (project / 'apps/site').mkdir(parents=True)
     (project / '.node-version').write_text('22.22.2\n')

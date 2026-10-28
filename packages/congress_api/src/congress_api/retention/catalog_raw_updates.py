@@ -29,7 +29,7 @@ from .raw_values import NATIVE_CAPTURE_SCHEMA
 from .raw_archive import STATE_KEY, STATE_SCHEMA
 from .source_observations import SourceObservationStorage, dependency_id, hearing_records
 from .source_replay import prepare_source_replay, retain_source_seeds
-from .source_update_proof import retain_source_update, read_source_update, source_update_requirements, SourceUpdateDeletions
+from .source_update_proof import retain_source_update, read_source_update, source_update_operation, source_update_requirements, SourceUpdateDeletions
 
 MAX_ROWS, MAX_BYTES = 8192, 16 << 20
 DEFAULT_CATALOG_SCALAR_FIELDS = (
@@ -291,6 +291,7 @@ def upgrade_source_rules(store, *, raw_storage, directory, candidate, rule_versi
         continuous_backfill=continuous_backfill, dependency_correction=dependency_correction)
 
 
+@source_update_operation()
 def _update_from_raw(store, *, raw_storage, directory, candidate, expected_bodies, seeds, purpose, rule_version,
                      schema_additions=(), write_defaults=None, scalar_backfill=None,
                      continuous_backfill=None, dependency_correction=None):

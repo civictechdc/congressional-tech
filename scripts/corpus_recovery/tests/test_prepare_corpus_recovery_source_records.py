@@ -5,7 +5,6 @@ from pathlib import Path
 import sys
 from unittest.mock import patch
 
-import pyarrow as pa
 import pyarrow.parquet as pq
 import pytest
 
@@ -25,9 +24,7 @@ def fixture(tmp_path):
     def seal(rows=None, prior=None):
         (batch/'recoveries.json').write_text(json.dumps(rows if rows is not None else [row]))
         (batch/'manifest.json').write_text(json.dumps(dict(files={'recoveries.json': module.digest(batch/'recoveries.json')})))
-        schema = pa.schema([('context_url',pa.string()),('body_key',pa.string()),('retrieved_at',pa.string()),
-                            ('receipt_key',pa.string()),('receipt_line',pa.int64())])
-        pq.write_table(pa.Table.from_pylist(prior or [], schema=schema), captures)
+        pq.write_table(module.raw_archive.prepare_capture_table(prior or []), captures)
     seal()
     def outputs():
         return json.loads((batch/module.OUTPUTS[0]).read_text()), json.loads((batch/module.OUTPUTS[1]).read_text())
@@ -40,11 +37,14 @@ def test_exact_url_and_body_choose_latest_documented_capture(fixture):
     prior = [cap(row['recovered_url'],row['body_key'],'2020-01-01T12:00:00+00:00','first'),
              cap(row['recovered_url'],row['body_key'],'2020-01-01T09:00:00-04:00','latest'),
              cap('https://other.test/file.pdf',row['body_key'],'2026-01-01T00:00:00Z','wrong-url'),
-             cap(row['recovered_url'],'wrong-body','2026-01-01T00:00:00Z','wrong-body')]
+             cap(row['recovered_url'],module.raw_archive.derive_body_key('a'*64),'2026-01-01T00:00:00Z','wrong-body')]
     seal(prior=prior); manifest = (batch/'manifest.json').read_bytes()
     module.prepare(batch,captures); records,report = outputs()
     record = records[0]['record']
-    assert record['retrieved_at'] == '2020-01-01T09:00:00-04:00'
+    assert pq.read_schema(captures).equals(module.raw_archive.CAPTURE_SCHEMA)
+    assert record['retrieved_at'] == '2020-01-01T13:00:00+00:00'
+    assert record['recovery_evidence']['original_capture']['sha256'] == row['sha256']
+    assert record['recovery_evidence']['original_capture']['body_key'] == row['body_key']
     assert record['recovery_evidence']['original_capture']['receipt_key'] == 'latest'
     assert records[0]['captures'][0]['body_key'] == row['body_key']
     assert records[0]['preserve_download_state'] is True
@@ -221,3 +221,25 @@ def test_rows_changed_between_manifest_check_and_read_are_refused(fixture):
         with pytest.raises(ValueError,match='Preparation input changed'):
             module.prepare(batch,captures)
     assert not any((batch/name).exists() for name in module.OUTPUTS)
+
+
+@pytest.mark.parametrize('mismatch', ['url', 'digest', 'timestamp', 'missing-digest'])
+def test_current_capture_index_requires_exact_source_body_and_recorded_time(fixture, mismatch):
+    batch, row, captures, seal, outputs = fixture
+    prior = dict(context_url=row['recovered_url'], sha256=row['sha256'],
+                 retrieved_at='2020-01-01T00:00:00Z', receipt_key='prior-receipt', receipt_line=7)
+    if mismatch == 'url':
+        prior['context_url'] = 'https://other.test/file.pdf'
+    elif mismatch == 'digest':
+        prior['sha256'] = 'a' * 64
+    elif mismatch == 'timestamp':
+        prior['retrieved_at'] = None
+    else:
+        prior['sha256'] = None
+    seal(prior=[prior])
+    before = captures.read_bytes()
+    module.prepare(batch, captures)
+    records, report = outputs()
+    assert records == []
+    assert report['unresolved'] == [dict(original_url=row['original_url'], reason='source_timestamp_not_established')]
+    assert captures.read_bytes() == before

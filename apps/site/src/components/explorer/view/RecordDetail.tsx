@@ -347,11 +347,12 @@ function FactGroups({ facts, eyebrow }: { facts: [unknown, unknown][]; eyebrow: 
 export function RecordDetail({ record, onSelect, sourceEvidence, committeeLabels, affectedAction, meetingAction }: { record: DetailRecord; onSelect: (ref: ExplorerRecordRef) => void; sourceEvidence?: ReactNode; committeeLabels?: Readonly<Record<string, string>>; affectedAction?: ReactNode; meetingAction?: ReactNode }) {
   const row = fields(record);
   const when = recordedWhen(row);
-  const committees = (Array.isArray(row.committee_ids) ? row.committee_ids : []).map(id => committeeLabels?.[String(id)]).filter(Boolean);
+  const committees = (Array.isArray(row.committee_ids) ? row.committee_ids : []).map(id => committeeLabels?.[String(id)]).filter((name): name is string => Boolean(name));
   const kind = kindLabel(record);
   const roleLabels = (Array.isArray(row.roles) ? row.roles.map(role => enumLabel(role)) : []).filter(role => role.toLowerCase() !== kind.toLowerCase());
+  const date = typeof row.date === 'string' ? row.date.slice(0, 10) : '';
   const facts = [
-    ['Date', (row.date || '').slice(0, 10) || null], ['Scheduled time', (row.date || '').slice(0, 10) && when.time ? when.time : null], ['Meeting schedule', scheduleNote(row).replace(/^Scheduled /, '') || null], ['Congress', congressName(row.congress) || null], ['Chamber', row.chamber],
+    ['Date', date || null], ['Scheduled time', date && when.time ? when.time : null], ['Meeting schedule', scheduleNote(row).replace(/^Scheduled /, '') || null], ['Congress', congressName(row.congress) || null], ['Chamber', row.chamber],
     ['Committees', record.kind === 'committee_term' ? null : committees.length ? committees.join(' · ') : null],
     ['Open issues', typeof row.issue_count === 'number' && row.issue_count > 0 ? row.issue_count : null],
     ['Access', row.access],

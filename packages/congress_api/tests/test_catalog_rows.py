@@ -549,3 +549,86 @@ def test_native_projected_read_pushes_column_selection_and_bounds_bytes_read(tmp
     assert proj_out.equals(wide_table.select(["source_id", "source_url"]), check_metadata=True)
     assert proj_reader.bytes_read < full_reader.bytes_read // 10
 
+
+
+def test_cached_descriptor_still_refuses_mutated_pin_schema_and_missing_owner(monkeypatch):
+    native, store = Native(), MemoryStore()
+    owner = CatalogRows(native=native, store=store)
+    pin = owner.write(values().slice(0, 3), dataset="cached", operation="initial",
+                      definition="test", owner_column="document_id", max_rows=8, max_bytes=8192)
+    decodes = []
+    read_schema = pa.ipc.read_schema
+    monkeypatch.setattr(pa.ipc, "read_schema", lambda *a, **k: (decodes.append(1), read_schema(*a, **k))[1])
+    for _ in range(2):
+        assert owner.occurrences(pin, schema=SCHEMA, owner_id="null") is None
+        assert list(owner.occurrences(pin, schema=SCHEMA, owner_id="empty")) == []
+        actual = pa.concat_arrays(list(owner.occurrences(pin, schema=SCHEMA, owner_id="edge")))
+        assert actual.equals(values()["source_occurrences"][2].values)
+    assert len(decodes) == 1
+    with pytest.raises(ValueError, match="owner is absent"):
+        owner.occurrences(pin, schema=SCHEMA, owner_id="missing")
+    with pytest.raises(ValueError, match="logical schema"):
+        owner.occurrences(pin, schema=SCHEMA.with_metadata({b"custom": b"changed"}), owner_id="edge")
+    pending = owner.occurrences(pin, schema=SCHEMA, owner_id="edge")
+    pin["catalog_rows"]["rows"] += 1
+    with pytest.raises(ValueError, match="binding"):
+        list(pending)
+    with pytest.raises(ValueError, match="binding"):
+        owner.occurrences(pin, schema=SCHEMA, owner_id="edge")
+
+
+def test_owner_slices_preserve_cross_part_order_and_evict_indexes_together():
+    native, store = Native(), MemoryStore()
+    owner = CatalogRows(native=native, store=store)
+    rows = [dict(document_id=str(i), title="t", source_occurrences=[
+        dict(label=[str(i), str(j)], url=None) if j % 2 else None for j in range(7)
+    ]) for i in range(5)]
+    table = pa.Table.from_pylist(rows, schema=SCHEMA)
+    pin = owner.write(table, dataset="sliced", operation="initial", definition="test",
+                      owner_column="document_id", max_rows=5, max_bytes=8192)
+    assert pin["catalog_rows"]["parts"] > 2
+    for identity in ["4", "0", "3", "1", "2", "0"]:
+        actual = pa.concat_arrays(list(owner.occurrences(pin, schema=SCHEMA, owner_id=identity)))
+        assert actual.equals(table["source_occurrences"][int(identity)].values)
+        assert len(owner._children) <= 2
+    # Sorting never permits a child to claim a different owner's values.
+    child = next(name for name in native.tables if "-occ-" in name)
+    original = native.tables[child]
+    native.tables[child] = original.set_column(1, original.schema.field("owner_id"),
+                                              pa.array(["wrong"] * len(original)))
+    with pytest.raises(ValueError, match="child owner"):
+        list(CatalogRows(native=native, store=store).occurrences(pin, schema=SCHEMA, owner_id="0"))
+
+
+def test_bound_source_occurrence_reader_detaches_selection_and_reference(monkeypatch):
+    from congress_api.retention.catalog_dependency_storage import CatalogDependencyStorage
+    from congress_api.retention.catalog_dependencies import DependencyGap
+    from test_catalog_dependencies import source, identity
+    from test_catalog_dependency_storage import SCHEMA as BASE
+
+    native, store = Native(), MemoryStore()
+    schema = BASE.append(pa.field("source_occurrences", OCC))
+    owner = CatalogDependencyStorage(native=native, store=store, namespace="reader",
+                                     source_schema=schema, max_rows=8, max_bytes=8192)
+    rows = [source("a.pdf", "a", source_occurrences=[None, dict(label=["é"], url=[])]),
+            source("b.pdf", "b", source_occurrences=[]), source("c.pdf", "c", source_occurrences=None)]
+    selected = owner.prepare(None, replacements=rows)
+    _, reference = owner.sources.lookup(selected["source_root"], identity(rows[0]))
+    decodes = []
+    read_schema = pa.ipc.read_schema
+    monkeypatch.setattr(pa.ipc, "read_schema", lambda *a, **k: (decodes.append(1), read_schema(*a, **k))[1])
+    reader = owner.source_occurrence_reader(selected, reference)
+    for row in rows:
+        result = reader(identity(row))
+        assert (None if result is None else [value for batch in result for value in batch.to_pylist()]) == row["source_occurrences"]
+    assert len(decodes) == 3  # selection, leaf schema, descriptor; once per bound leaf
+    selected["namespace"] = "changed"
+    reference["release"]["catalog_rows"]["rows"] += 1
+    assert sum(len(batch) for batch in reader(identity(rows[0]))) == 2
+    with pytest.raises(DependencyGap):
+        owner.source_occurrence_reader(selected, reference)
+    selected["namespace"] = "reader"
+    with pytest.raises(ValueError, match="binding"):
+        owner.source_occurrence_reader(selected, reference)(identity(rows[0]))
+    with pytest.raises(ValueError, match="owner is absent"):
+        reader("missing")

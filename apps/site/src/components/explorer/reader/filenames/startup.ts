@@ -28,7 +28,7 @@ export async function withVerifiedBytes(policy: any, label: string, run: (verifi
     try { return await Promise.race([promise, stopped]); }
     finally { if (interrupted) signal.removeEventListener('abort', interrupted); }
   };
-  const verified = async (fetcher: any, url: string, sha256: string, length: number, name: string) => {
+  const verified = async (fetcher: typeof fetch, url: string, sha256: string, length: number, name: string) => {
     if (!Number.isSafeInteger(length) || length < 1 || length > policy.maxBytes) throw new Error(`${name} exceeds the startup byte limit.`);
     check();
     const pending = Promise.resolve(fetcher(url, {signal}));

@@ -5,7 +5,7 @@ import {pathToFileURL} from 'node:url';
 import {performance} from 'node:perf_hooks';
 import {argumentsMap,checkTargets,readTargets,measurementProfiles} from './archive-targets.mjs';
 import {startArchiveServer} from './archive-server.mjs';
-import {browserDependency,heapSampler} from './archive-browser.mjs';
+import {browserDependency,heapSampler,routeArchiveOrigin} from './archive-browser.mjs';
 export async function measureArchive(args){
   const samples=[],repeats=Number(args.repeats||3),deviceClass=args['device-class']||'desktop-profile';
   if(!Number.isSafeInteger(repeats)||repeats<1||repeats>20)throw new Error('Use between one and twenty repetitions.');
@@ -22,7 +22,7 @@ export async function measureArchive(args){
     browser=args.cdp?await chromium.connectOverCDP(args.cdp):await chromium.launch({headless:true,...(args['browser-executable']?{executablePath:args['browser-executable']}:{})});
     for(let i=0;i<repeats;i++){
       const ownedContext=!args.cdp,context=ownedContext?await browser.newContext({viewport:profile.viewport,deviceScaleFactor:profile.deviceScaleFactor,isMobile:profile.isMobile}):browser.contexts()[0];
-      const page=await context.newPage();page.setDefaultTimeout(Number(args['timeout-ms']||60000));
+      const page=await context.newPage();await routeArchiveOrigin(page,server);page.setDefaultTimeout(Number(args['timeout-ms']||60000));
       const sampler=heapSampler(browser,page,{profile:emulated?profile:undefined});
       try{
         await sampler.ready;

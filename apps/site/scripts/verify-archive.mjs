@@ -8,6 +8,7 @@ import {fileURLToPath} from 'node:url';
 import {openArchive} from '../src/components/explorer/reader/archive.ts';
 import {argumentsMap,checkTargetRelease,readTargets} from './archive-targets.mjs';
 const hex=value=>typeof value==='string'?value:Buffer.from(value).toString('hex');
+const EXPLORER_ORIGIN='https://civictechdc.github.io';
 function safeUrl(value,local){
   const url=new URL(value);
   if(url.username||url.password)throw new Error('Use a public URL without credentials.');
@@ -23,7 +24,7 @@ export async function verifyArchive({pointerUrl,releaseId,rawBase,local=false,fe
   const sample=()=>{const memory=process.memoryUsage();peak=Math.max(peak,memory.heapUsed+memory.external);return memory;};
   const sampler=setInterval(sample,5);sample();
   const bounded=async(url,options={})=>{
-    safeUrl(url,local);const response=await fetcher(url,{...options,signal:options.signal?AbortSignal.any([options.signal,controller.signal]):controller.signal});
+    safeUrl(url,local);const response=await fetcher(url,{...options,headers:local?options.headers:{...options.headers,Origin:EXPLORER_ORIGIN},signal:options.signal?AbortSignal.any([options.signal,controller.signal]):controller.signal});
     const path=new URL(url).pathname,cache=response.headers.get('Cache-Control')||'';
     if(path===pointer.pathname&&!cache.includes('no-store')){await response.body?.cancel();throw new Error('Archive pointer must be no-store.');}
     if(response.ok&&path.includes('/releases/')){

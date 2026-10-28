@@ -7,6 +7,18 @@ export function browserDependency(name){
   }
   throw new Error(`Missing ${name}. Set VIEWER_BENCHMARK_MODULES to its maintained node_modules folder.`);
 }
+/** The built site reads the public archive origin (pointer, then its release
+ * files). Local harnesses keep that real artifact and redirect only those reads
+ * to the fixture server, which serves the same layout under /data/archive/. */
+export const ARCHIVE_ORIGIN='https://congressional-data.spicygov.ai';
+const archivePath=/^\/viewer-publications\/(manifest\.json|releases\/[a-f0-9]{64}\/[a-z_0-9.-]+)$/;
+export async function routeArchiveOrigin(target,server){
+  await target.route(url=>url.origin===ARCHIVE_ORIGIN&&archivePath.test(url.pathname),async route=>{
+    const url=new URL(route.request().url());
+    const fixture=server.origin+'/congressional-tech/data/archive/'+archivePath.exec(url.pathname)[1]+url.search;
+    await route.fulfill({response:await route.fetch({url:fixture})});
+  });
+}
 const heap=value=>value.usedSize+(value.backingStorageSize||0)+(value.embedderHeapUsedSize||0);
 const networkParameters=network=>({offline:false,latency:network.latency,downloadThroughput:network.downloadThroughput,uploadThroughput:network.uploadThroughput,connectionType:'cellular4g'});
 /** One page session owns policy and samples. Chromium 148 resets global page
