@@ -7,6 +7,9 @@ from congress_api.retention.provenance import (field as _field, list_of as _list
 from viewer_publication.archive_fixture import build_fixture_release
 from viewer_publication.archive_format import ROOT, EMPTY_STRINGS, _step, _normal, _execute, legacy_meeting_keys
 
+# Existing parity callers retain this name until their shared-helper import lands.
+_meeting_keys = legacy_meeting_keys
+
 
 def _match(expression, pattern):
     return f"array_element(regexp_match({expression},'{pattern}'),1)"
