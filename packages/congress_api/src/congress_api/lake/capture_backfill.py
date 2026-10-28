@@ -9,6 +9,7 @@ from datetime import datetime,timezone
 import json
 from pathlib import Path
 import importlib.util
+import errno
 import os
 import shutil
 import signal
@@ -180,6 +181,20 @@ class _MemorySamples:
         return rss,physical
 
 
+def _group_is_live(group):
+    result=subprocess.run(['ps','-axo','pgid=,stat='],capture_output=True,text=True,check=True,timeout=5)
+    return any(int(parts[0])==group and not parts[1].startswith('Z')
+        for line in result.stdout.splitlines() if len(parts:=line.split())==2)
+
+
+def _signal_group(group,number,send,is_live):
+    try:send(group,number)
+    except OSError as error:
+        if error.errno in (errno.EPERM,errno.ESRCH) and not is_live(group):
+            return dict(signal=number,errno=error.errno,group_exited=True)
+        raise
+
+
 def monitor_command(command,*,work,physical_limit=16<<30,timeout=2700,min_free_bytes=15<<30,
                     scratch_root=None):
     """Run one owned batch process and record sampled RSS/physical footprint.
@@ -219,6 +234,7 @@ raise SystemExit(process.returncode)
     old={number:signal.getsignal(number) for number in (signal.SIGTERM,signal.SIGINT,signal.SIGHUP)}
     for number in old:signal.signal(number,interrupted)
     started=time.monotonic();peak=0;physical_peak=0;samples=0;failure=None;child=None;disk_next=started
+    primary_error=None;cleanup_errors=[]
     try:
         with log.open('x') as output:
             child=subprocess.Popen([sys.executable,'-I','-c',watchdog,str(os.getpid()),*command],
@@ -243,26 +259,33 @@ raise SystemExit(process.returncode)
                     if time.monotonic()-started>timeout:raise RuntimeError('Batch exceeded its time limit')
                     time.sleep(.5)
             except Exception as error:
+                primary_error=error
                 failure=dict(type=type(error).__name__,message=str(error))
                 if child.poll() is None:
-                    try:os.killpg(child.pid,signal.SIGTERM)
-                    except ProcessLookupError:pass
+                    try:
+                        note=_signal_group(child.pid,signal.SIGTERM,os.killpg,_group_is_live)
+                        if note:cleanup_errors.append(note)
+                    except OSError as cleanup:cleanup_errors.append(dict(type=type(cleanup).__name__,message=str(cleanup)))
                     try:child.wait(timeout=5)
                     except subprocess.TimeoutExpired:pass
                 # The group can outlive its leader when a descendant ignores TERM.
-                try:os.killpg(child.pid,signal.SIGKILL)
-                except ProcessLookupError:pass
-                child.wait()
-            result=dict(returncode=child.wait(),seconds=time.monotonic()-started,
+                try:
+                    note=_signal_group(child.pid,signal.SIGKILL,os.killpg,_group_is_live)
+                    if note:cleanup_errors.append(note)
+                except OSError as cleanup:cleanup_errors.append(dict(type=type(cleanup).__name__,message=str(cleanup)))
+                try:child.wait(timeout=5)
+                except subprocess.TimeoutExpired:cleanup_errors.append(dict(type='TimeoutExpired',message='Owned group did not stop'))
+            result=dict(returncode=child.poll(),seconds=time.monotonic()-started,
                 monitor_pid=os.getpid(),owned_pgid=child.pid,samples=samples,
                 sampled_peak_tree_rss=peak,sampled_peak_tree_physical_footprint=physical_peak,
                 physical_limit=physical_limit,failure=failure,
+                cleanup_errors=cleanup_errors,
                 physical_basis='macOS charged physical footprint' if sys.platform=='darwin' else 'Linux RSS plus swap conservative proxy',
                 qualification='sampled owned tree; not continuous or a Linux production bound')
             report.write_text(json.dumps(result,indent=2)+'\n')
     finally:
         for number,handler in old.items():signal.signal(number,handler)
-    if failure:raise RuntimeError(failure['message'])
+    if primary_error is not None:raise primary_error
     if result['returncode']!=0:raise RuntimeError('Batch exited '+str(result['returncode'])+'; see '+str(log))
     return result
 
