@@ -189,6 +189,8 @@ class R2Store:
         self.excluded_body_hashes = excluded_body_hashes
         self.store_uncompressed_pdfs = store_uncompressed_pdfs
         self.index_etags = {}
+        from congress_api.retention.body_store import BodyStore, R2Adapter
+        self.raw = BodyStore(R2Adapter(client, bucket))
         self.cache_dir = Path(cache_dir) if cache_dir is not None else None
         self._manifest_cache_dir = self.cache_dir / 'r2-native-manifests' if self.cache_dir is not None else None
         self._immutable_cache_dir = self.cache_dir / 'r2-immutable' if self.cache_dir is not None else None
@@ -335,8 +337,15 @@ class R2Store:
             self._write_manifest_disk_cache(immutable_path, data)
         return data
 
-    def put(self, key, body, *, immutable=False):
+    def put(self, key, body, *, immutable=None):
         from botocore.exceptions import ClientError
+        from io import BytesIO
+        from congress_api.retention.body_store import RAW_PREFIXES, R2Adapter, create_stored
+        if key.startswith(RAW_PREFIXES):
+            media = ('application/pdf' if key.endswith('.pdf') else
+                     'application/gzip' if key.endswith('.gz') else 'application/octet-stream')
+            return create_stored(R2Adapter(self.client, self.bucket), key, BytesIO(body), media,
+                operation='replace' if immutable is False else 'create').outcome == 'stored'
 
         if self._manifest_cache_dir is not None and immutable and key.startswith('indexes/native-manifests/'):
             disk_path = self._manifest_cache_dir / key.removeprefix('indexes/native-manifests/')
@@ -366,10 +375,6 @@ class R2Store:
             return True
 
         self._flush_manifests()
-
-        if key.startswith("bodies/") and self.excluded_body_hashes:
-            from congress_api.retention.raw_storage import enforce_body_ingest_gate
-            enforce_body_ingest_gate(self, key, body, excluded_hashes=self.excluded_body_hashes)
 
         options = {}
         if immutable:
