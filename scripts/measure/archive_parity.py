@@ -445,10 +445,9 @@ def normalization(loaded, *, directory):
         wide=next(step for step in steps if step['name']=='old_wide')
         wide['sql']=wide['sql'].replace('t.first_captured FROM',"t.first_captured,m.bytes AS saved_bytes,coalesce(m.media_type,CASE WHEN d.format[1]='pdf' THEN 'application/pdf' ELSE 'application/octet-stream' END) AS saved_media_type FROM")
         wide['sql']+=' LEFT JOIN old_capture_metadata m ON d.body_key=m.body_key'
-    from viewer_publication.archive_format import LIST_COLUMNS,DETAIL_COLUMNS
-    from viewer_publication.archive_release import _meeting_keys
+    from viewer_publication.archive_format import LIST_COLUMNS,DETAIL_COLUMNS,legacy_meeting_keys
     steps.append(dict(name='new_wide',sql='SELECT cast(list_row AS VARCHAR) AS doc,* FROM document_rows',materialize=True))
-    steps.append(dict(name='old_meetings',sql=f'''SELECT DISTINCT document_id AS doc,cast(unnest({_meeting_keys('source_url')}) AS VARCHAR) AS meeting_key FROM oracle_documents
+    steps.append(dict(name='old_meetings',sql=f'''SELECT DISTINCT document_id AS doc,cast(unnest({legacy_meeting_keys('source_url')}) AS VARCHAR) AS meeting_key FROM oracle_documents
         UNION SELECT document_id,cast(try_cast(regexp_replace(unnest(source_meeting_id),'^(HHRG|HMKP|HMTG)-?','') AS BIGINT) AS VARCHAR) FROM oracle_documents''',materialize=True))
     if kind=='f0':
         new_ids="SELECT 'new' AS side,cast(s.list_row AS VARCHAR) AS doc,s.document_id,g.body_keys,g.source_ids FROM (SELECT DISTINCT document_id,list_row FROM source_members) s JOIN old_identity_groups g USING(document_id)"
