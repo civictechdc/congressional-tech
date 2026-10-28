@@ -5,7 +5,8 @@ from pathlib import Path
 import pyarrow as pa
 import pyarrow.parquet as pq
 
-from congress_api.retention.provenance import parquet_output, run_job
+from congress_api.retention.body_store import validate_key
+from congress_api.retention.provenance import json_input,parquet_output,run_job
 
 
 RULES = {
@@ -34,10 +35,45 @@ COVERAGE = dict(
                             'original_path outside archive captures'])
 
 
-def compare_old(evidence, old_index, *, engine, work):
+def compare_old(evidence, old_index, *, engine, work, receipt_keys=None):
+    """Compare one retained evidence file or an explicit set of whole batches.
+
+    The native union precedes every occurrence rank and is materialized once.
+    An explicit new-receipt scope never narrows the old oracle population.
+    Python checks only file schemas and bounded receipt metadata, not rows.
+    """
+    paths=evidence if isinstance(evidence,list) else [evidence]
+    if not paths or any(not isinstance(path,(str,Path)) for path in paths):
+        raise ValueError('Comparison requires a nonempty evidence path list')
+    paths=[Path(path).resolve() for path in paths]
+    if len(paths)!=len(set(paths)):
+        raise ValueError('Comparison evidence paths must be unique')
+    schemas=[pq.read_schema(path) for path in paths]
+    new_schema=schemas[0]
+    if any(not schema.equals(new_schema,check_metadata=True) for schema in schemas[1:]):
+        raise ValueError('Comparison evidence schemas must exactly match')
+    if receipt_keys is not None:
+        if (not isinstance(receipt_keys,list) or not receipt_keys
+                or any(not isinstance(key,str) or not key.startswith('receipts/') for key in receipt_keys)
+                or len(receipt_keys)!=len(set(receipt_keys))):
+            raise ValueError('Comparison receipt scope requires unique receipt keys')
+        for key in receipt_keys:validate_key(key)
+        receipt_keys=sorted(receipt_keys)
+    old_schema=pq.read_schema(old_index)
     work = Path(work).resolve()
     work.mkdir(parents=True, exist_ok=False)
-    old_schema, new_schema = pq.read_schema(old_index), pq.read_schema(evidence)
+    inputs=[dict(name='old_input',kind='parquet',path=str(Path(old_index).resolve()))]
+    inputs.extend(dict(name='new_part_'+str(index),kind='parquet',path=str(path))
+                  for index,path in enumerate(paths))
+    steps=[dict(name='new_input',sql=' UNION ALL '.join(
+        'SELECT * FROM new_part_'+str(index) for index in range(len(paths))),materialize=True)]
+    new_input='new_input'
+    if receipt_keys is not None:
+        inputs.append(json_input(work,'comparison_receipts',
+            [dict(receipt_key=key) for key in receipt_keys],receipt_key='Utf8'))
+        steps.append(dict(name='new_selected',sql='''SELECT n.* FROM new_input n
+            LEFT SEMI JOIN comparison_receipts s ON n.receipt_key=s.receipt_key'''))
+        new_input='new_selected'
     def value(schema, name, kind='VARCHAR'):
         return '"'+name+'"' if name in schema.names else f'cast(NULL AS {kind})'
     def projection(schema, old=False):
@@ -73,9 +109,9 @@ def compare_old(evidence, old_index, *, engine, work):
                 expression=(value(schema,name,kind) if name in schema.names and valid(schema.field(name).type)
                             else f'cast(NULL AS {kind})')
                 cols.append(expression+' AS '+name)
-        return 'SELECT '+','.join(cols)+' FROM '+('old_input' if old else 'new_input')
+        return 'SELECT '+','.join(cols)+' FROM '+('old_input' if old else new_input)
     old_order = ','.join('"'+f+'"' for f in old_schema.names)
-    steps = [dict(name='old_numbered',sql=f'SELECT *,row_number() OVER (ORDER BY {old_order}) AS old_row FROM old_input'),
+    steps += [dict(name='old_numbered',sql=f'SELECT *,row_number() OVER (ORDER BY {old_order}) AS old_row FROM old_input'),
         dict(name='old_facts',sql=projection(old_schema,True).replace('FROM old_input',',old_row FROM old_numbered')),
         dict(name='new_values',sql=projection(new_schema)),
         dict(name='secondary_duplicates',sql='''SELECT o.old_row FROM old_facts o
@@ -200,12 +236,19 @@ def compare_old(evidence, old_index, *, engine, work):
         (SELECT count(*) FROM matched WHERE unexplained) AS unexplained,
         (SELECT count(*) FROM matched WHERE expected_change AND NOT unexplained) AS expected_changes,
         (SELECT count(*) FROM matched) AS matched'''
-    result = run_job(work,engine,inputs=[
-        dict(name='old_input',kind='parquet',path=str(Path(old_index).resolve())),
-        dict(name='new_input',kind='parquet',path=str(Path(evidence).resolve()))],
-        steps=steps,outputs=outputs,queries=[dict(name='counts',sql=query)])['counts'][0]
+    excluded='''SELECT n.receipt_key,count(*) AS rows FROM new_input n
+        LEFT ANTI JOIN comparison_receipts s ON n.receipt_key=s.receipt_key
+        GROUP BY n.receipt_key ORDER BY n.receipt_key''' if receipt_keys is not None else '''
+        SELECT receipt_key,cast(0 AS BIGINT) AS rows FROM new_input WHERE false'''
+    native=run_job(work,engine,inputs=inputs,steps=steps,outputs=outputs,queries=[
+        dict(name='counts',sql=query),
+        dict(name='input_new_rows',sql='SELECT count(*) AS rows FROM new_input'),
+        dict(name='excluded_new_receipts',sql=excluded)])
+    result=native['counts'][0]
     result['owner_gate'] = bool(result['old_only'] or result['unexplained_new_only'] or result['unexplained'])
     result['rules'] = RULES
     result['coverage'] = dict(COVERAGE,available_old_fields=old_schema.names)
+    result['scope']=dict(receipt_keys=receipt_keys,input_new_rows=native['input_new_rows'][0]['rows'],
+        excluded_new_receipts=native['excluded_new_receipts'])
     (work/'comparison.json').write_text(json.dumps(result,indent=2,sort_keys=True)+'\n')
     return result
