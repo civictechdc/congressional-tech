@@ -167,3 +167,37 @@ def test_invalid_provenance_etag_binding_refuses_before_yield(tmp_path,failure):
     with pytest.raises(ValueError,match='provenance|ETag'):
         with model_arguments(value,provenance_etags=etags):
             pytest.fail('Unbound provenance reached model consumption')
+
+
+def test_checked_provenance_cache_is_retained_without_another_hash_pass(tmp_path, monkeypatch):
+    from hashlib import md5
+    import viewer_publication.archive_model_job as job
+    from congress_shared.custody import verify_local_file
+    value=pinned_local_spec(tmp_path);item=value['review_files'][0]
+    checked=verify_local_file(item['path'],additional_hashes={'md5':md5})
+    hashed=[];original=job.file_identity
+    def record(path,**kwargs):
+        hashed.append(str(path));return original(path,**kwargs)
+    monkeypatch.setattr(job,'file_identity',record)
+    with job.model_arguments(value,provenance_etags={item['key']:checked['md5']},
+                             verified_files={item['path']:checked}) as arguments:
+        assert Path(arguments['review_files'][0]['path']).read_bytes()==Path(item['path']).read_bytes()
+        assert arguments['review_files'][0]['path']!=item['path']
+    assert item['path'] not in hashed
+    assert hashed==[value['captures']['path']]
+
+
+@pytest.mark.parametrize('failure',['changed','checksum','plain_mapping','missing_md5'])
+def test_checked_provenance_cache_refuses_invalid_custody_before_consumption(tmp_path,failure):
+    from hashlib import md5
+    from congress_shared.custody import verify_local_file
+    from viewer_publication.archive_model_job import model_arguments
+    value=pinned_local_spec(tmp_path);item=value['review_files'][0]
+    checked=verify_local_file(item['path'],additional_hashes={'md5':md5} if failure!='missing_md5' else None)
+    etag=md5(Path(item['path']).read_bytes()).hexdigest()
+    if failure=='changed':Path(item['path']).write_bytes(b'changed')
+    elif failure=='checksum':item['sha256']='0'*64
+    elif failure=='plain_mapping':checked=dict(checked)
+    with pytest.raises(ValueError,match='custody|checksum|provenance'):
+        with model_arguments(value,provenance_etags={item['key']:etag},verified_files={item['path']:checked}):
+            pytest.fail('Unchecked cache reached native consumption')
