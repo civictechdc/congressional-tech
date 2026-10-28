@@ -1,44 +1,22 @@
 # B15 weekly raw preservation release
 
-Prepared on `release/b15-weekly-raw` from existing `origin/main` `7411f5b7`. Contracts `38700dec` precede implementation `674b0471`. This owner-approved port copies the maintained weekly writer and applies only its synchronous storage and workflow changes. A local snapshot commit is preserved as create-only raw bodies and receipts before its Git ref is published.
+`release/b15-weekly-raw` starts at the shared `origin/main` `7411f5b7`. It preserves source files as create-only bodies and receipts before either collection or publication force-pushes `pipeline-data`. The release includes the publication job's pinned `uv` setup and `CLOUDFLARE_ACCOUNT_ID`, `R2_ACCESS_KEY_ID`, `R2_SECRET_ACCESS_KEY` environment. All five save steps use the same script. Setup, body or receipt failure prevents its push; a push failure leaves raw evidence intact.
 
-Main's `scripts/dev.py`, `test-suites.toml`, setup action, lockfile and dependency declarations are unchanged. This release requires no native runtime configuration. The generic capture `ReceiptWriter`, lake and site are outside the weekly import graph; the shipped `pipeline_raw.py` writes its own receipts. Existing `body_files.py` is reused unchanged.
+The application writer runs from a clean checkout at the exact application commit with `uv sync --locked`. No native runtime is required. Main's runner, Python dependencies and lockfile remain unchanged; `test-suites.toml` adds a storage-only loopback lane because the existing native lane also requires source-fetch.
 
-## Shipped source, configuration and tests
+## Local verification
 
-Line counts include complete files, not added lines.
-
-| File | Lines |
-|---|---:|
-| `.github/scripts/prepare-raw-writer.sh` | 23 |
-| `.github/scripts/save-pipeline-data.sh` | 20 |
-| `.github/tests/test_clean_raw_writer.py` | 205 |
-| `.github/tests/test_update_data_workflow.py` | 93 |
-| `.github/workflows/update-data.yml` | 276 |
-| `model/registries/credential-parameters.json` | 42 |
-| `model/registries/import-runs.json` | 6 |
-| `packages/congress_api/src/congress_api/cli/pipeline_raw.py` | 65 |
-| `packages/congress_api/src/congress_api/retention/body_store.py` | 282 |
-| `packages/congress_api/src/congress_api/retention/pipeline_raw.py` | 245 |
-| `packages/congress_api/src/congress_api/retention/r2.py` | 602 |
-| `packages/congress_api/src/congress_api/retention/receipt_privacy.py` | 167 |
-| `packages/congress_api/src/congress_api/retention/writer_identity.py` | 25 |
-| `packages/congress_api/tests/test_async_capture_native.py` | 387 |
-| `packages/congress_api/tests/test_body_store_contract.py` | 215 |
-| `packages/congress_api/tests/test_pipeline_raw.py` | 230 |
-| `packages/congress_api/tests/test_r2_archive_store.py` | 345 |
-| `packages/congress_api/tests/test_writer_identity.py` | 86 |
-
-The release ticket and this handoff are the only additional metadata. Correction to the implementation commit body's count: `r2.py` is **597 → 602** lines; the committed diff is authoritative.
-
-## Verification
-
-Baseline workflow checks: **3 passed**. New workflow contracts failed **8** cases before the port. After the port, the project runner passed **123** focused checks, including real archive helpers, conditional storage/checksums, clean identity, source-byte identity and all five local weekly success/failure cases. The five-case weekly dry run uses a local raw store and a local bare Git repository; setup, body and receipt failures make zero push calls, and a push failure leaves raw evidence intact. No network write, live import or hosted workflow ran. Architecture review found one existing SDK retry fixture with a malformed body key; the forward fix derives its key from the fixture bytes. Its 25 loopback cases were collected and deselected by the offline lane, and remain unexecuted. Independent code and architecture reviews identified that same fixture issue; commit `16664219` fixes it. The code reviewer separately ran 112 focused checks and 8 existing public-body checks successfully.
-
-Run the focused lane from this worktree:
+- **150 focused checks pass**, including both actual workflows' commands against local bare Git and fake raw storage, storage integrity, writer identity, interrupted rescue retries, and the owner-command/runner checks.
+- **26 SDK loopback checks pass**, using the repository's local HTTP fakes with real synchronous/asynchronous S3 SDKs. No SDK loopback check is skipped. These files also belong to the existing CI native loopback lane.
+- The actual rescue CLI passed twice against an injected local S3 protocol fake on **copies of two real snapshots: 122 files, 303,593,622 distinct source bytes**. Input hashes and stored object identities remained identical. A conflicting receipt was refused before PUT.
+- No hosted workflow, real bucket, Basin job or network write ran. Hosted behavior, R2 lock semantics and live readback remain owner gates.
 
 ```sh
+cd /Users/mikewolfd/Work/wt/ct-b15-weekly-raw
+uv sync --locked
 .venv/bin/python scripts/dev.py test production-offline \
+  --path .github/tests/test_owner_raw_safety_commands.py \
+  --path .github/tests/test_dev_environment.py \
   --path .github/tests/test_clean_raw_writer.py \
   --path .github/tests/test_update_data_workflow.py \
   --path packages/congress_api/tests/test_pipeline_raw.py \
@@ -46,36 +24,39 @@ Run the focused lane from this worktree:
   --path packages/congress_api/tests/test_body_store_contract.py \
   --path packages/congress_api/tests/test_r2_archive_store.py \
   --path packages/congress_api/tests/test_r2_body_files.py
+.venv/bin/python scripts/dev.py test storage-loopback -- -ra
 ```
 
-## Owner release steps
+## Owner sequence
 
-1. Add GitHub repository secrets **`R2_ACCESS_KEY_ID`** and **`R2_SECRET_ACCESS_KEY`** for the approved raw writer. `CLOUDFLARE_ACCOUNT_ID` is public workflow configuration. Existing workflow secrets remain in place.
-2. Push the prepared branch, review its diff and merge it into main:
-
-```sh
-git -C /Users/mikewolfd/Work/wt/ct-b15-weekly-raw push origin release/b15-weekly-raw
-```
-
-3. After the merge and secret setup, enable and run the existing workflow:
+Use [the ordered owner checklist](../owner-raw-safety.md), starting with rescue import or a verified copy off this disk. It contains the before/after inventories and receipt/body readback commands. Do not enable either workflow before installing the secrets: merging this release triggers `publish-explorer.yml` automatically.
 
 ```sh
+gh secret set R2_ACCESS_KEY_ID --repo civictechdc/congressional-tech
+gh secret set R2_SECRET_ACCESS_KEY --repo civictechdc/congressional-tech
+git push origin release/b15-weekly-raw
+gh pr create --repo civictechdc/congressional-tech --base main --head release/b15-weekly-raw \
+  --title 'Preserve pipeline snapshots in raw before publication' \
+  --body 'Preserve source snapshots before both pipeline-data pushes; local failure and SDK loopback checks pass. See B15 RELEASE.md.'
+gh pr merge release/b15-weekly-raw --repo civictechdc/congressional-tech --merge
 gh workflow enable update-data.yml --repo civictechdc/congressional-tech
+gh workflow enable publish-explorer.yml --repo civictechdc/congressional-tech
+gh workflow run publish-explorer.yml --ref main --repo civictechdc/congressional-tech
 gh workflow run update-data.yml --ref main --repo civictechdc/congressional-tech
 ```
 
-Check all four save steps. The first hosted run remains an owner gate.
+Verify the automatically triggered publication and the first collection run, then its downstream publication. Require successful raw preservation before all five snapshot pushes; inspect each raw summary's receipt key and download that receipt, confirm its snapshot commit URL, and match every referenced body key to the post-run body listing. Stop with `gh workflow disable` for both workflows; cancel an active run with `gh run cancel RUN_ID`. Do not rerun the old save helper by itself.
 
-## Owner rescued-batch import
+## Rescued batch
 
-Use the reviewed batch at `/Users/mikewolfd/Work/ct-raw-rescue/pipeline-data`. The release preview reports 33 snapshots, 2,013 files, 226 distinct bodies and zero missing blobs; it reads metadata and checks presence without hashing source blobs or connecting to storage. Repeat the preview:
+Read-only preview refreshed from `/Users/mikewolfd/Work/ct-raw-rescue/pipeline-data`: **35 snapshots, 2,135 files, 226 distinct bodies, zero missing blobs**; 10,722,485,958 file bytes and 1,176,433,815 distinct source bytes. This preview trusts recorded digests; the actual import hashes source bytes before storage.
 
 ```sh
 .venv/bin/python -I -m congress_api.cli.pipeline_raw \
   --rescue-batch /Users/mikewolfd/Work/ct-raw-rescue/pipeline-data --dry-run
 ```
 
-Before importing, set the `pipeline-data-rescue-20261027` entry in `model/registries/import-runs.json` to the **actual UTC import date** and commit that edit, leaving the application clean. The CLI refuses a stale date before connecting. Then run, as the owner:
+Before the live command, register the actual UTC import date for `pipeline-data-rescue-20261027` in `model/registries/import-runs.json` and commit only that file. The writer requires a clean application tree and refuses a stale date before connecting. Keep that exact commit, batch order and date for retries.
 
 ```sh
 .venv/bin/python -I -m congress_api.cli.pipeline_raw \
@@ -83,4 +64,6 @@ Before importing, set the `pipeline-data-rescue-20261027` entry in `model/regist
   --bucket congressional-tech-raw
 ```
 
-The rescue keeps original snapshot times and uses its registered run; ordinary weekly saves use fresh fetch runs. No rescued data was modified or imported during release preparation.
+This writes missing bodies at `bodies/sha256/<shard>/<sha256>` (reusing recognized legacy suffixes) and one receipt per 50,000 files at `receipts/pipeline-data/<registered-date>/pipeline-data-rescue-20261027-000001.jsonl.gz`. The present batch needs one receipt. Lines retain the original snapshot times, order, repetitions and Git blob IDs, with `mode=fetch` and the registered import run. Derived `committee-explorer/` files are excluded.
+
+A rerun on the **same UTC date, exact clean application commit and unchanged batch** is idempotent: it verifies existing body storage, validates completed receipt identities and retains their original creating lines. It can finish a partial import without replacing completed receipts. Different input, writer or recorded storage metadata fails closed. After UTC midnight the date guard stops; retain the original commit and evidence and arrange a reviewed continuation rather than changing the registry to create a second dated import. Never delete or rewrite the rescue batch after import; keep the independent backup.
