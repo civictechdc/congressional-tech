@@ -29,7 +29,12 @@ mkdir "$WINDOW"
 # gh returns the newly created run URL. Use its ID, never a previous run's ID.
 dispatch_and_watch() {
   local workflow="$1"; shift
-  local stem="${workflow%.yml}" run_id
+  local stem="${workflow%.yml}" run_id baseline_validation=false
+  if test "${1:-}" = --baseline-validation; then
+    test "$workflow" = validate-explorer.yml
+    baseline_validation=true
+    shift
+  fi
   test "$(gh api "repos/$REPO/git/ref/heads/main" --jq .object.sha)" = "$LANDED_APPLICATION"
   gh workflow run "$workflow" --ref main --repo "$REPO" "$@" \
     | tee "$WINDOW/dispatch-$stem.txt"
@@ -46,6 +51,18 @@ dispatch_and_watch() {
   test "$(jq -r .headSha "$WINDOW/run-$stem-identity.json")" = "$LANDED_APPLICATION"
   test "$(jq -r .event "$WINDOW/run-$stem-identity.json")" = workflow_dispatch
   printf '%s\n' "$run_id" > "$WINDOW/run-$stem-id.txt"
+  if "$baseline_validation"; then
+    # Wait for completion while preserving the run's visible red conclusion.
+    gh run watch "$run_id" --repo "$REPO"
+    gh run view "$run_id" --repo "$REPO" --json headSha,event,status,conclusion,jobs \
+      > "$WINDOW/hosted-validation-run.json"
+    gh run view "$run_id" --repo "$REPO" --log > "$WINDOW/hosted-validation.log"
+    "$LANDING/.venv/bin/python" -I "$LANDING/.github/scripts/verify-hosted-baseline.py" \
+      --run "$WINDOW/hosted-validation-run.json" --log "$WINDOW/hosted-validation.log" \
+      --baseline "$LANDING/.github/ci-baseline-failures-20261027.json" \
+      --expected-head "$LANDED_APPLICATION" --output "$WINDOW/hosted-baseline-comparison.json"
+    return
+  fi
   gh run watch "$run_id" --exit-status --repo "$REPO"
   gh run view "$run_id" --repo "$REPO" --json conclusion > "$WINDOW/run-$stem-result.json"
   test "$(jq -r .conclusion "$WINDOW/run-$stem-result.json")" = success
@@ -154,8 +171,9 @@ The push is normal and fast-forward only; it never forces main. If main changed 
 Keep the same shell so `dispatch_and_watch`, `WINDOW`, `REPO` and `LANDED_APPLICATION` stay defined. Engine must announce the accepted seed and committed publish binding before the controller step. The first release records `seed: v5 catalog 596f08fa` and its pinned input SHA-256s. Its schema, reader, canary, desktop/phone/404 checks, count reconciliation and 50-document comparison must pass. The raw rebuild continues separately; seed `url_state` never drives capture. The switch checklist is `docs/plans/engine-first-switch.md`; its seed release and publish pins govern this phase.
 
 ```sh
-# 3. A real hosted green check follows the coherent application/runtime pair.
-dispatch_and_watch validate-explorer.yml
+# 3. All six hosted shards complete within budget; retain the visible red result.
+# Exact two-way comparison must equal the pinned36 identities with no new failures.
+dispatch_and_watch validate-explorer.yml --baseline-validation
 
 # 4. Confirm the committed publisher binding without opening runtime credentials.
 cd "$LANDING"
@@ -183,7 +201,7 @@ gh workflow enable update-data.yml --repo "$REPO"
 # capture-archive.yml and the retired filename publisher remain disabled.
 ```
 
-The first hosted check verifies private download credentials and Ubuntu execution; local Linux checks do not claim that boundary. If `gh workflow run` does not return the new run URL, the function stops and lists matching runs. Select the just-dispatched run using its URL/creation time, record its ID in the corresponding `run-*-id.txt`, verify its exact head and watch it; do not dispatch a duplicate controller job. Keep new archive capture, automated archive publication and the retired filename publisher disabled. The old raw capture and meeting updates stay enabled until the accepted raw rebuild replaces the seed; the owner will then use engine's rebuild switch checklist.
+The first hosted check verifies private download credentials and Ubuntu execution; local Linux checks do not claim that boundary. The lead's landing gate requires six completed shard test sessions within 30 minutes each, matching pytest counts and job conclusions, and exactly the pinned 36 failure identities in both directions. Retain all logs, job metadata and `hosted-baseline-comparison.json`. Report this as **red on the 36 pre-existing baseline failures, no new failures**, never green. Tests still run and fail visibly; this evidence check changes no CI conclusion, assertion, skip or workflow result. Missing evidence, infrastructure failures, changed identities or timed-out shards stop the window. Publisher and Pages dispatch still require success. If `gh workflow run` does not return the new run URL, the function stops and lists matching runs. Select the just-dispatched run using its URL/creation time, record its ID in the corresponding `run-*-id.txt`, verify its exact head and watch it; do not dispatch a duplicate controller job. Keep new archive capture, automated archive publication and the retired filename publisher disabled. The old raw capture and meeting updates stay enabled until the accepted raw rebuild replaces the seed; the owner will then use engine's rebuild switch checklist.
 
 ## Paired rollback: variable and previous application tree
 
