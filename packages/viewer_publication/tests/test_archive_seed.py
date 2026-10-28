@@ -86,12 +86,14 @@ def test_seed_keeps_real_ids_sizes_recovery_sources_and_reconciles(tmp_path):
     assert json.loads((out/'capture_scope.json').read_text())['entries']==[]
 
 
-@pytest.mark.parametrize('failure',['missing_size','conflicting_size','unknown_recovery_kind'])
+@pytest.mark.parametrize('failure',['missing_size','conflicting_size','unknown_recovery_kind','missing_status','null_status'])
 def test_seed_refuses_missing_facts_and_unmapped_recoveries(tmp_path,failure):
     def change(fixture):
         if failure=='missing_size':fixture['captures']=fixture['captures'][2:]
         elif failure=='conflicting_size':fixture['captures'][1]['bytes']=999
-        else:fixture['accepted']['recoveries'][0]['recovery_basis']='unmapped-new-claim'
+        elif failure=='unknown_recovery_kind':fixture['accepted']['recoveries'][0]['recovery_basis']='unmapped-new-claim'
+        elif failure=='missing_status':del fixture['accepted']['recoveries'][0]['recovery_status']
+        else:fixture['accepted']['recoveries'][0]['recovery_status']=None
     with pytest.raises(ValueError,match='[Ii]nvariant|[Ss]ize|[Rr]ecovery'):
         build(tmp_path,change)
     assert not (tmp_path/'release/manifest.json').exists()
