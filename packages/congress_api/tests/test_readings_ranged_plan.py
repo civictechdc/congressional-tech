@@ -78,6 +78,24 @@ def test_prefetch_cache_budget_refuses_before_get(tmp_path):
     assert not client.reads
 
 
+@pytest.mark.parametrize('combined',[False,True])
+def test_known_oversized_pages_settle_without_capture_pins_or_gets(tmp_path,combined):
+    args,stored,_=inputs(tmp_path,missing='md5')
+    values=pq.read_table(args['captures']).to_pylist()
+    for row in values:
+        row.update(sniffed_format='html',sniff_version=readings.current_version('sniff'),stored_bytes=None)
+    pq.write_table(pa.Table.from_pylist(values,schema=pq.read_schema(args['captures'])),args['captures'])
+    inventory=pq.read_table(args['body_inventory']);values=inventory.to_pylist()
+    values[0]['stored_bytes']=readings.MAX_STORED_BYTES+1
+    pq.write_table(pa.Table.from_pylist(values,schema=inventory.schema),args['body_inventory'])
+    client=Client(stored,'gzip');work=tmp_path/'stage'
+    store=R2Store(client,'bucket',cache_dir=work/'raw-pages')
+    result=readings.stage(**args,work=work,parser=None if combined else 'html',body_store=store)
+    output=pq.read_table(result['readings']).to_pylist()
+    assert [(r['parser'],r['status']) for r in output]==[('html','size_limit')]
+    assert result['read_bytes']==0 and not client.reads
+
+
 @pytest.mark.parametrize('fail_append',[False,True])
 def test_full_page_cache_is_removed_only_after_successful_readings_append(tmp_path,fail_append):
     args,stored,key=inputs(tmp_path);native=args.pop('engine');work=tmp_path/'backfill'
