@@ -132,12 +132,15 @@ def write_records(store,kind,records,*,timestamp):
 
 def import_unreadable(store, decisions_path, *, decided_at, expected=None,cache=None):
     """Validate and freeze producer decisions, then import exact bytes create-only."""
+    from congress_api.retention.provenance_inventory import MAX_OBJECT_BYTES
     stamp=timestamp_key(decided_at)
     with TemporaryDirectory(prefix='raw-unreadable-') as temporary:
         frozen=Path(temporary)/'decisions.jsonl'
         digest=sha256();count=0;size=0;seen=set()
         with Path(decisions_path).open('rb') as source,frozen.open('xb') as out:
-            for line in source:
+            while line:=source.readline(MAX_OBJECT_BYTES+1-size):
+                if size+len(line)>MAX_OBJECT_BYTES:
+                    raise ValueError('Unreadable import exceeds its byte limit')
                 row=validate_provenance('unreadable',json.loads(line))
                 if row['id'] in seen:raise ValueError('Duplicate unreadable decision ID')
                 seen.add(row['id'])
