@@ -108,3 +108,12 @@ def test_current_publisher_custody_helpers_survive_the_switch(inventory):
     publication=next(g for g in inventory.seeds() if g['binding_row']==6)
     client='packages/viewer_publication/src/viewer_publication/client.py'
     assert 'require_publication_client' not in publication['partial'][client]
+
+
+def test_first_flip_pointer_writer_and_receipt_dependencies_survive(inventory):
+    assert set(inventory.PUBLICATION_CLIENT_KEEP)=={
+        'require_publication_client','publish_manifest_pointer','VerifiedTransfer'}
+    assert set(inventory.PUBLICATION_CLIENT_KEEP_IMPORTS)=={'dataclasses.dataclass','hashlib'}
+    publication=next(g for g in inventory.seeds() if g['binding_row']==6)
+    partial=publication['partial']['packages/viewer_publication/src/viewer_publication/client.py']
+    assert not set(partial)&set(inventory.PUBLICATION_CLIENT_KEEP)
