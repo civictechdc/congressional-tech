@@ -66,7 +66,8 @@ def _require_definitions(spec):
 
 def _sql_steps():
     job=json.loads((ROOT/'model/jobs/seed-v5.json').read_text())
-    return [dict(name=item['name'],sql=(ROOT/item['sql_file']).read_text(),materialize=item['materialize']) for item in job['steps']]
+    return [_step(item['name'],(ROOT/item['sql_file']).read_text(),materialize=item['materialize'],
+        release_after=item.get('release_after',())) for item in job['steps']]
 
 
 def _seed_steps():
