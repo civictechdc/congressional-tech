@@ -216,13 +216,21 @@ def test_cli_daily_plan_over_budget_reports_backfill_required(tmp_path,capsys):
     assert not (tmp_path/'plan/plan/parsed').exists()
 
 
-def test_missing_native_current_lookup_refuses_before_work(tmp_path):
-    args=inputs(tmp_path/'source')
-    with pytest.raises(RuntimeError,match='Native current-table lookup'):
+def test_unavailable_native_current_lookup_refuses_before_body_work(tmp_path):
+    args=inputs(tmp_path/'source');jobs=[]
+    class UnavailableNative:
+        remote=None
+        def run_job(self,path):
+            jobs.append(json.loads(path.read_text()))
+            raise OSError('native current-table lookup unavailable')
+    args['engine']=UnavailableNative()
+    with pytest.raises(OSError,match='native current-table lookup unavailable'):
         readings.run(**args,work=tmp_path/'work',mode='backfill',execute=True,batch_size=2,
             catalog_root=tmp_path/'catalog',table=dict(namespace=['archive'],name='readings'),
             unreadable_store=BodyStore(LocalAdapter(tmp_path/'durable')))
-    assert not (tmp_path/'work').exists() and not (tmp_path/'durable').exists()
+    assert jobs[0]['table_operations']==[dict(kind='resolve',name='readings',
+        table=dict(namespace=['archive'],name='readings'))]
+    assert not (tmp_path/'work/plan').exists() and not (tmp_path/'durable').exists()
 
 
 def test_current_native_pin_is_bound_without_exporting_or_parsing_the_table(tmp_path):

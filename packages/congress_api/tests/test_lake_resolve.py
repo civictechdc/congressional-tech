@@ -67,3 +67,25 @@ def test_native_input_keeps_empty_snapshot_pin_without_export(tmp_path):
         name='captures',kind='parquet',path=str(tmp_path/'captures.parquet'))
     with pytest.raises(ValueError,match='immutable table pin'):
         tables.table_input('existing',dict(PIN,extra='unbound'))
+
+
+def test_receipt_and_filename_producers_bind_native_pins_without_export(tmp_path):
+    from congress_api.lake import receipt_inventory,filenames
+    assert receipt_inventory._existing(tmp_path,PIN)==tables.table_input('existing',PIN)
+    inputs=filenames._work_inputs(PIN,[],[],PIN,tmp_path)
+    assert next(i for i in inputs if i['name']=='captures')==tables.table_input('captures',PIN)
+    assert next(i for i in inputs if i['name']=='existing')==tables.table_input('existing',PIN)
+
+
+def test_reading_plan_binds_captures_and_existing_native_pins_directly(tmp_path):
+    from congress_api.lake import readings
+    class PlanNative:
+        def run_job(self,path):
+            job=json.loads(path.read_text())
+            for name in ['captures','existing']:
+                assert next(i for i in job['inputs'] if i['name']==name)==tables.table_input(name,PIN)
+            return dict(queries=[dict(name=q['name'],data=[dict(n=0)]) for q in job['queries']])
+    result=readings.plan(captures=PIN,existing=PIN,body_inventory=tmp_path/'inventory.parquet',
+        local_root=tmp_path,engine=PlanNative(),work=tmp_path/'plan',parser=None,
+        decided_at='2026-10-28T00:00:00Z')
+    assert result['work_items']==0
