@@ -1,9 +1,11 @@
 """Owner-run raw verifier. A preview stages evidence; --apply-staged creates its pinned records."""
 import argparse
 from datetime import datetime,timezone
-import hashlib
 import json
 from pathlib import Path
+from tempfile import TemporaryDirectory
+
+from congress_shared.custody import copy_checked
 
 from congress_api.retention.body_store import BodyStore,R2Adapter
 from congress_api.retention.raw_verifier import selected_captures,verify
@@ -31,17 +33,19 @@ def apply_staged(work,store):
     records=work/'verification.jsonl'
     if not report.get('valid'):
         raise ValueError('Refused raw verification cannot be applied')
-    with records.open('rb') as source:
-        if hashlib.file_digest(source,'sha256').hexdigest()!=report['records_sha256']:
-            raise ValueError('Verification records changed after staging')
-    if report.get('accepted_records')==0:
-        if records.stat().st_size:
-            raise ValueError('Empty verification delta has nonempty records')
-        return dict(provenance=None,listed=report['listed'],checked=report['checked'])
-    key=report['provenance_key']
-    if not key.startswith('provenance/verification/'):
+    key=report.get('provenance_key')
+    if report.get('accepted_records')!=0 and (not isinstance(key,str) or not key.startswith('provenance/verification/')):
         raise ValueError('Invalid verification provenance key')
-    store.put(key,records,'application/x-ndjson')
+    with TemporaryDirectory(prefix='raw-verification-') as temporary:
+        frozen=Path(temporary)/'verification.jsonl'
+        pin=copy_checked(records,frozen)
+        if pin.sha256!=report['records_sha256']:
+            raise ValueError('Verification records changed after staging')
+        if report.get('accepted_records')==0:
+            if pin.size_bytes:
+                raise ValueError('Empty verification delta has nonempty records')
+            return dict(provenance=None,listed=report['listed'],checked=report['checked'])
+        store.put(key,frozen,'application/x-ndjson')
     return dict(provenance=key,listed=report['listed'],checked=report['checked'])
 
 
