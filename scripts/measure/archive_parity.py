@@ -283,7 +283,7 @@ def normalization(loaded, *, directory):
     from viewer_publication.archive_format import EMPTY_STRINGS
     paths=loaded['paths'];kind=loaded['descriptor']['candidate']['kind']
     inputs=[dict(name=name,kind='parquet',path=path) for name,path in paths.items()
-            if name.startswith('oracle_') or name.startswith('release_') or name in {'source_members','document_rows'} or name.startswith('b7_')]
+            if name.startswith('oracle_') or name.startswith('release_') or name in {'source_members','document_rows'} or name.startswith('b7_') or name in loaded['descriptor'].get('cause_relations',{})]
     inputs += [json_input(directory,'legacy_media',[dict(media=k,format=v) for k,v in MEDIA_FORMATS.items()],media='Utf8',format='Utf8')]
     committee=json.loads((ROOT/'model/registries/committee-codes.json').read_text())
     inputs.append(json_input(directory,'committee_codes',committee,code='Utf8',system_code='Utf8',chamber='Utf8'))
@@ -336,9 +336,15 @@ def normalization(loaded, *, directory):
     if kind=='f0':
         new_ids="SELECT 'new' AS side,cast(s.list_row AS VARCHAR) AS doc,s.document_id,g.body_keys,g.source_ids FROM (SELECT DISTINCT document_id,list_row FROM source_members) s JOIN old_identity_groups g USING(document_id)"
     else:
-        new_ids=f"""SELECT 'new' AS side,cast(list_row AS VARCHAR) AS doc,min(document_id) AS document_id,
-            coalesce(array_sort(array_agg(DISTINCT body_key) FILTER(WHERE body_key IS NOT NULL)),{EMPTY_STRINGS}) AS body_keys,
-            array_sort(array_agg(DISTINCT source_id)) AS source_ids FROM source_members GROUP BY list_row"""
+        if {'capture_sources','record_roles'}<=set(loaded['descriptor'].get('cause_relations',{})):
+            steps.append(dict(name='model_real_sources',sql='SELECT DISTINCT c.source_id FROM capture_sources c JOIN record_roles r USING(receipt_key,receipt_line,capture_index) WHERE r.is_real_file',materialize=True))
+            body='CASE WHEN r.source_id IS NOT NULL THEN m.body_key END'
+            table='source_members m LEFT JOIN model_real_sources r USING(source_id)'
+        else:
+            body='m.body_key';table='source_members m'
+        new_ids=f"""SELECT 'new' AS side,cast(m.list_row AS VARCHAR) AS doc,min(m.document_id) AS document_id,
+            coalesce(array_sort(array_agg(DISTINCT {body}) FILTER(WHERE {body} IS NOT NULL)),{EMPTY_STRINGS}) AS body_keys,
+            array_sort(array_agg(DISTINCT m.source_id)) AS source_ids FROM {table} GROUP BY m.list_row"""
     steps.append(dict(name='identity_documents',sql="SELECT 'old' AS side,document_id AS doc,document_id,body_keys,source_ids FROM old_identity_groups UNION ALL "+new_ids,materialize=True))
     # Nullable attributes remain absent facts; no fabricated date, label or body.
     scalar_old=dict(filename='filename',title='source_link_label[1]',saved_body='body_key',
@@ -377,8 +383,22 @@ def normalization(loaded, *, directory):
         "SELECT doc,'alternates' AS field,encode(a['body'],'hex') AS subject,a['format'] AS value FROM (SELECT doc,unnest(alternates) AS a FROM new_wide)",
         "SELECT cast(list_row AS VARCHAR) AS doc,'recoveries' AS field,encode(body,'hex') AS subject,json_array(kind,encode(body,'hex'),recovered_url,cast(imported_at AS VARCHAR),identity_note) AS value FROM release_recoveries"]
     steps += [dict(name='old_fields',sql=' UNION '.join(old_parts)),dict(name='new_fields',sql=' UNION '.join(new_parts))]
+    steps += [dict(name='old_evidence_sources',sql='SELECT document_id AS doc,source_id,body_key,filename,source_url FROM oracle_filenames',materialize=True),
+        dict(name='new_evidence_sources',sql='SELECT cast(list_row AS VARCHAR) AS doc,source_id,body_key,effective_filename AS filename,source_url FROM source_members',materialize=True)]
     if kind=='f0':
         steps.append(dict(name='witnesses',sql="SELECT cast(NULL AS VARCHAR) AS old_doc,cast(NULL AS VARCHAR) AS new_doc,cast(NULL AS VARCHAR) AS subject,cast(NULL AS VARCHAR) AS fact,cast(NULL AS VARCHAR) AS evidence_ref WHERE false"))
+    # Each original wide file is parsed once by this consumer. All downstream
+    # joins reuse only browser fields and the identity evidence they need.
+    document_columns={'document_id','filename','source_url','source_link_label','body_key','body_keys',
+        'state_retrieved_at','date_token','document_kind','document_family','congress','format',
+        'measure_references','member_bioguide_id','hearing_package_id','committee_code','date_token_candidates','source_meeting_id'}
+    document_columns.update(row['field'] for row in display)
+    file_columns={'document_id','source_id','body_key','filename','source_url','http_status','capture_outcome',
+        'response_usable','response_body_complete','body_format','format','media_type','source_page_url','source_link_label','source_paths'}
+    for step in steps:
+        step['sql']=step['sql'].replace('oracle_documents','old_catalog').replace('oracle_filenames','old_file_rows')
+    steps=[dict(name=name,sql='SELECT '+','.join('"'+c+'"' for c in sorted(columns))+' FROM '+source,materialize=True,release_after=[source])
+        for name,source,columns in [('old_catalog','oracle_documents',document_columns),('old_file_rows','oracle_filenames',file_columns)]]+steps
     return inputs,steps
 
 
@@ -417,7 +437,7 @@ def f0_proof_steps(release_id):
     branches=[f"SELECT d.difference_id,'{cause}' AS cause,'F0:{release_id}' AS evidence_ref {source} WHERE ({predicate})"
               for cause,predicate in predicates.items()]
     return [dict(name='f0_first_context',sql='''SELECT document_id AS old_doc,source_url AS subject,
-        min(source_link_label[1]) AS link_text,min(source_page_url[1]) AS listed_on FROM oracle_filenames
+        min(source_link_label[1]) AS link_text,min(source_page_url[1]) AS listed_on FROM old_file_rows
         WHERE source_url IS NOT NULL GROUP BY document_id,source_url''',materialize=True),
         dict(name='f0_body_target',sql='SELECT body_key,cast(min(list_row) AS VARCHAR) AS doc FROM source_members WHERE body_key IS NOT NULL GROUP BY body_key',materialize=True),
         dict(name='f0_cause_proofs',sql=' UNION ALL '.join(branches),materialize=True)]
@@ -471,8 +491,110 @@ CAUSES = {
     'govinfo123_fetch': (['first_captured','body_keys','files'], 'added',
         f"{_text('match_basis')}='direct_official_package' AND {_text('mode')}='fetch' AND {_text('requested_url')}={_text('url')} AND {_text('url')}={_text('original_url')} AND regexp_like({_text('url')},'^https?://([^/]+[.])?govinfo[.]gov/') AND {_bool('publisher_requested')} AND {_int('http_status')}=200 AND {_bool('complete')} AND {_text('outcome')}='stored' AND {_text('retrieved_at')} IS NOT NULL"),
     'b7_owner_recoveries': (['recoveries','recovery.kind','recovery.imported_at'], 'added',
-        f"{_text('stage')}='raw-recoveries-owner-32c13ffa' AND {_text('decision_id')} IS NOT NULL AND {_text('kind')}='requested_content_in_official_hearing' AND {_text('source_time_basis')}='earliest_matching_fetch'"),
+        f"{_text('stage')}='raw-recoveries-owner-32c13ffa' AND {_text('decision_id')} IS NOT NULL AND ({_text('owner_decision')} IS NOT NULL OR {_text('source_time_basis')}='earliest_matching_fetch')"),
 }
+
+
+def model_witness_steps(available, *, restrict_differences=False):
+    """Join canonical facts in SQL; absent evidence is explicit, never a zero proof."""
+    missing=set(CAUSES)
+    empty="SELECT cast(NULL AS VARCHAR) AS old_doc,cast(NULL AS VARCHAR) AS new_doc,cast(NULL AS VARCHAR) AS subject,cast(NULL AS VARCHAR) AS fact,cast(NULL AS VARCHAR) AS evidence_ref WHERE false"
+    keys={'receipt_key','receipt_line','capture_index'}
+    requirements={'capture_sources':keys|{'source_id','body_sha','filename','source_url','import_date'},
+        'capture_evidence':keys|{'format','mode','complete','http_status','outcome','url','requested_url','retrieved_at','fidelity','member_path','h_content_disposition'},
+        'record_roles':keys|{'record_role','is_real_file'},
+        'page_facts':{'body_sha','status','fingerprint','error_type'}}
+    if any(not cols<=available.get(name,set()) for name,cols in requirements.items()):
+        return [dict(name='witnesses',sql=empty)],sorted(missing)
+    steps=[dict(name='e4_source_observations',sql="""SELECT s.source_id,s.body_sha,s.filename,s.source_url,s.import_date,
+        c.receipt_key,c.receipt_line,c.capture_index,c.format,c.mode,c.complete,c.http_status,c.outcome,c.url,c.requested_url,
+        c.retrieved_at,c.fidelity,c.member_path,c.h_content_disposition,r.record_role,r.is_real_file,
+        p.status AS reading_status,p.fingerprint,p.error_type
+        FROM capture_sources s JOIN capture_evidence c USING(receipt_key,receipt_line,capture_index)
+        JOIN record_roles r USING(receipt_key,receipt_line,capture_index)
+        LEFT JOIN page_facts p ON p.body_sha=s.body_sha""",materialize=True),
+        dict(name='e4_source_contexts',sql='SELECT body_sha,count(DISTINCT source_url) AS distinct_contexts FROM e4_source_observations GROUP BY body_sha',materialize=True),
+        dict(name='e4_evidence_sources',sql="SELECT 'old' AS side,* FROM old_evidence_sources UNION ALL SELECT 'new',* FROM new_evidence_sources",materialize=True),
+        dict(name='e4_observations',sql="""SELECT m.side,m.doc,m.body_key,c.*,x.distinct_contexts FROM e4_evidence_sources m
+            JOIN e4_source_observations c ON c.body_sha=(regexp_match(m.body_key,'([0-9a-f]{64})'))[1]
+            AND c.source_url IS NOT DISTINCT FROM m.source_url
+            JOIN e4_source_contexts x USING(body_sha)""",materialize=True)]
+    branches=[]
+    def branch(table, facts, *, subject, condition='true', evidence="receipt_key||':'||cast(receipt_line AS VARCHAR)||':'||cast(capture_index AS VARCHAR)"):
+        # json_array uses the maintained engine encoder once; strip only its
+        # outer brackets to retain the object's exact scalar JSON types.
+        fields=','.join("'"+name+"',"+expr for name,expr in facts.items())
+        selected=table
+        if restrict_differences:
+            selected+=f" JOIN differences ON ((side='old' AND doc=differences.old_doc) OR (side='new' AND doc=differences.new_doc)) AND differences.subject=({subject})"
+        branches.append(f"SELECT CASE WHEN side='old' THEN doc END AS old_doc,CASE WHEN side='new' THEN doc END AS new_doc,subject,substr(encoded,2,length(encoded)-2) AS fact,evidence_ref FROM (SELECT side,doc,{subject} AS subject,json_array(named_struct({fields})) AS encoded,{evidence} AS evidence_ref FROM {selected} WHERE {condition})")
+    facts={k:k for k in ['record_role','is_real_file','format','mode','complete','http_status','outcome','url','requested_url','fidelity','source_url','receipt_key','receipt_line','reading_status','distinct_contexts','error_type']}
+    facts.update(retrieved_at='cast(retrieved_at AS VARCHAR)',is_import_run='import_date IS NOT NULL',
+        old_time_basis="CASE WHEN import_date IS NOT NULL AND retrieved_at IS NULL THEN 'import_run' END",
+        xml_kind="CASE WHEN format='xml' AND record_role='listing' THEN 'feed' END",
+        name_basis="CASE WHEN member_path IS NULL AND disposition_filename(h_content_disposition)=filename THEN 'content_disposition' END",
+        header_filename='disposition_filename(h_content_disposition)')
+    for subject in ["body_key","json_array(body_key,source_url)","coalesce(source_url,'')"]:
+        branch('e4_observations',facts,subject=subject)
+    # Empty-subject witnesses address scalar fields. Non-document/listing facts
+    # cannot explain a whole lost document unless every source supports it.
+    scalar=dict(facts,record_role="CASE WHEN count_real=0 AND count_unknown=0 THEN record_role END")
+    steps.append(dict(name='e4_scalar_observations',sql="""SELECT *,sum(CASE WHEN is_real_file THEN 1 ELSE 0 END) OVER(PARTITION BY side,doc) AS count_real,
+        sum(CASE WHEN record_role IS NULL THEN 1 ELSE 0 END) OVER(PARTITION BY side,doc) AS count_unknown FROM e4_observations""",materialize=True))
+    branch('e4_scalar_observations',scalar,subject="''")
+    missing-=set(['non_document_roles','listing_pages','soft_error_wrapper_senate','real_web_untyped',
+        'incomplete_damaged_failed_feed','capture_header_names','old_placeholder_xml','capture_dates'])
+    if {'source_id','body_sha','format','group_kind','group_id'}<=available.get('valid_rendition_members',set()):
+        steps.append(dict(name='e4_group_observations',sql='SELECT o.*,g.group_kind,g.group_id FROM e4_observations o JOIN valid_rendition_members g ON o.source_id=g.source_id AND o.body_sha=g.body_sha',materialize=True))
+        for subject in ['body_key','json_array(body_key,source_url)']:
+            branch('e4_group_observations',dict(facts,group_kind='group_kind',group_id='group_id'),subject=subject)
+        missing.remove('govinfo_same_stem_groups')
+    steps.append(dict(name='e4_twin_observations',sql="""SELECT a.*,b.fingerprint AS other_fingerprint,b.source_url AS other_source_url,b.fidelity AS other_fidelity
+        FROM e4_observations a JOIN e4_source_observations b ON a.source_url=b.source_url AND a.fingerprint=b.fingerprint
+        WHERE a.fidelity='saved_text' AND b.fidelity='exact' AND a.body_sha<>b.body_sha""",materialize=True))
+    for subject in ['body_key','json_array(body_key,source_url)',"''"]:
+        branch('e4_twin_observations',dict(facts,other_fingerprint='other_fingerprint',other_source_url='other_source_url',other_fidelity='other_fidelity'),subject=subject)
+    missing.remove('saved_text_exact_twins')
+    recovery_cols={'id','original_url','body_sha256','kind','recovered_url','recovered_filename','decided_at'}
+    if recovery_cols<=available.get('current_recoveries',set()):
+        steps.append(dict(name='e4_recovery_observations',sql="""SELECT o.*,r.original_url AS recovery_original_url,r.recovered_url,r.kind,r.id AS decision_id,r.body_sha256
+            FROM e4_observations o JOIN current_recoveries r ON o.source_url=r.original_url AND o.body_sha=r.body_sha256""",materialize=True))
+        for subject in ['body_key','json_array(body_key,source_url)']:
+            branch('e4_recovery_observations',dict(facts,recovery_original_url='recovery_original_url'),subject=subject)
+        missing.remove('recovery_independent_fetch')
+        steps.append(dict(name='e4_recovery_documents',sql="""SELECT m.side,m.doc,r.* FROM e4_evidence_sources m JOIN current_recoveries r ON m.source_url=r.original_url""",materialize=True))
+        branch('e4_recovery_documents',dict(original_url='original_url',recovered_url='recovered_url'),subject='body_sha256',evidence="'provenance/recoveries:'||id")
+        missing.remove('eot_webharvest_attachment')
+        if 'b7_owner_records' in available and 'b7_source_time_minima' in available:
+            steps.append(dict(name='e4_b7_recoveries',sql="""SELECT r.*,o.id AS owner_decision,t.original_url AS timed_url FROM e4_recovery_documents r
+                LEFT JOIN b7_owner_records o ON r.id=o.id AND r.original_url=o.original_url AND r.body_sha256=o.body_sha256 AND r.kind=o.kind AND r.recovered_url=o.recovered_url
+                LEFT JOIN b7_source_time_minima t ON r.original_url=t.original_url AND r.body_sha256=t.body_sha256
+                WHERE o.id IS NOT NULL OR t.original_url IS NOT NULL""",materialize=True))
+            branch('e4_b7_recoveries',dict(stage="'raw-recoveries-owner-32c13ffa'",decision_id='id',kind='kind',
+                owner_decision='owner_decision',source_time_basis="CASE WHEN timed_url IS NOT NULL THEN 'earliest_matching_fetch' END"),
+                subject='body_sha256',evidence="'raw-recoveries-owner-32c13ffa:'||id")
+            missing.remove('b7_owner_recoveries')
+    if {'source_id','page_body','context','text','doc_type','link_index'}<=available.get('publisher_links',set()):
+        steps.append(dict(name='e4_link_observations',sql='SELECT o.*,p.page_body,p.context,p.text AS link_text,p.doc_type AS publisher_kind,p.link_index FROM e4_observations o JOIN publisher_links p USING(source_id)',materialize=True))
+        for subject in ["''","source_url"]:
+            branch('e4_link_observations',dict(label_basis="'saved_page'",link_text='link_text'),subject=subject,evidence="'page:'||page_body||':'||cast(link_index AS VARCHAR)")
+        missing.remove('link_label_provenance')
+        if 'document_kind' in available.get('capture_sources',set()):
+            steps.append(dict(name='e4_link_kinds',sql='SELECT o.*,cardinality(s.document_kind) AS filename_kind_count FROM e4_link_observations o JOIN capture_sources s USING(receipt_key,receipt_line,capture_index)',materialize=True))
+            branch('e4_link_kinds',dict(filename_kind_count='filename_kind_count',publisher_kind='publisher_kind',link_basis="'saved_page'"),subject="''",evidence="'page:'||page_body||':'||cast(link_index AS VARCHAR)")
+            missing.remove('publisher_link_kind')
+    # The official-package proof needs its retained raw association flag; no URL
+    # inference substitutes for the owner's publisher_requested condition.
+    official={'publisher_requested','match_basis','original_url'}
+    if official<=available.get('capture_evidence',set()):
+        steps.append(dict(name='e4_official_observations',sql='SELECT o.*,c.publisher_requested,c.match_basis,c.original_url FROM e4_observations o JOIN capture_evidence c USING(receipt_key,receipt_line,capture_index)',materialize=True))
+        for subject in ['body_key','json_array(body_key,source_url)',"''"]:
+            branch('e4_official_observations',dict(facts,publisher_requested='publisher_requested',match_basis='match_basis',original_url='original_url'),subject=subject)
+        missing.remove('govinfo123_fetch')
+    # D1's narrowed surface deliberately has no provider-attempt history. The
+    # cause stays visible as unavailable instead of fabricating retry matches.
+    steps.append(dict(name='witnesses',sql=' UNION '.join(branches),materialize=True))
+    return steps,sorted(missing)
 
 
 def cause_steps(*, f0=False):
@@ -512,7 +634,7 @@ def id_inputs(alias):
         ELSE json_array('sources',array_sort(array_distinct({alias}.source_ids))) END"""
 
 
-def comparison_steps(*, f0_release=None):
+def comparison_steps(*, f0_release=None, witness_step=None):
     steps = alignment_steps()
     steps.append(dict(name='identity_input_changes',sql=f'''SELECT p.old_doc,p.new_doc,
         o.document_id AS old_id,n.document_id AS new_id,{id_inputs('o')} AS old_inputs,{id_inputs('n')} AS new_inputs
@@ -537,6 +659,9 @@ def comparison_steps(*, f0_release=None):
             ON (w.old_doc IS NULL OR w.old_doc=d.old_doc) AND (w.new_doc IS NULL OR w.new_doc=d.new_doc)
             AND w.subject=d.subject AND (w.old_doc IS NOT NULL OR w.new_doc IS NOT NULL)''',materialize=True),
     ]
+    if witness_step is not None:
+        index=next(i for i,step in enumerate(steps) if step['name']=='observed_differences')
+        steps.insert(index,witness_step)
     if f0_release:
         steps += f0_proof_steps(f0_release)
     steps += cause_steps(f0=bool(f0_release))
@@ -556,7 +681,7 @@ def comparison_steps(*, f0_release=None):
     return steps
 
 
-def compare_relations(inputs, *, engine, work, missing_evidence=0, prelude=(), f0_release=None):
+def compare_relations(inputs, *, engine, work, missing_evidence=0, prelude=(), f0_release=None, witness_step=None):
     work = Path(work).resolve()
     work.mkdir(parents=True,exist_ok=False)
     outputs = [parquet_output(work,name,sql,order) for name,sql,order in [
@@ -567,7 +692,7 @@ def compare_relations(inputs, *, engine, work, missing_evidence=0, prelude=(), f
         ('identity-errors','SELECT * FROM source_identity_errors UNION ALL SELECT * FROM document_identity_errors',['side','doc','identity']),
         ('identity-input-changes','SELECT * FROM identity_input_changes',['old_doc','new_doc']),
     ]]
-    queries = [dict(name='counts',sql='''SELECT (SELECT count(*) FROM differences) AS differences,
+    queries = [dict(name='failure_causes',sql="SELECT json_get_str(o.fact,'format') AS format,json_get_str(o.fact,'error_type') AS error_type,count(DISTINCT c.difference_id) AS differences FROM known_causes c JOIN observed_differences o ON c.difference_id=o.difference_id AND c.evidence_ref=o.evidence_ref WHERE c.cause='incomplete_damaged_failed_feed' GROUP BY json_get_str(o.fact,'format'),json_get_str(o.fact,'error_type') ORDER BY format,error_type"),dict(name='counts',sql='''SELECT (SELECT count(*) FROM differences) AS differences,
         (SELECT count(*) FROM unexplained) AS unexplained,
         (SELECT count(*) FROM classified WHERE classification IS NULL) AS unclassified,
         (SELECT count(*) FROM classified WHERE classification='derived_only_fact') AS derived_only,
@@ -592,12 +717,12 @@ def compare_relations(inputs, *, engine, work, missing_evidence=0, prelude=(), f
     queries.append(dict(name='causes',sql=f'''SELECT r.cause,coalesce(c.differences,0) AS differences,'field_differences' AS unit FROM ({registry}) r
         LEFT JOIN (SELECT cause,count(DISTINCT difference_id) AS differences FROM known_causes GROUP BY cause) c USING(cause)
         UNION ALL SELECT 'document_id_inputs_changed',count(*),'document_pairs' FROM identity_input_changes ORDER BY cause'''))
-    reports = run_job(work,engine,inputs=inputs,steps=[*prelude,*comparison_steps(f0_release=f0_release)],outputs=outputs,queries=queries)
+    reports = run_job(work,engine,inputs=inputs,steps=[*prelude,*comparison_steps(f0_release=f0_release,witness_step=witness_step)],outputs=outputs,queries=queries)
     counts=reports['counts'][0]
     ready=decision_ready(**{key:counts[key] for key in ['unclassified','derived_only','invalid_ids','invalid_records']},missing_evidence=missing_evidence)
     result=dict(version=1,status='complete' if ready else 'incomplete',decision_ready=ready,
         counts=dict(counts,missing_evidence=missing_evidence),causes=reports['causes'],examples=reports['examples'],
-        identity_examples=reports['identity_examples'],clusters=reports['clusters'])
+        identity_examples=reports['identity_examples'],clusters=reports['clusters'],failure_causes=reports['failure_causes'])
     (work/'comparison.json').write_text(json.dumps(result,indent=2)+'\n')
     return result
 
@@ -610,11 +735,42 @@ def compare_descriptor(descriptor, *, engine_config, work):
     staging=work/'inputs';staging.mkdir()
     inputs,steps=normalization(loaded,directory=staging)
     kind=loaded['descriptor']['candidate']['kind']
-    if kind!='f0':
-        raise ValueError('Model cause projections must be bound before model qualification')
+    missing=[];witness=None
+    if kind=='model':
+        import pyarrow.parquet as pq
+        available={name:set(pq.read_schema(path).names) for name,path in loaded['paths'].items() if name in loaded['descriptor'].get('cause_relations',{}) or name.startswith('b7_')}
+        witness_steps,missing=model_witness_steps(available,restrict_differences=True)
+        witness=witness_steps.pop()
+        steps+=witness_steps
     result=compare_relations(inputs,engine=parallel,work=work/'result',prelude=steps,
-        f0_release=loaded['manifest']['release_id'])
-    result.update(candidate_kind=kind,model_qualified=False,release_id=loaded['manifest']['release_id'],
+        missing_evidence=len(missing),f0_release=loaded['manifest']['release_id'] if kind=='f0' else None,witness_step=witness)
+    for row in result['causes']:
+        row['evidence_status']='unavailable' if row['cause'] in missing else 'available'
+        if row['cause'] in missing:row['differences']=None
+    result.update(candidate_kind=kind,model_qualified=kind=='model' and result['decision_ready'],missing_causes=missing,release_id=loaded['manifest']['release_id'],
         oracle=loaded['selector'],descriptor_sha256=loaded['descriptor_sha256'])
     (work/'comparison.json').write_text(json.dumps(result,indent=2)+'\n')
     return result
+
+
+def main():
+    parser=argparse.ArgumentParser(description=__doc__)
+    parser.add_argument('operation',choices=['prepare-f0','compare'])
+    parser.add_argument('--inputs',type=Path,required=True)
+    parser.add_argument('--work',type=Path,required=True)
+    parser.add_argument('--runtime',type=Path,default=os.environ.get('DOCSPEC_JOB_CONFIG'))
+    args=parser.parse_args()
+    if not args.runtime:parser.error('An explicitly pinned local runtime is required')
+    if args.operation=='prepare-f0':
+        work=args.work.resolve();work.mkdir(parents=True,exist_ok=False)
+        engine=NativeDatasets.from_config(restricted_runtime(args.runtime,work/'runtime',threads=4))
+        output=prepare_f0(args.inputs,engine=engine,work=work/'layout')
+        print(output)
+        return 0
+    result=compare_descriptor(args.inputs,engine_config=args.runtime,work=args.work)
+    print(json.dumps(result,indent=2))
+    return 0 if result['decision_ready'] else 1
+
+
+if __name__=='__main__':
+    raise SystemExit(main())

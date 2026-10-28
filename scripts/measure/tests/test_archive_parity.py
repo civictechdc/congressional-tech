@@ -268,10 +268,11 @@ def test_model_witnesses_use_native_receipt_keys_and_match_only_source_evidence(
             complete='Boolean',http_status='Int64',publisher_requested='Boolean'),
         json_input(tmp_path,'record_roles',roles,receipt_key='Utf8',receipt_line='Int64',capture_index='Int64',record_role='Utf8',is_real_file='Boolean'),
         json_input(tmp_path,'page_facts',[],body_sha='Utf8',status='Utf8',fingerprint='Utf8',error_type='Utf8'),
-        *[json_input(tmp_path,name,rows,doc='Utf8',source_id='Utf8',body_key='Utf8',filename='Utf8',source_url='Utf8') for name,rows in [('old_evidence_sources',old),('new_evidence_sources',new)]]
+        *[json_input(tmp_path,name,rows,doc='Utf8',source_id='Utf8',body_key='Utf8',filename='Utf8',source_url='Utf8') for name,rows in [('old_evidence_sources',old),('new_evidence_sources',new)]]]
     available={item['name']:set(f['name'] for f in item['schema']['fields']) for item in inputs}
     steps,missing=parity.model_witness_steps(available)
     assert 'direct_provider_same_text' in missing  # No retry attempt was invented.
+    (tmp_path/'native').mkdir()
     reports=run_job(tmp_path/'native',engine(),inputs=inputs,steps=steps,outputs=[],queries=[dict(name='witnesses',
         sql="SELECT old_doc,new_doc,subject,json_get_str(fact,'record_role') AS role,json_get_str(fact,'header_filename') AS header,evidence_ref FROM witnesses ORDER BY old_doc,new_doc,subject")])
     assert any(r['old_doc']=='old-0' and r['role']=='caption' for r in reports['witnesses'])
