@@ -14,7 +14,8 @@ from congress_api.retention.body_store import BodyStore, LocalAdapter, validate_
 from congress_api.retention.body_keys import body_object_digest
 from congress_api.retention.parser_worker import ParserWorker, reading_input
 from congress_api.retention.provenance import (field, instant, json_input, list_of,
-    parquet_output, parquet_records, run_job, struct, finish_stage, import_unreadable)
+    parquet_output, parquet_records, run_job, struct, finish_stage, import_unreadable,
+    local_unreadable_inventory,imported_unreadable_provenance)
 
 ROOT=Path(__file__).resolve().parents[5]
 PK=['body_sha','parser','parser_version']
@@ -309,7 +310,7 @@ def _execute_plan(planned,*,engine,worker_factory=ParserWorker,unreadable_store=
              "arrow_cast(decode(fingerprint_hex,'hex'),'FixedSizeBinary(32)') AS fingerprint",'fields']
     run_job(parsed,engine,inputs=[source],steps=[],outputs=[parquet_output(work,'readings',
         'SELECT '+','.join(columns)+' FROM parsed_readings',PK)])
-    key=path=unreadable_stage=None
+    key=path=unreadable_stage=unreadable_provenance=None
     pending=bool(counters['unreadable'] and unreadable_store is None)
     if counters['unreadable']:
         if pending:
@@ -320,10 +321,12 @@ def _execute_plan(planned,*,engine,worker_factory=ParserWorker,unreadable_store=
                 records=counters['unreadable'],inputs={},extra=dict(decided_at=decided_at))
         else:
             imported=import_unreadable(unreadable_store,decisions_path,decided_at=decided_at)
+            unreadable_provenance=imported_unreadable_provenance(imported,unreadable_store,decisions_path)
         key=imported['key']
     return dict(readings=work/'readings.parquet',work_list=planned['work_list'],
         parser=parser,parser_version=version,unreadable_key=key,unreadable_path=path,
         unreadable_stage=unreadable_stage,unreadable_pending=pending,
+        unreadable_provenance=unreadable_provenance,
         body_admissions=planned['body_admissions'],
         work_items=planned['work_items'] if work_items is None else work_items,**counters)
 
@@ -387,12 +390,8 @@ def run(*,engine,work,mode,execute=False,max_work_items=None,batch_size=None,par
         # Raw decisions are append-only; the original spec cannot know later batches.
         if read_unreadable is not None:
             fresh=read_unreadable(store=unreadable_store)
-        elif isinstance(unreadable_store,BodyStore) and isinstance(unreadable_store.adapter,LocalAdapter):
-            root=unreadable_store.adapter.root.resolve()
-            fresh=[dict(key=p.relative_to(root).as_posix(),path=str(p))
-                   for p in sorted((root/'provenance/unreadable').glob('*.jsonl'))]
         else:
-            raise ValueError('Execution requires a current unreadable inventory reader')
+            fresh=local_unreadable_inventory(unreadable_store)
         inventory={(r['key'],r['path']):r for r in inputs.get('unreadable_files',())}
         inventory.update({(r['key'],r['path']):r for r in fresh})
         inputs['unreadable_files']=list(inventory.values())

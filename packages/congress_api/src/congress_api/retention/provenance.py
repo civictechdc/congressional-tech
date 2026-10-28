@@ -148,6 +148,23 @@ def import_unreadable(store, decisions_path, *, decided_at, expected=None):
     return dict(key=key,records=count,sha256=digest.hexdigest(),size=size)
 
 
+def local_unreadable_inventory(store):
+    """List current decision filenames once, without reading their records."""
+    if not isinstance(store,BodyStore) or not isinstance(store.adapter,LocalAdapter):
+        raise ValueError('Execution requires a current unreadable inventory reader')
+    root=store.adapter.root.resolve()
+    return [dict(key=p.relative_to(root).as_posix(),path=str(p))
+            for p in sorted((root/'provenance/unreadable').glob('*.jsonl'))]
+
+
+def imported_unreadable_provenance(imported,store,path):
+    """Retain the exact acknowledged import identity for the next model input."""
+    if isinstance(getattr(store,'adapter',None),LocalAdapter):
+        path=store.adapter.root/imported['key']
+    return dict(key=imported['key'],sha256=imported['sha256'],size=imported['size'],
+                path=str(Path(path).resolve()),etag=None)
+
+
 def record_review(store,record,*,timestamp):
     return write_records(store,'reviews',[record],timestamp=timestamp)[0]
 

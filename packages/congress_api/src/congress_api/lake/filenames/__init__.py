@@ -15,7 +15,7 @@ import pyarrow.parquet as pq
 from congress_api.lake.tables import table_input
 from congress_api.lake.versions import version_digest
 from congress_api.retention.body_store import BodyStore, LocalAdapter
-from congress_api.retention.provenance import field, json_input, list_of, struct, parquet_output, run_job, instant, import_unreadable, finish_stage
+from congress_api.retention.provenance import field, json_input, list_of, struct, parquet_output, run_job, instant, import_unreadable, finish_stage, imported_unreadable_provenance
 
 
 ROOT = Path(__file__).resolve().parents[6]
@@ -258,7 +258,7 @@ def stage(*, captures, recovery_files, engine, work, decided_at, existing=None, 
                else name for name in SCHEMA.names]
     run_job(parsed, engine, inputs=[source], steps=[], outputs=[parquet_output(work,
         'filename-readings', 'SELECT ' + ','.join(columns) + ' FROM parsed_readings', PK)])
-    unreadable_key = unreadable_path = unreadable_stage = None
+    unreadable_key = unreadable_path = unreadable_stage = unreadable_provenance = None
     pending = bool(decision_count and unreadable_store is None)
     if decision_count:
         if pending:
@@ -269,10 +269,12 @@ def stage(*, captures, recovery_files, engine, work, decided_at, existing=None, 
                 records=decision_count,inputs={},extra=dict(decided_at=decided_at))
         else:
             imported=import_unreadable(unreadable_store,decisions_path,decided_at=decided_at)
+            unreadable_provenance=imported_unreadable_provenance(imported,unreadable_store,decisions_path)
         unreadable_key=imported['key']
     return dict(readings=work/'filename-readings.parquet', work_list=work/'work-list.parquet',
         catalog_version=version,unreadable_key=unreadable_key,unreadable_path=unreadable_path,
-        unreadable_stage=unreadable_stage,unreadable_pending=pending)
+        unreadable_stage=unreadable_stage,unreadable_pending=pending,
+        unreadable_provenance=unreadable_provenance)
 
 def create_table(*, engine, work, catalog_root, table, location, create_namespace=False):
     from congress_api.lake.tables import create_table as native_create
