@@ -85,7 +85,9 @@ def test_lost_append_ack_retry_skips_unavailable_raw_and_later_appends_only_new_
     assert not retry.exists() and not (retry/'append').exists()
     selection=json.loads((tmp_path/'retry-inventory/job.json').read_text())
     assert next(i for i in selection['inputs'] if i['name']=='existing')['kind']=='native_table'
-    two=files(tmp_path/'two',[dict(record=dict(url='https://example.org/two'))],
+    two=files(tmp_path/'two',[dict(run_id='second',mode='fetch',family='documents',
+        requested_url='https://example.org/two',url='https://example.org/two',
+        retrieved_at=STAMP,http_status=200,outcome='stored',captures=[body()])],
         key='receipts/documents/2026-10-21/two.jsonl.gz')
     inventory.write_text(json.dumps(one+two))
     qualifications=tmp_path/'qualifications.json'
