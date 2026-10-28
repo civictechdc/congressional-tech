@@ -2,7 +2,7 @@
 
 Some committee documents never landed in the raw archive, or landed only as an error page. **Corpus recovery** is the path that adds a checked copy of those documents later.
 
-A recovered file is not imported because a script downloaded it. Each command writes a local folder whose inputs are named and hashed (a **sealed batch**). The next command refuses to run if those bytes changed. Import and publication default to a check. They write to Cloudflare R2 only when you pass `--execute`.
+A recovered file is not imported because a script downloaded it. Each command writes a local folder whose inputs are named and hashed (a **sealed batch**). The next command refuses to run if those bytes changed. Import defaults to a check. They write to Cloudflare R2 only when you pass `--execute`.
 
 Library code for assembly, transfer, and the write guards is in [`packages/corpus_recovery`](../../packages/corpus_recovery/README.md). Run these commands from the repository root with the locked environment.
 
@@ -20,9 +20,11 @@ Library code for assembly, transfer, and the write guards is in [`packages/corpu
 
 5. **`dispatch_corpus_recovery_import.py`** checks the sealed inputs, the reconciliation report, and that no other cloud writer holds the archive. With `--execute`, it stores the new document bytes and updates the raw indexes under a conditional write. Without `--execute`, it stops after the checks. Do not reuse a destination after a failed import; start a new one.
 
-6. **`dispatch_corpus_recovery_publication.py`** runs only after an import has actually finished. By default it checks that local evidence. With `--execute`, it rebuilds the catalog and viewer from the checkout you pass as `--runtime` and publishes those derived files. It does not fetch more documents and does not write raw archive bodies.
+6. **`run_corpus_recovery.py`** is a local supervisor for one of the commands above. It records the child process, its logs, and the exit code it actually waited for. A missing process is not success. Resume is a separate, explicit command. The supervisor does not decide whether a remote write landed; the import command does that.
 
-7. **`run_corpus_recovery.py`** is a local supervisor for one of the commands above. It records the child process, its logs, and the exit code it actually waited for. A missing process is not success. Resume is a separate, explicit command. The supervisor does not decide whether a remote write landed; the import and publication commands do that.
+Accepted recovery labels now enter raw as records in `recoveries/accepted.json`.
+The archive model and publisher consume them. The old catalog/viewer publication
+dispatcher is retired.
 
 ## What a sealed batch protects
 

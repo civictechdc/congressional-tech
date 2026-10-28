@@ -174,12 +174,11 @@ class CountedBody(io.BytesIO):
         return chunk
 
 
-def test_publisher_and_mapping_share_one_control_reader_and_policy():
+def test_mapping_uses_shared_control_reader_and_policy():
     import congress_api.retention.control_documents as controls
     import corpus_recovery.mappings as mappings
-    import viewer_publication.publish_viewer_r2 as publisher
-    assert publisher.bounded_control_read is mappings.bounded_control_read is controls.bounded_control_read
-    assert publisher.CONTROL_LIMITS is mappings.CONTROL_LIMITS is controls.CONTROL_LIMITS
+    assert mappings.bounded_control_read is controls.bounded_control_read
+    assert mappings.CONTROL_LIMITS is controls.CONTROL_LIMITS
     assert controls.CONTROL_LIMITS == {'manifest': 4 * 1024**2, 'accepted': 16 * 1024**2, 'recovery': 32 * 1024**2}
 
 
