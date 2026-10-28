@@ -310,7 +310,7 @@ def _execute_plan(planned,*,engine,worker_factory=ParserWorker,unreadable_store=
              "arrow_cast(decode(fingerprint_hex,'hex'),'FixedSizeBinary(32)') AS fingerprint",'fields']
     run_job(parsed,engine,inputs=[source],steps=[],outputs=[parquet_output(work,'readings',
         'SELECT '+','.join(columns)+' FROM parsed_readings',PK)])
-    key=path=unreadable_stage=unreadable_provenance=None
+    key=path=unreadable_stage=unreadable_provenance=unreadable_custody=None
     pending=bool(counters['unreadable'] and unreadable_store is None)
     if counters['unreadable']:
         if pending:
@@ -321,12 +321,13 @@ def _execute_plan(planned,*,engine,worker_factory=ParserWorker,unreadable_store=
                 records=counters['unreadable'],inputs={},extra=dict(decided_at=decided_at))
         else:
             imported=import_unreadable(unreadable_store,decisions_path,decided_at=decided_at)
-            unreadable_provenance=imported_unreadable_provenance(imported,unreadable_store,decisions_path)
+            unreadable_provenance,unreadable_custody=imported_unreadable_provenance(imported,unreadable_store,decisions_path)
         key=imported['key']
     return dict(readings=work/'readings.parquet',work_list=planned['work_list'],
         parser=parser,parser_version=version,unreadable_key=key,unreadable_path=path,
         unreadable_stage=unreadable_stage,unreadable_pending=pending,
         unreadable_provenance=unreadable_provenance,
+        _unreadable_custody=unreadable_custody,
         body_admissions=planned['body_admissions'],
         work_items=planned['work_items'] if work_items is None else work_items,**counters)
 

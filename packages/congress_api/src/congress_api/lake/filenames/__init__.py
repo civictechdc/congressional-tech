@@ -258,7 +258,7 @@ def stage(*, captures, recovery_files, engine, work, decided_at, existing=None, 
                else name for name in SCHEMA.names]
     run_job(parsed, engine, inputs=[source], steps=[], outputs=[parquet_output(work,
         'filename-readings', 'SELECT ' + ','.join(columns) + ' FROM parsed_readings', PK)])
-    unreadable_key = unreadable_path = unreadable_stage = unreadable_provenance = None
+    unreadable_key = unreadable_path = unreadable_stage = unreadable_provenance = unreadable_custody = None
     pending = bool(decision_count and unreadable_store is None)
     if decision_count:
         if pending:
@@ -269,12 +269,12 @@ def stage(*, captures, recovery_files, engine, work, decided_at, existing=None, 
                 records=decision_count,inputs={},extra=dict(decided_at=decided_at))
         else:
             imported=import_unreadable(unreadable_store,decisions_path,decided_at=decided_at)
-            unreadable_provenance=imported_unreadable_provenance(imported,unreadable_store,decisions_path)
+            unreadable_provenance,unreadable_custody=imported_unreadable_provenance(imported,unreadable_store,decisions_path)
         unreadable_key=imported['key']
     return dict(readings=work/'filename-readings.parquet', work_list=work/'work-list.parquet',
         catalog_version=version,unreadable_key=unreadable_key,unreadable_path=unreadable_path,
         unreadable_stage=unreadable_stage,unreadable_pending=pending,
-        unreadable_provenance=unreadable_provenance)
+        unreadable_provenance=unreadable_provenance,_unreadable_custody=unreadable_custody)
 
 def create_table(*, engine, work, catalog_root, table, location, create_namespace=False):
     from congress_api.lake.tables import create_table as native_create

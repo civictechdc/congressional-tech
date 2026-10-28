@@ -7,6 +7,8 @@ import re
 from tempfile import TemporaryDirectory
 from urllib.parse import urlsplit
 
+from congress_shared.custody import verify_local_file
+
 from congress_api.retention.body_store import BodyStore,LocalAdapter,validate_record
 from congress_api.retention.receipt_privacy import cut_paths
 
@@ -158,11 +160,16 @@ def local_unreadable_inventory(store):
 
 
 def imported_unreadable_provenance(imported,store,path):
-    """Retain the exact acknowledged import identity for the next model input."""
+    """Bind the acknowledged import to verified local bytes and private custody."""
     if isinstance(getattr(store,'adapter',None),LocalAdapter):
         path=store.adapter.root/imported['key']
-    return dict(key=imported['key'],sha256=imported['sha256'],size=imported['size'],
-                path=str(Path(path).resolve()),etag=None)
+    try:
+        custody=verify_local_file(path,expected_sha256=imported['sha256'],expected_size=imported['size'])
+    except (OSError,ValueError):
+        raise ValueError('Acknowledged unreadable provenance changed or disappeared') from None
+    public=dict(key=imported['key'],sha256=imported['sha256'],size=imported['size'],
+                path=str(custody.path),etag=None)
+    return public,custody
 
 
 def record_review(store,record,*,timestamp):
