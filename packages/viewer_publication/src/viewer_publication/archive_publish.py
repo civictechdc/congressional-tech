@@ -6,12 +6,14 @@ flag or an injectable model-policy implementation. Reader probes are external.
 """
 from base64 import b64decode
 from hashlib import md5,sha256
+from io import BytesIO
 import json
 from pathlib import Path
 import re
 from time import perf_counter
 from urllib.parse import urlsplit
 
+from congress_api.retention.derived_files import copy_checked
 from viewer_publication.archive_gate import gate_and_flip,validate_receipt
 from viewer_publication.archive_format import release_identity
 from viewer_publication.client import require_publication_client
@@ -156,11 +158,15 @@ def read_pointer(client,*,bucket,evidence=None):
         if _status_code(error)==404:return None,None
         raise
     if evidence is not None:
-        with Path(evidence).open('xb') as destination:destination.write(raw)
-    value=json.loads(raw)
-    if not isinstance(value,dict):raise ValueError('Invalid archive pointer shape')
+        held=copy_checked(BytesIO(raw),evidence,size=len(raw),key='archive outgoing pointer')
     etag=response.get('ETag')
     if not isinstance(etag,str) or not etag.strip():raise ValueError('Live archive pointer has no ETag')
+    if evidence is not None:
+        proof=_encoded(dict(etag=etag,sha256=held['sha256'],bytes=held['bytes']))
+        copy_checked(BytesIO(proof),Path(evidence).with_suffix('.response.json'),
+            size=len(proof),key='archive outgoing pointer response')
+    value=json.loads(raw)
+    if not isinstance(value,dict):raise ValueError('Invalid archive pointer shape')
     legacy=(type(value.get('version')) in (int,str) and str(value['version'])=='1'
         and type(value.get('publisher_version')) in (int,str) and str(value['publisher_version'])=='10'
         and isinstance(value.get('catalog_id'),str) and bool(value['catalog_id'])

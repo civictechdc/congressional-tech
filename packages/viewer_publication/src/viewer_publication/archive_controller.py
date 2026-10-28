@@ -1,5 +1,6 @@
 """Bind actual native model evidence to the one guarded publication controller."""
 import json
+import os
 import re
 from pathlib import Path
 from time import perf_counter
@@ -15,6 +16,19 @@ from viewer_publication.archive_publish import (
     NativeArchiveStore,input_digest,matching_live_input,publish_candidate,read_pointer,write_status,
 )
 from viewer_publication.receipt_pins import receipt_list
+
+
+def _publication_directory(path,*,fresh):
+    """Persist each newly created directory name before publication can start."""
+    target=Path(path).resolve();missing=[];current=target
+    while not current.exists():
+        missing.append(current.parent);current=current.parent
+    target.mkdir(parents=True,exist_ok=not fresh)
+    for parent in missing:
+        descriptor=os.open(parent,os.O_RDONLY)
+        try:os.fsync(descriptor)
+        finally:os.close(descriptor)
+    return target
 
 
 def _reports(result):
@@ -93,7 +107,7 @@ def run_publish(model_spec,*,client,engine,bucket,work,receipt_keys,provenance,r
     selected=[item['key'] for name in PROVENANCE for item in model_spec[name]]
     if len(selected)!=len(set(selected)) or set(selected)!=records:
         raise ValueError('Publication provenance records must equal the actual model input set')
-    work=Path(work).resolve();work.mkdir(parents=True,exist_ok=False)
+    work=_publication_directory(work,fresh=True)
     status=dict(status='failed',input_digest=None,live_release=None,live_release_basis='unknown',rows={},bytes=0)
     started=perf_counter();delegate=False;storage_ready=False;failure=None
     try:
@@ -164,7 +178,7 @@ def run_seed_publish(seed_spec,*,client,engine,bucket,work,run,public_origin,con
     if not isinstance(run,dict) or not run:raise ValueError('Publication requires explicit run metadata')
     digest=input_digest(receipt_keys=[],provenance=[],profile=profile,entity_digests={})
     record['input_digest']=digest
-    work=Path(work).resolve();work.mkdir(parents=True,exist_ok=False)
+    work=_publication_directory(work,fresh=True)
     status=dict(status='failed',input_digest=digest,input_kind='seed_v5',label=profile['label'],
         display_only=True,live_release=None,live_release_basis='unknown',rows={},bytes=0)
     started=perf_counter();delegate=False;storage_ready=False;failure=None

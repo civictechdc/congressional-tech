@@ -1,6 +1,7 @@
 """The actual native seed producer feeds the existing publication path."""
 import json
 import os
+import stat
 from pathlib import Path
 
 import pytest
@@ -13,6 +14,46 @@ def publication(tmp_path):
     value=publish_spec(tmp_path);seed,_=seed_spec(tmp_path)
     return dict(value,model_kind='seed_v5',model_spec=dict(path=str(seed),**file_pin(seed)),
         receipt_keys=[],provenance=[])
+
+
+@pytest.mark.parametrize('failed_parent',['new-parent','existing-parent'])
+def test_fresh_work_parent_sync_failure_precedes_runtime_and_storage(tmp_path,monkeypatch,failed_parent):
+    from viewer_publication.archive_seed import load_seed_spec
+    from viewer_publication.archive_controller import run_seed_publish
+    value=publication(tmp_path);spec=load_seed_spec(value['model_spec']['path'])
+    work=tmp_path/'new-parent'/'new-child'/'publish';fsync=os.fsync
+    failed=tmp_path/'new-parent' if failed_parent=='new-parent' else tmp_path
+    def sync_or_fail(fd):
+        actual=os.fstat(fd)
+        if stat.S_ISDIR(actual.st_mode) and actual.st_ino==failed.stat().st_ino:
+            raise OSError('Injected work-parent sync failure')
+        return fsync(fd)
+    class NoEffects:
+        def verify_runtime(self):pytest.fail('Runtime preceded durable work directories')
+    monkeypatch.setattr(os,'fsync',sync_or_fail)
+    with pytest.raises(OSError,match='Injected work-parent sync failure'):
+        run_seed_publish(spec,client=None,engine=NoEffects(),bucket='derived-fixture',work=work,
+            run={'id':'directory-failure'},public_origin='https://archive.fixture.test',contract=None,canary=None)
+
+
+def test_all_new_work_directory_names_are_synced_before_runtime(tmp_path,monkeypatch):
+    from viewer_publication.archive_seed import load_seed_spec
+    from viewer_publication.archive_controller import run_seed_publish
+    value=publication(tmp_path);spec=load_seed_spec(value['model_spec']['path'])
+    work=tmp_path/'new-parent'/'new-child'/'publish';seen=set();fsync=os.fsync
+    def observe_sync(fd):
+        actual=os.fstat(fd)
+        if stat.S_ISDIR(actual.st_mode):seen.add((actual.st_dev,actual.st_ino))
+        return fsync(fd)
+    class StopAfterDirectories:
+        def verify_runtime(self):
+            required={(p.stat().st_dev,p.stat().st_ino) for p in [work.parent,work.parent.parent,tmp_path]}
+            assert required<=seen
+            raise ValueError('Stop after durable work directories')
+    monkeypatch.setattr(os,'fsync',observe_sync)
+    with pytest.raises(ValueError,match='Stop after durable work directories'):
+        run_seed_publish(spec,client=None,engine=StopAfterDirectories(),bucket='derived-fixture',work=work,
+            run={'id':'directory-order'},public_origin='https://archive.fixture.test',contract=None,canary=None)
 
 
 def test_seed_startup_plan_reads_only_pinned_job_metadata(tmp_path,capsys):

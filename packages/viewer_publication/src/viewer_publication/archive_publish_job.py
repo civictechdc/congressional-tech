@@ -292,14 +292,14 @@ def execute(spec,*,runtime_factory=None,storage_factory=None,process_runner=None
     if not Path(spec['site_dist']).is_dir():raise ValueError('Publication site_dist must already exist; build the site first')
     from docspec_client.client import NativeDatasets
     from congress_shared.storage import connect_r2
-    from viewer_publication.archive_controller import run_publish,run_seed_publish
+    from viewer_publication.archive_controller import run_publish,run_seed_publish,_publication_directory
     runtime_factory=runtime_factory or NativeDatasets.from_config
     storage_factory=storage_factory or connect_r2
     process_runner=process_runner or subprocess.run
     settings,remote,endpoint,configuration_pins=publication_configuration(spec['_model']['engine_config'],bucket=spec['bucket'])
     def require_configuration():
         for path,identity in configuration_pins:identity.require(path)
-    parent=Path(spec['work']).parent;parent.mkdir(parents=True,exist_ok=True)
+    parent=_publication_directory(Path(spec['work']).parent,fresh=False)
     with TemporaryDirectory(prefix='.'+Path(spec['work']).name+'-startup-',dir=parent) as directory:
         directory=Path(directory)
         upload_remote=directory/'remote.json';upload_settings=directory/'runtime.json'

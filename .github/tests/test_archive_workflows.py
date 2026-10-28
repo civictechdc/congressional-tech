@@ -213,7 +213,7 @@ def test_publish_retains_only_named_run_evidence_on_success_or_failure():
     assert evidence['with']['if-no-files-found']=='ignore'
     assert evidence['with']['path'].splitlines()==[
         '${{ steps.publisher_binding.outputs.publisher_work }}/'+name
-        for name in ['outgoing-pointer.json','contract.json','canary.json']]
+        for name in ['outgoing-pointer.json','outgoing-pointer.response.json','contract.json','canary.json']]
     assert 'env' not in evidence
     assert steps.index(evidence)>next(i for i,step in enumerate(steps)
         if step.get('run','').endswith('run-archive-job.py publish'))
