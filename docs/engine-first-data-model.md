@@ -215,7 +215,7 @@ One row per body a line references (each `captures[]` entry or, on an older line
 | `member_path` | string, nullable | The endpoint is `(context_url, member_path)`. |
 | `h_content_disposition` | string, nullable | The flat download-name header: `record.response_headers["content-disposition"]`, else `record.response_headers["Content-Disposition"]`. The existing filename function reads it (§7.4). |
 | `http_status` | int, nullable | Final response status, from `http_status` or `status_code`; `capture_status` and `meetingStatus` are not HTTP statuses. |
-| `complete` | boolean, nullable | The final line's explicit completeness; unknown older values remain null. Per-attempt completeness stays in raw. |
+| `complete` | boolean, nullable | The entry's recorded completeness, else a recorded final-line value for the final response, else the older-line derivation below; `good_fetch` (§7.3) reads it. |
 | `retrieved_at` | timestamptz, nullable | Fetch time, with the older-entry fallbacks below. |
 | `sha256` | fixed[32], nullable | Digest of the referenced body. |
 | `bytes` | long, nullable | Body size. |
@@ -238,7 +238,7 @@ These values are **on demand, not phase-1 columns**:
 | Other writer metadata and supplements | Raw receipts and pinned producer/profile metadata retain these facts. |
 
 - **PK:** `(receipt_key, receipt_line, capture_index)`.
-- The line's final status, completeness, mode and outcome accompany its referenced bodies. No bulk prior-attempt lookup fills a missing final fact.
+- The line's final status, mode and outcome accompany its referenced bodies. Completeness uses the entry's recorded value, else the final line's value only for the final response, else its legacy derivation. No bulk prior-attempt lookup fills a missing fact.
 - **Older lines** keep their fields under `record`, in shapes the mapping reads individually; §5.2 binds new lines. The narrow mapping:
   - uses `captures[]` for row grain when both lists exist, filling missing storage metadata only from `file_references[]` with the same body key and digest. A secondary non-null body absent from the primary list refuses ingest with its receipt and line. Conflicting storage facts also refuse; the 285 duplicate-reference lines in the pinned input do not create extra capture rows;
   - takes `run_id` from `source_file` and defaults the older stored suffix to `.gz`;
