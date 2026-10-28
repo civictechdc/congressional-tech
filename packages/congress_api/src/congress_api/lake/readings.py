@@ -25,6 +25,7 @@ MAX_STORED_BYTES=64<<20
 MAX_DECODED_BYTES=64<<20
 RAW_CACHE_BYTES=1<<30
 RAW_CACHE_CEILING=10<<30
+GZIP_RULE_FIELDS=tuple('gzip_rule'+str(n) for n in range(1,5))
 WORKER_MEMORY_BYTES=512<<20
 WORKER_TIMEOUT_SECONDS=15
 LINK_FIELDS=('href','text','tag','basis','group_path','doc_type','add_date','publish_date','remove_date')
@@ -207,8 +208,8 @@ def plan(*,captures,body_inventory,local_root,engine,work,decided_at,parser,
         steps.append(dict(name='body_storage',sql="""SELECT sha256 AS body_sha,coalesce(stored_suffix,'.gz') AS stored_suffix,
             concat('bodies/sha256/',substr(encode(sha256,'hex'),1,2),'/',encode(sha256,'hex'),
                 coalesce(stored_suffix,'.gz')) AS physical_key,
-            max(stored_bytes) AS captured_stored_bytes,max(encode(stored_md5,'hex')) AS stored_md5,
-            min(stored_bytes)<>max(stored_bytes) OR min(encode(stored_md5,'hex'))<>max(encode(stored_md5,'hex')) AS conflict,
+            max(bytes) AS captured_bytes,max(stored_bytes) AS captured_stored_bytes,max(encode(stored_md5,'hex')) AS stored_md5,
+            min(bytes)<>max(bytes) OR min(stored_bytes)<>max(stored_bytes) OR min(encode(stored_md5,'hex'))<>max(encode(stored_md5,'hex')) AS conflict,
             bool_or(lower(split_part(media_type,';',1)) IN ('text/html','application/xhtml+xml','text/xml',
                 'application/xml','application/json','text/json') OR
                 ends_with(lower(split_part(media_type,';',1)),'+xml') OR
@@ -273,7 +274,7 @@ def plan(*,captures,body_inventory,local_root,engine,work,decided_at,parser,
        sp.parsers AS skip_parsers""" if combined else ''
     storage_join=''
     if raw_ranges:
-        extra+=',s.stored_md5,s.captured_stored_bytes,coalesce(s.page_hint,false) AS page_hint,coalesce(s.conflict,false) AS capture_conflict'
+        extra+=',s.stored_md5,s.captured_bytes,s.captured_stored_bytes,coalesce(s.page_hint,false) AS page_hint,coalesce(s.conflict,false) AS capture_conflict'
         storage_join=' LEFT JOIN body_storage s ON b.body_sha=s.body_sha AND i.physical_key=s.physical_key'
         if body_listing is not None:
             storage_join+=' LEFT JOIN body_listing l ON i.physical_key=l.key'
@@ -384,7 +385,7 @@ def _execute_plan(planned,*,engine,worker_factory=ParserWorker,unreadable_store=
         cache_use['actual']=sum(_cache_file_bytes(path) for path in prefetched.values())
     parsed=work/'parsed';parsed.mkdir()
     decisions_path=parsed/'unreadable.jsonl'
-    counters=dict(pending_reads=0,read_bytes=0,unreadable=0,ambiguous_gzip=0)
+    counters=dict(pending_reads=0,read_bytes=0,unreadable=0,ambiguous_gzip=0,**dict.fromkeys(GZIP_RULE_FIELDS,0))
     def rows():
         context=(nullcontext(worker) if worker is not None else worker_factory(parser,version,
             'congress_api.lake.readings:'+('parse_once_payload' if combined or body_store is not None else 'parse_payload'),**limits))
@@ -418,6 +419,7 @@ def _execute_plan(planned,*,engine,worker_factory=ParserWorker,unreadable_store=
                                     (set(versions)-{parser} if not combined else set()))),separators=(',',':')).encode()
                             if body_store is not None:
                                 request=json.loads(payload)
+                                request['original_bytes']=item['captured_bytes']
                                 request['max_read_bytes']=max_cache_bytes-cache_use['prefetched']-cache_use['ranges']-cache_use['reserve']
                                 if body_hex in prefetched:request.update(path=str(prefetched[body_hex]),prefetched=True)
                                 else:request['remote']=dict(bucket=body_store.bucket,key=item['physical_key'],
@@ -436,6 +438,8 @@ def _execute_plan(planned,*,engine,worker_factory=ParserWorker,unreadable_store=
                             counters['unreadable']+=1;continue
                         if outcome['status']!='completed':raise ValueError('Invalid reading worker outcome')
                         response=outcome['value'];counters['read_bytes']+=response.get('read_bytes',0)
+                        rule=response.get('gzip_rule')
+                        if type(rule) is int and 1<=rule<=4:counters['gzip_rule'+str(rule)]+=1
                         if response.get('read_error'):
                             counters['ambiguous_gzip']+=int(response.get('ambiguous_gzip',False))
                             counters['pending_reads']+=1;continue
@@ -590,7 +594,7 @@ def run(*,engine,work,mode,execute=False,max_work_items=None,batch_size=None,par
     if raw_ranges:report['raw_custody']=planned['raw_custody']
     if not execute:return report
     if raw_ranges and (planned['raw_custody']['missing_pins'] or planned['raw_custody']['conflicts']):raise RawCustodyRequired(planned)
-    report.update(status='completed',pending_reads=0,read_bytes=0,unreadable=0,ambiguous_gzip=0)
+    report.update(status='completed',pending_reads=0,read_bytes=0,unreadable=0,ambiguous_gzip=0,**dict.fromkeys(GZIP_RULE_FIELDS,0))
     if planned['work_items']==0:return report
     size=planned['work_items'] if mode=='daily' else batch_size
     items=iter(parquet_records(planned['work_list']))
@@ -612,7 +616,7 @@ def run(*,engine,work,mode,execute=False,max_work_items=None,batch_size=None,par
                 retained_cache+=_clean_committed_cache(staged) if staged['append'] is not None else staged['cache_bytes']
             report['batches'].append(staged)
             report['applied']|=staged['append'] is not None
-            for key in ('pending_reads','read_bytes','unreadable','ambiguous_gzip'):report[key]+=staged[key]
+            for key in ('pending_reads','read_bytes','unreadable','ambiguous_gzip')+GZIP_RULE_FIELDS:report[key]+=staged[key]
     if report['pending_reads']:report['status']='pending'
     return report
 
@@ -732,7 +736,7 @@ def parse_once_payload(payload,*,body_store=None):
     from congress_api.parsers.archive_readings import read_page
     request=json.loads(payload);source=None
     try:
-        versions=request['versions'];skip=set(request['skip_parsers']);rows=[];data=None
+        versions=request['versions'];skip=set(request['skip_parsers']);rows=[];data=None;gzip_rule=None
         known=request['known_format']
         def open_source():
             return _ReadOnceBody(request['path'],request['cache'],request['stored_bytes'],
@@ -746,12 +750,22 @@ def parse_once_payload(payload,*,body_store=None):
         elif known is None:
             source=open_source()
             head=source.read(0,min(source.size,8192))
-            # A headerless gzip can be original content or storage encoding.
-            # Only prove from bytes already held; prefix-only bodies stay bounded.
-            if request.get('remote') and not source.stored_gzip and head.startswith(b'\x1f\x8b'):
-                if source.size>len(head):raise OSError('ambiguous_storage_gzip')
-                data,source.stored_gzip=_page_entity(head,request['body_sha'])
-                if data is None:raise OSError('ambiguous_gzip_decoded_size_limit')
+            if request.get('remote'):
+                if not head.startswith(b'\x1f\x8b'):
+                    source.stored_gzip=False;gzip_rule=1
+                elif not source.stored_gzip:
+                    if source.size<=len(head):
+                        data,source.stored_gzip=_page_entity(head,request['body_sha'])
+                        if data is None:raise OSError('ambiguous_gzip_decoded_size_limit')
+                    else:
+                        gzip_rule=4;original=request.get('original_bytes')
+                        if type(original) is int and original>=0 and request['remote']['key'].endswith('.gz'):
+                            isize=int.from_bytes(source.read(source.size-4,4),'little')
+                            if original!=source.size and isize==original%(1<<32):
+                                source.stored_gzip=True;gzip_rule=2
+                        # Rule3 needs historical single-member writer proof,
+                        # which these inputs do not establish. Equality is ambiguous.
+                        if gzip_rule==4:raise OSError('ambiguous_storage_gzip')
         sniff=(dict(status='completed',format=known) if known is not None else
             read_sniff(source.read,stored_size=source.size,stored_gzip=source.stored_gzip))
         if 'sniff' not in skip:
@@ -766,9 +780,9 @@ def parse_once_payload(payload,*,body_store=None):
                     data,source.stored_gzip=_page_entity(source.read(0,source.size),request['body_sha'])
                 row=(dict(status='error',error_type='decoded_size_limit') if data is None else read_page(data,parser))
             rows.append(dict(row,parser=parser,parser_version=versions[parser]))
-        return dict(rows=rows,read_bytes=0 if source is None else source.read_bytes)
+        return dict(rows=rows,gzip_rule=gzip_rule,read_bytes=0 if source is None else source.read_bytes)
     except (OSError,EOFError) as error:
-        return dict(read_error=type(error).__name__,ambiguous_gzip=str(error)=='ambiguous_storage_gzip',
+        return dict(read_error=type(error).__name__,gzip_rule=gzip_rule,ambiguous_gzip=str(error)=='ambiguous_storage_gzip',
             rows=[],read_bytes=0 if source is None else source.read_bytes)
     finally:
         if source is not None:source.close()
