@@ -97,6 +97,8 @@ Unordered SQL row numbering is not a physical Parquet row-position guarantee.
 The comparator uses the producer's explicitly ordered relation and verifies its
 public output bytes and row values instead.
 
+D2 exact listing size cases: a capture lacking stored size and MD5 takes both pins only from its exact listed key and completes the actual conditional GET; its original capture remains unchanged. Missing listed size or ETag and an unrecorded alternate suffix refuse before any GET. Existing capture/listing size and MD5 conflict cases continue to refuse. These expectations cover both selected inventories and direct listing work lists in `test_readings_listed_etag.py`.
+
 ## References
 
 **[IMPLEMENTATION-PLAN]**
