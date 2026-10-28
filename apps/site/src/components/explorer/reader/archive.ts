@@ -2,6 +2,7 @@
 import {parquetMetadataAsync, parquetReadObjects} from 'hyparquet';
 import {parquetReadColumn} from 'hyparquet/src/read.js';
 import {compressors} from 'hyparquet-compressors';
+import readerLimits from '../../../../../../model/registries/reader-limits.json' with {type:'json'};
 import {byteCache, retainedBytes} from './filenames/cache.ts';
 import {withVerifiedBytes} from './filenames/startup.ts';
 import {rangeFile} from './range-file.ts';
@@ -265,7 +266,7 @@ export function savedCopy(detail: any,rawBase: string){
   const body=typeof detail.saved_body==='string'?detail.saved_body:detail.saved_body instanceof Uint8Array?hex(detail.saved_body):'';
   if(!/^[a-f0-9]{64}$/.test(body)||!['','.gz','.pdf'].includes(detail.saved_suffix))throw new Error('Invalid saved copy identity.');
   return {url:new URL(`bodies/sha256/${body.slice(0,2)}/${body}${detail.saved_suffix}`,rawBase).href,
-    compressedDownload:detail.saved_suffix==='.gz'&&detail.saved_bytes>100*1024*1024,mediaType:detail.saved_media_type};
+    compressedDownload:detail.saved_suffix==='.gz'&&detail.saved_bytes>readerLimits.max_unpacked_bytes,mediaType:detail.saved_media_type};
 }
 export function dateLabels(document: any,detail: any){
   const captured=date(document.first_captured),imported=date(detail.in_archive_since),day=date(document.document_date);
