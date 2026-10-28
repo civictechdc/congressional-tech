@@ -12,7 +12,9 @@ try{
   const sampler=heapSampler(browser,one,{profile:measurementProfiles.phone});await sampler.ready;
   await one.waitForTimeout(250);
   const networkMs=await one.evaluate(async url=>{const start=performance.now();const response=await fetch(url+'?policy-proof=1',{cache:'no-store'});await response.arrayBuffer();return performance.now()-start;},server.pageUrl);
+  const workerNetworkMs=await one.workers().find(worker=>worker.url().includes('archive-worker')).evaluate(async url=>{const start=performance.now();const response=await fetch(url+'?worker-policy-proof=1',{cache:'no-store'});await response.arrayBuffer();return performance.now()-start;},server.pageUrl);
   const sampled=await sampler.stop();assert.equal(sampled.workerIsolates,1);assert(sampled.heapSamples>2);
   assert(networkMs>=100,'Heap sampling must retain the applied 150ms network latency.');
-  console.log(JSON.stringify({status:'passed',operation:'two archive tabs, one measured worker, persistent throttling through samples',heap,sampled,networkMs}));
+  assert(workerNetworkMs>=100,'The archive worker must retain the applied 150ms network latency.');
+  console.log(JSON.stringify({status:'passed',operation:'two archive tabs, one measured worker, persistent throttling through samples',heap,sampled,networkMs,workerNetworkMs}));
 }finally{await browser.close();await server.close();}

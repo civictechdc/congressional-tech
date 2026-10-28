@@ -6,8 +6,8 @@ export const targetNames=['startupMs','searchMs','detailMs','heapBytes'];
 // Chrome Lighthouse's Moto G Power viewport and Slow 4G baseline, explicitly
 // applied through CDP. These are emulated observations, never physical devices.
 export const measurementProfiles={
-  phone:{name:'Moto G Power-class',viewport:{width:412,height:823},deviceScaleFactor:1.75,isMobile:true,cpuSlowdown:4,network:{name:'slow-4g',latency:150,downloadThroughput:1600000/8,uploadThroughput:750000/8}},
-  desktop:{name:'desktop',viewport:{width:1440,height:1000},deviceScaleFactor:1,isMobile:false,cpuSlowdown:1,network:null},
+  phone:{name:'Moto G Power-class',viewport:{width:412,height:823},deviceScaleFactor:1.75,isMobile:true,cpuSlowdown:4,cpuScope:'page main thread (CDP); worker CPU unthrottled',network:{name:'slow-4g',latency:150,downloadThroughput:1600000/8,uploadThroughput:750000/8}},
+  desktop:{name:'desktop',viewport:{width:1440,height:1000},deviceScaleFactor:1,isMobile:false,cpuSlowdown:1,cpuScope:'unthrottled',network:null},
 };
 const positive=value=>Number.isFinite(value)&&value>0;
 const seedOrigin=origin=>origin?.kind==='seed_v5'&&origin.display_only===true;
@@ -36,9 +36,15 @@ export async function readTargets(path=defaultTargets){const value=JSON.parse(aw
 export function checkTargets(sample,targets,origin,profile){
   validateTargets(targets??{});
   if(targets.status==='provisional-emulated'&&!seedOrigin(origin))throw new Error('Provisional emulated targets qualify only a display-only v5 seed.');
+  if(targets.status==='provisional-emulated'&&sample.releaseId!==targets.raw_runs.phone[0].releaseId)throw new Error('Provisional targets measured a different seed release identity.');
   const ceilings=targets.status==='provisional-emulated'&&profile?targets.profile[profile]?.ceilings:targets.ceilings;
   if(!ceilings)throw new Error('Unknown measured target profile.');
   for(const name of targetNames)if(!Number.isFinite(sample[name])||sample[name]<0||sample[name]>ceilings[name])throw new Error(`Archive ${name} exceeds its measured target.`);
+}
+export async function validateTargetFile(path,origin){
+  const targets=await readTargets(path);if(!targets)throw new Error('Qualified archive targets are missing.');
+  if(targets.status==='provisional-emulated'&&!seedOrigin(origin))throw new Error('Provisional targets qualify only a display-only v5 seed.');
+  return {status:targets.status,basis:targets.basis,measured_release_id:targets.status==='provisional-emulated'?targets.raw_runs.phone[0].releaseId:null};
 }
 export async function writeTargets({measurements,ceilings,output,basis='real-device',harnessCommit}){
   let targets;
@@ -71,7 +77,9 @@ export async function writeTargets({measurements,ceilings,output,basis='real-dev
 }
 export function argumentsMap(args){const out={};for(let i=0;i<args.length;i+=2){if(!args[i].startsWith('--')||args[i+1]===undefined)throw new Error('Use --name value arguments.');out[args[i].slice(2)]=args[i+1];}return out;}
 if(process.argv[1]&&import.meta.url===pathToFileURL(process.argv[1]).href){
-  const args=argumentsMap(process.argv.slice(2));if(!args.measurements||!args.output)throw new Error('Use --measurements phone.json,desktop.json --output targets.json and either real-device ceilings or --basis emulated --harness-commit SHA.');
+  const args=argumentsMap(process.argv.slice(2));
+  if(args.check){if(!['true','false'].includes(args['display-only'])||!['seed_v5','model'].includes(args['origin-kind']))throw new Error('Target validation requires --origin-kind seed_v5/model and --display-only true/false.');console.log(JSON.stringify(await validateTargetFile(args.check,{kind:args['origin-kind'],display_only:args['display-only']==='true'})));}
+  else{if(!args.measurements||!args.output)throw new Error('Use --measurements phone.json,desktop.json --output targets.json and either real-device ceilings or --basis emulated --harness-commit SHA.');
   const measurements=await Promise.all(args.measurements.split(',').map(async name=>JSON.parse(await readFile(name))));
-  await writeTargets({measurements,ceilings:Object.fromEntries(targetNames.map(name=>[name,Number(args[name])])),output:args.output,basis:args.basis,harnessCommit:args['harness-commit']});
+  await writeTargets({measurements,ceilings:Object.fromEntries(targetNames.map(name=>[name,Number(args[name])])),output:args.output,basis:args.basis,harnessCommit:args['harness-commit']});}
 }
