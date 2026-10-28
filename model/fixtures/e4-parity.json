@@ -1,0 +1,300 @@
+{
+  "version": 1,
+  "note": "Expected E4 cause outcomes authored before comparison code. Causes apply to a field/subject/direction, never an entire changed document. Synthetic facts represent pinned receipt/read/model observations, not production classification rules.",
+  "causes": [
+    {
+      "name": "non_document_roles",
+      "field": "body_keys",
+      "value": "body:non_document_roles",
+      "direction": "removed",
+      "fact": {
+        "record_role": "caption"
+      },
+      "expected_causes": [
+        "non_document_roles"
+      ]
+    },
+    {
+      "name": "listing_pages",
+      "field": "body_keys",
+      "value": "body:listing_pages",
+      "direction": "removed",
+      "fact": {
+        "record_role": "listing"
+      },
+      "expected_causes": [
+        "listing_pages"
+      ]
+    },
+    {
+      "name": "soft_error_wrapper_senate",
+      "field": "body_keys",
+      "value": "body:soft_error_wrapper_senate",
+      "direction": "removed",
+      "fact": {
+        "record_role": "error_response",
+        "format": "html"
+      },
+      "expected_causes": [
+        "soft_error_wrapper_senate"
+      ]
+    },
+    {
+      "name": "real_web_untyped",
+      "field": "body_keys",
+      "value": "body:real_web_untyped",
+      "direction": "added",
+      "fact": {
+        "record_role": "document",
+        "is_real_file": true,
+        "format": "html"
+      },
+      "expected_causes": [
+        "real_web_untyped"
+      ]
+    },
+    {
+      "name": "incomplete_damaged_failed_feed",
+      "field": "body_keys",
+      "value": "body:incomplete_damaged_failed_feed",
+      "direction": "removed",
+      "fact": {
+        "complete": false,
+        "format": "pdf"
+      },
+      "expected_causes": [
+        "incomplete_damaged_failed_feed"
+      ]
+    },
+    {
+      "name": "recovery_independent_fetch",
+      "field": "body_keys",
+      "value": "body:recovery_independent_fetch",
+      "direction": "added",
+      "fact": {
+        "mode": "fetch",
+        "complete": true,
+        "http_status": 200,
+        "outcome": "stored",
+        "recovery_original_url": "https://fixture.test/original"
+      },
+      "expected_causes": [
+        "recovery_independent_fetch"
+      ]
+    },
+    {
+      "name": "direct_provider_same_text",
+      "field": "body_keys",
+      "value": "body:direct_provider_same_text",
+      "direction": "added",
+      "fact": {
+        "fingerprint": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "other_fingerprint": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "receipt_key": "receipts/fixture/2026-10-01/a.jsonl",
+        "receipt_line": 1,
+        "other_receipt_key": "receipts/fixture/2026-10-01/a.jsonl",
+        "other_receipt_line": 1,
+        "attempt": 1,
+        "other_attempt": 0
+      },
+      "expected_causes": [
+        "direct_provider_same_text"
+      ]
+    },
+    {
+      "name": "eot_webharvest_attachment",
+      "field": "recoveries",
+      "value": "body:eot_webharvest_attachment",
+      "direction": "added",
+      "fact": {
+        "original_url": "https://veterans.house.gov/a.pdf",
+        "recovered_url": "https://www.webharvest.gov/a.pdf"
+      },
+      "expected_causes": [
+        "eot_webharvest_attachment"
+      ]
+    },
+    {
+      "name": "publisher_link_kind",
+      "field": "document_kind",
+      "value": "statement",
+      "direction": "added",
+      "fact": {
+        "filename_kind_count": 0,
+        "publisher_kind": "statement",
+        "link_basis": "saved_page"
+      },
+      "expected_causes": [
+        "publisher_link_kind"
+      ]
+    },
+    {
+      "name": "capture_header_names",
+      "field": "filename",
+      "value": "Report.pdf",
+      "direction": "added",
+      "fact": {
+        "name_basis": "content_disposition",
+        "header_filename": "Report.pdf"
+      },
+      "expected_causes": [
+        "capture_header_names"
+      ]
+    },
+    {
+      "name": "saved_text_exact_twins",
+      "field": "body_keys",
+      "value": "body:saved_text_exact_twins",
+      "direction": "removed",
+      "fact": {
+        "fingerprint": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+        "other_fingerprint": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+        "source_url": "https://fixture.test/twin",
+        "other_source_url": "https://fixture.test/twin",
+        "fidelity": "saved_text",
+        "other_fidelity": "exact"
+      },
+      "expected_causes": [
+        "saved_text_exact_twins"
+      ]
+    },
+    {
+      "name": "govinfo_same_stem_groups",
+      "field": "body_keys",
+      "value": "body:govinfo_same_stem_groups",
+      "direction": "added",
+      "fact": {
+        "group_kind": "publisher",
+        "group_id": "govinfo:fixture",
+        "source_url": "https://www.govinfo.gov/content/pkg/CHRG-118hhrg1.zip"
+      },
+      "expected_causes": [
+        "govinfo_same_stem_groups"
+      ]
+    },
+    {
+      "name": "old_placeholder_xml",
+      "field": "body_keys",
+      "value": "body:old_placeholder_xml",
+      "direction": "removed",
+      "fact": {
+        "record_role": "error_response",
+        "format": "html",
+        "source_url": "https://docs.house.gov/a.xml",
+        "distinct_contexts": 101
+      },
+      "expected_causes": [
+        "old_placeholder_xml"
+      ]
+    },
+    {
+      "name": "link_label_provenance",
+      "field": "title",
+      "value": "Published statement",
+      "direction": "added",
+      "fact": {
+        "label_basis": "saved_page",
+        "link_text": "Published statement"
+      },
+      "expected_causes": [
+        "link_label_provenance"
+      ]
+    },
+    {
+      "name": "capture_dates",
+      "field": "first_captured",
+      "value": "body:capture_dates",
+      "direction": "removed",
+      "fact": {
+        "retrieved_at": null,
+        "is_import_run": true,
+        "old_time_basis": "import_run"
+      },
+      "expected_causes": [
+        "capture_dates"
+      ]
+    },
+    {
+      "name": "govinfo123_fetch",
+      "field": "first_captured",
+      "value": "2026-10-16",
+      "direction": "added",
+      "fact": {
+        "match_basis": "direct_official_package",
+        "mode": "fetch",
+        "requested_url": "https://www.govinfo.gov/CHRG.zip",
+        "url": "https://www.govinfo.gov/CHRG.zip",
+        "original_url": "https://www.govinfo.gov/CHRG.zip",
+        "publisher_requested": true,
+        "http_status": 200,
+        "complete": true,
+        "outcome": "stored",
+        "retrieved_at": "2026-10-16T00:00:00Z"
+      },
+      "expected_causes": [
+        "govinfo123_fetch"
+      ]
+    },
+    {
+      "name": "b7_owner_recoveries",
+      "field": "recoveries",
+      "value": "body:b7_owner_recoveries",
+      "direction": "added",
+      "fact": {
+        "decision_id": "owner-b7-57",
+        "kind": "requested_content_in_official_hearing",
+        "stage": "raw-recoveries-owner-32c13ffa",
+        "source_time_basis": "earliest_matching_fetch"
+      },
+      "expected_causes": [
+        "b7_owner_recoveries"
+      ]
+    }
+  ],
+  "expected": {
+    "cause_cases": 17,
+    "unrelated_field_is_unexplained": true,
+    "unclassified_blocks": true,
+    "derived_only_blocks": true
+  },
+  "topology": {
+    "oracle": [
+      {
+        "doc": "old-a",
+        "evidence": [
+          "file-a"
+        ]
+      },
+      {
+        "doc": "old-b",
+        "evidence": [
+          "file-b"
+        ]
+      }
+    ],
+    "candidate": [
+      {
+        "doc": "new-ab",
+        "evidence": [
+          "file-a",
+          "file-b"
+        ]
+      }
+    ],
+    "pairs": [
+      [
+        "old-a",
+        "new-ab"
+      ],
+      [
+        "old-b",
+        "new-ab"
+      ]
+    ]
+  },
+  "classifications": [
+    "rule_change",
+    "old_pipeline_error",
+    "derived_only_fact"
+  ]
+}
