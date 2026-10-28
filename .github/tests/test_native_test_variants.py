@@ -96,15 +96,28 @@ def test_configured_native_prerequisite_is_selected(monkeypatch):
     resolve.assert_called_once_with('/approved/docspec')
 
 
-def test_validation_installs_private_runtime_only_for_trusted_sources():
+def test_validation_installs_private_runtime_only_for_trusted_sources(tmp_path, monkeypatch):
+    import importlib.util
     from pathlib import Path
     import yaml
     root = Path(__file__).resolve().parents[2]
     workflow = yaml.load((root / '.github/workflows/validate-explorer.yml').read_text(), Loader=yaml.BaseLoader)
     steps = workflow['jobs']['validate']['steps']
-    install = next(step for step in steps if 'setup-native-runtime.py' in step.get('run', ''))
+    install = next(step for step in steps if step.get('uses') == './.github/actions/setup-local-job-runtime')
     assert install['if'] == "github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository"
-    assert 'exit 1' in install['run']  # A trusted run cannot silently omit its required native artifact.
-    assert 'DOCSPEC_BINARY=' in install['run']
-    assert 'DOCSPEC_RUNTIME_CONFIG=' not in install['run']
+    assert install['with']['artifact'] == '${{ vars.DOCSPEC_RUNTIME_ARTIFACT }}'
+    action = yaml.load((root / '.github/actions/setup-local-job-runtime/action.yml').read_text(), Loader=yaml.BaseLoader)
+    assert '--local' in action['runs']['steps'][0]['run']
     assert any(step.get('run') == 'python scripts/dev.py test production-offline' for step in steps)
+    # Exercise the maintained missing-artifact refusal before any download or export.
+    spec = importlib.util.spec_from_file_location('landing_native_setup', root/'.github/scripts/setup-native-runtime.py')
+    helper = importlib.util.module_from_spec(spec); spec.loader.exec_module(helper)
+    monkeypatch.delenv('DOCSPEC_RUNTIME_ARTIFACT', raising=False)
+    monkeypatch.delenv('DOCSPEC_ENGINE_CREDENTIALS', raising=False)
+    def forbidden(*args, **kwargs):
+        pytest.fail('Missing runtime reached private storage')
+    monkeypatch.setattr(helper, 'make_client', forbidden)
+    envfile = tmp_path/'github-env'; envfile.touch()
+    assert helper.main(['--local','--directory',str(tmp_path/'runtime'),
+        '--output',str(tmp_path/'report.json'),'--github-env',str(envfile)]) == 1
+    assert envfile.read_text() == '' and not (tmp_path/'runtime').exists()
