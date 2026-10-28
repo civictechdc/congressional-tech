@@ -94,6 +94,15 @@ def load_spec(path):
     return result
 
 
+def provenance_etag_md5(etag):
+    """Normalize the stored-byte checksum of a single-PUT provenance object."""
+    if isinstance(etag,str) and etag.startswith('"') and etag.endswith('"'):
+        etag=etag[1:-1]
+    if not isinstance(etag,str) or re.fullmatch('[a-fA-F0-9]{32}',etag) is None:
+        raise ValueError('Provenance ETag must be a single-PUT MD5')
+    return etag.lower()
+
+
 @contextmanager
 def model_arguments(spec, *, provenance_etags=None):
     """Hold verified local inputs until native consumption completes successfully.
@@ -112,11 +121,7 @@ def model_arguments(spec, *, provenance_etags=None):
             raise ValueError('Selected provenance keys must exactly match their ETags')
         etags={}
         for key,etag in provenance_etags.items():
-            if isinstance(etag,str) and etag.startswith('"') and etag.endswith('"'):
-                etag=etag[1:-1]
-            if not isinstance(etag,str) or re.fullmatch('[a-fA-F0-9]{32}',etag) is None:
-                raise ValueError('Provenance ETag must be a single-PUT MD5')
-            etags[key]=etag.lower()
+            etags[key]=provenance_etag_md5(etag)
     parent=Path(spec['scratch']).parent
     parent.mkdir(parents=True,exist_ok=True)
     with TemporaryDirectory(prefix='.'+Path(spec['scratch']).name+'-inputs-',dir=parent) as directory:

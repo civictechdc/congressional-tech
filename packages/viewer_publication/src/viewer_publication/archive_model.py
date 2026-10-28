@@ -129,6 +129,12 @@ def input_receipts_query():
     return dict(name='input_receipts',sql='SELECT DISTINCT receipt_key FROM captures ORDER BY receipt_key')
 
 
+def probe_selectors_query():
+    """Choose one visible saved document using the actual exported detail rows."""
+    return dict(name='probe_selectors',sql="""SELECT list_row AS saved_row,encode(link_key,'hex') AS link_key
+        FROM details WHERE saved_body IS NOT NULL AND NOT hidden ORDER BY list_row LIMIT 1""")
+
+
 def prepare_model_inputs(*,captures,readings,filename_readings,parser_versions,catalog_version,
                          engine,scratch,recovery_files=(),review_files=(),verification_files=(),
                          unreadable_files=(),variant_files=(),root=ROOT):
@@ -272,7 +278,7 @@ def build_prepared_release(prepared,*,engine,output,root=ROOT):
     prefix_checks=','.join(sql+' AS '+name for name,sql in evidence_checks().items())
     manifest=_execute(inputs,steps,output=output,scratch=scratch,engine=engine,
         lookup_extra="SELECT o.list_row,a.url FROM source_addresses a JOIN document_members m ON a.source_id=m.source_id JOIN document_identities d ON m.component=d.component JOIN ordered o ON d.document_id=o.doc_key WHERE m.is_real_file",
-        metadata_queries=[input_receipts_query()],origin=dict(kind='model',gaps=[]),content_files={'capture_profile.json':capture_profile},auxiliary=auxiliary,extra_outputs=extra,
+        metadata_queries=[input_receipts_query(),probe_selectors_query()],origin=dict(kind='model',gaps=[]),content_files={'capture_profile.json':capture_profile},auxiliary=auxiliary,extra_outputs=extra,
         capture_scope=json.loads((Path(root)/'model/registries/capture-scope.json').read_text()),
         diagnostics=[dict(name='model_invariants',sql=f"""SELECT {prefix_checks},
             (SELECT count(*) FROM model_url_keys WHERE error IS NOT NULL) AS invalid_url_keys,
