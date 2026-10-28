@@ -435,3 +435,22 @@ def test_raw_link_type_is_not_a_registry_mapped_publisher_kind():
         'publisher_links':{'source_id','page_body','context','text','doc_type','link_index'}}
     _,missing=parity.model_witness_steps(available)
     assert 'publisher_link_kind' in missing
+
+
+@pytest.mark.parametrize('case',FIXTURE['oracle_scope_cases'],ids=lambda case:case['name'])
+def test_slice_oracle_keeps_full_components_and_reports_missing_evidence(tmp_path,case):
+    import pyarrow as pa
+    import pyarrow.parquet as pq
+    template=f0_fixture(tmp_path)
+    descriptor=parity.prepare_f0(template,engine=engine(),work=tmp_path/'prepare')
+    loaded=parity.load_descriptor(descriptor)
+    files=FIXTURE['f0_catalog']['files']
+    rows=[dict(body_sha=files[i]['body_key'].split('/')[-1][:-3],source_url=files[i]['source_url']) for i in case['source_indexes']]
+    source=tmp_path/'capture-sources.parquet';pq.write_table(pa.Table.from_pylist(rows),source)
+    recoveries=tmp_path/'current-recoveries.parquet';pq.write_table(pa.table(dict(original_url=pa.array([],type=pa.string()),body_sha256=pa.array([],type=pa.string()))),recoveries)
+    loaded['paths'].update(capture_sources=str(source),current_recoveries=str(recoveries))
+    scope=parity.select_oracle_scope(loaded,engine=engine(),work=tmp_path/'scope')
+    assert {key:scope[key] for key in ['selected_documents','selected_files','outside_documents','partial_documents','missing_files']}=={key:case[key] for key in ['selected_documents','selected_files','outside_documents','partial_documents','missing_files']}
+    assert pq.ParquetFile(loaded['paths']['oracle_filenames']).metadata.num_rows==case['selected_files']
+    assert pq.ParquetFile(loaded['paths']['oracle_documents']).metadata.num_rows==case['selected_documents']
+    assert pq.ParquetFile(tmp_path/'scope/scope-gaps.parquet').metadata.num_rows==case['missing_files']

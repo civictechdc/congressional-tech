@@ -25,7 +25,8 @@
       "path": "/Users/mikewolfd/Work/congressional-tech/output/incremental-updates-20261019/adoption-inputs/filenames-receipt.json",
       "sha256": "3e130ad375fe8deac5d9b22d98376556c874dd6384a73cc95ef128febff5635d",
       "size": 734
-    }
+    },
+    "scope": "source_evidence"
   },
   "candidate": {
     "kind": "model",

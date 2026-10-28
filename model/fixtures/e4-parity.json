@@ -861,5 +861,41 @@
     "imported_at": "2026-10-05",
     "superseded_kind": "recovered_document",
     "ready_time": "2026-10-08T12:00:00Z"
-  }
+  },
+  "oracle_scope_cases": [
+    {
+      "name": "closed-html",
+      "source_indexes": [
+        0
+      ],
+      "selected_documents": 1,
+      "selected_files": 1,
+      "outside_documents": 2,
+      "partial_documents": 0,
+      "missing_files": 0
+    },
+    {
+      "name": "partial-rendition",
+      "source_indexes": [
+        2
+      ],
+      "selected_documents": 1,
+      "selected_files": 2,
+      "outside_documents": 2,
+      "partial_documents": 1,
+      "missing_files": 1
+    },
+    {
+      "name": "closed-rendition",
+      "source_indexes": [
+        2,
+        3
+      ],
+      "selected_documents": 1,
+      "selected_files": 2,
+      "outside_documents": 2,
+      "partial_documents": 0,
+      "missing_files": 0
+    }
+  ]
 }
