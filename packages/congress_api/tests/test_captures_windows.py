@@ -27,7 +27,7 @@ def test_capture_join_boundary_contains_only_scalar_facts(tmp_path):
     for step in job['steps']:
         if 'JOIN' in step['sql']:
             assert all(name not in step['sql'] for name in ('__raw_line','list_raw','selected_record','entry'))
-    assert ' FROM mapped' in steps['scalar_rows']['sql']
+    assert ' FROM decisions' in steps['scalar_rows']['sql']
     assert 'line' not in evidence.column_names and 'record' not in evidence.column_names
 
 
@@ -61,8 +61,9 @@ def test_native_counter_plan_scans_once_and_joins_only_materialized_scalars(tmp_
     result = run_job(second, native, inputs=plan['inputs'],
         steps=plan['steps']+mapping_steps(),
         outputs=[parquet_output(second, 'scalars', 'SELECT * FROM scalar_rows', PK)],
-        queries=[dict(name='plan', sql='EXPLAIN SELECT * FROM enriched')])
+        queries=[dict(name='plan', sql='EXPLAIN SELECT * FROM windowed')])
     physical = next(row['plan'] for row in result['plan'] if row['plan_type'] == 'physical_plan')
     assert 'JoinExec' in physical
+    assert 'WindowAggExec' in physical
     assert all(name not in physical for name in ('__raw_line', 'list_raw', 'selected_record', 'json_get_many('))
     assert all(not pa.types.is_nested(field.type) for field in pq.read_schema(second/'scalars.parquet'))

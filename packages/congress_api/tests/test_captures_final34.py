@@ -52,23 +52,24 @@ def test_prior_pointer_does_not_borrow_final_complete_or_confirm_cutoff(tmp_path
     assert {r['outcome'] for r in rows}=={'stored'}
 
 
-@pytest.mark.parametrize('error',[None,{},'failure'])
+@pytest.mark.parametrize('error',['missing',None,{},'failure'])
 def test_cutoff_requires_explicit_false_and_respects_generic_error_presence(tmp_path,error):
     record=dict(http_status=200,outcome='saved')
-    if error is not None:record['error']=error
+    if error != 'missing':record['error']=error
     stage=ingest(tmp_path,[dict(record=record,captures=[dict(body(),bytes=64<<20,complete=False)]),
         dict(record=dict(http_status=200,outcome='saved'),captures=[dict(body(),bytes=64<<20)]),
         dict(record=dict(http_status=200,outcome='saved'),captures=[dict(body(),bytes=64<<20,complete=False),
             body(complete=True)])])
     rows=pq.read_table(stage/'captures.parquet').to_pylist()
-    assert [r['outcome'] for r in rows]==['size_limit' if error is None else 'stored','stored','stored','stored']
+    assert [r['outcome'] for r in rows]==['size_limit' if error in ('missing',None) else 'stored','stored','stored','stored']
 
 
 def test_expansion_inference_is_local_to_retained_member_attempt_and_context(tmp_path):
     source=dict(record=dict(url='https://example.test/final'),captures=[
         body(attempt=0,context_url='a'),body(attempt=0,context_url='a',member_path='a.pdf'),
-        body(attempt=0,context_url='b'),body(attempt=1,context_url='a'),
+        body(attempt=0,context_url='b'),dict(body(attempt=0,context_url='b',member_path='absent.pdf'),sha256=None),
+        body(attempt=1,context_url='a'),
         body(attempt=1,context_url='c'),body(attempt=1,context_url='c',member_path='c.pdf'),
         body(attempt=0,context_url='a',expansion='encrypted_member')])
     stage=ingest(tmp_path,[source]);rows=pq.read_table(stage/'captures.parquet').to_pylist()
-    assert [r['expansion'] for r in rows]==['expanded',None,None,None,'expanded',None,'encrypted_member']
+    assert [r['expansion'] for r in rows]==['expanded',None,None,None,None,'expanded',None,'encrypted_member']

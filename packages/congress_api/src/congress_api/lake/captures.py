@@ -1,14 +1,12 @@
-"""Versioned receipt mapping. Python selects files; native SQL interprets rows."""
+"""Versioned narrow receipt index. Native SQL interprets retained raw evidence."""
 from hashlib import sha256
 import json
 from pathlib import Path
 
 from congress_api.retention.provenance import parquet_output, run_job, json_input, file_pin
-from congress_api.lake.receipt_metadata import get, lit as literal
+from congress_api.lake.receipt_metadata import get, lit as literal, obj, projection, scalar, SCALARS, RECOVERY, DOWNLOAD_HEADERS
 
 
-# These are observed producer vocabularies, not fuzzy success guesses. New values
-# require a mapping version and fixture before they can enter the lake.
 LEGACY_OUTCOMES = {
     'archive_throttled': 'retry_later', 'available': 'derive',
     'build-complete': 'derive', 'candidate_live_and_archive_manifests_not_found': 'failed',
@@ -38,20 +36,15 @@ LEGACY_MODES = {
 }
 PK = ['receipt_key', 'receipt_line', 'capture_index']
 COLUMNS = [*PK, 'run_id', 'mode', 'outcome', 'family', 'requested_url', 'url',
-    'record_sha', 'http_status', 'attempt_status', 'complete', 'context_url',
-    'member_path', 'expansion', 'h_content_disposition', 'retry_after', 'retrieved_at',
+    'context_url', 'member_path', 'h_content_disposition', 'http_status', 'complete', 'retrieved_at',
     'sha256', 'bytes', 'media_type', 'fidelity', 'sniffed_format', 'sniff_version',
-    'intact', 'stored_suffix', 'stored_md5', 'stored_bytes', 'recovery_category',
-    'original_url', 'recovered_url', 'match_basis', 'evidence_sha256', 'imported_at',
-    'writer_job', 'writer_commit']
+    'intact', 'expansion', 'stored_suffix', 'stored_bytes',
+    'stored_md5', 'recovery_category', 'original_url', 'recovered_url', 'match_basis',
+    'evidence_sha256', 'imported_at', 'writer_job', 'writer_commit']
 
 
 def first(*values):
     return 'coalesce(' + ','.join(values) + ')'
-
-
-def integer(value, *path):
-    return f'try_cast(json_as_text({value},' + ','.join(literal(p) for p in path) + ') AS BIGINT)'
 
 
 def stamp(*values):
@@ -68,224 +61,190 @@ def fetch_time(value, getter=get):
     return stamp(*fields, getter(value, 'capture_date'))
 
 
-def compact_counter(counter, *, engine, work, receipt_keys=None, receipt_batch_size=64):
-    from congress_api.lake.receipt_metadata import compact_counter as compact
-    return compact(counter,engine=engine,work=work,receipt_keys=receipt_keys,
-                   receipt_batch_size=receipt_batch_size)
-
-
-def mapping_steps(*, existing=False):
-    steps = []
-    def step(name, sql, materialize=False):
-        steps.append(dict(name=name, sql=sql, materialize=materialize))
-
-    skip = (' WHERE __receipt_key NOT IN (SELECT DISTINCT receipt_key FROM existing_captures)'
-            if existing else '')
-    skip += (' AND ' if skip else ' WHERE ')+'__receipt_key IN (SELECT receipt_key FROM selected_receipts)'
-    step('lines','SELECT __receipt_key AS receipt_key,__receipt_line AS receipt_line,'
-        'line,caps_json,refs_json,record_values,record_is_list FROM receipts'+skip)
-    step('lists',f"SELECT *,{get('caps_json',kind='array')} AS caps,{get('refs_json',kind='array')} AS refs FROM lines")
-    step('primary_entries', '''SELECT receipt_key,receipt_line,line,
+def mapping_steps():
+    steps=[]
+    def step(name,sql,**options):
+        steps.append(dict(name=name,sql=sql,**options))
+    # Secondary storage references share the source pass and become scalar rows
+    # immediately. Bodiless record lists fan out only for retained-fact refusal;
+    # their first ordinal is the one public line row.
+    step('reference_lists', """SELECT *,
         CASE WHEN coalesce(array_length(caps),0)>0 THEN 'capture'
              WHEN coalesce(array_length(refs),0)>0 THEN 'file' ELSE 'line' END AS reference_kind,
-        unnest(CASE WHEN coalesce(array_length(caps),0)>0 THEN caps
-                    WHEN coalesce(array_length(refs),0)>0 THEN refs
-                    ELSE make_array(cast(NULL AS VARCHAR)) END) AS entry,
-        record_values,record_is_list,
-        unnest(range(0,cast(greatest(coalesce(array_length(caps),0),
-            CASE WHEN coalesce(array_length(caps),0)>0 THEN 0
-                 ELSE greatest(coalesce(array_length(refs),0),1) END) AS BIGINT))) AS capture_index
-        FROM lists''')
-    step('secondary_entries', '''SELECT receipt_key,receipt_line,unnest(refs) AS entry
-        FROM lists WHERE coalesce(array_length(caps),0)>0''')
-    step('secondary', f'''SELECT receipt_key,receipt_line,{get('entry','body_key')} AS body_key,
-        {get('entry','sha256')} AS sha,max({integer('entry','stored_bytes')}) AS stored_bytes,
-        max({get('entry','stored_md5')}) AS stored_md5,
-        max({get('entry','stored_suffix')}) AS stored_suffix,
-        count(DISTINCT {integer('entry','stored_bytes')}) AS size_variants,
-        count(DISTINCT {get('entry','stored_md5')}) AS md5_variants
-        FROM secondary_entries GROUP BY receipt_key,receipt_line,
-        {get('entry','body_key')},{get('entry','sha256')}''')
-    step('enriched', f'''SELECT p.*,s.stored_bytes AS secondary_bytes,
-        s.stored_md5 AS secondary_md5,s.stored_suffix AS secondary_suffix,
-        {get('p.entry','sha256')} AS body_sha
-        FROM primary_entries p LEFT JOIN secondary s
-        ON p.receipt_key=s.receipt_key AND p.receipt_line=s.receipt_line
-        AND {get('p.entry','body_key')}=s.body_key AND {get('p.entry','sha256')}=s.sha''')
-    # List-valued records keep the receipt's grain. A body pointer selects its
-    # source record; a line without bodies uses its first record for line facts.
-    pointer_index = first(get('entry', 'pointer', 0,kind='int'),
-        f'try_cast({get("entry","pointer",0)} AS BIGINT)',
-        get('entry', 'pointer', 1,kind='int'),
-        f'try_cast({get("entry","pointer",1)} AS BIGINT)', '0')
-    step('records', f'''SELECT *,array_element(record_values,
-        CASE WHEN record_is_list THEN cast({pointer_index} AS BIGINT)+1 ELSE 1 END) AS record
-        FROM enriched''')
-    step('header_entries', f'''SELECT receipt_key,receipt_line,capture_index,
-        unnest(coalesce({get(metadata_field('line','_ingest_header_items_json'),kind='array')},
-                        {get(metadata_field('record','_ingest_header_items_json'),kind='array')},
-                        {get(metadata_field('record','_ingest_other_headers_json'),kind='array')})) AS item FROM records''')
-    step('item_headers', '''SELECT receipt_key,receipt_line,capture_index,
-        max(CASE WHEN lower(json_get_str(item,'name'))='content-disposition'
-            THEN json_get_str(item,'value') END) AS item_disposition,
-        max(CASE WHEN lower(json_get_str(item,'name'))='retry-after'
-            THEN json_get_str(item,'value') END) AS item_retry
-        FROM header_entries GROUP BY receipt_key,receipt_line,capture_index''')
+        CASE WHEN coalesce(array_length(caps),0)>0 THEN caps
+             WHEN coalesce(array_length(refs),0)>0 THEN refs
+             ELSE array_repeat(cast(NULL AS VARCHAR),cast(greatest(coalesce(record_count,0),1) AS BIGINT)) END AS primary_refs,
+        CASE WHEN coalesce(array_length(caps),0)>0 THEN refs ELSE make_array(cast(NULL AS VARCHAR)) END AS storage_refs
+        FROM lines""")
+    step('reference_counts', """SELECT * EXCEPT(caps,refs),array_length(primary_refs) AS primary_count,
+        CASE WHEN coalesce(array_length(caps),0)>0 THEN coalesce(array_length(refs),0) ELSE 0 END AS storage_count
+        FROM reference_lists""")
+    step('entries', """SELECT receipt_key,receipt_line,line,record,record_is_list,list_raw,reference_kind,primary_count,
+        unnest(array_concat(primary_refs,CASE WHEN storage_count>0 THEN storage_refs ELSE make_array() END)) AS entry,
+        unnest(range(0,cast(primary_count+storage_count AS BIGINT))) AS ordinal FROM reference_counts""")
+    pointer_index=first(get('entry','pointer',0,kind='int'),f'try_cast({get("entry","pointer",0)} AS BIGINT)',
+        get('entry','pointer',1,kind='int'),f'try_cast({get("entry","pointer",1)} AS BIGINT)','0')
+    step('selected_records',f"""SELECT * EXCEPT(list_raw),
+        ordinal>=primary_count AS is_secondary,
+        CASE WHEN reference_kind='line' THEN ordinal ELSE 0 END AS list_ordinal,
+        CASE WHEN reference_kind='line' THEN cast(0 AS BIGINT) ELSE ordinal END AS capture_index,
+        CASE WHEN record_is_list AND ordinal<primary_count THEN json_get_json(list_raw,
+            CASE WHEN reference_kind='line' THEN ordinal ELSE cast({pointer_index} AS BIGINT) END) END AS selected_record
+        FROM entries""")
+    paths=[(name,) for name in SCALARS]+list(RECOVERY.values())+DOWNLOAD_HEADERS+[('error',)]
+    slots=projection('selected_record',paths)
+    list_record={name:first(scalar(slots[(name,)],kind),metadata_field('record',name))
+                 for name,kind in SCALARS.items()}
+    list_record.update({name:first(scalar(slots[path],'str'),metadata_field('record',name))
+                        for name,path in RECOVERY.items()})
+    list_record['h_content_disposition']=first(
+        *(scalar(slots[path],'str') for path in DOWNLOAD_HEADERS),
+        metadata_field('record','h_content_disposition'))
+    list_record['error_present']=f"({get(slots[('error',)],kind='json')} IS NOT NULL OR {metadata_field('record','error_present')})"
+    step('records',f"""SELECT * EXCEPT(record,selected_record),
+        {obj(list_record)} AS record
+        FROM selected_records""")
+    # One shared literal entry bundle; only scalar values and its small pointer
+    # remain after this step. No original body, prior or header object is read.
+    strings=('sha256','body_key','family','context_url','member_path','original_path',
+        'media_type','fidelity','sniffed_format','sniff_version','expansion','stored_suffix',
+        'stored_md5','pointer_json','retrieved_at','captured_at','observed_at',
+        'parent_retrieved_at','_retrieved_at','capture_date')
+    kinds={**dict.fromkeys(strings,'str'),**dict.fromkeys(('bytes','size','attempt','stored_bytes'),'int'),
+           **dict.fromkeys(('complete','intact'),'bool'),'pointer':'json'}
+    entry_slots=projection('entry',[(name,) for name in kinds])
+    step('entry_facts','SELECT * EXCEPT(entry),'+','.join(
+        scalar(entry_slots[(name,)],kind)+' AS e_'+name for name,kind in kinds.items())+' FROM records')
     def both(name):
         return first(metadata_field('line',name),metadata_field('record',name))
-    recovery = both('_ingest_recovery_json')
-    association = get(metadata_field('record','_ingest_assoc_json'),0,kind='json')
-    headers = first(metadata_field('line','_ingest_headers_json'),
-        metadata_field('line','_ingest_other_headers_json'),
-        metadata_field('record','_ingest_headers_json'),
-        metadata_field('record','_ingest_other_headers_json'))
-    step('facts', f'''SELECT r.*,h.item_disposition,h.item_retry,{recovery} AS recovery,
-        {association} AS association,{headers} AS headers,
-        {both('mode')} AS raw_mode,{both('outcome')} AS raw_outcome,
+    step('facts',f"""SELECT *,{both('mode')} AS raw_mode,{both('outcome')} AS raw_outcome,
         {first(metadata_field('line','http_status'),metadata_field('line','status_code'),metadata_field('record','http_status'),metadata_field('record','status_code'))} AS line_status,
-        {first(fetch_time('entry'),fetch_time('line',metadata_field),fetch_time('record',metadata_field))} AS fetched,
-        {first(metadata_field('line','family'),metadata_field('record','family'),"regexp_replace(receipt_key,'^receipts/(.*)/[^/]+/[^/]+$','\\1')")} AS line_family,
-        {first(get('entry','family'),metadata_field('line','family'),metadata_field('record','family'),"regexp_replace(receipt_key,'^receipts/(.*)/[^/]+/[^/]+$','\\1')")} AS entry_family,
+        {first(fetch_time('',lambda _,p:'e_'+p),fetch_time('line',metadata_field),fetch_time('record',metadata_field))} AS fetched,
+        {first('e_family',metadata_field('line','family'),metadata_field('record','family'),"regexp_replace(receipt_key,'^receipts/(.*)/[^/]+/[^/]+$','\\1')")} AS entry_family,
         {first(metadata_field('line','run_id'),metadata_field('line','source_file'),metadata_field('record','source_file'))} AS source_run,
         {first(metadata_field('line','requested_url'),metadata_field('record','requested_url'),metadata_field('record','_url'),metadata_field('record','url'),metadata_field('line','url'),metadata_field('record','final_url'),metadata_field('record','resolved_url'),metadata_field('record','source_url'))} AS requested,
         {first(metadata_field('line','url'),metadata_field('record','url'),metadata_field('record','_url'),metadata_field('record','final_url'),metadata_field('record','resolved_url'),metadata_field('record','source_url'))} AS final_url
-        FROM records r LEFT JOIN item_headers h USING(receipt_key,receipt_line,capture_index)''')
-    modes = ','.join(literal(v) for v in sorted(LEGACY_MODES))
-    outcomes = ','.join(literal(v) for v in sorted(LEGACY_OUTCOMES))
-    # Ordinary old labels describe content/inspection, not transfer success.
-    # Status and body presence decide those rows; explicit transfer failures keep
-    # their distinct incomplete/retry meaning.
-    transfer = {'retry_later','request_failed','size_limit','stored','unchanged','failed',
-                'archive_throttled','exception','request_or_parse_error','resource_limit','timeout'}
-    cases = ' '.join('WHEN '+literal(k)+' THEN '+literal(v if k in transfer else 'derive')
-                     for k,v in LEGACY_OUTCOMES.items())
-    step('mapped', f'''SELECT *,
-        CASE WHEN raw_mode='retained_import'
-             AND {get('association','basis')}='direct_official_package'
-             AND requested={get('association','original_url')}
-             AND final_url=requested THEN 'fetch'
-             WHEN raw_mode='retained_import' OR recovery IS NOT NULL
-             OR {get('association','original_url')} IS NOT NULL THEN 'retained_import'
-             ELSE 'fetch' END AS capture_mode,
+        FROM entry_facts""")
+    modes=','.join(literal(v) for v in sorted(LEGACY_MODES))
+    outcomes=','.join(literal(v) for v in sorted(LEGACY_OUTCOMES))
+    transfer={'retry_later','request_failed','size_limit','stored','unchanged','failed',
+              'archive_throttled','exception','request_or_parse_error','resource_limit','timeout'}
+    cases=' '.join('WHEN '+literal(k)+' THEN '+literal(v if k in transfer else 'derive') for k,v in LEGACY_OUTCOMES.items())
+    recovery_names=[name for name in RECOVERY if name.startswith('recovery_')]
+    recovery_present=' OR '.join(both(name)+' IS NOT NULL' for name in recovery_names)
+    step('mapped',f"""SELECT *,
+        CASE WHEN raw_mode='retained_import' AND {both('association_basis')}='direct_official_package'
+             AND requested={both('association_original')} AND final_url=requested THEN 'fetch'
+             WHEN raw_mode='retained_import' OR {recovery_present}
+             OR {both('association_original')} IS NOT NULL THEN 'retained_import' ELSE 'fetch' END AS capture_mode,
         CASE raw_outcome {cases} ELSE 'derive' END AS mapped_outcome,
-        (raw_mode IS NOT NULL AND raw_mode NOT IN ({modes})) AS unknown_mode,
-        (raw_outcome IS NOT NULL AND raw_outcome NOT IN ({outcomes})) AS unknown_outcome,
-        {first(integer('entry','attempt'), "CASE WHEN json_get_str(entry,'pointer',0)='prior_attempts' THEN coalesce(try_cast(json_as_text(entry,'pointer',1) AS BIGINT),0)+1 ELSE 0 END")} AS attempt,
-        {first(integer('entry','bytes'),integer('entry','size'))} AS body_bytes,
-        json_canonical({first(get('entry','pointer',kind='json'),get('entry','pointer_json'))}) AS pointer_json,
-        {get('entry','body_key')} AS body_key
-        FROM facts''')
-    step('attempt_facts', '''SELECT *,coalesce(
-        json_get_json(get_field(line,'_ingest_prior_attempts_json'),attempt-1),
-        json_get_json(get_field(record,'_ingest_prior_attempts_json'),attempt-1)) AS prior_record
-        FROM mapped''')
-    attempt_status = first(integer('entry','http_status'), integer('entry','status_code'),
-        "CASE WHEN attempt>0 THEN coalesce(json_get_int(prior_record,'http_status'),json_get_int(prior_record,'status_code')) ELSE line_status END")
-    recorded_complete=first(get('entry','complete',kind='bool'),
-        "CASE WHEN attempt>0 THEN json_get_bool(prior_record,'complete') ELSE coalesce(get_field(line,'complete'),get_field(record,'complete')) END")
-    final_complete = first(recorded_complete,
-        "NOT (coalesce(body_bytes,0)=67108864 OR mapped_outcome IN ('size_limit','request_failed'))")
-    explicit_complete = recorded_complete
-    top_level = "json_get_str(entry,'member_path') IS NULL AND position('archive_members' IN coalesce(pointer_json,''))=0"
-    legacy_cutoff = f'''(bool_or(attempt=0 AND body_bytes=67108864 AND ({top_level})
-        AND ({explicit_complete}) IS FALSE) OVER (PARTITION BY receipt_key,receipt_line))
-        AND NOT coalesce(bool_or(attempt=0 AND ({top_level}) AND ({explicit_complete}) IS TRUE)
-            OVER (PARTITION BY receipt_key,receipt_line),false)
-        AND capture_mode='fetch' AND get_field(line,'mode') IS NULL
+        raw_mode IS NOT NULL AND raw_mode NOT IN ({modes}) AS unknown_mode,
+        raw_outcome IS NOT NULL AND raw_outcome NOT IN ({outcomes}) AS unknown_outcome,
+        e_sha256 AS body_sha,coalesce(e_bytes,e_size) AS body_bytes,
+        json_canonical(coalesce(e_pointer,e_pointer_json)) AS pointer_json,
+        e_body_key AS body_key FROM facts""")
+    # Pointers can prefix a source record number before the attempt path.
+    prior_index=first(*(f"CASE WHEN json_get_str(pointer_json,{i})='prior_attempts' THEN coalesce(json_get_int(pointer_json,{i+1}),try_cast(json_get_str(pointer_json,{i+1}) AS BIGINT),0)+1 END" for i in (0,1,2)),'0')
+    step('attempts',f"""SELECT *,coalesce(e_attempt,{prior_index}) AS attempt,
+        e_member_path IS NULL AND position('archive_members' IN coalesce(pointer_json,''))=0 AS top_level
+        FROM mapped""")
+    recorded=first('e_complete',"CASE WHEN attempt=0 THEN "+both('complete')+' END')
+    step('decisions',f"""SELECT *,{recorded} AS recorded_complete,
+        {first(recorded,"NOT(coalesce(body_bytes,0)=67108864 OR mapped_outcome IN ('size_limit','request_failed'))")} AS capture_complete,
+        capture_mode='fetch' AND get_field(line,'mode') IS NULL
         AND (raw_outcome IS NULL OR raw_outcome IN ('saved','captured','complete','html','html_body','pdf','retained'))
-        AND coalesce(get_field(line,'error_type'),get_field(record,'error_type'),
-            get_field(record,'_ingest_error_json')) IS NULL'''
-    source_sha = "arrow_cast(decode(get_field(line,'_ingest_record_sha'),'hex'), 'FixedSizeBinary(32)')"
-    retry = first(get('headers','retry-after'), get('headers','Retry-After'), 'item_retry')
-    columns = dict(
-        receipt_key='receipt_key', receipt_line='cast(receipt_line AS INT)',
-        capture_index='cast(capture_index AS INT)', run_id='source_run', mode='capture_mode',
-        outcome=f"""CASE WHEN line_status IN (429,503) OR {retry} IS NOT NULL THEN 'retry_later'
-            WHEN line_status=304 THEN 'unchanged'
-            WHEN mapped_outcome<>'derive' THEN mapped_outcome
-            WHEN {legacy_cutoff} THEN 'size_limit'
-            WHEN body_sha IS NOT NULL AND (line_status BETWEEN 200 AND 299 OR line_status IS NULL)
-            THEN 'stored' ELSE 'failed' END""",
-        family='entry_family', requested_url='requested', url='final_url',
-        record_sha=f"CASE WHEN line_family='congress/meetings' AND body_sha IS NULL THEN {source_sha} ELSE arrow_cast(NULL,'FixedSizeBinary(32)') END",
-        http_status='cast(line_status AS INT)', attempt_status=f'cast({attempt_status} AS INT)',
-        complete=final_complete,
-        context_url=first(get('entry','context_url'), 'final_url'),
-        member_path=first(get('entry','member_path'),
-            "CASE WHEN position('archive_members' IN coalesce(pointer_json,''))>0 AND reference_kind='capture' THEN json_get_str(entry,'original_path') END"),
-        expansion=first(get('entry','expansion'),
-            f"CASE WHEN ({top_level}) AND bool_or(body_sha IS NOT NULL AND NOT ({top_level})) OVER (PARTITION BY receipt_key,receipt_line,attempt,coalesce(json_get_str(entry,'context_url'),final_url)) THEN 'expanded' END"),
-        h_content_disposition=first(get('headers','content-disposition'), get('headers','Content-Disposition'),'item_disposition'),
-        retry_after=f"CASE WHEN try_cast({retry} AS BIGINT)>=0 THEN to_timestamp_micros(try_cast((extract(epoch FROM fetched)+try_cast({retry} AS DECIMAL(20,0)))*1000000 AS BIGINT)) ELSE http_date({retry}) END",
-        retrieved_at='fetched', sha256="arrow_cast(decode(body_sha,'hex'),'FixedSizeBinary(32)')", bytes='body_bytes',
-        media_type=get('entry','media_type'), fidelity=get('entry','fidelity'),
-        sniffed_format=get('entry','sniffed_format'), sniff_version=get('entry','sniff_version'),
-        intact=first(get('entry','intact',kind='bool'),
-            "CASE WHEN fetched>=cast('2026-10-01' AS TIMESTAMP WITH TIME ZONE) AND raw_outcome IN ('saved','invalid_document') AND attempt=0 THEN raw_outcome='saved' END"),
-        stored_suffix=first(get('entry','stored_suffix'), 'secondary_suffix', literal('.gz')),
-        stored_md5="arrow_cast(decode(coalesce(json_get_str(entry,'stored_md5'),secondary_md5),'hex'),'FixedSizeBinary(16)')",
-        stored_bytes=first(integer('entry','stored_bytes'), 'secondary_bytes'),
-        recovery_category=get('recovery','acquisition','prior_access_category'),
-        original_url="CASE WHEN capture_mode='retained_import' THEN coalesce(json_get_str(recovery,'original_url'),json_get_str(association,'original_url')) END",
-        recovered_url="CASE WHEN capture_mode='retained_import' THEN coalesce(json_get_str(recovery,'acquisition','recovered_url'),final_url) END",
-        match_basis="CASE WHEN capture_mode='retained_import' THEN coalesce(json_get_str(recovery,'match_basis'),json_get_str(association,'basis')) END",
-        evidence_sha256="arrow_cast(decode(json_get_str(recovery,'acquisition','evidence_sha256'),'hex'),'FixedSizeBinary(32)')",
-        imported_at="CASE WHEN capture_mode='retained_import' THEN coalesce(try_cast(json_get_str(recovery,'imported_at') AS TIMESTAMP WITH TIME ZONE),try_cast(array_element(regexp_match(receipt_key,'/(\\d{4}-\\d{2}-\\d{2})/'),1) AS TIMESTAMP WITH TIME ZONE)) END",
-        writer_job=get(metadata_field('line','_ingest_writer_json'),'job'),
-        writer_commit=get(metadata_field('line','_ingest_writer_json'),'commit'))
-    # C1's source positions are required, while the older Parquet counter's
-    # schema declared them optional. Bind the same required lake key schema for
-    # both inputs using Arrow's maintained nested-type cast, without changing
-    # values or substituting a value for a missing locator.
-    locator = '''arrow_cast(named_struct('key',receipt_key,'line',cast(receipt_line AS INT),
-        'index',cast(capture_index AS INT)),
-        'Struct("key": Utf8, "line": Int32, "index": Int32)')'''
-    for name,member in [('receipt_key','key'),('receipt_line','line'),('capture_index','index')]:
-        columns[name] = f"get_field({locator},'{member}')"
-    for name in ('retrieved_at', 'retry_after', 'imported_at'):
-        columns[name] = f"arrow_cast({columns[name]}, 'Timestamp(Microsecond, Some(\"UTC\"))')"
-    step('capture_facts', 'SELECT '+','.join(f'{columns[k]} AS "{k}"' for k in COLUMNS)
-         + ',reference_kind,pointer_json,body_key,unknown_mode,unknown_outcome FROM attempt_facts',
-         materialize=True)
+        AND {both('error_type')} IS NULL AND NOT coalesce(get_field(line,'error_present'),false)
+        AND NOT coalesce(get_field(record,'error_present'),false) AS cutoff_eligible
+        FROM attempts""")
+    columns=dict(receipt_key='receipt_key',receipt_line='receipt_line',capture_index='capture_index',
+        run_id='source_run',mode='capture_mode',
+        outcome="CASE WHEN line_status IN (429,503) THEN 'retry_later' WHEN line_status=304 THEN 'unchanged' WHEN mapped_outcome<>'derive' THEN mapped_outcome WHEN body_sha IS NOT NULL AND (line_status BETWEEN 200 AND 299 OR line_status IS NULL) THEN 'stored' ELSE 'failed' END",
+        family='entry_family',requested_url='requested',url='final_url',
+        context_url=first('e_context_url','final_url'),
+        member_path=first('e_member_path',"CASE WHEN NOT top_level AND reference_kind='capture' THEN e_original_path END"),
+        h_content_disposition=metadata_field('record','h_content_disposition'),
+        http_status='cast(line_status AS INT)',complete='capture_complete',retrieved_at='fetched',
+        sha256="arrow_cast(decode(body_sha,'hex'),'FixedSizeBinary(32)')",bytes='body_bytes',
+        media_type='e_media_type',fidelity='e_fidelity',sniffed_format='e_sniffed_format',
+        sniff_version='e_sniff_version',intact='e_intact',expansion='e_expansion',
+        stored_suffix='e_stored_suffix',stored_bytes='e_stored_bytes',stored_md5='e_stored_md5',
+        recovery_category=both('recovery_category'),
+        original_url="CASE WHEN capture_mode='retained_import' THEN "+first(both('recovery_original'),both('association_original'))+' END',
+        recovered_url="CASE WHEN capture_mode='retained_import' THEN "+first(both('recovery_url'),'final_url')+' END',
+        match_basis="CASE WHEN capture_mode='retained_import' THEN "+first(both('recovery_basis'),both('association_basis'))+' END',
+        evidence_sha256="arrow_cast(decode("+both('recovery_sha')+",'hex'),'FixedSizeBinary(32)')",
+        imported_at="CASE WHEN capture_mode='retained_import' THEN coalesce(try_cast("+both('recovery_imported')+" AS TIMESTAMP WITH TIME ZONE),try_cast(array_element(regexp_match(receipt_key,'/(\\d{4}-\\d{2}-\\d{2})/'),1) AS TIMESTAMP WITH TIME ZONE)) END",
+        writer_job=metadata_field('line','writer_job'),writer_commit=metadata_field('line','writer_commit'))
+    diagnostics=['reference_kind','pointer_json','body_key','unknown_mode','unknown_outcome',
+                 'is_secondary','list_ordinal','body_sha','attempt','top_level','cutoff_eligible']
+    flags=dict(cutoff_candidate='attempt=0 AND top_level AND body_bytes=67108864 AND recorded_complete IS FALSE',
+        completed_final='attempt=0 AND top_level AND recorded_complete IS TRUE')
+    step('scalar_rows','SELECT '+','.join(f'{columns[name]} AS "{name}"' for name in COLUMNS)+
+         ','+','.join(diagnostics)+','+','.join(value+' AS '+name for name,value in flags.items())+' FROM decisions',materialize=True)
+    step('secondary',"""SELECT receipt_key,receipt_line,body_key,body_sha,
+        max(stored_bytes) AS stored_bytes,max(stored_md5) AS stored_md5,max(stored_suffix) AS stored_suffix,
+        count(DISTINCT stored_bytes) AS size_variants,count(DISTINCT stored_md5) AS md5_variants,
+        count(DISTINCT stored_suffix) AS suffix_variants
+        FROM scalar_rows WHERE is_secondary GROUP BY receipt_key,receipt_line,body_key,body_sha""")
+    step('enriched',"""SELECT p.*,s.stored_bytes AS secondary_bytes,s.stored_md5 AS secondary_md5,
+        s.stored_suffix AS secondary_suffix FROM secondary s RIGHT JOIN scalar_rows p
+        ON p.receipt_key=s.receipt_key AND p.receipt_line=s.receipt_line
+        AND p.body_key=s.body_key AND p.body_sha=s.body_sha
+        WHERE NOT p.is_secondary AND p.list_ordinal=0""")
+    step('windowed',"""SELECT *,
+        bool_or(cutoff_candidate) OVER (PARTITION BY receipt_key,receipt_line) AS has_cutoff,
+        bool_or(completed_final) OVER (PARTITION BY receipt_key,receipt_line) AS has_completed_final,
+        bool_or(body_sha IS NOT NULL AND NOT top_level) OVER
+            (PARTITION BY receipt_key,receipt_line,attempt,context_url) AS has_member FROM enriched""")
+    final={name:name for name in COLUMNS}
+    final.update(stored_suffix="coalesce(stored_suffix,secondary_suffix,'.gz')",
+        stored_bytes='coalesce(stored_bytes,secondary_bytes)',
+        stored_md5="arrow_cast(decode(coalesce(stored_md5,secondary_md5),'hex'),'FixedSizeBinary(16)')",
+        outcome="CASE WHEN cutoff_eligible AND has_cutoff AND NOT coalesce(has_completed_final,false) AND outcome NOT IN ('retry_later','unchanged') THEN 'size_limit' ELSE outcome END",
+        expansion="coalesce(expansion,CASE WHEN top_level AND has_member THEN 'expanded' END)")
+    locator='arrow_cast(named_struct(\'key\',receipt_key,\'line\',cast(receipt_line AS INT),\n        \'index\',cast(capture_index AS INT)), \'Struct("key": Utf8, "line": Int32, "index": Int32)\')'
+    for name,member in zip(PK,['key','line','index']):
+        final[name]=f"get_field({locator},'{member}')"
+    for name in ('retrieved_at','imported_at'):
+        final[name]=f"arrow_cast({final[name]}, 'Timestamp(Microsecond, Some(\"UTC\"))')"
+    public_diagnostics=['reference_kind','pointer_json','body_key','unknown_mode','unknown_outcome']
+    step('capture_facts','SELECT '+','.join(f'{final[name]} AS "{name}"' for name in COLUMNS)+
+        ','+','.join(public_diagnostics)+' FROM windowed',materialize=True)
     return steps
 
 
 def capture_checks():
-    """Bounded refusal diagnostics, shared by inline and prebuilt inputs."""
-    return [dict(name='positions',sql='''SELECT receipt_key,receipt_line,'invalid source locator' AS reason
-              FROM lines WHERE receipt_key IS NULL OR receipt_line IS NULL OR receipt_line<1 LIMIT 1'''),
-        dict(name='invalid', sql='''SELECT receipt_key,receipt_line,
+    narrow=','.join('"'+name+'"' for name in COLUMNS if name not in PK)
+    return [dict(name='positions',sql="""SELECT receipt_key,receipt_line,'invalid source locator' AS reason
+        FROM scalar_rows WHERE receipt_key IS NULL OR receipt_line IS NULL OR receipt_line<1 LIMIT 1"""),
+        dict(name='invalid',sql="""SELECT receipt_key,receipt_line,
         CASE WHEN unknown_mode THEN 'unknown mode' ELSE 'unknown outcome' END AS reason
-        FROM capture_facts WHERE unknown_mode OR unknown_outcome LIMIT 1'''),
-        dict(name='secondary', sql='''SELECT s.receipt_key,s.receipt_line,'secondary body not represented' AS reason
-        FROM secondary s LEFT ANTI JOIN primary_entries p
-        ON s.receipt_key=p.receipt_key AND s.receipt_line=p.receipt_line
-        AND s.body_key=json_get_str(p.entry,'body_key') AND s.sha=json_get_str(p.entry,'sha256')
-        WHERE s.sha IS NOT NULL UNION ALL
-        SELECT receipt_key,receipt_line,'secondary storage conflict' AS reason FROM secondary
-        WHERE size_variants>1 OR md5_variants>1 LIMIT 1'''),
-        dict(name='list_facts',sql='''SELECT receipt_key,receipt_line,'list record conflicting facts' AS reason
-            FROM (SELECT receipt_key,receipt_line,unnest(record_values) AS item
-                  FROM primary_entries WHERE reference_kind='line' AND record_is_list)
-            GROUP BY receipt_key,receipt_line HAVING
-                count(DISTINCT item)>1
-            LIMIT 1'''),
-        dict(name='missing',sql='''SELECT r.receipt_key,cast(0 AS BIGINT) AS receipt_line,
-            'selected receipt not present' AS reason FROM selected_receipts r
-            LEFT ANTI JOIN lines l ON r.receipt_key=l.receipt_key LIMIT 1''')]
+        FROM scalar_rows WHERE NOT is_secondary AND (unknown_mode OR unknown_outcome) LIMIT 1"""),
+        dict(name='secondary',sql="""SELECT s.receipt_key,s.receipt_line,'secondary body not represented' AS reason
+        FROM secondary s LEFT ANTI JOIN scalar_rows p ON NOT p.is_secondary
+        AND s.receipt_key=p.receipt_key AND s.receipt_line=p.receipt_line
+        AND s.body_key=p.body_key AND s.body_sha=p.body_sha WHERE s.body_sha IS NOT NULL
+        UNION ALL SELECT receipt_key,receipt_line,'secondary storage conflict' AS reason FROM secondary
+        WHERE size_variants>1 OR md5_variants>1 OR suffix_variants>1 LIMIT 1"""),
+        dict(name='list_facts',sql=f"""SELECT receipt_key,receipt_line,'list record conflicting facts' AS reason
+        FROM (SELECT DISTINCT receipt_key,receipt_line,{narrow} FROM scalar_rows
+              WHERE reference_kind='line' AND NOT is_secondary)
+        GROUP BY receipt_key,receipt_line HAVING count(*)>1 LIMIT 1"""),
+        dict(name='missing',sql="""SELECT r.receipt_key,cast(0 AS BIGINT) AS receipt_line,
+        'selected receipt not present' AS reason FROM selected_receipts r LEFT ANTI JOIN scalar_rows s
+        ON r.receipt_key=s.receipt_key LIMIT 1""")]
 
 
-def stage_captures(files, *, engine, work, existing=None, counter=None,validated_counter=None):
+def stage_captures(files, *, engine, work, existing=None, validated_counter=None,
+                   source_qualifications=None):
     """Create immutable local staging, refusing unknown vocabularies or lost bodies.
 
     Table appends are a separate explicit engine operation. A failed native read
     leaves no accepted receipt-key list, so that receipt remains work on retry.
     """
-    if counter is not None and validated_counter is not None:
-        raise ValueError('Choose prebuilt metadata or a validated counter')
     if validated_counter is not None:
         from congress_api.lake.receipt_metadata import counter_file
-        validated_counter=counter_file(validated_counter)
+        counter_file(validated_counter)
     work = Path(work).resolve()
     work.mkdir(parents=True, exist_ok=False)
     mapping_digest = sha256(Path(__file__).read_bytes()+(Path(__file__).parent/'receipt_metadata.py').read_bytes()).hexdigest()
@@ -298,38 +257,25 @@ def stage_captures(files, *, engine, work, existing=None, counter=None,validated
         keys=[f['key'] for f in files]
     if not files:
         raise ValueError('No missing receipt keys to stage')
-    from congress_api.lake.receipt_metadata import metadata_plan,producer,source_pins,validate_metadata
-    if counter is None:
-        reader_files=[{k:f[k] for k in ('key','path') if k in f} for f in files]
-        plan=metadata_plan(counter=validated_counter,files=reader_files,
-                           receipt_keys=keys if validated_counter is not None else None)
-        inputs=plan['inputs']
-        steps=plan['steps']+[dict(name='receipts',sql=plan['sql'])]
-        input_pin=dict(kind='validated-counter' if validated_counter is not None else 'receipt-files',
-            producer=producer(engine),sources=source_pins(counter=validated_counter,files=reader_files))
-        metadata_names=['root_metadata','record_metadata']
-    else:
-        metadata=validate_metadata(counter)
-        input_pin=dict(kind='metadata',descriptor=file_pin(Path(counter).resolve().parent/'metadata.json'),
-                       producer=metadata['producer'])
-        inputs=[dict(name='receipts',kind='parquet',path=str(Path(counter).resolve()))]
-        steps=[]
-        metadata_names=[]
+    from congress_api.lake.receipt_metadata import source_plan,producer,source_pins,recheck_source_pins
+    reader_files=[{k:f[k] for k in ('key','path') if k in f} for f in files]
+    sources=source_pins(counter=validated_counter,files=files,qualifications=source_qualifications)
+    plan=source_plan(counter=validated_counter,files=reader_files,receipt_keys=keys)
+    inputs=plan['inputs']
+    steps=plan['steps']
+    input_pin=dict(kind='validated-counter' if validated_counter is not None else 'receipt-files',
+        producer=producer(engine),sources=sources)
     inputs.append(json_input(work,'selected_receipts',[dict(receipt_key=k) for k in keys],
                              receipt_key='Utf8'))
-    if existing is not None:
-        inputs.append(dict(name='existing_captures', kind='parquet', path=str(Path(existing).resolve())))
-    mapping=mapping_steps(existing=existing is not None)
+    mapping=mapping_steps()
     steps+=mapping
-    steps.append(dict(name='source_counts',sql='''SELECT count(*) AS rows,
-        count(DISTINCT receipt_key) AS receipts FROM lines''',materialize=True))
+    steps.append(dict(name='source_counts',sql='''SELECT count(DISTINCT (receipt_key,receipt_line)) AS rows,
+        count(DISTINCT receipt_key) AS receipts FROM scalar_rows WHERE NOT is_secondary AND list_ordinal=0''',materialize=True))
     checks=capture_checks()
     violations=' UNION ALL '.join(f"SELECT {index} AS check_order,v.* FROM ({check['sql']}) v"
                                   for index,check in enumerate(checks))
-    stale=metadata_names+['receipts','selected_receipts']+[
+    stale=['source','lines','selected_receipts']+[
         step['name'] for step in mapping if step['name']!='capture_facts']
-    if existing is not None:
-        stale.append('existing_captures')
     steps.append(dict(name='capture_violations',sql=violations,materialize=True,release_after=stale))
     results = run_job(work, engine, inputs=inputs,
         steps=steps,
@@ -340,6 +286,7 @@ def stage_captures(files, *, engine, work, existing=None, counter=None,validated
     if results['violations']:
         row=results['violations'][0]
         raise ValueError(f"{row['reason']}: {row['receipt_key']}:{row['receipt_line']}")
+    recheck_source_pins(sources)
     final = work/'export'
     final.mkdir()
     accepted = run_job(final, engine,
@@ -353,6 +300,7 @@ def stage_captures(files, *, engine, work, existing=None, counter=None,validated
     input_pin['job']=file_pin(work/'job.json')
     input_pin['selection']=file_pin(work/'selected_receipts.jsonl.gz')
     outputs=json.loads((work/'result.json').read_text())['outputs']+json.loads((final/'result.json').read_text())['outputs']
+    recheck_source_pins(sources)
     (work/'ingested-receipts.json').write_text(json.dumps(dict(version=2,
         mapping_digest=mapping_digest,input=input_pin,outputs=outputs,source_counts=results['source_counts'][0],
         engine=dict(source_revision=engine.source_revision,binary_sha256=engine.binary_sha256),

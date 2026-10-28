@@ -90,6 +90,9 @@ def test_actual_writer_root_facts_equal_direct_and_missing_typed_counter(tmp_pat
     values=captured.to_pylist()
     fetched=[row for row in values if row['receipt_key']==files[0]['key']]
     assert [(row['http_status'],row['complete']) for row in fetched]==[(200,True),(200,False)]
+    assert {(row['writer_job'],row['writer_commit']) for row in fetched}=={(WRITER['job'],WRITER['commit'])}
+    assert [(row['sniffed_format'],row['sniff_version'],row['intact']) for row in fetched]==[
+        (entry['sniffed_format'],entry['sniff_version'],entry['intact']) for entry in rows[0][1]['captures']]
     [recovery]=[row for row in values if row['receipt_key']==files[1]['key']]
     assert recovery['mode']=='retained_import' and recovery['original_url']=='https://docs.house.gov/original.pdf'
     assert recovery['recovered_url']=='https://archive.org/recovered.pdf'
@@ -98,6 +101,7 @@ def test_actual_writer_root_facts_equal_direct_and_missing_typed_counter(tmp_pat
     assert recovery['imported_at'].isoformat()=='2026-10-21T14:00:00+00:00'
     [plain]=[row for row in values if row['receipt_key']==files[2]['key']]
     assert plain['mode']=='fetch' and plain['original_url'] is None and plain['evidence_sha256'] is None
+    assert plain['writer_job'] is None and plain['writer_commit'] is None
     assert captured.equals(direct)
 
 
