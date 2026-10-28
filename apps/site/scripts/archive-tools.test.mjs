@@ -85,3 +85,26 @@ test('a changed old pointer during the stale probe still refuses the candidate',
     assert.equal(server.state.pointerReads,2);
   }finally{await server.close();}
 });
+
+test('provisional targets bind five emulated runs to a seed and keep each profile median',async()=>{
+  const folder=await mkdtemp(join(tmpdir(),'archive-seed-targets-'));try{
+    const {measurementProfiles,readTargets}=await import('./archive-targets.mjs');
+    const origin={kind:'seed_v5',display_only:true},harnessCommit='a'.repeat(40);
+    const measurements=['phone','desktop'].map((kind,index)=>({deviceClass:kind+'-profile',basis:'emulated',profile:measurementProfiles[kind],harnessCommit,origin,
+      samples:[10,20,30,40,100].map(startupMs=>({releaseId:'ab'.repeat(32),startupMs:startupMs*(index?1:2),searchMs:2,detailMs:3,heapBytes:40,workerHeapBytes:20}))}));
+    const output=join(folder,'targets.json');
+    await assert.rejects(writeTargets({measurements:measurements.map(r=>({...r,samples:r.samples.slice(1)})),basis:'emulated',harnessCommit,output}),/five|5/i);
+    await assert.rejects(writeTargets({measurements:measurements.map(r=>({...r,origin:{kind:'model'}})),basis:'emulated',harnessCommit,output}),/seed/i);
+    await writeTargets({measurements,basis:'emulated',harnessCommit,output});
+    const targets=await readTargets(output);assert.equal(targets.status,'provisional-emulated');assert.equal(targets.basis,'emulated');
+    assert.equal(targets.profile.phone.ceilings.startupMs,90);assert.equal(targets.profile.desktop.ceilings.startupMs,45);
+    assert.equal(targets.ceilings.startupMs,90);assert.equal(targets.raw_runs.phone.length,5);assert.equal(targets.harness_commit,harnessCommit);
+    const sample=measurements[1].samples[2];checkTargets(sample,targets,origin,'desktop');
+    assert.throws(()=>checkTargets({...sample,startupMs:50},targets,origin,'desktop'),/startup/);
+    for(const other of [undefined,{kind:'model'},{kind:'seed_v5',display_only:false}])assert.throws(()=>checkTargets(sample,targets,other),/seed/i);
+    assert.throws(()=>checkTargets(sample,{status:'measured',ceilings:targets.ceilings},origin),/target/i);
+    const broken={...targets,raw_runs:{...targets.raw_runs,phone:targets.raw_runs.phone.slice(1)}};
+    const invalid=join(folder,'invalid.json');await (await import('node:fs/promises')).writeFile(invalid,JSON.stringify(broken));
+    await assert.rejects(readTargets(invalid),/five|5/i);
+  }finally{await rm(folder,{recursive:true,force:true});}
+});
