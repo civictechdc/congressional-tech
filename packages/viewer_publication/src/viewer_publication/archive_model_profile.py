@@ -3,13 +3,18 @@ import json
 from pathlib import Path
 import re
 
-from congress_api.lake.readings import bundle_version as readings_bundle_version
+from congress_api.lake.readings import bundle_version,worker_limits
 from congress_api.lake.versions import version_digest
 from congress_api.models.archive_profile import build_capture_profile
 from congress_api.retention.provenance import file_pin
 
 ROOT=Path(__file__).parents[4]
 PARSERS=('sniff','html','xml','json')
+
+
+def readings_bundle_version(versions):
+    """Use the same current worker policy as the combined producer."""
+    return bundle_version(versions,policy=worker_limits())
 
 
 def _copy(value):
@@ -26,6 +31,7 @@ def _definition_hashes(root):
     files += [package/name for name in ('archive_model.py','archive_model_profile.py','archive_format.py',
         'archive_annotations.py','archive_provenance.py','archive_reviews.py','archive_url_state.py')]
     files += [root/'packages/congress_api/src/congress_api/models/archive_profile.py',root/'uv.lock']
+    files += [root/'packages/congress_api/src/congress_api'/name for name in ['lake/readings.py','retention/parser_worker.py','retention/process_resources.py']]
     return {path.relative_to(root).as_posix():file_pin(path)['sha256'] for path in sorted(set(files))}
 
 

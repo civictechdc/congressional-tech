@@ -150,7 +150,7 @@ def build_release(*,captures,readings,filename_readings,parser_versions,catalog_
         'document-version-keys','document-versions','document-metadata','document-addresses','saved-recoveries','document-removals','document-packages'],root=root)
     steps += [dict(name='base_normalized',sql=(Path(root)/'model/sql/document-normalized.sql').read_text()+' UNION ALL '+(Path(root)/'model/sql/document-recovery-normalized.sql').read_text(),materialize=True)]
     from viewer_publication.archive_model_profile import completeness_steps,completeness_checks,profile_record
-    from congress_api.lake.readings import bundle_version
+    from congress_api.lake.readings import bundle_version,worker_limits
     steps += completeness_steps(root=root)+application_steps(root=root)
     steps += [dict(name='normalized',sql="""SELECT n.* EXCLUDE(title,document_kind,hidden,review_note,review_decided_at,removed_on),
         coalesce(r.title_override,n.title) AS title,coalesce(r.kind_override,n.document_kind) AS document_kind,
@@ -223,5 +223,5 @@ def build_release(*,captures,readings,filename_readings,parser_versions,catalog_
             (SELECT count(*) FROM document_link_key_conflicts) AS review_key_collisions,
             (SELECT count(*) FROM review_value_diagnostics) AS invalid_review_values,
             (SELECT CASE WHEN count(*)=0 THEN 1 ELSE 0 END FROM ordered) AS empty_document_list,
-            (SELECT count(*) FROM (SELECT unnest(alternates) AS alt FROM document_alternates) WHERE alt['size'] IS NULL) AS missing_alternate_sizes""")]+url_state_diagnostics()+completeness_checks(catalog_version=catalog_version,readings_version=bundle_version(parser_versions),root=root))
+            (SELECT count(*) FROM (SELECT unnest(alternates) AS alt FROM document_alternates) WHERE alt['size'] IS NULL) AS missing_alternate_sizes""")]+url_state_diagnostics()+completeness_checks(catalog_version=catalog_version,readings_version=bundle_version(parser_versions,policy=worker_limits()),root=root))
     return manifest
