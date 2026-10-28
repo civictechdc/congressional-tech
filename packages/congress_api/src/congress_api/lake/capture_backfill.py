@@ -169,6 +169,8 @@ class _MemorySamples:
         try:
             rss=self.sampler.resident_tree(pid);physical=self.sampler.physical_tree(pid)
             if physical is None:raise RuntimeError('Missing process memory sample')
+        except InterruptedError:
+            raise
         except (OSError,RuntimeError,subprocess.SubprocessError) as error:
             self.consecutive_failures+=1
             if self.consecutive_failures>=3:
