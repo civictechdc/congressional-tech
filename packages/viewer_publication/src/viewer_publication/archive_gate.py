@@ -17,11 +17,14 @@ def gate_and_flip(client, *, bucket, release_id, previous_release_id, expected_e
 
     The caller pins the outgoing pointer and its ETag before preparation. Reusing
     that ETag here detects a concurrent publication instead of overwriting it.
+    The first engine release can replace the legacy pointer with its observed
+    ETag even though that pointer names no previous engine release.
     """
     for value in [release_id, previous_release_id]:
         if value is not None and not re.fullmatch('[a-f0-9]{64}', value):
             raise ValueError('Invalid release ID')
-    if release_id is None or bool(previous_release_id) != bool(expected_etag):
+    if (release_id is None or previous_release_id is not None and expected_etag is None
+            or expected_etag is not None and (not isinstance(expected_etag, str) or not expected_etag.strip())):
         raise ValueError('Outgoing release and pointer ETag must be pinned together')
     # Admit the local candidate before the publisher uploads and probes HTTPS.
     for name, check in [('contract', contract), ('canary', canary)]:
