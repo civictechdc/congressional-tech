@@ -15,3 +15,9 @@ tags: [engine-first, E1]
 
 Canonical recovery kind data covers all thirteen observed categories and three legacy match bases, preserving named official substitutes and category precedence. Authentic receipt-pointer cases and native unknown/duplicate refusal checks pass; B7 and E2 use this same registry.
 
+
+## Notes
+
+**2026-10-28T05:11:54Z**
+
+Ownership transferred to site by owner decision 20261028T051000Z. Model expects current recovery-kind registry and both corrected B7 decision files, strict fatal diagnostics and canonical aliases; no new global rules for individual edge cases.
