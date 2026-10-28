@@ -220,6 +220,7 @@ One row per body a line references (each `captures[]` entry or, on an older line
 | `sha256` | fixed[32], nullable | Digest of the referenced body. |
 | `bytes` | long, nullable | Body size. |
 | `media_type`, `fidelity` | string, nullable | §5.2; saved-file ordering reads `fidelity` (§7.5). |
+| `sniffed_format`, `sniff_version`, `intact` | string, string, boolean; nullable | Capture-time reading reused by D2; unknown older values take a retained-body reading (§6.2). |
 | `expansion` | string, nullable | §5.2; the ZIP fingerprint (§6.2) reads `expanded`. |
 | `stored_suffix` | string, nullable | §5.2. |
 | `stored_bytes` | long, nullable | Stored object size. |
@@ -234,7 +235,6 @@ These values are **on demand, not phase-1 columns**:
 | Prior attempts, their status and completeness | Read the pointed receipt when an individual attempt needs examination; bulk ingest does not expand or sort them. |
 | Other response headers, header items and `retry_after` | Retained in raw. Bulk ingest reads only the two flat download-name paths; scheduling uses the phase-1 intervals (§7.7). |
 | `record_sha` and inline meeting records | D4, phase 2 (§6.5): read the four `congress/meetings` receipt files (77 MB, 199,156 lines) once and compute the record hashes then. D1 stores only their pointers. |
-| Captured sniff/version/integrity | Retained in raw; the bulk model reads its pinned body readings. |
 | Other writer metadata and supplements | Raw receipts and pinned producer/profile metadata retain these facts. |
 
 - **PK:** `(receipt_key, receipt_line, capture_index)`.
