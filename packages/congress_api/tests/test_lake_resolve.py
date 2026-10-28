@@ -89,3 +89,9 @@ def test_reading_plan_binds_captures_and_existing_native_pins_directly(tmp_path)
         local_root=tmp_path,engine=PlanNative(),work=tmp_path/'plan',parser=None,
         decided_at='2026-10-28T00:00:00Z')
     assert result['work_items']==0
+
+
+def test_filename_producer_refuses_an_explicit_empty_native_pin(tmp_path):
+    from congress_api.lake import filenames
+    with pytest.raises(ValueError,match='immutable table pin'):
+        filenames._work_inputs(PIN,[],[],{},tmp_path)
