@@ -12,16 +12,16 @@ from viewer_publication.archive_seed_profile import seed_profile_record
 
 
 def seed(root):
-    artifacts,manifest=candidate(root,rows=51)
-    profile=seed_profile_record(**dict(arguments(),document_rows=54))['profile']
+    artifacts,manifest=candidate(root,rows=96)
+    profile=seed_profile_record(**dict(arguments(),document_rows=100))['profile']
     manifest['origin']={key:profile[key] for key in
         ['kind','label','display_only','catalog_id','generation','input_files']}
     manifest['origin']['gaps']=['v5 has no recovery import events']
     path=Path(artifacts['manifest_pin']['path']);path.write_bytes(encoded(manifest))
     artifacts['manifest_pin']=pin(path)
     reports=[dict(name='seed_invariants',data=[dict(missing_required=0,bad_ids=0)]),
-        dict(name='seed_reconciliation',data=[dict(input_docs=54,listed=51,excluded=3)]),
-        dict(name='seed_exclusions',data=[dict(reason='no_display_document',count=3)]),
+        dict(name='seed_reconciliation',data=[dict(input_docs=100,listed=96,merged_duplicates=1,excluded=3)]),
+        dict(name='seed_exclusions',data=[dict(reason='seed_missing_format',count=3)]),
         dict(name='seed_spot_checks',data=[dict(source_row=i,filename_matches=True,format_matches=True,
             source_page_matches=True,meeting_matches=True) for i in range(50)])]
     path=Path(artifacts['result_pin']['path']);result=json.loads(path.read_text());result['queries']=reports
@@ -47,6 +47,7 @@ def test_seed_uses_same_gates_pointer_and_empty_canonical_receipt_evidence(tmp_p
     result,store,native,contexts=publish(tmp_path,artifacts,record)
     assert result['status']=='published' and result['label']==record['profile']['label']
     assert result['display_only'] is True and result['input_kind']=='seed_v5'
+    assert result['seed_reconciliation']==dict(input_docs=100,listed=96,merged_duplicates=1,excluded=3)
     assert len(contexts)==2 and all(context['manifest']['origin']==manifest['origin'] for context in contexts)
     assert json.loads(store.objects['viewer-publications/status.json'])['label']==record['profile']['label']
     from viewer_publication.archive_publish import matching_live_input,NativeArchiveStore
@@ -105,7 +106,7 @@ def test_retention_keeps_seed_without_reading_present_day_model_definitions(tmp_
     assert store.deleted==[] and all(count==1 for count in store.reads.values())
 
 
-def test_small_seed_samples_each_listed_document_and_keeps_exclusions_separate(tmp_path):
+def test_small_seed_samples_each_listed_document_and_keeps_merged_rows_separate(tmp_path):
     artifacts,manifest,record=seed(tmp_path)
     manifest['files'][0]['rows']=3
     from viewer_publication.archive_format import release_identity
@@ -114,9 +115,29 @@ def test_small_seed_samples_each_listed_document_and_keeps_exclusions_separate(t
     path=Path(artifacts['result_pin']['path']);result=json.loads(path.read_text())
     result['outputs'][0]['rows']=3
     for query in result['queries']:
-        if query['name']=='seed_reconciliation':query['data']=[dict(input_docs=54,listed=3,excluded=51)]
-        elif query['name']=='seed_exclusions':query['data']=[dict(reason='duplicate_document_identity',count=51)]
+        if query['name']=='seed_reconciliation':query['data']=[dict(input_docs=100,listed=3,merged_duplicates=97,excluded=0)]
+        elif query['name']=='seed_exclusions':query['data']=[]
         elif query['name']=='seed_spot_checks':query['data']=query['data'][:3]
     path.write_bytes(encoded(result));artifacts['result_pin']=pin(path)
     published,_,_,_=publish(tmp_path,artifacts,record)
     assert published['status']=='published' and published['rows']['list.parquet']==3
+
+
+def test_seed_data_gap_exclusions_above_three_percent_refuse_before_effects(tmp_path):
+    artifacts,manifest,record=seed(tmp_path)
+    manifest['files'][0]['rows']=95
+    from viewer_publication.archive_format import release_identity
+    manifest['release_id']=release_identity(1,manifest['files'])
+    path=Path(artifacts['manifest_pin']['path']);path.write_bytes(encoded(manifest));artifacts['manifest_pin']=pin(path)
+    path=Path(artifacts['result_pin']['path']);result=json.loads(path.read_text());result['outputs'][0]['rows']=95
+    for query in result['queries']:
+        if query['name']=='seed_reconciliation':query['data']=[dict(input_docs=100,listed=95,merged_duplicates=1,excluded=4)]
+        elif query['name']=='seed_exclusions':query['data']=[dict(reason='seed_missing_format',count=4)]
+    path.write_bytes(encoded(result));artifacts['result_pin']=pin(path)
+    store=Store();native=Native(store)
+    with pytest.raises(ValueError,match='three percent'):
+        publish_candidate(client=store,engine=native,bucket='derived-fixture',work=tmp_path/'publish',
+            **artifacts,input_record=record,receipt_keys=[],pointer=None,expected_etag=None,
+            public_origin='https://archive.example.test',contract=lambda **_:pytest.fail('Excluded seed reached reader'),
+            canary=lambda **_:pytest.fail('Excluded seed reached canary'))
+    assert native.calls==[] and 'viewer-publications/manifest.json' not in store.objects
