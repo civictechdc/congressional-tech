@@ -1,4 +1,5 @@
 """The pinned old index checks only fields its source actually records."""
+import json
 import os
 import pyarrow as pa
 import pyarrow.parquet as pq
@@ -57,6 +58,9 @@ def test_missing_family_and_run_are_explicit_restorations_without_prefix_rewrite
 @pytest.mark.parametrize('pointer,kind,old_path,new_path,unexplained',[
     ('["archive_members",0,"content","body"]','capture','inside/A.pdf','inside/B.pdf',1),
     ('["not_archive_members",0,"body"]','capture','local/A.pdf',None,0),
+    ('["archive_members_suffix",0,"body"]','capture','local/A.pdf',None,0),
+    (json.dumps(['prefix"archive_members',0,'body']),'capture','local/A.pdf',None,0),
+    ('["content","body"]','capture','local/A.pdf',None,0),
     ('["body"]','file','/local/retained/A.pdf',None,0),
 ])
 def test_member_names_require_the_proved_archive_pointer_component(
