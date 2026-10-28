@@ -34,11 +34,8 @@ def current_version(parser):
     return version_digest(packages={},files={
         'parser':Path(__file__).parents[1]/'parsers/archive_readings.py',
         'xml_helper':Path(__file__).parents[1]/'parsers/xml.py',
-        'producer':Path(__file__), 'supervisor':Path(__file__).parents[1]/'retention/parser_worker.py',
-        'resources':Path(__file__).parents[1]/'retention/process_resources.py',
         'lock':ROOT/'uv.lock','schema':ROOT/'model/lake/readings.schema.json'},
-        values=dict(parser=parser,stored_bytes=MAX_STORED_BYTES,decoded_bytes=MAX_DECODED_BYTES,
-                    memory_bytes=WORKER_MEMORY_BYTES,timeout_seconds=WORKER_TIMEOUT_SECONDS))
+        values=dict(parser=parser,stored_bytes=MAX_STORED_BYTES,decoded_bytes=MAX_DECODED_BYTES))
 
 
 def parse_payload(payload):
