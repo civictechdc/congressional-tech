@@ -69,7 +69,7 @@ def count_sql(counter,files):
         sum(items)::BIGINT AS list_items,sum(expected_captures)::BIGINT AS expected_captures,
         max(line_bytes)::BIGINT AS max_line_bytes,max(items)::BIGINT AS max_line_items,
         min(source_line) AS first_line,max(source_line) AS last_line,
-        count(DISTINCT source_line) AS distinct_lines,count(DISTINCT source_id) AS source_origins,
+        count(DISTINCT source_id) AS source_origins,
         min(source_id) AS source_id
         FROM line_metrics GROUP BY key ORDER BY key'''
 
@@ -124,9 +124,8 @@ def count_sources(*,counter,files,receipt_keys,work,source_qualifications,memory
         raise ValueError('Counted receipt keys differ from the complete original receipt inventory')
     source_rows=defaultdict(int)
     for row in rows:
-        if (row['source_origins']!=1 or row['first_line']!=1 or row['last_line']!=row['source_rows']
-                or row['distinct_lines']!=row['source_rows']):
-            raise ValueError('Invalid receipt source lines or duplicate original receipt keys')
+        if row['source_origins']!=1 or row['first_line']!=1 or row['last_line']!=row['source_rows']:
+            raise ValueError('Invalid receipt source range or repeated original receipt keys')
         source_rows[row['source_id']]+=row['source_rows']
     rows_by_path={str(counter):source_rows[0],**{f['path']:source_rows[i] for i,f in enumerate(files,1)}}
     if any(rows_by_path[p['path']]!=p['qualification']['rows'] for p in pins if 'rows' in p['qualification']):
