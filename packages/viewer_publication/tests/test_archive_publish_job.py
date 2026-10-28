@@ -375,3 +375,17 @@ def test_destination_description_cannot_select_another_account_or_persist_secret
     path.write_text(json.dumps(remote));runtime=tmp_path/'runtime.json'
     runtime.write_text(json.dumps(dict(version=1,remote=str(path))))
     with pytest.raises(ValueError,match='destination'):publication_configuration(runtime,bucket='derived-fixture')
+
+
+def test_shared_native_probe_skips_empty_hidden_and_unreadable_saved_bodies(tmp_path):
+    from docspec_client.client import NativeDatasets
+    from congress_api.retention.provenance import run_job
+    from viewer_publication.archive_model import probe_selectors_query
+    details="""SELECT list_row,decode(repeat('01',32),'hex') AS saved_body,
+        decode('0123456789abcdef','hex') AS link_key,hidden,saved_suffix,saved_bytes
+        FROM (VALUES (0,false,'',0),(1,true,'',1),(2,false,'.gz',1125899906842624),
+            (3,false,'.gz',20),(4,false,'',30)) AS t(list_row,hidden,saved_suffix,saved_bytes)"""
+    with NativeDatasets.from_config(os.environ['DOCSPEC_JOB_CONFIG']) as engine:
+        reports=run_job(tmp_path,engine,inputs=[],steps=[dict(name='details',sql=details)],
+            outputs=[],queries=[probe_selectors_query()])
+    assert reports['probe_selectors']==[dict(saved_row=3,link_key='0123456789abcdef')]
