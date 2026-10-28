@@ -26,7 +26,7 @@ def test_raw_lake_model_exports_one_group_and_keeps_download_names(tmp_path):
         digest=hashlib.sha256(data).hexdigest();key='bodies/sha256/'+digest[:2]+'/'+digest+('.gz' if fmt=='html' else '')
         path=raw/key;path.parent.mkdir(parents=True,exist_ok=True);path.write_bytes(stored)
         url='https://fixture.test/'+name
-        rows.append(dict(run_id='fixture',mode='fetch',family='documents',outcome='stored',requested_url='https://fixture.test/redirect/report.pdf' if index==1 else url,url=url,
+        rows.append(dict(writer=dict(job='fixture',commit='a'*40),run_id='fixture',mode='fetch',family='documents',outcome='stored',requested_url='https://fixture.test/redirect/report.pdf' if index==1 else url,url=url,
             response_headers={'content-disposition':header} if header else {},http_status=200,complete=True,retrieved_at='2026-10-27T12:00:00Z',
             captures=[dict(sha256=digest,bytes=len(data),media_type='text/html' if fmt=='html' else 'application/pdf',fidelity='saved-text' if index==1 else 'exact-bytes',
                 sniffed_format=fmt,sniff_version=readings.current_version('sniff'),intact=True if fmt=='pdf' else None,
