@@ -116,7 +116,8 @@ class ReceiptWriter:
                     final_write = stored
                 capture = self._capture(body,attempt,attempt_index,stored,None,None,fidelity)
                 line['captures'].append(capture)
-                if body.path is not None and attempt.complete and self.archive_limits is not None:
+                if (body.path is not None and body.sniff_error is None and attempt.complete
+                        and self.archive_limits is not None):
                     expansion = expand_archive(body.path,directory=temporary/str(attempt_index),limits=self.archive_limits)
                     capture['expansion'] = expansion.status
                     for member in expansion.members:
