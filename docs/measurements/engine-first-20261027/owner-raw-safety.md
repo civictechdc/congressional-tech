@@ -6,7 +6,7 @@ Packages start from shared `origin/main` `7411f5b7`, with separate branches/work
 
 ## Prepare one owner shell and private evidence directory
 
-Use `bash`, with credentials already exported by the owner. Set `SAFE_WORK` outside all release worktrees so evidence cannot dirty the application identity; use durable storage. Do not enable shell tracing. Supply raw-object `R2_ACCESS_KEY_ID`, `R2_SECRET_ACCESS_KEY`, and `CLOUDFLARE_ACCOUNT_ID` (`R2_ENDPOINT_URL` may override the object endpoint). Lock configuration additionally needs `CLOUDFLARE_API_TOKEN` with R2 bucket-configuration edit permission. Supply `B1_R2_ACCESS_KEY_ID` and `B1_R2_SECRET_ACCESS_KEY` for B1 scratch-only object access, and the separate `DOCSPEC_M1_*` credentials for M1. No command below opens a credential file.
+Use `bash`, with credentials already exported by the owner. Set `SAFE_WORK` outside all release worktrees so evidence cannot dirty the application identity; use durable storage. Do not enable shell tracing. Supply raw-object `R2_ACCESS_KEY_ID`, `R2_SECRET_ACCESS_KEY`, and `CLOUDFLARE_ACCOUNT_ID` (`R2_ENDPOINT_URL` may override the object endpoint). Lock configuration additionally needs `CLOUDFLARE_API_TOKEN` with R2 bucket-configuration edit permission. Supply `B1_R2_ACCESS_KEY_ID` and `B1_R2_SECRET_ACCESS_KEY` for B1 scratch-only object access, and the separate `DOCSPEC_M1_*` credentials for M1. No instruction below asks you to open or print a credential file.
 
 ```sh
 set +x
@@ -371,9 +371,8 @@ cd "$M1"
 uv sync --locked
 cf_locks "$DOCSPEC_M1_BUCKET" > "$SAFE_WORK/m1-bucket-locks.json"
 jq -e '.success and all(.result.rules[]; .enabled | not)' "$SAFE_WORK/m1-bucket-locks.json"
-# Set M1_PROBE and M1_PROBE_SHA256 from m1/RELEASE.md's immutable artifact pin.
-: "${M1_PROBE:?Set the optimized probe binary path}"
-: "${M1_PROBE_SHA256:?Set the artifact SHA-256}"
+export M1_PROBE=/private/tmp/claude-501/-Users-mikewolfd-Work/71969fc5-4a0f-4f4e-aa49-d2dd9f4c2272/scratchpad/codex-coord/shared/m1-probe-eb3a121/basin_maintenance_probe
+export M1_PROBE_SHA256=31d70fcba7013f6914b78bdd1be83eefbde8e0c4d9dfae7262f81f2c98705f0b
 M1_NS="docspec_m1_$(.venv/bin/python -I -c 'import uuid; print(uuid.uuid4().hex)')"
 .venv/bin/python -I scripts/m1_smoke.py --binary "$M1_PROBE" \
   --binary-sha256 "$M1_PROBE_SHA256" --namespace "$M1_NS" --work "$SAFE_WORK/m1-plan"
@@ -382,6 +381,6 @@ M1_NS="docspec_m1_$(.venv/bin/python -I -c 'import uuid; print(uuid.uuid4().hex)
 cat "$SAFE_WORK/m1-live/summary.json" "$SAFE_WORK/m1-live/remaining.json"
 ```
 
-**Verify:** `observe.json` has `rows_equal=true`, 300 rows; `race.json` has `server_snapshot_conflict=true`, no duplicates, zero repeat work/commits, and at most three retries. All reports identify the same release binary and table; `purge.json` contains the actual post-purge listing, copied to `remaining.json`. Remaining orphans are reported for owner review, never silently deleted. This run qualifies the remote smoke; fake-process tests qualify only the wrapper.
+**Verify:** this pinned optimized `darwin-arm64` artifact comes from docspec-rs `eb3a121a1434b5e4284e5ba1d92f829acdff5e35`. Its native and wrapper connection-free plans pass; the native size is 137,211,008 bytes. `observe.json` has `rows_equal=true`, 300 rows; `race.json` has `server_snapshot_conflict=true`, no duplicates, zero repeat work/commits, and at most three retries. All reports identify the same release binary and table; `purge.json` contains the actual post-purge listing under the owned table prefix, copied to `remaining.json`; the catalog namespace can remain. Remaining orphans are reported for owner review, never silently deleted. This run qualifies the remote smoke; fake-process tests qualify only the wrapper.
 
 **Stop:** interrupt at any failed step, retain the whole work directory, and report its last action. There is no automatic purge after failure. A new full attempt needs a fresh namespace/work directory; use the saved `plan.json` to identify the failed namespace for a separately reviewed scoped purge. Never remove the bucket guard or point the script at raw.
