@@ -310,3 +310,38 @@ def test_stale_rescue_date_fails_before_connecting(tmp_path, monkeypatch):
     monkeypatch.setattr('congress_shared.storage.connect_r2', refuse)
     with pytest.raises(ValueError, match='actual UTC import date'):
         cli.main(['--rescue-batch', str(source), '--bucket', 'cx-release-local-fake'])
+
+
+@pytest.mark.parametrize('accepted_before_failure', [False, True])
+def test_rescue_resume_after_a_partitioned_receipt_failure(tmp_path, monkeypatch, accepted_before_failure):
+    from io import BytesIO
+    root = batch(tmp_path, [{'a.json':b'{"x":1}', 'b.json':b'{"x":2}'},
+                            {'a.json':b'{"x":3}', 'b.json':b'{"x":2}'}])
+    monkeypatch.setattr(pipeline_raw, 'RECEIPT_LINES', 2)
+    bucket = Bucket()
+    def get_object(**args):
+        value = bucket.objects.get(args['Key'])
+        if value is None:
+            raise ClientError({'Error':{'Code':'NoSuchKey'}}, 'GetObject')
+        return dict(Body=BytesIO(value['Body']), ContentLength=len(value['Body']),
+                    ETag=hashlib.md5(value['Body']).hexdigest())
+    bucket.get_object = get_object
+    put = bucket.put_object
+    def interrupted(**args):
+        if args['Key'].endswith('-000002.jsonl.gz'):
+            if accepted_before_failure:
+                put(**args)
+            raise OSError('fixture interrupted receipt publication')
+        return put(**args)
+    bucket.put_object = interrupted
+    store = R2Store(bucket, 'cx-release-local-fake')
+    options = dict(writer=WRITER, run_id=pipeline_raw.RESCUE_RUN_ID, day='2026-10-27', resume=True)
+    with pytest.raises(OSError, match='interrupted'):
+        pipeline_raw.archive(store, pipeline_raw.rescue_files(root), **options)
+    before = {key:value['Body'] for key,value in bucket.objects.items()}
+    assert sum(key.startswith('receipts/') for key in before) == (2 if accepted_before_failure else 1)
+    bucket.put_object = put
+    result = pipeline_raw.archive(store, pipeline_raw.rescue_files(root), **options)
+    assert result['created'] == 0 and len(result['receipts']) == 2
+    assert all(bucket.objects[key]['Body'] == body for key,body in before.items())
+    assert len([line for key in result['receipts'] for line in receipt(bucket,key)]) == 4
