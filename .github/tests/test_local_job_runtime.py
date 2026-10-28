@@ -14,9 +14,13 @@ import yaml
 
 ROOT=Path(__file__).parents[2]
 FIXTURE=json.loads((ROOT/'model/fixtures/local-job-runtime.json').read_text())
-spec=importlib.util.spec_from_file_location('local_job_runtime',ROOT/'.github/scripts/setup-local-job-runtime.py')
-installer=importlib.util.module_from_spec(spec)
-spec.loader.exec_module(installer)
+
+@pytest.fixture
+def installer():
+    spec=importlib.util.spec_from_file_location('local_job_runtime',ROOT/'.github/scripts/setup-local-job-runtime.py')
+    module=importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module
 
 
 def archive(tmp_path, *, change=None, extra=None):
@@ -35,7 +39,7 @@ def archive(tmp_path, *, change=None, extra=None):
     return path,sha256(path.read_bytes()).hexdigest()
 
 
-def test_approved_local_archive_preserves_owner_limits_and_literal_pins(tmp_path):
+def test_approved_local_archive_preserves_owner_limits_and_literal_pins(tmp_path,installer):
     source,digest=archive(tmp_path)
     config=installer.install_archive(source,digest,tmp_path/'installed')
     assert json.loads(config.read_text())==FIXTURE['runtime']
@@ -45,7 +49,7 @@ def test_approved_local_archive_preserves_owner_limits_and_literal_pins(tmp_path
     assert not (config.parent/'workspace').exists()
 
 
-def test_unapproved_archive_digest_creates_no_executable(tmp_path):
+def test_unapproved_archive_digest_creates_no_executable(tmp_path,installer):
     source,_=archive(tmp_path)
     with pytest.raises(ValueError,match='digest|SHA'):
         installer.install_archive(source,'0'*64,tmp_path/'installed')
@@ -55,7 +59,7 @@ def test_unapproved_archive_digest_creates_no_executable(tmp_path):
 @pytest.mark.parametrize('name,kind',[
     ('../escape',tarfile.REGTYPE),('/absolute',tarfile.REGTYPE),('docspec',tarfile.SYMTYPE),
     ('docspec',tarfile.LNKTYPE),('unexpected',tarfile.REGTYPE),('runtime.json',tarfile.REGTYPE)])
-def test_unsafe_duplicate_or_extra_archive_members_refuse_before_install(tmp_path,name,kind):
+def test_unsafe_duplicate_or_extra_archive_members_refuse_before_install(tmp_path,name,kind,installer):
     source,digest=archive(tmp_path,extra=(name,kind))
     with pytest.raises(ValueError):
         installer.install_archive(source,digest,tmp_path/'installed')
@@ -64,7 +68,7 @@ def test_unsafe_duplicate_or_extra_archive_members_refuse_before_install(tmp_pat
 
 
 @pytest.mark.parametrize('case',['remote','credentials','path','platform','source','features','binary','limits'])
-def test_config_or_build_contradictions_refuse_before_install(tmp_path,case):
+def test_config_or_build_contradictions_refuse_before_install(tmp_path,case,installer):
     def change(data):
         runtime=json.loads(data['runtime.json']);build=json.loads(data['build.json'])
         if case in {'remote','credentials'}:runtime[case]='forbidden.json'
@@ -86,7 +90,7 @@ def test_local_archive_bootstrap_precedes_each_offline_ci_consumer():
         value=yaml.load((ROOT/'.github/workflows'/workflow).read_text(),Loader=yaml.BaseLoader)
         steps=value['jobs'][job]['steps']
         setup=next(i for i,s in enumerate(steps) if s.get('uses')=='./.github/actions/setup-local-job-runtime')
-        consumer=next(i for i,s in enumerate(steps) if 'production-offline' in s.get('run',''))
+        consumer=next(i for i,s in enumerate(steps) if 'production-offline' in s.get('run','') or 'capture_schedule' in s.get('run',''))
         assert setup<consumer
         assert steps[setup]['with']==dict(url='${{ vars.DOCSPEC_LOCAL_RUNTIME_URL }}',sha256='${{ vars.DOCSPEC_LOCAL_RUNTIME_SHA256 }}')
     action=(ROOT/'.github/actions/setup-local-job-runtime/action.yml').read_text()
