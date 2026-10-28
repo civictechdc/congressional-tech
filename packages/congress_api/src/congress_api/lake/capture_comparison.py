@@ -50,8 +50,8 @@ def compare_old(evidence, old_index, *, engine, work):
                 value(schema,'family')+' AS family',
                 value(schema,'source_file' if old else 'run_id')+' AS run_id']
         if old:
-            member = (f"CASE WHEN {kind}='capture' AND position('\"archive_members\"' IN "
-                      f"coalesce({raw_pointer},''))>0 THEN {value(schema,'original_path')} END")
+            member = (f"CASE WHEN {kind}='capture' AND coalesce(array_has(json_get_array("
+                      f"{raw_pointer}),'\"archive_members\"'),false) THEN {value(schema,'original_path')} END")
             location = value(schema,'body_key')
         else:
             member = value(schema,'member_path')
