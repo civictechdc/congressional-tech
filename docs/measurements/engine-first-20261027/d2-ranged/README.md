@@ -1,7 +1,9 @@
 # D2 ranged raw readings
 
 The producer uses the existing `R2Store` and read-once worker. Each GET is
-conditional on the selected physical object's stored MD5. Range responses must
+conditional on the selected physical object's captured stored MD5, or its exact
+listed ETag when captured MD5 is absent. Opaque and multipart ETags remain
+versions, not checksums. Range responses must
 match the requested interval and captured total size. Pages use bounded full
 prefetch or complete the existing disjoint ranges, then verify the decoded
 SHA-256 before parsing. Successful input caches are removed after the readings
@@ -15,13 +17,16 @@ nightly memory use. The five bodies are portable fixtures under
 ## Required owner inputs
 
 `codex-raw/run2/d2-ranged/full.spec.json` remains gated on an accepted D1 captures
-pin and a complete native body inventory. The stopped D1 proof did not create an
+pin and the complete native body listing. The stopped D1 proof did not create an
 accepted captures generation. Do not substitute a partial inventory or the old
-readings cache. The physical LIST JSON is not the producer's Parquet inventory;
-use the engine owner's maintained listing adapter.
+readings cache. The engine owner's maintained adapter supplied
+`$COORD/shared/body-listing-28f59cf4/listing.parquet`: 1,343,571 unique keys,
+with unchanged `key`, `size` and `etag` fields. The producer reads this directly
+through native SQL; it does not parse the original LIST JSON.
 
 The spec requires `captures` (a native table pin or Parquet input),
-`body_inventory` (Parquet), `local_root`, a fresh `work` directory,
+`body_inventory` (selected Parquet inventory, or `null` for direct listing),
+`local_root`, a fresh `work` directory,
 `decided_at`, `parser: null`, and
 `apply: {"catalog_root": "...", "table": {"namespace": ["..."], "name": "..."}}`.
 The readings table must exist. The ranged path does not read `local_root`.
@@ -29,8 +34,12 @@ The inventory has one selected physical object per body, with fields
 `body_sha: FixedSizeBinary(32)`, `physical_key: Utf8`, `relative_path: Utf8`,
 `stored_bytes: Int64`, and `stored_gzip: Boolean`.
 `stored_gzip` describes actual storage encoding, not the filename suffix.
-Stored MD5 and size come from captures grouped by the exact SHA and suffix;
-another suffix's checksum cannot supply the selected object's pin.
+Stored MD5 and size come from captures grouped by the exact SHA and suffix.
+Native selection considers only capture-recorded copies, in bare, `.gz`, `.pdf`
+order. An absent or conflicting copy falls back to the next recorded copy,
+using that copy's own size and version. No verifiable copy leaves the body
+pending. A supplied selected inventory remains authoritative; it receives only
+exact-key listing enrichment. No suffix supplies a different suffix's checksum.
 
 The intended owner catalog is under `codex-raw/run2/rebuild-885/catalog`, with
 the readings location `tables/readings_v1_g20261028_885`. These paths do not
@@ -47,16 +56,22 @@ DOCSPEC_JOB_CONFIG="$COORD/shared/engine-b2fd2d8/narrow.runtime.json" \
   --spec "$RAW/run2/d2-ranged/full.spec.json" \
   --mode backfill --plan --batch-size 32 \
   --raw-bucket congressional-tech-raw \
+  --body-listing "$COORD/shared/body-listing-28f59cf4/listing.parquet" \
   --raw-cache-bytes 4294967296 --raw-get-workers 64
 ```
 
 Planning creates no raw SDK client and performs no body GET. Its `raw_custody`
-report counts missing physical objects, stored MD5s and stored sizes for bodies
-that need reads. The exact native coverage query is the `raw_custody` query in
+report counts missing physical objects, captured MD5s and stored sizes for bodies
+that need reads. `capture_md5` and `listing_etag` distinguish the selected pin's
+source; `missing_pins` counts bodies still requiring custody. `md5_conflicts`
+and `size_conflicts` describe a selected-copy contradiction;
+`fallback_missing`, `fallback_conflict` and `fallback_pin` count rejected copies
+by reason before a usable choice, or all rejected copies if none is usable.
+The exact native coverage query is the `raw_custody` query in
 `<spec.work>/plan/job.json`; the complete selected facts are in
 `<spec.work>/plan/work-list.parquet`. Execution refuses missing pins before any
-body GET. An inventory fallback for legacy missing captures checksums requires
-an explicit owner decision; no checksum is guessed. Known oversized page
+body GET. The owner approved this exact-key listing fallback; no checksum is
+guessed and no unrecorded copy is selected. Known oversized page
 decisions that require no GET are excluded from this read-custody count.
 
 After the owner accepts coverage and supplies a fresh spec work directory,
@@ -68,6 +83,7 @@ DOCSPEC_JOB_CONFIG="$COORD/shared/engine-b2fd2d8/narrow.runtime.json" \
   --spec "$RAW/run2/d2-ranged/full.spec.json" \
   --mode backfill --execute --batch-size 32 \
   --raw-bucket congressional-tech-raw \
+  --body-listing "$COORD/shared/body-listing-28f59cf4/listing.parquet" \
   --raw-cache-bytes 4294967296 --raw-get-workers 64
 ```
 
