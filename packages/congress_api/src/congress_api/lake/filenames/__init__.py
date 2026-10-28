@@ -19,6 +19,7 @@ from congress_api.retention.provenance import field, json_input, list_of, struct
 
 ROOT = Path(__file__).resolve().parents[6]
 SQL = ROOT / 'model/sql/effective-filenames.sql'
+INPUT_SQL = ROOT / 'model/sql/filename-inputs.sql'
 PARAMETERS = ROOT / 'model/registries/filename-parameters.json'
 TABLE_SCHEMA = ROOT / 'model/lake/filename-readings.schema.json'
 PARTITION_SPEC = {'spec-id': 0, 'fields': [{'source-id': 3, 'field-id': 1000,
@@ -44,6 +45,9 @@ def current_version(*, vocabularies=None, root=ROOT):
     return version_digest(packages={'filename_parser': Path(house_naming.__file__).parent,
         'producer': Path(__file__).parent}, files={'lock': root/'uv.lock',
         'effective_filename': root/'model/sql/effective-filenames.sql',
+        'filename_inputs': root/'model/sql/filename-inputs.sql',
+        'parser_worker': root/'packages/congress_api/src/congress_api/retention/parser_worker.py',
+        'process_resources': root/'packages/congress_api/src/congress_api/retention/process_resources.py',
         'filename_parameters': root/'model/registries/filename-parameters.json',
         'lake_schema': root/'model/lake/filename-readings.schema.json'},
         values={'vocabularies': vocabularies or {}})
@@ -189,15 +193,8 @@ def stage(*, captures, recovery_files, engine, work, decided_at, existing=None, 
             ORDER BY cast(decided_at AS TIMESTAMP WITH TIME ZONE) DESC,id DESC) AS selected
         FROM recoveries r WHERE NOT EXISTS (SELECT 1 FROM recoveries s WHERE s.supersedes=r.id))
         WHERE selected=1'''),
-        dict(name='filename_inputs', sql='''SELECT
-        encode(sha256(json_array(receipt_key,receipt_line,capture_index)),'hex') AS input_id,
-        CASE WHEN member_path IS NOT NULL THEN cast(NULL AS VARCHAR) ELSE url END AS source_url,
-        requested_url,member_path,h_content_disposition,cast(NULL AS VARCHAR) AS recovered_filename,
-        false AS recovery_rejected FROM captures WHERE mode='fetch'
-        UNION ALL SELECT 'recovery:' || id AS input_id,original_url AS source_url,
-        original_url AS requested_url,cast(NULL AS VARCHAR) AS member_path,
-        cast(NULL AS VARCHAR) AS h_content_disposition,recovered_filename,
-        kind='rejected' AS recovery_rejected FROM current_recoveries'''),
+        dict(name='filename_captures', sql='SELECT * FROM captures'),
+        dict(name='filename_inputs', sql=INPUT_SQL.read_text()),
         dict(name='effective_names', sql=SQL.read_text()),
         dict(name='distinct_pairs', sql="SELECT DISTINCT filename,coalesce(source_url,'') AS source_url FROM effective_names"),
         dict(name='source_pairs', sql="SELECT *,encode(sha256(json_array(filename,source_url)),'hex') AS input_id FROM distinct_pairs")]

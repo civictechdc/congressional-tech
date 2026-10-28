@@ -1,6 +1,6 @@
 ---
 id: cefr-p8ec
-status: closed
+status: in_progress
 deps: []
 links: []
 created: 2026-10-27T13:54:32Z
@@ -37,3 +37,11 @@ B2 architecture concern fixed: contract1526907d reproduced both empty/member ZIP
 **2026-10-27T15:38:48Z**
 
 Local done: typed file-backed fetch/receipt/archive contracts pass135 checks; bounded ZIP-view fix passes100 focused checks. Code and architecture findings reproduced before fixes and resolved in56785668/800533e9/c6dc8e72/42eb6537/e273e22a. F2 wiring and hosted/native transport qualification are separate; no live capture ran.
+
+**2026-10-28T01:49:38Z**
+
+Acquisition review correction underway: transfer-only fetcher; receipt writer must acknowledge body storage before optional fallible inspection and retain explicit unknown/pending sniff failure facts. Contract-first local synthetic run expected red: 14 failed in 3.30s across F2 group. Archive expander and transfer retry/completion policy remain outside this slice.
+
+**2026-10-28T01:53:21Z**
+
+Review correction implemented after contract af44f627: acquisition returns transfer facts, then ReceiptWriter inspects only after body-store acknowledgement. Known read/resource failures retain exact durable body+receipt, stable sniff_error and unknown verdict; transfer complete/outcome and provider fallback stay unchanged. Successful capture-time sniff facts remain for D1/D2. Focused84 plus sniff/pending36 pass on approved486runtime; parent review pending. Archive-member inspection/expansion unchanged; no live action.

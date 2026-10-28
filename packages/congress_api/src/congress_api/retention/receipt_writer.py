@@ -1,5 +1,6 @@
 """Typed public receipts: source bodies first, then one create-only receipt."""
 from datetime import date
+from dataclasses import replace
 import gzip
 import json
 from pathlib import Path
@@ -11,6 +12,7 @@ from congress_api.parsers.source_family import family as source_family
 from congress_api.retention.archive_expander import expand_archive
 from congress_api.retention.body_store import validate_record
 from congress_api.retention.receipt_privacy import public_receipt
+from congress_api.retention.sniff import read_sniff_file, SniffResourceError
 
 HEADERS = frozenset('content-type content-length content-disposition last-modified etag content-encoding retry-after date cache-control accept-ranges'.split())
 TOKEN = re.compile(r'[A-Za-z0-9_.-]+')
@@ -41,6 +43,23 @@ def outcome(attempt, stored):
             raise ValueError('Complete successful attempt has no body')
         return stored.outcome
     return 'failed'
+
+
+def _inspect_stored(body):
+    """Enrich uninspected transfer facts only after body storage has succeeded."""
+    if body.path is None or any(value is not None for value in (
+            body.sniffed_format,body.sniff_version,body.intact,body.sniff_error)):
+        return body
+    try:
+        reading=read_sniff_file(body.path)
+    except (OSError,SniffResourceError) as error:
+        code=getattr(error,'error_type',None)
+        return replace(body,sniff_error=code if isinstance(code,str) and ERROR_CODE.fullmatch(code)
+                       else type(error).__name__)
+    if reading['status']!='completed':
+        return replace(body,sniff_error=reading['error_type'] or reading['status'])
+    return replace(body,sniffed_format=reading['format'],sniff_version=reading['parser_version'],
+                   intact=reading['intact'],sniff_error=reading['error_type'])
 
 
 class ReceiptWriter:
@@ -94,11 +113,13 @@ class ReceiptWriter:
                 key = f'bodies/sha256/{body.sha256[:2]}/{body.sha256}'
                 stored = (self.store.reference(key,stored_suffix=body.stored_suffix) if body.path is None else
                           self.store.put(key,body.path,body.media_type or 'application/octet-stream'))
+                body = _inspect_stored(body)
                 if attempt_index == 0:
                     final_write = stored
                 capture = self._capture(body,attempt,attempt_index,stored,None,None,fidelity)
                 line['captures'].append(capture)
-                if body.path is not None and attempt.complete and self.archive_limits is not None:
+                if (body.path is not None and body.sniff_error is None and attempt.complete
+                        and self.archive_limits is not None):
                     expansion = expand_archive(body.path,directory=temporary/str(attempt_index),limits=self.archive_limits)
                     capture['expansion'] = expansion.status
                     for member in expansion.members:

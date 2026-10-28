@@ -148,7 +148,7 @@ New lines MUST NOT carry:
 | `recoveries` | `id`, `original_url`, `recovered_url`, `recovered_filename`, `body_sha256`, `kind` (a display kind, or `rejected`), `match_basis`, `evidence_sha256`, `identity_note`, `decided_by`, `decided_at`, `supersedes` | `recoveries` (§7.8); the effective filename and its work list (§6.3, §7.4) |
 | `url_variants` | `id`, `canonical_url`, `variant_url`, `basis`, `decided_at`, `supersedes` | `url_key` (§7.2) |
 | `reviews` | `id`, `target` (a link key), `verdict` (`hide`, `duplicate_of`, `title_override`, `kind_override`, `withdraw`), `value`, `note`, `reviewer`, `decided_at`, `supersedes` | `reviews` (§7.9) |
-| `verification` | `key`, `size`, `etag`, `sha256_verified`, `checked_at`, `job`; more for a cleaned receipt. A listing baseline records size and ETag, the size checked against the recorded stored size, with `sha256_verified` false until a whole read or the full re-hash verifies the body; a `.pdf` copy's record adds the end-marker check, `intact` | The maintenance job; `suffix` for `.pdf` copies (§7.5) and `intact` (§7.3) |
+| `verification` | `key`, `size`, `etag`, `sha256_verified`, `checked_at`, `job`; more for a cleaned receipt. A listing baseline records size and ETag, the size checked against the recorded stored size, with `sha256_verified` false until a whole read or the full re-hash verifies the body. A successful whole-read record may also carry `stored_sha256`, the measured digest of the stored bytes; a stored-digest repair requires this measurement to agree with its receipt evidence. A `.pdf` copy's record adds the end-marker check, `intact` | The maintenance job; `suffix` for `.pdf` copies (§7.5) and `intact` (§7.3) |
 | `unreadable` | `id`, `body_sha256` (or `record_sha`), `parser`, `parser_version`, `reason`, `decided_by` (a person, or the producer after a second crash, §6), `decided_at`, `supersedes` | The parsers' work lists, which drop the input (§7.1); the model reports each per release |
 
 - A cleaned receipt's record adds `original_size`, `original_etag`, the backup object compared, the fields cut, and the counts of cookies, credential parameters and paths removed.
@@ -188,7 +188,7 @@ One row per body a line references (each `captures[]` entry or, on an older line
 | `member_path` | string, nullable | The endpoint is `(context_url, member_path)`. |
 | `h_content_disposition` | string, nullable | The flat download-name header: `record.response_headers["content-disposition"]`, else `record.response_headers["Content-Disposition"]`. The existing filename function reads it (§7.4). |
 | `http_status` | int, nullable | Final response status, from `http_status` or `status_code`; `capture_status` and `meetingStatus` are not HTTP statuses. |
-| `complete` | boolean, nullable | The final response's completeness, recorded on the line or its final-response capture entry; otherwise derived as the mapping below says (true unless the body is exactly 64 MiB or the outcome is `size_limit` or `request_failed`). Per-attempt completeness stays in raw. |
+| `complete` | boolean, nullable | The entry's recorded completeness, else a recorded final-line value for the final response, else the older-line derivation below; `good_fetch` (§7.3) reads it. |
 | `retrieved_at` | timestamptz, nullable | Fetch time, with the older-entry fallbacks below. |
 | `sha256` | fixed[32], nullable | Digest of the referenced body. |
 | `bytes` | long, nullable | Body size. |
@@ -211,7 +211,7 @@ Everything else stays in raw and is read **on demand**; this table is the single
 | Other writer metadata and supplements, and `links` | Raw receipts and pinned producer/profile metadata retain these facts. |
 
 - **PK:** `(receipt_key, receipt_line, capture_index)`.
-- The line's final status, completeness, mode and outcome accompany its referenced bodies. No bulk prior-attempt lookup fills a missing final fact.
+- The line's final status, mode and outcome accompany its referenced bodies. Completeness uses the entry's recorded value, else the final line's value only for the final response, else its legacy derivation. No bulk prior-attempt lookup fills a missing fact.
 - **Older lines** keep their fields under `record`, in shapes the mapping reads individually; §5.2 binds new lines. The narrow mapping:
   - uses `captures[]` for row grain when both lists exist, filling missing storage metadata only from `file_references[]` with the same body key and digest. A secondary non-null body absent from the primary list refuses ingest with its receipt and line. Conflicting storage facts also refuse; the 285 duplicate-reference lines in the pinned input do not create extra capture rows;
   - takes `run_id` from `source_file` and defaults the older stored suffix to `.gz`;

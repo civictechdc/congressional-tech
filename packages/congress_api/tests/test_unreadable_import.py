@@ -145,3 +145,14 @@ def test_reviewed_import_refuses_source_replacement_before_create(tmp_path):
             provenance.apply_staged(stage,Never())
     finally:
         sys.setprofile(previous)
+
+
+@pytest.mark.parametrize('rows', [
+    [dict(decision(),record_sha='B'*64)],
+    [decision(),dict(decision(),record_sha='d'*64)],
+])
+def test_noncanonical_identity_and_duplicate_ids_refuse_before_create(tmp_path,rows):
+    class Never:
+        def put(self,*args,**kwargs):raise AssertionError('invalid decisions reached storage')
+    path=tmp_path/'bad.jsonl';path.write_text(''.join(json.dumps(row)+'\n' for row in rows))
+    with pytest.raises(ValueError):provenance.import_unreadable(Never(),path,decided_at=STAMP)

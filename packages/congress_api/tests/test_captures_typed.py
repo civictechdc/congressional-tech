@@ -9,6 +9,7 @@ import pytest
 
 from docspec_client.client import NativeDatasets
 from congress_api.lake.receipt_metadata import BOOLS, NUMBERS, STRINGS
+from capture_qualification_helpers import write_qualified_parquet,created_qualifications
 
 
 def bounded_counter(tmp_path,*,header_padding=0):
@@ -37,7 +38,7 @@ def bounded_counter(tmp_path,*,header_padding=0):
             __receipt_family='documents',__line_shape='record:object',__raw_line=json.dumps(raw),
             __type_conflicts=[],__field_paths=[]))
     counter=tmp_path/'counter.parquet'
-    pq.write_table(pa.Table.from_pylist(rows,schema=schema),counter,row_group_size=8192)
+    write_qualified_parquet(pa.Table.from_pylist(rows,schema=schema),counter,row_group_size=8192)
     return counter,key
 
 
@@ -47,7 +48,7 @@ def assert_bounded_capture_rows(actual,key):
     assert actual['receipt_line'].to_pylist()==[line for line in range(1,4097) for _ in range(32)]
     assert actual['capture_index'].to_pylist()==list(range(32))*4096
     assert actual['url'].to_pylist()==[f'https://example.test/typed-fixture/{line}.pdf' for line in range(1,4097) for _ in range(32)]
-    for name,value in [('http_status',200),('attempt_status',200),('complete',True),('mode','fetch'),
+    for name,value in [('http_status',200),('complete',True),('mode','fetch'),
                        ('outcome','stored'),('bytes',123),('sha256',bytes.fromhex('a'*64)),
                        ('retrieved_at',datetime(2026,10,20,12,34,56,tzinfo=timezone.utc))]:
         assert actual[name].to_pylist()==[value]*131072
@@ -58,13 +59,13 @@ def test_bounded_metadata_fanout_preserves_public_rows(tmp_path):
     from congress_api.lake.captures import stage_captures
     counter,key=bounded_counter(tmp_path)
     stage=stage_captures([dict(key=key)],engine=NativeDatasets.from_config(os.environ['DOCSPEC_JOB_CONFIG']),
-        work=tmp_path/'stage',validated_counter=counter)
+        work=tmp_path/'stage',validated_counter=counter,source_qualifications=created_qualifications(counter))
     assert_bounded_capture_rows(pq.read_table(stage/'captures.parquet'),key)
 
 
 @pytest.mark.parametrize("view_strings",[False,True])
-def test_metadata_stays_typed_for_direct_counter_and_empty_selection(tmp_path,view_strings):
-    from congress_api.lake.receipt_metadata import compact, compact_counter
+def test_direct_and_counter_scalar_types_match(tmp_path,view_strings):
+    from congress_api.lake.captures import stage_captures
     from test_receipt_metadata import counter_fixture
     counter,files=counter_fixture(tmp_path)
     if view_strings:
@@ -72,28 +73,17 @@ def test_metadata_stays_typed_for_direct_counter_and_empty_selection(tmp_path,vi
         fields=[pa.field(f.name,pa.string_view() if f.type==pa.string() else f.type,
                          nullable=f.nullable) for f in table.schema.field('record').type]
         schema=table.schema.set(0,pa.field('record',pa.struct(fields)))
-        pq.write_table(pa.Table.from_pylist(table.to_pylist(),schema=schema),counter)
-        assert pq.read_schema(counter).field('record').type.field('url').type==pa.string_view()
+        write_qualified_parquet(pa.Table.from_pylist(table.to_pylist(),schema=schema),counter)
     native=NativeDatasets.from_config(os.environ['DOCSPEC_JOB_CONFIG'])
-    direct=compact(files=files,engine=native,work=tmp_path/'direct')
-    cached=compact(counter=counter,engine=native,work=tmp_path/'counter')
-    empty=compact_counter(counter,engine=native,work=tmp_path/'empty',receipt_keys=[])
-    table=pq.read_table(cached)
-    assert pa.types.is_struct(table.schema.field('line').type)
-    assert pa.types.is_list(table.schema.field('record_values').type)
-    assert pa.types.is_struct(table.schema.field('record_values').type.value_type)
-    assert table.schema.field('record_is_list').type==pa.bool_()
-    assert 'record_json' not in table.column_names
-    assert table.equals(pq.read_table(direct))
-    assert table.schema==pq.read_table(empty).schema
-    assert table['record_is_list'].to_pylist()==[False]*6
-    assert table.schema.field('line').type.field('url').type==pa.string()
-    assert table.schema.field('record_values').type.value_type.field('url').type==pa.string()
+    direct=stage_captures(files,engine=native,work=tmp_path/'direct')
+    cached=stage_captures([dict(key=f['key']) for f in files],engine=native,
+        work=tmp_path/'counter',validated_counter=counter,source_qualifications=created_qualifications(counter))
+    assert pq.read_table(cached/'captures.parquet').equals(pq.read_table(direct/'captures.parquet'))
+    assert all(not pa.types.is_nested(field.type) for field in pq.read_schema(cached/'captures.parquet'))
 
 
 def test_empty_list_duplicate_list_and_object_pointer_preserve_grain(tmp_path):
     from congress_api.lake.captures import stage_captures
-    from congress_api.lake.receipt_metadata import compact
     from test_captures_ingest import body,files
     native=NativeDatasets.from_config(os.environ['DOCSPEC_JOB_CONFIG'])
     source=files(tmp_path/'input',[
@@ -101,12 +91,7 @@ def test_empty_list_duplicate_list_and_object_pointer_preserve_grain(tmp_path):
         dict(record=dict(url='https://example.test/object',http_status=206),
              captures=[body(pointer=[37,'content','body'])]),
         dict(record=[dict(url='https://example.test/same',http_status=404)]*2)])
-    metadata=compact(files=source,engine=native,work=tmp_path/'metadata')
-    private=pq.read_table(metadata)
-    assert private['record_is_list'].to_pylist()==[True,False,True]
-    assert private['record_values'].to_pylist()[0] is None
-    stage=stage_captures([dict(key=source[0]['key'])],engine=native,
-        work=tmp_path/'stage',counter=metadata)
+    stage=stage_captures(source,engine=native,work=tmp_path/'stage')
     rows=pq.read_table(stage/'captures.parquet').to_pylist()
     assert len(rows)==3
     assert [row['capture_index'] for row in rows]==[0,0,0]
