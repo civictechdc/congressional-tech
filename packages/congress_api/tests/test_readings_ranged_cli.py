@@ -44,6 +44,7 @@ def test_cli_plan_accepts_exact_listing_without_creating_a_client(tmp_path,capsy
     values={k:str(v) if hasattr(v,'as_posix') else v for k,v in values.items()}
     values.update(work=str(tmp_path/'work'),parser=None,
         apply=dict(catalog_root=str(tmp_path/'catalog'),table=dict(namespace=['archive'],name='readings')))
+    values['body_inventory']=None
     spec=tmp_path/'spec.json';spec.write_text(json.dumps(values))
     path=listing(tmp_path,key,stored,etag='"opaque"')
     assert main(['--spec',str(spec),'--engine-config',os.environ['DOCSPEC_JOB_CONFIG'],

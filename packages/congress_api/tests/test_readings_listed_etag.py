@@ -1,5 +1,6 @@
 """Exact physical listing facts supplement capture custody through native SQL."""
 import hashlib
+import gzip
 import io
 
 import pyarrow as pa
@@ -76,11 +77,13 @@ def test_listed_opaque_page_is_decoded_proved_and_parsed_by_actual_worker(tmp_pa
 @pytest.mark.parametrize('bare',['valid','missing','conflict','neither'])
 def test_direct_listing_chooses_recorded_copy_then_falls_back_by_owner_rule(tmp_path,bare):
     args,stored,key=inputs(tmp_path)
+    alternative=gzip.compress(gzip.decompress(stored),compresslevel=1,mtime=1)
     captures=pq.read_table(args['captures']);rows=captures.to_pylist()
-    rows[1].update(stored_bytes=len(stored),stored_md5=hashlib.md5(stored).digest())
+    rows[1].update(stored_bytes=len(alternative),stored_md5=hashlib.md5(alternative).digest())
     pq.write_table(pa.Table.from_pylist(rows,schema=captures.schema),args['captures'])
     etag='"'+hashlib.md5(stored).hexdigest()+'"'
-    objects=[dict(key=key,size=len(stored),etag=etag),dict(key=key+'.gz',size=len(stored),etag=etag)]
+    objects=[dict(key=key,size=len(stored),etag=etag),dict(key=key+'.gz',size=len(alternative),
+        etag='"'+hashlib.md5(alternative).hexdigest()+'"')]
     if bare=='missing':objects=objects[1:]
     if bare=='conflict':objects[0]['etag']='"wrong"'
     if bare=='neither':objects=[]
@@ -91,7 +94,29 @@ def test_direct_listing_chooses_recorded_copy_then_falls_back_by_owner_rule(tmp_
     result=readings.plan(**args,work=tmp_path/'plan',parser=None,raw_ranges=True,body_listing=path)
     [row]=pq.read_table(result['work_list']).to_pylist();report=result['raw_custody']
     assert row['physical_key']==key+('.gz' if bare in {'missing','conflict'} else '')
+    selected=alternative if bare in {'missing','conflict'} else stored
+    assert row['stored_md5']==hashlib.md5(selected).hexdigest() and row['stored_bytes']==len(selected)
     assert report['missing_pins']==(1 if bare=='neither' else 0)
     assert report['fallback_missing']==(1 if bare=='missing' else 2 if bare=='neither' else 0)
     assert report['fallback_conflict']==(1 if bare=='conflict' else 0)
     assert row['stored_gzip'] is False # An object suffix is not a storage-encoding observation.
+
+
+def test_direct_listing_never_uses_an_unrecorded_alternative(tmp_path):
+    args,stored,key=inputs(tmp_path)
+    captures=pq.read_table(args['captures']);pq.write_table(captures.slice(0,1),args['captures'])
+    path=listing(tmp_path,key,stored);objects=pq.read_table(path)
+    pq.write_table(objects.slice(1),path);args['body_inventory']=None
+    result=readings.plan(**args,work=tmp_path/'plan',parser=None,raw_ranges=True,body_listing=path)
+    assert result['raw_custody']['missing_pins']==1 and result['raw_custody']['fallback_missing']==1
+    [row]=pq.read_table(result['work_list']).to_pylist();assert row['physical_key']==key
+
+
+def test_unknown_capture_suffix_refuses_before_reads(tmp_path):
+    args,stored,key=inputs(tmp_path);captures=pq.read_table(args['captures']);rows=captures.to_pylist()
+    rows[0]['stored_suffix']='.zip'
+    pq.write_table(pa.Table.from_pylist(rows,schema=captures.schema),args['captures'])
+    args['body_inventory']=None
+    with pytest.raises(ValueError,match='Conflicting or incomplete'):
+        readings.plan(**args,work=tmp_path/'plan',parser=None,raw_ranges=True,
+            body_listing=listing(tmp_path,key,stored))
