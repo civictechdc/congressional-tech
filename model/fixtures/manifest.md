@@ -11,6 +11,7 @@
 | S1 | Two archive members with one name and different bytes | An edition-ambiguous endpoint; neither member takes a rendition edge |
 | S1 | A linked GovInfo ZIP holding one hearing's HTML and PDF with its METS (`dip.xml`), MODS and PREMIS manifests; a linked ZIP holding two different PDFs | The ZIP, HTML and PDF form one document and the manifests join none; no rendition edges |
 | S1 | Several same-format files listed together; unrelated files on one page outside any list item | Each stays its own document; the unlisted files get no publisher group |
+| S1 | One source file at several archive-member paths and directories | One source identity, every address retained; same-stem memberships consider every directory |
 | S1 | One PDF body under two download names, listed with its XML | One document with both names and the XML; the group counts one PDF body |
 | S1 | One page template under two hearings, where only hearing A's PDF and hearing B's XML were captured | No rendition edge between them |
 | S1 | One page saved by a direct attempt and a provider retry with different page furniture; an archived page also imported as a rendered recovery | One document each: equal main-content fingerprints; the recovery attaches as labeled evidence |
@@ -70,6 +71,25 @@
 | S2 | A recovery-only link that later downloads | Its link URL key opens the document that now holds the download, where the recovery attaches |
 | S2 | Two recoveries equal in kind, time and body; decisions that match one recovery row twice; a recovery whose decision rejects it | Both shown, in receipt order; one recovery, from the latest decision; no recovery |
 | S2 | Two merged documents with different title overrides; two active merges on one document; a hide and its withdrawal | The latest override by `(decided_at, id)`; both merges applied; visible again |
+
+## E4 comparison
+
+The authored cases and outcomes are in [`e4-parity.json`](e4-parity.json); the
+versioned input example is [`e4-parity-inputs.example.json`](e4-parity-inputs.example.json).
+
+| Step | Case | Expected outcome |
+|---|---|---|
+| E4 | A split/merge shares source evidence; unchanged editions share an address | Every evidence-backed document pair remains; exact unchanged memberships do not cross-join |
+| E4 | Each known cause and an unrelated title or review-note change | Only the cause's fields/direction are explained; every other difference remains listed |
+| E4 | A rejected XML placeholder also satisfies the soft-error predicate | Both explanations remain, with each count deduplicated by difference ID |
+| E4 | Equal ID inputs with a wrong declared ID; changed inputs with valid IDs | Invalid IDs refuse qualification; valid input changes have their own count/examples |
+| E4 | Classified differences, one fact held only by derived tables | All uncovered rows remain; unclassified and derived-only cases prevent qualification |
+| E4 | Converted shared HTML, multiple formats, source contexts and dates | Only demonstrated converter gaps; fixture success never qualifies the model |
+| E4 | An unrelated visible filename regression in a converted candidate | Unexplained differences remain; conversion gaps cannot excuse it |
+
+Unordered SQL row numbering is not a physical Parquet row-position guarantee.
+The comparator uses the producer's explicitly ordered relation and verifies its
+public output bytes and row values instead.
 
 ## References
 

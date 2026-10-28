@@ -6,7 +6,6 @@
       "input": {
         "mode": "fetch",
         "outcome": "stored",
-        "attempt_status": 200,
         "complete": true,
         "sha256": "good-pdf",
         "bytes": 1000,
@@ -23,7 +22,8 @@
         "text_head": "A substantive committee hearing page with an agenda and testimony.",
         "text_bytes": 400,
         "link_count": 1,
-        "link_text_bytes": 12
+        "link_text_bytes": 12,
+        "http_status": 200
       },
       "expected": {
         "record_role": "document",
@@ -35,7 +35,6 @@
       "input": {
         "mode": "fetch",
         "outcome": "stored",
-        "attempt_status": 200,
         "complete": true,
         "sha256": "broken-pdf",
         "bytes": 1000,
@@ -52,7 +51,8 @@
         "text_head": "A substantive committee hearing page with an agenda and testimony.",
         "text_bytes": 400,
         "link_count": 1,
-        "link_text_bytes": 12
+        "link_text_bytes": 12,
+        "http_status": 200
       },
       "expected": {
         "record_role": "damaged",
@@ -64,7 +64,6 @@
       "input": {
         "mode": "fetch",
         "outcome": "stored",
-        "attempt_status": 200,
         "complete": true,
         "sha256": "reader-limit-pdf",
         "bytes": 1000,
@@ -82,7 +81,8 @@
         "text_bytes": 400,
         "link_count": 1,
         "link_text_bytes": 12,
-        "error_type": "pdf_reader_size_limit"
+        "error_type": "pdf_reader_size_limit",
+        "http_status": 200
       },
       "expected": {
         "record_role": "damaged",
@@ -94,7 +94,6 @@
       "input": {
         "mode": "fetch",
         "outcome": "stored",
-        "attempt_status": 200,
         "complete": true,
         "sha256": "unchecked-gzip-pdf",
         "bytes": 1000,
@@ -111,7 +110,8 @@
         "text_head": "A substantive committee hearing page with an agenda and testimony.",
         "text_bytes": 400,
         "link_count": 1,
-        "link_text_bytes": 12
+        "link_text_bytes": 12,
+        "http_status": 200
       },
       "expected": {
         "record_role": "document",
@@ -123,7 +123,6 @@
       "input": {
         "mode": "fetch",
         "outcome": "stored",
-        "attempt_status": 200,
         "complete": true,
         "sha256": "caption",
         "bytes": 1000,
@@ -140,7 +139,8 @@
         "text_head": "A substantive committee hearing page with an agenda and testimony.",
         "text_bytes": 400,
         "link_count": 1,
-        "link_text_bytes": 12
+        "link_text_bytes": 12,
+        "http_status": 200
       },
       "expected": {
         "record_role": "caption",
@@ -152,7 +152,6 @@
       "input": {
         "mode": "fetch",
         "outcome": "stored",
-        "attempt_status": 200,
         "complete": true,
         "sha256": "playlist",
         "bytes": 1000,
@@ -169,7 +168,8 @@
         "text_head": "A substantive committee hearing page with an agenda and testimony.",
         "text_bytes": 400,
         "link_count": 1,
-        "link_text_bytes": 12
+        "link_text_bytes": 12,
+        "http_status": 200
       },
       "expected": {
         "record_role": "playlist",
@@ -181,7 +181,6 @@
       "input": {
         "mode": "fetch",
         "outcome": "stored",
-        "attempt_status": 200,
         "complete": true,
         "sha256": "archive-original",
         "bytes": 1000,
@@ -198,7 +197,8 @@
         "text_head": "A substantive committee hearing page with an agenda and testimony.",
         "text_bytes": 400,
         "link_count": 1,
-        "link_text_bytes": 12
+        "link_text_bytes": 12,
+        "http_status": 200
       },
       "expected": {
         "record_role": "envelope",
@@ -210,7 +210,6 @@
       "input": {
         "mode": "fetch",
         "outcome": "stored",
-        "attempt_status": 200,
         "complete": true,
         "sha256": "api-without-reading",
         "bytes": 1000,
@@ -227,7 +226,8 @@
         "text_head": "A substantive committee hearing page with an agenda and testimony.",
         "text_bytes": 400,
         "link_count": 1,
-        "link_text_bytes": 12
+        "link_text_bytes": 12,
+        "http_status": 200
       },
       "expected": {
         "record_role": "api",
@@ -239,7 +239,6 @@
       "input": {
         "mode": "fetch",
         "outcome": "stored",
-        "attempt_status": 200,
         "complete": true,
         "sha256": "missing-page-reading",
         "bytes": 1000,
@@ -256,7 +255,8 @@
         "text_head": "A substantive committee hearing page with an agenda and testimony.",
         "text_bytes": 400,
         "link_count": 1,
-        "link_text_bytes": 12
+        "link_text_bytes": 12,
+        "http_status": 200
       },
       "expected": {
         "record_role": null,
@@ -268,7 +268,6 @@
       "input": {
         "mode": "fetch",
         "outcome": "stored",
-        "attempt_status": 200,
         "complete": true,
         "sha256": "rejected-page-reading",
         "bytes": 1000,
@@ -285,7 +284,8 @@
         "text_head": "A substantive committee hearing page with an agenda and testimony.",
         "text_bytes": 400,
         "link_count": 1,
-        "link_text_bytes": 12
+        "link_text_bytes": 12,
+        "http_status": 200
       },
       "expected": {
         "record_role": null,
@@ -297,7 +297,6 @@
       "input": {
         "mode": "fetch",
         "outcome": "stored",
-        "attempt_status": 200,
         "complete": true,
         "sha256": "mods",
         "bytes": 1000,
@@ -314,7 +313,8 @@
         "text_head": "A substantive committee hearing page with an agenda and testimony.",
         "text_bytes": 400,
         "link_count": 1,
-        "link_text_bytes": 12
+        "link_text_bytes": 12,
+        "http_status": 200
       },
       "expected": {
         "record_role": "source_record",
@@ -326,7 +326,6 @@
       "input": {
         "mode": "fetch",
         "outcome": "stored",
-        "attempt_status": 200,
         "complete": true,
         "sha256": "house-witness-list",
         "bytes": 1000,
@@ -343,7 +342,8 @@
         "text_head": "A substantive committee hearing page with an agenda and testimony.",
         "text_bytes": 400,
         "link_count": 1,
-        "link_text_bytes": 12
+        "link_text_bytes": 12,
+        "http_status": 200
       },
       "expected": {
         "record_role": "source_record",
@@ -355,7 +355,6 @@
       "input": {
         "mode": "fetch",
         "outcome": "stored",
-        "attempt_status": 200,
         "complete": true,
         "sha256": "soft-error",
         "bytes": 1000,
@@ -372,7 +371,8 @@
         "text_head": "A substantive committee hearing page with an agenda and testimony.",
         "text_bytes": 300,
         "link_count": 1,
-        "link_text_bytes": 12
+        "link_text_bytes": 12,
+        "http_status": 200
       },
       "expected": {
         "record_role": "error_response",
@@ -384,7 +384,6 @@
       "input": {
         "mode": "fetch",
         "outcome": "stored",
-        "attempt_status": 200,
         "complete": true,
         "sha256": "near-empty",
         "bytes": 1000,
@@ -401,7 +400,8 @@
         "text_head": "A substantive committee hearing page with an agenda and testimony.",
         "text_bytes": 10,
         "link_count": 1,
-        "link_text_bytes": 12
+        "link_text_bytes": 12,
+        "http_status": 200
       },
       "expected": {
         "record_role": "error_response",
@@ -413,7 +413,6 @@
       "input": {
         "mode": "fetch",
         "outcome": "stored",
-        "attempt_status": 200,
         "complete": true,
         "sha256": "download-wrapper",
         "bytes": 1000,
@@ -430,7 +429,8 @@
         "text_head": "Your download will begin shortly. Please wait.",
         "text_bytes": 400,
         "link_count": 1,
-        "link_text_bytes": 12
+        "link_text_bytes": 12,
+        "http_status": 200
       },
       "expected": {
         "record_role": "wrapper",
@@ -442,7 +442,6 @@
       "input": {
         "mode": "fetch",
         "outcome": "stored",
-        "attempt_status": 200,
         "complete": true,
         "sha256": "short-real-page",
         "bytes": 1000,
@@ -459,7 +458,8 @@
         "text_head": "A substantive committee hearing page with an agenda and testimony.",
         "text_bytes": 180,
         "link_count": 1,
-        "link_text_bytes": 12
+        "link_text_bytes": 12,
+        "http_status": 200
       },
       "expected": {
         "record_role": "document",
@@ -471,7 +471,6 @@
       "input": {
         "mode": "fetch",
         "outcome": "stored",
-        "attempt_status": 200,
         "complete": true,
         "sha256": "link-heavy-listing",
         "bytes": 1000,
@@ -488,7 +487,8 @@
         "text_head": "A substantive committee hearing page with an agenda and testimony.",
         "text_bytes": 1000,
         "link_count": 30,
-        "link_text_bytes": 900
+        "link_text_bytes": 900,
+        "http_status": 200
       },
       "expected": {
         "record_role": "listing",
@@ -500,7 +500,6 @@
       "input": {
         "mode": "fetch",
         "outcome": "stored",
-        "attempt_status": 200,
         "complete": true,
         "sha256": "feed",
         "bytes": 1000,
@@ -517,7 +516,8 @@
         "text_head": "A substantive committee hearing page with an agenda and testimony.",
         "text_bytes": 400,
         "link_count": 1,
-        "link_text_bytes": 12
+        "link_text_bytes": 12,
+        "http_status": 200
       },
       "expected": {
         "record_role": "listing",
@@ -529,7 +529,6 @@
       "input": {
         "mode": "fetch",
         "outcome": "stored",
-        "attempt_status": 200,
         "complete": true,
         "sha256": "html-at-file-shaped-url",
         "bytes": 1000,
@@ -546,7 +545,8 @@
         "text_head": "A substantive committee hearing page with an agenda and testimony.",
         "text_bytes": 400,
         "link_count": 1,
-        "link_text_bytes": 12
+        "link_text_bytes": 12,
+        "http_status": 200
       },
       "expected": {
         "record_role": "document",
@@ -558,7 +558,6 @@
       "input": {
         "mode": "fetch",
         "outcome": "stored",
-        "attempt_status": 200,
         "complete": true,
         "sha256": "member-html-is-not-container-file-shaped",
         "bytes": 1000,
@@ -575,7 +574,8 @@
         "text_head": "A substantive committee hearing page with an agenda and testimony.",
         "text_bytes": 400,
         "link_count": 1,
-        "link_text_bytes": 12
+        "link_text_bytes": 12,
+        "http_status": 200
       },
       "expected": {
         "record_role": "document",
@@ -587,7 +587,6 @@
       "input": {
         "mode": "fetch",
         "outcome": "stored",
-        "attempt_status": 200,
         "complete": false,
         "sha256": "cut-off-attempt",
         "bytes": 1000,
@@ -604,7 +603,8 @@
         "text_head": "A substantive committee hearing page with an agenda and testimony.",
         "text_bytes": 400,
         "link_count": 1,
-        "link_text_bytes": 12
+        "link_text_bytes": 12,
+        "http_status": 200
       },
       "expected": {
         "record_role": "document",
@@ -616,7 +616,6 @@
       "input": {
         "mode": "fetch",
         "outcome": "stored",
-        "attempt_status": 201,
         "complete": true,
         "sha256": "good-provider-retry",
         "bytes": 1000,
@@ -633,7 +632,8 @@
         "text_head": "A substantive committee hearing page with an agenda and testimony.",
         "text_bytes": 400,
         "link_count": 1,
-        "link_text_bytes": 12
+        "link_text_bytes": 12,
+        "http_status": 201
       },
       "expected": {
         "record_role": "document",
@@ -645,7 +645,6 @@
       "input": {
         "mode": "retained_import",
         "outcome": "stored",
-        "attempt_status": 200,
         "complete": true,
         "sha256": "import-is-not-fetch",
         "bytes": 1000,
@@ -662,7 +661,8 @@
         "text_head": "A substantive committee hearing page with an agenda and testimony.",
         "text_bytes": 400,
         "link_count": 1,
-        "link_text_bytes": 12
+        "link_text_bytes": 12,
+        "http_status": 200
       },
       "expected": {
         "record_role": "document",
@@ -674,7 +674,6 @@
       "input": {
         "mode": "fetch",
         "outcome": "stored",
-        "attempt_status": 200,
         "complete": true,
         "sha256": "zero-byte",
         "bytes": 0,
@@ -691,7 +690,8 @@
         "text_head": "A substantive committee hearing page with an agenda and testimony.",
         "text_bytes": 400,
         "link_count": 1,
-        "link_text_bytes": 12
+        "link_text_bytes": 12,
+        "http_status": 200
       },
       "expected": {
         "record_role": "document",
@@ -703,7 +703,6 @@
       "input": {
         "mode": "fetch",
         "outcome": "stored",
-        "attempt_status": 200,
         "complete": true,
         "sha256": "no-format",
         "bytes": 1000,
@@ -720,7 +719,8 @@
         "text_head": "A substantive committee hearing page with an agenda and testimony.",
         "text_bytes": 400,
         "link_count": 1,
-        "link_text_bytes": 12
+        "link_text_bytes": 12,
+        "http_status": 200
       },
       "expected": {
         "record_role": null,
@@ -732,7 +732,6 @@
       "input": {
         "mode": "fetch",
         "outcome": "stored",
-        "attempt_status": 200,
         "complete": true,
         "sha256": "shared-html-role-context",
         "bytes": 1000,
@@ -749,7 +748,8 @@
         "text_head": "A substantive committee hearing page with an agenda and testimony.",
         "text_bytes": 180,
         "link_count": 1,
-        "link_text_bytes": 12
+        "link_text_bytes": 12,
+        "http_status": 200
       },
       "expected": {
         "record_role": "error_response",
@@ -761,7 +761,6 @@
       "input": {
         "mode": "fetch",
         "outcome": "stored",
-        "attempt_status": 200,
         "complete": true,
         "sha256": "shared-html-role-context",
         "bytes": 1000,
@@ -778,7 +777,8 @@
         "text_head": "A substantive committee hearing page with an agenda and testimony.",
         "text_bytes": 180,
         "link_count": 1,
-        "link_text_bytes": 12
+        "link_text_bytes": 12,
+        "http_status": 200
       },
       "expected": {
         "record_role": "document",
@@ -1868,6 +1868,178 @@
           "group_path": "html[1]/body[1]/ul[1]/li[1]"
         }
       ]
+    },
+    {
+      "id": "candidate-fingerprint-propagation-only",
+      "files": [
+        {
+          "source_id": "a",
+          "body_sha": "a",
+          "format": "pdf",
+          "context_url": "https://fixture.test/edition",
+          "member_path": null,
+          "entry_index": null,
+          "fingerprint": "A",
+          "directory": "https://fixture.test/a/",
+          "stem": "a",
+          "is_real_file": true
+        },
+        {
+          "source_id": "b",
+          "body_sha": "b",
+          "format": "pdf",
+          "context_url": "https://fixture.test/edition",
+          "member_path": null,
+          "entry_index": null,
+          "fingerprint": "B",
+          "directory": "https://fixture.test/b/",
+          "stem": "b",
+          "is_real_file": true
+        },
+        {
+          "source_id": "c",
+          "body_sha": "c",
+          "format": "pdf",
+          "context_url": "https://fixture.test/equal",
+          "member_path": null,
+          "entry_index": null,
+          "fingerprint": "A",
+          "directory": "https://fixture.test/c/",
+          "stem": "c",
+          "is_real_file": true
+        },
+        {
+          "source_id": "d",
+          "body_sha": "d",
+          "format": "pdf",
+          "context_url": "https://fixture.test/equal",
+          "member_path": null,
+          "entry_index": null,
+          "fingerprint": "A",
+          "directory": "https://fixture.test/d/",
+          "stem": "d",
+          "is_real_file": true
+        },
+        {
+          "source_id": "e",
+          "body_sha": "e",
+          "format": "pdf",
+          "context_url": "https://fixture.test/single",
+          "member_path": null,
+          "entry_index": null,
+          "fingerprint": "A",
+          "directory": "https://fixture.test/e/",
+          "stem": "e",
+          "is_real_file": true
+        },
+        {
+          "source_id": "z",
+          "body_sha": "z",
+          "format": "xml",
+          "context_url": "https://fixture.test/xml",
+          "member_path": null,
+          "entry_index": null,
+          "fingerprint": null,
+          "directory": "https://fixture.test/z/",
+          "stem": "z",
+          "is_real_file": true
+        }
+      ],
+      "publisher_links": [
+        {
+          "source_id": "c",
+          "page_body": "page-candidate",
+          "context": "https://fixture.test/candidate",
+          "group_path": "list/item"
+        },
+        {
+          "source_id": "z",
+          "page_body": "page-candidate",
+          "context": "https://fixture.test/candidate",
+          "group_path": "list/item"
+        },
+        {
+          "source_id": "e",
+          "page_body": "page-noncandidate",
+          "context": "https://fixture.test/noncandidate",
+          "group_path": "list/item"
+        },
+        {
+          "source_id": "z",
+          "page_body": "page-noncandidate",
+          "context": "https://fixture.test/noncandidate",
+          "group_path": "list/item"
+        }
+      ],
+      "expected": {
+        "components": [
+          [
+            "a"
+          ],
+          [
+            "b"
+          ],
+          [
+            "c",
+            "d"
+          ],
+          [
+            "e",
+            "z"
+          ]
+        ],
+        "edition_bodies": [
+          "a",
+          "b",
+          "c",
+          "d"
+        ]
+      }
+    },
+    {
+      "id": "source-in-several-member-directories",
+      "files": [
+        {
+          "source_id": "a",
+          "body_sha": "a",
+          "format": "pdf",
+          "context_url": "https://fixture.test/a",
+          "member_path": null,
+          "entry_index": null,
+          "fingerprint": null,
+          "directory": "container/a/",
+          "stem": "report",
+          "is_real_file": true
+        },
+        {
+          "source_id": "x",
+          "body_sha": "x",
+          "format": "xml",
+          "context_url": "https://fixture.test/x",
+          "member_path": null,
+          "entry_index": null,
+          "fingerprint": null,
+          "directory": "container/b/",
+          "stem": "report",
+          "is_real_file": true
+        }
+      ],
+      "extra_directories": [
+        {
+          "source_id": "a",
+          "directory_key": "container/b/",
+          "stem": "report"
+        }
+      ],
+      "publisher_links": [],
+      "expected": {
+        "components": [
+          [
+            "a",
+            "x"
+          ]
+        ]
+      }
     }
   ],
   "links": [

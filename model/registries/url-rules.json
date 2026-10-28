@@ -1,7 +1,72 @@
 [
-  {"id":"wayback","kind":"wrapper","host_pattern":null,"pattern":"(?i)^https?://web\\.archive\\.org/web/[0-9]{14}(?:[a-z]+_)?/(https?://.+)$","replacement":"$1","decoder":"none","sample":"https://web.archive.org/web/20250610160415id_/https://example.gov/a.pdf","sample_basis":"test_capture_url_admission.py timestamped replay"},
-  {"id":"loc","kind":"wrapper","host_pattern":null,"pattern":"(?i)^https?://webarchive\\.loc\\.gov/all/[0-9]{14}(?:[a-z]+_)?/(https?://.+)$","replacement":"$1","decoder":"none","sample":"https://webarchive.loc.gov/all/20110707213402/https://example.gov/a.pdf","sample_basis":"test_capture_url_admission.py timestamped replay"},
-  {"id":"proofpoint-v2","kind":"wrapper","host_pattern":null,"pattern":"(?i)^https?://(?:urldefense\\.proofpoint\\.com|urldefense\\.com)/v2/url\\?u=([^&]+).*$","replacement":"$1","decoder":"proofpoint","sample":"https://urldefense.proofpoint.com/v2/url?u=https-3A__example.gov_a.pdf&d=fixture","sample_basis":"DM7.2 required encoding fixture; retained real sample still pending"},
-  {"id":"trackers","kind":"strip","host_pattern":null,"pattern":"(?i)^utm_.*$","replacement":null,"decoder":null,"sample":"https://example.gov/a?utm_source=fixture","sample_basis":"DM7.2 named tracker rule"},
-  {"id":"congress-search","kind":"strip","host_pattern":"(?i)^(?:www\\.)?congress\\.gov$","pattern":"^q$","replacement":null,"decoder":null,"sample":"https://www.congress.gov/bill/111th-congress/house-bill/1145/text?q=search&resultIndex=1","sample_basis":"meeting_inventory/house-sites/shape-audit/sources.json target"}
+  {
+    "id": "wayback",
+    "kind": "wrapper",
+    "host_pattern": null,
+    "pattern": "(?i)^https?://web\\.archive\\.org/web/[0-9]{14}(?:[a-z]+_)?/(https?://.+)$",
+    "replacement": "$1",
+    "decoder": "none",
+    "sample": "https://web.archive.org/web/20250610160415id_/https://example.gov/a.pdf",
+    "sample_basis": "test_capture_url_admission.py timestamped replay"
+  },
+  {
+    "id": "loc",
+    "kind": "wrapper",
+    "host_pattern": null,
+    "pattern": "(?i)^https?://webarchive\\.loc\\.gov/all/[0-9]{14}(?:[a-z]+_)?/(https?://.+)$",
+    "replacement": "$1",
+    "decoder": "none",
+    "sample": "https://webarchive.loc.gov/all/20110707213402/https://example.gov/a.pdf",
+    "sample_basis": "test_capture_url_admission.py timestamped replay"
+  },
+  {
+    "id": "proofpoint-v2",
+    "kind": "wrapper",
+    "host_pattern": null,
+    "pattern": "(?i)^https?://(?:urldefense\\.proofpoint\\.com|urldefense\\.com)/v2/url\\?u=([^&]+).*$",
+    "replacement": "$1",
+    "decoder": "proofpoint",
+    "sample": "https://urldefense.proofpoint.com/v2/url?u=https-3A__media.mnn.com_assets_images_2016_06_jupiter-2Dnasa.jpg.638x0-5Fq80-5Fcrop-2Dsmart.jpg&d=DwMBaQ&c=Vxt5e0Osvvt2gflwSlsJ5DmPGcPvTRKLJyp031rXjhg&r=BTD8MPjq1qSLi0tGKaB5H6aCJZZBjwYkLyorZdRQrnY&m=iKjixvaJuqvmReS78AB0JiActTrR_liSq7lDRjEQ9DE&s=-M8Vz-GV-kqkNVf1BAtv38DdudAHVDAI6_jQQLVmleE&e=",
+    "sample_basis": "https://help.proofpoint.com/Threat_Insight_Dashboard/API_Documentation/URL_Decoder_API paired encodedUrl/decodedUrl example; HTML entity decoding only, no API called"
+  },
+  {
+    "id": "trackers",
+    "kind": "strip",
+    "host_pattern": null,
+    "pattern": "(?i)^utm_.*$",
+    "replacement": null,
+    "decoder": null,
+    "sample": "https://example.gov/a?utm_source=fixture",
+    "sample_basis": "DM7.2 named tracker rule"
+  },
+  {
+    "id": "congress-search",
+    "kind": "strip",
+    "host_pattern": "(?i)^(?:www\\.)?congress\\.gov$",
+    "pattern": "^q$",
+    "replacement": null,
+    "decoder": null,
+    "sample": "https://www.congress.gov/bill/111th-congress/house-bill/1145/text?q=search&resultIndex=1",
+    "sample_basis": "meeting_inventory/house-sites/shape-audit/sources.json target"
+  },
+  {
+    "id": "lis-gpo",
+    "kind": "wrapper",
+    "host_pattern": null,
+    "pattern": "(?i)^https?://(?:www\\.)?lis\\.gov/cgi-lis/t2GPO/(https?://(?:www\\.)?gpo\\.gov/fdsys/pkg/.+)$",
+    "replacement": "$1",
+    "decoder": "none",
+    "sample": "https://www.lis.gov/cgi-lis/t2GPO/https://www.gpo.gov/fdsys/pkg/BILLS-114hr456ih/pdf/BILLS-114hr456ih.pdf",
+    "sample_basis": "test_capture_url_admission.py retained CI37420553827 LIS GPO link"
+  },
+  {
+    "id": "concatenated-file-urls",
+    "kind": "repair",
+    "host_pattern": null,
+    "pattern": "(?i)(https?://)",
+    "replacement": "\n$1",
+    "decoder": "none",
+    "sample": "https://www.gpo.gov/fdsys/pkg/BILLS-115s585rfh/xml/BILLS-115s585rfh.xmlhttps://www.gpo.gov/fdsys/pkg/BILLS-115s585es/xml/BILLS-115s585es.xml",
+    "sample_basis": "test_capture_url_admission.py retained CI37420553827 concatenated GPO XML links"
+  }
 ]

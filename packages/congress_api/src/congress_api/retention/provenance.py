@@ -225,12 +225,12 @@ def struct(**fields):return {'Struct':[field(k,v) for k,v in fields.items()]}
 def list_of(kind):return {'List':field('item',kind)}
 
 
-def json_input(directory,name,records,**fields):
+def json_input(directory,table_name,records,**fields):
     import gzip
-    path=Path(directory)/(name+'.jsonl.gz')
+    path=Path(directory)/(table_name+'.jsonl.gz')
     with gzip.open(path,'wt',encoding='utf-8') as out:
         for row in records:out.write(json.dumps(row,ensure_ascii=False,separators=(',',':'),allow_nan=False)+'\n')
-    return dict(name=name,kind='json_lines',files=[dict(key=name,path=str(path))],
+    return dict(name=table_name,kind='json_lines',files=[dict(key=table_name,path=str(path))],
                 schema=dict(fields=[field(k,v) for k,v in fields.items()],metadata={}))
 
 

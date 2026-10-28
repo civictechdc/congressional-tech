@@ -1,0 +1,79 @@
+[
+  {
+    "id": "preference-pdf",
+    "kind": "preference",
+    "value": "pdf",
+    "rank": 0,
+    "sample_id": "formats:preference-pdf"
+  },
+  {
+    "id": "preference-docx",
+    "kind": "preference",
+    "value": "docx",
+    "rank": 1,
+    "sample_id": "formats:preference-docx"
+  },
+  {
+    "id": "preference-doc",
+    "kind": "preference",
+    "value": "doc",
+    "rank": 2,
+    "sample_id": "formats:preference-doc"
+  },
+  {
+    "id": "preference-html",
+    "kind": "preference",
+    "value": "html",
+    "rank": 3,
+    "sample_id": "formats:preference-html"
+  },
+  {
+    "id": "preference-xml",
+    "kind": "preference",
+    "value": "xml",
+    "rank": 4,
+    "sample_id": "formats:preference-xml"
+  },
+  {
+    "id": "preference-json",
+    "kind": "preference",
+    "value": "json",
+    "rank": 5,
+    "sample_id": "formats:preference-json"
+  },
+  {
+    "id": "preference-text",
+    "kind": "preference",
+    "value": "text",
+    "rank": 6,
+    "sample_id": "formats:preference-text"
+  },
+  {
+    "id": "preference-image",
+    "kind": "preference",
+    "value": "image",
+    "rank": 7,
+    "sample_id": "formats:preference-image"
+  },
+  {
+    "id": "preference-zip",
+    "kind": "preference",
+    "value": "zip",
+    "rank": 8,
+    "sample_id": "formats:preference-zip"
+  },
+  {
+    "id": "generic_stem-index",
+    "kind": "generic_stem",
+    "value": "index",
+    "rank": null,
+    "sample_id": "formats:generic_stem-index"
+  },
+  {
+    "id": "generic_stem-download",
+    "kind": "generic_stem",
+    "value": "download",
+    "rank": null,
+    "sample_id": "formats:generic_stem-download"
+  }
+]

@@ -286,8 +286,8 @@ One row per `(body, parser, parser_version)`; a reading depends only on its body
     For markup in a JSON string, its path is prefixed by the script's element path, `@`, and the compact JSON key path, so different strings cannot share a group.
   - An XML document list's link `text` is its entry's description.
   - `doc_type` and the three dates are kept as the publisher wrote them; `remove_date` marks a committee's removal of the document from its hearing page.
-- `sniff` reads every body whose capture rows carry no sniff at the pinned version, with one ranged read of its first bytes, decompressing the start of a gzip-stored body (a gzip original whose first member is a WARC or ARC record sniffs as `warc`). For a bare PDF it also reads the last 8 KB, and runs the bounded reader only when that finds no `%%EOF`; borrowed PDF checks join in the model (§7.3).
-  - Only WARC/ARC is recognized through an original gzip layer; other gzip originals remain `other`. Storage compression is removed separately, so an older gzip-stored PDF still sniffs as `pdf`, with its integrity deferred or borrowed.
+- `sniff` reads every body with no reading at the pinned version; only a completed reading supplies its format. It makes one ranged read of its first bytes, decompressing the start of a gzip-stored body (a gzip original whose first member is a WARC or ARC record sniffs as `warc`). For a bare PDF it also reads the last 8 KB, and runs the bounded reader only when that finds no `%%EOF`; the model uses copy verification and pinned sniff checks (§7.3); older capture checks remain in raw behind the pointer.
+  - Only WARC/ARC is recognized through an original gzip layer; other gzip originals remain `other`. Storage compression is removed separately, so an older gzip-stored PDF still sniffs as `pdf`, with its integrity unchecked until a pinned sniff or copy verification supplies a check.
   - ZIP package detection shares the archive reader's bounds (64 MiB archive, 1 MiB directory, 1,024 entries). It currently reads the bounded archive to inspect root `[Content_Types].xml` or a bounded `mimetype` member naming an OpenDocument type; these packages sniff as `docx`, never from a URL or media type. An unsupported or over-limit ZIP is a failed reading, not an assumed generic archive. Stored gzip ZIPs obey the same decompressed limit.
   - a new sniff version re-reads about 1.04M bodies and can change the format parsers' work lists, so the profile moves them together.
 - `html`, `xml`, `json` read every body of their format once per version and record each body's fingerprint and links. No parser reads embedded PDF titles.
@@ -429,7 +429,7 @@ The model is one engine job of named steps ([[ARCHITECTURE]] §9.1) over `captur
 
 ### 7.1 Model Profile and Registries
 
-The **model profile** is the set of versions one publish reads. Publish MUST refuse when a pinned version's work list is not empty, or a lake PK is duplicated, at the pinned snapshot, and the refusal names the inputs. An input that crashes its parser twice, or whose read always fails, is settled by a provenance `unreadable` decision (§5.3, §6), which removes it from that parser's work list.
+The **model profile** is the set of versions one publish reads. Publish MUST refuse when a pinned version's work list is not empty, or a lake PK is duplicated, at the pinned snapshot, and the refusal names the inputs. An input that crashes its parser twice is settled by a provenance `unreadable` decision (§5.3, §6), which removes it from that parser's work list. A missing or failed raw read stays pending; it never creates an unreadable decision.
 
 - It pins: the model SQL (the SHA-256 of its files), the engine revision, each lake table version (§6), each parser, the catalog, each registry the model or a producer reads, and the release writer settings (§8.1); until the engine's export meets [[ARCHITECTURE]] §10.2 by itself (spicy-stack ss-iwqu), also the runner class and the engine's limits (threads, batch rows, batch bytes).
 - A parser or catalog version is the SHA-256 of its source files, the vocabularies it reads and its locked dependencies.
@@ -508,14 +508,13 @@ Each capture row takes one record role; a real file is a good fetch whose role i
 
 ```
 good_fetch  := rows of c where mode = 'fetch' and complete
-               and outcome in ('stored', 'unchanged') and attempt_status between 200 and 299
+               and outcome in ('stored', 'unchanged') and http_status between 200 and 299
                (import-run rows included; capture dates exclude them, §7.4)
-format      := r[sniff].format at the pinned sniff version,
-               else c.sniffed_format when c.sniff_version is that version
+format      := r[sniff].format from a completed reading at the pinned sniff version
 intact      := for a PDF, the first set of: its .pdf copy's verification record (§5.3);
-               r[sniff].intact at the pinned sniff version; c.intact when
-               c.sniff_version is that version, or on an older row (§6.1)
-intact_basis := 'copy', 'read' or 'capture', by which gave intact;
+               r[sniff].intact at the pinned sniff version; phase 1 does not bulk-read
+               older capture integrity checks, which stay in raw behind the pointer
+intact_basis := 'copy' or 'read', by which gave intact;
                'unchecked' when none did
 reading     := the body's html, xml or json reading at the pinned version
 record_role := per capture row, the first that applies:
@@ -584,12 +583,12 @@ One row per source file: 1,683,430 today.
 - **Effective filename:** the first non-empty name in this order, else `''`, by one SQL definition that the filename producer (§6.3) and the model share:
   1. the `recovered_filename` of the row's recovery decision (§7.8), unless the decision rejects it;
   2. the member basename, for an archive member;
-  3. the `h_content_disposition` filename, `filename*` [[RFC6266]] first;
+  3. the admitted flat `h_content_disposition` filename, `filename*` [[RFC6266]] first; no header arrays or prior-attempt copies are read;
   4. the value of the first filename-parameter registry entry present in the source URL's query, else the requested URL's, at its first occurrence;
   5. the source URL's last path segment;
   6. the requested URL's last path segment.
 - **Decoding:** URL segments and query values are percent-decoded once as strict UTF-8, `+` kept literal; an invalid sequence stays encoded.
-- **One name per capture row.** When fetches of one body at one URL offered different names, each name is its own source file, joined by the same-body edge; the other names a row was offered stay in its receipt, and the document shows the saved file's name.
+- **One name per capture row.** Each admitted effective name is its own source file, joined by the same-body edge. Other header copies stay in raw behind the capture pointer. The document shows the saved file's effective name.
 - **Grain:** two archive members with the same body and name at different paths are one source file; `sources` keeps each path.
 
 ### 7.5 Edges and Documents
@@ -721,8 +720,7 @@ One row per requested URL, plus the queue: `requested_url` string, `attempts` in
 - Aggregated over distinct `(receipt_key, receipt_line)`, so a fetch line counts once however many bodies it references.
 - The latest `mode = fetch` line wins, in the order `(retrieved_at nulls first, receipt_key, receipt_line)`, and gives `last_status` from its `http_status`; `last_good_at` is the `retrieved_at` of its latest good fetch (§7.3). Recovery rows MUST NOT appear.
 - **`next_attempt_at`:**
-  - for a retryable outcome (`retry_later`, `size_limit`, `request_failed`), the later of `last_attempt` and the line's `retry_after`, but no later than `last_attempt` plus the family's recheck interval;
-  - for any other outcome, `last_attempt` plus that interval; for a banded family, the band is the age at `last_attempt` of the URL's earliest meeting date (§7.5), else of the date in its docs.house.gov `/meetings/` path, else the family's shortest band applies, so the job's clock never enters.
+  - in phase 1, `last_attempt` plus the family's recheck interval for every outcome; `Retry-After` stays in raw and is not a bulk model input; for a banded family, the band is the age at `last_attempt` of the URL's earliest meeting date (§7.5), else of the date in its docs.house.gov `/meetings/` path, else the family's shortest band applies, so the job's clock never enters.
   - null, and so due now, when `last_attempt` is null (about 25,500 requested URLs today, nearly all from two undated backfill shapes).
 - **The queue:** every resolved URL target from a good-fetched page that is not an `error_response` (wrapper pages included), that matches the capture-scope registry, and whose `url_key` matches no `mode = fetch` row's requested or final URL (archive-member targets are not fetchable).
   - Each `url_key` adds one row under its byte-wise least target, with its credential parameters removed (`url_state` is public), `attempts = 0` and a null `next_attempt_at`.

@@ -18,6 +18,10 @@ def main():
         '--release', str(fixture / 'current'), '--next-release', str(fixture / 'next'),
         '--hand', 'true', '--output', str((args.work / 'contract.json').resolve()), *browser], cwd=ROOT / 'apps/site', check=True)
 
+    for script in ('test:archive-saved-browser', 'test:archive-heap-browser'):
+        subprocess.run(['npm', 'run', script, '--workspaces=false', '--',
+            '--release', str(fixture / 'current'), *browser], cwd=ROOT / 'apps/site', check=True)
+
 
 if __name__ == '__main__':
     main()

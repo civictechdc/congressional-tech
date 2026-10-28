@@ -19,7 +19,20 @@ class Pointer:
         self.value = json.loads(args['Body']); self.etag = 'next'; return {'ETag': self.etag}
 
 
-def passed(): return {'status': 'passed', 'releaseId': 'b' * 64}
+def passed(): return {'status': 'passed', 'releaseId': 'b' * 64, 'targets': 'measured'}
+
+
+@pytest.mark.parametrize('which',['contract','canary'])
+@pytest.mark.parametrize('qualification',['owner-gated',None,'estimated'])
+def test_unqualified_target_receipt_makes_zero_pointer_puts(which,qualification):
+    store=Pointer({'release_id':'a'*64,'previous_release_id':None})
+    receipt=dict(passed(),targets=qualification)
+    with pytest.raises(ValueError,match='measured|qualif'):
+        gate_and_flip(store,bucket='fake',release_id='b'*64,previous_release_id='a'*64,
+            expected_etag='original',contract=(lambda:receipt) if which=='contract' else passed,
+            canary=(lambda:receipt) if which=='canary' else passed)
+    assert store.puts==[] and store.etag=='original'
+    assert store.value=={'release_id':'a'*64,'previous_release_id':None}
 
 
 @pytest.mark.parametrize('which', ['canary', 'contract'])
@@ -94,6 +107,6 @@ def test_real_canary_failure_against_hand_candidate_does_not_flip(tmp_path):
     with pytest.raises(RuntimeError, match='actual canary refused'):
         gate_and_flip(store, bucket='fake', release_id=manifest['release_id'], previous_release_id='a' * 64,
                       expected_etag='original', canary=canary,
-                      contract=lambda: {'status': 'passed', 'releaseId': manifest['release_id']})
+                      contract=lambda: {'status': 'passed', 'releaseId': manifest['release_id'], 'targets':'measured'})
     assert store.etag == 'original' and not store.puts
     assert store.value == {'release_id': 'a' * 64, 'previous_release_id': None}

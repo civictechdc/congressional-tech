@@ -1,0 +1,20 @@
+name: Install the approved local job runtime
+description: Check the credential-free Linux archive and offline doctor before any consumer.
+inputs:
+  url:
+    required: true
+    description: Approved public HTTPS archive URL.
+  sha256:
+    required: true
+    description: Approved archive SHA-256.
+runs:
+  using: composite
+  steps:
+    - name: Verify local runtime bytes and offline prerequisites
+      shell: bash
+      env:
+        DOCSPEC_LOCAL_RUNTIME_URL: ${{ inputs.url }}
+        DOCSPEC_LOCAL_RUNTIME_SHA256: ${{ inputs.sha256 }}
+      run: >-
+        .venv/bin/python -I .github/scripts/setup-local-job-runtime.py
+        --directory "$RUNNER_TEMP/docspec-local-runtime" --github-env "$GITHUB_ENV"

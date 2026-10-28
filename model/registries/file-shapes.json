@@ -1,0 +1,22 @@
+[
+  {
+    "id": "extensions",
+    "pattern": "(?i)^[^?#]*[.](pdf|xml|docx?|xlsx?|pptx?|zip|rtf|txt|csv)($|[?#])",
+    "sample_id": "file-shapes:extensions"
+  },
+  {
+    "id": "publisher_routes",
+    "pattern": "(?i)^[^?#]*/(?:download|files|uploadedfiles|media/doc|imo/media/doc|media-center/files|wp-content/uploads|_cache/files|services/files)(?:/|[?#]|$)|^[^?#]*/sites/[^?#]*/files/|^[^?#]*/files[.]serve(?:/|[?#]|$)",
+    "sample_id": "file-shapes:publisher_routes"
+  },
+  {
+    "id": "download_parameter",
+    "pattern": "(?i)^[^?#]*\\?(?:[^#]*&)?download=1(?:[&#]|$)",
+    "sample_id": "file-shapes:download_parameter"
+  },
+  {
+    "id": "file_id_parameter",
+    "pattern": "(?i)^[^?#]*\\?(?:[^#]*&)?file_id=",
+    "sample_id": "file-shapes:file_id_parameter"
+  }
+]
