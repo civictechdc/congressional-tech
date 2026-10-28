@@ -12,7 +12,7 @@
     {
       "name": "seed_file_values",
       "sql_file": "model/sql/seed-v5-file-values.sql",
-      "materialize": true
+      "materialize": false
     },
     {
       "name": "seed_name_body",
@@ -32,12 +32,16 @@
     {
       "name": "seed_docs",
       "sql_file": "model/sql/seed-v5-documents.sql",
-      "materialize": true
+      "materialize": true,
+      "release_after": [
+        "seed_name_body",
+        "seed_body_formats"
+      ]
     },
     {
       "name": "seed_all_members",
       "sql_file": "model/sql/seed-v5-all-members.sql",
-      "materialize": true
+      "materialize": false
     },
     {
       "name": "seed_document_admission",
@@ -52,7 +56,11 @@
     {
       "name": "seed_members",
       "sql_file": "model/sql/seed-v5-members.sql",
-      "materialize": true
+      "materialize": true,
+      "release_after": [
+        "seed_all_members",
+        "seed_name_url"
+      ]
     },
     {
       "name": "seed_sizes",

@@ -87,21 +87,24 @@ def _settings(profile, order, *, columns=None, dictionary=(), delta=()):
 
 def _core(steps, output,*,lookup_extra=None):
     order = ['filename', 'document_date', 'first_captured', 'doc_key']
+    detail_inputs = ','.join('o.'+name for name in dict.fromkeys([*order,*LIST_COLUMNS,'list_row',
+        'document_date_source','in_archive_since','removed_on','review_note','review_decided_at',
+        'alternates','package_id','facts']))
     steps += [_step('ordered', "SELECT *,cast(row_number() OVER(ORDER BY filename,document_date NULLS LAST,first_captured NULLS LAST,doc_key)-1 AS INT) AS list_row FROM normalized", materialize=True, release_after=["normalized"]),
         _step('source_rows', """SELECT o.list_row,s.*,cast(row_number() OVER(PARTITION BY o.list_row ORDER BY s.is_saved DESC,s.first_seen NULLS LAST,s.url,s.member_path NULLS LAST)-1 AS INT) AS ordinal,
             cast(row_number() OVER(ORDER BY o.list_row,s.is_saved DESC,s.first_seen NULLS LAST,s.url,s.member_path NULLS LAST)-1 AS INT) AS source_index
-            FROM source_input s JOIN ordered o ON s.doc_key=o.doc_key""", materialize=True, release_after=["source_input"]),
+            FROM (SELECT doc_key,list_row FROM ordered) o JOIN source_input s ON s.doc_key=o.doc_key""", materialize=True, release_after=["source_input"]),
         _step('source_ranges', 'SELECT doc_key,min(source_index) AS src_start,cast(count(*) AS INT) AS src_len FROM source_rows GROUP BY doc_key'),
         _step('recovery_rows', """SELECT o.list_row,r.*,cast(row_number() OVER(PARTITION BY o.list_row ORDER BY r.recovery_key)-1 AS INT) AS ordinal,
             cast(row_number() OVER(ORDER BY o.list_row,r.recovery_key)-1 AS INT) AS recovery_index
             FROM recovery_input r JOIN ordered o ON r.doc_key=o.doc_key""", materialize=True, release_after=["recovery_input"]),
         _step('recovery_ranges', 'SELECT doc_key,min(recovery_index) AS rec_start,cast(count(*) AS INT) AS rec_len FROM recovery_rows GROUP BY doc_key'),
-        _step('details', f"""SELECT o.*,CASE WHEN saved_kind='recovery' THEN {_hash_key('o.source_url', 'url:')}
+        _step('details', f"""SELECT {detail_inputs},CASE WHEN saved_kind='recovery' THEN {_hash_key('o.source_url', 'url:')}
             ELSE {_binary('substr(body_hex,1,16)', 8)} END AS link_key,
             {_binary('body_hex', 32)} AS saved_body,CASE WHEN body_hex IS NOT NULL THEN suffix END AS saved_suffix,CASE WHEN body_hex IS NOT NULL THEN media_type END AS saved_media_type,bytes AS saved_bytes,
             coalesce(s.src_start,cast(0 AS INT)) AS src_start,coalesce(s.src_len,cast(0 AS INT)) AS src_len,
             coalesce(r.rec_start,cast(0 AS INT)) AS rec_start,coalesce(r.rec_len,cast(0 AS INT)) AS rec_len
-            FROM ordered o LEFT JOIN source_ranges s ON o.doc_key=s.doc_key LEFT JOIN recovery_ranges r ON o.doc_key=r.doc_key""", materialize=True),
+            FROM recovery_ranges r RIGHT JOIN (source_ranges s RIGHT JOIN ordered o ON o.doc_key=s.doc_key) ON o.doc_key=r.doc_key""", materialize=True),
         _step('body_links', "SELECT list_row,unnest(link_bodies) AS body_hex FROM ordered"),
         _step('all_links', f"""SELECT {_binary('substr(body_hex,1,16)', 8)} AS link_key,list_row,'body:' || body_hex AS origin FROM body_links
             UNION ALL SELECT {_hash_key('original_url', 'url:')},list_row,'url:' || original_url FROM recovery_rows"""),

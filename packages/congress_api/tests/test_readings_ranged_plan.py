@@ -46,6 +46,7 @@ def test_native_worklist_uses_md5_and_size_for_the_exact_physical_key(tmp_path):
     [row]=pq.read_table(result['work_list']).to_pylist()
     assert row['physical_key']==key and row['stored_md5']==hashlib.md5(stored).hexdigest()
     assert row['captured_stored_bytes']==len(stored) and row['page_hint'] is True
+    assert row['captured_bytes']==len(gzip.decompress(stored))
     assert result['raw_custody']['missing_pins']==0
 
 

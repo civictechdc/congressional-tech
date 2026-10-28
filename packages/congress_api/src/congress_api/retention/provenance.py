@@ -293,6 +293,7 @@ def parquet_output(root,name,sql,order):
 
 def run_job(root,engine,*,inputs,steps,outputs,queries=()):
     root=Path(root)
+    root.mkdir(parents=True,exist_ok=True)
     path=root/'job.json'
     path.write_text(json.dumps(dict(scratch=str(root/'native'),inputs=inputs,steps=steps,
                                    outputs=outputs,queries=list(queries)),separators=(',',':')))
