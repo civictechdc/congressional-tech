@@ -162,6 +162,15 @@ def legacy_date(alias='d'):
     return f"CASE WHEN cardinality({alias}.date_token)=1 THEN try_cast(CASE WHEN regexp_like({token},'^[0-9]{{8}}$') THEN concat(substr({token},1,4),'-',substr({token},5,2),'-',substr({token},7,2)) ELSE {token} END AS DATE) END"
 
 
+def approved_order(items, fields):
+    """The pinned native writer must preserve the agreed ASC / NULLS LAST sort."""
+    return (isinstance(items,list) and len(items)==len(fields) and all(
+        isinstance(item,dict) and set(item)<={'field','direction','nulls'}
+        and item.get('field')==name and item.get('direction','asc')=='asc'
+        and item.get('nulls','nulls_last')=='nulls_last'
+        for item,name in zip(items,fields)))
+
+
 def producer_inputs(base, candidate, manifest):
     """Native writer hashes and explicit sort bind private rows to public rows."""
     job_path=pinned_file(base,candidate.get('build_job'))
@@ -178,12 +187,12 @@ def producer_inputs(base, candidate, manifest):
     for name,relation in [('list.parquet','ordered'),('detail.parquet','details')]:
         spec=specs[name]
         order=[item['field'] for item in spec['settings']['order_by']]
-        if order[:3]!=['filename','document_date','first_captured'] or len(order)!=4 or order[-1] not in {'doc_key','document_id'}:
+        if len(order)!=4 or order[-1] not in {'doc_key','document_id'} or not approved_order(spec['settings']['order_by'],['filename','document_date','first_captured',order[-1]]):
             raise ValueError('Public rows need the explicit document sort')
         if spec['sql'].strip().lower()!='select * from '+relation:
             raise ValueError('Public writer must consume the agreed ordered relation')
     for name in ['sources.parquet','recoveries.parquet']:
-        if [item['field'] for item in specs[name]['settings']['order_by']]!=['list_row','ordinal']:
+        if not approved_order(specs[name]['settings']['order_by'],['list_row','ordinal']):
             raise ValueError('Attachment writer order differs from its public ranges')
     ordered=next((item for item in job['steps'] if item['name']=='ordered'),{})
     compact=re.sub(r'\s+','',ordered.get('sql','')).lower()
@@ -264,7 +273,7 @@ def validate_layout(loaded, *, engine, work):
     expected=[f'SELECT list_row,doc_key AS document_id,{columns} FROM details',
               f"SELECT list_row,encode(document_id,'hex') AS document_id,{columns} FROM details"]
     compact=lambda sql:re.sub(r'\s+','',sql).lower()
-    if compact(row_spec['sql']) not in {compact(sql) for sql in expected} or row_spec['settings']['order_by']!=[dict(field='list_row')]:
+    if compact(row_spec['sql']) not in {compact(sql) for sql in expected} or not approved_order(row_spec['settings']['order_by'],['list_row']):
         raise ValueError('Private document projection lineage must preserve the ordered details row')
     if candidate['kind']=='f0':
         member_spec=specs[Path(paths['source_members']).name]
@@ -419,7 +428,7 @@ def normalization(loaded, *, directory):
         old_parts.extend([f"SELECT d.document_id AS doc,'{field}' AS field,(regexp_match(f.body_key,'([a-f0-9]{{64}})'))[1] AS subject,cast({expression} AS VARCHAR) AS value FROM old_wide d JOIN oracle_filenames f USING(document_id) LEFT JOIN old_capture_metadata m ON f.body_key=m.body_key WHERE f.body_key IS NOT NULL AND f.body_key<>d.body_key AND f.format[1]<>d.format[1]"
             for field,expression in [('alternate.suffix',"CASE WHEN regexp_like(f.body_key,'[.]pdf$') THEN '.pdf' WHEN regexp_like(f.body_key,'[.]gz$') THEN '.gz' ELSE '' END"),('alternate.bytes','m.bytes')]])
     new_parts.extend([f"SELECT doc,'{field}' AS field,encode(a['body'],'hex') AS subject,cast(a['{column}'] AS VARCHAR) AS value FROM (SELECT doc,unnest(alternates) AS a FROM new_wide)" for field,column in [('alternate.suffix','suffix'),('alternate.bytes','size')]])
-    new_parts.extend([f"SELECT cast(list_row AS VARCHAR) AS doc,'recovery.{column}' AS field,encode(body,'hex') AS subject,cast({column} AS VARCHAR) AS value FROM release_recoveries" for column in ['kind','recovered_url','imported_at','identity_note','suffix','bytes']])
+    new_parts.extend([f"SELECT cast(list_row AS VARCHAR) AS doc,'recovery.{column}' AS field,encode(body,'hex') AS subject,json_array(cast({column} AS VARCHAR)) AS value FROM release_recoveries" for column in ['kind','recovered_url','imported_at','identity_note','suffix','bytes']])
     new_parts += ["SELECT doc,'facts' AS field,f['field'] AS subject,f['value'] AS value FROM (SELECT doc,unnest(facts) AS f FROM new_wide)",
         "SELECT doc,'alternates' AS field,encode(a['body'],'hex') AS subject,a['format'] AS value FROM (SELECT doc,unnest(alternates) AS a FROM new_wide)",
         "SELECT cast(list_row AS VARCHAR) AS doc,'recoveries' AS field,encode(body,'hex') AS subject,encode(body,'hex') AS value FROM release_recoveries"]
@@ -624,7 +633,7 @@ def model_witness_steps(available, *, restrict_differences=False):
             branch('e4_recovery_observations',{key:key for key in ['mode','complete','http_status','outcome','recovery_original_url']},subject=subject)
         missing.remove('recovery_independent_fetch')
         steps.append(dict(name='e4_recovery_documents',sql="""SELECT m.side,m.doc,r.* FROM e4_evidence_sources m JOIN current_recoveries r ON m.source_url=r.original_url""",materialize=True))
-        branch('e4_recovery_documents',dict(original_url='original_url',recovered_url='recovered_url',body_sha='body_sha256',expected_kind='kind',expected_recovered_url='recovered_url',expected_identity_note='identity_note'),subject='body_sha256',evidence="'provenance/recoveries:'||id")
+        branch('e4_recovery_documents',dict(original_url='original_url',recovered_url='recovered_url',body_sha='body_sha256',expected_kind='json_array(kind)',expected_recovered_url='json_array(recovered_url)',expected_identity_note='json_array(identity_note)'),subject='body_sha256',evidence="'provenance/recoveries:'||id")
         missing.remove('eot_webharvest_attachment')
         if {'b7_recovery_decisions','b7_ready_imports','b7_source_time_minima'}<=set(available):
             steps.append(dict(name='e4_b7_active',sql='SELECT a.* FROM b7_recovery_decisions a LEFT ANTI JOIN b7_recovery_decisions b ON a.id=b.supersedes',materialize=True))
@@ -635,7 +644,8 @@ def model_witness_steps(available, *, restrict_differences=False):
                 LEFT JOIN b7_ready_imports i ON r.original_url=i.original_url AND r.body_sha256=i.body_sha256
                 LEFT JOIN b7_source_time_minima t ON r.original_url=t.original_url AND r.body_sha256=t.body_sha256""",materialize=True))
             branch('e4_b7_recoveries',dict(stage="'raw-recoveries-owner-32c13ffa'",decision_id='id',body_sha='body_sha256',
-                **{'expected_'+name:'approved_'+name for name in ['kind','recovered_url','identity_note','imported_at','suffix','bytes']}),
+                **{'expected_'+name:'json_array(approved_'+name+')' for name in ['kind','recovered_url','identity_note']},
+                **{'expected_'+name:'CASE WHEN approved_'+name+' IS NOT NULL THEN json_array(approved_'+name+') END' for name in ['imported_at','suffix','bytes']}),
                 subject='body_sha256',evidence="'raw-recoveries-owner-32c13ffa:'||id")
             missing.remove('b7_owner_recoveries')
     if {'source_id','page_body','context','text','doc_type','link_index'}<=available.get('publisher_links',set()):
