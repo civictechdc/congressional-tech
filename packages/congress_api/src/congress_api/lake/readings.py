@@ -219,7 +219,8 @@ def plan(*,captures,body_inventory,local_root,engine,work,decided_at,parser,
         # Choose only capture-recorded copies. Rank before consulting availability;
         # a rejected higher-ranked copy contributes its own fallback reason.
         steps.extend([
-            dict(name='listed_copies',sql='''SELECT s.*,l.size AS listed_size,l.key IS NULL AS listing_missing,
+            dict(name='listed_copies',sql='''SELECT s.*,CASE WHEN nullif(l.etag,'') IS NOT NULL THEN l.size END AS listed_size,
+                l.key IS NULL AS listing_missing,
                 CASE s.stored_suffix WHEN '' THEN 0 WHEN '.gz' THEN 1 ELSE 2 END AS priority,
                 coalesce(l.etag,CASE WHEN s.stored_md5 IS NOT NULL THEN concat('"',s.stored_md5,'"') END) AS version,
                 coalesce(s.conflict,false) OR coalesce(s.stored_md5 IS NOT NULL AND l.etag IS NOT NULL AND
@@ -274,7 +275,7 @@ def plan(*,captures,body_inventory,local_root,engine,work,decided_at,parser,
        sp.parsers AS skip_parsers""" if combined else ''
     storage_join=''
     if raw_ranges:
-        size_pin='coalesce(s.captured_stored_bytes,l.size)' if body_listing is not None else 's.captured_stored_bytes'
+        size_pin="coalesce(s.captured_stored_bytes,CASE WHEN nullif(l.etag,'') IS NOT NULL THEN l.size END)" if body_listing is not None else 's.captured_stored_bytes'
         extra+=f',s.stored_md5,s.captured_bytes,{size_pin} AS captured_stored_bytes,coalesce(s.page_hint,false) AS page_hint,coalesce(s.conflict,false) AS capture_conflict'
         storage_join=' LEFT JOIN body_storage s ON b.body_sha=s.body_sha AND i.physical_key=s.physical_key'
         if body_listing is not None:
