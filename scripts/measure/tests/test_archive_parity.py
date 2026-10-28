@@ -347,3 +347,27 @@ def test_missing_native_url_resolution_rows_are_unexplained(tmp_path):
     result=parity.compare_descriptor(descriptor,engine_config=os.environ['DOCSPEC_JOB_CONFIG'],work=tmp_path/'comparison')
     assert result['counts']['unexplained']==4
     assert result['decision_ready'] is False
+
+
+def test_native_b7_witness_uses_superseding_kind_and_earliest_fetch_date(tmp_path):
+    expected=FIXTURE['b7_native_expected'];pk=dict(receipt_key='Utf8',receipt_line='Int64',capture_index='Int64')
+    inputs=[json_input(tmp_path,'capture_sources',[],**pk,source_id='Utf8',body_sha='Utf8',filename='Utf8',source_url='Utf8',import_date='Utf8'),
+        json_input(tmp_path,'capture_evidence',[],**pk,**{k:'Utf8' for k in ['format','mode','outcome','url','requested_url','retrieved_at','fidelity','member_path','h_content_disposition']},complete='Boolean',http_status='Int64'),
+        json_input(tmp_path,'record_roles',[],**pk,record_role='Utf8',is_real_file='Boolean'),
+        json_input(tmp_path,'page_facts',[],body_sha='Utf8',status='Utf8',fingerprint='Utf8',error_type='Utf8')]
+    source=dict(doc='new',source_id='e'*64,body_key=None,filename='original.html',source_url=expected['original_url'])
+    for name,rows in [('old_evidence_sources',[]),('new_evidence_sources',[source])]:
+        inputs.append(json_input(tmp_path,name,rows,doc='Utf8',source_id='Utf8',body_key='Utf8',filename='Utf8',source_url='Utf8'))
+    row=dict(id='owner-57',original_url=expected['original_url'],body_sha256=expected['body_sha'],kind=expected['kind'],
+        recovered_url='https://www.govinfo.gov/hearing.htm',recovered_filename=None,decided_at='2026-10-27T21:28:14Z',identity_note='Owner approved excerpt')
+    schema={k:'Utf8' for k in row}
+    inputs.append(json_input(tmp_path,'current_recoveries',[row],**schema))
+    old=dict(row,id='superseded',kind=expected['superseded_kind'],supersedes=None)
+    inputs.append(json_input(tmp_path,'b7_recovery_decisions',[old,dict(row,supersedes='superseded')],**schema,supersedes='Utf8'))
+    inputs.append(json_input(tmp_path,'b7_ready_imports',[dict(original_url=row['original_url'],body_sha256=row['body_sha256'],retrieved_at=expected['ready_time'],stored_suffix='.gz',bytes=100)],original_url='Utf8',body_sha256='Utf8',retrieved_at='Utf8',stored_suffix='Utf8',bytes='Int64'))
+    inputs.append(json_input(tmp_path,'b7_source_time_minima',[dict(original_url=row['original_url'],body_sha256=row['body_sha256'],retrieved_at=expected['source_minimum'])],original_url='Utf8',body_sha256='Utf8',retrieved_at='Utf8'))
+    available={item['name']:set(f['name'] for f in item['schema']['fields']) for item in inputs}
+    steps,missing=parity.model_witness_steps(available)
+    assert 'b7_owner_recoveries' not in missing
+    reports=run_job(tmp_path,engine(),inputs=inputs,steps=steps,outputs=[],queries=[dict(name='b7',sql="SELECT DISTINCT json_get_str(fact,'expected_kind') AS kind,json_get_str(fact,'expected_imported_at') AS imported_at FROM witnesses WHERE json_get_str(fact,'stage')='raw-recoveries-owner-32c13ffa'")])
+    assert reports['b7']==[dict(kind=expected['kind'],imported_at=expected['imported_at'])]

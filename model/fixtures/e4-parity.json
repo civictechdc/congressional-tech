@@ -834,5 +834,14 @@
     "filename": "saved-twin.html",
     "source_url": "https://fixture.test/22.pdf",
     "source_id": "c3a17177043f8de4143185391352767d8bfcdca0ea7c6e09d36625df1c416393"
+  },
+  "b7_native_expected": {
+    "original_url": "https://veterans.house.gov/node/50092/",
+    "body_sha": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+    "kind": "requested_content_in_official_hearing",
+    "source_minimum": "2026-10-06T01:00:00Z",
+    "imported_at": "2026-10-05",
+    "superseded_kind": "recovered_document",
+    "ready_time": "2026-10-08T12:00:00Z"
   }
 }
