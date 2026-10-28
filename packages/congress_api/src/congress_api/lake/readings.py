@@ -163,10 +163,12 @@ def _positive(value,name):
 
 
 def plan(*,captures,body_inventory,local_root,engine,work,decided_at,parser,
-         sniff_version=None,parser_version=None,existing=None,unreadable_files=(),max_work_items=None,raw_ranges=False):
+         sniff_version=None,parser_version=None,existing=None,unreadable_files=(),max_work_items=None,raw_ranges=False,
+         body_listing=None):
     """Materialize one native missing-body work list, without opening raw bodies."""
     if max_work_items is not None:_positive(max_work_items,'max_work_items')
     if type(raw_ranges) is not bool:raise ValueError('raw_ranges must be an explicit boolean')
+    if body_listing is not None and not raw_ranges:raise ValueError('Body listing requires ranged reads')
     instant(decided_at)
     combined=parser is None
     versions={p:current_version(p) for p in ['sniff','html','xml','json']}
@@ -184,6 +186,8 @@ def plan(*,captures,body_inventory,local_root,engine,work,decided_at,parser,
     inputs=[json_input(work,'parser_versions',[dict(parser=p,version=v) for p,v in ({**versions,'sniff':sniff_version} if combined else {'sniff':sniff_version}).items()],parser='Utf8',version='Utf8'),
             table_input('captures',captures),
             dict(name='body_inventory',kind='parquet',path=str(Path(body_inventory).resolve()))]
+    if body_listing is not None:
+        inputs.append(dict(name='body_listing',kind='parquet',path=str(Path(body_listing).resolve())))
     unreadable_schema=dict(id='Utf8',body_sha256='Utf8',parser='Utf8',parser_version='Utf8',supersedes='Utf8')
     if unreadable_files:
         inputs.append(dict(name='unreadable',kind='json_lines',files=list(unreadable_files),
@@ -241,6 +245,15 @@ def plan(*,captures,body_inventory,local_root,engine,work,decided_at,parser,
     if raw_ranges:
         extra+=',s.stored_md5,s.captured_stored_bytes,coalesce(s.page_hint,false) AS page_hint'
         storage_join=' LEFT JOIN body_storage s ON b.body_sha=s.body_sha AND i.physical_key=s.physical_key'
+        if body_listing is not None:
+            storage_join+=' LEFT JOIN body_listing l ON i.physical_key=l.key'
+            extra+=''',CASE WHEN s.stored_md5 IS NOT NULL THEN concat('"',s.stored_md5,'"') ELSE nullif(l.etag,'') END AS conditional_etag,
+                coalesce(s.stored_md5 IS NOT NULL AND l.etag IS NOT NULL AND
+                    s.stored_md5<>lower(trim(BOTH '"' FROM l.etag)),false) AS md5_conflict,
+                coalesce(l.size<>s.captured_stored_bytes,false) AS size_conflict'''
+        else:
+            extra+=''',CASE WHEN s.stored_md5 IS NOT NULL THEN concat('"',s.stored_md5,'"') END AS conditional_etag,
+                false AS md5_conflict,false AS size_conflict'''
     settled_join=' LEFT JOIN settled_parsers sp ON b.body_sha=sp.body_sha' if combined else ''
     sql=f'''SELECT b.body_sha,i.physical_key,i.relative_path,i.stored_bytes,i.stored_gzip{extra}
         FROM bodies b LEFT JOIN body_inventory i ON b.body_sha=i.body_sha{settled_join}{storage_join}
@@ -263,10 +276,15 @@ def plan(*,captures,body_inventory,local_root,engine,work,decided_at,parser,
             ON i.body_sha=s.body_sha AND i.physical_key=s.physical_key
             WHERE s.conflict OR i.stored_bytes<>s.captured_stored_bytes'''),
         dict(name='raw_custody',sql=f'''SELECT count(*) AS bodies,
-            coalesce(sum(CASE WHEN physical_key IS NULL OR stored_md5 IS NULL OR captured_stored_bytes IS NULL THEN 1 ELSE 0 END),0) AS missing_pins,
+            coalesce(sum(CASE WHEN physical_key IS NULL OR conditional_etag IS NULL OR captured_stored_bytes IS NULL THEN 1 ELSE 0 END),0) AS missing_pins,
             coalesce(sum(CASE WHEN physical_key IS NULL THEN 1 ELSE 0 END),0) AS missing_physical,
             coalesce(sum(CASE WHEN stored_md5 IS NULL THEN 1 ELSE 0 END),0) AS missing_md5,
-            coalesce(sum(CASE WHEN captured_stored_bytes IS NULL THEN 1 ELSE 0 END),0) AS missing_size
+            coalesce(sum(CASE WHEN captured_stored_bytes IS NULL THEN 1 ELSE 0 END),0) AS missing_size,
+            coalesce(sum(CASE WHEN stored_md5 IS NOT NULL THEN 1 ELSE 0 END),0) AS capture_md5,
+            coalesce(sum(CASE WHEN stored_md5 IS NULL AND conditional_etag IS NOT NULL THEN 1 ELSE 0 END),0) AS listing_etag,
+            coalesce(sum(CASE WHEN md5_conflict THEN 1 ELSE 0 END),0) AS md5_conflicts,
+            coalesce(sum(CASE WHEN size_conflict THEN 1 ELSE 0 END),0) AS size_conflicts,
+            coalesce(sum(CASE WHEN md5_conflict OR size_conflict THEN 1 ELSE 0 END),0) AS conflicts
             FROM pending_bodies WHERE NOT ({
                 "coalesce(stored_bytes>67108864,false) AND coalesce(known_format IN ('html','xml','json'),false)" if combined else
                 'coalesce(stored_bytes>67108864,false)' if parser!='sniff' else 'false'})''')]
@@ -307,7 +325,7 @@ def _execute_plan(planned,*,engine,worker_factory=ParserWorker,unreadable_store=
     prefetched={};cleanup=[];cache_use=dict(prefetched=0,ranges=0,actual=0,reserve=0)
     cache_root=Path(cache_root or planned['work']).resolve()
     if body_store is not None:
-        if planned['raw_custody']['missing_pins']:raise RawCustodyRequired(planned)
+        if planned['raw_custody']['missing_pins'] or planned['raw_custody']['conflicts']:raise RawCustodyRequired(planned)
         if body_store.cache_dir is None or not body_store.cache_dir.resolve().is_relative_to(cache_root):
             raise ValueError('Ranged reads require an owned cache below the producer work directory')
         items=list(items)
@@ -319,7 +337,7 @@ def _execute_plan(planned,*,engine,worker_factory=ParserWorker,unreadable_store=
         cache_use['prefetched']=sum(item['stored_bytes'] for item in candidates)
         if cache_use['prefetched']*2+cache_use['reserve']>max_cache_bytes:
             raise ValueError('Ranged page prefetch exceeds the cache budget')
-        pins={item['physical_key']:dict(md5=item['stored_md5'],bytes=item['captured_stored_bytes']) for item in candidates}
+        pins={item['physical_key']:dict(etag=item['conditional_etag'],md5=item['stored_md5'],bytes=item['captured_stored_bytes']) for item in candidates}
         body_store.prefetch_immutable(list(pins),expected=pins,max_workers=max_get_workers)
         prefetched={item['body_sha'].hex():body_store._immutable_cache_path(item['physical_key']) for item in candidates}
         cache_use['actual']=sum(_cache_file_bytes(path) for path in prefetched.values())
@@ -361,7 +379,8 @@ def _execute_plan(planned,*,engine,worker_factory=ParserWorker,unreadable_store=
                                 request=json.loads(payload)
                                 request['max_read_bytes']=max_cache_bytes-cache_use['prefetched']-cache_use['ranges']-cache_use['reserve']
                                 if body_hex in prefetched:request.update(path=str(prefetched[body_hex]),prefetched=True)
-                                else:request['remote']=dict(bucket=body_store.bucket,key=item['physical_key'],md5=item['stored_md5'])
+                                else:request['remote']=dict(bucket=body_store.bucket,key=item['physical_key'],
+                                    etag=item['conditional_etag'],md5=item['stored_md5'])
                                 payload=json.dumps(request,separators=(',',':')).encode()
                         outcome=active_worker.parse(body_hex,payload)
                         if outcome['status']=='read_error':
@@ -528,7 +547,7 @@ def run(*,engine,work,mode,execute=False,max_work_items=None,batch_size=None,par
     report.update(mode=mode,applied=False,batches=[])
     if raw_ranges:report['raw_custody']=planned['raw_custody']
     if not execute:return report
-    if raw_ranges and planned['raw_custody']['missing_pins']:raise RawCustodyRequired(planned)
+    if raw_ranges and (planned['raw_custody']['missing_pins'] or planned['raw_custody']['conflicts']):raise RawCustodyRequired(planned)
     report.update(status='completed',pending_reads=0,read_bytes=0,unreadable=0)
     if planned['work_items']==0:return report
     size=planned['work_items'] if mode=='daily' else batch_size
@@ -572,7 +591,7 @@ class _ReadOnceBody:
             self.identity=[observed.st_dev,observed.st_ino,observed.st_size,observed.st_mtime_ns,observed.st_ctime_ns]
         else:
             from congress_api.retention.r2 import _raw_pin
-            expected=_raw_pin(remote['key'],dict(md5=remote['md5'],bytes=stored_bytes))
+            expected=_raw_pin(remote['key'],{**{k:remote[k] for k in ('etag','md5') if k in remote},'bytes':stored_bytes})
             self.identity=dict(kind='r2',bucket=remote['bucket'],key=remote['key'],**expected,stored_gzip=stored_gzip)
         pin=self.cache/'identity.json'
         if pin.exists():
@@ -620,7 +639,7 @@ class _ReadOnceBody:
                         try:
                             store=self.body_store or _ranged_store(self.remote['bucket'])
                             piece=store.read(self.remote['key'],start=cursor,length=stop-cursor,
-                                expected={k:self.identity[k] for k in ('md5','bytes')},metadata=metadata)
+                                expected={k:self.identity[k] for k in ('etag','md5','bytes')},metadata=metadata)
                         except (BotoCoreError,ClientError,ValueError) as error:
                             raise OSError('raw_range_'+type(error).__name__) from None
                         encoding=metadata.get('content_encoding') or ''
