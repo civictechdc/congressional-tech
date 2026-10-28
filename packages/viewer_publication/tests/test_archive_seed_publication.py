@@ -16,6 +16,7 @@ def seed(root):
     profile=seed_profile_record(**dict(arguments(),document_rows=54))['profile']
     manifest['origin']={key:profile[key] for key in
         ['kind','label','display_only','catalog_id','generation','input_files']}
+    manifest['origin']['gaps']=['v5 has no recovery import events']
     path=Path(artifacts['manifest_pin']['path']);path.write_bytes(encoded(manifest))
     artifacts['manifest_pin']=pin(path)
     reports=[dict(name='seed_invariants',data=[dict(missing_required=0,bad_ids=0)]),
@@ -59,7 +60,7 @@ def test_seed_uses_same_gates_pointer_and_empty_canonical_receipt_evidence(tmp_p
 
 @pytest.mark.parametrize('change',['origin','capture','raw_guard','invariant_bool','missing_guard',
     'source_count','listed_count','excluded_count','duplicate_reason','sample_missing','sample_mismatch',
-    'sample_duplicate','raw_receipts','raw_snapshots','raw_provenance'])
+    'sample_duplicate','raw_receipts','raw_snapshots','raw_provenance','bad_gaps'])
 def test_seed_refuses_bad_evidence_before_input_upload_or_pointer(tmp_path,change):
     artifacts,manifest,record=seed(tmp_path)
     result_path=Path(artifacts['result_pin']['path']);result=json.loads(result_path.read_text())
@@ -79,6 +80,7 @@ def test_seed_refuses_bad_evidence_before_input_upload_or_pointer(tmp_path,chang
     elif change=='sample_duplicate':by_name['seed_spot_checks']['data'][4]=deepcopy(by_name['seed_spot_checks']['data'][3])
     elif change=='raw_receipts':keys=['receipts/documents/not-seed.jsonl.gz']
     elif change=='raw_snapshots':record['snapshots']={'captures':{'snapshot':1}}
+    elif change=='bad_gaps':manifest['origin']['gaps']=[None]
     else:record['provenance']=[dict(key='provenance/reviews/a.jsonl.gz',etag='etag')]
     record['input_digest']=input_digest(receipt_keys=keys,provenance=record['provenance'],profile=record['profile'],entity_digests={})
     path=Path(artifacts['manifest_pin']['path']);path.write_bytes(encoded(manifest));artifacts['manifest_pin']=pin(path)
