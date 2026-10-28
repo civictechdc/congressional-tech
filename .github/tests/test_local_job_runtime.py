@@ -3,7 +3,10 @@ from hashlib import sha256
 import importlib.util
 import io
 import json
+import os
 from pathlib import Path
+import subprocess
+import sys
 import tarfile
 
 import pytest
@@ -96,3 +99,26 @@ def test_existing_ci_commands_enroll_all_site_mechanism_checks():
     assert 'scripts/archive-tools.test.mjs' in scripts['test:explorer']
     browser=(ROOT/'.github/scripts/verify-archive-contract.py').read_text()
     assert 'test:archive-saved-browser' in browser and 'test:archive-heap-browser' in browser
+
+
+@pytest.mark.parametrize('failed',[None,'test:archive-saved-browser'])
+def test_actual_browser_wrapper_runs_checked_children_and_stops_at_failure(tmp_path,failed):
+    tools=tmp_path/'bin';tools.mkdir()
+    npm=tools/'npm'
+    npm.write_text('#!/bin/sh\nprintf "%s\\n" "$*" >> "$CALLS_FILE"\n'
+        'if [ -n "$FAIL_SCRIPT" ]; then case "$*" in *"$FAIL_SCRIPT"*) exit 9;; esac; fi\n')
+    npm.chmod(0o755)
+    calls=tmp_path/'calls.txt'
+    result=subprocess.run([sys.executable,'-I',str(ROOT/'.github/scripts/verify-archive-contract.py'),
+        '--work',str(tmp_path/'work'),'--browser-executable','/approved/chrome'],
+        env={**os.environ,'PATH':str(tools)+os.pathsep+os.defpath,'CALLS_FILE':str(calls),'FAIL_SCRIPT':failed or ''},
+        text=True,capture_output=True,timeout=15)
+    commands=calls.read_text().splitlines()
+    assert 'contract:archive' in commands[0]
+    assert 'test:archive-saved-browser' in commands[1]
+    assert all('--browser-executable /approved/chrome' in call for call in commands)
+    if failed:
+        assert result.returncode!=0 and len(commands)==2
+    else:
+        assert result.returncode==0 and len(commands)==3
+        assert 'test:archive-heap-browser' in commands[2]
