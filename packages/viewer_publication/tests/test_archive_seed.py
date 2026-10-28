@@ -198,3 +198,12 @@ def test_seed_job_keeps_approved_narrow_build_lifetimes(tmp_path):
     steps={item['name']:item for item in json.loads((Path(spec['scratch'])/'job.json').read_text())['steps']}
     assert steps['seed_file_values']['materialize'] is False
     assert steps['seed_docs']['release_after']==['seed_name_body','seed_body_formats']
+
+
+def test_seed_releases_finished_bulk_relations_before_the_writer(tmp_path):
+    _,spec,_=build(tmp_path)
+    steps={item['name']:item for item in json.loads((Path(spec['scratch'])/'job.json').read_text())['steps']}
+    assert steps['seed_all_members']['materialize'] is False
+    assert steps['seed_members']['release_after']==['seed_all_members','seed_name_url']
+    assert set(steps['seed_presented']['release_after'])=={'seed_dates','seed_links','seed_meetings','seed_committees','seed_recovery_choice'}
+    assert steps['normalized']['release_after']==['seed_presented']
