@@ -93,8 +93,9 @@ def test_weekly_writer_uses_pinned_clean_python_after_snapshot_save():
                    step.get('uses')=='./.github/actions/setup-python-project' for step in job['steps'])
 
 
+@pytest.mark.parametrize('workflow_name', ['update-data.yml', 'publish-explorer.yml'])
 @pytest.mark.parametrize('failure', [None, 'setup', 'body', 'receipt', 'push'])
-def test_weekly_snapshot_preserves_raw_before_publishing(tmp_path, failure):
+def test_weekly_snapshot_preserves_raw_before_publishing(tmp_path, failure, workflow_name):
     original = tmp_path/'job'
     application(original)
     scripts = original/'.github/scripts'
@@ -172,7 +173,11 @@ def test_weekly_snapshot_preserves_raw_before_publishing(tmp_path, failure):
     env.update(RUNNER_TEMP=str(temporary),WRITER_EXECUTION=str(tmp_path/'execution.json'),
         WRITER_PROBE=str(probe),FAILURE=failure or '',EVENTS=str(tmp_path/'events'),
         RAW_ROOT=str(tmp_path/'raw'),SNAPSHOT=str(snapshot),REAL_GIT=real_git,BARE_REMOTE=str(remote))
-    result = subprocess.run(['bash',str(scripts/'save-pipeline-data.sh'),'fixture'],cwd=original,
+    workflow = yaml.load((ROOT/'.github/workflows'/workflow_name).read_text(), Loader=yaml.BaseLoader)
+    commands = [step['run'] for job in workflow['jobs'].values() for step in job['steps']
+                if '.github/scripts/save-pipeline-data.sh' in step.get('run', '')]
+    assert commands
+    result = subprocess.run(['bash', '-e', '-c', commands[0]], cwd=original,
                             env=env,capture_output=True,text=True)
     events = (tmp_path/'events').read_text().splitlines()
     remote_head = subprocess.check_output(['git','--git-dir',str(remote),'rev-parse','pipeline-data'],text=True).strip()
