@@ -171,3 +171,28 @@ def test_new_durable_import_is_an_acknowledged_delta_without_get_or_reread(tmp_p
         assert public['etag']==imported['etag']==hashlib.md5(client.objects[public['key']]).hexdigest()
     assert len(client.list_calls)==1 and len(client.put_calls)==1 and not client.get_calls and not client.head_calls
     assert Path(public['path']).is_file()
+
+
+def test_declared_object_limit_refuses_before_any_download(tmp_path):
+    from congress_api.retention.provenance_inventory import unreadable_inventory
+    client=R2([(KEY,b'oversized')])
+    with pytest.raises(ValueError,match='limit'):
+        unreadable_inventory(BodyStore(R2Adapter(client,'bucket')),work=tmp_path/'snapshot',max_bytes=4)
+    assert len(client.list_calls)==1 and not client.get_calls and not client.head_calls
+
+
+@pytest.mark.parametrize('payload',[b'four',b'sixsix'])
+def test_actual_response_length_cannot_disagree_with_listing(tmp_path,payload):
+    from congress_api.retention.provenance_inventory import unreadable_inventory
+    client=R2([(KEY,b'bytes')]);client.get_override=dict(Body=io.BytesIO(payload))
+    with pytest.raises(ValueError,match='length|changed'):
+        unreadable_inventory(BodyStore(R2Adapter(client,'bucket')),work=tmp_path/'snapshot')
+    assert len(client.get_calls)==1 and not client.head_calls
+
+
+def test_response_bytes_must_match_single_put_checksum(tmp_path):
+    from congress_api.retention.provenance_inventory import unreadable_inventory
+    client=R2([(KEY,b'bytes')]);client.get_override=dict(Body=io.BytesIO(b'other'))
+    with pytest.raises(ValueError,match='MD5|checksum'):
+        unreadable_inventory(BodyStore(R2Adapter(client,'bucket')),work=tmp_path/'snapshot')
+    assert len(client.get_calls)==1 and not client.head_calls
