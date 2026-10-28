@@ -1,6 +1,6 @@
 ---
 id: cef-mvlz
-status: in_progress
+status: closed
 deps: []
 links: []
 created: 2026-10-28T01:35:13Z
@@ -18,3 +18,7 @@ Owner review B3: one native filename-inputs definition including flat Content-Di
 **2026-10-28T05:11:54Z**
 
 Ownership transferred to raw by owner decision 20261028T051000Z. Shared filename input/producer binding already integrated; root will not start further changes here. Coordinate model source/input seam through engine; currentmodel native file-name consumers and fixture2PASS remain unchanged.
+
+**2026-10-28T05:57:15Z**
+
+Verified current integrated D3/model sharing: 10 focused cases pass with qualified engine9b59263 (actual model factory filename-pair parity, shared input loading/refusal, and SQL/schema/registry/worker version invalidation). Canonical model/sql/filename-inputs.sql binds fixed filename_captures alias; producer copy removed in9218e303, prior CODE/ARCH approved. No new implementation or raw reads.
