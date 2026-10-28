@@ -59,6 +59,20 @@ def test_pending_spec_refuses_without_runtime_or_storage(tmp_path,capsys):
     assert json.loads(capsys.readouterr().out)==dict(status='blocked',reason='owner binding pending')
 
 
+@pytest.mark.parametrize('key',[
+    'provenance/recoveries/accepted-backup.json',
+    'provenance/recoveries/archive/fixture.jsonl',
+    'provenance/reviews/fixture.jsonl',
+])
+def test_model_input_requires_a_record_of_its_declared_provenance_kind(tmp_path,key):
+    from viewer_publication.archive_model_job import load_spec
+    value=spec(tmp_path)
+    value['recovery_files']=[dict(key=key,path='not-opened.json',sha256='a'*64,size=17)]
+    with pytest.raises(ValueError,match='provenance record'):
+        load_spec(write_spec(tmp_path,value))
+    assert not (tmp_path/'not-opened.json').exists()
+
+
 def test_model_cli_executes_real_raw_lake_fixture(tmp_path,capsys):
     import pyarrow.parquet as pq
     from viewer_publication.archive_model_job import main

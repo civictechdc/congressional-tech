@@ -376,7 +376,7 @@ Determinism is not a dedupe mechanism: one new document shifts every later row n
 
 #### 10.3.1 Pinned Inputs and Input Identity
 
-After the lake steps of §12, a publish run MUST pin, once, the current snapshots, the provenance set (every provenance key with its ETag) and the current spicy-regs generation of each reference family ([[PHASE-2]] §1.1). It prepares a prospective input identity from that metadata ([[DATA-MODEL]] §8.3), then proves current completeness at those exact pins ([[DATA-MODEL]] §7.1) and that their actual receipt keys equal the retained list before accepting either an early skip or model output. A prospective match runs only the model's shared admission prefix; a changed input runs that prefix and the remaining model in one native context, without parsing provenance twice. Local file inputs retain their verified bytes under private names until native consumption completes; a custody change refuses before publication effects.
+After the lake steps of §12, a publish run MUST pin, once, the current snapshots, the provenance set (every provenance key with its opaque ETag) and the current spicy-regs generation of each reference family ([[PHASE-2]] §1.1). The model reads exactly the recognized provenance records of [[DATA-MODEL]] §5.3; other objects, including the retained `accepted.json` backup, remain in the input identity without being read as records. It prepares a prospective input identity from that metadata ([[DATA-MODEL]] §8.3), then proves current completeness at those exact pins ([[DATA-MODEL]] §7.1) and that their actual receipt keys equal the retained list before accepting either an early skip or model output. A prospective match runs only the model's shared admission prefix; a changed input runs that prefix and the remaining model in one native context, without parsing provenance twice. Local file inputs retain their verified bytes under private names until native consumption completes; a custody change refuses before publication effects.
 
 #### 10.3.2 Early Skip
 
@@ -427,7 +427,7 @@ The reader MUST accept the current and the previous `schema_version` of the rele
 A saved file opens at its physical key: `saved_body` plus `saved_suffix`.
 
 - Bodies written to §7.1 open directly; older gzip PDFs open their `.pdf` copy once it is recorded, and until then unpack like other `.gz` bodies.
-- Other `.gz` bodies are fetched and unpacked with the browser's `DecompressionStream`, then opened with the media type from `detail`; unpacked active content stays in an opaque sandbox with subresources blocked and no opener, preserving the raw origin's isolation; those whose original size in `detail` exceeds 100 MB (313, up to 1.19 GB) are offered as a labeled compressed download.
+- Other `.gz` bodies are fetched and unpacked with the browser's `DecompressionStream`, then opened with the media type from `detail`; unpacked active content stays in an opaque sandbox with subresources blocked and no opener, preserving the raw origin's isolation; those whose original size in `detail` exceeds the shared `reader-limits.json` limit, currently 100 MiB, are offered as a labeled compressed download. The publisher chooses a visible saved copy within that limit for its canary.
 - A recovery is labeled by kind and links the recovered file.
 - A link key that no longer resolves opens a not-found notice; a pasted address is looked up in `urls`, and several matches are shown as versions.
 
