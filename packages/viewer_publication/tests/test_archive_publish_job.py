@@ -67,6 +67,8 @@ def test_daily_description_refuses_before_runtime_or_storage(tmp_path,capsys,cha
         value['daily']=dict(path=value['daily']['path'],**file_pin(value['daily']['path']))
     with pytest.raises(SystemExit) as error:invoke(tmp_path,value,'--execute')
     assert error.value.code==2
+    assert {'checksum':'checksum mismatch','overlap':'separate','stale_receipts':'Daily publication',
+            'stale_provenance':'Daily publication','qualified_override':'current raw inventory'}[change] in capsys.readouterr().err
     assert not (tmp_path/'daily-work').exists() and not Path(value['work']).exists()
 
 
