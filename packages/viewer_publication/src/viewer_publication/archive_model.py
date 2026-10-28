@@ -89,7 +89,7 @@ def _sql_steps(names,*,root=ROOT):
 
 def build_release(*,captures,readings,filename_readings,parser_versions,catalog_version,
                   engine,output,scratch,recovery_files=(),review_files=(),verification_files=(),
-                  unreadable_files=(),body_admissions=None,root=ROOT):
+                  unreadable_files=(),body_admissions=None,variant_files=(),root=ROOT):
     """Run the document model and shared native exporter over pinned local inputs."""
     from viewer_publication.archive_format import _execute,_settings,EMPTY_STRINGS,TS,_empty_struct,LIST_COLUMNS,DETAIL_COLUMNS
     from viewer_publication.archive_annotations import annotation_steps
@@ -113,7 +113,12 @@ def build_release(*,captures,readings,filename_readings,parser_versions,catalog_
         inputs.append(dict(name='verification_records',kind='json_lines',files=list(verification_files),schema=dict(fields=[field(k,v) for k,v in verification_schema.items()],metadata={})))
     else:inputs.append(json_input(scratch,'verification_records',[],**verification_schema))
     inputs.append(json_input(scratch,'url_state_meeting_dates',[],requested_url='Utf8',meeting_date='Date32'))
-    inputs.append(json_input(scratch,'url_variants',[],canonical_url='Utf8',variant_url='Utf8'))
+    variant_fields={name:'Utf8' for name in ['id','canonical_url','variant_url','basis','decided_at','supersedes']}
+    if variant_files:
+        from congress_api.retention.provenance import field
+        inputs.append(dict(name='url_variant_records',kind='json_lines',files=list(variant_files),schema=dict(fields=[field(k,v) for k,v in variant_fields.items()],metadata={})))
+    else:inputs.append(json_input(scratch,'url_variant_records',[],**variant_fields))
+    prelude += [dict(name='url_variants',sql='SELECT DISTINCT canonical_url,variant_url FROM url_variant_records r WHERE NOT EXISTS(SELECT 1 FROM url_variant_records s WHERE s.supersedes=r.id)',materialize=True)]
     unreadable_fields=dict(id='Utf8',body_sha256='Utf8',record_sha='Utf8',parser='Utf8',parser_version='Utf8',supersedes='Utf8')
     if unreadable_files:
         from congress_api.retention.provenance import field
