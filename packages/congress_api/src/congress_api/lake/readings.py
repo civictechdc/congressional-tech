@@ -408,7 +408,10 @@ def _execute_plan(planned,*,engine,worker_factory=ParserWorker,unreadable_store=
                 selected={item['physical_key']:pins[item['physical_key']] for item in window
                     if item['body_sha'].hex() in prefetched}
                 timings=[] if request_timings else None
-                try:body_store.prefetch_immutable(list(selected),expected=selected,max_workers=max_get_workers,timings=timings)
+                # A new window overlaps range reads already running in the pool.
+                # Reserve those slots within the global64-request ceiling.
+                try:body_store.prefetch_immutable(list(selected),expected=selected,
+                    max_workers=min(max_get_workers,64-parser_workers),timings=timings)
                 finally:
                     for timing in timings or ():
                         key=timing.pop('key');record_timing('prefetch',body_object_digest(key),timing)
