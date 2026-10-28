@@ -180,3 +180,14 @@ def test_seed_refuses_conflicting_byte_formats(tmp_path):
         mapping_fixture(fixture);fixture['filenames'][1]['response_format']=['html']
     with pytest.raises(ValueError,match='[Ii]nvariant|[Ff]ormat'):
         build(tmp_path,change)
+
+
+def test_seed_reports_source_rows_outside_documents_and_blank_names(tmp_path):
+    def change(fixture):
+        fixture['filenames'].append(dict(fixture['filenames'][2],document_id='context-only',source_id='legacy-context',filename='context.pdf'))
+        fixture['filenames'].append(dict(fixture['filenames'][2],source_id='legacy-blank',filename='  '))
+    _,spec,_=build(tmp_path,change)
+    reports={q['name']:q['data'] for q in json.loads((Path(spec['scratch'])/'result.json').read_text())['queries']}
+    assert {r['reason']:r['count'] for r in reports['seed_source_exclusions']}=={'seed_source_outside_documents':1,'seed_missing_source_filename':1}
+    assert reports['seed_source_reconciliation']==[dict(input_sources=7,included=5,excluded=2)]
+    assert all(type(v) is int and v==0 for v in reports['seed_invariants'][0].values())

@@ -12,7 +12,8 @@
       "seed_without_sources": 1
     },
     "source_exclusions": {
-      "seed_missing_source_filename": 2
+      "seed_missing_source_filename": 2,
+      "seed_document_excluded": 1
     },
     "merged_duplicates": 1
   },
