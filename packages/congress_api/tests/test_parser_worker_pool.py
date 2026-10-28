@@ -59,3 +59,30 @@ def test_pool_failure_closes_started_workers_and_preserves_the_error():
         with parser_worker.ParserWorkerPool('p','v','fixture:parse',workers=2,memory_budget=64<<20,
                 worker_factory=Worker,**LIMITS) as pool:list(pool.map(parse,range(100)))
     assert state['created']==state['closed']
+
+
+def test_pool_owns_the_context_even_when_enter_returns_a_different_value():
+    state=dict(closed=0);value=object()
+    class Context:
+        def __init__(self,*args,**kwargs):pass
+        def __enter__(self):return value
+        def __exit__(self,*args):state['closed']+=1
+    with parser_worker.ParserWorkerPool('p','v','fixture:parse',workers=1,memory_budget=64<<20,
+            worker_factory=Context,**LIMITS) as pool:
+        assert list(pool.map(lambda worker,item:worker is value,[1]))==[True]
+    assert state['closed']==1
+
+
+def test_pool_closes_all_contexts_even_when_cleanup_raises():
+    lock=threading.Lock();both=threading.Barrier(2);state=dict(closed=0)
+    class Context:
+        def __init__(self,*args,**kwargs):pass
+        def __enter__(self):return self
+        def __exit__(self,*args):
+            with lock:state['closed']+=1
+            raise RuntimeError('cleanup failure')
+    def parse(worker,item):both.wait(2);return item
+    with pytest.raises(RuntimeError,match='cleanup failure'):
+        with parser_worker.ParserWorkerPool('p','v','fixture:parse',workers=2,memory_budget=64<<20,
+                worker_factory=Context,**LIMITS) as pool:assert list(pool.map(parse,[1,2]))==[1,2]
+    assert state['closed']==2
