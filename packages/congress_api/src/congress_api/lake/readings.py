@@ -227,14 +227,14 @@ def plan(*,captures,body_inventory,local_root,engine,work,decided_at,parser,
                     coalesce(s.captured_stored_bytes<>l.size,false) AS pin_conflict
                 FROM body_storage s LEFT JOIN body_listing l ON s.physical_key=l.key''',materialize=True),
             dict(name='copy_candidates',sql='''SELECT *,NOT listing_missing AND NOT pin_conflict AND
-                captured_stored_bytes IS NOT NULL AND nullif(version,'') IS NOT NULL AS usable
+                coalesce(captured_stored_bytes,listed_size) IS NOT NULL AND nullif(version,'') IS NOT NULL AS usable
                 FROM listed_copies''',materialize=True),
             dict(name='ranked_copies',sql='''SELECT *,row_number() OVER (
                 PARTITION BY body_sha ORDER BY usable DESC,priority ASC) AS choice FROM copy_candidates''',materialize=True),
             dict(name='copy_fallbacks',sql='''SELECT r.body_sha,
                 sum(CASE WHEN c.listing_missing THEN 1 ELSE 0 END) AS fallback_missing,
                 sum(CASE WHEN c.pin_conflict THEN 1 ELSE 0 END) AS fallback_conflict,
-                sum(CASE WHEN c.captured_stored_bytes IS NULL OR nullif(c.version,'') IS NULL THEN 1 ELSE 0 END) AS fallback_pin
+                sum(CASE WHEN coalesce(c.captured_stored_bytes,c.listed_size) IS NULL OR nullif(c.version,'') IS NULL THEN 1 ELSE 0 END) AS fallback_pin
                 FROM ranked_copies r JOIN copy_candidates c ON r.body_sha=c.body_sha
                 WHERE r.choice=1 AND (NOT r.usable OR c.priority<r.priority) GROUP BY r.body_sha''',materialize=True),
             dict(name='body_inventory',sql='''SELECT r.body_sha,r.physical_key,r.physical_key AS relative_path,
@@ -274,7 +274,8 @@ def plan(*,captures,body_inventory,local_root,engine,work,decided_at,parser,
        sp.parsers AS skip_parsers""" if combined else ''
     storage_join=''
     if raw_ranges:
-        extra+=',s.stored_md5,s.captured_bytes,s.captured_stored_bytes,coalesce(s.page_hint,false) AS page_hint,coalesce(s.conflict,false) AS capture_conflict'
+        size_pin='coalesce(s.captured_stored_bytes,l.size)' if body_listing is not None else 's.captured_stored_bytes'
+        extra+=f',s.stored_md5,s.captured_bytes,{size_pin} AS captured_stored_bytes,coalesce(s.page_hint,false) AS page_hint,coalesce(s.conflict,false) AS capture_conflict'
         storage_join=' LEFT JOIN body_storage s ON b.body_sha=s.body_sha AND i.physical_key=s.physical_key'
         if body_listing is not None:
             storage_join+=' LEFT JOIN body_listing l ON i.physical_key=l.key'
@@ -289,7 +290,8 @@ def plan(*,captures,body_inventory,local_root,engine,work,decided_at,parser,
             i.fallback_missing,i.fallback_conflict,i.fallback_pin''' if direct_listing else
             ',true AS copy_usable,false AS listing_missing,0 AS fallback_missing,0 AS fallback_conflict,0 AS fallback_pin')
     settled_join=' LEFT JOIN settled_parsers sp ON b.body_sha=sp.body_sha' if combined else ''
-    sql=f'''SELECT b.body_sha,i.physical_key,i.relative_path,i.stored_bytes,i.stored_gzip{extra}
+    stored_size=size_pin if raw_ranges and body_listing is not None else 'i.stored_bytes'
+    sql=f'''SELECT b.body_sha,i.physical_key,i.relative_path,{stored_size} AS stored_bytes,i.stored_gzip{extra}
         FROM bodies b LEFT JOIN body_inventory i ON b.body_sha=i.body_sha{settled_join}{storage_join}
         WHERE {candidate} AND NOT EXISTS(SELECT 1 FROM existing e WHERE e.body_sha=b.body_sha
           AND e.parser={quote(parser)} AND e.parser_version={quote(version)})
