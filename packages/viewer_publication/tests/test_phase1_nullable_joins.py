@@ -33,3 +33,23 @@ def test_endpoint_member_joins_hash_every_key_without_matching_missing_endpoints
     for join in joins:
         assert 'member_path' in join.split('filter=')[0],physical
         assert 'filter=' not in join,physical
+        assert 'NullsEqual: true' in join,physical
+
+
+def test_adjacent_link_join_keeps_null_context_keys_in_hash_plan(tmp_path):
+    from viewer_publication.archive_model import registry_inputs,link_steps
+    rows=[dict(id=label,page_body='body',context_url='https://fixture.test/page',
+        member_path=member,base_href=None,href='https://fixture.test/report.pdf',
+        link_index=0,text='Report',group_path=None,doc_type=None,add_date=None,
+        publish_date=None,remove_date=None) for label,member in [('null',None),('empty','')]]
+    inputs=registry_inputs(tmp_path/'registries')
+    inputs.append(json_input(tmp_path,'link_inputs',rows,**{name:'Utf8' for name in rows[0] if name!='link_index'},link_index='Int64'))
+    with NativeDatasets.from_config(os.environ['DOCSPEC_JOB_CONFIG']) as engine:
+        result=run_job(tmp_path,engine,inputs=inputs,steps=link_steps(),outputs=[],queries=[
+            dict(name='actual',sql='SELECT id FROM resolved_links ORDER BY id'),
+            dict(name='plan',sql='EXPLAIN '+(ROOT/'model/sql/link-targets.sql').read_text())])
+    assert result['actual']==[{'id':'empty'},{'id':'null'}]
+    physical=next(row['plan'] for row in result['plan'] if row['plan_type']=='physical_plan')
+    context=next(line for line in physical.splitlines() if 'HashJoinExec' in line and 'page_body' in line)
+    assert all(name in context for name in ['page_body','context_url','member_path','base_href']),physical
+    assert 'NullsEqual: true' in context and 'filter=' not in context,physical
