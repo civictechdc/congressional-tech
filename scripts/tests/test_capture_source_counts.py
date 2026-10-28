@@ -152,3 +152,11 @@ def test_receipt_totals_fit_a_pool_that_does_not_hold_every_source_line(counts,t
     [row]=counts.count_sources(counter=path,files=[],receipt_keys=['receipts/fixture/source.jsonl.gz'],
         work=tmp_path/'work',source_qualifications={str(path):str(pin)},batch_rows=128,memory_bytes=8<<20)
     assert row['source_rows']==row['expected_captures']==row['list_items']==size
+
+
+def test_large_ordinary_record_counts_without_copying_its_unneeded_body(counts,tmp_path):
+    path,pin,raw=counter(tmp_path,[dict(record={'body':'x'*(12<<20)})])
+    [row]=counts.count_sources(counter=path,files=[],receipt_keys=['receipts/fixture/source.jsonl.gz'],
+        work=tmp_path/'work',source_qualifications={str(path):str(pin)},batch_rows=1,memory_bytes=64<<20)
+    assert row['source_rows']==row['expected_captures']==row['list_items']==1
+    assert row['uncompressed_bytes']==len(raw[0].encode())
