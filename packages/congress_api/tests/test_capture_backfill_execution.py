@@ -70,3 +70,24 @@ def test_driver_refuses_unowned_outputs_before_any_catalog_effect(tmp_path):
             catalog_root=tmp_path/'catalog',location=tmp_path/'table',create_table=True,
             create_namespace=True,scratch_root=tmp_path/'different-owned-root')
     assert not (tmp_path/'catalog').exists() and not (tmp_path/'table').exists()
+
+
+def test_failed_batch_status_keeps_the_measured_failed_process_peak(tmp_path):
+    key='receipts/documents/2026-10-28/invalid-mode.jsonl.gz'
+    files=receipts(tmp_path/'input',[dict(run_id='bad',mode='unknown-mode',outcome='failed',
+        family='documents',http_status=404,url='https://fixture.test/bad',record={})],key)
+    counts=[dict(key=key,source_rows=1,expected_captures=1,uncompressed_bytes=200,
+        list_items=1,max_line_bytes=200,max_line_items=1)]
+    with pytest.raises(RuntimeError,match='Batch exited'):
+        capture_backfill.execute_batches(files,counts,
+            engine=NativeDatasets.from_config(os.environ['DOCSPEC_JOB_CONFIG']),
+            engine_config=os.environ['DOCSPEC_JOB_CONFIG'],work=tmp_path/'work',
+            table=dict(namespace=['invalid_fixture'],name='captures'),
+            catalog_root=tmp_path/'catalog',location=tmp_path/'table',create_table=True,
+            create_namespace=True,progress_log=tmp_path/'status.jsonl')
+    measurements=list((tmp_path/'work').glob('batch-*/monitor/measurement.json'))
+    assert len(measurements)==1
+    actual=json.loads(measurements[0].read_text())['sampled_peak_tree_physical_footprint']
+    last=json.loads((tmp_path/'status.jsonl').read_text().splitlines()[-1])
+    assert actual>0 and last['status']=='fail'
+    assert last['peak_phys_gb']==actual/1e9
