@@ -172,6 +172,66 @@ def test_recovery_original_work_deduplicates_and_rejection_removes_name_override
     assert {(r['filename'],r['source_url']) for r in rows} == {('Original.pdf','https://a.test/Original.pdf'),('Named.pdf','https://a.test/Another.pdf'),('Other Body.pdf','https://a.test/Another.pdf')}
 
 
+def test_actual_model_factory_and_producer_keep_complete_filename_pair_parity(tmp_path):
+    from congress_api.retention.provenance import json_input, parquet_output, run_job
+    from viewer_publication.archive_model import source_steps
+
+    header=dict(url='https://fixture.test/address.pdf',
+        h_content_disposition="attachment; filename*=UTF-8''retained%20header.pdf")
+    cases=[header, dict(header),
+        dict(url='https://fixture.test/package.zip',member_path='folder/Member%20.pdf',
+            h_content_disposition='attachment; filename=ignored.pdf'),
+        dict(url=None,requested_url='https://fixture.test/Requested%20Name.pdf'),
+        dict(url='https://fixture.test/one/Same.pdf'),
+        dict(url='https://fixture.test/two/Same.pdf')]
+    rows=[dict(receipt_key='r',receipt_line=index,capture_index=0,mode='fetch',**row)
+        for index,row in enumerate(cases,1)]
+    rows.append(dict(receipt_key='r',receipt_line=7,capture_index=0,mode='retained_import',
+        url='https://fixture.test/ignored-import.pdf'))
+    captures=input_tables(tmp_path,rows)
+    # Both callers receive these already-current decisions. Rejection retains the
+    # original link but cannot contribute its old recovered-name override.
+    recoveries=[dict(id='accepted',body_sha256='a'*64,
+        original_url='https://fixture.test/Accepted.pdf',recovered_filename='Named.pdf',
+        kind='recovered_document',decided_at=STAMP),
+        dict(id='rejected',body_sha256='b'*64,
+        original_url='https://fixture.test/Original.pdf',recovered_filename='Rejected.pdf',
+        kind='rejected',decided_at=STAMP)]
+    model=tmp_path/'model'; model.mkdir()
+    recovery_input=json_input(model,'current_recoveries',recoveries,**{name:'Utf8' for name in
+        ('id','body_sha256','original_url','recovered_filename','kind','decided_at','supersedes')})
+    parameters=json_input(model,'filename_parameters',json.loads(reader().PARAMETERS.read_text()),
+        priority='Int32',parameter='Utf8')
+    producer=reader().stage(captures=captures,recovery_files=recovery_input['files'],
+        worker_factory=Worker,decided_at=STAMP,engine=engine(),work=tmp_path/'producer')
+    steps=source_steps()[:3]
+    assert [step['name'] for step in steps]==[
+        'filename_captures','filename_inputs','effective_filenames']
+    run_job(model,engine(),inputs=[
+        dict(name='capture_evidence',kind='parquet',path=str(captures)),recovery_input,parameters],
+        steps=steps,outputs=[parquet_output(model,'model-names',
+            "SELECT DISTINCT filename,coalesce(source_url,'') AS source_url FROM effective_filenames",
+            ['filename','source_url'])])
+    expected={('retained header.pdf','https://fixture.test/address.pdf'),('Member%20.pdf',''),
+        ('Requested Name.pdf',''),('Same.pdf','https://fixture.test/one/Same.pdf'),
+        ('Same.pdf','https://fixture.test/two/Same.pdf'),
+        ('Named.pdf','https://fixture.test/Accepted.pdf'),
+        ('Original.pdf','https://fixture.test/Original.pdf')}
+    for path in [model/'model-names.parquet',producer['work_list']]:
+        pairs=[(row['filename'],row['source_url']) for row in pq.read_table(path).to_pylist()]
+        assert set(pairs)==expected and len(pairs)==len(expected)
+    parity=tmp_path/'parity'; parity.mkdir()
+    compared=run_job(parity,engine(),inputs=[
+        dict(name='model_names',kind='parquet',path=str(model/'model-names.parquet')),
+        dict(name='producer_names',kind='parquet',path=str(producer['work_list']))],
+        steps=[],outputs=[],queries=[dict(name=name,sql=
+            f'SELECT count(*) AS n FROM (SELECT filename,source_url FROM {left} '
+            f'EXCEPT ALL SELECT filename,source_url FROM {right})') for name,left,right in [
+                ('model_only','model_names','producer_names'),
+                ('producer_only','producer_names','model_names')]])
+    assert compared==dict(model_only=[dict(n=0)],producer_only=[dict(n=0)])
+
+
 def test_stage_refuses_a_version_that_does_not_name_its_code_and_inputs(tmp_path):
     captures=input_tables(tmp_path, [])
     with pytest.raises(ValueError, match='version'):
