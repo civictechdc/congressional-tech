@@ -8,10 +8,115 @@ from hashlib import file_digest, sha256
 import json
 import os
 from pathlib import Path
+import re
 import sys
 
 from congress_api.retention.provenance import parquet_output, run_job
 from docspec_client.client import NativeDatasets
+
+ROOT = Path(__file__).parents[2]
+ORACLE_CATALOG = '469ef1ebf6864739a2c8a4c096defcc0'
+ORACLE_GENERATION = '596f08fa2dbf4875bb8da7dc94e33847'
+MEMBER_COLUMNS = {'document_id','list_row','source_id','body_key','effective_filename','source_url','member_path'}
+
+
+def pinned_file(base, pin):
+    if not isinstance(pin,dict) or not isinstance(pin.get('path'),str):
+        raise ValueError('Missing file pin')
+    path=(base/pin['path']).resolve()
+    if not path.is_file():
+        raise ValueError('Missing pinned file: '+str(path))
+    if not isinstance(pin.get('sha256'),str) or not re.fullmatch('[a-f0-9]{64}',pin['sha256']):
+        raise ValueError('Missing SHA-256 file pin: '+str(path))
+    if path.stat().st_size!=pin.get('size'):
+        raise ValueError('Pinned file size differs: '+str(path))
+    with path.open('rb') as stream:
+        if file_digest(stream,'sha256').hexdigest()!=pin['sha256']:
+            raise ValueError('Pinned file digest differs: '+str(path))
+    return path
+
+
+def load_descriptor(path):
+    """Verify selectors and bytes before registering any native relation."""
+    import pyarrow.parquet as pq
+    path=Path(path).resolve()
+    value=json.loads(path.read_text())
+    if value.get('version')!=1:
+        raise ValueError('Missing version-1 parity descriptor')
+    base=path.parent
+    oracle=value.get('oracle',{})
+    selector_path=pinned_file(base,oracle.get('selector'))
+    selector=json.loads(selector_path.read_text())
+    if selector.get('catalog_id')!=ORACLE_CATALOG or selector.get('generation')!=ORACLE_GENERATION:
+        raise ValueError('The oracle must be the agreed pinned catalog pair, never F0')
+    paths={}
+    for name in ['documents','filenames']:
+        source=pinned_file(base,oracle.get(name))
+        expected=selector['files'][name]
+        if oracle[name]['sha256']!=expected['sha256'] or oracle[name]['size']!=expected['bytes']:
+            raise ValueError('Oracle pair differs from its selector: '+name)
+        if pq.ParquetFile(source).metadata.num_rows!=expected['rows']:
+            raise ValueError('Oracle rows differ: '+name)
+        paths['oracle_'+name]=str(source)
+        receipt_path=pinned_file(base,oracle.get(name+'_receipt'))
+        receipt=json.loads(receipt_path.read_text())
+        if receipt.get('key')!=expected['key'] or receipt.get('identity',{}).get('sha256')!=expected['sha256']:
+            raise ValueError('Oracle receipt differs: '+name)
+    candidate=value.get('candidate',{})
+    if candidate.get('kind') not in {'model','f0'} or not isinstance(candidate.get('release'),str):
+        raise ValueError('Missing candidate kind or immutable release location')
+    release=(base/candidate['release']).resolve()
+    manifest_path=release/'manifest.json'
+    if not manifest_path.is_file():
+        raise ValueError('Missing candidate manifest')
+    if sha256(manifest_path.read_bytes()).hexdigest()!=candidate.get('manifest_sha256'):
+        raise ValueError('Candidate manifest digest differs')
+    manifest=json.loads(manifest_path.read_text())
+    if candidate['kind']=='f0' and (manifest.get('origin',{}).get('kind')!='converted_catalog'
+            or manifest['origin'].get('catalog_id')!=ORACLE_GENERATION):
+        raise ValueError('F0 candidate lacks the pinned converter origin')
+    if candidate['kind']=='model' and manifest.get('origin',{}).get('kind')=='converted_catalog':
+        raise ValueError('F0 cannot claim model qualification')
+    names=set()
+    for item in manifest['files']:
+        name=item['name']
+        if Path(name).name!=name or name in names:
+            raise ValueError('Invalid or duplicate release filename')
+        names.add(name)
+        source=pinned_file(release,dict(path=name,sha256=item['sha256'],size=item['size']))
+        if name.endswith('.parquet') and pq.ParquetFile(source).metadata.num_rows!=item['rows']:
+            raise ValueError('Candidate file rows differ: '+name)
+        if name.endswith('.parquet'):
+            paths['release_'+name.removesuffix('.parquet')]=str(source)
+    required={'list.parquet','detail.parquet','links.parquet','urls.parquet','sources.parquet','recoveries.parquet'}
+    if not required<=names:
+        raise ValueError('Missing required public candidate files')
+    identity=[manifest['schema_version'],[[f['name'],f['sha256'],f['size'],f['rows']] for f in manifest['files']]]
+    if sha256(json.dumps(identity,ensure_ascii=False,separators=(',',':')).encode()).hexdigest()!=manifest['release_id']:
+        raise ValueError('Candidate release identity differs')
+    members=pinned_file(base,candidate.get('source_members'))
+    if set(pq.read_schema(members).names)!=MEMBER_COLUMNS:
+        raise ValueError('Source-member sidecar must have the agreed seven columns')
+    paths['source_members']=str(members)
+    for name,pin in value.get('cause_relations',{}).items():
+        source=pinned_file(base,pin)
+        if not set(pin.get('required_columns',[]))<=set(pq.read_schema(source).names):
+            raise ValueError('Cause relation lacks its declared columns: '+name)
+        if not re.fullmatch('[a-z_]+',name):
+            raise ValueError('Invalid canonical relation name')
+        paths[name]=str(source)
+    provenance=value.get('provenance',{})
+    paths['owner_decisions']=str(pinned_file(base,provenance.get('owner_decisions')))
+    b7=pinned_file(base,provenance.get('b7_manifest'))
+    b7_manifest=json.loads(b7.read_text())
+    for pin in b7_manifest['provenance']:
+        pinned_file(b7.parent,pin)
+    for pin in b7_manifest['artifacts']:
+        if pin['path'] in {'owner-records.parquet','ready-imports.parquet','source-time-minima.parquet','recovery-decisions.parquet'}:
+            source=pinned_file(b7.parent,pin)
+            paths['b7_'+Path(pin['path']).stem.replace('-','_')]=str(source)
+    return dict(descriptor=value,paths=paths,manifest=manifest,selector=selector,
+        descriptor_sha256=sha256(path.read_bytes()).hexdigest())
 
 
 def _text(key):
