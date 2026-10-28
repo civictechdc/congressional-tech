@@ -144,3 +144,11 @@ def test_projected_arrow_batches_preserve_complete_receipt_aggregation(counts,tm
     [row]=counts.count_sources(counter=path,files=[],receipt_keys=['receipts/fixture/source.jsonl.gz'],
         work=tmp_path/'work',source_qualifications={str(path):str(pin)},batch_rows=1)
     assert row['source_rows']==5 and row['expected_captures']==8 and row['list_items']==9
+
+
+def test_receipt_totals_fit_a_pool_that_does_not_hold_every_source_line(counts,tmp_path):
+    size=131072
+    path,pin,_=counter(tmp_path,[{}]*size)
+    [row]=counts.count_sources(counter=path,files=[],receipt_keys=['receipts/fixture/source.jsonl.gz'],
+        work=tmp_path/'work',source_qualifications={str(path):str(pin)},batch_rows=128,memory_bytes=8<<20)
+    assert row['source_rows']==row['expected_captures']==row['list_items']==size
