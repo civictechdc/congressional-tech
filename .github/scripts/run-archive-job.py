@@ -8,6 +8,12 @@ import sys
 ROOT = Path(__file__).resolve().parents[2]
 
 
+def binding_command(binding, spec):
+    if binding.get('argv') != ['--execute']:
+        raise ValueError('active job needs explicit --execute arguments')
+    return [sys.executable, '-I', '-m', binding['module'], '--spec', str(spec), *binding['argv']]
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('operation', choices=['publish', 'backfill', 'maintenance'])
@@ -22,9 +28,14 @@ def main():
     if not binding['module']:
         print('Archive job refused: owner CLI is not bound', file=sys.stderr)
         return 2
+    try:
+        command = binding_command(binding, spec)
+    except ValueError as error:
+        print('Archive job refused: ' + str(error), file=sys.stderr)
+        return 2
     if args.check_binding:
         return 0
-    return subprocess.run([sys.executable, '-I', '-m', binding['module'], '--spec', str(spec)], cwd=ROOT).returncode
+    return subprocess.run(command, cwd=ROOT).returncode
 
 
 if __name__ == '__main__':
