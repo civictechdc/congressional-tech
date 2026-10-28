@@ -58,3 +58,7 @@ Actual engine-built real releaseac866cc3 read-only CLI seam passes on9b:129url_s
 **2026-10-28T10:23:19Z**
 
 Owner urgent display-only seed correction: refuse manifest.origin.kind=seed_v5 or display_only=true before scheduler data downloads, native queue work or capture. Contract-first local/fake-public and hand-built entrypoint fixtures; no live run. CODE review required before re-closing.
+
+**2026-10-28T10:26:27Z**
+
+Seed refusal contracts5dd031da failed19 cases before implementation. Final focused scheduler/new admission group passes52 cases13.60s on shared engine-b2fd2d8. Guard runs immediately after manifest and at direct planning/capture/binding/cutoff entrypoints; public inputs stop after pointer+manifest. Public origin is retained as manifest_origin beside transport origin. CODE review pending; no live capture.
