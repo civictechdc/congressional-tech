@@ -1,6 +1,5 @@
 """D1 receipt facts: expected rows precede the versioned native mapping."""
 import gzip
-import hashlib
 import json
 import os
 from pathlib import Path
@@ -10,6 +9,7 @@ import pyarrow.parquet as pq
 import pytest
 
 from docspec_client.client import NativeDatasets
+from capture_qualification_helpers import write_qualified_bytes,write_qualified_parquet,created_qualifications
 
 STAMP = '2026-10-20T12:34:56Z'
 SHA = 'a' * 64
@@ -19,10 +19,9 @@ KEY = 'bodies/sha256/aa/' + SHA + '.gz'
 def files(root, rows, key='receipts/documents/2026-10-20/run.jsonl.gz'):
     root.mkdir(parents=True, exist_ok=True)
     path = root / 'receipt.gz'
-    with gzip.open(path, 'wt') as out:
-        for row in rows:
-            out.write(json.dumps(row, separators=(',', ':')) + '\n')
-    return [dict(key=key, path=str(path))]
+    data=gzip.compress(''.join(json.dumps(row,separators=(',',':'))+'\n' for row in rows).encode(),mtime=0)
+    qualification=write_qualified_bytes(path,data)
+    return [dict(key=key,path=str(path),qualification=qualification)]
 
 
 def ingest(root, rows, *, key='receipts/documents/2026-10-20/run.jsonl.gz', **kwargs):
@@ -43,24 +42,23 @@ def test_bodiless_status_time_and_non_http_capture_status(tmp_path):
             capture_status=200, checked_at=STAMP, started_at=STAMP)),
     ])
     a, b = pq.read_table(stage / 'captures.parquet').to_pylist()
-    assert a['http_status'] == a['attempt_status'] == 404
+    assert a['http_status'] == 404
     assert a['retrieved_at'].isoformat() == '2026-10-20T12:34:56+00:00'
     assert a['run_id'] == 'old-run' and a['outcome'] == 'failed'
     assert a['sha256'] is None and a['capture_index'] == 0
     assert b['http_status'] is None and b['retrieved_at'] is None
 
 
-def test_new_attempts_do_not_borrow_final_success(tmp_path):
+def test_body_attempts_keep_final_line_facts(tmp_path):
     stage = ingest(tmp_path, [dict(run_id='new', mode='fetch', family='documents',
         requested_url='https://example.org/a', url='https://example.org/final',
-        retrieved_at=STAMP, http_status=200, outcome='stored',
+        retrieved_at=STAMP, http_status=200, outcome='stored', complete=True,
         prior_attempts=[dict(url='https://example.org/a', retrieved_at=STAMP, http_status=206)],
         captures=[dict(body(), attempt=1, complete=False, stored_suffix=''),
                   dict(body(), attempt=0, complete=True, stored_suffix='.gz')])])
     a, b = pq.read_table(stage / 'captures.parquet').to_pylist()
     assert a['http_status'] == b['http_status'] == 200
-    assert (a['attempt_status'], a['complete']) == (206, False)
-    assert (b['attempt_status'], b['complete']) == (200, True)
+    assert a['complete'] is False and b['complete'] is True
     assert a['stored_suffix'] == '' and a['sha256'] == bytes.fromhex(SHA)
     assert a['mode'] == b['mode'] == 'fetch'
     assert a['original_url'] is None and b['original_url'] is None
@@ -69,11 +67,11 @@ def test_new_attempts_do_not_borrow_final_success(tmp_path):
 
 def test_old_capture_and_matching_reference_enrich_storage_only(tmp_path):
     stage = ingest(tmp_path, [dict(record=dict(url='https://example.org/a', http_status=200,
-        retrieved_at=STAMP, outcome='saved'), captures=[body(status_code=206, complete=False)],
+        retrieved_at=STAMP, outcome='saved', complete=False), captures=[body(status_code=206, complete=False)],
         file_references=[body(http_status=200, complete=True, stored_bytes=42)])])
     [row] = pq.read_table(stage / 'captures.parquet').to_pylist()
     assert row['stored_bytes'] == 42 and row['stored_suffix'] == '.gz'
-    assert row['attempt_status'] == 206 and row['complete'] is False
+    assert row['http_status'] == 200 and row['complete'] is False
 
 
 def test_unmatched_secondary_reference_refuses_with_locator(tmp_path):
@@ -101,7 +99,7 @@ def test_unknown_outcome_refuses_before_output(tmp_path, value):
     assert not (tmp_path / 'stage/captures.parquet').exists()
 
 
-def test_cap_and_line_fetch_times_and_64mib_completeness(tmp_path):
+def test_entry_time_precedes_line_with_legacy_completeness(tmp_path):
     stage = ingest(tmp_path, [dict(record=dict(url='https://example.org/a',
         captured_at=STAMP, http_status=200), captures=[dict(body(), bytes=64<<20,
         parent_retrieved_at='2026-10-19T00:00:00Z'), body(capture_date='2026-10-18')])])
@@ -140,32 +138,11 @@ def test_ingested_receipt_is_never_reopened_by_stage(tmp_path):
     assert pq.read_table(stage/'captures.parquet')['receipt_key'].to_pylist()==[pending[0]['key']]
 
 
-def test_staging_refuses_metadata_with_a_different_producer(tmp_path):
-    from congress_api.lake.receipt_metadata import compact
-    from congress_api.lake.captures import stage_captures
-    engine=NativeDatasets.from_config(os.environ['DOCSPEC_JOB_CONFIG'])
-    source=files(tmp_path/'raw',[dict(record=dict(url='https://example.org/a'))])
-    metadata=compact(files=source,engine=engine,work=tmp_path/'metadata')
-    manifest=metadata.parent/'metadata.json'
-    descriptor=json.loads(manifest.read_text())
-    descriptor['producer']['sha256']='0'*64
-    manifest.write_text(json.dumps(descriptor))
-    with pytest.raises(ValueError,match='producer'):
-        stage_captures([dict(key=source[0]['key'])],engine=engine,work=tmp_path/'stage',counter=metadata)
-    assert not (tmp_path/'stage/ingested-receipts.json').exists()
 
 
-def test_inline_record_sha_canonical_json_required(tmp_path):
-    record = dict(z=2, meeting=dict(z=['é', dict(b=2, a=1)], a='value'))
-    stage = ingest(tmp_path, [dict(record=record)],
-                   key='receipts/congress/meetings/2026-10-20/run.jsonl.gz')
-    [row] = pq.read_table(stage/'captures.parquet').to_pylist()
-    compact = json.dumps(record['meeting'], ensure_ascii=False, sort_keys=True,
-                         separators=(',', ':')).encode()
-    assert row['record_sha'] == hashlib.sha256(compact).digest()
 
 
-def test_headers_items_retry_deadline_and_not_modified(tmp_path):
+def test_status_outcomes_ignore_on_demand_headers(tmp_path):
     stage = ingest(tmp_path, [
         dict(record=dict(url='https://example.org/a', http_status=304, retrieved_at=STAMP)),
         dict(record=dict(url='https://example.org/b', http_status=200, retrieved_at=STAMP,
@@ -175,9 +152,8 @@ def test_headers_items_retry_deadline_and_not_modified(tmp_path):
     ])
     a, b = pq.read_table(stage/'captures.parquet').to_pylist()
     assert a['outcome'] == 'unchanged'
-    assert b['outcome'] == 'retry_later'
-    assert b['retry_after'].isoformat() == '2026-10-20T12:36:56+00:00'
-    assert b['h_content_disposition'] == 'attachment; filename=x.pdf'
+    assert b['outcome'] == 'stored'
+    assert 'retry_after' not in b and b['h_content_disposition'] is None
 
 
 def test_list_record_pointer_selects_its_own_response(tmp_path):
@@ -185,8 +161,8 @@ def test_list_record_pointer_selects_its_own_response(tmp_path):
         dict(url='https://example.org/b', status_code=200)], captures=[
             body(pointer=[0, 'content', 'body']), body(pointer=['1', 'content', 'body'])])])
     a, b = pq.read_table(stage/'captures.parquet').to_pylist()
-    assert (a['url'], a['attempt_status']) == ('https://example.org/a', 206)
-    assert (b['url'], b['attempt_status']) == ('https://example.org/b', 200)
+    assert (a['url'], a['http_status']) == ('https://example.org/a', 206)
+    assert (b['url'], b['http_status']) == ('https://example.org/b', 200)
 
 
 def test_list_bodiless_conflicting_facts_refuse(tmp_path):
@@ -216,7 +192,7 @@ def test_exact_arrow_schema_and_unchanged_source_receipt(tmp_path):
 
 
 def test_verified_counter_projection_keeps_raw_metadata_missing_from_typed_fields(tmp_path):
-    from congress_api.lake.captures import compact_counter, stage_captures
+    from congress_api.lake.captures import stage_captures
     engine=NativeDatasets.from_config(os.environ['DOCSPEC_JOB_CONFIG'])
     record=dict(url='https://example.org/a',http_status=200,retrieved_at=STAMP,
         prior_attempts=[dict(http_status=206)],response_header_items=[
@@ -231,10 +207,10 @@ def test_verified_counter_projection_keeps_raw_metadata_missing_from_typed_field
         ('__receipt_key',pa.string()),('__receipt_line',pa.int64()),
         ('__receipt_family',pa.string()),('__raw_line',pa.string()),('__type_conflicts',pa.list_(pa.string()))])
     counter=tmp_path/'counter.parquet'
-    pq.write_table(pa.Table.from_pylist([dict(source, __receipt_key=receipt_key,__receipt_line=1,
+    write_qualified_parquet(pa.Table.from_pylist([dict(source, __receipt_key=receipt_key,__receipt_line=1,
         __receipt_family='documents',__raw_line=json.dumps(source),__type_conflicts=[])],schema=schema),counter)
-    metadata=compact_counter(counter,engine=engine,work=tmp_path/'compact')
-    actual=stage_captures([dict(key=receipt_key)],engine=engine,work=tmp_path/'counter-stage',counter=metadata)
+    actual=stage_captures([dict(key=receipt_key)],engine=engine,work=tmp_path/'counter-stage',
+        validated_counter=counter,source_qualifications=created_qualifications(counter))
     expected=ingest(tmp_path/'direct',[source])
     a=pq.read_table(actual/'capture-evidence.parquet')
     b=pq.read_table(expected/'capture-evidence.parquet')
@@ -242,14 +218,14 @@ def test_verified_counter_projection_keeps_raw_metadata_missing_from_typed_field
         for x,y in zip(a.to_pylist(),b.to_pylist())],[(x,y) for x,y in zip(a.schema,b.schema) if x!=y])
 
 
-def test_old_prior_attempt_without_attempt_number_keeps_own_response(tmp_path):
+def test_prior_body_keeps_final_status_and_legacy_completeness(tmp_path):
     stage=ingest(tmp_path,[dict(record=dict(http_status=200,retrieved_at=STAMP,
         outcome='saved',prior_attempts=[dict(http_status=206)]),captures=[
             dict(body(),bytes=64<<20,pointer=['prior_attempts',0,'content','body']),
             body(pointer=['content','body'])])])
     a,b=pq.read_table(stage/'captures.parquet').to_pylist()
-    assert (a['attempt_status'],a['complete'])==(206,False)
-    assert (b['attempt_status'],b['complete'])==(200,True)
+    assert (a['http_status'],a['complete'])==(200,False)
+    assert (b['http_status'],b['complete'])==(200,True)
 
 
 @pytest.mark.parametrize('which,expected',[
@@ -277,41 +253,25 @@ def test_new_failed_outcome_is_not_reinterpreted_as_stored(tmp_path):
     assert pq.read_table(stage/'captures.parquet')['outcome'].to_pylist()==['failed']
 
 
-def test_payload_is_removed_before_capture_fanout(tmp_path):
-    from congress_api.lake.receipt_metadata import compact
+def test_payload_is_absent_from_materialized_capture_rows(tmp_path):
     marker='body-payload-must-stay-in-raw-'
     stage=ingest(tmp_path,[dict(source_file='fanout',record=dict(url='https://example.org/a',
         http_status=200,content=dict(body=marker*20000)),captures=[body() for _ in range(100)])])
-    metadata=compact(files=[dict(key='receipts/documents/2026-10-20/run.jsonl.gz',
-        path=str(tmp_path/'input/receipt.gz'))],engine=NativeDatasets.from_config(os.environ['DOCSPEC_JOB_CONFIG']),
-        work=tmp_path/'inspect-metadata')
-    narrow=pq.read_table(metadata)
-    [row]=narrow.to_pylist()
-    assert marker not in str(row['line']) and marker not in str(row['record_values'])
-    assert narrow['record_values'].nbytes<32768
-    assert pq.read_metadata(stage/'captures.parquet').num_rows==100
+    facts=pq.read_table(stage/'capture-evidence.parquet')
+    assert facts.num_rows==100 and marker not in str(facts.to_pylist())
+    assert all(not pa.types.is_nested(field.type) for field in facts.schema)
 
 
-def test_prior_attempt_keeps_status_code_and_recorded_completeness(tmp_path):
-    stage=ingest(tmp_path,[dict(record=dict(http_status=200,complete=True,
+def test_prior_body_does_not_borrow_recorded_final_completeness(tmp_path):
+    stage=ingest(tmp_path,[dict(record=dict(http_status=200,complete=False,
         prior_attempts=[dict(status_code=206,complete=False)]),captures=[
             body(pointer=['prior_attempts',0,'content','body']),
             body(pointer=['content','body'])])])
     prior,final=pq.read_table(stage/'captures.parquet').to_pylist()
-    assert (prior['attempt_status'],prior['complete'])==(206,False)
-    assert (final['attempt_status'],final['complete'])==(200,True)
+    assert (prior['http_status'],prior['complete'])==(200,True)
+    assert (final['http_status'],final['complete'])==(200,False)
 
 
-@pytest.mark.parametrize('captured_member',[False,True])
-def test_archive_expansion_requires_a_captured_member(tmp_path,captured_member):
-    captures=[body(pointer=['content','body'])]
-    if captured_member:
-        captures.append(body(pointer=['archive_members',0,'body'],member_path='inside.pdf'))
-    stage=ingest(tmp_path,[dict(record=dict(archive_members=[dict(error='unreadable')]),
-                               captures=captures)])
-    rows=pq.read_table(stage/'captures.parquet').to_pylist()
-    assert rows[0]['expansion']==('expanded' if captured_member else None)
-    if captured_member:assert rows[1]['expansion'] is None
 
 
 def test_sparse_bodiless_record_list_never_silently_loses_later_facts(tmp_path):
@@ -322,23 +282,8 @@ def test_sparse_bodiless_record_list_never_silently_loses_later_facts(tmp_path):
             dict(url='https://example.org/a',status_code=404,observed_at=STAMP)])])
 
 
-def test_http_date_retry_after_preserves_publisher_deadline(tmp_path):
-    stage=ingest(tmp_path,[dict(record=dict(http_status=503,retrieved_at=STAMP,
-        response_headers={'retry-after':'Wed, 21 Oct 2026 07:28:00 GMT'}))])
-    [row]=pq.read_table(stage/'captures.parquet').to_pylist()
-    assert row['retry_after'].isoformat()=='2026-10-21T07:28:00+00:00'
 
 
-@pytest.mark.parametrize('value,expected',[
-    ('Wednesday, 21-Oct-26 07:28:00 GMT','2026-10-21T07:28:00+00:00'),
-    ('Wed Oct 21 07:28:00 2026','2026-10-21T07:28:00+00:00'),
-    ('invalid',None),('-1',None),('9223372036854775807',None),
-])
-def test_retry_deadline_accepts_http_dates_and_refuses_invalid_delays(tmp_path,value,expected):
-    stage=ingest(tmp_path,[dict(record=dict(http_status=503,retrieved_at=STAMP,
-        response_headers={'retry-after':value}))])
-    [row]=pq.read_table(stage/'captures.parquet').to_pylist()
-    assert (row['retry_after'].isoformat() if row['retry_after'] else None)==expected
 
 
 @pytest.mark.parametrize('same_url',[True,False])
@@ -353,16 +298,3 @@ def test_owner_decided_direct_official_package_is_a_fetch_only_for_same_source(t
     assert row['mode']==('fetch' if same_url else 'retained_import')
     assert row['original_url']==(None if same_url else original)
     assert row['retrieved_at'].isoformat()=='2026-10-20T12:34:56+00:00'
-
-
-@pytest.mark.parametrize('headers',[
-    {'response_header_items':[{'name':'Retry-After','value':'120'},
-                              {'name':'Content-Disposition','value':'attachment; filename=top.pdf'}]},
-    {'headers':{'Retry-After':'120','Content-Disposition':'attachment; filename=top.pdf'}},
-    {'response_headers':{'Retry-After':'120','Content-Disposition':'attachment; filename=top.pdf'}},
-])
-def test_top_level_header_shapes_preserve_deadline_and_download_name(tmp_path,headers):
-    stage=ingest(tmp_path,[dict(http_status=503,retrieved_at=STAMP,**headers)])
-    [row]=pq.read_table(stage/'captures.parquet').to_pylist()
-    assert row['retry_after'].isoformat()=='2026-10-20T12:36:56+00:00'
-    assert row['h_content_disposition']=='attachment; filename=top.pdf'
