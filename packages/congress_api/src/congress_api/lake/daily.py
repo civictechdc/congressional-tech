@@ -8,6 +8,7 @@ import pyarrow.parquet as pq
 from congress_api.lake import captures,filenames,readings,tables
 from congress_api.lake.receipt_inventory import select_receipts
 from congress_api.retention.body_store import BodyStore,LocalAdapter,R2Adapter,validate_key
+from congress_shared.storage import single_put_md5
 from congress_api.retention.provenance import file_pin,instant,local_unreadable_inventory,run_job
 from congress_api.retention.provenance_inventory import UnreadableInventory,unreadable_inventory
 from congress_shared.custody import custody_identity,VerifiedFile
@@ -83,7 +84,23 @@ def _validate(spec,engine,raw_store):
     for kind in PROVENANCE_KINDS:
         qualified[kind]=[];keys=set()
         for row in spec['provenance'][kind]:
-            row,identity=_qualified(row,kind,check_file=kind!='unreadable')
+            row,_=_qualified(row,kind,check_file=False)
+            cached=raw_store._provenance_cache.get(row['key'])
+            if cached is not None:
+                previous,identity,_=cached
+                if any(previous[k]!=row[k] for k in ('key','path','sha256','size')):
+                    raise ValueError('Cached daily provenance changed')
+                if isinstance(raw_store.adapter,R2Adapter):
+                    if (single_put_md5(previous['etag'])!=single_put_md5(row['etag'])
+                            or identity.get('md5')!=single_put_md5(row['etag'])):
+                        raise ValueError('Cached daily provenance MD5 changed')
+                elif previous['etag']!=row['etag']:
+                    raise ValueError('Cached daily provenance ETag changed')
+                if identity.sha256!=row['sha256'] or identity.size_bytes!=row['size']:
+                    raise ValueError('Cached daily provenance byte identity changed')
+                identity.require(row['path'])
+            else:
+                row,identity=_qualified(row,kind,check_file=kind!='unreadable')
             if row['key'] in keys:raise ValueError('Duplicate daily provenance key')
             keys.add(row['key']);qualified[kind].append(row)
             if identity is not None:identities[row['path']]=identity
@@ -152,7 +169,8 @@ def _final_provenance(initial,raw_store,imported,identities,*,acknowledgements=N
         if ref['key'] not in known:known[ref['key']]=row
     result['unreadable']=sorted(known.values(),key=lambda r:r['key'])
     for path,identity in identities.items():
-        if custody_identity(path)!=identity:raise ValueError('Daily provenance changed while producing')
+        if isinstance(identity,VerifiedFile):identity.require(path)
+        elif custody_identity(path)!=identity:raise ValueError('Daily provenance changed while producing')
     for key,row in required.items():require_ack(row,acknowledgements[key])
     if unreadable_snapshot is not None:unreadable_snapshot.rows()
     return result
