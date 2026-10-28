@@ -122,6 +122,9 @@ def test_descriptor_requires_the_pinned_pair_and_actual_candidate_files(tmp_path
     path.write_text(json.dumps(dict(version=1,oracle=dict(selector=dict(path='missing',sha256='0'*64,size=0)))))
     with pytest.raises(ValueError,match='missing|Missing'):
         parity.load_descriptor(path)
+    path.write_text(json.dumps(dict(version=1,oracle=dict(selector=dict(path='missing',sha256='0'*64,size=0)),candidate=dict(kind='f0'))))
+    with pytest.raises(ValueError,match='missing|Missing'):
+        parity.load_descriptor(path)
 
 
 def test_native_physical_ordinals_cross_three_row_groups(tmp_path):
@@ -139,6 +142,53 @@ def test_native_physical_ordinals_cross_three_row_groups(tmp_path):
     result=run_job(tmp_path,engine(),inputs=[dict(name='numbered',kind='parquet',path=str(numbered))],
         steps=[],outputs=[],queries=[dict(name='count',sql='SELECT count(*) AS n,count(*) FILTER(WHERE list_row<>value) AS mismatches FROM numbered')])
     assert result['count']==[dict(n=fixture['rows'],mismatches=fixture['expected_mismatches'])]
-    path.write_text(json.dumps(dict(version=1,oracle=dict(selector=dict(path='missing',sha256='0'*64,size=0)),candidate=dict(kind='f0'))))
-    with pytest.raises(ValueError,match='missing|Missing'):
-        parity.load_descriptor(path)
+    with pytest.raises(ValueError,match='one.partition'):
+        parity.number_file(source,engine=engine(),work=tmp_path/'unsafe-numbered')
+
+
+def f0_fixture(tmp_path):
+    import pyarrow as pa
+    import pyarrow.parquet as pq
+    from congress_api.retention.provenance import file_pin
+    from viewer_publication.archive_release import convert_catalog
+    data=FIXTURE['f0_catalog']
+    arrays=['body_keys','filenames','source_urls','body_format','format','media_type','http_status','capture_outcome',
+        'response_usable','response_body_complete','filename_origins','source_paths','document_kind','document_family',
+        'committee_code','congress','date_token','date_token_candidates','state_retrieved_at','source_link_label',
+        'source_page_url','source_meeting_id','source_capture_url','measure_references','member_bioguide_id',
+        'hearing_package_id','recovered_filename','recovered_source_url']
+    schema=pa.schema([(name,pa.string()) for name in ['document_id','source_id','body_key','filename','source_url']]
+        +[(name,pa.list_(pa.string())) for name in arrays])
+    for name,rows in [('documents',data['documents']),('filenames',data['files'])]:
+        pq.write_table(pa.Table.from_pylist(rows,schema=schema),tmp_path/(name+'.parquet'))
+    pq.write_table(pa.table(dict(body_key=[r['body_key'] for r in data['files']],bytes=[100]*4,media_type=['text/html','text/html','application/pdf','application/xml'])),tmp_path/'captures.parquet')
+    pq.write_table(pa.table(dict(system_code=['hsag00'],name=['Agriculture'],chamber=['house'])),tmp_path/'committees.parquet')
+    manifest=convert_catalog(tmp_path/'documents.parquet',tmp_path/'filenames.parquet',tmp_path/'captures.parquet',tmp_path/'committees.parquet',
+        catalog_id=parity.ORACLE_GENERATION,output=tmp_path/'release',scratch=tmp_path/'converter',engine=engine())
+    selector=dict(version=1,catalog_id=parity.ORACLE_CATALOG,generation=parity.ORACLE_GENERATION,files={})
+    for name,key in [('documents','documents.parquet'),('filenames','document-filenames.parquet')]:
+        pin=file_pin(tmp_path/(name+'.parquet'))
+        selector['files'][name]=dict(key='catalog-generations/'+parity.ORACLE_GENERATION+'/'+key,sha256=pin['sha256'],bytes=pin['size'],rows=len(data[name if name=='documents' else 'files']))
+        (tmp_path/(name+'-receipt.json')).write_text(json.dumps(dict(key=selector['files'][name]['key'],identity=dict(sha256=pin['sha256'],bytes=pin['size']))))
+    (tmp_path/'selector.json').write_text(json.dumps(selector))
+    example=json.loads((ROOT/'model/fixtures/e4-parity-inputs.example.json').read_text())
+    def pin(name):
+        path=tmp_path/name
+        return dict(path=str(path),**file_pin(path))
+    example['oracle']=dict(selector=pin('selector.json'),documents=pin('documents.parquet'),filenames=pin('filenames.parquet'),
+        documents_receipt=pin('documents-receipt.json'),filenames_receipt=pin('filenames-receipt.json'))
+    example['candidate']=dict(kind='f0',release=str(tmp_path/'release'),manifest_sha256=file_pin(tmp_path/'release/manifest.json')['sha256'])
+    example['cause_relations']={}
+    path=tmp_path/'f0-template.json';path.write_text(json.dumps(example))
+    return path
+
+
+def test_actual_f0_candidate_has_only_converter_gaps(tmp_path):
+    template=f0_fixture(tmp_path)
+    descriptor=parity.prepare_f0(template,engine=engine(),work=tmp_path/'prepare')
+    result=parity.compare_descriptor(descriptor,engine_config=os.environ['DOCSPEC_JOB_CONFIG'],work=tmp_path/'comparison')
+    for field in ['unexplained','unclassified','invalid_ids']:
+        assert result['counts'][field]==FIXTURE['f0_catalog']['expected'][field]
+    assert set(FIXTURE['f0_catalog']['expected']['required_causes'])<={row['cause'] for row in result['causes']}
+    assert result['candidate_kind']=='f0'
+    assert result['model_qualified'] is False

@@ -424,5 +424,352 @@
         "body_link"
       ]
     }
-  ]
+  ],
+  "f0_catalog": {
+    "files": [
+      {
+        "filename": "Alpha.html",
+        "source_url": "https://fixture.test/alpha.html",
+        "body_key": "bodies/sha256/aa/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa.gz",
+        "source_id": "75b613d57b42f656bb47ed7eec4822458e9ca6a30fd3476fcdbd377a77eaf597",
+        "body_format": [
+          "html"
+        ],
+        "format": [
+          "html"
+        ],
+        "media_type": [
+          "text/html"
+        ],
+        "http_status": [
+          "200"
+        ],
+        "capture_outcome": [
+          "saved"
+        ],
+        "response_usable": [
+          "true"
+        ],
+        "response_body_complete": [
+          "true"
+        ],
+        "state_retrieved_at": [
+          "2020-01-02T00:00:00Z"
+        ],
+        "source_page_url": [
+          "https://fixture.test/list1",
+          "https://fixture.test/list2"
+        ],
+        "source_link_label": [
+          "One",
+          "Two"
+        ],
+        "document_id": "a53d6ab2d63a62b98242c300b107473234ccf72537cb38bc4d0f9de399d128cd"
+      },
+      {
+        "filename": "Beta.html",
+        "source_url": "https://fixture.test/beta.html",
+        "body_key": "bodies/sha256/aa/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa.gz",
+        "source_id": "a02b0b6c7c23bce259b9583d187591e5ecc1af03c35ec9ceb5519a76b7939235",
+        "body_format": [
+          "html"
+        ],
+        "format": [
+          "html"
+        ],
+        "media_type": [
+          "text/html"
+        ],
+        "http_status": [
+          "200"
+        ],
+        "capture_outcome": [
+          "saved"
+        ],
+        "response_usable": [
+          "true"
+        ],
+        "response_body_complete": [
+          "true"
+        ],
+        "state_retrieved_at": [
+          "2020-01-02T00:00:00Z"
+        ],
+        "source_page_url": [
+          "https://fixture.test/list1",
+          "https://fixture.test/list2"
+        ],
+        "source_link_label": [
+          "One",
+          "Two"
+        ],
+        "document_id": "9d819fd204268d39b31ef0e0fbee553f65cdb79bf0bfc010eb1b59754b3803fd"
+      },
+      {
+        "filename": "Record.pdf",
+        "source_url": "https://fixture.test/record.pdf",
+        "body_key": "bodies/sha256/22/2222222222222222222222222222222222222222222222222222222222222222.gz",
+        "source_id": "f6f7497aef06e55bc67d54582e1d9d169f60043e9e07473b4171c06467a98f92",
+        "body_format": [
+          "pdf"
+        ],
+        "format": [
+          "pdf"
+        ],
+        "media_type": [
+          "application/pdf"
+        ],
+        "http_status": [
+          "200"
+        ],
+        "capture_outcome": [
+          "saved"
+        ],
+        "response_usable": [
+          "true"
+        ],
+        "response_body_complete": [
+          "true"
+        ],
+        "state_retrieved_at": [
+          "2020-01-02T00:00:00Z"
+        ],
+        "source_page_url": [
+          "https://fixture.test/list1",
+          "https://fixture.test/list2"
+        ],
+        "source_link_label": [
+          "One",
+          "Two"
+        ],
+        "document_id": "fb36fc98a84e76a1ef4c44cbc960623e74de53da86769923876a07204c48f9ae"
+      },
+      {
+        "filename": "Record.xml",
+        "source_url": "https://fixture.test/record.xml",
+        "body_key": "bodies/sha256/33/3333333333333333333333333333333333333333333333333333333333333333.gz",
+        "source_id": "26ba23a7c509aa0a937f3c0716a690ca6a172e29ef2edc2a3645290449397933",
+        "body_format": [
+          "xml"
+        ],
+        "format": [
+          "xml"
+        ],
+        "media_type": [
+          "application/xml"
+        ],
+        "http_status": [
+          "200"
+        ],
+        "capture_outcome": [
+          "saved"
+        ],
+        "response_usable": [
+          "true"
+        ],
+        "response_body_complete": [
+          "true"
+        ],
+        "state_retrieved_at": [
+          "2020-01-02T00:00:00Z"
+        ],
+        "source_page_url": [
+          "https://fixture.test/list1",
+          "https://fixture.test/list2"
+        ],
+        "source_link_label": [
+          "One",
+          "Two"
+        ],
+        "document_id": "fb36fc98a84e76a1ef4c44cbc960623e74de53da86769923876a07204c48f9ae"
+      }
+    ],
+    "documents": [
+      {
+        "filename": "Alpha.html",
+        "source_url": "https://fixture.test/alpha.html",
+        "body_key": "bodies/sha256/aa/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa.gz",
+        "source_id": "75b613d57b42f656bb47ed7eec4822458e9ca6a30fd3476fcdbd377a77eaf597",
+        "body_format": [
+          "html"
+        ],
+        "format": [
+          "html"
+        ],
+        "media_type": [
+          "text/html"
+        ],
+        "http_status": [
+          "200"
+        ],
+        "capture_outcome": [
+          "saved"
+        ],
+        "response_usable": [
+          "true"
+        ],
+        "response_body_complete": [
+          "true"
+        ],
+        "state_retrieved_at": [
+          "2020-01-02T00:00:00Z"
+        ],
+        "source_page_url": [
+          "https://fixture.test/list1",
+          "https://fixture.test/list2"
+        ],
+        "source_link_label": [
+          "One",
+          "Two"
+        ],
+        "document_id": "a53d6ab2d63a62b98242c300b107473234ccf72537cb38bc4d0f9de399d128cd",
+        "body_keys": [
+          "bodies/sha256/aa/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa.gz"
+        ],
+        "document_kind": [
+          "statement"
+        ],
+        "document_family": [
+          "Congressional"
+        ],
+        "congress": [
+          "118"
+        ],
+        "date_token": [
+          "2024-05-01"
+        ],
+        "date_token_candidates": [
+          "2024-05-01"
+        ]
+      },
+      {
+        "filename": "Beta.html",
+        "source_url": "https://fixture.test/beta.html",
+        "body_key": "bodies/sha256/aa/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa.gz",
+        "source_id": "a02b0b6c7c23bce259b9583d187591e5ecc1af03c35ec9ceb5519a76b7939235",
+        "body_format": [
+          "html"
+        ],
+        "format": [
+          "html"
+        ],
+        "media_type": [
+          "text/html"
+        ],
+        "http_status": [
+          "200"
+        ],
+        "capture_outcome": [
+          "saved"
+        ],
+        "response_usable": [
+          "true"
+        ],
+        "response_body_complete": [
+          "true"
+        ],
+        "state_retrieved_at": [
+          "2020-01-02T00:00:00Z"
+        ],
+        "source_page_url": [
+          "https://fixture.test/list1",
+          "https://fixture.test/list2"
+        ],
+        "source_link_label": [
+          "One",
+          "Two"
+        ],
+        "document_id": "9d819fd204268d39b31ef0e0fbee553f65cdb79bf0bfc010eb1b59754b3803fd",
+        "body_keys": [
+          "bodies/sha256/aa/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa.gz"
+        ],
+        "document_kind": [
+          "statement"
+        ],
+        "document_family": [
+          "Congressional"
+        ],
+        "congress": [
+          "118"
+        ],
+        "date_token": [
+          "2024-05-01"
+        ],
+        "date_token_candidates": [
+          "2024-05-01"
+        ]
+      },
+      {
+        "filename": "Record.pdf",
+        "source_url": "https://fixture.test/record.pdf",
+        "body_key": "bodies/sha256/22/2222222222222222222222222222222222222222222222222222222222222222.gz",
+        "source_id": "f6f7497aef06e55bc67d54582e1d9d169f60043e9e07473b4171c06467a98f92",
+        "body_format": [
+          "pdf"
+        ],
+        "format": [
+          "pdf",
+          "xml"
+        ],
+        "media_type": [
+          "application/pdf"
+        ],
+        "http_status": [
+          "200"
+        ],
+        "capture_outcome": [
+          "saved"
+        ],
+        "response_usable": [
+          "true"
+        ],
+        "response_body_complete": [
+          "true"
+        ],
+        "state_retrieved_at": [
+          "2020-01-02T00:00:00Z"
+        ],
+        "source_page_url": [
+          "https://fixture.test/list1",
+          "https://fixture.test/list2"
+        ],
+        "source_link_label": [
+          "One",
+          "Two"
+        ],
+        "document_id": "fb36fc98a84e76a1ef4c44cbc960623e74de53da86769923876a07204c48f9ae",
+        "body_keys": [
+          "bodies/sha256/22/2222222222222222222222222222222222222222222222222222222222222222.gz",
+          "bodies/sha256/33/3333333333333333333333333333333333333333333333333333333333333333.gz"
+        ],
+        "document_kind": [
+          "statement"
+        ],
+        "document_family": [
+          "Congressional"
+        ],
+        "congress": [
+          "118"
+        ],
+        "date_token": [
+          "2024-05-01"
+        ],
+        "date_token_candidates": [
+          "2024-05-01"
+        ]
+      }
+    ],
+    "expected": {
+      "unexplained": 0,
+      "unclassified": 0,
+      "invalid_ids": 0,
+      "required_causes": [
+        "f0_dates",
+        "f0_format_alternates",
+        "f0_source_context_fold",
+        "f0_shared_body_link",
+        "f0_display_facts"
+      ]
+    }
+  }
 }
