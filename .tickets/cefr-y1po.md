@@ -17,3 +17,9 @@ Apply owner 163103 after the read-only enumeration of all 95 assembly receipts. 
 
 Registry binds the mapping digest and observed counts; reduced real line489 and negative controls pass; committed522receipt compatibility is recorded; schemas remain24/34; one CODE review approves; resume only uncommitted receipts through native append.
 
+
+## Notes
+
+**2026-10-28T17:27:02Z**
+
+Registry21056 and fixtures precede behaviord387 and reviewed aliasfix10bb;20 provider/Vote checks pass92.65s0cb with native24/public34 unchanged. One CODE review found one alias-priority concern, confirmed by RED543237 then fixed10bb; no other findings. All95assembly receipts enumerated2003314lines/114.1s with provider counts2+1 and no other family unknowns;522committed receipts2823398captures proven unaffected. D1 resume from23 prepared, awaiting lead B1-accepted quiet marker; no stage retag or raw reparse.

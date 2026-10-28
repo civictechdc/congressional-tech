@@ -50,3 +50,7 @@ Updated consolidated-BIND keep boundary b258f488/d156a6ff: active cli_args.rs ex
 **2026-10-28T08:01:46Z**
 
 Refreshed preparation at CT53e4df39/DS71cc6eb: all19groups/731files/197241populationlines, SHA303de208ccfef01cbb84a5d9a6ce7d69ab57dee3612efc8a26791f6352ae198d. Fixed-head reproduction byte-identical; verify stale=false/no scanned dirty sources. Keep correction83eb8ef3→70406b41 passes9runner checks0.20s, first-flip writer/VerifiedTransfer/dataclasses/hashlib retained.19manualranges/13branchsplits remain switch gates. No source deletion; regenerate at final combined heads.
+
+**2026-10-28T17:27:02Z**
+
+Owner18CT scope3a/4ba contracts precede91c behavior; CODE found canonical review keeps and bad replacement paths, fixed0dc/a354 with19focusedPASS2.62s. Generator wc-l796→827 (91c body828 typo). New immutable shared/switch-inventory-4fe18d00 has18CTgroups609files128077populationlines, byte-identical fixed-head reproduction. Currentverify refuses only uncommitted4xdiagnostic test; no cleanfinalswitch claim. No DS files, cuts or live changes; old benchmark retired for active measure-archive.
