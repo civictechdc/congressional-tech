@@ -7,6 +7,7 @@ import subprocess
 import ctypes
 import errno
 import sys
+from pathlib import Path
 
 
 def process_tree(pid):
@@ -27,11 +28,20 @@ def resident_tree(pid):
 
 
 def physical_tree(pid):
-    """Sample macOS charged memory, including compressed memory; None elsewhere.
+    """Sample macOS charged memory, or a conservative Linux RSS+swap proxy.
 
     RUSAGE_INFO_V0 follows the installed macOS SDK's sys/resource.h layout.
     RSS alone can miss compressed private allocations on a memory-busy Mac.
     """
+    if sys.platform=='linux':
+        total=0
+        for process,(_,rss) in process_tree(pid).items():
+            try:
+                with (Path('/proc')/str(process)/'status').open() as stream:
+                    swap=next((int(line.split()[1])*1024 for line in stream if line.startswith('VmSwap:')),0)
+            except FileNotFoundError:continue
+            total+=rss+swap
+        return total  # Conservative RSS+swap proxy, not a cgroup high-water mark.
     if sys.platform!='darwin':return None
     class Rusage(ctypes.Structure):
         _fields_=[('uuid',ctypes.c_uint8*16)]+[(name,ctypes.c_uint64) for name in

@@ -127,7 +127,8 @@ def make_plan(files,counts,*,byte_target,item_target):
         expected_captures=sum(row['expected_captures'] for row in metrics.values()),batches=batches)
 
 
-def monitor_command(command,*,work,physical_limit=16<<30,timeout=2700,min_free_bytes=15<<30):
+def monitor_command(command,*,work,physical_limit=16<<30,timeout=2700,min_free_bytes=15<<30,
+                    scratch_root=None):
     """Run one owned batch process and record sampled RSS/physical footprint.
 
     The separate process group watches this monitor too: losing the tool session
@@ -135,17 +136,31 @@ def monitor_command(command,*,work,physical_limit=16<<30,timeout=2700,min_free_b
     sample. This one-time backfill qualification uses macOS physical accounting;
     it makes no Linux or continuous-memory qualification claim.
     """
-    if sys.platform!='darwin':raise RuntimeError('Backfill physical qualification requires macOS')
+    if sys.platform not in {'darwin','linux'}:raise RuntimeError('Backfill memory accounting requires macOS or Linux')
     _positive(physical_limit,'physical_limit');_positive(timeout,'timeout')
     if not isinstance(command,list) or not command or any(not isinstance(v,str) for v in command):
         raise ValueError('A concrete batch command is required')
     work=Path(work);work.mkdir(parents=True,exist_ok=True)
+    scratch_root=work if scratch_root is None else Path(scratch_root).resolve()
+    if not work.resolve().is_relative_to(scratch_root.resolve()):
+        raise ValueError('Owned scratch root must contain the batch work')
     report=work/'measurement.json';partial=work/'measurement.json.partial';log=work/'process.log'
     if any(p.exists() for p in (report,partial,log)):raise FileExistsError('Batch measurement paths must be fresh')
     path=Path(__file__).resolve().parents[5]/'scripts/measure/process_rss.py'
     spec=importlib.util.spec_from_file_location('backfill_memory_sampler',path)
     sampler=importlib.util.module_from_spec(spec);spec.loader.exec_module(sampler)
     if shutil.disk_usage(work).free<min_free_bytes:raise RuntimeError('Free disk is below the backfill floor')
+    def allocated():
+        total=0;pending=[scratch_root]
+        while pending:
+            with os.scandir(pending.pop()) as entries:
+                for entry in entries:
+                    try:
+                        if entry.is_dir(follow_symlinks=False):pending.append(entry.path)
+                        else:total+=entry.stat(follow_symlinks=False).st_blocks*512
+                    except FileNotFoundError:pass
+        return total
+    if allocated()>5<<30:raise RuntimeError('Owned backfill scratch exceeds 5GiB')
     watchdog='''import os,signal,subprocess,sys,time
 parent=int(sys.argv[1])
 process=subprocess.Popen(sys.argv[2:])
@@ -159,7 +174,7 @@ raise SystemExit(process.returncode)
     def interrupted(number,_frame):raise InterruptedError('Batch monitor received signal '+str(number))
     old={number:signal.getsignal(number) for number in (signal.SIGTERM,signal.SIGINT,signal.SIGHUP)}
     for number in old:signal.signal(number,interrupted)
-    started=time.monotonic();peak=0;physical_peak=0;samples=0;failure=None;child=None
+    started=time.monotonic();peak=0;physical_peak=0;samples=0;failure=None;child=None;disk_next=started
     try:
         with log.open('x') as output:
             child=subprocess.Popen([sys.executable,'-I','-c',watchdog,str(os.getpid()),*command],
@@ -167,7 +182,7 @@ raise SystemExit(process.returncode)
             try:
                 while child.poll() is None:
                     rss=sampler.resident_tree(child.pid);physical=sampler.physical_tree(child.pid)
-                    if physical is None:raise RuntimeError('Missing macOS physical footprint sample')
+                    if physical is None:raise RuntimeError('Missing process memory sample')
                     peak=max(peak,rss);physical_peak=max(physical_peak,physical);samples+=1
                     value=dict(status='running_unaccepted',monitor_pid=os.getpid(),owned_pgid=child.pid,
                         seconds=time.monotonic()-started,samples=samples,sampled_peak_tree_rss=peak,
@@ -175,6 +190,9 @@ raise SystemExit(process.returncode)
                     temporary=partial.with_suffix('.tmp');temporary.write_text(json.dumps(value)+'\n');temporary.replace(partial)
                     if physical>physical_limit:raise RuntimeError('Batch exceeded its physical memory limit')
                     if shutil.disk_usage(work).free<min_free_bytes:raise RuntimeError('Free disk dropped below the backfill floor')
+                    if time.monotonic()>=disk_next:
+                        if allocated()>5<<30:raise RuntimeError('Owned backfill scratch exceeds 5GiB')
+                        disk_next=time.monotonic()+5
                     if time.monotonic()-started>timeout:raise RuntimeError('Batch exceeded its time limit')
                     time.sleep(.5)
             except Exception as error:
@@ -187,6 +205,7 @@ raise SystemExit(process.returncode)
                 monitor_pid=os.getpid(),owned_pgid=child.pid,samples=samples,
                 sampled_peak_tree_rss=peak,sampled_peak_tree_physical_footprint=physical_peak,
                 physical_limit=physical_limit,failure=failure,
+                physical_basis='macOS charged physical footprint' if sys.platform=='darwin' else 'Linux RSS plus swap conservative proxy',
                 qualification='sampled owned tree; not continuous or a Linux production bound')
             report.write_text(json.dumps(result,indent=2)+'\n')
     finally:
@@ -200,7 +219,7 @@ def runtime_identity(engine,engine_config):
     """Bind the CLI subprocesses to the same explicit native runtime."""
     from docspec_client.client import NativeDatasets
     configured=NativeDatasets.from_config(engine_config)
-    fields=('source_revision','binary_sha256','remote','limits','binary')
+    fields=('source_revision','binary_sha256','remote','limits','binary','workspace','timeout')
     if any(getattr(engine,name)!=getattr(configured,name) for name in fields):
         raise ValueError('Batch CLI configuration differs from the admitted native runtime')
     configured.verify_runtime()
@@ -215,7 +234,7 @@ def runtime_identity(engine,engine_config):
 
 def execute_batches(files,counts,*,engine,engine_config,work,table,catalog_root,location=None,
                     create_table=False,create_namespace=False,byte_target=256<<20,item_target=200000,
-                    validated_counter=None,source_qualifications=None):
+                    validated_counter=None,source_qualifications=None,scratch_root=None):
     """Call the incremental CLI once per whole batch; never run downstream jobs.
 
     A fresh invocation replans from the pinned inputs. Each child resolves fresh
@@ -277,7 +296,7 @@ def execute_batches(files,counts,*,engine,engine_config,work,table,catalog_root,
                               if str(Path(path).resolve()) in paths}
                     qualification=directory/'qualifications.json';qualification.write_text(json.dumps(bindings)+'\n')
                     command+=['--source-qualifications',str(qualification)]
-            measured=monitor_command(command,work=directory/'monitor')
+            measured=monitor_command(command,work=directory/'monitor',scratch_root=scratch_root or work)
             unchanged()
             outcome=None
             for line in reversed((directory/'monitor/process.log').read_text().splitlines()):
@@ -294,7 +313,7 @@ def execute_batches(files,counts,*,engine,engine_config,work,table,catalog_root,
             catalog_root=str(Path(catalog_root).resolve()) if catalog_root is not None else None,
             table=table,counts=str(counts_path),work=str(acceptance/'jobs'),mapping_digest=definition),indent=2)+'\n')
         result['acceptance_measurement']=monitor_command([sys.executable,'-I','-m',
-            'congress_api.lake.capture_backfill','--validate-spec',str(spec)],work=acceptance/'monitor')
+            'congress_api.lake.capture_backfill','--validate-spec',str(spec)],work=acceptance/'monitor',scratch_root=scratch_root or work)
         accepted=json.loads((acceptance/'accepted.json').read_text())
         unchanged();result.update(status='public_guard_passed',pin=accepted['pin'],guard=accepted['guard'])
         return result
