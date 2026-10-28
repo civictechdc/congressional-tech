@@ -92,6 +92,13 @@ Unordered SQL row numbering is not a physical Parquet row-position guarantee.
 The comparator uses the producer's explicitly ordered relation and verifies its
 public output bytes and row values instead.
 
+## Native model resource fixtures
+
+| Step | Case | Expected outcome |
+|---|---|---|
+| E2 | Multiple bodies share an endpoint and nullable member; other rows have blank members or absent endpoints | The actual hash plan builds the grouped or two-key endpoint lookup, preserves null matching, and returns exactly the established body/source rows |
+| E2 | The real raw/lake model fixture reaches final exports and guards after link, graph and document helpers have their last materialized consumer | Completed helpers release through C7; public rows, private parity evidence and final guards remain unchanged and available |
+
 ## References
 
 **[IMPLEMENTATION-PLAN]**
