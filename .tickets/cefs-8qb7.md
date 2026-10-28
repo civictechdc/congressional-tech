@@ -1,6 +1,6 @@
 ---
 id: cefs-8qb7
-status: in_progress
+status: closed
 deps: []
 links: []
 created: 2026-10-27T17:10:10Z
@@ -34,3 +34,7 @@ F1 owner CLI seam: 25eb548e requires argv [--execute] before active preflight an
 **2026-10-28 final local workflow wiring**
 
 519ee332/e265a811 bind the actual owner archive_publish_job, read-only --plan work export and one site build before the single --execute invocation. Only outgoing-pointer.json, contract.json and canary.json are retained after success/failure; access follows repository policy as engine clarified. Pending specs emit no metadata and refuse before runtime/storage access. Fourteen workflow checks pass; latest normal merge a4a4bc5d passes 92 focused workflow/gate/receipt/maintenance checks in 2.57s. Root's publisher CODE review covers this final seam; keep open until that review. Active job specs, pinned Linux runtime, measured targets and secret wiring remain owner activation steps. No workflow dispatched.
+
+**2026-10-28T07:06:18Z**
+
+LOCAL DONE: manager acceptance 20261028T070251Z after normal merge f1f56939 and root 14 workflow checks PASS1.48s. Root CODE review APPROVE/no findings for cbd67436..f1f56939 (cx_f1_merge_review/review.md), covering owner-plan metadata, one build/execute, three explicit evidence files and first-candidate legacy/stale-byte proof. Latest site merged workflow/gate/receipt/maintenance proof:92 PASS2.57s. Failed local canary preserves prior pointer/ETag. Active specs, qualified Linux artifact, credentials, measured device targets, uploaded HTTPS and live switch remain explicit engine/owner gates; no workflow dispatched.

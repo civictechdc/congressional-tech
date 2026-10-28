@@ -18,9 +18,9 @@ def archive(entries, compression=ZIP_STORED):
         warnings.simplefilter('ignore', UserWarning)
         with ZipFile(target, 'w', compression=compression) as output:
             for name, body in entries:
-                info = ZipInfo(name, date_time=(2000, 1, 1, 0, 0, 0))
-                info.compress_type = compression
-                output.writestr(info, body)
+                entry = ZipInfo(name, date_time=(2000, 1, 1, 0, 0, 0))
+                entry.compress_type = compression
+                output.writestr(entry, body)
     return target.getvalue()
 
 

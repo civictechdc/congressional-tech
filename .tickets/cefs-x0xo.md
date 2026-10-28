@@ -26,3 +26,7 @@ Native parity comparison and focused fixtures implemented through 506f8ecf; fina
 **2026-10-28T05:43:27Z**
 
 Corrected immutable 167c6a78 passes pins/profile/layout. Query-shape fix 67ad584b removes a single-use materialization and uses small build inputs, with unchanged budgets and 42 E4 tests passing. Actual scope completes 20.573s/3251617792B peak tree RSS: 50 old docs/55 files, five partial components/five missing sources. Guard returns incomplete with null field/cause/unexplained counts; no field comparison ran. Immutable shared/e4-slice-67ad584b includes exact five scope gaps and native proof. Engine requested raw to extend those sources without changing old membership.
+
+**2026-10-28T07:11:41Z**
+
+ONE bounded five-parent native projection succeeded39.663s/5rows/30179B after explicitCOREEND; resource window immediately freed. Immutable shared/e4-five-parent-ca064ca9 retains result/pins/nested records. All five query URLs are ?download=1 children of no-query download parents with source_record receipt pointers; second occurrences are inherited linked_ancestor context, not independent raw link proof. Exact House-pages parent receipt keys/lines sent to raw+engine. No raw bodies, extractor, broad comparison or tests run. E4 remains incomplete5members with null field/cause/unexplained counts; no invented fetch, alias rule or derived-only classification. See docs/measurements/engine-first-20261027/site/e4-five-parents.md.
