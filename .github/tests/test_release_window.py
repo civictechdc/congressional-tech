@@ -452,7 +452,9 @@ def test_local_publish_records_binding_and_requires_controller_and_readback(tmp_
     def run(args,**kwargs):
         calls.append('controller')
         assert (tmp_path/'local-publish/binding.json').exists()
-        assert args==['.venv/bin/python','-I','-m','viewer_publication.archive_publish_job','--spec',str(spec_path),'--execute']
+        assert args[:3]==['.venv/bin/python','-I','-c']
+        assert 'execute(load_spec(sys.argv[1]))' in args[3]
+        assert args[4:]==[str(spec_path),str(tmp_path/'local-publish/controller-result.json')]
         work.mkdir()
         for name in ('contract','canary'):(work/(name+'.json')).write_text(json.dumps(dict(status='passed',releaseId=seed,targets='provisional-emulated')))
         outgoing=b'{"version":1}'
@@ -460,7 +462,8 @@ def test_local_publish_records_binding_and_requires_controller_and_readback(tmp_
         (work/'outgoing-pointer.response.json').write_text(json.dumps(dict(etag='opaque',bytes=len(outgoing),sha256='0'*64 if scenario=='bad_response' else hashlib.sha256(outgoing).hexdigest())))
         (output/'manifest.json').write_bytes(manifest_raw)
         if scenario=='changed_manifest':manifest_path.write_bytes(b'{}')
-        kwargs['stdout'].write(json.dumps(dict(status='failed' if scenario=='wrong_result' else 'published',release_id=seed,live_release=seed,live_release_basis='conditional_flip_acknowledged')).encode())
+        kwargs['stdout'].write(b'> npm probe\n{\"status\":\"passed\",\"receipt\":true}\n')
+        Path(args[5]).write_text(json.dumps(dict(status='failed' if scenario=='wrong_result' else 'published',release_id=seed,live_release=seed,live_release_basis='conditional_flip_acknowledged')))
         return types.SimpleNamespace(returncode=9 if scenario=='controller_failure' else 0)
     monkeypatch.setattr(subprocess,'check_output',checked);monkeypatch.setattr(subprocess,'run',run)
     client=object()
