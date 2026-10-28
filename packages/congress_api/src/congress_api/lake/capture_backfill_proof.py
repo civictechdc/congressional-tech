@@ -1,6 +1,6 @@
 """One measured original-source sample proves one-shot/batched capture equivalence.
 
-Sample selection is O(R log R), keeps the three independent cost extremes and
+Sample selection is O(R log R), keeps each family's largest line and
 fills from cheap receipts. DocSpec owns public-row comparison and table work.
 """
 from hashlib import sha256
@@ -9,7 +9,7 @@ from pathlib import Path
 from uuid import uuid4
 
 from congress_api.lake.captures import COLUMNS,current_version
-from congress_api.lake.receipt_metadata import source_pins,recheck_source_pins
+from congress_api.lake.receipt_metadata import source_pins,recheck_source_pins,qualification_path
 from congress_api.lake.tables import table_input
 from congress_api.retention.provenance import file_pin,run_job
 
@@ -20,33 +20,65 @@ class EquivalenceMismatch(ValueError):
         super().__init__('One-shot and batched captures differ; see '+report['report_path'])
 
 
-def select_sample(files,counts,*,byte_target,item_target,sample_size=200):
-    """Include each extreme, then cheap original counter receipts deterministically."""
+def select_sample(files,counts,*,byte_target,item_target,sample_size=200,
+                  proof_bytes=2<<30,required_keys=()):
+    """Keep family-largest lines and named shape cases, then cheap whole sources.
+
+    The logical byte cap bounds the one-shot comparison's input, independently
+    of runtime physical limits. A required receipt is never split or omitted.
+    """
     from congress_api.lake.capture_backfill import make_plan
-    if type(sample_size) is not int or sample_size<=0:
-        raise ValueError('sample_size must be a positive integer')
+    for name,value in (('sample_size',sample_size),('proof_bytes',proof_bytes)):
+        if type(value) is not int or value<=0:
+            raise ValueError(name+' must be a positive integer')
     normalized=make_plan(files,counts,byte_target=byte_target,item_target=item_target)
     inventory={row['key']:dict(row) for row in files}
+    if any(not row.get('path') or row.get('prepared_stage')
+           or not row.get('qualification') for row in files):
+        raise ValueError('Equivalence needs qualified original receipt file sources')
     metrics={row['key']:row for row in normalized['source_counts']}
-    eligible=sorted(key for key,row in inventory.items()
-                    if row.get('path') is None and row.get('prepared_stage') is None)
-    if not eligible:raise ValueError('Equivalence needs original counter receipt sources')
+    if (not isinstance(required_keys,(list,tuple))
+            or any(not isinstance(key,str) for key in required_keys)
+            or len(set(required_keys))!=len(required_keys) or set(required_keys)-set(inventory)):
+        raise ValueError('Required proof keys must uniquely name inventory receipts')
     def weight(key):
         row=metrics[key]
         return max(row['uncompressed_bytes']*item_target,row['list_items']*byte_target)
-    choices={name:max(eligible,key=lambda key:metrics[key][name])
-             for name in ('max_line_bytes','max_line_items')}
-    choices['weight']=max(eligible,key=weight)
-    mandatory=set(choices.values())
+    choices={}
+    for family in ('house','senate','youtube'):
+        candidates=[key for key in inventory if key.startswith('receipts/'+family+'/')]
+        if candidates:
+            choices[family]=min(candidates,key=lambda key:(-metrics[key]['max_line_bytes'],key))
+    mandatory=set(choices.values())|set(required_keys)
     if sample_size<len(mandatory):
-        raise ValueError('sample_size cannot omit a required source-cost extreme')
-    order=sorted((key for key in eligible if key not in mandatory),
-                 key=lambda key:(weight(key),metrics[key]['uncompressed_bytes'],metrics[key]['list_items'],key))
-    selected=sorted(mandatory|set(order[:max(0,min(sample_size,len(eligible))-len(mandatory))]))
+        raise ValueError('sample_size cannot omit required proof sources')
+    total=sum(metrics[key]['uncompressed_bytes'] for key in mandatory)
+    if total>proof_bytes:raise ValueError('Required proof receipts exceed the logical byte cap')
+    selected=set(mandatory)
+    order=sorted(set(inventory)-mandatory,key=lambda key:(weight(key),
+        metrics[key]['uncompressed_bytes'],metrics[key]['list_items'],key))
+    for key in order:
+        if len(selected)>=sample_size:break
+        cost=metrics[key]['uncompressed_bytes']
+        if total+cost<=proof_bytes:selected.add(key);total+=cost
+    selected=sorted(selected)
     return dict(files=[inventory[key] for key in selected],counts=[metrics[key] for key in selected],
-        mandatory_keys=sorted(mandatory),extremes={name:dict(metrics[key],weight=weight(key))
-            for name,key in choices.items()},
-        excluded_non_counter_keys=sorted(set(inventory)-set(eligible)))
+        mandatory_keys=sorted(mandatory),required_keys=sorted(required_keys),
+        family_largest_lines={name:dict(metrics[key]) for name,key in choices.items()},
+        logical_bytes=total,proof_bytes=proof_bytes,sample_size=sample_size)
+
+
+def _selected_qualifications(files,qualifications):
+    bindings={str(Path(row['path']).resolve()):row['qualification'] for row in files
+              if row.get('qualification')}
+    paths={str(Path(row['path']).resolve()) for row in files}
+    external={}
+    for path,authority in (qualifications or {}).items():
+        canonical=str(qualification_path(path).resolve())
+        if canonical in external:raise ValueError("Duplicate source qualification binding")
+        external[canonical]=authority
+    bindings.update({path:authority for path,authority in external.items() if path in paths})
+    return bindings
 
 
 def _count(result,name):
@@ -77,12 +109,10 @@ def compare_tables(left,right,*,engine,work):
     return report
 
 
-def proof_identity(*,engine,engine_config,validated_counter,source_qualifications):
-    """Bind a proof to mapping/runtime and unchanged original counter authority."""
+def proof_identity(*,engine,engine_config,files,source_qualifications=None):
+    """Bind selected receipt keys and original source authorities to the runtime."""
     if engine.remote is not None:
         raise ValueError('Rebuild equivalence qualification requires a local catalog runtime')
-    if validated_counter is None:
-        raise ValueError('Rebuild equivalence needs an original validated counter')
     from congress_api.lake.capture_backfill import runtime_identity
     config=Path(engine_config).resolve()
     runtime=runtime_identity(engine,engine_config)
@@ -90,24 +120,27 @@ def proof_identity(*,engine,engine_config,validated_counter,source_qualification
         proof_definition=sha256(Path(__file__).read_bytes()).hexdigest(),
         engine=runtime,
         engine_config=dict(path=str(config),**file_pin(config)),
-        sources=source_pins(counter=validated_counter,qualifications=source_qualifications))
+        receipt_sources=sorted([dict(key=row['key'],path=str(Path(row['path']).resolve())) for row in files],key=lambda row:row['key']),
+        sources=source_pins(files=files,qualifications=_selected_qualifications(files,source_qualifications)))
     return json.loads(json.dumps(identity))
 
 
 def prove_equivalence(files,counts,*,engine,engine_config,work,table,catalog_root,location,
-                      byte_target,item_target,validated_counter,source_qualifications,
-                      sample_size=200,scratch_root=None,progress_log=None):
+                      byte_target,item_target,source_qualifications=None,
+                      sample_size=200,proof_bytes=2<<30,required_keys=(),scratch_root=None,progress_log=None):
     """Build fresh local generations, compare them and retain only a truthful proof.
 
     Logical one-shot packing targets do not alter the runtime's physical limits.
-    The whole-corpus receipt set is deliberately outside this once-per-original-
-    counter proof: later separately qualified receipts do not invalidate it.
+    Only selected original receipts enter either generation; the whole-corpus
+    final guard and receipt counts remain separate acceptance requirements.
     """
     from congress_api.lake.capture_backfill import execute_batches
     if catalog_root is None:raise ValueError('Rebuild equivalence requires an explicit local catalog')
+    selected=select_sample(files,counts,byte_target=byte_target,item_target=item_target,
+        sample_size=sample_size,proof_bytes=proof_bytes,required_keys=required_keys)
+    qualifications=_selected_qualifications(selected['files'],source_qualifications)
     identity=proof_identity(engine=engine,engine_config=engine_config,
-        validated_counter=validated_counter,source_qualifications=source_qualifications)
-    selected=select_sample(files,counts,byte_target=byte_target,item_target=item_target,sample_size=sample_size)
+        files=selected['files'],source_qualifications=qualifications)
     work=Path(work).resolve();work.mkdir(parents=True,exist_ok=False)
     generation='eq_'+uuid4().hex[:12]
     report=dict(status='running_unaccepted',identity=identity,sample=selected,
@@ -127,7 +160,7 @@ def prove_equivalence(files,counts,*,engine,engine_config,work,table,catalog_roo
             value=execute_batches(selected['files'],selected['counts'],engine=engine,engine_config=engine_config,
                 work=work/name,table=target,catalog_root=catalog_root,location=target_location,
                 create_table=True,create_namespace=index==0,byte_target=byte_cost,item_target=item_cost,
-                validated_counter=validated_counter,source_qualifications=source_qualifications,
+                source_qualifications=qualifications,
                 scratch_root=scratch_root or work.parent,progress_log=progress_log,
                 progress_step='equivalence_'+name)
             if value.get('status')!='public_guard_passed' or value.get('mapping_digest')!=identity['mapping_digest'] or value.get('engine')!=identity['engine']:
@@ -140,7 +173,7 @@ def prove_equivalence(files,counts,*,engine,engine_config,work,table,catalog_roo
             engine=engine,work=work/'comparison')
         recheck_source_pins(identity['sources'])
         if identity!=proof_identity(engine=engine,engine_config=engine_config,
-                validated_counter=validated_counter,source_qualifications=source_qualifications):
+                files=selected['files'],source_qualifications=qualifications):
             raise ValueError('Rebuild equivalence source, mapping or runtime changed during qualification')
         report['status']='equivalent'
     except Exception as error:

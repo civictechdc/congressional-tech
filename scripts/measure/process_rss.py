@@ -27,6 +27,23 @@ def resident_tree(pid):
     return sum(value[1] for value in process_tree(pid).values())
 
 
+def _running(pid):
+    result=subprocess.run(['ps','-p',str(pid),'-o','stat='],capture_output=True,text=True,timeout=5)
+    if result.returncode not in (0,1):raise OSError('Cannot check sampled process state')
+    state=result.stdout.strip()
+    return bool(state) and not state.startswith('Z')
+
+
+def _physical_sum(processes,sample,is_running):
+    total=0
+    for process in processes:
+        try:total+=sample(process)
+        except OSError as error:
+            if error.errno in (errno.EPERM,errno.ESRCH) and not is_running(process):continue
+            raise
+    return total
+
+
 def physical_tree(pid):
     """Sample macOS charged memory, or a conservative Linux RSS+swap proxy.
 
@@ -48,12 +65,10 @@ def physical_tree(pid):
             ('user','system','pkg_idle','interrupt','pageins','wired','resident','footprint','start','exit')]
     sample=ctypes.CDLL('/usr/lib/libproc.dylib',use_errno=True).proc_pid_rusage
     sample.argtypes=[ctypes.c_int,ctypes.c_int,ctypes.c_void_p];sample.restype=ctypes.c_int
-    total=0
-    for process in process_tree(pid):
+    def footprint(process):
         usage=Rusage()
         if sample(process,0,ctypes.byref(usage)):
             code=ctypes.get_errno()
-            if code==errno.ESRCH:continue
             raise OSError(code,'Cannot sample owned physical footprint')
-        total+=usage.footprint
-    return total
+        return usage.footprint
+    return _physical_sum(process_tree(pid),footprint,_running)

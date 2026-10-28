@@ -1,0 +1,32 @@
+[
+  {
+    "sha256": "1d625dde501079e7997af7f3bdf626cdcf0176fecc81d7c3376a9ed33b0b2120",
+    "stored_bytes": 10890,
+    "stored_md5": "3c30291224d9b2ac566505ff98887a12",
+    "format": "html"
+  },
+  {
+    "sha256": "9628dfcfc8cc3a5ef934066e189e5714a2b63616ecdf39abd8c5ddcd838bf319",
+    "stored_bytes": 10887,
+    "stored_md5": "168cad5a61ffd30a30e5528e931cb23f",
+    "format": "html"
+  },
+  {
+    "sha256": "afee18c4ec4344323c77670531e75faacac8908b6957260fd197f2d26c3d81e7",
+    "stored_bytes": 9370,
+    "stored_md5": "abbced0e0dd294322eb302a4cdf40e99",
+    "format": "html"
+  },
+  {
+    "sha256": "f08d8af00260c44e8a86a7cc2c33e592147198308eed662a81e6c7c36e493d7e",
+    "stored_bytes": 10893,
+    "stored_md5": "dbdd3f5c4a067c292ebc84f69878ec19",
+    "format": "html"
+  },
+  {
+    "sha256": "f1d11a19e1d379978640c115847b8b8b4a573ac49f625a073cf3397941167797",
+    "stored_bytes": 10902,
+    "stored_md5": "c1e56d8f70c015592e8ea7d77ad59fc4",
+    "format": "html"
+  }
+]

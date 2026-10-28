@@ -121,11 +121,16 @@ def load_spec(path):
         if set(value)!={'status','reason'} or not isinstance(value['reason'],str) or not value['reason'].strip():
             raise ValueError('Blocked publication job requires exactly its reason')
         return value
-    if set(value)-FIELDS-{'site_dist','daily'}:raise ValueError('Publication job has unknown fields')
+    if set(value)-FIELDS-{'site_dist','daily','model_kind'}:raise ValueError('Publication job has unknown fields')
     if not FIELDS<=value.keys() or type(value['version']) is not int or value['version']!=1:
         raise ValueError('Publication job requires version 1 and all explicit inputs')
     base=path.parent
     result=dict(value)
+    kind=value.get('model_kind','raw')
+    if kind not in {'raw','seed_v5'}:raise ValueError('Unknown publication model_kind')
+    if kind=='seed_v5' and (value['receipt_keys'] or value['provenance'] or 'daily' in value):
+        raise ValueError('A display-only seed cannot select raw receipts, provenance or daily production')
+    result['model_kind']=kind
     for name in ['model_spec','targets']:result[name]=_metadata_pin(value[name],base)
     for name in ['work','contract_next_release']:result[name]=_local(value[name],base)
     result['site_dist']=_local(value['site_dist'],base) if 'site_dist' in value else str(SITE/'dist')
@@ -151,7 +156,10 @@ def load_spec(path):
                 or item['key'] in seen):raise ValueError('Publication requires distinct provenance keys and ETags')
         validate_key(item['key']);seen.add(item['key'])
     result['_model_identity']=_verify_metadata(result['model_spec'])
-    result['_model']=load_model_spec(result['model_spec']['path'])
+    if kind=='seed_v5':
+        from viewer_publication.archive_seed import load_seed_spec
+        result['_model']=load_seed_spec(result['model_spec']['path'])
+    else:result['_model']=load_model_spec(result['model_spec']['path'])
     result['_model_identity'].require(result['model_spec']['path'])
     if result['_model'].get('status')=='blocked':return result['_model']
     directories=[Path(result['work']),Path(result['_model']['output']),Path(result['_model']['scratch'])]
@@ -279,7 +287,7 @@ def execute(spec,*,runtime_factory=None,storage_factory=None,process_runner=None
     if not Path(spec['site_dist']).is_dir():raise ValueError('Publication site_dist must already exist; build the site first')
     from docspec_client.client import NativeDatasets
     from congress_shared.storage import connect_r2
-    from viewer_publication.archive_controller import run_publish
+    from viewer_publication.archive_controller import run_publish,run_seed_publish
     runtime_factory=runtime_factory or NativeDatasets.from_config
     storage_factory=storage_factory or connect_r2
     process_runner=process_runner or subprocess.run
@@ -320,9 +328,11 @@ def execute(spec,*,runtime_factory=None,storage_factory=None,process_runner=None
                 receipt=json.loads(receipt_path.read_text())
                 target_identity.require(spec['targets']['path']);require_configuration()
                 return receipt
-            result=run_publish(selected_model,client=client,engine=engine,bucket=spec['bucket'],work=spec['work'],
-                receipt_keys=keys,provenance=provenance,verified_files=verified,run=spec['run'],public_origin=spec['public_origin'],
-                contract=lambda **context:probe('contract',context),canary=lambda **context:probe('canary',context))
+            options=dict(client=client,engine=engine,bucket=spec['bucket'],work=spec['work'],run=spec['run'],
+                public_origin=spec['public_origin'],contract=lambda **context:probe('contract',context),
+                canary=lambda **context:probe('canary',context))
+            if spec.get('model_kind')=='seed_v5':result=run_seed_publish(selected_model,**options)
+            else:result=run_publish(selected_model,receipt_keys=keys,provenance=provenance,verified_files=verified,**options)
             spec['_model_identity'].require(spec['model_spec']['path']);require_configuration()
             return dict(result,daily=daily['daily']) if daily is not None else result
 
@@ -339,6 +349,7 @@ def main(argv=None):
             model_spec=spec['model_spec'],bucket=spec['bucket'],work=spec['work'],public_origin=spec['public_origin'],
             targets=spec['targets'],site_dist=spec['site_dist'])
         if not args.execute and 'daily' in spec:result['daily']=spec['daily']
+        if not args.execute and spec.get('model_kind')=='seed_v5':result['model_kind']='seed_v5'
     except (ValueError,OSError,subprocess.SubprocessError) as error:parser.error(str(error))
     print(json.dumps(result,sort_keys=True));return 2 if result.get('status') in {'pending','backfill_required'} else 0
 

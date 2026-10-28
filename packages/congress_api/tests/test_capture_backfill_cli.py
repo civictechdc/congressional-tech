@@ -48,6 +48,9 @@ def test_public_batch_cli_applies_two_native_commits_and_reports_guard_only(tmp_
 
 @pytest.mark.parametrize('extra',[
     ['--backfill'],['--source-counts','missing.json'],
+    ['--backfill','--source-counts','missing.json','--validated-counter','historical.parquet'],
+    ['--proof-bytes','1024'],
+    ['--backfill','--source-counts','missing.json','--proof-bytes','0','--prove-equivalence'],
     ['--backfill','--source-counts','missing.json','--existing','old.parquet'],
     ['--backfill','--source-counts','missing.json','--old-index','old.parquet'],
     ['--backfill','--source-counts','missing.json','--prove-equivalence','--apply','--table','a.b'],
@@ -59,3 +62,21 @@ def test_invalid_batch_modes_refuse_before_source_or_runtime_reads(tmp_path,extr
         main(['--receipt-inventory',str(tmp_path/'unopened.json'),'--engine-config',
             str(tmp_path/'unopened-runtime.json'),'--work',str(tmp_path/'work'),*extra])
     assert error.value.code==2 and not (tmp_path/'work').exists()
+
+
+def test_direct_gzip_public_proof_cli_needs_no_counter(tmp_path,capsys):
+    args=arguments(tmp_path)+['--prove-equivalence','--proof-bytes','4096',
+        '--table','archive.proof_generation','--catalog-root',str(tmp_path/'catalog'),
+        '--table-location',str(tmp_path/'data')]
+    required=tmp_path/'required.json'
+    inventory=json.loads((tmp_path/'inventory.json').read_text())
+    required.write_text(json.dumps([r['key'] for r in inventory]))
+    assert main(args+['--proof-required-keys',str(required)])==0
+    report=json.loads(capsys.readouterr().out)
+    assert report['status']=='equivalent'
+    assert report['sample']['required_keys']==sorted(r['key'] for r in inventory)
+    assert report['sample']['logical_bytes']==400
+    assert report['comparison']['left_rows']==report['comparison']['right_rows']==2
+    assert len(report['generations']['one_shot']['batches'])==1
+    assert len(report['generations']['batched']['batches'])==2
+    assert len(report['identity']['sources'])==2
