@@ -104,11 +104,12 @@
     {
       "name": "eot_webharvest_attachment",
       "field": "recoveries",
-      "value": "body:eot_webharvest_attachment",
+      "value": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
       "direction": "added",
       "fact": {
         "original_url": "https://veterans.house.gov/a.pdf",
-        "recovered_url": "https://www.webharvest.gov/a.pdf"
+        "recovered_url": "https://www.webharvest.gov/a.pdf",
+        "body_sha": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd"
       },
       "expected_causes": [
         "eot_webharvest_attachment"
@@ -239,13 +240,14 @@
     {
       "name": "b7_owner_recoveries",
       "field": "recoveries",
-      "value": "body:b7_owner_recoveries",
+      "value": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
       "direction": "added",
       "fact": {
         "decision_id": "owner-b7-57",
         "kind": "requested_content_in_official_hearing",
         "stage": "raw-recoveries-owner-32c13ffa",
-        "source_time_basis": "earliest_matching_fetch"
+        "source_time_basis": "earliest_matching_fetch",
+        "body_sha": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd"
       },
       "expected_causes": [
         "b7_owner_recoveries"
@@ -800,5 +802,31 @@
       "bad_metadata_unexplained": 12
     },
     "note": "F0 native producer preserves source membership; literal ID formula includes a usable PDF with mixed 200.0/404 status history. Corrupt bytes/media_type must produce 12 unexplained atoms; permuted private rows must refuse lineage."
-  }
+  },
+  "recovery_values": [
+    {
+      "cause": "b7_owner_recoveries",
+      "field": "recovery.kind",
+      "value": "requested_content_in_official_hearing",
+      "wrong": "recovered_document",
+      "fact": {
+        "stage": "raw-recoveries-owner-32c13ffa",
+        "decision_id": "owner-57",
+        "body_sha": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+        "expected_kind": "requested_content_in_official_hearing"
+      }
+    },
+    {
+      "cause": "b7_owner_recoveries",
+      "field": "recovery.imported_at",
+      "value": "2026-10-05",
+      "wrong": "2026-10-27",
+      "fact": {
+        "stage": "raw-recoveries-owner-32c13ffa",
+        "decision_id": "earliest-24",
+        "body_sha": "eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
+        "expected_imported_at": "2026-10-05"
+      }
+    }
+  ]
 }

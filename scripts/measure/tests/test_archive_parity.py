@@ -300,8 +300,8 @@ def test_native_private_mapping_permutation_is_not_public_row_evidence(tmp_path)
     job=json.loads(Path(candidate['layout_job']['path']).read_text())
     rows=next(o for o in job['outputs'] if o['name']=='document_rows')
     members=next(o for o in job['outputs'] if o['name']=='source_members')
-    rows['sql']=rows['sql'].replace('SELECT list_row,','SELECT cast(mod(list_row+1,3) AS INT) AS list_row,',1)
-    members['sql']=members['sql'].replace('o.list_row,','cast(mod(o.list_row+1,3) AS INT) AS list_row,',1)
+    rows['sql']=rows['sql'].replace('SELECT list_row,','SELECT cast((list_row+1)%3 AS INT) AS list_row,',1)
+    members['sql']=members['sql'].replace('o.list_row,','cast((o.list_row+1)%3 AS INT) AS list_row,',1)
     work=tmp_path/'permuted';work.mkdir();job['scratch']=str(work/'native')
     for output in job['outputs']:output['path']=str(work/(output['name']+'.parquet'))
     (work/'job.json').write_text(json.dumps(job));result=engine().run_job(work/'job.json')
@@ -311,3 +311,15 @@ def test_native_private_mapping_permutation_is_not_public_row_evidence(tmp_path)
     descriptor.write_text(json.dumps(value))
     with pytest.raises(ValueError,match='projection|lineage'):
         parity.compare_descriptor(descriptor,engine_config=os.environ['DOCSPEC_JOB_CONFIG'],work=tmp_path/'comparison')
+
+
+def test_recovery_causes_bind_each_visible_value_to_retained_evidence(tmp_path):
+    rows=[]
+    for case in FIXTURE['recovery_values']:
+        for variant in ['correct','wrong']:
+            rows.append(dict(difference_id=case['field']+':'+variant,field=case['field'],subject=case['fact']['body_sha'],
+                value=case['value'] if variant=='correct' else case['wrong'],direction='added',old_doc='old',new_doc='new',
+                fact=json.dumps(case['fact']),evidence_ref='fixture:retained-stage'))
+    inputs=[json_input(tmp_path,'observed_differences',rows,**{k:'Utf8' for k in rows[0]})]
+    result=run_job(tmp_path,engine(),inputs=inputs,steps=parity.cause_steps(),outputs=[],queries=[dict(name='causes',sql='SELECT difference_id,cause FROM known_causes ORDER BY difference_id')])
+    assert result['causes']==[dict(difference_id=field+':correct',cause='b7_owner_recoveries') for field in ['recovery.imported_at','recovery.kind']]
