@@ -10,7 +10,7 @@ assignee: mikewolfd
 ---
 # D2: completion-driven parser replenishment and asynchronous page prefetch
 
-Owner/lead234305Z supersedes233611Z: keep32 workers,512MiB cap,64-GET admission, sequential per-body ranges and all identity/encoding/retry/pending rules. Replenish viaFIRST_COMPLETED; final output ordering belongs to the native batch writer. Page prefetch must overlap work without blocking parser submission. Use the maintained R2Store helper. Build in isolated raw-fast while33630 uses frozen raw source; lead stops and relaunches at a commit boundary.
+Owner/lead234305Z supersedes233611Z: keep32 workers,512MiB cap,64-GET admission, sequential per-body ranges and all identity/encoding/pending rules. Replenish viaFIRST_COMPLETED; final output ordering belongs to the native batch writer. Page prefetch must overlap work without blocking parser submission. Use the maintained R2Store helper. Lead002059Z reports33630 endedfailed on R2 throttling: add same-key synchronous read serialization and a targeted five-attempt SDK GET throttle budget, preserving unrelated error and PUT behavior. Build in isolated raw-fast; the lead launches one fresh production command after the focused review.
 
 ## Acceptance Criteria
 

@@ -10,6 +10,7 @@ import zlib
 import threading
 import time
 from contextlib import nullcontext
+from queue import Empty
 from itertools import islice
 from functools import lru_cache
 
@@ -115,6 +116,7 @@ def bundle_version(versions,*,policy):
     files={'producer':Path(__file__),
         'supervisor':Path(__file__).parents[1]/'retention/parser_worker.py',
         'resources':Path(__file__).parents[1]/'retention/process_resources.py',
+        'concurrency':Path(__file__).parents[1]/'retention/concurrency.py',
         'raw_transport':Path(__file__).parents[1]/'retention/r2.py'}
     files.update({name:ROOT/'model/sql'/(name+'.sql') for name in
         ['pinned-readings','sniff-observations','sniff-conflicts','sniff-facts','body-admissions']})
@@ -401,50 +403,65 @@ def _execute_plan(planned,*,engine,worker_factory=ParserWorker,unreadable_store=
     trace=None;trace_path=work/'read-timings.jsonl.gz' if request_timings else None
     def record_timing(phase,body,values):
         if trace is not None:trace.write(json.dumps(dict(phase=phase,body_sha=body,**values),separators=(',',':'))+'\n')
-    def jobs():
-        source=iter(items)
-        while window:=list(islice(source,4*parser_workers)):
+    def prepare_job(item):
+        if item['physical_key'] is None:
+            counters['pending_reads']+=1;return None
+        validate_key(item['physical_key'])
+        relative=Path(item['relative_path'])
+        if relative.is_absolute() or '..' in relative.parts or not relative.parts:
+            raise ValueError('Body cache paths must be relative to the read-only root')
+        path=(raw/relative).resolve()
+        if not path.is_relative_to(raw):raise ValueError('Body path escapes read-only root')
+        body_hex=item['body_sha'].hex()
+        if body_object_digest(item['physical_key'])!=body_hex:
+            raise ValueError('Pinned physical key names a different body')
+        cache=work/'body-bytes'/body_hex if combined or body_store is not None else None
+        request=dict(path=str(path),body_sha=body_hex,parser=parser,stored_bytes=item['stored_bytes'],
+            stored_gzip=item['stored_gzip'])
+        if combined or body_store is not None:
+            request.update(cache=str(cache),versions=versions,
+                known_format=item['known_format'] if combined else None if parser=='sniff' else parser,
+                skip_parsers=sorted(set(item.get('skip_parsers') or []) |
+                    ({'sniff'} if item.get('known_format') is not None else set()) |
+                    (set(versions)-{parser} if not combined else set())))
             if body_store is not None:
-                selected={item['physical_key']:pins[item['physical_key']] for item in window
-                    if item['body_sha'].hex() in prefetched}
-                timings=[] if request_timings else None
-                # A new window overlaps range reads already running in the pool.
-                # Reserve those slots within the global64-request ceiling.
-                try:body_store.prefetch_immutable(list(selected),expected=selected,
-                    max_workers=min(max_get_workers,64-parser_workers),timings=timings)
-                finally:
-                    for timing in timings or ():
-                        key=timing.pop('key');record_timing('prefetch',body_object_digest(key),timing)
-                cache_use['actual']+=sum(_cache_file_bytes(prefetched[item['body_sha'].hex()])
-                    for item in window if item['body_sha'].hex() in prefetched)
-            for item in window:
-                if item['physical_key'] is None:
-                    counters['pending_reads']+=1;continue
-                validate_key(item['physical_key'])
-                relative=Path(item['relative_path'])
-                if relative.is_absolute() or '..' in relative.parts or not relative.parts:
-                    raise ValueError('Body cache paths must be relative to the read-only root')
-                path=(raw/relative).resolve()
-                if not path.is_relative_to(raw):raise ValueError('Body path escapes read-only root')
-                body_hex=item['body_sha'].hex()
-                if body_object_digest(item['physical_key'])!=body_hex:
-                    raise ValueError('Pinned physical key names a different body')
-                cache=work/'body-bytes'/body_hex if combined or body_store is not None else None
-                request=dict(path=str(path),body_sha=body_hex,parser=parser,stored_bytes=item['stored_bytes'],
-                    stored_gzip=item['stored_gzip'])
-                if combined or body_store is not None:
-                    request.update(cache=str(cache),versions=versions,
-                        known_format=item['known_format'] if combined else None if parser=='sniff' else parser,
-                        skip_parsers=sorted(set(item.get('skip_parsers') or []) |
-                            ({'sniff'} if item.get('known_format') is not None else set()) |
-                            (set(versions)-{parser} if not combined else set())))
-                    if body_store is not None:
-                        request['original_bytes']=item['captured_bytes']
-                        if request_timings:request['request_timings']=True
-                        if body_hex in prefetched:request.update(path=str(prefetched[body_hex]),prefetched=True)
-                        else:request['remote']=dict(bucket=body_store.bucket,key=item['physical_key'],
-                            etag=item['conditional_etag'],md5=item['stored_md5'])
-                yield body_hex,cache,request
+                request['original_bytes']=item['captured_bytes']
+                if request_timings:request['request_timings']=True
+                if body_hex in prefetched:request.update(path=str(prefetched[body_hex]),prefetched=True)
+                else:request['remote']=dict(bucket=body_store.bucket,key=item['physical_key'],
+                    etag=item['conditional_etag'],md5=item['stored_md5'])
+        return body_hex,cache,request
+
+    # Raw metadata is already a bounded admitted batch. Validate its jobs before
+    # starting any page fetch; no body bytes are retained in these dictionaries.
+    prepared=[job for item in items if (job:=prepare_job(item)) is not None] if body_store is not None else None
+    page_jobs={}
+    if body_store is not None:
+        by_body={job[0]:job for job in prepared}
+        if len(by_body)!=len(prepared):raise ValueError('Reading work list repeats a body')
+        page_jobs={key:by_body[body_object_digest(key)] for key in pins}
+    timings=[] if request_timings else None
+
+    def jobs(ready):
+        if body_store is None:
+            for item in items:
+                job=prepare_job(item)
+                if job is not None:yield job
+            return
+        regular=iter(job for job in prepared if not job[2].get('prefetched'))
+        if ready is None:
+            yield from regular;return
+        ranges_done=False
+        while True:
+            try:key=ready.get(block=ranges_done)
+            except Empty:
+                try:yield next(regular)
+                except StopIteration:ranges_done=True
+            except StopIteration:
+                yield from regular;return
+            else:
+                cache_use['actual']+=_cache_file_bytes(prefetched[body_object_digest(key)])
+                yield page_jobs[key]
 
     def invoke(worker,job):
         body_hex,cache,request=job
@@ -473,44 +490,54 @@ def _execute_plan(planned,*,engine,worker_factory=ParserWorker,unreadable_store=
 
     def rows():
         nonlocal trace
-        with ParserWorkerPool(parser,version,
-                'congress_api.lake.readings:'+('parse_once_payload' if combined or body_store is not None else 'parse_payload'),
-                workers=parser_workers,memory_budget=parser_memory_bytes,worker_factory=worker_factory,**limits) as pool,decisions_path.open('x') as decisions,\
+        prefetch=(body_store.prefetch_immutable_ready(list(pins),expected=pins,
+            max_workers=min(max_get_workers,64-parser_workers),timings=timings,max_ready=4*parser_workers)
+            if page_jobs else nullcontext(None))
+        with decisions_path.open('x') as decisions,\
                 gzip.open(trace_path,'xt') if trace_path is not None else nullcontext(None) as trace:
-            for body_hex,cache,outcome,actual,ranges,seconds,worker_id in pool.map(invoke,jobs()):
-                cache_use['actual']+=actual;cache_use['ranges']+=ranges
-                record_timing('supervisor',body_hex,dict(seconds=seconds,worker=worker_id,status=outcome['status']))
-                if outcome['status']=='read_error':
-                    counters['pending_reads']+=1;continue
-                if outcome['status']=='unreadable':
-                    identity=json.dumps([body_hex,parser,version,decided_at],separators=(',',':'))
-                    record=dict(id=sha256(identity.encode()).hexdigest(),body_sha256=body_hex,
-                        parser=parser,parser_version=version,reason=outcome['reason'],
-                        decided_by='readings',decided_at=decided_at,supersedes=None)
-                    encoded=json.dumps(record,separators=(',',':'))+'\n'
-                    decisions.write(encoded)
-                    counters['unreadable']+=1;continue
-                if outcome['status']!='completed':raise ValueError('Invalid reading worker outcome')
-                response=outcome['value'];counters['read_bytes']+=response.get('read_bytes',0)
-                for timing in response.get('read_timings',()):record_timing('range',body_hex,timing)
-                if response.get('omitted_request_timings'):
-                    record_timing('range_omitted',body_hex,dict(count=response['omitted_request_timings']))
-                rule=response.get('gzip_rule')
-                if type(rule) is int and 1<=rule<=4:counters['gzip_rule'+str(rule)]+=1
-                if response.get('read_error'):
-                    counters['ambiguous_gzip']+=int(response.get('ambiguous_gzip',False))
-                    counters['pending_reads']+=1;continue
-                value=response.get('rows') if combined or body_store is not None else response['row']
-                values=value if combined or body_store is not None else [value]
-                if body_store is not None and values:
-                    cleanup.append(str(cache))
-                    if body_hex in prefetched:cleanup.append(str(prefetched[body_hex]))
-                for value in values:
-                    value=dict(value,body_hex=body_hex,parser=value.get('parser',parser),parser_version=value.get('parser_version',version),
-                        fingerprint_hex=value.get('fingerprint'),named_meetings=value.get('named_meetings',[]),
-                        links=value.get('links',[]),fields=value.get('fields',[]))
-                    value.pop('fingerprint',None)
-                    yield value
+            try:
+                with prefetch as ready,ParserWorkerPool(parser,version,
+                        'congress_api.lake.readings:'+('parse_once_payload' if combined or body_store is not None else 'parse_payload'),
+                        workers=parser_workers,memory_budget=parser_memory_bytes,worker_factory=worker_factory,**limits) as pool:
+                    for body_hex,cache,outcome,actual,ranges,seconds,worker_id in pool.map(invoke,jobs(ready)):
+                        cache_use['actual']+=actual;cache_use['ranges']+=ranges
+                        record_timing('supervisor',body_hex,dict(seconds=seconds,worker=worker_id,status=outcome['status']))
+                        if outcome['status']=='read_error':
+                            counters['pending_reads']+=1;continue
+                        if outcome['status']=='unreadable':
+                            identity=json.dumps([body_hex,parser,version,decided_at],separators=(',',':'))
+                            record=dict(id=sha256(identity.encode()).hexdigest(),body_sha256=body_hex,
+                                parser=parser,parser_version=version,reason=outcome['reason'],
+                                decided_by='readings',decided_at=decided_at,supersedes=None)
+                            encoded=json.dumps(record,separators=(',',':'))+'\n'
+                            decisions.write(encoded)
+                            counters['unreadable']+=1;continue
+                        if outcome['status']!='completed':raise ValueError('Invalid reading worker outcome')
+                        response=outcome['value'];counters['read_bytes']+=response.get('read_bytes',0)
+                        for timing in response.get('read_timings',()):record_timing('range',body_hex,timing)
+                        if response.get('omitted_request_timings'):
+                            record_timing('range_omitted',body_hex,dict(count=response['omitted_request_timings']))
+                        rule=response.get('gzip_rule')
+                        if type(rule) is int and 1<=rule<=4:counters['gzip_rule'+str(rule)]+=1
+                        if response.get('read_error'):
+                            counters['ambiguous_gzip']+=int(response.get('ambiguous_gzip',False))
+                            counters['pending_reads']+=1;continue
+                        value=response.get('rows') if combined or body_store is not None else response['row']
+                        values=value if combined or body_store is not None else [value]
+                        if body_store is not None and values:
+                            cleanup.append(str(cache))
+                            if body_hex in prefetched:cleanup.append(str(prefetched[body_hex]))
+                        for value in values:
+                            value=dict(value,body_hex=body_hex,parser=value.get('parser',parser),parser_version=value.get('parser_version',version),
+                                fingerprint_hex=value.get('fingerprint'),named_meetings=value.get('named_meetings',[]),
+                                links=value.get('links',[]),fields=value.get('fields',[]))
+                            value.pop('fingerprint',None)
+                            yield value
+            finally:
+                # The prefetch context has joined before its bounded timing list
+                # is consumed. Only this main thread writes the diagnostic file.
+                for timing in timings or ():
+                    key=timing.pop('key');record_timing('prefetch',body_object_digest(key),timing)
     source=json_input(parsed,'parsed_readings',rows(),**_reading_fields())
     columns=["arrow_cast(decode(body_hex,'hex'),'FixedSizeBinary(32)') AS body_sha",
              *[f'cast({name} AS DATE) AS {name}' if name=='content_date' else name for name in STRINGS],
@@ -773,7 +800,7 @@ def _ranged_store(bucket):
     """One maintained SDK client per persistent worker; credentials stay in env."""
     from congress_shared.storage import R2Config,connect_r2
     from congress_api.retention.r2 import R2Store
-    return R2Store(connect_r2(R2Config.from_env(bucket=bucket)),bucket)
+    return R2Store(connect_r2(R2Config.from_env(bucket=bucket)),bucket,read_throttle_attempts=5)
 
 
 def _page_entity(stored,body_sha):
