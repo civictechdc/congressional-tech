@@ -81,10 +81,10 @@ def _lookup_steps(source):
     ]
 
 
-def _settings(profile, order, *, columns=None, dictionary=(), delta=()):
+def _settings(profile, order, *, columns=None, dictionary=(), delta=(), footer_limit=512 << 10):
     return dict(profile=profile, row_group_rows=65536, order_by=[dict(field=name) for name in order],
         columns=columns or [], dictionary_columns=list(dictionary), delta_columns=list(delta),
-        key_column=order[0] if profile == 'lookup' else None, created_by='docspec archive release v1', footer_limit=512 << 10)
+        key_column=order[0] if profile == 'lookup' else None, created_by='docspec archive release v1', footer_limit=footer_limit)
 
 
 def _core(steps, output,*,lookup_extra=None):

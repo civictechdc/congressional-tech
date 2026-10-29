@@ -265,12 +265,12 @@ def build_prepared_release(prepared,*,engine,output,root=ROOT):
     auxiliary=[('meetings',empty_meetings,['event_id'],['chamber','meeting_type','status']),
         ('url_state','SELECT * FROM url_state',['requested_url'],['last_outcome']),
         ('url_variants','SELECT * FROM url_variants',['canonical_url','variant_url'],[])]
-    extra=[dict(name='document_rows.parquet',path=str(evidence/'document_rows.parquet'),sql='SELECT list_row,doc_key AS document_id,'+','.join(LIST_COLUMNS+DETAIL_COLUMNS)+' FROM details',settings=_settings('whole',['list_row'])),
+    extra=[dict(name='document_rows.parquet',path=str(evidence/'document_rows.parquet'),sql='SELECT list_row,doc_key AS document_id,'+','.join(LIST_COLUMNS+DETAIL_COLUMNS)+' FROM details',settings=_settings('whole',['list_row'],footer_limit=4 << 20)),
         dict(name='source_members.parquet',path=str(evidence/'source_members.parquet'),sql="""SELECT DISTINCT o.doc_key AS document_id,o.list_row,
         m.source_id,CASE WHEN m.body_sha IS NOT NULL THEN 'bodies/sha256/'||substr(m.body_sha,1,2)||'/'||m.body_sha||'.gz' END AS body_key,
         m.filename AS effective_filename,m.source_url,c.member_path
         FROM document_members m JOIN document_identities d ON m.component=d.component JOIN ordered o ON d.document_id=o.doc_key
-        LEFT JOIN capture_source_contexts c ON m.source_id=c.source_id""",settings=_settings('whole',['document_id','source_id','member_path']))]
+        LEFT JOIN capture_source_contexts c ON m.source_id=c.source_id""",settings=_settings('whole',['document_id','source_id','member_path'],footer_limit=4 << 20))]
     causes={
         'capture_evidence':['receipt_key','receipt_line','capture_index'],
         'record_roles':['receipt_key','receipt_line','capture_index'],
@@ -287,7 +287,7 @@ def build_prepared_release(prepared,*,engine,output,root=ROOT):
         'fingerprint_candidates':['body_sha'],
         'fingerprints':['body_sha']}
     extra += [dict(name=name+'.parquet',path=str(evidence/(name+'.parquet')),
-        sql=("SELECT r.*,r.body_sha AS body_sha256,d.decided_at,d.recovered_url,d.identity_note FROM current_recoveries r LEFT JOIN remaining_recovery_decisions d ON r.decision_id=d.id" if name=='current_recoveries' else 'SELECT * FROM '+name),settings=_settings('whole',keys)) for name,keys in causes.items()]
+        sql=("SELECT r.*,r.body_sha AS body_sha256,d.decided_at,d.recovered_url,d.identity_note FROM current_recoveries r LEFT JOIN remaining_recovery_decisions d ON r.decision_id=d.id" if name=='current_recoveries' else 'SELECT * FROM '+name),settings=_settings('whole',keys,footer_limit=4 << 20)) for name,keys in causes.items()]
     prefix_checks=','.join(sql+' AS '+name for name,sql in evidence_checks().items())
     manifest=_execute(inputs,steps,output=output,scratch=scratch,engine=engine,
         lookup_extra="SELECT o.list_row,a.url FROM source_addresses a JOIN document_members m ON a.source_id=m.source_id JOIN document_identities d ON m.component=d.component JOIN ordered o ON d.document_id=o.doc_key WHERE m.is_real_file",
