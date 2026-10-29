@@ -38,3 +38,12 @@ def test_pinned_prefetch_collects_completed_read_and_failure_timings(tmp_path,sh
     assert timings[0]['error_type']==('ValueError' if short else None)
     assert timings[0]['bytes']==(0 if short else len(DATA))
     assert timings[0]['key']==KEY
+
+
+def test_timing_preserves_sdk_retry_metadata_separately_from_stream_attempts(tmp_path):
+    client=WholeClient();client.meta.config.retries={'total_max_attempts':1}
+    client.responses=[dict(Body=io.BytesIO(DATA),ContentLength=len(DATA),ETag='"'+hashlib.md5(DATA).hexdigest()+'"',
+        ResponseMetadata={'RetryAttempts':2})]
+    timing={}
+    assert R2Store(client,'bucket').read(KEY,expected=dict(md5=hashlib.md5(DATA).hexdigest(),bytes=len(DATA)),timing=timing)==DATA
+    assert timing['requests']==1 and timing['sdk_retries']==2

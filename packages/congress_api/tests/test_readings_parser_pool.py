@@ -171,16 +171,17 @@ def test_prefetch_window_reserves_slots_for_still_active_range_parsers(tmp_path)
                     return dict(result,ContentRange=f'bytes 0-{len(data)-1}/{len(data)}',ResponseMetadata={'HTTPStatusCode':206})
                 finally:
                     with lock:state['active']-=1
+            assert first_wave.wait(5)
+            with lock:state['overlap']|=state['active']>0
+            release.set()
             return result
     class CheckedStore(R2Store):
         def prefetch_immutable(self,keys,*,max_workers=64,**kwargs):
             if keys:
-                with lock:overlap=state['active']>0
                 try:
-                    assert overlap,'Second page window must overlap unfinished range reads'
-                    state['overlap']=True
                     assert max_workers+workers<=64,'Prefetch allocation must leave slots for active parsers'
-                finally:release.set()
+                except BaseException:
+                    release.set();raise
             return super().prefetch_immutable(keys,max_workers=max_workers,**kwargs)
     client=Mixed(b'fixture');work=tmp_path/'stage';store=CheckedStore(client,'bucket',cache_dir=work/'raw-pages')
     class Worker:

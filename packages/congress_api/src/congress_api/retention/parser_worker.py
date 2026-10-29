@@ -5,7 +5,6 @@ parser result, including a rejection row, completes its input. Only process or
 resource failures trigger the single retry. This is resource control, not a sandbox.
 """
 import contextlib
-from collections import deque
 from concurrent.futures import ThreadPoolExecutor
 import threading
 import importlib
@@ -21,6 +20,7 @@ from tempfile import TemporaryDirectory
 import time
 
 from congress_api.retention.process_resources import resident_bytes,virtual_bytes
+from congress_api.retention.concurrency import completed_map
 
 
 class _Failure(Exception):
@@ -183,7 +183,7 @@ class ParserWorker:
 
 
 class ParserWorkerPool:
-    """Bounded ordered calls through independent maintained parser supervisors."""
+    """Bounded completed calls through independent maintained parser supervisors."""
 
     @staticmethod
     def validate_budget(workers,memory_budget,memory_bytes):
@@ -219,19 +219,10 @@ class ParserWorkerPool:
         return function(worker,item)
 
     def map(self,function,items):
-        """Keep at most4N futures; only the caller consumes ordered outcomes."""
+        """Refill completed slots; the native batch writer supplies final ordering."""
         if self._executor is None:raise RuntimeError('Parser pool requires an open context')
-        source=iter(items);pending=deque()
-        for _ in range(4*self.workers):
-            try:item=next(source)
-            except StopIteration:break
-            pending.append(self._executor.submit(self._invoke,function,item))
-        while pending:
-            result=pending.popleft().result()
-            yield result
-            try:item=next(source)
-            except StopIteration:continue
-            pending.append(self._executor.submit(self._invoke,function,item))
+        yield from completed_map(self._executor,lambda item:self._invoke(function,item),
+            items,max_pending=4*self.workers)
 
     def __exit__(self,*error):
         try:

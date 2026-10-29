@@ -20,12 +20,19 @@ DC = 'packages/docspec_client/src/docspec_client/'
 SITE = 'apps/site/src/components/explorer/reader/filenames/'
 PUBLICATION_CLIENT_KEEP = ['require_publication_client','publish_manifest_pointer','VerifiedTransfer']
 PUBLICATION_CLIENT_KEEP_IMPORTS = ['dataclasses.dataclass','hashlib']
+RAW_READER_KEEP = ['_ReadyPrefetch','_raw_pin','_stream_read_attempts','_stream_retry_delay',
+    '_read_stream','_throttle_delay','_configure_retries','R2Store.__init__',
+    'R2Store._write_manifest_disk_cache','R2Store._immutable_cache_path',
+    'R2Store.prefetch_immutable_ready','R2Store.prefetch_immutable','R2Store.read','R2Store._read',
+    'R2Store.read_file','R2Store._read_checked_file','R2Store.read_derived_file',
+    'R2Store.read_body_cache_file','R2Store.keys']
 SPEED_KEEP = ['scripts/measure/process_rss.py', 'apps/site/scripts/measure-archive.mjs',
               'apps/site/scripts/archive-targets.mjs','apps/site/scripts/archive-browser.mjs',
               'apps/site/scripts/archive-server.mjs','apps/site/scripts/archive-tools.test.mjs']
 HARD_KEEP = [CA+'lake/', CA+'retention/body_store.py', CA+'retention/receipt_writer.py',
     CA+'retention/archive_expander.py', CA+'retention/provenance.py', CA+'retention/raw_verifier.py',
     CA+'retention/derived_files.py', 'packages/congress_shared/src/congress_shared/custody.py',
+    RET+'parser_worker.py',RET+'process_resources.py',RET+'concurrency.py',
     CA+'retention/raw_repair.py', CA+'acquisition/fetcher.py', CA+'acquisition/capture_scheduler.py',
     CA+'transport/raw_adapters.py', CA+'parsers/archive_readings.py', CA+'parsers/sniff.py',
     'packages/house-naming/', 'packages/news_lake/', 'apps/committee_youtube/',
@@ -668,7 +675,8 @@ def build(ct, ds, ct_rev, ds_rev):
             f['actions']=['preserve_target_or_parked_consumer']
         if f['path']==RET+'r2.py':
             f['preserve_symbols']=['put_parameters','verify_upload','AsyncBodies','R2Store.put_file',
-                'R2Store.read_file','R2Store.keys']
+                *RAW_READER_KEEP]
+            f['preserve_globals']=['LOGGER','_read_locks','_read_locks_guard']
             f['evidence_limits'].append('R2Store class is a split boundary, not a whole-class deletion range.')
         if f['path']==VP+'apply_r2_edge_rules.py' or f['path']==RET+'r2_edge_rules.py':
             f['preserve_behavior']=['CORS','immutable/no-store cache','sandbox CSP','Content-Disposition filename safety']

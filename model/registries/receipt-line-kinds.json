@@ -10,7 +10,7 @@
         {
           "family": "congress/committees",
           "record_is_list": false,
-          "rows": 14570
+          "rows": 13932
         },
         {
           "family": "congress/committees",
@@ -20,7 +20,7 @@
         {
           "family": "congress/meetings",
           "record_is_list": false,
-          "rows": 198940
+          "rows": 198925
         }
       ],
       "url_pattern": "(?i)^https?://api[.]congress[.]gov/v3/(committee-meeting|committee)/"
@@ -81,12 +81,12 @@
         {
           "family": "documents",
           "record_is_list": false,
-          "rows": 19849
+          "rows": 18150
         },
         {
           "family": "documents",
           "record_is_list": true,
-          "rows": 27151
+          "rows": 3130
         },
         {
           "family": "external/legislators",
@@ -101,37 +101,37 @@
         {
           "family": "external/provider-responses",
           "record_is_list": true,
-          "rows": 2463
+          "rows": 2376
         },
         {
           "family": "external/wayback",
           "record_is_list": true,
-          "rows": 4
+          "rows": 0
         },
         {
           "family": "govinfo/mets",
           "record_is_list": true,
-          "rows": 62
+          "rows": 0
         },
         {
           "family": "govinfo/mods",
           "record_is_list": false,
-          "rows": 11
+          "rows": 10
         },
         {
           "family": "govinfo/mods",
           "record_is_list": true,
-          "rows": 918
+          "rows": 509
         },
         {
           "family": "govinfo/transcript-html",
           "record_is_list": false,
-          "rows": 27
+          "rows": 24
         },
         {
           "family": "govinfo/transcript-html",
           "record_is_list": true,
-          "rows": 277
+          "rows": 275
         },
         {
           "family": "house/meeting-xml",
@@ -146,7 +146,7 @@
         {
           "family": "house/pages",
           "record_is_list": true,
-          "rows": 34
+          "rows": 28
         },
         {
           "family": "house/witness-xml",
@@ -156,27 +156,27 @@
         {
           "family": "meeting",
           "record_is_list": true,
-          "rows": 3679
+          "rows": 0
         },
         {
           "family": "senate/captions",
           "record_is_list": false,
-          "rows": 3563
+          "rows": 9
         },
         {
           "family": "senate/captions",
           "record_is_list": true,
-          "rows": 660
+          "rows": 0
         },
         {
           "family": "senate/pages",
           "record_is_list": false,
-          "rows": 100
+          "rows": 91
         },
         {
           "family": "senate/pages",
           "record_is_list": true,
-          "rows": 21
+          "rows": 0
         },
         {
           "family": "senate/players",
@@ -186,32 +186,74 @@
         {
           "family": "senate/players",
           "record_is_list": true,
-          "rows": 133
+          "rows": 1
         },
         {
           "family": "wlist",
           "record_is_list": true,
-          "rows": 20
+          "rows": 0
         },
         {
           "family": "youtube/api",
           "record_is_list": false,
-          "rows": 542
+          "rows": 438
         },
         {
           "family": "youtube/api",
           "record_is_list": true,
-          "rows": 123
+          "rows": 15
         },
         {
           "family": "youtube/captions",
           "record_is_list": false,
-          "rows": 9369
+          "rows": 7525
         },
         {
           "family": "youtube/captions",
           "record_is_list": true,
-          "rows": 574
+          "rows": 0
+        },
+        {
+          "family": "documents",
+          "record_is_list": true,
+          "record_shape": "path-digest-pair",
+          "rows": 7084
+        },
+        {
+          "family": "youtube/captions",
+          "record_is_list": true,
+          "record_shape": "identifier",
+          "rows": 84
+        },
+        {
+          "family": "youtube/api",
+          "record_is_list": true,
+          "record_shape": "identifier",
+          "rows": 104
+        },
+        {
+          "family": "senate/pages",
+          "record_is_list": true,
+          "record_shape": "identifier",
+          "rows": 21
+        },
+        {
+          "family": "govinfo/mods",
+          "record_is_list": true,
+          "record_shape": "empty-list",
+          "rows": 2
+        },
+        {
+          "family": "govinfo/transcript-html",
+          "record_is_list": true,
+          "record_shape": "empty-list",
+          "rows": 2
+        },
+        {
+          "family": "senate/captions",
+          "record_is_list": true,
+          "record_shape": "empty-list",
+          "rows": 1
         }
       ]
     },
@@ -222,22 +264,22 @@
         {
           "family": "documents",
           "record_is_list": false,
-          "rows": 756494
+          "rows": 756028
         },
         {
           "family": "documents",
           "record_is_list": true,
-          "rows": 210891
+          "rows": 203876
         },
         {
           "family": "external/provider-responses",
           "record_is_list": true,
-          "rows": 2
+          "rows": 0
         },
         {
           "family": "external/wayback",
           "record_is_list": true,
-          "rows": 1
+          "rows": 0
         },
         {
           "family": "govinfo/transcript-html",
@@ -257,39 +299,70 @@
         {
           "family": "senate/pages",
           "record_is_list": true,
-          "rows": 35
+          "rows": 22
         },
         {
           "family": "senate/players",
           "record_is_list": false,
-          "rows": 126
+          "rows": 10
         },
         {
           "family": "senate/players",
           "record_is_list": true,
-          "rows": 126
+          "rows": 12
         },
         {
           "family": "youtube/api",
           "record_is_list": true,
-          "rows": 17261
+          "rows": 10
         },
         {
           "family": "youtube/captions",
           "record_is_list": true,
-          "rows": 3
+          "rows": 0
         },
         {
           "family": "youtube/watch-pages",
           "record_is_list": true,
-          "rows": 1
+          "rows": 0
+        },
+        {
+          "family": "documents",
+          "record_is_list": true,
+          "record_shape": "url-digest-pair",
+          "rows": 16441
         }
       ]
+    },
+    {
+      "id": "malformed-document-reference",
+      "outcome": "reference",
+      "url_values": [
+        "ttps://www.gpo.gov/fdsys/pkg/BILLS-115hres964rh/pdf/BILLS-115hres964rh.pdf",
+        "ttps://www.gpo.gov/fdsys/pkg/BILLS-115hr3281rh/pdf/BILLS-115hr3281rh.pdf",
+        "mailto:https://www.congress.gov/116/bills/hr5040/BILLS-116hr5040ih.pdf",
+        "mailto:https://www.congress.gov/116/bills/hr6237/BILLS-116hr6237ih.pdf",
+        "mailto:https://www.congress.gov/116/bills/hr6636/BILLS-116hr6636ih.pdf",
+        "mailto:https://www.congress.gov/116/bills/hr7045/BILLS-116hr7045ih.pdf",
+        "/https://rules.house.gov/sites/republicans.rules118.house.gov/files/H3564_RCP_xml.pdf",
+        "chrome-extension://efaidnbmnnnibpcajpcglclefindmkaj/https://www.congress.gov/118/bills/hr7440/BILLS-118hr7440ih.pdf"
+      ],
+      "cases": [
+        {
+          "family": "documents",
+          "record_is_list": false,
+          "rows": 8
+        }
+      ],
+      "authority": "20261029T021121Z-lead-malformed-url-decision.md"
     }
   ],
   "enumeration": {
-    "candidate_rows": 1269080,
-    "source_result_sha256": "ce400c205b3042abce2ef25953d0d624dfd52645d5292c1a2ede5352ab99ecc0",
-    "qualification": "Candidate legacy failed/no-body/no-status rows; explicit acquisition facts are preserved separately"
+    "receipts": 2292,
+    "source_rows": 2598311,
+    "record_only_rows": 1230193,
+    "previously_unknown_rows": 23747,
+    "source_result_sha256": "6b333b8ffa41b1665e95e77e820501de95df6c2d6ed6500bc7e3288686ac45d5",
+    "qualification": "All pinned original receipts; no-primary and uncovered list items only; typed scalar acquisition facts take precedence. New variants validated per item; eight malformed document addresses retain their literal values by owner decision."
   }
 }

@@ -82,7 +82,7 @@ def main(argv=None,*,read_current=None,body_store=None):
             from congress_api.retention.r2 import R2Store
             from congress_shared.storage import R2Config,connect_r2
             body_store=R2Store(connect_r2(R2Config.from_env(bucket=args.raw_bucket,max_pool_connections=get_workers)),
-                args.raw_bucket,cache_dir=Path(spec['work'])/'raw-pages')
+                args.raw_bucket,cache_dir=Path(spec['work'])/'raw-pages',read_throttle_attempts=5)
         if modern:
             try:
                 result=readings.run(**spec,engine=engine,mode=args.mode,execute=args.execute,

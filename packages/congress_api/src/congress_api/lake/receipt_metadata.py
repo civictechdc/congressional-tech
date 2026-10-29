@@ -137,7 +137,8 @@ def source_plan(*,counter=None,files=None,receipt_keys=None):
     # its shape without selecting an ordinary object's potentially huge body.
     is_list=("__line_shape='record:array'" if '__line_shape' in root_names else
         "record IS NULL AND json_get_str(__raw_line,'record') IS NULL AND json_length(__raw_line,'record') IS NOT NULL")
-    records['line_kind_shape']="CASE WHEN source.record IS NOT NULL THEN 'object' ELSE 'unsupported' END"
+    records['line_kind_shape']="CASE WHEN source.record IS NOT NULL THEN 'object' WHEN "+is_list+\
+        " AND json_length(__raw_line,'record')=0 THEN 'empty-list' ELSE 'unsupported' END"
     invalid_lists=' OR '.join(
         '('+slots[(name,)]+" IS NOT NULL AND "+slots[(name,)]+"<>'null' AND "+
         get(slots[(name,)],kind='array')+' IS NULL)' for name in ('captures','file_references'))

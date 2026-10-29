@@ -115,7 +115,7 @@ def proof_identity(*,engine,engine_config,files,source_qualifications=None):
         raise ValueError('Rebuild equivalence qualification requires a local catalog runtime')
     from congress_api.lake.capture_backfill import runtime_identity
     config=Path(engine_config).resolve()
-    runtime=runtime_identity(engine,engine_config)
+    runtime=runtime_identity(engine,engine_config,files=files)
     identity=dict(mapping_digest=current_version(),
         proof_definition=sha256(Path(__file__).read_bytes()).hexdigest(),
         engine=runtime,
