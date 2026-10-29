@@ -120,3 +120,5 @@ D2 raw reads: concurrent synchronous readers of one bucket/key serialize through
 
 **[IMPLEMENTATION-PLAN]**
 : *Congressional Document Archive: Implementation Plan.* Note, 2026-10-24. `docs/plans/simplification-plan-20261024.md`.
+
+E2 reference association: `reference-sources.json` pins the complete raw-shape packet’s URL/digest examples and eight literal malformed references. The actual source/annotation fixture retains every occurrence and NULL acquisition digest; literal and equivalent maintained normalized URLs attach to one held body and enrich its meeting context. References and inline saved records add no fetch date. Unknown addresses, malformed literals, filename-only similarities and addresses holding different body editions remain unresolved. Explicit failed acquisitions retain their recorded fetch date.

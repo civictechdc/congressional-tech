@@ -1,0 +1,89 @@
+{
+  "packet": "capture-record-shapes-09e9ec6a",
+  "url_digest_examples": [
+    {
+      "line": 775801,
+      "index": 0,
+      "item": [
+        "http://docs.house.gov/meetings/AG/AG00/20210210/111183/HMKP-117-AG00-20210210-SD004.pdf",
+        "9fbc0bbfde5a1c89ed433c54699cf3ed9df0ca94e6491a530db5424c8aae1646"
+      ]
+    },
+    {
+      "line": 775801,
+      "index": 1,
+      "item": [
+        "http://docs.house.gov/meetings/AG/AG00/20230606/116051/HHRG-118-AG00-Bio-BerkovitzD-20230606.pdf",
+        "abd9ca790b661fabb75f5e190980d06fad4a5ed550449f227b24aa03184a4a10"
+      ]
+    }
+  ],
+  "path_digest_examples": [
+    {
+      "line": 776340,
+      "index": 0,
+      "item": [
+        "/Users/mikewolfd/hearing-text/docs_house/100052.html",
+        "3f7b26d26c57910aa2fad35fccfcd08d0caf09dc7a9ac59e3e5078992cb4744f"
+      ]
+    },
+    {
+      "line": 776340,
+      "index": 1,
+      "item": [
+        "/Users/mikewolfd/hearing-text/docs_house/100097.html",
+        "e4efa839d93ec5f454e44f73bf44ed48a77c1353048d862cce475ab546f49728"
+      ]
+    }
+  ],
+  "malformed_references": [
+    {
+      "receipt_key": "receipts/documents/undated/assemble-20260930.jsonl.gz",
+      "receipt_line": 182711,
+      "record_index": 0,
+      "literal_url": "ttps://www.gpo.gov/fdsys/pkg/BILLS-115hres964rh/pdf/BILLS-115hres964rh.pdf"
+    },
+    {
+      "receipt_key": "receipts/documents/undated/assemble-20260930.jsonl.gz",
+      "receipt_line": 182795,
+      "record_index": 0,
+      "literal_url": "ttps://www.gpo.gov/fdsys/pkg/BILLS-115hr3281rh/pdf/BILLS-115hr3281rh.pdf"
+    },
+    {
+      "receipt_key": "receipts/documents/undated/assemble-20260930.jsonl.gz",
+      "receipt_line": 183639,
+      "record_index": 0,
+      "literal_url": "mailto:https://www.congress.gov/116/bills/hr5040/BILLS-116hr5040ih.pdf"
+    },
+    {
+      "receipt_key": "receipts/documents/undated/assemble-20260930.jsonl.gz",
+      "receipt_line": 183640,
+      "record_index": 0,
+      "literal_url": "mailto:https://www.congress.gov/116/bills/hr6237/BILLS-116hr6237ih.pdf"
+    },
+    {
+      "receipt_key": "receipts/documents/undated/assemble-20260930.jsonl.gz",
+      "receipt_line": 183641,
+      "record_index": 0,
+      "literal_url": "mailto:https://www.congress.gov/116/bills/hr6636/BILLS-116hr6636ih.pdf"
+    },
+    {
+      "receipt_key": "receipts/documents/undated/assemble-20260930.jsonl.gz",
+      "receipt_line": 183642,
+      "record_index": 0,
+      "literal_url": "mailto:https://www.congress.gov/116/bills/hr7045/BILLS-116hr7045ih.pdf"
+    },
+    {
+      "receipt_key": "receipts/documents/undated/assemble-20260930.jsonl.gz",
+      "receipt_line": 185127,
+      "record_index": 0,
+      "literal_url": "/https://rules.house.gov/sites/republicans.rules118.house.gov/files/H3564_RCP_xml.pdf"
+    },
+    {
+      "receipt_key": "receipts/documents/undated/assemble-20260930.jsonl.gz",
+      "receipt_line": 185758,
+      "record_index": 0,
+      "literal_url": "chrome-extension://efaidnbmnnnibpcajpcglclefindmkaj/https://www.congress.gov/118/bills/hr7440/BILLS-118hr7440ih.pdf"
+    }
+  ]
+}

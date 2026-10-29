@@ -13,7 +13,7 @@ def test_native_sources_preserve_names_member_paths_imports_and_failed_urls(tmp_
     from viewer_publication.archive_model import source_steps,registry_inputs
     def capture(index,**values):
         return dict(receipt_key='receipts/documents/2026-10-20/run.gz',receipt_line=index,capture_index=0,
-            body_hex='a'*64,run_id='live',mode='fetch',url='https://fixture.test/a',
+            body_hex='a'*64,run_id='live',mode='fetch',outcome='stored',url='https://fixture.test/a',
             requested_url='https://fixture.test/a',context_url='https://fixture.test/a',member_path=None,
             h_content_disposition=None,retrieved_at='2026-10-20T12:00:00Z',format='pdf',
             is_real_file=True,record_role='document',**values)
@@ -32,14 +32,15 @@ def test_native_sources_preserve_names_member_paths_imports_and_failed_urls(tmp_
     rows.append(dict(rows[0],receipt_line=11))
     rows.append(dict(rows[0],receipt_line=12,h_content_disposition="attachment; filename*=UTF-8''retained%20header.pdf"))
     inputs=registry_inputs(tmp_path/'registries')
+    inputs.append(json_input(tmp_path,'url_variants',[],canonical_url='Utf8',variant_url='Utf8'))
     inputs=[x for x in inputs if x['name']!='import_runs']
     inputs.append(json_input(tmp_path,'import_runs',[dict(run_id='legacy-import',date='2026-10-10')],run_id='Utf8',date='Utf8'))
     inputs.append(json_input(tmp_path,'fixture_captures',rows,receipt_key='Utf8',receipt_line='Int32',capture_index='Int32',
-        body_hex='Utf8',run_id='Utf8',mode='Utf8',url='Utf8',requested_url='Utf8',context_url='Utf8',member_path='Utf8',
+        body_hex='Utf8',run_id='Utf8',mode='Utf8',outcome='Utf8',url='Utf8',requested_url='Utf8',context_url='Utf8',member_path='Utf8',
         h_content_disposition='Utf8',retrieved_at='Utf8',format='Utf8',is_real_file='Boolean',record_role='Utf8'))
     inputs.append(json_input(tmp_path,'current_recoveries',[dict(id='recovered',original_url='https://fixture.test/dead.pdf',
         recovered_filename='dead-original.pdf',kind='recovered_document'),dict(id='failed-recovery',original_url='https://fixture.test/failed.pdf',recovered_filename='failed.pdf',kind='recovered_document')],id='Utf8',original_url='Utf8',recovered_filename='Utf8',kind='Utf8'))
-    steps=[dict(name='capture_evidence',sql="SELECT receipt_key,receipt_line,capture_index,run_id,mode,url,requested_url,context_url,member_path,h_content_disposition,retrieved_at,format,decode(body_hex,'hex') AS sha256 FROM fixture_captures"),
+    steps=[dict(name='capture_evidence',sql="SELECT receipt_key,receipt_line,capture_index,run_id,mode,outcome,url,requested_url,context_url,member_path,h_content_disposition,retrieved_at,format,decode(body_hex,'hex') AS sha256 FROM fixture_captures"),
         dict(name='record_roles',sql='SELECT receipt_key,receipt_line,capture_index,is_real_file,record_role FROM fixture_captures')]
     result=run_job(tmp_path,NativeDatasets.from_config(os.environ['DOCSPEC_JOB_CONFIG']),inputs=inputs,
         steps=steps+source_steps(),outputs=[
