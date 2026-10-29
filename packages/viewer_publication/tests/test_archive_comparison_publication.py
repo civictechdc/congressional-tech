@@ -84,14 +84,7 @@ def test_receipt_mutated_by_actual_model_refuses_all_successful_writes(tmp_path)
     from viewer_publication.archive_comparison_acceptance import ComparisonAcceptance
     model,_,_=real_model_spec(tmp_path)
     with NativeDatasets.from_config(os.environ['DOCSPEC_JOB_CONFIG']) as native:
-        schema=json.loads((Path(__file__).resolve().parents[3]/'model/lake/captures.schema.json').read_text())
-        ref=dict(namespace=['fixture'],name='captures');catalog=tmp_path/'catalog'
-        tables.create_table(engine=native,work=tmp_path/'create',catalog_root=catalog,table=ref,schema=schema,location=tmp_path/'lake-captures',create_namespace=True)
-        appended=tables.append_rows(model['captures']['path'],engine=native,work=tmp_path/'append',catalog_root=catalog,table=ref,keys=['receipt_key'],definition=captures.current_version(),file_bytes=8<<20,row_group_rows=1024,row_group_bytes=1<<20)
-        capture_pin={k:appended[k] for k in ('metadata_location','table_uuid','snapshot','schema_id')}
-        model['captures']=dict(kind='native_table',**capture_pin);model=validate_spec(model,base=tmp_path)
-        selector,report=selected_acceptance(tmp_path/'comparison',capture_pin)
-        held=ComparisonAcceptance(selector['receipt'],expected_mapping_digest=MAPPING,capture_pin=capture_pin)
+        model,held,report=native_capture_model(tmp_path,model,native)
         store=Store()
         class MutatingRuntime(Runtime):
             def run_job(self,path):
@@ -124,3 +117,91 @@ def test_effect_guard_opens_no_input_bytes_after_initial_verification(tmp_path):
     finally:active[0]=False
     report.write_text(report.read_text()+'\n')
     with pytest.raises(ValueError):held.require()
+
+
+def native_capture_model(tmp_path,model,native):
+    from congress_api.lake import captures,tables
+    from viewer_publication.archive_model_job import validate_spec
+    from viewer_publication.archive_comparison_acceptance import ComparisonAcceptance
+    schema=json.loads((Path(__file__).resolve().parents[3]/'model/lake/captures.schema.json').read_text())
+    ref=dict(namespace=['fixture'],name='captures');catalog=tmp_path/'catalog'
+    tables.create_table(engine=native,work=tmp_path/'create',catalog_root=catalog,table=ref,schema=schema,location=tmp_path/'lake-captures',create_namespace=True)
+    appended=tables.append_rows(model['captures']['path'],engine=native,work=tmp_path/'append',catalog_root=catalog,table=ref,keys=['receipt_key'],definition=captures.current_version(),file_bytes=8<<20,row_group_rows=1024,row_group_bytes=1<<20)
+    capture_pin={k:appended[k] for k in ('metadata_location','table_uuid','snapshot','schema_id')}
+    model['captures']=dict(kind='native_table',**capture_pin);model=validate_spec(model,base=tmp_path)
+    selector,report=selected_acceptance(tmp_path/'comparison',capture_pin)
+    held=ComparisonAcceptance(selector['receipt'],expected_mapping_digest=MAPPING,capture_pin=capture_pin)
+    return model,held,report
+
+
+def status_mutating_store(report):
+    from test_archive_publish import Store
+    class StatusMutator(Store):
+        armed=True
+        def get_object(self,**kwargs):
+            try:return super().get_object(**kwargs)
+            finally:
+                if self.armed and kwargs['Key']=='viewer-publications/status.json':
+                    report.write_text(report.read_text()+'\n')
+    return StatusMutator()
+
+
+@pytest.mark.parametrize('status',['input_unchanged','release_unchanged','published'])
+def test_success_status_rechecks_comparison_after_status_get(tmp_path,status):
+    from viewer_publication.archive_comparison_acceptance import ComparisonAcceptance
+    from viewer_publication.archive_publish import write_status
+    selected,report=selected_acceptance(tmp_path/'comparison')
+    held=ComparisonAcceptance(selected['receipt'],expected_mapping_digest=MAPPING,capture_pin=CAPTURE)
+    store=status_mutating_store(report)
+    with pytest.raises(ValueError):
+        write_status(store,bucket='derived-fixture',status={'status':status},comparison_acceptance=held)
+    assert not store.requests
+
+
+def test_failed_status_can_be_recorded_after_comparison_changes(tmp_path):
+    from viewer_publication.archive_comparison_acceptance import ComparisonAcceptance
+    from viewer_publication.archive_publish import write_status
+    selected,report=selected_acceptance(tmp_path/'comparison')
+    held=ComparisonAcceptance(selected['receipt'],expected_mapping_digest=MAPPING,capture_pin=CAPTURE)
+    store=status_mutating_store(report)
+    write_status(store,bucket='derived-fixture',status={'status':'failed'},comparison_acceptance=held)
+    assert json.loads(store.objects['viewer-publications/status.json'])['status']=='failed'
+
+
+def test_release_unchanged_final_status_get_cannot_write_stale_success(tmp_path):
+    from test_archive_publish import candidate,record,Native
+    from viewer_publication.archive_comparison_acceptance import ComparisonAcceptance
+    from viewer_publication.archive_publish import publish_candidate
+    selected,report=selected_acceptance(tmp_path/'comparison')
+    held=ComparisonAcceptance(selected['receipt'],expected_mapping_digest=MAPPING,capture_pin=CAPTURE)
+    artifacts,manifest=candidate(tmp_path);input_record,keys=record();store=status_mutating_store(report)
+    def never(**kwargs):raise AssertionError('Unchanged release should not need reader probes')
+    with pytest.raises(ValueError):
+        publish_candidate(client=store,engine=Native(store),bucket='derived-fixture',work=tmp_path/'publish',
+            **artifacts,input_record=input_record,receipt_keys=keys,pointer={'release_id':manifest['release_id']},
+            expected_etag='initial',public_origin='https://archive.fixture.test',contract=never,canary=never,
+            comparison_acceptance=held)
+    assert not any(json.loads(r['Body']).get('status')=='release_unchanged' for r in store.requests if r['Key']=='viewer-publications/status.json')
+
+
+def test_input_unchanged_final_status_get_cannot_write_stale_success(tmp_path):
+    from archive_job_fixture import real_model_spec
+    from docspec_client.client import NativeDatasets
+    from test_archive_controller import Runtime
+    from viewer_publication.archive_controller import run_publish
+    model,_,_=real_model_spec(tmp_path)
+    with NativeDatasets.from_config(os.environ['DOCSPEC_JOB_CONFIG']) as native:
+        model,held,report=native_capture_model(tmp_path,model,native)
+        store=status_mutating_store(report);store.armed=False
+        def passed(**context):return dict(status='passed',releaseId=context['release_id'],targets='owner-approved')
+        options=dict(client=store,engine=Runtime(native,store),bucket='derived-fixture',
+            receipt_keys=['receipts/documents/2026-10-27/slice.jsonl.gz'],provenance=[],run={'id':'fixture'},
+            public_origin='https://archive.fixture.test',contract=passed,canary=passed,comparison_acceptance=held)
+        first=run_publish(model,work=tmp_path/'publish-first',**options)
+        assert first['status']=='published'
+        record=next(json.loads(v) for k,v in store.objects.items() if '/inputs/' in k and k.endswith('.json'))
+        assert record['run']=={'id':'fixture'}
+        before=dict(store.objects);store.armed=True
+        model=dict(model,output=str(tmp_path/'release-second'),scratch=str(tmp_path/'model-second'))
+        with pytest.raises(ValueError):run_publish(model,work=tmp_path/'publish-second',**options)
+        assert store.objects==before
