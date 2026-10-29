@@ -44,3 +44,7 @@ Reviewed D1 mapping3fc8c112…d77ec is implemented; corrected independent counts
 **2026-10-29T01:33:08Z**
 
 Owner requested a small proof-profile repair after5830 failed at17,683,779,072physicalB against16GiB. Proof sample contains historical assembly receipts; propagate the already-approved local assembly20native/24physical profile through outer and nested proof guards, preserving standard14native/16physical defaults. Preserve failed paths/control/source evidence, use fresh proof-v2 paths, update pins, and send a lead-only launch command. Active D2fast5747 and engine5921 sources stay untouched.
+
+**2026-10-29T01:45:22Z**
+
+Proof-profile fix009d6a60 approved by ONE focused CODE review after sole standard-cap concern closed fixture-first678eccfe.46 focused PASS67.360s; mixed actual200receipt sample selects assembly.runtime20native/24physical; standard10/14 retains16physical, remote/nonassembly20 and native>20 refuse. New cxb_d1_corrected_v2.py uses fresh proof-v2 work/monitor/status/markers and full requires new proof-v2 acceptance.33pins match; failed5830 evidence/control/source archived and preserved. All16 active D2fast pins unchanged. Lead-only command in proof-v2-owner-command.md; no proof launch, memory admission must be resampled.
