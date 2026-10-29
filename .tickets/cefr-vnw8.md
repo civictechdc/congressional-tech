@@ -50,3 +50,15 @@ Updated consolidated-BIND keep boundary b258f488/d156a6ff: active cli_args.rs ex
 **2026-10-28T08:01:46Z**
 
 Refreshed preparation at CT53e4df39/DS71cc6eb: all19groups/731files/197241populationlines, SHA303de208ccfef01cbb84a5d9a6ce7d69ab57dee3612efc8a26791f6352ae198d. Fixed-head reproduction byte-identical; verify stale=false/no scanned dirty sources. Keep correction83eb8ef3→70406b41 passes9runner checks0.20s, first-flip writer/VerifiedTransfer/dataclasses/hashlib retained.19manualranges/13branchsplits remain switch gates. No source deletion; regenerate at final combined heads.
+
+**2026-10-28T17:27:02Z**
+
+Owner18CT scope3a/4ba contracts precede91c behavior; CODE found canonical review keeps and bad replacement paths, fixed0dc/a354 with19focusedPASS2.62s. Generator wc-l796→827 (91c body828 typo). New immutable shared/switch-inventory-4fe18d00 has18CTgroups609files128077populationlines, byte-identical fixed-head reproduction. Currentverify refuses only uncommitted4xdiagnostic test; no cleanfinalswitch claim. No DS files, cuts or live changes; old benchmark retired for active measure-archive.
+
+**2026-10-28T20:58:15Z**
+
+F5 preparation refreshed at committed raw9030d537:18 CT groups/609 files/128194 population lines; SHAe5c8331f851a28f964f7d8787fc9acdaae76022d617bcd2b07a07ed225ed8f82. Fixed-head regeneration byte-identical; current verify stale=false/changed source0/uncommitted scanned0/generator unchanged. Official runner19focusedPASS. Prior ONECODE findings fixed. Complete per-group paths/symbols/callers/wc-l ready; no deletion. Final combined-head remeasurement and live replacement gates remain switch-owner actions; DS deferred.
+
+**2026-10-28T21:21:28Z**
+
+After the reviewed D2 size fix, refreshed current source47b3b0cf:18CTgroups609files128263populationlines; SHAbc8fcb7a9975d2d9d6e3d3ab843bce14035e226a6edf28f63c66aa269b8d283e. Fixed-head regeneration remains byte-identical and --verify stale=false. Selected immutable shared/switch-inventory-bc8fcb7a. No generator behavior changes;19focused source checks already passed. Final combined-head and actual-cut remeasurements remain switch-owner gates.

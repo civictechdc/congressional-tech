@@ -131,3 +131,72 @@ def test_all_copy_capture_conflicts_remain_reported_pending(tmp_path):
         body_listing=listing(tmp_path,key,stored))
     assert result['raw_custody']['conflicts']==1
     assert result['raw_custody']['missing_pins']==1 and result['raw_custody']['fallback_conflict']==1
+
+
+def _capture_without_storage_pins(tmp_path, *, direct):
+    args,stored,key=inputs(tmp_path)
+    captures=pq.read_table(args['captures']);row=captures.to_pylist()[0]
+    row.update(stored_bytes=None,stored_md5=None)
+    pq.write_table(pa.Table.from_pylist([row],schema=captures.schema),args['captures'])
+    if direct:args['body_inventory']=None
+    return args,stored,key
+
+
+@pytest.mark.parametrize('direct',[False,True],ids=['selected-inventory','direct-listing'])
+def test_exact_listing_size_pins_missing_capture_size_and_actual_get(tmp_path,direct):
+    args,stored,key=_capture_without_storage_pins(tmp_path,direct=direct)
+    etag='"opaque-object-12-7"';path=listing(tmp_path,key,stored,etag=etag)
+    result=readings.plan(**args,work=tmp_path/'plan',parser=None,raw_ranges=True,body_listing=path)
+    [row]=pq.read_table(result['work_list']).to_pylist()
+    assert result['raw_custody']['missing_pins']==result['raw_custody']['missing_size']==0
+    assert result['raw_custody']['fallback_pin']==0
+    assert row['captured_stored_bytes']==row['stored_bytes']==len(stored)
+    assert row['conditional_etag']==etag and row['physical_key']==key
+    # A derived working size must never rewrite the original capture fact.
+    assert pq.read_table(args['captures'],columns=['stored_bytes']).to_pylist()==[{'stored_bytes':None}]
+    class PageClient(Client):
+        def get_object(self,**kwargs):
+            self.reads.append(kwargs)
+            assert kwargs==dict(Bucket='bucket',Key=key,IfMatch=etag)
+            return dict(Body=io.BytesIO(stored),ETag=etag,ContentLength=len(stored),ContentEncoding='gzip')
+    client=PageClient(stored)
+    result=readings.stage_once(**args,work=tmp_path/'stage',body_listing=path,
+        body_store=R2Store(client,'bucket',cache_dir=tmp_path/'stage/raw-pages'))
+    assert result['pending_reads']==0 and result['unreadable']==0 and len(client.reads)==1
+    assert [(r['parser'],r['status']) for r in pq.read_table(result['readings']).to_pylist()]==[
+        ('html','completed'),('sniff','completed')]
+
+
+@pytest.mark.parametrize('missing',['size','etag','exact-key'])
+def test_listing_size_fallback_preserves_missing_authority_refusal_before_get(tmp_path,missing):
+    args,stored,key=_capture_without_storage_pins(tmp_path,direct=True)
+    path=listing(tmp_path,key,stored);objects=pq.read_table(path);rows=objects.to_pylist()
+    if missing=='exact-key':rows=rows[1:]
+    else:rows[0][missing]=None
+    pq.write_table(pa.Table.from_pylist(rows,schema=objects.schema),path)
+    client=Client(stored);work=tmp_path/'stage'
+    expected=ValueError if missing=='size' else readings.RawCustodyRequired
+    match='Conflicting or incomplete pinned body metadata' if missing=='size' else 'Ranged raw work requires'
+    with pytest.raises(expected,match=match):
+        readings.stage_once(**args,work=work,body_listing=path,
+            body_store=R2Store(client,'bucket',cache_dir=work/'raw-pages'))
+    assert not client.reads
+
+
+@pytest.mark.parametrize('direct',[False,True],ids=['selected-inventory','direct-listing'])
+def test_listing_size_without_its_version_cannot_borrow_capture_md5(tmp_path,direct):
+    args,stored,key=inputs(tmp_path,missing='size')
+    captures=pq.read_table(args['captures'])
+    pq.write_table(captures.slice(0,1),args['captures'])
+    if direct:args['body_inventory']=None
+    path=listing(tmp_path,key,stored);objects=pq.read_table(path);rows=objects.to_pylist();rows[0]['etag']=None
+    pq.write_table(pa.Table.from_pylist(rows,schema=objects.schema),path)
+    result=readings.plan(**args,work=tmp_path/'plan',parser=None,raw_ranges=True,body_listing=path)
+    assert result['raw_custody']['missing_pins']==1
+    [row]=pq.read_table(result['work_list']).to_pylist()
+    assert row['captured_stored_bytes'] is None
+    client=Client(stored);work=tmp_path/'stage'
+    with pytest.raises(readings.RawCustodyRequired):
+        readings.stage_once(**args,work=work,body_listing=path,
+            body_store=R2Store(client,'bucket',cache_dir=work/'raw-pages'))
+    assert not client.reads

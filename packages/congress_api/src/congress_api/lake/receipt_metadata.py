@@ -16,6 +16,9 @@ STRINGS = ('source_file','run_id','mode','outcome','family','requested_url','url
 NUMBERS = ('http_status','status_code')
 BOOLS = ('complete',)
 SCALARS = {**dict.fromkeys(STRINGS,'str'),**dict.fromkeys(NUMBERS,'int'),**dict.fromkeys(BOOLS,'bool')}
+COMPARISON_WITNESSES = dict(source_context_from_final='Boolean',source_retained_record='Boolean',
+    source_entry_status='Int64',source_final_status='Int64',
+    source_creating_size_absent='Boolean',source_family_basis='Utf8')
 DOWNLOAD_HEADERS = [('response_headers','content-disposition'),
                     ('response_headers','Content-Disposition')]
 # Only the recovery leaves consumed by the narrow index are selected in bulk.
@@ -38,6 +41,14 @@ def lit(value):
 def get(value,*path,kind='str'):
     expression=f'json_get_{kind}({value}'+(' ,'+','.join(str(p) if isinstance(p,int) else lit(p) for p in path) if path else '')+')'
     return f"nullif({expression},'null')" if kind=='json' else expression
+
+
+
+def record_pointer_index(pointer):
+    """The first numeric token in the first two canonical pointer components."""
+    values=[value for index in (0,1) for value in
+        (get(pointer,index,kind='int'),'try_cast('+get(pointer,index)+' AS BIGINT)')]
+    return 'coalesce('+','.join(values+['0'])+')'
 
 
 def obj(fields):
@@ -126,6 +137,8 @@ def source_plan(*,counter=None,files=None,receipt_keys=None):
     # its shape without selecting an ordinary object's potentially huge body.
     is_list=("__line_shape='record:array'" if '__line_shape' in root_names else
         "record IS NULL AND json_get_str(__raw_line,'record') IS NULL AND json_length(__raw_line,'record') IS NOT NULL")
+    records['line_kind_shape']="CASE WHEN source.record IS NOT NULL THEN 'object' WHEN "+is_list+\
+        " AND json_length(__raw_line,'record')=0 THEN 'empty-list' ELSE 'unsupported' END"
     invalid_lists=' OR '.join(
         '('+slots[(name,)]+" IS NOT NULL AND "+slots[(name,)]+"<>'null' AND "+
         get(slots[(name,)],kind='array')+' IS NULL)' for name in ('captures','file_references'))

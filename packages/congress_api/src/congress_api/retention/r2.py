@@ -1,7 +1,7 @@
 """Small object-store implementation for the raw mirror; no acquisition policy."""
 
 import base64
-from concurrent.futures import ThreadPoolExecutor
+from concurrent.futures import ThreadPoolExecutor,CancelledError
 import hashlib
 import asyncio
 import json
@@ -12,12 +12,79 @@ import random
 import re
 import threading
 import time
+from queue import Queue,Full
 from contextlib import asynccontextmanager, closing
 from datetime import timezone
 from email.utils import parsedate_to_datetime
+from weakref import WeakValueDictionary
+from congress_api.retention.concurrency import completed_map
 
 
 LOGGER = logging.getLogger(__name__)
+_read_locks = WeakValueDictionary()
+_read_locks_guard = threading.Lock()
+
+
+class _ReadyPrefetch:
+    """Bound ready keys; cancellation releases producer callbacks before joining."""
+    _END=object()
+
+    def __init__(self,store,keys,*,max_workers,expected,timings,max_ready):
+        if type(max_ready) is not int or max_ready<=0:
+            raise ValueError('Ready prefetch requires a positive queue bound')
+        if expected is None:raise ValueError('Ready prefetch requires exact body pins')
+        self.store,self.keys=store,list(keys)
+        if any(store._immutable_cache_path(key) is None for key in self.keys):
+            raise ValueError('Ready prefetch requires cacheable immutable keys')
+        self.options=dict(max_workers=max_workers,expected=expected,timings=timings)
+        self.queue=Queue(maxsize=max_ready);self.stop=threading.Event()
+        self.executor=self.future=None;self.error=None;self.exhausted=False
+
+    def _notify(self,key):
+        while not self.stop.is_set():
+            try:self.queue.put(key,timeout=.1);return
+            except Full:pass
+        raise CancelledError('Ready prefetch cancelled')
+
+    def _run(self):
+        try:self.store.prefetch_immutable(self.keys,on_ready=self._notify,**self.options)
+        except BaseException as error:self.error=error
+        finally:
+            if not self.stop.is_set():
+                try:self._notify(self._END)
+                except CancelledError:pass
+
+    def __enter__(self):
+        if self.future is not None:raise RuntimeError('Ready prefetch is single use')
+        self.executor=ThreadPoolExecutor(max_workers=1,thread_name_prefix='prefetch')
+        try:self.future=self.executor.submit(self._run)
+        except BaseException:
+            self.executor.shutdown(wait=True,cancel_futures=True);self.executor=None
+            raise
+        return self
+
+    def get(self,*,block):
+        if self.future is None:raise RuntimeError('Ready prefetch requires an open context')
+        if self.exhausted:raise StopIteration
+        if self.stop.is_set():raise CancelledError('Ready prefetch cancelled')
+        value=self.queue.get(block=block)
+        if value is self._END:
+            self.exhausted=True;self.future.result()
+            if self.error is not None:raise self.error
+            raise StopIteration
+        return value
+
+    def cancel(self):
+        self.stop.set()
+        try:self.queue.put_nowait(self._END)
+        except Full:pass
+
+    def __exit__(self,kind,*error):
+        self.cancel()
+        if self.executor is not None:
+            self.executor.shutdown(wait=True,cancel_futures=True);self.executor=None
+        if kind is None and self.error is not None and not isinstance(self.error,CancelledError):
+            raise self.error
 
 
 def _raw_pin(key,expected):
@@ -53,24 +120,33 @@ def _stream_retry_delay(client, key, response, error, attempt):
     return delay
 
 
-def _read_stream(client, key, request, consume):
+def _read_stream(client, key, request, consume, *, bucket):
     """Retry body consumption only; callers own requests and content checks."""
     from botocore.exceptions import IncompleteReadError, ReadTimeoutError, ResponseStreamingError
 
-    for attempt in range(1, _stream_read_attempts(client) + 1):
-        response = request()  # SDK request failures do not enter body retries.
-        if response is None:
-            return None
-        try:
-            with closing(response['Body']) as stream:
-                result = consume(response, stream)
-        except (IncompleteReadError, ReadTimeoutError, ResponseStreamingError) as error:
-            delay = _stream_retry_delay(client, key, response, error, attempt)
-            if delay is None:
-                raise
-            time.sleep(delay)  # The failed body has already been closed.
-            continue
-        return result
+    # Hold one process-wide lock through response consumption, close and retry
+    # backoff, across store instances and read methods. Weak values retain only
+    # active/waiting keys, O(concurrent readers), rather than a corpus-size map.
+    with _read_locks_guard:
+        lock = _read_locks.get((bucket, key))
+        if lock is None:
+            lock = threading.Lock()
+            _read_locks[bucket, key] = lock
+    with lock:
+        for attempt in range(1, _stream_read_attempts(client) + 1):
+            response = request()  # SDK request failures do not enter body retries.
+            if response is None:
+                return None
+            try:
+                with closing(response['Body']) as stream:
+                    result = consume(response, stream)
+            except (IncompleteReadError, ReadTimeoutError, ResponseStreamingError) as error:
+                delay = _stream_retry_delay(client, key, response, error, attempt)
+                if delay is None:
+                    raise
+                time.sleep(delay)  # The failed body has already been closed.
+                continue
+            return result
 
 
 def _throttle_delay(headers, attempt, now):
@@ -89,18 +165,24 @@ def _throttle_delay(headers, attempt, now):
     return max(requested, min(20, 2 ** (attempt - 1)) + random.random())
 
 
-def _configure_retries(client):
-    """Extend SDK retries for R2's HTTP 429 without a second attempt budget."""
+def _configure_retries(client, *, read_throttle_attempts=None):
+    """Use the SDK's single replay loop for R2 throttling, including D2 GETs."""
+    if read_throttle_attempts is not None and (
+            type(read_throttle_attempts) is not int or not 1 <= read_throttle_attempts <= 5):
+        raise ValueError('Read throttle attempts must be between one and five')
     # Do not invent a retry budget for clients using an implicit SDK default.
-    maximum = client.meta.config.retries.get('total_max_attempts')
+    sdk_maximum = client.meta.config.retries.get('total_max_attempts')
 
     def retry(*, response, attempts, operation, request_dict, **_):
         if response is None or response[0].status_code < 400:
             return None
         http, parsed = response
         status = http.status_code
+        maximum = (read_throttle_attempts if operation.name == 'GetObject' and read_throttle_attempts is not None
+                   else sdk_maximum)
         delay = None
-        if status == 429 and maximum is not None:
+        if (status == 429 or status == 503 and parsed.get('Error', {}).get('Code') in
+                {'ServiceUnavailable', 'SlowDown'}) and maximum is not None:
             delay = (_throttle_delay(http.headers, attempts, time.time())
                      if attempts < maximum else False)
         if status not in (404, 412):
@@ -194,9 +276,9 @@ class AsyncBodies:
 
 
 class R2Store:
-    def __init__(self, client, bucket, *, async_client=None, excluded_body_hashes=None, store_uncompressed_pdfs=False, cache_dir=None):
+    def __init__(self, client, bucket, *, async_client=None, excluded_body_hashes=None, store_uncompressed_pdfs=False, cache_dir=None, read_throttle_attempts=None):
         self.client, self.bucket = client, bucket
-        _configure_retries(client)
+        _configure_retries(client, read_throttle_attempts=read_throttle_attempts)
         self.async_client = async_client
         self.excluded_body_hashes = excluded_body_hashes
         self.store_uncompressed_pdfs = store_uncompressed_pdfs
@@ -268,7 +350,15 @@ class R2Store:
             return None
         return self._immutable_cache_dir / key
 
-    def prefetch_immutable(self, keys, *, max_workers=64,expected=None):
+    def prefetch_immutable_ready(self,keys,*,max_workers=64,expected=None,timings=None,max_ready=128):
+        return _ReadyPrefetch(self,keys,max_workers=max_workers,expected=expected,timings=timings,max_ready=max_ready)
+
+    def prefetch_immutable(self, keys, *, max_workers=64,expected=None,timings=None,on_ready=None):
+        if type(max_workers) is not int or max_workers<=0:raise ValueError('Prefetch worker bound must be positive')
+        if on_ready is not None and (not callable(on_ready) or expected is None):
+            raise ValueError('Ready notification requires a callable and exact body pins')
+        if timings is not None and (not isinstance(timings,list) or expected is None):
+            raise ValueError('Read timings require a list and exact body pins')
         if self._immutable_cache_dir is None:
             if expected is not None:raise ValueError('Pinned prefetch requires a local cache')
             return
@@ -287,13 +377,34 @@ class R2Store:
             return
         def fetch(key):
             if pins is None:self.read(key)
-            else:self.read(key,expected=pins[key])
+            elif timings is None:self.read(key,expected=pins[key])
+            else:
+                timing={}
+                try:self.read(key,expected=pins[key],timing=timing)
+                finally:timings.append(dict(key=key,**timing))
+            if on_ready is not None:on_ready(key)
             # Cache the bytes, not a second batch-sized collection of results.
         with ThreadPoolExecutor(max_workers=min(max_workers, len(missing))) as pool:
-            list(pool.map(fetch, missing))
+            for _ in completed_map(pool,fetch,missing,max_pending=4*min(max_workers,len(missing))):pass
 
-    def read(self, key, *, start=None,length=None,expected=None,metadata=None):
-        from botocore.exceptions import ClientError
+    def read(self, key, *, start=None,length=None,expected=None,metadata=None,timing=None):
+        if timing is not None and (not isinstance(timing,dict) or expected is None):
+            raise ValueError('Read timing requires a mapping and an exact body pin')
+        started=time.monotonic() if timing is not None else None
+        if timing is not None:timing.update(requests=0,bytes=0,cache_hit=False,error_type=None,
+            sdk_retries=0,sdk_retry_metadata_complete=True)
+        try:
+            value=self._read(key,start=start,length=length,expected=expected,metadata=metadata,timing=timing)
+            if timing is not None:timing['bytes']=len(value)
+            return value
+        except BaseException as error:
+            if timing is not None:timing['error_type']=type(error).__name__
+            raise
+        finally:
+            if timing is not None:timing['seconds']=time.monotonic()-started
+
+    def _read(self, key, *, start=None,length=None,expected=None,metadata=None,timing=None):
+        from botocore.exceptions import ClientError, BotoCoreError
         from congress_shared.storage import single_put_md5
         ranged=start is not None or length is not None
         pin=_raw_pin(key,expected) if expected is not None else None
@@ -312,6 +423,7 @@ class R2Store:
                 if pin is not None and (len(data)!=pin['bytes'] or
                         pin['md5'] is not None and hashlib.md5(data).hexdigest()!=pin['md5']):
                     raise ValueError('Pinned immutable cache changed')
+                if timing is not None:timing['cache_hit']=True
                 return data
             except OSError:
                 pass
@@ -332,19 +444,33 @@ class R2Store:
                 except OSError:
                     pass
 
+        def retries(response):
+            if timing is not None:
+                count=response.get('ResponseMetadata',{}).get('RetryAttempts')
+                if type(count) is int and count>=0:timing['sdk_retries']+=count
+                else:timing['sdk_retry_metadata_complete']=False
+
         def request():
             try:
+                if timing is not None:timing['requests']+=1
                 options={} if pin is None else dict(IfMatch=pin['etag'])
                 if ranged:options['Range']=f'bytes={start}-{start+length-1}'
                 return self.client.get_object(Bucket=self.bucket, Key=key,**options)
             except ClientError as error:
+                retries(error.response)
                 if error.response["Error"]["Code"] in {"NoSuchKey", "404"}:
                     if key.startswith("indexes/"):
                         self.index_etags[key] = None
                     if pin is None:return None
                 raise
+            except BotoCoreError:
+                # A transport error may follow SDK replays but carries no
+                # response RetryAttempts. Preserve the failure and report the gap.
+                if timing is not None:timing['sdk_retry_metadata_complete']=False
+                raise
 
         def consume(response, stream):
+            retries(response)
             if pin is not None:
                 wanted=length if ranged else pin['bytes']
                 # LIST versions are opaque. A canonical captured-MD5 condition
@@ -377,7 +503,7 @@ class R2Store:
                 data = stream.read()
             return response, data
 
-        result = _read_stream(self.client, key, request, consume)
+        result = _read_stream(self.client, key, request, consume, bucket=self.bucket)
         if result is None:
             return None
         response, data = result
@@ -523,7 +649,7 @@ class R2Store:
                 raise ValueError('Incomplete stored object')
             return count
 
-        return _read_stream(self.client, key, request, consume)
+        return _read_stream(self.client, key, request, consume, bucket=self.bucket)
 
     def put_catalog_manifest(self, data, *, expected_version):
         """Use the selector version captured before this catalog build."""
@@ -574,7 +700,7 @@ class R2Store:
             result['version'] = etag
             return result
 
-        return _read_stream(self.client, key, request, consume)
+        return _read_stream(self.client, key, request, consume, bucket=self.bucket)
 
     def put_derived_file(self, key, path, *, expected):
         """Upload an immutable catalog file with streamed checksum verification."""

@@ -1,0 +1,27 @@
+{
+  "version": 1,
+  "vote": {
+    "kind": "vote",
+    "outcomes": {
+      "agreed": 0,
+      "rejected": 0,
+      "tied": 0,
+      "other": 0,
+      "unknown": 1
+    }
+  },
+  "external_provider": {
+    "receipt_key_prefix": "receipts/external/provider-responses/",
+    "filename_prefix": "assemble-20260930",
+    "outcomes": {
+      "captured_original_page": 2,
+      "original_body_unresolved": 1
+    }
+  },
+  "enumeration": {
+    "receipts": 95,
+    "source_lines": 2003314,
+    "report_sha256": "ad5099078467bad657341d7d37e2b19bf1619de64b38b94f1ea482a637de96ad",
+    "other_unrecognized_families": 0
+  }
+}
