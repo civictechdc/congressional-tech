@@ -8,12 +8,20 @@ ROOT=Path(__file__).parents[4]
 
 def url_state_steps(*,root=ROOT):
     """Use shared good-fetch and URL keys, preserving explicit input diagnostics."""
-    acquisition="mode='fetch' AND outcome NOT IN ('reference','saved-record') AND requested_url IS NOT NULL AND family<>'external/provider-responses'"
-    sqls=[('lines',f"""SELECT receipt_key,receipt_line,requested_url,max(family) AS family,
+    acquisition="mode='fetch' AND outcome NOT IN ('reference','saved-record') AND requested_url IS NOT NULL"
+    sqls=[('lines',f"""WITH base_captures AS (
+        SELECT * FROM captures WHERE {acquisition}
+    ), companion_keys AS (
+        SELECT DISTINCT receipt_key,receipt_line,requested_url FROM base_captures WHERE family<>'external/provider-responses'
+    ), folded_captures AS (
+        SELECT b.* FROM base_captures b
+        LEFT JOIN companion_keys c ON b.receipt_key=c.receipt_key AND b.receipt_line=c.receipt_line AND b.requested_url=c.requested_url
+        WHERE b.family<>'external/provider-responses' OR c.receipt_key IS NULL
+    ) SELECT receipt_key,receipt_line,requested_url,max(family) AS family,
         max(arrow_cast(cast(retrieved_at AS TIMESTAMP WITH TIME ZONE),'Timestamp(Microsecond, Some("UTC"))')) AS retrieved_at,
         max(http_status) AS http_status,max(outcome) AS outcome,
         count(DISTINCT json_array(family,http_status,outcome)) AS variants
-        FROM captures WHERE {acquisition} GROUP BY receipt_key,receipt_line,requested_url"""),
+        FROM folded_captures GROUP BY receipt_key,receipt_line,requested_url"""),
         ('good_lines',"SELECT DISTINCT receipt_key,receipt_line FROM good_fetch_contexts"),
         ('latest',"""SELECT * FROM (SELECT *,row_number() OVER(PARTITION BY requested_url ORDER BY
             retrieved_at DESC NULLS LAST,receipt_key DESC,receipt_line DESC) AS preference FROM url_state_lines

@@ -35,28 +35,15 @@ WITH expected_parsers AS (
  AND NOT EXISTS (SELECT 1 FROM unreadable_pages u WHERE u.body_sha256=encode(b.body_sha,'hex')
    AND u.parser=v.parser AND u.parser_version=v.version)
 ), valid_filename_readings AS (
- SELECT filename,source_url FROM filename_readings
+ SELECT DISTINCT filename,source_url FROM filename_readings
  WHERE catalog_version={{CATALOG_VERSION}} AND status IN ('completed','error','size_limit')
- UNION ALL
- SELECT filename,
-   CASE WHEN source_url LIKE 'http://%' THEN replace(source_url,'http://','https://')
-        WHEN source_url LIKE 'https://%' THEN replace(source_url,'https://','http://')
-   END AS source_url
- FROM filename_readings
- WHERE catalog_version={{CATALOG_VERSION}} AND status IN ('completed','error','size_limit')
-   AND (source_url LIKE 'http://%' OR source_url LIKE 'https://%')
- UNION ALL
- SELECT filename,replace(source_url,'/xml/','/pdf/') AS source_url
- FROM filename_readings
- WHERE catalog_version={{CATALOG_VERSION}} AND status IN ('completed','error','size_limit')
-   AND source_url LIKE '%/xml/%'
 ), unreadable_filenames AS (
  SELECT record_sha FROM active_unreadable
  WHERE parser='filename' AND parser_version={{CATALOG_VERSION}}
 ), missing_filenames AS (
  SELECT p.* FROM profile_filename_pairs p
- WHERE NOT EXISTS (SELECT 1 FROM valid_filename_readings f
-   WHERE f.filename=p.filename AND f.source_url=p.source_url)
+ LEFT JOIN valid_filename_readings fr ON fr.filename=p.filename AND fr.source_url=p.source_url
+ WHERE fr.filename IS NULL
  AND NOT EXISTS (SELECT 1 FROM unreadable_filenames u
    WHERE u.record_sha=encode(sha256(json_array(p.filename,p.source_url)),'hex'))
 ), capture_dup AS (

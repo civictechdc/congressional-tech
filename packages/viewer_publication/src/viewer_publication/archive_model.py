@@ -88,7 +88,7 @@ def evidence_steps(*,root=ROOT):
     names=['pinned-readings','sniff-observations','sniff-conflicts','sniff-facts','page-facts','verification-conflicts','storage-verifications','copy-verifications','body-evidence','capture-evidence',
         'good-fetches','capture-locators','body-signals','locator-signals','placeholders','record-roles',
         'page-contexts','link-inputs']
-    return [writer_admission_step(root=root)]+[dict(name=name.replace('-','_'),sql=(Path(root)/'model/sql'/(name+'.sql')).read_text(),materialize=name not in ('capture-evidence',))
+    return [writer_admission_step(root=root)]+[dict(name=name.replace('-','_'),sql=(Path(root)/'model/sql'/(name+'.sql')).read_text(),materialize=True)
         for name in names]
 
 

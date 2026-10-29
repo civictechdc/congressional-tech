@@ -10,5 +10,5 @@ FROM captures c LEFT JOIN remaining_recovery_decisions d
  ON encode(c.sha256,'hex')=lower(d.body_sha256) AND c.original_url=d.original_url
 LEFT JOIN recovery_kinds category ON c.recovery_category=category.category
 LEFT JOIN recovery_kinds basis ON basis.category IS NULL AND c.match_basis=basis.match_basis
-WHERE c.mode='retained_import' AND c.sha256 IS NOT NULL
+WHERE c.mode='retained_import'
   AND (c.recovery_category IS NOT NULL OR d.id IS NOT NULL OR basis.kind IS NOT NULL)

@@ -56,12 +56,12 @@ def test_native_references_preserve_occurrences_without_inventing_acquisitions(t
         json_input(tmp_path,'page_facts',[],body_sha='Binary',status='Utf8',named_meetings=list_of('Int64')),
         json_input(tmp_path,'resolved_links',[],target_url='Utf8')]
     steps=[dict(name='capture_evidence',sql="""SELECT * EXCLUDE(body_hex,is_real_file,record_role),
-            decode(body_hex,'hex') AS sha256 FROM fixture_captures"""),
+            decode(body_hex,'hex') AS sha256,
+            cast(NULL AS VARCHAR) AS fidelity, cast(NULL AS VARCHAR) AS media_type FROM fixture_captures"""),
+        dict(name='good_fetches',sql="SELECT receipt_key,receipt_line,capture_index,requested_url,decode(body_hex,'hex') AS sha256,context_url,member_path FROM fixture_captures WHERE is_real_file"),
         dict(name='record_roles',sql='SELECT receipt_key,receipt_line,capture_index,is_real_file,record_role FROM fixture_captures')]
     steps += source_steps()
     steps += [dict(name='captures',sql='SELECT * FROM capture_evidence'),
-        dict(name='good_fetches',sql='SELECT receipt_key,receipt_line,capture_index FROM fixture_captures WHERE is_real_file'),
-        dict(name='source_addresses',sql=(ROOT/'model/sql/source-addresses.sql').read_text(),materialize=True),
         dict(name='url_inputs',sql=(ROOT/'model/sql/model-url-inputs.sql').read_text(),materialize=True),
         dict(name='url_normalized',sql=(ROOT/'model/sql/url-normalized.sql').read_text(),materialize=True),
         dict(name='model_url_keys',sql=(ROOT/'model/sql/url-keys.sql').read_text(),materialize=True),

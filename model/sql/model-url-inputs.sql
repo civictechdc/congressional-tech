@@ -4,4 +4,4 @@ SELECT DISTINCT encode(sha256(json_array(url)),'hex') AS input_id,url FROM (
  UNION SELECT target_url FROM resolved_links UNION SELECT original_url FROM current_recoveries
  UNION SELECT unnest(make_array(requested_url,url)) FROM captures
  WHERE mode='fetch' AND outcome NOT IN ('reference','saved-record')
-) WHERE url IS NOT NULL AND trim(url)<>'' AND regexp_like(url,'^https?://[a-zA-Z0-9][-a-zA-Z0-9._]*(?::[0-9]+)?(?:/|[?#]|$)')
+) WHERE url IS NOT NULL AND trim(url)<>''
