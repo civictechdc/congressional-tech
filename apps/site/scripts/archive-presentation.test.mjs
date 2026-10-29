@@ -6,9 +6,12 @@ import {build} from 'esbuild';
 import React from 'react';
 import {renderToStaticMarkup} from 'react-dom/server';
 const require=createRequire(import.meta.url);
-const result=await build({entryPoints:[new URL('../src/components/explorer/archive/ArchiveDetail.tsx',import.meta.url).pathname],bundle:true,platform:'node',format:'cjs',packages:'external',write:false});
-const compiled={exports:{}};new Function('require','module','exports',result.outputFiles[0].text)(require,compiled,compiled.exports);
-const {ArchiveDetail,ArchiveRows}=compiled.exports;
+async function compile(name){
+  const result=await build({entryPoints:[new URL('../src/components/explorer/archive/'+name,import.meta.url).pathname],bundle:true,platform:'node',format:'cjs',packages:'external',write:false});
+  const compiled={exports:{}};new Function('require','module','exports',result.outputFiles[0].text)(require,compiled,compiled.exports);return compiled.exports;
+}
+const {ArchiveDetail,ArchiveRows}=await compile('ArchiveDetail.tsx');
+let formatting;const formatModule=()=>formatting??=compile('ArchiveFormats.tsx');
 const row={list_row:0,filename:'Report.pdf',title:'Publisher report',format:'pdf',date_kind:'captured',first_captured:'2024-01-02',document_date:'2023-12-01',meeting_keys:['118001','118002'],hidden:false};
 const detail={link_key:new Uint8Array(8).fill(17),saved_body:new Uint8Array(32).fill(17),saved_suffix:'.gz',saved_bytes:101*1024*1024,saved_media_type:'application/pdf',document_date_source:'publisher',removed_on:'2024-03-01',alternates:[{format:'xml',body:new Uint8Array(32).fill(18),suffix:'.gz',size:50}]};
 const render=entry=>renderToStaticMarkup(React.createElement(ArchiveDetail,{entry,meetings:[{event_id:118001,title:'Transportation hearing'}],versions:[{...row,list_row:3}],rawBase:'https://raw.test/',onSelect:()=>{},onHearing:()=>{},onOpenSaved:()=>{}}));
@@ -49,4 +52,44 @@ test('a recovery with no import record omits the date line and retains its sourc
   assert(html.includes('https://recovery.test/seed-copy'));
   assert(!html.includes('Added to the archive'));
   assert(!html.includes('unknown'));
+});
+
+
+test('all measured seed formats keep their exact option values and counts with readable labels',async()=>{
+  const {JSDOM}=await import('jsdom');
+  const fixture=JSON.parse(await readFile(new URL('./fixtures/archive-formats.json',import.meta.url),'utf8'));
+  const {ArchiveFormatFilter,formatLabel}=await formatModule();
+  const html=renderToStaticMarkup(React.createElement(ArchiveFormatFilter,{options:fixture.formats,value:'application/x-mpegurl',onChange:()=>{}}));
+  const dom=new JSDOM(html);try{
+    const select=dom.window.document.querySelector('select');
+    assert.equal(select.value,'application/x-mpegurl');
+    assert.equal(select.options.length,fixture.formats.length+1);
+    assert.equal(fixture.formats.reduce((sum,item)=>sum+item.count,0),fixture.rows);
+    for(const item of fixture.formats){
+      const option=[...select.options].find(option=>option.value===item.value);
+      assert(option,item.value);assert.equal(option.textContent,`${item.label} (${item.count.toLocaleString('en-US')})`);
+      assert.equal(option.parentElement.label,item.section);assert.equal(formatLabel(item.value),item.label);
+    }
+    for(const item of fixture.additional_formats)assert.equal(formatLabel(item.value),item.label);
+    assert.equal(formatLabel('APPLICATION/X-MPEGURL'),'HLS playlist (MPEGURL)');
+    assert.equal(formatLabel('new-format'),'Other format (new-format)');
+    assert.equal(formatLabel(null),'Format not recorded');
+  }finally{dom.window.close();}
+});
+
+test('response states remain explicit and selectable rather than masquerading as file formats',async()=>{
+  const {ArchiveFormatFilter}=await formatModule();
+  const html=renderToStaticMarkup(React.createElement(ArchiveFormatFilter,{options:[{value:'challenge_html',count:9},{value:'html_requires_document_discovery',count:5402}],value:'challenge_html',onChange:()=>{}}));
+  assert(html.includes('Recorded response states'));assert(html.includes('Access-check page (not document content) (9)'));
+  assert(html.includes('value="challenge_html" selected=""'));assert(!html.includes('CHALLENGE_HTML'));
+  assert(html.includes('Page awaiting document discovery (5,402)'));
+});
+
+test('rows and saved-copy links share format labels without changing recorded file types',()=>{
+  const changed={...row,format:'application/x-mpegurl'};
+  const rows=renderToStaticMarkup(React.createElement(ArchiveRows,{rows:[changed],onSelect:()=>{}}));
+  const html=render({document:changed,detail:{...detail,alternates:[{format:'docx',body:new Uint8Array(32).fill(18),suffix:'.gz',size:50}]},sources:[],recoveries:[]});
+  assert(rows.includes('HLS playlist (MPEGURL)'));assert(!rows.includes('APPLICATION/X-MPEGURL'));
+  assert(html.includes('Open saved HLS playlist (MPEGURL)'));assert(html.includes('Open alternate Word document (DOCX)'));
+  assert.equal(changed.format,'application/x-mpegurl');
 });
