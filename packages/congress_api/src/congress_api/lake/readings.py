@@ -125,7 +125,7 @@ def bundle_version(versions,*,policy):
 
 def writer_admission_step(*,root=ROOT):
     """Derive current writer proofs from captures using the one versioned rule."""
-    return dict(name='body_admissions',sql=(Path(root)/'model/sql/body-admissions.sql').read_text(),materialize=False)
+    return dict(name='body_admissions',sql=(Path(root)/'model/sql/body-admissions.sql').read_text(),materialize=True)
 
 
 def writer_admission_conflict_sql():

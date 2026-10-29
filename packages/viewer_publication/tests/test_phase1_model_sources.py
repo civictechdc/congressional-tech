@@ -40,8 +40,8 @@ def test_native_sources_preserve_names_member_paths_imports_and_failed_urls(tmp_
         h_content_disposition='Utf8',retrieved_at='Utf8',format='Utf8',is_real_file='Boolean',record_role='Utf8'))
     inputs.append(json_input(tmp_path,'current_recoveries',[dict(id='recovered',original_url='https://fixture.test/dead.pdf',
         recovered_filename='dead-original.pdf',kind='recovered_document'),dict(id='failed-recovery',original_url='https://fixture.test/failed.pdf',recovered_filename='failed.pdf',kind='recovered_document')],id='Utf8',original_url='Utf8',recovered_filename='Utf8',kind='Utf8'))
-    steps=[dict(name='capture_evidence',sql="SELECT receipt_key,receipt_line,capture_index,run_id,mode,outcome,url,requested_url,context_url,member_path,h_content_disposition,retrieved_at,format,decode(body_hex,'hex') AS sha256 FROM fixture_captures"),
-        dict(name='record_roles',sql='SELECT receipt_key,receipt_line,capture_index,is_real_file,record_role FROM fixture_captures')]
+    steps=[dict(name='capture_evidence',sql="SELECT receipt_key,receipt_line,capture_index,run_id,mode,outcome,url,requested_url,context_url,member_path,h_content_disposition,retrieved_at,format,cast(NULL AS VARCHAR) AS fidelity,cast(NULL AS VARCHAR) AS media_type,decode(body_hex,'hex') AS sha256 FROM fixture_captures"),
+        dict(name='good_fetches',sql="SELECT * FROM capture_evidence WHERE mode='fetch' AND outcome='stored'"),dict(name='record_roles',sql='SELECT receipt_key,receipt_line,capture_index,is_real_file,record_role FROM fixture_captures')]
     result=run_job(tmp_path,NativeDatasets.from_config(os.environ['DOCSPEC_JOB_CONFIG']),inputs=inputs,
         steps=steps+source_steps(),outputs=[
             parquet_output(tmp_path,'fixture-captures','SELECT * FROM capture_evidence',['receipt_line','capture_index']),

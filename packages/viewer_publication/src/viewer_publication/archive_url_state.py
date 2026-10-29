@@ -8,7 +8,7 @@ ROOT=Path(__file__).parents[4]
 
 def url_state_steps(*,root=ROOT):
     """Use shared good-fetch and URL keys, preserving explicit input diagnostics."""
-    acquisition="mode='fetch' AND outcome NOT IN ('reference','saved-record')"
+    acquisition="mode='fetch' AND outcome NOT IN ('reference','saved-record') AND requested_url IS NOT NULL AND family<>'external/provider-responses'"
     sqls=[('lines',f"""SELECT receipt_key,receipt_line,requested_url,max(family) AS family,
         max(arrow_cast(cast(retrieved_at AS TIMESTAMP WITH TIME ZONE),'Timestamp(Microsecond, Some("UTC"))')) AS retrieved_at,
         max(http_status) AS http_status,max(outcome) AS outcome,

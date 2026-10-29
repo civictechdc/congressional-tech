@@ -43,7 +43,7 @@ WITH expected_parsers AS (
 ), missing_filenames AS (
  SELECT p.* FROM profile_filename_pairs p
  WHERE NOT EXISTS (SELECT 1 FROM valid_filename_readings f
-   WHERE f.filename=p.filename AND f.source_url=p.source_url)
+   WHERE f.filename=p.filename AND (f.source_url=p.source_url OR regexp_replace(f.source_url,'^https?://','')=regexp_replace(p.source_url,'^https?://','')))
  AND NOT EXISTS (SELECT 1 FROM unreadable_filenames u
    WHERE u.record_sha=encode(sha256(json_array(p.filename,p.source_url)),'hex'))
 ), capture_dup AS (
