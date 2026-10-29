@@ -90,3 +90,40 @@ def test_content_and_locator_signals_build_only_small_rule_inputs(tmp_path):
                 if len(line)-len(line.lstrip())<=indent:break
                 build.append(line)
             assert not any(re.search(r'\b(?:text_head|url)@',line) for line in build),'\n'.join(build)
+
+
+def test_source_and_model_url_cross_joins_build_the_single_validation_row(tmp_path):
+    from viewer_publication.archive_model import source_steps
+    inputs=[json_input(tmp_path,'url_inputs',[
+        dict(input_id='one',url='https://fixture.test/report'),dict(input_id='two',url=None)],
+        input_id='Utf8',url='Utf8'),
+        json_input(tmp_path,'url_normalized',[
+            dict(url='https://fixture.test/report',base_key='fixture.test/report',error=None,still_wrapped=False),
+            dict(url=None,base_key=None,error='invalid_url',still_wrapped=False)],
+            url='Utf8',base_key='Utf8',error='Utf8',still_wrapped='Boolean'),
+        json_input(tmp_path,'url_variants',[],canonical_url='Utf8',variant_url='Utf8')]
+    model=(ROOT/'model/sql/url-keys.sql').read_text()
+    source=next(step['sql'] for step in source_steps() if step['name']=='source_url_keys')
+    steps=[dict(name='source_url_inputs',sql='SELECT * FROM url_inputs'),
+        dict(name='source_url_normalized',sql='SELECT * FROM url_normalized'),
+        dict(name='model_keys',sql=model),dict(name='source_keys',sql=source)]
+    with NativeDatasets.from_config(os.environ['DOCSPEC_JOB_CONFIG']) as engine:
+        report=run_job(tmp_path/'job',engine,inputs=inputs,steps=steps,outputs=[],queries=[
+            dict(name='model_plan',sql='EXPLAIN SELECT * FROM model_keys'),
+            dict(name='source_plan',sql='EXPLAIN SELECT * FROM source_keys'),
+            dict(name='model',sql='SELECT * FROM model_keys ORDER BY input_id'),
+            dict(name='source',sql='SELECT * FROM source_keys ORDER BY input_id')])
+    assert report['model']==report['source']==[
+        dict(input_id='one',url='https://fixture.test/report',url_key='fixture.test/report',error=None,still_wrapped=False),
+        dict(input_id='two',url=None,url_key=None,error='invalid_url',still_wrapped=False)]
+    for query in ['model_plan','source_plan']:
+        plan=next(row['plan'] for row in report[query] if row['plan_type']=='physical_plan');lines=plan.splitlines()
+        joins=[i for i,line in enumerate(lines) if 'CrossJoinExec' in line]
+        assert joins,plan
+        for i in joins:
+            first=lines[i+1];indent=len(first)-len(first.lstrip());build=[first]
+            for line in lines[i+2:]:
+                if len(line)-len(line.lstrip())<=indent:break
+                build.append(line)
+            first_aggregate=next((line for line in build if 'AggregateExec:' in line),'')
+            assert 'gby=[]' in first_aggregate,'\n'.join(build)
