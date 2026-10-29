@@ -252,8 +252,8 @@ def build_prepared_release(prepared,*,engine,output,root=ROOT):
             ON d.component=r.component) ON d.component=x.component""",materialize=True),
         dict(name='source_input',sql=(Path(root)/'model/sql/document-source-input.sql').read_text(),materialize=True),
         dict(name='recovery_input',sql=(Path(root)/'model/sql/document-recovery-input.sql').read_text(),materialize=True)]
-    empty_meetings=f"""WITH keys AS (SELECT try_cast(unnest(meeting_keys) AS BIGINT) AS event_id FROM ordered)
-        SELECT DISTINCT event_id,cast(NULL AS VARCHAR) AS chamber,cast(NULL AS VARCHAR) AS title,cast(NULL AS DATE) AS meeting_date,
+    empty_meetings=f"""WITH keys AS (SELECT DISTINCT try_cast(unnest(meeting_keys) AS BIGINT) AS event_id FROM ordered)
+        SELECT event_id,cast(NULL AS VARCHAR) AS chamber,cast(NULL AS VARCHAR) AS title,cast(NULL AS DATE) AS meeting_date,
         cast(NULL AS VARCHAR) AS meeting_type,cast(NULL AS SMALLINT) AS session,cast(NULL AS VARCHAR) AS status,
         {_empty_struct(start=TS,end=TS,place='cast(NULL AS VARCHAR)')} AS sittings,
         {_empty_struct(system_code='cast(NULL AS VARCHAR)',role='cast(NULL AS VARCHAR)')} AS committees,
