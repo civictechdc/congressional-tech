@@ -110,7 +110,8 @@ def test_seed_plan_reads_no_inputs_or_runtime(tmp_path):
 
 @pytest.mark.parametrize('name',[
     'model/jobs/seed-v5.json','model/sql/seed-v5-documents.sql',
-    'model/registries/recovery-kinds.json','model/registries/reader-limits.json'])
+    'model/registries/recovery-kinds.json','model/registries/reader-limits.json',
+    'packages/viewer_publication/src/viewer_publication/archive_model_lifetimes.py'])
 def test_seed_refuses_definition_drift_before_native_effects(tmp_path,name):
     from viewer_publication.archive_seed import load_seed_spec,build_seed_release
     from congress_api.retention.derived_files import file_identity
