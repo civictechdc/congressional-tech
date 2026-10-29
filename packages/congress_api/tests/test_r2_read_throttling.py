@@ -1,0 +1,160 @@
+"""D2 retries only throttled GETs and never overlaps streams for one object."""
+from concurrent.futures import ThreadPoolExecutor
+from contextlib import closing
+import hashlib
+import io
+import threading
+
+import boto3
+from botocore.awsrequest import AWSResponse
+from botocore.config import Config
+from botocore.exceptions import ClientError
+import pytest
+
+from congress_api.retention.r2 import R2Store
+from test_r2_body_files import Client
+
+
+DATA=b'complete'
+DIGEST=hashlib.sha256(DATA).hexdigest()
+KEY=f'bodies/sha256/{DIGEST[:2]}/{DIGEST}'
+PIN=dict(bytes=len(DATA),md5=hashlib.md5(DATA).hexdigest())
+
+
+@pytest.mark.parametrize('second_reader',['bytes','file','other-store'])
+def test_same_key_waits_until_the_previous_stream_closes(tmp_path,second_reader):
+    entered=threading.Event();release=threading.Event();second_started=threading.Event()
+    overlap=threading.Event();other_finished=threading.Event()
+    active=0;peak=0;lock=threading.Lock()
+
+    class Stream(io.BytesIO):
+        def __init__(self,blocked):super().__init__(DATA);self.blocked=blocked
+        def read(self,*args):
+            if self.blocked:
+                entered.set()
+                if not release.wait(3):raise TimeoutError('fixture did not release first read')
+            return super().read(*args)
+        def close(self):
+            nonlocal active
+            if not self.closed and self.blocked is not None:
+                with lock:active-=1
+            super().close()
+
+    class Reads(Client):
+        def get_object(self,**args):
+            nonlocal active,peak
+            if args['Key']!=KEY:
+                other_finished.set()
+                return dict(Body=io.BytesIO(DATA),ContentLength=len(DATA),ETag='version')
+            with lock:
+                first=not self.reads;self.reads.append(args);active+=1;peak=max(peak,active)
+                if active>1:overlap.set()
+            return dict(Body=Stream(first),ContentLength=len(DATA),ETag='version')
+
+    client=Reads();store=R2Store(client,'bucket')
+    def second():
+        second_started.set()
+        if second_reader=='file':
+            return store.read_file(KEY,tmp_path/'second',max_bytes=len(DATA))
+        target=R2Store(client,'bucket') if second_reader=='other-store' else store
+        return target.read(KEY)
+    with ThreadPoolExecutor(max_workers=3) as pool:
+        first=pool.submit(store.read,KEY)
+        try:
+            assert entered.wait(2)
+            following=pool.submit(second)
+            assert second_started.wait(2)
+            distinct=pool.submit(store.read,'bodies/another-key')
+            assert other_finished.wait(2), 'A different key must progress while the first key is blocked'
+            assert distinct.result(timeout=2)==DATA
+            observed_overlap=overlap.wait(.2)
+        finally:release.set()
+        assert first.result(timeout=2)==DATA
+        result=following.result(timeout=2)
+    assert result==(len(DATA) if second_reader=='file' else DATA)
+    assert not observed_overlap and peak==1 and active==0
+    assert len(client.reads)==2
+
+
+class WireBytes(io.BytesIO):
+    def stream(self,amt=1024,decode_content=False):
+        while piece:=self.read(amt):yield piece
+
+
+def sdk_transport(monkeypatch,client,responses):
+    """Run actual SDK retry dispatch with a finite in-memory HTTP transport."""
+    calls=[];sleeps=[]
+    def send(request):
+        status,code,extra=responses[min(len(calls),len(responses)-1)]
+        calls.append(request)
+        body=(DATA if status==200 else
+              f'<Error><Code>{code}</Code><Message>R2 throttle</Message></Error>'.encode())
+        headers={'content-length':str(len(body)),'etag':'"'+PIN['md5']+'"',
+                 'x-amz-request-id':f'fixture-{len(calls)}',**extra}
+        return AWSResponse(request.url,status,headers,WireBytes(body))
+    monkeypatch.setattr(client._endpoint.http_session,'send',send)
+    monkeypatch.setattr('botocore.endpoint.time.sleep',sleeps.append)
+    monkeypatch.setattr('congress_api.retention.r2.random.random',lambda:.25)
+    return calls,sleeps
+
+
+def sdk_client():
+    return boto3.client('s3',endpoint_url='https://r2.example.test',region_name='auto',
+        aws_access_key_id='test',aws_secret_access_key='test',
+        config=Config(retries={'total_max_attempts':1,'mode':'standard'}))
+
+
+@pytest.mark.parametrize('status,code',[(429,'ServiceUnavailable'),(503,'ServiceUnavailable'),(503,'SlowDown')])
+@pytest.mark.parametrize('recover',[False,True])
+def test_throttled_get_uses_five_attempts_without_multiplying_body_retries(monkeypatch,status,code,recover):
+    sequence=[(status,code,{})]*4+([(200,'',{})] if recover else [(status,code,{})])
+    with closing(sdk_client()) as client:
+        calls,sleeps=sdk_transport(monkeypatch,client,sequence)
+        store=R2Store(client,'bucket',read_throttle_attempts=5);timing={}
+        if recover:assert store.read(KEY,expected=PIN,timing=timing)==DATA
+        else:
+            with pytest.raises(ClientError) as caught:store.read(KEY,expected=PIN,timing=timing)
+            assert caught.value.response['ResponseMetadata']['RetryAttempts']==4
+        assert len(calls)==5 and sleeps==[1.25,2.25,4.25,8.25]
+        assert timing['requests']==1 and timing['sdk_retries']==4 and timing['sdk_retry_metadata_complete']
+        assert timing['bytes']==(len(DATA) if recover else 0)
+        assert all(request.headers['If-Match']==b'"'+PIN['md5'].encode()+b'"' for request in calls)
+
+
+@pytest.mark.parametrize('status,code,extra',[
+    (403,'AccessDenied',{}),(500,'InternalError',{}),(503,'AccessDenied',{}),
+    (503,'SlowDown',{'retry-after':'61'}),
+])
+def test_other_get_errors_and_excessive_server_waits_do_not_gain_retries(monkeypatch,status,code,extra):
+    with closing(sdk_client()) as client:
+        calls,sleeps=sdk_transport(monkeypatch,client,[(status,code,extra)])
+        with pytest.raises(ClientError):R2Store(client,'bucket',read_throttle_attempts=5).read(KEY,expected=PIN)
+        assert len(calls)==1 and sleeps==[]
+
+
+def test_d2_get_retry_budget_does_not_change_put_budget(monkeypatch):
+    with closing(sdk_client()) as client:
+        calls,sleeps=sdk_transport(monkeypatch,client,[(503,'ServiceUnavailable',{})])
+        R2Store(client,'bucket',read_throttle_attempts=5)
+        with pytest.raises(ClientError):client.put_object(Bucket='bucket',Key=KEY,Body=DATA)
+        assert len(calls)==1 and sleeps==[]
+
+
+@pytest.mark.parametrize('attempts',[0,-1,True,6])
+def test_invalid_get_throttle_budget_refuses_before_read(attempts):
+    client=Client()
+    with pytest.raises(ValueError,match='throttle'):R2Store(client,'bucket',read_throttle_attempts=attempts)
+    assert not client.reads
+
+
+def test_persistent_worker_store_enables_the_get_budget(monkeypatch):
+    from congress_api.lake.readings import _ranged_store
+    from congress_shared.storage import R2Config
+    with closing(sdk_client()) as client:
+        calls,sleeps=sdk_transport(monkeypatch,client,[(503,'SlowDown',{}),(200,'',{})])
+        monkeypatch.setattr(R2Config,'from_env',lambda **_:object())
+        monkeypatch.setattr('congress_shared.storage.connect_r2',lambda _:client)
+        _ranged_store.cache_clear()
+        try:assert _ranged_store('fixture').read(KEY,expected=PIN)==DATA
+        finally:_ranged_store.cache_clear()
+        assert len(calls)==2 and sleeps==[1.25]
