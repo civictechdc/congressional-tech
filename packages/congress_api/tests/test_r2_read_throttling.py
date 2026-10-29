@@ -1,4 +1,4 @@
-"""D2 retries only throttled GETs and never overlaps streams for one object."""
+"""D2 bounds transient GET retries and never overlaps streams for one object."""
 from concurrent.futures import ThreadPoolExecutor
 from contextlib import closing
 import hashlib
@@ -87,8 +87,10 @@ def sdk_transport(monkeypatch,client,responses):
     """Run actual SDK retry dispatch with a finite in-memory HTTP transport."""
     calls=[];sleeps=[]
     def send(request):
-        status,code,extra=responses[min(len(calls),len(responses)-1)]
+        response=responses[min(len(calls),len(responses)-1)]
         calls.append(request)
+        if isinstance(response,Exception):raise response
+        status,code,extra=response
         body=(DATA if status==200 else
               f'<Error><Code>{code}</Code><Message>R2 throttle</Message></Error>'.encode())
         headers={'content-length':str(len(body)),'etag':'"'+PIN['md5']+'"',
@@ -100,10 +102,68 @@ def sdk_transport(monkeypatch,client,responses):
     return calls,sleeps
 
 
-def sdk_client():
+def sdk_client(mode='standard'):
     return boto3.client('s3',endpoint_url='https://r2.example.test',region_name='auto',
         aws_access_key_id='test',aws_secret_access_key='test',
-        config=Config(retries={'total_max_attempts':1,'mode':'standard'}))
+        config=Config(retries={'total_max_attempts':1,'mode':mode}))
+
+
+def transport_failure(kind):
+    from botocore.exceptions import ConnectionClosedError,EndpointConnectionError,HTTPClientError,ReadTimeoutError
+    if kind=='reset':return ConnectionResetError('fixture reset')
+    if kind=='wrapped-reset':return HTTPClientError(error=ConnectionResetError('fixture reset'))
+    cls={'closed':ConnectionClosedError,'timeout':ReadTimeoutError,'endpoint':EndpointConnectionError}[kind]
+    return cls(endpoint_url='https://r2.example.test')
+
+
+@pytest.mark.parametrize('mode',['legacy','standard'])
+@pytest.mark.parametrize('kind',['closed','timeout','endpoint','reset','wrapped-reset'])
+@pytest.mark.parametrize('failures',[0,1,4,5])
+def test_transport_get_recovers_within_one_shared_attempt_bound(monkeypatch,mode,kind,failures):
+    error=transport_failure(kind)
+    with closing(sdk_client(mode)) as client:
+        calls,sleeps=sdk_transport(monkeypatch,client,[error]*failures+[(200,'',{})])
+        timing={};store=R2Store(client,'bucket',read_throttle_attempts=5)
+        if failures<5:
+            assert store.read(KEY,expected=PIN,timing=timing)==DATA
+            assert timing['sdk_retries']==failures and timing['sdk_retry_metadata_complete']
+        else:
+            with pytest.raises(type(error)):store.read(KEY,expected=PIN,timing=timing)
+            assert timing['sdk_retry_metadata_complete'] is False
+        assert len(calls)==min(failures+1,5)
+        assert sleeps==[1.25,2.25,4.25,8.25][:min(failures,4)]
+        assert timing['requests']==1
+        assert all(request.headers['If-Match']==b'"'+PIN['md5'].encode()+b'"' for request in calls)
+
+
+@pytest.mark.parametrize('mode',['legacy','standard'])
+def test_503_and_transport_errors_share_one_get_attempt_counter(monkeypatch,mode):
+    sequence=[(503,'SlowDown',{}),transport_failure('closed'),transport_failure('timeout'),
+        transport_failure('endpoint'),(200,'',{})]
+    with closing(sdk_client(mode)) as client:
+        calls,sleeps=sdk_transport(monkeypatch,client,sequence)
+        assert R2Store(client,'bucket',read_throttle_attempts=5).read(KEY,expected=PIN)==DATA
+        assert len(calls)==5 and sleeps==[1.25,2.25,4.25,8.25]
+
+
+@pytest.mark.parametrize('mode',['legacy','standard'])
+@pytest.mark.parametrize('operation',['put_object','head_object'])
+def test_get_transport_override_does_not_expand_other_operations(monkeypatch,mode,operation):
+    with closing(sdk_client(mode)) as client:
+        calls,sleeps=sdk_transport(monkeypatch,client,[transport_failure('closed')])
+        R2Store(client,'bucket',read_throttle_attempts=5)
+        with pytest.raises(type(transport_failure('closed'))):
+            getattr(client,operation)(Bucket='bucket',Key=KEY,**({'Body':DATA} if operation=='put_object' else {}))
+        assert len(calls)==1 and sleeps==[]
+
+
+@pytest.mark.parametrize('mode',['legacy','standard'])
+def test_unclassified_get_exception_is_not_promoted_to_retryable(monkeypatch,mode):
+    with closing(sdk_client(mode)) as client:
+        calls,sleeps=sdk_transport(monkeypatch,client,[ValueError('fixture nontransport failure')])
+        with pytest.raises(ValueError,match='nontransport'):
+            R2Store(client,'bucket',read_throttle_attempts=5).read(KEY,expected=PIN)
+        assert len(calls)==1 and sleeps==[]
 
 
 @pytest.mark.parametrize('status,code',[(429,'ServiceUnavailable'),(503,'ServiceUnavailable'),(503,'SlowDown')])
@@ -197,6 +257,6 @@ def test_transport_failure_after_a_throttle_marks_retry_measurement_incomplete(m
         timing={}
         with pytest.raises(ReadTimeoutError):
             R2Store(client,'bucket',read_throttle_attempts=5).read(KEY,expected=PIN,timing=timing)
-        assert len(calls)==2 and sleeps==[1.25]
+        assert len(calls)==5 and sleeps==[1.25,2.25,4.25,8.25]
         assert timing['error_type']=='ReadTimeoutError' and timing['requests']==1
         assert timing['sdk_retry_metadata_complete'] is False
