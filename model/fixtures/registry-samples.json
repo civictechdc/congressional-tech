@@ -9198,6 +9198,72 @@
       "value": "https://www.congress.gov/error",
       "expected": true,
       "source": "Existing DM7.3/S1 acceptance error route; real response sample not yet qualified"
+    },
+    {
+      "id": "recheck-intervals:congress/hearings-None",
+      "registry": "recheck-intervals",
+      "entry": "congress/hearings-None",
+      "value": {
+        "family": "congress/hearings",
+        "age": 0
+      },
+      "expected": 604800,
+      "source": "Source family helper and acquisition/refresh.py retained7/28/365day policy"
+    },
+    {
+      "id": "recheck-intervals:congress/hearings-31",
+      "registry": "recheck-intervals",
+      "entry": "congress/hearings-31",
+      "value": {
+        "family": "congress/hearings",
+        "age": 32
+      },
+      "expected": 2419200,
+      "source": "Source family helper and acquisition/refresh.py retained7/28/365day policy"
+    },
+    {
+      "id": "recheck-intervals:congress/hearings-731",
+      "registry": "recheck-intervals",
+      "entry": "congress/hearings-731",
+      "value": {
+        "family": "congress/hearings",
+        "age": 732
+      },
+      "expected": 31536000,
+      "source": "Source family helper and acquisition/refresh.py retained7/28/365day policy"
+    },
+    {
+      "id": "recheck-intervals:house/repository-None",
+      "registry": "recheck-intervals",
+      "entry": "house/repository-None",
+      "value": {
+        "family": "house/repository",
+        "age": 0
+      },
+      "expected": 604800,
+      "source": "Source family helper and acquisition/refresh.py retained7/28/365day policy"
+    },
+    {
+      "id": "recheck-intervals:house/repository-31",
+      "registry": "recheck-intervals",
+      "entry": "house/repository-31",
+      "value": {
+        "family": "house/repository",
+        "age": 32
+      },
+      "expected": 2419200,
+      "source": "Source family helper and acquisition/refresh.py retained7/28/365day policy"
+    },
+    {
+      "id": "recheck-intervals:house/repository-731",
+      "registry": "recheck-intervals",
+      "entry": "house/repository-731",
+      "value": {
+        "family": "house/repository",
+        "age": 732
+      },
+      "expected": 31536000,
+      "source": "Source family helper and acquisition/refresh.py retained7/28/365day policy"
     }
   ]
 }

@@ -1,13 +1,5 @@
 [
   {
-    "id": "congress/committees-None",
-    "family": "congress/committees",
-    "min_age_days": null,
-    "max_age_days": 31,
-    "interval_seconds": 604800,
-    "sample_id": "recheck-intervals:congress/committees-None"
-  },
-  {
     "id": "congress/committees-31",
     "family": "congress/committees",
     "min_age_days": 31,
@@ -24,12 +16,36 @@
     "sample_id": "recheck-intervals:congress/committees-731"
   },
   {
-    "id": "congress/meetings-None",
-    "family": "congress/meetings",
+    "id": "congress/committees-None",
+    "family": "congress/committees",
     "min_age_days": null,
     "max_age_days": 31,
     "interval_seconds": 604800,
-    "sample_id": "recheck-intervals:congress/meetings-None"
+    "sample_id": "recheck-intervals:congress/committees-None"
+  },
+  {
+    "id": "congress/hearings-31",
+    "family": "congress/hearings",
+    "min_age_days": 31,
+    "max_age_days": 731,
+    "interval_seconds": 2419200,
+    "sample_id": "recheck-intervals:congress/hearings-31"
+  },
+  {
+    "id": "congress/hearings-731",
+    "family": "congress/hearings",
+    "min_age_days": 731,
+    "max_age_days": null,
+    "interval_seconds": 31536000,
+    "sample_id": "recheck-intervals:congress/hearings-731"
+  },
+  {
+    "id": "congress/hearings-None",
+    "family": "congress/hearings",
+    "min_age_days": null,
+    "max_age_days": 31,
+    "interval_seconds": 604800,
+    "sample_id": "recheck-intervals:congress/hearings-None"
   },
   {
     "id": "congress/meetings-31",
@@ -48,12 +64,12 @@
     "sample_id": "recheck-intervals:congress/meetings-731"
   },
   {
-    "id": "documents-None",
-    "family": "documents",
+    "id": "congress/meetings-None",
+    "family": "congress/meetings",
     "min_age_days": null,
     "max_age_days": 31,
     "interval_seconds": 604800,
-    "sample_id": "recheck-intervals:documents-None"
+    "sample_id": "recheck-intervals:congress/meetings-None"
   },
   {
     "id": "documents-31",
@@ -72,12 +88,12 @@
     "sample_id": "recheck-intervals:documents-731"
   },
   {
-    "id": "external/legislators-None",
-    "family": "external/legislators",
+    "id": "documents-None",
+    "family": "documents",
     "min_age_days": null,
     "max_age_days": 31,
     "interval_seconds": 604800,
-    "sample_id": "recheck-intervals:external/legislators-None"
+    "sample_id": "recheck-intervals:documents-None"
   },
   {
     "id": "external/legislators-31",
@@ -96,12 +112,12 @@
     "sample_id": "recheck-intervals:external/legislators-731"
   },
   {
-    "id": "external/provider-responses-None",
-    "family": "external/provider-responses",
+    "id": "external/legislators-None",
+    "family": "external/legislators",
     "min_age_days": null,
     "max_age_days": 31,
     "interval_seconds": 604800,
-    "sample_id": "recheck-intervals:external/provider-responses-None"
+    "sample_id": "recheck-intervals:external/legislators-None"
   },
   {
     "id": "external/provider-responses-31",
@@ -120,12 +136,12 @@
     "sample_id": "recheck-intervals:external/provider-responses-731"
   },
   {
-    "id": "external/wayback-None",
-    "family": "external/wayback",
+    "id": "external/provider-responses-None",
+    "family": "external/provider-responses",
     "min_age_days": null,
     "max_age_days": 31,
     "interval_seconds": 604800,
-    "sample_id": "recheck-intervals:external/wayback-None"
+    "sample_id": "recheck-intervals:external/provider-responses-None"
   },
   {
     "id": "external/wayback-31",
@@ -144,12 +160,12 @@
     "sample_id": "recheck-intervals:external/wayback-731"
   },
   {
-    "id": "govinfo/mets-None",
-    "family": "govinfo/mets",
+    "id": "external/wayback-None",
+    "family": "external/wayback",
     "min_age_days": null,
     "max_age_days": 31,
     "interval_seconds": 604800,
-    "sample_id": "recheck-intervals:govinfo/mets-None"
+    "sample_id": "recheck-intervals:external/wayback-None"
   },
   {
     "id": "govinfo/mets-31",
@@ -168,12 +184,12 @@
     "sample_id": "recheck-intervals:govinfo/mets-731"
   },
   {
-    "id": "govinfo/mods-None",
-    "family": "govinfo/mods",
+    "id": "govinfo/mets-None",
+    "family": "govinfo/mets",
     "min_age_days": null,
     "max_age_days": 31,
     "interval_seconds": 604800,
-    "sample_id": "recheck-intervals:govinfo/mods-None"
+    "sample_id": "recheck-intervals:govinfo/mets-None"
   },
   {
     "id": "govinfo/mods-31",
@@ -192,12 +208,12 @@
     "sample_id": "recheck-intervals:govinfo/mods-731"
   },
   {
-    "id": "govinfo/premis-None",
-    "family": "govinfo/premis",
+    "id": "govinfo/mods-None",
+    "family": "govinfo/mods",
     "min_age_days": null,
     "max_age_days": 31,
     "interval_seconds": 604800,
-    "sample_id": "recheck-intervals:govinfo/premis-None"
+    "sample_id": "recheck-intervals:govinfo/mods-None"
   },
   {
     "id": "govinfo/premis-31",
@@ -216,12 +232,12 @@
     "sample_id": "recheck-intervals:govinfo/premis-731"
   },
   {
-    "id": "govinfo/transcript-html-None",
-    "family": "govinfo/transcript-html",
+    "id": "govinfo/premis-None",
+    "family": "govinfo/premis",
     "min_age_days": null,
     "max_age_days": 31,
     "interval_seconds": 604800,
-    "sample_id": "recheck-intervals:govinfo/transcript-html-None"
+    "sample_id": "recheck-intervals:govinfo/premis-None"
   },
   {
     "id": "govinfo/transcript-html-31",
@@ -240,12 +256,12 @@
     "sample_id": "recheck-intervals:govinfo/transcript-html-731"
   },
   {
-    "id": "house/meeting-xml-None",
-    "family": "house/meeting-xml",
+    "id": "govinfo/transcript-html-None",
+    "family": "govinfo/transcript-html",
     "min_age_days": null,
     "max_age_days": 31,
     "interval_seconds": 604800,
-    "sample_id": "recheck-intervals:house/meeting-xml-None"
+    "sample_id": "recheck-intervals:govinfo/transcript-html-None"
   },
   {
     "id": "house/meeting-xml-31",
@@ -264,12 +280,12 @@
     "sample_id": "recheck-intervals:house/meeting-xml-731"
   },
   {
-    "id": "house/pages-None",
-    "family": "house/pages",
+    "id": "house/meeting-xml-None",
+    "family": "house/meeting-xml",
     "min_age_days": null,
     "max_age_days": 31,
     "interval_seconds": 604800,
-    "sample_id": "recheck-intervals:house/pages-None"
+    "sample_id": "recheck-intervals:house/meeting-xml-None"
   },
   {
     "id": "house/pages-31",
@@ -288,12 +304,36 @@
     "sample_id": "recheck-intervals:house/pages-731"
   },
   {
-    "id": "house/witness-xml-None",
-    "family": "house/witness-xml",
+    "id": "house/pages-None",
+    "family": "house/pages",
     "min_age_days": null,
     "max_age_days": 31,
     "interval_seconds": 604800,
-    "sample_id": "recheck-intervals:house/witness-xml-None"
+    "sample_id": "recheck-intervals:house/pages-None"
+  },
+  {
+    "id": "house/repository-31",
+    "family": "house/repository",
+    "min_age_days": 31,
+    "max_age_days": 731,
+    "interval_seconds": 2419200,
+    "sample_id": "recheck-intervals:house/repository-31"
+  },
+  {
+    "id": "house/repository-731",
+    "family": "house/repository",
+    "min_age_days": 731,
+    "max_age_days": null,
+    "interval_seconds": 31536000,
+    "sample_id": "recheck-intervals:house/repository-731"
+  },
+  {
+    "id": "house/repository-None",
+    "family": "house/repository",
+    "min_age_days": null,
+    "max_age_days": 31,
+    "interval_seconds": 604800,
+    "sample_id": "recheck-intervals:house/repository-None"
   },
   {
     "id": "house/witness-xml-31",
@@ -312,12 +352,12 @@
     "sample_id": "recheck-intervals:house/witness-xml-731"
   },
   {
-    "id": "pipeline-data-None",
-    "family": "pipeline-data",
+    "id": "house/witness-xml-None",
+    "family": "house/witness-xml",
     "min_age_days": null,
     "max_age_days": 31,
     "interval_seconds": 604800,
-    "sample_id": "recheck-intervals:pipeline-data-None"
+    "sample_id": "recheck-intervals:house/witness-xml-None"
   },
   {
     "id": "pipeline-data-31",
@@ -336,12 +376,12 @@
     "sample_id": "recheck-intervals:pipeline-data-731"
   },
   {
-    "id": "senate/captions-None",
-    "family": "senate/captions",
+    "id": "pipeline-data-None",
+    "family": "pipeline-data",
     "min_age_days": null,
     "max_age_days": 31,
     "interval_seconds": 604800,
-    "sample_id": "recheck-intervals:senate/captions-None"
+    "sample_id": "recheck-intervals:pipeline-data-None"
   },
   {
     "id": "senate/captions-31",
@@ -360,12 +400,12 @@
     "sample_id": "recheck-intervals:senate/captions-731"
   },
   {
-    "id": "senate/listings-None",
-    "family": "senate/listings",
+    "id": "senate/captions-None",
+    "family": "senate/captions",
     "min_age_days": null,
     "max_age_days": 31,
     "interval_seconds": 604800,
-    "sample_id": "recheck-intervals:senate/listings-None"
+    "sample_id": "recheck-intervals:senate/captions-None"
   },
   {
     "id": "senate/listings-31",
@@ -384,12 +424,12 @@
     "sample_id": "recheck-intervals:senate/listings-731"
   },
   {
-    "id": "senate/pages-None",
-    "family": "senate/pages",
+    "id": "senate/listings-None",
+    "family": "senate/listings",
     "min_age_days": null,
     "max_age_days": 31,
     "interval_seconds": 604800,
-    "sample_id": "recheck-intervals:senate/pages-None"
+    "sample_id": "recheck-intervals:senate/listings-None"
   },
   {
     "id": "senate/pages-31",
@@ -408,12 +448,12 @@
     "sample_id": "recheck-intervals:senate/pages-731"
   },
   {
-    "id": "senate/players-None",
-    "family": "senate/players",
+    "id": "senate/pages-None",
+    "family": "senate/pages",
     "min_age_days": null,
     "max_age_days": 31,
     "interval_seconds": 604800,
-    "sample_id": "recheck-intervals:senate/players-None"
+    "sample_id": "recheck-intervals:senate/pages-None"
   },
   {
     "id": "senate/players-31",
@@ -432,12 +472,12 @@
     "sample_id": "recheck-intervals:senate/players-731"
   },
   {
-    "id": "youtube/api-None",
-    "family": "youtube/api",
+    "id": "senate/players-None",
+    "family": "senate/players",
     "min_age_days": null,
     "max_age_days": 31,
     "interval_seconds": 604800,
-    "sample_id": "recheck-intervals:youtube/api-None"
+    "sample_id": "recheck-intervals:senate/players-None"
   },
   {
     "id": "youtube/api-31",
@@ -456,12 +496,12 @@
     "sample_id": "recheck-intervals:youtube/api-731"
   },
   {
-    "id": "youtube/captions-None",
-    "family": "youtube/captions",
+    "id": "youtube/api-None",
+    "family": "youtube/api",
     "min_age_days": null,
     "max_age_days": 31,
     "interval_seconds": 604800,
-    "sample_id": "recheck-intervals:youtube/captions-None"
+    "sample_id": "recheck-intervals:youtube/api-None"
   },
   {
     "id": "youtube/captions-31",
@@ -480,12 +520,12 @@
     "sample_id": "recheck-intervals:youtube/captions-731"
   },
   {
-    "id": "youtube/watch-pages-None",
-    "family": "youtube/watch-pages",
+    "id": "youtube/captions-None",
+    "family": "youtube/captions",
     "min_age_days": null,
     "max_age_days": 31,
     "interval_seconds": 604800,
-    "sample_id": "recheck-intervals:youtube/watch-pages-None"
+    "sample_id": "recheck-intervals:youtube/captions-None"
   },
   {
     "id": "youtube/watch-pages-31",
@@ -502,5 +542,13 @@
     "max_age_days": null,
     "interval_seconds": 31536000,
     "sample_id": "recheck-intervals:youtube/watch-pages-731"
+  },
+  {
+    "id": "youtube/watch-pages-None",
+    "family": "youtube/watch-pages",
+    "min_age_days": null,
+    "max_age_days": 31,
+    "interval_seconds": 604800,
+    "sample_id": "recheck-intervals:youtube/watch-pages-None"
   }
 ]

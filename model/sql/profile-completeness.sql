@@ -37,7 +37,7 @@ WITH expected_parsers AS (
 ), valid_filename_readings AS (
  SELECT filename,source_url FROM filename_readings
  WHERE catalog_version={{CATALOG_VERSION}} AND status IN ('completed','error','size_limit')
- UNION
+ UNION ALL
  SELECT filename,
    CASE WHEN source_url LIKE 'http://%' THEN replace(source_url,'http://','https://')
         WHEN source_url LIKE 'https://%' THEN replace(source_url,'https://','http://')
@@ -45,7 +45,7 @@ WITH expected_parsers AS (
  FROM filename_readings
  WHERE catalog_version={{CATALOG_VERSION}} AND status IN ('completed','error','size_limit')
    AND (source_url LIKE 'http://%' OR source_url LIKE 'https://%')
- UNION
+ UNION ALL
  SELECT filename,replace(source_url,'/xml/','/pdf/') AS source_url
  FROM filename_readings
  WHERE catalog_version={{CATALOG_VERSION}} AND status IN ('completed','error','size_limit')
