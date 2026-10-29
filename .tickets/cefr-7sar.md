@@ -40,3 +40,7 @@ Full local public guard passed:2292receipts4176794captures0violations; original2
 **2026-10-29T01:16:34Z**
 
 Reviewed D1 mapping3fc8c112…d77ec is implemented; corrected independent counts2292 receipts/2598311source/4147132captures with17/17 different-parser affected-receipt crosscheck. Blocked: owner resource window/new corpus jobs. Immutable corrected packet shared/capture-corrected-counts-a072668a. Exact guarded detached proof/full/comparison/D3 commands prepared under scratch/codex-raw/run2/d1-corrected-3fc8;32 source/runtime/input pins. Prior78047 comparison already ended and is historical, never rerun. No old stage/generation retag.
+
+**2026-10-29T01:33:08Z**
+
+Owner requested a small proof-profile repair after5830 failed at17,683,779,072physicalB against16GiB. Proof sample contains historical assembly receipts; propagate the already-approved local assembly20native/24physical profile through outer and nested proof guards, preserving standard14native/16physical defaults. Preserve failed paths/control/source evidence, use fresh proof-v2 paths, update pins, and send a lead-only launch command. Active D2fast5747 and engine5921 sources stay untouched.
