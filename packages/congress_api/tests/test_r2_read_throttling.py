@@ -102,10 +102,10 @@ def sdk_transport(monkeypatch,client,responses):
     return calls,sleeps
 
 
-def sdk_client(mode='standard'):
+def sdk_client(mode='standard',maximum=1):
     return boto3.client('s3',endpoint_url='https://r2.example.test',region_name='auto',
         aws_access_key_id='test',aws_secret_access_key='test',
-        config=Config(retries={'total_max_attempts':1,'mode':mode}))
+        config=Config(retries={'total_max_attempts':maximum,'mode':mode}))
 
 
 def transport_failure(kind):
@@ -164,6 +164,17 @@ def test_unclassified_get_exception_is_not_promoted_to_retryable(monkeypatch,mod
         with pytest.raises(ValueError,match='nontransport'):
             R2Store(client,'bucket',read_throttle_attempts=5).read(KEY,expected=PIN)
         assert len(calls)==1 and sleeps==[]
+
+
+@pytest.mark.parametrize('mode',['legacy','standard'])
+@pytest.mark.parametrize('get_budget',[None,1,2,5])
+def test_transport_uses_configured_or_explicit_get_budget_without_a_stream_multiplier(monkeypatch,mode,get_budget):
+    error=transport_failure('reset');maximum=3 if get_budget is None else get_budget
+    with closing(sdk_client(mode,maximum=3)) as client:
+        calls,sleeps=sdk_transport(monkeypatch,client,[error])
+        with pytest.raises(ConnectionResetError):
+            R2Store(client,'bucket',read_throttle_attempts=get_budget).read(KEY,expected=PIN)
+        assert len(calls)==maximum and len(sleeps)==maximum-1
 
 
 @pytest.mark.parametrize('status,code',[(429,'ServiceUnavailable'),(503,'ServiceUnavailable'),(503,'SlowDown')])
