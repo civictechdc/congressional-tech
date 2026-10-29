@@ -1,5 +1,7 @@
 """Shared native release layout; application models supply complete document rows."""
 from hashlib import md5, sha256
+
+from viewer_publication.archive_model_lifetimes import retire_relations
 import json
 from pathlib import Path
 
@@ -44,11 +46,8 @@ DETAIL_COLUMNS = ['link_key', 'saved_body', 'saved_suffix', 'saved_media_type', 
     'src_start', 'src_len', 'rec_start', 'rec_len', 'alternates', 'package_id', 'facts']
 
 
-def _step(name, sql, *, materialize=False, release_after=()):
-    step = dict(name=name, sql=sql, materialize=materialize)
-    if release_after:
-        step['release_after'] = list(release_after)
-    return step
+def _step(name, sql, *, materialize=False):
+    return dict(name=name, sql=sql, materialize=materialize)
 
 
 def _binary(expression, size):
@@ -90,14 +89,14 @@ def _core(steps, output,*,lookup_extra=None):
     detail_inputs = ','.join('o.'+name for name in dict.fromkeys([*order,*LIST_COLUMNS,'list_row',
         'document_date_source','in_archive_since','removed_on','review_note','review_decided_at',
         'alternates','package_id','facts']))
-    steps += [_step('ordered', "SELECT *,cast(row_number() OVER(ORDER BY filename,document_date NULLS LAST,first_captured NULLS LAST,doc_key)-1 AS INT) AS list_row FROM normalized", materialize=True, release_after=["normalized"]),
+    steps += [_step('ordered', "SELECT *,cast(row_number() OVER(ORDER BY filename,document_date NULLS LAST,first_captured NULLS LAST,doc_key)-1 AS INT) AS list_row FROM normalized", materialize=True),
         _step('source_rows', """SELECT o.list_row,s.*,cast(row_number() OVER(PARTITION BY o.list_row ORDER BY s.is_saved DESC,s.first_seen NULLS LAST,s.url,s.member_path NULLS LAST)-1 AS INT) AS ordinal,
             cast(row_number() OVER(ORDER BY o.list_row,s.is_saved DESC,s.first_seen NULLS LAST,s.url,s.member_path NULLS LAST)-1 AS INT) AS source_index
-            FROM (SELECT doc_key,list_row FROM ordered) o JOIN source_input s ON s.doc_key=o.doc_key""", materialize=True, release_after=["source_input"]),
+            FROM (SELECT doc_key,list_row FROM ordered) o JOIN source_input s ON s.doc_key=o.doc_key""", materialize=True),
         _step('source_ranges', 'SELECT doc_key,min(source_index) AS src_start,cast(count(*) AS INT) AS src_len FROM source_rows GROUP BY doc_key'),
         _step('recovery_rows', """SELECT o.list_row,r.*,cast(row_number() OVER(PARTITION BY o.list_row ORDER BY r.recovery_key)-1 AS INT) AS ordinal,
             cast(row_number() OVER(ORDER BY o.list_row,r.recovery_key)-1 AS INT) AS recovery_index
-            FROM recovery_input r JOIN ordered o ON r.doc_key=o.doc_key""", materialize=True, release_after=["recovery_input"]),
+            FROM recovery_input r JOIN ordered o ON r.doc_key=o.doc_key""", materialize=True),
         _step('recovery_ranges', 'SELECT doc_key,min(recovery_index) AS rec_start,cast(count(*) AS INT) AS rec_len FROM recovery_rows GROUP BY doc_key'),
         _step('details', f"""SELECT {detail_inputs},CASE WHEN saved_kind='recovery' THEN {_hash_key('o.source_url', 'url:')}
             ELSE {_binary('substr(body_hex,1,16)', 8)} END AS link_key,
@@ -190,7 +189,7 @@ def _execute(inputs, steps, *, output, scratch, engine, origin, auxiliary=None, 
         coverage_parts.append(f"SELECT '{name}.parquet' AS file,min(o.congress) AS congress_start,max(o.congress) AS congress_end,min(o.document_date) AS date_start,max(o.document_date) AS date_end FROM {source}")
     coverage_parts.append("SELECT 'meetings.parquet' AS file,cast(NULL AS SMALLINT) AS congress_start,cast(NULL AS SMALLINT) AS congress_end,min(meeting_date) AS date_start,max(meeting_date) AS date_end FROM meetings_export")
     queries.append(dict(name='coverage', sql=' UNION ALL '.join(coverage_parts)))
-    spec = dict(scratch=str(scratch / 'native'), inputs=inputs, steps=steps, outputs=outputs, queries=queries)
+    spec = retire_relations(dict(scratch=str(scratch / 'native'), inputs=inputs, steps=steps, outputs=outputs, queries=queries))
     spec_path = scratch / 'job.json'
     spec_path.write_text(json.dumps(spec, ensure_ascii=False, separators=(',', ':')))
     from docspec_client.models import DocSpecFailure

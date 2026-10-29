@@ -82,14 +82,6 @@ def url_state_steps(*,root=ROOT):
             FROM url_state_queue_literals q JOIN url_state_sanitized s ON q.url=s.url
             LEFT JOIN url_state_sanitized_keys k ON s.public_url=k.url""",materialize=True),
         dict(name='url_state',sql=(Path(root)/'model/sql/url-state.sql').read_text().replace('{{TS}}',TS),materialize=True)]
-    releases={'url_state_queue_literals':['url_state_page_contexts','url_state_scope_patterns',
-        'url_state_scope_exclusions','url_state_scoped_targets'],
-        'url_state_sanitized':['url_state_public_urls','url_state_query_parts'],
-        'url_state_queue':['url_state_queue_literals','url_state_sanitized_inputs',
-            'url_state_sanitized_normalized','url_state_sanitized_keys'],
-        'url_state':['url_state_good_lines']}
-    for step in steps:
-        if step['name'] in releases:step['release_after']=releases[step['name']]
     return steps
 
 
