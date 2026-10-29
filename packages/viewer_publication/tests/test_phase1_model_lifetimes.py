@@ -90,4 +90,4 @@ def test_actual_raw_lake_model_releases_every_relation_after_its_last_reader(tmp
     for reader in job['outputs'] + job['queries']:
         assert providers(sql_dependencies(reader['sql'])) <= available, reader['name']
     assert available & names == {name for name in names if last[name] == len(steps)}
-    assert len(names) == 147  # Complete 149-step model minus its two unconsumed diagnostics.
+    assert len(names) == 148  # Complete model, two unused diagnostics removed, interval candidates shared.
