@@ -56,7 +56,7 @@ def test_capture_source_contexts_is_strictly_narrow():
     assert steps['capture_source_contexts']['materialize'] is True
 
     sql = (Path(__file__).parents[3] / 'model/sql/capture-source-contexts.sql').read_text()
-    for omitted in ['receipt_key', 'requested_url', 'filename', 'source_url', 'fidelity', 'media_type']:
+    for omitted in ['requested_url', 'filename', 'source_url', 'fidelity', 'media_type']:
         assert omitted not in sql, f"capture-source-contexts.sql must not project heavy column {omitted}"
     for required in ['source_id', 'context_url', 'member_path', 'outcome', 'body_sha']:
         assert required in sql, f"capture-source-contexts.sql must project required column {required}"

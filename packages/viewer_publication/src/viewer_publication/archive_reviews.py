@@ -5,8 +5,7 @@ ROOT=Path(__file__).parents[4]
 
 
 def _steps(names,root):
-    lazy={'document-link-key-conflicts','review-value-diagnostics'}
-    return [dict(name=name.replace('-','_'),sql=(Path(root)/'model/sql'/('reviews-'+name+'.sql')).read_text(),materialize=name not in lazy)
+    return [dict(name=name.replace('-','_'),sql=(Path(root)/'model/sql'/('reviews-'+name+'.sql')).read_text(),materialize=True)
             for name in names]
 
 

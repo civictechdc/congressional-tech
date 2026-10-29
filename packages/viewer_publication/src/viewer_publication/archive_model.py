@@ -69,7 +69,7 @@ def source_steps(*,root=ROOT):
     keys=(Path(root)/'model/sql/url-keys.sql').read_text().replace('url_inputs','source_url_inputs').replace('url_normalized','source_url_normalized')
     steps += [dict(name='source_url_normalized',sql=normalize,materialize=True),
               dict(name='source_url_keys',sql=keys,materialize=True)]
-    for name in ('source-reference-targets','source-body-urls','capture-sources','capture-source-contexts','source-files','source-directories'):
+    for name in ('source-reference-targets','source-body-urls','capture-sources','capture-source-contexts','source-files','source-addresses','source-directories'):
         step=dict(name=name.replace('-','_'),sql=(Path(root)/'model/sql'/(name+'.sql')).read_text(),materialize=True)
         steps.append(step)
     return steps
@@ -87,7 +87,7 @@ def evidence_steps(*,root=ROOT):
     names=['pinned-readings','sniff-observations','sniff-conflicts','sniff-facts','page-facts','verification-conflicts','storage-verifications','copy-verifications','body-evidence','capture-evidence',
         'good-fetches','capture-locators','body-signals','locator-signals','placeholders','record-roles',
         'page-contexts','link-inputs']
-    return [writer_admission_step(root=root)]+[dict(name=name.replace('-','_'),sql=(Path(root)/'model/sql'/(name+'.sql')).read_text(),materialize=name not in ('capture-evidence','verification-conflicts'))
+    return [writer_admission_step(root=root)]+[dict(name=name.replace('-','_'),sql=(Path(root)/'model/sql'/(name+'.sql')).read_text(),materialize=name not in ('capture-evidence',))
         for name in names]
 
 
@@ -222,7 +222,6 @@ def build_prepared_release(prepared,*,engine,output,root=ROOT):
     inputs=prepared['inputs'];capture_profile=prepared['capture_profile']
     parser_versions=prepared['parser_versions'];catalog_version=prepared['catalog_version']
     steps=list(prepared['steps'])+link_steps(root=root)
-    steps += _sql_steps(['source-addresses'],root=root)
     steps += [dict(name='url_inputs',sql=(Path(root)/'model/sql/model-url-inputs.sql').read_text(),materialize=True)]
     steps += _sql_steps(['url-normalized'],root=root)
     steps += [dict(name='model_url_keys',sql=(Path(root)/'model/sql/url-keys.sql').read_text(),materialize=True)]

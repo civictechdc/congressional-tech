@@ -1,5 +1,5 @@
 WITH fidelity AS (
- SELECT source_id,bool_or(fidelity='exact-bytes') AS exact_bytes FROM capture_source_contexts GROUP BY source_id
+ SELECT source_id,bool_or(exact_bytes) AS exact_bytes FROM source_files GROUP BY source_id
 ), ranked AS (
  SELECT m.*,row_number() OVER(PARTITION BY m.component ORDER BY coalesce(p.rank,2147483647),
  CASE WHEN p.rank IS NULL THEN m.format ELSE '' END,coalesce(f.exact_bytes,false) DESC,
