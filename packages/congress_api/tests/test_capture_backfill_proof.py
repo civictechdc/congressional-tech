@@ -95,6 +95,10 @@ def test_native_comparison_checks_every_public_field_and_both_directions(tmp_pat
     assert len(job['inputs'])==2
     assert all('EXCEPT' not in q['sql'] for q in job['queries'])
     assert any('GROUP BY' in step['sql'] for step in job['steps'])
+    from test_capture_comparison_hashkeys import explain_step
+    physical=explain_step(job,'compared_values',native=native,work=tmp_path/'explain')
+    assert 'AggregateExec:' in physical
+    assert 'HashJoinExec:' not in physical and 'WindowAggExec:' not in physical
     assert not (tmp_path/'changed/equivalent.json').exists()
 
 
@@ -166,7 +170,7 @@ def test_three_original_gzip_receipts_rebuild_equally_in_fresh_native_generation
     resumed=resume_comparison(tmp_path/'proof/proof.json',
         engine=NativeDatasets.from_config(os.environ['DOCSPEC_JOB_CONFIG']),
         engine_config=os.environ['DOCSPEC_JOB_CONFIG'],work=tmp_path/'resumed')
-    assert resumed['status']=='equivalent' and resumed['generations']==report['generations']
+    assert resumed['status']=='equivalent' and resumed['generations']==json.loads(original)['generations']
     assert resumed['identity']==report['identity']
     assert (tmp_path/'proof/proof.json').read_bytes()==original
     assert not (tmp_path/'resumed/one_shot').exists() and not (tmp_path/'resumed/batched').exists()

@@ -10,6 +10,17 @@ from congress_api.lake.receipt_metadata import record_pointer_index,COMPARISON_W
 from congress_api.retention.provenance import json_input,parquet_output,run_job
 
 
+def tagged_group_sql(source,keys,*,left='old',right='new',left_count='old_n',right_count='new_n',aggregates=()):
+    """Group tagged facts once; preserve each side's multiplicity without a join.
+
+    Arguments are trusted internal SQL expressions, never source data. Both
+    oracle pairing and exact rebuild comparison use this native grouping path.
+    """
+    values=[keys,f"sum(CASE WHEN side='{left}' THEN 1 ELSE 0 END) AS {left_count}",
+        f"sum(CASE WHEN side='{right}' THEN 1 ELSE 0 END) AS {right_count}",*aggregates]
+    return 'SELECT '+','.join(values)+' FROM '+source+' GROUP BY '+keys
+
+
 RULES = {
     'secondary_duplicates': 'Remove only a file/retained-file row duplicating a capture body on the same line and context whose non-null stored size and location agree with the target; preserve contradictions and other occurrences.',
     'http_status': 'A missing old status may be restored. An old per-entry status may change to the final line/item status only when both explicit receipt facts independently match their respective sides; other changes and losses remain owner gates.',
@@ -228,11 +239,9 @@ def compare_old(evidence, old_index, *, engine, work, receipt_keys=None):
         return 'named_struct('+','.join(fields)+')'
     steps.extend([
         dict(name='tagged_facts',sql=tagged('old','old_normalized')+' UNION ALL '+tagged('new','new_facts')),
-        dict(name='paired',sql=f'''SELECT {keys},
-            sum(CASE WHEN side='old' THEN 1 ELSE 0 END) AS old_n,
-            sum(CASE WHEN side='new' THEN 1 ELSE 0 END) AS new_n,
-            {record('old',common_names+['old_row','occurrence'])} AS o,
-            {record('new',new_names)} AS n FROM tagged_facts GROUP BY {keys}''',materialize=True,
+        dict(name='paired',sql=tagged_group_sql('tagged_facts',keys,aggregates=[
+            record('old',common_names+['old_row','occurrence'])+' AS o',
+            record('new',new_names)+' AS n']),materialize=True,
             release_after=['tagged_facts','old_normalized','new_facts','old_values','old_facts','new_values']),
         dict(name='paired_totals',sql='''SELECT coalesce(sum(CASE WHEN old_n>0 AND new_n>0 THEN 1 ELSE 0 END),0)
             AS matched FROM paired''',materialize=True)])
