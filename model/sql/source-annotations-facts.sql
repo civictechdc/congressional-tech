@@ -8,7 +8,7 @@ WITH fields AS (
  '^([0-9]{4})([0-9]{2})([0-9]{2})$','$1-$2-$3') AS DATE)) AS VARCHAR),fact['value'])
  ELSE fact['value'] END) AS fact
  FROM fields
- WHERE fact['field'] IN ('document_kind','document_family','committee_code','congress','measure_references','date_token_candidates')
+ WHERE fact['field'] IN (SELECT field FROM display_facts)
 ), grouped AS (
  SELECT source_id,array_agg(fact) AS raw_facts
  FROM filtered GROUP BY source_id

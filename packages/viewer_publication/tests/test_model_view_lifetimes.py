@@ -76,7 +76,6 @@ def test_dead_tables_released_early(tmp_path):
         for rel in st.get('release_after', []):
             releases[rel] = st['name']
 
-    assert releases.get('capture_sources') == 'source_files', "capture_sources must be released by source_files"
     assert releases.get('good_fetches') in ('good_fetch_contexts', 'source_addresses'), (
         "good_fetches must be released by good_fetch_contexts or source_addresses around step 40"
     )

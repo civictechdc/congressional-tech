@@ -38,9 +38,9 @@ def url_state_steps(*,root=ROOT):
         ('page_contexts',"""SELECT DISTINCT encode(g.sha256,'hex') AS page_body,g.context_url,g.member_path
             FROM good_fetch_contexts g JOIN record_roles r USING(receipt_key,receipt_line,capture_index)
             WHERE g.sha256 IS NOT NULL AND r.record_role IS DISTINCT FROM 'error_response'"""),
-        ('fetched_keys',f"""SELECT DISTINCT k.url_key FROM (
-            SELECT unnest(make_array(requested_url,url)) AS url FROM captures WHERE {acquisition}
-            ) f JOIN model_url_keys k ON f.url=k.url
+        ('fetched_keys',f"""WITH raw_urls AS (
+            SELECT DISTINCT unnest(make_array(requested_url,url)) AS url FROM captures WHERE {acquisition}
+            ) SELECT DISTINCT k.url_key FROM raw_urls f JOIN model_url_keys k ON f.url=k.url
             WHERE k.error IS NULL AND k.url_key IS NOT NULL"""),
         ('scope_patterns','SELECT family,unnest(patterns) AS pattern FROM capture_scope'),
         ('scope_exclusions','SELECT family,unnest(exclusions) AS pattern FROM capture_scope'),
@@ -86,13 +86,8 @@ def url_state_steps(*,root=ROOT):
         dict(name='url_state_queue',sql="""SELECT q.url_key AS original_key,s.public_url AS requested_url,k.url_key AS public_key,k.error
             FROM url_state_queue_literals q JOIN url_state_sanitized s ON q.url=s.url
             LEFT JOIN url_state_sanitized_keys k ON s.public_url=k.url""",materialize=True),
-        dict(name='url_state',sql=(Path(root)/'model/sql/url-state.sql').read_text().replace('{{TS}}',TS),materialize=True)]
-    return steps
-
-
-def url_state_diagnostics():
-    """Return build-blocking counts; callers must check them before publication."""
-    return [dict(name='url_state_invariants',sql="""SELECT
+        dict(name='url_state',sql=(Path(root)/'model/sql/url-state.sql').read_text().replace('{{TS}}',TS),materialize=True),
+        dict(name='url_state_invariants_step',sql="""SELECT
         (SELECT count(*) FROM url_state_latest l WHERE NOT EXISTS(SELECT 1 FROM url_state_intervals i WHERE i.requested_url=l.requested_url)) AS unknown_families,
         (SELECT count(*) FROM url_state_lines WHERE variants<>1) AS conflicting_lines,
         (SELECT count(*) FROM recheck_intervals WHERE interval_seconds IS NULL OR interval_seconds<=0) AS invalid_intervals,
@@ -102,4 +97,10 @@ def url_state_diagnostics():
         (SELECT count(*) FROM url_state_sanitized s JOIN url_state_latest l ON s.url=l.requested_url WHERE s.public_url<>s.url
           OR regexp_like(s.url,'(?i)^https?://[^/?#]*@')) AS private_history,
         (SELECT count(*) FROM url_state_queue WHERE public_key IS NULL OR error IS NOT NULL) AS unusable_queue_keys,
-        (SELECT count(*) FROM (SELECT requested_url FROM url_state GROUP BY requested_url HAVING count(*)>1)) AS duplicate_urls""")]
+        (SELECT count(*) FROM (SELECT requested_url FROM url_state GROUP BY requested_url HAVING count(*)>1)) AS duplicate_urls""",materialize=True)]
+    return steps
+
+
+def url_state_diagnostics():
+    """Return build-blocking counts; callers must check them before publication."""
+    return [dict(name='url_state_invariants',sql="SELECT * FROM url_state_invariants_step")]
