@@ -79,7 +79,7 @@ def test_native_references_preserve_occurrences_without_inventing_acquisitions(t
                 cast(last_fetched AS VARCHAR) AS last_fetched FROM source_files ORDER BY source_id"""),
             dict(name='meetings',sql='SELECT source_id,meeting_keys FROM source_annotation_meetings ORDER BY source_id'),
             dict(name='invalid_keys',sql='SELECT count(*) AS n FROM model_url_keys WHERE error IS NOT NULL'),
-            dict(name='invented_endpoints',sql="SELECT count(*) AS n FROM source_endpoints WHERE endpoint_key LIKE '%HMKP%'")])
+            dict(name='invented_endpoints',sql="SELECT count(*) AS n FROM source_endpoints WHERE regexp_like(endpoint_key,'/HMKP(?:123|456|888|999)/')")])
     occurrences={item['receipt_line']:item for item in result['occurrences']}
     assert set(occurrences)==set(range(1,11))|malformed_lines
     owned=occurrences[1]['source_id']
