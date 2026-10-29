@@ -16,7 +16,7 @@ SELECT d.document_id AS doc_key,true AS body_expected,s.filename,a.title,
  coalesce(alt.alternates,array_slice(make_array(named_struct('format',cast(NULL AS VARCHAR),
  'body',arrow_cast(NULL,'FixedSizeBinary(32)'),'suffix',cast(NULL AS VARCHAR),'size',cast(NULL AS BIGINT))),1,0)) AS alternates,
  coalesce(pk.package_id,a.package_id) AS package_id,a.facts,bodies.link_bodies
-FROM (SELECT source_id,max(media_type) AS media_type FROM capture_sources GROUP BY source_id) c RIGHT JOIN (
+FROM (SELECT source_id,max(media_type) AS media_type FROM capture_source_contexts GROUP BY source_id) c RIGHT JOIN (
  document_versions v RIGHT JOIN (
   document_alternates alt RIGHT JOIN (
    document_packages pk RIGHT JOIN (

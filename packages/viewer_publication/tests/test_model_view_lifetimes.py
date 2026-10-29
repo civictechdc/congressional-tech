@@ -51,3 +51,14 @@ def test_capture_source_contexts_is_narrow():
     steps = {step['name']: step for step in source_steps()}
     assert 'capture_source_contexts' in steps, "capture_source_contexts must be present in source_steps"
     assert steps['capture_source_contexts']['materialize'] is True
+
+
+def test_capture_sources_released_after_source_files(tmp_path):
+    from archive_job_fixture import real_model_spec
+    from viewer_publication.archive_model_job import execute, validate_spec
+    value, _digest, _html = real_model_spec(tmp_path)
+    result = execute(validate_spec(value, base=tmp_path))
+    assert result['status'] == 'built'
+    job = json.loads((tmp_path / 'model/job.json').read_text())
+    releasers = [st['name'] for st in job['steps'] if 'capture_sources' in st.get('release_after', [])]
+    assert releasers == ['source_files'], f"capture_sources must be released by source_files, got {releasers}"
