@@ -1,0 +1,143 @@
+[
+  {
+    "id": "document-url-digest-pairs",
+    "kind": "document-reference",
+    "family": "documents",
+    "record_shape": "url-digest-pair",
+    "record": [
+      [
+        "https://docs.house.gov/fixture/a.pdf",
+        "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+      ],
+      [
+        "https://docs.house.gov/fixture/b.pdf",
+        "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+      ]
+    ],
+    "outcomes": [
+      "reference",
+      "reference"
+    ],
+    "urls": [
+      "https://docs.house.gov/fixture/a.pdf",
+      "https://docs.house.gov/fixture/b.pdf"
+    ]
+  },
+  {
+    "id": "youtube-caption-identifiers-line-3961",
+    "kind": "unaddressed-record",
+    "family": "youtube/captions",
+    "record_shape": "identifier",
+    "record": [
+      "FbncCf4rh8E",
+      "FsSGuBPdBKQ"
+    ],
+    "outcomes": [
+      "saved-record",
+      "saved-record"
+    ],
+    "urls": [
+      null,
+      null
+    ]
+  },
+  {
+    "id": "youtube-api-identifiers",
+    "kind": "unaddressed-record",
+    "family": "youtube/api",
+    "record_shape": "identifier",
+    "record": [
+      "R0h33K7rw7Q",
+      "WRzCFLK7uvg"
+    ],
+    "outcomes": [
+      "saved-record",
+      "saved-record"
+    ],
+    "urls": [
+      null,
+      null
+    ]
+  },
+  {
+    "id": "senate-page-identifiers",
+    "kind": "unaddressed-record",
+    "family": "senate/pages",
+    "record_shape": "identifier",
+    "record": [
+      "armed_armedA040924",
+      "intlnarc_intlnarc062426"
+    ],
+    "outcomes": [
+      "saved-record",
+      "saved-record"
+    ],
+    "urls": [
+      null,
+      null
+    ]
+  },
+  {
+    "id": "empty-mods-pending",
+    "kind": "unaddressed-record",
+    "family": "govinfo/mods",
+    "record_shape": "empty-list",
+    "record": [],
+    "outcomes": [
+      "saved-record"
+    ],
+    "urls": [
+      null
+    ]
+  },
+  {
+    "id": "empty-transcript-pending",
+    "kind": "unaddressed-record",
+    "family": "govinfo/transcript-html",
+    "record_shape": "empty-list",
+    "record": [],
+    "outcomes": [
+      "saved-record"
+    ],
+    "urls": [
+      null
+    ]
+  },
+  {
+    "id": "empty-senate-caption-pending",
+    "kind": "unaddressed-record",
+    "family": "senate/captions",
+    "record_shape": "empty-list",
+    "record": [],
+    "outcomes": [
+      "saved-record"
+    ],
+    "urls": [
+      null
+    ]
+  },
+  {
+    "id": "document-path-digest-pairs",
+    "kind": "unaddressed-record",
+    "family": "documents",
+    "record_shape": "path-digest-pair",
+    "record": [
+      [
+        "/retained/docs/100052.html",
+        "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+      ],
+      [
+        "/retained/docs/100097.html",
+        "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+      ]
+    ],
+    "outcomes": [
+      "saved-record",
+      "saved-record"
+    ],
+    "urls": [
+      null,
+      null
+    ]
+  }
+]

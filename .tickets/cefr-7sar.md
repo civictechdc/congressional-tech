@@ -32,3 +32,19 @@ Current narrow component and slice qualified:43D1PASS31.09s plus49extendedPASS/1
 **2026-10-28T04:07:16Z**
 
 Largest complete receipt key accepted28source lines223captures55.32s/RSS8.192GB on9b, containing187MB/196-capture line. Caption complete key fails portable byte limit102.84s/RSS8.144GB; native pre-materialization profile passes910574rows/maxstring148B90.05s/RSS8.922GB. Tiny generic256×1KiB rows,batch_rows32/max64KiB passes direct query but refuses materialize=true. Exact jobs sent core/engine; no application chunking or limit increase. Full still unfinished pending native byte fit; generic batch_rows256 bounded measurement now active. Merged seam99PASS/1fixture failure fixed by engine6f6818e3 (writer identity); failed actual-release assertion then passes1check15.06s without weakening.
+
+**2026-10-28T21:02:33Z**
+
+Full local public guard passed:2292receipts4176794captures0violations; original200receipt proof61628rows/all34EXCEPT0/0 passed on729. Single full old-index comparison480.51s/native0cb within approved20native/24physical/12scratch/17owned limits: oldOnly0, expectedNew265688, unexplainedNew0, unexplainedMatched2693191. All2704137changed rows retained; owner disposition required. Lead now requests saved-record outcome and403-to404 analysis; D3/model/E4 held for its outcome fix. No live import.
+
+**2026-10-29T01:16:34Z**
+
+Reviewed D1 mapping3fc8c112…d77ec is implemented; corrected independent counts2292 receipts/2598311source/4147132captures with17/17 different-parser affected-receipt crosscheck. Blocked: owner resource window/new corpus jobs. Immutable corrected packet shared/capture-corrected-counts-a072668a. Exact guarded detached proof/full/comparison/D3 commands prepared under scratch/codex-raw/run2/d1-corrected-3fc8;32 source/runtime/input pins. Prior78047 comparison already ended and is historical, never rerun. No old stage/generation retag.
+
+**2026-10-29T01:33:08Z**
+
+Owner requested a small proof-profile repair after5830 failed at17,683,779,072physicalB against16GiB. Proof sample contains historical assembly receipts; propagate the already-approved local assembly20native/24physical profile through outer and nested proof guards, preserving standard14native/16physical defaults. Preserve failed paths/control/source evidence, use fresh proof-v2 paths, update pins, and send a lead-only launch command. Active D2fast5747 and engine5921 sources stay untouched.
+
+**2026-10-29T01:45:22Z**
+
+Proof-profile fix009d6a60 approved by ONE focused CODE review after sole standard-cap concern closed fixture-first678eccfe.46 focused PASS67.360s; mixed actual200receipt sample selects assembly.runtime20native/24physical; standard10/14 retains16physical, remote/nonassembly20 and native>20 refuse. New cxb_d1_corrected_v2.py uses fresh proof-v2 work/monitor/status/markers and full requires new proof-v2 acceptance.33pins match; failed5830 evidence/control/source archived and preserved. All16 active D2fast pins unchanged. Lead-only command in proof-v2-owner-command.md; no proof launch, memory admission must be resampled.

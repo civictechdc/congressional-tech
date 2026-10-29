@@ -40,7 +40,7 @@ def test_bodiless_status_time_and_non_http_capture_status(tmp_path):
             observed_at=STAMP, capture_status=200)),
         dict(record=dict(url='https://example.org/meeting', meetingStatus='200',
             capture_status=200, checked_at=STAMP, started_at=STAMP)),
-    ])
+    ],key='receipts/documents/2026-10-20/assemble-status.jsonl.gz')
     a, b = pq.read_table(stage / 'captures.parquet').to_pylist()
     assert a['http_status'] == 404
     assert a['retrieved_at'].isoformat() == '2026-10-20T12:34:56+00:00'
@@ -112,9 +112,10 @@ def test_entry_time_precedes_line_with_legacy_completeness(tmp_path):
 def test_rebuild_and_incremental_missing_receipt_equivalence(tmp_path):
     from congress_api.lake.captures import stage_captures
     engine = NativeDatasets.from_config(os.environ['DOCSPEC_JOB_CONFIG'])
-    one = files(tmp_path/'one', [dict(record=dict(url='https://example.org/one'))])
+    one = files(tmp_path/'one', [dict(record=dict(url='https://example.org/one'))],
+                key='receipts/documents/undated/assemble-one.jsonl.gz')
     two = files(tmp_path/'two', [dict(record=dict(url='https://example.org/two'))],
-                key='receipts/documents/undated/two.jsonl.gz')
+                key='receipts/documents/undated/assemble-two.jsonl.gz')
     first = stage_captures(one, engine=engine, work=tmp_path/'first')
     delta = stage_captures(one+two, engine=engine, work=tmp_path/'delta',
                            existing=first/'captures.parquet')
@@ -132,7 +133,8 @@ def test_ingested_receipt_is_never_reopened_by_stage(tmp_path):
     key='receipts/documents/2026-10-19/already.jsonl.gz'
     prior=tmp_path/'existing.parquet'
     pq.write_table(pa.table({'receipt_key':[key]}),prior)
-    pending=files(tmp_path/'pending',[dict(record=dict(url='https://example.org/new'))])
+    pending=files(tmp_path/'pending',[dict(record=dict(url='https://example.org/new'))],
+        key='receipts/documents/undated/assemble-new.jsonl.gz')
     stage=stage_captures([dict(key=key,path='/unopened/absent-receipt.gz'),*pending],
         engine=engine,work=tmp_path/'stage',existing=prior)
     assert pq.read_table(stage/'captures.parquet')['receipt_key'].to_pylist()==[pending[0]['key']]
@@ -167,7 +169,7 @@ def test_list_record_pointer_selects_its_own_response(tmp_path):
 
 def test_list_bodiless_items_keep_their_own_urls_and_primary_keys(tmp_path):
     source=dict(record=[dict(url='https://example.org/a'),dict(url='https://example.org/b')])
-    stage=ingest(tmp_path,[source]);rows=pq.read_table(stage/'captures.parquet').to_pylist()
+    stage=ingest(tmp_path,[source],key='receipts/documents/undated/assemble-list.jsonl.gz');rows=pq.read_table(stage/'captures.parquet').to_pylist()
     assert [(r['capture_index'],r['url']) for r in rows]==[(0,'https://example.org/a'),(1,'https://example.org/b')]
     with gzip.open(tmp_path/'input/receipt.gz','rt') as stream:assert json.loads(stream.read())==source
 
@@ -278,7 +280,7 @@ def test_prior_body_does_not_borrow_recorded_final_completeness(tmp_path):
 def test_sparse_bodiless_record_list_keeps_later_facts_on_their_own_item(tmp_path):
     source=dict(record=[dict(url='https://example.org/a'),
         dict(url='https://example.org/a',status_code=404,observed_at=STAMP)])
-    stage=ingest(tmp_path,[source]);a,b=pq.read_table(stage/'captures.parquet').to_pylist()
+    stage=ingest(tmp_path,[source],key='receipts/documents/undated/assemble-sparse.jsonl.gz');a,b=pq.read_table(stage/'captures.parquet').to_pylist()
     assert (a['capture_index'],a['http_status'],a['retrieved_at'])==(0,None,None)
     assert (b['capture_index'],b['http_status'],b['retrieved_at'].isoformat())==(1,404,'2026-10-20T12:34:56+00:00')
     with gzip.open(tmp_path/'input/receipt.gz','rt') as stream:assert json.loads(stream.read())==source

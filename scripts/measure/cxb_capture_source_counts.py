@@ -38,12 +38,20 @@ def _index(event,value):
 def count_line(encoded):
     """Count direct elements and reference coverage without building a JSON tree."""
     depth=0;root=False;field=None;active=None;entry=False;ref_field=None
-    pointer=False;position=0;slots=[None,None];seen=set();is_list=False
+    pointer=None;position=0;slots={};seen=set();is_list=False
     lengths=dict.fromkeys(FIELDS,0);indices={k:set() for k in REFERENCES};fallbacks=Counter()
     def finish(name,values):
-        chosen=next((v for v in values if v is not None),None)
+        selected=values.get('pointer')
+        if selected is None:selected=values.get('pointer_json')
+        chosen=next((v for v in selected or [] if v is not None),None)
         if chosen is None:chosen=0;fallbacks[name]+=1
         indices[name].add(chosen)
+    def decoded_pointer(value):
+        # Decode only the encoded pointer field, never the source record/body.
+        values=json.loads(value)
+        if not isinstance(values,list):return [None,None]
+        return [_index('number' if type(v) is int else 'string' if isinstance(v,str) else 'other',v)
+                for v in values[:2]]
     for event,value in ijson.basic_parse(encoded):
         if not root:
             if event!='start_map':raise ValueError('Malformed source JSON object')
@@ -53,9 +61,9 @@ def count_line(encoded):
             elif depth==3 and entry:ref_field=value
             continue
         if event in {'end_map','end_array'}:
-            if pointer and depth==4:pointer=False
+            if pointer and depth==4:pointer=None
             if entry and depth==3:
-                finish(active,slots);entry=False;pointer=False
+                finish(active,slots);entry=False;pointer=None
             if active and depth==2:active=None
             depth-=1
             continue
@@ -69,13 +77,16 @@ def count_line(encoded):
         if active and depth==2:
             lengths[active]+=1
             if active in REFERENCES:
-                slots=[None,None];ref_field=None
+                slots={};ref_field=None
                 if event in {'start_map','start_array'}:entry=True
                 else:finish(active,slots)
-        if entry and depth==3 and ref_field=='pointer' and event=='start_array':
-            pointer=True;position=0
+        if entry and depth==3 and ref_field in {'pointer','pointer_json'}:
+            if event=='start_array':
+                slots[ref_field]=[None,None];pointer=ref_field;position=0
+            elif event=='string':slots[ref_field]=decoded_pointer(value)
+            elif event!='null':slots[ref_field]=[None,None]
         elif pointer and depth==4:
-            if position<2:slots[position]=_index(event,value)
+            if position<2:slots[pointer][position]=_index(event,value)
             position+=1
         if event in {'start_map','start_array'}:depth+=1
     if not root or depth:raise ValueError('Malformed source JSON object')

@@ -392,48 +392,9 @@ a > .explorer-icon {
 .explorer-table .explorer-title-cell > button {
   white-space: pre-line;
 }
-.explorer-filename-hash {
-  display: block;
-  margin-bottom: 0.15rem;
-  color: var(--ctdc-ink-muted);
-  font-size: var(--ctdc-text-2xs);
-  font-weight: 400;
-  overflow-wrap: anywhere;
-}
 .explorer-table .explorer-title-cell > button {
   display: block;
   max-width: 100%;
-}
-.explorer-table .explorer-filename-hash {
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  overflow-wrap: normal;
-  max-width: 100%;
-}
-.explorer-filename-table {
-  table-layout: fixed;
-}
-.explorer-filename-table th:nth-child(1),
-.explorer-filename-table td:nth-child(1) {
-  width: 48%;
-}
-.explorer-filename-table th:nth-child(2),
-.explorer-filename-table td:nth-child(2) {
-  width: 28%;
-}
-.explorer-filename-table th:nth-child(3),
-.explorer-filename-table td:nth-child(3) {
-  width: 24%;
-}
-.explorer-filename-table .explorer-title-cell {
-  width: 48%;
-  min-width: 0;
-}
-.explorer-detail h2 > .explorer-filename-hash,
-.explorer-detail h3 > .explorer-filename-hash {
-  margin-top: 0.4rem;
-  margin-bottom: 0;
 }
 .explorer-row-meta {
   display: block;
@@ -837,85 +798,60 @@ a > .explorer-icon {
 }
 @media (max-width: 600px) {
   .explorer-list-table,
-  .explorer-filename-table,
   .explorer-list-table thead,
-  .explorer-filename-table thead,
-  .explorer-list-table tbody,
-  .explorer-filename-table tbody {
+  .explorer-list-table tbody {
     display: block;
   }
-  .explorer-list-table thead tr,
-  .explorer-filename-table thead tr {
+  .explorer-list-table thead tr {
     display: flex;
     flex-wrap: wrap;
     gap: 0.35rem 1.25rem;
     border-bottom: 1px solid var(--explorer-border);
   }
-  .explorer-list-table thead th,
-  .explorer-filename-table thead th {
+  .explorer-list-table thead th {
     width: auto;
     border-bottom: 0;
     padding: 0.45rem 0 0.55rem;
   }
-  .explorer-list-table .explorer-sort,
-  .explorer-filename-table .explorer-sort {
+  .explorer-list-table .explorer-sort {
     white-space: nowrap;
   }
-  .explorer-list-table .explorer-sort-join,
-  .explorer-filename-table .explorer-sort-join {
+  .explorer-list-table .explorer-sort-join {
     display: inline;
   }
-  .explorer-list-table .explorer-sort-rest,
-  .explorer-filename-table .explorer-sort-rest {
+  .explorer-list-table .explorer-sort-rest {
     display: inline;
   }
   .explorer-list-table
     .explorer-sort[data-direction="asc"]
     .explorer-sort-rest::after,
   .explorer-list-table
-    .explorer-sort[data-direction="desc"]
-    .explorer-sort-rest::after,
-  .explorer-filename-table
-    .explorer-sort[data-direction="asc"]
-    .explorer-sort-rest::after,
-  .explorer-filename-table
     .explorer-sort[data-direction="desc"]
     .explorer-sort-rest::after {
     content: none;
   }
-  .explorer-list-table .explorer-sort[data-direction="asc"]::after,
-  .explorer-filename-table .explorer-sort[data-direction="asc"]::after {
+  .explorer-list-table .explorer-sort[data-direction="asc"]::after {
     content: " ↑";
   }
-  .explorer-list-table .explorer-sort[data-direction="desc"]::after,
-  .explorer-filename-table .explorer-sort[data-direction="desc"]::after {
+  .explorer-list-table .explorer-sort[data-direction="desc"]::after {
     content: " ↓";
   }
-  .explorer-list-table tbody tr,
-  .explorer-filename-table tbody tr {
+  .explorer-list-table tbody tr {
     display: block;
     padding: 0.85rem 0;
     border-bottom: 1px solid var(--ctdc-hairline-on-light);
   }
-  .explorer-list-table tbody td,
-  .explorer-filename-table tbody td:nth-child(n) {
+  .explorer-list-table tbody td {
     display: block;
     width: auto;
     min-width: 0;
     border: 0;
     padding: 0.12rem 0;
   }
-  .explorer-list-table .explorer-title-cell,
-  .explorer-filename-table .explorer-title-cell {
+  .explorer-list-table .explorer-title-cell {
     width: auto;
     min-width: 0;
     overflow-wrap: break-word;
-  }
-  .explorer-filename-table .explorer-filename-hash {
-    white-space: normal;
-    overflow: visible;
-    text-overflow: clip;
-    overflow-wrap: anywhere;
   }
   .explorer-bar-row {
     grid-template-columns: 1fr auto;

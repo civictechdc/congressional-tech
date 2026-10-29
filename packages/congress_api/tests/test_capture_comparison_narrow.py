@@ -23,6 +23,7 @@ def compare(tmp_path,old_changes=None,new_changes=None,*,secondary=None):
     old.update(old_changes or {});new.update(new_changes or {})
     for name,row in [('old',old),('new',new)]:
         types={k:pa.int64() if k in {'receipt_line','capture_index','bytes','stored_bytes','http_status'}
+            else pa.bool_() if k=='source_context_from_final'
             else pa.binary(32) if k=='sha256' and name=='new' else pa.string() for k in row}
         rows=[row]
         if name=='old' and secondary is not None:
@@ -74,7 +75,8 @@ def test_member_names_require_the_proved_archive_pointer_component(
 def test_only_proved_bodiless_metadata_empty_pointer_maps_to_null(tmp_path):
     report,_=compare(tmp_path,{'sha256':None,'body_key':None,'reference_kind':'metadata',
         'pointer_json':'[]','context_url':None},
-        {'sha256':None,'reference_kind':'line','pointer_json':None,'context_url':'https://example.org/a'})
+        {'sha256':None,'reference_kind':'line','pointer_json':None,'context_url':'https://example.org/a',
+         'source_context_from_final':True})
     assert report['matched']==1 and report['old_only']==report['new_only']==0
     assert report['unexplained']==0 and report['expected_changes']==1
 

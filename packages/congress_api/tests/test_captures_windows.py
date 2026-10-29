@@ -77,3 +77,44 @@ def test_native_counter_plan_scans_once_and_joins_only_materialized_scalars(tmp_
     schema=pq.read_schema(second/'scalars.parquet')
     assert schema.field('selected_record_index').type==pa.int64()
     assert all(not pa.types.is_nested(field.type) for field in schema)
+
+
+def test_capture_hash_builds_keep_only_keys_and_flags(tmp_path):
+    from test_capture_comparison_hashkeys import explain_step
+    stage=ingest(tmp_path,[dict(http_status=200,captures=[body() for _ in range(32)])])
+    spec=json.loads((stage/'job.json').read_text())
+    native=NativeDatasets.from_config(os.environ['DOCSPEC_JOB_CONFIG'])
+    for name in ['retained_items','windowed']:
+        work=tmp_path/('physical-'+name);work.mkdir()
+        physical=explain_step(spec,name,native=native,work=work)
+        lines=physical.splitlines();joins=[i for i,line in enumerate(lines) if 'HashJoinExec:' in line]
+        assert joins,physical
+        for index in joins:
+            depth=len(lines[index])-len(lines[index].lstrip())
+            end=next((j for j in range(index+2,len(lines)) if len(lines[j])-len(lines[j].lstrip())<=depth+2),len(lines))
+            build='\n'.join(lines[index+1:end])
+            assert all(field not in build for field in ['outcome@','h_content_disposition@','recovery_category@','writer_job@']),physical
+
+
+def test_retained_record_guard_builds_only_occurrence_keys(tmp_path):
+    from congress_api.lake.captures import capture_checks,ROW_KEYS
+    from congress_api.retention.provenance import run_job
+    stage=ingest(tmp_path,[dict(record=[dict(url='https://example.test/a')],captures=[body(pointer=[0,'body'])])])
+    spec=json.loads((stage/'job.json').read_text())
+    end=next(i for i,s in enumerate(spec['steps']) if s['name']=='capture_violations')
+    work=tmp_path/'guard-plan';work.mkdir()
+    with NativeDatasets.from_config(os.environ['DOCSPEC_JOB_CONFIG']) as native:
+        result=run_job(work,native,inputs=spec['inputs'],steps=spec['steps'][:end],outputs=[],
+            queries=[dict(name='plan',sql='EXPLAIN '+next(c['sql'] for c in capture_checks() if c['name']=='invalid'))])
+    physical=next(row['plan'] for row in result['plan'] if row['plan_type']=='physical_plan')
+    lines=physical.splitlines();joins=[i for i,line in enumerate(lines) if 'HashJoinExec:' in line]
+    assert len(joins)==1,physical
+    index=joins[0];join=lines[index];keys=join.split('on=[',1)[1].split(']',1)[0]
+    assert 'NullsEqual: true' in join and 'filter=' not in join,physical
+    for key in ROW_KEYS:assert len(re.findall(r'\b'+key+r'@',keys))==2,physical
+    indent=len(lines[index+1])-len(lines[index+1].lstrip());build=[lines[index+1]]
+    for line in lines[index+2:]:
+        if len(line)-len(line.lstrip())<=indent:break
+        build.append(line)
+    assert any('StreamingTableExec:' in line for line in build),physical
+    assert all(name not in '\n'.join(build) for name in ('unknown_outcome@','h_content_disposition@','writer_job@')),physical

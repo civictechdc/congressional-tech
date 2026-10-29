@@ -105,13 +105,13 @@ def local_table(args,tmp_path):
     return dict(table=table,catalog_root=tmp_path/'catalog')
 
 
-def test_backfill_streams_one_plan_and_one_worker_with_one_durable_append_per_batch(tmp_path):
+def test_backfill_streams_one_plan_and_closes_workers_for_each_durable_batch(tmp_path):
     args=inputs(tmp_path/'source',5);target=local_table(args,tmp_path);factory=CountingFactory();heads=[]
     def current(**kwargs):heads.append(kwargs);return None  # Explicit fake empty current table.
     result=readings.run(**args,**target,work=tmp_path/'backfill',mode='backfill',execute=True,
         batch_size=2,read_current=current,worker_factory=factory,
         unreadable_store=BodyStore(LocalAdapter(tmp_path/'durable')))
-    assert len(heads)==1 and factory.started==1 and len(factory.inputs)==len(set(factory.inputs))==5
+    assert len(heads)==1 and factory.started==3 and len(factory.inputs)==len(set(factory.inputs))==5
     assert result['status']=='completed' and result['work_items']==5 and result['applied'] is True
     assert [b['work_items'] for b in result['batches']]==[2,2,1]
     assert [sum(f['rows'] for f in b['append']['files']) for b in result['batches']]==[4,4,2]
@@ -201,7 +201,7 @@ def test_resumed_backfill_refreshes_current_lake_and_only_parses_missing_work(tm
         unreadable_store=BodyStore(LocalAdapter(tmp_path/'durable')))
     assert len(heads)==2 and heads[0]['work']!=heads[1]['work']
     assert second['work_items']==0 and second['batches']==[] and second['applied'] is False
-    assert factory.started==1 and len(factory.inputs)==3
+    assert factory.started==2 and len(factory.inputs)==3
 
 
 def test_cli_daily_plan_over_budget_reports_backfill_required(tmp_path,capsys):

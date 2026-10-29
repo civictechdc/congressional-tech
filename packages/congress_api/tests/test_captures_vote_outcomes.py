@@ -22,12 +22,14 @@ def test_list_vote_domain_outcomes_keep_sibling_and_line_acquisition_facts(tmp_p
         dict(http_status=404,outcome='http_error',complete=False,record=[vote]),
         dict(http_status=200,complete=True,record=[vote],
             captures=[body(pointer=[0,'content','body'],complete=True)])]
-    stage=ingest(tmp_path,source,key='receipts/house/meeting-xml/undated/vote-domain.jsonl.gz')
+    stage=ingest(tmp_path,source,key='receipts/house/meeting-xml/undated/assemble-vote-domain.jsonl.gz')
     table=pq.read_table(stage/'captures.parquet');rows=table.to_pylist()
     assert table.schema.names==NARROW_COLUMNS and len(table.schema.names)==34
     assert [(r['receipt_line'],r['capture_index']) for r in rows]==[(1,0),(1,1),(2,0),(3,0)]
     assert len({(r['receipt_key'],r['receipt_line'],r['capture_index']) for r in rows})==4
-    assert [r['outcome'] for r in rows]==['stored','failed','failed','stored']
+    # The retained vote has no acquisition facts; the explicit HTTP failure on
+    # the next line remains failed, independently of the vote's domain label.
+    assert [r['outcome'] for r in rows]==['stored','saved-record','failed','stored']
     assert [r['http_status'] for r in rows]==[200,None,404,200]
     assert [r['complete'] for r in rows]==[True,True,False,True]
     assert [r['url'] for r in rows]==['https://fixture.test/sibling',None,None,None]

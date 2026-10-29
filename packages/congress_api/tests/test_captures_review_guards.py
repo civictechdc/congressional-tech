@@ -27,7 +27,8 @@ def test_present_object_body_reference_list_never_becomes_a_bodiless_success(tmp
 
 @pytest.mark.parametrize('value',[None,[]])
 def test_null_and_empty_reference_lists_keep_the_bodiless_row(tmp_path,value):
-    work=ingest(tmp_path,[dict(source_file='run',record={},captures=value,file_references=value)])
+    work=ingest(tmp_path,[dict(source_file='run',record={},captures=value,file_references=value)],
+        key='receipts/documents/2026-10-20/assemble-empty-references.jsonl.gz')
     [row]=pq.read_table(work/'captures.parquet').to_pylist()
     assert row['capture_index']==0 and row['sha256'] is None
 

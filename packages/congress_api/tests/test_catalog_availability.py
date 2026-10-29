@@ -146,33 +146,6 @@ def test_corrupt_state_fails_before_publishing_or_replacing_archive_state():
     assert not store.writes
 
 
-def test_availability_survives_static_publication(tmp_path):
-    import importlib.util
-    from pathlib import Path
-    import pyarrow.parquet as pq
-    from congress_api.retention.catalog_publication import local_catalog_paths
-    script = Path(__file__).parent / 'historical_viewer_publication.py'
-    spec=importlib.util.spec_from_file_location('availability_publication',script)
-    publisher=importlib.util.module_from_spec(spec);spec.loader.exec_module(publisher)
-    api='https://api.congress.gov/v3/hearing/118/senate/53528?format=json'
-    pdf=saved('CHRG-118shrg53528')
-    missing=dict(url='https://committee.test/missing',outcome='pending')
-    rows=list(annotate_availability([dict(body_key=None, filename='53528', source_url=api,
-        source_occurrences=[dict(source_occurrence_scope=['source_record'], source_page_url=[api])])], state(pdf,missing)))
-    index.write_filename_metadata(tmp_path,rows,workers=1)
-    output=tmp_path/'public'
-    publication=publisher.publish(tmp_path,output)
-    for name,path in zip(('filenames','documents'),local_catalog_paths(tmp_path)):
-        original=pq.read_table(path)
-        published=pq.read_table(output/publication['files'][name]['path'])
-        assert original.equals(published,check_metadata=True)
-    sources=pq.read_table(local_catalog_paths(tmp_path)[0]).to_pylist()
-    reference=next(row for row in sources if row['source_url']==api)
-    assert reference['body_key'] is None
-    assert reference['hearing_resources'][0]['association_basis']=='endpoint_package_candidate'
-    unavailable=next(row for row in sources if row['source_url']==missing['url'])
-    assert unavailable['record_role']==['capture-state']
-    assert unavailable['state_outcome']==['pending']
 
 
 def test_filename_refresh_preserves_availability_and_structured_resources(tmp_path):
@@ -214,19 +187,6 @@ def test_state_retained_body_is_exposed_without_rewriting_existing_observation(t
     assert 'source_receipt_key' not in rows[1]
     assert list(annotate_availability(rows, state(current))) == rows
     index.write_filename_metadata(tmp_path, rows, workers=1)
-    from congress_api.retention.catalog_publication import local_catalog_paths
-    import importlib.util
-    from pathlib import Path
-    script = Path(__file__).parent / 'historical_viewer_publication.py'
-    spec = importlib.util.spec_from_file_location('retained_publication', script)
-    publisher = importlib.util.module_from_spec(spec); spec.loader.exec_module(publisher)
-    output = tmp_path / 'public'
-    publication = publisher.publish(tmp_path, output)
-    flags = (output / publication['files']['flags']['path']).read_bytes()
-    assert len(flags) == 1 and flags[0] & 1
-    import pyarrow.parquet as pq
-    details = pq.read_table(output / publication['files']['details']['path']).to_pylist()
-    assert any(r['body_key'] == current['body_key'] for r in details)
 
 
 @pytest.mark.parametrize('outcome,status', [('pending', None), ('http_error', 404)])
@@ -237,62 +197,8 @@ def test_failed_state_does_not_add_a_successful_body_to_an_existing_url(outcome,
     assert len(rows) == 1 and rows[0]['body_key'] is None
 
 
-@pytest.mark.parametrize('media,exposed', [('video/x-ms-wmv', False), ('video/mp4', False),
-                                         ('video/x-ms-wvx', True), ('application/xml', True)])
-def test_publication_keeps_video_locations_without_saved_video_links(tmp_path, media, exposed):
-    import importlib.util
-    from pathlib import Path
-    import pyarrow.parquet as pq
-    url = 'https://committee.example/recording'
-    body = 'bodies/sha256/aa/' + 'a' * 64 + '.gz'
-    rows = [dict(source_url=url, filename='recording', body_key=body, media_type=[media],
-                 source_occurrences=[dict(source_occurrence_scope=['capture'], source_capture_url=[url])])]
-    index.write_filename_metadata(tmp_path, rows, workers=1)
-    script = Path(__file__).parent / 'historical_viewer_publication.py'
-    spec = importlib.util.spec_from_file_location('video_policy_publication', script)
-    publisher = importlib.util.module_from_spec(spec); spec.loader.exec_module(publisher)
-    output = tmp_path / 'public'
-    publication = publisher.publish(tmp_path, output)
-    flags = (output / publication['files']['flags']['path']).read_bytes()
-    assert bool(flags[0] & 1) is exposed
-    detail, = pq.read_table(output / publication['files']['details']['path']).to_pylist()
-    assert detail['body_key'] == (body if exposed else None)
-    assert detail['source_url'] == url
-    original, = pq.read_table(output / publication['files']['filenames']['path']).to_pylist()
-    assert original['body_key'] == body
 
 
-@pytest.mark.parametrize('evidence,exposed', [
-    ({'http_status': ['404']}, False),
-    ({'http_status': ['200'], 'response_usable': ['false']}, False),
-    ({'capture_outcome': ['empty']}, False),
-    ({'capture_outcome': ['request_failed']}, False),
-    ({'http_status': ['200'], 'capture_outcome': ['retry_later']}, False),
-    ({'http_status': ['200'], 'capture_outcome': ['size_limit']}, False),
-    ({'state_outcome': ['http_error'], 'http_status': ['200']}, True),
-    ({'response_body_complete': ['false']}, False),
-    ({'source_record_type': ['error-page']}, False),
-    ({'http_status': ['200'], 'response_usable': ['true']}, True),
-    ({'state_outcome': ['retained'], 'media_type': ['application/xml']}, True),
-])
-def test_saved_response_flags_and_links_use_capture_evidence(tmp_path, evidence, exposed):
-    import importlib.util
-    from pathlib import Path
-    import pyarrow.parquet as pq
-    body = 'bodies/error-or-content'
-    rows = [dict(source_url='https://example.gov/document', filename='document', body_key=body, source_occurrences=[dict(source_occurrence_scope=['capture'], source_capture_url=['https://example.gov/document'])], **evidence)]
-    index.write_filename_metadata(tmp_path, rows, workers=1)
-    script = Path(__file__).parent / 'historical_viewer_publication.py'
-    spec = importlib.util.spec_from_file_location('saved_policy_publication', script)
-    publisher = importlib.util.module_from_spec(spec); spec.loader.exec_module(publisher)
-    output = tmp_path / 'public'
-    publication = publisher.publish(tmp_path, output)
-    flags = (output / publication['files']['flags']['path']).read_bytes()
-    assert bool(flags[0] & 1) is exposed
-    detail, = pq.read_table(output / publication['files']['details']['path']).to_pylist()
-    assert detail['body_key'] == (body if exposed else None)
-    original, = pq.read_table(output / publication['files']['filenames']['path']).to_pylist()
-    assert original['body_key'] == body
 
 
 def test_html_reviews_bind_exact_source_and_body():

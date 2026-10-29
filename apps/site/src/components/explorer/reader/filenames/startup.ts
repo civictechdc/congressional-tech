@@ -1,5 +1,4 @@
-// Both status loaders verify decoded JSON bytes. Their callers own whether a
-// failure is mandatory and choose independent byte and startup-time policies.
+// Verify bounded decoded response bytes; callers choose byte and time limits.
 function cancel(stream: any) {
   // A broken transport can ignore abort or leave cancel() pending forever.
   // Request cleanup without allowing that promise to block the caller.
@@ -73,17 +72,4 @@ export async function withVerifiedBytes(policy: any, label: string, run: (verifi
     callerSignal?.removeEventListener('abort', abort);
     controller.abort();
   }
-}
-
-// Compare parsed control data independently of object key insertion order.
-export function canonicalJson(value: any): string {
-  const ordered = (val: any): any => Array.isArray(val) ? val.map(ordered) : val && typeof val === 'object'
-    ? Object.fromEntries(Object.keys(val).sort().map(key=>[key,ordered(val[key])])) : val;
-  return JSON.stringify(ordered(value));
-}
-
-
-export function withVerifiedJson(policy: any, label: string, run: (verified: any) => Promise<any>, signal?: AbortSignal): Promise<any> {
-  return withVerifiedBytes(policy, label, verified => run(async (...args: any[]) =>
-    JSON.parse(new TextDecoder().decode(await verified(...args)))), signal);
 }

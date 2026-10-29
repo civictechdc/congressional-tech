@@ -111,7 +111,7 @@ def test_bodiless_list_ignores_differences_in_on_demand_evidence(tmp_path):
              prior_attempts=dict(complete=False), response_headers={'X-Padding': 'first'}),
         dict(url='https://example.test/a', complete=True,
              prior_attempts=[dict(complete=False)], response_headers={'X-Padding': 'second'}),
-    ])])
+    ])],key='receipts/documents/2026-10-20/assemble-on-demand.jsonl.gz')
     rows = pq.read_table(stage/'captures.parquet').to_pylist()
     assert [r['capture_index'] for r in rows]==[0,1]
     assert all(r['complete'] is True and r['url']=='https://example.test/a' for r in rows)
@@ -133,5 +133,5 @@ def test_download_header_lowercase_precedes_uppercase_and_other_shapes_stay_raw(
                          response_header_items=[dict(name='Content-Disposition', value='items')],
                          prior_attempts=[dict(response_headers={'content-disposition': 'prior'})],
                          source_metadata=dict(response_headers={'content-disposition': 'duplicate'}))),
-    ])
+    ],key='receipts/documents/2026-10-20/assemble-headers.jsonl.gz')
     assert pq.read_table(stage/'captures.parquet')['h_content_disposition'].to_pylist() == ['lower', None]
