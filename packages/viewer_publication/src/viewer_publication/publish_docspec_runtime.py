@@ -53,7 +53,7 @@ def build_runtime_descriptor(
     *,
     source_revision: str = QUALIFIED_DOCSPEC_RUNTIME["source_revision"],
     platform: str = "linux-amd64",
-    bucket: str = "congressional-tech-raw",
+    bucket: str,
     build_features: list[str] | tuple[str, ...] = ("remote",),
     required_capabilities: list[str] | tuple[str, ...] = REQUIRED_LOOPBACK_CAPABILITIES,
 ) -> dict[str, Any]:
@@ -138,7 +138,7 @@ def upload_runtime_binary(
     return descriptor
 
 
-def make_client(*, bucket: str = "congressional-tech-raw") -> Any:
+def make_client(*, bucket: str) -> Any:
     return connect_r2(
         bucket=bucket,
         connect_timeout=15,
@@ -163,8 +163,8 @@ def main(argv: list[str] | None = None, *, client: Any | None = None) -> int:
     )
     parser.add_argument(
         "--bucket",
-        default="congressional-tech-raw",
-        help="R2 bucket name storing private runtime artifacts",
+        required=True,
+        help="Explicit private R2 bucket for runtime artifacts (congressional-tech-runtime in production)",
     )
     parser.add_argument(
         "--upload",

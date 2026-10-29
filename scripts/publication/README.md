@@ -20,3 +20,19 @@ are retired. Rollback uses the previous application revision from git history.
 Runtime distribution still uses `.github/actions/setup-local-job-runtime` and
 its pinned runtime descriptor. `publish-docspec-runtime.py`, the PDF backfill
 wrapper and the origin-rule wrapper remain available for their retained owner gates.
+
+Runtime binaries use the private `congressional-tech-runtime` bucket. The raw-data
+bucket is public and must not hold private runtime binaries. The runtime uploader
+requires an explicit `--bucket` in descriptor and upload modes; its Python helpers
+also require the bucket explicitly. Prepare and inspect the approved descriptor
+before the lead runs an upload:
+
+```sh
+.venv/bin/python -I scripts/publication/publish-docspec-runtime.py \
+  --binary /absolute/path/to/docspec --bucket congressional-tech-runtime \
+  --output /absolute/path/to/runtime-artifact.json
+```
+
+The lead supplies `--upload --expected-descriptor /absolute/path/to/runtime-artifact.json`
+only after the matching platform qualification. Keep create-only writes and exact
+readback verification; selecting the repository variable is a separate lead step.
