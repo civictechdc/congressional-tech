@@ -38,5 +38,69 @@
       "title": "Retained metadata"
     },
     "outcome": "saved-record"
+  },
+  {
+    "kind": "malformed-document-reference",
+    "family": "documents",
+    "record": {
+      "url": "ttps://www.gpo.gov/fdsys/pkg/BILLS-115hres964rh/pdf/BILLS-115hres964rh.pdf"
+    },
+    "outcome": "reference"
+  },
+  {
+    "kind": "malformed-document-reference",
+    "family": "documents",
+    "record": {
+      "url": "ttps://www.gpo.gov/fdsys/pkg/BILLS-115hr3281rh/pdf/BILLS-115hr3281rh.pdf"
+    },
+    "outcome": "reference"
+  },
+  {
+    "kind": "malformed-document-reference",
+    "family": "documents",
+    "record": {
+      "url": "mailto:https://www.congress.gov/116/bills/hr5040/BILLS-116hr5040ih.pdf"
+    },
+    "outcome": "reference"
+  },
+  {
+    "kind": "malformed-document-reference",
+    "family": "documents",
+    "record": {
+      "url": "mailto:https://www.congress.gov/116/bills/hr6237/BILLS-116hr6237ih.pdf"
+    },
+    "outcome": "reference"
+  },
+  {
+    "kind": "malformed-document-reference",
+    "family": "documents",
+    "record": {
+      "url": "mailto:https://www.congress.gov/116/bills/hr6636/BILLS-116hr6636ih.pdf"
+    },
+    "outcome": "reference"
+  },
+  {
+    "kind": "malformed-document-reference",
+    "family": "documents",
+    "record": {
+      "url": "mailto:https://www.congress.gov/116/bills/hr7045/BILLS-116hr7045ih.pdf"
+    },
+    "outcome": "reference"
+  },
+  {
+    "kind": "malformed-document-reference",
+    "family": "documents",
+    "record": {
+      "url": "/https://rules.house.gov/sites/republicans.rules118.house.gov/files/H3564_RCP_xml.pdf"
+    },
+    "outcome": "reference"
+  },
+  {
+    "kind": "malformed-document-reference",
+    "family": "documents",
+    "record": {
+      "url": "chrome-extension://efaidnbmnnnibpcajpcglclefindmkaj/https://www.congress.gov/118/bills/hr7440/BILLS-118hr7440ih.pdf"
+    },
+    "outcome": "reference"
   }
 ]

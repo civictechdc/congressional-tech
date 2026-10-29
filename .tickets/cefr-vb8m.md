@@ -16,3 +16,9 @@ Implement owner212226 finite family/shape line-kind registry, reference and save
 
 Fixture first covers every registry kind, explicit failure and acquisition preservation, per-item lists, unknown refusal and final-status priority; focused runners and one independent code review pass. New D1 generation/comparator and downstream D3/model/E4 qualify serially when owner resources allow.
 
+
+## Notes
+
+**2026-10-29T02:00:24Z**
+
+Full corrected34291 refused unregistered youtube/captions object at3961; enumerate all2292 receipts under2GiB, then fixture-first explicit classification and proof-kind coverage; old failure evidence preserved.
