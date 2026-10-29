@@ -158,8 +158,11 @@ def test_memory_guard_continues_after_child_closes_output(monkeypatch):
 
 
 def test_unavailable_memory_measurement_refuses(monkeypatch):
+    from congress_api.retention import process_resources
     def fail(*args, **kwargs):
-        raise OSError('ps unavailable')
-    monkeypatch.setattr(pdf_tools.subprocess, 'run', fail)
+        raise OSError('host memory sampler unavailable')
+    # Memory is read through host APIs, not ps; disable both platform samplers.
+    monkeypatch.setattr(process_resources, '_darwin_memory_bytes', fail)
+    monkeypatch.setattr(process_resources, '_linux_memory_bytes', fail)
     with pytest.raises(pdf_tools.PdfToolError, match='memory measurement unavailable'):
         pdf_tools._resident_bytes(1)
