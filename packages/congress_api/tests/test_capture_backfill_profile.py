@@ -44,7 +44,8 @@ def test_twenty_gib_native_admission_requires_local_assembly_and_keeps_its_ceili
     assert not (tmp_path/'catalog').exists()
 
 
-def test_local_assembly_proof_propagates_twenty_four_gib_to_every_nested_monitor(tmp_path):
+@pytest.mark.parametrize('memory,physical',[(10,16),(20,24)])
+def test_local_assembly_proof_propagates_its_selected_runtime_to_every_nested_monitor(tmp_path,memory,physical):
     from test_captures_ingest import files as make_receipts
     from congress_api.lake.capture_backfill_proof import prove_equivalence
     files=[];counts=[]
@@ -53,7 +54,7 @@ def test_local_assembly_proof_propagates_twenty_four_gib_to_every_nested_monitor
             family='documents',http_status=404,url=f'https://fixture.test/{index}',record={})],key)
         counts.append(dict(key=key,source_rows=1,expected_captures=1,uncompressed_bytes=200,
             list_items=1,max_line_bytes=200,max_line_items=1))
-    engine,config=runtime(tmp_path,20)
+    engine,config=runtime(tmp_path,memory)
     result=prove_equivalence(files,counts,engine=engine,engine_config=config,work=tmp_path/'proof',
         table=dict(namespace=['assembly_profile_fixture'],name='captures'),catalog_root=tmp_path/'catalog',
         location=tmp_path/'table',byte_target=1000,item_target=1,required_keys=[ASSEMBLY])
@@ -61,5 +62,5 @@ def test_local_assembly_proof_propagates_twenty_four_gib_to_every_nested_monitor
     assert result['comparison']['left_rows']==result['comparison']['right_rows']==2
     assert result['comparison']['left_only']==result['comparison']['right_only']==0
     for generation in result['generations'].values():
-        assert generation['acceptance_measurement']['physical_limit']==24<<30
-        assert all(batch['measurement']['physical_limit']==24<<30 for batch in generation['batches'])
+        assert generation['acceptance_measurement']['physical_limit']==physical<<30
+        assert all(batch['measurement']['physical_limit']==physical<<30 for batch in generation['batches'])
