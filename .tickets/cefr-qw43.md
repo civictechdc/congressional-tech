@@ -1,6 +1,6 @@
 ---
 id: cefr-qw43
-status: in_progress
+status: closed
 deps: []
 links: []
 created: 2026-10-29T00:51:17Z
@@ -16,3 +16,9 @@ The reviewed completion/prefetch changes added maintained raw-reading helpers. M
 
 A fixture fails against the old preservation list; the focused switch lane passes; a current-head inventory verifies fresh and has an immutable handoff. No deletion is applied.
 
+
+## Notes
+
+**2026-10-29T00:57:54Z**
+
+Fixture-first reader-preservation case failed before9473b909 and the complete switch inventory lane passed20 cases. Inventory at9473b909 reproduces byte-identically and verifies stale=false;616 files/129336 population lines/18 groups. Immutable shared packet switch-inventory-ad99d156; actual deletions remain switch-owner actions and must be regenerated at the final combined head.
