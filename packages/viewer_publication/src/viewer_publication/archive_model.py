@@ -285,8 +285,25 @@ def build_prepared_release(prepared,*,engine,output,root=ROOT):
         'edition_bodies':['body_sha'],
         'fingerprint_candidates':['body_sha'],
         'fingerprints':['body_sha']}
+    page_facts_export = """SELECT r.* FROM (
+        SELECT r.body_sha,min(r.format) AS format FROM readings r JOIN parser_versions v ON r.parser=v.parser AND r.parser_version=v.version
+        WHERE r.parser='sniff' GROUP BY r.body_sha
+    ) s JOIN (
+        SELECT r.* FROM readings r JOIN parser_versions v ON r.parser=v.parser AND r.parser_version=v.version
+        WHERE r.parser IN ('html','xml','json')
+    ) r ON r.body_sha=s.body_sha AND r.parser=s.format"""
+    fingerprints_export = """SELECT encode(r.body_sha,'hex') AS body_sha,max(encode(r.fingerprint,'hex')) AS fingerprint
+    FROM (
+        SELECT r.body_sha,min(r.format) AS format FROM readings r JOIN parser_versions v ON r.parser=v.parser AND r.parser_version=v.version
+        WHERE r.parser='sniff' GROUP BY r.body_sha
+    ) s JOIN (
+        SELECT r.* FROM readings r JOIN parser_versions v ON r.parser=v.parser AND r.parser_version=v.version
+        WHERE r.parser IN ('html','xml','json')
+    ) r ON r.body_sha=s.body_sha AND r.parser=s.format
+    WHERE r.status='completed'
+    GROUP BY encode(r.body_sha,'hex')"""
     extra += [dict(name=name+'.parquet',path=str(evidence/(name+'.parquet')),
-        sql=("SELECT r.*,r.body_sha AS body_sha256,d.decided_at,d.recovered_url,d.identity_note FROM current_recoveries r LEFT JOIN remaining_recovery_decisions d ON r.decision_id=d.id" if name=='current_recoveries' else 'SELECT * FROM '+name),settings=_settings('whole',keys)) for name,keys in causes.items()]
+        sql=("SELECT r.*,r.body_sha AS body_sha256,d.decided_at,d.recovered_url,d.identity_note FROM current_recoveries r LEFT JOIN remaining_recovery_decisions d ON r.decision_id=d.id" if name=='current_recoveries' else page_facts_export if name=='page_facts' else fingerprints_export if name=='fingerprints' else 'SELECT * FROM '+name),settings=_settings('whole',keys)) for name,keys in causes.items()]
     prefix_checks=','.join(sql+' AS '+name for name,sql in evidence_checks().items())
     manifest=_execute(inputs,steps,output=output,scratch=scratch,engine=engine,
         lookup_extra="SELECT o.list_row,a.url FROM source_addresses a JOIN document_members m ON a.source_id=m.source_id JOIN document_identities d ON m.component=d.component JOIN ordered o ON d.document_id=o.doc_key WHERE m.is_real_file",
