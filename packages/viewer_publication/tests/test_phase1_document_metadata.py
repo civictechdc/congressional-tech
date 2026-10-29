@@ -48,3 +48,37 @@ def test_document_package_uses_member_url_order_before_saved_filename_fallback(t
     result=run_job(tmp_path,NativeDatasets.from_config(os.environ['DOCSPEC_JOB_CONFIG']),inputs=inputs,
         steps=[dict(name='document_packages',sql=(ROOT/'model/sql/document-packages.sql').read_text(),materialize=True)],outputs=[],queries=[dict(name='packages',sql='SELECT * FROM document_packages ORDER BY component')])
     assert result['packages']==[dict(component='document',package_id='CHRG-119hhrg22222'),dict(component='fallback',package_id=None)]
+
+
+def test_document_removals_use_each_pages_latest_timestamp_and_require_all_removed(tmp_path):
+    from congress_api.retention.provenance import json_input, run_job
+    from docspec_client.client import NativeDatasets
+    import os
+    page = 'https://docs.house.gov/meetings/AA/AA00/20261001/123456/HHRG-119-AA00-20261001.xml'
+    rows = []
+    def add(component, stamp, removed, context=page):
+        rows.append(dict(source_id=str(len(rows)), component=component,
+                         context_url=context, last_good_at=stamp, remove_date=removed))
+    add('removed', '2026-01-01T12:00:00Z', '2026-01-02')
+    add('readded', '2026-01-01T12:00:00Z', '2026-01-02')
+    add('readded', '2026-02-01T12:00:00Z', None)
+    add('tied', '2026-03-01T12:00:00Z', '2026-02-02')
+    add('tied', '2026-03-01T07:00:00-05:00', '2026-02-01')
+    add('tied-readd', '2026-03-01T12:00:00Z', '2026-02-01')
+    add('tied-readd', '2026-03-01T12:00:00Z', None)
+    add('unknown-time', None, '2026-01-02')
+    add('two-pages', '2026-03-01T12:00:00Z', '2026-02-01')
+    add('two-pages', '2026-02-01T12:00:00Z', None, page.replace('123456', '123457'))
+    add('unrelated', '2026-03-01T12:00:00Z', '2026-02-01', 'https://fixture.test/meeting.xml')
+    add(None, '2026-03-01T12:00:00Z', '2026-02-03')
+    inputs = [json_input(tmp_path, 'appearances', rows, source_id='Utf8', component='Utf8',
+                        context_url='Utf8', last_good_at='Utf8', remove_date='Utf8')]
+    steps = [dict(name='document_members', sql='SELECT source_id,component FROM appearances'),
+             dict(name='publisher_links', sql='''SELECT * EXCLUDE(component,last_good_at),
+                 cast(last_good_at AS TIMESTAMP WITH TIME ZONE) AS last_good_at FROM appearances'''),
+             dict(name='document_removals', sql=(ROOT/'model/sql/document-removals.sql').read_text())]
+    with NativeDatasets.from_config(os.environ['DOCSPEC_JOB_CONFIG']) as engine:
+        result = run_job(tmp_path/'job', engine, inputs=inputs, steps=steps, outputs=[],
+                         queries=[dict(name='removed', sql='SELECT * FROM document_removals')])
+    assert {(row['component'], row['removed_on']) for row in result['removed']} == {
+        ('removed', '2026-01-02'), ('tied', '2026-02-01'), (None, '2026-02-03')}

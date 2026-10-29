@@ -1,1 +1,1 @@
-SELECT l.component,f.* FROM source_files f JOIN final_source_labels l USING(source_id)
+SELECT l.component,f.* FROM final_source_labels l JOIN source_files f USING(source_id)

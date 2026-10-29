@@ -71,8 +71,6 @@ def source_steps(*,root=ROOT):
               dict(name='source_url_keys',sql=keys,materialize=True)]
     for name in ('source-reference-targets','capture-sources','source-files','source-directories'):
         step=dict(name=name.replace('-','_'),sql=(Path(root)/'model/sql'/(name+'.sql')).read_text(),materialize=True)
-        if name=='capture-sources':
-            step['release_after']=['source_reference_targets','source_url_inputs','source_url_normalized','source_url_keys','capture_source_names']
         steps.append(step)
     return steps
 
@@ -289,25 +287,6 @@ def build_prepared_release(prepared,*,engine,output,root=ROOT):
         'fingerprints':['body_sha']}
     extra += [dict(name=name+'.parquet',path=str(evidence/(name+'.parquet')),
         sql=("SELECT r.*,r.body_sha AS body_sha256,d.decided_at,d.recovered_url,d.identity_note FROM current_recoveries r LEFT JOIN remaining_recovery_decisions d ON r.decision_id=d.id" if name=='current_recoveries' else 'SELECT * FROM '+name),settings=_settings('whole',keys)) for name,keys in causes.items()]
-    # These successors are materialized before C7 releases their final inputs.
-    # Relations exported as E4 evidence or used by final guards remain registered.
-    last_inputs={
-        'sniff_facts':['sniff_observations'],
-        'page_facts':['pinned_readings'],
-        'fingerprints':['body_fingerprints'],
-        'source_components':['source_edges'],
-        'source_labels':['source_components'],
-        'duplicate_component_edges':['component_members'],
-        'final_recovery_attachments':['review_components'],
-        'resolved_links':['link_inputs','link_contexts','link_literals','link_parts','link_targets','link_errors'],
-        'document_version_keys':['endpoint_bodies','ambiguous_endpoints'],
-        'document_versions':['document_version_keys'],
-        'normalized':['base_normalized','document_bodies','document_versions','source_files'],
-        'url_state_queue_literals':['resolved_links'],
-    }
-    for index,step in enumerate(steps):
-        if retired:=last_inputs.get(step['name']):
-            steps[index]=dict(step,release_after=[*step.get('release_after',()),*retired])
     prefix_checks=','.join(sql+' AS '+name for name,sql in evidence_checks().items())
     manifest=_execute(inputs,steps,output=output,scratch=scratch,engine=engine,
         lookup_extra="SELECT o.list_row,a.url FROM source_addresses a JOIN document_members m ON a.source_id=m.source_id JOIN document_identities d ON m.component=d.component JOIN ordered o ON d.document_id=o.doc_key WHERE m.is_real_file",

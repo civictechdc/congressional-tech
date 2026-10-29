@@ -24,12 +24,15 @@ WITH roles AS (
                  OR (c.format = 'xml' AND (b.feed OR l.feed)) THEN 'listing'
             ELSE 'document'
         END AS record_role
-    FROM capture_evidence c
-    LEFT JOIN good_fetches g USING(receipt_key,receipt_line,capture_index)
-    LEFT JOIN body_signals b ON c.sha256 = b.body_sha
-    LEFT JOIN locator_signals l ON (c.url IS NOT DISTINCT FROM l.url)
-        AND (c.member_path IS NOT DISTINCT FROM l.member_path)
-    LEFT JOIN placeholders p ON c.sha256 = p.sha256
+    FROM placeholders p RIGHT JOIN (
+        locator_signals l RIGHT JOIN (
+            body_signals b RIGHT JOIN (
+                good_fetches g RIGHT JOIN capture_evidence c
+                USING(receipt_key,receipt_line,capture_index)
+            ) ON c.sha256 = b.body_sha
+        ) ON (c.url IS NOT DISTINCT FROM l.url)
+            AND (c.member_path IS NOT DISTINCT FROM l.member_path)
+    ) ON c.sha256 = p.sha256
 )
 SELECT receipt_key, receipt_line, capture_index, sha256, format, intact_basis,
     error_type, record_role,

@@ -5,7 +5,7 @@ WITH instances AS (
  SELECT l.*,p.repair_matches,p.split_position,p.target_literal,c.member_base,
  url_resolve(p.target_literal,c.resolved_base) AS resolved,
  regexp_replace(regexp_replace(p.target_literal,'[\t\n\r]','','g'),'^[\x00-\x20]+','') AS target_spelling
- FROM instances l JOIN (SELECT * FROM link_contexts WHERE page_body IS NOT NULL AND context_url IS NOT NULL) c
+ FROM (SELECT * FROM link_contexts WHERE page_body IS NOT NULL AND context_url IS NOT NULL) c JOIN instances l
  ON (l.page_body IS NOT DISTINCT FROM c.page_body)
  AND (l.context_url IS NOT DISTINCT FROM c.context_url) AND (l.member_path IS NOT DISTINCT FROM c.member_path)
  AND (l.base_href IS NOT DISTINCT FROM c.base_href)
@@ -20,4 +20,4 @@ SELECT r.*,CASE WHEN member_target THEN context_url ELSE resolved END AS target_
  CASE WHEN repair_matches>1 THEN 'repair_conflict'
  WHEN resolved IS NULL OR NOT regexp_like(resolved,'^https?://') THEN 'invalid_target'
  WHEN repair_matches=1 AND f.id IS NULL THEN 'invalid_repair' END AS target_error
-FROM resolved r LEFT JOIN file_shapes f ON f.id='extensions' AND regexp_like(r.resolved,f.pattern)
+FROM file_shapes f RIGHT JOIN resolved r ON f.id='extensions' AND regexp_like(r.resolved,f.pattern)

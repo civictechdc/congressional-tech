@@ -3,7 +3,7 @@ WITH fields AS (
  SELECT source_id,unnest(fields) AS fact FROM source_filename_readings WHERE status='completed'
 ), values AS (
  SELECT f.source_id,f.fact['field'] AS field,f.fact['value'] AS value
- FROM fields f JOIN display_facts d ON f.fact['field']=d.field
+ FROM display_facts d JOIN fields f ON f.fact['field']=d.field
 ), kept AS (
  SELECT DISTINCT source_id,field,CASE WHEN field='date_token_candidates' THEN
  coalesce(cast(coalesce(try_cast(value AS DATE),try_cast(regexp_replace(value,

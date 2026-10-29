@@ -12,7 +12,7 @@ SELECT d.document_id AS doc_key,false AS body_expected,n.filename,cast(NULL AS V
  array_slice(make_array(named_struct('format',cast(NULL AS VARCHAR),'body',arrow_cast(NULL,'FixedSizeBinary(32)'),
  'suffix',cast(NULL AS VARCHAR),'size',cast(NULL AS BIGINT))),1,0) AS alternates,
  a.package_id,a.facts,arrow_cast(array_slice(make_array(cast(NULL AS VARCHAR)),1,0),'List(Utf8)') AS link_bodies
-FROM document_identities d JOIN saved_recoveries r ON d.component=r.component AND r.saved_rank=1
+FROM saved_recoveries r JOIN document_identities d ON d.component=r.component AND r.saved_rank=1
 JOIN effective_filenames n ON n.input_id='recovery:'||r.id
 JOIN source_files f ON f.body_sha IS NULL AND f.source_url=r.original_url AND f.filename=n.filename
 JOIN source_annotations a ON f.source_id=a.source_id

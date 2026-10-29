@@ -16,9 +16,19 @@ SELECT d.document_id AS doc_key,true AS body_expected,s.filename,a.title,
  coalesce(alt.alternates,array_slice(make_array(named_struct('format',cast(NULL AS VARCHAR),
  'body',arrow_cast(NULL,'FixedSizeBinary(32)'),'suffix',cast(NULL AS VARCHAR),'size',cast(NULL AS BIGINT))),1,0)) AS alternates,
  coalesce(pk.package_id,a.package_id) AS package_id,a.facts,bodies.link_bodies
-FROM document_identities d JOIN saved_files s ON d.component=s.component AND s.saved_rank=1
-JOIN source_annotations a ON s.source_id=a.source_id JOIN document_metadata m ON d.component=m.component
-JOIN body_evidence b ON s.body_sha=b.body_sha JOIN document_bodies bodies ON d.component=bodies.component
-LEFT JOIN document_packages pk ON d.component=pk.component
-LEFT JOIN document_alternates alt ON d.component=alt.component LEFT JOIN document_versions v ON d.component=v.component
-LEFT JOIN (SELECT source_id,max(media_type) AS media_type FROM capture_sources GROUP BY source_id) c ON s.source_id=c.source_id
+FROM (SELECT source_id,max(media_type) AS media_type FROM capture_sources GROUP BY source_id) c RIGHT JOIN (
+ document_versions v RIGHT JOIN (
+  document_alternates alt RIGHT JOIN (
+   document_packages pk RIGHT JOIN (
+    document_bodies bodies JOIN (
+     body_evidence b JOIN (
+      document_metadata m JOIN (
+       document_identities d JOIN saved_files s ON d.component=s.component AND s.saved_rank=1
+       JOIN source_annotations a ON s.source_id=a.source_id
+      ) ON d.component=m.component
+     ) ON s.body_sha=b.body_sha
+    ) ON d.component=bodies.component
+   ) ON d.component=pk.component
+  ) ON d.component=alt.component
+ ) ON d.component=v.component
+) ON s.source_id=c.source_id

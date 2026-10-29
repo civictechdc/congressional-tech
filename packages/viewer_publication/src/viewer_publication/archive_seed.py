@@ -21,7 +21,8 @@ def _definition_paths(job):
         'model/registries/committee-codes.json','model/registries/reader-limits.json','model/fixtures/id-golden-vectors.json',
         'packages/viewer_publication/src/viewer_publication/archive_seed.py',
         'packages/viewer_publication/src/viewer_publication/archive_format.py',
-        'packages/viewer_publication/src/viewer_publication/archive_model.py']
+        'packages/viewer_publication/src/viewer_publication/archive_model.py',
+        'packages/viewer_publication/src/viewer_publication/archive_model_lifetimes.py']
     return sorted(set(paths+[step['sql_file'] for step in job['steps']]))
 
 

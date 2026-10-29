@@ -28,7 +28,7 @@ def _definition_hashes(root):
     files+=list((root/'model/registries').glob('*.json'))
     files+=list((root/'model/lake').glob('*.json'))
     package=root/'packages/viewer_publication/src/viewer_publication'
-    files += [package/name for name in ('archive_model.py','archive_model_profile.py','archive_format.py',
+    files += [package/name for name in ('archive_model.py','archive_model_profile.py','archive_format.py','archive_model_lifetimes.py',
         'archive_annotations.py','archive_provenance.py','archive_reviews.py','archive_url_state.py')]
     files += [root/'packages/congress_api/src/congress_api/models/archive_profile.py',root/'uv.lock']
     files += [root/'packages/congress_api/src/congress_api'/name for name in ['lake/readings.py','retention/parser_worker.py','retention/process_resources.py']]

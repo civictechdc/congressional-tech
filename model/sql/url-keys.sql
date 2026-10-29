@@ -17,8 +17,9 @@ WITH mappings AS (
 ), selected AS (
  SELECT i.input_id,i.url,coalesce(checks.error,b.error) AS error,
  coalesce(m.canonical,b.base_key) AS candidate,coalesce(b.still_wrapped,false) AS still_wrapped
- FROM checks CROSS JOIN url_inputs i
- LEFT JOIN url_normalized b ON i.url IS NOT DISTINCT FROM b.url
- LEFT JOIN resolved_mappings m ON b.base_key=m.variant
+ FROM resolved_mappings m RIGHT JOIN (
+  checks CROSS JOIN url_inputs i
+  LEFT JOIN url_normalized b ON i.url IS NOT DISTINCT FROM b.url
+ ) ON b.base_key=m.variant
 )
 SELECT input_id,url,CASE WHEN error IS NULL THEN candidate END AS url_key,error,still_wrapped FROM selected
