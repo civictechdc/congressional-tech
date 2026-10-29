@@ -1,9 +1,9 @@
 import {dateLabels, recoveryLabel, savedCopy} from '../reader/archive.ts';
 import {validUrl} from '../browse/provenance.ts';
+import {formatLabel} from './ArchiveFormats.tsx';
 
 export const keyHex=(value: any)=>typeof value==='string'?value:[...value].map((v:number)=>v.toString(16).padStart(2,'0')).join('');
 const day=(value:any)=>value instanceof Date?value.toISOString().slice(0,10):value?String(value).slice(0,10):'';
-const text=(value:any)=>String(value??'');
 const mediaTypes:Record<string,string>={pdf:'application/pdf',xml:'application/xml',html:'text/html',json:'application/json',txt:'text/plain',docx:'application/vnd.openxmlformats-officedocument.wordprocessingml.document'};
 export const bodyDetail=(record:any,format:string)=>({saved_body:record.body,saved_suffix:record.suffix,saved_bytes:record.size??record.bytes,saved_media_type:mediaTypes[format]??'application/octet-stream'});
 
@@ -19,7 +19,7 @@ export function ArchiveRows({rows,onSelect}:{rows:any[];onSelect:(row:number)=>v
   return <ul className="archive-rows">{rows.map(row=>{
     const labels=dateLabels(row,row);return <li key={row.list_row}>
       <button className="archive-document" onClick={()=>onSelect(row.list_row)}><strong>{row.title||row.filename}</strong>{row.title&&<span>{row.filename}</span>}</button>
-      <span className="archive-row-format">{text(row.format).toUpperCase()}</span>
+      <span className="archive-row-format">{formatLabel(row.format)}</span>
       <div className="archive-row-dates">{labels.document&&<span>Document date: {labels.document}</span>}<span>{labels.capture}</span></div>
     </li>;
   })}</ul>;
@@ -31,8 +31,8 @@ export function ArchiveDetail({entry,meetings=[],versions=[],rawBase,onSelect,on
     {document.hidden&&<aside role="note" className="archive-notice"><h2>Removed by review</h2><p>{detail.review_note||'This document was removed from the public list.'}</p>{detail.review_decided_at&&<p>Review decided {day(detail.review_decided_at)}</p>}</aside>}
     <header><p className="eyebrow">Archived document</p><h2>{document.title||document.filename}</h2>{document.title&&<p>{document.filename}</p>}</header>
     <div className="archive-dates"><p>{labels.capture}</p>{labels.document&&<p>Document date: {labels.document}</p>}{labels.removed&&<p>{labels.removed}</p>}</div>
-    <section><h3>Saved copies</h3>{detail.saved_body?<ul><li><CopyLink detail={detail} label={`Open saved ${text(document.format).toUpperCase()}`} rawBase={rawBase} onOpenSaved={onOpenSaved}/></li>
-      {(detail.alternates??[]).map((alternate:any,i:number)=><li key={i}><CopyLink detail={bodyDetail(alternate,alternate.format)} label={`Open alternate ${text(alternate.format).toUpperCase()}`} rawBase={rawBase} onOpenSaved={onOpenSaved}/></li>)}</ul>:<p>No original saved copy is recorded.</p>}</section>
+    <section><h3>Saved copies</h3>{detail.saved_body?<ul><li><CopyLink detail={detail} label={`Open saved ${formatLabel(document.format)}`} rawBase={rawBase} onOpenSaved={onOpenSaved}/></li>
+      {(detail.alternates??[]).map((alternate:any,i:number)=><li key={i}><CopyLink detail={bodyDetail(alternate,alternate.format)} label={`Open alternate ${formatLabel(alternate.format)}`} rawBase={rawBase} onOpenSaved={onOpenSaved}/></li>)}</ul>:<p>No original saved copy is recorded.</p>}</section>
     {recoveries.length>0&&<section><h3>Recovered and related files</h3><ul>{recoveries.map((recovery:any,i:number)=><li key={i}>
       <CopyLink detail={bodyDetail(recovery,document.format)} label={recoveryLabel(recovery.kind)} rawBase={rawBase} onOpenSaved={onOpenSaved}/>
       {recovery.identity_note&&<p>{recovery.identity_note}</p>}{(recovery.imported_at||recovery.recovered_url)&&<p>{recovery.imported_at&&<>Added to the archive {day(recovery.imported_at)}{recovery.recovered_url&&' · '}</>}{recovery.recovered_url&&<PublicLink url={recovery.recovered_url}>Recovery source</PublicLink>}</p>}
