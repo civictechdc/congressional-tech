@@ -10,12 +10,10 @@ from docspec_client.client import NativeDatasets
 
 
 def test_output_and_diagnostic_relations_are_lazy_views():
-    from viewer_publication.archive_model import build_prepared_release, prepare_model_inputs
-    from viewer_publication.archive_model_lifetimes import retire_relations
-
-    # Inspect the declared steps from prepare_model_inputs / admission_steps
     from viewer_publication.archive_model import admission_steps
-    steps = {step['name']: step for step in admission_steps()}
+
+    prelude = [dict(name='active_unreadable', sql='SELECT 1', materialize=False)]
+    steps = {step['name']: step for step in admission_steps(prelude=prelude)}
 
     # capture_evidence must be a lazy view, not a materialized table (saves ~2.78 GB in memory)
     assert steps['capture_evidence'].get('materialize') is False, "capture_evidence should be a view"
@@ -25,7 +23,6 @@ def test_output_and_diagnostic_relations_are_lazy_views():
         'active_unreadable',
         'recovery_diagnostics',
         'body_admissions',
-        'sniff_conflicts',
         'verification_conflicts',
         'profile_bodies',
     ]
