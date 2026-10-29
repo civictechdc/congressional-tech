@@ -87,7 +87,7 @@ def test_empty_list_duplicate_list_and_object_pointer_preserve_grain(tmp_path):
     from test_captures_ingest import body,files
     native=NativeDatasets.from_config(os.environ['DOCSPEC_JOB_CONFIG'])
     source=files(tmp_path/'input',[
-        dict(record=[]),
+        dict(mode='fetch',record=[]),
         dict(record=dict(url='https://example.test/object',http_status=206),
              captures=[body(pointer=[37,'content','body'])]),
         dict(record=[dict(url='https://example.test/same',http_status=404)]*2)])

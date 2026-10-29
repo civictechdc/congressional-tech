@@ -54,6 +54,9 @@ def run(counts,tmp_path,files,pins,*,work='work',keys=None):
     ({'captures':[],'file_references':[{},{}]},2,2),
     ({'captures':[{},{}],'file_references':[{}, {}, {}]},2,5),
     ({'record':{'text':'Montréal'}},1,1),
+    ({'record':[{}, {}, {}],'captures':[{'pointer_json':'[1,\"body\"]'},{'pointer_json':'[2,\"body\"]'}]},3,5),
+    ({'record':[{}, {}, {}],'captures':[{'pointer_json':'[\"record\",\"1\",\"body\"]'},{'pointer_json':'[2]'}]},3,5),
+    ({'record':[{}, {}],'captures':[{'pointer':[1],'pointer_json':'[0]'}]},2,3),
 ])
 def test_each_source_shape_has_an_independent_expected_grain(counts,tmp_path,record,expected,items):
     source,pin,raw=receipt(tmp_path,[record])

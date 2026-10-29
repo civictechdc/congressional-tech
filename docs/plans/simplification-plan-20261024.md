@@ -200,6 +200,9 @@ Each producer is built to [[ARCHITECTURE]] §8 and [[DATA-MODEL]] §6.
      - the 5,587 lines of the 2026-10-15 recovery run read as recoveries rather than fetches;
      - the final response's completeness (per-attempt completeness stays in raw);
      - `stored_md5` and `stored_suffix` new, `stored_sha256` gone.
+     - old bodiless metadata's `saved-record` fidelity becomes null only with proof that the receipt retains an object; a missing context becomes the mapped final URL only with its receipt-derived proof;
+     - an old per-entry HTTP status becomes the known final line or item status only when both explicit receipt facts match their respective sides; a `digest_verified` resolver's stored size becomes null only when the creating body reference lacks that size fact;
+     - the measured family changes use the receipt family only for `govinfo/mods` ↔ `govinfo/transcript-html`, `house/witness-xml` → `house/meeting-xml`, and `senate/players` → `senate/captions`; `documents` → `committee-reports` requires an explicit record family. Every other non-null family change remains an owner gate. Small scalar proofs live only in private comparison evidence, outside the public captures schema;
      - new-only rows from record-list items the old index collapsed: source evidence must prove the list and the distinct item's ordinal; count and report those rows as expected. Unproved new-only rows remain owner gates.
 
      A row that exists only in the old index is a fact raw does not hold, and it blocks the switch until the owner decides (§8).

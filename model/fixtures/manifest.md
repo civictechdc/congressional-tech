@@ -106,6 +106,14 @@ public output bytes and row values instead.
 
 - Outgoing pointer evidence (`test_archive_legacy_pointer.py`): legacy and engine pointers retain their exact bytes plus the same GET's opaque ETag, SHA-256 and byte count before fallible decoding; a later decode failure preserves both files, and an existing response proof refuses instead of being overwritten. No second GET or storage write occurs.
 
+D2 exact listing size cases: a capture lacking stored size and MD5 takes both pins only from its exact listed key and completes the actual conditional GET; its original capture remains unchanged. Missing listed size or ETag and an unrecorded alternate suffix refuse before any GET. Existing capture/listing size and MD5 conflict cases continue to refuse. These expectations cover both selected inventories and direct listing work lists in `test_readings_listed_etag.py`.
+
+D1 line kinds: `receipt-line-kinds.json` supplies one expected outcome per enumerated registry kind. References and saved inline records do not count as fetch attempts or shadow a real fetch. Explicit acquisition facts remain acquisition rows; array items stay separate; an unknown family, scalar shape, API shape or unreviewed producer refuses. A primary entry status_code fills only a missing final status.
+
+D1 audit regressions: direct `pointer`, serialized `pointer_json`, numeric-string prefix and both-field forms select the referenced list item before coverage; two references to items1/2 of three yield exactly those bodies plus one bodiless item0. Every explicit failure dictionary translation remains failed even with HTTP202 and a complete body; none passes the actual good-fetch SQL. The independent counter expects the same grain. The comparator refuses a claimed restored item already named by a primary pointer even if a buggy producer reports a different selected index.
+
+D2 parser pool: two workers execute concurrently while the producer consumes at most four times the worker count before the first result; result order matches input order. Invalid worker counts or aggregate memory refuse before allocation. A task failure preserves its error and closes every started supervisor. Producer fixtures will keep unreadable decisions and counters on the main thread and preserve actual-size cache refusal.
+
 ## References
 
 **[IMPLEMENTATION-PLAN]**

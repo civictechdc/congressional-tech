@@ -1,0 +1,42 @@
+[
+  {
+    "kind": "document-reference",
+    "family": "documents",
+    "record": {
+      "url": "https://fixture.test/report.pdf"
+    },
+    "outcome": "reference"
+  },
+  {
+    "kind": "congress-api-record",
+    "family": "congress/meetings",
+    "record": {
+      "url": "https://api.congress.gov/v3/committee-meeting/119/house/118152"
+    },
+    "outcome": "saved-record"
+  },
+  {
+    "kind": "govinfo-api-record",
+    "family": "govinfo/mods",
+    "record": {
+      "url": "https://api.govinfo.gov/packages/CHRG-fixture"
+    },
+    "outcome": "saved-record"
+  },
+  {
+    "kind": "run-evidence-record",
+    "family": "external/provider-responses",
+    "record": {
+      "url": "https://github.com/fixture/repo/actions/runs/123"
+    },
+    "outcome": "saved-record"
+  },
+  {
+    "kind": "unaddressed-record",
+    "family": "documents",
+    "record": {
+      "title": "Retained metadata"
+    },
+    "outcome": "saved-record"
+  }
+]

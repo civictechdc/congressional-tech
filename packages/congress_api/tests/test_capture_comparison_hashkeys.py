@@ -34,11 +34,13 @@ def test_actual_comparison_pivot_groups_nullable_identities_without_wide_builds(
     work=tmp_path/'explain';work.mkdir()
     physical=explain_step(spec,'paired',native=native,work=work)
     aggregates=[line for line in physical.splitlines() if 'AggregateExec:' in line]
-    assert any('mode=Partial' in line for line in aggregates),physical
-    assert any('mode=FinalPartitioned' in line for line in aggregates),physical
+    modes={re.search(r'\bmode=(\w+)',line).group(1) for line in aggregates}
+    # Compatible hash partitioning can flow through InterleaveExec directly;
+    # otherwise DataFusion inserts partial and final partitioned aggregation.
+    assert modes in ({'SinglePartitioned'},{'Partial','FinalPartitioned'}),physical
     assert 'RepartitionExec: partitioning=Hash' in physical,physical
     for key in ('receipt_key','receipt_line','body_sha','pointer','occurrence','invalid_side'):
-        assert any(re.search(r'\b'+key+r'@',line) for line in aggregates),physical
+        assert all(re.search(r'\b'+key+r'@',line.split('aggr=',1)[0]) for line in aggregates),physical
     # The surviving identity anti-join builds only secondary old-row IDs.
     joins=[line for line in physical.splitlines() if 'HashJoinExec:' in line]
     assert len(joins)==1+int(scoped),physical
@@ -47,7 +49,18 @@ def test_actual_comparison_pivot_groups_nullable_identities_without_wide_builds(
     scope_joins=[line for line in joins if 'join_type=RightSemi' in line]
     assert len(scope_joins)==int(scoped),physical
     assert all('receipt_key@' in line and 'filter=' not in line for line in scope_joins),physical
-    assert 'projection=[old_row]' in physical,physical
+    for join in joins:
+        lines=physical.splitlines();position=lines.index(join)
+        descendants=lines[position+1:]
+        assert descendants,physical
+        first_indent=len(descendants[0])-len(descendants[0].lstrip())
+        build=[descendants[0]]
+        for line in descendants[1:]:
+            if len(line)-len(line.lstrip())<=first_indent:break
+            build.append(line)
+        leaves=[line for line in build if 'DataSourceExec:' in line or 'StreamingTableExec:' in line]
+        expected='old_row' if 'join_type=RightAnti' in join else 'receipt_key'
+        assert leaves and all('projection=['+expected+']' in line for line in leaves),physical
 
 
 @pytest.mark.parametrize('step_name',['new_selected','excluded_receipts'])

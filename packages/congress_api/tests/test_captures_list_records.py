@@ -76,7 +76,7 @@ def test_body_reference_ordinals_and_entry_facts_keep_selected_item_binding(tmp_
 
 
 def test_qualified_new_writer_header_precedence_stays_line_owned(tmp_path):
-    stage=ingest(tmp_path,[dict(writer=dict(job='capture',commit='a'*40),
+    stage=ingest(tmp_path,[dict(mode='fetch',writer=dict(job='capture',commit='a'*40),
         response_headers={'content-disposition':'qualified-root'},record=[
             dict(response_headers={'content-disposition':'legacy-a'}),
             dict(response_headers={'content-disposition':'legacy-b'})])])
@@ -85,7 +85,7 @@ def test_qualified_new_writer_header_precedence_stays_line_owned(tmp_path):
 
 def test_conflicting_duplicate_counter_facts_within_one_list_item_still_refuse(tmp_path):
     from congress_api.lake.captures import stage_captures
-    key='receipts/documents/2026-10-20/duplicate.gz'
+    key='receipts/documents/2026-10-20/assemble-duplicate.gz'
     counter=minimal_counter(tmp_path,[(key,dict(record=[dict(url=url)],captures=[]))
         for url in ('https://fixture.test/a','https://fixture.test/b')],False)
     with pytest.raises(ValueError,match='list record conflicting facts'):
@@ -145,7 +145,8 @@ def test_mixed_primary_ordinals_stay_stable_and_bodiless_items_append(tmp_path,p
 def test_multiple_unreferenced_items_append_in_record_order_after_primary_rows(tmp_path):
     source=dict(record=[dict(url=f'https://fixture.test/{i}') for i in range(4)],captures=[
         body(pointer=[2,'content','body']),body(pointer=['2','another','body'])])
-    stage=ingest(tmp_path,[source]);rows=pq.read_table(stage/'captures.parquet').to_pylist()
+    stage=ingest(tmp_path,[source],key='receipts/documents/2026-10-20/assemble-unreferenced.jsonl.gz')
+    rows=pq.read_table(stage/'captures.parquet').to_pylist()
     assert [r['capture_index'] for r in rows]==[0,1,2,3,4]
     assert [r['url'] for r in rows]==['https://fixture.test/2']*2+[
         'https://fixture.test/0','https://fixture.test/1','https://fixture.test/3']
@@ -156,7 +157,8 @@ def test_multiple_unreferenced_items_append_in_record_order_after_primary_rows(t
 def test_secondary_storage_reference_does_not_replace_an_unreferenced_item_row(tmp_path):
     stage=ingest(tmp_path,[dict(record=[dict(url='https://fixture.test/a'),dict(url='https://fixture.test/b')],
         captures=[body(pointer=[0,'content','body'])],
-        file_references=[body(pointer=[1,'content','body'],stored_bytes=42)])])
+        file_references=[body(pointer=[1,'content','body'],stored_bytes=42)])],
+        key='receipts/documents/2026-10-20/assemble-secondary.jsonl.gz')
     rows=pq.read_table(stage/'captures.parquet').to_pylist()
     assert [(r['capture_index'],r['url'],r['stored_bytes']) for r in rows]==[
         (0,'https://fixture.test/a',42),(1,'https://fixture.test/b',None)]

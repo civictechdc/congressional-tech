@@ -12,10 +12,12 @@ from docspec_client.client import NativeDatasets
 from docspec_client.models import DocSpecFailure
 
 
-def limited_engine(tmp_path):
+def limited_engine(tmp_path,*,threads=2):
     config = json.loads(Path(os.environ['DOCSPEC_JOB_CONFIG']).read_text())
     limits = json.loads(Path(config['limits']).read_text())
-    limits.update(memory_bytes=192 << 20, scratch_bytes=256 << 20,
+    # Fix the partition count: every sort partition reserves memory independently,
+    # so inheriting a host/runtime CPU count changes this 192 MiB regression.
+    limits.update(compute_threads=threads,memory_bytes=192 << 20, scratch_bytes=256 << 20,
                   batch_rows=32, max_batch_bytes=1 << 20, max_metadata_bytes=1 << 20)
     limit_path = tmp_path/'limits.json'
     limit_path.write_text(json.dumps(limits))
@@ -25,8 +27,11 @@ def limited_engine(tmp_path):
     return NativeDatasets.from_config(config_path)
 
 
-def test_comparison_completes_with_bounded_native_memory(tmp_path):
-    engine=limited_engine(tmp_path)
+@pytest.mark.parametrize('threads',[2,pytest.param(4,marks=pytest.mark.xfail(
+    strict=True,raises=DocSpecFailure,
+    reason='docspec-rs dec-eog7: sort reservation scaling exhausts the small pool at4 threads; remove after native fix'))])
+def test_comparison_completes_with_bounded_native_memory(tmp_path,threads):
+    engine=limited_engine(tmp_path,threads=threads)
     count = 2048
     rows = [dict(receipt_key='receipts/documents/2026-10-20/large-contexts.gz',
                  receipt_line=index + 1, pointer_json='["body"]',
@@ -42,8 +47,15 @@ def test_comparison_completes_with_bounded_native_memory(tmp_path):
     pq.write_table(pa.Table.from_pylist([
         dict(row, sha256=bytes.fromhex('a'*64), capture_index=0,
              reference_kind='capture') for row in rows]), new, row_group_size=64)
-    result = compare_old(new, old, engine=engine,
-                         work=tmp_path/'comparison')
+    try:
+        result = compare_old(new, old, engine=engine,work=tmp_path/'comparison')
+    except DocSpecFailure as error:
+        if threads==4:
+            assert 'Not enough memory to continue external sort' in str(error)
+            assert any(name in str(error) for name in ('for ExternalSorter[','for ExternalSorterMerge['))
+            assert 'Resources exhausted:' in str(error) and '0.0 B already allocated' in str(error)
+            assert 'remain available for the total pool' in str(error)
+        raise
     assert result['old_rows'] == result['new_rows'] == result['matched'] == count
     assert result['old_only'] == result['new_only'] == result['secondary_duplicates'] == 0
     assert result['unexplained'] == result['expected_changes'] == 0

@@ -44,7 +44,7 @@ def validate_generation(*,engine,work,pin,counts):
         OR regexp_like(c.receipt_key,'(^|/)[.]{1,2}(/|$)|//') OR strpos(c.receipt_key,chr(92))>0
         OR trim(c.run_id)='' OR trim(c.family)=''
         OR c.mode NOT IN ('fetch','retained_import')
-        OR c.outcome NOT IN ('stored','unchanged','failed','retry_later','size_limit','request_failed')
+        OR c.outcome NOT IN ('stored','unchanged','failed','retry_later','size_limit','request_failed','reference','saved-record')
         OR (c.http_status IS NOT NULL AND (c.http_status<100 OR c.http_status>599))
         OR c.bytes<0 OR c.stored_bytes<0
         OR (c.sha256 IS NOT NULL AND length(encode(c.sha256,'hex'))<>64)

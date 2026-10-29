@@ -4,7 +4,7 @@ import json
 from pathlib import Path
 
 from congress_api.retention.provenance import parquet_output, run_job, json_input, file_pin
-from congress_api.lake.receipt_metadata import get, lit as literal, obj, projection, scalar, SCALARS, RECOVERY, DOWNLOAD_HEADERS
+from congress_api.lake.receipt_metadata import get, lit as literal, obj, projection, scalar, SCALARS, RECOVERY, DOWNLOAD_HEADERS, record_pointer_index
 
 
 LEGACY_OUTCOMES = {
@@ -35,6 +35,7 @@ LEGACY_MODES = {
     'Replay verified captures with current parser; --limit 0 forbids additional downloads',
 }
 PK = ['receipt_key', 'receipt_line', 'capture_index']
+ROW_KEYS=['source_row_id','receipt_key','receipt_line','selected_record_index','capture_index']
 COLUMNS = [*PK, 'run_id', 'mode', 'outcome', 'family', 'requested_url', 'url',
     'context_url', 'member_path', 'h_content_disposition', 'http_status', 'complete', 'retrieved_at',
     'sha256', 'bytes', 'media_type', 'fidelity', 'sniffed_format', 'sniff_version',
@@ -44,16 +45,21 @@ COLUMNS = [*PK, 'run_id', 'mode', 'outcome', 'family', 'requested_url', 'url',
 
 
 DOMAIN_OUTCOMES = Path(__file__).resolve().parents[5]/'model/registries/receipt-domain-outcomes.json'
+LINE_KINDS = DOMAIN_OUTCOMES.with_name('receipt-line-kinds.json')
 
 
 def current_version():
     """The existing mapping identity shared by ingest and daily admission."""
     return sha256(Path(__file__).read_bytes()+(Path(__file__).parent/'receipt_metadata.py').read_bytes()
-                  +DOMAIN_OUTCOMES.read_bytes()).hexdigest()
+                  +DOMAIN_OUTCOMES.read_bytes()+LINE_KINDS.read_bytes()).hexdigest()
 
 
 def first(*values):
     return 'coalesce(' + ','.join(values) + ')'
+
+
+def same(left,right,keys):
+    return ' AND '.join(f'({left}.{key} IS NOT DISTINCT FROM {right}.{key})' for key in keys)
 
 
 def stamp(*values):
@@ -68,6 +74,31 @@ def fetch_time(value, getter=get):
     fields = [getter(value, p) for p in (
         'retrieved_at', 'captured_at', 'observed_at', 'parent_retrieved_at', '_retrieved_at')]
     return stamp(*fields, getter(value, 'capture_date'))
+
+
+
+def record_kind_sql():
+    """Compile the finite observed record kinds; no default classifies a new shape."""
+    registry=json.loads(LINE_KINDS.read_bytes())
+    address="coalesce(nullif(requested,''),nullif(final_url,''))"
+    kinds=registry['kinds'];patterns=[kind for kind in kinds if 'url_pattern' in kind]
+    url_kind="CASE WHEN "+address+" IS NULL THEN 'unaddressed-record' "+' '.join(
+        'WHEN regexp_match('+address+','+literal(kind['url_pattern'])+') IS NOT NULL THEN '+literal(kind['id'])
+        for kind in patterns)+" WHEN regexp_match("+address+",'(?i)^https?://api[.]') IS NOT NULL THEN 'unsupported-api' WHEN regexp_match("+address+",'(?i)^https?://[^/?#]+') IS NOT NULL THEN 'document-reference' ELSE 'unsupported-address' END"
+    branches=[];seen=set()
+    for kind in kinds:
+        conditions=[]
+        for case in kind['cases']:
+            identity=(case['family'],case['record_is_list'],kind['id'])
+            if identity in seen:raise ValueError('Duplicate receipt line-kind case')
+            seen.add(identity)
+            conditions.append('(entry_family='+literal(case['family'])+' AND record_is_list='+str(case['record_is_list']).lower()+')')
+        if not conditions or kind['outcome'] not in {'reference','saved-record'}:
+            raise ValueError('Invalid receipt line-kind registry')
+        branches.append('WHEN '+literal(kind['id'])+' THEN CASE WHEN ('+' OR '.join(conditions)+') THEN '+literal(kind['outcome'])+' END')
+    prefix="starts_with(array_element(string_to_array(receipt_key,'/'),-1),"+literal(registry['receipt_filename_prefix'])+')'
+    shape=metadata_field('record','line_kind_shape')+'='+literal(registry['record_shape'])
+    return 'CASE WHEN '+prefix+' AND '+shape+' THEN CASE ('+url_kind+') '+' '.join(branches)+' END END'
 
 
 def mapping_steps():
@@ -108,6 +139,7 @@ def mapping_steps():
             selected=f'CASE WHEN {present} THEN {nested} ELSE {item_fields[name]} END'
         item_fields[name]=f'CASE WHEN {domain} THEN {selected} ELSE {item_fields[name]} END'
     item_fields['kind']=scalar(slots[('kind',)],'str')
+    item_fields['line_kind_shape']="CASE WHEN starts_with(item,'{') THEN 'object' ELSE 'unsupported' END"
     item_fields.update({name:scalar(slots[path],'str') for name,path in RECOVERY.items()})
     item_fields['h_content_disposition']=first(*(scalar(slots[path],'str') for path in DOWNLOAD_HEADERS))
     item_fields['error_present']='('+get(slots[('error',)],kind='json')+' IS NOT NULL OR ('+domain+' AND '+get(slots[('receipt','error')],kind='json')+' IS NOT NULL))'
@@ -130,21 +162,22 @@ def mapping_steps():
         unnest(array_concat(array_concat(primary_refs,array_repeat(cast(NULL AS VARCHAR),cast(placeholder_count AS BIGINT))),
             CASE WHEN storage_count>0 THEN storage_refs ELSE make_array() END)) AS entry,
         unnest(range(0,cast(primary_count+placeholder_count+storage_count AS BIGINT))) AS ordinal FROM reference_counts""")
-    pointer_index=first(get('entry','pointer',0,kind='int'),f'try_cast({get("entry","pointer",0)} AS BIGINT)',
-        get('entry','pointer',1,kind='int'),f'try_cast({get("entry","pointer",1)} AS BIGINT)','0')
+    pointer=first(get('entry','pointer'),get('entry','pointer',kind='json'),get('entry','pointer_json'),get('entry','pointer_json',kind='json'))
+    step('entry_pointers',"SELECT *,json_canonical("+pointer+") AS reference_pointer FROM entries")
+    pointer_index=record_pointer_index('reference_pointer')
     step('entry_positions',f"""SELECT *,ordinal>=primary_count+placeholder_count AS is_secondary,
         ordinal>=primary_count AND ordinal<primary_count+placeholder_count AS is_placeholder,
         cast(CASE WHEN record_is_list THEN CASE WHEN ordinal>=primary_count AND ordinal<primary_count+placeholder_count
             THEN ordinal-primary_count WHEN reference_kind='line' THEN ordinal
-            ELSE cast({pointer_index} AS BIGINT) END ELSE 0 END AS BIGINT) AS selected_record_index FROM entries""")
+            ELSE cast({pointer_index} AS BIGINT) END ELSE 0 END AS BIGINT) AS selected_record_index FROM entry_pointers""")
     # One shared literal entry bundle; only scalar values and its small pointer
     # remain after this step. No original body, prior or header object is read.
     strings=('sha256','body_key','family','context_url','member_path','original_path',
         'media_type','fidelity','sniffed_format','sniff_version','expansion','stored_suffix',
-        'stored_md5','pointer_json','retrieved_at','captured_at','observed_at',
+        'stored_md5','retrieved_at','captured_at','observed_at',
         'parent_retrieved_at','_retrieved_at','capture_date')
-    kinds={**dict.fromkeys(strings,'str'),**dict.fromkeys(('bytes','size','attempt','stored_bytes'),'int'),
-           **dict.fromkeys(('complete','intact'),'bool'),'pointer':'json'}
+    kinds={**dict.fromkeys(strings,'str'),**dict.fromkeys(('bytes','size','attempt','stored_bytes','status_code','http_status'),'int'),
+           **dict.fromkeys(('complete','intact'),'bool')}
     entry_slots=projection('entry',[(name,) for name in kinds])
     step('entry_facts','SELECT * EXCEPT(entry),'+','.join(
         scalar(entry_slots[(name,)],kind)+' AS e_'+name for name,kind in kinds.items())+' FROM entry_positions')
@@ -172,7 +205,8 @@ def mapping_steps():
         ordinary=item_first(first(line,record),record)
         return ordinary
     step('facts',f"""SELECT *,{both('mode')} AS raw_mode,{both('outcome')} AS raw_outcome,
-        {item_first(first(metadata_field('line','http_status'),metadata_field('line','status_code'),metadata_field('record','http_status'),metadata_field('record','status_code')),first(metadata_field('record','http_status'),metadata_field('record','status_code')))} AS line_status,
+        {item_first(first(metadata_field('line','http_status'),metadata_field('line','status_code'),metadata_field('record','http_status'),metadata_field('record','status_code')),first(metadata_field('record','http_status'),metadata_field('record','status_code')))} AS source_final_status,
+        {first(item_first(first(metadata_field('line','http_status'),metadata_field('line','status_code'),metadata_field('record','http_status'),metadata_field('record','status_code')),first(metadata_field('record','http_status'),metadata_field('record','status_code'))),'e_status_code')} AS line_status,
         {first(fetch_time('',lambda _,p:'e_'+p),item_first(first(fetch_time('line',metadata_field),fetch_time('record',metadata_field)),fetch_time('record',metadata_field)))} AS fetched,
         {first('e_family',both('family'),"regexp_replace(receipt_key,'^receipts/(.*)/[^/]+/[^/]+$','\\1')")} AS entry_family,
         {item_first(first(metadata_field('line','run_id'),metadata_field('line','source_file'),metadata_field('record','source_file')),first(metadata_field('record','run_id'),metadata_field('record','source_file')))} AS source_run,
@@ -181,9 +215,7 @@ def mapping_steps():
         FROM records""")
     modes=','.join(literal(v) for v in sorted(LEGACY_MODES))
     outcomes=','.join(literal(v) for v in sorted(LEGACY_OUTCOMES))
-    transfer={'retry_later','request_failed','size_limit','stored','unchanged','failed',
-              'archive_throttled','exception','request_or_parse_error','resource_limit','timeout'}
-    cases=' '.join('WHEN '+literal(k)+' THEN '+literal(v if k in transfer else 'derive') for k,v in LEGACY_OUTCOMES.items())
+    cases=' '.join('WHEN '+literal(k)+' THEN '+literal(v) for k,v in LEGACY_OUTCOMES.items())
     recovery_names=[name for name in RECOVERY if name.startswith('recovery_')]
     recovery_present=' OR '.join(both(name)+' IS NOT NULL' for name in recovery_names)
     step('mapped',f"""SELECT *,
@@ -195,13 +227,18 @@ def mapping_steps():
         raw_mode IS NOT NULL AND raw_mode NOT IN ({modes}) AS unknown_mode,
         raw_outcome IS NOT NULL AND raw_outcome NOT IN ({outcomes}) AS unknown_outcome,
         e_sha256 AS body_sha,coalesce(e_bytes,e_size) AS body_bytes,
-        json_canonical(coalesce(e_pointer,e_pointer_json)) AS pointer_json,
+        reference_pointer AS pointer_json,
         e_body_key AS body_key FROM facts""")
+    record_only="""body_sha IS NULL AND reference_kind='line' AND raw_mode IS NULL AND raw_outcome IS NULL
+        AND line_status IS NULL AND NOT coalesce(get_field(line,'error_present'),false)
+        AND NOT coalesce(get_field(record,'error_present'),false)"""
+    step('classified',"SELECT *,"+record_only+" AS record_only,CASE WHEN "+record_only+
+        " THEN "+record_kind_sql()+" END AS record_outcome FROM mapped")
     # Pointers can prefix a source record number before the attempt path.
     prior_index=first(*(f"CASE WHEN json_get_str(pointer_json,{i})='prior_attempts' THEN coalesce(json_get_int(pointer_json,{i+1}),try_cast(json_get_str(pointer_json,{i+1}) AS BIGINT),0)+1 END" for i in (0,1,2)),'0')
-    step('attempts',f"""SELECT *,coalesce(e_attempt,{prior_index}) AS attempt,
+    step('attempts',f"""SELECT *,record_only AND record_outcome IS NULL AS unknown_line_kind,coalesce(e_attempt,{prior_index}) AS attempt,
         e_member_path IS NULL AND NOT coalesce(array_has(json_get_array(pointer_json),'\"archive_members\"'),false) AS top_level
-        FROM mapped""")
+        FROM classified""")
     recorded=first('e_complete',"CASE WHEN attempt=0 THEN "+both('complete')+' END')
     step('decisions',f"""SELECT *,{recorded} AS recorded_complete,
         {first(recorded,"NOT(coalesce(body_bytes,0)=67108864 OR mapped_outcome IN ('size_limit','request_failed'))")} AS capture_complete,
@@ -212,7 +249,7 @@ def mapping_steps():
         FROM attempts""")
     columns=dict(receipt_key='receipt_key',receipt_line='receipt_line',capture_index='capture_index',
         run_id='source_run',mode='capture_mode',
-        outcome="CASE WHEN line_status IN (429,503) THEN 'retry_later' WHEN line_status=304 THEN 'unchanged' WHEN mapped_outcome<>'derive' THEN mapped_outcome WHEN body_sha IS NOT NULL AND (line_status BETWEEN 200 AND 299 OR line_status IS NULL) THEN 'stored' ELSE 'failed' END",
+        outcome="CASE WHEN record_outcome IS NOT NULL THEN record_outcome WHEN line_status IN (429,503) THEN 'retry_later' WHEN line_status=304 THEN 'unchanged' WHEN mapped_outcome<>'derive' THEN mapped_outcome WHEN body_sha IS NOT NULL AND (line_status BETWEEN 200 AND 299 OR line_status IS NULL) THEN 'stored' ELSE 'failed' END",
         family='entry_family',requested_url='requested',url='final_url',
         context_url=first('e_context_url','final_url'),
         member_path=first('e_member_path',"CASE WHEN NOT top_level AND reference_kind='capture' THEN e_original_path END"),
@@ -230,12 +267,17 @@ def mapping_steps():
         imported_at="CASE WHEN capture_mode='retained_import' THEN coalesce(try_cast("+both('recovery_imported')+" AS TIMESTAMP WITH TIME ZONE),try_cast(array_element(regexp_match(receipt_key,'/(\\d{4}-\\d{2}-\\d{2})/'),1) AS TIMESTAMP WITH TIME ZONE)) END",
         writer_job=metadata_field('line','writer_job'),writer_commit=metadata_field('line','writer_commit'))
     diagnostics=['source_row_id','reference_kind','pointer_json','body_key','unknown_mode','unknown_outcome',
-                 'is_secondary','list_ordinal','selected_record_index','body_sha','attempt','top_level','cutoff_eligible','invalid_lists',
+                 'unknown_line_kind','is_secondary','list_ordinal','selected_record_index','body_sha','attempt','top_level','cutoff_eligible','invalid_lists',
                  'record_is_list','source_record_count','is_placeholder','primary_count']
+    witnesses=dict(source_context_from_final='e_context_url IS NULL AND final_url IS NOT NULL',
+        source_retained_record=metadata_field('record','line_kind_shape')+"='object'",
+        source_entry_status='coalesce(e_http_status,e_status_code)',source_final_status='source_final_status',
+        source_creating_size_absent="reference_kind IN ('capture','embedded','file','retained-file') AND body_sha IS NOT NULL AND e_stored_bytes IS NULL",
+        source_family_basis="CASE WHEN e_family IS NOT NULL THEN 'entry' WHEN record_is_list AND "+metadata_field('record','family')+" IS NOT NULL THEN 'record' WHEN "+metadata_field('line','family')+" IS NOT NULL THEN 'line' WHEN "+metadata_field('record','family')+" IS NOT NULL THEN 'record' ELSE 'receipt' END")
     flags=dict(cutoff_candidate='attempt=0 AND top_level AND body_bytes=67108864 AND recorded_complete IS FALSE',
         completed_final='attempt=0 AND top_level AND recorded_complete IS TRUE')
     step('scalar_rows','SELECT '+','.join(f'{columns[name]} AS "{name}"' for name in COLUMNS)+
-         ','+','.join(diagnostics)+','+','.join(value+' AS '+name for name,value in flags.items())+' FROM decisions',materialize=True)
+         ','+','.join(diagnostics)+','+','.join(value+' AS '+name for name,value in {**flags,**witnesses}.items())+' FROM decisions',materialize=True)
     step('secondary',"""SELECT receipt_key,receipt_line,body_key,body_sha,
         max(stored_bytes) AS secondary_bytes,max(stored_md5) AS secondary_md5,max(stored_suffix) AS secondary_suffix,
         count(DISTINCT stored_bytes) AS size_variants,count(DISTINCT stored_md5) AS md5_variants,
@@ -251,10 +293,8 @@ def mapping_steps():
     # Hash groups/joins are expected O(N). The four consumers share one narrow
     # retained_keys materialization; only P placeholders need O(P log P) order.
     item_keys=['receipt_key','receipt_line','selected_record_index']
-    row_keys=['source_row_id',*item_keys,'capture_index']
+    row_keys=ROW_KEYS
     member_keys=[*item_keys,'attempt','context_url']
-    def same(left,right,keys):
-        return ' AND '.join(f'({left}.{key} IS NOT DISTINCT FROM {right}.{key})' for key in keys)
     inputs=[*row_keys,'is_placeholder','reference_kind','cutoff_candidate','completed_final',
             'attempt','context_url','body_sha IS NOT NULL AND NOT top_level AS member_candidate']
     step('window_inputs','SELECT '+','.join(inputs)+' FROM scalar_rows WHERE NOT is_secondary')
@@ -265,7 +305,7 @@ def mapping_steps():
     step('retained_keys','SELECT '+','.join('n.'+name for name in kept)+',r.has_primary_reference '+
         'FROM window_inputs n JOIN item_references r ON '+same('n','r',item_keys)+
         ' WHERE NOT n.is_placeholder OR NOT r.has_primary_reference',materialize=True)
-    step('retained_items','SELECT p.*,k.has_primary_reference FROM enriched p JOIN retained_keys k ON '+
+    step('retained_items','SELECT p.*,k.has_primary_reference FROM retained_keys k JOIN enriched p ON '+
         same('p','k',row_keys))
     step('cutoff_flags','SELECT '+','.join(item_keys)+""",
         bool_or(cutoff_candidate) AS has_cutoff,bool_or(completed_final) AS has_completed_final
@@ -277,9 +317,8 @@ def mapping_steps():
             ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW) AS appended_index
         FROM retained_keys WHERE is_placeholder""")
     step('windowed','SELECT p.*,r.appended_index,c.has_cutoff,c.has_completed_final,m.has_member '+
-        'FROM retained_items p JOIN cutoff_flags c ON '+same('p','c',item_keys)+
-        ' JOIN member_flags m ON '+same('p','m',member_keys)+
-        ' LEFT JOIN append_ranks r ON '+same('p','r',row_keys))
+        'FROM append_ranks r RIGHT JOIN (cutoff_flags c JOIN member_flags m ON '+same('c','m',item_keys)+
+        ' JOIN retained_items p ON '+same('p','m',member_keys)+') ON '+same('p','r',row_keys))
     final={name:name for name in COLUMNS}
     final.update(stored_suffix="coalesce(stored_suffix,secondary_suffix,'.gz')",
         stored_bytes='coalesce(stored_bytes,secondary_bytes)',
@@ -291,7 +330,7 @@ def mapping_steps():
         final[name]=f"get_field({locator},'{member}')"
     for name in ('retrieved_at','imported_at'):
         final[name]=f"arrow_cast({final[name]}, 'Timestamp(Microsecond, Some(\"UTC\"))')"
-    public_diagnostics=['reference_kind','pointer_json','body_key','unknown_mode','unknown_outcome']
+    public_diagnostics=['reference_kind','pointer_json','body_key','unknown_mode','unknown_outcome',*witnesses]
     step('capture_facts','SELECT '+','.join(f'{final[name]} AS "{name}"' for name in COLUMNS)+
         ','+','.join(public_diagnostics)+',record_is_list,source_record_count,selected_record_index AS source_record_index FROM windowed',materialize=True)
     return steps
@@ -303,9 +342,10 @@ def capture_checks():
         FROM scalar_rows WHERE receipt_key IS NULL OR receipt_line IS NULL OR receipt_line<1 LIMIT 1"""),
         dict(name='reference_shapes',sql="""SELECT receipt_key,receipt_line,'unsupported reference list shape' AS reason
         FROM scalar_rows WHERE invalid_lists LIMIT 1"""),
-        dict(name='invalid',sql="""SELECT receipt_key,receipt_line,
-        CASE WHEN unknown_mode THEN 'unknown mode' ELSE 'unknown outcome' END AS reason
-        FROM scalar_rows WHERE NOT is_secondary AND (unknown_mode OR unknown_outcome) LIMIT 1"""),
+        dict(name='invalid',sql="""SELECT p.receipt_key,p.receipt_line,
+        CASE WHEN unknown_mode THEN 'unknown mode' WHEN unknown_outcome THEN 'unknown outcome' ELSE 'unknown record-only line kind' END AS reason
+        FROM retained_keys k JOIN scalar_rows p ON """+same('k','p',ROW_KEYS)+"""
+        WHERE unknown_mode OR unknown_outcome OR unknown_line_kind LIMIT 1"""),
         dict(name='secondary',sql="""SELECT s.receipt_key,s.receipt_line,'secondary body not represented' AS reason
         FROM secondary s LEFT ANTI JOIN scalar_rows p ON NOT p.is_secondary
         AND s.receipt_key=p.receipt_key AND s.receipt_line=p.receipt_line
