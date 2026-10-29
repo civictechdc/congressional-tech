@@ -292,6 +292,8 @@ def build_prepared_release(prepared,*,engine,output,root=ROOT):
     # These successors are materialized before C7 releases their final inputs.
     # Relations exported as E4 evidence or used by final guards remain registered.
     last_inputs={
+        'sniff_facts':['sniff_observations'],
+        'page_facts':['pinned_readings'],
         'fingerprints':['body_fingerprints'],
         'source_components':['source_edges'],
         'source_labels':['source_components'],
