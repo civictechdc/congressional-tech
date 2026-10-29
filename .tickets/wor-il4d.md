@@ -16,3 +16,9 @@ Compute complete SQL dependencies with the maintained locked parser; retire unus
 
 Fixture proves every actual reader remains available and no named step survives its true last reader; native raw-to-release guards and output parity pass; every physical join build is audited with bounded fixture plans.
 
+
+## Notes
+
+**2026-10-29T09:24:52Z**
+
+Focused source completion at59d4eea4: model suites57PASS; final registry/profile/release/rebuild48PASS; final shared seed/controller/publication/model/lifetime/removal107PASS. Whole-job EXPLAIN covers181 readers and331 physical joins with no unbounded WindowAggExec. Final47 materialized+4lazy providers remain for real exports/guards; metadata and50-body width calibration cannot prove corpus fit. Review continuation pending. Correction to commit-body line counts: archive_seed.py236 to237 at59d4eea4, not269 to270; document-removals.sql8 to17 at542bab86, not8 to16. No history rewritten.
