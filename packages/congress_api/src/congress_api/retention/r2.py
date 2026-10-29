@@ -404,7 +404,7 @@ class R2Store:
             if timing is not None:timing['seconds']=time.monotonic()-started
 
     def _read(self, key, *, start=None,length=None,expected=None,metadata=None,timing=None):
-        from botocore.exceptions import ClientError
+        from botocore.exceptions import ClientError, BotoCoreError
         from congress_shared.storage import single_put_md5
         ranged=start is not None or length is not None
         pin=_raw_pin(key,expected) if expected is not None else None
@@ -462,6 +462,11 @@ class R2Store:
                     if key.startswith("indexes/"):
                         self.index_etags[key] = None
                     if pin is None:return None
+                raise
+            except BotoCoreError:
+                # A transport error may follow SDK replays but carries no
+                # response RetryAttempts. Preserve the failure and report the gap.
+                if timing is not None:timing['sdk_retry_metadata_complete']=False
                 raise
 
         def consume(response, stream):
