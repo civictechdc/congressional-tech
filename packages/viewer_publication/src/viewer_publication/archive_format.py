@@ -46,8 +46,11 @@ DETAIL_COLUMNS = ['link_key', 'saved_body', 'saved_suffix', 'saved_media_type', 
     'src_start', 'src_len', 'rec_start', 'rec_len', 'alternates', 'package_id', 'facts']
 
 
-def _step(name, sql, *, materialize=False):
-    return dict(name=name, sql=sql, materialize=materialize)
+def _step(name, sql, *, materialize=False, release_after=()):
+    step = dict(name=name, sql=sql, materialize=materialize)
+    if release_after:
+        step['release_after'] = list(release_after)
+    return step
 
 
 def _binary(expression, size):

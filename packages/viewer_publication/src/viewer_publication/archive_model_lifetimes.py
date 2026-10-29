@@ -107,7 +107,11 @@ def retire_relations(spec):
             releases[index].append(step['name'])
     # Drop dependent views before their providers when both die at one reader.
     planned = []
+    lazy = {step['name'] for step in steps if 'components' not in step and not step.get('materialize')}
     for step, retired in zip(steps, releases):
+        if not lazy.intersection(retired):
+            previous = [name for name in dict.fromkeys(step.get('release_after', ())) if name in retired]
+            retired = previous + [name for name in retired if name not in previous]
         step = {key: value for key, value in step.items() if key != 'release_after'}
         planned.append(dict(step, release_after=retired) if retired else step)
     return dict(spec, steps=planned)
