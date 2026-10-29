@@ -92,7 +92,9 @@ def test_native_comparison_checks_every_public_field_and_both_directions(tmp_pat
     assert error.value.report['left_only']==error.value.report['right_only']==1
     assert error.value.report['status']=='rejected'
     job=json.loads((tmp_path/'changed/job.json').read_text())
-    assert len(job['inputs'])==2 and all('EXCEPT' in q['sql'] for q in job['queries'] if q['name'].endswith('_only'))
+    assert len(job['inputs'])==2
+    assert all('EXCEPT' not in q['sql'] for q in job['queries'])
+    assert any('GROUP BY' in step['sql'] for step in job['steps'])
     assert not (tmp_path/'changed/equivalent.json').exists()
 
 
@@ -103,8 +105,25 @@ def test_native_comparison_row_counts_prevent_distinct_only_false_equivalence(tm
     with pytest.raises(EquivalenceMismatch) as error:
         compare_tables(source(left,values),source(right,values+[values[0]]),
             engine=NativeDatasets.from_config(os.environ['DOCSPEC_JOB_CONFIG']),work=tmp_path/'compare')
-    assert error.value.report['left_only']==error.value.report['right_only']==0
+    assert (error.value.report['left_only'],error.value.report['right_only'])==(0,1)
     assert (error.value.report['left_rows'],error.value.report['right_rows'])==(2,3)
+
+
+def test_native_multiset_comparison_detects_duplicate_distribution_and_differing_row(tmp_path):
+    """Equal totals and equal distinct values cannot hide unequal multiplicities."""
+    from congress_api.lake.capture_backfill_proof import compare_tables,EquivalenceMismatch
+    from test_capture_backfill_guard import rows,source
+    a,b=rows();left=tmp_path/'left';left.mkdir();right=tmp_path/'right';right.mkdir()
+    native=NativeDatasets.from_config(os.environ['DOCSPEC_JOB_CONFIG'])
+    with pytest.raises(EquivalenceMismatch) as error:
+        compare_tables(source(left,[a,a,b]),source(right,[a,b,b]),engine=native,work=tmp_path/'duplicates')
+    assert (error.value.report['left_rows'],error.value.report['right_rows'])==(3,3)
+    assert (error.value.report['left_only'],error.value.report['right_only'])==(1,1)
+    changed=dict(b,writer_commit='different')
+    with pytest.raises(EquivalenceMismatch) as error:
+        compare_tables(source(left,[a,a,b]),source(right,[a,changed,changed]),engine=native,work=tmp_path/'different')
+    assert (error.value.report['left_only'],error.value.report['right_only'])==(2,2)
+    assert compare_tables(source(left,[]),source(right,[]),engine=native,work=tmp_path/'empty')['status']=='equivalent'
 
 
 def test_three_original_gzip_receipts_rebuild_equally_in_fresh_native_generations(tmp_path):
@@ -142,6 +161,21 @@ def test_three_original_gzip_receipts_rebuild_equally_in_fresh_native_generation
     assert identity['mapping_digest'] and identity['proof_definition'] and len(identity['sources'])==3
     assert identity['engine']['binary_sha256'] and identity['sources'][0]['qualification']['sha256']
     assert json.loads((tmp_path/'proof/proof.json').read_text())['status']=='equivalent'
+    from congress_api.lake.capture_backfill_proof import resume_comparison
+    original=(tmp_path/'proof/proof.json').read_bytes()
+    resumed=resume_comparison(tmp_path/'proof/proof.json',
+        engine=NativeDatasets.from_config(os.environ['DOCSPEC_JOB_CONFIG']),
+        engine_config=os.environ['DOCSPEC_JOB_CONFIG'],work=tmp_path/'resumed')
+    assert resumed['status']=='equivalent' and resumed['generations']==report['generations']
+    assert resumed['identity']==report['identity']
+    assert (tmp_path/'proof/proof.json').read_bytes()==original
+    assert not (tmp_path/'resumed/one_shot').exists() and not (tmp_path/'resumed/batched').exists()
+    bad=dict(report,identity=dict(report['identity'],mapping_digest='wrong'))
+    bad_path=tmp_path/'bad.json';bad_path.write_text(json.dumps(bad))
+    with pytest.raises(ValueError,match='identity'):
+        resume_comparison(bad_path,engine=NativeDatasets.from_config(os.environ['DOCSPEC_JOB_CONFIG']),
+            engine_config=os.environ['DOCSPEC_JOB_CONFIG'],work=tmp_path/'refused')
+    assert not (tmp_path/'refused').exists()
 
 
 def test_proof_identity_binds_selected_raw_authorities_without_counter(tmp_path):
