@@ -63,3 +63,20 @@ def test_every_model_join_has_a_native_fixture_plan_and_wide_rows_stream(tmp_pat
             assert not any(field in build for field in fields), name+'\n'+build
             if name != 'capture_source_names':
                 assert 'HashJoinExec:' not in build and 'NestedLoopJoinExec:' not in build, name+'\n'+build
+
+    registry_fields = {'id', 'kind', 'host_pattern', 'pattern', 'replacement', 'decoder',
+                       'basis', 'document_kind'}
+    for name in ['source_url_normalized', 'url_normalized', 'url_state_sanitized_normalized',
+                 'link_literals', 'link_targets', 'source_annotation_publisher']:
+        lines = plans[name].splitlines()
+        for index, line in enumerate(lines):
+            if 'NestedLoopJoinExec:' not in line:
+                continue
+            # Use the same native tree boundary as build_children, selecting
+            # this individual non-equality rule join rather than other joins.
+            children = next(build_children('\n'.join(lines[index:])))
+            leaves = [leaf for leaf in children.splitlines() if 'StreamingTableExec:' in leaf]
+            assert leaves, name+'\n'+children
+            for leaf in leaves:
+                columns = {field.strip() for field in leaf.partition('projection=[')[2].partition(']')[0].split(',')}
+                assert columns <= registry_fields, name+'\n'+children
