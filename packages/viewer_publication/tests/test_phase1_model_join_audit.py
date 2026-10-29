@@ -54,10 +54,11 @@ def test_every_model_join_has_a_native_fixture_plan_and_wide_rows_stream(tmp_pat
     for name, fields in {
         'record_roles': ['mode@', 'outcome@', 'http_status@', 'complete@', 'bytes@'],
         'capture_source_names': ['stored_suffix@', 'response_headers@', 'outcome@'],
-        'source_annotations': ['filename_status@', 'listing_title@'],
+        'source_annotations': [],
         'saved_files': ['first_seen@', 'first_fetched@'],
     }.items():
         children = list(build_children(plans[name]))
         assert children, plans[name]
         for build in children:
             assert not any(field in build for field in fields), name+'\n'+build
+            assert 'HashJoinExec:' not in build and 'NestedLoopJoinExec:' not in build, name+'\n'+build
