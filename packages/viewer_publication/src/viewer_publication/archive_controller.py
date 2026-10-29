@@ -169,7 +169,7 @@ def run_publish(model_spec,*,client,engine,bucket,work,receipt_keys,provenance,r
     finally:
         if storage_ready and not delegate:
             status['durations']={'total':perf_counter()-started}
-            try:write_status(client,bucket=bucket,status=status)
+            try:write_status(client,bucket=bucket,status=status,comparison_acceptance=comparison_acceptance)
             except BaseException:
                 if failure is None:raise
                 failure.add_note('Archive status update also failed')

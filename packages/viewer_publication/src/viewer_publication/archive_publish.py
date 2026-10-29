@@ -206,7 +206,7 @@ def matching_live_input(store,*,release_id,digest):
     return record
 
 
-def write_status(client,*,bucket,status):
+def write_status(client,*,bucket,status,comparison_acceptance=None):
     """Conditionally write the fixed no-store control object, without retry."""
     require_publication_client(client)
     try:
@@ -219,6 +219,7 @@ def write_status(client,*,bucket,status):
         if not isinstance(etag,str) or not etag.strip():raise ValueError('Archive status has no ETag')
         condition={'IfMatch':etag}
     raw=_encoded(status)
+    if status.get('status')!='failed':require_comparison(comparison_acceptance)
     return client.put_object(Bucket=bucket,Key=STATUS,Body=raw,ContentLength=len(raw),
         ContentType='application/json',CacheControl='no-store',**condition)
 
@@ -404,7 +405,7 @@ def publish_candidate(*,client,engine,bucket,work,release,manifest_pin,result_pi
         raise
     finally:
         status['durations']['total']=perf_counter()-started
-        try:write_status(client,bucket=bucket,status=status)
+        try:write_status(client,bucket=bucket,status=status,comparison_acceptance=comparison_acceptance)
         except BaseException:
             if failure is None:raise
             failure.add_note('Archive status update also failed')
