@@ -3,6 +3,8 @@ from concurrent.futures import ThreadPoolExecutor
 from contextlib import closing
 import hashlib
 import io
+import json
+import os
 import threading
 
 import boto3
@@ -157,4 +159,25 @@ def test_persistent_worker_store_enables_the_get_budget(monkeypatch):
         _ranged_store.cache_clear()
         try:assert _ranged_store('fixture').read(KEY,expected=PIN)==DATA
         finally:_ranged_store.cache_clear()
+        assert len(calls)==2 and sleeps==[1.25]
+
+
+def test_cli_page_store_enables_the_same_get_budget(tmp_path,monkeypatch,capsys):
+    from congress_api.cli.readings import main
+    from congress_shared.storage import R2Config
+    values=dict(captures=[],body_inventory=None,local_root=None,work=str(tmp_path/'work'),
+        decided_at='2026-10-28T00:00:00Z',parser=None,
+        apply=dict(catalog_root=str(tmp_path/'catalog'),table=dict(namespace=['fixture'],name='readings')))
+    spec=tmp_path/'spec.json';spec.write_text(json.dumps(values))
+    with closing(sdk_client()) as client:
+        calls,sleeps=sdk_transport(monkeypatch,client,[(503,'SlowDown',{}),(200,'',{})])
+        monkeypatch.setattr(R2Config,'from_env',lambda **_:object())
+        monkeypatch.setattr('congress_shared.storage.connect_r2',lambda _:client)
+        def run(**kwargs):
+            assert kwargs['body_store'].read(KEY,expected=PIN)==DATA
+            return dict(status='fixture-read-complete')
+        monkeypatch.setattr('congress_api.lake.readings.run',run)
+        assert main(['--spec',str(spec),'--engine-config',os.environ['DOCSPEC_JOB_CONFIG'],
+            '--mode','backfill','--execute','--batch-size','32','--raw-bucket','bucket'])==0
+        assert json.loads(capsys.readouterr().out)['status']=='fixture-read-complete'
         assert len(calls)==2 and sleeps==[1.25]
