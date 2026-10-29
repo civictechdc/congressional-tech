@@ -184,3 +184,34 @@ def test_first_flip_pointer_writer_and_receipt_dependencies_survive(inventory):
     publication=next(g for g in inventory.seeds() if g['binding_row']==6)
     partial=publication['partial']['packages/viewer_publication/src/viewer_publication/client.py']
     assert not set(partial)&set(inventory.PUBLICATION_CLIENT_KEEP)
+
+
+def test_target_parser_and_verified_prefetch_survive_the_r2_class_split(inventory,tmp_path):
+    for name in ['parser_worker.py','process_resources.py','concurrency.py']:
+        assert inventory.RET+name in inventory.HARD_KEEP
+    subprocess.run(['git','init','-q',str(tmp_path)],check=True)
+    sources={
+        'docs/plans/bindings-20261025.md':'# Binding\n',
+        inventory.RET+'r2.py':'''class R2Store:
+    def read(self): pass
+    def _read(self): pass
+    def prefetch_immutable(self): pass
+    def prefetch_immutable_ready(self): pass
+class _ReadyPrefetch:
+    pass
+def _read_stream(): pass
+def _configure_retries(): pass
+''',
+        inventory.CA+'lake/readings.py':
+            'from congress_api.retention.r2 import R2Store\n',
+    }
+    for path,source in sources.items():
+        target=tmp_path/path;target.parent.mkdir(parents=True,exist_ok=True);target.write_text(source)
+    subprocess.run(['git','-C',str(tmp_path),'add','.'],check=True)
+    tree=subprocess.check_output(['git','-C',str(tmp_path),'write-tree']).decode().strip()
+    result=inventory.build(tmp_path,None,tree,None)
+    split=result['files']['ct:'+inventory.RET+'r2.py']
+    assert {'R2Store.read','R2Store._read','R2Store.prefetch_immutable',
+        'R2Store.prefetch_immutable_ready','_ReadyPrefetch','_read_stream',
+        '_configure_retries'} <= set(split['preserve_symbols'])
+    assert split['actions']!=['delete_file']
