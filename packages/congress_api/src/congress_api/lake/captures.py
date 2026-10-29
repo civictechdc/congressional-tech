@@ -81,24 +81,29 @@ def record_kind_sql():
     """Compile the finite observed record kinds; no default classifies a new shape."""
     registry=json.loads(LINE_KINDS.read_bytes())
     address="coalesce(nullif(requested,''),nullif(final_url,''))"
-    kinds=registry['kinds'];patterns=[kind for kind in kinds if 'url_pattern' in kind]
+    kinds=registry['kinds'];patterns=[kind for kind in kinds if 'url_pattern' in kind or 'url_values' in kind]
+    def address_match(kind):
+        if 'url_values' in kind:
+            return address+' IN ('+','.join(literal(value) for value in kind['url_values'])+')'
+        return 'regexp_match('+address+','+literal(kind['url_pattern'])+') IS NOT NULL'
     url_kind="CASE WHEN "+address+" IS NULL THEN 'unaddressed-record' "+' '.join(
-        'WHEN regexp_match('+address+','+literal(kind['url_pattern'])+') IS NOT NULL THEN '+literal(kind['id'])
+        'WHEN '+address_match(kind)+' THEN '+literal(kind['id'])
         for kind in patterns)+" WHEN regexp_match("+address+",'(?i)^https?://api[.]') IS NOT NULL THEN 'unsupported-api' WHEN regexp_match("+address+",'(?i)^https?://[^/?#]+') IS NOT NULL THEN 'document-reference' ELSE 'unsupported-address' END"
     branches=[];seen=set()
     for kind in kinds:
         conditions=[]
         for case in kind['cases']:
-            identity=(case['family'],case['record_is_list'],kind['id'])
+            shape=case.get('record_shape',registry['record_shape'])
+            identity=(case['family'],case['record_is_list'],shape,kind['id'])
             if identity in seen:raise ValueError('Duplicate receipt line-kind case')
             seen.add(identity)
-            conditions.append('(entry_family='+literal(case['family'])+' AND record_is_list='+str(case['record_is_list']).lower()+')')
+            conditions.append('(entry_family='+literal(case['family'])+' AND record_is_list='+str(case['record_is_list']).lower()+
+                ' AND '+metadata_field('record','line_kind_shape')+'='+literal(shape)+')')
         if not conditions or kind['outcome'] not in {'reference','saved-record'}:
             raise ValueError('Invalid receipt line-kind registry')
         branches.append('WHEN '+literal(kind['id'])+' THEN CASE WHEN ('+' OR '.join(conditions)+') THEN '+literal(kind['outcome'])+' END')
     prefix="starts_with(array_element(string_to_array(receipt_key,'/'),-1),"+literal(registry['receipt_filename_prefix'])+')'
-    shape=metadata_field('record','line_kind_shape')+'='+literal(registry['record_shape'])
-    return 'CASE WHEN '+prefix+' AND '+shape+' THEN CASE ('+url_kind+') '+' '.join(branches)+' END END'
+    return 'CASE WHEN '+prefix+' THEN CASE ('+url_kind+') '+' '.join(branches)+' END END'
 
 
 def mapping_steps():
@@ -111,6 +116,12 @@ def mapping_steps():
         unnest(record_items) AS item,
         unnest(range(0,cast(record_count AS BIGINT))) AS item_index
         FROM lines WHERE record_is_list""")
+    pair="starts_with(item,'[') AND json_length(item)=2 AND regexp_match(json_get_str(item,1),'^[0-9a-f]{64}$') IS NOT NULL"
+    step('item_shapes',"SELECT *,CASE WHEN starts_with(item,'{') THEN 'object' WHEN "+pair+
+        " AND regexp_match(json_get_str(item,0),'(?i)^https?://[^/?#]+') IS NOT NULL THEN 'url-digest-pair' WHEN "+pair+
+        " AND starts_with(json_get_str(item,0),'/') THEN 'path-digest-pair' "
+        "WHEN regexp_match(json_get_str(item),'^[A-Za-z0-9_-]{1,64}$') IS NOT NULL THEN 'identifier' "
+        "ELSE 'unsupported' END AS item_shape FROM item_entries")
     paths=[(name,) for name in SCALARS]+list(RECOVERY.values())+DOWNLOAD_HEADERS+[('error',),('kind',)]
     paths += [('receipt',name) for name in SCALARS]+[('receipt','body_complete'),('receipt','error')]
     slots=projection('item',paths)
@@ -138,13 +149,15 @@ def mapping_steps():
                                 for alias in aliases[name])
             selected=f'CASE WHEN {present} THEN {nested} ELSE {item_fields[name]} END'
         item_fields[name]=f'CASE WHEN {domain} THEN {selected} ELSE {item_fields[name]} END'
+    for name in ('requested_url','url'):
+        item_fields[name]="CASE WHEN item_shape='url-digest-pair' THEN json_get_str(item,0) ELSE "+item_fields[name]+' END'
     item_fields['kind']=scalar(slots[('kind',)],'str')
-    item_fields['line_kind_shape']="CASE WHEN starts_with(item,'{') THEN 'object' ELSE 'unsupported' END"
+    item_fields['line_kind_shape']='item_shape'
     item_fields.update({name:scalar(slots[path],'str') for name,path in RECOVERY.items()})
     item_fields['h_content_disposition']=first(*(scalar(slots[path],'str') for path in DOWNLOAD_HEADERS))
     item_fields['error_present']='('+get(slots[('error',)],kind='json')+' IS NOT NULL OR ('+domain+' AND '+get(slots[('receipt','error')],kind='json')+' IS NOT NULL))'
     step('items','SELECT source_row_id,receipt_key,receipt_line,item_index,'+
-        ','.join(value+' AS i_'+name for name,value in item_fields.items())+' FROM item_entries',materialize=True)
+        ','.join(value+' AS i_'+name for name,value in item_fields.items())+' FROM item_shapes',materialize=True)
     step('reference_lists', """SELECT * EXCEPT(record_items),
         CASE WHEN coalesce(array_length(caps),0)>0 THEN 'capture'
              WHEN coalesce(array_length(refs),0)>0 THEN 'file' ELSE 'line' END AS reference_kind,
