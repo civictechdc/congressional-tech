@@ -25,12 +25,16 @@ def url_state_steps(*,root=ROOT):
             '^([0-9]{4})([0-9]{2})([0-9]{2})$','$1-$2-$3') AS DATE)) AS meeting_date
             FROM url_state_latest l LEFT JOIN meetings m ON l.requested_url=m.requested_url)
             SELECT *,cast((date_part('epoch',cast(retrieved_at AS DATE))-date_part('epoch',meeting_date))/86400 AS BIGINT) AS age_days FROM dated"""),
-        ('intervals',"""SELECT * FROM (SELECT a.requested_url,i.interval_seconds,
-            count(*) OVER(PARTITION BY a.requested_url) AS matches,
-            row_number() OVER(PARTITION BY a.requested_url ORDER BY i.interval_seconds,i.id) AS preference
-            FROM url_state_ages a JOIN recheck_intervals i ON a.family=i.family
+        ('interval_candidates',"""SELECT a.requested_url,i.id,i.interval_seconds
+            FROM recheck_intervals i JOIN url_state_ages a ON a.family=i.family
             WHERE a.age_days IS NULL OR ((i.min_age_days IS NULL OR a.age_days>=i.min_age_days)
-              AND (i.max_age_days IS NULL OR a.age_days<i.max_age_days))) WHERE preference=1"""),
+              AND (i.max_age_days IS NULL OR a.age_days<i.max_age_days))"""),
+        ('intervals',"""WITH counts AS (
+            SELECT requested_url,count(*) AS matches FROM url_state_interval_candidates GROUP BY requested_url
+            ), ranked AS (SELECT *,row_number() OVER(PARTITION BY requested_url
+            ORDER BY interval_seconds,id) AS preference FROM url_state_interval_candidates)
+            SELECT r.requested_url,r.interval_seconds,c.matches,r.preference
+            FROM counts c JOIN ranked r ON c.requested_url=r.requested_url WHERE r.preference=1"""),
         ('page_contexts',"""SELECT DISTINCT encode(g.sha256,'hex') AS page_body,g.context_url,g.member_path
             FROM good_fetches g JOIN record_roles r USING(receipt_key,receipt_line,capture_index)
             WHERE g.sha256 IS NOT NULL AND r.record_role IS DISTINCT FROM 'error_response'"""),
