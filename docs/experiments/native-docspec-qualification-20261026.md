@@ -1,0 +1,13 @@
+# Native fixture prerequisites and qualification
+
+The explorer validation workflow installs the existing approved, hash-checked Linux AMD64 DocSpec artifact for trusted pull requests and manual validation runs. It exports only `DOCSPEC_BINARY`: local fixture tests do not receive a configured remote workspace. A trusted run fails if its private artifact configuration is missing. Fork pull requests keep the offline suite available without repository secrets; tests that actually need an unavailable native executable report that prerequisite as skipped. Pure Python schema and row-builder tests still execute. Explicitly configured missing executables fail.
+
+Three process pause checks require `DOCSPEC_TEST_UTIL_BINARY`, an exact-source build with `remote,test-util` features. A production binary cannot qualify those hooks: the helper checks the compiled `pause-after` command and fails an explicitly supplied binary without it. The ordinary owner-idle check continues to use the production executable.
+
+Python import preflight keeps its 15-second default. Local emulated qualification can set `CT_PREREQUISITE_TIMEOUT_SECONDS=60`; accepted values are integers from 1 through 120. This setting affects import and PyArrow version checks only, and does not change native-operation or test deadlines.
+
+Focused prerequisite, environment, installer and workflow checks passed locally. Native execution results are separate evidence: skips, mocked helpers and import checks do not establish native qualification. The retained production artifact is source `c949c6762f001845d2933e55cb9d7cf237e80810`, Linux AMD64, `remote`, SHA-256 `c14bfbd12b6ad958e9fa8cd8d2bc57feb014ef12431a9826ec078c631fdafd33`. The same-source hook build adds `test-util`, SHA-256 `8ab9c0249e63c378dbc49d182d78225f76c23c8e418d77c33869f16771c4baa9`.
+
+The locked Linux DuckDB 1.5.5 runtime exposed a fresh-process failure when `parquet_metadata_cache` was supplied to `duckdb.connect`: Parquet settings were not yet registered. The preparation sorter now disables that cache immediately after opening the connection, preserving its cache, memory and scratch limits. A new child-process regression reproduced the original failure and passed against the repair (1 passed in 33.68 seconds under AMD64 emulation). This is a focused startup/adoption check, not a full-suite claim.
+
+The three real same-source test-util pause checks passed (3 passed in 30.31 seconds) using the binary identified above. Production and test-util evidence remain separate.

@@ -1,0 +1,13 @@
+{
+  "manifest": "releases/03fc4cfd93a74fdc9be16d41dc528207/manifest.json",
+  "version": 5,
+  "catalog_id": "469ef1ebf6864739a2c8a4c096defcc0",
+  "manifest_sha256": "b4a41dcc26935c3b07da5d276ea52f4d29ef7cb0020c38f40c9972c2f7ef8b0a",
+  "artifact": {
+    "version": 1,
+    "status": "failed",
+    "error": "Error: page.evaluate: Error: Unsupported filename catalog version.\n    at a.onmessage (http://127.0.0.1:4173/congressional-tech/_astro/session.D8kS52KI.js:1:3156)",
+    "viewer_url": "https://congressional-data.spicygov.ai/viewer-publications/manifest.json",
+    "pages_url": "http://127.0.0.1:4173/congressional-tech/dashboard/"
+  }
+}

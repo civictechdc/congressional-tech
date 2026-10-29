@@ -81,11 +81,57 @@ def test_journal_acceptance_reuses_synced_request_bytes(journal, monkeypatch):
     assert sum(size for _, size in writes) == total
 
 
+def test_journal_append_reuses_saved_digest_and_preserves_chain(journal, monkeypatch):
+    import sys
+    from congress_shared import custody
+    from viewer_publication import client
+    log, continuation, remote = journal
+    original_sha = hashlib.sha256
+    production = {state.__file__, custody.__file__, client.__file__}
+    hashed = []
+    class ObservedDigest:
+        def __init__(self, raw):
+            self.parts = [raw]
+            self.inner = original_sha(raw)
+            hashed.append(self.parts)
+        def update(self, raw):
+            self.parts.append(bytes(raw))
+            self.inner.update(raw)
+        def __getattr__(self, name):
+            return getattr(self.inner, name)
+    def digest(raw=b''):
+        if sys._getframe(1).f_code.co_filename in production:
+            return ObservedDigest(raw)
+        return original_sha(raw)
+    monkeypatch.setattr(hashlib, 'sha256', digest)
+    monkeypatch.setattr(custody, 'sha256', digest)
+    previous, bodies, serialized = log.previous, [], []
+    original_encode = log._encoded_event
+    def encode(*args, **options):
+        raw = original_encode(*args, **options)
+        if options.get('nonce'):
+            serialized.append(raw)
+        return raw
+    monkeypatch.setattr(log, '_encoded_event', encode)
+    for index in range(2):
+        intent, _ = write_facts(f'viewer-publications/releases/digest/{index}')
+        log.record('publication_write_intent', intent)
+        body = remote.objects[log.prefix + f'{log.sequence - 1:08d}.json']
+        assert json.loads(body)['previous'] == previous
+        previous = original_sha(body).hexdigest()
+        assert log.previous == previous
+        # Synced request proof, guarded PUT admission, and current-byte verification.
+        bodies.extend([body, body, body])
+    assert [b''.join(parts) for parts in hashed] == bodies
+    assert serialized == bodies[::3]  # Encode each accepted wire event only once.
+
+
 @pytest.mark.parametrize('boundary', ['before_put', 'after_put', 'accept_link'])
 def test_journal_interruption_preserves_request_and_resumes(journal, monkeypatch, boundary):
     log, continuation, remote = journal
     sequence, previous, total = log.sequence, log.previous, log.total_bytes
     original_put = remote.put_object
+    original_accept = continuation.accept_saved
     if boundary == 'accept_link':
         monkeypatch.setattr(continuation, 'accept_saved',
             lambda *args, **kwargs: (_ for _ in ()).throw(KeyboardInterrupt('accept link')))
@@ -102,6 +148,7 @@ def test_journal_interruption_preserves_request_and_resumes(journal, monkeypatch
     assert len(requests) == 1
     assert not (continuation.root / f'journal/{sequence:08d}.json').exists()
     puts = remote.puts
+    monkeypatch.setattr(continuation, 'accept_saved', original_accept)
     restored = state.DurableJournal(remote, 'bucket', continuation, 'test-attempt', {'prepared': True}, resume=True)
     assert restored.sequence == sequence + (boundary != 'before_put')
     assert remote.puts == puts  # Recovery never resends an uncertain request.
@@ -203,7 +250,7 @@ def test_restore_validates_entire_prefix_before_any_checkpoint(journal):
     log.record('informational_progress', {'completed': 1})
     saved = continuation.path.read_bytes()
     key = log.prefix + '00000001.json'
-    event = json.loads(remote.objects[key]); event['version'] = 2
+    event = json.loads(remote.objects[key]); event['version'] = 3
     remote.objects[key] = json.dumps(event).encode()
     with pytest.raises(ValueError, match='journal version'):
         state.DurableJournal(remote, 'bucket', continuation, 'test-attempt', {'prepared': True}, resume=True)
@@ -314,7 +361,7 @@ def test_verification_joins_next_durable_intent_with_periodic_local_cache(journa
     assert state.Continuation(continuation.root, {'fixture': True}, resume=True).value['writes'] == {}
     log.record('publication_write_intent', second)
     record = json.loads(remote.objects[log.prefix + '00000002.json'])
-    assert record['verified_write'] == verified
+    assert record['verified_writes'] == [verified]
     restored = state.DurableJournal(remote, 'bucket', continuation, 'test-attempt', {'prepared': True}, resume=True)
     assert restored.sequence == 3
     assert continuation.value['writes'][first['key']]['etag'] == verified['etag']
@@ -337,7 +384,7 @@ def test_runner_loss_before_joined_append_reconciles_complete_payload(journal, t
     assert remote.puts == puts
 
 
-def test_consecutive_verifications_keep_one_pending_fact_and_persist_final_fact(journal):
+def test_consecutive_verifications_share_the_final_append(journal):
     log, continuation, remote = journal
     first, first_verified = write_facts('viewer-publications/releases/x/first')
     second, second_verified = write_facts('viewer-publications/releases/x/second')
@@ -345,13 +392,12 @@ def test_consecutive_verifications_keep_one_pending_fact_and_persist_final_fact(
         log.record('publication_write_intent', intent)
     log.record('publication_write_verified', first_verified)
     log.record('publication_write_verified', second_verified)
-    assert log.pending_verified == second_verified
-    previous = json.loads(remote.objects[log.prefix + '00000003.json'])
-    assert previous['event'] == 'publication_write_verified' and previous['value'] == first_verified
+    assert log.pending_verified == [first_verified, second_verified]
+    assert log.prefix + '00000003.json' not in remote.objects
     log.record('publication_completed', {'status': 'published'})
-    assert log.pending_verified is None
-    final = json.loads(remote.objects[log.prefix + '00000004.json'])
-    assert final['verified_write'] == second_verified
+    assert log.pending_verified == []
+    final = json.loads(remote.objects[log.prefix + '00000003.json'])
+    assert final['verified_writes'] == [first_verified, second_verified]
     state.DurableJournal(remote, 'bucket', continuation, 'test-attempt', {'prepared': True}, resume=True)
     assert all(value['verified'] for value in continuation.value['writes'].values())
 
@@ -372,7 +418,7 @@ def test_failed_joined_append_retains_pending_fact_and_sequence(journal, monkeyp
     with pytest.raises((RuntimeError, ValueError)):
         log.record('publication_completed', {})
     assert (log.sequence, log.previous, log.total_bytes, remote.puts) == before
-    assert log.pending_verified == verified
+    assert log.pending_verified == [verified]
 
 
 @pytest.mark.parametrize('malformed', [None, [], {}, {'key': 'unknown'},
@@ -384,7 +430,7 @@ def test_malformed_joined_verification_refuses_before_checkpoint(journal, malfor
     log.record('publication_write_verified', verified)
     log.record('publication_completed', {})
     key = log.prefix + '00000002.json'
-    event = json.loads(remote.objects[key]); event['verified_write'] = malformed
+    event = json.loads(remote.objects[key]); event['verified_writes'] = [malformed]
     remote.objects[key] = json.dumps(event).encode()
     before = continuation.path.read_bytes(), remote.puts
     with pytest.raises(ValueError):
@@ -407,7 +453,7 @@ def test_lost_acknowledgment_of_joined_intent_never_repeats_put(journal, monkeyp
     monkeypatch.setattr(remote, 'put_object', committed_without_ack)
     log.record('publication_write_intent', second)
     assert calls == [log.prefix + '00000002.json']
-    assert log.sequence == 3 and log.pending_verified is None
+    assert log.sequence == 3 and log.pending_verified == []
     restored = state.DurableJournal(remote, 'bucket', continuation, 'test-attempt', {'prepared': True}, resume=True)
     assert restored.sequence == 3
     assert continuation.value['writes'][first['key']]['etag'] == verified['etag']
@@ -427,7 +473,7 @@ def test_joined_record_byte_limit_prevents_next_payload_put(journal, monkeypatch
         proxy.put_object(Bucket='bucket', Key=second, Body=b'x', IfNoneMatch='*')
     assert second not in remote.objects
     assert (remote.puts, log.sequence) == before
-    assert log.pending_verified['key'] == first
+    assert log.pending_verified[0]['key'] == first
 
 
 def test_joined_acknowledgment_reuses_recorded_version_without_readback(journal):

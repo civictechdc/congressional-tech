@@ -174,12 +174,11 @@ class CountedBody(io.BytesIO):
         return chunk
 
 
-def test_publisher_and_mapping_share_one_control_reader_and_policy():
+def test_mapping_uses_shared_control_reader_and_policy():
     import congress_api.retention.control_documents as controls
     import corpus_recovery.mappings as mappings
-    import viewer_publication.publish_viewer_r2 as publisher
-    assert publisher.bounded_control_read is mappings.bounded_control_read is controls.bounded_control_read
-    assert publisher.CONTROL_LIMITS is mappings.CONTROL_LIMITS is controls.CONTROL_LIMITS
+    assert mappings.bounded_control_read is controls.bounded_control_read
+    assert mappings.CONTROL_LIMITS is controls.CONTROL_LIMITS
     assert controls.CONTROL_LIMITS == {'manifest': 4 * 1024**2, 'accepted': 16 * 1024**2, 'recovery': 32 * 1024**2}
 
 
@@ -210,14 +209,90 @@ def test_real_guarded_receipts_or_independent_fallback_verify_one_put(proof):
     result = publish_mappings(proxy, bucket='test', baseline=doc(), prepared=doc('new'), validate=lambda rows: rows,
         guard=lambda: None, save_payload=saved.__setitem__, journal=journal)
     assert result['complete'] and not result['viewer_pointer_advanced']
-    assert result['etag'] == base.etag
+    # The receipt records our acknowledged write, not a later remote version.
+    assert result['etag'] == 'new'
+    assert base.etag == ('same-bytes-new-version' if proof == 'stale' else 'new')
     assert len(base.writes) == 1 and base.writes[0]['IfMatch'] == 'old'
     assert base.raw == saved['accepted-proposed.json']
     assert json.loads(saved['accepted-before.json']) == doc()
-    assert base.gets == (2 if proof == 'issued' else 3)  # Initial mapping + guarded full readback [+ independent fallback].
-    assert base.heads == int(proof in ('issued', 'stale'))
+    # Successful guarded PUTs need no readback; unusable receipts require one.
+    assert base.gets == (1 if proof in ('issued', 'stale') else 2)
+    assert base.heads == 0
     assert events.count('publication_write_verified') == 1
 
+
+@pytest.mark.parametrize('proof', ['missing', 'foreign', 'wrong_key'])
+def test_unusable_guarded_receipt_still_rejects_changed_mapping_readback(proof):
+    from viewer_publication.client import GuardedPublicationClient
+    base = Client(doc())
+    events = []
+    options = dict(guard=lambda: None, journal=lambda event, value: events.append(event),
+                   after_write=lambda *args: None)
+    other = GuardedPublicationClient(base, **options)
+
+    class Proxy(GuardedPublicationClient):
+        def put_object(self, **kwargs):
+            result = super().put_object(**kwargs)
+            if proof == 'missing':
+                result.pop('_verified_transfer')
+            else:
+                issuer = other if proof == 'foreign' else self
+                key = KEY if proof == 'foreign' else 'viewer-publications/other'
+                result = issuer.verified_result({}, bucket='test', key=key, size=len(base.raw),
+                    sha256=hashlib.sha256(base.raw).hexdigest(), etag=base.etag)
+            base.raw = base.raw.replace(b'"new"', b'"bad"')
+            assert base.raw != kwargs['Body'] and len(base.raw) == len(kwargs['Body'])
+            base.etag = 'concurrent-version'
+            return result
+
+    with pytest.raises(ValueError, match='readback differs'):
+        publish_mappings(Proxy(base, **options), bucket='test', baseline=doc(), prepared=doc('new'),
+            validate=lambda rows: rows, guard=lambda: None, save_payload=lambda *args: None,
+            journal=options['journal'])
+    assert len(base.writes) == 1 and base.writes[0]['IfMatch'] == 'old'
+    assert base.gets == 2 and base.heads == 0
+    assert events.count('publication_write_verified') == 1
+    assert 'mapping_readback_verified' not in events
+
+
+@pytest.mark.parametrize('mutation', ['mapping_version', 'mapping_bytes', 'source_pin'])
+def test_acknowledged_mapping_does_not_authorize_next_write_after_input_changes(tmp_path, mutation):
+    from corpus_recovery.guards import RecoveryGuard
+    from viewer_publication.client import GuardedPublicationClient
+    base = Client(doc())
+    source = tmp_path / 'source.json'
+    source.write_bytes(b'original source')
+    versions = {KEY: 'old'}
+
+    def protected_check():
+        if base.head_object(Bucket='test', Key=KEY)['ETag'] != versions[KEY]:
+            raise RuntimeError('Publication input changed: ' + KEY)
+
+    guard = RecoveryGuard(pins={source: hashlib.sha256(source.read_bytes()).hexdigest()},
+        local_check=lambda: None, cloud_check=lambda: None, protected_check=protected_check)
+
+    class Proxy(GuardedPublicationClient):
+        def put_object(self, **kwargs):
+            result = super().put_object(**kwargs)
+            if mutation == 'source_pin':
+                source.write_bytes(b'changed source!')
+            else:
+                base.etag = 'concurrent-version'
+                if mutation == 'mapping_bytes':
+                    base.raw = base.raw.replace(b'"new"', b'"bad"')
+            return result
+
+    proxy = Proxy(base, guard=guard, journal=lambda *args: None,
+        after_write=lambda key, etag: versions.__setitem__(key, etag))
+    result = publish_mappings(proxy, bucket='test', baseline=doc(), prepared=doc('new'),
+        validate=lambda rows: rows, guard=guard.boundary, save_payload=lambda *args: None,
+        journal=lambda *args: None)
+    assert result['complete'] and result['etag'] == versions[KEY] == 'new'
+    assert len(base.writes) == 1 and base.gets == 1
+    # The next mutable write must refresh the real guard before reaching PUT.
+    with pytest.raises(RuntimeError, match='Pinned input changed|Publication input changed'):
+        proxy.put_object(Bucket='test', Key=KEY, Body=b'next payload', IfMatch=result['etag'])
+    assert len(base.writes) == 1
 
 
 def test_guarded_failure_keeps_its_own_reconciliation_without_outer_read():

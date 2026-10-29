@@ -78,6 +78,16 @@ def test_completed_replay_restores_exact_values_without_repeating_payload_work(t
         assert restored.after == expected_after
     with pytest.raises(ValueError, match='continuation inputs differ'):
         prepare(seeds=[dict(url='https://example.gov/different.pdf')])
+    # A new operation must reread source bytes and reject a checkpoint produced
+    # by a different implementation, before any retained payload is reused.
+    from pathlib import Path
+    from congress_api.retention import source_inputs
+    source_copy = tmp_path / 'source_inputs.py'
+    source_copy.write_bytes(Path(source_inputs.__file__).read_bytes() + b'\n# changed source version\n')
+    with monkeypatch.context() as changed:
+        changed.setattr(source_inputs, '__file__', str(source_copy))
+        with pytest.raises(ValueError, match='continuation inputs differ'):
+            prepare()
     path = tmp_path / 'replay' / 'replay-sources.sqlite'
     with path.open('ab') as damaged:
         damaged.write(b'changed')

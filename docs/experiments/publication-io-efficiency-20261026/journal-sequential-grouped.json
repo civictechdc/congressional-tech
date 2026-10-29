@@ -1,0 +1,113 @@
+{
+  "version": 1,
+  "scope": "small generated fixture and in-memory remote only",
+  "inputs": {
+    "arm": "idle-grouped",
+    "trial": 1,
+    "checkout": "/Users/mikewolfd/.codex/worktrees/v6-continuation-capacity/congressional-tech",
+    "source_head": "7145114742d2915e6bf1757c86039e31e3254884",
+    "source_files_sha256": {
+      "packages/viewer_publication/src/viewer_publication/continuation.py": "ce82e94f41ff042610701308a082650caf61d94f7050dcd0f48d89dc84efd4a2",
+      "packages/viewer_publication/src/viewer_publication/client.py": "9c899340b3f87529ea9392c04ce4442cefd6e89ce859ad6c669b7a6ec6937c00",
+      "packages/viewer_publication/tests/test_publication_capacity.py": "524f340f43c29300dd7bba466f3b0b48c0e48f14b61ced2aaa086fb3c30dfa84"
+    },
+    "telemetry_file": "/Users/mikewolfd/.codex/worktrees/publication-cost-baseline/congressional-tech/scripts/measure/publication_costs.py",
+    "telemetry_sha256": "0445f19049d50e5c9bb1555d85edcd70c076fc5f8c104171354a5a2f80329a32",
+    "rss_sampler_sha256": "d998bdfb02a3eed8491fe6a7203a3c1efdbf854fbc0f11b7c55592d1c5e079d5",
+    "script_sha256": "4fd6f3c1fc50f7d02e69b6f9dee25f954e407d172a83b632017d1dfb77d3dcc7",
+    "python": "/Users/mikewolfd/Work/congressional-tech/.venv/bin/python",
+    "count": 1000,
+    "payload_bytes": 1,
+    "workers": 6,
+    "sdk_request_latency_ms": 1.0,
+    "local_evidence_saves_and_fsync": "real; no mocked writes",
+    "fixture_limit": "no production network/artifact/native preparation"
+  },
+  "outcomes": {
+    "payload_writes": 1000,
+    "journal_events": 1002,
+    "journal_bytes": 740005,
+    "payload_replays": 1000,
+    "max_upload_window": 6,
+    "max_replay_window": 6,
+    "replay_payload_put_get_head_delta": [
+      0,
+      0,
+      0
+    ],
+    "uncertain_payload_reads": 0,
+    "total_wall_seconds": 17.985096
+  },
+  "stages": [
+    {
+      "stage": "upload",
+      "status": "complete",
+      "seconds": 11.094894208014011,
+      "sampled_process_tree_rss_peak_bytes": 70369280,
+      "memory_samples": 46,
+      "scratch_bytes": 1939200,
+      "counts": {
+        "json_dumps_calls": 11534,
+        "json_serialized_characters": 4930740,
+        "json_serialization_seconds": 0.2469840565463528,
+        "state_json_dump_calls": 3,
+        "state_json_serialized_characters": 459569,
+        "state_json_serialization_seconds": 0.005585041013546288,
+        "fsync_calls": 1008,
+        "fsync_seconds": 0.563988596200943,
+        "journal_get_requests": 1,
+        "journal_get_seconds": 0.0019167080172337592,
+        "journal_get_failures": 1,
+        "put_body_bytes": 741005,
+        "journal_put_requests": 1002,
+        "journal_put_seconds": 3.108902272710111,
+        "journal_record_calls": 2002,
+        "journal_lock_wait_seconds": 47.19541142950766,
+        "journal_lock_held_seconds": 8.644090389483608,
+        "payload_put_requests": 1000,
+        "payload_put_seconds": 3.9824185944744386
+      }
+    },
+    {
+      "stage": "restore_fresh_local_state",
+      "status": "complete",
+      "seconds": 4.447067875007633,
+      "sampled_process_tree_rss_peak_bytes": 74285056,
+      "memory_samples": 19,
+      "scratch_bytes": 3138395,
+      "counts": {
+        "json_dumps_calls": 4,
+        "json_serialized_characters": 1377757,
+        "json_serialization_seconds": 0.02521699998760596,
+        "state_json_dump_calls": 4,
+        "state_json_serialized_characters": 1377757,
+        "state_json_serialization_seconds": 0.025276291999034584,
+        "fsync_calls": 1008,
+        "fsync_seconds": 0.03340742539148778,
+        "journal_get_requests": 1002,
+        "journal_get_seconds": 3.1350486541050486,
+        "journal_list_requests": 2,
+        "journal_list_seconds": 0.0030425830045714974,
+        "get_body_bytes": 740005,
+        "journal_restore_calls": 1,
+        "journal_restore_seconds": 3.9477197500527836
+      }
+    },
+    {
+      "stage": "replay_acknowledged_payloads",
+      "status": "complete",
+      "seconds": 1.0995337499771267,
+      "sampled_process_tree_rss_peak_bytes": 74498048,
+      "memory_samples": 3,
+      "scratch_bytes": 3138395,
+      "counts": {}
+    }
+  ],
+  "sampling_errors": [],
+  "limits": {
+    "memory_sample_interval_seconds": 0.05,
+    "remote_network": false,
+    "excluded": "interpreter/import startup, GitHub artifact API, public HTTP, actual GitHub Actions setup/downloads; native Arrow I/O bytes and internal hashes",
+    "full_linux_oom_stage": "unknown; no retry or resource change"
+  }
+}

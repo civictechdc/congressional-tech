@@ -19,7 +19,7 @@ import prepare_corpus_recovery_source_records as source_module
 from corpus_recovery import govinfo
 from corpus_recovery.inventory import sealed_inputs
 from corpus_recovery.transfer import import_batch
-from congress_api.retention.raw_archive import CAPTURE_SCHEMA, STATE_SCHEMA, CAPTURES_KEY, STATE_KEY, decode_table
+from congress_api.retention.raw_archive import CAPTURE_SCHEMA, STATE_SCHEMA, CAPTURES_KEY, STATE_KEY, decode_table, prepare_capture_table
 from congress_api.retention.document_index import DocumentSources
 from congress_api.retention.raw_storage import RAW_KEY
 sys.path.insert(0, str(Path(__file__).resolve().parents[3] / "tests"))
@@ -91,7 +91,13 @@ def test_complete_package_import_preserves_mappings_and_existing_data(package):
     assert json.loads((batch / 'recoveries.json').read_text()) == package['rows']
     assert json.loads((batch / 'accepted.json').read_text()) == package['accepted']
     captured = package['root'] / 'captures.parquet'
-    baseline_captures = pa.Table.from_pylist([dict(context_url='https://untouched.test', body_key='prior')], schema=CAPTURE_SCHEMA)
+    prior_body = b'untouched retained source'
+    prior_stored = gzip.compress(prior_body, mtime=123)
+    baseline_captures = prepare_capture_table([dict(context_url='https://untouched.test',
+        sha256=sha(prior_body), bytes=len(prior_body), media_type='text/plain',
+        stored_sha256=sha(prior_stored), stored_bytes=len(prior_stored),
+        retrieved_at='2020-01-01T00:00:00Z', receipt_key='receipts/untouched.jsonl.gz', receipt_line=7)])
+    assert baseline_captures.schema.equals(CAPTURE_SCHEMA) and 'body_key' not in baseline_captures.column_names
     pq.write_table(baseline_captures, captured)
     report = source_module.prepare(batch, captured)
     assert report['unresolved'] == []
@@ -117,7 +123,8 @@ def test_complete_package_import_preserves_mappings_and_existing_data(package):
     class Store:
         def __init__(self):
             raw = next(iter(package['files'].values()))
-            self.data = {key(raw): gzip.compress(raw, mtime=123), 'unrelated': b'preserve'}
+            self.data = {key(raw): gzip.compress(raw, mtime=123), key(prior_body): prior_stored,
+                         'unrelated': b'preserve'}
             self.writes = []
 
         def read(self, name):
@@ -134,6 +141,11 @@ def test_complete_package_import_preserves_mappings_and_existing_data(package):
         captures=baseline_captures, states=old_state))
     store.writes.clear()
     before = deepcopy(store.data)
+    before_captures = owner.snapshot().captures()
+    before_states = owner.snapshot().states()
+    assert len(before_states) == len(old_state) == 1
+    assert before_captures['body_key'][0].as_py() == key(prior_body)
+    assert before_captures['receipt_key'][0].as_py() == 'receipts/untouched.jsonl.gz'
     result = import_batch(store, prepared=records, body_paths={k:v['path'] for k,v in inventory.items()},
                           raw_storage=owner, operation='govinfo-fixture', source_file='fixture',
                           receipt_prefix='receipts/documents/fixture', guard=lambda:None,
@@ -148,8 +160,8 @@ def test_complete_package_import_preserves_mappings_and_existing_data(package):
     evidence = imported[-1]['record']['recovery_package']
     assert base64.b64decode(evidence['acquisition_receipt_base64'], validate=True) == package['receipt_path'].read_bytes()
     assert sha(package['receipt_path'].read_bytes()) == evidence['acquisition_receipt_sha256']
-    assert owner.snapshot().states().slice(0, len(old_state)).to_pylist() == old_state.to_pylist()
-    assert owner.snapshot().captures().slice(0, len(baseline_captures)).to_pylist() == baseline_captures.to_pylist()
+    assert owner.snapshot().states().slice(0, len(before_states)).equals(before_states)
+    assert owner.snapshot().captures().slice(0, len(before_captures)).equals(before_captures)
     assert json.loads((batch / 'accepted.json').read_text()) == package['accepted']
 
 

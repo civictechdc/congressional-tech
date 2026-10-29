@@ -2,6 +2,7 @@ import {useEffect,useState} from 'react';
 import {createArchiveClient} from '../reader/archive-client.ts';
 import {openSavedBlob} from './saved-tab.ts';
 import {ArchiveDetail,ArchiveRows,keyHex} from './ArchiveDetail.tsx';
+import {ArchiveFormatFilter} from './ArchiveFormats.tsx';
 import {RequestMessage,useRequest,integer} from '../view/request-state.tsx';
 
 const pageSize=30;
@@ -45,7 +46,7 @@ function Workspace({client,nav,navigate,rawBase}:{client:ReturnType<typeof creat
       <label>Find documents or paste a publisher address<input type="search" name="q" defaultValue={nav.text} key={nav.text} placeholder="Title, filename, or web address"/></label><button className="explorer-button" type="submit">Search</button>
     </form>
     <div className="archive-filters"><label>Hearing key<input value={nav.hearing} onChange={event=>filter({hearing:event.target.value})} placeholder="For example, 118001"/></label>
-      <label>Format<select value={nav.format} onChange={event=>filter({format:event.target.value})}><option value="">All formats</option>{formats.map((item:any)=><option key={item.value} value={item.value}>{String(item.value).toUpperCase()} ({integer(Number(item.count))})</option>)}</select></label>
+      <ArchiveFormatFilter options={formats} value={nav.format} onChange={format=>filter({format})}/>
       <label>Order<select value={nav.sort} onChange={event=>filter({sort:event.target.value})}><option value="">Filename</option><option value="document_date">Document date, newest first</option><option value="first_captured">Capture date, newest first</option></select></label>
     </div>
     {info.status!=='ready'&&<RequestMessage state={info} retry={retryInfo} noun="the archive"/>}

@@ -22,7 +22,7 @@ def catalog_build_observation(root, phases):
         integrity_rechecked=False, remote_reconciliation='not_performed',
         resume_authorized=False, publication_complete=False,
         next_read_only_checks=[
-            dict(path=str(root / 'continuation.json'),
+            dict(path=str(root / 'events.jsonl'),
                  check='Compare binding.pins and pins.json with the current code, configuration, batch and completed import; changed pins must remain a refusal.'),
             dict(path=str(build if incremental else build / 'working.sqlite'),
                  check=('Inspect retained request, candidate results and native receipts; preserve originals and diagnose the last failed incremental operation.'
@@ -30,7 +30,7 @@ def catalog_build_observation(root, phases):
             dict(path=str(root / 'source/indexes/catalog.json'),
                  check=('Verify the saved native selector, selected_identity, exact scope proof and imported-body coverage; missing or incomplete outputs remain unaccepted.'
                         if incremental else 'If present, verify the saved catalog pair byte counts, SHA256, catalog_id and imported-body coverage with validate_catalog_pair; missing or incomplete outputs remain unaccepted.')),
-            dict(path=str(root / 'continuation.json'),
-                 check='Read each recorded remote write in full and compare bytes and original conditions; HEAD or phase metadata alone cannot resolve an uncertain write.'),
+            dict(path=str(root / 'events.jsonl'),
+                 check='Reconcile only writes without an accepted acknowledgment: compare current bytes and original conditions; accepted uploads need no routine readback.'),
         ],
     )

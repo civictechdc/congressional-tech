@@ -32,62 +32,68 @@ class AtomicJSONStorage(Storage):
 class YoutubeChannelMetadata(TypedDict):
     name: str
     handles: list[str]
+    member_handles: list[str]
+
+
+def _read_committee_rows(csv_path):
+    with open(csv_path, newline="", encoding="utf-8") as csvfile:
+        return list(csv.DictReader(csvfile))
+
+
+def _committee_metadata(rows):
+    """Keep CSV order and literal handles as the committee cache keys."""
+    committees = {}
+    for row in rows:
+        committees[row["systemCode"]] = {
+            "name": row["committee"],
+            "handles": [row["handle"]] + [h.strip() for h in row["secondary"].split(";") if h.strip()],
+            "member_handles": [h.strip() for h in (row.get("member_channels") or "").split(";") if h.strip()],
+        }
+    return committees
 
 
 def map_system_code_committee_handles(
     csv_path: Path = DEFAULT_CHANNELS_CSV,
 ) -> dict[str, YoutubeChannelMetadata]:
-    system_code_mapper = {}
-    with open(csv_path, newline="", encoding="utf-8") as csvfile:
-        reader = csv.DictReader(csvfile)
-        rows = list(reader)
+    return _committee_metadata(_read_committee_rows(csv_path))
 
-        for row in rows:
-            ## unpack the row
-            name = row["committee"]
-            systemCode = row["systemCode"]
-            handle = row["handle"]
-            secondary = row["secondary"]
 
-            ## "secondary" holds any other channels, separated by semicolons
-            handles = [handle] + [h.strip() for h in secondary.split(";") if h.strip()]
-            ## "member_channels": personal channels of chairs that hold a committee's
-            ##  hearings (e.g. a select committee's chair). They're fetched and used for
-            ##  matching hearings, but not counted as committee videos in the report.
-            members = [h.strip() for h in (row.get("member_channels") or "").split(";") if h.strip()]
-            system_code_mapper[systemCode] = {
-                "name": name,
-                "handles": handles,
-                "member_handles": members,
-            }
-    return system_code_mapper
+def _channel_id_overrides(rows):
+    channel_ids = {}
+    for row in rows:
+        configured = json.loads(row.get("channel_ids") or "{}")
+        handles = {
+            handle.strip()
+            for column in ("handle", "secondary", "member_channels")
+            for handle in (row.get(column) or "").split(";")
+            if handle.strip()
+        }
+        if not isinstance(configured, dict):
+            raise ValueError("channel_ids must be a JSON object")
+        for handle, channel_id in configured.items():
+            if (
+                handle not in handles
+                or not isinstance(channel_id, str)
+                or not re.fullmatch(r"UC[A-Za-z0-9_-]{22}", channel_id)
+            ):
+                raise ValueError(f"Invalid configured YouTube channel ID for {handle}")
+            if handle in channel_ids and channel_ids[handle] != channel_id:
+                raise ValueError(f"Conflicting configured YouTube channel IDs for {handle}")
+            channel_ids[handle] = channel_id
+    return channel_ids
 
 
 def get_channel_id_overrides(csv_path: Path = DEFAULT_CHANNELS_CSV) -> dict[str, str]:
     """Read optional stable IDs without changing literal handles or table names."""
-    channel_ids = {}
-    with open(csv_path, newline="", encoding="utf-8") as csvfile:
-        for row in csv.DictReader(csvfile):
-            configured = json.loads(row.get("channel_ids") or "{}")
-            handles = {
-                handle.strip()
-                for column in ("handle", "secondary", "member_channels")
-                for handle in (row.get(column) or "").split(";")
-                if handle.strip()
-            }
-            if not isinstance(configured, dict):
-                raise ValueError("channel_ids must be a JSON object")
-            for handle, channel_id in configured.items():
-                if (
-                    handle not in handles
-                    or not isinstance(channel_id, str)
-                    or not re.fullmatch(r"UC[A-Za-z0-9_-]{22}", channel_id)
-                ):
-                    raise ValueError(f"Invalid configured YouTube channel ID for {handle}")
-                if handle in channel_ids and channel_ids[handle] != channel_id:
-                    raise ValueError(f"Conflicting configured YouTube channel IDs for {handle}")
-                channel_ids[handle] = channel_id
-    return channel_ids
+    return _channel_id_overrides(_read_committee_rows(csv_path))
+
+
+def load_committee_configuration(
+    csv_path: Path = DEFAULT_CHANNELS_CSV,
+) -> tuple[dict[str, YoutubeChannelMetadata], dict[str, str]]:
+    """One command owns one freshly read, validated configuration snapshot."""
+    rows = _read_committee_rows(csv_path)
+    return _committee_metadata(rows), _channel_id_overrides(rows)
 
 
 def get_all_committee_handles(

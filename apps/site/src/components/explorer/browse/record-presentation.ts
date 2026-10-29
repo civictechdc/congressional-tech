@@ -1,5 +1,5 @@
-import { filenameManifestUrl } from '../reader/filenames/publication.ts';
 import type { CoverageAspect, EvidenceState } from './kinds.ts';
+import type { QueryRow } from '../reader/types.ts';
 
 const calendar = new Intl.DateTimeFormat('en-CA', { timeZone: 'America/New_York', year: 'numeric', month: '2-digit', day: '2-digit' });
 
@@ -1447,7 +1447,7 @@ export function savedCopyHref(
     content_type?: string | null;
     url?: string | null;
   } | null | undefined,
-  manifestUrl = filenameManifestUrl,
+  manifestUrl = 'https://congressional-data.spicygov.ai/',
 ): string | undefined {
   if (!file || typeof file.saved_copy_sha256 !== 'string' || !/^[a-f0-9]{64}$/.test(file.saved_copy_sha256)) return undefined;
   const hash = file.saved_copy_sha256;
@@ -1634,7 +1634,7 @@ function phrase(value: unknown): string {
   return text.charAt(0).toUpperCase() + text.slice(1);
 }
 
-type RelatedRow = DisplayRow & {
+type RelatedRow = DisplayRow & Pick<QueryRow, 'facts' | 'source_ids'> & {
   position?: string | null;
   organization?: string | null;
   roles?: readonly string[] | null;
@@ -1701,7 +1701,7 @@ export function relatedParts(kind: string, value: object): RelatedPart[] {
         : kind === 'committee_term'
           ? [committeeTypeLabel(row) === 'Type not recorded' ? '' : committeeTypeLabel(row), (row.title || '').toLowerCase().includes(committeeLevelLabel(row).toLowerCase()) ? '' : committeeLevelLabel(row), congress]
           : [clock, scheduleNote(row), status]
-  ).filter(Boolean).map(text => ({ text, role: notes.includes(text) ? 'note' as const : kind === 'meeting' && place && text === place ? 'place' as const : (kind === 'meeting' || kind === 'data_issue') && status && text === status ? 'status' as const : undefined }));
+  ).filter((text): text is string => Boolean(text)).map(text => ({ text, role: notes.includes(text) ? 'note' as const : kind === 'meeting' && place && text === place ? 'place' as const : (kind === 'meeting' || kind === 'data_issue') && status && text === status ? 'status' as const : undefined }));
   const sources = sourceCountNote(row);
   if (!sources) return parts;
   const noteIndex = parts.findIndex(part => part.role === 'note');

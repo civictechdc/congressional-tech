@@ -15,7 +15,7 @@ def test_pages_uses_declared_locked_environments_and_checks_built_reader():
     workflow = yaml.load((ROOT / '.github/workflows/deploy-pages.yml').read_text(), Loader=yaml.BaseLoader)
     from fnmatch import fnmatch
     triggers = workflow['on']['push']['paths']
-    assert any(fnmatch('apps/site/src/components/explorer/browse/filename-rules.ts', path) for path in triggers)
+    assert any(fnmatch('apps/site/src/components/explorer/reader/archive.ts', path) for path in triggers)
     steps = workflow['jobs']['build']['steps']
     assert any(step.get('uses') == './.github/actions/setup-python-project' for step in steps)
     shared = './.github/actions/setup-node-project'
@@ -38,34 +38,29 @@ def test_pages_uses_declared_locked_environments_and_checks_built_reader():
     assert '.github/actions/setup-node-project/**' in triggers
     assert commands.index('npm run test:explorer') > next(i for i, step in enumerate(steps) if step.get('uses') == shared)
     assert commands.index('npm run test:explorer') < commands.index('npm run build')
-    assert commands.index('npm run build') < commands.index('npm run test:built-filenames')
     assert any('verify(source)' in command and 'shutil.copytree(source, target, dirs_exist_ok=True)' in command for command in commands)
-    assert 'stage-document-reviews.py' in package['scripts']['build']
+    assert package['scripts']['build'] == 'astro build'
     lock = json.loads((ROOT / 'apps/site/package-lock.json').read_text())
     assert lock['packages']['']['dependencies'] == package['dependencies']
     assert lock['packages']['']['devDependencies'] == package['devDependencies']
 
 
-def test_real_filename_worker_must_pass_before_deploy_and_match_afterward():
+def test_archive_contract_gates_the_pages_upload_without_the_legacy_filename_worker():
+    # The archive pointer switch made the legacy filename worker unable to load
+    # the live pointer, so its live checks were removed; the archive contract
+    # (and the publisher's live canary) cover the reader that replaced it.
     workflow = yaml.load((ROOT / '.github/workflows/deploy-pages.yml').read_text(), Loader=yaml.BaseLoader)
     build = workflow['jobs']['build']['steps']
-    gate = next(i for i, step in enumerate(build) if step.get('name', '').startswith('Require the built filename worker'))
+    gate = next(i for i, step in enumerate(build) if step.get('name', '').startswith('Require the archive contract'))
     upload = next(i for i, step in enumerate(build) if step.get('uses') == 'actions/upload-pages-artifact@v3')
     assert gate < upload
-    assert build[gate]['run'] == 'bash .github/scripts/verify-built-filename-worker.sh'
-    script = (ROOT / '.github/scripts/verify-built-filename-worker.sh').read_text()
-    assert '--require-native-worker true' in script
-    assert '--viewer-url https://congressional-data.spicygov.ai/viewer-publications/manifest.json' in script
-    assert 'http.server' in script and '/congressional-tech/dashboard/' in script
+    assert 'verify-archive-contract.py' in build[gate]['run']
+    assert any(step.get('uses') == './.github/actions/setup-publication-browser' for step in build[:gate])
     deploy = workflow['jobs']['deploy']['steps']
-    operation = next(i for i, step in enumerate(deploy) if step.get('id') == 'deployment')
-    after = next(i for i, step in enumerate(deploy) if step.get('name', '').startswith('Require the deployed filename worker'))
-    assert operation < after
-    assert '--expected-observation "$RUNNER_TEMP/filename-worker-built/filename-worker-built.json"' in deploy[after]['run']
-    assert '--require-native-worker true' in deploy[after]['run']
-    assert deploy[after]['env']['PAGES_BASE'] == '${{ steps.deployment.outputs.page_url }}'
-    for steps in (build, deploy):
-        assert any(step.get('uses') == './.github/actions/setup-publication-browser' for step in steps)
+    assert any(step.get('id') == 'deployment' for step in deploy)
+    runs = '\n'.join(step.get('run', '') for job in workflow['jobs'].values() for step in job.get('steps', []))
+    assert 'verify-built-filename-worker' not in runs and 'verify-live-publication' not in runs
+    assert not (ROOT / '.github/scripts/verify-built-filename-worker.sh').exists()
 
 
 def bootstrap(tmp_path, *, node_version='22.22.2', package_manager='npm@11.19.1', installed_version='11.19.1', fail=False):

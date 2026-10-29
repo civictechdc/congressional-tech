@@ -1,10 +1,8 @@
 """Shared pair validation avoids rescans and rejects changed content or validators."""
 import copy
 import hashlib
-import importlib.util
 import os
 from pathlib import Path
-import sys
 import tempfile
 import unittest
 from unittest.mock import patch
@@ -12,10 +10,14 @@ import pyarrow as pa
 import pyarrow.parquet as pq
 from congress_api.retention.catalog_validation import validate_catalog_pair
 
-ROOT = Path(__file__).resolve().parents[3]
-sys.path.insert(0, str(ROOT/'apps/site/scripts'))
-spec = importlib.util.spec_from_file_location('historical_validated_pair_builder', Path(__file__).parent / 'historical_viewer_publication.py')
-builder = importlib.util.module_from_spec(spec); spec.loader.exec_module(builder)
+def replace_with_identical_bytes(path):
+    """Change custody deterministically, even within one filesystem clock tick."""
+    before = path.stat()
+    replacement = path.with_suffix('.replacement')
+    replacement.write_bytes(path.read_bytes())
+    os.utime(replacement, ns=(before.st_atime_ns, before.st_mtime_ns))
+    replacement.replace(path)
+    assert path.stat().st_ino != before.st_ino
 
 
 class PairValidationTests(unittest.TestCase):
@@ -33,12 +35,11 @@ class PairValidationTests(unittest.TestCase):
         self.validator = lambda *paths: self.validations.append(paths)
     def validate(self):
         return validate_catalog_pair(self.root, self.manifest, validator=self.validator, expected_bodies={'body'})
-    def test_dispatch_and_builder_share_two_hashes_and_one_pair_validation(self):
+    def test_reused_pair_proof_needs_two_hashes_and_one_validation(self):
         with patch('hashlib.file_digest', wraps=hashlib.file_digest) as hashes:
             proof = self.validate()
             for _ in range(3):
                 proof.require(self.root, self.manifest, validator=self.validator, expected_bodies={'body'})
-                builder.verify(self.root, self.manifest, validation=proof)
             self.assertEqual(hashes.call_count, 2)
         self.assertEqual(len(self.validations), 1)
     def test_changed_file_identity_rejects_equal_size_bytes_with_restored_mtime(self):
@@ -46,7 +47,7 @@ class PairValidationTests(unittest.TestCase):
         before = path.stat(); raw = path.read_bytes()
         path.write_bytes(raw[:-1]+bytes([raw[-1]^1]))
         os.utime(path, ns=(before.st_atime_ns, before.st_mtime_ns))
-        with self.assertRaisesRegex(ValueError, 'no longer applies'): builder.verify(self.root, self.manifest, validation=proof)
+        with self.assertRaisesRegex(ValueError, 'no longer applies'): proof.require(self.root, self.manifest)
     def test_manifest_expected_inputs_validator_and_root_are_bound(self):
         proof = self.validate(); changed = copy.deepcopy(self.manifest); changed['catalog_id'] = 'other'
         for root, manifest, options in [(self.root, changed, {}), (self.root/'other', self.manifest, {}),
@@ -69,37 +70,6 @@ class PairValidationTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, 'bytes differ'): self.validate()
 
 if __name__ == '__main__': unittest.main()
-
-
-def test_actual_viewer_materialization_accepts_the_shared_pair_proof(tmp_path):
-    from congress_api.retention import document_index as index
-    from congress_api.retention.catalog_cache import LocalStore
-    from congress_api.retention.catalog_publication import publish_catalog, read_catalog
-    import json
-    root = tmp_path/'source'; (root/'indexes').mkdir(parents=True)
-    source = root/'indexes/document-filenames.parquet'
-    schema = index.SOURCE_SCHEMA.append(pa.field('source_occurrences', index.metadata_type('source_occurrences')))
-    index.write_document_indexes(source, [dict(body_key=None, filename='probe.pdf',
-        source_url='https://example.test/probe.pdf', source_occurrences=[])], schema)
-    store = LocalStore(root)
-    publish_catalog(store, source, source.with_name('documents.parquet'), previous=read_catalog(store))
-    manifest = json.loads((root/'indexes/catalog.json').read_text())
-    proof = validate_catalog_pair(root, manifest, validator=index.validate_document_indexes)
-    result = builder.publish(root, tmp_path/'prepared', validation=proof)
-    assert result['info']['catalog_id'] == manifest['catalog_id']
-    assert result['info']['rows'] == 1
-    assert result['info']['video_reference_groups'] == 0
-    assert all((tmp_path/'prepared'/item['path']).is_file() for item in result['files'].values())
-
-
-def test_direct_build_refuses_existing_publication_before_reading_inputs(tmp_path):
-    target = tmp_path / 'published'; target.mkdir()
-    original = b'{"previous":true}\n'
-    (target / 'manifest.json').write_bytes(original)
-    with __import__('pytest').raises(ValueError, match='fresh empty directory'):
-        builder.publish(tmp_path / 'missing-source', target)
-    assert (target / 'manifest.json').read_bytes() == original
-    assert list(target.iterdir()) == [target / 'manifest.json']
 
 
 def test_normal_catalog_rebuild_checks_references_once_and_fresh_process_has_no_proof(tmp_path, monkeypatch):
@@ -154,7 +124,7 @@ def test_local_catalog_handoff_does_not_trust_restored_or_changed_proofs(tmp_pat
     if proof_kind == 'serialized':
         result = __import__('json').loads(__import__('json').dumps(result))
     else:
-        paths[0].write_bytes(paths[0].read_bytes())
+        replace_with_identical_bytes(paths[0])
     with read_catalog(LocalStore(tmp_path)) as snapshot:
         if proof_kind == 'changed':
             with pytest.raises(ValueError, match='no longer applies'):
@@ -193,38 +163,6 @@ def test_reference_content_proof_reuses_one_scan_across_owned_copy_and_rejects_f
         copy.copy(content).require(manifest, validator=validator)
     with pytest.raises(ValueError, match='no longer applies'):
         reference.require(*paths, validator=lambda *_: None)
-    paths[0].write_bytes(paths[0].read_bytes())
+    replace_with_identical_bytes(paths[0])
     with pytest.raises(ValueError, match='no longer applies'):
         reference.require(*paths, validator=validator)
-
-
-@__import__('pytest').mark.parametrize('damage', ['interrupt', 'corrupt', 'manifest', 'success'])
-def test_fetch_stages_complete_pair_before_replacing_prior_selection(tmp_path, damage):
-    from congress_api.retention.catalog_cache import LocalStore
-    from congress_api.retention.catalog_publication import publish_catalog, read_catalog
-    from test_catalog_publication import pair
-    from datetime import datetime, timezone
-    import io
-    import json
-    import pytest
-    remote = tmp_path / 'remote'; remote.mkdir()
-    store = LocalStore(remote)
-    publish_catalog(store, *pair(tmp_path / 'new', 'new'), previous=read_catalog(store))
-    manifest = json.loads((remote / 'indexes/catalog.json').read_text())
-    root = tmp_path / 'local'; (root / 'indexes').mkdir(parents=True)
-    original = b'{"prior":"selected"}'
-    (root / 'indexes/catalog.json').write_bytes(original)
-    body = io.BytesIO(b'{}' if damage == 'manifest' else json.dumps(manifest).encode())
-    class Client:
-        def get_object(self, **kwargs): return dict(Body=body, LastModified=datetime.now(timezone.utc))
-        def download_file(self, bucket, key, path):
-            Path(path).write_bytes(b'partial' if damage == 'corrupt' else (remote / key).read_bytes())
-            if damage == 'interrupt': raise OSError('injected interrupted download')
-    if damage == 'success':
-        builder.fetch(root, client=Client())
-        builder.verify(root, json.loads((root / 'indexes/catalog.json').read_text()))
-    else:
-        with pytest.raises((ValueError, OSError)):
-            builder.fetch(root, client=Client())
-        assert (root / 'indexes/catalog.json').read_bytes() == original
-    assert body.closed

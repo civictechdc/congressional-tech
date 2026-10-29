@@ -8,7 +8,7 @@ Committee sites and the Library of Congress Web Harvest sometimes hold a hearing
 from corpus_recovery.admission import verify_import
 ```
 
-Import each operation from its owning module. Importing this package or its admission checks leaves the catalog implementation unselected so the publication command can load its named `--runtime`.
+Import each operation from its owning module. Importing this package or its admission checks leaves the archive implementation unselected until a caller needs it.
 
 The package is installed with the rest of the workspace (`uv sync --locked`). It does not download documents. Fetching from Web Harvest is [`scripts/webharvest`](../../scripts/webharvest/README.md).
 
@@ -22,7 +22,6 @@ The package is installed with the rest of the workspace (`uv sync --locked`). It
 | `transfer` | `import_batch` writes those bodies and index rows. Each write is conditional. An uncertain response is reconciled by reading the object back, not by repeating the upload. |
 | `inventory` | Loads a sealed batch, compares it with objects already stored, and checks that a file's digest still matches the manifest. |
 | `admission` | `verify_import` checks that an import finished and that the readiness report still matches the batch. |
-| `publication` | Runs the admitted local catalog, mapping and viewer phases; reuses accepted pair/file proofs and keeps proposed source bytes separate until verified selection. Runtime selection, pins, lock and write guard stay with the dispatcher. |
 | `mappings` | Merges filename decisions onto the current accepted map, then publishes that map. A conflicting edit to an old decision is refused. |
 | `guards` | `RecoveryGuard` and `active_cloud_writers` refuse a write when another job still holds the archive, or when the local pins have changed. |
 | `preservation` | Compares the imported index with the baseline so existing rows are still present and new rows are only the ones this batch added. |
@@ -30,6 +29,8 @@ The package is installed with the rest of the workspace (`uv sync --locked`). It
 
 ## What it will not do
 
-It will not treat a download as success. A batch is usable only when the named files match the hashes recorded in its manifest. Import and publication commands default to that check. They write only when the caller passes `--execute`.
+It will not treat a download as success. A batch is usable only when the named files match the hashes recorded in its manifest. Import commands default to that check. They write only when the caller passes `--execute`.
 
-Viewer uploads (the public filename lookup under `viewer-publications/`) go through [`viewer_publication`](../viewer_publication/README.md), which owns the shared accepted viewer plan and guarded transfer boundary. The publication entry point uses that package after runtime admission.
+Accepted recovery labels enter raw as records in `recoveries/accepted.json`. The
+archive model and publisher consume them; the old catalog/viewer publication
+dispatcher is retired. Raw guards, admission, body custody and mappings remain.

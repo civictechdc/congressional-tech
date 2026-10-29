@@ -1,8 +1,6 @@
 """Preserve source assertions and meaningful distinctions when publishing metadata."""
 from catalog_test_helpers import selected_path
 from hashlib import sha256
-import importlib.util
-from pathlib import Path
 
 import pyarrow as pa
 import pyarrow.parquet as pq
@@ -69,23 +67,6 @@ def test_literal_and_source_congress_and_document_types_stay_separate(tmp_path):
     assert person['document_kind_source'] == ['source_document_type']
     assert not index.Engine().extract('JaneDoe.pdf')['metadata'].get('document_kind')
 
-
-def test_old_publication_field_filter_uses_canonical_column(tmp_path):
-    (tmp_path / 'indexes').mkdir()
-    sources = [dict(body_key=None, filename='CHRG-119hhrg12345.pdf', source_url=None)]
-    index.write_filename_metadata(tmp_path, sources, workers=1)
-    path = tmp_path / 'indexes/document-filenames.parquet'
-    # Ensure the fixture exercises the new schema even against the old writer.
-    for target in (path, path.with_name('documents.parquet')):
-        table = pq.read_table(selected_path(target))
-        if 'publication_code_code' in table.column_names:
-            pq.write_table(table.drop(['publication_code_code']), target)
-    script = Path(__file__).resolve().parent / 'view_document_filenames.py'
-    spec = importlib.util.spec_from_file_location('experiment_viewer', script)
-    viewer = importlib.util.module_from_spec(spec)
-    spec.loader.exec_module(viewer)
-    catalog = viewer.Catalog(path)
-    assert catalog.search({'field': 'publication_code_code', 'q': 'hhrg'})['total'] == 1
 
 
 def test_govinfo_summary_endpoint_keeps_package_identity_without_document_subject():

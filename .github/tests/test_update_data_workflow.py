@@ -4,6 +4,7 @@ from pathlib import Path
 import shutil
 
 import yaml
+import pytest
 
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -77,14 +78,22 @@ def test_house_directory_and_site_pages_precede_xml_fallback_and_save_partial_pr
                for step in raw['jobs']['capture']['steps'])
 
 
-def test_every_snapshot_save_also_keeps_the_snapshot_in_raw():
-    workflow = yaml.load((ROOT / '.github/workflows/update-data.yml').read_text(), Loader=yaml.BaseLoader)
+@pytest.mark.parametrize('filename,count', [('update-data.yml', 4), ('publish-explorer.yml', 1)])
+def test_every_snapshot_save_also_keeps_the_snapshot_in_raw(filename, count):
+    workflow = yaml.load((ROOT / '.github/workflows' / filename).read_text(), Loader=yaml.BaseLoader)
     saves = [step for job in workflow['jobs'].values() for step in job['steps']
              if '.github/scripts/save-pipeline-data.sh' in step.get('run', '')]
-    assert len(saves) == 4
+    assert len(saves) == count
     for step in saves:
         assert set(step['env']) == {'CLOUDFLARE_ACCOUNT_ID', 'R2_ACCESS_KEY_ID', 'R2_SECRET_ACCESS_KEY'}
         assert step['env']['R2_ACCESS_KEY_ID'] == '${{ secrets.R2_ACCESS_KEY_ID }}'
+        assert step['env']['R2_SECRET_ACCESS_KEY'] == '${{ secrets.R2_SECRET_ACCESS_KEY }}'
+        assert step.get('continue-on-error', 'false') == 'false'
+    for job in workflow['jobs'].values():
+        for index, step in enumerate(job['steps']):
+            if '.github/scripts/save-pipeline-data.sh' in step.get('run', ''):
+                assert any(prior.get('uses') in {'astral-sh/setup-uv@v6',
+                    './.github/actions/setup-python-project'} for prior in job['steps'][:index])
     script = (ROOT / '.github/scripts/save-pipeline-data.sh').read_text().splitlines()
     setup = next(i for i,line in enumerate(script) if 'prepare-raw-writer.sh' in line)
     preserve = next(i for i,line in enumerate(script) if 'congress_api.cli.pipeline_raw' in line)

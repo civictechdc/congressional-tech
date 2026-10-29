@@ -19,6 +19,8 @@ permissions:
   contents: write
 
 concurrency:
+  # Saves pipeline-data to raw, so it joins the shared R2 writer lock; this also
+  # keeps the two pipeline-data writers (update and publish) from overlapping.
   group: raw-source-mirror
   cancel-in-progress: false
   queue: max

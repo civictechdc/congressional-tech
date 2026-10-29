@@ -1,0 +1,6 @@
+{
+  "packages/congress_api/src/congress_api/retention/catalog_batches.py": "72a563464cc699263c59b063f618923d706f0693f28f90776405aba7c2a1cbde",
+  "packages/congress_api/src/congress_api/retention/catalog_selection.py": "816f920d7acdd26b6e1cdb86d89ad6d233eae6ba02fd957d5ccdd362d4332314",
+  "packages/viewer_publication/src/viewer_publication/filename_native_recoveries.py": "aa5c4cafaf7850a24a705ce373620876a307dbd7fdb982501e1c0e2d379159bb",
+  "packages/viewer_publication/src/viewer_publication/native.py": "1d625b081b6c443cffe942cf3e4b28516cea87dff6b07d7e1aff8160219e4a18"
+}

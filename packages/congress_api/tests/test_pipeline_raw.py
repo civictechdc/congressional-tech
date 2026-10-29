@@ -187,7 +187,7 @@ def test_rescued_import_is_registered_but_weekly_fetch_is_not(tmp_path, capsys):
     registry = json.loads((cli.ROOT / 'model/registries/import-runs.json').read_text())
     assert summary['import_run'] in registry
     assert summary['import_run']['run_id'] == pipeline_raw.RESCUE_RUN_ID
-    assert summary['import_run']['date'] == '2026-10-27'
+    assert summary['import_run']['date'] == '2026-10-28'
     [item] = list(pipeline_raw.rescue_files(root))
     line = pipeline_raw.receipt_line(item, run_id=pipeline_raw.RESCUE_RUN_ID, writer=WRITER,
                                      sha256=item.sha256, outcome='unchanged')
@@ -228,3 +228,120 @@ def test_weekly_writer_reuses_the_legacy_body_suffix_without_upload(tmp_path):
     [line] = receipt(bucket, result['receipts'][0])
     assert line['captures'][0]['stored_suffix'] == '.gz'
     assert 'stored_md5' not in line['captures'][0]
+
+
+def test_rescue_cli_rerun_preserves_existing_objects(tmp_path, monkeypatch, capsys):
+    """Run the actual CLI twice, optionally using a copied real two-snapshot batch."""
+    from datetime import datetime, timezone
+    from io import BytesIO
+    import os
+    import shutil
+
+    application = tmp_path / 'application'
+    application.mkdir()
+    (application / 'model/registries').mkdir(parents=True)
+    (application / 'model/registries/import-runs.json').write_text(json.dumps([
+        dict(run_id=pipeline_raw.RESCUE_RUN_ID, date=datetime.now(timezone.utc).date().isoformat())]))
+    (application / 'uv.lock').write_text('fixture locked dependencies\n')
+    checkout(application, {})
+    monkeypatch.setattr(cli, 'ROOT', application)
+    root = tmp_path / 'batch'
+    if copied := os.environ.get('CXR_RESCUE_COPY'):
+        source = Path(copied).resolve()
+        assert source.is_relative_to(Path(os.environ['CXR_RELEASE_SCRATCH']).resolve())
+        assert len((source / 'commits.jsonl').read_text().splitlines()) == 2
+        shutil.copytree(source, root)
+    else:
+        root.mkdir()
+        batch(root, [{'README.md': b'first', 'youtube/a.json': b'{"x":1}'},
+                     {'README.md': b'second', 'youtube/a.json': b'{"x":1}'}])
+    before = {p.relative_to(root): hashlib.sha256(p.read_bytes()).hexdigest()
+              for p in root.rglob('*') if p.is_file()}
+    bucket = Bucket()
+
+    def get_object(**args):
+        value = bucket.objects.get(args['Key'])
+        if value is None:
+            raise ClientError({'Error': {'Code': 'NoSuchKey'}}, 'GetObject')
+        return dict(Body=BytesIO(value['Body']), ContentLength=len(value['Body']),
+                    ETag=hashlib.md5(value['Body']).hexdigest())
+
+    bucket.get_object = get_object
+    def connect(**args):
+        assert args['bucket'] == 'cx-release-local-fake'
+        return bucket
+    monkeypatch.setattr('congress_shared.storage.connect_r2', connect)
+    command = ['--rescue-batch', str(root), '--bucket', 'cx-release-local-fake']
+    cli.main(command)
+    first = json.loads(capsys.readouterr().out)
+    identities = {key: hashlib.sha256(value['Body']).hexdigest() for key,value in bucket.objects.items()}
+    cli.main(command)
+    second = json.loads(capsys.readouterr().out)
+    assert second['created'] == 0 and second['receipts'] == first['receipts']
+    assert identities == {key: hashlib.sha256(value['Body']).hexdigest()
+                          for key,value in bucket.objects.items()}
+    assert before == {p.relative_to(root): hashlib.sha256(p.read_bytes()).hexdigest()
+                      for p in root.rglob('*') if p.is_file()}
+    lines = receipt(bucket, first['receipts'][0])
+    assert len({line['url'].split('/raw/')[1].split('/')[0] for line in lines}) == 2
+    # A different batch at the registered receipt name must fail before any PUT.
+    key = first['receipts'][0]
+    changed = receipt(bucket, key)
+    changed[0]['captures'][0]['sha256'] = '0' * 64
+    bucket.objects[key]['Body'] = gzip.compress(b''.join(json.dumps(line).encode() + b'\n'
+                                                       for line in changed), mtime=0)
+    puts = len(bucket.puts)
+    with pytest.raises(ValueError, match='rescue receipt'):
+        cli.main(command)
+    assert len(bucket.puts) == puts
+
+
+def test_stale_rescue_date_fails_before_connecting(tmp_path, monkeypatch):
+    root = tmp_path / 'application'
+    (root / 'model/registries').mkdir(parents=True)
+    (root / 'model/registries/import-runs.json').write_text(json.dumps([
+        dict(run_id=pipeline_raw.RESCUE_RUN_ID, date='2000-01-01')]))
+    monkeypatch.setattr(cli, 'ROOT', root)
+    source = tmp_path / 'batch'
+    source.mkdir()
+    batch(source, [{'README.md': b'x'}])
+    def refuse(**args):
+        raise AssertionError('stale import connected')
+    monkeypatch.setattr('congress_shared.storage.connect_r2', refuse)
+    with pytest.raises(ValueError, match='actual UTC import date'):
+        cli.main(['--rescue-batch', str(source), '--bucket', 'cx-release-local-fake'])
+
+
+@pytest.mark.parametrize('accepted_before_failure', [False, True])
+def test_rescue_resume_after_a_partitioned_receipt_failure(tmp_path, monkeypatch, accepted_before_failure):
+    from io import BytesIO
+    root = batch(tmp_path, [{'a.json':b'{"x":1}', 'b.json':b'{"x":2}'},
+                            {'a.json':b'{"x":3}', 'b.json':b'{"x":2}'}])
+    monkeypatch.setattr(pipeline_raw, 'RECEIPT_LINES', 2)
+    bucket = Bucket()
+    def get_object(**args):
+        value = bucket.objects.get(args['Key'])
+        if value is None:
+            raise ClientError({'Error':{'Code':'NoSuchKey'}}, 'GetObject')
+        return dict(Body=BytesIO(value['Body']), ContentLength=len(value['Body']),
+                    ETag=hashlib.md5(value['Body']).hexdigest())
+    bucket.get_object = get_object
+    put = bucket.put_object
+    def interrupted(**args):
+        if args['Key'].endswith('-000002.jsonl.gz'):
+            if accepted_before_failure:
+                put(**args)
+            raise OSError('fixture interrupted receipt publication')
+        return put(**args)
+    bucket.put_object = interrupted
+    store = R2Store(bucket, 'cx-release-local-fake')
+    options = dict(writer=WRITER, run_id=pipeline_raw.RESCUE_RUN_ID, day='2026-10-27', resume=True)
+    with pytest.raises(OSError, match='interrupted'):
+        pipeline_raw.archive(store, pipeline_raw.rescue_files(root), **options)
+    before = {key:value['Body'] for key,value in bucket.objects.items()}
+    assert sum(key.startswith('receipts/') for key in before) == (2 if accepted_before_failure else 1)
+    bucket.put_object = put
+    result = pipeline_raw.archive(store, pipeline_raw.rescue_files(root), **options)
+    assert result['created'] == 0 and len(result['receipts']) == 2
+    assert all(bucket.objects[key]['Body'] == body for key,body in before.items())
+    assert len([line for key in result['receipts'] for line in receipt(bucket,key)]) == 4

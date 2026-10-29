@@ -100,12 +100,12 @@ class DispatchTests(unittest.TestCase):
             self.assertIn('IfMatch' if key == module.RAW_KEY else 'IfNoneMatch', options)
         self.assertTrue((self.destination / 'payloads/import-complete.json').exists())
 
-    def test_maintained_reconciliation_to_import_to_publication_evidence(self):
+    def test_maintained_reconciliation_to_raw_import_admission(self):
         client = ConditionalClient()
         result = self.exercise_dispatch(client, external=True)
         self.assertTrue(result['complete'])
-        import dispatch_corpus_recovery_publication as publication
-        verified = publication.verify_import(self.batch, self.destination, readiness=self.readiness_path)
+        from corpus_recovery import admission
+        verified = admission.verify_import(self.batch, self.destination, readiness=self.readiness_path)
         self.assertEqual(verified, result)
         events = [json.loads(row) for row in (self.destination/'events.jsonl').read_text().splitlines()]
         pins = next(row['value'] for row in events if row['event']=='pins')
@@ -116,7 +116,7 @@ class DispatchTests(unittest.TestCase):
         self.assertIn(str(self.readiness_path), pins)
         self.assertIn(str(self.readiness_path.with_name('remote-body-readback.json')), pins)
         self.readiness_path.with_name('remote-body-readback.json').write_text('{}')
-        with self.assertRaises(ValueError):publication.verify_import(self.batch,self.destination,readiness=self.readiness_path)
+        with self.assertRaises(ValueError):admission.verify_import(self.batch,self.destination,readiness=self.readiness_path)
 
     def test_isolated_runtime_uses_shared_control_lock(self):
         import fcntl

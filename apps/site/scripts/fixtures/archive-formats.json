@@ -1,0 +1,249 @@
+{
+  "release_id": "2ebf773da49d326ec6fe75f1dc8fa4060991575cac66676633976e08cd9a4558",
+  "rows": 936580,
+  "expected": "Display labels only: retain all raw option values and counts; known response states stay visible and selectable in their own group, never relabeled as successful document content. No format grouping, query expansion, row exclusion or release changes.",
+  "formats": [
+    {
+      "value": "application/javascript",
+      "count": 1,
+      "label": "JavaScript file",
+      "section": "File formats"
+    },
+    {
+      "value": "application/rss+xml",
+      "count": 1,
+      "label": "RSS feed (XML)",
+      "section": "File formats"
+    },
+    {
+      "value": "application/x-mpegurl",
+      "count": 954,
+      "label": "HLS playlist (MPEGURL)",
+      "section": "File formats"
+    },
+    {
+      "value": "application/x-octet-stream",
+      "count": 198,
+      "label": "Binary file (type unspecified)",
+      "section": "File formats"
+    },
+    {
+      "value": "aspx",
+      "count": 80,
+      "label": "ASP.NET page (ASPX)",
+      "section": "File formats"
+    },
+    {
+      "value": "cfm",
+      "count": 10,
+      "label": "ColdFusion page (CFM)",
+      "section": "File formats"
+    },
+    {
+      "value": "challenge_html",
+      "count": 9,
+      "label": "Access-check page (not document content)",
+      "section": "Recorded response states"
+    },
+    {
+      "value": "csv",
+      "count": 2,
+      "label": "Table (CSV)",
+      "section": "File formats"
+    },
+    {
+      "value": "doc",
+      "count": 99,
+      "label": "Word document (DOC)",
+      "section": "File formats"
+    },
+    {
+      "value": "docx",
+      "count": 179,
+      "label": "Word document (DOCX)",
+      "section": "File formats"
+    },
+    {
+      "value": "html",
+      "count": 140873,
+      "label": "Web page (HTML)",
+      "section": "File formats"
+    },
+    {
+      "value": "html_requires_document_discovery",
+      "count": 5402,
+      "label": "Page awaiting document discovery",
+      "section": "Recorded response states"
+    },
+    {
+      "value": "jpeg",
+      "count": 11,
+      "label": "JPEG image",
+      "section": "File formats"
+    },
+    {
+      "value": "json",
+      "count": 542,
+      "label": "JSON",
+      "section": "File formats"
+    },
+    {
+      "value": "legacy_office",
+      "count": 24,
+      "label": "Legacy Office file",
+      "section": "File formats"
+    },
+    {
+      "value": "m3u8",
+      "count": 3553,
+      "label": "HLS playlist (M3U8)",
+      "section": "File formats"
+    },
+    {
+      "value": "mp3",
+      "count": 1,
+      "label": "MP3 audio",
+      "section": "File formats"
+    },
+    {
+      "value": "mp4",
+      "count": 3,
+      "label": "MP4 video",
+      "section": "File formats"
+    },
+    {
+      "value": "pdf",
+      "count": 292874,
+      "label": "PDF",
+      "section": "File formats"
+    },
+    {
+      "value": "png",
+      "count": 9,
+      "label": "PNG image",
+      "section": "File formats"
+    },
+    {
+      "value": "ppt",
+      "count": 4,
+      "label": "Presentation (PPT)",
+      "section": "File formats"
+    },
+    {
+      "value": "pptx",
+      "count": 3,
+      "label": "Presentation (PPTX)",
+      "section": "File formats"
+    },
+    {
+      "value": "rtf",
+      "count": 2,
+      "label": "Rich text (RTF)",
+      "section": "File formats"
+    },
+    {
+      "value": "text/calendar",
+      "count": 1,
+      "label": "Calendar (iCalendar)",
+      "section": "File formats"
+    },
+    {
+      "value": "text/vtt",
+      "count": 366146,
+      "label": "Captions (WebVTT)",
+      "section": "File formats"
+    },
+    {
+      "value": "txt",
+      "count": 3,
+      "label": "Plain text (TXT)",
+      "section": "File formats"
+    },
+    {
+      "value": "unrecognized_body",
+      "count": 4,
+      "label": "Unrecognized response body",
+      "section": "Recorded response states"
+    },
+    {
+      "value": "video/x-ms-asf",
+      "count": 2,
+      "label": "Windows Media (ASF)",
+      "section": "File formats"
+    },
+    {
+      "value": "video/x-ms-wmv",
+      "count": 5,
+      "label": "Windows Media video (WMV)",
+      "section": "File formats"
+    },
+    {
+      "value": "video/x-ms-wvx",
+      "count": 34,
+      "label": "Windows Media playlist (WVX)",
+      "section": "File formats"
+    },
+    {
+      "value": "xls",
+      "count": 8,
+      "label": "Spreadsheet (XLS)",
+      "section": "File formats"
+    },
+    {
+      "value": "xlsx",
+      "count": 2,
+      "label": "Spreadsheet (XLSX)",
+      "section": "File formats"
+    },
+    {
+      "value": "xml",
+      "count": 117101,
+      "label": "XML",
+      "section": "File formats"
+    },
+    {
+      "value": "zip",
+      "count": 8334,
+      "label": "ZIP archive",
+      "section": "File formats"
+    },
+    {
+      "value": "zip_or_office",
+      "count": 106,
+      "label": "ZIP or Office file (unconfirmed)",
+      "section": "File formats"
+    }
+  ],
+  "additional_formats": [
+    {
+      "value": "text",
+      "label": "Plain text",
+      "section": "File formats"
+    },
+    {
+      "value": "vtt",
+      "label": "Captions (VTT)",
+      "section": "File formats"
+    },
+    {
+      "value": "image",
+      "label": "Image",
+      "section": "File formats"
+    },
+    {
+      "value": "other",
+      "label": "Other file type",
+      "section": "File formats"
+    },
+    {
+      "value": "empty",
+      "label": "Empty response",
+      "section": "Recorded response states"
+    },
+    {
+      "value": "warc",
+      "label": "Web archive (WARC)",
+      "section": "File formats"
+    }
+  ]
+}

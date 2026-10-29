@@ -13,6 +13,7 @@ import pyarrow.parquet as pq
 import pytest
 
 from congress_api.retention.docspec import NativeDatasets
+from native_test_helpers import native_test_util_binary
 
 
 def wait_for(condition, *, seconds=15):
@@ -36,7 +37,8 @@ def running(pid, workspace):
 @pytest.mark.skipif(os.name != 'posix', reason='exercise SIGKILL and Unix child process ownership')
 @pytest.mark.parametrize('phase', ['idle', 'processing'])
 def test_actual_owner_death_stops_intake_and_drains_admitted_work(tmp_path, phase):
-    binary = os.environ.get('DOCSPEC_BINARY') or shutil.which('docspec')
+    binary = (native_test_util_binary() if phase == 'processing'
+              else os.environ.get('DOCSPEC_BINARY') or shutil.which('docspec'))
     if not binary:
         pytest.skip('Set DOCSPEC_BINARY to the owned-stdin-eof native candidate')
     marker, resume, ready = tmp_path / 'paused', tmp_path / 'resume', tmp_path / 'owner-ready.json'

@@ -61,7 +61,7 @@ def test_identities_round_trip_from_a_review_publication_and_refuse_mismatches()
 
 def test_committed_identities_name_the_published_review_pin():
     identities = binding.load_identities()
-    descriptor = __import__('json').loads((Path(__file__).resolve().parents[3] / 'apps/site/document-review-publication.json').read_text())
+    descriptor = __import__('json').loads(binding.DESCRIPTOR.read_text())
     assert identities['review_sha256'] == descriptor['review_sha256']
     assert len(identities['rows']) == descriptor['groups']
     assert len({row['document_id'] for row in identities['rows']}) == len(identities['rows'])

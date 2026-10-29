@@ -1031,7 +1031,21 @@ class NativeDatasets:
         cache_entry = (release_path, str(pin.get('id')), pin_key)
         if cache_entry in self._verified_pins:
             return
-        if host.request('GET', release_path, deadline=deadline) != pin:
+        for attempt in range(3):
+            try:
+                actual = host.request('GET', release_path, deadline=deadline)
+                break
+            except DocSpecFailure as error:
+                # This exact-pin GET has no write or stream-delivery effects.
+                # Retry the observed upstream transport failure within the same
+                # request deadline; schema, identity and native refusals still fail.
+                delay = 0.25 * 2 ** attempt
+                if (attempt == 2 or error.status_code not in (None, 500, 502, 503, 504)
+                        or 'Failed to execute http request' not in error.stderr
+                        or time.monotonic() + delay >= deadline):
+                    raise
+                time.sleep(delay)
+        if actual != pin:
             raise ValueError('Native release differs from the selected exact pin')
         if len(self._verified_pins) < 8192:
             self._verified_pins.add(cache_entry)

@@ -7,7 +7,10 @@ never resent until its original outcome has been reconciled.
 import hashlib
 import json
 import os
+from collections import deque
+from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path, PurePosixPath
+from tempfile import TemporaryDirectory
 import threading
 import uuid
 
@@ -31,6 +34,8 @@ MAX_STATE_BYTES = 128 * 1024**2  # Includes the retained ~9.6MB accepted-recover
 MAX_EVENT_BYTES = 1024**2
 MAX_JOURNAL_BYTES = 256 * 1024**2
 JOURNAL_CHECKPOINT_EVENTS = 1024
+JOURNAL_RESTORE_WORKERS = 6
+MAX_PENDING_ACKS = 6  # v2 wire bound, sized for the maintained six-worker uploader.
 
 
 def bounded_json(path):
@@ -192,19 +197,26 @@ class Continuation:
             fsync_dir=False,
         )
 
-    def accept_saved(self, source, name, *, proof):
-        """Retain accepted evidence without rewriting an already synced request."""
+    def accept_saved(self, source, name, *, proof, fsync=False):
+        """Retain accepted evidence by linking its unchanged saved file."""
         source, path = self.saved_path(source), self.saved_path(name)
         if not isinstance(proof, VerifiedFile):
             raise ValueError('Invalid publication saved request')
         proof.require(source)
         path.parent.mkdir(parents=True, exist_ok=True)
+        if fsync and not path.exists():
+            # Restore staging is disposable until the whole prefix is valid.
+            # Sync it once before retaining a new accepted name; existing equal
+            # evidence already passed its original durable save.
+            with source.open('rb') as stream:
+                os.fsync(stream.fileno())
         try:
             # Both names stay available; uncertain requests never reach this step.
             # Atomic link creation also refuses to replace competing evidence.
             os.link(source, path)
         except FileExistsError:
-            if path.is_symlink() or path.read_bytes() != source.read_bytes():
+            if (path.is_symlink() or path.stat().st_size != proof.size_bytes
+                    or sha256(path) != proof.sha256):
                 raise ValueError('Publication artifact changed: ' + name)
 
     def phase(self, name, action, *, files, inventory=None):
@@ -418,6 +430,8 @@ class DurableJournal:
 
     Each event binds the preceding payload digest. Restoring an attempt reads the
     whole bounded prefix, validates the chain, and reconstructs local write state.
+    New v2 events carry up to six acknowledgments; v1 history stays readable.
+    Lost pending acknowledgments retain their individual pre-PUT intents.
     The journal's guarded immutable PUT has no recursive journal callback.
     """
     def __init__(self, client, bucket, continuation, attempt, binding, *, resume=False):
@@ -431,7 +445,7 @@ class DurableJournal:
         self.sequence = 0
         self.previous = None
         self.total_bytes = 0
-        self.pending_verified = None
+        self.pending_verified = []
         self.checkpoint_sequence = 0
         self.lock = threading.RLock()
         self.writer = GuardedPublicationClient(client, guard=lambda: None,
@@ -462,50 +476,84 @@ class DurableJournal:
         keys.sort()
         if not keys:
             raise MissingPublicationJournal('Publication attempt journal is missing')
-        # Reconstruct write state from the full accepted prefix, not stale local
-        # writes. No checkpoint or accepted journal file is changed until every
-        # event has passed version/chain/binding/transition and byte limits.
-        restored = dict(self.continuation.value, writes={})
-        previous, total, accepted = None, 0, []
         for index, key in enumerate(keys):
             if key != self.prefix + f'{index:08d}.json':
                 raise ValueError('Publication attempt journal has a gap or foreign object')
-            response = self.client.get_object(Bucket=self.bucket, Key=key)
-            with response['Body'] as stream:
-                declared = response.get('ContentLength')
-                if type(declared) is not int or not 0 <= declared <= MAX_EVENT_BYTES:
-                    raise ValueError('Publication journal exceeds event byte limit')
-                if total + declared > MAX_JOURNAL_BYTES:
-                    raise ValueError('Publication journal exceeds total byte limit')
-                raw = stream.read(min(MAX_EVENT_BYTES, MAX_JOURNAL_BYTES - total) + 1)
-            total += len(raw)
-            if len(raw) > MAX_EVENT_BYTES or total > MAX_JOURNAL_BYTES:
-                raise ValueError('Publication journal exceeds byte limit')
-            if len(raw) != declared:
-                raise ValueError('Incomplete publication journal read')
-            event = json.loads(raw)
-            if not isinstance(event, dict) or type(event.get('version')) is not int or event['version'] != 1:
-                raise ValueError('Unsupported publication journal version')
-            if (type(event.get('sequence')) is not int or event['sequence'] != index or event.get('previous') != previous
-                    or not isinstance(event.get('nonce'), str) or len(event['nonce']) != 32
-                    or any(c not in '0123456789abcdef' for c in event['nonce'])):
-                raise ValueError('Publication attempt journal chain or nonce differs')
-            if not isinstance(event.get('value'), dict):
-                raise ValueError('Malformed publication event value')
-            if index == 0 and (event.get('event') != 'attempt_started' or event.get('value', {}).get('binding') != self.binding):
-                raise ValueError('Publication attempt preparation binding differs')
-            if 'verified_write' in event:
-                apply_event(restored, 'publication_write_verified', event['verified_write'])
-            apply_event(restored, event.get('event'), event.get('value'))
-            accepted.append(raw)
-            previous = hashlib.sha256(raw).hexdigest()
-        validate_state(restored)
-        if len(canonical_json_bytes(restored, ensure_ascii=True)) + 1 > MAX_STATE_BYTES:
-            raise ValueError('Publication continuation exceeds state byte limit')
-        # Local event files are retained evidence. Only derived continuation state
-        # uses one serialized/fsynced checkpoint after complete prefix validation.
-        for index, raw in enumerate(accepted):
-            self.continuation.save(f'journal/{index:08d}.json', raw)
+        # Fetch a fixed window, not one future per event. Workers reserve declared
+        # bytes before reading so concurrent staging cannot exceed the journal
+        # budget. Only small file receipts, not the raw prefix, remain in memory.
+        reserved, budget_lock = 0, threading.Lock()
+        with TemporaryDirectory(prefix='.journal-restore-', dir=self.continuation.root) as directory:
+            def fetch(index):
+                nonlocal reserved
+                response = self.client.get_object(Bucket=self.bucket, Key=keys[index])
+                with response['Body'] as stream:
+                    declared = response.get('ContentLength')
+                    if type(declared) is not int or not 0 <= declared <= MAX_EVENT_BYTES:
+                        raise ValueError('Publication journal exceeds event byte limit')
+                    with budget_lock:
+                        if reserved + declared > MAX_JOURNAL_BYTES:
+                            raise ValueError('Publication journal exceeds total byte limit')
+                        reserved += declared
+                    raw = stream.read(declared + 1)
+                if len(raw) > MAX_EVENT_BYTES:
+                    raise ValueError('Publication journal exceeds byte limit')
+                if len(raw) != declared:
+                    raise ValueError('Incomplete publication journal read')
+                proof = write_atomic_bytes(Path(directory) / f'{index:08d}.json', raw, fsync=False)
+                return proof, json.loads(raw)
+
+            # Reconstruct privately in sequence order. No accepted journal file or
+            # checkpoint changes until the entire remote prefix has been checked.
+            restored = dict(self.continuation.value, writes={})
+            previous, total, accepted = None, 0, []
+            with ThreadPoolExecutor(max_workers=JOURNAL_RESTORE_WORKERS) as pool:
+                submitted = min(JOURNAL_RESTORE_WORKERS, len(keys))
+                pending = deque(pool.submit(fetch, index) for index in range(submitted))
+                try:
+                    for index in range(len(keys)):
+                        proof, event = pending.popleft().result()
+                        proof.require(proof.path)
+                        total += proof.size_bytes
+                        if not isinstance(event, dict) or type(event.get('version')) is not int or event['version'] not in (1, 2):
+                            raise ValueError('Unsupported publication journal version')
+                        if (type(event.get('sequence')) is not int or event['sequence'] != index or event.get('previous') != previous
+                                or not isinstance(event.get('nonce'), str) or len(event['nonce']) != 32
+                                or any(c not in '0123456789abcdef' for c in event['nonce'])):
+                            raise ValueError('Publication attempt journal chain or nonce differs')
+                        if not isinstance(event.get('value'), dict):
+                            raise ValueError('Malformed publication event value')
+                        if index == 0 and (event.get('event') != 'attempt_started' or event.get('value', {}).get('binding') != self.binding):
+                            raise ValueError('Publication attempt preparation binding differs')
+                        if event['version'] == 1:
+                            if 'verified_writes' in event:
+                                raise ValueError('Invalid publication journal acknowledgment group')
+                            acknowledgments = [event['verified_write']] if 'verified_write' in event else []
+                        else:
+                            acknowledgments = event.get('verified_writes', [])
+                            if ('verified_write' in event or not isinstance(acknowledgments, list)
+                                    or len(acknowledgments) > MAX_PENDING_ACKS):
+                                raise ValueError('Invalid publication journal acknowledgment group')
+                        for acknowledgment in acknowledgments:
+                            apply_event(restored, 'publication_write_verified', acknowledgment)
+                        apply_event(restored, event.get('event'), event.get('value'))
+                        accepted.append(proof)
+                        previous = proof.sha256
+                        if submitted < len(keys):
+                            pending.append(pool.submit(fetch, submitted))
+                            submitted += 1
+                    validate_state(restored)
+                    if len(canonical_json_bytes(restored, ensure_ascii=True)) + 1 > MAX_STATE_BYTES:
+                        raise ValueError('Publication continuation exceeds state byte limit')
+                finally:
+                    for future in pending:
+                        future.cancel()
+            # All workers have quiesced. Publish accepted evidence one event at a
+            # time; the spool's custody receipts refuse changed staging files.
+            for index, proof in enumerate(accepted):
+                proof.require(proof.path)
+                source = str(proof.path.relative_to(self.continuation.root.resolve()))
+                self.continuation.accept_saved(source, f'journal/{index:08d}.json', proof=proof, fsync=True)
         self.continuation.value['writes'] = restored['writes']
         self.continuation.flush()
         self.previous, self.sequence, self.total_bytes = previous, len(keys), total
@@ -515,17 +563,38 @@ class DurableJournal:
         with self.lock:
             self.continuation.checked_event(event, value)
             if event == 'publication_write_verified':
-                # Keep one fact until the next append. Its original durable intent
-                # supports full-body reconciliation after runner loss. Consecutive
-                # verifications flush the older fact even during parallel uploads.
-                if self.pending_verified is not None:
-                    self._append('publication_write_verified', self.pending_verified)
-                    self.pending_verified = None
+                # Every fact already has its own durable pre-PUT intent. Bound
+                # the acknowledgment group by count and its eventual wire size;
+                # runner loss leaves at most this group needing reconciliation.
+                acknowledgment = dict(value)
+                candidate = self.pending_verified + [acknowledgment]
+                flush_group = (len(candidate) > MAX_PENDING_ACKS
+                    or len(self._encoded_event('publication_acknowledgments', {}, candidate)) > MAX_EVENT_BYTES)
+                if len(self._encoded_event('publication_acknowledgments', {}, [acknowledgment],
+                                           offset=int(flush_group))) > MAX_EVENT_BYTES:
+                    raise ValueError('Publication journal exceeds event/total byte limit')
+                if flush_group:
+                    self._append('publication_acknowledgments', {}, verified_writes=self.pending_verified)
+                    self.pending_verified.clear()
                 self.continuation.record(event, value, checkpoint=False)
-                self.pending_verified = dict(value)
+                self.pending_verified.append(acknowledgment)
             else:
-                self._append(event, value, verified_write=self.pending_verified)
-                self.pending_verified = None
+                if (self.pending_verified
+                        and len(self._encoded_event(event, value, self.pending_verified)) > MAX_EVENT_BYTES):
+                    # A legal event must not fail just because acknowledgments
+                    # share its record. Admit both encoded records before either
+                    # PUT, then flush the group and retain the individual intent.
+                    entries = [('publication_acknowledgments', {}, self.pending_verified), (event, value, [])]
+                    sizes = [len(self._encoded_event(name, detail, acknowledgments, offset=index))
+                             for index, (name, detail, acknowledgments) in enumerate(entries)]
+                    if self.sequence + 2 > MAX_EVENTS:
+                        raise ValueError('Publication journal exceeds event count limit')
+                    if max(sizes) > MAX_EVENT_BYTES or self.total_bytes + sum(sizes) > MAX_JOURNAL_BYTES:
+                        raise ValueError('Publication journal exceeds event/total byte limit')
+                    self._append('publication_acknowledgments', {}, verified_writes=self.pending_verified)
+                    self.pending_verified.clear()
+                self._append(event, value, verified_writes=self.pending_verified)
+                self.pending_verified.clear()
                 self.continuation.record(event, value, checkpoint=False)
             # The cloud chain owns write recovery, including uncertain intents.
             # continuation.json is a derived cache. Phase acceptance and direct
@@ -535,17 +604,24 @@ class DurableJournal:
                 self.continuation.flush()
                 self.checkpoint_sequence = self.sequence
 
-    def _append(self, event, value, *, verified_write=None):
+    def _encoded_event(self, event, value, verified_writes=(), *, nonce=None, offset=0):
+        # Fixed-width placeholders make admission sizes exact without allocating
+        # a sequence/nonce or mutating the remote chain. v1 readers fail closed on
+        # v2 records; v1 history remains readable without rewriting its bytes.
+        item = {'version': 2, 'sequence': self.sequence + offset,
+                'previous': self.previous if offset == 0 else '0' * 64,
+                'nonce': nonce or '0' * 32, 'event': event, 'value': value}
+        if verified_writes:
+            item['verified_writes'] = list(verified_writes)
+        return json.dumps(item, sort_keys=True, separators=(',', ':')).encode()
+
+    def _append(self, event, value, *, verified_writes=()):
         # Called only while record owns the journal lock. Advance nothing until
         # conditional creation and accepted local evidence both succeed.
         if self.sequence >= MAX_EVENTS:
             raise ValueError('Publication journal exceeds event count limit')
         nonce = uuid.uuid4().hex
-        item = {'version': 1, 'sequence': self.sequence, 'previous': self.previous,
-                'nonce': nonce, 'event': event, 'value': value}
-        if verified_write is not None:
-            item['verified_write'] = verified_write
-        raw = json.dumps(item, sort_keys=True, separators=(',', ':')).encode()
+        raw = self._encoded_event(event, value, verified_writes, nonce=nonce)
         if len(raw) > MAX_EVENT_BYTES or self.total_bytes + len(raw) > MAX_JOURNAL_BYTES:
             raise ValueError('Publication journal exceeds event/total byte limit')
         key = self.prefix + f'{self.sequence:08d}.json'
@@ -558,4 +634,4 @@ class DurableJournal:
         self.continuation.accept_saved(intent_name, f'journal/{self.sequence:08d}.json', proof=request_proof)
         self.sequence += 1
         self.total_bytes += len(raw)
-        self.previous = hashlib.sha256(raw).hexdigest()
+        self.previous = request_proof.sha256
