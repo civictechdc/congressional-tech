@@ -61,6 +61,10 @@ def test_raw_lake_model_exports_one_group_and_keeps_download_names(tmp_path):
     assert detail[0]['alternates'][0]['format']=='html'
     assert detail[0]['alternates'][0]['size']==len(html)
     assert pq.read_table(tmp_path/'release/url_variants.parquet').to_pylist()==[dict(canonical_url='https://fixture.test/report.pdf',variant_url='https://fixture.test/mirror.pdf')]
+    # These reused parser inputs have finished all consumers before body joins.
+    model_steps={step['name']:step for step in json.loads((tmp_path/'model/job.json').read_text())['steps']}
+    assert 'sniff_observations' in model_steps['sniff_facts'].get('release_after',[])
+    assert 'pinned_readings' in model_steps['page_facts'].get('release_after',[])
     members=pq.read_table(tmp_path/'model/evidence/source_members.parquet').to_pylist()
     assert len({m['source_id'] for m in members})==3
     assert {m['effective_filename'] for m in members}=={'report.html','report.pdf','download report.pdf'}
