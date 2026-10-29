@@ -20,9 +20,10 @@ KNOWN_HTTP_DEFECT='known_defect_mapping_52120d49_http_alias'
 KNOWN_INLINE_DEFECT='known_defect_mapping_52120d49_inline_payload_outcome'
 MAPPING_52120D49='52120d49aa771c10105d87af6440b3d2a0b0c297aca08a0dac1c654205464d4b'
 HTTP_CHANGE_KINDS={'unchanged','null_to_value','value_to_null','value_changed'}
-CLASSIFICATIONS={'old_pipeline_error','rule_change','accepted_derived_fact_loss',KNOWN_HTTP_DEFECT,KNOWN_INLINE_DEFECT}
+PROVIDER_STATUS='provider_transport_status_replaced_by_publisher_status'
+CLASSIFICATIONS={PROVIDER_STATUS,'old_pipeline_error','rule_change','accepted_derived_fact_loss',KNOWN_HTTP_DEFECT,KNOWN_INLINE_DEFECT}
 OWNER_FIELDS={'version','mapping_digest','capture_pin','comparison_report','comparison_terminal','changed_fields','groups'}
-GROUP_FIELDS={'id',*LABELS,'count','decision','classification','reason','evidence'}
+GROUP_FIELDS={'id',*LABELS,'count','affected_count','decision','classification','reason','evidence'}
 
 
 def _require(value,message):
@@ -79,10 +80,13 @@ def validate_owner_record(value,*,mapping_digest,capture_pin,comparison_report,c
         key=tuple(group[name] for name in LABELS)
         _require(key not in keys,'Overlapping owner group predicates');keys.add(key)
         _require(type(group['count']) is int and group['count']>0,'Owner group count must be a positive integer')
+        _require(type(group['affected_count']) is int and 0<group['affected_count']<=group['count'],'Affected count must be a positive integer within the full group count')
         total+=group['count']
         _require(isinstance(group['decision'],str) and group['decision'] in DECISIONS,'Invalid owner decision')
         _require(group['decision']=='accept_new','Owner group remains blocked')
         _require(isinstance(group['classification'],str) and group['classification'] in CLASSIFICATIONS,'Invalid owner classification')
+        if group['classification']==PROVIDER_STATUS:
+            _require(group['http_change_kind']=='value_changed','Provider transport status replacement requires value_changed')
         if group['classification'] in (KNOWN_HTTP_DEFECT,KNOWN_INLINE_DEFECT):
             _require(mapping_digest==MAPPING_52120D49,'Known defect tag requires mapping 52120d49')
         if group['classification']==KNOWN_HTTP_DEFECT:
