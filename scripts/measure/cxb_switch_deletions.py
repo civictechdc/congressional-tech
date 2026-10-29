@@ -20,7 +20,7 @@ DC = 'packages/docspec_client/src/docspec_client/'
 SITE = 'apps/site/src/components/explorer/reader/filenames/'
 PUBLICATION_CLIENT_KEEP = ['require_publication_client','publish_manifest_pointer','VerifiedTransfer']
 PUBLICATION_CLIENT_KEEP_IMPORTS = ['dataclasses.dataclass','hashlib']
-RAW_READER_KEEP = ['_ReadyPrefetch','_raw_pin','_stream_read_attempts','_stream_retry_delay',
+RAW_READER_KEEP = ['R2GetTransportExhausted','_ReadyPrefetch','_raw_pin','_stream_read_attempts','_stream_retry_delay',
     '_read_stream','_throttle_delay','_configure_retries','R2Store.__init__',
     'R2Store._write_manifest_disk_cache','R2Store._immutable_cache_path',
     'R2Store.prefetch_immutable_ready','R2Store.prefetch_immutable','R2Store.read','R2Store._read',
