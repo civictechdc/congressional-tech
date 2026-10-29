@@ -94,7 +94,11 @@ def test_owner_record_refuses_incomplete_or_unbound_decisions(tmp_path,case):
         for group in owner['groups']:del group['http_change_kind']
     elif case=='invalid_http_kind':g['http_change_kind']='loss_or_change'
     elif case=='false_defect_tag':g['classification']='known_defect_mapping_52120d49_http_alias'
-    elif case=='wrong_defect_mapping','missing_affected_count','zero_affected_count','boolean_affected_count','excess_affected_count':
+    elif case=='missing_affected_count':del g['affected_count']
+    elif case=='zero_affected_count':g['affected_count']=0
+    elif case=='boolean_affected_count':g['affected_count']=True
+    elif case=='excess_affected_count':g['affected_count']=2
+    elif case=='wrong_defect_mapping':
         g['classification']='known_defect_mapping_52120d49_http_alias';g['http_change_kind']='value_to_null';owner['mapping_digest']='b'*64
     with pytest.raises(ValueError):validate(owner,report,terminal,changed)
 
