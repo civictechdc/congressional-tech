@@ -29,7 +29,7 @@ def fixture(tmp_path,group_count=97):
     for i in range(group_count):
         labels=dict(changed_fields='bytes' if i==0 else 'bytes,family',old_family=None if i==0 else "f'"+str(i),new_family=None,
                     old_fidelity='saved-record',new_fidelity=None,old_reference_kind='metadata',new_reference_kind=None,retrieved_at_reason='unchanged',http_change_kind='unchanged')
-        groups.append(dict(id='fixture-'+str(i),**labels,count=1,decision='accept_new',classification='old_pipeline_error',
+        groups.append(dict(id='fixture-'+str(i),**labels,count=1,affected_count=1,decision='accept_new',classification='old_pipeline_error',
                            reason='Explicit fixture-only decision',evidence=[pin(evidence)]))
         row={side+'_'+name:None for name in FIELDS for side in ('old','new')}
         row.update({k:v for k,v in labels.items() if k not in ('changed_fields','http_change_kind')})
@@ -68,7 +68,7 @@ def test_owner_record_is_complete_exact_and_normalizes_ordered_field_array(tmp_p
 @pytest.mark.parametrize('case',[
     'missing_group','overlap','duplicate_id','wrong_count','bad_mapping','bad_capture','bad_report_pin',
     'bad_terminal_pin','bad_changed_pin','bad_evidence','blocked','bad_decision','bad_classification',
-    'missing_null','missing_reason','empty_evidence','wrong_order','unknown_field','boolean_count','missing_http_kind','invalid_http_kind','false_defect_tag','wrong_defect_mapping'])
+    'missing_null','missing_reason','empty_evidence','wrong_order','unknown_field','boolean_count','missing_http_kind','invalid_http_kind','false_defect_tag','wrong_defect_mapping','missing_affected_count','zero_affected_count','boolean_affected_count','excess_affected_count'])
 def test_owner_record_refuses_incomplete_or_unbound_decisions(tmp_path,case):
     report,terminal,changed,owner,_=fixture(tmp_path);g=owner['groups'][0]
     if case=='missing_group':owner['groups'].pop()
@@ -94,7 +94,7 @@ def test_owner_record_refuses_incomplete_or_unbound_decisions(tmp_path,case):
         for group in owner['groups']:del group['http_change_kind']
     elif case=='invalid_http_kind':g['http_change_kind']='loss_or_change'
     elif case=='false_defect_tag':g['classification']='known_defect_mapping_52120d49_http_alias'
-    elif case=='wrong_defect_mapping':
+    elif case=='wrong_defect_mapping','missing_affected_count','zero_affected_count','boolean_affected_count','excess_affected_count':
         g['classification']='known_defect_mapping_52120d49_http_alias';g['http_change_kind']='value_to_null';owner['mapping_digest']='b'*64
     with pytest.raises(ValueError):validate(owner,report,terminal,changed)
 
@@ -141,8 +141,9 @@ def http_fixture(tmp_path):
         for side in ('old','new'):
             for name in FIELDS:row[side+'_'+name]=None
         row.update(old_fidelity='saved-record',new_fidelity='saved-record',old_http_status=200,new_http_status=None if i==0 else 403,http_change_kind='unchanged')
+    rows.append(dict(rows[0]));owner['groups'][0].update(count=2,affected_count=1)
     pq.write_table(pa.Table.from_pylist(rows,schema=pq.read_schema(changed)),changed)
-    r=json.loads(report.read_text());r['outputs'][0].update(sha256=pin(changed)['sha256'],size=pin(changed)['size']);write(report,r)
+    r=json.loads(report.read_text());r['outputs'][0].update(sha256=pin(changed)['sha256'],size=pin(changed)['size'],rows=3);r['counts']['unexplained']=3;write(report,r)
     owner['changed_fields']=pin(changed);owner['comparison_report']=pin(report)
     assert all(owner['groups'][0][key]==owner['groups'][1][key] for key in LABELS if key!='http_change_kind')
     return report,terminal,changed,owner,evidence
@@ -151,12 +152,12 @@ def http_fixture(tmp_path):
 def test_legacy_eight_key_combined_http_bucket_refuses_before_native(tmp_path):
     from viewer_publication.archive_comparison_acceptance import validate_owner_record
     report,terminal,changed,owner,_=http_fixture(tmp_path)
-    owner['groups']=[dict(owner['groups'][0],count=2)]
+    owner['groups']=[dict(owner['groups'][0],count=3)]
     del owner['groups'][0]['http_change_kind']
     owner['groups'][0]['classification']='old_pipeline_error'
     with pytest.raises(ValueError):
         validate_owner_record(owner,mapping_digest=MAPPING,capture_pin=CAPTURE,comparison_report=pin(report),
-            comparison_terminal=pin(terminal),changed_fields=pin(changed),unexplained=2)
+            comparison_terminal=pin(terminal),changed_fields=pin(changed),unexplained=3)
     assert not (tmp_path/'never-created').exists()
 
 
@@ -172,7 +173,7 @@ def test_native_exact_null_safe_coverage_and_receipt_rechecks_evidence(tmp_path)
     after=changed.stat()
     assert (before.st_ino,before.st_nlink,before.st_ctime_ns)==(after.st_ino,after.st_nlink,after.st_ctime_ns)
     assert receipt['status']=='accepted_with_owner_dispositions'
-    assert receipt['counts']==dict(actual_groups=2,owner_groups=2,unexplained=2,mismatches=0)
+    assert receipt['counts']==dict(actual_groups=2,owner_groups=2,unexplained=3,mismatches=0)
     assert json.loads(report.read_text())['counts']['owner_gate'] is True
     selected=pin(tmp_path/'work/acceptance.json')
     assert validate_receipt(selected,expected_mapping_digest=MAPPING,capture_pin=CAPTURE)==receipt
@@ -211,3 +212,24 @@ def test_known_defect_wildcard_is_not_an_approval_classification(tmp_path):
     report,terminal,changed,owner,_=fixture(tmp_path)
     owner['groups'][0]['classification']='known_defect_mapping_52120d49_anything'
     with pytest.raises(ValueError):validate(owner,report,terminal,changed)
+
+
+@pytest.mark.parametrize('count,affected',[(745932,485),(2435,487)])
+def test_known_defect_affected_count_is_audit_not_group_population(tmp_path,count,affected):
+    from viewer_publication.archive_comparison_acceptance import validate_owner_record
+    report,terminal,changed,owner,_=fixture(tmp_path)
+    group=owner['groups'][0]
+    group.update(count=count,affected_count=affected,classification='known_defect_mapping_52120d49_inline_payload_outcome',
+        reason=f'{affected} rows have the documented inline defect; the remaining {count-affected} rows are expected fidelity/context or explicit404 outcomes, as the pinned fixture evidence states.')
+    result=validate_owner_record(owner,mapping_digest=MAPPING,capture_pin=CAPTURE,comparison_report=pin(report),
+        comparison_terminal=pin(terminal),changed_fields=pin(changed),unexplained=count+96)
+    assert result['groups'][0]['count']==count and result['groups'][0]['affected_count']==affected
+
+
+@pytest.mark.parametrize('kind',['value_changed','unchanged','null_to_value','value_to_null'])
+def test_provider_transport_status_classification_requires_value_changed(tmp_path,kind):
+    report,terminal,changed,owner,_=fixture(tmp_path)
+    owner['groups'][0].update(http_change_kind=kind,classification='provider_transport_status_replaced_by_publisher_status')
+    if kind=='value_changed':assert validate(owner,report,terminal,changed)['groups'][0]['classification']=='provider_transport_status_replaced_by_publisher_status'
+    else:
+        with pytest.raises(ValueError):validate(owner,report,terminal,changed)
