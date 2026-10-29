@@ -34,3 +34,5 @@ Only after all six cohorts are `equivalent`:
 ```
 
 The full command independently checks every cohort, then writes 118 groups into fresh local table `d1_record_shapes_52120d49.captures`, expecting 4,147,132 rows from all 2,292 receipts. Its comparison and downstream acceptance remain separate gates. Original failed runs and their controls remain intact; these commands reuse none of their work or table locations. No corpus proof or full job was launched during preparation.
+
+The separately sealed [current-generation downstream commands](continuations-52120d49.md) prepare the comparator, fresh post-D2 provenance inventory and independent D3 computation. They supersede the older 3fc8 continuation controls.
