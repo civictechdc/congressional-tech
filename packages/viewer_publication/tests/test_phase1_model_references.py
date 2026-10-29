@@ -53,11 +53,19 @@ def test_native_references_preserve_occurrences_without_inventing_acquisitions(t
             recovered_filename='Utf8',kind='Utf8'),
         json_input(tmp_path,'url_variants',[],canonical_url='Utf8',variant_url='Utf8'),
         json_input(tmp_path,'publisher_links',[],source_id='Utf8',context_url='Utf8'),
-        json_input(tmp_path,'page_facts',[],body_sha='Binary',status='Utf8',named_meetings=list_of('Int64'))]
+        json_input(tmp_path,'page_facts',[],body_sha='Binary',status='Utf8',named_meetings=list_of('Int64')),
+        json_input(tmp_path,'resolved_links',[],target_url='Utf8')]
     steps=[dict(name='capture_evidence',sql="""SELECT * EXCLUDE(body_hex,is_real_file,record_role),
             decode(body_hex,'hex') AS sha256 FROM fixture_captures"""),
         dict(name='record_roles',sql='SELECT receipt_key,receipt_line,capture_index,is_real_file,record_role FROM fixture_captures')]
     steps += source_steps()
+    steps += [dict(name='captures',sql='SELECT * FROM capture_evidence'),
+        dict(name='good_fetches',sql='SELECT receipt_key,receipt_line,capture_index FROM fixture_captures WHERE is_real_file'),
+        dict(name='source_addresses',sql=(ROOT/'model/sql/source-addresses.sql').read_text(),materialize=True),
+        dict(name='url_inputs',sql=(ROOT/'model/sql/model-url-inputs.sql').read_text(),materialize=True),
+        dict(name='url_normalized',sql=(ROOT/'model/sql/url-normalized.sql').read_text(),materialize=True),
+        dict(name='model_url_keys',sql=(ROOT/'model/sql/url-keys.sql').read_text(),materialize=True),
+        dict(name='source_endpoints',sql=(ROOT/'model/sql/source-endpoints.sql').read_text(),materialize=True)]
     for name in ('addresses','meetings'):
         steps.append(dict(name='source_annotation_'+name,
             sql=(ROOT/'model/sql'/('source-annotations-'+name+'.sql')).read_text(),materialize=True))
@@ -69,7 +77,9 @@ def test_native_references_preserve_occurrences_without_inventing_acquisitions(t
             dict(name='files',sql="""SELECT source_id,body_sha,filename,source_url,
                 cast(first_fetched AS VARCHAR) AS first_fetched,
                 cast(last_fetched AS VARCHAR) AS last_fetched FROM source_files ORDER BY source_id"""),
-            dict(name='meetings',sql='SELECT source_id,meeting_keys FROM source_annotation_meetings ORDER BY source_id')])
+            dict(name='meetings',sql='SELECT source_id,meeting_keys FROM source_annotation_meetings ORDER BY source_id'),
+            dict(name='invalid_keys',sql='SELECT count(*) AS n FROM model_url_keys WHERE error IS NOT NULL'),
+            dict(name='invented_endpoints',sql="SELECT count(*) AS n FROM source_endpoints WHERE endpoint_key LIKE '%HMKP%'")])
     occurrences={item['receipt_line']:item for item in result['occurrences']}
     assert set(occurrences)==set(range(1,11))|malformed_lines
     owned=occurrences[1]['source_id']
@@ -94,3 +104,6 @@ def test_native_references_preserve_occurrences_without_inventing_acquisitions(t
     meetings={item['source_id']:item['meeting_keys'] for item in result['meetings']}
     assert meetings[owned]==['123','456']
     assert '999' not in meetings[owned] and '888' not in meetings[owned]
+
+    assert result['invalid_keys']==[dict(n=0)]
+    assert result['invented_endpoints']==[dict(n=0)]
