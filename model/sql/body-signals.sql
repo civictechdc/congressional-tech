@@ -10,6 +10,9 @@ WITH thresholds AS (
     SELECT kind, pattern FROM page_signals
     WHERE kind IN ('source_record_root', 'error_word', 'body_marker', 'wrapper_marker', 'feed_root')
       AND pattern IS NOT NULL
+), facts AS (
+    SELECT body_sha,status,xml_root,title,heading,text_head,text_bytes,link_count,link_text_bytes
+    FROM page_facts
 )
 SELECT f.body_sha, max(f.status) AS status,
     bool_or(CASE WHEN r.kind = 'source_record_root'
@@ -26,5 +29,5 @@ SELECT f.body_sha, max(f.status) AS status,
     max(f.link_count) >= max(t.listing_links)
         AND 100 * cast(max(f.link_text_bytes) AS BIGINT)
             >= max(t.listing_percent) * cast(max(f.text_bytes) AS BIGINT) AS listing
-FROM page_facts f CROSS JOIN rules r CROSS JOIN thresholds t
+FROM rules r CROSS JOIN thresholds t CROSS JOIN facts f
 GROUP BY f.body_sha

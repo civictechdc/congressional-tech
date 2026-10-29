@@ -16,5 +16,5 @@ SELECT c.url, c.member_path,
     bool_or(CASE WHEN r.kind = 'file_shape'
         THEN coalesce(regexp_like(coalesce(c.member_path, c.url), r.pattern), false)
         ELSE false END) AS file_shaped
-FROM capture_locators c CROSS JOIN rules r
+FROM rules r CROSS JOIN capture_locators c
 GROUP BY c.url, c.member_path

@@ -102,6 +102,7 @@ public output bytes and row values instead.
 | Step | Case | Expected outcome |
 |---|---|---|
 | E2 | Multiple bodies share an endpoint and nullable member; other rows have blank members or absent endpoints | The actual hash plan builds the grouped or two-key endpoint lookup, preserves null matching, and returns exactly the established body/source rows |
+| E2 | Page text, locator URLs and source/model URL inputs cross a fixed rule or scalar-check relation | All four native cross joins collect only the small side; content flags, URL keys, literal values, invalid inputs and all release output remain unchanged |
 | E2 | A wide body or capture relation joins sparse sniff, admission and verification evidence | Native plans keep corpus-sized preserved rows on the streamed side; byte facts, absent evidence, damaged copies and verification-conflict refusal remain unchanged |
 | E2 | The real raw/lake model fixture reaches final exports and guards after link, graph and document helpers have their last materialized consumer | Completed helpers release through C7; public rows, private parity evidence and final guards remain unchanged and available |
 
