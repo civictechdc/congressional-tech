@@ -359,7 +359,10 @@ def execute_batches(files,counts,*,engine,engine_config,work,table,catalog_root,
     for name in [*table['namespace'],table['name']]:tables._identifier(name)
     tables.validate_catalog_authority(engine,catalog_root)
     runtime=runtime_identity(engine,engine_config,files=files)
-    physical_limit=receipt_profile(files,local=engine.remote is None)['physical_limit']
+    # Existing standard-config callers retain16GiB even for assembly metadata.
+    # The larger monitor accompanies only an explicitly selected native profile.
+    physical_limit=(receipt_profile(files,local=engine.remote is None)['physical_limit']
+        if json.loads(engine.limits.read_text())['memory_bytes']>14<<30 else 16<<30)
     runtime_custody={str(path):custody_identity(path) for path in (Path(engine_config),engine.limits)}
     definition=captures.current_version()
     started=time.monotonic();completed_receipts=0;completed_rows=0;peak=0
