@@ -151,7 +151,7 @@ def restricted_runtime(config, directory, *, threads):
     if threads>limits['compute_threads'] or threads<1:
         raise ValueError('Comparison cannot widen compute admission')
     limits['compute_threads']=threads
-    limits['scratch_bytes']=min(limits['scratch_bytes'],2<<30)
+    limits['scratch_bytes']=min(limits['scratch_bytes'],8<<30)
     limits['batch_rows']=min(limits['batch_rows'],1024)
     directory=Path(directory).resolve()
     directory.mkdir(parents=True,exist_ok=False)
