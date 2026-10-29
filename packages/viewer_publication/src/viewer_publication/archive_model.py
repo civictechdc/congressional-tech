@@ -69,7 +69,7 @@ def source_steps(*,root=ROOT):
     keys=(Path(root)/'model/sql/url-keys.sql').read_text().replace('url_inputs','source_url_inputs').replace('url_normalized','source_url_normalized')
     steps += [dict(name='source_url_normalized',sql=normalize,materialize=True),
               dict(name='source_url_keys',sql=keys,materialize=True)]
-    for name in ('source-reference-targets','capture-sources','source-files','source-directories'):
+    for name in ('source-reference-targets','source-body-urls','capture-sources','source-files','source-directories'):
         step=dict(name=name.replace('-','_'),sql=(Path(root)/'model/sql'/(name+'.sql')).read_text(),materialize=True)
         steps.append(step)
     return steps

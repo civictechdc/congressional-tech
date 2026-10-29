@@ -1,7 +1,5 @@
-WITH body_urls AS (
- SELECT DISTINCT source_url FROM capture_source_names WHERE sha256 IS NOT NULL
-), kept AS (
- SELECT n.* FROM body_urls b RIGHT JOIN capture_source_names n ON b.source_url=n.source_url
+WITH kept AS (
+ SELECT n.* FROM source_body_urls b RIGHT JOIN capture_source_names n ON b.source_url=n.source_url
  WHERE n.sha256 IS NOT NULL OR n.outcome IN ('reference','saved-record') OR b.source_url IS NULL
 ), keyed AS (
  SELECT n.*,CASE WHEN n.outcome='reference' AND n.sha256 IS NULL AND n.member_path IS NULL
