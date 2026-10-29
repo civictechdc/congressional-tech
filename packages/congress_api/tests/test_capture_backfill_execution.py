@@ -7,6 +7,7 @@ from docspec_client.client import NativeDatasets
 
 from congress_api.lake import capture_backfill
 from test_captures_ingest import files as receipts
+from test_capture_backfill_scratch import over_default_allocated_root
 
 
 def inputs(tmp_path):
@@ -20,13 +21,15 @@ def inputs(tmp_path):
     return files,counts
 
 
-def test_real_two_batch_append_then_fresh_retry_never_reopens_raw(tmp_path):
+def test_real_two_batch_append_then_fresh_retry_never_reopens_raw(tmp_path,over_default_allocated_root):
     files,counts=inputs(tmp_path/'input')
     engine=NativeDatasets.from_config(os.environ['DOCSPEC_JOB_CONFIG'])
     common=dict(engine=engine,engine_config=os.environ['DOCSPEC_JOB_CONFIG'],
         table=dict(namespace=['batch_fixture'],name='captures_v1_gtest'),
         catalog_root=tmp_path/'catalog',location=tmp_path/'table',byte_target=1000,item_target=1)
-    first=capture_backfill.execute_batches(files,counts,work=tmp_path/'first',
+    # A retained sibling larger than the default quota belongs to another job.
+    work=over_default_allocated_root.parent/'first'
+    first=capture_backfill.execute_batches(files,counts,work=work,
         create_table=True,create_namespace=True,**common)
     assert first['status']=='public_guard_passed' and first['qualified_for_downstream'] is False
     assert len(first['batches'])==2 and first['guard']['rows']==2 and first['guard']['receipts']==2

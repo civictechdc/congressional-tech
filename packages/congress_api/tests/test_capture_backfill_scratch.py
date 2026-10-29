@@ -100,6 +100,20 @@ def test_existing_ownership_and_free_space_refusals_stay_enforced(tmp_path):
         check_scratch(tmp_path,min_free_bytes=1<<100)
 
 
+def test_job_scratch_excludes_siblings_but_counts_its_own_allocated_blocks(tmp_path):
+    job=tmp_path/'job';job.mkdir()
+    sibling=tmp_path/'previous-job';sibling.mkdir()
+    (sibling/'evidence').write_bytes(b'x'*16384)
+    owned=job/'retained';owned.write_bytes(b'y'*4096)
+    cap=owned.stat().st_blocks*512
+    assert _allocated_bytes(tmp_path)>cap
+    assert check_scratch(job,job/'monitor',min_free_bytes=0,max_owned_scratch_bytes=cap)==job
+    (job/'spill').write_bytes(b'z'*4096)
+    with pytest.raises(RuntimeError,match='scratch exceeds'):
+        check_scratch(job,min_free_bytes=0,max_owned_scratch_bytes=cap)
+    assert (sibling/'evidence').read_bytes()==b'x'*16384
+
+
 @pytest.fixture
 def over_default_allocated_root(tmp_path):
     """Exercise block accounting above 5 GiB without writing 5 GiB of test data."""

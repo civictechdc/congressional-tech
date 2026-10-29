@@ -373,11 +373,10 @@ def execute_batches(files,counts,*,engine,engine_config,work,table,catalog_root,
                 peak_phys_gb=peak/1e9,status=status,note=note)
     progress('running',note='Starting a fresh unpublished backfill invocation')
     work=Path(work).resolve()
-    local_outputs=[work]
-    if catalog_root is not None:
-        local_outputs.append(catalog_root)
-        if location is not None:local_outputs.append(location)
-    scratch_root=check_scratch(scratch_root or work.parent,*local_outputs)
+    # Catalog metadata and persisted tables have their own explicit authority;
+    # a shared catalog is not scratch owned by this backfill invocation.
+    # An explicit root may cover this job's sibling build/monitor directories.
+    scratch_root=check_scratch(scratch_root or work,work)
     work.mkdir(parents=True,exist_ok=False)
     (work/'plan.json').write_text(json.dumps(dict(plan,mapping_digest=definition,runtime=runtime),indent=2)+'\n')
     counts_path=work/'source-counts.json';counts_path.write_text(json.dumps(counts,indent=2)+'\n')
@@ -388,7 +387,7 @@ def execute_batches(files,counts,*,engine,engine_config,work,table,catalog_root,
                 schema=schema,location=location,create_namespace=create_namespace)
         else:
             pin=tables.resolve_tables(engine=engine,work=work/'preflight',catalog_root=catalog_root,tables={'captures':table})['captures']
-            if catalog_root is not None:check_scratch(scratch_root,pin['metadata_location'])
+            check_scratch(scratch_root,work)
     except BaseException as error:
         progress('fail',note=type(error).__name__+' during catalog preflight')
         raise

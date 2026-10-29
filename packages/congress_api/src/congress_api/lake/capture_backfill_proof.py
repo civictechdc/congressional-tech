@@ -11,6 +11,7 @@ from uuid import uuid4
 from congress_api.lake.captures import COLUMNS,current_version
 from congress_api.lake.receipt_metadata import source_pins,recheck_source_pins,qualification_path
 from congress_api.lake.tables import table_input
+from congress_api.lake import capture_comparison
 from congress_api.retention.provenance import file_pin,run_job
 
 
@@ -94,13 +95,21 @@ def compare_tables(left,right,*,engine,work):
     inputs=[table_input('one_shot',left),table_input('batched',right)]
     work=Path(work).resolve();work.mkdir(parents=True,exist_ok=False)
     columns=','.join('"'+name+'"' for name in COLUMNS)
-    queries=[dict(name='left_rows',sql='SELECT count(*) AS n FROM one_shot'),
-             dict(name='right_rows',sql='SELECT count(*) AS n FROM batched')]
-    for name,a,b in [('left_only','one_shot','batched'),('right_only','batched','one_shot')]:
-        queries.append(dict(name=name,sql=f'SELECT count(*) AS n FROM (SELECT {columns} FROM {a} EXCEPT SELECT {columns} FROM {b})'))
-    result=run_job(work,engine,inputs=inputs,steps=[],outputs=[],queries=queries)
+    steps=[dict(name='tagged_facts',sql=f"SELECT 'L' AS side,{columns} FROM one_shot UNION ALL SELECT 'R' AS side,{columns} FROM batched"),
+        dict(name='compared_values',sql=capture_comparison.tagged_group_sql('tagged_facts',columns,
+            left='L',right='R',left_count='l',right_count='r'),materialize=True,
+            release_after=['tagged_facts'])]
+    queries=[dict(name='counts',sql='''SELECT coalesce(sum(l),0) AS left_rows,
+        coalesce(sum(r),0) AS right_rows,
+        coalesce(sum(CASE WHEN l>r THEN l-r ELSE 0 END),0) AS left_only,
+        coalesce(sum(CASE WHEN r>l THEN r-l ELSE 0 END),0) AS right_only FROM compared_values''')]
+    result=run_job(work,engine,inputs=inputs,steps=steps,outputs=[],queries=queries)
+    names=('left_rows','right_rows','left_only','right_only')
+    counts=result.get('counts')
+    if not isinstance(counts,list) or len(counts)!=1 or set(counts[0])!=set(names):
+        raise ValueError('Malformed native equivalence counts')
     report=dict(status='rejected',columns=list(COLUMNS),report_path=str(work/'comparison.json'),
-                **{query['name']:_count(result,query['name']) for query in queries},
+                **{name:_count({name:[dict(n=counts[0][name])]},name) for name in names},
                 job=file_pin(work/'job.json'),result=file_pin(work/'result.json'))
     if (report['left_rows']==report['right_rows'] and report['left_only']==report['right_only']==0):
         report['status']='equivalent'
@@ -117,12 +126,64 @@ def proof_identity(*,engine,engine_config,files,source_qualifications=None):
     config=Path(engine_config).resolve()
     runtime=runtime_identity(engine,engine_config,files=files)
     identity=dict(mapping_digest=current_version(),
-        proof_definition=sha256(Path(__file__).read_bytes()).hexdigest(),
+        proof_definition=sha256(Path(__file__).read_bytes()+
+            Path(capture_comparison.__file__).read_bytes()).hexdigest(),
         engine=runtime,
         engine_config=dict(path=str(config),**file_pin(config)),
         receipt_sources=sorted([dict(key=row['key'],path=str(Path(row['path']).resolve())) for row in files],key=lambda row:row['key']),
         sources=source_pins(files=files,qualifications=_selected_qualifications(files,source_qualifications)))
     return json.loads(json.dumps(identity))
+
+
+def resume_comparison(prior_proof,*,engine,engine_config,work):
+    """Compare preserved guarded immutable generations under today's proof.
+
+    Never rebuild or retag either table, and never overwrite the earlier proof.
+    Only the comparison definition may change; source and runtime identities
+    must still agree exactly with the completed generation builds.
+    """
+    prior_proof=Path(prior_proof).resolve()
+    before=file_pin(prior_proof)
+    prior=json.loads(prior_proof.read_text())
+    selected=prior['sample'];old_identity=prior['identity']
+    identity=proof_identity(engine=engine,engine_config=engine_config,files=selected['files'])
+    if {k:v for k,v in old_identity.items() if k!='proof_definition'}!={
+            k:v for k,v in identity.items() if k!='proof_definition'}:
+        raise ValueError('Preserved proof source, mapping or runtime identity changed')
+    recheck_source_pins(old_identity['sources'])
+    generations=prior.get('generations')
+    if not isinstance(generations,dict) or set(generations)!={'one_shot','batched'}:
+        raise ValueError('Both completed generations are required for comparison resume')
+    for name,value in generations.items():
+        if (value.get('status')!='public_guard_passed'
+                or value.get('mapping_digest')!=identity['mapping_digest']
+                or value.get('engine')!=identity['engine']):
+            raise ValueError('Preserved generation is not guarded by the unchanged identity')
+        table_input(name,value['pin'])
+    if len(generations['one_shot']['batches'])!=1:
+        raise ValueError('Preserved one-shot generation was split')
+    work=Path(work).resolve();work.mkdir(parents=True,exist_ok=False)
+    report=dict(prior,status='running_unaccepted',identity=identity,prior_identity=old_identity,
+        prior_proof=dict(path=str(prior_proof),**before),report_path=str(work/'proof.json'),
+        qualified_for_downstream=False)
+    report.pop('failure',None);report.pop('comparison',None)
+    try:
+        report['comparison']=compare_tables(generations['one_shot']['pin'],generations['batched']['pin'],
+            engine=engine,work=work/'comparison')
+        expected=sum(row['expected_captures'] for row in selected['counts'])
+        if report['comparison']['left_rows']!=expected:
+            raise ValueError('Preserved generations differ from expected sample row count')
+        recheck_source_pins(identity['sources'])
+        if before!=file_pin(prior_proof) or identity!=proof_identity(engine=engine,
+                engine_config=engine_config,files=selected['files']):
+            raise ValueError('Preserved proof or current identity changed during comparison')
+        report['status']='equivalent'
+    except BaseException as error:
+        report.update(status='rejected',failure=dict(type=type(error).__name__,message=str(error)))
+        (work/'proof.json').write_text(json.dumps(report,indent=2)+'\n')
+        raise
+    (work/'proof.json').write_text(json.dumps(report,indent=2)+'\n')
+    return report
 
 
 def prove_equivalence(files,counts,*,engine,engine_config,work,table,catalog_root,location,

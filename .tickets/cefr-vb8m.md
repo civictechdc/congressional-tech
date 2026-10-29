@@ -26,3 +26,11 @@ Full corrected34291 refused unregistered youtube/captions object at3961; enumera
 **2026-10-29T02:31:43Z**
 
 All2292 read-only census verified2598311 lines under533612080B physical. Fixture-first7bd015e3 -> native registry3b6c2ca9;115 focusedPASS324.344s. ONECODE APPROVE after private aggregate status suffix fix; 55D1pins and16activeD2pins match. All23747 unknown variants classified with owner decisions; no default or URL repair. BLOCKED OWNER: six serial proof-v3 cohorts then fresh full, exact commands docs/measurements/engine-first-20261027/d1/record-only-shapes.md;205 receipts,6kinds,48activecases. Failed34291/5830 preserved. Corpus acceptance ticket remains open.
+
+**2026-10-29T03:15:05Z**
+
+Current52120 downstream controls prepared separately from running55D1pins. Comparator binds newfull4,147,132/2292 and3909134oracle; D3 binds currentcapturepin/finalD2/freshcompleteunreadables. Lead025710 makes15:27empty stale; readbacke515 verified. Lead031255 permits D3compute independent ofcomparator, comparison remains model/releaseacceptancegate withsamepin/nullpendingD3fields. ONECODEreview fixes inherited unreadableauthority-binding gap. Exactownercommands docs/measurements/engine-first-20261027/d1/continuations-52120d49.md; no heavy/nativecorpus/R2jobs byraw.
+
+**2026-10-29T03:19:14Z**
+
+ONE downstream CODE APPROVE after confirmed fresh-unreadable authority concern fixed. Final83 continuationpins independently match; active55D1pins unchanged. 101 distinct focusedcases resolvedgreen under4GiB physical (72initial+soleappendcapacityrerun1+provenance28); actualauthoritymetadata valid+8refusals, notpytest. Lead031255parallelD3compute approval implemented withnull/pendingcomparison andmandatorymodel/releasegate. No corpus jobs/networkoperations byraw. Exactfull/comparator/freshsnapshot/D3commands sealed; remaininglaunches lead-only.
