@@ -66,7 +66,7 @@ def profile_record(*,parser_versions,catalog_version,engine_revision,runtime_pin
 
 def completeness_steps(*,root=ROOT):
     """Retain expected populations once before their independent coverage checks."""
-    return [dict(name=name.replace('-','_'),sql=(Path(root)/'model/sql'/(name+'.sql')).read_text(),materialize=False)
+    return [dict(name=name.replace('-','_'),sql=(Path(root)/'model/sql'/(name+'.sql')).read_text(),materialize=True)
         for name in ['profile-bodies','profile-filename-pairs']]
 
 
