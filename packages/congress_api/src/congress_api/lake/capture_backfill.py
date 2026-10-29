@@ -280,6 +280,9 @@ raise SystemExit(process.returncode)
                         sampled_peak_tree_physical_footprint=physical_peak,
                         consecutive_sample_failures=memory.consecutive_failures)
                     temporary=partial.with_suffix('.tmp');temporary.write_text(json.dumps(value)+'\n');temporary.replace(partial)
+                    with (work/'timeline.jsonl').open('a') as timeline_f:
+                        timeline_f.write(json.dumps(dict(seconds=round(time.monotonic()-started,3),
+                            rss=rss if observed is not None else 0,physical=physical if observed is not None else 0,samples=samples))+'\n')
                     if observed is not None and physical>physical_limit:
                         raise RuntimeError('Batch exceeded its physical memory limit')
                     if shutil.disk_usage(work).free<min_free_bytes:raise RuntimeError('Free disk dropped below the backfill floor')
