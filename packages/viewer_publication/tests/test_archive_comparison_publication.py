@@ -87,7 +87,7 @@ def test_receipt_mutated_by_actual_model_refuses_all_successful_writes(tmp_path)
         schema=json.loads((Path(__file__).resolve().parents[3]/'model/lake/captures.schema.json').read_text())
         ref=dict(namespace=['fixture'],name='captures');catalog=tmp_path/'catalog'
         tables.create_table(engine=native,work=tmp_path/'create',catalog_root=catalog,table=ref,schema=schema,location=tmp_path/'lake-captures',create_namespace=True)
-        appended=tables.append_rows(model['captures']['path'],engine=native,work=tmp_path/'append',catalog_root=catalog,table=ref,keys=['receipt_key'],definition=captures.current_version())
+        appended=tables.append_rows(model['captures']['path'],engine=native,work=tmp_path/'append',catalog_root=catalog,table=ref,keys=['receipt_key'],definition=captures.current_version(),file_bytes=8<<20,row_group_rows=1024,row_group_bytes=1<<20)
         capture_pin={k:appended[k] for k in ('metadata_location','table_uuid','snapshot','schema_id')}
         model['captures']=dict(kind='native_table',**capture_pin);model=validate_spec(model,base=tmp_path)
         selector,report=selected_acceptance(tmp_path/'comparison',capture_pin)
