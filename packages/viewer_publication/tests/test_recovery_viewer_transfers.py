@@ -3,20 +3,15 @@ from collections import Counter
 from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime, timezone
 import hashlib
-import importlib.util
 import io
-import json
 from pathlib import Path
-import sys
 import tempfile
 import threading
 import unittest
-from unittest.mock import patch
 from botocore.exceptions import ClientError
 
 ROOT = Path(__file__).resolve().parents[3]
 from viewer_publication.client import GuardedPublicationClient, VerifiedTransfer
-from viewer_publication import publish_viewer_r2 as publisher
 
 
 class Remote:
@@ -55,35 +50,6 @@ class Remote:
 class TransferTests(unittest.TestCase):
     def proxy(self, remote, guard=lambda: None):
         return GuardedPublicationClient(remote, guard=guard, journal=lambda *a: None, after_write=lambda *a: None)
-    def test_publisher_reads_payload_only_when_put_ack_is_lost(self):
-        for lost_ack in (False, True):
-            with self.subTest(lost_ack=lost_ack), tempfile.TemporaryDirectory() as folder:
-                root = Path(folder); files = {}
-                for name in ('one.bin', 'two.bin'):
-                    files[name] = root/name; files[name].write_bytes(name.encode()*10)
-                remote = Remote(); remote.lost_ack = lost_ack
-                selected = {'catalog_id': 'selected'}
-                remote.objects['indexes/catalog.json'] = (json.dumps(selected).encode(), 'selected-etag')
-                remote.objects['viewer-publications/catalogs/selected.json'] = (b'old saved locator', 'old-locator')
-                manifest = dict(info={'catalog_id': 'selected'}, source_manifest=selected)
-                probes = []
-                def public_open(request):
-                    probes.append('pointer')
-                    return io.BytesIO(remote.objects['viewer-publications/manifest.json'][0])
-                with patch.object(publisher, 'prepared_files', return_value=files), \
-                     patch.object(publisher, 'recovery_for_publication', return_value=({'path': 'recovery'}, (None, None, None, None))), \
-                     patch.object(publisher, 'recovery_inputs', return_value={}), \
-                     patch.object(publisher, 'open_public', side_effect=public_open):
-                    result = publisher.upload(self.proxy(remote), root, manifest,
-                        previous_etag='before', selected_etag='selected-etag',
-                        probe=lambda *a: probes.append('payloads'),
-                        publication_plan=dict(release='releases/'+'a'*32+'/', published_at='fixed'))
-                self.assertEqual(result['status'], 'published')
-                self.assertEqual(probes, ['payloads', 'pointer'])
-                for name in files:
-                    key = 'viewer-publications/releases/'+'a'*32+'/'+name
-                    self.assertEqual(remote.gets[key], int(lost_ack))
-                    self.assertEqual(remote.puts[key], 1)
     def test_receipt_binds_issuing_client_and_exact_acknowledged_request(self):
         remote = Remote(); proxy = self.proxy(remote)
         key = 'viewer-publications/releases/x/file'
@@ -115,18 +81,6 @@ class TransferTests(unittest.TestCase):
         self.assertEqual(calls, ['check', 'shared', 'shared'])
 
 if __name__ == '__main__': unittest.main()
-
-
-def test_guarded_and_plain_successful_json_uploads_have_no_readback():
-    for guarded in (True, False):
-        remote = Remote()
-        proxy = GuardedPublicationClient(remote, guard=lambda: None, journal=lambda *a: None, after_write=lambda *a: None) if guarded else remote
-        descriptor = publisher.store_recovery_index(proxy, {'version': 1, 'sources': [], 'groups': []})
-        key = publisher.PREFIX + descriptor['path']
-        assert remote.gets[key] == 0
-        if guarded:
-            assert not proxy._receipts
-            assert not proxy._key_locks
 
 
 def test_native_metadata_is_create_only_and_hash_addressed_before_any_write():

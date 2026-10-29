@@ -1,15 +1,4 @@
-"""Tier 5 Adversarial Tests: Milestone 5 (ct-8od2).
-
-White-box stress testing of:
-1. Catalog footer overhead ratio scaling between small and large row-group configurations.
-2. `scalarize_catalog_columns` edge cases:
-   - Empty tables (0 rows).
-   - Columns with all empty lists [].
-   - Columns with multi-element lists (must NOT scalarize).
-   - Non-numeric values in integer columns (http_status, congress, source_receipt_line fallback).
-   - Struct list columns like source_occurrences (must never scalarize).
-3. `compact_readings` compaction idempotency across repeated executions.
-"""
+"""Parquet footer sizing and retained readings compaction remain checked."""
 
 from __future__ import annotations
 from pathlib import Path
@@ -17,88 +6,12 @@ import pytest
 import pyarrow as pa
 import pyarrow.parquet as pq
 
-from viewer_publication.filename_exports import (
-    scalarize_catalog_columns,
-    prune_catalog_null_columns,
-    prune_catalog_top_level_source_columns,
-)
 from viewer_publication.compact_readings import (
     compact_readings,
     deduplicate_reading_table,
     sort_reading_table,
 )
 from tests.e2e.harness.parquet_oracle import ParquetOracle
-
-
-class TestM5ScalarizationEdgeCases:
-    """Stress testing scalarize_catalog_columns under hostile and boundary inputs."""
-
-    def test_empty_table_zero_rows_scalarization(self):
-        """Empty table (0 rows) with list<string> column preserves schema and does not crash."""
-        empty_table = pa.Table.from_pydict({
-            "http_status": pa.array([], type=pa.list_(pa.string())),
-            "format": pa.array([], type=pa.list_(pa.string())),
-        })
-        scalarized = scalarize_catalog_columns(empty_table)
-        assert len(scalarized) == 0
-        # Empty columns are scalarized to their typed scalar types
-        assert scalarized.schema.field("http_status").type == pa.int16()
-        assert scalarized.schema.field("format").type == pa.string()
-
-    def test_all_empty_lists_scalarize_to_null_scalars(self):
-        """Column containing only empty lists [ [], [] ] scalarizes to [None, None]."""
-        table = pa.Table.from_pydict({
-            "format": pa.array([[], []], type=pa.list_(pa.string())),
-            "http_status": pa.array([[], []], type=pa.list_(pa.string())),
-        })
-        scalarized = scalarize_catalog_columns(table)
-        assert scalarized.schema.field("format").type == pa.string()
-        assert scalarized.schema.field("http_status").type == pa.int16()
-        assert scalarized["format"].to_pylist() == [None, None]
-        assert scalarized["http_status"].to_pylist() == [None, None]
-
-    def test_multi_element_list_retains_list_type(self):
-        """Column containing any multi-element list (max_len > 1) MUST NOT scalarize."""
-        table = pa.Table.from_pydict({
-            "tags": pa.array([["hearing", "senate"], ["markup"]], type=pa.list_(pa.string())),
-            "single": pa.array([["pdf"], ["xml"]], type=pa.list_(pa.string())),
-        })
-        scalarized = scalarize_catalog_columns(table)
-        # tags has max_len = 2 > 1 -> remains list<string>
-        assert pa.types.is_list(scalarized.schema.field("tags").type)
-        assert scalarized["tags"].to_pylist() == [["hearing", "senate"], ["markup"]]
-
-        # single has max_len = 1 <= 1 -> scalarized to string
-        assert scalarized.schema.field("single").type == pa.string()
-        assert scalarized["single"].to_pylist() == ["pdf", "xml"]
-
-    def test_non_numeric_integer_column_fallback_to_string(self):
-        """Non-numeric string in http_status or congress gracefully falls back to string array."""
-        table = pa.Table.from_pydict({
-            "http_status": pa.array([["200"], ["UNKNOWN_ERROR"], [None]], type=pa.list_(pa.string())),
-            "congress": pa.array([["118th"], ["117"], [None]], type=pa.list_(pa.string())),
-        })
-        scalarized = scalarize_catalog_columns(table)
-        # "UNKNOWN_ERROR" fails int16 parsing -> falls back to string
-        assert scalarized.schema.field("http_status").type == pa.string()
-        assert scalarized["http_status"].to_pylist() == ["200", "UNKNOWN_ERROR", None]
-
-        # "118th" fails int32 parsing -> falls back to string
-        assert scalarized.schema.field("congress").type == pa.string()
-        assert scalarized["congress"].to_pylist() == ["118th", "117", None]
-
-    def test_source_occurrences_struct_list_never_scalarized(self):
-        """source_occurrences: list<struct<...>> must NEVER be scalarized even if max_len <= 1."""
-        occ_struct = pa.struct([("url", pa.string()), ("status", pa.int32())])
-        table = pa.Table.from_pydict({
-            "source_occurrences": pa.array(
-                [[{"url": "https://example.com", "status": 200}]],
-                type=pa.list_(occ_struct),
-            ),
-        })
-        scalarized = scalarize_catalog_columns(table)
-        assert pa.types.is_list(scalarized.schema.field("source_occurrences").type)
-        assert pa.types.is_struct(scalarized.schema.field("source_occurrences").type.value_type)
 
 
 class TestM5FooterOverheadRatio:

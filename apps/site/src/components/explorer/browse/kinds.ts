@@ -30,11 +30,6 @@ export const isAccessState = (value: string): value is AccessState => accessSet.
 export const isCommitteeType = (value: string): value is CommitteeType => committeeTypeSet.has(value);
 export const isEvidenceState = (value: string): value is EvidenceState => evidenceSet.has(value);
 
-export const filenameScopes = ['', 'documents', 'capture-records', 'all'] as const;
-export type FilenameScope = (typeof filenameScopes)[number];
-const filenameScopeSet: ReadonlySet<string> = new Set(filenameScopes);
-export const isFilenameScope = (value: string): value is FilenameScope => filenameScopeSet.has(value);
-
 export const materialCategories = [
   'statement', 'amendment', 'transcript', 'supporting', 'disclosure', 'biography', 'bill_text', 'vote',
   'witness_list', 'questions_for_record', 'hearing_record', 'report', 'errata', 'notice', 'committee_print', 'unknown',
@@ -80,8 +75,3 @@ export const issueSeverities = ['affects_interpretation', 'informational'] as co
 export type IssueSeverity = (typeof issueSeverities)[number];
 const issueSeveritySet: ReadonlySet<string> = new Set(issueSeverities);
 export const isIssueSeverity = (value: string): value is IssueSeverity => issueSeveritySet.has(value);
-
-export const retainedFilters = ['', 'yes', 'no'] as const;
-export type RetainedFilter = (typeof retainedFilters)[number];
-const retainedSet: ReadonlySet<string> = new Set(retainedFilters);
-export const isRetainedFilter = (value: string): value is RetainedFilter => retainedSet.has(value);

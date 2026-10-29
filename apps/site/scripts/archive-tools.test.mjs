@@ -38,61 +38,16 @@ test('pinned candidate canaries still check live pointer cache policy',async()=>
 
 
 
-test('the live canary refuses the actual old viewer pointer without reading old folders',async()=>{
-  const pointer=JSON.parse(await readFile(new URL('./fixtures/old-viewer-pointer.json',import.meta.url),'utf8'));
-  const pointerUrl='https://public.test/viewer-publications/manifest.json',requests=[];
-  await assert.rejects(verifyArchive({pointerUrl,fetcher:async address=>{
-    requests.push(String(address));return Response.json(pointer,{headers:{'Cache-Control':'no-store'}});
-  }}),/Invalid live archive pointer/);
-  assert.deepEqual(requests,[pointerUrl]);
-});
-
-test('the public canary names the explorer origin so the host returns CORS headers',async()=>{
-  const pointer=JSON.parse(await readFile(new URL('./fixtures/old-viewer-pointer.json',import.meta.url),'utf8'));
-  const origins=[];
-  await assert.rejects(verifyArchive({pointerUrl:'https://public.test/viewer-publications/manifest.json',fetcher:async(_address,options)=>{
-    origins.push(options.headers?.Origin);return Response.json(pointer,{headers:{'Cache-Control':'no-store'}});
-  }}),/Invalid live archive pointer/);
-  assert.deepEqual(origins,['https://civictechdc.github.io']);
-});
-
-
-test('an explicit candidate canary crosses the recognized old pointer without reading old assets',async()=>{
-  const pointer=JSON.parse(await readFile(new URL('./fixtures/old-viewer-pointer.json',import.meta.url),'utf8'));
-  for(const versions of [{version:1,publisher_version:10},{version:'1',publisher_version:'10'}]){
-    const server=await startArchiveServer({release:fileURLToPath(new URL('../../../model/fixtures/archive-contract/current',import.meta.url))});
-    server.state.pointerBody=JSON.stringify({...pointer,...versions});
-    try{
-      const result=await verifyArchive({pointerUrl:server.pointerUrl,releaseId:server.manifest.release_id,local:true,checkSaved:false});
-      assert.equal(result.status,'incomplete');assert.equal(result.savedCopyChecked,false);
-      assert.equal(result.releaseId,server.manifest.release_id);assert.equal(server.state.pointerReads,2);
-      assert(server.state.requests.every(request=>request.path.includes('/releases/'+server.manifest.release_id+'/')));
-    }finally{await server.close();}
-  }
-});
-
-
-test('an explicit candidate never makes an unknown pointer into an accepted old pointer',async()=>{
-  const pointer=JSON.parse(await readFile(new URL('./fixtures/old-viewer-pointer.json',import.meta.url),'utf8'));
-  for(const change of [{version:2},{publisher_version:11},{version:true},{catalog_id:''},{manifest:''},{release_id:'invalid'},{previous_release_id:null}]){
-    const requests=[],pointerUrl='https://public.test/viewer-publications/manifest.json';
-    await assert.rejects(verifyArchive({pointerUrl,releaseId:'a'.repeat(64),fetcher:async address=>{
-      requests.push(String(address));return Response.json({...pointer,...change},{headers:{'Cache-Control':'no-store'}});
+test('the canary refuses unsupported pointers before assets, including pinned candidates',async()=>{
+  const old=JSON.parse(await readFile(new URL('./fixtures/old-viewer-pointer.json',import.meta.url),'utf8'));
+  const pointerUrl='https://public.test/viewer-publications/manifest.json';
+  for(const releaseId of [undefined,'ab'.repeat(32)])for(const pointer of [old,{unexpected:'shape'},{release_id:'invalid'}]){
+    const requests=[];
+    await assert.rejects(verifyArchive({pointerUrl,releaseId,fetcher:async address=>{
+      requests.push(String(address));return Response.json(pointer,{headers:{'Cache-Control':'no-store'}});
     }}),/Invalid live archive pointer/);
     assert.deepEqual(requests,[pointerUrl]);
   }
-});
-
-
-test('a changed old pointer during the stale probe still refuses the candidate',async()=>{
-  const pointer=JSON.parse(await readFile(new URL('./fixtures/old-viewer-pointer.json',import.meta.url),'utf8'));
-  const server=await startArchiveServer({release:fileURLToPath(new URL('../../../model/fixtures/archive-contract/current',import.meta.url))});
-  server.state.pointerBody=JSON.stringify(pointer);
-  try{
-    await assert.rejects(verifyArchive({pointerUrl:server.pointerUrl,releaseId:server.manifest.release_id,local:true,checkSaved:false,
-      fetcher:async(url,options)=>{const response=await fetch(url,options);if(String(url)===server.pointerUrl)server.state.pointerBody=JSON.stringify({...pointer,publisher_version:11});return response;}}),/Invalid archive release identity/);
-    assert.equal(server.state.pointerReads,2);
-  }finally{await server.close();}
 });
 
 test('provisional targets bind five emulated runs to a seed and keep each profile median',async()=>{
@@ -153,4 +108,13 @@ test('Node canary keeps its decoded budget without applying browser runtime ceil
     assert.throws(()=>checkTargets({releaseId:server.manifest.release_id,startupMs:2,searchMs:2,detailMs:2,heapBytes:2},targets,server.manifest.origin),/startupMs/);
     await assert.rejects(verifyArchive({...options,heapBytes:1}),/budget|allowance|limit|bytes/i);
   }finally{await server.close();}
+});
+
+test('the public canary names the explorer origin so the host returns CORS headers',async()=>{
+  const pointer=JSON.parse(await readFile(new URL('./fixtures/old-viewer-pointer.json',import.meta.url),'utf8'));
+  const origins=[];
+  await assert.rejects(verifyArchive({pointerUrl:'https://public.test/viewer-publications/manifest.json',fetcher:async(_address,options)=>{
+    origins.push(options.headers?.Origin);return Response.json(pointer,{headers:{'Cache-Control':'no-store'}});
+  }}),/Invalid live archive pointer/);
+  assert.deepEqual(origins,['https://civictechdc.github.io']);
 });

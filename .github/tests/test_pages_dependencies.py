@@ -15,7 +15,7 @@ def test_pages_uses_declared_locked_environments_and_checks_built_reader():
     workflow = yaml.load((ROOT / '.github/workflows/deploy-pages.yml').read_text(), Loader=yaml.BaseLoader)
     from fnmatch import fnmatch
     triggers = workflow['on']['push']['paths']
-    assert any(fnmatch('apps/site/src/components/explorer/browse/filename-rules.ts', path) for path in triggers)
+    assert any(fnmatch('apps/site/src/components/explorer/reader/archive.ts', path) for path in triggers)
     steps = workflow['jobs']['build']['steps']
     assert any(step.get('uses') == './.github/actions/setup-python-project' for step in steps)
     shared = './.github/actions/setup-node-project'
@@ -38,9 +38,8 @@ def test_pages_uses_declared_locked_environments_and_checks_built_reader():
     assert '.github/actions/setup-node-project/**' in triggers
     assert commands.index('npm run test:explorer') > next(i for i, step in enumerate(steps) if step.get('uses') == shared)
     assert commands.index('npm run test:explorer') < commands.index('npm run build')
-    assert commands.index('npm run build') < commands.index('npm run test:built-filenames')
     assert any('verify(source)' in command and 'shutil.copytree(source, target, dirs_exist_ok=True)' in command for command in commands)
-    assert 'stage-document-reviews.py' in package['scripts']['build']
+    assert package['scripts']['build'] == 'astro build'
     lock = json.loads((ROOT / 'apps/site/package-lock.json').read_text())
     assert lock['packages']['']['dependencies'] == package['dependencies']
     assert lock['packages']['']['devDependencies'] == package['devDependencies']

@@ -282,26 +282,6 @@ def test_incremental_json_size_and_checkpoint_cadence(tmp_path, monkeypatch):
     assert state.Continuation(run.root, {'unicode': '雪'}, resume=True).value == run.value
 
 
-def test_paged_inventory_and_state_validator_accept_complete_metadata(tmp_path):
-    from viewer_publication.filename_native import ViewerAssets, write_inventory, iterator_inventory
-    count = 100_000
-    assets = ViewerAssets(tmp_path / 'publication')
-    # Inventory references are synthetic. Inventory pages are real hash-checked
-    # ViewerAssets files; payload custody is exercised in the small fixture suite.
-    assets.identities.update({asset_name(n): dict(bytes=1, sha256=hashlib.sha256(str(n).encode()).hexdigest())
-                              for n in range(count)})
-    inventory = write_inventory(assets)
-    references = list(iterator_inventory(assets, inventory))
-    assert len(references) == count + math.ceil(count / 64)
-    assert len({item['path'] for item in references}) == len(references)
-    run = state.Continuation(tmp_path / 'attempt', {})
-    run.value['phases']['prepared'] = dict(result={}, files={
-        'publication/' + item['path']: item['sha256'] for item in references})
-    state.validate_state(run.value)
-    print(json.dumps(dict(inventory_assets=count, inventory_pages=math.ceil(count / 64),
-        inventory_references=len(references), inventory_page_bytes=assets.written_bytes), sort_keys=True))
-
-
 def test_event_and_journal_bounds_refuse_next_append_before_payload(tmp_path, monkeypatch):
     run = state.Continuation(tmp_path / 'attempt', {})
     remote = Remote()

@@ -88,3 +88,20 @@ def test_new_review_cli_stages_before_explicit_owner_apply(tmp_path,capsys):
     with pytest.raises(ValueError,match='separate|stage'):
         main(['--records',str(source),'--kind','reviews','--decided-at',STAMP,
               '--stage',str(tmp_path/'other'),'--apply'])
+
+
+def test_kept_cli_defaults_read_pinned_reviews_without_site_copies(tmp_path,monkeypatch,capsys):
+    from viewer_publication import review_provenance as cli
+    from viewer_publication.filename_review_binding import load_identities,DESCRIPTOR,IDENTITIES
+    engine=object()
+    monkeypatch.setattr(NativeDatasets,'from_config',lambda config:engine)
+    def read_inputs(reviews,descriptor,identities,**options):
+        assert descriptor==DESCRIPTOR and identities==IDENTITIES
+        assert options['engine'] is engine
+        data=load_identities(identities,descriptor=descriptor)
+        return dict(records=len(data['rows']),review_sha256=data['review_sha256'])
+    monkeypatch.setattr(cli,'stage_reviews',read_inputs)
+    cli.main(['--reviews',str(tmp_path/'reviews.json'),'--stage',str(tmp_path/'stage'),
+              '--decided-at',STAMP,'--native-config',str(tmp_path/'unopened-config.json')])
+    report=json.loads(capsys.readouterr().out)
+    assert report==dict(records=86,review_sha256=json.loads(DESCRIPTOR.read_text())['review_sha256'])

@@ -10,7 +10,6 @@ import {
   type QueryResult,
   type RelatedResult,
 } from "./reader/data-source.ts";
-import { catalogMatchFiles } from "./browse/filename-match.ts";
 import {
   recordedCategoryLabel,
   sameRecordedTitle,
@@ -27,8 +26,6 @@ import {
   recordTitle,
   type DetailRecord,
 } from "./view/RecordDetail";
-import { FilenameEvidence } from "./view/FilenameEvidence";
-import { FilenameFilters, FilenameListing } from "./view/FilenameListing";
 import Coverage from "./view/Coverage";
 import RelatedMaterials, { OpenIssues } from "./view/RelatedMaterials";
 import {
@@ -53,8 +50,6 @@ import {
   type View,
 } from "./browse/navigation.ts";
 import { issueCategories, isMaterialProvider } from "./browse/kinds.ts";
-import { filenameRequest } from "./reader/filenames/session.ts";
-import type { FilenameCatalogInfo } from "./reader/filenames/types.ts";
 import {
   categoryNote,
   committeeKindNote,
@@ -197,14 +192,14 @@ function toQuery(nav: Navigation, info: QueryInfo): ExplorerQuery {
     category:
       nav.view === "gaps"
         ? nav.category || undefined
-        : nav.view === "materials" && nav.scope === ""
+        : nav.view === "materials"
           ? nav.materialCategory || undefined
           : undefined,
     severity: nav.view === "gaps" ? nav.severity || undefined : undefined,
     participation:
       nav.view === "witnesses" ? nav.participation || undefined : undefined,
     provider:
-      nav.view === "materials" && nav.scope === ""
+      nav.view === "materials"
         ? nav.provider || undefined
         : undefined,
     history: nav.view === "gaps" ? nav.history || undefined : undefined,
@@ -225,16 +220,8 @@ function toQuery(nav: Navigation, info: QueryInfo): ExplorerQuery {
     evidence: nav.evidence || undefined,
     offset: nav.page * PAGE_SIZE,
     limit: PAGE_SIZE,
-    sort:
-      nav.view === "materials" && nav.scope !== ""
-        ? undefined
-        : nav.sort || undefined,
-    direction:
-      nav.view === "materials" && nav.scope !== ""
-        ? undefined
-        : nav.sort
-          ? nav.direction || "asc"
-          : undefined,
+    sort: nav.sort || undefined,
+    direction: nav.sort ? nav.direction || "asc" : undefined,
   };
   return query;
 }
@@ -308,15 +295,6 @@ function Workspace({
       evidence: "",
       measure: "transcript",
       grouping: "congress",
-      scope: nav.view === "materials" ? nav.scope : "",
-      retained: "",
-      document_family: "",
-      document_kind: "",
-      format: "",
-      field: "",
-      classification: "",
-      review: "",
-      catalog: "",
       sort: "",
       direction: "",
     };
@@ -324,33 +302,12 @@ function Workspace({
     setNav(next);
     setQueryText("");
   };
-  const captured = nav.view === "materials" && nav.scope !== "";
   const dateError =
-    !captured &&
     nav.view !== "committees" &&
     nav.from &&
     nav.to &&
     nav.from > nav.to;
   const hasDrill = nav.committee || nav.month || nav.aspect || nav.evidence;
-  const [filenameInfo, retryFilename] = useRequest(
-    (signal) =>
-      nav.view === "materials"
-        ? filenameRequest<FilenameCatalogInfo>("/api/info", signal)
-        : Promise.resolve(undefined),
-    [nav.view === "materials"],
-  );
-  const catalogInfo =
-    filenameInfo.status === "ready" ? filenameInfo.value : undefined;
-  const openFilename = (id: string) =>
-    update(
-      {
-        kind: "filename_entry",
-        id,
-        catalog: nav.catalog || catalogInfo?.catalog_id || "",
-      },
-      nav.kind === "filename_entry",
-    );
-  const namingVersion = catalogInfo?.house_naming_version;
   const closeDetail = () => {
     if (
       window.history.state &&
@@ -389,17 +346,13 @@ function Workspace({
           <label>
             <span>Search this workspace</span>
             <span className="explorer-field-reason">
-              {captured
-                ? "Find a filename or the page it was captured from."
-                : "Find a title, vote, note, or other recorded text in this workspace."}
+              Find a title, vote, note, or other recorded text in this workspace.
             </span>
             <input
               type="search"
               value={queryText}
               onChange={(event) => setQueryText(event.target.value)}
-              placeholder={
-                captured ? "Filename or web address" : "Title or recorded text"
-              }
+              placeholder="Title or recorded text"
             />
           </label>
           <button
@@ -427,83 +380,23 @@ function Workspace({
             ))}
           </select>
         </label>
-        {nav.view === "materials" ? (
-          <label className="explorer-scope">
-            <span>Show</span>
-            <span className="explorer-field-reason">
-              Meeting materials are linked to a hearing. Captured files and
-              capture records come from committee websites.
-            </span>
-            <select
-              value={nav.scope}
-              onChange={(event) => {
-                const scope = event.target.value;
-                filter(
-                  scope === "documents" ||
-                    scope === "capture-records" ||
-                    scope === "all"
-                    ? {
-                        scope,
-                        sort: "",
-                        direction: "",
-                        chamber: "",
-                        from: "",
-                        to: "",
-                        type: "",
-                        status: "",
-                        materialCategory: "",
-                        provider: "",
-                        committee: "",
-                        committeeLevel: "",
-                        committeeType: "",
-                        month: "",
-                        aspect: "",
-                        evidence: "",
-                      }
-                    : {
-                        scope: "",
-                        retained: "",
-                        document_family: "",
-                        document_kind: "",
-                        format: "",
-                        field: "",
-                        classification: "",
-                        review: "",
-                        sort: "",
-                        direction: "",
-                      },
-                );
-              }}
-            >
-              <option value="">Meeting materials</option>
-              <option value="documents">Captured files</option>
-              <option value="capture-records">Where files came from</option>
-              <option value="all">All saved files</option>
-            </select>
-          </label>
-        ) : null}
-        {captured && catalogInfo ? (
-          <FilenameFilters nav={nav} info={catalogInfo} onChange={filter} />
-        ) : null}
-        {captured ? null : (
-          <label>
-            <span>Chamber</span>
-            <span className="explorer-field-reason">
-              House, Senate, joint, or a chamber the source did not record.
-            </span>
-            <select
-              value={nav.chamber}
-              onChange={(event) => filter({ chamber: event.target.value })}
-            >
-              <option value="">All chambers</option>
-              <option value="house">House</option>
-              <option value="senate">Senate</option>
-              <option value="joint">Joint</option>
-              <option value="unknown">Not recorded</option>
-            </select>
-          </label>
-        )}
-        {!captured && info.supported_filters?.includes("committeeLevel") ? (
+        <label>
+          <span>Chamber</span>
+          <span className="explorer-field-reason">
+            House, Senate, joint, or a chamber the source did not record.
+          </span>
+          <select
+            value={nav.chamber}
+            onChange={(event) => filter({ chamber: event.target.value })}
+          >
+            <option value="">All chambers</option>
+            <option value="house">House</option>
+            <option value="senate">Senate</option>
+            <option value="joint">Joint</option>
+            <option value="unknown">Not recorded</option>
+          </select>
+        </label>
+        {info.supported_filters?.includes("committeeLevel") ? (
           <label>
             <span>Committee level</span>
             <span className="explorer-field-reason">
@@ -523,7 +416,7 @@ function Workspace({
             </select>
           </label>
         ) : null}
-        {!captured && info.supported_filters?.includes("committeeType") ? (
+        {info.supported_filters?.includes("committeeType") ? (
           <label>
             <span>Committee type</span>
             <span className="explorer-field-reason">
@@ -544,7 +437,7 @@ function Workspace({
             </select>
           </label>
         ) : null}
-        {!captured && nav.view !== "committees" ? (
+        {nav.view !== "committees" ? (
           <>
             <label>
               <span>From date</span>
@@ -570,7 +463,7 @@ function Workspace({
             </label>
           </>
         ) : null}
-        {nav.view === "materials" && !captured ? (
+        {nav.view === "materials" ? (
           <>
             <label>
               <span>Material type</span>
@@ -835,7 +728,7 @@ function Workspace({
           </button>
         </div>
       ) : null}
-      {nav.congress === "all" && !captured ? (
+      {nav.congress === "all" ? (
         <p className="explorer-note">
           Searching every Congress looks through the whole archive and may take
           longer.
@@ -847,15 +740,11 @@ function Workspace({
         </p>
       ) : null}
       {nav.view === "materials" &&
-      nav.scope === "" &&
       nav.congress !== "all" ? (
         <p className="explorer-note">
           Recordings and documents with no recorded Congress are listed under
           All Congresses.
         </p>
-      ) : null}
-      {captured && catalogInfo ? (
-        <CapturedCatalogNote info={catalogInfo} />
       ) : null}
       <section
         ref={headingRef}
@@ -867,22 +756,12 @@ function Workspace({
           <p className="explorer-alert" role="alert">
             The start date must be on or before the end date.
           </p>
-        ) : selection?.kind === "filename_entry" ? (
-          <FilenameInspector
-            id={selection.id}
-            catalog={nav.catalog}
-            namingVersion={namingVersion}
-            onOpen={openFilename}
-            onClose={closeDetail}
-          />
         ) : selection ? (
           <Inspector
             key={`${selection.kind}/${selection.id}`}
             reader={reader}
             selected={selection}
             onSelect={select}
-            onOpenFilename={openFilename}
-            namingVersion={namingVersion}
             committeeLabels={info.committee_labels}
             onClose={closeDetail}
           />
@@ -895,30 +774,6 @@ function Workspace({
             grouping={nav.grouping}
             onSettings={update}
           />
-        ) : captured ? (
-          catalogInfo ? (
-            <FilenameListing
-              nav={nav}
-              info={catalogInfo}
-              onOpen={(row) =>
-                openFilename(
-                  row.source_id || (row._row == null ? "" : String(row._row)),
-                )
-              }
-              onPage={(page) => update({ page })}
-              onSort={(patch) => update({ ...patch, page: 0 })}
-            />
-          ) : (
-            <RequestMessage
-              state={
-                filenameInfo.status === "ready"
-                  ? { status: "error", message: "The file list did not load." }
-                  : filenameInfo
-              }
-              retry={retryFilename}
-              noun="the file list"
-            />
-          )
         ) : (
           <Listing
             reader={reader}
@@ -2351,80 +2206,6 @@ function CoverageView({
   );
 }
 
-function CapturedCatalogNote({ info }: { info: FilenameCatalogInfo }) {
-  const filenames = info.downloads?.filenames;
-  const documents = info.downloads?.documents;
-  return (
-    <>
-      {filenames || documents ? (
-        <p className="explorer-file-links">
-          {filenames ? (
-            <a
-              className="explorer-nowrap"
-              href={filenames}
-              aria-label="Download the full captured-file list for this archive"
-            >
-              Download the file list
-            </a>
-          ) : null}
-          {documents ? (
-            <a
-              className="explorer-nowrap"
-              href={documents}
-              aria-label="Download the full document list for this archive"
-            >
-              Download the document list
-            </a>
-          ) : null}
-        </p>
-      ) : null}
-      <details>
-        <summary>
-          Which file list this is
-          <span className="explorer-field-reason">
-            A code for this exact file list. You do not need it to browse.
-          </span>
-        </summary>
-        <p className="explorer-note">File list {info.catalog_id}</p>
-      </details>
-    </>
-  );
-}
-
-function FilenameInspector({
-  id,
-  catalog,
-  namingVersion,
-  onOpen,
-  onClose,
-}: {
-  id: string;
-  catalog: string;
-  namingVersion?: string;
-  onOpen: (id: string) => void;
-  onClose: () => void;
-}) {
-  return (
-    <article className="explorer-detail">
-      <div className="explorer-subheading">
-        <button
-          className="explorer-text-button"
-          aria-label="Back to the list. Filters stay as they are."
-          onClick={onClose}
-        >
-          <BackIcon /> Results
-        </button>
-      </div>
-      <FilenameEvidence
-        entryId={id}
-        catalog={catalog}
-        namingVersion={namingVersion}
-        onOpen={onOpen}
-      />
-    </article>
-  );
-}
-
 function NamedMeeting({
   reader,
   meetingId,
@@ -2512,53 +2293,16 @@ function IssueSubject({
   );
 }
 
-function shownOnRecord(
-  record: DetailRecord,
-  labels?: Readonly<Record<string, string>>,
-) {
-  const row = fields(record);
-  const committees = (Array.isArray(row.committee_ids) ? row.committee_ids : [])
-    .map((id) => labels?.[String(id)] || "")
-    .filter(Boolean)
-    .join(" · ");
-  const chamber =
-    typeof row.chamber === "string" && row.chamber && row.chamber !== "unknown"
-      ? enumLabel(row.chamber)
-      : "";
-  const typed = listedDocumentType(
-    typeof row.document_type === "string" ? row.document_type : "",
-  );
-  const documentKind =
-    typed ||
-    (row.type === "recording"
-      ? "Recording"
-      : row.type === "text"
-        ? "Captions or transcript"
-        : row.type === "document"
-          ? "Document"
-          : "");
-  return {
-    congress: congressName(row.congress),
-    chamber,
-    committee: committees,
-    documentKind,
-  };
-}
-
 function Inspector({
   reader,
   selected,
   onSelect,
-  onOpenFilename,
-  namingVersion,
   committeeLabels,
   onClose,
 }: {
   reader: ExplorerReader;
   selected: ExplorerRecordRef;
   onSelect: (ref: ExplorerRecordRef) => void;
-  onOpenFilename: (id: string) => void;
-  namingVersion?: string;
   committeeLabels?: Readonly<Record<string, string>>;
   onClose: () => void;
 }) {
@@ -2624,16 +2368,6 @@ function Inspector({
                   onSelect={onSelect}
                 />
               ) : undefined
-            }
-            catalogEvidence={
-              state.value.kind === "material" ? (
-                <FilenameEvidence
-                  files={catalogMatchFiles(state.value)}
-                  namingVersion={namingVersion}
-                  onOpen={onOpenFilename}
-                  alreadyShown={shownOnRecord(state.value, committeeLabels)}
-                />
-              ) : null
             }
             sourceEvidence={
               <SourceEvidence reader={reader} record={state.value} />

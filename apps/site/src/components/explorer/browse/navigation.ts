@@ -1,6 +1,6 @@
 import type { ExplorerQuery } from '../reader/types.ts';
 import type { CoverageAspect } from './kinds.ts';
-import { accessStates, committeeTypes, isAccessState, isCommitteeType, isCoverageAspect, isFilenameScope, isIssueCategory, isIssueHistory, isIssueSeverity, isIssueStatus, isMaterialCategory, isMaterialProvider, isMeetingStatus, isRetainedFilter, isView, isWitnessParticipation, materialCategories, materialProviders, type FilenameScope, type IssueHistory, type MaterialProvider, type RetainedFilter, type View, type WitnessParticipation } from './kinds.ts';
+import { accessStates, committeeTypes, isAccessState, isCommitteeType, isCoverageAspect, isIssueCategory, isIssueHistory, isIssueSeverity, isIssueStatus, isMaterialCategory, isMaterialProvider, isMeetingStatus, isView, isWitnessParticipation, materialCategories, materialProviders, type IssueHistory, type MaterialProvider, type View, type WitnessParticipation } from './kinds.ts';
 
 export { accessStates, committeeTypes, materialCategories, materialProviders };
 export type { View };
@@ -32,62 +32,33 @@ export interface Navigation {
   evidence: string;
   measure: CoverageAspect;
   grouping: 'congress' | 'month';
-  scope: FilenameScope;
-  retained: RetainedFilter;
-  document_family: string;
-  document_kind: string;
-  format: string;
-  field: string;
-  classification: '' | 'reviewed';
-  review: string;
-  catalog: string;
   sort: '' | 'record' | 'date' | 'kind' | 'congress';
   direction: '' | 'asc' | 'desc';
 }
 
 const meetingViews: ReadonlySet<View> = new Set(['meetings', 'coverage']);
 
-function legacyCongress(params: URLSearchParams, defaultCongress: number): string {
-  const requestedView = params.get('view') || '';
-  const scopeValue = params.get('scope') || '';
-  const legacyFilename = !params.has('view') && (params.has('source') || params.has('row') || params.has('document_kind') || params.has('document_family') || params.has('retained') || params.has('classification') || params.has('field') || params.has('format') || params.has('review') || scopeValue === 'documents' || scopeValue === 'capture-records' || scopeValue === 'all');
-  return legacyFilename && !requestedView ? 'all' : String(defaultCongress);
-}
-
-function filenameScope(scopeValue: string, legacyFilename: boolean): FilenameScope {
-  if (!isFilenameScope(scopeValue)) return legacyFilename ? 'documents' : '';
-  if (legacyFilename && scopeValue === '') return 'documents';
-  return scopeValue;
-}
-
 export function readNavigation(search: string, defaultCongress: number): Navigation {
   const params = new URLSearchParams(search);
-  const congress = params.has('congress') ? params.get('congress') || String(defaultCongress) : legacyCongress(params, defaultCongress);
+  const congress = params.get('congress') || String(defaultCongress);
   const requestedView = params.get('view') || '';
   const measure = params.get('measure') || '';
   const access = params.get('access') || '';
   const committeeType = params.get('committeeType') || '';
-  const scopeValue = params.get('scope') || '';
-  const retainedValue = params.get('retained') || '';
-  const classificationValue = params.get('classification') || '';
-  const legacyFilename = !params.has('view') && (params.has('source') || params.has('row') || params.has('document_kind') || params.has('document_family') || params.has('retained') || params.has('classification') || params.has('field') || params.has('format') || params.has('review') || scopeValue === 'documents' || scopeValue === 'capture-records' || scopeValue === 'all');
   const page = Number(params.get('page'));
-  const pageIndex = legacyFilename
-    ? (Number.isSafeInteger(page) && page >= 1 ? page - 1 : 0)
-    : (Number.isSafeInteger(page) && page > 0 ? page : 0);
-  const legacyId = params.get('source') || params.get('row') || '';
+  const pageIndex = Number.isSafeInteger(page) && page > 0 ? page : 0;
   const sortValue = params.get('sort') || '';
   const sort = sortValue === 'record' || sortValue === 'date' || sortValue === 'kind' || sortValue === 'congress' ? sortValue : '';
   const directionValue = params.get('direction') || '';
   return {
-    view: isView(requestedView) ? requestedView : legacyFilename ? 'materials' : 'meetings',
+    view: isView(requestedView) ? requestedView : 'meetings',
     congress: congress === 'all' || /^\d+$/.test(congress) ? congress : String(defaultCongress),
     chamber: params.get('chamber') || '',
     q: params.get('q') || '',
     from: params.get('from') || '',
     to: params.get('to') || '',
     type: params.get('type') || '',
-    status: readStatus(isView(requestedView) ? requestedView : legacyFilename ? 'materials' : 'meetings', params.get('status') || ''),
+    status: readStatus(isView(requestedView) ? requestedView : 'meetings', params.get('status') || ''),
     category: isIssueCategory(params.get('category') || '') ? params.get('category') || '' : '',
     severity: isIssueSeverity(params.get('severity') || '') ? params.get('severity') || '' : '',
     materialCategory: isMaterialCategory(params.get('materialCategory') || '') ? params.get('materialCategory') || '' : '',
@@ -96,8 +67,8 @@ export function readNavigation(search: string, defaultCongress: number): Navigat
     history: requestedView === 'gaps' && isIssueHistory(params.get('history') || '') ? params.get('history') as IssueHistory : '',
     access: isAccessState(access) ? access : '',
     page: pageIndex,
-    kind: legacyFilename && legacyId ? 'filename_entry' : params.get('kind') || '',
-    id: legacyFilename && legacyId ? legacyId : params.get('id') || '',
+    kind: params.get('kind') || '',
+    id: params.get('id') || '',
     committee: params.get('committee') || '',
     month: params.get('month') || '',
     committeeLevel: params.get('committeeLevel') === 'full' ? 'full' : '',
@@ -106,15 +77,6 @@ export function readNavigation(search: string, defaultCongress: number): Navigat
     evidence: params.get('evidence') || '',
     measure: isCoverageAspect(measure) ? measure : 'transcript',
     grouping: params.get('grouping') === 'month' ? 'month' : 'congress',
-    scope: filenameScope(scopeValue, legacyFilename),
-    retained: isRetainedFilter(retainedValue) ? retainedValue : '',
-    document_family: params.get('document_family') || '',
-    document_kind: params.get('document_kind') || '',
-    format: params.get('format') || params.get('extension') || '',
-    field: params.get('field') || '',
-    classification: classificationValue === 'reviewed' ? 'reviewed' : '',
-    review: params.get('review') || '',
-    catalog: params.get('catalog') || '',
     sort,
     direction: sort ? directionValue === 'desc' ? 'desc' : 'asc' : '',
   };
@@ -154,7 +116,7 @@ export function viewNavigation(nav: Navigation, view: View): Navigation {
     aspect: meetings ? nav.aspect : '',
     evidence: meetings ? nav.evidence : '',
     ...(view === 'committees' ? { from: '', to: '' } : {}),
-    ...(view === 'materials' ? {} : { scope: '', retained: '', document_family: '', document_kind: '', format: '', field: '', classification: '', review: '', catalog: '', sort: '', direction: '' }),
+    ...(view === 'materials' ? {} : { sort: '', direction: '' }),
   };
 }
 

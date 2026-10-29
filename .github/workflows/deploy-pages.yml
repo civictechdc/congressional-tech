@@ -1,7 +1,7 @@
 name: Deploy website to Pages
 
-# Filename data publishes independently to R2. Pages deploys interface changes
-# and the existing Explorer publication.
+# Archive releases publish independently to R2. Pages deploys the archive
+# interface and the retained committee Explorer publication.
 on:
   push:
     branches: [main]
@@ -16,9 +16,6 @@ on:
       - ".github/actions/setup-publication-browser/**"
       - ".github/workflows/deploy-pages.yml"
       - "packages/congress_shared/**"
-      - "packages/viewer_publication/src/viewer_publication/filename_*.py"
-      - "scripts/publication/filename-test-fixture.py"
-      - "scripts/publication/publish-filename-viewer.py"
   workflow_dispatch:
     inputs:
       code_revision:
@@ -92,15 +89,12 @@ jobs:
           shutil.copytree(source, target, dirs_exist_ok=True)
           PYTHON
       - uses: ./.github/actions/setup-node-project
-      - name: Verify review controls and static reader
+      - name: Verify retained explorer and archive readers
         working-directory: apps/site
         run: npm run test:explorer
       - name: Build Astro site
         working-directory: apps/site
         run: npm run build
-      - name: Smoke test the built filename page
-        working-directory: apps/site
-        run: npm run test:built-filenames
       - uses: ./.github/actions/setup-publication-browser
       - name: Require the archive contract against native hand releases
         env:

@@ -10,15 +10,9 @@ The UI receives one `ExplorerReader` with `search`, `getRecord`, `getRelated` an
 `getCoverage`. React components know nothing about Parquet or HTTP ranges.
 `openPublicationReader` chooses the reader from the release manifest.
 
-Recordings & documents also reads a second publication, the filename catalog.
-`CURRENT.json` and the filename `manifest.json` stay independent. The dashboard
-script `reader/filenames/bootstrap.ts` is the only place that starts the filename
-worker. Explorer calls it through `window.filenameViewerApi`, which is also the
-probe live publication checks use. A committee file joins a catalog row by
-`provenanceUrlKey` (host, path, query, and fragment) against `source_url` and
-`recovered_source_url`, or by `saved_copy_sha256` against the `body_key` digest.
-`matchUrls` stops after 24 distinct source records and reports `truncated` when
-that bound fires. It does not join on source id.
+The document archive at `/archive/` uses `archive/ArchiveExplorer.tsx` and
+`reader/archive.ts`. The committee explorer retains its own published weekly
+tables until the phase-2 consumers move. It does not open the retired filename catalog.
 
 Production exports six logical tables:
 

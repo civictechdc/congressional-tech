@@ -5,18 +5,14 @@ import { withBase } from '../lib/paths';
 import '../styles/explorer.css';
 ---
 
-<Base title="Committee Explorer" active="dashboard" description="Explore congressional committee meetings, recordings, documents, captured filenames, witnesses, source evidence, and known gaps.">
+<Base title="Committee Explorer" active="dashboard" description="Explore congressional committee meetings, recordings, documents, witnesses, source evidence, and known gaps.">
   <section class="explorer-page">
     <div class="container">
       <div class="explorer-page-heading">
         <div><p class="eyebrow">Committee records</p><h1>Committee Explorer</h1></div>
         <a href={withBase('/youtube-coverage/')}>YouTube Event ID report ↗</a>
       </div>
-      <p data-catalog-update hidden role="status"><span>New data available.</span> <a>Load latest data →</a></p>
       <Explorer pointerUrl={withBase('/data/explorer/CURRENT.json')} client:load />
-      <script>
-        import '../components/explorer/reader/filenames/bootstrap.ts';
-      </script>
       <noscript><p>The interactive explorer requires JavaScript. Browse the <a href="https://github.com/civictechdc/congressional-tech/tree/pipeline-data">retained source data</a> on GitHub.</p></noscript>
     </div>
   </section>

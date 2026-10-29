@@ -9,9 +9,7 @@ publication recomputes positions from those identities and keeps a review only
 when its document, members and body are unchanged; anything else is withdrawn
 and shows the original catalog category.
 """
-import argparse
 import hashlib
-import importlib.util
 import json
 import re
 from pathlib import Path
@@ -156,26 +154,3 @@ def pinned_reviews(path, descriptor):
             or value.get('catalog_id') != descriptor['catalog_id'] or len(value.get('rows', [])) != descriptor['groups']):
         raise ValueError('Review publication pins differ from descriptor')
     return value
-
-
-def main():
-    parser = argparse.ArgumentParser(description='Record stable review identities from a verified review publication.')
-    parser.add_argument('reviews', type=Path, help='reviews.json of the pinned review publication')
-    parser.add_argument('filenames', type=Path, help='document-filenames.parquet of the exact catalog the reviews name')
-    parser.add_argument('--output', type=Path, default=IDENTITIES)
-    parser.add_argument('--descriptor', type=Path, default=DESCRIPTOR)
-    args = parser.parse_args()
-    import viewer_publication.filename_viewer as viewer
-    descriptor = json.loads(args.descriptor.read_text())
-    reviews = pinned_reviews(args.reviews, descriptor)
-    with viewer.Catalog(args.filenames, search_indexes=False) as catalog:
-        identities = validate_identities(identities_from(catalog, reviews), descriptor)
-        binding = bind(catalog, identities)
-    if binding['withdrawn'] or len(binding['rows']) != len(identities['rows']):
-        raise ValueError('The recorded identities do not bind back to their own catalog')
-    args.output.write_text(json.dumps(identities, indent=1, sort_keys=True) + '\n')
-    print(f"{len(identities['rows'])} review identities written to {args.output}")
-
-
-if __name__ == '__main__':
-    main()

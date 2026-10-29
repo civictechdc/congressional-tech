@@ -1,7 +1,7 @@
 import {test} from 'node:test';
 import assert from 'node:assert/strict';
 import {byteCache,retainedBytes,sharedLoad} from './cache.ts';
-import {rangeFile} from './catalog.ts';
+import {rangeFile} from '../range-file.ts';
 
 test('wide decoded values never enter a cache beyond its aggregate byte budget',()=>{
  const cache=byteCache(1024);
