@@ -105,3 +105,22 @@ def test_receipt_mutated_by_actual_model_refuses_all_successful_writes(tmp_path)
                 public_origin='https://archive.fixture.test',contract=never,canary=never,comparison_acceptance=held)
         assert set(store.objects)<= {'viewer-publications/status.json'}
         assert not any('/inputs/' in key or key=='viewer-publications/manifest.json' for key in store.objects)
+
+
+def test_effect_guard_opens_no_input_bytes_after_initial_verification(tmp_path):
+    import sys
+    from viewer_publication.archive_comparison_acceptance import ComparisonAcceptance
+    selected,report=selected_acceptance(tmp_path/'comparison')
+    held=ComparisonAcceptance(selected['receipt'],expected_mapping_digest=MAPPING,capture_pin=CAPTURE)
+    paths={str(verified.path) for verified in held._held}
+    reads=[];active=[True]
+    def audit(event,args):
+        if active[0] and event=='open' and isinstance(args[0],(str,bytes)) and str(args[0]) in paths:
+            reads.append(args[0])
+    sys.addaudithook(audit)
+    try:
+        for _ in range(4):held.require()
+        assert reads==[], 'An effect guard reopened/rehashed accepted input bytes'
+    finally:active[0]=False
+    report.write_text(report.read_text()+'\n')
+    with pytest.raises(ValueError):held.require()
