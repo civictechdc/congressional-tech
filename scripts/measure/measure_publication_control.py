@@ -93,24 +93,27 @@ def run(checkout, source, output, source_manifest_sha256, *, maximum_source_byte
     metrics = PublicationCosts(output)
     original_get, original_put, original_download, original_head = remote.get_object, remote.put_object, remote.download_file, remote.head_object
     def get(**kwargs):
-        time.sleep(request_latency_ms / 1000)
-        metrics.counts['get_requests'] += 1
-        response = original_get(**kwargs)
+        with metrics.request('get', kwargs['Key']):
+            time.sleep(request_latency_ms / 1000)
+            metrics.counts['get_requests'] += 1
+            response = original_get(**kwargs)
         metrics.counts['remote_body_bytes_read'] += response['ContentLength']
         return response
     def put(**kwargs):
-        time.sleep(request_latency_ms / 1000)
-        metrics.counts['put_requests'] += 1
-        body = kwargs['Body']
-        metrics.counts['put_body_bytes'] += len(body) if isinstance(body, bytes) else kwargs['ContentLength']
-        return original_put(**kwargs)
+        with metrics.request('put', kwargs['Key']):
+            time.sleep(request_latency_ms / 1000)
+            metrics.counts['put_requests'] += 1
+            body = kwargs['Body']
+            metrics.counts['put_body_bytes'] += len(body) if isinstance(body, bytes) else kwargs['ContentLength']
+            return original_put(**kwargs)
     def head(**kwargs):
         # The test adapter models HEAD using GET internally. Keep that detail
         # out of the request/full-body counters to model the actual SDK boundary.
-        time.sleep(request_latency_ms / 1000)
-        metrics.counts['head_requests'] += 1
-        response = original_get(**kwargs); response['Body'].close()
-        return {name: response[name] for name in ('ETag', 'ContentLength')}
+        with metrics.request('head', kwargs['Key']):
+            time.sleep(request_latency_ms / 1000)
+            metrics.counts['head_requests'] += 1
+            response = original_get(**kwargs); response['Body'].close()
+            return {name: response[name] for name in ('ETag', 'ContentLength')}
     def download(bucket, key, destination):
         time.sleep(request_latency_ms / 1000)
         metrics.counts['download_requests'] += 1
@@ -128,7 +131,7 @@ def run(checkout, source, output, source_manifest_sha256, *, maximum_source_byte
         'runtime': {'implementation': platform.python_implementation(), 'platform': platform.platform(),
             'machine': platform.machine(), 'packages': installed_versions(
                 ('pyarrow', 'boto3', 'botocore', 'lxml', 'duckdb', 'zstandard', 'ijson'))},
-        'command_process_model': 'source identity cache starts cold for each timed command; interpreter/import startup excluded',
+        'command_process_model': 'source identity freshly hashes code/config bytes; interpreter/import startup excluded',
         'prepared_recovery_supported': hasattr(publisher, 'prepare_recovery'),
         'measurement_sources': {name: digest(Path(__file__).with_name(name))
                                 for name in ('publication_costs.py', 'measure_publication_control.py',
@@ -136,30 +139,24 @@ def run(checkout, source, output, source_manifest_sha256, *, maximum_source_byte
     def publish(*, resume=False, probe=lambda *args: None):
         return attempts.publish(publisher, remote, root, artifact={'id': '456'}, public_url=publisher.PUBLIC_URL,
             verify_artifact=fixture.custody, probe=probe, resume=resume, attempt=prepared['attempt'] if resume else None)
-    def command_stage(name):
-        # The real CLI commands run in separate processes. Clear only the shared
-        # source identity cache before timing; keep reuse within each command.
-        identity_module=sys.modules.get('viewer_release_identity')
-        if identity_module is not None:identity_module._source_cache.clear()
-        return metrics.stage(name)
     try:
         with metrics.instrument():
-            with command_stage('accepted_preparation'):
+            with metrics.stage('accepted_preparation'):
                 prepared = attempts.prepare(publisher, remote, root, run_id='123', run_attempt='1', public_url=publisher.PUBLIC_URL)
-            with command_stage('successful_publication'):
+            with metrics.stage('successful_publication'):
                 outcomes['successful_publication'] = publish()
-            with command_stage('unchanged_poll'):
+            with metrics.stage('unchanged_poll'):
                 outcomes['unchanged_poll'] = attempts.prepare(publisher, remote, output / 'noop', run_id='124', run_attempt='1', public_url=publisher.PUBLIC_URL)
             def refuse(*args):
                 raise RuntimeError('Explicit bounded fixture probe failure')
             try:
-                with command_stage('explicit_resume_failure'):
+                with metrics.stage('explicit_resume_failure'):
                     publish(resume=True, probe=refuse)
             except RuntimeError as error:
                 outcomes['explicit_resume_failure'] = {'status': 'failed', 'error_type': type(error).__name__, 'error': str(error)}
             else:
                 raise AssertionError('Expected fixture failure did not occur')
-            with command_stage('explicit_resume'):
+            with metrics.stage('explicit_resume'):
                 outcomes['explicit_resume'] = publish(resume=True)
         assert outcomes['successful_publication']['status'] == 'published'
         assert outcomes['unchanged_poll']['status'] == 'unchanged'

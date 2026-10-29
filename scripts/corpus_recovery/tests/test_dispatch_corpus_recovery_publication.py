@@ -312,8 +312,8 @@ def test_local_publication_keeps_original_conditions_after_own_selector_advance(
     assert module.publication_conditions(restored)==original=={'previous_etag':'before-viewer','selected_etag':'selected-source'}
 
 
-@__import__('pytest').mark.parametrize('outcome', ['refused', 'uncommitted', 'readback_failed', 'success', 'lost_ack'])
-def test_local_selector_receipt_advances_only_after_guarded_verification(tmp_path, monkeypatch, outcome):
+@__import__('pytest').mark.parametrize('outcome', ['refused', 'uncommitted', 'readback_failed', 'success', 'success_readback_unavailable', 'lost_ack'])
+def test_local_selector_receipt_advances_only_after_guarded_acceptance(tmp_path, monkeypatch, outcome):
     import hashlib
     import io
     import shutil
@@ -352,7 +352,7 @@ def test_local_selector_receipt_advances_only_after_guarded_verification(tmp_pat
                 self.readbacks += 1
                 assert selected_path.read_bytes() == before
                 assert proposed_path.read_bytes() == proposed
-                if outcome == 'readback_failed':
+                if outcome in ('readback_failed', 'success_readback_unavailable'):
                     raise OSError('readback unavailable')
             raw = objects[Key]
             return dict(Body=io.BytesIO(raw), ContentLength=len(raw), ETag=etag(raw))
@@ -367,7 +367,7 @@ def test_local_selector_receipt_advances_only_after_guarded_verification(tmp_pat
             if outcome == 'uncommitted':
                 raise TimeoutError('commit unknown')
             objects[selector] = kwargs['Body']
-            if outcome == 'lost_ack':
+            if outcome in ('lost_ack', 'readback_failed'):
                 raise TimeoutError('committed acknowledgment lost')
             return {'ETag': etag(objects[selector])}
     client = Client()
@@ -391,7 +391,7 @@ def test_local_selector_receipt_advances_only_after_guarded_verification(tmp_pat
     monkeypatch.setattr('boto3.client', lambda *a, **kw: client)
     args = SimpleNamespace(batch=batch, imported=imported, runtime=RUNTIME, execute=True,
         destination=destination, baseline=baseline, config=config, native_config=config, resume=False)
-    if outcome in ('success', 'lost_ack'):
+    if outcome in ('success', 'success_readback_unavailable', 'lost_ack'):
         with pytest.raises(StoppedAfterSelection):
             module.run(args)
         assert selected_path.read_bytes() == proposed
@@ -400,7 +400,8 @@ def test_local_selector_receipt_advances_only_after_guarded_verification(tmp_pat
             module.run(args)
         assert selected_path.read_bytes() == before
     assert proposed_path.read_bytes() == proposed
-    assert client.puts == 1 and client.readbacks == 1
+    assert client.puts == 1
+    assert client.readbacks == (0 if outcome in ('success', 'success_readback_unavailable') else 1)
 
 
 def test_preflight_keeps_catalog_imports_available_for_selected_runtime(tmp_path):

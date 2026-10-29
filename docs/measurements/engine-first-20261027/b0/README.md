@@ -1,4 +1,4 @@
-# Older receipt cleanup: local qualification
+# B0 old-writer repair and receipt cleanup release
 
 All 2,289 receipt files (2,596,054 lines) passed the five-step rewrite on scratch copies. The final full scan found zero targeted header or local-path occurrences. No bucket was accessed, and the source cache was read only. This qualifies the tool locally; the live cleanup and lock remain owner actions.
 
@@ -22,11 +22,31 @@ These are measurements on this Mac, not qualification of the Linux 16 GB runner.
 
 The focused cleanup, privacy, probe and pipeline contracts pass: 56 tests. At the public-writer change, the complete production-offline lane had exactly the same 33 failures and three setup errors as the initial baseline: 11,318 passed versus 11,296 initially. See the scratch ledger for full logs and exact failed-test identities.
 
+## Standalone release and checks
+
+Branch `release/b0-old-writers`, worktree `/Users/mikewolfd/Work/wt/ct-release-b0`, starts at shared `origin/main` `7411f5b7`. Maintained source comes from integration `ef66bb97`; the legacy emission repair is the two-call-site change from `d306f02a`. Capture and recovery apply one shared privacy helper before storing public receipts. The release keeps the original writer inputs intact.
+
+A forward review fix makes backup file contents and all directory entries durable before replacement; a sync failure blocks the live write, including a retry that finds a previously linked backup. **52 focused tests pass**, covering both writer emission points, conditional replacement, backup/readback, crashes, races, inventory and final rescan. The larger historical local qualification above remains historical evidence; it was not repeated for this release and no real storage was accessed.
+
+```sh
+cd /Users/mikewolfd/Work/wt/ct-release-b0
+uv sync --locked
+.venv/bin/python scripts/dev.py test production-offline \
+  --path packages/congress_api/tests/test_receipt_cleanup.py \
+  --path packages/congress_api/tests/test_public_receipts.py \
+  --path packages/corpus_recovery/tests/test_public_recovery_receipts.py \
+  --path packages/corpus_recovery/tests/test_import_corpus_recovery_batch.py \
+  --path packages/corpus_recovery/tests/test_native_import_preservation.py \
+  --path packages/corpus_recovery/tests/test_verify_corpus_recovery_import_preservation.py
+```
+
+The owner's [ordered checklist](../owner-raw-safety.md) gives push/merge, drain, inventory, cleanup, final coverage verification, receipt lock and stop commands. Run this release's commands from the worktree above after `uv sync --locked`. Keep private backups on a durable disk independent of scratch. No native runtime configuration is needed for these focused checks or the cleanup CLI.
+
 ## Owner procedure
 
 First confirm both patterns in `scan.json`: recorded authorization/cookie headers and absolute local paths, with URLs and pointer targets protected. Deploy the patched old writers and drain their prior revisions; pause recovery imports and the weekly raw writer for the cleanup window. Use a dedicated cleanup credential, supplied outside this report.
 
-Run from the congressional-tech worktree. Set `B0_WORK` to a private, durable owner directory with enough room for originals and the final mirror. The following commands are prepared, not executed against live storage:
+Run from `/Users/mikewolfd/Work/wt/ct-release-b0`. Set `B0_WORK` to a private, durable owner directory with enough room for originals and the final mirror. The following commands are prepared, not executed against live storage:
 
 ```sh
 .venv/bin/python -I -m congress_api.cli.receipt_cleanup --bucket congressional-tech-raw --list-inventory --inventory "$B0_WORK/keys.json" --report "$B0_WORK/listing-before.json"
@@ -43,4 +63,6 @@ Pause capture before the final listing and keep it paused until the lock is read
 .venv/bin/python -I -m congress_api.cli.receipt_cleanup --bucket congressional-tech-raw --scan-live --inventory "$B0_WORK/final-keys.json" --mirror-root "$B0_WORK/final-mirror" --report "$B0_WORK/final-scan.json"
 ```
 
-Require zero matches, one verified record for every final key, and agreement between the final listing and verification identities. Only then lock `receipts/` indefinitely and read the rules back. The common create-only body-store binding (B3) is still pending; the cleanup's conditional replacement remains a deliberately separate one-time adapter.
+Require zero matches, one verified record for every final key, and agreement between the final listing and verification identities. Only then lock `receipts/` indefinitely and read the rules back. B3 is built on the integration branch: `BodyStore` and its R2/local adapters serve the new raw writers (BIND §3.1, inspected at `ef66bb97`). This standalone B0 release ports the public-receipt repair into the two running legacy writers and retains the cleanup's conditional replacement as its separate one-time adapter. Deploying B0 does not deploy the integration branch.
+
+Release review: the semi-formal code review approved the package after the backup-durability correction (`01594e57`, `35914df5`); no BLOCKER or CONCERN remains. Correction to the latter commit's body: `receipt_cleanup_stores.py` is **87 → 104** lines, as the committed file shows.

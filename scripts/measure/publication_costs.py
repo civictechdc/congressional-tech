@@ -26,6 +26,27 @@ class PublicationCosts:
         self.peak = 0
         self.samples = 0
         self.errors = []
+        self.count_lock = threading.Lock()
+
+    def add(self, values):
+        with self.count_lock:
+            self.counts.update(values)
+
+    @contextmanager
+    def request(self, method, key):
+        category = ('journal' if key.startswith('viewer-publications/attempts/') else
+                    'payload' if key.startswith('viewer-publications/releases/') else 'control')
+        prefix = category + '_' + method
+        started = time.perf_counter()
+        failed = False
+        try:
+            yield
+        except BaseException:
+            failed = True
+            raise
+        finally:
+            self.add({prefix + '_requests': 1, prefix + '_seconds': time.perf_counter() - started,
+                      prefix + '_failures': int(failed)})
 
     def sample(self):
         try:
@@ -61,6 +82,26 @@ class PublicationCosts:
     @contextmanager
     def instrument(self):
         import pyarrow.parquet as pq
+        from viewer_publication.continuation import DurableJournal
+        old_record, old_restore = DurableJournal.record, DurableJournal.restore
+        metrics = self
+        def record(journal, event, value):
+            started = time.perf_counter()
+            with journal.lock:
+                acquired = time.perf_counter()
+                try:
+                    return old_record(journal, event, value)
+                finally:
+                    metrics.add({"journal_record_calls": 1,
+                        "journal_lock_wait_seconds": acquired - started,
+                        "journal_lock_held_seconds": time.perf_counter() - acquired})
+        def restore(journal):
+            started = time.perf_counter()
+            try:
+                return old_restore(journal)
+            finally:
+                metrics.add({"journal_restore_calls": 1,
+                             "journal_restore_seconds": time.perf_counter() - started})
         old_file_digest, old_parquet, old_connect = hashlib.file_digest, pq.ParquetFile, sqlite3.connect
         old_fsync, old_dump, old_dumps = os.fsync, json.dump, json.dumps
         counts = self.counts
@@ -120,11 +161,13 @@ class PublicationCosts:
             return old_connect(*args, **kwargs)
         hashlib.file_digest, pq.ParquetFile, sqlite3.connect = file_digest, CountedParquet, connect
         os.fsync, json.dump, json.dumps = fsync, dump, dumps
+        DurableJournal.record, DurableJournal.restore = record, restore
         try:
             yield self
         finally:
             hashlib.file_digest, pq.ParquetFile, sqlite3.connect = old_file_digest, old_parquet, old_connect
             os.fsync, json.dump, json.dumps = old_fsync, old_dump, old_dumps
+            DurableJournal.record, DurableJournal.restore = old_record, old_restore
 
     def save(self, path, *, inputs, outcomes):
         Path(path).write_text(json.dumps({'version': 1, 'scope': 'small generated fixture and in-memory remote only',

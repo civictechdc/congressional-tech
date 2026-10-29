@@ -11,6 +11,16 @@ import tempfile
 from congress_api.retention.receipt_cleanup import digest
 
 
+def sync_directories(path):
+    """Make the filename and every potentially new parent entry durable, or fail."""
+    for parent in (path.parent, *path.parent.parents):
+        descriptor = os.open(parent, os.O_RDONLY)
+        try:
+            os.fsync(descriptor)
+        finally:
+            os.close(descriptor)
+
+
 class DirectoryFiles:
     def __init__(self, root):
         self.root = Path(root).resolve()
@@ -24,7 +34,13 @@ class DirectoryFiles:
     def get_file(self, key, destination):
         source = self.path(key)
         try:
-            shutil.copyfile(source, destination)
+            # A previous attempt may have linked the backup and failed its sync.
+            # Reestablish durability before that existing name can authorize a rewrite.
+            with source.open('rb') as stable:
+                os.fsync(stable.fileno())
+                sync_directories(source)
+                with Path(destination).open('wb') as out:
+                    shutil.copyfileobj(stable, out)
         except FileNotFoundError:
             return None
         return dict(etag=digest(destination), size=destination.stat().st_size)
@@ -50,6 +66,7 @@ class DirectoryFiles:
                         os.link(temporary, path)
                     else:
                         os.replace(temporary, path)
+                    sync_directories(path)
                 finally:
                     temporary.unlink(missing_ok=True)
 

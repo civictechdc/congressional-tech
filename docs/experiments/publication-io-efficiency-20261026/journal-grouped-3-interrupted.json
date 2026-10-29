@@ -1,0 +1,11 @@
+{
+  "arm": "grouped",
+  "trial": 3,
+  "status": "interrupted_budget_exhausted",
+  "completed": false,
+  "receipt_exists": false,
+  "source_head": "e47d0384c6ba4aaa05df272402edc57d6a739c92",
+  "timeout_seconds": 12.724192000000002,
+  "metrics_claim": "none; partial artifacts preserved, not a completed trial",
+  "remaining_benchmark_work": "paused at parent instruction; no retry"
+}

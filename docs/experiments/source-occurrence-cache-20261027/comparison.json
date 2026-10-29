@@ -1,0 +1,22 @@
+{
+  "exact_asset_bytes": true,
+  "exact_source_result": true,
+  "retained_inputs_identical": true,
+  "assets": 6,
+  "asset_bytes": 5452166,
+  "baseline_seconds": 225.29920991700055,
+  "candidate_seconds": 30.59942533299909,
+  "speedup": 7.3628575525577915,
+  "wall_time_reduction_percent": 86.41831662691058,
+  "matches_previously_qualified_assets": true,
+  "baseline_counters": {
+    "schema_decodes": 31268,
+    "descriptor_checks": 11424,
+    "owner_comparison_rows": 97305306
+  },
+  "candidate_counters": {
+    "schema_decodes": 5,
+    "descriptor_checks": 1,
+    "owner_comparison_rows": 0
+  }
+}

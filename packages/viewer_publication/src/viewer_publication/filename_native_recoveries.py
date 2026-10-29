@@ -1,12 +1,19 @@
 """Update stable recovery links from affected URLs and retained row ownership."""
+from contextlib import closing
 import json
 from pathlib import Path
 import pickle
 import sqlite3
+import time
 from tempfile import TemporaryDirectory
 
+import pyarrow as pa
+
+from viewer_publication.filename_budget import DEFAULT_DECODED_POLICY, bounded_batches, refuse
+
 from congress_api.parsers.archive_links import allowed_url
-from congress_api.retention.saved_responses import saved_response
+from congress_api.retention.saved_responses import FIELDS, saved_response
+from congress_api.retention.document_index import compact
 from congress_api.retention.source_aliases import resolution_candidates
 from viewer_publication.filename_aliases import content_kind, valid_body
 from viewer_publication.filename_alias_index import OUTPUT_BYTES
@@ -15,13 +22,16 @@ from viewer_publication.filename_recoveries import accepted_rows
 
 class CatalogRecoverySources:
     """Adapt selected source lookups; preserve the original encounter ordering."""
-    def __init__(self, snapshot, *, max_ordered_bytes):
+    def __init__(self, snapshot, *, max_ordered_bytes, initial=False, metrics=None, admission_directory=None):
         from congress_api.retention.catalog_dependency_storage import CatalogDependencyStorage
         self.snapshot, self.max_ordered_bytes = snapshot, max_ordered_bytes
         self.owner = CatalogDependencyStorage.for_snapshot(snapshot)
         self.selection = snapshot.selection['dependency']
         self._temp_dir = None
         self._spill_db = None
+        self.initial, self._initial_ready = initial, False
+        self.admission_directory = admission_directory
+        self.metrics = metrics if metrics is not None else {}
 
     def _get_spill_db(self):
         if self._spill_db is None:
@@ -36,13 +46,74 @@ class CatalogRecoverySources:
             self._spill_db = db
         return self._spill_db
 
+    def _initial_index(self):
+        if self._initial_ready:
+            return self._spill_db
+        # The scan must retain the routed reader's current lookup-policy admission.
+        self.owner._selection(self.selection, require_lookup_policy=True)
+        db = self._get_spill_db()
+        started, count = time.monotonic(), 0
+        try:
+            db.executescript('''
+                CREATE TABLE initial_sources(source TEXT NOT NULL PRIMARY KEY,
+                    position INTEGER NOT NULL UNIQUE,url TEXT,body BLOB NOT NULL);
+                CREATE INDEX initial_urls ON initial_sources(url,position);
+                CREATE TABLE initial_targets(target TEXT,source TEXT,
+                    PRIMARY KEY(target,source));
+            ''')
+            columns = [name for name in dict.fromkeys([*FIELDS, 'source_resolved_url', 'source_id', 'document_id'])
+                       if name in self.snapshot.schemas['filenames'].names]
+            table = self.snapshot.table('filenames', max_ordered_bytes=self.max_ordered_bytes)
+            options = dict(columns=columns, batch_size=128, include_order=True)
+            if self.admission_directory is not None:
+                options['admission_directory'] = self.admission_directory
+            for incoming in table.iter_batches(**options):
+                for batch in bounded_batches(pa.Table.from_batches([incoming]), stage='initial recovery', metrics=self.metrics):
+                    for row in batch.to_pylist():
+                        position = row.pop('_catalog_order')
+                        source, document = row.get('source_id'), row.get('document_id')
+                        if (type(position) is not int or position < 0 or not isinstance(source, str) or not source
+                                or not isinstance(document, str) or not document):
+                            raise ValueError('Recovery row lacks stable source/document ownership or source order')
+                        body = pickle.dumps(row)
+                        if len(body) > DEFAULT_DECODED_POLICY.writer_buffer_bytes:
+                            refuse('initial recovery', 'indexed row bytes', len(body),
+                                   DEFAULT_DECODED_POLICY.writer_buffer_bytes)
+                        self.metrics['max_initial_recovery_index_row_bytes'] = max(
+                            self.metrics.get('max_initial_recovery_index_row_bytes', 0), len(body))
+                        db.execute('INSERT INTO initial_sources VALUES (?,?,?,?)',
+                                   (source, position, row.get('source_url'), body))
+                        db.executemany('INSERT OR IGNORE INTO initial_targets VALUES (?,?)',
+                                       ((target, source) for target in {compact(v) for v in resolution_candidates(row)}))
+                        count += 1
+            if count != self.snapshot.selection['counts']['source_rows']:
+                raise ValueError('Initial recovery source row count differs from selected catalog')
+            db.commit()
+        except BaseException:
+            self.close()
+            raise
+        self._initial_ready = True
+        self.metrics.update(initial_recovery_scans=1, initial_recovery_rows=count,
+                            initial_recovery_scan_seconds=time.monotonic() - started,
+                            initial_recovery_sqlite_bytes=Path(self._temp_dir.name,'spill.sqlite').stat().st_size)
+        return db
+
     def urls(self):
         # Initial adoption only. Subsequent updates use the exact change cursor.
+        if self.initial:
+            yield from (url for url, in self._initial_index().execute(
+                "SELECT DISTINCT url FROM initial_sources WHERE url IS NOT NULL AND url!='' ORDER BY url"))
+            return
         for batch in self.snapshot.table('filenames', max_ordered_bytes=self.max_ordered_bytes).iter_batches(
                 columns=['source_url']):
             yield from (url for url in batch.column(0).to_pylist() if url)
 
     def at_url(self, url):
+        if self.initial:
+            for body, in self._initial_index().execute(
+                    'SELECT body FROM initial_sources WHERE url=? ORDER BY position', (url,)):
+                yield pickle.loads(body)
+            return
         # URL membership is hash routed, while the historical content-kind rule
         # uses the last encounter. Hybrid fast-path: in-memory sort for small sets
         # (<256 rows and <64 KiB), spilling to a reusable SQLite connection for prolific URLs.
@@ -82,10 +153,17 @@ class CatalogRecoverySources:
             db.execute('DELETE FROM spill_sources')
 
     def targeting(self, url):
+        if self.initial:
+            for body, in self._initial_index().execute(
+                    'SELECT body FROM initial_targets JOIN initial_sources USING(source) '
+                    'WHERE target=? ORDER BY source', (compact(url),)):
+                yield pickle.loads(body)
+            return
         for record in self.owner.originals_targeting(self.selection, url):
             yield record['source_values']
 
     def close(self):
+        self._initial_ready = False
         if self._spill_db is not None:
             try:
                 self._spill_db.close()
@@ -103,7 +181,7 @@ class CatalogRecoverySources:
         self.close()
 
 
-def index_catalog_recoveries(snapshot, rows, *, max_ordered_bytes, previous=None, metrics=None):
+def index_catalog_recoveries(snapshot, rows, *, max_ordered_bytes, previous=None, metrics=None, admission_directory=None):
     """Bind recovery updates to exact retained catalog ancestry and row values."""
     source_identity = previous['source_identity'] if previous is not None else None
 
@@ -117,10 +195,11 @@ def index_catalog_recoveries(snapshot, rows, *, max_ordered_bytes, previous=None
     counts = snapshot.selection['counts']
     info = dict(catalog_id=snapshot.schemas['filenames'].metadata[b'catalog_id'].decode(),
                 rows=counts['source_rows'], entries=counts['document_rows'])
-    return index_selected_recoveries(info, snapshot.identity,
-        CatalogRecoverySources(snapshot, max_ordered_bytes=max_ordered_bytes), rows,
-        previous=previous, previous_identity=source_identity,
-        changed_sources=changed_rows() if previous is not None else (), metrics=metrics)
+    with closing(CatalogRecoverySources(snapshot, max_ordered_bytes=max_ordered_bytes,
+            initial=previous is None, metrics=metrics, admission_directory=admission_directory)) as sources:
+        return index_selected_recoveries(info, snapshot.identity, sources, rows,
+            previous=previous, previous_identity=source_identity,
+            changed_sources=changed_rows() if previous is not None else (), metrics=metrics)
 
 
 def _alias(original, sources, accepted, accepted_targets):

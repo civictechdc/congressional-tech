@@ -6,11 +6,7 @@ from pathlib import Path
 
 from congress_shared.auth import load_youtube_api_key
 from congress_shared.cli import add_global_args, add_youtube_args, configure_logging
-from youtube_api.tables import (
-    get_all_committee_handless,
-    get_all_commitee_names,
-    get_committee_index,
-)
+from youtube_api.tables import load_committee_configuration
 from .youtube_event_fetcher import YoutubeEventFetcher
 
 
@@ -19,20 +15,20 @@ def main(
 ) -> None:
     api_key = load_youtube_api_key()
 
-    ## read the names of each committee from the CSV file, include their row
-    ##  indices so we can name their json files programmatically
-    committee_names = get_all_commitee_names(
-        with_index=True, csv_path=channels_csv_path
-    )
-
-    ## read all the handles for all the committees
-    all_committee_handless = get_all_committee_handless(
-        csv_path=channels_csv_path, include_member_channels=True
-    )
+    committees, channel_ids = load_committee_configuration(channels_csv_path)
+    committee_names = [
+        (metadata["name"], index) for index, metadata in enumerate(committees.values())
+    ]
+    all_committee_handles = [
+        metadata["handles"] + metadata["member_handles"] for metadata in committees.values()
+    ]
 
     ## if we were passed a selection, determine both the committee name and index
     if committee_name is not None:
-        committee_index = get_committee_index(committee_name, channels_csv_path)
+        try:
+            committee_index = [name for name, _ in committee_names].index(committee_name)
+        except ValueError:
+            raise IndexError(f"No committee name matched {committee_name} in {channels_csv_path}")
         committee_names = [(committee_names[committee_index][0], committee_index)]
     elif committee_index is not None:
         # Validate the committee index
@@ -51,9 +47,10 @@ def main(
             committee_index=committee_index,
             csv_path=channels_csv_path,
             tinydb_dir=tinydb_dir,
+            channel_ids=channel_ids,
         )
 
-        handles = all_committee_handless[committee_index]
+        handles = all_committee_handles[committee_index]
         for handle in handles:
             logging.info(f"Working on: {handle}")
             if len(handle) > 0:

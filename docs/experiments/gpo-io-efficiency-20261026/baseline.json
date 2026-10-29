@@ -1,0 +1,339 @@
+{
+  "source": "/Users/mikewolfd/.codex/worktrees/v6-continuation-capacity/congressional-tech",
+  "head": "7242f0419f589ffcf9e52f5f5068fb4edd5b6c44",
+  "files": {
+    "acquisition/gpo.py": {
+      "loaded_path": "/Users/mikewolfd/.codex/worktrees/v6-continuation-capacity/congressional-tech/packages/congress_api/src/congress_api/acquisition/gpo.py",
+      "sha256": "54ac5c7322b14b772183e8f5c2629f8830d4bd0dbc5cd1be773bdd8e4c73283e"
+    },
+    "transport/zip_member.py": {
+      "loaded_path": "/Users/mikewolfd/.codex/worktrees/v6-continuation-capacity/congressional-tech/packages/congress_api/src/congress_api/transport/zip_member.py",
+      "sha256": "179fa93f668b81d0d60f170627ad884e8e9156f79a2d9069112a3d7598e05c07"
+    }
+  },
+  "zip": [
+    {
+      "case": "success",
+      "accepted": true,
+      "member_sha256": "6270a0ec10cf04da74e362b450f43d65402bd341bdc198ad93259ff42880f60b",
+      "response_bytes": 65680,
+      "copy_calls": 16,
+      "copy_bytes": 426272,
+      "copy_sizes": [
+        8192,
+        16384,
+        24576,
+        32768,
+        40960,
+        49152,
+        57344,
+        65536,
+        65557,
+        65557,
+        30,
+        30,
+        25,
+        25,
+        68,
+        68
+      ],
+      "requests": 4,
+      "streams_closed": true
+    },
+    {
+      "case": "oversized",
+      "accepted": false,
+      "error": "Publisher exceeded the ZIP range byte limit",
+      "rejected_bytes": 65557,
+      "rejected_sha256": "c96a456cbe47491cd709a2242d0da4a9099e683521cc18472c7e516352e1deae",
+      "source": {
+        "url": "https://www.govinfo.gov/content/pkg/CHRG-119shrg64090.zip",
+        "requests": [
+          {
+            "http_status": 206,
+            "final_url": "https://www.govinfo.gov/content/pkg/CHRG-119shrg64090.zip",
+            "response_headers": {
+              "Content-Range": "bytes 294871-360427/360428",
+              "Content-Type": "application/zip",
+              "ETag": "\"source-1\"",
+              "Last-Modified": "Fri, 23 Oct 2026 21:58:30 GMT"
+            },
+            "response_header_items": [
+              {
+                "name": "Content-Range",
+                "value": "bytes 294871-360427/360428"
+              },
+              {
+                "name": "Content-Type",
+                "value": "application/zip"
+              },
+              {
+                "name": "ETag",
+                "value": "\"source-1\""
+              },
+              {
+                "name": "Last-Modified",
+                "value": "Fri, 23 Oct 2026 21:58:30 GMT"
+              }
+            ],
+            "response_header_fidelity": "combined_mapping_only",
+            "response_reason": null,
+            "http_version": null,
+            "response_metadata_version": 2,
+            "range": "bytes=-65557",
+            "truncated": true
+          }
+        ]
+      },
+      "copy_calls": 9,
+      "copy_bytes": 360469,
+      "copy_sizes": [
+        8192,
+        16384,
+        24576,
+        32768,
+        40960,
+        49152,
+        57344,
+        65536,
+        65557
+      ],
+      "requests": 1,
+      "streams_closed": true
+    },
+    {
+      "case": "interrupted",
+      "accepted": false,
+      "error": "ZIP range transfer failed: ChunkedEncodingError",
+      "rejected_bytes": 16384,
+      "rejected_sha256": "8b7cf49743af8a35d4e45042afe10caaee9c027389387e8275bb90a94d6713b5",
+      "source": {
+        "url": "https://www.govinfo.gov/content/pkg/CHRG-119shrg64090.zip",
+        "requests": [
+          {
+            "http_status": 206,
+            "final_url": "https://www.govinfo.gov/content/pkg/CHRG-119shrg64090.zip",
+            "response_headers": {
+              "Content-Range": "bytes 294871-360427/360428",
+              "Content-Type": "application/zip",
+              "ETag": "\"source-1\"",
+              "Last-Modified": "Fri, 23 Oct 2026 21:58:30 GMT"
+            },
+            "response_header_items": [
+              {
+                "name": "Content-Range",
+                "value": "bytes 294871-360427/360428"
+              },
+              {
+                "name": "Content-Type",
+                "value": "application/zip"
+              },
+              {
+                "name": "ETag",
+                "value": "\"source-1\""
+              },
+              {
+                "name": "Last-Modified",
+                "value": "Fri, 23 Oct 2026 21:58:30 GMT"
+              }
+            ],
+            "response_header_fidelity": "combined_mapping_only",
+            "response_reason": null,
+            "http_version": null,
+            "response_metadata_version": 2,
+            "range": "bytes=-65557"
+          }
+        ]
+      },
+      "copy_calls": 2,
+      "copy_bytes": 24576,
+      "copy_sizes": [
+        8192,
+        16384
+      ],
+      "requests": 1,
+      "streams_closed": true
+    },
+    {
+      "case": "wrong-range",
+      "accepted": false,
+      "error": "ZIP range length does not match Content-Range",
+      "rejected_bytes": 65557,
+      "rejected_sha256": "7a1dbe11f057656ad049d868cec073af936dcb38ffc81e4c85dccb917fcdaae2",
+      "source": {
+        "url": "https://www.govinfo.gov/content/pkg/CHRG-119shrg64090.zip",
+        "requests": [
+          {
+            "http_status": 206,
+            "final_url": "https://www.govinfo.gov/content/pkg/CHRG-119shrg64090.zip",
+            "response_headers": {
+              "Content-Range": "bytes 0-0/2",
+              "Content-Type": "application/zip",
+              "ETag": "\"source-1\"",
+              "Last-Modified": "Fri, 23 Oct 2026 21:58:30 GMT"
+            },
+            "response_header_items": [
+              {
+                "name": "Content-Range",
+                "value": "bytes 0-0/2"
+              },
+              {
+                "name": "Content-Type",
+                "value": "application/zip"
+              },
+              {
+                "name": "ETag",
+                "value": "\"source-1\""
+              },
+              {
+                "name": "Last-Modified",
+                "value": "Fri, 23 Oct 2026 21:58:30 GMT"
+              }
+            ],
+            "response_header_fidelity": "combined_mapping_only",
+            "response_reason": null,
+            "http_version": null,
+            "response_metadata_version": 2,
+            "range": "bytes=-65557",
+            "bytes": 65557,
+            "sha256": "7a1dbe11f057656ad049d868cec073af936dcb38ffc81e4c85dccb917fcdaae2"
+          }
+        ]
+      },
+      "copy_calls": 10,
+      "copy_bytes": 426026,
+      "copy_sizes": [
+        8192,
+        16384,
+        24576,
+        32768,
+        40960,
+        49152,
+        57344,
+        65536,
+        65557,
+        65557
+      ],
+      "requests": 1,
+      "streams_closed": true
+    },
+    {
+      "case": "changed-etag",
+      "accepted": false,
+      "error": "ZIP source ETag changed between requests",
+      "rejected_bytes": 30,
+      "rejected_sha256": "5702a12f5d0603048a091dd0f9f09f4cd6e5e38c1c41ca0778d86fa1852064d1",
+      "source": {
+        "url": "https://www.govinfo.gov/content/pkg/CHRG-119shrg64090.zip",
+        "requests": [
+          {
+            "http_status": 206,
+            "final_url": "https://www.govinfo.gov/content/pkg/CHRG-119shrg64090.zip",
+            "response_headers": {
+              "Content-Range": "bytes 294871-360427/360428",
+              "Content-Type": "application/zip",
+              "ETag": "\"source-1\"",
+              "Last-Modified": "Fri, 23 Oct 2026 21:58:30 GMT"
+            },
+            "response_header_items": [
+              {
+                "name": "Content-Range",
+                "value": "bytes 294871-360427/360428"
+              },
+              {
+                "name": "Content-Type",
+                "value": "application/zip"
+              },
+              {
+                "name": "ETag",
+                "value": "\"source-1\""
+              },
+              {
+                "name": "Last-Modified",
+                "value": "Fri, 23 Oct 2026 21:58:30 GMT"
+              }
+            ],
+            "response_header_fidelity": "combined_mapping_only",
+            "response_reason": null,
+            "http_version": null,
+            "response_metadata_version": 2,
+            "range": "bytes=-65557",
+            "bytes": 65557,
+            "sha256": "7a1dbe11f057656ad049d868cec073af936dcb38ffc81e4c85dccb917fcdaae2"
+          },
+          {
+            "http_status": 206,
+            "final_url": "https://www.govinfo.gov/content/pkg/CHRG-119shrg64090.zip",
+            "response_headers": {
+              "Content-Range": "bytes 59-88/360428",
+              "Content-Type": "application/zip",
+              "ETag": "\"changed\"",
+              "Last-Modified": "Fri, 23 Oct 2026 21:58:30 GMT"
+            },
+            "response_header_items": [
+              {
+                "name": "Content-Range",
+                "value": "bytes 59-88/360428"
+              },
+              {
+                "name": "Content-Type",
+                "value": "application/zip"
+              },
+              {
+                "name": "ETag",
+                "value": "\"changed\""
+              },
+              {
+                "name": "Last-Modified",
+                "value": "Fri, 23 Oct 2026 21:58:30 GMT"
+              }
+            ],
+            "response_header_fidelity": "combined_mapping_only",
+            "response_reason": null,
+            "http_version": null,
+            "response_metadata_version": 2,
+            "range": "bytes=59-88",
+            "bytes": 30,
+            "sha256": "5702a12f5d0603048a091dd0f9f09f4cd6e5e38c1c41ca0778d86fa1852064d1"
+          }
+        ],
+        "bytes": 360428,
+        "etag": "\"source-1\"",
+        "last_modified": "Fri, 23 Oct 2026 21:58:30 GMT"
+      },
+      "copy_calls": 12,
+      "copy_bytes": 426086,
+      "copy_sizes": [
+        8192,
+        16384,
+        24576,
+        32768,
+        40960,
+        49152,
+        57344,
+        65536,
+        65557,
+        65557,
+        30,
+        30
+      ],
+      "requests": 2,
+      "streams_closed": true
+    }
+  ],
+  "settled": {
+    "write_calls": 1,
+    "written_bytes": 1740,
+    "byte_identical": true
+  },
+  "new_failure": {
+    "exit": 1,
+    "write_calls": 1,
+    "written_bytes": 1845,
+    "rejected_body_retained": true,
+    "prior_csv_preserved": true,
+    "pending": {
+      "CHRG-110shrg41912": "2026-10-02T00:00:00Z"
+    }
+  }
+}

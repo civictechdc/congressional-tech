@@ -58,7 +58,8 @@ def retain_verified_file(path, destination, *, expected, key):
         finally:
             os.close(directory)
         partial.unlink()
-        # Adding/removing owned links changes ctime. Rebind only after proving
+        # Adding/removing owned links changes link count and may change ctime.
+        # Rebind only after proving
         # the exact inode, size and modification time across that operation.
         now = custody_identity(path)
         if now[:4] != actual.custody[:4]:

@@ -55,7 +55,8 @@ def main(argv=None):
         store = R2Store(client, args.bucket)
         summary = pipeline_raw.archive(
             store, files, writer=identity,
-            run_id=pipeline_raw.RESCUE_RUN_ID if args.rescue_batch else None)
+            run_id=pipeline_raw.RESCUE_RUN_ID if args.rescue_batch else None,
+            day=import_run['date'] if import_run else None, resume=bool(import_run))
     if import_run:
         summary['import_run'] = import_run
     print(json.dumps(summary, indent=1))

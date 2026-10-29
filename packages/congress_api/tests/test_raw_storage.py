@@ -68,6 +68,7 @@ def test_only_full_state_leaf_splits_and_duplicate_captures_keep_order(storage):
 def test_unselected_native_update_does_not_block_independent_raw_candidate(storage, tmp_path):
     """Native latest may advance while the coherent application pin stays old."""
     import pyarrow.parquet as pq
+    from docspec_client import native_storage_schema
     from congress_api.retention.raw_storage import state_key, STATE_KEY_FIELD
 
     first = storage.publish(storage.prepare(storage.snapshot(), operation='seed', states=states('a', 'b')))
@@ -76,7 +77,8 @@ def test_unselected_native_update_does_not_block_independent_raw_candidate(stora
     rows = storage._read_states(reference).to_pylist()
     rows[0]['attempts'] = 99
     replacement = tmp_path / 'unselected.parquet'
-    pq.write_table(pa.Table.from_pylist([rows[0]], schema=storage.state_native_schema), replacement)
+    table = pa.Table.from_pylist([rows[0]], schema=storage.state_native_schema)
+    pq.write_table(native_storage_schema(table, native_types=False), replacement)
     request = dict(dataset=base_pin['dataset']['dataset'], operation='unselected', definition='raw-native-v1',
         base=base_pin['id'], keys=[STATE_KEY_FIELD], replacements=dict(path=str(replacement),
             digest=storage.native.hash_input(replacement)['digest']))

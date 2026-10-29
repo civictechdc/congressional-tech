@@ -1,0 +1,1 @@
+Initial baseline and candidate measurement processes both stopped before acquisition/count output: TypeError: <lambda>() got an unexpected keyword argument 'through_zyte'. The fixture-only pacing override was corrected to accept **kwargs. No source behavior or count criteria changed.

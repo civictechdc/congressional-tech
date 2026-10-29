@@ -1,3 +1,8 @@
+import type { FilenameMatch, FilenameQuery, FilenameReaderMetrics, FilenameReaderOptions, FilenameRecord } from './types.ts';
+import type { ByteCache } from './cache.ts';
+
+interface CachedRange { url: string; start: number; end: number; bytes: ArrayBuffer }
+
 /** Stable-ID reader for the selected native catalog's bounded delivery assets. */
 export const FLAG_RETAINED = 1;
 export const FLAG_HAS_DOCUMENT = 2;
@@ -93,16 +98,16 @@ export const compareBrowseKeys = (a,b) => a[0] !== b[0] ? a[0] ? 1 : -1 : compar
 const compare=compareBrowseKeys;
 const key = row => [row.filename == null,row.filename ?? '',row.document_id];
 
-export async function createStableFilenameCatalog(publication, fetcher, reviewPublication, options = {}) {
+export async function createStableFilenameCatalog(publication, fetcher, reviewPublication, options: FilenameReaderOptions = {}) {
   const {manifest, recovery: recoveryDescriptor} = publication;
   const base = /\/releases\/[a-f0-9]{32}\/manifest\.json$/.test(new URL(publication.url).pathname)
     ? new URL('../../',publication.url) : new URL('./',publication.url);
   const url = path => new URL(path,base).href;
-  const metrics = {metadataReads:0,sourceScanVisits:0,groupScanVisits:0,decodedRows:0,tableLoads:0,normalizationValues:0};
-  const compressed = byteCache(options.compressedBytes ?? 48*1024*1024, options.rangeEntryBytes ?? 32*1024*1024);
+  const metrics: FilenameReaderMetrics = {metadataReads:0,sourceScanVisits:0,groupScanVisits:0,decodedRows:0,tableLoads:0,normalizationValues:0};
+  const compressed = byteCache<CachedRange>(options.compressedBytes ?? 48*1024*1024, options.rangeEntryBytes ?? 32*1024*1024);
   const decoded = byteCache(options.decodedBytes ?? 64*1024*1024);
   const loads = new Map();
-  const cached = (name,load,signal) => {
+  const cached = (name,load,signal?: AbortSignal) => {
     signal?.throwIfAborted(); const retained = decoded.get(name);
     return retained ? Promise.resolve(retained) : sharedLoad(loads,name,async()=>{const value=await load();decoded.set(name,value);return value;},signal);
   };
@@ -112,25 +117,22 @@ export async function createStableFilenameCatalog(publication, fetcher, reviewPu
         (ref.bytes === 0 && !names.some(n => n.endsWith('.parquet'))) ||
         !names.some(name => ref.path === `releases/${digest.slice(0,32)}/${digest.slice(32)}/viewer-v2/${name}` || (manifest.exports && ref.path === name))) throw new Error('Invalid immutable catalog asset.');
   }
-  const node = (ref,signal) => {
+  const node = (ref,signal?: AbortSignal) => {
     valid(ref);
     return cached(ref.path,()=>withVerifiedJson({deadlineMs:30_000,maxBytes:1024*1024},'Catalog page',async verified=>{
       metrics.metadataReads++; return verified(fetcher,url(ref.path),ref.sha256,ref.bytes,'catalog page');
     }),signal);
   };
   const isExportPinManifest = Boolean(manifest.exports && !manifest.roots);
-  let proof = null, selected = null;
+  const {roots = {}} = manifest, info = {...manifest.info};
   if (!isExportPinManifest) {
-    proof = await node(manifest.proof); selected = await node(manifest.source_selection);
+    const proof = await node(manifest.proof), selected = await node(manifest.source_selection);
     const basis = Object.fromEntries(['version','source_manifest','source_identity','source_selection','requirements','roots','files'].map(k=>[k,manifest[k]]));
     basis.info = Object.fromEntries(Object.entries(manifest.info).filter(([k])=>k!=='publication_version'));
     if (!same(proof,{version:1,kind:'viewer-proof',publication:basis}) ||
         !same(manifest.source_manifest,{version:2,selection:manifest.source_identity?.selected_ref}) ||
         manifest.source_selection.sha256 !== manifest.source_identity?.selected_ref?.sha256 ||
         await hash(canonicalJson(manifest.source_manifest)) !== manifest.source_identity.selector_sha256) throw new Error('Catalog roots belong to a different selected snapshot.');
-  }
-  const {roots = {}} = manifest, info = {...manifest.info};
-  if (!isExportPinManifest) {
     for (const [name,native] of [['sources',selected.dependency.source_root],['components',selected.components]]) {
       if ((roots[name]?.native_sha256 ?? null) !== (native?.sha256 ?? null)) throw new Error('Catalog root differs from the selected native root.');
     }
@@ -147,13 +149,13 @@ export async function createStableFilenameCatalog(publication, fetcher, reviewPu
     return cached(`table:${part.path}`,async()=>{
       metrics.tableLoads++; const buffer=ranged(part), metadata=await parquetMetadataAsync(buffer.file());
       if (Number(metadata.num_rows)!==part.rows) throw new Error('Parquet row count differs from its selected partition.');
-      const fields=[];let cursor=1;
+      const fields: string[]=[];let cursor=1;
       function skip(){const field=metadata.schema[cursor++];for(let i=0;i<(field.num_children??0);i++)skip();}
       for(let i=0;i<(metadata.schema[0].num_children??0);i++){fields.push(metadata.schema[cursor].name);skip();}
       return {buffer,metadata,fields};
     },signal);
   }
-  async function read(part,start,end,columns,signal) {
+  async function read(part,start,end,columns,signal?: AbortSignal) {
     const {buffer,metadata,fields}=await table(part,signal);
     if (columns?.length===0 || end<=start) return Array.from({length:Math.max(0,end-start)},()=>({}));
     const physical=columns?.filter(name=>fields.includes(name));
@@ -259,7 +261,7 @@ export async function createStableFilenameCatalog(publication, fetcher, reviewPu
         throw new Error('Document is not present in this catalog.');
       }, signal);
     }
-    async function exportSearch(query = {}, signal) {
+    async function exportSearch(query: FilenameQuery = {}, signal?: AbortSignal) {
       signal?.throwIfAborted();
       const reviewed = reviewedMode(query, info);
       const limit = positiveInteger(query.limit, 50, 100), requested = positiveInteger(query.page);
@@ -279,7 +281,7 @@ export async function createStableFilenameCatalog(publication, fetcher, reviewPu
         return { rows, total, page, pages, limit };
       }
       const allRows = await read(componentsFile, 0, componentsFile.rows, undefined, signal);
-      const matched = [];
+      const matched: FilenameRecord[] = [];
       for (const raw of allRows) {
         const rendered = present(raw, reviewed);
         if (needle && !text(rendered[field]).includes(needle)) continue;
@@ -297,7 +299,7 @@ export async function createStableFilenameCatalog(publication, fetcher, reviewPu
       const data = (await read(sourcesFile, row, row + 1, undefined, signal))[0];
       return decodeDetailRecord(data);
     }
-    async function exportObservationPage(id, catalog, query = {}, signal) {
+    async function exportObservationPage(id, catalog, query: FilenameQuery = {}, signal?: AbortSignal) {
       const { row } = await resolveExportSource(id, catalog, signal);
       return sourceObs.page(
         row,
@@ -310,7 +312,7 @@ export async function createStableFilenameCatalog(publication, fetcher, reviewPu
         signal
       );
     }
-    async function exportDocumentObservationPage(id, catalog, query = {}, signal) {
+    async function exportDocumentObservationPage(id, catalog, query: FilenameQuery = {}, signal?: AbortSignal) {
       const { documentId } = sourceId(id) ? await resolveExportSource(id, catalog, signal) : { documentId: id };
       const { row } = await resolveExportComponentRow(documentId, signal);
       return docObs.page(
@@ -362,7 +364,7 @@ export async function createStableFilenameCatalog(publication, fetcher, reviewPu
       sourceContext,
     };
   }
-  async function route(root,id,kind,signal) {
+  async function route(root,id,kind,signal?: AbortSignal) {
     let current=root,prefix=''; const digest=await hash(id);
     while(current) {
       const value=await node(current,signal);
@@ -437,14 +439,14 @@ export async function createStableFilenameCatalog(publication, fetcher, reviewPu
     return binObs;
   }
   async function technical(id,catalog,signal,full=false) {
-    const {bundle,row}=await resolve(id,catalog,signal), fields=info.fields.filter(k=>k!=='source_occurrences'), record={};
+    const {bundle,row}=await resolve(id,catalog,signal), fields=info.fields.filter(k=>k!=='source_occurrences'), record: FilenameRecord={};
     for(let offset=0;offset<fields.length;offset+=8)Object.assign(record,(await read(bundle.files.filenames,row,row+1,fields.slice(offset,offset+8),signal))[0]);
     if(full && info.fields.includes('source_occurrences'))record.source_occurrences=await(await observations(bundle,signal,occurrenceSplit(bundle,'occurrences_split'))).read(row,signal);
     const output=Object.fromEntries(info.fields.filter(k=>full || k!=='source_occurrences').map(k=>[k,record[k]]));
     if(recovery.sources.has(id))output.recovery=recovery.sources.get(id);
     return output;
   }
-  async function observationPage(id,catalog,query={},signal) {
+  async function observationPage(id,catalog,query: FilenameQuery={},signal?: AbortSignal) {
     const {bundle,row}=await resolve(id,catalog,signal);
     return (await observations(bundle,signal)).page(row,{offset:positiveInteger(query.offset,0),limit:positiveInteger(query.limit,20,100),...(query.origin?{columns:origins}:{})},signal);
   }
@@ -487,7 +489,7 @@ export async function createStableFilenameCatalog(publication, fetcher, reviewPu
       const take=Math.min(limit,child.rows-offset);yield* browseRows(child,signal,offset,take);limit-=take;offset=0;if(!limit)break;
     }
   }
-  const flaggedCount = (ref,accept) => Object.entries(ref?.flags??{}).reduce((sum,[flag,count])=>sum+(accept(Number(flag))?count:0),0);
+  const flaggedCount = (ref,accept) => Object.entries<number>(ref?.flags??{}).reduce((sum,[flag,count])=>sum+(accept(Number(flag))?count:0),0);
   async function* flaggedRows(ref,accept,offset,limit,signal) {
     if(!ref||!limit)return;
     const value=await browseNode(ref,signal);
@@ -506,26 +508,27 @@ export async function createStableFilenameCatalog(publication, fetcher, reviewPu
     }
     throw new Error('Document browse row differs from selected membership.');
   }
-  async function search(query,signal) {
+  async function search(query: FilenameQuery,signal?: AbortSignal) {
     signal?.throwIfAborted();const reviewed=reviewedMode(query,info), limit=positiveInteger(query.limit,50,100), requested=positiveInteger(query.page);
     let field=query.field||'filename';if(field==='publication_code_code'&&!info.fields.includes(field))field='publication_type';
     if(!info.fields.includes(field))throw new Error('Unknown search field.');
     if(!['','yes','no'].includes(query.retained||'')||!['','all','capture-records'].includes(query.scope||''))throw new Error('Unknown catalog filter.');
     const selectedFilters=filters.filter(k=>query[k]&&query[k]!=='__null__');
     for(const name of selectedFilters)if(!(info.review_facets?.[name]||info.facets[name]).includes(query[name]))throw new Error(`Unknown ${name} filter.`);
-    const needle=(query.q||'').slice(0,2000).toLowerCase(); let matches=null;
+    const needle=(query.q||'').slice(0,2000).toLowerCase(); let matches: Set<string> | null=null;
     if(needle || selectedFilters.length) {
-      matches=new Set();const stream=needle&&field==='source_occurrences';
+      matches=new Set<string>();const stream=needle&&field==='source_occurrences';
       const columns=[...new Set(['source_id','document_id',...selectedFilters,...(needle&&!stream?[field,...(field==='filename'&&info.fields.includes('recovered_filename')?['recovered_filename']:[])]:[])])];
       for await(const bundle of bundles(roots.sources,signal)) {
-        let observed=null;if(stream){observed=new Set();for await(const row of(await observations(bundle,signal)).matchingSources(needle,signal))observed.add(row);}
+        const observed=stream?new Set<number>():null;
+        if(observed)for await(const row of(await observations(bundle,signal)).matchingSources(needle,signal))observed.add(row);
         // One selected physical source partition at a time; no full source columns.
         const rows=await read(bundle.files.filenames,0,bundle.rows,columns,signal);
         for(const [index,row]of rows.entries()) {
           metrics.sourceScanVisits++;
           const review=reviewed&&reviews.sources.get(row.source_id);
           const value=name=>review?.status==='candidate_applied'&&name in review.selected?review.selected[name]:row[name];
-          if((!needle || (stream?observed.has(index):text(value(field)).includes(needle)||field==='filename'&&text(row.recovered_filename).includes(needle))) &&
+          if((!needle || (observed?observed.has(index):text(value(field)).includes(needle)||field==='filename'&&text(row.recovered_filename).includes(needle))) &&
               selectedFilters.every(k=>values(value(k)).some(v=>(k==='format'?v.toLowerCase():v)===query[k])))matches.add(row.document_id);
         }
         await yieldToMessages(signal,metrics);
@@ -535,7 +538,7 @@ export async function createStableFilenameCatalog(publication, fetcher, reviewPu
       const accept=(flag: number)=>(!query.retained || !!(flag&FLAG_RETAINED)===(query.retained==='yes')) &&
         (query.scope==='all' || (query.scope==='capture-records'?!(flag&FLAG_HAS_DOCUMENT):!!(flag&FLAG_HAS_DOCUMENT))) &&
         (query.document_kind!=='__null__'||!!(flag&FLAG_HAS_DOCUMENT_KIND)) && (query.document_family!=='__null__'||!!(flag&FLAG_HAS_DOCUMENT_FAMILY));
-      const total=flaggedCount(roots.browse,accept),pages=Math.max(1,Math.ceil(total/limit)),page=Math.min(requested,pages),rows=[];
+      const total=flaggedCount(roots.browse,accept),pages=Math.max(1,Math.ceil(total/limit)),page=Math.min(requested,pages),rows: FilenameRecord[]=[];
       for await(const row of flaggedRows(roots.browse,accept,(page-1)*limit,limit,signal))rows.push(present(row,reviewed));
       return {rows,total,page,pages,limit};
     }
@@ -558,7 +561,7 @@ export async function createStableFilenameCatalog(publication, fetcher, reviewPu
     if(!urls.size&&!digests.size)return {matches:[],truncated:false};
     const columns=['source_url','source_id',...(digests.size&&info.fields.includes('body_key')?['body_key']:[]),
       ...(urls.size&&info.fields.includes('recovered_source_url')?['recovered_source_url']:[])];
-    const matches=[],seen=new Set();
+    const matches: FilenameMatch[]=[],seen=new Set();
     for await(const bundle of bundles(roots.sources,signal)) {
       const rows=await read(bundle.files.filenames,0,bundle.rows,columns,signal);
       for(const row of rows) {
@@ -570,7 +573,7 @@ export async function createStableFilenameCatalog(publication, fetcher, reviewPu
         const saved=digests.has(digest);
         if((!hit&&!recovered&&!saved)||seen.has(row.source_id))continue;
         seen.add(row.source_id);
-        matches.push({source_id:row.source_id,...(hit?{url:row.source_url}:{}),...(saved?{sha256:digest}:{})});
+        matches.push({source_id:row.source_id,...(hit?{url:row.source_url}:{}),...(saved&&digest?{sha256:digest}:{})});
         if(matches.length>=24)return {matches,truncated:true};
       }
       await yieldToMessages(signal,metrics);
@@ -584,7 +587,7 @@ export async function createStableFilenameCatalog(publication, fetcher, reviewPu
     if(recovery.sources.has(id))value.record.recovery=recovery.sources.get(id);
     return value;
   }
-  async function entryOrigin(id,catalog,signal,known) {
+  async function entryOrigin(id,catalog,signal,known?: { record: FilenameRecord; member: Record<string, unknown> }) {
     const record=known?.record??await technicalOrigin(id,catalog,signal), part=await observationPage(id,catalog,{limit:20,origin:true},signal);
     const origin=sourceContext({...record,source_occurrences:part.items.filter(Boolean)});
     const member=known?.member??await component((await resolve(id,catalog,signal)).documentId,signal);
@@ -592,8 +595,8 @@ export async function createStableFilenameCatalog(publication, fetcher, reviewPu
     if(member.source_id!==id){const canonical=await technicalOrigin(member.source_id,catalog,signal), evidence=await observationPage(member.source_id,catalog,{limit:20,origin:true},signal);preferred=sourceContext({...canonical,source_occurrences:evidence.items.filter(Boolean)});}
     return {origin_pending:false,origin,document_origin:{redirects:preferred.redirects},observation_count:part.total,origin_next:part.next};
   }
-  async function entry(id,catalog,signal,query={}) {
-    const value=await detail(id,catalog,signal),{record}=value,documentId=(await resolve(id,catalog,signal)).documentId,member=await component(documentId,signal),sources=[],bodies=[];
+  async function entry(id,catalog,signal,query: FilenameQuery={}) {
+    const value=await detail(id,catalog,signal),{record}=value,documentId=(await resolve(id,catalog,signal)).documentId,member=await component(documentId,signal),sources: FilenameRecord[]=[],bodies: (string | null | undefined)[]=[];
     for await(const source of memberIds(member,signal)) {
       const located=await resolve(source,catalog,signal), row=(await read(located.bundle.files.details,located.row,located.row+1,['filename','source_url','source_id','body_key','format','record_role','fact_alternatives'],signal))[0];
       row.record_role=row.fact_alternatives?.find(item=>item.field==='record_role')?.values??(row.record_role==null?null:[row.record_role]);delete row.fact_alternatives;
@@ -621,7 +624,7 @@ export async function createStableFilenameCatalog(publication, fetcher, reviewPu
     }
     return Object.fromEntries(info.document_fields.map(name=>[name,record[name]??null]));
   }
-  async function documentObservationPage(id,catalog,query={},signal) {
+  async function documentObservationPage(id,catalog,query: FilenameQuery={},signal?: AbortSignal) {
     const {documentId}=sourceId(id)?await resolve(id,catalog,signal):{documentId:id};
     const member=await component(documentId,signal);
     const rows=await read(member.document_file,0,member.document_file.rows,['document_id'],signal);

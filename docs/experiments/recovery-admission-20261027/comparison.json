@@ -1,0 +1,47 @@
+{
+  "components": 2048,
+  "metadata_pages": 32,
+  "logical_source_rows": 2766,
+  "admission_tables_byte_digests_equal": true,
+  "private_recovery_bytes_equal": true,
+  "private_recovery_source_rows": 4,
+  "private_recovery_document_rows": 3,
+  "baseline_cpu_seconds": [
+    2.226485,
+    2.2014,
+    2.179788
+  ],
+  "candidate_cpu_seconds": [
+    1.3675179999999998,
+    1.3454789999999999,
+    1.3461740000000002
+  ],
+  "baseline_wall_seconds": [
+    2.6301350420108065,
+    2.447767583988025,
+    2.1866613750025863
+  ],
+  "candidate_wall_seconds": [
+    1.3850850409944542,
+    1.3626945839932887,
+    1.3491579160036054
+  ],
+  "median_cpu_before": 2.2014,
+  "median_cpu_after": 1.3461740000000002,
+  "cpu_speedup": 1.635301231490134,
+  "cpu_reduction_percent": 38.84918688107567,
+  "median_wall_before": 2.447767583988025,
+  "median_wall_after": 1.3626945839932887,
+  "baseline_statistics": {
+    "compatibility_calls": 2048,
+    "chunk_sql_reads": 4096,
+    "binding_encodes": 2048,
+    "binding_json_bytes": 483666989
+  },
+  "candidate_statistics": {
+    "compatibility_calls": 1,
+    "chunk_sql_reads": 1650,
+    "binding_encodes": 2048,
+    "binding_json_bytes": 483666989
+  }
+}

@@ -15,7 +15,7 @@ import pytest
 
 from congress_api.retention.docspec import DocSpecFailure, NativeDatasets
 from docspec_transport_helpers import host_for_client
-from native_test_helpers import native_test_client
+from native_test_helpers import native_test_client, native_test_util_binary
 
 
 def failure(status, code=None):
@@ -186,9 +186,7 @@ native.run_table(pa.table({'key': ['one', 'one', None]}), dataset='custody', ope
 
 @pytest.mark.parametrize('phase', ['admission', 'processing'])
 def test_real_timeout_retains_unadmitted_input_and_recovers_admitted_input_without_producer(tmp_path, monkeypatch, phase):
-    binary = os.environ.get('DOCSPEC_BINARY') or shutil.which('docspec')
-    if not binary:
-        pytest.skip('Set DOCSPEC_BINARY to the protocol1 test-util candidate')
+    binary = native_test_util_binary()
     marker, resume = tmp_path / 'paused', tmp_path / 'resume'
     monkeypatch.setenv('DOCSPEC_TEST_PAUSE_BEFORE', phase)
     monkeypatch.setenv('DOCSPEC_TEST_PAUSE_MARKER', str(marker))

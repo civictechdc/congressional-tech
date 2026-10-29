@@ -10,6 +10,7 @@ import pytest
 
 from congress_api.models.content import RawContent
 from congress_api.retention.bundles import restore
+from congress_api.retention.raw_archive import read_table
 
 spec = importlib.util.spec_from_file_location('assemble_raw_archive', Path(__file__).resolve().parent / 'assemble_raw_archive.py')
 archive = importlib.util.module_from_spec(spec)
@@ -137,9 +138,24 @@ def test_archive_end_to_end_preserves_metadata_and_missing_checks(tmp_path):
     assert not (output/'snapshots').exists()
     assert summary['unresolved_reference_occurrences']==1
     assert record==json.loads(source.read_text())
-    table=pq.read_table(output/'indexes/captures.parquet').to_pylist()
+    physical=pq.read_table(output/'indexes/captures.parquet')
+    assert physical.schema.equals(archive.SCHEMA)
+    assert 'body_key' not in physical.column_names
+    table=read_table(output/'indexes/captures.parquet').to_pylist()
     assert any(r['resolution']=='not_retained' and r['body_key'] is None for r in table)
-    assert any(r['sha256']==docsha for r in table)
+    embedded=next(r for r in table if r['reference_kind']=='embedded')
+    assert embedded['source_file']==source.name
+    assert embedded['context_url']==record['url']
+    assert embedded['retrieved_at'].isoformat()=='2026-09-29T01:00:00+00:00'
+    assert embedded['http_status']==200
+    document_rows=[r for r in table if r['sha256']==bytes.fromhex(docsha)]
+    assert document_rows
+    for row in document_rows:
+        stored=(output/row['body_key']).read_bytes()
+        assert row['is_stored'] is True
+        assert row['stored_sha256']==hashlib.sha256(stored).digest()
+        assert row['stored_bytes']==len(stored)
+        assert gzip.decompress(stored)==raw.read_bytes()
     restored=[]
     for p in (output/'receipts').rglob('*.jsonl.gz'):
         for line in gzip.open(p,'rt'):
@@ -162,5 +178,15 @@ def test_identical_response_bytes_do_not_merge_source_families(tmp_path):
     out=cache/'archive'
     result=archive.run(bm,rm,None,cache,out,admin,'same-bytes',workers=2,min_free_gib=0)
     assert result['distinct_bodies']==1
-    aliases={r['source_file']:r['family'] for r in pq.read_table(out/'indexes/captures.parquet').to_pylist() if r['reference_kind']=='retained-file'}
+    rows=read_table(out/'indexes/captures.parquet').to_pylist()
+    retained=[r for r in rows if r['reference_kind']=='retained-file']
+    aliases={r['source_file']:r['family'] for r in retained}
     assert aliases=={'first.bin':'house/pages','second.bin':'senate/pages'}
+    assert len(retained)==2
+    assert {r['sha256'] for r in retained}=={bytes.fromhex(digest)}
+    assert len({r['body_key'] for r in retained})==1
+    for row in retained:
+        stored=(out/row['body_key']).read_bytes()
+        assert row['is_stored'] is True
+        assert row['stored_sha256']==hashlib.sha256(stored).digest()
+        assert gzip.decompress(stored)==b'Not found'

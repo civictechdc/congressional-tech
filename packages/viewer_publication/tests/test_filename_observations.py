@@ -151,21 +151,25 @@ def test_default_budget_accepts_many_small_units_without_converting_the_outer_li
     assert index['references']['rows'] == 1
     assert metrics['observation_serializations'] == 60000
     assert metrics['verification_lookups'] == 60000
-    assert metrics['max_observation_python_estimate'] < DEFAULT_DECODED_POLICY.row_python_estimate
+    assert metrics['max_python_json_estimate'] <= DEFAULT_DECODED_POLICY.batch_python_estimate
     assert metrics['max_reference_list_python_estimate'] == 64 + 48 * 60000
 
 
 @pytest.mark.parametrize('stage', ['observations', 'observation verification'])
-def test_single_observation_refuses_before_python_conversion(stage):
+def test_single_observation_refuses_before_python_conversion(stage, monkeypatch):
     from dataclasses import replace
     from viewer_publication.filename_budget import DEFAULT_DECODED_POLICY, DecodedBudgetExceeded
     values = pa.array([{'label': ['é🏛️' * 1000]}], type=pa.struct([('label', pa.list_(pa.string()))]))
-    class Guarded:
-        def slice(self, *args): return values.slice(*args)
-        def __getitem__(self, index): raise AssertionError('conversion accessed before admission')
-    with pytest.raises(DecodedBudgetExceeded, match='single-observation Python/JSON estimate'):
-        observations.observation_value(Guarded(), 0,
-            policy=replace(DEFAULT_DECODED_POLICY, row_python_estimate=1024), metrics={}, stage=stage)
+    original = observations.bounded_batches
+    def guarded(*args, **options):
+        for admitted in original(*args, **options):
+            raise AssertionError('conversion batch admitted before the row check')
+            yield admitted
+    monkeypatch.setattr(observations, 'bounded_batches', guarded)
+    with pytest.raises(DecodedBudgetExceeded, match='single-row Python/JSON estimate'):
+        list(observations.observation_values(values,
+            policy=replace(DEFAULT_DECODED_POLICY, row_python_estimate=1024), metrics={},
+            stage=stage, kind=values.type))
 
 
 def test_reference_list_refuses_before_allocating_or_converting_observations(tmp_path, monkeypatch):
@@ -176,7 +180,7 @@ def test_reference_list_refuses_before_allocating_or_converting_observations(tmp
         schema_arrow = table.schema
         def iter_batches(self, **kwargs): return iter(table.to_batches())
     def unexpected(*args, **kwargs): raise AssertionError('no reference allocation or observation conversion expected')
-    monkeypatch.setattr(observations, 'observation_value', unexpected)
+    monkeypatch.setattr(observations, 'observation_values', unexpected)
     with pytest.raises(DecodedBudgetExceeded, match='reference-list Python estimate'):
         observations.publish_observations(Source(), tmp_path,
             policy=replace(DEFAULT_DECODED_POLICY, row_python_estimate=1024))
@@ -384,3 +388,64 @@ def test_flat_occurrence_refuses_single_row_larger_than_writer_byte_budget(tmp_p
             publish_occurrence_parquet(Source(), tmp_path / 'occurrences.parquet', policy=policy)
     assert not assets.identities
     assert (tmp_path / 'preparation-memory-failure.json').is_file()
+
+
+def test_one_large_typed_part_streams_small_observations_with_exact_owners(tmp_path):
+    from types import SimpleNamespace
+    from viewer_publication.filename_native import ViewerAssets, publish_occurrence_assets
+    kind = pa.struct([('label', pa.list_(pa.string())), ('links', pa.list_(pa.string()))])
+    pattern = [{'label': ['José 🏛️' + 'x' * 4096, '', None], 'links': []},
+               None, {'label': [], 'links': None}, {'label': None, 'links': ['https://example.test']}]
+    part = pa.array(pattern * 4200, type=kind)
+    assert part.nbytes > observations.DEFAULT_DECODED_POLICY.row_arrow_bytes
+    assert max(part.slice(index, 1).nbytes for index in range(4)) < 8192
+    opened = []
+    def parts():
+        opened.append(True)
+        yield part
+    class Source:
+        schema_arrow = pa.schema([('source_occurrences', pa.list_(kind))])
+        metadata = SimpleNamespace(num_rows=1)
+        owner_ids = ['exact-owner']
+        def observation_rows(self):
+            yield observations.ObservationSequence(len(part), parts)
+    metrics = {};assets = ViewerAssets(tmp_path / 'assets');folder = tmp_path / 'parts';folder.mkdir()
+    result = publish_occurrence_assets(Source(), folder, assets, policy=observations.DEFAULT_DECODED_POLICY, metrics=metrics)
+    assert opened == [True]
+    assert metrics['max_observation_part_arrow_bytes'] == part.nbytes
+    assert metrics['max_batch_arrow_bytes'] <= observations.DEFAULT_DECODED_POLICY.batch_arrow_bytes
+    assert metrics['max_python_json_estimate'] <= observations.DEFAULT_DECODED_POLICY.batch_python_estimate
+    assert metrics['max_occurrence_pending_python_bytes'] <= observations.DEFAULT_DECODED_POLICY.writer_buffer_bytes
+    reference = result['occurrences']
+    assert reference['rows'] == len(part) and reference['row_slices'] == [[0, len(part)]]
+    with pq.ParquetFile(assets.root / reference['path']) as file:
+        flat = file.read()
+    assert flat['owner_id'].to_pylist() == ['exact-owner'] * len(part)
+    assert flat['occurrence_order'].to_pylist() == list(range(len(part)))
+    assert flat['occurrence_is_null'].to_pylist() == [value is None for value in pattern] * 4200
+    assert flat['label'].to_pylist() == [None if value is None else value['label'] for value in pattern] * 4200
+    assert flat['links'].to_pylist() == [None if value is None else value['links'] for value in pattern] * 4200
+    index = __import__('json').loads((assets.root / result['observation_index']['path']).read_bytes())
+    refs = [row for block in index['references']['blocks'] for row in
+            observations.block_items(assets.root / result['observation_rows']['path'], block)]
+    assert refs == [[0, 1, 2, 3] * 4200]
+
+
+@pytest.mark.parametrize('limit', ['arrow', 'python'])
+def test_typed_part_keeps_individual_observation_admission(tmp_path, limit):
+    from dataclasses import replace
+    from types import SimpleNamespace
+    from viewer_publication.filename_budget import DecodedBudgetExceeded
+    kind = pa.struct([('label', pa.list_(pa.string()))])
+    policy = observations.DEFAULT_DECODED_POLICY
+    value = {'label': ['x' * (policy.row_arrow_bytes + 1)]} if limit == 'arrow' else {'label': ['x'] * 100}
+    if limit == 'python':policy = replace(policy, row_python_estimate=512)
+    part = pa.array([{'label': ['small']}, value], type=kind)
+    class Source:
+        schema_arrow = pa.schema([('source_occurrences', pa.list_(kind))])
+        metadata = SimpleNamespace(num_rows=1)
+        def observation_rows(self):
+            yield observations.ObservationSequence(len(part), lambda: iter([part]))
+    with pytest.raises(DecodedBudgetExceeded, match='single-row Arrow bytes|single-row Python/JSON estimate'):
+        observations.publish_observations(Source(), tmp_path, policy=policy)
+    assert not (tmp_path / 'observation-index.json').exists()

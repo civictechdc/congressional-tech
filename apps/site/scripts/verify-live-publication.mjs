@@ -125,6 +125,21 @@ export async function verifyLivePublication({
     url: new URL("data/document-reviews/reviews.json", new URL("../", pagesUrl))
       .href,
   };
+  // Keep one bounded raw response for this invocation. Each consumer receives
+  // its own body and parses independently: the review loader mutates its rows.
+  let reviewSnapshot;
+  const reviewFetcher = async (url, options = {}) => {
+    if (String(url) !== reviewDescriptor.url) return bounded(url, options);
+    options.signal?.throwIfAborted();
+    reviewSnapshot ??= bounded(url, options).then(async (response) => ({
+      bytes: await response.arrayBuffer(),
+      status: response.status,
+      headers: response.headers,
+    }));
+    const { bytes, status, headers } = await reviewSnapshot;
+    options.signal?.throwIfAborted();
+    return new Response(bytes, { status, headers });
+  };
   const native = manifest.version === 6;
   let reviews;
   if (native) {
@@ -143,7 +158,7 @@ export async function verifyLivePublication({
       await import("../src/components/explorer/reader/filenames/catalog-v6.ts");
     const reader = await createStableFilenameCatalog(
       publication,
-      bounded,
+      reviewFetcher,
       reviewDescriptor,
     );
     reviews = { info: reader.info };
@@ -179,7 +194,7 @@ export async function verifyLivePublication({
     reviews = await loadReviews(
       reviewDescriptor,
       manifest,
-      bounded,
+      reviewFetcher,
       manifestUrl,
     );
   }
@@ -194,7 +209,7 @@ export async function verifyLivePublication({
       throw new Error("Review binding readback differs");
     binding = JSON.parse(new TextDecoder().decode(bytes));
   }
-  const reviewResponse = await bounded(reviewDescriptor.url),
+  const reviewResponse = await reviewFetcher(reviewDescriptor.url),
     reviewBytes = new Uint8Array(await reviewResponse.arrayBuffer());
   if (
     reviewBytes.byteLength !== descriptor.bytes ||

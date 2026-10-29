@@ -1,13 +1,13 @@
 import assert from 'node:assert/strict';
 import {build} from 'esbuild';
-import {browserDependency} from './archive-browser.mjs';
+import {browserDependency,routeArchiveOrigin} from './archive-browser.mjs';
 import {startArchiveServer} from './archive-server.mjs';
 import {argumentsMap} from './archive-targets.mjs';
 const args=argumentsMap(process.argv.slice(2));
 const server=await startArchiveServer({release:args.release,siteDist:args.dist||'dist'});
 const {chromium}=browserDependency('playwright'),browser=await chromium.launch({headless:true,executablePath:args['browser-executable']});
 try{
-  const page=await browser.newPage(),outgoing=[];page.on('request',request=>outgoing.push(request.url()));await page.goto(server.pageUrl);
+  const page=await browser.newPage(),outgoing=[];await routeArchiveOrigin(page,server);page.on('request',request=>outgoing.push(request.url()));await page.goto(server.pageUrl);
   const bundle=await build({entryPoints:[new URL('../src/components/explorer/archive/saved-tab.ts',import.meta.url).pathname],bundle:true,format:'iife',globalName:'ArchiveSaved',write:false});await page.addScriptTag({content:bundle.outputFiles[0].text});
   await page.evaluate(()=>{localStorage.setItem('archive-fixture-sentinel','unchanged');const button=document.createElement('button');button.id='hostile-saved-fixture';button.textContent='Open hostile saved fixture';button.onclick=()=>{const tab=window.open('about:blank','_blank');window.ArchiveSaved.openSavedBlob(tab,new Blob([`<h1>Archived page</h1><script>parent.localStorage.setItem('archive-fixture-sentinel','changed'); parent.document.body.dataset.compromised='yes';<\/script><img src="/unexpected-raw-subresource">`],{type:'text/html'}));};document.body.append(button);});
   const popupPromise=page.waitForEvent('popup');await page.locator('#hostile-saved-fixture').click();const popup=await popupPromise;

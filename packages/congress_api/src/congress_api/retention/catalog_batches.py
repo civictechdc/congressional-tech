@@ -1,14 +1,16 @@
 """Coalesced native catalog batches and bounded shared component proof pages."""
 import base64
+import fcntl
 from copy import deepcopy
 import json
-from contextlib import closing
+from contextlib import closing, contextmanager
 from pathlib import Path
 import sqlite3
 from tempfile import TemporaryDirectory
 
 from collections import deque
 from concurrent.futures import ThreadPoolExecutor
+from functools import lru_cache
 from hashlib import sha256
 import os
 
@@ -258,7 +260,7 @@ class CatalogComponentReader:
         self._schema_cache = {}
         self._chunk_cache = {}
 
-    def page(self, reference):
+    def page(self, reference, *, remember=True):
         import os
         if ('PYTEST_CURRENT_TEST' not in os.environ
                 and isinstance(reference, dict)
@@ -272,7 +274,7 @@ class CatalogComponentReader:
                 or not 0 < len(page['components']) <= PROOF_PAGE_ENTRIES
                 or not isinstance(page.get('requirements'), dict) or not page['requirements']):
             raise ValueError('Invalid catalog component proof page')
-        if ('PYTEST_CURRENT_TEST' not in os.environ
+        if (remember and 'PYTEST_CURRENT_TEST' not in os.environ
                 and isinstance(reference, dict)
                 and isinstance(reference.get('sha256'), str)
                 and len(_PARSED_COMPONENT_PAGES) < 32768):
@@ -375,75 +377,164 @@ class SelectedCatalogTable:
 
     component_refs is a repeatable iterator factory yielding (document_id, ref).
     A temporary SQLite index groups metadata pages and shared pins without
-    retaining the whole selection in memory. Each scan checks exact historical
-    proofs; publication admission separately supplies current requirements.
+    retaining the whole selection in memory. An optional private checkpoint
+    reuses completed, hash-verified admission bound to this exact selection and
+    policy. Fresh scans check every historical proof before native delivery.
     """
-    def __init__(self, schema, component_refs, *, store, native, label, rows, max_ordered_bytes):
+    def __init__(self, schema, component_refs, *, store, native, label, rows, max_ordered_bytes, selection_identity=None):
         if label not in ('filenames', 'documents') or type(rows) is not int or rows < 0:
             raise ValueError('Invalid selected catalog table label or row count')
         self.schema_arrow, self.component_refs = schema, component_refs
         self.store, self.native, self.label = store, native, label
         self.rows, self.max_ordered_bytes = rows, max_ordered_bytes
+        self._selection_identity = deepcopy(selection_identity)
 
-    def iter_batches(self, *, columns=None, batch_size=65536):
+    def _admit(self, db):
+        reader = CatalogComponentReader(self.store)
+        db.executescript('''PRAGMA journal_mode=OFF; PRAGMA synchronous=OFF;
+            PRAGMA cache_size=-8192;
+            CREATE TABLE members(component TEXT PRIMARY KEY,page TEXT NOT NULL);
+            CREATE INDEX member_pages ON members(page);
+            CREATE TABLE chunks(identity TEXT PRIMARY KEY,reference TEXT NOT NULL,body TEXT NOT NULL);
+            CREATE TABLE physical(name TEXT PRIMARY KEY,identity TEXT NOT NULL,first_order INTEGER NOT NULL,schema TEXT NOT NULL);
+            CREATE TABLE views(name TEXT,component TEXT,rows INTEGER,PRIMARY KEY(name,component));''')
+        try:
+            for component, reference in self.component_refs():
+                if reference.get('component') != component or not isinstance(reference.get('page'), dict):
+                    raise ValueError('Selected catalog component reference differs')
+                db.execute('INSERT INTO members VALUES (?,?)', (component, encoded(reference['page']).decode()))
+        except sqlite3.IntegrityError as error:
+            raise ValueError('Duplicate selected catalog component') from error
+
+        @lru_cache(maxsize=64)
+        def decoded_chunk(identity):
+            # Full reference bytes are the cache key, including length and
+            # digest. SQLite retains evicted entries; parsed values stay bounded.
+            saved = db.execute('SELECT body FROM chunks WHERE identity=?', (identity,)).fetchone()
+            if saved:
+                return json.loads(saved[0])
+            value = reader.chunks.read(json.loads(identity))
+            db.execute('INSERT INTO chunks VALUES (?,?,?)', (identity, identity, encoded(value).decode()))
+            return value
+
+        def read_chunk(reference):
+            return decoded_chunk(encoded(reference).decode())
+
+        logical_schema = self.schema_arrow
+
+        @lru_cache(maxsize=16)
+        def require_schema(schema_text):
+            physical_schema = _component_schema(dict(schema=schema_text))
+            # Cache only exact immutable schemas for this one selected scan.
+            # Nullable additions remain checked against its logical schema.
+            if not can_read_catalog_schema(physical_schema, logical_schema):
+                raise ValueError('Selected catalog application schemas differ')
+
+        logical_rows = 0
+        for raw_page, in db.execute('SELECT DISTINCT page FROM members ORDER BY page'):
+            page_ref = json.loads(raw_page)
+            page = reader.page(page_ref)
+            for component, in db.execute('SELECT component FROM members WHERE page=? ORDER BY component', (raw_page,)):
+                proof = reader.read(dict(page=page_ref, component=component), page=page, read_chunk=read_chunk)
+                table = proof['tables'][self.label]
+                # Old pins retain exact types and metadata. The selected
+                # logical schema may add nullable fields without rewriting them.
+                require_schema(table['schema'])
+                for view in table['chunks']:
+                    name, identity = view['name'], encoded(page['chunks'][view['name']]).decode()
+                    prior = db.execute('SELECT identity,schema FROM physical WHERE name=?', (name,)).fetchone()
+                    if prior and prior != (identity, table['schema']):
+                        raise ValueError('Selected catalog physical chunk identity differs')
+                    db.execute('INSERT INTO physical VALUES (?,?,?,?) ON CONFLICT(name) DO UPDATE '
+                               'SET first_order=min(first_order,excluded.first_order)',
+                               (name, identity, view['order_min'], table['schema']))
+                    db.execute('INSERT INTO views VALUES (?,?,?)', (name, component, view['rows']))
+                    logical_rows += view['rows']
+        if logical_rows != self.rows:
+            raise ValueError('Selected catalog logical row count differs')
+
+    @contextmanager
+    def _admission_db(self, directory):
+        if directory is None:
+            with TemporaryDirectory(prefix='selected-catalog-') as temporary, closing(
+                    sqlite3.connect(Path(temporary) / 'selected.sqlite')) as db:
+                self._admit(db)
+                yield db
+            return
+        if not self._selection_identity:
+            raise ValueError('Retained catalog admission requires an exact selection identity')
+        from congress_shared.custody import file_identity, verify_local_file, write_atomic_json
+        folder = Path(directory)
+        if folder.is_symlink():
+            raise ValueError('Catalog admission directory cannot be a symlink')
+        folder.mkdir(parents=True, exist_ok=True, mode=0o700)
+        database, receipt, lock_path = (folder / name for name in ('admission.sqlite', 'complete.json', '.lock'))
+        if any(path.is_symlink() for path in (database, receipt, lock_path)):
+            raise ValueError('Catalog admission files cannot be symlinks')
+        binding = dict(version=1, selection=self._selection_identity, label=self.label, rows=self.rows,
+            schema_sha256=sha256(self.schema_arrow.serialize().to_pybytes()).hexdigest(),
+            max_ordered_bytes=self.max_ordered_bytes, requirements=catalog_reference_requirements(),
+            implementation_sha256=sha256(Path(__file__).read_bytes()).hexdigest(),
+            partitions_sha256=sha256(Path(__file__).with_name('catalog_partitions.py').read_bytes()).hexdigest(),
+            metadata_sha256=sha256(Path(__file__).with_name('immutable_metadata.py').read_bytes()).hexdigest())
+        # The owned preparation normally has one writer. Fence this private
+        # directory too, so concurrent builders cannot publish mismatched receipts.
+        with lock_path.open('a+b') as lock:
+            try:
+                fcntl.flock(lock, fcntl.LOCK_EX | fcntl.LOCK_NB)
+            except BlockingIOError as error:
+                raise ValueError('Catalog admission checkpoint is already in use') from error
+            if receipt.exists():
+                with receipt.open('rb') as stream:
+                    raw = stream.read((64 << 10) + 1)
+                if len(raw) > 64 << 10:
+                    raise ValueError('Catalog admission receipt exceeds its byte bound')
+                saved = json.loads(raw)
+                if (not isinstance(saved, dict) or type(saved.get('version')) is not int or saved['version'] != 1
+                        or saved.get('status') != 'complete' or encoded(saved.get('binding')) != encoded(binding)):
+                    raise ValueError('Catalog admission checkpoint binding differs')
+                facts = saved.get('file')
+                if (not isinstance(facts, dict) or set(facts) != {'bytes', 'sha256'}
+                        or type(facts.get('bytes')) is not int or facts['bytes'] < 1
+                        or not isinstance(facts.get('sha256'), str) or len(facts['sha256']) != 64
+                        or database.stat().st_size != facts['bytes']):
+                    raise ValueError('Catalog admission file identity differs')
+                proof = verify_local_file(database, expected_size=facts['bytes'], expected_sha256=facts['sha256'])
+            else:
+                # An orphan database or unfinished staging directory is never
+                # admission. Build afresh and publish completion only after validation.
+                with TemporaryDirectory(prefix='.building-', dir=folder) as temporary:
+                    pending = Path(temporary) / 'selected.sqlite'
+                    with closing(sqlite3.connect(pending)) as db:
+                        self._admit(db)
+                        db.commit()
+                    with pending.open('rb') as stream:
+                        os.fsync(stream.fileno())
+                    pending.replace(database)
+                    proof = file_identity(database)
+                    write_atomic_json(receipt, dict(version=1, status='complete', binding=binding,
+                        file=dict(proof)), fsync_dir=True)
+            proof._require_custody(database)
+            with closing(sqlite3.connect(database.resolve().as_uri() + '?mode=ro', uri=True)) as db:
+                db.executescript('PRAGMA query_only=ON; PRAGMA cache_size=-8192;')
+                proof._require_custody(database)
+                try:
+                    yield db
+                finally:
+                    proof._require_custody(database)
+
+    def iter_batches(self, *, columns=None, batch_size=65536, include_order=False, admission_directory=None):
+        if type(include_order) is not bool:
+            raise ValueError('Catalog order output must be explicitly enabled or disabled')
         if type(batch_size) is not int or batch_size < 1:
             raise ValueError('Catalog batch size must be a positive integer')
         columns = self.schema_arrow.names if columns is None else list(columns)
         if not columns or len(set(columns)) != len(columns) or set(columns) - set(self.schema_arrow.names):
             raise ValueError('Requested catalog columns must be nonempty distinct selected fields')
-        output_schema = pa.schema([self.schema_arrow.field(name) for name in columns],
-                                  metadata=self.schema_arrow.metadata)
-        reader = CatalogComponentReader(self.store)
-        with TemporaryDirectory(prefix='selected-catalog-') as directory, closing(
-                sqlite3.connect(Path(directory) / 'selected.sqlite')) as db:
-            db.executescript('''PRAGMA journal_mode=OFF; PRAGMA synchronous=OFF;
-                PRAGMA cache_size=-8192;
-                CREATE TABLE members(component TEXT PRIMARY KEY,page TEXT NOT NULL);
-                CREATE INDEX member_pages ON members(page);
-                CREATE TABLE chunks(identity TEXT PRIMARY KEY,reference TEXT NOT NULL,body TEXT NOT NULL);
-                CREATE TABLE physical(name TEXT PRIMARY KEY,identity TEXT NOT NULL,first_order INTEGER NOT NULL,schema TEXT NOT NULL);
-                CREATE TABLE views(name TEXT,component TEXT,rows INTEGER,PRIMARY KEY(name,component));''')
-            try:
-                for component, reference in self.component_refs():
-                    if reference.get('component') != component or not isinstance(reference.get('page'), dict):
-                        raise ValueError('Selected catalog component reference differs')
-                    db.execute('INSERT INTO members VALUES (?,?)', (component, encoded(reference['page']).decode()))
-            except sqlite3.IntegrityError as error:
-                raise ValueError('Duplicate selected catalog component') from error
-
-            def read_chunk(reference):
-                identity = encoded(reference).decode()
-                saved = db.execute('SELECT body FROM chunks WHERE identity=?', (identity,)).fetchone()
-                if saved:
-                    return json.loads(saved[0])
-                value = reader.chunks.read(reference)
-                db.execute('INSERT INTO chunks VALUES (?,?,?)', (identity, identity, encoded(value).decode()))
-                return value
-
-            logical_rows = 0
-            for raw_page, in db.execute('SELECT DISTINCT page FROM members ORDER BY page'):
-                page_ref = json.loads(raw_page)
-                page = reader.page(page_ref)
-                for component, in db.execute('SELECT component FROM members WHERE page=? ORDER BY component', (raw_page,)):
-                    proof = reader.read(dict(page=page_ref, component=component), page=page, read_chunk=read_chunk)
-                    table = proof['tables'][self.label]
-                    physical_schema = _component_schema(table)
-                    # Old pins retain exact types and metadata. The selected
-                    # logical schema may add nullable fields without rewriting them.
-                    if not can_read_catalog_schema(physical_schema, self.schema_arrow):
-                        raise ValueError('Selected catalog application schemas differ')
-                    for view in table['chunks']:
-                        name, identity = view['name'], encoded(page['chunks'][view['name']]).decode()
-                        prior = db.execute('SELECT identity,schema FROM physical WHERE name=?', (name,)).fetchone()
-                        if prior and prior != (identity, table['schema']):
-                            raise ValueError('Selected catalog physical chunk identity differs')
-                        db.execute('INSERT INTO physical VALUES (?,?,?,?) ON CONFLICT(name) DO UPDATE '
-                                   'SET first_order=min(first_order,excluded.first_order)',
-                                   (name, identity, view['order_min'], table['schema']))
-                        db.execute('INSERT INTO views VALUES (?,?,?)', (name, component, view['rows']))
-                        logical_rows += view['rows']
-            if logical_rows != self.rows:
-                raise ValueError('Selected catalog logical row count differs')
+        output_schema = pa.schema([self.schema_arrow.field(name) for name in columns] +
+            ([pa.field('_catalog_order', pa.int64(), nullable=False)] if include_order else []),
+            metadata=self.schema_arrow.metadata)
+        with self._admission_db(admission_directory) as db:
             # Admission exhausts all metadata before native data is delivered.
             # Physical order is deterministic; it does not retain global offsets
             # when a changed component moves between shared physical batches.
@@ -456,9 +547,9 @@ class SelectedCatalogTable:
                     order_column='_catalog_order', max_ordered_bytes=self.max_ordered_bytes,
                     views={name: dict(components=[member for member, _ in members], rows=sum(n for _, n in members))}, store=self.store)
                 physical_columns = [name for name in columns if name in physical_schema.names]
-                for batch in table.iter_batches(columns=physical_columns or ['document_id']):
+                for batch in table.iter_batches(columns=physical_columns or ['document_id'], include_order=include_order):
                     batch = pa.RecordBatch.from_arrays(
-                        [batch.column(field.name) if field.name in physical_columns
+                        [batch.column(field.name) if field.name in physical_columns or include_order and field.name == '_catalog_order'
                          else pa.nulls(batch.num_rows, type=field.type) for field in output_schema],
                         schema=output_schema)
                     for offset in range(0, batch.num_rows, batch_size):

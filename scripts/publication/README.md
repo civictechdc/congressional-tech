@@ -122,3 +122,35 @@ Offline, pass saved GitHub and heartbeat JSON with `--github-json` and `--progre
 ## What this folder does not contain
 
 The guarded upload, the resume journal, and the read-back checks live in [`packages/viewer_publication`](../../packages/viewer_publication/README.md). The cheap "already published?" check that runs before dependencies are installed is `scripts/publication_preflight.py`.
+
+
+## Publish a preparation directly from this Mac
+
+For an explicitly authorized local release, use the local adapter after the
+normal `prepare` command has completed:
+
+```sh
+.venv/bin/python scripts/publication/publish_local_preparation.py \
+  --directory /absolute/path/to/prepared-attempt \
+  --report /absolute/path/to/local-publication-result.json
+```
+
+Run it with the same Python, dependencies, OS and architecture used for
+preparation (including the same container when preparing in Docker); the existing
+runtime identity check rejects a different environment. It uses the same R2
+connection settings as `publish-viewer-r2.py`. It creates a
+synced `local-publication-receipt.json` after full inventory verification and
+before any publication write. That receipt binds the original preparation bytes,
+producer identity, exact directory/device/inode and adapter SHA-256. The remote
+attempt journal also binds the complete local receipt SHA-256. It explicitly
+identifies local custody and supplies no GitHub artifact ID or fabricated import.
+An exclusive local lock prevents concurrent invocations on the same directory.
+The maintained publisher still owns selector checks, conditional writes, remote
+journaling, uncertain-write reconciliation, public readback and pointer commit.
+
+After any interruption, keep this exact directory, receipt and adapter and repeat
+the command with `--resume`. A moved/copied directory or changed receipt/adapter
+refuses; use a new preparation for different inputs. A completed retry can append
+a journal completion observation without uploading accepted payloads again.
+No GitHub CI or artifact service participates in this route. The hosted command
+continues to require its actual GitHub artifact.

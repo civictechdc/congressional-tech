@@ -83,3 +83,45 @@ test('recovery absence is valid and corrupt size/hash/catalog/position never fal
  await assert.rejects(attempt({...data,catalog_id:'other'}),/different catalog/);
  await assert.rejects(attempt({...data,sources:[[1,0]]}),/position/);
 });
+
+test('actual worker refuses unavailable export-pin capabilities and keeps its reader usable', async () => {
+  const manifestUrl = 'https://catalog.test/manifest.json';
+  const manifest = {
+    version: 6,
+    info: {catalog_id: 'a'.repeat(32), rows: 0, entries: 0, fields: [], document_fields: [], facets: {}},
+    exports: Object.fromEntries(['sources', 'components'].map(name => [name, {
+      object: {path: `${name}.parquet`, bytes: 0, digest: 'b'.repeat(64)}, rows: 0, fields: [],
+    }])),
+  };
+  const messages = [], requests = [];
+  const originalFetch = globalThis.fetch;
+  const originalSelf = globalThis.self;
+  const worker = {postMessage(message) { messages.push(message); }};
+  globalThis.self = worker;
+  globalThis.fetch = async url => {
+    requests.push(String(url));
+    assert.equal(String(url), manifestUrl, 'unsupported routes must not read catalog payloads');
+    return Response.json(manifest);
+  };
+  try {
+    await import('./worker.ts');
+    await worker.onmessage({data: {id: 1, url: '/api/info', manifest: manifestUrl}});
+    assert.equal(messages[0].result.catalog_id, manifest.info.catalog_id);
+    const id = '1'.repeat(64);
+    for (const route of ['/api/match', `/api/review/${id}`, `/api/entry-origin/${id}`,
+      `/api/source-identity/${id}`, `/api/technical/${id}`, `/api/full/${id}`]) {
+      const requestId = messages.length + 1;
+      await worker.onmessage({data: {id: requestId, url: route, manifest: manifestUrl}});
+      assert.equal(messages.at(-1).id, requestId);
+      assert.match(messages.at(-1).error, /unavailable for this catalog/);
+      assert(!('result' in messages.at(-1)));
+    }
+    await worker.onmessage({data: {id: 8, url: '/api/info', manifest: manifestUrl}});
+    assert.equal(messages.at(-1).result.catalog_id, manifest.info.catalog_id);
+    assert.deepEqual(requests, [manifestUrl], 'refusals leave the initialized reader reusable');
+  } finally {
+    globalThis.fetch = originalFetch;
+    if (originalSelf === undefined) delete globalThis.self;
+    else globalThis.self = originalSelf;
+  }
+});

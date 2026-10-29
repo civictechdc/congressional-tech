@@ -57,7 +57,7 @@ def test_each_accepted_phase_restores_from_events_without_checkpoint(tmp_path):
         run = local.LocalContinuation(root, {'input': 'pinned'}, resume=True)
         assert run.phase(name, lambda: pytest.fail('accepted phase reran'), files=lambda: []) == {'accepted': name}
     assert calls == ['catalog', 'mappings', 'prepared', 'publication']
-    run.path.unlink()
+    run.path.unlink(missing_ok=True)
     restored = local.LocalContinuation(root, {'input': 'pinned'}, resume=True)
     assert set(restored.value['phases']) == set(calls)
     with pytest.raises(ValueError, match='inputs changed'):
@@ -93,7 +93,7 @@ def test_uncertain_write_restore_requires_current_body_without_duplicate_put(tmp
         run.record('publication_write_verified', dict(detail, etag='committed'))
     # Intent-only may represent an uncommitted write or an uncertain committed
     # request; both must be reconciled from current bytes on explicit resume.
-    run.path.unlink()
+    run.path.unlink(missing_ok=True)
     restored = local.LocalContinuation(run.root, {}, resume=True)
     if boundary == 'intent':
         from botocore.exceptions import ClientError
@@ -160,6 +160,7 @@ def test_corrupt_history_refuses_before_touching_derived_checkpoint(tmp_path, da
         value = json.loads(lines[0]); value['sequence'] = True
         lines[0] = local.encoded(value) + b'\n'
     run.journal_path.write_bytes(b''.join(lines))
+    run.path.write_bytes(b'untouched older checkpoint')
     checkpoint = run.path.read_bytes()
     with pytest.raises((ValueError, TypeError)):
         local.LocalContinuation(run.root, {}, resume=True)
@@ -187,11 +188,16 @@ def test_limits_and_failed_sync_block_further_operations(tmp_path, monkeypatch):
         run.record('failed', {})
 
 
-def test_derived_checkpoint_failure_preserves_accepted_event(tmp_path, monkeypatch):
+def test_interruption_after_phase_event_preserves_accepted_phase(tmp_path, monkeypatch):
     run = local.LocalContinuation(tmp_path / 'attempt', {})
-    monkeypatch.setattr(state.Continuation, 'flush', lambda self: (_ for _ in ()).throw(OSError('checkpoint failure')))
-    with pytest.raises(OSError, match='checkpoint failure'):
+    append = run._append
+    def interrupted(event, value):
+        append(event, value)
+        raise KeyboardInterrupt('after synced checkpoint event')
+    monkeypatch.setattr(run, '_append', interrupted)
+    with pytest.raises(KeyboardInterrupt, match='after synced'):
         run.phase('catalog', lambda: {'ok': True}, files=lambda: [])
+    assert not run.path.exists()
     restored = local.LocalContinuation(run.root, {}, resume=True)
     assert restored.phase('catalog', lambda: pytest.fail('reran'), files=lambda: []) == {'ok': True}
 
@@ -271,3 +277,29 @@ def test_event_application_never_clears_guard_versions_or_unrelated_writes(tmp_p
     assert run.value['writes'][immutable['key']] is unchanged_write
     assert versions[protected] == 'new'
     assert run._state_bytes == len(local.encoded(run.value)) + 1
+
+
+def test_local_checkpoint_encodes_state_once_and_keeps_only_authoritative_copy(tmp_path, monkeypatch):
+    run = local.LocalContinuation(tmp_path / 'attempt', {'unicode': 'José 雪'})
+    assert not run.path.exists()
+    calls = []
+    encode = local.encoded
+    def counted(value):
+        if value is run.value or isinstance(value, dict) and value.get('value') is run.value:
+            calls.append(True)
+        return encode(value)
+    monkeypatch.setattr(local, 'encoded', counted)
+    run.flush()
+    assert calls == [True]
+    assert run._state_bytes == len(encode(run.value)) + 1
+    assert not run.path.exists()
+    assert local.LocalContinuation(run.root, run.value['binding'], resume=True).value == run.value
+
+
+def test_local_checkpoint_state_limit_refuses_before_appending(tmp_path, monkeypatch):
+    run = local.LocalContinuation(tmp_path / 'attempt', {'unicode': '雪'})
+    before = run.journal_path.read_bytes()
+    monkeypatch.setattr(state, 'MAX_STATE_BYTES', run._state_bytes - 1)
+    with pytest.raises(ValueError, match='state byte limit'):
+        run.flush()
+    assert run.journal_path.read_bytes() == before

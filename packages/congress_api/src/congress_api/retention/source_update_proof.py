@@ -1,6 +1,8 @@
 """Retain receipt interpretation ownership with the exact catalog selection."""
 import base64
-from contextlib import closing
+from contextlib import closing, contextmanager
+from contextvars import ContextVar
+import inspect
 from tempfile import TemporaryDirectory
 from hashlib import sha256
 from pathlib import Path
@@ -11,16 +13,77 @@ from .immutable_metadata import MetadataObjects, encoded
 from .catalog_staging import WorkingCatalog
 
 
-def source_update_requirements():
+_SOURCE_UPDATE_OPERATION = ContextVar('source_update_operation', default=None)
+
+
+@contextmanager
+def source_update_operation():
+    """Share requirements within one update; nested replay uses the same owner."""
+    if _SOURCE_UPDATE_OPERATION.get() is not None:
+        yield
+        return
+    token = _SOURCE_UPDATE_OPERATION.set({})
+    try:
+        yield
+    finally:
+        _SOURCE_UPDATE_OPERATION.reset(token)
+
+
+def _implementation_paths():
     from . import source_inputs, source_observations, document_index, source_capture_inputs, document_recovery, catalog_availability, capture_metadata, catalog_qualification
-    digest = sha256()
-    for module in (source_inputs, source_observations, document_index, source_capture_inputs, document_recovery, catalog_availability, capture_metadata, catalog_qualification):
-        digest.update(Path(module.__file__).read_bytes())
-    for path in (Path(__file__), Path(__file__).with_name('source_replay.py'), Path(__file__).with_name('catalog_raw_updates.py')):
-        digest.update(path.read_bytes())
+    return [Path(module.__file__) for module in
+            (source_inputs, source_observations, document_index, source_capture_inputs, document_recovery,
+             catalog_availability, capture_metadata, catalog_qualification)] + [
+        Path(__file__), Path(__file__).with_name('source_replay.py'), Path(__file__).with_name('catalog_raw_updates.py')]
+
+
+def _requirements_version():
+    import house_naming
+    from . import document_index
+    from .catalog_cache import source_fingerprint_paths
+    # The filename fingerprint owns Python/JSON rules and the loaded extractor.
+    # Stat every input on reuse, including added/deleted policy files. ctime also
+    # catches same-size rewrites whose modification timestamp was restored.
+    paths = set(_implementation_paths()) | set(source_fingerprint_paths())
+    paths.update(path for path in Path(house_naming.__file__).parent.rglob('*') if path.suffix in {'.py', '.json'})
+    paths.update(Path(inspect.getsourcefile(function)) for function in
+                 (document_index.parser_fingerprint, document_index.extract))
+    versions = []
+    for path in sorted(paths):
+        stat = path.stat()
+        versions.append((path, stat.st_dev, stat.st_ino, stat.st_size, stat.st_mtime_ns, stat.st_ctime_ns))
+    return pa.__version__, document_index.parser_fingerprint, document_index.extract, tuple(versions)
+
+
+def _calculate_source_update_requirements():
+    from . import document_index
     from .catalog_cache import source_fingerprint
+    contents = {}
+    def read(path):
+        if path not in contents:
+            contents[path] = path.read_bytes()
+        return contents[path]
+    digest = sha256()
+    for path in _implementation_paths():
+        digest.update(read(path))
     return dict(implementation_sha256=digest.hexdigest(), format='retained-source-update-v1', pyarrow=pa.__version__,
-                source_policy_sha256=source_fingerprint(), filename_rules_sha256=document_index.parser_fingerprint())
+                source_policy_sha256=source_fingerprint(read_bytes=read), filename_rules_sha256=document_index.parser_fingerprint())
+
+
+def source_update_requirements():
+    operation = _SOURCE_UPDATE_OPERATION.get()
+    if operation is None:
+        return _calculate_source_update_requirements()
+    version = _requirements_version()
+    if 'requirements' in operation:
+        if version != operation['version']:
+            raise ValueError('Source update implementation changed during operation')
+        return dict(operation['requirements'])
+    value = _calculate_source_update_requirements()
+    if version != _requirements_version():
+        raise ValueError('Source update implementation changed during operation')
+    operation.update(version=version, requirements=value)
+    return dict(value)
 
 
 _PARSED_SOURCE_UPDATE_PAGES = {}
