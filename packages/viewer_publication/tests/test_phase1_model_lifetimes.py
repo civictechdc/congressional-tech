@@ -14,7 +14,8 @@ def test_dependencies_use_sql_ast_scopes_and_ignore_literals_and_comments():
         LEFT ANTI JOIN nested USING(id) -- JOIN imaginary
         WHERE EXISTS (SELECT 1 FROM guard_facts)'''
     assert sql_dependencies(sql) == {'raw_facts', 'other_facts', 'guard_facts'}
-    assert sql_dependencies('SELECT * FROM left_facts RIGHT ANTI JOIN right_facts USING(id)') == {
+    assert sql_dependencies("WITH facts AS (SELECT * FROM facts) SELECT * FROM facts") == {'facts'}
+    assert sql_dependencies("SELECT 'é' FROM left_facts RIGHT ANTI JOIN right_facts USING(id)") == {
         'left_facts', 'right_facts'}
     with pytest.raises(ValueError, match='parse'):
         sql_dependencies('SELECT * FROM (')
@@ -35,7 +36,7 @@ def test_last_readers_include_lazy_view_ownership_components_exports_and_guards(
     retained = retire_relations(spec)
     assert 'release_after' not in spec['steps'][0], 'caller plan must remain intact'
     releases = {step['name']: step.get('release_after', []) for step in retained['steps']}
-    assert releases == dict(facts=[], lazy=[], unused=['unused'], lazy2=[],
+    assert releases == dict(facts=[], lazy=[], lazy2=[],
         snapshot=['lazy2', 'lazy', 'facts'], components=[], final=['components'])
 
 
@@ -53,7 +54,6 @@ def test_actual_raw_lake_model_releases_every_relation_after_its_last_reader(tmp
     the simulation expands lazy providers but stops at materialized successors.
     """
     from archive_job_fixture import real_model_spec
-    from docspec_client.client import NativeDatasets
     from viewer_publication.archive_model_job import execute, validate_spec
     from viewer_publication.archive_model_lifetimes import sql_dependencies
     value, _digest, _html = real_model_spec(tmp_path)
@@ -90,4 +90,4 @@ def test_actual_raw_lake_model_releases_every_relation_after_its_last_reader(tmp
     for reader in job['outputs'] + job['queries']:
         assert providers(sql_dependencies(reader['sql'])) <= available, reader['name']
     assert available & names == {name for name in names if last[name] == len(steps)}
-    assert len(names) >= 149
+    assert len(names) == 147  # Complete 149-step model minus its two unconsumed diagnostics.
