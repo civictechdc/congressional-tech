@@ -36,3 +36,7 @@ Largest complete receipt key accepted28source lines223captures55.32s/RSS8.192GB 
 **2026-10-28T21:02:33Z**
 
 Full local public guard passed:2292receipts4176794captures0violations; original200receipt proof61628rows/all34EXCEPT0/0 passed on729. Single full old-index comparison480.51s/native0cb within approved20native/24physical/12scratch/17owned limits: oldOnly0, expectedNew265688, unexplainedNew0, unexplainedMatched2693191. All2704137changed rows retained; owner disposition required. Lead now requests saved-record outcome and403-to404 analysis; D3/model/E4 held for its outcome fix. No live import.
+
+**2026-10-29T01:16:34Z**
+
+Reviewed D1 mapping3fc8c112…d77ec is implemented; corrected independent counts2292 receipts/2598311source/4147132captures with17/17 different-parser affected-receipt crosscheck. Blocked: owner resource window/new corpus jobs. Immutable corrected packet shared/capture-corrected-counts-a072668a. Exact guarded detached proof/full/comparison/D3 commands prepared under scratch/codex-raw/run2/d1-corrected-3fc8;32 source/runtime/input pins. Prior78047 comparison already ended and is historical, never rerun. No old stage/generation retag.
