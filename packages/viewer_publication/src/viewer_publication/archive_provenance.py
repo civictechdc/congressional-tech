@@ -24,7 +24,8 @@ def provenance_inputs(work,*,recovery_files=(),review_files=()):
 
 
 def _steps(names,root):
-    return [dict(name=name.replace('-','_'),sql=(Path(root)/'model/sql'/('provenance-'+name+'.sql')).read_text(),materialize=True)
+    lazy={'recovery-diagnostics','recovery-attachment-diagnostics','body-review-key-conflicts'}
+    return [dict(name=name.replace('-','_'),sql=(Path(root)/'model/sql'/('provenance-'+name+'.sql')).read_text(),materialize=name not in lazy)
             for name in names]
 
 

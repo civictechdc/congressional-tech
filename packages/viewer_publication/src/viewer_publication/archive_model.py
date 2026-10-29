@@ -87,7 +87,7 @@ def evidence_steps(*,root=ROOT):
     names=['pinned-readings','sniff-observations','sniff-conflicts','sniff-facts','page-facts','verification-conflicts','storage-verifications','copy-verifications','body-evidence','capture-evidence',
         'good-fetches','capture-locators','body-signals','locator-signals','placeholders','record-roles',
         'page-contexts','link-inputs']
-    return [writer_admission_step(root=root)]+[dict(name=name.replace('-','_'),sql=(Path(root)/'model/sql'/(name+'.sql')).read_text(),materialize=True)
+    return [writer_admission_step(root=root)]+[dict(name=name.replace('-','_'),sql=(Path(root)/'model/sql'/(name+'.sql')).read_text(),materialize=name not in ('capture-evidence','verification-conflicts'))
         for name in names]
 
 
@@ -182,7 +182,7 @@ def prepare_model_inputs(*,captures,readings,filename_readings,parser_versions,c
         from congress_api.retention.provenance import field
         inputs.append(dict(name='unreadable_records',kind='json_lines',files=list(unreadable_files),schema=dict(fields=[field(k,v) for k,v in unreadable_fields.items()],metadata={})))
     else:inputs.append(json_input(scratch,'unreadable_records',[],**unreadable_fields))
-    prelude += [dict(name='active_unreadable',sql='SELECT u.* FROM unreadable_records u WHERE NOT EXISTS(SELECT 1 FROM unreadable_records s WHERE s.supersedes=u.id)',materialize=True)]
+    prelude += [dict(name='active_unreadable',sql='SELECT u.* FROM unreadable_records u WHERE NOT EXISTS(SELECT 1 FROM unreadable_records s WHERE s.supersedes=u.id)',materialize=False)]
     from congress_api.models.archive_profile import build_capture_profile
     capture_profile=build_capture_profile(engine_revision=engine.source_revision,
         url_normalized_sql=(Path(root)/'model/sql/url-normalized.sql').read_text(),
