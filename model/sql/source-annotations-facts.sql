@@ -9,6 +9,9 @@ WITH fields AS (
  ELSE fact['value'] END) AS fact
  FROM fields
  WHERE fact['field'] IN ('document_kind','document_family','committee_code','congress','measure_references','date_token_candidates')
+), grouped AS (
+ SELECT source_id,array_agg(fact) AS raw_facts
+ FROM filtered GROUP BY source_id
 )
-SELECT source_id,array_agg(DISTINCT fact ORDER BY fact) AS facts
-FROM filtered GROUP BY source_id
+SELECT source_id,array_sort(array_distinct(raw_facts)) AS facts
+FROM grouped
