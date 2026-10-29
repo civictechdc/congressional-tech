@@ -49,7 +49,8 @@ def grouping_steps(*,node_limit=10_000_000,root=ROOT,review_edges=False):
     steps=[dict(name='fingerprints',sql='SELECT body_sha,max(fingerprint) AS fingerprint FROM body_fingerprints GROUP BY body_sha',materialize=True)]
     for name in ['endpoint-bodies','fingerprint-candidates','ambiguous-endpoints','edition-bodies',
                  'rendition-members','valid-rendition-members','source-edges']:
-        steps.append(dict(name=name.replace('-','_'),sql=(Path(root)/'model/sql'/(name+'.sql')).read_text(),materialize=True))
+        steps.append(dict(name=name.replace('-','_'),sql=(Path(root)/'model/sql'/(name+'.sql')).read_text(),
+                          materialize=name not in ('fingerprint-candidates','edition-bodies','rendition-members')))
     if review_edges:
         steps[-1]['sql']+=' UNION SELECT left_node,right_node FROM body_review_edges'
     steps.append(dict(name='source_components',components=dict(sql='SELECT left_node,right_node FROM source_edges',
