@@ -58,8 +58,12 @@ def assert_bounded_capture_rows(actual,key):
 def test_bounded_metadata_fanout_preserves_public_rows(tmp_path):
     from congress_api.lake.captures import stage_captures
     counter,key=bounded_counter(tmp_path)
-    stage=stage_captures([dict(key=key)],engine=NativeDatasets.from_config(os.environ['DOCSPEC_JOB_CONFIG']),
-        work=tmp_path/'stage',validated_counter=counter,source_qualifications=created_qualifications(counter))
+    with NativeDatasets.from_config(os.environ['DOCSPEC_JOB_CONFIG']) as native:
+        # This 131,072-row correctness fixture needs finite headroom on the slow
+        # Linux container; its native memory and scratch budgets stay unchanged.
+        native.timeout=300
+        stage=stage_captures([dict(key=key)],engine=native,
+            work=tmp_path/'stage',validated_counter=counter,source_qualifications=created_qualifications(counter))
     assert_bounded_capture_rows(pq.read_table(stage/'captures.parquet'),key)
 
 
