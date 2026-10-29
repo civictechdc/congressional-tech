@@ -14,7 +14,7 @@ def url_state_steps(*,root=ROOT):
         max(http_status) AS http_status,max(outcome) AS outcome,
         count(DISTINCT json_array(family,http_status,outcome)) AS variants
         FROM captures WHERE {acquisition} GROUP BY receipt_key,receipt_line,requested_url"""),
-        ('good_lines',"SELECT DISTINCT receipt_key,receipt_line FROM good_fetches"),
+        ('good_lines',"SELECT DISTINCT receipt_key,receipt_line FROM good_fetch_contexts"),
         ('latest',"""SELECT * FROM (SELECT *,row_number() OVER(PARTITION BY requested_url ORDER BY
             retrieved_at DESC NULLS LAST,receipt_key DESC,receipt_line DESC) AS preference FROM url_state_lines
             WHERE requested_url IS NOT NULL) WHERE preference=1"""),
@@ -36,7 +36,7 @@ def url_state_steps(*,root=ROOT):
             SELECT r.requested_url,r.interval_seconds,c.matches,r.preference
             FROM counts c JOIN ranked r ON c.requested_url=r.requested_url WHERE r.preference=1"""),
         ('page_contexts',"""SELECT DISTINCT encode(g.sha256,'hex') AS page_body,g.context_url,g.member_path
-            FROM good_fetches g JOIN record_roles r USING(receipt_key,receipt_line,capture_index)
+            FROM good_fetch_contexts g JOIN record_roles r USING(receipt_key,receipt_line,capture_index)
             WHERE g.sha256 IS NOT NULL AND r.record_role IS DISTINCT FROM 'error_response'"""),
         ('fetched_keys',f"""SELECT DISTINCT k.url_key FROM (
             SELECT unnest(make_array(requested_url,url)) AS url FROM captures WHERE {acquisition}
@@ -47,11 +47,11 @@ def url_state_steps(*,root=ROOT):
         ('scoped_targets',"""SELECT DISTINCT l.target_url FROM
             url_state_scope_exclusions e RIGHT JOIN (
              url_state_scope_patterns s JOIN
-             (SELECT DISTINCT target_url FROM resolved_links WHERE target_member_path IS NULL) l
+             (SELECT DISTINCT target_url FROM resolved_link_targets WHERE target_member_path IS NULL) l
              ON regexp_like(l.target_url,s.pattern)
             ) ON e.family=s.family AND regexp_like(l.target_url,e.pattern)
             WHERE e.family IS NULL"""),
-        ('queue_literals',"""SELECT k.url_key,min(l.target_url) AS url FROM resolved_links l
+        ('queue_literals',"""SELECT k.url_key,min(l.target_url) AS url FROM resolved_link_targets l
             JOIN (SELECT * FROM url_state_page_contexts WHERE page_body IS NOT NULL AND context_url IS NOT NULL) p
               ON (l.page_body IS NOT DISTINCT FROM p.page_body) AND (l.context_url IS NOT DISTINCT FROM p.context_url)
               AND (l.member_path IS NOT DISTINCT FROM p.member_path)
