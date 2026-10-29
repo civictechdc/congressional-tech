@@ -86,15 +86,15 @@ test('a changed old pointer during the stale probe still refuses the candidate',
   }finally{await server.close();}
 });
 
-test('provisional targets bind five emulated runs to a seed and keep each profile median',async()=>{
+for(const origin of [{kind:'seed_v5',display_only:true},{kind:'model'},{kind:'model',display_only:false}])test(`provisional targets bind five emulated runs to ${JSON.stringify(origin)} and keep each profile median`,async()=>{
   const folder=await mkdtemp(join(tmpdir(),'archive-seed-targets-'));try{
     const {measurementProfiles,readTargets}=await import('./archive-targets.mjs');
-    const origin={kind:'seed_v5',display_only:true},harnessCommit='a'.repeat(40);
+    const harnessCommit='a'.repeat(40);
     const measurements=['phone','desktop'].map((kind,index)=>({deviceClass:kind+'-profile',basis:'emulated',profile:measurementProfiles[kind],harnessCommit,origin,
       samples:[10,20,30,40,100].map(startupMs=>({releaseId:'ab'.repeat(32),startupMs:startupMs*(index?1:2),searchMs:2,detailMs:3,heapBytes:40,workerHeapBytes:20}))}));
     const output=join(folder,'targets.json');
     await assert.rejects(writeTargets({measurements:measurements.map(r=>({...r,samples:r.samples.slice(1)})),basis:'emulated',harnessCommit,output}),/five|5/i);
-    await assert.rejects(writeTargets({measurements:measurements.map(r=>({...r,origin:{kind:'model'}})),basis:'emulated',harnessCommit,output}),/seed/i);
+    await assert.rejects(writeTargets({measurements:measurements.map(r=>({...r,origin:{kind:'model',display_only:true}})),basis:'emulated',harnessCommit,output}),/origin/i);
     await writeTargets({measurements,basis:'emulated',harnessCommit,output});
     const targets=await readTargets(output);assert.equal(targets.status,'provisional-emulated');assert.equal(targets.basis,'emulated');
     assert.equal(targets.profile.phone.ceilings.startupMs,90);assert.equal(targets.profile.desktop.ceilings.startupMs,45);
@@ -102,10 +102,10 @@ test('provisional targets bind five emulated runs to a seed and keep each profil
     const sample=measurements[1].samples[2];checkTargets(sample,targets,origin,'desktop');
     const {checkTargetRelease}=await import('./archive-targets.mjs');
     checkTargetRelease(sample.releaseId,targets,origin);
-    assert.throws(()=>checkTargetRelease('cd'.repeat(32),targets,origin),/different seed release/);
-    assert.throws(()=>checkTargetRelease(sample.releaseId,targets,{kind:'model'}),/seed/i);
+    assert.throws(()=>checkTargetRelease('cd'.repeat(32),targets,origin),/different release/);
+    assert.throws(()=>checkTargetRelease(sample.releaseId,targets,{kind:'model',display_only:true}),/seed|model|origin/i);
     assert.throws(()=>checkTargets({...sample,startupMs:50},targets,origin,'desktop'),/startup/);
-    for(const other of [undefined,{kind:'model'},{kind:'seed_v5',display_only:false}])assert.throws(()=>checkTargets(sample,targets,other),/seed/i);
+    for(const other of [undefined,{kind:'unknown'},{kind:'model',display_only:true},{kind:'seed_v5',display_only:false}])assert.throws(()=>checkTargets(sample,targets,other),/seed/i);
     assert.throws(()=>checkTargets(sample,{status:'measured',ceilings:targets.ceilings},origin),/target/i);
     const broken={...targets,raw_runs:{...targets.raw_runs,phone:targets.raw_runs.phone.slice(1)}};
     const invalid=join(folder,'invalid.json');await (await import('node:fs/promises')).writeFile(invalid,JSON.stringify(broken));
@@ -128,7 +128,7 @@ test('provisional targets refuse a different seed identity and CLI validation re
     const output=join(folder,'targets.json'),targets=await writeTargets({measurements,basis:'emulated',harnessCommit,output});
     assert.throws(()=>checkTargets({...sample,releaseId:'ab'.repeat(32)},targets,origin),/release|identity/i);
     assert.deepEqual(await validateTargetFile(output,origin),{status:'provisional-emulated',basis:'emulated',measured_release_id:releaseId});
-    await assert.rejects(validateTargetFile(output,{kind:'model'}),/seed/i);
+    await assert.rejects(validateTargetFile(output,{kind:'model',display_only:true}),/seed|model|origin/i);
   }finally{await rm(folder,{recursive:true,force:true});}
 });
 
@@ -144,4 +144,23 @@ test('Node canary keeps its decoded budget without applying browser runtime ceil
     assert.throws(()=>checkTargets({releaseId:server.manifest.release_id,startupMs:2,searchMs:2,detailMs:2,heapBytes:2},targets,server.manifest.origin),/startupMs/);
     await assert.rejects(verifyArchive({...options,heapBytes:1}),/budget|allowance|limit|bytes/i);
   }finally{await server.close();}
+});
+
+
+for(const origin of [{kind:'model'},{kind:'model',display_only:false}])test('raw model target validation derives actual identity and refuses mixed candidates',async()=>{
+  const {measurementProfiles,validateTargetFile,checkTargetRelease}=await import('./archive-targets.mjs');
+  const folder=await mkdtemp(join(tmpdir(),'archive-model-targets-'));try{
+    const releaseId='de'.repeat(32),harnessCommit='c'.repeat(40);
+    const sample={releaseId,startupMs:10,searchMs:2,detailMs:3,heapBytes:40,workerHeapBytes:20};
+    const measurements=['phone','desktop'].map(kind=>({deviceClass:kind+'-profile',basis:'emulated',profile:measurementProfiles[kind],harnessCommit,origin,samples:Array.from({length:5},()=>({...sample}))}));
+    const output=join(folder,'targets.json');
+    const mixed=measurements.map((receipt,index)=>({...receipt,samples:receipt.samples.map(sample=>({...sample,releaseId:index?'ef'.repeat(32):releaseId}))}));
+    await assert.rejects(writeTargets({measurements:mixed,basis:'emulated',harnessCommit,output}),/same release/);
+    const targets=await writeTargets({measurements,basis:'emulated',harnessCommit,output});
+    assert.equal(targets.ceilings.startupMs,15);assert.equal(targets.profile.phone.ceilings.heapBytes,60);
+    assert.deepEqual(await validateTargetFile(output,origin),{status:'provisional-emulated',basis:'emulated',measured_release_id:releaseId});
+    assert.throws(()=>checkTargetRelease('ef'.repeat(32),targets,origin),/different release/);
+    assert.throws(()=>checkTargets({...sample,heapBytes:61},targets,origin,'phone'),/heapBytes/);
+    assert.equal(Object.hasOwn(targets,'measured_release_id'),false);
+  }finally{await rm(folder,{recursive:true,force:true});}
 });
