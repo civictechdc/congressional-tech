@@ -102,7 +102,7 @@ def test_native_references_preserve_occurrences_without_inventing_acquisitions(t
         assert files[occurrences[line]['source_id']]['last_fetched'] is None
     assert files[occurrences[6]['source_id']]['first_fetched'].startswith('2026-10-28')
     meetings={item['source_id']:item['meeting_keys'] for item in result['meetings']}
-    assert meetings[owned]==['123','456']
+    assert meetings[owned]==['111183','123','456']
     assert '999' not in meetings[owned] and '888' not in meetings[owned]
 
     assert result['invalid_keys']==[dict(n=0)]
