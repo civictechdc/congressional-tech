@@ -65,7 +65,9 @@ def test_native_references_preserve_occurrences_without_inventing_acquisitions(t
         dict(name='url_inputs',sql=(ROOT/'model/sql/model-url-inputs.sql').read_text(),materialize=True),
         dict(name='url_normalized',sql=(ROOT/'model/sql/url-normalized.sql').read_text(),materialize=True),
         dict(name='model_url_keys',sql=(ROOT/'model/sql/url-keys.sql').read_text(),materialize=True),
-        dict(name='source_endpoints',sql=(ROOT/'model/sql/source-endpoints.sql').read_text(),materialize=True)]
+        dict(name='source_endpoints',sql=(ROOT/'model/sql/source-endpoints.sql').read_text(),materialize=True),
+        dict(name='document_members',sql='SELECT *,source_id AS component FROM source_files',materialize=True),
+        dict(name='document_addresses',sql=(ROOT/'model/sql/document-addresses.sql').read_text(),materialize=True)]
     for name in ('addresses','meetings'):
         steps.append(dict(name='source_annotation_'+name,
             sql=(ROOT/'model/sql'/('source-annotations-'+name+'.sql')).read_text(),materialize=True))
@@ -79,7 +81,8 @@ def test_native_references_preserve_occurrences_without_inventing_acquisitions(t
                 cast(last_fetched AS VARCHAR) AS last_fetched FROM source_files ORDER BY source_id"""),
             dict(name='meetings',sql='SELECT source_id,meeting_keys FROM source_annotation_meetings ORDER BY source_id'),
             dict(name='invalid_keys',sql='SELECT count(*) AS n FROM model_url_keys WHERE error IS NOT NULL'),
-            dict(name='invented_endpoints',sql="SELECT count(*) AS n FROM source_endpoints WHERE regexp_like(endpoint_key,'/HMKP(?:123|456|888|999)/')")])
+            dict(name='invented_endpoints',sql="SELECT count(*) AS n FROM source_endpoints WHERE regexp_like(endpoint_key,'/HMKP(?:123|456|888|999)/')"),
+            dict(name='invented_public_addresses',sql="SELECT count(*) AS n FROM document_addresses WHERE regexp_like(url,'/HMKP(?:123|456|888|999)/')")])
     occurrences={item['receipt_line']:item for item in result['occurrences']}
     assert set(occurrences)==set(range(1,11))|malformed_lines
     owned=occurrences[1]['source_id']
@@ -107,3 +110,4 @@ def test_native_references_preserve_occurrences_without_inventing_acquisitions(t
 
     assert result['invalid_keys']==[dict(n=0)]
     assert result['invented_endpoints']==[dict(n=0)]
+    assert result['invented_public_addresses']==[dict(n=0)]
