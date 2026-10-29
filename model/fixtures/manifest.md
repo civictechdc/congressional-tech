@@ -102,6 +102,7 @@ public output bytes and row values instead.
 | Step | Case | Expected outcome |
 |---|---|---|
 | E2 | Multiple bodies share an endpoint and nullable member; other rows have blank members or absent endpoints | The actual hash plan builds the grouped or two-key endpoint lookup, preserves null matching, and returns exactly the established body/source rows |
+| E2 | A wide body or capture relation joins sparse sniff, admission and verification evidence | Native plans keep corpus-sized preserved rows on the streamed side; byte facts, absent evidence, damaged copies and verification-conflict refusal remain unchanged |
 | E2 | The real raw/lake model fixture reaches final exports and guards after link, graph and document helpers have their last materialized consumer | Completed helpers release through C7; public rows, private parity evidence and final guards remain unchanged and available |
 
 - Outgoing pointer evidence (`test_archive_legacy_pointer.py`): legacy and engine pointers retain their exact bytes plus the same GET's opaque ETag, SHA-256 and byte count before fallible decoding; a later decode failure preserves both files, and an existing response proof refuses instead of being overwritten. No second GET or storage write occurs.

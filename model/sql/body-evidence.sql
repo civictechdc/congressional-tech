@@ -14,10 +14,17 @@ SELECT b.body_sha,b.original_size,coalesce(s.format,a.format) AS format,coalesce
  WHEN b.bare THEN '' ELSE '.gz' END AS suffix,
  CASE WHEN v.body_sha IS NOT NULL AND s.format='pdf' THEN pdf.size
  WHEN b.bare THEN coalesce(b.bare_size,bare.size) ELSE coalesce(b.gzip_size,gz.size) END AS stored_size
-FROM keys b LEFT JOIN sniff_facts s ON b.body_sha=encode(s.body_sha,'hex')
-LEFT JOIN body_admissions a ON b.body_sha=encode(a.body_sha,'hex')
-LEFT JOIN copy_verifications v ON b.body_sha=v.body_sha
-LEFT JOIN storage_verifications pdf ON pdf.key=b.body_key||'.pdf'
-LEFT JOIN storage_verifications bare ON bare.key=b.body_key
-LEFT JOIN storage_verifications gz ON gz.key=b.body_key||'.gz'
-WHERE NOT EXISTS (SELECT 1 FROM verification_conflicts c WHERE c.body_sha=b.body_sha)
+-- Keep corpus-sized body rows on the streamed side of every evidence join.
+FROM storage_verifications gz RIGHT JOIN (
+ storage_verifications bare RIGHT JOIN (
+  storage_verifications pdf RIGHT JOIN (
+   copy_verifications v RIGHT JOIN (
+    body_admissions a RIGHT JOIN (
+     sniff_facts s RIGHT JOIN (
+      verification_conflicts c RIGHT ANTI JOIN keys b ON c.body_sha=b.body_sha
+     ) ON b.body_sha=encode(s.body_sha,'hex')
+    ) ON b.body_sha=encode(a.body_sha,'hex')
+   ) ON b.body_sha=v.body_sha
+  ) ON pdf.key=b.body_key||'.pdf'
+ ) ON bare.key=b.body_key
+) ON gz.key=b.body_key||'.gz'
