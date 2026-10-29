@@ -4,37 +4,56 @@ WITH expected_parsers AS (
 ), valid_admissions AS (
  SELECT body_sha FROM body_admissions
  WHERE format IN ('empty','vtt','m3u8') AND basis IS NOT NULL AND basis<>''
+), sniff_readings AS (
+ SELECT r.body_sha FROM readings r JOIN parser_versions v ON r.parser=v.parser AND r.parser_version=v.version
+ WHERE r.parser='sniff' AND r.status IN ('completed','error','size_limit')
 ), missing_sniff AS (
  SELECT b.body_sha FROM profile_bodies b
  WHERE NOT EXISTS (SELECT 1 FROM sniff_facts f WHERE f.body_sha=b.body_sha)
  AND NOT EXISTS (SELECT 1 FROM valid_admissions a WHERE a.body_sha=b.body_sha)
- AND NOT EXISTS (SELECT 1 FROM readings r JOIN parser_versions v ON r.parser=v.parser AND r.parser_version=v.version
-   WHERE r.body_sha=b.body_sha AND r.parser='sniff' AND r.status IN ('completed','error','size_limit'))
+ AND NOT EXISTS (SELECT 1 FROM sniff_readings r WHERE r.body_sha=b.body_sha)
  AND NOT EXISTS (SELECT 1 FROM active_unreadable u WHERE u.body_sha256=encode(b.body_sha,'hex')
    AND ((u.parser='sniff' AND EXISTS (SELECT 1 FROM parser_versions v WHERE v.parser='sniff' AND v.version=u.parser_version))
      OR (u.parser='readings' AND u.parser_version={{READINGS_VERSION}})))
+), page_readings AS (
+ SELECT r.body_sha,r.parser,r.parser_version FROM readings r
+ WHERE r.parser IN ('html','xml','json') AND r.status IN ('completed','error','size_limit')
 ), missing_pages AS (
  SELECT DISTINCT b.body_sha,s.format FROM profile_bodies b JOIN sniff_facts s ON b.body_sha=s.body_sha
  JOIN parser_versions v ON s.format=v.parser WHERE s.format IN ('html','xml','json')
- AND NOT EXISTS (SELECT 1 FROM readings r WHERE r.body_sha=b.body_sha AND r.parser=v.parser
-   AND r.parser_version=v.version AND r.status IN ('completed','error','size_limit'))
+ AND NOT EXISTS (SELECT 1 FROM page_readings r WHERE r.body_sha=b.body_sha AND r.parser=v.parser
+   AND r.parser_version=v.version)
  AND NOT EXISTS (SELECT 1 FROM active_unreadable u WHERE u.body_sha256=encode(b.body_sha,'hex')
    AND ((u.parser=v.parser AND u.parser_version=v.version)
      OR (u.parser='readings' AND u.parser_version={{READINGS_VERSION}})))
+), valid_filename_readings AS (
+ SELECT filename,source_url FROM filename_readings
+ WHERE catalog_version={{CATALOG_VERSION}} AND status IN ('completed','error','size_limit')
 ), missing_filenames AS (
- SELECT p.* FROM profile_filename_pairs p WHERE NOT EXISTS (SELECT 1 FROM filename_readings f
-   WHERE f.filename=p.filename AND f.source_url=p.source_url AND f.catalog_version={{CATALOG_VERSION}}
-   AND f.status IN ('completed','error','size_limit'))
+ SELECT p.* FROM profile_filename_pairs p WHERE NOT EXISTS (SELECT 1 FROM valid_filename_readings f
+   WHERE f.filename=p.filename AND f.source_url=p.source_url)
  AND NOT EXISTS (SELECT 1 FROM active_unreadable u WHERE u.parser='filename'
    AND u.parser_version={{CATALOG_VERSION}} AND u.record_sha=encode(sha256(json_array(p.filename,p.source_url)),'hex'))
+), capture_dup AS (
+ SELECT count(*) AS cnt FROM (
+   SELECT receipt_key,receipt_line,capture_index FROM captures
+   GROUP BY receipt_key,receipt_line,capture_index HAVING count(*)>1
+ )
+), reading_dup AS (
+ SELECT count(*) AS cnt FROM (
+   SELECT body_sha,parser,parser_version FROM readings
+   GROUP BY body_sha,parser,parser_version HAVING count(*)>1
+ )
+), filename_dup AS (
+ SELECT count(*) AS cnt FROM (
+   SELECT filename,source_url,catalog_version FROM filename_readings
+   GROUP BY filename,source_url,catalog_version HAVING count(*)>1
+ )
 )
 SELECT
- (SELECT count(*) FROM (SELECT receipt_key,receipt_line,capture_index FROM captures
-   GROUP BY receipt_key,receipt_line,capture_index HAVING count(*)>1)) AS duplicate_captures,
- (SELECT count(*) FROM (SELECT body_sha,parser,parser_version FROM readings
-   GROUP BY body_sha,parser,parser_version HAVING count(*)>1)) AS duplicate_readings,
- (SELECT count(*) FROM (SELECT filename,source_url,catalog_version FROM filename_readings
-   GROUP BY filename,source_url,catalog_version HAVING count(*)>1)) AS duplicate_filename_readings,
+ (SELECT cnt FROM capture_dup) AS duplicate_captures,
+ (SELECT cnt FROM reading_dup) AS duplicate_readings,
+ (SELECT cnt FROM filename_dup) AS duplicate_filename_readings,
  (SELECT count(*) FROM (SELECT parser FROM parser_versions GROUP BY parser HAVING count(*)>1)) AS duplicate_parser_versions,
  (SELECT count(*) FROM captures WHERE receipt_key IS NULL OR receipt_line IS NULL OR capture_index IS NULL) AS invalid_capture_keys,
  (SELECT count(*) FROM readings WHERE body_sha IS NULL OR parser IS NULL OR parser_version IS NULL
