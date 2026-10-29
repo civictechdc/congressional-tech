@@ -309,7 +309,14 @@ raise SystemExit(process.returncode)
     return result
 
 
-def runtime_identity(engine,engine_config):
+def receipt_profile(files,*,local):
+    """Reuse the qualified local envelope for historical whole assembly files."""
+    assembly=local and any('assemble-20260930' in Path(row['key']).name for row in files)
+    return dict(name='assembly' if assembly else 'standard',
+        memory_bytes=(20 if assembly else 14)<<30,physical_limit=(24 if assembly else 16)<<30)
+
+
+def runtime_identity(engine,engine_config,*,files=()):
     """Bind the CLI subprocesses to the same explicit native runtime."""
     from docspec_client.client import NativeDatasets
     configured=NativeDatasets.from_config(engine_config)
@@ -319,7 +326,8 @@ def runtime_identity(engine,engine_config):
     configured.verify_runtime()
     if configured.limits is None:raise ValueError('Backfill requires explicit native limits')
     limits=json.loads(configured.limits.read_text())
-    for name,maximum in (('compute_threads',4),('memory_bytes',14<<30),('scratch_bytes',6<<30)):
+    profile=receipt_profile(files,local=configured.remote is None)
+    for name,maximum in (('compute_threads',4),('memory_bytes',profile['memory_bytes']),('scratch_bytes',6<<30)):
         if type(limits.get(name)) is not int or not 0<limits[name]<=maximum:
             raise ValueError('Backfill native '+name+' exceeds the qualified runner budget')
     return dict(source_revision=engine.source_revision,binary_sha256=engine.binary_sha256,
@@ -350,7 +358,8 @@ def execute_batches(files,counts,*,engine,engine_config,work,table,catalog_root,
         raise ValueError('Backfill requires an explicit generation table')
     for name in [*table['namespace'],table['name']]:tables._identifier(name)
     tables.validate_catalog_authority(engine,catalog_root)
-    runtime=runtime_identity(engine,engine_config)
+    runtime=runtime_identity(engine,engine_config,files=files)
+    physical_limit=receipt_profile(files,local=engine.remote is None)['physical_limit']
     runtime_custody={str(path):custody_identity(path) for path in (Path(engine_config),engine.limits)}
     definition=captures.current_version()
     started=time.monotonic();completed_receipts=0;completed_rows=0;peak=0
@@ -410,7 +419,8 @@ def execute_batches(files,counts,*,engine,engine_config,work,table,catalog_root,
                     qualification=directory/'qualifications.json';qualification.write_text(json.dumps(bindings)+'\n')
                     command+=['--source-qualifications',str(qualification)]
             measurement_work=directory/'monitor'
-            measured=monitor_command(command,work=measurement_work,scratch_root=scratch_root or work)
+            measured=monitor_command(command,work=measurement_work,scratch_root=scratch_root or work,
+                physical_limit=physical_limit)
             unchanged()
             outcome=None
             for line in reversed((directory/'monitor/process.log').read_text().splitlines()):
@@ -433,7 +443,8 @@ def execute_batches(files,counts,*,engine,engine_config,work,table,catalog_root,
             table=table,counts=str(counts_path),work=str(acceptance/'jobs'),mapping_digest=definition),indent=2)+'\n')
         measurement_work=acceptance/'monitor'
         result['acceptance_measurement']=monitor_command([sys.executable,'-I','-m',
-            'congress_api.lake.capture_backfill','--validate-spec',str(spec)],work=measurement_work,scratch_root=scratch_root or work)
+            'congress_api.lake.capture_backfill','--validate-spec',str(spec)],work=measurement_work,scratch_root=scratch_root or work,
+            physical_limit=physical_limit)
         accepted=json.loads((acceptance/'accepted.json').read_text())
         unchanged();result.update(status='public_guard_passed',pin=accepted['pin'],guard=accepted['guard'])
         completed_rows=accepted['guard']['rows']
