@@ -2,6 +2,7 @@
 import re
 
 from viewer_publication.client import publish_manifest_pointer
+from viewer_publication.archive_comparison_acceptance import require_comparison
 
 
 def qualified_target_status(status,manifest_origin=None):
@@ -20,7 +21,7 @@ def validate_receipt(receipt, *, release_id, name, manifest_origin=None):
         raise ValueError(f'Archive {name} requires measured-target qualification')
 
 
-def gate_and_flip(client, *, bucket, release_id, previous_release_id, expected_etag, canary, contract,manifest_origin=None):
+def gate_and_flip(client, *, bucket, release_id, previous_release_id, expected_etag, canary, contract,manifest_origin=None,comparison_acceptance=None):
     """Callbacks run the shipped reader checks; any refusal prevents the flip.
 
     The caller pins the outgoing pointer and its ETag before preparation. Reusing
@@ -28,6 +29,7 @@ def gate_and_flip(client, *, bucket, release_id, previous_release_id, expected_e
     The first engine release can replace the legacy pointer with its observed
     ETag even though that pointer names no previous engine release.
     """
+    require_comparison(comparison_acceptance)
     for value in [release_id, previous_release_id]:
         if value is not None and not re.fullmatch('[a-f0-9]{64}', value):
             raise ValueError('Invalid release ID')
@@ -37,5 +39,7 @@ def gate_and_flip(client, *, bucket, release_id, previous_release_id, expected_e
     # Admit the local candidate before the publisher uploads and probes HTTPS.
     for name, check in [('contract', contract), ('canary', canary)]:
         validate_receipt(check(), release_id=release_id, name=name,manifest_origin=manifest_origin)
+        require_comparison(comparison_acceptance)
+    require_comparison(comparison_acceptance)
     return publish_manifest_pointer(client, bucket=bucket,
         pointer={'release_id': release_id, 'previous_release_id': previous_release_id}, expected_etag=expected_etag)

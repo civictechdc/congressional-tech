@@ -15,6 +15,7 @@ from viewer_publication.archive_model_job import (
     TABLES,PROVENANCE,provenance_record_kind,provenance_etag_md5,
 )
 from viewer_publication.receipt_pins import receipt_list
+from viewer_publication.archive_comparison_acceptance import ComparisonAcceptance,require_comparison
 
 ROOT=Path(__file__).resolve().parents[4]
 SITE=ROOT/'apps/site'
@@ -120,7 +121,7 @@ def load_spec(path):
         if set(value)!={'status','reason'} or not isinstance(value['reason'],str) or not value['reason'].strip():
             raise ValueError('Blocked publication job requires exactly its reason')
         return value
-    if set(value)-FIELDS-{'site_dist','daily','model_kind'}:raise ValueError('Publication job has unknown fields')
+    if set(value)-FIELDS-{'site_dist','daily','model_kind','comparison_acceptance'}:raise ValueError('Publication job has unknown fields')
     if not FIELDS<=value.keys() or type(value['version']) is not int or value['version']!=1:
         raise ValueError('Publication job requires version 1 and all explicit inputs')
     base=path.parent
@@ -130,6 +131,13 @@ def load_spec(path):
     if kind=='seed_v5' and (value['receipt_keys'] or value['provenance'] or 'daily' in value):
         raise ValueError('A display-only seed cannot select raw receipts, provenance or daily production')
     result['model_kind']=kind
+    if 'comparison_acceptance' in value:
+        selected=value['comparison_acceptance']
+        if kind!='raw' or 'daily' in value:raise ValueError('Comparison acceptance selects only an explicit raw model publication')
+        if (not isinstance(selected,dict) or set(selected)!={'receipt','mapping_digest'} or
+                not isinstance(selected['mapping_digest'],str) or re.fullmatch('[a-f0-9]{64}',selected['mapping_digest']) is None):
+            raise ValueError('Comparison acceptance requires its receipt pin and mapping digest')
+        result['comparison_acceptance']=dict(receipt=_metadata_pin(selected['receipt'],base),mapping_digest=selected['mapping_digest'])
     for name in ['model_spec','targets']:result[name]=_metadata_pin(value[name],base)
     for name in ['work','contract_next_release']:result[name]=_local(value[name],base)
     result['site_dist']=_local(value['site_dist'],base) if 'site_dist' in value else str(SITE/'dist')
@@ -165,6 +173,7 @@ def load_spec(path):
     else:result['_model']=load_model_spec(result['model_spec']['path'])
     result['_model_identity'].require(result['model_spec']['path'])
     if result['_model'].get('status')=='blocked':return result['_model']
+    if 'comparison_acceptance' in result and result['_model']['captures'].get('kind')!='native_table':raise ValueError('Comparison acceptance requires the exact native capture selector')
     directories=[Path(result['work']),Path(result['_model']['output']),Path(result['_model']['scratch'])]
     if 'daily' in value:
         if value['receipt_keys'] or value['provenance']:
@@ -265,6 +274,12 @@ def probe_commands(spec,*,release,release_id,probe_selectors):
 def execute(spec,*,runtime_factory=None,storage_factory=None,process_runner=None):
     """Refuse local problems, qualify a remote runtime, then connect the SDK."""
     spec['_model_identity'].require(spec['model_spec']['path'])
+    acceptance=None
+    if 'comparison_acceptance' in spec:
+        selected=spec['comparison_acceptance']
+        acceptance=ComparisonAcceptance(selected['receipt'],expected_mapping_digest=selected['mapping_digest'],
+            capture_pin={k:v for k,v in spec['_model']['captures'].items() if k!='kind'})
+        require_comparison(acceptance,captures=spec['_model']['captures'])
     targets,target_identity=_read_metadata(spec['targets'])
     # The site owns profile, median and run validation. Execute its fixed local
     # metadata command once, before constructing a runtime or SDK client.
@@ -309,6 +324,7 @@ def execute(spec,*,runtime_factory=None,storage_factory=None,process_runner=None
     settings,remote,endpoint,configuration_pins=publication_configuration(spec['_model']['engine_config'],bucket=spec['bucket'])
     def require_configuration():
         for path,identity in configuration_pins:identity.require(path)
+        require_comparison(acceptance)
     parent=_publication_directory(Path(spec['work']).parent,fresh=False)
     with TemporaryDirectory(prefix='.'+Path(spec['work']).name+'-startup-',dir=parent) as directory:
         directory=Path(directory)
@@ -349,7 +365,7 @@ def execute(spec,*,runtime_factory=None,storage_factory=None,process_runner=None
             if spec.get('model_kind')=='seed_v5':result=run_seed_publish(selected_model,
                 measured_release_id=measured_release_id,**options)
             else:result=run_publish(selected_model,receipt_keys=keys,provenance=provenance,verified_files=verified,
-                measured_release_id=measured_release_id,**options)
+                measured_release_id=measured_release_id,comparison_acceptance=acceptance,**options)
             spec['_model_identity'].require(spec['model_spec']['path']);require_configuration()
             return dict(result,daily=daily['daily']) if daily is not None else result
 

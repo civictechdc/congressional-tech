@@ -196,7 +196,7 @@ def accept_comparison(report_path,*,expected_mapping_digest,capture_pin,work,eng
     return receipt
 
 
-def validate_receipt(receipt_pin,*,expected_mapping_digest,capture_pin):
+def _validated_receipt(receipt_pin,*,expected_mapping_digest,capture_pin):
     """Recheck a caller-pinned acceptance receipt and every original evidence pin."""
     held=[];receipt=_json(receipt_pin,held)
     fields={'version','status','mapping_digest','capture_pin','comparison_report','comparison_terminal','changed_fields','owner_record','counts','native_job','native_result','owner_groups_input','retained_changes'}
@@ -217,4 +217,27 @@ def validate_receipt(receipt_pin,*,expected_mapping_digest,capture_pin):
         _require(len(queries)==1 and queries[0].get('data')==[receipt['counts']],'Acceptance native result differs')
     else:_require(all(receipt[k] is None for k in ('native_job','native_result','owner_groups_input','retained_changes')),'Unexpected native receipt for ungated comparison')
     for verified in held:verified.require(verified.path)
-    return receipt
+    return receipt,held
+
+
+def validate_receipt(receipt_pin,*,expected_mapping_digest,capture_pin):
+    return _validated_receipt(receipt_pin,expected_mapping_digest=expected_mapping_digest,capture_pin=capture_pin)[0]
+
+
+class ComparisonAcceptance:
+    """Hold exact receipt/input custody once; later effect guards only stat files."""
+    def __init__(self,receipt_pin,*,expected_mapping_digest,capture_pin):
+        self._receipt,self._held=_validated_receipt(receipt_pin,expected_mapping_digest=expected_mapping_digest,capture_pin=capture_pin)
+        self._capture_pin=copy.deepcopy(capture_pin)
+    def require(self):
+        for verified in self._held:verified.require(verified.path)
+
+
+def require_comparison(acceptance,*,captures=None):
+    """Accept only the concrete checked custody object, never a policy callback."""
+    if acceptance is None:return
+    _require(type(acceptance) is ComparisonAcceptance,'Comparison effect guard requires checked receipt custody')
+    acceptance.require()
+    if captures is not None:
+        _require(captures.get('kind')=='native_table' and
+            {k:v for k,v in captures.items() if k!='kind'}==acceptance._capture_pin,'Comparison receipt capture differs from published model')
