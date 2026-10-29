@@ -1,6 +1,6 @@
 ---
 id: cefs-75ew
-status: in_progress
+status: closed
 deps: []
 links: []
 created: 2026-10-29T04:05:21Z
@@ -22,3 +22,7 @@ All35 measured seed format labels tested before code; known states explicit, not
 **2026-10-29T04:07:50Z**
 
 Native1thread countPASS1.107s/70.9MBsampledphysical:35formats936580rows/exactmanifestagreement;9challenge originals reportedlead/engine. Fixtureall35values+normalizedmodeltypes precedesUIcode. Presentation5PASS3expectedRED; no data/model/reader changes.
+
+**2026-10-29T04:14:46Z**
+
+Local UI task complete from maine107:35formats/936580publicseedrows counted in nativeprojectedSQL, manifestagreementexact (1.107s/70.9MBsampledphysical). Dataissue9challenge originalrows sentlead+engine; physicalbodybytes notreread. Rawmodel traces normalizedsniff/versionpinnedwriterformats via body_evidence/sourcefiles/saved_files/document-normalized and directexport; recognizedchallenge HTML excluded from document role. One UIlabelowner for filter/rows/copies; response states explicit/selectable in separateoptgroup; rawvalues/counts/exactfilterURLs/data unchanged; no aggregation or row exclusion. Fixture14180061 precededcode9c0acca1;5PASS3expectedRED→86NodePASS+29AstroPASS under4GiB. ONECODE APPROVE/no blockers/concerns; observationstaticmarkup doesnotdispatch change/history, tracedcallback unchanged. No release/live writes/push. Lead owns normalmerge; actualrawrelease qualification remains separate/nonblocking.
