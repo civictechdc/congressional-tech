@@ -25,6 +25,10 @@ _read_locks = WeakValueDictionary()
 _read_locks_guard = threading.Lock()
 
 
+class R2GetTransportExhausted(RuntimeError):
+    """An explicitly bounded GET failed; never turn it into a pending body read."""
+
+
 class _ReadyPrefetch:
     """Bound ready keys; cancellation releases producer callbacks before joining."""
     _END=object()
@@ -165,21 +169,38 @@ def _throttle_delay(headers, attempt, now):
     return max(requested, min(20, 2 ** (attempt - 1)) + random.random())
 
 
-def _configure_retries(client, *, read_throttle_attempts=None):
-    """Use the SDK's single replay loop for R2 throttling, including D2 GETs."""
+def _configure_retries(client, *, read_throttle_attempts=None, asynchronous=False):
+    """Use one SDK replay loop for bounded throttling and GET transport failures."""
+    from botocore.exceptions import ConnectionClosedError,EndpointConnectionError,HTTPClientError,ReadTimeoutError
     if read_throttle_attempts is not None and (
             type(read_throttle_attempts) is not int or not 1 <= read_throttle_attempts <= 5):
         raise ValueError('Read throttle attempts must be between one and five')
     # Do not invent a retry budget for clients using an implicit SDK default.
     sdk_maximum = client.meta.config.retries.get('total_max_attempts')
 
-    def retry(*, response, attempts, operation, request_dict, **_):
-        if response is None or response[0].status_code < 400:
+    def transport(error):
+        return isinstance(error,(ConnectionClosedError,ReadTimeoutError,EndpointConnectionError,ConnectionResetError)) or (
+            isinstance(error,HTTPClientError) and isinstance(error.kwargs.get('error'),ConnectionResetError))
+
+    def retry(*, response, attempts, operation, request_dict, caught_exception=None, **_):
+        maximum = (read_throttle_attempts if operation.name == 'GetObject' and read_throttle_attempts is not None
+                   else sdk_maximum)
+        if response is None:
+            if operation.name!='GetObject' or maximum is None or not transport(caught_exception):
+                return None
+            delay=_throttle_delay({},attempts,time.time()) if attempts<maximum else False
+            LOGGER.warning(json.dumps(dict(event='r2_request_error',operation=operation.name,
+                key=request_dict['context'].get('input_params',{}).get('Key'),
+                error_type=type(caught_exception).__name__,http_status=None,attempt=attempts,
+                max_attempts=maximum,retry_delay_seconds=delay),sort_keys=True))
+            if delay is False and read_throttle_attempts is not None:
+                key=request_dict['context'].get('input_params',{}).get('Key')
+                raise R2GetTransportExhausted(f'GetObject transport failed after {attempts} attempts: {key}') from caught_exception
+            return delay
+        if response[0].status_code < 400:
             return None
         http, parsed = response
         status = http.status_code
-        maximum = (read_throttle_attempts if operation.name == 'GetObject' and read_throttle_attempts is not None
-                   else sdk_maximum)
         delay = None
         if (status == 429 or status == 503 and parsed.get('Error', {}).get('Code') in
                 {'ServiceUnavailable', 'SlowDown'}) and maximum is not None:
@@ -196,6 +217,29 @@ def _configure_retries(client, *, read_throttle_attempts=None):
                 attempt=attempts, max_attempts=maximum, retry_delay_seconds=delay,
             ), sort_keys=True))
         return delay
+
+    if client.meta.config.retries.get('mode')=='legacy' and sdk_maximum is not None:
+        # Legacy dispatch raises at its own bound, or for a raw reset it does
+        # not recognize, even when our earlier hook requests another replay.
+        # Delegate its installed SDK policy unchanged for every other decision.
+        # Only this owner's GET transport decision bypasses that second vote;
+        # no request/replay loop is added here.
+        from botocore.loaders import Loader
+        if asynchronous:
+            from aiobotocore.retryhandler import create_retry_handler
+        else:
+            from botocore.retryhandler import create_retry_handler
+        from botocore.translate import build_retry_config
+        model=Loader(extra_search_paths=[Loader.BUILTIN_DATA_PATH],
+            include_default_search_paths=False).load_data('_retry')
+        policy=build_retry_config('s3',model['retry'],model['definitions'],
+            dict(max_attempts=sdk_maximum-1))
+        sdk_retry=create_retry_handler(policy,'s3')
+        def legacy_retry(*,operation,caught_exception=None,**kwargs):
+            if operation.name=='GetObject' and transport(caught_exception):return None
+            return sdk_retry(operation=operation,caught_exception=caught_exception,**kwargs)
+        client.meta.events.unregister('needs-retry.s3',unique_id='retry-config-s3')
+        client.meta.events.register('needs-retry.s3',legacy_retry,unique_id='retry-config-s3')
 
     # Public SDK extension point. The SDK owns request replay and sync/async
     # sleeping; returning False stops even a later SDK handler's retry decision.
@@ -243,7 +287,7 @@ class AsyncBodies:
     """Async I/O for immutable bodies; index state remains with the collector."""
     def __init__(self, client, bucket):
         self.client, self.bucket = client, bucket
-        _configure_retries(client)
+        _configure_retries(client,asynchronous=True)
 
     async def put(self, key, data):
         from io import BytesIO
@@ -463,7 +507,7 @@ class R2Store:
                         self.index_etags[key] = None
                     if pin is None:return None
                 raise
-            except BotoCoreError:
+            except (BotoCoreError,ConnectionResetError,R2GetTransportExhausted):
                 # A transport error may follow SDK replays but carries no
                 # response RetryAttempts. Preserve the failure and report the gap.
                 if timing is not None:timing['sdk_retry_metadata_complete']=False

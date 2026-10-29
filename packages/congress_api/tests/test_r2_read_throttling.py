@@ -1,4 +1,4 @@
-"""D2 retries only throttled GETs and never overlaps streams for one object."""
+"""D2 bounds transient GET retries and never overlaps streams for one object."""
 from concurrent.futures import ThreadPoolExecutor
 from contextlib import closing
 import hashlib
@@ -87,8 +87,10 @@ def sdk_transport(monkeypatch,client,responses):
     """Run actual SDK retry dispatch with a finite in-memory HTTP transport."""
     calls=[];sleeps=[]
     def send(request):
-        status,code,extra=responses[min(len(calls),len(responses)-1)]
+        response=responses[min(len(calls),len(responses)-1)]
         calls.append(request)
+        if isinstance(response,Exception):raise response
+        status,code,extra=response
         body=(DATA if status==200 else
               f'<Error><Code>{code}</Code><Message>R2 throttle</Message></Error>'.encode())
         headers={'content-length':str(len(body)),'etag':'"'+PIN['md5']+'"',
@@ -100,10 +102,127 @@ def sdk_transport(monkeypatch,client,responses):
     return calls,sleeps
 
 
-def sdk_client():
+def sdk_client(mode='standard',maximum=1):
     return boto3.client('s3',endpoint_url='https://r2.example.test',region_name='auto',
         aws_access_key_id='test',aws_secret_access_key='test',
-        config=Config(retries={'total_max_attempts':1,'mode':'standard'}))
+        config=Config(retries={'total_max_attempts':maximum,'mode':mode}))
+
+
+def transport_failure(kind):
+    from botocore.exceptions import ConnectionClosedError,EndpointConnectionError,HTTPClientError,ReadTimeoutError
+    if kind=='reset':return ConnectionResetError('fixture reset')
+    if kind=='wrapped-reset':return HTTPClientError(error=ConnectionResetError('fixture reset'))
+    cls={'closed':ConnectionClosedError,'timeout':ReadTimeoutError,'endpoint':EndpointConnectionError}[kind]
+    return cls(endpoint_url='https://r2.example.test')
+
+
+@pytest.mark.parametrize('mode',['legacy','standard'])
+@pytest.mark.parametrize('kind',['closed','timeout','endpoint','reset','wrapped-reset'])
+@pytest.mark.parametrize('failures',[0,1,4,5])
+def test_transport_get_recovers_within_one_shared_attempt_bound(monkeypatch,mode,kind,failures):
+    error=transport_failure(kind)
+    with closing(sdk_client(mode)) as client:
+        calls,sleeps=sdk_transport(monkeypatch,client,[error]*failures+[(200,'',{})])
+        timing={};store=R2Store(client,'bucket',read_throttle_attempts=5)
+        if failures<5:
+            assert store.read(KEY,expected=PIN,timing=timing)==DATA
+            assert timing['sdk_retries']==failures and timing['sdk_retry_metadata_complete']
+        else:
+            from congress_api.retention.r2 import R2GetTransportExhausted
+            with pytest.raises(R2GetTransportExhausted) as caught:
+                store.read(KEY,expected=PIN,timing=timing)
+            assert caught.value.__cause__ is error and not isinstance(caught.value,OSError)
+            assert timing['sdk_retry_metadata_complete'] is False
+        assert len(calls)==min(failures+1,5)
+        assert sleeps==[1.25,2.25,4.25,8.25][:min(failures,4)]
+        assert timing['requests']==1
+        assert all(request.headers['If-Match']==b'"'+PIN['md5'].encode()+b'"' for request in calls)
+
+
+@pytest.mark.parametrize('mode',['legacy','standard'])
+def test_503_and_transport_errors_share_one_get_attempt_counter(monkeypatch,mode):
+    sequence=[(503,'SlowDown',{}),transport_failure('closed'),transport_failure('timeout'),
+        transport_failure('endpoint'),(200,'',{})]
+    with closing(sdk_client(mode)) as client:
+        calls,sleeps=sdk_transport(monkeypatch,client,sequence)
+        assert R2Store(client,'bucket',read_throttle_attempts=5).read(KEY,expected=PIN)==DATA
+        assert len(calls)==5 and sleeps==[1.25,2.25,4.25,8.25]
+
+
+@pytest.mark.parametrize('mode',['legacy','standard'])
+@pytest.mark.parametrize('operation',['put_object','head_object'])
+def test_get_transport_override_does_not_expand_other_operations(monkeypatch,mode,operation):
+    with closing(sdk_client(mode)) as client:
+        calls,sleeps=sdk_transport(monkeypatch,client,[transport_failure('closed')])
+        R2Store(client,'bucket',read_throttle_attempts=5)
+        with pytest.raises(type(transport_failure('closed'))):
+            getattr(client,operation)(Bucket='bucket',Key=KEY,**({'Body':DATA} if operation=='put_object' else {}))
+        assert len(calls)==1 and sleeps==[]
+
+
+@pytest.mark.parametrize('mode',['legacy','standard'])
+def test_unclassified_get_exception_is_not_promoted_to_retryable(monkeypatch,mode):
+    with closing(sdk_client(mode)) as client:
+        calls,sleeps=sdk_transport(monkeypatch,client,[ValueError('fixture nontransport failure')])
+        with pytest.raises(ValueError,match='nontransport'):
+            R2Store(client,'bucket',read_throttle_attempts=5).read(KEY,expected=PIN)
+        assert len(calls)==1 and sleeps==[]
+
+
+@pytest.mark.parametrize('mode',['legacy','standard'])
+@pytest.mark.parametrize('get_budget',[None,1,2,5])
+def test_transport_uses_configured_or_explicit_get_budget_without_a_stream_multiplier(monkeypatch,mode,get_budget):
+    error=transport_failure('reset');maximum=3 if get_budget is None else get_budget
+    with closing(sdk_client(mode,maximum=3)) as client:
+        calls,sleeps=sdk_transport(monkeypatch,client,[error])
+        from congress_api.retention.r2 import R2GetTransportExhausted
+        with pytest.raises(ConnectionResetError if get_budget is None else R2GetTransportExhausted):
+            R2Store(client,'bucket',read_throttle_attempts=get_budget).read(KEY,expected=PIN)
+        assert len(calls)==maximum and len(sleeps)==maximum-1
+
+
+@pytest.mark.parametrize('mode',['legacy','standard'])
+@pytest.mark.parametrize('recover',[True,False])
+def test_async_adapter_shares_the_sdk_transport_policy_without_an_outer_request_retry(monkeypatch,mode,recover):
+    import asyncio
+    from aiobotocore.awsrequest import AioAWSResponse
+    from aiobotocore.session import get_session
+    from congress_api.retention.r2 import AsyncBodies
+    calls=[];sleeps=[]
+    class AsyncWire:
+        def __init__(self):self.stream=io.BytesIO(DATA);self.content=self
+        async def read(self,n=-1):return self.stream.read(n)
+        def close(self):self.stream.close()
+    async def send(request):
+        calls.append(request)
+        if not recover or len(calls)<3:raise transport_failure('reset')
+        return AioAWSResponse(request.url,200,{'content-length':str(len(DATA))},AsyncWire())
+    async def sleep(delay):sleeps.append(delay)
+    async def check():
+        async with get_session().create_client('s3',endpoint_url='https://r2.example.test',region_name='auto',
+                aws_access_key_id='test',aws_secret_access_key='test',
+                config=Config(retries={'total_max_attempts':3,'mode':mode})) as client:
+            monkeypatch.setattr(client._endpoint.http_session,'send',send)
+            monkeypatch.setattr('aiobotocore.endpoint.asyncio.sleep',sleep)
+            monkeypatch.setattr('congress_api.retention.r2.random.random',lambda:.25)
+            store=AsyncBodies(client,'bucket')
+            if recover:assert await store.read(KEY)==DATA
+            else:
+                with pytest.raises(ConnectionResetError):await store.read(KEY)
+    asyncio.run(check())
+    assert len(calls)==3 and sleeps==[1.25,2.25]
+
+
+@pytest.mark.parametrize('kind',['closed','timeout','endpoint','reset'])
+def test_exhausted_get_aborts_the_ranged_reader_instead_of_becoming_pending(tmp_path,monkeypatch,kind):
+    from congress_api.lake.readings import parse_once_payload
+    from congress_api.retention.r2 import R2GetTransportExhausted
+    from test_readings_ranged import phase,payload
+    with closing(sdk_client('legacy')) as client:
+        calls,sleeps=sdk_transport(monkeypatch,client,[transport_failure(kind)])
+        with phase(tmp_path),pytest.raises(R2GetTransportExhausted):
+            parse_once_payload(payload(tmp_path,DATA,DATA),body_store=R2Store(client,'bucket',read_throttle_attempts=5))
+        assert len(calls)==5 and sleeps==[1.25,2.25,4.25,8.25]
 
 
 @pytest.mark.parametrize('status,code',[(429,'ServiceUnavailable'),(503,'ServiceUnavailable'),(503,'SlowDown')])
@@ -195,8 +314,10 @@ def test_transport_failure_after_a_throttle_marks_retry_measurement_incomplete(m
             return send(request)
         monkeypatch.setattr(client._endpoint.http_session,'send',fail_second)
         timing={}
-        with pytest.raises(ReadTimeoutError):
+        from congress_api.retention.r2 import R2GetTransportExhausted
+        with pytest.raises(R2GetTransportExhausted) as caught:
             R2Store(client,'bucket',read_throttle_attempts=5).read(KEY,expected=PIN,timing=timing)
-        assert len(calls)==2 and sleeps==[1.25]
-        assert timing['error_type']=='ReadTimeoutError' and timing['requests']==1
+        assert isinstance(caught.value.__cause__,ReadTimeoutError)
+        assert len(calls)==5 and sleeps==[1.25,2.25,4.25,8.25]
+        assert timing['error_type']=='R2GetTransportExhausted' and timing['requests']==1
         assert timing['sdk_retry_metadata_complete'] is False

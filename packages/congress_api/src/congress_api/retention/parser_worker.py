@@ -2,7 +2,8 @@
 
 This supervisor performs no storage reads, joins or provenance writes. A normal
 parser result, including a rejection row, completes its input. Only process or
-resource failures trigger the single retry. This is resource control, not a sandbox.
+resource failures trigger the single retry. Exhausted GETs stop the caller without
+worker replay or an unreadable verdict. This is resource control, not a sandbox.
 """
 import contextlib
 from concurrent.futures import ThreadPoolExecutor
@@ -21,6 +22,7 @@ import time
 
 from congress_api.retention.process_resources import resident_bytes,virtual_bytes
 from congress_api.retention.concurrency import completed_map
+from congress_api.retention.r2 import R2GetTransportExhausted
 
 
 class _Failure(Exception):
@@ -138,7 +140,7 @@ class ParserWorker:
                         raise _Failure('output_limit')
 
     def parse(self, input_id, payload):
-        """Return the reading or a stable failure for caller-owned provenance."""
+        """Return parser results; propagate transport refusals without replay."""
         if self._directory is None:
             raise RuntimeError('Parser worker requires an open context')
         if not input_id or not isinstance(payload, bytes):
@@ -159,6 +161,10 @@ class ParserWorker:
                     response = self._response(time.monotonic() + self.timeout_seconds)
                     if not isinstance(response, dict):
                         raise _Failure('parser_crash')
+                    if response.get('failure')=='transport_exhausted':
+                        if set(response)!={'failure','message'} or not isinstance(response['message'],str):
+                            raise RuntimeError('Invalid fatal transport response from parser worker')
+                        raise R2GetTransportExhausted(response['message'])
                     if response.get('failure') in ('memory_limit', 'output_limit'):
                         raise _Failure(response['failure'])
                     if set(response) != {'value'}:
@@ -269,6 +275,12 @@ def _child():
                 value = function((Path(directory) / 'input').read_bytes())
             send({'value': value})
             del value
+        except R2GetTransportExhausted as error:
+            message=str(error)
+            if error.__cause__ is not None:
+                message+=' ('+type(error.__cause__).__name__+': '+str(error.__cause__)+')'
+            send(dict(failure='transport_exhausted',message=message))
+            return
         except MemoryError:
             send({'failure': 'memory_limit'})
             return
