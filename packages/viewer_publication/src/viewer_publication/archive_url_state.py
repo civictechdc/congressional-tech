@@ -23,7 +23,7 @@ def url_state_steps(*,root=ROOT):
             ), dated AS (SELECT l.*,coalesce(m.meeting_date,try_cast(regexp_replace(
             (regexp_match(l.requested_url,'(?i)^https?://docs[.]house[.]gov/meetings/[^/]+/[^/]+/([0-9]{8})/'))[1],
             '^([0-9]{4})([0-9]{2})([0-9]{2})$','$1-$2-$3') AS DATE)) AS meeting_date
-            FROM url_state_latest l LEFT JOIN meetings m ON l.requested_url=m.requested_url)
+            FROM meetings m RIGHT JOIN url_state_latest l ON l.requested_url=m.requested_url)
             SELECT *,cast((date_part('epoch',cast(retrieved_at AS DATE))-date_part('epoch',meeting_date))/86400 AS BIGINT) AS age_days FROM dated"""),
         ('interval_candidates',"""SELECT a.requested_url,i.id,i.interval_seconds
             FROM recheck_intervals i JOIN url_state_ages a ON a.family=i.family
@@ -45,9 +45,11 @@ def url_state_steps(*,root=ROOT):
         ('scope_patterns','SELECT family,unnest(patterns) AS pattern FROM capture_scope'),
         ('scope_exclusions','SELECT family,unnest(exclusions) AS pattern FROM capture_scope'),
         ('scoped_targets',"""SELECT DISTINCT l.target_url FROM
-            (SELECT DISTINCT target_url FROM resolved_links WHERE target_member_path IS NULL) l
-            JOIN url_state_scope_patterns s ON regexp_like(l.target_url,s.pattern)
-            LEFT JOIN url_state_scope_exclusions e ON e.family=s.family AND regexp_like(l.target_url,e.pattern)
+            url_state_scope_exclusions e RIGHT JOIN (
+             url_state_scope_patterns s JOIN
+             (SELECT DISTINCT target_url FROM resolved_links WHERE target_member_path IS NULL) l
+             ON regexp_like(l.target_url,s.pattern)
+            ) ON e.family=s.family AND regexp_like(l.target_url,e.pattern)
             WHERE e.family IS NULL"""),
         ('queue_literals',"""SELECT k.url_key,min(l.target_url) AS url FROM resolved_links l
             JOIN (SELECT * FROM url_state_page_contexts WHERE page_body IS NOT NULL AND context_url IS NOT NULL) p
@@ -66,14 +68,13 @@ def url_state_steps(*,root=ROOT):
             SELECT url,unnest(string_to_array(query,'&')) AS part,
               unnest(range(0,cast(array_length(string_to_array(query,'&')) AS BIGINT))) AS position FROM queries"""),
         ('sanitized',"""WITH queries AS (
-            SELECT p.url,string_agg(p.part,'&' ORDER BY p.position) AS query FROM url_state_query_parts p
-            WHERE NOT EXISTS(SELECT 1 FROM credential_parameters c
-                WHERE lower(percent_decode_utf8(replace(split_part(p.part,'=',1),'+',' ')))=lower(c.parameter))
+            SELECT p.url,string_agg(p.part,'&' ORDER BY p.position) AS query FROM credential_parameters c RIGHT ANTI JOIN url_state_query_parts p
+            ON lower(percent_decode_utf8(replace(split_part(p.part,'=',1),'+',' ')))=lower(c.parameter)
             GROUP BY p.url)
             SELECT u.url,split_part(split_part(u.url,'#',1),'?',1)||
             CASE WHEN q.query IS NOT NULL THEN '?'||q.query ELSE '' END||
             CASE WHEN strpos(u.url,'#')>0 THEN substr(u.url,strpos(u.url,'#')) ELSE '' END AS public_url
-            FROM url_state_public_urls u LEFT JOIN queries q ON u.url=q.url"""),
+            FROM queries q RIGHT JOIN url_state_public_urls u ON u.url=q.url"""),
         ('sanitized_inputs',"""SELECT DISTINCT encode(sha256(json_array(s.public_url)),'hex') AS input_id,s.public_url AS url
             FROM url_state_queue_literals q JOIN url_state_sanitized s ON q.url=s.url""")]
     steps=[dict(name='url_state_'+name,sql=sql,materialize=True) for name,sql in sqls]

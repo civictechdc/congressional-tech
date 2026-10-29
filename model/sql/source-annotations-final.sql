@@ -18,10 +18,16 @@ SELECT s.source_id,
  coalesce(c.committee_keys,{{EMPTY_STRINGS}}) AS committee_keys,
  array_sort(array_distinct(array_concat(coalesce(c.chambers,{{EMPTY_STRINGS}}),coalesce(m.chambers,{{EMPTY_STRINGS}})))) AS chambers,
  coalesce(d.facts,{{EMPTY_FACTS}}) AS facts,f.status AS filename_status
-FROM source_files s LEFT JOIN source_filename_readings f ON s.source_id=f.source_id
-LEFT JOIN page_facts p ON s.body_sha=encode(p.body_sha,'hex')
-LEFT JOIN source_annotation_publisher k ON s.source_id=k.source_id
-LEFT JOIN source_annotation_committees c ON s.source_id=c.source_id
-LEFT JOIN source_annotation_facts d ON s.source_id=d.source_id
-LEFT JOIN source_annotation_meetings m ON s.source_id=m.source_id
-LEFT JOIN packages u ON s.source_id=u.source_id
+FROM packages u RIGHT JOIN (
+ source_annotation_meetings m RIGHT JOIN (
+  source_annotation_facts d RIGHT JOIN (
+   source_annotation_committees c RIGHT JOIN (
+    source_annotation_publisher k RIGHT JOIN (
+     page_facts p RIGHT JOIN (
+      source_files s LEFT JOIN source_filename_readings f ON s.source_id=f.source_id
+     ) ON s.body_sha=encode(p.body_sha,'hex')
+    ) ON s.source_id=k.source_id
+   ) ON s.source_id=c.source_id
+  ) ON s.source_id=d.source_id
+ ) ON s.source_id=m.source_id
+) ON s.source_id=u.source_id

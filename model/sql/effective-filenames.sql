@@ -24,7 +24,7 @@ WITH urls AS (
             THEN substr(q.part, strpos(q.part, '=') + 1) ELSE '' END) AS filename,
         row_number() OVER (PARTITION BY q.input_id
             ORDER BY q.url_priority, p.priority, q.part_index) AS preference
-    FROM query_parts q JOIN filename_parameters p
+    FROM filename_parameters p JOIN query_parts q
         ON lower(percent_decode_utf8(split_part(q.part, '=', 1))) = p.parameter
 )
 SELECT i.input_id, i.source_url,
@@ -35,5 +35,5 @@ SELECT i.input_id, i.source_url,
         nullif(p.filename, ''),
         nullif(url_filename(i.source_url), ''),
         nullif(url_filename(i.requested_url), ''), '') AS filename
-FROM filename_inputs i LEFT JOIN parameter_values p
+FROM parameter_values p RIGHT JOIN filename_inputs i
     ON i.input_id = p.input_id AND p.preference = 1

@@ -96,7 +96,7 @@ def _core(steps, output,*,lookup_extra=None):
         _step('source_ranges', 'SELECT doc_key,min(source_index) AS src_start,cast(count(*) AS INT) AS src_len FROM source_rows GROUP BY doc_key'),
         _step('recovery_rows', """SELECT o.list_row,r.*,cast(row_number() OVER(PARTITION BY o.list_row ORDER BY r.recovery_key)-1 AS INT) AS ordinal,
             cast(row_number() OVER(ORDER BY o.list_row,r.recovery_key)-1 AS INT) AS recovery_index
-            FROM recovery_input r JOIN ordered o ON r.doc_key=o.doc_key""", materialize=True),
+            FROM (SELECT doc_key,list_row FROM ordered) o JOIN recovery_input r ON r.doc_key=o.doc_key""", materialize=True),
         _step('recovery_ranges', 'SELECT doc_key,min(recovery_index) AS rec_start,cast(count(*) AS INT) AS rec_len FROM recovery_rows GROUP BY doc_key'),
         _step('details', f"""SELECT {detail_inputs},CASE WHEN saved_kind='recovery' THEN {_hash_key('o.source_url', 'url:')}
             ELSE {_binary('substr(body_hex,1,16)', 8)} END AS link_key,

@@ -1,6 +1,6 @@
 WITH kinds AS (
  SELECT DISTINCT l.source_id,r.basis,r.document_kind
- FROM publisher_links l JOIN publisher_kinds r ON
+ FROM publisher_kinds r JOIN publisher_links l ON
  (r.basis='doc_type' AND regexp_like(l.doc_type,r.pattern)) OR
  (r.basis='text' AND regexp_like(l.text,r.pattern))
 ), chosen_kinds AS (
@@ -14,6 +14,6 @@ WITH kinds AS (
  cast(first_good_at AS TIMESTAMP WITH TIME ZONE) NULLS LAST,context,page_body,link_index,split_position) AS preference
  FROM publisher_links WHERE nullif(trim(text),'') IS NOT NULL
 )
-SELECT s.source_id,k.document_kind,l.text AS listing_title FROM source_files s
-LEFT JOIN kind_arrays k ON s.source_id=k.source_id
-LEFT JOIN labels l ON s.source_id=l.source_id AND l.preference=1
+SELECT s.source_id,k.document_kind,l.text AS listing_title FROM labels l RIGHT JOIN (
+ kind_arrays k RIGHT JOIN source_files s ON s.source_id=k.source_id
+) ON s.source_id=l.source_id AND l.preference=1
