@@ -225,12 +225,12 @@ def validate_receipt(receipt_pin,*,expected_mapping_digest,capture_pin):
 
 
 class ComparisonAcceptance:
-    """Hold exact receipt/input custody once; later effect guards only stat files."""
+    """Verify initial receipt/input bytes; later effect guards check metadata."""
     def __init__(self,receipt_pin,*,expected_mapping_digest,capture_pin):
         self._receipt,self._held=_validated_receipt(receipt_pin,expected_mapping_digest=expected_mapping_digest,capture_pin=capture_pin)
         self._capture_pin=copy.deepcopy(capture_pin)
     def require(self):
-        for verified in self._held:verified.require(verified.path)
+        for verified in self._held:verified._require_custody(verified.path)
 
 
 def require_comparison(acceptance,*,captures=None):
