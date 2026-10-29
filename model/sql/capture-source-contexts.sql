@@ -1,0 +1,2 @@
+SELECT source_id,body_sha,filename,source_url,context_url,member_path,outcome
+FROM capture_sources

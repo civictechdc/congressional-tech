@@ -29,17 +29,13 @@ def test_output_and_diagnostic_relations_are_lazy_views():
     for name in lazy_diagnostics:
         assert steps[name].get('materialize') is False, f"{name} should be a view"
 
-    # Single-reader grouping steps must be lazy views
-    g_steps = {step['name']: step for step in grouping_steps()}
-    for name in ['fingerprint_candidates', 'edition_bodies', 'rendition_members', 'valid_rendition_members']:
-        assert g_steps[name].get('materialize') is False, f"{name} should be a view"
-
 
 def test_source_annotation_addresses_regex_on_distinct_urls():
     sql = (Path(__file__).parents[3] / 'model/sql/source-annotations-addresses.sql').read_text()
     assert 'distinct_urls' in sql or 'SELECT DISTINCT url' in sql, (
         "source-annotations-addresses.sql must evaluate regexes on distinct URLs"
     )
+    assert 'capture_source_contexts' in sql, "source-annotations-addresses.sql must read narrow capture_source_contexts"
 
 
 def test_page_facts_excludes_links_and_recomputes_for_export():
@@ -48,3 +44,10 @@ def test_page_facts_excludes_links_and_recomputes_for_export():
 
     link_sql = (Path(__file__).parents[3] / 'model/sql/link-inputs.sql').read_text()
     assert 'FROM readings r' in link_sql, "link-inputs.sql must read links directly from readings"
+
+
+def test_capture_source_contexts_is_narrow():
+    from viewer_publication.archive_model import source_steps
+    steps = {step['name']: step for step in source_steps()}
+    assert 'capture_source_contexts' in steps, "capture_source_contexts must be present in source_steps"
+    assert steps['capture_source_contexts']['materialize'] is True

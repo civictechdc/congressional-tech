@@ -4,4 +4,4 @@ SELECT DISTINCT source_id,
  ELSE json_array((regexp_match(source_url,'^(https?://[^/?#]+)'))[1],
  regexp_replace(coalesce(nullif((regexp_match(source_url,'^https?://[^/?#]+([^?#]*)'))[1],''),'/'),'[^/]*$','')) END AS directory_key,
  regexp_replace(filename,'[.][^.]*$','') AS stem
-FROM capture_sources
+FROM capture_source_contexts

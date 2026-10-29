@@ -1,6 +1,6 @@
 WITH package_records AS (
  SELECT DISTINCT a.package_id,unnest(p.named_meetings) AS event_id FROM source_annotation_addresses a
- JOIN capture_sources c ON a.source_id=c.source_id AND a.url=c.context_url
+ JOIN capture_source_contexts c ON a.source_id=c.source_id AND a.url=c.context_url
  JOIN page_facts p ON c.body_sha=encode(p.body_sha,'hex')
  WHERE a.package_id IS NOT NULL AND NOT a.publisher AND p.status='completed'
 ), combined AS (

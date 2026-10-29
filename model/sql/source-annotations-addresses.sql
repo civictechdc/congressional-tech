@@ -1,7 +1,7 @@
 -- A member's source URL is null; its container remains an attributable address.
 WITH addresses AS (
  SELECT source_id,source_url AS url,false AS publisher FROM source_files WHERE source_url IS NOT NULL
- UNION SELECT source_id,context_url AS url,false AS publisher FROM capture_sources WHERE context_url IS NOT NULL
+ UNION SELECT source_id,context_url AS url,false AS publisher FROM capture_source_contexts WHERE context_url IS NOT NULL
  UNION SELECT source_id,context_url AS url,true AS publisher FROM publisher_links WHERE context_url IS NOT NULL
 ), distinct_urls AS (
  SELECT url,

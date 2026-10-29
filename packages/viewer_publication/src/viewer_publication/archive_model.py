@@ -49,8 +49,7 @@ def grouping_steps(*,node_limit=10_000_000,root=ROOT,review_edges=False):
     steps=[dict(name='fingerprints',sql='SELECT body_sha,max(fingerprint) AS fingerprint FROM body_fingerprints GROUP BY body_sha',materialize=True)]
     for name in ['endpoint-bodies','fingerprint-candidates','ambiguous-endpoints','edition-bodies',
                  'rendition-members','valid-rendition-members','source-edges']:
-        steps.append(dict(name=name.replace('-','_'),sql=(Path(root)/'model/sql'/(name+'.sql')).read_text(),
-                          materialize=name not in ('fingerprint-candidates','edition-bodies','rendition-members','valid-rendition-members')))
+        steps.append(dict(name=name.replace('-','_'),sql=(Path(root)/'model/sql'/(name+'.sql')).read_text(),materialize=True))
     if review_edges:
         steps[-1]['sql']+=' UNION SELECT left_node,right_node FROM body_review_edges'
     steps.append(dict(name='source_components',components=dict(sql='SELECT left_node,right_node FROM source_edges',
@@ -70,7 +69,7 @@ def source_steps(*,root=ROOT):
     keys=(Path(root)/'model/sql/url-keys.sql').read_text().replace('url_inputs','source_url_inputs').replace('url_normalized','source_url_normalized')
     steps += [dict(name='source_url_normalized',sql=normalize,materialize=True),
               dict(name='source_url_keys',sql=keys,materialize=True)]
-    for name in ('source-reference-targets','source-body-urls','capture-sources','source-files','source-directories'):
+    for name in ('source-reference-targets','source-body-urls','capture-sources','capture-source-contexts','source-files','source-directories'):
         step=dict(name=name.replace('-','_'),sql=(Path(root)/'model/sql'/(name+'.sql')).read_text(),materialize=True)
         steps.append(step)
     return steps
@@ -270,7 +269,7 @@ def build_prepared_release(prepared,*,engine,output,root=ROOT):
         m.source_id,CASE WHEN m.body_sha IS NOT NULL THEN 'bodies/sha256/'||substr(m.body_sha,1,2)||'/'||m.body_sha||'.gz' END AS body_key,
         m.filename AS effective_filename,m.source_url,c.member_path
         FROM document_members m JOIN document_identities d ON m.component=d.component JOIN ordered o ON d.document_id=o.doc_key
-        LEFT JOIN capture_sources c ON m.source_id=c.source_id""",settings=_settings('whole',['document_id','source_id','member_path']))]
+        LEFT JOIN capture_source_contexts c ON m.source_id=c.source_id""",settings=_settings('whole',['document_id','source_id','member_path']))]
     causes={
         'capture_evidence':['receipt_key','receipt_line','capture_index'],
         'record_roles':['receipt_key','receipt_line','capture_index'],
