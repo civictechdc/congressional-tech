@@ -17,6 +17,7 @@ from congress_api.retention.derived_files import copy_checked
 from viewer_publication.archive_gate import gate_and_flip,validate_receipt
 from viewer_publication.archive_format import release_identity
 from viewer_publication.client import require_publication_client
+from viewer_publication.archive_comparison_acceptance import require_comparison
 from viewer_publication.receipt_pins import (PREFIX,receipt_list,read_receipt_list,
     write_input_receipts,kept_receipt_keys)
 
@@ -84,7 +85,9 @@ class NativeArchiveStore:
     Metadata GET/LIST remains in the injected SDK. The same get/keys interface
     supports receipt_pins.kept_receipt_keys in the separate maintenance job.
     """
-    def __init__(self,*,client,engine,bucket,work):
+    def __init__(self,*,client,engine,bucket,work,comparison_acceptance=None):
+        require_comparison(comparison_acceptance)
+        self.comparison_acceptance=comparison_acceptance
         require_publication_client(client)
         if not re.fullmatch('[a-z0-9][a-z0-9.-]{1,61}[a-z0-9]',bucket):
             raise ValueError('Invalid archive bucket')
@@ -119,6 +122,7 @@ class NativeArchiveStore:
             if not next_token or next_token==token:raise ValueError('Archive listing did not advance')
             token=next_token
     def upload_file(self,key,source,facts,*,content_type):
+        require_comparison(self.comparison_acceptance)
         key=self._key(key)
         source=Path(source)
         _sha(facts['sha256'])
@@ -131,12 +135,14 @@ class NativeArchiveStore:
             md5=facts['md5'],size=facts['size'],content_type=content_type,cache_control=IMMUTABLE)
         path=self.work/f'cx_upload_{self.serial:06d}.json'
         path.write_bytes(_encoded(spec))
+        require_comparison(self.comparison_acceptance)
         result=self.engine.create_file(path)
         if (not isinstance(result,dict) or result.get('result') not in {'created','already_exists'}
                 or any(result.get(name)!=spec[name] for name in ['destination','sha256','md5','size'])):
             raise ValueError('Native upload returned no matching acknowledged outcome')
         return result['result']
     def create(self,key,body,*,content_type,content_md5,cache_control):
+        require_comparison(self.comparison_acceptance)
         self._key(key)
         if cache_control!=IMMUTABLE or not isinstance(body,bytes) or len(body)>CONTROL_BYTES:
             raise ValueError('Invalid immutable archive metadata')
@@ -200,7 +206,7 @@ def matching_live_input(store,*,release_id,digest):
     return record
 
 
-def write_status(client,*,bucket,status):
+def write_status(client,*,bucket,status,comparison_acceptance=None):
     """Conditionally write the fixed no-store control object, without retry."""
     require_publication_client(client)
     try:
@@ -213,6 +219,7 @@ def write_status(client,*,bucket,status):
         if not isinstance(etag,str) or not etag.strip():raise ValueError('Archive status has no ETag')
         condition={'IfMatch':etag}
     raw=_encoded(status)
+    if status.get('status')!='failed':require_comparison(comparison_acceptance)
     return client.put_object(Bucket=bucket,Key=STATUS,Body=raw,ContentLength=len(raw),
         ContentType='application/json',CacheControl='no-store',**condition)
 
@@ -332,7 +339,7 @@ def _candidate(release,manifest_pin,result_pin,*,input_record,receipt_keys):
 
 
 def publish_candidate(*,client,engine,bucket,work,release,manifest_pin,result_pin,
-                      input_record,receipt_keys,pointer,expected_etag,public_origin,contract,canary,measured_release_id=None):
+                      input_record,receipt_keys,pointer,expected_etag,public_origin,contract,canary,measured_release_id=None,comparison_acceptance=None):
     """Upload a pinned model candidate and use the existing reader gates and CAS.
 
     The caller owns actual model planning, completeness and early skip. This stage
@@ -352,7 +359,8 @@ def publish_candidate(*,client,engine,bucket,work,release,manifest_pin,result_pi
                 (live is not None and expected_etag is None)):
             raise ValueError('Outgoing pointer and ETag must be pinned together')
         status.update(live_release=live,live_release_basis='pinned_at_start')
-        store=NativeArchiveStore(client=client,engine=engine,bucket=bucket,work=Path(work)/'uploads')
+        require_comparison(comparison_acceptance)
+        store=NativeArchiveStore(client=client,engine=engine,bucket=bucket,work=Path(work)/'uploads',comparison_acceptance=comparison_acceptance)
         receipt_keys=sorted(set(receipt_keys))
         digest=input_digest(receipt_keys=receipt_keys,provenance=input_record['provenance'],
             profile=input_record['profile'],entity_digests=input_record['entity_digests'])
@@ -385,7 +393,7 @@ def publish_candidate(*,client,engine,bucket,work,release,manifest_pin,result_pi
             return canary(release_id=release_id,public_origin=public_origin.rstrip('/'),manifest=manifest)
         begin=perf_counter()
         transfer=gate_and_flip(client,bucket=bucket,release_id=release_id,previous_release_id=live,expected_etag=expected_etag,
-            contract=lambda:contract_receipt,canary=uploaded_canary,manifest_origin=manifest.get('origin'))
+            contract=lambda:contract_receipt,canary=uploaded_canary,manifest_origin=manifest.get('origin'),comparison_acceptance=comparison_acceptance)
         if not isinstance(transfer.etag,str) or not transfer.etag.strip():
             status.update(live_release=None,live_release_basis='unacknowledged_pointer_write')
             raise ValueError('Publication requires an acknowledged pointer ETag')
@@ -397,7 +405,7 @@ def publish_candidate(*,client,engine,bucket,work,release,manifest_pin,result_pi
         raise
     finally:
         status['durations']['total']=perf_counter()-started
-        try:write_status(client,bucket=bucket,status=status)
+        try:write_status(client,bucket=bucket,status=status,comparison_acceptance=comparison_acceptance)
         except BaseException:
             if failure is None:raise
             failure.add_note('Archive status update also failed')

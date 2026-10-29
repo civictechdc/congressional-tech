@@ -91,7 +91,7 @@ def _probe_evidence(reports):
 
 
 def run_publish(model_spec,*,client,engine,bucket,work,receipt_keys,provenance,run,
-                public_origin,contract,canary,verified_files=None,measured_release_id=None):
+                public_origin,contract,canary,verified_files=None,measured_release_id=None,comparison_acceptance=None):
     """Prepare once, admit before a skip, otherwise export once and publish.
 
     SQL, graphs, grouping and file writing use the maintained native model.
@@ -99,6 +99,8 @@ def run_publish(model_spec,*,client,engine,bucket,work,receipt_keys,provenance,r
     Receipt/provenance metadata identifies the prospective inputs; native results
     prove their actual receipt population before any release or input-record PUT.
     """
+    from viewer_publication.archive_comparison_acceptance import require_comparison
+    require_comparison(comparison_acceptance,captures=model_spec['captures'])
     receipt_keys=list(receipt_keys);receipt_list(receipt_keys);provenance=list(provenance)
     keys=sorted(set(receipt_keys))
     if not isinstance(run,dict) or not run:raise ValueError('Publication requires explicit run metadata')
@@ -143,6 +145,7 @@ def run_publish(model_spec,*,client,engine,bucket,work,receipt_keys,provenance,r
                 probe_selectors=_probe_evidence(reports)
         # Local custody must still hold after native consumption and before any
         # successful status, reader probe, release upload or input-record write.
+        require_comparison(comparison_acceptance,captures=model_spec['captures'])
         if manifest is None:
             if measured_release_id is not None and measured_release_id!=pointer['release_id']:
                 raise ValueError('Measured site targets identify a different release')
@@ -156,7 +159,7 @@ def run_publish(model_spec,*,client,engine,bucket,work,receipt_keys,provenance,r
         delegate=True
         return publish_candidate(client=client,engine=engine,bucket=bucket,work=work/'candidate',
             release=Path(model_spec['output']),**artifacts,input_record=record,receipt_keys=keys,
-            measured_release_id=measured_release_id,
+            measured_release_id=measured_release_id,comparison_acceptance=comparison_acceptance,
             pointer=pointer,expected_etag=etag,public_origin=public_origin,
             contract=lambda **context:contract(**context,probe_selectors=probe_selectors),
             canary=lambda **context:canary(**context,probe_selectors=probe_selectors))
@@ -166,7 +169,7 @@ def run_publish(model_spec,*,client,engine,bucket,work,receipt_keys,provenance,r
     finally:
         if storage_ready and not delegate:
             status['durations']={'total':perf_counter()-started}
-            try:write_status(client,bucket=bucket,status=status)
+            try:write_status(client,bucket=bucket,status=status,comparison_acceptance=comparison_acceptance)
             except BaseException:
                 if failure is None:raise
                 failure.add_note('Archive status update also failed')
