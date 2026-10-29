@@ -44,3 +44,33 @@ def test_ranges_progress_while_a_page_prefetch_is_waiting(tmp_path):
     values=pq.read_table(result['readings']).to_pylist()
     assert len(values)==4 and [r['body_sha'] for r in values]==sorted(r['body_sha'] for r in values)
     assert result['pending_reads']==result['unreadable']==0
+
+
+def test_fast_pages_parse_before_an_unrelated_slow_page_finishes(tmp_path):
+    args,objects=fixture(tmp_path);table=pq.read_table(args['captures']);rows=table.to_pylist()
+    slow=next(key for key in objects if key.endswith(rows[0]['sha256'].hex()))
+    for row in rows:row['media_type']='text/html'
+    import pyarrow as pa
+    pq.write_table(pa.Table.from_pylist(rows,schema=table.schema),args['captures'])
+    progressed=threading.Event()
+    class Pages(Client):
+        def get_object(self,**kwargs):
+            assert 'Range' not in kwargs
+            data=objects[kwargs['Key']];self.reads.append(kwargs)
+            if kwargs['Key']==slow:assert progressed.wait(3),'One slow page blocked ready pages'
+            return dict(Body=io.BytesIO(data),ContentLength=len(data),ETag=kwargs['IfMatch'])
+    client=Pages(b'fixture');work=tmp_path/'stage';store=R2Store(client,'bucket',cache_dir=work/'raw-pages')
+    class Worker:
+        def __init__(self,*args,**kwargs):pass
+        def __enter__(self):return self
+        def __exit__(self,*args):pass
+        def parse(self,body,payload):
+            request=json.loads(payload);assert request['prefetched']
+            data=Path(request['path']).read_bytes();assert hashlib.sha256(data).hexdigest()==body
+            if body!=slow.rsplit('/',1)[1]:progressed.set()
+            return dict(status='completed',value=dict(rows=[dict(parser='sniff',parser_version=request['versions']['sniff'],status='completed',format='pdf')]))
+    result=readings.stage_once(**args,work=work,body_store=store,worker_factory=Worker,
+        parser_workers=2,parser_memory_bytes=1<<30,max_cache_bytes=1<<20)
+    assert progressed.is_set() and len(client.reads)==4
+    values=pq.read_table(result['readings']).to_pylist()
+    assert len(values)==4 and [r['body_sha'] for r in values]==sorted(r['body_sha'] for r in values)
