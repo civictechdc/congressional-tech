@@ -77,6 +77,12 @@ def test_dead_tables_released_early(tmp_path):
             releases[rel] = st['name']
 
     assert releases.get('capture_sources') == 'source_files', "capture_sources must be released by source_files"
+    assert releases.get('good_fetches') == 'good_fetch_contexts', (
+        "good_fetches must be released by good_fetch_contexts"
+    )
+    assert releases.get('resolved_links') == 'resolved_link_targets', (
+        "resolved_links must be released by resolved_link_targets"
+    )
     assert releases.get('initial_document_link_keys') == 'duplicate_component_edges', (
         "initial_document_link_keys must be released by duplicate_component_edges"
     )
