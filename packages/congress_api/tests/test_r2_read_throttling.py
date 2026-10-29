@@ -181,3 +181,22 @@ def test_cli_page_store_enables_the_same_get_budget(tmp_path,monkeypatch,capsys)
             '--mode','backfill','--execute','--batch-size','32','--raw-bucket','bucket'])==0
         assert json.loads(capsys.readouterr().out)['status']=='fixture-read-complete'
         assert len(calls)==2 and sleeps==[1.25]
+
+
+def test_transport_failure_after_a_throttle_marks_retry_measurement_incomplete(monkeypatch):
+    from botocore.exceptions import ReadTimeoutError
+    with closing(sdk_client()) as client:
+        calls,sleeps=sdk_transport(monkeypatch,client,[(429,'ServiceUnavailable',{})])
+        send=client._endpoint.http_session.send
+        def fail_second(request):
+            if calls:
+                calls.append(request)
+                raise ReadTimeoutError(endpoint_url='https://r2.example.test')
+            return send(request)
+        monkeypatch.setattr(client._endpoint.http_session,'send',fail_second)
+        timing={}
+        with pytest.raises(ReadTimeoutError):
+            R2Store(client,'bucket',read_throttle_attempts=5).read(KEY,expected=PIN,timing=timing)
+        assert len(calls)==2 and sleeps==[1.25]
+        assert timing['error_type']=='ReadTimeoutError' and timing['requests']==1
+        assert timing['sdk_retry_metadata_complete'] is False
