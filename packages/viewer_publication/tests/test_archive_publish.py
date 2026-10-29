@@ -270,3 +270,26 @@ def test_missing_pointer_acknowledgement_never_claims_publication(tmp_path,ack):
         launch(tmp_path/'run',store=store)
     report=json.loads(store.objects['viewer-publications/status.json'])
     assert report['status']=='failed' and report['live_release_basis']=='unacknowledged_pointer_write'
+
+
+@pytest.mark.parametrize('unchanged',[False,True])
+@pytest.mark.parametrize('matching',[False,True])
+def test_raw_measured_candidate_identity_precedes_upload_or_pointer_effects(tmp_path,unchanged,matching):
+    artifacts,manifest=candidate(tmp_path);value,keys=record();store=Store();native=Native(store)
+    def passed(**context):
+        assert matching
+        return dict(status='passed',releaseId=context['release_id'],targets='owner-approved')
+    def publish():
+        return publish_candidate(client=store,engine=native,bucket='derived-fixture',work=tmp_path/'publish',
+            **artifacts,input_record=value,receipt_keys=keys,
+            pointer={'release_id':manifest['release_id']} if unchanged else None,
+            expected_etag='outgoing' if unchanged else None,public_origin='https://archive.example.test',
+            contract=passed,canary=passed,
+            measured_release_id=manifest['release_id'] if matching else 'ab'*32)
+    if matching:
+        result=publish()
+        assert result['status']==('release_unchanged' if unchanged else 'published')
+    else:
+        with pytest.raises(ValueError,match='Measured.*release'):publish()
+        assert native.calls==[]
+        assert not any('/inputs/' in key or key.endswith('/manifest.json') for key in store.objects)

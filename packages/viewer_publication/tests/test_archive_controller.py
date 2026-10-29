@@ -40,13 +40,21 @@ def test_actual_model_publishes_then_checks_admission_before_input_skip(tmp_path
         before=dict(store.objects)
         spec.update(output=str(tmp_path/'release-again'),scratch=str(tmp_path/'model-again'))
         specpath.write_text(json.dumps(spec))
-        skipped=run_publish(load_spec(specpath),work=tmp_path/'publish-again',**kwargs)
+        skipped=run_publish(load_spec(specpath),work=tmp_path/'publish-again',measured_release_id=first['release_id'],**kwargs)
         assert skipped['status']=='input_unchanged' and len(calls)==2
         assert not Path(spec['output']).exists()
         assert not (Path(spec['scratch'])/'job.json').exists()
         assert (Path(spec['scratch'])/'admission/result.json').is_file()
         assert {k:v for k,v in store.objects.items() if k!='viewer-publications/status.json'}=={
             k:v for k,v in before.items() if k!='viewer-publications/status.json'}
+        # A measured/approved candidate pin also binds the admitted early skip.
+        spec.update(output=str(tmp_path/'release-wrong-measurement'),scratch=str(tmp_path/'model-wrong-measurement'))
+        specpath.write_text(json.dumps(spec))
+        with pytest.raises(ValueError,match='Measured.*release'):
+            run_publish(load_spec(specpath),work=tmp_path/'publish-wrong-measurement',
+                measured_release_id='ab'*32,**kwargs)
+        assert len(calls)==2
+        assert store.objects['viewer-publications/manifest.json']==before['viewer-publications/manifest.json']
         # Identical semantic identity does not excuse a physically incomplete lake.
         empty=tmp_path/'missing-readings.parquet';pq.write_table(pq.read_table(spec['readings']['path']).slice(0,0),empty)
         from congress_api.retention.provenance import file_pin

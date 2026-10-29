@@ -178,14 +178,15 @@ def test_existing_engine_release_requires_the_observed_etag_before_reader_checks
     assert store.puts==[]
 
 
-@pytest.mark.parametrize('origin',[None,{'kind':'model'},dict(kind='seed_v5',display_only=False),
-                                  dict(kind='seed_v5',display_only=True)])
-def test_emulated_target_receipts_only_flip_an_explicit_display_only_seed(origin):
+@pytest.mark.parametrize('origin',[None,dict(kind='model'),dict(kind='model',display_only=False),
+                                  dict(kind='model',display_only=True),dict(kind='unknown'),
+                                  dict(kind='seed_v5',display_only=False),dict(kind='seed_v5',display_only=True)])
+def test_emulated_target_receipts_require_an_admitted_release_origin(origin):
     store=Pointer();receipt=dict(passed(),targets='provisional-emulated')
     def flip():
         return gate_and_flip(store,bucket='fake',release_id='b'*64,previous_release_id=None,
             expected_etag=None,manifest_origin=origin,contract=lambda:receipt,canary=lambda:receipt)
-    if origin==dict(kind='seed_v5',display_only=True):
+    if origin==dict(kind='seed_v5',display_only=True) or (isinstance(origin,dict) and origin.get('kind')=='model' and origin.get('display_only') is not True):
         flip();assert len(store.puts)==1
     else:
         with pytest.raises(ValueError,match='qualification'):flip()

@@ -392,7 +392,7 @@ def test_shared_native_probe_skips_empty_hidden_and_unreadable_saved_bodies(tmp_
 
 
 @pytest.mark.parametrize('status',['measured','provisional-emulated','owner-gated'])
-def test_raw_startup_refuses_targets_without_real_device_approval_before_sdk(tmp_path,status):
+def test_raw_startup_refuses_unqualified_or_unmeasured_targets_before_sdk(tmp_path,status):
     from viewer_publication.archive_publish_job import load_spec,execute
     value=publish_spec(tmp_path);target=Path(value['targets']['path']);targets=json.loads(target.read_text())
     targets.update(status=status,basis='emulated' if status=='provisional-emulated' else 'unknown')
@@ -507,4 +507,13 @@ await writeTargets({measurements,basis:'emulated',harnessCommit:'cd'.repeat(20),
     def never(*args,**kwargs):pytest.fail('Malformed shared target metadata reached runtime or SDK')
     with pytest.raises(ValueError,match='targets'):
         execute(load_spec(path),runtime_factory=never,storage_factory=never)
+    assert not Path(value['work']).exists()
+
+
+@pytest.mark.parametrize('invalid',[None,True,'short','AB'*32])
+def test_expected_rebuild_identity_refuses_invalid_pins_before_effects(tmp_path,invalid):
+    from viewer_publication.archive_publish_job import load_spec
+    value=publish_spec(tmp_path);value['run']['expected_release_id']=invalid
+    path=tmp_path/'publish.json';path.write_text(json.dumps(value))
+    with pytest.raises(ValueError,match='expected.*release|Expected.*release'):load_spec(path)
     assert not Path(value['work']).exists()
