@@ -120,3 +120,40 @@ def test_unknown_raw_phase_is_pending_after_the_child_has_stopped(parser):
     with worker(parser) as run:
         assert run.parse('uncertain', b'unknown_phase') == {'status': 'read_error', 'reason': 'parser_crash'}
         assert run.parse('next', b'valid')['status'] == 'completed'
+
+
+@pytest.mark.parametrize('pooled',[False,True])
+def test_exhausted_get_crosses_the_real_worker_boundary_without_retry_or_unreadable(tmp_path,pooled):
+    from congress_api.retention.parser_worker import ParserWorkerPool
+    from congress_api.retention.r2 import R2GetTransportExhausted
+    from test_readings_ranged import payload
+    attempts=tmp_path/'attempts'
+    parser=tmp_path/'transport_reader.py'
+    parser.write_text('''import boto3
+from pathlib import Path
+from botocore.config import Config
+from botocore.exceptions import ReadTimeoutError
+from congress_api.lake.readings import parse_once_payload
+from congress_api.retention.r2 import R2Store
+import botocore.endpoint
+client=boto3.client('s3',endpoint_url='https://r2.example.test',region_name='auto',
+    aws_access_key_id='test',aws_secret_access_key='test',
+    config=Config(retries={'total_max_attempts':1,'mode':'legacy'}))
+def send(request):
+    with Path('''+repr(str(attempts))+''').open('a') as stream:stream.write('GET\\n')
+    raise ReadTimeoutError(endpoint_url='https://r2.example.test')
+client._endpoint.http_session.send=send
+botocore.endpoint.time.sleep=lambda delay:None
+store=R2Store(client,'bucket',read_throttle_attempts=5)
+def parse(body):return parse_once_payload(body,body_store=store)
+''')
+    args=('fixture','v1',str(parser)+':parse')
+    limits=dict(timeout_seconds=10,memory_bytes=512<<20,max_input_bytes=65536,max_output_bytes=4096)
+    request=payload(tmp_path,b'body',b'body')
+    with pytest.raises(R2GetTransportExhausted,match='after 5 attempts'):
+        if pooled:
+            with ParserWorkerPool(*args,workers=1,memory_budget=512<<20,**limits) as run:
+                list(run.map(lambda reader,body:reader.parse('body',body),[request]))
+        else:
+            with ParserWorker(*args,**limits) as run:run.parse('body',request)
+    assert attempts.read_text().splitlines()==['GET']*5
