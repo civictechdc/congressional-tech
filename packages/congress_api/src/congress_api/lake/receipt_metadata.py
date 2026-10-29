@@ -16,6 +16,9 @@ STRINGS = ('source_file','run_id','mode','outcome','family','requested_url','url
 NUMBERS = ('http_status','status_code')
 BOOLS = ('complete',)
 SCALARS = {**dict.fromkeys(STRINGS,'str'),**dict.fromkeys(NUMBERS,'int'),**dict.fromkeys(BOOLS,'bool')}
+COMPARISON_WITNESSES = dict(source_context_from_final='Boolean',source_retained_record='Boolean',
+    source_entry_status='Int64',source_final_status='Int64',
+    source_creating_size_absent='Boolean',source_family_basis='Utf8')
 DOWNLOAD_HEADERS = [('response_headers','content-disposition'),
                     ('response_headers','Content-Disposition')]
 # Only the recovery leaves consumed by the narrow index are selected in bulk.

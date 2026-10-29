@@ -6,19 +6,19 @@ import pyarrow as pa
 import pyarrow.parquet as pq
 
 from congress_api.retention.body_store import validate_key
-from congress_api.lake.receipt_metadata import record_pointer_index
+from congress_api.lake.receipt_metadata import record_pointer_index,COMPARISON_WITNESSES
 from congress_api.retention.provenance import json_input,parquet_output,run_job
 
 
 RULES = {
     'secondary_duplicates': 'Remove only a file/retained-file row duplicating a capture body on the same line and context whose non-null stored size and location agree with the target; preserve contradictions and other occurrences.',
-    'http_status': 'A missing old status may be restored. Every changed or lost non-null status remains an owner gate, including possible old per-attempt/provider facts.',
+    'http_status': 'A missing old status may be restored. An old per-entry status may change to the final line/item status only when both explicit receipt facts independently match their respective sides; other changes and losses remain owner gates.',
     'retrieved_at': 'Compare equivalent UTC instants. Only a missing old time restored to a valid new time is accepted; invalid, lost or conflicting times remain owner gates.',
-    'family_run': 'Compare old family and source_file directly with family and run_id. Missing values may be restored; never strip ci/ or invent a family equivalence.',
+    'family_run': 'Compare old family and source_file directly with family and run_id. Missing values may be restored. Only the five measured family pairs are accepted with their exact receipt-family fallback or explicit record-family witness. Never strip ci/ or generalize the pairs.',
     'member_path': 'Compare original_path only for a capture with the exact archive_members pointer component. Retained file local paths do not establish member names.',
     'body_location': 'Compare each recorded old physical body_key with the key derived from the new body SHA and stored_suffix, defaulting the legacy suffix to .gz. Noncanonical or conflicting locations are not normalized away.',
-    'storage': 'Missing stored_bytes may be enriched. Non-null sizes must survive. Stored SHA-256 is distinct from MD5 and is not a target column.',
-    'bodiless_pointer': 'Only old metadata plus null body SHA plus pointer [] maps to the new no-body null pointer. Missing context restoration is qualified by that same source shape.',
+    'storage': 'Missing stored_bytes may be enriched. An old digest_verified resolver size may become null only on a body reference whose creating entry explicitly has no stored-size fact. Every other non-null size must survive. Stored SHA-256 is distinct from MD5 and is not a target column.',
+    'bodiless_pointer': 'Only old metadata plus null body SHA plus pointer [] maps to the new no-body null pointer. Saved-record fidelity may become null only for that shape with a retained-object receipt witness. Missing context may be restored only from the mapped final URL, with its receipt witness.',
     'source_list_items': 'Only a new bodiless line row with a true source-list proof, list length greater than one, a valid distinct item ordinal appearing once after independently decoding primary pointer coverage, and an old row on the same receipt line is an expected restoration. Preserve and gate every unproved new-only row.',
     'old_only': 'Every remaining old-only row is an owner gate; preserve all original columns. No automatic dismissal or invented capture row.',
     'occurrences': 'Match repeated receipt/body/pointer facts one-to-one; keep multiplicity after qualified secondary normalization.',
@@ -64,10 +64,12 @@ def compare_old(evidence, old_index, *, engine, work, receipt_keys=None):
     common_names=['receipt_key','receipt_line','body_sha','pointer','reference_kind','qualified_bodiless',
         'family','run_id','member_path','body_key','original_path','resolution','outcome',
         'context_url','bytes','stored_bytes','media_type','fidelity','http_status','retrieved_at']
-    new_names=common_names+['capture_index','record_is_list','source_record_count','source_record_index','occurrence']
+    new_names=common_names+['capture_index','record_is_list','source_record_count','source_record_index',*COMPARISON_WITNESSES,'occurrence']
     integers={'receipt_line','bytes','stored_bytes','http_status','old_row','capture_index',
               'source_record_count','source_record_index'}
     booleans={'qualified_bodiless','record_is_list'}
+    integers.update(name for name,kind in COMPARISON_WITNESSES.items() if kind=='Int64')
+    booleans.update(name for name,kind in COMPARISON_WITNESSES.items() if kind=='Boolean')
     strings=set(common_names)-integers-booleans
     work = Path(work).resolve()
     work.mkdir(parents=True, exist_ok=False)
@@ -120,9 +122,12 @@ def compare_old(evidence, old_index, *, engine, work, receipt_keys=None):
         if old:cols.append('old_row')
         else:
             cols.append('capture_index')
+            witness_types={'Boolean':('BOOLEAN',pa.types.is_boolean),'Int64':('BIGINT',pa.types.is_integer),
+                           'Utf8':('VARCHAR',lambda kind:pa.types.is_string(kind) or pa.types.is_large_string(kind))}
             for name,kind,valid in [('record_is_list','BOOLEAN',pa.types.is_boolean),
                     ('source_record_count','BIGINT',pa.types.is_integer),
-                    ('source_record_index','BIGINT',pa.types.is_integer)]:
+                    ('source_record_index','BIGINT',pa.types.is_integer),
+                    *((name,*witness_types[kind]) for name,kind in COMPARISON_WITNESSES.items())]:
                 expression=(value(schema,name,kind) if name in schema.names and valid(schema.field(name).type)
                             else f'cast(NULL AS {kind})')
                 cols.append(expression+' AS '+name)
@@ -200,7 +205,7 @@ def compare_old(evidence, old_index, *, engine, work, receipt_keys=None):
     # Invalid locators stay separate across sides, preserving unmatched NULLs.
     keys=occurrence_keys+',occurrence,invalid_side'
     payload=[n for n in common_names if n not in occurrence_keys.split(',')]+[
-        'old_row','capture_index','record_is_list','source_record_count','source_record_index']
+        'old_row','capture_index','record_is_list','source_record_count','source_record_index',*COMPARISON_WITNESSES]
     def tagged(side,table):
         available=set(common_names+(['old_row'] if side=='old' else new_names[len(common_names):]))
         columns=[]
@@ -232,7 +237,17 @@ def compare_old(evidence, old_index, *, engine, work, receipt_keys=None):
         dict(name='paired_totals',sql='''SELECT coalesce(sum(CASE WHEN old_n>0 AND new_n>0 THEN 1 ELSE 0 END),0)
             AS matched FROM paired''',materialize=True)])
     stable = ' OR '.join(f'(o."{k}" IS DISTINCT FROM n."{k}")'
-                         for k in ('bytes','media_type','fidelity'))
+                         for k in ('bytes','media_type'))
+    def proven(sql):return 'coalesce(('+sql+'),false)'
+    restored_fidelity=proven("o.qualified_bodiless AND n.body_sha IS NULL AND n.reference_kind='line' AND o.fidelity='saved-record' AND n.fidelity IS NULL AND n.source_retained_record IS TRUE")
+    restored_context=proven('o.context_url IS NULL AND n.context_url IS NOT NULL AND n.source_context_from_final IS TRUE')
+    restored_status=proven('(o.http_status IS DISTINCT FROM n.http_status) AND o.http_status BETWEEN 100 AND 599 AND n.http_status BETWEEN 100 AND 599 AND o.http_status=n.source_entry_status AND n.http_status=n.source_final_status')
+    restored_storage=proven("o.stored_bytes IS NOT NULL AND n.stored_bytes IS NULL AND o.resolution='digest_verified' AND n.body_sha IS NOT NULL AND n.reference_kind IN ('capture','embedded','file','retained-file') AND n.source_creating_size_absent IS TRUE")
+    receipt_family="regexp_replace(n.receipt_key,'^receipts/(.*)/[^/]+/[^/]+$','\\1')"
+    family_pairs=[('govinfo/mods','govinfo/transcript-html'),('govinfo/transcript-html','govinfo/mods'),
+                  ('house/witness-xml','house/meeting-xml'),('senate/players','senate/captions')]
+    pairs=' OR '.join("(o.family='"+old+"' AND n.family='"+new+"')" for old,new in family_pairs)
+    restored_family=proven("(n.source_family_basis='receipt' AND n.family="+receipt_family+' AND ('+pairs+")) OR (o.family='documents' AND n.family='committee-reports' AND n.source_family_basis='record' AND "+receipt_family+"='documents')")
     old_time='try_cast(o.retrieved_at AS TIMESTAMP WITH TIME ZONE)'
     new_time='try_cast(n.retrieved_at AS TIMESTAMP WITH TIME ZONE)'
     invalid_old=f'(o.retrieved_at IS NOT NULL AND {old_time} IS NULL)'
@@ -246,19 +261,19 @@ def compare_old(evidence, old_index, *, engine, work, receipt_keys=None):
         WHEN {restored_time} THEN 'missing_time_restored'
         WHEN n.retrieved_at IS NULL THEN 'timestamp_lost'
         ELSE 'timestamp_changed' END'''
-    unexpected = f'''({stable}) OR ((o.context_url IS DISTINCT FROM n.context_url)
-        AND NOT (o.qualified_bodiless AND o.context_url IS NULL))
-        OR (o.family IS NOT NULL AND (o.family IS DISTINCT FROM n.family))
+    unexpected = f'''({stable}) OR ((o.fidelity IS DISTINCT FROM n.fidelity) AND NOT {restored_fidelity})
+        OR ((o.context_url IS DISTINCT FROM n.context_url) AND NOT {restored_context})
+        OR (o.family IS NOT NULL AND (o.family IS DISTINCT FROM n.family) AND NOT {restored_family})
         OR (o.run_id IS NOT NULL AND (o.run_id IS DISTINCT FROM n.run_id))
         OR (o.member_path IS NOT NULL AND (o.member_path IS DISTINCT FROM n.member_path))
         OR (o.body_key IS NOT NULL AND (o.body_key IS DISTINCT FROM n.body_key))
-        OR (o.stored_bytes IS NOT NULL AND (o.stored_bytes IS DISTINCT FROM n.stored_bytes))
-        OR (o.http_status IS NOT NULL AND (o.http_status IS DISTINCT FROM n.http_status))
+        OR (o.stored_bytes IS NOT NULL AND (o.stored_bytes IS DISTINCT FROM n.stored_bytes) AND NOT {restored_storage})
+        OR (o.http_status IS NOT NULL AND (o.http_status IS DISTINCT FROM n.http_status) AND NOT {restored_status})
         OR {unexplained_time}'''
     expected = f'''(o.http_status IS NULL AND n.http_status IS NOT NULL)
         OR {restored_time}
         OR (o.stored_bytes IS NULL AND n.stored_bytes IS NOT NULL)
-        OR (o.qualified_bodiless AND o.context_url IS NULL AND n.context_url IS NOT NULL)
+        OR {restored_fidelity} OR {restored_context} OR {restored_status} OR {restored_storage} OR {restored_family}
         OR (o.family IS NULL AND n.family IS NOT NULL)
         OR (o.run_id IS NULL AND n.run_id IS NOT NULL)'''
     fact_values=[]

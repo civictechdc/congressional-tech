@@ -66,6 +66,15 @@ def test_valid_repeated_observations_and_prior_completeness_are_not_conflicts(tm
     assert pq.read_metadata(report['facts_path']).num_rows==0
 
 
+@pytest.mark.parametrize('outcome',['reference','saved-record'])
+def test_retained_record_outcomes_pass_the_whole_generation_gate(tmp_path,outcome):
+    values=rows();values[0].update(outcome=outcome,sha256=None,bytes=None,stored_bytes=None,
+        stored_md5=None,fidelity=None,http_status=None)
+    report=check(tmp_path,values)
+    assert report['status']=='validated' and report['violations']==0
+    assert (report['rows'],report['receipts'])==(2,2)
+
+
 @pytest.mark.parametrize('suffix',['','.pdf'])
 def test_different_urls_and_physical_suffixes_can_share_decoded_bytes(tmp_path,suffix):
     values=rows();values[1].update(url='https://other.test/body',stored_suffix=suffix,stored_bytes=10,stored_md5=b'z'*16)
@@ -74,7 +83,8 @@ def test_different_urls_and_physical_suffixes_can_share_decoded_bytes(tmp_path,s
 
 @pytest.mark.parametrize('change',[
     dict(receipt_line=0),dict(capture_index=-1),dict(receipt_key=None),dict(run_id=None),dict(family=None),
-    dict(mode='replay'),dict(outcome='invented'),dict(http_status=99),dict(http_status=600),
+    dict(mode='replay'),dict(outcome='invented'),dict(outcome='Reference'),dict(outcome='saved_record'),
+    dict(http_status=99),dict(http_status=600),
     dict(bytes=-1),dict(stored_bytes=-1),dict(sha256=b'a'*31),dict(stored_md5=b'm'*15),
     dict(evidence_sha256=b'e'*31),dict(stored_suffix='.unknown'),dict(fidelity='invented'),
 ])

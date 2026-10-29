@@ -39,6 +39,11 @@ def run_state(tmp_path,change=None):
     if change=='non_acquisition':
         rows += [row(12,url,outcome='reference',body_hex=None,http_status=None,family='record-only',retrieved_at='2026-11-21T00:00:00Z'),
                  row(13,url,outcome='saved-record',body_hex=None,http_status=None,family='record-only',retrieved_at='2026-11-22T00:00:00Z')]
+    if change in ('mention_reference','mention_saved-record','mention_failed'):
+        outcome=change.removeprefix('mention_')
+        rows.append(row(12,BASE+'mentioned.pdf',url=BASE+'mentioned-final.pdf',outcome=outcome,
+            body_hex=None,http_status=404 if outcome=='failed' else None))
+        targets.extend((target,None,'b'*64) for target in (BASE+'mentioned.pdf',BASE+'mentioned-final.pdf'))
     if change=='unknown_family':rows[3]['family']='not-registered'
     if change=='line_conflict':rows[1]['http_status']=503
     if change=='entry_facts':
@@ -112,3 +117,18 @@ def test_references_and_inline_records_cannot_shadow_a_real_fetch(tmp_path):
     assert not any(result['url_state_invariants'][0].values())
     [row]=[r for r in result['state'] if r['requested_url']==BASE+'report.pdf']
     assert row['attempts']==3 and row['last_status']==503 and row['last_outcome']=='request_failed'
+
+
+@pytest.mark.parametrize('outcome',['reference','saved-record','failed'])
+def test_only_metadata_mentions_leave_linked_addresses_unfetched(tmp_path,outcome):
+    result=run_state(tmp_path,'mention_'+outcome)
+    assert not any(result['url_state_invariants'][0].values())
+    states={r['requested_url']:r for r in result['state']}
+    if outcome=='failed':
+        assert states[BASE+'mentioned.pdf']['attempts']==1
+        assert states[BASE+'mentioned.pdf']['last_outcome']=='failed'
+        assert BASE+'mentioned-final.pdf' not in states
+    else:
+        for url in (BASE+'mentioned.pdf',BASE+'mentioned-final.pdf'):
+            assert states[url]['attempts']==0
+            assert states[url]['last_status'] is None and states[url]['last_attempt'] is None
