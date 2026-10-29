@@ -68,7 +68,7 @@ def test_generated_descriptor_passes_setup_native_runtime_validation(tmp_path: P
             "--binary",
             str(binary),
             "--bucket",
-            "congressional-tech-raw",
+            "congressional-tech-runtime",
             "--output",
             str(output_file),
         ]
@@ -80,7 +80,7 @@ def test_generated_descriptor_passes_setup_native_runtime_validation(tmp_path: P
     assert validated["version"] == 1
     assert validated["platform"] == "linux-amd64"
     assert validated["source_revision"] == QUALIFIED_DOCSPEC_RUNTIME["source_revision"]
-    assert validated["bucket"] == "congressional-tech-raw"
+    assert validated["bucket"] == "congressional-tech-runtime"
     assert validated["bytes"] == len(payload)
     assert validated["sha256"] == expected_sha
     assert validated["key"] == (
@@ -104,7 +104,7 @@ def test_upload_verifies_exact_byte_length_and_sha256(tmp_path: Path):
             "--binary",
             str(binary),
             "--bucket",
-            "congressional-tech-raw",
+            "congressional-tech-runtime",
             "--upload",
             "--output",
             str(output_file),
@@ -115,7 +115,7 @@ def test_upload_verifies_exact_byte_length_and_sha256(tmp_path: Path):
     descriptor = json.loads(output_file.read_text(encoding="utf-8"))
     assert len(client.puts) == 1
     put_call = client.puts[0]
-    assert put_call["Bucket"] == "congressional-tech-raw"
+    assert put_call["Bucket"] == "congressional-tech-runtime"
     assert put_call["Key"] == descriptor["key"]
     assert put_call["ContentLength"] == len(payload)
     assert put_call["IfNoneMatch"] == "*"
@@ -134,8 +134,38 @@ def test_upload_rejects_corrupted_readback(tmp_path: Path):
                 "--binary",
                 str(binary),
                 "--bucket",
-                "congressional-tech-raw",
+                "congressional-tech-runtime",
                 "--upload",
             ],
             client=corrupt_client,
         )
+
+
+@pytest.mark.parametrize("upload", [False, True], ids=["descriptor", "upload"])
+def test_cli_requires_bucket_before_reading_binary_or_connecting(tmp_path, monkeypatch, upload):
+    monkeypatch.setattr(publish_runtime, "build_runtime_descriptor",
+        lambda *args, **kwargs: pytest.fail("Missing bucket reached binary descriptor construction"))
+    monkeypatch.setattr(publish_runtime, "make_client",
+        lambda **kwargs: pytest.fail("Missing bucket reached storage"))
+    output = tmp_path / "descriptor.json"
+    args = ["--binary", str(tmp_path / "missing-binary"), "--output", str(output)]
+    if upload:
+        args.append("--upload")
+    with pytest.raises(SystemExit) as refused:
+        publish_runtime.main(args)
+    assert refused.value.code == 2
+    assert not output.exists()
+
+
+def test_descriptor_builder_requires_explicit_bucket_before_hashing(tmp_path, monkeypatch):
+    monkeypatch.setattr(publish_runtime, "compute_binary_identity",
+        lambda *args: pytest.fail("Missing bucket reached binary hashing"))
+    with pytest.raises(TypeError, match="bucket"):
+        publish_runtime.build_runtime_descriptor(tmp_path / "missing-binary")
+
+
+def test_storage_factory_requires_explicit_bucket_before_connecting(monkeypatch):
+    monkeypatch.setattr(publish_runtime, "connect_r2",
+        lambda **kwargs: pytest.fail("Missing bucket reached storage connection"))
+    with pytest.raises(TypeError, match="bucket"):
+        publish_runtime.make_client()
