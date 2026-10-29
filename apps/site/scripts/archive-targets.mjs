@@ -10,7 +10,7 @@ export const measurementProfiles={
   desktop:{name:'desktop',viewport:{width:1440,height:1000},deviceScaleFactor:1,isMobile:false,cpuSlowdown:1,cpuScope:'unthrottled',network:null},
 };
 const positive=value=>Number.isFinite(value)&&value>0;
-const seedOrigin=origin=>origin?.kind==='seed_v5'&&origin.display_only===true;
+const measurableOrigin=origin=>(origin?.kind==='seed_v5'&&origin.display_only===true)||(origin?.kind==='model'&&(origin.display_only===undefined||origin.display_only===false));
 const median=values=>[...values].sort((a,b)=>a-b)[2];
 function profileStatistics(samples){
   if(!Array.isArray(samples)||samples.length!==5)throw new Error('Provisional targets require exactly five runs per profile.');
@@ -28,15 +28,15 @@ function validateTargets(value){
     if(!profile||Object.keys(measurementProfiles[kind]).some(name=>JSON.stringify(profile[name])!==JSON.stringify(measurementProfiles[kind][name]))||JSON.stringify(profile.medians)!==JSON.stringify(expected.medians)||JSON.stringify(profile.ceilings)!==JSON.stringify(expected.ceilings))throw new Error('Provisional profile or median ceilings differ from their measured runs.');
     for(const sample of value.raw_runs[kind])releases.add(sample.releaseId);
   }
-  if(releases.size!==1)throw new Error('Both profiles must measure the same seed release.');
+  if(releases.size!==1)throw new Error('Both profiles must measure the same release.');
   if(targetNames.some(name=>value.ceilings[name]!==Math.max(value.profile.phone.ceilings[name],value.profile.desktop.ceilings[name])))throw new Error('Provisional combined ceilings differ from their profiles.');
   return value;
 }
 export async function readTargets(path=defaultTargets){const value=JSON.parse(await readFile(path));if(value.version!==1)throw new Error('Unsupported target schema.');if(value.status==='owner-gated')return undefined;return validateTargets(value);}
 export function checkTargetRelease(releaseId,targets,origin){
   validateTargets(targets??{});
-  if(targets.status==='provisional-emulated'&&!seedOrigin(origin))throw new Error('Provisional emulated targets qualify only a display-only v5 seed.');
-  if(targets.status==='provisional-emulated'&&releaseId!==targets.raw_runs.phone[0].releaseId)throw new Error('Provisional targets measured a different seed release identity.');
+  if(targets.status==='provisional-emulated'&&!measurableOrigin(origin))throw new Error('Provisional emulated targets require a model release or display-only v5 seed.');
+  if(targets.status==='provisional-emulated'&&releaseId!==targets.raw_runs.phone[0].releaseId)throw new Error('Provisional targets measured a different release identity.');
 }
 export function checkTargets(sample,targets,origin,profile){
   checkTargetRelease(sample.releaseId,targets,origin);
@@ -46,7 +46,7 @@ export function checkTargets(sample,targets,origin,profile){
 }
 export async function validateTargetFile(path,origin){
   const targets=await readTargets(path);if(!targets)throw new Error('Qualified archive targets are missing.');
-  if(targets.status==='provisional-emulated'&&!seedOrigin(origin))throw new Error('Provisional targets qualify only a display-only v5 seed.');
+  if(targets.status==='provisional-emulated'&&!measurableOrigin(origin))throw new Error('Provisional targets require a model release or display-only v5 seed.');
   return {status:targets.status,basis:targets.basis,measured_release_id:targets.status==='provisional-emulated'?targets.raw_runs.phone[0].releaseId:null};
 }
 export async function writeTargets({measurements,ceilings,output,basis='real-device',harnessCommit}){
@@ -56,7 +56,7 @@ export async function writeTargets({measurements,ceilings,output,basis='real-dev
     const profile={},raw_runs={};
     for(const kind of ['phone','desktop']){
       const receipt=measurements.find(item=>item.deviceClass===kind+'-profile');
-      if(!receipt||receipt.basis!=='emulated'||!seedOrigin(receipt.origin)||receipt.harnessCommit!==harnessCommit||JSON.stringify(receipt.profile)!==JSON.stringify(measurementProfiles[kind]))throw new Error('Emulated seed profile, harness commit and origin must match the measurement.');
+      if(!receipt||receipt.basis!=='emulated'||!measurableOrigin(receipt.origin)||receipt.harnessCommit!==harnessCommit||JSON.stringify(receipt.profile)!==JSON.stringify(measurementProfiles[kind]))throw new Error('Emulated profile, harness commit and origin must match the measurement.');
       raw_runs[kind]=receipt.samples;profile[kind]={...measurementProfiles[kind],...profileStatistics(receipt.samples)};
     }
     targets={version:1,status:'provisional-emulated',basis,profile,harness_commit:harnessCommit,raw_runs,ceilings:Object.fromEntries(targetNames.map(name=>[name,Math.max(profile.phone.ceilings[name],profile.desktop.ceilings[name])]))};
