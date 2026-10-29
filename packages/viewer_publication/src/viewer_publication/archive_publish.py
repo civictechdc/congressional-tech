@@ -360,8 +360,8 @@ def publish_candidate(*,client,engine,bucket,work,release,manifest_pin,result_pi
         manifest,raw,release_id,admission=_candidate(Path(release),manifest_pin,result_pin,
             input_record=input_record,receipt_keys=receipt_keys)
         if measured_release_id is not None:
-            if input_record['profile'].get('kind')!='seed_v5' or _sha(measured_release_id)!=release_id:
-                raise ValueError('Measured site targets identify a different seed release')
+            if _sha(measured_release_id)!=release_id:
+                raise ValueError('Measured site targets identify a different release')
         status.update(admission)
         if input_record['profile'].get('kind')=='seed_v5':
             status.update(input_kind='seed_v5',label=input_record['profile']['label'],display_only=True)

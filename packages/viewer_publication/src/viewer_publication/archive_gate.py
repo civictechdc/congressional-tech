@@ -5,10 +5,11 @@ from viewer_publication.client import publish_manifest_pointer
 
 
 def qualified_target_status(status,manifest_origin=None):
-    """The first display-only seed may use the owner's labeled emulation."""
+    """Admitted seed and model releases may use candidate-bound emulation."""
     return status=='owner-approved' or (status=='provisional-emulated'
-        and isinstance(manifest_origin,dict) and manifest_origin.get('kind')=='seed_v5'
-        and manifest_origin.get('display_only') is True)
+        and isinstance(manifest_origin,dict) and (
+            manifest_origin.get('kind')=='seed_v5' and manifest_origin.get('display_only') is True
+            or manifest_origin.get('kind')=='model' and manifest_origin.get('display_only') is not True))
 
 
 def validate_receipt(receipt, *, release_id, name, manifest_origin=None):

@@ -91,7 +91,7 @@ def _probe_evidence(reports):
 
 
 def run_publish(model_spec,*,client,engine,bucket,work,receipt_keys,provenance,run,
-                public_origin,contract,canary,verified_files=None):
+                public_origin,contract,canary,verified_files=None,measured_release_id=None):
     """Prepare once, admit before a skip, otherwise export once and publish.
 
     SQL, graphs, grouping and file writing use the maintained native model.
@@ -144,6 +144,8 @@ def run_publish(model_spec,*,client,engine,bucket,work,receipt_keys,provenance,r
         # Local custody must still hold after native consumption and before any
         # successful status, reader probe, release upload or input-record write.
         if manifest is None:
+            if measured_release_id is not None and measured_release_id!=pointer['release_id']:
+                raise ValueError('Measured site targets identify a different release')
             status.update(status='input_unchanged',release_id=pointer['release_id'])
             return dict(status)
         record=dict(input_digest=digest,profile=profile['profile'],snapshots=profile['snapshots'],
@@ -154,6 +156,7 @@ def run_publish(model_spec,*,client,engine,bucket,work,receipt_keys,provenance,r
         delegate=True
         return publish_candidate(client=client,engine=engine,bucket=bucket,work=work/'candidate',
             release=Path(model_spec['output']),**artifacts,input_record=record,receipt_keys=keys,
+            measured_release_id=measured_release_id,
             pointer=pointer,expected_etag=etag,public_origin=public_origin,
             contract=lambda **context:contract(**context,probe_selectors=probe_selectors),
             canary=lambda **context:canary(**context,probe_selectors=probe_selectors))

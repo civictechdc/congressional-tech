@@ -147,6 +147,10 @@ def load_spec(path):
     if not isinstance(value['receipt_keys'],list):raise ValueError('Publication receipt keys must be a list')
     receipt_list(value['receipt_keys'])
     if not isinstance(value['run'],dict) or not value['run']:raise ValueError('Publication requires explicit run metadata')
+    if 'expected_release_id' in value['run']:
+        expected=value['run']['expected_release_id']
+        if not isinstance(expected,str) or re.fullmatch('[a-f0-9]{64}',expected) is None:
+            raise ValueError('Invalid expected publication release ID')
     if not isinstance(value['provenance'],list):raise ValueError('Publication provenance must be a list')
     seen=set()
     for item in value['provenance']:
@@ -273,11 +277,17 @@ def execute(spec,*,runtime_factory=None,storage_factory=None,process_runner=None
         if len(checked.stdout.encode())>METADATA_BYTES:raise ValueError('Target validator output exceeds the metadata allowance')
         target_metadata=json.loads(checked.stdout)
     except (subprocess.SubprocessError,ValueError) as error:
-        raise ValueError('Publication requires valid measured site targets (owner-approved; provisional-emulated only for a seed)') from error
+        raise ValueError('Publication requires valid measured site targets (owner-approved or candidate-bound provisional-emulated)') from error
     target_identity.require(spec['targets']['path'])
     if (not isinstance(target_metadata,dict) or set(target_metadata)!={'status','basis','measured_release_id'}
             or target_metadata['status']!=targets.get('status') or target_metadata['basis']!=targets.get('basis')):
         raise ValueError('Shared targets validation differs from the pinned metadata')
+    measured_release_id=target_metadata['measured_release_id']
+    expected_release_id=spec['run'].get('expected_release_id')
+    if (expected_release_id is not None and measured_release_id is not None
+            and expected_release_id!=measured_release_id):
+        raise ValueError('Measured site targets differ from the approved release')
+    measured_release_id=expected_release_id or measured_release_id
     for name in ['work']:
         path=Path(spec[name])
         if path.exists() or path.is_symlink():raise ValueError('Publication work must be fresh')
@@ -337,8 +347,9 @@ def execute(spec,*,runtime_factory=None,storage_factory=None,process_runner=None
                 public_origin=spec['public_origin'],contract=lambda **context:probe('contract',context),
                 canary=lambda **context:probe('canary',context))
             if spec.get('model_kind')=='seed_v5':result=run_seed_publish(selected_model,
-                measured_release_id=target_metadata['measured_release_id'],**options)
-            else:result=run_publish(selected_model,receipt_keys=keys,provenance=provenance,verified_files=verified,**options)
+                measured_release_id=measured_release_id,**options)
+            else:result=run_publish(selected_model,receipt_keys=keys,provenance=provenance,verified_files=verified,
+                measured_release_id=measured_release_id,**options)
             spec['_model_identity'].require(spec['model_spec']['path']);require_configuration()
             return dict(result,daily=daily['daily']) if daily is not None else result
 
