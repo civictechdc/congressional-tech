@@ -62,9 +62,18 @@ def source_steps(*,root=ROOT):
     """Derive source grain and addresses from classified fetches and originals."""
     steps=[dict(name='filename_captures',sql='SELECT * FROM capture_evidence')]
     for name,file in [('filename_inputs','filename-inputs'),('effective_filenames','effective-filenames'),
-                      ('capture_source_names','capture-source-names'),('capture_sources','capture-sources'),('source_files','source-files'),
-                      ('source_directories','source-directories')]:
+                      ('capture_source_names','capture-source-names'),('source_url_inputs','source-url-inputs')]:
         steps.append(dict(name=name,sql=(Path(root)/'model/sql'/(file+'.sql')).read_text(),materialize=True))
+    # Reuse the maintained URL policy before references acquire a source ID.
+    normalize=(Path(root)/'model/sql/url-normalized.sql').read_text().replace('url_inputs','source_url_inputs')
+    keys=(Path(root)/'model/sql/url-keys.sql').read_text().replace('url_inputs','source_url_inputs').replace('url_normalized','source_url_normalized')
+    steps += [dict(name='source_url_normalized',sql=normalize,materialize=True),
+              dict(name='source_url_keys',sql=keys,materialize=True)]
+    for name in ('source-reference-targets','capture-sources','source-files','source-directories'):
+        step=dict(name=name.replace('-','_'),sql=(Path(root)/'model/sql'/(name+'.sql')).read_text(),materialize=True)
+        if name=='capture-sources':
+            step['release_after']=['source_reference_targets','source_url_inputs','source_url_normalized','source_url_keys','capture_source_names']
+        steps.append(step)
     return steps
 
 

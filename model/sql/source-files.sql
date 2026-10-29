@@ -3,10 +3,10 @@ WITH captured AS (
  coalesce(max(CASE WHEN is_real_file THEN format END),max(format)) AS format,
  bool_or(is_real_file) AS is_real_file,
  CASE WHEN bool_or(is_real_file) THEN 'document' ELSE min(record_role) END AS record_role,
- min(arrow_cast(CASE WHEN import_date IS NULL THEN cast(retrieved_at AS TIMESTAMP WITH TIME ZONE) END,'Timestamp(Microsecond, Some("UTC"))')) AS first_fetched,
- max(arrow_cast(CASE WHEN import_date IS NULL THEN cast(retrieved_at AS TIMESTAMP WITH TIME ZONE) END,'Timestamp(Microsecond, Some("UTC"))')) AS last_fetched,
- CASE WHEN count(CASE WHEN import_date IS NULL THEN 1 END)=0
- THEN min(cast(import_date AS DATE)) END AS in_archive_since
+ min(arrow_cast(CASE WHEN outcome NOT IN ('reference','saved-record') AND import_date IS NULL THEN cast(retrieved_at AS TIMESTAMP WITH TIME ZONE) END,'Timestamp(Microsecond, Some("UTC"))')) AS first_fetched,
+ max(arrow_cast(CASE WHEN outcome NOT IN ('reference','saved-record') AND import_date IS NULL THEN cast(retrieved_at AS TIMESTAMP WITH TIME ZONE) END,'Timestamp(Microsecond, Some("UTC"))')) AS last_fetched,
+ CASE WHEN count(CASE WHEN outcome NOT IN ('reference','saved-record') AND import_date IS NULL THEN 1 END)=0
+ THEN min(CASE WHEN outcome NOT IN ('reference','saved-record') THEN cast(import_date AS DATE) END) END AS in_archive_since
  FROM capture_sources GROUP BY source_id,body_sha,filename,source_url
 ), originals AS (
  SELECT DISTINCT encode(sha256(json_array(cast(NULL AS VARCHAR),f.filename,f.source_url)),'hex') AS source_id,
