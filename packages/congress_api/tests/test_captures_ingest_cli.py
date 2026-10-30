@@ -32,7 +32,7 @@ def test_cli_discovers_local_receipts_and_reuses_existing_namespace(tmp_path):
     engine=NativeDatasets.from_config(os.environ['DOCSPEC_JOB_CONFIG'])
     create_table(engine=engine,work=tmp_path/'bootstrap',catalog_root=tmp_path/'catalog',
         table=dict(namespace=['archive'],name='other'),
-        schema={'type':'struct','schema-id':0,'fields':[
+        schema={'type':'struct','schema-id':0,'identifier-field-ids':[1],'fields':[
             {'id':1,'name':'id','required':True,'type':'string'}]},
         location=tmp_path/'other-data',create_namespace=True)
     [receipt]=files(tmp_path/'raw',[dict(run_id='new',mode='fetch',family='documents',

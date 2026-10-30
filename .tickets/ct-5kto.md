@@ -1,8 +1,8 @@
 ---
 id: ct-5kto
-status: closed
-deps: [ct-t915, ct-yymr, ct-vnkf, ct-adtz, ct-klyz, ct-4jms]
-links: [cefr-vnw8, cef-jh7i, cef-96wc]
+status: open
+deps: [ct-t915, ct-yymr, ct-vnkf, ct-adtz, ct-klyz, ct-4jms, ct-gi01, ct-m104, cef-96wc]
+links: [cefr-vnw8, cef-jh7i, cef-96wc, ct-w8dc, ct-93zs, ct-m104, ct-t915, ct-gi01]
 created: 2026-10-30T14:32:31Z
 type: task
 priority: 1
@@ -18,10 +18,22 @@ Per docs/plans/bindings-20261025.md §6 and docs/plans/engine-first-switch.md it
 - Retire legacy pipeline-data/committee-explorer/public staging in .github/workflows/deploy-pages.yml and publish-explorer.yml.
 - Rewrite apps/site/FILENAME-VIEWER.md and .github/workflows/raw-source-tables.md.
 
+## Remaining scope — 2026-10-30 reconciliation
+
+Reopened at the user's request. Keep the completed G01-G18 deletion evidence;
+there is no instruction to repeat those deletions. The remaining failure is
+pipeline-data/committee-explorer/public staging in both publish-explorer.yml and
+deploy-pages.yml, together with the separate Explorer publishing route. The
+required sequence and preservation checks are in docs/plans/phase-2-annex-20261028.md §4.6 and
+docs/plans/engine-first-switch.md, Remaining phase-2 Explorer switch.
+
 ## Acceptance Criteria
 
-All 18 superseded groups in cxb_switch_deletions.py are deleted one commit per group with before/after wc -l, seed_v5/display_only and pipeline-data staging paths are removed, FILENAME-VIEWER.md and raw-source-tables.md are rewritten, and all active test suites pass.
-
+- Retain the earlier G01-G18, seed_v5/display_only and documentation results; verify any remaining applicable criteria without repeating completed work.
+- ct-gi01's field-preservation mapping and native producer, ct-t915's unified consumer, ct-m104's data coverage and cef-96wc's live switch have accepted evidence before deleting their old replacements.
+- Remove the separate Explorer writer/pointer consumption and pipeline-data/committee-explorer/public staging from both publishing workflows. Check active imports, commands and callers rather than only the deletion-group count.
+- Preserve raw inputs, provenance, legacy-only facts now retained by the replacement, and rollback references. Do not erase historical releases merely to remove their live consumers.
+- Update maintained workflow/reader documentation and verify the shared site/MCP release after retirement, with focused checks and the required combined regression for implementation changes.
 
 ## Notes
 
@@ -56,3 +68,7 @@ Completed all 18 F5 deletion groups (G01-G18) on main (-58,500+ net lines remove
 - G18: cb19315b (-186 net)
 - Plus 3014737a (zero PYTEST_CURRENT_TEST ratchet across all packages/*/src/**/*.py) and 32a1a3c6 (cxb_switch_deletions.py SITE path update).
 Verified with pytest across congress_api, viewer_publication, docspec_client, corpus_recovery, committee_youtube, and scripts/measure.
+
+**2026-10-30T20:37:05Z**
+
+Reopened and reconciled at the user’s request on 2026-10-30. Current scope and acceptance above supersede the earlier closure where it claimed the remaining Explorer migration was complete. Canonical coverage and order: docs/plans/phase-2-annex-20261028.md §4.6. No implementation, live publication or deletion was performed by this reconciliation.

@@ -2,7 +2,7 @@
 id: ct-jnm9
 status: open
 deps: [ct-93zs]
-links: []
+links: [ct-082q, ct-m104, ct-0a37]
 created: 2026-10-30T14:10:03Z
 type: feature
 priority: 2
@@ -32,3 +32,9 @@ Preserve bounded result size, paging, date precision, and missing/partial/confli
 - Hearing date remains distinct from page publication/modification in tool output; citations resolve to the selected source reading.
 - Existing generic support is reused where sufficient; no extraction logic or independent identity policy is added to MCP.
 
+
+## Notes
+
+**2026-10-30T20:37:07Z**
+
+Link selected HTML metadata acceptance to ct-m104 and PHASE-2 §4.6. Consume the shared native release through existing generic discovery/query support; keep extraction and field selection upstream. This ticket does not own the broader channel/video/research inventory.

@@ -518,13 +518,19 @@ class R2Store:
             if pin is not None and not immutable_path.is_file():raise OSError('Pinned raw cache write failed')
         return data
 
+    def put(self, key, body, *, immutable=None):
+        from io import BytesIO
+        from congress_api.retention.body_store import R2Adapter, create_stored
+        media = ('application/pdf' if key.endswith('.pdf') else
+                 'application/gzip' if key.endswith('.gz') else 'application/octet-stream')
+        return create_stored(R2Adapter(self.client, self.bucket), key, BytesIO(body), media,
+            operation='replace' if immutable is False else 'create').outcome == 'stored'
+
     def put_pdf_body(self, key_or_sha256, data):
         """Conditionally retain an uncompressed PDF body with public inline and immutable headers."""
-        from io import BytesIO
         from congress_api.retention.body_keys import physical_body_object_key
-        from congress_api.retention.body_store import R2Adapter, create_stored
         pdf_key = physical_body_object_key(key_or_sha256, is_pdf=True)
-        return create_stored(R2Adapter(self.client, self.bucket), pdf_key, BytesIO(data), 'application/pdf').outcome == 'stored'
+        return self.put(pdf_key, data, immutable=True)
 
     def put_file(self, key, path, *, content_type='application/gzip', content_encoding=None, md5=None):
         """Conditionally retain an immutable body without loading it in memory.

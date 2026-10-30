@@ -29,9 +29,18 @@ Already in place: the hosted setup refuses an engine revision other than the qua
 
 **Switch, then delete.** The target components are built beside the old pipeline. At the switch the publish path binds to them; the old layers are then bound to nothing and are deleted whole, as [[BINDINGS]] §6 lists them. Until the switch, the old capture job keeps writing raw data and reading the raw index, and gets raw-safety fixes only; its whole-leaf index rewrites continue until then, which is accepted.
 
+**Phase-2 status correction, 2026-10-30.** The Explorer migration is incomplete.
+`ct-gi01` owns native model/publication migration and data preservation;
+`ct-t915` owns the unified site; `ct-m104` owns MCP acceptance against the same
+release; `ct-5kto` owns retirement after the replacement is live. Their shared
+coverage and closure checklist is [[PHASE-2]] §4.6. The old incremental-mirror
+design was superseded, not the requirement to move Explorer. Existing native
+input flags, passing local tests and completed deletion groups do not establish
+that the production workflows or every research field have moved.
+
 ## 3. Constraints and Rules
 
-**What must survive:** objects in `congressional-tech-raw` under `bodies/`, `receipts/` and `provenance/`. Everything else can be rebuilt, and nothing uses it yet.
+**What must survive:** objects in `congressional-tech-raw` under `bodies/`, `receipts/` and `provenance/`, plus any source facts or decisions still held only in legacy files until their preserved equivalents are verified. Derived tables may be rebuilt only after that evidence is accounted for. The site and MCP now consume published releases; preserve their selected release and rollback references during migration.
 
 **Rules for every step**
 
@@ -250,9 +259,9 @@ Each producer is built to [[ARCHITECTURE]] §8 and [[DATA-MODEL]] §6.
 1. **Workflows** ([[ARCHITECTURE]] §12): the capture job; the publish job, backfills and the maintenance job, with its monthly table rebuild ([[ARCHITECTURE]] §8.6), in one CI concurrency group. The disabled viewer workflow and its 30-minute cron are deleted.
 2. **Capture scheduler:** capture reads `url_state` from the live release, including its queue of linked-but-unfetched URLs, stops reading the raw index and drops its replay mode; until B14 it also takes the weekly job's inventory files as seeds.
    - Each run works within a request, byte and spool budget sized from the first engine-built `url_state`'s due rows (1,298,420 URLs today; the old capture caps a run at 20,000), taking the queue first, which holds the wrapped files (*est.* 8,800 never fetched), then the cut-off URLs (62 to 64, whose cut-off copies stay in raw), then the oldest `next_attempt_at`.
-3. **The committee explorer** (phase 2) reads meeting and witness records from the lake and committees, members and rosters from the pinned spicy-regs generations ([[ARCHITECTURE]] §8.5), not from the fetchers' state files.
+3. **The committee explorer** (phase 2, `ct-gi01`) moves its maintained data into the native model and shared release. Its producer reads meeting and witness records from the lake and committees, members and rosters from pinned spicy-regs generations ([[ARCHITECTURE]] §8.5), not fetchers' state files. Account for the retained research inputs in [[PHASE-2]] §4.6 before removing their readers. Wire the actual production jobs; optional CLI support is insufficient. `ct-t915` moves entity browsing to the shared release, and `ct-m104` verifies site/MCP parity there.
 4. **Pins:** publish and the maintenance job keep the receipt-key lists and, in phase 2, `pins/spicy-generations.json` ([[ARCHITECTURE]] §10.3.4, §10.3.7). The spicy-regs side (its retention reading that list, `nomination_id`, the nominations backfill, and reading the archive's releases instead of capturing meetings) is spicy-stack ss-vhi2.
-5. **Delete what is bound to nothing,** one PR per group as [[BINDINGS]] §6 lists them, measured again at cut.
+5. **Delete what is bound to nothing** (`ct-5kto`), one PR per group as [[BINDINGS]] §6 lists them, measured again at cut. After the phase-2 replacement and data-preservation checks pass, retire the separate Explorer writer, pointer consumption and `pipeline-data/committee-explorer/public` staging in both publishing workflows. Preserve raw inputs, evidence and rollback references. Completed archive deletion groups do not close this remaining Explorer work.
 
 The first engine-era release may be seeded by an engine SQL conversion of the pinned live v5 catalog `596f08fa`, with its seed origin and input hashes recorded; the raw rebuild replaces it after its E4 comparison passes. This seed is display-only: its `url_state` does not drive capture, and the old capture and update workflows continue until the rebuild cut-over. The seed and raw rebuild may use the provisional emulated method in [[ARCHITECTURE]] §11, with fresh phone and desktop runs bound to the exact candidate release before its pointer flip. Real-phone and real-desktop measurements and owner-approved ceilings remain an owner follow-up for this release.
 
@@ -270,9 +279,9 @@ The first engine-era release may be seeded by an engine SQL conversion of the pi
 
 - **news_lake** keeps the DocSpec backend and the engine's lifecycle store. No work until it adopts the three layers.
 - **The freeze:** no browser or engine performance work beyond this plan until there is a user or a measured failure on real data.
-- **Committee explorer and weekly retention onto incremental tables:** the approach conflicts with the design. Re-scope it before starting.
+- **The old incremental weekly-mirror design:** superseded by lake-derived native model jobs. The Explorer migration itself is active under `ct-gi01` (F3 and [[PHASE-2]] §4.6); do not restore duplicate weekly tables or leave the old publication permanently in place.
 - **Considered, not chosen,** so not re-proposed without new information: showing the original link's last status (36,768 documents' URLs last returned 404 or 410), showing saved-file size (2,467 files over 50 MB), and saving resolved links between publishes (revisit only if a measured reprint shows link resolution is the slow step).
-- **The MCP coverage tasks** (`docs/youtube-coverage/congressional-explorer-mcp-data-coverage-tasks.md`, a proposal): what the target covers is in [[PHASE-2]] §4.3.
+- **Additional MCP products beyond the existing Congress server:** no separate server is needed for this migration. Current data coverage is active work under `ct-gi01`, `ct-m104` and the metadata epic `ct-082q`; see [[PHASE-2]] §4.3 and §4.6.
 - **Parquet variant for the folds:** revisit when all three hold:
   - an iceberg-rust release writes variant through its Parquet writer (0.10.1, the pinned release, has none; 0.11 is expected to add it);
   - Basin Catalog accepts format-version 3 tables;
@@ -280,7 +289,7 @@ The first engine-era release may be seeded by an engine SQL conversion of the pi
 
   The candidates are nested, mixed-type readings such as Congress.gov API JSON and MODS or meeting XML trees.
 - **Structured transcripts:** the captions and subtitles are held in raw and, in phase 2, listed per recording (99% of Senate meeting videos in the 118th–119th Congresses have them); turning them and the printed transcripts (`pdf_text`) into timed speaker turns is full-text work. Such a reading can also name witnesses a source left unnamed, as attributes that never move a `witness_key` ([[PHASE-2]] §2).
-- **Committee markup votes:** spicy-regs has amendments and committee activities but no committee vote tallies; the House committee repository is the source if one is needed.
+- **New committee markup-vote acquisition or reconstruction:** remains deferred. Existing retained committee amendment/vote records must be inventoried and preserved by `ct-gi01`; exposing recorded facts does not imply individual ballots or complete tallies ([[PHASE-2]] §4.6).
 - **Full-text extraction of every PDF:** one later read of about 403 GB into `pdf_text` ([[DATA-MODEL]] §6.6). It gives page counts and text fingerprints for every PDF, which makes dedupe across sites cheap to revisit.
 
 ## 8. Uncertainties and Tests

@@ -159,6 +159,11 @@ nominations    := per nomination_id a meeting's subject_keys names, the pinned r
 
 These files join [[DATA-MODEL]] §8.1's table, with its shared writer settings and profiles.
 
+These definitions are the baseline release schema. The migration requirements
+in §4.6 identify additional retained facts that this baseline does not yet expose.
+Their exact typed schema changes must land with the native producer and release
+registry; this document does not claim those additions are already published.
+
 | File | Columns | Order | Writer settings | Size |
 |---|---|---|---|---|
 | `witnesses.parquet` | `witness_key` string, `occasion` dict, `event_id` int64 nullable, `package_id` string nullable, `page_url` string nullable, `name` string nullable, `position`, `organization`, `on_behalf_of`, `location`, `panel` (strings, nullable), `panel_order`, `display_order` int16 nullable, `witness_type` dict nullable, `testified` bool nullable, `bioguide_id` dict nullable | `(occasion, panel_order, display_order, witness_key)` | Whole | *est.* a few MB |
@@ -175,7 +180,9 @@ These files join [[DATA-MODEL]] §8.1's table, with its shared writer settings a
 
 Phase 2 is done when, beyond [[IMPLEMENTATION-PLAN]] §6.6's phase-1 checklist:
 - every older gzip PDF has a recorded `.pdf` copy (B13), and the full re-hash has run (B10);
-- the committee explorer reads meeting and witness records from the lake (F3);
+- the actual production jobs use lake meeting/witness records and pinned SpicyRegs inputs, and all retained Explorer field families have the destinations and parity evidence required by §4.6 (`ct-gi01`, F3);
+- site entity browsing and Congress MCP consume the shared release; `/dashboard/` is replaced/redirected or serves only Coverage/Gaps from that release (`ct-t915`, `ct-m104`);
+- after the replacement is verified live, the separate Explorer publishing route and `pipeline-data/committee-explorer/public` staging are retired (`ct-5kto`); preservation and rollback references remain;
 - spicy-regs' retention plan keeps every generation a kept release pins (F4);
 - the weekly meeting job is gone, after B14's first run;
 - C3's export is byte-identical across threads, batch sizes and a forced spill, so the profile no longer pins the runner class;
@@ -237,19 +244,21 @@ As in [[IMPLEMENTATION-PLAN]] §8, each row closes only with its measurement.
 
 ### 4.3 MCP Coverage
 
-The MCP coverage tasks (`docs/youtube-coverage/congressional-explorer-mcp-data-coverage-tasks.md`, a proposal): its producer fixes (tasks 1–10) may land on today's exporter so the MCP gains them before the switch, as work the switch deletes; the target covers each, and the switch checks it does:
+Congress MCP reads the native release and its schema. It does not own extraction,
+entity resolution or a second congressional model. The earlier coverage proposal
+is historical; current work and closure criteria are assigned below and in §4.6.
+Generic access to every published column proves access to that release, not
+coverage of every retained source or upstream table.
 
-| Task | Covered by |
+| Coverage | Existing owner and remaining requirement |
 |---|---|
-| 1 identifiers, 9 coverage | [[DATA-MODEL]] §8–9: native keys, `schema.json`, the manifest's producer and coverage; §4.4 adds native relationship discovery metadata |
-| 2–3 participants, ownership | D4 and §2, unnamed witnesses kept apart |
-| 4 legislative items | `subject_keys`; spicy-regs amendments and committee activities; markup votes parked ([[IMPLEMENTATION-PLAN]] §7) |
-| 5 committee history | spicy-regs `committees`; its other fields are spicy-regs' to add |
-| 6 sittings, versions | `sittings`, editions, `version_keys`, alternates |
-| 7 file and text catalog | `recordings`; recoveries and reviews in the same release |
-| 8 reference data | Not covered: archive routes, session dates and chamber control, channel mappings |
-| 10 replay and rebuild | The switch: everything rebuilt from raw, parity by cause |
-| 11–15 the two MCP servers | Their own plan, reading release manifests; full research tables are decided then |
+| Identifiers, relationships and coverage | §4.4 and `ct-m103` supply native discovery; `ct-m104` verifies actual data availability and limits, including the additions in §4.6. |
+| Participants, ownership, sittings and versions | D4 and §2 remain the model; `ct-gi01` accounts for old Explorer records, conflicts and evidence without matching identities by name. |
+| Legislative records and reference history | SpicyRegs remains upstream owner (`ct-u01c` / `ss-vhi2`). `ct-gi01` maps the retained committee records and identifies exactly which upstream detail is published or externally pinned; summary fields are not full histories or ballots. |
+| Recordings, channels and research evidence | `ct-gi01` maps retained channel/video metadata, matching decisions, tracks and completeness into the shared release or stable evidence references; `ct-m104` checks their discoverability and queryability. |
+| Other retained reference data | `ct-gi01` inventories archive routes, session dates and chamber control alongside the old reference inputs. No unassigned omission is treated as completed migration. |
+| HTML dates, descriptions and labels | `ct-082q`: mapping `ct-w8dc`, publication `ct-93zs`, MCP `ct-jnm9`, site `ct-4thc`, and full-path qualification `ct-0a37`. These add selected metadata; they do not replace the broader migration. |
+| Replay, rebuild and production acceptance | `ct-gi01` supplies preservation/parity evidence, `ct-m104` verifies the shared release, `cef-96wc` records the live switch, and `ct-5kto` retires the old route. |
 
 ### 4.4 Native relationship metadata — execution order
 
@@ -322,6 +331,90 @@ inspected every table and relationship and executed every recipe. See
 for exact commands, the fixture release ID, response size and historical-check
 boundaries. This is local completion. No release was deployed or republished;
 older releases accurately report that relationship metadata was not published.
+
+**Later result, 2026-10-30:** `ct-m104` records the subsequent metadata-only
+publication and production measurements in
+[`congress-mcp-production-20261030.md`](../measurements/congress-mcp-production-20261030.md).
+That release exposed the 16 table identities, 59 relationships and 10 recipes
+without changing the Parquet data. Those counts describe that release; they are
+not a ceiling on future coverage or proof that the Explorer migration is done.
+`ct-m104` is open again for the data-coverage acceptance below.
+
+### 4.6 Explorer migration and data coverage
+
+**Reconciled 2026-10-30; implementation remains incomplete.** The target is one
+maintained congressional-tech native model and publication path, consumed by
+the site and Congress MCP. A separate Coverage/Gaps page is allowed; a separate
+Explorer data model or publication is not the end state. SpicyRegs remains an
+independently owned, pinned upstream source. The old weekly-mirror approach is
+superseded; its data-preservation requirement survives.
+
+Current evidence: `publish-explorer.yml` still reads JSON/CSV source state and
+writes `pipeline-data/committee-explorer/public`; `deploy-pages.yml` stages that
+directory; `dashboard.astro` loads `/data/explorer/CURRENT.json` for full entity
+browsing. `ct-gi01` added optional lake inputs, but the workflow does not select
+them. These are remaining acceptance gaps, not reasons to discard prior work.
+
+#### Required field inventory
+
+`ct-gi01` MUST record the exact input snapshot, row meaning, identifiers, fields,
+provenance, date precision, conflicts and missingness for each family below.
+Each retained field gets a destination: a typed native release field/relation,
+an explicitly described pinned upstream relation, or a stable evidence reference
+when it is too large or is provenance rather than a queryable fact. An unavailable
+or intentionally deferred field remains visible in coverage metadata with its
+reason and owner. Deferral of existing user-facing data requires an explicit
+scope decision; it cannot silently satisfy migration acceptance.
+
+| Family and retained input | Required destination and meaning | Existing owner |
+|---|---|---|
+| Committee channel directory: `packages/congress_shared/src/congress_shared/youtube/youtube-accounts.csv` | Typed committee/channel relationships with source URLs and evidence for the committee mapping; account for historical or unresolved mappings. Channel membership is not evidence that every video is a hearing. | `ct-gi01`; MCP checks `ct-m104` |
+| Collected video inventory and metadata: retained YouTube caches and meeting video references | Recording/video identity, original/watch URL, channel, supplied title/description, dates, duration and availability where retained. Preserve collected videos without a resolved meeting; do not limit the inventory to successfully matched recordings. | `ct-gi01` |
+| Recording matches: `gpo_hearing_videos.csv`, `meeting_recordings_found.csv` and retained match evidence under `apps/committee_youtube/data/` | Typed links and decisions with their basis, score where present, full-recording/excerpt distinction, unresolved/conflicting status and source references. Preserve observations and adjudication history; old derived matches are a parity oracle, not silently promoted to publisher assertions. | `ct-gi01` |
+| Hearing completeness: `apps/committee_youtube/data/meeting_completeness.csv`, Explorer issues and coverage | Typed coverage/issue facts with scope, denominator, date and reason. Unknown, missing, unresolved and confirmed absent remain distinct. Coverage/Gaps and MCP read these same meanings. | `ct-gi01`, `ct-t915`, `ct-m104` |
+| Retained committee amendments/votes: `apps/committee_youtube/data/house_amendments_found.csv` and source records | Preserve the actual record kind, meeting/document references, outcome and evidence where supplied. Document links and vote records must not be described as complete member ballots or tallies. New acquisition/reconstruction remains deferred. | `ct-gi01` |
+| Meeting attributes already read internally, including `congress` and source `updated` | Carry useful attributes into typed release fields with origin and date meaning. Keep hearing dates, publisher updates and capture times distinct; reconcile overlapping HTML date work. | `ct-gi01`, `ct-w8dc`, `ct-93zs` |
+| Full bill action histories, cosponsors, member votes, historical nominations/amendments/rosters | Inventory the exact available SpicyRegs tables, columns and generation pins. Identify local summaries separately from accessible detailed upstream records; expose supported relationships and access limits in discovery. Do not mirror all upstream tables or infer that a vote summary contains ballots. | `ct-gi01`, `ct-m104`; upstream `ct-u01c` / `ss-vhi2` |
+| HTML descriptions, dates, classifications and source evidence | Publish the selected typed fields through the maintained model, with stable evidence references and field meanings shared by site and MCP. | `ct-082q`, `ct-93zs`, `ct-jnm9`, `ct-0a37` |
+| Remaining old Explorer fields and reference inputs | Inventory all six old entity/research tables and their source inputs, including archive routes, session dates and chamber control where retained. The named rows above are a minimum, not an exhaustive field list. | `ct-gi01` |
+
+The exact additions are pending implementation: §3 and DATA-MODEL §8.1 still
+describe the baseline, and `model/registries/release-schema.json` must change
+together with producer SQL and checks. Do not publish invented rows, missing
+values as empty tables, or a second MCP schema to conceal a producer gap.
+Full-text search, new source acquisition and speaker-turn reconstruction remain
+separate deferred work; preserving existing caption/text references is required.
+
+#### Closure evidence and order
+
+1. **Native data and jobs — `ct-gi01`.** Complete the inventory, preserve facts
+   held only in derived files, define typed mappings and versioned schemas, and
+   compare the native output with the frozen old inputs. Account for every
+   excluded, unresolved or changed row by reason. Prove the actual workflow uses
+   pinned lake/SpicyRegs inputs and native exports without legacy full-corpus
+   JSON/CSV assembly. Record runtime, memory and work performed on the selected
+   input; optional flags and fixture tests alone do not close the ticket.
+2. **Site — `ct-t915`.** Replace/redirect the old dashboard or keep only
+   Coverage/Gaps backed by the same native release. Verify entity navigation,
+   recording links and evidence without a second publication pointer.
+3. **MCP — `ct-m104`.** Exercise the actual produced release over stdio and the
+   site against the same identity. For every inventory family, check discovery,
+   representative queries, missingness and evidence links; demonstrate any
+   supported external pinned access and state what is unavailable. Retain the
+   earlier performance/recovery evidence and repeat affected checks as needed.
+   Selected HTML metadata qualification remains owned by `ct-0a37`.
+4. **Live switch — `cef-96wc`.** Record exact production job bindings, release
+   identity, live site/MCP readback, and previous-release rollback references.
+   Local success and merged code remain separate from live acceptance.
+5. **Retirement — `ct-5kto`.** After the replacement is live and accepted, remove
+   the old writer, pointer consumption and workflow staging. Check active callers
+   and preserve raw/provenance records and recovery references. Completed archive
+   deletion groups remain completed; they do not substitute for this retirement.
+
+`ct-7uit`, `ct-98sm`, `ct-8kl2` and `ct-77zb` must reflect these unfinished
+children. DocSpec's superseded `ss-55jg` does not prove consumer adoption;
+`ss-oxg1` owns only generic engine gaps demonstrated by this work. Reuse existing
+native job/table/export operations and link a specific engine gap if one is found.
 
 ## References
 

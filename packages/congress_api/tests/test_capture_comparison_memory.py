@@ -29,9 +29,7 @@ def limited_engine(tmp_path,*,threads=2):
     return NativeDatasets.from_config(config_path)
 
 
-@pytest.mark.parametrize('threads',[2,pytest.param(4,marks=pytest.mark.xfail(
-    strict=True,raises=DocSpecFailure,
-    reason='docspec-rs dec-eog7: sort reservation scaling exhausts the small pool at4 threads; remove after native fix'))])
+@pytest.mark.parametrize('threads',[2,4])
 def test_comparison_completes_with_bounded_native_memory(tmp_path,threads):
     engine=limited_engine(tmp_path,threads=threads)
     count = 2048
@@ -49,15 +47,7 @@ def test_comparison_completes_with_bounded_native_memory(tmp_path,threads):
     pq.write_table(pa.Table.from_pylist([
         dict(row, sha256=bytes.fromhex('a'*64), capture_index=0,
              reference_kind='capture') for row in rows]), new, row_group_size=64)
-    try:
-        result = compare_old(new, old, engine=engine,work=tmp_path/'comparison')
-    except DocSpecFailure as error:
-        if threads==4:
-            assert 'Not enough memory to continue external sort' in str(error)
-            assert any(name in str(error) for name in ('for ExternalSorter[','for ExternalSorterMerge['))
-            assert 'Resources exhausted:' in str(error) and '0.0 B already allocated' in str(error)
-            assert 'remain available for the total pool' in str(error)
-        raise
+    result = compare_old(new, old, engine=engine,work=tmp_path/'comparison')
     assert result['old_rows'] == result['new_rows'] == result['matched'] == count
     assert result['old_only'] == result['new_only'] == result['secondary_duplicates'] == 0
     assert result['unexplained'] == result['expected_changes'] == 0
@@ -67,9 +57,7 @@ def test_comparison_completes_with_bounded_native_memory(tmp_path,threads):
         assert pq.read_metadata(tmp_path/'comparison'/(name + '.parquet')).num_rows == 0
 
 
-@pytest.mark.parametrize('count',[2048,pytest.param(8192,marks=pytest.mark.xfail(
-    strict=True,raises=DocSpecFailure,
-    reason='docspec-rs dec-eog7: retained tables exhaust sort headroom; remove after native fix'))])
+@pytest.mark.parametrize('count',[2048,8192])
 def test_full_comparison_preserves_file_references_and_restorations_at_four_times_rows(tmp_path,count):
     """The signed pivot must preserve counts and old evidence under one budget."""
     engine=limited_engine(tmp_path)
@@ -113,9 +101,12 @@ def test_full_comparison_preserves_file_references_and_restorations_at_four_time
     except DocSpecFailure as error:
         # Only the measured native reservation failure is expected. Invalid SQL,
         # input refusals, or a different resource failure must remain red.
-        assert 'Not enough memory to continue external sort' in str(error)
-        assert any(name in str(error) for name in ('for ExternalSorter[','for ExternalSorterMerge['))
-        assert 'Resources exhausted:' in str(error) and 'remain available for the total pool' in str(error)
+        assert 'Resources exhausted:' in str(error)
+        assert any(msg in str(error) for msg in (
+            'Not enough memory to continue external sort',
+            'Failed to reserve memory for sort during spill',
+            'The used disk space during the spilling process has exceeded the allowable limit of 256.0 MB',
+        ))
         raise
     expected=dict(old_rows=count+3,new_rows=count+3,secondary_duplicates=1,old_only=1,
         new_only=2,expected_new_only=1,unexplained_new_only=1,unexplained=0,

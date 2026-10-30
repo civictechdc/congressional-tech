@@ -1,8 +1,8 @@
 ---
 id: ct-98sm
 status: open
-deps: []
-links: [ct-v967, ct-csyg, ct-gi01, ct-6rnk]
+deps: [ct-7uit, ct-5kto]
+links: [ct-v967, ct-csyg, ct-gi01, ct-6rnk, ct-77zb, ct-8kl2]
 created: 2026-10-24T18:15:53Z
 type: epic
 priority: 1
@@ -27,6 +27,14 @@ Owner decisions (binding):
 Rules for every child: one conceptual move per PR, with tests that pin the behavior landing before code moves; behavior changes in their own PRs. Run checks only through `.venv/bin/python scripts/dev.py test <lane>` (congressional-tech) or `scripts/check` (docspec-rs), never a tool from PATH, and say so in every agent or reviewer brief. Work in a separate worktree and venv (the primary checkout backs live recovery jobs). Report before and after `wc -l` in every PR that deletes code. Run the plan's R-check (section 1).
 
 Reopened audit tickets keep their original parents, which are reopened too; each is linked to the child here that owns its remaining criteria.
+
+## Current status — 2026-10-30 reconciliation
+
+Still open for the reopened ct-7uit / ct-gi01 migration and ct-t915 / ct-m104 /
+ct-5kto acceptance and retirement, alongside the previously recorded raw-safety,
+operational and parked News Lake work. The 17:48 note's claim that all
+Archive/Explorer workstreams are complete is superseded by this reconciliation.
+Follow docs/plans/phase-2-annex-20261028.md §4.6; the old weekly-mirror approach stays superseded.
 
 ## Acceptance Criteria
 

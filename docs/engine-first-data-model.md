@@ -28,6 +28,15 @@ Sections marked "This section is non-normative", and all examples and diagrams, 
 
 Key words are interpreted as [[ARCHITECTURE]] §2 says. The conformance classes are those of [[ARCHITECTURE]] §2. Each conforms by producing or reading what this document assigns it and satisfying the invariants of §10 that apply to it.
 
+**Phase-2 migration clarification, 2026-10-30.** The target is one maintained
+congressional-tech model and publication path for the site and Congress MCP.
+The separate Committee Explorer publication is transitional. SpicyRegs remains
+the owner of its reference data, selected by immutable generation pins; this does
+not require copying every upstream table into congressional-tech. Phase-2
+conformance also requires the data-preservation and consumer checks in
+[[PHASE-2]] §4.6. Implementing lake input options or publishing relationship
+metadata alone does not establish that migration is complete.
+
 ## 3. Terminology
 
 Terms are defined in [[ARCHITECTURE]] §3; this section adds only the notation and encodings the rules use.
@@ -658,7 +667,17 @@ Phase 2: [[PHASE-2]] §2.
 
 ## 8. Release Files
 
-Release files are what the site and the capture job read: `list` for search, facets and sorting; `detail` for everything a document page acts on; `links` and `urls` to resolve a public link or a pasted address; `sources` and `recoveries` for where a document was published and what recovers it; the entity files for hearings, recordings, witnesses, committees, members, rosters, bills and nominations; `url_state` and `capture_scope.json` for the capture job; `schema.json` and the manifest for any other consumer, such as an MCP server.
+Release files are what the site, Congress MCP and the capture job read: `list` for search, facets and sorting; `detail` for everything a document page acts on; `links` and `urls` to resolve a public link or a pasted address; `sources` and `recoveries` for where a document was published and what recovers it; the entity files for hearings, recordings, witnesses, committees, members, rosters, bills and nominations; `url_state` and `capture_scope.json` for the capture job; `schema.json` and the manifest for shared discovery by every consumer.
+
+The file definitions below describe the specified release, not all facts retained
+by the old Explorer or available upstream. [[PHASE-2]] §4.6 records the remaining
+coverage work. Before retiring an old producer, every retained field MUST have
+a recorded destination and preservation check. User-facing research facts MUST
+be available through the shared release or an explicitly described pinned
+upstream relation. Large evidence may remain behind stable references. A missing
+table or unimplemented mapping MUST be reported as unavailable; it is not an
+empty dataset or evidence of completed migration. Planned additions MUST acquire
+typed schemas, keys, provenance and compatibility checks before publication.
 
 ### 8.1 Files
 

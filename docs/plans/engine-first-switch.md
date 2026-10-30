@@ -48,6 +48,31 @@ The lead performs every live step. The first publication is a display-only conve
    .venv/bin/python -I scripts/measure/cxb_switch_deletions.py --ct "$PWD" --ds /Users/mikewolfd/Work/wt/ds-engine-first --verify "$RAW_SCRATCH/cxb_switch_deletions.final.json"
    ```
 
-   The inventory is preparation evidence, not proof that a shared function is unused. Run focused checks per group, prove no production imports or workflows refer to removed paths, and run one full regression on the combined strip branch before merging. The lead must confirm deployment before any strip merge. Do not remove the old explorer or weekly meeting tables before their phase-2 consumers move.
+   The inventory is preparation evidence, not proof that a shared function is unused. Run focused checks per group, prove no production imports or workflows refer to removed paths, and run one full regression on the combined strip branch before merging. The lead must confirm deployment before any strip merge. Do not remove the old explorer or weekly meeting tables before their phase-2 consumers move. This is temporary retention, not permission to keep a second publication indefinitely.
+
+## Remaining phase-2 Explorer switch — 2026-10-30
+
+The archive deletion work already recorded in `ct-5kto` remains valid historical
+evidence. It does not close the following remaining sequence:
+
+1. `ct-gi01`: complete the field inventory and mappings in
+   [PHASE-2 §4.6](phase-2-annex-20261028.md#46-explorer-migration-and-data-coverage),
+   preserve legacy-only evidence, and produce the shared native release from
+   pinned lake/reference inputs through the actual production job configuration.
+2. `ct-t915`: make `/archive/` and `/dashboard/` use that release. Redirect or
+   replace the dashboard, or retain only Coverage/Gaps backed by the same release.
+3. `ct-m104`: verify producer-to-site/MCP parity and real release discovery/query
+   results. `ct-082q` and its children supply their selected HTML metadata; do not
+   introduce a second publisher or MCP-owned data model.
+4. `cef-96wc`: record the production release, workflow bindings, successful live
+   reads and rollback references under the existing operational gates.
+5. `ct-5kto`: retire the old Explorer publishing route, old pointer consumption
+   and `pipeline-data/committee-explorer/public` staging in both workflows.
+   Preserve raw inputs and evidence; verify the replacement after retirement.
+
+Close `ct-77zb`, `ct-98sm` and `ct-8kl2` only when their remaining criteria and
+children are satisfied. Closed superseded mirror/engine tickets are historical
+context, not evidence that these steps ran. This reconciliation changes planning
+and ticket state; it does not execute a publication or enable a scheduled job.
 
 No workflow was disabled, live job run, pointer flipped or imported source deleted while preparing this checklist.

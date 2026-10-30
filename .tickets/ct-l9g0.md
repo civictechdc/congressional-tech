@@ -1,6 +1,6 @@
 ---
 id: ct-l9g0
-status: closed
+status: open
 deps: []
 links: [cef-9e9w, ct-oxg6]
 created: 2026-10-30T14:32:31Z
@@ -18,3 +18,9 @@ Per docs/plans/bindings-20261025.md §3.1: replace environment-variable digest l
 
 One committed runtime pin file holds the engine revision and per-OS SHA-256 digests, and setup-native-runtime.py, setup-local-job-runtime.py, and check-native-runtime.py read from it.
 
+
+## Notes
+
+**2026-10-30T19:28:54Z**
+
+Reopened per Greybeard parity audit: (1) .github/scripts/setup-native-runtime.py:71-77 computes should_enforce = Path(pin_file).resolve() != Path(RUNTIME_PIN_FILE).resolve(), which evaluates to False on the default RUNTIME_PIN_FILE and skips checking value['sha256'] != pinned_digest; (2) .github/scripts/check-native-runtime.py:55 sets pin_file = None if binary_sha256 is not None else pin_file, bypassing pin-file verification when --binary-sha256 is passed.

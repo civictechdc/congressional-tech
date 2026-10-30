@@ -2,7 +2,7 @@
 id: ct-93zs
 status: open
 deps: [ct-pocg, ct-w8dc]
-links: []
+links: [ct-w8dc, ct-m104, ct-t915, ct-5kto, ct-gi01]
 created: 2026-10-30T14:10:03Z
 type: feature
 priority: 2
@@ -32,3 +32,9 @@ Publish compact typed descriptions, distinct publication/modification dates with
 - Older releases remain readable under the declared compatibility policy; new schema changes are versioned and validated.
 - Browse operations do not load raw HTML/full article text. Measure release/browse-column size changes and prove evidence is available on demand through the maintained release format.
 
+
+## Notes
+
+**2026-10-30T20:37:07Z**
+
+Coordinate with reopened ct-gi01 under PHASE-2 §4.6. The end state is one native publication for site and MCP. Any separate Explorer output is transitional; map selected HTML fields into the maintained model and preserve evidence. Local work may proceed without waiting for the production switch.

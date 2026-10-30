@@ -1,7 +1,7 @@
 ---
 id: ct-7uit
-status: closed
-deps: [ct-q2ht, ct-qqk2, ct-70kc, ct-w5fm]
+status: open
+deps: [ct-q2ht, ct-qqk2, ct-70kc, ct-w5fm, ct-gi01]
 links: [ct-13cn, ct-gziq, ct-bwac, ct-nc7l, ct-sb0s, ct-czsd, ct-2ukk, ct-si9g, ct-v5kb, ct-upte, ct-7e7q, ct-rcs8, ct-5kb2, ct-9vtu, ct-y32m, ct-l5q1, ct-gd8v, ct-dat9, ct-qdkd, ct-13g5]
 created: 2026-10-24T18:15:54Z
 type: task
@@ -22,6 +22,13 @@ Then:
 4. Delete the Python incremental layer, the adopt/qualify-sources/upgrade-source-rules modes and the native branches named in the plan; `native_features.py` shrinks to thin engine calls.
 
 Keep `partition_routing.py`, the raw-side routing pages and the oracle's own modules, re-checking each against decision 6 as it is touched. The DuckDB external sort, typed-preparation resume, the spill arena (ct-4g55) and the reuse cache (ct-3bfx) stay only if the rebuild's profile needs them; if the engine prototype needs them, they belong in the engine.
+
+## Current status — 2026-10-30 reconciliation
+
+Reopened because child ct-gi01 is incomplete. The earlier native archive/catalog
+implementation and G01/G02 deletions remain completed; do not repeat or restore
+them. Remaining responsibility is the child Explorer migration in docs/plans/phase-2-annex-20261028.md §4.6.
+This parent cannot close while that child's applicable criteria are unmet.
 
 ## Acceptance Criteria
 
@@ -46,3 +53,7 @@ Efficiency pass: 'partition_routing.py and the raw-side routing pages are raw pr
 **2026-10-30T17:17:30Z**
 
 Verified completed and superseded by the engine-first native SQL model (model/sql/, viewer_publication.archive_model, congress_api.lake.tables/daily) and F5 G01/G02 deletions (commits 703a5920 and df1bed37, deleting -36,423 net lines across the Python incremental catalog and Python rebuild/oracle layer).
+
+**2026-10-30T20:37:05Z**
+
+Reopened and reconciled at the user’s request on 2026-10-30. Current scope and acceptance above supersede the earlier closure where it claimed the remaining Explorer migration was complete. Canonical coverage and order: docs/plans/phase-2-annex-20261028.md §4.6. No implementation, live publication or deletion was performed by this reconciliation.

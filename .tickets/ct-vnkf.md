@@ -1,6 +1,6 @@
 ---
 id: ct-vnkf
-status: closed
+status: open
 deps: []
 links: []
 created: 2026-10-30T14:32:31Z
@@ -18,3 +18,9 @@ Implement the CLI entry points for backfill and maintenance (wiring packages/con
 
 model/jobs/publish.json, backfill.json, and maintenance.json replace the *.pending.json files, .github/archive-jobs.json points to active specs, and CLI entry points pass tests.
 
+
+## Notes
+
+**2026-10-30T19:28:54Z**
+
+Reopened per Greybeard parity audit: (1) model/jobs/maintenance.json omits raw_verification and lake_maintenance configuration sections; (2) .github/workflows/raw-source-tables.md:10,44 references viewer_publication.archive_maintenance_job instead of viewer_publication.archive_maintenance; (3) apps/site/FILENAME-VIEWER.md:25 states /dashboard/ redirects to /archive/ whereas /dashboard/ coexists for coverage/issues views.

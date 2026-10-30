@@ -1,6 +1,6 @@
 ---
 id: ct-vpo2
-status: closed
+status: open
 deps: []
 links: []
 created: 2026-10-30T14:32:30Z
@@ -20,3 +20,9 @@ Add Phase-2 invariant & diagnostic queries in packages/viewer_publication/src/vi
 
 Invariant 15 referential and single-chamber checks are enforced in model_invariants, and non-fatal annex §2 diagnostic counts/reports are emitted without failing valid builds.
 
+
+## Notes
+
+**2026-10-30T19:28:54Z**
+
+Reopened per Greybeard parity audit: align D4 lake schemas & E3 completeness gate with DATA-MODEL §4.2/§6.4 and PHASE-2 §2.1: (1) model/lake/meeting-records.schema.json and appearance-records.schema.json need status/error_type and record_sha alignment; (2) model/jobs/publish-model.json needs parser_versions pins for meeting_records and appearance_records; (3) model/sql/profile-completeness.sql needs D4 work-list completeness anti-joins against captures + meeting-sources.json.

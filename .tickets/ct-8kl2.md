@@ -2,7 +2,7 @@
 id: ct-8kl2
 status: open
 deps: [ct-2ukk, ct-oc2g, ct-xu1o, ct-8ax6, ct-dzyf, ct-13cn, ct-dmca, ct-gziq, ct-n6lj, ct-sb0s, ct-te1p, ct-aia9, ct-2yl5, ct-bwac, ct-gi01, ct-a3le]
-links: [ct-mi03, ct-czsd, ct-2ukk, ct-oc2g, ct-xu1o, ct-8ax6, ct-dzyf, ct-13cn, ct-dmca, ct-gziq, ct-n6lj, ct-sb0s, ct-te1p, ct-aia9, ct-2yl5, ct-bwac, ct-gi01, ct-a3le, ct-0odd, ct-ec91, ct-3ttc, ct-84xa, ct-uov2]
+links: [ct-mi03, ct-czsd, ct-2ukk, ct-oc2g, ct-xu1o, ct-8ax6, ct-dzyf, ct-13cn, ct-dmca, ct-gziq, ct-n6lj, ct-sb0s, ct-te1p, ct-aia9, ct-2yl5, ct-bwac, ct-gi01, ct-a3le, ct-0odd, ct-ec91, ct-3ttc, ct-84xa, ct-uov2, ct-77zb, ct-98sm]
 created: 2026-10-21T20:52:42Z
 type: epic
 priority: 1
@@ -22,6 +22,15 @@ See ideal_end_state_proposal.md and architecture_and_duplication_trace.md (inclu
 3. Pillar 2 (ct-te1p): Attach congressional-data.spicygov.ai directly to public congressional-tech-raw with static Bucket CORS, Cloudflare WAF prefix allowlist, Response Header Transform Rules (conditional CSP: sandbox on non-PDFs + ?filename= Content-Disposition), ingest SHA-256 exclusion gate (accepted-files.json), and uncompressed PDFs (206 Partial Content) while keeping row.body_key ('bodies/sha256/<xx>/<sha256>.gz') immutable so all 1.68M source_ids and 1.24M document_ids are preserved; retire apps/viewer-data/worker.mjs and continuation.py.
 4. Pillar 3 (ct-aia9): Extract congress_shared.custody + connect_r2 (keeping R2Store/LocalStore in congress_api) and consolidate the shared Arrow schema adapter in packages/docspec_client (paired with ss-8tpu).
 5. Pillars 4 & 5 (ct-a3le): Migrate news_lake upserts/bridges while preserving cross-table C5 capture-expiry semantics, retire legacy .json.gz exports, and decouple apps/site tests from docs/youtube-coverage/research/filename-*.mjs.
+
+## Current status — 2026-10-30 reconciliation
+
+Still open for active Explorer migration as well as the separately parked News
+Lake work. The 17:48 note below is superseded where it says all Explorer work is
+complete and only News Lake remains. ct-gi01, ct-t915, ct-m104 and ct-5kto own the
+remaining shared model, consumer acceptance and retirement in docs/plans/phase-2-annex-20261028.md §4.6.
+A single engine implementation does not by itself establish one live publication
+or field coverage. Close only after applicable child acceptance is evidenced.
 
 ## Acceptance Criteria
 
