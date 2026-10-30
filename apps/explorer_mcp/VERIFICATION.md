@@ -20,6 +20,12 @@ Retrying the failed job passed; subsequent releases retry the fresh install up t
 six times, 30 seconds apart. A separate installation from PyPI queried the public
 release successfully: 16 tables, six tools, and one document row.
 
+The [website deployment](https://github.com/civictechdc/congressional-tech/actions/runs/41108670415)
+passed. Live readback verified the PyPI 0.4.0 copy command, removed GitHub wheel
+install link, and HTTP 200 for both desktop downloads. Skills CLI 1.7.4 discovers
+`explore-congress` from the public repository. A new isolated Claude Code install
+reports the `uvx`-launched PyPI plugin as **Connected**.
+
 - 61 app tests pass, including first-use preparation, failure/retry, concurrent
   callers, cancellation during setup, reuse of a selected snapshot, and preservation
   of a damaged selection. The separate retained native producer-to-stdio integration
