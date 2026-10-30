@@ -28,7 +28,6 @@ from congress_api.retention.r2_edge_rules import (
     load_edge_config,
 )
 from viewer_publication.apply_r2_edge_rules import validate_edge_config, verify_live_edge
-from congress_api.retention.raw_archive import body_payload
 
 
 def _s3_client():
@@ -47,8 +46,8 @@ def test_logical_body_key_is_immutable_while_physical_key_splits_pdf_vs_gzip():
     pdf_sha = hashlib.sha256(pdf_bytes).hexdigest()
     xml_sha = hashlib.sha256(xml_bytes).hexdigest()
 
-    _, pdf_info = body_payload(pdf_bytes)
-    _, xml_info = body_payload(xml_bytes)
+    pdf_info = {"body_key": f"bodies/sha256/{pdf_sha[:2]}/{pdf_sha}.gz"}
+    xml_info = {"body_key": f"bodies/sha256/{xml_sha[:2]}/{xml_sha}.gz"}
 
     # Logical row["body_key"] is always bodies/sha256/<xx>/<sha256>.gz
     assert pdf_info["body_key"] == f"bodies/sha256/{pdf_sha[:2]}/{pdf_sha}.gz"

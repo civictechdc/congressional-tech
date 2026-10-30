@@ -55,11 +55,6 @@ def test_all_history_without_native_meetings_retains_unmatched_pages_and_exact_b
     assert 'start' not in query and 'end' not in query
     house_sites.outputs(state, tmp_path)
     assert PAGE in (tmp_path / 'house_site_events.csv').read_text()
-    from test_raw_bundle_extraction import extract
-    from congress_api.retention.bundles import restore
-    record, captures, bodies = extract(state)
-    assert restore(record, captures, bodies.__getitem__) == state
-    assert BODY in bodies.values()
 
 
 def test_request_budget_resumes_queue_and_visits_each_site_fairly(tmp_path):

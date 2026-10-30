@@ -17,11 +17,11 @@ from urllib.parse import urlsplit
 import pyarrow.parquet as pq
 
 ROOT = Path(__file__).resolve().parents[2]
-for package in ('congress_api', 'house-naming'):
+for package in ('congress_api', 'corpus_recovery', 'house-naming'):
     sys.path.insert(0, str(ROOT/'packages'/package/'src'))
 
 from congress_api.models.content import CapturedBody
-from congress_api.retention import raw_archive
+from corpus_recovery import govinfo as raw_archive
 
 OUTPUTS = ('prepared-source-records.json', 'source-record-preparation.json')
 MEDIA = {'pdf': 'application/pdf', 'xml': 'application/xml', 'html': 'text/html',

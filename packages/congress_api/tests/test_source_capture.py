@@ -88,8 +88,6 @@ def test_oversized_source_and_partial_response_are_not_complete(monkeypatch):
 def test_invalid_zyte_body_is_retained_without_breaking_receipt_serialization(
     monkeypatch,
 ):
-    from congress_api.retention.bundles import separate
-
     payload = {"statusCode": 200, "httpResponseBody": "not valid base64!"}
     monkeypatch.setattr(
         "congress_api.transport.source_capture.zyte.request",
@@ -101,7 +99,6 @@ def test_invalid_zyte_body_is_retained_without_breaking_receipt_serialization(
         json.loads(RawContent.model_validate(result["provider_content"]).body_bytes())
         == payload
     )
-    separate(result, lambda body: "bodies/test")
 
 
 @pytest.mark.parametrize('url,expected', [

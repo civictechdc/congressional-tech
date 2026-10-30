@@ -17,8 +17,8 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[3] / 'scripts/corpus_rec
 import prepare_corpus_recovery_batch as batch_module
 import prepare_corpus_recovery_source_records as source_module
 from corpus_recovery import govinfo
+from corpus_recovery.govinfo import CAPTURE_SCHEMA, prepare_capture_table
 from corpus_recovery.inventory import sealed_inputs
-from congress_api.retention.raw_archive import CAPTURE_SCHEMA, prepare_capture_table
 
 
 def sha(raw):

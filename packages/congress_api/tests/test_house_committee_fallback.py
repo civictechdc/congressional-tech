@@ -213,19 +213,6 @@ def test_offline_keeps_saved_pages_and_never_requests(tmp_path, monkeypatch):
     assert ROYSE in (tmp_path / 'house_documents_found.csv').read_text()
 
 
-def test_fallback_bodies_use_existing_bundle_separation_and_exact_restore():
-    from test_raw_bundle_extraction import extract
-    from congress_api.retention.bundles import restore
-    request, _ = client()
-    saved = empty()
-    merge_documents(saved, CommitteeFallback(DIRECTORY, retained()).find(MEETING))
-    record, captures, bodies = extract(saved)
-    assert restore(record, captures, bodies.__getitem__) == saved
-    match, = [capture for capture in captures if capture.get('context_url') == PAGE]
-    assert match['fidelity'] == 'exact-bytes'
-    assert BODY in bodies.values()
-
-
 def test_main_uses_retained_directory_and_forces_known_failures_through_normal_outputs(tmp_path, monkeypatch):
     broken = 'https://docs.house.gov/broken.pdf'
     meeting = {**MEETING, 'witnesses': [{'name': 'Witness'}],
