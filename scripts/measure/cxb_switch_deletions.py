@@ -325,6 +325,7 @@ def seeds():
         group(11,'Review forms catalog binding',[RET+'document_review_*.py',RET+'document_reviews.py',RET+'review/*.py'],
             gate='Forms survive; rebind catalog-dependent functions to provenance before deleting ranges'),
         group(12,'Recovery old-catalog coupling',[*[CR+n+'.py' for n in 'guards acknowledge admission assemble mappings publication preservation diagnostics'.split()],
+            'scripts/corpus_recovery/dispatch_corpus_recovery_import.py',
             'scripts/corpus_recovery/dispatch_corpus_recovery_publication.py'],
             partial={CR+'transfer.py':['checked_put','GuardedStore']},
             gate='B7 target recovery/provenance import bound; old shared-index guards no longer own live import'),

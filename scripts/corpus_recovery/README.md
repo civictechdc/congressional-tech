@@ -18,13 +18,12 @@ Library code for assembly, transfer, and the write guards is in [`packages/corpu
 
 4. **`reconcile_corpus_recovery_bodies.py`** compares the sealed batch with document objects already in storage. It only reads. The report says which bodies are already present, which are missing, and which disagree.
 
-5. **`dispatch_corpus_recovery_import.py`** checks the sealed inputs, the reconciliation report, and that no other cloud writer holds the archive. With `--execute`, it stores the new document bytes and updates the raw indexes under a conditional write. Without `--execute`, it stops after the checks. Do not reuse a destination after a failed import; start a new one.
+5. **`run_corpus_recovery.py`** is a local supervisor for one of the commands above. It records the child process, its logs, and the exit code it actually waited for. A missing process is not success. Resume is a separate, explicit command.
 
-6. **`run_corpus_recovery.py`** is a local supervisor for one of the commands above. It records the child process, its logs, and the exit code it actually waited for. A missing process is not success. Resume is a separate, explicit command. The supervisor does not decide whether a remote write landed; the import command does that.
-
-Accepted recovery labels now enter raw as records in `recoveries/accepted.json`.
-The archive model and publisher consume them. The old catalog/viewer publication
-dispatcher is retired.
+Accepted recovery labels now enter raw through provenance staging and the common
+receipt writer (`corpus_recovery.reconcile`). The archive model and publisher
+consume them; the old shared-index import and catalog/viewer publication
+dispatchers are retired.
 
 ## What a sealed batch protects
 
