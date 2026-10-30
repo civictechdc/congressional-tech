@@ -96,8 +96,11 @@ jobs:
         run: .venv/bin/python -I .github/scripts/setup-native-runtime.py --directory "$RUNNER_TEMP/docspec-runtime" --output "$RUNNER_TEMP/native-runtime-check.json" --github-env "$GITHUB_ENV"
       - name: Run the committed producer backfill specification
         env:
+          CLOUDFLARE_ACCOUNT_ID: ${{ vars.CLOUDFLARE_ACCOUNT_ID }}
           DOCSPEC_RUNTIME_ARTIFACT: ${{ vars.DOCSPEC_RUNTIME_ARTIFACT }}
           DOCSPEC_ENGINE_CREDENTIALS: ${{ secrets.ARCHIVE_PUBLISH_ENGINE_CREDENTIALS }}
+          R2_ACCESS_KEY_ID: ${{ secrets.ARCHIVE_PUBLISH_R2_ACCESS_KEY_ID }}
+          R2_SECRET_ACCESS_KEY: ${{ secrets.ARCHIVE_PUBLISH_R2_SECRET_ACCESS_KEY }}
         run: .venv/bin/python -I .github/scripts/run-archive-job.py backfill
 
   maintenance:

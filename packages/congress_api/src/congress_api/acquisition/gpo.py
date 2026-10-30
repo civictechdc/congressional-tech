@@ -340,7 +340,7 @@ def _strip_api_key_from_url(url: str | None) -> str | None:
     return urlunsplit((parts.scheme, parts.netloc, parts.path, urlencode(filtered), parts.fragment))
 
 
-def list_collection(since: str, api_key: str, *, fetcher=None, receipt_writer=None, family: str = "govinfo/collections"):
+def list_collection(since: str, api_key: str, *, fetcher=None, receipt_writer=None, family: str = "govinfo/collections", receipt_keys: list[str] | None = None):
     """Yield every CHRG package modified since `since` (paged, 1000 at a time).
 
     Sends `X-Api-Key` in request headers so credentials never appear in recorded URLs.
@@ -351,7 +351,9 @@ def list_collection(since: str, api_key: str, *, fetcher=None, receipt_writer=No
         while url:
             clean_url = _strip_api_key_from_url(url)
             result = fetcher.fetch(clean_url)
-            receipt_writer.write(result, family=family)
+            r_key, _ = receipt_writer.write(result, family=family)
+            if receipt_keys is not None:
+                receipt_keys.append(r_key)
             if not (result.final.complete and result.final.http_status == 200 and result.final.body and result.final.body.path):
                 raise RuntimeError(f"GovInfo collection page fetch failed for {clean_url}: {result.final.error or result.final.http_status}")
             page = GpoCollectionPage.model_validate(json.loads(result.final.body.path.read_bytes().decode("utf-8")))

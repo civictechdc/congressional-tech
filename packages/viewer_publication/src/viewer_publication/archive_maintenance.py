@@ -277,6 +277,7 @@ def execute(spec,*,runtime_factory=None,storage_factory=None,now=None):
     work=Path(spec['work'])
     if work.exists() or work.is_symlink():
         raise ValueError('Maintenance work directory must be fresh')
+    from contextlib import nullcontext
     from congress_api.cli.raw_verify import apply_staged
     from congress_api.lake.maintenance import maintenance_decision,purge_generation,rebuild_generation
     from congress_api.retention.body_store import BodyStore,R2Adapter,R2Source
@@ -286,67 +287,67 @@ def execute(spec,*,runtime_factory=None,storage_factory=None,now=None):
     runtime_factory=runtime_factory or NativeDatasets.from_config
     storage_factory=storage_factory or connect_r2
     current_time=_time(now or datetime.now(timezone.utc))
-    client=storage_factory(bucket=spec['bucket'],retries={'total_max_attempts':1})
-    store=ArchiveMaintenanceStore(client=client,bucket=spec['bucket'])
-    releases=maintain_releases(store,now=current_time,external_pins=spec['external_pins'],execute=True)
+    need_engine=bool(spec.get('raw_verification') or spec.get('lake_maintenance'))
+    engine_config=(spec.get('engine_config')
+        or os.environ.get('DOCSPEC_RUNTIME_CONFIG')
+        or (os.environ.get('DOCSPEC_JOB_CONFIG') if need_engine else None))
+    if need_engine and (not isinstance(engine_config,str) or not engine_config.strip()):
+        raise ValueError('Maintenance raw or lake operations require engine_config or DOCSPEC_RUNTIME_CONFIG')
     raw_report=None
     lake_report=dict(decisions={},rebuilt={},purged=[])
-    need_engine=bool(spec.get('raw_verification') or spec.get('lake_maintenance'))
-    if need_engine:
-        engine_config=(spec.get('engine_config')
-            or os.environ.get('DOCSPEC_RUNTIME_CONFIG')
-            or os.environ.get('DOCSPEC_JOB_CONFIG'))
-        if not isinstance(engine_config,str) or not engine_config.strip():
-            raise ValueError('Maintenance raw or lake operations require engine_config or DOCSPEC_RUNTIME_CONFIG')
-        with runtime_factory(engine_config) as engine:
+    with (runtime_factory(engine_config) if engine_config else nullcontext(None)) as engine:
+        if engine is not None:
             engine.verify_runtime()
-            if spec.get('raw_verification'):
-                raw_cfg=spec['raw_verification']
-                raw_work=work/'raw-verify'
-                verified=verify_raw(
-                    R2Source(client,spec['bucket']),
-                    captures=Path(raw_cfg['captures']),
-                    receipts=json.loads(Path(raw_cfg['receipt_inventory']).read_text(encoding='utf-8')),
-                    previous=json.loads(Path(raw_cfg['verification_inventory']).read_text(encoding='utf-8')),
-                    engine=engine,
-                    work=raw_work,
-                    checked_at=current_time.isoformat(),
-                    seed=raw_cfg.get('seed'),
-                )
-                applied=None
-                if raw_cfg.get('apply_staged',True) and verified.get('valid'):
-                    applied=apply_staged(raw_work,BodyStore(R2Adapter(client,spec['bucket'])))
-                raw_report=dict(verification=verified,applied=applied)
-            if spec.get('lake_maintenance'):
-                lake_cfg=spec['lake_maintenance']
-                for table_name,obs in (lake_cfg.get('observations') or {}).items():
-                    exceeded=maintenance_decision(obs,spec['thresholds'])
-                    lake_report['decisions'][table_name]=exceeded
-                    rebuild_spec=(lake_cfg.get('rebuild') or {}).get(table_name)
-                    if exceeded and rebuild_spec is not None:
-                        rebuilt_pin=rebuild_generation(
-                            rebuild_spec['old_pin'],
-                            engine=engine,
-                            work=work/'lake-rebuild'/table_name,
-                            catalog_root=spec['catalog_root'],
-                            table=spec['tables'][table_name],
-                            schema=rebuild_spec['schema'],
-                            location=rebuild_spec['location'],
-                            keys=rebuild_spec['keys'],
-                            definition=rebuild_spec['definition'],
-                        )
-                        lake_report['rebuilt'][table_name]=rebuilt_pin
-                for index,purge_spec in enumerate(lake_cfg.get('purge') or ()):
-                    table_name=purge_spec['table']
-                    purged=purge_generation(
-                        purge_spec['pin'],
-                        table=spec['tables'][table_name],
-                        kept_inputs=releases['kept_inputs'],
+        client=storage_factory(bucket=spec['bucket'],retries={'total_max_attempts':1})
+        store=ArchiveMaintenanceStore(client=client,bucket=spec['bucket'])
+        releases=maintain_releases(store,now=current_time,external_pins=spec['external_pins'],execute=True)
+        if spec.get('raw_verification'):
+            raw_cfg=spec['raw_verification']
+            raw_work=work/'raw-verify'
+            verified=verify_raw(
+                R2Source(client,spec['bucket']),
+                captures=Path(raw_cfg['captures']),
+                receipts=json.loads(Path(raw_cfg['receipt_inventory']).read_text(encoding='utf-8')),
+                previous=json.loads(Path(raw_cfg['verification_inventory']).read_text(encoding='utf-8')),
+                engine=engine,
+                work=raw_work,
+                checked_at=current_time.isoformat(),
+                seed=raw_cfg.get('seed'),
+            )
+            applied=None
+            if raw_cfg.get('apply_staged',True) and verified.get('valid'):
+                applied=apply_staged(raw_work,BodyStore(R2Adapter(client,spec['bucket'])))
+            raw_report=dict(verification=verified,applied=applied)
+        if spec.get('lake_maintenance'):
+            lake_cfg=spec['lake_maintenance']
+            for table_name,obs in (lake_cfg.get('observations') or {}).items():
+                exceeded=maintenance_decision(obs,spec['thresholds'])
+                lake_report['decisions'][table_name]=exceeded
+                rebuild_spec=(lake_cfg.get('rebuild') or {}).get(table_name)
+                if exceeded and rebuild_spec is not None:
+                    rebuilt_pin=rebuild_generation(
+                        rebuild_spec['old_pin'],
                         engine=engine,
-                        work=work/'lake-purge'/f'{index:04d}-{table_name}',
+                        work=work/'lake-rebuild'/table_name,
                         catalog_root=spec['catalog_root'],
+                        table=spec['tables'][table_name],
+                        schema=rebuild_spec['schema'],
+                        location=rebuild_spec['location'],
+                        keys=rebuild_spec['keys'],
+                        definition=rebuild_spec['definition'],
                     )
-                    lake_report['purged'].append(dict(table=table_name,result=purged))
+                    lake_report['rebuilt'][table_name]=rebuilt_pin
+            for index,purge_spec in enumerate(lake_cfg.get('purge') or ()):
+                table_name=purge_spec['table']
+                purged=purge_generation(
+                    purge_spec['pin'],
+                    table=spec['tables'][table_name],
+                    kept_inputs=releases['kept_inputs'],
+                    engine=engine,
+                    work=work/'lake-purge'/f'{index:04d}-{table_name}',
+                    catalog_root=spec['catalog_root'],
+                )
+                lake_report['purged'].append(dict(table=table_name,result=purged))
     work.mkdir(parents=True,exist_ok=True)
     result=dict(
         status='executed',

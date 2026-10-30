@@ -39,6 +39,7 @@ from docspec_client.docspec_host import (
 
 __all__ = [
     'QUALIFIED_DOCSPEC_RUNTIME',
+    'RUNTIME_PIN_FILE',
     'SUPPORTED_PLATFORMS',
     'AggregateSpec',
     'ConnectedComponentsTransform',
@@ -56,9 +57,11 @@ __all__ = [
     'build_export_spec',
     'cleanup_safe',
     'facet_summary',
+    'load_runtime_pin',
     'native_storage_schema',
     'parse_export_pin',
     'producer_input_entry',
+    'runtime_pin_digest',
     'REQUIRED_LOOPBACK_CAPABILITIES',
     'ArrowResponse',
     'DocSpecFailure',

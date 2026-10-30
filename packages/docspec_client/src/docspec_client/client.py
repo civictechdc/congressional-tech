@@ -32,11 +32,14 @@ from .models import (
     PRE_ADMISSION_ERROR_CODES,
     PRODUCER_PARQUET_ROW_GROUP_SIZE,
     REQUIRED_LOOPBACK_CAPABILITIES,
+    RUNTIME_PIN_FILE,
     SUPPORTED_PLATFORMS,
     DocSpecFailure,
     PartitionSpec,
     UpdateMergeSpec,
     UpdateMergeStrategy,
+    load_runtime_pin,
+    runtime_pin_digest,
 )
 from .schema import (
     application_schema,
@@ -182,8 +185,19 @@ class NativeDatasets:
         expected_source_revision: str | None = None,
         required_features: Sequence[str] = (),
         required_capabilities: Sequence[str] = REQUIRED_LOOPBACK_CAPABILITIES,
+        pin_file: Path | str | None = None,
     ) -> dict[str, Any]:
         """Verify binary existence, permissions, digest, platform, features and capabilities before execution."""
+        if pin_file is not None:
+            pin = load_runtime_pin(pin_file)
+            if expected_source_revision is None:
+                expected_source_revision = pin['source_revision']
+            if not required_features:
+                required_features = tuple(pin['build_features'])
+            required_capabilities = tuple(dict.fromkeys([*required_capabilities, *pin['required_capabilities']]))
+            platform_for_pin = expected_platform if expected_platform is not None else self.platform
+            if expected_sha256 is None and platform_for_pin in pin['platforms']:
+                expected_sha256 = runtime_pin_digest(platform_for_pin, pin_path=pin_file)
         expected_sha = self._validate_sha256(expected_sha256) if expected_sha256 is not None else self.binary_sha256
         if expected_sha256 is not None and self.binary_sha256 is not None and expected_sha != self.binary_sha256:
             raise ValueError('Configured binary_sha256 differs from its approved SHA-256')

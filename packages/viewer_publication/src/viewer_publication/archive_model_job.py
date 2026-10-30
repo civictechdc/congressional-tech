@@ -4,6 +4,7 @@ from contextlib import contextmanager
 from collections.abc import Mapping
 from hashlib import md5
 import json
+import os
 from pathlib import Path
 from tempfile import TemporaryDirectory
 import re
@@ -195,8 +196,11 @@ def execute(spec):
     """Verify inputs, then invoke the one maintained model producer."""
     from docspec_client.client import NativeDatasets
     from viewer_publication.archive_model import build_release
+    engine_config=spec['engine_config']
+    if not Path(engine_config).exists() and os.environ.get('DOCSPEC_RUNTIME_CONFIG'):
+        engine_config=os.environ['DOCSPEC_RUNTIME_CONFIG']
     with model_arguments(spec) as arguments:
-        with NativeDatasets.from_config(spec['engine_config']) as engine:
+        with NativeDatasets.from_config(engine_config) as engine:
             manifest=build_release(**arguments,parser_versions=spec['parser_versions'],
                 catalog_version=spec['catalog_version'],engine=engine,
                 output=Path(spec['output']),scratch=Path(spec['scratch']))

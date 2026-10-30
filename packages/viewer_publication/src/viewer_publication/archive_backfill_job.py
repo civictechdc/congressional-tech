@@ -11,7 +11,7 @@ from congress_api.lake.daily import ALL_TABLE_NAMES
 from viewer_publication.archive_model_job import _local,provenance_record_kind
 
 FIELDS={'version','bucket','catalog_root','work','tables','batch_size','max_batches'}
-OPTIONAL={'engine_config','decided_at','max_work_items'}
+OPTIONAL={'engine_config','decided_at','max_work_items','body_inventory','receipt_inventory','local_root'}
 
 
 def _bucket(value):
@@ -83,6 +83,14 @@ def load_spec(path):
         if type(value['max_work_items']) is not int or value['max_work_items']<=0:
             raise ValueError('Backfill max_work_items must be a positive integer')
         result['max_work_items']=value['max_work_items']
+    if 'body_inventory' in value and value['body_inventory'] is not None:
+        result['body_inventory']=_local(value['body_inventory'],base)
+    if 'local_root' in value and value['local_root'] is not None:
+        result['local_root']=_local(value['local_root'],base)
+    if 'receipt_inventory' in value and value['receipt_inventory'] is not None:
+        if not isinstance(value['receipt_inventory'],list) or any(not isinstance(item,dict) for item in value['receipt_inventory']):
+            raise ValueError('Backfill receipt_inventory must be a list of objects')
+        result['receipt_inventory']=list(value['receipt_inventory'])
     return result
 
 
@@ -140,6 +148,19 @@ def execute(spec,*,runtime_factory=None,storage_factory=None,producer=None):
             max_work_items=spec.get('max_work_items',spec['batch_size']*spec['max_batches']),
             provenance=provenance,
         )
+        body_inv_path=Path(daily_spec['body_inventory'])
+        if not body_inv_path.exists():
+            import pyarrow as pa
+            import pyarrow.parquet as pq
+            body_inv_path.parent.mkdir(parents=True,exist_ok=True)
+            empty_schema=pa.schema([
+                ('body_sha',pa.binary(32)),
+                ('physical_key',pa.string()),
+                ('relative_path',pa.string()),
+                ('stored_bytes',pa.int64()),
+                ('stored_gzip',pa.bool_()),
+            ])
+            pq.write_table(pa.Table.from_pylist([],schema=empty_schema),body_inv_path)
         production=producer(daily_spec,engine=engine,raw_store=raw_store)
     work.mkdir(parents=True,exist_ok=True)
     report=dict(

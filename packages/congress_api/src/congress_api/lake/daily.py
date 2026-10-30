@@ -251,21 +251,37 @@ def produce_daily(spec,*,engine,raw_store):
     if 'meeting_records' in spec['tables']:
         meeting_head=tables.resolve_tables(**authority,work=work/'meeting-head',
             tables={'meeting_records':spec['tables']['meeting_records']})['meeting_records']
-        meetings_staged=meeting_records.stage(captures=heads['captures'],existing=meeting_head,engine=engine,
-            work=work/'meeting-records',local_root=spec['local_root'],raw_store=raw_store,
-            unreadable_files=unreadable_snapshot.files())
+        try:
+            meetings_staged=meeting_records.stage(captures=heads['captures'],existing=meeting_head,engine=engine,
+                work=work/'meeting-records',local_root=spec['local_root'],raw_store=raw_store,
+                unreadable_files=unreadable_snapshot.files(),max_work_items=spec['max_work_items'],
+                decided_at=spec['decided_at'],unreadable_store=raw_store)
+        except readings.BackfillRequired as error:
+            report.update(status='backfill_required');report['producerreports']['meeting_records']=error.as_dict()
+            return report
         meetings_staged['append']=(meeting_records.append(meetings_staged,**authority,work=work/'meeting-records-append',
             table=spec['tables']['meeting_records']) if pq.ParquetFile(meetings_staged['records']).metadata.num_rows else None)
+        imports.append(meetings_staged['unreadable_provenance'])
+        if meetings_staged['unreadable_provenance'] is not None:
+            acknowledgements[meetings_staged['unreadable_provenance']['key']]=meetings_staged['_unreadable_custody']
         report['producerreports']['meeting_records']=meetings_staged
         versions['meeting_records']=meetings_staged['parser_version']
     if 'appearance_records' in spec['tables']:
         appearance_head=tables.resolve_tables(**authority,work=work/'appearance-head',
             tables={'appearance_records':spec['tables']['appearance_records']})['appearance_records']
-        appearances_staged=appearance_records.stage(captures=heads['captures'],existing=appearance_head,engine=engine,
-            work=work/'appearance-records',local_root=spec['local_root'],raw_store=raw_store,
-            unreadable_files=unreadable_snapshot.files())
+        try:
+            appearances_staged=appearance_records.stage(captures=heads['captures'],existing=appearance_head,engine=engine,
+                work=work/'appearance-records',local_root=spec['local_root'],raw_store=raw_store,
+                unreadable_files=unreadable_snapshot.files(),max_work_items=spec['max_work_items'],
+                decided_at=spec['decided_at'],unreadable_store=raw_store)
+        except readings.BackfillRequired as error:
+            report.update(status='backfill_required');report['producerreports']['appearance_records']=error.as_dict()
+            return report
         appearances_staged['append']=(appearance_records.append(appearances_staged,**authority,work=work/'appearance-records-append',
             table=spec['tables']['appearance_records']) if pq.ParquetFile(appearances_staged['records']).metadata.num_rows else None)
+        imports.append(appearances_staged['unreadable_provenance'])
+        if appearances_staged['unreadable_provenance'] is not None:
+            acknowledgements[appearances_staged['unreadable_provenance']['key']]=appearances_staged['_unreadable_custody']
         report['producerreports']['appearance_records']=appearances_staged
         versions['appearance_records']=appearances_staged['parser_version']
     report['provenance']=_final_provenance(provenance,raw_store,imports,identities,

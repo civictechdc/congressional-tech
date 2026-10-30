@@ -25,7 +25,7 @@ _BODY_KEY_RE = re.compile(r'^bodies/sha256/([0-9a-f]{2})/([0-9a-f]{64})(?:\.(?:g
 
 
 def resolve_review_target(target):
-    """Normalize a 16-hex link key, 64-hex SHA-256, or raw body key to a 16-hex target key."""
+    """Normalize a 16-hex link key, 64-hex SHA-256, raw body key, or original_url to a 16-hex target key."""
     if not isinstance(target, str):
         raise ValueError('Invalid review target')
     if re.fullmatch(r'[0-9a-f]{16}', target):
@@ -35,6 +35,11 @@ def resolve_review_target(target):
     match = _BODY_KEY_RE.fullmatch(target)
     if match and match.group(1) == match.group(2)[:2]:
         return match.group(2)[:16]
+    if target.startswith(('http://', 'https://', 'url:')):
+        raw_url = target[4:] if target.startswith('url:') else target
+        if not raw_url:
+            raise ValueError('Invalid review target')
+        return sha256(('url:' + raw_url).encode('utf-8')).hexdigest()[:16]
     raise ValueError('Invalid review target')
 
 
@@ -42,7 +47,14 @@ def build_review_verdict(form, *, default_decided_at=None, default_reviewer=None
     """Convert an interactive review form submission into a schema-validated provenance record."""
     if not isinstance(form, dict):
         raise ValueError('Review form submission must be a mapping')
-    raw_target = form.get('target') or form.get('link_key') or form.get('body_key') or form.get('body_sha256') or form.get('sha256')
+    raw_target = (
+        form.get('target')
+        or form.get('link_key')
+        or form.get('body_key')
+        or form.get('body_sha256')
+        or form.get('sha256')
+        or form.get('original_url')
+    )
     target = resolve_review_target(raw_target)
     verdict = form.get('verdict')
     value = form.get('value')

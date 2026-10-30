@@ -21,6 +21,7 @@ Rules ([[PHASE-2]] §1.3 & [[DATA-MODEL]] §3, §7.2):
 
 from __future__ import annotations
 
+from hashlib import sha256
 import json
 import re
 import unicodedata
@@ -910,12 +911,25 @@ def stage(
     raw_store: Any = None,
     unreadable_files: Sequence[Mapping[str, Any]] = (),
     parser_version: str | None = None,
+    max_work_items: int | None = None,
+    decided_at: str | None = None,
+    unreadable_store: Any = None,
 ) -> dict[str, Any]:
     """Stage missing `appearance_records` rows from `captures` via native anti-join."""
     import pyarrow.parquet as pq
 
-    from ..retention.provenance import field, json_input, parquet_output, run_job
-    from .meeting_records import _read_candidate_body
+    from ..retention.body_store import BodyStore, LocalAdapter
+    from ..retention.provenance import (
+        field,
+        finish_stage,
+        import_unreadable,
+        imported_unreadable_provenance,
+        json_input,
+        parquet_output,
+        run_job,
+    )
+    from .meeting_records import _read_candidate_body, _read_receipt_lines
+    from .readings import BackfillRequired
     from .tables import table_input
 
     version = current_version() if parser_version is None else str(parser_version)
@@ -946,7 +960,7 @@ def stage(
         inputs.append(table_input("existing", existing))
 
     candidate_sql = """SELECT encode(sha256, 'hex') AS record_sha,
-        max(coalesce(stored_suffix, '.gz')) AS stored_suffix,
+        min(coalesce(stored_suffix, '')) AS stored_suffix,
         max(coalesce(url, requested_url, context_url, '')) AS source_url,
         CASE
             WHEN bool_or(family = 'congress/meetings'
@@ -955,7 +969,7 @@ def stage(
             WHEN bool_or(family IN ('house/witness-xml', 'house/meeting-xml')
                 OR (coalesce(url, requested_url, context_url, '') ILIKE '%docs.house.gov%'
                     AND (coalesce(url, requested_url, '') ILIKE '%.xml%' OR sniffed_format = 'xml'))) THEN 'house_xml'
-            WHEN bool_or(family = 'gpo/chrg'
+            WHEN bool_or(family IN ('gpo/chrg', 'govinfo/mods')
                 OR coalesce(url, requested_url, '') ILIKE '%govinfo.gov%CHRG%mods%'
                 OR coalesce(member_path, '') ILIKE '%mods.xml') THEN 'mods'
             WHEN bool_or(family = 'senate/hearings'
@@ -965,6 +979,16 @@ def stage(
         FROM captures
         WHERE sha256 IS NOT NULL AND coalesce(complete, true) AND coalesce(http_status, 200) BETWEEN 200 AND 299
         GROUP BY sha256"""
+
+    inline_sql = """SELECT DISTINCT receipt_key, receipt_line,
+        coalesce(url, requested_url, context_url, '') AS source_url
+        FROM captures
+        WHERE sha256 IS NULL AND outcome = 'saved-record'
+          AND receipt_key IS NOT NULL AND receipt_line IS NOT NULL
+          AND (family = 'congress/meetings'
+               OR coalesce(url, requested_url, '') ILIKE '%api.congress.gov%/committee-meeting%'
+               OR coalesce(url, requested_url, '') ILIKE '%congress.gov/committee-meeting%')
+        ORDER BY receipt_key, receipt_line"""
 
     version_sql = "'" + version.replace("'", "''") + "'"
     missing = (
@@ -979,46 +1003,187 @@ def stage(
             "AND e.parser_version=" + version_sql + ")"
         )
 
-    run_job(
+    queries: list[dict[str, Any]] = [
+        dict(name="inline_candidates", sql=inline_sql),
+        dict(
+            name="unreadable_shas",
+            sql=(
+                "SELECT DISTINCT u.record_sha FROM unreadable u "
+                "WHERE u.parser='appearance_records' AND u.parser_version="
+                + version_sql
+                + " AND NOT EXISTS (SELECT 1 FROM unreadable s WHERE s.supersedes=u.id)"
+            ),
+        ),
+    ]
+    if existing is not None:
+        queries.append(
+            dict(
+                name="existing_shas",
+                sql="SELECT DISTINCT record_sha FROM existing WHERE parser_version=" + version_sql,
+            )
+        )
+
+    reports = run_job(
         work,
         engine,
         inputs=inputs,
         steps=[dict(name="candidates", sql=candidate_sql)],
         outputs=[parquet_output(work, "work-list", "SELECT c.* FROM candidates c" + missing, ["record_sha"])],
+        queries=queries,
     )
 
     work_list_path = work / "work-list.parquet"
     work_items = pq.read_table(work_list_path).to_pylist()
     local_root_path = Path(local_root) if local_root is not None else None
-    to_parse: list[dict[str, Any]] = []
-    for item in work_items:
-        payload_bytes = _read_candidate_body(
-            item["record_sha"],
-            item.get("stored_suffix") or ".gz",
-            local_root=local_root_path,
-            raw_store=raw_store,
-        )
-        to_parse.append(
-            {
-                "record_sha": item["record_sha"],
-                "source": item["source"],
-                "payload": payload_bytes,
-                "source_url": item.get("source_url") or None,
-                "parser_version": version,
-            }
+    excluded_shas = {row["record_sha"] for row in reports.get("unreadable_shas", []) if row.get("record_sha")}
+    if existing is not None:
+        excluded_shas.update(row["record_sha"] for row in reports.get("existing_shas", []) if row.get("record_sha"))
+    seen_shas = {item["record_sha"] for item in work_items}
+
+    receipt_cache: dict[str, list[bytes]] = {}
+    inline_items: list[dict[str, Any]] = []
+    for inline_ref in reports.get("inline_candidates", []):
+        r_key = inline_ref["receipt_key"]
+        r_line = int(inline_ref["receipt_line"])
+        lines = _read_receipt_lines(r_key, local_root=local_root_path, raw_store=raw_store, cache=receipt_cache)
+        if 1 <= r_line <= len(lines):
+            line_bytes = lines[r_line - 1]
+            rec_sha = sha256(line_bytes).hexdigest()
+            if rec_sha not in excluded_shas and rec_sha not in seen_shas:
+                seen_shas.add(rec_sha)
+                inline_items.append(
+                    {
+                        "record_sha": rec_sha,
+                        "source": "congress_gov",
+                        "payload": line_bytes,
+                        "source_url": inline_ref.get("source_url") or None,
+                        "parser_version": version,
+                    }
+                )
+
+    total_work_items = len(work_items) + len(inline_items)
+    if max_work_items is not None and total_work_items > max_work_items:
+        raise BackfillRequired(
+            dict(
+                work_items=total_work_items,
+                work_list=work_list_path,
+                parser="appearance_records",
+                parser_version=version,
+            ),
+            max_work_items,
         )
 
-    produced_table = produce_appearance_records(to_parse, parser_version=version)
+    rows: list[dict[str, Any]] = []
+    unreadable_records: list[dict[str, Any]] = []
+    decision_time = decided_at or "2026-10-30T00:00:00Z"
+
+    for item in work_items:
+        rec_sha = item["record_sha"]
+        suffix = item["stored_suffix"] if item.get("stored_suffix") is not None else ".gz"
+        try:
+            payload_bytes = _read_candidate_body(
+                rec_sha,
+                suffix,
+                local_root=local_root_path,
+                raw_store=raw_store,
+            )
+            rows.append(
+                build_appearance_record_row(
+                    record_sha=rec_sha,
+                    source=item["source"],
+                    payload=payload_bytes,
+                    source_url=item.get("source_url") or None,
+                    parser_version=version,
+                )
+            )
+        except (ValueError, KeyError, ET.ParseError, UnicodeDecodeError) as exc:
+            unreadable_records.append(
+                {
+                    "id": f"unreadable:appearance_records:{version}:{rec_sha}",
+                    "body_sha256": rec_sha,
+                    "record_sha": rec_sha,
+                    "parser": "appearance_records",
+                    "parser_version": version,
+                    "reason": f"{type(exc).__name__}: {exc}",
+                    "decided_by": "appearance_records",
+                    "decided_at": decision_time,
+                    "supersedes": None,
+                }
+            )
+    for inline_item in inline_items:
+        rec_sha = inline_item["record_sha"]
+        try:
+            rows.append(
+                build_appearance_record_row(
+                    record_sha=rec_sha,
+                    source=inline_item["source"],
+                    payload=inline_item["payload"],
+                    source_url=inline_item.get("source_url"),
+                    parser_version=version,
+                )
+            )
+        except (ValueError, KeyError, ET.ParseError, UnicodeDecodeError) as exc:
+            unreadable_records.append(
+                {
+                    "id": f"unreadable:appearance_records:{version}:{rec_sha}",
+                    "body_sha256": None,
+                    "record_sha": rec_sha,
+                    "parser": "appearance_records",
+                    "parser_version": version,
+                    "reason": f"{type(exc).__name__}: {exc}",
+                    "decided_by": "appearance_records",
+                    "decided_at": decision_time,
+                    "supersedes": None,
+                }
+            )
+
+    unreadable_key = unreadable_path = unreadable_stage = unreadable_provenance = unreadable_custody = None
+    pending = bool(unreadable_records and unreadable_store is None)
+    if unreadable_records:
+        decisions_path = work / "unreadable-decisions.jsonl"
+        decisions_path.write_text(
+            "".join(json.dumps(r, separators=(",", ":")) + "\n" for r in unreadable_records),
+            encoding="utf-8",
+        )
+        if pending:
+            unreadable_stage = work / "unreadable-stage"
+            unreadable_stage.mkdir()
+            imported = import_unreadable(
+                BodyStore(LocalAdapter(unreadable_stage)),
+                decisions_path,
+                decided_at=decision_time,
+            )
+            unreadable_path = str(unreadable_stage / imported["key"])
+            finish_stage(
+                unreadable_stage,
+                kind="unreadable",
+                provenance=imported["key"],
+                records=len(unreadable_records),
+                inputs={},
+                extra=dict(decided_at=decision_time),
+            )
+        else:
+            imported = import_unreadable(unreadable_store, decisions_path, decided_at=decision_time)
+            unreadable_provenance, unreadable_custody = imported_unreadable_provenance(
+                imported, unreadable_store, decisions_path
+            )
+        unreadable_key = imported["key"]
+
+    produced_table = table(rows)
     out_path = work / "appearance-records.parquet"
     pq.write_table(produced_table, out_path)
     return dict(
         records=out_path,
         work_list=work_list_path,
-        work_items=len(work_items),
+        work_items=total_work_items,
         produced=produced_table.num_rows,
         parser_version=version,
-        unreadable_pending=False,
-        unreadable_provenance=None,
+        unreadable_key=unreadable_key,
+        unreadable_path=unreadable_path,
+        unreadable_stage=unreadable_stage,
+        unreadable_pending=pending,
+        unreadable_provenance=unreadable_provenance,
+        _unreadable_custody=unreadable_custody,
     )
 
 

@@ -250,3 +250,68 @@ def test_maintenance_and_backfill_cli_plan_and_execute_specs(tmp_path,capsys):
     backfill_plan=json.loads(capsys.readouterr().out)
     assert backfill_plan['status']=='planned' and backfill_plan['executed'] is False
     assert set(backfill_plan['tables'])==set(ALL_TABLE_NAMES)
+
+
+def test_maintenance_execute_verifies_runtime_before_storage_access_and_backfill_creates_inventory(tmp_path):
+    from pathlib import Path
+    from viewer_publication import archive_backfill_job,archive_maintenance
+    from congress_api.lake.daily import ALL_TABLE_NAMES
+    events=[]
+    class FailingRuntime:
+        def __enter__(self):return self
+        def __exit__(self,*_):pass
+        def verify_runtime(self):
+            events.append('verify_runtime')
+            raise ValueError('Runtime qualification failed')
+    def never_storage(**_):
+        events.append('storage')
+        raise AssertionError('Storage must not be opened before engine verification')
+    maint_spec=dict(
+        version=1,
+        bucket='archive-fixture',
+        catalog_root=None,
+        work=str(tmp_path/'maint-work'),
+        external_pins=[],
+        tables={name:dict(namespace=['archive'],name=name) for name in ALL_TABLE_NAMES},
+        thresholds=dict(file_count=256,manifest_count=64,scan_planning_seconds=30.0),
+        engine_config=str(tmp_path/'runtime.json'),
+        lake_maintenance=dict(observations={}),
+    )
+    with pytest.raises(ValueError,match='Runtime qualification failed'):
+        archive_maintenance.execute(maint_spec,runtime_factory=lambda _:FailingRuntime(),storage_factory=never_storage,now=NOW)
+    assert events==['verify_runtime']
+
+    # Verify archive_backfill_job.execute creates an empty body-inventory.parquet when absent
+    class OkRuntime:
+        def __enter__(self):return self
+        def __exit__(self,*_):pass
+        def verify_runtime(self):return dict(verified=True)
+    class EmptyPaginatedR2:
+        def get_paginator(self,op):
+            from types import SimpleNamespace
+            assert op=='list_objects_v2'
+            return SimpleNamespace(paginate=lambda **_: [dict(Contents=[],IsTruncated=False)])
+    observed_daily={}
+    def fake_producer(daily_spec,*,engine,raw_store):
+        observed_daily.update(daily_spec)
+        assert Path(daily_spec['body_inventory']).is_file()
+        return dict(status='completed',pins={})
+    backfill_spec=dict(
+        version=1,
+        bucket='archive-fixture',
+        catalog_root=None,
+        work=str(tmp_path/'backfill-work'),
+        tables={name:dict(namespace=['archive'],name=name) for name in ALL_TABLE_NAMES},
+        batch_size=100,
+        max_batches=2,
+        engine_config=str(tmp_path/'runtime.json'),
+    )
+    report=archive_backfill_job.execute(
+        backfill_spec,
+        runtime_factory=lambda _:OkRuntime(),
+        storage_factory=lambda **_:EmptyPaginatedR2(),
+        producer=fake_producer,
+    )
+    assert report['status']=='executed' and report['production']['status']=='completed'
+    assert observed_daily['max_work_items']==200
+    assert (tmp_path/'backfill-work/backfill-report.json').is_file()

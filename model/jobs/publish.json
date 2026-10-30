@@ -7,12 +7,12 @@
   },
   "daily": {
     "path": "publish-daily.json",
-    "sha256": "83aa6f0ea00e155f4568e6e7ccceb80b2bf2388d21d97f9ac8a7d8fa33bb0a7b",
-    "size": 849
+    "sha256": "f17e281d5c23f8dec67b2950284733ef20bf5101065d8ef459cab210022f57bc",
+    "size": 942
   },
   "bucket": "congressional-tech-raw",
   "work": "../../output/archive-publish",
-  "public_origin": "https://data.congressional.tech",
+  "public_origin": "https://congressional-data.spicygov.ai",
   "receipt_keys": [],
   "provenance": [],
   "run": {

@@ -49,6 +49,24 @@ def validate_edge_config(
     ruleset = spec["cloudflare_ruleset"]
     if ruleset.get("phase") != "http_response_headers_transform":
         raise ValueError(f"Expected http_response_headers_transform phase, got {ruleset.get('phase')!r}")
+    rules_by_ref = {r["ref"]: r for r in ruleset.get("rules", [])}
+    required_refs = {
+        "public-r2-security-and-disposition-headers-base-and-immutable-cache",
+        "public-r2-security-and-disposition-headers-mutable-manifests-no-store",
+        "public-r2-security-and-disposition-headers-non-pdf-csp-and-disposition",
+        "public-r2-security-and-disposition-headers-pdf-filename-disposition",
+        "public-r2-security-and-disposition-headers-non-pdf-filename-disposition",
+    }
+    if set(rules_by_ref) != required_refs:
+        raise ValueError(f"Unexpected ruleset refs: {sorted(rules_by_ref)}")
+    for disp_ref in (
+        "public-r2-security-and-disposition-headers-pdf-filename-disposition",
+        "public-r2-security-and-disposition-headers-non-pdf-filename-disposition",
+    ):
+        expr = rules_by_ref[disp_ref]["expression"]
+        for forbidden in ("%", '\\"', "\\\\", ";", "/", "..", "\\r", "\\n"):
+            if f'not contains(http.request.uri.args["filename"][0], "{forbidden}")' not in expr:
+                raise ValueError(f"Missing header-injection guard {forbidden!r} in {disp_ref}")
 
     sample_sha = "ab" + "cd" * 31
     pdf_headers = evaluate_response_headers(

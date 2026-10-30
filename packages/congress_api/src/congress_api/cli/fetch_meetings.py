@@ -86,6 +86,7 @@ def run_meeting_fetchers(
             spool_limit=spool_limit,
             headers=headers,
         )
+        discovered_detail_urls = []
         for item in congress_endpoints:
             spec = item if isinstance(item, dict) else {'endpoint': item}
             res = meetings_acq.relist_endpoint_window(
@@ -108,25 +109,42 @@ def run_meeting_fetchers(
                 }
             )
             summary['receipt_keys'].extend(res['receipt_keys'])
+            discovered_detail_urls.extend(res['detail_urls'])
 
-        for detail_url in congress_detail_urls:
+        seen_detail_urls = set()
+        for detail_url in [*discovered_detail_urls, *congress_detail_urls]:
+            canon_detail = str(detail_url).split('?', 1)[0].rstrip('/')
+            if canon_detail in seen_detail_urls:
+                continue
+            seen_detail_urls.add(canon_detail)
             res = meetings_acq.fetch_detail_through_raw(fetcher, writer, detail_url)
             summary['congress_details'].append(res)
             summary['receipt_keys'].extend(res['receipt_keys'])
 
+        discovered_gpo_packages = []
         if gpo_since:
             key = api_key or os.environ.get('DATA_GOV_API_KEY') or ''
+            gpo_list_receipts = []
             listed_pkgs = list(
                 gpo_acq.list_collection(
                     gpo_since,
                     key,
                     fetcher=fetcher,
                     receipt_writer=writer,
+                    receipt_keys=gpo_list_receipts,
                 )
             )
             summary['gpo_listed_count'] = len(listed_pkgs)
+            summary['receipt_keys'].extend(gpo_list_receipts)
+            discovered_gpo_packages.extend(
+                pkg['packageId'] for pkg in listed_pkgs if isinstance(pkg, dict) and pkg.get('packageId')
+            )
 
-        for package_id in gpo_packages:
+        seen_gpo_packages = set()
+        for package_id in [*discovered_gpo_packages, *gpo_packages]:
+            if package_id in seen_gpo_packages:
+                continue
+            seen_gpo_packages.add(package_id)
             res = gpo_acq.fetch_package_through_raw(fetcher, writer, package_id)
             summary['gpo_packages'].append(res)
             summary['receipt_keys'].extend(res['receipt_keys'])

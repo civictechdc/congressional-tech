@@ -388,3 +388,60 @@ def test_native_daily_producer_refreshes_and_pins_all_five_tables(tmp_path):
     assert second['status']=='completed' and set(second['pins'])==set(ALL_TABLE_NAMES)
     assert second['producerreports']['meeting_records']['work_items']==0
     assert second['producerreports']['appearance_records']['work_items']==0
+
+
+def test_inline_saved_record_and_govinfo_mods_staging_with_anti_join(tmp_path):
+    import gzip
+    from docspec_client.client import NativeDatasets
+    from congress_api.lake import appearance_records,captures,meeting_records
+    raw=tmp_path/'raw';raw.mkdir()
+    store=BodyStore(LocalAdapter(raw))
+    inline_row=dict(
+        writer=dict(job='b14-meeting-fetchers',commit='a'*40),
+        run_id='inline-run',
+        family='congress/meetings',
+        requested_url='https://api.congress.gov/v3/committee-meeting/118/house/115599?format=json',
+        url='https://api.congress.gov/v3/committee-meeting/118/house/115599?format=json',
+        retrieved_at=STAMP,
+        record=dict(
+            committeeMeeting=dict(
+                eventId='115599',
+                congress=118,
+                chamber='House',
+                title='Inline Saved Meeting',
+                date='2024-08-01T14:00:00Z',
+                committees=[dict(systemCode='hsif00',name='Energy',chamber='House')],
+                witnesses=[dict(name='Dr. Inline Witness',organization='Lab')],
+            )
+        ),
+    )
+    receipt_rel='receipts/congress/meetings/2026-10-28/assemble-inline.jsonl.gz'
+    receipt_path=raw/receipt_rel;receipt_path.parent.mkdir(parents=True,exist_ok=True)
+    receipt_path.write_bytes(gzip.compress((json.dumps(inline_row)+'\n').encode(),mtime=0))
+    qual=tmp_path/'inline-qual.json'
+    from congress_api.retention.provenance import file_pin
+    qual.write_text(json.dumps(dict(path=str(receipt_path),**file_pin(receipt_path),producer='inline test')))
+    eng=NativeDatasets.from_config(os.environ['DOCSPEC_JOB_CONFIG'])
+    try:
+        cap_stage=captures.stage_captures([dict(key=receipt_rel,path=str(receipt_path),qualification=str(qual))],
+            engine=eng,work=tmp_path/'cap-stage')/'captures.parquet'
+        m_stage=meeting_records.stage(captures=cap_stage,engine=eng,work=tmp_path/'m1',
+            local_root=raw,raw_store=store,decided_at=STAMP,unreadable_store=store)
+        assert m_stage['work_items']==1 and m_stage['produced']==1
+        m_rows=pq.read_table(m_stage['records']).to_pylist()
+        assert len(m_rows)==1 and m_rows[0]['meetings'][0]['event_id']=='115599'
+        # Second pass with existing records anti-joins the inline record
+        m_stage2=meeting_records.stage(captures=cap_stage,existing=m_stage['records'],engine=eng,
+            work=tmp_path/'m2',local_root=raw,raw_store=store,decided_at=STAMP,unreadable_store=store)
+        assert m_stage2['work_items']==0 and m_stage2['produced']==0
+
+        a_stage=appearance_records.stage(captures=cap_stage,engine=eng,work=tmp_path/'a1',
+            local_root=raw,raw_store=store,decided_at=STAMP,unreadable_store=store)
+        assert a_stage['work_items']==1 and a_stage['produced']==1
+        a_rows=pq.read_table(a_stage['records']).to_pylist()
+        assert len(a_rows)==1 and a_rows[0]['appearances'][0]['name']=='Dr. Inline Witness'
+        a_stage2=appearance_records.stage(captures=cap_stage,existing=a_stage['records'],engine=eng,
+            work=tmp_path/'a2',local_root=raw,raw_store=store,decided_at=STAMP,unreadable_store=store)
+        assert a_stage2['work_items']==0 and a_stage2['produced']==0
+    finally:
+        eng.close()

@@ -94,7 +94,7 @@
           {
             "ref": "public-r2-security-and-disposition-headers-mutable-manifests-no-store",
             "description": "Set nosniff, Referrer-Policy, sandbox CSP, and Cache-Control: no-store on top-level manifest selectors",
-            "expression": "(http.host eq \"congressional-data.spicygov.ai\") and (http.request.uri.path eq \"/viewer-publications/manifest.json\" or http.request.uri.path eq \"/exports/manifest.json\" or ends_with(http.request.uri.path, \"/recovery-status.json\"))",
+            "expression": "(http.host eq \"congressional-data.spicygov.ai\") and (http.request.uri.path eq \"/viewer-publications/manifest.json\" or http.request.uri.path eq \"/exports/manifest.json\" or ends_with(http.request.uri.path, \"/recovery-status.json\") or (starts_with(http.request.uri.path, \"/exports/\") and (ends_with(http.request.uri.path, \"/manifest.json\") or ends_with(http.request.uri.path, \"/latest.json\")) and not starts_with(http.request.uri.path, \"/exports/releases/\") and not starts_with(http.request.uri.path, \"/exports/snapshots/\")))",
             "action": "rewrite",
             "action_parameters": {
               "headers": {
@@ -136,13 +136,13 @@
           {
             "ref": "public-r2-security-and-disposition-headers-pdf-filename-disposition",
             "description": "Set inline RFC 6266 Content-Disposition from ?filename= on PDF bodies",
-            "expression": "(http.host eq \"congressional-data.spicygov.ai\") and starts_with(http.request.uri.path, \"/bodies/sha256/\") and len(http.request.uri.args[\"filename\"]) > 0 and len(http.request.uri.args[\"filename\"][0]) <= 128 and not contains(http.request.uri.args[\"filename\"][0], \"\\\"\") and not contains(http.request.uri.args[\"filename\"][0], \"\\\\\") and not contains(http.request.uri.args[\"filename\"][0], \";\") and not contains(http.request.uri.args[\"filename\"][0], \"/\") and not contains(http.request.uri.args[\"filename\"][0], \"..\") and not contains(http.request.uri.args[\"filename\"][0], \"\\r\") and not contains(http.request.uri.args[\"filename\"][0], \"\\n\") and starts_with(lower(http.response.content_type.media_type), \"application/pdf\")",
+            "expression": "(http.host eq \"congressional-data.spicygov.ai\") and starts_with(http.request.uri.path, \"/bodies/sha256/\") and len(http.request.uri.args[\"filename\"]) > 0 and len(http.request.uri.args[\"filename\"][0]) <= 128 and not contains(http.request.uri.args[\"filename\"][0], \"%\") and not contains(http.request.uri.args[\"filename\"][0], \"\\\"\") and not contains(http.request.uri.args[\"filename\"][0], \"\\\\\") and not contains(http.request.uri.args[\"filename\"][0], \";\") and not contains(http.request.uri.args[\"filename\"][0], \"/\") and not contains(http.request.uri.args[\"filename\"][0], \"..\") and not contains(http.request.uri.args[\"filename\"][0], \"\\r\") and not contains(http.request.uri.args[\"filename\"][0], \"\\n\") and starts_with(lower(http.response.content_type.media_type), \"application/pdf\")",
             "action": "rewrite",
             "action_parameters": {
               "headers": {
                 "Content-Disposition": {
                   "operation": "set",
-                  "expression": "concat(\"inline; filename=\\\"\", http.request.uri.args[\"filename\"][0], \"\\\"\")"
+                  "expression": "concat(\"inline; filename=\\\"\", http.request.uri.args[\"filename\"][0], \"\\\"; filename*=UTF-8''\", http.request.uri.args[\"filename\"][0])"
                 }
               }
             },
@@ -151,13 +151,13 @@
           {
             "ref": "public-r2-security-and-disposition-headers-non-pdf-filename-disposition",
             "description": "Set attachment RFC 6266 Content-Disposition from ?filename= on non-PDF bodies",
-            "expression": "(http.host eq \"congressional-data.spicygov.ai\") and starts_with(http.request.uri.path, \"/bodies/sha256/\") and len(http.request.uri.args[\"filename\"]) > 0 and len(http.request.uri.args[\"filename\"][0]) <= 128 and not contains(http.request.uri.args[\"filename\"][0], \"\\\"\") and not contains(http.request.uri.args[\"filename\"][0], \"\\\\\") and not contains(http.request.uri.args[\"filename\"][0], \";\") and not contains(http.request.uri.args[\"filename\"][0], \"/\") and not contains(http.request.uri.args[\"filename\"][0], \"..\") and not contains(http.request.uri.args[\"filename\"][0], \"\\r\") and not contains(http.request.uri.args[\"filename\"][0], \"\\n\") and not starts_with(lower(http.response.content_type.media_type), \"application/pdf\")",
+            "expression": "(http.host eq \"congressional-data.spicygov.ai\") and starts_with(http.request.uri.path, \"/bodies/sha256/\") and len(http.request.uri.args[\"filename\"]) > 0 and len(http.request.uri.args[\"filename\"][0]) <= 128 and not contains(http.request.uri.args[\"filename\"][0], \"%\") and not contains(http.request.uri.args[\"filename\"][0], \"\\\"\") and not contains(http.request.uri.args[\"filename\"][0], \"\\\\\") and not contains(http.request.uri.args[\"filename\"][0], \";\") and not contains(http.request.uri.args[\"filename\"][0], \"/\") and not contains(http.request.uri.args[\"filename\"][0], \"..\") and not contains(http.request.uri.args[\"filename\"][0], \"\\r\") and not contains(http.request.uri.args[\"filename\"][0], \"\\n\") and not starts_with(lower(http.response.content_type.media_type), \"application/pdf\")",
             "action": "rewrite",
             "action_parameters": {
               "headers": {
                 "Content-Disposition": {
                   "operation": "set",
-                  "expression": "concat(\"attachment; filename=\\\"\", http.request.uri.args[\"filename\"][0], \"\\\"\")"
+                  "expression": "concat(\"attachment; filename=\\\"\", http.request.uri.args[\"filename\"][0], \"\\\"; filename*=UTF-8''\", http.request.uri.args[\"filename\"][0])"
                 }
               }
             },

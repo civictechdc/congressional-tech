@@ -1,5 +1,6 @@
 {
   "work": "../../output/archive-daily",
+  "decided_at": "2026-10-30T00:00:00Z",
   "catalog_root": null,
   "tables": {
     "captures": {
@@ -33,8 +34,10 @@
       "name": "appearance_records"
     }
   },
+  "receipt_inventory": [],
   "body_inventory": "../../output/archive-daily-inputs/body-inventory.parquet",
   "local_root": "../../output/archive-daily-inputs/raw",
+  "max_work_items": 5000,
   "provenance": {
     "recoveries": [],
     "reviews": [],

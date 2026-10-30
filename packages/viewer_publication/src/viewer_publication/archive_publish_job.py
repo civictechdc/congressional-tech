@@ -1,6 +1,7 @@
 """Plan or execute the one guarded archive publication path."""
 import argparse
 import json
+import os
 from pathlib import Path
 import re
 import subprocess
@@ -83,6 +84,19 @@ def produce_daily_inputs(template,daily,*,engine,raw_store):
     records=snapshot.qualify([key for key in full if provenance_record_kind(key) is not None])
     selected=dict(daily,provenance={kind:[row for row in records if provenance_record_kind(row['key'])==kind]
         for kind in ['recoveries','reviews','unreadable']})
+    body_inv_path=Path(selected['body_inventory'])
+    if not body_inv_path.exists():
+        import pyarrow as pa
+        import pyarrow.parquet as pq
+        body_inv_path.parent.mkdir(parents=True,exist_ok=True)
+        empty_schema=pa.schema([
+            ('body_sha',pa.binary(32)),
+            ('physical_key',pa.string()),
+            ('relative_path',pa.string()),
+            ('stored_bytes',pa.int64()),
+            ('stored_gzip',pa.bool_()),
+        ])
+        pq.write_table(pa.Table.from_pylist([],schema=empty_schema),body_inv_path)
     production=produce_daily(selected,engine=engine,raw_store=raw_store)
     summary={key:production.get(key) for key in ['status','pins','receipt_keys','new_receipt_keys','currentversions']}
     with (work/'daily-summary.json').open('x') as target:json.dump(summary,target,sort_keys=True)
@@ -321,7 +335,10 @@ def execute(spec,*,runtime_factory=None,storage_factory=None,process_runner=None
     runtime_factory=runtime_factory or NativeDatasets.from_config
     storage_factory=storage_factory or connect_r2
     process_runner=process_runner or subprocess.run
-    settings,remote,endpoint,configuration_pins=publication_configuration(spec['_model']['engine_config'],bucket=spec['bucket'])
+    engine_config=spec['_model']['engine_config']
+    if not Path(engine_config).exists() and os.environ.get('DOCSPEC_RUNTIME_CONFIG'):
+        engine_config=os.environ['DOCSPEC_RUNTIME_CONFIG']
+    settings,remote,endpoint,configuration_pins=publication_configuration(engine_config,bucket=spec['bucket'])
     def require_configuration():
         for path,identity in configuration_pins:identity.require(path)
         require_comparison(acceptance)
@@ -331,7 +348,7 @@ def execute(spec,*,runtime_factory=None,storage_factory=None,process_runner=None
         upload_remote=directory/'remote.json';upload_settings=directory/'runtime.json'
         upload_remote.write_text(json.dumps(dict(remote,owned_prefix='s3://'+spec['bucket']+'/viewer-publications')))
         upload_settings.write_text(json.dumps(dict(settings,remote=str(upload_remote),workspace=str(directory/'workspace'))))
-        with runtime_factory(spec['_model']['engine_config']) as model, runtime_factory(upload_settings) as uploads:
+        with runtime_factory(engine_config) as model, runtime_factory(upload_settings) as uploads:
             if (Path(model.remote).resolve()!=Path(settings['remote']) or Path(uploads.remote).resolve()!=upload_remote):
                 raise ValueError('Publication destination differs from the loaded runtime')
             engine=PublicationRuntime(model,uploads)

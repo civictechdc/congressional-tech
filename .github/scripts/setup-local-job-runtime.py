@@ -22,12 +22,14 @@ LIMITS = {'compute_threads', 'memory_bytes', 'scratch_bytes', 'batch_rows',
 MAX_ARCHIVE_BYTES = 1024**3
 
 
-def install_archive(archive, expected_sha256, directory, *, proof=None, pin_file=None):
+def install_archive(archive, expected_sha256=None, directory=None, *, proof=None, pin_file=None):
     """Check complete archive custody, then expose exactly four validated files."""
-    if not isinstance(expected_sha256, str) or not re.fullmatch('[0-9a-f]{64}', expected_sha256):
+    if expected_sha256 is None and pin_file is None:
+        raise ValueError('An approved archive SHA-256 is required')
+    if expected_sha256 is not None and (not isinstance(expected_sha256, str) or not re.fullmatch('[0-9a-f]{64}', expected_sha256)):
         raise ValueError('An approved archive SHA-256 is required')
     actual = proof.require(archive) if proof is not None else file_identity(archive)
-    if actual['sha256'] != expected_sha256 or not 0 < actual['bytes'] <= MAX_ARCHIVE_BYTES:
+    if not 0 < actual['bytes'] <= MAX_ARCHIVE_BYTES or (expected_sha256 is not None and actual['sha256'] != expected_sha256):
         raise ValueError('Local runtime archive digest or size differs from approval')
     directory = Path(directory)
     if directory.exists() or directory.is_symlink():
@@ -111,9 +113,11 @@ def main(argv=None):
     try:
         url = require_https(os.environ.get('DOCSPEC_LOCAL_RUNTIME_URL', ''))
         pin = load_runtime_pin(args.pin_file)
-        digest = args.archive_sha256 or runtime_pin_digest(args.platform, pin_path=args.pin_file)
-        if not re.fullmatch('[0-9a-f]{64}', digest):
+        pinned_binary_sha = runtime_pin_digest(args.platform, pin_path=args.pin_file)
+        if not re.fullmatch('[0-9a-f]{64}', pinned_binary_sha):
             raise ValueError('Committed runtime pin must supply a 64-char SHA-256 digest')
+        if args.archive_sha256 is not None and not re.fullmatch('[0-9a-f]{64}', args.archive_sha256):
+            raise ValueError('An approved archive SHA-256 is required')
         runner = Path(os.environ['RUNNER_TEMP']).resolve()
         for path in (args.directory, args.github_env):
             if path.is_symlink() or not path.resolve().is_relative_to(runner) or any(c in str(path) for c in '\r\n'):
@@ -126,8 +130,10 @@ def main(argv=None):
                 size = int(source.headers.get('Content-Length', '0'))
                 if not 0 < size <= MAX_ARCHIVE_BYTES:
                     raise ValueError('Runtime download requires a bounded Content-Length')
-                proof = copy_checked(source, archive, size=size, expected={'bytes':size, 'sha256':digest}, exclusive=True)
-            config = install_archive(archive, digest, args.directory, proof=proof,
+                expected_download = ({'bytes': size, 'sha256': args.archive_sha256}
+                                     if args.archive_sha256 is not None else None)
+                proof = copy_checked(source, archive, size=size, expected=expected_download, exclusive=True)
+            config = install_archive(archive, args.archive_sha256, args.directory, proof=proof,
                                      pin_file=args.pin_file if args.archive_sha256 is None else None)
         env = {**os.environ, 'DOCSPEC_JOB_CONFIG':str(config)}
         root = Path(__file__).resolve().parents[2]

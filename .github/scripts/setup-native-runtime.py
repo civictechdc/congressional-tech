@@ -34,9 +34,12 @@ def document(raw, label):
         raise SetupFailure(f'{label} must be valid JSON') from None
 
 
-def artifact_descriptor(raw, *, pin_file=RUNTIME_PIN_FILE, enforce_platform_digest=False):
+def artifact_descriptor(raw, *, pin_file=RUNTIME_PIN_FILE, enforce_platform_digest=None):
     pin = load_runtime_pin(pin_file)
     value = document(raw, 'Runtime artifact descriptor')
+    if isinstance(value, dict) and 'sha256' not in value and value.get('platform') in pin.get('platforms', {}):
+        pinned_sha = pin['platforms'][value['platform']]['sha256']
+        value = {**value, 'sha256': pinned_sha}
     required = {'version', 'platform', 'source_revision', 'bucket', 'key', 'bytes', 'sha256'}
     optional = {'build_features', 'required_capabilities'}
     if (not isinstance(value, dict) or not required.issubset(value) or set(value) - (required | optional)
@@ -65,7 +68,10 @@ def artifact_descriptor(raw, *, pin_file=RUNTIME_PIN_FILE, enforce_platform_dige
     if value['source_revision'] != pin['source_revision']:
         raise SetupFailure('Runtime artifact revision differs from the qualified DocSpec revision '
                            f"{pin['source_revision']}")
-    if enforce_platform_digest:
+    should_enforce = enforce_platform_digest if enforce_platform_digest is not None else (
+        Path(pin_file).resolve() != Path(RUNTIME_PIN_FILE).resolve()
+    )
+    if should_enforce:
         pinned_digest = pin['platforms'].get(value['platform'], {}).get('sha256')
         if value['sha256'] != pinned_digest:
             raise SetupFailure('Runtime artifact digest differs from the committed DocSpec runtime pin')

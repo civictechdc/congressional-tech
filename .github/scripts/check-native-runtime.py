@@ -52,6 +52,7 @@ def check(path, binary_sha256=None, *, expected_platform=None,
         expected_source_revision=expected_source_revision,
         required_features=required_features,
         required_capabilities=required_capabilities,
+        pin_file=pin_file if binary_sha256 is None else None,
     )
     return dict(
         verified=True,
