@@ -1,6 +1,6 @@
 ---
 id: ct-elhm
-status: open
+status: closed
 deps: []
 links: [ct-uov2, ct-v967]
 created: 2026-10-22T17:34:59Z
@@ -41,3 +41,7 @@ Subagent Self-Review Additions:
 **2026-10-24T18:47:54Z**
 
 Reopened after the Oct 24 audit. captions/main.py:92 catches 'except (DownloadError, Exception)', so programming errors become silent, retryable error rows and can hide raw caption-capture failures. Done when: only DownloadError (and named transient errors) are retried, and other exceptions fail the run, with a test.
+
+**2026-10-30T16:49:25Z**
+
+Fixed in commit 91c2f86c: narrowed packages/youtube_api/src/youtube_api/captions/main.py:92 from except (yt_dlp.utils.DownloadError, Exception) to except (yt_dlp.utils.DownloadError, OSError, TimeoutError) so programming errors propagate instead of becoming silent retryable error rows. Verified by test_youtube_programming_errors_propagate_instead_of_becoming_retryable_error_rows in packages/congress_api/tests/test_caption_source_fidelity.py (74 passed across test_caption_source_fidelity.py, test_caption_inventory_receipts.py, and packages/youtube_api/tests/).

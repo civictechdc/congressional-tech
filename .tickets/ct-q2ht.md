@@ -1,6 +1,6 @@
 ---
 id: ct-q2ht
-status: open
+status: closed
 deps: []
 links: [ct-czsd, ct-2ukk, ct-nc7l]
 created: 2026-10-24T18:15:53Z
@@ -32,3 +32,7 @@ Owner action: a bucket-scoped, read-only R2 token for these runs. The run of rec
 **2026-10-24T18:47:53Z**
 
 Efficiency pass: also log today's raw-index cost per save (leaves touched, rows rewritten, datasets created) as the baseline for ct-w5fm. Owner action: a bucket-scoped, read-only R2 token for the hosted runs.
+
+**2026-10-30T16:49:25Z**
+
+Verified completed and superseded under docs/plans/simplification-plan-20261024.md §5.2 (M2: Done), D1 (cefr-7sar commit fdb9242c), E2/E4 (cef-h2rv), and F5 G15 (commits f619d529 and a0eaac9a): the full raw-derived rebuild is the live production model and benchmark_core_rebuild.py was deleted.

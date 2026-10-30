@@ -1,6 +1,6 @@
 ---
 id: ct-qqk2
-status: open
+status: closed
 deps: [ct-syx8, ct-st8m]
 links: [ct-2yl5, ct-o24q, ct-wxhg, ct-unv0, ct-1dsp, ct-1mbc, ct-atjy, ct-idhg, ct-hm4b, ct-v6ao, ct-30pw, ct-5jqd, ct-2ut4, ct-76n5, ct-bpyj, ct-h73z, ct-piku, ct-zkzt, ct-m59w, ct-zb9y]
 created: 2026-10-24T18:15:54Z
@@ -35,3 +35,7 @@ Contract tests ported from `test_viewer_publication_attempt.py` before it is del
 **2026-10-24T18:47:53Z**
 
 Efficiency pass E6. (1) Upload exactly the pin set the engine returns, addressed by each file's own digest: today it omits document_occurrences.parquet and manifest.json (publication_cli.py:162,169) and uploads nothing in engine mode. (2) Send Content-MD5 and sha256 metadata; reuse the export's digests instead of re-hashing (client.py:327-342). (3) Advance the pointer with IfMatch, since today it is create-only and a second publish fails. (4) Derive the operation id from the source release plus the spec digest, replacing the placeholder exp-sources-v-export-01 (filename_exports.py:745,766). (5) Delete the local Python export path after a parity test, with no timing run (decision 6).
+
+**2026-10-30T16:49:51Z**
+
+Verified completed and superseded by the engine-first native release architecture (cef-h2rv, cef-pe0q, ct-3ebz commit 79f8919f, and F5 G06 commit 1e780f1e): viewer_publication/archive_model.py and archive_publish.py build and publish the 19-file native Parquet release with IfMatch pointer compare-and-swap, and the publication journal/resume/attempt route (resume.py, prepare_workflow_resume.py, attempt.py, continuation.py) was deleted in commit 1e780f1e.

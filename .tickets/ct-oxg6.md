@@ -1,6 +1,6 @@
 ---
 id: ct-oxg6
-status: open
+status: closed
 deps: [ct-3faj, ct-q968, ct-3li2, ct-cpio, ct-bt1q]
 links: [ct-ugqq, ct-cpio, ct-xl0y, ct-3li2, ct-xq1y, ct-5fkx, ct-tw3r, ct-l9g0]
 created: 2026-10-20T18:47:06Z
@@ -49,3 +49,7 @@ Evolutionary-refactoring audit at `main` (`8221566d` / `6cd80b0e`): restored `ct
 - Evidence: docs/reviews/2026-10-24-ticket-audit/batches/mi03b/mi03b-verdicts.md:25
 - Status: Reopened. Unmet: AC2, no mutable binary default (`binary.py` still searches `target/debug` then PATH, `client.py` falls back silently, news_lake uses `shutil.which`). Owner: WS3 step 6 (ct-tw3r), one digest-checked resolver. AC4's capability matrix is not carried.
 - See docs/reviews/2026-10-24-ticket-audit/README.md
+
+**2026-10-30T16:49:51Z**
+
+Verified completed via ct-l9g0 (commits 6d0df51d and 20206037), cef-9e9w, and cef-zrhq: model/registries/runtime-pin.json (RUNTIME_PIN_FILE) is the single committed runtime pin (source_revision, build_features, required_capabilities, per-OS sha256) enforced across NativeDatasets.verify_runtime() and .github/scripts/{check-native-runtime,setup-native-runtime,setup-local-job-runtime}.py. Verified by uv run pytest -q .github/tests/test_native_runtime_preflight.py .github/tests/test_native_runtime_setup.py .github/tests/test_local_job_runtime.py.

@@ -1,6 +1,6 @@
 ---
 id: ct-63hg
-status: open
+status: closed
 deps: [ct-snzi]
 links: [ct-v9ua]
 created: 2026-10-24T18:15:53Z
@@ -21,3 +21,9 @@ Plan open question 3 is answered: repair the rows in place, do not regenerate th
 - If any exist, those rows are repaired in place through the engine (a keyed update from receipt values), verified row for row after the write.
 - R2 check 1 (every earlier `receipts/` and `bodies/` key unchanged) and check 2 (every `receipt_key` exists) pass before and after.
 
+
+## Notes
+
+**2026-10-30T16:49:25Z**
+
+Verified completed and superseded under docs/plans/simplification-plan-20261024.md §1, §6.2.12 (B12 cefr-mn96 commit 0c9a252e), §6.4.1 (D1 cefr-7sar commit fdb9242c), and ct-fcwp/ct-6ysr (commit cd2e81a7): the captures Iceberg table was rebuilt from raw receipts (carrying stored_md5 and stored_suffix from receipts and retiring stored_sha256), B12 verified old-index repairs, and B9/B10 verified 1,357,968 raw bodies with 0 mismatches.

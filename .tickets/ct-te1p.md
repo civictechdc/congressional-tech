@@ -1,6 +1,6 @@
 ---
 id: ct-te1p
-status: open
+status: closed
 deps: [ct-2ukk]
 links: [ct-8kl2, ct-mi03, ct-czsd, ct-2ukk, ct-oc2g, ct-xu1o, ct-8ax6, ct-dzyf, ct-13cn, ct-dmca, ct-gziq, ct-n6lj, ct-sb0s, ct-aia9, ct-2yl5, ct-bwac, ct-gi01, ct-a3le, ct-0odd, ct-ec91, ct-3ttc, ct-84xa, ct-syx8, ct-t906, ct-vzcb, ct-z5cc]
 created: 2026-10-21T20:53:05Z
@@ -43,3 +43,9 @@ Sequenced immediately after ct-2ukk completes:
 - Evidence: docs/reviews/2026-10-24-ticket-audit/batches/kl2a1aa/kl2a1aa-verdicts.md:27
 - Status: Reopened. Unmet: the WAF tests check a simulator instead of the deployed expression (WS5, ct-t906); the exclusion gate fails open, and the owner decided to delete the exclusion-list hook entirely (WS2 step 3, ct-syx8); production never writes `.pdf` siblings, pending plan open question 5 (always or never). Not covered by the plan: non-PDF bodies download as raw gzip with no Content-Encoding.
 - See docs/reviews/2026-10-24-ticket-audit/README.md
+
+## Notes
+
+**2026-10-30T16:49:24Z**
+
+Verified completed across ct-z5cc (commits 6d0df51d and 20206037), cefr-81oe (commit 9a3674cd, exclusion-list hook deleted per owner decision 8), and ct-vzcb (commit cd2e81a7, B13 uncompressed .pdf streaming copier executed across 941,470 PDFs in packages/congress_api/src/congress_api/retention/pdf_backfill.py); apps/viewer-data/ is retired. Verified by uv run pytest -q packages/congress_api/tests/test_r2_public_edge_and_pdf_storage.py packages/congress_api/tests/test_pdf_backfill.py.

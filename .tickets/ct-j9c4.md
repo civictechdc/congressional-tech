@@ -1,6 +1,6 @@
 ---
 id: ct-j9c4
-status: open
+status: closed
 deps: [ct-snzi]
 links: []
 created: 2026-10-24T18:15:53Z
@@ -25,3 +25,7 @@ No raw captures have run since about Oct 19. Hosted capture failed from Oct 21 t
 **2026-10-24T18:47:54Z**
 
 Also check, after the first capture run, that new compressed (gzip) capture rows carry stored_sha256 different from sha256 and equal to the stored object's hash (fix 54a68ac7).
+
+**2026-10-30T16:49:25Z**
+
+Verified completed and superseded under docs/plans/simplification-plan-20261024.md §6.4.1 (D1 cefr-7sar commit fdb9242c) and ct-4jms (commit 6d0df51d): the captures Iceberg table and url_state.parquet carry stored_md5 and stored_suffix from raw receipts, and capture-archive.yml runs against live url_state.parquet.

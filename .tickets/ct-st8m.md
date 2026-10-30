@@ -1,6 +1,6 @@
 ---
 id: ct-st8m
-status: open
+status: closed
 deps: []
 links: []
 created: 2026-10-24T18:15:53Z
@@ -27,3 +27,7 @@ This is plan P5 (audit open item 6) and blocks WS6 step 5, which moves the mappi
 **2026-10-24T18:47:54Z**
 
 After reconciling, stop rewriting accepted.json whole on each publish (O(A), mappings.py:44-78): derive it from receipts, or publish append-only deltas (E11).
+
+**2026-10-30T16:49:24Z**
+
+Verified completed via cefr-8q3p (commits 0a55702e and 87bc28fd), cefr-7cj1 (commits ac9a747c and 7a8c74a6), and F5 G12 (commit 8978b3bb): all 24,028 recovery decisions in accepted.json and receipt recoveries were reconciled via packages/corpus_recovery/src/corpus_recovery/reconcile.py with write-once provenance under provenance/recoveries/ and measurements committed under docs/measurements/engine-first-20261027/b7/, and legacy mappings.py was deleted in commit 8978b3bb.

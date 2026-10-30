@@ -1,6 +1,6 @@
 ---
 id: ct-uov2
-status: open
+status: closed
 deps: []
 links: [ct-bzl9, ct-sbdp, ct-elhm, ct-syem, ct-8kl2, ct-mi03, ct-3180, ct-ccy4, ct-2io2, ct-f7p8, ct-oc2g]
 created: 2026-10-24T18:15:54Z
@@ -26,3 +26,9 @@ First move: adopt the eight points below and add the one cheap check: commit SHA
 7. A check fails when a closed ticket cites a commit SHA that does not resolve.
 8. Every reviewer brief names the project runners (`scripts/dev.py`, `scripts/check`).
 
+
+## Notes
+
+**2026-10-30T16:49:25Z**
+
+Verified adopted in docs/plans/simplification-plan-20261024.md §3 (Constraints and Rules) and enforced across the engine-first simplification and Phase-2 execution.
