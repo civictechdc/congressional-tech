@@ -89,7 +89,7 @@ def fetch_one(
         try:
             with yt_dlp.YoutubeDL(opts) as ydl:
                 info = ydl.extract_info(f"https://www.youtube.com/watch?v={video_id}", download=True)
-        except (yt_dlp.utils.DownloadError, Exception) as e:
+        except (yt_dlp.utils.DownloadError, OSError, TimeoutError) as e:
             msg = str(e).splitlines()[-1]
             kind = "error"  # A failed request never establishes absence of captions.
             logging.warning(f"{video_id}: {msg[:120]}")

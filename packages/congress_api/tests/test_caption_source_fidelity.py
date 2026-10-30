@@ -38,12 +38,14 @@ def test_real_youtube_space_payload_line_is_not_a_cue_separator():
     assert youtube.vtt_to_text(raw) == 'THE TO COMMITTEE RULES. MEMBERS\n'
 
 
-def fake_ydl(monkeypatch, *, info=None, tracks=None, error=None):
+def fake_ydl(monkeypatch, *, info=None, tracks=None, error=None, exception=None):
     class Downloader:
         def __init__(self, opts): self.opts = opts
         def __enter__(self): return self
         def __exit__(self, *args): pass
         def extract_info(self, url, download):
+            if exception is not None:
+                raise exception
             if error:
                 raise yt_dlp.utils.DownloadError(error)
             folder = Path(self.opts['outtmpl']).parent
@@ -59,6 +61,16 @@ def test_failed_youtube_acquisition_never_becomes_permanent_none(tmp_path, monke
     assert youtube.fetch_one(VIDEO, tmp_path) == (VIDEO, 'error', 0)
     youtube.main(tmp_path, [VIDEO], nthreads=1)
     assert (tmp_path / youtube.INDEX).read_text().strip() == 'video_id,kind,characters'
+
+
+def test_youtube_programming_errors_propagate_instead_of_becoming_retryable_error_rows(tmp_path, monkeypatch):
+    fake_ydl(monkeypatch, exception=TimeoutError('network timed out'))
+    assert youtube.fetch_one(VIDEO, tmp_path) == (VIDEO, 'error', 0)
+    fake_ydl(monkeypatch, exception=TypeError('unexpected extractor contract change'))
+    with pytest.raises(TypeError, match='unexpected extractor contract change'):
+        youtube.fetch_one(VIDEO, tmp_path)
+    with pytest.raises(TypeError, match='unexpected extractor contract change'):
+        youtube.main(tmp_path, [VIDEO], nthreads=1)
 
 
 def test_youtube_manual_track_is_selected_and_all_downloaded_timing_is_retained(tmp_path, monkeypatch):
