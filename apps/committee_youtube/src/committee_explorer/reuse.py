@@ -24,9 +24,14 @@ def implementation_digest():
 
 
 def request_key(*, files, youtube_dir, transcript_files, format, limit, as_of, document_filenames=None):
+    from .lake_inputs import input_digest
     # Ordinary input paths are machine-local. Transcript URIs are retained in
     # source evidence, so moving those files must also invalidate reuse.
-    inputs = {name: file_sha(path) if path is not None else None for name, path in files.items()}
+    inputs = {
+        name: (file_sha(path) if isinstance(path, (str, Path)) and Path(path).is_file() else input_digest(path))
+        if path is not None else None
+        for name, path in files.items()
+    }
     if document_filenames is not None or 'document_filenames' not in inputs:
         inputs['document_filenames'] = file_sha(document_filenames) if document_filenames is not None else inputs.get('document_filenames')
     inputs['youtube'] = None if youtube_dir is None else [(p.name, file_sha(p)) for p in sorted(Path(youtube_dir).glob('youtube_*.json'))]

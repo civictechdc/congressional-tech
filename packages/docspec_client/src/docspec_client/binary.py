@@ -16,7 +16,16 @@ def resolve_docspec_binary(binary: Path | str | None = None) -> Path:
         if env_bin and Path(env_bin).is_file():
             return Path(env_bin).resolve()
 
-    # Search candidate directories relative to package location and cwd
+    for runtime_var in ("QUALIFIED_DOCSPEC_RUNTIME", "DOCSPEC_JOB_CONFIG"):
+        runtime_val = os.environ.get(runtime_var)
+        if not runtime_val:
+            continue
+        rp = Path(runtime_val)
+        candidate = rp / "docspec" if rp.is_dir() else (rp.parent / "docspec" if rp.name.endswith(".json") else rp)
+        if candidate.is_file() and os.access(candidate, os.X_OK):
+            return candidate.resolve()
+
+    # Search candidate release directories relative to package location and cwd
     search_roots = []
     pkg_dir = Path(__file__).resolve().parent
     for parent in (pkg_dir, *pkg_dir.parents):
@@ -29,11 +38,8 @@ def resolve_docspec_binary(binary: Path | str | None = None) -> Path:
     for root in search_roots:
         candidates = (
             root / "spicy-stack" / "docspec-rs" / "target" / "release" / "docspec",
-            root / "spicy-stack" / "docspec-rs" / "target" / "debug" / "docspec",
             root / "docspec-rs" / "target" / "release" / "docspec",
-            root / "docspec-rs" / "target" / "debug" / "docspec",
             root / "target" / "release" / "docspec",
-            root / "target" / "debug" / "docspec",
         )
         for candidate in candidates:
             if candidate.is_file() and os.access(candidate, os.X_OK):

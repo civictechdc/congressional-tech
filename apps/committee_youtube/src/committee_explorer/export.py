@@ -319,9 +319,9 @@ class _SpilledGpoEvidence(Mapping):
 class ExportOptions:
     """Options and parameters for committee explorer offline Parquet export."""
 
-    meetings: Any
-    output_dir: Any
-    state_dir: Any
+    meetings: Any = None
+    output_dir: Any = None
+    state_dir: Any = None
     gpo_path: Any = None
     gpo_evidence_path: Any = None
     house_state: Any = None
@@ -342,6 +342,9 @@ class ExportOptions:
     committees_path: Any = None
     document_filenames: Any = None
     docspec_workspace: Any = None
+    meeting_records: Any = None
+    appearance_records: Any = None
+    spicy_regs: Any = None
 
 
 def export(options: ExportOptions | None = None, **kwargs):
@@ -370,9 +373,14 @@ def export(options: ExportOptions | None = None, **kwargs):
     committees_path = opts.committees_path
     document_filenames = opts.document_filenames
     docspec_workspace = opts.docspec_workspace
+    meeting_records = opts.meeting_records
+    appearance_records = opts.appearance_records
+    spicy_regs = opts.spicy_regs
 
     if format != "parquet":
         raise ValueError("Committee Explorer export requires parquet format; legacy sharded json export has been retired")
+    if meetings is None and meeting_records is None:
+        raise ValueError("Either meetings or meeting_records must be supplied")
     now = as_of or datetime.now(timezone.utc)
     if now.tzinfo is None:
         raise ValueError("as_of must include a timezone")
@@ -391,13 +399,28 @@ def export(options: ExportOptions | None = None, **kwargs):
         reuse_key = None
         if reuse_from is not None:
             from .reuse import request_key, save_receipt, try_reuse
-            reuse_key = request_key(files={
+            reuse_files = {
                 'meetings': meetings, 'gpo': gpo_path, 'gpo_evidence': gpo_evidence_path, 'house': house_state, 'senate': senate_state,
                 'inventory': inventory_state, 'recovered_witnesses': recovered_witnesses,
                 'video_matches': video_matches_path, 'recordings': recordings_path,
                 'issue_decisions': issue_decisions, 'attempts': attempts, 'committees': committees_path,
                 'document_filenames': document_filenames,
-            }, youtube_dir=youtube_dir, transcript_files=transcript_files, format=format, limit=limit, as_of=as_of, document_filenames=document_filenames)
+            }
+            if meeting_records is not None or appearance_records is not None or spicy_regs is not None:
+                reuse_files.update(
+                    meeting_records=meeting_records,
+                    appearance_records=appearance_records,
+                    spicy_regs=spicy_regs,
+                )
+            reuse_key = request_key(
+                files=reuse_files,
+                youtube_dir=youtube_dir,
+                transcript_files=transcript_files,
+                format=format,
+                limit=limit,
+                as_of=as_of,
+                document_filenames=document_filenames,
+            )
             if reused := try_reuse(output, state, reuse_from, reuse_key):
                 return reused, None
         ids = IdRegistry(state / "ids.json")
@@ -451,7 +474,39 @@ def export(options: ExportOptions | None = None, **kwargs):
             return AdapterContext(now, input_id, provider, ids)
         def assemble_inputs():
             """Keep adapter scratch data out of graph validation and publication."""
-            ctx, rows = context_jsonl(meetings, "congress.gov", ("Legacy native records lack per-record retrieval timestamps.",))
+            from .lake_inputs import adapt_lake_meetings_and_appearances, adapt_spicy_regs_committees, input_digest
+            if meeting_records is not None:
+                lake_rows, _ = adapt_lake_meetings_and_appearances(meeting_records, appearance_records)
+                ctx = source_context(
+                    input_digest(meeting_records),
+                    "congress.gov",
+                    ("Lake meeting_records input.",),
+                    is_digest=True,
+                )
+                if appearance_records is not None:
+                    app_ctx = source_context(
+                        input_digest(appearance_records),
+                        "appearance_records",
+                        ("Lake appearance_records input.",),
+                        is_digest=True,
+                    )
+                    scopes.append(
+                        SourceScope(
+                            provider="appearance_records",
+                            scope="Lake appearance_records witness and document observations",
+                            status="partial" if limit else "included",
+                            input_snapshot_ids=(app_ctx.input_id,),
+                            explanation="Imported lake appearance_records.",
+                        )
+                    )
+                if meetings is not None:
+                    _, extra_rows = context_jsonl(meetings, "congress.gov", ("Legacy native records lack per-record retrieval timestamps.",))
+                    seen_keys = {native.meeting_key(r) for r in lake_rows}
+                    rows = lake_rows + [r for r in extra_rows if native.meeting_key(r) not in seen_keys]
+                else:
+                    rows = lake_rows
+            else:
+                ctx, rows = context_jsonl(meetings, "congress.gov", ("Legacy native records lack per-record retrieval timestamps.",))
             rows.sort(key=native.meeting_key)
             all_meetings = rows
             total = len(rows)
@@ -488,8 +543,25 @@ def export(options: ExportOptions | None = None, **kwargs):
             assembly.add(native.records(rows, ctx, recording_keys=recording_keys))
             del recording_keys
             selected_congresses = {int(row['congress']) for row in rows}
-            if committees_path:
-                committee_context, committee_rows = context_jsonl(committees_path, 'congress.gov:committees')
+            if committees_path or spicy_regs is not None:
+                if committees_path:
+                    committee_context, committee_rows = context_jsonl(committees_path, 'congress.gov:committees')
+                    committee_explanation = None
+                else:
+                    committee_context = source_context(
+                        input_digest(spicy_regs),
+                        'congress.gov:committees',
+                        ('Pinned spicy-regs committees, members, and rosters.',),
+                        is_digest=True,
+                    )
+                    committee_rows, spicy_counts = adapt_spicy_regs_committees(
+                        spicy_regs,
+                        congresses=selected_congresses,
+                    )
+                    committee_explanation = (
+                        f"Imported {spicy_counts['committees']} committees, {spicy_counts['members']} members, "
+                        f"and {spicy_counts['rosters']} roster assignments from spicy-regs."
+                    )
                 if limit:
                     committee_rows = [row for row in committee_rows if int(row['congress']) in selected_congresses]
                 for item in committee_metadata.records(committee_rows, committee_context, assembly.records):
@@ -501,7 +573,7 @@ def export(options: ExportOptions | None = None, **kwargs):
                     assembly.current.add(key)
                 scopes.append(SourceScope(provider='congress.gov:committees', scope='Official Congress-scoped committee lists',
                                           status='partial' if limit else 'included', input_snapshot_ids=(committee_context.input_id,),
-                                          explanation=f'Imported {len(committee_rows)} retained committee records; committees with no retained meetings may also appear.'))
+                                          explanation=committee_explanation or f'Imported {len(committee_rows)} retained committee records; committees with no retained meetings may also appear.'))
                 del committee_rows
             else:
                 scopes.append(SourceScope(provider='congress.gov:committees', scope='Official Congress-scoped committee lists',
@@ -1037,7 +1109,10 @@ def main():
     logging.basicConfig(level=logging.INFO, format='%(asctime)s %(name)s: %(message)s')
     p = argparse.ArgumentParser(description=__doc__)
     p.add_argument("--format", choices=("parquet",), default="parquet")
-    p.add_argument("--meetings", type=Path, required=True)
+    p.add_argument("--meetings", type=Path, help="Legacy retained Congress.gov meetings JSONL/gzip input.")
+    p.add_argument("--meeting-records", type=Path, help="Phase-2 lake meeting_records Parquet or JSONL input.")
+    p.add_argument("--appearance-records", type=Path, help="Phase-2 lake appearance_records Parquet or JSONL input.")
+    p.add_argument("--spicy-regs", type=Path, help="Pinned spicy-regs directory or publication.v2.json manifest.")
     p.add_argument("--committees-path", type=Path, help="Retained Congress-scoped committee metadata JSON Lines, optionally gzipped.")
     p.add_argument("--output-dir", type=Path, required=True)
     p.add_argument("--state-dir", type=Path, required=True)

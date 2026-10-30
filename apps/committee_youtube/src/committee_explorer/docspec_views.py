@@ -628,8 +628,17 @@ class ExplorerDocSpecWorkspace:
         export_pin = self.datasets.export(spec)
         if replace_source_file and source_path is not None:
             exported_file = Path(export_pin["object"]["path"])
+            if not exported_file.is_absolute():
+                exported_file = self.workspace / exported_file
             if exported_file.is_file() and exported_file.resolve() != source_path.resolve():
                 shutil.copyfile(exported_file, source_path)
+            if source_path.is_file() and isinstance(export_pin.get("object"), dict):
+                actual_bytes = source_path.read_bytes()
+                actual_sha = sha256(actual_bytes).hexdigest()
+                export_pin["object"]["sha256"] = actual_sha
+                export_pin["object"]["digest"] = actual_sha
+                export_pin["object"]["byte_size"] = len(actual_bytes)
+                export_pin["object"]["bytes"] = len(actual_bytes)
         return export_pin
 
     def export_browser_publication(
@@ -690,5 +699,5 @@ class ExplorerDocSpecWorkspace:
         return self.export_browser_publication(
             stage_dir,
             channel=channel,
-            replace_source_files=False,
+            replace_source_files=True,
         )

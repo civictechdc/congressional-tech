@@ -299,6 +299,17 @@ def test_manifest_parquet_tables_and_docspec_views_resolve_every_record_and_sour
 
     pins = json.loads((tmp_path / "state/export-pins.json").read_text())
     assert set(pins) == {"committees", "meetings", "materials", "witnesses", "issues", "sources"}
+    manifest_parts = {p.path: p for p in manifest.partitions}
+    for name in ("committees", "meetings", "materials", "witnesses", "issues", "sources"):
+        fname = f"{name}.parquet"
+        file_bytes = (directory / fname).read_bytes()
+        expected_sha = sha256(file_bytes).hexdigest()
+        expected_size = len(file_bytes)
+        obj = pins[name]["object"]
+        assert obj.get("sha256") == expected_sha or obj.get("digest") == expected_sha
+        assert obj.get("byte_size") == expected_size or obj.get("bytes") == expected_size
+        assert manifest_parts[fname].sha256 == expected_sha
+        assert manifest_parts[fname].byte_size == expected_size
 
     # Verify export() automatically populated and refreshed explorer_meeting_summaries & explorer_committee_rollups
     with ExplorerDocSpecWorkspace(ds_dir) as ds_ws:
@@ -524,3 +535,261 @@ def test_official_nominee_csv_and_senate_state_share_one_appearance(tmp_path):
     assert appearance.roles == ('witness', 'nominee')
     sources = {source.id: source for source in catalog.sources}
     assert {sources[citation.source.id].provider for citation in appearance.provenance.citations} == {'senate.committees', 'recovered-witnesses'}
+
+
+def test_export_from_lake_meeting_and_appearance_records_and_spicy_regs(tmp_path):
+    import pyarrow as pa
+    import pyarrow.parquet as pq
+    from congress_api.lake.appearance_records import ARROW_SCHEMA as APP_SCHEMA
+    from congress_api.lake.meeting_records import ARROW_SCHEMA as MTG_SCHEMA
+
+    mtg_path = tmp_path / "meeting_records.parquet"
+    app_path = tmp_path / "appearance_records.parquet"
+    spicy_dir = tmp_path / "spicy-regs"
+    spicy_dir.mkdir()
+
+    pq.write_table(
+        pa.Table.from_pylist(
+            [
+                {
+                    "record_sha": "a" * 64,
+                    "parser_version": "meeting-records-v1",
+                    "source": "congress_gov",
+                    "meetings": [
+                        {
+                            "event_id": "119001",
+                            "chamber": "house",
+                            "congress": 119,
+                            "session": 1,
+                            "updated": "2026-10-01T12:00:00Z",
+                            "title": "Oversight of Federal Rules",
+                            "meeting_date": "2026-10-01",
+                            "meeting_type": "hearing",
+                            "status": "scheduled",
+                            "sittings": [
+                                {
+                                    "start": "2026-10-01T14:00:00Z",
+                                    "end": None,
+                                    "room": "H-313",
+                                    "building": "Capitol",
+                                    "address": None,
+                                }
+                            ],
+                            "committees": [
+                                {
+                                    "system_code": "hsru00",
+                                    "name": "Committee on Rules",
+                                    "chamber": "house",
+                                    "role": "convening",
+                                }
+                            ],
+                            "subject_keys": ["119:hr:42"],
+                            "transcript_jackets": [],
+                            "videos": [
+                                {
+                                    "video_key": "youtube:abcdefghijk",
+                                    "url": "https://www.youtube.com/watch?v=abcdefghijk",
+                                    "title": "Rules Oversight Video",
+                                }
+                            ],
+                        }
+                    ],
+                }
+            ],
+            schema=MTG_SCHEMA,
+        ),
+        mtg_path,
+    )
+
+    pq.write_table(
+        pa.Table.from_pylist(
+            [
+                {
+                    "record_sha": "b" * 64,
+                    "parser_version": "appearance-records-v1",
+                    "source": "congress_gov",
+                    "appearances": [
+                        {
+                            "event_id": "119001",
+                            "package_id": None,
+                            "page_url": None,
+                            "name_key": "jane doe",
+                            "name": "Dr. Jane Doe",
+                            "honorific": "Dr.",
+                            "given": "Jane",
+                            "middle": None,
+                            "family": "Doe",
+                            "suffix": None,
+                            "position": "Director",
+                            "organization": "Policy Institute",
+                            "on_behalf_of": None,
+                            "location": None,
+                            "panel": "1",
+                            "panel_order": 1,
+                            "display_order": 1,
+                            "witness_type": "nongovernmental",
+                            "testified": True,
+                            "bioguide_id": None,
+                            "document_urls": ["https://docs.house.gov/meetings/RU/RU00/20261001/119001/HHRG-119-RU00-Wstate-DoeJ-20261001.pdf"],
+                        }
+                    ],
+                }
+            ],
+            schema=APP_SCHEMA,
+        ),
+        app_path,
+    )
+
+    pq.write_table(
+        pa.Table.from_pylist(
+            [
+                {
+                    "system_code": "hsru00",
+                    "name": "Committee on Rules",
+                    "chamber": "House",
+                    "committee_type": "Standing",
+                    "parent_system_code": None,
+                    "website_url": "https://rules.house.gov",
+                    "is_current": True,
+                    "history": [],
+                }
+            ]
+        ),
+        spicy_dir / "spicy_committees.parquet",
+    )
+    pq.write_table(
+        pa.Table.from_pylist(
+            [
+                {
+                    "bioguide_id": "C001053",
+                    "name_first": "Tom",
+                    "name_last": "Cole",
+                    "lis_id": None,
+                    "opensecrets_id": None,
+                    "govtrack_id": None,
+                    "icpsr_id": None,
+                    "wikidata_id": None,
+                    "fec_ids": [],
+                }
+            ]
+        ),
+        spicy_dir / "spicy_members.parquet",
+    )
+    pq.write_table(
+        pa.Table.from_pylist(
+            [
+                {
+                    "congress": 119,
+                    "system_code": "hsru00",
+                    "bioguide_id": "C001053",
+                    "position": "Chair",
+                    "rank": 1,
+                    "party": "R",
+                }
+            ]
+        ),
+        spicy_dir / "spicy_committee_assignments.parquet",
+    )
+
+    manifest, catalog = export(
+        meeting_records=mtg_path,
+        appearance_records=app_path,
+        spicy_regs=spicy_dir,
+        output_dir=tmp_path / "public",
+        state_dir=tmp_path / "state",
+        reuse_from=tmp_path / "public",
+        as_of=NOW,
+    )
+    assert catalog is not None
+    meetings = [r for r in catalog.records if r.kind == "meeting"]
+    assert len(meetings) == 1
+    assert meetings[0].title == "Oversight of Federal Rules"
+    terms = [r for r in catalog.records if r.kind == "committee_term" and r.committee_code == "hsru00"]
+    assert len(terms) == 1
+    assert terms[0].committee_type == "standing"
+    appearances = [r for r in catalog.records if r.kind == "appearance"]
+    assert len(appearances) == 1
+    assert appearances[0].name.display == "Dr. Jane Doe"
+    items = [r for r in catalog.records if r.kind == "legislative_item"]
+    assert len(items) == 1
+    assert items[0].designation == "HR 42"
+
+    reused_manifest, reused_catalog = export(
+        meeting_records=mtg_path,
+        appearance_records=app_path,
+        spicy_regs=spicy_dir,
+        output_dir=tmp_path / "public",
+        state_dir=tmp_path / "state",
+        reuse_from=tmp_path / "public",
+        as_of=NOW,
+    )
+    assert reused_catalog is None
+    assert reused_manifest.publication_id == manifest.publication_id
+
+
+def test_docspec_views_sync_export_replaces_stage_files_and_unifies_pins(tmp_path, monkeypatch):
+    from committee_explorer.docspec_views import ExplorerDocSpecWorkspace
+    from docspec_client.binary import resolve_docspec_binary
+
+    # Verify resolve_docspec_binary honors QUALIFIED_DOCSPEC_RUNTIME and ignores target/debug
+    runtime_dir = tmp_path / "qualified-runtime"
+    runtime_dir.mkdir()
+    fake_bin = runtime_dir / "docspec"
+    fake_bin.write_text("#!/bin/sh\nexit 0\n")
+    fake_bin.chmod(0o755)
+    monkeypatch.delenv("DOCSPEC_BINARY", raising=False)
+    monkeypatch.delenv("DOCSPEC_BIN", raising=False)
+    monkeypatch.setenv("QUALIFIED_DOCSPEC_RUNTIME", str(runtime_dir))
+    assert resolve_docspec_binary() == fake_bin.resolve()
+
+    # Verify sync_export replaces stage/*.parquet with ExportPin outputs and records matching sha256/byte_size
+    ws_dir = tmp_path / "ws"
+    ws_dir.mkdir()
+    stage_dir = tmp_path / "stage"
+    stage_dir.mkdir()
+    exported_dir = ws_dir / "exports"
+    exported_dir.mkdir()
+
+    for name in ("committees", "meetings", "materials", "witnesses", "issues", "sources"):
+        (stage_dir / f"{name}.parquet").write_bytes(f"python-stage-{name}".encode())
+        (exported_dir / f"{name}.parquet").write_bytes(f"engine-export-pin-{name}".encode())
+
+    class _FakeDatasets:
+        limits = {}
+
+        def close(self):
+            pass
+
+        def try_latest(self, dataset):
+            return None
+
+        def hash_input(self, path):
+            return {"digest": sha256(Path(path).read_bytes()).hexdigest()}
+
+        def run(self, req):
+            return {"id": "ver-1", "dataset": {"dataset": req["dataset"]}, "manifest": "m-1"}
+
+        def try_latest_export(self, dataset, channel):
+            return None
+
+        def export(self, spec):
+            tname = spec["dataset"].removeprefix("explorer_browser_")
+            rel_path = f"exports/{tname}.parquet"
+            return {
+                "id": f"exp-{tname}",
+                "dataset": {"dataset": spec["dataset"]},
+                "object": {"path": rel_path},
+            }
+
+    monkeypatch.setattr("committee_explorer.docspec_views.NativeDatasets", lambda *a, **kw: _FakeDatasets())
+    with ExplorerDocSpecWorkspace(ws_dir, binary=fake_bin) as ds_ws:
+        pins = ds_ws.sync_export(type("_EmptyCatalog", (), {"records": (), "sources": ()})(), stage_dir)
+
+    for name in ("committees", "meetings", "materials", "witnesses", "issues", "sources"):
+        stage_bytes = (stage_dir / f"{name}.parquet").read_bytes()
+        assert stage_bytes == f"engine-export-pin-{name}".encode()
+        expected_sha = sha256(stage_bytes).hexdigest()
+        assert pins[name]["object"]["sha256"] == expected_sha
+        assert pins[name]["object"]["byte_size"] == len(stage_bytes)
+
+
