@@ -186,7 +186,7 @@ def test_emulated_target_receipts_require_an_admitted_release_origin(origin):
     def flip():
         return gate_and_flip(store,bucket='fake',release_id='b'*64,previous_release_id=None,
             expected_etag=None,manifest_origin=origin,contract=lambda:receipt,canary=lambda:receipt)
-    if origin==dict(kind='seed_v5',display_only=True) or (isinstance(origin,dict) and origin.get('kind')=='model' and origin.get('display_only') is not True):
+    if isinstance(origin,dict) and origin.get('kind')=='model' and origin.get('display_only') is not True:
         flip();assert len(store.puts)==1
     else:
         with pytest.raises(ValueError,match='qualification'):flip()

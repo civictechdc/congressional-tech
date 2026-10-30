@@ -6,11 +6,10 @@ from viewer_publication.archive_comparison_acceptance import require_comparison
 
 
 def qualified_target_status(status,manifest_origin=None):
-    """Admitted seed and model releases may use candidate-bound emulation."""
+    """Admitted model releases may use candidate-bound emulation."""
     return status=='owner-approved' or (status=='provisional-emulated'
-        and isinstance(manifest_origin,dict) and (
-            manifest_origin.get('kind')=='seed_v5' and manifest_origin.get('display_only') is True
-            or manifest_origin.get('kind')=='model' and manifest_origin.get('display_only') is not True))
+        and isinstance(manifest_origin,dict)
+        and manifest_origin.get('kind')=='model' and manifest_origin.get('display_only') is not True)
 
 
 def validate_receipt(receipt, *, release_id, name, manifest_origin=None):

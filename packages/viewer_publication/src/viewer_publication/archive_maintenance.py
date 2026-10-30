@@ -93,10 +93,6 @@ class _InventoryEvidence:
 
 
 def _validate_kept_model(record,receipt_keys):
-    if isinstance(record.get('profile'),dict) and record['profile'].get('kind')=='seed_v5':
-        from viewer_publication.archive_seed_profile import validate_seed_inputs
-        validate_seed_inputs(record,receipt_keys)
-        return
     from viewer_publication.archive_model_job import TABLES,OPTIONAL_TABLES,_selector
     from viewer_publication.archive_model_profile import profile_record
     snapshots=record['snapshots']
