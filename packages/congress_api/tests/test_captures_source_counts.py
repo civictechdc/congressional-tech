@@ -15,11 +15,13 @@ def test_actual_d1_source_count_sql_preserves_counts_with_a_bounded_memory_budge
     assert accepted['source_counts']==dict(rows=1,receipts=1)
     job=json.loads((stage/'job.json').read_text())
     source_counts=next(step for step in job['steps'] if step['name']=='source_counts')
-    runtime=json.loads(Path(os.environ['DOCSPEC_JOB_CONFIG']).read_text())
-    limits=json.loads(Path(runtime['limits']).read_text())
+    config_path=Path(os.environ['DOCSPEC_JOB_CONFIG']).resolve()
+    runtime=json.loads(config_path.read_text())
+    limits=json.loads((config_path.parent/runtime['limits']).read_text())
     limits.update(compute_threads=4,memory_bytes=128<<20,max_batch_bytes=64<<20)
     limits_path=tmp_path/'limits.json';limits_path.write_text(json.dumps(limits))
-    runtime.update(limits=str(limits_path),workspace=str(tmp_path/'native-workspace'))
+    runtime.update(binary=str((config_path.parent/runtime['binary']).resolve()),
+        limits=str(limits_path),workspace=str(tmp_path/'native-workspace'))
     runtime_path=tmp_path/'runtime.json';runtime_path.write_text(json.dumps(runtime))
     work=tmp_path/'bounded';work.mkdir()
     fixture=dict(name='scalar_rows',materialize=True,sql="""SELECT

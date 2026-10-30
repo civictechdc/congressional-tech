@@ -13,15 +13,17 @@ from docspec_client.models import DocSpecFailure
 
 
 def limited_engine(tmp_path,*,threads=2):
-    config = json.loads(Path(os.environ['DOCSPEC_JOB_CONFIG']).read_text())
-    limits = json.loads(Path(config['limits']).read_text())
+    source = Path(os.environ['DOCSPEC_JOB_CONFIG']).resolve()
+    config = json.loads(source.read_text())
+    limits = json.loads((source.parent / config['limits']).read_text())
     # Fix the partition count: every sort partition reserves memory independently,
     # so inheriting a host/runtime CPU count changes this 192 MiB regression.
     limits.update(compute_threads=threads,memory_bytes=192 << 20, scratch_bytes=256 << 20,
                   batch_rows=32, max_batch_bytes=1 << 20, max_metadata_bytes=1 << 20)
     limit_path = tmp_path/'limits.json'
     limit_path.write_text(json.dumps(limits))
-    config.update(limits=str(limit_path), workspace=str(tmp_path/'workspace'), timeout_seconds=120)
+    config.update(binary=str((source.parent / config['binary']).resolve()),
+                  limits=str(limit_path), workspace=str(tmp_path/'workspace'), timeout_seconds=120)
     config_path = tmp_path/'runtime.json'
     config_path.write_text(json.dumps(config))
     return NativeDatasets.from_config(config_path)

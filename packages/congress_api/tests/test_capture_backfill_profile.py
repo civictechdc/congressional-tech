@@ -25,10 +25,12 @@ def test_receipt_profile_is_local_and_assembly_membership_drives_both_limits(key
 
 
 def runtime(tmp_path,memory):
-    config=json.loads(Path(os.environ['DOCSPEC_JOB_CONFIG']).read_text())
-    limits=json.loads(Path(config['limits']).read_text());limits['memory_bytes']=memory<<30
+    source=Path(os.environ['DOCSPEC_JOB_CONFIG']).resolve()
+    config=json.loads(source.read_text())
+    limits=json.loads((source.parent/config['limits']).read_text());limits['memory_bytes']=memory<<30
     path=tmp_path/'limits.json';path.write_text(json.dumps(limits))
-    config.update(limits=str(path),workspace=str(tmp_path/'workspace'))
+    config.update(binary=str((source.parent/config['binary']).resolve()),
+        limits=str(path),workspace=str(tmp_path/'workspace'))
     path=tmp_path/'runtime.json';path.write_text(json.dumps(config))
     return NativeDatasets.from_config(path),path
 

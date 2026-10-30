@@ -67,6 +67,7 @@ def test_prerequisite_budget_changes_only_bounded_import_checks(monkeypatch, val
         return SimpleNamespace(stdout=str(root / config['environment']['imports'][name] / '__init__.py'))
     monkeypatch.setattr(dev, 'run', run)
     config['environment']['native'] = {}
+    config['lanes']['production-offline'].pop('required_job_config_env', None)
     dev.doctor(config, 'production-offline')
     assert calls and all(kwargs['timeout'] == expected for _, kwargs in calls)
 

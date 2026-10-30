@@ -10,11 +10,13 @@ from docspec_client.client import NativeDatasets
 
 def test_native_body_url_build_compacts_aggregate_backing_before_retention(tmp_path):
     from viewer_publication.archive_model import source_steps
-    config = json.loads(Path(os.environ['DOCSPEC_JOB_CONFIG']).read_text())
-    limits = json.loads(Path(config['limits']).read_text())
+    source_config = Path(os.environ['DOCSPEC_JOB_CONFIG']).resolve()
+    config = json.loads(source_config.read_text())
+    limits = json.loads((source_config.parent / config['limits']).read_text())
     limits.update(memory_bytes=1 << 30, scratch_bytes=256 << 20, max_batch_bytes=8 << 20)
     (tmp_path/'limits.json').write_text(json.dumps(limits))
-    config.update(limits=str(tmp_path/'limits.json'), workspace=str(tmp_path/'workspace'), timeout_seconds=90)
+    config.update(binary=str((source_config.parent / config['binary']).resolve()),
+                  limits=str(tmp_path/'limits.json'), workspace=str(tmp_path/'workspace'), timeout_seconds=90)
     (tmp_path/'runtime.json').write_text(json.dumps(config))
     inputs = [json_input(tmp_path, 'source_url_keys', [], url='Utf8', url_key='Utf8', error='Utf8'),
               json_input(tmp_path, 'source_reference_targets', [],

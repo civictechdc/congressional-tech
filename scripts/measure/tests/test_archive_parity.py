@@ -223,6 +223,9 @@ def f0_fixture(tmp_path, *, bad_filename=False, bad_metadata=False, bad_ranges=F
     example['candidate']=dict(kind='f0',release=str(release),manifest_sha256=file_pin(release/'manifest.json')['sha256'],
         build_job=dict(path=str(producer/'job.json'),**file_pin(producer/'job.json')),
         build_result=dict(path=str(producer/'result.json'),**file_pin(producer/'result.json')))
+    (tmp_path/'decisions.md').write_text('# Fixture owner decisions\n')
+    (tmp_path/'b7-manifest.json').write_text(json.dumps(dict(files=[],artifacts=[])))
+    example['provenance']=dict(owner_decisions=pin('decisions.md'),b7_manifest=pin('b7-manifest.json'))
     example['cause_relations']={}
     path=tmp_path/'f0-template.json';path.write_text(json.dumps(example))
     return path

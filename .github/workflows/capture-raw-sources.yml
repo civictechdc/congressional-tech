@@ -15,7 +15,6 @@ on:
       - 'packages/congress_api/src/congress_api/cli/common.py'
       - 'packages/congress_api/src/congress_api/acquisition/raw_sync.py'
       - 'packages/congress_api/src/congress_api/acquisition/streamed_recovery.py'
-      - 'packages/congress_api/src/congress_api/acquisition/recovery_queue.py'
       - 'packages/congress_api/src/congress_api/retention/raw_*.py'
       - 'packages/congress_api/src/congress_api/retention/document_*.py'
       - 'packages/congress_api/src/congress_api/retention/catalog_cache.py'
@@ -41,7 +40,6 @@ on:
       - 'tests/test_catalog_consumers.py'
       - 'tests/test_catalog_staging.py'
       - 'tests/test_catalog_availability.py'
-      - 'tests/test_standalone_catalog_publication.py'
       - 'tests/catalog_test_helpers.py'
       - 'packages/congress_api/src/congress_api/retention/catalog_*.py'
       - '.github/scripts/offline-python.py'
@@ -80,7 +78,6 @@ on:
       - 'tests/test_r2_body_files*.py'
       - 'tests/test_capture_state_completeness.py'
       - 'tests/test_streamed_recovery.py'
-      - 'tests/test_recovery_queue.py'
       - 'tests/test_pdf_file_metadata.py'
       - 'tests/test_pdf_metadata_refresh.py'
       - 'tests/test_explicit_document_forms.py'
@@ -217,12 +214,11 @@ jobs:
           tests/test_async_capture.py tests/test_spooled_capture.py tests/test_file_backed_capture.py
           tests/test_capture_failure_regressions.py tests/test_pdf_reader_recovery.py tests/test_file_wrapper_capture.py
           tests/test_capture_state_completeness.py tests/test_streamed_recovery.py
-          tests/test_recovery_queue.py tests/test_r2_body_files.py tests/test_pdf_file_metadata.py
+          tests/test_r2_body_files.py tests/test_pdf_file_metadata.py
           tests/test_pdf_metadata_refresh.py
           tests/test_raw_catalog.py tests/test_raw_rebuild.py tests/test_incremental_catalog.py tests/test_capture_checkpoint.py
           tests/test_raw_progress.py tests/test_core_benchmark.py
           tests/test_core_source_context.py tests/test_catalog_publication.py tests/test_catalog_staging.py tests/test_catalog_availability.py tests/test_catalog_consumers.py
-          tests/test_standalone_catalog_publication.py
           .github/tests/test_raw_source_finalizer.py .github/tests/test_native_runtime_preflight.py .github/tests/test_native_runtime_setup.py tests/test_native_raw_cli.py
           .github/tests/test_capture_verification.py .github/tests/test_capture_memory_guard.py .github/tests/test_capture_source_manifest.py
           tests/test_document_filename_index.py
