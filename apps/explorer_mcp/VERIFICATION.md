@@ -11,6 +11,15 @@ passed the app suite, strict package checks, and fresh installs on Ubuntu 24.04
 and macOS 14. An installation from the public GitHub wheel also passed the MCP
 check against the prepared public release (16 tables, six tools).
 
+The [setup page](https://civictechdc.github.io/congressional-tech/mcp/) is live.
+[Pages deployment](https://github.com/civictechdc/congressional-tech/actions/runs/41095984681)
+passed at `570ce355`, including the existing native archive browser checks,
+saved-file sandbox checks and heap checks. Public readback returned HTTP 200 for
+the MCP page, homepage and both explorers, with the new setup links present.
+Deployment also required removing a deleted test from the inventory, correcting
+an obsolete singular-count expectation and restoring wrapping for long archive
+format labels. No publication checks were bypassed.
+
 - 57 app tests passed, plus the retained native producer-to-stdio integration:
   58 total. The first native run used a missing fixture path; the targeted rerun
   used the retained `readiness-native` output and passed.
