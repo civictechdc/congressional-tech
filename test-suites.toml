@@ -71,15 +71,7 @@ purpose = "Real local sockets, spawned workers and the compiled source-fetch tra
 
 [lanes.active-experiment-regression]
 roots = [
-    "docs/experiments/filename-patterns-20261015/test_catalog_content_review.py",
-    "docs/experiments/filename-patterns-20261015/test_catalog_disposition_compare.py",
-    "docs/experiments/filename-patterns-20261015/test_catalog_review_evidence.py",
-    "docs/experiments/filename-patterns-20261015/test_current_review_candidates.py",
-    "docs/experiments/filename-patterns-20261015/test_normalized_review_candidates.py",
-    "docs/experiments/filename-patterns-20261015/test_pilot_evaluate.py",
     "docs/experiments/filename-patterns-20261015/test_pilot_evidence.py",
-    "docs/experiments/filename-patterns-20261015/test_pilot_workflow.py",
-    "docs/experiments/filename-patterns-20261015/test_review_catalog_reconcile.py",
     "docs/experiments/filename-patterns-20261015/test_rule_review.py",
 ]
 offline = true
