@@ -339,6 +339,35 @@ def test_meeting_records_from_house_xml_strips_all_prefixes(prefix: str):
     assert m["videos"] == []
 
 
+def test_house_xml_meeting_bills_from_house_naming_and_sd_refusal():
+    xml_bytes = b"""<?xml version="1.0" encoding="UTF-8"?>
+<committee-meeting congress-num="118" session-num="2" meeting-id="HHRG118777" meeting-type="HHRG">
+  <meeting-details>
+    <meeting-title>Legislative Hearing on Wildfire Management</meeting-title>
+    <meeting-date><calendar-date>2024-06-15</calendar-date></meeting-date>
+    <committees><committee-name id="IG00">Permanent Select Committee on Intelligence</committee-name></committees>
+  </meeting-details>
+  <meeting-documents>
+    <meeting-document type="SD">
+      <description>Hearing Notice mentioning H.R. 9999 and S. 8888</description>
+      <files><file doc-url="https://docs.house.gov/118/BILLS-118hr9999ih.pdf"/></files>
+    </meeting-document>
+    <meeting-document type="BR">
+      <description>Discussion of R.S. 2477, W.S. 11-6-302, U.S. 500, and Clause S 2(N) alongside HR 1234</description>
+      <files><file doc-url="https://docs.house.gov/118/BILLS-118HR3522ih-FIRESHEDSAct.pdf"/></files>
+    </meeting-document>
+  </meeting-documents>
+</committee-meeting>"""
+    row = meeting_records.build_meeting_record_row(_sha("house-naming-bills"), "house_xml", xml_bytes, parser_version="v1")
+    m = row["meetings"][0]
+    assert m["event_id"] == "118777"
+    assert m["congress"] == 118
+    assert m["session"] == 2
+    assert m["title"] == "Legislative Hearing on Wildfire Management"
+    assert m["committees"][0]["system_code"] == "hlig00"
+    assert m["subject_keys"] == ["118-hr-3522", "118-hr-1234"]
+
+
 # ---------------------------------------------------------------------------
 # 3. `appearance_records` Extraction, Normalization, S2 Fixtures & Anti-Join
 # ---------------------------------------------------------------------------

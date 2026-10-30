@@ -39,7 +39,7 @@ def _scope(element):
         'search_titles': 'searchTitle', 'preferred_citations': 'preferredCitation',
         'held_dates': 'heldDate', 'congresses': 'congress', 'sessions': 'session',
         'chambers': 'chamber', 'source_types': 'type',
-        'event_ids': 'eventId', 'date_ingested': 'dateIngested',
+        'access_ids': 'accessId', 'event_ids': 'eventId', 'date_ingested': 'dateIngested',
         'document_classes': 'docClass', 'granule_classes': 'granuleClass',
         'errata': 'errata', 'is_errata': 'isErrata', 'is_nomination': 'isNomination', 'witnesses': 'witness',
     }

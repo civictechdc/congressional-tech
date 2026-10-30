@@ -31,7 +31,7 @@ def _definition_hashes(root):
     files += [package/name for name in ('archive_model.py','archive_model_profile.py','archive_format.py','archive_schema.py','archive_model_lifetimes.py',
         'archive_annotations.py','archive_provenance.py','archive_reviews.py','archive_url_state.py')]
     files += [root/'packages/congress_api/src/congress_api/models/archive_profile.py',root/'uv.lock']
-    files += [root/'packages/congress_api/src/congress_api'/name for name in ['lake/readings.py','lake/meeting_records.py','lake/appearance_records.py','retention/parser_worker.py','retention/process_resources.py']]
+    files += [root/'packages/congress_api/src/congress_api'/name for name in ['lake/readings.py','lake/_record_producer.py','lake/meeting_records.py','lake/appearance_records.py','retention/parser_worker.py','retention/process_resources.py']]
     return {path.relative_to(root).as_posix():file_pin(path)['sha256'] for path in sorted(set(files))}
 
 

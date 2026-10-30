@@ -101,6 +101,7 @@ class ModsScope(SourceModel):
     chambers: list[str | None] = Field(default_factory=list)
     source_types: list[str | None] = Field(default_factory=list)
     sessions: list[str | None] = Field(default_factory=list)
+    access_ids: list[str | None] = Field(default_factory=list)
     event_ids: list[str | None] = Field(default_factory=list)
     date_ingested: list[str | None] = Field(default_factory=list)
     document_classes: list[str | None] = Field(default_factory=list)
