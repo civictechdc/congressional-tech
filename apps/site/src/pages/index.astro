@@ -77,7 +77,7 @@ const summary = (body?: string) => body?.trim().split('\n')[0] ?? '';
       <div class="section-head">
         <h2 class="section-heading">Congressional Data Explorers</h2>
         <a class="slide-link" href={withBase('/dashboard/')}>
-          Open Committee Explorer →
+          Open Committee Explorer
         </a>
       </div>
       <p class="section-intro">
@@ -87,7 +87,6 @@ const summary = (body?: string) => body?.trim().split('\n')[0] ?? '';
       </p>
       <div class="explorer-cards-grid">
         <article class="card card--gold project-card">
-          <p class="eyebrow project-eyebrow">Live workspace · Meetings &amp; evidence</p>
           <h3 class="card-title">Committee Explorer</h3>
           <p>
             Search and cross-reference 16,600+ committee meetings, recordings,
@@ -96,32 +95,30 @@ const summary = (body?: string) => body?.trim().split('\n')[0] ?? '';
           </p>
           <div class="project-links">
             <a class="slide-link" href={withBase('/dashboard/')}>
-              Open Committee Explorer →
+              Open Committee Explorer
             </a>
             <a class="slide-link" href={withBase('/dashboard/?view=coverage')}>
-              View source coverage →
+              View source coverage
             </a>
           </div>
         </article>
         <article class="card card--gold project-card">
-          <p class="eyebrow project-eyebrow">Live archive · 367,000+ documents</p>
           <h3 class="card-title">Document Archive</h3>
           <p>
-            Browse and verify preserved committee hearing documents, witness
-            statements, transcripts, and recovered files with cryptographic
-            checksums and provenance records.
+            Browse and verify 367,000+ preserved committee hearing documents,
+            witness statements, transcripts, and recovered files with
+            cryptographic checksums and provenance records.
           </p>
           <div class="project-links">
             <a class="slide-link" href={withBase('/archive/')}>
-              Open Document Archive →
+              Open Document Archive
             </a>
             <a class="slide-link" href={withBase('/dashboard/?view=materials')}>
-              Browse recordings &amp; materials →
+              Browse recordings &amp; materials
             </a>
           </div>
         </article>
         <article class="card card--gold project-card">
-          <p class="eyebrow project-eyebrow">Live report · Project I.2</p>
           <h3 class="card-title">Committee YouTube Coverage</h3>
           <p>
             Track how consistently House and Senate committees tag their
@@ -130,7 +127,7 @@ const summary = (body?: string) => body?.trim().split('\n')[0] ?? '';
           </p>
           <div class="project-links">
             <a class="slide-link" href={withBase('/youtube-coverage/')}>
-              Open YouTube coverage report →
+              Open YouTube coverage report
             </a>
           </div>
         </article>
@@ -157,13 +154,17 @@ const summary = (body?: string) => body?.trim().split('\n')[0] ?? '';
               <h3 class="card-title">{theme.data.title}</h3>
               <p class="theme-focus">{themeBlurb(theme.data.focus)}</p>
               <p class="card-meta">
-                {proposalCount(theme.data.id)} proposal{
-                  proposalCount(theme.data.id) === 1 ? '' : 's'
-                }
-                {builtCount(theme.data.id) > 0 &&
-                  ` · ${builtCount(theme.data.id)} built`}
-                {inProgressCount(theme.data.id) > 0 &&
-                  ` · ${inProgressCount(theme.data.id)} in progress`}
+                {[
+                  `${proposalCount(theme.data.id)} proposal${proposalCount(theme.data.id) === 1 ? '' : 's'}`,
+                  builtCount(theme.data.id) > 0
+                    ? `${builtCount(theme.data.id)} built`
+                    : '',
+                  inProgressCount(theme.data.id) > 0
+                    ? `${inProgressCount(theme.data.id)} in progress`
+                    : '',
+                ]
+                  .filter(Boolean)
+                  .join(', ')}
               </p>
             </a>
           ))
@@ -184,17 +185,17 @@ const summary = (body?: string) => body?.trim().split('\n')[0] ?? '';
         {
           projects.map((project) => (
             <article class="card card--gold project-card">
-              <p class="eyebrow project-eyebrow">Built · Project {project.data.id}</p>
+              <p class="eyebrow project-eyebrow">Project {project.data.id}</p>
               <h3 class="card-title">{project.data.title}</h3>
               <p>{project.data.description}</p>
               <div class="project-links">
                 {project.data.id === 'I.2' && (
                   <a class="slide-link" href={withBase('/youtube-coverage/')}>
-                    Open the dashboard →
+                    Open the dashboard
                   </a>
                 )}
                 <a class="slide-link" href={project.data.repo}>
-                  Source on GitHub →
+                  Source on GitHub
                 </a>
               </div>
             </article>
@@ -210,7 +211,7 @@ const summary = (body?: string) => body?.trim().split('\n')[0] ?? '';
       <div class="section-head">
         <h2 class="section-heading">Sub-projects</h2>
         <a class="slide-link" href={withBase('/subprojects/')}>
-          All sub-projects →
+          All sub-projects
         </a>
       </div>
       <p class="section-intro">
@@ -223,7 +224,7 @@ const summary = (body?: string) => body?.trim().split('\n')[0] ?? '';
           subprojects.map((sp) => (
             <article class="card card--gold project-card">
               <p class="eyebrow project-eyebrow">
-                Sub-project · {subStatusLabel[sp.data.status]}
+                {subStatusLabel[sp.data.status]}
               </p>
               <h3 class="card-title">{sp.data.title}</h3>
               <p>{summary(sp.body)}</p>
@@ -232,10 +233,10 @@ const summary = (body?: string) => body?.trim().split('\n')[0] ?? '';
                   class="slide-link"
                   href={withBase(`/subprojects/${sp.data.id}/`)}
                 >
-                  View sub-project →
+                  View sub-project
                 </a>
                 <a class="slide-link" href={sp.data.repo}>
-                  Source on GitHub →
+                  Source on GitHub
                 </a>
               </div>
             </article>

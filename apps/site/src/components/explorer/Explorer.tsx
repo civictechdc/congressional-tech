@@ -65,7 +65,7 @@ import {
   documentSourceLabel,
   extraIssueAlternatives,
   listedDocumentType,
-  listedEvidence,
+  listedMaterialCounts,
   listedSourcePile,
   listedWitnessCount,
   filePartNote,
@@ -98,6 +98,7 @@ import {
   recordedVotes,
   recordedWhen,
   recordedWitnesses,
+  recordingDue,
   recordingIdentity,
   relatedParts,
   scheduleNote,
@@ -1136,6 +1137,29 @@ function useWitnessLines(
   return lines;
 }
 
+function useMaterialCounts(
+  reader: ExplorerReader,
+  rows: readonly { id: string }[],
+): ReadonlyMap<string, { recordings: number; documents: number }> {
+  const key = rows
+    .map((row) => row.id)
+    .sort()
+    .join("|");
+  const [state] = useRequest(
+    (signal) =>
+      key && reader.listMaterialCounts
+        ? reader.listMaterialCounts(
+            rows.map((row) => row.id),
+            { signal },
+          )
+        : Promise.resolve(
+            new Map<string, { recordings: number; documents: number }>(),
+          ),
+    [reader, key],
+  );
+  return state.status === "ready" ? state.value : new Map();
+}
+
 function useSubjectTitles(
   reader: ExplorerReader,
   rows: readonly { subject_kind?: string | null; subject_id?: string | null }[],
@@ -1316,6 +1340,10 @@ function Listing({
   );
   const meetingTitles = useSubjectTitles(reader, meetingRefs);
   const witnessLines = useWitnessLines(
+    reader,
+    view === "meetings" && visible ? visible.rows : [],
+  );
+  const materialCounts = useMaterialCounts(
     reader,
     view === "meetings" && visible ? visible.rows : [],
   );
@@ -1526,11 +1554,14 @@ function Listing({
                         (recordedNames ? [recordedNames] : [])
                       : [];
                   const witnessCount = listedWitnessCount(witnesses.length);
-                  const evidenceNotes =
+                  const rowCounts =
                     view === "meetings"
-                      ? listedEvidence(row.evidence_states, {
-                          omit: witnesses.length ? ["witnesses"] : [],
-                        })
+                      ? [
+                          witnessCount,
+                          ...listedMaterialCounts(materialCounts.get(row.id), {
+                            includeRecordings: recordingDue(row),
+                          }),
+                        ].filter(Boolean)
                       : [];
                   const committeeNames = (
                     view === "committees" ? [] : row.committee_ids || []
@@ -1823,9 +1854,9 @@ function Listing({
                             {meetingPlace}
                           </span>
                         ) : null}
-                        {witnessCount ? (
+                        {rowCounts.length ? (
                           <span className="explorer-row-meta">
-                            {witnessCount}
+                            {rowCounts.join(" · ")}
                           </span>
                         ) : null}
                         {view === "meetings" ? (
@@ -1835,11 +1866,6 @@ function Listing({
                             reason="Bills, resolutions, treaties, and nominations recorded for this meeting."
                             limit={4}
                           />
-                        ) : null}
-                        {evidenceNotes.length ? (
-                          <span className="explorer-row-meta">
-                            {evidenceNotes.join(" · ")}
-                          </span>
                         ) : null}
                         {view === "meetings" ? (
                           <RemainingNotes
@@ -2262,6 +2288,56 @@ function IssueSubject({
   );
 }
 
+function meetingEventId(
+  record: DetailRecord,
+  sources: readonly (DetailRecord | undefined)[],
+): string {
+  if (record.kind !== "meeting") return "";
+  const recordFacts = fields(record).facts;
+  if (Array.isArray(recordFacts)) {
+    for (const item of recordFacts) {
+      const f = fields(item);
+      if (
+        (f.label === "Event ID" || f.label === "Event number") &&
+        typeof f.value === "string" &&
+        f.value.trim()
+      ) {
+        return f.value.trim();
+      }
+    }
+  }
+  for (const source of sources) {
+    if (!source) continue;
+    const row = fields(source);
+    if (Array.isArray(row.facts)) {
+      for (const item of row.facts) {
+        const f = fields(item);
+        if (
+          (f.label === "Event ID" || f.label === "Event number") &&
+          typeof f.value === "string" &&
+          f.value.trim()
+        ) {
+          return f.value.trim();
+        }
+      }
+    }
+    const idVal =
+      typeof row.identifier_value === "string"
+        ? row.identifier_value
+        : typeof row.identifier === "string"
+          ? row.identifier
+          : "";
+    const idMatch = /\|(\d{5,})(?:"|\s|$)/.exec(idVal);
+    if (idMatch) return idMatch[1];
+    const urlVal = typeof row.url === "string" ? row.url : "";
+    const urlMatch = /\/committee-meeting\/\d+\/(?:house|senate)\/(\d+)/i.exec(
+      urlVal,
+    );
+    if (urlMatch) return urlMatch[1];
+  }
+  return "";
+}
+
 function Inspector({
   reader,
   selected,
@@ -2279,6 +2355,34 @@ function Inspector({
     (signal) => reader.getRecord(selected, { signal }),
     [reader, selected.kind, selected.id],
   );
+  const sourceIds =
+    state.status === "ready" &&
+    state.value &&
+    state.value.kind === "meeting" &&
+    Array.isArray(fields(state.value).source_ids)
+      ? (fields(state.value).source_ids as unknown[]).map(String)
+      : [];
+  const [sourcesState] = useRequest(
+    (signal) =>
+      sourceIds.length
+        ? reader.getRecords(
+            sourceIds.map((id) => ({ kind: "source_record", id })),
+            { signal },
+          )
+        : Promise.resolve([]),
+    [reader, sourceIds.join(",")],
+  );
+  const eventId =
+    state.status === "ready" && state.value
+      ? meetingEventId(
+          state.value,
+          sourcesState.status === "ready" ? sourcesState.value : [],
+        )
+      : "";
+  const base = import.meta.env.BASE_URL.replace(/\/+$/, "");
+  const archiveHref = eventId
+    ? `${base}/archive/?meeting=${encodeURIComponent(eventId)}`
+    : `${base}/archive/`;
   return (
     <article className="explorer-detail">
       <div className="explorer-subheading">
@@ -2291,10 +2395,8 @@ function Inspector({
         </button>
         {state.status === "ready" && state.value ? (
           <div className="explorer-actions">
-            <a
-              href={`${import.meta.env.BASE_URL.replace(/\/+$/, "")}/archive/`}
-            >
-              Document Archive →
+            <a href={archiveHref}>
+              Document Archive
             </a>
             <button
               className="explorer-text-button"
@@ -2471,6 +2573,20 @@ function sourceFocus(name: string): string {
   );
 }
 
+const redundantSourceFactLabels = new Set([
+  "Fetched",
+  "Added here",
+  "Changed at the source",
+  "Updated at the source",
+  "Checked",
+  "Retrieved",
+  "Record number",
+  "Type at the source",
+  "Status at the source",
+  "Chamber",
+  "Congress",
+]);
+
 function SourceRecords({
   reader,
   ids,
@@ -2503,7 +2619,9 @@ function SourceRecords({
             </p>
           );
         const url = publicUrl(sourcePageUrl(fields(source).url));
-        const facts = sourceFacts(source);
+        const facts = sourceFacts(source).filter(
+          ([label]) => !redundantSourceFactLabels.has(label),
+        );
         const recorded = sourceLinks(source);
         const links =
           focus.length >= 3
@@ -2544,31 +2662,10 @@ function SourceRecords({
               </dl>
             ) : null}
             <SourceLinkGroups links={links} />
-            <SourcePayload source={source} />
           </div>
         );
       })}
     </>
-  );
-}
-
-function SourcePayload({ source }: { source: object }) {
-  const [open, setOpen] = useState(false);
-  return (
-    <details onToggle={(event) => setOpen(event.currentTarget.open)}>
-      <summary>
-        See the saved source
-        <span className="explorer-field-reason">
-          The complete saved source, in a technical format. You do not need it
-          to read this page.
-        </span>
-      </summary>
-      {open ? (
-        <pre>
-          <code>{JSON.stringify(source, null, 2)}</code>
-        </pre>
-      ) : null}
-    </details>
   );
 }
 

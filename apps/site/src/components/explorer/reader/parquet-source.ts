@@ -287,11 +287,43 @@ export function createParquetReader(publication: PublicationHandle, fetcher: Fet
     return ids.flatMap(meetingId => (index.get(meetingId) || []).map(title => ({ meeting_id: meetingId, title })));
   }
 
+  let materialIndex: Promise<Map<string, { recordings: number; documents: number }>> | undefined;
+  async function listMaterialCounts(meetingIds: readonly string[]): Promise<ReadonlyMap<string, { recordings: number; documents: number }>> {
+    const ids = [...new Set(meetingIds.map(id => id.trim()).filter(Boolean))];
+    if (!ids.length) return new Map();
+    materialIndex ??= read('material', { columns: ['meeting_ids', 'type', 'recording_url'] }).then(rows => {
+      const counts = new Map<string, { recordings: number; documents: number }>();
+      for (const row of rows) {
+        if (row.type === 'recording' && !row.recording_url) continue;
+        const isRecording = row.type === 'recording';
+        for (const meetingId of row.meeting_ids || []) {
+          if (!meetingId) continue;
+          const current = counts.get(meetingId) || { recordings: 0, documents: 0 };
+          if (isRecording) current.recordings++;
+          else current.documents++;
+          counts.set(meetingId, current);
+        }
+      }
+      return counts;
+    }).catch(error => {
+      materialIndex = undefined;
+      throw error;
+    });
+    const index = await materialIndex;
+    const result = new Map<string, { recordings: number; documents: number }>();
+    for (const id of ids) {
+      const found = index.get(id);
+      if (found) result.set(id, found);
+    }
+    return result;
+  }
+
   const reader: ExplorerReader = {
     publication: manifest as ExplorerReader['publication'],
     getQueryInfo,
     getRecords,
     listWitnesses,
+    listMaterialCounts,
     async getRecord(ref: ExplorerRecordRef, recordOptions?: { signal?: AbortSignal }) { return (await getRecords([ref], recordOptions))[0]; },
     async search(query: ExplorerQuery = {}, { signal }: { signal?: AbortSignal } = {}) {
       const now = new Date();
