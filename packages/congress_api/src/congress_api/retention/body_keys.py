@@ -67,12 +67,3 @@ def physical_body_object_key(body_key: str, content_type_or_format=None, *, is_p
     ext = 'pdf' if pdf else 'gz'
     return f'bodies/sha256/{digest[:2]}/{digest}.{ext}'
 
-
-def quarantine_body_key(key_or_sha256: str, *, is_pdf: bool = False) -> str:
-    """Return the non-public quarantine object key for an excluded SHA-256 body."""
-    digest = body_object_digest(key_or_sha256)
-    if digest is None:
-        raise ValueError(f'Invalid body key or SHA-256 digest for quarantine: {key_or_sha256!r}')
-    ext = 'pdf' if is_pdf else 'gz'
-    return f'quarantine/bodies/sha256/{digest[:2]}/{digest}.{ext}'
-

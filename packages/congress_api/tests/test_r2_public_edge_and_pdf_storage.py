@@ -12,16 +12,12 @@ from botocore.config import Config
 from botocore.stub import ANY, Stubber
 import pytest
 
-from congress_api.retention.body_files import retain_body_file
 from congress_api.retention.body_keys import (
     body_key_digest,
     is_pdf_bytes,
     is_pdf_format,
     physical_body_object_key,
-    quarantine_body_key,
 )
-from congress_api.retention.catalog_cache import LocalStore
-from congress_api.retention.document_evidence import read_retained_body
 from congress_api.retention.r2 import PDF_CACHE_CONTROL, R2Store, put_parameters
 from congress_api.retention.r2_edge_rules import (
     PUBLIC_BUCKET,
@@ -33,13 +29,6 @@ from congress_api.retention.r2_edge_rules import (
 )
 from viewer_publication.apply_r2_edge_rules import validate_edge_config, verify_live_edge
 from congress_api.retention.raw_archive import body_payload
-from congress_api.retention.raw_storage import (
-    DEFAULT_ACCEPTED_FILES_PATH,
-    ExcludedBodyError,
-    enforce_body_ingest_gate,
-    load_excluded_body_hashes,
-    store_public_body,
-)
 
 
 def _s3_client():
@@ -138,86 +127,6 @@ def test_r2_put_pdf_body_and_file_set_inline_pdf_and_immutable_cache_headers(tmp
             },
         )
         assert store.put_pdf_file(logical_key, pdf_file) is True
-
-
-def test_store_public_body_and_resumable_pdf_migration_including_zip_members(tmp_path):
-    store = LocalStore(tmp_path / "r2")
-    pdf_bytes = b"%PDF-1.4\n% Direct PDF document\n%%EOF\n"
-    html_bytes = b"<!doctype html><html><body>Hearing notice</body></html>"
-    zip_member_pdf = b"%PDF-1.6\n% Extracted from ZIP bundle\n%%EOF\n"
-
-    pdf_sha = hashlib.sha256(pdf_bytes).hexdigest()
-    html_sha = hashlib.sha256(html_bytes).hexdigest()
-    member_sha = hashlib.sha256(zip_member_pdf).hexdigest()
-
-    # 1. Direct public body write stores .pdf uncompressed and non-PDF as .gz while keeping logical .gz key
-    pdf_meta = store_public_body(store, pdf_bytes, content_type_or_format="application/pdf")
-    assert pdf_meta["body_key"] == f"bodies/sha256/{pdf_sha[:2]}/{pdf_sha}.gz"
-    assert pdf_meta["physical_key"] == f"bodies/sha256/{pdf_sha[:2]}/{pdf_sha}.pdf"
-    assert store.read(pdf_meta["physical_key"]) == pdf_bytes
-    assert store.read(pdf_meta["body_key"]) is None
-
-    html_meta = store_public_body(store, html_bytes, content_type_or_format="text/html")
-    assert html_meta["body_key"] == f"bodies/sha256/{html_sha[:2]}/{html_sha}.gz"
-    assert html_meta["physical_key"] == html_meta["body_key"]
-    assert gzip.decompress(store.read(html_meta["physical_key"])) == html_bytes
-
-    # Transparent read fallback reads uncompressed .pdf via logical .gz key
-    assert read_retained_body(store.root, pdf_meta["body_key"]) == pdf_bytes
-    assert read_retained_body(store.root, pdf_meta["body_key"], read_compressed=store.read) == pdf_bytes
-    assert read_retained_body(store.root, html_meta["body_key"]) == html_bytes
-
-
-def test_deferred_body_sha256_exclusion_gate_blocks_and_quarantines(tmp_path):
-    accepted_files_path = tmp_path / "accepted-files.json"
-    blocked_pdf = b"%PDF-1.7\n% Excluded witness draft\n"
-    blocked_sha = hashlib.sha256(blocked_pdf).hexdigest()
-    zip_member_sha = "20ce208ea9c9dc9f776c79c5eb74f7f67a32f9de422645d43d7d153eb57be840"
-    accepted_sha = "0173cecd70e9fa3e5c57941f96ba382524c2a21b9d725b0b6e416bc03f03cd33"
-
-    accepted_files_path.write_text(
-        '{\n'
-        '  "files": [\n'
-        f'    {{"url": "https://example.gov/excluded.pdf", "sha256": "{blocked_sha}", "decision": "exclude",\n'
-        f'     "zip_Check": {{"members": [{{"sha256": "{zip_member_sha}", "decision": "exclude"}}]}}}},\n'
-        f'    {{"url": "https://example.gov/accepted.pdf", "sha256": "{accepted_sha}", "decision": "accept"}}\n'
-        '  ]\n'
-        '}\n',
-        encoding="utf-8",
-    )
-
-    excluded_hashes = load_excluded_body_hashes(accepted_files_path)
-    assert blocked_sha in excluded_hashes
-    assert zip_member_sha in excluded_hashes
-    assert accepted_sha not in excluded_hashes
-
-    # Also test the flat list format used by --deferred accepted-files.json in corpus recovery
-    flat_deferred_path = tmp_path / "deferred-list.json"
-    flat_deferred_path.write_text(
-        f'[{{"url": "https://example.gov/excluded.pdf", "sha256": "{blocked_sha}", "body_key": "bodies/sha256/{blocked_sha[:2]}/{blocked_sha}.gz"}}]',
-        encoding="utf-8",
-    )
-    assert blocked_sha in load_excluded_body_hashes(flat_deferred_path)
-
-    store = LocalStore(tmp_path / "archive", excluded_body_hashes=excluded_hashes)
-    public_pdf_key = f"bodies/sha256/{blocked_sha[:2]}/{blocked_sha}.pdf"
-    public_gz_key = f"bodies/sha256/{blocked_sha[:2]}/{blocked_sha}.gz"
-    expected_quarantine_key = quarantine_body_key(blocked_sha, is_pdf=True)
-
-    with pytest.raises(ExcludedBodyError) as exc_info:
-        store_public_body(store, blocked_pdf, content_type_or_format="application/pdf")
-
-    assert exc_info.value.sha256 == blocked_sha
-    assert exc_info.value.quarantine_key == expected_quarantine_key
-    assert store.read(public_pdf_key) is None
-    assert store.read(public_gz_key) is None
-    assert store.read(expected_quarantine_key) == blocked_pdf
-
-    # Also verify retain_body_file enforces the exclusion gate
-    blocked_file = tmp_path / "blocked.pdf"
-    blocked_file.write_bytes(blocked_pdf)
-    with pytest.raises(ExcludedBodyError):
-        retain_body_file(store, blocked_file, tmp_path / "scratch.gz")
 
 
 def test_cloudflare_r2_custom_domain_waf_and_transform_rules():

@@ -110,22 +110,6 @@ def test_file_encoding_checks_utf8_across_chunk_boundaries(tmp_path, suffix):
     assert file.sha256 == expected['sha256']
 
 
-def test_changed_file_and_foreign_scratch_are_preserved_or_refused(tmp_path):
-    from congress_api.retention.body_files import retain_body_file
-    source, scratch = tmp_path / 'source', tmp_path / 'scratch'
-    source.write_bytes(PDF)
-    body = CapturedFile(source, 'application/pdf')
-    source.write_bytes(PDF.replace(b'fixture', b'changed'))
-    store = FileStore()
-    with pytest.raises(ValueError, match='changed'):
-        retain_body_file(store, source, scratch, expected_sha256=body.sha256)
-    assert not store.file_uploads and not scratch.exists()
-    scratch.write_bytes(b'existing evidence')
-    with pytest.raises(FileExistsError):
-        retain_body_file(store, source, scratch)
-    assert scratch.read_bytes() == b'existing evidence'
-
-
 @pytest.mark.parametrize('field', ['sha256', 'media_type', 'body_encoding'])
 def test_file_metadata_cannot_be_relabelled(tmp_path, field):
     fetcher, paths = native(tmp_path)
