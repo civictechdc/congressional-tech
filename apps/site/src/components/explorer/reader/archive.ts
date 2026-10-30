@@ -332,9 +332,10 @@ export function savedCopy(detail: any,rawBase: string){
 }
 export function dateLabels(document: any,detail: any){
   const captured=date(document.first_captured),imported=date(detail.in_archive_since),day=date(document.document_date);
+  const source=detail.document_date_source&&detail.document_date_source!=='filename'?` (${detail.document_date_source})`:'';
   return {capture:document.date_kind==='captured'&&captured?`Captured ${captured}`:
     document.date_kind==='import_day'&&imported?`In our archive since ${imported} (original capture date not recorded)`:'Capture date not recorded',
-    document:day?`${day}${detail.document_date_source?' ('+detail.document_date_source+')':''}`:null,
+    document:day?`${day}${source}`:null,
     removed:detail.removed_on?`Removed from the hearing page by the committee on ${date(detail.removed_on)}`:null};
 }
 export function recoveryLabel(kind: string){

@@ -61,25 +61,20 @@ export function ArchiveDetail({entry,meetings=[],versions=[],rawBase,onSelect,on
     ?{...detail,saved_media_type:mediaTypes[primaryFormat]}
     :detail;
   const meetingLabels=new Map(meetings.map(item=>[String(item.event_id),item.title||String(item.event_id)]));
-  const hasLegislativeSummary=Boolean(presented.congress||presented.committees.length||presented.kinds.length||presented.measures.length);
+  const contextLine=[presented.congress,...presented.committees,...presented.kinds].filter(Boolean).join(' · ');
   return <article className="archive-detail" data-archive-detail>
     {document.hidden&&<aside role="note" className="archive-notice"><h2>Removed by review</h2><p>{detail.review_note||'This document was removed from the public list.'}</p>{detail.review_decided_at&&<p>Review decided {day(detail.review_decided_at)}</p>}</aside>}
     <header className="archive-detail-header">
-      <p className="eyebrow">{presented.contextParts.length?presented.contextParts.join(' · '):'Archived congressional document'}</p>
+      <p className="archive-detail-context">{contextLine||'Archived congressional document'}</p>
       <h2>{presented.title}</h2>
       {presented.subtitle&&<p className="archive-detail-filename">{presented.subtitle}</p>}
     </header>
     <div className="archive-dates">
       {labels.document&&<p><strong>Document date:</strong> {labels.document}</p>}
       <p>{labels.capture}</p>
+      {presented.measures.length>0&&<p className="archive-dates-measures"><strong>Related legislation:</strong> <span className="archive-measure-list">{presented.measures.map(m=>onMeasure?<button key={m.key} type="button" className="archive-measure-pill" onClick={()=>onMeasure(m.key)}>{m.label}</button>:<span key={m.key} className="archive-measure-pill">{m.label}</span>)}</span></p>}
       {labels.removed&&<p className="archive-removed-callout">{labels.removed}</p>}
     </div>
-    {hasLegislativeSummary&&<dl className="archive-summary-dl">
-      {presented.congress&&<div><dt>Congress</dt><dd>{presented.congress}</dd></div>}
-      {presented.committees.length>0&&<div><dt>Committee</dt><dd>{presented.committees.join(' · ')}</dd></div>}
-      {presented.kinds.length>0&&<div><dt>Document type</dt><dd>{presented.kinds.join(' · ')}</dd></div>}
-      {presented.measures.length>0&&<div><dt>Related legislation</dt><dd className="archive-measure-list">{presented.measures.map(m=>onMeasure?<button key={m.key} type="button" className="archive-measure-pill" onClick={()=>onMeasure(m.key)}>{m.label}</button>:<span key={m.key} className="archive-measure-pill">{m.label}</span>)}</dd></div>}
-    </dl>}
     <section><h3>Saved copies</h3>{detail.saved_body?<ul><li><CopyLink detail={primaryDetail} label={`Open saved ${formatLabel(primaryFormat)}`} rawBase={rawBase} onOpenSaved={onOpenSaved}/></li>
       {(detail.alternates??[]).map((alternate:any,i:number)=><li key={i}><CopyLink detail={bodyDetail(alternate,alternate.format)} label={`Open alternate ${formatLabel(alternate.format)}`} rawBase={rawBase} onOpenSaved={onOpenSaved}/></li>)}</ul>:<p>No original saved copy is recorded.</p>}</section>
     {recoveries.length>0&&<section><h3>Recovered and related files</h3><ul>{recoveries.map((recovery:any,i:number)=>{
@@ -90,12 +85,12 @@ export function ArchiveDetail({entry,meetings=[],versions=[],rawBase,onSelect,on
         {(recovery.imported_at||recovery.recovered_url)&&<p className="archive-source-meta">{recovery.imported_at&&<>Added to the archive {day(recovery.imported_at)}{recovery.recovered_url&&' · '}</>}{recovery.recovered_url&&<PublicLink url={recovery.recovered_url}>Recovery source</PublicLink>}</p>}
       </li>;
     })}</ul></section>}
-    <section><h3>Sources</h3>{sources.length?<ul>{sources.map((source:any,i:number)=><li key={i}>
+    {(sources.length>0||recoveries.length===0)&&<section><h3>Sources</h3>{sources.length?<ul>{sources.map((source:any,i:number)=><li key={i}>
       <PublicLink url={source.url}>{source.link_text||source.url}</PublicLink>{source.is_saved&&<span className="archive-saved-tag"> · Saved file</span>}
       {source.member_path&&source.member_path!==document.filename&&<p className="archive-source-meta">File in archive: {source.member_path}</p>}
       {source.listed_on&&<p className="archive-source-meta">Listed on <PublicLink url={source.listed_on}/></p>}
       {source.posted&&<p className="archive-source-meta">Posted {day(source.posted)}</p>}
-    </li>)}</ul>:<p>No source address is recorded.</p>}</section>
+    </li>)}</ul>:<p>No source address is recorded.</p>}</section>}
     {(document.meeting_keys??[]).length>0&&<section><h3>Hearings</h3><ul>{document.meeting_keys.map((key:string)=><li key={key} className="archive-hearing-row">
       <button onClick={()=>onHearing(key)}>{meetingLabels.get(String(key))||key}</button>
       <span className="archive-hearing-meta"> · <a href={`/dashboard/?meeting=${encodeURIComponent(key)}`}>Open in Committee Explorer</a></span>

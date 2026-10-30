@@ -134,7 +134,7 @@ function Workspace({client,nav,navigate,rawBase}:{client:ReturnType<typeof creat
 
   return <div className="explorer archive-workspace" data-archive-release={info.status==='ready'?info.value.releaseId:undefined} data-archive-ready={info.status==='ready'?'true':undefined}>
     <form className="archive-search" onSubmit={event=>{event.preventDefault();const data=new FormData(event.currentTarget);filter({text:String(data.get('q')||'')});}}>
-      <label><span>Find documents, legislation, or paste a publisher URL</span><input type="search" name="q" defaultValue={nav.text} key={nav.text} placeholder="Title, bill (e.g. H.R. 475), filename, or https:// address"/></label>
+      <label><span>Search documents, legislation, or paste a URL</span><input type="search" name="q" defaultValue={nav.text} key={nav.text} placeholder="Title, bill (e.g. H.R. 475), filename, or https:// address"/></label>
       <button className="explorer-button archive-search-button" type="submit">Search</button>
     </form>
     {!isDetail&&<div className="archive-filters">

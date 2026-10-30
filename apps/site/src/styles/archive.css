@@ -235,11 +235,12 @@
   margin: var(--ctdc-space-sm) 0 var(--ctdc-space-2xl);
 }
 
-.archive-detail-header .eyebrow {
+.archive-detail-context {
   font-size: var(--ctdc-text-xs);
   font-weight: var(--ctdc-weight-semibold);
   color: var(--ctdc-ink-muted);
   margin: 0 0 var(--ctdc-space-3xs);
+  line-height: 1.4;
 }
 
 .archive-detail h2 {
@@ -280,39 +281,15 @@
   font-weight: var(--ctdc-weight-semibold);
 }
 
-.archive-summary-dl {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(12rem, 1fr));
-  gap: var(--ctdc-space-xs) var(--ctdc-space-md);
-  margin: var(--ctdc-space-md) 0;
-  padding: var(--ctdc-space-sm);
-  background: var(--ctdc-surface);
-  border: 1px solid var(--ctdc-hairline-on-light);
-  border-radius: var(--ctdc-radius-xs);
-}
-
-.archive-summary-dl > div {
-  min-width: 0;
-}
-
-.archive-summary-dl dt {
-  font-size: var(--ctdc-text-2xs);
-  font-weight: var(--ctdc-weight-semibold);
-  text-transform: uppercase;
-  letter-spacing: 0.04em;
-  color: var(--ctdc-ink-muted);
-  margin-bottom: 0.15rem;
-}
-
-.archive-summary-dl dd {
-  margin: 0;
-  font-size: var(--ctdc-text-sm);
-  color: var(--ctdc-ink);
-  overflow-wrap: anywhere;
+.archive-dates-measures {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.35rem;
 }
 
 .archive-measure-list {
-  display: flex;
+  display: inline-flex;
   flex-wrap: wrap;
   gap: 0.35rem;
 }
@@ -436,9 +413,6 @@
 
   .archive-search label > span {
     font-size: var(--ctdc-text-xs);
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
   }
 
   .archive-filters {
