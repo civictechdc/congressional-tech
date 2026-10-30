@@ -94,7 +94,7 @@ export function ArchiveDetail({
   const {document,detail,sources,recoveries}=entry,labels=dateLabels(document,detail);
   const catalog=committeesCatalog??committees;
   const presented=presentDocument(document,detail,sources,recoveries,catalog);
-  const packageId=typeof detail?.package_id==='string'&&/^(?:CHRG|BILLS|CRPT|CDOC|CPRT)-[0-9a-z-]+$/i.test(detail.package_id.trim())?detail.package_id.trim():'';
+  const packageId=typeof detail?.package_id==='string'&&/^(?:(?:CHRG|CRPT|CDOC|CPRT)-[0-9a-z-]+|BILLS-\d{3}(?:hr|s|hjres|sjres|hconres|sconres|hres|sres)\d+[a-z0-9]*)$/i.test(detail.package_id.trim())?detail.package_id.trim():'';
   const primaryFormat=effectiveFormat(document,detail);
   const primaryDetail=primaryFormat!==String(document.format??'').toLowerCase()&&mediaTypes[primaryFormat]
     ?{...detail,saved_media_type:mediaTypes[primaryFormat]}
@@ -180,7 +180,7 @@ export function ArchiveDetail({
     {(sources.length>0||recoveries.length===0)&&<section><h3>Sources</h3>{sources.length?<ul>{sources.map((source:any,i:number)=><li key={i}>
       <PublicLink url={source.url}>{source.link_text||source.url}</PublicLink>{source.is_saved&&<span className="archive-saved-tag"> · Saved file</span>}
       {source.member_path&&source.member_path!==document.filename&&<p className="archive-source-meta">File in archive: {source.member_path}</p>}
-      {source.listed_on&&<p className="archive-source-meta">Listed on <PublicLink url={source.listed_on}/></p>}
+      {source.listed_on&&source.listed_on!==source.url&&<p className="archive-source-meta">Listed on <PublicLink url={source.listed_on}/></p>}
       {source.posted&&<p className="archive-source-meta">Posted {day(source.posted)}</p>}
     </li>)}</ul>:<p>No source address is recorded.</p>}</section>}
     {presented.committeeItems.length>0&&<section><h3>Committees</h3><ul>{presented.committeeItems.map(item=><li key={item.code} className="archive-hearing-row">
@@ -190,7 +190,7 @@ export function ArchiveDetail({
       const m=meetingMap.get(String(key));
       const recs:any[]=Array.isArray(m?.recordings)&&m.recordings.length?m.recordings:Array.isArray(m?.videos)?m.videos:[];
       return <li key={key} className="archive-hearing-row">
-        <button onClick={()=>onHearing(key)}>{meetingLabels.get(String(key))||key}</button>
+        <button type="button" onClick={()=>onHearing(key)}>{meetingLabels.get(String(key))||key}</button>
         {m?.meeting_date&&<span className="archive-source-meta"><span aria-hidden="true"> · </span>{day(m.meeting_date)}</span>}
         {m?.status&&<span className="archive-source-meta"><span aria-hidden="true"> · </span>{m.status}</span>}
         {recs.length>0&&recs[0]?.url&&<span className="archive-source-meta"><span aria-hidden="true"> · </span><PublicLink url={recs[0].url}>Watch recording</PublicLink></span>}
@@ -198,7 +198,7 @@ export function ArchiveDetail({
     })}</ul></section>}
     {versions.some(row=>row.list_row!==document.list_row)&&<section><h3>Other versions</h3><ul>{versions.filter(row=>row.list_row!==document.list_row).map(row=>{
       const ver=presentDocument(row,undefined,undefined,undefined,catalog);
-      return <li key={row.list_row}><button onClick={()=>onSelect(row.list_row)}>{ver.title}</button> · {dateLabels(row,row).capture}</li>;
+      return <li key={row.list_row}><button type="button" onClick={()=>onSelect(row.list_row)}>{ver.title}</button> · {dateLabels(row,row).capture}{ver.format?` · ${ver.format}`:''}</li>;
     })}</ul></section>}
   </article>;
 }

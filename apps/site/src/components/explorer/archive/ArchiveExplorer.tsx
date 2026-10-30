@@ -1,4 +1,4 @@
-import {useEffect,useState} from 'react';
+import {useEffect,useRef,useState} from 'react';
 import {createArchiveClient} from '../reader/archive-client.ts';
 import {openSavedBlob} from './saved-tab.ts';
 import {
@@ -126,6 +126,7 @@ export default function ArchiveExplorer({pointerUrl,rawBase}:{pointerUrl:string;
 }
 
 function Workspace({client,nav,navigate,rawBase}:{client:ReturnType<typeof createArchiveClient>;nav:Navigation;navigate:(change:Partial<Navigation>,replace?:boolean)=>void;rawBase:string}){
+  const workspaceRef=useRef<HTMLDivElement>(null);
   const [selection,setSelection]=useState<number|null>(null),[savedError,setSavedError]=useState('');
   const [info,retryInfo]=useRequest(signal=>client.request('info',{},signal),[client]);
   const allFacets:any[]=info.status==='ready'?info.value.facets??[]:[];
@@ -201,12 +202,11 @@ function Workspace({client,nav,navigate,rawBase}:{client:ReturnType<typeof creat
 
   const [entityRows,retryEntityRows]=useRequest(async signal=>{
     if(isDocTab||isInspectingEntity)return null;
-    const committeeKeys=nav.tab==='committees'||!nav.committee?[]:expandCommitteeKeys(nav.committee,committeeFacets,committeesCatalog);
     return client.listEntities(entityBrowseKind,{
       q:nav.text||undefined,
       congress:nav.congress||undefined,
       chamber:nav.chamber||undefined,
-      committee:committeeKeys.length?committeeKeys:undefined,
+      committee:nav.tab==='committees'?undefined:nav.committee||undefined,
       offset:nav.offset,
       limit:pageSize,
     },signal);
@@ -220,22 +220,27 @@ function Workspace({client,nav,navigate,rawBase}:{client:ReturnType<typeof creat
     nav.chamber,
     nav.committee,
     nav.offset,
-    nav.committee?committeeFacets.length+committeesCatalog.length:0,
   ]);
 
   const [detail,retryDetail]=useRequest(signal=>selection!==null||nav.key?client.request('entry',nav.key?{key:nav.key}:{index:selection},signal):Promise.resolve(null),[client,nav.key,selection]);
   const [entityView,retryEntityView]=useRequest(async signal=>{
     const [meeting,subject,witness,member,committee]=await Promise.all([
-      (isDocTab||nav.tab==='hearings')&&nav.hearing?client.getMeeting(nav.hearing,signal).catch(()=>null):Promise.resolve(null),
-      (isDocTab||nav.tab==='subjects')&&nav.subject?client.getSubject(nav.subject,signal).catch(()=>null):Promise.resolve(null),
-      (isDocTab||nav.tab==='witnesses')&&nav.witness?client.getWitness(nav.witness,signal).catch(()=>null):Promise.resolve(null),
-      (isDocTab||nav.tab==='members')&&nav.member?client.getMember(nav.member,signal).catch(()=>null):Promise.resolve(null),
-      (isDocTab||nav.tab==='committees')&&nav.committee?client.getCommittee(nav.committee,{congress:nav.congress||undefined},signal).catch(()=>null):Promise.resolve(null),
+      nav.hearing?client.getMeeting(nav.hearing,signal).catch(()=>null):Promise.resolve(null),
+      nav.subject?client.getSubject(nav.subject,signal).catch(()=>null):Promise.resolve(null),
+      nav.witness?client.getWitness(nav.witness,signal).catch(()=>null):Promise.resolve(null),
+      nav.member?client.getMember(nav.member,signal).catch(()=>null):Promise.resolve(null),
+      nav.committee?client.getCommittee(nav.committee,{congress:nav.congress||undefined},signal).catch(()=>null):Promise.resolve(null),
     ]);
     return {meeting,subject,witness,member,committee};
-  },[client,isDocTab,nav.tab,nav.hearing,nav.subject,nav.witness,nav.member,nav.committee,nav.congress]);
+  },[client,nav.hearing,nav.subject,nav.witness,nav.member,nav.committee,nav.congress]);
 
   useEffect(()=>{if(detail.status==='ready'&&detail.value&&detail.value.entry.detail.link_key&&!nav.key){navigate({key:keyHex(detail.value.entry.detail.link_key)},true);setSelection(null);}},[detail]);
+  useEffect(()=>{
+    if(typeof window!=='undefined'&&window.scrollY>200){
+      workspaceRef.current?.scrollIntoView({block:'start'});
+    }
+  },[selection,nav.key,nav.tab,nav.offset,nav.hearing,nav.committee,nav.witness,nav.member,nav.subject]);
+
   const select=(index:number)=>{setSelection(index);navigate({key:''});setSavedError('');};
   const close=()=>{setSelection(null);navigate({key:''});};
   async function openSaved(record:any){
@@ -245,11 +250,11 @@ function Workspace({client,nav,navigate,rawBase}:{client:ReturnType<typeof creat
   }
   const filter=(change:Partial<Navigation>)=>{setSelection(null);navigate({...change,key:'',offset:0});};
 
-  const inspectHearing=(hearing:string)=>filter({tab:'hearings',hearing,subject:'',witness:'',member:''});
+  const inspectHearing=(hearing:string)=>filter({tab:'hearings',hearing,committee:'',subject:'',witness:'',member:''});
   const inspectCommittee=(committee:string)=>filter({tab:'committees',committee,hearing:'',subject:'',witness:'',member:''});
-  const inspectWitness=(witness:string)=>filter({tab:'witnesses',witness,hearing:'',subject:'',member:''});
-  const inspectMember=(member:string)=>filter({tab:'members',member,hearing:'',subject:'',witness:''});
-  const inspectSubject=(subject:string)=>filter({tab:'subjects',subject,hearing:'',witness:'',member:''});
+  const inspectWitness=(witness:string)=>filter({tab:'witnesses',witness,committee:'',hearing:'',subject:'',member:''});
+  const inspectMember=(member:string)=>filter({tab:'members',member,committee:'',hearing:'',subject:'',witness:''});
+  const inspectSubject=(subject:string)=>filter({tab:'subjects',subject,committee:'',hearing:'',witness:'',member:''});
 
   const clearInspectedEntity=()=>{
     if(nav.tab==='hearings')filter({hearing:''});
@@ -271,13 +276,16 @@ function Workspace({client,nav,navigate,rawBase}:{client:ReturnType<typeof creat
     .sort((a,b)=>Number(b.count)-Number(a.count)||String(a.value).localeCompare(String(b.value)));
 
   const activeEntities=entityView.status==='ready'?entityView.value:null;
+  const rawHearingTitle=activeEntities?.meeting?.title?String(activeEntities.meeting.title):'';
+  const shortHearingTitle=rawHearingTitle.length>60?`${rawHearingTitle.slice(0,60)}…`:rawHearingTitle;
 
   const activeFilters=[
+    nav.text&&{label:`Search: "${nav.text.length>45?`${nav.text.slice(0,45)}…`:nav.text}"`,clear:()=>filter({text:''})},
     nav.congress&&{label:congressLabel(nav.congress)||`Congress ${nav.congress}`,clear:()=>filter({congress:''})},
     nav.chamber&&{label:`Chamber: ${nav.chamber.charAt(0).toUpperCase()+nav.chamber.slice(1)}`,clear:()=>filter({chamber:''})},
     (isDocTab||nav.tab!=='committees')&&nav.committee&&{label:committeeLabel(nav.committee,committeesCatalog,nav.congress||undefined),clear:()=>filter({committee:''})},
     isDocTab&&nav.kind&&{label:documentKindLabel(nav.kind),clear:()=>filter({kind:''})},
-    isDocTab&&nav.hearing&&{label:activeEntities?.meeting?.title?`Hearing: ${activeEntities.meeting.title}`:`Hearing ${nav.hearing}`,clear:()=>filter({hearing:''})},
+    isDocTab&&nav.hearing&&{label:shortHearingTitle?`Hearing: ${shortHearingTitle}`:`Hearing ${nav.hearing}`,clear:()=>filter({hearing:''})},
     isDocTab&&nav.subject&&{label:formatMeasure(nav.subject),clear:()=>filter({subject:''})},
     nav.tab==='subjects'&&nav.subjectKind&&{label:nav.subjectKind==='bills'?'Legislation only':'Nominations only',clear:()=>filter({subjectKind:''})},
     isDocTab&&nav.witness&&{label:activeEntities?.witness?.name?`Witness: ${activeEntities.witness.name}`:`Witness ${nav.witness}`,clear:()=>filter({witness:''})},
@@ -286,16 +294,21 @@ function Workspace({client,nav,navigate,rawBase}:{client:ReturnType<typeof creat
   ].filter(Boolean) as Array<{label:string;clear:()=>void}>;
 
   const isDetail=selection!==null||Boolean(nav.key);
+  const inspectedEntityValue=!isInspectingEntity||!activeEntities?null:
+    nav.tab==='hearings'?activeEntities.meeting:
+    nav.tab==='committees'?activeEntities.committee:
+    nav.tab==='witnesses'?activeEntities.witness:
+    nav.tab==='members'?activeEntities.member:
+    activeEntities.subject;
 
-  return <div className="explorer archive-workspace" data-archive-release={info.status==='ready'?info.value.releaseId:undefined} data-archive-ready={info.status==='ready'?'true':undefined}>
-    <nav className="explorer-tabs" aria-label="Archive workspaces" style={{display:'flex',flexWrap:'wrap',gap:'0.5rem',marginBottom:'0.75rem'}}>
+  return <div ref={workspaceRef} className="explorer archive-workspace" data-archive-release={info.status==='ready'?info.value.releaseId:undefined} data-archive-ready={info.status==='ready'?'true':undefined}>
+    <nav className="explorer-tabs" aria-label="Archive workspaces">
       {ARCHIVE_TABS.map(tabItem=>{
         const count=tabTotalCount(tabItem.key,totalDocs,entityCounts);
         const active=nav.tab===tabItem.key;
         return <button
           key={tabItem.key}
           type="button"
-          className="explorer-button"
           aria-current={active?'page':undefined}
           data-archive-tab={tabItem.key}
           onClick={()=>{
@@ -304,6 +317,7 @@ function Workspace({client,nav,navigate,rawBase}:{client:ReturnType<typeof creat
               tab:tabItem.key,
               key:'',
               offset:0,
+              ...(nav.tab==='committees'&&tabItem.key!=='committees'?{committee:''}:{}),
               ...(tabItem.key==='hearings'?{hearing:''}:{}),
               ...(tabItem.key==='committees'?{committee:''}:{}),
               ...(tabItem.key==='witnesses'?{witness:''}:{}),
@@ -312,11 +326,24 @@ function Workspace({client,nav,navigate,rawBase}:{client:ReturnType<typeof creat
             });
           }}
         >
-          {tabItem.label}{count!==null?` (${integer(count)})`:''}
+          {tabItem.label}{count!==null?<> <span className="explorer-tab-count">({integer(count)})</span></>:''}
         </button>;
       })}
     </nav>
-    <form className="archive-search" onSubmit={event=>{event.preventDefault();const data=new FormData(event.currentTarget);filter({text:String(data.get('q')||'')});}}>
+    <form className="archive-search" onSubmit={event=>{
+      event.preventDefault();
+      const data=new FormData(event.currentTarget);
+      filter({
+        text:String(data.get('q')||''),
+        ...(isInspectingEntity?{
+          ...(nav.tab==='hearings'?{hearing:''}:{}),
+          ...(nav.tab==='committees'?{committee:''}:{}),
+          ...(nav.tab==='witnesses'?{witness:''}:{}),
+          ...(nav.tab==='members'?{member:''}:{}),
+          ...(nav.tab==='subjects'?{subject:''}:{}),
+        }:{}),
+      });
+    }}>
       <label>
         <span>{isDocTab?'Search documents, legislation, or paste a URL':`Search ${activeTabMeta.noun}`}</span>
         <input
@@ -353,59 +380,74 @@ function Workspace({client,nav,navigate,rawBase}:{client:ReturnType<typeof creat
       {nav.hearing&&activeEntities.meeting&&<HearingDetail
         meeting={activeEntities.meeting}
         committeesCatalog={committeesCatalog}
+        compact
         onSelect={select}
-        onCommittee={committee=>filter({committee})}
-        onSubject={subject=>filter({subject})}
-        onWitness={witness=>filter({witness})}
-        onMember={member=>filter({member})}
+        onCommittee={inspectCommittee}
+        onSubject={inspectSubject}
+        onWitness={inspectWitness}
+        onMember={inspectMember}
+        onInspect={()=>inspectHearing(nav.hearing)}
         onClose={()=>filter({hearing:''})}
       />}
       {nav.subject&&activeEntities.subject&&<SubjectDetail
         subject={activeEntities.subject}
         committeesCatalog={committeesCatalog}
+        compact
         onSelect={select}
-        onHearing={hearing=>filter({hearing})}
-        onCommittee={committee=>filter({committee})}
-        onMember={member=>filter({member})}
-        onSubject={subject=>filter({subject})}
+        onHearing={inspectHearing}
+        onCommittee={inspectCommittee}
+        onMember={inspectMember}
+        onSubject={inspectSubject}
+        onInspect={()=>inspectSubject(nav.subject)}
         onClose={()=>filter({subject:''})}
       />}
       {nav.witness&&activeEntities.witness&&<WitnessDetail
         witness={activeEntities.witness}
         committeesCatalog={committeesCatalog}
+        compact
         onSelect={select}
-        onHearing={hearing=>filter({hearing})}
-        onCommittee={committee=>filter({committee})}
-        onMember={member=>filter({member})}
+        onHearing={inspectHearing}
+        onCommittee={inspectCommittee}
+        onMember={inspectMember}
+        onInspect={()=>inspectWitness(nav.witness)}
         onClose={()=>filter({witness:''})}
       />}
       {nav.member&&activeEntities.member&&<MemberDetail
         member={activeEntities.member}
         committeesCatalog={committeesCatalog}
+        compact
         onSelect={select}
-        onHearing={hearing=>filter({hearing})}
-        onCommittee={committee=>filter({committee})}
-        onSubject={subject=>filter({subject})}
+        onHearing={inspectHearing}
+        onCommittee={inspectCommittee}
+        onSubject={inspectSubject}
+        onInspect={()=>inspectMember(nav.member)}
         onClose={()=>filter({member:''})}
       />}
       {nav.committee&&!nav.hearing&&!nav.subject&&!nav.witness&&!nav.member&&activeEntities.committee&&<CommitteeDetail
         committee={activeEntities.committee}
         committeesCatalog={committeesCatalog}
+        compact
         onSelect={select}
-        onCommittee={committee=>filter({committee})}
-        onHearing={hearing=>filter({hearing})}
-        onMember={member=>filter({member})}
+        onCommittee={inspectCommittee}
+        onHearing={inspectHearing}
+        onMember={inspectMember}
         onCongressChange={congress=>filter({congress})}
+        onInspect={()=>inspectCommittee(nav.committee)}
         onClose={()=>filter({committee:''})}
       />}
     </>}
-    {isDetail?<div className="archive-detail-view"><button className="explorer-button archive-back-button" onClick={close}>← Back to {isDocTab?'documents':activeTabMeta.noun}</button>{detail.status==='ready'?detail.value&&<ArchiveDetail entry={detail.value.entry} versions={detail.value.versions} meetings={detail.value.meetings} meetingDetails={detail.value.meetingDetails} committees={detail.value.committees} subjects={detail.value.subjects} witnesses={detail.value.witnesses} members={detail.value.members} committeesCatalog={committeesCatalog} rawBase={rawBase} onSelect={select} onHearing={hearing=>isDocTab?filter({hearing}):inspectHearing(hearing)} onMeasure={measure=>isDocTab?filter({subject:measure}):inspectSubject(measure)} onSubject={subject=>isDocTab?filter({subject}):inspectSubject(subject)} onCommittee={committee=>isDocTab?filter({committee}):inspectCommittee(committee)} onWitness={witness=>isDocTab?filter({witness}):inspectWitness(witness)} onMember={member=>isDocTab?filter({member}):inspectMember(member)} onOpenSaved={openSaved}/>:<RequestMessage state={detail} retry={retryDetail} noun="this document"/>}</div>:
+    {isDetail?<div className="archive-detail-view"><button type="button" className="explorer-button archive-back-button" onClick={close}>← Back to {isDocTab?'documents':activeTabMeta.noun}</button>{detail.status==='ready'?detail.value&&<ArchiveDetail entry={detail.value.entry} versions={detail.value.versions} meetings={detail.value.meetings} meetingDetails={detail.value.meetingDetails} committees={detail.value.committees} subjects={detail.value.subjects} witnesses={detail.value.witnesses} members={detail.value.members} committeesCatalog={committeesCatalog} rawBase={rawBase} onSelect={select} onHearing={hearing=>filter({hearing})} onMeasure={measure=>filter({subject:measure})} onSubject={subject=>filter({subject})} onCommittee={committee=>filter({committee})} onWitness={witness=>filter({witness})} onMember={member=>filter({member})} onOpenSaved={openSaved}/>:<RequestMessage state={detail} retry={retryDetail} noun="this document"/>}</div>:
       isDocTab?(
-        rows.status==='ready'&&rows.value?<section aria-label="Document results" data-archive-query={rows.value.completedQuery}><div className="archive-results-bar"><p className="archive-total" data-archive-total>{integer(rows.value.total)} documents</p></div><ArchiveRows rows={rows.value.rows} committeesCatalog={committeesCatalog} onSelect={select}/><nav className="explorer-pagination" aria-label="Document pages"><button className="explorer-button" disabled={!nav.offset} onClick={()=>navigate({offset:Math.max(0,nav.offset-pageSize)})}>Previous</button><span>{rows.value.total?integer(nav.offset+1):0}–{integer(Math.min(nav.offset+rows.value.rows.length,rows.value.total))} of {integer(rows.value.total)}</span><button className="explorer-button" disabled={rows.value.next===null} onClick={()=>navigate({offset:rows.value.next})}>Next</button></nav></section>:<RequestMessage state={rows} retry={retryRows} noun="document results"/>
+        rows.status==='ready'&&rows.value?<section aria-label="Document results" data-archive-query={rows.value.completedQuery}><div className="archive-results-bar"><p className="archive-total" data-archive-total>{rows.value.total===1?'1 document':`${integer(rows.value.total)} documents`}</p></div>{rows.value.total===0?<p className="explorer-muted">No matching documents found.</p>:<>
+          <ArchiveRows rows={rows.value.rows} committeesCatalog={committeesCatalog} sort={effectiveSort} onSelect={select}/>
+          <nav className="explorer-pagination" aria-label="Document pages"><button type="button" className="explorer-button" disabled={!nav.offset} onClick={()=>navigate({offset:Math.max(0,nav.offset-pageSize)})}>Previous</button><span>{rows.value.total?integer(nav.offset+1):0}–{integer(Math.min(nav.offset+rows.value.rows.length,rows.value.total))} of {integer(rows.value.total)}</span><button type="button" className="explorer-button" disabled={rows.value.next===null} onClick={()=>navigate({offset:rows.value.next})}>Next</button></nav>
+        </>}</section>:<RequestMessage state={rows} retry={retryRows} noun="document results"/>
       ):isInspectingEntity?(
         <div className="archive-detail-view" data-archive-entity-inspector={nav.tab}>
           <button type="button" className="explorer-button archive-back-button" onClick={clearInspectedEntity}>← Back to {activeTabMeta.noun}</button>
-          {entityView.status!=='ready'?<RequestMessage state={entityView} retry={retryEntityView} noun={`this ${activeTabMeta.singular}`}/>:(
+          {entityView.status!=='ready'?<RequestMessage state={entityView} retry={retryEntityView} noun={`this ${activeTabMeta.singular}`}/>:!inspectedEntityValue?(
+            <p className="explorer-muted">No matching {activeTabMeta.singular} found.</p>
+          ):(
             <>
               {nav.tab==='hearings'&&activeEntities?.meeting&&<HearingDetail
                 meeting={activeEntities.meeting}
@@ -416,7 +458,6 @@ function Workspace({client,nav,navigate,rawBase}:{client:ReturnType<typeof creat
                 onWitness={inspectWitness}
                 onMember={inspectMember}
                 onFilterDocuments={()=>filter({tab:'documents',hearing:nav.hearing})}
-                onClose={clearInspectedEntity}
               />}
               {nav.tab==='committees'&&activeEntities?.committee&&<CommitteeDetail
                 committee={activeEntities.committee}
@@ -425,9 +466,7 @@ function Workspace({client,nav,navigate,rawBase}:{client:ReturnType<typeof creat
                 onCommittee={inspectCommittee}
                 onHearing={inspectHearing}
                 onMember={inspectMember}
-                onCongressChange={congress=>filter({congress})}
                 onFilterDocuments={()=>filter({tab:'documents',committee:nav.committee})}
-                onClose={clearInspectedEntity}
               />}
               {nav.tab==='witnesses'&&activeEntities?.witness&&<WitnessDetail
                 witness={activeEntities.witness}
@@ -437,7 +476,6 @@ function Workspace({client,nav,navigate,rawBase}:{client:ReturnType<typeof creat
                 onCommittee={inspectCommittee}
                 onMember={inspectMember}
                 onFilterDocuments={()=>filter({tab:'documents',witness:nav.witness})}
-                onClose={clearInspectedEntity}
               />}
               {nav.tab==='members'&&activeEntities?.member&&<MemberDetail
                 member={activeEntities.member}
@@ -447,7 +485,6 @@ function Workspace({client,nav,navigate,rawBase}:{client:ReturnType<typeof creat
                 onCommittee={inspectCommittee}
                 onSubject={inspectSubject}
                 onFilterDocuments={()=>filter({tab:'documents',member:nav.member})}
-                onClose={clearInspectedEntity}
               />}
               {nav.tab==='subjects'&&activeEntities?.subject&&<SubjectDetail
                 subject={activeEntities.subject}
@@ -458,13 +495,12 @@ function Workspace({client,nav,navigate,rawBase}:{client:ReturnType<typeof creat
                 onMember={inspectMember}
                 onSubject={inspectSubject}
                 onFilterDocuments={()=>filter({tab:'documents',subject:nav.subject})}
-                onClose={clearInspectedEntity}
               />}
             </>
           )}
         </div>
       ):(
-        entityRows.status==='ready'&&entityRows.value?<section aria-label={`${activeTabMeta.label} results`} data-archive-entity-tab={nav.tab}><div className="archive-results-bar"><p className="archive-total" data-archive-entity-total>{integer(entityRows.value.total)} {activeTabMeta.noun}</p></div><ArchiveEntityRows tab={nav.tab} rows={entityRows.value.rows} committeesCatalog={committeesCatalog} onInspectHearing={inspectHearing} onInspectCommittee={inspectCommittee} onInspectWitness={inspectWitness} onInspectMember={inspectMember} onInspectSubject={inspectSubject}/><nav className="explorer-pagination" aria-label={`${activeTabMeta.label} pages`}><button className="explorer-button" disabled={!nav.offset} onClick={()=>navigate({offset:Math.max(0,nav.offset-pageSize)})}>Previous</button><span>{entityRows.value.total?integer(nav.offset+1):0}–{integer(Math.min(nav.offset+entityRows.value.rows.length,entityRows.value.total))} of {integer(entityRows.value.total)}</span><button className="explorer-button" disabled={entityRows.value.next===null} onClick={()=>navigate({offset:entityRows.value.next})}>Next</button></nav></section>:<RequestMessage state={entityRows} retry={retryEntityRows} noun={`${activeTabMeta.noun}`}/>
+        entityRows.status==='ready'&&entityRows.value?<section aria-label={`${activeTabMeta.label} results`} data-archive-entity-tab={nav.tab}><div className="archive-results-bar"><p className="archive-total" data-archive-entity-total>{entityRows.value.total===1?`1 ${activeTabMeta.singular}`:`${integer(entityRows.value.total)} ${activeTabMeta.noun}`}</p></div><ArchiveEntityRows tab={nav.tab} rows={entityRows.value.rows} committeesCatalog={committeesCatalog} onInspectHearing={inspectHearing} onInspectCommittee={inspectCommittee} onInspectWitness={inspectWitness} onInspectMember={inspectMember} onInspectSubject={inspectSubject}/>{entityRows.value.total>0&&<nav className="explorer-pagination" aria-label={`${activeTabMeta.label} pages`}><button type="button" className="explorer-button" disabled={!nav.offset} onClick={()=>navigate({offset:Math.max(0,nav.offset-pageSize)})}>Previous</button><span>{entityRows.value.total?integer(nav.offset+1):0}–{integer(Math.min(nav.offset+entityRows.value.rows.length,entityRows.value.total))} of {integer(entityRows.value.total)}</span><button type="button" className="explorer-button" disabled={entityRows.value.next===null} onClick={()=>navigate({offset:entityRows.value.next})}>Next</button></nav>}</section>:<RequestMessage state={entityRows} retry={retryEntityRows} noun={`${activeTabMeta.noun}`}/>
       )}
   </div>;
 }

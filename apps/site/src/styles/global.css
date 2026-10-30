@@ -84,14 +84,27 @@ a {
 }
 
 a:hover {
-  color: var(--ctdc-gold);
+  color: var(--ctdc-primary-hover);
 }
 
-/* One focus indicator for every interactive element (gold = "you are here") */
+/* One focus indicator for every interactive element (primary on light, gold on dark) */
 :focus-visible {
   outline: var(--ctdc-focus-ring);
   outline-offset: 2px;
   border-radius: var(--ctdc-radius-xs);
+}
+
+.site-header a:hover,
+.site-footer a:hover,
+.anchor-band a:hover {
+  color: var(--ctdc-gold);
+}
+
+.site-header :focus-visible,
+.site-footer :focus-visible,
+.anchor-band :focus-visible,
+.anchor-dark :focus-visible {
+  outline: var(--ctdc-focus-ring-on-dark);
 }
 
 .skip-link {
@@ -244,7 +257,7 @@ a:hover {
 
 .slide-link:hover {
   transform: translateX(4px);
-  color: var(--ctdc-gold);
+  color: var(--ctdc-primary-hover);
 }
 
 /* ---- Badges & tags ---- */
