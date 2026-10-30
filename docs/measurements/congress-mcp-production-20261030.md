@@ -154,10 +154,10 @@ selection was restored to the public release. See
 
 ## Committed CI
 
-Final tested code: `32941eb15ba5e4f938e783218c0c572236669ab6`, merged and pushed
-to remote main, including concurrent published phase 2 changes and a two-entry
-lockfile refresh. [MCP CI passed](https://github.com/civictechdc/congressional-tech/actions/runs/41087258770):
-54 app tests, 61 producer/profile/retention tests, and the actual native-output
+Final tested code: `62f82ab29dc22047239fad1e119d6291b8632e6f`, merged and pushed
+to remote main, including concurrent published phase 2 pipeline changes and a
+two-entry lockfile refresh. [MCP CI passed](https://github.com/civictechdc/congressional-tech/actions/runs/41088300417):
+54 app tests, 62 producer/profile/retention tests, and the actual native-output
 stdio integration. The app suite deliberately delegates its one native test to
 that separate job; together all 55 MCP tests run.
 
