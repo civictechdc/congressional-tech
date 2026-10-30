@@ -722,6 +722,37 @@ def test_phase2_entities_meetings_witnesses_recordings_and_spicy_projections(tmp
     assert len(nom['floor_votes']) == 1
     assert nom['floor_votes'][0]['vote_id'] == '118-s-1-99'
 
+    # 8. Verify search.parquet: one SpicyEngine row per document, meeting and witness, in one column set
+    from viewer_publication.archive_model import SEARCH_LISTS
+    assert queries_by_name['search_invariants'] == [dict.fromkeys(queries_by_name['search_invariants'][0], 0)]
+    search = pq.read_table(release_dir / 'search.parquet').to_pylist()
+    rows = {(r['source_id'], r['member_key']): r for r in search}
+    assert sum(r['source_id'] == 'documents' for r in search) == len(listed)
+    assert [k for k in rows if k[0] != 'documents'] == [('meetings', '115538')] + sorted(
+        ('witnesses', w['witness_key']) for w in witnesses)
+    for row in search:
+        canonical = json.dumps([row['source_id'], row['member_key']], ensure_ascii=False, separators=(',', ':'))
+        assert row['id'] == hashlib.sha256(canonical.encode()).hexdigest()
+        assert isinstance(json.loads(row['metadata']), dict)
+        assert row['url'].startswith('https://civictechdc.github.io/congressional-tech/archive/?')
+        for name in SEARCH_LISTS:
+            assert row[name] == sorted(set(row[name])) and not {None, ''} & set(row[name]), (name, row[name])
+        assert set(row['committee']) <= set(row['committee_expanded'])
+    meeting = rows[('meetings', '115538')]
+    assert (meeting['title'], meeting['date'], meeting['chamber'], meeting['committee']) == (
+        'House XML Official Title', date(2023, 5, 10), ['house'], ['hsag00'])
+    assert (meeting['has_video'], meeting['has_transcript'], meeting['congress']) == (['true'], ['true'], ['118'])
+    assert {'115538', '118-hr-1234', 'CHRG-118hhrg55555', 'youtube:dQw4w9WgXcQ'} <= set(meeting['identifiers'])
+    assert 'Committee on Agriculture' in meeting['context'] and 'Dr. Jane Smith' in meeting['context']
+    heard = rows[('witnesses', by_occasion['meeting:115538']['witness_key'])]
+    assert (heard['date'], heard['chamber'], heard['committee']) == (date(2023, 5, 10), ['house'], ['hsag00'])
+    printed = rows[('witnesses', by_occasion['package:CHRG-118shrg77777']['witness_key'])]
+    assert (printed['date'], printed['chamber'], printed['congress']) == (None, ['senate'], ['118'])
+    assert rows[('witnesses', by_occasion[page_occasions[0]]['witness_key'])]['chamber'] == ['senate']
+    statement = next(r for r in search if r['source_id'] == 'documents'
+                     and json.loads(r['metadata'])['witness_keys'] == stmt_doc['witness_keys'])
+    assert statement['record_kind'] == ['document'] and 'Dr. Jane Smith' in statement['context']
+
 
 def test_spicy_generations_pinned_by_publish_and_maintenance():
     from viewer_publication.archive_maintenance import maintain_releases

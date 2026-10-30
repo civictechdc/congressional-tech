@@ -93,6 +93,12 @@ def validate_schema(schema):
         for path in table.get('notes', {}):
             if path not in paths[name]:
                 raise ValueError(f'Unknown note field: {name}.{path}')
+        engine = table.get('engine_fields', {})
+        named = [engine.get(role) for role in ('key', 'title', 'url', 'identifiers', 'metadata', 'date_default')]
+        named += [*engine.get('text', []), *engine.get('compact', []), *engine.get('references', [])]
+        named += [*engine.get('descendants', {}), *engine.get('descendants', {}).values()]
+        if any(column is not None and column not in paths[name] for column in named):
+            raise ValueError(f'Unknown engine field column: {name}')
     ids = set()
     for relationship in schema['relationships']:
         rid = relationship['id']
@@ -248,6 +254,9 @@ def render_reference(schema):
         for path, note in table.get('notes', {}).items():
             lines += [f'- `{path}`: {note}']
         lines.append('')
+        if table.get('engine_fields'):
+            lines += ['SpicyEngine indexes this file under this `fields` block, published with it in `schema.json`:', '',
+                '```json', json.dumps(table['engine_fields'], indent=2), '```', '']
         for direction in ('source', 'target'):
             selected = [r['id'] for r in schema['relationships'] if r[direction].get('table') == name]
             lines += [('Outgoing' if direction == 'source' else 'Incoming') + ': ' + (', '.join(f'`{x}`' for x in selected) or 'none') + '.', '']

@@ -411,6 +411,91 @@ Outgoing: `capture_canonical_address`, `capture_variant_address`.
 
 Incoming: none.
 
+## `search` — SpicyEngine search layer
+
+One searchable document, meeting or witness appearance in the column set SpicyEngine indexes.
+
+Identity: `id` (primary_key; published identifier).
+
+Coverage: Document bodies and source link text are not indexed; context holds titles, names and display facts only.
+
+Coverage: A witness without a meeting (printed-hearing package or Senate page occasion) has no date or committee.
+
+Coverage: meeting_type mixes Congress.gov words with unmapped docs.house.gov codes (HHRG, HMKP, HMTG).
+
+| Field | Published type | Meaning |
+| --- | --- | --- |
+| `id` | `string` | SpicyEngine record ID: lowercase hex SHA-256 of the compact JSON [source_id, member_key] |
+| `source_id` | `dict` | Source of the row: documents, meetings or witnesses |
+| `member_key` | `string` | The row's key in its source: a document's link_key as lowercase hex, a meeting's event_id, or a witness_key |
+| `source_occurrence_id` | `string` | Lowercase hex of the first 8 bytes of the SHA-256 of the row's other columns as compact JSON; it changes exactly when the row's content does |
+| `title` | `string` | A document's title, else its filename, else 'Document {link_key}'; a meeting's title, else 'Meeting {event_id}'; a witness's name |
+| `url` | `string` | The record's page on the public archive site |
+| `context` | `string` | Searchable text joined from the record and its related records; empty when none |
+| `identifiers` | `list<string>` | Exact identifiers matched as keywords |
+| `metadata` | `string` | JSON object of display fields that are not columns of this file |
+| `date` | `date32` | A document's date, a meeting's date, or a witness's meeting date |
+| `first_captured` | `date32` | A document's first capture date; null for meetings and witnesses |
+| `record_kind` | `list<dict>` | document, meeting or witness |
+| `chamber` | `list<dict>` | A document's chambers, a meeting's chamber, or a witness's: its meeting's, else its GovInfo package letter's, else senate for a Senate hearing page |
+| `committee` | `list<dict>` | Congress.gov committee system codes: a document's committee_keys, a meeting's committees, a witness's meeting committees |
+| `committee_expanded` | `list<dict>` | committee plus the parent_system_code of each code from committees.parquet |
+| `congress` | `list<dict>` | Congress number as text: a document's congress, a meeting record's congress, or a witness's meeting congress, else its CHRG package's |
+| `document_kind` | `list<dict>` | Document kinds; documents only |
+| `format` | `list<dict>` | Saved file format; documents only |
+| `meeting_type` | `list<dict>` | Meeting type as published; meetings only |
+| `status` | `list<dict>` | Meeting status; meetings only |
+| `witness_type` | `list<dict>` | Source witness classification; witnesses only |
+| `has_video` | `list<dict>` | true or false by whether a meeting with a current record lists a recording; empty without a record |
+| `has_transcript` | `list<dict>` | true or false by whether a meeting with a current record has a matched printed transcript; empty without a record |
+
+- `member_key`: Resolve by source_id: documents to detail.link_key (hex), meetings to meetings.event_id, witnesses to witnesses.witness_key. Hidden documents have no row.
+- `context`: Documents: the filename when a title exists, linked meeting titles, linked witness names and organizations, and display-fact values. Meetings: committee names, witness names, positions and organizations, bill titles and linked document titles. Witnesses: position, organization, represented entity, panel and meeting title.
+- `identifiers[]`: Documents: link_key, package_id, measure_keys and meeting_keys. Meetings: event_id, subject_keys, transcript package IDs and video keys. Witnesses: witness_key, bioguide_id, event_id and package_id.
+- `record_kind[]`: Embedded record kinds. Like every list column here: sorted bytewise, distinct, without empty strings or nulls, and empty when its field does not apply to the row's source.
+- `chamber[]`: Embedded chamber labels.
+- `committee[]`: Embedded system codes; committees.parquet names them.
+- `committee_expanded[]`: Holds committee, so a filter on a parent committee also matches its subcommittees.
+- `congress[]`: Embedded Congress numbers, not keys.
+- `document_kind[]`: Embedded classification values, not foreign keys.
+- `format[]`: Embedded format labels.
+- `meeting_type[]`: Embedded publisher values.
+- `status[]`: Embedded publisher values.
+- `witness_type[]`: Embedded publisher values.
+- `has_video[]`: Unknown, not false, when the meeting has no current record.
+- `has_transcript[]`: Unknown, not false, when the meeting has no current record.
+
+SpicyEngine indexes this file under this `fields` block, published with it in `schema.json`:
+
+```json
+{
+  "key": "id",
+  "title": "title",
+  "url": "url",
+  "text": [
+    "context"
+  ],
+  "identifiers": "identifiers",
+  "metadata": "metadata",
+  "date_default": "date",
+  "descendants": {
+    "committee": "committee_expanded"
+  },
+  "compact": [
+    "record_kind",
+    "chamber",
+    "committee"
+  ],
+  "references": [
+    "congress"
+  ]
+}
+```
+
+Outgoing: none.
+
+Incoming: none.
+
 ## Relationships
 
 ### `document_detail`

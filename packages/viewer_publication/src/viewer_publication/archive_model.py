@@ -374,6 +374,32 @@ def _sql_steps(names,*,root=ROOT):
     return [dict(name=name.replace('-','_'),sql=(Path(root)/'model/sql'/(name+'.sql')).read_text(),materialize=True) for name in names]
 
 
+SEARCH_LISTS=('identifiers','record_kind','chamber','committee','committee_expanded','congress','document_kind',
+    'format','meeting_type','status','witness_type','has_video','has_transcript')
+
+
+def search_auxiliary(*,root=ROOT):
+    """SpicyEngine's layer: one row per document, meeting and witness in one column set (PHASE-2 §3)."""
+    steps=_sql_steps(['search-meeting-facts','search-documents','search-meetings','search-witnesses'],root=root)
+    dictionary=['source_id',*(name+'.list.item' for name in SEARCH_LISTS if name!='identifiers')]
+    return steps+[('search',(Path(root)/'model/sql/search.sql').read_text(),['source_id','member_key'],dictionary)]
+
+
+def search_checks():
+    """Engine's row rules and each source's row count, checked where the rows are made."""
+    noncanonical=' OR '.join(f's.{name} IS NULL OR s.{name}<>array_sort(array_except(s.{name},x.blanks))' for name in SEARCH_LISTS)
+    count="(SELECT count(*) FROM search_export WHERE source_id='{0}')"
+    return dict(name='search_invariants',sql=f"""SELECT
+        (SELECT count(*) FROM search_export WHERE source_id NOT IN ('documents','meetings','witnesses')) AS unknown_search_sources,
+        (SELECT count(*) FROM (SELECT make_array(cast(NULL AS VARCHAR),'') AS blanks) x CROSS JOIN search_export s
+            WHERE {noncanonical}) AS noncanonical_search_lists,
+        (SELECT count(*) FROM search_export
+            WHERE octet_length(title)+octet_length(context)+octet_length(metadata)>16777216) AS oversized_search_rows,
+        abs({count.format('documents')}-(SELECT count(*) FROM ordered WHERE NOT hidden)) AS search_document_rows_differ,
+        abs({count.format('meetings')}-(SELECT count(*) FROM meetings_export)) AS search_meeting_rows_differ,
+        abs({count.format('witnesses')}-(SELECT count(*) FROM witnesses_export)) AS search_witness_rows_differ""")
+
+
 def admission_steps(*,prelude=(),root=ROOT):
     """Use the full model's maintained input prefix before accepting a skip."""
     from viewer_publication.archive_provenance import current_steps
@@ -656,6 +682,8 @@ def build_prepared_release(prepared,*,engine,output,root=ROOT):
         ]
     auxiliary += [('url_state','SELECT * FROM url_state',['requested_url'],['last_outcome']),
         ('url_variants','SELECT * FROM url_variants',['variant_url','canonical_url'],[])]
+    if prepared.get('include_entities'):
+        auxiliary += search_auxiliary(root=root)
     extra=[dict(name='document_rows.parquet',path=str(evidence/'document_rows.parquet'),sql='SELECT list_row,doc_key AS document_id,'+','.join(LIST_COLUMNS+DETAIL_COLUMNS)+' FROM details',settings=_settings('whole',['list_row'],footer_limit=4 << 20)),
         dict(name='source_members.parquet',path=str(evidence/'source_members.parquet'),sql="""SELECT DISTINCT o.doc_key AS document_id,o.list_row,
         m.source_id,CASE WHEN m.body_sha IS NOT NULL THEN 'bodies/sha256/'||substr(m.body_sha,1,2)||'/'||m.body_sha||'.gz' END AS body_key,
@@ -766,7 +794,8 @@ def build_prepared_release(prepared,*,engine,output,root=ROOT):
                     UNION SELECT substr(left_node,3,16) AS prefix FROM body_review_edges WHERE left_node IS NOT NULL
                     UNION SELECT substr(right_node,3,16) AS prefix FROM body_review_edges WHERE right_node IS NOT NULL
                 ) rev ON substr(o.bh,1,16)=rev.prefix
-            ) merged_docs ON single_vk.doc_key=merged_docs.doc_key) AS single_doc_version_keys{entity_invariant_sql}""")]+url_state_diagnostics()+completeness_checks(
+            ) merged_docs ON single_vk.doc_key=merged_docs.doc_key) AS single_doc_version_keys{entity_invariant_sql}""")]+url_state_diagnostics()+(
+            [search_checks()] if prepared.get('include_entities') else [])+completeness_checks(
             catalog_version=catalog_version,
             readings_version=bundle_version(parser_versions,policy=worker_limits()),
             include_entities=bool(prepared.get('include_entities')),

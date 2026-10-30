@@ -12,7 +12,7 @@ def test_reference_matches_registry_and_nested_paths_are_explicit():
     schema = build_schema()
     assert REFERENCE.read_text() == render_reference(schema)
     tables = {f['name'].removesuffix('.parquet'): f for f in schema['files']}
-    assert len(tables) == 16
+    assert len(tables) == 17
     assert tables['rosters']['identity']['fields'] == ['congress', 'system_code', 'bioguide_id']
     assert tables['urls']['identity']['scope'] == 'release'
     assert field_types(tables['members'])['cross_ids.fec[]'] == 'string'
@@ -52,6 +52,7 @@ def test_release_availability_keeps_unavailable_definitions_and_identity():
     (lambda s: next(t for t in s['files'] if t['name']=='members.parquet')['identity'].update(fields=['terms']), 'scalar row fields'),
     (lambda s: next(t for t in s['files'] if t['name']=='members.parquet')['columns'][0].update(nullable=True), 'Nullable primary key'),
     (lambda s: s['recipes'][0]['requires'].append('absent'), 'Unknown recipe dependency'),
+    (lambda s: next(t for t in s['files'] if t['name']=='search.parquet')['engine_fields'].update(title='absent'), 'Unknown engine field column'),
 ])
 def test_invalid_metadata_is_rejected(mutation, expected):
     schema = build_schema()

@@ -173,6 +173,17 @@ registry; this document does not claim those additions are already published.
 | `rosters.parquet` | `congress` int16, `system_code` dict, `bioguide_id` dict, `title` dict nullable, `rank` int16 nullable, `party` dict nullable | `(system_code, rank, bioguide_id)` | Whole | Under 1 MB |
 | `bills.parquet` | `bill_id` string, `title` string nullable, `short_title` string nullable, `sponsor_bioguide_id` dict nullable, `introduced`, `latest_action_date` date32 nullable, `latest_action_text` string nullable, `stage` dict nullable, `policy_area` dict nullable, `committees` List<dict> (system codes), `cbo_estimates` List<Struct<publication_id string, date date32, description string>>, `floor_votes` List<Struct<vote_id string, basis dict, chamber dict, date date32, question string, result string, yea int16, nay int16>>, `amendments` List<Struct<amendment_id string, purpose string, sponsor_bioguide_id dict, latest_action_date date32, latest_action_text string>>, `committee_activities` List<Struct<system_code dict, activity dict, date date32>> | `bill_id` | Whole | *est.* a few MB |
 | `nominations.parquet` | `nomination_id` string, `description` string, `organization` string nullable, `received` date32 nullable, `latest_action_date` date32 nullable, `latest_action_text` string nullable (the outcome, such as a voice vote), `committees` List<dict>, `transcripts` List<string> (package IDs), `floor_votes` List<Struct<vote_id string, date date32, question string, result string, yea int16, nay int16>> (cloture, then confirmation, as cast) | `nomination_id` | Whole | Under 1 MB |
+| `search.parquet` | `id` string, `source_id` dict, `member_key` string, `source_occurrence_id` string, `title` string, `url` string, `context` string, `identifiers` List<string>, `metadata` string (a JSON object), `date` date32 nullable, `first_captured` date32 nullable, and the List<dict> facets `record_kind`, `chamber`, `committee`, `committee_expanded`, `congress`, `document_kind`, `format`, `meeting_type`, `status`, `witness_type`, `has_video`, `has_transcript`; one row per non-hidden `list` row, `meetings` row and `witnesses` row | `(source_id, member_key)` | Whole | 86.6 MB at 532,743 rows (local build of 2026-10-30) |
+
+`search.parquet` is SpicyEngine's input. Engine spells no dataset's column names, so the
+release-schema registry entry carries the `fields` block Engine indexes it under, published
+in `schema.json`; the registry also gives each column's derivation per source (see the
+[relationship reference](../release-relationships.md)). Its rows are built by the named steps
+`search-*.sql` from the exported entity relations, never a second join of the lake. `id` is
+Engine's record ID, the SHA-256 of the compact JSON `[source_id, member_key]`. A file cannot
+carry the ID of the release that hashes it, so `source_occurrence_id` is a digest of the
+row's own content and the manifest entry ties the file to its release. The site does not
+read the file; Congress MCP downloads every manifest file, so a prepare carries its bytes.
 
 ## 4. Plan Items
 

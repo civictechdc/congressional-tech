@@ -178,9 +178,14 @@ def _execute(inputs, steps, *, output, scratch, engine, origin, auxiliary=None, 
     outputs = _core(steps, output,lookup_extra=lookup_extra)
     # Entity files and the capture fixture have their full declared schema,
     # including when this documents-only input provides no rows for them.
+    # A step dict among them is a named step that a later export reads.
     aux_items = list(_auxiliary() if auxiliary is None else auxiliary)
-    aux_names = {name for name, _, _, _ in aux_items}
-    for name, sql, keys, dictionary in aux_items:
+    aux_names = {item[0] for item in aux_items if not isinstance(item, dict)}
+    for item in aux_items:
+        if isinstance(item, dict):
+            steps.append(item)
+            continue
+        name, sql, keys, dictionary = item
         steps.append(_step(name + '_export', sql, materialize=True))
         outputs.append(dict(name=name + '.parquet', path=str(output / (name + '.parquet')), sql='SELECT * FROM ' + name + '_export',
             settings=_settings('whole', keys, dictionary=dictionary)))
@@ -240,6 +245,9 @@ def _execute(inputs, steps, *, output, scratch, engine, origin, auxiliary=None, 
         coverage_parts.append("SELECT 'bills.parquet' AS file,min(try_cast(split_part(bill_id,'-',1) AS SMALLINT)) AS congress_start,max(try_cast(split_part(bill_id,'-',1) AS SMALLINT)) AS congress_end,min(introduced) AS date_start,max(introduced) AS date_end FROM bills_export")
     if 'nominations' in aux_names:
         coverage_parts.append("SELECT 'nominations.parquet' AS file,min(try_cast(split_part(nomination_id,'-',1) AS SMALLINT)) AS congress_start,max(try_cast(split_part(nomination_id,'-',1) AS SMALLINT)) AS congress_end,min(received) AS date_start,max(received) AS date_end FROM nominations_export")
+    if 'search' in aux_names:
+        congresses = 'FROM (SELECT try_cast(unnest(congress) AS SMALLINT) AS c FROM search_export)'
+        coverage_parts.append(f"SELECT 'search.parquet' AS file,(SELECT min(c) {congresses}) AS congress_start,(SELECT max(c) {congresses}) AS congress_end,min(date) AS date_start,max(date) AS date_end FROM search_export")
     queries.append(dict(name='coverage', sql=' UNION ALL '.join(coverage_parts)))
     spec = retire_relations(dict(scratch=str(scratch / 'native'), inputs=inputs, steps=steps, outputs=outputs, queries=queries))
     spec_path = scratch / 'job.json'

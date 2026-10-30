@@ -1048,6 +1048,182 @@
       "notes": {
         "canonical_url": "Capture-profile aliases only. Do not use this table to reproduce the fixed public URL lookup hash."
       }
+    },
+    {
+      "name": "search.parquet",
+      "columns": [
+        {
+          "name": "id",
+          "type": "string",
+          "meaning": "SpicyEngine record ID: lowercase hex SHA-256 of the compact JSON [source_id, member_key]"
+        },
+        {
+          "name": "source_id",
+          "type": "dict",
+          "meaning": "Source of the row: documents, meetings or witnesses"
+        },
+        {
+          "name": "member_key",
+          "type": "string",
+          "meaning": "The row's key in its source: a document's link_key as lowercase hex, a meeting's event_id, or a witness_key"
+        },
+        {
+          "name": "source_occurrence_id",
+          "type": "string",
+          "meaning": "Lowercase hex of the first 8 bytes of the SHA-256 of the row's other columns as compact JSON; it changes exactly when the row's content does"
+        },
+        {
+          "name": "title",
+          "type": "string",
+          "meaning": "A document's title, else its filename, else 'Document {link_key}'; a meeting's title, else 'Meeting {event_id}'; a witness's name"
+        },
+        {
+          "name": "url",
+          "type": "string",
+          "meaning": "The record's page on the public archive site"
+        },
+        {
+          "name": "context",
+          "type": "string",
+          "meaning": "Searchable text joined from the record and its related records; empty when none"
+        },
+        {
+          "name": "identifiers",
+          "type": "list<string>",
+          "meaning": "Exact identifiers matched as keywords"
+        },
+        {
+          "name": "metadata",
+          "type": "string",
+          "meaning": "JSON object of display fields that are not columns of this file"
+        },
+        {
+          "name": "date",
+          "type": "date32",
+          "nullable": true,
+          "meaning": "A document's date, a meeting's date, or a witness's meeting date"
+        },
+        {
+          "name": "first_captured",
+          "type": "date32",
+          "nullable": true,
+          "meaning": "A document's first capture date; null for meetings and witnesses"
+        },
+        {
+          "name": "record_kind",
+          "type": "list<dict>",
+          "meaning": "document, meeting or witness"
+        },
+        {
+          "name": "chamber",
+          "type": "list<dict>",
+          "meaning": "A document's chambers, a meeting's chamber, or a witness's: its meeting's, else its GovInfo package letter's, else senate for a Senate hearing page"
+        },
+        {
+          "name": "committee",
+          "type": "list<dict>",
+          "meaning": "Congress.gov committee system codes: a document's committee_keys, a meeting's committees, a witness's meeting committees"
+        },
+        {
+          "name": "committee_expanded",
+          "type": "list<dict>",
+          "meaning": "committee plus the parent_system_code of each code from committees.parquet"
+        },
+        {
+          "name": "congress",
+          "type": "list<dict>",
+          "meaning": "Congress number as text: a document's congress, a meeting record's congress, or a witness's meeting congress, else its CHRG package's"
+        },
+        {
+          "name": "document_kind",
+          "type": "list<dict>",
+          "meaning": "Document kinds; documents only"
+        },
+        {
+          "name": "format",
+          "type": "list<dict>",
+          "meaning": "Saved file format; documents only"
+        },
+        {
+          "name": "meeting_type",
+          "type": "list<dict>",
+          "meaning": "Meeting type as published; meetings only"
+        },
+        {
+          "name": "status",
+          "type": "list<dict>",
+          "meaning": "Meeting status; meetings only"
+        },
+        {
+          "name": "witness_type",
+          "type": "list<dict>",
+          "meaning": "Source witness classification; witnesses only"
+        },
+        {
+          "name": "has_video",
+          "type": "list<dict>",
+          "meaning": "true or false by whether a meeting with a current record lists a recording; empty without a record"
+        },
+        {
+          "name": "has_transcript",
+          "type": "list<dict>",
+          "meaning": "true or false by whether a meeting with a current record has a matched printed transcript; empty without a record"
+        }
+      ],
+      "gaps": [
+        "Document bodies and source link text are not indexed; context holds titles, names and display facts only",
+        "A witness without a meeting (printed-hearing package or Senate page occasion) has no date or committee",
+        "meeting_type mixes Congress.gov words with unmapped docs.house.gov codes (HHRG, HMKP, HMTG)"
+      ],
+      "purpose": "SpicyEngine search layer",
+      "row_meaning": "One searchable document, meeting or witness appearance in the column set SpicyEngine indexes",
+      "identity": {
+        "fields": [
+          "id"
+        ],
+        "scope": "published identifier",
+        "validation": "native publication key checks",
+        "kind": "primary_key"
+      },
+      "notes": {
+        "member_key": "Resolve by source_id: documents to detail.link_key (hex), meetings to meetings.event_id, witnesses to witnesses.witness_key. Hidden documents have no row.",
+        "context": "Documents: the filename when a title exists, linked meeting titles, linked witness names and organizations, and display-fact values. Meetings: committee names, witness names, positions and organizations, bill titles and linked document titles. Witnesses: position, organization, represented entity, panel and meeting title.",
+        "identifiers[]": "Documents: link_key, package_id, measure_keys and meeting_keys. Meetings: event_id, subject_keys, transcript package IDs and video keys. Witnesses: witness_key, bioguide_id, event_id and package_id.",
+        "record_kind[]": "Embedded record kinds. Like every list column here: sorted bytewise, distinct, without empty strings or nulls, and empty when its field does not apply to the row's source.",
+        "chamber[]": "Embedded chamber labels.",
+        "committee[]": "Embedded system codes; committees.parquet names them.",
+        "committee_expanded[]": "Holds committee, so a filter on a parent committee also matches its subcommittees.",
+        "congress[]": "Embedded Congress numbers, not keys.",
+        "document_kind[]": "Embedded classification values, not foreign keys.",
+        "format[]": "Embedded format labels.",
+        "meeting_type[]": "Embedded publisher values.",
+        "status[]": "Embedded publisher values.",
+        "witness_type[]": "Embedded publisher values.",
+        "has_video[]": "Unknown, not false, when the meeting has no current record.",
+        "has_transcript[]": "Unknown, not false, when the meeting has no current record."
+      },
+      "engine_fields": {
+        "key": "id",
+        "title": "title",
+        "url": "url",
+        "text": [
+          "context"
+        ],
+        "identifiers": "identifiers",
+        "metadata": "metadata",
+        "date_default": "date",
+        "descendants": {
+          "committee": "committee_expanded"
+        },
+        "compact": [
+          "record_kind",
+          "chamber",
+          "committee"
+        ],
+        "references": [
+          "congress"
+        ]
+      }
     }
   ],
   "relationships_version": 1,

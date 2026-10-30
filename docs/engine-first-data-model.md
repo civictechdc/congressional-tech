@@ -667,7 +667,7 @@ Phase 2: [[PHASE-2]] §2.
 
 ## 8. Release Files
 
-Release files are what the site, Congress MCP and the capture job read: `list` for search, facets and sorting; `detail` for everything a document page acts on; `links` and `urls` to resolve a public link or a pasted address; `sources` and `recoveries` for where a document was published and what recovers it; the entity files for hearings, recordings, witnesses, committees, members, rosters, bills and nominations; `url_state` and `capture_scope.json` for the capture job; `schema.json` and the manifest for shared discovery by every consumer.
+Release files are what the site, Congress MCP and the capture job read: `list` for search, facets and sorting; `detail` for everything a document page acts on; `links` and `urls` to resolve a public link or a pasted address; `sources` and `recoveries` for where a document was published and what recovers it; the entity files for hearings, recordings, witnesses, committees, members, rosters, bills and nominations; `url_state` and `capture_scope.json` for the capture job; `schema.json` and the manifest for shared discovery by every consumer; `search` for SpicyEngine's index ([[PHASE-2]] §3).
 
 The file definitions below describe the specified release, not all facts retained
 by the old Explorer or available upstream. [[PHASE-2]] §4.6 records the remaining
