@@ -4,9 +4,10 @@
 }
 .explorer-page-heading {
   display: flex;
+  flex-wrap: wrap;
   align-items: end;
   justify-content: space-between;
-  gap: var(--ctdc-space-lg);
+  gap: var(--ctdc-space-xs) var(--ctdc-space-lg);
   margin-bottom: var(--ctdc-space-xl);
 }
 .explorer-page-heading h1 {
@@ -23,7 +24,8 @@
 .explorer-page-heading > a,
 .explorer-page-links {
   font-size: var(--ctdc-text-sm);
-  flex-shrink: 0;
+  min-width: 0;
+  max-width: 100%;
 }
 .explorer-page-links {
   display: flex;

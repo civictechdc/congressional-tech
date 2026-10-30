@@ -114,6 +114,12 @@
   border-color: var(--ctdc-primary);
 }
 
+.archive-explorer-link {
+  margin-left: auto;
+  font-size: var(--ctdc-text-xs);
+  font-weight: var(--ctdc-weight-semibold);
+}
+
 .archive-results-bar {
   display: flex;
   align-items: center;

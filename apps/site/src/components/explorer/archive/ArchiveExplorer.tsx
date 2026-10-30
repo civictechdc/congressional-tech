@@ -1,7 +1,7 @@
 import {useEffect,useState} from 'react';
 import {createArchiveClient} from '../reader/archive-client.ts';
 import {openSavedBlob} from './saved-tab.ts';
-import {ArchiveDetail,ArchiveRows,keyHex} from './ArchiveDetail.tsx';
+import {ArchiveDetail,ArchiveRows,keyHex,siteBase} from './ArchiveDetail.tsx';
 import {ArchiveFormatFilter,formatLabel} from './ArchiveFormats.tsx';
 import {
   buildCommitteeGroups,
@@ -129,6 +129,12 @@ function Workspace({client,nav,navigate,rawBase}:{client:ReturnType<typeof creat
     nav.hearing&&{label:`Hearing ${nav.hearing}`,clear:()=>filter({hearing:''})},
     nav.format&&{label:formatLabel(nav.format),clear:()=>filter({format:''})},
   ].filter(Boolean) as Array<{label:string;clear:()=>void}>;
+  const base=siteBase();
+  const explorerFilterHref=nav.hearing
+    ?`${base}/dashboard/?meeting=${encodeURIComponent(nav.hearing)}${nav.congress?`&congress=${encodeURIComponent(nav.congress)}`:''}`
+    :nav.committee
+      ?`${base}/dashboard/?committee=${encodeURIComponent(nav.committee)}${nav.congress?`&congress=${encodeURIComponent(nav.congress)}`:''}`
+      :'';
 
   const isDetail=selection!==null||Boolean(nav.key);
 
@@ -150,10 +156,11 @@ function Workspace({client,nav,navigate,rawBase}:{client:ReturnType<typeof creat
     {!isDetail&&activeFilters.length>0&&<div className="archive-active-filters" aria-label="Active filters">
       {activeFilters.map((item,i)=><button key={i} type="button" className="archive-filter-pill" onClick={item.clear}>{item.label} <span aria-hidden="true">×</span></button>)}
       <button type="button" className="explorer-text-button" onClick={()=>filter({text:'',congress:'',committee:'',kind:'',hearing:'',format:''})}>Clear filters</button>
+      {explorerFilterHref&&<a className="archive-explorer-link" href={explorerFilterHref}>{nav.hearing?'Open hearing in Committee Explorer':'Open committee in Committee Explorer'}</a>}
     </div>}
     {info.status!=='ready'&&<RequestMessage state={info} retry={retryInfo} noun="the archive"/>}
     {savedError&&<p role="alert" className="explorer-alert">{savedError}</p>}
-    {isDetail?<div className="archive-detail-view"><button className="explorer-button archive-back-button" onClick={close}>← Back to documents</button>{detail.status==='ready'?detail.value&&<ArchiveDetail {...detail.value} rawBase={rawBase} onSelect={select} onHearing={hearing=>filter({hearing})} onMeasure={measure=>filter({text:measure})} onOpenSaved={openSaved}/>:<RequestMessage state={detail} retry={retryDetail} noun="this document"/>}</div>:
+    {isDetail?<div className="archive-detail-view"><button className="explorer-button archive-back-button" onClick={close}>← Back to documents</button>{detail.status==='ready'?detail.value&&<ArchiveDetail {...detail.value} rawBase={rawBase} onSelect={select} onHearing={hearing=>filter({hearing})} onCommittee={committee=>filter({committee})} onMeasure={measure=>filter({text:measure})} onOpenSaved={openSaved}/>:<RequestMessage state={detail} retry={retryDetail} noun="this document"/>}</div>:
       rows.status==='ready'?<section aria-label="Document results" data-archive-query={rows.value.completedQuery}><div className="archive-results-bar"><p className="archive-total" data-archive-total>{integer(rows.value.total)} documents</p></div><ArchiveRows rows={rows.value.rows} onSelect={select}/><nav className="explorer-pagination" aria-label="Document pages"><button className="explorer-button" disabled={!nav.offset} onClick={()=>navigate({offset:Math.max(0,nav.offset-pageSize)})}>Previous</button><span>{rows.value.total?integer(nav.offset+1):0}–{integer(Math.min(nav.offset+rows.value.rows.length,rows.value.total))} of {integer(rows.value.total)}</span><button className="explorer-button" disabled={rows.value.next===null} onClick={()=>navigate({offset:rows.value.next})}>Next</button></nav></section>:<RequestMessage state={rows} retry={retryRows} noun="document results"/>}
   </div>;
 }

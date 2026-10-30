@@ -7,7 +7,7 @@ import React from 'react';
 import {renderToStaticMarkup} from 'react-dom/server';
 const require=createRequire(import.meta.url);
 async function compile(name){
-  const result=await build({entryPoints:[new URL('../src/components/explorer/archive/'+name,import.meta.url).pathname],bundle:true,platform:'node',format:'cjs',packages:'external',write:false});
+  const result=await build({entryPoints:[new URL('../src/components/explorer/archive/'+name,import.meta.url).pathname],bundle:true,platform:'node',format:'cjs',packages:'external',write:false,define:{'import.meta.env':'globalThis.__IMPORT_META_ENV__'}});
   const compiled={exports:{}};new Function('require','module','exports',result.outputFiles[0].text)(require,compiled,compiled.exports);return compiled.exports;
 }
 const {ArchiveDetail,ArchiveRows}=await compile('ArchiveDetail.tsx');
@@ -125,4 +125,54 @@ test('rows and saved-copy links share format labels without changing recorded fi
   assert(rows.includes('HLS playlist (MPEGURL)'));assert(!rows.includes('APPLICATION/X-MPEGURL'));
   assert(html.includes('Open saved HLS playlist (MPEGURL)'));assert(html.includes('Open alternate Word document (DOCX)'));
   assert.equal(changed.format,'application/x-mpegurl');
+});
+
+test('detail view derives committees from facts and URLs, renders GovInfo package links, and honors BASE_URL',()=>{
+  globalThis.__IMPORT_META_ENV__={BASE_URL:'/congressional-tech/'};
+  try{
+    const derivedEntry={
+      document:{...row,congress:118,committee_keys:[],meeting_keys:['118001']},
+      detail:{
+        ...detail,
+        package_id:'CHRG-118hhrg55469',
+        facts:[{field:'committee_code',value:'ap06'}],
+      },
+      sources:[
+        {url:'https://docs.house.gov/meetings/SY/SY15/20240101/118001/HHRG-118-SY15-Wstate.pdf',listed_on:'https://www.csce.gov/hearings'},
+      ],
+      recoveries:[{kind:'recovered_document',body:new Uint8Array(32).fill(19),suffix:'.gz',bytes:50,recovered_url:'https://d1dth6e84htgma.cloudfront.net/doc.pdf'}],
+    };
+    const html=renderToStaticMarkup(React.createElement(ArchiveDetail,{
+      entry:derivedEntry,
+      meetings:[{event_id:118001,title:'Transportation infrastructure hearing'}],
+      versions:[],
+      rawBase:'https://raw.test/',
+      onSelect:()=>{},
+      onHearing:()=>{},
+      onCommittee:()=>{},
+      onOpenSaved:()=>{},
+    }));
+    assert(html.includes('House Appropriations — Interior, Environment, &amp; Related Agencies'));
+    assert(html.includes('House Science, Space, &amp; Technology — Research &amp; Technology'));
+    assert(html.includes('Helsinki Commission'));
+    assert(html.includes('House Energy &amp; Commerce'));
+    assert(html.includes('href="/congressional-tech/dashboard/?committee=hsap06&amp;congress=118"'));
+    assert(html.includes('href="/congressional-tech/dashboard/?meeting=118001&amp;congress=118"'));
+    assert(html.includes('href="https://www.govinfo.gov/app/details/CHRG-118hhrg55469"'));
+    assert(html.includes('>Transportation infrastructure hearing</button>'));
+
+    const selectSubHtml=render({
+      document:{...row,congress:118,committee_keys:['hlfd00','hlvc00','hsap10','hsfa16','hsvr10']},
+      detail,
+      sources:[],
+      recoveries:[],
+    });
+    assert(selectSubHtml.includes('House Judiciary — Select Subcommittee on the Weaponization of the Federal Government'));
+    assert(selectSubHtml.includes('House Oversight &amp; Accountability — Select Subcommittee on the Coronavirus Pandemic'));
+    assert(selectSubHtml.includes('House Appropriations — Energy &amp; Water Development'));
+    assert(selectSubHtml.includes('House Foreign Affairs — Africa'));
+    assert(selectSubHtml.includes('House Veterans&#x27; Affairs — Economic Opportunity'));
+  }finally{
+    delete globalThis.__IMPORT_META_ENV__;
+  }
 });

@@ -1,13 +1,14 @@
 ---
 import Base from '../layouts/Base.astro';
 import ArchiveExplorer from '../components/explorer/archive/ArchiveExplorer';
+import { withBase } from '../lib/paths';
 import '../styles/explorer.css';
 import '../styles/archive.css';
 const pointerUrl=import.meta.env.PUBLIC_ARCHIVE_POINTER_URL||'https://congressional-data.spicygov.ai/viewer-publications/manifest.json';
 const rawBase=import.meta.env.PUBLIC_ARCHIVE_RAW_BASE_URL||'https://congressional-data.spicygov.ai/';
 ---
 <Base title="Document archive" active="archive" description="Search congressional committee hearings, witness statements, bills, markups, saved copies, and recovered records.">
-  <section class="explorer-page explorer-archive-page"><div class="container"><div class="explorer-page-heading"><div><p class="eyebrow">Congressional records</p><h1>Document archive</h1><p class="explorer-note">Search committee hearings, witness testimony, bills, amendments, and preserved copies across Congress.</p></div></div>
+  <section class="explorer-page explorer-archive-page"><div class="container"><div class="explorer-page-heading"><div><p class="eyebrow">Congressional records</p><h1>Document archive</h1><p class="explorer-note">Search committee hearings, witness testimony, bills, amendments, and preserved copies across Congress.</p></div><div class="explorer-page-links"><a href={withBase('/dashboard/')}>Explore meetings, committees, witnesses, and coverage in Committee Explorer</a></div></div>
     <ArchiveExplorer pointerUrl={pointerUrl} rawBase={rawBase} client:load/>
     <noscript><p>JavaScript is required to search the document archive.</p></noscript>
   </div></section>

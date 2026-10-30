@@ -97,14 +97,17 @@ export function recordFiles(record: unknown): Fields[] {
 export function FileLinks({ record }: { record: unknown }) {
   const files = recordFiles(record);
   if (!files.length) return null;
+  const base = (typeof import.meta !== 'undefined' && (import.meta as any).env?.BASE_URL ? String((import.meta as any).env.BASE_URL) : '').replace(/\/+$/, '');
+  const isRecording = fields(record).type === 'recording';
   return <div className="explorer-file-links">{files.map(file => {
+    const href = publicUrl(file.url);
     const saved = savedCopyHref(file, import.meta.env.PUBLIC_ARCHIVE_RAW_BASE_URL);
     const label = fileLinkName(file);
     const savedLabel = file.label && file.label !== 'unknown' ? ` (${words(file.label)})` : '';
     const meta = [file.version && file.version !== 'unknown' ? words(file.version) : '', typeof file.published_at === 'string' ? `Published ${file.published_at.slice(0, 10)}` : '', fileTypeNote(typeof file.media_type === 'string' ? file.media_type : '')].filter(Boolean).join(' · ');
     return <span key={String(file.url)}>
-      <a href={publicUrl(file.url)} target="_blank" rel="noreferrer">{label} <ExternalIcon /></a>
-      {saved ? <> <a href={saved} target="_blank" rel="noreferrer">Open saved copy{savedLabel} <ExternalIcon /></a></> : null}
+      <a href={href} target="_blank" rel="noreferrer">{label} <ExternalIcon /></a>
+      {saved ? <> <a href={saved} target="_blank" rel="noreferrer">Open saved copy{savedLabel} <ExternalIcon /></a></> : !isRecording && href ? <> <a href={`${base}/archive/?q=${encodeURIComponent(href)}`}>Find in Document Archive</a></> : null}
       {meta ? <span className="explorer-row-meta">{meta}</span> : null}
     </span>;
   })}</div>;

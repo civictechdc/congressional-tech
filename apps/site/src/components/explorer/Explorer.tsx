@@ -23,6 +23,7 @@ import {
   enumLabel,
   fields,
   publicUrl,
+  recordFiles,
   recordTitle,
   type DetailRecord,
 } from "./view/RecordDetail";
@@ -204,7 +205,10 @@ function toQuery(nav: Navigation, info: QueryInfo): ExplorerQuery {
         ? nav.provider || undefined
         : undefined,
     history: nav.view === "gaps" ? nav.history || undefined : undefined,
-    committeeId: nav.committee || undefined,
+    committeeId:
+      nav.committee && !/^[a-z]{4}\d{2}$/i.test(nav.committee)
+        ? nav.committee
+        : undefined,
     month: nav.month || undefined,
     committeeLevel: info.supported_filters?.includes("committeeLevel")
       ? nav.committeeLevel || undefined
@@ -257,6 +261,116 @@ function Workspace({
     setNav(next);
     if (patch.q !== undefined) setQueryText(patch.q);
   };
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const eventId = (params.get("meeting") || params.get("hearing") || "").trim();
+    if (!eventId || (nav.kind && nav.id)) return;
+    let cancelled = false;
+    const base = (
+      typeof import.meta !== "undefined" && (import.meta as any).env?.BASE_URL
+        ? String((import.meta as any).env.BASE_URL)
+        : ""
+    ).replace(/\/+$/, "");
+    fetch(`${base}/data/explorer/event-meetings.json`)
+      .then((res) => (res.ok ? res.json() : null))
+      .then((map) => {
+        if (cancelled) return;
+        const hit = map && typeof map === "object" ? map[eventId] : null;
+        if (Array.isArray(hit) && hit[0]) {
+          update(
+            {
+              congress: String(hit[1] || params.get("congress") || nav.congress),
+              kind: "meeting",
+              id: String(hit[0]),
+            },
+            true,
+          );
+        } else {
+          update(
+            {
+              view: "meetings",
+              congress: params.get("congress") || "all",
+              q: eventId,
+            },
+            true,
+          );
+        }
+      })
+      .catch(() => {
+        if (cancelled) return;
+        update(
+          {
+            view: "meetings",
+            congress: params.get("congress") || "all",
+            q: eventId,
+          },
+          true,
+        );
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+  useEffect(() => {
+    if (!/^[a-z]{4}\d{2}$/i.test(nav.committee)) return;
+    const code = nav.committee.trim().toLowerCase();
+    const parentOverrides: Record<string, string> = {
+      hlfd00: "hsju00",
+      hlqj00: "hsju00",
+      hlvc00: "hsgo00",
+      hzgo34: "hsgo00",
+    };
+    const parentCode = parentOverrides[code] || `${code.slice(0, 4)}00`;
+    const controller = new AbortController();
+    const signal = controller.signal;
+    (async () => {
+      const lookupCode = async (
+        targetCode: string,
+        cong: number | "all",
+      ) => {
+        const res = await reader.search(
+          {
+            kind: "committee_term",
+            congress: cong,
+            q: targetCode,
+            limit: 100,
+          },
+          { signal },
+        );
+        const sorted = [...res.rows].sort(
+          (a, b) =>
+            Number(fields(b).congress || 0) - Number(fields(a).congress || 0),
+        );
+        return sorted.find(
+          (r) =>
+            String(fields(r).committee_code || "").toLowerCase() === targetCode,
+        );
+      };
+      const cong = nav.congress === "all" ? "all" : Number(nav.congress);
+      let match = await lookupCode(code, cong);
+      if (!match && cong !== "all") {
+        match = await lookupCode(code, "all");
+      }
+      if (!match && parentCode !== code) {
+        match = await lookupCode(parentCode, cong);
+        if (!match && cong !== "all") {
+          match = await lookupCode(parentCode, "all");
+        }
+      }
+      if (!signal.aborted && match) {
+        update(
+          {
+            congress: String(fields(match).congress || nav.congress),
+            committee: "",
+            kind: "committee_term",
+            id: String(fields(match).id),
+          },
+          true,
+        );
+      }
+    })().catch(() => {});
+    return () => controller.abort();
+  }, [reader, nav.committee, nav.congress]);
   const filter = (patch: Partial<Navigation>) =>
     update({ ...patch, page: 0, kind: "", id: "" });
   const select = (ref: ExplorerRecordRef) => {
@@ -2380,9 +2494,33 @@ function Inspector({
         )
       : "";
   const base = import.meta.env.BASE_URL.replace(/\/+$/, "");
-  const archiveHref = eventId
-    ? `${base}/archive/?meeting=${encodeURIComponent(eventId)}`
-    : `${base}/archive/`;
+  const archiveHref = (() => {
+    if (state.status !== "ready" || !state.value) return `${base}/archive/`;
+    const rec = state.value;
+    const row = fields(rec);
+    const congParam = row.congress
+      ? `&congress=${encodeURIComponent(String(row.congress))}`
+      : "";
+    if (rec.kind === "meeting" && eventId) {
+      return `${base}/archive/?hearing=${encodeURIComponent(eventId)}${congParam}`;
+    }
+    if (rec.kind === "committee_term" && row.committee_code) {
+      return `${base}/archive/?committee=${encodeURIComponent(String(row.committee_code).toLowerCase())}${congParam}`;
+    }
+    if (rec.kind === "material" && row.type !== "recording") {
+      const fileUrl = recordFiles(rec)[0]?.url;
+      if (fileUrl) {
+        return `${base}/archive/?q=${encodeURIComponent(String(fileUrl))}`;
+      }
+    }
+    if (rec.kind === "appearance") {
+      const title = recordTitle(rec);
+      if (title) {
+        return `${base}/archive/?q=${encodeURIComponent(title)}${congParam}`;
+      }
+    }
+    return `${base}/archive/`;
+  })();
   return (
     <article className="explorer-detail">
       <div className="explorer-subheading">

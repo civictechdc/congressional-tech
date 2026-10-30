@@ -53,9 +53,17 @@ export function ArchiveRows({rows,onSelect}:{rows:any[];onSelect:(row:number)=>v
     </li>;
   })}</ul>;
 }
-export function ArchiveDetail({entry,meetings=[],versions=[],rawBase,onSelect,onHearing,onMeasure,onOpenSaved}:{entry:any;meetings?:any[];versions?:any[];rawBase:string;onSelect:(row:number)=>void;onHearing:(key:string)=>void;onMeasure?:(key:string)=>void;onOpenSaved:(detail:any)=>void}){
+export const siteBase = () => {
+  const raw = (import.meta.env as any)?.BASE_URL || (globalThis as any).__SITE_BASE_URL__ || '';
+  return String(raw).replace(/\/+$/, '');
+};
+
+export function ArchiveDetail({entry,meetings=[],versions=[],rawBase,onSelect,onHearing,onCommittee,onMeasure,onOpenSaved}:{entry:any;meetings?:any[];versions?:any[];rawBase:string;onSelect:(row:number)=>void;onHearing:(key:string)=>void;onCommittee?:(code:string)=>void;onMeasure?:(key:string)=>void;onOpenSaved:(detail:any)=>void}){
   const {document,detail,sources,recoveries}=entry,labels=dateLabels(document,detail);
   const presented=presentDocument(document,detail,sources,recoveries);
+  const base=siteBase();
+  const congressParam=document.congress?`&congress=${encodeURIComponent(String(document.congress))}`:'';
+  const packageId=typeof detail?.package_id==='string'&&/^(?:CHRG|BILLS|CRPT|CDOC|CPRT)-[0-9a-z-]+$/i.test(detail.package_id.trim())?detail.package_id.trim():'';
   const primaryFormat=effectiveFormat(document,detail);
   const primaryDetail=primaryFormat!==String(document.format??'').toLowerCase()&&mediaTypes[primaryFormat]
     ?{...detail,saved_media_type:mediaTypes[primaryFormat]}
@@ -72,6 +80,7 @@ export function ArchiveDetail({entry,meetings=[],versions=[],rawBase,onSelect,on
     <div className="archive-dates">
       {labels.document&&<p><strong>Document date:</strong> {labels.document}</p>}
       <p>{labels.capture}</p>
+      {packageId&&<p><strong>GovInfo package:</strong> {packageId} · <a href={`https://www.govinfo.gov/app/details/${encodeURIComponent(packageId)}`} target="_blank" rel="noreferrer">View on GovInfo</a></p>}
       {presented.measures.length>0&&<p className="archive-dates-measures"><strong>Related legislation:</strong> <span className="archive-measure-list">{presented.measures.map(m=>onMeasure?<button key={m.key} type="button" className="archive-measure-pill" onClick={()=>onMeasure(m.key)}>{m.label}</button>:<span key={m.key} className="archive-measure-pill">{m.label}</span>)}</span></p>}
       {labels.removed&&<p className="archive-removed-callout">{labels.removed}</p>}
     </div>
@@ -91,9 +100,13 @@ export function ArchiveDetail({entry,meetings=[],versions=[],rawBase,onSelect,on
       {source.listed_on&&<p className="archive-source-meta">Listed on <PublicLink url={source.listed_on}/></p>}
       {source.posted&&<p className="archive-source-meta">Posted {day(source.posted)}</p>}
     </li>)}</ul>:<p>No source address is recorded.</p>}</section>}
+    {presented.committeeItems.length>0&&<section><h3>Committees</h3><ul>{presented.committeeItems.map(item=><li key={item.code} className="archive-hearing-row">
+      {onCommittee?<button type="button" onClick={()=>onCommittee(item.code)}>{item.label}</button>:<span>{item.label}</span>}
+      <span className="archive-hearing-meta"> · <a href={`${base}/dashboard/?committee=${encodeURIComponent(item.code)}${congressParam}`}>Open in Committee Explorer</a></span>
+    </li>)}</ul></section>}
     {(document.meeting_keys??[]).length>0&&<section><h3>Hearings</h3><ul>{document.meeting_keys.map((key:string)=><li key={key} className="archive-hearing-row">
       <button onClick={()=>onHearing(key)}>{meetingLabels.get(String(key))||key}</button>
-      <span className="archive-hearing-meta"> · <a href={`/dashboard/?meeting=${encodeURIComponent(key)}`}>Open in Committee Explorer</a></span>
+      <span className="archive-hearing-meta"> · <a href={`${base}/dashboard/?meeting=${encodeURIComponent(key)}${congressParam}`}>Open in Committee Explorer</a></span>
     </li>)}</ul></section>}
     {versions.some(row=>row.list_row!==document.list_row)&&<section><h3>Other versions</h3><ul>{versions.filter(row=>row.list_row!==document.list_row).map(row=>{
       const ver=presentDocument(row);
