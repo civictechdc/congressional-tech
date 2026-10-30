@@ -150,6 +150,14 @@ jobs:
           packages-dir: pypi-dist/
           skip-existing: true
       - name: Verify a fresh PyPI install
-        run: uv run --no-project --python 3.12 apps/explorer_mcp/scripts/check_distribution.py
+        # Newly uploaded files can reach PyPI's index after the upload succeeds.
+        run: |
+          for attempt in 1 2 3 4 5 6; do
+            if uv run --no-project --python 3.12 apps/explorer_mcp/scripts/check_distribution.py; then
+              exit 0
+            fi
+            if [ "$attempt" -eq 6 ]; then exit 1; fi
+            sleep 30
+          done
       - name: Verify every desktop configuration against PyPI
         run: uv run --locked --project apps/explorer_mcp --no-dev python apps/explorer_mcp/scripts/check_desktop.py dist

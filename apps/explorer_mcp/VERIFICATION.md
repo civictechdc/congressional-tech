@@ -3,13 +3,22 @@
 The MCP runs locally over stdio with DuckDB 2.0.0 and FastMCP 4.1.4 in its own
 locked environment. It queries published Parquet files directly.
 
-## Desktop packages — 0.4.0, local candidate
+## PyPI and desktop packages — 0.4.0
 
 The `.mcpb` extension and Claude/OpenAI-compatible plugin ZIP install the same
 version-pinned PyPI package. Neither archive includes the server source or lockfile.
 The manual install command, registry launch, and research skill use PyPI too.
-Release downloads, a deployment of the new website buttons, and public vendor
-directory listings have not been published for this version.
+[PyPI 0.4.0](https://pypi.org/project/congressional-explorer-mcp/0.4.0/) and the
+[GitHub release](https://github.com/civictechdc/congressional-tech/releases/tag/congress-mcp-v0.4.0)
+are published from `455d9eb8`. [Release CI](https://github.com/civictechdc/congressional-tech/actions/runs/41108101522)
+passed the build, Linux/macOS installations, and all three client configurations
+against PyPI. The wheel and source distribution hashes match between PyPI and
+GitHub. The extension is 23,141 bytes; the plugin ZIP is 24,968 bytes.
+
+The first post-upload check ran before PyPI's package index exposed the new version.
+Retrying the failed job passed; subsequent releases retry the fresh install up to
+six times, 30 seconds apart. A separate installation from PyPI queried the public
+release successfully: 16 tables, six tools, and one document row.
 
 - 61 app tests pass, including first-use preparation, failure/retry, concurrent
   callers, cancellation during setup, reuse of a selected snapshot, and preservation
@@ -36,15 +45,14 @@ directory listings have not been published for this version.
   guide, and the OpenAI onboarding path resolves in the rebuilt plugin ZIP.
 - Astro builds. Browser checks at 1200 px and 390 px found no horizontal overflow;
   both plugin copy buttons return the exact setup commands, and the manual client
-  selector still works. Download URLs point to the planned 0.4.0 release and must
-  not be deployed before those assets exist.
+  selector still works. Download URLs point to the published 0.4.0 release.
 - The rebuilt page's PyPI install and Skills CLI copy controls return the exact
   displayed commands. The manual installation no longer uses a GitHub wheel URL.
 
 Desktop GUI installation in Claude Desktop/Cowork and ChatGPT is not yet manually
 qualified. In particular, the host-managed uv install has schema and launch checks,
-not a clean-machine GUI check. Linux/macOS archive checks are wired into the release
-workflow; that new workflow has not yet run remotely. Windows remains unsupported.
+not a clean-machine GUI check. Public vendor directory listings and the MCP Registry
+remain unpublished. Windows remains unsupported.
 
 ## Local installation and website — 0.3.0
 
