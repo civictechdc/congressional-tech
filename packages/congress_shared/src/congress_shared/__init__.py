@@ -3,7 +3,9 @@ from __future__ import annotations
 
 from congress_shared.custody import (
     CHUNK_BYTES,
+    CONTROL_LIMITS,
     VerifiedFile,
+    bounded_control_read,
     canonical_json_bytes,
     copy_checked,
     custody_identity,
@@ -25,8 +27,10 @@ from congress_shared.storage import R2Config, connect_r2
 
 __all__ = [
     "CHUNK_BYTES",
+    "CONTROL_LIMITS",
     "R2Config",
     "VerifiedFile",
+    "bounded_control_read",
     "canonical_json_bytes",
     "congress_to_years",
     "connect_r2",
