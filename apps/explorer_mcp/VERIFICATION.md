@@ -8,9 +8,9 @@ locked environment. It queries published Parquet files directly.
 - **55 MCP tests passed locally**, including the actual native producer's phase 2
   output consumed through FastMCP stdio. All six tools, 16 table definitions,
   59 relationships and 10 SQL recipes are covered.
-- [MCP CI passed on committed main](https://github.com/civictechdc/congressional-tech/actions/runs/41082729727):
+- [MCP CI passed on committed main](https://github.com/civictechdc/congressional-tech/actions/runs/41087258770):
   54 app tests pass; the one native integration test runs and passes in the
-  separate producer-to-consumer job.
+  separate producer-to-consumer job, alongside 61 producer/profile/retention tests.
 - Focused producer checks passed: 19 schema/release tests, 27 semantic-profile
   tests, the real phase 2 fixture, and 17 XML-recovery tests.
 - The generated relationship reference, dependency lock, Python compilation and
