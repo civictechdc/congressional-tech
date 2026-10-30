@@ -1,6 +1,6 @@
 ---
 id: ct-z5cc
-status: in_progress
+status: closed
 deps: []
 links: [ct-t906, ct-te1p]
 created: 2026-10-30T14:32:31Z

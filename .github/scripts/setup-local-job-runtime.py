@@ -13,7 +13,7 @@ from urllib.parse import urlsplit
 from urllib.request import HTTPRedirectHandler, build_opener
 
 from congress_api.retention.derived_files import copy_checked, file_identity
-from docspec_client import NativeDatasets
+from docspec_client import RUNTIME_PIN_FILE, NativeDatasets, load_runtime_pin, runtime_pin_digest
 
 FILES = {'docspec', 'runtime.json', 'limits.json', 'build.json'}
 PINS = {'source_revision', 'platform', 'build_features', 'binary_sha256'}
@@ -22,7 +22,7 @@ LIMITS = {'compute_threads', 'memory_bytes', 'scratch_bytes', 'batch_rows',
 MAX_ARCHIVE_BYTES = 1024**3
 
 
-def install_archive(archive, expected_sha256, directory, *, proof=None):
+def install_archive(archive, expected_sha256, directory, *, proof=None, pin_file=None):
     """Check complete archive custody, then expose exactly four validated files."""
     if not isinstance(expected_sha256, str) or not re.fullmatch('[0-9a-f]{64}', expected_sha256):
         raise ValueError('An approved archive SHA-256 is required')
@@ -71,6 +71,11 @@ def install_archive(archive, expected_sha256, directory, *, proof=None):
         if (not isinstance(limits, dict) or set(limits) != LIMITS
                 or any(type(value) is not int or value <= 0 for value in limits.values())):
             raise ValueError('Local runtime requires the six approved positive integer limits')
+        if pin_file is not None:
+            pin = load_runtime_pin(pin_file)
+            pinned_sha256 = runtime_pin_digest(build['platform'], pin_path=pin_file)
+            if build['source_revision'] != pin['source_revision'] or build['binary_sha256'] != pinned_sha256:
+                raise ValueError('Local runtime build pins differ from the committed runtime pin file')
         (stage/'docspec').chmod(0o700)
         NativeDatasets.from_config(stage/'runtime.json').verify_runtime(required_features=['remote'])
         # Fresh destination owns the exposure; no stale or concurrent install is overwritten.
@@ -95,16 +100,20 @@ class HTTPSRedirects(HTTPRedirectHandler):
         return super().redirect_request(req, fp, code, msg, headers, newurl)
 
 
-def main():
+def main(argv=None):
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--directory', type=Path, required=True)
     parser.add_argument('--github-env', type=Path, required=True)
-    args = parser.parse_args()
+    parser.add_argument('--pin-file', type=Path, default=RUNTIME_PIN_FILE)
+    parser.add_argument('--platform', default='linux-amd64')
+    parser.add_argument('--archive-sha256', help='Optional explicit archive SHA-256 override; defaults to committed pin file.')
+    args = parser.parse_args(argv)
     try:
         url = require_https(os.environ.get('DOCSPEC_LOCAL_RUNTIME_URL', ''))
-        digest = os.environ.get('DOCSPEC_LOCAL_RUNTIME_SHA256', '')
+        pin = load_runtime_pin(args.pin_file)
+        digest = args.archive_sha256 or runtime_pin_digest(args.platform, pin_path=args.pin_file)
         if not re.fullmatch('[0-9a-f]{64}', digest):
-            raise ValueError('DOCSPEC_LOCAL_RUNTIME_SHA256 must name the approved archive')
+            raise ValueError('Committed runtime pin must supply a 64-char SHA-256 digest')
         runner = Path(os.environ['RUNNER_TEMP']).resolve()
         for path in (args.directory, args.github_env):
             if path.is_symlink() or not path.resolve().is_relative_to(runner) or any(c in str(path) for c in '\r\n'):
@@ -118,13 +127,14 @@ def main():
                 if not 0 < size <= MAX_ARCHIVE_BYTES:
                     raise ValueError('Runtime download requires a bounded Content-Length')
                 proof = copy_checked(source, archive, size=size, expected={'bytes':size, 'sha256':digest}, exclusive=True)
-            config = install_archive(archive, digest, args.directory, proof=proof)
+            config = install_archive(archive, digest, args.directory, proof=proof,
+                                     pin_file=args.pin_file if args.archive_sha256 is None else None)
         env = {**os.environ, 'DOCSPEC_JOB_CONFIG':str(config)}
         root = Path(__file__).resolve().parents[2]
         subprocess.run([sys.executable, str(root/'scripts/dev.py'), 'doctor', '--lane', 'production-offline'],
                        cwd=root, env=env, check=True)
         with args.github_env.open('a') as target:
-            target.write(f'DOCSPEC_JOB_CONFIG={config}\n')
+            target.write(f'DOCSPEC_JOB_CONFIG={config}\nDOCSPEC_SOURCE_REVISION={pin["source_revision"]}\n')
         print('Approved credential-free local runtime installed; offline doctor passed.')
         return 0
     except ValueError as error:

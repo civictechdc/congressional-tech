@@ -10,6 +10,8 @@ from congress_api.retention.document_reviews import (
     REVIEW_SOURCE,
     SUPPORTED_FORMS,
     apply_review_candidate,
+    build_review_verdict,
+    resolve_review_target,
     review_group_digest,
 )
 from congress_api.retention.rejected_pages import (
@@ -22,8 +24,10 @@ __all__ = [
     "SUPPORTED_FORMS",
     "apply_review_candidate",
     "attach_review_provenance_receipts",
+    "build_review_verdict",
     "load_bundle",
     "read_rejected_pages",
+    "resolve_review_target",
     "retain_rejected_page",
     "review_group_digest",
     "select_document",

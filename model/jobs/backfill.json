@@ -1,0 +1,40 @@
+{
+  "version": 1,
+  "bucket": "congressional-tech-raw",
+  "catalog_root": null,
+  "work": "../../output/archive-backfill",
+  "tables": {
+    "captures": {
+      "namespace": [
+        "archive"
+      ],
+      "name": "captures"
+    },
+    "readings": {
+      "namespace": [
+        "archive"
+      ],
+      "name": "readings"
+    },
+    "filename_readings": {
+      "namespace": [
+        "archive"
+      ],
+      "name": "filename_readings"
+    },
+    "meeting_records": {
+      "namespace": [
+        "archive"
+      ],
+      "name": "meeting_records"
+    },
+    "appearance_records": {
+      "namespace": [
+        "archive"
+      ],
+      "name": "appearance_records"
+    }
+  },
+  "batch_size": 5000,
+  "max_batches": 20
+}

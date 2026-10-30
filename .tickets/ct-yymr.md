@@ -1,6 +1,6 @@
 ---
 id: ct-yymr
-status: in_progress
+status: closed
 deps: []
 links: [cef-rmye]
 created: 2026-10-30T14:32:31Z

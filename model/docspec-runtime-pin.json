@@ -1,0 +1,19 @@
+{
+  "version": 1,
+  "source_revision": "0cbad87574a4414af56461f442a481a4cfa93079",
+  "build_features": [
+    "remote"
+  ],
+  "required_capabilities": [
+    "request-deadline",
+    "owned-stdin-eof"
+  ],
+  "platforms": {
+    "darwin-arm64": {
+      "sha256": "b4833c07931652f47508ea1e36639f9ef5171fc1e2dcbae84e7edfe5854bbdd7"
+    },
+    "linux-amd64": {
+      "sha256": "efe0c5c0a4f03d31e905e0fb38b06024abf0ff053a6288f2f2606dfa36a54c72"
+    }
+  }
+}

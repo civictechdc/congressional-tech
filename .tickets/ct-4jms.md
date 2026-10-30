@@ -1,6 +1,6 @@
 ---
 id: ct-4jms
-status: in_progress
+status: closed
 deps: []
 links: [cefr-xjsp, cef-96wc]
 created: 2026-10-30T14:32:31Z

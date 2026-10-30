@@ -1,4 +1,4 @@
-"""Declarative Cloudflare R2 Custom Domain, CORS, WAF, and Transform Rule contract."""
+"""Declarative Cloudflare R2 Custom Domain, CORS, and Response Header Transform Rule contract."""
 
 from pathlib import Path
 import json
@@ -12,26 +12,50 @@ DEFAULT_EDGE_CONFIG_PATH = (
     / 'cloudflare'
     / 'congressional-data-r2-edge.json'
 )
+DEFAULT_TERRAFORM_CONFIG_PATH = (
+    Path(__file__).resolve().parents[5]
+    / 'infra'
+    / 'cloudflare'
+    / 'main.tf'
+)
 
 PUBLIC_HOSTNAME = 'congressional-data.spicygov.ai'
 PUBLIC_BUCKET = 'congressional-tech-raw'
-
-_VIEWER_MANIFEST_RE = re.compile(
-    r'^/viewer-publications/(?:manifest\.json|catalogs/[a-f0-9]{32}\.json|releases/[a-f0-9]{32}/manifest\.json|releases/[a-f0-9]{32}/[a-f0-9]{32}/viewer-v2/recovery-status\.json)$'
-)
-_VIEWER_RELEASE_ASSET_RE = re.compile(
-    r'^/viewer-publications/releases/[a-f0-9]{32}/(?:[a-f0-9]{32}/viewer-v2/(?:manifest\.json|search\.parquet|sources\.parquet|details\.parquet|recoveries\.parquet|observations(?:\.index\.json|\.blocks\.br|\.refs\.br))|[A-Za-z0-9._-]+-(?:filenames|documents|sources)\.parquet)$'
-)
-_BODY_OBJECT_RE = re.compile(r'^/bodies/sha256/([a-f0-9]{2})/([a-f0-9]{64})\.(pdf|gz)$')
-_EXPORTS_OBJECT_RE = re.compile(
-    r'^/exports/(?:[A-Za-z0-9][A-Za-z0-9._-]*/)*[A-Za-z0-9][A-Za-z0-9._-]*\.(?:json|parquet|bin|br|gz|csv|zst|ipc|arrow)$'
-)
 
 
 def load_edge_config(path=None):
     """Load the declarative Cloudflare R2 custom-domain edge configuration."""
     target = Path(path) if path is not None else DEFAULT_EDGE_CONFIG_PATH
     return json.loads(target.read_text(encoding='utf-8'))
+
+
+def build_declarative_ruleset_spec(config=None, *, terraform_path=None):
+    """Return the declarative Wrangler R2 CORS and Terraform cloudflare_ruleset specification."""
+    cfg = config or load_edge_config()
+    if 'waf_custom_rules' in cfg:
+        raise ValueError('Legacy firewall path allowlist (waf_custom_rules) is retired')
+    tf_target = Path(terraform_path) if terraform_path is not None else DEFAULT_TERRAFORM_CONFIG_PATH
+    tf_text = tf_target.read_text(encoding='utf-8')
+    if 'resource "cloudflare_ruleset" "public_r2_response_headers"' not in tf_text:
+        raise ValueError('Terraform cloudflare_ruleset resource missing from infra/cloudflare/main.tf')
+    if 'resource "cloudflare_r2_bucket_cors" "public_r2_cors"' not in tf_text:
+        raise ValueError('Terraform cloudflare_r2_bucket_cors resource missing from infra/cloudflare/main.tf')
+    transform = cfg['response_header_transform_rules'][0]
+    ruleset = transform['ruleset']
+    return {
+        'custom_domain': cfg['custom_domain'],
+        'r2_bucket_cors': {
+            'bucket': cfg['custom_domain']['bucket'],
+            'rules': cfg['cors']['rules'],
+        },
+        'cloudflare_ruleset': {
+            'name': ruleset['name'],
+            'description': transform['description'],
+            'kind': ruleset['kind'],
+            'phase': ruleset['phase'],
+            'rules': ruleset['rules'],
+        },
+    }
 
 
 def sanitize_download_filename(raw_filename):
@@ -59,50 +83,6 @@ def format_content_disposition(disposition_type, filename=None):
     for ch in ("'", '(', ')', '*'):
         encoded = encoded.replace(ch, f'%{ord(ch):02X}')
     return f'{disposition_type}; filename="{ascii_fallback}"; filename*=UTF-8\'\'{encoded}'
-
-
-def evaluate_waf_request(method, url_or_path, *, config=None):
-    """Evaluate the Cloudflare WAF Custom Rule prefix allowlist on congressional-data.spicygov.ai."""
-    cfg = config or load_edge_config()
-    parsed = urlsplit(url_or_path)
-    host = parsed.hostname or cfg['custom_domain']['hostname']
-    path = parsed.path or '/'
-    upper_method = (method or 'GET').upper()
-
-    if host != cfg['custom_domain']['hostname']:
-        return dict(allowed=False, status_code=403, reason='host_mismatch')
-    if upper_method not in {'GET', 'HEAD', 'OPTIONS'}:
-        return dict(allowed=False, status_code=403, reason='method_not_allowed')
-    if '..' in path or '//' in path:
-        return dict(allowed=False, status_code=403, reason='path_traversal')
-
-    for blocked in cfg['waf_custom_rules'][0]['blocked_prefixes']:
-        if path.startswith(blocked) or path == blocked.rstrip('/'):
-            return dict(allowed=False, status_code=403, reason=f'blocked_prefix:{blocked}')
-
-    if path.startswith('/viewer-publications/'):
-        if _VIEWER_MANIFEST_RE.match(path) or _VIEWER_RELEASE_ASSET_RE.match(path):
-            return dict(allowed=True, status_code=200, prefix='/viewer-publications/')
-        return dict(allowed=False, status_code=403, reason='unallowed_viewer_publication_path')
-
-    if path.startswith('/bodies/sha256/'):
-        match = _BODY_OBJECT_RE.match(path)
-        if match and match.group(1) == match.group(2)[:2]:
-            return dict(
-                allowed=True,
-                status_code=200,
-                prefix='/bodies/sha256/',
-                sha256=match.group(2),
-                extension=match.group(3),
-            )
-        return dict(allowed=False, status_code=403, reason='invalid_body_object_path')
-
-    if path.startswith('/exports/'):
-        if '/accepted-' not in path and _EXPORTS_OBJECT_RE.match(path):
-            return dict(allowed=True, status_code=200, prefix='/exports/')
-        return dict(allowed=False, status_code=403, reason='unallowed_exports_path')
-
-    return dict(allowed=False, status_code=403, reason='outside_prefix_allowlist')
 
 
 def evaluate_response_headers(url_or_path, *, content_type=None, config=None):

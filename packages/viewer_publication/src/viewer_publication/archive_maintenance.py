@@ -3,10 +3,13 @@
 The weekly caller holds the shared publish/maintenance exclusion. This helper
 never lists or deletes raw keys and never selects a lake generation to purge.
 """
-from datetime import datetime,timedelta
+import argparse
+from datetime import datetime,timedelta,timezone
 import json
+import os
 from pathlib import Path
 import re
+from urllib.parse import urlsplit
 
 from viewer_publication.archive_publish import (NativeArchiveStore,SPICY_PINS,_encoded,
     _read,input_digest,read_pointer,write_spicy_generations)
@@ -182,3 +185,201 @@ def maintain_releases(store,*,now,external_pins=(),execute=False):
     return dict(status='executed' if execute else 'planned',pointer=pointer,pointer_etag=etag,
         kept_releases=sorted(kept),kept_inputs=records,protected_keys=sorted(protected),delete_keys=delete_keys,
         spicy_generations=spicy_generations,ignored_legacy_objects=ignored_legacy_objects)
+
+
+JOB_FIELDS={'version','bucket','catalog_root','work','external_pins','tables','thresholds'}
+JOB_OPTIONAL={'engine_config','raw_verification','lake_maintenance'}
+
+
+def load_spec(path):
+    """Validate the committed maintenance job specification without opening runtime or storage."""
+    from congress_api.lake.daily import ALL_TABLE_NAMES
+    from congress_api.lake.maintenance import METRICS,maintenance_decision
+    from viewer_publication.archive_backfill_job import _tables
+    from viewer_publication.archive_model_job import _local
+    path=Path(path).resolve();value=json.loads(path.read_text(encoding='utf-8'))
+    if not isinstance(value,dict):raise ValueError('Maintenance job spec must be an object')
+    if value.get('status')=='blocked':
+        if set(value)!={'status','reason'} or not isinstance(value.get('reason'),str) or not value['reason'].strip():
+            raise ValueError('Blocked maintenance job requires exactly its reason')
+        return dict(value)
+    if set(value)-JOB_FIELDS-JOB_OPTIONAL or not JOB_FIELDS<=set(value):
+        raise ValueError('Maintenance job requires version 1 and all explicit fields')
+    if type(value['version']) is not int or value['version']!=1:
+        raise ValueError('Maintenance job requires version 1')
+    bucket=value['bucket']
+    if not isinstance(bucket,str) or not re.fullmatch('[a-z0-9][a-z0-9.-]{1,61}[a-z0-9]',bucket):
+        raise ValueError('Invalid archive bucket')
+    base=path.parent
+    work=_local(value['work'],base)
+    if any(char in work for char in '\r\n\0'):
+        raise ValueError('Maintenance work path cannot contain control characters')
+    catalog_root=value['catalog_root']
+    if catalog_root is not None:
+        if not isinstance(catalog_root,str) or not catalog_root.strip():
+            raise ValueError('Maintenance catalog_root must be None or a non-empty string')
+        uri=urlsplit(catalog_root)
+        if not uri.scheme:catalog_root=_local(catalog_root,base)
+    external_pins=value['external_pins']
+    if not isinstance(external_pins,list):
+        raise ValueError('Maintenance external_pins must be a list of release IDs')
+    pins=[_release(pin) for pin in external_pins]
+    validated_tables=_tables(value['tables'])
+    thresholds=value['thresholds']
+    maintenance_decision({metric:0 for metric in METRICS},thresholds)
+    result=dict(
+        version=1,
+        bucket=bucket,
+        catalog_root=catalog_root,
+        work=work,
+        external_pins=pins,
+        tables=validated_tables,
+        thresholds=dict(thresholds),
+    )
+    if 'engine_config' in value and value['engine_config'] is not None:
+        result['engine_config']=_local(value['engine_config'],base)
+    if 'raw_verification' in value and value['raw_verification'] is not None:
+        raw_cfg=value['raw_verification']
+        if not isinstance(raw_cfg,dict) or not {'captures','receipt_inventory','verification_inventory'}<=set(raw_cfg):
+            raise ValueError('Maintenance raw_verification requires captures, receipt_inventory and verification_inventory')
+        result['raw_verification']=dict(
+            captures=_local(raw_cfg['captures'],base),
+            receipt_inventory=_local(raw_cfg['receipt_inventory'],base),
+            verification_inventory=_local(raw_cfg['verification_inventory'],base),
+            seed=raw_cfg.get('seed'),
+            apply_staged=bool(raw_cfg.get('apply_staged',True)),
+        )
+    if 'lake_maintenance' in value and value['lake_maintenance'] is not None:
+        lake_cfg=value['lake_maintenance']
+        if not isinstance(lake_cfg,dict):
+            raise ValueError('Maintenance lake_maintenance must be an object')
+        result['lake_maintenance']=dict(lake_cfg)
+    return result
+
+
+def plan(spec):
+    if spec.get('status')=='blocked':return dict(spec)
+    return dict(
+        status='planned',
+        executed=False,
+        bucket=spec['bucket'],
+        catalog_root=spec['catalog_root'],
+        work=spec['work'],
+        external_pins=spec['external_pins'],
+        tables=spec['tables'],
+        thresholds=spec['thresholds'],
+    )
+
+
+def execute(spec,*,runtime_factory=None,storage_factory=None,now=None):
+    """Execute weekly release retention, raw verification and lake maintenance."""
+    if spec.get('status')=='blocked':return dict(spec)
+    work=Path(spec['work'])
+    if work.exists() or work.is_symlink():
+        raise ValueError('Maintenance work directory must be fresh')
+    from congress_api.cli.raw_verify import apply_staged
+    from congress_api.lake.maintenance import maintenance_decision,purge_generation,rebuild_generation
+    from congress_api.retention.body_store import BodyStore,R2Adapter,R2Source
+    from congress_api.retention.raw_verifier import verify as verify_raw
+    from congress_shared.storage import connect_r2
+    from docspec_client.client import NativeDatasets
+    runtime_factory=runtime_factory or NativeDatasets.from_config
+    storage_factory=storage_factory or connect_r2
+    current_time=_time(now or datetime.now(timezone.utc))
+    client=storage_factory(bucket=spec['bucket'],retries={'total_max_attempts':1})
+    store=ArchiveMaintenanceStore(client=client,bucket=spec['bucket'])
+    releases=maintain_releases(store,now=current_time,external_pins=spec['external_pins'],execute=True)
+    raw_report=None
+    lake_report=dict(decisions={},rebuilt={},purged=[])
+    need_engine=bool(spec.get('raw_verification') or spec.get('lake_maintenance'))
+    if need_engine:
+        engine_config=(spec.get('engine_config')
+            or os.environ.get('DOCSPEC_RUNTIME_CONFIG')
+            or os.environ.get('DOCSPEC_JOB_CONFIG'))
+        if not isinstance(engine_config,str) or not engine_config.strip():
+            raise ValueError('Maintenance raw or lake operations require engine_config or DOCSPEC_RUNTIME_CONFIG')
+        with runtime_factory(engine_config) as engine:
+            engine.verify_runtime()
+            if spec.get('raw_verification'):
+                raw_cfg=spec['raw_verification']
+                raw_work=work/'raw-verify'
+                verified=verify_raw(
+                    R2Source(client,spec['bucket']),
+                    captures=Path(raw_cfg['captures']),
+                    receipts=json.loads(Path(raw_cfg['receipt_inventory']).read_text(encoding='utf-8')),
+                    previous=json.loads(Path(raw_cfg['verification_inventory']).read_text(encoding='utf-8')),
+                    engine=engine,
+                    work=raw_work,
+                    checked_at=current_time.isoformat(),
+                    seed=raw_cfg.get('seed'),
+                )
+                applied=None
+                if raw_cfg.get('apply_staged',True) and verified.get('valid'):
+                    applied=apply_staged(raw_work,BodyStore(R2Adapter(client,spec['bucket'])))
+                raw_report=dict(verification=verified,applied=applied)
+            if spec.get('lake_maintenance'):
+                lake_cfg=spec['lake_maintenance']
+                for table_name,obs in (lake_cfg.get('observations') or {}).items():
+                    exceeded=maintenance_decision(obs,spec['thresholds'])
+                    lake_report['decisions'][table_name]=exceeded
+                    rebuild_spec=(lake_cfg.get('rebuild') or {}).get(table_name)
+                    if exceeded and rebuild_spec is not None:
+                        rebuilt_pin=rebuild_generation(
+                            rebuild_spec['old_pin'],
+                            engine=engine,
+                            work=work/'lake-rebuild'/table_name,
+                            catalog_root=spec['catalog_root'],
+                            table=spec['tables'][table_name],
+                            schema=rebuild_spec['schema'],
+                            location=rebuild_spec['location'],
+                            keys=rebuild_spec['keys'],
+                            definition=rebuild_spec['definition'],
+                        )
+                        lake_report['rebuilt'][table_name]=rebuilt_pin
+                for index,purge_spec in enumerate(lake_cfg.get('purge') or ()):
+                    table_name=purge_spec['table']
+                    purged=purge_generation(
+                        purge_spec['pin'],
+                        table=spec['tables'][table_name],
+                        kept_inputs=releases['kept_inputs'],
+                        engine=engine,
+                        work=work/'lake-purge'/f'{index:04d}-{table_name}',
+                        catalog_root=spec['catalog_root'],
+                    )
+                    lake_report['purged'].append(dict(table=table_name,result=purged))
+    work.mkdir(parents=True,exist_ok=True)
+    result=dict(
+        status='executed',
+        executed=True,
+        bucket=spec['bucket'],
+        catalog_root=spec['catalog_root'],
+        work=spec['work'],
+        releases=releases,
+        raw_verification=raw_report,
+        lake_maintenance=lake_report,
+    )
+    (work/'maintenance-report.json').write_text(json.dumps(result,sort_keys=True)+'\n',encoding='utf-8')
+    return result
+
+
+def main(argv=None):
+    parser=argparse.ArgumentParser(description=__doc__)
+    parser.add_argument('--spec',type=Path,required=True)
+    mode=parser.add_mutually_exclusive_group()
+    mode.add_argument('--plan',action='store_true')
+    mode.add_argument('--execute',action='store_true')
+    args=parser.parse_args(argv)
+    try:
+        spec=load_spec(args.spec)
+        if spec.get('status')=='blocked':
+            print(json.dumps(spec,sort_keys=True))
+            return 2
+        result=execute(spec) if args.execute else plan(spec)
+    except (ValueError,OSError) as error:
+        parser.error(str(error))
+    print(json.dumps(result,sort_keys=True))
+    return 0
+
+
+if __name__=='__main__':
+    raise SystemExit(main())

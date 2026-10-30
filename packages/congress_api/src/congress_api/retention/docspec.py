@@ -6,6 +6,7 @@ archive packages.
 """
 from docspec_client.docspec import (
     QUALIFIED_DOCSPEC_RUNTIME,
+    RUNTIME_PIN_FILE,
     SUPPORTED_PLATFORMS,
     AggregateSpec,
     ConnectedComponentsTransform,
@@ -23,9 +24,11 @@ from docspec_client.docspec import (
     build_export_spec,
     cleanup_safe,
     facet_summary,
+    load_runtime_pin,
     native_storage_schema,
     parse_export_pin,
     producer_input_entry,
+    runtime_pin_digest,
 )
 from docspec_client.docspec_host import (
     REQUIRED_LOOPBACK_CAPABILITIES,

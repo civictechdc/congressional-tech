@@ -23,7 +23,6 @@ def main(argv=None):
     parser.add_argument('--byte-budget',type=int,required=True)
     parser.add_argument('--spool-budget',type=int,required=True)
     parser.add_argument('--work',type=Path,required=True)
-    parser.add_argument('--seed-inventory',action='append',type=Path,default=[])
     parser.add_argument('--cutoff-urls',type=Path,help='Owner-reviewed exact URL list; no raw index')
     parser.add_argument('--as-of',default=datetime.now(timezone.utc).isoformat())
     parser.add_argument('--engine-config',type=Path,default=os.environ.get('DOCSPEC_JOB_CONFIG'))
@@ -46,7 +45,7 @@ def main(argv=None):
         raise ValueError('Cutoff input must be an owner-reviewed URL list')
     if not args.apply:
         result=plan_queue(release,engine=engine,work=args.work/'plan',as_of=args.as_of,
-            request_budget=args.request_budget,seed_inventories=args.seed_inventory,cutoff_urls=cutoffs)
+            request_budget=args.request_budget,cutoff_urls=cutoffs)
         result.update(apply=False,budgets=dict(requests=args.request_budget,bytes=args.byte_budget,spool=args.spool_budget))
     else:
         CapturePolicy(release['scope']).require_capture()
@@ -73,7 +72,7 @@ def main(argv=None):
         result=run_capture(release,engine=engine,work=args.work/'capture',as_of=args.as_of,
             request_budget=args.request_budget,byte_budget=args.byte_budget,spool_budget=args.spool_budget,
             store=store,identity=identity,direct=DirectAdapter(session),provider=provider,
-            seed_inventories=args.seed_inventory,cutoff_urls=cutoffs,max_discovery_jobs=args.max_discovery_jobs,headers=headers)
+            cutoff_urls=cutoffs,max_discovery_jobs=args.max_discovery_jobs,headers=headers)
     (args.work/'summary.json').write_text(json.dumps(result,ensure_ascii=False,indent=2)+'\n')
     print(json.dumps(result,ensure_ascii=False,indent=2))
 

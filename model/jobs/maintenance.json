@@ -1,0 +1,44 @@
+{
+  "version": 1,
+  "bucket": "congressional-tech-raw",
+  "catalog_root": null,
+  "work": "../../output/archive-maintenance",
+  "external_pins": [],
+  "tables": {
+    "captures": {
+      "namespace": [
+        "archive"
+      ],
+      "name": "captures"
+    },
+    "readings": {
+      "namespace": [
+        "archive"
+      ],
+      "name": "readings"
+    },
+    "filename_readings": {
+      "namespace": [
+        "archive"
+      ],
+      "name": "filename_readings"
+    },
+    "meeting_records": {
+      "namespace": [
+        "archive"
+      ],
+      "name": "meeting_records"
+    },
+    "appearance_records": {
+      "namespace": [
+        "archive"
+      ],
+      "name": "appearance_records"
+    }
+  },
+  "thresholds": {
+    "file_count": 256,
+    "manifest_count": 64,
+    "scan_planning_seconds": 30.0
+  }
+}
