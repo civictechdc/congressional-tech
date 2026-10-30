@@ -1,6 +1,6 @@
-import { useEffect, useMemo, useState, type ReactNode } from 'react';
+import { type ReactNode } from 'react';
 import { ExternalIcon, ForwardIcon } from './icons';
-import { categoryNote, collapseRepeatedFacts, committeeHierarchyNote, committeeLevelLabel, committeeTypeLabel, congressName, disagreementSummary, distinctRecordedFacts, documentSourceLabel, evidenceStateLabels, factLabel, issueStatusLabel, severityLabel, fileLinkName, filePartNote, listedDocumentType, listTitle, meetingStatusNote, orderRecordedFiles, parentCommitteeId, plainRecordedNote, providerLabel, recordedTitlePreview, recordedWhen, recordingEmbedUrl, recordingIdentity, savedCopyHref, savedOriginalUrl, scheduleNote, sourceFacts, sourceLinks, sourcePageUrl, sourceTypeNote, type SourceLink } from '../browse/record-presentation.ts';
+import { categoryNote, collapseRepeatedFacts, committeeHierarchyNote, committeeLevelLabel, committeeTypeLabel, congressName, disagreementSummary, distinctRecordedFacts, documentSourceLabel, factLabel, issueStatusLabel, severityLabel, fileLinkName, filePartNote, listedDocumentType, listTitle, meetingStatusNote, orderRecordedFiles, parentCommitteeId, plainRecordedNote, providerLabel, recordedTitlePreview, recordedWhen, recordingEmbedUrl, recordingIdentity, savedCopyHref, savedOriginalUrl, scheduleNote, sourceFacts, sourceLinks, sourcePageUrl, sourceTypeNote, type SourceLink } from '../browse/record-presentation.ts';
 import type { ExplorerRecordRef, LoadedRecord } from '../reader/data-source.ts';
 
 export type DetailRecord = LoadedRecord;
@@ -115,66 +115,6 @@ export function RecordingPlayer({ record }: { record: unknown }) {
   return <iframe className="explorer-recording-player" src={url} title={`Recording: ${recordTitle(record)}`}
     loading="lazy" allow="encrypted-media; picture-in-picture; fullscreen" allowFullScreen
     referrerPolicy="strict-origin-when-cross-origin" />;
-}
-const evidenceLabels = evidenceStateLabels;
-
-function EvidenceNotes({ states }: { states: Fields }) {
-  const entries = Object.entries(states).filter(([, state]) => state);
-  if (!entries.length) return null;
-  return <dl className="explorer-facts" aria-label="Recorded evidence">{entries.map(([aspect, state]) => <div key={aspect}><dt>{readableLabel(words(aspect))}</dt><dd>{evidenceLabels[String(state)] || words(state)}</dd></div>)}</dl>;
-}
-
-function RawRecord({ record }: { record: DetailRecord }) {
-  const [open, setOpen] = useState(false);
-  const [fetchedPayload, setFetchedPayload] = useState<unknown>(null);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-
-  useEffect(() => {
-    if (!open) return;
-    const row = record as Record<string, unknown>;
-    if (row.kind === 'source_record' && !row.payload && row.retained_uri && typeof row.retained_uri === 'string') {
-      const uri = row.retained_uri;
-      setLoading(true);
-      setError(null);
-      const url = uri.startsWith('/') || uri.startsWith('http') ? uri : `/${uri}`;
-      fetch(url)
-        .then(async res => {
-          if (!res.ok) throw new Error(`HTTP ${res.status}`);
-          if (uri.endsWith('.gz') && typeof DecompressionStream !== 'undefined') {
-            const decompressed = res.body?.pipeThrough(new DecompressionStream('gzip'));
-            const text = await new Response(decompressed).text();
-            return JSON.parse(text);
-          } else if (uri.endsWith('.pdf')) {
-            return { _info: 'Raw PDF body stored in CAS', uri };
-          } else {
-            return await res.json();
-          }
-        })
-        .then(payload => {
-          setFetchedPayload(payload);
-          setLoading(false);
-        })
-        .catch(err => {
-          setError(String(err));
-          setLoading(false);
-        });
-    }
-  }, [open, record]);
-
-  const displayRecord = useMemo(() => {
-    if (fetchedPayload !== null) {
-      return { ...record, payload: fetchedPayload };
-    }
-    return record;
-  }, [record, fetchedPayload]);
-
-  return <details onToggle={event => setOpen(event.currentTarget.open)}><summary>See everything saved<span className="explorer-field-reason">The complete saved record, in a technical format. You do not need it to read this page.</span></summary>
-    {open ? (
-      loading ? <p className="explorer-note">Loading payload...</p> :
-      error ? <p className="explorer-note">Could not load payload: {error}</p> :
-      <pre><code>{JSON.stringify(displayRecord, null, 2)}</code></pre>
-    ) : null}</details>;
 }
 
 export function SourceLinkGroups({ links }: { links: readonly SourceLink[] }) {
@@ -356,7 +296,6 @@ export function RecordDetail({ record, onSelect, sourceEvidence, committeeLabels
     ['Committees', record.kind === 'committee_term' ? null : committees.length ? committees.join(' · ') : null],
     ['Open issues', typeof row.issue_count === 'number' && row.issue_count > 0 ? row.issue_count : null],
     ['Access', row.access],
-    ['At the source', row.source_status && row.source_status !== row.status ? row.source_status : null],
     ['Committee type', row.kind === 'committee_term' ? committeeTypeLabel(row) : null],
     ['Source committee type', (() => {
       const sourceType = String(row.source_committee_type || '');
@@ -364,7 +303,7 @@ export function RecordDetail({ record, onSelect, sourceEvidence, committeeLabels
       return sourceType.toLowerCase().replaceAll(' ', '_') !== row.committee_type || row.committee_type === 'subcommittee' ? sourceType : null;
     })()],
     ['Committee level', (() => { const level = committeeLevelLabel(row); return level && !committees.some(name => name.toLowerCase().includes(level.toLowerCase())) ? level : null; })()],
-    [documentType(record) ? 'Document type' : 'Type', row.kind === 'committee_term' ? null : listedDocumentType(documentType(record)) || row.type || row.meeting_type], [row.source_status && row.source_status !== row.status ? 'Recorded here' : 'Status', row.status], ['Category', row.kind === 'material' ? categoryNote(row) || null : row.category],
+    [documentType(record) ? 'Document type' : 'Type', row.kind === 'committee_term' ? null : listedDocumentType(documentType(record)) || row.type || row.meeting_type], ['Status', record.kind === 'meeting' && ['past', 'upcoming', 'today', 'scheduled'].includes(String(row.status)) ? null : row.status], ['Category', row.kind === 'material' ? categoryNote(row) || null : row.category],
     ['Filed as', Array.isArray(row.source_document_groups) && row.source_document_groups.length ? documentSourceLabel(row) : null],
     ['Volume part', filePartNote(row) || null],
     ['Position', row.position], ['Organization', row.organization], ['Participation', row.participation],
@@ -429,7 +368,6 @@ export function RecordDetail({ record, onSelect, sourceEvidence, committeeLabels
     {voteFacts.rest.length ? <NumberedFactRest noun="vote" facts={voteFacts.rest} reason="The remaining roll-call and voice-vote results, in vote number order." /> : null}
     {amendmentFacts.preview.length ? <dl className="explorer-facts">{amendmentFacts.preview.map((fact, index) => <FactRow key={index} fact={fact} />)}</dl> : null}
     {amendmentFacts.rest.length ? <NumberedFactRest noun="amendment" facts={amendmentFacts.rest} reason="The remaining amendment outcomes, in amendment number order." /> : null}
-    {record.kind === 'meeting' ? <EvidenceNotes states={fields(row.evidence_states)} /> : null}
     {record.kind === 'source_record' ? <SourceLinkGroups links={sourceLinks(record).links} /> : null}
     {explanation ? <p className="explorer-note">{plainRecordedNote(String(explanation))}</p> : null}
     {parentId ? <p><button className="explorer-text-button" aria-label={parentName ? `Open the parent committee ${parentName}` : 'Open the parent committee recorded for this subcommittee'} onClick={() => onSelect({kind: 'committee_term', id: parentId})}>{parentName ? `Subcommittee of ${parentName}` : 'Parent committee'} <ForwardIcon /></button></p> : null}
@@ -437,6 +375,5 @@ export function RecordDetail({ record, onSelect, sourceEvidence, committeeLabels
     {meetingAction !== undefined ? meetingAction : row.meeting_id && !['meeting', 'material', 'data_issue'].includes(record.kind) ? <p><button className="explorer-text-button" aria-label="Open the meeting this record belongs to" onClick={() => onSelect({ kind: 'meeting', id: String(row.meeting_id) })}>Meeting <ForwardIcon /></button></p> : null}
     {affectedAction !== undefined ? affectedAction : affected ? <p><button className="explorer-text-button" aria-label="Open the record this issue describes" onClick={() => onSelect(affected)}>Affected record <ForwardIcon /></button></p> : null}
     {sourceEvidence}
-    <RawRecord key={`${record.kind}/${record.id}`} record={record} />
   </>;
 }

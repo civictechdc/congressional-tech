@@ -304,6 +304,22 @@ export function listedWitnessCount(count: number): string {
   return count === 1 ? '1 witness' : `${count} witnesses`;
 }
 
+/** High-signal material counts for a meeting row. */
+export function listedMaterialCounts(
+  counts: { recordings: number; documents: number } | undefined,
+  options: { includeRecordings?: boolean } = {},
+): string[] {
+  if (!counts) return [];
+  const parts: string[] = [];
+  if ((options.includeRecordings ?? true) && counts.recordings > 0) {
+    parts.push(counts.recordings === 1 ? '1 recording' : `${counts.recordings} recordings`);
+  }
+  if (counts.documents > 0) {
+    parts.push(counts.documents === 1 ? '1 document' : `${counts.documents} documents`);
+  }
+  return parts;
+}
+
 /** A location's recorded "label" is the place, when the same record also names a building or city. */
 export function factLabel(label: string, siblingLabels: readonly string[]): string {
   const names = siblingLabels.map(item => item.toLowerCase());
@@ -363,7 +379,10 @@ export function distinctRecordedFacts(facts: readonly { label?: string | null; v
   const rows = (facts || []).flatMap(fact => {
     const label = fact.label?.trim() || '';
     const value = fact.value?.trim() || '';
-    return label && value ? [[label, value] as [string, string]] : [];
+    if (!label || !value) return [];
+    if (label.toLowerCase().replace(/[\s_]+/g, '') === 'ismanuallycurated') return [];
+    if (label === 'Saved original' && !/^https?:\/\//i.test(value)) return [];
+    return [[label, value] as [string, string]];
   });
   const place = (rows.find(([label]) => ['label', 'place'].includes(label.toLowerCase()))?.[1] || '').toLowerCase();
   let absorbed = false;
@@ -468,7 +487,7 @@ export function sourceFacts(value: object): [string, string][] {
   for (const [key, label] of sourceEnvelope) {
     if (typeof row[key] !== 'string' || !row[key].trim()) continue;
     const recorded = row[key].trim();
-    if (label === 'Saved original' && !/^https?:\/\/|^\/?bodies\/sha256\//i.test(recorded)) continue;
+    if (label === 'Saved original' && !/^https?:\/\//i.test(recorded)) continue;
     facts.push([label, ['Fetched', 'Added here', 'Changed at the source'].includes(label) ? recordedInstant(recorded) : recorded]);
   }
   const identifier = identifierLine(row.identifier || (row.identifier_value ? { scheme: row.identifier_scheme, value: row.identifier_value, scope: row.identifier_scope } : null));
@@ -476,7 +495,18 @@ export function sourceFacts(value: object): [string, string][] {
   if (Array.isArray(row.facts) && row.facts.length > 0) {
     for (const f of row.facts as readonly { label: string; value: string }[]) {
       if (f && typeof f.label === 'string' && typeof f.value === 'string') {
-        facts.push([f.label, f.value]);
+        const cleanLabel = f.label.trim();
+        const cleanValue = f.value.trim();
+        if (!cleanLabel || !cleanValue) continue;
+        const normLabel = cleanLabel.toLowerCase().replace(/[\s_]+/g, '');
+        if (normLabel === 'ismanuallycurated') continue;
+        if (normLabel === 'retrievedat' && facts.some(([l]) => l === 'Fetched')) continue;
+        if (normLabel === 'url' && /^https?:\/\/api\.congress\.gov\//i.test(cleanValue)) continue;
+        if (cleanLabel === 'Saved original' && !/^https?:\/\//i.test(cleanValue)) continue;
+        const formattedValue = ['Updated at the source', 'Date', 'Fetched', 'Checked'].includes(cleanLabel)
+          ? recordedInstant(cleanValue)
+          : cleanValue;
+        facts.push([cleanLabel, formattedValue]);
       }
     }
     return mergeFacts(facts);
@@ -1135,10 +1165,8 @@ export function subjectAbsentNote(kind: string | null | undefined): string {
 }
 
 /** How many source observations a record was built from, when there is more than one. */
-export function sourceCountNote(row: { source_ids?: readonly string[] | null }): string {
-  const count = row.source_ids?.length || 0;
-  if (count < 2) return '';
-  return `Built from ${count} original pages`;
+export function sourceCountNote(_row: { source_ids?: readonly string[] | null }): string {
+  return '';
 }
 
 /** When the issue was detected, if that day is not already the row date. */
@@ -1824,13 +1852,8 @@ export function recordingVisible(row: DisplayRow, now?: Date): boolean {
 }
 
 /** A source status worth a second line. Upcoming already means the source said scheduled. */
-export function listedSourceStatus(row: { status?: string | null; source_status?: string | null }): string {
-  const source = row.source_status || '';
-  if (!source || source === row.status) return '';
-  if (source === 'unknown') return 'Status at the source not recorded';
-  if (['upcoming', 'today'].includes(row.status || '') && ['scheduled', 'rescheduled'].includes(source)) return '';
-  const label = phrase(source);
-  return label ? `The source still says ${label.toLowerCase()}` : '';
+export function listedSourceStatus(_row: { status?: string | null; source_status?: string | null }): string {
+  return '';
 }
 
 export function presentRecord<T extends DisplayRow>(row: T, now = new Date()): T {

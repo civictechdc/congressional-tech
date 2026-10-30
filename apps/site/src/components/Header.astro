@@ -13,6 +13,7 @@ const links = [
   { key: 'projects', label: 'Projects', href: withBase('/projects/') },
   { key: 'subprojects', label: 'Sub-projects', href: withBase('/subprojects/') },
   { key: 'dashboard', label: 'Committee Explorer', href: withBase('/dashboard/') },
+  { key: 'archive', label: 'Document Archive', href: withBase('/archive/') },
   { key: 'contribute', label: 'Contribute', href: withBase('/contribute/') },
 ];
 ---
@@ -174,6 +175,15 @@ const links = [
     .header-inner {
       flex-direction: column;
       align-items: flex-start;
+    }
+
+    .nav-list {
+      gap: 0.15rem var(--ctdc-space-sm);
+    }
+
+    .nav-link {
+      font-size: var(--ctdc-text-xs);
+      padding: 0.25rem 0.1rem;
     }
   }
 </style>

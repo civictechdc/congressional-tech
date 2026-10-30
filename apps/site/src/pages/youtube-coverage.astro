@@ -7,19 +7,23 @@ import { withBase } from '../lib/paths';
 
 <Base
   title="YouTube Coverage"
-  active="dashboard"
+  active="projects"
   description="How consistently congressional committees tag their YouTube videos with official Event IDs, by congress, chamber, and party control."
 >
   <section class="page-hero anchor-dark">
     <div class="container">
-      <p class="eyebrow page-eyebrow">Project I.2 · Live data</p>
+      <p class="eyebrow page-eyebrow">Project I.2</p>
       <h1 class="page-title">Committee YouTube coverage</h1>
       <p class="page-lead lead">
         Committees publish thousands of hearing videos, but many never include
         the official Event ID that links a video back to the record on
         Congress.gov. This dashboard tracks that gap.
       </p>
-      <p class="legacy-explorer-link"><a href={withBase('/dashboard/')}>Explore meetings, materials, witnesses, and known gaps →</a></p>
+      <p class="legacy-explorer-link">
+        <a href={withBase('/dashboard/')}>Explore meetings, materials, witnesses, and known gaps in Committee Explorer</a>
+        <span class="legacy-explorer-sep" aria-hidden="true">/</span>
+        <a href={withBase('/archive/')}>Browse the Document Archive</a>
+      </p>
     </div>
   </section>
 
@@ -43,8 +47,16 @@ import { withBase } from '../lib/paths';
     padding-block: var(--ctdc-space-3xl);
   }
 
-  .legacy-explorer-link { margin-top: var(--ctdc-space-md); margin-bottom: 0; }
+  .legacy-explorer-link {
+    margin-top: var(--ctdc-space-md);
+    margin-bottom: 0;
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--ctdc-space-2xs) var(--ctdc-space-sm);
+    align-items: center;
+  }
   .legacy-explorer-link a { color: var(--ctdc-gold); }
+  .legacy-explorer-sep { color: var(--ctdc-on-dark-muted); }
 
   .page-eyebrow {
     color: var(--ctdc-gold);

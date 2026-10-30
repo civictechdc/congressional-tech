@@ -216,6 +216,7 @@ export interface ExplorerReader {
   getRecord(ref: ExplorerRecordRef, options?: { signal?: AbortSignal }): Promise<LoadedRecord | undefined>;
   getRecords(refs: readonly ExplorerRecordRef[], options?: { signal?: AbortSignal }): Promise<readonly (LoadedRecord | undefined)[]>;
   listWitnesses(meetingIds: readonly string[], options?: { signal?: AbortSignal }): Promise<readonly { meeting_id: string; title: string }[]>;
+  listMaterialCounts?(meetingIds: readonly string[], options?: { signal?: AbortSignal }): Promise<ReadonlyMap<string, { recordings: number; documents: number }>>;
 }
 
 export interface ArtifactPart {

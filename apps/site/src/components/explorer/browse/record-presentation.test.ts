@@ -192,11 +192,11 @@ test('related rows keep the recorded role, time, and issue severity', () => {
   assert.deepEqual(witnessNotes({ organization: 'U.S. Forest Service', facts: [{ label: 'on behalf of', value: 'U.S. Department of Agriculture' }, { label: 'location', value: 'Washington, D.C.' }] }), ['On behalf of U.S. Department of Agriculture', 'Washington, D.C.']);
   assert.deepEqual(witnessNotes({ organization: 'Orgill', facts: [{ label: 'on behalf of', value: 'Orgill' }, { label: 'on behalf of', value: 'themselves' }] }), []);
   assert.equal(listedSourceStatus({ status: 'upcoming', source_status: 'scheduled' }), '');
-  assert.equal(listedSourceStatus({ status: 'past', source_status: 'scheduled' }), 'The source still says scheduled');
-  assert.equal(relatedMeta('meeting', { type: 'hearing', status: 'past', source_status: 'scheduled', date: '2026-01-01' }).includes('The source still says scheduled'), true);
+  assert.equal(listedSourceStatus({ status: 'past', source_status: 'scheduled' }), '');
+  assert.equal(relatedMeta('meeting', { type: 'hearing', status: 'past', source_status: 'scheduled', date: '2026-01-01' }).includes('The source still says scheduled'), false);
   assert.equal(relatedMeta('meeting', { title: 'Full Committee Hearing on elections', type: 'hearing', date: '2026-07-22' }).startsWith('2026-07-22'), true);
   assert.equal(relatedMeta('meeting', { title: 'Full Committee Hearing on elections', type: 'meeting', date: '2026-06-25' }).startsWith('Meeting'), true);
-  assert.equal(listedSourceStatus({ status: 'past', source_status: 'unknown' }), 'Status at the source not recorded');
+  assert.equal(listedSourceStatus({ status: 'past', source_status: 'unknown' }), '');
   assert.deepEqual(relatedParts('meeting', { type: 'business', date: '2026-09-30', congress: 119, chamber: 'senate', status: 'past', facts: [{ label: 'building', value: 'Dirksen Senate Office Building' }, { label: 'room', value: '366' }] }).filter(part => part.role).map(part => [part.role, part.text]), [['place', 'Dirksen Senate Office Building, room 366'], ['status', 'Past']]);
   assert.equal(sourceFacts({ payload: { chamber: 'house' } }).find(([label]) => label === 'Chamber')?.[1], 'House');
   assert.equal(sourceFacts({ payload: { witnesses: [{ name: 'Richard Blaylock' }], people: [{ name: 'Richard Blaylock', position: 'Professor' }, { name: 'Sue Peschin' }] } }).find(([label]) => label === 'Source witnesses')?.[1], 'Richard Blaylock\nRichard Blaylock · Professor\nSue Peschin');
@@ -233,8 +233,8 @@ test('related rows keep the recorded role, time, and issue severity', () => {
   assert.equal(span.find(([label]) => label === 'Document category')?.[1], 'Supporting');
   assert.deepEqual(sourceLinks({ payload: { values: { website: 'https://live.house.gov/' } } }).links, [{ group: 'Committee website', href: 'https://live.house.gov/', label: 'live.house.gov' }]);
   assert.equal(sourceCountNote({ source_ids: ['a'] }), '');
-  assert.equal(sourceCountNote({ source_ids: ['a', 'b'] }), 'Built from 2 original pages');
-  assert.equal(relatedMeta('meeting', { type: 'hearing', congress: 119, source_ids: ['a', 'b', 'c'] }), 'Hearing · 119th Congress · Built from 3 original pages');
+  assert.equal(sourceCountNote({ source_ids: ['a', 'b'] }), '');
+  assert.equal(relatedMeta('meeting', { type: 'hearing', congress: 119, source_ids: ['a', 'b', 'c'] }), 'Hearing · 119th Congress');
   assert.equal(detectedNote({ date: '2013-10-23', facts: [{ label: 'detected at', value: '2026-09-28T00:40:12.226742Z' }] }), 'Detected 2026-09-28');
   assert.equal(detectedNote({ date: '2026-09-28', facts: [{ label: 'detected at', value: '2026-09-28T00:40:12Z' }] }), '');
   assert.equal(detectedNote({ facts: [{ label: 'detected at', value: '2026-10-18T01:02:03Z' }] }), 'Detected 2026-10-18');
@@ -253,7 +253,7 @@ test('related rows keep the recorded role, time, and issue severity', () => {
   assert.equal(relatedMeta('data_issue', { category: 'conflicting', severity: 'affects_interpretation', status: 'open', date: '2026-10-18' }), 'Conflicting · Changes how to read it · Still open · 2026-10-18');
   const disagreement = relatedParts('data_issue', { category: 'conflicting', status: 'open', source_ids: ['a', 'b'], facts: [{ label: 'Selected value', value: '{"channel":"5dbb6c64-2f48-4364-86cc-68a38059ae57"}' }, { label: 'alternative 1', value: '{}' }] });
   assert.equal(disagreement.find(part => part.text === 'Built from 4 original pages'), undefined);
-  assert.equal(disagreement[disagreement.findIndex(part => part.role === 'note') - 1]?.text, 'Built from 2 original pages');
+  assert.equal(disagreement.find(part => part.text === 'Built from 2 original pages'), undefined);
   assert.match(disagreement.find(part => part.role === 'note')?.text || '', /Channel: recorded on this version\. Another recorded version does not have one/);
 });
 
@@ -392,7 +392,7 @@ test('supported YouTube and Senate recordings embed without autoplay', () => {
     assert.equal(meetingStatusNote({ meeting_status: 'canceled' }), 'Meeting canceled');
     assert.equal(meetingStatusNote({ meeting_status: 'scheduled' }), '');
     assert.equal(meetingStatusNote({ meeting_status: 'unknown' }), 'Meeting status unknown');
-    assert.equal(relatedMeta('meeting', { type: 'hearing', status: 'past', source_status: 'unknown', congress: 112 }), 'Hearing · 112th Congress · Past · Status at the source not recorded');
+    assert.equal(relatedMeta('meeting', { type: 'hearing', status: 'past', source_status: 'unknown', congress: 112 }), 'Hearing · 112th Congress · Past');
   }
   assert.equal(recordingEmbedUrl({...recording, recording_url: 'https://www.senate.gov/isvp/?comm=armed&filename=armedA050825&auto_play=true'}, now),
     'https://www.senate.gov/isvp/?comm=armed&filename=armedA050825&auto_play=false');

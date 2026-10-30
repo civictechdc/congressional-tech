@@ -378,39 +378,42 @@ function Leaderboard({ rows }: { rows: ReportRow[] }) {
     <div>
       <Legend />
       <ol className="dash-board">
-        {committees.map((entry) => (
-          <li key={entry.committee} className="dash-board-row">
-            <span className="dash-board-name" title={entry.committee}>
-              {entry.committee}
-            </span>
-            <span className="dash-board-bar" aria-hidden="true">
-              {entry.withId > 0 && (
-                <span
-                  className="dash-board-seg"
-                  style={{
-                    width: `${pct(entry.withId, max)}%`,
-                    background: COLOR_WITH,
-                  }}
-                  title={`Has Event ID: ${formatInt.format(entry.withId)}`}
-                />
-              )}
-              {entry.missing > 0 && (
-                <span
-                  className="dash-board-seg"
-                  style={{
-                    width: `${pct(entry.missing, max)}%`,
-                    background: COLOR_MISSING,
-                  }}
-                  title={`Missing Event ID: ${formatInt.format(entry.missing)}`}
-                />
-              )}
-            </span>
-            <span className="dash-board-value">
-              {formatInt.format(entry.total)}
-              <small>{Math.round(pct(entry.withId, entry.total))}% tagged</small>
-            </span>
-          </li>
-        ))}
+        {committees.map((entry) => {
+          const displayName = entry.committee.replace(/,(?=\S)/g, ', ');
+          return (
+            <li key={entry.committee} className="dash-board-row">
+              <span className="dash-board-name" title={displayName}>
+                {displayName}
+              </span>
+              <span className="dash-board-bar" aria-hidden="true">
+                {entry.withId > 0 && (
+                  <span
+                    className="dash-board-seg"
+                    style={{
+                      width: `${pct(entry.withId, max)}%`,
+                      background: COLOR_WITH,
+                    }}
+                    title={`Has Event ID: ${formatInt.format(entry.withId)}`}
+                  />
+                )}
+                {entry.missing > 0 && (
+                  <span
+                    className="dash-board-seg"
+                    style={{
+                      width: `${pct(entry.missing, max)}%`,
+                      background: COLOR_MISSING,
+                    }}
+                    title={`Missing Event ID: ${formatInt.format(entry.missing)}`}
+                  />
+                )}
+              </span>
+              <span className="dash-board-value">
+                {formatInt.format(entry.total)}
+                <small>{Math.round(pct(entry.withId, entry.total))}% tagged</small>
+              </span>
+            </li>
+          );
+        })}
       </ol>
     </div>
   );
