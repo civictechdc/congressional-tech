@@ -480,7 +480,11 @@ def add_retained_house_documents(context, captures, read_body):
                                          root if root.tag == "witness-list" else None)
         except (ValueError, ParseError):
             continue
-        event = root.get("meeting-id", "").removeprefix("HMKP")
+        event = root.get("meeting-id", "")
+        for prefix in ("HHRG", "HMKP", "HMTG"):
+            if event.startswith(prefix):
+                event = event[len(prefix):]
+                break
         with context.observation(context_values(source_receipt_key=row.get('receipt_key'),
                                                 source_receipt_line=row.get('receipt_line'))):
             meeting = context.event_context(event, "house")

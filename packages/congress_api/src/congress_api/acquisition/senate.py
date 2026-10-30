@@ -415,3 +415,44 @@ def main(meetings, state_dir, output_dir, seed_cache=None, offline=False, as_of=
         write_csv(output_dir / f"{name}.csv", rows, fields)
         totals[name] = len(rows)
     print(dict(totals), dict(http.COUNTS))
+
+
+def fetch_page_through_raw(
+    fetcher,
+    receipt_writer,
+    url: str,
+    *,
+    family: str = "senate/hearing-page",
+    observations=(),
+) -> dict:
+    """Fetch a Senate hearing page and any explicit Drug Caucus attachment pages through
+    the raw `Fetcher` and `ReceiptWriter`, with no separate state file.
+    """
+    result = fetcher.fetch(url)
+    r_key, r_line = receipt_writer.write(result, family=family, observations=observations)
+    receipt_keys = [r_key]
+    attachment_urls: list[str] = []
+
+    final = result.final
+    if final.complete and final.http_status == 200 and final.body and final.body.path:
+        try:
+            html_text = final.body.path.read_bytes().decode("utf-8")
+            page_parsed = parsed(html_text, url)
+            for _, _, linked_url in page_parsed.get("documents") or []:
+                if attachment_page(linked_url):
+                    att_res = fetcher.fetch(linked_url)
+                    att_key, _ = receipt_writer.write(att_res, family=family)
+                    receipt_keys.append(att_key)
+                    attachment_urls.append(linked_url)
+        except (UnicodeDecodeError, ValueError):
+            pass
+
+    return {
+        "url": url,
+        "receipt_keys": receipt_keys,
+        "attachment_urls": attachment_urls,
+        "outcome": r_line.get("outcome"),
+        "http_status": r_line.get("http_status"),
+        "complete": final.complete,
+    }
+
