@@ -488,11 +488,10 @@ def test_actual_execute_daily_path_publishes_only_completed_work(tmp_path,outcom
 def test_seed_target_metadata_uses_shared_validator_before_runtime(tmp_path,change):
     import subprocess
     from viewer_publication.archive_publish_job import execute,load_spec,SITE
-    from test_archive_seed_controller import publication
-    value=publication(tmp_path);target=Path(value['targets']['path'])
+    value=publish_spec(tmp_path);target=Path(value['targets']['path'])
     script="""import {writeTargets,measurementProfiles} from './scripts/archive-targets.mjs';
 const sample={releaseId:'ab'.repeat(32),startupMs:100,searchMs:20,detailMs:30,heapBytes:1000000,workerHeapBytes:100000};
-const measurements=['phone','desktop'].map(kind=>({deviceClass:kind+'-profile',basis:'emulated',origin:{kind:'seed_v5',display_only:true},harnessCommit:'cd'.repeat(20),profile:measurementProfiles[kind],samples:Array.from({length:5},()=>({...sample}))}));
+const measurements=['phone','desktop'].map(kind=>({deviceClass:kind+'-profile',basis:'emulated',origin:{kind:'model'},harnessCommit:'cd'.repeat(20),profile:measurementProfiles[kind],samples:Array.from({length:5},()=>({...sample}))}));
 await writeTargets({measurements,basis:'emulated',harnessCommit:'cd'.repeat(20),output:process.argv[1]});"""
     target.unlink()
     subprocess.run(['node','--input-type=module','-e',script,str(target)],cwd=SITE,check=True,capture_output=True,text=True)

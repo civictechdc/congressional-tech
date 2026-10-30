@@ -127,9 +127,7 @@ def load_spec(path):
     base=path.parent
     result=dict(value)
     kind=value.get('model_kind','raw')
-    if kind not in {'raw','seed_v5'}:raise ValueError('Unknown publication model_kind')
-    if kind=='seed_v5' and (value['receipt_keys'] or value['provenance'] or 'daily' in value):
-        raise ValueError('A display-only seed cannot select raw receipts, provenance or daily production')
+    if kind!='raw':raise ValueError('Unknown publication model_kind')
     result['model_kind']=kind
     if 'comparison_acceptance' in value:
         selected=value['comparison_acceptance']
@@ -167,10 +165,7 @@ def load_spec(path):
                 or item['key'] in seen):raise ValueError('Publication requires distinct provenance keys and ETags')
         validate_key(item['key']);seen.add(item['key'])
     result['_model_identity']=_verify_metadata(result['model_spec'])
-    if kind=='seed_v5':
-        from viewer_publication.archive_seed import load_seed_spec
-        result['_model']=load_seed_spec(result['model_spec']['path'])
-    else:result['_model']=load_model_spec(result['model_spec']['path'])
+    result['_model']=load_model_spec(result['model_spec']['path'])
     result['_model_identity'].require(result['model_spec']['path'])
     if result['_model'].get('status')=='blocked':return result['_model']
     if 'comparison_acceptance' in result and result['_model']['captures'].get('kind')!='native_table':raise ValueError('Comparison acceptance requires the exact native capture selector')
@@ -286,8 +281,7 @@ def execute(spec,*,runtime_factory=None,storage_factory=None,process_runner=None
     target_identity.require(spec['targets']['path'])
     try:
         checked=subprocess.run(['npm','run','--silent','targets:archive','--','--check',spec['targets']['path'],
-            '--origin-kind','seed_v5' if spec.get('model_kind')=='seed_v5' else 'model',
-            '--display-only','true' if spec.get('model_kind')=='seed_v5' else 'false'],
+            '--origin-kind','model','--display-only','false'],
             cwd=SITE,check=True,capture_output=True,text=True,timeout=30)
         if len(checked.stdout.encode())>METADATA_BYTES:raise ValueError('Target validator output exceeds the metadata allowance')
         target_metadata=json.loads(checked.stdout)
@@ -317,7 +311,7 @@ def execute(spec,*,runtime_factory=None,storage_factory=None,process_runner=None
     if not Path(spec['site_dist']).is_dir():raise ValueError('Publication site_dist must already exist; build the site first')
     from docspec_client.client import NativeDatasets
     from congress_shared.storage import connect_r2
-    from viewer_publication.archive_controller import run_publish,run_seed_publish,_publication_directory
+    from viewer_publication.archive_controller import run_publish,_publication_directory
     runtime_factory=runtime_factory or NativeDatasets.from_config
     storage_factory=storage_factory or connect_r2
     process_runner=process_runner or subprocess.run
@@ -362,9 +356,7 @@ def execute(spec,*,runtime_factory=None,storage_factory=None,process_runner=None
             options=dict(client=client,engine=engine,bucket=spec['bucket'],work=spec['work'],run=spec['run'],
                 public_origin=spec['public_origin'],contract=lambda **context:probe('contract',context),
                 canary=lambda **context:probe('canary',context))
-            if spec.get('model_kind')=='seed_v5':result=run_seed_publish(selected_model,
-                measured_release_id=measured_release_id,**options)
-            else:result=run_publish(selected_model,receipt_keys=keys,provenance=provenance,verified_files=verified,
+            result=run_publish(selected_model,receipt_keys=keys,provenance=provenance,verified_files=verified,
                 measured_release_id=measured_release_id,comparison_acceptance=acceptance,**options)
             spec['_model_identity'].require(spec['model_spec']['path']);require_configuration()
             return dict(result,daily=daily['daily']) if daily is not None else result
@@ -382,7 +374,6 @@ def main(argv=None):
             model_spec=spec['model_spec'],bucket=spec['bucket'],work=spec['work'],public_origin=spec['public_origin'],
             targets=spec['targets'],site_dist=spec['site_dist'])
         if not args.execute and 'daily' in spec:result['daily']=spec['daily']
-        if not args.execute and spec.get('model_kind')=='seed_v5':result['model_kind']='seed_v5'
     except (ValueError,OSError,subprocess.SubprocessError) as error:parser.error(str(error))
     print(json.dumps(result,sort_keys=True));return 2 if result.get('status') in {'pending','backfill_required'} else 0
 

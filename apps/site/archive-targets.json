@@ -1,6 +1,193 @@
 {
   "version": 1,
-  "status": "owner-gated",
-  "ceilings": null,
-  "devices": []
+  "status": "provisional-emulated",
+  "basis": "emulated",
+  "profile": {
+    "phone": {
+      "name": "Moto G Power-class",
+      "viewport": {
+        "width": 412,
+        "height": 823
+      },
+      "deviceScaleFactor": 1.75,
+      "isMobile": true,
+      "cpuSlowdown": 4,
+      "cpuScope": "page main thread (CDP); worker CPU unthrottled",
+      "network": {
+        "name": "slow-4g",
+        "latency": 150,
+        "downloadThroughput": 200000,
+        "uploadThroughput": 93750
+      },
+      "medians": {
+        "startupMs": 6352.411458000002,
+        "searchMs": 191.8680829999994,
+        "detailMs": 237.45004100000006,
+        "heapBytes": 359177817
+      },
+      "ceilings": {
+        "startupMs": 9529,
+        "searchMs": 288,
+        "detailMs": 357,
+        "heapBytes": 538766726
+      }
+    },
+    "desktop": {
+      "name": "desktop",
+      "viewport": {
+        "width": 1440,
+        "height": 1000
+      },
+      "deviceScaleFactor": 1,
+      "isMobile": false,
+      "cpuSlowdown": 1,
+      "cpuScope": "unthrottled",
+      "network": null,
+      "medians": {
+        "startupMs": 1357.015292,
+        "searchMs": 140.31124999999884,
+        "detailMs": 212.6787089999998,
+        "heapBytes": 372901138
+      },
+      "ceilings": {
+        "startupMs": 2036,
+        "searchMs": 211,
+        "detailMs": 320,
+        "heapBytes": 559351707
+      }
+    }
+  },
+  "harness_commit": "d5ab03b19485335b727d4ade3683fbbdb73b4b4d",
+  "raw_runs": {
+    "phone": [
+      {
+        "releaseId": "a64ff58ee289dfc7d7ab163dcdc78983a6e6b191d7ab0adf7260b0883332c485",
+        "pageUrl": "http://127.0.0.1:53471/congressional-tech/archive/?key=d3266118d8e8f628",
+        "startupMs": 6415.210792,
+        "searchMs": 228.0398750000004,
+        "detailMs": 163.29533300000003,
+        "heapBytes": 486723834,
+        "workerHeapBytes": 478962401,
+        "pageHeapBytes": 7761433,
+        "workerIsolates": 1,
+        "heapSamples": 126
+      },
+      {
+        "releaseId": "a64ff58ee289dfc7d7ab163dcdc78983a6e6b191d7ab0adf7260b0883332c485",
+        "pageUrl": "http://127.0.0.1:53471/congressional-tech/archive/?key=d3266118d8e8f628",
+        "startupMs": 6355.604791,
+        "searchMs": 191.8680829999994,
+        "detailMs": 237.45004100000006,
+        "heapBytes": 241985689,
+        "workerHeapBytes": 233975716,
+        "pageHeapBytes": 8009973,
+        "workerIsolates": 1,
+        "heapSamples": 129
+      },
+      {
+        "releaseId": "a64ff58ee289dfc7d7ab163dcdc78983a6e6b191d7ab0adf7260b0883332c485",
+        "pageUrl": "http://127.0.0.1:53471/congressional-tech/archive/?key=d3266118d8e8f628",
+        "startupMs": 6352.411458000002,
+        "searchMs": 176.79287499999919,
+        "detailMs": 240.39487499999814,
+        "heapBytes": 317851644,
+        "workerHeapBytes": 310113129,
+        "pageHeapBytes": 7738515,
+        "workerIsolates": 1,
+        "heapSamples": 129
+      },
+      {
+        "releaseId": "a64ff58ee289dfc7d7ab163dcdc78983a6e6b191d7ab0adf7260b0883332c485",
+        "pageUrl": "http://127.0.0.1:53471/congressional-tech/archive/?key=d3266118d8e8f628",
+        "startupMs": 6342.460208,
+        "searchMs": 174.080750000001,
+        "detailMs": 263.8677089999983,
+        "heapBytes": 378424066,
+        "workerHeapBytes": 357960419,
+        "pageHeapBytes": 20463647,
+        "workerIsolates": 1,
+        "heapSamples": 129
+      },
+      {
+        "releaseId": "a64ff58ee289dfc7d7ab163dcdc78983a6e6b191d7ab0adf7260b0883332c485",
+        "pageUrl": "http://127.0.0.1:53471/congressional-tech/archive/?key=d3266118d8e8f628",
+        "startupMs": 6348.600584,
+        "searchMs": 193.69270799999504,
+        "detailMs": 148.33779200000572,
+        "heapBytes": 359177817,
+        "workerHeapBytes": 351154088,
+        "pageHeapBytes": 8023729,
+        "workerIsolates": 1,
+        "heapSamples": 128
+      }
+    ],
+    "desktop": [
+      {
+        "releaseId": "a64ff58ee289dfc7d7ab163dcdc78983a6e6b191d7ab0adf7260b0883332c485",
+        "pageUrl": "http://127.0.0.1:53641/congressional-tech/archive/?key=d3266118d8e8f628",
+        "startupMs": 1377.291834,
+        "searchMs": 152.76454200000012,
+        "detailMs": 218.63745900000026,
+        "heapBytes": 310885771,
+        "workerHeapBytes": 303445388,
+        "pageHeapBytes": 7440383,
+        "workerIsolates": 1,
+        "heapSamples": 36
+      },
+      {
+        "releaseId": "a64ff58ee289dfc7d7ab163dcdc78983a6e6b191d7ab0adf7260b0883332c485",
+        "pageUrl": "http://127.0.0.1:53641/congressional-tech/archive/?key=d3266118d8e8f628",
+        "startupMs": 1348.9218340000002,
+        "searchMs": 143.48266699999976,
+        "detailMs": 212.6787089999998,
+        "heapBytes": 309481915,
+        "workerHeapBytes": 301671518,
+        "pageHeapBytes": 7810397,
+        "workerIsolates": 1,
+        "heapSamples": 35
+      },
+      {
+        "releaseId": "a64ff58ee289dfc7d7ab163dcdc78983a6e6b191d7ab0adf7260b0883332c485",
+        "pageUrl": "http://127.0.0.1:53641/congressional-tech/archive/?key=d3266118d8e8f628",
+        "startupMs": 1357.015292,
+        "searchMs": 121.64249999999993,
+        "detailMs": 212.08795800000007,
+        "heapBytes": 373989048,
+        "workerHeapBytes": 355209660,
+        "pageHeapBytes": 18779388,
+        "workerIsolates": 1,
+        "heapSamples": 34
+      },
+      {
+        "releaseId": "a64ff58ee289dfc7d7ab163dcdc78983a6e6b191d7ab0adf7260b0883332c485",
+        "pageUrl": "http://127.0.0.1:53641/congressional-tech/archive/?key=d3266118d8e8f628",
+        "startupMs": 1358.4536670000007,
+        "searchMs": 132.26900000000023,
+        "detailMs": 222.62924999999996,
+        "heapBytes": 461942693,
+        "workerHeapBytes": 454434564,
+        "pageHeapBytes": 7508129,
+        "workerIsolates": 1,
+        "heapSamples": 35
+      },
+      {
+        "releaseId": "a64ff58ee289dfc7d7ab163dcdc78983a6e6b191d7ab0adf7260b0883332c485",
+        "pageUrl": "http://127.0.0.1:53641/congressional-tech/archive/?key=d3266118d8e8f628",
+        "startupMs": 1351.006792000001,
+        "searchMs": 140.31124999999884,
+        "detailMs": 212.08374999999978,
+        "heapBytes": 372901138,
+        "workerHeapBytes": 354114854,
+        "pageHeapBytes": 18786284,
+        "workerIsolates": 1,
+        "heapSamples": 35
+      }
+    ]
+  },
+  "ceilings": {
+    "startupMs": 9529,
+    "searchMs": 288,
+    "detailMs": 357,
+    "heapBytes": 559351707
+  }
 }
