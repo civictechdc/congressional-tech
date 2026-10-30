@@ -3,17 +3,15 @@
   "mcpServers": {
     "congress": {
       "type": "stdio",
-      "command": "uv",
+      "command": "uvx",
       "args": [
-        "run",
-        "--project",
-        "${PLUGIN_ROOT}",
         "--python",
         "3.12",
-        "--locked",
-        "--no-dev",
-        "python",
-        "${PLUGIN_ROOT}/desktop.py"
+        "--from",
+        "congressional-explorer-mcp==0.4.0",
+        "congress-explorer-mcp",
+        "serve",
+        "--prepare-if-missing"
       ]
     }
   }

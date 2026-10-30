@@ -1,4 +1,4 @@
-"""Shared entry point for desktop bundles and plugins; stdout is MCP only."""
+"""Claude extension bridge to the installed PyPI package; stdout is MCP only."""
 import sys
 
 from congressional_explorer_mcp.cli import main
