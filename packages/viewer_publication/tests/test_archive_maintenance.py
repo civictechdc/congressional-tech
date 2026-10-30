@@ -234,3 +234,19 @@ def test_valid_kept_parquet_selectors_require_no_local_payload_reads():
             store.objects[key]=json.dumps(record).encode()
     result=maintain_releases(store,now=NOW,external_pins=[PINNED])
     assert len(result['kept_inputs'])==4 and store.deleted==[]
+
+
+def test_maintenance_and_backfill_cli_plan_and_execute_specs(tmp_path,capsys):
+    from pathlib import Path
+    from congress_api.lake.daily import ALL_TABLE_NAMES
+    from viewer_publication import archive_backfill_job,archive_maintenance
+    root=Path(__file__).resolve().parents[3]
+    assert archive_maintenance.main(['--spec',str(root/'model/jobs/maintenance.json'),'--plan'])==0
+    maint_plan=json.loads(capsys.readouterr().out)
+    assert maint_plan['status']=='planned' and maint_plan['executed'] is False
+    assert set(maint_plan['tables'])==set(ALL_TABLE_NAMES)
+
+    assert archive_backfill_job.main(['--spec',str(root/'model/jobs/backfill.json'),'--plan'])==0
+    backfill_plan=json.loads(capsys.readouterr().out)
+    assert backfill_plan['status']=='planned' and backfill_plan['executed'] is False
+    assert set(backfill_plan['tables'])==set(ALL_TABLE_NAMES)

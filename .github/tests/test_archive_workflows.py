@@ -39,7 +39,7 @@ def test_new_capture_uses_scheduler_and_common_lock_with_explicit_switch():
     assert value['permissions'] == {'contents': 'read'}
     command = '\n'.join(step.get('run', '') for step in job['steps'])
     assert 'congress_api.cli.capture_schedule' in command
-    assert '--seed-inventory' in command
+    assert '--seed-inventory' not in command
     assert all(arg in command for arg in ['--request-budget', '--byte-budget', '--spool-budget'])
     assert '--max-file-mib' not in command and '--replay' not in command and 'raw-source-sync' not in command
     preflight = next(i for i, step in enumerate(job['steps']) if step.get('uses') == './.github/actions/setup-local-job-runtime')
@@ -57,14 +57,49 @@ def test_obsolete_viewer_workflow_and_thirty_minute_cron_are_absent():
 
 
 def test_pending_model_spec_refuses_before_importing_publisher_or_accessing_storage(tmp_path):
-    result = subprocess.run([sys.executable, '-I', str(ROOT / '.github/scripts/run-archive-job.py'), 'publish'],
-        cwd=tmp_path, capture_output=True, text=True, timeout=10, env={'PATH': '/usr/bin:/bin'})
+    root = tmp_path / 'pending-repo'
+    scripts = root / '.github/scripts'
+    scripts.mkdir(parents=True)
+    runner = scripts / 'run-archive-job.py'
+    runner.write_bytes((ROOT / '.github/scripts/run-archive-job.py').read_bytes())
+    jobs = root / 'model/jobs'
+    jobs.mkdir(parents=True)
+    (jobs / 'publish.pending.json').write_text(json.dumps({
+        'status': 'blocked',
+        'reason': 'Track E model job and engine publisher spec are not bound; publication refused before storage access.',
+    }))
+    (root / '.github/archive-jobs.json').write_text(json.dumps({
+        'publish': {'module': 'viewer_publication.archive_publish_job', 'spec': 'model/jobs/publish.pending.json'},
+    }))
+    work = tmp_path / 'work'
+    work.mkdir()
+    result = subprocess.run([sys.executable, '-I', str(runner), 'publish'],
+        cwd=work, capture_output=True, text=True, timeout=10, env={'PATH': '/usr/bin:/bin'})
     assert result.returncode != 0
     assert 'Track E' in result.stderr and 'refused' in result.stderr
-    assert not list(tmp_path.iterdir())
+    assert not list(work.iterdir())
     config = json.loads((ROOT / '.github/archive-jobs.json').read_text())
-    assert config['publish']['module'] == 'viewer_publication.archive_publish_job'
-    assert config['publish']['spec'] == 'model/jobs/publish.pending.json'
+    assert config['publish'] == {
+        'module': 'viewer_publication.archive_publish_job',
+        'spec': 'model/jobs/publish.json',
+        'argv': ['--execute'],
+    }
+    assert config['backfill'] == {
+        'module': 'viewer_publication.archive_backfill_job',
+        'spec': 'model/jobs/backfill.json',
+        'argv': ['--execute'],
+    }
+    assert config['maintenance'] == {
+        'module': 'viewer_publication.archive_maintenance',
+        'spec': 'model/jobs/maintenance.json',
+        'argv': ['--execute'],
+    }
+    for name in ('publish', 'backfill', 'maintenance'):
+        assert (ROOT / config[name]['spec']).is_file()
+        assert not (ROOT / f'model/jobs/{name}.pending.json').exists()
+        check = subprocess.run([sys.executable, '-I', str(ROOT / '.github/scripts/run-archive-job.py'), name, '--check-binding'],
+            cwd=tmp_path, capture_output=True, text=True, timeout=15)
+        assert check.returncode == 0, check.stderr
 
 
 def test_every_new_r2_writer_has_an_explicit_endpoint_source():
@@ -95,8 +130,7 @@ def test_capture_shell_passes_budgets_and_only_existing_weekly_seeds(tmp_path):
     assert json.loads((tmp_path / 'invocation.json').read_text()) == [
         '-I', '-m', 'congress_api.cli.capture_schedule', '--pointer', env['ARCHIVE_POINTER'],
         '--request-budget', '19', '--byte-budget', '2048', '--spool-budget', '1024',
-        '--work', str(tmp_path / 'archive-capture'), '--apply',
-        '--seed-inventory', 'pipeline-data/meeting-inventory/house.json.gz']
+        '--work', str(tmp_path / 'archive-capture'), '--apply']
     (tmp_path / 'invocation.json').unlink()
     env['REQUEST_BUDGET'] = '0'
     result = subprocess.run(['bash', '-eo', 'pipefail', '-c', step['run']], cwd=tmp_path,
@@ -174,8 +208,13 @@ def test_github_output_uses_the_owner_plan_without_running_or_opening_runtime(tm
 
 
 def test_pending_binding_exports_no_github_metadata(tmp_path):
+    root=tmp_path/'pending'
+    scripts=root/'.github/scripts';scripts.mkdir(parents=True)
+    runner=scripts/'run-archive-job.py';runner.write_bytes((ROOT/'.github/scripts/run-archive-job.py').read_bytes())
+    (root/'publish.pending.json').write_text(json.dumps({'status':'blocked','reason':'Track E blocked'}))
+    (root/'.github/archive-jobs.json').write_text(json.dumps({'publish':{'module':'viewer_publication.archive_publish_job','spec':'publish.pending.json'}}))
     output=tmp_path/'github-output'
-    result=subprocess.run([sys.executable,'-I',str(ROOT/'.github/scripts/run-archive-job.py'),'publish',
+    result=subprocess.run([sys.executable,'-I',str(runner),'publish',
         '--check-binding','--github-output',str(output)],cwd=tmp_path,capture_output=True,text=True,timeout=10,env={'PATH':'/usr/bin:/bin'})
     assert result.returncode==2 and 'Track E' in result.stderr
     assert not output.exists()

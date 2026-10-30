@@ -1,0 +1,27 @@
+{
+  "version": 1,
+  "model_spec": {
+    "path": "publish-model.json",
+    "sha256": "57a454f40237f512d0e8526b7df0dc2bffa40b77db3cfe2057d6c195c95db0d6",
+    "size": 1992
+  },
+  "daily": {
+    "path": "publish-daily.json",
+    "sha256": "83aa6f0ea00e155f4568e6e7ccceb80b2bf2388d21d97f9ac8a7d8fa33bb0a7b",
+    "size": 849
+  },
+  "bucket": "congressional-tech-raw",
+  "work": "../../output/archive-publish",
+  "public_origin": "https://data.congressional.tech",
+  "receipt_keys": [],
+  "provenance": [],
+  "run": {
+    "id": "archive-publish"
+  },
+  "contract_next_release": "../fixtures/archive-contract/next",
+  "targets": {
+    "path": "../../apps/site/archive-targets.json",
+    "sha256": "4d1f8921ef739cce8936bc913061d7fc4c0d92adb061a81de17a0434b4060284",
+    "size": 83
+  }
+}

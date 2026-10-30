@@ -1,0 +1,43 @@
+{
+  "work": "../../output/archive-daily",
+  "catalog_root": null,
+  "tables": {
+    "captures": {
+      "namespace": [
+        "archive"
+      ],
+      "name": "captures"
+    },
+    "readings": {
+      "namespace": [
+        "archive"
+      ],
+      "name": "readings"
+    },
+    "filename_readings": {
+      "namespace": [
+        "archive"
+      ],
+      "name": "filename_readings"
+    },
+    "meeting_records": {
+      "namespace": [
+        "archive"
+      ],
+      "name": "meeting_records"
+    },
+    "appearance_records": {
+      "namespace": [
+        "archive"
+      ],
+      "name": "appearance_records"
+    }
+  },
+  "body_inventory": "../../output/archive-daily-inputs/body-inventory.parquet",
+  "local_root": "../../output/archive-daily-inputs/raw",
+  "provenance": {
+    "recoveries": [],
+    "reviews": [],
+    "unreadable": []
+  }
+}

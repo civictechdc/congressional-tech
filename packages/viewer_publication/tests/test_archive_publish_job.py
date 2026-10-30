@@ -516,3 +516,20 @@ def test_expected_rebuild_identity_refuses_invalid_pins_before_effects(tmp_path,
     path=tmp_path/'publish.json';path.write_text(json.dumps(value))
     with pytest.raises(ValueError,match='expected.*release|Expected.*release'):load_spec(path)
     assert not Path(value['work']).exists()
+
+
+def test_daily_handoff_binds_all_five_table_pins_when_present(tmp_path):
+    from congress_api.lake import appearance_records,meeting_records
+    from viewer_publication.archive_model_job import load_spec
+    from viewer_publication.archive_publish_job import ALL_TABLES,completed_daily_inputs
+    template=model_spec(tmp_path);path=tmp_path/'template.json';path.write_text(json.dumps(template))
+    report,records=daily_report(tmp_path)
+    for idx,name in enumerate(['meeting_records','appearance_records'],start=4):
+        report['pins'][name]=dict(metadata_location='s3://derived-fixture/lake/'+name+'/metadata/00001.json',
+            table_uuid='00000000-0000-4000-8000-000000000001',snapshot=idx,schema_id=0)
+    report['currentversions']['meeting_records']=meeting_records.current_version()
+    report['currentversions']['appearance_records']=appearance_records.current_version()
+    selected,receipts=completed_daily_inputs(load_spec(path),report,records)
+    assert receipts==report['receipt_keys']
+    for name in ALL_TABLES:
+        assert selected[name]==dict(kind='native_table',**report['pins'][name])

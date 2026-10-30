@@ -105,3 +105,93 @@ def test_kept_cli_defaults_read_pinned_reviews_without_site_copies(tmp_path,monk
               '--decided-at',STAMP,'--native-config',str(tmp_path/'unopened-config.json')])
     report=json.loads(capsys.readouterr().out)
     assert report==dict(records=86,review_sha256=json.loads(DESCRIPTOR.read_text())['review_sha256'])
+
+
+def test_interactive_review_forms_emit_provenance_records_without_legacy_catalog(tmp_path,capsys):
+    from viewer_publication import review_provenance as cli
+    from congress_api.retention.review import SUPPORTED_FORMS, build_review_verdict, resolve_review_target
+
+    body_hex='abcdef0123456789'*4
+    other_hex='1234567890abcdef'*4
+    assert resolve_review_target(f'bodies/sha256/{body_hex[:2]}/{body_hex}.gz')==body_hex[:16]
+    assert resolve_review_target(body_hex)==body_hex[:16]
+    assert resolve_review_target(body_hex[:16])==body_hex[:16]
+    assert 'witness-statement' in SUPPORTED_FORMS
+
+    forms=[
+        dict(
+            id='interactive-kind-1',
+            body_key=f'bodies/sha256/{body_hex[:2]}/{body_hex}.gz',
+            primary_forms=['witness-statement'],
+            component_forms=['testimony-disclosure'],
+            notes='Reviewed witness packet',
+            reviewer='owner',
+            decided_at=STAMP,
+        ),
+        dict(
+            id='interactive-title-1',
+            target=body_hex[:16],
+            verdict='title_override',
+            value='Corrected Testimony Title',
+            note='Header correction',
+            reviewer='owner',
+            decided_at=STAMP,
+        ),
+        dict(
+            id='interactive-dup-1',
+            body_sha256=body_hex,
+            verdict='duplicate_of',
+            value=f'bodies/sha256/{other_hex[:2]}/{other_hex}.pdf',
+            note='Duplicate upload',
+            reviewer='owner',
+            decided_at=STAMP,
+        ),
+        dict(
+            id='interactive-hide-1',
+            target=other_hex[:16],
+            verdict='hide',
+            value=True,
+            note='Withdrawn by committee',
+            reviewer='owner',
+            decided_at=STAMP,
+        ),
+        dict(
+            id='interactive-withdraw-1',
+            target=body_hex[:16],
+            verdict='withdraw',
+            value=None,
+            note='Supersede title override',
+            reviewer='owner',
+            decided_at='2026-10-27T12:05:00Z',
+            supersedes='interactive-title-1',
+        ),
+    ]
+    verdicts_file=tmp_path/'verdicts.jsonl'
+    verdicts_file.write_text(''.join(json.dumps(item)+'\n' for item in forms))
+    stage_dir=tmp_path/'interactive-stage'
+    cli.main(['--verdicts',str(verdicts_file),'--stage',str(stage_dir),'--decided-at',STAMP,'--require-supported-forms'])
+    staged=json.loads(capsys.readouterr().out)
+    assert staged['kind']=='reviews' and staged['records']==5
+    lines=[json.loads(line) for line in (stage_dir/staged['provenance']).read_text().splitlines()]
+    assert lines[0]['verdict']=='kind_override'
+    assert lines[0]['target']==body_hex[:16]
+    assert lines[0]['value']==['witness-statement','testimony-disclosure']
+    assert lines[2]['verdict']=='duplicate_of' and lines[2]['value']==other_hex[:16]
+    assert lines[3]['verdict']=='hide' and lines[3]['value'] is True
+    assert lines[4]['verdict']=='withdraw' and lines[4]['supersedes']=='interactive-title-1'
+
+    store=BodyStore(LocalAdapter(tmp_path/'raw-direct'))
+    direct=cli.record_interactive_verdict(
+        store,
+        dict(id='direct-1',body_sha256=body_hex,observed_forms=['letter'],note='Direct form submit',reviewer='owner'),
+        decided_at=STAMP,
+        require_supported_forms=True,
+    )
+    assert direct['key'].startswith('provenance/reviews/')
+    assert json.loads((tmp_path/'raw-direct'/direct['key']).read_text())['value']==['letter']
+
+    with pytest.raises(ValueError,match='Unsupported document review form'):
+        build_review_verdict(
+            dict(id='bad-form',target=body_hex[:16],observed_forms=['unapproved-form'],reviewer='owner',decided_at=STAMP),
+            require_supported_forms=True,
+        )

@@ -9,6 +9,7 @@ from .models import (
     QUALIFIED_DOCSPEC_RUNTIME,
     REQUIRED_LOOPBACK_CAPABILITIES,
     RESPONSE_LIMIT,
+    RUNTIME_PIN_FILE,
     SUPPORTED_PLATFORMS,
     VALID_UPDATE_MERGE_STRATEGIES,
     AggregateSpec,
@@ -23,6 +24,8 @@ from .models import (
     UpdateMergeSpec,
     UpdateMergeStrategy,
     VersionRef,
+    load_runtime_pin,
+    runtime_pin_digest,
 )
 from .schema import (
     _cast_array,

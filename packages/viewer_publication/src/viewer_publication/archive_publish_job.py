@@ -12,13 +12,14 @@ from congress_api.retention.body_store import validate_key
 from congress_api.retention.derived_files import file_identity,check_identity
 from viewer_publication.archive_model_job import (
     load_spec as load_model_spec,validate_spec as validate_model_spec,_local,_pin,
-    TABLES,PROVENANCE,provenance_record_kind,provenance_etag_md5,
+    TABLES,OPTIONAL_TABLES,PROVENANCE,provenance_record_kind,provenance_etag_md5,
 )
 from viewer_publication.receipt_pins import receipt_list
 from viewer_publication.archive_comparison_acceptance import ComparisonAcceptance,require_comparison
 
 ROOT=Path(__file__).resolve().parents[4]
 SITE=ROOT/'apps/site'
+ALL_TABLES=(*TABLES,*OPTIONAL_TABLES)
 FIELDS={'version','model_spec','bucket','work','public_origin','receipt_keys','provenance','run',
         'contract_next_release','targets'}
 METADATA_BYTES=1<<20
@@ -29,14 +30,19 @@ def completed_daily_inputs(template,production,records):
     if not isinstance(production,dict) or production.get('status')!='completed':
         raise ValueError('Publication requires completed daily production')
     pins=production.get('pins');keys=production.get('receipt_keys');versions=production.get('currentversions')
-    if (not isinstance(pins,dict) or set(pins)!=set(TABLES)
+    if (not isinstance(pins,dict) or set(pins) not in (set(TABLES),set(ALL_TABLES))
             or not isinstance(keys,list) or any(not isinstance(key,str) for key in keys)
             or keys!=sorted(set(keys)) or not isinstance(versions,dict)
             or not {'parsers','filename_readings'}<=versions.keys()):
-        raise ValueError('Daily publication requires three fresh pins, complete receipt keys and definitions')
+        raise ValueError('Daily publication requires fresh pins, complete receipt keys and definitions')
+    if 'meeting_records' in pins or 'appearance_records' in pins:
+        from congress_api.lake import appearance_records,meeting_records
+        if (versions.get('meeting_records')!=meeting_records.current_version()
+                or versions.get('appearance_records')!=appearance_records.current_version()):
+            raise ValueError('Daily publication meeting or appearance producer version differs from current definition')
     receipt_list(keys)
     value=dict(template,parser_versions=versions['parsers'],catalog_version=versions['filename_readings'])
-    for name in TABLES:
+    for name in (*TABLES,*(n for n in OPTIONAL_TABLES if n in pins)):
         if (not isinstance(pins[name],dict)
                 or set(pins[name])!={'metadata_location','table_uuid','snapshot','schema_id'}):
             raise ValueError('Invalid daily native table pin')

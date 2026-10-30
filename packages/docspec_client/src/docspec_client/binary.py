@@ -1,7 +1,6 @@
 """Resolution for the native docspec binary across local and CI environments."""
 import os
 from pathlib import Path
-import shutil
 
 
 def resolve_docspec_binary(binary: Path | str | None = None) -> Path:
@@ -39,9 +38,5 @@ def resolve_docspec_binary(binary: Path | str | None = None) -> Path:
         for candidate in candidates:
             if candidate.is_file() and os.access(candidate, os.X_OK):
                 return candidate.resolve()
-
-    found = shutil.which("docspec")
-    if found:
-        return Path(found).resolve()
 
     raise FileNotFoundError("Unable to locate native docspec binary")

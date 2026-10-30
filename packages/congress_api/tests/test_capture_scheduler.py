@@ -235,6 +235,136 @@ def test_scheduler_cli_has_no_replay_or_raw_index_mode(tmp_path):
     from congress_api.cli.capture_schedule import main
     with pytest.raises(SystemExit):main(['--replay'])
     with pytest.raises(SystemExit):main(['--raw-index','indexes/raw.json'])
+    with pytest.raises(SystemExit):main(['--seed-inventory','pipeline-data/meeting-inventory/house.json.gz'])
+
+
+def test_b14_meeting_fetchers_and_url_state_capture_emit_stored_md5_and_suffix(tmp_path):
+    from congress_api.cli.fetch_meetings import run_meeting_fetchers
+    from congress_api.acquisition.capture_scheduler import run_capture
+
+    house_xml = (
+        b'<?xml version="1.0" encoding="UTF-8"?>'
+        b'<committee-meeting meeting-type="HHRG" event-id="118001" congress="118">'
+        b'<committees><committee-name id="IF00">Energy</committee-name></committees>'
+        b'<meeting-details><meeting-date><calendar-date>2026-10-10</calendar-date></meeting-date>'
+        b'<meeting-title>Hearing</meeting-title></meeting-details></committee-meeting>'
+    )
+    witness_xml = (
+        b'<?xml version="1.0" encoding="UTF-8"?>'
+        b'<witness-list event-id="118001"><witness><witness-name>Jane Doe</witness-name></witness></witness-list>'
+    )
+    mods_xml = (Path(__file__).resolve().parent / 'fixtures/gpo_metadata/CHRG-113hhrg21122.xml').read_bytes()
+    congress_list = json.dumps({
+        'committeeMeetings': [{
+            'eventId': '118001',
+            'chamber': 'House',
+            'congress': 118,
+            'updateDate': '2026-10-10T00:00:00Z',
+            'url': 'https://api.congress.gov/v3/committee-meeting/118/house/118001?format=json',
+        }],
+        'pagination': {'count': 1, 'next': None},
+    }).encode('utf-8')
+    congress_detail = json.dumps({
+        'committeeMeeting': {
+            'eventId': '118001',
+            'chamber': 'House',
+            'congress': 118,
+            'title': 'Hearing',
+            'date': '2026-10-10T14:00:00Z',
+            'updateDate': '2026-10-10T00:00:00Z',
+            'committees': [{'systemCode': 'hsif00', 'name': 'Energy'}],
+        }
+    }).encode('utf-8')
+
+    responses = {
+        'https://api.congress.gov/v3/committee-meeting/118/house?format=json&limit=250&offset=0&fromDateTime=2026-10-01T00%3A00%3A00Z&toDateTime=2026-10-15T00%3A00%3A00Z': (
+            200, congress_list, {'content-type': 'application/json'}
+        ),
+        'https://api.congress.gov/v3/committee-meeting/118/house/118001?format=json': (
+            200, congress_detail, {'content-type': 'application/json'}
+        ),
+        'https://www.govinfo.gov/metadata/pkg/CHRG-113hhrg21122/mods.xml': (
+            200, mods_xml, {'content-type': 'application/xml'}
+        ),
+        'https://docs.house.gov/meetings/IF/IF00/20261010/118001/HHRG-118-IF00-20261010.xml': (
+            200, house_xml, {'content-type': 'application/xml'}
+        ),
+        'https://docs.house.gov/meetings/IF/IF00/20261010/118001/HHRG-118-IF00-WList-20261010.xml': (
+            200, witness_xml, {'content-type': 'application/xml'}
+        ),
+        'https://www.banking.senate.gov/hearings/test-hearing': (
+            200, b'<html><head><title>Hearing</title></head><body><h1>Hearing</h1></body></html>', {'content-type': 'text/html'}
+        ),
+    }
+
+    store = BodyStore(LocalAdapter(tmp_path / 'b14-raw'))
+    adapter = Adapter(responses)
+    b14_summary = run_meeting_fetchers(
+        store=store,
+        identity=IDENTITY,
+        direct=adapter,
+        resolve=lambda _: ['8.8.8.8'],
+        pace=lambda *_: None,
+        api_key='test-api-key',
+        congress_endpoints=[{
+            'endpoint': 'https://api.congress.gov/v3/committee-meeting/118/house',
+            'from_date_time': '2026-10-01T00:00:00Z',
+            'to_date_time': '2026-10-15T00:00:00Z',
+        }],
+        congress_detail_urls=['https://api.congress.gov/v3/committee-meeting/118/house/118001'],
+        gpo_packages=['CHRG-113hhrg21122'],
+        house_meetings=[{
+            'eventId': '118001',
+            'congress': 118,
+            'chamber': 'House',
+            'date': '2026-10-10T14:00:00Z',
+            'committees': [{'systemCode': 'hsif00', 'name': 'Energy'}],
+            'meetingDocuments': [{
+                'url': 'https://docs.house.gov/meetings/IF/IF00/20261010/118001/HHRG-118-IF00-20261010.xml'
+            }],
+        }],
+        senate_urls=['https://www.banking.senate.gov/hearings/test-hearing'],
+    )
+    assert len(b14_summary['receipt_keys']) == 6
+    b14_lines = []
+    for path in (tmp_path / 'b14-raw').rglob('*.jsonl.gz'):
+        with gzip.open(path, 'rt') as stream:
+            b14_lines.extend(map(json.loads, stream))
+    assert len(b14_lines) == 6
+    for line in b14_lines:
+        assert line['mode'] == 'fetch' and line['outcome'] == 'stored'
+        for cap in line['captures']:
+            assert cap['stored_md5'] and cap['stored_suffix'] in {'.gz', '.pdf', ''}
+
+    # Also verify url_state.parquet capture produces stored_md5 and stored_suffix with zero old-index reads
+    cap_root = release(
+        tmp_path,
+        [dict(requested_url='https://fixture.test/doc.pdf', attempts=0)],
+    )
+    cap_store = BodyStore(LocalAdapter(tmp_path / 'cap-raw'))
+    cap_adapter = Adapter({'https://fixture.test/doc.pdf': (200, b'%PDF-1.7\nbody\n%%EOF', {'content-type': 'application/pdf'})})
+    cap_res = run_capture(
+        load(cap_root, tmp_path / 'cap-read'),
+        engine=engine(),
+        work=tmp_path / 'cap-work',
+        as_of=ASOF,
+        request_budget=14,
+        byte_budget=2**30,
+        spool_budget=2**30,
+        store=cap_store,
+        identity=IDENTITY,
+        direct=cap_adapter,
+        resolve=lambda _: ['8.8.8.8'],
+        archive_limits=LIMITS,
+        pace=lambda *_: None,
+    )
+    assert cap_res['captures'] == 1
+    assert 'raw_index' not in json.dumps(cap_res)
+    [cap_receipt] = list((tmp_path / 'cap-raw').rglob('*.jsonl.gz'))
+    with gzip.open(cap_receipt, 'rt') as stream:
+        cap_line = json.loads(stream.readline())
+    assert cap_line['captures'][0]['stored_md5']
+    assert cap_line['captures'][0]['stored_suffix'] == ''
 
 
 class PublicResponse:

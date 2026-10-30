@@ -769,6 +769,161 @@ def query_candidate_house_xml(*, engine: Any, work: Path, captures: Any, reading
     return list(res["house_cm"])
 
 
+def _read_candidate_body(record_sha: str, stored_suffix: str, *, local_root: Path | None, raw_store: Any) -> bytes:
+    import gzip as _gzip
+
+    suffix = stored_suffix if stored_suffix is not None else ".gz"
+    rel_candidates = [f"bodies/sha256/{record_sha[:2]}/{record_sha}{suffix}"]
+    if suffix != ".gz":
+        rel_candidates.append(f"bodies/sha256/{record_sha[:2]}/{record_sha}.gz")
+    if suffix != "":
+        rel_candidates.append(f"bodies/sha256/{record_sha[:2]}/{record_sha}")
+
+    raw_bytes: bytes | None = None
+    if local_root is not None:
+        base = Path(local_root)
+        for rel in rel_candidates:
+            candidate = base / rel
+            if candidate.is_file():
+                raw_bytes = candidate.read_bytes()
+                break
+    if raw_bytes is None and raw_store is not None:
+        adapter = getattr(raw_store, "adapter", None)
+        adapter_root = getattr(adapter, "root", None)
+        if adapter_root is not None:
+            for rel in rel_candidates:
+                candidate = Path(adapter_root) / rel
+                if candidate.is_file():
+                    raw_bytes = candidate.read_bytes()
+                    break
+        elif hasattr(adapter, "client") and hasattr(adapter, "bucket"):
+            for rel in rel_candidates:
+                try:
+                    resp = adapter.client.get_object(Bucket=adapter.bucket, Key=rel)
+                    body = resp["Body"]
+                    raw_bytes = body.read() if hasattr(body, "read") else bytes(body)
+                    break
+                except Exception:
+                    continue
+    if raw_bytes is None:
+        raise FileNotFoundError(f"Missing raw body for record_sha={record_sha}")
+    if raw_bytes[:2] == b"\x1f\x8b":
+        return _gzip.decompress(raw_bytes)
+    return raw_bytes
+
+
+def stage(
+    *,
+    captures: Any,
+    engine: Any,
+    work: Path,
+    existing: Any = None,
+    local_root: Path | str | None = None,
+    raw_store: Any = None,
+    unreadable_files: Sequence[Mapping[str, Any]] = (),
+    parser_version: str | None = None,
+) -> dict[str, Any]:
+    """Stage missing `meeting_records` rows from `captures` via native anti-join."""
+    from ..retention.provenance import field, json_input, parquet_output, run_job
+    from .tables import table_input
+
+    version = current_version() if parser_version is None else str(parser_version)
+    work = Path(work).resolve()
+    work.mkdir(parents=True, exist_ok=False)
+
+    inputs: list[dict[str, Any]] = [table_input("captures", captures)]
+    unreadable_schema = dict(
+        fields=[field(name, "Utf8") for name in ("id", "record_sha", "parser", "parser_version", "supersedes")],
+        metadata={},
+    )
+    if unreadable_files:
+        inputs.append(dict(name="unreadable", kind="json_lines", files=list(unreadable_files), schema=unreadable_schema))
+    else:
+        inputs.append(
+            json_input(
+                work,
+                "unreadable",
+                [],
+                id="Utf8",
+                record_sha="Utf8",
+                parser="Utf8",
+                parser_version="Utf8",
+                supersedes="Utf8",
+            )
+        )
+    if existing is not None:
+        inputs.append(table_input("existing", existing))
+
+    candidate_sql = """SELECT encode(sha256, 'hex') AS record_sha,
+        max(coalesce(stored_suffix, '.gz')) AS stored_suffix,
+        max(coalesce(url, requested_url, context_url, '')) AS source_url,
+        CASE
+            WHEN bool_or(family = 'congress/meetings'
+                OR coalesce(url, requested_url, '') ILIKE '%api.congress.gov%/committee-meeting%'
+                OR coalesce(url, requested_url, '') ILIKE '%congress.gov/committee-meeting%') THEN 'congress_gov'
+            WHEN bool_or(family IN ('house/meeting-xml', 'house/witness-xml')
+                OR (coalesce(url, requested_url, context_url, '') ILIKE '%docs.house.gov%'
+                    AND (coalesce(url, requested_url, '') ILIKE '%.xml%' OR sniffed_format = 'xml'))) THEN 'house_xml'
+        END AS source
+        FROM captures
+        WHERE sha256 IS NOT NULL AND coalesce(complete, true) AND coalesce(http_status, 200) BETWEEN 200 AND 299
+        GROUP BY sha256"""
+
+    version_sql = "'" + version.replace("'", "''") + "'"
+    missing = (
+        " WHERE c.source IS NOT NULL AND NOT EXISTS (SELECT 1 FROM unreadable u "
+        "WHERE u.record_sha=c.record_sha AND u.parser='meeting_records' AND u.parser_version="
+        + version_sql
+        + " AND NOT EXISTS (SELECT 1 FROM unreadable s WHERE s.supersedes=u.id))"
+    )
+    if existing is not None:
+        missing += (
+            " AND NOT EXISTS (SELECT 1 FROM existing e WHERE e.record_sha=c.record_sha "
+            "AND e.parser_version=" + version_sql + ")"
+        )
+
+    run_job(
+        work,
+        engine,
+        inputs=inputs,
+        steps=[dict(name="candidates", sql=candidate_sql)],
+        outputs=[parquet_output(work, "work-list", "SELECT c.* FROM candidates c" + missing, ["record_sha"])],
+    )
+
+    work_list_path = work / "work-list.parquet"
+    work_items = pq.read_table(work_list_path).to_pylist()
+    local_root_path = Path(local_root) if local_root is not None else None
+    to_parse: list[dict[str, Any]] = []
+    for item in work_items:
+        payload_bytes = _read_candidate_body(
+            item["record_sha"],
+            item.get("stored_suffix") or ".gz",
+            local_root=local_root_path,
+            raw_store=raw_store,
+        )
+        to_parse.append(
+            {
+                "record_sha": item["record_sha"],
+                "source": item["source"],
+                "payload": payload_bytes,
+                "parser_version": version,
+            }
+        )
+
+    produced_table = produce_meeting_records(to_parse, parser_version=version)
+    out_path = work / "meeting-records.parquet"
+    pq.write_table(produced_table, out_path)
+    return dict(
+        records=out_path,
+        work_list=work_list_path,
+        work_items=len(work_items),
+        produced=produced_table.num_rows,
+        parser_version=version,
+        unreadable_pending=False,
+        unreadable_provenance=None,
+    )
+
+
 def create_table(*, engine: Any, work: Path, catalog_root: Path | None, table: dict[str, Any], location: str, create_namespace: bool = False) -> Any:
     from .tables import create_table as native_create
 
@@ -783,15 +938,24 @@ def create_table(*, engine: Any, work: Path, catalog_root: Path | None, table: d
     )
 
 
-def append(staged_parquet: Path, *, engine: Any, work: Path, catalog_root: Path | None, table: dict[str, Any], parser_version: str = DEFAULT_PARSER_VERSION) -> Any:
+def append(staged_parquet: Path | Mapping[str, Any], *, engine: Any, work: Path, catalog_root: Path | None, table: dict[str, Any], parser_version: str | None = None) -> Any:
     from .tables import append_rows
 
+    if isinstance(staged_parquet, Mapping):
+        if staged_parquet.get("unreadable_pending"):
+            raise ValueError("Pending unreadable decisions require durable import")
+        resolved_version = str(staged_parquet.get("parser_version") or parser_version or current_version())
+        source_path = Path(staged_parquet["records"])
+    else:
+        resolved_version = str(parser_version or DEFAULT_PARSER_VERSION)
+        source_path = Path(staged_parquet)
+
     return append_rows(
-        staged_parquet,
+        source_path,
         engine=engine,
         work=work,
         catalog_root=catalog_root,
         table=table,
         keys=PK,
-        definition=f"meeting_records:{parser_version}",
+        definition=f"meeting_records:{resolved_version}",
     )

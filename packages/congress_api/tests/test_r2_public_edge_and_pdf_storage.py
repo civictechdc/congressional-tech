@@ -26,11 +26,12 @@ from congress_api.retention.r2 import PDF_CACHE_CONTROL, R2Store, put_parameters
 from congress_api.retention.r2_edge_rules import (
     PUBLIC_BUCKET,
     PUBLIC_HOSTNAME,
+    build_declarative_ruleset_spec,
     evaluate_response_headers,
-    evaluate_waf_request,
     format_content_disposition,
     load_edge_config,
 )
+from viewer_publication.apply_r2_edge_rules import validate_edge_config, verify_live_edge
 from congress_api.retention.raw_archive import body_payload
 from congress_api.retention.raw_storage import (
     DEFAULT_ACCEPTED_FILES_PATH,
@@ -255,63 +256,30 @@ def test_cloudflare_r2_custom_domain_waf_and_transform_rules():
     assert cfg["custom_domain"]["hostname"] == PUBLIC_HOSTNAME
     assert cfg["custom_domain"]["bucket"] == PUBLIC_BUCKET
     assert cfg["custom_domain"]["retired_worker"] == "congressional-viewer-data"
-    assert cfg["waf_custom_rules"][0]["allowed_prefixes"] == [
+    assert "waf_custom_rules" not in cfg
+    transform = cfg["response_header_transform_rules"][0]
+    assert transform["allowed_prefixes"] == [
         "/viewer-publications/",
         "/bodies/sha256/",
         "/exports/",
     ]
-    assert 'starts_with(http.request.uri.path, "/exports/")' in cfg["waf_custom_rules"][0]["expression"]
+    spec = build_declarative_ruleset_spec(cfg)
+    assert validate_edge_config(cfg) == spec
+    assert spec["cloudflare_ruleset"]["phase"] == "http_response_headers_transform"
+    rules_by_ref = {r["ref"]: r for r in spec["cloudflare_ruleset"]["rules"]}
+    assert set(rules_by_ref) == {
+        "public-r2-security-and-disposition-headers-base-and-immutable-cache",
+        "public-r2-security-and-disposition-headers-mutable-manifests-no-store",
+        "public-r2-security-and-disposition-headers-non-pdf-csp-and-disposition",
+        "public-r2-security-and-disposition-headers-pdf-filename-disposition",
+        "public-r2-security-and-disposition-headers-non-pdf-filename-disposition",
+    }
+    pdf_disp = rules_by_ref["public-r2-security-and-disposition-headers-pdf-filename-disposition"]
+    for forbidden in ('\\"', "\\\\", ";", "/", "..", "\\r", "\\n"):
+        assert f'not contains(http.request.uri.args["filename"][0], "{forbidden}")' in pdf_disp["expression"]
 
     sha = "ab" * 32
     release = "cd" * 16
-
-    # Allowed public paths on GET/HEAD/OPTIONS
-    for method in ("GET", "HEAD", "OPTIONS"):
-        assert evaluate_waf_request(
-            method, f"https://{PUBLIC_HOSTNAME}/viewer-publications/manifest.json"
-        )["allowed"] is True
-        assert evaluate_waf_request(
-            method,
-            f"https://{PUBLIC_HOSTNAME}/viewer-publications/releases/{release}/{release}/viewer-v2/search.parquet",
-        )["allowed"] is True
-        assert evaluate_waf_request(
-            method, f"https://{PUBLIC_HOSTNAME}/bodies/sha256/ab/{sha}.pdf?filename=Test.pdf"
-        )["allowed"] is True
-        assert evaluate_waf_request(
-            method, f"https://{PUBLIC_HOSTNAME}/bodies/sha256/ab/{sha}.gz?filename=Test.xml"
-        )["allowed"] is True
-        assert evaluate_waf_request(
-            method, f"https://{PUBLIC_HOSTNAME}/exports/manifest.json"
-        )["allowed"] is True
-        assert evaluate_waf_request(
-            method,
-            f"https://{PUBLIC_HOSTNAME}/exports/releases/{release}/committee-meetings.parquet",
-        )["allowed"] is True
-
-    # Blocked internal prefixes (/warehouse/*, /receipts/*, /quarantine/*, /indexes/*) and mutations
-    for blocked_path in (
-        "/warehouse/catalog.parquet",
-        "/receipts/documents/2026-10-21/download-1.jsonl.gz",
-        f"/quarantine/bodies/sha256/ab/{sha}.pdf",
-        "/indexes/catalog.json",
-        "/indexes/raw.json",
-        "/viewer-publications/accepted-recoveries.json",
-        "/exports/accepted-internal.json",
-        "/exports/../indexes/raw.json",
-        f"/bodies/sha256/ff/{sha}.pdf",
-        "/bodies/sha256/../indexes/raw.json",
-        "/",
-    ):
-        verdict = evaluate_waf_request("GET", f"https://{PUBLIC_HOSTNAME}{blocked_path}")
-        assert verdict["allowed"] is False, blocked_path
-        assert verdict["status_code"] == 403
-
-    assert evaluate_waf_request(
-        "PUT", f"https://{PUBLIC_HOSTNAME}/viewer-publications/manifest.json"
-    )["status_code"] == 403
-    assert evaluate_waf_request(
-        "POST", f"https://{PUBLIC_HOSTNAME}/exports/releases/{release}/committee-meetings.parquet"
-    )["status_code"] == 403
 
     # Response Header Transform Rules: PDF omits sandbox CSP and sets inline Content-Disposition
     pdf_headers = evaluate_response_headers(
@@ -352,6 +320,26 @@ def test_cloudflare_r2_custom_domain_waf_and_transform_rules():
     assert export_parquet_headers["Cache-Control"] == "public, max-age=31536000, immutable"
     assert export_parquet_headers["Content-Type"] == "application/vnd.apache.parquet"
     assert export_parquet_headers["Content-Security-Policy"] == "sandbox; default-src 'none'"
+
+    # Live-edge check validates CORS, Cache-Control, CSP, and ?filename= without legacy WAF path blocks
+    pdf_path = f"/bodies/sha256/ab/{sha}.pdf"
+
+    def simulated_edge_probe(method, url, headers):
+        ctype = "application/pdf" if ".pdf" in url else "application/json"
+        resp_headers = evaluate_response_headers(url, content_type=ctype)
+        status = 206 if headers and "Range" in headers and ".pdf" in url else 200
+        return status, resp_headers
+
+    live_report = verify_live_edge(
+        f"https://{PUBLIC_HOSTNAME}",
+        pdf_path=pdf_path,
+        http_probe=simulated_edge_probe,
+    )
+    assert live_report["status"] == "verified"
+    assert {c["check"] for c in live_report["checks"]} == {
+        "allow:GET:/viewer-publications/manifest.json",
+        f"allow:GET:{pdf_path}",
+    }
 
 
 def test_senate_seed_fetch_detects_pdf_magic_and_stores_cas_pdf(tmp_path):

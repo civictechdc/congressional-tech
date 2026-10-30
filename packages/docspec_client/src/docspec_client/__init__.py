@@ -7,6 +7,7 @@ contains no congressional-tech domain policy.
 from .docspec import (
     ARROW_STREAM_MIME,
     QUALIFIED_DOCSPEC_RUNTIME,
+    RUNTIME_PIN_FILE,
     SUPPORTED_PLATFORMS,
     VALID_UPDATE_MERGE_STRATEGIES,
     AggregateSpec,
@@ -32,10 +33,12 @@ from .docspec import (
     cleanup_safe,
     encode_arrow_ipc_stream,
     facet_summary,
+    load_runtime_pin,
     native_storage_schema,
     parse_export_pin,
     producer_input_entry,
     restore_application_schema,
+    runtime_pin_digest,
 )
 from .binary import resolve_docspec_binary
 from .docspec_host import (

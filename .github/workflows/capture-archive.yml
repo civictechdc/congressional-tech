@@ -25,18 +25,13 @@ jobs:
         with:
           ref: main
           persist-credentials: false
-      - uses: actions/checkout@v5
-        with:
-          ref: pipeline-data
-          path: pipeline-data
-          persist-credentials: false
       - uses: ./.github/actions/setup-python-project
       - uses: ./.github/actions/setup-local-job-runtime
         with:
           artifact: ${{ vars.DOCSPEC_RUNTIME_ARTIFACT }}
           credentials: ${{ secrets.DOCSPEC_ENGINE_CREDENTIALS }}
           account-id: "174055408ff1560e60601c4d12c561c4"
-      - name: Capture from the public release and weekly inventory seeds
+      - name: Capture from the public release
         env:
           CLOUDFLARE_ACCOUNT_ID: ${{ vars.CLOUDFLARE_ACCOUNT_ID }}
           R2_ACCESS_KEY_ID: ${{ secrets.ARCHIVE_CAPTURE_R2_ACCESS_KEY_ID }}
@@ -52,16 +47,10 @@ jobs:
           for value in "$REQUEST_BUDGET" "$BYTE_BUDGET" "$SPOOL_BUDGET"; do
             [[ "$value" =~ ^[1-9][0-9]*$ ]] || { echo 'Capture budgets must be positive integers' >&2; exit 2; }
           done
-          seeds=()
-          for path in pipeline-data/congress_meetings.jsonl.gz pipeline-data/gpo-evidence.jsonl.gz \
-            pipeline-data/meeting-inventory/house.json.gz pipeline-data/meeting-inventory/house-sites.json.gz \
-            pipeline-data/meeting-inventory/senate.json.gz; do
-            if [[ -f "$path" ]]; then seeds+=(--seed-inventory "$path"); fi
-          done
           .venv/bin/python -I -m congress_api.cli.capture_schedule \
             --pointer "$ARCHIVE_POINTER" --request-budget "$REQUEST_BUDGET" \
             --byte-budget "$BYTE_BUDGET" --spool-budget "$SPOOL_BUDGET" \
-            --work "$RUNNER_TEMP/archive-capture" --apply "${seeds[@]}"
+            --work "$RUNNER_TEMP/archive-capture" --apply
       - uses: actions/upload-artifact@v4
         if: always()
         with:
