@@ -27,14 +27,18 @@ self.onmessage=async({data})=>{
         result=await reader.search(args,controller.signal);
         // Only visible import-day rows need detail reads for the date absent from list.
         await displayedDates(reader,result.rows,controller.signal);
+        if(!args.offset&&!args.text)void reader.meetings().catch(()=>{});
         break;
       }
       case '/lookup':result=await reader.lookupRows(args.url,args.query,controller.signal);await displayedDates(reader,result.rows,controller.signal);break;
       case '/entry':{
         const index=args.key?await reader.resolve(args.key):args.index;
         if(index===null)throw new Error('This document was not found in the archive.');
-        const entry=await reader.entry(index,controller.signal);
-        const [meetings,versions]=await Promise.all([reader.meetings(),reader.versions(index,controller.signal)]);
+        const [entry,meetings,versions]=await Promise.all([
+          reader.entry(index,controller.signal),
+          reader.meetings(),
+          reader.versions(index,controller.signal),
+        ]);
         result={entry,meetings,versions:await displayedDates(reader,versions,controller.signal)};break;
       }
       case '/saved':result=await reader.openSaved(args);break;

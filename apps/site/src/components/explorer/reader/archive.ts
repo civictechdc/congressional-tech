@@ -273,6 +273,7 @@ export async function openArchive(pointerUrl: string, options: any = {}) {
     async entry(index: number,signal?: AbortSignal){
       signal?.throwIfAborted();
       if(!Number.isSafeInteger(index)||index<0||index>=count)throw new Error('Archive document not found.');
+      if(!shards.has('sources')&&files.has('sources.parquet'))void table('sources.parquet').catch(()=>{});
       const [detail]=await awaitShared(read('detail.parquet',index,index+1),signal);
       if(!detail)throw new Error('Archive detail not found.');
       for(const name of ['src_start','src_len','rec_start','rec_len'])if(!Number.isSafeInteger(detail[name])||detail[name]<0)throw new Error('Invalid archive attachment range.');
