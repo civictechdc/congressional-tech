@@ -95,7 +95,31 @@
           "meaning": "Hex endpoint keys shared by editions"
         }
       ],
-      "gaps": []
+      "gaps": [],
+      "purpose": "Searchable documents",
+      "row_meaning": "One document edition in this release",
+      "identity": {
+        "fields": [
+          "list_row"
+        ],
+        "scope": "release",
+        "validation": "shared ordered native export",
+        "kind": "row_position",
+        "note": "list_row is virtual: zero-based physical row position, continued across manifest shard row ranges. Never reuse it across releases."
+      },
+      "virtual_columns": [
+        {
+          "name": "list_row",
+          "type": "int64",
+          "meaning": "Zero-based release-local physical row position; readers add this column"
+        }
+      ],
+      "notes": {
+        "version_keys[]": "Shared lowercase hexadecimal endpoint keys identify different editions, not alternate formats of one document. A document can have several keys.",
+        "document_kind[]": "Embedded classification values, not foreign keys.",
+        "document_family[]": "Embedded filename classification values.",
+        "chambers[]": "Embedded chamber labels."
+      }
     },
     {
       "name": "detail.parquet",
@@ -186,7 +210,31 @@
           "meaning": "Selected filename facts, one value per entry"
         }
       ],
-      "gaps": []
+      "gaps": [],
+      "purpose": "Document files and metadata",
+      "row_meaning": "One document edition, in exactly the same order as list",
+      "identity": {
+        "fields": [
+          "list_row"
+        ],
+        "scope": "release",
+        "validation": "shared ordered native export",
+        "kind": "row_position",
+        "note": "list_row is virtual: zero-based physical row position, continued across manifest shard row ranges. Never reuse it across releases."
+      },
+      "virtual_columns": [
+        {
+          "name": "list_row",
+          "type": "int64",
+          "meaning": "Zero-based release-local physical row position; readers add this column"
+        }
+      ],
+      "notes": {
+        "alternates[]": "Other formats of the same document; each has its own body and suffix.",
+        "facts[]": "Embedded selected filename field/value observations; not a generic entity join.",
+        "src_start": "Zero-based physical sources row offset; src_len is the contiguous row count.",
+        "rec_start": "Zero-based physical recoveries row offset; rec_len is the contiguous row count."
+      }
     },
     {
       "name": "links.parquet",
@@ -202,7 +250,20 @@
           "meaning": "Zero-based row in list.parquet"
         }
       ],
-      "gaps": []
+      "gaps": [],
+      "purpose": "Public document link lookup",
+      "row_meaning": "One stable link key mapped to one release-local document row",
+      "identity": {
+        "fields": [
+          "link_key"
+        ],
+        "scope": "published identifier",
+        "validation": "native publication key checks",
+        "kind": "primary_key"
+      },
+      "notes": {
+        "link_key": "First 8 body SHA-256 bytes, or first 8 SHA-256 bytes of url: plus exact original URL for recovery links. Binary key; hex is a display encoding."
+      }
     },
     {
       "name": "urls.parquet",
@@ -218,7 +279,21 @@
           "meaning": "Zero-based row in list.parquet"
         }
       ],
-      "gaps": []
+      "gaps": [],
+      "purpose": "Normalized source address lookup",
+      "row_meaning": "One lookup key and document row pair; an address can identify several editions",
+      "identity": {
+        "fields": [
+          "lookup_key",
+          "list_row"
+        ],
+        "scope": "release",
+        "validation": "native publication key checks",
+        "kind": "primary_key"
+      },
+      "notes": {
+        "lookup_key": "First 8 SHA-256 bytes of lookup: plus fixed lookup_url(u): remove scheme, leading www, default port, fragment and one trailing path slash; lowercase host; preserve query bytes. This is not capture-profile url_key."
+      }
     },
     {
       "name": "sources.parquet",
@@ -274,7 +349,21 @@
           "meaning": "Publisher link posting date"
         }
       ],
-      "gaps": []
+      "gaps": [],
+      "purpose": "Publisher addresses and listing context",
+      "row_meaning": "One source address/context occurrence within a document",
+      "identity": {
+        "fields": [
+          "list_row",
+          "ordinal"
+        ],
+        "scope": "release",
+        "validation": "native publication key checks",
+        "kind": "primary_key"
+      },
+      "notes": {
+        "member_path": "Path inside a captured archive container. Interpret together with the source URL; not a document key."
+      }
     },
     {
       "name": "recoveries.parquet",
@@ -326,7 +415,18 @@
           "meaning": "Explanation identifying the recovery"
         }
       ],
-      "gaps": []
+      "gaps": [],
+      "purpose": "Recovered document files",
+      "row_meaning": "One recovered file occurrence within a document",
+      "identity": {
+        "fields": [
+          "list_row",
+          "ordinal"
+        ],
+        "scope": "release",
+        "validation": "native publication key checks",
+        "kind": "primary_key"
+      }
     },
     {
       "name": "meetings.parquet",
@@ -379,7 +479,7 @@
         {
           "name": "subject_keys",
           "type": "list<dict>",
-          "meaning": "Bill and nomination subjects"
+          "meaning": "Bill, nomination and treaty subjects"
         },
         {
           "name": "transcripts",
@@ -392,7 +492,23 @@
           "meaning": "Recorded meeting links"
         }
       ],
-      "gaps": []
+      "gaps": [],
+      "purpose": "Congressional meetings and hearings",
+      "row_meaning": "One event, shared House/Senate event ID namespace",
+      "identity": {
+        "fields": [
+          "event_id"
+        ],
+        "scope": "published identifier",
+        "validation": "native publication key checks",
+        "kind": "primary_key"
+      },
+      "notes": {
+        "sittings[]": "Embedded scheduled intervals and places. Times retain published precision; do not invent a Congress from the session number.",
+        "committees[]": "Host/participant roles belong to this meeting-committee association.",
+        "transcripts[]": "Package identifier and release-local document row identify the same retained hearing transcript.",
+        "videos[]": "Publisher recording links; video_key joins retained recordings when available."
+      }
     },
     {
       "name": "witnesses.parquet",
@@ -492,7 +608,20 @@
           "meaning": "Bioguide identifier when the witness is a Member of Congress"
         }
       ],
-      "gaps": []
+      "gaps": [],
+      "purpose": "Witness appearances",
+      "row_meaning": "One named witness appearance at a meeting, package, or page; not a deduplicated person",
+      "identity": {
+        "fields": [
+          "witness_key"
+        ],
+        "scope": "published identifier",
+        "validation": "native publication key checks",
+        "kind": "primary_key"
+      },
+      "notes": {
+        "occasion": "meeting:{event_id}, package:{package_id}, or page:{sha256_prefix}. Witness keys hash the occasion and normalized name; names alone never join appearances."
+      }
     },
     {
       "name": "recordings.parquet",
@@ -513,7 +642,20 @@
           "meaning": "Captured caption, subtitle, and playlist tracks from their latest good fetch"
         }
       ],
-      "gaps": []
+      "gaps": [],
+      "purpose": "Meeting recordings and captured tracks",
+      "row_meaning": "One provider-prefixed recording",
+      "identity": {
+        "fields": [
+          "video_key"
+        ],
+        "scope": "published identifier",
+        "validation": "native publication key checks",
+        "kind": "primary_key"
+      },
+      "notes": {
+        "tracks[]": "Embedded captured caption/subtitle/playlist files. Language and production describe each track; these are not document-list rows."
+      }
     },
     {
       "name": "committees.parquet",
@@ -559,7 +701,20 @@
           "meaning": "Current committee record"
         }
       ],
-      "gaps": []
+      "gaps": [],
+      "purpose": "Current and historical committees",
+      "row_meaning": "One Congress.gov system code",
+      "identity": {
+        "fields": [
+          "system_code"
+        ],
+        "scope": "published identifier",
+        "validation": "native publication key checks",
+        "kind": "primary_key"
+      },
+      "notes": {
+        "names[]": "Embedded names with half-open [start,end) dates, ordered latest start first. Null endpoints mean unknown or open-ended."
+      }
     },
     {
       "name": "members.parquet",
@@ -585,7 +740,21 @@
           "meaning": "Cross-walk identifiers across legislative datasets"
         }
       ],
-      "gaps": []
+      "gaps": [],
+      "purpose": "Current and historical members",
+      "row_meaning": "One Bioguide member",
+      "identity": {
+        "fields": [
+          "bioguide_id"
+        ],
+        "scope": "published identifier",
+        "validation": "native publication key checks",
+        "kind": "primary_key"
+      },
+      "notes": {
+        "terms[]": "Embedded service terms with half-open [start,end) dates, latest first. Terms do not establish historical committee seats.",
+        "cross_ids": "External dataset identifiers; an identifier does not imply that dataset is included in this release."
+      }
     },
     {
       "name": "rosters.parquet",
@@ -621,7 +790,21 @@
           "meaning": "Party caucus for the committee assignment"
         }
       ],
-      "gaps": ["Current-Congress seats only; spicy-regs keeps no roster history"]
+      "gaps": [
+        "Current-Congress seats only; spicy-regs keeps no roster history"
+      ],
+      "purpose": "Current-Congress committee seats",
+      "row_meaning": "One member assignment to a committee in a Congress; no historical roster reconstruction",
+      "identity": {
+        "fields": [
+          "congress",
+          "system_code",
+          "bioguide_id"
+        ],
+        "scope": "published identifier",
+        "validation": "native publication key checks",
+        "kind": "primary_key"
+      }
     },
     {
       "name": "bills.parquet",
@@ -697,7 +880,25 @@
           "meaning": "Committee referral, markup, and report activities"
         }
       ],
-      "gaps": ["Amendments cover the 119th Congress only until spicy-regs backfills"]
+      "gaps": [
+        "Amendments cover the 119th Congress only until spicy-regs backfills"
+      ],
+      "purpose": "Referenced bills and embedded legislative facts",
+      "row_meaning": "One bill referenced by documents or meetings; bounded by upstream retained data",
+      "identity": {
+        "fields": [
+          "bill_id"
+        ],
+        "scope": "published identifier",
+        "validation": "native publication key checks",
+        "kind": "primary_key"
+      },
+      "notes": {
+        "cbo_estimates[]": "Embedded publication IDs, dates and descriptions, not full CBO estimate text.",
+        "floor_votes[]": "One embedded vote per vote_id per bill; basis distinguishes vote_record from bill_action. Counts are vote totals, not member positions.",
+        "amendments[]": "Embedded direct/chained amendment summaries; 119th Congress coverage until upstream backfill.",
+        "committee_activities[]": "Embedded committee events; several activities can refer to the same committee."
+      }
     },
     {
       "name": "nominations.parquet",
@@ -748,7 +949,21 @@
           "meaning": "Senate roll-call votes on the nomination"
         }
       ],
-      "gaps": []
+      "gaps": [],
+      "purpose": "Referenced nominations and embedded legislative facts",
+      "row_meaning": "One nomination including its part when present; bounded by upstream retained data",
+      "identity": {
+        "fields": [
+          "nomination_id"
+        ],
+        "scope": "published identifier",
+        "validation": "native publication key checks",
+        "kind": "primary_key"
+      },
+      "notes": {
+        "floor_votes[]": "Embedded Senate roll-call summaries; no individual member positions.",
+        "transcripts[]": "GovInfo CHRG package identifiers; a retained transcript can have multiple document formats or editions."
+      }
     },
     {
       "name": "url_state.parquet",
@@ -789,7 +1004,20 @@
           "meaning": "Next scheduled fetch time"
         }
       ],
-      "gaps": []
+      "gaps": [],
+      "purpose": "Capture scheduling state",
+      "row_meaning": "One exact requested URL, including requests without a successful capture",
+      "identity": {
+        "fields": [
+          "requested_url"
+        ],
+        "scope": "published identifier",
+        "validation": "native publication key checks",
+        "kind": "primary_key"
+      },
+      "notes": {
+        "requested_url": "Exact scheduled address. Missing success is not missing publication; this is operational capture state, not an entity or document catalogue."
+      }
     },
     {
       "name": "url_variants.parquet",
@@ -805,7 +1033,1421 @@
           "meaning": "Active alternate URL for capture joins"
         }
       ],
-      "gaps": []
+      "gaps": [],
+      "purpose": "Active capture URL aliases",
+      "row_meaning": "One canonical/variant URL pair used by capture policy",
+      "identity": {
+        "fields": [
+          "canonical_url",
+          "variant_url"
+        ],
+        "scope": "published identifier",
+        "validation": "native publication key checks",
+        "kind": "primary_key"
+      },
+      "notes": {
+        "canonical_url": "Capture-profile aliases only. Do not use this table to reproduce the fixed public URL lookup hash."
+      }
+    }
+  ],
+  "relationships_version": 1,
+  "relationships": [
+    {
+      "id": "document_detail",
+      "source": {
+        "table": "list",
+        "fields": [
+          "list_row"
+        ]
+      },
+      "target": {
+        "table": "detail",
+        "fields": [
+          "list_row"
+        ]
+      },
+      "meaning": "Same physical row position, including shard offsets.",
+      "cardinality": "one-to-one",
+      "nullable": false,
+      "resolution": "required",
+      "match": "equal",
+      "scope": "selected release"
+    },
+    {
+      "id": "document_public_link",
+      "source": {
+        "table": "detail",
+        "fields": [
+          "link_key"
+        ]
+      },
+      "target": {
+        "table": "links",
+        "fields": [
+          "link_key"
+        ]
+      },
+      "meaning": "Resolve the document’s primary public link to the canonical document row; the lookup key identifies one row even when several records reference the same body.",
+      "cardinality": "many-to-one",
+      "nullable": true,
+      "resolution": "required",
+      "match": "equal",
+      "scope": "selected release; stable public link identifier"
+    },
+    {
+      "id": "links_document",
+      "source": {
+        "table": "links",
+        "fields": [
+          "list_row"
+        ]
+      },
+      "target": {
+        "table": "list",
+        "fields": [
+          "list_row"
+        ]
+      },
+      "meaning": "Release-local document row.",
+      "cardinality": "many-to-one",
+      "nullable": false,
+      "resolution": "required",
+      "match": "equal",
+      "scope": "selected release"
+    },
+    {
+      "id": "urls_document",
+      "source": {
+        "table": "urls",
+        "fields": [
+          "list_row"
+        ]
+      },
+      "target": {
+        "table": "list",
+        "fields": [
+          "list_row"
+        ]
+      },
+      "meaning": "Release-local document row.",
+      "cardinality": "many-to-one",
+      "nullable": false,
+      "resolution": "required",
+      "match": "equal",
+      "scope": "selected release"
+    },
+    {
+      "id": "sources_document",
+      "source": {
+        "table": "sources",
+        "fields": [
+          "list_row"
+        ]
+      },
+      "target": {
+        "table": "list",
+        "fields": [
+          "list_row"
+        ]
+      },
+      "meaning": "Release-local document row.",
+      "cardinality": "many-to-one",
+      "nullable": false,
+      "resolution": "required",
+      "match": "equal",
+      "scope": "selected release"
+    },
+    {
+      "id": "recoveries_document",
+      "source": {
+        "table": "recoveries",
+        "fields": [
+          "list_row"
+        ]
+      },
+      "target": {
+        "table": "list",
+        "fields": [
+          "list_row"
+        ]
+      },
+      "meaning": "Release-local document row.",
+      "cardinality": "many-to-one",
+      "nullable": false,
+      "resolution": "required",
+      "match": "equal",
+      "scope": "selected release"
+    },
+    {
+      "id": "document_meetings",
+      "source": {
+        "table": "list",
+        "fields": [
+          "meeting_keys[]"
+        ]
+      },
+      "target": {
+        "table": "meetings",
+        "fields": [
+          "event_id"
+        ]
+      },
+      "meaning": "Meetings explicitly associated with the document.",
+      "cardinality": "many-to-many",
+      "nullable": true,
+      "resolution": "required",
+      "match": "decimal_string_to_integer",
+      "scope": "selected release"
+    },
+    {
+      "id": "document_committees",
+      "source": {
+        "table": "list",
+        "fields": [
+          "committee_keys[]"
+        ]
+      },
+      "target": {
+        "table": "committees",
+        "fields": [
+          "system_code"
+        ]
+      },
+      "meaning": "Committee attribution; does not imply authorship.",
+      "cardinality": "many-to-many",
+      "nullable": true,
+      "resolution": "unresolved_allowed",
+      "match": "equal",
+      "scope": "selected release"
+    },
+    {
+      "id": "document_bills",
+      "source": {
+        "table": "list",
+        "fields": [
+          "measure_keys[]"
+        ]
+      },
+      "target": {
+        "table": "bills",
+        "fields": [
+          "bill_id"
+        ]
+      },
+      "meaning": "Exact typed measure identifiers; values for the other measure type do not match.",
+      "cardinality": "many-to-many",
+      "nullable": true,
+      "resolution": "unresolved_allowed",
+      "match": "equal",
+      "scope": "selected release"
+    },
+    {
+      "id": "meeting_bills",
+      "source": {
+        "table": "meetings",
+        "fields": [
+          "subject_keys[]"
+        ]
+      },
+      "target": {
+        "table": "bills",
+        "fields": [
+          "bill_id"
+        ]
+      },
+      "meaning": "Measures explicitly named as meeting subjects.",
+      "cardinality": "many-to-many",
+      "nullable": true,
+      "resolution": "unresolved_allowed",
+      "match": "equal",
+      "scope": "selected release"
+    },
+    {
+      "id": "document_nominations",
+      "source": {
+        "table": "list",
+        "fields": [
+          "measure_keys[]"
+        ]
+      },
+      "target": {
+        "table": "nominations",
+        "fields": [
+          "nomination_id"
+        ]
+      },
+      "meaning": "Exact typed measure identifiers; values for the other measure type do not match.",
+      "cardinality": "many-to-many",
+      "nullable": true,
+      "resolution": "unresolved_allowed",
+      "match": "equal",
+      "scope": "selected release"
+    },
+    {
+      "id": "meeting_nominations",
+      "source": {
+        "table": "meetings",
+        "fields": [
+          "subject_keys[]"
+        ]
+      },
+      "target": {
+        "table": "nominations",
+        "fields": [
+          "nomination_id"
+        ]
+      },
+      "meaning": "Measures explicitly named as meeting subjects.",
+      "cardinality": "many-to-many",
+      "nullable": true,
+      "resolution": "unresolved_allowed",
+      "match": "equal",
+      "scope": "selected release"
+    },
+    {
+      "id": "document_members",
+      "source": {
+        "table": "list",
+        "fields": [
+          "bioguide_ids[]"
+        ]
+      },
+      "target": {
+        "table": "members",
+        "fields": [
+          "bioguide_id"
+        ]
+      },
+      "meaning": "Members explicitly associated with the document; no role inferred.",
+      "cardinality": "many-to-many",
+      "nullable": true,
+      "resolution": "unresolved_allowed",
+      "match": "equal",
+      "scope": "selected release"
+    },
+    {
+      "id": "witness_submitted_documents",
+      "source": {
+        "table": "list",
+        "fields": [
+          "witness_keys[]"
+        ]
+      },
+      "target": {
+        "table": "witnesses",
+        "fields": [
+          "witness_key"
+        ]
+      },
+      "meaning": "Documents attached from this witness appearance’s own document URLs; not every document from the meeting.",
+      "cardinality": "many-to-many",
+      "nullable": true,
+      "resolution": "required",
+      "match": "equal",
+      "scope": "selected release"
+    },
+    {
+      "id": "document_editions",
+      "source": {
+        "table": "list",
+        "fields": [
+          "version_keys[]"
+        ]
+      },
+      "target": {
+        "table": "list",
+        "fields": [
+          "version_keys[]"
+        ]
+      },
+      "meaning": "Different document rows sharing a version endpoint key; exclude the same row and deduplicate when keys overlap.",
+      "cardinality": "many-to-many",
+      "nullable": true,
+      "resolution": "unresolved_allowed",
+      "match": "shared_list_value",
+      "scope": "selected release"
+    },
+    {
+      "id": "meeting_committees",
+      "source": {
+        "table": "meetings",
+        "fields": [
+          "committees[].system_code"
+        ]
+      },
+      "target": {
+        "table": "committees",
+        "fields": [
+          "system_code"
+        ]
+      },
+      "meaning": "Committee participation and its published role.",
+      "cardinality": "many-to-many",
+      "nullable": true,
+      "resolution": "unresolved_allowed",
+      "match": "equal",
+      "scope": "selected release"
+    },
+    {
+      "id": "meeting_transcript_documents",
+      "source": {
+        "table": "meetings",
+        "fields": [
+          "transcripts[].list_row"
+        ]
+      },
+      "target": {
+        "table": "list",
+        "fields": [
+          "list_row"
+        ]
+      },
+      "meaning": "Retained printed hearing document; accompanying package_id preserves the source reference.",
+      "cardinality": "many-to-many",
+      "nullable": true,
+      "resolution": "required",
+      "match": "equal",
+      "scope": "selected release"
+    },
+    {
+      "id": "meeting_recordings",
+      "source": {
+        "table": "meetings",
+        "fields": [
+          "videos[].video_key"
+        ]
+      },
+      "target": {
+        "table": "recordings",
+        "fields": [
+          "video_key"
+        ]
+      },
+      "meaning": "Publisher video reference to a retained recording.",
+      "cardinality": "many-to-many",
+      "nullable": true,
+      "resolution": "unresolved_allowed",
+      "match": "equal",
+      "scope": "selected release"
+    },
+    {
+      "id": "recording_meetings",
+      "source": {
+        "table": "recordings",
+        "fields": [
+          "event_ids[]"
+        ]
+      },
+      "target": {
+        "table": "meetings",
+        "fields": [
+          "event_id"
+        ]
+      },
+      "meaning": "Meetings explicitly associated with one recording; not an inferred transcript identity.",
+      "cardinality": "many-to-many",
+      "nullable": true,
+      "resolution": "unresolved_allowed",
+      "match": "equal",
+      "scope": "selected release"
+    },
+    {
+      "id": "witness_meeting",
+      "source": {
+        "table": "witnesses",
+        "fields": [
+          "event_id"
+        ]
+      },
+      "target": {
+        "table": "meetings",
+        "fields": [
+          "event_id"
+        ]
+      },
+      "meaning": "Meeting occasion when known; package/page occasions may have no event ID.",
+      "cardinality": "many-to-one",
+      "nullable": true,
+      "resolution": "unresolved_allowed",
+      "match": "equal",
+      "scope": "selected release"
+    },
+    {
+      "id": "witness_transcript_documents",
+      "source": {
+        "table": "witnesses",
+        "fields": [
+          "package_id"
+        ]
+      },
+      "target": {
+        "table": "detail",
+        "fields": [
+          "package_id"
+        ]
+      },
+      "meaning": "Appearance participation in a printed hearing package; separate from ownership of submitted documents.",
+      "cardinality": "many-to-many",
+      "nullable": true,
+      "resolution": "unresolved_allowed",
+      "match": "equal",
+      "scope": "selected release"
+    },
+    {
+      "id": "witness_member",
+      "source": {
+        "table": "witnesses",
+        "fields": [
+          "bioguide_id"
+        ]
+      },
+      "target": {
+        "table": "members",
+        "fields": [
+          "bioguide_id"
+        ]
+      },
+      "meaning": "Published Bioguide identification of a witness who is a member; never infer by name.",
+      "cardinality": "many-to-one",
+      "nullable": true,
+      "resolution": "unresolved_allowed",
+      "match": "equal",
+      "scope": "selected release"
+    },
+    {
+      "id": "committee_parent",
+      "source": {
+        "table": "committees",
+        "fields": [
+          "parent_system_code"
+        ]
+      },
+      "target": {
+        "table": "committees",
+        "fields": [
+          "system_code"
+        ]
+      },
+      "meaning": "Subcommittee’s parent committee when identified.",
+      "cardinality": "many-to-one",
+      "nullable": true,
+      "resolution": "unresolved_allowed",
+      "match": "equal",
+      "scope": "selected release"
+    },
+    {
+      "id": "roster_committee",
+      "source": {
+        "table": "rosters",
+        "fields": [
+          "system_code"
+        ]
+      },
+      "target": {
+        "table": "committees",
+        "fields": [
+          "system_code"
+        ]
+      },
+      "meaning": "Committee assignment, current-Congress snapshot only.",
+      "cardinality": "many-to-one",
+      "nullable": false,
+      "resolution": "unresolved_allowed",
+      "match": "equal",
+      "scope": "rosters.congress; current-Congress coverage only"
+    },
+    {
+      "id": "roster_member",
+      "source": {
+        "table": "rosters",
+        "fields": [
+          "bioguide_id"
+        ]
+      },
+      "target": {
+        "table": "members",
+        "fields": [
+          "bioguide_id"
+        ]
+      },
+      "meaning": "Assigned member, current-Congress snapshot only.",
+      "cardinality": "many-to-one",
+      "nullable": false,
+      "resolution": "unresolved_allowed",
+      "match": "equal",
+      "scope": "rosters.congress; current-Congress coverage only"
+    },
+    {
+      "id": "bill_sponsor",
+      "source": {
+        "table": "bills",
+        "fields": [
+          "sponsor_bioguide_id"
+        ]
+      },
+      "target": {
+        "table": "members",
+        "fields": [
+          "bioguide_id"
+        ]
+      },
+      "meaning": "Primary sponsor when supplied; null is allowed.",
+      "cardinality": "many-to-one",
+      "nullable": true,
+      "resolution": "unresolved_allowed",
+      "match": "equal",
+      "scope": "selected release"
+    },
+    {
+      "id": "amendment_sponsor",
+      "source": {
+        "table": "bills",
+        "fields": [
+          "amendments[].sponsor_bioguide_id"
+        ]
+      },
+      "target": {
+        "table": "members",
+        "fields": [
+          "bioguide_id"
+        ]
+      },
+      "meaning": "Sponsor of the nested amendment, not necessarily the bill sponsor.",
+      "cardinality": "many-to-many",
+      "nullable": true,
+      "resolution": "unresolved_allowed",
+      "match": "equal",
+      "scope": "selected release"
+    },
+    {
+      "id": "bill_activity_committee",
+      "source": {
+        "table": "bills",
+        "fields": [
+          "committee_activities[].system_code"
+        ]
+      },
+      "target": {
+        "table": "committees",
+        "fields": [
+          "system_code"
+        ]
+      },
+      "meaning": "Committee performing an embedded activity; repeated activities are meaningful.",
+      "cardinality": "many-to-many",
+      "nullable": true,
+      "resolution": "unresolved_allowed",
+      "match": "equal",
+      "scope": "selected release"
+    },
+    {
+      "id": "bills_committees",
+      "source": {
+        "table": "bills",
+        "fields": [
+          "committees[]"
+        ]
+      },
+      "target": {
+        "table": "committees",
+        "fields": [
+          "system_code"
+        ]
+      },
+      "meaning": "Published committee referrals.",
+      "cardinality": "many-to-many",
+      "nullable": true,
+      "resolution": "unresolved_allowed",
+      "match": "equal",
+      "scope": "selected release"
+    },
+    {
+      "id": "bills_votes",
+      "source": {
+        "table": "bills",
+        "fields": [
+          "floor_votes[].vote_id"
+        ]
+      },
+      "target": {
+        "external": "spicy-regs roll-call-votes"
+      },
+      "meaning": "External vote identity; the local embedded record provides only the published summary.",
+      "cardinality": "many-to-many",
+      "nullable": true,
+      "resolution": "external",
+      "match": "identifier",
+      "scope": "external identifier or retained object; no local entity table implied"
+    },
+    {
+      "id": "nominations_committees",
+      "source": {
+        "table": "nominations",
+        "fields": [
+          "committees[]"
+        ]
+      },
+      "target": {
+        "table": "committees",
+        "fields": [
+          "system_code"
+        ]
+      },
+      "meaning": "Published committee referrals.",
+      "cardinality": "many-to-many",
+      "nullable": true,
+      "resolution": "unresolved_allowed",
+      "match": "equal",
+      "scope": "selected release"
+    },
+    {
+      "id": "nominations_votes",
+      "source": {
+        "table": "nominations",
+        "fields": [
+          "floor_votes[].vote_id"
+        ]
+      },
+      "target": {
+        "external": "spicy-regs roll-call-votes"
+      },
+      "meaning": "External vote identity; the local embedded record provides only the published summary.",
+      "cardinality": "many-to-many",
+      "nullable": true,
+      "resolution": "external",
+      "match": "identifier",
+      "scope": "external identifier or retained object; no local entity table implied"
+    },
+    {
+      "id": "nomination_transcript_documents",
+      "source": {
+        "table": "nominations",
+        "fields": [
+          "transcripts[]"
+        ]
+      },
+      "target": {
+        "table": "detail",
+        "fields": [
+          "package_id"
+        ]
+      },
+      "meaning": "Printed hearing packages associated with this nomination; use exact package IDs.",
+      "cardinality": "many-to-many",
+      "nullable": true,
+      "resolution": "unresolved_allowed",
+      "match": "equal",
+      "scope": "selected release"
+    },
+    {
+      "id": "document_body",
+      "source": {
+        "table": "detail",
+        "fields": [
+          "saved_body",
+          "saved_suffix"
+        ]
+      },
+      "target": {
+        "external": "archive body store"
+      },
+      "meaning": "Use lowercase hex SHA-256 and the recorded suffix: bodies/sha256/{first two hex characters}/{full hex digest}{suffix}. Binary hashes are not text keys. Files are fetched separately.",
+      "cardinality": "many-to-one",
+      "nullable": true,
+      "resolution": "external",
+      "match": "identifier",
+      "scope": "external identifier or retained object; no local entity table implied"
+    },
+    {
+      "id": "alternate_bodies",
+      "source": {
+        "table": "detail",
+        "fields": [
+          "alternates[].body",
+          "alternates[].suffix"
+        ]
+      },
+      "target": {
+        "external": "archive body store"
+      },
+      "meaning": "Use lowercase hex SHA-256 and the recorded suffix: bodies/sha256/{first two hex characters}/{full hex digest}{suffix}. Binary hashes are not text keys. Files are fetched separately.",
+      "cardinality": "many-to-many",
+      "nullable": true,
+      "resolution": "external",
+      "match": "identifier",
+      "scope": "external identifier or retained object; no local entity table implied"
+    },
+    {
+      "id": "recovery_body",
+      "source": {
+        "table": "recoveries",
+        "fields": [
+          "body",
+          "suffix"
+        ]
+      },
+      "target": {
+        "external": "archive body store"
+      },
+      "meaning": "Use lowercase hex SHA-256 and the recorded suffix: bodies/sha256/{first two hex characters}/{full hex digest}{suffix}. Binary hashes are not text keys. Files are fetched separately.",
+      "cardinality": "many-to-one",
+      "nullable": true,
+      "resolution": "external",
+      "match": "identifier",
+      "scope": "external identifier or retained object; no local entity table implied"
+    },
+    {
+      "id": "recording_tracks",
+      "source": {
+        "table": "recordings",
+        "fields": [
+          "tracks[].body",
+          "tracks[].suffix"
+        ]
+      },
+      "target": {
+        "external": "archive body store"
+      },
+      "meaning": "Use lowercase hex SHA-256 and the recorded suffix: bodies/sha256/{first two hex characters}/{full hex digest}{suffix}. Binary hashes are not text keys. Files are fetched separately.",
+      "cardinality": "many-to-many",
+      "nullable": true,
+      "resolution": "external",
+      "match": "identifier",
+      "scope": "external identifier or retained object; no local entity table implied"
+    },
+    {
+      "id": "member_lis",
+      "source": {
+        "table": "members",
+        "fields": [
+          "cross_ids.lis"
+        ]
+      },
+      "target": {
+        "external": "Senate LIS"
+      },
+      "meaning": "Published member crosswalk identifier; null or an empty list means unavailable.",
+      "cardinality": "many-to-one",
+      "nullable": true,
+      "resolution": "external",
+      "match": "identifier",
+      "scope": "external identifier or retained object; no local entity table implied"
+    },
+    {
+      "id": "member_opensecrets",
+      "source": {
+        "table": "members",
+        "fields": [
+          "cross_ids.opensecrets"
+        ]
+      },
+      "target": {
+        "external": "OpenSecrets"
+      },
+      "meaning": "Published member crosswalk identifier; null or an empty list means unavailable.",
+      "cardinality": "many-to-one",
+      "nullable": true,
+      "resolution": "external",
+      "match": "identifier",
+      "scope": "external identifier or retained object; no local entity table implied"
+    },
+    {
+      "id": "member_govtrack",
+      "source": {
+        "table": "members",
+        "fields": [
+          "cross_ids.govtrack"
+        ]
+      },
+      "target": {
+        "external": "GovTrack"
+      },
+      "meaning": "Published member crosswalk identifier; null or an empty list means unavailable.",
+      "cardinality": "many-to-one",
+      "nullable": true,
+      "resolution": "external",
+      "match": "identifier",
+      "scope": "external identifier or retained object; no local entity table implied"
+    },
+    {
+      "id": "member_icpsr",
+      "source": {
+        "table": "members",
+        "fields": [
+          "cross_ids.icpsr"
+        ]
+      },
+      "target": {
+        "external": "ICPSR"
+      },
+      "meaning": "Published member crosswalk identifier; null or an empty list means unavailable.",
+      "cardinality": "many-to-one",
+      "nullable": true,
+      "resolution": "external",
+      "match": "identifier",
+      "scope": "external identifier or retained object; no local entity table implied"
+    },
+    {
+      "id": "member_wikidata",
+      "source": {
+        "table": "members",
+        "fields": [
+          "cross_ids.wikidata"
+        ]
+      },
+      "target": {
+        "external": "Wikidata"
+      },
+      "meaning": "Published member crosswalk identifier; null or an empty list means unavailable.",
+      "cardinality": "many-to-one",
+      "nullable": true,
+      "resolution": "external",
+      "match": "identifier",
+      "scope": "external identifier or retained object; no local entity table implied"
+    },
+    {
+      "id": "member_fec",
+      "source": {
+        "table": "members",
+        "fields": [
+          "cross_ids.fec[]"
+        ]
+      },
+      "target": {
+        "external": "FEC"
+      },
+      "meaning": "Published member crosswalk identifier; null or an empty list means unavailable.",
+      "cardinality": "many-to-many",
+      "nullable": true,
+      "resolution": "external",
+      "match": "identifier",
+      "scope": "external identifier or retained object; no local entity table implied"
+    },
+    {
+      "id": "bill_cbo_publications",
+      "source": {
+        "table": "bills",
+        "fields": [
+          "cbo_estimates[].publication_id"
+        ]
+      },
+      "target": {
+        "external": "CBO publications"
+      },
+      "meaning": "Published cost-estimate identifier; date and description remain embedded in the bill.",
+      "cardinality": "many-to-many",
+      "nullable": true,
+      "resolution": "external",
+      "match": "identifier",
+      "scope": "external identifier or retained object; no local entity table implied"
+    },
+    {
+      "id": "bill_amendments",
+      "source": {
+        "table": "bills",
+        "fields": [
+          "amendments[].amendment_id"
+        ]
+      },
+      "target": {
+        "external": "spicy-regs amendments"
+      },
+      "meaning": "Published amendment identifiers; purpose, sponsor and latest action remain embedded in the bill.",
+      "cardinality": "many-to-many",
+      "nullable": true,
+      "resolution": "external",
+      "match": "identifier",
+      "scope": "external identifier or retained object; no local entity table implied"
+    },
+    {
+      "id": "document_package",
+      "source": {
+        "table": "detail",
+        "fields": [
+          "package_id"
+        ]
+      },
+      "target": {
+        "external": "GovInfo packages"
+      },
+      "meaning": "Publisher package identity; it can exist without a retained local document.",
+      "cardinality": "many-to-one",
+      "nullable": true,
+      "resolution": "external",
+      "match": "identifier",
+      "scope": "external identifier or retained object; no local entity table implied"
+    },
+    {
+      "id": "meeting_transcript_packages",
+      "source": {
+        "table": "meetings",
+        "fields": [
+          "transcripts[].package_id"
+        ]
+      },
+      "target": {
+        "external": "GovInfo packages"
+      },
+      "meaning": "Publisher package identity; it can exist without a retained local document.",
+      "cardinality": "many-to-many",
+      "nullable": true,
+      "resolution": "external",
+      "match": "identifier",
+      "scope": "external identifier or retained object; no local entity table implied"
+    },
+    {
+      "id": "witness_package",
+      "source": {
+        "table": "witnesses",
+        "fields": [
+          "package_id"
+        ]
+      },
+      "target": {
+        "external": "GovInfo packages"
+      },
+      "meaning": "Publisher package identity; it can exist without a retained local document.",
+      "cardinality": "many-to-one",
+      "nullable": true,
+      "resolution": "external",
+      "match": "identifier",
+      "scope": "external identifier or retained object; no local entity table implied"
+    },
+    {
+      "id": "nomination_packages",
+      "source": {
+        "table": "nominations",
+        "fields": [
+          "transcripts[]"
+        ]
+      },
+      "target": {
+        "external": "GovInfo packages"
+      },
+      "meaning": "Publisher package identity; it can exist without a retained local document.",
+      "cardinality": "many-to-many",
+      "nullable": true,
+      "resolution": "external",
+      "match": "identifier",
+      "scope": "external identifier or retained object; no local entity table implied"
+    },
+    {
+      "id": "source_address",
+      "source": {
+        "table": "sources",
+        "fields": [
+          "url"
+        ]
+      },
+      "target": {
+        "external": "web URL"
+      },
+      "meaning": "Published URL, not proof of a locally retained document. Use the fixed urls lookup for document address searches.",
+      "cardinality": "many-to-one",
+      "nullable": true,
+      "resolution": "external",
+      "match": "identifier",
+      "scope": "external identifier or retained object; no local entity table implied"
+    },
+    {
+      "id": "source_listing_page",
+      "source": {
+        "table": "sources",
+        "fields": [
+          "listed_on"
+        ]
+      },
+      "target": {
+        "external": "web URL"
+      },
+      "meaning": "Published URL, not proof of a locally retained document. Use the fixed urls lookup for document address searches.",
+      "cardinality": "many-to-one",
+      "nullable": true,
+      "resolution": "external",
+      "match": "identifier",
+      "scope": "external identifier or retained object; no local entity table implied"
+    },
+    {
+      "id": "recovery_address",
+      "source": {
+        "table": "recoveries",
+        "fields": [
+          "recovered_url"
+        ]
+      },
+      "target": {
+        "external": "web URL"
+      },
+      "meaning": "Published URL, not proof of a locally retained document. Use the fixed urls lookup for document address searches.",
+      "cardinality": "many-to-one",
+      "nullable": true,
+      "resolution": "external",
+      "match": "identifier",
+      "scope": "external identifier or retained object; no local entity table implied"
+    },
+    {
+      "id": "witness_page",
+      "source": {
+        "table": "witnesses",
+        "fields": [
+          "page_url"
+        ]
+      },
+      "target": {
+        "external": "web URL"
+      },
+      "meaning": "Published URL, not proof of a locally retained document. Use the fixed urls lookup for document address searches.",
+      "cardinality": "many-to-one",
+      "nullable": true,
+      "resolution": "external",
+      "match": "identifier",
+      "scope": "external identifier or retained object; no local entity table implied"
+    },
+    {
+      "id": "meeting_video_address",
+      "source": {
+        "table": "meetings",
+        "fields": [
+          "videos[].url"
+        ]
+      },
+      "target": {
+        "external": "web URL"
+      },
+      "meaning": "Published URL, not proof of a locally retained document. Use the fixed urls lookup for document address searches.",
+      "cardinality": "many-to-many",
+      "nullable": true,
+      "resolution": "external",
+      "match": "identifier",
+      "scope": "external identifier or retained object; no local entity table implied"
+    },
+    {
+      "id": "committee_website",
+      "source": {
+        "table": "committees",
+        "fields": [
+          "website"
+        ]
+      },
+      "target": {
+        "external": "web URL"
+      },
+      "meaning": "Published URL, not proof of a locally retained document. Use the fixed urls lookup for document address searches.",
+      "cardinality": "many-to-one",
+      "nullable": true,
+      "resolution": "external",
+      "match": "identifier",
+      "scope": "external identifier or retained object; no local entity table implied"
+    },
+    {
+      "id": "capture_request_address",
+      "source": {
+        "table": "url_state",
+        "fields": [
+          "requested_url"
+        ]
+      },
+      "target": {
+        "external": "web URL"
+      },
+      "meaning": "Published URL, not proof of a locally retained document. Use the fixed urls lookup for document address searches.",
+      "cardinality": "many-to-one",
+      "nullable": true,
+      "resolution": "external",
+      "match": "identifier",
+      "scope": "external identifier or retained object; no local entity table implied"
+    },
+    {
+      "id": "capture_canonical_address",
+      "source": {
+        "table": "url_variants",
+        "fields": [
+          "canonical_url"
+        ]
+      },
+      "target": {
+        "external": "web URL"
+      },
+      "meaning": "Published URL, not proof of a locally retained document. Use the fixed urls lookup for document address searches.",
+      "cardinality": "many-to-one",
+      "nullable": true,
+      "resolution": "external",
+      "match": "identifier",
+      "scope": "external identifier or retained object; no local entity table implied"
+    },
+    {
+      "id": "capture_variant_address",
+      "source": {
+        "table": "url_variants",
+        "fields": [
+          "variant_url"
+        ]
+      },
+      "target": {
+        "external": "web URL"
+      },
+      "meaning": "Published URL, not proof of a locally retained document. Use the fixed urls lookup for document address searches.",
+      "cardinality": "many-to-one",
+      "nullable": true,
+      "resolution": "external",
+      "match": "identifier",
+      "scope": "external identifier or retained object; no local entity table implied"
+    },
+    {
+      "id": "meeting_treaties",
+      "source": {
+        "table": "meetings",
+        "fields": [
+          "subject_keys[]"
+        ]
+      },
+      "target": {
+        "external": "Congress.gov treaties"
+      },
+      "meaning": "Subject identifiers of the form {congress}-treaty-{number}; bill and nomination values in the same list use their separate relationships. No treaty entity table is published.",
+      "cardinality": "many-to-many",
+      "nullable": true,
+      "resolution": "external",
+      "match": "identifier",
+      "scope": "typed treaty identifiers only"
+    }
+  ],
+  "recipes": [
+    {
+      "id": "bill_documents",
+      "title": "Documents related to a bill",
+      "dialect": "duckdb",
+      "requires": [
+        "list",
+        "detail"
+      ],
+      "relationships": [
+        "document_bills",
+        "document_detail"
+      ],
+      "parameters": [
+        {
+          "name": "bill_id",
+          "example": "119-hr-1"
+        }
+      ],
+      "sql": "SELECT l.list_row,l.filename,l.title,hex(d.link_key) AS link_key\nFROM \"list\" l JOIN detail d USING (list_row)\nWHERE list_contains(l.measure_keys,?) ORDER BY l.list_row LIMIT 100",
+      "result_row": "One document edition",
+      "notes": [
+        "Does not require the bounded bills table to contain this identifier."
+      ]
+    },
+    {
+      "id": "hearing_documents",
+      "title": "Documents and hearing titles",
+      "dialect": "duckdb",
+      "requires": [
+        "list",
+        "meetings"
+      ],
+      "relationships": [
+        "document_meetings"
+      ],
+      "parameters": [
+        {
+          "name": "event_id",
+          "example": 118001
+        }
+      ],
+      "sql": "SELECT l.list_row,l.filename,m.event_id,m.title\nFROM \"list\" l JOIN meetings m ON list_contains(l.meeting_keys,CAST(m.event_id AS VARCHAR))\nWHERE m.event_id=? ORDER BY l.list_row LIMIT 100",
+      "result_row": "One document associated with the selected hearing",
+      "notes": [
+        "meeting_keys stores decimal text; event_id is an integer."
+      ]
+    },
+    {
+      "id": "witness_documents",
+      "title": "Documents submitted by a witness appearance",
+      "dialect": "duckdb",
+      "requires": [
+        "list",
+        "witnesses"
+      ],
+      "relationships": [
+        "witness_submitted_documents"
+      ],
+      "parameters": [
+        {
+          "name": "witness_key",
+          "example": "0123456789abcdef"
+        }
+      ],
+      "sql": "SELECT w.witness_key,w.name,l.list_row,l.filename\nFROM witnesses w JOIN \"list\" l ON list_contains(l.witness_keys,w.witness_key)\nWHERE w.witness_key=? ORDER BY l.list_row LIMIT 100",
+      "result_row": "One submitted document for this appearance",
+      "notes": [
+        "Use a witness_key, never a person-name join."
+      ]
+    },
+    {
+      "id": "witness_transcripts",
+      "title": "Printed hearings containing a witness appearance",
+      "dialect": "duckdb",
+      "requires": [
+        "witnesses",
+        "detail",
+        "list"
+      ],
+      "relationships": [
+        "witness_transcript_documents",
+        "document_detail"
+      ],
+      "parameters": [
+        {
+          "name": "witness_key",
+          "example": "0123456789abcdef"
+        }
+      ],
+      "sql": "SELECT w.witness_key,w.name,d.package_id,l.list_row,l.filename\nFROM witnesses w JOIN detail d ON d.package_id=w.package_id JOIN \"list\" l USING (list_row)\nWHERE w.witness_key=? ORDER BY l.list_row LIMIT 100",
+      "result_row": "One retained transcript document for the appearance",
+      "notes": [
+        "No package_id means no published package association; submitted documents use a different relationship."
+      ]
+    },
+    {
+      "id": "committee_roster",
+      "title": "Committee members for a published Congress",
+      "dialect": "duckdb",
+      "requires": [
+        "rosters",
+        "committees",
+        "members"
+      ],
+      "relationships": [
+        "roster_committee",
+        "roster_member"
+      ],
+      "parameters": [
+        {
+          "name": "system_code",
+          "example": "hsif00"
+        },
+        {
+          "name": "congress",
+          "example": 119
+        }
+      ],
+      "sql": "SELECT r.congress,r.system_code,c.name AS committee,r.bioguide_id,m.name,r.title,r.rank,r.party\nFROM rosters r LEFT JOIN committees c USING (system_code) LEFT JOIN members m USING (bioguide_id)\nWHERE r.system_code=? AND r.congress=? ORDER BY r.rank,r.bioguide_id LIMIT 100",
+      "result_row": "One current-Congress committee assignment",
+      "notes": [
+        "An empty historical result does not establish that the committee had no members."
+      ]
+    },
+    {
+      "id": "nomination_transcripts",
+      "title": "Printed hearings related to a nomination",
+      "dialect": "duckdb",
+      "requires": [
+        "nominations",
+        "detail",
+        "list"
+      ],
+      "relationships": [
+        "nomination_transcript_documents",
+        "document_detail"
+      ],
+      "parameters": [
+        {
+          "name": "nomination_id",
+          "example": "119-pn-730-2"
+        }
+      ],
+      "sql": "SELECT n.nomination_id,d.package_id,l.list_row,l.filename\nFROM nominations n JOIN detail d ON list_contains(n.transcripts,d.package_id) JOIN \"list\" l USING (list_row)\nWHERE n.nomination_id=? ORDER BY l.list_row LIMIT 100",
+      "result_row": "One retained transcript document",
+      "notes": [
+        "Preserve the nomination part, for example 119-pn-730-2."
+      ]
+    },
+    {
+      "id": "bill_votes",
+      "title": "Vote summaries associated with a bill",
+      "dialect": "duckdb",
+      "requires": [
+        "bills"
+      ],
+      "relationships": [
+        "bills_votes"
+      ],
+      "parameters": [
+        {
+          "name": "bill_id",
+          "example": "119-hr-1"
+        }
+      ],
+      "sql": "SELECT b.bill_id,v.vote_id,v.basis,v.chamber,v.date,v.question,v.result,v.yea,v.nay\nFROM bills b,UNNEST(b.floor_votes) AS votes(v)\nWHERE b.bill_id=? ORDER BY v.date,v.vote_id LIMIT 100",
+      "result_row": "One embedded roll-call summary for this bill",
+      "notes": [
+        "This is vote-level data, not member voting records. Unnest only the list you need; unnesting amendments as well would multiply votes."
+      ]
+    },
+    {
+      "id": "nomination_votes",
+      "title": "Vote summaries associated with a nomination",
+      "dialect": "duckdb",
+      "requires": [
+        "nominations"
+      ],
+      "relationships": [
+        "nominations_votes"
+      ],
+      "parameters": [
+        {
+          "name": "nomination_id",
+          "example": "119-pn-730-2"
+        }
+      ],
+      "sql": "SELECT n.nomination_id,v.vote_id,v.date,v.question,v.result,v.yea,v.nay\nFROM nominations n,UNNEST(n.floor_votes) AS votes(v)\nWHERE n.nomination_id=? ORDER BY v.date,v.vote_id LIMIT 100",
+      "result_row": "One embedded Senate vote summary",
+      "notes": []
+    },
+    {
+      "id": "recording_tracks",
+      "title": "Captured tracks for a hearing",
+      "dialect": "duckdb",
+      "requires": [
+        "recordings"
+      ],
+      "relationships": [
+        "recording_meetings",
+        "recording_tracks"
+      ],
+      "parameters": [
+        {
+          "name": "event_id",
+          "example": 118001
+        }
+      ],
+      "sql": "SELECT r.video_key,hex(t.body) AS body,t.suffix,t.format,t.language,t.production\nFROM recordings r,UNNEST(r.tracks) AS tracks(t)\nWHERE list_contains(r.event_ids,CAST(? AS BIGINT)) ORDER BY r.video_key,t.language,t.format LIMIT 100",
+      "result_row": "One captured recording track",
+      "notes": [
+        "Construct the body URL using the recorded suffix; a track is not a list document."
+      ]
+    },
+    {
+      "id": "document_editions",
+      "title": "Other editions sharing an endpoint",
+      "dialect": "duckdb",
+      "requires": [
+        "list"
+      ],
+      "relationships": [
+        "document_editions"
+      ],
+      "parameters": [
+        {
+          "name": "list_row",
+          "example": 3
+        }
+      ],
+      "sql": "SELECT DISTINCT other.list_row,other.filename,other.document_date\nFROM \"list\" selected JOIN \"list\" other ON list_has_any(selected.version_keys,other.version_keys)\nWHERE selected.list_row=? AND other.list_row<>selected.list_row ORDER BY other.list_row LIMIT 100",
+      "result_row": "One other document edition",
+      "notes": [
+        "list_row belongs only to the selected release. Multiple shared endpoint keys must not duplicate a document."
+      ]
     }
   ]
 }

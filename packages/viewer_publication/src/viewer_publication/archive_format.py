@@ -139,10 +139,9 @@ def release_identity(schema_version,files):
     return sha256(json.dumps(identity,ensure_ascii=False,separators=(',',':'),allow_nan=False).encode()).hexdigest()
 
 
-def _release_schema():
-    # The interface registry is shared with the reader; policy metadata stays
-    # content-only while all row transformations and Parquet writing stay native.
-    return json.loads((ROOT / 'model/registries/release-schema.json').read_text())
+def _release_schema(available=None):
+    from viewer_publication.archive_schema import build_schema
+    return build_schema(available)
 
 
 NORMAL_DEFAULTS = dict(body_expected='true', title='cast(NULL AS VARCHAR)', document_kind=EMPTY_STRINGS,
@@ -185,6 +184,9 @@ def _execute(inputs, steps, *, output, scratch, engine, origin, auxiliary=None, 
         steps.append(_step(name + '_export', sql, materialize=True))
         outputs.append(dict(name=name + '.parquet', path=str(output / (name + '.parquet')), sql='SELECT * FROM ' + name + '_export',
             settings=_settings('whole', keys, dictionary=dictionary)))
+    schema = _release_schema([item['name'] for item in outputs])
+    from viewer_publication.archive_schema import publication_checks
+    diagnostics = [*diagnostics, *publication_checks(schema, aux_names)]
     outputs.extend(extra_outputs)
     facets = [f"SELECT '{name}' AS facet,cast({name} AS VARCHAR) AS value,count(*) AS count FROM ordered WHERE NOT hidden GROUP BY {name}" for name in ['format', 'congress', 'saved_kind']]
     facets += [f"SELECT '{name}' AS facet,value,count(*) AS count FROM (SELECT unnest({name}) AS value FROM ordered WHERE NOT hidden) GROUP BY value" for name in ['document_kind', 'document_family', 'committee_keys', 'chambers', 'meeting_keys']]
@@ -221,7 +223,7 @@ def _execute(inputs, steps, *, output, scratch, engine, origin, auxiliary=None, 
     reports = {query['name']: query['data'] for query in result['queries']}
     if any(reports['invariants'][0].values()) or any(any(row.values()) for query in diagnostics for row in reports[query['name']]):
         raise ValueError('Release key invariant failed; native results retained in scratch')
-    schema_files = {item['name']: item for item in _release_schema().get('files', [])}
+    schema_files = {item['name']: item for item in schema['files']}
     coverage = {row['file']: {key: value for key, value in row.items() if key != 'file'} for row in reports['coverage']}
     files = []
     for entry in result['outputs']:
@@ -241,7 +243,9 @@ def _execute(inputs, steps, *, output, scratch, engine, origin, auxiliary=None, 
             coverage=dict(coverage.get(entry['name'], dict(congress_start=None, congress_end=None, date_start=None, date_end=None)), gaps=file_gaps)))
     for entry in files:
         entry.pop('footer_bytes', None)
-    files.append(_content(output / 'schema.json', _release_schema()))
+    from viewer_publication.archive_schema import validate_parquet_fields
+    validate_parquet_fields(schema, [output / f['name'] for f in files])
+    files.append(_content(output / 'schema.json', schema))
     files.append(_content(output / 'capture_scope.json', dict(version=1, entries=[]) if capture_scope is None else capture_scope))
     for name,value in (content_files or {}).items():
         files.append(_content(output/name,value))

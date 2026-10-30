@@ -178,7 +178,8 @@ Phase 2 is done when, beyond [[IMPLEMENTATION-PLAN]] §6.6's phase-1 checklist:
 - the committee explorer reads meeting and witness records from the lake (F3);
 - spicy-regs' retention plan keeps every generation a kept release pins (F4);
 - the weekly meeting job is gone, after B14's first run;
-- C3's export is byte-identical across threads, batch sizes and a forced spill, so the profile no longer pins the runner class.
+- C3's export is byte-identical across threads, batch sizes and a forced spill, so the profile no longer pins the runner class;
+- the native relationship metadata and consumer checks in §4.4 pass. This is follow-through added on 2026-10-30 after the first phase 2 entity deployment.
 
 ### 4.2 Uncertainties
 
@@ -199,7 +200,7 @@ The MCP coverage tasks (`docs/youtube-coverage/congressional-explorer-mcp-data-c
 
 | Task | Covered by |
 |---|---|
-| 1 identifiers, 9 coverage | [[DATA-MODEL]] §8–9: native keys, `schema.json`, the manifest's producer and coverage |
+| 1 identifiers, 9 coverage | [[DATA-MODEL]] §8–9: native keys, `schema.json`, the manifest's producer and coverage; §4.4 adds native relationship discovery metadata |
 | 2–3 participants, ownership | D4 and §2, unnamed witnesses kept apart |
 | 4 legislative items | `subject_keys`; spicy-regs amendments and committee activities; markup votes parked ([[IMPLEMENTATION-PLAN]] §7) |
 | 5 committee history | spicy-regs `committees`; its other fields are spicy-regs' to add |
@@ -208,6 +209,78 @@ The MCP coverage tasks (`docs/youtube-coverage/congressional-explorer-mcp-data-c
 | 8 reference data | Not covered: archive routes, session dates and chamber control, channel mappings |
 | 10 replay and rebuild | The switch: everything rebuilt from raw, parity by cause |
 | 11–15 the two MCP servers | Their own plan, reading release manifests; full research tables are decided then |
+
+### 4.4 Native relationship metadata — execution order
+
+Added 2026-10-30. The producer owns the meaning and keys of congressional data.
+The public release must explain its relationships to every reader: the site,
+Congress MCP, SpicyRegs consumers and direct SQL users. The MCP exposes this
+published information; it must not become a second owner of congressional joins.
+
+Reuse `model/registries/release-schema.json`, the existing `_release_schema()` and
+release writer in `viewer_publication/archive_format.py`, the model invariants,
+and the phase 2 test fixtures. Derive table inventories, reverse relationship
+listings, availability and the human join reference from those files. Author
+relationship meaning explicitly from DATA-MODEL §9 and this annex §2; do not infer
+foreign keys or witness identity from similar column names, names or SQL text.
+
+1. **P2R1 — Define the native metadata.** Extend the existing schema registry with
+   table purpose and row meaning, validated identities (including compound keys
+   and release-local row positions), relationship endpoints, one/many behavior,
+   optional/unresolved references, scope, and meaning. Cover all published tables
+   and nested reference fields. Distinguish submitted witness documents from
+   transcript appearances, editions from alternate formats, and local entities
+   from external identifiers and embedded facts. Keep keys separate from sort
+   order. Update DATA-MODEL §8–9 to make this part of the native release interface.
+2. **P2R2 — Build and publish from the existing registry.** Extend the existing
+   schema publication path, preserving immutable release identity and all current
+   file types. Determine availability from the actual release files; an omitted
+   entity table is unavailable, not empty. Keep semantic definitions portable;
+   label engine-specific query examples by dialect. Do not add a parallel MCP
+   registry, a graph database, a query language, or a full-corpus rebuild.
+3. **P2R3 — Generate the reader reference and query examples.** Generate the human
+   table/key/relationship reference from the same registry, with a drift check.
+   Include bounded, parameterized recipes for bills/hearings/witnesses/documents,
+   committee rosters/members, nominations/transcripts/votes, recordings/tracks and
+   document versions. Explain the result row meaning, optional joins, nested-list
+   multiplication, relevant casts and scope. Keep exact URL lookup hashing distinct
+   from the capture profile's URL normalization rules.
+4. **P2R4 — Validate at the producer boundary.** Check metadata field paths,
+   identities, relationship endpoints, declared uniqueness and required references
+   using existing producer checks where possible. Add meaningful negative fixtures
+   for bad keys/types, nulls, absent targets, nested lists and duplicate-producing
+   joins. Validate recipe SQL against maintained small fixtures; do not execute
+   catalog SQL automatically when serving or add repeated whole-release scans.
+5. **P2R5 — Consume through the existing MCP.** Extend `get_dataset_info` to expose
+   table identities, incoming/outgoing relationships, scope and focused relation
+   or recipe details from the selected release's schema. Keep the existing six
+   tools, direct SQL and resource limits. Definitions from future releases should
+   appear without hardcoded MCP relationship additions. The site already exposes
+   schema JSON; preserve that shared publication path without a separate UI rewrite.
+6. **P2R6 — Verify and document delivery.** Exercise publication, generated-doc
+   drift checks, representative producer fixtures and actual MCP discovery/query
+   calls. Record local completion separately from deployment; do not overwrite a
+   live release or deploy merely to validate metadata. The acceptance outcome is
+   that an agent using only MCP discovery can obtain correct joins and meanings
+   without reading this repository or guessing identifiers.
+
+### 4.5 Local execution result — 2026-10-30
+
+P2R1–P2R6 are implemented and verified locally. The existing registry now owns
+16 table descriptions, 59 relationships and 10 DuckDB recipes. The native writer
+publishes their actual-file availability, validates identity/reference paths
+against output footers, and reuses native construction checks plus focused
+entity-key/reference checks. The generated [relationship reference](../release-relationships.md)
+has a drift check. The MCP retains six tools and consumes the published metadata
+through `get_dataset_info` selectors.
+
+The focused producer runner passed 21 tests; the MCP runner passed 44 tests. An
+independent stdio check read the newly produced native phase 2 fixture and
+inspected every table and relationship and executed every recipe. See
+[`apps/explorer_mcp/VERIFICATION.md`](../../apps/explorer_mcp/VERIFICATION.md)
+for exact commands, the fixture release ID, response size and historical-check
+boundaries. This is local completion. No release was deployed or republished;
+older releases accurately report that relationship metadata was not published.
 
 ## References
 

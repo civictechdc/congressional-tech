@@ -59,6 +59,7 @@ Already in place: the hosted setup refuses an engine revision other than the qua
 **Phase 2, connections and one-time raw jobs,** adding files and facts. Three items can also change the document core: B13 (an unchecked PDF found broken leaves the list, and its links open the not-found notice), S2's widening and a fingerprint parser (editions can split).
 - hearings, witnesses and recordings: B14, D4, and the meeting, appearance and recording relations ([[PHASE-2]] §2), cheap: about 60k bodies (9 GB) plus the 199,156 inline records already in the receipts;
 - the spicy-regs entities (committees, members, rosters, bills, CBO estimates, floor votes, amendments, committee activities, nominations), with their pin lists and the committee explorer's move (F3–F4), after spicy-stack ss-vhi2's retention change;
+- native relationship metadata: [[PHASE-2]] §4.4 (P2R1–P2R6), extending the existing release schema and publication path, with generated join documentation and thin downstream consumers;
 - the large raw jobs: B13 (PDF copies), B10 (full re-hash), S2's edition-count widening, and C4's dense IDs (ss-6jg6);
 - engine and tooling: export bytes independent of the runner class (ss-iwqu; phase 1 pins the runner class and limits instead), a `fingerprint` parser only if a PDF or unexpanded-ZIP candidate appears, and the review forms (B8).
 

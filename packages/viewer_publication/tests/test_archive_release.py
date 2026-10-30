@@ -23,6 +23,8 @@ def engine():
 
 def checked_manifest(root, manifest):
     assert json.loads((root / 'manifest.json').read_text()) == manifest
+    from viewer_publication.archive_schema import build_schema
+    assert json.loads((root / 'schema.json').read_text()) == build_schema([f['name'] for f in manifest['files']])
     for item in manifest['files']:
         data = (root / item['name']).read_bytes()
         assert sha256(data).hexdigest() == item['sha256']

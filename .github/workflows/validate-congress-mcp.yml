@@ -1,0 +1,31 @@
+name: Validate Congress MCP
+on:
+  pull_request:
+    paths:
+      - 'apps/explorer_mcp/**'
+      - 'model/fixtures/archive-contract/**'
+      - 'model/registries/release-schema.json'
+      - 'docs/plans/phase-2-annex-20261028.md'
+      - 'scripts/dev.py'
+      - 'test-suites.toml'
+      - '.python-version'
+      - '.github/workflows/validate-congress-mcp.yml'
+  workflow_dispatch: {}
+permissions:
+  contents: read
+jobs:
+  mcp:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v6
+        with:
+          python-version-file: '.python-version'
+      - uses: astral-sh/setup-uv@v6
+        with:
+          version: '0.11.21'
+      - run: uv sync --locked --project apps/explorer_mcp
+      - run: apps/explorer_mcp/.venv/bin/python scripts/dev.py test explorer-mcp -- -q

@@ -1,0 +1,27 @@
+[project]
+name = "congressional-explorer-mcp"
+version = "0.2.0"
+description = "Local Congress research over immutable archive releases"
+requires-python = ">=3.12"
+dependencies = ["duckdb==2.0.0", "fastmcp==4.1.4"]
+
+[project.scripts]
+congress-explorer-mcp = "congressional_explorer_mcp.cli:main"
+
+[dependency-groups]
+dev = ["pytest>=9,<10", "pyarrow>=23,<24"]
+
+[build-system]
+requires = ["setuptools>=80"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+# Independent runtime: producer packages still require DuckDB 1.x.
+[tool.uv.workspace]
+members = []
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-ra"

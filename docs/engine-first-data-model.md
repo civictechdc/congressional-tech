@@ -685,7 +685,7 @@ Sizes are *est.* at about 0.65M listed documents, scaled from today's 1.24M cata
 | `capture_scope.json` | The capture-scope registry at the profile's version | — | Content only | Under 50 KB |
 | `capture_profile.json` | Version 1; engine revision; `sql` with `url_normalized` and `url_keys`, each UTF-8 `text` and SHA-256; the URL-rule rows (`id`, `kind`, `host_pattern`, `pattern`, `replacement`, `decoder`); `url_variants_file` naming `url_variants.parquet` | — | Content only; capture uses this release's definitions | A few KB |
 | `url_variants.parquet` | Active `canonical_url` and `variant_url` strings, after supersession and the URL-key conflict/chain checks; no other provenance fields | `(variant_url, canonical_url)` | Whole | Proportional to active variants |
-| `schema.json` | Every file's columns, with type and meaning, from the release-schema registry | — | Content only | *est.* under 50 KB |
+| `schema.json` | File columns, row meanings, identities, relationships and labelled query examples from the release-schema registry; actual-file availability | — | Content only; relationship metadata versioned separately | Size recorded in manifest |
 | `manifest.json` | `schema_version`; `files[]` {name, sha256, md5, size, rows, row_range, shard, producer, coverage}; `facet_counts` over the non-hidden rows of `list`; `release_id` | — | Deterministic, content only | 5–20 KB |
 | `inputs/<input_digest>.json` | The input identity (§8.3); the pinned snapshot IDs, provenance set and spicy-regs generation digests; the SHA-256 of the receipt-key list; the run | — | One per input identity | About 2 KB |
 | `inputs/receipts/<sha256>.json.gz` | The sorted unique receipt keys the identity hashes; SHA-256 hashes the uncompressed compact UTF-8 JSON array, gzip uses `mtime = 0`; the input record names it as `receipt_keys_sha256` | — | Content-addressed, inside the release prefix; retained with every kept input record | *est.* under 1 MB |
@@ -715,9 +715,59 @@ The **input identity** is the SHA-256 of UTF-8 compact JSON `[receipt_keys, [[pr
 
 The **release ID** is the SHA-256 of UTF-8 compact JSON `[schema_version, [[name, sha256, size, rows], ...]]`, in `files[]` order. Content-only files have `rows = 0`. The manifest does not hash itself.
 
+### 8.4 Native relationship metadata
+
+`model/registries/release-schema.json` is the producer-owned source for table
+purpose, row meaning, identities, relationship endpoints and query examples.
+`viewer_publication.archive_schema` validates it and the existing release writer
+publishes it as `schema.json`. The schema file's content hash participates in the
+existing release identity; the archive `schema_version` remains 1. Additive
+relationship metadata uses `relationships_version: 1`.
+
+Each table declares an `identity`: either a validated `primary_key` (possibly
+compound), or a `row_position`. `list_row` is a virtual, zero-based position for
+`list` and `detail`, continued across manifest shard row ranges. It is not a
+physical column in those files and is valid only in the selected release.
+Identities describe uniqueness, not sort order. Binary hashes retain their
+published byte types; hexadecimal is a display encoding.
+
+A relationship declares its source and target field paths, match rule,
+cardinality, nullable behavior, resolution requirement, meaning and scope.
+`[]` denotes list elements. Cardinality describes source and target rows across
+all their list elements. Local targets name published tables. External targets
+name identifiers or body files without claiming that an external dataset is
+present. `required` references must resolve when both files are published;
+`unresolved_allowed` preserves valid references outside a bounded local release.
+Null optional references mean unknown or absent, not a failed join.
+
+The writer derives `available` and `missing_tables` from the actual release
+files for tables, relationships and recipes. Availability means the required
+local files exist, including an empty file; it does not certify that every
+optional reference resolves or every external URL is fetchable. Definitions for
+absent files remain discoverable. Older releases without a relationship version
+have no published relationship metadata. Readers must not silently reconstruct
+it from their own hardcoded joins; unknown metadata versions leave ordinary
+schema and table access available.
+
+Publication reuses the existing native construction and key checks for document
+row alignment, link and URL lookup keys, source/recovery ordinals, and capture
+URLs. The same native job validates entity keys, primary-link resolution, and
+required document-to-meeting, document-to-witness and meeting-transcript row
+references. Output footers check declared key/reference paths and types against
+the actual Parquet shapes. These checks read no document bodies and add no
+whole-release Parquet scan.
+
+The [generated reference](release-relationships.md) includes every table's
+columns, incoming/outgoing relationship IDs, scope and bounded DuckDB recipes.
+Generate it with `.venv/bin/python -m viewer_publication.archive_schema`; `--check`
+refuses documentation drift. SQL examples are dialect-labelled guidance with
+positional parameters and result-row meanings. Discovery never executes them.
+Consumers may derive inverse listings and availability, but they must preserve
+the producer's relationship meaning.
+
 ## 9. Keys Between Layers
 
-*The key table is normative.*
+*The key table is normative. The producer registry and generated [release relationship reference](release-relationships.md) describe its published table joins, including nested references; §8.4 defines their machine-readable form.*
 
 ```mermaid
 erDiagram

@@ -106,3 +106,9 @@ roots = [
 marker = "loopback"
 offline = false
 purpose = "Real S3 SDK transport against local HTTP fakes; no source-fetch binary or live storage."
+
+[lanes.explorer-mcp]
+roots = ["apps/explorer_mcp/tests"]
+offline = true
+runner = ["apps/explorer_mcp/.venv/bin/python", "apps/explorer_mcp/scripts/dev.py", "test"]
+purpose = "Archive MCP in its independent DuckDB 2 environment: cd apps/explorer_mcp && .venv/bin/python scripts/dev.py test."

@@ -193,12 +193,15 @@ def test(config, name, paths, pytest_args, *, shard=None):
         raise ValueError('--path and --shard cannot be combined')
     files = inventory(config)
     selected = shard_files(files, lane['roots'], shard) if shard is not None else paths or lane['roots']
-    doctor(config, name)
     for path in selected:
         resolved = (ROOT / path.split('::', 1)[0]).resolve()
         if not any(resolved == (ROOT / root).resolve() or resolved.is_relative_to((ROOT / root).resolve())
                    for root in lane['roots']):
             raise ValueError(f'{path} is outside the {name} suite roots')
+    if runner := lane.get('runner'):
+        paths = [str(ROOT / path) for path in selected]
+        return subprocess.run([str(ROOT / runner[0]), str(ROOT / runner[1]), *runner[2:], *paths, *pytest_args], cwd=ROOT).returncode
+    doctor(config, name)
     command = [sys.executable]
     if lane['offline']:
         command += [str(ROOT / '.github/scripts/offline-python.py')]
