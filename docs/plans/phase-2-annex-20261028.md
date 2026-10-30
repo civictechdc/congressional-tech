@@ -187,11 +187,52 @@ As in [[IMPLEMENTATION-PLAN]] §8, each row closes only with its measurement.
 | Uncertainty | Settled by | Decides |
 |---|---|---|
 | Roster history: spicy-regs keeps the current Congress only | A spicy-regs change publishing its captured rosters as dated history | Rosters show current seats until then |
-| How often one printed hearing covers several meetings, leaving its MODS witnesses on the package | D4, counting packages that more than one meeting's jackets resolve to | Whether multi-day hearings need a per-day rule |
-| Senate card coverage by committee site (judiciary 98.6%, hsgac 64.8%, indian 54.8%, jec 0%) | D4, on every Senate hearing page | Which sites need a second page layout |
-| Event IDs never name two chambers (observed on 18,140, not promised by the publishers) | Invariant 15 at every publish | The meeting key, if one ever does |
+| How often one printed hearing covers several meetings, leaving its MODS witnesses on the package | **Settled by D4 full-corpus measurement:** among **10,723** `CHRG-*` packages linked to meetings in `meetings.parquet`, **6,917 (64.5%)** link to **1 meeting** (`meeting:{event_id}`) and **3,806 (35.5%)** link to **>1 meetings** (`package:{package_id}`); across all **34,559** parsed `CHRG-*` MODS records (**107,272** deduplicated appearances), **6,882** packages (**22,501** witnesses) resolve to 1 meeting, **3,796** packages (**12,162** witnesses) resolve to 2–15 meetings, and **23,881** packages (**72,609** witnesses, mostly pre-113th Congress) have 0 meeting records | Keep `'package:{package_id}'` when `count(event_id) != 1`; no per-day rule needed in Phase 2 |
+| Senate card coverage by committee site (judiciary 98.6%, hsgac 64.8%, indian 54.8%, jec 0%) | **Settled by D4 full-corpus measurement** across **6,685** candidate `senate_page` captures (**5,030** non-empty pages, **17,687** witnesses, **16,496** card links) and **8,946** listed Senate testimony documents: **5,638 / 8,946 (63.0%)** match strictly under current `url_key`; stripping ColdFusion `[?&]download=1` suffixes on `banking`, `finance`, `appropriations`, `aging`, `budget` and `veterans` raises coverage to **8,096 / 8,946 (90.5%)** | Normalize `[?&]download=1` on ColdFusion `/download/` URLs; second page layouts only needed for `environment`, `intelligence` and `jec` |
+| Event IDs never name two chambers (observed on 18,140, not promised by the publishers) | Invariant 15 at every publish (**0** multi-chamber `event_id`s across all **18,140** Congress.gov + **6,164** House XML `meeting_records`, **18,225** resolved meetings) | The meeting key, if one ever does |
 | Nominations before the 119th Congress | spicy-stack ss-vhi2's backfill | How far back nomination pages reach |
-| How often one witness gets two keys at one meeting (spelling, titles, initials) | A sample of House and Congress.gov witness lists in S2 | What the later witness table must match |
+| How often one witness gets two keys at one meeting (spelling, titles, initials) | **Settled by D4 full-corpus measurement:** intra-record duplicate `name_key`s occur in **0.64%** of `mods` records (**220 / 34,559**, **534** rows dropped), **0.61%** of `congress_gov` records (**110 / 18,140**, **478** rows dropped), and **0.44%** of `house_xml` records (**15 / 3,398**, **23** rows dropped), leaving **0** duplicate `(occasion, witness_key)` rows in `witnesses.parquet` (**109,572** rows across **28,392** occasions); **138 / 28,392 (0.49%)** occasions (**152** pairs) have distinct `name_key`s sharing surname + first initial (49 honorific/title pairs, plus middle-initial and suffix variants) | `deduplicate_appearances` + `ROW_NUMBER() OVER (PARTITION BY occasion, name_key)` guarantees unique `(occasion, witness_key)`; later witness entity table matches honorific/initial pairs |
+
+#### 4.2.1 D4 Measurement Details
+
+1. **Multi-meeting MODS packages (`meeting_records` = 24,304 rows; `appearance_records` = 62,782 rows including 34,559 `mods` rows):**
+   - **Meeting count distribution across the 10,723 linked `CHRG-*` packages in `meetings.parquet`:** `1 meeting: 6,917 (64.5%)`, `2: 2,696 (25.1%)`, `3: 750 (7.0%)`, `4: 199 (1.9%)`, `5: 52`, `6: 48`, `7: 14`, `8: 19`, `9: 8`, `10: 5`, `11: 3`, `12: 1`, `13: 5`, `14: 5`, `15: 1` (total `>1 meetings`: **3,806 / 10,723 = 35.5%**).
+   - **Examples of multi-meeting packages:** `CHRG-112hhrg64725` (`event_id`s `103896, 103897`), `CHRG-112hhrg72254` (`100083, 100180`), `CHRG-113hhrg78631` (`100222, 100223, 100225`), `CHRG-113hhrg79435` (`100220, 100221, 101129`).
+   - **MODS witness assignment across all 34,559 parsed `CHRG-*` packages (22,498 with `>=1` witness; 107,272 deduplicated appearances):**
+     - `1 meeting` (`occasion = 'meeting:{event_id}'`): **6,882** packages (**4,798** with witnesses, **22,501** appearances; **3,053** overridden by higher-precedence `house_xml` or `congress_gov`, **1,745** winning in `witnesses.parquet` with **6,213** witnesses).
+     - `>1 meetings` (`occasion = 'package:{package_id}'`): **3,796** packages (**2,256** with witnesses, **12,162** appearances: `2 meetings: 2,690 pkgs / 9,255 witnesses`, `3 meetings: 747 pkgs / 2,397 witnesses`, `4 meetings: 199 pkgs / 417 witnesses`, `5–15 meetings: 160 pkgs / 93 witnesses`).
+     - `0 meetings` (`occasion = 'package:{package_id}'`): **23,881** packages (**15,444** with witnesses, **72,609** appearances).
+
+2. **Senate card coverage by committee site (6,685 candidate pages, 5,030 with cards, 8,946 listed Senate testimony documents):**
+
+| Committee site | Candidate pages | Non-empty pages | Witnesses | Listed testimony docs | Strict `url_key` match | Match stripping `[?&]download=1` |
+|---|---:|---:|---:|---:|---:|---:|
+| `judiciary.senate.gov` | 645 | 602 | 2,424 | 2,265 | 2,235 (**98.7%**) | 2,235 (**98.7%**) |
+| `commerce.senate.gov` | 482 | 463 | 1,688 | 1,039 | 1,014 (**97.6%**) | 1,014 (**97.6%**) |
+| `banking.senate.gov` | 460 | 440 | 1,354 | 892 | 0 (**0.0%**) | 860 (**96.4%**) |
+| `finance.senate.gov` | 405 | 350 | 1,210 | 826 | 0 (**0.0%**) | 804 (**97.3%**) |
+| `appropriations.senate.gov` | 538 | 369 | 1,735 | 632 | 0 (**0.0%**) | 451 (**71.4%**) |
+| `epw.senate.gov` | 365 | 258 | 936 | 626 | 533 (**85.1%**) | 533 (**85.1%**) |
+| `hsgac.senate.gov` | 599 | 458 | 1,458 | 499 | 327 (**65.5%**) | 327 (**65.5%**) |
+| `energy.senate.gov` | 360 | 269 | 957 | 460 | 388 (**84.3%**) | 388 (**84.3%**) |
+| `foreign.senate.gov` | 540 | 382 | 1,019 | 347 | 308 (**88.8%**) | 308 (**88.8%**) |
+| `indian.senate.gov` | 249 | 184 | 825 | 316 | 174 (**55.1%**) | 174 (**55.1%**) |
+| `help.senate.gov` | 249 | 217 | 784 | 265 | 250 (**94.3%**) | 250 (**94.3%**) |
+| `aging.senate.gov` | 150 | 132 | 476 | 242 | 0 (**0.0%**) | 242 (**100.0%**) |
+| `armed-services.senate.gov` | 296 | 218 | 661 | 169 | 166 (**98.2%**) | 166 (**98.2%**) |
+| `agriculture.senate.gov` | 177 | 138 | 548 | 123 | 102 (**82.9%**) | 102 (**82.9%**) |
+| `sbc.senate.gov` | 145 | 101 | 375 | 85 | 69 (**81.2%**) | 69 (**81.2%**) |
+| `budget.senate.gov` | 191 | 153 | 523 | 81 | 0 (**0.0%**) | 79 (**97.5%**) |
+| `intelligence.senate.gov` | 436 | 133 | 298 | 49 | 25 (**51.0%**) | 25 (**51.0%**) |
+| `environment.senate.gov` | 192 | 48 | 139 | 20 | 3 (**15.0%**) | 3 (**15.0%**) |
+| `veterans.senate.gov` | 127 | 115 | 266 | 9 | 0 (**0.0%**) | 8 (**88.9%**) |
+| `jec.senate.gov` | 56 | 0 | 0 | 1 | 0 (**0.0%**) | 0 (**0.0%**) |
+| **Total (all Senate hosts)** | **6,685** | **5,030** | **17,687** | **8,946** | **5,638 (63.0%)** | **8,096 (90.5%)** |
+
+3. **Duplicate witness keys per occasion:**
+   - **Before deduplication (within a single source record):** `mods` has **220 / 34,559 (0.64%)** records with repeated `name_key`s (**107,806** raw -> **107,272** deduplicated, **534** dropped, e.g., multi-panel or multi-day appearances in `CHRG-117shrg46099`); `congress_gov` has **110 / 18,140 (0.61%)** records (**35,964** raw -> **35,486** deduplicated, **478** dropped); `house_xml` has **15 / 3,398 (0.44%)** records (**15,112** raw -> **15,089** deduplicated, **23** dropped).
+   - **After deduplication (`appearance-records-resolved.sql` / `witnesses.parquet`):** **0** duplicate `(occasion, witness_key)` rows across all **109,572** resolved witnesses (**28,392** occasions).
+   - **Near-collision variants within one occasion:** **652 / 28,392 (2.30%)** occasions (**945** pairs) contain distinct `name_key`s sharing a last token; **138 / 28,392 (0.49%)** occasions (**152** pairs) share both surname and first initial (**49** honorific/title prefix differences such as `dr`/`mr`/`hon`, plus middle-initial and `jr`/`sr`/`ii`/`iii` suffix variants).
 
 ### 4.3 MCP Coverage
 

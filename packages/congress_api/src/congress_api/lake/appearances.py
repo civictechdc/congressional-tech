@@ -3,6 +3,9 @@
 from .appearance_records import (
     APPEARANCE_STRUCT,
     ARROW_SCHEMA,
+    CANDIDATE_HOUSE_XML_SQL,
+    CANDIDATE_MODS_SQL,
+    CANDIDATE_SENATE_PAGE_SQL,
     DEFAULT_BASE_URLS,
     DEFAULT_PARSER_VERSION,
     PK,
@@ -22,6 +25,7 @@ from .appearance_records import (
     filter_unprocessed_inputs,
     normalize_name_key,
     produce_appearance_records,
+    query_candidate_inputs,
     resolve_document_url,
     table,
 )
@@ -29,6 +33,9 @@ from .appearance_records import (
 __all__ = [
     "APPEARANCE_STRUCT",
     "ARROW_SCHEMA",
+    "CANDIDATE_HOUSE_XML_SQL",
+    "CANDIDATE_MODS_SQL",
+    "CANDIDATE_SENATE_PAGE_SQL",
     "DEFAULT_BASE_URLS",
     "DEFAULT_PARSER_VERSION",
     "PK",
@@ -48,6 +55,7 @@ __all__ = [
     "filter_unprocessed_inputs",
     "normalize_name_key",
     "produce_appearance_records",
+    "query_candidate_inputs",
     "resolve_document_url",
     "table",
 ]

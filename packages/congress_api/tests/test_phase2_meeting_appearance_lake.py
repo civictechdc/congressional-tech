@@ -821,3 +821,164 @@ def test_b14_govinfo_and_inventory_fetchers_route_through_raw(tmp_path: Path):
     fb = house_fallback.CommitteeFallback([], {}, fetcher=fetcher, receipt_writer=writer)
     fb_res = fb.fetch_through_raw("https://judiciary.house.gov/calendar/eventsingle.aspx?EventID=1")
     assert fb_res["http_status"] == 404
+
+
+def test_d4_candidate_queries_and_native_iceberg_commits(tmp_path: Path):
+    """D4 candidate queries match both archive-member and context_url CHRG MODS captures
+    and commit `meeting_records` and `appearance_records` to native Iceberg tables.
+    """
+    import os
+    import pyarrow.parquet as pq
+    from docspec_client.client import NativeDatasets
+
+    cfg = os.environ.get("DOCSPEC_JOB_CONFIG")
+    if not cfg:
+        pytest.skip("DOCSPEC_JOB_CONFIG required for native Iceberg test")
+
+    sha_cm = bytes.fromhex(_sha("cand-cm"))
+    sha_wl = bytes.fromhex(_sha("cand-wl"))
+    sha_mods_member = bytes.fromhex(_sha("cand-mods-member"))
+    sha_mods_context = bytes.fromhex(_sha("cand-mods-context"))
+    sha_mods_bill = bytes.fromhex(_sha("cand-mods-bill"))
+    sha_senate = bytes.fromhex(_sha("cand-senate"))
+
+    captures_path = tmp_path / "captures.parquet"
+    readings_path = tmp_path / "readings.parquet"
+    pq.write_table(
+        pa.Table.from_pylist(
+            [
+                {
+                    "sha256": sha_cm,
+                    "url": "https://docs.house.gov/meetings/JU/JU00/20240510/118555/HHRG-118-JU00-20240510.xml",
+                    "requested_url": None,
+                    "context_url": None,
+                    "member_path": None,
+                },
+                {
+                    "sha256": sha_wl,
+                    "url": "https://docs.house.gov/meetings/JU/JU00/20240510/118555/HHRG-118-JU00-WList-20240510.xml",
+                    "requested_url": None,
+                    "context_url": None,
+                    "member_path": None,
+                },
+                {
+                    "sha256": sha_mods_member,
+                    "url": "https://www.govinfo.gov/content/pkg/CHRG-113hhrg21122.zip",
+                    "requested_url": "https://www.govinfo.gov/content/pkg/CHRG-113hhrg21122.zip",
+                    "context_url": "https://www.govinfo.gov/content/pkg/CHRG-113hhrg21122.zip",
+                    "member_path": "CHRG-113hhrg21122/mods.xml",
+                },
+                {
+                    "sha256": sha_mods_context,
+                    "url": None,
+                    "requested_url": None,
+                    "context_url": "https://api.govinfo.gov/packages/CHRG-117hhrg44535/mods",
+                    "member_path": None,
+                },
+                {
+                    "sha256": sha_mods_bill,
+                    "url": "https://www.govinfo.gov/metadata/pkg/BILLS-118hr1ih/mods.xml",
+                    "requested_url": None,
+                    "context_url": None,
+                    "member_path": None,
+                },
+                {
+                    "sha256": sha_senate,
+                    "url": "https://www.judiciary.senate.gov/meetings/oversight-hearing",
+                    "requested_url": None,
+                    "context_url": None,
+                    "member_path": None,
+                },
+            ],
+            schema=pa.schema(
+                [
+                    ("sha256", pa.binary(32)),
+                    ("url", pa.string()),
+                    ("requested_url", pa.string()),
+                    ("context_url", pa.string()),
+                    ("member_path", pa.string()),
+                ]
+            ),
+        ),
+        captures_path,
+    )
+    pq.write_table(
+        pa.Table.from_pylist(
+            [
+                {"body_sha": sha_cm, "parser": "xml", "status": "completed", "xml_root": "committee-meeting"},
+                {"body_sha": sha_wl, "parser": "xml", "status": "completed", "xml_root": "witness-list"},
+                {"body_sha": sha_mods_member, "parser": "xml", "status": "completed", "xml_root": "mods"},
+                {"body_sha": sha_mods_context, "parser": "xml", "status": "completed", "xml_root": "mods"},
+                {"body_sha": sha_mods_bill, "parser": "xml", "status": "completed", "xml_root": "mods"},
+                {"body_sha": sha_senate, "parser": "html", "status": "completed", "xml_root": None},
+            ],
+            schema=pa.schema(
+                [
+                    ("body_sha", pa.binary(32)),
+                    ("parser", pa.string()),
+                    ("status", pa.string()),
+                    ("xml_root", pa.string()),
+                ]
+            ),
+        ),
+        readings_path,
+    )
+
+    engine = NativeDatasets.from_config(cfg)
+    cm_candidates = meeting_records.query_candidate_house_xml(
+        engine=engine, work=tmp_path / "q_cm", captures=captures_path, readings=readings_path
+    )
+    assert [r["sha"] for r in cm_candidates] == [sha_cm.hex()]
+
+    app_candidates = appearance_records.query_candidate_inputs(
+        engine=engine, work=tmp_path / "q_app", captures=captures_path, readings=readings_path
+    )
+    assert [r["sha"] for r in app_candidates["house_xml"]] == [sha_wl.hex()]
+    assert {r["sha"] for r in app_candidates["mods"]} == {sha_mods_member.hex(), sha_mods_context.hex()}
+    assert [r["sha"] for r in app_candidates["senate_page"]] == [sha_senate.hex()]
+
+    # Stage and commit both tables to a local Iceberg catalog
+    m_row = meeting_records.build_meeting_record_row(
+        sha_cm.hex(),
+        "congress_gov",
+        {"eventId": "118555", "congress": 118, "chamber": "House", "title": "Oversight"},
+    )
+    a_row = appearance_records.build_appearance_record_row(
+        sha_mods_context.hex(),
+        "mods",
+        {"package_id": "CHRG-117hhrg44535", "witnesses": ["Doe, Hon. John, Director, Agency Z"]},
+    )
+    m_staged = tmp_path / "m_staged.parquet"
+    a_staged = tmp_path / "a_staged.parquet"
+    pq.write_table(meeting_records.table([m_row]), m_staged)
+    pq.write_table(appearance_records.table([a_row]), a_staged)
+
+    cat_root = tmp_path / "catalog"
+    m_spec = {"namespace": ["lake"], "name": "meeting_records"}
+    a_spec = {"namespace": ["lake"], "name": "appearance_records"}
+    meeting_records.create_table(
+        engine=engine,
+        work=tmp_path / "m_create",
+        catalog_root=cat_root,
+        table=m_spec,
+        location=str(tmp_path / "tables/meeting_records"),
+        create_namespace=True,
+    )
+    m_res = meeting_records.append(
+        m_staged, engine=engine, work=tmp_path / "m_append", catalog_root=cat_root, table=m_spec
+    )
+    assert m_res["files"][0]["rows"] == 1
+
+    appearance_records.create_table(
+        engine=engine,
+        work=tmp_path / "a_create",
+        catalog_root=cat_root,
+        table=a_spec,
+        location=str(tmp_path / "tables/appearance_records"),
+        create_namespace=False,
+    )
+    a_res = appearance_records.append(
+        a_staged, engine=engine, work=tmp_path / "a_append", catalog_root=cat_root, table=a_spec
+    )
+    assert a_res["files"][0]["rows"] == 1
+
