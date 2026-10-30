@@ -257,7 +257,8 @@
   border: 1px solid rgba(16, 67, 120, 0.15);
   border-radius: var(--ctdc-radius-xs);
   padding: 0.15rem 0.5rem;
-  white-space: nowrap;
+  white-space: normal;
+  overflow-wrap: anywhere;
   text-align: center;
   min-width: 0;
   max-width: 100%;

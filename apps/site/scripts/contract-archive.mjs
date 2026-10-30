@@ -53,7 +53,7 @@ try{
       assert((await page.locator('[data-archive-detail]').innerText()).includes('Saved copies'));
       if(args.hand==='true'){
         await page.getByRole('link',{name:'Open saved PDF',exact:true}).click();await page.getByRole('alert').filter({hasText:'Saved copy not found'}).waitFor();
-        await page.getByRole('button',{name:'Transportation infrastructure hearing',exact:true}).click();await page.locator('[data-archive-total]').waitFor();assert.equal(await page.locator('[data-archive-total]').innerText(),'1 documents');
+        await page.getByRole('button',{name:'Transportation infrastructure hearing',exact:true}).click();await page.locator('[data-archive-total]').waitFor();assert.equal(await page.locator('[data-archive-total]').innerText(),'1 document');
         for(const [key,label] of [[hex(fixtureEntries[0].detail.link_key),'Requested content in an official hearing'],[hex(fixtureEntries[2].detail.link_key),'Recovered document'],[hex(fixtureEntries[3].detail.link_key),'Official substitute']]){
           await page.goto(server.pageUrl+'?key='+key);await page.locator('[data-archive-detail]').waitFor();assert((await page.locator('[data-archive-detail]').innerText()).includes(label));
         }
