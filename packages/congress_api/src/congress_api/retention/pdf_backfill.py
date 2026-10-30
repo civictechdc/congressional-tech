@@ -187,7 +187,7 @@ def select_pdf_candidates(
                 "FROM captures c WHERE c.sha256 IS NOT NULL "
                 f"GROUP BY {capture_sha} "
                 "HAVING bool_or(coalesce(c.stored_suffix, '.gz') = '.gz') "
-                "AND NOT bool_or(c.stored_suffix = '')"
+                "AND NOT bool_or(coalesce(c.stored_suffix, '.gz') = '')"
             ),
             materialize=True,
         ),
@@ -347,10 +347,7 @@ def backfill_uncompressed_pdfs(
                                 out.write(chunk)
                     except (OSError, EOFError, zlib.error) as error:
                         decompress_error = type(error).__name__
-                        try:
-                            while hashed.read(STREAM_CHUNK_BYTES):
-                                pass
-                        except OSError:
+                        while hashed.read(STREAM_CHUNK_BYTES):
                             pass
                     else:
                         while hashed.read(STREAM_CHUNK_BYTES):

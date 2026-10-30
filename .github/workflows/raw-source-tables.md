@@ -58,12 +58,17 @@ python -I -m congress_api.cli.capture_schedule \
 
 # Admit captured raw batches and reading receipts into native datasets
 python -I -m congress_api.cli.captures_ingest \
-  --native-config native.json \
+  --engine-config "$DOCSPEC_JOB_CONFIG" \
   --work /tmp/archive-capture
 
 # Verify raw archive checkpoints, receipts, and body samples
 python -I -m congress_api.cli.raw_verify \
-  --native-config native.json
+  --bucket congressional-tech-raw \
+  --captures "$CAPTURES_PARQUET" \
+  --engine-config "$DOCSPEC_JOB_CONFIG" \
+  --receipt-inventory "$RECEIPT_INVENTORY" \
+  --verification-inventory "$VERIFICATION_INVENTORY" \
+  --work /tmp/raw-verify
 
 # Check binding or execute committed archive jobs
 python -I .github/scripts/run-archive-job.py publish --check-binding
