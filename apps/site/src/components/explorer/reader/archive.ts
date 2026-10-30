@@ -218,6 +218,7 @@ export async function openArchive(pointerUrl: string, options: any = {}) {
     const subjectKeys=Array.isArray(m.subject_keys)?m.subject_keys.map(String):Array.isArray(m.measure_keys)?m.measure_keys.map(String):[];
     return {
       ...m,
+      event_id:eventKey,
       congress:m.congress!=null?Number(m.congress):null,
       session:m.session!=null?Number(m.session):null,
       meeting_key:eventKey,
@@ -226,21 +227,46 @@ export async function openArchive(pointerUrl: string, options: any = {}) {
       committee_keys:committeeKeys,
       subject_keys:subjectKeys,
       sittings:Array.isArray(m.sittings)?m.sittings:[],
-      transcripts:Array.isArray(m.transcripts)?m.transcripts:[],
-      videos:Array.isArray(m.videos)?m.videos:[],
+      transcripts:Array.isArray(m.transcripts)?m.transcripts.map((t: any)=>({...t,list_row:t?.list_row!=null?Number(t.list_row):null})):[],
+      videos:Array.isArray(m.videos)?m.videos.map((v: any)=>({...v,title:v?.title??v?.name??null,name:v?.name??v?.title??null})):[],
       witnesses:Array.isArray(m.witnesses)?m.witnesses:[],
       list_rows:listRows,
     };
   };
   const normalizeWitness=(w: any)=>{
-    const wKey=String(w.witness_key??w.name_key??'');
-    const appearances=Array.isArray(w.appearances)?w.appearances.map((a: any)=>({
+    const wKey=w.witness_key instanceof Uint8Array?hex(w.witness_key):String(w.witness_key??w.name_key??'');
+    const inferredEventId=w.event_id!=null?String(w.event_id):(typeof w.occasion==='string'&&w.occasion.startsWith('meeting:')?w.occasion.slice(8):null);
+    const colRows=rowsForColumn('witness_keys',wKey);
+    const rawAppearances=Array.isArray(w.appearances)
+      ?w.appearances
+      :(inferredEventId||w.occasion||w.package_id||w.page_url)
+        ?[{
+            event_id:inferredEventId,
+            occasion:w.occasion??null,
+            package_id:w.package_id??null,
+            page_url:w.page_url??null,
+            position:w.position??null,
+            organization:w.organization??null,
+            on_behalf_of:w.on_behalf_of??null,
+            location:w.location??null,
+            panel:w.panel??null,
+            panel_order:w.panel_order!=null?Number(w.panel_order):null,
+            display_order:w.display_order!=null?Number(w.display_order):null,
+            witness_type:w.witness_type??null,
+            testified:w.testified??null,
+            list_rows:colRows,
+          }]
+        :[];
+    const appearances=rawAppearances.map((a: any)=>({
       ...a,
+      event_id:a.event_id!=null?String(a.event_id):null,
       congress:a.congress!=null?Number(a.congress):null,
-      panel:a.panel!=null?Number(a.panel):null,
+      panel:a.panel!=null?(typeof a.panel==='number'||/^\d+$/.test(String(a.panel))?Number(a.panel):a.panel):null,
+      panel_order:a.panel_order!=null?Number(a.panel_order):(typeof a.panel==='number'||/^\d+$/.test(String(a.panel))?Number(a.panel):null),
+      display_order:a.display_order!=null?Number(a.display_order):null,
       meeting_date:date(a.meeting_date),
       list_rows:uniqueInts(Array.isArray(a.list_rows)?a.list_rows:[]),
-    })):[];
+    }));
     const organizations=Array.isArray(w.organizations)&&w.organizations.length
       ?w.organizations.map(String)
       :[...new Set([w.organization,...appearances.map((a: any)=>a.organization)].filter(Boolean).map(String))];
@@ -249,13 +275,16 @@ export async function openArchive(pointerUrl: string, options: any = {}) {
       :[...new Set([w.position,...appearances.map((a: any)=>a.position)].filter(Boolean).map(String))];
     const listRows=uniqueInts([
       ...(Array.isArray(w.list_rows)?w.list_rows:[]),
-      ...rowsForColumn('witness_keys',wKey),
+      ...colRows,
       ...appearances.flatMap((a: any)=>a.list_rows??[]),
     ]);
     return {
       ...w,
       witness_key:wKey,
       name_key:w.name_key??wKey,
+      event_id:inferredEventId,
+      panel_order:w.panel_order!=null?Number(w.panel_order):null,
+      display_order:w.display_order!=null?Number(w.display_order):null,
       organization:w.organization??organizations[0]??null,
       organizations,
       position:w.position??positions[0]??null,
@@ -265,9 +294,13 @@ export async function openArchive(pointerUrl: string, options: any = {}) {
     };
   };
   const normalizeRecording=(r: any)=>{
-    const eventIds=Array.isArray(r.event_ids)?r.event_ids:Array.isArray(r.meeting_keys)?r.meeting_keys:[];
-    const meetingKeys=Array.isArray(r.meeting_keys)?r.meeting_keys.map(String):eventIds.map(String);
-    const tracks=Array.isArray(r.tracks)?r.tracks:Array.isArray(r.transcripts)?r.transcripts:[];
+    const rawEventIds=Array.isArray(r.event_ids)?r.event_ids:Array.isArray(r.meeting_keys)?r.meeting_keys:[];
+    const eventIds=rawEventIds.map(String);
+    const meetingKeys=Array.isArray(r.meeting_keys)?r.meeting_keys.map(String):eventIds;
+    const tracks=(Array.isArray(r.tracks)?r.tracks:Array.isArray(r.transcripts)?r.transcripts:[]).map((t: any)=>({
+      ...t,
+      sha256:t?.sha256??(t?.body instanceof Uint8Array?hex(t.body):typeof t?.body==='string'?t.body:null),
+    }));
     return {
       ...r,
       congress:r.congress!=null?Number(r.congress):null,
