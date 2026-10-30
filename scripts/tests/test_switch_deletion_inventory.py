@@ -217,3 +217,33 @@ def _configure_retries(): pass
         'R2Store.prefetch_immutable_ready','_ReadyPrefetch','_read_stream',
         '_configure_retries','R2GetTransportExhausted'} <= set(split['preserve_symbols'])
     assert split['actions']!=['delete_file']
+
+
+def test_deleted_glob_and_partial_paths_resolve_to_already_removed(inventory,tmp_path):
+    subprocess.run(['git','init','-q',str(tmp_path)],check=True)
+    subprocess.run(['git','-C',str(tmp_path),'config','user.name','Test'],check=True)
+    subprocess.run(['git','-C',str(tmp_path),'config','user.email','test@example.com'],check=True)
+    sources={
+        'docs/plans/bindings-20261025.md':'# Binding\n',
+        inventory.RET+'catalog/legacy_a.py':'def a(): pass\n',
+        inventory.RET+'catalog/legacy_b.py':'def b(): pass\n',
+        inventory.SITE+'catalog.ts':'export const legacy = 1;\n',
+    }
+    for path,source in sources.items():
+        target=tmp_path/path;target.parent.mkdir(parents=True,exist_ok=True);target.write_text(source)
+    subprocess.run(['git','-C',str(tmp_path),'add','.'],check=True)
+    subprocess.run(['git','-C',str(tmp_path),'commit','-qm','initial'],check=True)
+    subprocess.run(['git','-C',str(tmp_path),'rm','-q',
+                    inventory.RET+'catalog/legacy_a.py',
+                    inventory.RET+'catalog/legacy_b.py',
+                    inventory.SITE+'catalog.ts'],check=True)
+    subprocess.run(['git','-C',str(tmp_path),'commit','-qm','delete legacy'],check=True)
+    head=subprocess.check_output(['git','-C',str(tmp_path),'rev-parse','HEAD']).decode().strip()
+    result=inventory.build(tmp_path,None,head,None)
+    g01=next(g for g in result['groups'] if g['id']=='G01')
+    g07=next(g for g in result['groups'] if g['id']=='G07')
+    assert {r['path'] for r in g01['already_removed']}>={
+        inventory.RET+'catalog/legacy_a.py',inventory.RET+'catalog/legacy_b.py'}
+    assert not any(u['seed']==inventory.RET+'catalog/*.py' for u in g01['unresolved'])
+    assert any(r['path']==inventory.SITE+'catalog.ts' and r['deletion_commit']==head for r in g07['already_removed'])
+    assert not any(u['seed']==inventory.SITE+'catalog.ts' for u in g07['unresolved'])

@@ -1,6 +1,9 @@
+import {useState} from 'react';
 import {
   committeeLabel,
   congressLabel,
+  formatChamber,
+  formatCommitteeType,
   presentDocument,
   type CommitteeCatalogInput,
 } from './archive-metadata.ts';
@@ -9,23 +12,27 @@ import {PublicLink, day} from './ArchiveRows.tsx';
 export function CommitteeDetail({
   committee,
   committeesCatalog,
+  compact,
   onSelect,
   onCommittee,
   onHearing,
   onMember,
   onCongressChange,
   onFilterDocuments,
+  onInspect,
   onClose,
   closeLabel,
 }:{
   committee:any;
   committeesCatalog?:CommitteeCatalogInput;
+  compact?:boolean;
   onSelect?:(row:number)=>void;
   onCommittee?:(key:string)=>void;
   onHearing?:(key:string)=>void;
   onMember?:(bioguideId:string)=>void;
   onCongressChange?:(congress:string)=>void;
   onFilterDocuments?:()=>void;
+  onInspect?:()=>void;
   onClose?:()=>void;
   closeLabel?:string;
 }){
@@ -33,25 +40,32 @@ export function CommitteeDetail({
   const code=String(committee.committee_key??committee.system_code??'').toLowerCase();
   const displayName=committee.resolved_name||committee.current_name||committee.name||committeeLabel(code,committeesCatalog);
   const subcommittees:any[]=Array.isArray(committee.subcommittees)?committee.subcommittees:[];
-  const roster:any[]=Array.isArray(committee.roster)?committee.roster:[];
+  const allRosters:any[]=Array.isArray(committee.all_rosters)?committee.all_rosters:Array.isArray(committee.roster)?committee.roster:[];
   const hearings:any[]=Array.isArray(committee.hearings)?committee.hearings:[];
   const namesHistory:any[]=Array.isArray(committee.names)?committee.names:[];
   const congresses:number[]=Array.isArray(committee.roster_congresses)?committee.roster_congresses:[];
   const documents:any[]=Array.isArray(committee.documents)?committee.documents:[];
+
+  const [localCongress,setLocalCongress]=useState<string>(committee.active_congress!=null?String(committee.active_congress):(congresses[0]!=null?String(congresses[0]):''));
+  const selectedCongress=onCongressChange?(committee.active_congress!=null?String(committee.active_congress):''):localCongress;
+  const roster:any[]=Array.isArray(committee.all_rosters)&&selectedCongress
+    ?allRosters.filter((r:any)=>Number(r.congress)===Number(selectedCongress))
+    :(Array.isArray(committee.roster)?committee.roster:allRosters);
 
   return <section className="archive-entity-card" aria-label="Committee details" data-archive-entity="committee">
     <header className="archive-entity-header">
       <div className="archive-entity-header-top">
         <p className="archive-detail-context">
           {[
-            committee.chamber?String(committee.chamber).charAt(0).toUpperCase()+String(committee.chamber).slice(1):null,
-            committee.type||committee.committee_type,
+            formatChamber(committee.chamber),
+            formatCommitteeType(committee.type||committee.committee_type),
             code.toUpperCase(),
           ].filter(Boolean).join(' · ')}
         </p>
         <div className="archive-pill-list">
-          {onFilterDocuments&&<button type="button" className="explorer-text-button" onClick={onFilterDocuments}>Filter documents in Document Search</button>}
-          {onClose&&<button type="button" className="explorer-text-button" onClick={onClose}>{closeLabel||'Clear committee filter'}</button>}
+          {onInspect&&<button type="button" className="archive-measure-pill" onClick={onInspect}>Open full profile →</button>}
+          {onFilterDocuments&&<button type="button" className="archive-measure-pill" onClick={onFilterDocuments}>Filter documents in Document Search</button>}
+          {onClose&&<button type="button" className="archive-measure-pill" onClick={onClose}>{closeLabel||'Clear committee filter'}</button>}
         </div>
       </div>
       <h2>{displayName}</h2>
@@ -83,7 +97,7 @@ export function CommitteeDetail({
       <p>{committee.jurisdiction}</p>
     </div>}
 
-    {namesHistory.length>1&&<div className="archive-entity-section">
+    {!compact&&namesHistory.length>1&&<div className="archive-entity-section">
       <h3>Historical Names</h3>
       <ul className="archive-entity-list">
         {namesHistory.map((h:any,i:number)=><li key={i}>
@@ -108,12 +122,12 @@ export function CommitteeDetail({
       </div>
     </div>}
 
-    {roster.length>0&&<div className="archive-entity-section">
+    {!compact&&roster.length>0&&<div className="archive-entity-section">
       <div className="archive-entity-section-header">
-        <h3>Roster {committee.active_congress?`(${congressLabel(committee.active_congress)})`:''}</h3>
-        {congresses.length>1&&onCongressChange&&<label className="archive-inline-select">
+        <h3>Roster {selectedCongress?`(${congressLabel(selectedCongress)})`:''}</h3>
+        {congresses.length>1&&<label className="archive-inline-select">
           <span>Congress: </span>
-          <select value={committee.active_congress??''} onChange={e=>onCongressChange(e.target.value)}>
+          <select value={selectedCongress} onChange={e=>onCongressChange?onCongressChange(e.target.value):setLocalCongress(e.target.value)}>
             {congresses.map(c=><option key={c} value={c}>{congressLabel(c)}</option>)}
           </select>
         </label>}
@@ -131,7 +145,7 @@ export function CommitteeDetail({
       </ul>
     </div>}
 
-    {hearings.length>0&&<div className="archive-entity-section">
+    {!compact&&hearings.length>0&&<div className="archive-entity-section">
       <h3>Hearings ({hearings.length})</h3>
       <ul className="archive-entity-list">
         {hearings.slice(0,15).map((h:any)=>{
@@ -146,14 +160,18 @@ export function CommitteeDetail({
       </ul>
     </div>}
 
-    {documents.length>0&&onSelect&&<div className="archive-entity-section">
+    {!compact&&documents.length>0&&onSelect&&<div className="archive-entity-section">
       <h3>Recent Committee Documents ({documents.length})</h3>
       <ul className="archive-entity-list">
         {documents.slice(0,20).map((doc:any)=>{
           const pres=presentDocument(doc,undefined,undefined,undefined,committeesCatalog);
           return <li key={doc.list_row}>
             <button type="button" className="explorer-text-button" onClick={()=>onSelect(doc.list_row)}>{pres.title}</button>
-            {doc.document_date&&<span className="archive-source-meta"> · {day(doc.document_date)}</span>}
+            <span className="archive-source-meta">
+              {doc.document_date?` · ${day(doc.document_date)}`:''}
+              {pres.kinds[0]?` · ${pres.kinds[0]}`:''}
+              {pres.format?` (${pres.format})`:''}
+            </span>
           </li>;
         })}
       </ul>

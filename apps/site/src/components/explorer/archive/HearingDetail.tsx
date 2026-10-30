@@ -1,7 +1,9 @@
 import {
   committeeLabel,
   congressLabel,
+  formatChamber,
   formatDuration,
+  formatMeetingType,
   formatSubject,
   presentDocument,
   type CommitteeCatalogInput,
@@ -11,23 +13,27 @@ import {PublicLink, day} from './ArchiveRows.tsx';
 export function HearingDetail({
   meeting,
   committeesCatalog,
+  compact,
   onSelect,
   onCommittee,
   onSubject,
   onWitness,
   onMember,
   onFilterDocuments,
+  onInspect,
   onClose,
   closeLabel,
 }:{
   meeting:any;
   committeesCatalog?:CommitteeCatalogInput;
+  compact?:boolean;
   onSelect?:(row:number)=>void;
   onCommittee?:(key:string)=>void;
   onSubject?:(key:string)=>void;
   onWitness?:(key:string)=>void;
   onMember?:(bioguideId:string)=>void;
   onFilterDocuments?:()=>void;
+  onInspect?:()=>void;
   onClose?:()=>void;
   closeLabel?:string;
 }){
@@ -53,18 +59,20 @@ export function HearingDetail({
   const documents:any[]=Array.isArray(meeting.documents)?meeting.documents:[];
   const contextParts=[
     congressLabel(meeting.congress),
-    meeting.chamber?String(meeting.chamber).charAt(0).toUpperCase()+String(meeting.chamber).slice(1):null,
-    meeting.meeting_type?String(meeting.meeting_type):null,
+    formatChamber(meeting.chamber),
+    formatMeetingType(meeting.meeting_type),
     meeting.status?`Status: ${meeting.status}`:null,
   ].filter(Boolean);
+  const shownWitnesses=compact?witnesses.slice(0,6):witnesses;
 
   return <section className="archive-entity-card" aria-label="Hearing details" data-archive-entity="hearing">
     <header className="archive-entity-header">
       <div className="archive-entity-header-top">
         <p className="archive-detail-context">{contextParts.join(' · ')||'Congressional Hearing'}</p>
         <div className="archive-pill-list">
-          {onFilterDocuments&&<button type="button" className="explorer-text-button" onClick={onFilterDocuments}>Filter documents in Document Search</button>}
-          {onClose&&<button type="button" className="explorer-text-button" onClick={onClose}>{closeLabel||'Close hearing details'}</button>}
+          {onInspect&&<button type="button" className="archive-measure-pill" onClick={onInspect}>Open full profile →</button>}
+          {onFilterDocuments&&<button type="button" className="archive-measure-pill" onClick={onFilterDocuments}>Filter documents in Document Search</button>}
+          {onClose&&<button type="button" className="archive-measure-pill" onClick={onClose}>{closeLabel||'Close hearing details'}</button>}
         </div>
       </div>
       <h2>{meeting.title||`Hearing ${eventId}`}</h2>
@@ -96,8 +104,9 @@ export function HearingDetail({
       <h3>Sittings &amp; Location</h3>
       <ul className="archive-entity-list">
         {sittings.map((s:any,i:number)=>{
-          const loc=[s.building,s.room,s.location,s.address].filter(Boolean).join(' ');
-          const when=s.datetime||s.date||s.start_time||'';
+          const bldgRoom=[s.building,s.room].filter(Boolean).join(' ');
+          const loc=s.place||[bldgRoom,s.location,s.address].filter(Boolean).join(', ');
+          const when=s.datetime||s.date||s.start_time||s.start||'';
           return <li key={i}>
             {when&&<strong>{String(when)}</strong>}
             {when&&loc&&' — '}
@@ -130,17 +139,27 @@ export function HearingDetail({
       <ul className="archive-entity-list">
         {recordings.map((rec:any,i:number)=>{
           const duration=formatDuration(rec.duration_s);
-          const tracks:any[]=Array.isArray(rec.tracks)?rec.tracks:Array.isArray(rec.transcripts)?rec.transcripts:[];
+          const rawTracks:any[]=Array.isArray(rec.tracks)?rec.tracks:Array.isArray(rec.transcripts)?rec.transcripts:[];
+          const seenTracks=new Set<string>();
+          const tracks=rawTracks.filter((t:any)=>{
+            const k=String(typeof t==='string'?t:(t?.url||t?.label||t?.language||t?.format||t?.production||''));
+            if(!k||seenTracks.has(k))return false;
+            seenTracks.add(k);
+            return true;
+          });
           return <li key={rec.video_key||rec.video_id||i}>
             {rec.url?<PublicLink url={rec.url}>{rec.title||rec.source||`Recording ${i+1}`}</PublicLink>:<strong>{rec.title||rec.source||`Recording ${i+1}`}</strong>}
             {rec.source&&<span className="archive-source-meta"> ({rec.source}{duration?`, ${duration}`:''})</span>}
             {!rec.source&&duration&&<span className="archive-source-meta"> ({duration})</span>}
             {tracks.length>0&&<span className="archive-source-meta">
               <span aria-hidden="true"> · </span>
-              Captions: {tracks.map((t:any,ti:number)=><span key={ti}>
-                {ti>0&&', '}
-                {t.url?<PublicLink url={t.url}>{t.label||t.language||'Captions'}</PublicLink>:<span>{t.label||t.language||'Captions'}</span>}
-              </span>)}
+              Captions: {tracks.map((t:any,ti:number)=>{
+                const tLabel=typeof t==='string'?t:(t.label||t.language||t.format||t.production||'Captions');
+                return <span key={ti}>
+                  {ti>0&&', '}
+                  {t?.url?<PublicLink url={t.url}>{tLabel}</PublicLink>:<span>{tLabel}</span>}
+                </span>;
+              })}
             </span>}
           </li>;
         })}
@@ -166,7 +185,7 @@ export function HearingDetail({
     {witnesses.length>0&&<div className="archive-entity-section">
       <h3>Witnesses ({witnesses.length})</h3>
       <ul className="archive-witness-list">
-        {witnesses.map((w:any,i:number)=>{
+        {shownWitnesses.map((w:any,i:number)=>{
           const wKey=w.witness_key||w.name_key||'';
           const roleParts=[w.position,w.organization,w.on_behalf_of?`on behalf of ${w.on_behalf_of}`:null].filter(Boolean);
           const docs:any[]=Array.isArray(w.documents)?w.documents:[];
@@ -197,14 +216,18 @@ export function HearingDetail({
       </ul>
     </div>}
 
-    {documents.length>0&&onSelect&&<div className="archive-entity-section">
+    {!compact&&documents.length>0&&onSelect&&<div className="archive-entity-section">
       <h3>Hearing Documents ({documents.length})</h3>
       <ul className="archive-entity-list">
         {documents.slice(0,25).map((doc:any)=>{
           const pres=presentDocument(doc,undefined,undefined,undefined,committeesCatalog);
           return <li key={doc.list_row}>
             <button type="button" className="explorer-text-button" onClick={()=>onSelect(doc.list_row)}>{pres.title}</button>
-            {doc.document_date&&<span className="archive-source-meta"> · {day(doc.document_date)}</span>}
+            <span className="archive-source-meta">
+              {doc.document_date?` · ${day(doc.document_date)}`:''}
+              {pres.kinds[0]?` · ${pres.kinds[0]}`:''}
+              {pres.format?` (${pres.format})`:''}
+            </span>
           </li>;
         })}
       </ul>

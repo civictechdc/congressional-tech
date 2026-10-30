@@ -325,6 +325,7 @@ def seeds():
         group(11,'Review forms catalog binding',[RET+'document_review_*.py',RET+'document_reviews.py',RET+'review/*.py'],
             gate='Forms survive; rebind catalog-dependent functions to provenance before deleting ranges'),
         group(12,'Recovery old-catalog coupling',[*[CR+n+'.py' for n in 'guards acknowledge admission assemble mappings publication preservation diagnostics'.split()],
+            'scripts/corpus_recovery/dispatch_corpus_recovery_import.py',
             'scripts/corpus_recovery/dispatch_corpus_recovery_publication.py'],
             partial={CR+'transfer.py':['checked_put','GuardedStore']},
             gate='B7 target recovery/provenance import bound; old shared-index guards no longer own live import'),
@@ -509,14 +510,16 @@ def build(ct, ds, ct_rev, ds_rev):
         for pattern in g['patterns']:
             found=[p for p in data['entries'] if fnmatch.fnmatch(p,pattern)]
             if not found:
-                deletion=None
-                if not any(c in pattern for c in '*?['):
-                    deletion=git(Path(data['root']),'log','-1','--format=%H','--diff-filter=D',
-                                 data['head'],'--',pattern).decode().strip()
-                if deletion:
-                    old=git(Path(data['root']),'show',deletion+'^:'+pattern)
-                    g['already_removed'].append(dict(path=pattern,status='already_removed',
-                        deletion_commit=deletion,before_sha256=digest(old),before_wc_l=old.count(b'\n')))
+                spec=':(glob)'+pattern if any(c in pattern for c in '*?[') else pattern
+                lines=git(Path(data['root']),'log','-1','--format=%H','--name-only','--diff-filter=D',
+                          data['head'],'--',spec).decode().splitlines()
+                deletion=lines[0].strip() if lines else ''
+                removed=[p.strip() for p in lines[1:] if p.strip()]
+                if deletion and removed:
+                    for p in removed:
+                        old=git(Path(data['root']),'show',deletion+'^:'+p)
+                        g['already_removed'].append(dict(path=p,status='already_removed',
+                            deletion_commit=deletion,before_sha256=digest(old),before_wc_l=old.count(b'\n')))
                 else:
                     g['unresolved'].append(dict(seed=pattern,status='not_found_at_pin',
                         action='Resolve move/deletion evidence before cut; missing is not deletion proof.'))
@@ -526,7 +529,14 @@ def build(ct, ds, ct_rev, ds_rev):
         for path,names in g['partial'].items():
             key=add_file(g['repo'],path,g['id'],'partial_split_required')
             if key is None:
-                g['unresolved'].append(dict(seed=path,status='not_found_at_pin'))
+                deletion=git(Path(data['root']),'log','-1','--format=%H','--diff-filter=D',
+                             data['head'],'--',path).decode().strip()
+                if deletion:
+                    old=git(Path(data['root']),'show',deletion+'^:'+path)
+                    g['already_removed'].append(dict(path=path,status='already_removed',
+                        deletion_commit=deletion,before_sha256=digest(old),before_wc_l=old.count(b'\n')))
+                else:
+                    g['unresolved'].append(dict(seed=path,status='not_found_at_pin'))
                 continue
             if key not in g['files']:g['files'].append(key)
             available=files[key]['symbols']

@@ -188,6 +188,8 @@ def sync_weekly_retention_tables(
     data_dir: Path | str,
     channels_csv: Path | str | None = None,
     chunk_size: int = 10_000,
+    binary: Path | str | None = None,
+    limits: Path | str | Mapping[str, Any] | None = None,
 ) -> dict[str, Any]:
     """Sync available weekly retention files into ``WeeklyRetentionTables(workspace)`` in bounded chunks."""
     p_dir = Path(pipeline_data)
@@ -195,7 +197,7 @@ def sync_weekly_retention_tables(
     c_csv = Path(channels_csv) if channels_csv else None
     synced: dict[str, str | None] = {}
 
-    with WeeklyRetentionTables(workspace) as wt:
+    with WeeklyRetentionTables(workspace, binary=binary, limits=limits) as wt:
         house_path = p_dir / "meeting-inventory" / "house.json.gz"
         if house_path.is_file():
             with gzip.open(house_path, "rt", encoding="utf-8") as fh:
@@ -320,6 +322,18 @@ def main(argv: list[str] | None = None) -> int:
         help="Optional YouTube accounts CSV for channel systemCode lookup",
     )
     parser.add_argument("--chunk-size", type=int, default=10_000)
+    parser.add_argument(
+        "--binary",
+        type=Path,
+        default=None,
+        help="Explicit docspec binary path",
+    )
+    parser.add_argument(
+        "--limits",
+        type=Path,
+        default=None,
+        help="Explicit native resource limits JSON file",
+    )
     args = parser.parse_args(argv)
     report = sync_weekly_retention_tables(
         args.workspace,
@@ -327,6 +341,8 @@ def main(argv: list[str] | None = None) -> int:
         data_dir=args.data_dir,
         channels_csv=args.channels_csv,
         chunk_size=args.chunk_size,
+        binary=args.binary,
+        limits=args.limits,
     )
     sys.stdout.write(json.dumps(report, indent=2) + "\n")
     return 0

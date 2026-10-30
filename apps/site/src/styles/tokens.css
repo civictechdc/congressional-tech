@@ -8,6 +8,7 @@
 :root {
   /* ---- Color: brand ---- */
   --ctdc-primary: #104378; /* trust, institution — structural blocks, buttons */
+  --ctdc-primary-hover: #0b3158; /* high-contrast hover on light surfaces */
   --ctdc-gold: #eec05e; /* community accent — borders, active nav, hovers */
 
   /* ---- Color: dark anchors (header / hero / footer) ---- */
@@ -25,10 +26,11 @@
 
   /* ---- Color: text ---- */
   --ctdc-ink: #1b1b1b; /* body text on light canvas */
+  --ctdc-ink-secondary: #3d4551; /* badges & supporting labels on light canvas */
   --ctdc-ink-muted: #565c65; /* secondary text on light canvas */
   --ctdc-on-dark-strong: rgba(255, 255, 255, 0.92); /* headings on dark */
   --ctdc-on-dark: rgba(255, 255, 255, 0.7); /* links & body on dark */
-  --ctdc-on-dark-caption: rgba(255, 255, 255, 0.45); /* captions, metadata */
+  --ctdc-on-dark-caption: rgba(255, 255, 255, 0.54); /* captions, metadata */
 
   /* ---- Color: glass & hairlines (dark anchors) ---- */
   --ctdc-glass: rgba(255, 255, 255, 0.05);
@@ -102,6 +104,7 @@
   --ctdc-duration-fast: 0.2s; /* hovers and taps */
   --ctdc-duration-base: 0.3s; /* larger state changes */
 
-  /* ---- Focus: gold ring = active-nav accent ---- */
-  --ctdc-focus-ring: 2px solid var(--ctdc-gold);
+  /* ---- Focus: high-contrast primary ring on light, gold on dark ---- */
+  --ctdc-focus-ring: 2px solid var(--ctdc-primary);
+  --ctdc-focus-ring-on-dark: 2px solid var(--ctdc-gold);
 }

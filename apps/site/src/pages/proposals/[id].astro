@@ -101,14 +101,13 @@ const status = proposal.data.status;
       {
         status === 'built' && (
           <p class="built-note">
-            This proposal is built — see it on the
-            <a href={withBase('/projects/')}>projects page</a>
-            {proposal.data.id === 'I.2' && (
+            This proposal is built — see it on the{' '}
+            <a href={withBase('/projects/')}>projects page</a>{proposal.data.id === 'I.2' ? (
               <>
                 {' '}or open the{' '}
-                <a href={withBase('/youtube-coverage/')}>live dashboard</a>
+                <a href={withBase('/youtube-coverage/')}>live dashboard</a>.
               </>
-            )}.
+            ) : '.'}
           </p>
         )
       }

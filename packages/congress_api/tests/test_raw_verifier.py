@@ -185,3 +185,90 @@ def test_equal_index_digest_does_not_hide_conflicting_receipt_evidence(tmp_path)
         engine=engine(),work=tmp_path/'job',checked_at='2026-10-27T00:00:00Z',seed='fixed')
     assert not result['valid'] and result['digest_conflicts']==1 and result['digest_repairs']==0
     assert pq.read_table(tmp_path/'job/digest-repairs.parquet').num_rows==0
+
+
+def test_full_rehash_hashes_all_unverified_and_skips_sha256_verified(tmp_path):
+    originals=[f'rehash-body-{i}'.encode() for i in range(30)]
+    values={key(data):(gzip.compress(data,mtime=0),None) for data in originals}
+    pdf_data=b'%PDF-1.7\nverified by b13\n%%EOF\n'
+    pdf_gz_key=key(pdf_data,'.gz')
+    pdf_copy_key=key(pdf_data,'.pdf')
+    pdf_gz_bytes=gzip.compress(pdf_data,mtime=0)
+    values[pdf_gz_key]=(pdf_gz_bytes,None)
+    values[pdf_copy_key]=(pdf_data,None)
+
+    rows=[dict(body_key=k,stored_bytes=len(v[0])) for k,v in values.items() if not k.endswith('.pdf')]
+    prior=[
+        dict(key=pdf_gz_key,size=len(pdf_gz_bytes),etag=hashlib.md5(pdf_gz_bytes).hexdigest(),
+             sha256_verified=True,stored_sha256=hashlib.sha256(pdf_gz_bytes).hexdigest(),
+             checked_at='2026-10-26T00:00:00Z',job='pdf-backfill'),
+        dict(key=pdf_copy_key,size=len(pdf_data),etag=hashlib.md5(pdf_data).hexdigest(),
+             sha256_verified=True,stored_sha256=hashlib.sha256(pdf_data).hexdigest(),
+             intact=True,checked_at='2026-10-26T00:00:00Z',job='pdf-backfill'),
+    ]
+    for k,(stored,_) in list(values.items())[:10]:
+        prior.append(dict(key=k,size=len(stored),etag=hashlib.md5(stored).hexdigest(),
+                          sha256_verified=False,stored_sha256=None,
+                          checked_at='2026-10-26T00:00:00Z',job='raw-verifier'))
+
+    captures,receipts,previous=inputs(tmp_path,rows,previous=prior)
+    with pytest.raises(ValueError,match='full_rehash'):
+        verify(Store(values),captures=captures,receipts=receipts,previous=previous,
+               engine=engine(),work=tmp_path/'bad-flag',checked_at='2026-10-27T00:00:00Z',full_rehash='yes')
+
+    store=Store(values)
+    result=verify(store,captures=captures,receipts=receipts,previous=previous,
+                  engine=engine(),work=tmp_path/'rehash-1',checked_at='2026-10-27T00:00:00Z',
+                  seed='fixed',full_rehash=True)
+    assert result['valid'] and result['full_rehash'] is True
+    assert result['listed']==32 and result['checked']==30 and result['accepted_records']==30
+    assert pdf_gz_key not in store.reads and pdf_copy_key not in store.reads
+    emitted=[json.loads(line) for line in Path(result['records']).read_text().splitlines()]
+    assert len(emitted)==30 and all(row['sha256_verified'] is True and row['stored_sha256'] for row in emitted)
+
+    all_history=tmp_path/'all-verification.jsonl.gz'
+    with gzip.open(all_history,'wt') as out:
+        for row in prior+emitted:
+            out.write(json.dumps(row)+'\n')
+    store2=Store(values)
+    second=verify(store2,captures=captures,receipts=receipts,
+                  previous=[dict(key='provenance/verification/all.jsonl',path=str(all_history))],
+                  engine=engine(),work=tmp_path/'rehash-2',checked_at='2026-10-28T00:00:00Z',
+                  seed='fixed',full_rehash=True)
+    assert second['valid'] and second['checked']==0 and second['accepted_records']==0
+    assert store2.reads==[]
+
+
+def test_d1_captures_schema_with_stored_suffix_and_binary_digests(tmp_path):
+    gz_body=b'compressed html body'
+    gz_stored=gzip.compress(gz_body,mtime=0)
+    bare_body=b'%PDF-1.7\nbare pdf body\n%%EOF\n'
+    values={
+        key(gz_body,'.gz'):(gz_stored,None),
+        key(bare_body,''):(bare_body,None),
+    }
+    captures=tmp_path/'d1-captures.parquet'
+    schema=pa.schema([
+        ('sha256',pa.binary(32)),
+        ('stored_suffix',pa.string()),
+        ('stored_bytes',pa.int64()),
+        ('stored_md5',pa.binary(16)),
+        ('receipt_key',pa.string()),
+        ('receipt_line',pa.int64()),
+        ('capture_index',pa.int32()),
+    ])
+    pq.write_table(pa.Table.from_pylist([
+        dict(sha256=hashlib.sha256(gz_body).digest(),stored_suffix='.gz',stored_bytes=len(gz_stored),
+             stored_md5=hashlib.md5(gz_stored).digest(),receipt_key='receipts/a/1.jsonl.gz',
+             receipt_line=1,capture_index=0),
+        dict(sha256=hashlib.sha256(bare_body).digest(),stored_suffix='',stored_bytes=len(bare_body),
+             stored_md5=hashlib.md5(bare_body).digest(),receipt_key='receipts/a/1.jsonl.gz',
+             receipt_line=2,capture_index=0),
+    ],schema=schema),captures)
+    aux=tmp_path/'aux';aux.mkdir()
+    _,receipts,previous=inputs(aux,[])
+    store=Store(values)
+    result=verify(store,captures=captures,receipts=receipts,previous=previous,
+                  engine=engine(),work=tmp_path/'d1-job',checked_at='2026-10-27T00:00:00Z',seed='fixed')
+    assert result['valid'] and result['listed']==2 and result['missing']==0 and result['orphans']==0
+    assert result['mismatches']==0

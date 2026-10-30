@@ -1,7 +1,7 @@
 [project]
 name = "viewer-publication"
 version = "0.1.0"
-description = "Guarded viewer publication writes, continuation, and read-only verification."
+description = "Archive release publication, conditional pointer flips, and read-only verification."
 readme = "README.md"
 requires-python = ">=3.12"
 dependencies = [

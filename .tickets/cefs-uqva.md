@@ -1,6 +1,6 @@
 ---
 id: cefs-uqva
-status: in_progress
+status: closed
 deps: []
 links: []
 created: 2026-10-27T18:47:22Z
@@ -32,3 +32,7 @@ Engine195746 accepted fixture/harness handoff and merged5eb98218. Canonical E2 d
 **2026-10-30T14:32:31Z**
 
 Linked under master epic ct-77zb as Item 19 (T4.5 / S2 edition-count measurement, docs/plans/simplification-plan-20261024.md §5.3): measure whether any real body sharing a rendition group with an edition_bodies member has equal text on the canonical E2 relations, so the owner can decide whether to widen fingerprint candidates.
+
+**2026-10-30T15:36:29Z**
+
+Supported canonical archive_model body_sha evidence relations in scripts/measure/edition_match_count.py, executed full-corpus S2 edition-match measurement against publish_v19/model/evidence (eligible_candidates: 59, matching_candidates: 0, unknown_candidates: 59, known_nonmatching_candidates: 0), and committed edition-match-count.json and detailed breakdown in docs/measurements/engine-first-20261027/s2-site/README.md.

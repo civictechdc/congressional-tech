@@ -80,6 +80,16 @@ export function createArchiveEntities(ctx: ArchiveEntityContext) {
 
   const normalizeMeeting = (m: any) => {
     const eventKey = String(m.event_id ?? m.meeting_key ?? '');
+    const mDate = date(m.meeting_date);
+    const yr = Number(mDate?.slice(0, 4));
+    const pkgCong = /CHRG-(\d{3})/i.exec(String(m.package_id ?? eventKey))?.[1];
+    const derivedCong = m.congress != null
+      ? Number(m.congress)
+      : pkgCong
+        ? Number(pkgCong)
+        : yr >= 1789
+          ? Math.floor((yr - 1789) / 2) + 1
+          : null;
     const transcriptRows = Array.isArray(m.transcripts) ? m.transcripts.map((t: any) => t?.list_row).filter((r: any) => r != null) : [];
     const listRows = uniqueInts([...(Array.isArray(m.list_rows) ? m.list_rows : []), ...rowsForColumn('meeting_keys', eventKey), ...transcriptRows]);
     const committeeObjs = Array.isArray(m.committees) ? m.committees.map((c: any) => typeof c === 'string' ? { system_code: c, committee_key: c } : { ...c, system_code: c.system_code ?? c.committee_key, committee_key: c.committee_key ?? c.system_code }) : [];
@@ -87,10 +97,18 @@ export function createArchiveEntities(ctx: ArchiveEntityContext) {
       ? m.committee_keys.map((k: any) => String(k).toLowerCase())
       : committeeObjs.map((c: any) => String(c.committee_key ?? c.system_code ?? '').toLowerCase()).filter(Boolean);
     const subjectKeys = Array.isArray(m.subject_keys) ? m.subject_keys.map(String) : Array.isArray(m.measure_keys) ? m.measure_keys.map(String) : [];
+    const rawSittings = Array.isArray(m.sittings) ? m.sittings : [];
+    const sittings = rawSittings.map((s: any) => {
+      const start = date(s?.start ?? s?.datetime ?? s?.date ?? s?.start_time);
+      const end = date(s?.end ?? s?.end_time);
+      const bldgRoom = [s?.building, s?.room].filter(Boolean).join(' ');
+      const place = s?.place ?? ([bldgRoom, s?.location, s?.address].filter(Boolean).join(', ') || null);
+      return { ...s, start, end, place };
+    }).filter((s: any) => Boolean(s.start || s.place || s.datetime || s.date || s.start_time || s.status));
     return {
-      ...m, event_id: eventKey, congress: m.congress != null ? Number(m.congress) : null, session: m.session != null ? Number(m.session) : null,
-      meeting_key: eventKey, meeting_date: date(m.meeting_date), committees: committeeObjs, committee_keys: committeeKeys, subject_keys: subjectKeys,
-      sittings: Array.isArray(m.sittings) ? m.sittings : [],
+      ...m, event_id: eventKey, congress: derivedCong, session: m.session != null ? Number(m.session) : null,
+      meeting_key: eventKey, meeting_date: mDate, committees: committeeObjs, committee_keys: committeeKeys, subject_keys: subjectKeys,
+      sittings,
       transcripts: Array.isArray(m.transcripts) ? m.transcripts.map((t: any) => ({ ...t, list_row: t?.list_row != null ? Number(t.list_row) : null })) : [],
       videos: Array.isArray(m.videos) ? m.videos.map((v: any) => ({ ...v, title: v?.title ?? v?.name ?? null, name: v?.name ?? v?.title ?? null })) : [],
       witnesses: Array.isArray(m.witnesses) ? m.witnesses : [], list_rows: listRows,
@@ -140,6 +158,7 @@ export function createArchiveEntities(ctx: ArchiveEntityContext) {
       ...n, start: date(n.start ?? n.start_date), end: date(n.end ?? n.end_date), start_date: date(n.start_date ?? n.start), end_date: date(n.end_date ?? n.end),
     }));
     const currentName = String(c.current_name ?? c.name ?? names.at(-1)?.name ?? '');
+    const docRows = rowsForColumn('committee_keys', key);
     return {
       ...c, committee_key: key, system_code: String(c.system_code ?? key).toLowerCase(),
       parent_key: parentKey ? String(parentKey).toLowerCase() : null, parent_system_code: parentKey ? String(parentKey).toLowerCase() : null,
@@ -147,25 +166,47 @@ export function createArchiveEntities(ctx: ArchiveEntityContext) {
       gpo_codes: Array.isArray(c.gpo_codes) ? c.gpo_codes : [], type: c.type ?? c.committee_type ?? null, committee_type: c.committee_type ?? c.type ?? null,
       current_name: currentName, name: String(c.name ?? currentName), names, histories: names, url: c.url ?? c.website ?? null, website: c.website ?? c.url ?? null,
       subcommittees: Array.isArray(c.subcommittees) ? c.subcommittees : [],
-      doc_count: c.doc_count != null ? Number(c.doc_count) : rowsForColumn('committee_keys', key).length,
+      list_rows: docRows,
+      doc_count: c.doc_count != null ? Number(c.doc_count) : docRows.length,
       hearing_count: c.hearing_count != null ? Number(c.hearing_count) : 0,
     };
   };
 
   const normalizeMember = (m: any) => {
     const bio = String(m.bioguide_id ?? '');
+    const terms = (Array.isArray(m.terms) ? m.terms : []).map((t: any) => {
+      const start = date(t?.start_date ?? t?.start);
+      const end = date(t?.end_date ?? t?.end);
+      const startYear = Number(t?.start_year ?? start?.slice(0, 4)) || null;
+      const endYear = Number(t?.end_year ?? end?.slice(0, 4)) || null;
+      const cong = t?.congress != null ? Number(t.congress) : (startYear ? Math.floor((startYear - 1789) / 2) + 1 : null);
+      return { ...t, start, end, start_date: start, end_date: end, start_year: startYear, end_year: endYear, congress: cong };
+    });
+    const latestTerm = terms.length ? terms[terms.length - 1] : null;
     const appearances = Array.isArray(m.appearances) ? m.appearances.map((a: any) => ({ ...a, meeting_date: date(a.meeting_date) })) : [];
     const listRows = uniqueInts([...(Array.isArray(m.list_rows) ? m.list_rows : []), ...rowsForColumn('bioguide_ids', bio), ...appearances.flatMap((a: any) => Array.isArray(a.list_rows) ? a.list_rows : [])]);
-    return { ...m, bioguide_id: bio, terms: Array.isArray(m.terms) ? m.terms : [], committees: Array.isArray(m.committees) ? m.committees : [], appearances, list_rows: listRows };
+    return {
+      ...m,
+      bioguide_id: bio,
+      party: m.party ?? latestTerm?.party ?? null,
+      state: m.state ?? latestTerm?.state ?? null,
+      district: m.district ?? latestTerm?.district ?? null,
+      chamber: m.chamber ?? latestTerm?.chamber ?? null,
+      congress: m.congress != null ? Number(m.congress) : (latestTerm?.congress ?? null),
+      terms,
+      committees: Array.isArray(m.committees) ? m.committees : [],
+      appearances,
+      list_rows: listRows,
+    };
   };
 
   const normalizeRoster = (r: any) => {
     const key = String(r.committee_key ?? r.system_code ?? '').toLowerCase();
     return {
-      ...r, committee_key: key, system_code: key, congress: r.congress != null ? Number(r.congress) : null,
-      role: r.role ?? r.title ?? 'Member', title: r.title ?? r.role ?? 'Member',
-      rank_in_party: r.rank_in_party != null ? Number(r.rank_in_party) : r.rank != null ? Number(r.rank) : null,
-      rank: r.rank != null ? Number(r.rank) : r.rank_in_party != null ? Number(r.rank_in_party) : null,
+      ...r, committee_key: key, system_code: String(r.system_code ?? key).toLowerCase(), congress: r.congress != null ? Number(r.congress) : null,
+      role: r.role ?? r.title ?? null, title: r.title ?? r.role ?? null,
+      rank_in_party: r.rank_in_party != null ? Number(r.rank_in_party) : (r.rank != null ? Number(r.rank) : null),
+      rank: r.rank != null ? Number(r.rank) : (r.rank_in_party != null ? Number(r.rank_in_party) : null),
       start_date: date(r.start_date), end_date: date(r.end_date),
       subcommittee_keys: Array.isArray(r.subcommittee_keys) ? r.subcommittee_keys.map((s: any) => String(s).toLowerCase()) : [],
     };
@@ -176,16 +217,33 @@ export function createArchiveEntities(ctx: ArchiveEntityContext) {
     const listRows = uniqueInts([...(Array.isArray(b.list_rows) ? b.list_rows : []), ...rowsForColumn('measure_keys', subjectKey)]);
     const activities = Array.isArray(b.committee_activities) ? b.committee_activities : [];
     const meetingKeys = Array.isArray(b.meeting_keys) ? b.meeting_keys.map(String) : [...new Set(activities.flatMap((a: any) => a.event_id != null ? [String(a.event_id)] : Array.isArray(a.meeting_keys) ? a.meeting_keys.map(String) : []))];
+    const parsedCong = /^(\d+)-/.exec(subjectKey)?.[1];
+    const cboEstimates = (Array.isArray(b.cbo_estimates) ? b.cbo_estimates : []).map((c: any) => ({
+      ...c,
+      date: date(c?.date ?? c?.published_date ?? c?.pub_date),
+      pub_date: date(c?.pub_date ?? c?.date ?? c?.published_date),
+      title: c?.title ?? c?.description ?? null,
+      description: c?.description ?? c?.title ?? null,
+      url: c?.url ?? (c?.publication_id ? `https://www.cbo.gov/publication/${c.publication_id}` : null),
+    }));
+    const amendments = (Array.isArray(b.amendments) ? b.amendments : []).map((a: any) => ({
+      ...a,
+      amendment_id: a?.amendment_id ?? null,
+      purpose: a?.purpose ?? a?.description ?? null,
+      sponsor_bioguide_id: a?.sponsor_bioguide_id ?? null,
+      date: date(a?.date ?? a?.latest_action_date),
+    }));
     return {
       ...b, kind: 'bill' as const, subject_key: subjectKey, bill_id: String(b.bill_id ?? subjectKey),
-      congress: b.congress != null ? Number(b.congress) : null, bill_number: b.bill_number != null ? Number(b.bill_number) : null,
+      congress: b.congress != null ? Number(b.congress) : (parsedCong ? Number(parsedCong) : null),
+      bill_number: b.bill_number != null ? Number(b.bill_number) : null,
       introduced_date: date(b.introduced_date ?? b.introduced), introduced: date(b.introduced ?? b.introduced_date),
       latest_action_date: date(b.latest_action_date), status: b.status ?? b.stage ?? null, stage: b.stage ?? b.status ?? null,
       subjects: Array.isArray(b.subjects) ? b.subjects : [], laws: Array.isArray(b.laws) ? b.laws : [],
       committees: Array.isArray(b.committees) ? b.committees : [], committee_activities: activities,
-      related_bills: Array.isArray(b.related_bills) ? b.related_bills : [], cbo_estimates: Array.isArray(b.cbo_estimates) ? b.cbo_estimates : [],
-      amendments: Array.isArray(b.amendments) ? b.amendments : [],
-      amendment_count: b.amendment_count != null ? Number(b.amendment_count) : (Array.isArray(b.amendments) ? b.amendments.length : 0),
+      related_bills: Array.isArray(b.related_bills) ? b.related_bills : [], cbo_estimates: cboEstimates,
+      amendments,
+      amendment_count: b.amendment_count != null ? Number(b.amendment_count) : amendments.length,
       votes, floor_votes: Array.isArray(b.floor_votes) ? b.floor_votes : votes, meeting_keys: meetingKeys, list_rows: listRows,
     };
   };
@@ -194,9 +252,11 @@ export function createArchiveEntities(ctx: ArchiveEntityContext) {
     const subjectKey = String(n.subject_key ?? n.nomination_id ?? ''), votes = Array.isArray(n.votes) ? n.votes : Array.isArray(n.floor_votes) ? n.floor_votes : [];
     const transcripts = Array.isArray(n.transcripts) ? n.transcripts : [];
     const listRows = uniqueInts([...(Array.isArray(n.list_rows) ? n.list_rows : []), ...rowsForColumn('measure_keys', subjectKey), ...transcripts.map((t: any) => t?.list_row).filter((r: any) => r != null)]);
+    const parsedCong = /^(\d+)-/.exec(subjectKey)?.[1];
     return {
       ...n, kind: 'nomination' as const, subject_key: subjectKey, nomination_id: String(n.nomination_id ?? subjectKey),
-      congress: n.congress != null ? Number(n.congress) : null, received_date: date(n.received_date ?? n.received), received: date(n.received ?? n.received_date),
+      congress: n.congress != null ? Number(n.congress) : (parsedCong ? Number(parsedCong) : null),
+      received_date: date(n.received_date ?? n.received), received: date(n.received ?? n.received_date),
       latest_action_date: date(n.latest_action_date), nominees: Array.isArray(n.nominees) ? n.nominees : [], committees: Array.isArray(n.committees) ? n.committees : [],
       transcripts, votes, floor_votes: Array.isArray(n.floor_votes) ? n.floor_votes : votes,
       meeting_keys: Array.isArray(n.meeting_keys) ? n.meeting_keys.map(String) : [], list_rows: listRows,
@@ -213,8 +273,15 @@ export function createArchiveEntities(ctx: ArchiveEntityContext) {
     return normalizedCache.get(key)!;
   };
 
+  const sortSubjects = (a: any, b: any) =>
+    String(b.latest_action_date ?? b.introduced_date ?? b.received_date ?? '').localeCompare(String(a.latest_action_date ?? a.introduced_date ?? a.received_date ?? ''))
+    || ((b.congress ?? 0) - (a.congress ?? 0))
+    || (b.list_rows.length - a.list_rows.length)
+    || String(a.subject_key ?? '').localeCompare(String(b.subject_key ?? ''));
+
   const meetingsIndex = () => memoized('meetings', async () => {
     const rows = (await entity('meetings')).map(normalizeMeeting);
+    rows.sort((a: any, b: any) => String(b.meeting_date ?? '').localeCompare(String(a.meeting_date ?? '')) || String(b.event_id ?? '').localeCompare(String(a.event_id ?? '')));
     const byEventId = new Map<string, any[]>(), byDocRow = new Map<number, any[]>(), byCommitteeKey = new Map<string, any[]>(), bySubjectKey = new Map<string, any[]>();
     for (const m of rows) {
       if (m.event_id) pushMap(byEventId, String(m.event_id).toLowerCase(), m);
@@ -233,6 +300,10 @@ export function createArchiveEntities(ctx: ArchiveEntityContext) {
 
   const committeesIndex = () => memoized('committees', async () => {
     const rows = (await entity('committees')).map(normalizeCommittee), byCode = new Map<string, any>(), subcommitteesByParent = new Map<string, any[]>();
+    rows.sort((a: any, b: any) =>
+      (Number(Boolean(b.is_current)) - Number(Boolean(a.is_current)))
+      || ((b.list_rows?.length ?? b.doc_count ?? 0) - (a.list_rows?.length ?? a.doc_count ?? 0))
+      || String(a.name ?? '').localeCompare(String(b.name ?? '')));
     for (const c of rows) {
       for (const k of [c.committee_key, c.system_code, c.thomas_id, c.house_committee_id, c.senate_code, ...c.system_codes]) if (k) byCode.set(String(k).toLowerCase(), c);
       if (c.parent_key && c.committee_key !== c.parent_key) pushMap(subcommitteesByParent, c.parent_key, c);
@@ -242,6 +313,7 @@ export function createArchiveEntities(ctx: ArchiveEntityContext) {
 
   const witnessesIndex = () => memoized('witnesses', async () => {
     const rows = (await entity('witnesses')).map(normalizeWitness);
+    rows.sort((a: any, b: any) => (b.list_rows.length - a.list_rows.length) || (b.appearances.length - a.appearances.length) || String(a.name ?? '').localeCompare(String(b.name ?? '')));
     const byKey = new Map<string, any>(), byEventId = new Map<string, any[]>(), byBioguide = new Map<string, any[]>(), byDocRow = new Map<number, any[]>();
     for (const w of rows) {
       if (w.witness_key) byKey.set(w.witness_key.toLowerCase(), w);
@@ -255,6 +327,7 @@ export function createArchiveEntities(ctx: ArchiveEntityContext) {
 
   const membersIndex = () => memoized('members', async () => {
     const rows = (await entity('members')).map(normalizeMember), byBioguide = new Map<string, any>(), byDocRow = new Map<number, any[]>();
+    rows.sort((a: any, b: any) => (b.list_rows.length - a.list_rows.length) || (b.appearances.length - a.appearances.length) || String(a.name ?? '').localeCompare(String(b.name ?? '')));
     for (const m of rows) {
       if (m.bioguide_id) byBioguide.set(m.bioguide_id.toLowerCase(), m);
       for (const r of m.list_rows) pushMap(byDocRow, r, m);
@@ -265,15 +338,37 @@ export function createArchiveEntities(ctx: ArchiveEntityContext) {
   const rostersIndex = () => memoized('rosters', async () => {
     const rows = (await entity('rosters')).map(normalizeRoster), byCommitteeKey = new Map<string, any[]>(), byBioguide = new Map<string, any[]>();
     for (const r of rows) {
-      if (r.committee_key) pushMap(byCommitteeKey, r.committee_key, r);
-      for (const sk of r.subcommittee_keys) if (sk !== r.committee_key) pushMap(byCommitteeKey, sk, r);
+      const keys = new Set([r.committee_key, r.system_code, r.committee_key?.replace(/00$/, ''), ...r.subcommittee_keys].filter(Boolean));
+      for (const k of keys) pushMap(byCommitteeKey, k, r);
       if (r.bioguide_id) pushMap(byBioguide, String(r.bioguide_id).toLowerCase(), r);
     }
     return { rows, byCommitteeKey, byBioguide };
   });
 
   const billsIndex = () => memoized('bills', async () => {
-    const rows = (await entity('bills')).map(normalizeBill), byKey = new Map<string, any>(), bySponsor = new Map<string, any[]>(), byDocRow = new Map<number, any[]>();
+    const [rawBills, memIdx] = await Promise.all([
+      entity('bills'),
+      files.has('members.parquet') ? membersIndex().catch(() => ({ byBioguide: new Map() })) : Promise.resolve({ byBioguide: new Map() }),
+    ]);
+    const rows = rawBills.map(raw => {
+      const b = normalizeBill(raw);
+      const sponsorBio = b.sponsor_bioguide_id ? String(b.sponsor_bioguide_id).toLowerCase() : '';
+      const mem = sponsorBio ? memIdx.byBioguide.get(sponsorBio) : null;
+      const amendments = b.amendments.map((a: any) => {
+        const abio = a.sponsor_bioguide_id ? String(a.sponsor_bioguide_id).toLowerCase() : '';
+        const amem = abio ? memIdx.byBioguide.get(abio) : null;
+        return { ...a, sponsor_name: a.sponsor_name ?? amem?.name ?? null };
+      });
+      return {
+        ...b,
+        sponsor_name: b.sponsor_name ?? mem?.name ?? null,
+        sponsor_party: b.sponsor_party ?? mem?.party ?? null,
+        sponsor_state: b.sponsor_state ?? mem?.state ?? null,
+        amendments,
+      };
+    });
+    rows.sort(sortSubjects);
+    const byKey = new Map<string, any>(), bySponsor = new Map<string, any[]>(), byDocRow = new Map<number, any[]>();
     for (const b of rows) {
       if (b.subject_key) byKey.set(b.subject_key.toLowerCase(), b);
       if (b.bill_id) byKey.set(b.bill_id.toLowerCase(), b);
@@ -285,6 +380,7 @@ export function createArchiveEntities(ctx: ArchiveEntityContext) {
 
   const nominationsIndex = () => memoized('nominations', async () => {
     const rows = (await entity('nominations')).map(normalizeNomination), byKey = new Map<string, any>(), byDocRow = new Map<number, any[]>();
+    rows.sort(sortSubjects);
     for (const n of rows) {
       for (const k of [n.subject_key, n.nomination_id, n.citation]) if (k) byKey.set(String(k).toLowerCase(), n);
       for (const r of n.list_rows) pushMap(byDocRow, r, n);
@@ -384,8 +480,29 @@ export function createArchiveEntities(ctx: ArchiveEntityContext) {
       subject_keys: docRows.length ? value('measure_keys', docRows[0]) ?? [] : [],
       list_rows: docRows,
     });
-    const recordings = recIdx.byEventId.get(eventKey) ?? [];
-    const allVideos = [...recordings, ...baseMeeting.videos.filter((v: any) => !recordings.some((r: any) => (v.video_id && r.video_id === v.video_id) || (v.url && r.url === v.url)))];
+    const recRows = recIdx.byEventId.get(eventKey) ?? [];
+    const seenVideoKeys = new Set<string>();
+    const dedupedVideos: any[] = [];
+    for (const v of baseMeeting.videos) {
+      const vk = String(v.url || v.video_id || v.title || v.name || '');
+      if (vk && seenVideoKeys.has(vk)) continue;
+      if (vk) seenVideoKeys.add(vk);
+      dedupedVideos.push({ ...v });
+    }
+    const extraTracks = recRows.filter((r: any) => !r.url).flatMap((r: any) => Array.isArray(r.tracks) ? r.tracks : []);
+    if (extraTracks.length && dedupedVideos.length) {
+      const seenTrackLabels = new Set<string>();
+      const mergedTracks: any[] = [];
+      for (const t of [...(dedupedVideos[0].tracks ?? []), ...extraTracks]) {
+        const key = String(t?.url || t?.label || t?.language || t?.format || t?.production || '');
+        if (key && !seenTrackLabels.has(key)) { seenTrackLabels.add(key); mergedTracks.push(t); }
+      }
+      dedupedVideos[0] = { ...dedupedVideos[0], tracks: mergedTracks };
+    }
+    const allVideos = [
+      ...recRows.filter((r: any) => Boolean(r.url) || dedupedVideos.length === 0),
+      ...dedupedVideos.filter((v: any) => !recRows.some((r: any) => r.url && ((v.video_id && r.video_id === v.video_id) || (v.url && r.url === v.url)))),
+    ];
     const enrichedCommittees = (baseMeeting.committee_keys.length ? baseMeeting.committee_keys : baseMeeting.committees.map((c: any) => c.committee_key ?? c.system_code)).map((code: string) => {
       const lower = String(code ?? '').toLowerCase(), cat = commIdx.byCode.get(lower);
       const inline = baseMeeting.committees.find((c: any) => String(c.committee_key ?? c.system_code ?? '').toLowerCase() === lower);
@@ -429,26 +546,68 @@ export function createArchiveEntities(ctx: ArchiveEntityContext) {
       const lower = sk.toLowerCase();
       return bIdx.byKey.get(lower) ?? nIdx.byKey.get(lower) ?? { kind: /^(?:\d+-)?pn-/i.test(sk) ? 'nomination' : 'bill', subject_key: sk, title: null, list_rows: rowsForColumn('measure_keys', sk) };
     });
-    return { ...baseMeeting, subject_keys: allSubjectKeys, subjects, committees: enrichedCommittees, recordings, videos: allVideos, witnesses: mergedWitnesses, documents: baseMeeting.list_rows.map(row) };
+    return { ...baseMeeting, subject_keys: allSubjectKeys, subjects, committees: enrichedCommittees, recordings: recRows, videos: allVideos, witnesses: mergedWitnesses, documents: baseMeeting.list_rows.map(row) };
   }
 
   async function getCommittee(committeeKey: string, options: any = {}, signal?: AbortSignal) {
     signal?.throwIfAborted();
     const clean = String(committeeKey ?? '').trim().toLowerCase();
     if (!clean) return null;
-    const [commIdx, rostIdx, mIdx] = await Promise.all([committeesIndex(), rostersIndex(), meetingsIndex()]);
+    const [commIdx, rostIdx, mIdx, memIdx] = await Promise.all([
+      committeesIndex(),
+      rostersIndex(),
+      meetingsIndex(),
+      files.has('members.parquet') ? membersIndex().catch(() => ({ byBioguide: new Map() })) : Promise.resolve({ byBioguide: new Map() }),
+    ]);
     const found = commIdx.byCode.get(clean), canonicalKey = found?.committee_key ?? clean;
     const subcommittees = commIdx.subcommitteesByParent.get(canonicalKey) ?? [];
     const explicitSubs = Array.isArray(found?.subcommittees) && found.subcommittees.length ? found.subcommittees : subcommittees;
     const relatedKeys = new Set([canonicalKey, ...subcommittees.map((s: any) => s.committee_key)]);
     const docRows = uniqueInts([...relatedKeys].flatMap(k => rowsForColumn('committee_keys', k)));
+    docRows.sort((a, b) => String(value('document_date', b) ?? '').localeCompare(String(value('document_date', a) ?? '')) || a - b);
     const seenMeetingEvents = new Set<string>(), normMeetings: any[] = [];
     for (const k of relatedKeys) for (const m of mIdx.byCommitteeKey.get(k) ?? []) {
       const ev = String(m.event_id);
       if (!seenMeetingEvents.has(ev)) { seenMeetingEvents.add(ev); normMeetings.push(m); }
     }
     normMeetings.sort((a: any, b: any) => (b.meeting_date ?? '').localeCompare(a.meeting_date ?? '') || String(b.event_id).localeCompare(String(a.event_id)));
-    const normRosters = [...(rostIdx.byCommitteeKey.get(canonicalKey) ?? [])].sort((a: any, b: any) =>
+    const rosterLookupKeys = new Set([
+      canonicalKey,
+      String(found?.system_code ?? '').toLowerCase(),
+      String(found?.thomas_id ?? '').toLowerCase(),
+      canonicalKey.replace(/00$/, ''),
+    ].filter(Boolean));
+    const seenRosterEntries = new Set<string>();
+    const rawRosters: any[] = [];
+    for (const rk of rosterLookupKeys) {
+      for (const r of rostIdx.byCommitteeKey.get(rk) ?? []) {
+        const dedupKey = `${String(r.bioguide_id ?? r.name ?? '').toLowerCase()}:${r.congress ?? ''}`;
+        if (!seenRosterEntries.has(dedupKey)) {
+          seenRosterEntries.add(dedupKey);
+          const mem = r.bioguide_id ? memIdx.byBioguide.get(String(r.bioguide_id).toLowerCase()) : null;
+          const termState = mem?.terms?.find((t: any) => Number(t.congress) === Number(r.congress))?.state;
+          rawRosters.push({
+            ...r,
+            name: r.name ?? mem?.name ?? r.bioguide_id,
+            party: r.party ?? mem?.party ?? null,
+            state: r.state ?? termState ?? mem?.state ?? null,
+          });
+        }
+      }
+    }
+    const chairByCongress = new Map<any, string>();
+    for (const r of rawRosters) {
+      const roleStr = String(r.role ?? r.title ?? '');
+      if (r.party && /chair/i.test(roleStr) && !/vice|sub|ranking/i.test(roleStr)) {
+        chairByCongress.set(r.congress, r.party);
+      }
+    }
+    const normRosters = rawRosters.map((r: any) => {
+      const chairParty = chairByCongress.get(r.congress);
+      const majority = r.majority ?? (chairParty && r.party ? r.party === chairParty : null);
+      const role = (!r.role && majority === false && r.rank_in_party === 1) ? 'Ranking Member' : r.role;
+      return { ...r, majority, role, title: r.title ?? role };
+    }).sort((a: any, b: any) =>
       (Number(b.congress ?? 0) - Number(a.congress ?? 0))
       || ((a.majority === true ? 0 : a.majority === false ? 1 : 2) - (b.majority === true ? 0 : b.majority === false ? 1 : 2))
       || ((a.rank_in_party ?? 999) - (b.rank_in_party ?? 999))
@@ -503,12 +662,16 @@ export function createArchiveEntities(ctx: ArchiveEntityContext) {
     signal?.throwIfAborted();
     const clean = String(bioguideId ?? '').trim().toLowerCase();
     if (!clean) return null;
-    const [memIdx, rostIdx, wIdx, mIdx, bIdx] = await Promise.all([membersIndex(), rostersIndex(), witnessesIndex(), meetingsIndex(), billsIndex()]);
-    const found = memIdx.byBioguide.get(clean), rosterEntries = rostIdx.byBioguide.get(clean) ?? [], witnessRecords = wIdx.byBioguide.get(clean) ?? [], sponsoredBills = bIdx.bySponsor.get(clean) ?? [], colRows = rowsForColumn('bioguide_ids', clean);
-    if (!found && !rosterEntries.length && !witnessRecords.length && !colRows.length && !sponsoredBills.length) return null;
+    const [memIdx, rostIdx, wIdx, mIdx, bIdx, commIdx] = await Promise.all([membersIndex(), rostersIndex(), witnessesIndex(), meetingsIndex(), billsIndex(), committeesIndex()]);
+    const found = memIdx.byBioguide.get(clean), rawRosterEntries = rostIdx.byBioguide.get(clean) ?? [], witnessRecords = wIdx.byBioguide.get(clean) ?? [], sponsoredBills = bIdx.bySponsor.get(clean) ?? [], colRows = rowsForColumn('bioguide_ids', clean);
+    if (!found && !rawRosterEntries.length && !witnessRecords.length && !colRows.length && !sponsoredBills.length) return null;
+    const rosterEntries = rawRosterEntries.map((r: any) => {
+      const c = commIdx.byCode.get(r.committee_key) ?? commIdx.byCode.get(`${r.committee_key}00`);
+      return { ...r, committee_key: c?.committee_key ?? r.committee_key, name: r.name && r.name !== found?.name ? r.name : (c?.current_name ?? null) };
+    });
     const base = found ?? normalizeMember({
-      bioguide_id: bioguideId.toUpperCase(), name: rosterEntries[0]?.name ?? witnessRecords[0]?.name ?? bioguideId.toUpperCase(),
-      party: rosterEntries[0]?.party ?? null, state: rosterEntries[0]?.state ?? null,
+      bioguide_id: bioguideId.toUpperCase(), name: rawRosterEntries[0]?.name ?? witnessRecords[0]?.name ?? bioguideId.toUpperCase(),
+      party: rawRosterEntries[0]?.party ?? null, state: rawRosterEntries[0]?.state ?? null,
       committees: rosterEntries.map((r: any) => ({ committee_key: r.committee_key, system_code: r.system_code, congress: r.congress, role: r.role, rank_in_party: r.rank_in_party })),
       appearances: witnessRecords.flatMap((w: any) => w.appearances),
       list_rows: uniqueInts([...colRows, ...witnessRecords.flatMap((w: any) => w.list_rows)]),
@@ -581,23 +744,7 @@ export function createArchiveEntities(ctx: ArchiveEntityContext) {
     const text = String(options.q ?? options.text ?? '').trim().toLowerCase();
     const rawCong = options.congress, congressFilter = rawCong != null && rawCong !== '' && rawCong !== 'all' ? Number(rawCong) : null;
     const chamberFilter = options.chamber && options.chamber !== 'all' ? String(options.chamber).toLowerCase() : null;
-    const rawCommittees = toFilterList(options.committee).map(c => c.toLowerCase());
-    const committeeSet = new Set<string>(rawCommittees);
-    if (committeeSet.size > 0 && files.has('committees.parquet')) {
-      const cIdx = await committeesIndex();
-      for (const ck of [...committeeSet]) {
-        const resolved = cIdx.byCode.get(ck);
-        const parentKey = String(resolved?.committee_key ?? ck).toLowerCase();
-        committeeSet.add(parentKey);
-        for (const sub of cIdx.subcommitteesByParent.get(parentKey) ?? []) {
-          if (sub.committee_key) committeeSet.add(String(sub.committee_key).toLowerCase());
-          if (sub.system_code) committeeSet.add(String(sub.system_code).toLowerCase());
-        }
-      }
-    }
-    const mIdxForWitnessCommittee = committeeSet.size > 0 && kind === 'witnesses' && files.has('meetings.parquet')
-      ? await meetingsIndex()
-      : null;
+    const committeeFilter = options.committee ? String(options.committee).toLowerCase() : null;
     let items: any[] = [];
     switch (kind) {
       case 'meetings': items = (await meetingsIndex()).rows; break;
@@ -610,34 +757,45 @@ export function createArchiveEntities(ctx: ArchiveEntityContext) {
       case 'nominations': items = (await nominationsIndex()).rows; break;
       case 'subjects': {
         const [bIdx, nIdx] = await Promise.all([billsIndex(), nominationsIndex()]);
-        items = [...bIdx.rows, ...nIdx.rows];
+        items = [...bIdx.rows, ...nIdx.rows].sort(sortSubjects);
         break;
       }
       default: throw new Error(`Unknown archive entity kind: ${kind}`);
     }
     const filtered = items.filter((item: any) => {
-      if (congressFilter != null) {
-        if (item.congress != null) { if (Number(item.congress) !== congressFilter) return false; }
-        else if (Array.isArray(item.terms) && item.terms.length) { if (!item.terms.some((t: any) => Number(t?.congress) === congressFilter)) return false; }
-        else if (Array.isArray(item.appearances) && item.appearances.some((a: any) => a?.congress != null)) { if (!item.appearances.some((a: any) => Number(a?.congress) === congressFilter)) return false; }
+      if (congressFilter != null && kind !== 'committees') {
+        if (Array.isArray(item.terms) && item.terms.length) {
+          const matchesTerm = item.terms.some((t: any) =>
+            Number(t?.congress) === congressFilter
+            || (t?.start_year && t.start_year <= congressFilter * 2 + 1788 && (t.end_year ?? 9999) >= congressFilter * 2 + 1787));
+          if (!matchesTerm) return false;
+        } else if (item.congress != null) {
+          if (Number(item.congress) !== congressFilter) return false;
+        } else if (Array.isArray(item.appearances) && item.appearances.length) {
+          if (!item.appearances.some((a: any) => Number(a?.congress) === congressFilter)) return false;
+        } else {
+          return false;
+        }
       }
       if (chamberFilter) {
-        if (item.chamber) { if (String(item.chamber).toLowerCase() !== chamberFilter) return false; }
-        else if (Array.isArray(item.terms) && item.terms.length && !item.terms.some((t: any) => String(t?.chamber ?? '').toLowerCase() === chamberFilter)) return false;
+        if (Array.isArray(item.terms) && item.terms.length) {
+          if (!item.terms.some((t: any) => String(t?.chamber ?? '').toLowerCase() === chamberFilter)) return false;
+        } else if (item.chamber) {
+          if (String(item.chamber).toLowerCase() !== chamberFilter) return false;
+        } else if (Array.isArray(item.appearances) && item.appearances.length) {
+          if (!item.appearances.some((a: any) => String(a?.chamber ?? '').toLowerCase() === chamberFilter)) return false;
+        } else {
+          return false;
+        }
       }
-      if (committeeSet.size > 0) {
+      if (committeeFilter) {
         const keys = [
           item.committee_key, item.system_code, item.parent_key,
           ...(Array.isArray(item.committee_keys) ? item.committee_keys : []),
           ...(Array.isArray(item.committees) ? item.committees.map((c: any) => typeof c === 'string' ? c : (c?.committee_key ?? c?.system_code)) : []),
-          ...(Array.isArray(item.appearances) ? item.appearances.flatMap((a: any) => {
-            const direct = Array.isArray(a?.committee_keys) ? a.committee_keys : [];
-            if (direct.length || !mIdxForWitnessCommittee) return direct;
-            const ev = String(a?.event_id ?? a?.meeting_key ?? '').toLowerCase();
-            return (mIdxForWitnessCommittee.byEventId.get(ev) ?? []).flatMap((m: any) => m.committee_keys ?? []);
-          }) : []),
+          ...(Array.isArray(item.appearances) ? item.appearances.flatMap((a: any) => Array.isArray(a?.committee_keys) ? a.committee_keys : []) : []),
         ].filter(Boolean).map((k: any) => String(k).toLowerCase());
-        if (!keys.some(k => committeeSet.has(k))) return false;
+        if (!keys.includes(committeeFilter)) return false;
       }
       if (text) {
         const hay = [

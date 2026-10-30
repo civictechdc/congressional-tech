@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import json
 from pathlib import Path
-from native_test_helpers import require_native_docspec
+from native_test_helpers import native_ci_limits, require_native_docspec
 from types import SimpleNamespace
 
 from congress_api.retention import (
@@ -68,7 +68,8 @@ def test_weekly_table_schemas_keys_and_merges_cover_all_datasets() -> None:
 
 def test_incremental_meetings_and_committees_retention_tables(tmp_path: Path) -> None:
     require_native_docspec()
-    with WeeklyRetentionTables(tmp_path / "docspec-ws") as wt:
+    ws = tmp_path / "docspec-ws"
+    with WeeklyRetentionTables(ws, limits=native_ci_limits(ws)) as wt:
         m1 = _meeting_record("115001", title="Original Title", update_date="2026-01-10T00:00:00Z")
         m2 = _meeting_record("115002", title="Second Hearing", update_date="2026-01-11T00:00:00Z")
         records = {m1["_url"]: m1, m2["_url"]: m2}
@@ -118,7 +119,8 @@ def test_incremental_meetings_and_committees_retention_tables(tmp_path: Path) ->
 
 def test_incremental_gpo_house_senate_and_youtube_tables(tmp_path: Path) -> None:
     require_native_docspec()
-    with WeeklyRetentionTables(tmp_path / "docspec-ws") as wt:
+    ws = tmp_path / "docspec-ws"
+    with WeeklyRetentionTables(ws, limits=native_ci_limits(ws)) as wt:
         # GPO hearings with UpdateMergeSpec latest_or_backfill
         initial_hearings = {
             "CHRG-118hhrg1": {
@@ -228,7 +230,8 @@ def test_incremental_gpo_house_senate_and_youtube_tables(tmp_path: Path) -> None
 
 def test_incremental_captions_transcripts_and_rejected_pages_tables(tmp_path: Path) -> None:
     require_native_docspec()
-    with WeeklyRetentionTables(tmp_path / "docspec-ws") as wt:
+    ws = tmp_path / "docspec-ws"
+    with WeeklyRetentionTables(ws, limits=native_ci_limits(ws)) as wt:
         # Captions: first a successful observation with kind='asr', then an error receipt
         captions.upsert_captions(
             {
@@ -386,6 +389,7 @@ def test_sync_weekly_tables_cli_and_explorer_state_pack(tmp_path: Path):
     )
 
     ws_dir = tmp_path / "weekly-ws"
+    limits_file = native_ci_limits(ws_dir)
     rc = sync_weekly_tables.main(
         [
             "--workspace",
@@ -394,11 +398,13 @@ def test_sync_weekly_tables_cli_and_explorer_state_pack(tmp_path: Path):
             str(pipeline_dir),
             "--data-dir",
             str(data_dir),
+            "--limits",
+            str(limits_file),
         ]
     )
     assert rc == 0
 
-    with WeeklyRetentionTables(ws_dir) as wt:
+    with WeeklyRetentionTables(ws_dir, limits=limits_file) as wt:
         assert wt.latest_version("house_events") is not None
         assert wt.latest_version("senate_events") is not None
         assert wt.latest_version("captions") is not None
@@ -418,3 +424,61 @@ def test_sync_weekly_tables_cli_and_explorer_state_pack(tmp_path: Path):
     pack(state_in, state_packed)
     assert unpack(state_packed, state_out) is True
     assert json.loads((state_out / "export-pins.json").read_text(encoding="utf-8")) == {"meetings": {"id": "pin1"}}
+
+
+def test_explorer_docspec_workspace_and_weekly_tables_forward_limits(tmp_path: Path) -> None:
+    from committee_explorer.docspec_views import ExplorerDocSpecWorkspace
+    from congress_api.cli import sync_weekly_tables
+
+    binary = tmp_path / "docspec"
+    binary.write_text("#!/bin/sh\nexit 1\n", encoding="utf-8")
+    binary.chmod(0o755)
+    limits_path = native_ci_limits(tmp_path / "ws")
+
+    with ExplorerDocSpecWorkspace(tmp_path / "ws-exp", binary=binary, limits=limits_path) as exp_ws:
+        assert exp_ws.limits == limits_path.resolve()
+        assert exp_ws.datasets.limits == limits_path.resolve()
+
+    with ExplorerDocSpecWorkspace(tmp_path / "ws-exp-default", binary=binary) as exp_default:
+        assert exp_default.limits is None
+        assert exp_default.datasets.limits is None
+
+    with WeeklyRetentionTables(tmp_path / "ws-wt", binary=binary, limits=limits_path) as wt:
+        assert wt.limits == limits_path.resolve()
+        assert wt.datasets.limits == limits_path.resolve()
+
+    with WeeklyRetentionTables(tmp_path / "ws-wt-default", binary=binary) as wt_default:
+        assert wt_default.limits is None
+        assert wt_default.datasets.limits is None
+
+    pipeline_dir = tmp_path / "empty-pipeline"
+    data_dir = tmp_path / "empty-data"
+    pipeline_dir.mkdir()
+    data_dir.mkdir()
+    captured: list[tuple[Path, str, Path | None]] = []
+    orig_enter = WeeklyRetentionTables.__enter__
+
+    def _spy_enter(self: WeeklyRetentionTables) -> WeeklyRetentionTables:
+        captured.append((self.workspace, self.datasets.binary, self.limits))
+        return orig_enter(self)
+
+    WeeklyRetentionTables.__enter__ = _spy_enter  # type: ignore[method-assign]
+    try:
+        rc = sync_weekly_tables.main(
+            [
+                "--workspace",
+                str(tmp_path / "ws-cli"),
+                "--pipeline-data",
+                str(pipeline_dir),
+                "--data-dir",
+                str(data_dir),
+                "--binary",
+                str(binary),
+                "--limits",
+                str(limits_path),
+            ]
+        )
+    finally:
+        WeeklyRetentionTables.__enter__ = orig_enter  # type: ignore[method-assign]
+    assert rc == 0
+    assert captured == [((tmp_path / "ws-cli").resolve(), str(binary.resolve()), limits_path.resolve())]

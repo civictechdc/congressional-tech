@@ -2,6 +2,7 @@ import {
   committeeLabel,
   congressGovMemberUrl,
   congressLabel,
+  formatChamber,
   formatSubject,
   presentDocument,
   type CommitteeCatalogInput,
@@ -11,21 +12,25 @@ import {PublicLink, day} from './ArchiveRows.tsx';
 export function MemberDetail({
   member,
   committeesCatalog,
+  compact,
   onSelect,
   onHearing,
   onCommittee,
   onSubject,
   onFilterDocuments,
+  onInspect,
   onClose,
   closeLabel,
 }:{
   member:any;
   committeesCatalog?:CommitteeCatalogInput;
+  compact?:boolean;
   onSelect?:(row:number)=>void;
   onHearing?:(key:string)=>void;
   onCommittee?:(key:string)=>void;
   onSubject?:(key:string)=>void;
   onFilterDocuments?:()=>void;
+  onInspect?:()=>void;
   onClose?:()=>void;
   closeLabel?:string;
 }){
@@ -42,7 +47,7 @@ export function MemberDetail({
   const metaParts=[
     member.party,
     member.state?(member.district!=null?`${member.state}-${member.district}`:member.state):null,
-    member.chamber?String(member.chamber).charAt(0).toUpperCase()+String(member.chamber).slice(1):null,
+    formatChamber(member.chamber),
     bio?`Bioguide: ${bio}`:null,
   ].filter(Boolean);
 
@@ -51,8 +56,9 @@ export function MemberDetail({
       <div className="archive-entity-header-top">
         <p className="archive-detail-context">{metaParts.join(' · ')||'Member of Congress'}</p>
         <div className="archive-pill-list">
-          {onFilterDocuments&&<button type="button" className="explorer-text-button" onClick={onFilterDocuments}>Filter documents in Document Search</button>}
-          {onClose&&<button type="button" className="explorer-text-button" onClick={onClose}>{closeLabel||'Clear member filter'}</button>}
+          {onInspect&&<button type="button" className="archive-measure-pill" onClick={onInspect}>Open full profile →</button>}
+          {onFilterDocuments&&<button type="button" className="archive-measure-pill" onClick={onFilterDocuments}>Filter documents in Document Search</button>}
+          {onClose&&<button type="button" className="archive-measure-pill" onClick={onClose}>{closeLabel||'Clear member filter'}</button>}
         </div>
       </div>
       <h2>{member.name||bio}</h2>
@@ -63,13 +69,13 @@ export function MemberDetail({
       </p>}
     </header>
 
-    {terms.length>0&&<div className="archive-entity-section">
+    {!compact&&terms.length>0&&<div className="archive-entity-section">
       <h3>Congressional Terms ({terms.length})</h3>
       <ul className="archive-entity-list">
         {terms.map((t:any,i:number)=><li key={i}>
           <strong>{t.congress?congressLabel(t.congress):`${t.start_year||t.start||''}–${t.end_year||t.end||''}`}</strong>
           <span className="archive-source-meta">
-            {' '}— {[t.chamber,t.party,t.state?(t.district!=null?`${t.state}-${t.district}`:t.state):null].filter(Boolean).join(', ')}
+            {' '}— {[formatChamber(t.chamber),t.party,t.state?(t.district!=null?`${t.state}-${t.district}`:t.state):null].filter(Boolean).join(', ')}
           </span>
         </li>)}
       </ul>
@@ -78,7 +84,7 @@ export function MemberDetail({
     {committees.length>0&&<div className="archive-entity-section">
       <h3>Committee Assignments</h3>
       <ul className="archive-entity-list">
-        {committees.map((c:any,i:number)=>{
+        {(compact?committees.slice(0,5):committees).map((c:any,i:number)=>{
           const code=String(c.committee_key??c.system_code??'').toLowerCase();
           const label=c.name||committeeLabel(code,committeesCatalog,c.congress);
           return <li key={`${code}-${c.congress??i}`}>
@@ -93,10 +99,10 @@ export function MemberDetail({
       </ul>
     </div>}
 
-    {sponsoredBills.length>0&&<div className="archive-entity-section">
+    {!compact&&sponsoredBills.length>0&&<div className="archive-entity-section">
       <h3>Sponsored Legislation ({sponsoredBills.length})</h3>
       <ul className="archive-entity-list">
-        {sponsoredBills.map((b:any)=>{
+        {sponsoredBills.slice(0,25).map((b:any)=>{
           const sk=String(b.subject_key??b.bill_id??'');
           return <li key={sk}>
             {onSubject
@@ -109,10 +115,10 @@ export function MemberDetail({
       </ul>
     </div>}
 
-    {hearings.length>0&&<div className="archive-entity-section">
+    {!compact&&hearings.length>0&&<div className="archive-entity-section">
       <h3>Hearing Appearances ({hearings.length})</h3>
       <ul className="archive-entity-list">
-        {hearings.map((h:any,i:number)=>{
+        {hearings.slice(0,25).map((h:any,i:number)=>{
           const ev=String(h.event_id??h.meeting_key??'');
           return <li key={ev||i}>
             {ev&&onHearing
@@ -124,14 +130,18 @@ export function MemberDetail({
       </ul>
     </div>}
 
-    {documents.length>0&&onSelect&&<div className="archive-entity-section">
+    {!compact&&documents.length>0&&onSelect&&<div className="archive-entity-section">
       <h3>Related Documents ({documents.length})</h3>
       <ul className="archive-entity-list">
         {documents.slice(0,20).map((doc:any)=>{
           const pres=presentDocument(doc,undefined,undefined,undefined,committeesCatalog);
           return <li key={doc.list_row}>
             <button type="button" className="explorer-text-button" onClick={()=>onSelect(doc.list_row)}>{pres.title}</button>
-            {doc.document_date&&<span className="archive-source-meta"> · {day(doc.document_date)}</span>}
+            <span className="archive-source-meta">
+              {doc.document_date?` · ${day(doc.document_date)}`:''}
+              {pres.kinds[0]?` · ${pres.kinds[0]}`:''}
+              {pres.format?` (${pres.format})`:''}
+            </span>
           </li>;
         })}
       </ul>

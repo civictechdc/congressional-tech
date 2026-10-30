@@ -1009,6 +1009,11 @@ export function deriveCommitteeCodes(document: any, detail?: any, sources?: any[
       }
     }
   }
+  const fname = String(document?.filename ?? '');
+  const hhrgMatch = /\bHHRG-\d+-([A-Z]{2,4}\d{0,2})\b/i.exec(fname);
+  if (hhrgMatch) {
+    add(normalizeCommitteeCode(hhrgMatch[1]));
+  }
   const urls = [
     document?.source_url,
     ...(Array.isArray(sources) ? sources.flatMap(s => [s?.url, s?.listed_on]) : []),
@@ -1238,6 +1243,114 @@ function urlFallbackLabel(url: any): string {
   }
 }
 
+export function formatBillStage(stage?: string | null): string | null {
+  const clean = String(stage ?? '').trim();
+  if (!clean) return null;
+  const lower = clean.toLowerCase();
+  const map: Record<string, string> = {
+    introduced: 'Introduced',
+    referred: 'Referred to Committee',
+    referred_to_committee: 'Referred to Committee',
+    reported: 'Reported by Committee',
+    reported_by_committee: 'Reported by Committee',
+    passed_house: 'Passed House',
+    passed_senate: 'Passed Senate',
+    resolving_differences: 'Resolving Differences',
+    to_president: 'Presented to President',
+    became_law: 'Enacted into Law',
+    enacted: 'Enacted into Law',
+    vetoed: 'Vetoed',
+    failed: 'Failed',
+    received: 'Received in Senate',
+    confirmed: 'Confirmed by Senate',
+    withdrawn: 'Withdrawn',
+    returned: 'Returned to President',
+  };
+  if (map[lower]) return map[lower];
+  if (/[_-]/.test(clean) || clean === lower) {
+    return clean
+      .split(/[_-]+/)
+      .filter(Boolean)
+      .map(w => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase())
+      .join(' ');
+  }
+  return clean;
+}
+
+export function formatMeetingType(type?: string | null): string | null {
+  const clean = String(type ?? '').trim();
+  if (!clean) return null;
+  const lower = clean.toLowerCase();
+  const map: Record<string, string> = {
+    hearing: 'Hearing',
+    markup: 'Markup',
+    meeting: 'Business Meeting',
+    business_meeting: 'Business Meeting',
+    'business-meeting': 'Business Meeting',
+    field_hearing: 'Field Hearing',
+    'field-hearing': 'Field Hearing',
+    joint_hearing: 'Joint Hearing',
+    roundtable: 'Roundtable',
+  };
+  if (map[lower]) return map[lower];
+  if (/[_-]/.test(clean) || clean === lower) {
+    return clean
+      .split(/[_-]+/)
+      .filter(Boolean)
+      .map(w => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase())
+      .join(' ');
+  }
+  return clean;
+}
+
+export function formatCommitteeType(type?: string | null): string | null {
+  const clean = String(type ?? '').trim();
+  if (!clean) return null;
+  const lower = clean.toLowerCase();
+  const map: Record<string, string> = {
+    standing: 'Standing Committee',
+    select: 'Select Committee',
+    special: 'Special Committee',
+    joint: 'Joint Committee',
+    subcommittee: 'Subcommittee',
+    commission: 'Commission',
+    caucus: 'Caucus',
+    other: 'Committee',
+  };
+  if (map[lower]) return map[lower];
+  if (/[_-]/.test(clean) || clean === lower) {
+    return clean
+      .split(/[_-]+/)
+      .filter(Boolean)
+      .map(w => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase())
+      .join(' ');
+  }
+  return clean;
+}
+
+export function formatChamber(chamber?: string | null): string | null {
+  const clean = String(chamber ?? '').trim();
+  if (!clean) return null;
+  const lower = clean.toLowerCase();
+  if (lower === 'nochamber' || lower === 'none' || lower === 'unknown') return null;
+  if (lower === 'house') return 'House';
+  if (lower === 'senate') return 'Senate';
+  if (lower === 'joint') return 'Joint';
+  return clean.charAt(0).toUpperCase() + clean.slice(1).toLowerCase();
+}
+
+export function formatAmendmentId(id?: string | null): string {
+  const clean = String(id ?? '').trim();
+  if (!clean) return '';
+  const match = /^(?:(\d+)-)?(hamdt|samdt|suamdt)-?(\d+)$/i.exec(clean);
+  if (match) {
+    const type = match[2].toLowerCase();
+    const prefix = type === 'hamdt' ? 'H.Amdt.' : type === 'samdt' ? 'S.Amdt.' : 'S.U.Amdt.';
+    return `${prefix} ${match[3]}`;
+  }
+  return clean;
+}
+
 export function presentDocument(
   document: any,
   detail?: any,
@@ -1245,7 +1358,11 @@ export function presentDocument(
   recoveries?: any[],
   committeesCatalog?: CommitteeCatalogInput,
 ) {
-  const rawTitle = String(document?.title ?? '').trim();
+  const rawTitle = String(document?.title ?? '')
+    .trim()
+    .replace(/^[-–—]+\s+/, '')
+    .replace(/\s*[»›]+$/, '')
+    .trim();
   const cleanFile = cleanDisplayFilename(document?.filename);
   const validTitle = !isGenericTitle(rawTitle) ? rawTitle : '';
   const sourceUrl = document?.source_url || sources?.[0]?.url || recoveries?.[0]?.recovered_url || '';
@@ -1274,14 +1391,11 @@ export function presentDocument(
     ? document.measure_keys.slice(0, 3).map(formatMeasure).filter(Boolean)
     : [];
 
-  const fmt = effectiveFormat(document, detail).toUpperCase();
+  const effFmt = effectiveFormat(document, detail);
+  const fmt = effFmt.toUpperCase();
   const fallbackKind = kindLabels[0]
-    || (document?.saved_kind === 'recovery' ? `Recovered ${fmt} document` : `Archived ${fmt} document`);
-  const fallbackSuffix = committees[0]
-    ? ` — ${committees[0]}`
-    : document?.list_row != null
-      ? ` (#${Number(document.list_row) + 1})`
-      : '';
+    || (document?.saved_kind === 'recovery' ? `Recovered ${effFmt.toLowerCase()} record` : `Archived ${effFmt.toLowerCase()} record`);
+  const fallbackSuffix = committees[0] ? ` — ${committees[0]}` : '';
 
   const title = validTitle || cleanFile || urlLabel || `${fallbackKind}${fallbackSuffix}`;
   const subtitle = cleanFile && cleanFile !== title ? cleanFile : '';

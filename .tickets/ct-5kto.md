@@ -22,3 +22,13 @@ Per docs/plans/bindings-20261025.md §6 and docs/plans/engine-first-switch.md it
 
 All 18 superseded groups in cxb_switch_deletions.py are deleted one commit per group with before/after wc -l, seed_v5/display_only and pipeline-data staging paths are removed, FILENAME-VIEWER.md and raw-source-tables.md are rewritten, and all active test suites pass.
 
+
+## Notes
+
+**2026-10-30T15:21:37Z**
+
+Phase A committed at f619d529: retired seed_v5/display_only branches (deleted archive_seed_profile.py + test, updated archive_publish.py, archive_maintenance.py, archive_gate.py, archive-targets.mjs), rewrote .github/workflows/raw-source-tables.md and apps/site/FILENAME-VIEWER.md, forwarded limits on retained wrappers (cef-jh7i), and resolved deleted glob/partial seeds in cxb_switch_deletions.py (unresolved=0 across G01-G18).
+
+**2026-10-30T15:56:37Z**
+
+Executed self-contained per-group F5 deletions: 1e780f1e (G06: wc -l 3991 -> 430, -3487 net, replaced by viewer_publication.archive_publish) and 8978b3bb (G12: wc -l 2625 -> 252, -2373 net, replaced by corpus_recovery.reconcile). 246 focused tests pass.

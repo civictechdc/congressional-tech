@@ -6,7 +6,7 @@ from pathlib import Path
 
 from docspec_client.client import NativeDatasets
 from congress_api.lake.capture_comparison import compare_old
-from congress_api.retention.control_documents import bounded_control_read
+from congress_shared.custody import bounded_control_read
 
 
 def main(argv=None):

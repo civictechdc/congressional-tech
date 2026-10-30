@@ -259,7 +259,7 @@ export async function openArchive(pointerUrl: string, options: any = {}) {
       const filenameSorted=query.sort==='filename';
       const datePacked:Float64Array|undefined=dateSorted?columns.get(query.sort)?.packed:undefined;
       const targetCount=offset+limit;
-      const fallbackTitled:number[]=[],fallbackBlank:number[]=[];
+      const alphaRows:Array<{i:number;key:string}>=[],punctRows:Array<{i:number;key:string}>=[],fallbackBlank:number[]=[];
       const parsed=parseSearchText(query.text);
       for(let i=0;i<count;i++){
         if(i%scanBatchRows===0)await yieldToMessages(signal);
@@ -274,11 +274,18 @@ export async function openArchive(pointerUrl: string, options: any = {}) {
             if(selected.length>targetCount)selected.pop();
           }
         }else if(filenameSorted){
-          const fname=String(value('filename',i)??'');
-          if(/^[0-9a-z]/i.test(fname)){
-            if(selected.length<targetCount)selected.push(i);
+          const fname=String(value('filename',i)??'').replace(/^[0-9a-f]{64}\./i,'').trim();
+          const key=fname.toLowerCase();
+          if(/^[a-z]/i.test(fname)){
+            if(alphaRows.length<targetCount||key<alphaRows[alphaRows.length-1].key){
+              let lo=0,hi=alphaRows.length;
+              while(lo<hi){const mid=(lo+hi)>>1;if(key<alphaRows[mid].key)hi=mid;else lo=mid+1;}
+              alphaRows.splice(lo,0,{i,key});
+              if(alphaRows.length>targetCount)alphaRows.pop();
+            }
           }else if(fname||value('title',i)){
-            if(fallbackTitled.length<targetCount)fallbackTitled.push(i);
+            const tKey=key||String(value('title',i)??'').trim().toLowerCase();
+            if(punctRows.length<targetCount)punctRows.push({i,key:tKey});
           }else if(fallbackBlank.length<targetCount){
             fallbackBlank.push(i);
           }
@@ -286,9 +293,15 @@ export async function openArchive(pointerUrl: string, options: any = {}) {
           selected.push(i);
         }
       }
-      if(filenameSorted&&selected.length<targetCount){
-        for(const idx of fallbackTitled){if(selected.length>=targetCount)break;selected.push(idx);}
-        for(const idx of fallbackBlank){if(selected.length>=targetCount)break;selected.push(idx);}
+      if(filenameSorted){
+        for(const item of alphaRows){if(selected.length>=targetCount)break;selected.push(item.i);}
+        if(selected.length<targetCount){
+          punctRows.sort((a,b)=>a.key.localeCompare(b.key)||a.i-b.i);
+          for(const item of punctRows){if(selected.length>=targetCount)break;selected.push(item.i);}
+        }
+        if(selected.length<targetCount){
+          for(const idx of fallbackBlank){if(selected.length>=targetCount)break;selected.push(idx);}
+        }
       }
       const pageRows=(dateSorted||filenameSorted)?selected.slice(offset,offset+limit):selected;
       return {total,rows:pageRows.map(row),offset,next:offset+limit<total?offset+limit:null};
@@ -359,9 +372,17 @@ export function savedCopy(detail: any,rawBase: string){
   return {url:new URL(`bodies/sha256/${body.slice(0,2)}/${body}${detail.saved_suffix}`,rawBase).href,
     compressedDownload:detail.saved_suffix==='.gz'&&detail.saved_bytes>readerLimits.max_unpacked_bytes,mediaType:detail.saved_media_type};
 }
+const dateSourceLabels:Record<string,string>={
+  meeting:'hearing date',
+  listed_on:'listing page',
+  url:'URL',
+  content:'document text',
+  publisher:'publisher',
+};
 export function dateLabels(document: any,detail: any){
   const captured=date(document.first_captured),imported=date(detail.in_archive_since),day=date(document.document_date);
-  const source=detail.document_date_source&&detail.document_date_source!=='filename'?` (${detail.document_date_source})`:'';
+  const rawSource=detail.document_date_source?String(detail.document_date_source).trim():'';
+  const source=rawSource&&rawSource!=='filename'?` (${dateSourceLabels[rawSource]??rawSource})`:'';
   return {capture:document.date_kind==='captured'&&captured?`Captured ${captured}`:
     document.date_kind==='import_day'&&imported?`In our archive since ${imported} (original capture date not recorded)`:'Capture date not recorded',
     document:day?`${day}${source}`:null,

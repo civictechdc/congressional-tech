@@ -2407,6 +2407,14 @@ function meetingEventId(
   sources: readonly (DetailRecord | undefined)[],
 ): string {
   if (record.kind !== "meeting") return "";
+  const directEventId = fields(record).event_id;
+  if (
+    directEventId !== undefined &&
+    directEventId !== null &&
+    String(directEventId).trim()
+  ) {
+    return String(directEventId).trim();
+  }
   const recordFacts = fields(record).facts;
   if (Array.isArray(recordFacts)) {
     for (const item of recordFacts) {
