@@ -155,46 +155,6 @@ def apply_flat(work,captures):
     return manifest['audit']
 
 
-def apply_native(work,storage):
-    """Replace bounded selected references, preserve counts and CAS the same selector."""
-    from congress_api.retention.raw_storage import RawSnapshot
-    from congress_api.retention.raw_values import NATIVE_CAPTURE_SCHEMA
-    manifest=load_repair(work)
-    base=storage.snapshot()
-    if manifest['kind']!='native' or base.identity!=manifest['expected']:
-        raise ValueError('Native capture selection changed after preparation')
-    operation='stored-digest-repair-'+manifest['output_pin']['sha256'][:24]
-    selected=deepcopy(base.manifest)
-    head=None
-    rows=0
-    with pq.ParquetFile(manifest['output']) as source:
-        for batch in source.iter_batches(batch_size=storage.max_capture_rows):
-            table=pa.Table.from_batches([batch]).cast(NATIVE_CAPTURE_SCHEMA)
-            for _,part in storage._capture_batches(table):
-                first=part['_capture_order'][0].as_py()
-                if first!=rows:
-                    raise ValueError('Repair capture order is not contiguous')
-                pin=storage._candidate('captures',part,operation=operation,prefix=str(first),base_id=base.identity)
-                entry=dict(release=pin,rows=len(part),
-                           decoded_bytes=pa.Table.from_pylist(part.to_pylist(),schema=NATIVE_CAPTURE_SCHEMA).nbytes,
-                           first_order=first,receipt_keys=sorted(set(part['receipt_key'].drop_null().to_pylist())))
-                head=storage.capture_pages.append(head,[entry])
-                rows+=len(part)
-    if rows!=base.manifest['captures']['rows']:
-        raise ValueError('Repair cannot append or remove capture observations')
-    selected['captures']['head']=head
-    with pq.ParquetFile(manifest['changed']) as source:
-        for number,batch in enumerate(source.iter_batches(batch_size=storage.max_capture_rows)):
-            current=RawSnapshot(storage,selected,base.version)
-            selected['bodies']=storage._prepare_bodies(current,pa.Table.from_batches([batch]),
-                                                       operation=f'{operation}-bodies-{number}',base_id=base.identity)
-    load_repair(work)
-    data=encoded(selected)
-    result=storage.publish(dict(base=base,manifest=selected,data=data,changed=selected!=base.manifest,
-                                already_applied=False,delivery=None))
-    return dict(identity=result.identity,**manifest['audit'])
-
-
 def restore_missing(store,key,source,*,expected_stored_sha256):
     """Only owner-supplied exact stored bytes may restore an absent physical key."""
     source=Path(source)

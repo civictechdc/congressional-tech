@@ -66,20 +66,6 @@ def test_pdf_fetch_does_not_materialize_native_body(tmp_path, monkeypatch):
     assert not paths[0].exists()
 
 
-def test_normal_file_metadata_skips_large_pdf_reader(tmp_path, monkeypatch):
-    from congress_api.retention import capture_metadata
-    path = tmp_path / 'large.pdf'
-    with path.open('wb') as source:
-        source.write(b'%PDF-1.7\n')
-        source.truncate(capture_metadata.BODY_LIMIT + 1)
-    monkeypatch.setattr(capture_metadata, 'inspect_pdf_file',
-                        lambda *a: pytest.fail('Normal capture invoked large-PDF reader'))
-    assert capture_metadata.read_document_file(path, 'body-key', 'fingerprint', large_pdf=False) == {
-        'body_key': 'body-key', 'parser_fingerprint': 'fingerprint',
-        'status': 'size_limit', 'error_type': None,
-    }
-
-
 @pytest.mark.parametrize('body,media,status', [
     (PDF, 'application/pdf', 200),
     (b'%PDF-1.7\npartial', 'application/pdf', 200),
@@ -120,23 +106,3 @@ def test_file_metadata_cannot_be_relabelled(tmp_path, field):
             inspect_capture(capture)
     finally:
         capture['content']['body'].close()
-
-
-@pytest.mark.parametrize('office', [False, True])
-def test_file_archive_separation_preserves_members_and_links(tmp_path, office):
-    from congress_api.retention.raw_archive import prepare_capture
-    from test_archive_members import archive
-    entries = [('testimony.pdf', PDF), ('index.html', b'<a href="https://example.gov/other.pdf">File</a>')]
-    if office:
-        entries.append(('[Content_Types].xml', b'<Types/>'))
-    data = archive(entries)
-    original = response(URL + '.zip', data, 'application/zip')
-    path = tmp_path / 'archive.body'; path.write_bytes(data)
-    file = CapturedFile(path, 'application/zip')
-    acquired = {**original, 'content': file.source_dict()}
-    before = prepare_capture(original, outcome='saved', links=[])
-    after = prepare_capture(acquired, outcome='saved', links=[])
-    assert before[:2] == after[:2] and before[3] == after[3]
-    assert before[2] == {key: value.read_bytes() if isinstance(value, CapturedFile) else value
-                         for key, value in after[2].items()}
-    file.close()

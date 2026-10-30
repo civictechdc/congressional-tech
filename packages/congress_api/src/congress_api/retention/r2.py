@@ -270,19 +270,6 @@ def verify_upload(result, body):
         raise ValueError('Upload checksum mismatch')
 
 
-@asynccontextmanager
-async def threaded_bodies(store):
-    """Adapt local stores and existing injected synchronous stores."""
-    class Bodies:
-        async def put(self, key, data):
-            return await asyncio.to_thread(store.put, key, data, immutable=True)
-
-        async def read(self, key):
-            return await asyncio.to_thread(store.read, key)
-
-    yield Bodies()
-
-
 class AsyncBodies:
     """Async I/O for immutable bodies; index state remains with the collector."""
     def __init__(self, client, bucket):
@@ -345,44 +332,6 @@ class R2Store:
             os.replace(tmp_path, disk_path)
         except OSError:
             pass
-
-    def _upload_manifest(self, key, body, disk_path):
-        from botocore.exceptions import ClientError
-
-        if disk_path.is_file():
-            try:
-                if disk_path.stat().st_size == len(body):
-                    return False
-            except OSError:
-                pass
-        try:
-            result = self.client.put_object(**put_parameters(self.bucket, key, body, IfNoneMatch='*'))
-        except ClientError as error:
-            if error.response['Error']['Code'] in {'PreconditionFailed', '412'}:
-                self._write_manifest_disk_cache(disk_path, body)
-                return False
-            raise
-        verify_upload(result, body)
-        self._write_manifest_disk_cache(disk_path, body)
-        return True
-
-    def _flush_manifests(self):
-        if not self._manifest_futures:
-            return
-        with self._manifest_lock:
-            pending = list(self._manifest_futures)
-            self._manifest_futures.clear()
-        for future in pending:
-            future.result()
-
-    @asynccontextmanager
-    async def async_bodies(self):
-        if self.async_client is None:
-            async with threaded_bodies(self) as bodies:
-                yield bodies
-        else:
-            async with self.async_client() as client:
-                yield AsyncBodies(client, self.bucket)
 
     def _immutable_cache_path(self, key):
         if (
@@ -569,78 +518,13 @@ class R2Store:
             if pin is not None and not immutable_path.is_file():raise OSError('Pinned raw cache write failed')
         return data
 
-    def put(self, key, body, *, immutable=None):
-        from botocore.exceptions import ClientError
-        from io import BytesIO
-        from congress_api.retention.body_store import RAW_PREFIXES, R2Adapter, create_stored
-        if key.startswith(RAW_PREFIXES):
-            media = ('application/pdf' if key.endswith('.pdf') else
-                     'application/gzip' if key.endswith('.gz') else 'application/octet-stream')
-            return create_stored(R2Adapter(self.client, self.bucket), key, BytesIO(body), media,
-                operation='replace' if immutable is False else 'create').outcome == 'stored'
-
-
-        if self._manifest_cache_dir is not None and immutable and key.startswith('indexes/native-manifests/'):
-            disk_path = self._manifest_cache_dir / key.removeprefix('indexes/native-manifests/')
-            with self._manifest_lock:
-                if len(self._manifest_mem) >= 16384:
-                    self._manifest_mem.clear()
-                self._manifest_mem[key] = body
-            if disk_path.is_file():
-                try:
-                    if disk_path.stat().st_size == len(body):
-                        return False
-                except OSError:
-                    pass
-            with self._manifest_lock:
-                if self._manifest_pool is None:
-                    self._manifest_pool = ThreadPoolExecutor(max_workers=128)
-                if len(self._manifest_futures) >= 512:
-                    done = [f for f in self._manifest_futures if f.done()]
-                    self._manifest_futures = [f for f in self._manifest_futures if not f.done()]
-                else:
-                    done = []
-                self._manifest_futures.append(
-                    self._manifest_pool.submit(self._upload_manifest, key, body, disk_path)
-                )
-            for f in done:
-                f.result()
-            return True
-
-        self._flush_manifests()
-
-        options = {}
-        if immutable:
-            options["IfNoneMatch"] = "*"
-        elif key.startswith("indexes/"):
-            if key not in self.index_etags:
-                raise ValueError("Read an index before replacing it")
-            etag = self.index_etags[key]
-            options.update({"IfMatch": etag} if etag else {"IfNoneMatch": "*"})
-        try:
-            result = self.client.put_object(**put_parameters(self.bucket, key, body, **options))
-        except ClientError as error:
-            if error.response["Error"]["Code"] in {"PreconditionFailed", "412"}:
-                if immutable and key.startswith("bodies/"):
-                    return False
-                if immutable and key.startswith("indexes/processing/body-results/") and self.read(key) == body:
-                    return False  # A retry may preserve the same processing result again.
-                if immutable and key.startswith("indexes/native-manifests/") and self.read(key) == body:
-                    return False
-                raise RuntimeError(
-                    f"Concurrent update or reused receipt name: {key}; published receipts remain recoverable."
-                ) from error
-            raise
-        verify_upload(result, body)
-        if key.startswith("indexes/"):
-            self.index_etags[key] = result["ETag"]
-        return True
-
     def put_pdf_body(self, key_or_sha256, data):
         """Conditionally retain an uncompressed PDF body with public inline and immutable headers."""
+        from io import BytesIO
         from congress_api.retention.body_keys import physical_body_object_key
+        from congress_api.retention.body_store import R2Adapter, create_stored
         pdf_key = physical_body_object_key(key_or_sha256, is_pdf=True)
-        return self.put(pdf_key, data, immutable=True)
+        return create_stored(R2Adapter(self.client, self.bucket), pdf_key, BytesIO(data), 'application/pdf').outcome == 'stored'
 
     def put_file(self, key, path, *, content_type='application/gzip', content_encoding=None, md5=None):
         """Conditionally retain an immutable body without loading it in memory.
@@ -695,18 +579,6 @@ class R2Store:
 
         return _read_stream(self.client, key, request, consume, bucket=self.bucket)
 
-    def put_catalog_manifest(self, data, *, expected_version):
-        """Use the selector version captured before this catalog build."""
-        from congress_api.retention.catalog_publication import MANIFEST_KEY
-        return self.put_index_selector(MANIFEST_KEY, data, expected_version=expected_version)
-
-    def put_index_selector(self, key, data, *, expected_version):
-        """Compare against the exact selector version captured before preparation."""
-        from congress_api.retention.index_selector import require_selector_key
-        require_selector_key(key)
-        self.index_etags[key] = expected_version
-        return self.put(key, data)
-
     def read_derived_file(self, key, path, *, expected=None):
         """Stream only catalog tables, pinning the object version across retries."""
         from congress_api.retention.derived_files import require_derived_key
@@ -745,64 +617,6 @@ class R2Store:
             return result
 
         return _read_stream(self.client, key, request, consume, bucket=self.bucket)
-
-    def put_derived_file(self, key, path, *, expected):
-        """Upload an immutable catalog file with streamed checksum verification."""
-        import os
-        from pathlib import Path
-        import shutil
-        import tempfile
-        from botocore.exceptions import ClientError
-        from congress_api.retention.derived_files import require_derived_key, check_identity, VerifiedFile
-        require_derived_key(key)
-        with Path(path).open('rb') as source:
-            before = os.fstat(source.fileno())
-            proven = isinstance(expected, VerifiedFile)
-            if proven:
-                # The following transport scan verifies content without a second read.
-                expected._require_custody(path)
-            md5, digest, count = hashlib.md5(), hashlib.sha256(), 0
-            for chunk in iter(lambda: source.read(1024**2), b''):
-                md5.update(chunk)
-                digest.update(chunk)
-                count += len(chunk)
-            actual = {'bytes': count, 'sha256': digest.hexdigest()}
-            check_identity(actual, expected, key)
-            source.seek(0)
-            try:
-                result = self.client.put_object(Bucket=self.bucket, Key=key, Body=source,
-                    ContentLength=count, ContentMD5=base64.b64encode(md5.digest()).decode(),
-                    ContentType='application/vnd.apache.parquet', IfNoneMatch='*')
-            except ClientError as error:
-                if error.response['Error']['Code'] not in {'PreconditionFailed', '412'}:
-                    raise
-                if not key.startswith('catalog-history/sha256/'):
-                    raise RuntimeError(f'Concurrent update or reused catalog generation: {key}') from error
-                directory = Path(tempfile.mkdtemp(prefix='catalog-history-verify-'))
-                try:
-                    if self.read_derived_file(key, directory / 'existing.parquet', expected=expected) is None:
-                        raise ValueError(f'Missing immutable catalog history: {key}')
-                except BaseException as failure:
-                    failure.add_note(f'Catalog verification evidence retained: {directory}')
-                    raise
-                shutil.rmtree(directory)
-                return False
-            after = os.fstat(source.fileno())
-            if (before.st_size, before.st_mtime_ns, before.st_ctime_ns) != (after.st_size, after.st_mtime_ns, after.st_ctime_ns):
-                raise ValueError(f'Catalog source changed during upload: {path}')
-        if result['ETag'].strip('"') != md5.hexdigest():
-            raise ValueError('Catalog upload checksum mismatch')
-        return True
-
-    def version(self, key):
-        """Read an object's version without downloading its contents."""
-        from botocore.exceptions import ClientError
-        try:
-            return self.client.head_object(Bucket=self.bucket, Key=key)['ETag']
-        except ClientError as error:
-            if error.response['Error']['Code'] in {'NoSuchKey', '404'}:
-                return 'missing'
-            raise
 
     def keys(self, prefix):
         for page in self.client.get_paginator("list_objects_v2").paginate(

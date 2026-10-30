@@ -3,13 +3,6 @@ import ast
 from pathlib import Path, PurePosixPath
 import re
 
-import pyarrow as pa
-import pyarrow.parquet as pq
-
-from congress_api.retention.raw_storage import STATE_ORDER
-from native_memory_helpers import memory_raw_storage
-from testing_fakes import SelectorStore, states
-
 ROOT = Path(__file__).resolve().parents[3]
 SOURCE = ROOT / 'packages/congress_api/src/congress_api'
 SURVIVING = (
@@ -20,8 +13,6 @@ SURVIVING = (
     'retention/provenance.py', 'retention/recovery_facts.py',
     'retention/raw_verifier.py', 'retention/raw_repair.py', 'retention/pdf_backfill.py',
     'cli/provenance.py', 'cli/raw_verify.py', 'cli/raw_repair.py',
-    # These old raw adapters remain operational until the switch and must obey the same rule.
-    'retention/raw_storage.py', 'retention/raw_archive.py',
 )
 OTHER_SURVIVING = (
     ROOT / 'packages/corpus_recovery/src/corpus_recovery/reconcile.py',
@@ -66,25 +57,3 @@ def test_ratchet_detects_environment_and_fixture_substitutions():
     assert violations('import pytest')
     assert violations('def capture(test_mode=False): pass')
     assert violations("# pytest is discussed in comments\nsource = adapter.read(key)") == []
-
-
-def test_state_iterator_uses_selected_pins_even_beside_development_output(tmp_path, monkeypatch):
-    owner = memory_raw_storage(SelectorStore(), max_state_rows=2)
-    selected = owner.publish(owner.prepare(owner.snapshot(), operation='selected', states=states('b', 'a', 'c')))
-    substitute = states('b', 'a', 'c').to_pylist()
-    for row in substitute:
-        row['attempts'] = 99
-    local = tmp_path / 'output/incremental-updates-20261019/adoption-inputs/state.parquet'
-    local.parent.mkdir(parents=True)
-    pq.write_table(pa.Table.from_pylist(substitute, schema=owner.state_schema), local)
-    monkeypatch.chdir(tmp_path)
-    urls = ['https://example.gov/b', *[f'https://example.gov/missing-{i}' for i in range(513)]]
-    expected = states('b').to_pylist()
-    for environment in (None, 'synthetic test context'):
-        if environment is None:
-            monkeypatch.delenv('PYTEST_CURRENT_TEST', raising=False)
-        else:
-            monkeypatch.setenv('PYTEST_CURRENT_TEST', environment)
-        rows = list(selected.iter_states_for(iter(urls)))
-        assert [{name: row[name] for name in owner.state_schema.names} for row in rows] == expected
-        assert [row[STATE_ORDER] for row in rows] == [0]

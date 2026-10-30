@@ -8,7 +8,7 @@ from tempfile import TemporaryDirectory
 from congress_shared.custody import copy_checked
 
 from congress_api.retention.body_store import BodyStore,R2Adapter,R2Source
-from congress_api.retention.raw_verifier import selected_captures,verify
+from congress_api.retention.raw_verifier import verify
 from congress_api.retention.writer_identity import writer_identity
 from docspec_client.client import NativeDatasets
 
@@ -44,14 +44,13 @@ def main(argv=None):
     parser.add_argument('--engine-config',type=Path)
     selection=parser.add_mutually_exclusive_group()
     selection.add_argument('--captures',type=Path,help='Explicit selected old capture Parquet')
-    selection.add_argument('--old-native-config',type=Path,help='Read the old selector and its exact source TablePins')
     parser.add_argument('--receipt-inventory',type=Path,help='JSON array of exact {key,path} receipt files')
     parser.add_argument('--verification-inventory',type=Path,help='JSON array of exact {key,path} gzip verification files')
     parser.add_argument('--seed')
     parser.add_argument('--full-rehash',action='store_true')
     parser.add_argument('--apply-staged',action='store_true')
     args=parser.parse_args(argv)
-    if not args.apply_staged and not all((args.engine_config,args.captures or args.old_native_config,
+    if not args.apply_staged and not all((args.engine_config,args.captures,
                                          args.receipt_inventory,args.verification_inventory)):
         parser.error('Preview requires engine config, selected captures, receipt and verification inventories')
     writer_identity(ROOT,'raw-verifier')
@@ -62,11 +61,6 @@ def main(argv=None):
     else:
         captures=(json.loads(args.captures.read_text())
                   if args.captures and args.captures.suffix=='.json' else args.captures)
-        if args.old_native_config:
-            from congress_api.retention.r2 import R2Store
-            from congress_api.retention.raw_storage import RawStorage
-            captures=selected_captures(RawStorage.open(R2Store(client,args.bucket),
-                NativeDatasets.from_config(args.old_native_config)))
         result=verify(R2Source(client,args.bucket),captures=captures,
             receipts=json.loads(args.receipt_inventory.read_text()),
             previous=json.loads(args.verification_inventory.read_text()),

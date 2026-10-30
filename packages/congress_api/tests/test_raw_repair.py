@@ -86,45 +86,6 @@ def test_restore_requires_exact_stored_source_and_cannot_overwrite(tmp_path):
     assert (tmp_path/'raw'/key).read_bytes()==stored
 
 
-@pytest.mark.parametrize('count',[1,2])
-def test_native_selected_pin_repair_preserves_rows_old_snapshot_and_cas(tmp_path,count):
-    from congress_api.retention.raw_storage import RawStorage
-    from congress_api.retention.raw_schemas import LEGACY_CAPTURE_SCHEMA
-    from congress_api.retention.raw_verifier import selected_captures
-    from congress_api.retention.raw_repair import apply_native
-    from native_test_helpers import native_test_client
-    from testing_fakes import SelectorStore
-    job_engine=NativeDatasets.from_config(os.environ['DOCSPEC_JOB_CONFIG'])
-    storage=RawStorage(SelectorStore(),native_test_client(job_engine.binary,tmp_path/'old-native'),
-                       max_state_rows=1000,max_capture_rows=1)
-    originals=[f'native repair {n}'.encode() for n in range(count)]
-    digests=[hashlib.sha256(data).hexdigest() for data in originals]
-    rows=[dict(body_key=f'bodies/sha256/{digest[:2]}/{digest}.gz',sha256=digest,bytes=len(originals[n]),
-        receipt_key='receipts/f/day/run.jsonl.gz',receipt_line=n+1,pointer_json='["body"]',
-        stored_sha256='0'*64,stored_bytes=10,context_url=f'https://example.gov/{digest}')
-        for n,digest in enumerate(digests)]
-    source=pa.Table.from_pylist(rows,schema=LEGACY_CAPTURE_SCHEMA)
-    old=storage.publish(storage.prepare(storage.snapshot(),operation='seed',captures=source))
-    repairs=tmp_path/'repairs.parquet'
-    pq.write_table(pa.Table.from_pylist([measured(dict(key=row['body_key'],receipt_key=row['receipt_key'],
-        receipt_line=row['receipt_line'],pointer_json=row['pointer_json']),gzip.compress(data,mtime=0))
-        for row,data in zip(rows,originals)]),repairs)
-    prepare_repair(selected_captures(storage),repairs,engine=job_engine,
-                   work=tmp_path/'repair',expected=old.identity)
-    repaired=apply_native(tmp_path/'repair',storage)
-    now=storage.snapshot()
-    assert repaired['after_rows']==old.manifest['captures']['rows']==now.manifest['captures']['rows']==count
-    expected=source.to_pylist()
-    for row,data in zip(expected,originals):
-        stored=gzip.compress(data,mtime=0)
-        row.update(stored_sha256=hashlib.sha256(stored).hexdigest(),stored_bytes=len(stored))
-    assert now.captures().to_pylist()==expected
-    assert old.captures().equals(source)
-    assert now.body_info(digests[0])['stored_sha256']==hashlib.sha256(gzip.compress(originals[0],mtime=0)).hexdigest()
-    with pytest.raises(ValueError,match='changed'):
-        apply_native(tmp_path/'repair',storage)
-
-
 def test_flat_repair_requires_explicit_observation_order(tmp_path):
     captures,repairs,rows=fixture(tmp_path)
     pq.write_table(pq.read_table(captures).drop(['_capture_order']),captures)

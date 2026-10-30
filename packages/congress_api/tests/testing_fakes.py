@@ -160,20 +160,6 @@ class SelectorStore(MemoryStore):
             raise TimeoutError("reply lost")
 
 
-def captures(label: str) -> pa.Table:
-    """Build a synthetic captures table row for raw storage tests."""
-    return pa.Table.from_pylist([dict(body_key=f'bodies/{label}.gz', receipt_key=f'receipts/{label}.gz',
-        receipt_line=1, context_url=f'https://example.gov/{label}', http_status=200, resolution='saved')],
-        schema=LEGACY_CAPTURE_SCHEMA)
-
-
-def states(*labels: str) -> pa.Table:
-    """Build a synthetic states table for raw storage tests."""
-    from congress_api.retention.raw_storage import STATE_SCHEMA
-    return pa.Table.from_pylist([dict(url=f'https://example.gov/{label}', outcome='saved',
-        attempts=1, links_scanned=True, body_key=f'bodies/{label}.gz') for label in labels], schema=STATE_SCHEMA)
-
-
 class MemoryNative:
     """In-memory mock for native DocSpec table processing and reading."""
 

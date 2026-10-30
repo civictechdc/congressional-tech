@@ -27,23 +27,6 @@ D1_CAPTURE_SCHEMA = pa.schema([
 ])
 
 
-def selected_captures(storage):
-    """Select exact source TablePins from the old index without exporting its rows."""
-    from congress_api.retention.raw_values import NATIVE_CAPTURE_SCHEMA
-    snapshot=storage.snapshot()
-    inputs=[]
-    selects=[]
-    for number,entry in enumerate(storage.capture_pages.entries(snapshot.manifest['captures']['head'])):
-        name=f'old_source_{number:06d}'
-        pin=entry['release']['dataset']['groups']['source']
-        inputs.append(dict(name=name,kind='iceberg',pin=pin))
-        selects.append('SELECT '+','.join('"'+f.name+'"' for f in NATIVE_CAPTURE_SCHEMA)+' FROM '+name)
-    if not selects:
-        raise ValueError('Selected old capture index has no source batches')
-    return dict(inputs=inputs,sql=' UNION ALL '.join(selects),schema=NATIVE_CAPTURE_SCHEMA,
-                expected_rows=snapshot.manifest['captures']['rows'],identity=snapshot.identity)
-
-
 def json_input(name, files, columns):
     return dict(name=name,kind='json_lines',files=files,
                 schema=dict(fields=[field(k,v) for k,v in columns.items()],metadata={}))

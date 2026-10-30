@@ -41,29 +41,3 @@ def test_new_receipt_refuses_authority_credentials_and_pointer_path_keys():
                 {'record': {'/tmp/a': None}, 'captures': [{'pointer': ['/tmp/a']}]}]:
         with pytest.raises(ValueError):
             public_receipt(row)
-
-
-def test_live_capture_flush_uses_public_receipt_policy():
-    from congress_api.retention.raw_archive import _Acquisition
-    # Use the production collector with an injected object store; no transport.
-    class Store:
-        def __init__(self):
-            self.data = {}
-        def put(self, key, payload, **kwargs):
-            self.data[key] = payload
-    store = Store()
-    archive = _Acquisition()
-    archive.store, archive.run_id, archive.day = store, 'fixture', '2026-10-27'
-    archive.metadata, archive.sequence = None, 0
-    archive.state, archive.body_info, archive.pending, archive.additions = {}, {}, [], []
-    archive.seed({'url': 'https://example.gov/a'})
-    archive.record({'requested_url': 'https://example.gov/a', 'url': 'https://example.gov/a',
-                    'retrieved_at': '2026-10-27T00:00:00Z', 'complete': True,
-                    'response_headers': {'Set-Cookie': 'private', 'Content-Type': 'text/plain'},
-                    'source_path': '/tmp/source.json', 'http_status': 200},
-                   outcome='empty', links=[])
-    archive.flush()
-    [key] = [k for k in store.data if k.startswith('receipts/')]
-    [line] = [json.loads(x) for x in gzip.decompress(store.data[key]).splitlines()]
-    assert line['record']['source_path'] == 'source.json'
-    assert line['record']['response_headers'] == {'Content-Type': 'text/plain'}
