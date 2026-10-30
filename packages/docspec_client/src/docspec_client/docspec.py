@@ -12,9 +12,6 @@ from .models import (
     RUNTIME_PIN_FILE,
     SUPPORTED_PLATFORMS,
     VALID_UPDATE_MERGE_STRATEGIES,
-    AggregateSpec,
-    ConnectedComponentsTransform,
-    ConnectedEdgeSpec,
     DocSpecFailure,
     PartitionFieldSpec,
     PartitionSpec,
@@ -36,11 +33,7 @@ from .schema import (
     restore_application_schema,
 )
 from .specs import (
-    _normalize_child_table_spec,
-    _normalize_child_tables,
     _normalize_computed_columns,
-    _normalize_facet_sets,
-    _normalize_fold_readings,
     _normalize_predicate,
     _normalize_scalar_expr,
     _normalize_sort_column,
@@ -53,7 +46,6 @@ from .specs import (
     build_ipc_run_spec,
     build_ipc_update_spec,
     build_update_merge_spec,
-    facet_summary,
     parse_export_pin,
 )
 from .transport import (
@@ -72,10 +64,7 @@ __all__ = [
     'RESPONSE_LIMIT',
     'SUPPORTED_PLATFORMS',
     'VALID_UPDATE_MERGE_STRATEGIES',
-    'AggregateSpec',
     'ArrowResponse',
-    'ConnectedComponentsTransform',
-    'ConnectedEdgeSpec',
     'DocSpecFailure',
     'Host',
     'NativeDatasets',
@@ -99,7 +88,6 @@ __all__ = [
     'build_update_merge_spec',
     'cleanup_safe',
     'encode_arrow_ipc_stream',
-    'facet_summary',
     'native_storage_schema',
     'parse_export_pin',
     'producer_input_entry',

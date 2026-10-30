@@ -3,7 +3,6 @@ from docspec_client import (
     NativeDatasets,
     build_export_policy,
     build_export_spec,
-    facet_summary,
     parse_export_pin,
 )
 
@@ -12,7 +11,7 @@ def test_build_export_policy_full_surface():
     policy = build_export_policy(
         group='source',
         groups=('source',),
-        columns=['source_key', 'document_id', 'collection', 'filename_readings', 'filename_field_count'],
+        columns=['source_key', 'document_id', 'collection', 'filename_field_count'],
         filter={'op': 'is_not_null', 'column': 'source_key'},
         computed_columns={
             'filename_field_count': {
@@ -20,34 +19,11 @@ def test_build_export_policy_full_surface():
                 'columns': ['raw_leaf', 'normalized_leaf', 'header_leaf'],
             }
         },
-        fold_readings={
-            'target_column': 'filename_readings',
-            'columns': ['raw_leaf', 'normalized_leaf', 'header_leaf'],
-            'strip_suffix': False,
-            'drop_source_columns': True,
-        },
         order_by=[
             {'column': 'source_key', 'direction': 'asc', 'nulls_first': False},
         ],
         page_index_columns=['source_key', 'document_id', 'collection'],
-        facet_sets=[
-            ['collection'],
-            ['source_role'],
-            ['recovery_status'],
-        ],
         browse_range_columns=['source_key', 'collection'],
-        child_tables={
-            'occurrences': {
-                'list_column': 'source_occurrences',
-                'parent_key_columns': ['source_id'],
-                'child_key_columns': ['owner_id'],
-                'ordinal_column': 'occurrence_order',
-                'struct_columns': ['source_id', 'block', 'page'],
-                'row_group_rows': 2048,
-                'replace_with_count_column': 'occurrence_count',
-                'drop_parent_column': True,
-            }
-        },
         row_group_rows=2048,
     )
     assert set(policy.keys()) <= {
@@ -57,12 +33,9 @@ def test_build_export_policy_full_surface():
         'columns',
         'filter',
         'computed_columns',
-        'fold_readings',
         'order_by',
         'page_index_columns',
-        'facet_sets',
         'browse_range_columns',
-        'child_tables',
         'row_group_rows',
     }
     assert policy['group'] == 'source'
@@ -74,32 +47,11 @@ def test_build_export_policy_full_surface():
     }
     assert isinstance(policy['computed_columns'], dict)
     assert 'filename_field_count' in policy['computed_columns']
-    assert policy['fold_readings'] == {
-        'target_column': 'filename_readings',
-        'columns': ['raw_leaf', 'normalized_leaf', 'header_leaf'],
-        'strip_suffix': False,
-        'drop_source_columns': True,
-    }
     assert policy['order_by'] == [
         {'column': 'source_key', 'direction': 'asc', 'nulls_first': False}
     ]
     assert policy['page_index_columns'] == ['source_key', 'document_id', 'collection']
-    assert policy['facet_sets'] == [
-        ['collection'],
-        ['source_role'],
-        ['recovery_status'],
-    ]
     assert policy['browse_range_columns'] == ['source_key', 'collection']
-    assert policy['child_tables']['occurrences'] == {
-        'list_column': 'source_occurrences',
-        'parent_key_columns': ['source_id'],
-        'child_key_columns': ['owner_id'],
-        'ordinal_column': 'occurrence_order',
-        'struct_columns': ['source_id', 'block', 'page'],
-        'row_group_rows': 2048,
-        'replace_with_count_column': 'occurrence_count',
-        'drop_parent_column': True,
-    }
     assert policy['row_group_rows'] == 2048
 
 
@@ -151,7 +103,7 @@ def test_build_export_spec_accepts_pin_or_version_string():
     }
 
 
-def test_parse_export_pin_and_facet_summary():
+def test_parse_export_pin():
     raw_pin = {
         'format': 1,
         'id': 'exp-01',
@@ -194,11 +146,6 @@ def test_parse_export_pin_and_facet_summary():
             'sampled_rows': 10,
             'sampled_decoded_bytes': 512,
         },
-        'facets': [
-            {'grouping': ['collection'], 'values': {'collection': 'house'}, 'count': 6},
-            {'grouping': ['collection'], 'values': {'collection': 'senate'}, 'count': 3},
-            {'grouping': ['collection'], 'values': {'collection': None}, 'count': 1},
-        ],
         'browse_ranges': [
             {
                 'row_group': 0,
@@ -208,52 +155,10 @@ def test_parse_export_pin_and_facet_summary():
                 'max_values': {'source_key': 'doc-010'},
             }
         ],
-        'child_tables': {
-            'occurrences': {
-                'object': {
-                    'owner': 'exp-01',
-                    'path': 'exports/exp-01/occurrences.parquet',
-                    'digest': 'd' * 64,
-                    'bytes': 8192,
-                },
-                'rows': 42,
-                'fields': [
-                    {'id': 1, 'name': 'owner_id', 'data_type': 'Utf8', 'nullable': False},
-                    {'id': 2, 'name': 'occurrence_order', 'data_type': 'Int64', 'nullable': False},
-                ],
-                'validation': {
-                    'object': {
-                        'owner': 'exp-01',
-                        'path': 'exports/exp-01/occurrences.parquet',
-                        'digest': 'd' * 64,
-                        'bytes': 8192,
-                    },
-                    'rows': 42,
-                    'sampled_rows': 42,
-                    'sampled_decoded_bytes': 2048,
-                },
-                'browse_ranges': [
-                    {
-                        'row_group': 0,
-                        'start_row': 0,
-                        'num_rows': 42,
-                        'min_values': {'owner_id': 'doc-001'},
-                        'max_values': {'owner_id': 'doc-010'},
-                    }
-                ],
-            }
-        },
     }
     parsed = parse_export_pin(raw_pin)
     assert parsed['rows'] == 10
     assert parsed['object']['bytes'] == 4096
-    assert parsed['child_tables']['occurrences']['rows'] == 42
-
-    summary = facet_summary(parsed, column='collection')
-    assert summary == {
-        'values': {'house': 6, 'senate': 3},
-        'null_count': 1,
-    }
 
 
 def test_export_table_dispatches_normalized_request(tmp_path, monkeypatch):

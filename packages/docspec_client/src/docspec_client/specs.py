@@ -5,7 +5,6 @@ from typing import Any
 import pyarrow as pa
 
 from .models import (
-    PRODUCER_PARQUET_ROW_GROUP_SIZE,
     VALID_UPDATE_MERGE_STRATEGIES,
     SortColumn,
     UpdateMergeSpec,
@@ -66,36 +65,6 @@ def _normalize_computed_columns(computed_columns: Any) -> dict[str, Any]:
     raise ValueError('computed_columns must be a dict mapping column_name -> ScalarExpr or a sequence of specs')
 
 
-def _normalize_fold_readings(fold_readings: Any) -> dict[str, Any]:
-    if isinstance(fold_readings, (list, tuple)):
-        if len(fold_readings) != 1:
-            raise ValueError('fold_readings must be a single ReadingsFoldSpec dict')
-        fold_readings = fold_readings[0]
-    if not isinstance(fold_readings, Mapping):
-        raise ValueError('fold_readings must be a ReadingsFoldSpec dict')
-    target_column = fold_readings.get('target_column') or fold_readings.get('name')
-    if not isinstance(target_column, str) or not target_column.strip():
-        raise ValueError('ReadingsFoldSpec requires a non-empty target_column')
-    raw_cols = fold_readings.get('columns') if 'columns' in fold_readings else fold_readings.get('fields', ())
-    columns = [str(c) for c in (raw_cols or ()) if str(c).strip()]
-    include_suffixes = [str(s) for s in (fold_readings.get('include_suffixes') or ()) if str(s).strip()]
-    include_prefixes = [str(p) for p in (fold_readings.get('include_prefixes') or ()) if str(p).strip()]
-    if not columns and not include_suffixes and not include_prefixes:
-        raise ValueError('ReadingsFoldSpec requires non-empty columns, include_suffixes, or include_prefixes')
-    spec: dict[str, Any] = {
-        'target_column': target_column,
-        'strip_suffix': bool(fold_readings.get('strip_suffix', False)),
-        'drop_source_columns': bool(fold_readings.get('drop_source_columns', True)),
-    }
-    if columns:
-        spec['columns'] = columns
-    if include_suffixes:
-        spec['include_suffixes'] = include_suffixes
-    if include_prefixes:
-        spec['include_prefixes'] = include_prefixes
-    return spec
-
-
 def _normalize_predicate(predicate: Any) -> Any:
     if isinstance(predicate, str):
         if not predicate.strip():
@@ -114,88 +83,6 @@ def _normalize_predicate(predicate: Any) -> Any:
     raise ValueError('Predicate dict requires a valid kind')
 
 
-def _normalize_facet_sets(facet_sets: Any) -> list[list[str]]:
-    if not isinstance(facet_sets, (list, tuple)):
-        raise ValueError('facet_sets must be a list of grouping column lists')
-    normalized: list[list[str]] = []
-    for item in facet_sets:
-        if isinstance(item, str) and item.strip():
-            normalized.append([item])
-        elif isinstance(item, (list, tuple)):
-            cols = [str(col) for col in item if isinstance(col, str) and col.strip()]
-            if not cols:
-                raise ValueError('facet_sets grouping list must not be empty')
-            normalized.append(cols)
-        elif isinstance(item, Mapping) and isinstance(item.get('columns'), (list, tuple)):
-            cols = [str(col) for col in item['columns'] if isinstance(col, str) and col.strip()]
-            if not cols:
-                raise ValueError('FacetSetSpec columns must not be empty')
-            for col in cols:
-                if [col] not in normalized:
-                    normalized.append([col])
-        else:
-            raise ValueError('Each facet_sets entry must be a non-empty list of column names')
-    return normalized
-
-
-def _normalize_child_table_spec(spec: Any) -> dict[str, Any]:
-    if not isinstance(spec, Mapping):
-        raise ValueError('ChildTableExportSpec must be a dict')
-    list_column = spec.get('list_column')
-    if not list_column or not str(list_column).strip():
-        raise ValueError('ChildTableExportSpec requires a non-empty list_column')
-    parent_key_columns = [
-        str(c) for c in (spec.get('parent_key_columns') or ()) if str(c).strip()
-    ]
-    if not parent_key_columns:
-        raise ValueError('ChildTableExportSpec requires non-empty parent_key_columns')
-    child_key_columns = [
-        str(c) for c in (spec.get('child_key_columns') or ()) if str(c).strip()
-    ]
-    ordinal_column = spec.get('ordinal_column')
-    if not ordinal_column or not str(ordinal_column).strip():
-        raise ValueError('ChildTableExportSpec requires a non-empty ordinal_column')
-    row_group_rows = int(spec.get('row_group_rows', PRODUCER_PARQUET_ROW_GROUP_SIZE))
-    if row_group_rows <= 0:
-        raise ValueError('ChildTableExportSpec row_group_rows must be positive')
-    normalized: dict[str, Any] = {
-        'list_column': str(list_column),
-        'parent_key_columns': parent_key_columns,
-        'ordinal_column': str(ordinal_column),
-        'row_group_rows': row_group_rows,
-        'drop_parent_column': bool(spec.get('drop_parent_column', True)),
-    }
-    if child_key_columns:
-        normalized['child_key_columns'] = child_key_columns
-    struct_cols = spec.get('struct_columns')
-    if struct_cols is None and spec.get('columns'):
-        excluded = set(parent_key_columns) | set(child_key_columns) | {str(ordinal_column)}
-        struct_cols = [str(c) for c in spec['columns'] if str(c) not in excluded]
-    if struct_cols is not None:
-        normalized['struct_columns'] = [str(c) for c in struct_cols]
-    if spec.get('replace_with_count_column') is not None:
-        normalized['replace_with_count_column'] = str(spec['replace_with_count_column'])
-    return normalized
-
-
-def _normalize_child_tables(child_tables: Any) -> dict[str, dict[str, Any]]:
-    if isinstance(child_tables, Mapping):
-        result: dict[str, dict[str, Any]] = {}
-        for name, spec in child_tables.items():
-            if not isinstance(name, str) or not name.strip():
-                raise ValueError('child_tables key must be a non-empty table name')
-            result[name] = _normalize_child_table_spec(spec)
-        return result
-    if isinstance(child_tables, (list, tuple)):
-        result = {}
-        for item in child_tables:
-            if not isinstance(item, Mapping) or not isinstance(item.get('name'), str) or not item['name'].strip():
-                raise ValueError('child_tables list item requires a non-empty name')
-            result[item['name']] = _normalize_child_table_spec(item)
-        return result
-    raise ValueError('child_tables must be a dict mapping name -> ChildTableExportSpec')
-
-
 def build_export_policy(
     *,
     group: str = 'source',
@@ -204,12 +91,9 @@ def build_export_policy(
     columns: Sequence[str] = (),
     filter: Any = None,
     computed_columns: Any = None,
-    fold_readings: Any = None,
     order_by: Sequence[Any] = (),
     page_index_columns: Sequence[str] = (),
-    facet_sets: Sequence[Any] = (),
     browse_range_columns: Sequence[str] = (),
-    child_tables: Any = None,
     row_group_rows: int | None = None,
 ) -> dict[str, Any]:
     """Build a canonical DocSpec ``ExportPolicy`` dictionary matching ``src/export.rs``."""
@@ -246,18 +130,12 @@ def build_export_policy(
         policy['filter'] = _normalize_predicate(filter)
     if computed_columns:
         policy['computed_columns'] = _normalize_computed_columns(computed_columns)
-    if fold_readings:
-        policy['fold_readings'] = _normalize_fold_readings(fold_readings)
     if order_by:
         policy['order_by'] = [_normalize_sort_column(spec) for spec in order_by]
     if page_index_columns:
         policy['page_index_columns'] = [str(col) for col in page_index_columns]
-    if facet_sets:
-        policy['facet_sets'] = _normalize_facet_sets(facet_sets)
     if browse_range_columns:
         policy['browse_range_columns'] = [str(col) for col in browse_range_columns]
-    if child_tables:
-        policy['child_tables'] = _normalize_child_tables(child_tables)
     if row_group_rows is not None:
         resolved_rows = int(row_group_rows)
         if resolved_rows <= 0:
@@ -423,54 +301,7 @@ def parse_export_pin(pin: Any) -> dict[str, Any]:
         normalized.setdefault('rows', rows)
     normalized.setdefault('facets', [])
     normalized.setdefault('browse_ranges', [])
-    normalized.setdefault('child_tables', {})
     return normalized
-
-
-def facet_summary(pin: Any, *, facet_set: Any = None, column: str | None = None) -> dict[str, Any]:
-    """Project ``FacetCountEntry`` items from an ``ExportPin`` into a lookup map."""
-    if isinstance(pin, Mapping):
-        entries = list(pin.get('facets') or ())
-    else:
-        entries = list(pin or ())
-    by_column: dict[str, dict[str, Any]] = {}
-    for entry in entries:
-        if not isinstance(entry, Mapping):
-            continue
-        count = int(entry.get('count', 0))
-        if 'grouping' in entry and isinstance(entry.get('values'), Mapping):
-            grouping = entry.get('grouping') or []
-            values_map = entry['values']
-            if len(grouping) == 1:
-                col_name = str(grouping[0])
-                if column is not None and col_name != column:
-                    continue
-                bucket = by_column.setdefault(col_name, {'values': {}, 'null_count': 0})
-                val = values_map.get(col_name)
-                if val is None:
-                    bucket['null_count'] += count
-                else:
-                    bucket['values'][str(val)] = bucket['values'].get(str(val), 0) + count
-            elif column is not None and column in values_map:
-                bucket = by_column.setdefault(column, {'values': {}, 'null_count': 0})
-                val = values_map.get(column)
-                if val is None:
-                    bucket['null_count'] += count
-                else:
-                    bucket['values'][str(val)] = bucket['values'].get(str(val), 0) + count
-        else:
-            col_name = entry.get('column')
-            if not col_name or (column is not None and col_name != column):
-                continue
-            bucket = by_column.setdefault(col_name, {'values': {}, 'null_count': 0})
-            val = entry.get('value')
-            if val is None:
-                bucket['null_count'] += count
-            else:
-                bucket['values'][str(val)] = bucket['values'].get(str(val), 0) + count
-    if column is not None:
-        return by_column.get(column, {'values': {}, 'null_count': 0})
-    return by_column
 
 
 def _merge_row_pair(

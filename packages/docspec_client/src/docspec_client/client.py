@@ -1111,43 +1111,6 @@ class NativeDatasets:
             finally:
                 self._responses.discard(response)
 
-    def _read_pin_endpoint(self, pin: Any, suffix: str, *, schema: pa.Schema | None = None) -> pa.Table:
-        started = time.monotonic()
-        deadline = started + self.timeout
-        dataset, version = pin['dataset']['dataset'], pin['id']
-        host = self._execution_host()
-        release_path = f'/datasets/{quote(dataset, safe="")}/versions/{quote(version, safe="")}'
-        self._verify_pin(host, release_path, pin, deadline)
-        path = release_path + suffix
-        with host.stream('GET', path, deadline=deadline) as (response, deadline):
-            self._responses.add(response)
-            try:
-                host.check_response(response)
-                expected = {
-                    'docspec-dataset': dataset,
-                    'docspec-version': version,
-                    'docspec-manifest-blake3': pin['manifest']['digest'],
-                    'content-type': 'application/vnd.apache.arrow.stream',
-                }
-                if any(response.headers.get(k) != v for k, v in expected.items()):
-                    raise ValueError('Native stream differs from the selected exact pin')
-                with ArrowResponse(response, deadline=deadline) as stream, \
-                        pa.ipc.open_stream(stream) as reader:
-                    table = reader.read_all()
-                    stream.finish()
-                return table if schema is None else table.cast(schema, safe=True)
-            finally:
-                self._responses.discard(response)
-
-    def read_receipts(self, pin: Any, *, schema: pa.Schema | None = None) -> pa.Table:
-        return self._read_pin_endpoint(pin, '/receipts', schema=schema)
-
-    def read_evidence(self, pin: Any, *, schema: pa.Schema | None = None) -> pa.Table:
-        return self._read_pin_endpoint(pin, '/evidence', schema=schema)
-
-    def read_occurrences(self, pin: Any, *, schema: pa.Schema | None = None) -> pa.Table:
-        return self._read_pin_endpoint(pin, '/occurrences', schema=schema)
-
     def export(
         self,
         request: Any,
