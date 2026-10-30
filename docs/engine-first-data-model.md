@@ -725,6 +725,15 @@ publishes it as `schema.json`. The schema file's content hash participates in th
 existing release identity; the archive `schema_version` remains 1. Additive
 relationship metadata uses `relationships_version: 1`.
 
+A metadata-only release can reuse unchanged native Parquet exports and their
+original model pins. Its semantic profile adds `relationship_metadata_update`
+with `base_release_id`, `registry_sha256`, `schema_sha256` (lowercase SHA-256
+values) and `relationships_version: 1`. The canonical profile builder validates
+this marker for publication identity and retained-input checks. It records new
+metadata without claiming that current model code rebuilt the original data.
+The resulting release still passes the existing field/key checks, reader gates
+and conditional pointer update.
+
 Each table declares an `identity`: either a validated `primary_key` (possibly
 compound), or a `row_position`. `list_row` is a virtual, zero-based position for
 `list` and `detail`, continued across manifest shard row ranges. It is not a

@@ -56,6 +56,8 @@ jobs:
         run: |
           .venv/bin/python scripts/dev.py test production-offline \
             --path packages/viewer_publication/tests/test_phase2_model_entities.py::test_phase2_entities_meetings_witnesses_recordings_and_spicy_projections \
+            --path packages/viewer_publication/tests/test_phase1_model_profile.py \
+            --path packages/viewer_publication/tests/test_archive_maintenance.py \
             -- --basetemp "$RUNNER_TEMP/native-mcp" --junitxml="$RUNNER_TEMP/native-producer.xml"
       - name: Sync the independent DuckDB 2 consumer
         run: uv sync --locked --project apps/explorer_mcp

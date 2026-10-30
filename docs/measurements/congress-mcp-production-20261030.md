@@ -47,6 +47,15 @@ changed the pointer conditionally against its observed ETag. Publication took
 canary also fetched an actual saved file. These are publication checks, separate
 from MCP performance measurements.
 
+A final lifecycle check caught that retained-input validation did not yet accept
+the new metadata-update marker. The canonical profile builder now validates its
+base release, registry/schema SHA-256 values and relationship version explicitly.
+The actual published input record was read back over HTTPS and passed retained-
+input validation with all 2,292 original receipt keys. No immutable record was
+rewritten. Sixty focused profile/retention tests pass; malformed markers still
+refuse deletion. The same tests now run in the native-consumer CI job. See
+[`congress-mcp-retention-20261030.json`](congress-mcp-retention-20261030.json).
+
 A fresh public `prepare` selected this exact release and verified all 16 tables.
 Actual stdio discovery returned all table identities and 59 relationship
 definitions. The receipt summary is in
@@ -134,3 +143,19 @@ the old reader's immutable objects. Injected ENOSPC at payload and selection
 writes, reset/truncated transfers, update/rollback, and corrupt-old-object
 refusal also passed. Completed objects are retained for active readers; cache
 retirement remains an explicit stop-all-readers then remove-cache operation.
+
+The full public-release update/rollback check also passed through two concurrent
+stdio servers. Updating the prior release took 0.94 seconds, reused all 19
+existing objects unchanged and added only the new schema object. The old server
+kept the prior release; the new server kept the updated release even after the
+cache selection rolled back. Both still counted 367,008 documents. The final
+selection was restored to the public release. See
+[`congress-mcp-update-rollback-20261030.json`](congress-mcp-update-rollback-20261030.json).
+
+## Committed CI
+
+Code commit: `c649abece2a5b802a1381e6fb61a2feb5f3bd4fa`, merged and pushed to main.
+[MCP CI passed](https://github.com/civictechdc/congressional-tech/actions/runs/41082729727),
+including both the isolated app suite and native producer-to-stdio job.
+[The broader repository run](https://github.com/civictechdc/congressional-tech/actions/runs/41082733637)
+is still in progress; final disposition will be recorded here.

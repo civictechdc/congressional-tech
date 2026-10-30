@@ -1,0 +1,11 @@
+{
+  "status": "passed",
+  "base_release_id": "a06e2a636d3c765f81be13712f496aa25a0dec50d7055ea8a1dbb18f0ebf1e25",
+  "updated_release_id": "0db23484fe86c7f5a5e50e44f078ec34e74e793873b26c4a15f0b9e9efa17b69",
+  "final_selection": "0db23484fe86c7f5a5e50e44f078ec34e74e793873b26c4a15f0b9e9efa17b69",
+  "update_seconds": 0.937680792005267,
+  "old_objects_reused": 19,
+  "new_objects": 1,
+  "old_and_new_stdio_readers_preserved": true,
+  "document_count_each": 367008
+}

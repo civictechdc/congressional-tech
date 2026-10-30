@@ -591,14 +591,12 @@ source = { editable = "packages/corpus_recovery" }
 dependencies = [
     { name = "congress-api", extra = ["archive"] },
     { name = "congress-shared" },
-    { name = "viewer-publication" },
 ]
 
 [package.metadata]
 requires-dist = [
     { name = "congress-api", extras = ["archive"], editable = "packages/congress_api" },
     { name = "congress-shared", editable = "packages/congress_shared" },
-    { name = "viewer-publication", editable = "packages/viewer_publication" },
 ]
 
 [[package]]
