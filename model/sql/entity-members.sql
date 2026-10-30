@@ -11,11 +11,17 @@ WITH parsed_terms AS (
   try_cast(term_start AS DATE) AS start_date,
   try_cast(term_end AS DATE) AS end_date
  FROM spicy_member_terms WHERE bioguide_id IS NOT NULL
+), ranked_terms AS (
+ SELECT *,row_number() OVER (
+  PARTITION BY bioguide_id
+  ORDER BY start_date DESC NULLS LAST,end_date DESC NULLS LAST,chamber ASC
+ ) AS term_seq
+ FROM parsed_terms
 ), terms_agg AS (
  SELECT bioguide_id,array_agg(named_struct(
   'chamber',chamber,'state',state,'district',district,'party',party,'start',start_date,'end',end_date
- ) ORDER BY start_date DESC NULLS LAST,end_date DESC NULLS LAST,chamber ASC) AS terms
- FROM parsed_terms GROUP BY bioguide_id
+ ) ORDER BY term_seq ASC) AS terms
+ FROM ranked_terms GROUP BY bioguide_id
 )
 SELECT m.bioguide_id,
  trim(coalesce(m.name_first,'')||' '||coalesce(m.name_last,'')) AS name,

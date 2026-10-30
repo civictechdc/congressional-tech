@@ -7,11 +7,17 @@ WITH keys AS (
  FROM meeting_transcript_links l
  JOIN details d ON l.package_id=d.package_id
  WHERE d.package_id IS NOT NULL
+), transcript_ranked AS (
+ SELECT *,row_number() OVER (
+  PARTITION BY event_id
+  ORDER BY list_row ASC,package_id ASC
+ ) AS tr_seq
+ FROM transcript_rows
 ), transcripts_agg AS (
  SELECT event_id,array_agg(named_struct(
   'package_id',package_id,'list_row',list_row
- ) ORDER BY list_row ASC,package_id ASC) AS transcripts
- FROM transcript_rows GROUP BY event_id
+ ) ORDER BY tr_seq ASC) AS transcripts
+ FROM transcript_ranked GROUP BY event_id
 )
 SELECT k.event_id,
  m.chamber,

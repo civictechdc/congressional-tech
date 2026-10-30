@@ -53,7 +53,7 @@ WITH referenced_nominations AS (
  WHERE v.documents IS NOT NULL AND lower(trim(v.chamber)) IN ('s','senate')
 ), pn_votes AS (
  SELECT DISTINCT
-  cast(coalesce(doc['congress'],vote_congress) AS VARCHAR)||'-pn-'||
+  coalesce(cast(doc['congress'] AS VARCHAR),cast(vote_congress AS VARCHAR))||'-pn-'||
   regexp_replace(
    regexp_replace(
     regexp_replace(lower(trim(doc['number'])),'^(?:pn\s*)?0*([0-9]+)', '$1'),
@@ -66,11 +66,21 @@ WITH referenced_nominations AS (
   question,result,try_cast(yea AS SMALLINT) AS yea,try_cast(nay AS SMALLINT) AS nay
  FROM vote_docs
  WHERE upper(trim(doc['type']))='PN' AND doc['number'] IS NOT NULL
+), pn_votes_matched AS (
+ SELECT pv.*
+ FROM pn_votes pv
+ JOIN matched_nominations mn ON pv.nomination_id=mn.nomination_id
+), pn_votes_sorted AS (
+ SELECT *,row_number() OVER (
+  PARTITION BY nomination_id
+  ORDER BY vote_date ASC NULLS LAST,vote_id ASC
+ ) AS vote_seq
+ FROM pn_votes_matched
 ), votes_agg AS (
  SELECT nomination_id,array_agg(named_struct(
   'vote_id',vote_id,'date',vote_date,'question',question,'result',result,'yea',yea,'nay',nay
- ) ORDER BY vote_date ASC NULLS LAST,vote_id ASC) AS floor_votes
- FROM pn_votes GROUP BY nomination_id
+ ) ORDER BY vote_seq ASC) AS floor_votes
+ FROM pn_votes_sorted GROUP BY nomination_id
 )
 SELECT m.nomination_id,
  m.description,m.organization,

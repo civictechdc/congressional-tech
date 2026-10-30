@@ -3,29 +3,45 @@ WITH referenced_bills AS (
  UNION
  SELECT DISTINCT lower(trim(unnest(subject_keys))) AS bill_id FROM meetings_resolved WHERE subject_keys IS NOT NULL
 ), bill_committees_agg AS (
- SELECT lower(trim(bill_id)) AS bill_id,
-  array_sort(array_distinct(array_agg(lower(trim(system_code))))) AS committees
- FROM spicy_bill_committees
- WHERE bill_id IS NOT NULL AND system_code IS NOT NULL
- GROUP BY lower(trim(bill_id))
+ SELECT lower(trim(c.bill_id)) AS bill_id,
+  array_sort(array_distinct(array_agg(lower(trim(c.system_code))))) AS committees
+ FROM spicy_bill_committees c
+ JOIN referenced_bills rb ON lower(trim(c.bill_id))=rb.bill_id
+ WHERE c.bill_id IS NOT NULL AND c.system_code IS NOT NULL
+ GROUP BY lower(trim(c.bill_id))
+), cbo_parsed AS (
+ SELECT lower(trim(c.bill_id)) AS bill_id,
+  c.publication_id,
+  coalesce(try_cast(c.pub_date AS DATE),cast(arrow_cast(try_cast(c.pub_date AS TIMESTAMP WITH TIME ZONE),'Timestamp(Second, Some("America/New_York"))') AS DATE)) AS pub_date,
+  c.description
+ FROM spicy_cbo_cost_estimates c
+ JOIN referenced_bills rb ON lower(trim(c.bill_id))=rb.bill_id
+ WHERE c.bill_id IS NOT NULL
+), cbo_sorted AS (
+ SELECT *,row_number() OVER (
+  PARTITION BY bill_id
+  ORDER BY pub_date ASC NULLS LAST,publication_id ASC
+ ) AS cbo_seq
+ FROM cbo_parsed
 ), cbo_agg AS (
- SELECT lower(trim(bill_id)) AS bill_id,
+ SELECT bill_id,
   array_agg(named_struct(
    'publication_id',publication_id,
-   'date',coalesce(try_cast(pub_date AS DATE),cast(arrow_cast(try_cast(pub_date AS TIMESTAMP WITH TIME ZONE),'Timestamp(Second, Some("America/New_York"))') AS DATE)),
+   'date',pub_date,
    'description',description
-  ) ORDER BY coalesce(try_cast(pub_date AS DATE),cast(arrow_cast(try_cast(pub_date AS TIMESTAMP WITH TIME ZONE),'Timestamp(Second, Some("America/New_York"))') AS DATE)) ASC NULLS LAST,publication_id ASC) AS cbo_estimates
- FROM spicy_cbo_cost_estimates
- WHERE bill_id IS NOT NULL
- GROUP BY lower(trim(bill_id))
+  ) ORDER BY cbo_seq ASC) AS cbo_estimates
+ FROM cbo_sorted
+ GROUP BY bill_id
 ), raw_votes AS (
- SELECT lower(trim(bill_id)) AS bill_id,
-  vote_id,'vote_record' AS basis,
-  CASE lower(trim(chamber)) WHEN 'h' THEN 'house' WHEN 's' THEN 'senate' ELSE lower(trim(chamber)) END AS chamber,
-  coalesce(try_cast(vote_day AS DATE),cast(arrow_cast(try_cast(vote_day AS TIMESTAMP WITH TIME ZONE),'Timestamp(Second, Some("America/New_York"))') AS DATE)) AS vote_date,
-  question,result,try_cast(yea AS SMALLINT) AS yea,try_cast(nay AS SMALLINT) AS nay,
+ SELECT lower(trim(v.bill_id)) AS bill_id,
+  v.vote_id,'vote_record' AS basis,
+  CASE lower(trim(v.chamber)) WHEN 'h' THEN 'house' WHEN 's' THEN 'senate' ELSE lower(trim(v.chamber)) END AS chamber,
+  coalesce(try_cast(v.vote_day AS DATE),cast(arrow_cast(try_cast(v.vote_day AS TIMESTAMP WITH TIME ZONE),'Timestamp(Second, Some("America/New_York"))') AS DATE)) AS vote_date,
+  v.question,v.result,try_cast(v.yea AS SMALLINT) AS yea,try_cast(v.nay AS SMALLINT) AS nay,
   1 AS basis_rank
- FROM spicy_roll_call_votes WHERE bill_id IS NOT NULL AND trim(bill_id)<>''
+ FROM spicy_roll_call_votes v
+ JOIN referenced_bills rb ON lower(trim(v.bill_id))=rb.bill_id
+ WHERE v.bill_id IS NOT NULL AND trim(v.bill_id)<>''
  UNION ALL
  SELECT lower(trim(r.bill_id)) AS bill_id,
   v.vote_id,'bill_action' AS basis,
@@ -34,19 +50,29 @@ WITH referenced_bills AS (
   v.question,v.result,try_cast(v.yea AS SMALLINT) AS yea,try_cast(v.nay AS SMALLINT) AS nay,
   2 AS basis_rank
  FROM spicy_bill_vote_references r
+ JOIN referenced_bills rb ON lower(trim(r.bill_id))=rb.bill_id
  JOIN spicy_roll_call_votes v
-  ON v.vote_id = cast(r.congress AS VARCHAR)||'-'||(CASE lower(trim(r.chamber)) WHEN 'house' THEN 'h' WHEN 'senate' THEN 's' ELSE lower(trim(r.chamber)) END)||'-'||cast(r.session AS VARCHAR)||'-'||cast(r.roll_number AS VARCHAR)
-  OR v.vote_id = cast(r.congress AS VARCHAR)||'-'||lower(trim(r.chamber))||'-'||cast(r.session AS VARCHAR)||'-'||cast(r.roll_number AS VARCHAR)
+  ON cast(v.congress AS VARCHAR)=cast(r.congress AS VARCHAR)
+  AND (CASE lower(trim(v.chamber)) WHEN 'h' THEN 'house' WHEN 's' THEN 'senate' ELSE lower(trim(v.chamber)) END)
+    = (CASE lower(trim(r.chamber)) WHEN 'h' THEN 'house' WHEN 's' THEN 'senate' ELSE lower(trim(r.chamber)) END)
+  AND cast(v.session AS VARCHAR)=cast(r.session AS VARCHAR)
+  AND cast(v.roll_number AS VARCHAR)=cast(r.roll_number AS VARCHAR)
  WHERE r.bill_id IS NOT NULL
 ), dedup_votes AS (
  SELECT *,row_number() OVER(PARTITION BY bill_id,vote_id ORDER BY basis_rank ASC) AS rn
  FROM raw_votes WHERE vote_id IS NOT NULL
+), votes_sorted AS (
+ SELECT *,row_number() OVER (
+  PARTITION BY bill_id
+  ORDER BY vote_date ASC NULLS LAST,vote_id ASC
+ ) AS vote_seq
+ FROM dedup_votes WHERE rn=1
 ), votes_agg AS (
  SELECT bill_id,array_agg(named_struct(
   'vote_id',vote_id,'basis',basis,'chamber',chamber,'date',vote_date,
   'question',question,'result',result,'yea',yea,'nay',nay
- ) ORDER BY vote_date ASC NULLS LAST,vote_id ASC) AS floor_votes
- FROM dedup_votes WHERE rn=1 GROUP BY bill_id
+ ) ORDER BY vote_seq ASC) AS floor_votes
+ FROM votes_sorted GROUP BY bill_id
 ), amdt_base AS (
  SELECT lower(trim(amendment_id)) AS amendment_id,purpose,sponsor_bioguide_id,
   coalesce(try_cast(latest_action_date AS DATE),cast(arrow_cast(try_cast(latest_action_date AS TIMESTAMP WITH TIME ZONE),'Timestamp(Second, Some("America/New_York"))') AS DATE)) AS latest_action_date,
@@ -61,25 +87,43 @@ WITH referenced_bills AS (
  LEFT JOIN amdt_base a1 ON a0.amended_bill_id IS NULL AND a0.amended_amendment_id=a1.amendment_id
  LEFT JOIN amdt_base a2 ON a0.amended_bill_id IS NULL AND a1.amended_bill_id IS NULL AND a1.amended_amendment_id=a2.amendment_id
  LEFT JOIN amdt_base a3 ON a0.amended_bill_id IS NULL AND a1.amended_bill_id IS NULL AND a2.amended_bill_id IS NULL AND a2.amended_amendment_id=a3.amendment_id
+), amdt_dedup AS (
+ SELECT DISTINCT ar.*
+ FROM amdt_resolved ar
+ JOIN referenced_bills rb ON ar.bill_id=rb.bill_id
+ WHERE ar.bill_id IS NOT NULL
+), amdt_sorted AS (
+ SELECT *,row_number() OVER (
+  PARTITION BY bill_id
+  ORDER BY latest_action_date ASC NULLS LAST,amendment_id ASC
+ ) AS amdt_seq
+ FROM amdt_dedup
 ), amendments_agg AS (
  SELECT bill_id,array_agg(named_struct(
   'amendment_id',amendment_id,'purpose',purpose,'sponsor_bioguide_id',sponsor_bioguide_id,
   'latest_action_date',latest_action_date,'latest_action_text',latest_action_text
- ) ORDER BY latest_action_date ASC NULLS LAST,amendment_id ASC) AS amendments
- FROM (SELECT DISTINCT * FROM amdt_resolved WHERE bill_id IS NOT NULL) GROUP BY bill_id
+ ) ORDER BY amdt_seq ASC) AS amendments
+ FROM amdt_sorted GROUP BY bill_id
 ), activities_parsed AS (
- SELECT lower(trim(bill_id)) AS bill_id,
-  lower(trim(system_code)) AS system_code,
-  activity_name AS activity,
-  coalesce(try_cast(activity_date AS DATE),cast(arrow_cast(try_cast(activity_date AS TIMESTAMP WITH TIME ZONE),'Timestamp(Second, Some("America/New_York"))') AS DATE)) AS act_date,
-  coalesce(occurrence,0) AS occurrence
- FROM spicy_bill_committee_activities
- WHERE bill_id IS NOT NULL AND system_code IS NOT NULL AND activity_name IS NOT NULL
+ SELECT lower(trim(a.bill_id)) AS bill_id,
+  lower(trim(a.system_code)) AS system_code,
+  a.activity_name AS activity,
+  coalesce(try_cast(a.activity_date AS DATE),cast(arrow_cast(try_cast(a.activity_date AS TIMESTAMP WITH TIME ZONE),'Timestamp(Second, Some("America/New_York"))') AS DATE)) AS act_date,
+  coalesce(a.occurrence,0) AS occurrence
+ FROM spicy_bill_committee_activities a
+ JOIN referenced_bills rb ON lower(trim(a.bill_id))=rb.bill_id
+ WHERE a.bill_id IS NOT NULL AND a.system_code IS NOT NULL AND a.activity_name IS NOT NULL
+), activities_sorted AS (
+ SELECT *,row_number() OVER (
+  PARTITION BY bill_id
+  ORDER BY act_date ASC NULLS LAST,occurrence ASC,system_code ASC,activity ASC
+ ) AS act_seq
+ FROM activities_parsed
 ), activities_agg AS (
  SELECT bill_id,array_agg(named_struct(
   'system_code',system_code,'activity',activity,'date',act_date
- ) ORDER BY act_date ASC NULLS LAST,occurrence ASC,system_code ASC,activity ASC) AS committee_activities
- FROM activities_parsed GROUP BY bill_id
+ ) ORDER BY act_seq ASC) AS committee_activities
+ FROM activities_sorted GROUP BY bill_id
 ), base_bills AS (
  SELECT lower(trim(bill_id)) AS norm_bill_id,
   title,short_title,
