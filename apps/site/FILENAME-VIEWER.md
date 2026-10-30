@@ -16,11 +16,14 @@ flipping the release pointer. A failure leaves the previous release selected.
 `npm run measure:archive` and `npm run targets:archive` maintain the archive measurement
 harness and its targets. Device and live-publication gates remain owner-run steps.
 
-The committee explorer remains at `/dashboard/` until its phase-2 consumers move.
-Its six workspaces use the weekly committee publication independently of the document
-archive. It retains direct file links, saved-body links, source evidence, filtering,
-coverage, witnesses and issues. It no longer opens the retired filename catalog.
+The unified archive and entity explorer at `/archive/` serves both the document archive and
+the six committee explorer workspaces (`meetings`, `committees`, `materials`, `witnesses`,
+`issues`, and `coverage`) from the same immutable engine release Parquets (`documents`,
+`sources`, `meetings`, `committees`, `materials`, `witnesses`, `issues`, and search/detail
+sidecars). It retains direct file links, saved-body links, source evidence, filtering,
+coverage, witnesses, and issues, and no longer opens a separate weekly committee publication
+or the retired filename catalog. Requests to `/dashboard/` redirect to `/archive/`.
 
-Pages builds run the retained explorer checks and the native archive contract before
+Pages builds run the explorer checks and the native archive contract before
 uploading the static site. Archive releases publish separately through the engine
 publisher. The removed `/filenames/` redirect and filename worker are not public routes.

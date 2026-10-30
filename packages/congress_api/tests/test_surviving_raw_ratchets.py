@@ -18,7 +18,7 @@ SURVIVING = (
     'models/raw_fetch.py', 'acquisition/fetcher.py', 'transport/raw_adapters.py',
     'retention/receipt_writer.py', 'retention/archive_expander.py',
     'retention/provenance.py', 'retention/recovery_facts.py',
-    'retention/raw_verifier.py', 'retention/raw_repair.py',
+    'retention/raw_verifier.py', 'retention/raw_repair.py', 'retention/pdf_backfill.py',
     'cli/provenance.py', 'cli/raw_verify.py', 'cli/raw_repair.py',
     # These old raw adapters remain operational until the switch and must obey the same rule.
     'retention/raw_storage.py', 'retention/raw_archive.py', 'acquisition/raw_sync.py',
@@ -26,6 +26,7 @@ SURVIVING = (
 OTHER_SURVIVING = (
     ROOT / 'packages/corpus_recovery/src/corpus_recovery/reconcile.py',
     ROOT / 'packages/viewer_publication/src/viewer_publication/review_provenance.py',
+    ROOT / 'packages/viewer_publication/src/viewer_publication/backfill_uncompressed_pdfs.py',
 )
 TEST_SWITCH = re.compile(r'^(?:PYTEST(?:_.*)?|UNITTEST(?:_.*)?|TEST_MODE|TESTING)$', re.I)
 

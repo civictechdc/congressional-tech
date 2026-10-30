@@ -183,6 +183,25 @@ class BodyStore:
             self.known[key] = result
         return result
 
+    def put_pdf_copy(self, key, file, *, expected_md5, expected_size, operation='create'):
+        """Create an uncompressed .pdf copy without a pre-upload HEAD; verify 412 against expected MD5."""
+        validate_key(key, operation)
+        if not key.startswith('bodies/') or not key.endswith('.pdf'):
+            raise ValueError('PDF copy requires a .pdf body key')
+        if (not isinstance(expected_md5, str) or re.fullmatch('[0-9a-f]{32}', expected_md5) is None
+                or type(expected_size) is not int or expected_size < 0):
+            raise ValueError('PDF copy requires an explicit lowercase MD5 and byte size')
+        with Path(file).open('rb') as source:
+            result = create_stored(self.adapter, key, source, 'application/pdf', operation=operation,
+                                   expected_md5=expected_md5, expected_size=expected_size)
+        if result.outcome == 'unchanged':
+            existing = self.adapter.head(key)
+            if (existing is None or existing.get('size') != expected_size
+                    or single_put_md5(existing.get('etag')) != expected_md5):
+                raise ValueError('Existing PDF copy differs from expected MD5 or size')
+            result = WriteResult('unchanged', '.pdf', expected_md5, expected_size)
+        return result
+
     def put(self, key, file, media, *, operation='create'):
         validate_key(key, operation)
         if not key.startswith('bodies/'):
@@ -292,9 +311,25 @@ class LocalAdapter:
     def head(self, key):
         path = self.root / key
         try:
-            return dict(size=path.stat().st_size, etag=None)
+            with path.open('rb') as source:
+                digest = hashlib.file_digest(source, 'md5').hexdigest()
+                return dict(size=source.tell(), etag=digest)
         except FileNotFoundError:
             return None
+
+    def get(self, key, *, if_match=None):
+        path = self.root / key
+        source = path.open('rb')
+        try:
+            digest = hashlib.file_digest(source, 'md5').hexdigest()
+            size = source.tell()
+            source.seek(0)
+            if if_match is not None and single_put_md5(if_match) != digest:
+                raise ValueError('Local object ETag mismatch')
+            return dict(Body=source, ContentLength=size, ETag=digest)
+        except BaseException:
+            source.close()
+            raise
 
     def create(self, key, source, *, media, encoding, md5, size):
         path = self.root / key

@@ -101,3 +101,24 @@ def test_conflicting_fingerprints_refuse_a_qualified_count(tmp_path):
     with pytest.raises(ValueError,match='invariant'):
         measurement.measure(path,engine=NativeDatasets.from_config(os.environ['DOCSPEC_JOB_CONFIG']),work=tmp_path/'work')
     assert not (tmp_path/'work/measurement.json').exists()
+
+
+def test_archive_model_body_sha_relations_match_body_key_semantics(tmp_path):
+    path=inputs(tmp_path,complete=True)
+    descriptor=json.loads(path.read_text())
+    for name,pin in descriptor['relations'].items():
+        relation=path.parent/pin['path']
+        rows=[]
+        for row in pq.read_table(relation).to_pylist():
+            body_sha=row.pop('body_key').split('/')[-1].removesuffix('.gz')
+            rows.append({**row,'body_sha':body_sha})
+        pq.write_table(pa.Table.from_pylist(rows),relation)
+        pin['sha256']=sha256(relation.read_bytes()).hexdigest()
+    path.write_text(json.dumps(descriptor))
+    result=measurement.measure(path,engine=NativeDatasets.from_config(os.environ['DOCSPEC_JOB_CONFIG']),work=tmp_path/'work')
+    assert result['eligible_candidates']==FIXTURE['expected']['eligible_candidates']
+    assert result['matching_candidates']==3 and result['unknown_candidates']==0
+    assert result['status']=='complete' and result['decision_ready'] is True
+    examples=pq.read_table(tmp_path/'work/matching-examples.parquet').to_pylist()
+    assert {row['body_key'] for row in examples}==set(FIXTURE['expected']['matching_bodies'])|{FIXTURE['complete_variant']['body_key']}
+

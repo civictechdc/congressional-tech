@@ -10,7 +10,7 @@ export const measurementProfiles={
   desktop:{name:'desktop',viewport:{width:1440,height:1000},deviceScaleFactor:1,isMobile:false,cpuSlowdown:1,cpuScope:'unthrottled',network:null},
 };
 const positive=value=>Number.isFinite(value)&&value>0;
-const measurableOrigin=origin=>(origin?.kind==='seed_v5'&&origin.display_only===true)||(origin?.kind==='model'&&(origin.display_only===undefined||origin.display_only===false));
+const measurableOrigin=origin=>origin?.kind==='model'&&(origin.display_only===undefined||origin.display_only===false);
 const median=values=>[...values].sort((a,b)=>a-b)[2];
 function profileStatistics(samples){
   if(!Array.isArray(samples)||samples.length!==5)throw new Error('Provisional targets require exactly five runs per profile.');
@@ -35,7 +35,7 @@ function validateTargets(value){
 export async function readTargets(path=defaultTargets){const value=JSON.parse(await readFile(path));if(value.version!==1)throw new Error('Unsupported target schema.');if(value.status==='owner-gated')return undefined;return validateTargets(value);}
 export function checkTargetRelease(releaseId,targets,origin){
   validateTargets(targets??{});
-  if(targets.status==='provisional-emulated'&&!measurableOrigin(origin))throw new Error('Provisional emulated targets require a model release or display-only v5 seed.');
+  if(targets.status==='provisional-emulated'&&!measurableOrigin(origin))throw new Error('Provisional emulated targets require a non-display-only model release.');
   if(targets.status==='provisional-emulated'&&releaseId!==targets.raw_runs.phone[0].releaseId)throw new Error('Provisional targets measured a different release identity.');
 }
 export function checkTargets(sample,targets,origin,profile){
@@ -46,7 +46,7 @@ export function checkTargets(sample,targets,origin,profile){
 }
 export async function validateTargetFile(path,origin){
   const targets=await readTargets(path);if(!targets)throw new Error('Qualified archive targets are missing.');
-  if(targets.status==='provisional-emulated'&&!measurableOrigin(origin))throw new Error('Provisional targets require a model release or display-only v5 seed.');
+  if(targets.status==='provisional-emulated'&&!measurableOrigin(origin))throw new Error('Provisional targets require a non-display-only model release.');
   return {status:targets.status,basis:targets.basis,measured_release_id:targets.status==='provisional-emulated'?targets.raw_runs.phone[0].releaseId:null};
 }
 export async function writeTargets({measurements,ceilings,output,basis='real-device',harnessCommit}){
@@ -81,7 +81,7 @@ export async function writeTargets({measurements,ceilings,output,basis='real-dev
 export function argumentsMap(args){const out={};for(let i=0;i<args.length;i+=2){if(!args[i].startsWith('--')||args[i+1]===undefined)throw new Error('Use --name value arguments.');out[args[i].slice(2)]=args[i+1];}return out;}
 if(process.argv[1]&&import.meta.url===pathToFileURL(process.argv[1]).href){
   const args=argumentsMap(process.argv.slice(2));
-  if(args.check){if(!['true','false'].includes(args['display-only'])||!['seed_v5','model'].includes(args['origin-kind']))throw new Error('Target validation requires --origin-kind seed_v5/model and --display-only true/false.');console.log(JSON.stringify(await validateTargetFile(args.check,{kind:args['origin-kind'],display_only:args['display-only']==='true'})));}
+  if(args.check){if(args['display-only']!=='false'||args['origin-kind']!=='model')throw new Error('Target validation requires --origin-kind model and --display-only false.');console.log(JSON.stringify(await validateTargetFile(args.check,{kind:args['origin-kind'],display_only:false})));}
   else{if(!args.measurements||!args.output)throw new Error('Use --measurements phone.json,desktop.json --output targets.json and either real-device ceilings or --basis emulated --harness-commit SHA.');
   const measurements=await Promise.all(args.measurements.split(',').map(async name=>JSON.parse(await readFile(name))));
   await writeTargets({measurements,ceilings:Object.fromEntries(targetNames.map(name=>[name,Number(args[name])])),output:args.output,basis:args.basis,harnessCommit:args['harness-commit']});}

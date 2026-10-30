@@ -12,7 +12,7 @@ from congress_api.lake.capture_comparison import compare_old
 from congress_api.lake.daily import _source_qualifications
 from congress_api.lake.tables import append_rows, create_table, resolve_tables, validate_catalog_authority
 from congress_api.lake.receipt_inventory import LocalReceiptStore, discover_receipts, select_receipts
-from congress_api.retention.control_documents import CONTROL_LIMITS,bounded_control_read
+from congress_shared.custody import CONTROL_LIMITS,bounded_control_read
 from congress_api.retention.provenance import run_job
 
 

@@ -847,6 +847,59 @@ def produce_appearance_records(
     return table(rows)
 
 
+CANDIDATE_HOUSE_XML_SQL = """
+SELECT encode(r.body_sha, 'hex') AS sha, min(coalesce(c.url, c.requested_url)) AS url
+FROM readings r
+LEFT JOIN captures c ON r.body_sha = c.sha256
+WHERE r.parser='xml' AND r.status='completed' AND r.xml_root='witness-list'
+GROUP BY r.body_sha
+""".strip()
+
+CANDIDATE_MODS_SQL = """
+SELECT encode(r.body_sha, 'hex') AS sha, min(coalesce(c.url, c.requested_url, c.context_url, c.member_path)) AS url
+FROM readings r
+JOIN captures c ON r.body_sha = c.sha256
+WHERE r.parser='xml' AND r.status='completed' AND r.xml_root='mods'
+  AND coalesce(c.url, c.requested_url, c.context_url, c.member_path) LIKE '%CHRG%'
+GROUP BY r.body_sha
+""".strip()
+
+CANDIDATE_SENATE_PAGE_SQL = """
+SELECT encode(r.body_sha, 'hex') AS sha, min(coalesce(c.url, c.requested_url)) AS url
+FROM readings r
+JOIN captures c ON r.body_sha = c.sha256
+WHERE r.parser='html' AND r.status='completed'
+  AND c.member_path IS NULL
+  AND lower(coalesce(c.url, c.requested_url)) LIKE '%.senate.gov%'
+  AND (
+      lower(coalesce(c.url, c.requested_url)) LIKE '%hearing%'
+      OR lower(coalesce(c.url, c.requested_url)) LIKE '%meeting%'
+      OR lower(coalesce(c.url, c.requested_url)) LIKE '%business%'
+  )
+GROUP BY r.body_sha
+""".strip()
+
+
+def query_candidate_inputs(*, engine: Any, work: Path, captures: Any, readings: Any) -> dict[str, list[dict[str, Any]]]:
+    """Query `readings` and `captures` via the native engine for `house_xml`, `mods`, and `senate_page` candidates."""
+    from ..retention.provenance import run_job
+    from .tables import table_input
+
+    res = run_job(
+        Path(work),
+        engine,
+        inputs=[table_input("captures", captures), table_input("readings", readings)],
+        steps=[],
+        outputs=[],
+        queries=[
+            {"name": "house_xml", "sql": CANDIDATE_HOUSE_XML_SQL},
+            {"name": "mods", "sql": CANDIDATE_MODS_SQL},
+            {"name": "senate_page", "sql": CANDIDATE_SENATE_PAGE_SQL},
+        ],
+    )
+    return {k: list(v) for k, v in res.items()}
+
+
 def create_table(*, engine: Any, work: Path, catalog_root: Path | None, table: dict[str, Any], location: str, create_namespace: bool = False) -> Any:
     from .tables import create_table as native_create
 

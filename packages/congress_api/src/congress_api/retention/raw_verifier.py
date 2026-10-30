@@ -11,9 +11,20 @@ import secrets
 import pyarrow as pa
 import pyarrow.parquet as pq
 
+from congress_api.lake.tables import table_input
 from congress_api.retention.body_store import BODY
 from congress_api.retention.provenance import (field, parquet_output, parquet_records,
                                                file_pin, run_job)
+
+D1_CAPTURE_SCHEMA = pa.schema([
+    ('sha256', pa.binary(32)),
+    ('stored_suffix', pa.string()),
+    ('stored_bytes', pa.int64()),
+    ('stored_md5', pa.binary(16)),
+    ('receipt_key', pa.string()),
+    ('receipt_line', pa.int64()),
+    ('capture_index', pa.int32()),
+])
 
 
 def selected_captures(storage):
@@ -94,8 +105,10 @@ def check_body(store, listing, *, checked_at):
         return dict(result,error=type(error).__name__)
 
 
-def verify(store, *, captures, receipts, previous, engine, work, checked_at, seed=None):
+def verify(store, *, captures, receipts, previous, engine, work, checked_at, seed=None, full_rehash=False):
     """Stage reports and accepted verification records; never repair or upload implicitly."""
+    if type(full_rehash) is not bool:
+        raise ValueError('full_rehash must be an explicit boolean')
     work=Path(work)
     work.mkdir(parents=True,exist_ok=False)
     seed=seed or secrets.token_hex(32)
@@ -106,17 +119,35 @@ def verify(store, *, captures, receipts, previous, engine, work, checked_at, see
         raise ValueError('Verification time needs a timezone')
     (work/'sample-seed.txt').write_text(seed+'\n')
     listing_files=stage_json(work/'listing.jsonl.gz',store.listing())
-    native=isinstance(captures,dict)
-    schema=captures['schema'] if native else pq.read_schema(captures)
+    old_native=isinstance(captures,dict) and 'inputs' in captures
+    d1_native=isinstance(captures,dict) and not old_native and (
+        captures.get('kind')=='native_table' or 'metadata_location' in captures)
+    if old_native:
+        schema=captures['schema']
+        capture_inputs=captures['inputs']
+        capture_identity=captures['identity']
+    elif d1_native:
+        pin={k:captures.get(k) for k in ('metadata_location','table_uuid','snapshot','schema_id')}
+        schema=D1_CAPTURE_SCHEMA
+        capture_inputs=[table_input('old',pin)]
+        capture_identity=hashlib.sha256(json.dumps(pin,sort_keys=True,separators=(',',':')).encode()).hexdigest()
+    else:
+        capture_path=Path(captures['path'] if isinstance(captures,dict) else captures)
+        schema=pq.read_schema(capture_path)
+        capture_inputs=[dict(name='old',kind='parquet',path=str(capture_path.resolve()))]
+        capture_identity=file_pin(capture_path)['sha256']
     def column(name, kind='VARCHAR'):
         if name not in schema.names:
             return f'cast(NULL AS {kind})'
         value='"'+name+'"'
-        if name in {'sha256','stored_sha256'} and (pa.types.is_binary(schema.field(name).type) or pa.types.is_fixed_size_binary(schema.field(name).type)):
+        field_type=schema.field(name).type
+        if name in {'sha256','stored_sha256','stored_md5'} and (
+                pa.types.is_binary(field_type) or pa.types.is_fixed_size_binary(field_type)):
             value=f"lower(encode({value},'hex'))"
         return value
     sha=column('sha256')
-    derived=f"CASE WHEN regexp_like({sha},'^[a-f0-9]{{64}}$') THEN concat('bodies/sha256/',substr({sha},1,2),'/',{sha},'.gz') END"
+    suffix=f"coalesce({column('stored_suffix')},'.gz')"
+    derived=f"CASE WHEN regexp_like({sha},'^[a-f0-9]{{64}}$') THEN concat('bodies/sha256/',substr({sha},1,2),'/',{sha},{suffix}) END"
     index_key=f"coalesce({column('body_key')},{derived})"
     entry={'Struct':[field(n,t) for n,t in dict(body_key='Utf8',sha256='Utf8',stored_suffix='Utf8',
         stored_md5='Utf8',stored_sha256='Utf8',stored_bytes='Int64',bytes='Int64').items()]}
@@ -125,17 +156,17 @@ def verify(store, *, captures, receipts, previous, engine, work, checked_at, see
         stored_sha256='Utf8',checked_at='Utf8',job='Utf8')
     inputs=[json_input('listing',listing_files,dict(key='Utf8',size='Int64',etag='Utf8')),
             json_input('receipts',receipts,receipt_schema),json_input('previous',previous,verify_schema)]
-    inputs+=captures['inputs'] if native else [dict(name='old',kind='parquet',path=str(Path(captures).resolve()))]
+    inputs+=capture_inputs
     steps=[]
     def step(name,sql,materialize=False):
         steps.append(dict(name=name,sql=sql,materialize=materialize))
-    if native:step('old',captures['sql'])
+    if old_native:step('old',captures['sql'])
     step('listed','SELECT key,size,etag FROM listing',True)
-    step('index_refs',f"SELECT {index_key} AS key,{column('stored_bytes','BIGINT')} AS size,{column('stored_sha256')} AS stored_sha256,{column('receipt_key')} AS receipt_key,{column('receipt_line','BIGINT')} AS receipt_line,{column('pointer_json')} AS pointer_json FROM old",True)
+    step('index_refs',f"SELECT {index_key} AS key,{column('stored_bytes','BIGINT')} AS size,{column('stored_md5')} AS md5,{column('stored_sha256')} AS stored_sha256,{column('receipt_key')} AS receipt_key,{column('receipt_line','BIGINT')} AS receipt_line,{column('pointer_json')} AS pointer_json FROM old",True)
     step('receipt_entries',"""SELECT __source_key AS receipt_key,__source_line AS receipt_line,
         unnest(array_concat(coalesce(captures,make_array()),coalesce(file_references,make_array()))) AS c FROM receipts""")
     step('receipt_refs',"""SELECT coalesce(c['body_key'],CASE WHEN regexp_like(c['sha256'],'^[a-f0-9]{64}$') THEN concat('bodies/sha256/',substr(c['sha256'],1,2),'/',c['sha256'],coalesce(c['stored_suffix'],'.gz')) END) AS key,c['stored_bytes'] AS size,c['stored_md5'] AS md5,c['stored_sha256'] AS stored_sha256,receipt_key,receipt_line FROM receipt_entries""",True)
-    step('all_refs','SELECT key,size,cast(NULL AS VARCHAR) AS md5 FROM index_refs UNION ALL SELECT key,size,md5 FROM receipt_refs')
+    step('all_refs','SELECT key,size,md5 FROM index_refs UNION ALL SELECT key,size,md5 FROM receipt_refs')
     step('refs',"SELECT key,min(size) AS size,min(md5) AS md5,count(DISTINCT size)>1 OR count(DISTINCT md5)>1 AS conflicting FROM all_refs WHERE key IS NOT NULL GROUP BY key")
     step('ranked_previous',"SELECT *,row_number() OVER(PARTITION BY key ORDER BY checked_at DESC,__source_key DESC,__source_line DESC) AS ranking FROM previous WHERE key LIKE 'bodies/%'")
     step('verified','SELECT key,size,etag,sha256_verified,stored_sha256,checked_at FROM ranked_previous WHERE ranking=1',True)
@@ -156,7 +187,12 @@ def verify(store, *, captures, receipts, previous, engine, work, checked_at, see
         FROM listed l FULL OUTER JOIN expected e ON l.key=e.key""",True)
     step('sample',f"SELECT key,size,etag FROM listed ORDER BY sha256('{seed}' || key),key LIMIT 25")
     step('orphans','SELECT key,size,etag FROM compared WHERE NOT has_capture AND NOT missing')
-    step('work','SELECT key,size,etag FROM compared WHERE NOT has_capture AND NOT has_verification AND NOT missing UNION SELECT key,size,etag FROM sample')
+    work_sql=(
+        "SELECT key,size,etag FROM compared WHERE NOT missing AND NOT (sha256_verified AND verified_size=size AND verified_etag=etag AND coalesce(regexp_like(previous_stored_sha256,'^[a-f0-9]{64}$'),false))"
+        if full_rehash else
+        'SELECT key,size,etag FROM compared WHERE NOT has_capture AND NOT has_verification AND NOT missing UNION SELECT key,size,etag FROM sample'
+    )
+    step('work',work_sql)
     step('digest_facts',"""SELECT key,receipt_key,receipt_line,min(stored_sha256) AS receipt_stored_sha256,
         min(size) AS receipt_stored_bytes,count(DISTINCT stored_sha256) AS hashes,count(DISTINCT size) AS sizes
         FROM receipt_refs WHERE key IS NOT NULL AND stored_sha256 IS NOT NULL GROUP BY key,receipt_key,receipt_line""")
@@ -179,7 +215,7 @@ def verify(store, *, captures, receipts, previous, engine, work, checked_at, see
                  dict(name='issues',sql='SELECT count(*) FILTER(WHERE missing) AS missing,count(*) FILTER(WHERE mismatch AND NOT missing) AS mismatches FROM compared'),
                  dict(name='orphans',sql='SELECT count(*) AS orphans FROM orphans'),
                  dict(name='capture_rows',sql='SELECT count(*) AS rows FROM index_refs')])
-    if native and reports['capture_rows'][0]['rows']!=captures['expected_rows']:
+    if old_native and reports['capture_rows'][0]['rows']!=captures['expected_rows']:
         raise ValueError('Selected capture source count differs from pinned manifest')
     counts=dict(reports['counts'][0],**reports['issues'][0],**reports['orphans'][0])
     checks=work/'checked.jsonl.gz'
@@ -250,7 +286,7 @@ def verify(store, *, captures, receipts, previous, engine, work, checked_at, see
     counts['candidate_records']=counts['accepted_records']
     if not valid:counts['accepted_records']=0
     result=dict(counts,checked=checked,content_errors=errors,valid=bool(valid),records=str(records),
-                capture_identity=captures['identity'] if native else file_pin(captures)['sha256'])
+                full_rehash=full_rehash,capture_identity=capture_identity)
     if valid:
         with records.open('x',encoding='utf-8') as out:
             for row in parquet_records(work/'accepted.parquet'):

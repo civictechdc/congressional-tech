@@ -462,10 +462,17 @@ def extract_meeting_observations_from_stage(
 class ExplorerDocSpecWorkspace:
     """Manage declarative ``RefreshSpec`` views and ``ExportPin`` browser exports."""
 
-    def __init__(self, workspace: Path | str, *, binary: Path | str | None = None):
+    def __init__(
+        self,
+        workspace: Path | str,
+        *,
+        binary: Path | str | None = None,
+        limits: Path | str | Mapping[str, Any] | None = None,
+    ):
         self.workspace = Path(workspace).resolve()
         self.binary = resolve_docspec_binary(binary)
-        self.datasets = NativeDatasets(self.binary, self.workspace)
+        self.datasets = NativeDatasets(self.binary, self.workspace, limits=limits)
+        self.limits = self.datasets.limits
 
     def close(self) -> None:
         self.datasets.close()

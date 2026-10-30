@@ -1,10 +1,11 @@
 """Receipts describe the bytes consumed by a successful file upload."""
 import hashlib
+from types import SimpleNamespace
 
 import pytest
 
 from congress_api.retention.derived_files import file_identity
-from viewer_publication.client import ConditionalManifestPublisher, GuardedPublicationClient
+from viewer_publication.client import ConditionalManifestPublisher, require_publication_client
 
 
 class Receiver:
@@ -36,43 +37,31 @@ class Receiver:
         return {'ETag': hashlib.md5(self.data).hexdigest()}
 
 
-def publish(kind, receiver, path, proof, after_write):
+def publish(receiver, path, proof):
     key = 'viewer-publications/releases/test/payload'
-    if kind == 'guarded':
-        client = GuardedPublicationClient(receiver, guard=lambda: None,
-            journal=lambda *args: None, after_write=lambda *args: after_write.append(args))
-        if proof is None:
-            receipt = client.upload_file(path, 'bucket', key)
-        else:
-            receipt = client.upload_verified_file(path, 'bucket', key, validation=proof)
-        return receipt
     return ConditionalManifestPublisher(receiver, bucket='bucket').put_immutable_asset(
         key, path, validation=proof)
 
 
-@pytest.mark.parametrize('kind', ['guarded', 'conditional'])
 @pytest.mark.parametrize('proven', [False, True])
 @pytest.mark.parametrize('behavior', ['mutate', 'partial'])
-def test_acknowledged_wrong_or_partial_bytes_do_not_issue_receipts(tmp_path, kind, proven, behavior):
+def test_acknowledged_wrong_or_partial_bytes_do_not_issue_receipts(tmp_path, proven, behavior):
     path = tmp_path / 'payload'
     path.write_bytes(b'original')
     proof = file_identity(path) if proven else None
     receiver = Receiver(path, behavior)
-    after_write = []
     with pytest.raises(ValueError, match='upload bytes'):
-        publish(kind, receiver, path, proof, after_write)
+        publish(receiver, path, proof)
     assert receiver.puts == 1
-    assert after_write == []
 
 
-@pytest.mark.parametrize('kind', ['guarded', 'conditional'])
 @pytest.mark.parametrize('proven', [False, True])
-def test_sdk_probe_rewind_and_readinto_check_the_final_consumed_pass(tmp_path, kind, proven):
+def test_sdk_probe_rewind_and_readinto_check_the_final_consumed_pass(tmp_path, proven):
     path = tmp_path / 'payload'
     path.write_bytes(b'original')
     proof = file_identity(path) if proven else None
     receiver = Receiver(path, 'rewind_readinto')
-    receipt = publish(kind, receiver, path, proof, [])
+    receipt = publish(receiver, path, proof)
     assert receiver.puts == 1 and receiver.data == b'original'
     assert receipt.bytes == 8 and receipt.sha256 == hashlib.sha256(receiver.data).hexdigest()
 
@@ -105,14 +94,16 @@ def test_real_boto_put_consumes_the_checked_body(tmp_path):
     try:
         path = tmp_path / 'payload'
         path.write_bytes(b'actual SDK upload' * 1024)
-        client = GuardedPublicationClient(sdk, guard=lambda: None,
-            journal=lambda *args: None, after_write=lambda *args: None)
-        receipt = client.upload_verified_file(path, 'fixture',
-            'viewer-publications/releases/test/payload', validation=file_identity(path))
+        publisher = ConditionalManifestPublisher(require_publication_client(sdk), bucket='fixture')
+        receipt = publisher.put_immutable_asset(
+            'viewer-publications/releases/test/payload', path, validation=file_identity(path))
         assert received == [path.read_bytes()]
-        assert client.confirm_transfer(receipt, bucket='fixture',
-            key='viewer-publications/releases/test/payload', size=len(received[0]),
-            sha256=hashlib.sha256(received[0]).hexdigest())
+        assert (receipt.bucket, receipt.key, receipt.bytes, receipt.sha256) == (
+            'fixture',
+            'viewer-publications/releases/test/payload',
+            len(received[0]),
+            hashlib.sha256(received[0]).hexdigest(),
+        )
     finally:
         sdk.close()
         server.shutdown()
@@ -120,8 +111,7 @@ def test_real_boto_put_consumes_the_checked_body(tmp_path):
         worker.join(timeout=5)
 
 
-@pytest.mark.parametrize('kind', ['guarded', 'conditional'])
-def test_proven_upload_hashes_the_transport_read_without_a_preflight_read(tmp_path, monkeypatch, kind):
+def test_proven_upload_hashes_the_transport_read_without_a_preflight_read(tmp_path, monkeypatch):
     from pathlib import Path
     path = tmp_path / 'payload'
     path.write_bytes(b'original')
@@ -141,12 +131,11 @@ def test_proven_upload_hashes_the_transport_read_without_a_preflight_read(tmp_pa
         stream = original_open(target, *args, **kwargs)
         return Reader(stream) if target == path and args == ('rb',) else stream
     monkeypatch.setattr(Path, 'open', counted_open)
-    receipt = publish(kind, Receiver(path, 'normal'), path, proof, [])
+    receipt = publish(Receiver(path, 'normal'), path, proof)
     assert receipt.bytes == sum(consumed) == 8
 
 
-@pytest.mark.parametrize('kind', ['guarded', 'conditional'])
-def test_stale_proof_with_identical_metadata_cannot_issue_upload_receipt(tmp_path, monkeypatch, kind):
+def test_stale_proof_with_identical_metadata_cannot_issue_upload_receipt(tmp_path, monkeypatch):
     import congress_shared.custody as custody
     import congress_api.retention.derived_files as files
     path = tmp_path / 'payload'
@@ -161,7 +150,18 @@ def test_stale_proof_with_identical_metadata_cannot_issue_upload_receipt(tmp_pat
     proof = file_identity(path)
     path.write_bytes(b'replaced')
     assert custody.custody_identity(path) == proof.custody
-    after_write = []
     with pytest.raises(ValueError, match='upload bytes'):
-        publish(kind, Receiver(path, 'normal'), path, proof, after_write)
-    assert after_write == []
+        publish(Receiver(path, 'normal'), path, proof)
+
+
+def test_require_publication_client_rejects_missing_methods_and_retries():
+    with pytest.raises(TypeError, match='put_object'):
+        require_publication_client(SimpleNamespace(get_object=lambda **k: None))
+    retrying = SimpleNamespace(
+        get_object=lambda **k: None,
+        put_object=lambda **k: None,
+        meta=SimpleNamespace(config=SimpleNamespace(retries={'total_max_attempts': 2})),
+    )
+    with pytest.raises(ValueError, match='total_max_attempts=1'):
+        require_publication_client(retrying)
+

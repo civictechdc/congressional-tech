@@ -1,6 +1,6 @@
 ---
 id: cef-jh7i
-status: open
+status: closed
 deps: []
 links: [ct-5kto, ct-77zb, cef-96wc, ct-t906]
 created: 2026-10-28T14:21:37Z
@@ -22,3 +22,7 @@ Release CI-health triage also found scripts/qualify/document_review_catalog.py n
 **2026-10-30T14:32:32Z**
 
 Synced with ct-5kto (F5 18-group post-switch deletions under master epic ct-77zb).
+
+**2026-10-30T15:21:37Z**
+
+Committed at f619d529: forwarded limits to NativeDatasets in retained wrappers ExplorerDocSpecWorkspace, WeeklyRetentionTables, and sync_weekly_tables CLI (--limits / --binary), verified by test_weekly_retention_tables.py.

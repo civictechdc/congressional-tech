@@ -50,7 +50,7 @@ test('the canary refuses unsupported pointers before assets, including pinned ca
   }
 });
 
-for(const origin of [{kind:'seed_v5',display_only:true},{kind:'model'},{kind:'model',display_only:false}])test(`provisional targets bind five emulated runs to ${JSON.stringify(origin)} and keep each profile median`,async()=>{
+for(const origin of [{kind:'model'},{kind:'model',display_only:false}])test(`provisional targets bind five emulated runs to ${JSON.stringify(origin)} and keep each profile median`,async()=>{
   const folder=await mkdtemp(join(tmpdir(),'archive-seed-targets-'));try{
     const {measurementProfiles,readTargets}=await import('./archive-targets.mjs');
     const harnessCommit='a'.repeat(40);
@@ -59,6 +59,7 @@ for(const origin of [{kind:'seed_v5',display_only:true},{kind:'model'},{kind:'mo
     const output=join(folder,'targets.json');
     await assert.rejects(writeTargets({measurements:measurements.map(r=>({...r,samples:r.samples.slice(1)})),basis:'emulated',harnessCommit,output}),/five|5/i);
     await assert.rejects(writeTargets({measurements:measurements.map(r=>({...r,origin:{kind:'model',display_only:true}})),basis:'emulated',harnessCommit,output}),/origin/i);
+    await assert.rejects(writeTargets({measurements:measurements.map(r=>({...r,origin:{kind:'seed_v5',display_only:true}})),basis:'emulated',harnessCommit,output}),/origin/i);
     await writeTargets({measurements,basis:'emulated',harnessCommit,output});
     const targets=await readTargets(output);assert.equal(targets.status,'provisional-emulated');assert.equal(targets.basis,'emulated');
     assert.equal(targets.profile.phone.ceilings.startupMs,90);assert.equal(targets.profile.desktop.ceilings.startupMs,45);
@@ -67,9 +68,9 @@ for(const origin of [{kind:'seed_v5',display_only:true},{kind:'model'},{kind:'mo
     const {checkTargetRelease}=await import('./archive-targets.mjs');
     checkTargetRelease(sample.releaseId,targets,origin);
     assert.throws(()=>checkTargetRelease('cd'.repeat(32),targets,origin),/different release/);
-    assert.throws(()=>checkTargetRelease(sample.releaseId,targets,{kind:'model',display_only:true}),/seed|model|origin/i);
+    assert.throws(()=>checkTargetRelease(sample.releaseId,targets,{kind:'model',display_only:true}),/model|origin/i);
     assert.throws(()=>checkTargets({...sample,startupMs:50},targets,origin,'desktop'),/startup/);
-    for(const other of [undefined,{kind:'unknown'},{kind:'model',display_only:true},{kind:'seed_v5',display_only:false}])assert.throws(()=>checkTargets(sample,targets,other),/seed/i);
+    for(const other of [undefined,{kind:'unknown'},{kind:'model',display_only:true},{kind:'seed_v5',display_only:false},{kind:'seed_v5',display_only:true}])assert.throws(()=>checkTargets(sample,targets,other),/model|origin/i);
     assert.throws(()=>checkTargets(sample,{status:'measured',ceilings:targets.ceilings},origin),/target/i);
     const broken={...targets,raw_runs:{...targets.raw_runs,phone:targets.raw_runs.phone.slice(1)}};
     const invalid=join(folder,'invalid.json');await (await import('node:fs/promises')).writeFile(invalid,JSON.stringify(broken));
@@ -83,16 +84,17 @@ test('measurement argument errors refuse before opening a release or browser',as
   await assert.rejects(measureArchive({release:'/missing/not-opened',repeats:'0','harness-commit':'a'.repeat(40)}),/repetitions/i);
 });
 
-test('provisional targets refuse a different seed identity and CLI validation reuses the shared policy',async()=>{
+test('provisional targets refuse a different release identity and CLI validation reuses the shared policy',async()=>{
   const {measurementProfiles,validateTargetFile}=await import('./archive-targets.mjs');
   const folder=await mkdtemp(join(tmpdir(),'archive-target-identity-'));try{
-    const origin={kind:'seed_v5',display_only:true},harnessCommit='b'.repeat(40),releaseId='cd'.repeat(32);
+    const origin={kind:'model',display_only:false},harnessCommit='b'.repeat(40),releaseId='cd'.repeat(32);
     const sample={releaseId,startupMs:10,searchMs:2,detailMs:3,heapBytes:40,workerHeapBytes:20};
     const measurements=['phone','desktop'].map(kind=>({deviceClass:kind+'-profile',basis:'emulated',profile:measurementProfiles[kind],harnessCommit,origin,samples:Array.from({length:5},()=>({...sample}))}));
     const output=join(folder,'targets.json'),targets=await writeTargets({measurements,basis:'emulated',harnessCommit,output});
     assert.throws(()=>checkTargets({...sample,releaseId:'ab'.repeat(32)},targets,origin),/release|identity/i);
     assert.deepEqual(await validateTargetFile(output,origin),{status:'provisional-emulated',basis:'emulated',measured_release_id:releaseId});
-    await assert.rejects(validateTargetFile(output,{kind:'model',display_only:true}),/seed|model|origin/i);
+    await assert.rejects(validateTargetFile(output,{kind:'model',display_only:true}),/model|origin/i);
+    await assert.rejects(validateTargetFile(output,{kind:'seed_v5',display_only:true}),/model|origin/i);
   }finally{await rm(folder,{recursive:true,force:true});}
 });
 

@@ -1,6 +1,6 @@
 ---
 id: ct-fcwp
-status: in_progress
+status: closed
 deps: [ct-vnkf]
 links: [cefr-9zd4]
 created: 2026-10-30T14:32:31Z
@@ -18,3 +18,9 @@ Per docs/plans/simplification-plan-20261024.md §6.2.9: run packages/congress_ap
 
 Initial listing baseline is committed to provenance/verification/ and weekly verification runs are wired into the maintenance job.
 
+
+## Notes
+
+**2026-10-30T15:21:37Z**
+
+Committed at 7bab5c8d: added D1 captures schema support (native_table pin or Parquet input, binary sha256/stored_md5 hex encoding, and coalesce(stored_suffix, '.gz')) to raw_verifier.py so B9 initial baseline and weekly maintenance verification work seamlessly across both old capture index and D1 captures.
