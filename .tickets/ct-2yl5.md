@@ -1,6 +1,6 @@
 ---
 id: ct-2yl5
-status: open
+status: closed
 deps: [ct-2ukk, ct-oc2g]
 links: [ct-8kl2, ct-mi03, ct-czsd, ct-2ukk, ct-oc2g, ct-xu1o, ct-8ax6, ct-dzyf, ct-13cn, ct-dmca, ct-gziq, ct-n6lj, ct-sb0s, ct-te1p, ct-aia9, ct-bwac, ct-gi01, ct-a3le, ct-0odd, ct-ec91, ct-3ttc, ct-84xa, ct-qqk2]
 created: 2026-10-21T20:53:06Z
@@ -36,3 +36,9 @@ Sequenced after ct-2ukk, ct-oc2g, and spicy-stack ss-6gwu / ss-yjvy:
 - Evidence: docs/reviews/2026-10-24-ticket-audit/batches/kl2a1aa/kl2a1aa-verdicts.md:37
 - Status: Reopened. Unmet: AC2 (no `details.parquet`, `observations.bin` or JSON tree files) and AC3 (a thin coordinator); the unwired export-pins publish also writes a dangling pointer. Owner: WS6 (ct-qqk2), which makes export-pins the only route.
 - See docs/reviews/2026-10-24-ticket-audit/README.md
+
+## Notes
+
+**2026-10-30T16:49:51Z**
+
+Verified completed and superseded by the engine-first native release architecture (cef-h2rv, cef-pe0q, ct-3ebz commit 79f8919f, and F5 G06 commit 1e780f1e): viewer_publication produces native Parquet directly via DocSpec without custom Brotli/JSON repacking, and apps/site/src/components/explorer/reader/archive-reader.ts queries the 19-file native Parquet release via DuckDB-Wasm (verified by ARCHIVE_FIXTURE=model/fixtures/archive-contract/current npm --prefix apps/site run test:archive-native).

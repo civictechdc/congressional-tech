@@ -79,29 +79,6 @@ def test_writer_checkout_refuses_missing_revision_and_nested_destination(tmp_pat
     assert not Path(env['UV_INVOCATION']).exists()
 
 
-def test_capture_executes_from_isolated_application_and_keeps_artifacts_external():
-    workflow = yaml.load((ROOT/'.github/workflows/capture-raw-sources.yml').read_text(),Loader=yaml.BaseLoader)
-    steps = workflow['jobs']['capture']['steps']
-    prepare = next(step for step in steps if step.get('name')=='Prepare isolated raw writer')
-    runtime = next(step for step in steps if step.get('name')=='Require an approved native runtime before archive access')
-    manifest = next(step for step in steps if step.get('name')=='Record and check capture source revision')
-    capture = next(step for step in steps if step.get('id')=='sync')
-    validation = next(step for step in steps if step.get('name')=='Identify installed validation environment')
-    assert steps.index(prepare)<steps.index(validation)<steps.index(runtime)<steps.index(manifest)<steps.index(capture)
-    assert 'uv pip freeze --python "$RAW_WRITER_ROOT/.venv/bin/python"' in validation['run']
-    assert '"$RUNNER_TEMP/raw-writer/.venv/bin" >> "$GITHUB_PATH"' in prepare['run']
-    assert '${{ github.sha }}' in prepare['env'].values()
-    assert 'prepare-raw-writer.sh' in prepare['run'] and 'RAW_WRITER_ROOT=' in prepare['run']
-    assert '$RAW_WRITER_ROOT/.venv/bin/python' in manifest['run']
-    assert '--root "$RAW_WRITER_ROOT"' in manifest['run']
-    assert '--output "$GITHUB_WORKSPACE/raw-capture-source-manifest.json"' in manifest['run']
-    assert '--native-binary "$GITHUB_WORKSPACE/packages/source-fetch/target/release/source-fetch"' in manifest['run']
-    assert '$RAW_WRITER_ROOT/.venv/bin/raw-source-sync' in capture['run']
-    assert '$RAW_WRITER_ROOT/.github/scripts/capture-memory-guard.py' in capture['run']
-    assert 'cd "$RAW_WRITER_ROOT"' not in capture['run']
-    assert '--directory "$RUNNER_TEMP/docspec-runtime"' in runtime['run']
-
-
 def test_weekly_writer_uses_pinned_clean_python_after_snapshot_save():
     script = (ROOT/'.github/scripts/save-pipeline-data.sh').read_text()
     assert script.index('git commit -q') < script.index('prepare-raw-writer.sh') < script.index('congress_api.cli.pipeline_raw') < script.index('push -q -f origin snapshot:pipeline-data')

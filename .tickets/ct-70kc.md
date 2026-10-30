@@ -1,6 +1,6 @@
 ---
 id: ct-70kc
-status: open
+status: closed
 deps: []
 links: [ct-esm4, ct-ma8a, ct-r46l, ct-4r1c]
 created: 2026-10-24T18:15:54Z
@@ -25,3 +25,9 @@ Owner decision (plan open question 4, answered): recovery imports refuse uncommi
 - This lands before WS10 deletes `document_index.py` and `raw_catalog.py`.
 - R-check 1-3 pass.
 
+
+## Notes
+
+**2026-10-30T16:49:25Z**
+
+Verified completed in docs/plans/simplification-plan-20261024.md §6.2.6 (B6, cef-l1ws, cefr-4pxk) and F5 G12 (commit 8978b3bb): packages/congress_api/src/congress_api/retention/provenance.py and packages/congress_api/src/congress_api/lake/versions.py (version_digest) pin clean git commit, file, and uv.lock digests across receipt writers, recovery imports (reconcile.py), and lake producers, and legacy admission.py/guards.py were deleted in commit 8978b3bb.

@@ -1,5 +1,4 @@
 """Transcript types follow explicit publisher sections, not nearby topic words."""
-from copy import deepcopy
 import gzip
 from hashlib import sha256
 import json
@@ -11,9 +10,7 @@ import pytest
 
 from congress_api.parsers.senate import parsed
 from congress_api.parsers.senate_page import documents
-from congress_api.replay.senate import replay
 from congress_api.retention.document_index import DocumentSources, fill_document_kind, read_document_sources
-from congress_api.retention.senate import cached_html_path
 
 PAGE = 'https://www.foreign.senate.gov/hearings/modernizing-us-alliances-and-partnerships-in-the-indo-pacific'
 LINK = 'https://www.foreign.senate.gov/download/04-17-24__2024-modernizing-us-alliances'
@@ -70,19 +67,6 @@ def legacy_page():
     for field in ('document_metadata', 'raw_html'):
         page.pop(field, None)
     return page
-
-
-def test_saved_state_replay_updates_other_but_preserves_label_url_and_input(tmp_path):
-    path = cached_html_path(tmp_path, PAGE)
-    path.parent.mkdir()
-    path.write_text(RAW)
-    state = {'foreign.senate.gov': {'pages': {PAGE: legacy_page()}}}
-    before = deepcopy(state)
-    result, report = replay(state, tmp_path, meetings=[])
-    assert state == before
-    document, = result['foreign.senate.gov']['pages'][PAGE]['documents']
-    assert document == ['transcript', *before['foreign.senate.gov']['pages'][PAGE]['documents'][0][1:]]
-    assert report['counts']['document_types_from_sections'] == 1
 
 
 @pytest.mark.parametrize('available', [True, False])

@@ -1,13 +1,10 @@
 """Real retained HTML keeps witness-card ownership through state and adaptation."""
 import json
-from copy import deepcopy
 from pathlib import Path
 
 import pytest
 from congress_api.matching.senate_pages import retained_matches
 from congress_api.parsers.senate import parsed
-from congress_api.replay.senate import replay
-from congress_api.retention.senate import cached_html_path
 from test_explorer_senate_adapter import adapt, of_kind, retained_page
 
 FIXTURES = Path(__file__).parent / "fixtures" / "meeting_inventory"
@@ -123,68 +120,6 @@ def test_unsupported_name_only_proximity_does_not_create_ownership():
     representation = next(row for row in of_kind(rows, "representation") if row.locations[0].url == file)
     assert representation.media_type == "application/pdf"
     assert not any(link.subject.kind == "appearance" and link.version == representation.version for link in of_kind(rows, "material_link"))
-
-
-def test_replay_is_additive_and_protects_live_receipts(tmp_path):
-    raw = (FIXTURES / "senate-aging-witness-card.html").read_text()
-    cached = cached_html_path(tmp_path, URL)
-    cached.parent.mkdir()
-    cached.write_text(raw)
-    saved = parsed(raw, URL)
-    del saved["document_metadata"], saved["witness_metadata"]
-    saved.update(events=["12"], checked="2025-04-03", imported_at="2025-04-03T10:00:00Z", match_details={"12": {"method": "kept"}})
-    state = {"aging.senate.gov": {"pages": {URL: saved}, "listings": {URL: ["2021-06-17", "Hearing"]}}}
-    before = deepcopy(state)
-    output, report = replay(state, tmp_path, meetings=[], parsed_at="2026-09-28T00:00:00Z")
-    page = output["aging.senate.gov"]["pages"][URL]
-    workflow = output["aging.senate.gov"]["workflow"][URL]
-    assert state == before
-    for key, value in saved.items():
-        if key in ("events", "match_details"):
-            assert key not in page and workflow[key] == value
-        else:
-            assert page[key] == value
-    assert report["counts"]["replayed_pages"] == 1
-    assert workflow["cache_replay"]["acquisition_time"] is None
-    assert "cache_replay" not in page and "retrieved_at" not in page and "last_check" not in page
-    assert replay(output, tmp_path, meetings=[])[0] == output
-    saved["last_check"] = {"mode": "live", "completed_at": "2026-09-27T00:00:00Z"}
-    protected, protected_report = replay(state, tmp_path, meetings=[])
-    protected_page = protected["aging.senate.gov"]["pages"][URL]
-    protected_workflow = protected["aging.senate.gov"]["workflow"][URL]
-    assert protected_report["counts"]["protected_live_observation"] == 1
-    assert "cache_replay" not in protected_workflow and protected_workflow["last_check"]["mode"] == "live"
-    assert protected_workflow["events"] == ["12"] and "last_check" not in protected_page
-    assert protected_page.get("parser_version") == saved.get("parser_version")
-
-
-def test_replay_rejects_changed_source_text(tmp_path):
-    raw = (FIXTURES / "senate-aging-witness-card.html").read_text()
-    cached = cached_html_path(tmp_path, URL)
-    cached.parent.mkdir()
-    cached.write_text(raw)
-    saved = parsed(raw, URL)
-    saved["lines"].append("A newer observation")
-    state = {"aging.senate.gov": {"pages": {URL: saved}}}
-    output, report = replay(state, tmp_path, meetings=[])
-    assert output == state
-    assert report["counts"]["different_or_unrecognized_page"] == 1
-
-
-def test_replayed_event_header_keeps_native_duplicate_guard(tmp_path):
-    url = "https://www.hsgac.senate.gov/hearings/business-meeting/"
-    raw = '<title>Business Meeting</title><h1>Business Meeting</h1><div class="jet-listing-dynamic-field__content">Date: January 26, 2021</div>'
-    saved = parsed(raw, url)
-    del saved["event"]
-    state = {"hsgac.senate.gov": {"pages": {url: saved}}}
-    cached = cached_html_path(tmp_path, url)
-    cached.parent.mkdir()
-    cached.write_text(raw)
-    meetings = [{"eventId": "321", "chamber": "Senate", "date": "2021-01-26", "committees": [{"systemCode": "ssga00"}]}]
-    output, _ = replay(state, tmp_path, meetings=meetings)
-    assert output["hsgac.senate.gov"]["workflow"][url]["candidate_events"] == ["321"]
-    assert not output["hsgac.senate.gov"]["pages"][url].get("events")
-    assert not output["hsgac.senate.gov"]["workflow"][url].get("events")
 
 
 def test_actual_drug_caucus_attachment_aliases_keep_direct_identity_and_both_sources():

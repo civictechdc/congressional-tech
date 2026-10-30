@@ -40,7 +40,6 @@ def test_imports_preserve_root_logging_and_do_not_write(existing_handler):
         'congress_api.transcripts.generate', *LEGACY_COMMANDS,
         'congress_api.cli.house', 'congress_api.cli.senate',
         'congress_api.cli.house_sites', 'congress_api.cli.senate_captions',
-        'congress_api.cli.raw_sync', 'congress_api.cli.document_index',
         'youtube_api.captions.main', 'committee_explorer.export',
     ]
     run_python('''

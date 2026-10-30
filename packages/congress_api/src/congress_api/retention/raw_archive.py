@@ -48,7 +48,7 @@ from congress_api.retention.raw_schemas import (
     prepare_state_table,
     encode_table,
 )
-from congress_api.retention.raw_storage import enforce_body_ingest_gate, _merge_states
+from congress_api.retention.raw_storage import _merge_states
 
 STATE_KEY = "indexes/download-state.parquet"
 CAPTURES_KEY = "indexes/captures.parquet"
@@ -375,16 +375,6 @@ class _Acquisition:
         from congress_api.retention.body_keys import is_pdf_bytes, physical_body_object_key
 
         digest = hashlib.sha256(data).hexdigest()
-        exclusions = getattr(self.store, 'excluded_body_hashes', None) or getattr(
-            getattr(self, 'storage', None), 'excluded_body_hashes', None
-        )
-        if exclusions:
-            enforce_body_ingest_gate(
-                self.store,
-                f'bodies/sha256/{digest[:2]}/{digest}.gz',
-                data,
-                excluded_hashes=exclusions,
-            )
         if digest not in self.retained_body_hashes:
             compressed, info = body_payload(data)
             created = self.store.put(info['body_key'], compressed, immutable=True)

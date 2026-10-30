@@ -22,7 +22,6 @@ from docspec_client import (
     UpdateMergeStrategy,
     apply_update_merge_spec,
 )
-from congress_api.acquisition.recovery_queue import completed_from_tables, plan_recovery
 from congress_api.retention import catalog_scope, catalog_staging, document_index as index
 from congress_api.retention.catalog_dependency_storage import (
     ALIAS_PARTITION_SPEC,
@@ -690,7 +689,7 @@ def test_requirement_4_table_backed_capture_state_and_recovery_without_jsonl_gz(
     finally:
         work.close()
 
-    # 5. scan_receipt_history and plan_recovery read directly from tables without scanning .jsonl.gz
+    # 5. scan_receipt_history reads directly from tables without scanning .jsonl.gz
     history = scan_receipt_history(
         captures=captures_table,
         states=states_table,
@@ -699,9 +698,3 @@ def test_requirement_4_table_backed_capture_state_and_recovery_without_jsonl_gz(
     assert history[url_pdf]["source"] == "table"
     assert history[url_pdf]["attempts"] == 1
     assert history[url_pdf]["latest_state"]["outcome"] == "saved"
-
-    now = datetime(2026, 5, 10, 12, 10, 0, tzinfo=timezone.utc)
-    campaign = [{"url": url_pdf}, {"url": url_zip}]
-    plan = plan_recovery(campaign, [states_table], now)
-    assert plan["due"] == [url_zip]
-    assert plan["finished"] == [url_pdf]

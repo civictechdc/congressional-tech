@@ -12,7 +12,6 @@ from congress_api.matching.gpo_committees import merge_cached_row as fetch_merge
 from congress_api.parsers.gpo_hearings import PARSER_VERSION as fetch_PARSER_VERSION
 from congress_api.parsers.gpo_hearings import committee_on_title_page as fetch_committee_on_title_page
 from congress_api.parsers.gpo_hearings import parse_mods as fetch_parse_mods
-from congress_api.replay.gpo import replay
 from congress_api.retention import gpo as evidence
 from congress_api.retention.gpo import read_csv as fetch_read_csv
 from congress_api.retention.gpo import write_csv as fetch_write_csv
@@ -80,29 +79,6 @@ def test_all_native_held_dates_reach_material_and_remain_alternatives_to_headers
     alternate = material.field_evidence[0].alternatives[0]
     assert [d['date'] for d in alternate.value] == ['2020-06-03', '2020-06-11']
     assert alternate.provenance.citations[0].selector == '/held_dates'
-
-
-def test_replay_preserves_later_corrections_dates_and_digest_is_exact(tmp_path):
-    row = parsed()
-    row.update(title='Reviewed title', committee_code='hsxx00', hearing_dates='2013-06-14',
-               text_read='yes', parser_version='', committee_metadata='', serial_numbers='',
-               file_metadata='', html_urls='', pdf_urls='')
-    inp, out, retained, receipt = (tmp_path / name for name in ('in.csv', 'out.csv', 'evidence.jsonl.gz', 'receipt.json'))
-    fetch_write_csv({row['package_id']: row}, inp)
-    result = replay(inp, FIXTURES, out, retained, receipt_path=receipt)
-    repaired = fetch_read_csv(out)[row['package_id']]
-    for field in ('title', 'committee_code', 'hearing_dates', 'text_read', 'last_modified'):
-        assert repaired[field] == row[field]
-    assert repaired['serial_numbers'] == 'FC09'
-    assert repaired['parser_version'] == ''
-    upstream = evidence.read(retained)[row['package_id']]
-    assert upstream['mods']['retrieved_at'] is None
-    assert upstream['mods']['acquisition'] == 'cached-replay'
-    assert upstream['mods']['sha256'] == hashlib.sha256((FIXTURES / f"{row['package_id']}.xml").read_bytes()).hexdigest()
-    assert result['failures'] == []
-    before = out.read_bytes(), retained.read_bytes()
-    replay(out, FIXTURES, out, retained)
-    assert before == (out.read_bytes(), retained.read_bytes())
 
 
 def test_unchanged_rows_refresh_by_parser_version_with_a_bound_and_no_transcript_refetch(tmp_path, monkeypatch, package_manifests):
@@ -241,28 +217,6 @@ def test_committee_and_material_adapters_share_enriched_source_identity():
     committee = next(r for r in gpo.committee_records([row], context(), existing={}, **kwargs) if r.kind == 'source_record')
     material = next(r for r in gpo.records([row], context(), **kwargs) if r.kind == 'source_record')
     assert committee.id == material.id
-
-
-def test_replay_retains_html_without_mods_and_preserves_acquired_observation(tmp_path):
-    row = parsed()
-    input_path, output_path, retained = (tmp_path / name for name in ('in.csv', 'out.csv', 'evidence.jsonl.gz'))
-    fetch_write_csv({row['package_id']: row}, input_path)
-    html_dir, mods_dir = tmp_path / 'html', tmp_path / 'mods'
-    html_dir.mkdir(); mods_dir.mkdir()
-    raw = b'<pre>THURSDAY, JUNE 13, 2013</pre>'
-    (html_dir / f"{row['package_id']}.htm").write_bytes(raw)
-    receipt = replay(input_path, mods_dir, output_path, retained, html_dir=html_dir)
-    value = evidence.read(retained)[row['package_id']]
-    assert value.get('mods') is None
-    assert evidence.body_bytes(value['transcripts'][row['html_url']]) == raw
-    assert receipt['retained_html'] == 1 and receipt['retained_mods'] == 0
-    assert receipt['unmatched_html_files'] == []
-    value['transcripts'][row['html_url']]['retrieved_at'] = '2026-09-28T00:00:00Z'
-    value['transcripts'][row['html_url']]['acquisition'] = 'http'
-    evidence.write({row['package_id']: value}, retained)
-    (html_dir / f"{row['package_id']}.htm").write_bytes(b'older response')
-    replay(input_path, mods_dir, output_path, retained, html_dir=html_dir)
-    assert evidence.body_bytes(evidence.read(retained)[row['package_id']]['transcripts'][row['html_url']]) == raw
 
 
 def test_invalid_mods_root_is_failure_not_empty_success():

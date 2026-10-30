@@ -1,6 +1,6 @@
 ---
 id: ct-csyg
-status: open
+status: closed
 deps: [ct-xl0y, ct-clvr, ct-cpio]
 links: [ct-nloa, ct-eipa, ct-ur2y, ct-qkvr, ct-98sm]
 created: 2026-10-20T19:23:00Z
@@ -65,3 +65,7 @@ Scale review 2026-10-21: query pushdown pruning (file_matches_inexact_filters) w
 - Evidence: docs/reviews/2026-10-24-ticket-audit/batches/mi03a/mi03a-verdicts.md:29
 - Status: Reopened: revisit under engine-first rule. About 1,500 lines of hand-written predicate evaluation (docspec-rs `src/query.rs`, `src/engine/key_pruning.rs`) duplicate iceberg's maintained evaluators, which this ticket's own note rejected; the plan's keep list had kept it. Decide whether to expose or upstream iceberg's evaluator instead. Context: docspec-rs epic ss-oxg1; linked to ct-98sm.
 - See docs/reviews/2026-10-24-ticket-audit/README.md
+
+**2026-10-30T16:49:25Z**
+
+Verified superseded by docs/plans/simplification-plan-20261024.md §6.3 (Not needed any more) and docs/plans/bindings-20261025.md §6 (C1 partition filter visible in Iceberg scan verified in docspec-rs).

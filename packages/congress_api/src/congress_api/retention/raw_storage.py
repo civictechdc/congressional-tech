@@ -22,7 +22,6 @@ from congress_api.retention.body_keys import (
     is_pdf_bytes,
     is_pdf_format,
     physical_body_object_key,
-    quarantine_body_key,
 )
 from congress_api.retention.immutable_metadata import encoded
 from congress_api.retention.partition_routing import RoutingPages, split_partition, key_hash
@@ -70,295 +69,6 @@ def _compatible_priority(row):
         checked = ''
     return outcome_match, checked, row.get('url') or ''
 _rsr.priority = _compatible_priority
-
-
-DEFAULT_ACCEPTED_FILES_PATH = (
-    Path(__file__).resolve().parents[5]
-    / 'apps'
-    / 'site'
-    / 'src'
-    / 'data'
-    / 'deferred-body-reviews'
-    / 'accepted-files.json'
-)
-
-
-class ExcludedBodyError(PermissionError, ValueError):
-    """Raised when a deferred-body review exclusion blocks ingest or publication."""
-
-    def __init__(self, sha256_hex, *, body_key=None, quarantine_key=None):
-        self.sha256 = sha256_hex
-        self.body_key = body_key or f'bodies/sha256/{sha256_hex[:2]}/{sha256_hex}.gz'
-        self.quarantine_key = quarantine_key or quarantine_body_key(sha256_hex)
-        super().__init__(
-            f'Excluded body SHA-256 {sha256_hex} blocked by deferred-body gate '
-            f'(quarantine: {self.quarantine_key})'
-        )
-
-
-def _extract_excluded_digests(item):
-    digests = set()
-    if isinstance(item, str):
-        digest = body_object_digest(item.lower())
-        if digest:
-            digests.add(digest)
-        return digests
-    if not isinstance(item, dict):
-        return digests
-    decision = item.get('decision')
-    # In accepted-files.json (--deferred list), rows without an explicit "accept" decision
-    # or with decision == "exclude" supply excluded sha256 / body_key values.
-    if decision in (None, 'exclude'):
-        for field in ('sha256', 'body_key', 'stored_sha256'):
-            raw_val = item.get(field)
-            if isinstance(raw_val, str):
-                digest = body_object_digest(raw_val.lower())
-                if digest:
-                    digests.add(digest)
-    zip_check = item.get('zip_Check') or {}
-    for member in zip_check.get('members') or ():
-        if isinstance(member, dict) and (decision == 'exclude' or member.get('decision') in (None, 'exclude')):
-            for field in ('sha256', 'body_key'):
-                raw_val = member.get(field)
-                if isinstance(raw_val, str):
-                    digest = body_object_digest(raw_val.lower())
-                    if digest:
-                        digests.add(digest)
-    for member in item.get('members') or ():
-        digests.update(_extract_excluded_digests(member))
-    return digests
-
-
-def load_excluded_body_hashes(source=None):
-    """Load excluded SHA-256 digests from accepted-files.json or an explicit collection."""
-    if source is None:
-        source = DEFAULT_ACCEPTED_FILES_PATH
-        if not source.is_file():
-            return frozenset()
-    if isinstance(source, (set, frozenset, list, tuple)):
-        digests = set()
-        for item in source:
-            digests.update(_extract_excluded_digests(item))
-        return frozenset(digests)
-    if isinstance(source, Path):
-        if not source.is_file():
-            raise FileNotFoundError(f'Deferred-body exclusion file not found: {source}')
-        payload = json.loads(source.read_text(encoding='utf-8'))
-    elif isinstance(source, str):
-        path = Path(source)
-        if path.is_file():
-            payload = json.loads(path.read_text(encoding='utf-8'))
-        else:
-            payload = json.loads(source)
-    elif isinstance(source, (bytes, bytearray)):
-        payload = json.loads(bytes(source).decode('utf-8'))
-    elif isinstance(source, dict):
-        payload = source
-    else:
-        raise ValueError('Unsupported excluded body hash source')
-
-    if isinstance(payload, list):
-        excluded = set()
-        for item in payload:
-            excluded.update(_extract_excluded_digests(item))
-        return frozenset(excluded)
-
-    excluded = set()
-    for raw_digest in payload.get('excluded_sha256') or ():
-        excluded.update(_extract_excluded_digests(raw_digest))
-    for entry in payload.get('files') or payload.get('deferred') or ():
-        excluded.update(_extract_excluded_digests(entry))
-    return frozenset(excluded)
-
-
-def enforce_body_ingest_gate(
-    store,
-    key_or_sha256,
-    data=None,
-    *,
-    excluded_hashes=None,
-    content_type_or_format=None,
-    is_pdf=None,
-    quarantine=True,
-):
-    """Block excluded SHA-256 digests and optionally quarantine their payload."""
-    digest = body_object_digest(key_or_sha256)
-    if digest is None and isinstance(data, (bytes, bytearray, memoryview)):
-        digest = sha256(bytes(data)).hexdigest()
-    if digest is None:
-        raise ValueError(f'Invalid retained body key or SHA-256 digest: {key_or_sha256!r}')
-    active = (
-        load_excluded_body_hashes(excluded_hashes)
-        if excluded_hashes is not None and not isinstance(excluded_hashes, frozenset)
-        else excluded_hashes
-    )
-    if active is None:
-        store_exclusions = getattr(store, 'excluded_body_hashes', None) if store is not None else None
-        active = (
-            load_excluded_body_hashes(store_exclusions)
-            if store_exclusions is not None and not isinstance(store_exclusions, frozenset)
-            else (store_exclusions or frozenset())
-        )
-    if digest in active:
-        pdf_flag = (
-            is_pdf
-            if is_pdf is not None
-            else (
-                is_pdf_bytes(data)
-                if isinstance(data, (bytes, bytearray, memoryview))
-                else is_pdf_format(content_type_or_format)
-            )
-        )
-        q_key = quarantine_body_key(digest, is_pdf=bool(pdf_flag))
-        if quarantine and data is not None and store is not None and hasattr(store, 'put'):
-            raw_bytes = bytes(data)
-            if pdf_flag:
-                if raw_bytes[:2] == b'\x1f\x8b':
-                    try:
-                        raw_bytes = gzip.decompress(raw_bytes)
-                    except OSError:
-                        pass
-                store.put(q_key, raw_bytes, immutable=True)
-            else:
-                compressed = (
-                    raw_bytes
-                    if raw_bytes[:2] == b'\x1f\x8b'
-                    else gzip.compress(raw_bytes, compresslevel=1, mtime=0)
-                )
-                store.put(q_key, compressed, immutable=True)
-        raise ExcludedBodyError(
-            digest,
-            body_key=f'bodies/sha256/{digest[:2]}/{digest}.gz',
-            quarantine_key=q_key,
-        )
-    return digest
-
-
-def store_public_body(store, data, *, content_type_or_format=None, excluded_hashes=None):
-    """Store a public body (.pdf uncompressed, non-PDF .gz) while preserving logical .gz body_key."""
-    raw_bytes = bytes(data)
-    digest = sha256(raw_bytes).hexdigest()
-    logical_key = f'bodies/sha256/{digest[:2]}/{digest}.gz'
-    pdf_flag = is_pdf_bytes(raw_bytes) or is_pdf_format(content_type_or_format)
-    enforce_body_ingest_gate(
-        store,
-        logical_key,
-        raw_bytes,
-        excluded_hashes=excluded_hashes,
-        content_type_or_format=content_type_or_format,
-        is_pdf=pdf_flag,
-        quarantine=True,
-    )
-    physical_key = physical_body_object_key(logical_key, content_type_or_format, is_pdf=pdf_flag)
-    if pdf_flag:
-        if hasattr(store, 'put_pdf_body'):
-            store.put_pdf_body(physical_key, raw_bytes)
-        else:
-            store.put(physical_key, raw_bytes, immutable=True)
-        return dict(
-            body_key=logical_key,
-            physical_key=physical_key,
-            sha256=digest,
-            bytes=len(raw_bytes),
-            stored_sha256=digest,
-            stored_bytes=len(raw_bytes),
-            is_pdf=True,
-        )
-    compressed = gzip.compress(raw_bytes, compresslevel=1, mtime=0)
-    store.put(physical_key, compressed, immutable=True)
-    return dict(
-        body_key=logical_key,
-        physical_key=physical_key,
-        sha256=digest,
-        bytes=len(raw_bytes),
-        stored_sha256=sha256(compressed).hexdigest(),
-        stored_bytes=len(compressed),
-        is_pdf=False,
-    )
-
-
-def migrate_pdf_bodies_to_uncompressed(store, *, keys=None, excluded_hashes=None):
-    """Idempotently decompress retained PDF bodies (and ZIP-member PDFs) to bodies/sha256/<xx>/<sha256>.pdf.
-
-    The canonical gzip body is never removed: it is the raw record the PDF copy derives from.
-    """
-    from congress_api.retention.archive_members import ArchiveReadError, ZipLimits, is_office_zip, iter_archive_members
-
-    active_exclusions = (
-        load_excluded_body_hashes(excluded_hashes)
-        if excluded_hashes is not None
-        else load_excluded_body_hashes(getattr(store, 'excluded_body_hashes', frozenset()))
-    )
-    candidate_keys = list(keys) if keys is not None else sorted(store.keys('bodies/sha256/'))
-    migrated_pdfs = []
-    migrated_zip_member_pdfs = []
-    already_present = []
-    skipped_non_pdf = []
-    excluded_skipped = []
-
-    def _object_exists(target_key):
-        if hasattr(store, 'version'):
-            try:
-                if store.version(target_key) != 'missing':
-                    return True
-            except Exception:
-                pass
-        return store.read(target_key) is not None
-
-    for key in candidate_keys:
-        digest = body_key_digest(key)
-        if digest is None:
-            continue
-        if digest in active_exclusions:
-            excluded_skipped.append(key)
-            continue
-        pdf_key = physical_body_object_key(key, is_pdf=True)
-        if _object_exists(pdf_key):
-            already_present.append(pdf_key)
-            continue
-        compressed = store.read(key)
-        if compressed is None:
-            continue
-        raw_bytes = gzip.decompress(compressed) if compressed[:2] == b'\x1f\x8b' else compressed
-        if sha256(raw_bytes).hexdigest() != digest:
-            raise ValueError(f'Retained body checksum mismatch during PDF migration: {key}')
-        if is_pdf_bytes(raw_bytes):
-            if hasattr(store, 'put_pdf_body'):
-                store.put_pdf_body(pdf_key, raw_bytes)
-            else:
-                store.put(pdf_key, raw_bytes, immutable=True)
-            migrated_pdfs.append(pdf_key)
-            continue
-        if raw_bytes.startswith((b'PK\x03\x04', b'PK\x05\x06')) and not is_office_zip(raw_bytes, limits=ZipLimits()):
-            try:
-                for member in iter_archive_members(raw_bytes, archive_path=key, limits=ZipLimits()):
-                    if member.data is not None and is_pdf_bytes(member.data):
-                        member_digest = sha256(member.data).hexdigest()
-                        if member_digest in active_exclusions:
-                            excluded_skipped.append(f'bodies/sha256/{member_digest[:2]}/{member_digest}.gz')
-                            continue
-                        member_pdf_key = physical_body_object_key(member_digest, is_pdf=True)
-                        if _object_exists(member_pdf_key):
-                            if member_pdf_key not in already_present:
-                                already_present.append(member_pdf_key)
-                            continue
-                        if hasattr(store, 'put_pdf_body'):
-                            store.put_pdf_body(member_pdf_key, member.data)
-                        else:
-                            store.put(member_pdf_key, member.data, immutable=True)
-                        migrated_zip_member_pdfs.append(member_pdf_key)
-                        migrated_pdfs.append(member_pdf_key)
-            except ArchiveReadError:
-                pass
-        skipped_non_pdf.append(key)
-
-    return dict(
-        migrated_pdfs=migrated_pdfs,
-        migrated_zip_member_pdfs=migrated_zip_member_pdfs,
-        already_present=already_present,
-        skipped_non_pdf=skipped_non_pdf,
-        excluded_skipped=excluded_skipped,
-    )
 
 RAW_KEY = 'indexes/raw.json'
 STATE_ORDER = '_state_order'
@@ -738,20 +448,8 @@ class RawStorage:
     """
     def __init__(self, store, native, *, max_state_rows=16384, max_state_bytes=32 << 20,
                  max_capture_rows=CAPTURE_BATCH_ROWS, max_capture_bytes=CAPTURE_BATCH_BYTES,
-                 state_schema=STATE_SCHEMA, excluded_body_hashes=None,
-                 deferred_exclusions_path=None):
+                 state_schema=STATE_SCHEMA):
         self.store, self.native = store, native
-        if deferred_exclusions_path is not None:
-            self.excluded_body_hashes = load_excluded_body_hashes(deferred_exclusions_path)
-        elif excluded_body_hashes is not None:
-            self.excluded_body_hashes = load_excluded_body_hashes(excluded_body_hashes)
-        else:
-            store_exclusions = getattr(store, 'excluded_body_hashes', None)
-            self.excluded_body_hashes = (
-                load_excluded_body_hashes(store_exclusions)
-                if store_exclusions is not None
-                else frozenset()
-            )
         if (not isinstance(state_schema, pa.Schema) or 'url' not in state_schema.names
                 or state_schema.field('url').type != pa.string()
                 or {STATE_ORDER, STATE_KEY_FIELD} & set(state_schema.names)):
@@ -774,15 +472,6 @@ class RawStorage:
                           max_state_rows=max_state_rows, max_state_bytes=max_state_bytes,
                           max_capture_rows=max_capture_rows, max_capture_bytes=max_capture_bytes,
                           state_schema=base64.b64encode(state_schema.serialize()).decode("ascii"))
-
-    def put_body(self, data, *, content_type_or_format=None):
-        """Retain a body through the deferred-body exclusion gate and public PDF storage rule."""
-        return store_public_body(
-            self.store,
-            data,
-            content_type_or_format=content_type_or_format,
-            excluded_hashes=self.excluded_body_hashes,
-        )
 
     @classmethod
     def open(cls, store, native):
@@ -901,13 +590,6 @@ class RawStorage:
             sha_hex = format_sha256(row.get('sha256'))
             body_key = row.get('body_key') or (derive_body_key(sha_hex, row.get('media_type')) if sha_hex else None)
             if body_key:
-                if self.excluded_body_hashes or getattr(self.store, 'excluded_body_hashes', None):
-                    enforce_body_ingest_gate(
-                        self.store,
-                        body_key,
-                        excluded_hashes=self.excluded_body_hashes or None,
-                        quarantine=False,
-                    )
                 stored_sha = row.get('stored_sha256')
                 info = {
                     'body_key': body_key,

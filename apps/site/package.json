@@ -19,7 +19,6 @@
     "targets:archive": "node scripts/archive-targets.mjs",
     "contract:archive": "node scripts/contract-archive.mjs",
     "contract:archive-ci": "../../.venv/bin/python -I ../../.github/scripts/verify-archive-contract.py",
-    "test:archive-f0": "node --test scripts/archive-f0.test.mjs",
     "test:archive-shards": "node --test scripts/archive-shards.test.mjs",
     "canary:archive-local": "node --expose-gc scripts/canary-archive-local.mjs",
     "test:archive-saved-browser": "node scripts/archive-saved-browser.mjs",

@@ -3,7 +3,6 @@ import json
 import pytest
 
 
-from congress_api.cli.raw_sync import parser
 from congress_api.models.content import RawContent
 from congress_api.transport.source_capture import fetch_source
 
@@ -29,9 +28,6 @@ class Response:
 
 
 def test_capture_defaults_to_direct_with_fallback_and_retains_native_metadata(monkeypatch):
-    defaults = parser().parse_args([])
-    assert (defaults.transport, defaults.files_per_second, defaults.workers) == ("auto", 60, 80)
-    assert parser().parse_args(['--requests-per-second', '30']).files_per_second == 30
     raw = b"%PDF-1.7\n\xff\n%%EOF"
     payload = {
         "url": "https://example.gov/final.pdf",

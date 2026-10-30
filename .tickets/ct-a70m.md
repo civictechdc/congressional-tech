@@ -1,6 +1,6 @@
 ---
 id: ct-a70m
-status: open
+status: closed
 deps: [ct-qdkd]
 links: [ct-wmtx, ct-lcbc, ct-mpsp, ct-m9td, ct-egpe, ct-qdkd, ct-nc7l, ct-3faj, ct-gfv8, ct-syx8]
 created: 2026-10-20T18:24:29Z
@@ -44,3 +44,7 @@ CS 300 Grade at 8221566d — Spec: A | Impl: B+ (Closed for RunSpec pins). plan_
 - Evidence: docs/reviews/2026-10-24-ticket-audit/batches/mi03a/mi03a-verdicts.md:21
 - Status: Reopened: revisit under engine-first rule. The unmet criteria (feed application pins, honor native blockers) are not wanted; the owner wants the Python retention planner deleted entirely (`plan_protected_retention` and the retention-plan CLI mode) in favor of engine retention. Owner: WS2 step 6 (ct-syx8), after the guard test that no Python path deletes under raw prefixes.
 - See docs/reviews/2026-10-24-ticket-audit/README.md
+
+**2026-10-30T16:49:25Z**
+
+Verified completed and superseded by packages/viewer_publication/src/viewer_publication/archive_maintenance.py and packages/congress_api/src/congress_api/lake/maintenance.py (cef-3mv3, cef-qovg, ct-vnkf commits 6d0df51d and 20206037), with raw prefix deletion forbidden and guarded by packages/congress_api/tests/test_body_store_contract.py.

@@ -18,7 +18,7 @@ SCRIPTS = {
     'house-committee-sites', 'house-meeting-records', 'senate-meeting-records', 'meeting-inventory',
     'gpo-fetch', 'gpo-match',
     'senate-captions', 'hearing-transcribe', 'gpo-transcripts',
-    'congress-meetings', 'congress-committees', 'raw-source-sync',
+    'congress-meetings', 'congress-committees',
 }
 VERSIONS = {
     ('acquisition/house_sites.py', 'PARSER_VERSION'): 14,
@@ -176,7 +176,7 @@ def test_committee_entrypoint_delegates_without_changing_main(monkeypatch):
 
 
 def test_interpretation_cannot_import_acquisition_storage_or_command_wiring():
-    forbidden = {'acquisition', 'transport', 'retention', 'cli', 'transcripts', 'replay', 'adapters'}
+    forbidden = {'acquisition', 'transport', 'retention', 'cli', 'transcripts', 'adapters'}
     for family in ('models', 'parsers', 'matching'):
         for path in (SOURCE / family).glob('*.py'):
             for node in ast.walk(ast.parse(path.read_text())):
@@ -201,5 +201,5 @@ def test_commands_resolve_to_cli_and_old_provider_packages_are_retired():
     assert all(entry.startswith('congress_api.cli.') for entry in project['scripts'].values())
     assert {p.name for p in SOURCE.iterdir() if p.is_dir() and p.name != '__pycache__'} == {
         'models', 'parsers', 'acquisition', 'transport', 'retention', 'adapters',
-        'matching', 'transcripts', 'replay', 'cli', 'lake',
+        'matching', 'transcripts', 'cli', 'lake',
     }
