@@ -583,6 +583,66 @@ def build_prepared_release(prepared,*,engine,output,root=ROOT):
     meetings_sql=(Path(root)/'model/sql/entity-meetings.sql').read_text()
     auxiliary=[('meetings',meetings_sql,['event_id'],['chamber','meeting_type','status','committees.list.item.system_code','committees.list.item.role','subject_keys.list.item'])]
     if prepared.get('include_entities'):
+        steps += [
+            dict(name='recording_url_sources',sql="SELECT pattern,key_template,format,default_language,default_production FROM recording_sources WHERE kind='video_url'",materialize=True),
+            dict(name='recording_track_formats',sql="SELECT pattern,format,default_language,default_production FROM recording_sources WHERE kind='track_format'",materialize=True),
+            dict(name='recording_segment_exclusions',sql="SELECT pattern FROM recording_sources WHERE kind='segment_exclusion'",materialize=True),
+            dict(name='recording_link_candidates',sql="SELECT DISTINCT page_body,target_url FROM resolved_link_targets WHERE target_url IS NOT NULL AND regexp_like(target_url,'(?i)(?:youtube|youtu[.]be|senate)')",materialize=True),
+            dict(name='recording_video_links',sql="""SELECT DISTINCT l.page_body,
+                regexp_replace((regexp_match(l.target_url,rs.pattern))[1],'^(.+)$',rs.key_template) AS extracted_key
+                FROM recording_url_sources rs JOIN recording_link_candidates l ON regexp_like(l.target_url,rs.pattern)""",materialize=True),
+            dict(name='recording_video_pages',sql="""SELECT DISTINCT page_body,
+                arrow_cast(decode(page_body,'hex'),'FixedSizeBinary(32)') AS body_sha
+                FROM recording_video_links WHERE page_body IS NOT NULL""",materialize=True),
+            dict(name='recording_page_sources',sql="""SELECT DISTINCT c.source_id,c.body_sha AS page_body
+                FROM recording_video_pages vp JOIN capture_source_contexts c ON c.body_sha=vp.page_body""",materialize=True),
+            dict(name='recording_page_meetings',sql="""SELECT vp.page_body,unnest(pf.named_meetings) AS event_id
+                FROM recording_video_pages vp JOIN page_facts pf ON pf.body_sha=vp.body_sha
+                WHERE pf.status='completed' AND pf.named_meetings IS NOT NULL
+                UNION
+                SELECT DISTINCT vps.page_body,try_cast(a.meeting_key AS BIGINT) AS event_id
+                FROM recording_page_sources vps JOIN source_annotation_addresses a ON a.source_id=vps.source_id
+                WHERE try_cast(a.meeting_key AS BIGINT) IS NOT NULL""",materialize=True),
+            dict(name='recording_fetch_candidates',sql="""SELECT g.receipt_key,g.receipt_line,g.capture_index,g.sha256,
+                coalesce(g.stored_suffix,'.gz') AS suffix,
+                coalesce(g.sniffed_format,CASE lower(split_part(g.media_type,';',1)) WHEN 'text/vtt' THEN 'vtt' WHEN 'application/vnd.apple.mpegurl' THEN 'm3u8' WHEN 'application/x-mpegurl' THEN 'm3u8' END) AS body_format,
+                coalesce(g.url,g.requested_url,g.context_url) AS fetch_url,
+                arrow_cast(try_cast(g.retrieved_at AS TIMESTAMP WITH TIME ZONE),'Timestamp(Microsecond, Some("UTC"))') AS retrieved_at
+                FROM captures g
+                WHERE g.mode='fetch' AND g.complete AND g.outcome IN ('stored','unchanged') AND g.http_status BETWEEN 200 AND 299
+                 AND g.sha256 IS NOT NULL AND coalesce(g.url,g.requested_url,g.context_url) IS NOT NULL
+                 AND regexp_like(coalesce(g.url,g.requested_url,g.context_url),'(?i)(?:youtube|youtu[.]be|senate)')""",materialize=True),
+            dict(name='recording_track_candidates',sql="""WITH matched_fetches AS (
+                SELECT cf.*,
+                 regexp_replace((regexp_match(cf.fetch_url,vu.pattern))[1],'^(.+)$',vu.key_template) AS extracted_key,
+                 vu.format AS vu_format,
+                 vu.default_language AS vu_default_language,
+                 vu.default_production AS vu_default_production
+                FROM recording_url_sources vu
+                JOIN recording_fetch_candidates cf ON regexp_like(cf.fetch_url,vu.pattern)
+            )
+            SELECT mf.receipt_key,mf.receipt_line,mf.capture_index,mf.sha256,mf.suffix,mf.fetch_url,mf.retrieved_at,
+                mf.extracted_key,
+                coalesce(
+                 CASE WHEN mf.body_format IN ('vtt','srt','m3u8','ttml') THEN mf.body_format END,
+                 tf.format,
+                 mf.vu_format
+                ) AS format,
+                coalesce(
+                 lower(nullif((regexp_match(mf.fetch_url,'(?i)[?&](?:t?lang)=([a-z]{2,3}(?:-[a-z0-9]+)?)'))[1],'')),
+                 lower(nullif((regexp_match(mf.fetch_url,'(?i)/(?:subtitles|captions|cc)/([a-z]{2,3})(?:/|[._-])'))[1],'')),
+                 mf.vu_default_language,tf.default_language,'en'
+                ) AS language,
+                coalesce(
+                 CASE WHEN regexp_like(mf.fetch_url,'(?i)[?&](?:kind|caps)=asr(?:[&#]|$)') THEN 'asr' END,
+                 mf.vu_default_production,tf.default_production,'caption'
+                ) AS production
+            FROM matched_fetches mf
+            LEFT JOIN recording_track_formats tf ON regexp_like(mf.fetch_url,tf.pattern)
+            WHERE NOT EXISTS (
+                SELECT 1 FROM recording_segment_exclusions ex WHERE regexp_like(mf.fetch_url,ex.pattern)
+            )""",materialize=True),
+        ]
         auxiliary += [
             ('witnesses','SELECT witness_key,occasion,event_id,package_id,page_url,name,position,organization,on_behalf_of,location,panel,panel_order,display_order,witness_type,testified,bioguide_id FROM appearance_records_resolved',['witness_key'],['occasion','witness_type','bioguide_id']),
             ('recordings',(Path(root)/'model/sql/entity-recordings.sql').read_text(),['video_key'],['tracks.list.item.suffix','tracks.list.item.format','tracks.list.item.language','tracks.list.item.production']),
