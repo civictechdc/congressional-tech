@@ -106,6 +106,27 @@ def record_kind_sql():
     return 'CASE WHEN '+prefix+' THEN CASE ('+url_kind+') '+' '.join(branches)+' END END'
 
 
+def retained_record_sql():
+    """Compile finite successful payloads and descriptors without asserting body custody."""
+    registry=json.loads(LINE_KINDS.read_bytes())
+    branches=[]
+    for kind in registry['inline_payloads']+registry['descriptors']:
+        descriptor=kind in registry['descriptors']
+        conditions=["starts_with(array_element(string_to_array(receipt_key,'/'),-1),"+literal(registry['receipt_filename_prefix'])+')',
+            'entry_family='+literal(kind['family']), 'NOT record_is_list',
+            metadata_field('record','line_kind_shape')+"='object'",
+            metadata_field('record','descriptor_kind' if descriptor else 'inline_payload_kind')+'='+literal(kind['kind']),
+            'raw_outcome IS NULL' if descriptor else 'raw_outcome='+literal(kind['outcome_marker'])]
+        if descriptor:conditions.append('line_status=200')
+        if kind.get('url_pattern'):
+            conditions.append('regexp_match(coalesce(requested,final_url),'+literal(kind['url_pattern'])+') IS NOT NULL')
+        if kind.get('filename_pattern'):
+            conditions.append('regexp_match(array_element(string_to_array(receipt_key,\'/\'),-1),'+literal(kind['filename_pattern'])+') IS NOT NULL')
+            conditions.extend(["nullif(requested,'') IS NULL","nullif(final_url,'') IS NULL"])
+        branches.append('WHEN '+' AND '.join(conditions)+' THEN '+literal('reference' if descriptor else 'saved-record'))
+    return 'CASE '+' '.join(branches)+' END'
+
+
 def mapping_steps():
     steps=[]
     def step(name,sql,**options):
@@ -208,6 +229,8 @@ def mapping_steps():
     list_record={name:first('i_'+name,metadata_field('record',name))
         for name in item_fields if name!='kind'}
     list_record['kind']='i_kind'
+    list_record['inline_payload_kind']=metadata_field('record','inline_payload_kind')
+    list_record['descriptor_kind']=metadata_field('record','descriptor_kind')
     list_record['error_present']="(coalesce(i_error_present,false) OR "+metadata_field('record','error_present')+')'
     step('records','SELECT * EXCEPT(record,'+','.join('i_'+name for name in item_fields)+'),'+
         obj(list_record)+' AS record FROM selected_records')
@@ -217,9 +240,13 @@ def mapping_steps():
         line,record=metadata_field('line',name),metadata_field('record',name)
         ordinary=item_first(first(line,record),record)
         return ordinary
+    final_status=item_first(first(metadata_field('line','http_status'),metadata_field('line','status_code'),
+        metadata_field('record','http_status'),metadata_field('record','status_code')),
+        first(metadata_field('record','http_status'),metadata_field('record','status_code')))
+    entry_status=first('e_http_status','e_status_code')
     step('facts',f"""SELECT *,{both('mode')} AS raw_mode,{both('outcome')} AS raw_outcome,
-        {item_first(first(metadata_field('line','http_status'),metadata_field('line','status_code'),metadata_field('record','http_status'),metadata_field('record','status_code')),first(metadata_field('record','http_status'),metadata_field('record','status_code')))} AS source_final_status,
-        {first(item_first(first(metadata_field('line','http_status'),metadata_field('line','status_code'),metadata_field('record','http_status'),metadata_field('record','status_code')),first(metadata_field('record','http_status'),metadata_field('record','status_code'))),'e_status_code')} AS line_status,
+        {final_status} AS source_final_status,
+        {first(final_status,entry_status)} AS line_status,
         {first(fetch_time('',lambda _,p:'e_'+p),item_first(first(fetch_time('line',metadata_field),fetch_time('record',metadata_field)),fetch_time('record',metadata_field)))} AS fetched,
         {first('e_family',both('family'),"regexp_replace(receipt_key,'^receipts/(.*)/[^/]+/[^/]+$','\\1')")} AS entry_family,
         {item_first(first(metadata_field('line','run_id'),metadata_field('line','source_file'),metadata_field('record','source_file')),first(metadata_field('record','run_id'),metadata_field('record','source_file')))} AS source_run,
@@ -245,8 +272,14 @@ def mapping_steps():
     record_only="""body_sha IS NULL AND reference_kind='line' AND raw_mode IS NULL AND raw_outcome IS NULL
         AND line_status IS NULL AND NOT coalesce(get_field(line,'error_present'),false)
         AND NOT coalesce(get_field(record,'error_present'),false)"""
+    inline_candidate=f"""body_sha IS NULL AND reference_kind='line' AND raw_mode IS NULL
+        AND mapped_outcome='derive' AND (raw_outcome IS NULL OR raw_outcome IN ('captured','complete'))
+        AND (line_status IS NULL OR line_status BETWEEN 200 AND 299)
+        AND {both('error_type')} IS NULL
+        AND NOT coalesce(get_field(line,'error_present'),false)
+        AND NOT coalesce(get_field(record,'error_present'),false)"""
     step('classified',"SELECT *,"+record_only+" AS record_only,CASE WHEN "+record_only+
-        " THEN "+record_kind_sql()+" END AS record_outcome FROM mapped")
+        " THEN "+record_kind_sql()+" WHEN "+inline_candidate+" THEN "+retained_record_sql()+" END AS record_outcome FROM mapped")
     # Pointers can prefix a source record number before the attempt path.
     prior_index=first(*(f"CASE WHEN json_get_str(pointer_json,{i})='prior_attempts' THEN coalesce(json_get_int(pointer_json,{i+1}),try_cast(json_get_str(pointer_json,{i+1}) AS BIGINT),0)+1 END" for i in (0,1,2)),'0')
     step('attempts',f"""SELECT *,record_only AND record_outcome IS NULL AS unknown_line_kind,coalesce(e_attempt,{prior_index}) AS attempt,
@@ -284,7 +317,7 @@ def mapping_steps():
                  'record_is_list','source_record_count','is_placeholder','primary_count']
     witnesses=dict(source_context_from_final='e_context_url IS NULL AND final_url IS NOT NULL',
         source_retained_record=metadata_field('record','line_kind_shape')+"='object'",
-        source_entry_status='coalesce(e_http_status,e_status_code)',source_final_status='source_final_status',
+        source_entry_status=entry_status,source_final_status='source_final_status',
         source_creating_size_absent="reference_kind IN ('capture','embedded','file','retained-file') AND body_sha IS NOT NULL AND e_stored_bytes IS NULL",
         source_family_basis="CASE WHEN e_family IS NOT NULL THEN 'entry' WHEN record_is_list AND "+metadata_field('record','family')+" IS NOT NULL THEN 'record' WHEN "+metadata_field('line','family')+" IS NOT NULL THEN 'line' WHEN "+metadata_field('record','family')+" IS NOT NULL THEN 'record' ELSE 'receipt' END")
     flags=dict(cutoff_candidate='attempt=0 AND top_level AND body_bytes=67108864 AND recorded_complete IS FALSE',

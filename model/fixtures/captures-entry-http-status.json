@@ -1,0 +1,55 @@
+{
+  "source": {
+    "receipt_key": "receipts/documents/2026-09-21/assemble-20260930.jsonl.gz",
+    "receipt_line": 1,
+    "capture_index": 0,
+    "excerpt": "First file reference and its pointed record capture; unrelated record fields and sibling references omitted."
+  },
+  "receipt": {
+    "source_file": "external-sources/corpora/fork-execution-2026-09-21/report-family/acquisition/ledger.json",
+    "source_line": null,
+    "record": {
+      "captures": [
+        {
+          "requested_url": "https://api.govinfo.gov/packages/CHRG-118hhrg58134/summary",
+          "resolved_url": "https://api.govinfo.gov/packages/CHRG-118hhrg58134/summary",
+          "status_code": 200,
+          "content_type": "application/json",
+          "observed_at": "2026-09-21T23:56:11.703704Z",
+          "content_encoding": "identity",
+          "method": "GET",
+          "package_id": "CHRG-118hhrg58134",
+          "part": "summary",
+          "path": "/Users/mikewolfd/Work/corpora/fork-execution-2026-09-21/report-family/acquisition/raw/402e151c3e23471fd472872f7decad3a236a7ce0cba9f95295e0c4f5af5a55d9",
+          "sha256": "sha256:402e151c3e23471fd472872f7decad3a236a7ce0cba9f95295e0c4f5af5a55d9",
+          "bytes": 1292
+        }
+      ]
+    },
+    "captures": [],
+    "file_references": [
+      {
+        "reference_kind": "file",
+        "original_path": "/Users/mikewolfd/Work/corpora/fork-execution-2026-09-21/report-family/acquisition/raw/402e151c3e23471fd472872f7decad3a236a7ce0cba9f95295e0c4f5af5a55d9",
+        "pointer_json": "[\"captures\",0,\"path\"]",
+        "fidelity": "retained-file",
+        "resolution": "digest_verified",
+        "context_url": "https://api.govinfo.gov/packages/CHRG-118hhrg58134/summary",
+        "retrieved_at": "2026-09-21T23:56:11.703704Z",
+        "http_status": 200,
+        "media_type": "application/json",
+        "family": "documents",
+        "body_key": "bodies/sha256/40/402e151c3e23471fd472872f7decad3a236a7ce0cba9f95295e0c4f5af5a55d9.gz",
+        "sha256": "402e151c3e23471fd472872f7decad3a236a7ce0cba9f95295e0c4f5af5a55d9",
+        "bytes": 1292,
+        "stored_sha256": "65f2005b9b4c930303c587da488c9a6fbf1e04c42c468b74c45f26956f83147b",
+        "stored_bytes": 603
+      }
+    ]
+  },
+  "expected": {
+    "http_status": 200,
+    "outcome": "stored",
+    "sha256": "402e151c3e23471fd472872f7decad3a236a7ce0cba9f95295e0c4f5af5a55d9"
+  }
+}
