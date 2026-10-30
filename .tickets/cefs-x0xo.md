@@ -1,6 +1,6 @@
 ---
 id: cefs-x0xo
-status: in_progress
+status: closed
 deps: []
 links: []
 created: 2026-10-28T00:01:03Z
@@ -30,3 +30,7 @@ Corrected immutable 167c6a78 passes pins/profile/layout. Query-shape fix 67ad584
 **2026-10-28T07:11:41Z**
 
 ONE bounded five-parent native projection succeeded39.663s/5rows/30179B after explicitCOREEND; resource window immediately freed. Immutable shared/e4-five-parent-ca064ca9 retains result/pins/nested records. All five query URLs are ?download=1 children of no-query download parents with source_record receipt pointers; second occurrences are inherited linked_ancestor context, not independent raw link proof. Exact House-pages parent receipt keys/lines sent to raw+engine. No raw bodies, extractor, broad comparison or tests run. E4 remains incomplete5members with null field/cause/unexplained counts; no invented fetch, alias rule or derived-only classification. See docs/measurements/engine-first-20261027/site/e4-five-parents.md.
+
+**2026-10-30T14:32:57Z**
+
+Completed E4 full-corpus parity verification (docs/measurements/engine-first-20261027/e4/full-raw-e2-parity-20261030.json, 0 unexplained differences).

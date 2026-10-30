@@ -949,7 +949,7 @@
           "meaning": "Senate roll-call votes on the nomination"
         }
       ],
-      "gaps": [],
+      "gaps": ["Nominations cover the 119th Congress only until spicy-regs backfills"],
       "purpose": "Referenced nominations and embedded legislative facts",
       "row_meaning": "One nomination including its part when present; bounded by upstream retained data",
       "identity": {

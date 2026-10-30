@@ -2,6 +2,37 @@
   "version": 1,
   "receipt_filename_prefix": "assemble-",
   "record_shape": "object",
+  "inline_payloads": [
+    {
+      "kind": "committee-detail",
+      "family": "congress/committees",
+      "outcome_marker": "captured",
+      "url_pattern": "(?i)^https?://api[.]congress[.]gov/v3/committee/",
+      "authority": "20261029T081249Z-lead-disposition-decisions-2.md"
+    },
+    {
+      "kind": "package-outcome",
+      "family": "documents",
+      "outcome_marker": "complete",
+      "filename_pattern": "^assemble-[0-9]{8}-journal-metadata[.]jsonl[.]gz$",
+      "authority": "20261029T081249Z-lead-disposition-decisions-2.md"
+    },
+    {
+      "kind": "meeting-event",
+      "family": "congress/meetings",
+      "outcome_marker": "captured",
+      "url_pattern": "(?i)^https?://api[.]congress[.]gov/v3/committee-meeting/",
+      "authority": "20261029T084507Z-lead-vnext-finite-policy.md"
+    }
+  ],
+  "descriptors": [
+    {
+      "kind": "govinfo-mods",
+      "family": "govinfo/mods",
+      "authority": "20261029T084507Z-lead-vnext-finite-policy.md",
+      "qualification": "All 34,584 current exact descriptors match accepted stored captures by digest and original byte count. This reference classification alone never asserts custody of future bodies."
+    }
+  ],
   "kinds": [
     {
       "id": "congress-api-record",

@@ -87,7 +87,7 @@ const statusLabel = {
           </div>
         </fieldset>
       </form>
-      <p class="filter-empty" data-filter-empty hidden>
+      <p class="filter-empty" id="filter-empty" data-filter-empty hidden>
         No proposals match those filters.
       </p>
 
@@ -182,6 +182,12 @@ const statusLabel = {
     const data = new FormData(form);
     const theme = String(data.get('theme') ?? 'all');
     const status = String(data.get('status') ?? 'all');
+    for (const chip of form.querySelectorAll<HTMLElement>('.chip')) {
+      const input = chip.querySelector<HTMLInputElement>('input');
+      if (input) {
+        chip.setAttribute('aria-pressed', String(input.checked));
+      }
+    }
     let visible = 0;
     for (const card of cards) {
       const show =
@@ -252,6 +258,8 @@ const statusLabel = {
   /* Pill chips: radio inputs styled as nav chips */
   .chip {
     position: relative;
+    user-select: none;
+    -webkit-user-select: none;
   }
 
   .chip input {
@@ -274,18 +282,34 @@ const statusLabel = {
     transition: all var(--ctdc-duration-fast) var(--ctdc-ease);
   }
 
+  .chip:hover,
   .chip:hover span {
-    transform: translateY(-3px);
     color: var(--ctdc-primary);
+  }
+
+  .chip:hover span {
+    transform: translateY(-2px);
+    border-color: var(--ctdc-primary);
     box-shadow: var(--ctdc-shadow-sm);
   }
 
+  .chip[aria-pressed="true"],
+  .chip[aria-pressed="true"] span,
+  .chip:has(input:checked) span,
   .chip input:checked + span {
     background: var(--ctdc-primary);
     border-color: var(--ctdc-primary);
     color: #fff;
   }
 
+  .chip[aria-pressed="true"]:hover span,
+  .chip:has(input:checked):hover span,
+  .chip:hover input:checked + span {
+    color: #fff;
+  }
+
+  .chip:focus-visible,
+  .chip:has(input:focus-visible) span,
   .chip input:focus-visible + span {
     outline: var(--ctdc-focus-ring);
     outline-offset: 2px;
@@ -319,7 +343,13 @@ const statusLabel = {
 
   .proposal-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(19rem, 1fr));
+    grid-template-columns: repeat(auto-fit, minmax(min(100%, 19rem), 1fr));
+    gap: var(--ctdc-space-md);
+  }
+
+  .domain-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(min(100%, 18rem), 1fr));
     gap: var(--ctdc-space-md);
   }
 

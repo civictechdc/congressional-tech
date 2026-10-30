@@ -2,7 +2,7 @@
 id: cefr-xjsp
 status: closed
 deps: []
-links: []
+links: [ct-4jms]
 created: 2026-10-27T18:55:33Z
 type: task
 priority: 2

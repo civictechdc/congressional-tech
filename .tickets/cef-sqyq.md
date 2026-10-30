@@ -1,6 +1,6 @@
 ---
 id: cef-sqyq
-status: in_progress
+status: closed
 deps: []
 links: []
 created: 2026-10-27T04:27:05Z
@@ -25,3 +25,7 @@ Contracts f790132a and 3c8c1d5f precede the cleanup binding 28fe4caa. Privacy-em
 **2026-10-27T05:45:03Z**
 
 Local qualification complete: all 2289 scratch-copy receipts and 2596054 lines verified; 887 changed; final full scan has zero matches. 56 focused checks pass. Commands and safe report are committed under docs/measurements/engine-first-20261027/b0. Owner must confirm patterns, drain writers, run live cleanup and final rescan, then lock receipts/. No live storage accessed.
+
+**2026-10-30T14:32:56Z**
+
+Completed B0 receipt sanitization and readback verification on R2.

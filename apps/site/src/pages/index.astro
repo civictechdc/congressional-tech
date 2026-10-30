@@ -183,23 +183,43 @@ const summary = (body?: string) => body?.trim().split('\n')[0] ?? '';
       </p>
       <div class="project-grid">
         {
-          projects.map((project) => (
-            <article class="card card--gold project-card">
-              <p class="eyebrow project-eyebrow">Project {project.data.id}</p>
-              <h3 class="card-title">{project.data.title}</h3>
-              <p>{project.data.description}</p>
-              <div class="project-links">
-                {project.data.id === 'I.2' && (
-                  <a class="slide-link" href={withBase('/youtube-coverage/')}>
-                    Open the dashboard
+          projects.map((project) => {
+            const rawLive = project.data.liveUrl ?? project.data.live;
+            const liveHref = rawLive
+              ? rawLive.startsWith('/')
+                ? withBase(rawLive)
+                : rawLive
+              : project.data.id === 'I.2'
+                ? withBase('/youtube-coverage/')
+                : undefined;
+            const liveLabel =
+              project.data.liveLabel ??
+              (project.data.id === 'I.2'
+                ? 'Open the dashboard'
+                : 'Open template in Google Sheets');
+            return (
+              <article class="card card--gold project-card">
+                <p class="eyebrow project-eyebrow">Project {project.data.id}</p>
+                <h3 class="card-title">{project.data.title}</h3>
+                <p>{project.data.description}</p>
+                <div class="project-links">
+                  {liveHref && (
+                    <a class="slide-link" href={liveHref}>
+                      {liveLabel}
+                    </a>
+                  )}
+                  {project.data.id === 'I.2' && (
+                    <a class="slide-link" href={withBase('/dashboard/')}>
+                      Explore committee records
+                    </a>
+                  )}
+                  <a class="slide-link" href={project.data.repo}>
+                    Source on GitHub
                   </a>
-                )}
-                <a class="slide-link" href={project.data.repo}>
-                  Source on GitHub
-                </a>
-              </div>
-            </article>
-          ))
+                </div>
+              </article>
+            );
+          })
         }
       </div>
     </div>
@@ -235,6 +255,11 @@ const summary = (body?: string) => body?.trim().split('\n')[0] ?? '';
                 >
                   View sub-project
                 </a>
+                {sp.data.liveUrl && (
+                  <a class="slide-link" href={sp.data.liveUrl}>
+                    {sp.data.liveLabel ?? 'View live'}
+                  </a>
+                )}
                 <a class="slide-link" href={sp.data.repo}>
                   Source on GitHub
                 </a>
@@ -341,7 +366,7 @@ const summary = (body?: string) => body?.trim().split('\n')[0] ?? '';
 
   .theme-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(17rem, 1fr));
+    grid-template-columns: repeat(auto-fit, minmax(min(100%, 20rem), 1fr));
     gap: var(--ctdc-space-md);
   }
 
@@ -369,13 +394,13 @@ const summary = (body?: string) => body?.trim().split('\n')[0] ?? '';
 
   .explorer-cards-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(18rem, 1fr));
+    grid-template-columns: repeat(auto-fit, minmax(min(100%, 18rem), 1fr));
     gap: var(--ctdc-space-md);
   }
 
   .project-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(20rem, 1fr));
+    grid-template-columns: repeat(auto-fit, minmax(min(100%, 22rem), 1fr));
     gap: var(--ctdc-space-md);
   }
 
@@ -430,6 +455,10 @@ const summary = (body?: string) => body?.trim().split('\n')[0] ?? '';
   @media (max-width: 640px) {
     .hero {
       padding-block: var(--ctdc-space-3xl);
+    }
+
+    .hero-art {
+      display: none;
     }
 
     .hero-panel {

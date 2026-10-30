@@ -1,4 +1,4 @@
-import {byteCache, sharedLoad} from './filenames/cache.ts';
+import {byteCache, sharedLoad} from './cache.ts';
 
 /** Bounded compressed-byte cache; the host must return the exact requested range. */
 export function rangeFile(url, byteLength, fetcher = fetch, cache = byteCache(48 * 1024 * 1024, 32 * 1024 * 1024), metrics = {}, retained = {entries:new Map(),bytes:0,maxBytes:32*1024*1024}) {

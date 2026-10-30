@@ -1,0 +1,115 @@
+[
+  {
+    "id": "committee-detail-captured",
+    "source": {
+      "receipt_key": "receipts/congress/committees/undated/assemble-20260930.jsonl.gz",
+      "receipt_line": 1,
+      "record_json_bytes": 806
+    },
+    "record": {
+      "url": "https://api.congress.gov/v3/committee/house/hlcn00",
+      "started_at": "2026-09-30T21:26:19.498900+00:00",
+      "detail": {
+        "committeeWebsiteUrl": "https://climatecrisis.house.gov/",
+        "communications": {
+          "count": 0,
+          "url": "https://api.congress.gov/v3/committee/house/hlcn00/house-communication?format=json"
+        },
+        "history": [
+          {
+            "endDate": "2023-01-03T16:59:00Z",
+            "libraryOfCongressName": "Select Committee on the Climate Crisis",
+            "officialName": "Select Committee on the Climate Crisis",
+            "startDate": "2019-01-03T06:18:01Z",
+            "updateDate": "2023-01-31T20:47:50Z"
+          }
+        ],
+        "isCurrent": false,
+        "reports": {
+          "count": 2,
+          "url": "https://api.congress.gov/v3/committee/house/hlcn00/reports?format=json"
+        },
+        "systemCode": "hlcn00",
+        "type": "Select",
+        "updateDate": "2023-01-03T18:06:31Z"
+      },
+      "detail_retrieved_at": "2026-09-30T21:26:20.088390+00:00",
+      "outcome": "captured"
+    },
+    "expected_outcome": "saved-record"
+  },
+  {
+    "id": "package-outcome-audit-complete",
+    "source": {
+      "receipt_key": "receipts/documents/2026-09-23/assemble-20260930-journal-metadata.jsonl.gz",
+      "receipt_line": 6,
+      "record_json_bytes": 248
+    },
+    "record": {
+      "event": "package-outcome",
+      "last_modified": "2026-09-21T14:49:30Z",
+      "observed_at": "2026-09-23T18:41:15.859369+00:00",
+      "outcome": "complete",
+      "package_id": "CHRG-118hhrg63377",
+      "recorded_at": "2026-09-23T18:41:17.754621+00:00",
+      "rule_version": "27acfc7cf7ae"
+    },
+    "expected_outcome": "saved-record"
+  },
+  {
+    "id": "meeting-event-captured",
+    "source": {
+      "receipt_key": "receipts/congress/meetings/undated/assemble-20260930.jsonl.gz",
+      "receipt_line": 198869
+    },
+    "record": {
+      "url": "https://api.congress.gov/v3/committee-meeting/119/house/119575",
+      "started_at": "2026-09-30T21:28:21.036971+00:00",
+      "outcome": "captured",
+      "meeting": {
+        "chamber": "House",
+        "committees": [
+          {
+            "name": "House Ways and Means",
+            "systemCode": "hswm00",
+            "url": "https://api.congress.gov/v3/committee/house/hswm00?format=json"
+          }
+        ],
+        "congress": 119,
+        "date": "2026-10-06T13:00:00Z",
+        "eventId": "119575",
+        "location": {
+          "address": "{\"building_name\": \"Orgill Innovation Center\", \"street-address\": \"4027 Bailey Station Rd\", \"city\": \"Collierville\", \"state\": \"TN\", \"postal_code\": \"38017\"}"
+        },
+        "meetingStatus": "Scheduled",
+        "title": "The One, Big, Beautiful Bill Delivering for Small Business, Manufacturing, and Working Families",
+        "type": "Hearing",
+        "updateDate": "2026-09-29T23:48:37Z",
+        "_url": "https://api.congress.gov/v3/committee-meeting/119/house/119575",
+        "_retrieved_at": "2026-09-30T21:28:21.463225+00:00"
+      }
+    },
+    "expected_outcome": "saved-record"
+  },
+  {
+    "id": "mods-external-body-descriptor",
+    "source": {
+      "receipt_key": "receipts/govinfo/mods/2026-09-28/assemble-20260930.jsonl.gz",
+      "receipt_line": 26,
+      "record_json_bytes": 349
+    },
+    "record": {
+      "package_id": "CHRG-119hhrg58430",
+      "status": "captured",
+      "url": "https://www.govinfo.gov/metadata/pkg/CHRG-119hhrg58430/mods.xml",
+      "retrieved_at": "2026-09-28T23:39:15.230672+00:00",
+      "sha256": "11d6eca9d24b156937e7ce46493ce82bd71f65af8cccfcad052aa86ecf774d70",
+      "bytes": 45043,
+      "http_status": 200,
+      "etag": null,
+      "http_last_modified": "Sat, 15 Aug 2026 20:24:16 GMT"
+    },
+    "expected_inline_payload": false,
+    "expected_outcome": "reference"
+  }
+]

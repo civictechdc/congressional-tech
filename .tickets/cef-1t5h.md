@@ -1,6 +1,6 @@
 ---
 id: cef-1t5h
-status: in_progress
+status: closed
 deps: []
 links: []
 created: 2026-10-27T04:07:58Z
@@ -25,3 +25,7 @@ Prepared three public-receipt/import-run contracts, implementation and PLAN B15 
 **2026-10-27T04:25:20Z**
 
 Unsandboxed baseline retained: 11296 passed, 33 failed, 3 errors before new changes. All 9 B15 tests pass with the prepared implementation. Contract-only check proves 3 expected failures against the merged implementation (registration, URL escaping, unsafe writer refusal); no assertions weakened. Real import and weekly credential remain owner-gated.
+
+**2026-10-30T14:32:56Z**
+
+Completed in Phase 1/2 raw preservation and merged to main.

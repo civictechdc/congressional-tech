@@ -21,6 +21,14 @@ COMPARISON_WITNESSES = dict(source_context_from_final='Boolean',source_retained_
     source_creating_size_absent='Boolean',source_family_basis='Utf8')
 DOWNLOAD_HEADERS = [('response_headers','content-disposition'),
                     ('response_headers','Content-Disposition')]
+INLINE_PAYLOAD_PATHS = [('detail','systemCode'),('detail','type'),
+    ('detail','committeeWebsiteUrl'),('detail','history',0,'officialName'),
+    ('detail','reports','count'),('event',),('package_id',),('last_modified',),
+    ('observed_at',),('recorded_at',),('rule_version',),('meeting','eventId'),
+    ('meeting','congress'),('meeting','date'),('meeting','title'),
+    ('meeting','committees',0,'systemCode')]
+MODS_DESCRIPTOR_FIELDS = ('package_id','status','url','sha256','bytes','http_status',
+    'retrieved_at','etag','http_last_modified')
 # Only the recovery leaves consumed by the narrow index are selected in bulk.
 RECOVERY = {
     'recovery_original': ('recovery_evidence','original_url'),
@@ -82,6 +90,38 @@ def scalar(slot,kind):
     return f'try_cast(json_as_text({slot}) AS BIGINT)' if kind=='int' else get(slot,kind=kind)
 
 
+def inline_payload_kind(slots):
+    """Small content witnesses for three demonstrated object payloads, not body custody."""
+    def text(*path):
+        return scalar(slots[path],'str')
+    def present(*path):
+        return "nullif("+text(*path)+",'') IS NOT NULL"
+    detail=present('detail','systemCode')+' AND '+present('detail','type')+' AND ('+\
+        present('detail','committeeWebsiteUrl')+' OR '+present('detail','history',0,'officialName')+\
+        ' OR '+scalar(slots[('detail','reports','count')],'int')+'>=0)'
+    audit=text('event')+"='package-outcome' AND "+present('package_id')+' AND '+present('rule_version')
+    for name in ('last_modified','observed_at','recorded_at'):
+        audit+=' AND try_cast('+text(name)+' AS TIMESTAMP WITH TIME ZONE) IS NOT NULL'
+    meeting=' AND '.join([scalar(slots[('meeting','eventId')],'int')+'>0',
+        scalar(slots[('meeting','congress')],'int')+'>0',present('meeting','title'),
+        present('meeting','committees',0,'systemCode'),
+        'try_cast('+text('meeting','date')+' AS TIMESTAMP WITH TIME ZONE) IS NOT NULL'])
+    return "CASE WHEN "+detail+" THEN 'committee-detail' WHEN "+audit+\
+        " THEN 'package-outcome' WHEN "+meeting+" THEN 'meeting-event' END"
+
+
+def mods_descriptor_kind(slots,keys):
+    """Recognize the qualified descriptor only; its digest is not a captured body."""
+    text=lambda name:scalar(slots[(name,)],'str')
+    expected='make_array('+','.join(lit(name) for name in sorted(MODS_DESCRIPTOR_FIELDS))+')'
+    conditions=[keys+'='+expected,text('status')+"='captured'",
+        get(slots[('http_status',)],kind='int')+'=200',get(slots[('bytes',)],kind='int')+'>0',
+        "nullif("+text('package_id')+",'') IS NOT NULL",
+        'regexp_match('+text('sha256')+",'^[0-9a-f]{64}$') IS NOT NULL",
+        text('url')+"=concat('https://www.govinfo.gov/metadata/pkg/',"+text('package_id')+",'/mods.xml')"]
+    return 'CASE WHEN '+' AND '.join(conditions)+" THEN 'govinfo-mods' END"
+
+
 def source_plan(*,counter=None,files=None,receipt_keys=None):
     """Materialize one source projection, retaining list items once before shredding."""
     if counter is not None:
@@ -108,6 +148,8 @@ def source_plan(*,counter=None,files=None,receipt_keys=None):
     paths += [prefix+path for prefix in [(),('record',)] for path in RECOVERY.values()]
     paths += [prefix+path for prefix in [(),('record',)] for path in DOWNLOAD_HEADERS]
     paths += [('captures',),('file_references',),('writer','job'),('writer','commit'),('error',),('record','error')]
+    paths += [('record',*path) for path in INLINE_PAYLOAD_PATHS]
+    paths += [('record',name) for name in MODS_DESCRIPTOR_FIELDS]
     slots=projection('__raw_line',paths)
     def typed(name,kind,record=False):
         path=('record',name) if record else (name,)
@@ -133,6 +175,10 @@ def source_plan(*,counter=None,files=None,receipt_keys=None):
         records[name]=scalar(slots[('record',)+path],'str')
     records['h_content_disposition']='coalesce('+','.join(
         scalar(slots[('record',)+path],'str') for path in DOWNLOAD_HEADERS)+')'
+    records['inline_payload_kind']=inline_payload_kind({path:slots[('record',*path)] for path in INLINE_PAYLOAD_PATHS})
+    source_key='__receipt_key' if counter is not None else '__source_key'
+    descriptor_keys="CASE WHEN starts_with("+source_key+",'receipts/govinfo/mods/') THEN array_sort(json_object_keys(__raw_line,'record')) END"
+    records['descriptor_kind']=mods_descriptor_kind({(name,):slots[('record',name)] for name in MODS_DESCRIPTOR_FIELDS},descriptor_keys)
     # An array conflicts with the typed object record and becomes null. Test
     # its shape without selecting an ordinary object's potentially huge body.
     is_list=("__line_shape='record:array'" if '__line_shape' in root_names else

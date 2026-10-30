@@ -1,4 +1,4 @@
-import {createWorkerClient} from './filenames/client.ts';
+import {createWorkerClient} from './client.ts';
 export function createArchiveClient(pointerUrl:string,rawBase:string,onReload:()=>void){
   let releaseId:string|undefined;
   const client=createWorkerClient({context:()=>({pointerUrl,rawBase,releaseId}),

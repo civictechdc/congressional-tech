@@ -5,6 +5,9 @@ theme: "I"
 status: "built"
 description: "A dashboard for keeping track of congressional YouTube Channels"
 repo: "https://github.com/civictechdc/congressional-tech/tree/main/apps/committee_youtube"
+live: "/youtube-coverage/"
+liveUrl: "/youtube-coverage/"
+liveLabel: "Open the live dashboard"
 ---
 
 A dashboard for keeping track of congressional YouTube Channels.

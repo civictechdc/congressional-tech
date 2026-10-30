@@ -1,6 +1,6 @@
 ---
 id: cefr-2rvb
-status: in_progress
+status: closed
 deps: []
 links: []
 created: 2026-10-29T04:25:48Z
@@ -16,3 +16,9 @@ ConnectionClosedError escaped the configured GET throttle budget. Add connection
 
 Fixture-first real SDK with fake transport covers recovery/exhaustion, legacy and standard, mixed503/transport attempts, no extra stream layer, nonGET controls; focused runners and one code review; active owned-v2 remains frozen.
 
+
+## Notes
+
+**2026-10-30T14:32:56Z**
+
+Completed bounded R2 GET transport retry policy and merged to main.

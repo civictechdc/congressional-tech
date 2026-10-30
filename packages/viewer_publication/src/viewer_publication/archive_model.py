@@ -381,13 +381,14 @@ def admission_steps(*,prelude=(),root=ROOT):
     return list(prelude)+current_steps(root=root)+evidence_steps(root=root)+source_steps(root=root)+completeness_steps(root=root)
 
 
-def admission_checks(*,parser_versions,catalog_version,root=ROOT):
+def admission_checks(*,parser_versions,catalog_version,include_entities=False,root=ROOT):
     """Check current pinned inputs without exporting public release files."""
     from viewer_publication.archive_model_profile import completeness_checks
     from congress_api.lake.readings import bundle_version,worker_limits
     checks=','.join(sql+' AS '+name for name,sql in evidence_checks().items())
     return [dict(name='model_invariants',sql='SELECT '+checks)]+completeness_checks(
-        catalog_version=catalog_version,readings_version=bundle_version(parser_versions,policy=worker_limits()),root=root)
+        catalog_version=catalog_version,readings_version=bundle_version(parser_versions,policy=worker_limits()),
+        include_entities=include_entities,root=root)
 
 
 def input_receipts_query():
@@ -483,10 +484,11 @@ def prepare_model_inputs(*,captures,readings,filename_readings,parser_versions,c
         url_rules=json.loads((Path(root)/'model/registries/url-rules.json').read_text()))
     from congress_api.retention.provenance import file_pin
     selectors={item['name']:dict(item) if item['kind']=='native_table' else dict(kind='parquet',path=item['path'],**file_pin(item['path'])) for item in data_inputs}
+    lake_tables=['captures','readings','filename_readings']+(['meeting_records','appearance_records'] if include_entities else [])
     model_profile=profile_record(parser_versions=parser_versions,catalog_version=catalog_version,
         engine_revision=engine.source_revision,runtime_pins=dict(platform=engine.platform,build_features=list(engine.build_features),
             binary_sha256=engine.binary_sha256,limits=json.loads(engine.limits.read_text())),
-        lake_versions={name:dict(schema_sha256=file_pin(Path(root)/'model/lake'/(name.replace('_','-')+'.schema.json'))['sha256']) for name in ['captures','readings','filename_readings']},
+        lake_versions={name:dict(schema_sha256=file_pin(Path(root)/'model/lake'/(name.replace('_','-')+'.schema.json'))['sha256']) for name in lake_tables},
         snapshots=selectors,writer_settings=dict(schema_version=1,whole=_settings('whole',['list_row']),
             ranged=_settings('ranged',['list_row']),lookup=_settings('lookup',['link_key'])),root=root)
     (scratch/'profile.json').write_text(json.dumps(model_profile,ensure_ascii=False,sort_keys=True,separators=(',',':'))+'\n')
@@ -644,16 +646,16 @@ def build_prepared_release(prepared,*,engine,output,root=ROOT):
             )""",materialize=True),
         ]
         auxiliary += [
-            ('witnesses','SELECT witness_key,occasion,event_id,package_id,page_url,name,position,organization,on_behalf_of,location,panel,panel_order,display_order,witness_type,testified,bioguide_id FROM appearance_records_resolved',['witness_key'],['occasion','witness_type','bioguide_id']),
+            ('witnesses','SELECT witness_key,occasion,event_id,package_id,page_url,name,position,organization,on_behalf_of,location,panel,panel_order,display_order,witness_type,testified,bioguide_id FROM appearance_records_resolved',['occasion','panel_order','display_order','witness_key'],['occasion','witness_type','bioguide_id']),
             ('recordings',(Path(root)/'model/sql/entity-recordings.sql').read_text(),['video_key'],['tracks.list.item.suffix','tracks.list.item.format','tracks.list.item.language','tracks.list.item.production']),
             ('committees',(Path(root)/'model/sql/entity-committees.sql').read_text(),['system_code'],['chamber','committee_type','parent_system_code']),
             ('members',(Path(root)/'model/sql/entity-members.sql').read_text(),['bioguide_id'],['terms.list.item.chamber','terms.list.item.state','terms.list.item.party']),
-            ('rosters',(Path(root)/'model/sql/entity-rosters.sql').read_text(),['congress','system_code','bioguide_id'],['system_code','bioguide_id','title','party']),
+            ('rosters',(Path(root)/'model/sql/entity-rosters.sql').read_text(),['system_code','rank','bioguide_id'],['system_code','bioguide_id','title','party']),
             ('bills',(Path(root)/'model/sql/entity-bills.sql').read_text(),['bill_id'],['sponsor_bioguide_id','stage','policy_area','committees.list.item','floor_votes.list.item.basis','floor_votes.list.item.chamber','amendments.list.item.sponsor_bioguide_id','committee_activities.list.item.system_code','committee_activities.list.item.activity']),
             ('nominations',(Path(root)/'model/sql/entity-nominations.sql').read_text(),['nomination_id'],['committees.list.item']),
         ]
     auxiliary += [('url_state','SELECT * FROM url_state',['requested_url'],['last_outcome']),
-        ('url_variants','SELECT * FROM url_variants',['canonical_url','variant_url'],[])]
+        ('url_variants','SELECT * FROM url_variants',['variant_url','canonical_url'],[])]
     extra=[dict(name='document_rows.parquet',path=str(evidence/'document_rows.parquet'),sql='SELECT list_row,doc_key AS document_id,'+','.join(LIST_COLUMNS+DETAIL_COLUMNS)+' FROM details',settings=_settings('whole',['list_row'],footer_limit=4 << 20)),
         dict(name='source_members.parquet',path=str(evidence/'source_members.parquet'),sql="""SELECT DISTINCT o.doc_key AS document_id,o.list_row,
         m.source_id,CASE WHEN m.body_sha IS NOT NULL THEN 'bodies/sha256/'||substr(m.body_sha,1,2)||'/'||m.body_sha||'.gz' END AS body_key,
@@ -678,9 +680,49 @@ def build_prepared_release(prepared,*,engine,output,root=ROOT):
     extra += [dict(name=name+'.parquet',path=str(evidence/(name+'.parquet')),
         sql=("SELECT r.*,r.body_sha AS body_sha256,d.decided_at,d.recovered_url,d.identity_note FROM current_recoveries r LEFT JOIN remaining_recovery_decisions d ON r.decision_id=d.id" if name=='current_recoveries' else 'SELECT * FROM '+name),settings=_settings('whole',keys,footer_limit=4 << 20)) for name,keys in causes.items()]
     prefix_checks=','.join(sql+' AS '+name for name,sql in evidence_checks().items())
+    entity_invariant_sql=''
+    meta_queries=[input_receipts_query(),probe_selectors_query(root=root)]
+    if prepared.get('include_entities'):
+        entity_invariant_sql=""",
+            (SELECT count(*) FROM (
+                SELECT DISTINCT unnest(witness_keys) AS witness_key FROM ordered WHERE witness_keys IS NOT NULL
+            ) k WHERE NOT EXISTS (SELECT 1 FROM witnesses_export w WHERE w.witness_key=k.witness_key)) AS missing_witness_keys,
+            (SELECT CASE WHEN (SELECT count(*) FROM committees_export)=0 THEN 0 ELSE (
+                SELECT count(*) FROM (
+                    SELECT DISTINCT unnest(committee_keys) AS system_code FROM ordered WHERE committee_keys IS NOT NULL
+                ) k WHERE NOT EXISTS (SELECT 1 FROM committees_export c WHERE c.system_code=k.system_code)
+            ) END) AS missing_committee_keys"""
+        meta_queries += [
+            dict(name='appearance_name_key_variants',sql="""WITH stripped AS (
+                SELECT occasion,name_key,
+                    trim(regexp_replace(
+                        regexp_replace(
+                            ' '||name_key||' ',
+                            '(?i)\\s+(?:dr|mr|ms|mrs|miss|hon|the honorable|rep|sen|prof|gen|lt gen|maj gen|brig gen|adm|rear adm|vice adm|col|lt col|maj|capt|lt|cmdr|sgt|rev|fr|rabbi|amb|sec|gov|mayor|judge|justice|esq|phd|md|jd|jr|sr|ii|iii|iv|v|usa|usn|usaf|usmc|uscg|ret)\\s+',
+                            ' ','g'
+                        ),
+                        '\\s+[a-z]\\s+',' ','g'
+                    )) AS base_key
+                FROM appearance_records_resolved
+            )
+            SELECT occasion,base_key,min(name_key) AS first_name_key,max(name_key) AS second_name_key,count(DISTINCT name_key) AS variant_count
+            FROM stripped
+            WHERE base_key<>''
+            GROUP BY occasion,base_key
+            HAVING count(DISTINCT name_key)>1
+            ORDER BY occasion,base_key"""),
+            dict(name='senate_cards_without_links',sql="""SELECT record_sha_hex,app['page_url'] AS page_url,app['name_key'] AS name_key,app['name'] AS name
+            FROM (
+                SELECT record_sha_hex,unnest(appearances) AS app
+                FROM appearance_records_input
+                WHERE status='completed' AND source='senate_page' AND appearances IS NOT NULL
+            )
+            WHERE coalesce(array_length(app['document_urls']),0)=0
+            ORDER BY record_sha_hex,page_url,name_key"""),
+        ]
     manifest=_execute(inputs,steps,output=output,scratch=scratch,engine=engine,
         lookup_extra="SELECT o.list_row,a.url FROM source_addresses a JOIN document_members m ON a.source_id=m.source_id JOIN document_identities d ON m.component=d.component JOIN ordered o ON d.document_id=o.doc_key WHERE m.is_real_file",
-        metadata_queries=[input_receipts_query(),probe_selectors_query(root=root)],origin=dict(kind='model',gaps=[]),content_files={'capture_profile.json':capture_profile},auxiliary=auxiliary,extra_outputs=extra,
+        metadata_queries=meta_queries,origin=dict(kind='model',gaps=[]),content_files={'capture_profile.json':capture_profile},auxiliary=auxiliary,extra_outputs=extra,
         capture_scope=json.loads((Path(root)/'model/registries/capture-scope.json').read_text()),
         entity_digests=prepared.get('entity_digests'),
         diagnostics=[dict(name='model_invariants',sql=f"""SELECT {prefix_checks},
@@ -690,5 +732,35 @@ def build_prepared_release(prepared,*,engine,output,root=ROOT):
             (SELECT count(*) FROM document_link_key_conflicts) AS review_key_collisions,
             (SELECT count(*) FROM review_value_diagnostics) AS invalid_review_values,
             (SELECT CASE WHEN count(*)=0 THEN 1 ELSE 0 END FROM ordered) AS empty_document_list,
-            (SELECT count(*) FROM (SELECT unnest(alternates) AS alt FROM document_alternates) WHERE alt['size'] IS NULL) AS missing_alternate_sizes""")]+url_state_diagnostics()+completeness_checks(catalog_version=catalog_version,readings_version=bundle_version(parser_versions,policy=worker_limits()),root=root))
+            (SELECT count(*) FROM (SELECT unnest(alternates) AS alt FROM document_alternates) WHERE alt['size'] IS NULL) AS missing_alternate_sizes,
+            (SELECT count(*) FROM (
+                SELECT cast(m['event_id'] AS BIGINT) AS event_id
+                FROM (SELECT unnest(meetings) AS m FROM meeting_records_input WHERE status='completed' AND meetings IS NOT NULL)
+                WHERE m['event_id'] IS NOT NULL AND nullif(trim(m['chamber']),'') IS NOT NULL
+                GROUP BY cast(m['event_id'] AS BIGINT)
+                HAVING count(DISTINCT CASE
+                    WHEN lower(trim(m['chamber'])) IN ('house','h','house of representatives') THEN 'house'
+                    WHEN lower(trim(m['chamber'])) IN ('senate','s') THEN 'senate'
+                    WHEN lower(trim(m['chamber'])) IN ('joint','j') THEN 'joint'
+                    ELSE lower(trim(m['chamber']))
+                END)>1
+            )) AS multi_chamber_events,
+            (SELECT count(*) FROM (
+                SELECT DISTINCT try_cast(unnest(meeting_keys) AS BIGINT) AS event_id FROM ordered WHERE meeting_keys IS NOT NULL
+            ) k WHERE k.event_id IS NULL OR NOT EXISTS (SELECT 1 FROM meetings_export m WHERE m.event_id=k.event_id)) AS missing_meeting_keys,
+            (SELECT count(*) FROM (
+                SELECT unnest(transcripts) AS tr FROM meetings_export WHERE transcripts IS NOT NULL
+            ) WHERE tr['list_row'] IS NULL OR tr['list_row']<0 OR tr['list_row']>=(SELECT count(*) FROM ordered)) AS invalid_transcript_rows,
+            (SELECT count(*) FROM url_keys WHERE list_row IS NULL OR list_row<0 OR list_row>=(SELECT count(*) FROM ordered)) AS invalid_url_rows,
+            (SELECT count(*) FROM (
+                SELECT vk,min(doc_key) AS doc_key
+                FROM (SELECT doc_key,unnest(version_keys) AS vk FROM ordered WHERE version_keys IS NOT NULL)
+                GROUP BY vk HAVING count(*)<2
+            ) single_vk
+            WHERE (SELECT count(*) FROM current_reviews WHERE verdict='duplicate_of')=0
+              AND (SELECT count(*) FROM body_review_edges)=0) AS single_doc_version_keys{entity_invariant_sql}""")]+url_state_diagnostics()+completeness_checks(
+            catalog_version=catalog_version,
+            readings_version=bundle_version(parser_versions,policy=worker_limits()),
+            include_entities=bool(prepared.get('include_entities')),
+            root=root))
     return manifest

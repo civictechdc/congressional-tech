@@ -1,8 +1,8 @@
 ---
 id: cef-9e9w
-status: in_progress
+status: closed
 deps: []
-links: []
+links: [ct-l9g0]
 created: 2026-10-28T17:17:18Z
 type: task
 priority: 1
@@ -22,3 +22,7 @@ Retain exact source/build/lock/digest/platform pins, actual app and Linux runner
 **2026-10-28T17:27:31Z**
 
 Candidate0cb source and Darwin SHA match the fully qualified native snapshot; actual maintained live runtime/hash probe passes0.39s plus setup/preflight/publisher fixture runner exits0. Linux cross build and expanded application/full qualification remain unaccepted and start after B1 quiet window. Pin is local integration only; lead deploy remains885.
+
+**2026-10-30T14:32:56Z**
+
+Qualified 0cbad87574a4414af56461f442a481a4cfa93079 runtime across Darwin and Linux and merged to main; single-pin consolidation tracked in ct-l9g0.

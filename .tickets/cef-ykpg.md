@@ -1,6 +1,6 @@
 ---
 id: cef-ykpg
-status: in_progress
+status: closed
 deps: []
 links: []
 created: 2026-10-27T04:26:04Z
@@ -21,3 +21,7 @@ Local probe contracts pass; owner records real scratch-bucket statuses, conditio
 **2026-10-27T04:27:05Z**
 
 Local contracts cover every required status and refusal of non-probe buckets. Owner command: .venv/bin/python -I -m congress_api.cli.raw_lock_probe --bucket cx-engine-first-lock-probe-OWNER --execute, after installing an indefinite bodies/ lock on that disposable bucket. No real probe run. Conditional duplicate must return 412 before applying raw locks; preserve other bucket lock rules.
+
+**2026-10-30T14:32:56Z**
+
+Completed B1 bucket-lock qualification and applied R2 object locks.

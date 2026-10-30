@@ -351,6 +351,8 @@ One nomination including its part when present; bounded by upstream retained dat
 
 Identity: `nomination_id` (primary_key; published identifier).
 
+Coverage: Nominations cover the 119th Congress only until spicy-regs backfills.
+
 | Field | Published type | Meaning |
 | --- | --- | --- |
 | `nomination_id` | `string` | Canonical nomination identifier ({congress}-pn-{number}[-{part}]) |
