@@ -12,7 +12,6 @@ from congress_api.models.content import RawContent
 from congress_api.retention.body_files import content_bytes
 from congress_api.parsers.committee_discovery import discover, event_url, key, task
 from congress_api.parsers.committee_pages import parse_event_page
-from congress_api.retention.document_index import DocumentSources
 from congress_api.retention.tables import read_state, write_state
 from test_house_committee_fallback import BODY, CALENDAR, DIRECTORY, HOME, PAGE, ROYSE
 
@@ -56,12 +55,6 @@ def test_all_history_without_native_meetings_retains_unmatched_pages_and_exact_b
     assert 'start' not in query and 'end' not in query
     house_sites.outputs(state, tmp_path)
     assert PAGE in (tmp_path / 'house_site_events.csv').read_text()
-    index = DocumentSources(); index.add_house_sites(state)
-    context = index.for_url(ROYSE)
-    assert context['source_page_url'] == [PAGE]
-    assert context['source_publisher_committee_code'] == ['hsif00']
-    assert context['source_page_sha256'] == [page['raw_html']['sha256']]
-    assert not context.get('source_meeting_id')  # A site observation is not a native match.
     from test_raw_bundle_extraction import extract
     from congress_api.retention.bundles import restore
     record, captures, bodies = extract(state)

@@ -18,18 +18,13 @@ from congress_api.retention.derived_files import (
     file_identity,
     require_derived_key,
 )
-from congress_api.retention.raw_storage import CAPTURE_SCHEMA, LEGACY_CAPTURE_SCHEMA, encode_table
 
 
 class MemoryStore:
     """In-memory object store double for raw storage and catalog retention."""
 
     def __init__(self) -> None:
-        self.objects: dict[str, bytes] = {
-            "indexes/captures.parquet": encode_table(
-                pa.Table.from_pylist([], schema=CAPTURE_SCHEMA)
-            )
-        }
+        self.objects: dict[str, bytes] = {}
         self.writes: list[str] = []
 
     def read(self, key: str) -> bytes | None:

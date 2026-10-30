@@ -94,9 +94,22 @@ def withdrawal_reason(*, exists, sources_match, body_matches):
     return None
 
 
+def catalog_source_ids_digest(sorted_source_ids):
+    """Hash an ordered unique membership set without retaining another ID list."""
+    digest, previous = hashlib.sha256(b'['), None
+    for source_id in sorted_source_ids:
+        if not isinstance(source_id, str) or previous is not None and source_id <= previous:
+            raise ValueError('Catalog membership IDs must be unique sorted strings')
+        if previous is not None:
+            digest.update(b',')
+        digest.update(json.dumps(source_id, ensure_ascii=True, allow_nan=False).encode('utf-8'))
+        previous = source_id
+    digest.update(b']')
+    return digest.hexdigest()
+
+
 def bind_selected(catalog_id, identities, component_lookup, *, previous=None):
     """Place reviews by stable IDs using retained exact membership proofs."""
-    from congress_api.retention.catalog_validation import catalog_source_ids_digest
     validate_identities(identities)
     prior = {}
     if previous is not None:

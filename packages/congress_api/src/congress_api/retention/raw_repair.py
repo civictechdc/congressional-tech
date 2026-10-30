@@ -12,10 +12,14 @@ import tempfile
 import pyarrow as pa
 import pyarrow.parquet as pq
 
+from congress_shared.custody import canonical_json_bytes
 from congress_api.retention.body_store import create_stored
-from congress_api.retention.immutable_metadata import encoded
 from congress_api.retention.provenance import file_pin,parquet_output,run_job
 from congress_api.retention.raw_verifier import check_body
+
+
+def encoded(value):
+    return canonical_json_bytes(value, ensure_ascii=True, allow_nan=False)
 
 
 LOCATOR=('receipt_key','receipt_line','pointer_json')

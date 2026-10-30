@@ -19,7 +19,6 @@ import prepare_corpus_recovery_source_records as source_module
 from corpus_recovery import govinfo
 from corpus_recovery.inventory import sealed_inputs
 from congress_api.retention.raw_archive import CAPTURE_SCHEMA, prepare_capture_table
-from congress_api.retention.document_index import DocumentSources
 
 
 def sha(raw):
@@ -110,9 +109,6 @@ def test_complete_package_import_preserves_mappings_and_existing_data(package):
     package_record = json.loads((batch / 'zip-receipts.json').read_text())[0]
     assert all(c['pointer'] == ['content', 'body'] or c['pointer'][0] == 'archive_members'
                for c in package_record['captures'])
-    sources = DocumentSources()
-    sources.add_associations(package_record['record'])
-    assert not sources.transfers  # The package introduces no document identity edge.
     for body_key, info in inventory.items():
         assert sha(Path(info['path']).read_bytes()) == info['sha256']
     evidence = package_record['record']['recovery_package']

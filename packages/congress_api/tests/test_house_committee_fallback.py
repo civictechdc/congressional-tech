@@ -134,12 +134,6 @@ def test_merge_retains_xml_and_separate_publisher_context_without_summary_duplic
     group, = [g for g in saved['evidence']['document_groups'] if g.get('source_url') == PAGE and g['files'][0]['url'] == ROYSE]
     assert 'owning_witness_selector' not in group  # No invented witness ownership.
     assert group['metadata']['link']['source_selector'].endswith('/agenda/0/info')
-    from congress_api.retention.document_index import DocumentSources
-    index = DocumentSources()
-    index.add_house({'118632': saved})
-    sources = index.for_url(ROYSE)
-    assert sources['source_page_url'] == [PAGE]
-    assert sources['source_page_sha256'] == [group['source_sha256']]
     from test_house_source_fidelity import adapt
     assert ROYSE in {loc.url for row in adapt(saved) if row.kind == 'representation' for loc in row.locations}
 

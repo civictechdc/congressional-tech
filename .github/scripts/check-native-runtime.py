@@ -11,7 +11,7 @@ import os
 from pathlib import Path
 import re
 
-from congress_api.retention.docspec import (
+from docspec_client.docspec import (
     REQUIRED_LOOPBACK_CAPABILITIES,
     RUNTIME_PIN_FILE,
     NativeDatasets,

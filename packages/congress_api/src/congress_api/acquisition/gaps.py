@@ -7,6 +7,7 @@ See docs/congress-api-contracts.md for the per-command offline behavior.
 """
 
 import datetime as dt
+import re
 from xml.etree.ElementTree import ParseError
 
 from pypdf.errors import PyPdfError
@@ -16,8 +17,12 @@ from congress_api.models.content import RawContent
 from congress_api.parsers import witness_pdf as witness_lists
 from congress_api.parsers.observations import latest_check_failed
 from congress_api.parsers.senate_player import archive_url, live_url, player_url
-from congress_api.retention.document_evidence import legacy_house_cache_name
 from congress_api.transport import http
+
+
+def legacy_house_cache_name(url):
+    """Exact historical witness-PDF cache key; lossy and never reversible alone."""
+    return re.sub(r'\W+', '_', url.split('/meeting/')[-1])
 
 
 def timestamp():

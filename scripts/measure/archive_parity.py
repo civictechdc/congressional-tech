@@ -392,8 +392,21 @@ def oracle_columns(display=None):
 
 def normalization(loaded, *, directory, use_scalar_deltas=False):
     """Project the old consumer and actual new release into comparable facts."""
-    from congress_api.retention.index.schemas import MEDIA_FORMATS,EMPTY_BODY_DIGEST
     from viewer_publication.archive_format import EMPTY_STRINGS
+    EMPTY_BODY_DIGEST = hashlib.sha256(b"").hexdigest()
+    MEDIA_FORMATS = {
+        "application/pdf": "pdf", "application/json": "json", "application/xml": "xml",
+        "text/xml": "xml", "text/html": "html", "text/plain": "txt", "text/csv": "csv",
+        "text/tab-separated-values": "tsv", "application/zip": "zip",
+        "application/x-zip-compressed": "zip", "application/msword": "doc",
+        "application/rtf": "rtf", "text/rtf": "rtf",
+        "application/vnd.openxmlformats-officedocument.wordprocessingml.document": "docx",
+        "application/vnd.ms-excel": "xls",
+        "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet": "xlsx",
+        "application/vnd.ms-powerpoint": "ppt",
+        "application/vnd.openxmlformats-officedocument.presentationml.presentation": "pptx",
+        "application/octet-stream": "binary",
+    }
     paths=loaded['paths'];kind=loaded['descriptor']['candidate']['kind']
     inputs=[dict(name=name,kind='parquet',path=path) for name,path in paths.items()
             if name.startswith('oracle_') or name.startswith('release_') or name in {'source_members','document_rows'} or name.startswith('b7_') or name in loaded['descriptor'].get('cause_relations',{})]

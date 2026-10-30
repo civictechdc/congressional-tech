@@ -11,7 +11,7 @@ import subprocess
 import sys
 
 from congress_api.retention.derived_files import copy_checked
-from congress_api.retention.docspec import (
+from docspec_client.docspec import (
     QUALIFIED_DOCSPEC_RUNTIME,
     REQUIRED_LOOPBACK_CAPABILITIES,
     RUNTIME_PIN_FILE,

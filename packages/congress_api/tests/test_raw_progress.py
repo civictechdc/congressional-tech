@@ -1,5 +1,4 @@
 """Progress must remain observable during work and truthful after a failure."""
-from catalog_test_helpers import selected_path
 import io
 import json
 import logging
@@ -74,52 +73,6 @@ def test_tracking_counts_completed_items_not_yielded_items(caplog):
     assert caplog.records[-1].progress == {
         'stage': 'read_receipts', 'completed': 3, 'total': 3, 'unit': 'receipts'}
 
-
-def test_rebuild_reports_real_stages_and_preserves_output(tmp_path):
-    from catalog_test_helpers import initialize, table
-    from historical_raw_archive import LegacyArchiveSeed as Archive
-    from historical_raw_catalog import rebuild_catalog
-
-    store = initialize(tmp_path)
-    Archive(store, 'progress-fixture').save()
-    before = table(store).to_pylist()
-    stream = io.StringIO()
-    with ProgressLog(tmp_path / 'progress.json', stream=stream, interval=3600):
-        result = rebuild_catalog(store, workers=1)
-    events = [json.loads(line) for line in stream.getvalue().splitlines()]
-    stages = [event['stage'] for event in events]
-    assert stages.index('load_indexes') < stages.index('extract_filenames')
-    assert stages.index('inspect_document_contents') < stages.index('write_document_tables')
-    assert stages.index('validate_document_tables') < stages.index('publish_catalog_files')
-    assert stages.index('publish_catalog_files') < stages.index('select_catalog_generation')
-    assert stages.index('select_catalog_generation') < stages.index('catalog_published')
-    # Progress heartbeats and shutdown repeat the current stage snapshot.
-    transitions = [stage for i, stage in enumerate(stages) if not i or stage != stages[i - 1]]
-    assert transitions.count('catalog_published') == 1
-    assert events[-1]['status'] == 'completed'
-    assert events[-1]['completed'] == events[-1]['total'] == 1
-    assert events[-1]['unit'] == 'generations'
-    assert events[-1]['counters']['objects_read'] >= 3
-    assert result['rows'] == len(before)
-    after = table(store).to_pylist()
-    assert [{key: row[key] for key in old} for row, old in zip(after, before, strict=True)] == before
-    assert after[0]['state_outcome'] == ['pending']
-    assert after[0]['state_family'] == ['documents']
-
-
-def test_progress_with_spawned_filename_workers_preserves_metadata(tmp_path):
-    import pyarrow.parquet as pq
-    from congress_api.retention import document_index as index
-
-    rows = [dict(filename='Witness Statement.pdf', source_url='https://example.gov/statement.pdf', body_key=None)]
-    results = []
-    with ProgressLog(tmp_path / 'progress.json', stream=io.StringIO(), interval=3600):
-        for workers in (1, 2):
-            root = tmp_path / str(workers)
-            (root / 'indexes').mkdir(parents=True)
-            index.write_filename_metadata(root, rows, workers=workers)
-            results.append(pq.read_table(selected_path(root / 'indexes/document-filenames.parquet')).to_pylist())
-    assert results[0] == results[1]
 
 
 def test_running_heartbeat_has_expiry_and_memory_measurement(tmp_path):

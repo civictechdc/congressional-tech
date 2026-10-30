@@ -9,7 +9,6 @@ from PIL import Image
 
 from congress_api.retention import image_tools as reader
 from congress_api.retention.capture_inspection import inspect_body
-from congress_api.retention.document_evidence import document_body_fields
 
 
 def encoded(kind):
@@ -23,7 +22,6 @@ def test_static_images_decode_with_fact_based_format(kind):
     body = encoded(kind)
     assert reader.image_info(body) == dict(format=kind.lower(), width=20, height=30)
     assert inspect_body(body, 'https://example.gov/deceptive.pdf', 'application/pdf') == ('saved', kind.lower())
-    assert document_body_fields(body) == {'body_format': [kind.lower()]}
 
 
 @pytest.mark.parametrize('kind', ['PNG', 'JPEG'])

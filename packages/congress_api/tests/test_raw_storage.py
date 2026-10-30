@@ -8,7 +8,7 @@ import pytest
 
 from native_test_helpers import native_test_client
 from congress_api.retention.raw_archive import CAPTURE_SCHEMA, LEGACY_CAPTURE_SCHEMA, STATE_SCHEMA
-from congress_api.retention.docspec import DocSpecFailure
+from docspec_client import DocSpecFailure
 from congress_api.retention.raw_storage import RawStorage, RAW_KEY
 from testing_fakes import SelectorStore, captures, states, MemoryStore
 

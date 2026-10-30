@@ -59,7 +59,7 @@ def test_install_uses_exact_selected_object_and_existing_runtime_validation(tmp_
     for name in ['runtime.json', 'credentials.json', 'remote.json']:
         assert (directory / name).stat().st_mode & 0o777 == 0o600
     assert (directory / 'remote.json').read_bytes() == (ROOT / '.github/docspec-remote.json').read_bytes()
-    from congress_api.retention.docspec import NativeDatasets
+    from docspec_client.docspec import NativeDatasets
     native = NativeDatasets.from_config(config)
     assert native._remote_secrets == credentials
     assert native.limits is None and native.timeout == 120

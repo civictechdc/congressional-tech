@@ -43,7 +43,6 @@ from congress_api.parsers.house_xml import (
     strip_house_meeting_prefix,
 )
 from congress_api.retention.body_store import BodyStore, LocalAdapter
-from congress_api.retention.index.records import DocumentSources, add_retained_house_documents
 from congress_api.retention.receipt_writer import ReceiptWriter
 from congress_api.transport import congress as congress_transport
 
@@ -153,38 +152,6 @@ def test_meeting_and_appearance_lake_schemas_and_table_profiles():
 def test_house_meeting_prefix_stripping_all_three_prefixes(raw_id: str, expected: str):
     assert HOUSE_MEETING_PREFIXES == ("HHRG", "HMKP", "HMTG")
     assert strip_house_meeting_prefix(raw_id) == expected
-
-
-def test_house_records_index_strips_hhrg_hmkp_and_hmtg():
-    bodies = {}
-    capture_rows = []
-    for prefix, event_num in (("HHRG", "118001"), ("HMKP", "118002"), ("HMTG", "118003")):
-        xml = f'<committee-meeting meeting-id="{prefix}{event_num}" meeting-type="{prefix}"><meeting-details><congress>118</congress></meeting-details></committee-meeting>'.encode("utf-8")
-        b_key = f"bodies/sha256/00/{_sha(prefix)}.gz"
-        bodies[b_key] = xml
-        capture_rows.append(
-            {
-                "family": "house/meeting-xml",
-                "body_key": b_key,
-                "context_url": f"https://docs.house.gov/{prefix}{event_num}.xml",
-                "http_status": 200,
-                "receipt_key": "receipts/house/2026-10-30/r.jsonl.gz",
-                "receipt_line": 1,
-            }
-        )
-    captures_tbl = pa.Table.from_pylist(capture_rows)
-    seen_events = []
-
-    class _Recorder(DocumentSources):
-        def event_context(self, event_id, chamber):
-            seen_events.append((event_id, chamber))
-            return {}
-
-        def add_house_evidence(self, evidence, values):
-            pass
-
-    add_retained_house_documents(_Recorder(), captures_tbl, lambda k: bodies.get(k))
-    assert seen_events == [("118001", "house"), ("118002", "house"), ("118003", "house")]
 
 
 def test_meeting_records_from_congress_gov_body_and_inline_receipt():

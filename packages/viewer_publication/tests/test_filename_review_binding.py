@@ -106,7 +106,7 @@ def test_identity_generation_requires_exact_pinned_review_bytes(tmp_path):
 
 
 def test_stable_withdrawal_survives_disappearance_and_return():
-    from congress_api.retention.catalog_validation import catalog_source_ids_digest
+    from viewer_publication.filename_review_binding import catalog_source_ids_digest
     missing = binding.bind_selected('missing', IDENTITIES, lambda _: None)
     component = dict(source_ids_sha256=catalog_source_ids_digest(iter(['s1','s2'])), body_key='bodies/a')
     returned = binding.bind_selected('returned', IDENTITIES, lambda _: component, previous=missing)

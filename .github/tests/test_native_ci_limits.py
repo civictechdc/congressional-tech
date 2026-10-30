@@ -6,7 +6,7 @@ from pathlib import Path
 import pytest
 
 import native_test_helpers as helpers
-from congress_api.retention.docspec import NativeDatasets
+from docspec_client.docspec import NativeDatasets
 from news_lake.storage.docspec import DocSpecClient
 
 PROFILE = dict(compute_threads=2, memory_bytes=2 << 30, scratch_bytes=2 << 30,

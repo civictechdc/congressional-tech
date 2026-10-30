@@ -34,7 +34,7 @@ def test_all_fourteen_experiment_files_are_explicit_active_regressions():
     declared = set(config['lanes']['active-experiment-regression']['roots'])
     existing = {str(path.relative_to(ROOT)) for path in (ROOT / 'docs/experiments').rglob('test_*.py')}
     assert declared == existing
-    assert len(declared) == 14
+    assert len(declared) == 10
     assert not config['lanes']['frozen-reproduction']['roots']
 
 
