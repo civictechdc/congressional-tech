@@ -14,10 +14,15 @@ import sys
 
 from congress_api.retention.provenance import parquet_output, run_job
 from docspec_client.client import NativeDatasets
+import pyarrow.parquet as pq
 
 RELATIONS = {'rendition_members', 'edition_bodies', 'fingerprint_candidates', 'fingerprints'}
 KINDS = {'same_stem', 'publisher'}
 DIGEST = re.compile('[a-f0-9]{64}')
+BODY_KEY_FROM_SHA = (
+    "CASE WHEN body_sha IS NOT NULL AND regexp_match(body_sha,'^[a-f0-9]{64}$') IS NOT NULL "
+    "THEN concat('bodies/sha256/',substr(body_sha,1,2),'/',body_sha,'.gz') ELSE body_sha END AS body_key"
+)
 
 
 def pinned_inputs(path):
@@ -50,13 +55,28 @@ def pinned_inputs(path):
 
 
 def measure(descriptor, *, engine, work):
-    source, inputs = pinned_inputs(descriptor)
+    source, raw_inputs = pinned_inputs(descriptor)
     work = Path(work).resolve()
     work.mkdir(parents=True, exist_ok=False)
+    inputs, shim_steps = [], []
+    columns = {
+        'rendition_members': f'group_kind,group_id,{BODY_KEY_FROM_SHA}',
+        'edition_bodies': BODY_KEY_FROM_SHA,
+        'fingerprint_candidates': BODY_KEY_FROM_SHA,
+        'fingerprints': f'{BODY_KEY_FROM_SHA},fingerprint',
+    }
+    for item in raw_inputs:
+        names = set(pq.read_schema(item['path']).names)
+        if 'body_key' not in names and 'body_sha' in names:
+            raw = 'raw_' + item['name']
+            inputs.append({**item, 'name': raw})
+            shim_steps.append((item['name'], f"SELECT {columns[item['name']]} FROM {raw}", False))
+        else:
+            inputs.append(item)
     # One row per group/fingerprint avoids a candidate × reference-body join.
     # Work is linear in memberships plus hash joins/distinct grouping, with
     # O(E log E) sorting for deterministic examples; repeated groups count once.
-    definitions = [
+    definitions = shim_steps + [
         ('fp', 'SELECT body_key,min(fingerprint) AS fingerprint FROM fingerprints GROUP BY body_key', True),
         ('reference_groups', '''SELECT DISTINCT m.group_kind,m.group_id,m.body_key
             FROM rendition_members m JOIN edition_bodies e ON m.body_key=e.body_key''', True),
