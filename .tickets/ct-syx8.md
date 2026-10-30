@@ -1,6 +1,6 @@
 ---
 id: ct-syx8
-status: open
+status: closed
 deps: [ct-snzi]
 links: [ct-te1p, ct-a70m, ct-dmca, ct-ec91, ct-aia9, ct-8v02, ct-4t6s, ct-1dsp, ct-fw0m, ct-1l1h, ct-snzi]
 created: 2026-10-24T18:15:53Z
@@ -34,3 +34,7 @@ Owner decisions applied: delete the exclusion-list hook entirely (`raw_storage.p
 **2026-10-24T18:47:53Z**
 
 Efficiency pass children: ct-klql (verify each raw upload once), ct-allr (body existence by key), ct-i5g2 (small cleanups). Owner answer: delete the exclusion-list hook entirely (no list will exist).
+
+**2026-10-30T16:52:15Z**
+
+Verified completed across cefr-81oe (commit 9a3674cd), cef-s4vp, cef-u7wj, F5 G05 (commit 4dce6edc), F5 G12 (commit 8978b3bb), and B9/B10/B13 (commit cd2e81a7): packages/congress_api/src/congress_api/retention/body_store.py (BodyStore) is the single owner for raw write rules (create-only PUTs with Content-MD5/ETag verification and URL credential refusal before I/O), the raw_storage.py exclusion-list hook and substitution were deleted, raw prefix deletion is forbidden and guarded, and 941,470 PDFs + 1,357,968 raw bodies were verified. Verified by uv run pytest -q packages/congress_api/tests/test_body_store_contract.py packages/congress_api/tests/test_r2_public_edge_and_pdf_storage.py.
