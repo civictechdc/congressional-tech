@@ -13,7 +13,7 @@ import { withBase } from '../lib/paths';
 interface Props {
   title: string;
   description?: string;
-  /** Which top-level nav item is active, e.g. "proposals". */
+  /** Which top-level nav item is active, e.g. "proposals", "dashboard", "archive", "youtube-coverage". */
   active?: string;
 }
 
@@ -34,7 +34,7 @@ const {
     <link rel="icon" type="image/svg+xml" href={withBase('/favicon.svg')} />
     <title>{title} · Congressional Tech · Civic Tech DC</title>
   </head>
-  <body>
+  <body id="top">
     <a class="skip-link" href="#main">Skip to content</a>
     <Header active={active} />
     <main id="main">

@@ -3,7 +3,7 @@ import { compressors } from 'hyparquet-compressors';
 import { presentRecord, recordingDue, recordingVisible } from '../browse/record-presentation.ts';
 import { compareRecordedDate, createSearchMemo, matches, orderSearchRows, pageBounds, selectSearchRows, summarizeCoverage } from '../browse/query-utils.ts';
 import { selectRelatedMaterials } from '../browse/related-materials.ts';
-import { byteCache } from './filenames/cache.ts';
+import { byteCache } from './cache.ts';
 import type { ArtifactPart, ExplorerQuery, ExplorerReader, ExplorerRecordRef, Fetcher, PublicationHandle, QueryInfo, QueryKind, QueryRow, RelatedOptions } from './types.ts';
 
 const rowLocation = Symbol('rowLocation');

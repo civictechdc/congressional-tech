@@ -38,6 +38,9 @@ const projects = defineCollection({
     status: z.literal('built'),
     description: z.string(),
     repo: z.string().url(),
+    live: z.string().optional(),
+    liveUrl: z.string().optional(),
+    liveLabel: z.string().optional(),
   }),
 });
 

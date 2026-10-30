@@ -20,7 +20,7 @@ import {
 } from '../archive/archive-metadata.ts';
 import {rangeFile} from './range-file.ts';
 import {readFile} from 'node:fs/promises';
-import {byteCache} from './filenames/cache.ts';
+import {byteCache} from './cache.ts';
 
 test('public lookup spelling preserves queries and rejects credentials',()=>{
   assert.equal(lookupUrl('http://www.EXAMPLE.test:80/report.pdf/#old'),'example.test/report.pdf');
@@ -64,7 +64,7 @@ test('shared range transport checks ranges, shares bytes and retries failures',a
 });
 
 test('generic worker transport pins release replies and cancels pending calls',async()=>{
-  const {createWorkerClient}=await import('./filenames/client.ts');
+  const {createWorkerClient}=await import('./client.ts');
   const workers=[];let pin;
   const client=createWorkerClient({context:()=>({releaseId:pin}),validate:(_url,data)=>{
     if(!/^[a-f0-9]{64}$/.test(data.releaseId)||pin&&data.releaseId!==pin)throw Error('Archive release changed');pin=data.releaseId;
@@ -93,7 +93,7 @@ test('pinned index and dictionary bytes survive data-cache pressure',async()=>{
 });
 
 test('worker payloads preserve native int64 sizes through structured cloning',async()=>{
-  const {createWorkerClient}=await import('./filenames/client.ts');let message;
+  const {createWorkerClient}=await import('./client.ts');let message;
   const worker={postMessage(value){message=value;},terminate(){}};
   const client=createWorkerClient({context:()=>({}),createWorker:()=>worker});
   const request=client.request('/saved',undefined,{saved_bytes:100n});assert.equal(message.payload.saved_bytes,100n);

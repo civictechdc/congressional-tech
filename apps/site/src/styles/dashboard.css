@@ -1,5 +1,10 @@
 /* YouTube coverage dashboard island — styled entirely with ctdc tokens. */
 
+.dash {
+  min-width: 0;
+  max-width: 100%;
+}
+
 .dash-status {
   color: var(--ctdc-ink-muted);
   font-size: var(--ctdc-text-sm);
@@ -125,6 +130,8 @@
   box-shadow: var(--ctdc-shadow-card);
   padding: var(--ctdc-space-lg);
   min-width: 0;
+  max-width: 100%;
+  overflow-x: auto;
 }
 
 .dash-card-title {
@@ -312,10 +319,13 @@
 
 .dash-table-wrap {
   overflow-x: auto;
+  max-width: 100%;
+  min-width: 0;
 }
 
 .dash-table {
   width: 100%;
+  max-width: 100%;
   border-collapse: collapse;
 }
 
@@ -340,7 +350,32 @@
 
 @media (max-width: 860px) {
   .dash-grid {
-    grid-template-columns: 1fr;
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+@media (max-width: 768px) {
+  .dash-card {
+    padding: var(--ctdc-space-md);
+    max-width: 100%;
+    min-width: 0;
+    overflow-x: auto;
+  }
+
+  .dash-filter,
+  .dash-filter select {
+    max-width: 100%;
+    min-width: 0;
+  }
+
+  .dash-card .explorer-table,
+  .dash-table {
+    min-width: 0;
+    max-width: 100%;
+  }
+
+  .dash-card .coverage-cell {
+    min-width: 0;
   }
 }
 
@@ -349,7 +384,8 @@
     gap: var(--ctdc-space-sm);
   }
 
-  .dash-board-row {
+  .dash-board-row,
+  .dash-leader-row {
     grid-template-columns: 1fr auto;
     grid-template-areas:
       "name value"

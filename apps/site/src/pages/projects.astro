@@ -42,29 +42,44 @@ const summary = (body?: string) => body?.trim().split('\n')[0] ?? '';
       <h2 class="section-heading">Built from the proposal list</h2>
       <div class="project-list">
         {
-          rendered.map(({ project, Content }) => (
-            <article class="card card--gold project-entry">
-              <div class="project-head">
-                <p class="eyebrow project-eyebrow">
-                  Project {project.data.id} · Theme {project.data.theme}
-                </p>
-                <h3 class="project-title">{project.data.title}</h3>
-              </div>
-              <div class="prose project-body">
-                <Content />
-              </div>
-              <div class="project-actions">
-                <a class="btn btn--primary" href={project.data.repo}>
-                  Source on GitHub
-                </a>
-                {project.data.id === 'I.2' && (
-                  <a class="btn btn--gold" href={withBase('/youtube-coverage/')}>
-                    Open the live dashboard
+          rendered.map(({ project, Content }) => {
+            const rawLive = project.data.liveUrl ?? project.data.live;
+            const liveHref = rawLive
+              ? rawLive.startsWith('/')
+                ? withBase(rawLive)
+                : rawLive
+              : project.data.id === 'I.2'
+                ? withBase('/youtube-coverage/')
+                : undefined;
+            const liveLabel =
+              project.data.liveLabel ??
+              (project.data.id === 'I.2'
+                ? 'Open the live dashboard'
+                : 'Open template in Google Sheets');
+            return (
+              <article class="card card--gold project-entry">
+                <div class="project-head">
+                  <p class="eyebrow project-eyebrow">
+                    Project {project.data.id} · Theme {project.data.theme}
+                  </p>
+                  <h3 class="project-title">{project.data.title}</h3>
+                </div>
+                <div class="prose project-body">
+                  <Content />
+                </div>
+                <div class="project-actions">
+                  <a class="btn btn--primary" href={project.data.repo}>
+                    Source on GitHub
                   </a>
-                )}
-              </div>
-            </article>
-          ))
+                  {liveHref && (
+                    <a class="btn btn--gold" href={liveHref}>
+                      {liveLabel}
+                    </a>
+                  )}
+                </div>
+              </article>
+            );
+          })
         }
       </div>
     </div>
@@ -226,9 +241,10 @@ const summary = (body?: string) => body?.trim().split('\n')[0] ?? '';
     color: var(--ctdc-primary);
   }
 
-  .repo-grid {
+  .repo-grid,
+  .card-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(20rem, 1fr));
+    grid-template-columns: repeat(auto-fit, minmax(min(100%, 22rem), 1fr));
     gap: var(--ctdc-space-md);
   }
 

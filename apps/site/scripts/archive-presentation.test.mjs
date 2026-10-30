@@ -164,8 +164,7 @@ test('detail view derives committees from facts and URLs, renders GovInfo packag
     assert(html.includes('House Science, Space, &amp; Technology — Research &amp; Technology'));
     assert(html.includes('Helsinki Commission'));
     assert(html.includes('House Energy &amp; Commerce'));
-    assert(html.includes('href="/congressional-tech/dashboard/?committee=hsap06&amp;congress=118"'));
-    assert(html.includes('href="/congressional-tech/dashboard/?meeting=118001&amp;congress=118"'));
+    assert(!html.includes('/dashboard/'));
     assert(html.includes('href="https://www.govinfo.gov/app/details/CHRG-118hhrg55469"'));
     assert(html.includes('>Transportation infrastructure hearing</button>'));
 
@@ -220,8 +219,8 @@ test('Phase-2 entity detail components render hearings, committees, witnesses, m
     'Official Hearing Transcript',
     'Dr. Jane Smith',
     'National Transit Institute',
-    '/dashboard/?meeting=118001',
   ])assert(hearingHtml.includes(text),`Missing in HearingDetail: ${text}`);
+  assert(!hearingHtml.includes('/dashboard/'));
 
   const committeeHtml=renderToStaticMarkup(React.createElement(CommitteeDetail,{
     committee:{
@@ -256,8 +255,8 @@ test('Phase-2 entity detail components render hearings, committees, witnesses, m
     'Highways and Transit',
     'Sam Graves',
     'Adam Smith',
-    '/dashboard/?committee=hspw00',
   ])assert(committeeHtml.includes(text),`Missing in CommitteeDetail: ${text}`);
+  assert(!committeeHtml.includes('/dashboard/'));
 
   const witnessHtml=renderToStaticMarkup(React.createElement(WitnessDetail,{
     witness:{
@@ -334,4 +333,89 @@ test('Phase-2 entity detail components render hearings, committees, witnesses, m
     'GPO GovInfo',
     'spicy-regs',
   ])assert(billHtml.includes(text),`Missing in SubjectDetail: ${text}`);
+});
+
+test('Phase-2 entity browse tabs, navigation parser, and inspector document-filter actions render cleanly',async()=>{
+  const {ArchiveEntityRows,normalizeArchiveTab,tabTotalCount}=await compile('ArchiveEntityBrowse.tsx');
+  const {readArchiveNavigation}=await compile('ArchiveExplorer.tsx');
+
+  assert.equal(normalizeArchiveTab(null),'documents');
+  assert.equal(normalizeArchiveTab('hearings'),'hearings');
+  assert.equal(normalizeArchiveTab('meetings'),'hearings');
+  assert.equal(normalizeArchiveTab('committees'),'committees');
+  assert.equal(normalizeArchiveTab('witnesses'),'witnesses');
+  assert.equal(normalizeArchiveTab('members'),'members');
+  assert.equal(normalizeArchiveTab('subjects'),'subjects');
+  assert.equal(normalizeArchiveTab('bills'),'subjects');
+
+  const counts={meetings:12,committees:8,witnesses:34,members:535,bills:100,nominations:25};
+  assert.equal(tabTotalCount('documents',6,counts),6);
+  assert.equal(tabTotalCount('hearings',6,counts),12);
+  assert.equal(tabTotalCount('committees',6,counts),8);
+  assert.equal(tabTotalCount('witnesses',6,counts),34);
+  assert.equal(tabTotalCount('members',6,counts),535);
+  assert.equal(tabTotalCount('subjects',6,counts),125);
+
+  const parsed=readArchiveNavigation('?tab=hearings&chamber=house&hearing=118001&subject_kind=bills');
+  assert.equal(parsed.tab,'hearings');
+  assert.equal(parsed.chamber,'house');
+  assert.equal(parsed.hearing,'118001');
+  assert.equal(parsed.subjectKind,'bills');
+
+  const commonCallbacks={
+    onInspectHearing:()=>{},
+    onInspectCommittee:()=>{},
+    onInspectWitness:()=>{},
+    onInspectMember:()=>{},
+    onInspectSubject:()=>{},
+  };
+  const hearingsListHtml=renderToStaticMarkup(React.createElement(ArchiveEntityRows,{
+    tab:'hearings',
+    rows:[{event_id:118001,congress:118,chamber:'house',committee_keys:['hspw00'],title:'Transportation infrastructure hearing',meeting_date:'2024-05-01',list_rows:[0],witnesses:[{}]}],
+    ...commonCallbacks,
+  }));
+  assert(hearingsListHtml.includes('Transportation infrastructure hearing'));
+  assert(hearingsListHtml.includes('1 document · 1 witness'));
+
+  const committeesListHtml=renderToStaticMarkup(React.createElement(ArchiveEntityRows,{
+    tab:'committees',
+    rows:[{committee_key:'hspw00',chamber:'house',type:'standing',current_name:'House Committee on Transportation and Infrastructure',doc_count:42,hearing_count:5}],
+    ...commonCallbacks,
+  }));
+  assert(committeesListHtml.includes('House Committee on Transportation and Infrastructure'));
+  assert(committeesListHtml.includes('42 documents'));
+
+  const witnessesListHtml=renderToStaticMarkup(React.createElement(ArchiveEntityRows,{
+    tab:'witnesses',
+    rows:[{witness_key:'smith_jane',name:'Dr. Jane Smith',organizations:['National Transit Institute'],positions:['Director'],appearances:[{}],list_rows:[0,1]}],
+    ...commonCallbacks,
+  }));
+  assert(witnessesListHtml.includes('Dr. Jane Smith'));
+  assert(witnessesListHtml.includes('2 documents'));
+
+  const membersListHtml=renderToStaticMarkup(React.createElement(ArchiveEntityRows,{
+    tab:'members',
+    rows:[{bioguide_id:'S000510',name:'Adam Smith',party:'D',state:'WA',district:9,chamber:'house',terms:[{}],list_rows:[0]}],
+    ...commonCallbacks,
+  }));
+  assert(membersListHtml.includes('Adam Smith'));
+  assert(membersListHtml.includes('WA-9'));
+
+  const subjectsListHtml=renderToStaticMarkup(React.createElement(ArchiveEntityRows,{
+    tab:'subjects',
+    rows:[{subject_key:'118-hr-1234',kind:'bill',congress:118,short_title:'Surface Transportation Modernization Act',sponsor_name:'Rep. Smith, Adam',list_rows:[0]}],
+    ...commonCallbacks,
+  }));
+  assert(subjectsListHtml.includes('H.R. 1234 — Surface Transportation Modernization Act'));
+
+  const inspectorHtml=renderToStaticMarkup(React.createElement(HearingDetail,{
+    meeting:{event_id:118001,title:'Transportation infrastructure hearing'},
+    onSelect:()=>{},
+    onCommittee:()=>{},
+    onSubject:()=>{},
+    onWitness:()=>{},
+    onMember:()=>{},
+    onFilterDocuments:()=>{},
+  }));
+  assert(inspectorHtml.includes('Filter documents in Document Search'));
 });

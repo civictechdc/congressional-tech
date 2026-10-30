@@ -5,6 +5,9 @@ theme: "V"
 status: "built"
 description: "A Google Sheets template for easily calculating inflation"
 repo: "https://github.com/civictechdc/congressional-tech/tree/main/apps/inflation_gsheets"
+live: "https://docs.google.com/spreadsheets/d/1Rims_eUSdLdm5I2QTXc-3MoRaXmH2oFxHsvSNoDD-SQ/edit?usp=sharing"
+liveUrl: "https://docs.google.com/spreadsheets/d/1Rims_eUSdLdm5I2QTXc-3MoRaXmH2oFxHsvSNoDD-SQ/edit?usp=sharing"
+liveLabel: "Open template in Google Sheets"
 ---
 
 A Google Sheets template for easily calculating inflation.
