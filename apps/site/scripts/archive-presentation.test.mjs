@@ -418,4 +418,22 @@ test('Phase-2 entity browse tabs, navigation parser, and inspector document-filt
     onFilterDocuments:()=>{},
   }));
   assert(inspectorHtml.includes('Filter documents in Document Search'));
+
+  const multiVersionRowsHtml=renderToStaticMarkup(React.createElement(ArchiveRows,{
+    rows:[{...row,format:'other',version_keys:['vk1']}],
+    onSelect:()=>{},
+  }));
+  assert(multiVersionRowsHtml.includes('Other file type (PDF)'));
+  assert(multiVersionRowsHtml.includes('Multiple versions'));
+
+  const dedupRecoveryHtml=render({
+    document:{...row,saved_kind:'recovery'},
+    detail,
+    sources:[{url:'https://publisher.test/report',posted:'2024-01-01',first_seen:'2024-01-02'}],
+    recoveries:[{kind:'recovered_document',body:new Uint8Array(32).fill(17),suffix:'.gz',bytes:50,imported_at:'2024-01-03'}],
+  });
+  assert(dedupRecoveryHtml.includes('Recovered document (saved copy above)'));
+  assert(dedupRecoveryHtml.includes('Archival verification metadata'));
+  assert(dedupRecoveryHtml.includes('First seen 2024-01-02'));
+  assert(dedupRecoveryHtml.includes('(Report.pdf)'));
 });

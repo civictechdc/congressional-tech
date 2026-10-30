@@ -380,11 +380,13 @@ function Leaderboard({ rows }: { rows: ReportRow[] }) {
       <ol className="dash-board">
         {committees.map((entry) => {
           const displayName = entry.committee.replace(/,(?=\S)/g, ', ');
+          const base = (import.meta.env?.BASE_URL ?? '').replace(/\/+$/, '');
+          const explorerHref = `${base}/archive/?tab=committees&q=${encodeURIComponent(displayName)}`;
           return (
             <li key={entry.committee} className="dash-board-row">
-              <span className="dash-board-name" title={displayName}>
+              <a className="dash-board-name" href={explorerHref} title={`Explore ${displayName} in the archive`}>
                 {displayName}
-              </span>
+              </a>
               <span className="dash-board-bar" aria-hidden="true">
                 {entry.withId > 0 && (
                   <span

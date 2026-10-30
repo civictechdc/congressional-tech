@@ -1020,3 +1020,74 @@ a > .explorer-icon {
   gap: 0.35rem 0.75rem;
   max-width: 20rem;
 }
+
+.archive-row-versions {
+  font-size: var(--ctdc-text-xs);
+  font-weight: var(--ctdc-weight-semibold);
+  color: var(--ctdc-primary);
+}
+
+.archive-copy-link-primary a {
+  display: inline-flex;
+  align-items: center;
+  min-height: 2.25rem;
+  padding: 0.35rem 0.85rem;
+  border-radius: var(--ctdc-radius-xs);
+  background: var(--ctdc-primary);
+  color: var(--ctdc-on-primary, #fff);
+  font-weight: var(--ctdc-weight-semibold);
+  text-decoration: none;
+}
+
+.archive-copy-link-primary a:hover {
+  background: var(--ctdc-primary-strong);
+  color: var(--ctdc-on-primary, #fff);
+}
+
+.archive-recovery-same-copy {
+  font-weight: var(--ctdc-weight-semibold);
+  color: var(--ctdc-ink);
+}
+
+.archive-provenance-details {
+  margin-top: var(--ctdc-space-xs);
+  font-size: var(--ctdc-text-xs);
+  color: var(--ctdc-ink-muted);
+}
+
+.archive-provenance-details summary {
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  min-height: 2rem;
+  font-weight: var(--ctdc-weight-medium);
+  color: var(--ctdc-ink-muted);
+}
+
+.archive-provenance-meta {
+  display: grid;
+  gap: 0.25rem;
+  margin: 0.35rem 0 0;
+  padding: 0.5rem 0.75rem;
+  border: 1px solid var(--ctdc-hairline-on-light);
+  border-radius: var(--ctdc-radius-xs);
+  background: var(--ctdc-surface-low, #f4f3ef);
+}
+
+.archive-provenance-meta > div {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem 0.75rem;
+  align-items: baseline;
+}
+
+.archive-provenance-meta dt {
+  font-weight: var(--ctdc-weight-semibold);
+  min-width: 5.5rem;
+  color: var(--ctdc-ink);
+}
+
+.archive-provenance-meta dd {
+  margin: 0;
+  word-break: break-all;
+}

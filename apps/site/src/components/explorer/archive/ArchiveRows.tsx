@@ -33,6 +33,12 @@ export function ArchiveRows({
     const labels=dateLabels(row,row);
     const presented=presentDocument(row,undefined,undefined,undefined,committeesCatalog);
     const showCapturedFirst=sort==='first_captured'&&Boolean(row.first_captured);
+    const rawFormat=String(row.format??'').trim().toLowerCase();
+    const effFormat=effectiveFormat(row);
+    const rowFormatLabel=rawFormat==='other'&&effFormat&&effFormat!=='other'
+      ?`${formatLabel('other')} (${formatLabel(effFormat)})`
+      :formatLabel(effFormat);
+    const hasMultipleVersions=Array.isArray(row.version_keys)&&row.version_keys.length>0;
     return <li key={row.list_row}>
       <div className="archive-row-main">
         {presented.contextParts.length>0&&<span className="archive-row-context">{presented.contextParts.join(' · ')}</span>}
@@ -41,11 +47,12 @@ export function ArchiveRows({
           {presented.subtitle&&<span className="archive-document-subtitle">{presented.subtitle}</span>}
         </button>
       </div>
-      <span className="archive-row-format">{formatLabel(effectiveFormat(row))}</span>
+      <span className="archive-row-format">{rowFormatLabel}</span>
       <div className="archive-row-dates">
         {showCapturedFirst
           ?<span>Captured {day(row.first_captured)}</span>
           :(labels.document?<span>Document date: {labels.document}</span>:<span>{labels.capture}</span>)}
+        {hasMultipleVersions&&<span className="archive-row-versions">Multiple versions</span>}
         {labels.removed&&<span className="archive-row-removed">Removed from hearing page</span>}
       </div>
     </li>;

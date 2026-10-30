@@ -42,10 +42,10 @@ export const bodyDetail=(record:any,format:string)=>{
   return {saved_body:record.body,saved_suffix:record.suffix,saved_bytes:record.size??record.bytes,saved_media_type:mediaTypes[fmt]??'application/octet-stream'};
 };
 
-function CopyLink({detail,label,rawBase,onOpenSaved}:{detail:any;label:string;rawBase:string;onOpenSaved:(detail:any)=>void}){
+function CopyLink({detail,label,rawBase,onOpenSaved,primary=false}:{detail:any;label:string;rawBase:string;onOpenSaved:(detail:any)=>void;primary?:boolean}){
   const saved=savedCopy(detail,rawBase),unpack=detail.saved_suffix==='.gz'&&!saved.compressedDownload;
   const size=formatBytes(detail.saved_bytes);
-  return <span className="archive-copy-link">
+  return <span className={primary?'archive-copy-link archive-copy-link-primary':'archive-copy-link'}>
     <a href={saved.url} target="_blank" rel="noreferrer" download={saved.compressedDownload||undefined}
       onClick={unpack?event=>{event.preventDefault();onOpenSaved(detail);}:undefined}>{label}{saved.compressedDownload?' — compressed download (over 100 MB unpacked)':''}</a>
     {size&&<span className="archive-copy-size"> ({size})</span>}
@@ -167,12 +167,23 @@ export function ArchiveDetail({
       </p>}
       {labels.removed&&<p className="archive-removed-callout">{labels.removed}</p>}
     </div>
-    <section><h3>Saved copies</h3>{detail.saved_body?<ul><li><CopyLink detail={primaryDetail} label={`Open saved ${formatLabel(primaryFormat)}`} rawBase={rawBase} onOpenSaved={onOpenSaved}/></li>
-      {(detail.alternates??[]).map((alternate:any,i:number)=><li key={i}><CopyLink detail={bodyDetail(alternate,alternate.format)} label={`Open alternate ${formatLabel(alternate.format)}`} rawBase={rawBase} onOpenSaved={onOpenSaved}/></li>)}</ul>:<p>No original saved copy is recorded.</p>}</section>
+    <section><h3>Saved copies</h3>{detail.saved_body?<><ul><li><CopyLink detail={primaryDetail} label={`Open saved ${formatLabel(primaryFormat)}`} rawBase={rawBase} onOpenSaved={onOpenSaved} primary/></li>
+      {(detail.alternates??[]).map((alternate:any,i:number)=><li key={i}><CopyLink detail={bodyDetail(alternate,alternate.format)} label={`Open alternate ${formatLabel(alternate.format)}`} rawBase={rawBase} onOpenSaved={onOpenSaved}/></li>)}</ul>
+      <details className="archive-provenance-details">
+        <summary>Archival verification metadata</summary>
+        <dl className="archive-provenance-meta">
+          <div><dt>SHA-256</dt><dd><code>{keyHex(detail.saved_body)}</code></dd></div>
+          {primaryDetail?.saved_media_type&&<div><dt>Media type</dt><dd><code>{primaryDetail.saved_media_type}</code></dd></div>}
+          {detail?.link_key&&<div><dt>Archive key</dt><dd><code>{keyHex(detail.link_key)}</code></dd></div>}
+        </dl>
+      </details></>:<p>No original saved copy is recorded.</p>}</section>
     {recoveries.length>0&&<section><h3>Recovered and related files</h3><ul>{recoveries.map((recovery:any,i:number)=>{
       const note=cleanIdentityNote(recovery.identity_note);
+      const sameAsPrimary=Boolean(detail.saved_body&&recovery.body&&keyHex(recovery.body)===keyHex(detail.saved_body));
       return <li key={i}>
-        <CopyLink detail={bodyDetail(recovery,primaryFormat)} label={recoveryLabel(recovery.kind)} rawBase={rawBase} onOpenSaved={onOpenSaved}/>
+        {sameAsPrimary
+          ?<span className="archive-recovery-same-copy">{recoveryLabel(recovery.kind)} (saved copy above)</span>
+          :<CopyLink detail={bodyDetail(recovery,primaryFormat)} label={recoveryLabel(recovery.kind)} rawBase={rawBase} onOpenSaved={onOpenSaved}/>}
         {note&&<p>{note}</p>}
         {(recovery.imported_at||recovery.recovered_url)&&<p className="archive-source-meta">{recovery.imported_at&&<>Added to the archive {day(recovery.imported_at)}{recovery.recovered_url&&' · '}</>}{recovery.recovered_url&&<PublicLink url={recovery.recovered_url}>Recovery source</PublicLink>}</p>}
       </li>;
@@ -182,6 +193,7 @@ export function ArchiveDetail({
       {source.member_path&&source.member_path!==document.filename&&<p className="archive-source-meta">File in archive: {source.member_path}</p>}
       {source.listed_on&&source.listed_on!==source.url&&<p className="archive-source-meta">Listed on <PublicLink url={source.listed_on}/></p>}
       {source.posted&&<p className="archive-source-meta">Posted {day(source.posted)}</p>}
+      {source.first_seen&&day(source.first_seen)!==day(source.posted)&&<p className="archive-source-meta">First seen {day(source.first_seen)}</p>}
     </li>)}</ul>:<p>No source address is recorded.</p>}</section>}
     {presented.committeeItems.length>0&&<section><h3>Committees</h3><ul>{presented.committeeItems.map(item=><li key={item.code} className="archive-hearing-row">
       {onCommittee?<button type="button" onClick={()=>onCommittee(item.code)}>{item.label}</button>:<span>{item.label}</span>}
@@ -198,7 +210,8 @@ export function ArchiveDetail({
     })}</ul></section>}
     {versions.some(row=>row.list_row!==document.list_row)&&<section><h3>Other versions</h3><ul>{versions.filter(row=>row.list_row!==document.list_row).map(row=>{
       const ver=presentDocument(row,undefined,undefined,undefined,catalog);
-      return <li key={row.list_row}><button type="button" onClick={()=>onSelect(row.list_row)}>{ver.title}</button> · {dateLabels(row,row).capture}{ver.format?` · ${ver.format}`:''}</li>;
+      const verLabels=dateLabels(row,row);
+      return <li key={row.list_row}><button type="button" onClick={()=>onSelect(row.list_row)}>{ver.title}</button>{ver.subtitle?` (${ver.subtitle})`:''}{verLabels.document&&verLabels.document!==day(row.first_captured)?` · Document date: ${verLabels.document}`:''} · {verLabels.capture}{ver.format?` · ${ver.format}`:''}</li>;
     })}</ul></section>}
   </article>;
 }
