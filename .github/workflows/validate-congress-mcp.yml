@@ -3,6 +3,8 @@ on:
   pull_request:
     paths:
       - 'apps/explorer_mcp/**'
+      - '.agents/plugins/marketplace.json'
+      - '.claude-plugin/marketplace.json'
       - '.github/workflows/publish-congress-mcp.yml'
       - 'model/**'
       - 'packages/viewer_publication/**'
@@ -35,11 +37,19 @@ jobs:
       - uses: astral-sh/setup-uv@v6
         with:
           version: '0.11.21'
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
       - run: uv sync --locked --project apps/explorer_mcp
       - run: apps/explorer_mcp/.venv/bin/python scripts/dev.py test explorer-mcp -- -q
       - run: uv build apps/explorer_mcp --out-dir dist
       - run: uvx --from twine twine check --strict dist/*
       - run: apps/explorer_mcp/.venv/bin/python apps/explorer_mcp/scripts/check_distribution.py dist/*.whl
+      - run: python3 apps/explorer_mcp/scripts/build_desktop.py --check --output-dir dist
+      - run: npx --yes @anthropic-ai/mcpb@2.1.2 validate apps/explorer_mcp/manifest.json
+      - run: npx --yes @anthropic-ai/claude-code@2.1.314 plugin validate --strict apps/explorer_mcp
+      - run: npx --yes @anthropic-ai/claude-code@2.1.314 plugin validate --strict .
+      - run: apps/explorer_mcp/.venv/bin/python apps/explorer_mcp/scripts/check_desktop.py dist
 
   native-consumer:
     name: Native producer to MCP stdio

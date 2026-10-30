@@ -34,6 +34,9 @@ jobs:
       - uses: astral-sh/setup-uv@v6
         with:
           version: '0.11.21'
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
       - id: release
         name: Validate the release version
         env:
@@ -53,6 +56,10 @@ jobs:
       - run: apps/explorer_mcp/.venv/bin/python scripts/dev.py test explorer-mcp -- -q
       - run: uv build apps/explorer_mcp --out-dir dist
       - run: uvx --from twine twine check --strict dist/*
+      - run: python3 apps/explorer_mcp/scripts/build_desktop.py --check --output-dir dist
+      - run: npx --yes @anthropic-ai/mcpb@2.1.2 validate apps/explorer_mcp/manifest.json
+      - run: npx --yes @anthropic-ai/claude-code@2.1.314 plugin validate --strict apps/explorer_mcp
+      - run: npx --yes @anthropic-ai/claude-code@2.1.314 plugin validate --strict .
       - uses: actions/upload-artifact@v4
         with:
           name: congress-mcp-distributions
@@ -78,6 +85,8 @@ jobs:
           path: dist
       - name: Install and query from outside the repository
         run: uv run --no-project --python 3.12 apps/explorer_mcp/scripts/check_distribution.py dist/*.whl
+      - name: Launch each desktop package outside the repository
+        run: uv run --locked --project apps/explorer_mcp --no-dev python apps/explorer_mcp/scripts/check_desktop.py dist
 
   github-release:
     needs: [build, install]
@@ -101,11 +110,11 @@ jobs:
           fi
           sha256sum dist/* > dist/SHA256SUMS
           cat > release-notes.md <<'NOTES'
-          Run Congress Explorer locally from your AI assistant. This release includes client configuration output and an MCP installation check.
+          Run Congress Explorer locally from your AI assistant. Download the .mcpb for Claude Desktop chat, or the compatible plugin ZIP for Claude Code/Cowork and ChatGPT/Codex desktop. The first tool call prepares missing data; later sessions reuse it.
 
           Setup: https://civictechdc.github.io/congressional-tech/mcp/
 
-          macOS and Linux; Python 3.12 managed by uv. Downloaded data is refreshed separately with `congress-explorer-mcp prepare`. Windows is not yet supported.
+          macOS and Linux; Python 3.12 managed by uv. The plugin requires uv on the host's PATH. Claude Desktop's uv bundle runtime manages it for the .mcpb. Downloaded data is refreshed separately with `congress-explorer-mcp prepare`. Windows is not yet supported. Public plugin directory listings are separate from these downloads.
           NOTES
           gh release create "$RELEASE_TAG" dist/* --verify-tag --title "Congress Explorer MCP ${RELEASE_TAG#congress-mcp-v}" --notes-file release-notes.md --latest=false
 

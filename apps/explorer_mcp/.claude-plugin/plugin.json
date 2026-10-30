@@ -1,0 +1,17 @@
+{
+  "name": "congress-explorer",
+  "version": "0.4.0",
+  "description": "Explore congressional hearings, witnesses, bills, members and related documents locally.",
+  "author": {
+    "name": "Civic Tech DC"
+  },
+  "homepage": "https://civictechdc.github.io/congressional-tech/mcp/",
+  "repository": "https://github.com/civictechdc/congressional-tech",
+  "license": "Apache-2.0",
+  "keywords": [
+    "congress",
+    "hearings",
+    "legislation",
+    "research"
+  ]
+}

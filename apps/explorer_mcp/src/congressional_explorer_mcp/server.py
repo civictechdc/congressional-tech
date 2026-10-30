@@ -1,15 +1,22 @@
 """The public MCP surface uses only the current published archive model."""
 from contextlib import asynccontextmanager
+from functools import partial
+
+import anyio
 
 from fastmcp import FastMCP
 from fastmcp.exceptions import ToolError
 
 from .models import DocumentSearch, DocumentQuery, EntitySearch, EntityQuery, SqlQuery, ExplorerError
 from .worker import Worker
+from .release import PUBLICATION, load_selection, prepare
 
 
-def create_server(selection, *, timeout=10.0):
+def create_server(selection=None, *, timeout=10.0, data_dir=None, publication=PUBLICATION):
+    if selection is None and data_dir is None:
+        raise ValueError('A selected release or data directory is required')
     worker = Worker(selection, timeout=timeout)
+    setup_lock = anyio.Lock()
 
     @asynccontextmanager
     async def lifespan(server):
@@ -29,11 +36,19 @@ def create_server(selection, *, timeout=10.0):
 
     async def call(method, query):
         try:
+            if worker.selection is None:
+                async with setup_lock:
+                    if worker.selection is None:
+                        # Keep MCP initialization fast. The host may cancel a tool,
+                        # but keep this lock until the preparer's thread finishes.
+                        loader = partial(load_selection, data_dir) if (data_dir / 'selection.json').exists() else partial(prepare, data_dir, publication)
+                        worker.selection = await anyio.to_thread.run_sync(loader)
             return await worker.call(method, query)
-        except ExplorerError as error:
+        except (ExplorerError, OSError, ValueError, KeyError, TypeError) as error:
             raise ToolError(str(error)) from error
 
-    annotations = dict(readOnlyHint=True, destructiveHint=False, idempotentHint=True, openWorldHint=False)
+    annotations = dict(readOnlyHint=True, destructiveHint=False, idempotentHint=True,
+        openWorldHint=selection is None)
 
     @mcp.tool(annotations=annotations)
     async def get_dataset_info(table: str | None = None, relationship: str | None = None, recipe: str | None = None) -> dict:

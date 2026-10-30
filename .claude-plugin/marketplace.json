@@ -1,0 +1,14 @@
+{
+  "name": "congressional-tech",
+  "owner": {
+    "name": "Civic Tech DC"
+  },
+  "description": "Explore public congressional data locally.",
+  "plugins": [
+    {
+      "name": "congress-explorer",
+      "source": "./apps/explorer_mcp",
+      "description": "Explore congressional hearings, witnesses, bills, members and related documents locally."
+    }
+  ]
+}

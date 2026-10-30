@@ -1,0 +1,50 @@
+{
+  "manifest_version": "0.4",
+  "name": "congress-explorer",
+  "display_name": "Congress Explorer",
+  "version": "0.4.0",
+  "description": "Explore congressional hearings, witnesses, bills, members and related documents locally.",
+  "author": {
+    "name": "Civic Tech DC"
+  },
+  "homepage": "https://civictechdc.github.io/congressional-tech/mcp/",
+  "documentation": "https://civictechdc.github.io/congressional-tech/mcp/",
+  "support": "https://github.com/civictechdc/congressional-tech/issues",
+  "icon": "assets/icon.png",
+  "license": "Apache-2.0",
+  "keywords": [
+    "congress",
+    "hearings",
+    "legislation",
+    "research"
+  ],
+  "tools_generated": true,
+  "long_description": "Explore congressional metadata locally. The first question downloads the public snapshot (about 65 MiB as of October 2026); later sessions reuse it. Document bodies are not downloaded. Python and dependencies are managed by uv. macOS and Linux; Windows is not supported.",
+  "server": {
+    "type": "uv",
+    "entry_point": "desktop.py",
+    "mcp_config": {
+      "command": "uv",
+      "args": [
+        "run",
+        "--project",
+        "${__dirname}",
+        "--python",
+        "3.12",
+        "--locked",
+        "--no-dev",
+        "python",
+        "${__dirname}/desktop.py"
+      ]
+    }
+  },
+  "compatibility": {
+    "platforms": [
+      "darwin",
+      "linux"
+    ],
+    "runtimes": {
+      "python": ">=3.12,<3.13"
+    }
+  }
+}

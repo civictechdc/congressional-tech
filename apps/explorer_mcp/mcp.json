@@ -1,0 +1,20 @@
+{
+  "$schema": "https://agent-plugins.org/schemas/1.0.0/mcp.schema.json",
+  "mcpServers": {
+    "congress": {
+      "type": "stdio",
+      "command": "uv",
+      "args": [
+        "run",
+        "--project",
+        "${PLUGIN_ROOT}",
+        "--python",
+        "3.12",
+        "--locked",
+        "--no-dev",
+        "python",
+        "${PLUGIN_ROOT}/desktop.py"
+      ]
+    }
+  }
+}

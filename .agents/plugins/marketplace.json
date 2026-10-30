@@ -1,0 +1,18 @@
+{
+  "name": "congressional-tech",
+  "interface": {
+    "displayName": "Congressional Tech"
+  },
+  "plugins": [
+    {
+      "name": "congress-explorer",
+      "source": "./apps/explorer_mcp",
+      "description": "Explore congressional hearings, witnesses, bills, members and related documents locally.",
+      "policy": {
+        "installation": "AVAILABLE",
+        "authentication": "ON_INSTALL"
+      },
+      "category": "Productivity"
+    }
+  ]
+}

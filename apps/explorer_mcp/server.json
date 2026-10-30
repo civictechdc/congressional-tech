@@ -3,7 +3,7 @@
   "name": "io.github.civictechdc/congress-explorer",
   "title": "Congress Explorer",
   "description": "Explore congressional hearings, witnesses, bills, members and related documents locally.",
-  "version": "0.3.0",
+  "version": "0.4.0",
   "websiteUrl": "https://civictechdc.github.io/congressional-tech/mcp/",
   "repository": {
     "url": "https://github.com/civictechdc/congressional-tech",
@@ -13,7 +13,7 @@
   "packages": [{
     "registryType": "pypi",
     "identifier": "congressional-explorer-mcp",
-    "version": "0.3.0",
+    "version": "0.4.0",
     "runtimeHint": "uvx",
     "runtimeArguments": [{"type": "named", "name": "--python", "value": "3.12"}],
     "packageArguments": [{"type": "positional", "value": "serve"}],

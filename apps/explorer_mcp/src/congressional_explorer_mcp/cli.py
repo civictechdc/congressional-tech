@@ -2,6 +2,7 @@
 import argparse
 import asyncio
 import json
+import os
 from pathlib import Path
 import sys
 
@@ -47,7 +48,7 @@ def main(argv=None):
         check='Check the installed server and read one data row over MCP')
     for name, description in descriptions.items():
         command = sub.add_parser(name, help=description)
-        command.add_argument('--data-dir', type=Path, default=Path.home() / '.cache/congress-explorer-mcp')
+        command.add_argument('--data-dir', type=Path, default=os.environ.get('CONGRESS_MCP_DATA_DIR', Path.home() / '.cache/congress-explorer-mcp'))
         if name == 'config':
             command.add_argument('--client', choices=('codex', 'claude-desktop', 'claude-code', 'cursor'), required=True)
         if name == 'prepare':
@@ -55,11 +56,20 @@ def main(argv=None):
             command.add_argument('--archive-origin', help='Body archive origin; inferred for remote publications')
         if name == 'serve':
             command.add_argument('--query-timeout', type=float, default=10.0)
+            command.add_argument('--prepare-if-missing', action='store_true',
+                help='Prepare data on the first tool call if no snapshot has been selected')
+            command.add_argument('--publication', default=PUBLICATION,
+                help='Publication to use for first-run preparation only')
     args = parser.parse_args(argv)
     args.data_dir = args.data_dir.expanduser().absolute()
     try:
         if args.command == 'config':
             print(client_config(args.data_dir, args.client))
+            return 0
+        if args.command == 'serve' and args.prepare_if_missing:
+            from .server import create_server
+            create_server(data_dir=args.data_dir, publication=args.publication,
+                timeout=args.query_timeout).run(transport='stdio', show_banner=False)
             return 0
         if args.command == 'prepare':
             selection = prepare(args.data_dir, args.publication, archive_origin=args.archive_origin)

@@ -8,6 +8,11 @@ import release from '../../../explorer_mcp/server.json';
 const repository = release.repository.url;
 const releaseUrl = `${repository}/releases/tag/congress-mcp-v${release.version}`;
 const wheel = `${repository}/releases/download/congress-mcp-v${release.version}/congressional_explorer_mcp-${release.version}-py3-none-any.whl`;
+const desktopBundle = `${repository}/releases/download/congress-mcp-v${release.version}/congress-explorer-${release.version}.mcpb`;
+const pluginBundle = `${repository}/releases/download/congress-mcp-v${release.version}/congress-explorer-${release.version}.plugin.zip`;
+const codexSetup = `codex plugin marketplace add civictechdc/congressional-tech --ref congress-mcp-v${release.version}\ncodex plugin add congress-explorer@congressional-tech`;
+const claudeSetup = 'claude plugin install congress-explorer --marketplace civictechdc/congressional-tech';
+const exploreLink = `codex://new?prompt=${encodeURIComponent('[@Congress Explorer](plugin://congress-explorer@congressional-tech) Find hearings about artificial intelligence and list their witnesses and organizations.')}`;
 const install = `uv tool install --python 3.12 \\\n  '${wheel}'`;
 const clients = [
   { id: 'claude-desktop', name: 'Claude Desktop', destination: 'Settings → Developer → Edit Config', detail: 'Merge the printed congress entry into mcpServers in your configuration. Keep your existing servers. Quit and reopen Claude Desktop.', url: 'https://modelcontextprotocol.io/docs/develop/connect-local-servers' },
@@ -29,16 +34,55 @@ const prompts = [
       <h1>Congress Explorer <span>MCP</span></h1>
       <p class="mcp-lead">Congressional data.<br />Your questions. Your assistant.</p>
       <p class="mcp-intro">Find hearings, witnesses, bills, members, recordings, and related documents through your AI assistant.</p>
-      <a class="btn btn--gold" href="#setup">Set up locally <span aria-hidden="true">↓</span></a>
+      <div class="mcp-actions">
+        <a class="btn btn--gold" href={desktopBundle}>Download for Claude Desktop</a>
+        <a class="btn btn--gold" href="#plugins">Get the plugin <span aria-hidden="true">↓</span></a>
+      </div>
       <p class="mcp-platforms">Free &amp; open source · macOS and Linux · No data API key</p>
     </div>
   </section>
 
-  <section class="section" id="setup">
+  <section class="section" id="plugins">
+    <div class="container mcp-layout">
+      <div>
+        <p class="eyebrow">Quick setup</p>
+        <h2>One server.<br />Your choice of assistant.</h2>
+        <p>The first question downloads the published metadata snapshot. Later sessions reuse it. Queries run on your computer.</p>
+        <p class="mcp-note">About 65 MiB of data as of October 2026, plus Python and dependencies. Windows is not yet supported.</p>
+        <a href="#setup">Other clients &amp; manual setup ↓</a>
+      </div>
+      <div class="mcp-steps">
+        <section class="mcp-step" aria-labelledby="claude-extension-heading">
+          <h3 id="claude-extension-heading">Claude Desktop chat</h3>
+          <p>Download the extension, open it with Claude Desktop, and click <strong>Install</strong>. Use a current version with support for uv-based extensions; the app manages Python and dependencies.</p>
+          <a class="btn btn--gold" href={desktopBundle}>Download .mcpb</a>
+          <p class="mcp-note">If opening the file does not show an installer, go to Settings → Desktop app → Extensions → Advanced settings → Install Extension.</p>
+        </section>
+        <section class="mcp-step" aria-labelledby="claude-plugin-heading">
+          <h3 id="claude-plugin-heading">Claude Code &amp; Cowork</h3>
+          <p>Install <a href="https://docs.astral.sh/uv/getting-started/installation/">uv</a> on the computer running the plugin, then use this command with a current Claude Code:</p>
+          <CopyCommand command={claudeSetup} label="Copy Claude plugin install command" />
+          <p>In Cowork desktop, open Customize → Plugins and upload the plugin ZIP. Start a local task, then run <code>/congress-explorer:setup</code>.</p>
+          <a class="btn btn--gold" href={pluginBundle}>Download plugin ZIP</a>
+          <p class="mcp-note">The plugin's local server runs in Claude Code and Cowork desktop. For Claude Desktop chat, use the extension above.</p>
+        </section>
+        <section class="mcp-step" aria-labelledby="openai-plugin-heading">
+          <h3 id="openai-plugin-heading">ChatGPT &amp; Codex desktop</h3>
+          <p>Install <a href="https://docs.astral.sh/uv/getting-started/installation/">uv</a> and the <a href="https://developers.openai.com/codex/cli/">Codex CLI</a>, then add the marketplace and plugin:</p>
+          <CopyCommand command={codexSetup} label="Copy ChatGPT and Codex plugin setup commands" />
+          <p>Open the desktop app and start a local conversation. The button below prepares a question with Congress Explorer selected; review it and send when ready.</p>
+          <a class="btn btn--gold" href={exploreLink}>Explore Congress in Codex</a>
+          <p class="mcp-note">Distributed through our repository marketplace. A public OpenAI directory listing requires separate approval. This server runs in local desktop conversations.</p>
+        </section>
+      </div>
+    </div>
+  </section>
+
+  <section class="section section--tint" id="setup">
     <div class="container mcp-layout">
       <aside class="mcp-orientation">
-        <p class="eyebrow">Get connected</p>
-        <h2>Three steps.<br />Then ask away.</h2>
+        <p class="eyebrow">Manual setup</p>
+        <h2>Connect another client.</h2>
         <p>MCP connects an AI assistant to tools and data. This server queries a downloaded snapshot on your computer.</p>
         <p>Your client starts the server when it needs it. You do not need to leave a terminal running.</p>
         <a href={releaseUrl}>Release {release.version} &amp; source code ↗</a>
@@ -94,7 +138,7 @@ const prompts = [
       <div class="mcp-details">
         <details open><summary>What can I explore?</summary><p>Meetings, witness appearances, bills, nominations, members, committees, rosters, recordings, and document records. All published tables and columns are queryable. Availability varies by source, Congress, and record; this is a bounded collection, not a complete record of every congressional activity.</p></details>
         <details><summary>Can it read documents?</summary><p>The server searches structured data and document metadata, then returns links to saved files. Your assistant needs its own file-fetching and reading tools to read those documents. The server does not provide full-text search or OCR.</p></details>
-        <details><summary>How do I get newer data?</summary><p>Run <code>congress-explorer-mcp prepare</code> again, then restart the client connection. Only changed files download. Run <code>congress-explorer-mcp inspect</code> to see your selected release. Software updates are separate: install the version linked on this page and restart your client.</p></details>
+        <details><summary>How do I get newer data?</summary><p>With the plugin, ask your assistant to follow the setup skill's data refresh instructions. With a manual install, run <code>congress-explorer-mcp prepare</code> again, then restart the client connection. The extension uses the same default data directory, so a manual install can also refresh its data. Only changed files download. Software updates are separate: install the version linked on this page and restart your client.</p></details>
         <details><summary>What leaves my computer?</summary><p>The server downloads public data during preparation and queries it locally afterward. Your AI client may send your questions and tool results to its model provider. Fetching linked documents requires an internet connection.</p></details>
         <details><summary>Need help connecting?</summary><p>Run <code>congress-explorer-mcp check</code> in your terminal. If data is missing, run <code>prepare</code> first. If you chose a custom <code>--data-dir</code>, use that same directory for preparation, checks, and configuration. <a href={`${repository}/issues`}>Report an issue</a> with your operating system, client, and error message.</p></details>
         <p class="mcp-more"><a href={`${repository}/tree/main/apps/explorer_mcp`}>Technical documentation ↗</a><a href={withBase('/archive/')}>Browse the data on the web →</a></p>
@@ -124,6 +168,7 @@ const prompts = [
   .mcp-lead { font-size: clamp(1.6rem, 2.5vw, 2.5rem); line-height: 1.15; margin: 1.3rem 0; }
   .mcp-intro { max-width: 440px; color: var(--ctdc-on-dark); font-size: 1.13rem; margin-bottom: 1.5rem; }
   .mcp-platforms { font-size: .9rem; margin-top: 1rem; color: var(--ctdc-on-dark); }
+  .mcp-actions { display: flex; flex-wrap: wrap; gap: .8rem; }
   .mcp-layout { display: grid; grid-template-columns: 1fr 1.75fr; gap: clamp(2rem, 6vw, 6rem); }
   .mcp-layout h2 { font-size: clamp(1.8rem, 3vw, 2.6rem); margin-bottom: 1rem; }
   .mcp-orientation { position: sticky; top: 2rem; align-self: start; }

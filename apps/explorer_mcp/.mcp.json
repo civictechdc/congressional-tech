@@ -1,0 +1,19 @@
+{
+  "mcpServers": {
+    "congress": {
+      "type": "stdio",
+      "command": "uv",
+      "args": [
+        "run",
+        "--project",
+        "${CLAUDE_PLUGIN_ROOT}",
+        "--python",
+        "3.12",
+        "--locked",
+        "--no-dev",
+        "python",
+        "${CLAUDE_PLUGIN_ROOT}/desktop.py"
+      ]
+    }
+  }
+}

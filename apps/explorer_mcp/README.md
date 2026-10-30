@@ -16,13 +16,66 @@ committee catalog, legacy parser imports, review overlays, copied DuckDB databas
 or custom SQL language. The producer owns data assembly and SpicyRegs imports;
 the MCP queries the published result. It stays a separate Congress server.
 
-## Install a release (macOS or Linux)
+## Quick setup (macOS or Linux)
+
+The same server is available as a Claude Desktop extension and a plugin compatible
+with Claude Code/Cowork and ChatGPT/Codex desktop. The first tool call downloads
+the public metadata snapshot. Tool discovery does not download data; later sessions
+reuse the selected release. No document bodies are bundled or downloaded.
+
+### Claude Desktop chat
+
+Download [congress-explorer-0.4.0.mcpb](https://github.com/civictechdc/congressional-tech/releases/download/congress-mcp-v0.4.0/congress-explorer-0.4.0.mcpb),
+open it with Claude Desktop, and click **Install**. Use a current Claude Desktop
+with support for MCPB 0.4's uv runtime; the host manages Python and dependencies.
+Alternatively, select the file in Settings → Desktop app → Extensions → Advanced
+settings → Install Extension. Ask your first congressional question to prepare data.
+
+### Claude Code and Cowork
+
+Install [uv](https://docs.astral.sh/uv/getting-started/installation/) on the host,
+then use a current Claude Code (2.1.275 or later):
+
+```sh
+claude plugin install congress-explorer --marketplace civictechdc/congressional-tech
+```
+
+Inside Claude Code, the equivalent is
+`/plugin install congress-explorer --marketplace civictechdc/congressional-tech`.
+In Cowork desktop, open Customize → Plugins and upload
+[congress-explorer-0.4.0.plugin.zip](https://github.com/civictechdc/congressional-tech/releases/download/congress-mcp-v0.4.0/congress-explorer-0.4.0.plugin.zip).
+Start a local task and run `/congress-explorer:setup`.
+The plugin's local server runs in Claude Code and Cowork desktop; Claude chat uses
+the separate `.mcpb` extension above. Organization policies may restrict installation.
+
+### ChatGPT and Codex desktop
+
+Install uv and the Codex CLI, then:
+
+```sh
+codex plugin marketplace add civictechdc/congressional-tech --ref congress-mcp-v0.4.0
+codex plugin add congress-explorer@congressional-tech
+```
+
+Open a local conversation in the desktop app and select Congress Explorer. The
+website's **Explore Congress in Codex** button opens a prepared question; it does
+not send it automatically. This is a repository marketplace distribution, not an
+approved public OpenAI directory listing. A public listing for a local MCP server
+requires separate partner approval.
+
+The source plugin root is this directory. `plugin.json` and `mcp.json` describe
+the portable OpenAI package; `.claude-plugin/plugin.json` and `.mcp.json` describe
+the Claude package. Both launch `desktop.py` with the same locked dependencies.
+`scripts/build_desktop.py` generates the client-specific metadata from `server.json`;
+do not edit the generated manifests by hand.
+
+## Manual install (macOS or Linux)
 
 Install [uv](https://docs.astral.sh/uv/getting-started/installation/), then:
 
 ```sh
 uv tool install --python 3.12 \
-  'https://github.com/civictechdc/congressional-tech/releases/download/congress-mcp-v0.3.0/congressional_explorer_mcp-0.3.0-py3-none-any.whl'
+  'https://github.com/civictechdc/congressional-tech/releases/download/congress-mcp-v0.4.0/congressional_explorer_mcp-0.4.0-py3-none-any.whl'
 congress-explorer-mcp prepare
 congress-explorer-mcp check
 ```
@@ -76,8 +129,13 @@ uv run --locked --project apps/explorer_mcp congress-explorer-mcp serve
 ```
 
 `prepare` defaults to the public archive pointer and stores metadata under
-`~/.cache/congress-explorer-mcp`. `serve` uses stdio and makes no network requests.
-Use `--data-dir /absolute/path` on each command to select another directory.
+`~/.cache/congress-explorer-mcp`. Plain `serve` uses stdio and makes no network requests.
+The desktop entry point adds `serve --prepare-if-missing`: it starts MCP immediately
+and prepares data on the first tool call only when no selection exists. A selected
+snapshot is never refreshed or replaced automatically, including if it is damaged.
+Use `--data-dir /absolute/path` on each command or `CONGRESS_MCP_DATA_DIR` to select
+another directory. Desktop extensions, plugins and manual installs share the
+default directory when they run under the same account on the same host.
 `inspect` prints the selected release and published table counts.
 
 For a retained or test release:

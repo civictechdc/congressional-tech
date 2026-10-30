@@ -1,0 +1,42 @@
+{
+  "$schema": "https://agent-plugins.org/schemas/1.0.0/plugin.schema.json",
+  "name": "congress-explorer",
+  "version": "0.4.0",
+  "description": "Explore congressional hearings, witnesses, bills, members and related documents locally.",
+  "author": {
+    "name": "Civic Tech DC"
+  },
+  "homepage": "https://civictechdc.github.io/congressional-tech/mcp/",
+  "repository": "https://github.com/civictechdc/congressional-tech",
+  "license": "Apache-2.0",
+  "keywords": [
+    "congress",
+    "hearings",
+    "legislation",
+    "research"
+  ],
+  "extensions": {
+    "com.openai": {
+      "interface": {
+        "displayName": "Congress Explorer",
+        "shortDescription": "Explore Congress from your assistant",
+        "longDescription": "Explore congressional hearings, witnesses, bills, members and related documents locally.",
+        "developerName": "Civic Tech DC",
+        "category": "Productivity",
+        "capabilities": [
+          "Read"
+        ],
+        "websiteURL": "https://civictechdc.github.io/congressional-tech/mcp/",
+        "supportURL": "https://github.com/civictechdc/congressional-tech/issues",
+        "defaultPrompt": [
+          "Find hearings about artificial intelligence and list their witnesses."
+        ],
+        "brandColor": "#0b1a30",
+        "composerIcon": "./assets/icon.svg",
+        "logo": "./assets/icon.svg"
+      },
+      "requires_local_executor": true,
+      "onboardingSkill": "./skills/setup/SKILL.md"
+    }
+  }
+}
