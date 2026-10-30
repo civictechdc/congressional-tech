@@ -1,7 +1,17 @@
 import {useEffect,useState} from 'react';
 import {createArchiveClient} from '../reader/archive-client.ts';
 import {openSavedBlob} from './saved-tab.ts';
-import {ArchiveDetail,ArchiveRows,keyHex,siteBase} from './ArchiveDetail.tsx';
+import {
+  ArchiveDetail,
+  ArchiveRows,
+  CommitteeDetail,
+  HearingDetail,
+  MemberDetail,
+  SubjectDetail,
+  WitnessDetail,
+  keyHex,
+  siteBase,
+} from './ArchiveDetail.tsx';
 import {ArchiveFormatFilter,formatLabel} from './ArchiveFormats.tsx';
 import {
   buildCommitteeGroups,
@@ -10,30 +20,50 @@ import {
   congressOptionLabel,
   documentKindLabel,
   expandCommitteeKeys,
+  formatMeasure,
 } from './archive-metadata.ts';
 import {RequestMessage,useRequest,integer} from '../view/request-state.tsx';
 
 const pageSize=30;
-type Navigation={
+export type Navigation={
   text:string;
   congress:string;
   committee:string;
   kind:string;
   hearing:string;
+  subject:string;
+  witness:string;
+  member:string;
   format:string;
   sort:string;
   offset:number;
   key:string;
 };
-const emptyNavigation:Navigation={text:'',congress:'',committee:'',kind:'',hearing:'',format:'',sort:'',offset:0,key:''};
-const readNavigation=():Navigation=>{
-  const q=new URLSearchParams(location.search);
+const emptyNavigation:Navigation={
+  text:'',
+  congress:'',
+  committee:'',
+  kind:'',
+  hearing:'',
+  subject:'',
+  witness:'',
+  member:'',
+  format:'',
+  sort:'',
+  offset:0,
+  key:'',
+};
+export const readArchiveNavigation=(search:string=location.search):Navigation=>{
+  const q=new URLSearchParams(search);
   return {
     text:q.get('q')||'',
     congress:q.get('congress')||'',
-    committee:q.get('committee')||'',
+    committee:q.get('committee')||q.get('committee_key')||'',
     kind:q.get('kind')||'',
-    hearing:q.get('hearing')||q.get('meeting')||'',
+    hearing:q.get('hearing')||q.get('meeting')||q.get('event_id')||'',
+    subject:q.get('subject')||q.get('bill')||q.get('nomination')||q.get('measure')||'',
+    witness:q.get('witness')||q.get('witness_key')||'',
+    member:q.get('member')||q.get('bioguide_id')||'',
     format:q.get('format')||'',
     sort:q.get('sort')||'',
     offset:Math.max(0,Number(q.get('offset'))||0),
@@ -46,8 +76,8 @@ export default function ArchiveExplorer({pointerUrl,rawBase}:{pointerUrl:string;
   const [client,setClient]=useState<ReturnType<typeof createArchiveClient>>();
   const [nav,setNav]=useState<Navigation>(emptyNavigation);
   useEffect(()=>{
-    setNav(readNavigation());const connection=createArchiveClient(new URL(pointerUrl,location.href).href,new URL(rawBase,location.href).href,()=>location.reload());setClient(connection);
-    const pop=()=>{setNav(readNavigation());setHistoryEpoch(value=>value+1);};window.addEventListener('popstate',pop);
+    setNav(readArchiveNavigation());const connection=createArchiveClient(new URL(pointerUrl,location.href).href,new URL(rawBase,location.href).href,()=>location.reload());setClient(connection);
+    const pop=()=>{setNav(readArchiveNavigation());setHistoryEpoch(value=>value+1);};window.addEventListener('popstate',pop);
     const dispose=()=>connection.dispose();const hide=(event:PageTransitionEvent)=>{if(!event.persisted)dispose();};window.addEventListener('pagehide',hide);
     return ()=>{window.removeEventListener('popstate',pop);window.removeEventListener('pagehide',hide);dispose();};
   },[pointerUrl,rawBase]);
@@ -62,6 +92,9 @@ export default function ArchiveExplorer({pointerUrl,rawBase}:{pointerUrl:string;
         committee:next.committee,
         kind:next.kind,
         hearing:next.hearing,
+        subject:next.subject,
+        witness:next.witness,
+        member:next.member,
         format:next.format,
         sort:next.sort,
         offset:next.offset,
@@ -78,15 +111,19 @@ function Workspace({client,nav,navigate,rawBase}:{client:ReturnType<typeof creat
   const [selection,setSelection]=useState<number|null>(null),[savedError,setSavedError]=useState('');
   const [info,retryInfo]=useRequest(signal=>client.request('info',{},signal),[client]);
   const allFacets:any[]=info.status==='ready'?info.value.facets??[]:[];
+  const committeesCatalog:any[]=info.status==='ready'?info.value.committees??[]:[];
   const committeeFacets=allFacets.filter(item=>item.facet==='committee_keys');
   const effectiveSort=nav.sort||'document_date';
   const [rows,retryRows]=useRequest(async signal=>{
-    const committeeKeys=nav.committee?expandCommitteeKeys(nav.committee,committeeFacets):[];
+    const committeeKeys=nav.committee?expandCommitteeKeys(nav.committee,committeeFacets,committeesCatalog):[];
     const filterArgs={
       congress:nav.congress?[Number(nav.congress)]:[],
       committee_keys:committeeKeys,
       document_kind:nav.kind?[nav.kind]:[],
       meeting_keys:nav.hearing?[nav.hearing]:[],
+      subject:nav.subject||undefined,
+      witness:nav.witness||undefined,
+      member:nav.member||undefined,
       format:nav.format?[nav.format]:[],
       sort:effectiveSort,
       offset:nav.offset,
@@ -99,8 +136,33 @@ function Workspace({client,nav,navigate,rawBase}:{client:ReturnType<typeof creat
     }
     const result=await client.request('search',{text:nav.text,...filterArgs},signal);
     return {...result,completedQuery:nav.text};
-  },[client,nav.text,nav.congress,nav.committee,nav.kind,nav.hearing,nav.format,effectiveSort,nav.offset,nav.committee?committeeFacets.length:0]);
+  },[
+    client,
+    nav.text,
+    nav.congress,
+    nav.committee,
+    nav.kind,
+    nav.hearing,
+    nav.subject,
+    nav.witness,
+    nav.member,
+    nav.format,
+    effectiveSort,
+    nav.offset,
+    nav.committee?committeeFacets.length:0,
+  ]);
   const [detail,retryDetail]=useRequest(signal=>selection!==null||nav.key?client.request('entry',nav.key?{key:nav.key}:{index:selection},signal):Promise.resolve(null),[client,nav.key,selection]);
+  const [entityView]=useRequest(async signal=>{
+    const [meeting,subject,witness,member,committee]=await Promise.all([
+      nav.hearing?client.getMeeting(nav.hearing,signal).catch(()=>null):Promise.resolve(null),
+      nav.subject?client.getSubject(nav.subject,signal).catch(()=>null):Promise.resolve(null),
+      nav.witness?client.getWitness(nav.witness,signal).catch(()=>null):Promise.resolve(null),
+      nav.member?client.getMember(nav.member,signal).catch(()=>null):Promise.resolve(null),
+      nav.committee?client.getCommittee(nav.committee,{congress:nav.congress||undefined},signal).catch(()=>null):Promise.resolve(null),
+    ]);
+    return {meeting,subject,witness,member,committee};
+  },[client,nav.hearing,nav.subject,nav.witness,nav.member,nav.committee,nav.congress]);
+
   useEffect(()=>{if(detail.status==='ready'&&detail.value&&detail.value.entry.detail.link_key&&!nav.key){navigate({key:keyHex(detail.value.entry.detail.link_key)},true);setSelection(null);}},[detail]);
   const select=(index:number)=>{setSelection(index);navigate({key:''});setSavedError('');};
   const close=()=>{setSelection(null);navigate({key:''});};
@@ -114,7 +176,7 @@ function Workspace({client,nav,navigate,rawBase}:{client:ReturnType<typeof creat
   const congresses=allFacets
     .filter(item=>item.facet==='congress'&&Number(item.value)>=100)
     .sort((a,b)=>Number(b.value)-Number(a.value));
-  const committeeGroups=buildCommitteeGroups(committeeFacets);
+  const committeeGroups=buildCommitteeGroups(committeeFacets,committeesCatalog);
   const kinds=allFacets
     .filter(item=>item.facet==='document_kind')
     .sort((a,b)=>Number(b.count)-Number(a.count)||String(a.value).localeCompare(String(b.value)));
@@ -122,11 +184,16 @@ function Workspace({client,nav,navigate,rawBase}:{client:ReturnType<typeof creat
     .filter(item=>item.facet==='format')
     .sort((a,b)=>Number(b.count)-Number(a.count)||String(a.value).localeCompare(String(b.value)));
 
+  const activeEntities=entityView.status==='ready'?entityView.value:null;
+
   const activeFilters=[
     nav.congress&&{label:congressLabel(nav.congress)||`Congress ${nav.congress}`,clear:()=>filter({congress:''})},
-    nav.committee&&{label:committeeLabel(nav.committee),clear:()=>filter({committee:''})},
+    nav.committee&&{label:committeeLabel(nav.committee,committeesCatalog,nav.congress||undefined),clear:()=>filter({committee:''})},
     nav.kind&&{label:documentKindLabel(nav.kind),clear:()=>filter({kind:''})},
-    nav.hearing&&{label:`Hearing ${nav.hearing}`,clear:()=>filter({hearing:''})},
+    nav.hearing&&{label:activeEntities?.meeting?.title?`Hearing: ${activeEntities.meeting.title}`:`Hearing ${nav.hearing}`,clear:()=>filter({hearing:''})},
+    nav.subject&&{label:formatMeasure(nav.subject),clear:()=>filter({subject:''})},
+    nav.witness&&{label:activeEntities?.witness?.name?`Witness: ${activeEntities.witness.name}`:`Witness ${nav.witness}`,clear:()=>filter({witness:''})},
+    nav.member&&{label:activeEntities?.member?.name?`Member: ${activeEntities.member.name}`:`Member ${nav.member}`,clear:()=>filter({member:''})},
     nav.format&&{label:formatLabel(nav.format),clear:()=>filter({format:''})},
   ].filter(Boolean) as Array<{label:string;clear:()=>void}>;
   const base=siteBase();
@@ -155,12 +222,62 @@ function Workspace({client,nav,navigate,rawBase}:{client:ReturnType<typeof creat
     </div>}
     {!isDetail&&activeFilters.length>0&&<div className="archive-active-filters" aria-label="Active filters">
       {activeFilters.map((item,i)=><button key={i} type="button" className="archive-filter-pill" onClick={item.clear}>{item.label} <span aria-hidden="true">×</span></button>)}
-      <button type="button" className="explorer-text-button" onClick={()=>filter({text:'',congress:'',committee:'',kind:'',hearing:'',format:''})}>Clear filters</button>
+      <button type="button" className="explorer-text-button" onClick={()=>filter({text:'',congress:'',committee:'',kind:'',hearing:'',subject:'',witness:'',member:'',format:''})}>Clear filters</button>
       {explorerFilterHref&&<a className="archive-explorer-link" href={explorerFilterHref}>{nav.hearing?'Open hearing in Committee Explorer':'Open committee in Committee Explorer'}</a>}
     </div>}
     {info.status!=='ready'&&<RequestMessage state={info} retry={retryInfo} noun="the archive"/>}
     {savedError&&<p role="alert" className="explorer-alert">{savedError}</p>}
-    {isDetail?<div className="archive-detail-view"><button className="explorer-button archive-back-button" onClick={close}>← Back to documents</button>{detail.status==='ready'?detail.value&&<ArchiveDetail {...detail.value} rawBase={rawBase} onSelect={select} onHearing={hearing=>filter({hearing})} onCommittee={committee=>filter({committee})} onMeasure={measure=>filter({text:measure})} onOpenSaved={openSaved}/>:<RequestMessage state={detail} retry={retryDetail} noun="this document"/>}</div>:
-      rows.status==='ready'?<section aria-label="Document results" data-archive-query={rows.value.completedQuery}><div className="archive-results-bar"><p className="archive-total" data-archive-total>{integer(rows.value.total)} documents</p></div><ArchiveRows rows={rows.value.rows} onSelect={select}/><nav className="explorer-pagination" aria-label="Document pages"><button className="explorer-button" disabled={!nav.offset} onClick={()=>navigate({offset:Math.max(0,nav.offset-pageSize)})}>Previous</button><span>{rows.value.total?integer(nav.offset+1):0}–{integer(Math.min(nav.offset+rows.value.rows.length,rows.value.total))} of {integer(rows.value.total)}</span><button className="explorer-button" disabled={rows.value.next===null} onClick={()=>navigate({offset:rows.value.next})}>Next</button></nav></section>:<RequestMessage state={rows} retry={retryRows} noun="document results"/>}
+    {!isDetail&&activeEntities&&<>
+      {nav.hearing&&activeEntities.meeting&&<HearingDetail
+        meeting={activeEntities.meeting}
+        committeesCatalog={committeesCatalog}
+        onSelect={select}
+        onCommittee={committee=>filter({committee})}
+        onSubject={subject=>filter({subject})}
+        onWitness={witness=>filter({witness})}
+        onMember={member=>filter({member})}
+        onClose={()=>filter({hearing:''})}
+      />}
+      {nav.subject&&activeEntities.subject&&<SubjectDetail
+        subject={activeEntities.subject}
+        committeesCatalog={committeesCatalog}
+        onSelect={select}
+        onHearing={hearing=>filter({hearing})}
+        onCommittee={committee=>filter({committee})}
+        onMember={member=>filter({member})}
+        onSubject={subject=>filter({subject})}
+        onClose={()=>filter({subject:''})}
+      />}
+      {nav.witness&&activeEntities.witness&&<WitnessDetail
+        witness={activeEntities.witness}
+        committeesCatalog={committeesCatalog}
+        onSelect={select}
+        onHearing={hearing=>filter({hearing})}
+        onCommittee={committee=>filter({committee})}
+        onMember={member=>filter({member})}
+        onClose={()=>filter({witness:''})}
+      />}
+      {nav.member&&activeEntities.member&&<MemberDetail
+        member={activeEntities.member}
+        committeesCatalog={committeesCatalog}
+        onSelect={select}
+        onHearing={hearing=>filter({hearing})}
+        onCommittee={committee=>filter({committee})}
+        onSubject={subject=>filter({subject})}
+        onClose={()=>filter({member:''})}
+      />}
+      {nav.committee&&!nav.hearing&&!nav.subject&&!nav.witness&&!nav.member&&activeEntities.committee&&<CommitteeDetail
+        committee={activeEntities.committee}
+        committeesCatalog={committeesCatalog}
+        onSelect={select}
+        onCommittee={committee=>filter({committee})}
+        onHearing={hearing=>filter({hearing})}
+        onMember={member=>filter({member})}
+        onCongressChange={congress=>filter({congress})}
+        onClose={()=>filter({committee:''})}
+      />}
+    </>}
+    {isDetail?<div className="archive-detail-view"><button className="explorer-button archive-back-button" onClick={close}>← Back to documents</button>{detail.status==='ready'?detail.value&&<ArchiveDetail {...detail.value} committeesCatalog={committeesCatalog} rawBase={rawBase} onSelect={select} onHearing={hearing=>filter({hearing})} onMeasure={measure=>filter({subject:measure})} onSubject={subject=>filter({subject})} onCommittee={committee=>filter({committee})} onWitness={witness=>filter({witness})} onMember={member=>filter({member})} onOpenSaved={openSaved}/>:<RequestMessage state={detail} retry={retryDetail} noun="this document"/>}</div>:
+      rows.status==='ready'?<section aria-label="Document results" data-archive-query={rows.value.completedQuery}><div className="archive-results-bar"><p className="archive-total" data-archive-total>{integer(rows.value.total)} documents</p></div><ArchiveRows rows={rows.value.rows} committeesCatalog={committeesCatalog} onSelect={select}/><nav className="explorer-pagination" aria-label="Document pages"><button className="explorer-button" disabled={!nav.offset} onClick={()=>navigate({offset:Math.max(0,nav.offset-pageSize)})}>Previous</button><span>{rows.value.total?integer(nav.offset+1):0}–{integer(Math.min(nav.offset+rows.value.rows.length,rows.value.total))} of {integer(rows.value.total)}</span><button className="explorer-button" disabled={rows.value.next===null} onClick={()=>navigate({offset:rows.value.next})}>Next</button></nav></section>:<RequestMessage state={rows} retry={retryRows} noun="document results"/>}
   </div>;
 }

@@ -2504,8 +2504,9 @@ function Inspector({
     if (rec.kind === "meeting" && eventId) {
       return `${base}/archive/?hearing=${encodeURIComponent(eventId)}${congParam}`;
     }
-    if (rec.kind === "committee_term" && row.committee_code) {
-      return `${base}/archive/?committee=${encodeURIComponent(String(row.committee_code).toLowerCase())}${congParam}`;
+    const committeeCode = row.committee_code || row.system_code || row.committee_id;
+    if (rec.kind === "committee_term" && committeeCode) {
+      return `${base}/archive/?committee=${encodeURIComponent(String(committeeCode).toLowerCase())}${congParam}`;
     }
     if (rec.kind === "material" && row.type !== "recording") {
       const fileUrl = recordFiles(rec)[0]?.url;
@@ -2514,6 +2515,9 @@ function Inspector({
       }
     }
     if (rec.kind === "appearance") {
+      if (row.bioguide_id) {
+        return `${base}/archive/?member=${encodeURIComponent(String(row.bioguide_id))}${congParam}`;
+      }
       const title = recordTitle(rec);
       if (title) {
         return `${base}/archive/?q=${encodeURIComponent(title)}${congParam}`;

@@ -40,7 +40,8 @@ const meetingViews: ReadonlySet<View> = new Set(['meetings', 'coverage']);
 
 export function readNavigation(search: string, defaultCongress: number): Navigation {
   const params = new URLSearchParams(search);
-  const congress = params.get('congress') || String(defaultCongress);
+  const meetingParam = params.get('meeting') || '';
+  const congress = params.get('congress') || (meetingParam ? 'all' : String(defaultCongress));
   const requestedView = params.get('view') || '';
   const measure = params.get('measure') || '';
   const access = params.get('access') || '';
@@ -54,7 +55,7 @@ export function readNavigation(search: string, defaultCongress: number): Navigat
     view: isView(requestedView) ? requestedView : 'meetings',
     congress: congress === 'all' || /^\d+$/.test(congress) ? congress : String(defaultCongress),
     chamber: params.get('chamber') || '',
-    q: params.get('q') || '',
+    q: params.get('q') || meetingParam || '',
     from: params.get('from') || '',
     to: params.get('to') || '',
     type: params.get('type') || '',

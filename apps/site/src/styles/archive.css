@@ -374,6 +374,94 @@
   margin-bottom: var(--ctdc-space-3xs);
 }
 
+.archive-entity-card {
+  max-width: 100%;
+  margin: var(--ctdc-space-sm) 0 var(--ctdc-space-md);
+  padding: var(--ctdc-space-md);
+  background: var(--ctdc-surface);
+  border: 1px solid var(--explorer-border, #d5dbe2);
+  border-radius: var(--ctdc-radius-xs);
+  overflow-wrap: anywhere;
+}
+
+.archive-entity-header-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: var(--ctdc-space-sm);
+  flex-wrap: wrap;
+}
+
+.archive-entity-card h2 {
+  font-size: var(--ctdc-text-xl);
+  line-height: var(--ctdc-leading-tight);
+  color: var(--ctdc-primary);
+  margin: 0 0 var(--ctdc-space-2xs);
+  overflow-wrap: anywhere;
+}
+
+.archive-entity-meta {
+  font-size: var(--ctdc-text-sm);
+  margin: var(--ctdc-space-3xs) 0;
+  color: var(--ctdc-ink);
+}
+
+.archive-entity-section {
+  margin-top: var(--ctdc-space-sm);
+  padding-top: var(--ctdc-space-xs);
+  border-top: 1px solid var(--explorer-border, #d5dbe2);
+}
+
+.archive-entity-section-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: var(--ctdc-space-sm);
+  flex-wrap: wrap;
+}
+
+.archive-entity-section h3 {
+  font-size: var(--ctdc-text-base);
+  color: var(--ctdc-ink);
+  margin: 0 0 var(--ctdc-space-2xs);
+}
+
+.archive-entity-list,
+.archive-witness-list,
+.archive-roster-list {
+  padding-left: var(--ctdc-space-md);
+  margin: 0;
+  font-size: var(--ctdc-text-sm);
+}
+
+.archive-entity-list li,
+.archive-witness-list li,
+.archive-roster-list li {
+  margin: 0.35rem 0;
+  overflow-wrap: anywhere;
+}
+
+.archive-pill-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+  align-items: center;
+}
+
+.archive-pill-group {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  flex-wrap: wrap;
+}
+
+.archive-inline-select {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  font-size: var(--ctdc-text-xs);
+}
+
 .archive-workspace a:focus-visible,
 .archive-workspace button:focus-visible,
 .archive-workspace input:focus-visible,

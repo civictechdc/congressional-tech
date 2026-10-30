@@ -22,7 +22,11 @@ self.onmessage=async({data})=>{
     const reader=await awaitShared(session,controller.signal),request=new URL(url,'https://archive.invalid/');
     const args=data.payload??{};let result;
     switch(request.pathname){
-      case '/info':result={releaseId:reader.releaseId,count:reader.count,facets:reader.manifest.facet_counts};break;
+      case '/info':{
+        const committees=await reader.committees().catch(()=>[]);
+        result={releaseId:reader.releaseId,count:reader.count,facets:reader.manifest.facet_counts,committees};
+        break;
+      }
       case '/search':{
         result=await reader.search(args,controller.signal);
         // Only visible import-day rows need detail reads for the date absent from list.
@@ -30,17 +34,42 @@ self.onmessage=async({data})=>{
         if(!args.offset&&!args.text)void reader.meetings().catch(()=>{});
         break;
       }
+      case '/facets':result=await reader.facets(args,controller.signal);break;
       case '/lookup':result=await reader.lookupRows(args.url,args.query,controller.signal);await displayedDates(reader,result.rows,controller.signal);break;
-      case '/entry':{
+      case '/entry':
+      case '/openDocument':{
         const index=args.key?await reader.resolve(args.key):args.index;
         if(index===null)throw new Error('This document was not found in the archive.');
-        const [entry,meetings,versions]=await Promise.all([
-          reader.entry(index,controller.signal),
+        const [opened,allMeetings]=await Promise.all([
+          reader.openDocument(index,controller.signal),
           reader.meetings(),
-          reader.versions(index,controller.signal),
         ]);
-        result={entry,meetings,versions:await displayedDates(reader,versions,controller.signal)};break;
+        const entry={document:opened.document,detail:opened.detail,sources:opened.sources,recoveries:opened.recoveries};
+        const versions=await displayedDates(reader,opened.versions,controller.signal);
+        result={
+          ...opened,
+          entry,
+          meetings:allMeetings.length?allMeetings:opened.meetings,
+          meetingDetails:opened.meetings,
+          versions,
+        };
+        break;
       }
+      case '/meeting':{
+        const hasChamber=args.chamber!=null&&args.chamber!=='';
+        const eventId=args.eventId??args.event_id??args.key;
+        result=hasChamber
+          ?await reader.getMeeting(args.chamber,eventId,controller.signal)
+          :await reader.getMeeting(eventId,controller.signal);
+        break;
+      }
+      case '/committee':result=await reader.getCommittee(args.committeeKey??args.committee_key??args.key,args,controller.signal);break;
+      case '/witness':result=await reader.getWitness(args.witnessKey??args.witness_key??args.key,controller.signal);break;
+      case '/member':result=await reader.getMember(args.bioguideId??args.bioguide_id??args.key,controller.signal);break;
+      case '/subject':result=await reader.getSubject(args.subjectKey??args.subject_key??args.key,controller.signal);break;
+      case '/bill':result=await reader.getBill(args.subjectKey??args.subject_key??args.bill_id??args.key,controller.signal);break;
+      case '/nomination':result=await reader.getNomination(args.subjectKey??args.subject_key??args.nomination_id??args.key,controller.signal);break;
+      case '/entities':result=await reader.listEntities(args.kind,args,controller.signal);break;
       case '/saved':result=await reader.openSaved(args);break;
       default:throw new Error('Unknown archive request.');
     }

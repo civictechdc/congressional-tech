@@ -83,3 +83,10 @@ test('source links use public Congress event pages and preserve other source URL
   assert.equal(sourcePageUrl('https://docs.house.gov/meeting/meetingdocs.aspx'), 'https://docs.house.gov/meeting/meetingdocs.aspx');
   assert.equal(sourcePageUrl(null), undefined);
 });
+
+test('meeting deep-links from the archive search across congresses by event ID', () => {
+  const nav = readNavigation('?meeting=118001', 119);
+  assert.equal(nav.view, 'meetings');
+  assert.equal(nav.congress, 'all');
+  assert.equal(nav.q, '118001');
+});

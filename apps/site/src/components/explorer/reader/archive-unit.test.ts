@@ -4,10 +4,19 @@ import {dateLabels, lookupUrl, recoveryLabel, savedCopy, openArchive} from './ar
 import {
   cleanIdentityNote,
   committeeLabel,
+  committeeShortLabel,
+  congressGovBillUrl,
+  congressGovMemberUrl,
+  congressGovNominationUrl,
   effectiveFormat,
   expandCommitteeKeys,
+  formatDuration,
   formatMeasure,
+  formatSubject,
+  gpoBillUrl,
   presentDocument,
+  resolveCommitteeName,
+  spicyRegsUrl,
 } from '../archive/archive-metadata.ts';
 import {rangeFile} from './range-file.ts';
 import {readFile} from 'node:fs/promises';
@@ -144,4 +153,44 @@ test('document presentation resolves generic scrape titles, missing filenames, f
     expandCommitteeKeys('hsju00',[{value:'hsju00',count:10},{value:'hsju01',count:5},{value:'ssju00',count:8}]),
     ['hsju00','hsju01'],
   );
+});
+
+test('historical committee names, nominations, durations, and external URLs resolve accurately',()=>{
+  const catalog=[
+    {
+      committee_key:'hspw00',
+      system_code:'hspw00',
+      current_name:'House Committee on Transportation and Infrastructure',
+      names:[
+        {name:'House Committee on Public Works and Transportation',start:'1975-01-03',end:'1995-01-03'},
+        {name:'House Committee on Transportation and Infrastructure',start:'1995-01-03',end:null},
+      ],
+      subcommittees:['hspw12'],
+    },
+    {
+      committee_key:'hspw12',
+      system_code:'hspw12',
+      parent_key:'hspw00',
+      current_name:'Highways and Transit',
+      names:[
+        {name:'Surface Transportation',start:'1975-01-03',end:'1999-01-03'},
+        {name:'Highways and Transit',start:'1999-01-03',end:null},
+      ],
+    },
+  ];
+  assert.equal(resolveCommitteeName(catalog[0],'1988-04-10'),'House Committee on Public Works and Transportation');
+  assert.equal(resolveCommitteeName(catalog[0],'2024-05-01'),'House Committee on Transportation and Infrastructure');
+  assert.equal(committeeLabel('hspw12',catalog,'1990-01-01'),'House Committee on Public Works and Transportation — Surface Transportation');
+  assert.equal(committeeLabel('hspw12',catalog,'2024-05-01'),'House Committee on Transportation and Infrastructure — Highways and Transit');
+  assert.equal(committeeShortLabel('hspw12',catalog,'2024-05-01'),'House Committee on Transportation and Infrastructure');
+
+  assert.equal(formatMeasure('119-pn-730-2'),'PN730-2');
+  assert.equal(formatSubject('119-pn-730-2',{citation:'PN730-2'}),'PN730-2');
+  assert.equal(formatDuration(5420),'1:30:20');
+  assert.equal(formatDuration(125),'2:05');
+  assert.equal(congressGovBillUrl('118-hr-1234'),'https://www.congress.gov/bill/118th-congress/house-bill/1234');
+  assert.match(gpoBillUrl('118-hr-1234')??'',/govinfo\.gov.*1234/);
+  assert.equal(congressGovNominationUrl('119-pn-730-2'),'https://www.congress.gov/nomination/119th-congress/730-2');
+  assert.equal(congressGovMemberUrl('S000510','Adam Smith'),'https://www.congress.gov/member/adam-smith/S000510');
+  assert.equal(spicyRegsUrl('H.R. 1234'),'https://spicyregs.org/?q=H.R.%201234');
 });
