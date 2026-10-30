@@ -2,7 +2,7 @@
 id: cefr-3w18
 status: closed
 deps: []
-links: []
+links: [ct-adtz]
 created: 2026-10-27T14:03:56Z
 type: task
 priority: 2

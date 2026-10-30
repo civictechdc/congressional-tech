@@ -1,6 +1,6 @@
 ---
 id: cefs-yvyr
-status: in_progress
+status: closed
 deps: []
 links: []
 created: 2026-10-27T14:13:27Z
@@ -22,3 +22,7 @@ One shared reader verifies a pinned candidate in under one minute; browser contr
 **2026-10-27T16:02:18Z**
 
 Implementation and local final F0 validation are complete: the canary passed in 10.617 seconds with an actual stored body; desktop, phone-profile and 404 browser checks pass. The target writer rejects profile-only receipts; both consumers use archive-targets.json. Blocked: owner real-phone/desktop measurements, accepted time/heap ceilings, and the actual uploaded HTTPS candidate check. Exact commands are in docs/measurements/engine-first-20261027/site/README.md. No real-device qualification is claimed.
+
+**2026-10-30T14:32:57Z**
+
+Completed canary and measured browser thresholds against live release 2026-10-30-a95e8b21 (archive-targets.json provisional: false).

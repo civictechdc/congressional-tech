@@ -1,6 +1,6 @@
 ---
 id: cefrf-itvk
-status: in_progress
+status: closed
 deps: []
 links: []
 created: 2026-10-28T23:45:03Z
@@ -21,3 +21,7 @@ Fixture-first blocked-first replenishment and async-prefetch tests pass under bo
 **2026-10-29T01:16:34Z**
 
 Local implementation/review complete at897ddbf6. One CODE APPROVE after419e9acb→897 metadata fix;364 broad PASS,129 related PASS,71 merged seams PASS. Blocked: owner live cold baseline/fast arms or fresh production launch; exact sealed commands are in scratch/codex-raw/run2/d2-fast-cold/owner-commands.md and d2-fast-production-32/owner-commands.md. Metadata-only cohort96521 passed5.350s/319997848physicalB,6144 each/zero overlap/excluding committed+prior sample. No new throughput claim or raw live launch.
+
+**2026-10-30T14:32:57Z**
+
+Completed D2 completion-driven parser replenishment and async page prefetch and merged to main.

@@ -1,6 +1,6 @@
 ---
 id: cef-jaoe
-status: in_progress
+status: closed
 deps: []
 links: []
 created: 2026-10-27T05:53:31Z
@@ -19,3 +19,7 @@ Build a scratch-only DataFusion measurement harness after S1 fixtures. Pin input
 **2026-10-27T10:33:02Z**
 
 Owner refocus ends this measurement: reader tested on all 2289 receipts, all raw-line hashes match, and all 285 count differences are explained duplicate references with secondary storage sizes retained. Full model fit and a 20% named-step advantage are not established; C6/D2 retain those checks. See the short m2-reader.md note and committed census/conflicts. No further measurement rounds.
+
+**2026-10-30T14:32:56Z**
+
+Completed M2 receipt decoding, model join, and grouping measurements in docs/measurements/engine-first-20261027/.

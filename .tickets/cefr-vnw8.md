@@ -2,7 +2,7 @@
 id: cefr-vnw8
 status: closed
 deps: []
-links: []
+links: [ct-5kto]
 created: 2026-10-27T19:00:52Z
 type: task
 priority: 2

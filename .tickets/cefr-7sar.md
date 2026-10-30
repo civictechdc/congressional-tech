@@ -1,6 +1,6 @@
 ---
 id: cefr-7sar
-status: in_progress
+status: closed
 deps: []
 links: []
 created: 2026-10-27T17:09:26Z
@@ -48,3 +48,7 @@ Owner requested a small proof-profile repair after5830 failed at17,683,779,072ph
 **2026-10-29T01:45:22Z**
 
 Proof-profile fix009d6a60 approved by ONE focused CODE review after sole standard-cap concern closed fixture-first678eccfe.46 focused PASS67.360s; mixed actual200receipt sample selects assembly.runtime20native/24physical; standard10/14 retains16physical, remote/nonassembly20 and native>20 refuse. New cxb_d1_corrected_v2.py uses fresh proof-v2 work/monitor/status/markers and full requires new proof-v2 acceptance.33pins match; failed5830 evidence/control/source archived and preserved. All16 active D2fast pins unchanged. Lead-only command in proof-v2-owner-command.md; no proof launch, memory admission must be resampled.
+
+**2026-10-30T14:32:57Z**
+
+Completed D1 full captures rebuild on Basin and merged to main (including e31aeb42).

@@ -1,6 +1,6 @@
 ---
 id: cefr-vb8m
-status: in_progress
+status: closed
 deps: []
 links: []
 created: 2026-10-28T21:27:26Z
@@ -34,3 +34,7 @@ Current52120 downstream controls prepared separately from running55D1pins. Compa
 **2026-10-29T03:19:14Z**
 
 ONE downstream CODE APPROVE after confirmed fresh-unreadable authority concern fixed. Final83 continuationpins independently match; active55D1pins unchanged. 101 distinct focusedcases resolvedgreen under4GiB physical (72initial+soleappendcapacityrerun1+provenance28); actualauthoritymetadata valid+8refusals, notpytest. Lead031255parallelD3compute approval implemented withnull/pendingcomparison andmandatorymodel/releasegate. No corpus jobs/networkoperations byraw. Exactfull/comparator/freshsnapshot/D3commands sealed; remaininglaunches lead-only.
+
+**2026-10-30T14:32:57Z**
+
+Completed D1 finite line-kind registry and reference/saved-record classification and merged to main (including e31aeb42).

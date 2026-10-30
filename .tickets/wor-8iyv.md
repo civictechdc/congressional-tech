@@ -1,6 +1,6 @@
 ---
 id: wor-8iyv
-status: in_progress
+status: closed
 deps: []
 links: []
 created: 2026-10-29T12:02:52Z
@@ -26,3 +26,7 @@ Attribution completed on exact model6 pins: inline distinct body-URL build9.73B 
 **2026-10-29T12:28:32Z**
 
 ONE review FINAL APPROVE product87ab39adddafa43a46e3f36f12bb61fbffa8f9d8, no blocker/concern; certificate cx_body_urls_review/review.md SHA25654a09455175ec7c786c95ec076931acd90213a87392ecd68a807af71da3783ce. Final official6+63PASS, native194.8M->105.9M charged build gauge on fixed196608 keys, no inline aggregate and exact source_url-only persisted lookup. Native149-step last-reader graph and unchanged four leaves/combined0bef/filenamee8 pass. Clarified the stale serialization wording in place per revised lead20261029T121132Z: three narrow capture joins remain; materialize/compact only the measured dominant DISTINCT first. No product change after87ab39ad. Ticket stays open for lead modelv7 same-pin/same-limit corpus acceptance after normal merge; local measured fixture and review evidence do not claim full-corpus fit.
+
+**2026-10-30T14:32:57Z**
+
+Completed body URL compaction and recording intermediate relation retirement (16ce6cc0) in main.

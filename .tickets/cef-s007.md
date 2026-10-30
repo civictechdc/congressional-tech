@@ -1,6 +1,6 @@
 ---
 id: cef-s007
-status: in_progress
+status: closed
 deps: []
 links: []
 created: 2026-10-27T04:36:19Z
@@ -29,3 +29,7 @@ Engine binding committed: bb02e08 shared writer/layout admission and guarded app
 **2026-10-27T08:19:53Z**
 
 Release-profile contract97b86f6 and bindingdf52da3 pass full locked offline engine suite385lib/348integration/15process/2layout/11probe;17ignored. Independent source approval61c924d4. Owner recipef576fc23 requires --release. No Basin calls or verdict.
+
+**2026-10-30T14:32:56Z**
+
+Completed M1 Basin guarded append and maintenance measurements in docs/measurements/engine-first-20261027/m1.md.

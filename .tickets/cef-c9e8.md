@@ -1,6 +1,6 @@
 ---
 id: cef-c9e8
-status: in_progress
+status: closed
 deps: []
 links: []
 created: 2026-10-27T04:54:00Z
@@ -45,3 +45,7 @@ All twelve retained House XML entities pass current sniff/XML leaves at 519ee332
 **2026-10-28T08:18:36Z**
 
 S1 fixture ZIP bytes now use fixed DOS timestamps and explicit original compression types, preserving every assertion/data/compression variant and test count. Existing55 archive/sniff cases PASS0.34s; two separate project-runner collections return identical55 literal node IDs (run4/zip-literal-ids.json). This repairs six wall-clock-dependent CI parameter identities without custom IDs or production changes. S1 canonical/raw/semantic coverage remains open.
+
+**2026-10-30T14:32:56Z**
+
+Completed S1/E1 executable fixtures and registry seeds in main.

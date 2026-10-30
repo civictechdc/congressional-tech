@@ -1,6 +1,6 @@
 ---
 id: cefr-mn96
-status: in_progress
+status: closed
 deps: []
 links: []
 created: 2026-10-27T14:08:33Z
@@ -37,3 +37,7 @@ Owner mixed-join global rule follow-up: use all null-safe repair identity hash k
 **2026-10-28T12:09:45Z**
 
 Mixed-join correction contracta52eb5b7 reproduced1 physical-plan failure/1 NULL-body preservation pass. Final repair/locator/evidence group32PASS11.65s on sharedb2. All four identities are null-safe hash keys; matching-side body-key filters preserve NULL nonmatching semantics, including unmatched=1/ambiguous=0 for NULL candidates. No live repair; combined CODE review pending.
+
+**2026-10-30T14:32:57Z**
+
+Completed B12 old-index repair staging and daily digest verification.

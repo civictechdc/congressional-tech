@@ -6,7 +6,9 @@ links: []
 created: 2026-10-27T18:47:22Z
 type: task
 priority: 2
-assignee: site
+assignee: mikewolfd
+parent: ct-77zb
+tags: [phase2, s2, measurement, track4]
 ---
 # S2 stratified rubric labels and edition widening count
 
@@ -26,3 +28,7 @@ Panel and native-count helper committed through b7b6d5e7:291 file contexts/287 v
 **2026-10-27T20:11:05Z**
 
 Engine195746 accepted fixture/harness handoff and merged5eb98218. Canonical E2 descriptor remains root producer dependency, not an owner decision; actual count ticket stays incomplete until measurement. Unresolved rubric observations/queryalias/mirror limits stay explicit without inventing release gates. Final c1713681 full11672passed and exact36baseline unchanged;91merged focused pass. Immutable287body evidence received shared/s2-site-c1713681.
+
+**2026-10-30T14:32:31Z**
+
+Linked under master epic ct-77zb as Item 19 (T4.5 / S2 edition-count measurement, docs/plans/simplification-plan-20261024.md §5.3): measure whether any real body sharing a rendition group with an edition_bodies member has equal text on the canonical E2 relations, so the owner can decide whether to widen fingerprint candidates.

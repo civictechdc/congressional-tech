@@ -2,7 +2,7 @@
 id: cefr-9zd4
 status: closed
 deps: []
-links: []
+links: [ct-fcwp]
 created: 2026-10-27T14:08:33Z
 type: task
 priority: 2

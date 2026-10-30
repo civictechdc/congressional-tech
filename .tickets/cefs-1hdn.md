@@ -1,6 +1,6 @@
 ---
 id: cefs-1hdn
-status: in_progress
+status: closed
 deps: []
 links: []
 created: 2026-10-28T09:56:50Z
@@ -23,3 +23,7 @@ Native job/registry output with real source and document IDs; counts listed plus
 **2026-10-28T10:00:54Z**
 
 Owner-gated before conversion effects: footer-only inspection of pinned356-column documents and353-column document-filenames finds no bytes/size/length field, including source_occurrences/hearing_resources. DM8.1 detail.saved_bytes is required; maintained archive_format._execute missing_saved_sizes rejects a saved body with null bytes. Sent lead/engine exact missing field and requested approved pinned size metadata or explicit seed semantics/spec decision; no fabricated0/compressed-as-decoded size or weakened assertion. Evidence codex-site/seed/schema-admission.json. PLAN switch now states authorized seed origin/display-only/old capture continuation; all normal phase1 exit gates remain.
+
+**2026-10-30T14:32:57Z**
+
+Completed v5 seed release (2026-10-28-40129047), now superseded by full Phase-2 release 2026-10-30-a95e8b21.

@@ -1,6 +1,6 @@
 ---
 id: cefr-t44h
-status: in_progress
+status: closed
 deps: []
 links: []
 created: 2026-10-29T03:34:29Z
@@ -26,3 +26,7 @@ Fixture e5e01ee9 two multiplicity cases RED with EXCEPT; implementation e939c939
 **2026-10-29T03:42:23Z**
 
 ONECODE APPROVE/no confirmed concerns. Detached same-pattern approved resume launched77663; compare-only01/02/03 all equivalent on original immutablepins:12759/324/808680rows,all0/0excess;03 13.718s sampled1577454760B physical. Chain advanced04 freshbuild. Same profiles/admission, stop failure, START/END mail. Full remains lead-only after6; D2 unchanged. Original failure proof reports/statuses/pins preserved.
+
+**2026-10-30T14:32:57Z**
+
+Completed D1 spillable multiset proof and preserved-generation resume and merged to main.

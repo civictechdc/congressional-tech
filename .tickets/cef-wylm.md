@@ -1,6 +1,6 @@
 ---
 id: cef-wylm
-status: in_progress
+status: closed
 deps: []
 links: []
 created: 2026-10-28T01:07:54Z
@@ -22,3 +22,7 @@ Ownership transferred to raw by owner decision 20261028T051000Z. Current clean p
 **2026-10-28T06:06:45Z**
 
 Raw producer commits5cf1cdfd/3f0bed14 add metadata-first daily admission and one-work-list/one-worker durable backfill batches. CODE review requested changes: missing production native head lookup remains core-owned blocker; stale unreadable resume fixed contract-first d9a29036/e6cccfcf (27 focused pass excluding the known native current-reading export case). Seven native type-failure identities remain active; no real complete backfill or live execution claim. Source wc-l510 to524 for inventory refresh, replacing stale static decisions with one metadata discovery per invocation.
+
+**2026-10-30T14:32:56Z**
+
+Completed D2 read-once body readings producer and full Basin readings backfill.

@@ -2,7 +2,7 @@
 id: cef-jh7i
 status: open
 deps: []
-links: []
+links: [ct-5kto, ct-77zb, cef-96wc, ct-t906]
 created: 2026-10-28T14:21:37Z
 type: task
 priority: 2
@@ -18,3 +18,7 @@ Lead141825 follow-up, not a local switch gate. At F5 determine whether ExplorerD
 **2026-10-28T14:45:16Z**
 
 Release CI-health triage also found scripts/qualify/document_review_catalog.py native-config constructor ignores its optional limits value. Review this retained wrapper with ExplorerDocSpecWorkspace, WeeklyRetentionTables and sync-weekly at F5; use the maintained NativeDatasets limits argument if retained. This followup is not the local switch gate (lead141825). News CLI forwarding is separately complete0e9af87c.
+
+**2026-10-30T14:32:32Z**
+
+Synced with ct-5kto (F5 18-group post-switch deletions under master epic ct-77zb).
