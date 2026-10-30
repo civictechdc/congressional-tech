@@ -1,0 +1,38 @@
+[
+  {
+    "id": "meeting-house-xml",
+    "kind": "meeting",
+    "source": "house_xml",
+    "priority": 1
+  },
+  {
+    "id": "meeting-congress-gov",
+    "kind": "meeting",
+    "source": "congress_gov",
+    "priority": 2
+  },
+  {
+    "id": "appearance-house-xml",
+    "kind": "appearance",
+    "source": "house_xml",
+    "priority": 1
+  },
+  {
+    "id": "appearance-congress-gov",
+    "kind": "appearance",
+    "source": "congress_gov",
+    "priority": 2
+  },
+  {
+    "id": "appearance-mods",
+    "kind": "appearance",
+    "source": "mods",
+    "priority": 3
+  },
+  {
+    "id": "appearance-senate-page",
+    "kind": "appearance",
+    "source": "senate_page",
+    "priority": 4
+  }
+]

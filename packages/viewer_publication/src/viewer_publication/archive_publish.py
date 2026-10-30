@@ -23,6 +23,7 @@ from viewer_publication.receipt_pins import (PREFIX,receipt_list,read_receipt_li
 
 POINTER='viewer-publications/manifest.json'
 STATUS='viewer-publications/status.json'
+SPICY_PINS='viewer-publications/pins/spicy-generations.json'
 IMMUTABLE='public,max-age=31536000,immutable'
 # Control objects are small metadata, never release assets. Bound SDK readback.
 CONTROL_BYTES=32<<20
@@ -58,11 +59,51 @@ def _read(client,bucket,key):
         body.close()
 
 
+def _valid_entity_digests(entity_digests):
+    if not isinstance(entity_digests,dict):
+        raise ValueError('Reference entity digests must be a mapping or empty in phase one')
+    for key,value in entity_digests.items():
+        if not isinstance(key,str) or not key.strip() or not isinstance(value,str) or DIGEST.fullmatch(value) is None:
+            raise ValueError('Reference entity digests must be 64-char hex or empty in phase one')
+    return {key:entity_digests[key] for key in sorted(entity_digests)}
+
+
+def write_spicy_generations(client,*,bucket,generations):
+    """Write the pinned union of (family, digest) pairs for spicy-regs retention."""
+    require_publication_client(client)
+    pairs=sorted({(item['family'],_sha(item['digest'])) if isinstance(item,dict) else (item[0],_sha(item[1])) for item in generations})
+    payload=dict(version=1,generations=[dict(family=family,digest=digest) for family,digest in pairs])
+    raw=_encoded(payload)
+    client.put_object(Bucket=bucket,Key=SPICY_PINS,Body=raw,ContentLength=len(raw),
+        ContentType='application/json',CacheControl='no-store')
+    return payload
+
+
+def _collect_spicy_generations(client,store,bucket,*,live,previous,candidate_digests):
+    pairs={(family,digest) for family,digest in candidate_digests.items()}
+    try:
+        existing_raw,_=_read(client,bucket,SPICY_PINS)
+        existing=json.loads(existing_raw)
+        for item in existing.get('generations',[]):
+            if isinstance(item,dict) and isinstance(item.get('family'),str) and DIGEST.fullmatch(str(item.get('digest',''))):
+                pairs.add((item['family'],item['digest']))
+    except Exception as error:
+        if _status_code(error)!=404:raise
+    for release_id in [r for r in (live,previous) if r is not None]:
+        for key in store.keys(PREFIX+release_id+'/inputs/'):
+            if key.endswith('.json') and '/inputs/receipts/' not in key:
+                record=json.loads(store.get(key))
+                for family,digest in (record.get('entity_digests') or {}).items():
+                    if isinstance(family,str) and isinstance(digest,str) and DIGEST.fullmatch(digest):
+                        pairs.add((family,digest))
+    return sorted(pairs)
+
+
 def input_digest(*,receipt_keys,provenance,profile,entity_digests):
     """Hash semantic inputs only; snapshots and run fields never enter this API."""
     if not isinstance(profile,dict) or not profile:
         raise ValueError('Input identity requires the semantic model profile')
-    if entity_digests!={}:raise ValueError('Reference entity digests must be empty in phase one')
+    entities=_valid_entity_digests(entity_digests)
     keys=list(receipt_keys)
     receipt_list(keys)
     keys=sorted(set(keys))
@@ -75,7 +116,7 @@ def input_digest(*,receipt_keys,provenance,profile,entity_digests):
             raise ValueError('Input identity requires provenance keys and ETags')
         if key in pinned and pinned[key]!=etag:raise ValueError('Conflicting pinned provenance ETags')
         pinned[key]=etag
-    identity=[keys,[[key,pinned[key]] for key in sorted(pinned)],{},profile]
+    identity=[keys,[[key,pinned[key]] for key in sorted(pinned)],entities,profile]
     return sha256(_encoded(identity)).hexdigest()
 
 
@@ -377,6 +418,10 @@ def publish_candidate(*,client,engine,bucket,work,release,manifest_pin,result_pi
             bytes=sum(item['size'] for item in manifest['files']))
         if release_id==live:
             write_input_receipts(store,release_id,digest,input_record,receipt_keys)
+            if input_record['entity_digests']:
+                previous=pointer.get('previous_release_id') if pointer else None
+                pairs=_collect_spicy_generations(client,store,bucket,live=live,previous=previous,candidate_digests=input_record['entity_digests'])
+                write_spicy_generations(client,bucket=bucket,generations=pairs)
             status['status']='release_unchanged'
             return dict(status)
         contract_receipt=contract(release_id=release_id,release=Path(release),manifest=manifest)
@@ -389,6 +434,10 @@ def publish_candidate(*,client,engine,bucket,work,release,manifest_pin,result_pi
                     content_type='application/vnd.apache.parquet' if item['name'].endswith('.parquet') else 'application/json')
             store.upload_file(prefix+'manifest.json',manifest_pin['path'],
                 dict(sha256=sha256(raw).hexdigest(),md5=md5(raw).hexdigest(),size=len(raw)),content_type='application/json')
+            if input_record['entity_digests']:
+                previous=pointer.get('previous_release_id') if pointer else None
+                pairs=_collect_spicy_generations(client,store,bucket,live=live,previous=previous,candidate_digests=input_record['entity_digests'])
+                write_spicy_generations(client,bucket=bucket,generations=pairs)
             status['durations']['upload']=perf_counter()-begin
             return canary(release_id=release_id,public_origin=public_origin.rstrip('/'),manifest=manifest)
         begin=perf_counter()
