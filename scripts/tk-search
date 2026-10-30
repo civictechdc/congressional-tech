@@ -1,0 +1,3 @@
+#!/bin/sh
+# Search local tk tickets with the pinned MiniLM CPU encoder and LanceDB.
+exec uv run --python 3.13 --script "$(dirname "$0")/ticket-search/ticket_search.py" "$@"

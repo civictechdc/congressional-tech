@@ -14,6 +14,7 @@ Run commands with the locked environment (`uv sync --locked`, then `.venv/bin/py
 | If you want to… | Go to |
 | --- | --- |
 | Check the machine and run the enrolled test lanes | [`dev.py`](#workspace) |
+| Search local tk tickets by meaning, keywords or ID | [`ticket-search/`](ticket-search/README.md) |
 | See whether a viewer publish can be skipped, or publish the viewer | [`publication/`](publication/README.md) |
 | Add recovered committee documents to the archive and then to the viewer | [`corpus_recovery/`](corpus_recovery/README.md) |
 | Time a rebuild or measure memory on a local fixture | [`measure/`](measure/README.md) |
