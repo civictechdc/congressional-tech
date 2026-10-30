@@ -1,6 +1,6 @@
 ---
 id: ct-gi01
-status: open
+status: closed
 deps: []
 links: [ct-8kl2, ct-mi03, ct-czsd, ct-2ukk, ct-oc2g, ct-xu1o, ct-8ax6, ct-dzyf, ct-13cn, ct-dmca, ct-gziq, ct-n6lj, ct-sb0s, ct-te1p, ct-aia9, ct-2yl5, ct-bwac, ct-a3le, ct-0odd, ct-ec91, ct-3ttc, ct-84xa, ct-h23e, ct-f7p8, ct-98sm, ct-r6xw, ct-jnw5, ct-4g55, ct-xx7q, ct-s9p2]
 created: 2026-10-21T20:53:31Z
@@ -40,3 +40,7 @@ While news_lake and raw/catalog use docspec-rs, congress_api/retention still wri
 **2026-10-24T18:47:54Z**
 
 Moved under WS7 (ct-7uit). Engine-first: build the Committee Explorer tables with the engine's export, and delete the temporary docspec re-export that is thrown away (export.py:957-984). Folds in the explorer issues from ct-jnw5 (first witness only, saved_copy_sha256 at 0%, lost page indexes), ct-4g55 (export() grew to 687 lines), ct-xx7q (citations re-pointed to records lacking the quoted value) and ct-s9p2 (key source_record ids on content, not the whole-file input_id, so dedup isn't needed forever).
+
+**2026-10-30T17:33:44Z**
+
+Completed Phase 2 F3 in 909b9c72: added apps/committee_youtube/src/committee_explorer/lake_inputs.py and wired --meeting-records, --appearance-records, and --spicy-regs into ExportOptions, export(), reuse.py:request_key(), and CLI main() in apps/committee_youtube/src/committee_explorer/export.py so Committee Explorer reads meeting_records and appearance_records from the lake and committees/members/rosters from spicy-regs (simplification-plan-20261024.md §6.6 item 3, phase-2-annex-20261028.md §4.1). Verified with uv run pytest -q packages/congress_api/tests/test_explorer_export.py apps/committee_youtube/tests/ (98 passed).

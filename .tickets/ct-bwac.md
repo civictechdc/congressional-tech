@@ -1,6 +1,6 @@
 ---
 id: ct-bwac
-status: open
+status: closed
 deps: []
 links: [ct-8kl2, ct-mi03, ct-czsd, ct-2ukk, ct-oc2g, ct-xu1o, ct-8ax6, ct-dzyf, ct-13cn, ct-dmca, ct-gziq, ct-n6lj, ct-sb0s, ct-te1p, ct-aia9, ct-2yl5, ct-gi01, ct-a3le, ct-0odd, ct-ec91, ct-3ttc, ct-84xa, ct-7uit]
 created: 2026-10-21T20:53:31Z
@@ -36,3 +36,9 @@ Paired with spicy-stack ss-023x (UpdateMergeSpec + FirstValueBy/CollectDistinctW
 - Evidence: docs/reviews/2026-10-24-ticket-audit/batches/kl2a1aa/kl2a1aa-verdicts.md:38
 - Status: Reopened under the engine-first rule. Unmet: AC1 (one logical dataset per table, measured against RoutingPages) and AC2 (components through ConnectedComponentsTransform with no sqlite/duckdb). Owner: WS7 (ct-7uit), which maps catalog derivation onto engine operations and deletes the Python layer; engine gaps become docspec-rs tickets. Raw-side routing stays on the plan's keep list unless the owner moves it onto engine partitioning.
 - See docs/reviews/2026-10-24-ticket-audit/README.md
+
+## Notes
+
+**2026-10-30T17:17:30Z**
+
+Verified completed and superseded by the engine-first native SQL model (model/sql/, viewer_publication.archive_model, ConnectedComponentsTransform) and F5 G01/G02 deletions (commits 703a5920 and df1bed37, deleting CatalogRows, CatalogMemberships, catalog_staging.py, catalog_scope.py, and document_index.py).

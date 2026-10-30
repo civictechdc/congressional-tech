@@ -1,6 +1,6 @@
 ---
 id: ct-7uit
-status: open
+status: closed
 deps: [ct-q2ht, ct-qqk2, ct-70kc, ct-w5fm]
 links: [ct-13cn, ct-gziq, ct-bwac, ct-nc7l, ct-sb0s, ct-czsd, ct-2ukk, ct-si9g, ct-v5kb, ct-upte, ct-7e7q, ct-rcs8, ct-5kb2, ct-9vtu, ct-y32m, ct-l5q1, ct-gd8v, ct-dat9, ct-qdkd, ct-13g5]
 created: 2026-10-24T18:15:54Z
@@ -42,3 +42,7 @@ File each missing engine primitive under the docspec-rs epic ss-oxg1 (spicy-stac
 **2026-10-24T18:47:53Z**
 
 Efficiency pass: 'partition_routing.py and the raw-side routing pages are raw provenance' is withdrawn. They index rebuildable tables and move onto the engine in ct-w5fm. Depends on ct-w5fm and on engine tickets ss-k1f0, ss-1uh5, ss-n68e and ss-eyhn landing first.
+
+**2026-10-30T17:17:30Z**
+
+Verified completed and superseded by the engine-first native SQL model (model/sql/, viewer_publication.archive_model, congress_api.lake.tables/daily) and F5 G01/G02 deletions (commits 703a5920 and df1bed37, deleting -36,423 net lines across the Python incremental catalog and Python rebuild/oracle layer).

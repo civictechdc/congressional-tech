@@ -1,6 +1,6 @@
 ---
 id: ct-6rnk
-status: open
+status: closed
 deps: []
 links: [ct-3ttc, ct-98sm, ct-tw3r]
 created: 2026-10-22T11:11:43Z
@@ -40,3 +40,7 @@ Verified resolve_docspec_binary env/path hierarchy in docspec_views.py and weekl
 - Evidence: docs/reviews/2026-10-24-ticket-audit/batches/kl2a1aa/kl2a1aa-verdicts.md:33
 - Status: Reopened. Unmet: the resolver still falls back to unpinned `target/debug` builds and PATH; owner WS3 step 6 (ct-tw3r). Revisit under engine-first rule: AC2 (published `stage/*.parquet` equal the ExportPin outputs) was reverted by `f2fea711`, so the explorer publishes Python-written tables again. No plan workstream owns the explorer; linked to the epic ct-98sm.
 - See docs/reviews/2026-10-24-ticket-audit/README.md
+
+**2026-10-30T17:33:44Z**
+
+Completed in 909b9c72: updated resolve_docspec_binary in packages/docspec_client/src/docspec_client/binary.py to check DOCSPEC_BINARY, DOCSPEC_BIN, QUALIFIED_DOCSPEC_RUNTIME, and DOCSPEC_JOB_CONFIG and removed unpinned target/debug fallback paths; updated sync_export() and export_browser_table() in apps/committee_youtube/src/committee_explorer/docspec_views.py to copy ExportPin Parquet outputs back to stage/*.parquet (replace_source_files=True) and record matching sha256/byte_size in state/export-pins.json. Verified with uv run pytest -q packages/congress_api/tests/test_explorer_export.py (test_docspec_views_sync_export_replaces_stage_files_and_unifies_pins passed).
