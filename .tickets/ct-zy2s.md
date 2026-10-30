@@ -1,6 +1,6 @@
 ---
 id: ct-zy2s
-status: open
+status: closed
 deps: []
 links: []
 created: 2026-10-30T14:32:30Z

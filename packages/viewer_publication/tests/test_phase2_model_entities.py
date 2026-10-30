@@ -560,15 +560,64 @@ def test_phase2_entities_meetings_witnesses_recordings_and_spicy_projections(tmp
     }
     assert expected_parquet <= set(files_by_name)
 
-    # Check producer & generations metadata on spicy-regs files
+    # Check producer, generations, coverage, and gaps metadata on Phase-2 files
     assert files_by_name['committees.parquet']['producer'] == 'spicy-regs'
     assert files_by_name['committees.parquet']['generations'] == {'committee-rosters': '1' * 64}
+    assert files_by_name['committees.parquet']['coverage']['date_start'] == '2021-01-03'
+    assert files_by_name['committees.parquet']['coverage']['date_end'] == '2023-01-03'
+    assert files_by_name['members.parquet']['coverage']['date_start'] == '2021-01-03'
+    assert files_by_name['members.parquet']['coverage']['date_end'] == '2025-01-03'
+    assert files_by_name['rosters.parquet']['coverage']['congress_start'] == 118
+    assert files_by_name['rosters.parquet']['coverage']['congress_end'] == 118
     assert files_by_name['rosters.parquet']['coverage']['gaps'] == ['Current-Congress seats only; spicy-regs keeps no roster history']
     assert files_by_name['bills.parquet']['generations'] == {'bill-family': '3' * 64, 'roll-call-votes': '5' * 64}
     assert files_by_name['bills.parquet']['coverage']['gaps'] == ['Amendments cover the 119th Congress only until spicy-regs backfills']
     assert files_by_name['nominations.parquet']['generations'] == {'nominations': '4' * 64, 'roll-call-votes': '5' * 64}
+    assert files_by_name['nominations.parquet']['coverage']['gaps'] == ['Nominations cover the 119th Congress only until spicy-regs backfills']
     assert files_by_name['meetings.parquet']['producer'] == 'archive'
+    assert files_by_name['meetings.parquet']['coverage']['congress_start'] == 118
+    assert files_by_name['meetings.parquet']['coverage']['congress_end'] == 118
+    assert files_by_name['meetings.parquet']['coverage']['date_start'] == '2023-05-10'
+    assert files_by_name['meetings.parquet']['coverage']['date_end'] == '2023-05-10'
+    assert files_by_name['witnesses.parquet']['coverage']['congress_start'] == 118
+    assert files_by_name['witnesses.parquet']['coverage']['congress_end'] == 118
+    assert files_by_name['witnesses.parquet']['coverage']['date_start'] == '2023-05-10'
+    assert files_by_name['witnesses.parquet']['coverage']['date_end'] == '2023-05-10'
     assert 'generations' not in files_by_name['meetings.parquet']
+
+    # Check lake_versions pins and job settings for sort order, Invariant 15, and Annex §2 diagnostics
+    profile_doc = json.loads((tmp_path / 'model/profile.json').read_text())
+    assert {'captures', 'readings', 'filename_readings', 'meeting_records', 'appearance_records'} <= set(
+        profile_doc['profile']['lake_versions']
+    )
+    job_doc = json.loads((tmp_path / 'model/job.json').read_text())
+    outputs_by_name = {o['name']: o for o in job_doc['outputs']}
+    assert [f['field'] for f in outputs_by_name['witnesses.parquet']['settings']['order_by']] == [
+        'occasion', 'panel_order', 'display_order', 'witness_key',
+    ]
+    assert [f['field'] for f in outputs_by_name['rosters.parquet']['settings']['order_by']] == [
+        'system_code', 'rank', 'bioguide_id',
+    ]
+    assert [f['field'] for f in outputs_by_name['url_variants.parquet']['settings']['order_by']] == [
+        'variant_url', 'canonical_url',
+    ]
+    result_doc = json.loads((tmp_path / 'model/result.json').read_text())
+    queries_by_name = {q['name']: q['data'] for q in result_doc['queries']}
+    inv = queries_by_name['model_invariants'][0]
+    for key in (
+        'multi_chamber_events',
+        'missing_meeting_keys',
+        'invalid_transcript_rows',
+        'invalid_url_rows',
+        'single_doc_version_keys',
+        'missing_witness_keys',
+        'missing_committee_keys',
+    ):
+        assert inv[key] == 0
+    ent_comp = queries_by_name['entity_profile_completeness'][0]
+    assert all(v == 0 for v in ent_comp.values())
+    assert len(queries_by_name['senate_cards_without_links']) == 1
+    assert queries_by_name['senate_cards_without_links'][0]['name_key'] == 'doe_john'
 
     # 1. Verify meetings.parquet
     meetings = pq.read_table(release_dir / 'meetings.parquet').to_pylist()
@@ -735,3 +784,130 @@ def test_spicy_generations_pinned_by_publish_and_maintenance():
         'version': 1,
         'generations': expected_generations,
     }
+
+
+def test_phase2_invariant15_diagnostics_and_entity_completeness_guards(tmp_path):
+    from viewer_publication.archive_model import build_release
+
+    engine = NativeDatasets.from_config(os.environ['DOCSPEC_JOB_CONFIG'])
+    staged = _stage_raw_fixture(tmp_path, engine, [
+        dict(
+            url='https://docs.house.gov/meetings/AG/AG00/20230510/115538/HHRG-118-AG00-Wstate-SmithJ-20230510.pdf',
+            data=b'%PDF-1.7\nwitness statement bytes\n%%EOF\n',
+            format='pdf',
+            compress=False,
+            family='documents',
+            retrieved_at='2023-05-20T12:00:00Z',
+        ),
+    ])
+
+    # 1. Verify non-fatal appearance_name_key_variants report detects title/initial variants within one occasion
+    valid_meetings = [
+        dict(
+            record_sha='11' * 32,
+            source='house_xml',
+            meetings=[dict(
+                event_id='115538',
+                chamber='house',
+                congress=118,
+                session=1,
+                updated='2023-05-10T14:00:00Z',
+                title='House Hearing',
+                meeting_date='2023-05-10',
+                meeting_type='Hearing',
+                status='Published',
+                sittings=[],
+                committees=[],
+                subject_keys=[],
+                transcript_jackets=[],
+                videos=[],
+            )],
+        ),
+    ]
+    variant_appearances = [
+        dict(
+            record_sha='aa' * 32,
+            source='house_xml',
+            appearances=[
+                dict(
+                    event_id='115538',
+                    name_key='dr jane a smith',
+                    name='Dr. Jane A. Smith',
+                    panel_order=1,
+                    display_order=1,
+                    document_urls=['https://docs.house.gov/meetings/AG/AG00/20230510/115538/HHRG-118-AG00-Wstate-SmithJ-20230510.pdf'],
+                ),
+                dict(
+                    event_id='115538',
+                    name_key='jane smith',
+                    name='Jane Smith',
+                    panel_order=1,
+                    display_order=2,
+                    document_urls=[],
+                ),
+            ],
+        ),
+    ]
+    build_release(
+        **staged,
+        meeting_records=valid_meetings,
+        appearance_records=variant_appearances,
+        engine=engine,
+        output=tmp_path / 'release-variants',
+        scratch=tmp_path / 'model-variants',
+    )
+    res_variants = json.loads((tmp_path / 'model-variants/result.json').read_text())
+    q_variants = {q['name']: q['data'] for q in res_variants['queries']}
+    assert q_variants['appearance_name_key_variants'] == [
+        dict(
+            occasion='meeting:115538',
+            base_key='jane smith',
+            first_name_key='dr jane a smith',
+            second_name_key='jane smith',
+            variant_count=2,
+        )
+    ]
+
+    # 2. Verify Invariant 15 multi_chamber_events refuses a release when one event_id names two chambers
+    conflicting_meetings = valid_meetings + [
+        dict(
+            record_sha='22' * 32,
+            source='congress_gov',
+            meetings=[dict(
+                event_id='115538',
+                chamber='senate',
+                congress=118,
+                session=1,
+                updated='2023-05-10T14:00:00Z',
+                title='Conflicting Chamber Meeting',
+                meeting_date='2023-05-10',
+                meeting_type='Hearing',
+                status='Published',
+                sittings=[],
+                committees=[],
+                subject_keys=[],
+                transcript_jackets=[],
+                videos=[],
+            )],
+        ),
+    ]
+    with pytest.raises(ValueError, match='Release key invariant failed'):
+        build_release(
+            **staged,
+            meeting_records=conflicting_meetings,
+            appearance_records=variant_appearances,
+            engine=engine,
+            output=tmp_path / 'release-conflict',
+            scratch=tmp_path / 'model-conflict',
+        )
+
+    # 3. Verify entity_profile_completeness refuses duplicate (record_sha, parser_version) rows
+    with pytest.raises(ValueError, match='Release key invariant failed'):
+        build_release(
+            **staged,
+            meeting_records=valid_meetings + valid_meetings,
+            appearance_records=variant_appearances,
+            engine=engine,
+            output=tmp_path / 'release-dup',
+            scratch=tmp_path / 'model-dup',
+        )

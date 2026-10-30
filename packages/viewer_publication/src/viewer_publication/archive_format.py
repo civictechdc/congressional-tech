@@ -197,11 +197,33 @@ def _execute(inputs, steps, *, output, scratch, engine, origin, auxiliary=None, 
             (SELECT count(*) FROM (SELECT lookup_key FROM lookup_keys_full GROUP BY lookup_key HAVING min(lookup_url)<>max(lookup_url))) AS lookup_collisions""")]
     queries.extend(diagnostics)
     queries.extend(metadata_queries)
+    step_names = {s['name'] for s in steps}
     coverage_parts = []
     for name, relation in [('list', None), ('detail', None), ('links', 'links'), ('urls', 'url_keys'), ('sources', 'source_rows'), ('recoveries', 'recovery_rows')]:
         source = 'ordered o' if relation is None else f'ordered o JOIN (SELECT DISTINCT list_row FROM {relation}) r ON o.list_row=r.list_row'
         coverage_parts.append(f"SELECT '{name}.parquet' AS file,min(o.congress) AS congress_start,max(o.congress) AS congress_end,min(o.document_date) AS date_start,max(o.document_date) AS date_end FROM {source}")
-    coverage_parts.append("SELECT 'meetings.parquet' AS file,cast(NULL AS SMALLINT) AS congress_start,cast(NULL AS SMALLINT) AS congress_end,min(meeting_date) AS date_start,max(meeting_date) AS date_end FROM meetings_export")
+    if 'meetings_resolved' in step_names:
+        coverage_parts.append("SELECT 'meetings.parquet' AS file,(SELECT min(cast(congress AS SMALLINT)) FROM meetings_resolved) AS congress_start,(SELECT max(cast(congress AS SMALLINT)) FROM meetings_resolved) AS congress_end,min(meeting_date) AS date_start,max(meeting_date) AS date_end FROM meetings_export")
+    else:
+        coverage_parts.append("SELECT 'meetings.parquet' AS file,cast(NULL AS SMALLINT) AS congress_start,cast(NULL AS SMALLINT) AS congress_end,min(meeting_date) AS date_start,max(meeting_date) AS date_end FROM meetings_export")
+    if 'witnesses' in aux_names and 'meetings_resolved' in step_names:
+        coverage_parts.append("""SELECT 'witnesses.parquet' AS file,
+            min(coalesce(cast(m.congress AS SMALLINT),o.congress)) AS congress_start,
+            max(coalesce(cast(m.congress AS SMALLINT),o.congress)) AS congress_end,
+            min(coalesce(m.meeting_date,o.document_date)) AS date_start,
+            max(coalesce(m.meeting_date,o.document_date)) AS date_end
+            FROM witnesses_export w
+            LEFT JOIN meetings_resolved m ON w.event_id=m.event_id
+            LEFT JOIN (
+                SELECT unnest(witness_keys) AS witness_key,min(congress) AS congress,min(document_date) AS document_date
+                FROM ordered WHERE witness_keys IS NOT NULL GROUP BY 1
+            ) o ON w.witness_key=o.witness_key""")
+    if 'committees' in aux_names:
+        coverage_parts.append("SELECT 'committees.parquet' AS file,cast(NULL AS SMALLINT) AS congress_start,cast(NULL AS SMALLINT) AS congress_end,min(n['start']) AS date_start,max(n['end']) AS date_end FROM (SELECT unnest(names) AS n FROM committees_export WHERE names IS NOT NULL)")
+    if 'members' in aux_names:
+        coverage_parts.append("SELECT 'members.parquet' AS file,cast(NULL AS SMALLINT) AS congress_start,cast(NULL AS SMALLINT) AS congress_end,min(t['start']) AS date_start,max(t['end']) AS date_end FROM (SELECT unnest(terms) AS t FROM members_export WHERE terms IS NOT NULL)")
+    if 'rosters' in aux_names:
+        coverage_parts.append("SELECT 'rosters.parquet' AS file,min(congress) AS congress_start,max(congress) AS congress_end,cast(NULL AS DATE) AS date_start,cast(NULL AS DATE) AS date_end FROM rosters_export")
     if 'bills' in aux_names:
         coverage_parts.append("SELECT 'bills.parquet' AS file,min(try_cast(split_part(bill_id,'-',1) AS SMALLINT)) AS congress_start,max(try_cast(split_part(bill_id,'-',1) AS SMALLINT)) AS congress_end,min(introduced) AS date_start,max(introduced) AS date_end FROM bills_export")
     if 'nominations' in aux_names:

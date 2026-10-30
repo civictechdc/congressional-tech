@@ -70,7 +70,8 @@ def completeness_steps(*,root=ROOT):
         for name in ['profile-bodies','profile-filename-pairs']]
 
 
-def completeness_checks(*,catalog_version,readings_version,root=ROOT):
+def completeness_checks(*,catalog_version,readings_version,include_entities=False,
+                        meeting_records_version=None,appearance_records_version=None,root=ROOT):
     """Return native counts; every positive value refuses accepted model output.
 
     Run completeness_steps first. Inputs are captures, readings, filename_readings, parser_versions,
@@ -84,4 +85,57 @@ def completeness_checks(*,catalog_version,readings_version,root=ROOT):
     sql=(Path(root)/'model/sql/profile-completeness.sql').read_text()
     for token,value in [('{{CATALOG_VERSION}}',catalog_version),('{{READINGS_VERSION}}',readings_version)]:
         sql=sql.replace(token,"'"+value.replace("'","''")+"'")
-    return [dict(name='profile_completeness',sql=sql)]
+    checks=[dict(name='profile_completeness',sql=sql)]
+    if include_entities:
+        mr_ver_filter=(f" AND parser_version='{meeting_records_version.replace(chr(39),chr(39)*2)}'"
+            if isinstance(meeting_records_version,str) and meeting_records_version else '')
+        ar_ver_filter=(f" AND parser_version='{appearance_records_version.replace(chr(39),chr(39)*2)}'"
+            if isinstance(appearance_records_version,str) and appearance_records_version else '')
+        entity_sql=f"""WITH mr_dup AS (
+            SELECT count(*) AS cnt FROM (
+                SELECT record_sha_hex,parser_version FROM meeting_records_input
+                GROUP BY record_sha_hex,parser_version HAVING count(*)>1
+            )
+        ), ar_dup AS (
+            SELECT count(*) AS cnt FROM (
+                SELECT record_sha_hex,parser_version FROM appearance_records_input
+                GROUP BY record_sha_hex,parser_version HAVING count(*)>1
+            )
+        ), mr_invalid AS (
+            SELECT count(*) AS cnt FROM meeting_records_input
+            WHERE record_sha_hex IS NULL OR trim(record_sha_hex)=''
+               OR parser_version IS NULL OR trim(parser_version)=''
+               OR status IS NULL OR status NOT IN ('completed','error','size_limit')
+               OR source IS NULL OR source NOT IN ('congress_gov','house_xml')
+        ), ar_invalid AS (
+            SELECT count(*) AS cnt FROM appearance_records_input
+            WHERE record_sha_hex IS NULL OR trim(record_sha_hex)=''
+               OR parser_version IS NULL OR trim(parser_version)=''
+               OR status IS NULL OR status NOT IN ('completed','error','size_limit')
+               OR source IS NULL OR source NOT IN ('house_xml','congress_gov','senate_page','mods')
+        ), mr_unsettled AS (
+            SELECT count(*) AS cnt FROM meeting_records_input m
+            WHERE (m.status NOT IN ('completed','error','size_limit'){mr_ver_filter})
+              AND NOT EXISTS (
+                  SELECT 1 FROM active_unreadable u
+                  WHERE (u.record_sha=m.record_sha_hex OR u.body_sha256=m.record_sha_hex)
+                    AND u.parser IN ('meeting_records','meetings')
+              )
+        ), ar_unsettled AS (
+            SELECT count(*) AS cnt FROM appearance_records_input a
+            WHERE (a.status NOT IN ('completed','error','size_limit'){ar_ver_filter})
+              AND NOT EXISTS (
+                  SELECT 1 FROM active_unreadable u
+                  WHERE (u.record_sha=a.record_sha_hex OR u.body_sha256=a.record_sha_hex)
+                    AND u.parser IN ('appearance_records','appearances')
+              )
+        )
+        SELECT
+            (SELECT cnt FROM mr_dup) AS duplicate_meeting_records,
+            (SELECT cnt FROM ar_dup) AS duplicate_appearance_records,
+            (SELECT cnt FROM mr_invalid) AS invalid_meeting_records,
+            (SELECT cnt FROM ar_invalid) AS invalid_appearance_records,
+            (SELECT cnt FROM mr_unsettled) AS unsettled_meeting_records,
+            (SELECT cnt FROM ar_unsettled) AS unsettled_appearance_records"""
+        checks.append(dict(name='entity_profile_completeness',sql=entity_sql))
+    return checks

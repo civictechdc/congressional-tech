@@ -748,7 +748,7 @@
           "meaning": "Senate roll-call votes on the nomination"
         }
       ],
-      "gaps": []
+      "gaps": ["Nominations cover the 119th Congress only until spicy-regs backfills"]
     },
     {
       "name": "url_state.parquet",
