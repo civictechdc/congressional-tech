@@ -165,12 +165,23 @@ def _normal(table, **values):
 
 
 
-def _execute(inputs, steps, *, output, scratch, engine, origin, auxiliary=None, capture_scope=None, extra_outputs=(), diagnostics=(), metadata_queries=(), content_files=None,lookup_extra=None):
+SPICY_PRODUCER_FAMILIES = {
+    'committees.parquet': ('committee-rosters',),
+    'members.parquet': ('members',),
+    'rosters.parquet': ('committee-rosters',),
+    'bills.parquet': ('bill-family', 'roll-call-votes'),
+    'nominations.parquet': ('nominations', 'roll-call-votes'),
+}
+
+
+def _execute(inputs, steps, *, output, scratch, engine, origin, auxiliary=None, capture_scope=None, extra_outputs=(), diagnostics=(), metadata_queries=(), content_files=None, lookup_extra=None, entity_digests=None):
     output.mkdir(parents=True, exist_ok=False)
     outputs = _core(steps, output,lookup_extra=lookup_extra)
     # Entity files and the capture fixture have their full declared schema,
     # including when this documents-only input provides no rows for them.
-    for name, sql, keys, dictionary in (_auxiliary() if auxiliary is None else auxiliary):
+    aux_items = list(_auxiliary() if auxiliary is None else auxiliary)
+    aux_names = {name for name, _, _, _ in aux_items}
+    for name, sql, keys, dictionary in aux_items:
         steps.append(_step(name + '_export', sql, materialize=True))
         outputs.append(dict(name=name + '.parquet', path=str(output / (name + '.parquet')), sql='SELECT * FROM ' + name + '_export',
             settings=_settings('whole', keys, dictionary=dictionary)))
@@ -191,6 +202,10 @@ def _execute(inputs, steps, *, output, scratch, engine, origin, auxiliary=None, 
         source = 'ordered o' if relation is None else f'ordered o JOIN (SELECT DISTINCT list_row FROM {relation}) r ON o.list_row=r.list_row'
         coverage_parts.append(f"SELECT '{name}.parquet' AS file,min(o.congress) AS congress_start,max(o.congress) AS congress_end,min(o.document_date) AS date_start,max(o.document_date) AS date_end FROM {source}")
     coverage_parts.append("SELECT 'meetings.parquet' AS file,cast(NULL AS SMALLINT) AS congress_start,cast(NULL AS SMALLINT) AS congress_end,min(meeting_date) AS date_start,max(meeting_date) AS date_end FROM meetings_export")
+    if 'bills' in aux_names:
+        coverage_parts.append("SELECT 'bills.parquet' AS file,min(try_cast(split_part(bill_id,'-',1) AS SMALLINT)) AS congress_start,max(try_cast(split_part(bill_id,'-',1) AS SMALLINT)) AS congress_end,min(introduced) AS date_start,max(introduced) AS date_end FROM bills_export")
+    if 'nominations' in aux_names:
+        coverage_parts.append("SELECT 'nominations.parquet' AS file,min(try_cast(split_part(nomination_id,'-',1) AS SMALLINT)) AS congress_start,max(try_cast(split_part(nomination_id,'-',1) AS SMALLINT)) AS congress_end,min(received) AS date_start,max(received) AS date_end FROM nominations_export")
     queries.append(dict(name='coverage', sql=' UNION ALL '.join(coverage_parts)))
     spec = retire_relations(dict(scratch=str(scratch / 'native'), inputs=inputs, steps=steps, outputs=outputs, queries=queries))
     spec_path = scratch / 'job.json'
@@ -206,9 +221,24 @@ def _execute(inputs, steps, *, output, scratch, engine, origin, auxiliary=None, 
     reports = {query['name']: query['data'] for query in result['queries']}
     if any(reports['invariants'][0].values()) or any(any(row.values()) for query in diagnostics for row in reports[query['name']]):
         raise ValueError('Release key invariant failed; native results retained in scratch')
+    schema_files = {item['name']: item for item in _release_schema().get('files', [])}
     coverage = {row['file']: {key: value for key, value in row.items() if key != 'file'} for row in reports['coverage']}
-    files = [dict(entry, row_range=None, shard=None, producer='archive',
-        coverage=dict(coverage.get(entry['name'], dict(congress_start=None, congress_end=None, date_start=None, date_end=None)), gaps=origin['gaps'])) for entry in result['outputs'] if entry['name'] not in {item['name'] for item in extra_outputs}]
+    files = []
+    for entry in result['outputs']:
+        if entry['name'] in {item['name'] for item in extra_outputs}:
+            continue
+        meta = schema_files.get(entry['name'], {})
+        file_gaps = list(meta.get('gaps') or origin['gaps'])
+        producer = 'spicy-regs' if (entity_digests is not None and entry['name'] in SPICY_PRODUCER_FAMILIES) else 'archive'
+        extra_meta = {}
+        if producer == 'spicy-regs':
+            extra_meta['generations'] = {
+                family: entity_digests[family]
+                for family in SPICY_PRODUCER_FAMILIES[entry['name']]
+                if family in entity_digests
+            }
+        files.append(dict(entry, row_range=None, shard=None, producer=producer, **extra_meta,
+            coverage=dict(coverage.get(entry['name'], dict(congress_start=None, congress_end=None, date_start=None, date_end=None)), gaps=file_gaps)))
     for entry in files:
         entry.pop('footer_bytes', None)
     files.append(_content(output / 'schema.json', _release_schema()))

@@ -395,6 +395,127 @@
       "gaps": []
     },
     {
+      "name": "witnesses.parquet",
+      "columns": [
+        {
+          "name": "witness_key",
+          "type": "string",
+          "meaning": "Lowercase hex of first 8 bytes of SHA-256 of [\"witness\", occasion, name_key]"
+        },
+        {
+          "name": "occasion",
+          "type": "dict",
+          "meaning": "Appearance occasion key (meeting:{event_id}, package:{package_id}, or page:{sha256_prefix})"
+        },
+        {
+          "name": "event_id",
+          "type": "int64",
+          "nullable": true,
+          "meaning": "Meeting event ID when occasion is a meeting"
+        },
+        {
+          "name": "package_id",
+          "type": "string",
+          "nullable": true,
+          "meaning": "GovInfo CHRG package ID when occasion is a package or matched transcript"
+        },
+        {
+          "name": "page_url",
+          "type": "string",
+          "nullable": true,
+          "meaning": "Senate hearing page URL when occasion is a page"
+        },
+        {
+          "name": "name",
+          "type": "string",
+          "nullable": true,
+          "meaning": "Display name of the witness"
+        },
+        {
+          "name": "position",
+          "type": "string",
+          "nullable": true,
+          "meaning": "Witness title or position"
+        },
+        {
+          "name": "organization",
+          "type": "string",
+          "nullable": true,
+          "meaning": "Witness organization or affiliation"
+        },
+        {
+          "name": "on_behalf_of",
+          "type": "string",
+          "nullable": true,
+          "meaning": "Represented entity when distinct from organization"
+        },
+        {
+          "name": "location",
+          "type": "string",
+          "nullable": true,
+          "meaning": "Witness locality or state"
+        },
+        {
+          "name": "panel",
+          "type": "string",
+          "nullable": true,
+          "meaning": "Panel heading or label"
+        },
+        {
+          "name": "panel_order",
+          "type": "int16",
+          "nullable": true,
+          "meaning": "1-based panel order within the occasion"
+        },
+        {
+          "name": "display_order",
+          "type": "int16",
+          "nullable": true,
+          "meaning": "1-based witness display order within the occasion or panel"
+        },
+        {
+          "name": "witness_type",
+          "type": "dict",
+          "nullable": true,
+          "meaning": "Source witness classification"
+        },
+        {
+          "name": "testified",
+          "type": "boolean",
+          "nullable": true,
+          "meaning": "Whether the witness testified"
+        },
+        {
+          "name": "bioguide_id",
+          "type": "dict",
+          "nullable": true,
+          "meaning": "Bioguide identifier when the witness is a Member of Congress"
+        }
+      ],
+      "gaps": []
+    },
+    {
+      "name": "recordings.parquet",
+      "columns": [
+        {
+          "name": "video_key",
+          "type": "string",
+          "meaning": "Provider-prefixed recording identifier"
+        },
+        {
+          "name": "event_ids",
+          "type": "list<int64>",
+          "meaning": "Sorted meeting event IDs associated with this recording"
+        },
+        {
+          "name": "tracks",
+          "type": "list<struct<body fixed[32],suffix dict,format dict,language dict,production dict>>",
+          "meaning": "Captured caption, subtitle, and playlist tracks from their latest good fetch"
+        }
+      ],
+      "gaps": []
+    },
+    {
       "name": "committees.parquet",
       "columns": [
         {
@@ -436,6 +557,195 @@
           "name": "is_current",
           "type": "boolean",
           "meaning": "Current committee record"
+        }
+      ],
+      "gaps": []
+    },
+    {
+      "name": "members.parquet",
+      "columns": [
+        {
+          "name": "bioguide_id",
+          "type": "string",
+          "meaning": "Bioguide member identifier"
+        },
+        {
+          "name": "name",
+          "type": "string",
+          "meaning": "Member display name ({name_first} {name_last})"
+        },
+        {
+          "name": "terms",
+          "type": "list<struct<chamber dict,state dict,district int16,party dict,start date32,end date32>>",
+          "meaning": "Congressional service terms ordered latest first"
+        },
+        {
+          "name": "cross_ids",
+          "type": "struct<lis string,opensecrets string,govtrack string,icpsr string,wikidata string,fec list<string>>",
+          "meaning": "Cross-walk identifiers across legislative datasets"
+        }
+      ],
+      "gaps": []
+    },
+    {
+      "name": "rosters.parquet",
+      "columns": [
+        {
+          "name": "congress",
+          "type": "int16",
+          "meaning": "Congress number for the committee assignment"
+        },
+        {
+          "name": "system_code",
+          "type": "dict",
+          "meaning": "Lowercase committee or subcommittee system code"
+        },
+        {
+          "name": "bioguide_id",
+          "type": "dict",
+          "meaning": "Assigned member Bioguide identifier"
+        },
+        {
+          "name": "title",
+          "type": "dict",
+          "meaning": "Committee leadership or seat position title"
+        },
+        {
+          "name": "rank",
+          "type": "int16",
+          "meaning": "Numeric party rank on the committee"
+        },
+        {
+          "name": "party",
+          "type": "dict",
+          "meaning": "Party caucus for the committee assignment"
+        }
+      ],
+      "gaps": ["Current-Congress seats only; spicy-regs keeps no roster history"]
+    },
+    {
+      "name": "bills.parquet",
+      "columns": [
+        {
+          "name": "bill_id",
+          "type": "string",
+          "meaning": "Canonical bill identifier ({congress}-{type}-{number})"
+        },
+        {
+          "name": "title",
+          "type": "string",
+          "meaning": "Official or primary bill title"
+        },
+        {
+          "name": "short_title",
+          "type": "string",
+          "meaning": "Short title when present"
+        },
+        {
+          "name": "sponsor_bioguide_id",
+          "type": "dict",
+          "meaning": "Primary sponsor Bioguide identifier"
+        },
+        {
+          "name": "introduced",
+          "type": "date32",
+          "meaning": "Date the measure was introduced"
+        },
+        {
+          "name": "latest_action_date",
+          "type": "date32",
+          "meaning": "Date of the latest recorded action"
+        },
+        {
+          "name": "latest_action_text",
+          "type": "string",
+          "meaning": "Text of the latest recorded action"
+        },
+        {
+          "name": "stage",
+          "type": "dict",
+          "meaning": "Lifecycle stage derived by spicy-regs"
+        },
+        {
+          "name": "policy_area",
+          "type": "dict",
+          "meaning": "CRS policy area"
+        },
+        {
+          "name": "committees",
+          "type": "list<dict>",
+          "meaning": "Referred committee system codes"
+        },
+        {
+          "name": "cbo_estimates",
+          "type": "list<struct<publication_id string,date date32,description string>>",
+          "meaning": "CBO cost estimates associated with the bill"
+        },
+        {
+          "name": "floor_votes",
+          "type": "list<struct<vote_id string,basis dict,chamber dict,date date32,question string,result string,yea int16,nay int16>>",
+          "meaning": "Roll-call votes tied by vote record or bill action"
+        },
+        {
+          "name": "amendments",
+          "type": "list<struct<amendment_id string,purpose string,sponsor_bioguide_id dict,latest_action_date date32,latest_action_text string>>",
+          "meaning": "Direct and chained amendments to the bill"
+        },
+        {
+          "name": "committee_activities",
+          "type": "list<struct<system_code dict,activity dict,date date32>>",
+          "meaning": "Committee referral, markup, and report activities"
+        }
+      ],
+      "gaps": ["Amendments cover the 119th Congress only until spicy-regs backfills"]
+    },
+    {
+      "name": "nominations.parquet",
+      "columns": [
+        {
+          "name": "nomination_id",
+          "type": "string",
+          "meaning": "Canonical nomination identifier ({congress}-pn-{number}[-{part}])"
+        },
+        {
+          "name": "description",
+          "type": "string",
+          "meaning": "Nomination description"
+        },
+        {
+          "name": "organization",
+          "type": "string",
+          "meaning": "Executive or independent agency name"
+        },
+        {
+          "name": "received",
+          "type": "date32",
+          "meaning": "Date received in the Senate"
+        },
+        {
+          "name": "latest_action_date",
+          "type": "date32",
+          "meaning": "Date of latest action"
+        },
+        {
+          "name": "latest_action_text",
+          "type": "string",
+          "meaning": "Text of latest action"
+        },
+        {
+          "name": "committees",
+          "type": "list<dict>",
+          "meaning": "Referred Senate committee system codes"
+        },
+        {
+          "name": "transcripts",
+          "type": "list<string>",
+          "meaning": "Printed hearing package IDs from nomination hearing references"
+        },
+        {
+          "name": "floor_votes",
+          "type": "list<struct<vote_id string,date date32,question string,result string,yea int16,nay int16>>",
+          "meaning": "Senate roll-call votes on the nomination"
         }
       ],
       "gaps": []

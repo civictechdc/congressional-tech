@@ -1,8 +1,9 @@
 """Application-owned policy inputs and native SQL for raw-derived releases."""
+import hashlib
 import json
 from pathlib import Path
 
-from congress_api.retention.provenance import json_input,list_of
+from congress_api.retention.provenance import json_input,list_of,struct
 
 ROOT=Path(__file__).parents[4]
 REGISTRIES={
@@ -19,7 +20,264 @@ REGISTRIES={
     'credential_parameters':dict(parameter='Utf8'),
     'recovery_kinds':dict(category='Utf8',match_basis='Utf8',kind='Utf8',import_category='Utf8'),
     'capture_scope':dict(family='Utf8',patterns=list_of('Utf8'),exclusions=list_of('Utf8')),
+    'meeting_sources':dict(id='Utf8',kind='Utf8',source='Utf8',priority='Int64'),
+    'recording_sources':dict(id='Utf8',kind='Utf8',provider='Utf8',pattern='Utf8',key_template='Utf8',format='Utf8',default_language='Utf8',default_production='Utf8'),
 }
+
+MEETING_RECORD_FIELDS=dict(
+    record_sha_hex='Utf8',
+    parser_version='Utf8',
+    status='Utf8',
+    error_type='Utf8',
+    source='Utf8',
+    meetings=list_of(struct(
+        event_id='Utf8',
+        chamber='Utf8',
+        congress='Int32',
+        session='Int32',
+        updated='Utf8',
+        title='Utf8',
+        meeting_date='Utf8',
+        meeting_type='Utf8',
+        status='Utf8',
+        sittings=list_of(struct(start='Utf8',end='Utf8',room='Utf8',building='Utf8',address='Utf8')),
+        committees=list_of(struct(system_code='Utf8',name='Utf8',chamber='Utf8',role='Utf8')),
+        subject_keys=list_of('Utf8'),
+        transcript_jackets=list_of('Utf8'),
+        videos=list_of(struct(video_key='Utf8',url='Utf8',title='Utf8')),
+    )),
+)
+
+APPEARANCE_RECORD_FIELDS=dict(
+    record_sha_hex='Utf8',
+    parser_version='Utf8',
+    status='Utf8',
+    error_type='Utf8',
+    source='Utf8',
+    appearances=list_of(struct(
+        event_id='Utf8',
+        package_id='Utf8',
+        page_url='Utf8',
+        name_key='Utf8',
+        name='Utf8',
+        honorific='Utf8',
+        given='Utf8',
+        middle='Utf8',
+        family='Utf8',
+        suffix='Utf8',
+        position='Utf8',
+        organization='Utf8',
+        on_behalf_of='Utf8',
+        location='Utf8',
+        panel='Utf8',
+        panel_order='Int32',
+        display_order='Int32',
+        witness_type='Utf8',
+        testified='Boolean',
+        bioguide_id='Utf8',
+        document_urls=list_of('Utf8'),
+    )),
+)
+
+SPICY_SCHEMAS={
+    'spicy_committees':dict(
+        system_code='Utf8',name='Utf8',chamber='Utf8',committee_type='Utf8',
+        parent_system_code='Utf8',website_url='Utf8',is_current='Boolean',
+        history=list_of(struct(officialName='Utf8',startDate='Utf8',endDate='Utf8')),
+    ),
+    'spicy_members':dict(
+        bioguide_id='Utf8',name_first='Utf8',name_last='Utf8',
+        lis_id='Utf8',opensecrets_id='Utf8',govtrack_id='Utf8',
+        icpsr_id='Utf8',wikidata_id='Utf8',fec_ids=list_of('Utf8'),
+    ),
+    'spicy_member_terms':dict(
+        bioguide_id='Utf8',term_type='Utf8',term_state='Utf8',
+        term_district='Int32',term_party='Utf8',term_start='Utf8',term_end='Utf8',
+    ),
+    'spicy_committee_assignments':dict(
+        congress='Int32',system_code='Utf8',bioguide_id='Utf8',
+        position='Utf8',rank='Int32',party='Utf8',
+    ),
+    'spicy_congress_bills':dict(
+        bill_id='Utf8',title='Utf8',short_title='Utf8',
+        sponsor_bioguide_id='Utf8',introduced_date='Utf8',
+        latest_action_date='Utf8',latest_action_text='Utf8',
+        stage='Utf8',policy_area='Utf8',
+    ),
+    'spicy_bill_committees':dict(
+        bill_id='Utf8',system_code='Utf8',
+    ),
+    'spicy_bill_committee_activities':dict(
+        bill_id='Utf8',system_code='Utf8',activity_name='Utf8',
+        activity_date='Utf8',occurrence='Int32',
+    ),
+    'spicy_cbo_cost_estimates':dict(
+        bill_id='Utf8',publication_id='Utf8',pub_date='Utf8',description='Utf8',
+    ),
+    'spicy_amendments':dict(
+        amendment_id='Utf8',purpose='Utf8',sponsor_bioguide_id='Utf8',
+        latest_action_date='Utf8',latest_action_text='Utf8',
+        amended_bill_id='Utf8',amended_amendment_id='Utf8',
+    ),
+    'spicy_bill_vote_references':dict(
+        bill_id='Utf8',congress='Int32',chamber='Utf8',session='Int32',roll_number='Int32',
+    ),
+    'spicy_roll_call_votes':dict(
+        vote_id='Utf8',bill_id='Utf8',congress='Int32',chamber='Utf8',
+        session='Int32',roll_number='Int32',vote_day='Utf8',
+        question='Utf8',result='Utf8',yea='Int32',nay='Int32',
+        documents=list_of(struct(congress='Int32',type='Utf8',number='Utf8')),
+    ),
+    'spicy_nominations':dict(
+        congress='Int32',number='Int32',part_number='Utf8',
+        description='Utf8',organization='Utf8',received_date='Utf8',
+        latest_action_date='Utf8',latest_action_text='Utf8',
+        committees_json='Utf8',hearings_json='Utf8',
+    ),
+}
+
+
+def _hex_sha(value,index):
+    if isinstance(value,(bytes,bytearray)):
+        return bytes(value).hex()
+    if isinstance(value,str) and value:
+        return value.lower()
+    return hashlib.sha256(f'record:{index}'.encode()).hexdigest()
+
+
+def _normalize_meeting_rows(rows):
+    normalized=[]
+    for idx,raw in enumerate(rows):
+        row=dict(raw)
+        record_sha_hex=row.get('record_sha_hex') or _hex_sha(row.get('record_sha'),idx)
+        meetings=[]
+        for m in (row.get('meetings') or ()):
+            item=dict(m)
+            if item.get('event_id') is not None:
+                item['event_id']=str(item['event_id'])
+            sittings=[]
+            for s in (item.get('sittings') or ()):
+                sd=dict(s)
+                if sd.get('room') is None and sd.get('place') is not None:
+                    sd['room']=sd['place']
+                sittings.append({k:sd.get(k) for k in ('start','end','room','building','address')})
+            item['sittings']=sittings
+            item['committees']=[{k:dict(c).get(k) for k in ('system_code','name','chamber','role')} for c in (item.get('committees') or ())]
+            item['subject_keys']=list(item.get('subject_keys') or [])
+            item['transcript_jackets']=[str(x) for x in (item.get('transcript_jackets') or [])]
+            videos=[]
+            for v in (item.get('videos') or ()):
+                vd=dict(v)
+                videos.append(dict(
+                    video_key=vd.get('video_key'),
+                    url=vd.get('url'),
+                    title=vd.get('title') if vd.get('title') is not None else vd.get('name'),
+                ))
+            item['videos']=videos
+            meetings.append(item)
+        normalized.append(dict(
+            record_sha_hex=record_sha_hex,
+            parser_version=row.get('parser_version','meeting-v1'),
+            status=row.get('status','completed'),
+            error_type=row.get('error_type'),
+            source=row.get('source'),
+            meetings=meetings,
+        ))
+    return normalized
+
+
+def _normalize_appearance_rows(rows):
+    normalized=[]
+    for idx,raw in enumerate(rows):
+        row=dict(raw)
+        record_sha_hex=row.get('record_sha_hex') or _hex_sha(row.get('record_sha'),idx)
+        appearances=[]
+        for a in (row.get('appearances') or ()):
+            item=dict(a)
+            if item.get('event_id') is not None:
+                item['event_id']=str(item['event_id'])
+            if item.get('panel') is not None:
+                item['panel']=str(item['panel'])
+            doc_urls=list(item.get('document_urls') or [])
+            for extra_urls in ('statement_urls','bio_urls','truth_urls','answer_urls','supplement_urls'):
+                if item.get(extra_urls):
+                    doc_urls.extend(item[extra_urls])
+            item['document_urls']=doc_urls
+            appearances.append(item)
+        normalized.append(dict(
+            record_sha_hex=record_sha_hex,
+            parser_version=row.get('parser_version','appearance-v1'),
+            status=row.get('status','completed'),
+            error_type=row.get('error_type'),
+            source=row.get('source'),
+            appearances=appearances,
+        ))
+    return normalized
+
+
+def _prepare_spicy_inputs(scratch,spicy_regs):
+    spicy_dir=scratch/'spicy'
+    spicy_dir.mkdir(parents=True,exist_ok=True)
+    inputs=[]
+    if spicy_regs is None:
+        for table_name,schema in SPICY_SCHEMAS.items():
+            inputs.append(json_input(spicy_dir,table_name,[],**schema))
+        return inputs,None
+    spec=spicy_regs
+    base_dir=None
+    if isinstance(spicy_regs,(str,Path)):
+        p=Path(spicy_regs)
+        if p.is_file():
+            spec=json.loads(p.read_text())
+            base_dir=p.parent
+        else:
+            base_dir=p
+            manifest_path=base_dir/'publication.v2.json'
+            spec=json.loads(manifest_path.read_text()) if manifest_path.is_file() else {}
+    if not isinstance(spec,dict):
+        raise ValueError('Unsupported spicy_regs specification')
+    raw_gens=spec.get('generations') or spec.get('entity_digests') or spec.get('families') or {}
+    entity_digests={}
+    if isinstance(raw_gens,dict):
+        for fam,val in raw_gens.items():
+            if isinstance(val,str):
+                entity_digests[fam]=val
+            elif isinstance(val,dict) and isinstance(val.get('generation'),str):
+                entity_digests[fam]=val['generation']
+    tables_map=spec.get('tables') if isinstance(spec.get('tables'),dict) else spec
+    aliases={'spicy_congress_bills':'bills','spicy_committee_assignments':'rosters'}
+    for table_name,schema in SPICY_SCHEMAS.items():
+        short_name=table_name.removeprefix('spicy_')
+        val=tables_map.get(table_name,tables_map.get(short_name))
+        if val is None and table_name in aliases:
+            val=tables_map.get(aliases[table_name])
+        if val is None and base_dir is not None:
+            for candidate in (base_dir/(table_name+'.parquet'),base_dir/(short_name+'.parquet')):
+                if candidate.is_file():
+                    val=candidate
+                    break
+        if val is None:
+            inputs.append(json_input(spicy_dir,table_name,[],**schema))
+        elif isinstance(val,(list,tuple)):
+            rows=[]
+            for r in val:
+                row={}
+                for k,kind in schema.items():
+                    v=r.get(k)
+                    if v is None and isinstance(kind,dict) and 'List' in kind:
+                        v=[]
+                    row[k]=v
+                rows.append(row)
+            inputs.append(json_input(spicy_dir,table_name,rows,**schema))
+        elif isinstance(val,dict) and 'kind' in val:
+            inputs.append(dict(val,name=table_name))
+        elif isinstance(val,(str,Path)):
+            inputs.append(dict(name=table_name,kind='parquet',path=str(Path(val).resolve())))
+        else:
+            raise ValueError('Unsupported spicy_regs table input: '+table_name)
+    for fam in ('committee-rosters','members','bill-family','nominations','roll-call-votes'):
+        entity_digests.setdefault(fam,hashlib.sha256(f'spicy-regs:{fam}'.encode()).hexdigest())
+    return inputs,entity_digests
 
 
 def registry_inputs(directory,*,root=ROOT):
@@ -149,16 +407,21 @@ def probe_selectors_query(*,root=ROOT):
 
 def prepare_model_inputs(*,captures,readings,filename_readings,parser_versions,catalog_version,
                          engine,scratch,recovery_files=(),review_files=(),verification_files=(),
-                         unreadable_files=(),variant_files=(),root=ROOT):
+                         unreadable_files=(),variant_files=(),meeting_records=None,appearance_records=None,
+                         spicy_regs=None,include_entities=False,root=ROOT):
     """Freeze current input selectors and the shared prefix in fresh private scratch."""
     from viewer_publication.archive_format import _settings
     from viewer_publication.archive_model_profile import profile_record
     scratch=Path(scratch).resolve();scratch.mkdir(parents=True,exist_ok=False)
     evidence=scratch/'evidence';evidence.mkdir()
     inputs=registry_inputs(scratch/'registries',root=root)
+    raw_data_inputs=[('captures',captures),('readings',readings),('filename_readings',filename_readings)]
+    if meeting_records is not None and not isinstance(meeting_records,(list,tuple)):
+        raw_data_inputs.append(('meeting_records',meeting_records))
+    if appearance_records is not None and not isinstance(appearance_records,(list,tuple)):
+        raw_data_inputs.append(('appearance_records',appearance_records))
     data_inputs=[dict(value,name=name) if isinstance(value,dict) else
-        dict(name=name,kind='parquet',path=str(Path(value).resolve())) for name,value in
-        [('captures',captures),('readings',readings),('filename_readings',filename_readings)]]
+        dict(name=name,kind='parquet',path=str(Path(value).resolve())) for name,value in raw_data_inputs]
     inputs += data_inputs
     inputs.append(json_input(scratch,'parser_versions',[dict(parser=p,version=v) for p,v in sorted(parser_versions.items())],parser='Utf8',version='Utf8'))
     # Provenance is immutable input data; JSON columns with heterogeneous values
@@ -166,12 +429,41 @@ def prepare_model_inputs(*,captures,readings,filename_readings,parser_versions,c
     from viewer_publication.archive_provenance import provenance_inputs
     provenance,prelude=provenance_inputs(scratch/'provenance',recovery_files=recovery_files,review_files=review_files)
     inputs += provenance
+    def _record_table_sql(table_name,value,payload_col):
+        parquet_path=value.get('path') if isinstance(value,dict) and value.get('kind')=='parquet' else (value if isinstance(value,(str,Path)) else None)
+        sha_expr="lower(record_sha)"
+        status_expr="'completed'"
+        error_expr="cast(NULL AS VARCHAR)"
+        if parquet_path is not None and Path(parquet_path).is_file():
+            import pyarrow as pa
+            import pyarrow.parquet as pq
+            schema=pq.read_schema(parquet_path)
+            if 'record_sha' in schema.names and (pa.types.is_binary(schema.field('record_sha').type) or pa.types.is_fixed_size_binary(schema.field('record_sha').type)):
+                sha_expr="lower(encode(record_sha,'hex'))"
+            if 'status' in schema.names:
+                status_expr='status'
+            if 'error_type' in schema.names:
+                error_expr='error_type'
+        return f"SELECT {sha_expr} AS record_sha_hex,parser_version,{status_expr} AS status,{error_expr} AS error_type,source,{payload_col} FROM {table_name}"
+    if meeting_records is None or isinstance(meeting_records,(list,tuple)):
+        inputs.append(json_input(scratch,'meeting_records_input',_normalize_meeting_rows(meeting_records or ()),**MEETING_RECORD_FIELDS))
+    else:
+        prelude += [dict(name='meeting_records_input',sql=_record_table_sql('meeting_records',meeting_records,'meetings'),materialize=True)]
+    if appearance_records is None or isinstance(appearance_records,(list,tuple)):
+        inputs.append(json_input(scratch,'appearance_records_input',_normalize_appearance_rows(appearance_records or ()),**APPEARANCE_RECORD_FIELDS))
+    else:
+        prelude += [dict(name='appearance_records_input',sql=_record_table_sql('appearance_records',appearance_records,'appearances'),materialize=True)]
+    spicy_inputs,entity_digests=_prepare_spicy_inputs(scratch,spicy_regs)
+    inputs += spicy_inputs
+    include_entities=bool(include_entities or meeting_records is not None or appearance_records is not None or spicy_regs is not None)
+    if include_entities and entity_digests is None:
+        entity_digests={fam:hashlib.sha256(f'spicy-regs:{fam}'.encode()).hexdigest() for fam in ('committee-rosters','members','bill-family','nominations','roll-call-votes')}
     verification_schema=dict(key='Utf8',size='Int64',intact='Boolean',sha256_verified='Boolean',checked_at='Utf8')
     if verification_files:
         from congress_api.retention.provenance import field
         inputs.append(dict(name='verification_records',kind='json_lines',files=list(verification_files),schema=dict(fields=[field(k,v) for k,v in verification_schema.items()],metadata={})))
     else:inputs.append(json_input(scratch,'verification_records',[],**verification_schema))
-    inputs.append(json_input(scratch,'url_state_meeting_dates',[],requested_url='Utf8',meeting_date='Date32'))
+    inputs.append(json_input(scratch,'url_state_meeting_dates_input',[],requested_url='Utf8',meeting_date='Date32'))
     variant_fields={name:'Utf8' for name in ['id','canonical_url','variant_url','basis','decided_at','supersedes']}
     if variant_files:
         from congress_api.retention.provenance import field
@@ -200,23 +492,26 @@ def prepare_model_inputs(*,captures,readings,filename_readings,parser_versions,c
     (scratch/'profile.json').write_text(json.dumps(model_profile,ensure_ascii=False,sort_keys=True,separators=(',',':'))+'\n')
     return dict(inputs=inputs,prelude=prelude,steps=admission_steps(prelude=prelude,root=root),
         profile=model_profile,capture_profile=capture_profile,scratch=scratch,evidence=evidence,
-        parser_versions=dict(parser_versions),catalog_version=catalog_version)
+        parser_versions=dict(parser_versions),catalog_version=catalog_version,
+        include_entities=include_entities,entity_digests=entity_digests)
 
 
 def build_release(*,captures,readings,filename_readings,parser_versions,catalog_version,
                   engine,output,scratch,recovery_files=(),review_files=(),verification_files=(),
-                  unreadable_files=(),variant_files=(),root=ROOT):
+                  unreadable_files=(),variant_files=(),meeting_records=None,appearance_records=None,
+                  spicy_regs=None,include_entities=False,root=ROOT):
     """Prepare inputs once and run the document model's maintained full job."""
     prepared=prepare_model_inputs(captures=captures,readings=readings,filename_readings=filename_readings,
         parser_versions=parser_versions,catalog_version=catalog_version,engine=engine,scratch=scratch,
         recovery_files=recovery_files,review_files=review_files,verification_files=verification_files,
-        unreadable_files=unreadable_files,variant_files=variant_files,root=root)
+        unreadable_files=unreadable_files,variant_files=variant_files,meeting_records=meeting_records,
+        appearance_records=appearance_records,spicy_regs=spicy_regs,include_entities=include_entities,root=root)
     return build_prepared_release(prepared,engine=engine,output=output,root=root)
 
 
 def build_prepared_release(prepared,*,engine,output,root=ROOT):
     """Continue one prepared plan through grouping and the shared native exporter."""
-    from viewer_publication.archive_format import _execute,_settings,EMPTY_STRINGS,TS,_empty_struct,LIST_COLUMNS,DETAIL_COLUMNS
+    from viewer_publication.archive_format import _execute,_settings,LIST_COLUMNS,DETAIL_COLUMNS
     from viewer_publication.archive_annotations import annotation_steps
     from viewer_publication.archive_provenance import attachment_steps,body_review_steps
     scratch=prepared['scratch'];evidence=prepared['evidence'];output=Path(output).resolve()
@@ -240,6 +535,24 @@ def build_prepared_release(prepared,*,engine,output,root=ROOT):
     steps += annotation_steps(catalog_version=catalog_version,root=root)
     steps += _sql_steps(['document-members','document-bodies','document-identities','saved-files','document-alternates',
         'document-version-keys','document-versions','document-metadata','document-addresses','saved-recoveries','document-removals','document-packages'],root=root)
+    steps += [dict(name='meetings_resolved',sql=(Path(root)/'model/sql/meeting-records-resolved.sql').read_text(),materialize=True),
+        dict(name='meeting_transcript_links',sql=(Path(root)/'model/sql/meeting-transcript-links.sql').read_text(),materialize=True)]
+    app_url_inputs_sql="""WITH apps AS (
+        SELECT unnest(appearances) AS app FROM appearance_records_input WHERE status='completed' AND appearances IS NOT NULL
+    ), raw_urls AS (
+        SELECT app['page_url'] AS raw_url FROM apps
+        UNION SELECT unnest(coalesce(app['document_urls'],arrow_cast(make_array(),'List(Utf8)'))) AS raw_url FROM apps
+    ), distinct_urls AS (
+        SELECT DISTINCT raw_url AS url FROM raw_urls WHERE raw_url IS NOT NULL AND trim(raw_url)<>''
+    ) SELECT encode(sha256(json_array(url)),'hex') AS input_id,url FROM distinct_urls"""
+    app_normalize=(Path(root)/'model/sql/url-normalized.sql').read_text().replace('url_inputs','appearance_url_inputs')
+    app_keys=(Path(root)/'model/sql/url-keys.sql').read_text().replace('url_inputs','appearance_url_inputs').replace('url_normalized','appearance_url_normalized')
+    steps += [dict(name='appearance_url_inputs',sql=app_url_inputs_sql,materialize=True),
+        dict(name='appearance_url_normalized',sql=app_normalize,materialize=True),
+        dict(name='appearance_url_keys',sql=app_keys,materialize=True),
+        dict(name='appearance_records_resolved',sql=(Path(root)/'model/sql/appearance-records-resolved.sql').read_text(),materialize=True),
+        dict(name='document_witness_keys',sql=(Path(root)/'model/sql/document-witness-keys.sql').read_text(),materialize=True),
+        dict(name='component_meeting_links',sql=(Path(root)/'model/sql/component-meeting-links.sql').read_text(),materialize=True)]
     steps += [dict(name='base_normalized',sql=(Path(root)/'model/sql/document-normalized.sql').read_text()+' UNION ALL '+(Path(root)/'model/sql/document-recovery-normalized.sql').read_text(),materialize=True)]
     from viewer_publication.archive_model_profile import completeness_checks
     from congress_api.lake.readings import bundle_version,worker_limits
@@ -252,18 +565,34 @@ def build_prepared_release(prepared,*,engine,output,root=ROOT):
             ON d.component=r.component) ON d.component=x.component""",materialize=True),
         dict(name='source_input',sql=(Path(root)/'model/sql/document-source-input.sql').read_text(),materialize=True),
         dict(name='recovery_input',sql=(Path(root)/'model/sql/document-recovery-input.sql').read_text(),materialize=True)]
-    empty_meetings=f"""WITH keys AS (SELECT DISTINCT try_cast(unnest(meeting_keys) AS BIGINT) AS event_id FROM ordered)
-        SELECT event_id,cast(NULL AS VARCHAR) AS chamber,cast(NULL AS VARCHAR) AS title,cast(NULL AS DATE) AS meeting_date,
-        cast(NULL AS VARCHAR) AS meeting_type,cast(NULL AS SMALLINT) AS session,cast(NULL AS VARCHAR) AS status,
-        {_empty_struct(start=TS,end=TS,place='cast(NULL AS VARCHAR)')} AS sittings,
-        {_empty_struct(system_code='cast(NULL AS VARCHAR)',role='cast(NULL AS VARCHAR)')} AS committees,
-        {EMPTY_STRINGS} AS subject_keys,{_empty_struct(package_id='cast(NULL AS VARCHAR)',list_row='cast(NULL AS INT)')} AS transcripts,
-        {_empty_struct(name='cast(NULL AS VARCHAR)',url='cast(NULL AS VARCHAR)',video_key='cast(NULL AS VARCHAR)')} AS videos
-        FROM keys WHERE event_id IS NOT NULL"""
+    url_state_meeting_dates_sql="""SELECT requested_url,cast(meeting_date AS DATE) AS meeting_date FROM url_state_meeting_dates_input
+        UNION SELECT a.url AS requested_url,m.meeting_date FROM source_addresses a
+            JOIN source_annotation_addresses sa ON a.source_id=sa.source_id
+            JOIN meetings_resolved m ON try_cast(sa.meeting_key AS BIGINT)=m.event_id WHERE m.meeting_date IS NOT NULL
+        UNION SELECT a.url AS requested_url,cml.meeting_date FROM source_addresses a
+            JOIN document_members dm ON a.source_id=dm.source_id
+            JOIN component_meeting_links cml ON dm.component=cml.component WHERE cml.meeting_date IS NOT NULL
+        UNION SELECT c.requested_url,m.meeting_date FROM (SELECT DISTINCT requested_url FROM captures WHERE requested_url IS NOT NULL) c
+            JOIN meetings_resolved m ON m.event_id=coalesce(
+                try_cast((regexp_match(c.requested_url,'(?i)/committee-meeting/[0-9]+/[a-z]+/([0-9]+)'))[1] AS BIGINT),
+                try_cast((regexp_match(c.requested_url,'(?i)[?&]eventid=([0-9]+)'))[1] AS BIGINT))
+            WHERE m.meeting_date IS NOT NULL"""
+    steps += [dict(name='url_state_meeting_dates',sql=url_state_meeting_dates_sql,materialize=True)]
     from viewer_publication.archive_url_state import url_state_steps,url_state_diagnostics
     steps += url_state_steps(root=root)
-    auxiliary=[('meetings',empty_meetings,['event_id'],['chamber','meeting_type','status']),
-        ('url_state','SELECT * FROM url_state',['requested_url'],['last_outcome']),
+    meetings_sql=(Path(root)/'model/sql/entity-meetings.sql').read_text()
+    auxiliary=[('meetings',meetings_sql,['event_id'],['chamber','meeting_type','status','committees.list.item.system_code','committees.list.item.role','subject_keys.list.item'])]
+    if prepared.get('include_entities'):
+        auxiliary += [
+            ('witnesses','SELECT witness_key,occasion,event_id,package_id,page_url,name,position,organization,on_behalf_of,location,panel,panel_order,display_order,witness_type,testified,bioguide_id FROM appearance_records_resolved',['witness_key'],['occasion','witness_type','bioguide_id']),
+            ('recordings',(Path(root)/'model/sql/entity-recordings.sql').read_text(),['video_key'],['tracks.list.item.suffix','tracks.list.item.format','tracks.list.item.language','tracks.list.item.production']),
+            ('committees',(Path(root)/'model/sql/entity-committees.sql').read_text(),['system_code'],['chamber','committee_type','parent_system_code']),
+            ('members',(Path(root)/'model/sql/entity-members.sql').read_text(),['bioguide_id'],['terms.list.item.chamber','terms.list.item.state','terms.list.item.party']),
+            ('rosters',(Path(root)/'model/sql/entity-rosters.sql').read_text(),['congress','system_code','bioguide_id'],['system_code','bioguide_id','title','party']),
+            ('bills',(Path(root)/'model/sql/entity-bills.sql').read_text(),['bill_id'],['sponsor_bioguide_id','stage','policy_area','committees.list.item','floor_votes.list.item.basis','floor_votes.list.item.chamber','amendments.list.item.sponsor_bioguide_id','committee_activities.list.item.system_code','committee_activities.list.item.activity']),
+            ('nominations',(Path(root)/'model/sql/entity-nominations.sql').read_text(),['nomination_id'],['committees.list.item']),
+        ]
+    auxiliary += [('url_state','SELECT * FROM url_state',['requested_url'],['last_outcome']),
         ('url_variants','SELECT * FROM url_variants',['canonical_url','variant_url'],[])]
     extra=[dict(name='document_rows.parquet',path=str(evidence/'document_rows.parquet'),sql='SELECT list_row,doc_key AS document_id,'+','.join(LIST_COLUMNS+DETAIL_COLUMNS)+' FROM details',settings=_settings('whole',['list_row'],footer_limit=4 << 20)),
         dict(name='source_members.parquet',path=str(evidence/'source_members.parquet'),sql="""SELECT DISTINCT o.doc_key AS document_id,o.list_row,
@@ -293,6 +622,7 @@ def build_prepared_release(prepared,*,engine,output,root=ROOT):
         lookup_extra="SELECT o.list_row,a.url FROM source_addresses a JOIN document_members m ON a.source_id=m.source_id JOIN document_identities d ON m.component=d.component JOIN ordered o ON d.document_id=o.doc_key WHERE m.is_real_file",
         metadata_queries=[input_receipts_query(),probe_selectors_query(root=root)],origin=dict(kind='model',gaps=[]),content_files={'capture_profile.json':capture_profile},auxiliary=auxiliary,extra_outputs=extra,
         capture_scope=json.loads((Path(root)/'model/registries/capture-scope.json').read_text()),
+        entity_digests=prepared.get('entity_digests'),
         diagnostics=[dict(name='model_invariants',sql=f"""SELECT {prefix_checks},
             (SELECT count(*) FROM model_url_keys WHERE error IS NOT NULL) AS invalid_url_keys,
             (SELECT count(*) FROM recovery_attachment_diagnostics) AS invalid_recovery_attachments,

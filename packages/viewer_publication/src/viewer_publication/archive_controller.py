@@ -123,7 +123,8 @@ def run_publish(model_spec,*,client,engine,bucket,work,receipt_keys,provenance,r
             prepared=prepare_model_inputs(**arguments,parser_versions=model_spec['parser_versions'],
                 catalog_version=model_spec['catalog_version'],engine=engine,scratch=model_spec['scratch'])
             profile=prepared['profile']
-            digest=input_digest(receipt_keys=keys,provenance=provenance,profile=profile['profile'],entity_digests={})
+            entity_digests=prepared.get('entity_digests') or {}
+            digest=input_digest(receipt_keys=keys,provenance=provenance,profile=profile['profile'],entity_digests=entity_digests)
             status['input_digest']=digest
             live_input=None
             if pointer:
@@ -152,7 +153,7 @@ def run_publish(model_spec,*,client,engine,bucket,work,receipt_keys,provenance,r
             status.update(status='input_unchanged',release_id=pointer['release_id'])
             return dict(status)
         record=dict(input_digest=digest,profile=profile['profile'],snapshots=profile['snapshots'],
-            provenance=provenance,entity_digests={},run=run)
+            provenance=provenance,entity_digests=entity_digests,run=run)
         pin=lambda path:dict(path=str(path),**file_pin(path))
         artifacts=dict(manifest_pin=pin(Path(model_spec['output'])/'manifest.json'),
             result_pin=pin(prepared['scratch']/'result.json'))

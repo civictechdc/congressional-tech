@@ -16,6 +16,8 @@ from congress_shared.custody import custody_identity,VerifiedFile
 from congress_shared.storage import single_put_md5 as provenance_etag_md5
 
 TABLES=('captures','readings','filename_readings')
+OPTIONAL_TABLES=('meeting_records','appearance_records')
+OPTIONAL={*OPTIONAL_TABLES,'spicy_regs','entity_digests'}
 PROVENANCE={'recovery_files':'recoveries','review_files':'reviews','verification_files':'verification',
             'unreadable_files':'unreadable','variant_files':'url_variants'}
 REQUIRED={'version','engine_config',*TABLES,'parser_versions','catalog_version','output','scratch'}
@@ -80,10 +82,15 @@ def validate_spec(value,*,base):
         if not isinstance(value.get('reason'),str) or not value['reason']:
             raise ValueError('Blocked model job requires its reason')
         return dict(status='blocked',reason=value['reason'])
-    if set(value)-REQUIRED-PROVENANCE.keys():raise ValueError('Model job has unknown fields')
+    if set(value)-REQUIRED-PROVENANCE.keys()-OPTIONAL:raise ValueError('Model job has unknown fields')
     if not REQUIRED<=value.keys() or type(value['version']) is not int or value['version']!=1:
         raise ValueError('Model job requires version 1 and all explicit inputs')
     result=dict(value,**{name:_selector(value[name],base) for name in TABLES})
+    for name in OPTIONAL_TABLES:
+        if value.get(name) is not None:
+            result[name]=_selector(value[name],base)
+    if isinstance(value.get('spicy_regs'),str):
+        result['spicy_regs']=_local(value['spicy_regs'],base)
     for name in ['engine_config','output','scratch']:result[name]=_local(value[name],base)
     output,scratch=Path(result['output']),Path(result['scratch'])
     if output.is_relative_to(scratch) or scratch.is_relative_to(output):
@@ -172,6 +179,13 @@ def model_arguments(spec, *, provenance_etags=None,verified_files=None):
             value=spec[name]
             arguments[name]=(dict(kind='parquet',path=hold(value))
                              if value['kind']=='parquet' else dict(value))
+        for name in OPTIONAL_TABLES:
+            if spec.get(name) is not None:
+                value=spec[name]
+                arguments[name]=(dict(kind='parquet',path=hold(value))
+                                 if value['kind']=='parquet' else dict(value))
+        if spec.get('spicy_regs') is not None:
+            arguments['spicy_regs']=spec['spicy_regs']
         for _source,verified in retained.values():verified.require(verified.path)
         yield arguments
         for _source,verified in retained.values():verified.require(verified.path)

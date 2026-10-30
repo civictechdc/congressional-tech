@@ -1,0 +1,142 @@
+[
+  {
+    "id": "youtube-watch",
+    "kind": "video_url",
+    "provider": "youtube",
+    "pattern": "(?i)^https?://(?:www[.]|m[.])?youtube(?:-nocookie)?[.]com/watch[?](?:[^#]*&)?v=([A-Za-z0-9_-]{11})(?:[&#]|$)",
+    "key_template": "youtube:$1",
+    "format": null,
+    "default_language": "en",
+    "default_production": "caption"
+  },
+  {
+    "id": "youtube-embed-or-live",
+    "kind": "video_url",
+    "provider": "youtube",
+    "pattern": "(?i)^https?://(?:www[.])?youtube(?:-nocookie)?[.]com/(?:embed|live|shorts|v)/([A-Za-z0-9_-]{11})(?:[/?#]|$)",
+    "key_template": "youtube:$1",
+    "format": null,
+    "default_language": "en",
+    "default_production": "caption"
+  },
+  {
+    "id": "youtube-short",
+    "kind": "video_url",
+    "provider": "youtube",
+    "pattern": "(?i)^https?://youtu[.]be/([A-Za-z0-9_-]{11})(?:[/?#]|$)",
+    "key_template": "youtube:$1",
+    "format": null,
+    "default_language": "en",
+    "default_production": "caption"
+  },
+  {
+    "id": "youtube-timedtext",
+    "kind": "video_url",
+    "provider": "youtube",
+    "pattern": "(?i)^https?://(?:www[.])?youtube[.]com/api/timedtext[?](?:[^#]*&)?v=([A-Za-z0-9_-]{11})(?:[&#]|$)",
+    "key_template": "youtube:$1",
+    "format": "vtt",
+    "default_language": "en",
+    "default_production": "caption"
+  },
+  {
+    "id": "youtube-caption-path",
+    "kind": "video_url",
+    "provider": "youtube",
+    "pattern": "(?i)^https?://[^/?#]*youtube[^/?#]*/(?:captions?|subtitles?|timedtext)/([A-Za-z0-9_-]{11})(?:[/?#.]|$)",
+    "key_template": "youtube:$1",
+    "format": "vtt",
+    "default_language": "en",
+    "default_production": "caption"
+  },
+  {
+    "id": "senate-isvp-player",
+    "kind": "video_url",
+    "provider": "senate",
+    "pattern": "(?i)^https?://(?:www[.])?senate[.]gov/isvp/?[?](?:[^#]*&)?filename=([^&#]+)",
+    "key_template": "senate:$1",
+    "format": null,
+    "default_language": "en",
+    "default_production": "live"
+  },
+  {
+    "id": "senate-srs-live-hls",
+    "kind": "video_url",
+    "provider": "senate",
+    "pattern": "(?i)^https?://www-senate-gov-media-srs[.]akamaized[.]net/hls/live/[^/]+/[^/]+/([^/?#]+)/",
+    "key_template": "senate:$1",
+    "format": null,
+    "default_language": "en",
+    "default_production": "live"
+  },
+  {
+    "id": "senate-msl3-archive-hls",
+    "kind": "video_url",
+    "provider": "senate",
+    "pattern": "(?i)^https?://www-senate-gov-msl3archive[.]akamaized[.]net/[^/]+/([^/?#]+?)(?:_1)?/",
+    "key_template": "senate:$1",
+    "format": null,
+    "default_language": "en",
+    "default_production": "archive"
+  },
+  {
+    "id": "senate-generic-stream-path",
+    "kind": "video_url",
+    "provider": "senate",
+    "pattern": "(?i)^https?://[^/?#]*senate[^/?#]*/(?:[^?#]*/)?([a-z]+[a-z0-9]*[0-9]{6})(?:_1)?(?:/|[.](?:vtt|srt|m3u8|ttml|xml|ts|m4s|mp4))",
+    "key_template": "senate:$1",
+    "format": null,
+    "default_language": "en",
+    "default_production": "caption"
+  },
+  {
+    "id": "track-vtt",
+    "kind": "track_format",
+    "provider": "*",
+    "pattern": "(?i)(?:[.](vtt)(?:[?#]|$)|[?&]fmt=(vtt)(?:[&#]|$))",
+    "key_template": "vtt",
+    "format": "vtt",
+    "default_language": "en",
+    "default_production": "caption"
+  },
+  {
+    "id": "track-srt",
+    "kind": "track_format",
+    "provider": "*",
+    "pattern": "(?i)(?:[.](srt)(?:[?#]|$)|[?&]fmt=(srt)(?:[&#]|$))",
+    "key_template": "srt",
+    "format": "srt",
+    "default_language": "en",
+    "default_production": "caption"
+  },
+  {
+    "id": "track-m3u8",
+    "kind": "track_format",
+    "provider": "*",
+    "pattern": "(?i)[.](m3u8)(?:[?#]|$)",
+    "key_template": "m3u8",
+    "format": "m3u8",
+    "default_language": "en",
+    "default_production": "hls"
+  },
+  {
+    "id": "track-ttml",
+    "kind": "track_format",
+    "provider": "*",
+    "pattern": "(?i)(?:[.](?:ttml|dfxp)(?:[?#]|$)|[?&]fmt=(?:ttml|srv[123])(?:[&#]|$))",
+    "key_template": "ttml",
+    "format": "ttml",
+    "default_language": "en",
+    "default_production": "caption"
+  },
+  {
+    "id": "exclude-segment-files",
+    "kind": "segment_exclusion",
+    "provider": "*",
+    "pattern": "(?i)[.](?:ts|m4s|mp4|m4a|aac|mp3|webm|fmp4|cmfv|cmfa)(?:[?#]|$)",
+    "key_template": null,
+    "format": null,
+    "default_language": null,
+    "default_production": null
+  }
+]
