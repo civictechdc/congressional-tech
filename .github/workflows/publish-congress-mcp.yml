@@ -111,14 +111,17 @@ jobs:
 
   pypi:
     if: inputs.publish_pypi == true
-    needs: [build, install]
+    needs: [build, install, github-release]
     runs-on: ubuntu-24.04
     environment: pypi
     permissions:
       id-token: write
+      contents: read
     steps:
-      - uses: actions/download-artifact@v4
-        with:
-          name: congress-mcp-distributions
-          path: dist
+      - name: Reuse the exact published GitHub distributions
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          RELEASE_TAG: ${{ needs.build.outputs.tag }}
+        run: gh release download "$RELEASE_TAG" --pattern '*.whl' --pattern '*.tar.gz' --dir dist
       - uses: pypa/gh-action-pypi-publish@release/v1

@@ -5,6 +5,12 @@ locked environment. It queries published Parquet files directly.
 
 ## Local installation and website — 0.3.0
 
+[Release 0.3.0](https://github.com/civictechdc/congressional-tech/releases/tag/congress-mcp-v0.3.0)
+is published from `236114f3`. [Release CI](https://github.com/civictechdc/congressional-tech/actions/runs/41094647368)
+passed the app suite, strict package checks, and fresh installs on Ubuntu 24.04
+and macOS 14. An installation from the public GitHub wheel also passed the MCP
+check against the prepared public release (16 tables, six tools).
+
 - 57 app tests passed, plus the retained native producer-to-stdio integration:
   58 total. The first native run used a missing fixture path; the targeted rerun
   used the retained `readiness-native` output and passed.
@@ -19,12 +25,11 @@ locked environment. It queries published Parquet files directly.
 - Astro builds the onboarding page. Playwright checks cover desktop/mobile layout,
   copy controls and client selection. The site-wide type check still reports the
   same 32 existing explorer errors; none come from the new page or copy component.
-- Release CI verifies the packaged install on macOS and Linux before publishing
-  GitHub assets. PyPI and the MCP Registry require account-side publisher setup;
-  see [publishing](PUBLISHING.md). A prepared publishing workflow is not proof of
+- PyPI and the MCP Registry are not published; they require account-side publisher setup.
+  See [publishing](PUBLISHING.md). A prepared publishing workflow is not proof of
   an uploaded package or registry listing.
 
-## Current checks
+## Core runtime verification before 0.3.0
 
 - **55 MCP tests passed locally**, including the actual native producer's phase 2
   output consumed through FastMCP stdio. All six tools, 16 table definitions,

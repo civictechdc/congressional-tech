@@ -36,7 +36,9 @@ An account owner must configure a pending trusted publisher at
 
 Then dispatch **Publish Congress MCP** on main with the release tag and
 `publish_pypi: true`. GitHub supplies a short-lived publishing credential. No
-long-lived token belongs in the repository. Once PyPI returns the new release,
+long-lived token belongs in the repository. PyPI receives the exact distributions
+already published on GitHub, including when a dispatch retries publication.
+Once PyPI returns the new release,
 verify `uv tool install --python 3.12 congressional-explorer-mcp==VERSION` from
 a fresh environment before changing the website's primary install command.
 
