@@ -48,6 +48,7 @@ def main(argv=None):
     parser.add_argument('--receipt-inventory',type=Path,help='JSON array of exact {key,path} receipt files')
     parser.add_argument('--verification-inventory',type=Path,help='JSON array of exact {key,path} gzip verification files')
     parser.add_argument('--seed')
+    parser.add_argument('--full-rehash',action='store_true')
     parser.add_argument('--apply-staged',action='store_true')
     args=parser.parse_args(argv)
     if not args.apply_staged and not all((args.engine_config,args.captures or args.old_native_config,
@@ -59,7 +60,8 @@ def main(argv=None):
     if args.apply_staged:
         result=apply_staged(args.work,BodyStore(R2Adapter(client,args.bucket)))
     else:
-        captures=args.captures
+        captures=(json.loads(args.captures.read_text())
+                  if args.captures and args.captures.suffix=='.json' else args.captures)
         if args.old_native_config:
             from congress_api.retention.r2 import R2Store
             from congress_api.retention.raw_storage import RawStorage
@@ -69,7 +71,8 @@ def main(argv=None):
             receipts=json.loads(args.receipt_inventory.read_text()),
             previous=json.loads(args.verification_inventory.read_text()),
             engine=NativeDatasets.from_config(args.engine_config),work=args.work,
-            checked_at=datetime.now(timezone.utc).isoformat(),seed=args.seed)
+            checked_at=datetime.now(timezone.utc).isoformat(),seed=args.seed,
+            full_rehash=args.full_rehash)
     print(json.dumps(result,indent=2))
     return 0 if result.get('valid',True) else 1
 
