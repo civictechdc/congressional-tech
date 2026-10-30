@@ -1,4 +1,4 @@
-"""Guarded viewer publication writes, continuation, read-only verification, and catalog compaction."""
+"""Archive release publication, conditional pointer flips, read-only verification, and catalog compaction."""
 from __future__ import annotations
 from typing import Any
 
