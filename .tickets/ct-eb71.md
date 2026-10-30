@@ -1,6 +1,6 @@
 ---
 id: ct-eb71
-status: open
+status: closed
 deps: []
 links: []
 created: 2026-10-24T18:46:38Z
@@ -20,3 +20,9 @@ Efficiency pass E3. Arrow to Python to Arrow round trips exist only to satisfy a
 - No test asserts a self-computed byte equality.
 - Raw lanes pass.
 
+
+## Notes
+
+**2026-10-30T17:36:12Z**
+
+Completed and superseded by G03 raw index deletion in c25ee9bb (wc -l: 11,617 -> 2,124, -9,493 net): packages/congress_api/src/congress_api/retention/raw_storage.py and packages/congress_api/tests/test_raw_storage.py (including all 5 Arrow-Python byte-count round trips) have been deleted, replaced by congress_api.lake.captures and congress_api.lake.tables.

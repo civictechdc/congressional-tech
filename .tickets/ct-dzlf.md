@@ -1,6 +1,6 @@
 ---
 id: ct-dzlf
-status: open
+status: closed
 deps: []
 links: [ct-2ukk, ct-adu0]
 created: 2026-10-24T18:15:53Z
@@ -35,3 +35,7 @@ Engine half (60 Rust sites, deferred-commit revert, integration run without test
 **2026-10-24T18:47:53Z**
 
 Efficiency pass: child ct-eb71 (Table.nbytes instead of byte-count round trips). Keep the engine's generic verified local read (build.rs:356-372).
+
+**2026-10-30T17:36:12Z**
+
+Completed across cefr-cjqb (d3093739), G01 (703a5920), G02 (df1bed37), G03 (c25ee9bb), and 3014737a: all 75 PYTEST_CURRENT_TEST sites across packages/*/src have been eliminated (0 remaining), raw_storage.py, partition_routing.py, source_capture_inputs.py, and catalog_raw_updates.py have been deleted, and test_zero_pytest_current_test_sites_across_all_packages in packages/congress_api/tests/test_surviving_raw_ratchets.py enforces 0 sites across packages/*/src (3 passed).
