@@ -601,6 +601,18 @@ const measurePrefixes: Record<string, string> = {
   sjres: 'S.J.Res.',
   hconres: 'H.Con.Res.',
   sconres: 'S.Con.Res.',
+  pn: 'PN',
+};
+
+const billTypeSlugMap: Record<string, string> = {
+  hr: 'house-bill',
+  s: 'senate-bill',
+  hres: 'house-resolution',
+  sres: 'senate-resolution',
+  hjres: 'house-joint-resolution',
+  sjres: 'senate-joint-resolution',
+  hconres: 'house-concurrent-resolution',
+  sconres: 'senate-concurrent-resolution',
 };
 
 const genericAnchorTitles = new Set([
@@ -637,30 +649,179 @@ export function congressOptionLabel(congress: number | string): string {
   return `${ordinal(num)} Congress (${startYear}–${endYear})`;
 }
 
-export function parentCommitteeCode(code: string): string {
+export type CommitteeCatalogInput =
+  | any[]
+  | Map<string, any>
+  | Record<string, any>
+  | null
+  | undefined;
+
+function normalizeDateString(value: any): string | null {
+  if (!value) return null;
+  if (value instanceof Date) return value.toISOString().slice(0, 10);
+  const str = String(value).trim();
+  const match = /^(\d{4}-\d{2}-\d{2})/.exec(str);
+  return match ? match[1] : null;
+}
+
+export function indexCommittees(committees?: CommitteeCatalogInput): Map<string, any> {
+  const map = new Map<string, any>();
+  if (!committees) return map;
+  if (committees instanceof Map) {
+    for (const [k, v] of committees.entries()) {
+      map.set(String(k).toLowerCase(), v);
+    }
+    return map;
+  }
+  const items = Array.isArray(committees) ? committees : Object.values(committees);
+  for (const item of items) {
+    if (!item || typeof item !== 'object') continue;
+    const keys = [
+      item.committee_key,
+      item.system_code,
+      item.thomas_id,
+      item.house_committee_id,
+      item.senate_code,
+      ...(Array.isArray(item.system_codes) ? item.system_codes : []),
+      ...(Array.isArray(item.gpo_codes) ? item.gpo_codes : []),
+    ];
+    for (const key of keys) {
+      if (key) {
+        const lower = String(key).trim().toLowerCase();
+        if (lower && !map.has(lower)) map.set(lower, item);
+      }
+    }
+  }
+  return map;
+}
+
+export function resolveCommitteeName(
+  committee: any,
+  dateOrCongress?: string | number | Date | null,
+): string {
+  if (!committee) return '';
+  const historyList: any[] = Array.isArray(committee.names)
+    ? committee.names
+    : Array.isArray(committee.histories)
+      ? committee.histories
+      : [];
+  if (dateOrCongress != null && historyList.length > 0) {
+    const asNumber = typeof dateOrCongress === 'number'
+      ? dateOrCongress
+      : /^\d{1,3}$/.test(String(dateOrCongress).trim())
+        ? Number(String(dateOrCongress).trim())
+        : null;
+    if (asNumber != null && Number.isInteger(asNumber) && asNumber >= 1 && asNumber <= 300) {
+      for (const entry of historyList) {
+        if (entry?.congress != null && Number(entry.congress) === asNumber && entry.name) {
+          return String(entry.name);
+        }
+        if (Array.isArray(entry?.congresses) && entry.congresses.map(Number).includes(asNumber) && entry.name) {
+          return String(entry.name);
+        }
+      }
+      const meta = (congressMetadata as Record<string, { start: string; end: string }>)[String(asNumber)];
+      if (meta) {
+        for (const entry of historyList) {
+          const start = normalizeDateString(entry?.start ?? entry?.start_date);
+          const end = normalizeDateString(entry?.end ?? entry?.end_date);
+          if ((!start || start < meta.end) && (!end || end > meta.start) && entry?.name) {
+            return String(entry.name);
+          }
+        }
+      }
+    } else {
+      const targetDate = normalizeDateString(dateOrCongress);
+      if (targetDate) {
+        for (const entry of historyList) {
+          const start = normalizeDateString(entry?.start ?? entry?.start_date);
+          const end = normalizeDateString(entry?.end ?? entry?.end_date);
+          if ((!start || targetDate >= start) && (!end || targetDate < end) && entry?.name) {
+            return String(entry.name);
+          }
+        }
+      }
+    }
+  }
+  return String(
+    committee.current_name
+    || committee.name
+    || historyList.at(-1)?.name
+    || '',
+  ).trim();
+}
+
+export function parentCommitteeCode(code: string, committees?: CommitteeCatalogInput): string {
   const clean = String(code ?? '').trim().toLowerCase();
+  if (!clean) return '';
+  if (committees) {
+    const map = indexCommittees(committees);
+    const entry = map.get(clean);
+    const parent = String(entry?.parent_key ?? entry?.parent_system_code ?? '').trim().toLowerCase();
+    if (parent) return parent;
+  }
   if (parentCommitteeOverrides[clean]) return parentCommitteeOverrides[clean];
   if (clean.length === 6 && /^[a-z]{4}\d{2}$/.test(clean)) {
     const parent = `${clean.slice(0, 4)}00`;
     if (standingCommittees[parent]) return parent;
+    if (committees && indexCommittees(committees).has(parent)) return parent;
   }
   return clean;
 }
 
-export function committeeShortLabel(code: string): string {
+export function committeeShortLabel(
+  code: string,
+  committees?: CommitteeCatalogInput,
+  dateOrCongress?: string | number | Date | null,
+): string {
   const clean = String(code ?? '').trim().toLowerCase();
   if (!clean) return '';
+  if (committees) {
+    const map = indexCommittees(committees);
+    const entry = map.get(clean);
+    if (entry) {
+      const parentKey = String(entry.parent_key ?? entry.parent_system_code ?? '').trim().toLowerCase();
+      if (parentKey && map.has(parentKey)) {
+        const parentName = resolveCommitteeName(map.get(parentKey), dateOrCongress);
+        if (parentName) return parentName;
+      }
+      const name = resolveCommitteeName(entry, dateOrCongress);
+      if (name) return name;
+    }
+  }
   if (standingCommittees[clean]) return standingCommittees[clean];
-  const parent = parentCommitteeCode(clean);
+  const parent = parentCommitteeCode(clean, committees);
   if (standingCommittees[parent]) return standingCommittees[parent];
   return clean.toUpperCase();
 }
 
-export function committeeLabel(code: string): string {
+export function committeeLabel(
+  code: string,
+  committees?: CommitteeCatalogInput,
+  dateOrCongress?: string | number | Date | null,
+): string {
   const clean = String(code ?? '').trim().toLowerCase();
   if (!clean) return '';
+  if (committees) {
+    const map = indexCommittees(committees);
+    const entry = map.get(clean);
+    if (entry) {
+      const name = resolveCommitteeName(entry, dateOrCongress);
+      const parentKey = String(entry.parent_key ?? entry.parent_system_code ?? '').trim().toLowerCase();
+      if (parentKey && parentKey !== clean) {
+        const parentEntry = map.get(parentKey);
+        const parentName = parentEntry
+          ? resolveCommitteeName(parentEntry, dateOrCongress)
+          : standingCommittees[parentKey] || '';
+        if (parentName && name && !name.toLowerCase().startsWith(parentName.toLowerCase())) {
+          return `${parentName} — ${name}`;
+        }
+      }
+      if (name) return name;
+    }
+  }
   if (standingCommittees[clean]) return standingCommittees[clean];
-  const parent = parentCommitteeCode(clean);
+  const parent = parentCommitteeCode(clean, committees);
   const parentName = standingCommittees[parent];
   const subName = subcommittees[clean];
   if (parentName && subName) return `${parentName} — ${subName}`;
@@ -668,15 +829,28 @@ export function committeeLabel(code: string): string {
   return clean.toUpperCase();
 }
 
-export function expandCommitteeKeys(selected: string, facetItems: Array<{ value: string; count: number }>): string[] {
+export function expandCommitteeKeys(
+  selected: string,
+  facetItems: Array<{ value: string; count: number }>,
+  committees?: CommitteeCatalogInput,
+): string[] {
   const clean = String(selected ?? '').trim().toLowerCase();
   if (!clean) return [];
-  if (clean.endsWith('00') && standingCommittees[clean]) {
+  const map = indexCommittees(committees);
+  const entry = map.get(clean);
+  const explicitSubs: string[] = Array.isArray(entry?.subcommittees)
+    ? entry.subcommittees.map((s: any) => String(typeof s === 'string' ? s : (s?.committee_key ?? s?.system_code ?? '')).toLowerCase()).filter(Boolean)
+    : [];
+  if ((clean.endsWith('00') && (standingCommittees[clean] || entry)) || explicitSubs.length > 0) {
     const prefix = clean.slice(0, 4);
+    const subSet = new Set([clean, ...explicitSubs]);
     const matching = facetItems
       .map(item => String(item.value).toLowerCase())
-      .filter(code => code === clean || ((code.startsWith(prefix) || parentCommitteeCode(code) === clean) && parentCommitteeCode(code) === clean));
-    return matching.length ? matching : [clean];
+      .filter(code => subSet.has(code) || ((code.startsWith(prefix) || parentCommitteeCode(code, committees) === clean) && parentCommitteeCode(code, committees) === clean));
+    for (const s of explicitSubs) {
+      if (!matching.includes(s)) matching.push(s);
+    }
+    return matching.length ? [...new Set([clean, ...matching])] : [clean];
   }
   return [clean];
 }
@@ -846,20 +1020,23 @@ export function deriveCommitteeCodes(document: any, detail?: any, sources?: any[
   return result;
 }
 
-export function buildCommitteeGroups(facetItems: Array<{ value: string; count: number }>) {
+export function buildCommitteeGroups(
+  facetItems: Array<{ value: string; count: number }>,
+  committees?: CommitteeCatalogInput,
+) {
   const parentTotals = new Map<string, number>();
   const subItems: Array<{ value: string; label: string; count: number }> = [];
   for (const item of facetItems) {
     const code = String(item.value).toLowerCase();
     const count = Number(item.count) || 0;
-    const parent = parentCommitteeCode(code);
+    const parent = parentCommitteeCode(code, committees);
     parentTotals.set(parent, (parentTotals.get(parent) ?? 0) + count);
     if (code !== parent) {
-      subItems.push({ value: code, label: committeeLabel(code), count });
+      subItems.push({ value: code, label: committeeLabel(code, committees), count });
     }
   }
   const primary = [...parentTotals.entries()]
-    .map(([value, count]) => ({ value, label: committeeShortLabel(value), count }))
+    .map(([value, count]) => ({ value, label: committeeShortLabel(value, committees), count }))
     .sort((a, b) => b.count - a.count || a.label.localeCompare(b.label));
   subItems.sort((a, b) => a.label.localeCompare(b.label));
   return { primary, subItems };
@@ -906,10 +1083,111 @@ export function effectiveFormat(document: any, detail?: any): string {
 }
 
 export function formatMeasure(key: string): string {
-  const match = /^(?:(\d+)-)?([a-z]+)-(\d+)$/i.exec(String(key ?? '').trim());
-  if (!match) return String(key ?? '');
+  const raw = String(key ?? '').trim();
+  const nomMatch = /^(?:(\d+)-)?pn-([0-9-]+)$/i.exec(raw);
+  if (nomMatch) {
+    return `PN${nomMatch[2]}`;
+  }
+  const match = /^(?:(\d+)-)?([a-z]+)-(\d+)$/i.exec(raw);
+  if (!match) return raw;
   const prefix = measurePrefixes[match[2].toLowerCase()] ?? match[2].toUpperCase();
   return `${prefix} ${match[3]}`;
+}
+
+export function formatSubject(key: string, subject?: any): string {
+  if (subject?.citation) return String(subject.citation);
+  if (subject?.bill_type && subject?.bill_number != null) {
+    const prefix = measurePrefixes[String(subject.bill_type).toLowerCase()] ?? String(subject.bill_type).toUpperCase();
+    return `${prefix} ${subject.bill_number}`;
+  }
+  return formatMeasure(key);
+}
+
+export function congressGovBillUrl(billOrKey: any): string | null {
+  if (!billOrKey) return null;
+  if (typeof billOrKey === 'object' && billOrKey.congress_gov_url) return String(billOrKey.congress_gov_url);
+  const key = typeof billOrKey === 'object'
+    ? String(billOrKey.subject_key ?? billOrKey.bill_id ?? '')
+    : String(billOrKey);
+  const match = /^(\d+)-([a-z]+)-(\d+)$/i.exec(key.trim());
+  if (match) {
+    const congress = Number(match[1]);
+    const type = match[2].toLowerCase();
+    const num = match[3];
+    const slug = billTypeSlugMap[type];
+    if (slug && congress > 0) {
+      return `https://www.congress.gov/bill/${ordinal(congress)}-congress/${slug}/${num}`;
+    }
+  }
+  if (typeof billOrKey === 'object' && billOrKey.congress && billOrKey.bill_type && billOrKey.bill_number != null) {
+    const slug = billTypeSlugMap[String(billOrKey.bill_type).toLowerCase()];
+    if (slug) {
+      return `https://www.congress.gov/bill/${ordinal(Number(billOrKey.congress))}-congress/${slug}/${billOrKey.bill_number}`;
+    }
+  }
+  return null;
+}
+
+export function gpoBillUrl(billOrKey: any): string | null {
+  if (!billOrKey) return null;
+  if (typeof billOrKey === 'object' && billOrKey.gpo_url) return String(billOrKey.gpo_url);
+  const key = typeof billOrKey === 'object'
+    ? String(billOrKey.subject_key ?? billOrKey.bill_id ?? '')
+    : String(billOrKey);
+  const match = /^(\d+)-([a-z]+)-(\d+)$/i.exec(key.trim());
+  if (match) {
+    const [, congress, type, num] = match;
+    if (type.toLowerCase() !== 'pn') {
+      return `https://www.govinfo.gov/app/search/%7B%22query%22%3A%22collection%3Abills%20congress%3A${congress}%20billtype%3A${type.toLowerCase()}%20billnum%3A${num}%22%7D`;
+    }
+  }
+  return null;
+}
+
+export function congressGovNominationUrl(nomOrKey: any): string | null {
+  if (!nomOrKey) return null;
+  if (typeof nomOrKey === 'object' && nomOrKey.congress_gov_url) return String(nomOrKey.congress_gov_url);
+  const key = typeof nomOrKey === 'object'
+    ? String(nomOrKey.subject_key ?? nomOrKey.nomination_id ?? '')
+    : String(nomOrKey);
+  const match = /^(\d+)-pn-([0-9-]+)$/i.exec(key.trim());
+  if (match) {
+    const congress = Number(match[1]);
+    const number = match[2];
+    if (congress > 0) {
+      return `https://www.congress.gov/nomination/${ordinal(congress)}-congress/${number}`;
+    }
+  }
+  return null;
+}
+
+export function congressGovMemberUrl(bioguideId: string, name?: string): string | null {
+  const clean = String(bioguideId ?? '').trim();
+  if (!clean) return null;
+  if (name) {
+    const slug = String(name).toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
+    if (slug) return `https://www.congress.gov/member/${slug}/${clean}`;
+  }
+  return `https://bioguide.congress.gov/search/bio/${clean}`;
+}
+
+export function spicyRegsUrl(queryOrBill: string): string | null {
+  const clean = String(queryOrBill ?? '').trim();
+  if (!clean) return null;
+  return `https://spicyregs.org/?q=${encodeURIComponent(clean)}`;
+}
+
+export function formatDuration(seconds: number | null | undefined): string | null {
+  const num = Number(seconds);
+  if (!Number.isFinite(num) || num <= 0) return null;
+  const totalSec = Math.round(num);
+  const hrs = Math.floor(totalSec / 3600);
+  const mins = Math.floor((totalSec % 3600) / 60);
+  const secs = totalSec % 60;
+  if (hrs > 0) {
+    return `${hrs}:${String(mins).padStart(2, '0')}:${String(secs).padStart(2, '0')}`;
+  }
+  return `${mins}:${String(secs).padStart(2, '0')}`;
 }
 
 export function formatBytes(value: any): string | null {
@@ -960,7 +1238,13 @@ function urlFallbackLabel(url: any): string {
   }
 }
 
-export function presentDocument(document: any, detail?: any, sources?: any[], recoveries?: any[]) {
+export function presentDocument(
+  document: any,
+  detail?: any,
+  sources?: any[],
+  recoveries?: any[],
+  committeesCatalog?: CommitteeCatalogInput,
+) {
   const rawTitle = String(document?.title ?? '').trim();
   const cleanFile = cleanDisplayFilename(document?.filename);
   const validTitle = !isGenericTitle(rawTitle) ? rawTitle : '';
@@ -969,6 +1253,7 @@ export function presentDocument(document: any, detail?: any, sources?: any[], re
   const kindLabels = Array.isArray(document?.document_kind)
     ? document.document_kind.map(documentKindLabel).filter(Boolean)
     : [];
+  const dateOrCongress = document?.document_date || document?.congress;
   const explicitCodes = Array.isArray(document?.committee_keys)
     ? document.committee_keys.map((key: any) => String(key ?? '').trim().toLowerCase()).filter(Boolean)
     : [];
@@ -979,8 +1264,8 @@ export function presentDocument(document: any, detail?: any, sources?: any[], re
   const committeeItems = uniqueCodes
     .map(code => ({
       code,
-      label: committeeLabel(code),
-      shortLabel: committeeShortLabel(code),
+      label: committeeLabel(code, committeesCatalog, dateOrCongress),
+      shortLabel: committeeShortLabel(code, committeesCatalog, dateOrCongress),
     }))
     .filter(item => Boolean(item.label));
   const committees = [...new Set(committeeItems.map(item => item.shortLabel).filter(Boolean))];

@@ -10,7 +10,15 @@ async function compile(name){
   const result=await build({entryPoints:[new URL('../src/components/explorer/archive/'+name,import.meta.url).pathname],bundle:true,platform:'node',format:'cjs',packages:'external',write:false,define:{'import.meta.env':'globalThis.__IMPORT_META_ENV__'}});
   const compiled={exports:{}};new Function('require','module','exports',result.outputFiles[0].text)(require,compiled,compiled.exports);return compiled.exports;
 }
-const {ArchiveDetail,ArchiveRows}=await compile('ArchiveDetail.tsx');
+const {
+  ArchiveDetail,
+  ArchiveRows,
+  HearingDetail,
+  CommitteeDetail,
+  WitnessDetail,
+  MemberDetail,
+  SubjectDetail,
+}=await compile('ArchiveDetail.tsx');
 let formatting;const formatModule=()=>formatting??=compile('ArchiveFormats.tsx');
 const row={list_row:0,filename:'Report.pdf',title:'Publisher report',format:'pdf',date_kind:'captured',first_captured:'2024-01-02',document_date:'2023-12-01',meeting_keys:['118001','118002'],hidden:false};
 const detail={link_key:new Uint8Array(8).fill(17),saved_body:new Uint8Array(32).fill(17),saved_suffix:'.gz',saved_bytes:101*1024*1024,saved_media_type:'application/pdf',document_date_source:'publisher',removed_on:'2024-03-01',alternates:[{format:'xml',body:new Uint8Array(32).fill(18),suffix:'.gz',size:50}]};
@@ -175,4 +183,155 @@ test('detail view derives committees from facts and URLs, renders GovInfo packag
   }finally{
     delete globalThis.__IMPORT_META_ENV__;
   }
+});
+
+test('Phase-2 entity detail components render hearings, committees, witnesses, members, bills, and nominations with cross-links',()=>{
+  const hearingHtml=renderToStaticMarkup(React.createElement(HearingDetail,{
+    meeting:{
+      event_id:118001,
+      chamber:'house',
+      congress:118,
+      title:'Transportation infrastructure hearing',
+      meeting_date:'2024-05-01',
+      meeting_type:'hearing',
+      status:'held',
+      sittings:[{datetime:'2024-05-01T10:00:00Z',building:'Rayburn',room:'2167'}],
+      committees:[{committee_key:'hspw00',system_code:'hspw00',name:'House Committee on Transportation and Infrastructure'}],
+      subjects:[{subject_key:'118-hr-1234',short_title:'Surface Transportation Modernization Act'},{subject_key:'118-pn-730-2',citation:'PN730-2',title:'Jane Doe nomination'}],
+      videos:[{video_key:'youtube:yt118001',source:'youtube',url:'https://www.youtube.com/watch?v=yt118001',title:'Hearing Livestream',duration_s:5420,tracks:[{label:'English captions',url:'https://fixture.test/captions.vtt'}]}],
+      transcripts:[{jacket_number:'55-123',title:'Official Hearing Transcript',list_row:0}],
+      witnesses:[{witness_key:'smith_jane',name:'Dr. Jane Smith',organization:'National Transit Institute',position:'Director',panel:1,documents:[row]}],
+    },
+    onSelect:()=>{},
+    onCommittee:()=>{},
+    onSubject:()=>{},
+    onWitness:()=>{},
+    onMember:()=>{},
+  }));
+  for(const text of [
+    'Transportation infrastructure hearing',
+    'Rayburn 2167',
+    'House Committee on Transportation and Infrastructure',
+    'H.R. 1234 — Surface Transportation Modernization Act',
+    'PN730-2 — Jane Doe nomination',
+    'Hearing Livestream',
+    '1:30:20',
+    'English captions',
+    'Official Hearing Transcript',
+    'Dr. Jane Smith',
+    'National Transit Institute',
+    '/dashboard/?meeting=118001',
+  ])assert(hearingHtml.includes(text),`Missing in HearingDetail: ${text}`);
+
+  const committeeHtml=renderToStaticMarkup(React.createElement(CommitteeDetail,{
+    committee:{
+      committee_key:'hspw00',
+      system_code:'hspw00',
+      chamber:'house',
+      type:'standing',
+      current_name:'House Committee on Transportation and Infrastructure',
+      resolved_name:'House Committee on Transportation and Infrastructure',
+      jurisdiction:'Transportation, highways, aviation, and water resources.',
+      url:'https://transportation.house.gov',
+      doc_count:42,
+      hearing_count:5,
+      active_congress:118,
+      roster_congresses:[118,117],
+      names:[
+        {name:'House Committee on Public Works and Transportation',start:'1975-01-03',end:'1995-01-03'},
+        {name:'House Committee on Transportation and Infrastructure',start:'1995-01-03',end:null},
+      ],
+      subcommittees:[{committee_key:'hspw12',current_name:'Highways and Transit'}],
+      roster:[{bioguide_id:'G000546',name:'Sam Graves',party:'R',state:'MO',role:'Chair'},{bioguide_id:'S000510',name:'Adam Smith',party:'D',state:'WA',role:'Ranking Member'}],
+      hearings:[{event_id:118001,title:'Transportation infrastructure hearing',meeting_date:'2024-05-01'}],
+    },
+    onCommittee:()=>{},
+    onHearing:()=>{},
+    onMember:()=>{},
+  }));
+  for(const text of [
+    'House Committee on Transportation and Infrastructure',
+    'Transportation, highways, aviation, and water resources.',
+    'House Committee on Public Works and Transportation',
+    'Highways and Transit',
+    'Sam Graves',
+    'Adam Smith',
+    '/dashboard/?committee=hspw00',
+  ])assert(committeeHtml.includes(text),`Missing in CommitteeDetail: ${text}`);
+
+  const witnessHtml=renderToStaticMarkup(React.createElement(WitnessDetail,{
+    witness:{
+      witness_key:'smith_jane',
+      name:'Dr. Jane Smith',
+      organizations:['National Transit Institute'],
+      positions:['Director'],
+      appearances:[{event_id:118001,title:'Transportation infrastructure hearing',meeting_date:'2024-05-01',panel:1,committee_keys:['hspw00']}],
+      documents:[row],
+    },
+    onSelect:()=>{},
+    onHearing:()=>{},
+    onCommittee:()=>{},
+  }));
+  for(const text of ['Dr. Jane Smith','National Transit Institute','Director','Transportation infrastructure hearing','Publisher report'])assert(witnessHtml.includes(text),`Missing in WitnessDetail: ${text}`);
+
+  const memberHtml=renderToStaticMarkup(React.createElement(MemberDetail,{
+    member:{
+      bioguide_id:'S000510',
+      name:'Adam Smith',
+      party:'D',
+      state:'WA',
+      district:9,
+      chamber:'house',
+      official_url:'https://adamsmith.house.gov',
+      terms:[{congress:118,chamber:'house',party:'D',state:'WA',district:9}],
+      roster_entries:[{committee_key:'hspw00',congress:118,role:'Ranking Member'}],
+      sponsored_bills:[{subject_key:'118-hr-1234',short_title:'Surface Transportation Modernization Act'}],
+      hearings:[{event_id:118001,title:'Transportation infrastructure hearing',meeting_date:'2024-05-01'}],
+    },
+    onCommittee:()=>{},
+    onHearing:()=>{},
+    onSubject:()=>{},
+  }));
+  for(const text of ['Adam Smith','WA-9','Bioguide: S000510','Ranking Member','H.R. 1234','Surface Transportation Modernization Act'])assert(memberHtml.includes(text),`Missing in MemberDetail: ${text}`);
+
+  const billHtml=renderToStaticMarkup(React.createElement(SubjectDetail,{
+    subject:{
+      kind:'bill',
+      subject_key:'118-hr-1234',
+      congress:118,
+      short_title:'Surface Transportation Modernization Act',
+      title:'A bill to modernize surface transportation.',
+      introduced_date:'2024-03-15',
+      sponsor_bioguide_id:'S000510',
+      sponsor_name:'Rep. Smith, Adam',
+      sponsor_party:'D',
+      sponsor_state:'WA',
+      status:'Reported by Committee',
+      latest_action_date:'2024-05-02',
+      latest_action_text:'Ordered to be Reported.',
+      committees:['hspw00'],
+      cbo_estimates:[{title:'CBO Estimate for H.R. 1234',pub_date:'2024-05-10',url:'https://www.cbo.gov/publication/59999'}],
+      votes:[{chamber:'house',roll_number:210,date:'2024-05-15',question:'On Passage',result:'Passed',yea:310,nay:110,url:'https://clerk.house.gov/evs/2024/roll210.xml'}],
+      amendment_count:1,
+      amendments:[{type:'HAMDT',number:99,sponsor_name:'Rep. Smith',purpose:'Bridge inspection funding'}],
+      related_bills:[{subject_key:'118-s-567',relationship:'Companion bill'}],
+      hearings:[{event_id:118001,title:'Transportation infrastructure hearing',meeting_date:'2024-05-01'}],
+    },
+    onHearing:()=>{},
+    onCommittee:()=>{},
+    onMember:()=>{},
+    onSubject:()=>{},
+  }));
+  for(const text of [
+    'H.R. 1234 — Surface Transportation Modernization Act',
+    'Rep. Smith, Adam',
+    'CBO Estimate for H.R. 1234',
+    'Roll #210',
+    '310–110',
+    'Bridge inspection funding',
+    'S. 567 (Companion bill)',
+    'Congress.gov',
+    'GPO GovInfo',
+    'spicy-regs',
+  ])assert(billHtml.includes(text),`Missing in SubjectDetail: ${text}`);
 });
