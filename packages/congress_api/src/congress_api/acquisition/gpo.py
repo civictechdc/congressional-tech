@@ -322,17 +322,86 @@ def main(
         sys.exit(1)
 
 
-def list_collection(since: str, api_key: str):
-    """Yield every CHRG package modified since `since` (paged, 1000 at a time)."""
+def govinfo_api_headers(api_key: str):
+    """Return a per-URL header provider supplying `X-Api-Key` for `api.govinfo.gov` endpoints."""
+    def _headers(url: str) -> dict[str, str]:
+        if url and "api.govinfo.gov" in url:
+            return {"X-Api-Key": api_key}
+        return {}
+    return _headers
+
+
+def _strip_api_key_from_url(url: str | None) -> str | None:
+    if not url:
+        return None
+    from urllib.parse import parse_qsl, urlencode, urlsplit, urlunsplit
+    parts = urlsplit(url)
+    filtered = [(k, v) for k, v in parse_qsl(parts.query, keep_blank_values=True) if k.casefold() != "api_key"]
+    return urlunsplit((parts.scheme, parts.netloc, parts.path, urlencode(filtered), parts.fragment))
+
+
+def list_collection(since: str, api_key: str, *, fetcher=None, receipt_writer=None, family: str = "govinfo/collections"):
+    """Yield every CHRG package modified since `since` (paged, 1000 at a time).
+
+    Sends `X-Api-Key` in request headers so credentials never appear in recorded URLs.
+    When `fetcher` and `receipt_writer` are supplied, routes every page through the raw fetcher.
+    """
+    url: str | None = f"{GOVINFO_API}/collections/CHRG/{since}?pageSize=1000&offsetMark=*"
+    if fetcher is not None and receipt_writer is not None:
+        while url:
+            clean_url = _strip_api_key_from_url(url)
+            result = fetcher.fetch(clean_url)
+            receipt_writer.write(result, family=family)
+            if not (result.final.complete and result.final.http_status == 200 and result.final.body and result.final.body.path):
+                raise RuntimeError(f"GovInfo collection page fetch failed for {clean_url}: {result.final.error or result.final.http_status}")
+            page = GpoCollectionPage.model_validate(json.loads(result.final.body.path.read_bytes().decode("utf-8")))
+            yield from (package.source_dict() for package in page.packages)
+            url = _strip_api_key_from_url(page.next_page)
+        return
+
     url = f"{GOVINFO_API}/collections/CHRG/{since}"
-    params = {"pageSize": 1000, "offsetMark": "*", "api_key": api_key}
+    params: dict | None = {"pageSize": 1000, "offsetMark": "*"}
+    headers = {"X-Api-Key": api_key}
     session = requests.Session()
     while url:
-        page = GpoCollectionPage.model_validate(get_with_retry(session, url, params=params).json())
+        clean_url = _strip_api_key_from_url(url)
+        page = GpoCollectionPage.model_validate(
+            get_with_retry(session, clean_url, params=params, headers=headers).json()
+        )
         yield from (package.source_dict() for package in page.packages)
         ## nextPage already carries the paging params, minus the key
-        url = page.next_page
-        params = {"api_key": api_key}
+        url = _strip_api_key_from_url(page.next_page)
+        params = None
+
+
+def fetch_package_through_raw(
+    fetcher,
+    receipt_writer,
+    package_id: str,
+    *,
+    mods_family: str = "govinfo/mods",
+    html_family: str = "govinfo/transcript-html",
+    html_urls: tuple[str, ...] = (),
+) -> dict:
+    """Fetch a GovInfo CHRG package's `mods.xml` (and optional transcript HTMLs) through `Fetcher` + `ReceiptWriter`."""
+    mods_url = f"{GOVINFO_CONTENT}/metadata/pkg/{package_id}/mods.xml"
+    mods_result = fetcher.fetch(mods_url)
+    mods_key, mods_line = receipt_writer.write(mods_result, family=mods_family)
+    receipt_keys = [mods_key]
+    for h_url in html_urls:
+        if not h_url:
+            continue
+        h_res = fetcher.fetch(h_url)
+        h_key, _ = receipt_writer.write(h_res, family=html_family)
+        receipt_keys.append(h_key)
+    return {
+        "package_id": package_id,
+        "mods_url": mods_url,
+        "receipt_keys": receipt_keys,
+        "outcome": mods_line.get("outcome"),
+        "http_status": mods_line.get("http_status"),
+        "complete": mods_result.final.complete,
+    }
 
 
 def read_transcript(session, row: dict, evidence: dict | None = None) -> dict:

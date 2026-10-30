@@ -62,14 +62,25 @@ def merge_documents(saved, fallback):
 class CommitteeFallback:
     """Match retained event pages once; XML workers never recrawl committee sites."""
 
-    def __init__(self, rows, state):
+    def __init__(self, rows, state, *, fetcher=None, receipt_writer=None):
         self.sites = committee_websites(rows)
         self.state = state
+        self.fetcher = fetcher
+        self.receipt_writer = receipt_writer
         self.by_day = defaultdict(list)
         for host, saved in state.items():
             for url, page in saved.get('pages', {}).items():
                 if (event := page.get('event')) and page.get('raw_html'):
                     self.by_day[host, event['date']].append((url, page))
+
+    def fetch_through_raw(self, url: str, *, family: str = "house/committee-page"):
+        """Fetch a committee fallback event page through the shared raw `Fetcher` and `ReceiptWriter`."""
+        if self.fetcher is None or self.receipt_writer is None:
+            raise ValueError("CommitteeFallback.fetch_through_raw requires fetcher and receipt_writer")
+        result = self.fetcher.fetch(url)
+        receipt_key, receipt_line = self.receipt_writer.write(result, family=family)
+        return dict(url=url, receipt_key=receipt_key, outcome=receipt_line.get("outcome"),
+                    http_status=receipt_line.get("http_status"), complete=result.final.complete)
 
     def find(self, meeting, previous=None):
         homes = set()

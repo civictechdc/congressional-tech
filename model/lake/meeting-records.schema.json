@@ -1,0 +1,113 @@
+{
+  "type": "struct",
+  "schema-id": 0,
+  "identifier-field-ids": [1, 2],
+  "fields": [
+    {"id": 1, "name": "record_sha", "required": true, "type": "string"},
+    {"id": 2, "name": "parser_version", "required": true, "type": "string"},
+    {"id": 3, "name": "source", "required": true, "type": "string"},
+    {
+      "id": 4,
+      "name": "meetings",
+      "required": true,
+      "type": {
+        "type": "list",
+        "element-id": 5,
+        "element-required": true,
+        "element": {
+          "type": "struct",
+          "fields": [
+            {"id": 6, "name": "event_id", "required": true, "type": "string"},
+            {"id": 7, "name": "chamber", "required": false, "type": "string"},
+            {"id": 8, "name": "congress", "required": false, "type": "int"},
+            {"id": 9, "name": "session", "required": false, "type": "int"},
+            {"id": 10, "name": "updated", "required": false, "type": "string"},
+            {"id": 11, "name": "title", "required": false, "type": "string"},
+            {"id": 12, "name": "meeting_date", "required": false, "type": "string"},
+            {"id": 13, "name": "meeting_type", "required": false, "type": "string"},
+            {"id": 14, "name": "status", "required": false, "type": "string"},
+            {
+              "id": 15,
+              "name": "sittings",
+              "required": true,
+              "type": {
+                "type": "list",
+                "element-id": 16,
+                "element-required": true,
+                "element": {
+                  "type": "struct",
+                  "fields": [
+                    {"id": 17, "name": "start", "required": false, "type": "string"},
+                    {"id": 18, "name": "end", "required": false, "type": "string"},
+                    {"id": 19, "name": "room", "required": false, "type": "string"},
+                    {"id": 20, "name": "building", "required": false, "type": "string"},
+                    {"id": 21, "name": "address", "required": false, "type": "string"}
+                  ]
+                }
+              }
+            },
+            {
+              "id": 22,
+              "name": "committees",
+              "required": true,
+              "type": {
+                "type": "list",
+                "element-id": 23,
+                "element-required": true,
+                "element": {
+                  "type": "struct",
+                  "fields": [
+                    {"id": 24, "name": "system_code", "required": false, "type": "string"},
+                    {"id": 25, "name": "name", "required": false, "type": "string"},
+                    {"id": 26, "name": "chamber", "required": false, "type": "string"},
+                    {"id": 27, "name": "role", "required": false, "type": "string"}
+                  ]
+                }
+              }
+            },
+            {
+              "id": 28,
+              "name": "subject_keys",
+              "required": true,
+              "type": {
+                "type": "list",
+                "element-id": 29,
+                "element-required": true,
+                "element": "string"
+              }
+            },
+            {
+              "id": 30,
+              "name": "transcript_jackets",
+              "required": true,
+              "type": {
+                "type": "list",
+                "element-id": 31,
+                "element-required": true,
+                "element": "int"
+              }
+            },
+            {
+              "id": 32,
+              "name": "videos",
+              "required": true,
+              "type": {
+                "type": "list",
+                "element-id": 33,
+                "element-required": true,
+                "element": {
+                  "type": "struct",
+                  "fields": [
+                    {"id": 34, "name": "video_key", "required": false, "type": "string"},
+                    {"id": 35, "name": "url", "required": false, "type": "string"},
+                    {"id": 36, "name": "title", "required": false, "type": "string"}
+                  ]
+                }
+              }
+            }
+          ]
+        }
+      }
+    }
+  ]
+}

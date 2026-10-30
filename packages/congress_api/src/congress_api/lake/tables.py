@@ -9,6 +9,79 @@ import pyarrow.parquet as pq
 
 from congress_api.retention.provenance import file_pin
 
+ROOT = Path(__file__).resolve().parents[5]
+PART_LAYOUT = dict(file_bytes=128 << 20, row_group_rows=100_000, row_group_bytes=32 << 20)
+WRITER_PROFILES = {
+    'part': dict(
+        compression_codec='zstd',
+        compression_level=3,
+        row_group_rows=100_000,
+        layout=PART_LAYOUT,
+    ),
+}
+LAKE_SCHEMA_PATHS = {
+    'captures': ROOT / 'model/lake/captures.schema.json',
+    'readings': ROOT / 'model/lake/readings.schema.json',
+    'filename_readings': ROOT / 'model/lake/filename-readings.schema.json',
+    'meeting_records': ROOT / 'model/lake/meeting-records.schema.json',
+    'appearance_records': ROOT / 'model/lake/appearance-records.schema.json',
+}
+TABLE_SPECS = {
+    'captures': dict(
+        schema_path=LAKE_SCHEMA_PATHS['captures'],
+        primary_key=('receipt_key', 'receipt_line', 'capture_index'),
+        sort_key=('receipt_key', 'receipt_line', 'capture_index'),
+        writer_profile='part',
+        row_group_rows=100_000,
+    ),
+    'readings': dict(
+        schema_path=LAKE_SCHEMA_PATHS['readings'],
+        primary_key=('body_sha', 'parser', 'parser_version'),
+        sort_key=('body_sha', 'parser', 'parser_version'),
+        writer_profile='part',
+        row_group_rows=100_000,
+    ),
+    'filename_readings': dict(
+        schema_path=LAKE_SCHEMA_PATHS['filename_readings'],
+        primary_key=('filename', 'source_url', 'catalog_version'),
+        sort_key=('filename', 'source_url', 'catalog_version'),
+        writer_profile='part',
+        row_group_rows=100_000,
+    ),
+    'meeting_records': dict(
+        schema_path=LAKE_SCHEMA_PATHS['meeting_records'],
+        primary_key=('record_sha', 'parser_version'),
+        sort_key=('record_sha', 'parser_version'),
+        writer_profile='part',
+        row_group_rows=100_000,
+    ),
+    'appearance_records': dict(
+        schema_path=LAKE_SCHEMA_PATHS['appearance_records'],
+        primary_key=('record_sha', 'parser_version'),
+        sort_key=('record_sha', 'parser_version'),
+        writer_profile='part',
+        row_group_rows=100_000,
+    ),
+}
+
+
+def load_schema(name, *, root=ROOT):
+    key = name.replace('-', '_')
+    if key not in LAKE_SCHEMA_PATHS:
+        raise ValueError(f'Unknown lake schema: {name}')
+    path = Path(root) / 'model/lake' / LAKE_SCHEMA_PATHS[key].name
+    return json.loads(path.read_text())
+
+
+def table_spec(name, *, root=ROOT):
+    key = name.replace('-', '_')
+    if key not in TABLE_SPECS:
+        raise ValueError(f'Unknown lake table: {name}')
+    spec = dict(TABLE_SPECS[key])
+    spec['schema_path'] = Path(root) / 'model/lake' / spec['schema_path'].name
+    spec['schema'] = load_schema(key, root=root)
+    return spec
+
 
 def _identifier(value):
     if not isinstance(value,str) or re.fullmatch('[A-Za-z_][A-Za-z0-9_]*',value) is None:

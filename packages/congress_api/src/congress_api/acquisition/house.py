@@ -278,3 +278,84 @@ def main(meetings, gpo_path, state_dir, output_dir, seed_cache=None, offline=Fal
         totals[name] = len(rows)
     totals["refreshes deferred"] = max(0, len(pending) - len(todo))
     print(dict(totals), dict(http.COUNTS))
+
+
+def fetch_through_raw(
+    fetcher,
+    receipt_writer,
+    meeting: dict,
+    *,
+    previous_urls: tuple[str, ...] = (),
+    meeting_family: str = "house/meeting-xml",
+    witness_family: str = "house/witness-xml",
+    page_family: str = "house/event-page",
+) -> dict:
+    """Fetch a House/joint meeting's `<committee-meeting>` XML, `<witness-list>` XML, or event page
+    through the shared raw `Fetcher` and `ReceiptWriter`, with no separate state file.
+    """
+    candidates = list(dict.fromkeys(list(previous_urls) + addresses(meeting)))
+    receipt_keys: list[str] = []
+    root = None
+    matched_url = ""
+
+    for url in candidates:
+        res = fetcher.fetch(url)
+        r_key, _ = receipt_writer.write(res, family=meeting_family)
+        receipt_keys.append(r_key)
+        if res.final.complete and res.final.http_status == 200 and res.final.body and res.final.body.path:
+            try:
+                parsed_root = parse_house_meeting(res.final.body.path.read_bytes())
+                if parsed_root.tag == "committee-meeting":
+                    root = parsed_root
+                    matched_url = url
+                    break
+            except (ET.ParseError, ValueError):
+                continue
+
+    page_url = f"https://docs.house.gov/Committee/Calendar/ByEvent.aspx?EventID={meeting['eventId']}"
+    if root is None:
+        page_res = fetcher.fetch(page_url)
+        p_key, _ = receipt_writer.write(page_res, family=page_family)
+        receipt_keys.append(p_key)
+        if page_res.final.complete and page_res.final.http_status == 200 and page_res.final.body and page_res.final.body.path:
+            page_text = page_res.final.body.path.read_bytes().decode("utf-8", "replace")
+            extra = [u for u in addresses(meeting, page=page_text) if u not in candidates]
+            for url in extra:
+                res = fetcher.fetch(url)
+                r_key, _ = receipt_writer.write(res, family=meeting_family)
+                receipt_keys.append(r_key)
+                if res.final.complete and res.final.http_status == 200 and res.final.body and res.final.body.path:
+                    try:
+                        parsed_root = parse_house_meeting(res.final.body.path.read_bytes())
+                        if parsed_root.tag == "committee-meeting":
+                            root = parsed_root
+                            matched_url = url
+                            break
+                    except (ET.ParseError, ValueError):
+                        continue
+            candidates.extend(extra)
+
+    witness_url = ""
+    if root is not None:
+        bases = [matched_url] + [u for u in candidates if f"/{root.get('meeting-type')}-" in u] + addresses(meeting, root)
+        w_candidates = list(dict.fromkeys(re.sub(r"-(\d{8})\.xml$", r"-WList-\1.xml", u) for u in bases if u))
+        for w_url in w_candidates:
+            w_res = fetcher.fetch(w_url)
+            w_key, _ = receipt_writer.write(w_res, family=witness_family)
+            receipt_keys.append(w_key)
+            if w_res.final.complete and w_res.final.http_status == 200 and w_res.final.body and w_res.final.body.path:
+                try:
+                    w_root = parse_house_witnesses(w_res.final.body.path.read_bytes())
+                    if w_root.tag == "witness-list":
+                        witness_url = w_url
+                        break
+                except (ET.ParseError, ValueError):
+                    continue
+
+    return {
+        "event_id": str(meeting["eventId"]),
+        "meeting_url": matched_url,
+        "witness_url": witness_url,
+        "receipt_keys": receipt_keys,
+    }
+

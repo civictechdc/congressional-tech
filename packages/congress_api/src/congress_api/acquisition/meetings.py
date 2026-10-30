@@ -33,8 +33,9 @@ from congress_api.models.content import RawContent
 from congress_api.parsers.congress import meeting_from_xml, parse_congress_xml
 from congress_api.retention.meetings import read, write, write_pending
 from congress_api.retention.rejected_pages import retain_rejected_page
-from congress_api.transport.congress import API, get
+from congress_api.transport.congress import API, api_headers, get
 from congress_api.transport.http import HttpRequestError, get_with_retry
+from urllib.parse import urlencode
 
 
 FIRST_CONGRESS = 112  # Congress.gov's committee meeting records start here
@@ -116,7 +117,7 @@ def main(output_path: Path = DEFAULT_MEETINGS_FILE, nthreads: int = 5) -> None:
                 # XML. Refusals, rate limits and missing records are not that case.
                 if isinstance(error, HttpRequestError) and error.status != 500:
                     raise
-                xml = get_with_retry(session, url, params={'api_key': api_key, 'format': 'xml'}, attempts=5)
+                xml = get_with_retry(session, url, params={'format': 'xml'}, headers={'X-Api-Key': api_key}, attempts=5)
                 # Retained in failed_responses if XML parsing raises before committeeMeeting is built.
                 response = {'_source_xml': RawContent.from_bytes(xml.content, 'application/xml').source_dict()}
                 response = {'committeeMeeting': meeting_from_xml(parse_congress_xml(xml.content)).source_dict()}
@@ -159,3 +160,188 @@ def main(output_path: Path = DEFAULT_MEETINGS_FILE, nthreads: int = 5) -> None:
     if failures:
         logging.error(f"{len(failures)} meeting(s) failed:\n  " + "\n  ".join(failures[:50]))
         sys.exit(1)
+
+
+def build_list_url(
+    endpoint: str,
+    *,
+    offset: int = 0,
+    limit: int = 250,
+    from_date_time: str | None = None,
+    to_date_time: str | None = None,
+) -> str:
+    """Build a public Congress.gov list URL without credentials in query parameters."""
+    base = endpoint.split("?", 1)[0]
+    params: dict[str, str | int] = {"format": "json", "limit": limit, "offset": offset}
+    if from_date_time:
+        params["fromDateTime"] = from_date_time
+    if to_date_time:
+        params["toDateTime"] = to_date_time
+    return f"{base}?{urlencode(params)}"
+
+
+def relist_endpoint_window(
+    fetcher,
+    receipt_writer,
+    endpoint: str,
+    *,
+    from_date_time: str | None = None,
+    to_date_time: str | None = None,
+    limit: int = 250,
+    watermarks: dict | None = None,
+    family: str = "congress/meetings",
+) -> dict:
+    """Relist one Congress.gov meeting endpoint window through the raw `Fetcher` and `ReceiptWriter`.
+
+    Track B14 invariant: the incremental relist is keyed by `(endpoint, fromDateTime, toDateTime)`,
+    and the window advances ONLY when every page from `offset=0` through the final page has a
+    good fetch (`complete`, HTTP 200..299, and valid `MeetingsPage`). A later-page failure leaves
+    the watermark unchanged so the next run repeats the window.
+    """
+    if limit < 1:
+        raise ValueError("limit must be positive")
+    clean_endpoint = endpoint.split("?", 1)[0]
+    window_key = (clean_endpoint, from_date_time, to_date_time)
+    offset = 0
+    listed: set[str] = set()
+    detail_urls: list[str] = []
+    receipt_keys: list[str] = []
+    pages_fetched = 0
+    last_retrieved_at: str | None = None
+
+    while True:
+        page_url = build_list_url(
+            clean_endpoint,
+            offset=offset,
+            limit=limit,
+            from_date_time=from_date_time,
+            to_date_time=to_date_time,
+        )
+        result = fetcher.fetch(page_url)
+        receipt_key, receipt_line = receipt_writer.write(result, family=family)
+        receipt_keys.append(receipt_key)
+        pages_fetched += 1
+        final = result.final
+        last_retrieved_at = final.retrieved_at
+        good_fetch = (
+            final.complete
+            and receipt_line.get("outcome") in ("stored", "unchanged")
+            and final.http_status is not None
+            and 200 <= final.http_status < 300
+            and final.body is not None
+            and final.body.path is not None
+        )
+        if not good_fetch:
+            return {
+                "window_key": window_key,
+                "complete": False,
+                "window_advanced": False,
+                "detail_urls": list(dict.fromkeys(detail_urls)),
+                "receipt_keys": receipt_keys,
+                "pages_fetched": pages_fetched,
+                "failed_offset": offset,
+                "error": final.error or f"http_{final.http_status}",
+            }
+
+        try:
+            payload = json.loads(final.body.path.read_bytes().decode("utf-8"))
+            envelope = parse_response(payload)
+            if not isinstance(envelope, MeetingsPage):
+                raise ValueError("Congress.gov meeting list did not return a MeetingsPage")
+            meetings_list = envelope.committeeMeetings
+        except (ValueError, TypeError, KeyError, UnicodeDecodeError) as exc:
+            return {
+                "window_key": window_key,
+                "complete": False,
+                "window_advanced": False,
+                "detail_urls": list(dict.fromkeys(detail_urls)),
+                "receipt_keys": receipt_keys,
+                "pages_fetched": pages_fetched,
+                "failed_offset": offset,
+                "error": type(exc).__name__,
+            }
+
+        page_urls = [m.url.split("?", 1)[0] for m in meetings_list]
+        if page_urls and not (set(page_urls) - listed):
+            return {
+                "window_key": window_key,
+                "complete": False,
+                "window_advanced": False,
+                "detail_urls": list(dict.fromkeys(detail_urls)),
+                "receipt_keys": receipt_keys,
+                "pages_fetched": pages_fetched,
+                "failed_offset": offset,
+                "error": "repeated_page",
+            }
+        listed.update(page_urls)
+        detail_urls.extend(page_urls)
+
+        has_next = bool(envelope.pagination and envelope.pagination.next)
+        if not has_next and len(meetings_list) < limit:
+            break
+        if not meetings_list:
+            return {
+                "window_key": window_key,
+                "complete": False,
+                "window_advanced": False,
+                "detail_urls": list(dict.fromkeys(detail_urls)),
+                "receipt_keys": receipt_keys,
+                "pages_fetched": pages_fetched,
+                "failed_offset": offset,
+                "error": "pagination_stalled",
+            }
+        offset += len(meetings_list)
+
+    new_watermark = to_date_time or last_retrieved_at or datetime.now(UTC).isoformat()
+    if watermarks is not None:
+        watermarks[window_key] = new_watermark
+        watermarks[clean_endpoint] = new_watermark
+
+    return {
+        "window_key": window_key,
+        "complete": True,
+        "window_advanced": True,
+        "watermark": new_watermark,
+        "detail_urls": list(dict.fromkeys(detail_urls)),
+        "receipt_keys": receipt_keys,
+        "pages_fetched": pages_fetched,
+        "failed_offset": None,
+        "error": None,
+    }
+
+
+def fetch_detail_through_raw(
+    fetcher,
+    receipt_writer,
+    url: str,
+    *,
+    family: str = "congress/meetings",
+    observations=(),
+) -> dict:
+    """Fetch one Congress.gov meeting detail endpoint through `Fetcher` + `ReceiptWriter`."""
+    clean_url = url.split("?", 1)[0]
+    if not clean_url.startswith(f"{API}/committee-meeting/"):
+        raise ValueError("Meeting detail URL is not on the Congress.gov API")
+    json_url = f"{clean_url}?format=json"
+    result = fetcher.fetch(json_url)
+    receipt_key, receipt_line = receipt_writer.write(
+        result, family=family, observations=observations
+    )
+    receipt_keys = [receipt_key]
+    final = result.final
+    if final.http_status == 500:
+        xml_url = f"{clean_url}?format=xml"
+        xml_result = fetcher.fetch(xml_url)
+        xml_key, receipt_line = receipt_writer.write(
+            xml_result, family=family, observations=observations
+        )
+        receipt_keys.append(xml_key)
+        final = xml_result.final
+    return {
+        "url": clean_url,
+        "receipt_keys": receipt_keys,
+        "outcome": receipt_line.get("outcome"),
+        "http_status": receipt_line.get("http_status"),
+        "complete": final.complete,
+    }
+
