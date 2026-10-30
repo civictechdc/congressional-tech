@@ -15,11 +15,11 @@ from news_lake.storage.docspec.schema import (
     DEFINITION,
     table_records,
 )
-from docspec_client.docspec import (
+from docspec_client import (
+    DocSpecFailure,
     NativeDatasets,
     restore_application_schema,
 )
-from docspec_client.docspec_host import DocSpecFailure
 
 
 class DocSpecClient:

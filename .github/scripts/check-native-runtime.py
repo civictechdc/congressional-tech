@@ -11,7 +11,7 @@ import os
 from pathlib import Path
 import re
 
-from docspec_client.docspec import (
+from docspec_client import (
     REQUIRED_LOOPBACK_CAPABILITIES,
     RUNTIME_PIN_FILE,
     NativeDatasets,

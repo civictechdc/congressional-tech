@@ -18,7 +18,7 @@ from typing import Any
 
 from congress_shared.custody import canonical_json_bytes, write_atomic_bytes
 from congress_shared.storage import connect_r2
-from docspec_client.docspec import QUALIFIED_DOCSPEC_RUNTIME, REQUIRED_LOOPBACK_CAPABILITIES
+from docspec_client import QUALIFIED_DOCSPEC_RUNTIME, REQUIRED_LOOPBACK_CAPABILITIES
 
 MAX_BINARY_BYTES = 1024**3
 MAX_DESCRIPTOR_BYTES = 1024**2

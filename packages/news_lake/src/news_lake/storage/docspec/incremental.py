@@ -49,8 +49,7 @@ import pyarrow.compute as pc
 import pyarrow.parquet as pq
 
 from congress_shared.custody import write_atomic_bytes
-from docspec_client.docspec import restore_application_schema
-from docspec_client.docspec_host import DocSpecFailure
+from docspec_client import DocSpecFailure, restore_application_schema
 from news_lake.analysis import bridges
 from news_lake.analysis.cluster import text_group_key
 from news_lake.analysis.views import _publication_date

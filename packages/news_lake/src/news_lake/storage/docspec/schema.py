@@ -16,7 +16,7 @@ from news_lake.contract.records import (
 )
 from news_lake.storage.coordinator import CommitError, _merge_upsert
 from congress_shared.custody import canonical_json_bytes, verify_local_file
-from docspec_client.docspec import (
+from docspec_client import (
     application_schema,
     build_update_merge_spec,
     native_storage_schema,

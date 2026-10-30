@@ -174,10 +174,7 @@ class Host:
                     value = None  # The child may still be writing its one record.
                 if value is not None:
                     address = self._ready_address(value)
-                    import sys
-                    host_mod = sys.modules.get('docspec_client.docspec_host')
-                    client_cls = getattr(getattr(host_mod, 'httpx', httpx), 'Client', httpx.Client)
-                    self.client = client_cls(base_url=f'http://{address}',
+                    self.client = httpx.Client(base_url=f'http://{address}',
                                                timeout=timeout, trust_env=False)
                     break
                 if time.monotonic() >= deadline:

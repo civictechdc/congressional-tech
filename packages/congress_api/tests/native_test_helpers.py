@@ -6,8 +6,7 @@ import subprocess
 import pytest
 from pathlib import Path
 
-from docspec_client.docspec import NativeDatasets
-from docspec_client.binary import resolve_docspec_binary
+from docspec_client import NativeDatasets, resolve_docspec_binary
 from news_lake.storage.docspec import DocSpecClient as _NewsClient
 
 

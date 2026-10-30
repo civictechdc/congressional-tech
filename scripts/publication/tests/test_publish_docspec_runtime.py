@@ -8,7 +8,7 @@ import json
 from pathlib import Path
 
 import pytest
-from docspec_client.docspec import QUALIFIED_DOCSPEC_RUNTIME, REQUIRED_LOOPBACK_CAPABILITIES
+from docspec_client import QUALIFIED_DOCSPEC_RUNTIME, REQUIRED_LOOPBACK_CAPABILITIES
 
 ROOT = Path(__file__).resolve().parents[3]
 
