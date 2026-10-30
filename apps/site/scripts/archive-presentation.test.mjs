@@ -30,8 +30,41 @@ test('all recovery kinds and hidden direct links show their recorded decisions',
 });
 
 test('list rows distinguish editions and import dates without inventing captures',()=>{
-  const html=renderToStaticMarkup(React.createElement(ArchiveRows,{rows:[row,{...row,list_row:1,date_kind:'import_day',first_captured:null,in_archive_since:'2020-01-02'}],onSelect:()=>{}}));
+  const html=renderToStaticMarkup(React.createElement(ArchiveRows,{rows:[
+    row,
+    {...row,list_row:1,document_date:null},
+    {...row,list_row:2,document_date:null,date_kind:'import_day',first_captured:null,in_archive_since:'2020-01-02'}
+  ],onSelect:()=>{}}));
   assert(html.includes('Captured 2024-01-02'));assert(html.includes('In our archive since 2020-01-02 (original capture date not recorded)'));assert(html.includes('2023-12-01'));
+  const datedOnly=renderToStaticMarkup(React.createElement(ArchiveRows,{rows:[row],onSelect:()=>{}}));
+  assert(datedOnly.includes('Document date: 2023-12-01'));
+  assert(!datedOnly.includes('Captured 2024-01-02'),'List row omits redundant capture date when document date is present');
+});
+
+test('blank and generic scrape titles fall back to clean congressional context and true file formats',()=>{
+  const zipEntry={
+    document:{...row,list_row:9,filename:'CHRG-109hhrg32242.zip',title:'ZIP',format:'json',congress:109,committee_keys:['hsju00'],document_kind:['published-hearing'],measure_keys:['109-hr-475']},
+    detail:{...detail,saved_bytes:590,saved_media_type:'application/json'},
+    sources:[{url:'https://publisher.test/CHRG-109hhrg32242.zip',member_path:'CHRG-109hhrg32242.zip'}],
+    recoveries:[{kind:'recovered_document',body:new Uint8Array(32).fill(19),suffix:'.gz',bytes:590,imported_at:'2024-01-01',identity_note:'Reconciled from pinned accepted mappings 00922c1eb29d84cdf68b1d17fb00e050f443942f13b3d35e775192ff42b73864; receipt categories preserved'}]
+  };
+  const detailHtml=render(zipEntry);
+  assert(detailHtml.includes('<h2>CHRG-109hhrg32242.zip</h2>'));
+  assert(!detailHtml.includes('<h2>ZIP</h2>'));
+  assert(detailHtml.includes('Open saved ZIP'));
+  assert(detailHtml.includes('(590 B)'));
+  assert(detailHtml.includes('109th Congress'));
+  assert(detailHtml.includes('House Judiciary'));
+  assert(detailHtml.includes('Published Hearing'));
+  assert(detailHtml.includes('H.R. 475'));
+  assert(!detailHtml.includes('Reconciled from pinned accepted mappings'));
+  assert(!detailHtml.includes('File in archive: CHRG-109hhrg32242.zip'));
+
+  const blankRowsHtml=renderToStaticMarkup(React.createElement(ArchiveRows,{rows:[
+    {...row,list_row:10,filename:'',title:null,format:'pdf',saved_kind:'recovery',congress:118,committee_keys:['hsju01'],document_kind:['witness-statement']}
+  ],onSelect:()=>{}}));
+  assert(blankRowsHtml.includes('Witness Statement — House Judiciary'));
+  assert(blankRowsHtml.includes('118th Congress · House Judiciary · Witness Statement'));
 });
 
 

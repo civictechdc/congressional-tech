@@ -56,7 +56,7 @@ function column(values: any[], isArray: boolean) {
   const dates = values.some(value => value instanceof Date);
   const packed = Float64Array.from(values, value => value == null ? NaN : Number(value));
   const get = (i: number) => Number.isNaN(packed[i]) ? null : dates ? new Date(packed[i]) : packed[i];
-  return { get, matches: (i: number, wanted: any[]) => wanted.includes(get(i)), bytes: packed.byteLength };
+  return { get, packed, matches: (i: number, wanted: any[]) => { const v = get(i); return v != null && (wanted.includes(v) || wanted.includes(String(v))); }, bytes: packed.byteLength };
 }
 
 export async function openArchive(pointerUrl: string, options: any = {}) {
@@ -174,13 +174,47 @@ export async function openArchive(pointerUrl: string, options: any = {}) {
   };
   const checkedRow=(index: number)=>{if(!Number.isSafeInteger(index)||index<0||index>=count)throw new Error('Invalid archive list row.');return row(index);};
   const captures=(a: any,b: any)=>(date(b.first_captured)??'').localeCompare(date(a.first_captured)??'')||a.list_row-b.list_row;
-  const matches=(i: number,query: any,text: string)=>{
+  const parseSearchText=(raw: any)=>{
+    const text=String(raw??'').normalize('NFKC').toLowerCase().trim();
+    if(!text)return {text:'',billSuffix:'',billCongress:'',codeSearch:false};
+    const billMatch=/^(?:(\d{2,3})[\s/-]+)?(h\.?\s*r\.?|s\.?|h\.?\s*res\.?|s\.?\s*res\.?|h\.?\s*j\.?\s*res\.?|s\.?\s*j\.?\s*res\.?|h\.?\s*con\.?\s*res\.?|s\.?\s*con\.?\s*res\.?)[\s.-]*(\d+)$/i.exec(text);
+    const billType=billMatch?billMatch[2].replace(/[^a-z]/gi,'').toLowerCase():'';
+    const billSuffix=billMatch?`-${billType}-${billMatch[3]}`:'';
+    const billCongress=billMatch?.[1]??'';
+    const codeSearch=Boolean(billSuffix||(/^[0-9a-z_-]+$/.test(text)&&/\d/.test(text)));
+    return {text,billSuffix,billCongress,codeSearch};
+  };
+  const matches=(i: number,query: any,parsed: ReturnType<typeof parseSearchText>)=>{
     if(!query.includeHidden&&value('hidden',i))return false;
-    if(text&&!`${value('filename',i)??''} ${value('title',i)??''}`.normalize('NFKC').toLowerCase().includes(text))return false;
+    if(parsed.text){
+      const inLabel=`${value('filename',i)??''} ${value('title',i)??''}`.normalize('NFKC').toLowerCase().includes(parsed.text);
+      if(!inLabel){
+        let inCodes=false;
+        if(parsed.codeSearch){
+          const measures:string[]=value('measure_keys',i)??[];
+          if(parsed.billSuffix){
+            const target=parsed.billCongress?`${parsed.billCongress}${parsed.billSuffix}`:parsed.billSuffix;
+            inCodes=measures.some(m=>parsed.billCongress?String(m).toLowerCase()===target:String(m).toLowerCase().endsWith(target));
+          }
+          if(!inCodes){
+            inCodes=measures.some(m=>String(m).toLowerCase().includes(parsed.text))
+              ||(value('meeting_keys',i)??[]).some((m:any)=>String(m).toLowerCase()===parsed.text)
+              ||(value('committee_keys',i)??[]).some((c:any)=>String(c).toLowerCase()===parsed.text);
+          }
+        }
+        if(!inCodes)return false;
+      }
+    }
     for(const [name,wanted] of Object.entries(query) as [string,any][]){
       if(columns.has(name)&&Array.isArray(wanted)&&wanted.length&&!columns.get(name).matches(i,wanted))return false;
     }
     return true;
+  };
+  const maxPlausibleDateEpoch=1798761599000; // 2026-12-31T23:59:59Z
+  const dateRank=(packed: Float64Array,i: number)=>{
+    const v=packed[i];
+    if(Number.isNaN(v))return -Infinity;
+    return v<=maxPlausibleDateEpoch?v:-1e15+v*1e-6;
   };
   const reader={releaseId,manifest,metrics,count,
     has:(name: string)=>files.has(name+'.parquet')||shards.has(name),
@@ -188,23 +222,50 @@ export async function openArchive(pointerUrl: string, options: any = {}) {
       signal?.throwIfAborted();const offset=query.offset??0,limit=query.limit??100;
       if(!Number.isSafeInteger(offset)||offset<0||!Number.isSafeInteger(limit)||limit<1||limit>1000)throw new Error('Invalid archive page.');
       const selected:number[]=[];let total=0;
-      const sorted=query.sort==='document_date'||query.sort==='first_captured';
-      const text=String(query.text??'').normalize('NFKC').toLowerCase();
+      const dateSorted=query.sort==='document_date'||query.sort==='first_captured';
+      const filenameSorted=query.sort==='filename';
+      const datePacked:Float64Array|undefined=dateSorted?columns.get(query.sort)?.packed:undefined;
+      const targetCount=offset+limit;
+      const fallbackTitled:number[]=[],fallbackBlank:number[]=[];
+      const parsed=parseSearchText(query.text);
       for(let i=0;i<count;i++){
         if(i%scanBatchRows===0)await yieldToMessages(signal);
-        if(!matches(i,query,text))continue;
-        if(sorted||(total>=offset&&selected.length<limit))selected.push(i);total++;
+        if(!matches(i,query,parsed))continue;
+        total++;
+        if(datePacked){
+          const s=dateRank(datePacked,i);
+          if(selected.length<targetCount||s>dateRank(datePacked,selected[selected.length-1])){
+            let lo=0,hi=selected.length;
+            while(lo<hi){const mid=(lo+hi)>>1;if(s>dateRank(datePacked,selected[mid]))hi=mid;else lo=mid+1;}
+            selected.splice(lo,0,i);
+            if(selected.length>targetCount)selected.pop();
+          }
+        }else if(filenameSorted){
+          const fname=String(value('filename',i)??'');
+          if(/^[0-9a-z]/i.test(fname)){
+            if(selected.length<targetCount)selected.push(i);
+          }else if(fname||value('title',i)){
+            if(fallbackTitled.length<targetCount)fallbackTitled.push(i);
+          }else if(fallbackBlank.length<targetCount){
+            fallbackBlank.push(i);
+          }
+        }else if(total>offset&&selected.length<limit){
+          selected.push(i);
+        }
       }
-      // Sorting is O(M log M) for M matching rows; ordinary paging retains only O(limit) row indexes.
-      if(sorted)selected.sort((a,b)=>(date(value(query.sort,b))??'').localeCompare(date(value(query.sort,a))??'')||a-b);
-      return {total,rows:(sorted?selected.slice(offset,offset+limit):selected).map(row),offset,next:offset+limit<total?offset+limit:null};
+      if(filenameSorted&&selected.length<targetCount){
+        for(const idx of fallbackTitled){if(selected.length>=targetCount)break;selected.push(idx);}
+        for(const idx of fallbackBlank){if(selected.length>=targetCount)break;selected.push(idx);}
+      }
+      const pageRows=(dateSorted||filenameSorted)?selected.slice(offset,offset+limit):selected;
+      return {total,rows:pageRows.map(row),offset,next:offset+limit<total?offset+limit:null};
     },
     async facets(query: any={},signal?: AbortSignal){
       const result=Object.fromEntries(facetFields.map(name=>[name,Object.create(null)])) as Record<string,Record<string,number>>;
-      const text=String(query.text??'').normalize('NFKC').toLowerCase();
+      const parsed=parseSearchText(query.text);
       for(let i=0;i<count;i++){
         if(i%scanBatchRows===0)await yieldToMessages(signal);
-        if(!matches(i,query,text))continue;
+        if(!matches(i,query,parsed))continue;
         for(const name of facetFields){const current=value(name,i);for(const item of new Set(Array.isArray(current)?current:[current]))if(item!=null){const key=String(item);result[name][key]=(result[name][key]??0)+1;}}
       }
       return result;
@@ -236,7 +297,8 @@ export async function openArchive(pointerUrl: string, options: any = {}) {
     async lookupRows(url: string,query: any={},signal?: AbortSignal){
       signal?.throwIfAborted();const offset=query.offset??0,limit=query.limit??100;
       if(!Number.isSafeInteger(offset)||offset<0||!Number.isSafeInteger(limit)||limit<1||limit>1000)throw new Error('Invalid archive page.');
-      const found=(await reader.lookup(url)).filter(item=>matches(item.list_row,query,''));
+      const emptyText=parseSearchText('');
+      const found=(await reader.lookup(url)).filter(item=>matches(item.list_row,query,emptyText));
       if(query.sort==='document_date')found.sort((a,b)=>(date(b.document_date)??'').localeCompare(date(a.document_date)??'')||captures(a,b));else found.sort(captures);
       return {total:found.length,rows:found.slice(offset,offset+limit),offset,next:offset+limit<found.length?offset+limit:null};
     },

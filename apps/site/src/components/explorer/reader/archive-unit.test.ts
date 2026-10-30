@@ -1,6 +1,14 @@
 import {test} from 'node:test';
 import assert from 'node:assert/strict';
 import {dateLabels, lookupUrl, recoveryLabel, savedCopy, openArchive} from './archive.ts';
+import {
+  cleanIdentityNote,
+  committeeLabel,
+  effectiveFormat,
+  expandCommitteeKeys,
+  formatMeasure,
+  presentDocument,
+} from '../archive/archive-metadata.ts';
 import {rangeFile} from './range-file.ts';
 import {readFile} from 'node:fs/promises';
 import {byteCache} from './filenames/cache.ts';
@@ -105,4 +113,35 @@ test('the actual old viewer pointer refuses before any archive or legacy asset r
     requests.push(String(address));return Response.json(pointer);
   }}),{message:'Invalid archive release identity.'});
   assert.deepEqual(requests,[url]);
+});
+
+test('document presentation resolves generic scrape titles, missing filenames, formats, and plumbing notes',()=>{
+  const zipDoc=presentDocument(
+    {title:'ZIP',filename:'CHRG-109hhrg32242.zip',format:'ZIP',document_kind:['hearing_serial'],congress:109},
+    {saved_media_type:'application/json'},
+    [{url:'https://www.govinfo.gov/content/pkg/CHRG-109hhrg32242/zip/CHRG-109hhrg32242.zip'}],
+  );
+  assert.equal(zipDoc.title,'CHRG-109hhrg32242.zip');
+  assert.equal(zipDoc.subtitle,'');
+  assert.equal(zipDoc.format,'ZIP');
+  assert.equal(effectiveFormat({filename:'CHRG-109hhrg32242.zip',format:'ZIP'},{saved_media_type:'application/json'}),'zip');
+
+  const recovered=presentDocument(
+    {title:null,filename:null,format:'PDF',document_kind:['hearing_transcript'],congress:114,committee_keys:['hswm06']},
+    undefined,
+    [{url:'https://waysandmeans.house.gov/UploadedFiles/2015.02.11_Transcript.pdf'}],
+    [{recovered_url:'https://www.govinfo.gov/content/pkg/CHRG-114hhrg94847/pdf/HHRG-114-WM06-Transcript-20150211.pdf'}],
+  );
+  assert.equal(recovered.title,'2015.02.11_Transcript.pdf');
+  assert.ok(recovered.contextParts.includes('114th Congress'));
+  assert.ok(recovered.contextParts.includes('House Ways & Means'));
+
+  assert.equal(cleanIdentityNote('Reconciled from pinned accepted mappings 00922c1ef98d2431d98987234abc0123456789abcdef0123456789abcdef0123'),null);
+  assert.equal(cleanIdentityNote('Verified against printed GPO serial'), 'Verified against printed GPO serial');
+  assert.equal(formatMeasure('114-hr-475'),'H.R. 475');
+  assert.equal(committeeLabel('hsju00'),'House Judiciary');
+  assert.deepEqual(
+    expandCommitteeKeys('hsju00',[{value:'hsju00',count:10},{value:'hsju01',count:5},{value:'ssju00',count:8}]),
+    ['hsju00','hsju01'],
+  );
 });
