@@ -201,11 +201,12 @@ function Workspace({client,nav,navigate,rawBase}:{client:ReturnType<typeof creat
 
   const [entityRows,retryEntityRows]=useRequest(async signal=>{
     if(isDocTab||isInspectingEntity)return null;
+    const committeeKeys=nav.tab==='committees'||!nav.committee?[]:expandCommitteeKeys(nav.committee,committeeFacets,committeesCatalog);
     return client.listEntities(entityBrowseKind,{
       q:nav.text||undefined,
       congress:nav.congress||undefined,
       chamber:nav.chamber||undefined,
-      committee:nav.tab==='committees'?undefined:nav.committee||undefined,
+      committee:committeeKeys.length?committeeKeys:undefined,
       offset:nav.offset,
       limit:pageSize,
     },signal);
@@ -219,19 +220,20 @@ function Workspace({client,nav,navigate,rawBase}:{client:ReturnType<typeof creat
     nav.chamber,
     nav.committee,
     nav.offset,
+    nav.committee?committeeFacets.length+committeesCatalog.length:0,
   ]);
 
   const [detail,retryDetail]=useRequest(signal=>selection!==null||nav.key?client.request('entry',nav.key?{key:nav.key}:{index:selection},signal):Promise.resolve(null),[client,nav.key,selection]);
   const [entityView,retryEntityView]=useRequest(async signal=>{
     const [meeting,subject,witness,member,committee]=await Promise.all([
-      nav.hearing?client.getMeeting(nav.hearing,signal).catch(()=>null):Promise.resolve(null),
-      nav.subject?client.getSubject(nav.subject,signal).catch(()=>null):Promise.resolve(null),
-      nav.witness?client.getWitness(nav.witness,signal).catch(()=>null):Promise.resolve(null),
-      nav.member?client.getMember(nav.member,signal).catch(()=>null):Promise.resolve(null),
-      nav.committee?client.getCommittee(nav.committee,{congress:nav.congress||undefined},signal).catch(()=>null):Promise.resolve(null),
+      (isDocTab||nav.tab==='hearings')&&nav.hearing?client.getMeeting(nav.hearing,signal).catch(()=>null):Promise.resolve(null),
+      (isDocTab||nav.tab==='subjects')&&nav.subject?client.getSubject(nav.subject,signal).catch(()=>null):Promise.resolve(null),
+      (isDocTab||nav.tab==='witnesses')&&nav.witness?client.getWitness(nav.witness,signal).catch(()=>null):Promise.resolve(null),
+      (isDocTab||nav.tab==='members')&&nav.member?client.getMember(nav.member,signal).catch(()=>null):Promise.resolve(null),
+      (isDocTab||nav.tab==='committees')&&nav.committee?client.getCommittee(nav.committee,{congress:nav.congress||undefined},signal).catch(()=>null):Promise.resolve(null),
     ]);
     return {meeting,subject,witness,member,committee};
-  },[client,nav.hearing,nav.subject,nav.witness,nav.member,nav.committee,nav.congress]);
+  },[client,isDocTab,nav.tab,nav.hearing,nav.subject,nav.witness,nav.member,nav.committee,nav.congress]);
 
   useEffect(()=>{if(detail.status==='ready'&&detail.value&&detail.value.entry.detail.link_key&&!nav.key){navigate({key:keyHex(detail.value.entry.detail.link_key)},true);setSelection(null);}},[detail]);
   const select=(index:number)=>{setSelection(index);navigate({key:''});setSavedError('');};
@@ -397,7 +399,7 @@ function Workspace({client,nav,navigate,rawBase}:{client:ReturnType<typeof creat
         onClose={()=>filter({committee:''})}
       />}
     </>}
-    {isDetail?<div className="archive-detail-view"><button className="explorer-button archive-back-button" onClick={close}>← Back to {isDocTab?'documents':activeTabMeta.noun}</button>{detail.status==='ready'?detail.value&&<ArchiveDetail entry={detail.value.entry} versions={detail.value.versions} meetings={detail.value.meetings} meetingDetails={detail.value.meetingDetails} committees={detail.value.committees} subjects={detail.value.subjects} witnesses={detail.value.witnesses} members={detail.value.members} committeesCatalog={committeesCatalog} rawBase={rawBase} onSelect={select} onHearing={hearing=>filter({hearing})} onMeasure={measure=>filter({subject:measure})} onSubject={subject=>filter({subject})} onCommittee={committee=>filter({committee})} onWitness={witness=>filter({witness})} onMember={member=>filter({member})} onOpenSaved={openSaved}/>:<RequestMessage state={detail} retry={retryDetail} noun="this document"/>}</div>:
+    {isDetail?<div className="archive-detail-view"><button className="explorer-button archive-back-button" onClick={close}>← Back to {isDocTab?'documents':activeTabMeta.noun}</button>{detail.status==='ready'?detail.value&&<ArchiveDetail entry={detail.value.entry} versions={detail.value.versions} meetings={detail.value.meetings} meetingDetails={detail.value.meetingDetails} committees={detail.value.committees} subjects={detail.value.subjects} witnesses={detail.value.witnesses} members={detail.value.members} committeesCatalog={committeesCatalog} rawBase={rawBase} onSelect={select} onHearing={hearing=>isDocTab?filter({hearing}):inspectHearing(hearing)} onMeasure={measure=>isDocTab?filter({subject:measure}):inspectSubject(measure)} onSubject={subject=>isDocTab?filter({subject}):inspectSubject(subject)} onCommittee={committee=>isDocTab?filter({committee}):inspectCommittee(committee)} onWitness={witness=>isDocTab?filter({witness}):inspectWitness(witness)} onMember={member=>isDocTab?filter({member}):inspectMember(member)} onOpenSaved={openSaved}/>:<RequestMessage state={detail} retry={retryDetail} noun="this document"/>}</div>:
       isDocTab?(
         rows.status==='ready'&&rows.value?<section aria-label="Document results" data-archive-query={rows.value.completedQuery}><div className="archive-results-bar"><p className="archive-total" data-archive-total>{integer(rows.value.total)} documents</p></div><ArchiveRows rows={rows.value.rows} committeesCatalog={committeesCatalog} onSelect={select}/><nav className="explorer-pagination" aria-label="Document pages"><button className="explorer-button" disabled={!nav.offset} onClick={()=>navigate({offset:Math.max(0,nav.offset-pageSize)})}>Previous</button><span>{rows.value.total?integer(nav.offset+1):0}–{integer(Math.min(nav.offset+rows.value.rows.length,rows.value.total))} of {integer(rows.value.total)}</span><button className="explorer-button" disabled={rows.value.next===null} onClick={()=>navigate({offset:rows.value.next})}>Next</button></nav></section>:<RequestMessage state={rows} retry={retryRows} noun="document results"/>
       ):isInspectingEntity?(

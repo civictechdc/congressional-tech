@@ -185,7 +185,7 @@ const statusLabel = {
     for (const chip of form.querySelectorAll<HTMLElement>('.chip')) {
       const input = chip.querySelector<HTMLInputElement>('input');
       if (input) {
-        chip.setAttribute('aria-pressed', String(input.checked));
+        chip.dataset.active = String(input.checked);
       }
     }
     let visible = 0;
@@ -293,8 +293,7 @@ const statusLabel = {
     box-shadow: var(--ctdc-shadow-sm);
   }
 
-  .chip[aria-pressed="true"],
-  .chip[aria-pressed="true"] span,
+  .chip[data-active="true"] span,
   .chip:has(input:checked) span,
   .chip input:checked + span {
     background: var(--ctdc-primary);
@@ -302,7 +301,7 @@ const statusLabel = {
     color: #fff;
   }
 
-  .chip[aria-pressed="true"]:hover span,
+  .chip[data-active="true"]:hover span,
   .chip:has(input:checked):hover span,
   .chip:hover input:checked + span {
     color: #fff;

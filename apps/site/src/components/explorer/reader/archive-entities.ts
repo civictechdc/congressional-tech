@@ -581,7 +581,23 @@ export function createArchiveEntities(ctx: ArchiveEntityContext) {
     const text = String(options.q ?? options.text ?? '').trim().toLowerCase();
     const rawCong = options.congress, congressFilter = rawCong != null && rawCong !== '' && rawCong !== 'all' ? Number(rawCong) : null;
     const chamberFilter = options.chamber && options.chamber !== 'all' ? String(options.chamber).toLowerCase() : null;
-    const committeeFilter = options.committee ? String(options.committee).toLowerCase() : null;
+    const rawCommittees = toFilterList(options.committee).map(c => c.toLowerCase());
+    const committeeSet = new Set<string>(rawCommittees);
+    if (committeeSet.size > 0 && files.has('committees.parquet')) {
+      const cIdx = await committeesIndex();
+      for (const ck of [...committeeSet]) {
+        const resolved = cIdx.byCode.get(ck);
+        const parentKey = String(resolved?.committee_key ?? ck).toLowerCase();
+        committeeSet.add(parentKey);
+        for (const sub of cIdx.subcommitteesByParent.get(parentKey) ?? []) {
+          if (sub.committee_key) committeeSet.add(String(sub.committee_key).toLowerCase());
+          if (sub.system_code) committeeSet.add(String(sub.system_code).toLowerCase());
+        }
+      }
+    }
+    const mIdxForWitnessCommittee = committeeSet.size > 0 && kind === 'witnesses' && files.has('meetings.parquet')
+      ? await meetingsIndex()
+      : null;
     let items: any[] = [];
     switch (kind) {
       case 'meetings': items = (await meetingsIndex()).rows; break;
@@ -609,14 +625,19 @@ export function createArchiveEntities(ctx: ArchiveEntityContext) {
         if (item.chamber) { if (String(item.chamber).toLowerCase() !== chamberFilter) return false; }
         else if (Array.isArray(item.terms) && item.terms.length && !item.terms.some((t: any) => String(t?.chamber ?? '').toLowerCase() === chamberFilter)) return false;
       }
-      if (committeeFilter) {
+      if (committeeSet.size > 0) {
         const keys = [
           item.committee_key, item.system_code, item.parent_key,
           ...(Array.isArray(item.committee_keys) ? item.committee_keys : []),
           ...(Array.isArray(item.committees) ? item.committees.map((c: any) => typeof c === 'string' ? c : (c?.committee_key ?? c?.system_code)) : []),
-          ...(Array.isArray(item.appearances) ? item.appearances.flatMap((a: any) => Array.isArray(a?.committee_keys) ? a.committee_keys : []) : []),
+          ...(Array.isArray(item.appearances) ? item.appearances.flatMap((a: any) => {
+            const direct = Array.isArray(a?.committee_keys) ? a.committee_keys : [];
+            if (direct.length || !mIdxForWitnessCommittee) return direct;
+            const ev = String(a?.event_id ?? a?.meeting_key ?? '').toLowerCase();
+            return (mIdxForWitnessCommittee.byEventId.get(ev) ?? []).flatMap((m: any) => m.committee_keys ?? []);
+          }) : []),
         ].filter(Boolean).map((k: any) => String(k).toLowerCase());
-        if (!keys.includes(committeeFilter)) return false;
+        if (!keys.some(k => committeeSet.has(k))) return false;
       }
       if (text) {
         const hay = [
