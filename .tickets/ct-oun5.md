@@ -1,6 +1,6 @@
 ---
 id: ct-oun5
-status: in_progress
+status: closed
 deps: []
 links: []
 created: 2026-10-30T14:32:31Z
@@ -22,3 +22,13 @@ External repository tasks in docspec-rs / spicy-stack (docs/plans/bindings-20261
 
 docspec-rs tickets ss-vfgz (C0), ss-iwqu (C3), and ss-6jg6 (C4) are implemented, verified by scripts/check, and bumped in congressional-tech's runtime pin.
 
+
+## Notes
+
+**2026-10-30T16:16:17Z**
+
+Completed ss-vfgz (C0), ss-iwqu (C3), and ss-6jg6 (C4) in /Users/mikewolfd/Work/wt/ds-engine-first on branch impl/engine-first-20261027 at commit b368968384c914a6621d43d1ba754d04d4c70a1d. Built release binary target/release/docspec (--locked --release --features remote --bin docspec) with SHA-256 c27077db7a8b60fde569bddcf7b9948032bcd4baec5253d5490e31a3c4687401 and reported to coordinator 9e04a2e5-de01-4df4-8c0d-eaaf0a941bbc for Session 3 runtime pinning.
+
+**2026-10-30T16:16:46Z**
+
+Completed and 3-hat reviewed in /Users/mikewolfd/Work/wt/ds-engine-first (impl/engine-first-20261027 @ b368968384c914a6621d43d1ba754d04d4c70a1d; darwin-arm64 release binary SHA-256: c27077db7a8b60fde569bddcf7b9948032bcd4baec5253d5490e31a3c4687401): C0 (ss-vfgz: gc.enabled=true default & drop 2MiB/2048-row remote write caps), C3 (ss-iwqu: byte-deterministic Parquet export across threads/batches/permutations/spills), and C4 (ss-6jg6: ConnectedComponents binary keys, smallest-member component_id, and 4M-node/2M-edge 256MiB budget).
