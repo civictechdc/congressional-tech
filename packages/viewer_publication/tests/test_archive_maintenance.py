@@ -80,6 +80,33 @@ def test_execute_rereads_pointer_before_only_old_derived_deletes():
     assert all(key.startswith(PREFIX+OLD+'/') for key in store.deleted)
 
 
+@pytest.mark.parametrize('change',[None,{'base_release_id':'invalid'}, {'registry_sha256':None},
+    {'schema_sha256':'g'*64}, {'relationships_version':2}, {'relationships_version':True}])
+def test_metadata_only_release_preserves_valid_retention_inputs(change):
+    from viewer_publication.archive_maintenance import maintain_releases
+    from viewer_publication.receipt_pins import read_receipt_list
+    store,records=fixture()
+    record=deepcopy(records[0])
+    original_profile=deepcopy(record['profile'])
+    keys=read_receipt_list(record['receipt_keys_sha256'],store.get(
+        PREFIX+LIVE+'/inputs/receipts/'+record['receipt_keys_sha256']+'.json.gz'))
+    update=dict(base_release_id=PREVIOUS,registry_sha256='1'*64,schema_sha256='2'*64,relationships_version=1)
+    if change:update.update(change)
+    record['profile']['relationship_metadata_update']=update
+    record['input_digest']=input_digest(receipt_keys=keys,**{k:record[k] for k in ['profile','provenance','entity_digests']})
+    assert record['input_digest']!=records[0]['input_digest']
+    write_input_receipts(store,LIVE,record['input_digest'],record,keys)
+    if change:
+        with pytest.raises(ValueError):maintain_releases(store,now=NOW,execute=True)
+        assert store.deleted==[]
+    else:
+        result=maintain_releases(store,now=NOW)
+        kept=next(item for item in result['kept_inputs'] if item['input_digest']==record['input_digest'])
+        assert kept['profile'].pop('relationship_metadata_update')==update
+        assert kept['profile']==original_profile
+        assert store.deleted==[]
+
+
 @pytest.mark.parametrize('failure',['identity','receipts','missing','pointer','escape'])
 def test_invalid_kept_evidence_or_pointer_race_prevents_every_delete(failure):
     from viewer_publication.archive_maintenance import maintain_releases

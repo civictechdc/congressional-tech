@@ -45,7 +45,8 @@ def capture_profile_record(*,engine_revision,root=ROOT):
 
 
 def profile_record(*,parser_versions,catalog_version,engine_revision,runtime_pins,
-                   lake_versions,writer_settings,snapshots,file_hashes=None,root=ROOT):
+                   lake_versions,writer_settings,snapshots,file_hashes=None,root=ROOT,
+                   relationship_metadata_update=None):
     """Pin semantic definitions; retain exact physical selectors outside their digest."""
     if (not isinstance(parser_versions,dict) or not set(PARSERS)<=parser_versions.keys()
             or any(not isinstance(v,str) or not v for v in parser_versions.values())
@@ -60,6 +61,16 @@ def profile_record(*,parser_versions,catalog_version,engine_revision,runtime_pin
     profile=_copy(dict(parser_versions=parser_versions,catalog_version=catalog_version,
         engine_revision=engine_revision,runtime_pins=runtime_pins,lake_versions=lake_versions,
         writer_settings=writer_settings,file_hashes=hashes))
+    if relationship_metadata_update is not None:
+        update=relationship_metadata_update
+        digests={'base_release_id','registry_sha256','schema_sha256'}
+        if (not isinstance(update,dict) or set(update)!=digests|{'relationships_version'}
+                or type(update['relationships_version']) is not int or update['relationships_version']!=1
+                or any(not isinstance(update[key],str) or re.fullmatch('[0-9a-f]{64}',update[key]) is None for key in digests)):
+            raise ValueError('Relationship metadata update requires a base release, registry, schema and supported version')
+        # Keep the original model pins: this versions metadata without claiming
+        # that newer model code produced the unchanged Parquet data.
+        profile['relationship_metadata_update']=_copy(update)
     return dict(version=1,profile=profile,
         profile_sha256=version_digest(packages={},files={},values=profile),snapshots=_copy(snapshots))
 

@@ -1,0 +1,8 @@
+{
+  "status": "passed",
+  "release_id": "0db23484fe86c7f5a5e50e44f078ec34e74e793873b26c4a15f0b9e9efa17b69",
+  "input_digest": "7e238c9d13373a4111b9f5636a598bb19dd8b9ae621e9d87dd3db927fb5c1ad0",
+  "receipt_keys": 2292,
+  "public_readback": true,
+  "retained_input_validation": true
+}
