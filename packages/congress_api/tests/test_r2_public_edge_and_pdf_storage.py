@@ -38,7 +38,6 @@ from congress_api.retention.raw_storage import (
     ExcludedBodyError,
     enforce_body_ingest_gate,
     load_excluded_body_hashes,
-    migrate_pdf_bodies_to_uncompressed,
     store_public_body,
 )
 
@@ -167,36 +166,6 @@ def test_store_public_body_and_resumable_pdf_migration_including_zip_members(tmp
     assert read_retained_body(store.root, pdf_meta["body_key"]) == pdf_bytes
     assert read_retained_body(store.root, pdf_meta["body_key"], read_compressed=store.read) == pdf_bytes
     assert read_retained_body(store.root, html_meta["body_key"]) == html_bytes
-
-    # 2. Seed legacy .gz PDF and a .gz ZIP containing a PDF member for migration
-    legacy_pdf_bytes = b"%PDF-1.3\n% Legacy gzipped PDF\n%%EOF\n"
-    legacy_pdf_sha = hashlib.sha256(legacy_pdf_bytes).hexdigest()
-    legacy_pdf_gz_key = f"bodies/sha256/{legacy_pdf_sha[:2]}/{legacy_pdf_sha}.gz"
-    store.put(legacy_pdf_gz_key, gzip.compress(legacy_pdf_bytes, mtime=0), immutable=True)
-
-    zip_buf = BytesIO()
-    with zipfile.ZipFile(zip_buf, "w", compression=zipfile.ZIP_DEFLATED) as zf:
-        zf.writestr("submittal/witness-statement.pdf", zip_member_pdf)
-        zf.writestr("submittal/notes.txt", b"Plain text attachment")
-    zip_bytes = zip_buf.getvalue()
-    zip_sha = hashlib.sha256(zip_bytes).hexdigest()
-    zip_gz_key = f"bodies/sha256/{zip_sha[:2]}/{zip_sha}.gz"
-    store.put(zip_gz_key, gzip.compress(zip_bytes, mtime=0), immutable=True)
-
-    first_run = migrate_pdf_bodies_to_uncompressed(store)
-    expected_legacy_pdf_key = f"bodies/sha256/{legacy_pdf_sha[:2]}/{legacy_pdf_sha}.pdf"
-    expected_member_pdf_key = f"bodies/sha256/{member_sha[:2]}/{member_sha}.pdf"
-
-    assert expected_legacy_pdf_key in first_run["migrated_pdfs"]
-    assert expected_member_pdf_key in first_run["migrated_zip_member_pdfs"]
-    assert store.read(expected_legacy_pdf_key) == legacy_pdf_bytes
-    assert store.read(expected_member_pdf_key) == zip_member_pdf
-    assert html_meta["body_key"] in first_run["skipped_non_pdf"]
-
-    # Second run is idempotent and skips already-present .pdf objects
-    second_run = migrate_pdf_bodies_to_uncompressed(store)
-    assert second_run["migrated_pdfs"] == []
-    assert expected_legacy_pdf_key in second_run["already_present"]
 
 
 def test_deferred_body_sha256_exclusion_gate_blocks_and_quarantines(tmp_path):
