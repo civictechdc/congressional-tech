@@ -10,7 +10,6 @@ from congress_api.adapters.common import AdapterContext
 from congress_api.matching.house import document_rows as records_document_rows
 from congress_api.parsers.house import parsed as records_parsed
 from congress_api.parsers.xml import parse_xml as repository_parse_xml
-from congress_api.replay.house import MATCH_FIELDS, replay
 
 FIXTURES = Path(__file__).parent / "fixtures/meeting_inventory"
 
@@ -103,49 +102,6 @@ def test_distinct_documents_with_same_add_time_do_not_share_identity():
     rows = adapt(records_parsed(root, None, "", "absent"))
     materials = [row for row in rows if row.kind == "material"]
     assert len({row.id for row in materials}) == len(materials) == 5
-
-
-def legacy_cache(tmp_path):
-    path = tmp_path / "docs_house_xml/meeting/100431.xml"
-    path.parent.mkdir(parents=True)
-    path.write_bytes((FIXTURES / "house-multiple-files.xml").read_bytes())
-    witness = tmp_path / "docs_house_xml/wlist/100431.none"
-    witness.parent.mkdir(parents=True)
-    witness.touch()
-    saved = records_parsed(xml("house-multiple-files.xml"), None, "", "absent")
-    saved.pop("evidence")
-    saved.update(checked="2026-09-27", version="old-api-update", seed="research cache")
-    return {"100431": saved}
-
-
-def test_offline_replay_requires_exact_reproduction_and_never_advances_checks(tmp_path):
-    previous = legacy_cache(tmp_path)
-    upgraded, report = replay(previous, tmp_path)
-    assert report["counts"] == {"replayed": 1}
-    saved = upgraded["100431"]
-    assert all(saved[field] == previous["100431"][field] for field in previous["100431"])
-    assert "retrieved_at" not in saved and "last_check" not in saved
-    assert saved["replay"]["mode"] == "offline"
-    assert saved["replay"]["matched_fields"] == list(MATCH_FIELDS)
-    assert all(len(item["sha256"]) == 64 for item in saved["replay"]["inputs"])
-    assert replay(upgraded, tmp_path)[1]["counts"] == {"current": 1}
-    newer = deepcopy(previous)
-    newer["100431"]["xml_update"] = "2026-09-28T12:00:00"
-    refused, report = replay(newer, tmp_path)
-    assert refused == newer
-    assert report["events"]["100431"]["fields"] == ["xml_update"]
-    newer = deepcopy(previous)
-    newer["100431"]["documents"][0][1] = "A later source correction"
-    assert replay(newer, tmp_path)[0] == newer
-
-
-def test_replay_does_not_claim_old_live_time_for_expanded_cache_payload(tmp_path):
-    previous = legacy_cache(tmp_path)
-    previous["100431"].update(retrieved_at="2026-09-27T12:00:00Z", last_check={"mode": "live", "outcome": "present"})
-    upgraded, _ = replay(previous, tmp_path)
-    source, = [row for row in adapt(upgraded["100431"]) if row.kind == "source_record"]
-    assert source.retrieved_at is None
-    assert source.payload["retrieved_at"] == "2026-09-27T12:00:00Z"
 
 
 def test_malformed_upstream_url_stays_visible_as_an_issue():

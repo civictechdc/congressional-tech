@@ -3,9 +3,7 @@
 from congress_api.parsers.archive_links import related_links
 from congress_api.retention.capture_inspection import inspect_capture
 from congress_api.parsers.senate import parse_page
-from congress_api.acquisition.raw_sync import run_sync
-from historical_raw_archive import LegacyArchiveSeed as Archive
-from testing_fakes import MemoryStore, response
+from testing_fakes import response
 
 
 def test_senate_capture_uses_shared_document_interpretation():
@@ -17,12 +15,6 @@ def test_senate_capture_uses_shared_document_interpretation():
     links = related_links(body, url, 'html')
     link = next(link for link in links if link['url'] == target)
     assert link['context']['document_metadata'] == parsed['document_metadata'][target]
-    store = MemoryStore()
-    stats = run_sync(Archive(store, 'senate-source'), [{'url': url}],
-        fetch=lambda _: response(url, body, 'text/html'), limit=1)
-    assert stats['saved'] == 1
-    state = Archive(store, 'read').state
-    assert state[target]['outcome'] == 'pending'
     assert inspect_capture(response(url, body, 'text/html'))[0] == 'saved'
 
 

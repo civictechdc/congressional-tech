@@ -14,7 +14,6 @@ from pathlib import Path
 from congress_api.models.content import RawContent
 from congress_api.transport.rust_fetch import RustFetcher
 from congress_api.transport.source_capture import fetch_source
-from testing_fakes import MemoryStore
 
 _DEFAULT_SOURCE_FETCH = Path(__file__).resolve().parents[2] / "source-fetch/target/release/source-fetch"
 BINARY = os.environ.get('SOURCE_FETCH_BINARY') or (str(_DEFAULT_SOURCE_FETCH) if _DEFAULT_SOURCE_FETCH.is_file() else None)
@@ -142,32 +141,6 @@ def test_compression_preserves_original_headers_and_limits_decoded_bytes(server,
     assert result['complete'] == complete
     if not complete:
         assert len(body) == 1024 and result['error'] == 'response_limit'
-
-
-def test_spooled_pipeline_downloads_ahead_with_explicit_memory_budget(server, monkeypatch):
-    from functools import partial
-    from congress_api.acquisition.raw_sync import run_sync
-    from historical_raw_archive import LegacyArchiveSeed as Archive
-
-    url, starts, peak = server
-    # Only the fixture server is accepted; production scope checks stay intact.
-    monkeypatch.setattr('congress_api.parsers.archive_links.allowed_url',
-                        lambda value, base='': value if value.startswith(url + '/') else None)
-    monkeypatch.setattr('congress_api.transport.source_capture.allowed_url',
-                        lambda value: value if value.startswith(url + '/') else None)
-    monkeypatch.setattr('congress_api.retention.raw_archive.allowed_url',
-                        lambda value: value if value.startswith(url + '/') else None)
-    with RustFetcher(BINARY, workers=16) as fetcher:
-        store = MemoryStore()
-        result = run_sync(Archive(store, 'native-spool'),
-            [{'url': f'{url}/{i}'} for i in range(16)], workers=16, download_workers=16,
-            max_buffer_bytes=512 * 1024**2,
-            fetch_spooled=partial(fetcher.fetch_spooled, transport='direct'))
-        assert result['saved'] == len(starts) == 16
-        assert 4 <= peak() <= 16
-        assert result['peak_body_payload_reservation_bytes'] <= 512*1024**2
-        assert result['peak_spool_reservation_bytes'] <= 2*1024**3
-        assert not list(fetcher.root.glob('*.body'))
 
 
 def test_native_body_deadline_preserves_timeout_reason_and_partial_bytes():

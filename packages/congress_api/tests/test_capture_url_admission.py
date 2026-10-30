@@ -125,21 +125,6 @@ def test_archived_capture_survives_checkpoint_without_replacing_original_failure
     assert restored.state[replay]['family'] == 'external/wayback'
 
 
-def test_excluded_probe_stays_deferred_until_independent_publisher_seed():
-    from congress_api.acquisition.raw_sync import run_sync
-    store = MemoryStore()
-    archive = Archive(store, 'excluded')
-    url = 'https://example.gov/generated.xml'
-    archive.seed({'url': url})
-    archive.state[url]['outcome'] = 'excluded_probe'
-    archive.save()
-    result = run_sync(Archive(store, 'skip'), [], fetch=lambda _: pytest.fail('Excluded probe fetched'))
-    assert result['attempted'] == result['remaining'] == 0
-    result = run_sync(Archive(store, 'publisher'), [{'url': url}],
-                      fetch=lambda u: response(u, b'<bill/>', media='application/xml'))
-    assert result['saved'] == 1
-
-
 # Literal malformed publisher values found in failed CI run 37420553827.
 GPO_PDF = 'https://www.gpo.gov/fdsys/pkg/BILLS-114hr456ih/pdf/BILLS-114hr456ih.pdf'
 GPO_XML = [f'https://www.gpo.gov/fdsys/pkg/BILLS-115s585{version}/xml/BILLS-115s585{version}.xml'
@@ -206,57 +191,6 @@ def test_discovery_repairs_json_xml_html_and_keeps_source_evidence(original, tar
     assert html_items[0]['attributes']['href'] == original
     # The same JSON source path is used by retained body discovery.
     assert related_links(json.dumps({'documents': [native]}).encode(), 'fixture.json', 'json') == json_items
-
-
-def legacy_pending(archive, url):
-    """Simulate a checkpoint written before the current admission rules."""
-    temporary = 'https://example.gov/temporary.xml'
-    archive.seed({'url': temporary})
-    archive.state[url] = {**archive.state.pop(temporary), 'url': url}
-
-
-def test_legacy_pending_repairs_survive_batch_limits_without_resetting_saved_children():
-    import gzip
-    import json
-    from congress_api.acquisition.raw_sync import run_sync
-
-    store = MemoryStore()
-    archive = Archive(store, 'old')
-    for value in (LIS_WRAPPER, CONCATENATED, 'http://127.0.0.1/private.xml'):
-        legacy_pending(archive, value)
-    archive.save()
-    fetched = []
-
-    def fetch(url):
-        assert allowed_url(url) == url
-        fetched.append(url)
-        return response(url, f'<document>{url}</document>'.encode(), media='application/xml')
-
-    first = run_sync(Archive(store, 'first'), [], fetch=fetch, initial_only=True, limit=1)
-    assert first['attempted'] == first['saved'] == 1
-    checkpoint = Archive(store, 'second')
-    saved_url = fetched[0]
-    saved_state = dict(checkpoint.state[saved_url])
-    second = run_sync(checkpoint, [], fetch=fetch, initial_only=True, limit=20)
-    assert second['attempted'] == second['saved'] == 2
-    assert sorted(fetched) == sorted([GPO_PDF, *GPO_XML])
-    assert checkpoint.state[saved_url] == saved_state
-    final = Archive(store, 'final')
-    for original in (LIS_WRAPPER, CONCATENATED):
-        assert final.state[original]['outcome'] == 'repaired_url'
-        assert final.state[original]['attempts'] == 0
-        assert final.state[original]['body_key'] is None
-    assert final.state['http://127.0.0.1/private.xml']['outcome'] == 'excluded_scope'
-    assert second['accounting']['url_outcomes'] == {'saved': 3, 'repaired_url': 2, 'excluded_scope': 1}
-    assert run_sync(final, [], fetch=lambda _: pytest.fail('Unexpected retry'))['attempted'] == 0
-    receipts = [json.loads(line) for key in store.keys('receipts/')
-                for line in gzip.decompress(store.read(key)).splitlines()]
-    assert len(receipts) == 3  # Repairing a source value is not a download attempt.
-    for receipt in receipts:
-        url = receipt['download_state']['url']
-        observations = receipt['record']['source_context']['observations']
-        assert any(item['original_url'] == (LIS_WRAPPER if url == GPO_PDF else CONCATENATED)
-                   for item in observations)
 
 
 @pytest.mark.parametrize('original, targets', [(LIS_WRAPPER, [GPO_PDF]), (CONCATENATED, GPO_XML)])

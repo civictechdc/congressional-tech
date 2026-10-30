@@ -8,7 +8,6 @@ from pathlib import Path
 import pytest
 
 from congress_api.acquisition.documents import resolve_document
-from congress_api.acquisition.raw_sync import run_sync
 from congress_api.retention.body_files import content_bytes
 from congress_api.parsers.archive_links import related_links
 from congress_api.retention.capture_inspection import inspect_capture
@@ -16,8 +15,7 @@ from congress_api.parsers.committee_pages import parse_event_page, document_grou
 from congress_api.parsers.document_links import document_links
 from congress_api.parsers.senate import parse_page
 from congress_api.parsers.senate_page import document_labels
-from historical_raw_archive import LegacyArchiveSeed as Archive
-from testing_fakes import MemoryStore, probe_response, response
+from testing_fakes import probe_response, response
 
 FIXTURES = Path(__file__).parent / 'fixtures/meeting_inventory/house-sites/download-wrappers'
 SOURCES = json.loads((FIXTURES / 'sources.json').read_text())
@@ -128,34 +126,6 @@ def test_successful_literal_ampersand_route_still_wins():
     result = resolve_document(BAD, saved={BAD: probe_response(BAD, b'%PDF-1.7', media='application/pdf')})
     assert result.resolved_url == BAD and result.links == []
     assert inspect_capture(response(BAD, b'%PDF-1.7'))[1] == []
-
-
-@pytest.mark.parametrize('status', [404, 410])
-def test_capture_fallback_uses_queue_and_keeps_failure_receipt(status):
-    from io import BytesIO
-    from pypdf import PdfWriter
-
-    pdf = PdfWriter()
-    pdf.add_blank_page(width=100, height=100)
-    stream = BytesIO()
-    pdf.write(stream)
-    store = MemoryStore()
-    def fetch(url):
-        assert url in {BAD, GOOD}
-        return response(url, b'<html>Gone</html>', 'text/html', status=status) if url==BAD else response(url, stream.getvalue())
-    # A fallback is a queued candidate, not an uncounted request inside a task.
-    stats = run_sync(Archive(store, 'bad-route'), [{'url':BAD}], fetch=fetch, limit=1, workers=1)
-    assert stats['attempted'] == 1
-    state = Archive(store,'inspect').state
-    assert state[BAD]['outcome'] == 'http_error' and state[BAD]['http_status'] == status
-    assert state[GOOD]['outcome'] == 'pending'
-    receipts = [json.loads(line) for key, value in store.objects.items() if key.startswith('receipts/') for line in gzip.decompress(value).splitlines()]
-    failed, = [r['record'] for r in receipts if r['record']['requested_url']==BAD]
-    assert failed['links'][0]['original_url'] == BAD
-    assert failed['links'][0]['basis'] == 'publisher_download_query_fallback'
-    resumed = run_sync(Archive(store,'good-route'), [], fetch=fetch, limit=1, workers=1, initial_only=True)
-    assert resumed['attempted'] == 1 and resumed['saved'] == 1
-    assert Archive(store,'final').state[BAD]['http_status'] == status
 
 
 def test_incomplete_failed_response_does_not_generate_a_fallback():

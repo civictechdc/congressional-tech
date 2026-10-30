@@ -21,7 +21,7 @@ SURVIVING = (
     'retention/raw_verifier.py', 'retention/raw_repair.py', 'retention/pdf_backfill.py',
     'cli/provenance.py', 'cli/raw_verify.py', 'cli/raw_repair.py',
     # These old raw adapters remain operational until the switch and must obey the same rule.
-    'retention/raw_storage.py', 'retention/raw_archive.py', 'acquisition/raw_sync.py',
+    'retention/raw_storage.py', 'retention/raw_archive.py',
 )
 OTHER_SURVIVING = (
     ROOT / 'packages/corpus_recovery/src/corpus_recovery/reconcile.py',

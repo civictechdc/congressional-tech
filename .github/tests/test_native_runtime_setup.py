@@ -169,23 +169,21 @@ def workflow(name):
 
 
 def test_workflow_installation_preserves_execution_gates_and_secret_boundaries():
-    capture = workflow('capture-raw-sources.yml')['jobs']
-    steps = [(job, step) for job in [capture['capture'], capture['update_catalog_after_capture']]
+    archive = workflow('archive-jobs.yml')['jobs']
+    steps = [(job, step) for job in [archive['publish'], archive['backfill'], archive['maintenance']]
              for step in job['steps'] if 'setup-native-runtime.py' in step.get('run', '')]
-    assert len(steps) == 2
-    assert steps[0][1]['if'] == "steps.operation.outputs.mode != 'validate'"
-    assert 'if' not in steps[1][1]
+    assert len(steps) == 3
     for job, step in steps:
         assert step['env']['DOCSPEC_RUNTIME_ARTIFACT'] == '${{ vars.DOCSPEC_RUNTIME_ARTIFACT }}'
-        assert step['env']['DOCSPEC_ENGINE_CREDENTIALS'] == '${{ secrets.DOCSPEC_ENGINE_CREDENTIALS }}'
+        assert step['env']['DOCSPEC_ENGINE_CREDENTIALS'].startswith('${{ secrets.ARCHIVE_')
         assert 'R2_ACCESS_KEY_ID' not in step['env'] and 'R2_SECRET_ACCESS_KEY' not in step['env']
         assert '--directory "$RUNNER_TEMP/docspec-runtime"' in step['run']
         assert '--github-env "$GITHUB_ENV"' in step['run']
         assert 'DOCSPEC_RUNTIME_CONFIG' not in job.get('env', {})
         assert job['runs-on'] == 'ubuntu-24.04'
-    assert capture['capture']['timeout-minutes'] == capture['update_catalog_after_capture']['timeout-minutes'] == '360'
-    assert workflow('archive-jobs.yml')['jobs']['publish']['timeout-minutes'] == '180'
-    for job in [capture['capture'], capture['update_catalog_after_capture']]:
+    assert archive['publish']['timeout-minutes'] == archive['maintenance']['timeout-minutes'] == '180'
+    assert archive['backfill']['timeout-minutes'] == '360'
+    for job in archive.values():
         for step in job['steps']:
             if step.get('uses', '').startswith('actions/upload-artifact'):
                 assert 'docspec-runtime' not in step.get('with', {}).get('path', '')
