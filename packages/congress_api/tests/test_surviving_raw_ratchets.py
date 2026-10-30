@@ -7,7 +7,7 @@ ROOT = Path(__file__).resolve().parents[3]
 SOURCE = ROOT / 'packages/congress_api/src/congress_api'
 SURVIVING = (
     'retention/body_store.py', 'retention/receipt_privacy.py', 'retention/writer_identity.py',
-    'retention/pipeline_raw.py', 'retention/archive_members.py', 'retention/sniff.py',
+    'retention/sniff.py',
     'models/raw_fetch.py', 'acquisition/fetcher.py', 'transport/raw_adapters.py',
     'retention/receipt_writer.py', 'retention/archive_expander.py',
     'retention/provenance.py', 'retention/recovery_facts.py',
@@ -57,3 +57,13 @@ def test_ratchet_detects_environment_and_fixture_substitutions():
     assert violations('import pytest')
     assert violations('def capture(test_mode=False): pass')
     assert violations("# pytest is discussed in comments\nsource = adapter.read(key)") == []
+
+
+def test_zero_pytest_current_test_sites_across_all_packages():
+    sites = [
+        str(p.relative_to(ROOT))
+        for p in sorted((ROOT / 'packages').glob('*/src/**/*.py'))
+        if 'PYTEST_CURRENT_TEST' in p.read_text()
+    ]
+    assert sites == []
+
