@@ -1,0 +1,155 @@
+{
+  "base_release": "a06e2a636d3c765f81be13712f496aa25a0dec50d7055ea8a1dbb18f0ebf1e25",
+  "release_id": "0db23484fe86c7f5a5e50e44f078ec34e74e793873b26c4a15f0b9e9efa17b69",
+  "parquet_files": 16,
+  "parquet_changed": false,
+  "checks": {
+    "relationship_invariants": [
+      {
+        "invalid_bills_key": 0,
+        "invalid_committees_key": 0,
+        "invalid_meetings_key": 0,
+        "invalid_members_key": 0,
+        "invalid_nominations_key": 0,
+        "invalid_recordings_key": 0,
+        "invalid_rosters_key": 0,
+        "invalid_url_variants_key": 0,
+        "invalid_witnesses_key": 0,
+        "missing_document_meeting": 0,
+        "missing_document_witness": 0,
+        "missing_primary_link": 0,
+        "missing_transcript_document": 0
+      }
+    ]
+  },
+  "publication": {
+    "status": "published",
+    "input_digest": "7e238c9d13373a4111b9f5636a598bb19dd8b9ae621e9d87dd3db927fb5c1ad0",
+    "live_release_basis": "conditional_flip_acknowledged",
+    "rows": {
+      "list.parquet": 367008,
+      "detail.parquet": 367008,
+      "links.parquet": 439555,
+      "urls.parquet": 587616,
+      "sources.parquet": 605848,
+      "recoveries.parquet": 12782,
+      "meetings.parquet": 18687,
+      "witnesses.parquet": 56066,
+      "recordings.parquet": 12033,
+      "committees.parquet": 817,
+      "members.parquet": 12770,
+      "rosters.parquet": 2973,
+      "bills.parquet": 11832,
+      "nominations.parquet": 747,
+      "url_state.parquet": 1201754,
+      "url_variants.parquet": 0,
+      "schema.json": 0,
+      "capture_scope.json": 0,
+      "capture_profile.json": 0
+    },
+    "bytes": 68173793,
+    "durations": {
+      "upload": 18.46933245798573,
+      "gates_and_flip": 32.0459615419968,
+      "total": 56.68894341698615
+    }
+  },
+  "schema_sha256": "fa0b8e30f0330b36bb2151aa74f8f84ee491b5b9ee6a3062fb1ebb6f59718f65",
+  "browser_contract": {
+    "version": 1,
+    "status": "passed",
+    "releaseId": "0db23484fe86c7f5a5e50e44f078ec34e74e793873b26c4a15f0b9e9efa17b69",
+    "targets": "owner-approved",
+    "results": [
+      {
+        "viewport": {
+          "width": 1440,
+          "height": 1000
+        },
+        "releaseId": "0db23484fe86c7f5a5e50e44f078ec34e74e793873b26c4a15f0b9e9efa17b69",
+        "pageUrl": "http://127.0.0.1:61004/congressional-tech/archive/?key=ffffffffffffffff",
+        "startupMs": 1636.6225419999998,
+        "searchMs": 183.17537500000026,
+        "detailMs": 1336.9055409999996,
+        "heapBytes": 490792041,
+        "workerHeapBytes": 482993529,
+        "pageHeapBytes": 7798512,
+        "workerIsolates": 1,
+        "heapSamples": 64,
+        "publicKey": "d3266118d8e8f628",
+        "status": "passed"
+      },
+      {
+        "viewport": {
+          "width": 412,
+          "height": 823
+        },
+        "releaseId": "0db23484fe86c7f5a5e50e44f078ec34e74e793873b26c4a15f0b9e9efa17b69",
+        "pageUrl": "http://127.0.0.1:61004/congressional-tech/archive/?key=ffffffffffffffff",
+        "startupMs": 1547.8547089999993,
+        "searchMs": 177.0403750000005,
+        "detailMs": 1352.0567500000016,
+        "heapBytes": 448609153,
+        "workerHeapBytes": 428403495,
+        "pageHeapBytes": 20205658,
+        "workerIsolates": 1,
+        "heapSamples": 62,
+        "publicKey": "d3266118d8e8f628",
+        "status": "passed"
+      },
+      {
+        "operation": "404-reload",
+        "status": "passed"
+      },
+      {
+        "operation": "old-pointer-refusal",
+        "status": "passed",
+        "pointerRequests": 1
+      }
+    ],
+    "fixtureBodyReads": []
+  },
+  "https_canary": {
+    "version": 1,
+    "status": "passed",
+    "targets": "owner-approved",
+    "savedCopyChecked": true,
+    "elapsedMs": 12543.452749999999,
+    "releaseId": "0db23484fe86c7f5a5e50e44f078ec34e74e793873b26c4a15f0b9e9efa17b69",
+    "startupMs": 2533.7169169999997,
+    "searchMs": 71.18987500000003,
+    "detailMs": 1275.0668749999995,
+    "heapBytes": 1139917821,
+    "workerHeapBytes": 0,
+    "operations": {
+      "startup": 2533.7169169999997,
+      "listScan": 27.68566600000031,
+      "facets": 510.5605419999997,
+      "detail0": 1275.0668749999995,
+      "detail1": 374.25224999999955,
+      "detail2": 402.69487499999923,
+      "search": 71.18987500000003,
+      "link": 510.4860840000001,
+      "sources": 1,
+      "recoveryRange": 376.7272920000005,
+      "recoveryAttachment": 356.92454199999975,
+      "recoveryRows": 1,
+      "urlState": 2530.8109999999997,
+      "saved": 200.7805840000001,
+      "stale": 2443.1614580000005
+    },
+    "estimatedListBytes": 84835136,
+    "estimatedListPeakBytes": 97495352,
+    "memory": {
+      "rss": 1425604608,
+      "heapTotal": 1022033920,
+      "heapUsed": 970510648,
+      "external": 162763517,
+      "arrayBuffers": 151657453
+    },
+    "transport": {
+      "requests": 136,
+      "ranges": 131
+    }
+  }
+}

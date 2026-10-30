@@ -103,3 +103,7 @@ def reader(selection):
         yield reader
     finally:
         reader.close()
+
+
+def pytest_addoption(parser):
+    parser.addoption('--native-fixture-root', help='Retained output directory of the producer phase 2 fixture runner')

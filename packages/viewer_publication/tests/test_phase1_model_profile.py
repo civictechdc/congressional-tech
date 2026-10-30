@@ -116,6 +116,7 @@ def test_profile_hashes_current_definition_files_and_reuses_capture_profile():
     assert 'model/sql/profile-completeness.sql' in hashes
     assert 'model/registries/release-schema.json' in hashes
     assert 'packages/viewer_publication/src/viewer_publication/archive_format.py' in hashes
+    assert 'packages/viewer_publication/src/viewer_publication/archive_schema.py' in hashes
 
 
 def test_semantic_profile_pins_the_failure_producer_separately_from_leaf_parsers():

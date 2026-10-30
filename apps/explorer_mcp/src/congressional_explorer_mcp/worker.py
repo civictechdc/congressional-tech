@@ -1,8 +1,11 @@
 """One query process; cancellation and deadlines reclaim its connection and spill."""
 import asyncio
 import multiprocessing
+from multiprocessing.connection import wait
 import os
 import socket
+import shutil
+from threading import Event, Thread
 from tempfile import TemporaryDirectory
 import time
 
@@ -15,6 +18,22 @@ def _offline(*args, **kwargs):
 
 
 def _run(connection, selection, scratch):
+    reader = None
+    finished = Event()
+
+    def watch_parent():
+        # The sentinel closes on SIGKILL too. Interrupt native work before
+        # removing spill files; only this worker owns this scratch directory.
+        wait([multiprocessing.parent_process().sentinel])
+        if reader is not None:
+            reader.db.interrupt()
+        if not finished.wait(2):
+            try:
+                shutil.rmtree(scratch)
+            finally:
+                os._exit(1)
+
+    Thread(target=watch_parent, daemon=True).start()
     import duckdb
     from .reader import Reader
 
@@ -22,7 +41,6 @@ def _run(connection, selection, scratch):
         if any(token in name.upper() for token in ('TOKEN', 'SECRET', 'PASSWORD', 'AWS_', 'API_KEY', 'CREDENTIAL')):
             os.environ.pop(name, None)
     socket.create_connection = socket.socket.connect = socket.socket.connect_ex = _offline
-    reader = None
     try:
         reader = Reader(selection, scratch=scratch)
         connection.send({'ready': True})
@@ -42,9 +60,13 @@ def _run(connection, selection, scratch):
     except Exception as error:
         connection.send({'error': str(error)[:4000], 'restart': True})
     finally:
-        if reader is not None:
-            reader.close()
-        connection.close()
+        try:
+            if reader is not None:
+                reader.close()
+            connection.close()
+            shutil.rmtree(scratch)
+        finally:
+            finished.set()
 
 
 class Worker:
@@ -119,9 +141,12 @@ class Worker:
                         await self._start()
                     self.connection.send((method, query))
                     return (await self._receive(time.monotonic() + self.timeout))['result']
-                except (asyncio.CancelledError, EOFError, BrokenPipeError):
+                except asyncio.CancelledError:
                     await asyncio.shield(self._stop())
                     raise
+                except (EOFError, BrokenPipeError, ConnectionResetError) as error:
+                    await asyncio.shield(self._stop())
+                    raise ExplorerError('Query process disconnected; retry the query') from error
         finally:
             self.pending -= 1
 

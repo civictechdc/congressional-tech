@@ -111,7 +111,7 @@ def resolve(location):
 
 
 def atomic_json(path, value):
-    with NamedTemporaryFile(dir=path.parent, delete=False) as stream:
+    with NamedTemporaryFile(dir=path.parent, prefix='.selection-', suffix='.partial', delete=False) as stream:
         temporary = Path(stream.name)
         try:
             stream.write(encoded(value)); stream.flush(); os.fsync(stream.fileno())
@@ -135,7 +135,7 @@ def retain(location, item, objects, previous):
                 if target.stat().st_size != item['size'] or file_digest(stream, 'sha256').hexdigest() != item['sha256']:
                     raise ExplorerError('Incomplete or corrupt cached object')
         return target
-    with NamedTemporaryFile(dir=objects, suffix='.partial', delete=False) as output:
+    with NamedTemporaryFile(dir=objects, prefix='.download-', suffix='.partial', delete=False) as output:
         temporary = Path(output.name)
         try:
             digest, size = sha256(), 0
@@ -168,6 +168,10 @@ def prepare(data_dir, publication=PUBLICATION, *, archive_origin=None):
 
 def _prepare(root, publication, archive_origin):
     objects = root / 'objects'; objects.mkdir(exist_ok=True)
+    # The exclusive prepare lock proves no active writer owns these temporary
+    # files. Readers use immutable digest names, never these partial namespaces.
+    for partial in [*objects.glob('.download-*.partial'), *root.glob('.selection-*.partial')]:
+        partial.unlink()
     selected = root / 'selection.json'
     previous = json.loads(selected.read_bytes()) if selected.exists() else {}
     if previous and previous.get('version') != 1:

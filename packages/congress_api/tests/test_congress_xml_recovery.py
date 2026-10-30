@@ -70,7 +70,8 @@ def test_failed_json_detail_recovers_xml_and_clears_pending(tmp_path, monkeypatc
     assert saved['eventId'] == 'old' and saved['relatedItems']['nominations'][0]['part'] == '00'
     assert RawContent.model_validate(saved['_source_xml']).body_bytes() == raw
     assert pending(path) == []
-    assert calls == [(url, {'params': {'api_key': 'private-key', 'format': 'xml'}, 'attempts': 5})]
+    assert calls == [(url, {'params': {'format': 'xml'},
+                           'headers': {'X-Api-Key': 'private-key'}, 'attempts': 5})]
     assert 'private-key' not in json.dumps(saved)
 
 

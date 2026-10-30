@@ -1,0 +1,1273 @@
+{
+  "release_id": "0db23484fe86c7f5a5e50e44f078ec34e74e793873b26c4a15f0b9e9efa17b69",
+  "tables": 16,
+  "relationships": 59,
+  "recipes": 10,
+  "status": "passed",
+  "host": "macOS-26.6-arm64-arm-64bit",
+  "python": "3.12.13",
+  "startup_seconds": 1.2589061670005322,
+  "process_tree_peak_rss_bytes": 338132992,
+  "processes_at_peak": 3,
+  "rss_samples": 36,
+  "rss_interval_target_seconds": 0.05,
+  "observed_max_sample_interval_seconds": 0.1365849160356447,
+  "parameters": {
+    "bill_id": "106-hr-3244",
+    "nomination_id": "119-pn-1011",
+    "event_id": 100031,
+    "witness_key": "6b482153b084adb5",
+    "system_code": "hlig00",
+    "congress": 119,
+    "list_row": 0
+  },
+  "summary": {
+    "initial_discovery": {
+      "count": 1,
+      "median_seconds": 0.48799179203342646,
+      "max_seconds": 0.48799179203342646,
+      "max_data_bytes": 17023
+    },
+    "table_discovery": {
+      "count": 16,
+      "median_seconds": 0.008015458530280739,
+      "max_seconds": 0.011209040996618569,
+      "max_data_bytes": 3435
+    },
+    "relationship_discovery": {
+      "count": 59,
+      "median_seconds": 0.007700500020291656,
+      "max_seconds": 0.011695124965626746,
+      "max_data_bytes": 656
+    },
+    "parameter_selection": {
+      "count": 6,
+      "median_seconds": 0.008452937501715496,
+      "max_seconds": 0.025882542016915977,
+      "max_data_bytes": 212
+    },
+    "recipe_discovery": {
+      "count": 10,
+      "median_seconds": 0.0076494375243783,
+      "max_seconds": 0.008575500047300011,
+      "max_data_bytes": 863
+    },
+    "document_selection": {
+      "count": 1,
+      "median_seconds": 0.06979183299699798,
+      "max_seconds": 0.06979183299699798,
+      "max_data_bytes": 757
+    },
+    "documents_text": {
+      "count": 3,
+      "median_seconds": 0.057250042038504034,
+      "max_seconds": 0.08299350005108863,
+      "max_data_bytes": 13046
+    },
+    "bill_documents": {
+      "count": 3,
+      "median_seconds": 0.014684166002552956,
+      "max_seconds": 0.023511708015576005,
+      "max_data_bytes": 2300
+    },
+    "witnesses_text": {
+      "count": 3,
+      "median_seconds": 0.03751850000116974,
+      "max_seconds": 0.042526291974354535,
+      "max_data_bytes": 10699
+    },
+    "document_detail": {
+      "count": 3,
+      "median_seconds": 0.03296024998417124,
+      "max_seconds": 0.042458417010493577,
+      "max_data_bytes": 1227
+    },
+    "bill_record": {
+      "count": 3,
+      "median_seconds": 0.016164915985427797,
+      "max_seconds": 0.024705624964553863,
+      "max_data_bytes": 655
+    },
+    "aggregate": {
+      "count": 3,
+      "median_seconds": 0.014023749972693622,
+      "max_seconds": 0.01876304199686274,
+      "max_data_bytes": 856
+    },
+    "recipe:bill_documents": {
+      "count": 3,
+      "median_seconds": 0.013700958981644362,
+      "max_seconds": 0.014512334018945694,
+      "max_data_bytes": 769
+    },
+    "recipe:hearing_documents": {
+      "count": 3,
+      "median_seconds": 0.025830166996456683,
+      "max_seconds": 0.03279425000073388,
+      "max_data_bytes": 454
+    },
+    "recipe:witness_documents": {
+      "count": 3,
+      "median_seconds": 0.02865774999372661,
+      "max_seconds": 0.03650191699853167,
+      "max_data_bytes": 569
+    },
+    "recipe:witness_transcripts": {
+      "count": 3,
+      "median_seconds": 0.032165042008273304,
+      "max_seconds": 0.03275591699639335,
+      "max_data_bytes": 323
+    },
+    "recipe:committee_roster": {
+      "count": 3,
+      "median_seconds": 0.014558832976035774,
+      "max_seconds": 0.016283333010505885,
+      "max_data_bytes": 5204
+    },
+    "recipe:nomination_transcripts": {
+      "count": 3,
+      "median_seconds": 0.03115275001619011,
+      "max_seconds": 0.031502333004027605,
+      "max_data_bytes": 292
+    },
+    "recipe:bill_votes": {
+      "count": 3,
+      "median_seconds": 0.013554667006246746,
+      "max_seconds": 0.014159500016830862,
+      "max_data_bytes": 647
+    },
+    "recipe:nomination_votes": {
+      "count": 3,
+      "median_seconds": 0.008453208953142166,
+      "max_seconds": 0.008568458026275039,
+      "max_data_bytes": 715
+    },
+    "recipe:recording_tracks": {
+      "count": 3,
+      "median_seconds": 0.01050062500871718,
+      "max_seconds": 0.013480834022630006,
+      "max_data_bytes": 355
+    },
+    "recipe:document_editions": {
+      "count": 3,
+      "median_seconds": 0.025632374978158623,
+      "max_seconds": 0.02633233298547566,
+      "max_data_bytes": 250
+    },
+    "concurrent:documents_text": {
+      "count": 3,
+      "median_seconds": 0.05472812498919666,
+      "max_seconds": 0.0691470000310801,
+      "max_data_bytes": 13046
+    },
+    "concurrent:bill_documents": {
+      "count": 3,
+      "median_seconds": 0.06576687499182299,
+      "max_seconds": 0.08075550000648946,
+      "max_data_bytes": 2300
+    },
+    "concurrent:witnesses_text": {
+      "count": 3,
+      "median_seconds": 0.09997987496899441,
+      "max_seconds": 0.11765775003004819,
+      "max_data_bytes": 10699
+    },
+    "concurrent:document_detail": {
+      "count": 3,
+      "median_seconds": 0.12389454199001193,
+      "max_seconds": 0.14072708395542577,
+      "max_data_bytes": 1227
+    },
+    "concurrent_batch": {
+      "count": 3,
+      "median_seconds": 0.12413620902225375,
+      "max_seconds": 0.141256750037428,
+      "max_data_bytes": 0
+    }
+  },
+  "calls": [
+    {
+      "label": "initial_discovery",
+      "seconds": 0.48799179203342646,
+      "data_bytes": 17023,
+      "rows": 0,
+      "truncated": false
+    },
+    {
+      "label": "table_discovery",
+      "seconds": 0.007865499996114522,
+      "data_bytes": 3166,
+      "rows": 0,
+      "truncated": false
+    },
+    {
+      "label": "table_discovery",
+      "seconds": 0.007491249998565763,
+      "data_bytes": 3156,
+      "rows": 0,
+      "truncated": false
+    },
+    {
+      "label": "table_discovery",
+      "seconds": 0.008231624960899353,
+      "data_bytes": 798,
+      "rows": 0,
+      "truncated": false
+    },
+    {
+      "label": "table_discovery",
+      "seconds": 0.008146584033966064,
+      "data_bytes": 869,
+      "rows": 0,
+      "truncated": false
+    },
+    {
+      "label": "table_discovery",
+      "seconds": 0.007214082987047732,
+      "data_bytes": 1544,
+      "rows": 0,
+      "truncated": false
+    },
+    {
+      "label": "table_discovery",
+      "seconds": 0.00748258299427107,
+      "data_bytes": 1402,
+      "rows": 0,
+      "truncated": false
+    },
+    {
+      "label": "table_discovery",
+      "seconds": 0.007770291995257139,
+      "data_bytes": 2645,
+      "rows": 0,
+      "truncated": false
+    },
+    {
+      "label": "table_discovery",
+      "seconds": 0.007884333026595414,
+      "data_bytes": 2868,
+      "rows": 0,
+      "truncated": false
+    },
+    {
+      "label": "table_discovery",
+      "seconds": 0.007467582996468991,
+      "data_bytes": 1151,
+      "rows": 0,
+      "truncated": false
+    },
+    {
+      "label": "table_discovery",
+      "seconds": 0.0072934170020744205,
+      "data_bytes": 1576,
+      "rows": 0,
+      "truncated": false
+    },
+    {
+      "label": "table_discovery",
+      "seconds": 0.011209040996618569,
+      "data_bytes": 1627,
+      "rows": 0,
+      "truncated": false
+    },
+    {
+      "label": "table_discovery",
+      "seconds": 0.008175124996341765,
+      "data_bytes": 1225,
+      "rows": 0,
+      "truncated": false
+    },
+    {
+      "label": "table_discovery",
+      "seconds": 0.008750958018936217,
+      "data_bytes": 3435,
+      "rows": 0,
+      "truncated": false
+    },
+    {
+      "label": "table_discovery",
+      "seconds": 0.008384875021874905,
+      "data_bytes": 2145,
+      "rows": 0,
+      "truncated": false
+    },
+    {
+      "label": "table_discovery",
+      "seconds": 0.008947207999881357,
+      "data_bytes": 1436,
+      "rows": 0,
+      "truncated": false
+    },
+    {
+      "label": "table_discovery",
+      "seconds": 0.008833665982820094,
+      "data_bytes": 816,
+      "rows": 0,
+      "truncated": false
+    },
+    {
+      "label": "relationship_discovery",
+      "seconds": 0.007642665994353592,
+      "data_bytes": 441,
+      "rows": 0,
+      "truncated": false
+    },
+    {
+      "label": "relationship_discovery",
+      "seconds": 0.007487417024094611,
+      "data_bytes": 586,
+      "rows": 0,
+      "truncated": false
+    },
+    {
+      "label": "relationship_discovery",
+      "seconds": 0.0076504170428961515,
+      "data_bytes": 415,
+      "rows": 0,
+      "truncated": false
+    },
+    {
+      "label": "relationship_discovery",
+      "seconds": 0.007365958008449525,
+      "data_bytes": 413,
+      "rows": 0,
+      "truncated": false
+    },
+    {
+      "label": "relationship_discovery",
+      "seconds": 0.007601041987072676,
+      "data_bytes": 419,
+      "rows": 0,
+      "truncated": false
+    },
+    {
+      "label": "relationship_discovery",
+      "seconds": 0.007718249980825931,
+      "data_bytes": 425,
+      "rows": 0,
+      "truncated": false
+    },
+    {
+      "label": "relationship_discovery",
+      "seconds": 0.008187833009287715,
+      "data_bytes": 469,
+      "rows": 0,
+      "truncated": false
+    },
+    {
+      "label": "relationship_discovery",
+      "seconds": 0.008053124998696148,
+      "data_bytes": 468,
+      "rows": 0,
+      "truncated": false
+    },
+    {
+      "label": "relationship_discovery",
+      "seconds": 0.008431083988398314,
+      "data_bytes": 483,
+      "rows": 0,
+      "truncated": false
+    },
+    {
+      "label": "relationship_discovery",
+      "seconds": 0.008561790979001671,
+      "data_bytes": 452,
+      "rows": 0,
+      "truncated": false
+    },
+    {
+      "label": "relationship_discovery",
+      "seconds": 0.007712000049650669,
+      "data_bytes": 501,
+      "rows": 0,
+      "truncated": false
+    },
+    {
+      "label": "relationship_discovery",
+      "seconds": 0.008326540992129594,
+      "data_bytes": 470,
+      "rows": 0,
+      "truncated": false
+    },
+    {
+      "label": "relationship_discovery",
+      "seconds": 0.007405916985590011,
+      "data_bytes": 477,
+      "rows": 0,
+      "truncated": false
+    },
+    {
+      "label": "relationship_discovery",
+      "seconds": 0.008239124959800392,
+      "data_bytes": 521,
+      "rows": 0,
+      "truncated": false
+    },
+    {
+      "label": "relationship_discovery",
+      "seconds": 0.008159583027008921,
+      "data_bytes": 535,
+      "rows": 0,
+      "truncated": false
+    },
+    {
+      "label": "relationship_discovery",
+      "seconds": 0.008531374973244965,
+      "data_bytes": 477,
+      "rows": 0,
+      "truncated": false
+    },
+    {
+      "label": "relationship_discovery",
+      "seconds": 0.007920500007458031,
+      "data_bytes": 509,
+      "rows": 0,
+      "truncated": false
+    },
+    {
+      "label": "relationship_discovery",
+      "seconds": 0.007375791959930211,
+      "data_bytes": 472,
+      "rows": 0,
+      "truncated": false
+    },
+    {
+      "label": "relationship_discovery",
+      "seconds": 0.0073314590263180435,
+      "data_bytes": 501,
+      "rows": 0,
+      "truncated": false
+    },
+    {
+      "label": "relationship_discovery",
+      "seconds": 0.00800187501590699,
+      "data_bytes": 479,
+      "rows": 0,
+      "truncated": false
+    },
+    {
+      "label": "relationship_discovery",
+      "seconds": 0.008289415971376002,
+      "data_bytes": 524,
+      "rows": 0,
+      "truncated": false
+    },
+    {
+      "label": "relationship_discovery",
+      "seconds": 0.009229041985236108,
+      "data_bytes": 494,
+      "rows": 0,
+      "truncated": false
+    },
+    {
+      "label": "relationship_discovery",
+      "seconds": 0.00787529197987169,
+      "data_bytes": 473,
+      "rows": 0,
+      "truncated": false
+    },
+    {
+      "label": "relationship_discovery",
+      "seconds": 0.0075735829886980355,
+      "data_bytes": 499,
+      "rows": 0,
+      "truncated": false
+    },
+    {
+      "label": "relationship_discovery",
+      "seconds": 0.0079526660265401,
+      "data_bytes": 488,
+      "rows": 0,
+      "truncated": false
+    },
+    {
+      "label": "relationship_discovery",
+      "seconds": 0.0075659999856725335,
+      "data_bytes": 459,
+      "rows": 0,
+      "truncated": false
+    },
+    {
+      "label": "relationship_discovery",
+      "seconds": 0.007973750005476177,
+      "data_bytes": 497,
+      "rows": 0,
+      "truncated": false
+    },
+    {
+      "label": "relationship_discovery",
+      "seconds": 0.008813792024739087,
+      "data_bytes": 520,
+      "rows": 0,
+      "truncated": false
+    },
+    {
+      "label": "relationship_discovery",
+      "seconds": 0.007689708028919995,
+      "data_bytes": 443,
+      "rows": 0,
+      "truncated": false
+    },
+    {
+      "label": "relationship_discovery",
+      "seconds": 0.006974583026021719,
+      "data_bytes": 545,
+      "rows": 0,
+      "truncated": false
+    },
+    {
+      "label": "relationship_discovery",
+      "seconds": 0.00744033302180469,
+      "data_bytes": 455,
+      "rows": 0,
+      "truncated": false
+    },
+    {
+      "label": "relationship_discovery",
+      "seconds": 0.007442833040840924,
+      "data_bytes": 557,
+      "rows": 0,
+      "truncated": false
+    },
+    {
+      "label": "relationship_discovery",
+      "seconds": 0.007509791990742087,
+      "data_bytes": 510,
+      "rows": 0,
+      "truncated": false
+    },
+    {
+      "label": "relationship_discovery",
+      "seconds": 0.0076963750179857016,
+      "data_bytes": 638,
+      "rows": 0,
+      "truncated": false
+    },
+    {
+      "label": "relationship_discovery",
+      "seconds": 0.00815829198108986,
+      "data_bytes": 656,
+      "rows": 0,
+      "truncated": false
+    },
+    {
+      "label": "relationship_discovery",
+      "seconds": 0.008320500026457012,
+      "data_bytes": 630,
+      "rows": 0,
+      "truncated": false
+    },
+    {
+      "label": "relationship_discovery",
+      "seconds": 0.008166209037881345,
+      "data_bytes": 652,
+      "rows": 0,
+      "truncated": false
+    },
+    {
+      "label": "relationship_discovery",
+      "seconds": 0.007931625004857779,
+      "data_bytes": 514,
+      "rows": 0,
+      "truncated": false
+    },
+    {
+      "label": "relationship_discovery",
+      "seconds": 0.007566042011603713,
+      "data_bytes": 531,
+      "rows": 0,
+      "truncated": false
+    },
+    {
+      "label": "relationship_discovery",
+      "seconds": 0.011695124965626746,
+      "data_bytes": 522,
+      "rows": 0,
+      "truncated": false
+    },
+    {
+      "label": "relationship_discovery",
+      "seconds": 0.009193375008180737,
+      "data_bytes": 513,
+      "rows": 0,
+      "truncated": false
+    },
+    {
+      "label": "relationship_discovery",
+      "seconds": 0.007672749983612448,
+      "data_bytes": 522,
+      "rows": 0,
+      "truncated": false
+    },
+    {
+      "label": "relationship_discovery",
+      "seconds": 0.007543542014900595,
+      "data_bytes": 510,
+      "rows": 0,
+      "truncated": false
+    },
+    {
+      "label": "relationship_discovery",
+      "seconds": 0.007156917010433972,
+      "data_bytes": 553,
+      "rows": 0,
+      "truncated": false
+    },
+    {
+      "label": "relationship_discovery",
+      "seconds": 0.007544375024735928,
+      "data_bytes": 558,
+      "rows": 0,
+      "truncated": false
+    },
+    {
+      "label": "relationship_discovery",
+      "seconds": 0.007526708010118455,
+      "data_bytes": 518,
+      "rows": 0,
+      "truncated": false
+    },
+    {
+      "label": "relationship_discovery",
+      "seconds": 0.009984750009607524,
+      "data_bytes": 546,
+      "rows": 0,
+      "truncated": false
+    },
+    {
+      "label": "relationship_discovery",
+      "seconds": 0.008571124984882772,
+      "data_bytes": 520,
+      "rows": 0,
+      "truncated": false
+    },
+    {
+      "label": "relationship_discovery",
+      "seconds": 0.007777542050462216,
+      "data_bytes": 530,
+      "rows": 0,
+      "truncated": false
+    },
+    {
+      "label": "relationship_discovery",
+      "seconds": 0.007924709003418684,
+      "data_bytes": 539,
+      "rows": 0,
+      "truncated": false
+    },
+    {
+      "label": "relationship_discovery",
+      "seconds": 0.007700500020291656,
+      "data_bytes": 550,
+      "rows": 0,
+      "truncated": false
+    },
+    {
+      "label": "relationship_discovery",
+      "seconds": 0.007717165979556739,
+      "data_bytes": 554,
+      "rows": 0,
+      "truncated": false
+    },
+    {
+      "label": "relationship_discovery",
+      "seconds": 0.007656542002223432,
+      "data_bytes": 544,
+      "rows": 0,
+      "truncated": false
+    },
+    {
+      "label": "relationship_discovery",
+      "seconds": 0.007419667032081634,
+      "data_bytes": 557,
+      "rows": 0,
+      "truncated": false
+    },
+    {
+      "label": "relationship_discovery",
+      "seconds": 0.007297666044905782,
+      "data_bytes": 549,
+      "rows": 0,
+      "truncated": false
+    },
+    {
+      "label": "relationship_discovery",
+      "seconds": 0.007634832989424467,
+      "data_bytes": 560,
+      "rows": 0,
+      "truncated": false
+    },
+    {
+      "label": "relationship_discovery",
+      "seconds": 0.007337791961617768,
+      "data_bytes": 565,
+      "rows": 0,
+      "truncated": false
+    },
+    {
+      "label": "relationship_discovery",
+      "seconds": 0.007600916957017034,
+      "data_bytes": 561,
+      "rows": 0,
+      "truncated": false
+    },
+    {
+      "label": "relationship_discovery",
+      "seconds": 0.0072511250036768615,
+      "data_bytes": 589,
+      "rows": 0,
+      "truncated": false
+    },
+    {
+      "label": "parameter_selection",
+      "seconds": 0.025882542016915977,
+      "data_bytes": 199,
+      "rows": 1,
+      "truncated": false
+    },
+    {
+      "label": "parameter_selection",
+      "seconds": 0.008211666950955987,
+      "data_bytes": 211,
+      "rows": 1,
+      "truncated": false
+    },
+    {
+      "label": "parameter_selection",
+      "seconds": 0.008694208052475005,
+      "data_bytes": 193,
+      "rows": 1,
+      "truncated": false
+    },
+    {
+      "label": "parameter_selection",
+      "seconds": 0.02465941704576835,
+      "data_bytes": 212,
+      "rows": 1,
+      "truncated": false
+    },
+    {
+      "label": "parameter_selection",
+      "seconds": 0.007308624975848943,
+      "data_bytes": 202,
+      "rows": 1,
+      "truncated": false
+    },
+    {
+      "label": "parameter_selection",
+      "seconds": 0.007060249976348132,
+      "data_bytes": 192,
+      "rows": 1,
+      "truncated": false
+    },
+    {
+      "label": "recipe_discovery",
+      "seconds": 0.0074819999863393605,
+      "data_bytes": 667,
+      "rows": 0,
+      "truncated": false
+    },
+    {
+      "label": "recipe_discovery",
+      "seconds": 0.007706667005550116,
+      "data_bytes": 683,
+      "rows": 0,
+      "truncated": false
+    },
+    {
+      "label": "recipe_discovery",
+      "seconds": 0.007383500051219016,
+      "data_bytes": 696,
+      "rows": 0,
+      "truncated": false
+    },
+    {
+      "label": "recipe_discovery",
+      "seconds": 0.008575500047300011,
+      "data_bytes": 825,
+      "rows": 0,
+      "truncated": false
+    },
+    {
+      "label": "recipe_discovery",
+      "seconds": 0.007674166990909725,
+      "data_bytes": 863,
+      "rows": 0,
+      "truncated": false
+    },
+    {
+      "label": "recipe_discovery",
+      "seconds": 0.00760650000302121,
+      "data_bytes": 771,
+      "rows": 0,
+      "truncated": false
+    },
+    {
+      "label": "recipe_discovery",
+      "seconds": 0.00764166604494676,
+      "data_bytes": 738,
+      "rows": 0,
+      "truncated": false
+    },
+    {
+      "label": "recipe_discovery",
+      "seconds": 0.0074757919646799564,
+      "data_bytes": 625,
+      "rows": 0,
+      "truncated": false
+    },
+    {
+      "label": "recipe_discovery",
+      "seconds": 0.007920417003333569,
+      "data_bytes": 742,
+      "rows": 0,
+      "truncated": false
+    },
+    {
+      "label": "recipe_discovery",
+      "seconds": 0.0076572090038098395,
+      "data_bytes": 775,
+      "rows": 0,
+      "truncated": false
+    },
+    {
+      "label": "document_selection",
+      "seconds": 0.06979183299699798,
+      "data_bytes": 757,
+      "rows": 1,
+      "truncated": false
+    },
+    {
+      "label": "documents_text",
+      "seconds": 0.053483374998904765,
+      "data_bytes": 13046,
+      "rows": 25,
+      "truncated": false
+    },
+    {
+      "label": "bill_documents",
+      "seconds": 0.012789875036105514,
+      "data_bytes": 2300,
+      "rows": 5,
+      "truncated": false
+    },
+    {
+      "label": "witnesses_text",
+      "seconds": 0.036960790981538594,
+      "data_bytes": 10699,
+      "rows": 25,
+      "truncated": false
+    },
+    {
+      "label": "document_detail",
+      "seconds": 0.03296024998417124,
+      "data_bytes": 1227,
+      "rows": 1,
+      "truncated": false
+    },
+    {
+      "label": "bill_record",
+      "seconds": 0.016164915985427797,
+      "data_bytes": 655,
+      "rows": 1,
+      "truncated": false
+    },
+    {
+      "label": "aggregate",
+      "seconds": 0.014023749972693622,
+      "data_bytes": 856,
+      "rows": 19,
+      "truncated": false
+    },
+    {
+      "label": "recipe:bill_documents",
+      "seconds": 0.013700958981644362,
+      "data_bytes": 769,
+      "rows": 5,
+      "truncated": false
+    },
+    {
+      "label": "recipe:hearing_documents",
+      "seconds": 0.03279425000073388,
+      "data_bytes": 454,
+      "rows": 1,
+      "truncated": false
+    },
+    {
+      "label": "recipe:witness_documents",
+      "seconds": 0.03650191699853167,
+      "data_bytes": 569,
+      "rows": 2,
+      "truncated": false
+    },
+    {
+      "label": "recipe:witness_transcripts",
+      "seconds": 0.032165042008273304,
+      "data_bytes": 323,
+      "rows": 0,
+      "truncated": false
+    },
+    {
+      "label": "recipe:committee_roster",
+      "seconds": 0.01370216702343896,
+      "data_bytes": 5204,
+      "rows": 27,
+      "truncated": false
+    },
+    {
+      "label": "recipe:nomination_transcripts",
+      "seconds": 0.031502333004027605,
+      "data_bytes": 292,
+      "rows": 0,
+      "truncated": false
+    },
+    {
+      "label": "recipe:bill_votes",
+      "seconds": 0.014159500016830862,
+      "data_bytes": 647,
+      "rows": 1,
+      "truncated": false
+    },
+    {
+      "label": "recipe:nomination_votes",
+      "seconds": 0.008453208953142166,
+      "data_bytes": 715,
+      "rows": 2,
+      "truncated": false
+    },
+    {
+      "label": "recipe:recording_tracks",
+      "seconds": 0.013480834022630006,
+      "data_bytes": 355,
+      "rows": 0,
+      "truncated": false
+    },
+    {
+      "label": "recipe:document_editions",
+      "seconds": 0.024823666957672685,
+      "data_bytes": 250,
+      "rows": 0,
+      "truncated": false
+    },
+    {
+      "label": "concurrent:documents_text",
+      "seconds": 0.05472812498919666,
+      "data_bytes": 13046,
+      "rows": 25,
+      "truncated": false
+    },
+    {
+      "label": "concurrent:bill_documents",
+      "seconds": 0.06494820903753862,
+      "data_bytes": 2300,
+      "rows": 5,
+      "truncated": false
+    },
+    {
+      "label": "concurrent:witnesses_text",
+      "seconds": 0.09997987496899441,
+      "data_bytes": 10699,
+      "rows": 25,
+      "truncated": false
+    },
+    {
+      "label": "concurrent:document_detail",
+      "seconds": 0.1225729999714531,
+      "data_bytes": 1227,
+      "rows": 1,
+      "truncated": false
+    },
+    {
+      "label": "concurrent_batch",
+      "seconds": 0.12275383301312104
+    },
+    {
+      "label": "documents_text",
+      "seconds": 0.057250042038504034,
+      "data_bytes": 13046,
+      "rows": 25,
+      "truncated": false
+    },
+    {
+      "label": "bill_documents",
+      "seconds": 0.023511708015576005,
+      "data_bytes": 2300,
+      "rows": 5,
+      "truncated": false
+    },
+    {
+      "label": "witnesses_text",
+      "seconds": 0.03751850000116974,
+      "data_bytes": 10699,
+      "rows": 25,
+      "truncated": false
+    },
+    {
+      "label": "document_detail",
+      "seconds": 0.026741291978396475,
+      "data_bytes": 1227,
+      "rows": 1,
+      "truncated": false
+    },
+    {
+      "label": "bill_record",
+      "seconds": 0.014630291960202157,
+      "data_bytes": 655,
+      "rows": 1,
+      "truncated": false
+    },
+    {
+      "label": "aggregate",
+      "seconds": 0.01363037497503683,
+      "data_bytes": 856,
+      "rows": 19,
+      "truncated": false
+    },
+    {
+      "label": "recipe:bill_documents",
+      "seconds": 0.014512334018945694,
+      "data_bytes": 769,
+      "rows": 5,
+      "truncated": false
+    },
+    {
+      "label": "recipe:hearing_documents",
+      "seconds": 0.025830166996456683,
+      "data_bytes": 454,
+      "rows": 1,
+      "truncated": false
+    },
+    {
+      "label": "recipe:witness_documents",
+      "seconds": 0.028098291950300336,
+      "data_bytes": 569,
+      "rows": 2,
+      "truncated": false
+    },
+    {
+      "label": "recipe:witness_transcripts",
+      "seconds": 0.03081604203907773,
+      "data_bytes": 323,
+      "rows": 0,
+      "truncated": false
+    },
+    {
+      "label": "recipe:committee_roster",
+      "seconds": 0.014558832976035774,
+      "data_bytes": 5204,
+      "rows": 27,
+      "truncated": false
+    },
+    {
+      "label": "recipe:nomination_transcripts",
+      "seconds": 0.03015937499003485,
+      "data_bytes": 292,
+      "rows": 0,
+      "truncated": false
+    },
+    {
+      "label": "recipe:bill_votes",
+      "seconds": 0.013540082960389555,
+      "data_bytes": 647,
+      "rows": 1,
+      "truncated": false
+    },
+    {
+      "label": "recipe:nomination_votes",
+      "seconds": 0.00777420902159065,
+      "data_bytes": 715,
+      "rows": 2,
+      "truncated": false
+    },
+    {
+      "label": "recipe:recording_tracks",
+      "seconds": 0.01050062500871718,
+      "data_bytes": 355,
+      "rows": 0,
+      "truncated": false
+    },
+    {
+      "label": "recipe:document_editions",
+      "seconds": 0.025632374978158623,
+      "data_bytes": 250,
+      "rows": 0,
+      "truncated": false
+    },
+    {
+      "label": "concurrent:documents_text",
+      "seconds": 0.053926708991639316,
+      "data_bytes": 13046,
+      "rows": 25,
+      "truncated": false
+    },
+    {
+      "label": "concurrent:bill_documents",
+      "seconds": 0.06576687499182299,
+      "data_bytes": 2300,
+      "rows": 5,
+      "truncated": false
+    },
+    {
+      "label": "concurrent:witnesses_text",
+      "seconds": 0.09994825004832819,
+      "data_bytes": 10699,
+      "rows": 25,
+      "truncated": false
+    },
+    {
+      "label": "concurrent:document_detail",
+      "seconds": 0.12389454199001193,
+      "data_bytes": 1227,
+      "rows": 1,
+      "truncated": false
+    },
+    {
+      "label": "concurrent_batch",
+      "seconds": 0.12413620902225375
+    },
+    {
+      "label": "documents_text",
+      "seconds": 0.08299350005108863,
+      "data_bytes": 13046,
+      "rows": 25,
+      "truncated": false
+    },
+    {
+      "label": "bill_documents",
+      "seconds": 0.014684166002552956,
+      "data_bytes": 2300,
+      "rows": 5,
+      "truncated": false
+    },
+    {
+      "label": "witnesses_text",
+      "seconds": 0.042526291974354535,
+      "data_bytes": 10699,
+      "rows": 25,
+      "truncated": false
+    },
+    {
+      "label": "document_detail",
+      "seconds": 0.042458417010493577,
+      "data_bytes": 1227,
+      "rows": 1,
+      "truncated": false
+    },
+    {
+      "label": "bill_record",
+      "seconds": 0.024705624964553863,
+      "data_bytes": 655,
+      "rows": 1,
+      "truncated": false
+    },
+    {
+      "label": "aggregate",
+      "seconds": 0.01876304199686274,
+      "data_bytes": 856,
+      "rows": 19,
+      "truncated": false
+    },
+    {
+      "label": "recipe:bill_documents",
+      "seconds": 0.013546959031373262,
+      "data_bytes": 769,
+      "rows": 5,
+      "truncated": false
+    },
+    {
+      "label": "recipe:hearing_documents",
+      "seconds": 0.024963708012364805,
+      "data_bytes": 454,
+      "rows": 1,
+      "truncated": false
+    },
+    {
+      "label": "recipe:witness_documents",
+      "seconds": 0.02865774999372661,
+      "data_bytes": 569,
+      "rows": 2,
+      "truncated": false
+    },
+    {
+      "label": "recipe:witness_transcripts",
+      "seconds": 0.03275591699639335,
+      "data_bytes": 323,
+      "rows": 0,
+      "truncated": false
+    },
+    {
+      "label": "recipe:committee_roster",
+      "seconds": 0.016283333010505885,
+      "data_bytes": 5204,
+      "rows": 27,
+      "truncated": false
+    },
+    {
+      "label": "recipe:nomination_transcripts",
+      "seconds": 0.03115275001619011,
+      "data_bytes": 292,
+      "rows": 0,
+      "truncated": false
+    },
+    {
+      "label": "recipe:bill_votes",
+      "seconds": 0.013554667006246746,
+      "data_bytes": 647,
+      "rows": 1,
+      "truncated": false
+    },
+    {
+      "label": "recipe:nomination_votes",
+      "seconds": 0.008568458026275039,
+      "data_bytes": 715,
+      "rows": 2,
+      "truncated": false
+    },
+    {
+      "label": "recipe:recording_tracks",
+      "seconds": 0.008494458044879138,
+      "data_bytes": 355,
+      "rows": 0,
+      "truncated": false
+    },
+    {
+      "label": "recipe:document_editions",
+      "seconds": 0.02633233298547566,
+      "data_bytes": 250,
+      "rows": 0,
+      "truncated": false
+    },
+    {
+      "label": "concurrent:documents_text",
+      "seconds": 0.0691470000310801,
+      "data_bytes": 13046,
+      "rows": 25,
+      "truncated": false
+    },
+    {
+      "label": "concurrent:bill_documents",
+      "seconds": 0.08075550000648946,
+      "data_bytes": 2300,
+      "rows": 5,
+      "truncated": false
+    },
+    {
+      "label": "concurrent:witnesses_text",
+      "seconds": 0.11765775003004819,
+      "data_bytes": 10699,
+      "rows": 25,
+      "truncated": false
+    },
+    {
+      "label": "concurrent:document_detail",
+      "seconds": 0.14072708395542577,
+      "data_bytes": 1227,
+      "rows": 1,
+      "truncated": false
+    },
+    {
+      "label": "concurrent_batch",
+      "seconds": 0.141256750037428
+    }
+  ]
+}

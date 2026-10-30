@@ -199,10 +199,17 @@ are disabled in the query runtime.
 Completed objects remain reusable and may still be in use by an older running
 server. Preparation therefore does not delete old objects. To retire a cache,
 stop every server using that data directory, remove that directory, then prepare
-again. Interrupted transfer files are removed on ordinary failure; process-killed
-preparations may leave disposable `.partial` files in that owned cache. Query spill
-cleanup is owned by the server; an abrupt kill of the server itself can leave its
-`congress-mcp-query-*` temporary directory.
+again. The next preparation removes its interrupted download and selection files
+after acquiring the exclusive prepare lock. It keeps completed objects for live
+readers and rollback. If the server is killed, its worker detects parent death,
+interrupts DuckDB, closes the connection and removes its own spill directory.
+An unexpectedly killed worker produces a retryable error; the next call starts
+a new worker.
+
+To roll back, prepare the previous immutable release manifest and restart the
+server. Existing servers remain on their selected release. If a cached object is
+corrupt, preparation refuses it and preserves the current selection; prepare into
+a fresh data directory to recover, then retire the old cache after its readers stop.
 
 ## Check it
 
@@ -214,7 +221,9 @@ The root runner dispatches to the app's locked environment. Tests cover the
 canonical archive fixture, phase 2 entity shapes, raw SQL and relationships,
 shards, duplicates, missing versus empty data, failure/reuse, SQL restrictions,
 byte limits, subprocess cancellation and real stdio MCP calls. The dedicated CI
-workflow runs this same lane. See [local verification](VERIFICATION.md).
+workflow also builds the native phase 2 fixture and consumes its actual output
+over stdio in the independent MCP environment. See [verification](VERIFICATION.md)
+and [production measurements](../../docs/measurements/congress-mcp-production-20261030.md).
 
 Published data availability is separate from reader support. Absent tables are
 reported as unavailable; an empty table means zero published rows; nulls remain

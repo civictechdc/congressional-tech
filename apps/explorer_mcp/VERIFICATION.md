@@ -1,5 +1,27 @@
 # Local verification — 2026-10-30
 
+## Current production acceptance
+
+The MCP and native relationship metadata are merged to main. Public release
+`0db23484fe86c7f5a5e50e44f078ec34e74e793873b26c4a15f0b9e9efa17b69`
+publishes all 16 table definitions, 59 relationships and 10 SQL recipes. This
+metadata-only update preserves every Parquet byte from the deployed phase 2
+release. Fresh public preparation, native relationship checks, built-site checks
+and the HTTPS saved-file check passed.
+
+The current local MCP suite passes **55 tests**, including a newly produced
+native phase 2 release consumed through real stdio. Recovery checks include
+server SIGKILL during native spill, worker death, SIGKILL during preparation,
+disk-full failures during payload and selection writes, reset/truncated
+transfers, rollback, corrupt old objects and protection of live readers.
+Disk-full errors are injected; the kill tests use real subprocesses and files.
+
+CI results, full-data timing/RSS and acceptance limits are recorded in
+[the production report](../../docs/measurements/congress-mcp-production-20261030.md).
+The sections below retain earlier observations and their historical limits.
+
+## Earlier implementation baseline
+
 The greenfield MCP uses DuckDB 2.0.0 and FastMCP 4.1.4 in its independent locked
 environment. No producer package, legacy catalog adapter, or persistent DuckDB
 copy is imported or built.
@@ -10,7 +32,7 @@ copy is imported or built.
   cancellation, restart and spill cleanup, interrupted preparation, reuse, and
   dispatch through the repository test runner.
 - `uv lock --check`, Python compilation and `git diff --check` passed.
-- CI is configured in `validate-congress-mcp.yml`; remote CI has not run.
+- At this earlier baseline, CI was configured in `validate-congress-mcp.yml`; remote CI had not run.
 - At that baseline, production Python source measured **792 lines**, compared
   with **2,907** in the earlier local MCP. This was a code-size observation, not
   a runtime speedup. The original task checkout later disappeared; the current
