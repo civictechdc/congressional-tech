@@ -10,7 +10,10 @@ import '../styles/explorer.css';
     <div class="container">
       <div class="explorer-page-heading">
         <div><p class="eyebrow">Committee records</p><h1>Committee Explorer</h1></div>
-        <a href={withBase('/youtube-coverage/')}>YouTube Event ID report ↗</a>
+        <div class="explorer-page-links">
+          <a href={withBase('/archive/')}>Browse 367,000+ preserved hearing documents in the Document Archive →</a>
+          <a href={withBase('/youtube-coverage/')}>YouTube Event ID report ↗</a>
+        </div>
       </div>
       <Explorer pointerUrl={withBase('/data/explorer/CURRENT.json')} client:load />
       <noscript><p>The interactive explorer requires JavaScript. Browse the <a href="https://github.com/civictechdc/congressional-tech/tree/pipeline-data">retained source data</a> on GitHub.</p></noscript>

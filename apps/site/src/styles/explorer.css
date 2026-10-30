@@ -20,9 +20,19 @@
   color: var(--ctdc-ink-muted);
   margin-bottom: var(--ctdc-space-3xs);
 }
-.explorer-page-heading > a {
+.explorer-page-heading > a,
+.explorer-page-links {
   font-size: var(--ctdc-text-sm);
   flex-shrink: 0;
+}
+.explorer-page-links {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--ctdc-space-xs) var(--ctdc-space-lg);
+}
+.explorer-page-links a {
+  font-weight: 600;
 }
 .explorer {
   min-width: 0;
@@ -89,8 +99,8 @@
 .explorer-filters label,
 .explorer-measure {
   display: grid;
-  grid-template-areas: "name" "control" "reason";
-  grid-template-rows: auto auto auto;
+  grid-template-areas: "name" "control";
+  grid-template-rows: auto auto;
   gap: var(--ctdc-space-3xs);
   align-content: start;
   color: var(--ctdc-ink);
@@ -116,15 +126,15 @@
   color: var(--ctdc-ink-muted);
 }
 .explorer-filters .explorer-field-reason,
-.explorer-measure .explorer-field-reason {
-  grid-area: reason;
-  max-width: none;
+.explorer-measure .explorer-field-reason,
+.explorer summary > .explorer-field-reason {
+  display: none;
 }
 .explorer-search {
   flex: 1 1 22rem;
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto;
-  grid-template-rows: auto auto auto;
+  grid-template-rows: auto auto;
   column-gap: var(--ctdc-space-xs);
 }
 .explorer-search label {

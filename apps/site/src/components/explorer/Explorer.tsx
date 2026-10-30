@@ -941,21 +941,6 @@ function PublicationScope({
                             ))}
                           </ul>
                         </details>
-                      ) : group.length > 1 ? (
-                        <details>
-                          <summary>
-                            Part names
-                            <span className="explorer-field-reason">
-                              The saved name of each part. You do not need it to
-                              read this row.
-                            </span>
-                          </summary>
-                          <ul className="explorer-values">
-                            {parts.map((part, itemIndex) => (
-                              <li key={itemIndex}>{part.raw}</li>
-                            ))}
-                          </ul>
-                        </details>
                       ) : null}
                     </td>
                   </tr>
@@ -980,22 +965,6 @@ function PublicationScope({
             <li key={index}>{plainRecordedNote(String(limitation))}</li>
           ))}
         </ul>
-      ) : null}
-      {exactNotes.length ? (
-        <details>
-          <summary>
-            Exact saved notes
-            <span className="explorer-field-reason">
-              The wording saved with this archive. You do not need it to read
-              the table.
-            </span>
-          </summary>
-          <ul className="explorer-values">
-            {exactNotes.map((note) => (
-              <li key={note}>{note}</li>
-            ))}
-          </ul>
-        </details>
       ) : null}
       <details>
         <summary>
@@ -2321,23 +2290,30 @@ function Inspector({
           <BackIcon /> Results
         </button>
         {state.status === "ready" && state.value ? (
-          <button
-            className="explorer-text-button"
-            aria-label="Download a copy of everything saved for this record"
-            onClick={() =>
-              downloadJson(
-                `committee-explorer-${selected.kind}-${selected.id}.json`,
-                {
-                  scope: "record",
-                  publication_id: reader.publication.publication_id,
-                  schema_version: reader.publication.schema_version,
-                  record: state.value,
-                },
-              )
-            }
-          >
-            Download this record
-          </button>
+          <div className="explorer-actions">
+            <a
+              href={`${import.meta.env.BASE_URL.replace(/\/+$/, "")}/archive/`}
+            >
+              Document Archive →
+            </a>
+            <button
+              className="explorer-text-button"
+              aria-label="Download a copy of everything saved for this record"
+              onClick={() =>
+                downloadJson(
+                  `committee-explorer-${selected.kind}-${selected.id}.json`,
+                  {
+                    scope: "record",
+                    publication_id: reader.publication.publication_id,
+                    schema_version: reader.publication.schema_version,
+                    record: state.value,
+                  },
+                )
+              }
+            >
+              Download this record
+            </button>
+          </div>
         ) : null}
       </div>
       {state.status !== "ready" ? (

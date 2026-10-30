@@ -57,13 +57,83 @@ const summary = (body?: string) => body?.trim().split('\n')[0] ?? '';
           themes, with working tools already shipping.
         </p>
         <div class="hero-actions">
-          <a class="btn btn--gold" href={withBase('/proposals/')}>
+          <a class="btn btn--gold" href={withBase('/dashboard/')}>
+            Explore committee data
+          </a>
+          <a class="btn btn--ghost-dark" href={withBase('/archive/')}>
+            Browse document archive
+          </a>
+          <a class="btn btn--ghost-dark" href={withBase('/proposals/')}>
             Browse the proposals
           </a>
-          <a class="btn btn--ghost-dark" href={withBase('/contribute/')}>
-            Get involved
-          </a>
         </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Live Congressional Data Explorers -->
+  <section class="section section--tint" id="explorers">
+    <div class="container">
+      <div class="section-head">
+        <h2 class="section-heading">Congressional Data Explorers</h2>
+        <a class="slide-link" href={withBase('/dashboard/')}>
+          Open Committee Explorer →
+        </a>
+      </div>
+      <p class="section-intro">
+        Live interactive workspaces for exploring congressional committee
+        meetings, preserved hearing documents, witness records, and video
+        coverage across Congresses.
+      </p>
+      <div class="explorer-cards-grid">
+        <article class="card card--gold project-card">
+          <p class="eyebrow project-eyebrow">Live workspace · Meetings &amp; evidence</p>
+          <h3 class="card-title">Committee Explorer</h3>
+          <p>
+            Search and cross-reference 16,600+ committee meetings, recordings,
+            published documents, witness appearances, coverage metrics, and
+            known source gaps across Congresses.
+          </p>
+          <div class="project-links">
+            <a class="slide-link" href={withBase('/dashboard/')}>
+              Open Committee Explorer →
+            </a>
+            <a class="slide-link" href={withBase('/dashboard/?view=coverage')}>
+              View source coverage →
+            </a>
+          </div>
+        </article>
+        <article class="card card--gold project-card">
+          <p class="eyebrow project-eyebrow">Live archive · 367,000+ documents</p>
+          <h3 class="card-title">Document Archive</h3>
+          <p>
+            Browse and verify preserved committee hearing documents, witness
+            statements, transcripts, and recovered files with cryptographic
+            checksums and provenance records.
+          </p>
+          <div class="project-links">
+            <a class="slide-link" href={withBase('/archive/')}>
+              Open Document Archive →
+            </a>
+            <a class="slide-link" href={withBase('/dashboard/?view=materials')}>
+              Browse recordings &amp; materials →
+            </a>
+          </div>
+        </article>
+        <article class="card card--gold project-card">
+          <p class="eyebrow project-eyebrow">Live report · Project I.2</p>
+          <h3 class="card-title">Committee YouTube Coverage</h3>
+          <p>
+            Track how consistently House and Senate committees tag their
+            YouTube hearing videos with official Congress.gov Event IDs, broken
+            down by Congress, chamber, and party control.
+          </p>
+          <div class="project-links">
+            <a class="slide-link" href={withBase('/youtube-coverage/')}>
+              Open YouTube coverage report →
+            </a>
+          </div>
+        </article>
       </div>
     </div>
   </section>
@@ -296,9 +366,15 @@ const summary = (body?: string) => body?.trim().split('\n')[0] ?? '';
     margin: 0;
   }
 
+  .explorer-cards-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(18rem, 1fr));
+    gap: var(--ctdc-space-md);
+  }
+
   .project-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(17rem, 1fr));
+    grid-template-columns: repeat(auto-fit, minmax(20rem, 1fr));
     gap: var(--ctdc-space-md);
   }
 

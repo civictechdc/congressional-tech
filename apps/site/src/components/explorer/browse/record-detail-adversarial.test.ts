@@ -76,7 +76,7 @@ test('sourceFacts handles normalized schema without payload, empty arrays, and n
   });
   assert.ok(Array.isArray(normalized));
   assert.ok(normalized.some(([label, value]) => label === 'Source' && value === 'congress.gov'));
-  assert.ok(normalized.some(([label, value]) => label === 'Saved original' && value.includes('bodies/sha256/12/1234567890abcdef.gz')));
+  assert.ok(!normalized.some(([label]) => label === 'Saved original'));
   assert.ok(normalized.some(([label, value]) => label === 'Chamber' && value === 'House'));
   assert.ok(normalized.some(([label, value]) => label === 'Event ID' && value === '119575'));
 

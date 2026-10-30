@@ -86,10 +86,10 @@ const statusLabel = {
             </label>
           </div>
         </fieldset>
-        <p class="filter-empty" data-filter-empty hidden>
-          No proposals match those filters.
-        </p>
       </form>
+      <p class="filter-empty" data-filter-empty hidden>
+        No proposals match those filters.
+      </p>
 
       {
         byTheme.map(({ theme, proposals: themeProposals }) => (
@@ -270,6 +270,7 @@ const statusLabel = {
     font-weight: var(--ctdc-weight-semibold);
     color: var(--ctdc-ink-muted);
     cursor: pointer;
+    user-select: none;
     transition: all var(--ctdc-duration-fast) var(--ctdc-ease);
   }
 
@@ -291,10 +292,13 @@ const statusLabel = {
   }
 
   .filter-empty {
-    align-self: center;
     color: var(--ctdc-ink-muted);
     font-size: var(--ctdc-text-sm);
-    margin: 0;
+    padding: var(--ctdc-space-md) var(--ctdc-space-lg);
+    background: var(--ctdc-surface);
+    border: 1px solid var(--ctdc-hairline-on-light);
+    border-radius: var(--ctdc-radius-md);
+    margin: 0 0 var(--ctdc-space-xl) 0;
   }
 
   .theme-section {

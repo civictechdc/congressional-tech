@@ -363,7 +363,10 @@ export function distinctRecordedFacts(facts: readonly { label?: string | null; v
   const rows = (facts || []).flatMap(fact => {
     const label = fact.label?.trim() || '';
     const value = fact.value?.trim() || '';
-    return label && value ? [[label, value] as [string, string]] : [];
+    if (!label || !value) return [];
+    if (label.toLowerCase().replace(/[\s_]+/g, '') === 'ismanuallycurated') return [];
+    if (label === 'Saved original' && !/^https?:\/\//i.test(value)) return [];
+    return [[label, value] as [string, string]];
   });
   const place = (rows.find(([label]) => ['label', 'place'].includes(label.toLowerCase()))?.[1] || '').toLowerCase();
   let absorbed = false;
@@ -468,7 +471,7 @@ export function sourceFacts(value: object): [string, string][] {
   for (const [key, label] of sourceEnvelope) {
     if (typeof row[key] !== 'string' || !row[key].trim()) continue;
     const recorded = row[key].trim();
-    if (label === 'Saved original' && !/^https?:\/\/|^\/?bodies\/sha256\//i.test(recorded)) continue;
+    if (label === 'Saved original' && !/^https?:\/\//i.test(recorded)) continue;
     facts.push([label, ['Fetched', 'Added here', 'Changed at the source'].includes(label) ? recordedInstant(recorded) : recorded]);
   }
   const identifier = identifierLine(row.identifier || (row.identifier_value ? { scheme: row.identifier_scheme, value: row.identifier_value, scope: row.identifier_scope } : null));
@@ -476,7 +479,18 @@ export function sourceFacts(value: object): [string, string][] {
   if (Array.isArray(row.facts) && row.facts.length > 0) {
     for (const f of row.facts as readonly { label: string; value: string }[]) {
       if (f && typeof f.label === 'string' && typeof f.value === 'string') {
-        facts.push([f.label, f.value]);
+        const cleanLabel = f.label.trim();
+        const cleanValue = f.value.trim();
+        if (!cleanLabel || !cleanValue) continue;
+        const normLabel = cleanLabel.toLowerCase().replace(/[\s_]+/g, '');
+        if (normLabel === 'ismanuallycurated') continue;
+        if (normLabel === 'retrievedat' && facts.some(([l]) => l === 'Fetched')) continue;
+        if (normLabel === 'url' && /^https?:\/\/api\.congress\.gov\//i.test(cleanValue)) continue;
+        if (cleanLabel === 'Saved original' && !/^https?:\/\//i.test(cleanValue)) continue;
+        const formattedValue = ['Updated at the source', 'Date', 'Fetched', 'Checked'].includes(cleanLabel)
+          ? recordedInstant(cleanValue)
+          : cleanValue;
+        facts.push([cleanLabel, formattedValue]);
       }
     }
     return mergeFacts(facts);
