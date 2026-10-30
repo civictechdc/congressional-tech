@@ -240,8 +240,8 @@ def capture_digest_matches(table, expected):
 def source_fingerprint_paths():
     """Files owned by the source interpretation fingerprint."""
     from congress_api.retention import (
-        body_files, capture_inspection, catalog_availability, catalog_staging, document_index,
-        document_recovery, image_tools, pdf_tools, raw_catalog,
+        body_files, capture_inspection, catalog_staging, document_index,
+        document_recovery, image_tools, pdf_tools,
     )
     from congress_api import parsers, models
 
@@ -251,7 +251,7 @@ def source_fingerprint_paths():
         Path(__file__),
         *(
             Path(module.__file__)
-            for module in (document_index, document_recovery, raw_catalog, catalog_staging, catalog_availability,
+            for module in (document_index, document_recovery, catalog_staging,
                            body_files, capture_inspection, image_tools, pdf_tools)
         ),
     ]

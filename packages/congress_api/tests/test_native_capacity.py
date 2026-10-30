@@ -91,36 +91,6 @@ def test_preparation_estimate_uses_uncompressed_metadata_not_payload(monkeypatch
     assert capacity.preparation_budget(metadata) == 3 * 300 + 4096 * 3 + (1 << 20)
 
 
-def test_preparation_estimate_covers_parts_and_ordered_derivative_reservations(tmp_path):
-    import pyarrow.parquet as pq
-    from congress_api.retention.catalog_dependency_preparation import DependencyPreparation
-    from test_catalog_dependency_preparation import owner, values
-
-    table = values()
-    source_path = tmp_path / "sources.parquet"
-    pq.write_table(table, source_path, use_compliant_nested_type=False)
-    with pq.ParquetFile(source_path) as source_file:
-        budget = capacity.preparation_budget(source_file.metadata)
-    prepared = owner()
-    stage = tmp_path / "stage"
-    work = DependencyPreparation(
-        prepared,
-        directory=stage,
-        preparation_key="capacity-ordered-derivative",
-        first_unused_order=0,
-        source_orders=None,
-        staging_byte_budget=budget,
-    )
-    try:
-        work.prepare([table])
-        work.prepare_order()
-        assert (stage / "ordered.parquet").exists()
-        assert (stage / "ordered.json").exists()
-        assert prepared.preparation_metrics["staging_bytes"] <= budget
-    finally:
-        work.close()
-
-
 def test_progress_rechecks_space_without_walking_retained_files(tmp_path, monkeypatch):
     filesystem(monkeypatch, free=1000)
     receipt = capacity.require_adoption_capacity(

@@ -14,9 +14,28 @@ import weakref
 import pyarrow
 import pyarrow.parquet as pq
 
-from .catalog_types import _manifest
-
 _issued = weakref.WeakValueDictionary()
+
+
+def _manifest(data):
+    try:
+        manifest = json.loads(data)
+        generation = manifest['generation']
+        if (manifest['version'] != 1 or not isinstance(generation, str)
+                or len(generation) != 32 or any(c not in '0123456789abcdef' for c in generation)
+                or not isinstance(manifest['catalog_id'], str) or not manifest['catalog_id']):
+            raise ValueError('Invalid catalog manifest')
+        for label, name in [('filenames', 'document-filenames.parquet'), ('documents', 'documents.parquet')]:
+            item = manifest['files'][label]
+            if item['key'] != f'catalog-generations/{generation}/{name}':
+                raise ValueError('Invalid catalog generation path')
+            if (not isinstance(item['rows'], int) or item['rows'] < 0
+                    or not isinstance(item['bytes'], int) or item['bytes'] < 0
+                    or not isinstance(item['sha256'], str)):
+                raise ValueError('Invalid catalog file properties')
+        return manifest
+    except (KeyError, TypeError, json.JSONDecodeError) as error:
+        raise ValueError('Invalid selected catalog manifest') from error
 
 
 class CatalogReferenceCheck:
@@ -130,9 +149,8 @@ def catalog_source_ids_digest(sorted_source_ids):
 def catalog_reference_requirements():
     """Portable current requirements for reusing an immutable reference proof."""
     implementation = inspect.getsource(CatalogReferenceCheck) + inspect.getsource(catalog_source_ids_digest)
-    from .catalog_rows import FORMAT
-    return dict(validator='catalog-references-v1', row_format=FORMAT,
-                row_implementation_sha256=hashlib.sha256(Path(__file__).with_name('catalog_rows.py').read_bytes()).hexdigest(),
+    return dict(validator='catalog-references-v1', row_format='catalog-row-v1',
+                row_implementation_sha256=hashlib.sha256(Path(__file__).read_bytes()).hexdigest(),
                 implementation_sha256=hashlib.sha256(implementation.encode()).hexdigest(),
                 python=sys.version, pyarrow=pyarrow.__version__, sqlite=sqlite3.sqlite_version)
 

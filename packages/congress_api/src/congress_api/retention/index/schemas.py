@@ -18,7 +18,12 @@ from congress_api.retention.document_evidence import (
 from congress_api.parsers.document_cover import COVER_FIELDS
 from congress_api.parsers.document_links import http_url
 from congress_api.parsers.document_types import DOCUMENT_TYPE_MEANINGS, document_type, document_label_kind
-from congress_api.retention.catalog_types import AVAILABILITY_FIELDS, RESOURCE_FIELDS
+
+STATE_FIELDS = frozenset({'state_outcome', 'state_body_key', 'state_checked_at',
+                          'state_retrieved_at', 'state_family'})
+AVAILABILITY_FIELDS = STATE_FIELDS | {'hearing_package_id', 'hearing_resources'}
+RESOURCE_FIELDS = ('package_id', 'url', 'body_key', 'format', 'outcome',
+                   'association_basis', 'api_response_body_key', 'publisher_format_url')
 
 
 FAMILIES = (

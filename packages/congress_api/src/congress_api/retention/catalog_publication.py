@@ -20,11 +20,6 @@ import pyarrow.compute as pc
 import pyarrow.parquet as pq
 
 from congress_api.retention import raw_progress as progress
-from congress_api.retention.catalog_batches import (
-    _component_binding, _component_schema, _require_component, prepare_native_catalog_chunks,
-    CatalogComponentReader,
-)
-from congress_api.retention.catalog_selection import read_native_catalog
 from congress_api.retention.catalog_validation import validate_references, CatalogReferenceCheck
 
 MANIFEST_KEY = 'indexes/catalog.json'
@@ -118,13 +113,6 @@ def read_catalog(store, *, read=None, native=None, retained_directory=None):
     version = (getattr(store, 'index_etags', {}).get(MANIFEST_KEY)
                if hasattr(store, 'index_etags') else
                sha256(selected).hexdigest() if selected is not None else None)
-    if selected is not None:
-        try:
-            selector = json.loads(selected)
-        except json.JSONDecodeError:
-            selector = None  # The existing v1 parser retains its failure behavior.
-        if isinstance(selector, dict) and selector.get('version') == 2:
-            return read_native_catalog(store, selected, version=version, native=native)
     snapshot = CatalogSnapshot(None, None, None, version,
                                Path(tempfile.mkdtemp(prefix='catalog-snapshot-')))
     try:
@@ -198,17 +186,6 @@ def publish_catalog(store, filenames_path, documents_path, *, previous, validati
     progress.report('catalog_published', completed=1, total=1, unit='generations')
     return {'manifest_key': MANIFEST_KEY, 'generation': generation, 'catalog_id': catalog_id,
             'filenames_key': files['filenames']['key'], 'documents_key': files['documents']['key']}
-
-def read_catalog_component(store, reference, *, requirements=None):
-    """Read historical evidence; new-selection admission supplies current requirements.
-
-    The admission owner computes requirements once for the entire selection.
-    An installed validator upgrade never makes an older exact snapshot unreadable.
-    """
-    if not isinstance(reference, dict) or 'page' not in reference:
-        raise ValueError('Catalog components require an exact proof page member')
-    return CatalogComponentReader(store, requirements=requirements).read(reference)
-
 
 
 def local_catalog_paths(root):
