@@ -1,6 +1,6 @@
 ---
 id: ct-4fcl
-status: open
+status: closed
 deps: []
 links: [ct-tw3r, ct-r6xw]
 created: 2026-10-22T17:36:18Z
@@ -49,3 +49,7 @@ CS300 Subagent Sign-Off (e53d5741): Verified read_evidence, update_evidence, and
 - Evidence: docs/reviews/2026-10-24-ticket-audit/batches/syem/syem-verdicts.md:86
 - Status: Reopened. Unmet: AC2, the triplicated producer staging (WS3 step 2, ct-tw3r), and AC3, production imports of the `congress_api.retention.docspec` shims plus the two new `docspec_client` shims (WS10, ct-r6xw). AC1 (domain policy in docspec_client) and AC4 (docstrings) are not carried.
 - See docs/reviews/2026-10-24-ticket-audit/README.md
+
+**2026-10-30T17:43:04Z**
+
+Completed across 7bde0dc3 (ct-5v1y), df1bed37 (G02), dd9a5f12 (G10), and 176cd4a1: decomposed docspec_client into binary.py, client.py, host.py, models.py, schema.py, specs.py, and transport.py; deleted archive-only domain policy/specs in dd9a5f12 (-477 net); deleted pure-Python BLAKE3 fallback in 7bde0dc3 (-108 net); deleted congress_api.retention.docspec* shims in df1bed37; and deleted docspec_client.docspec and docspec_client.docspec_host shims in 176cd4a1 (-109 net). Verified with 251 passed tests.

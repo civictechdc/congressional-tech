@@ -1,6 +1,6 @@
 ---
 id: ct-5kto
-status: in_progress
+status: closed
 deps: [ct-t915, ct-yymr, ct-vnkf, ct-adtz, ct-klyz, ct-4jms]
 links: [cefr-vnw8, cef-jh7i, cef-96wc]
 created: 2026-10-30T14:32:31Z
@@ -32,3 +32,27 @@ Phase A committed at f619d529: retired seed_v5/display_only branches (deleted ar
 **2026-10-30T15:56:37Z**
 
 Executed self-contained per-group F5 deletions: 1e780f1e (G06: wc -l 3991 -> 430, -3487 net, replaced by viewer_publication.archive_publish) and 8978b3bb (G12: wc -l 2625 -> 252, -2373 net, replaced by corpus_recovery.reconcile). 246 focused tests pass.
+
+**2026-10-30T17:46:00Z**
+
+Completed all 18 F5 deletion groups (G01-G18) on main (-58,500+ net lines removed):
+- G01: 703a5920 (-19,820 net)
+- G02: df1bed37 (-16,603 net)
+- G03: c25ee9bb (-9,493 net)
+- G04: 14dbae1e (-309 net)
+- G05: 4dce6edc (-417 net)
+- G06: 1e780f1e (-3,487 net)
+- G07: 7ee01ac7 (filename_viewer.py deleted)
+- G08: 4c78d1ee (-198 net)
+- G09: 41c7112c (pipeline_status.py deleted)
+- G10: dd9a5f12 (-477 net) + 176cd4a1 (-109 net, docspec.py & docspec_host.py shims deleted)
+- G11: 0c281563 (-1,467 net)
+- G12: 8978b3bb (-2,373 net)
+- G13: 9b387f85 (-8,107 net)
+- G14: 41c7112c (apply-r2-edge-rules.py deleted)
+- G15: a0eaac9a (-2,147 net)
+- G16: 9225ac8b (-411 net)
+- G17: 72dd4975 (tests/e2e deleted)
+- G18: cb19315b (-186 net)
+- Plus 3014737a (zero PYTEST_CURRENT_TEST ratchet across all packages/*/src/**/*.py) and 32a1a3c6 (cxb_switch_deletions.py SITE path update).
+Verified with pytest across congress_api, viewer_publication, docspec_client, corpus_recovery, committee_youtube, and scripts/measure.

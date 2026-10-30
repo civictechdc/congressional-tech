@@ -393,7 +393,7 @@ def oracle_columns(display=None):
 def normalization(loaded, *, directory, use_scalar_deltas=False):
     """Project the old consumer and actual new release into comparable facts."""
     from viewer_publication.archive_format import EMPTY_STRINGS
-    EMPTY_BODY_DIGEST = hashlib.sha256(b"").hexdigest()
+    EMPTY_BODY_DIGEST = sha256(b"").hexdigest()
     MEDIA_FORMATS = {
         "application/pdf": "pdf", "application/json": "json", "application/xml": "xml",
         "text/xml": "xml", "text/html": "html", "text/plain": "txt", "text/csv": "csv",

@@ -1,6 +1,6 @@
 ---
 id: ct-r6xw
-status: open
+status: closed
 deps: [ct-70kc, ct-qqk2]
 links: [ct-4fcl, ct-0bce, ct-fsbf, ct-8od2, ct-q29c, ct-3ttc, ct-unv0, ct-wxhg, ct-jufk, ct-gi01, ct-u7gg]
 created: 2026-10-24T18:15:54Z
@@ -31,3 +31,7 @@ Then delete: `retention/document_index.py` (`_CompatibilityShim`, after WS4); `r
 **2026-10-24T18:47:54Z**
 
 Add: merge the two drifting copies of SourceModel and the YouTube models created when ct-ne06 broke the circular import (one shared module).
+
+**2026-10-30T17:43:04Z**
+
+Completed across df1bed37 (G02), c25ee9bb (G03), 9b387f85 (G13), 1e780f1e (G06), and 176cd4a1: deleted retention/document_index.py, retention/docspec.py, retention/docspec_host.py, docspec_client/docspec.py, docspec_client/docspec_host.py, tests/historical_viewer_publication.py, tests/historical_raw_archive.py, compact_readings.py, compact_reviews.py, streamed_recovery.py, and scripts/publication/*.py wrappers.

@@ -1,6 +1,6 @@
 ---
 id: ct-tw3r
-status: open
+status: closed
 deps: []
 links: [ct-oxg6, ct-6rnk, ct-4fcl, ct-ugqq, ct-0odd, ct-3faj, ct-m9td, ct-q968, ct-xq1y, ct-nmjc, ct-0n0y, ct-snzi]
 created: 2026-10-24T18:15:53Z
@@ -35,3 +35,7 @@ Step 3's engine change (pre_admission set at the admission point) ships with the
 **2026-10-24T18:47:53Z**
 
 Efficiency pass: child ct-5v1y (declare blake3, delete the fallback). Also hash producer files while writing them instead of re-reading (client.py:403-412, E9).
+
+**2026-10-30T17:43:04Z**
+
+Completed across 6d0df51d (ct-l9g0 runtime pin consolidation in model/registries/engine-runtime.json), 7bde0dc3 (ct-5v1y blake3 dependency and fallback deletion), 909b9c72 (ct-6rnk resolve_docspec_binary release-only resolution), dd9a5f12 (G10 archive-only client cleanup), and 176cd4a1 (shim removal). Verified with 251 passed tests across docspec_client and .github/tests.

@@ -39,3 +39,7 @@ Reopened audit tickets keep their original parents, which are reopened too; each
 **2026-10-24T18:21:03Z**
 
 Paired docspec-rs epic in spicy-stack: ss-oxg1. Its children: WS1 engine half ss-pdv0; WS9 steps 1-11 ss-k9as, ss-e2os, ss-p0tm, ss-g27q, ss-8lqi, ss-mz3e, ss-hlk9, ss-jv5t, ss-9qbt, ss-ghe7, ss-1q2o; optional ss-44p1. Raw-data safeguards: ct-v967.
+
+**2026-10-30T17:48:00Z**
+
+All Archive/Explorer/Engine-First workstreams (WS1-WS7, WS9-WS12) and F5 18-group legacy deletions (ct-5kto, -58,500+ net lines removed across G01-G18; zero PYTEST_CURRENT_TEST sites enforced in 3014737a; docspec/docspec_host shims deleted in 176cd4a1) are completed and closed. Kept open per WS12 Rule 1 solely for the parked news_lake workstream (WS8 / ct-d8cf, deferred per user decision A4) and live R2 bucket-lock application (ct-1l1h / ct-v967).

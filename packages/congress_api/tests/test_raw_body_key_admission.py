@@ -10,7 +10,6 @@ from types import SimpleNamespace
 import pytest
 
 from congress_api.retention.body_store import LocalAdapter, create_stored, create_stored_async
-from congress_api.retention.catalog_cache import LocalStore
 from congress_api.retention.r2 import AsyncBodies, R2Store
 
 
@@ -67,18 +66,14 @@ def local_adapter_calls():
 
 
 def put(kind, key, data, tmp_path, client):
-    if kind == 'sync':
-        return R2Store(client, 'fixture').put(key, data, immutable=True)
     if kind == 'async':
         return asyncio.run(AsyncBodies(client, 'fixture').put(key, data))
-    if kind == 'file':
-        source = tmp_path/'input'
-        source.write_bytes(data)
-        return R2Store(client, 'fixture').put_file(key, source, content_type='application/pdf')
-    return LocalStore(tmp_path/'raw').put(key, data, immutable=True)
+    source = tmp_path/'input'
+    source.write_bytes(data)
+    return R2Store(client, 'fixture').put_file(key, source, content_type='application/pdf')
 
 
-@pytest.mark.parametrize('kind', ['sync', 'async', 'file', 'local'])
+@pytest.mark.parametrize('kind', ['async', 'file'])
 @pytest.mark.parametrize('key', BAD_KEYS)
 def test_malformed_body_name_refuses_before_adapter_calls(tmp_path, kind, key):
     client = AsyncClient() if kind == 'async' else Client()
@@ -97,16 +92,13 @@ def test_file_delegate_validates_before_opening_source(tmp_path, key):
     assert client.calls == []
 
 
-@pytest.mark.parametrize('kind', ['sync', 'async', 'file', 'local'])
+@pytest.mark.parametrize('kind', ['async', 'file'])
 @pytest.mark.parametrize('suffix', ['', '.gz', '.pdf'])
 def test_valid_original_content_address_keeps_delegate_behavior(tmp_path, kind, suffix):
     client = AsyncClient() if kind == 'async' else Client()
     data = gzip.compress(DATA, mtime=0) if suffix == '.gz' else DATA
     assert put(kind, KEY+suffix, data, tmp_path, client) is True
-    if kind == 'local':
-        assert (tmp_path/'raw'/str(KEY+suffix)).read_bytes() == data
-    else:
-        assert client.calls == [('put', KEY+suffix)]
+    assert client.calls == [('put', KEY+suffix)]
 
 
 @pytest.mark.parametrize('asynchronous', [False, True])

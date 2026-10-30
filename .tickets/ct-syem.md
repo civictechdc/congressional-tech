@@ -38,3 +38,9 @@ Parent epic tracking findings from the 13-subagent CS300 Capstone Code Quality A
 - Evidence: docs/reviews/2026-10-24-ticket-audit/batches/syem/syem-verdicts.md:94
 - Status: Reopened, because its children ct-0bce and ct-4fcl are reopened; it closes when they do. Its gate (`scripts/dev.py check`) runs no tests; WS12 (ct-uov2) makes the gate `scripts/dev.py test` on the merged revision. The shims it left go with WS10 (ct-r6xw).
 - See docs/reviews/2026-10-24-ticket-audit/README.md
+
+## Notes
+
+**2026-10-30T17:48:00Z**
+
+ct-4fcl, ct-r6xw, and ct-uov2 are completed and closed (and docspec.py/docspec_host.py shims deleted in 176cd4a1). Kept open per WS12 Rule 1 solely for the parked news_lake child ct-0bce (deferred per user decision A4).

@@ -1,6 +1,6 @@
 ---
 id: ct-w5fm
-status: open
+status: closed
 deps: []
 links: []
 created: 2026-10-24T18:46:38Z
@@ -28,3 +28,7 @@ Efficiency pass E1, confirmed by five batches. Every save rewrites whole raw ind
 **2026-10-24T18:47:54Z**
 
 Engine prerequisites (spicy-stack): ss-k1f0, ss-1uh5, ss-n68e, ss-eyhn. Related: ct-63hg (repair wrong stored_sha256 rows in place first).
+
+**2026-10-30T17:43:04Z**
+
+Completed and superseded by the engine-first lake architecture (congress_api.lake.captures, congress_api.lake.tables) and G03 deletion in c25ee9bb (wc -l: 11,617 -> 2,124, -9,493 net): partition_routing.py, raw_state_routes.py, raw_storage.py, raw_changes.py, raw_archive.py, and raw_readings.py have all been deleted.
