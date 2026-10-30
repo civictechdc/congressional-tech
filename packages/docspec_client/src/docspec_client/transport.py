@@ -1,127 +1,19 @@
 """Transport primitives, BLAKE3 checksums, and Arrow IPC encoding."""
 import json
 from pathlib import Path
-import struct
 from typing import Any
 
+import blake3
 import pyarrow as pa
 import pyarrow.parquet as pq
-
-try:
-    import blake3 as _blake3_ext
-except ImportError:
-    _blake3_ext = None
 
 from .models import PRODUCER_PARQUET_ROW_GROUP_SIZE
 from .schema import native_storage_schema
 
-_BLAKE3_IV = (
-    0x6A09E667, 0xBB67AE85, 0x3C6EF372, 0xA54FF53A,
-    0x510E527F, 0x9B05688C, 0x1F83D9AB, 0x5BE0CD19,
-)
-_BLAKE3_MSG_PERMUTATION = (2, 6, 3, 10, 7, 0, 4, 13, 1, 11, 12, 5, 9, 14, 15, 8)
-_BLAKE3_CHUNK_START = 1
-_BLAKE3_CHUNK_END = 2
-_BLAKE3_PARENT = 4
-_BLAKE3_ROOT = 8
-
-
-def _blake3_rotr32(x: int, n: int) -> int:
-    return ((x >> n) | ((x << (32 - n)) & 0xFFFFFFFF)) & 0xFFFFFFFF
-
-
-def _blake3_g(state: list[int], a: int, b: int, c: int, d: int, mx: int, my: int) -> None:
-    state[a] = (state[a] + state[b] + mx) & 0xFFFFFFFF
-    state[d] = _blake3_rotr32(state[d] ^ state[a], 16)
-    state[c] = (state[c] + state[d]) & 0xFFFFFFFF
-    state[b] = _blake3_rotr32(state[b] ^ state[c], 12)
-    state[a] = (state[a] + state[b] + my) & 0xFFFFFFFF
-    state[d] = _blake3_rotr32(state[d] ^ state[a], 8)
-    state[c] = (state[c] + state[d]) & 0xFFFFFFFF
-    state[b] = _blake3_rotr32(state[b] ^ state[c], 7)
-
-
-def _blake3_round(state: list[int], m: list[int]) -> None:
-    _blake3_g(state, 0, 4, 8, 12, m[0], m[1])
-    _blake3_g(state, 1, 5, 9, 13, m[2], m[3])
-    _blake3_g(state, 2, 6, 10, 14, m[4], m[5])
-    _blake3_g(state, 3, 7, 11, 15, m[6], m[7])
-    _blake3_g(state, 0, 5, 10, 15, m[8], m[9])
-    _blake3_g(state, 1, 6, 11, 12, m[10], m[11])
-    _blake3_g(state, 2, 7, 8, 13, m[12], m[13])
-    _blake3_g(state, 3, 4, 9, 14, m[14], m[15])
-
-
-def _blake3_compress(cv: Any, block_words: Any, counter: int, block_len: int, flags: int) -> list[int]:
-    state = [
-        cv[0], cv[1], cv[2], cv[3],
-        cv[4], cv[5], cv[6], cv[7],
-        _BLAKE3_IV[0], _BLAKE3_IV[1], _BLAKE3_IV[2], _BLAKE3_IV[3],
-        counter & 0xFFFFFFFF, (counter >> 32) & 0xFFFFFFFF, block_len, flags,
-    ]
-    m = list(block_words)
-    for r in range(7):
-        _blake3_round(state, m)
-        if r < 6:
-            m = [m[i] for i in _BLAKE3_MSG_PERMUTATION]
-    for i in range(8):
-        state[i] ^= state[i + 8]
-        state[i + 8] ^= cv[i]
-    return state
-
-
-def _blake3_chunk_output(chunk_bytes: bytes, chunk_counter: int, flags: int) -> tuple[Any, Any, int, int, int]:
-    cv = list(_BLAKE3_IV)
-    num_blocks = max(1, (len(chunk_bytes) + 63) // 64)
-    for b in range(num_blocks):
-        start = b * 64
-        block = chunk_bytes[start:start + 64]
-        block_len = len(block)
-        if block_len < 64:
-            block = block + b'\x00' * (64 - block_len)
-        words = struct.unpack('<16I', block)
-        b_flags = flags
-        if b == 0:
-            b_flags |= _BLAKE3_CHUNK_START
-        if b == num_blocks - 1:
-            b_flags |= _BLAKE3_CHUNK_END
-            return (cv, words, chunk_counter, block_len, b_flags)
-        cv = _blake3_compress(cv, words, chunk_counter, block_len, b_flags)[:8]
-    return (cv, (0,) * 16, chunk_counter, 0, flags)
-
 
 def blake3_hex(data: bytes | bytearray | memoryview) -> str:
     """Compute the 64-character lowercase hex BLAKE3 digest of ``data`` in memory."""
-    raw = bytes(data)
-    if _blake3_ext is not None:
-        return _blake3_ext.blake3(raw).hexdigest()
-    num_chunks = max(1, (len(raw) + 1023) // 1024)
-    cv_stack: list[list[int]] = []
-    for c in range(num_chunks):
-        chunk = raw[c * 1024:(c + 1) * 1024]
-        out = _blake3_chunk_output(chunk, c, 0)
-        if num_chunks == 1:
-            words = _blake3_compress(out[0], out[1], out[2], out[3], out[4] | _BLAKE3_ROOT)[:8]
-            return struct.pack('<8I', *words).hex()
-        cv = _blake3_compress(*out)[:8]
-        total_chunks = c + 1
-        while (total_chunks & 1) == 0 and (len(cv_stack) > 1 or c + 1 < num_chunks):
-            left_cv = cv_stack.pop()
-            block_words = tuple(left_cv) + tuple(cv)
-            cv = _blake3_compress(_BLAKE3_IV, block_words, 0, 64, _BLAKE3_PARENT)[:8]
-            total_chunks >>= 1
-        cv_stack.append(cv)
-    while len(cv_stack) > 1:
-        right_cv = cv_stack.pop()
-        left_cv = cv_stack.pop()
-        block_words = tuple(left_cv) + tuple(right_cv)
-        is_root = len(cv_stack) == 0
-        fl = _BLAKE3_PARENT | (_BLAKE3_ROOT if is_root else 0)
-        if fl & _BLAKE3_ROOT:
-            words = _blake3_compress(_BLAKE3_IV, block_words, 0, 64, fl)[:8]
-            return struct.pack('<8I', *words).hex()
-        cv_stack.append(_blake3_compress(_BLAKE3_IV, block_words, 0, 64, fl)[:8])
-    return ''
+    return blake3.blake3(bytes(data)).hexdigest()
 
 
 def encode_arrow_ipc_stream(table: Any, *, native_types: bool = False) -> bytes:

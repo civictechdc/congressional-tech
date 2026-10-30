@@ -4,6 +4,7 @@ version = "0.1.0"
 description = "Neutral transport and custody for the maintained DocSpec engine."
 requires-python = ">=3.12"
 dependencies = [
+    "blake3>=1.0",
     "httpx>=0.28,<1",
     "pyarrow>=15",
 ]
