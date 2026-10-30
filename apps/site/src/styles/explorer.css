@@ -31,10 +31,13 @@
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: var(--ctdc-space-xs) var(--ctdc-space-lg);
+  gap: var(--ctdc-space-2xs) var(--ctdc-space-sm);
 }
 .explorer-page-links a {
   font-weight: 600;
+}
+.explorer-page-sep {
+  color: var(--ctdc-ink-muted);
 }
 .explorer {
   min-width: 0;
@@ -237,10 +240,13 @@
   outline-offset: 2px;
 }
 .explorer-text-button {
+  display: inline-flex;
+  align-items: center;
+  min-height: 2rem;
   border: 0;
   background: transparent;
   color: var(--ctdc-primary);
-  padding: 0;
+  padding: 0.2rem 0;
   font: inherit;
   font-weight: 600;
   text-align: left;
@@ -477,16 +483,18 @@ a > .explorer-icon {
 }
 .explorer-detail {
   padding-top: var(--ctdc-space-lg);
+  scroll-margin-top: 5rem;
   animation: explorer-enter 0.2s ease-out;
 }
 .explorer-workspace {
   scroll-margin-top: 7rem;
 }
+.explorer-detail-heading,
 .explorer-detail > h2 {
   font-size: var(--ctdc-text-2xl);
   max-width: 58rem;
   white-space: pre-line;
-  scroll-margin-top: 7rem;
+  scroll-margin-top: 5rem;
 }
 @media (max-width: 640px) {
   .explorer-workspace,
@@ -739,9 +747,19 @@ a > .explorer-icon {
 }
 @media (max-width: 600px) {
   .explorer-tabs {
-    gap: 0 var(--ctdc-space-md);
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+    gap: var(--ctdc-space-xs) var(--ctdc-space-md);
+  }
+  .explorer-tabs::-webkit-scrollbar {
+    display: none;
   }
   .explorer-tabs button {
+    flex: 0 0 auto;
+    min-height: 2.75rem;
+    white-space: nowrap;
     font-size: var(--ctdc-text-sm);
   }
   .explorer-filters label:not(:first-child) {
@@ -981,6 +999,7 @@ a > .explorer-icon {
 .explorer-link-groups {
   margin-top: var(--ctdc-space-md);
 }
+.explorer-link-group h4,
 .explorer-link-group h5 {
   margin: 0.85rem 0 0;
   font-size: var(--ctdc-text-sm);

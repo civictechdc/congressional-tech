@@ -56,7 +56,7 @@ export function ArchiveFormatFilter({options,value,onChange}:{options:FormatOpti
   const isState=(item:FormatOption)=>responseStates.has(item.value.trim().toLowerCase());
   const formats=options.filter(item=>!isState(item)),states=options.filter(isState);
   const option=(item:FormatOption)=><option key={item.value} value={item.value}>{formatLabel(item.value)} ({integer(Number(item.count))})</option>;
-  return <label>Format<select value={value} onChange={event=>onChange(event.target.value)}>
+  return <label><span>Format</span><select value={value} onChange={event=>onChange(event.target.value)}>
     <option value="">All formats</option>
     {formats.length>0&&<optgroup label="File formats">{formats.map(option)}</optgroup>}
     {states.length>0&&<optgroup label="Recorded response states">{states.map(option)}</optgroup>}

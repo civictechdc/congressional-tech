@@ -1,6 +1,10 @@
 import {
   committeeShortLabel,
   congressLabel,
+  formatBillStage,
+  formatChamber,
+  formatCommitteeType,
+  formatMeetingType,
   formatSubject,
   type CommitteeCatalogInput,
 } from './archive-metadata.ts';
@@ -102,9 +106,9 @@ export function ArchiveEntityRows({
         .map((ck: string) => committeeShortLabel(ck, committeesCatalog, item.meeting_date || item.congress));
       const contextParts = [
         congressLabel(item.congress),
-        item.chamber ? String(item.chamber).charAt(0).toUpperCase() + String(item.chamber).slice(1) : null,
+        formatChamber(item.chamber),
         ...committeeNames,
-        item.meeting_type ? String(item.meeting_type) : null,
+        formatMeetingType(item.meeting_type),
       ].filter(Boolean);
       const docCount = Array.isArray(item.list_rows) ? item.list_rows.length : 0;
       const witnessCount = Array.isArray(item.witnesses) ? item.witnesses.length : 0;
@@ -127,10 +131,11 @@ export function ArchiveEntityRows({
     if (tab === 'committees') {
       const code = String(item.committee_key ?? item.system_code ?? idx).toLowerCase();
       const title = item.current_name || item.name || code.toUpperCase();
+      const parentName = item.parent_key ? committeeShortLabel(item.parent_key, committeesCatalog) : null;
       const contextParts = [
-        item.chamber ? String(item.chamber).charAt(0).toUpperCase() + String(item.chamber).slice(1) : null,
-        item.type || item.committee_type,
-        item.parent_key ? `Subcommittee of ${String(item.parent_key).toUpperCase()}` : null,
+        formatChamber(item.chamber),
+        formatCommitteeType(item.type || item.committee_type),
+        parentName ? `Subcommittee of ${parentName}` : null,
       ].filter(Boolean);
       const docCount = Number(item.doc_count ?? 0);
       const hearingCount = Number(item.hearing_count ?? 0);
@@ -181,7 +186,7 @@ export function ArchiveEntityRows({
       const contextParts = [
         item.party,
         stateLabel,
-        item.chamber ? String(item.chamber).charAt(0).toUpperCase() + String(item.chamber).slice(1) : null,
+        formatChamber(item.chamber),
       ].filter(Boolean);
       const termCount = Array.isArray(item.terms) ? item.terms.length : 0;
       const docCount = Array.isArray(item.list_rows) ? item.list_rows.length : 0;
@@ -208,7 +213,7 @@ export function ArchiveEntityRows({
     const contextParts = [
       congressLabel(item.congress),
       isNom ? 'Presidential Nomination' : 'Legislation',
-      item.status || item.stage,
+      formatBillStage(item.status || item.stage),
       item.policy_area,
     ].filter(Boolean);
     const docCount = Array.isArray(item.list_rows) ? item.list_rows.length : 0;
@@ -221,7 +226,7 @@ export function ArchiveEntityRows({
           {item.sponsor_name && <span className="archive-document-subtitle">Sponsor: {item.sponsor_name}</span>}
         </button>
       </div>
-      <span className="archive-row-format">{label}</span>
+      <span className="archive-row-format">{isNom ? 'Nomination' : 'Legislation'}</span>
       <div className="archive-row-dates">
         {actionDate && <span>{isNom ? 'Received/Action: ' : 'Action: '}{actionDate}</span>}
         <span>{integer(docCount)} {docCount === 1 ? 'document' : 'documents'}</span>

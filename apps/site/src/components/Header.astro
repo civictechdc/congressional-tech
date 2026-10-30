@@ -28,7 +28,7 @@ const links = [
       <span class="brand-sep" aria-hidden="true">→</span>
       <a class="brand-current" href={withBase('/')}>Congressional Tech</a>
     </div>
-    <nav aria-label="Main">
+    <nav class="main-nav" aria-label="Main">
       <ul class="nav-list">
         {
           links.map((link) => (
@@ -175,16 +175,37 @@ const links = [
   @media (max-width: 640px) {
     .header-inner {
       flex-direction: column;
-      align-items: flex-start;
+      align-items: stretch;
+      gap: var(--ctdc-space-3xs);
+    }
+
+    .site-tagline {
+      display: none;
+    }
+
+    .main-nav {
+      width: 100%;
+      overflow-x: auto;
+      -webkit-overflow-scrolling: touch;
+      scrollbar-width: none;
+    }
+
+    .main-nav::-webkit-scrollbar {
+      display: none;
     }
 
     .nav-list {
-      gap: 0.15rem var(--ctdc-space-sm);
+      flex-wrap: nowrap;
+      gap: var(--ctdc-space-xs);
     }
 
     .nav-link {
+      display: inline-flex;
+      align-items: center;
+      min-height: 2.5rem;
       font-size: var(--ctdc-text-xs);
-      padding: 0.25rem 0.1rem;
+      padding: 0.35rem 0.5rem;
+      white-space: nowrap;
     }
   }
 </style>

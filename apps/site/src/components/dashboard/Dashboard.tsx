@@ -218,7 +218,7 @@ export function CoverageDashboard({ source }: { source: CoverageReportSource }) 
         <>
           <div className="dash-grid">
             <section className="dash-card" aria-label="Event ID coverage">
-              <h3 className="dash-card-title">Event ID coverage</h3>
+              <h2 className="dash-card-title">Event ID coverage</h2>
               <p className="dash-card-sub">
                 Share of committee videos whose descriptions include the
                 official Event ID linking them to Congress.gov.
@@ -229,7 +229,7 @@ export function CoverageDashboard({ source }: { source: CoverageReportSource }) 
               className="dash-card"
               aria-label="Coverage by congress and party control"
             >
-              <h3 className="dash-card-title">By congress</h3>
+              <h2 className="dash-card-title">By congress</h2>
               <p className="dash-card-sub">
                 Videos per congress, split by Event ID coverage. Letters mark
                 the chamber's party control (D/R).
@@ -238,7 +238,7 @@ export function CoverageDashboard({ source }: { source: CoverageReportSource }) 
             </section>
           </div>
           <section className="dash-card" aria-label="Committee leaderboard">
-            <h3 className="dash-card-title">Committee leaderboard</h3>
+            <h2 className="dash-card-title">Committee leaderboard</h2>
             <p className="dash-card-sub">
               Committees ranked by uploaded videos across the selected slice.
             </p>

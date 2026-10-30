@@ -98,16 +98,19 @@ export function FileLinks({ record }: { record: unknown }) {
   const files = recordFiles(record);
   if (!files.length) return null;
   const base = (typeof import.meta !== 'undefined' && (import.meta as any).env?.BASE_URL ? String((import.meta as any).env.BASE_URL) : '').replace(/\/+$/, '');
-  const isRecording = fields(record).type === 'recording';
+  const row = fields(record);
+  const isRecording = row.type === 'recording';
+  const eventId = row.event_id !== undefined && row.event_id !== null && String(row.event_id).trim() ? String(row.event_id).trim() : '';
   return <div className="explorer-file-links">{files.map(file => {
     const href = publicUrl(file.url);
     const saved = savedCopyHref(file, import.meta.env.PUBLIC_ARCHIVE_RAW_BASE_URL);
     const label = fileLinkName(file);
     const savedLabel = file.label && file.label !== 'unknown' ? ` (${words(file.label)})` : '';
     const meta = [file.version && file.version !== 'unknown' ? words(file.version) : '', typeof file.published_at === 'string' ? `Published ${file.published_at.slice(0, 10)}` : '', fileTypeNote(typeof file.media_type === 'string' ? file.media_type : '')].filter(Boolean).join(' · ');
+    const archiveHref = eventId ? `${base}/archive/?hearing=${encodeURIComponent(eventId)}` : href ? `${base}/archive/?q=${encodeURIComponent(href)}` : `${base}/archive/`;
     return <span key={String(file.url)}>
       <a href={href} target="_blank" rel="noreferrer">{label} <ExternalIcon /></a>
-      {saved ? <> <a href={saved} target="_blank" rel="noreferrer">Open saved copy{savedLabel} <ExternalIcon /></a></> : !isRecording && href ? <> <a href={`${base}/archive/?q=${encodeURIComponent(href)}`}>Find in Document Archive</a></> : null}
+      {saved ? <> <a href={saved} target="_blank" rel="noreferrer">Open saved copy{savedLabel} <ExternalIcon /></a></> : !isRecording && (eventId || href) ? <> <a href={archiveHref}>Find in Document Archive</a></> : null}
       {meta ? <span className="explorer-row-meta">{meta}</span> : null}
     </span>;
   })}</div>;
@@ -128,7 +131,7 @@ export function SourceLinkGroups({ links }: { links: readonly SourceLink[] }) {
     else groups.push({ name: link.group, links: [link] });
   }
   if (!groups.length) return null;
-  return <div className="explorer-link-groups">{groups.map(group => <section className="explorer-link-group" key={group.name}><h5>{group.name}</h5><ul className="explorer-related-list">{group.links.map((link, linkIndex) => {
+  return <div className="explorer-link-groups">{groups.map(group => <section className="explorer-link-group" key={group.name}><h4>{group.name}</h4><ul className="explorer-related-list">{group.links.map((link, linkIndex) => {
     const href = publicUrl(link.href);
     return <li key={`${link.href}/${linkIndex}`}>{href ? <a href={href} target="_blank" rel="noreferrer">{link.label} <ExternalIcon /></a> : <span>{link.label}</span>}</li>;
   })}</ul></section>)}</div>;
