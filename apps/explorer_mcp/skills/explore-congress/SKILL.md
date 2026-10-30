@@ -39,7 +39,7 @@ For data setup errors, show the actual error. Repeating `get_dataset_info` retri
 a failed initial preparation. Do not delete caches or change a selected release
 to work around an error. To refresh data at the user's request with a full plugin
 installation, run
-`uv run --project <installed-plugin-directory> --python 3.12 --locked --no-dev
+`uvx --python 3.12 --from congressional-explorer-mcp==0.4.0
 congress-explorer-mcp prepare`, then restart the connection. For a manual server
 installation, use `congress-explorer-mcp prepare`. Use the same
 `CONGRESS_MCP_DATA_DIR` if it was customized. Queries never refresh data silently.

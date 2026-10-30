@@ -31,7 +31,6 @@
         "${__dirname}",
         "--python",
         "3.12",
-        "--locked",
         "--no-dev",
         "python",
         "${__dirname}/desktop.py"

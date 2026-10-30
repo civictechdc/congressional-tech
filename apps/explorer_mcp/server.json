@@ -16,7 +16,7 @@
     "version": "0.4.0",
     "runtimeHint": "uvx",
     "runtimeArguments": [{"type": "named", "name": "--python", "value": "3.12"}],
-    "packageArguments": [{"type": "positional", "value": "serve"}],
+    "packageArguments": [{"type": "positional", "value": "serve"}, {"type": "named", "name": "--prepare-if-missing"}],
     "transport": {"type": "stdio"}
   }]
 }

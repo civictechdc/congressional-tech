@@ -65,7 +65,9 @@ requires separate partner approval.
 
 The source plugin root is this directory. `plugin.json` and `mcp.json` describe
 the portable OpenAI package; `.claude-plugin/plugin.json` and `.mcp.json` describe
-the Claude package. Both launch `desktop.py` with the same locked dependencies.
+the Claude package. Both run `uvx` with `congressional-explorer-mcp==0.4.0` from
+PyPI. The Claude extension uses a tiny Python launcher with the same pinned
+PyPI dependency. Neither archive contains a copy of the server source.
 `scripts/build_desktop.py` generates the client-specific metadata from `server.json`;
 do not edit the generated manifests by hand.
 
@@ -95,8 +97,7 @@ run `npx skills add . --skill explore-congress` at the repository root.
 Install [uv](https://docs.astral.sh/uv/getting-started/installation/), then:
 
 ```sh
-uv tool install --python 3.12 \
-  'https://github.com/civictechdc/congressional-tech/releases/download/congress-mcp-v0.4.0/congressional_explorer_mcp-0.4.0-py3-none-any.whl'
+uv tool install --python 3.12 congressional-explorer-mcp==0.4.0
 congress-explorer-mcp prepare
 congress-explorer-mcp check
 ```
@@ -131,8 +132,9 @@ running. Ask: “Use Congress Explorer to find documents related to H.R. 1 in th
 119th Congress.” Your assistant needs its own tools to fetch and read linked files.
 
 Run `prepare` again and restart the client connection to refresh data. Software
-updates are separate: install the wheel for the desired release and restart the
-client. Preparation currently downloads about 65 MiB (October 30, 2026 snapshot);
+updates are separate: install the desired PyPI version with `uv tool install
+--upgrade --python 3.12 congressional-explorer-mcp==VERSION` and restart the client.
+Update the plugin or extension to adopt its new pinned version. Preparation currently downloads about 65 MiB (October 30, 2026 snapshot);
 the Python runtime and dependencies require additional disk space.
 
 Queries run locally, but your AI client may send prompts and tool results to its
@@ -151,7 +153,7 @@ uv run --locked --project apps/explorer_mcp congress-explorer-mcp serve
 
 `prepare` defaults to the public archive pointer and stores metadata under
 `~/.cache/congress-explorer-mcp`. Plain `serve` uses stdio and makes no network requests.
-The desktop entry point adds `serve --prepare-if-missing`: it starts MCP immediately
+Plugins, the desktop extension and the registry launch add `serve --prepare-if-missing`: it starts MCP immediately
 and prepares data on the first tool call only when no selection exists. A selected
 snapshot is never refreshed or replaced automatically, including if it is damaged.
 Use `--data-dir /absolute/path` on each command or `CONGRESS_MCP_DATA_DIR` to select

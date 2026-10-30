@@ -9,10 +9,6 @@ on:
         description: Existing congress-mcp-vVERSION tag to publish
         required: true
         type: string
-      publish_pypi:
-        description: Publish to PyPI after configuring its trusted publisher
-        default: false
-        type: boolean
 
 permissions:
   contents: read
@@ -86,10 +82,10 @@ jobs:
       - name: Install and query from outside the repository
         run: uv run --no-project --python 3.12 apps/explorer_mcp/scripts/check_distribution.py dist/*.whl
       - name: Launch each desktop package outside the repository
-        run: uv run --locked --project apps/explorer_mcp --no-dev python apps/explorer_mcp/scripts/check_desktop.py dist
+        run: uv run --locked --project apps/explorer_mcp --no-dev python apps/explorer_mcp/scripts/check_desktop.py dist --wheel dist/*.whl
 
   github-release:
-    needs: [build, install]
+    needs: [build, install, pypi]
     runs-on: ubuntu-24.04
     permissions:
       contents: write
@@ -110,7 +106,7 @@ jobs:
           fi
           sha256sum dist/* > dist/SHA256SUMS
           cat > release-notes.md <<'NOTES'
-          Run Congress Explorer locally from your AI assistant. Download the .mcpb for Claude Desktop chat, or the compatible plugin ZIP for Claude Code/Cowork and ChatGPT/Codex desktop. The first tool call prepares missing data; later sessions reuse it.
+          Run Congress Explorer locally from your AI assistant. Install congressional-explorer-mcp from PyPI, download the .mcpb for Claude Desktop chat, or use the plugin ZIP for Claude Code/Cowork and ChatGPT/Codex desktop. Every client installs the same versioned PyPI package. The first tool call prepares missing data; later sessions reuse it.
 
           Setup: https://civictechdc.github.io/congressional-tech/mcp/
 
@@ -119,18 +115,41 @@ jobs:
           gh release create "$RELEASE_TAG" dist/* --verify-tag --title "Congress Explorer MCP ${RELEASE_TAG#congress-mcp-v}" --notes-file release-notes.md --latest=false
 
   pypi:
-    if: inputs.publish_pypi == true
-    needs: [build, install, github-release]
+    needs: [build, install]
     runs-on: ubuntu-24.04
     environment: pypi
     permissions:
       id-token: write
       contents: read
     steps:
-      - name: Reuse the exact published GitHub distributions
+      - uses: actions/checkout@v5
+        with:
+          ref: ${{ needs.build.outputs.tag }}
+          persist-credentials: false
+      - uses: astral-sh/setup-uv@v6
+        with:
+          version: '0.11.21'
+      - uses: actions/download-artifact@v4
+        with:
+          name: congress-mcp-distributions
+          path: dist
+      - name: Select distributions without overwriting an existing release
         env:
           GH_TOKEN: ${{ github.token }}
           GH_REPO: ${{ github.repository }}
           RELEASE_TAG: ${{ needs.build.outputs.tag }}
-        run: gh release download "$RELEASE_TAG" --pattern '*.whl' --pattern '*.tar.gz' --dir dist
+        run: |
+          mkdir pypi-dist
+          if gh release view "$RELEASE_TAG" >/dev/null 2>&1; then
+            gh release download "$RELEASE_TAG" --pattern '*.whl' --pattern '*.tar.gz' --dir pypi-dist
+          else
+            cp dist/*.whl dist/*.tar.gz pypi-dist/
+          fi
       - uses: pypa/gh-action-pypi-publish@release/v1
+        with:
+          packages-dir: pypi-dist/
+          skip-existing: true
+      - name: Verify a fresh PyPI install
+        run: uv run --no-project --python 3.12 apps/explorer_mcp/scripts/check_distribution.py
+      - name: Verify every desktop configuration against PyPI
+        run: uv run --locked --project apps/explorer_mcp --no-dev python apps/explorer_mcp/scripts/check_desktop.py dist

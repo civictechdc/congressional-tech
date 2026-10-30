@@ -7,14 +7,14 @@ import release from '../../../explorer_mcp/server.json';
 
 const repository = release.repository.url;
 const releaseUrl = `${repository}/releases/tag/congress-mcp-v${release.version}`;
-const wheel = `${repository}/releases/download/congress-mcp-v${release.version}/congressional_explorer_mcp-${release.version}-py3-none-any.whl`;
+const pypiUrl = `https://pypi.org/project/congressional-explorer-mcp/${release.version}/`;
 const desktopBundle = `${repository}/releases/download/congress-mcp-v${release.version}/congress-explorer-${release.version}.mcpb`;
 const pluginBundle = `${repository}/releases/download/congress-mcp-v${release.version}/congress-explorer-${release.version}.plugin.zip`;
 const codexSetup = `codex plugin marketplace add civictechdc/congressional-tech --ref congress-mcp-v${release.version}\ncodex plugin add congress-explorer@congressional-tech`;
 const claudeSetup = 'claude plugin install congress-explorer --marketplace civictechdc/congressional-tech';
 const skillSetup = 'npx skills add civictechdc/congressional-tech --skill explore-congress';
 const exploreLink = `codex://new?prompt=${encodeURIComponent('[@Congress Explorer](plugin://congress-explorer@congressional-tech) Find hearings about artificial intelligence and list their witnesses and organizations.')}`;
-const install = `uv tool install --python 3.12 \\\n  '${wheel}'`;
+const install = `uv tool install --python 3.12 congressional-explorer-mcp==${release.version}`;
 const clients = [
   { id: 'claude-desktop', name: 'Claude Desktop', destination: 'Settings → Developer → Edit Config', detail: 'Merge the printed congress entry into mcpServers in your configuration. Keep your existing servers. Quit and reopen Claude Desktop.', url: 'https://modelcontextprotocol.io/docs/develop/connect-local-servers' },
   { id: 'codex', name: 'Codex', destination: '~/.codex/config.toml', detail: 'Add the printed [mcp_servers.congress] section to your config file. Replace an existing congress section rather than adding a duplicate. Restart the client connection.', url: 'https://developers.openai.com/codex/mcp/' },
@@ -48,7 +48,7 @@ const prompts = [
       <div>
         <p class="eyebrow">Quick setup</p>
         <h2>One server.<br />Your choice of assistant.</h2>
-        <p>The first question downloads the published metadata snapshot. Later sessions reuse it. Queries run on your computer.</p>
+        <p>Every setup option installs the same versioned PyPI package. The first question downloads the published metadata snapshot. Later sessions reuse it. Queries run on your computer.</p>
         <p class="mcp-note">About 65 MiB of data as of October 2026, plus Python and dependencies. Windows is not yet supported.</p>
         <a href="#setup">Other clients &amp; manual setup ↓</a>
       </div>
@@ -99,7 +99,7 @@ const prompts = [
         <section class="mcp-step" aria-labelledby="install-heading">
           <p class="step-number">01 / Install</p>
           <h3 id="install-heading">Install Congress Explorer</h3>
-          <p>Install <a href="https://docs.astral.sh/uv/getting-started/installation/">uv</a>, then paste this command into a terminal. It installs the released package and manages Python 3.12 for you.</p>
+          <p>Install <a href="https://docs.astral.sh/uv/getting-started/installation/">uv</a>, then paste this command into a terminal. It installs the <a href={pypiUrl}>released PyPI package</a> and manages Python 3.12 for you.</p>
           <CopyCommand command={install} label="Copy install command" />
           <p class="mcp-note">If your shell cannot find the command afterward, run <code>uv tool update-shell</code> and open a new terminal. Windows is not yet supported.</p>
         </section>

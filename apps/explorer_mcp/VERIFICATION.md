@@ -5,7 +5,9 @@ locked environment. It queries published Parquet files directly.
 
 ## Desktop packages — 0.4.0, local candidate
 
-The `.mcpb` extension and Claude/OpenAI-compatible plugin ZIP are built locally.
+The `.mcpb` extension and Claude/OpenAI-compatible plugin ZIP install the same
+version-pinned PyPI package. Neither archive includes the server source or lockfile.
+The manual install command, registry launch, and research skill use PyPI too.
 Release downloads, a deployment of the new website buttons, and public vendor
 directory listings have not been published for this version.
 
@@ -17,7 +19,9 @@ directory listings have not been published for this version.
   spaces. The actual MCPB, OpenAI and Claude launch configurations all connected,
   listed six tools before downloading data, prepared the fixture on the first
   call, read a document row and reused the snapshot after restart with an invalid
-  publication path. The wheel's existing clean-install check also passes.
+  publication path. Pre-release checks supplied the unpublished wheel through
+  `UV_FIND_LINKS`; the release workflow repeats them against PyPI after upload.
+  The wheel's fresh-install check also passes.
 - MCPB 2.1.2 validates the bundle manifest. Claude Code 2.1.314 validates the
   plugin and marketplace with `--strict`. The portable manifests validate against
   the official Agent Plugins 1.0.0 JSON schemas.
@@ -34,6 +38,8 @@ directory listings have not been published for this version.
   both plugin copy buttons return the exact setup commands, and the manual client
   selector still works. Download URLs point to the planned 0.4.0 release and must
   not be deployed before those assets exist.
+- The rebuilt page's PyPI install and Skills CLI copy controls return the exact
+  displayed commands. The manual installation no longer uses a GitHub wheel URL.
 
 Desktop GUI installation in Claude Desktop/Cowork and ChatGPT is not yet manually
 qualified. In particular, the host-managed uv install has schema and launch checks,
