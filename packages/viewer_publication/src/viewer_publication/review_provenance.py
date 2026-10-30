@@ -1,12 +1,83 @@
-"""One-time native conversion of the pinned, published assistant kind reviews."""
+"""One-time native conversion of the pinned, published assistant kind reviews
+and interactive document review form provenance recording.
+"""
 import json
 from pathlib import Path
 
+from congress_api.retention.document_reviews import (
+    SUPPORTED_FORMS,
+    build_review_verdict,
+    resolve_review_target,
+)
 from congress_api.retention.provenance import (
     file_pin,finish_stage,instant,json_input,list_of,parquet_output,parquet_records,
-    run_job,stage_records,struct,
+    record_review,run_job,stage_records,struct,timestamp_key,validate_provenance,
 )
 from viewer_publication.filename_review_binding import pinned_reviews,validate_identities
+
+
+def _read_verdict_inputs(source):
+    if isinstance(source, (str, Path)):
+        path = Path(source)
+        text = path.read_text(encoding='utf-8').strip()
+        if not text:
+            raise ValueError('Empty review verdict input')
+        if text.startswith('['):
+            rows = json.loads(text)
+        elif text.startswith('{') and '\n' not in text:
+            parsed = json.loads(text)
+            rows = parsed['records'] if isinstance(parsed, dict) and isinstance(parsed.get('records'), list) else [parsed]
+        else:
+            rows = [json.loads(line) for line in text.splitlines() if line.strip()]
+        return rows, dict(verdicts=file_pin(path))
+    return list(source), {}
+
+
+def stage_interactive_reviews(verdicts, *, output, decided_at, reviewer=None, require_supported_forms=False):
+    """Validate interactive review form verdicts and stage provenance/reviews/ JSONL records."""
+    instant(decided_at)
+    raw_rows, inputs = _read_verdict_inputs(verdicts)
+    if not raw_rows:
+        raise ValueError('Empty review verdict batch')
+    records = [
+        validate_provenance(
+            'reviews',
+            build_review_verdict(
+                row,
+                default_decided_at=decided_at,
+                default_reviewer=reviewer,
+                require_supported_forms=require_supported_forms,
+            ),
+        )
+        for row in raw_rows
+    ]
+    output = Path(output)
+    output.mkdir(parents=True, exist_ok=False)
+    key, count = stage_records(output, 'reviews', records, decided_at=decided_at)
+    return finish_stage(output, kind='reviews', provenance=key, records=count, inputs=inputs)
+
+
+stage_review_verdicts = stage_interactive_reviews
+
+
+def record_interactive_verdict(store, form, *, decided_at=None, reviewer=None, timestamp=None,
+                               require_supported_forms=False):
+    """Validate one interactive review form verdict and write it to provenance/reviews/."""
+    record = validate_provenance(
+        'reviews',
+        build_review_verdict(
+            form,
+            default_decided_at=decided_at,
+            default_reviewer=reviewer,
+            require_supported_forms=require_supported_forms,
+        ),
+    )
+    stamp = timestamp if timestamp is not None else timestamp_key(record['decided_at'])
+    key = record_review(store, record, timestamp=stamp)
+    return dict(key=key, record=record)
+
+
+record_review_verdict = record_interactive_verdict
 
 
 def stage_reviews(reviews,descriptor,identities,*,output,engine,decided_at):
@@ -60,15 +131,30 @@ def main(argv=None):
     import argparse
     from docspec_client.client import NativeDatasets
     parser=argparse.ArgumentParser(description=__doc__)
-    parser.add_argument('--reviews',type=Path,required=True)
+    source_group=parser.add_mutually_exclusive_group(required=True)
+    source_group.add_argument('--reviews',type=Path)
+    source_group.add_argument('--verdicts',type=Path,help='Interactive review form verdicts JSON or JSONL')
     parser.add_argument('--descriptor',type=Path,default=Path(__file__).resolve().parent/'data/document-review-publication.json')
     parser.add_argument('--identities',type=Path,default=Path(__file__).resolve().parent/'data/document-review-identities.json')
     parser.add_argument('--stage',type=Path,required=True)
     parser.add_argument('--decided-at',required=True,help='Explicit migration decision timestamp, with timezone')
-    parser.add_argument('--native-config',type=Path,required=True)
+    parser.add_argument('--reviewer',default=None,help='Default reviewer identity for interactive verdicts')
+    parser.add_argument('--require-supported-forms',action='store_true')
+    parser.add_argument('--native-config',type=Path)
     args=parser.parse_args(argv)
-    result=stage_reviews(args.reviews,args.descriptor,args.identities,output=args.stage,
-        engine=NativeDatasets.from_config(args.native_config),decided_at=args.decided_at)
+    if args.verdicts is not None:
+        result=stage_interactive_reviews(
+            args.verdicts,
+            output=args.stage,
+            decided_at=args.decided_at,
+            reviewer=args.reviewer,
+            require_supported_forms=args.require_supported_forms,
+        )
+    else:
+        if args.native_config is None:
+            parser.error('--native-config is required when staging published --reviews')
+        result=stage_reviews(args.reviews,args.descriptor,args.identities,output=args.stage,
+            engine=NativeDatasets.from_config(args.native_config),decided_at=args.decided_at)
     print(json.dumps(result,indent=2))
 
 

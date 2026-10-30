@@ -1,0 +1,48 @@
+{
+  "version": 1,
+  "engine_config": "../../.runtime/docspec/runtime.json",
+  "captures": {
+    "kind": "native_table",
+    "metadata_location": "s3://congressional-tech-raw/__r2_data_catalog/archive/captures/metadata/00000.metadata.json",
+    "table_uuid": "80c2e091-98ca-5b6f-b48e-b6011d68a17a",
+    "snapshot": null,
+    "schema_id": 0
+  },
+  "readings": {
+    "kind": "native_table",
+    "metadata_location": "s3://congressional-tech-raw/__r2_data_catalog/archive/readings/metadata/00000.metadata.json",
+    "table_uuid": "3555c02e-4468-5dab-8ebf-e333606dc6f9",
+    "snapshot": null,
+    "schema_id": 0
+  },
+  "filename_readings": {
+    "kind": "native_table",
+    "metadata_location": "s3://congressional-tech-raw/__r2_data_catalog/archive/filename_readings/metadata/00000.metadata.json",
+    "table_uuid": "375dce91-641c-56cb-accd-f0277324d78d",
+    "snapshot": null,
+    "schema_id": 0
+  },
+  "meeting_records": {
+    "kind": "native_table",
+    "metadata_location": "s3://congressional-tech-raw/__r2_data_catalog/archive/meeting_records/metadata/00000.metadata.json",
+    "table_uuid": "b4decbc1-19f4-5b1b-bc79-b216feba5ea8",
+    "snapshot": null,
+    "schema_id": 0
+  },
+  "appearance_records": {
+    "kind": "native_table",
+    "metadata_location": "s3://congressional-tech-raw/__r2_data_catalog/archive/appearance_records/metadata/00000.metadata.json",
+    "table_uuid": "8d7adc56-f638-56c5-9f9d-042cd1e7e82c",
+    "snapshot": null,
+    "schema_id": 0
+  },
+  "parser_versions": {
+    "sniff": "50120f7fa8750c3cc48df97afd0de46baade734afccc482a354d404153628428",
+    "html": "f90d96a2f3196e14c70d7e7642ff8a23d7ceb5b8938408fa4373b949f18eaf89",
+    "xml": "3c8678d4cdd4e118a1ed9936ed2173040a019d663b3db1a043d1fa534d1c8166",
+    "json": "30735c9594770675288725384de9224e67f94815c2771531a44330a5e7f850dd"
+  },
+  "catalog_version": "e8b0b175ba72e9d006a13adb7572a63784874f15d286328e87c66f97ac4cc20d",
+  "output": "../../output/archive-release",
+  "scratch": "../../output/archive-model"
+}

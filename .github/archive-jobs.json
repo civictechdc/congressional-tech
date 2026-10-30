@@ -1,5 +1,23 @@
 {
-  "publish": {"module": "viewer_publication.archive_publish_job", "spec": "model/jobs/publish.pending.json"},
-  "backfill": {"module": null, "spec": "model/jobs/backfill.pending.json"},
-  "maintenance": {"module": null, "spec": "model/jobs/maintenance.pending.json"}
+  "publish": {
+    "module": "viewer_publication.archive_publish_job",
+    "spec": "model/jobs/publish.json",
+    "argv": [
+      "--execute"
+    ]
+  },
+  "backfill": {
+    "module": "viewer_publication.archive_backfill_job",
+    "spec": "model/jobs/backfill.json",
+    "argv": [
+      "--execute"
+    ]
+  },
+  "maintenance": {
+    "module": "viewer_publication.archive_maintenance",
+    "spec": "model/jobs/maintenance.json",
+    "argv": [
+      "--execute"
+    ]
+  }
 }

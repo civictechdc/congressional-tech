@@ -65,7 +65,7 @@ def test_only_adapters_import_canonical_meeting_models():
 def test_weekly_workflow_keeps_explore_tools_out_of_production():
     workflow = (ROOT / '.github/workflows/update-data.yml').read_text()
     assert not re.search(r'\bcongress-(?:fetch|analyze)\b', workflow)
-    assert re.findall(r'^  (\w+):\n', workflow.split('\njobs:\n', 1)[1], re.M) == ['youtube', 'congress', 'meetings', 'committees']
+    assert re.findall(r'^  (\w+):\n', workflow.split('\njobs:\n', 1)[1], re.M) == ['youtube', 'congress', 'committees']
     assert 'congress-meetings --output-path pipeline-data/congress_meetings.jsonl.gz' in workflow
     assert 'continue-on-error' not in workflow
     publication = (ROOT / '.github/workflows/publish-explorer.yml').read_text()

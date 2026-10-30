@@ -12,9 +12,7 @@ ROOT = Path(__file__).resolve().parents[2]
 
 def test_meeting_validation_runs_declared_offline_suite(tmp_path, monkeypatch, capfd):
     workflow = yaml.load((ROOT / '.github/workflows/update-data.yml').read_text(), Loader=yaml.BaseLoader)
-    steps = workflow['jobs']['meetings']['steps']
-    command = next(step['run'] for step in steps if step.get('name') == 'Test source parsing and refresh decisions')
-    assert command == 'python scripts/dev.py test production-offline'
+    assert 'meetings' not in workflow['jobs']
     spec = importlib.util.spec_from_file_location('dev_workflow_test', ROOT / 'scripts/dev.py')
     dev = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(dev)
@@ -46,9 +44,6 @@ def test_meeting_validation_runs_declared_offline_suite(tmp_path, monkeypatch, c
 
 
 def test_meeting_validation_uses_shared_locked_setup():
-    workflow = yaml.load((ROOT / '.github/workflows/update-data.yml').read_text(), Loader=yaml.BaseLoader)
-    steps = workflow['jobs']['meetings']['steps']
-    assert any(step.get('uses') == './.github/actions/setup-python-project' for step in steps)
     setup = yaml.load((ROOT / '.github/actions/setup-python-project/action.yml').read_text(), Loader=yaml.BaseLoader)
     commands = '\n'.join(step.get('run', '') for step in setup['runs']['steps'])
     assert 'uv sync --locked' in commands
@@ -56,29 +51,18 @@ def test_meeting_validation_uses_shared_locked_setup():
     assert python_setup['with']['python-version-file'] == '.python-version'
     assert 'poppler-utils' in commands
     assert 'scripts/dev.py prepare-baseline' in commands
-    assert any(step.get('run') == 'python scripts/dev.py test active-experiment-regression' for step in steps)
 
 
-def test_house_directory_and_site_pages_precede_xml_fallback_and_save_partial_progress():
+def test_b14_cutover_removes_legacy_weekly_meeting_inventory_job():
     workflow = yaml.load((ROOT / '.github/workflows/update-data.yml').read_text(), Loader=yaml.BaseLoader)
     jobs = workflow['jobs']
+    assert set(jobs) == {'youtube', 'congress', 'committees'}
     assert jobs['committees']['needs'] == 'congress'
-    assert 'committees' in jobs['meetings']['needs']
-    steps = jobs['meetings']['steps']
-    sites = next(step for step in steps if step.get('id') == 'house_sites')
-    house = next(step for step in steps if step.get('id') == 'house_records')
-    assert steps.index(sites) < steps.index(house)
-    assert '--committees pipeline-data/congress_committees.jsonl.gz' in sites['run']
-    assert '--limit 3000' in sites['run'] and '--since' not in sites['run']
-    assert "steps.house_sites.outcome == 'failure'" in house['if']
-    save = next(step for step in steps if step.get('name') == 'Save pipeline data snapshot')
-    assert "steps.house_records.outcome == 'failure'" in save['if']
-    raw = yaml.load((ROOT / '.github/workflows/capture-raw-sources.yml').read_text(), Loader=yaml.BaseLoader)
-    assert any('pipeline-data/meeting-inventory/house-sites.json.gz' in step.get('run', '')
-               for step in raw['jobs']['capture']['steps'])
+    capture = yaml.load((ROOT / '.github/workflows/capture-archive.yml').read_text(), Loader=yaml.BaseLoader)
+    assert not any('--seed-inventory' in step.get('run', '') for step in capture['jobs']['capture']['steps'])
 
 
-@pytest.mark.parametrize('filename,count', [('update-data.yml', 4), ('publish-explorer.yml', 1)])
+@pytest.mark.parametrize('filename,count', [('update-data.yml', 3), ('publish-explorer.yml', 1)])
 def test_every_snapshot_save_also_keeps_the_snapshot_in_raw(filename, count):
     workflow = yaml.load((ROOT / '.github/workflows' / filename).read_text(), Loader=yaml.BaseLoader)
     saves = [step for job in workflow['jobs'].values() for step in job['steps']

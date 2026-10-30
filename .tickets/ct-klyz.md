@@ -1,6 +1,6 @@
 ---
 id: ct-klyz
-status: open
+status: closed
 deps: []
 links: [cef-96wc]
 created: 2026-10-30T14:32:31Z

@@ -129,7 +129,8 @@ def test_actual_required_gate_propagates_every_matrix_result(status, expected):
 
 
 def test_update_data_installs_node_before_python_reader_regressions():
-    steps = workflow('update-data.yml')['jobs']['meetings']['steps']
+    assert 'meetings' not in workflow('update-data.yml')['jobs']
+    steps = workflow('validate-explorer.yml')['jobs']['offline']['steps']
     node = next(i for i, s in enumerate(steps) if s.get('uses') == './.github/actions/setup-node-project')
     consumer = next(i for i, s in enumerate(steps) if 'production-offline' in s.get('run', ''))
     assert node < consumer

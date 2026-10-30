@@ -26,30 +26,15 @@
       }
     ]
   },
-  "waf_custom_rules": [
+  "response_header_transform_rules": [
     {
-      "id": "block-non-public-r2-prefixes",
-      "description": "Allow only GET/HEAD/OPTIONS on /viewer-publications/*, /bodies/sha256/*, and /exports/*; block /warehouse/*, /receipts/*, /quarantine/*, /indexes/* and all other paths with 403.",
-      "action": "block",
-      "status_code": 403,
-      "expression": "(http.host eq \"congressional-data.spicygov.ai\") and not ((http.request.method in {\"GET\" \"HEAD\" \"OPTIONS\"}) and (starts_with(http.request.uri.path, \"/viewer-publications/\") or starts_with(http.request.uri.path, \"/bodies/sha256/\") or starts_with(http.request.uri.path, \"/exports/\")) and not contains(http.request.uri.path, \"..\") and not starts_with(http.request.uri.path, \"/viewer-publications/accepted-\"))",
+      "id": "public-r2-security-and-disposition-headers",
+      "description": "Set nosniff, Referrer-Policy, conditional CSP (omit sandbox CSP on application/pdf so Chromium PDF viewer renders), Cache-Control for /viewer-publications/*, /bodies/sha256/*, and /exports/*, and map ?filename= to Content-Disposition.",
       "allowed_prefixes": [
         "/viewer-publications/",
         "/bodies/sha256/",
         "/exports/"
       ],
-      "blocked_prefixes": [
-        "/warehouse/",
-        "/receipts/",
-        "/quarantine/",
-        "/indexes/"
-      ]
-    }
-  ],
-  "response_header_transform_rules": [
-    {
-      "id": "public-r2-security-and-disposition-headers",
-      "description": "Set nosniff, Referrer-Policy, conditional CSP (omit sandbox CSP on application/pdf so Chromium PDF viewer renders), Cache-Control for /viewer-publications/*, /bodies/sha256/*, and /exports/*, and map ?filename= to Content-Disposition.",
       "headers": {
         "X-Content-Type-Options": "nosniff",
         "Referrer-Policy": "no-referrer"
@@ -76,6 +61,108 @@
         "no_store_paths": [
           "/viewer-publications/manifest.json",
           "/exports/manifest.json"
+        ]
+      },
+      "ruleset": {
+        "name": "congressional-data.spicygov.ai R2 response headers",
+        "kind": "zone",
+        "phase": "http_response_headers_transform",
+        "rules": [
+          {
+            "ref": "public-r2-security-and-disposition-headers-base-and-immutable-cache",
+            "description": "Set nosniff, Referrer-Policy, and immutable Cache-Control on content-addressed R2 objects",
+            "expression": "(http.host eq \"congressional-data.spicygov.ai\") and (starts_with(http.request.uri.path, \"/bodies/sha256/\") or starts_with(http.request.uri.path, \"/viewer-publications/releases/\") or starts_with(http.request.uri.path, \"/viewer-publications/catalogs/\") or starts_with(http.request.uri.path, \"/exports/releases/\") or starts_with(http.request.uri.path, \"/exports/snapshots/\"))",
+            "action": "rewrite",
+            "action_parameters": {
+              "headers": {
+                "X-Content-Type-Options": {
+                  "operation": "set",
+                  "value": "nosniff"
+                },
+                "Referrer-Policy": {
+                  "operation": "set",
+                  "value": "no-referrer"
+                },
+                "Cache-Control": {
+                  "operation": "set",
+                  "value": "public, max-age=31536000, immutable"
+                }
+              }
+            },
+            "enabled": true
+          },
+          {
+            "ref": "public-r2-security-and-disposition-headers-mutable-manifests-no-store",
+            "description": "Set nosniff, Referrer-Policy, sandbox CSP, and Cache-Control: no-store on top-level manifest selectors",
+            "expression": "(http.host eq \"congressional-data.spicygov.ai\") and (http.request.uri.path eq \"/viewer-publications/manifest.json\" or http.request.uri.path eq \"/exports/manifest.json\" or ends_with(http.request.uri.path, \"/recovery-status.json\"))",
+            "action": "rewrite",
+            "action_parameters": {
+              "headers": {
+                "X-Content-Type-Options": {
+                  "operation": "set",
+                  "value": "nosniff"
+                },
+                "Referrer-Policy": {
+                  "operation": "set",
+                  "value": "no-referrer"
+                },
+                "Content-Security-Policy": {
+                  "operation": "set",
+                  "value": "sandbox; default-src 'none'"
+                },
+                "Cache-Control": {
+                  "operation": "set",
+                  "value": "no-store"
+                }
+              }
+            },
+            "enabled": true
+          },
+          {
+            "ref": "public-r2-security-and-disposition-headers-non-pdf-csp-and-disposition",
+            "description": "Set sandbox CSP on non-PDF responses",
+            "expression": "(http.host eq \"congressional-data.spicygov.ai\") and (starts_with(http.request.uri.path, \"/viewer-publications/\") or starts_with(http.request.uri.path, \"/bodies/sha256/\") or starts_with(http.request.uri.path, \"/exports/\")) and not starts_with(lower(http.response.content_type.media_type), \"application/pdf\")",
+            "action": "rewrite",
+            "action_parameters": {
+              "headers": {
+                "Content-Security-Policy": {
+                  "operation": "set",
+                  "value": "sandbox; default-src 'none'"
+                }
+              }
+            },
+            "enabled": true
+          },
+          {
+            "ref": "public-r2-security-and-disposition-headers-pdf-filename-disposition",
+            "description": "Set inline RFC 6266 Content-Disposition from ?filename= on PDF bodies",
+            "expression": "(http.host eq \"congressional-data.spicygov.ai\") and starts_with(http.request.uri.path, \"/bodies/sha256/\") and len(http.request.uri.args[\"filename\"]) > 0 and len(http.request.uri.args[\"filename\"][0]) <= 128 and not contains(http.request.uri.args[\"filename\"][0], \"\\\"\") and not contains(http.request.uri.args[\"filename\"][0], \"\\\\\") and not contains(http.request.uri.args[\"filename\"][0], \";\") and not contains(http.request.uri.args[\"filename\"][0], \"/\") and not contains(http.request.uri.args[\"filename\"][0], \"..\") and not contains(http.request.uri.args[\"filename\"][0], \"\\r\") and not contains(http.request.uri.args[\"filename\"][0], \"\\n\") and starts_with(lower(http.response.content_type.media_type), \"application/pdf\")",
+            "action": "rewrite",
+            "action_parameters": {
+              "headers": {
+                "Content-Disposition": {
+                  "operation": "set",
+                  "expression": "concat(\"inline; filename=\\\"\", http.request.uri.args[\"filename\"][0], \"\\\"\")"
+                }
+              }
+            },
+            "enabled": true
+          },
+          {
+            "ref": "public-r2-security-and-disposition-headers-non-pdf-filename-disposition",
+            "description": "Set attachment RFC 6266 Content-Disposition from ?filename= on non-PDF bodies",
+            "expression": "(http.host eq \"congressional-data.spicygov.ai\") and starts_with(http.request.uri.path, \"/bodies/sha256/\") and len(http.request.uri.args[\"filename\"]) > 0 and len(http.request.uri.args[\"filename\"][0]) <= 128 and not contains(http.request.uri.args[\"filename\"][0], \"\\\"\") and not contains(http.request.uri.args[\"filename\"][0], \"\\\\\") and not contains(http.request.uri.args[\"filename\"][0], \";\") and not contains(http.request.uri.args[\"filename\"][0], \"/\") and not contains(http.request.uri.args[\"filename\"][0], \"..\") and not contains(http.request.uri.args[\"filename\"][0], \"\\r\") and not contains(http.request.uri.args[\"filename\"][0], \"\\n\") and not starts_with(lower(http.response.content_type.media_type), \"application/pdf\")",
+            "action": "rewrite",
+            "action_parameters": {
+              "headers": {
+                "Content-Disposition": {
+                  "operation": "set",
+                  "expression": "concat(\"attachment; filename=\\\"\", http.request.uri.args[\"filename\"][0], \"\\\"\")"
+                }
+              }
+            },
+            "enabled": true
+          }
         ]
       }
     }

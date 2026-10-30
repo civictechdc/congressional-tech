@@ -5,7 +5,7 @@ import re
 
 import pyarrow.parquet as pq
 
-from congress_api.lake import captures,filenames,readings,tables
+from congress_api.lake import appearance_records,captures,filenames,meeting_records,readings,tables
 from congress_api.lake.receipt_inventory import select_receipts
 from congress_api.retention.body_store import BodyStore,LocalAdapter,R2Adapter,validate_key
 from congress_shared.storage import single_put_md5
@@ -15,6 +15,8 @@ from congress_shared.custody import custody_identity,VerifiedFile
 
 
 TABLE_NAMES=('captures','readings','filename_readings')
+OPTIONAL_TABLE_NAMES=('meeting_records','appearance_records')
+ALL_TABLE_NAMES=TABLE_NAMES+OPTIONAL_TABLE_NAMES
 PROVENANCE_KINDS=('recoveries','reviews','unreadable')
 QUALIFIED_FIELDS={'key','etag','path','sha256','size'}
 
@@ -65,13 +67,13 @@ def _validate(spec,engine,raw_store):
     if spec.get('vocabularies') is not None:
         if not isinstance(spec['vocabularies'],dict):raise ValueError('Daily vocabularies must be an explicit object')
         json.dumps(spec['vocabularies'],allow_nan=False)
-    if (not isinstance(spec['tables'],dict) or set(spec['tables'])!=set(TABLE_NAMES)
+    if (not isinstance(spec['tables'],dict) or set(spec['tables']) not in (set(TABLE_NAMES),set(ALL_TABLE_NAMES))
             or any(not isinstance(t,dict) or set(t)!={'namespace','name'}
                 or not isinstance(t['namespace'],list) or not t['namespace']
                 or any(not isinstance(p,str) or not p for p in t['namespace'])
                 or not isinstance(t['name'],str) or not t['name'] for t in spec['tables'].values())
-            or len({json.dumps(t,sort_keys=True) for t in spec['tables'].values()})!=3):
-        raise ValueError('Daily tables must name three distinct explicit targets')
+            or len({json.dumps(t,sort_keys=True) for t in spec['tables'].values()})!=len(spec['tables'])):
+        raise ValueError('Daily tables must name three or five distinct explicit targets')
     if not isinstance(spec['receipt_inventory'],list) or any(not isinstance(r,dict) for r in spec['receipt_inventory']):
         raise ValueError('Daily receipt inventory must contain original receipt metadata')
     if not isinstance(raw_store,BodyStore) or not isinstance(raw_store.adapter,(LocalAdapter,R2Adapter)):
@@ -246,6 +248,26 @@ def produce_daily(spec,*,engine,raw_store):
     if names['unreadable_provenance'] is not None:
         acknowledgements[names['unreadable_provenance']['key']]=names['_unreadable_custody']
     report['producerreports']['filename_readings']=names;versions['filename_readings']=names['catalog_version']
+    if 'meeting_records' in spec['tables']:
+        meeting_head=tables.resolve_tables(**authority,work=work/'meeting-head',
+            tables={'meeting_records':spec['tables']['meeting_records']})['meeting_records']
+        meetings_staged=meeting_records.stage(captures=heads['captures'],existing=meeting_head,engine=engine,
+            work=work/'meeting-records',local_root=spec['local_root'],raw_store=raw_store,
+            unreadable_files=unreadable_snapshot.files())
+        meetings_staged['append']=(meeting_records.append(meetings_staged,**authority,work=work/'meeting-records-append',
+            table=spec['tables']['meeting_records']) if pq.ParquetFile(meetings_staged['records']).metadata.num_rows else None)
+        report['producerreports']['meeting_records']=meetings_staged
+        versions['meeting_records']=meetings_staged['parser_version']
+    if 'appearance_records' in spec['tables']:
+        appearance_head=tables.resolve_tables(**authority,work=work/'appearance-head',
+            tables={'appearance_records':spec['tables']['appearance_records']})['appearance_records']
+        appearances_staged=appearance_records.stage(captures=heads['captures'],existing=appearance_head,engine=engine,
+            work=work/'appearance-records',local_root=spec['local_root'],raw_store=raw_store,
+            unreadable_files=unreadable_snapshot.files())
+        appearances_staged['append']=(appearance_records.append(appearances_staged,**authority,work=work/'appearance-records-append',
+            table=spec['tables']['appearance_records']) if pq.ParquetFile(appearances_staged['records']).metadata.num_rows else None)
+        report['producerreports']['appearance_records']=appearances_staged
+        versions['appearance_records']=appearances_staged['parser_version']
     report['provenance']=_final_provenance(provenance,raw_store,imports,identities,
         acknowledgements=acknowledgements,unreadable_snapshot=unreadable_snapshot)
     final=tables.resolve_tables(**authority,work=work/'final-heads',tables=spec['tables'])
@@ -254,7 +276,9 @@ def produce_daily(spec,*,engine,raw_store):
     if (captures.current_version()!=versions['captures']
             or filenames.current_version(vocabularies=spec.get('vocabularies'))!=versions['filename_readings']
             or {p:readings.current_version(p) for p in versions['parsers']}!=versions['parsers']
-            or readings.bundle_version(versions['parsers'],policy=readings.worker_limits())!=versions['readings']):
+            or readings.bundle_version(versions['parsers'],policy=readings.worker_limits())!=versions['readings']
+            or ('meeting_records' in versions and meeting_records.current_version()!=versions['meeting_records'])
+            or ('appearance_records' in versions and appearance_records.current_version()!=versions['appearance_records'])):
         raise ValueError('Daily producer definitions changed during execution')
     report['pins']=final
     report['receipt_keys']=_complete_receipt_keys(final['captures'],engine=engine,work=work/'receipt-identity')

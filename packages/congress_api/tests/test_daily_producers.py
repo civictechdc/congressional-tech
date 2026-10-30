@@ -197,7 +197,7 @@ def test_matching_ack_keeps_the_initial_same_key_qualification(tmp_path):
     assert final['unreadable']==[initial]
 
 
-def native_fixture(tmp_path,count=1,*,payloads=None):
+def native_fixture(tmp_path,count=1,*,payloads=None,url_prefix='https://docs.house.gov/report',url_suffix='.json',family='documents'):
     from capture_qualification_helpers import write_qualified_bytes
     from congress_api.models.raw_fetch import BodyFile,FetchAttempt,FetchResult
     from congress_api.retention.receipt_writer import ReceiptWriter
@@ -216,12 +216,12 @@ def native_fixture(tmp_path,count=1,*,payloads=None):
     files=[];inventory=[]
     for i in range(count):
         data=(payloads[i] if payloads is not None else
-            json.dumps(dict(title='Daily input '+str(i),url='https://docs.house.gov/report'+str(i)+'.json')).encode())
+            json.dumps(dict(title='Daily input '+str(i),url=url_prefix+str(i)+url_suffix)).encode())
         entity=tmp_path/('body'+str(i));entity.write_bytes(data);digest=hashlib.sha256(data).hexdigest()
         body=BodyFile(entity,digest,len(data),'application/json',None,None,None)
-        url='https://docs.house.gov/report'+str(i)+'.json'
+        url=url_prefix+str(i)+url_suffix
         attempt=FetchAttempt(url,url,STAMP,'direct',200,None,{},(),True,body)
-        key,line=writer.write(FetchResult(attempt),family='documents')
+        key,line=writer.write(FetchResult(attempt),family=family)
         files.append(dict(key=key,path=str(root/key),qualification=qualifications[key]))
         capture=line['captures'][0];physical='bodies/sha256/'+digest[:2]+'/'+digest+capture['stored_suffix']
         # Canonical gzip bodies have no suffix. Inventory records byte facts.
@@ -354,3 +354,37 @@ def test_native_daily_r2_imports_and_resume_reuse_complete_qualified_inputs(tmp_
     assert second['producerreports']['readings']['work_items']==0
     assert second['provenance']==first['provenance'] and len(client.put_calls)==puts
     assert not client.list_calls and not client.get_calls and not client.head_calls
+
+
+def test_native_daily_producer_refreshes_and_pins_all_five_tables(tmp_path):
+    from congress_api.lake import appearance_records,meeting_records
+    from congress_api.lake.daily import ALL_TABLE_NAMES,produce_daily
+    detail_payload=json.dumps({
+        'committeeMeeting':{
+            'eventId':'115538',
+            'congress':118,
+            'chamber':'House',
+            'title':'Daily Hearing',
+            'date':'2024-07-09T14:00:00Z',
+            'committees':[{'systemCode':'hsju00','name':'Judiciary','chamber':'House'}],
+            'witnesses':[{'name':'Dr. Jane Doe','organization':'ACME'}],
+        }
+    }).encode()
+    value,engine,store=native_fixture(tmp_path,payloads=[detail_payload],
+        url_prefix='https://api.congress.gov/v3/committee-meeting/118/house/11553',url_suffix='',family='congress/meetings')
+    five_tables={name:dict(namespace=['archive'],name=name) for name in ALL_TABLE_NAMES}
+    meeting_records.create_table(engine=engine,work=tmp_path/'create-meetings',catalog_root=value['catalog_root'],
+        table=five_tables['meeting_records'],location=tmp_path/'lake-meetings')
+    appearance_records.create_table(engine=engine,work=tmp_path/'create-appearances',catalog_root=value['catalog_root'],
+        table=five_tables['appearance_records'],location=tmp_path/'lake-appearances')
+    value['tables']=five_tables
+    first=produce_daily(value,engine=engine,raw_store=store)
+    assert first['status']=='completed' and set(first['pins'])==set(ALL_TABLE_NAMES)
+    assert first['currentversions']['meeting_records']==meeting_records.current_version()
+    assert first['currentversions']['appearance_records']==appearance_records.current_version()
+    assert first['producerreports']['meeting_records']['produced']==1
+    assert first['producerreports']['appearance_records']['produced']==1
+    second=produce_daily(dict(value,work=str(tmp_path/'second')),engine=engine,raw_store=store)
+    assert second['status']=='completed' and set(second['pins'])==set(ALL_TABLE_NAMES)
+    assert second['producerreports']['meeting_records']['work_items']==0
+    assert second['producerreports']['appearance_records']['work_items']==0

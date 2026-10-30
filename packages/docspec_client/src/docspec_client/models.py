@@ -2,6 +2,7 @@
 from collections.abc import Mapping
 import json
 from pathlib import Path
+import re
 from typing import Any
 
 
@@ -13,11 +14,70 @@ PRODUCER_PARQUET_ROW_GROUP_SIZE = 2048
 REQUIRED_LOOPBACK_CAPABILITIES = ('request-deadline', 'owned-stdin-eof')
 RESPONSE_LIMIT = 1 << 20  # 1 MiB bounded metadata response limit
 
+RUNTIME_PIN_FILE = Path(__file__).resolve().parents[4] / 'model/docspec-runtime-pin.json'
+_HEX40 = re.compile(r'^[0-9a-f]{40}$')
+_HEX64 = re.compile(r'^[0-9a-f]{64}$')
+
+
+def load_runtime_pin(path: str | Path | None = None) -> dict[str, Any]:
+    """Load and validate the committed native runtime pin file."""
+    target = RUNTIME_PIN_FILE if path is None else Path(path)
+    try:
+        payload = json.loads(target.read_text(encoding='utf-8'))
+    except OSError as error:
+        raise ValueError('Native runtime pin file is unreadable: ' + str(target)) from error
+    except ValueError as error:
+        raise ValueError('Native runtime pin file is invalid JSON: ' + str(target)) from error
+    if not isinstance(payload, dict) or payload.get('version') != 1:
+        raise ValueError('Native runtime pin file must have version 1')
+    revision = payload.get('source_revision')
+    if not isinstance(revision, str) or not _HEX40.match(revision):
+        raise ValueError('Native runtime pin source_revision must be a 40-char lowercase hex commit')
+    features = payload.get('build_features')
+    if not isinstance(features, list) or not features or not all(isinstance(v, str) and v for v in features):
+        raise ValueError('Native runtime pin build_features must be a non-empty string list')
+    capabilities = payload.get('required_capabilities')
+    if not isinstance(capabilities, list) or not capabilities or not all(isinstance(v, str) and v for v in capabilities):
+        raise ValueError('Native runtime pin required_capabilities must be a non-empty string list')
+    platforms = payload.get('platforms')
+    if not isinstance(platforms, dict) or not platforms:
+        raise ValueError('Native runtime pin platforms must be a non-empty mapping')
+    validated_platforms: dict[str, dict[str, str]] = {}
+    for platform_name, entry in platforms.items():
+        if not isinstance(platform_name, str) or not platform_name or not isinstance(entry, dict):
+            raise ValueError('Native runtime pin platform entry must be an object')
+        digest = entry.get('sha256')
+        if not isinstance(digest, str) or not _HEX64.match(digest):
+            raise ValueError(f'Native runtime pin sha256 for {platform_name} must be a 64-char lowercase hex digest')
+        validated_platforms[platform_name] = {'sha256': digest}
+    return {
+        'version': 1,
+        'source_revision': revision,
+        'build_features': list(features),
+        'required_capabilities': list(capabilities),
+        'platforms': validated_platforms,
+    }
+
+
+def runtime_pin_digest(platform_name: str, *, pin_path: str | Path | None = None) -> str:
+    """Return the committed SHA-256 digest for the given platform key."""
+    pin = load_runtime_pin(pin_path)
+    platforms = pin['platforms']
+    if platform_name not in platforms:
+        raise ValueError(f'Unsupported native runtime platform in pin file: {platform_name}')
+    return platforms[platform_name]['sha256']
+
+
+_PIN = load_runtime_pin()
+
 QUALIFIED_DOCSPEC_RUNTIME = {
-    'source_revision': '0cbad87574a4414af56461f442a481a4cfa93079',
-    'darwin_arm64_binary_sha256': 'b4833c07931652f47508ea1e36639f9ef5171fc1e2dcbae84e7edfe5854bbdd7',
-    'build_features': ('remote',),
-    'required_capabilities': REQUIRED_LOOPBACK_CAPABILITIES,
+    'source_revision': _PIN['source_revision'],
+    'darwin_arm64_binary_sha256': _PIN['platforms']['darwin-arm64']['sha256'],
+    'linux_amd64_binary_sha256': _PIN['platforms']['linux-amd64']['sha256'],
+    'platforms': {k: dict(v) for k, v in _PIN['platforms'].items()},
+    'pin_file': str(RUNTIME_PIN_FILE),
+    'build_features': tuple(_PIN['build_features']),
+    'required_capabilities': tuple(_PIN['required_capabilities']),
     'safety_prerequisites': (
         'ct-3li2', 'ct-cpio', 'ct-xq1y', 'ct-5fkx', 'ct-gfv8', 'ct-q05l', 'ct-csyg',
         'ct-tuez', 'ct-nmjc', 'ct-13g5',

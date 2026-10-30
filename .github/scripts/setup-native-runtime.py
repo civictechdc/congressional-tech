@@ -11,7 +11,13 @@ import subprocess
 import sys
 
 from congress_api.retention.derived_files import copy_checked
-from congress_api.retention.docspec import QUALIFIED_DOCSPEC_RUNTIME, REQUIRED_LOOPBACK_CAPABILITIES, NativeDatasets
+from congress_api.retention.docspec import (
+    QUALIFIED_DOCSPEC_RUNTIME,
+    REQUIRED_LOOPBACK_CAPABILITIES,
+    RUNTIME_PIN_FILE,
+    NativeDatasets,
+    load_runtime_pin,
+)
 
 MAX_BINARY_BYTES = 1024**3
 SECRET_NAMES = {'DOCSPEC_CATALOG_TOKEN', 'DOCSPEC_S3_ACCESS_KEY_ID', 'DOCSPEC_S3_SECRET_ACCESS_KEY'}
@@ -28,7 +34,8 @@ def document(raw, label):
         raise SetupFailure(f'{label} must be valid JSON') from None
 
 
-def artifact_descriptor(raw):
+def artifact_descriptor(raw, *, pin_file=RUNTIME_PIN_FILE, enforce_platform_digest=False):
+    pin = load_runtime_pin(pin_file)
     value = document(raw, 'Runtime artifact descriptor')
     required = {'version', 'platform', 'source_revision', 'bucket', 'key', 'bytes', 'sha256'}
     optional = {'build_features', 'required_capabilities'}
@@ -40,24 +47,28 @@ def artifact_descriptor(raw):
             or type(value['bytes']) is not int or not 0 < value['bytes'] <= MAX_BINARY_BYTES
             or not isinstance(value['bucket'], str) or not re.fullmatch('[a-z0-9][a-z0-9.-]{1,61}[a-z0-9]', value['bucket'])):
         raise SetupFailure('Runtime artifact descriptor requires exact version, platform, revision, location and bounded byte identity')
-    features = value.get('build_features', ['remote'])
+    features = value.get('build_features', list(pin['build_features']))
     if (not isinstance(features, list) or not features
             or any(not isinstance(item, str) or not item.strip() for item in features)
-            or 'remote' not in features):
+            or not set(pin['build_features']).issubset(features)):
         raise SetupFailure('Runtime artifact descriptor requires the remote build feature')
-    capabilities = value.get('required_capabilities', list(REQUIRED_LOOPBACK_CAPABILITIES))
+    capabilities = value.get('required_capabilities', list(pin['required_capabilities']))
     if (not isinstance(capabilities, list) or not capabilities
             or any(not isinstance(item, str) or not item.strip() for item in capabilities)
-            or not set(REQUIRED_LOOPBACK_CAPABILITIES).issubset(capabilities)):
+            or not set(pin['required_capabilities']).issubset(capabilities)):
         raise SetupFailure('Runtime artifact descriptor requires loopback protocol 1 capabilities')
     expected = f"runtime/docspec/{value['source_revision']}/linux-amd64/{value['sha256']}/docspec"
     if value['key'] != expected:
         raise SetupFailure('Runtime artifact key differs from its revision, platform or digest')
-    # The descriptor only proves the bytes match itself; the application decides
-    # which engine revision it is qualified against.
-    if value['source_revision'] != QUALIFIED_DOCSPEC_RUNTIME['source_revision']:
+    # The descriptor only proves the bytes match itself; the committed pin file decides
+    # which engine revision and platform digest the application is qualified against.
+    if value['source_revision'] != pin['source_revision']:
         raise SetupFailure('Runtime artifact revision differs from the qualified DocSpec revision '
-                           f"{QUALIFIED_DOCSPEC_RUNTIME['source_revision']}")
+                           f"{pin['source_revision']}")
+    if enforce_platform_digest:
+        pinned_digest = pin['platforms'].get(value['platform'], {}).get('sha256')
+        if value['sha256'] != pinned_digest:
+            raise SetupFailure('Runtime artifact digest differs from the committed DocSpec runtime pin')
     return {**value, 'build_features': list(dict.fromkeys(features)),
             'required_capabilities': list(dict.fromkeys(capabilities))}
 
@@ -174,12 +185,16 @@ def main(argv=None):
     parser.add_argument('--remote', type=Path, default=Path(__file__).resolve().parents[1] / 'docspec-remote.json')
     parser.add_argument('--local', action='store_true', help='Install a credential-free local job runtime from the same private binary.')
     parser.add_argument('--local-limits', type=Path, default=Path(__file__).resolve().parents[1] / 'docspec-local-limits.json')
+    parser.add_argument('--pin-file', type=Path, default=RUNTIME_PIN_FILE, help='Committed engine runtime pin file.')
     parser.add_argument('--directory', type=Path, required=True)
     parser.add_argument('--output', type=Path, required=True)
     parser.add_argument('--github-env', type=Path, help='Export only the installed configuration path and approved binary digest.')
     args = parser.parse_args(argv)
     try:
-        artifact = artifact_descriptor(args.artifact_descriptor.read_text() if args.artifact_descriptor else os.environ.get('DOCSPEC_RUNTIME_ARTIFACT'))
+        artifact = artifact_descriptor(
+            args.artifact_descriptor.read_text() if args.artifact_descriptor else os.environ.get('DOCSPEC_RUNTIME_ARTIFACT'),
+            pin_file=args.pin_file,
+        )
         credentials = engine_credentials(args.credentials_file.read_text() if args.credentials_file else os.environ.get('DOCSPEC_ENGINE_CREDENTIALS'))
         if args.credentials_file and args.credentials_file.stat().st_mode & 0o077:
             raise SetupFailure('Local DocSpec credentials require private file permissions (0600)')
