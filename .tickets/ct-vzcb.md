@@ -1,6 +1,6 @@
 ---
 id: ct-vzcb
-status: open
+status: in_progress
 deps: []
 links: [ct-te1p]
 created: 2026-10-30T14:32:31Z

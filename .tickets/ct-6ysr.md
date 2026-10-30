@@ -1,6 +1,6 @@
 ---
 id: ct-6ysr
-status: open
+status: in_progress
 deps: [ct-vzcb]
 links: []
 created: 2026-10-30T14:32:31Z

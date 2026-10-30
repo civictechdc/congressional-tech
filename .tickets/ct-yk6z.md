@@ -1,6 +1,6 @@
 ---
 id: ct-yk6z
-status: open
+status: closed
 deps: []
 links: []
 created: 2026-10-30T14:32:30Z
@@ -18,3 +18,9 @@ Expose top-level browse tabs in apps/site/src/components/explorer/archive/Archiv
 
 Users can browse Documents, Hearings, Committees, Witnesses, Members, and Bills & Nominations directly from top-level tabs in ArchiveExplorer.tsx using reader.listEntities.
 
+
+## Notes
+
+**2026-10-30T15:06:23Z**
+
+Completed and verified in main (verify-archive-contract.py exit 0, 97/97 test:explorer, 11/11 test:archive-native, 29 Astro pages built).

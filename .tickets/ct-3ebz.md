@@ -1,6 +1,6 @@
 ---
 id: ct-3ebz
-status: open
+status: closed
 deps: []
 links: []
 created: 2026-10-30T14:32:31Z
@@ -18,3 +18,9 @@ Split apps/site/src/components/explorer/archive/ArchiveDetail.tsx (957 lines) in
 
 ArchiveDetail.tsx and archive.ts are decomposed into focused modules, reader/filenames/ is retired, and verify-archive-contract.py and site build/tests pass.
 
+
+## Notes
+
+**2026-10-30T15:06:23Z**
+
+Completed and verified in main (verify-archive-contract.py exit 0, 97/97 test:explorer, 11/11 test:archive-native, 29 Astro pages built).

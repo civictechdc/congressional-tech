@@ -1,6 +1,6 @@
 ---
 id: ct-h5ks
-status: open
+status: closed
 deps: []
 links: []
 created: 2026-10-30T14:32:31Z
@@ -18,3 +18,9 @@ Add the Phase-2 Explorer / Document Archive link to apps/site/src/components/Foo
 
 Footer.astro and index.astro link to the Phase-2 Archive Explorer, youtube-coverage.astro sets its own active nav state, and #top works on every page.
 
+
+## Notes
+
+**2026-10-30T14:50:39Z**
+
+Completed W5 in wt-track3-site: added id='top' to Base.astro <body>, updated youtube-coverage.astro active='youtube-coverage' and Header.astro active contract, ensured Document Archive (/archive/) and YouTube Coverage (/youtube-coverage/) are in Footer.astro, and verified Astro build (29 pages in 1.75s).

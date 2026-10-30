@@ -1,6 +1,6 @@
 ---
 id: ct-r8ne
-status: open
+status: closed
 deps: []
 links: []
 created: 2026-10-30T14:32:31Z
@@ -18,3 +18,9 @@ Fix <p class='filter-empty'> placement and .chip selection/focus styles on apps/
 
 proposals/index.astro filter-empty and chip states render cleanly, 2-card grids fill desktop width, V.1.md includes live link, and /youtube-coverage/ has zero horizontal overflow at 412px.
 
+
+## Notes
+
+**2026-10-30T14:50:39Z**
+
+Completed W6 in wt-track3-site (incorporating Greybeard review b04b2a28): added live/liveUrl/liveLabel to projects Zod schema in content/config.ts and V.1.md/I.2.md, rendered live CTA links on index.astro/projects.astro/subprojects/index.astro, changed auto-fill to auto-fit on proposals/index.astro and 2-card grids, moved #filter-empty outside #proposal-grid with aria-pressed/focus-visible chip styles, and fixed mobile (<=768px) horizontal overflow in dashboard.css.

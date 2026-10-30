@@ -1,6 +1,6 @@
 ---
 id: ct-fcwp
-status: open
+status: in_progress
 deps: [ct-vnkf]
 links: [cefr-9zd4]
 created: 2026-10-30T14:32:31Z
