@@ -757,8 +757,16 @@ def build_prepared_release(prepared,*,engine,output,root=ROOT):
                 FROM (SELECT doc_key,unnest(version_keys) AS vk FROM ordered WHERE version_keys IS NOT NULL)
                 GROUP BY vk HAVING count(*)<2
             ) single_vk
-            WHERE (SELECT count(*) FROM current_reviews WHERE verdict='duplicate_of')=0
-              AND (SELECT count(*) FROM body_review_edges)=0) AS single_doc_version_keys{entity_invariant_sql}""")]+url_state_diagnostics()+completeness_checks(
+            LEFT ANTI JOIN (
+                SELECT DISTINCT o.doc_key
+                FROM (SELECT doc_key,unnest(link_bodies) AS bh FROM ordered WHERE link_bodies IS NOT NULL) o
+                JOIN (
+                    SELECT target AS prefix FROM current_reviews WHERE verdict='duplicate_of' AND target IS NOT NULL
+                    UNION SELECT value_text AS prefix FROM current_reviews WHERE verdict='duplicate_of' AND value_text IS NOT NULL
+                    UNION SELECT substr(left_node,3,16) AS prefix FROM body_review_edges WHERE left_node IS NOT NULL
+                    UNION SELECT substr(right_node,3,16) AS prefix FROM body_review_edges WHERE right_node IS NOT NULL
+                ) rev ON substr(o.bh,1,16)=rev.prefix
+            ) merged_docs ON single_vk.doc_key=merged_docs.doc_key) AS single_doc_version_keys{entity_invariant_sql}""")]+url_state_diagnostics()+completeness_checks(
             catalog_version=catalog_version,
             readings_version=bundle_version(parser_versions,policy=worker_limits()),
             include_entities=bool(prepared.get('include_entities')),
