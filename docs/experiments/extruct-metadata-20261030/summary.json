@@ -1,0 +1,5014 @@
+{
+  "audit_date": "2026-10-30",
+  "code_identity": {
+    "congressional_head": "558fe9028bc9f80cf04492fefd86fb2eb3ab13b8",
+    "keeplist_head": "35e2fdd6a1b9a1ccb581319439ddb7ef5f5b4ffa",
+    "source_files": {
+      "packages/congress_api/src/congress_api/parsers/senate.py": "f3228e4f5f7e4a93916ffe959ab0953e331122b4d5c6d896114d183fd3ad56e7",
+      "packages/congress_api/src/congress_api/parsers/senate_page.py": "f1c14f160c31c3fe55805b09f63664d22fd1d58d45a4e7968bfd767aac662100",
+      "packages/congress_api/src/congress_api/parsers/committee_pages.py": "43eea7dc0d14009e7ab45c2f64290b162651cfa8ae5836cee56e6e7032ecee47",
+      "packages/congress_api/src/congress_api/parsers/page_content.py": "c7c2aac9d98b19ec7921b724e12e3ff1dc40084ba2df0756ef36bd85c775f6e9",
+      "packages/congress_api/src/congress_api/parsers/archive_readings.py": "fb06f896006889dc66dc9f1d40028bf182a7fca30b48f82a7969a60558c113e3",
+      "/Users/mikewolfd/Work/keeplist-backend/keeplist_io/scrape/parsers/extruct.py": "738c2a8f79317971430aeab361709a758c90d4e2249900376e7cb2c41e8e0ca9",
+      "/Users/mikewolfd/Work/keeplist-backend/keeplist_io/scrape/parsers/canonical/pipeline.py": "fdd7f9035600c2fcdfef2144183c64ee1316399dbb5a4bcf3b1d3bda3ce4c40c"
+    }
+  },
+  "selector_sha256": "4773ba6bcf55404cfbbb01242df8e25c931e5e5454ae2e5072ce23addc4afcd6",
+  "capture_head": {
+    "bytes": 299928,
+    "end_order": 3909134,
+    "entries": 47,
+    "first_order": 3145728,
+    "key": "indexes/native-manifests/raw-captures-v1/cf53faf9c0ebf8d15257639ad0201e40368c6ac00a5f3b78ebcbf44009ebc9d7.json",
+    "sha256": "cf53faf9c0ebf8d15257639ad0201e40368c6ac00a5f3b78ebcbf44009ebc9d7"
+  },
+  "inventory": {
+    "counts": {
+      "capture_rows": 3909134,
+      "candidate_references": 428790,
+      "references_without_body": 443,
+      "locally_available_bodies": 14498
+    },
+    "unique_candidate_bodies": 196152,
+    "decoded_candidate_bytes": 19796186078
+  },
+  "supplement": {
+    "counts": {
+      "verified_parent_bodies": 10280,
+      "loose_html": 2,
+      "archive_records": 10278,
+      "html_response_records": 5489,
+      "duplicate_html_payloads": 5488,
+      "non_html_responses": 4789,
+      "new_html_payloads": 1
+    },
+    "errors": []
+  },
+  "versions": {
+    "extruct": "0.18.0",
+    "lxml": "6.1.3",
+    "rdflib": "7.6.0",
+    "w3lib": "2.5.0",
+    "mf2py": "2.0.2",
+    "pyRdfa3": "3.6.5"
+  },
+  "counts": {
+    "non_html": 10457,
+    "ok": 185689,
+    "html_bodies": 185698,
+    "html_bytes": 14358741257,
+    "capture_references": 386389,
+    "with_metadata": 104927,
+    "domain_from_page_declaration": 3939,
+    "error_title_hints": 40601,
+    "only_error_http_statuses": 71372,
+    "not_flagged_as_error": 114270,
+    "partial": 9
+  },
+  "unique_html_capture_urls": 178634,
+  "html_bodies_without_capture_url": 10228,
+  "syntaxes_all": {
+    "dublincore": 54724,
+    "opengraph": 66044,
+    "rdfa": 97819,
+    "microformat": 5049,
+    "json-ld": 3112,
+    "microdata": 59
+  },
+  "syntaxes_not_flagged_as_error": {
+    "dublincore": 54088,
+    "opengraph": 59664,
+    "rdfa": 64601,
+    "microformat": 5038,
+    "json-ld": 2341,
+    "microdata": 54
+  },
+  "families": {
+    "house/meeting-xml": {
+      "bodies": 1248,
+      "not_flagged_as_error": 196,
+      "dublincore": 196
+    },
+    "senate/pages": {
+      "bodies": 11144,
+      "not_flagged_as_error": 10961,
+      "opengraph": 10343,
+      "rdfa": 11105,
+      "microformat": 4844,
+      "dublincore": 7403,
+      "json-ld": 2248,
+      "microdata": 8
+    },
+    "documents": {
+      "bodies": 143430,
+      "not_flagged_as_error": 76092,
+      "opengraph": 40337,
+      "rdfa": 71338,
+      "dublincore": 36855,
+      "json-ld": 112,
+      "microformat": 52,
+      "microdata": 4
+    },
+    "govinfo/transcript-html": {
+      "bodies": 34783,
+      "not_flagged_as_error": 34776,
+      "opengraph": 2,
+      "rdfa": 2,
+      "dublincore": 2
+    },
+    "external/wayback": {
+      "bodies": 35,
+      "not_flagged_as_error": 34,
+      "opengraph": 33,
+      "rdfa": 33,
+      "dublincore": 33,
+      "microformat": 1
+    },
+    "house/pages": {
+      "bodies": 21937,
+      "not_flagged_as_error": 19174,
+      "dublincore": 9702,
+      "json-ld": 720,
+      "opengraph": 14800,
+      "rdfa": 14801,
+      "microformat": 129
+    },
+    "senate/players": {
+      "bodies": 2,
+      "not_flagged_as_error": 2,
+      "opengraph": 1,
+      "microformat": 1,
+      "rdfa": 1,
+      "dublincore": 1
+    },
+    "govinfo/mods": {
+      "bodies": 1,
+      "not_flagged_as_error": 0,
+      "opengraph": 1,
+      "rdfa": 1,
+      "dublincore": 1
+    },
+    "house/witness-xml": {
+      "bodies": 50,
+      "not_flagged_as_error": 0
+    },
+    "external/provider-responses": {
+      "bodies": 630,
+      "not_flagged_as_error": 568,
+      "opengraph": 524,
+      "rdfa": 533,
+      "dublincore": 497,
+      "json-ld": 38,
+      "microformat": 22,
+      "microdata": 13
+    },
+    "youtube/watch-pages": {
+      "bodies": 44,
+      "not_flagged_as_error": 42,
+      "microdata": 34,
+      "opengraph": 32,
+      "rdfa": 34,
+      "dublincore": 43,
+      "json-ld": 2
+    },
+    "house/repository": {
+      "bodies": 3,
+      "not_flagged_as_error": 3,
+      "dublincore": 3
+    },
+    "youtube/api": {
+      "bodies": 1,
+      "not_flagged_as_error": 1,
+      "json-ld": 1,
+      "opengraph": 1,
+      "microformat": 1,
+      "rdfa": 1
+    },
+    "archive/html-responses": {
+      "bodies": 1,
+      "not_flagged_as_error": 1
+    }
+  },
+  "domains": {
+    "govinfo.gov": {
+      "bodies": 102945,
+      "not_flagged_as_error": 76529,
+      "opengraph": 34829,
+      "rdfa": 61233,
+      "dublincore": 34829
+    },
+    "docs.house.gov": {
+      "bodies": 29835,
+      "not_flagged_as_error": 854,
+      "dublincore": 853
+    },
+    "veterans.house.gov": {
+      "bodies": 7202,
+      "not_flagged_as_error": 6893,
+      "rdfa": 6889,
+      "opengraph": 2578,
+      "dublincore": 2177
+    },
+    "(unknown)": {
+      "bodies": 6289,
+      "not_flagged_as_error": 6209,
+      "dublincore": 6148,
+      "opengraph": 112,
+      "rdfa": 184,
+      "microdata": 2,
+      "microformat": 3,
+      "json-ld": 7
+    },
+    "judiciary.house.gov": {
+      "bodies": 4232,
+      "not_flagged_as_error": 165,
+      "opengraph": 3857,
+      "rdfa": 3857,
+      "dublincore": 1
+    },
+    "democrats-science.house.gov": {
+      "bodies": 4093,
+      "not_flagged_as_error": 2454,
+      "opengraph": 2460,
+      "rdfa": 2460
+    },
+    "democrats-edworkforce.house.gov": {
+      "bodies": 2613,
+      "not_flagged_as_error": 2166,
+      "opengraph": 2183,
+      "rdfa": 2183,
+      "dublincore": 6
+    },
+    "democrats-naturalresources.house.gov": {
+      "bodies": 2478,
+      "not_flagged_as_error": 1588,
+      "opengraph": 1590,
+      "rdfa": 1590
+    },
+    "waysandmeans.house.gov": {
+      "bodies": 1706,
+      "not_flagged_as_error": 348,
+      "json-ld": 757,
+      "opengraph": 757,
+      "rdfa": 757,
+      "dublincore": 117,
+      "microformat": 19
+    },
+    "science.house.gov": {
+      "bodies": 1624,
+      "not_flagged_as_error": 595,
+      "opengraph": 1006,
+      "rdfa": 1006,
+      "dublincore": 585
+    },
+    "democrats-transportation.house.gov": {
+      "bodies": 1552,
+      "not_flagged_as_error": 1490,
+      "opengraph": 1492,
+      "rdfa": 1492
+    },
+    "foreign.senate.gov": {
+      "bodies": 1398,
+      "not_flagged_as_error": 1391,
+      "opengraph": 1398,
+      "rdfa": 1398,
+      "dublincore": 1363
+    },
+    "judiciary.senate.gov": {
+      "bodies": 1380,
+      "not_flagged_as_error": 1375,
+      "opengraph": 1380,
+      "rdfa": 1380,
+      "dublincore": 1334
+    },
+    "democrats-homeland.house.gov": {
+      "bodies": 1309,
+      "not_flagged_as_error": 1306,
+      "opengraph": 1306,
+      "rdfa": 1306,
+      "dublincore": 1
+    },
+    "oversightdemocrats.house.gov": {
+      "bodies": 1262,
+      "not_flagged_as_error": 1,
+      "json-ld": 1,
+      "opengraph": 1,
+      "rdfa": 1,
+      "dublincore": 1
+    },
+    "armed-services.senate.gov": {
+      "bodies": 1189,
+      "not_flagged_as_error": 1178,
+      "opengraph": 1188,
+      "rdfa": 1188,
+      "dublincore": 1154
+    },
+    "hsgac.senate.gov": {
+      "bodies": 823,
+      "not_flagged_as_error": 821,
+      "json-ld": 823,
+      "opengraph": 823,
+      "microformat": 818,
+      "rdfa": 823
+    },
+    "commerce.senate.gov": {
+      "bodies": 798,
+      "not_flagged_as_error": 776,
+      "json-ld": 798,
+      "opengraph": 798,
+      "microformat": 776,
+      "rdfa": 798
+    },
+    "energy.senate.gov": {
+      "bodies": 753,
+      "not_flagged_as_error": 558,
+      "microformat": 558,
+      "rdfa": 753
+    },
+    "appropriations.senate.gov": {
+      "bodies": 725,
+      "not_flagged_as_error": 722,
+      "opengraph": 722,
+      "microformat": 673,
+      "rdfa": 722,
+      "dublincore": 701
+    },
+    "banking.senate.gov": {
+      "bodies": 684,
+      "not_flagged_as_error": 681,
+      "opengraph": 681,
+      "microformat": 656,
+      "rdfa": 681,
+      "dublincore": 653
+    },
+    "democrats-foreignaffairs.house.gov": {
+      "bodies": 673,
+      "not_flagged_as_error": 0,
+      "opengraph": 672,
+      "rdfa": 672
+    },
+    "finance.senate.gov": {
+      "bodies": 632,
+      "not_flagged_as_error": 627,
+      "opengraph": 627,
+      "microformat": 576,
+      "rdfa": 627,
+      "dublincore": 627
+    },
+    "help.senate.gov": {
+      "bodies": 572,
+      "not_flagged_as_error": 459,
+      "opengraph": 462,
+      "rdfa": 462,
+      "dublincore": 442
+    },
+    "indian.senate.gov": {
+      "bodies": 406,
+      "not_flagged_as_error": 404,
+      "json-ld": 406,
+      "opengraph": 406,
+      "microformat": 402,
+      "rdfa": 406
+    },
+    "agriculture.senate.gov": {
+      "bodies": 361,
+      "not_flagged_as_error": 351,
+      "opengraph": 354,
+      "rdfa": 354,
+      "dublincore": 340
+    },
+    "edworkforce.house.gov": {
+      "bodies": 356,
+      "not_flagged_as_error": 324,
+      "opengraph": 324,
+      "rdfa": 324,
+      "dublincore": 323
+    },
+    "congress.gov": {
+      "bodies": 349,
+      "not_flagged_as_error": 333,
+      "opengraph": 336,
+      "rdfa": 343,
+      "dublincore": 336
+    },
+    "rules.house.gov": {
+      "bodies": 341,
+      "not_flagged_as_error": 0,
+      "opengraph": 135,
+      "rdfa": 135,
+      "dublincore": 135
+    },
+    "smallbusiness.house.gov": {
+      "bodies": 327,
+      "not_flagged_as_error": 2,
+      "opengraph": 2,
+      "rdfa": 2,
+      "dublincore": 2
+    },
+    "beta.congress.gov": {
+      "bodies": 326,
+      "not_flagged_as_error": 0
+    },
+    "republicans-edlabor.house.gov": {
+      "bodies": 309,
+      "not_flagged_as_error": 54,
+      "opengraph": 54,
+      "rdfa": 54,
+      "dublincore": 54
+    },
+    "republicans-science.house.gov": {
+      "bodies": 299,
+      "not_flagged_as_error": 180,
+      "opengraph": 192,
+      "rdfa": 192,
+      "dublincore": 180
+    },
+    "democrats-waysandmeans.house.gov": {
+      "bodies": 286,
+      "not_flagged_as_error": 191,
+      "opengraph": 273,
+      "rdfa": 273,
+      "dublincore": 273
+    },
+    "naturalresources.house.gov": {
+      "bodies": 258,
+      "not_flagged_as_error": 7,
+      "opengraph": 8,
+      "rdfa": 8,
+      "dublincore": 5
+    },
+    "frwebgate.access.gpo.gov": {
+      "bodies": 255,
+      "not_flagged_as_error": 255,
+      "opengraph": 1,
+      "rdfa": 1
+    },
+    "csce.gov": {
+      "bodies": 253,
+      "not_flagged_as_error": 200,
+      "opengraph": 253,
+      "rdfa": 253,
+      "dublincore": 253
+    },
+    "epw.senate.gov": {
+      "bodies": 251,
+      "not_flagged_as_error": 250,
+      "opengraph": 250,
+      "rdfa": 250
+    },
+    "aging.senate.gov": {
+      "bodies": 250,
+      "not_flagged_as_error": 159,
+      "opengraph": 161,
+      "rdfa": 161,
+      "dublincore": 149
+    },
+    "oversight.house.gov": {
+      "bodies": 248,
+      "not_flagged_as_error": 2,
+      "json-ld": 2,
+      "opengraph": 2,
+      "rdfa": 2,
+      "dublincore": 1
+    },
+    "sbc.senate.gov": {
+      "bodies": 242,
+      "not_flagged_as_error": 239,
+      "opengraph": 239,
+      "rdfa": 242
+    },
+    "drugcaucus.senate.gov": {
+      "bodies": 236,
+      "not_flagged_as_error": 236,
+      "json-ld": 236,
+      "opengraph": 236,
+      "microformat": 236,
+      "rdfa": 236
+    },
+    "republicans-agriculture.house.gov": {
+      "bodies": 231,
+      "not_flagged_as_error": 124,
+      "opengraph": 124,
+      "rdfa": 124,
+      "dublincore": 123
+    },
+    "democrats-energycommerce.house.gov": {
+      "bodies": 222,
+      "not_flagged_as_error": 0,
+      "opengraph": 221,
+      "rdfa": 221,
+      "dublincore": 221
+    },
+    "rules.senate.gov": {
+      "bodies": 171,
+      "not_flagged_as_error": 169,
+      "opengraph": 171,
+      "rdfa": 171,
+      "dublincore": 162
+    },
+    "energycommerce.house.gov": {
+      "bodies": 169,
+      "not_flagged_as_error": 126,
+      "opengraph": 126,
+      "microformat": 126,
+      "rdfa": 126,
+      "dublincore": 126
+    },
+    "democrats-budget.house.gov": {
+      "bodies": 168,
+      "not_flagged_as_error": 168,
+      "opengraph": 168,
+      "rdfa": 168,
+      "dublincore": 166
+    },
+    "veterans.senate.gov": {
+      "bodies": 167,
+      "not_flagged_as_error": 166,
+      "opengraph": 167,
+      "rdfa": 167,
+      "dublincore": 166
+    },
+    "budget.senate.gov": {
+      "bodies": 167,
+      "not_flagged_as_error": 164,
+      "opengraph": 164,
+      "rdfa": 164,
+      "dublincore": 164,
+      "microformat": 142
+    },
+    "gpo.gov": {
+      "bodies": 164,
+      "not_flagged_as_error": 38,
+      "opengraph": 2,
+      "rdfa": 127,
+      "dublincore": 2
+    },
+    "agriculture.house.gov": {
+      "bodies": 161,
+      "not_flagged_as_error": 161,
+      "opengraph": 161,
+      "rdfa": 161,
+      "dublincore": 161
+    },
+    "transportation.house.gov": {
+      "bodies": 127,
+      "not_flagged_as_error": 1,
+      "opengraph": 1,
+      "rdfa": 1,
+      "dublincore": 1
+    },
+    "humanrightscommission.house.gov": {
+      "bodies": 119,
+      "not_flagged_as_error": 6,
+      "opengraph": 12,
+      "rdfa": 12,
+      "dublincore": 10
+    },
+    "intelligence.house.gov": {
+      "bodies": 116,
+      "not_flagged_as_error": 7,
+      "json-ld": 8,
+      "opengraph": 8,
+      "rdfa": 8
+    },
+    "republicans-naturalresources.house.gov": {
+      "bodies": 109,
+      "not_flagged_as_error": 1,
+      "opengraph": 2,
+      "rdfa": 2,
+      "dublincore": 2
+    },
+    "financialservices.house.gov": {
+      "bodies": 107,
+      "not_flagged_as_error": 0
+    },
+    "gop-waysandmeans.house.gov": {
+      "bodies": 107,
+      "not_flagged_as_error": 0
+    },
+    "web.archive.org": {
+      "bodies": 106,
+      "not_flagged_as_error": 105,
+      "dublincore": 16,
+      "opengraph": 7,
+      "rdfa": 8,
+      "microformat": 19
+    },
+    "dol.gov": {
+      "bodies": 96,
+      "not_flagged_as_error": 1,
+      "opengraph": 2,
+      "rdfa": 2,
+      "dublincore": 1
+    },
+    "thomas.loc.gov": {
+      "bodies": 75,
+      "not_flagged_as_error": 75
+    },
+    "gao.gov": {
+      "bodies": 71,
+      "not_flagged_as_error": 9,
+      "opengraph": 11,
+      "rdfa": 11,
+      "dublincore": 9
+    },
+    "jec.senate.gov": {
+      "bodies": 55,
+      "not_flagged_as_error": 54,
+      "opengraph": 54,
+      "rdfa": 54,
+      "dublincore": 54
+    },
+    "armedservices.house.gov": {
+      "bodies": 55,
+      "not_flagged_as_error": 54,
+      "opengraph": 54,
+      "rdfa": 54
+    },
+    "appropriations.house.gov": {
+      "bodies": 53,
+      "not_flagged_as_error": 49,
+      "opengraph": 53,
+      "rdfa": 53,
+      "dublincore": 53
+    },
+    "budget.house.gov": {
+      "bodies": 51,
+      "not_flagged_as_error": 46,
+      "opengraph": 49,
+      "rdfa": 49,
+      "microformat": 2
+    },
+    "gop.science.house.gov": {
+      "bodies": 50,
+      "not_flagged_as_error": 50
+    },
+    "gop-foreignaffairs.house.gov": {
+      "bodies": 46,
+      "not_flagged_as_error": 0,
+      "opengraph": 46,
+      "rdfa": 46,
+      "dublincore": 46
+    },
+    "youtube.com": {
+      "bodies": 44,
+      "not_flagged_as_error": 42,
+      "microdata": 34,
+      "opengraph": 32,
+      "rdfa": 34,
+      "dublincore": 43,
+      "json-ld": 2
+    },
+    "cbo.gov": {
+      "bodies": 41,
+      "not_flagged_as_error": 2,
+      "rdfa": 6
+    },
+    "foreignaffairs.house.gov": {
+      "bodies": 38,
+      "not_flagged_as_error": 5,
+      "opengraph": 8,
+      "rdfa": 8,
+      "dublincore": 8
+    },
+    "edlabor.house.gov": {
+      "bodies": 34,
+      "not_flagged_as_error": 34,
+      "opengraph": 34,
+      "rdfa": 34
+    },
+    "archive.legion.org": {
+      "bodies": 26,
+      "not_flagged_as_error": 0,
+      "rdfa": 26
+    },
+    "democrats-financialservices.house.gov": {
+      "bodies": 25,
+      "not_flagged_as_error": 25,
+      "opengraph": 25,
+      "rdfa": 25,
+      "dublincore": 25
+    },
+    "appropriations.edgeboss.net": {
+      "bodies": 24,
+      "not_flagged_as_error": 2
+    },
+    "dropbox.com": {
+      "bodies": 19,
+      "not_flagged_as_error": 19,
+      "opengraph": 2,
+      "rdfa": 2
+    },
+    "democrats-agriculture.house.gov": {
+      "bodies": 14,
+      "not_flagged_as_error": 14,
+      "opengraph": 14,
+      "rdfa": 14
+    },
+    "va.gov": {
+      "bodies": 14,
+      "not_flagged_as_error": 1,
+      "rdfa": 14,
+      "opengraph": 3,
+      "dublincore": 3,
+      "json-ld": 1,
+      "microformat": 1
+    },
+    "democrats-armedservices.house.gov": {
+      "bodies": 13,
+      "not_flagged_as_error": 13,
+      "opengraph": 13,
+      "rdfa": 13,
+      "dublincore": 13
+    },
+    "webharvest.gov": {
+      "bodies": 12,
+      "not_flagged_as_error": 12,
+      "opengraph": 10,
+      "rdfa": 10,
+      "microformat": 2
+    },
+    "ohchr.org": {
+      "bodies": 11,
+      "not_flagged_as_error": 10,
+      "json-ld": 10,
+      "opengraph": 10,
+      "rdfa": 11,
+      "dublincore": 7
+    },
+    "state.gov": {
+      "bodies": 9,
+      "not_flagged_as_error": 8,
+      "opengraph": 7,
+      "microformat": 7,
+      "rdfa": 7
+    },
+    "r20.rs6.net": {
+      "bodies": 8,
+      "not_flagged_as_error": 1,
+      "rdfa": 6,
+      "json-ld": 4,
+      "opengraph": 5,
+      "microformat": 2,
+      "dublincore": 1
+    },
+    "youtu.be": {
+      "bodies": 8,
+      "not_flagged_as_error": 8,
+      "microdata": 8,
+      "opengraph": 8,
+      "rdfa": 8,
+      "dublincore": 8
+    },
+    "republicans-intelligence.house.gov": {
+      "bodies": 7,
+      "not_flagged_as_error": 0
+    },
+    "intelligence.senate.gov": {
+      "bodies": 6,
+      "not_flagged_as_error": 6,
+      "microdata": 6,
+      "microformat": 6,
+      "rdfa": 6
+    },
+    "facebook.com": {
+      "bodies": 6,
+      "not_flagged_as_error": 6,
+      "opengraph": 1,
+      "rdfa": 1,
+      "dublincore": 1
+    },
+    "house.gov": {
+      "bodies": 6,
+      "not_flagged_as_error": 0,
+      "rdfa": 6
+    },
+    "bls.gov": {
+      "bodies": 6,
+      "not_flagged_as_error": 1,
+      "opengraph": 1,
+      "rdfa": 1
+    },
+    "speaker.gov": {
+      "bodies": 6,
+      "not_flagged_as_error": 0,
+      "json-ld": 6,
+      "rdfa": 6
+    },
+    "pstrust.org": {
+      "bodies": 5,
+      "not_flagged_as_error": 1,
+      "microdata": 3,
+      "json-ld": 3,
+      "rdfa": 3
+    },
+    "sciencedirect.com": {
+      "bodies": 5,
+      "not_flagged_as_error": 5,
+      "rdfa": 5,
+      "opengraph": 3,
+      "dublincore": 3
+    },
+    "un.org": {
+      "bodies": 5,
+      "not_flagged_as_error": 5,
+      "rdfa": 3,
+      "opengraph": 1,
+      "dublincore": 1
+    },
+    "reliefweb.int": {
+      "bodies": 5,
+      "not_flagged_as_error": 5,
+      "opengraph": 2,
+      "rdfa": 2,
+      "dublincore": 2
+    },
+    "agriculture.edgeboss.net": {
+      "bodies": 5,
+      "not_flagged_as_error": 0
+    },
+    "mresearch.com": {
+      "bodies": 4,
+      "not_flagged_as_error": 0,
+      "json-ld": 4,
+      "opengraph": 4,
+      "microformat": 4,
+      "rdfa": 4
+    },
+    "oig.justice.gov": {
+      "bodies": 4,
+      "not_flagged_as_error": 0,
+      "rdfa": 4
+    },
+    "twitter.com": {
+      "bodies": 4,
+      "not_flagged_as_error": 4,
+      "opengraph": 4,
+      "microformat": 4,
+      "rdfa": 4,
+      "dublincore": 4
+    },
+    "amendments-rules.house.gov": {
+      "bodies": 3,
+      "not_flagged_as_error": 0
+    },
+    "media.defense.gov": {
+      "bodies": 3,
+      "not_flagged_as_error": 0
+    },
+    "algreen.house.gov": {
+      "bodies": 3,
+      "not_flagged_as_error": 1,
+      "opengraph": 2,
+      "rdfa": 3,
+      "dublincore": 2
+    },
+    "beatty.house.gov": {
+      "bodies": 3,
+      "not_flagged_as_error": 1,
+      "opengraph": 3,
+      "rdfa": 3,
+      "dublincore": 1
+    },
+    "oig.dhs.gov": {
+      "bodies": 3,
+      "not_flagged_as_error": 0,
+      "rdfa": 3
+    },
+    "humanrightsfirst.org": {
+      "bodies": 3,
+      "not_flagged_as_error": 1,
+      "microdata": 1,
+      "opengraph": 1,
+      "rdfa": 1,
+      "dublincore": 2
+    },
+    "addthis.com": {
+      "bodies": 3,
+      "not_flagged_as_error": 3,
+      "opengraph": 1,
+      "rdfa": 1,
+      "dublincore": 2
+    },
+    "senate.gov": {
+      "bodies": 2,
+      "not_flagged_as_error": 2,
+      "dublincore": 1
+    },
+    "cpj.org": {
+      "bodies": 2,
+      "not_flagged_as_error": 2,
+      "json-ld": 2,
+      "opengraph": 2,
+      "microformat": 2,
+      "rdfa": 2
+    },
+    "sites.duke.edu": {
+      "bodies": 2,
+      "not_flagged_as_error": 2,
+      "json-ld": 2,
+      "opengraph": 2,
+      "microformat": 2,
+      "rdfa": 2
+    },
+    "gphaonline.org": {
+      "bodies": 2,
+      "not_flagged_as_error": 2
+    },
+    "usaid.gov": {
+      "bodies": 2,
+      "not_flagged_as_error": 2,
+      "dublincore": 2
+    },
+    "dspo.mil": {
+      "bodies": 2,
+      "not_flagged_as_error": 0
+    },
+    "sia.org": {
+      "bodies": 2,
+      "not_flagged_as_error": 0,
+      "opengraph": 2,
+      "rdfa": 2
+    },
+    "democrats-judiciary.house.gov": {
+      "bodies": 2,
+      "not_flagged_as_error": 0,
+      "opengraph": 2,
+      "rdfa": 2,
+      "dublincore": 2
+    },
+    "americanwildlifeconservation.org": {
+      "bodies": 2,
+      "not_flagged_as_error": 0
+    },
+    "ethics.harvard.edu": {
+      "bodies": 2,
+      "not_flagged_as_error": 0,
+      "rdfa": 1
+    },
+    "ec.europa.eu": {
+      "bodies": 2,
+      "not_flagged_as_error": 1,
+      "opengraph": 2,
+      "rdfa": 2,
+      "dublincore": 1
+    },
+    "echr.coe.int": {
+      "bodies": 2,
+      "not_flagged_as_error": 1,
+      "opengraph": 2,
+      "rdfa": 2
+    },
+    "rsf.org": {
+      "bodies": 2,
+      "not_flagged_as_error": 2,
+      "opengraph": 2,
+      "rdfa": 2
+    },
+    "centerforhealthsecurity.org": {
+      "bodies": 2,
+      "not_flagged_as_error": 0,
+      "rdfa": 2,
+      "opengraph": 1,
+      "dublincore": 1
+    },
+    "fao.org": {
+      "bodies": 2,
+      "not_flagged_as_error": 2,
+      "dublincore": 1
+    },
+    "www2.ed.gov": {
+      "bodies": 2,
+      "not_flagged_as_error": 0,
+      "dublincore": 1,
+      "opengraph": 1,
+      "rdfa": 1
+    },
+    "2009-2017.state.gov": {
+      "bodies": 2,
+      "not_flagged_as_error": 2,
+      "opengraph": 1,
+      "rdfa": 1
+    },
+    "concernusa.org": {
+      "bodies": 2,
+      "not_flagged_as_error": 2,
+      "opengraph": 2,
+      "rdfa": 2,
+      "dublincore": 2
+    },
+    "aei.org": {
+      "bodies": 2,
+      "not_flagged_as_error": 0,
+      "json-ld": 2,
+      "opengraph": 2,
+      "rdfa": 2
+    },
+    "lung.org": {
+      "bodies": 2,
+      "not_flagged_as_error": 0,
+      "opengraph": 2,
+      "rdfa": 2,
+      "dublincore": 2
+    },
+    "nist.gov": {
+      "bodies": 2,
+      "not_flagged_as_error": 0,
+      "opengraph": 2,
+      "rdfa": 2,
+      "dublincore": 2
+    },
+    "adl.org": {
+      "bodies": 2,
+      "not_flagged_as_error": 2,
+      "json-ld": 2,
+      "opengraph": 2,
+      "rdfa": 2,
+      "dublincore": 2
+    },
+    "sciencedems.house.gov": {
+      "bodies": 2,
+      "not_flagged_as_error": 1,
+      "dublincore": 1
+    },
+    "osce.org": {
+      "bodies": 2,
+      "not_flagged_as_error": 2
+    },
+    "www2.census.gov": {
+      "bodies": 2,
+      "not_flagged_as_error": 0,
+      "dublincore": 2
+    },
+    "news.un.org": {
+      "bodies": 2,
+      "not_flagged_as_error": 2,
+      "json-ld": 2,
+      "opengraph": 2,
+      "rdfa": 2,
+      "dublincore": 2
+    },
+    "files.consumerfinance.gov": {
+      "bodies": 2,
+      "not_flagged_as_error": 0
+    },
+    "usip.org": {
+      "bodies": 2,
+      "not_flagged_as_error": 2,
+      "json-ld": 2,
+      "opengraph": 2,
+      "microformat": 2,
+      "rdfa": 2
+    },
+    "pewresearch.org": {
+      "bodies": 2,
+      "not_flagged_as_error": 2,
+      "json-ld": 2,
+      "opengraph": 2,
+      "rdfa": 2,
+      "dublincore": 2
+    },
+    "pomed.org": {
+      "bodies": 2,
+      "not_flagged_as_error": 0
+    },
+    "store.samhsa.gov": {
+      "bodies": 2,
+      "not_flagged_as_error": 0,
+      "opengraph": 2,
+      "rdfa": 2,
+      "dublincore": 2
+    },
+    "sites.google.com": {
+      "bodies": 2,
+      "not_flagged_as_error": 2,
+      "microdata": 2,
+      "opengraph": 2,
+      "rdfa": 2
+    },
+    "ajc.org": {
+      "bodies": 2,
+      "not_flagged_as_error": 2,
+      "opengraph": 2,
+      "rdfa": 2,
+      "dublincore": 2
+    },
+    "nrc.gov": {
+      "bodies": 2,
+      "not_flagged_as_error": 0
+    },
+    "gov.uk": {
+      "bodies": 2,
+      "not_flagged_as_error": 2,
+      "json-ld": 2,
+      "opengraph": 2,
+      "rdfa": 2,
+      "dublincore": 2
+    },
+    "ssa.gov": {
+      "bodies": 2,
+      "not_flagged_as_error": 0
+    },
+    "cdc.gov": {
+      "bodies": 2,
+      "not_flagged_as_error": 0
+    },
+    "democrats-veterans.house.gov": {
+      "bodies": 2,
+      "not_flagged_as_error": 1,
+      "opengraph": 1,
+      "rdfa": 1
+    },
+    "khanna.house.gov": {
+      "bodies": 2,
+      "not_flagged_as_error": 0,
+      "opengraph": 1,
+      "rdfa": 1,
+      "dublincore": 1
+    },
+    "whitehouse.gov": {
+      "bodies": 2,
+      "not_flagged_as_error": 1,
+      "json-ld": 2,
+      "opengraph": 2,
+      "microformat": 1,
+      "rdfa": 2,
+      "dublincore": 1
+    },
+    "coe.int": {
+      "bodies": 2,
+      "not_flagged_as_error": 1,
+      "microdata": 2,
+      "json-ld": 2,
+      "opengraph": 2,
+      "rdfa": 2
+    },
+    "urban.org": {
+      "bodies": 2,
+      "not_flagged_as_error": 0,
+      "json-ld": 2,
+      "opengraph": 2,
+      "rdfa": 2,
+      "dublincore": 2
+    },
+    "waysandmeans.granicus.com": {
+      "bodies": 2,
+      "not_flagged_as_error": 1
+    },
+    "issa.house.gov": {
+      "bodies": 2,
+      "not_flagged_as_error": 0,
+      "opengraph": 2,
+      "rdfa": 2
+    },
+    "fra.europa.eu": {
+      "bodies": 2,
+      "not_flagged_as_error": 0,
+      "opengraph": 2,
+      "rdfa": 2
+    },
+    "perseus-strategies.com": {
+      "bodies": 1,
+      "not_flagged_as_error": 0,
+      "json-ld": 1,
+      "rdfa": 1
+    },
+    "theguardian.com": {
+      "bodies": 1,
+      "not_flagged_as_error": 1,
+      "json-ld": 1,
+      "opengraph": 1,
+      "rdfa": 1,
+      "dublincore": 1
+    },
+    "europarl.europa.eu": {
+      "bodies": 1,
+      "not_flagged_as_error": 1
+    },
+    "icj-cij.org": {
+      "bodies": 1,
+      "not_flagged_as_error": 0,
+      "rdfa": 1
+    },
+    "transportation.gov": {
+      "bodies": 1,
+      "not_flagged_as_error": 0
+    },
+    "assets.aspeninstitute.org": {
+      "bodies": 1,
+      "not_flagged_as_error": 0
+    },
+    "treasury.gov": {
+      "bodies": 1,
+      "not_flagged_as_error": 1,
+      "opengraph": 1,
+      "rdfa": 1,
+      "dublincore": 1
+    },
+    "ourpublicservice.org": {
+      "bodies": 1,
+      "not_flagged_as_error": 0,
+      "json-ld": 1,
+      "opengraph": 1,
+      "rdfa": 1
+    },
+    "cantwell.senate.gov": {
+      "bodies": 1,
+      "not_flagged_as_error": 0
+    },
+    "crr.bc.edu": {
+      "bodies": 1,
+      "not_flagged_as_error": 0,
+      "opengraph": 1,
+      "microformat": 1,
+      "rdfa": 1
+    },
+    "americanbar.org": {
+      "bodies": 1,
+      "not_flagged_as_error": 1,
+      "opengraph": 1,
+      "rdfa": 1,
+      "dublincore": 1
+    },
+    "transition.fcc.gov": {
+      "bodies": 1,
+      "not_flagged_as_error": 0
+    },
+    "home.treasury.gov": {
+      "bodies": 1,
+      "not_flagged_as_error": 1,
+      "opengraph": 1,
+      "rdfa": 1,
+      "dublincore": 1
+    },
+    "assets.ey.com": {
+      "bodies": 1,
+      "not_flagged_as_error": 0,
+      "rdfa": 1,
+      "dublincore": 1
+    },
+    "insideepa.com": {
+      "bodies": 1,
+      "not_flagged_as_error": 0,
+      "rdfa": 1
+    },
+    "fpf.org": {
+      "bodies": 1,
+      "not_flagged_as_error": 0,
+      "rdfa": 1
+    },
+    "dfa.ie": {
+      "bodies": 1,
+      "not_flagged_as_error": 1,
+      "json-ld": 1,
+      "rdfa": 1,
+      "dublincore": 1
+    },
+    "doyle.house.gov": {
+      "bodies": 1,
+      "not_flagged_as_error": 1,
+      "opengraph": 1,
+      "rdfa": 1,
+      "dublincore": 1
+    },
+    "mailchi.mp": {
+      "bodies": 1,
+      "not_flagged_as_error": 1,
+      "opengraph": 1,
+      "rdfa": 1
+    },
+    "republicans-transportation.house.gov": {
+      "bodies": 1,
+      "not_flagged_as_error": 1,
+      "opengraph": 1,
+      "rdfa": 1,
+      "dublincore": 1
+    },
+    "open.bu.edu": {
+      "bodies": 1,
+      "not_flagged_as_error": 1
+    },
+    "napawash.org": {
+      "bodies": 1,
+      "not_flagged_as_error": 0,
+      "json-ld": 1,
+      "opengraph": 1,
+      "microformat": 1,
+      "rdfa": 1
+    },
+    "oig.ssa.gov": {
+      "bodies": 1,
+      "not_flagged_as_error": 0
+    },
+    "aha.org": {
+      "bodies": 1,
+      "not_flagged_as_error": 0
+    },
+    "bea.gov": {
+      "bodies": 1,
+      "not_flagged_as_error": 0,
+      "rdfa": 1,
+      "dublincore": 1
+    },
+    "dni.gov": {
+      "bodies": 1,
+      "not_flagged_as_error": 0
+    },
+    "irs.gov": {
+      "bodies": 1,
+      "not_flagged_as_error": 0,
+      "json-ld": 1,
+      "opengraph": 1,
+      "rdfa": 1,
+      "dublincore": 1
+    },
+    "portal.hud.gov": {
+      "bodies": 1,
+      "not_flagged_as_error": 1,
+      "rdfa": 1
+    },
+    "healthquality.va.gov": {
+      "bodies": 1,
+      "not_flagged_as_error": 0,
+      "opengraph": 1,
+      "rdfa": 1,
+      "dublincore": 1
+    },
+    "legion.org": {
+      "bodies": 1,
+      "not_flagged_as_error": 0,
+      "opengraph": 1,
+      "rdfa": 1,
+      "dublincore": 1
+    },
+    "republicans-energycommerce.house.gov": {
+      "bodies": 1,
+      "not_flagged_as_error": 1,
+      "opengraph": 1,
+      "microformat": 1,
+      "rdfa": 1,
+      "dublincore": 1
+    },
+    "childtrends-ciw49tixgw5lbab.stackpathdns.com": {
+      "bodies": 1,
+      "not_flagged_as_error": 1,
+      "rdfa": 1,
+      "dublincore": 1
+    },
+    "defense.gov": {
+      "bodies": 1,
+      "not_flagged_as_error": 0
+    },
+    "archives113.transportation.house.gov": {
+      "bodies": 1,
+      "not_flagged_as_error": 0
+    },
+    "ftc.gov": {
+      "bodies": 1,
+      "not_flagged_as_error": 0
+    },
+    "academicpedsjnl.net": {
+      "bodies": 1,
+      "not_flagged_as_error": 1,
+      "opengraph": 1,
+      "rdfa": 1
+    },
+    "wfp.org": {
+      "bodies": 1,
+      "not_flagged_as_error": 1,
+      "json-ld": 1,
+      "opengraph": 1,
+      "rdfa": 1,
+      "dublincore": 1
+    },
+    "unece.org": {
+      "bodies": 1,
+      "not_flagged_as_error": 0,
+      "rdfa": 1
+    },
+    "comiteseguimientoymonitoreo.co": {
+      "bodies": 1,
+      "not_flagged_as_error": 0,
+      "dublincore": 1
+    },
+    "ncsbn.org": {
+      "bodies": 1,
+      "not_flagged_as_error": 0,
+      "opengraph": 1,
+      "rdfa": 1,
+      "dublincore": 1
+    },
+    "uspsoig.gov": {
+      "bodies": 1,
+      "not_flagged_as_error": 0,
+      "json-ld": 1,
+      "rdfa": 1
+    },
+    "childtrends.org": {
+      "bodies": 1,
+      "not_flagged_as_error": 1,
+      "json-ld": 1,
+      "opengraph": 1,
+      "rdfa": 1,
+      "dublincore": 1
+    },
+    "clairemontialoux.com": {
+      "bodies": 1,
+      "not_flagged_as_error": 0,
+      "microformat": 1,
+      "rdfa": 1
+    },
+    "files-profile.medicine.yale.edu": {
+      "bodies": 1,
+      "not_flagged_as_error": 1
+    },
+    "healthpolicy.duke.edu": {
+      "bodies": 1,
+      "not_flagged_as_error": 1,
+      "opengraph": 1,
+      "rdfa": 1
+    },
+    "nap.edu": {
+      "bodies": 1,
+      "not_flagged_as_error": 1,
+      "opengraph": 1,
+      "microformat": 1,
+      "rdfa": 1,
+      "dublincore": 1
+    },
+    "who.int": {
+      "bodies": 1,
+      "not_flagged_as_error": 0,
+      "json-ld": 1,
+      "opengraph": 1,
+      "rdfa": 1,
+      "dublincore": 1
+    },
+    "watson.brown.edu": {
+      "bodies": 1,
+      "not_flagged_as_error": 0
+    },
+    "fas.org": {
+      "bodies": 1,
+      "not_flagged_as_error": 1
+    },
+    "cradmin-clerk.house.gov": {
+      "bodies": 1,
+      "not_flagged_as_error": 1
+    },
+    "prhome.defense.gov": {
+      "bodies": 1,
+      "not_flagged_as_error": 0
+    },
+    "docstore.ohchr.org": {
+      "bodies": 1,
+      "not_flagged_as_error": 1
+    },
+    "1.usa.gov": {
+      "bodies": 1,
+      "not_flagged_as_error": 1,
+      "json-ld": 1,
+      "opengraph": 1,
+      "rdfa": 1,
+      "dublincore": 1
+    },
+    "wolf.house.gov": {
+      "bodies": 1,
+      "not_flagged_as_error": 1,
+      "dublincore": 1
+    },
+    "2021-2025.state.gov": {
+      "bodies": 1,
+      "not_flagged_as_error": 1,
+      "json-ld": 1,
+      "opengraph": 1,
+      "microformat": 1,
+      "rdfa": 1
+    },
+    "rferl.org": {
+      "bodies": 1,
+      "not_flagged_as_error": 1,
+      "json-ld": 1,
+      "opengraph": 1,
+      "rdfa": 1,
+      "dublincore": 1
+    },
+    "moodysanalytics.com": {
+      "bodies": 1,
+      "not_flagged_as_error": 1,
+      "microdata": 1,
+      "json-ld": 1,
+      "opengraph": 1,
+      "rdfa": 1,
+      "dublincore": 1
+    },
+    "eeoc.gov": {
+      "bodies": 1,
+      "not_flagged_as_error": 0,
+      "opengraph": 1,
+      "rdfa": 1
+    },
+    "ferc.gov": {
+      "bodies": 1,
+      "not_flagged_as_error": 0
+    },
+    "propublica.org": {
+      "bodies": 1,
+      "not_flagged_as_error": 1,
+      "json-ld": 1,
+      "opengraph": 1,
+      "microformat": 1,
+      "rdfa": 1,
+      "dublincore": 1
+    },
+    "ucr.fbi.gov": {
+      "bodies": 1,
+      "not_flagged_as_error": 1,
+      "opengraph": 1,
+      "rdfa": 1,
+      "dublincore": 1
+    },
+    "ncbi.nlm.nih.gov": {
+      "bodies": 1,
+      "not_flagged_as_error": 1
+    },
+    "innovationtaskforce.org": {
+      "bodies": 1,
+      "not_flagged_as_error": 1,
+      "json-ld": 1,
+      "opengraph": 1,
+      "rdfa": 1,
+      "dublincore": 1
+    },
+    "pcij.org": {
+      "bodies": 1,
+      "not_flagged_as_error": 1,
+      "json-ld": 1,
+      "opengraph": 1,
+      "microformat": 1,
+      "rdfa": 1
+    },
+    "ranepa.ru": {
+      "bodies": 1,
+      "not_flagged_as_error": 0,
+      "opengraph": 1,
+      "rdfa": 1,
+      "dublincore": 1
+    },
+    "battelle.org": {
+      "bodies": 1,
+      "not_flagged_as_error": 1,
+      "json-ld": 1,
+      "opengraph": 1,
+      "rdfa": 1,
+      "dublincore": 1
+    },
+    "static1.squarespace.com": {
+      "bodies": 1,
+      "not_flagged_as_error": 0
+    },
+    "my.community.com": {
+      "bodies": 1,
+      "not_flagged_as_error": 1,
+      "opengraph": 1,
+      "rdfa": 1,
+      "dublincore": 1
+    },
+    "oig.dot.gov": {
+      "bodies": 1,
+      "not_flagged_as_error": 1,
+      "rdfa": 1,
+      "dublincore": 1
+    },
+    "philadelphiafed.org": {
+      "bodies": 1,
+      "not_flagged_as_error": 1,
+      "opengraph": 1,
+      "rdfa": 1
+    },
+    "piie.com": {
+      "bodies": 1,
+      "not_flagged_as_error": 0,
+      "json-ld": 1,
+      "opengraph": 1,
+      "rdfa": 1,
+      "dublincore": 1
+    },
+    "mentalhealth.va.gov": {
+      "bodies": 1,
+      "not_flagged_as_error": 0,
+      "opengraph": 1,
+      "rdfa": 1,
+      "dublincore": 1
+    },
+    "sierraclub.org": {
+      "bodies": 1,
+      "not_flagged_as_error": 1
+    },
+    "ciel.org": {
+      "bodies": 1,
+      "not_flagged_as_error": 0,
+      "rdfa": 1
+    },
+    "developingchild.harvard.edu": {
+      "bodies": 1,
+      "not_flagged_as_error": 0
+    },
+    "cftc.gov": {
+      "bodies": 1,
+      "not_flagged_as_error": 1,
+      "opengraph": 1,
+      "rdfa": 1
+    },
+    "ukraine.un.org": {
+      "bodies": 1,
+      "not_flagged_as_error": 1,
+      "opengraph": 1,
+      "microformat": 1,
+      "rdfa": 1,
+      "dublincore": 1
+    },
+    "assets.documentcloud.org": {
+      "bodies": 1,
+      "not_flagged_as_error": 0
+    },
+    "oas.org": {
+      "bodies": 1,
+      "not_flagged_as_error": 1,
+      "json-ld": 1,
+      "opengraph": 1,
+      "rdfa": 1,
+      "dublincore": 1
+    },
+    "ipcinfo.org": {
+      "bodies": 1,
+      "not_flagged_as_error": 0,
+      "rdfa": 1
+    },
+    "uscode.house.gov": {
+      "bodies": 1,
+      "not_flagged_as_error": 1,
+      "rdfa": 1
+    },
+    "ai100.stanford.edu": {
+      "bodies": 1,
+      "not_flagged_as_error": 0,
+      "opengraph": 1,
+      "rdfa": 1
+    },
+    "geneva.usmission.gov": {
+      "bodies": 1,
+      "not_flagged_as_error": 1,
+      "json-ld": 1,
+      "opengraph": 1,
+      "rdfa": 1
+    },
+    "rescue.org": {
+      "bodies": 1,
+      "not_flagged_as_error": 1,
+      "json-ld": 1,
+      "opengraph": 1,
+      "rdfa": 1,
+      "dublincore": 1
+    },
+    "nsf.gov": {
+      "bodies": 1,
+      "not_flagged_as_error": 0,
+      "rdfa": 1
+    },
+    "chrissmith.house.gov": {
+      "bodies": 1,
+      "not_flagged_as_error": 1,
+      "opengraph": 1,
+      "rdfa": 1
+    },
+    "bringkidsback.org.ua": {
+      "bodies": 1,
+      "not_flagged_as_error": 1,
+      "opengraph": 1,
+      "microformat": 1,
+      "rdfa": 1,
+      "dublincore": 1
+    },
+    "c-span.org": {
+      "bodies": 1,
+      "not_flagged_as_error": 1
+    },
+    "maplight.org": {
+      "bodies": 1,
+      "not_flagged_as_error": 0,
+      "opengraph": 1,
+      "rdfa": 1
+    },
+    "crsreports.congress.gov": {
+      "bodies": 1,
+      "not_flagged_as_error": 1,
+      "opengraph": 1,
+      "rdfa": 1,
+      "dublincore": 1
+    }
+  },
+  "types": {
+    "dublincore": {},
+    "opengraph": {},
+    "rdfa": {
+      "http://xmlns.com/foaf/0.1/Image": 12,
+      "http://xmlns.com/foaf/0.1/Document": 4316,
+      "http://www.w3.org/1999/02/22-rdf-syntax-ns#XMLLiteral": 4091,
+      "http://rdfs.org/sioc/ns#Item": 4316,
+      "http://schema.org/Organization": 1,
+      "http://schema.org/Text": 1,
+      "http://schema.org/Person": 1,
+      "http://schema.org/Article": 1,
+      "http://www.w3.org/2001/XMLSchema#dateTime": 1
+    },
+    "microformat": {
+      "h-card": 2042,
+      "h-entry": 2821,
+      "h-event": 51,
+      "h-px": 132,
+      "h-full": 137,
+      "h-fit": 127,
+      "h-adr": 40,
+      "h-feed": 3,
+      "h-auto": 5,
+      "h-dvh": 4,
+      "h-screen": 1,
+      "h-header": 1,
+      "h-stk": 1,
+      "h-sh": 1,
+      "h-cta": 1,
+      "h-nsub": 1,
+      "h-cl": 1,
+      "h-db": 1,
+      "h-svh": 1
+    },
+    "json-ld": {
+      "WebSite": 3079,
+      "ListItem": 2281,
+      "ReadAction": 2302,
+      "ImageObject": 3060,
+      "EntryPoint": 3063,
+      "SearchAction": 3064,
+      "BreadcrumbList": 2281,
+      "WebPage": 2331,
+      "PropertyValueSpecification": 3053,
+      "Organization": 3077,
+      "CollectionPage": 4,
+      "Person": 70,
+      "Article": 71,
+      "ViewAction": 1,
+      "CreativeWork": 1,
+      "NewsArticle": 9,
+      "Product": 1,
+      "ProfilePage": 2,
+      "InteractionCounter": 2,
+      "FollowAction": 2,
+      "GovernmentOrganization": 5,
+      "PostalAddress": 7,
+      "Book": 2,
+      "MediaObject": 2,
+      "ContactPoint": 4,
+      "Thing": 3,
+      "Event": 1,
+      "NewsMediaOrganization": 1,
+      "Offer": 1,
+      "OfferCatalog": 1,
+      "Service": 1,
+      "AdministrativeArea": 1,
+      "Place": 1
+    },
+    "microdata": {
+      "http://schema.org/SiteNavigationElement": 8,
+      "http://schema.org/BroadcastEvent": 8,
+      "https://schema.org/BreadcrumbList": 42,
+      "https://schema.org/InteractionCounter": 40,
+      "https://schema.org/ListItem": 42,
+      "https://schema.org/Thing": 42,
+      "http://schema.org/ImageObject": 43,
+      "http://schema.org/VideoObject": 40,
+      "http://schema.org/Person": 42,
+      "https://schema.org/WebPage": 3,
+      "http://schema.org/CreativeWork": 3,
+      "https://schema.org/SearchAction": 3,
+      "https://schema.org/WPHeader": 3,
+      "https://schema.org/WPFooter": 3,
+      "https://schema.org/SiteNavigationElement": 3,
+      "http://data-vocabulary.org/Breadcrumb": 1,
+      "http://schema.org/WebPage": 2,
+      "http://schema.org/ListItem": 2,
+      "http://schema.org/Organization": 2,
+      "http://schema.org/BreadcrumbList": 2,
+      "http://schema.org/PostalAddress": 2
+    }
+  },
+  "features_not_flagged_as_error": {
+    "og:description": 55241,
+    "og:image": 55856,
+    "declared_page_url": 25868,
+    "twitter_cards": 56733,
+    "microformat_people": 2042,
+    "jsonld_datePublished": 2323,
+    "jsonld_dateModified": 2236,
+    "organization_social_links": 2017,
+    "article:modified_time": 5603,
+    "article:published_time": 4981,
+    "meta_keywords": 60,
+    "microformat_event": 51,
+    "microdata_video": 39,
+    "microdata_event": 7,
+    "og:video:url": 39,
+    "og:video:secure_url": 39,
+    "structured_article": 78,
+    "jsonld_author": 82,
+    "structured_person": 67,
+    "rdfa_article_body": 4180,
+    "repeated_opengraph": 140,
+    "article:tag": 407,
+    "jsonld_keywords": 8,
+    "article:author": 17,
+    "meta_citation_title": 5,
+    "meta_citation_date": 1,
+    "meta_citation_pdf_url": 1,
+    "meta_citation_author": 2,
+    "meta_citation_publication_date": 4,
+    "structured_event": 1,
+    "jsonld_organizer": 1,
+    "jsonld_location": 1
+  },
+  "errors": [
+    {
+      "body_key": "bodies/sha256/22/22c57e71fed6537095d5d446356116eb6d7bf38b0f2f1ba448e30823e0035e00.gz",
+      "url": "https://www.govinfo.gov/content/pkg/CHRG-116hhrg38089/html/CHRG-116hhrg38089.htm",
+      "syntax": "microformat",
+      "error": "RecursionError: maximum recursion depth exceeded"
+    },
+    {
+      "body_key": "bodies/sha256/35/35b59b0d12f7700488fc457f7839b5401218d4ea0515ce5ec820eec3b986f60a.gz",
+      "url": "https://www.govinfo.gov/content/pkg/CHRG-112hhrg68336.zip",
+      "syntax": "microformat",
+      "error": "RecursionError: maximum recursion depth exceeded"
+    },
+    {
+      "body_key": "bodies/sha256/61/61b3ee1ecd76d3bae125f2233920dd31becc87ede6cf1d28bce309fb33364b1d.gz",
+      "url": "https://www.govinfo.gov/content/pkg/CHRG-112shrg74537/html/CHRG-112shrg74537.htm",
+      "syntax": "microformat",
+      "error": "RecursionError: maximum recursion depth exceeded"
+    },
+    {
+      "body_key": "bodies/sha256/84/84e2d7f34ef5931a951a898df1f6b143e0a569272519139705982ce8185dd2f9.gz",
+      "url": "https://www.govinfo.gov/content/pkg/CHRG-117hhrg49906/html/CHRG-117hhrg49906.htm",
+      "syntax": "microformat",
+      "error": "RecursionError: maximum recursion depth exceeded"
+    },
+    {
+      "body_key": "bodies/sha256/88/889998291883961dfcf9c104c96f4a56b5170d818bc40b8090153970f38fc3d3.gz",
+      "url": "https://www.govinfo.gov/content/pkg/CHRG-112hhrg68336/html/CHRG-112hhrg68336.htm",
+      "syntax": "microformat",
+      "error": "RecursionError: maximum recursion depth exceeded"
+    },
+    {
+      "body_key": "bodies/sha256/9b/9b88f03ea1e0980318291bb14cbe47bea404b0bdbb50190dd606463ae91420ae.gz",
+      "url": "https://www.govinfo.gov/content/pkg/CHRG-115hhrg24725/html/CHRG-115hhrg24725-pt1.htm",
+      "syntax": "microformat",
+      "error": "RecursionError: maximum recursion depth exceeded"
+    },
+    {
+      "body_key": "bodies/sha256/ab/abd8b70133bcf310a8229c3f8d917ffa500269fca69b1f5c71186d679e567824.gz",
+      "url": "https://www.govinfo.gov/content/pkg/CHRG-112hhrg74371/html/CHRG-112hhrg74371.htm",
+      "syntax": "microformat",
+      "error": "RecursionError: maximum recursion depth exceeded"
+    },
+    {
+      "body_key": "bodies/sha256/ba/ba0e1102e30c4e607a3c94d3a80ef9d0797f5ec35c4b7f5a46dfdf6fe1644040.gz",
+      "url": "https://www.govinfo.gov/content/pkg/CHRG-112shrg72302/html/CHRG-112shrg72302.htm",
+      "syntax": "rdfa",
+      "error": "TimeoutError: initial all-syntax extraction exceeded 30 seconds; other syntaxes recovered separately"
+    },
+    {
+      "body_key": "bodies/sha256/e8/e8fd4cda892dc09d2460a18164cf9eaa2eae51693b296ff3922a87eb180b88ed.gz",
+      "url": "https://www.govinfo.gov/content/pkg/CHRG-107shrg81723/html/CHRG-107shrg81723.htm",
+      "syntax": "microformat",
+      "error": "RecursionError: maximum recursion depth exceeded"
+    }
+  ],
+  "listing_comparison": {
+    "counts": {
+      "senate_bodies": 49,
+      "baseline_listing_rows": 1194,
+      "event_occurrences": 1225,
+      "visible_row_day_found": 1225,
+      "metadata_day_matches_visible": 1223,
+      "matched_baseline_url": 1191,
+      "matching_day": 253,
+      "baseline_details": 883,
+      "baseline_room": 883,
+      "baseline_time": 0,
+      "baseline_day_conflicts_with_visible_metadata_day": 936,
+      "pm_encoded_as_morning": 177,
+      "distinct_declared_event_urls": 1022
+    },
+    "day_disagreement_examples": [
+      {
+        "sha256": "01d7cbfd2adc71286e7de804014766ab08e5e2b81867499519d6b500ddd8c7e6",
+        "page_url": "https://www.appropriations.senate.gov/hearings",
+        "event_url": "https://www.appropriations.senate.gov/hearings/a-review-of-the-fiscal-year-2027-budget-requests-for-the-senate-sergeant-at-arms-and-united-states-capitol-police",
+        "baseline_day": "2026-04-28",
+        "microformat_start": "2026-04-22T03:00",
+        "visible_day": "2026-04-22"
+      },
+      {
+        "sha256": "01d7cbfd2adc71286e7de804014766ab08e5e2b81867499519d6b500ddd8c7e6",
+        "page_url": "https://www.appropriations.senate.gov/hearings",
+        "event_url": "https://www.appropriations.senate.gov/hearings/a-review-of-the-presidents-fiscal-year-2027-budget-request-for-the-department-of-health-and-human-services",
+        "baseline_day": "2026-04-22",
+        "microformat_start": "2026-04-21T02:30",
+        "visible_day": "2026-04-21"
+      },
+      {
+        "sha256": "01d7cbfd2adc71286e7de804014766ab08e5e2b81867499519d6b500ddd8c7e6",
+        "page_url": "https://www.appropriations.senate.gov/hearings",
+        "event_url": "https://www.appropriations.senate.gov/hearings/a-review-of-the-fiscal-year-2027-budget-requests-for-the-congressional-budget-office-government-publishing-office-and-the-government-accountability-office",
+        "baseline_day": "2026-04-21",
+        "microformat_start": "2026-04-15T03:00",
+        "visible_day": "2026-04-15"
+      }
+    ],
+    "pm_examples": [
+      {
+        "sha256": "01d7cbfd2adc71286e7de804014766ab08e5e2b81867499519d6b500ddd8c7e6",
+        "page_url": "https://www.appropriations.senate.gov/hearings",
+        "datetime": "2026-04-22T03:00",
+        "visible_text": "04/22/26 03:00PM"
+      },
+      {
+        "sha256": "01d7cbfd2adc71286e7de804014766ab08e5e2b81867499519d6b500ddd8c7e6",
+        "page_url": "https://www.appropriations.senate.gov/hearings",
+        "datetime": "2026-04-22T02:30",
+        "visible_text": "04/22/26 02:30PM"
+      },
+      {
+        "sha256": "01d7cbfd2adc71286e7de804014766ab08e5e2b81867499519d6b500ddd8c7e6",
+        "page_url": "https://www.appropriations.senate.gov/hearings",
+        "datetime": "2026-04-22T02:30",
+        "visible_text": "04/22/26 02:30PM"
+      },
+      {
+        "sha256": "01d7cbfd2adc71286e7de804014766ab08e5e2b81867499519d6b500ddd8c7e6",
+        "page_url": "https://www.appropriations.senate.gov/hearings",
+        "datetime": "2026-04-21T02:30",
+        "visible_text": "04/21/26 02:30PM"
+      },
+      {
+        "sha256": "01d7cbfd2adc71286e7de804014766ab08e5e2b81867499519d6b500ddd8c7e6",
+        "page_url": "https://www.appropriations.senate.gov/hearings",
+        "datetime": "2026-04-15T03:00",
+        "visible_text": "04/15/26 03:00PM"
+      }
+    ],
+    "note": "Occurrences across body versions; www prefixes normalized only for comparison. Missing capture URLs use the declared OG URL as unverified context. House pages excluded from Senate-parser comparison."
+  },
+  "examples": {
+    "jsonld_dateModified": [
+      {
+        "sha256": "001ef8749e97374c6811590d5e0c854ea0f0e8b70069e204c39a2bc85205e466",
+        "body_key": "bodies/sha256/00/001ef8749e97374c6811590d5e0c854ea0f0e8b70069e204c39a2bc85205e466.gz",
+        "url": "https://www.indian.senate.gov/hearings/oversight-hearing-high-risk-indian-programs-progress-and-efforts-addressing-gaos/",
+        "domain": "indian.senate.gov",
+        "values": [
+          "2025-04-01T15:01:50+00:00"
+        ]
+      },
+      {
+        "sha256": "002ae45641d912cbe9d57b54476814c8942df1e84a122797769b0a6c63603086",
+        "body_key": "bodies/sha256/00/002ae45641d912cbe9d57b54476814c8942df1e84a122797769b0a6c63603086.gz",
+        "url": "https://www.hsgac.senate.gov/subcommittees/dmdcc/hearings/examining-fraud-in-state-and-federal-programs/",
+        "domain": "hsgac.senate.gov",
+        "values": [
+          "2026-02-10T21:19:52+00:00"
+        ]
+      },
+      {
+        "sha256": "0070cdc17514d7351634a192293d19e94db49abbd640020d02364d48fa7aa541",
+        "body_key": "bodies/sha256/00/0070cdc17514d7351634a192293d19e94db49abbd640020d02364d48fa7aa541.gz",
+        "url": "https://www.drugcaucus.senate.gov/media-center/files/rannazzisi-testimony-for-prescription-drug-abuse/",
+        "domain": "drugcaucus.senate.gov",
+        "values": [
+          "2022-11-01T16:20:20+00:00"
+        ]
+      },
+      {
+        "sha256": "0070e07508c9206588c5df406cd42fe402df5e8e24bbe799d64c733d56954719",
+        "body_key": "bodies/sha256/00/0070e07508c9206588c5df406cd42fe402df5e8e24bbe799d64c733d56954719.gz",
+        "url": "https://www.commerce.senate.gov/meetings/field-hearing-take-it-down-ending-big-techs-complicity-in-revenge-porn/",
+        "domain": "commerce.senate.gov",
+        "values": [
+          "2026-03-30T08:22:46+00:00"
+        ]
+      },
+      {
+        "sha256": "02b13ac40868214b43cb5c129750a3131f161975de5ca2cf49c382199397efc3",
+        "body_key": "bodies/sha256/02/02b13ac40868214b43cb5c129750a3131f161975de5ca2cf49c382199397efc3.gz",
+        "url": "https://waysandmeans.house.gov/2012/09/14/johnson-opening-statement-hearing-on-securing-the-future-of-the-social-security-disability-insurance-program-4/",
+        "domain": "waysandmeans.house.gov",
+        "values": [
+          "2024-05-02T19:07:34+00:00",
+          "2024-05-02T19:07:34+00:00"
+        ]
+      },
+      {
+        "sha256": "0334e627db786a2b90ed064ba0d5dc19e286e49bcdb85b7b19ed5c5f0389ffa2",
+        "body_key": "bodies/sha256/03/0334e627db786a2b90ed064ba0d5dc19e286e49bcdb85b7b19ed5c5f0389ffa2.gz",
+        "url": "https://cpj.org/2010/04/russian-bill-gives-fsb-authority-to-arrest-critica.php",
+        "domain": "cpj.org",
+        "values": [
+          "2019-03-20T13:11:35+00:00",
+          "2019-03-20T13:11:35+00:00"
+        ]
+      },
+      {
+        "sha256": "049f81fa1e0bf3a883385659fb3b828972e423162b083839dc97824a9cc865a1",
+        "body_key": "bodies/sha256/04/049f81fa1e0bf3a883385659fb3b828972e423162b083839dc97824a9cc865a1.gz",
+        "url": "http://sites.duke.edu/tcths/files/2013/06/Kurzman_Schanzer_Law_Enforcement_Assessment_of_the_Violent_Extremist_Threat_final.pdf",
+        "domain": "sites.duke.edu",
+        "values": [
+          "2021-11-16T19:04:58+00:00"
+        ]
+      },
+      {
+        "sha256": "11524c8c8aff68491352216ec4868f5fdd05560a67e86546d7a031d49d47ceb2",
+        "body_key": "bodies/sha256/11/11524c8c8aff68491352216ec4868f5fdd05560a67e86546d7a031d49d47ceb2.gz",
+        "url": "https://www.theguardian.com/global-development/2022/jan/28/we-just-sleep-and-hope-we-dont-perish-2m-in-tigray-in-urgent-need-of-food-un",
+        "domain": "theguardian.com",
+        "values": [
+          "2022-10-19T15:36:42.000Z"
+        ]
+      }
+    ],
+    "organization_social_links": [
+      {
+        "sha256": "001ef8749e97374c6811590d5e0c854ea0f0e8b70069e204c39a2bc85205e466",
+        "body_key": "bodies/sha256/00/001ef8749e97374c6811590d5e0c854ea0f0e8b70069e204c39a2bc85205e466.gz",
+        "url": "https://www.indian.senate.gov/hearings/oversight-hearing-high-risk-indian-programs-progress-and-efforts-addressing-gaos/",
+        "domain": "indian.senate.gov",
+        "values": [
+          [
+            "https://www.facebook.com/IndianCommittee/",
+            "https://x.com/IndianCommittee",
+            "http://www.youtube.com/user/SenateIndianAffairs",
+            "https://www.flickr.com/photos/131671645@N03/albums"
+          ]
+        ]
+      },
+      {
+        "sha256": "002ae45641d912cbe9d57b54476814c8942df1e84a122797769b0a6c63603086",
+        "body_key": "bodies/sha256/00/002ae45641d912cbe9d57b54476814c8942df1e84a122797769b0a6c63603086.gz",
+        "url": "https://www.hsgac.senate.gov/subcommittees/dmdcc/hearings/examining-fraud-in-state-and-federal-programs/",
+        "domain": "hsgac.senate.gov",
+        "values": [
+          [
+            "https://www.facebook.com/HSGAC/",
+            "https://x.com/HSGAC"
+          ]
+        ]
+      },
+      {
+        "sha256": "0070e07508c9206588c5df406cd42fe402df5e8e24bbe799d64c733d56954719",
+        "body_key": "bodies/sha256/00/0070e07508c9206588c5df406cd42fe402df5e8e24bbe799d64c733d56954719.gz",
+        "url": "https://www.commerce.senate.gov/meetings/field-hearing-take-it-down-ending-big-techs-complicity-in-revenge-porn/",
+        "domain": "commerce.senate.gov",
+        "values": [
+          [
+            "https://www.facebook.com/SenateCommerce",
+            "https://x.com/SenateCommerce"
+          ]
+        ]
+      },
+      {
+        "sha256": "0334e627db786a2b90ed064ba0d5dc19e286e49bcdb85b7b19ed5c5f0389ffa2",
+        "body_key": "bodies/sha256/03/0334e627db786a2b90ed064ba0d5dc19e286e49bcdb85b7b19ed5c5f0389ffa2.gz",
+        "url": "https://cpj.org/2010/04/russian-bill-gives-fsb-authority-to-arrest-critica.php",
+        "domain": "cpj.org",
+        "values": [
+          [
+            "https://www.facebook.com/committeetoprotectjournalists/",
+            "https://x.com/pressfreedom",
+            "https://www.instagram.com/committeetoprotectjournalists/?hl=en",
+            "https://www.linkedin.com/company/cpj/",
+            "https://www.youtube.com/channel/UCJ6Fa7MQH9-3yBFwYUZRJMQ",
+            "https://en.wikipedia.org/wiki/Committee_to_Protect_Journalists"
+          ]
+        ]
+      },
+      {
+        "sha256": "11524c8c8aff68491352216ec4868f5fdd05560a67e86546d7a031d49d47ceb2",
+        "body_key": "bodies/sha256/11/11524c8c8aff68491352216ec4868f5fdd05560a67e86546d7a031d49d47ceb2.gz",
+        "url": "https://www.theguardian.com/global-development/2022/jan/28/we-just-sleep-and-hope-we-dont-perish-2m-in-tigray-in-urgent-need-of-food-un",
+        "domain": "theguardian.com",
+        "values": [
+          [
+            "https://www.facebook.com/theguardian",
+            "https://twitter.com/guardian",
+            "https://www.youtube.com/user/TheGuardian"
+          ]
+        ]
+      },
+      {
+        "sha256": "746347f16945f6a4c3a6cf1c006a3ba262bb7a82d776c089249b00aa99a5a2b8",
+        "body_key": "bodies/sha256/74/746347f16945f6a4c3a6cf1c006a3ba262bb7a82d776c089249b00aa99a5a2b8.gz",
+        "url": "https://www.usip.org/publications/2021/04/two-years-after-easter-attacks-sri-lankas-muslims-face-backlash",
+        "domain": "usip.org",
+        "values": [
+          [
+            "https://x.com/https://x.com/usiporg"
+          ]
+        ]
+      },
+      {
+        "sha256": "77ce27e179c123b7461df1e56575aeda2b4d4d03393c783a94088e9dcc57284c",
+        "body_key": "bodies/sha256/77/77ce27e179c123b7461df1e56575aeda2b4d4d03393c783a94088e9dcc57284c.gz",
+        "url": "https://www.pewresearch.org/religion/2021/09/30/globally-social-hostilities-related-to-religion-decline-in-2019-while-government-restrictions-remain-at-highest-levels/",
+        "domain": "pewresearch.org",
+        "values": [
+          [
+            "https://x.com/pewresearch",
+            "https://www.facebook.com/pewresearch",
+            "https://www.threads.com/@pewresearch",
+            "https://www.instagram.com/pewresearch",
+            "https://www.youtube.com/user/PewResearchCenter",
+            "https://www.linkedin.com/company/pew-research-center"
+          ]
+        ]
+      },
+      {
+        "sha256": "7cfd5144a780774bbea1e479a995f68cfe87405a6de37d9c4bd39d6dde068487",
+        "body_key": "bodies/sha256/7c/7cfd5144a780774bbea1e479a995f68cfe87405a6de37d9c4bd39d6dde068487.gz",
+        "url": "http://www.childtrends.org/publications/prevalence-adverse-childhood-experiences-nationally-state-race-ethnicity",
+        "domain": "childtrends.org",
+        "values": [
+          [
+            "http://www.linkedin.com/company/child-trends",
+            "https://www.instagram.com/childtrends_research/",
+            "http://www.youtube.com/childtrends",
+            "https://bsky.app/profile/did:plc:gipncb3yr6gymjirvdcquii7"
+          ]
+        ]
+      }
+    ],
+    "microformat_event": [
+      {
+        "sha256": "01d7cbfd2adc71286e7de804014766ab08e5e2b81867499519d6b500ddd8c7e6",
+        "body_key": "bodies/sha256/01/01d7cbfd2adc71286e7de804014766ab08e5e2b81867499519d6b500ddd8c7e6.gz",
+        "url": "https://www.appropriations.senate.gov/hearings",
+        "domain": "appropriations.senate.gov",
+        "values": [
+          {
+            "type": [
+              "h-event"
+            ],
+            "properties": {
+              "name": [
+                "Subcommittee Hearing: A Review of the President’s Fiscal Year 2027 Budget Request for the Department of Education"
+              ],
+              "url": [
+                "/hearings/a-review-of-the-presidents-fiscal-year-2027-budget-request-for-the-department-of-education"
+              ],
+              "location": [
+                "Dirksen Senate Office Building 124"
+              ],
+              "start": [
+                "2026-04-28T10:00"
+              ]
+            },
+            "lang": "en"
+          },
+          {
+            "type": [
+              "h-event"
+            ],
+            "properties": {
+              "name": [
+                "Subcommittee Hearing: A Review of the Fiscal Year 2027 Budget Requests for the Senate Sergeant at Arms and United States Capitol Police"
+              ],
+              "url": [
+                "/hearings/a-review-of-the-fiscal-year-2027-budget-requests-for-the-senate-sergeant-at-arms-and-united-states-capitol-police"
+              ],
+              "location": [
+                "Dirksen Senate Office Building 138"
+              ],
+              "start": [
+                "2026-04-22T03:00"
+              ]
+            },
+            "lang": "en"
+          },
+          {
+            "type": [
+              "h-event"
+            ],
+            "properties": {
+              "name": [
+                "Subcommittee Hearing: A Review of the President’s Fiscal Year 2027 Budget Request for the Department of Energy"
+              ],
+              "url": [
+                "/hearings/a-review-of-the-presidents-fiscal-year-2027-budget-request-for-the-department-of-energy"
+              ],
+              "location": [
+                "Dirksen Senate Office Building 124"
+              ],
+              "start": [
+                "2026-04-22T02:30"
+              ]
+            },
+            "lang": "en"
+          },
+          {
+            "type": [
+              "h-event"
+            ],
+            "properties": {
+              "name": [
+                "Subcommittee Hearing: A Review of the President’s Fiscal Year 2027 Budget Request for the Department of Agriculture"
+              ],
+              "url": [
+                "/hearings/a-review-of-the-presidents-fiscal-year-2027-budget-request-for-the-department-of-agriculture"
+              ],
+              "location": [
+                "Dirksen Senate Office Building 106"
+              ],
+              "start": [
+                "2026-04-22T02:30"
+              ]
+            },
+            "lang": "en"
+          },
+          {
+            "type": [
+              "h-event"
+            ],
+            "properties": {
+              "name": [
+                "Subcommittee Hearing: A Review of the President’s Fiscal Year 2027 Budget Request for the Department of Commerce"
+              ],
+              "url": [
+                "/hearings/a-review-of-the-presidents-fiscal-year-2027-budget-request-for-the-department-of-commerce"
+              ],
+              "location": [
+                "Dirksen Senate Office Building 192"
+              ],
+              "start": [
+                "2026-04-22T10:00"
+              ]
+            },
+            "lang": "en"
+          },
+          {
+            "type": [
+              "h-event"
+            ],
+            "properties": {
+              "name": [
+                "Subcommittee Hearing: A Review of the President’s Fiscal Year 2027 Budget Request for the Department of the Interior"
+              ],
+              "url": [
+                "/hearings/a-review-of-the-presidents-fiscal-year-2027-budget-request-for-the-department-of-the-interior"
+              ],
+              "location": [
+                "Dirksen Senate Office Building 124"
+              ],
+              "start": [
+                "2026-04-22T10:00"
+              ]
+            },
+            "lang": "en"
+          },
+          {
+            "type": [
+              "h-event"
+            ],
+            "properties": {
+              "name": [
+                "Subcommittee Hearing: A Review of the President’s Fiscal Year 2027 Budget Request for the Department of the Treasury"
+              ],
+              "url": [
+                "/hearings/a-review-of-the-presidents-fiscal-year-2027-budget-request-for-the-department-of-the-treasury"
+              ],
+              "location": [
+                "Dirksen Senate Office Building 138"
+              ],
+              "start": [
+                "2026-04-22T10:00"
+              ]
+            },
+            "lang": "en"
+          },
+          {
+            "type": [
+              "h-event"
+            ],
+            "properties": {
+              "name": [
+                "Subcommittee Hearing: A Review of the President’s Fiscal Year 2027 Budget Request for the Department of Health and Human Services"
+              ],
+              "url": [
+                "/hearings/a-review-of-the-presidents-fiscal-year-2027-budget-request-for-the-department-of-health-and-human-services"
+              ],
+              "location": [
+                "Dirksen Senate Office Building 124"
+              ],
+              "start": [
+                "2026-04-21T02:30"
+              ]
+            },
+            "lang": "en"
+          },
+          {
+            "type": [
+              "h-event"
+            ],
+            "properties": {
+              "name": [
+                "Subcommittee Hearing: A Review of the President’s Fiscal Year 2027 Budget Request for the National Guard and Reserves Forces"
+              ],
+              "url": [
+                "/hearings/a-review-of-the-presidents-fiscal-year-2027-budget-request-for-the-national-guard-and-reserves-forces"
+              ],
+              "location": [
+                "Dirksen Senate Office Building 192"
+              ],
+              "start": [
+                "2026-04-21T10:30"
+              ]
+            },
+            "lang": "en"
+          },
+          {
+            "type": [
+              "h-event"
+            ],
+            "properties": {
+              "name": [
+                "Subcommittee Hearing: A Review of the Fiscal Year 2027 Budget Requests for the Congressional Budget Office, Government Publishing Office, and the Government Accountability Office"
+              ],
+              "url": [
+                "/hearings/a-review-of-the-fiscal-year-2027-budget-requests-for-the-congressional-budget-office-government-publishing-office-and-the-government-accountability-office"
+              ],
+              "location": [
+                "Dirksen Senate Office Building 138"
+              ],
+              "start": [
+                "2026-04-15T03:00"
+              ]
+            },
+            "lang": "en"
+          },
+          {
+            "type": [
+              "h-event"
+            ],
+            "properties": {
+              "name": [
+                "Subcommittee Hearing: A Review of Preparations for the FIFA World Cup 2026"
+              ],
+              "url": [
+                "/a-review-of-preparations-for-the-fifa-world-cup-2026"
+              ],
+              "location": [
+                "Dirksen Senate Office Building 138"
+              ],
+              "start": [
+                "2026-04-15T11:00"
+              ]
+            },
+            "lang": "en"
+          },
+          {
+            "type": [
+              "h-event"
+            ],
+            "properties": {
+              "name": [
+                "Subcommittee Hearing: Haiti 2026: Security and Foreign Assistance Priorities"
+              ],
+              "url": [
+                "/hearings/haiti-2026-security-and-foreign-assistance-priorities"
+              ],
+              "location": [
+                "Dirksen Senate Office Building 138"
+              ],
+              "start": [
+                "2026-02-10T02:30"
+              ]
+            },
+            "lang": "en"
+          },
+          {
+            "type": [
+              "h-event"
+            ],
+            "properties": {
+              "name": [
+                "Subcommittee Hearing: A Review of Broadband Deployment Funding at the Department of Commerce"
+              ],
+              "url": [
+                "/hearings/a-review-of-broadband-deployment-funding-at-the-department-of-commerce"
+              ],
+              "location": [
+                "Dirksen Senate Office Building 138"
+              ],
+              "start": [
+                "2026-02-10T09:30"
+              ]
+            },
+            "lang": "en"
+          },
+          {
+            "type": [
+              "h-event"
+            ],
+            "properties": {
+              "name": [
+                "Subcommittee Hearing: A Review of the Activities and Fiscal Year 2026 Funding Priorities of the Office of the United States Trade Representative"
+              ],
+              "url": [
+                "/hearings/a-review-of-the-activities-and-fiscal-year-2026-funding-priorities-of-the-office-of-the-united-states-trade-representative"
+              ],
+              "location": [
+                "Dirksen Senate Office Building 138"
+              ],
+              "start": [
+                "2025-12-09T04:30"
+              ]
+            },
+            "lang": "en"
+          },
+          {
+            "type": [
+              "h-event"
+            ],
+            "properties": {
+              "name": [
+                "Subcommittee Hearing: The Abduction of Ukrainian Children by the Russian Federation"
+              ],
+              "url": [
+                "/hearings/the-abduction-of-ukrainian-children-by-the-russian-federation"
+              ],
+              "location": [
+                "Dirksen Senate Office Building 138"
+              ],
+              "start": [
+                "2025-12-03T02:00"
+              ]
+            },
+            "lang": "en"
+          },
+          {
+            "type": [
+              "h-event"
+            ],
+            "properties": {
+              "name": [
+                "RESCHEDULED: Business Meeting: Full Committee Markup of the Homeland Security Appropriations Act"
+              ],
+              "url": [
+                "/hearings/full-committee-markup-of-the-homeland-security-appropriations-act"
+              ],
+              "start": [
+                "2025-09-11T09:30"
+              ]
+            },
+            "lang": "en"
+          },
+          {
+            "type": [
+              "h-event"
+            ],
+            "properties": {
+              "name": [
+                "Business Meeting: Full Committee Markup of Defense and Labor, Health and Human Services, and Education Appropriations Acts"
+              ],
+              "url": [
+                "/hearings/full-committee-markup-of-defense-and-labor-health-and-human-services-and-education-appropriations-acts"
+              ],
+              "location": [
+                "Dirksen Senate Office Building 106"
+              ],
+              "start": [
+                "2025-07-31T09:30"
+              ]
+            },
+            "lang": "en"
+          },
+          {
+            "type": [
+              "h-event"
+            ],
+            "properties": {
+              "name": [
+                "Business Meeting: Full Committee Markup of Interior, Environment and Transportation, Housing and Urban Development Appropriations Acts"
+              ],
+              "url": [
+                "/hearings/full-committee-markup-of-interior-environment-and-transportation-housing-and-urban-development-appropriations-acts"
+              ],
+              "location": [
+                "Dirksen Senate Office Building 106"
+              ],
+              "start": [
+                "2025-07-24T09:30"
+              ]
+            },
+            "lang": "en"
+          },
+          {
+            "type": [
+              "h-event"
+            ],
+            "properties": {
+              "name": [
+                "Business Meeting: Full Committee Markup of Military Construction, Veterans Affairs and Commerce, Justice, Science Appropriations Acts"
+              ],
+              "url": [
+                "/hearings/full-committee-markup-of-military-construction-veterans-affairs-and-commerce-justice-science-appropriations-acts"
+              ],
+              "location": [
+                "Dirksen Senate Office Building 106"
+              ],
+              "start": [
+                "2025-07-17T11:00"
+              ]
+            },
+            "lang": "en"
+          },
+          {
+            "type": [
+              "h-event"
+            ],
+            "properties": {
+              "name": [
+                "Business Meeting: Full Committee Markup of Commerce, Justice, Science; Agriculture, Rural Development, FDA; and Legislative Branch Appropriations Acts"
+              ],
+              "url": [
+                "/hearings/full-committee-markup-of-commerce-justice-science-agriculture-rural-development-fda-and-legislative-branch-appropriations-acts"
+              ],
+              "location": [
+                "Dirksen Senate Office Building 106"
+              ],
+              "start": [
+                "2025-07-10T09:30"
+              ]
+            },
+            "lang": "en"
+          },
+          {
+            "type": [
+              "h-event"
+            ],
+            "properties": {
+              "name": [
+                "Business Meeting: Subcommittee Markup of the Commerce, Justice, Science, and Related Agencies Appropriations Act"
+              ],
+              "url": [
+                "/hearings/subcommittee-markup-of-the-commerce-justice-science-and-related-agencies-appropriations-act"
+              ],
+              "location": [
+                "Capitol S-127"
+              ],
+              "start": [
+                "2025-07-09T06:00"
+              ]
+            },
+            "lang": "en"
+          },
+          {
+            "type": [
+              "h-event"
+            ],
+            "properties": {
+              "name": [
+                "Full Committee Hearing: A Future Without Type 1 Diabetes: Accelerating Breakthroughs and Creating Hope"
+              ],
+              "url": [
+                "/hearings/a-future-without-type-1-diabetes-accelerating-breakthroughs-and-creating-hope"
+              ],
+              "location": [
+                "Dirksen Senate Office Building 106"
+              ],
+              "start": [
+                "2025-07-09T10:00"
+              ]
+            },
+            "lang": "en"
+          },
+          {
+            "type": [
+              "h-event"
+            ],
+            "properties": {
+              "name": [
+                "Subcommittee Hearing: A Review of the President’s Fiscal Year 2026 Budget Request for the Air Force and Space Force"
+              ],
+              "url": [
+                "/hearings/a-review-of-the-presidents-fiscal-year-2026-budget-request-for-the-air-force-and-space-force"
+              ],
+              "location": [
+                "Dirksen Senate Office Building 192"
+              ],
+              "start": [
+                "2025-06-26T10:30"
+              ]
+            },
+            "lang": "en"
+          },
+          {
+            "type": [
+              "h-event"
+            ],
+            "properties": {
+              "name": [
+                "Full Committee Hearing: A Review of the President’s Special Message of June 3, 2025"
+              ],
+              "url": [
+                "/hearings/a-review-of-the-presidents-special-message-of-june-3-2025"
+              ],
+              "location": [
+                "Dirksen Senate Office Building 106"
+              ],
+              "start": [
+                "2025-06-25T02:30"
+              ]
+            },
+            "lang": "en"
+          },
+          {
+            "type": [
+              "h-event"
+            ],
+            "properties": {
+              "name": [
+                "Subcommittee Hearing: A Review of the President’s Fiscal Year 2026 Budget Request for the Department of Justice"
+              ],
+              "url": [
+                "/hearings/a-review-of-the-presidents-fiscal-year-2026-budget-request-for-the-department-of-justice"
+              ],
+              "location": [
+                "Dirksen Senate Office Building 138"
+              ],
+              "start": [
+                "2025-06-25T10:00"
+              ]
+            },
+            "lang": "en"
+          }
+        ]
+      },
+      {
+        "sha256": "094cc221e34610ed9d8b4f13728a8ea5fae2d2b748529557a9acd23f06d4004b",
+        "body_key": "bodies/sha256/09/094cc221e34610ed9d8b4f13728a8ea5fae2d2b748529557a9acd23f06d4004b.gz",
+        "url": "https://www.budget.senate.gov/hearings",
+        "domain": "budget.senate.gov",
+        "values": [
+          {
+            "type": [
+              "h-event"
+            ],
+            "properties": {
+              "name": [
+                "Who Pays the Price: The Real Cost of Fossil Fuels"
+              ],
+              "url": [
+                "/hearings/who-pays-the-price-the-real-cost-of-fossil-fuels"
+              ],
+              "location": [
+                "SD-608"
+              ],
+              "start": [
+                "2023-05-03T10:00"
+              ]
+            },
+            "lang": "en"
+          },
+          {
+            "type": [
+              "h-event"
+            ],
+            "properties": {
+              "name": [
+                "Under the Weather: Diagnosing the Health Costs of Climate Change"
+              ],
+              "url": [
+                "/hearings/under-the-weather-diagnosing-the-health-costs-of-climate-change"
+              ],
+              "location": [
+                "SD-608"
+              ],
+              "start": [
+                "2023-04-26T10:15"
+              ]
+            },
+            "lang": "en"
+          },
+          {
+            "type": [
+              "h-event"
+            ],
+            "properties": {
+              "name": [
+                "A Rigged System: The Cost of Tax Dodging by the Wealthy and Big Corporations"
+              ],
+              "url": [
+                "/hearings/a-rigged-system-the-cost-of-tax-dodging-by-the-wealthy-and-big-corporations"
+              ],
+              "location": [
+                "SD-608"
+              ],
+              "start": [
+                "2023-04-18T10:00"
+              ]
+            },
+            "lang": "en"
+          },
+          {
+            "type": [
+              "h-event"
+            ],
+            "properties": {
+              "name": [
+                "Left Holding the Bag: The Cost of Oil Dependence in a Low-Carbon World"
+              ],
+              "url": [
+                "/hearings/left-holding-the-bag-the-cost-of-oil-dependence-in-a-low-carbon-world"
+              ],
+              "location": [
+                "SD-608"
+              ],
+              "start": [
+                "2023-03-29T10:00"
+              ]
+            },
+            "lang": "en"
+          },
+          {
+            "type": [
+              "h-event"
+            ],
+            "properties": {
+              "name": [
+                "Risky Business: How Climate Change is Changing Insurance Markets"
+              ],
+              "url": [
+                "/hearings/risky-business-how-climate-change-is-changing-insurance-markets"
+              ],
+              "location": [
+                "SD-608"
+              ],
+              "start": [
+                "2023-03-22T10:00"
+              ]
+            },
+            "lang": "en"
+          },
+          {
+            "type": [
+              "h-event"
+            ],
+            "properties": {
+              "name": [
+                "The President's Fiscal Year 2024 Budget Proposal"
+              ],
+              "url": [
+                "/hearings/the-presidents-fiscal-year-2024-budget-proposal"
+              ],
+              "location": [
+                "SD-608"
+              ],
+              "start": [
+                "2023-03-15T10:15"
+              ]
+            },
+            "lang": "en"
+          },
+          {
+            "type": [
+              "h-event"
+            ],
+            "properties": {
+              "name": [
+                "A Burning Issue: The Economic Costs of Wildfires"
+              ],
+              "url": [
+                "/hearings/a-burning-issue-the-economic-costs-of-wildfires"
+              ],
+              "location": [
+                "SD-608"
+              ],
+              "start": [
+                "2023-03-08T10:00"
+              ]
+            },
+            "lang": "en"
+          },
+          {
+            "type": [
+              "h-event"
+            ],
+            "properties": {
+              "name": [
+                "Rising Seas, Rising Costs: Climate Change and the Economic Risks to Coastal Communities"
+              ],
+              "url": [
+                "/hearings/rising-seas-rising-costs-climate-change-and-the-economic-risks-to-coastal-communities"
+              ],
+              "location": [
+                "SD-608"
+              ],
+              "start": [
+                "2023-03-01T10:00"
+              ]
+            },
+            "lang": "en"
+          },
+          {
+            "type": [
+              "h-event"
+            ],
+            "properties": {
+              "name": [
+                "Climate-Related Economic Risks and Their Costs to the Federal Budget and the Global Economy"
+              ],
+              "url": [
+                "/hearings/climate-related-economic-risks-and-their-costs-to-the-federal-budget-and-the-global-economy"
+              ],
+              "location": [
+                "SD-106"
+              ],
+              "start": [
+                "2023-02-15T10:00"
+              ]
+            },
+            "lang": "en"
+          },
+          {
+            "type": [
+              "h-event"
+            ],
+            "properties": {
+              "name": [
+                "Saving Social Security: Expanding Benefits and Demanding the Wealthy Pay Their Fair Share or Cutting Benefits and Increasing Retirement Anxiety"
+              ],
+              "url": [
+                "/hearings/saving-social-security-expanding-benefits-and-demanding-the-wealthy-pay-their-fair-share-or-cutting-benefits-and-increasing-retirement-anxiety"
+              ],
+              "location": [
+                "SH-216"
+              ],
+              "start": [
+                "2022-06-09T11:00"
+              ]
+            },
+            "lang": "en"
+          },
+          {
+            "type": [
+              "h-event"
+            ],
+            "properties": {
+              "name": [
+                "Medicare for All: Protecting Health, Saving Lives, Saving Money"
+              ],
+              "url": [
+                "/hearings/medicare-for-all-protecting-health-saving-lives-saving-money"
+              ],
+              "location": [
+                "SH-216"
+              ],
+              "start": [
+                "2022-05-12T11:00"
+              ]
+            },
+            "lang": "en"
+          },
+          {
+            "type": [
+              "h-event"
+            ],
+            "properties": {
+              "name": [
+                "Should Taxpayer Dollars Go to Companies that Violate Labor Laws?"
+              ],
+              "url": [
+                "/hearings/should-taxpayer-dollars-go-to-companies-that-violate-labor-laws"
+              ],
+              "location": [
+                "SD-608"
+              ],
+              "start": [
+                "2022-05-05T11:00"
+              ]
+            },
+            "lang": "en"
+          },
+          {
+            "type": [
+              "h-event"
+            ],
+            "properties": {
+              "name": [
+                "Corporate Profits are Soaring as Prices Rise: Are Corporate Greed and Profiteering Fueling Inflation?"
+              ],
+              "url": [
+                "/hearings/corporate-profits-are-soaring-as-prices-rise-are-corporate-greed-and-profiteering-fueling-inflation"
+              ],
+              "location": [
+                "Room SD-608"
+              ],
+              "start": [
+                "2022-04-05T11:00"
+              ]
+            },
+            "lang": "en"
+          },
+          {
+            "type": [
+              "h-event"
+            ],
+            "properties": {
+              "name": [
+                "The President's Fiscal Year 2023 Budget Proposal"
+              ],
+              "url": [
+                "/hearings/the-presidents-fiscal-year-2023-budget-proposal"
+              ],
+              "location": [
+                "Room SD-608"
+              ],
+              "start": [
+                "2022-03-30T11:00"
+              ]
+            },
+            "lang": "en"
+          },
+          {
+            "type": [
+              "h-event"
+            ],
+            "properties": {
+              "name": [
+                "Warrior Met and Wall Street Greed: What Corporate Raiders are Doing to Workers and Consumers"
+              ],
+              "url": [
+                "/hearings/warrior-met-and-wall-street-greed-what-corporate-raiders-are-doing-to-workers-and-consumers"
+              ],
+              "location": [
+                "Room SH-216"
+              ],
+              "start": [
+                "2022-02-17T11:00"
+              ]
+            },
+            "lang": "en"
+          },
+          {
+            "type": [
+              "h-event"
+            ],
+            "properties": {
+              "name": [
+                "Business Meeting to Consider the Hon. Shalanda Young to be Director of OMB and the Hon. Nani Coloretti to be Deputy Director of OMB"
+              ],
+              "url": [
+                "/hearings/business-meeting-to-consider-the-hon-shalanda-d-young-to-be-director-of-omb-and-the-hon-nani-a-coloretti-to-be-deputy-director-of-omb"
+              ],
+              "location": [
+                "Room S-120"
+              ],
+              "start": [
+                "2022-02-09T11:45"
+              ]
+            },
+            "lang": "en"
+          },
+          {
+            "type": [
+              "h-event"
+            ],
+            "properties": {
+              "name": [
+                "The Nomination of the Hon. Shalanda D. Young to be Director of OMB and The Nomination of the Hon. Nani A. Coloretti to be Deputy Director of OMB"
+              ],
+              "url": [
+                "/hearings/the-nomination-of-the-hon-shalanda-d-young-to-be-director-of-omb-and-the-nomination-of-the-hon-nani-a-coloretti-to-be-deputy-director-of-omb"
+              ],
+              "location": [
+                "SH-216"
+              ],
+              "start": [
+                "2022-02-01T02:30"
+              ]
+            },
+            "lang": "en"
+          },
+          {
+            "type": [
+              "h-event"
+            ],
+            "properties": {
+              "name": [
+                "The President's Fiscal Year 2022 Budget Proposal"
+              ],
+              "url": [
+                "/hearings/the-presidents-fiscal-year-2022-budget-proposal"
+              ],
+              "location": [
+                "Room SD-608"
+              ],
+              "start": [
+                "2021-06-08T11:00"
+              ]
+            },
+            "lang": "en"
+          },
+          {
+            "type": [
+              "h-event"
+            ],
+            "properties": {
+              "name": [
+                "Waste, Fraud, Cost Overruns, and Auditing at the Pentagon"
+              ],
+              "url": [
+                "/hearings/waste-fraud-cost-overruns-and-auditing-at-the-pentagon"
+              ],
+              "location": [
+                "Room SD-608"
+              ],
+              "start": [
+                "2021-05-12T11:00"
+              ]
+            },
+            "lang": "en"
+          },
+          {
+            "type": [
+              "h-event"
+            ],
+            "properties": {
+              "name": [
+                "The Cost of Inaction on Climate Change"
+              ],
+              "url": [
+                "/hearings/the-cost-of-inaction-on-climate-change"
+              ],
+              "location": [
+                "Room SH-216"
+              ],
+              "start": [
+                "2021-04-15T11:00"
+              ]
+            },
+            "lang": "en"
+          },
+          {
+            "type": [
+              "h-event"
+            ],
+            "properties": {
+              "name": [
+                "Ending a Rigged Tax Code: The Need To Make the Wealthiest People and Largest Corporations Pay their Fair Share of Taxes"
+              ],
+              "url": [
+                "/hearings/ending-a-rigged-tax-code-the-need-to-make-the-wealthiest-people-and-largest-corporations-pay-their-fair-share-of-taxes"
+              ],
+              "location": [
+                "Room SH-216"
+              ],
+              "start": [
+                "2021-03-25T11:00"
+              ]
+            },
+            "lang": "en"
+          },
+          {
+            "type": [
+              "h-event"
+            ],
+            "properties": {
+              "name": [
+                "The Income and Wealth Inequality Crisis in America"
+              ],
+              "url": [
+                "/hearings/the-income-and-wealth-inequality-crisis-in-america"
+              ],
+              "location": [
+                "SH 216"
+              ],
+              "start": [
+                "2021-03-17T11:00"
+              ]
+            },
+            "lang": "en"
+          },
+          {
+            "type": [
+              "h-event"
+            ],
+            "properties": {
+              "name": [
+                "Nomination of Ms. Shalanda D. Young to be Deputy Director of OMB"
+              ],
+              "url": [
+                "/nomination-of-ms-shalanda-d-young-to-be-deputy-director-of-omb"
+              ],
+              "location": [
+                "SD 608 SD 608"
+              ],
+              "start": [
+                "2021-03-02T11:00"
+              ]
+            },
+            "lang": "en"
+          },
+          {
+            "type": [
+              "h-event"
+            ],
+            "properties": {
+              "name": [
+                "Hearing: Should Taxpayers Subsidize Poverty Wages at Large Profitable Corporations?"
+              ],
+              "url": [
+                "/hearing-should-taxpayers-subsidize-poverty-wages-at-large-profitable-corporations"
+              ],
+              "location": [
+                "SD 608 SD 08"
+              ],
+              "start": [
+                "2021-02-25T10:15"
+              ]
+            },
+            "lang": "en"
+          },
+          {
+            "type": [
+              "h-event"
+            ],
+            "properties": {
+              "name": [
+                "OMB Nomination Hearing of Ms. Neera Tanden"
+              ],
+              "url": [
+                "/omb-nomination-hearing-of-ms-neera-tanden"
+              ],
+              "location": [
+                "SD-608 SD-608"
+              ],
+              "start": [
+                "2021-02-10T10:00"
+              ]
+            },
+            "lang": "en"
+          }
+        ]
+      },
+      {
+        "sha256": "0a83f76a413ac5eef79cbc30c088249698c0465bfd9e3a269ef841809ea81621",
+        "body_key": "bodies/sha256/0a/0a83f76a413ac5eef79cbc30c088249698c0465bfd9e3a269ef841809ea81621.gz",
+        "url": "https://www.banking.senate.gov/hearings",
+        "domain": "banking.senate.gov",
+        "values": [
+          {
+            "type": [
+              "h-event"
+            ],
+            "properties": {
+              "name": [
+                "Full Committee Hearing: Perspectives on Challenges in the Property Insurance Market and the Impact on Consumers"
+              ],
+              "url": [
+                "/hearings/perspectives-on-challenges-in-the-property-insurance-market-and-the-impact-on-consumers"
+              ],
+              "location": [
+                "Dirksen Senate Office Building 538"
+              ],
+              "start": [
+                "2023-09-07T10:00"
+              ]
+            },
+            "lang": "en"
+          },
+          {
+            "type": [
+              "h-event"
+            ],
+            "properties": {
+              "name": [
+                "Subcommittee Hearing: Taking Account of Fees and Tactics Impacting Americans' Wallets"
+              ],
+              "url": [
+                "/hearings/07/18/2023/taking-account-of-fees-and-tactics-impacting-americans-wallets"
+              ],
+              "location": [
+                "Dirksen Senate Office Building 538"
+              ],
+              "start": [
+                "2023-07-26T09:30"
+              ]
+            },
+            "lang": "en"
+          },
+          {
+            "type": [
+              "h-event"
+            ],
+            "properties": {
+              "name": [
+                "Full Committee Hearing: Perspectives on Deposit Insurance Reform after Recent Bank Failures"
+              ],
+              "url": [
+                "/hearings/perspectives-on-deposit-insurance-reform-after-recent-bank-failures"
+              ],
+              "location": [
+                "Dirksen Senate Office Building 538"
+              ],
+              "start": [
+                "2023-07-20T10:00"
+              ]
+            },
+            "lang": "en"
+          },
+          {
+            "type": [
+              "h-event"
+            ],
+            "properties": {
+              "name": [
+                "Subcommittee Hearing: Bank Mergers and the Economic Impacts of Consolidation"
+              ],
+              "url": [
+                "/hearings/bank-mergers-and-the-economic-impacts-of-consolidation"
+              ],
+              "location": [
+                "Dirksen Senate Office Building 538"
+              ],
+              "start": [
+                "2023-07-12T02:30"
+              ]
+            },
+            "lang": "en"
+          },
+          {
+            "type": [
+              "h-event"
+            ],
+            "properties": {
+              "name": [
+                "Subcommittee Hearing: Exploiting the American Dream: How Abusive Land Contracts Prey on Vulnerable Homebuyers"
+              ],
+              "url": [
+                "/hearings/exploiting-the-american-dream-how-abusive-land-contracts-prey-on-vulnerable-homebuyers"
+              ],
+              "location": [
+                "Dirksen Senate Office Building 538"
+              ],
+              "start": [
+                "2023-07-11T02:15"
+              ]
+            },
+            "lang": "en"
+          },
+          {
+            "type": [
+              "h-event"
+            ],
+            "properties": {
+              "name": [
+                "Full Committee Hearing: The Semiannual Monetary Policy Report to the Congress"
+              ],
+              "url": [
+                "/hearings/06/15/2023/the-semiannual-monetary-policy-report-to-the-congress"
+              ],
+              "location": [
+                "Dirksen Senate Office Building 538"
+              ],
+              "start": [
+                "2023-06-22T10:00"
+              ]
+            },
+            "lang": "en"
+          },
+          {
+            "type": [
+              "h-event"
+            ],
+            "properties": {
+              "name": [
+                "Nomination Hearing: Nomination Hearing"
+              ],
+              "url": [
+                "/hearings/06/14/2023/nomination-hearing"
+              ],
+              "location": [
+                "Hart Senate Office Building 216"
+              ],
+              "start": [
+                "2023-06-21T09:30"
+              ]
+            },
+            "lang": "en"
+          },
+          {
+            "type": [
+              "h-event"
+            ],
+            "properties": {
+              "name": [
+                "Subcommittee Hearing: State of Native American Housing"
+              ],
+              "url": [
+                "/hearings/state-of-native-american-housing"
+              ],
+              "location": [
+                "Dirksen Senate Office Building 538"
+              ],
+              "start": [
+                "2023-06-13T02:30"
+              ]
+            },
+            "lang": "en"
+          },
+          {
+            "type": [
+              "h-event"
+            ],
+            "properties": {
+              "name": [
+                "Full Committee Hearing: The Consumer Financial Protection Bureau’s Semi-Annual Report to Congress"
+              ],
+              "url": [
+                "/hearings/06/06/2023/the-consumer-financial-protection-bureaus-semi-annual-report-to-congress"
+              ],
+              "location": [
+                "Dirksen Senate Office Building 538"
+              ],
+              "start": [
+                "2023-06-13T10:00"
+              ]
+            },
+            "lang": "en"
+          },
+          {
+            "type": [
+              "h-event"
+            ],
+            "properties": {
+              "name": [
+                "Full Committee Hearing: Countering China: Advancing U.S. National Security, Economic Security, and Foreign Policy"
+              ],
+              "url": [
+                "/hearings/countering-china-advancing-us-national-security-economic-security-and-foreign-policy"
+              ],
+              "location": [
+                "Dirksen Senate Office Building 538"
+              ],
+              "start": [
+                "2023-05-31T10:00"
+              ]
+            },
+            "lang": "en"
+          },
+          {
+            "type": [
+              "h-event"
+            ],
+            "properties": {
+              "name": [
+                "Full Committee Hearing: Oversight of Financial Regulators: Financial Stability, Supervision, and Consumer Protection in the Wake of Recent Bank Failures"
+              ],
+              "url": [
+                "/hearings/oversight-of-financial-regulators-financial-stability-supervision-and-consumer-protection-in-the-wake-of-recent-bank-failures"
+              ],
+              "location": [
+                "Dirksen Senate Office Building G50"
+              ],
+              "start": [
+                "2023-05-18T09:30"
+              ]
+            },
+            "lang": "en"
+          },
+          {
+            "type": [
+              "h-event"
+            ],
+            "properties": {
+              "name": [
+                "Subcommittee Hearing: Strengthening Accountability at the Federal Reserve: Lessons and Opportunities for Reform"
+              ],
+              "url": [
+                "/hearings/strengthening-accountability-at-the-federal-reserve-lessons-and-opportunities-for-reform"
+              ],
+              "location": [
+                "Dirksen Senate Office Building 538"
+              ],
+              "start": [
+                "2023-05-17T02:30"
+              ]
+            },
+            "lang": "en"
+          },
+          {
+            "type": [
+              "h-event"
+            ],
+            "properties": {
+              "name": [
+                "Full Committee Hearing: Examining the Failures of Silicon Valley Bank and Signature Bank"
+              ],
+              "url": [
+                "/hearings/examining-the-failures-of-silicon-valley-bank-and-signature-bank"
+              ],
+              "location": [
+                "Dirksen Senate Office Building G50"
+              ],
+              "start": [
+                "2023-05-16T10:00"
+              ]
+            },
+            "lang": "en"
+          },
+          {
+            "type": [
+              "h-event"
+            ],
+            "properties": {
+              "name": [
+                "Full Committee Hearing: Examining Cannabis Banking Challenges of Small Businesses and Workers"
+              ],
+              "url": [
+                "/hearings/examining-cannabis-banking-challenges-of-small-businesses-and-workers"
+              ],
+              "location": [
+                "Dirksen Senate Office Building 538"
+              ],
+              "start": [
+                "2023-05-11T09:45"
+              ]
+            },
+            "lang": "en"
+          },
+          {
+            "type": [
+              "h-event"
+            ],
+            "properties": {
+              "name": [
+                "Full Committee Hearing: Holding Executives Accountable After Recent Bank Failures"
+              ],
+              "url": [
+                "/hearings/holding-executives-accountable-after-recent-bank-failures"
+              ],
+              "location": [
+                "Dirksen Senate Office Building 538"
+              ],
+              "start": [
+                "2023-05-04T10:00"
+              ]
+            },
+            "lang": "en"
+          },
+          {
+            "type": [
+              "h-event"
+            ],
+            "properties": {
+              "name": [
+                "Subcommittee Hearing: Rural Housing Legislation"
+              ],
+              "url": [
+                "/hearings/rural-housing-legislation"
+              ],
+              "location": [
+                "Dirksen Senate Office Building 538"
+              ],
+              "start": [
+                "2023-05-02T02:45"
+              ]
+            },
+            "lang": "en"
+          },
+          {
+            "type": [
+              "h-event"
+            ],
+            "properties": {
+              "name": [
+                "Full Committee Hearing: Reauthorization of the National Flood Insurance Program: Improving Community Resilience"
+              ],
+              "url": [
+                "/hearings/reauthorization-of-the-national-flood-insurance-program-improving-community-resilience"
+              ],
+              "location": [
+                "Dirksen Senate Office Building 538"
+              ],
+              "start": [
+                "2023-05-02T10:00"
+              ]
+            },
+            "lang": "en"
+          },
+          {
+            "type": [
+              "h-event"
+            ],
+            "properties": {
+              "name": [
+                "Full Committee Hearing: Oversight of the Credit Reporting Agencies"
+              ],
+              "url": [
+                "/hearings/oversight-of-the-credit-reporting-agencies"
+              ],
+              "location": [
+                "Dirksen Senate Office Building 538"
+              ],
+              "start": [
+                "2023-04-27T10:00"
+              ]
+            },
+            "lang": "en"
+          },
+          {
+            "type": [
+              "h-event"
+            ],
+            "properties": {
+              "name": [
+                "Full Committee Hearing: Building Consensus to Address Housing Challenges"
+              ],
+              "url": [
+                "/hearings/building-consensus-to-address-housing-challenges"
+              ],
+              "location": [
+                "Dirksen Senate Office Building 538"
+              ],
+              "start": [
+                "2023-04-26T10:00"
+              ]
+            },
+            "lang": "en"
+          },
+          {
+            "type": [
+              "h-event"
+            ],
+            "properties": {
+              "name": [
+                "Nomination Hearing: Nomination Hearing"
+              ],
+              "url": [
+                "/hearings/04/11/2023/nomination-hearing"
+              ],
+              "location": [
+                "Dirksen Senate Office Building 538"
+              ],
+              "start": [
+                "2023-04-18T10:00"
+              ]
+            },
+            "lang": "en"
+          },
+          {
+            "type": [
+              "h-event"
+            ],
+            "properties": {
+              "name": [
+                "Full Committee Hearing: Recent Bank Failures and the Federal Regulatory Response"
+              ],
+              "url": [
+                "/hearings/recent-bank-failures-and-the-federal-regulatory-response"
+              ],
+              "location": [
+                "Dirksen Senate Office Building 106"
+              ],
+              "start": [
+                "2023-03-28T10:00"
+              ]
+            },
+            "lang": "en"
+          },
+          {
+            "type": [
+              "h-event"
+            ],
+            "properties": {
+              "name": [
+                "Full Committee Hearing: Local Views on Public Transportation, Transit Infrastructure and Operations, and Federal Transit Programs"
+              ],
+              "url": [
+                "/hearings/local-views-on-public-transportation-transit-infrastructure-and-operations-and-federal-transit-programs"
+              ],
+              "location": [
+                "Dirksen Senate Office Building 538"
+              ],
+              "start": [
+                "2023-03-16T10:10"
+              ]
+            },
+            "lang": "en"
+          },
+          {
+            "type": [
+              "h-event"
+            ],
+            "properties": {
+              "name": [
+                "Subcommittee Hearing: The Federal Strategic Plan to Prevent and End Homelessness"
+              ],
+              "url": [
+                "/hearings/the-federal-strategic-plan-to-prevent-and-end-homelessness"
+              ],
+              "location": [
+                "Dirksen Senate Office Building 538"
+              ],
+              "start": [
+                "2023-03-08T02:30"
+              ]
+            },
+            "lang": "en"
+          },
+          {
+            "type": [
+              "h-event"
+            ],
+            "properties": {
+              "name": [
+                "Subcommittee Hearing: The Federal Debt Limit and its Economic and Financial Consequences"
+              ],
+              "url": [
+                "/hearings/the-federal-debt-limit-and-its-economic-and-financial-consequences"
+              ],
+              "location": [
+                "Dirksen Senate Office Building 538"
+              ],
+              "start": [
+                "2023-03-07T02:30"
+              ]
+            },
+            "lang": "en"
+          },
+          {
+            "type": [
+              "h-event"
+            ],
+            "properties": {
+              "name": [
+                "Full Committee Hearing: The Semiannual Monetary Policy Report to the Congress"
+              ],
+              "url": [
+                "/hearings/02/28/2023/the-semiannual-monetary-policy-report-to-the-congress"
+              ],
+              "location": [
+                "Hart Senate Office Building 216"
+              ],
+              "start": [
+                "2023-03-07T10:00"
+              ]
+            },
+            "lang": "en"
+          }
+        ]
+      },
+      {
+        "sha256": "0a9a6a6956a9482c71ed9074a2a09d50b32d274857245ce60fec778d038c1665",
+        "body_key": "bodies/sha256/0a/0a9a6a6956a9482c71ed9074a2a09d50b32d274857245ce60fec778d038c1665.gz",
+        "url": "https://www.finance.senate.gov/hearings",
+        "domain": "finance.senate.gov",
+        "values": [
+          {
+            "type": [
+              "h-event"
+            ],
+            "properties": {
+              "name": [
+                "Open Executive Session to Consider Favorably Reporting the Nominations of Gerard Klomp, of Utah, to be Deputy Secretary of Health and Human Services; James Gadwood, of Maryland, to be Chief Counsel for the Internal Revenue Service and an Assistant General Counsel in the Department of the Treasury; Ge Bai, of Virginia, to be an Assistant Secretary of Health and Human Services; and Andrew A. De Mello, of Virginia, to be a Judge of the United States Tax Court for a term of fifteen years"
+              ],
+              "url": [
+                "/hearings/open-executive-session-to-consider-favorably-reporting-the-nominations-of-gerard-klomp-of-utah-to-be-deputy-secretary-of-health-and-human-services-james-gadwood-of-maryland-to-be-chief-counsel-for-the-internal-revenue-service-and-an-assistant-general-counsel-in-the-department-of-the-treasury-ge-bai-of-virginia-to-be-an-assistant-secretary-of-health-and-human-services-and-andrew-a-de-mello-of-virginia-to-be-a-judge-of-the-united-states-tax-court-for-a-term-of-fifteen-years"
+              ],
+              "start": [
+                "2026-09-24T10:00"
+              ]
+            },
+            "lang": "en"
+          },
+          {
+            "type": [
+              "h-event"
+            ],
+            "properties": {
+              "name": [
+                "Hearing to Consider the Nominations of Gerard Klomp, of Utah, to be Deputy Secretary of Health and Human Services, vice James O'Neill, resigned; James Gadwood, of Maryland, to be Chief Counsel for the Internal Revenue Service and an Assistant General Counsel in the Department of the Treasury, vice Marjorie A. Rollinson; Ge Bai, of Virginia, to be an Assistant Secretary of Health and Human Services, vice Richard G. Frank; and Andrew A. De Mello, of Virginia, to be a Judge of the United States Tax Court for a term of fifteen years, vice Maurice B. Foley, resigned."
+              ],
+              "url": [
+                "/hearings/hearing-to-consider-the-nominations-of-gerard-klomp-of-utah-to-be-deputy-secretary-of-health-and-human-services-vice-james-oneill-resigned-james-gadwood-of-maryland-to-be-chief-counsel-for-the-internal-revenue-service-and-an-assistant-general-counsel-in-the-department-of-the-treasury-vice-marjorie-a-rollinson-ge-bai-of-virginia-to-be-an-assistant-secretary-of-health-and-human-services-vice-richard-g-frank-and-andrew-a-de-mello-of-virginia-to-be-a-judge-of-the-united-states-tax-court-for-a-term-of-fifteen-years-vice-maurice-b-foley-resigned"
+              ],
+              "start": [
+                "2026-09-15T10:00"
+              ]
+            },
+            "lang": "en"
+          },
+          {
+            "type": [
+              "h-event"
+            ],
+            "properties": {
+              "name": [
+                "Exploring Process Approaches for Addressing Social Security Solvency"
+              ],
+              "url": [
+                "/hearings/exploring-process-approaches-for-addressing-social-security-solvency"
+              ],
+              "start": [
+                "2026-08-05T10:00"
+              ]
+            },
+            "lang": "en"
+          },
+          {
+            "type": [
+              "h-event"
+            ],
+            "properties": {
+              "name": [
+                "Building a Resilient Health Care Future with Biotechnology"
+              ],
+              "url": [
+                "/hearings/building-a-resilient-health-care-future-with-biotechnology"
+              ],
+              "start": [
+                "2026-08-04T10:00"
+              ]
+            },
+            "lang": "en"
+          },
+          {
+            "type": [
+              "h-event"
+            ],
+            "properties": {
+              "name": [
+                "Open Executive Session to Consider the Taxpayer Assistance and Service Act"
+              ],
+              "url": [
+                "/hearings/open-executive-session-to-consider-the-taxpayer-assistance-and-service-act"
+              ],
+              "start": [
+                "2026-07-30T10:00"
+              ]
+            },
+            "lang": "en"
+          },
+          {
+            "type": [
+              "h-event"
+            ],
+            "properties": {
+              "name": [
+                "Open Executive Session to Consider the Nominations of Francis Brooke, of Virginia, to be Deputy Secretary of the Treasury; Erin Browne, of New York, to be an Under Secretary of the Treasury; Sriprakash Kothari, of Massachusetts, to be an Assistant Secretary of the Treasury; and George McMaster, of South Carolina, to be an Assistant Secretary of the Treasury"
+              ],
+              "url": [
+                "/hearings/open-executive-session-to-consider-the-nominations-of-francis-brooke-of-virginia-to-be-deputy-secretary-of-the-treasury-erin-browne-of-new-york-to-be-an-under-secretary-of-the-treasury-sriprakash-kothari-of-massachusetts-to-be-an-assistant-secretary-of-the-treasury-and-george-mcmaster-of-south-carolina-to-be-an-assistant-secretary-of-the-treasury"
+              ],
+              "start": [
+                "2026-07-23T10:30"
+              ]
+            },
+            "lang": "en"
+          },
+          {
+            "type": [
+              "h-event"
+            ],
+            "properties": {
+              "name": [
+                "RESCHEDULED: The President’s 2026 Trade Policy Agenda"
+              ],
+              "url": [
+                "/hearings/rescheduled-the-presidents-2026-trade-policy-agenda"
+              ],
+              "start": [
+                "2026-07-22T10:00"
+              ]
+            },
+            "lang": "en"
+          },
+          {
+            "type": [
+              "h-event"
+            ],
+            "properties": {
+              "name": [
+                "Hearing to Consider the Nominations of Francis Brooke, of Virginia, to be Deputy Secretary of the Treasury, vice Michael Faulkender; Erin Browne, of New York, to be an Under Secretary of the Treasury, vice Jay Curtis Shambaugh, resigned; Sriprakash Kothari, of Massachusetts, to be an Assistant Secretary of the Treasury, vice Benjamin Harris, resigned; and George McMaster, of South Carolina, to be an Assistant Secretary of the Treasury, vice Joshua Frost, resigned"
+              ],
+              "url": [
+                "/hearings/hearing-to-consider-the-nominations-of-francis-brooke-of-virginia-to-be-deputy-secretary-of-the-treasury-vice-michael-faulkender-erin-browne-of-new-york-to-be-an-under-secretary-of-the-treasury-vice-jay-curtis-shambaugh-resigned-sriprakash-kothari-of-massachusetts-to-be-an-assistant-secretary-of-the-treasury-vice-benjamin-harris-resigned-and-george-mcmaster-of-south-carolina-to-be-an-assistant-secretary-of-the-treasury-vice-joshua-frost-resigned"
+              ],
+              "start": [
+                "2026-07-16T10:00"
+              ]
+            },
+            "lang": "en"
+          },
+          {
+            "type": [
+              "h-event"
+            ],
+            "properties": {
+              "name": [
+                "Open Executive Session to Consider Favorably Reporting the Nominations of Brett Doyle, of Connecticut, to be a Member of the United States International Trade Commission for a term expiring December 16, 2030; David Foley, Jr., of Virginia, to be a Member of the United States International Trade Commission for a term expiring June 16, 2032; Samuel Negatu, of the District of Columbia, to be a Member of the United States International Trade Commission for a term expiring June 16, 2029; Peter-Anthony Pappas, of New Jersey, to be a Member of the United States International Trade Commission for the term expiring June 16, 2035; and Bartholomew Thanhauser, of New York, to be a Member of the United States International Trade Commission for a term expiring December 16, 2027"
+              ],
+              "url": [
+                "/hearings/open-executive-session-to-consider-favorably-reporting-the-nominations-of-brett-doyle-of-connecticut-to-be-a-member-of-the-united-states-international-trade-commission-for-a-term-expiring-december-16-2030-david-foley-jr-of-virginia-to-be-a-member-of-the-united-states-international-trade-commission-for-a-term-expiring-june-16-2032-samuel-negatu-of-the-district-of-columbia-to-be-a-member-of-the-united-states-international-trade-commission-for-a-term-expiring-june-16-2029-peter-anthony-pappas-of-new-jersey-to-be-a-member-of-the-united-states-international-trade-commission-for-the-term-expiring-june-16-2035-and-bartholomew-thanhauser-of-new-york-to-be-a-member-of-the-united-states-international-trade-commission-for-a-term-expiring-december-16-2027"
+              ],
+              "start": [
+                "2026-07-14T11:30"
+              ]
+            },
+            "lang": "en"
+          },
+          {
+            "type": [
+              "h-event"
+            ],
+            "properties": {
+              "name": [
+                "Hearing to Consider the Nominations of Brett Doyle, of Connecticut, to be a Member of the United States International Trade Commission for a term expiring December 16, 2030, vice Rhonda K. Schmidtlein, term expired; David Foley, Jr., of Virginia, to be a Member of the United States International Trade Commission for a term expiring June 16, 2032, vice Amy Karpel, term expired; Samuel Negatu, of the District of Columbia, to be a Member of the United States International Trade Commission for a term expiring June 16, 2029, vice F. Scott Kieff, term expired; Peter-Anthony Pappas, of New Jersey, to be a Member of the United States International Trade Commission for the term expiring June 16, 2035, vice Randolph J. Stayin, term expired; and Bartholomew Thanhauser, of New York, to be a Member of the United States International Trade Commission for a term expiring December 16, 2027, vice David S. Johanson, term expired."
+              ],
+              "url": [
+                "/hearings/hearing-to-consider-the-nominations-of-brett-doyle-of-connecticut-to-be-a-member-of-the-united-states-international-trade-commission-for-a-term-expiring-december-16-2030-vice-rhonda-k-schmidtlein-term-expired-david-foley-jr-of-virginia-to-be-a-member-of-the-united-states-international-trade-commission-for-a-term-expiring-june-16-2032-vice-amy-karpel-term-expired-samuel-negatu-of-the-district-of-columbia-to-be-a-member-of-the-united-states-international-trade-commission-for-a-term-expiring-june-16-2029-vice-f-scott-kieff-term-expired-peter-anthony-pappas-of-new-jersey-to-be-a-member-of-the-united-states-international-trade-commission-for-the-term-expiring-june-16-2035-vice-randolph-j-stayin-term-expired-and-bartholomew-thanhauser-of-new-york-to-be-a-member-of-the-united-states-international-trade-commission-for-a-term-expiring-december-16-2027-vice-david-s-johanson-term-expired"
+              ],
+              "start": [
+                "2026-06-25T10:00"
+              ]
+            },
+            "lang": "en"
+          },
+          {
+            "type": [
+              "h-event"
+            ],
+            "properties": {
+              "name": [
+                "The Future of Social Security"
+              ],
+              "url": [
+                "/hearings/the-future-of-social-security"
+              ],
+              "start": [
+                "2026-06-24T03:00"
+              ]
+            },
+            "lang": "en"
+          },
+          {
+            "type": [
+              "h-event"
+            ],
+            "properties": {
+              "name": [
+                "The President’s Fiscal Year 2027 Budget for the Department of the Treasury"
+              ],
+              "url": [
+                "/hearings/the-presidents-fiscal-year-2027-budget-for-the-department-of-the-treasury"
+              ],
+              "start": [
+                "2026-06-03T10:00"
+              ]
+            },
+            "lang": "en"
+          },
+          {
+            "type": [
+              "h-event"
+            ],
+            "properties": {
+              "name": [
+                "The President’s Fiscal Year 2027 Department of Health and Human Services Budget"
+              ],
+              "url": [
+                "/hearings/the-presidents-fiscal-year-2027-department-of-health-and-human-services-budget"
+              ],
+              "start": [
+                "2026-04-22T10:00"
+              ]
+            },
+            "lang": "en"
+          },
+          {
+            "type": [
+              "h-event"
+            ],
+            "properties": {
+              "name": [
+                "IRS 2026 Filing Season and IRS Operations"
+              ],
+              "url": [
+                "/hearings/the-presidents-fiscal-year-2027-irs-budget-and-the-irs-2026-filing-season"
+              ],
+              "start": [
+                "2026-04-15T10:00"
+              ]
+            },
+            "lang": "en"
+          },
+          {
+            "type": [
+              "h-event"
+            ],
+            "properties": {
+              "name": [
+                "The Fiscal Outlook: 2027-2036"
+              ],
+              "url": [
+                "/hearings/the-fiscal-outlook-2027-2036"
+              ],
+              "start": [
+                "2026-03-11T03:00"
+              ]
+            },
+            "lang": "en"
+          },
+          {
+            "type": [
+              "h-event"
+            ],
+            "properties": {
+              "name": [
+                "The U.S.-Mexico-Canada Agreement: Evaluating North American Competitiveness"
+              ],
+              "url": [
+                "/hearings/the-us-mexico-canada-agreement-evaluating-north-american-competitiveness"
+              ],
+              "start": [
+                "2026-02-12T10:00"
+              ]
+            },
+            "lang": "en"
+          },
+          {
+            "type": [
+              "h-event"
+            ],
+            "properties": {
+              "name": [
+                "The Rising Cost of Health Care: Considering Meaningful Solutions for all Americans"
+              ],
+              "url": [
+                "/hearings/the-rising-cost-of-health-care-considering-meaningful-solutions-for-all-americans"
+              ],
+              "start": [
+                "2025-11-19T10:00"
+              ]
+            },
+            "lang": "en"
+          },
+          {
+            "type": [
+              "h-event"
+            ],
+            "properties": {
+              "name": [
+                "Open Executive Session to consider favorably reporting the nominations of Arjun Mody, of New Jersey, to be Deputy Commissioner Social Security for the term expiring January 19, 2031; Jeffrey Goettman, of Virginia, to be a Deputy United States Trade Representative (Africa, Western Hemisphere, Europe, the Middle East, Environment, Labor, and Industrial Competitiveness), with the Rank of Ambassador; Julie Callahan, of the District of Columbia, to be Chief Agricultural Negotiator, Office of the United States Trade Representative, with the rank of Ambassador; Thomas Bell, of Virginia, to be Inspector General, Department of Health and Human Services"
+              ],
+              "url": [
+                "/hearings/open-executive-session-to-consider-favorably-reporting-the-nominations-of-arjun-mody-of-new-jersey-to-be-deputy-commissioner-social-security-for-the-term-expiring-january-19-2031-jeffrey-goettman-of-virginia-to-be-a-deputy-united-states-trade-representative-africa-western-hemisphere-europe-the-middle-east-environment-labor-and-industrial-competitiveness-with-the-rank-of-ambassador-julie-callahan-of-the-district-of-columbia-to-be-chief-agricultural-negotiator-office-of-the-united-states-trade-representative-with-the-rank-of-ambassador-thomas-bell-of-virginia-to-be-inspector-general-department-of-health-and-human-services"
+              ],
+              "start": [
+                "2025-11-19T09:45"
+              ]
+            },
+            "lang": "en"
+          },
+          {
+            "type": [
+              "h-event"
+            ],
+            "properties": {
+              "name": [
+                "Hearing to Consider the Nominations of Arjun Mody, of New Jersey, to be Deputy Commissioner Social Security for the term expiring January 19, 2031, vice David Fabian Black, term expired; Jeffrey Goettman, of Virginia, to be a Deputy United States Trade Representative (Africa, Western Hemisphere, Europe, the Middle East, Environment, Labor, and Industrial Competitiveness), with the Rank of Ambassador, vice Jayme Ray White; Julie Callahan, of the District of Columbia, to be Chief Agricultural Negotiator, Office of the United States Trade Representative, with the rank of Ambassador, vice Douglas J. McKalip, resigned; Thomas Bell, of Virginia, to be Inspector General, Department of Health and Human Services, vice Christi A. Grimm"
+              ],
+              "url": [
+                "/hearings/hearing-to-consider-the-nominations-of-arjun-mody-of-new-jersey-to-be-deputy-commissioner-social-security-for-the-term-expiring-january-19-2031-vice-david-fabian-black-term-expired-jeffrey-goettman-of-virginia-to-be-a-deputy-united-states-trade-representative-africa-western-hemisphere-europe-the-middle-east-environment-labor-and-industrial-competitiveness-with-the-rank-of-ambassador-vice-jayme-ray-white-julie-callahan-of-the-district-of-columbia-to-be-chief-agricultural-negotiator-office-of-the-united-states-trade-representative-with-the-rank-of-ambassador-vice-douglas-j-mckalip-resigned-thomas-bell-of-virginia-to-be-inspector-general-department-of-health-and-human-services-vice-christi-a-grimm"
+              ],
+              "start": [
+                "2025-10-29T10:00"
+              ]
+            },
+            "lang": "en"
+          },
+          {
+            "type": [
+              "h-event"
+            ],
+            "properties": {
+              "name": [
+                "Open Executive Session to Consider Favorably Reporting the Nominations of Jonathan Greenstein, of New York, to be a Deputy Under Secretary of the Treasury; The Honorable Donald Korb, of Ohio, to be Chief Counsel for the Internal Revenue Service and an Assistant General Counsel in the Department of the Treasury; and Derek Theurer, of Virginia, to be a Deputy Under Secretary of the Treasury"
+              ],
+              "url": [
+                "/hearings/open-executive-session-to-consider-favorably-reporting-the-nominations-of-jonathan-greenstein-of-new-york-to-be-a-deputy-under-secretary-of-the-treasury-the-honorable-donald-korb-of-ohio-to-be-chief-counsel-for-the-internal-revenue-service-and-an-assistant-general-counsel-in-the-department-of-the-treasury-and-derek-theurer-of-virginia-to-be-a-deputy-under-secretary-of-the-treasury"
+              ],
+              "start": [
+                "2025-10-08T10:00"
+              ]
+            },
+            "lang": "en"
+          },
+          {
+            "type": [
+              "h-event"
+            ],
+            "properties": {
+              "name": [
+                "Examining the Taxation of Digital Assets"
+              ],
+              "url": [
+                "/hearings/examining-the-taxation-of-digital-assets"
+              ],
+              "start": [
+                "2025-10-01T10:00"
+              ]
+            },
+            "lang": "en"
+          },
+          {
+            "type": [
+              "h-event"
+            ],
+            "properties": {
+              "name": [
+                "Hearing to Consider the Nominations of Jonathan Greenstein, of New York, to be a Deputy Under Secretary of the Treasury, vice Brent Neiman, resigned; and The Honorable Donald Korb, of Ohio, to be Chief Counsel for the Internal Revenue Service and an Assistant General Counsel in the Department of the Treasury, vice Marjorie A. Rollinson."
+              ],
+              "url": [
+                "/hearings/hearing-to-consider-the-nominations-of-jonathan-greenstein-of-new-york-to-be-a-deputy-under-secretary-of-the-treasury-vice-brent-neiman-resigned-and-the-honorable-donald-korb-of-ohio-to-be-chief-counsel-for-the-internal-revenue-service-and-an-assistant-general-counsel-in-the-department-of-the-treasury-vice-marjorie-a-rollinson"
+              ],
+              "start": [
+                "2025-09-10T10:15"
+              ]
+            },
+            "lang": "en"
+          },
+          {
+            "type": [
+              "h-event"
+            ],
+            "properties": {
+              "name": [
+                "The President’s 2026 Health Care Agenda"
+              ],
+              "url": [
+                "/hearings/the-presidents-2026-health-care-agenda"
+              ],
+              "start": [
+                "2025-09-04T10:00"
+              ]
+            },
+            "lang": "en"
+          },
+          {
+            "type": [
+              "h-event"
+            ],
+            "properties": {
+              "name": [
+                "Open Executive Session to Consider Favorably Reporting the Nominations of Bryan Switzer, of Virginia, to be a Deputy United States Trade Representative (Asia, Textiles, Investment, Services, and Intellectual Property), with the rank of Ambassador; Gustav Chiarello III, of Virginia, to be an Assistant Secretary of Health and Human Services; The Honorable Michael Stuart, of West Virginia, to be General Counsel of the Department of Health and Human Services"
+              ],
+              "url": [
+                "/hearings/open-execuitve-session-to-consider-favorably-reporting-the-nominations-of-bryan-switzer-of-virginia-to-be-a-deputy-united-states-trade-representative-asia-textiles-investment-services-and-intellectual-property-with-the-rank-of-ambassador-gustav-chiarello-iii-of-virginia-to-be-an-assistant-secretary-of-health-and-human-services-the-honorable-michael-stuart-of-west-virginia-to-be-general-counsel-of-the-department-of-health-and-human-services"
+              ],
+              "start": [
+                "2025-09-04T09:30"
+              ]
+            },
+            "lang": "en"
+          },
+          {
+            "type": [
+              "h-event"
+            ],
+            "properties": {
+              "name": [
+                "Hearing to Consider the Nominations Bryan Switzer, of Virginia, to be a Deputy United States Trade Representative (Asia, Textiles, Investment, Services, and Intellectual Property), with the rank of Ambassador, vice Sarah Bianchi; Gustav Chiarello III, of Virginia, to be an Assistant Secretary of Health and Human Services, vice Robert Michael Gordon; The Honorable Michael Stuart, of West Virginia, to be General Counsel of the Department of Health and Human Services, vice Samuel R. Bagenstos, resigned; and Derek Theurer, of Virginia, to be a Deputy Under Secretary of the Treasury, vice Jonathan Davidson."
+              ],
+              "url": [
+                "/hearings/hearing-to-consider-the-nominations-bryan-switzer-of-virginia-to-be-a-deputy-united-states-trade-representative-asia-textiles-investment-services-and-intellectual-property-with-the-rank-of-ambassador-vice-sarah-bianchi-gustav-chiarello-iii-of-virginia-to-be-an-assistant-secretary-of-health-and-human-services-vice-robert-michael-gordon-the-honorable-michael-stuart-of-west-virginia-to-be-general-counsel-of-the-department-of-health-and-human-services-vice-samuel-r-bagenstos-resigned-and-derek-theurer-of-virginia-to-be-a-deputy-under-secretary-of-the-treasury-vice-jonathan-davidson"
+              ],
+              "start": [
+                "2025-07-31T10:00"
+              ]
+            },
+            "lang": "en"
+          }
+        ]
+      },
+      {
+        "sha256": "1fa5fece228dffd5fee099239c0a39917b8619f3b41a905dfc7112b00bbdf1b4",
+        "body_key": "bodies/sha256/1f/1fa5fece228dffd5fee099239c0a39917b8619f3b41a905dfc7112b00bbdf1b4.gz",
+        "url": "https://budget.house.gov/hearings",
+        "domain": "budget.house.gov",
+        "values": [
+          {
+            "type": [
+              "h-event"
+            ],
+            "properties": {
+              "location": [
+                "Old Parkland 3819 Maple Ave Dallas, TX 75219"
+              ],
+              "start": [
+                "2026-09-21T02:00"
+              ]
+            },
+            "lang": "en"
+          },
+          {
+            "type": [
+              "h-event"
+            ],
+            "properties": {
+              "location": [
+                "Cannon House Office Building 210"
+              ],
+              "start": [
+                "2026-09-16T09:30"
+              ]
+            },
+            "lang": "en"
+          },
+          {
+            "type": [
+              "h-event"
+            ],
+            "properties": {
+              "location": [
+                "Cannon House Office Building 210"
+              ],
+              "start": [
+                "2026-07-16T09:00"
+              ]
+            },
+            "lang": "en"
+          },
+          {
+            "type": [
+              "h-event"
+            ],
+            "properties": {
+              "location": [
+                "Cannon House Office Building 210"
+              ],
+              "start": [
+                "2026-04-15T10:15"
+              ]
+            },
+            "lang": "en"
+          },
+          {
+            "type": [
+              "h-event"
+            ],
+            "properties": {
+              "location": [
+                "Cannon House Office Building 210"
+              ],
+              "start": [
+                "2026-03-26T10:00"
+              ]
+            },
+            "lang": "en"
+          },
+          {
+            "type": [
+              "h-event"
+            ],
+            "properties": {
+              "location": [
+                "Cannon House Office Building 210"
+              ],
+              "start": [
+                "2026-01-21T10:15"
+              ]
+            },
+            "lang": "en"
+          },
+          {
+            "type": [
+              "h-event"
+            ],
+            "properties": {
+              "location": [
+                "210 Cannon House Office Building"
+              ],
+              "start": [
+                "2025-12-03T10:15"
+              ]
+            },
+            "lang": "en"
+          },
+          {
+            "type": [
+              "h-event"
+            ],
+            "properties": {
+              "location": [
+                "Cannon House Office Building 210"
+              ],
+              "start": [
+                "2025-11-18T10:15"
+              ]
+            },
+            "lang": "en"
+          },
+          {
+            "type": [
+              "h-event"
+            ],
+            "properties": {
+              "location": [
+                "Cannon House Building 210"
+              ],
+              "start": [
+                "2025-06-25T10:00"
+              ]
+            },
+            "lang": "en"
+          },
+          {
+            "type": [
+              "h-event"
+            ],
+            "properties": {
+              "location": [
+                "Cannon Office Building 210"
+              ],
+              "start": [
+                "2025-05-18T10:00"
+              ]
+            },
+            "lang": "en"
+          },
+          {
+            "type": [
+              "h-event"
+            ],
+            "properties": {
+              "location": [
+                "Cannon House Office Building 210"
+              ],
+              "start": [
+                "2025-05-16T09:00"
+              ]
+            },
+            "lang": "en"
+          },
+          {
+            "type": [
+              "h-event"
+            ],
+            "properties": {
+              "location": [
+                "Cannon House Office Building 210"
+              ],
+              "start": [
+                "2025-05-07T10:00"
+              ]
+            },
+            "lang": "en"
+          },
+          {
+            "type": [
+              "h-event"
+            ],
+            "properties": {
+              "location": [
+                "Cannon House Office Building 210"
+              ],
+              "start": [
+                "2025-02-13T10:00"
+              ]
+            },
+            "lang": "en"
+          },
+          {
+            "type": [
+              "h-event"
+            ],
+            "properties": {
+              "location": [
+                "Cannon House Office Building 210"
+              ],
+              "start": [
+                "2025-01-23T10:00"
+              ]
+            },
+            "lang": "en"
+          },
+          {
+            "type": [
+              "h-event"
+            ],
+            "properties": {
+              "location": [
+                "Cannon House Office Building 210"
+              ],
+              "start": [
+                "2024-12-11T10:00"
+              ]
+            },
+            "lang": "en"
+          },
+          {
+            "type": [
+              "h-event"
+            ],
+            "properties": {
+              "location": [
+                "Cannon House Office Building 210"
+              ],
+              "start": [
+                "2024-09-25T10:00"
+              ]
+            },
+            "lang": "en"
+          },
+          {
+            "type": [
+              "h-event"
+            ],
+            "properties": {
+              "location": [
+                "Cannon House Office Building 210"
+              ],
+              "start": [
+                "2024-09-19T10:00"
+              ]
+            },
+            "lang": "en"
+          },
+          {
+            "type": [
+              "h-event"
+            ],
+            "properties": {
+              "location": [
+                "Cannon House Office Building 210"
+              ],
+              "start": [
+                "2024-09-11T09:00"
+              ]
+            },
+            "lang": "en"
+          },
+          {
+            "type": [
+              "h-event"
+            ],
+            "properties": {
+              "location": [
+                "Cannon House Office Building 210"
+              ],
+              "start": [
+                "2024-06-13T11:15"
+              ]
+            },
+            "lang": "en"
+          },
+          {
+            "type": [
+              "h-event"
+            ],
+            "properties": {
+              "location": [
+                "Cannon House Office Building 210"
+              ],
+              "start": [
+                "2024-05-23T10:00"
+              ]
+            },
+            "lang": "en"
+          },
+          {
+            "type": [
+              "h-event"
+            ],
+            "properties": {
+              "location": [
+                "Cannon House Office Building 210"
+              ],
+              "start": [
+                "2024-05-16T10:00"
+              ]
+            },
+            "lang": "en"
+          },
+          {
+            "type": [
+              "h-event"
+            ],
+            "properties": {
+              "location": [
+                "Cannon House Office Building 210"
+              ],
+              "start": [
+                "2024-05-08T10:00"
+              ]
+            },
+            "lang": "en"
+          },
+          {
+            "type": [
+              "h-event"
+            ],
+            "properties": {
+              "location": [
+                "Cannon House Office Building 210"
+              ],
+              "start": [
+                "2024-03-21T10:00"
+              ]
+            },
+            "lang": "en"
+          },
+          {
+            "type": [
+              "h-event"
+            ],
+            "properties": {
+              "location": [
+                "Cannon House Office Building 210"
+              ],
+              "start": [
+                "2024-03-07T10:00"
+              ]
+            },
+            "lang": "en"
+          },
+          {
+            "type": [
+              "h-event"
+            ],
+            "properties": {
+              "location": [
+                "Cannon House Office Building 210"
+              ],
+              "start": [
+                "2024-02-14T10:00"
+              ]
+            },
+            "lang": "en"
+          }
+        ]
+      }
+    ],
+    "microdata_video": [
+      {
+        "sha256": "3c6ff46b9712ba7c6d9bf614d7733783d3aa7179b94ecdb1597f644c20f469b0",
+        "body_key": "bodies/sha256/3c/3c6ff46b9712ba7c6d9bf614d7733783d3aa7179b94ecdb1597f644c20f469b0.gz",
+        "url": "https://www.youtube.com/watch?v=R0h33K7rw7Q",
+        "domain": "youtube.com",
+        "values": [
+          {
+            "type": "http://schema.org/VideoObject",
+            "id": "https://www.youtube.com/watch?v=R0h33K7rw7Q",
+            "properties": {
+              "url": "https://www.youtube.com/watch?v=R0h33K7rw7Q",
+              "name": "Briefing—Russia’s Tech Authoritarianism on the Occupied Territories of Ukraine",
+              "description": "Over the past 12 years of war, Russia’s occupation authorities have implemented a form of tech-enabled authoritarian governance in eastern Ukraine and Crimea...",
+              "requiresSubscription": "False",
+              "identifier": "R0h33K7rw7Q",
+              "duration": "PT56M26S",
+              "author": {
+                "type": "http://schema.org/Person",
+                "properties": {
+                  "url": "http://www.youtube.com/@HelsinkiCommission",
+                  "name": "https://www.youtube.com/watch?v=R0h33K7rw7Q"
+                }
+              },
+              "thumbnailUrl": "https://i.ytimg.com/vi/R0h33K7rw7Q/maxresdefault.jpg",
+              "thumbnail": {
+                "type": "http://schema.org/ImageObject",
+                "properties": {
+                  "url": "https://i.ytimg.com/vi/R0h33K7rw7Q/maxresdefault.jpg",
+                  "width": "1280",
+                  "height": "720"
+                }
+              },
+              "embedUrl": "https://www.youtube.com/embed/R0h33K7rw7Q",
+              "playerType": "HTML5 Flash",
+              "width": "1280",
+              "height": "720",
+              "isFamilyFriendly": "true",
+              "regionsAllowed": "AD,AE,AF,AG,AI,AL,AM,AO,AQ,AR,AS,AT,AU,AW,AX,AZ,BA,BB,BD,BE,BF,BG,BH,BI,BJ,BL,BM,BN,BO,BQ,BR,BS,BT,BV,BW,BY,BZ,CA,CC,CD,CF,CG,CH,CI,CK,CL,CM,CN,CO,CR,CU,CV,CW,CX,CY,CZ,DE,DJ,DK,DM,DO,DZ,EC,EE,EG,EH,ER,ES,ET,FI,FJ,FK,FM,FO,FR,GA,GB,GD,GE,GF,GG,GH,GI,GL,GM,GN,GP,GQ,GR,GS,GT,GU,GW,GY,HK,HM,HN,HR,HT,HU,ID,IE,IL,IM,IN,IO,IQ,IR,IS,IT,JE,JM,JO,JP,KE,KG,KH,KI,KM,KN,KP,KR,KW,KY,KZ,LA,LB,LC,LI,LK,LR,LS,LT,LU,LV,LY,MA,MC,MD,ME,MF,MG,MH,MK,ML,MM,MN,MO,MP,MQ,MR,MS,MT,MU,MV,MW,MX,MY,MZ,NA,NC,NE,NF,NG,NI,NL,NO,NP,NR,NU,NZ,OM,PA,PE,PF,PG,PH,PK,PL,PM,PN,PR,PS,PT,PW,PY,QA,RE,RO,RS,RU,RW,SA,SB,SC,SD,SE,SG,SH,SI,SJ,SK,SL,SM,SN,SO,SR,SS,ST,SV,SX,SY,SZ,TC,TD,TF,TG,TH,TJ,TK,TL,TM,TN,TO,TR,TT,TV,TW,TZ,UA,UG,UM,US,UY,UZ,VA,VC,VE,VG,VI,VN,VU,WF,WS,YE,YT,ZA,ZM,ZW",
+              "interactionStatistic": [
+                {
+                  "type": "https://schema.org/InteractionCounter",
+                  "properties": {
+                    "interactionType": "https://schema.org/LikeAction",
+                    "userInteractionCount": "23"
+                  }
+                },
+                {
+                  "type": "https://schema.org/InteractionCounter",
+                  "properties": {
+                    "interactionType": "https://schema.org/WatchAction",
+                    "userInteractionCount": "823"
+                  }
+                }
+              ],
+              "datePublished": "2026-06-26T00:13:36-07:00",
+              "uploadDate": "2026-06-26T00:13:36-07:00",
+              "genre": "News & Politics",
+              "publication": {
+                "type": "http://schema.org/BroadcastEvent",
+                "properties": {
+                  "isLiveBroadcast": "True",
+                  "startDate": "2026-06-25T17:59:56+00:00",
+                  "endDate": "2026-06-25T18:56:09+00:00"
+                }
+              }
+            }
+          }
+        ]
+      },
+      {
+        "sha256": "18f6cb5b28060ce868769093827e8be71e15cd6bdbd05f38843df6e68e42bed1",
+        "body_key": "bodies/sha256/18/18f6cb5b28060ce868769093827e8be71e15cd6bdbd05f38843df6e68e42bed1.gz",
+        "url": "https://youtu.be/sOqRhohydHY",
+        "domain": "youtu.be",
+        "values": [
+          {
+            "type": "http://schema.org/VideoObject",
+            "id": "https://www.youtube.com/watch?v=sOqRhohydHY",
+            "properties": {
+              "url": "https://www.youtube.com/watch?v=sOqRhohydHY",
+              "name": "Ranking Member Lucas Opening Statement on \"Engineering Our Way to a Sustainable Bioeconomy\"",
+              "description": "Enjoy the videos and music you love, upload original content, and share it all with friends, family, and the world on YouTube.",
+              "requiresSubscription": "False",
+              "identifier": "sOqRhohydHY",
+              "duration": "PT2M26S",
+              "author": {
+                "type": "http://schema.org/Person",
+                "properties": {
+                  "url": "http://www.youtube.com/@HouseScienceGOP",
+                  "name": "https://youtu.be/sOqRhohydHY"
+                }
+              },
+              "thumbnailUrl": "https://i.ytimg.com/vi/sOqRhohydHY/maxresdefault.jpg",
+              "thumbnail": {
+                "type": "http://schema.org/ImageObject",
+                "properties": {
+                  "url": "https://i.ytimg.com/vi/sOqRhohydHY/maxresdefault.jpg",
+                  "width": "1280",
+                  "height": "720"
+                }
+              },
+              "embedUrl": "https://www.youtube.com/embed/sOqRhohydHY",
+              "playerType": "HTML5 Flash",
+              "width": "640",
+              "height": "360",
+              "isFamilyFriendly": "true",
+              "regionsAllowed": "AD,AE,AF,AG,AI,AL,AM,AO,AQ,AR,AS,AT,AU,AW,AX,AZ,BA,BB,BD,BE,BF,BG,BH,BI,BJ,BL,BM,BN,BO,BQ,BR,BS,BT,BV,BW,BY,BZ,CA,CC,CD,CF,CG,CH,CI,CK,CL,CM,CN,CO,CR,CU,CV,CW,CX,CY,CZ,DE,DJ,DK,DM,DO,DZ,EC,EE,EG,EH,ER,ES,ET,FI,FJ,FK,FM,FO,FR,GA,GB,GD,GE,GF,GG,GH,GI,GL,GM,GN,GP,GQ,GR,GS,GT,GU,GW,GY,HK,HM,HN,HR,HT,HU,ID,IE,IL,IM,IN,IO,IQ,IR,IS,IT,JE,JM,JO,JP,KE,KG,KH,KI,KM,KN,KP,KR,KW,KY,KZ,LA,LB,LC,LI,LK,LR,LS,LT,LU,LV,LY,MA,MC,MD,ME,MF,MG,MH,MK,ML,MM,MN,MO,MP,MQ,MR,MS,MT,MU,MV,MW,MX,MY,MZ,NA,NC,NE,NF,NG,NI,NL,NO,NP,NR,NU,NZ,OM,PA,PE,PF,PG,PH,PK,PL,PM,PN,PR,PS,PT,PW,PY,QA,RE,RO,RS,RU,RW,SA,SB,SC,SD,SE,SG,SH,SI,SJ,SK,SL,SM,SN,SO,SR,SS,ST,SV,SX,SY,SZ,TC,TD,TF,TG,TH,TJ,TK,TL,TM,TN,TO,TR,TT,TV,TW,TZ,UA,UG,UM,US,UY,UZ,VA,VC,VE,VG,VI,VN,VU,WF,WS,YE,YT,ZA,ZM,ZW",
+              "interactionStatistic": [
+                {
+                  "type": "https://schema.org/InteractionCounter",
+                  "properties": {
+                    "interactionType": "https://schema.org/LikeAction",
+                    "userInteractionCount": "0"
+                  }
+                },
+                {
+                  "type": "https://schema.org/InteractionCounter",
+                  "properties": {
+                    "interactionType": "https://schema.org/WatchAction",
+                    "userInteractionCount": "2"
+                  }
+                }
+              ],
+              "datePublished": "2019-03-12T07:17:47-07:00",
+              "uploadDate": "2019-03-12T07:17:47-07:00",
+              "genre": "People & Blogs"
+            }
+          }
+        ]
+      }
+    ],
+    "structured_article": [
+      {
+        "sha256": "90e65c99377e9fc47b6bf47abeeba7416015d12e4cf27d26593eb8d5687781c6",
+        "body_key": "bodies/sha256/90/90e65c99377e9fc47b6bf47abeeba7416015d12e4cf27d26593eb8d5687781c6.gz",
+        "url": "https://intelligence.house.gov/2017/12/06/erik-prince-transcript-released/",
+        "domain": "intelligence.house.gov",
+        "values": [
+          {
+            "@type": "Article",
+            "@id": "https://intelligence.house.gov/2017/12/06/erik-prince-transcript-released/#article",
+            "isPartOf": {
+              "@id": "https://intelligence.house.gov/2017/12/06/erik-prince-transcript-released/"
+            },
+            "author": {
+              "name": "r.lowery",
+              "@id": "https://admin-intelligence.house.gov/#/schema/person/aaf3410244de6673c8749e70967ce2c9"
+            },
+            "headline": "Erik Prince Transcript Released",
+            "datePublished": "2017-12-06T00:00:00+00:00",
+            "mainEntityOfPage": {
+              "@id": "https://intelligence.house.gov/2017/12/06/erik-prince-transcript-released/"
+            },
+            "wordCount": 32,
+            "articleSection": [
+              "Press Releases"
+            ],
+            "inLanguage": "en-US"
+          }
+        ]
+      },
+      {
+        "sha256": "002afb2eb67951daaf904a694d81e0c6883481543c23a50f7ab4e9688a1157ec",
+        "body_key": "bodies/sha256/00/002afb2eb67951daaf904a694d81e0c6883481543c23a50f7ab4e9688a1157ec.gz",
+        "url": "https://waysandmeans.house.gov/hearing-advisory-chairman-brady-announces-hearing-on-the-2013-medicare-trustees-report/",
+        "domain": "waysandmeans.house.gov",
+        "values": [
+          {
+            "@type": "Article",
+            "@id": "https://waysandmeans.house.gov/2013/06/13/hearing-advisory-chairman-brady-announces-hearing-on-the-2013-medicare-trustees-report/#article",
+            "isPartOf": {
+              "@id": "https://waysandmeans.house.gov/2013/06/13/hearing-advisory-chairman-brady-announces-hearing-on-the-2013-medicare-trustees-report/"
+            },
+            "author": {
+              "name": "admin",
+              "@id": "https://waysandmeans.house.gov/#/schema/person/d2ca2116db134d5414752fe191badb54"
+            },
+            "headline": "HEARING ADVISORY: Chairman Brady Announces Hearing on the 2013 Medicare Trustees Report",
+            "datePublished": "2013-06-13T00:00:00+00:00",
+            "mainEntityOfPage": {
+              "@id": "https://waysandmeans.house.gov/2013/06/13/hearing-advisory-chairman-brady-announces-hearing-on-the-2013-medicare-trustees-report/"
+            },
+            "wordCount": 1150,
+            "commentCount": 0,
+            "publisher": {
+              "@id": "https://waysandmeans.house.gov/#organization"
+            },
+            "articleSection": [
+              "Hearing Advisory"
+            ],
+            "inLanguage": "en-US"
+          }
+        ]
+      },
+      {
+        "sha256": "0334e627db786a2b90ed064ba0d5dc19e286e49bcdb85b7b19ed5c5f0389ffa2",
+        "body_key": "bodies/sha256/03/0334e627db786a2b90ed064ba0d5dc19e286e49bcdb85b7b19ed5c5f0389ffa2.gz",
+        "url": "https://cpj.org/2010/04/russian-bill-gives-fsb-authority-to-arrest-critica.php",
+        "domain": "cpj.org",
+        "values": [
+          {
+            "@type": "Article",
+            "@id": "https://cpj.org/2010/04/russian-bill-gives-fsb-authority-to-arrest-critica/#article",
+            "isPartOf": {
+              "@id": "https://cpj.org/2010/04/russian-bill-gives-fsb-authority-to-arrest-critica/"
+            },
+            "headline": "Russian bill gives FSB authority to arrest critical journalists",
+            "datePublished": "2010-04-29T21:41:29+00:00",
+            "dateModified": "2019-03-20T13:11:35+00:00",
+            "mainEntityOfPage": {
+              "@id": "https://cpj.org/2010/04/russian-bill-gives-fsb-authority-to-arrest-critica/"
+            },
+            "wordCount": 579,
+            "publisher": {
+              "@id": "https://cpj.org/#organization"
+            },
+            "keywords": [
+              "Anastasiya Baburova",
+              "Extremism",
+              "FSB",
+              "Legal Action",
+              "Novaya Gazeta",
+              "The Moscow Times"
+            ],
+            "inLanguage": "en-US",
+            "author": [
+              {
+                "@id": "https://cpj.org/author/lwolfe/"
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "sha256": "11524c8c8aff68491352216ec4868f5fdd05560a67e86546d7a031d49d47ceb2",
+        "body_key": "bodies/sha256/11/11524c8c8aff68491352216ec4868f5fdd05560a67e86546d7a031d49d47ceb2.gz",
+        "url": "https://www.theguardian.com/global-development/2022/jan/28/we-just-sleep-and-hope-we-dont-perish-2m-in-tigray-in-urgent-need-of-food-un",
+        "domain": "theguardian.com",
+        "values": [
+          {
+            "@type": "NewsArticle",
+            "@context": "https://schema.org",
+            "@id": "https://www.theguardian.com/global-development/2022/jan/28/we-just-sleep-and-hope-we-dont-perish-2m-in-tigray-in-urgent-need-of-food-un",
+            "publisher": {
+              "@type": "Organization",
+              "@context": "https://schema.org",
+              "@id": "https://www.theguardian.com#publisher",
+              "name": "The Guardian",
+              "url": "https://www.theguardian.com/",
+              "logo": {
+                "@type": "ImageObject",
+                "url": "https://uploads.guim.co.uk/2018/01/31/TheGuardian_AMP.png",
+                "width": 190,
+                "height": 60
+              },
+              "sameAs": [
+                "https://www.facebook.com/theguardian",
+                "https://twitter.com/guardian",
+                "https://www.youtube.com/user/TheGuardian"
+              ]
+            },
+            "isAccessibleForFree": true,
+            "isPartOf": {
+              "@type": [
+                "CreativeWork",
+                "Product"
+              ],
+              "name": "The Guardian",
+              "productID": "theguardian.com:basic"
+            },
+            "image": [
+              "https://i.guim.co.uk/img/media/e0525214f8fe62d830465b669921dffc079c0098/721_455_2764_1658/master/2764.jpg?width=1200&height=630&quality=85&auto=format&fit=crop&precrop=40:21,offset-x50,offset-y0&overlay-align=bottom%2Cleft&overlay-width=100p&overlay-base64=L2ltZy9zdGF0aWMvb3ZlcmxheXMvdGctYWdlLTIwMjIucG5n&enable=upscale&s=ff61a51b2bdca1496c14bf22f16731ba",
+              "https://i.guim.co.uk/img/media/e0525214f8fe62d830465b669921dffc079c0098/721_455_2764_1658/master/2764.jpg?width=1200&height=1200&quality=85&auto=format&fit=crop&s=a58c51a8124751c1c3cb8fd9177b532d",
+              "https://i.guim.co.uk/img/media/e0525214f8fe62d830465b669921dffc079c0098/721_455_2764_1658/master/2764.jpg?width=1200&height=900&quality=85&auto=format&fit=crop&s=2663458d5b32d2f0f2832454db50e7a6",
+              "https://i.guim.co.uk/img/media/e0525214f8fe62d830465b669921dffc079c0098/721_455_2764_1658/master/2764.jpg?width=1200&quality=85&auto=format&fit=max&s=f24d0bc8582d51869bc36656507513cf"
+            ],
+            "author": [
+              {
+                "@type": "Person",
+                "name": "Lizzy Davies",
+                "sameAs": "https://www.theguardian.com/profile/lizzydavies"
+              }
+            ],
+            "datePublished": "2022-01-28T12:05:05.000Z",
+            "headline": "‘We just sleep and hope we don’t perish’: 2m in Tigray in urgent need of food – UN",
+            "dateModified": "2022-10-19T15:36:42.000Z",
+            "mainEntityOfPage": "https://www.theguardian.com/global-development/2022/jan/28/we-just-sleep-and-hope-we-dont-perish-2m-in-tigray-in-urgent-need-of-food-un"
+          }
+        ]
+      },
+      {
+        "sha256": "1f4eb4fe31149af3e1866b56b245062f3cf2d10decaa7e6f2950847cf06ee3a1",
+        "body_key": "bodies/sha256/1f/1f4eb4fe31149af3e1866b56b245062f3cf2d10decaa7e6f2950847cf06ee3a1.gz",
+        "url": "https://www.ohchr.org/en/professionalinterest/pages/crc.aspx",
+        "domain": "ohchr.org",
+        "values": [
+          {
+            "@type": "Article",
+            "@id": "https://www.ohchr.org/en/instruments-mechanisms/instruments/convention-rights-child",
+            "headline": "Convention on the Rights of the Child",
+            "description": "Entry into force: 2 September 1990, in accordance with article 49\n\nPreamble\n\nThe States Parties to the present Convention,\n\nConsidering that, in accordance with the principles proclaimed in the Charter of the United Nations, recognition of the inherent dignity and of the equal and inalienable rights of all members of the human family is the foundation of freedom, justice and peace in the world,",
+            "datePublished": "2021-07-01T14:02:36+0200",
+            "dateModified": "2025-01-21T20:41:20+0100",
+            "isAccessibleForFree": "True",
+            "author": {
+              "@type": "Organization",
+              "name": "OHCHR",
+              "url": "https://www.ohchr.org/en"
+            },
+            "publisher": {
+              "@type": "Organization",
+              "name": "OHCHR",
+              "url": "https://www.ohchr.org/en"
+            },
+            "mainEntityOfPage": "https://www.ohchr.org/en/instruments-mechanisms/instruments/convention-rights-child"
+          }
+        ]
+      },
+      {
+        "sha256": "5be5fc3d32c67bb4fdc22578ab39eeb7bacee52b9e0f8ffee96818589c7a4dc5",
+        "body_key": "bodies/sha256/5b/5be5fc3d32c67bb4fdc22578ab39eeb7bacee52b9e0f8ffee96818589c7a4dc5.gz",
+        "url": "https://www.adl.org/adl-global-100-index-antisemitism",
+        "domain": "adl.org",
+        "values": [
+          {
+            "@type": "Article",
+            "headline": "The ADL Global 100: Index of Antisemitism",
+            "name": "The ADL Global 100: Index of Antisemitism | ADL",
+            "image": {
+              "@type": "ImageObject",
+              "representativeOfPage": "True",
+              "url": "ADL Global 100 image 1630px"
+            },
+            "datePublished": "2023-05-19",
+            "dateModified": "2026-04-13",
+            "isAccessibleForFree": "True",
+            "author": {
+              "@type": "Organization",
+              "@id": "https://adl.org",
+              "name": "ADL",
+              "url": "https://adl.org",
+              "logo": {
+                "@type": "ImageObject",
+                "representativeOfPage": "False",
+                "url": "https://www.adl.org/sites/default/files/styles/large/public/images/2025-01/testing-global-100.png?itok=GPYehaOt"
+              }
+            },
+            "mainEntityOfPage": "https://www.adl.org/adl-global-100-index-antisemitism"
+          }
+        ]
+      },
+      {
+        "sha256": "630b465ef3dcace3be08baddf86fc27d51864368dcc8a4c9f46417e743b63346",
+        "body_key": "bodies/sha256/63/630b465ef3dcace3be08baddf86fc27d51864368dcc8a4c9f46417e743b63346.gz",
+        "url": "https://news.un.org/en/story/2021/09/1100782",
+        "domain": "news.un.org",
+        "values": [
+          {
+            "@type": "NewsArticle",
+            "@id": "https://news.un.org/en/story/2021/09/1100782#article",
+            "headline": "Millions in Yemen ‘a step away from starvation’",
+            "description": "The crisis in Yemen, now in its seventh year of war, continues unabated, with thousands of people displaced and millions “a step away from starvation”, the UN Humanitarian Relief Coordinator said on Wednesday during a high-level side event on the margins of the 76th General Assembly.",
+            "image": {
+              "@type": "ImageObject",
+              "url": "https://global.unitednations.entermediadb.net/assets/mediadb/services/module/asset/downloads/preset/Collections/Embargoed/04-08-2021_WFP_Yemen-02.jpg/image770x420cropped.jpg"
+            },
+            "datePublished": "2021-09-22T17:16:08-04:00",
+            "dateModified": "2021-09-25T13:13:26-04:00",
+            "isAccessibleForFree": "True",
+            "author": {
+              "@type": "Organization",
+              "name": "UN News"
+            },
+            "publisher": {
+              "@type": "Organization",
+              "name": "UN News",
+              "url": "https://news.un.org/en/",
+              "logo": {
+                "@type": "ImageObject",
+                "url": "https://news.un.org/en/modules/custom/un_meta/images/organization-logo.png"
+              }
+            },
+            "mainEntityOfPage": {
+              "@type": "WebPage",
+              "@id": "https://news.un.org/en/story/2021/09/1100782"
+            },
+            "associatedMedia": [
+              {
+                "@type": "MediaObject",
+                "contentUrl": "https://news.un.org/en/sites/default/files/audio/2021/03/20210308-intv-gilesclarke.mp3",
+                "encodingFormat": "audio/mpeg"
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "sha256": "77ce27e179c123b7461df1e56575aeda2b4d4d03393c783a94088e9dcc57284c",
+        "body_key": "bodies/sha256/77/77ce27e179c123b7461df1e56575aeda2b4d4d03393c783a94088e9dcc57284c.gz",
+        "url": "https://www.pewresearch.org/religion/2021/09/30/globally-social-hostilities-related-to-religion-decline-in-2019-while-government-restrictions-remain-at-highest-levels/",
+        "domain": "pewresearch.org",
+        "values": [
+          {
+            "@context": "https://schema.org",
+            "@type": "Article",
+            "headline": "Government Restrictions on Religion Remain at Highest Levels in 2019, Social Hostilities Decline",
+            "url": "https://www.pewresearch.org/religion/2021/09/30/globally-social-hostilities-related-to-religion-decline-in-2019-while-government-restrictions-remain-at-highest-levels/",
+            "datePublished": "2021-09-30T09:42:30-04:00",
+            "dateModified": "2026-08-25T12:41:14-04:00",
+            "publisher": {
+              "@type": "Organization",
+              "@id": "https://www.pewresearch.org/#organization",
+              "name": "Pew Research Center",
+              "url": "https://www.pewresearch.org",
+              "logo": {
+                "@type": "ImageObject",
+                "url": "https://www.pewresearch.org/wp-content/images/logo.png",
+                "width": 600,
+                "height": 60
+              }
+            },
+            "description": "Social hostilities involving religion, including violence and harassment against religious groups by private individuals and groups, declined in 2019, according to Pew Research Center’s 12th annual study of global restrictions on religion, which examines 198 countries and territories.",
+            "image": {
+              "@type": "ImageObject",
+              "url": "https://www.pewresearch.org/wp-content/uploads/sites/20/2021/09/featured_GRI_SHI_medians640px.png",
+              "width": 1280,
+              "height": 720
+            },
+            "author": [
+              {
+                "@type": "Person",
+                "name": "Samirah Majumdar",
+                "url": "https://www.pewresearch.org/staff/samirah-majumdar/",
+                "jobTitle": "Research Associate",
+                "worksFor": "Pew Research Center"
+              },
+              {
+                "@type": "Person",
+                "name": "Virginia Villa",
+                "url": "https://www.pewresearch.org/staff/virginia-villa/",
+                "jobTitle": "Former Research Analyst",
+                "worksFor": "Pew Research Center"
+              }
+            ],
+            "mainEntityOfPage": "https://www.pewresearch.org/religion/2021/09/30/globally-social-hostilities-related-to-religion-decline-in-2019-while-government-restrictions-remain-at-highest-levels/",
+            "articleSection": "International Religious Freedom &amp; Restrictions"
+          }
+        ]
+      }
+    ],
+    "repeated_opengraph": [
+      {
+        "sha256": "0110dad7256e4075d05e1b95d80effeffd57a54ce2458a02f057971c384eb4af",
+        "body_key": "bodies/sha256/01/0110dad7256e4075d05e1b95d80effeffd57a54ce2458a02f057971c384eb4af.gz",
+        "url": "https://agriculture.house.gov/news/documentsingle.aspx?DocumentID=3148",
+        "domain": "agriculture.house.gov",
+        "values": [
+          {
+            "article:tag": 2
+          }
+        ]
+      },
+      {
+        "sha256": "044d2fe4c77df0cca3329dce7bc7ff1ed0b147b4778421e73f2177ce7deb2d5a",
+        "body_key": "bodies/sha256/04/044d2fe4c77df0cca3329dce7bc7ff1ed0b147b4778421e73f2177ce7deb2d5a.gz",
+        "url": "https://republicans-agriculture.house.gov/news/documentsingle.aspx?DocumentID=7250",
+        "domain": "republicans-agriculture.house.gov",
+        "values": [
+          {
+            "article:tag": 2
+          }
+        ]
+      },
+      {
+        "sha256": "07012cc0db83b3ac3fd632a081636a33852ac0fa91c3c827eba5bab09d857e9e",
+        "body_key": "bodies/sha256/07/07012cc0db83b3ac3fd632a081636a33852ac0fa91c3c827eba5bab09d857e9e.gz",
+        "url": "https://edworkforce.house.gov/News/DocumentSingle.aspx?DocumentID=230135",
+        "domain": "edworkforce.house.gov",
+        "values": [
+          {
+            "article:tag": 2
+          }
+        ]
+      },
+      {
+        "sha256": "087b60389d4b6f5b99445a8f975df3e3bb0d97a949adcb61b5b53f1832b9f73d",
+        "body_key": "bodies/sha256/08/087b60389d4b6f5b99445a8f975df3e3bb0d97a949adcb61b5b53f1832b9f73d.gz",
+        "url": "https://republicans-edlabor.house.gov/news/documentsingle.aspx?DocumentID=407558",
+        "domain": "republicans-edlabor.house.gov",
+        "values": [
+          {
+            "article:tag": 2
+          }
+        ]
+      },
+      {
+        "sha256": "096901f5ee8ef340243c89312042c19331aa9f217e7012248be81645f80256c2",
+        "body_key": "bodies/sha256/09/096901f5ee8ef340243c89312042c19331aa9f217e7012248be81645f80256c2.gz",
+        "url": "https://democrats-financialservices.house.gov/news/documentsingle.aspx?DocumentID=399521",
+        "domain": "democrats-financialservices.house.gov",
+        "values": [
+          {
+            "article:tag": 11
+          }
+        ]
+      },
+      {
+        "sha256": "381a2f2fe4b053086ea7842e5b484737179471fdee3d50cc32aaf54d13303302",
+        "body_key": "bodies/sha256/38/381a2f2fe4b053086ea7842e5b484737179471fdee3d50cc32aaf54d13303302.gz",
+        "url": "https://www.youtube.com/watch?v=pAAIjrKJOiE&index=89&list=PLuoA7PTNRjFRbUaHMR8CNG_lv8wJotH3u",
+        "domain": "youtube.com",
+        "values": [
+          {
+            "og:video:tag": 4
+          }
+        ]
+      },
+      {
+        "sha256": "647bfbaa6dd55850586ea54830c34bf52370bcc32dd107be777de4532061c3b5",
+        "body_key": "bodies/sha256/64/647bfbaa6dd55850586ea54830c34bf52370bcc32dd107be777de4532061c3b5.gz",
+        "url": "https://www.echr.coe.int/w/ukraine-and-the-netherlands-v.-russia-nos.-8019/16-43800/14-and-28525/20-1",
+        "domain": "echr.coe.int",
+        "values": [
+          {
+            "og:locale:alternate": 2
+          }
+        ]
+      },
+      {
+        "sha256": "74c67a4206e17947cb50071425063791abb456be3fa02d75da09b7335a802efa",
+        "body_key": "bodies/sha256/74/74c67a4206e17947cb50071425063791abb456be3fa02d75da09b7335a802efa.gz",
+        "url": "https://naturalresources.house.gov/news/documentsingle.aspx?DocumentID=381462",
+        "domain": "naturalresources.house.gov",
+        "values": [
+          {
+            "article:tag": 4
+          }
+        ]
+      }
+    ]
+  }
+}
