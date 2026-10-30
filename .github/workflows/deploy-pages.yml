@@ -7,6 +7,7 @@ on:
     branches: [main]
     paths:
       - "apps/site/**"
+      - "apps/explorer_mcp/server.json"
       - ".node-version"
       - ".python-version"
       - "pyproject.toml"

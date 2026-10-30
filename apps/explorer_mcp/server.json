@@ -1,0 +1,22 @@
+{
+  "$schema": "https://static.modelcontextprotocol.io/schemas/2025-12-11/server.schema.json",
+  "name": "io.github.civictechdc/congress-explorer",
+  "title": "Congress Explorer",
+  "description": "Explore congressional hearings, witnesses, bills, members and related documents locally.",
+  "version": "0.3.0",
+  "websiteUrl": "https://civictechdc.github.io/congressional-tech/mcp/",
+  "repository": {
+    "url": "https://github.com/civictechdc/congressional-tech",
+    "source": "github",
+    "subfolder": "apps/explorer_mcp"
+  },
+  "packages": [{
+    "registryType": "pypi",
+    "identifier": "congressional-explorer-mcp",
+    "version": "0.3.0",
+    "runtimeHint": "uvx",
+    "runtimeArguments": [{"type": "named", "name": "--python", "value": "3.12"}],
+    "packageArguments": [{"type": "positional", "value": "serve"}],
+    "transport": {"type": "stdio"}
+  }]
+}

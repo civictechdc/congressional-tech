@@ -235,7 +235,6 @@ wheels = [
 
 [[package]]
 name = "congressional-explorer-mcp"
-version = "0.2.0"
 source = { editable = "." }
 dependencies = [
     { name = "duckdb" },

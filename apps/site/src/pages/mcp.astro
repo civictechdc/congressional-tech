@@ -1,0 +1,154 @@
+---
+import Base from '../layouts/Base.astro';
+import CapitolArt from '../components/CapitolArt.astro';
+import CopyCommand from '../components/CopyCommand.astro';
+import { withBase } from '../lib/paths';
+import release from '../../../explorer_mcp/server.json';
+
+const repository = release.repository.url;
+const releaseUrl = `${repository}/releases/tag/congress-mcp-v${release.version}`;
+const wheel = `${repository}/releases/download/congress-mcp-v${release.version}/congressional_explorer_mcp-${release.version}-py3-none-any.whl`;
+const install = `uv tool install --python 3.12 \\\n  '${wheel}'`;
+const clients = [
+  { id: 'claude-desktop', name: 'Claude Desktop', destination: 'Settings → Developer → Edit Config', detail: 'Merge the printed congress entry into mcpServers in your configuration. Keep your existing servers. Quit and reopen Claude Desktop.', url: 'https://modelcontextprotocol.io/docs/develop/connect-local-servers' },
+  { id: 'codex', name: 'Codex', destination: '~/.codex/config.toml', detail: 'Add the printed [mcp_servers.congress] section to your config file. Replace an existing congress section rather than adding a duplicate. Restart the client connection.', url: 'https://developers.openai.com/codex/mcp/' },
+  { id: 'cursor', name: 'Cursor', destination: '~/.cursor/mcp.json', detail: 'Merge the printed congress entry into mcpServers in your configuration. Keep your existing servers. Enable Congress in Cursor’s MCP settings.', url: 'https://cursor.com/docs/mcp' },
+  { id: 'claude-code', name: 'Claude Code', destination: 'A new terminal session', detail: 'Save the printed JSON to a file, then start Claude Code with --mcp-config /absolute/path/to/that-file.json. Review the requested tool permissions.', url: 'https://code.claude.com/docs/en/mcp' },
+];
+const prompts = [
+  'Find documents related to H.R. 1 in the 119th Congress. Group them by hearing.',
+  'Find hearings about artificial intelligence and list their witnesses and organizations.',
+  'Find recordings and saved transcripts for a committee meeting I choose.',
+];
+---
+<Base title="Congress Explorer MCP — Use with AI" active="mcp" description="Connect your AI assistant to congressional hearings, witnesses, bills, members and related documents. Free, open-source local MCP server for macOS and Linux.">
+  <section class="mcp-hero anchor-dark">
+    <div class="mcp-art" aria-hidden="true"><CapitolArt /></div>
+    <div class="container mcp-hero-content">
+      <p class="eyebrow">Congressional Tech · Use with AI</p>
+      <h1>Congress Explorer <span>MCP</span></h1>
+      <p class="mcp-lead">Congressional data.<br />Your questions. Your assistant.</p>
+      <p class="mcp-intro">Find hearings, witnesses, bills, members, recordings, and related documents through your AI assistant.</p>
+      <a class="btn btn--gold" href="#setup">Set up locally <span aria-hidden="true">↓</span></a>
+      <p class="mcp-platforms">Free &amp; open source · macOS and Linux · No data API key</p>
+    </div>
+  </section>
+
+  <section class="section" id="setup">
+    <div class="container mcp-layout">
+      <aside class="mcp-orientation">
+        <p class="eyebrow">Get connected</p>
+        <h2>Three steps.<br />Then ask away.</h2>
+        <p>MCP connects an AI assistant to tools and data. This server queries a downloaded snapshot on your computer.</p>
+        <p>Your client starts the server when it needs it. You do not need to leave a terminal running.</p>
+        <a href={releaseUrl}>Release {release.version} &amp; source code ↗</a>
+      </aside>
+      <div class="mcp-steps">
+        <section class="mcp-step" aria-labelledby="install-heading">
+          <p class="step-number">01 / Install</p>
+          <h3 id="install-heading">Install Congress Explorer</h3>
+          <p>Install <a href="https://docs.astral.sh/uv/getting-started/installation/">uv</a>, then paste this command into a terminal. It installs the released package and manages Python 3.12 for you.</p>
+          <CopyCommand command={install} label="Copy install command" />
+          <p class="mcp-note">If your shell cannot find the command afterward, run <code>uv tool update-shell</code> and open a new terminal. Windows is not yet supported.</p>
+        </section>
+        <section class="mcp-step" aria-labelledby="prepare-heading">
+          <p class="step-number">02 / Prepare</p>
+          <h3 id="prepare-heading">Download the data and check it</h3>
+          <CopyCommand command={'congress-explorer-mcp prepare\ncongress-explorer-mcp check'} label="Copy prepare and check commands" />
+          <p>The check should report <code>"status": "ok"</code> and six tools. It starts the server and reads a data row over MCP.</p>
+          <p class="mcp-note">The October 30, 2026 snapshot is about 65 MiB. Data goes in <code>~/.cache/congress-explorer-mcp</code>; Python and dependencies need additional space. Document files are fetched separately when your assistant needs them.</p>
+        </section>
+        <section class="mcp-step" aria-labelledby="connect-heading">
+          <p class="step-number">03 / Connect</p>
+          <h3 id="connect-heading">Choose your assistant</h3>
+          <div id="client-picker" hidden>
+            <label for="mcp-client">AI client</label>
+            <select id="mcp-client" aria-controls="client-instructions">
+              {clients.map(client => <option value={client.id}>{client.name}</option>)}
+            </select>
+          </div>
+          <div id="client-instructions">
+            {clients.map(client => <section class="client-guide" data-client={client.id} aria-label={`${client.name} setup`}>
+              <h4>{client.name}</h4>
+              <CopyCommand command={`congress-explorer-mcp config --client ${client.id}`} label={`Copy ${client.name} configuration command`} />
+              <p><strong>{client.destination}</strong></p>
+              <p>{client.detail}</p>
+              <p class="mcp-note">The command prints settings with the correct paths. It does not edit your client. <a href={client.url}>Client documentation ↗</a></p>
+            </section>)}
+          </div>
+        </section>
+      </div>
+    </div>
+  </section>
+
+  <section class="section section--tint" id="try-it">
+    <div class="container mcp-layout">
+      <div><p class="eyebrow">Start a conversation</p><h2>Follow a question<br />through Congress.</h2><p>Ask your assistant to use Congress Explorer. It can discover tables, follow documented relationships, and run read-only SQL.</p></div>
+      <div class="mcp-prompts">{prompts.map((prompt, index) => <div class="mcp-prompt"><span aria-hidden="true">0{index + 1}</span><p>“{prompt}”</p></div>)}</div>
+    </div>
+  </section>
+
+  <section class="section">
+    <div class="container mcp-layout">
+      <div><p class="eyebrow">Know your data</p><h2>Published records.<br />Clear boundaries.</h2></div>
+      <div class="mcp-details">
+        <details open><summary>What can I explore?</summary><p>Meetings, witness appearances, bills, nominations, members, committees, rosters, recordings, and document records. All published tables and columns are queryable. Availability varies by source, Congress, and record; this is a bounded collection, not a complete record of every congressional activity.</p></details>
+        <details><summary>Can it read documents?</summary><p>The server searches structured data and document metadata, then returns links to saved files. Your assistant needs its own file-fetching and reading tools to read those documents. The server does not provide full-text search or OCR.</p></details>
+        <details><summary>How do I get newer data?</summary><p>Run <code>congress-explorer-mcp prepare</code> again, then restart the client connection. Only changed files download. Run <code>congress-explorer-mcp inspect</code> to see your selected release. Software updates are separate: install the version linked on this page and restart your client.</p></details>
+        <details><summary>What leaves my computer?</summary><p>The server downloads public data during preparation and queries it locally afterward. Your AI client may send your questions and tool results to its model provider. Fetching linked documents requires an internet connection.</p></details>
+        <details><summary>Need help connecting?</summary><p>Run <code>congress-explorer-mcp check</code> in your terminal. If data is missing, run <code>prepare</code> first. If you chose a custom <code>--data-dir</code>, use that same directory for preparation, checks, and configuration. <a href={`${repository}/issues`}>Report an issue</a> with your operating system, client, and error message.</p></details>
+        <p class="mcp-more"><a href={`${repository}/tree/main/apps/explorer_mcp`}>Technical documentation ↗</a><a href={withBase('/archive/')}>Browse the data on the web →</a></p>
+      </div>
+    </div>
+  </section>
+</Base>
+<script>
+  const picker = document.querySelector<HTMLSelectElement>('#mcp-client');
+  const container = document.querySelector<HTMLElement>('#client-picker');
+  if (picker && container) {
+    container.hidden = false;
+    const selectClient = () => {
+      for (const guide of document.querySelectorAll<HTMLElement>('[data-client]')) guide.hidden = guide.dataset.client !== picker.value;
+    };
+    picker.addEventListener('change', selectClient);
+    selectClient();
+  }
+</script>
+<style>
+  .mcp-hero { position: relative; overflow: hidden; background: var(--ctdc-midnight); color: var(--ctdc-on-dark-strong); }
+  .mcp-hero-content { position: relative; padding-top: 4rem; padding-bottom: 3.5rem; }
+  .mcp-art { position: absolute; width: min(67vw, 900px); right: -6%; bottom: -9%; opacity: .65; pointer-events: none; }
+  .mcp-hero .eyebrow { color: var(--ctdc-gold); }
+  h1 { font-size: clamp(2.3rem, 4vw, 3.8rem); max-width: 700px; margin: 1.2rem 0; letter-spacing: -.035em; }
+  h1 span { color: var(--ctdc-gold); }
+  .mcp-lead { font-size: clamp(1.6rem, 2.5vw, 2.5rem); line-height: 1.15; margin: 1.3rem 0; }
+  .mcp-intro { max-width: 440px; color: var(--ctdc-on-dark); font-size: 1.13rem; margin-bottom: 1.5rem; }
+  .mcp-platforms { font-size: .9rem; margin-top: 1rem; color: var(--ctdc-on-dark); }
+  .mcp-layout { display: grid; grid-template-columns: 1fr 1.75fr; gap: clamp(2rem, 6vw, 6rem); }
+  .mcp-layout h2 { font-size: clamp(1.8rem, 3vw, 2.6rem); margin-bottom: 1rem; }
+  .mcp-orientation { position: sticky; top: 2rem; align-self: start; }
+  .mcp-orientation p { max-width: 330px; }
+  .mcp-steps { min-width: 0; }
+  .mcp-step { padding: 0 0 2rem; margin-bottom: 2rem; border-bottom: 1px solid var(--ctdc-hairline-on-light); }
+  .mcp-step:last-child { border-bottom: 0; margin-bottom: 0; padding-bottom: 0; }
+  .step-number { color: var(--ctdc-primary); text-transform: uppercase; letter-spacing: .12em; font-size: .8rem; font-weight: 700; }
+  .mcp-step h3 { font-size: 1.55rem; }
+  .mcp-note { font-size: .92rem; color: var(--ctdc-ink-muted); }
+  #client-picker { margin: 1rem 0; }
+  label { display: block; font-weight: 600; margin-bottom: .3rem; }
+  select { width: 100%; padding: .7rem; border: 1px solid var(--ctdc-ink-muted); background: var(--ctdc-surface); font: inherit; border-radius: 4px; }
+  .client-guide { animation: arrive .2s ease-out; }
+  .client-guide h4 { margin-top: 1.3rem; }
+  .mcp-prompt { display: flex; gap: 1.5rem; padding: 1.5rem 0; border-bottom: 1px solid var(--ctdc-hairline-on-light); }
+  .mcp-prompt:first-child { padding-top: 0; }
+  .mcp-prompt span { color: var(--ctdc-primary); font: .8rem var(--ctdc-font-mono); padding-top: .4rem; }
+  .mcp-prompt p { font-size: clamp(1.15rem, 2vw, 1.5rem); line-height: 1.4; margin: 0; }
+  details { border-bottom: 1px solid var(--ctdc-hairline-on-light); padding: 1rem 0; }
+  summary { font-size: 1.15rem; font-weight: 600; cursor: pointer; }
+  details p { margin-top: .8rem; }
+  .mcp-more { display: flex; flex-wrap: wrap; gap: 1rem; margin-top: 2rem; }
+  @keyframes arrive { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: translateY(0); } }
+  @media (prefers-reduced-motion: no-preference) { .mcp-hero-content { animation: arrive .5s ease-out; } }
+  @media (prefers-reduced-motion: reduce) { .client-guide { animation: none; } }
+  @media (max-width: 760px) { .mcp-layout { grid-template-columns: 1fr; gap: 2rem; } .mcp-orientation { position: static; } .mcp-hero-content { padding-top: 2.5rem; padding-bottom: 2rem; } .mcp-art { width: 110vw; right: -45%; opacity: .18; } }
+</style>

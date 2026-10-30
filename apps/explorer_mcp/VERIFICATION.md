@@ -3,6 +3,27 @@
 The MCP runs locally over stdio with DuckDB 2.0.0 and FastMCP 4.1.4 in its own
 locked environment. It queries published Parquet files directly.
 
+## Local installation and website — 0.3.0
+
+- 57 app tests passed, plus the retained native producer-to-stdio integration:
+  58 total. The first native run used a missing fixture path; the targeted rerun
+  used the retained `readiness-native` output and passed.
+- The built wheel and source distribution pass strict Twine metadata checks.
+  A fresh `uv tool install` outside the repository passed preparation, generated
+  JSON/TOML configuration, MCP discovery and a document read. A separate installed
+  wheel passed `check` against the prepared public release and exposed all 16 tables.
+- Claude Code's real `mcp get` reports **Connected** with the generated settings
+  in an isolated configuration directory. Codex CLI accepts the generated launch
+  settings through a temporary command-line override. Existing user settings were
+  not edited. Claude Desktop and Cursor setup UI have not been manually qualified.
+- Astro builds the onboarding page. Playwright checks cover desktop/mobile layout,
+  copy controls and client selection. The site-wide type check still reports the
+  same 32 existing explorer errors; none come from the new page or copy component.
+- Release CI verifies the packaged install on macOS and Linux before publishing
+  GitHub assets. PyPI and the MCP Registry require account-side publisher setup;
+  see [publishing](PUBLISHING.md). A prepared publishing workflow is not proof of
+  an uploaded package or registry listing.
+
 ## Current checks
 
 - **55 MCP tests passed locally**, including the actual native producer's phase 2

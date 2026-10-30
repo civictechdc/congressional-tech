@@ -1,5 +1,11 @@
 # Congress Explorer MCP
 
+<!-- mcp-name: io.github.civictechdc/congress-explorer -->
+
+Explore congressional hearings, witnesses, bills, members, recordings, and related
+documents from your AI assistant. Free and open source. No data API key required.
+Start with the [setup guide](https://civictechdc.github.io/congressional-tech/mcp/).
+
 A local FastMCP server for the current Congressional Document Archive and its
 phase 2 entities. It reads one immutable release: every Parquet table, every
 published column, and native nested lists/structs. DuckDB **2.0.0** and FastMCP
@@ -10,7 +16,56 @@ committee catalog, legacy parser imports, review overlays, copied DuckDB databas
 or custom SQL language. The producer owns data assembly and SpicyRegs imports;
 the MCP queries the published result. It stays a separate Congress server.
 
-## Run locally
+## Install a release (macOS or Linux)
+
+Install [uv](https://docs.astral.sh/uv/getting-started/installation/), then:
+
+```sh
+uv tool install --python 3.12 \
+  'https://github.com/civictechdc/congressional-tech/releases/download/congress-mcp-v0.3.0/congressional_explorer_mcp-0.3.0-py3-none-any.whl'
+congress-explorer-mcp prepare
+congress-explorer-mcp check
+```
+
+If the command is not on your shell's PATH, run `uv tool update-shell` and open
+a new terminal. `check` should report `"status": "ok"` and six tools. It launches
+the installed server, connects over MCP and reads one document row. Python 3.12
+is managed by uv. Windows is not supported yet.
+
+Print configuration for your client:
+
+```sh
+congress-explorer-mcp config --client claude-desktop
+congress-explorer-mcp config --client codex
+congress-explorer-mcp config --client cursor
+congress-explorer-mcp config --client claude-code
+```
+
+Choose one. These commands print settings with absolute paths and never edit the
+client's configuration. Merge the output into the appropriate settings, preserving
+other servers, then restart the client connection:
+
+| Client | Configuration |
+|---|---|
+| Claude Desktop | Settings → Developer → Edit Config; merge into `mcpServers` |
+| Codex | Add or replace `[mcp_servers.congress]` in `~/.codex/config.toml` |
+| Cursor | Merge into `mcpServers` in `~/.cursor/mcp.json` |
+| Claude Code | Save JSON to a file and pass `--mcp-config /absolute/path/to/file.json` when starting Claude Code |
+
+The client starts `serve` for you. There is no port to open or terminal to keep
+running. Ask: “Use Congress Explorer to find documents related to H.R. 1 in the
+119th Congress.” Your assistant needs its own tools to fetch and read linked files.
+
+Run `prepare` again and restart the client connection to refresh data. Software
+updates are separate: install the wheel for the desired release and restart the
+client. Preparation currently downloads about 65 MiB (October 30, 2026 snapshot);
+the Python runtime and dependencies require additional disk space.
+
+Queries run locally, but your AI client may send prompts and tool results to its
+model provider. Coverage varies by source and Congress. This is a bounded published
+collection, not a complete record of every congressional activity.
+
+## Run from source
 
 From the repository root, on macOS or Linux:
 
@@ -117,7 +172,7 @@ registry. New definitions within the supported metadata version appear without
 MCP changes. Older releases report that relationships were not published, and
 unknown versions report unsupported metadata while table and SQL access remain
 available. The complete producer reference is generated at
-[`docs/release-relationships.md`](../../docs/release-relationships.md).
+[`docs/release-relationships.md`](https://github.com/civictechdc/congressional-tech/blob/main/docs/release-relationships.md).
 
 These examples use the defined phase 2 fields and require those tables in the
 selected release.
@@ -222,11 +277,11 @@ canonical archive fixture, phase 2 entity shapes, raw SQL and relationships,
 shards, duplicates, missing versus empty data, failure/reuse, SQL restrictions,
 byte limits, subprocess cancellation and real stdio MCP calls. The dedicated CI
 workflow also builds the native phase 2 fixture and consumes its actual output
-over stdio in the independent MCP environment. See [verification](VERIFICATION.md)
-and [production measurements](../../docs/measurements/congress-mcp-production-20261030.md).
+over stdio in the independent MCP environment. See [verification](https://github.com/civictechdc/congressional-tech/blob/main/apps/explorer_mcp/VERIFICATION.md)
+and [production measurements](https://github.com/civictechdc/congressional-tech/blob/main/docs/measurements/congress-mcp-production-20261030.md).
 
 Published data availability is separate from reader support. Absent tables are
 reported as unavailable; an empty table means zero published rows; nulls remain
 unknown. The server cannot supply phase 2 fields before producers publish them.
-The current model is defined by [the data model](../../docs/engine-first-data-model.md)
-and [the phase 2 annex](../../docs/plans/phase-2-annex-20261028.md).
+The current model is defined by [the data model](https://github.com/civictechdc/congressional-tech/blob/main/docs/engine-first-data-model.md)
+and [the phase 2 annex](https://github.com/civictechdc/congressional-tech/blob/main/docs/plans/phase-2-annex-20261028.md).

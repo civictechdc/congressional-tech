@@ -5,6 +5,7 @@ on:
     paths:
       - "apps/committee_youtube/**"
       - "apps/site/**"
+      - "apps/explorer_mcp/server.json"
       - "infra/cloudflare/**"
       - "packages/committee_meeting/**"
       - "packages/congress_api/**"

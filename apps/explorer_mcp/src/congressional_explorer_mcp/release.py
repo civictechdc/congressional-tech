@@ -11,6 +11,7 @@ from urllib.parse import urljoin, urlsplit
 from urllib.request import Request, urlopen
 
 from .models import ExplorerError
+from . import __version__
 
 PUBLICATION = 'https://congressional-data.spicygov.ai/viewer-publications/manifest.json'
 CONTROL_BYTES = 32 << 20
@@ -37,7 +38,7 @@ def stamp(path):
 @contextmanager
 def opened(location):
     if str(location).startswith(('https://', 'http://')):
-        with urlopen(Request(str(location), headers={'User-Agent': 'CongressExplorerMCP/0.2.0'}), timeout=30) as stream:
+        with urlopen(Request(str(location), headers={'User-Agent': f'CongressExplorerMCP/{__version__}'}), timeout=30) as stream:
             if urlsplit(stream.url).netloc != urlsplit(str(location)).netloc:
                 raise ExplorerError('Publication redirected to a different host')
             yield stream
