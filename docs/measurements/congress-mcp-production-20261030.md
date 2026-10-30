@@ -154,8 +154,21 @@ selection was restored to the public release. See
 
 ## Committed CI
 
-Code commit: `c649abece2a5b802a1381e6fb61a2feb5f3bd4fa`, merged and pushed to main.
-[MCP CI passed](https://github.com/civictechdc/congressional-tech/actions/runs/41082729727),
-including both the isolated app suite and native producer-to-stdio job.
+Final tested code: `32941eb15ba5e4f938e783218c0c572236669ab6`, merged and pushed
+to remote main, including concurrent published phase 2 changes and a two-entry
+lockfile refresh. [MCP CI passed](https://github.com/civictechdc/congressional-tech/actions/runs/41087258770):
+54 app tests, 61 producer/profile/retention tests, and the actual native-output
+stdio integration. The app suite deliberately delegates its one native test to
+that separate job; together all 55 MCP tests run.
+
 [The broader repository run](https://github.com/civictechdc/congressional-tech/actions/runs/41082733637)
-is still in progress; final disposition will be recorded here.
+tested the earlier integration commit `c649abec`. All six offline shards passed:
+12,586 tests passed, five skipped and two expected failures. Its later Python
+checks passed another 241 active-experiment tests and 46 native-loopback tests.
+The run then failed on 32 website TypeScript errors across seven site files,
+including 20 errors in `reader/range-file.ts`. It did not reach the remaining
+site build/browser steps. This is a separate repository CI failure; the complete
+repository workflow is not green. The newly merged code was checked through the
+expanded MCP/native-producer workflow above, not another full repository replay.
+The existing `npx --no-install astro check` command reproduced the same 32 site
+errors locally at `32941eb1`; they are not a stale CI-only result.
