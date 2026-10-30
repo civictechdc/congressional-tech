@@ -299,6 +299,12 @@ test('committee meetings are chronological, witnesses searchable by organization
   assert.equal(witnesses.total, 1);
   assert.equal(witnesses.rows[0].title, 'Alex Smith');
   assert.equal(witnesses.rows[0].organization, 'First office');
+  const witnessRelated = await reader.getRelated(witnesses.rows[0]);
+  assert.equal(witnessRelated.total, 0);
+  const witnessRecordings = await reader.getRelated(witnesses.rows[0], {kind:'material', materialType:'recording'});
+  assert.equal(witnessRecordings.total, 0);
+  const witnessDocuments = await reader.getRelated(witnesses.rows[0], {kind:'material', materialType:'document'});
+  assert.equal(witnessDocuments.total, 0);
   const committees = await reader.search({kind:'committee_term', congress:116});
   const committee = committees.rows.find(r => r.committee_code === 'hsru00' || (r.issue_count ?? 0) > 0);
   assert.ok(committee);

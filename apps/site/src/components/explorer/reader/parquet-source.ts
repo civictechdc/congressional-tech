@@ -127,6 +127,13 @@ export function createParquetReader(publication: PublicationHandle, fetcher: Fet
       }
       const available = new Set(parquetSchema(metadata).children.map(child => child.element.name));
       const selectedColumns = options.columns?.filter(column => available.has(column));
+      if (
+        (options.columns?.length && !selectedColumns?.length) ||
+        (options.filter && Object.keys(options.filter).some(column => !available.has(column.split('.')[0]))) ||
+        (options.pruningFilter && Object.keys(options.pruningFilter).some(column => !available.has(column.split('.')[0])))
+      ) {
+        continue;
+      }
       const readOptions = {
         file: buffer,
         metadata,
