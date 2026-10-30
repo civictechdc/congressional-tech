@@ -30,7 +30,7 @@ def generated_files():
     return {
         APP / 'plugin.json': {'$schema': 'https://agent-plugins.org/schemas/1.0.0/plugin.schema.json',
             **identity, 'extensions': {'com.openai': dict(interface=interface,
-                requires_local_executor=True, onboardingSkill='./skills/setup/SKILL.md')}},
+                requires_local_executor=True, onboardingSkill='./skills/explore-congress/SKILL.md')}},
         APP / 'mcp.json': {'$schema': 'https://agent-plugins.org/schemas/1.0.0/mcp.schema.json',
             'mcpServers': {'congress': dict(type='stdio', **launch('${PLUGIN_ROOT}'))}},
         APP / '.claude-plugin/plugin.json': identity,
@@ -58,7 +58,7 @@ def build(output):
     version = json.loads((APP / 'server.json').read_text())['version']
     common = ['pyproject.toml', 'uv.lock', 'README.md', 'LICENSE', 'desktop.py', 'assets/icon.svg', 'assets/icon.png']
     common += [str(p.relative_to(APP)) for p in sorted((APP / 'src').rglob('*.py'))]
-    plugin = common + ['plugin.json', 'mcp.json', '.claude-plugin/plugin.json', '.mcp.json', 'skills/setup/SKILL.md']
+    plugin = common + ['plugin.json', 'mcp.json', '.claude-plugin/plugin.json', '.mcp.json', 'skills/explore-congress/SKILL.md']
     output.mkdir(parents=True, exist_ok=True)
     for suffix, paths in [('mcpb', common + ['manifest.json']), ('plugin.zip', plugin)]:
         target = output / f'congress-explorer-{version}.{suffix}'

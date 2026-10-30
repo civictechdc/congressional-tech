@@ -36,7 +36,7 @@
         "logo": "./assets/icon.svg"
       },
       "requires_local_executor": true,
-      "onboardingSkill": "./skills/setup/SKILL.md"
+      "onboardingSkill": "./skills/explore-congress/SKILL.md"
     }
   }
 }

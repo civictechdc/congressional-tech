@@ -12,6 +12,7 @@ const desktopBundle = `${repository}/releases/download/congress-mcp-v${release.v
 const pluginBundle = `${repository}/releases/download/congress-mcp-v${release.version}/congress-explorer-${release.version}.plugin.zip`;
 const codexSetup = `codex plugin marketplace add civictechdc/congressional-tech --ref congress-mcp-v${release.version}\ncodex plugin add congress-explorer@congressional-tech`;
 const claudeSetup = 'claude plugin install congress-explorer --marketplace civictechdc/congressional-tech';
+const skillSetup = 'npx skills add civictechdc/congressional-tech --skill explore-congress';
 const exploreLink = `codex://new?prompt=${encodeURIComponent('[@Congress Explorer](plugin://congress-explorer@congressional-tech) Find hearings about artificial intelligence and list their witnesses and organizations.')}`;
 const install = `uv tool install --python 3.12 \\\n  '${wheel}'`;
 const clients = [
@@ -62,7 +63,7 @@ const prompts = [
           <h3 id="claude-plugin-heading">Claude Code &amp; Cowork</h3>
           <p>Install <a href="https://docs.astral.sh/uv/getting-started/installation/">uv</a> on the computer running the plugin, then use this command with a current Claude Code:</p>
           <CopyCommand command={claudeSetup} label="Copy Claude plugin install command" />
-          <p>In Cowork desktop, open Customize → Plugins and upload the plugin ZIP. Start a local task, then run <code>/congress-explorer:setup</code>.</p>
+          <p>In Cowork desktop, open Customize → Plugins and upload the plugin ZIP. Start a local task, then run <code>/congress-explorer:explore-congress</code>.</p>
           <a class="btn btn--gold" href={pluginBundle}>Download plugin ZIP</a>
           <p class="mcp-note">The plugin's local server runs in Claude Code and Cowork desktop. For Claude Desktop chat, use the extension above.</p>
         </section>
@@ -73,6 +74,13 @@ const prompts = [
           <p>Open the desktop app and start a local conversation. The button below prepares a question with Congress Explorer selected; review it and send when ready.</p>
           <a class="btn btn--gold" href={exploreLink}>Explore Congress in Codex</a>
           <p class="mcp-note">Distributed through our repository marketplace. A public OpenAI directory listing requires separate approval. This server runs in local desktop conversations.</p>
+        </section>
+        <section class="mcp-step" aria-labelledby="skill-heading">
+          <h3 id="skill-heading">Add the research skill</h3>
+          <p>Already using an agent with skills? Add our research and setup guidance with Node.js 22.20 or later:</p>
+          <CopyCommand command={skillSetup} label="Copy research skill install command" />
+          <p>Choose your agent, then ask it to use <code>explore-congress</code>. Add <code>--global</code> to make the skill available across projects.</p>
+          <p class="mcp-note">This installs instructions only. Connect the MCP server using one of the setup paths on this page to query data. The full plugin already includes this skill. <a href="https://github.com/vercel-labs/skills/blob/main/docs/commands.md#skills-add">Skills CLI documentation ↗</a></p>
         </section>
       </div>
     </div>

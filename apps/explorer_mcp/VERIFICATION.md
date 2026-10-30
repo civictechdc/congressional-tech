@@ -25,6 +25,11 @@ directory listings have not been published for this version.
   `claude mcp list` reported `plugin:congress-explorer:congress` as **Connected**.
   Codex CLI 0.165.0 discovers the plugin using a command-line marketplace override.
   Existing user client configuration was not changed.
+- Skills CLI 1.7.4 discovers `explore-congress` through the repository's Claude
+  marketplace. A project-scoped install into a temporary directory installed the
+  same skill for Claude Code and Codex. It installed no MCP configuration, plugin
+  manifest or server runtime. The standalone skill points to the server setup
+  guide, and the OpenAI onboarding path resolves in the rebuilt plugin ZIP.
 - Astro builds. Browser checks at 1200 px and 390 px found no horizontal overflow;
   both plugin copy buttons return the exact setup commands, and the manual client
   selector still works. Download URLs point to the planned 0.4.0 release and must
@@ -66,9 +71,15 @@ format labels. No publication checks were bypassed.
 - Astro builds the onboarding page. Playwright checks cover desktop/mobile layout,
   copy controls and client selection. The site-wide type check still reports the
   same 32 existing explorer errors; none come from the new page or copy component.
-- PyPI and the MCP Registry are not published; they require account-side publisher setup.
-  See [publishing](PUBLISHING.md). A prepared publishing workflow is not proof of
-  an uploaded package or registry listing.
+- [PyPI 0.3.0](https://pypi.org/project/congressional-explorer-mcp/0.3.0/) is published.
+  [Publishing CI](https://github.com/civictechdc/congressional-tech/actions/runs/41105530100)
+  passed on Ubuntu 24.04 and macOS 15 after migrating from the macOS 14 runner
+  blocked by GitHub's scheduled retirement brownout.
+  Both PyPI distribution hashes match the existing GitHub release. A fresh
+  `uv tool install` from PyPI outside the repository passed `check` against the
+  prepared public release: 16 tables, six tools and one document row read.
+- The MCP Registry is not published. See [publishing](PUBLISHING.md) for the
+  separate registry authentication and publication step.
 
 ## Core runtime verification before 0.3.0
 

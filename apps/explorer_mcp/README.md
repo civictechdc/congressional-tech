@@ -44,7 +44,7 @@ Inside Claude Code, the equivalent is
 `/plugin install congress-explorer --marketplace civictechdc/congressional-tech`.
 In Cowork desktop, open Customize → Plugins and upload
 [congress-explorer-0.4.0.plugin.zip](https://github.com/civictechdc/congressional-tech/releases/download/congress-mcp-v0.4.0/congress-explorer-0.4.0.plugin.zip).
-Start a local task and run `/congress-explorer:setup`.
+Start a local task and run `/congress-explorer:explore-congress`.
 The plugin's local server runs in Claude Code and Cowork desktop; Claude chat uses
 the separate `.mcpb` extension above. Organization policies may restrict installation.
 
@@ -68,6 +68,27 @@ the portable OpenAI package; `.claude-plugin/plugin.json` and `.mcp.json` descri
 the Claude package. Both launch `desktop.py` with the same locked dependencies.
 `scripts/build_desktop.py` generates the client-specific metadata from `server.json`;
 do not edit the generated manifests by hand.
+
+### Install the research skill with npx
+
+With Node.js 22.20 or later, run this from the project where you want the skill:
+
+```sh
+npx skills add civictechdc/congressional-tech --skill explore-congress
+```
+
+Choose your agent, or append `--agent claude-code` or `--agent codex`. Add `--global`
+to make the skill available across projects. Then ask your agent to use
+`explore-congress` for a congressional question or to help connect Congress Explorer.
+
+This installs the skill's instructions. It does **not** install or register the
+MCP server. The full plugin already includes the same skill; no separate skill
+install is needed. The skill links to the client setup guide if the server is
+missing. The Skills CLI discovers it through our existing Claude marketplace
+manifest. See the [Skills CLI documentation](https://github.com/vercel-labs/skills/blob/main/docs/commands.md#skills-add).
+
+The GitHub shorthand reads the default branch. To try a checkout before merging,
+run `npx skills add . --skill explore-congress` at the repository root.
 
 ## Manual install (macOS or Linux)
 
