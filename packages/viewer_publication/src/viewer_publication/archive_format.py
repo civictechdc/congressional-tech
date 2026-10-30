@@ -205,7 +205,17 @@ def _execute(inputs, steps, *, output, scratch, engine, origin, auxiliary=None, 
         source = 'ordered o' if relation is None else f'ordered o JOIN (SELECT DISTINCT list_row FROM {relation}) r ON o.list_row=r.list_row'
         coverage_parts.append(f"SELECT '{name}.parquet' AS file,min(o.congress) AS congress_start,max(o.congress) AS congress_end,min(o.document_date) AS date_start,max(o.document_date) AS date_end FROM {source}")
     if 'meetings_resolved' in step_names:
-        coverage_parts.append("SELECT 'meetings.parquet' AS file,(SELECT min(cast(congress AS SMALLINT)) FROM meetings_resolved) AS congress_start,(SELECT max(cast(congress AS SMALLINT)) FROM meetings_resolved) AS congress_end,min(meeting_date) AS date_start,max(meeting_date) AS date_end FROM meetings_export")
+        coverage_parts.append("""SELECT 'meetings.parquet' AS file,
+            min(coalesce(cast(r.congress AS SMALLINT),o.congress_min)) AS congress_start,
+            max(coalesce(cast(r.congress AS SMALLINT),o.congress_max)) AS congress_end,
+            min(m.meeting_date) AS date_start,
+            max(m.meeting_date) AS date_end
+            FROM meetings_export m
+            LEFT JOIN meetings_resolved r ON m.event_id=r.event_id
+            LEFT JOIN (
+                SELECT try_cast(unnest(meeting_keys) AS BIGINT) AS event_id,min(congress) AS congress_min,max(congress) AS congress_max
+                FROM ordered WHERE meeting_keys IS NOT NULL GROUP BY 1
+            ) o ON m.event_id=o.event_id""")
     else:
         coverage_parts.append("SELECT 'meetings.parquet' AS file,cast(NULL AS SMALLINT) AS congress_start,cast(NULL AS SMALLINT) AS congress_end,min(meeting_date) AS date_start,max(meeting_date) AS date_end FROM meetings_export")
     if 'witnesses' in aux_names and 'meetings_resolved' in step_names:

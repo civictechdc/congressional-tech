@@ -132,7 +132,8 @@ def run_publish(model_spec,*,client,engine,bucket,work,receipt_keys,provenance,r
                 live_input=matching_live_input(lookup,release_id=pointer['release_id'],digest=digest)
             if live_input is not None:
                 admission=prepared['scratch']/'admission';admission.mkdir()
-                checks=admission_checks(parser_versions=prepared['parser_versions'],catalog_version=prepared['catalog_version'])
+                checks=admission_checks(parser_versions=prepared['parser_versions'],catalog_version=prepared['catalog_version'],
+                    include_entities=bool(prepared.get('include_entities')))
                 reports=run_job(admission,engine,inputs=prepared['inputs'],steps=prepared['steps'],outputs=[],
                     queries=checks+[input_receipts_query()])
                 _admitted(reports,[query['name'] for query in checks]);_receipt_evidence(reports,keys)
@@ -141,7 +142,10 @@ def run_publish(model_spec,*,client,engine,bucket,work,receipt_keys,provenance,r
                 manifest=build_prepared_release(prepared,engine=engine,output=model_spec['output'])
                 result=json.loads((prepared['scratch']/'result.json').read_text())
                 reports=_reports(result)
-                _admitted(reports,['invariants','model_invariants','url_state_invariants','profile_completeness'])
+                admitted_names=['invariants','model_invariants','url_state_invariants','profile_completeness']
+                if prepared.get('include_entities'):
+                    admitted_names.append('entity_profile_completeness')
+                _admitted(reports,admitted_names)
                 _receipt_evidence(reports,keys)
                 probe_selectors=_probe_evidence(reports)
         # Local custody must still hold after native consumption and before any
