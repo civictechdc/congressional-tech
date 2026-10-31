@@ -21,7 +21,7 @@ from congress_api.retention.body_store import validate_record
 from congress_api.retention.recovery_facts import project_legacy
 
 
-def import_retained(writer,source):
+def import_retained(writer,source,*,operation_id=None,freeze_dir=None,verified_body=None):
     """One retained file becomes one recovery receipt; no storage loop or index."""
     required=('original_url','recovered_url','body_sha256','retrieved_at',
               'category','match_basis','imported_at')
@@ -40,7 +40,7 @@ def import_retained(writer,source):
         body=BodyFile(None,source['body_sha256'],source['bytes'],source.get('media_type'),
             source.get('sniffed_format'),source.get('sniff_version'),source.get('intact'),
             stored_suffix=source['stored_suffix'])
-        return _write_import(writer,source,body)
+        return _write_import(writer,source,body,operation_id=operation_id,freeze_dir=freeze_dir)
     if not isinstance(source.get('body_path'),str) or not source['body_path']:
         raise ValueError('New recovery needs a retained local file')
     with TemporaryDirectory(prefix='retained-import-') as temporary:
@@ -51,16 +51,22 @@ def import_retained(writer,source):
                 import shutil
                 shutil.copyfileobj(src,dst,1024**2)
             path=unpacked
-        with path.open('rb') as body:
-            digest=file_digest(body,'sha256').hexdigest()
+        if verified_body is not None:
+            if source.get('stored_gzip'):
+                raise ValueError('Verified body must describe decoded bytes')
+            verified_body._require_custody(path)
+            digest=verified_body.sha256
+        else:
+            with path.open('rb') as body:
+                digest=file_digest(body,'sha256').hexdigest()
         if digest!=source['body_sha256']:raise ValueError('Recovery body changed')
         reading=read_sniff_file(path)
         body=BodyFile(path,digest,path.stat().st_size,source.get('media_type'),
             reading['format'],reading['parser_version'],reading['intact'],reading.get('error_type'))
-        return _write_import(writer,source,body)
+        return _write_import(writer,source,body,operation_id=operation_id,freeze_dir=freeze_dir)
 
 
-def _write_import(writer,source,body):
+def _write_import(writer,source,body,*,operation_id=None,freeze_dir=None):
     attempt=FetchAttempt(source['recovered_url'],source['recovered_url'],source['retrieved_at'],
                          'retained-import',200,None,{},(),True,body)
     acquisition=dict(prior_access_category=source['category'],recovered_url=source['recovered_url'],
@@ -73,7 +79,8 @@ def _write_import(writer,source,body):
     evidence=dict(original_url=source['original_url'],imported_at=source['imported_at'],
                   match_basis=source['match_basis'],acquisition=acquisition)
     return writer.write(FetchResult(attempt),family='documents',mode='retained_import',
-                        recovery_evidence=evidence,fidelity=source.get('fidelity','retained-file'))
+                        recovery_evidence=evidence,fidelity=source.get('fidelity','retained-file'),
+                        **(dict(operation_id=operation_id,freeze_dir=freeze_dir) if operation_id else {}))
 
 
 def capture_input(path):

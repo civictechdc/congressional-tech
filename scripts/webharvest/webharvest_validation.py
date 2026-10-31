@@ -56,6 +56,10 @@ def freeze(directory, config):
         implementation = (directory / 'validation.py').read_bytes()
         if digest(implementation) != value['implementation_sha256']:
             raise ValueError('Frozen validator implementation changed')
+        if 'qualification_sha256' in value:
+            for name, field in [('qualification.py', 'qualification_sha256'), ('html.py', 'qualification_html_sha256')]:
+                if digest((directory / name).read_bytes()) != value[field]:
+                    raise ValueError('Frozen qualification implementation changed')
         return value
     source_dir = classifier_directory()
     source = (source_dir / 'html.py').read_bytes()
@@ -71,7 +75,15 @@ def freeze(directory, config):
         raise ValueError('Interrupted validator snapshot differs; use a new directory')
     if not code_snapshot.exists():
         code_snapshot.write_bytes(implementation)
-    value = {'version': VERSION, 'classifier_sha256': digest(source),
+    qualification = (source_dir / 'qualification.py').read_bytes()
+    for name, data in [('qualification.py', qualification), ('html.py', source)]:
+        target = directory / name
+        if target.exists() and target.read_bytes() != data:
+            raise ValueError('Interrupted qualification snapshot differs; use a new directory')
+        if not target.exists():
+            target.write_bytes(data)
+    value = {'qualification_sha256': digest(qualification), 'qualification_html_sha256': digest(source),
+             'version': VERSION, 'classifier_sha256': digest(source),
              'implementation_sha256': digest(implementation), 'config': config}
     value['validator_sha256'] = digest(json.dumps(value, sort_keys=True).encode())
     immutable(manifest, value)
@@ -117,43 +129,18 @@ def _classify_cached(raw, directory, snapshot, validator):
                      'validator_sha256': validator['validator_sha256']}
 
 
-def validate_pdf(body, directory, *, preview=False):
-    from pypdf import PdfReader
-    directory.mkdir(parents=True, exist_ok=True)
-    raw = body.read_bytes()
-    result = {'valid_pdf': False, 'bytes': len(raw), 'sha256': digest(raw),
-              'validator_version': VERSION, 'preview_requested': preview,
-              'pdf_header': b'%PDF-' in raw[:1024], 'pdf_eof': b'%%EOF' in raw[-8192:]}
-    if not result['pdf_header']:
-        return dict(result, reason='not_pdf_bytes')
-    try:
-        try:
-            reader = PdfReader(body, strict=True)
-            count = len(reader.pages)
-            result['strict_parser'] = True
-        except Exception as error:
-            result['strict_error_type'] = type(error).__name__
-            reader = PdfReader(body, strict=False)
-            count = len(reader.pages)
-            result['strict_parser'] = False
-        for page in reader.pages:
-            contents = page.get_contents()
-            if contents is not None:
-                contents.get_data()
-        result.update(pages=count, pages_decoded=count, encrypted=reader.is_encrypted)
-        info = subprocess.run(['pdfinfo', str(body)], capture_output=True, timeout=45)
-        (directory / 'pdfinfo.txt').write_bytes(info.stdout + info.stderr)
-        render = subprocess.run(['pdftoppm', '-r', '18', '-gray', str(body)],
-                                stdout=subprocess.DEVNULL, stderr=subprocess.PIPE, timeout=120)
-        (directory / 'all-pages-render.stderr').write_bytes(render.stderr)
-        result.update(pdfinfo_exit=info.returncode, all_pages_render_exit=render.returncode,
-                      all_pages_rendered=count if render.returncode == 0 else 0)
-        result['valid_pdf'] = bool(result['pdf_eof'] and count > 0 and info.returncode == 0 and render.returncode == 0)
-        result['reason'] = 'all_pages_decoded_and_rendered' if result['valid_pdf'] else 'validation_incomplete'
-    except Exception as error:
-        result.update(reason='validation_failed', error_type=type(error).__name__)
-    # Preview has no role in acceptance and cannot revoke successful validation.
+def _validate_with_module(body, directory, module, *, preview=False, verified_body=None):
+    from congress_shared.custody import verify_local_file
+    verified = verified_body if verified_body is not None else verify_local_file(body)
+    verified._require_custody(body)
+    record = module.qualify(verified, directory / 'qualification-cache')
+    result = dict(record)
+    result.update(valid_pdf=record.status == 'qualified' and record.media_type == 'application/pdf',
+                  bytes=verified.size_bytes, sha256=verified.sha256,
+                  validator_version=VERSION, preview_requested=preview)
+    # Preview is a separate, optional convenience and cannot revoke acceptance.
     if preview and result['valid_pdf']:
+        directory.mkdir(parents=True, exist_ok=True)
         try:
             image = subprocess.run(['pdftoppm', '-f', '1', '-singlefile', '-scale-to', '800', '-png',
                                     str(body), str(directory / 'first-page')], capture_output=True, timeout=45)
@@ -164,10 +151,38 @@ def validate_pdf(body, directory, *, preview=False):
     return result
 
 
-def validate_pdf_frozen(body, directory, snapshot, validator, *, preview=False):
+def validate_pdf(body, directory, *, preview=False, verified_body=None):
+    from corpus_recovery import qualification
+    return _validate_with_module(body, directory, qualification, preview=preview, verified_body=verified_body)
+
+
+def validate_pdf_frozen(body, directory, snapshot, validator, *, preview=False, verified_body=None):
     source = (snapshot / 'validation.py').read_bytes()
     if digest(source) != validator['implementation_sha256']:
         raise ValueError('Frozen validator implementation changed')
     namespace = {'__file__': str(snapshot / 'validation.py')}
     exec(compile(source, str(snapshot / 'validation.py'), 'exec'), namespace)
-    return namespace['validate_pdf'](body, directory, preview=preview)
+    if 'qualification_sha256' not in validator:
+        if '_validate_with_module' in namespace:
+            raise ValueError('Frozen shared qualification snapshot is missing its pinned implementation')
+        return namespace['validate_pdf'](body, directory, preview=preview)
+    import importlib.util
+    import sys
+    for name, field in [('qualification.py', 'qualification_sha256'), ('html.py', 'qualification_html_sha256')]:
+        if digest((snapshot / name).read_bytes()) != validator[field]:
+            raise ValueError('Frozen qualification implementation changed')
+    import uuid
+    name = '_frozen_qualification_' + uuid.uuid4().hex
+    spec = importlib.util.spec_from_file_location(name, snapshot / 'qualification.py')
+    module = importlib.util.module_from_spec(spec)
+    sys.modules[name] = module
+    try:
+        spec.loader.exec_module(module)
+        import inspect
+        function=namespace['_validate_with_module']
+        options=dict(preview=preview)
+        if 'verified_body' in inspect.signature(function).parameters:
+            options['verified_body']=verified_body
+        return function(body, directory, module, **options)
+    finally:
+        del sys.modules[name]

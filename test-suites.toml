@@ -13,6 +13,11 @@ arguments = ["-v"]
 macos_remedy = "brew install poppler"
 linux_remedy = "sudo apt-get install poppler-utils"
 
+[environment.native.pdftoppm]
+arguments = ["-v"]
+macos_remedy = "brew install poppler"
+linux_remedy = "sudo apt-get install poppler-utils"
+
 [environment.native.ps]
 arguments = ["-o", "pid=", "-p", "{pid}"]
 macos_remedy = "restore the system /bin/ps command and include /bin in PATH"
@@ -63,7 +68,7 @@ offline = true
 purpose = "Production regression with an in-process Python socket tripwire; child processes are not network-isolated."
 
 [lanes.native-loopback]
-roots = ["packages/congress_api/tests", "tests"]
+roots = ["packages/congress_api/tests", "tests", "packages/viewer_publication/tests/test_recovery_publication_journey.py"]
 marker = "loopback"
 offline = false
 required_binary_env = "SOURCE_FETCH_BINARY"

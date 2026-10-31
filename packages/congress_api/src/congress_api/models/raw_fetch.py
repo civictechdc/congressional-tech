@@ -27,6 +27,7 @@ class Transfer:
     provider_status: int | None = None
     sha256: str | None = None
     size: int | None = None
+    wire_bytes: int | None = None
 
 
 @dataclass(frozen=True)

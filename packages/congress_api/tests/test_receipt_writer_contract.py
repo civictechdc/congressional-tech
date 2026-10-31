@@ -126,3 +126,24 @@ def test_provider_partial_response_stays_incomplete_in_published_receipt(tmp_pat
     assert line['error_type']=='partial_response' and line['http_status']==status
     assert not line['captures'][0]['complete'] and not line['captures'][1]['complete']
     assert result.final.body.path.read_bytes()==b'ab'
+
+
+def test_frozen_receipt_reconciles_lost_ack_and_reuses_exact_bytes(tmp_path):
+    from congress_api.models.raw_fetch import FetchResult
+    from congress_api.retention.receipt_writer import ReceiptWriter
+    from congress_api.retention.body_store import BodyStore, LocalAdapter
+    class LostAck(LocalAdapter):
+        def create(self,key,source,**facts):
+            created=super().create(key,source,**facts)
+            if key.startswith('receipts/') and created:
+                raise OSError('lost acknowledgment')
+            return created
+    store=BodyStore(LostAck(tmp_path/'raw'))
+    writer=ReceiptWriter(store,identity=WRITER,run_id='run',write_date='2026-10-27',archive_limits=None)
+    key,line=writer.write(FetchResult(attempt(tmp_path)),family='documents',operation_id='op1',freeze_dir=tmp_path/'frozen')
+    first=(tmp_path/'raw'/key).read_bytes()
+    fresh=ReceiptWriter(BodyStore(LocalAdapter(tmp_path/'raw')),identity=WRITER,run_id='different',
+                        write_date='2026-10-28',archive_limits=None)
+    key2,line2=fresh.write(None,operation_id='op1',freeze_dir=tmp_path/'frozen')
+    assert (key2,line2)==(key,line)
+    assert (tmp_path/'raw'/key).read_bytes()==first

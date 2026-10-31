@@ -42,7 +42,10 @@ def gate_and_flip(client, *, bucket, release_id, previous_release_id, expected_e
     require_comparison(comparison_acceptance)
     pointer={'release_id': release_id, 'previous_release_id': previous_release_id}
     try:
-        return publish_manifest_pointer(client, bucket=bucket, pointer=pointer, expected_etag=expected_etag)
+        transfer=publish_manifest_pointer(client, bucket=bucket, pointer=pointer, expected_etag=expected_etag)
+        if not isinstance(transfer.etag,str) or not transfer.etag.strip():
+            raise ValueError('Pointer PUT returned no ETag')
+        return transfer
     except Exception as error:
         # The conditional PUT may have committed before its response was lost.
         # Only the exact selected pointer and its observed ETag settle that uncertainty.

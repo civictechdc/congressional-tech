@@ -1,44 +1,90 @@
 # Holistic recovery implementation record
 
-Started 2026-10-31 from code `72d0349838de7a0a9c5fceb9030d4a23dd34dc2c`.
-The architecture plan in this directory defines the intended behavior. This record tracks execution; it does not assert completion.
+Started from `72d0349838de7a0a9c5fceb9030d4a23dd34dc2c` on 2026-10-31.
+Status: final integration verification in progress. This record does not yet claim completion.
 
-## Scope and completion
+## Recovered execution
 
-Implement all seven validated fixes through the existing owners. Finish usable entry points, integration, proportional regression checks, failure/restart checks, and independent review. Preserve the primary checkout's unrelated changes. Do not restart retired v6 publication work or change unrelated runtimes. Do not acquire the corpus, spend provider credits, or publish production data as an implementation test. Missing production baseline and live-provider acceptance must remain explicit, not guessed.
+The five app task sessions were stopped after their permission failures. Their
+preserved commits were selectively integrated into the managed
+`holistic-recovery-integration` checkout. The coordinator implemented campaign
+planning, acceptance, discovery wiring and integration directly. GPT-6.1 Sol
+subagents with high reasoning completed bounded capture, qualification and native
+publication work in that same checkout without additional approval prompts.
+The primary checkout's unrelated source changes remain separate.
 
-Implementation sessions use GPT-6.1 Terra with high reasoning. Independent review uses GPT-6.1 Sol with high reasoning and the ETL Workflow, Greybeard, and Semi-Formal Code Review skills. Local completion and resolved material findings are the goal, not speed.
+Independent GPT-6.1 Sol high reviewers loaded ETL Workflow, Greybeard and
+Semi-Formal Code Review. Reviews traced actual consumers and found defects beyond
+the initially passing tests. Those findings are tracked below; a passing subset
+is not substituted for final integrated verification.
 
-## Parallel ownership
+## Implementation and evidence map
 
-| Session | Primary ownership | Integration obligations |
+| Finding | Implemented owner | Maintained verification |
 | --- | --- | --- |
-| Recovery evidence | `packages/corpus_recovery`, shared campaign descriptor if needed, qualification script delegation | Pinned ledger, identity acceptance, body qualification/cache, actual import entry point; integrate discovery and capture outputs after other slices arrive |
-| Native feedback | `packages/viewer_publication`, `model/sql`, capture/recovery registries, `congress_api/models/archive_profile.py` | Native eligibility, current acceptance/rejection, required reader/profile versions, existing publication continuation; coordinate scheduler consumer with capture owner |
-| Durable capture | `congress_api/acquisition`, transport, retention receipt writer, capture CLI | Stable attempt/receipt identity, restart, provider ladder, request/cost/resource limits, campaign-only selection, eligibility-aware scheduler consumption |
-| Discovery | New discovery adapter module(s) and focused tests; source-specific Web Harvest helper changes | Maintained CDX path, Wayback replay validation, scoped relocated search, source mapping; return evidence-rich candidates through the recovery owner, not a second importer |
+| Inconsistent baseline totals | `congress_shared.campaign` pins input tables; `corpus_recovery.campaign.plan` writes a native ledger, counts, requirements and manifest | `test_campaign.py`: conservation, literal membership, duplicates, changed pins, state/profile/requirement binding and zero acquisition |
+| Identity inferred by reconciliation | `corpus_recovery.acceptance` extracts facts from pinned source records, binds actual receipt/body/qualification and compares required native identifiers | Wrong meeting/witness/date/version/document, supported alias, source mutation, updated revision with explicit relationship evidence, readable wrong body |
+| Recovery did not reach scheduling | Version-2 provenance/profile, native eligibility and capture consumer; explicit refresh intent remains independent of recovery relationship | Native eligibility matrix and `test_recovery_publication_journey.py` through importer, native model, public publisher, actual browser/reader and real queue |
+| Missing execution paths | Packaged campaign plan/import CLIs; CDX parser, archive/runtime adapters, scoped search and source-specific mapping leads; capture campaign selector | Discovery/runtime and CLI fixtures; invalid replay identity cannot dispatch; partial searches remain unresolved; raw replay stays on disk |
+| Downloads/imports/publication repeated after failure | Existing capture runner with durable attempts and frozen receipts; stable provenance writes; existing publication continuation owner | Fresh-process SIGKILL, lost acknowledgments, changed inputs, uncertain outcomes, stable replay and selected-pointer readback |
+| Unbounded ladder/capacity assumptions | Three-rung raw-byte ladder, shared persistent request/spend admission, byte/scratch controls, explicit provider error policy | Mixed rungs/redirects, concurrent reservations, exhausted-cap continuation, shared actual CLI ledger and measured successful maximum admitted body |
+| Sniffing treated as readability | Shared bounded qualification with pinned implementation/tools/configuration, parser decoding and all-page Poppler rendering | Fake/truncated/corrupt PDF, decoding/resource limits, cache reuse/invalidation, subprocess cleanup, frozen legacy behavior; actual Web Harvest PDF caller uses streamed custody |
 
-No shared-file concurrent edits. Each implementation session uses its own checkout, preserves commits, and reports exact integration points. The coordinator owns integration, final plan/status updates, and combined journeys. Missing cross-slice wiring is unfinished work, not grounds to call a slice's objective complete.
+## Independent findings and closure
 
-## Integration seams
+Capture review initially requested changes for spent-cap continuation, concurrent
+byte over-admission, automatic fallback after unknown/provider quota outcomes,
+orphaned spools on approved retry, missed cleanup after commitment, and a capacity
+test that could accept a failure receipt. The first reported 16 MiB capacity
+measurement is **invalid and superseded**; final capacity proof must assert the
+successful decoded/stored body's size and digest and shared qualification.
 
-- Accepted identity must bind target URL, target requirement, candidate/body/receipt identity, qualification, relationship kind, and evidence. No filename-only success.
-- Native eligibility preserves HTTP facts and evaluates current accepted or rejected decisions for a pinned requirement. Current live-page refresh remains distinct from historical recovery.
-- Campaign selection is an immutable descriptor plus pinned metadata tables. Resolve the shared schema with the recovery owner; avoid large URL arrays and reverse package dependencies.
-- Discovery returns candidates and source evidence, never acceptance. Provider calls use the capture owner's common attempt and budget boundary.
-- Durable receipt/provenance writes reconcile an uncertain acknowledgment using stable bytes and keys. Publication continuation remains with the existing archive publication owner.
-- Reuse checks precede payload opening. Every new retained file has an owner, protected lifetime, and cleanup condition.
+Recovery review found an ignored Wayback predicate, inability to accept an
+explicitly supported changed revision, whole-PDF materialization in the historical
+caller, and separate CLI admission databases. Repairs reject invalid replays
+before requests, require pinned revision relationship evidence, pass streamed
+custody through current frozen validators, and expose the same persistent budget
+path on both CLIs. The scoped review approved those repaired paths with final
+refresh-policy/shared-CLI checks assigned to the coordinator.
 
-## Evidence still required
+The blind greybeard review found accepted live pages could stop refreshing,
+incomplete native builds could not resume, and canary-failure continuation repeated
+acknowledged upload work. Final native continuation and freshness checks must
+close those findings before the integration is marked complete.
 
-- Reconciled target memberships and changed-pin refusal on fixtures; actual production baseline only if located and pinned.
-- Identity adversarial cases, format qualification, cache reuse/invalidation, and mutable-file custody.
-- Accepted/withdrawn/counterpart/excluded/freshness behavior through published output and the actual scheduler.
-- Failure and fresh-process restart around download, body/receipt/provenance acknowledgment, native output, and release selection.
-- Bounded archive pagination/search candidates, scope violations, and actual command journeys.
-- Mixed provider/redirect/retry scenarios with shared request/spend reservations and bounded memory/disk behavior.
-- Independent findings-first code review, blind architecture critique, resolved material findings, and verification at the integrated head.
+## Acceptance boundaries
 
-## Current state
+- Production `publish_v20` and `capture_rust_batch1..10` inputs were not located
+  and pinned. Correct production membership/counts and recovery yield remain
+  unknown. The planner is tested against authored local input sets.
+- No production acquisition, paid request, remote publication, push or merge was
+  used as an implementation test. Live source mappings, archive availability,
+  provider behavior/pricing and remote upload capacity remain operational checks.
+- The integrated journey uses actual native model producers, the publication
+  controller, Chromium, the shipped reader and the scheduler. A local object
+  service and transport adapter stand in for production storage. This does not
+  qualify production upload memory/network behavior.
+- Version-2 provenance is a trusted producer attestation. The campaign producer
+  establishes real qualification and identity bindings; generic administrative
+  provenance writers are trusted. Native hash syntax checks alone do not prove
+  qualification.
+- Qualification uses process limits and sampled process-tree RSS on macOS.
+  Sampling does not prove a hard transient memory ceiling. One measured worker
+  does not qualify 16 workers or production throughput.
+- Historical standalone validator snapshots retain their original behavior and
+  identity. New snapshots pin and invoke the shared qualifier. No corpus-wide
+  replay or retired v6 publication work is required.
 
-Implementation not yet integrated. Review not yet run. Production counts and live acquisition acceptance remain unverified.
+## Reproduction
+
+Use installed workspace packages from this integration checkout, not editable
+imports pointing at the primary checkout. `test-suites.toml` lists package roots
+and native prerequisites. Set `DOCSPEC_JOB_CONFIG` to a pinned DocSpec runtime;
+these runs use revision `eb40c5457a450c3820900583af5b4da13313ca96`, binary SHA-256
+`8d33f1d03540fb0bc8160eac18e0121c0cde428feaeb77b4e815abf805f2d819`, 512 MiB
+native memory, 256 MiB native scratch, and two native threads.
+
+The publication journey is explicitly in the maintained native-loopback lane.
+It additionally needs the integration site's built assets and the repository's
+pinned Playwright/Chromium setup. Campaign CLI input schemas and actual commands
+are documented in `packages/corpus_recovery/README.md`.

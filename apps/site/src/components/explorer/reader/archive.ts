@@ -333,6 +333,7 @@ export async function openArchive(pointerUrl: string, options: any = {}) {
       if(query.sort==='document_date')found.sort((a,b)=>(date(b.document_date)??'').localeCompare(date(a.document_date)??'')||captures(a,b));else found.sort(captures);
       return {total:found.length,rows:found.slice(offset,offset+limit),offset,next:offset+limit<found.length?offset+limit:null};
     },
+    async sourceRange(start: number,length: number,signal?: AbortSignal){if(!Number.isSafeInteger(start)||start<0||!Number.isSafeInteger(length)||length<0)throw new Error('Invalid source row range.');return awaitShared(read('sources.parquet',start,start+length),signal);},
     async recoveryRange(start: number,length: number,signal?: AbortSignal){if(!Number.isSafeInteger(start)||start<0||!Number.isSafeInteger(length)||length<0)throw new Error('Invalid recovery row range.');return awaitShared(read('recoveries.parquet',start,start+length),signal);},
     versions,
     meetings:()=>entity('meetings'),

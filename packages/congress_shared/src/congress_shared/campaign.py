@@ -27,7 +27,7 @@ class Campaign:
     def require_custody(self):
         """Refuse use after any verified local metadata table has changed."""
         for identity in self.tables.values():
-            identity.require(identity.path)
+            identity._require_custody(identity.path)
 
     def table_path(self, name):
         if name not in self.tables:

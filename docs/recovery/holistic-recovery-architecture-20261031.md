@@ -1,8 +1,8 @@
 # Holistic Corpus Recovery & Acquisition Architecture
 
-**Updated:** 2026-10-31  
-**Reviewed code:** `72d0349838de7a0a9c5fceb9030d4a23dd34dc2c`  
-**Status:** Revised proposal. Seven findings were directly validated. The fixes below are proposed work; production corpus totals remain unverified.
+**Updated:** 2026-10-31
+**Directly reviewed baseline:** `72d0349838de7a0a9c5fceb9030d4a23dd34dc2c`
+**Status:** All seven findings have local implementations and maintained tests. Final independent-review corrections and integrated acceptance checks are in progress. Production corpus totals remain unverified. See the [implementation and verification record](holistic-recovery-execution-20261031.md).
 
 ## Decision and scope
 
@@ -10,7 +10,7 @@ Recover useful congressional documents through the existing acquisition, retenti
 
 Inputs are a pinned release, selected capture batches, retained inventories, source metadata, and recovery policy. Outputs are qualified bodies, immutable receipts and recovery decisions, a published release, and a scheduler queue reflecting those decisions. A downloaded body alone is not completion.
 
-New modules, fields, and command options below are implementation proposals. Existing capabilities are identified separately. This document does not authorize or perform production acquisition, publication, or credential changes. Keep the existing storage, scheduler, and release-pointer owners.
+The modules, fields, and command options below now have implementations in the integration checkout. Their acceptance criteria remain the completion gates. This document does not authorize production acquisition, publication, or credential changes. The existing storage, scheduler, and release-pointer owners remain authoritative.
 
 ## Finding 1 — Replace inconsistent totals with a reproducible baseline
 
@@ -86,7 +86,7 @@ flowchart TD
 
 1. Add proposed native output fields `capture_disposition` (`eligible`, `satisfied`, `excluded`), `capture_reason`, and `capture_decision_id`, evaluated for the selected requirement and policy version. Retain actual status, attempt, and retry history; do not fabricate a successful fetch for a recovered original.
 2. Extend typed inputs in [archive_provenance.py](../../packages/viewer_publication/src/viewer_publication/archive_provenance.py), join current non-superseded acceptance and qualified-body evidence, and export eligibility through [archive_model.py](../../packages/viewer_publication/src/viewer_publication/archive_model.py). Unmatched, rejected, or ambiguous decisions cannot suppress acquisition. Counterparts satisfy only policies that allow them.
-3. Apply eligibility in [capture_scheduler.py](../../packages/congress_api/src/congress_api/acquisition/capture_scheduler.py) before due-time selection and budget reservation. Withdraw acceptance through a superseding recovery decision with `kind='rejected'`, which the current native selection already recognizes; do not repurpose editorial reviews. Restore eligibility when no satisfying evidence remains. Keep historical recovery separate from ongoing freshness; a retained historical document does not permanently disable refreshing a live page.
+3. Apply eligibility in [capture_scheduler.py](../../packages/congress_api/src/congress_api/acquisition/capture_scheduler.py) before due-time selection and budget reservation. Withdraw acceptance through a superseding recovery decision with `kind='rejected'`, which the current native selection already recognizes; do not repurpose editorial reviews. Restore eligibility when no satisfying evidence remains. Keep historical recovery separate from ongoing freshness. Pinned requirements carry `refresh_policy`: `historical_only` permits satisfaction to suppress acquisition; `refresh_live` remains eligible for ordinary refresh even with an accepted recovery. Missing refresh intent defaults to `refresh_live`.
 4. Version [archive_profile.py](../../packages/congress_api/src/congress_api/models/archive_profile.py) and producer/consumer schemas together. Recovery campaigns refuse releases lacking the required semantics. Preserve legacy scheduling only as an explicit compatibility path.
 5. Check [capture-scope.json](../../model/registries/capture-scope.json) before adding narrow media exclusions. Keep expired stream records discoverable and in-scope captions/document attachments eligible. Do not introduce `retire` URL rewrites or use display reviews to control acquisition.
 
@@ -112,7 +112,7 @@ flowchart TD
 
 Retain the source families as discovery work: House XML/PDF siblings and local aliases; Thomas/beta Congress packages; internal CMS and meeting URLs; migrated CloudFront files; walled publishers; and missing committee documents. Verify mappings individually. Legacy URLs need not have deterministic successors, and an old 404 does not establish permanent absence.
 
-Add a proposed capture `--campaign` selector limiting execution to the pinned target/candidate set. Current `--cutoff-urls` is priority/reporting input, not an include-only boundary. Check candidates against retained inventory and the attempt journal before fetching; prevent rediscovery loops. Incomplete, denied, rate-limited, or unpaginated archive searches leave targets unresolved. A complete negative result establishes only no match in the queried index/time window.
+Use the implemented capture `--campaign` selector limiting execution to the pinned target/candidate set. Current `--cutoff-urls` is priority/reporting input, not an include-only boundary. Check candidates against retained inventory and the attempt journal before fetching; prevent rediscovery loops. Incomplete, denied, rate-limited, or unpaginated archive searches leave targets unresolved. A complete negative result establishes only no match in the queried index/time window.
 
 **Acceptance:** Every documented entry point has a real parser and local journey. Cover partial CDX results, Web Harvest/Wayback replay identity, binary preservation, invalid hosts, duplicate discovery, and GovInfo version mismatch. Never fetch an out-of-campaign due URL. A retained candidate and a downloaded candidate must each reach acceptance, existing import, publication, and queue readback.
 
@@ -137,7 +137,7 @@ Extend [ReceiptWriter](../../packages/congress_api/src/congress_api/retention/re
 
 Move completed downloads into campaign-owned durable spools before marking `downloaded`. On restart, reconcile sealed files whose phase update was interrupted. Cleanup requires acknowledged body custody and durable downstream records; preserve active/uncertain inputs and bound quarantined/abandoned storage.
 
-Persist publication spec, exact input identities, and completed-stage references. Resume through the existing publication owner, reconciling an already selected release before executing again. Implement any missing continuation in that owner; do not add another release pointer or assume today's fresh-work CLI already resumes.
+Persist publication spec, exact input identities, and completed-stage references, including acknowledged upload identities. Reconcile those assets through local custody and remote metadata before reopening payloads. Restart an unfinished native model in a fresh owned stage while preserving its interrupted attempt. Resume through the existing publication owner, reconciling an already selected release before executing again. Implement any missing continuation in that owner; do not add another release pointer or assume today's fresh-work CLI already resumes.
 
 **Acceptance:** Inject fresh-process failures at download seal, body acknowledgment, receipt preparation, lost receipt acknowledgment, provenance acknowledgment, model output, and release selection. Completed downloads require zero additional acquisition; repeated import creates one logical receipt/decision. Unknown remote outcomes remain explicit, conflicting identities fail, and cleanup preserves active inputs. Include process-kill testing before claiming crash durability.
 
@@ -166,7 +166,7 @@ Implement these supporting changes:
 - **Bounded classification:** Add a versioned 64 KiB prefix classifier beside the fetcher, using maintained [page signals](../../model/registries/page-signals.json) and [file shapes](../../model/registries/file-shapes.json). Gate ambiguous refusal terms by status/context and detect HTML at file-shaped URLs. PDF magic skips HTML classification, not qualification. Share overlapping fixtures with publication SQL; a prefix classifier cannot promise full-body coverage.
 - **Adapter boundaries:** Keep direct/Zyte redirects explicit and scope-checked; Zyte requests raw bytes with `followRedirect: false`. Pin and test the proposed Firecrawl options `formats: ["rawBase64"]`, `parsers: []`, `maxAge: 0`, `storeInCache: false` against the supported API before rollout. Validate returned status, final URL, encoding, and byte limits; redact credentials. Count opaque provider calls honestly without claiming visibility into internal origin requests. Require a stricter path where that opacity violates source policy.
 - **Requests and spend:** Derive reservations from configured rungs/redirect limits instead of the current fixed two-rung bound. Share actual-call accounting across acquisition, CDX pages, search, and candidate fetches. Reuse the Web Harvest cost-reservation approach: version conservative unit costs/credit limits and enforce `spent + reserved + next_upper_bound <= cap` before dispatch. Reserve atomically under the campaign's single admission owner so concurrent workers cannot oversubscribe a cap. Persist reservations; unknown outcomes retain them. Missing price bounds disable paid execution.
-- **Memory and disk:** Reserve encoded/decoded bytes, pending spools, validator scratch, and process memory together. Include validator processes and native threads in total concurrency. Stop admission before exhausting disk reserve. Start at measured safe concurrency, not an assumed 16. Consider incremental JSON/base64 parsing or windowed mapping only if measured limits cannot otherwise meet the workload.
+- **Memory and disk:** Reserve encoded/decoded bytes, pending spools, validator scratch, and process memory together. Include validator processes and native threads in total concurrency. Stop admission before exhausting disk reserve. The default capture and qualification input ceiling is 16 MiB; the acceptance fixture verifies a successful body and shared qualification with one worker. Larger inputs or higher concurrency need separate capacity validation. Do not infer a 16-worker limit from a one-worker run. Consider incremental JSON/base64 parsing or windowed mapping only if measured limits cannot otherwise meet the workload.
 - **Dependency scope:** Prefer a thin provider adapter using maintained components. The lockfile participates in receipt/sniff identity; a dependency change needs explicit version/invalidation treatment, but does not itself prove all historical bodies need rereading. Avoid importing an entire sibling application or duplicating transport infrastructure.
 
 **Acceptance:** Mixed successes, redirects, throttling, timeouts, and multiple rungs obey tiny request/dollar caps across restart. Measure peak resident memory, temporary/pending disk, bytes read/written, requests, and reservations at the largest admitted body and configured concurrency, including validators/native threads. Record versions, input sizes, cache conditions, concurrency, and stopping limits. Set operational limits from that run; claim throughput improvements only with comparable measurements.
@@ -213,12 +213,13 @@ Local evidence remains at `/tmp/holistic-review-validation-20261031-wdj3_yrb/`. 
 
 Native probes used DocSpec revision `eb40c5457a450c3820900583af5b4da13313ca96`, binary SHA-256 `8d33f1d03540fb0bc8160eac18e0121c0cde428feaeb77b4e815abf805f2d819`, with 512 MiB memory, 256 MiB scratch, and two native threads. Memory probes used one fresh process per size and one repetition, with no cold-cache or throughput claim. No paid acquisition or production publication was performed.
 
-While the local evidence directory is retained, reproduce the eight code probes from the repository root:
+The original temporary probe harness hardcodes the primary checkout. Its passing
+results establish the baseline findings, not the integrated implementation. Use
+the maintained tests and runtime setup in the [execution record](holistic-recovery-execution-20261031.md)
+for current acceptance. The ninth probe checked the original plan's arithmetic;
+`plan-before-update.md` and `f1-arithmetic.json` preserve its input and result.
 
-```sh
-.venv/bin/python -m pytest -q /tmp/holistic-review-validation-20261031-wdj3_yrb/test_findings.py -k 'not test_f1_plan_arithmetic'
-```
-
-The ninth probe checked the original plan's arithmetic and reads its original path. Its source input is now preserved as `plan-before-update.md`, with results in `f1-arithmetic.json`; do not run that unchanged probe against this revised document.
-
-Production membership, complete crash durability/publication continuation, all live source mappings, current provider prices, and 16-worker capacity remain unproved. The acceptance gates above define the evidence needed to close each gap.
+Production membership, live source/provider acceptance, current provider prices,
+remote upload capacity, and 16-worker throughput remain outside the local proof.
+A campaign may complete with explicitly unresolved targets; local implementation
+completion does not establish complete historical recovery.

@@ -141,11 +141,13 @@ def load_spec(path):
         if set(value)!={'status','reason'} or not isinstance(value['reason'],str) or not value['reason'].strip():
             raise ValueError('Blocked publication job requires exactly its reason')
         return value
-    if set(value)-FIELDS-{'site_dist','daily','model_kind','comparison_acceptance'}:raise ValueError('Publication job has unknown fields')
+    if set(value)-FIELDS-{'site_dist','daily','model_kind','comparison_acceptance','resume'}:raise ValueError('Publication job has unknown fields')
     if not FIELDS<=value.keys() or type(value['version']) is not int or value['version']!=1:
         raise ValueError('Publication job requires version 1 and all explicit inputs')
     base=path.parent
     result=dict(value)
+    if type(value.get('resume',False)) is not bool:raise ValueError('Publication resume must be boolean')
+    if value.get('resume') and 'daily' in value:raise ValueError('Daily production cannot resume through a model checkpoint')
     kind=value.get('model_kind','raw')
     if kind!='raw':raise ValueError('Unknown publication model_kind')
     result['model_kind']=kind
@@ -319,10 +321,10 @@ def execute(spec,*,runtime_factory=None,storage_factory=None,process_runner=None
     measured_release_id=expected_release_id or measured_release_id
     for name in ['work']:
         path=Path(spec[name])
-        if path.exists() or path.is_symlink():raise ValueError('Publication work must be fresh')
+        if (path.exists() or path.is_symlink()) and not spec.get('resume',False):raise ValueError('Publication work must be fresh')
     for name in ['output','scratch']:
         path=Path(spec['_model'][name])
-        if path.exists() or path.is_symlink():raise ValueError('Model output and scratch must be fresh')
+        if (path.exists() or path.is_symlink()) and not spec.get('resume',False):raise ValueError('Model output and scratch must be fresh')
     if '_daily' in spec:
         spec['_daily_identity'].require(spec['daily']['path'])
         path=Path(spec['_daily']['work'])
@@ -368,10 +370,16 @@ def execute(spec,*,runtime_factory=None,storage_factory=None,process_runner=None
                 selected_model=daily['model'];keys=daily['receipt_keys'];provenance=daily['provenance'];verified=daily['verified_files']
             def probe(name,context):
                 target_identity.require(spec['targets']['path']);require_configuration()
-                commands=probe_commands(spec,release=context.get('release',spec['_model']['output']),
+                probe_spec=spec
+                if spec.get('resume',False):
+                    from uuid import uuid4
+                    probe_work=Path(spec['work'])/('probe-'+uuid4().hex)
+                    probe_work.mkdir()
+                    probe_spec=dict(spec,work=str(probe_work))
+                commands=probe_commands(probe_spec,release=context.get('release',spec['_model']['output']),
                     release_id=context['release_id'],probe_selectors=context.get('probe_selectors'))
                 process_runner(commands[name],cwd=SITE,check=True,timeout=180)
-                receipt_path=Path(spec['work'])/(name+'.json')
+                receipt_path=Path(probe_spec['work'])/(name+'.json')
                 if receipt_path.stat().st_size>METADATA_BYTES:raise ValueError('Site probe receipt exceeds the metadata allowance')
                 receipt=json.loads(receipt_path.read_text())
                 target_identity.require(spec['targets']['path']);require_configuration()
@@ -380,7 +388,7 @@ def execute(spec,*,runtime_factory=None,storage_factory=None,process_runner=None
                 public_origin=spec['public_origin'],contract=lambda **context:probe('contract',context),
                 canary=lambda **context:probe('canary',context))
             result=run_publish(selected_model,receipt_keys=keys,provenance=provenance,verified_files=verified,
-                measured_release_id=measured_release_id,comparison_acceptance=acceptance,**options)
+                measured_release_id=measured_release_id,comparison_acceptance=acceptance,resume=spec.get('resume',False),**options)
             spec['_model_identity'].require(spec['model_spec']['path']);require_configuration()
             return dict(result,daily=daily['daily']) if daily is not None else result
 

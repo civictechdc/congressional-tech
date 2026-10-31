@@ -5,24 +5,36 @@ import re
 RULE_FIELDS=('id','kind','host_pattern','pattern','replacement','decoder')
 
 
-def build_capture_profile(*,engine_revision,url_normalized_sql,url_keys_sql,url_rules):
+def build_capture_profile(*,engine_revision,url_normalized_sql,url_keys_sql,url_rules,recovery_policy=None):
     """Copy the model's pinned capture instructions into content-only metadata."""
     value=dict(version=1,engine_revision=engine_revision,
         sql={name:dict(text=text,sha256=sha256(text.encode('utf-8')).hexdigest())
              for name,text in [('url_normalized',url_normalized_sql),('url_keys',url_keys_sql)]},
         url_rules=[{key:row.get(key) for key in RULE_FIELDS} for row in url_rules],
         url_variants_file='url_variants.parquet')
+    if recovery_policy is not None:
+        value['version']=2
+        value['recovery_policy']=dict(recovery_policy)
     return validate_capture_profile(value,engine_revision=engine_revision)
 
 
 def validate_capture_profile(value,*,engine_revision):
     """Refuse changed instructions or an incompatible engine; perform no I/O."""
-    if not isinstance(value,dict) or set(value)!={'version','engine_revision','sql','url_rules','url_variants_file'}:
+    fields={'version','engine_revision','sql','url_rules','url_variants_file'}
+    if not isinstance(value,dict) or set(value) not in (fields,fields|{'recovery_policy'}):
         raise ValueError('Incomplete public capture profile')
-    if (type(value['version']) is not int or value['version']!=1 or not isinstance(engine_revision,str)
+    if (type(value['version']) is not int or value['version'] not in (1,2)
+            or (value['version']==2)!=('recovery_policy' in value) or not isinstance(engine_revision,str)
             or re.fullmatch('[0-9a-f]{40}',engine_revision) is None
             or value['engine_revision']!=engine_revision):
         raise ValueError('Public capture profile version or engine revision is incompatible')
+    if value['version']==2:
+        policy=value['recovery_policy']
+        if (not isinstance(policy,dict) or set(policy)!={'acceptance_policy','requirements_sha256'}
+                or not isinstance(policy['acceptance_policy'],str) or not policy['acceptance_policy'].strip()
+                or not isinstance(policy['requirements_sha256'],str)
+                or re.fullmatch('[0-9a-f]{64}',policy['requirements_sha256']) is None):
+            raise ValueError('Invalid pinned recovery policy')
     if value['url_variants_file']!='url_variants.parquet':
         raise ValueError('Public variants must name the release-bound variant file')
     definitions=value['sql']

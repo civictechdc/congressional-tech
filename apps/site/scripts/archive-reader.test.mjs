@@ -38,6 +38,8 @@ test('one reader opens native releases, searches arrays and resolves indexed key
   assert.equal(entry.detail.alternates[0].format,'xml');
   assert.equal(entry.sources.length,1);
   assert.equal(entry.sources[0].url,'https://fixture.test/agenda.pdf');
+  assert.deepEqual(await reader.sourceRange(0,1),entry.sources);
+  await assert.rejects(reader.sourceRange(-1,1),/Invalid source row range/);
   assert.equal((await reader.meetings())[0].title,'Transportation infrastructure hearing');
   assert.equal((await reader.versions(3)).length,2);
   assert.deepEqual((await reader.lookup('http://www.FIXTURE.test:80/record.pdf/#fragment')).map(row=>row.list_row),[3,4]);

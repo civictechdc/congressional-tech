@@ -151,15 +151,15 @@ def test_request_budget_counts_redirects_and_preserves_prior_evidence(tmp_path):
         dict(requested_url='https://fixture.test/z',attempts=0)],{
         'https://fixture.test/a':(302,b'',{'location':'/end'}),
         'https://fixture.test/end':(200,b'entity',{}),
-        'https://fixture.test/z':(200,b'z',{})},request_budget=7)
+        'https://fixture.test/z':(200,b'z',{})},request_budget=2)
     assert adapter.calls==['https://fixture.test/a','https://fixture.test/end']
     assert result['requests']==2 and result['stop_reason']=='request_budget'
 
 
-def test_budget_allows_more_than_64mib_without_a_large_fixture(tmp_path):
+def test_scheduler_caps_direct_entities_at_measured_capacity(tmp_path):
     result,adapter,_=run_fixture(tmp_path,[dict(requested_url='https://fixture.test/a',attempts=0)],
         {'https://fixture.test/a':(200,b'bounded fixture',{})},byte_budget=2**32,spool_budget=2**31)
-    assert adapter.limits[0]>64*1024**2
+    assert adapter.limits[0]==16*1024**2
     assert result['fetched_bytes']==len(b'bounded fixture')
 
 
@@ -178,12 +178,13 @@ def test_scope_registry_refuses_credentials_private_addresses_and_traps():
 
 def test_provider_fallback_keeps_both_attempts_and_budget_accounting(tmp_path):
     from congress_api.acquisition.capture_scheduler import run_capture
+    from congress_api.acquisition.admission import Admission
     root=release(tmp_path,[dict(requested_url='https://fixture.test/a',attempts=0)])
     direct=Adapter({'https://fixture.test/a':(403,b'denied',{})})
     provider=Adapter({'https://fixture.test/a':(200,b'publisher bytes',{})})
     result=run_capture(load(root,tmp_path/'read'),engine=engine(),work=tmp_path/'capture',as_of=ASOF,
         request_budget=14,byte_budget=2**30,spool_budget=2**30,store=BodyStore(LocalAdapter(tmp_path/'raw')),
-        identity=IDENTITY,direct=direct,provider=provider,discover=fixture_discover,resolve=lambda _:['8.8.8.8'],archive_limits=LIMITS,pace=lambda *_:None)
+        identity=IDENTITY,direct=direct,provider=provider,provider_cost=1,admission=Admission(tmp_path/'admission.sqlite',14,1),discover=fixture_discover,resolve=lambda _:['8.8.8.8'],archive_limits=LIMITS,pace=lambda *_:None)
     assert result['requests']==2 and result['fetched_bytes']==len(b'deniedpublisher bytes')
     [receipt]=list((tmp_path/'raw').rglob('*.jsonl.gz'))
     with gzip.open(receipt,'rt') as source:line=json.loads(source.readline())
@@ -420,12 +421,12 @@ def test_seed_loader_keeps_jsonl_pointer_and_refuses_credential_urls(tmp_path):
     with pytest.raises(ValueError,match='Credential'):list(inventories([path]))
 
 
-def test_single_put_entity_boundary_is_admitted_when_resources_fit(tmp_path):
+def test_large_budget_keeps_measured_entity_capacity(tmp_path):
     single_put=5*1024**3
     result,adapter,_=run_fixture(tmp_path,[dict(requested_url='https://fixture.test/a',attempts=0)],
         {'https://fixture.test/a':(200,b'virtual large binary boundary',{'content-type':'application/octet-stream'})},
         byte_budget=single_put*14,spool_budget=single_put*4)
-    assert adapter.limits==[single_put]
+    assert adapter.limits==[16<<20]
     assert result['spool_reserved_bound']<=result['budgets']['spool']
 
 
@@ -453,7 +454,7 @@ def test_every_reviewed_cutoff_has_a_native_disposition(tmp_path):
         dict(requested_url=cutoffs[2],attempts=1,next_attempt_at=future),
         dict(requested_url=cutoffs[3],attempts=1)],{
         'https://fixture.test/a':(200,b'queue',{}),'https://fixture.test/good':(200,b'complete cutoff',{})},
-        request_budget=8,cutoff_urls=cutoffs)
+        request_budget=2,cutoff_urls=cutoffs)
     assert adapter.calls==['https://fixture.test/a','https://fixture.test/good']
     rows={row['requested_url']:row for row in result['cutoffs']}
     assert set(rows)==set(cutoffs)
@@ -637,3 +638,37 @@ def test_keyed_states_cache_reused_across_discovery_and_cutoff_report(tmp_path):
     assert any(inp['name']=='keyed_states' for inp in cutoff_job['inputs'])
 
 
+
+
+def test_campaign_queue_uses_exact_membership_and_feedback(tmp_path):
+    from congress_api.acquisition.capture_scheduler import plan_queue
+    from congress_shared.campaign import load_campaign
+    targets=['https://fixture.test/eligible','https://fixture.test/satisfied','https://fixture.test/new']
+    root=release(tmp_path,[dict(requested_url=url,attempts=0) for url in targets[:2]]+
+                 [dict(requested_url='https://fixture.test/unrelated',attempts=0)])
+    table=pq.read_table(root/'url_state.parquet')
+    for name,values in [('capture_disposition',['eligible','satisfied','eligible']),
+                        ('capture_reason',['pending','accepted','pending']),
+                        ('capture_decision_id',[None,'decision-1',None])]:
+        table=table.append_column(name,pa.array(values,type=pa.string()))
+    pq.write_table(table,root/'url_state.parquet')
+    requirements=tmp_path/'requirements.parquet'
+    pq.write_table(pa.table({'original_url':targets,'target_requirement':['requested_content']*3,
+                             'acceptance_policy':['policy']*3}),requirements)
+    target=tmp_path/'targets.parquet';candidate=tmp_path/'candidates.parquet'
+    pq.write_table(pa.table({'target_url':targets}),target)
+    pq.write_table(pa.table({'target_url':pa.array([],type=pa.string()),
+                             'candidate_url':pa.array([],type=pa.string())}),candidate)
+    profile=json.loads((root/'capture_profile.json').read_text())
+    profile.update(version=2,recovery_policy={'acceptance_policy':'policy',
+                   'requirements_sha256':hashlib.sha256(requirements.read_bytes()).hexdigest()})
+    (root/'capture_profile.json').write_text(json.dumps(profile));write_manifest(root)
+    def pin(path):return {'path':str(path),'sha256':hashlib.sha256(path.read_bytes()).hexdigest()}
+    descriptor=tmp_path/'campaign.json'
+    descriptor.write_text(json.dumps(dict(version=1,campaign_id='test',requirement='requested_content',
+        tables={'targets':pin(target),'candidates':pin(candidate),'requirements':pin(requirements)},
+        target_table='targets',candidate_table='candidates')))
+    campaign=load_campaign(descriptor)
+    result=plan_queue(load(root,tmp_path/'read-campaign'),engine=engine(),work=tmp_path/'campaign-plan',
+                      as_of=ASOF,request_budget=10,campaign=campaign)
+    assert {row['requested_url'] for row in pq.read_table(result['queue']).to_pylist()} == {targets[0],targets[2]}

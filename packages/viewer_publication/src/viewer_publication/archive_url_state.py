@@ -6,7 +6,7 @@ from viewer_publication.archive_format import TS
 ROOT=Path(__file__).parents[4]
 
 
-def url_state_steps(*,root=ROOT):
+def url_state_steps(*,root=ROOT,recovery_policy=None):
     """Use shared good-fetch and URL keys, preserving explicit input diagnostics."""
     acquisition="mode='fetch' AND outcome NOT IN ('reference','saved-record') AND requested_url IS NOT NULL"
     sqls=[('lines',f"""WITH base_captures AS (
@@ -121,6 +121,57 @@ def url_state_steps(*,root=ROOT):
           OR regexp_like(s.url,'(?i)^https?://[^/?#]*@')) AS private_history,
         (SELECT count(*) FROM url_state_queue WHERE public_key IS NULL OR error IS NOT NULL) AS unusable_queue_keys,
         (SELECT count(*) FROM (SELECT requested_url FROM url_state GROUP BY requested_url HAVING count(*)>1)) AS duplicate_urls""",materialize=True)]
+    if recovery_policy is not None:
+        # Keep ordinary HTTP facts untouched; recovery is a separate decision.
+        state=next(step for step in steps if step['name']=='url_state')
+        state['name']='url_state_history'
+        policy=recovery_policy['acceptance_policy'].replace("'","''")
+        eligibility=f"""WITH candidates AS (
+          SELECT d.original_url,d.id,d.kind,d.target_requirement,d.acceptance_policy
+          FROM recovery_decisions d JOIN recovery_requirements r ON d.original_url=r.original_url
+          JOIN (SELECT DISTINCT original_url,encode(sha256,'hex') AS body_sha FROM captures
+                WHERE mode='retained_import' AND complete) c
+            ON c.original_url=d.original_url AND c.body_sha=lower(d.body_sha256)
+          WHERE d.recovery_record_version=2 AND d.acceptance_status='accepted'
+            AND d.acceptance_policy='{policy}' AND r.acceptance_policy='{policy}'
+            AND d.target_requirement=r.target_requirement AND r.refresh_policy='historical_only'
+            AND regexp_like(d.evidence_sha256,'^[0-9a-fA-F]{{64}}$')
+            AND regexp_like(d.qualification_sha256,'^[0-9a-f]{{64}}$')
+            AND d.id NOT IN (SELECT supersedes FROM recovery_decisions WHERE supersedes IS NOT NULL)
+        ), active_counts AS (
+          SELECT original_url,count(*) AS n FROM recovery_decisions d
+          WHERE d.id NOT IN (SELECT supersedes FROM recovery_decisions WHERE supersedes IS NOT NULL)
+          GROUP BY original_url
+        ), unambiguous AS (
+          SELECT c.original_url,min(c.id) AS id FROM candidates c JOIN active_counts a ON c.original_url=a.original_url AND a.n=1
+          WHERE c.kind='recovered_document'
+            OR (c.target_requirement IN ('requested_content','current_official_counterpart') AND c.kind IN
+                ('requested_content_in_official_hearing','requested_content_in_official_report',
+                 'requested_content_in_official_amendment_packet','official_complete_statement_text_available',
+                 'same_article_publisher_text_available'))
+            OR (c.target_requirement='current_official_counterpart' AND c.kind IN
+                ('official_updated_revision_available','official_introduced_bill_counterpart',
+                 'official_recorded_votes_available','official_alternate_amendment_available',
+                 'official_public_statement_counterpart','official_report_counterpart_available','related_final_report_available'))
+          GROUP BY c.original_url HAVING count(*)=1
+        ), excluded AS (SELECT DISTINCT l.requested_url FROM url_state_latest l JOIN url_state_scope_exclusions e
+            ON e.family=l.family AND regexp_like(l.requested_url,e.pattern))
+        SELECT h.*,
+          CASE WHEN x.requested_url IS NOT NULL THEN 'excluded'
+               WHEN u.id IS NOT NULL THEN 'satisfied' ELSE 'eligible' END AS capture_disposition,
+          CASE WHEN x.requested_url IS NOT NULL THEN 'scope_exclusion'
+               WHEN u.id IS NOT NULL THEN 'qualified_recovery' ELSE 'no_satisfying_recovery' END AS capture_reason,
+          CASE WHEN x.requested_url IS NOT NULL THEN cast(NULL AS VARCHAR)
+               ELSE u.id END AS capture_decision_id
+        FROM url_state_history h LEFT JOIN unambiguous u ON h.requested_url=u.original_url
+          LEFT JOIN excluded x ON h.requested_url=x.requested_url"""
+        index=next(i for i,step in enumerate(steps) if step['name']=='url_state_invariants_step')
+        steps.insert(index,dict(name='url_state',sql=eligibility,materialize=True))
+        steps[index+1]['sql']+=f""",(SELECT count(*) FROM recovery_requirements WHERE original_url IS NULL OR trim(original_url)=''
+            OR target_requirement IS NULL OR target_requirement NOT IN ('historical_exact','requested_content','current_official_counterpart')
+            OR (acceptance_policy IS DISTINCT FROM '{policy}')
+            OR refresh_policy IS NULL OR refresh_policy NOT IN ('historical_only','refresh_live')) +
+            (SELECT count(*) FROM (SELECT original_url FROM recovery_requirements GROUP BY original_url HAVING count(*)<>1)) AS invalid_recovery_requirements"""
     return steps
 
 
