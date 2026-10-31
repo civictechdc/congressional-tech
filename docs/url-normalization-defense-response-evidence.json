@@ -1,0 +1,1207 @@
+{
+  "reviewed_commit": "cafb1b43",
+  "artifact_note": "Campaign plan_v2 was rebuilt during review. Frozen input pins identify the checked generation; prior results.json recorded the earlier generation.",
+  "measurements": {
+    "success_hosts": {
+      "sql": "SELECT regexp_extract(requested_url,'^https?://([^/]+)',1) host,count(*) capture_rows,count(DISTINCT requested_url) urls FROM c\n WHERE ends_with(requested_url,'&download=1') AND http_status=200 AND is_real_file GROUP BY ALL ORDER BY host",
+      "rows": [
+        {
+          "host": "www.appropriations.senate.gov",
+          "capture_rows": 734,
+          "urls": 734
+        },
+        {
+          "host": "www.banking.senate.gov",
+          "capture_rows": 1419,
+          "urls": 1417
+        },
+        {
+          "host": "www.budget.senate.gov",
+          "capture_rows": 342,
+          "urls": 342
+        },
+        {
+          "host": "www.finance.senate.gov",
+          "capture_rows": 1814,
+          "urls": 1569
+        }
+      ]
+    },
+    "house_attempts": {
+      "sql": "SELECT http_status,outcome,record_role,count(*) capture_rows,count(DISTINCT requested_url) urls FROM c\n WHERE regexp_matches(requested_url,'^https?://[^/]*[.]house[.]gov/') AND ends_with(requested_url,'&download=1') AND http_status IS NOT NULL GROUP BY ALL",
+      "rows": [
+        {
+          "http_status": 410,
+          "outcome": "failed",
+          "record_role": "error_response",
+          "capture_rows": 19,
+          "urls": 19
+        }
+      ]
+    },
+    "amp_transitions": {
+      "sql": "SELECT a.disposition previous_disposition,b.disposition current_disposition,b.subtype,count(*) urls FROM d0 a JOIN d b USING(target_url)\n WHERE ends_with(a.target_url,'&download=1') GROUP BY ALL ORDER BY ALL",
+      "rows": [
+        {
+          "previous_disposition": "needs_acquisition",
+          "current_disposition": "accepted_recovery",
+          "subtype": "retained_candidate_redirect_location_corpus_match",
+          "urls": 24
+        },
+        {
+          "previous_disposition": "needs_acquisition",
+          "current_disposition": "accepted_recovery",
+          "subtype": "retained_candidate_repaired_download_query",
+          "urls": 1563
+        },
+        {
+          "previous_disposition": "needs_acquisition",
+          "current_disposition": "accepted_recovery",
+          "subtype": "retained_candidate_repaired_download_query_docx",
+          "urls": 3
+        },
+        {
+          "previous_disposition": "needs_acquisition",
+          "current_disposition": "accepted_recovery",
+          "subtype": "retained_candidate_repaired_download_query_poppler_verified",
+          "urls": 226
+        },
+        {
+          "previous_disposition": "needs_acquisition",
+          "current_disposition": "needs_acquisition",
+          "subtype": "needs_acquisition_legacy_or_unreachable",
+          "urls": 32
+        },
+        {
+          "previous_disposition": "needs_acquisition",
+          "current_disposition": "needs_acquisition",
+          "subtype": "needs_acquisition_purged_404_410",
+          "urls": 1367
+        },
+        {
+          "previous_disposition": "needs_acquisition",
+          "current_disposition": "needs_acquisition",
+          "subtype": "needs_acquisition_walled_403_or_unattempted",
+          "urls": 16
+        },
+        {
+          "previous_disposition": "retained_candidate_pending",
+          "current_disposition": "accepted_recovery",
+          "subtype": "retained_candidate_v1_recovery_provenance",
+          "urls": 749
+        },
+        {
+          "previous_disposition": "usable_direct",
+          "current_disposition": "usable_direct",
+          "subtype": "usable_direct_baseline",
+          "urls": 4075
+        }
+      ]
+    },
+    "pending_chambers": {
+      "sql": "SELECT CASE WHEN regexp_matches(target_url,'^https?://[^/]*[.]house[.]gov/') THEN 'House' ELSE 'other' END chamber,count(*) urls\n FROM d WHERE disposition='needs_acquisition' AND ends_with(target_url,'&download=1') GROUP BY ALL",
+      "rows": [
+        {
+          "chamber": "House",
+          "urls": 1411
+        },
+        {
+          "chamber": "other",
+          "urls": 4
+        }
+      ]
+    },
+    "selected_repairs": {
+      "sql": "SELECT candidate_source,count(*) AS n,count(DISTINCT target_url) targets FROM selected WHERE candidate_source='repaired_download_query' GROUP BY ALL",
+      "rows": [
+        {
+          "candidate_source": "repaired_download_query",
+          "n": 1606,
+          "targets": 1606
+        }
+      ]
+    },
+    "ashley": {
+      "sql": "SELECT requested_url,attempts,last_status,last_outcome,capture_disposition,capture_reason FROM st WHERE contains(requested_url,'ashley-nunes-witness-testimony')",
+      "rows": [
+        {
+          "requested_url": "https://democrats-science.house.gov/download/ashley-nunes-witness-testimony",
+          "attempts": 1,
+          "last_status": 200,
+          "last_outcome": "stored",
+          "capture_disposition": "eligible",
+          "capture_reason": "no_satisfying_recovery"
+        },
+        {
+          "requested_url": "https://democrats-science.house.gov/download/ashley-nunes-witness-testimony&download=1",
+          "attempts": 0,
+          "last_status": null,
+          "last_outcome": null,
+          "capture_disposition": "eligible",
+          "capture_reason": "no_satisfying_recovery"
+        }
+      ]
+    },
+    "senate_state": {
+      "sql": "SELECT capture_disposition,capture_reason,count(*) AS n FROM st WHERE contains(requested_url,'/404?notfound=') GROUP BY ALL",
+      "rows": [
+        {
+          "capture_disposition": "eligible",
+          "capture_reason": "no_satisfying_recovery",
+          "n": 37
+        },
+        {
+          "capture_disposition": "satisfied",
+          "capture_reason": "qualified_recovery",
+          "n": 16
+        }
+      ]
+    },
+    "ashley_page": {
+      "sql": "SELECT link_count,status FROM pf WHERE body_sha=from_hex('ae5ee73d95a8fada1e9491574799cf263d03114d3f84d830ed26a9f6e1e0934c')",
+      "rows": [
+        {
+          "link_count": 87,
+          "status": "completed"
+        }
+      ]
+    },
+    "table_counts": {
+      "sql": "SELECT 'publisher_links' table_name,count(*) AS n FROM p UNION ALL SELECT 'plan',count(*) FROM d0 UNION ALL SELECT 'plan_v2',count(*) FROM d UNION ALL SELECT 'sources',count(*) FROM s",
+      "rows": [
+        {
+          "table_name": "publisher_links",
+          "n": 913034
+        },
+        {
+          "table_name": "plan",
+          "n": 1202155
+        },
+        {
+          "table_name": "plan_v2",
+          "n": 1202155
+        },
+        {
+          "table_name": "sources",
+          "n": 605848
+        }
+      ]
+    },
+    "spaces": {
+      "sql": "SELECT 'plan' AS generation_name,count(*) urls FROM d0 WHERE ends_with(target_url,'%20') UNION ALL SELECT 'plan_v2',count(*) FROM d WHERE ends_with(target_url,'%20')",
+      "rows": [
+        {
+          "generation_name": "plan",
+          "urls": 35
+        },
+        {
+          "generation_name": "plan_v2",
+          "urls": 35
+        }
+      ]
+    },
+    "source_hex": {
+      "sql": "SELECT count(*) FILTER (WHERE regexp_matches(url,'%[0-9A-F][A-F]')) defense_upper_regex,\n count(*) FILTER (WHERE regexp_matches(url,'%([0-9A-Fa-f][A-F]|[A-F][0-9A-Fa-f])')) either_upper_digit,\n count(*) FILTER (WHERE regexp_matches(url,'%([0-9A-Fa-f][a-f]|[a-f][0-9A-Fa-f])')) either_lower_digit FROM s",
+      "rows": [
+        {
+          "defense_upper_regex": 826,
+          "either_upper_digit": 987,
+          "either_lower_digit": 0
+        }
+      ]
+    },
+    "pending_repaired_already_attempted": {
+      "sql": "WITH pending AS (SELECT target_url,regexp_replace(target_url,'(?:%20|\\s)*&download=1$','?download=1') repaired FROM d\n WHERE disposition='needs_acquisition' AND ends_with(target_url,'&download=1') AND regexp_matches(target_url,'^https?://[^/]*[.]house[.]gov/'))\n SELECT w.http_status,w.outcome,w.qualification_status,count(DISTINCT p.target_url) targets FROM pending p JOIN wave w ON p.repaired=w.candidate_url GROUP BY ALL ORDER BY ALL",
+      "rows": [
+        {
+          "http_status": 200,
+          "outcome": "size_limit",
+          "qualification_status": null,
+          "targets": 3
+        },
+        {
+          "http_status": 200,
+          "outcome": "stored",
+          "qualification_status": "unresolved",
+          "targets": 3
+        },
+        {
+          "http_status": 200,
+          "outcome": "unchanged",
+          "qualification_status": "unresolved",
+          "targets": 2
+        },
+        {
+          "http_status": 302,
+          "outcome": "failed",
+          "qualification_status": null,
+          "targets": 2
+        },
+        {
+          "http_status": null,
+          "outcome": "request_failed",
+          "qualification_status": null,
+          "targets": 2
+        }
+      ]
+    },
+    "pending_repaired_examples": {
+      "sql": "WITH pending AS (SELECT target_url,regexp_replace(target_url,'(?:%20|\\s)*&download=1$','?download=1') repaired FROM d\n WHERE disposition='needs_acquisition' AND ends_with(target_url,'&download=1') AND regexp_matches(target_url,'^https?://[^/]*[.]house[.]gov/'))\n SELECT p.target_url,w.candidate_url,w.http_status,w.outcome,w.qualification_status,w.receipt_key FROM pending p JOIN wave w ON p.repaired=w.candidate_url ORDER BY p.target_url LIMIT 3",
+      "rows": [
+        {
+          "target_url": "https://democrats-science.house.gov/download/09142023-an-update-on-the-department-of-energys-science-and-technology-priorities-hearing-charter&download=1",
+          "candidate_url": "https://democrats-science.house.gov/download/09142023-an-update-on-the-department-of-energys-science-and-technology-priorities-hearing-charter?download=1",
+          "http_status": 302,
+          "outcome": "failed",
+          "qualification_status": null,
+          "receipt_key": "receipts/documents/2026-10-31/track-b-wave4-20261031-eb5f0ce859e7e9fa150c8130c3cb5629250f453bf20a5257cd269557b288c362.jsonl.gz"
+        },
+        {
+          "target_url": "https://democrats-science.house.gov/download/3823-innovation-through-collaboration_-the-department-of-energys-role-in-the-us-research-ecosystem&download=1",
+          "candidate_url": "https://democrats-science.house.gov/download/3823-innovation-through-collaboration_-the-department-of-energys-role-in-the-us-research-ecosystem?download=1",
+          "http_status": 302,
+          "outcome": "failed",
+          "qualification_status": null,
+          "receipt_key": "receipts/documents/2026-10-31/track-b-wave4-20261031-6d1ea1623e5d9d615621ed51368818a0bf55dd140588832ecd13e8e6a3fc97a9.jsonl.gz"
+        },
+        {
+          "target_url": "https://democrats-science.house.gov/download/ashley-nunes-witness-testimony&download=1",
+          "candidate_url": "https://democrats-science.house.gov/download/ashley-nunes-witness-testimony?download=1",
+          "http_status": 200,
+          "outcome": "stored",
+          "qualification_status": "unresolved",
+          "receipt_key": "receipts/documents/2026-10-31/track-b-wave4-20261031-a13ed292de0ec3429d9594f856c98e74fd59c9a4673dce91e0b0b1e4aa267669.jsonl.gz"
+        }
+      ]
+    },
+    "paths": {
+      "c": "/private/tmp/claude-501/-Users-mikewolfd-Work/71969fc5-4a0f-4f4e-aa49-d2dd9f4c2272/scratchpad/codex-impl/cx_model_design/publish_v20/model/evidence/capture_sources.parquet",
+      "p": "/private/tmp/claude-501/-Users-mikewolfd-Work/71969fc5-4a0f-4f4e-aa49-d2dd9f4c2272/scratchpad/codex-impl/cx_model_design/publish_v20/model/evidence/publisher_links.parquet",
+      "pf": "/private/tmp/claude-501/-Users-mikewolfd-Work/71969fc5-4a0f-4f4e-aa49-d2dd9f4c2272/scratchpad/codex-impl/cx_model_design/publish_v20/model/evidence/page_facts.parquet",
+      "s": "/private/tmp/claude-501/-Users-mikewolfd-Work/71969fc5-4a0f-4f4e-aa49-d2dd9f4c2272/scratchpad/codex-impl/cx_model_design/publish_v20/release/sources.parquet",
+      "d0": "/var/folders/g8/10vdwk2n07z85vqn_vlv2lfc0000gn/T/url-trace-validation-9vlmw_gm/defense-inputs/plan.parquet",
+      "d": "/var/folders/g8/10vdwk2n07z85vqn_vlv2lfc0000gn/T/url-trace-validation-9vlmw_gm/defense-inputs/plan_v2.parquet",
+      "st": "/var/folders/g8/10vdwk2n07z85vqn_vlv2lfc0000gn/T/url-trace-validation-9vlmw_gm/defense-inputs/state.parquet",
+      "selected": "/var/folders/g8/10vdwk2n07z85vqn_vlv2lfc0000gn/T/url-trace-validation-9vlmw_gm/defense-inputs/selected.parquet"
+    },
+    "pins": {
+      "plan.parquet": {
+        "sha256": "77f52032b8aea6dc308dd7d910843d8ac561bc5a960bd8663ba164cf1a0cf1f2",
+        "bytes": 14154786
+      },
+      "plan_v2.parquet": {
+        "sha256": "b551043dac48970c961f0329cf8b89f8917c873608a95399aa3e590511d0aa0b",
+        "bytes": 15030584
+      },
+      "selected.parquet": {
+        "sha256": "d25202c859dc2e46347d3c8408204a702b00efdc944f53c8d222f383af24043a",
+        "bytes": 4653768
+      },
+      "state.parquet": {
+        "sha256": "5ada99f9406449870e4633c75abad0af71967017a1a69f971c3648ae088da3fa",
+        "bytes": 14711714
+      },
+      "wave4.json": {
+        "sha256": "8639e53d235da5d51eed70b56566415066d40c393d1cfc885010b3ee380b2fec",
+        "bytes": 1755581
+      }
+    }
+  },
+  "wave4_pending_cohort": {
+    "ashley_selected": 0,
+    "wave4_pending_attempted": [
+      [
+        200,
+        "size_limit",
+        null,
+        3
+      ],
+      [
+        200,
+        "stored",
+        "unresolved",
+        231
+      ],
+      [
+        200,
+        "unchanged",
+        "unresolved",
+        3
+      ],
+      [
+        302,
+        "failed",
+        null,
+        2
+      ],
+      [
+        null,
+        "request_failed",
+        null,
+        2
+      ]
+    ],
+    "query": "WITH pending AS (SELECT target_url,regexp_replace(target_url,'(?:%20|\\s)*&download=1$','?download=1') repaired FROM old\n WHERE disposition='needs_acquisition' AND ends_with(target_url,'&download=1') AND regexp_matches(target_url,'^https?://[^/]*[.]house[.]gov/')\n AND NOT EXISTS(SELECT 1 FROM selected s WHERE s.target_url=old.target_url AND candidate_source='repaired_download_query'))\n SELECT w.http_status,w.outcome,w.qualification_status,count(DISTINCT p.target_url) FROM pending p JOIN wave w ON p.repaired=w.candidate_url GROUP BY ALL ORDER BY ALL",
+    "wave4_pending_attempted_distinct": 241,
+    "wave4_pending_house_cohort": 1664
+  },
+  "proposed_trailing_trim": {
+    "comparison": [
+      {
+        "current_key": "example.gov/report",
+        "proposed_key": "example.gov/report",
+        "url": "https://example.gov/report"
+      },
+      {
+        "current_key": "example.gov/report%20",
+        "proposed_key": "example.gov/report",
+        "url": "https://example.gov/report%20"
+      },
+      {
+        "current_key": "example.gov/report",
+        "proposed_key": "example.gov/report",
+        "url": "https://example.gov/report/"
+      },
+      {
+        "current_key": "example.gov/report/",
+        "proposed_key": "example.gov/report",
+        "url": "https://example.gov/report//"
+      }
+    ]
+  },
+  "prior_plan_v2_pin": {
+    "sha256": "5f6639a2d55c6075c8be1a4994aac181665cce56465739e645fbf855071dfa3b",
+    "size": 14992828,
+    "modified_utc": "2026-10-31T19:02:55.712817+00:00"
+  },
+  "trailing_space_corpus_validation": {
+    "reviewed_commit": "cafb1b43",
+    "checked_date": "2026-10-31",
+    "artifact_root": "/private/tmp/claude-501/-Users-mikewolfd-Work/71969fc5-4a0f-4f4e-aa49-d2dd9f4c2272/scratchpad/codex-impl/cx_model_design",
+    "release_id": "c94bfedcfcf0287ce9868b4532766c7dcf4b3202187d48db07874a05fd703a78",
+    "artifacts": {
+      "campaign": "recovery_campaign_v1/key_prep/keyed_universe.parquet",
+      "captures": "publish_v20/model/evidence/capture_sources.parquet",
+      "sources": "publish_v20/release/sources.parquet",
+      "documents": "publish_v20/model/evidence/document_rows.parquet"
+    },
+    "counts": {
+      "campaign_rows": 1202155,
+      "affected_campaign_rows": 27,
+      "affected_keys_with_existing_clean_counterpart": 1,
+      "affected_repeated_slash_campaign_keys": 0,
+      "capture_source_rows_scanned": 4129878,
+      "published_source_rows": 605848,
+      "distinct_published_urls": 529386,
+      "native_screened_published_urls": 19397,
+      "native_total_inputs": 19502,
+      "changed_published_source_keys": 0,
+      "published_source_backslash_urls": 0,
+      "affected_urls_with_real_file_capture": 0
+    },
+    "campaign_predicate": "regexp_matches(split_part(url_key,'?',1),'%20(?:%20|/)*$')",
+    "campaign_proposed_key": "regexp_replace(split_part(url_key,'?',1),'(?:%20|/)+$','') || CASE WHEN contains(url_key,'?') THEN substring(url_key,strpos(url_key,'?')) ELSE '' END",
+    "campaign_join": "Join each proposed key to keyed_universe.url_key; retain existing literal target URLs.",
+    "source_screen": "Select every distinct source URL containing %20, whitespace, repeated slashes (regex [^:]//), or matching any wrapper pattern from model/registries/url-rules.json. Separately confirmed zero source URLs containing backslashes.",
+    "native_method": "Run model/sql/url-normalized.sql unchanged and with regexp_replace(c.path,'/$','') replaced by regexp_replace(c.path,'(?:%20|/)+$',''). Use current url-rules.json and empty url_variants. Compare base_key for each literal URL. All 27 historical affected keys equal current native results; each proposed result equals the current native key of its clean spelling.",
+    "capture_method": "Read matching basename candidates from requested_url, url, source_url, original_url, recovered_url; then match affected literal URLs exactly for the per-address summaries. Candidate basename matches on other hosts are not counted as counterpart evidence.",
+    "native_binary_sha256": "8d33f1d03540fb0bc8160eac18e0121c0cde428feaeb77b4e815abf805f2d819",
+    "native_source_revision": "eb40c5457a450c3820900583af5b4da13313ca96",
+    "affected_capture_summaries": [
+      {
+        "url": "https://appropriations.house.gov/sites/evo-subsites/republicans-appropriations.house.gov/files/evo-media-document/fs-notice-of-subcommittee-markup-fy27.pdf%20",
+        "url_key": "appropriations.house.gov/sites/evo-subsites/republicans-appropriations.house.gov/files/evo-media-document/fs-notice-of-subcommittee-markup-fy27.pdf%20",
+        "capture_rows": 3,
+        "real_file_rows": 0,
+        "response_shapes": [
+          {
+            "http_status": 404,
+            "record_role": "error_response",
+            "format": "html",
+            "is_real_file": false,
+            "rows": 3
+          }
+        ]
+      },
+      {
+        "url": "https://appropriations.house.gov/sites/evo-subsites/republicans-appropriations.house.gov/files/evo-media-document/mc-notice-of-subcommittee-markup-fy27.pdf%20",
+        "url_key": "appropriations.house.gov/sites/evo-subsites/republicans-appropriations.house.gov/files/evo-media-document/mc-notice-of-subcommittee-markup-fy27.pdf%20",
+        "capture_rows": 3,
+        "real_file_rows": 0,
+        "response_shapes": [
+          {
+            "http_status": 404,
+            "record_role": "error_response",
+            "format": "html",
+            "is_real_file": false,
+            "rows": 3
+          }
+        ]
+      },
+      {
+        "url": "https://democrats-edworkforce.house.gov/imo/media/doc/rc41_H.R.4674MurphyA54.pdf%20",
+        "url_key": "democrats-edworkforce.house.gov/imo/media/doc/rc41_H.R.4674MurphyA54.pdf%20",
+        "capture_rows": 3,
+        "real_file_rows": 0,
+        "response_shapes": [
+          {
+            "http_status": 404,
+            "record_role": "error_response",
+            "format": "html",
+            "is_real_file": false,
+            "rows": 3
+          }
+        ]
+      },
+      {
+        "url": "https://democrats-transportation.house.gov/download/09/09/2020/flynn-testimony%20",
+        "url_key": "democrats-transportation.house.gov/download/09/09/2020/flynn-testimony%20",
+        "capture_rows": 1,
+        "real_file_rows": 0,
+        "response_shapes": [
+          {
+            "http_status": 200,
+            "record_role": "wrapper",
+            "format": "html",
+            "is_real_file": false,
+            "rows": 1
+          }
+        ]
+      },
+      {
+        "url": "https://democrats-transportation.house.gov/download/09/09/2020/mathews-testimony%20",
+        "url_key": "democrats-transportation.house.gov/download/09/09/2020/mathews-testimony%20",
+        "capture_rows": 1,
+        "real_file_rows": 0,
+        "response_shapes": [
+          {
+            "http_status": 200,
+            "record_role": "wrapper",
+            "format": "html",
+            "is_real_file": false,
+            "rows": 1
+          }
+        ]
+      },
+      {
+        "url": "https://democrats-transportation.house.gov/download/ans-to-hr-4358%20",
+        "url_key": "democrats-transportation.house.gov/download/ans-to-hr-4358%20",
+        "capture_rows": 1,
+        "real_file_rows": 0,
+        "response_shapes": [
+          {
+            "http_status": 200,
+            "record_role": "wrapper",
+            "format": "html",
+            "is_real_file": false,
+            "rows": 1
+          }
+        ]
+      },
+      {
+        "url": "https://democrats-transportation.house.gov/download/ans-to-hr-4611%20",
+        "url_key": "democrats-transportation.house.gov/download/ans-to-hr-4611%20",
+        "capture_rows": 1,
+        "real_file_rows": 0,
+        "response_shapes": [
+          {
+            "http_status": 200,
+            "record_role": "wrapper",
+            "format": "html",
+            "is_real_file": false,
+            "rows": 1
+          }
+        ]
+      },
+      {
+        "url": "https://democrats-transportation.house.gov/download/elizabeth-jolin-testimony%20",
+        "url_key": "democrats-transportation.house.gov/download/elizabeth-jolin-testimony%20",
+        "capture_rows": 1,
+        "real_file_rows": 0,
+        "response_shapes": [
+          {
+            "http_status": 200,
+            "record_role": "wrapper",
+            "format": "html",
+            "is_real_file": false,
+            "rows": 1
+          }
+        ]
+      },
+      {
+        "url": "https://democrats-transportation.house.gov/download/eve-williams-testimony%20",
+        "url_key": "democrats-transportation.house.gov/download/eve-williams-testimony%20",
+        "capture_rows": 1,
+        "real_file_rows": 0,
+        "response_shapes": [
+          {
+            "http_status": 200,
+            "record_role": "wrapper",
+            "format": "html",
+            "is_real_file": false,
+            "rows": 1
+          }
+        ]
+      },
+      {
+        "url": "https://democrats-transportation.house.gov/download/farad-ali-testimony%20",
+        "url_key": "democrats-transportation.house.gov/download/farad-ali-testimony%20",
+        "capture_rows": 1,
+        "real_file_rows": 0,
+        "response_shapes": [
+          {
+            "http_status": 200,
+            "record_role": "wrapper",
+            "format": "html",
+            "is_real_file": false,
+            "rows": 1
+          }
+        ]
+      },
+      {
+        "url": "https://democrats-transportation.house.gov/download/gary-ritter-testimony%20",
+        "url_key": "democrats-transportation.house.gov/download/gary-ritter-testimony%20",
+        "capture_rows": 1,
+        "real_file_rows": 0,
+        "response_shapes": [
+          {
+            "http_status": 200,
+            "record_role": "wrapper",
+            "format": "html",
+            "is_real_file": false,
+            "rows": 1
+          }
+        ]
+      },
+      {
+        "url": "https://democrats-transportation.house.gov/download/graves-la-234%20",
+        "url_key": "democrats-transportation.house.gov/download/graves-la-234%20",
+        "capture_rows": 1,
+        "real_file_rows": 0,
+        "response_shapes": [
+          {
+            "http_status": 200,
+            "record_role": "wrapper",
+            "format": "html",
+            "is_real_file": false,
+            "rows": 1
+          }
+        ]
+      },
+      {
+        "url": "https://democrats-transportation.house.gov/download/griffin-testimony%20",
+        "url_key": "democrats-transportation.house.gov/download/griffin-testimony%20",
+        "capture_rows": 1,
+        "real_file_rows": 0,
+        "response_shapes": [
+          {
+            "http_status": 200,
+            "record_role": "wrapper",
+            "format": "html",
+            "is_real_file": false,
+            "rows": 1
+          }
+        ]
+      },
+      {
+        "url": "https://democrats-transportation.house.gov/download/honorable-chauncey-p-goss-ii-testimony%20",
+        "url_key": "democrats-transportation.house.gov/download/honorable-chauncey-p-goss-ii-testimony%20",
+        "capture_rows": 1,
+        "real_file_rows": 0,
+        "response_shapes": [
+          {
+            "http_status": 200,
+            "record_role": "wrapper",
+            "format": "html",
+            "is_real_file": false,
+            "rows": 1
+          }
+        ]
+      },
+      {
+        "url": "https://democrats-transportation.house.gov/download/jon-wainwright-testimony%20",
+        "url_key": "democrats-transportation.house.gov/download/jon-wainwright-testimony%20",
+        "capture_rows": 1,
+        "real_file_rows": 0,
+        "response_shapes": [
+          {
+            "http_status": 200,
+            "record_role": "wrapper",
+            "format": "html",
+            "is_real_file": false,
+            "rows": 1
+          }
+        ]
+      },
+      {
+        "url": "https://democrats-transportation.house.gov/download/mary-lerdahl-testimony%20",
+        "url_key": "democrats-transportation.house.gov/download/mary-lerdahl-testimony%20",
+        "capture_rows": 1,
+        "real_file_rows": 0,
+        "response_shapes": [
+          {
+            "http_status": 200,
+            "record_role": "wrapper",
+            "format": "html",
+            "is_real_file": false,
+            "rows": 1
+          }
+        ]
+      },
+      {
+        "url": "https://democrats-transportation.house.gov/download/mucarsel-powell-037%20",
+        "url_key": "democrats-transportation.house.gov/download/mucarsel-powell-037%20",
+        "capture_rows": 1,
+        "real_file_rows": 0,
+        "response_shapes": [
+          {
+            "http_status": 200,
+            "record_role": "wrapper",
+            "format": "html",
+            "is_real_file": false,
+            "rows": 1
+          }
+        ]
+      },
+      {
+        "url": "https://democrats-transportation.house.gov/download/noah-valenstein-testimony%20",
+        "url_key": "democrats-transportation.house.gov/download/noah-valenstein-testimony%20",
+        "capture_rows": 1,
+        "real_file_rows": 0,
+        "response_shapes": [
+          {
+            "http_status": 200,
+            "record_role": "wrapper",
+            "format": "html",
+            "is_real_file": false,
+            "rows": 1
+          }
+        ]
+      },
+      {
+        "url": "https://democrats-transportation.house.gov/download/sandra-norman-testimony%20",
+        "url_key": "democrats-transportation.house.gov/download/sandra-norman-testimony%20",
+        "capture_rows": 1,
+        "real_file_rows": 0,
+        "response_shapes": [
+          {
+            "http_status": 200,
+            "record_role": "wrapper",
+            "format": "html",
+            "is_real_file": false,
+            "rows": 1
+          }
+        ]
+      },
+      {
+        "url": "https://democrats-transportation.house.gov/download/sandy-michael-mcdonald-testimony%20",
+        "url_key": "democrats-transportation.house.gov/download/sandy-michael-mcdonald-testimony%20",
+        "capture_rows": 1,
+        "real_file_rows": 0,
+        "response_shapes": [
+          {
+            "http_status": 200,
+            "record_role": "wrapper",
+            "format": "html",
+            "is_real_file": false,
+            "rows": 1
+          }
+        ]
+      },
+      {
+        "url": "https://democrats-transportation.house.gov/download/shannon-estenoz-testimony%20",
+        "url_key": "democrats-transportation.house.gov/download/shannon-estenoz-testimony%20",
+        "capture_rows": 1,
+        "real_file_rows": 0,
+        "response_shapes": [
+          {
+            "http_status": 200,
+            "record_role": "wrapper",
+            "format": "html",
+            "is_real_file": false,
+            "rows": 1
+          }
+        ]
+      },
+      {
+        "url": "https://democrats-transportation.house.gov/sites/transportation.creativengine.com/files/costello.pdf%20",
+        "url_key": "democrats-transportation.house.gov/sites/transportation.creativengine.com/files/costello.pdf%20",
+        "capture_rows": 3,
+        "real_file_rows": 0,
+        "response_shapes": [
+          {
+            "http_status": 410,
+            "record_role": "error_response",
+            "format": "html",
+            "is_real_file": false,
+            "rows": 3
+          }
+        ]
+      },
+      {
+        "url": "https://humanrightscommission.house.gov/sites/evo-subsites/humanrightscommission.house.gov/files/evo-media-document/hr-in-central-america.pdf%20",
+        "url_key": "humanrightscommission.house.gov/sites/evo-subsites/humanrightscommission.house.gov/files/evo-media-document/hr-in-central-america.pdf%20",
+        "capture_rows": 3,
+        "real_file_rows": 0,
+        "response_shapes": [
+          {
+            "http_status": 404,
+            "record_role": "error_response",
+            "format": "html",
+            "is_real_file": false,
+            "rows": 3
+          }
+        ]
+      },
+      {
+        "url": "https://permanent.access.gpo.gov/gpo2978/DEEPWATER_ReporttothePresident_FINAL.pdf%20",
+        "url_key": "permanent.access.gpo.gov/gpo2978/DEEPWATER_ReporttothePresident_FINAL.pdf%20",
+        "capture_rows": 3,
+        "real_file_rows": 0,
+        "response_shapes": [
+          {
+            "http_status": 404,
+            "record_role": "error_response",
+            "format": "html",
+            "is_real_file": false,
+            "rows": 3
+          }
+        ]
+      },
+      {
+        "url": "https://waysandmeans.house.gov/UploadedFiles/Burman_TIT_9.20.2012.pdf%20",
+        "url_key": "waysandmeans.house.gov/UploadedFiles/Burman_TIT_9.20.2012.pdf%20",
+        "capture_rows": 3,
+        "real_file_rows": 0,
+        "response_shapes": [
+          {
+            "http_status": 404,
+            "record_role": "error_response",
+            "format": "html",
+            "is_real_file": false,
+            "rows": 3
+          }
+        ]
+      },
+      {
+        "url": "https://www.cantwell.senate.gov/download/rail-safety-presser-may-17%20",
+        "url_key": "cantwell.senate.gov/download/rail-safety-presser-may-17%20",
+        "capture_rows": 10,
+        "real_file_rows": 0,
+        "response_shapes": [
+          {
+            "http_status": null,
+            "record_role": "document",
+            "format": "html",
+            "is_real_file": false,
+            "rows": 5
+          },
+          {
+            "http_status": 200,
+            "record_role": "document",
+            "format": "html",
+            "is_real_file": false,
+            "rows": 1
+          },
+          {
+            "http_status": null,
+            "record_role": null,
+            "format": null,
+            "is_real_file": false,
+            "rows": 4
+          }
+        ]
+      },
+      {
+        "url": "https://www.hsgac.senate.gov/download/threats-to-us-networks-oversight-of-chinese-government-owned-carriers%20",
+        "url_key": "hsgac.senate.gov/download/threats-to-us-networks-oversight-of-chinese-government-owned-carriers%20",
+        "capture_rows": 7,
+        "real_file_rows": 0,
+        "response_shapes": [
+          {
+            "http_status": null,
+            "record_role": "error_response",
+            "format": "html",
+            "is_real_file": false,
+            "rows": 2
+          },
+          {
+            "http_status": 404,
+            "record_role": "error_response",
+            "format": "html",
+            "is_real_file": false,
+            "rows": 4
+          },
+          {
+            "http_status": null,
+            "record_role": null,
+            "format": null,
+            "is_real_file": false,
+            "rows": 1
+          }
+        ]
+      }
+    ],
+    "existing_clean_counterparts": [
+      {
+        "spaced_url": "https://permanent.access.gpo.gov/gpo2978/DEEPWATER_ReporttothePresident_FINAL.pdf%20",
+        "spaced_key": "permanent.access.gpo.gov/gpo2978/DEEPWATER_ReporttothePresident_FINAL.pdf%20",
+        "proposed_key": "permanent.access.gpo.gov/gpo2978/DEEPWATER_ReporttothePresident_FINAL.pdf",
+        "counterpart_url": "https://permanent.access.gpo.gov/gpo2978/DEEPWATER_ReporttothePresident_FINAL.pdf",
+        "counterpart_key": "permanent.access.gpo.gov/gpo2978/DEEPWATER_ReporttothePresident_FINAL.pdf"
+      },
+      {
+        "spaced_url": "https://permanent.access.gpo.gov/gpo2978/DEEPWATER_ReporttothePresident_FINAL.pdf%20",
+        "spaced_key": "permanent.access.gpo.gov/gpo2978/DEEPWATER_ReporttothePresident_FINAL.pdf%20",
+        "proposed_key": "permanent.access.gpo.gov/gpo2978/DEEPWATER_ReporttothePresident_FINAL.pdf",
+        "counterpart_url": "https://permanent.access.gpo.gov/gpo2978/DEEPWATER_ReporttothePresident_FINAL.pdf ",
+        "counterpart_key": "permanent.access.gpo.gov/gpo2978/DEEPWATER_ReporttothePresident_FINAL.pdf"
+      }
+    ],
+    "gpo_http_captures": [
+      {
+        "receipt_key": "receipts/documents/2026-09-29/assemble-20260930.jsonl.gz",
+        "receipt_line": 20,
+        "run_id": "raw-source-backfill-20260928/documents/receipts.jsonl",
+        "outcome": "stored",
+        "requested_url": "https://permanent.access.gpo.gov/gpo2978/DEEPWATER_ReporttothePresident_FINAL.pdf",
+        "url": "https://permanent.access.gpo.gov/gpo2978/DEEPWATER_ReporttothePresident_FINAL.pdf",
+        "source_url": "https://permanent.access.gpo.gov/gpo2978/DEEPWATER_ReporttothePresident_FINAL.pdf",
+        "original_url": null,
+        "recovered_url": null,
+        "http_status": 200,
+        "complete": true,
+        "body_sha": "f0a242909914e4d00200005734ce9b240b1b4c58e0e8af04e95387717780b23c",
+        "bytes": 17746116,
+        "media_type": null,
+        "fidelity": "retained-file",
+        "format": "pdf",
+        "intact": null,
+        "is_real_file": true,
+        "record_role": "document",
+        "error_type": null,
+        "retrieved_at": "2026-09-28 22:14:03.604500-04:00",
+        "filename": "DEEPWATER_ReporttothePresident_FINAL.pdf",
+        "member_path": null,
+        "match_basis": null
+      },
+      {
+        "receipt_key": "receipts/documents/2026-09-29/assemble-20260930.jsonl.gz",
+        "receipt_line": 43,
+        "run_id": "raw-source-backfill-20260928/documents/receipts.jsonl",
+        "outcome": "failed",
+        "requested_url": "https://permanent.access.gpo.gov/gpo2978/DEEPWATER_ReporttothePresident_FINAL.pdf ",
+        "url": "https://permanent.access.gpo.gov/gpo2978/DEEPWATER_ReporttothePresident_FINAL.pdf ",
+        "source_url": "https://permanent.access.gpo.gov/gpo2978/DEEPWATER_ReporttothePresident_FINAL.pdf ",
+        "original_url": null,
+        "recovered_url": null,
+        "http_status": 404,
+        "complete": true,
+        "body_sha": "80c3fe2ae1062abf56456f52518bd670f9ec3917b7f85e152b347ac6b6faf880",
+        "bytes": 196,
+        "media_type": null,
+        "fidelity": "retained-file",
+        "format": "html",
+        "intact": null,
+        "is_real_file": false,
+        "record_role": "error_response",
+        "error_type": null,
+        "retrieved_at": "2026-09-28 22:16:53.312616-04:00",
+        "filename": "DEEPWATER_ReporttothePresident_FINAL.pdf",
+        "member_path": null,
+        "match_basis": null
+      },
+      {
+        "receipt_key": "receipts/documents/2026-10-04/download-20261004T123658Z-dd0f16c77128-000004.jsonl.gz",
+        "receipt_line": 17,
+        "run_id": "ci/20261004T123658Z-dd0f16c77128",
+        "outcome": "stored",
+        "requested_url": "https://permanent.access.gpo.gov/gpo2978/DEEPWATER_ReporttothePresident_FINAL.pdf ",
+        "url": "https://permanent.access.gpo.gov/gpo2978/DEEPWATER_ReporttothePresident_FINAL.pdf",
+        "source_url": "https://permanent.access.gpo.gov/gpo2978/DEEPWATER_ReporttothePresident_FINAL.pdf",
+        "original_url": null,
+        "recovered_url": null,
+        "http_status": 200,
+        "complete": true,
+        "body_sha": "f0a242909914e4d00200005734ce9b240b1b4c58e0e8af04e95387717780b23c",
+        "bytes": 17746116,
+        "media_type": "application/pdf",
+        "fidelity": "exact-bytes",
+        "format": "pdf",
+        "intact": null,
+        "is_real_file": true,
+        "record_role": "document",
+        "error_type": null,
+        "retrieved_at": "2026-10-04 08:38:27.057728-04:00",
+        "filename": "DEEPWATER_ReporttothePresident_FINAL.pdf",
+        "member_path": null,
+        "match_basis": null
+      },
+      {
+        "receipt_key": "receipts/documents/2026-10-04/download-20261004T123658Z-dd0f16c77128-000003.jsonl.gz",
+        "receipt_line": 79,
+        "run_id": "ci/20261004T123658Z-dd0f16c77128",
+        "outcome": "failed",
+        "requested_url": "https://permanent.access.gpo.gov/gpo2978/DEEPWATER_ReporttothePresident_FINAL.pdf%20",
+        "url": "https://permanent.access.gpo.gov/gpo2978/DEEPWATER_ReporttothePresident_FINAL.pdf%20",
+        "source_url": "https://permanent.access.gpo.gov/gpo2978/DEEPWATER_ReporttothePresident_FINAL.pdf%20",
+        "original_url": null,
+        "recovered_url": null,
+        "http_status": 404,
+        "complete": true,
+        "body_sha": "80c3fe2ae1062abf56456f52518bd670f9ec3917b7f85e152b347ac6b6faf880",
+        "bytes": 196,
+        "media_type": "text/html; charset=iso-8859-1",
+        "fidelity": "exact-bytes",
+        "format": "html",
+        "intact": null,
+        "is_real_file": false,
+        "record_role": "error_response",
+        "error_type": null,
+        "retrieved_at": "2026-10-04 08:38:27.057854-04:00",
+        "filename": "DEEPWATER_ReporttothePresident_FINAL.pdf ",
+        "member_path": null,
+        "match_basis": null
+      },
+      {
+        "receipt_key": "receipts/documents/2026-10-04/download-20261004T123658Z-dd0f16c77128-000003.jsonl.gz",
+        "receipt_line": 79,
+        "run_id": "ci/20261004T123658Z-dd0f16c77128",
+        "outcome": "failed",
+        "requested_url": "https://permanent.access.gpo.gov/gpo2978/DEEPWATER_ReporttothePresident_FINAL.pdf%20",
+        "url": "https://permanent.access.gpo.gov/gpo2978/DEEPWATER_ReporttothePresident_FINAL.pdf%20",
+        "source_url": "https://permanent.access.gpo.gov/gpo2978/DEEPWATER_ReporttothePresident_FINAL.pdf%20",
+        "original_url": null,
+        "recovered_url": null,
+        "http_status": 404,
+        "complete": true,
+        "body_sha": "80c3fe2ae1062abf56456f52518bd670f9ec3917b7f85e152b347ac6b6faf880",
+        "bytes": 196,
+        "media_type": "text/html; charset=iso-8859-1",
+        "fidelity": "exact-bytes",
+        "format": "html",
+        "intact": null,
+        "is_real_file": false,
+        "record_role": "error_response",
+        "error_type": null,
+        "retrieved_at": "2026-10-04 08:38:28.342188-04:00",
+        "filename": "DEEPWATER_ReporttothePresident_FINAL.pdf ",
+        "member_path": null,
+        "match_basis": null
+      },
+      {
+        "receipt_key": "receipts/documents/2026-10-04/download-20261004T123658Z-dd0f16c77128-000003.jsonl.gz",
+        "receipt_line": 79,
+        "run_id": "ci/20261004T123658Z-dd0f16c77128",
+        "outcome": "failed",
+        "requested_url": "https://permanent.access.gpo.gov/gpo2978/DEEPWATER_ReporttothePresident_FINAL.pdf%20",
+        "url": "https://permanent.access.gpo.gov/gpo2978/DEEPWATER_ReporttothePresident_FINAL.pdf%20",
+        "source_url": "https://permanent.access.gpo.gov/gpo2978/DEEPWATER_ReporttothePresident_FINAL.pdf%20",
+        "original_url": null,
+        "recovered_url": null,
+        "http_status": 404,
+        "complete": true,
+        "body_sha": "80c3fe2ae1062abf56456f52518bd670f9ec3917b7f85e152b347ac6b6faf880",
+        "bytes": 196,
+        "media_type": null,
+        "fidelity": "exact-bytes",
+        "format": "html",
+        "intact": null,
+        "is_real_file": false,
+        "record_role": "error_response",
+        "error_type": null,
+        "retrieved_at": "2026-10-04 08:38:28.342188-04:00",
+        "filename": "DEEPWATER_ReporttothePresident_FINAL.pdf ",
+        "member_path": null,
+        "match_basis": null
+      }
+    ],
+    "gpo_published_sources": [
+      {
+        "list_row": 158716,
+        "ordinal": 0,
+        "url": "https://permanent.access.gpo.gov/gpo2978/DEEPWATER_ReporttothePresident_FINAL.pdf",
+        "member_path": null,
+        "is_saved": true,
+        "first_seen": "2026-09-29",
+        "listed_on": null,
+        "link_text": null,
+        "doc_type": null,
+        "posted": null
+      }
+    ],
+    "gpo_published_document": {
+      "list_row": 158716,
+      "document_id": "5e998a590c4346b01dedac0ae5dbfb53f966eebf7e78a87a7c8f76392eb9e854",
+      "format": "pdf",
+      "saved_body_sha256": "f0a242909914e4d00200005734ce9b240b1b4c58e0e8af04e95387717780b23c",
+      "saved_bytes": 17746116
+    },
+    "affected_native_results": [
+      {
+        "current_key": "appropriations.house.gov/sites/evo-subsites/republicans-appropriations.house.gov/files/evo-media-document/fs-notice-of-subcommittee-markup-fy27.pdf%20",
+        "error": null,
+        "proposed_key": "appropriations.house.gov/sites/evo-subsites/republicans-appropriations.house.gov/files/evo-media-document/fs-notice-of-subcommittee-markup-fy27.pdf",
+        "url": "https://appropriations.house.gov/sites/evo-subsites/republicans-appropriations.house.gov/files/evo-media-document/fs-notice-of-subcommittee-markup-fy27.pdf%20"
+      },
+      {
+        "current_key": "appropriations.house.gov/sites/evo-subsites/republicans-appropriations.house.gov/files/evo-media-document/mc-notice-of-subcommittee-markup-fy27.pdf%20",
+        "error": null,
+        "proposed_key": "appropriations.house.gov/sites/evo-subsites/republicans-appropriations.house.gov/files/evo-media-document/mc-notice-of-subcommittee-markup-fy27.pdf",
+        "url": "https://appropriations.house.gov/sites/evo-subsites/republicans-appropriations.house.gov/files/evo-media-document/mc-notice-of-subcommittee-markup-fy27.pdf%20"
+      },
+      {
+        "current_key": "democrats-edworkforce.house.gov/imo/media/doc/rc41_H.R.4674MurphyA54.pdf%20",
+        "error": null,
+        "proposed_key": "democrats-edworkforce.house.gov/imo/media/doc/rc41_H.R.4674MurphyA54.pdf",
+        "url": "https://democrats-edworkforce.house.gov/imo/media/doc/rc41_H.R.4674MurphyA54.pdf%20"
+      },
+      {
+        "current_key": "democrats-transportation.house.gov/download/09/09/2020/flynn-testimony%20",
+        "error": null,
+        "proposed_key": "democrats-transportation.house.gov/download/09/09/2020/flynn-testimony",
+        "url": "https://democrats-transportation.house.gov/download/09/09/2020/flynn-testimony%20"
+      },
+      {
+        "current_key": "democrats-transportation.house.gov/download/09/09/2020/mathews-testimony%20",
+        "error": null,
+        "proposed_key": "democrats-transportation.house.gov/download/09/09/2020/mathews-testimony",
+        "url": "https://democrats-transportation.house.gov/download/09/09/2020/mathews-testimony%20"
+      },
+      {
+        "current_key": "democrats-transportation.house.gov/download/ans-to-hr-4358%20",
+        "error": null,
+        "proposed_key": "democrats-transportation.house.gov/download/ans-to-hr-4358",
+        "url": "https://democrats-transportation.house.gov/download/ans-to-hr-4358%20"
+      },
+      {
+        "current_key": "democrats-transportation.house.gov/download/ans-to-hr-4611%20",
+        "error": null,
+        "proposed_key": "democrats-transportation.house.gov/download/ans-to-hr-4611",
+        "url": "https://democrats-transportation.house.gov/download/ans-to-hr-4611%20"
+      },
+      {
+        "current_key": "democrats-transportation.house.gov/download/elizabeth-jolin-testimony%20",
+        "error": null,
+        "proposed_key": "democrats-transportation.house.gov/download/elizabeth-jolin-testimony",
+        "url": "https://democrats-transportation.house.gov/download/elizabeth-jolin-testimony%20"
+      },
+      {
+        "current_key": "democrats-transportation.house.gov/download/eve-williams-testimony%20",
+        "error": null,
+        "proposed_key": "democrats-transportation.house.gov/download/eve-williams-testimony",
+        "url": "https://democrats-transportation.house.gov/download/eve-williams-testimony%20"
+      },
+      {
+        "current_key": "democrats-transportation.house.gov/download/farad-ali-testimony%20",
+        "error": null,
+        "proposed_key": "democrats-transportation.house.gov/download/farad-ali-testimony",
+        "url": "https://democrats-transportation.house.gov/download/farad-ali-testimony%20"
+      },
+      {
+        "current_key": "democrats-transportation.house.gov/download/gary-ritter-testimony%20",
+        "error": null,
+        "proposed_key": "democrats-transportation.house.gov/download/gary-ritter-testimony",
+        "url": "https://democrats-transportation.house.gov/download/gary-ritter-testimony%20"
+      },
+      {
+        "current_key": "democrats-transportation.house.gov/download/graves-la-234%20",
+        "error": null,
+        "proposed_key": "democrats-transportation.house.gov/download/graves-la-234",
+        "url": "https://democrats-transportation.house.gov/download/graves-la-234%20"
+      },
+      {
+        "current_key": "democrats-transportation.house.gov/download/griffin-testimony%20",
+        "error": null,
+        "proposed_key": "democrats-transportation.house.gov/download/griffin-testimony",
+        "url": "https://democrats-transportation.house.gov/download/griffin-testimony%20"
+      },
+      {
+        "current_key": "democrats-transportation.house.gov/download/honorable-chauncey-p-goss-ii-testimony%20",
+        "error": null,
+        "proposed_key": "democrats-transportation.house.gov/download/honorable-chauncey-p-goss-ii-testimony",
+        "url": "https://democrats-transportation.house.gov/download/honorable-chauncey-p-goss-ii-testimony%20"
+      },
+      {
+        "current_key": "democrats-transportation.house.gov/download/jon-wainwright-testimony%20",
+        "error": null,
+        "proposed_key": "democrats-transportation.house.gov/download/jon-wainwright-testimony",
+        "url": "https://democrats-transportation.house.gov/download/jon-wainwright-testimony%20"
+      },
+      {
+        "current_key": "democrats-transportation.house.gov/download/mary-lerdahl-testimony%20",
+        "error": null,
+        "proposed_key": "democrats-transportation.house.gov/download/mary-lerdahl-testimony",
+        "url": "https://democrats-transportation.house.gov/download/mary-lerdahl-testimony%20"
+      },
+      {
+        "current_key": "democrats-transportation.house.gov/download/mucarsel-powell-037%20",
+        "error": null,
+        "proposed_key": "democrats-transportation.house.gov/download/mucarsel-powell-037",
+        "url": "https://democrats-transportation.house.gov/download/mucarsel-powell-037%20"
+      },
+      {
+        "current_key": "democrats-transportation.house.gov/download/noah-valenstein-testimony%20",
+        "error": null,
+        "proposed_key": "democrats-transportation.house.gov/download/noah-valenstein-testimony",
+        "url": "https://democrats-transportation.house.gov/download/noah-valenstein-testimony%20"
+      },
+      {
+        "current_key": "democrats-transportation.house.gov/download/sandra-norman-testimony%20",
+        "error": null,
+        "proposed_key": "democrats-transportation.house.gov/download/sandra-norman-testimony",
+        "url": "https://democrats-transportation.house.gov/download/sandra-norman-testimony%20"
+      },
+      {
+        "current_key": "democrats-transportation.house.gov/download/sandy-michael-mcdonald-testimony%20",
+        "error": null,
+        "proposed_key": "democrats-transportation.house.gov/download/sandy-michael-mcdonald-testimony",
+        "url": "https://democrats-transportation.house.gov/download/sandy-michael-mcdonald-testimony%20"
+      },
+      {
+        "current_key": "democrats-transportation.house.gov/download/shannon-estenoz-testimony%20",
+        "error": null,
+        "proposed_key": "democrats-transportation.house.gov/download/shannon-estenoz-testimony",
+        "url": "https://democrats-transportation.house.gov/download/shannon-estenoz-testimony%20"
+      },
+      {
+        "current_key": "democrats-transportation.house.gov/sites/transportation.creativengine.com/files/costello.pdf%20",
+        "error": null,
+        "proposed_key": "democrats-transportation.house.gov/sites/transportation.creativengine.com/files/costello.pdf",
+        "url": "https://democrats-transportation.house.gov/sites/transportation.creativengine.com/files/costello.pdf%20"
+      },
+      {
+        "current_key": "humanrightscommission.house.gov/sites/evo-subsites/humanrightscommission.house.gov/files/evo-media-document/hr-in-central-america.pdf%20",
+        "error": null,
+        "proposed_key": "humanrightscommission.house.gov/sites/evo-subsites/humanrightscommission.house.gov/files/evo-media-document/hr-in-central-america.pdf",
+        "url": "https://humanrightscommission.house.gov/sites/evo-subsites/humanrightscommission.house.gov/files/evo-media-document/hr-in-central-america.pdf%20"
+      },
+      {
+        "current_key": "permanent.access.gpo.gov/gpo2978/DEEPWATER_ReporttothePresident_FINAL.pdf%20",
+        "error": null,
+        "proposed_key": "permanent.access.gpo.gov/gpo2978/DEEPWATER_ReporttothePresident_FINAL.pdf",
+        "url": "https://permanent.access.gpo.gov/gpo2978/DEEPWATER_ReporttothePresident_FINAL.pdf%20"
+      },
+      {
+        "current_key": "waysandmeans.house.gov/UploadedFiles/Burman_TIT_9.20.2012.pdf%20",
+        "error": null,
+        "proposed_key": "waysandmeans.house.gov/UploadedFiles/Burman_TIT_9.20.2012.pdf",
+        "url": "https://waysandmeans.house.gov/UploadedFiles/Burman_TIT_9.20.2012.pdf%20"
+      },
+      {
+        "current_key": "cantwell.senate.gov/download/rail-safety-presser-may-17%20",
+        "error": null,
+        "proposed_key": "cantwell.senate.gov/download/rail-safety-presser-may-17",
+        "url": "https://www.cantwell.senate.gov/download/rail-safety-presser-may-17%20"
+      },
+      {
+        "current_key": "hsgac.senate.gov/download/threats-to-us-networks-oversight-of-chinese-government-owned-carriers%20",
+        "error": null,
+        "proposed_key": "hsgac.senate.gov/download/threats-to-us-networks-oversight-of-chinese-government-owned-carriers",
+        "url": "https://www.hsgac.senate.gov/download/threats-to-us-networks-oversight-of-chinese-government-owned-carriers%20"
+      }
+    ],
+    "conclusion": "No demonstrated distinct-document collision in the checked corpus. The only existing clean campaign counterpart is a published PDF paired with an encoded-space 404 response. No published-source normalization keys change. Withdraw the corpus document-loss objection; future URL equivalence and successful recovery of all 27 addresses are not established.",
+    "limits": "Read-only retained-artifact and native normalization check; no live fetch, acquisition, publication rebuild, or document regrouping was performed."
+  }
+}

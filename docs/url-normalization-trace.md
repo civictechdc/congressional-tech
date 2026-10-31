@@ -526,7 +526,7 @@ Across the 8 stages of the `congressional-tech` pipeline, URLs pass through **fo
 
 ## Aggregated Empirical Findings Across Holistic Recovery Waves 1–6
 
-Across Holistic Recovery Waves 1–6 (**`35,552` accepted recoveries in Waves 1–5 + `1,375+` in Wave 6**, reducing `needs_acquisition` from `41,111` baseline by over `91%`), seven empirical URL parsing, normalization, candidate-generation, and qualification patterns accounted for the overwhelming majority of recoveries:
+Across Holistic Recovery Waves 1–6 (**`35,552` accepted recoveries in Waves 1–5 + `1,984` in Wave 6 = `37,536` total accepted recoveries**, reducing `needs_acquisition` from `41,111` baseline down to **`2,605`**, a **`-93.7%`** reduction), seven empirical URL parsing, normalization, candidate-generation, and qualification patterns accounted for the overwhelming majority of recoveries:
 
 1. **Scheme Upgrade (`http://` $\rightarrow$ `https://`) & `.xml` $\leftrightarrow$ `.pdf` Representation Siblings (`17,447` in Wave 1 + `61` in Wave 6)**:
    - On `docs.house.gov/meetings/...` and `docs.house.gov/billsthisweek/...`, `http://` links failed `capture-scope.json`'s `^https://` regexes when `min(url)` picked `http://`, and `.xml` witness/bill files had already-captured `.pdf` siblings at the identical path stem (`s/\.xml$/.pdf/i`).
