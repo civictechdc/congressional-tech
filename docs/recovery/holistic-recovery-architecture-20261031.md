@@ -10,7 +10,7 @@ Recover useful congressional documents through the existing acquisition, retenti
 
 Inputs are a pinned release, selected capture batches, retained inventories, source metadata, and recovery policy. Outputs are qualified bodies, immutable receipts and recovery decisions, a published release, and a scheduler queue reflecting those decisions. A downloaded body alone is not completion.
 
-The modules, fields, and command options below now have implementations in the integration checkout. Their acceptance criteria remain the completion gates. This document does not authorize production acquisition, publication, or credential changes. The existing storage, scheduler, and release-pointer owners remain authoritative.
+The modules, fields, and command options below are merged into `main` at `04800bfd9967c1ecc462d4825f5fc272a4b57120`. Their acceptance criteria remain the completion gates. This document does not authorize production acquisition, publication, or credential changes. The existing storage, scheduler, and release-pointer owners remain authoritative.
 
 ## Finding 1 — Replace inconsistent totals with a reproducible baseline
 
@@ -209,7 +209,7 @@ A campaign can finish with unresolved targets. Report reasons, evidence, and ret
 
 The review ran **9 targeted probes and 95 existing regression tests, all passing**, against the reviewed code. The probes assert the seven gaps; passing them does not establish that the proposed fixes exist. Regressions covered engine recovery import, URL state, capture scheduling, and raw fetcher behavior.
 
-Local evidence remains at `/tmp/holistic-review-validation-20261031-wdj3_yrb/`. `validation-index.json` maps findings to artifacts/limits; `inputs.json` pins reviewed files and the original plan; `probes.xml` and `regressions.xml` record results; `plan-before-update.md` preserves the original plan. These temporary files are local review evidence, not a durable repository test suite. This revised plan intentionally differs from the original hash.
+Decisive local review evidence is retained in the primary checkout at `.cache/holistic-recovery-preservation-20261031/baseline-review/`. `validation-index.json` records the original findings and limits; `inputs.json` pins reviewed files and the original plan; `probes.xml` and `regressions.xml` record results; `plan-before-update.md` preserves the original plan. The temporary execution directory and failed harness log were pruned after preserving these records. Maintained regression tests now cover the implemented fixes. This revised plan intentionally differs from the original hash.
 
 Native probes used DocSpec revision `eb40c5457a450c3820900583af5b4da13313ca96`, binary SHA-256 `8d33f1d03540fb0bc8160eac18e0121c0cde428feaeb77b4e815abf805f2d819`, with 512 MiB memory, 256 MiB scratch, and two native threads. Memory probes used one fresh process per size and one repetition, with no cold-cache or throughput claim. No paid acquisition or production publication was performed.
 

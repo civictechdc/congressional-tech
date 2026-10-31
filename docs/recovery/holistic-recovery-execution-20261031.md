@@ -11,7 +11,9 @@ preserved commits were selectively integrated into the managed
 planning, acceptance, discovery wiring and integration directly. GPT-6.1 Sol
 subagents with high reasoning completed bounded capture, qualification and native
 publication work in that same checkout without additional approval prompts.
-The primary checkout's unrelated source changes remain separate.
+The implementation is merged into primary `main` at
+`04800bfd9967c1ecc462d4825f5fc272a4b57120`. Pre-existing local ticket and
+documentation edits remain unchanged.
 
 Independent GPT-6.1 Sol high reviewers loaded ETL Workflow, Greybeard and
 Semi-Formal Code Review. Reviews traced actual consumers and found defects beyond
@@ -73,9 +75,11 @@ owned temporary directory and kept that guard intact.
 
 All three independent Sol high reviews approve their scopes after rechecking the
 repairs. The coordinator's final run includes their cross-component seams.
-The five stopped app sessions were read back as idle; their original worktrees
-and checkpoints remain preserved. The primary checkout's unrelated source work
-was not integrated wholesale or overwritten.
+The five stopped app sessions were read back as idle and their worktrees were
+pruned after integration. Superseded drafts, duplicate backups and temporary Git
+refs were subsequently removed. Codex protects this chat's active integration
+checkout from deletion; its generated caches and build outputs were removed.
+The primary checkout's pre-existing edits remain unchanged.
 
 The [machine-readable acceptance record](evidence/20261031-local-acceptance.json)
 contains the tested commit, test paths, versions, configured limits and final
@@ -87,18 +91,23 @@ nominal 10 ms interval. It is one fixture workload, not a hard transient ceiling
 or throughput comparison. Logical wire/body sizes and peak disk are measured;
 total filesystem I/O bytes are not instrumented.
 
-Full local JUnit/logs and the exact invocation remain in
-`.cache/holistic-integration/final/`; prior failed-run logs are retained separately.
-The committed summary and maintained tests remain available independently of
-those temporary execution artifacts.
+The same 630 tests passed on merged `main` in 100.79 seconds, with no failures,
+errors or skips, and the site build passed. This checkout's only committed
+difference from the tested integration was a pre-existing ticket. Final JUnit,
+logs, invocation, runtime settings and resource measurements remain in the
+primary checkout at `.cache/holistic-recovery-preservation-20261031/validation/`.
+The original review evidence is retained alongside them in `baseline-review/`.
+Temporary test bodies, browser dependencies, build outputs, staging scripts and
+superseded run logs were pruned. The committed summary and maintained tests
+remain available independently of those local records.
 
 ## Acceptance boundaries
 
 - Production `publish_v20` and `capture_rust_batch1..10` inputs were not located
   and pinned. Correct production membership/counts and recovery yield remain
   unknown. The planner is tested against authored local input sets.
-- No production acquisition, paid request, remote publication, push or merge was
-  used as an implementation test. Live source mappings, archive availability,
+- Validation used local fixtures and services. No production acquisition, paid
+  request, remote publication or push was performed. Live source mappings, archive availability,
   provider behavior/pricing and remote upload capacity remain operational checks.
 - The integrated journey uses actual native model producers, the publication
   controller, Chromium, the shipped reader and the scheduler. A local object
@@ -117,14 +126,14 @@ those temporary execution artifacts.
 
 ## Reproduction
 
-Use installed workspace packages from this integration checkout, not editable
-imports pointing at the primary checkout. `test-suites.toml` lists package roots
+Use installed workspace packages from the checkout being tested and verify that
+editable imports resolve there. `test-suites.toml` lists package roots
 and native prerequisites. Set `DOCSPEC_JOB_CONFIG` to a pinned DocSpec runtime;
 these runs use revision `eb40c5457a450c3820900583af5b4da13313ca96`, binary SHA-256
 `8d33f1d03540fb0bc8160eac18e0121c0cde428feaeb77b4e815abf805f2d819`, 512 MiB
 native memory, 256 MiB native scratch, and two native threads.
 
 The publication journey is explicitly in the maintained native-loopback lane.
-It additionally needs the integration site's built assets and the repository's
-pinned Playwright/Chromium setup. Campaign CLI input schemas and actual commands
+It additionally needs freshly built site assets and the repository's pinned
+Playwright/Chromium setup. Campaign CLI input schemas and actual commands
 are documented in `packages/corpus_recovery/README.md`.
