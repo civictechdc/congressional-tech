@@ -113,5 +113,15 @@
     "url": "https://www.lis.gov/cgi-lis/t2GPO/https://www.gpo.gov/fdsys/pkg/BILLS-114hr456ih/pdf/BILLS-114hr456ih.pdf",
     "key": "gpo.gov/fdsys/pkg/BILLS-114hr456ih/pdf/BILLS-114hr456ih.pdf",
     "source": "test_capture_url_admission.py literals from failed CI37420553827"
+  },
+  {
+    "id": "senate-notfound",
+    "url": "https://www.judiciary.senate.gov/404?notfound=download/01/06/2026/benton-sjq",
+    "key": "judiciary.senate.gov/download/01/06/2026/benton-sjq"
+  },
+  {
+    "id": "download-ampersand-query",
+    "url": "https://democrats-science.house.gov/download/ashley-nunes-witness-testimony&download=1",
+    "key": "democrats-science.house.gov/download/ashley-nunes-witness-testimony?download=1"
   }
 ]

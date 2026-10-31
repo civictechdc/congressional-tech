@@ -68,5 +68,25 @@
     "decoder": "none",
     "sample": "https://www.gpo.gov/fdsys/pkg/BILLS-115s585rfh/xml/BILLS-115s585rfh.xmlhttps://www.gpo.gov/fdsys/pkg/BILLS-115s585es/xml/BILLS-115s585es.xml",
     "sample_basis": "test_capture_url_admission.py retained CI37420553827 concatenated GPO XML links"
+  },
+  {
+    "id": "senate-notfound",
+    "kind": "wrapper",
+    "host_pattern": null,
+    "pattern": "(?i)^(https?://(?:[a-z0-9-]+\\.)+senate\\.gov)/404\\?notfound=/?([^#]+)$",
+    "replacement": "$1/$2",
+    "decoder": "none",
+    "sample": "https://www.judiciary.senate.gov/404?notfound=download/01/06/2026/benton-sjq",
+    "sample_basis": "Senate ColdFusion 404 redirect preserves requested target path"
+  },
+  {
+    "id": "download-ampersand-query",
+    "kind": "wrapper",
+    "host_pattern": null,
+    "pattern": "(?i)^(https?://(?:[a-z0-9-]+\\.)*(?:house|senate)\\.gov/download/[^?#]+?)(?:%20|\\s)*&download=1$",
+    "replacement": "$1?download=1",
+    "decoder": "none",
+    "sample": "https://democrats-science.house.gov/download/ashley-nunes-witness-testimony&download=1",
+    "sample_basis": "CreativeEngine download wrapper links append &download=1 without ?"
   }
 ]

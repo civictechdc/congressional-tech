@@ -7,7 +7,7 @@
         "^https://api\\.congress\\.gov/v3/committee-meeting/[^#]+$"
       ],
       "exclusions": [
-        "(?i)(?:/(?:month|day|today)(?:/|$)|/feed/?(?:[?#]|$)|[?&](?:eventDate|tribe-bar-date)=|\\.(?:css|js|map|png|jpe?g|gif|svg|ico|woff2?|webp|mp4|m4v|webm|mov|mp3|m4a|aac|ts|m4s)(?:[?#]|$))"
+        "(?i)(?:/(?:month|day|today)(?:/|$)|/feed/?(?:[?#]|$)|/wp-json/oembed/|[?&](?:eventDate|tribe-bar-date)=|\\.(?:css|js|map|png|jpe?g|gif|svg|ico|woff2?|webp|mp4|m4v|webm|mov|mp3|m4a|aac|ts|m4s)(?:[?#]|$))"
       ]
     },
     {
@@ -16,7 +16,7 @@
         "^https://docs\\.house\\.gov/meetings/[^#]*[Ww]List[^#]*\\.xml(?:\\?[^#]*)?$"
       ],
       "exclusions": [
-        "(?i)(?:/(?:month|day|today)(?:/|$)|/feed/?(?:[?#]|$)|[?&](?:eventDate|tribe-bar-date)=|\\.(?:css|js|map|png|jpe?g|gif|svg|ico|woff2?|webp|mp4|m4v|webm|mov|mp3|m4a|aac|ts|m4s)(?:[?#]|$))"
+        "(?i)(?:/(?:month|day|today)(?:/|$)|/feed/?(?:[?#]|$)|/wp-json/oembed/|[?&](?:eventDate|tribe-bar-date)=|\\.(?:css|js|map|png|jpe?g|gif|svg|ico|woff2?|webp|mp4|m4v|webm|mov|mp3|m4a|aac|ts|m4s)(?:[?#]|$))"
       ]
     },
     {
@@ -25,7 +25,7 @@
         "^https://docs\\.house\\.gov/meetings/[^#]*/HMTG-[^#]+\\.xml(?:\\?[^#]*)?$"
       ],
       "exclusions": [
-        "(?i)(?:/(?:month|day|today)(?:/|$)|/feed/?(?:[?#]|$)|[?&](?:eventDate|tribe-bar-date)=|\\.(?:css|js|map|png|jpe?g|gif|svg|ico|woff2?|webp|mp4|m4v|webm|mov|mp3|m4a|aac|ts|m4s)(?:[?#]|$))"
+        "(?i)(?:/(?:month|day|today)(?:/|$)|/feed/?(?:[?#]|$)|/wp-json/oembed/|[?&](?:eventDate|tribe-bar-date)=|\\.(?:css|js|map|png|jpe?g|gif|svg|ico|woff2?|webp|mp4|m4v|webm|mov|mp3|m4a|aac|ts|m4s)(?:[?#]|$))"
       ]
     },
     {
@@ -34,7 +34,7 @@
         "^https://(?:www\\.)?govinfo\\.gov/metadata/pkg/[^/#]+/mods\\.xml(?:\\?[^#]*)?$"
       ],
       "exclusions": [
-        "(?i)(?:/(?:month|day|today)(?:/|$)|/feed/?(?:[?#]|$)|[?&](?:eventDate|tribe-bar-date)=|\\.(?:css|js|map|png|jpe?g|gif|svg|ico|woff2?|webp|mp4|m4v|webm|mov|mp3|m4a|aac|ts|m4s)(?:[?#]|$))"
+        "(?i)(?:/(?:month|day|today)(?:/|$)|/feed/?(?:[?#]|$)|/wp-json/oembed/|[?&](?:eventDate|tribe-bar-date)=|\\.(?:css|js|map|png|jpe?g|gif|svg|ico|woff2?|webp|mp4|m4v|webm|mov|mp3|m4a|aac|ts|m4s)(?:[?#]|$))"
       ]
     },
     {
@@ -43,7 +43,7 @@
         "^https://(?:www\\.)?govinfo\\.gov/metadata/pkg/[^/#]+/(?:mets|dip)\\.xml(?:\\?[^#]*)?$"
       ],
       "exclusions": [
-        "(?i)(?:/(?:month|day|today)(?:/|$)|/feed/?(?:[?#]|$)|[?&](?:eventDate|tribe-bar-date)=|\\.(?:css|js|map|png|jpe?g|gif|svg|ico|woff2?|webp|mp4|m4v|webm|mov|mp3|m4a|aac|ts|m4s)(?:[?#]|$))"
+        "(?i)(?:/(?:month|day|today)(?:/|$)|/feed/?(?:[?#]|$)|/wp-json/oembed/|[?&](?:eventDate|tribe-bar-date)=|\\.(?:css|js|map|png|jpe?g|gif|svg|ico|woff2?|webp|mp4|m4v|webm|mov|mp3|m4a|aac|ts|m4s)(?:[?#]|$))"
       ]
     },
     {
@@ -52,7 +52,7 @@
         "^https://(?:www\\.)?govinfo\\.gov/metadata/pkg/[^/#]+/premis\\.xml(?:\\?[^#]*)?$"
       ],
       "exclusions": [
-        "(?i)(?:/(?:month|day|today)(?:/|$)|/feed/?(?:[?#]|$)|[?&](?:eventDate|tribe-bar-date)=|\\.(?:css|js|map|png|jpe?g|gif|svg|ico|woff2?|webp|mp4|m4v|webm|mov|mp3|m4a|aac|ts|m4s)(?:[?#]|$))"
+        "(?i)(?:/(?:month|day|today)(?:/|$)|/feed/?(?:[?#]|$)|/wp-json/oembed/|[?&](?:eventDate|tribe-bar-date)=|\\.(?:css|js|map|png|jpe?g|gif|svg|ico|woff2?|webp|mp4|m4v|webm|mov|mp3|m4a|aac|ts|m4s)(?:[?#]|$))"
       ]
     },
     {
@@ -61,7 +61,7 @@
         "^https://(?:www\\.)?govinfo\\.gov/content/pkg/[^/#]+/html/[^#]+$"
       ],
       "exclusions": [
-        "(?i)(?:/(?:month|day|today)(?:/|$)|/feed/?(?:[?#]|$)|[?&](?:eventDate|tribe-bar-date)=|\\.(?:css|js|map|png|jpe?g|gif|svg|ico|woff2?|webp|mp4|m4v|webm|mov|mp3|m4a|aac|ts|m4s)(?:[?#]|$))"
+        "(?i)(?:/(?:month|day|today)(?:/|$)|/feed/?(?:[?#]|$)|/wp-json/oembed/|[?&](?:eventDate|tribe-bar-date)=|\\.(?:css|js|map|png|jpe?g|gif|svg|ico|woff2?|webp|mp4|m4v|webm|mov|mp3|m4a|aac|ts|m4s)(?:[?#]|$))"
       ]
     },
     {
@@ -74,7 +74,7 @@
         "^https://(?:[a-z0-9-]+\\.)+senate\\.gov/(?:public/)?index\\.cfm\\?a=files\\.serve(?:&[^#]*)?$"
       ],
       "exclusions": [
-        "(?i)(?:/(?:month|day|today)(?:/|$)|/feed/?(?:[?#]|$)|[?&](?:eventDate|tribe-bar-date)=|\\.(?:css|js|map|png|jpe?g|gif|svg|ico|woff2?|webp|mp4|m4v|webm|mov|mp3|m4a|aac|ts|m4s)(?:[?#]|$))"
+        "(?i)(?:/(?:month|day|today)(?:/|$)|/feed/?(?:[?#]|$)|/wp-json/oembed/|[?&](?:eventDate|tribe-bar-date)=|\\.(?:css|js|map|png|jpe?g|gif|svg|ico|woff2?|webp|mp4|m4v|webm|mov|mp3|m4a|aac|ts|m4s)(?:[?#]|$))"
       ]
     },
     {
@@ -84,7 +84,7 @@
         "^https://(?:[a-z0-9-]+\\.)+house\\.gov/(?:hearings?|events?|calendar|meetings?|markups?|committee-activity|wp-json)(?:/|\\?)[^#]*$"
       ],
       "exclusions": [
-        "(?i)(?:/(?:month|day|today)(?:/|$)|/feed/?(?:[?#]|$)|[?&](?:eventDate|tribe-bar-date)=|\\.(?:css|js|map|png|jpe?g|gif|svg|ico|woff2?|webp|mp4|m4v|webm|mov|mp3|m4a|aac|ts|m4s)(?:[?#]|$))"
+        "(?i)(?:/(?:month|day|today)(?:/|$)|/feed/?(?:[?#]|$)|/wp-json/oembed/|[?&](?:eventDate|tribe-bar-date)=|\\.(?:css|js|map|png|jpe?g|gif|svg|ico|woff2?|webp|mp4|m4v|webm|mov|mp3|m4a|aac|ts|m4s)(?:[?#]|$))"
       ]
     },
     {
@@ -93,7 +93,7 @@
         "^https://(?:[a-z0-9-]+\\.)+senate\\.gov/(?:hearings?|events?|calendar|meetings?|markups?|committee-activity|wp-json)(?:/|\\?)[^#]*$"
       ],
       "exclusions": [
-        "(?i)(?:/(?:month|day|today)(?:/|$)|/feed/?(?:[?#]|$)|[?&](?:eventDate|tribe-bar-date)=|\\.(?:css|js|map|png|jpe?g|gif|svg|ico|woff2?|webp|mp4|m4v|webm|mov|mp3|m4a|aac|ts|m4s)(?:[?#]|$))"
+        "(?i)(?:/(?:month|day|today)(?:/|$)|/feed/?(?:[?#]|$)|/wp-json/oembed/|[?&](?:eventDate|tribe-bar-date)=|\\.(?:css|js|map|png|jpe?g|gif|svg|ico|woff2?|webp|mp4|m4v|webm|mov|mp3|m4a|aac|ts|m4s)(?:[?#]|$))"
       ]
     },
     {
@@ -102,7 +102,7 @@
         "^https://www-senate-gov-media-srs\\.akamaized\\.net/hls/[^#]+\\.(?:vtt|srt)(?:\\?[^#]*)?$"
       ],
       "exclusions": [
-        "(?i)(?:/(?:month|day|today)(?:/|$)|/feed/?(?:[?#]|$)|[?&](?:eventDate|tribe-bar-date)=|\\.(?:css|js|map|png|jpe?g|gif|svg|ico|woff2?|webp|mp4|m4v|webm|mov|mp3|m4a|aac|ts|m4s)(?:[?#]|$))"
+        "(?i)(?:/(?:month|day|today)(?:/|$)|/feed/?(?:[?#]|$)|/wp-json/oembed/|[?&](?:eventDate|tribe-bar-date)=|\\.(?:css|js|map|png|jpe?g|gif|svg|ico|woff2?|webp|mp4|m4v|webm|mov|mp3|m4a|aac|ts|m4s)(?:[?#]|$))"
       ]
     },
     {
@@ -112,7 +112,7 @@
         "^https://www-senate-gov-media-srs\\.akamaized\\.net/hls/[^#]+\\.m3u8(?:\\?[^#]*)?$"
       ],
       "exclusions": [
-        "(?i)(?:/(?:month|day|today)(?:/|$)|/feed/?(?:[?#]|$)|[?&](?:eventDate|tribe-bar-date)=|\\.(?:css|js|map|png|jpe?g|gif|svg|ico|woff2?|webp|mp4|m4v|webm|mov|mp3|m4a|aac|ts|m4s)(?:[?#]|$))"
+        "(?i)(?:/(?:month|day|today)(?:/|$)|/feed/?(?:[?#]|$)|/wp-json/oembed/|[?&](?:eventDate|tribe-bar-date)=|\\.(?:css|js|map|png|jpe?g|gif|svg|ico|woff2?|webp|mp4|m4v|webm|mov|mp3|m4a|aac|ts|m4s)(?:[?#]|$))"
       ]
     },
     {
@@ -121,7 +121,7 @@
         "^https://(?:www\\.)?youtube\\.com/api/timedtext\\?[^#]+$"
       ],
       "exclusions": [
-        "(?i)(?:/(?:month|day|today)(?:/|$)|/feed/?(?:[?#]|$)|[?&](?:eventDate|tribe-bar-date)=|\\.(?:css|js|map|png|jpe?g|gif|svg|ico|woff2?|webp|mp4|m4v|webm|mov|mp3|m4a|aac|ts|m4s)(?:[?#]|$))"
+        "(?i)(?:/(?:month|day|today)(?:/|$)|/feed/?(?:[?#]|$)|/wp-json/oembed/|[?&](?:eventDate|tribe-bar-date)=|\\.(?:css|js|map|png|jpe?g|gif|svg|ico|woff2?|webp|mp4|m4v|webm|mov|mp3|m4a|aac|ts|m4s)(?:[?#]|$))"
       ]
     }
   ]
