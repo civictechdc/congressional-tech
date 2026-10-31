@@ -192,6 +192,21 @@ def test_host_registry_spaces_house_starts_and_honors_retry_after():
     assert sleeps[-1] == pytest.approx(120)
 
 
+def test_origin_retry_after_applies_across_transports():
+    from congress_api.acquisition.fetcher import HostPacer
+    now, sleeps = [0.0], []
+    def sleep(seconds):
+        sleeps.append(seconds)
+        now[0] += seconds
+    pacer = HostPacer({'default_gap_seconds':0,'provider_gap_seconds':0,'hosts':{}},
+                      clock=lambda:now[0],sleep=sleep,utc_now=lambda:0)
+    pacer.observe(URL,'direct',429,{'retry-after':'120'})
+    pacer('https://www.senate.gov/a','zyte')
+    assert sleeps == []
+    pacer(URL,'zyte')
+    assert sleeps == [120]
+
+
 def test_provider_adapter_disables_redirects_and_keeps_separate_status(tmp_path):
     from congress_api.transport.raw_adapters import ProviderAdapter
     class Response:

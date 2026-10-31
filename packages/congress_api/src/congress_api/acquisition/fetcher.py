@@ -122,7 +122,7 @@ class HostPacer:
             raise ValueError('Host pacing values must be finite and nonnegative')
         self.clock,self.sleep,self.utc_now = clock or time.monotonic,sleep or time.sleep,utc_now or time.time
         self.lock,self.deadlines,self.starts = threading.Lock(),{},{}
-        self.new_lock = threading.Lock
+        self.new_lock, self.origin_deadlines = threading.Lock, {}
 
     def __call__(self,url,transport):
         host = urlsplit(url).hostname
@@ -135,7 +135,7 @@ class HostPacer:
         with gate:
             while True:
                 with self.lock:
-                    delay = max(0,self.deadlines.get(key,0)-self.clock())
+                    delay = max(0,max(self.deadlines.get(key,0),self.origin_deadlines.get(host,0))-self.clock())
                     if not delay:
                         self.deadlines[key] = self.clock()+gap
                         return
@@ -155,3 +155,5 @@ class HostPacer:
         with self.lock:
             key = (host,transport)
             self.deadlines[key] = max(self.deadlines.get(key,0),self.clock()+delay)
+            if status in {429,503} or value:
+                self.origin_deadlines[host] = max(self.origin_deadlines.get(host,0),self.clock()+delay)
