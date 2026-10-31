@@ -154,3 +154,47 @@ apps/explorer_mcp/.venv/bin/python scripts/dev.py test explorer-mcp \
 ```
 
 The production report includes the separate full-data measurement command.
+
+## 2026-10-30: exact entity inputs and bill-linked transcripts
+
+Local implementation for ct-6ots and ct-1xt0 adds strict entity input types,
+column-aware integer validation, canonical record/document/cursor values, and
+the producer-owned `bill_hearing_transcripts` recipe. The recipe returns one
+visible document per row with distinct, sorted supporting meeting IDs. Direct
+bill filters and general SQL parameter semantics retain their existing meaning.
+
+- The new focused regressions reproduced 16 failures before the repair.
+- The full independent MCP lane passed **85 tests**, including real stdio,
+  numeric rejection and normalization, cross-spelling cursors, transcript
+  deduplication, hidden documents, missing tables, and row/byte limits.
+- **12 publication-schema tests passed**; the unchanged native invariant job
+  test was deselected. The generated relationship reference passed its check.
+- Native integration reused retained producer output, refreshed its schema with
+  the existing producer metadata builder, and executed all 11 recipes through
+  stdio. All 16 Parquet files retained their original hashes. This verifies
+  metadata delivery over native data, not a fresh producer data-generation run.
+- A separate **30-call stdio replay** against retained release
+  `0db23484fe86c7f5a5e50e44f078ec34e74e793873b26c4a15f0b9e9efa17b69`
+  returned the same **38 documents** for integer, string, leading-zero and
+  whitespace spellings of meeting 118300, and rejected fractional, decimal,
+  exponent, boolean and out-of-range inputs. The new SQL returned transcript
+  `CHRG-119hhrg61207.pdf` once, reference `a80bbbc83acf1c12`, supported by meeting
+  118300. The existing direct bill/hearing filter still returned zero rows.
+
+The retained full release's selection and custody stamps remained unchanged.
+Its existing schema does not advertise the new recipe. App distribution and
+publication of updated discovery metadata remain delivery work; no public
+pointer, data release or installed package was updated. The editable package
+still reports version 0.4.0, so source hashes identify this local verification.
+Local logs, exact calls, source hashes and native metadata identities are in
+`.cache/mcp-ticket-fixes-20261030/`; this ignored directory is not portable.
+
+Reproduce the full MCP lane with a native fixture containing current metadata:
+
+```sh
+apps/explorer_mcp/.venv/bin/python apps/explorer_mcp/scripts/dev.py test tests \
+  --native-fixture-root /absolute/path/to/native-fixture -q
+.venv/bin/python .github/scripts/offline-python.py -m pytest \
+  packages/viewer_publication/tests/test_archive_schema.py -k 'not native_checks' -q
+.venv/bin/python -m viewer_publication.archive_schema --check
+```

@@ -6,7 +6,7 @@ import json
 from tempfile import TemporaryDirectory
 
 import duckdb
-from .models import (MAX_BYTES, ENTITY_KEYS, DOCUMENT_LINKS, ExplorerError,
+from .models import (MAX_BYTES, ENTITY_KEYS, DOCUMENT_LINKS, ExplorerError, exact_scalar,
                      DocumentSearch, DocumentQuery, EntitySearch, EntityQuery, SqlQuery)
 from .release import encoded, quote, literal
 
@@ -243,6 +243,7 @@ class Reader:
         for name, value in query.filters.items():
             if name not in columns or '[]' in columns[name] or columns[name].startswith(('STRUCT', 'MAP')):
                 raise ExplorerError(f'Use a scalar published filter; query_sql supports nested {name!r}')
+            query.filters[name] = value = exact_scalar(value, columns[name], f'{query.table}.{name}')
             conditions.append(f'{quote(name)}=?'); args.append(value)
         order = quote(ENTITY_KEYS[query.table]) if query.table in ENTITY_KEYS else 'congress,system_code,bioguide_id,rank'
         result = self.page(query, f'SELECT {self.entity_columns(query.table)} FROM {quote(query.table)} WHERE ' + (' AND '.join(conditions) or 'true'), args, order=order)
@@ -265,8 +266,11 @@ class Reader:
             raise ExplorerError('Entity table has no single identifier; use search_entities or query_sql')
         self.require(query.table)
         key = ENTITY_KEYS[query.table]
-        if not self.db.execute(f'SELECT 1 FROM {quote(query.table)} WHERE {quote(key)}=? LIMIT 1', [query.id]).fetchall():
+        query.id = exact_scalar(query.id, self.schemas[query.table][key], f'{query.table}.{key}')
+        stored = self.db.execute(f'SELECT {quote(key)} FROM {quote(query.table)} WHERE {quote(key)}=? LIMIT 1', [query.id]).fetchall()
+        if not stored:
             raise ExplorerError('Entity is absent from this release')
+        query.id = stored[0][0]
         if query.section == 'documents':
             field = DOCUMENT_LINKS.get(query.table)
             if field:

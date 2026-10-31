@@ -36,6 +36,7 @@ def test_native_producer_release_through_stdio(tmp_path, request):
             info = await call('get_dataset_info')
             assert info['release_id']==selected['release_id']
             assert len(encoded(info)) < MAX_BYTES
+            assert 'bill_hearing_transcripts' in {r['id'] for r in info['recipes']}
             assert {'meetings','witnesses','recordings','committees','members','rosters','bills','nominations'} <= info['tables'].keys()
             for table in native_schema['files']:
                 if table['available']:
@@ -55,8 +56,11 @@ def test_native_producer_release_through_stdio(tmp_path, request):
                 result = await call('get_dataset_info', {'recipe':recipe['id']})
                 assert result['available']
                 rows = await sql(result['sql'], [parameters.get(p['name'],p['example']) for p in result['parameters']])
-                if recipe['id'] in ('witness_documents','hearing_documents','committee_roster','bill_votes','nomination_votes','recording_tracks'):
+                if recipe['id'] in ('bill_hearing_transcripts','witness_documents','hearing_documents','committee_roster','bill_votes','nomination_votes','recording_tracks'):
                     assert rows, recipe['id']
+                if recipe['id'] == 'bill_hearing_transcripts':
+                    assert len({r['list_row'] for r in rows}) == len(rows)
+                    assert all(r['meeting_ids'] == sorted(set(r['meeting_ids'])) and r['meeting_ids'] for r in rows)
             found = await call('search_documents', {'witness_key':witness['witness_key']})
             assert found['rows']
             document = await call('get_document', found['rows'][0]['reference'])

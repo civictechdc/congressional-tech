@@ -2,7 +2,7 @@
 id: ct-h1nd
 status: in_progress
 deps: []
-links: []
+links: [ct-wx65]
 created: 2026-10-30T18:34:40Z
 type: task
 priority: 1

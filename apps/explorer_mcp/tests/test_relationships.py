@@ -62,7 +62,7 @@ def test_old_release_does_not_reconstruct_relationships(tmp_path):
 
 
 def test_every_recipe_executes_and_has_the_declared_result_grain(reader):
-    expected = dict(bill_documents=1, hearing_documents=1, witness_documents=1, witness_transcripts=0,
+    expected = dict(bill_documents=1, bill_hearing_transcripts=1, hearing_documents=1, witness_documents=1, witness_transcripts=0,
                     committee_roster=1, nomination_transcripts=1, bill_votes=1, nomination_votes=1,
                     recording_tracks=1, document_editions=1)
     for item in reader.dataset_info({})['recipes']:
@@ -124,6 +124,44 @@ def test_missing_published_table_is_unavailable_not_empty(tmp_path, phase2):
         assert not reader.dataset_info({'table': 'witnesses'})['available']
         assert reader.dataset_info({'relationship': 'witness_submitted_documents'})['missing_tables'] == ['witnesses']
         assert not reader.dataset_info({'recipe': 'witness_documents'})['available']
+        assert reader.dataset_info({'recipe': 'bill_documents'})['available']
+    finally:
+        reader.close()
+
+
+def test_bill_transcripts_deduplicate_paths_and_keep_supporting_meetings(tmp_path, linked_transcripts):
+    reader = Reader(prepare(tmp_path, linked_transcripts))
+    try:
+        recipe = reader.dataset_info({'recipe': 'bill_hearing_transcripts'})
+        assert recipe['available']
+        assert 'bill_hearing_transcripts' in reader.dataset_info({'table': 'meetings'})['recipes']
+        result = reader.query_sql({'sql': recipe['sql'], 'parameters': ['119-hr-1']})
+        assert [(r['list_row'], r['meeting_ids']) for r in result['rows']] == [(1, [118001, 118002]), (2, [118001])]
+        assert not result['truncated']
+        assert reader.search_documents({'measure_key': '119-hr-1', 'document_kind': 'published-hearing'})['rows'] == []
+        assert reader.query_sql({'sql': recipe['sql'], 'parameters': ['119-hr-999']})['rows'] == []
+        limited = reader.query_sql({'sql': recipe['sql'], 'parameters': ['119-hr-1'], 'limit': 1})
+        assert limited['truncated'] and limited['rows'] == result['rows'][:1]
+        reader.db.execute('CREATE TEMP VIEW oversized_titles AS SELECT * REPLACE(repeat(\'x\',140000) AS title) FROM "list"')
+        with pytest.raises(ExplorerError, match='128 KiB'):
+            reader.query_sql({'sql': recipe['sql'].replace('"list"', 'oversized_titles'), 'parameters': ['119-hr-1']})
+    finally:
+        reader.close()
+
+
+def test_bill_transcript_recipe_missing_meetings_is_unavailable(tmp_path, linked_transcripts):
+    import shutil
+    import duckdb
+    from conftest import manifest
+    root = tmp_path / 'sparse'
+    shutil.copytree(linked_transcripts.parent, root)
+    (root / 'meetings.parquet').unlink()
+    reader = Reader(prepare(tmp_path / 'selected', manifest(root)))
+    try:
+        recipe = reader.dataset_info({'recipe': 'bill_hearing_transcripts'})
+        assert not recipe['available'] and recipe['missing_tables'] == ['meetings']
+        with pytest.raises(duckdb.Error, match='meetings'):
+            reader.query_sql({'sql': recipe['sql'], 'parameters': ['119-hr-1']})
         assert reader.dataset_info({'recipe': 'bill_documents'})['available']
     finally:
         reader.close()

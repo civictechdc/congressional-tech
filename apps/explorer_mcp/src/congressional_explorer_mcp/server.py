@@ -66,6 +66,7 @@ def create_server(selection=None, *, timeout=10.0, data_dir=None, publication=PU
         """Find documents by title/filename or exact published entity keys; returns references and saved file URLs.
 
         Text matches metadata, not full document text. Hidden documents are excluded by default.
+        measure_key matches direct document annotations; discover bill_hearing_transcripts for meeting-linked transcripts when published.
         """
         return await call('search_documents', query.model_dump())
 
@@ -82,6 +83,7 @@ def create_server(selection=None, *, timeout=10.0, data_dir=None, publication=PU
         """Search meetings, witnesses, recordings, committees, members, rosters, bills or nominations.
 
         Text searches published names/titles; filters are exact scalar field/value matches.
+        Integer filters accept integers or base-10 integer strings; decimals, exponents and booleans are rejected.
         Use query_sql for dates, nested fields and multi-table joins.
         """
         return await call('search_entities', query.model_dump())
@@ -91,6 +93,7 @@ def create_server(selection=None, *, timeout=10.0, data_dir=None, publication=PU
         """Read an entity by its published primary key, or page its directly associated documents.
 
         get_dataset_info describes available keys. Rosters have compound keys; use search_entities.
+        Integer IDs accept leading zeros and surrounding whitespace; decimals, exponents and booleans are rejected.
         """
         return await call('get_entity', query.model_dump())
 

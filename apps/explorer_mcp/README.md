@@ -228,6 +228,13 @@ Entity keys:
 | `nominations` | `nomination_id`, e.g. `119-pn-730-2` |
 | `rosters` | Compound fields; use `search_entities` or SQL |
 
+Entity IDs and integer entity filters accept integers or base-10 integer strings.
+Leading zeros and surrounding whitespace normalize to the same value, including
+when continuing a page. Decimal spellings, scientific notation, booleans and
+out-of-range values return validation errors. Text identifiers stay exact;
+boolean filters take `true` or `false`. General `query_sql` parameters retain
+DuckDB's normal SQL behavior.
+
 File URLs follow the recorded body hash and exact suffix. Summaries include
 alternate formats; recordings include saved caption/transcript track URLs.
 Recovery records retain `kind` and `identity_note`: a substitute or related file
@@ -258,7 +265,15 @@ available. The complete producer reference is generated at
 These examples use the defined phase 2 fields and require those tables in the
 selected release.
 
-Documents about a bill, including their saved file identifiers:
+For hearing transcripts linked through meeting subjects, discover the
+`bill_hearing_transcripts` recipe when the selected release publishes it. It
+returns each visible transcript once, with the distinct supporting meeting IDs.
+It can find transcripts whose direct `measure_keys` are empty. The
+`bill_documents` recipe and `search_documents`'s `measure_key` filter match direct
+document annotations only. Existing releases need updated publication metadata
+before they advertise the new recipe.
+
+Documents directly annotated with a bill, including their saved file identifiers:
 
 ```sql
 SELECT filename, title, hex(link_key) AS link_key,

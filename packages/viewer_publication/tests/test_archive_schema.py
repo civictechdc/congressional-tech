@@ -38,7 +38,11 @@ def test_release_availability_keeps_unavailable_definitions_and_identity():
     assert not relations['witness_submitted_documents']['available']
     recipes = {r['id']: r for r in published['recipes']}
     assert recipes['bill_documents']['available']  # list keys work without bills.
+    assert recipes['bill_hearing_transcripts']['available']  # meeting subjects work without bills.
     assert not recipes['committee_roster']['available']
+    sparse = build_schema(['list.parquet', 'detail.parquet'], registry=original)
+    transcripts = next(r for r in sparse['recipes'] if r['id'] == 'bill_hearing_transcripts')
+    assert not transcripts['available'] and transcripts['missing_tables'] == ['meetings']
     assert published['schema_version'] == 1 and published['relationships_version'] == 1
 
 

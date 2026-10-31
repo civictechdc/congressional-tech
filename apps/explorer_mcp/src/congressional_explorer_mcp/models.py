@@ -1,6 +1,7 @@
 """Queries use the release's identifiers; no legacy catalog identities."""
 from typing import Any, Literal
-from pydantic import BaseModel, ConfigDict, Field
+import re
+from pydantic import BaseModel, ConfigDict, Field, StrictBool, StrictInt, StrictStr
 
 MAX_BYTES = 128 << 10
 ENTITY_KEYS = {
@@ -16,6 +17,27 @@ DOCUMENT_LINKS = {
 
 class ExplorerError(ValueError):
     pass
+
+
+def exact_scalar(value, column_type, field):
+    """Normalize integer spellings before SQL; never let a comparison round an ID."""
+    bits = {'TINYINT': 8, 'SMALLINT': 16, 'INTEGER': 32, 'BIGINT': 64, 'HUGEINT': 128}.get(column_type.removeprefix('U'))
+    if bits is not None:
+        message = f'{field} requires a base-10 integer within {column_type} range; decimals, exponents and booleans are not accepted'
+        if isinstance(value, str) and re.fullmatch(r'[+-]?[0-9]+', value.strip()):
+            try:
+                value = int(value.strip())
+            except ValueError:
+                raise ExplorerError(message) from None
+        unsigned = column_type.startswith('U')
+        lower, upper = (0, 2**bits) if unsigned else (-2**(bits-1), 2**(bits-1))
+        if type(value) is not int or not lower <= value < upper:
+            raise ExplorerError(message)
+    elif column_type == 'VARCHAR' and not isinstance(value, str):
+        raise ExplorerError(f'{field} requires text; preserve the published identifier or value exactly')
+    elif column_type == 'BOOLEAN' and type(value) is not bool:
+        raise ExplorerError(f'{field} requires a boolean (true or false)')
+    return value
 
 
 class Query(BaseModel):
@@ -49,12 +71,12 @@ class DocumentQuery(Page):
 class EntitySearch(Page):
     table: str
     text: str = Field(default='', max_length=2000)
-    filters: dict[str, str | int | bool] = Field(default_factory=dict, max_length=12)
+    filters: dict[str, StrictStr | StrictInt | StrictBool] = Field(default_factory=dict, max_length=12)
 
 
 class EntityQuery(Page):
     table: str
-    id: str | int
+    id: StrictStr | StrictInt
     section: Literal['record', 'documents'] = 'record'
 
 

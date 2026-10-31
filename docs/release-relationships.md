@@ -769,7 +769,7 @@ many-to-many; match: `identifier`; nullable: true; resolution: `external`. Scope
 
 ## Query recipes (DuckDB)
 
-### `bill_documents` — Documents related to a bill
+### `bill_documents` — Documents directly annotated with a bill
 
 Requires: `list`, `detail`.
 
@@ -783,7 +783,36 @@ FROM "list" l JOIN detail d USING (list_row)
 WHERE list_contains(l.measure_keys,?) ORDER BY l.list_row LIMIT 100
 ```
 
-Does not require the bounded bills table to contain this identifier.
+Matches direct list.measure_keys annotations only. Use bill_hearing_transcripts for transcripts linked through meeting subjects.
+
+Does not require the bounded bills table to contain this identifier. This SQL includes hidden rows; add NOT coalesce(l.hidden,false) to exclude them.
+
+### `bill_hearing_transcripts` — Hearing transcripts linked to a bill through meetings
+
+Requires: `meetings`, `list`, `detail`.
+
+Result: One visible transcript document edition with its distinct supporting meeting IDs in numeric order.
+
+Parameters, in order: `bill_id` (example `119-hr-1`).
+
+```sql
+WITH matched AS (
+  SELECT t.list_row,list(DISTINCT m.event_id ORDER BY m.event_id) AS meeting_ids
+  FROM meetings m,UNNEST(m.transcripts) AS u(t)
+  WHERE list_contains(m.subject_keys,?) GROUP BY t.list_row
+)
+SELECT l.list_row,l.filename,l.title,hex(d.link_key) AS link_key,matched.meeting_ids
+FROM matched JOIN "list" l USING (list_row) JOIN detail d USING (list_row)
+WHERE NOT coalesce(l.hidden,false) ORDER BY l.list_row LIMIT 100
+```
+
+Follows meetings.subject_keys and meetings.transcripts[].list_row even when the document has no direct measure_keys annotation.
+
+Repeated paths and multiple meetings produce one row per document. Supporting meetings explain the association; they do not establish witness participation or historical completeness.
+
+Does not require the bounded bills table to contain this identifier. Missing required tables mean unavailable, not an empty complete result.
+
+Returns at most 100 documents in list_row order. Use list_row filtering for further pages; query_sql also enforces its row and byte limits.
 
 ### `hearing_documents` — Documents and hearing titles
 

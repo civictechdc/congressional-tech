@@ -1,5 +1,6 @@
 """Consumer fixtures: canonical archive files plus the normative phase 2 entity shapes."""
 from hashlib import sha256, md5
+from copy import deepcopy
 import json
 from pathlib import Path
 import shutil
@@ -103,6 +104,27 @@ def reader(selection):
         yield reader
     finally:
         reader.close()
+
+
+@pytest.fixture(scope='module')
+def linked_transcripts(phase2, tmp_path_factory):
+    """Indirect transcripts, repeated paths and a hidden document in native shapes."""
+    root = tmp_path_factory.mktemp('linked-transcripts') / 'release'
+    shutil.copytree(phase2.parent, root)
+    hidden = []
+    def documents(rows):
+        hidden.extend(i for i, row in enumerate(rows) if row['hidden'])
+        for i in (1, 2):
+            rows[i].update(measure_keys=[], document_kind=['published-hearing'], hidden=False,
+                           meeting_keys=['118001', '118002'] if i == 1 else ['118001'])
+    replace_rows(root, 'list', documents)
+    def meetings(rows):
+        rows[0]['transcripts'] = [dict(package_id='CHRG-118hhrg1', list_row=i) for i in (1, 1, 2, hidden[0])]
+        other = deepcopy(rows[0])
+        other.update(event_id=118002, transcripts=[dict(package_id='CHRG-118hhrg1', list_row=1)])
+        rows.append(other)
+    replace_rows(root, 'meetings', meetings)
+    return manifest(root)
 
 
 def pytest_addoption(parser):
