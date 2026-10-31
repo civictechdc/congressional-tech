@@ -8,14 +8,14 @@ Across the 8 stages of the `congressional-tech` pipeline, URLs pass through **fo
    - Stage 5 (`model/sql/url-normalized.sql` + `model/sql/url-keys.sql`) unwraps archival/security wrappers (`wayback`, `loc`, `proofpoint-v2`, `lis-gpo`, `senate-notfound`) and repairs malformed query delimiters (`download-ampersand-query`: `/download/<slug>&download=1` $\rightarrow$ `/download/<slug>?download=1`), **but only uses the transformed string to compute `url_key` while keeping `url_keys.url` as the raw literal string** (`-- Literal values remain unchanged`).
    - Downstream, Stage 2 (`capture_scheduler.py:391-397`) and Stage 6 (`archive_url_state.py:70-80`) select `min(url)` / `min(l.target_url)` as `requested_url` and evaluate `capture-scope.json` against that **un-repaired literal URL**.
    - **Consequences in the corpus**:
-     - **3,231 `needs_acquisition` `&download=1` URLs in `plan` (`1,668` remaining in `plan_v2` after Wave 4 recovered `1,563` via `repaired_download_query`)**: While 4 Senate ColdFusion servers (`finance`, `banking`, `appropriations`, `budget.senate.gov`) have a server-side rewrite that served **4,062** literal `&download=1` PDFs (`100%` of historical `&download=1` successes), **0 (`0%`) literal `&download=1` fetches succeeded on `*.house.gov` CreativeEngine servers**! On House servers, `&download=1` in the literal path returns `410 Gone` / `403` / `404` or remains unfetched unless rewritten to `?download=1`, while **3,213** of their base `/download/<slug>` URLs returned HTTP 200 HTML download wrappers (`record_role = 'wrapper'`) that do not share `url_key` with `?download=1`.
+     - **3,231 `needs_acquisition` `&download=1` URLs in `plan` (`1,668` in `plan_v2` Gen 1 after Wave 4 recovered `1,563`; `1,415` in `plan_v2` Gen 2 after Wave 5 recovered `226` Poppler-verified PDFs + `3` DOCX + `24` redirect-location corpus matches)**: In `capture_sources.parquet`, **100% (`4,062 / 4,062`) of historical HTTP 200 real-file captures with literal `&download=1` are on 4 Senate hosts (`finance`, `banking`, `appropriations`, `budget.senate.gov`), while `0 / 4,062` (`0%`) are on `*.house.gov`** (all `19` House HTTP attempts returned `410 Gone`). Across Waves 4–5, out of **1,804** `needs_acquisition` House `&download=1` targets tested by rewriting `&download=1` $\rightarrow$ `?download=1`, **1,792 (`99.33%`)** succeeded and became qualified `accepted_recovery` documents (and `10` of the remaining `12` redirected `302` to `/imo/media/doc/<Filename>.pdf`, failing only due to `0`-byte origin files or size/qualification limits).
      - **100,725 `http://` target URLs** and all wrapped links (`web.archive.org`, `webarchive.loc.gov`, `urldefense.proofpoint.com`, `lis.gov/cgi-lis/t2GPO/`) fail `capture-scope.json` when `capture-scope.json` is anchored with `^https://` and evaluated before unwrapping or `http` $\rightarrow$ `https` upgrade (and when both `http://` and `https://` exist for a `url_key`, `min(url)` picks `http://` and drops it during scope filtering).
 
 2. **Four Distinct URL Keying Functions Across the Pipeline**:
-   - **Model `url_key`** (`model/sql/url-normalized.sql` + Rust `url_resolve`/`uri_normalize_encoding`): 2-pass `url-rules.json` `wrapper` unwrap $\rightarrow$ WHATWG URL parse (strips `:80`/`:443`, lowercases scheme/host, resolves `..`, encodes spaces) $\rightarrow$ RFC 3986 unreserved percent-decode & uppercase hex $\rightarrow$ strips `^www\.`, `#fragment`, trailing `/` $\rightarrow$ strips `utm_*` and `congress.gov` `q=` $\rightarrow$ sorts query params.
-   - **Archive State Custody Joins vs. Provenance Attachment Joins** (`archive_url_state.py:129-166` vs. `provenance-recovery-attachments.sql`): `archive_url_state.py` intentionally enforces **exact literal string equality** (`d.original_url = r.original_url`, `c.original_url = d.original_url`, `h.requested_url = u.original_url`) to verify per-target `recovery_requirements`, `refresh_policy = 'historical_only'`, receipt custody, and unambiguous 1:1 mapping, whereas `url_key`-alias resolution happens in candidate discovery (`stored_url_key_alias`, resolving **35** of **36** alias rows in `plan_v2`) and `provenance-recovery-attachments.sql` attaches accepted recoveries to documents via `url_key`.
-   - **Corpus Recovery CDX & Wayback Validation** (`corpus_recovery/cdx.py:28-37` & `discovery.py:117-126, 165-189`): Uses `surt.surt(url)` for WebHarvest CDX, but in `wayback_lookup` enforces **exact literal equality** `row['original'] != original` and treats empty JSON `[]` as an error—causing **51 of 60 (85%) HTTP 200 Wayback CDX responses** in `track_b/b2_discovery` to fail with `invalid_index_response` (**36** empty `[]` responses and **15 of 24 non-empty hits** rejected solely because Wayback's SURT-matched `original` had `:80`, `http://`, `www.`, or `//`).
-   - **Public Release `DM8.2` `lookup_key`** (`archive_format.py:65-82` `_lookup_steps` & `archive.ts:25-36` `lookupUrl`): Implements the locked `DM8.2` lookup contract (lowercases scheme/host and strips `www.`, `:80`/`:443`, `#fragment`, and trailing `/`, while keeping query bytes intact). All **605,848** published rows in `sources.parquet` match their own `DM8.2` lookup entry; however, for **cross-spelling user lookups**, `lookupUrl` differs from `url_key` on URLs with raw spaces (`472` rows vs browser `%20`), uppercase hex escapes (`987` rows vs lowercase user input; note `16,543` rows have numeric `%[0-9]{2}` like `%20` and `0` have lowercase hex), `&download=1` (`4,270` rows vs `913` `?download=1`), Congress.gov `?q=` (`174` rows), Wayback wrappers (`68` rows), and `utm_*` (`13` rows).
+   - **Model `url_key`** (`model/sql/url-normalized.sql` + Rust `url_resolve`/`uri_normalize_encoding`): 2-pass `url-rules.json` `wrapper` unwrap $\rightarrow$ WHATWG URL parse (strips `:80`/`:443`, lowercases scheme/host, resolves `..`, encodes spaces) $\rightarrow$ RFC 3986 unreserved percent-decode & uppercase hex $\rightarrow$ strips `^www\.`, `#fragment`, single trailing `/` (`/$`) $\rightarrow$ strips `utm_*` and `congress.gov` `q=` $\rightarrow$ sorts query params.
+   - **Archive State Custody Joins vs. Provenance Attachment Joins** (`archive_url_state.py:129-166` vs. `provenance-recovery-attachments.sql`): `archive_url_state.py` intentionally enforces **exact literal string equality** (`d.original_url = r.original_url`, `c.original_url = d.original_url`, `h.requested_url = u.original_url`) to verify per-target `recovery_requirements`, `refresh_policy = 'historical_only'`, receipt custody, and unambiguous 1:1 mapping (`capture_disposition` in `{'excluded', 'satisfied', 'eligible'}` and `capture_reason` in `{'scope_exclusion', 'qualified_recovery', 'no_satisfying_recovery'}`), whereas `url_key`-alias resolution happens in candidate discovery (`stored_url_key_alias`, resolving **35** of **36** alias rows in `plan_v2`) and `provenance-recovery-attachments.sql` attaches accepted recoveries to documents via `url_key`.
+   - **Corpus Recovery CDX & Wayback Validation** (`corpus_recovery/cdx.py:28-37` & `discovery.py:117-246`): Uses `surt.surt(url)` for WebHarvest CDX, but in `wayback_lookup` enforces **exact literal equality** `row['original'] != original` and treats empty JSON `[]` in `_wayback_page` as an error—causing **51 of 60 (85%) HTTP 200 Wayback CDX responses** in `track_b/b2_discovery` to fail with `invalid_index_response` (**36** empty `[]` responses and **15 of 24 non-empty hits** rejected solely because Wayback's SURT-matched `original` had `:80`, `http://`, `www.`, or `//`, discarding `88` of `237` valid snapshot rows).
+   - **Public Release `DM8.2` `lookup_key`** (`archive_format.py:61-82` `_lookup_steps` & `archive.ts:25-36` `lookupUrl`): Implements the locked `DM8.2` lookup contract (first 8 bytes of `sha256('lookup:' || lookup_url)`, where `lookup_url` lowercases scheme/host and strips `www.`, `:80`/`:443`, `#fragment`, and a single trailing `/` while keeping query bytes intact). All **605,848** published rows in `sources.parquet` match their own `DM8.2` lookup entry; however, for **cross-spelling user lookups**, `lookupUrl` differs from `url_key` on URLs with raw spaces (`472` rows vs browser `%20`), uppercase hex escapes (`987` rows matching `%([0-9A-Fa-f][A-F]|[A-F][0-9A-Fa-f])` and `826` matching `%[0-9A-F][A-F]` vs lowercase user input; note `16,543` rows have numeric `%[0-9]{2}` like `%20` and `0` have lowercase hex), `&download=1` (`4,270` rows vs `913` `?download=1`), Congress.gov `?q=` (`174` rows), Wayback wrappers (`68` rows), and `utm_*` (`13` rows).
 
 ---
 
@@ -23,14 +23,14 @@ Across the 8 stages of the `congressional-tech` pipeline, URLs pass through **fo
 
 | Stage | Name | Primary Code Locations | Input URL Column(s) | Output URL / Key Column(s) | Mutates Literal URL? | Key Transformations Applied | Top Corpus Quantified Bug / Gap |
 | :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- |
-| **1** | **Link Extraction & Contextual Resolution** | `archive_readings.py:103-265`<br>`model/sql/page-contexts.sql`<br>`model/sql/link-*.sql`<br>`model/sql/publisher-links.sql` | `readings.links[].href`, `readings.base_href`, `page_contexts.origin` (`coalesce(url, requested_url)`) | `resolved_links.target_url`<br>`publisher_links.target_url`, `url_key` | **Yes** (`target_url` is resolved via `url_resolve` and split on `repair` rules) | Strips controls `[\x00-\x20]`; splits `concatenated-file-urls` (`wrappers=0`, no `[?#\s]`); WHATWG `url_resolve(target_literal, resolved_base)` | `publisher-links.sql:4` `INNER JOIN copy_url_keys` drops unfetched `&download=1` links extracted from wrapper pages while retaining self-fragment `#` links; `mailto:https://...` fails `^https?://`; `1,385` `publisher_links` rows contain `https?://.+https?://` |
-| **2** | **Capture Scheduler & Admission** | `capture_scheduler.py:67-113, 365-413, 685-705`<br>`archive_url_state.py:63-85`<br>`capture-scope.json` | `publisher_links.target_url`, `captures.requested_url`, live HTML discovery `href` | `queue.requested_url`, `url_key` | **Only `_safe_reference`** (`urljoin` + space $\rightarrow$ `%20`); keeps `min(url)` literal! | `_safe_reference` rejects schemes not in `{'','http','https'}`; groups by `url_key` and picks `min(literal_url)`; filters by `capture-scope.json` on **literal** URL | `min(url)` picks `&download=1` over `?download=1` (`0/4,062` House `&download=1` fetches succeeded; `3,231` pre-W4 / `1,668` post-W4 `needs_acquisition`) and picks `http://` over `https://` |
-| **3** | **HTTP Fetch & Redirect Handling** | `fetcher.py:25-125`<br>`receipt_writer.py:135-210`<br>`receipt_privacy.py:36-74` | `requested_url` | `receipt.requested_url`, `receipt.url` (final or blocked redirect URL) | **Yes** on redirect (`url = urljoin(transfer.url, location)`) & `sanitize_url` | Follows up to 10 redirects if `CaptureScope(target)` matches; redacts `credential-parameters.json` query params in receipts | Redirects to out-of-scope hosts fail with `excluded_redirect`; Senate 302s to `/404?notfound=...` record the 404 error URL as `url` (**337** rows in `capture_sources.parquet`) |
-| **4** | **Lake Ingestion & URL Universe** | `captures.py:253-311`<br>`model/sql/capture-sources.sql`<br>`model/sql/model-url-inputs.sql` | `requested_url`, `url`, `context_url`, `original_url`, `recovered_url`, `resolved_links.target_url` | `url_inputs.url` | **No** (`trim()` only in `captures.py`) | Unions all source addresses, contexts, resolved links, recoveries, and `unnest([requested_url, url])` from `mode='fetch'` captures | `model-url-inputs.sql:7-8` ingests failed/error-redirect `url`s (**53** `/404?notfound=` URLs, **1,784** concatenated `https://...https://...` URLs, and host `'File URL path: '` into `url-dispositions.parquet`) |
-| **5** | **Native SQL Normalization & `url_key`** | `model/sql/url-normalized.sql`<br>`model/sql/url-keys.sql`<br>`url-rules.json`<br>`functions.rs:577-637` | `url_inputs.url` | `url_keys.url` (literal), `url_keys.url_key` (normalized) | **No** (`url_keys.url` is untouched; only `url_key` is normalized) | 2-pass `wrapper` unwrap $\rightarrow$ `uri_normalize_encoding(url_resolve(val, NULL))` $\rightarrow$ strip `^www\.`, `#frag`, trailing `/` $\rightarrow$ strip `utm_*`, `q=` $\rightarrow$ sort query | `senate-notfound` (`535375d1`) lacks `"decoder":"percent"` (`%2F`) and fails to match when `#main-nav` fragment is present (**20** rows); `&download=1` $\rightarrow$ `?download=1` still differs from base `/download/<slug>` (**8,023** pairs); trailing `%20` (**38** URLs) |
-| **6** | **Archive URL State & Recovery Attachment** | `archive_url_state.py:55-180`<br>`model/sql/url-state.sql`<br>`model/sql/provenance-recovery-*.sql` | `captures.requested_url`, `url_keys.url_key`, `current_recoveries.original_url` | `url_state.parquet` (7 cols in v1 `publish_v20`; 10 cols in v2 `release_v2`) | **No** | `archive_url_state.py:129-166` enforces literal `original_url` custody joins; `stored_url_key_alias` mints candidate decisions for `url_key` aliases; `provenance-recovery-attachments.sql` joins on `url_key` | **35** of **36** `url_key` alias targets were resolved into `accepted_recovery` (`satisfied`) in `plan_v2` / `release_v2` via `stored_url_key_alias` |
-| **7** | **Corpus Recovery Campaign & CDX Discovery** | `campaign.py:92-199`<br>`discovery.py:53-204`<br>`cdx.py:28-37`<br>`reconcile.py:123-299` | `targets.target_url`, `url_key` | `lookup_key` (`surt`), `candidate_url` (`web.archive.org/web/{ts}id_/{url}`) | **Yes** (constructs Wayback replay URL using query `original`) | `cdx.py` computes `surt.surt(url)`; `wayback_lookup` queries CDX `matchType=exact` and checks `row['original'] != original` | **51/60 (85%)** HTTP 200 Wayback CDX calls in `b2_discovery` failed with `invalid_index_response`: **36** on empty `[]` and **15/24** non-empty hits rejected because `row['original']` had `:80`, `http://`, `www.`, or `//` |
-| **8** | **Public Release & UI Lookup** | `archive_format.py:65-82, 190-211`<br>`archive.ts:25-36, 178-199`<br>`ArchiveDetail.tsx:107-120` | `document_addresses.url` (`sources.parquet`, `recoveries.parquet`) | `urls.lookup_key` (`sha256(lookup_url)`), `document_rows.link_key` | **No** (renders literal `public_url` in UI) | `_lookup_steps` / `lookupUrl`: regex parse, lowercase scheme/host, strip `^www\.`, `:80`/`:443`, `#fragment`, trailing `/` (`DM8.2` contract) | All **605,848** `sources.parquet` rows match their own `DM8.2` key; cross-spelling user pastes differ on **472** raw-space URLs, **987** uppercase hex URLs, **4,270** `&download=1`, **174** `?q=`, **68** Wayback URLs |
+| **1** | **Link Extraction & Contextual Resolution** | `archive_readings.py:103-265`<br>`model/sql/page-contexts.sql`<br>`model/sql/link-*.sql`<br>`model/sql/publisher-links.sql` | `readings.links[].href`, `readings.base_href`, `page_contexts.origin` (`coalesce(url, requested_url)`) | `resolved_links.target_url`<br>`publisher_links.target_url`, `url_key` | **Yes** (`target_url` is resolved via `url_resolve` and split on `repair` rules) | Strips controls `[\x00-\x20]`; splits `concatenated-file-urls` (`wrappers=0`, no `[?#\s]`); WHATWG `url_resolve(target_literal, resolved_base)` | `publisher-links.sql:4` `INNER JOIN copy_url_keys` associates links with captured sources (`913,034` rows in `publish_v20`), while acquisition discovers unfetched targets via `resolved_link_targets`; `mailto:https://...` fails `^https?://`; `1,385` `publisher_links` rows contain `https?://.+https?://` |
+| **2** | **Capture Scheduler & Admission** | `capture_scheduler.py:67-113, 365-413, 685-705`<br>`archive_url_state.py:63-85`<br>`capture-scope.json` | `resolved_link_targets`, `captures.requested_url`, `url_state_latest`, live HTML discovery `href` | `queue.requested_url`, `url_key` | **No** (`_safe_reference` validates; `min(url)` keeps raw literal) | `_safe_reference` validates scheme/host/length/no-credentials; `keyed_states` takes `s.requested_url` and suppresses same-key seeds; `seed_keys` picks `min(url)`; filters by `capture-scope.json` and `campaign_targets` | `min(url)` picks `&download=1` over `?download=1` (`0/4,062` House literal `&download=1` fetches succeeded; `1,792/1,804` succeeded when rewritten to `?download=1`) and picks `http://` over `https://` |
+| **3** | **HTTP Fetch & Redirect Handling** | `fetcher.py:25-125`<br>`receipt_writer.py:135-210`<br>`receipt_privacy.py:36-74` | `requested_url` | `receipt.requested_url`, `receipt.url` (final or blocked redirect URL) | **Yes** on redirect (`url = urljoin(transfer.url, location)`) & `sanitize_url` | Follows up to 6 redirects (`for step in range(7)`) if `CaptureScope(target)` matches; redacts `credential-parameters.json` query params in receipts | Redirects to out-of-scope hosts fail with `excluded_redirect`; Senate 302s to `/404?notfound=...` record the 404 error URL as `url` (**337** rows in `capture_sources.parquet`) |
+| **4** | **Lake Ingestion & URL Universe** | `captures.py:253-311`<br>`model/sql/capture-sources.sql`<br>`model/sql/model-url-inputs.sql` | `requested_url`, `url`, `context_url`, `original_url`, `recovered_url`, `resolved_links.target_url` | `url_inputs.url` | **No** (`trim()` only in `captures.py`) | Unions all source addresses, contexts, resolved links, recoveries, and `unnest([requested_url, url])` from `mode='fetch'` captures | `model-url-inputs.sql:7-8` ingests failed/error-redirect `url`s and legacy `assemble-20260930` literals (**53** `/404?notfound=` URLs, **1,784** concatenated `https://...https://...` URLs, and legacy `http://File URL path: ...` into `url-dispositions.parquet` totaling `1,202,155` rows) |
+| **5** | **Native SQL Normalization & `url_key`** | `model/sql/url-normalized.sql`<br>`model/sql/url-keys.sql`<br>`url-rules.json`<br>`functions.rs:577-637` | `url_inputs.url` | `url_normalized(url, error, still_wrapped, base_key)`<br>`url_keys(url, url_key)` | **No** (`url_keys.url` is untouched; only `url_key` is normalized) | 2-pass `wrapper` unwrap $\rightarrow$ `uri_normalize_encoding(url_resolve(val, NULL))` $\rightarrow$ strip `^www\.`, `#frag`, single trailing `/` (`/$`) $\rightarrow$ strip `utm_*`, `q=` $\rightarrow$ sort query | `senate-notfound` (`535375d1`) lacks `"decoder":"percent"` (`%2F`) and fails to match when `#main-nav` fragment is present (**20** rows in `publisher_links.parquet`); `download-ampersand-query` lacks `(?:#.*)?$` |
+| **6** | **Archive URL State & Recovery Attachment** | `archive_url_state.py:55-180`<br>`model/sql/url-state.sql`<br>`model/sql/provenance-recovery-*.sql` | `captures.requested_url`, `url_keys.url_key`, `current_recoveries.original_url` | `url_state.parquet` (7 cols in v1 `publish_v20`; 10 cols in v2 `release_v2`) | **No** | `archive_url_state.py:129-166` enforces literal `original_url` custody joins (`eligible`, `satisfied`, `excluded`); `stored_url_key_alias` mints candidate decisions for `url_key` aliases; `provenance-recovery-attachments.sql` joins on `url_key` | **35** of **36** `url_key` alias targets were resolved into `accepted_recovery` (`satisfied`, `qualified_recovery`) in `plan_v2` / `release_v2` via `stored_url_key_alias` |
+| **7** | **Corpus Recovery Campaign & CDX Discovery** | `campaign.py:92-199`<br>`discovery.py:53-246`<br>`cdx.py:28-37`<br>`reconcile.py:123-299` | `targets.target_url`, `url_key` | `lookup_key` (`surt`), `candidate_url` (`web.archive.org/web/{ts}id_/{url}`) | **Yes** (constructs Wayback replay URL) | `cdx.py` computes `surt.surt(url)`; `wayback_lookup` queries CDX `matchType=exact` and checks `row['original'] != original` | **51/60 (85%)** HTTP 200 Wayback CDX calls in `b2_discovery` failed with `invalid_index_response`: **36** on empty `[]` and **15/24** non-empty hits rejected because `row['original']` had `:80`, `http://`, `www.`, or `//` |
+| **8** | **Public Release & UI Lookup** | `archive_format.py:61-82, 190-211`<br>`archive.ts:25-36, 178-199`<br>`ArchiveDetail.tsx:107-120` | `document_addresses.url` (`sources.parquet`, `recoveries.parquet`) | `urls.lookup_key` (8-byte prefix of `sha256('lookup:' \|\| lookup_url)`), `link_key` | **No** (renders literal `public_url` in UI) | `_lookup_steps` / `lookupUrl`: regex parse, lowercase scheme/host, strip `^www\.`, `:80`/`:443`, `#fragment`, single trailing `/` (`DM8.2` contract) | All **605,848** `sources.parquet` rows match their own `DM8.2` key; cross-spelling user pastes differ on **472** raw-space URLs, **987** uppercase hex URLs, **4,270** `&download=1`, **174** `?q=`, **68** Wayback URLs |
 
 ---
 
@@ -61,7 +61,7 @@ Across the 8 stages of the `congressional-tech` pipeline, URLs pass through **fo
   - `capture_sources.url` and `capture_sources.requested_url` combined as `coalesce(url, requested_url) AS origin` in `page_contexts`.
 - **Outputs**:
   - `resolved_links`: `(context_url, href, base_href, split_position, target_url)`
-  - `publisher_links`: `(context_url, context_key, target_url, url_key, href, split_position)`
+  - `publisher_links`: `(context_url, context_key, target_url, url_key, href, split_position)` (`913,034` rows in `publish_v20/model/evidence/publisher_links.parquet`)
 
 #### 3. Exact Transformations Applied
 1. **HTML/XML/JSON Extraction (`archive_readings.py`)**:
@@ -100,17 +100,17 @@ Across the 8 stages of the `congressional-tech` pipeline, URLs pass through **fo
 #### 4. Why It Does This
 - Resolves relative links against `<base href>` / page origin and repairs accidental CMS/HTML-to-text concatenations like `https://...BILLS-115s585rfh.xmlhttps://...BILLS-115s585es.xml` without falsely splitting Wayback/Proofpoint wrappers (`l.wrappers = 0`).
 
-#### 5. What It SHOULD Be (Gaps, Bugs & Corpus Counts)
-- **Bug 1A (`publisher-links.sql:4` `INNER JOIN copy_url_keys` drops unfetched `&download=1` links extracted from wrapper pages while retaining self-fragment `#` links)**:
+#### 5. Architectural Distinctions, Gaps & Corpus Counts
+- **Distinction 1A (`publisher-links.sql` Source Association vs. `resolved_link_targets` Acquisition Discovery)**:
   - House CreativeEngine download landing pages (e.g. `https://democrats-science.house.gov/download/ashley-nunes-witness-testimony`, `body_sha = ae5ee73d95a8fada1e9491574799cf263d03114d3f84d830ed26a9f6e1e0934c`) are classified as `record_role = 'wrapper', is_real_file = false`.
-  - In `readings_full_0cb`, `ae5ee73d...` yields **87 extracted HTML links**, including `href = '//democrats-science.house.gov/download/ashley-nunes-witness-testimony&download=1'` and 4 self-fragment links (`#main-nav`, `#skip-nav`, `#`, `#`). All 87 enter `resolved_links` and `url_state_queue`.
-  - However, `model/sql/publisher-links.sql:4` is an `INNER JOIN` against `copy_url_keys` (already-captured sources). Because `url-normalized.sql` strips `#fragment`, the 4 self-fragment links get `url_key = 'democrats-science.house.gov/download/ashley-nunes-witness-testimony'` and self-join to the wrapper page's own capture (`source_id = 3746c1fd...`), whereas `https://democrats-science.house.gov/download/ashley-nunes-witness-testimony&download=1` has a different `url_key` (`&download=1` or `?download=1`) and `0` captures (`attempts = 0`), so `publisher-links.sql` drops it!
-- **Bug 1B (`mailto:https://...` and XML `<file-url>File URL path: /sites/...</file-url>` are not repaired before resolution)**:
-  - In HTML pages, authors frequently write `<a href="mailto:https://www.congress.gov/116/bills/hr7045/BILLS-116hr7045ih.pdf">`. Because `mailto:` is not stripped before `url_resolve`, `url_resolve` parses scheme `mailto:`, which fails `^https?://[^/?#]+` in `link-targets.sql:21` (`invalid_target`).
-  - In XML feeds (`parse_xml`, line 250), `<file-url>File URL path: /sites/default/files/documents/7.7.17DallinMaybeeTestimoney.pdf</file-url>` contains `/` so it is extracted literally; when resolved against an `http://` base URL, WHATWG `Url::parse` treats `File URL path:` as the relative path or host (`http://File URL path: /sites/...`, which actually appears in `url-dispositions.parquet` with `host = 'File URL path: '`!).
+  - In `page_facts.parquet` and `readings_full_0cb`, `ae5ee73d...` has `link_count = 87, status = 'completed'`, including `href = '//democrats-science.house.gov/download/ashley-nunes-witness-testimony&download=1'` and 4 self-fragment links (`#main-nav`, `#skip-nav`, `#`, `#`).
+  - `model/sql/publisher-links.sql:4` associates resolved links with already-captured source identities via `INNER JOIN copy_url_keys`: the 4 `#fragment` links strip `#...` and match the wrapper's own captured address (`source_id = 3746c1fd...`), whereas an unfetched download target (`&download=1`) has no captured source row yet and is therefore absent from `publisher_links.parquet`.
+  - Meanwhile, acquisition discovers targets independently through `resolved_link_targets` in [archive_url_state.py](file:///Users/mikewolfd/Work/congressional-tech/packages/viewer_publication/src/viewer_publication/archive_url_state.py#L70-L85), where `url_state_queue` (`lines 77–85`) applies scope, `target_member_path IS NULL`, `url_key IS NOT NULL`, and `NOT EXISTS (SELECT 1 FROM url_state_fetched_keys f WHERE f.url_key = k.url_key)` filters (which excludes the 4 self-fragment links at line 84 while admitting the unfetched `&download=1` target into discovery). Keeping separate `url_key` identities for the wrapper landing page (`/download/<slug>`) and its downloadable document (`/download/<slug>?download=1`) is proper model separation, not a defect.
+- **Bug 1B (`mailto:https://...` and legacy `http://File URL path: ...` receipt literals)**:
+  - In HTML pages, authors occasionally write `<a href="mailto:https://www.congress.gov/116/bills/hr7045/BILLS-116hr7045ih.pdf">`. Because `mailto:` is not stripped before `url_resolve`, `url_resolve` parses scheme `mailto:`, which fails `^https?://[^/?#]+` in `link-targets.sql:21` (`invalid_target`).
+  - Separately, `http://File URL path: /sites/default/files/documents/7.7.17DallinMaybeeTestimoney.pdf` in `url-dispositions.parquet` did not come from `url_resolve` (which resolves a relative `File URL path: ...` under the base host and rejects an absolute `http://File URL path: ...` with `NULL`); rather, it entered `captures` as a literal `requested_url` in legacy receipt `receipts/documents/2026-09-29/assemble-20260930.jsonl.gz` (`source_id = 59762db1...`), and `campaign.py:83` extracted `host = 'File URL path: '` via regex.
 - **Bug 1C (`link-literals.sql` only repairs `wrappers = 0` without `[?#\s]`, leaving 1,385 concatenated rows in `publisher_links.parquet`)**:
-  - In `publish_v20/model/evidence/publisher_links.parquet`, **1,385 rows (507 distinct `target_url`s)** still match `(?i)^https?://.+https?://` (including `http://www.congress.gov/cgi-lis/t2GPO/http://www.gpo.gov/...`, `exit.asp?link=http://...`, and concatenated URLs where one URL has a query string or space).
-  - Furthermore, `link-literals.sql` does **not** repair `/download/<slug>&download=1` $\rightarrow$ `/download/<slug>?download=1` at the `target_url` level, so `resolved_links.target_url` retains the broken `&download=1` path literal.
+  - In `publish_v20/model/evidence/publisher_links.parquet` (`913,034` rows), **1,385 rows (507 distinct `target_url`s)** still match `(?i)^https?://.+https?://` (including `http://www.congress.gov/cgi-lis/t2GPO/http://www.gpo.gov/...`, `exit.asp?link=http://...`, and concatenated URLs where one URL has a query string or space).
 
 ---
 
@@ -124,58 +124,30 @@ Across the 8 stages of the `congressional-tech` pipeline, URLs pass through **fo
 - [capture-scope.json](file:///Users/mikewolfd/Work/congressional-tech/model/registries/capture-scope.json#L1-L129)
 
 #### 2. Input & Output Columns
-- **Inputs**: `publisher_links.target_url` (or `seed_rows`: `captures.requested_url` + `readings.links[].href`), `url_rules`, `capture-scope.json`.
+- **Inputs**: `resolved_link_targets`, `url_state_latest` / `captures.requested_url`, live HTML discovery `href`, `url_rules`, `capture-scope.json`, optional `campaign_targets`.
 - **Outputs**: `queue.requested_url`, `queue.url_key` (in `capture_scheduler.py`) and `url_state_queue.requested_url`, `url_state_queue.url_key` (in `archive_url_state.py`).
 
 #### 3. Exact Transformations Applied
-1. **In-Run Link Resolution (`_safe_reference`, `capture_scheduler.py:99-113`)**:
-   - Strips leading/trailing whitespace, rejects schemes not in `{'', 'http', 'https'}`, calls `urlsplit(urljoin(base_url, cleaned))`, rejects URLs without scheme/netloc or with credentials, and replaces raw spaces `' '` with `'%20'` in path and query.
-2. **Key Grouping & Representative Literal Selection (`capture_scheduler.py:390-396` & `archive_url_state.py:70-80`)**:
-   - Computes `url_key` via `url-normalized.sql` / `url-keys.sql`.
-   - Groups by `url_key` and picks **`min(url)`** (or `min(l.target_url)`) as the literal `requested_url`:
-     ```sql
-     -- capture_scheduler.py:391-395
-     keyed_seeds AS (
-         SELECT s.url, k.url_key
-         FROM seed_rows s
-         JOIN url_keys k ON k.url = s.url
-         WHERE k.url_key IS NOT NULL
-     ),
-     seed_keys AS (
-         SELECT url_key, min(url) AS url FROM keyed_seeds GROUP BY url_key
-     )
-     ```
-     ```sql
-     -- archive_url_state.py:70-80
-     scoped_targets AS (
-         SELECT DISTINCT l.target_url
-         FROM publisher_links l
-         WHERE (regexp_matches(l.target_url, ...)) -- capture-scope.json
-     ),
-     publisher_queue AS (
-         SELECT k.url_key, min(l.target_url) AS url
-         FROM scoped_targets l
-         JOIN url_keys k ON k.url = l.target_url
-         WHERE k.url_key IS NOT NULL
-         GROUP BY k.url_key
-     )
-     ```
+1. **Reference Validation (`_safe_reference`, `capture_scheduler.py:99-113`)**:
+   - Pure boolean validation helper: checks `bool(value)`, `len(value) <= 16384`, no control characters (`ord(ch) < 0x20 or ord(ch) == 0x7F`), `validate_record(value)`, `urlsplit(value)` scheme in `{'', 'http', 'https'}`, hostname present when scheme is present, no `username`/`password`, and no query keys in `credential_parameters()`. (Does not mutate or call `urljoin`.)
+2. **State Precedence, Key Grouping & Representative Literal Selection (`capture_scheduler.py:377-405` & `archive_url_state.py:70-85`)**:
+   - Computes `url_key` via `url-normalized.sql` / `url-keys.sql` (note `url-normalized.sql` exports `(url, error, still_wrapped, base_key)`).
+   - In `capture_scheduler.py:392-396`, existing `url_state_latest` rows (`keyed_states`) take `s.requested_url` directly and suppress same-`url_key` rows from `seed_urls` (`LEFT ANTI JOIN keyed_states s ON o.url_key = s.url_key`).
+   - For new seeds (`seed_urls` / `queue_literals`), groups by `url_key` and selects `min(url)` (or `min(l.target_url)`) as `requested_url`.
+   - In campaign mode (`capture_scheduler.py:381`), requires `EXISTS (SELECT 1 FROM campaign_targets t WHERE t.target_url = scoped.requested_url)`.
 3. **Scope Filtering (`capture-scope.json`)**:
-   - Evaluates 16 regexes (every single one anchored with `^https://`) against the **literal** `requested_url` / `l.target_url`.
+   - Evaluates `capture-scope.json` regexes against `requested_url` / `l.target_url`.
 
 #### 4. Why It Does This
-- Deduplicates the fetch queue so multiple literal URLs with the same `url_key` are only fetched once, and enforces domain scoping (`*.senate.gov`, `*.house.gov`, `www.congress.gov`, `www.govinfo.gov`, `www.gpo.gov`, `www.gao.gov`, `crsreports.congress.gov`).
+- Deduplicates the fetch queue by `url_key`, preserves attempt state history on existing `url_state` rows, and enforces domain and campaign target scoping.
 
 #### 5. What It SHOULD Be (Gaps, Bugs & Corpus Counts)
-- **Bug 2A (Critical: `min(literal_url)` schedules un-repaired `&download=1` and wrapped URLs as `requested_url`)**:
-  - Because `url-normalized.sql` only uses `u.value` (the unwrapped/repaired URL) to compute `url_key` while leaving `url_keys.url` as the raw literal string, `min(url)` selects the broken literal `https://democrats-science.house.gov/download/ashley-nunes-witness-testimony&download=1` instead of `https://democrats-science.house.gov/download/ashley-nunes-witness-testimony?download=1`!
-  - **100% Senate vs. 0% House Server Split (`capture_sources.parquet` & `url-dispositions.parquet`)**:
-    - While **4,062** distinct literal `&download=1` URLs (`4,309` capture rows) succeeded with HTTP 200 real files in `capture_sources.parquet`, **100% (`4,062 / 4,062`) of those successes were on 4 Senate ColdFusion hosts** (`finance.senate.gov`: `1,569`, `banking.senate.gov`: `1,417`, `appropriations.senate.gov`: `734`, `budget.senate.gov`: `342`) that have a server-side ColdFusion rewrite rule, while **0 (`0%`) succeeded on `*.house.gov` CreativeEngine hosts** (where literal `&download=1` returned `410 Gone` on all `19` attempted fetches)!
-    - In `plan/url-dispositions.parquet` (pre-Wave 4), **3,231** `&download=1` URLs (`3,227` on `*.house.gov` and `4` on `*.senate.gov`) were in `needs_acquisition`. In Wave 4 (`plan_v2/url-dispositions.parquet`), rewriting `&download=1` $\rightarrow$ `?download=1` recovered **1,563** of those House targets (`subtype = 'retained_candidate_repaired_download_query'`), leaving **1,668** (`3,231 - 1,563 = 1,668`, of which `1,664` are on `*.house.gov`) in `needs_acquisition`.
-- **Bug 2B (Critical: `capture-scope.json` is evaluated against the raw literal URL instead of the unwrapped/scheme-upgraded URL)**:
-  - When `model/registries/capture-scope.json` patterns are anchored with `^https://`, any `http://` link literal (**100,725** targets in `url-dispositions.parquet` start with `http://`!) or any link wrapped in `web.archive.org`, `webarchive.loc.gov`, `urldefense.proofpoint.com`, or `lis.gov/cgi-lis/t2GPO/` fails `scoped_targets` (`archive_url_state.py:70-75`) and `policy.sql('requested_url')` (`capture_scheduler.py:397`), even when its unwrapped `url_key` is an in-scope `.gov` document!
-- **Bug 2C (`min(url)` lexicographical ordering prefers `http://` over `https://` and `&download=1` over `?download=1`)**:
-  - Confirmed by native reproduction: in ASCII, `'&'` (0x26) < `'?'` (0x3F), and `'http://'` < `'https://'`. Whenever both a broken `&download=1` and a valid `?download=1` (or `http://` and `https://`) map to the same `url_key`, `min(url)` deterministically chooses the **worse** literal (`&download=1` and `http://`)!
+- **Bug 2A (Critical: `min(url)` and `keyed_states` schedule un-repaired `&download=1` and `http://` literals)**:
+  - Confirmed by native reproduction: in ASCII, `'&'` (0x26) < `'?'` (0x3F), and `'http://'` < `'https://'`. When both `&download=1` and `?download=1` exist for a `url_key`, `min(url)` picks `&download=1`; when both `http://` and `https://` exist, `min(url)` picks `http://` and discards it during `^https://` scope filtering.
+  - Furthermore, sorting alone cannot create `?download=1` when the only observed seed literal contains `&download=1`, and changing `seed_urls` alone leaves existing `keyed_states` rows (`s.requested_url`) untouched and must also preserve `campaign_targets` membership (`capture_scheduler.py:381`).
+  - **House vs. Senate Empirical Split (`capture_sources.parquet` & `url-dispositions.parquet`)**:
+    - All **4,062** distinct literal `&download=1` URLs (`4,309` capture rows) with HTTP 200 real files in `capture_sources.parquet` are on 4 Senate hosts (`finance.senate.gov`: `1,569`, `banking.senate.gov`: `1,417`, `appropriations.senate.gov`: `734`, `budget.senate.gov`: `342`); **0** are on House hosts (`19` HTTP attempts on `democrats-transportation.house.gov`, all returning HTTP `410`).
+    - Across Waves 4–5, out of **1,804** `needs_acquisition` House `&download=1` targets tested by rewriting `&download=1` $\rightarrow$ `?download=1`, **1,792 (`99.33%`)** succeeded and became accepted recoveries (`1,563` `retained_candidate_repaired_download_query` + `226` `retained_candidate_repaired_download_query_poppler_verified` + `3` `retained_candidate_repaired_download_query_docx`), while `24` more were recovered via `retained_candidate_redirect_location_corpus_match`, reducing pending `&download=1` targets from `3,231` (`plan`) $\rightarrow$ `1,668` (`plan_v2` Gen 1) $\rightarrow$ `1,415` (`plan_v2` Gen 2: `1,411` House + `4` Senate).
 
 ---
 
@@ -192,8 +164,8 @@ Across the 8 stages of the `congressional-tech` pipeline, URLs pass through **fo
 - **Outputs**: `FetchAttempt(requested_url, url, status, headers, body, error, ...)` written to JSONL receipts with `sanitize_url(requested_url)` and `sanitize_url(url)`.
 
 #### 3. Exact Transformations Applied
-1. **Pre-Flight & Redirect Scope Check (`fetcher.py:67-68, 92-95, 112`)**:
-   - Before each hop (up to `_MAX_REDIRECTS = 10`), checks `self.scope(current)`.
+1. **Pre-Flight & Redirect Scope Check (`fetcher.py:67-68, 89-112`)**:
+   - Loops `for step in range(7):` (up to 6 redirects; returns `error='redirect_limit'` on `step == 6`), checking `self.scope(current)` before each hop.
    - On HTTP `301, 302, 303, 307, 308`, resolves `target = urljoin(transfer.url, location)`.
    - On the next iteration, if `not self.scope(target)`, returns `FetchAttempt(requested_url=url, url=target, error='excluded_redirect')`.
 2. **Credential Sanitization (`receipt_privacy.py:36-74`)**:
@@ -207,6 +179,8 @@ Across the 8 stages of the `congressional-tech` pipeline, URLs pass through **fo
   - When a Senate ColdFusion page or file is missing, `*.senate.gov` returns `302 Found` with `Location: /404?notfound=<original_path>`.
   - Because `https://<committee>.senate.gov/404?notfound=...` matches `capture-scope.json`, `Fetcher` follows the redirect and records `url = 'https://<committee>.senate.gov/404?notfound=...'`.
   - In `capture_sources.parquet`, there are **337 rows** with `/404?notfound=` (**333** with `http_status = 404, outcome = 'failed'`, and **4** with `http_status = 200, outcome = 'stored'`, all classified as `record_role = 'error_response'`). Worse, in historical `assemble-20260930.jsonl.gz` receipts, the redirect target `/404?notfound=...` was written into **`requested_url`** itself (**53** distinct URLs)!
+- **Bug 3B (`spool_limit = 16 MB` in `Fetcher` and `max_input_bytes = 16 MB` in `QualificationConfig` drop large congressional hearing volumes)**:
+  - Across Waves 3–6, `15` legitimate House/Senate hearing PDFs (`17 MB` to `157 MB`, e.g. `HHRG-115-IF02-20180508-SD005.pdf` at `157 MB` and `HHRG-115-IF17-Wstate-SmithR-20171003-SD013.pdf` at `83 MB`) returned HTTP 200 over Direct HTTP but failed with `outcome = 'size_limit'` until `spool_limit` and `max_input_bytes` were raised to `256 MB` in Wave 6.
 
 ---
 
@@ -312,21 +286,17 @@ Across the 8 stages of the `congressional-tech` pipeline, URLs pass through **fo
 #### 5. What It SHOULD Be (Gaps, Bugs & Corpus Counts)
 - **Bug 5A (`publish_v20` and `recovery_campaign_v1/plan_v2` were compiled BEFORE `senate-notfound` and `download-ampersand-query` were added)**:
   - Verified in `publish_v20/model/registries/url_rules.jsonl.gz` and `recovery_campaign_v1/key_prep/url_rules.jsonl.gz`: both artifacts only contain the 7 previously committed rules (`wayback`, `loc`, `proofpoint-v2`, `lis-gpo`, `concatenated-file-urls`, `utm`, `congress-search-q`).
-- **Bug 5B (Critical: Even with `download-ampersand-query`, `/download/<slug>&download=1` and `/download/<slug>` produce DIFFERENT `url_key`s!)**:
-  - `download-ampersand-query` (`url-rules.json:82-91`) rewrites `.../download/slug&download=1` to `.../download/slug?download=1`, which gets `url_key = .../download/slug?download=1`.
-  - Meanwhile, the base URL `.../download/slug` gets `url_key = .../download/slug` (no `?download=1`).
-  - **Corpus impact**: In `url-dispositions.parquet`, **8,023 distinct `&download=1` URLs** have a sibling base `/download/<slug>` URL in `url-dispositions.parquet`, including **all 3,231 `needs_acquisition` `&download=1` URLs**! Because their `url_key`s differ (`?download=1` vs no query), the pipeline treats them as two unrelated resources!
-  - **What it should be**:
-    1. For **literal repair** (so the HTTP fetcher requests the actual file rather than the HTML landing wrapper), `/download/<slug>(?:%20|\s)*&download=1` must be repaired to `/download/<slug>?download=1`.
-    2. For **`url_key` identity**, either `download=1` on `/download/` paths should be stripped in `url-keys.sql` (so `/download/<slug>`, `/download/<slug>?download=1`, and `/download/<slug>&download=1` share the same `url_key`), OR `record_role = 'wrapper'` captures at `/download/<slug>` must not be marked `usable_direct` while `/download/<slug>?download=1` is fetched for the document body.
+- **Distinction 5B (Wrapper Page `/download/<slug>` vs. Downloadable Document `/download/<slug>?download=1`)**:
+  - `download-ampersand-query` (`url-rules.json:82-91`) rewrites `.../download/slug&download=1` to `.../download/slug?download=1`, which gets `url_key = .../download/slug?download=1`, whereas the landing wrapper page `.../download/slug` gets `url_key = .../download/slug`.
+  - Preserving separate `url_key` identities for the HTML landing wrapper (`/download/<slug>`) and its downloadable document (`/download/<slug>?download=1`) is proper model separation; what is required for acquisition is generating `/download/<slug>?download=1` as the repaired fetch candidate whenever `/download/<slug>&download=1` is queued.
 - **Bug 5C (`senate-notfound` in `url-rules.json:72-81` uses `"decoder": "none"` and lacks `(?:#.*)?$`, failing on `%2F` and `#main-nav`)**:
-  - In `publisher_links.parquet` (`20` rows), `finance.senate.gov` redirects to `https://www.finance.senate.gov/404?notfound=hearings%2Fthe-presidents-fiscal-year-2024-irs-budget-and-the-irss-2023-filing-season#main-nav`.
+  - In `publisher_links.parquet` (`20` rows across `3` distinct URLs), `finance.senate.gov` redirects to `https://www.finance.senate.gov/404?notfound=hearings%2Fthe-presidents-fiscal-year-2024-irs-budget-and-the-irss-2023-filing-season#main-nav` (plus `#skip-nav` and `#`).
   - First, because `url-normalized.sql` runs `wrapper` rules before stripping `#fragment` (`components`, lines 34–35), the `([^#]+)$` anchor in `url-rules.json:76` fails to match whenever a `#fragment` (like `#main-nav`) is present! The same fragment anchor gap applies to `download-ampersand-query` (`&download=1$`).
   - Second, because `senate-notfound` has `"decoder": "none"`, `$1/$2` produces `https://www.finance.senate.gov/hearings%2F...`. Since `/` is a reserved RFC 3986 character, `uri_normalize_encoding` does **not** decode `%2F`, yielding `url_key = finance.senate.gov/hearings%2F...` instead of `finance.senate.gov/hearings/...`!
   - **Fix**: Set `"decoder": "percent"` on `senate-notfound` and match `(?i)^(https?://(?:[a-z0-9-]+\.)+senate\.gov)/404\?notfound=(?:%2f|/)?([^#]+)(?:#.*)?$`.
-- **Bug 5D (Trailing `%20` in URL paths is not stripped by `url_resolve` or `url-normalized.sql` — 38 URLs in `url-dispositions.parquet`)**:
-  - `url::Url::parse` strips raw ASCII whitespace at the end of a URL, **but not pre-encoded `%20`**!
-  - While `download-ampersand-query` at commit `535375d1` (`url-rules.json:86`) handles `(?:%20|\s)*` before `&download=1`, when the base URL has a trailing `%20` (e.g., `https://democrats-transportation.house.gov/download/09/09/2020/flynn-testimony%20`, 25 links in `url-dispositions.parquet`, and **38 total URLs** in `url-dispositions.parquet`), `url-normalized.sql:48` (`regexp_replace(c.path, '/$', '')`) leaves the trailing `%20` intact!
+- **Note 5D (Why Global Trailing `%20` Path Trimming `(?:%20|/)+$` Is Withdrawn)**:
+  - `url::Url::parse` strips raw ASCII whitespace at the end of a URL, while preserving pre-encoded `%20` (`35` rows in `plan` and `plan_v2` match `ends_with(target_url, '%20')`).
+  - However, replacing `regexp_replace(c.path, '/$', '')` (`url-normalized.sql:48`) with `(?:%20|/)+$` globally would also collapse multiple trailing slashes (`/report//` $\rightarrow$ `example.gov/report` instead of `example.gov/report/`) and merge trailing `%20` across every host without evidence. Instead, `%20` before `&download=1` is handled by `download-ampersand-query` (`(?:%20|\s)*&download=1`), and any publisher-specific trailing-space alias is handled via explicit candidate/variant rules.
 - **Bug 5E (Missing wrapper rules for `congress.gov/cgi-lis/t2GPO/` and House `exit.asp?link=`)**:
   - `lis-gpo` (`url-rules.json:52-60`) only matches `(?:www\.)?lis\.gov/cgi-lis/t2GPO/`, missing `http://www.congress.gov/cgi-lis/t2GPO/http://www.gpo.gov/fdsys/pkg/...` (3 rows in `url-dispositions.parquet`).
 - **Bug 5F (`r.kind = 'repair'` is not applied in `url-normalized.sql`)**:
@@ -368,12 +338,12 @@ Across the 8 stages of the `congressional-tech` pipeline, URLs pass through **fo
   ```
 
 #### 4. Why It Does This
-- Computes the operational state (`satisfied`, `eligible`, `exhausted`, `excluded`) of every queued or fetched URL while enforcing per-target `recovery_requirements`, `refresh_policy = 'historical_only'`, receipt custody (`c.original_url = d.original_url`), and unambiguous 1:1 decision mapping per `original_url`.
+- Computes the operational state (`capture_disposition` in `{'excluded', 'satisfied', 'eligible'}` and `capture_reason` in `{'scope_exclusion', 'qualified_recovery', 'no_satisfying_recovery'}`) of every queued or fetched URL while enforcing per-target `recovery_requirements`, `refresh_policy = 'historical_only'`, receipt custody (`c.original_url = d.original_url`), and unambiguous 1:1 decision mapping per `original_url`.
 
 #### 5. What It SHOULD Be (Gaps, Bugs & Corpus Counts)
 - **Architectural Design Note (`archive_url_state.py:129-166` Literal Custody Joins vs. `stored_url_key_alias` Candidate Resolution)**:
   - Because `archive_url_state.py:129-166` enforces per-target `recovery_requirements`, `refresh_policy = 'historical_only'`, receipt binding, and unambiguous 1:1 checks on `original_url`, replacing it with a bare `url_key` join would weaken those custody invariants.
-  - Instead, `url_key` aliases (`36` rows in `plan/url-dispositions.parquet` with `subtype = 'retained_r2_url_key_alias'`) are resolved in the candidate discovery/reconciliation layer by minting explicit `recovery_decisions` and `retained_captures` records (`candidate_source = 'stored_url_key_alias'`), which moved **35** of those **36** rows (all except 1 `.wmv` video on Dropbox) to `disposition = 'accepted_recovery'` (`capture_disposition = 'satisfied'`) in `plan_v2` and `release_v2/url_state.parquet`.
+  - Instead, `url_key` aliases (`36` rows in `plan/url-dispositions.parquet` with `subtype = 'retained_r2_url_key_alias'`) are resolved in the candidate discovery/reconciliation layer by minting explicit `recovery_decisions` and `retained_captures` records (`candidate_source = 'stored_url_key_alias'`), which moved **35** of those **36** rows (all except 1 `.wmv` video on Dropbox) to `disposition = 'accepted_recovery'` (`capture_disposition = 'satisfied', capture_reason = 'qualified_recovery'`) in `plan_v2` and `release_v2/url_state.parquet`.
 
 ---
 
@@ -381,7 +351,7 @@ Across the 8 stages of the `congressional-tech` pipeline, URLs pass through **fo
 
 #### 1. Where the Step Lives
 - [campaign.py](file:///Users/mikewolfd/Work/congressional-tech/packages/corpus_recovery/src/corpus_recovery/campaign.py#L92-L199): `plan_campaign`
-- [discovery.py](file:///Users/mikewolfd/Work/congressional-tech/packages/corpus_recovery/src/corpus_recovery/discovery.py#L53-L204): `webharvest_lookup`, `validate_wayback_replay`, `acquire_wayback`, `wayback_lookup`
+- [discovery.py](file:///Users/mikewolfd/Work/congressional-tech/packages/corpus_recovery/src/corpus_recovery/discovery.py#L53-L246): `webharvest_lookup`, `validate_wayback_replay`, `_wayback_page`, `wayback_lookup`, `acquire_candidate`
 - [cdx.py](file:///Users/mikewolfd/Work/congressional-tech/packages/corpus_recovery/src/corpus_recovery/cdx.py#L28-L37): `key(url)` (`surt.surt`)
 - [reconcile.py](file:///Users/mikewolfd/Work/congressional-tech/packages/corpus_recovery/src/corpus_recovery/reconcile.py#L123-L299)
 
@@ -392,28 +362,13 @@ Across the 8 stages of the `congressional-tech` pipeline, URLs pass through **fo
 #### 3. Exact Transformations Applied
 1. **WebHarvest CDX Lookup (`cdx.py:28-37` & `discovery.py:53-115`)**:
    - Computes `surt_key = surt.surt(original_url)` and queries local DuckDB CDX index `WHERE key = ?`.
-2. **Wayback CDX Lookup (`discovery.py:149-204`)**:
-   - Requests `https://web.archive.org/cdx/search/cdx?url={quote(original, safe='')}&matchType=exact&output=json&fl=timestamp,original,statuscode,mimetype,digest`.
-   - Parses JSON response (`discovery.py:167-189`):
-     ```python
-     rows = json.loads(page.body.decode())
-     if not isinstance(rows, list) or not rows:
-         raise ValueError('Empty or non-list Wayback JSON')
-     header, *entries = rows
-     ...
-     for entry in entries:
-         row = dict(zip(header, entry, strict=True))
-         if (
-             row['original'] != original
-             or not row['timestamp'].isdigit()
-             or len(row['timestamp']) != 14
-         ):
-             raise ValueError('CDX result outside query')
-         if row['statuscode'] == '200':
-             replay = f"https://web.archive.org/web/{row['timestamp']}id_/{original}"
-     ```
-3. **Wayback Replay Validation (`discovery.py:117-126`)**:
-   - Checks `match = _WAYBACK_REPLAY_RE.match(candidate_url)` and raises `ValueError` if `target != original`.
+2. **Wayback CDX Lookup (`discovery.py:129-215`)**:
+   - Requests `https://web.archive.org/cdx/search/cdx?url={quote(original, safe='')}&matchType=exact&output=json&fl=urlkey,timestamp,original,mimetype,statuscode,digest,length&showResumeKey=true&limit=...`.
+   - Parses JSON response in `_wayback_page(body)` (`lines 129–146`) and validates rows in `wayback_lookup` (`lines 178–193`):
+     - Currently raises `ValueError('Invalid Wayback JSON')` in `_wayback_page` when `data == []`.
+     - Currently checks `row['original'] != original` in `wayback_lookup`, rejecting any row whose archived `original` spelling differs from `original` even when `row['urlkey']` matches the queried SURT.
+3. **Wayback Replay Validation (`discovery.py:117-126` & `227-239`)**:
+   - `acquire_candidate` (`line 232`) passes `candidate['original_url']` to `acquire_wayback(url, original, timestamp, ...)`, which calls `validate_wayback_replay(url, original, timestamp)` (`lines 117–126`) to enforce exact host, timestamp, and `id_/{original}` match.
 
 #### 4. Why It Does This
 - Queries WebHarvest and Internet Archive Wayback CDX indexes to discover historical 200-status captures for dead/walled URLs and construct `id_` raw replay URLs.
@@ -421,25 +376,24 @@ Across the 8 stages of the `congressional-tech` pipeline, URLs pass through **fo
 #### 5. What It SHOULD Be (Gaps, Bugs & Corpus Counts)
 - **Bug 7A (Critical: `wayback_lookup` failed with `invalid_index_response` on 51 of 60 (85%) HTTP 200 CDX responses in `track_b/b2_discovery`!)**:
   - Inspecting all 60 HTTP 200 Wayback CDX responses in `/private/tmp/claude-501/-Users-mikewolfd-Work/71969fc5-4a0f-4f4e-aa49-d2dd9f4c2272/scratchpad/codex-impl/cx_model_design/recovery_campaign_v1/track_b/b2_discovery/calls/*/downloaded.json`:
-    1. **Empty JSON `[]` treated as fatal error (`36 / 60` responses)**: When Wayback has 0 captures for a URL, its JSON API returns HTTP 200 with body `[]\n`. In `discovery.py:168`, `if not isinstance(rows, list) or not rows: raise ValueError('Empty or non-list Wayback JSON')` catches `not rows`, marking the lookup `complete=False, reason='invalid_index_response'` instead of `complete=True, candidates=(), reason='complete'`!
-    2. **Exact string check `row['original'] != original` rejects valid SURT-matched captures (`15 / 24` non-empty responses — 62.5% of hits!)**: Wayback's `matchType=exact` matches by **SURT key (`urlkey`)**, so it returns captures whose `original` URL had port `:80`, `http://` instead of `https://`, `www.` vs non-`www.`, or `//` in the path. Every single time a row has any of those differences, `row['original'] != original` throws `ValueError('CDX result outside query')` and discards the **entire** CDX response!
+    1. **Empty JSON `[]` treated as fatal error (`36 / 60` responses)**: When Wayback has 0 captures for a URL, its JSON API returns HTTP 200 with body `[]\n`. In `_wayback_page` (`discovery.py:133`), `not data` raises `ValueError('Invalid Wayback JSON')`, marking the lookup `complete=False, reason='invalid_index_response'` instead of returning `([], None)` so `wayback_lookup` can finish with `complete=True, reason='complete'`.
+    2. **Exact string check `row['original'] != original` rejects valid SURT-matched captures (`15 / 24` non-empty responses — 62.5% of hits, discarding `88` of `237` valid snapshot rows!)**: Wayback's `matchType=exact` matches by **SURT key (`urlkey`)**, so it returns captures whose `original` URL had port `:80`, `http://` instead of `https://`, `www.` vs non-`www.`, or `//` in the path.
        - Concrete examples from `b2_discovery` where valid HTTP 200 PDF captures were thrown away:
          - Query: `https://www.irs.gov/pub/irs-utl/20-Immigration%20and%20Taxation.pdf` $\rightarrow$ CDX returned `http://www.irs.gov:80/pub/irs-utl/20-Immigration%20and%20Taxation.pdf` (status 200, `application/pdf`) $\rightarrow$ **ABORTED!**
          - Query: `https://hcfa.house.gov/110/41994.pdf` $\rightarrow$ CDX returned `http://hcfa.house.gov/110/41994.pdf` (status 200, `application/pdf`) $\rightarrow$ **ABORTED!**
          - Query: `https://www.pgpf.org/sites/default/files/05092016_debt_limit_letter.pdf` $\rightarrow$ CDX returned `http://pgpf.org:80/sites/default/files/05092016_debt_limit_letter.pdf` (status 200, `application/pdf`) $\rightarrow$ **ABORTED!**
          - Also rejected: `nist.gov`, `piie.com`, `integration.samhsa.gov:80`, `crr.bc.edu:80`, `oregon-pip.org:80`, `archives113.transportation.house.gov//sites/...`, `help.senate.gov:80`, `aging.senate.gov:80`, `finance.senate.gov:80`, `foreign.senate.gov:80`, `judiciary.senate.gov:80`.
-  - **Fix for `discovery.py:167-190` and `117-126`**:
-    - If `rows == []`, return `DiscoveryOutcome(original_url=original, source='wayback', complete=True, reason='complete', candidates=())`.
-    - Compare `cdx.key(row['original']) == cdx.key(original)` (or `url_key` equality) instead of `row['original'] != original`.
-    - Construct `replay = f"https://web.archive.org/web/{row['timestamp']}id_/{row['original']}"` using `row['original']`, and in `validate_wayback_replay`, validate `cdx.key(target) == cdx.key(original)`.
+  - **Converged Fix for `discovery.py:129-215` (Preserving `validate_wayback_replay` Intact)**:
+    - In `_wayback_page(body)`: return `([], None)` when `data == []`.
+    - In `wayback_lookup`: validate a non-null `query_key = key(original)` against both `row['urlkey'] == query_key` and `key(row['original']) == query_key` (plus `_source_url(row['original'])`), preserve the requested campaign URL in `candidate['target_url'] = original`, set `candidate['original_url'] = row['original']`, and use `row['original']` in both `replay` and `ident`. Because `acquire_candidate` passes `candidate['original_url']` to `validate_wayback_replay`, `validate_wayback_replay` remains completely unchanged and passes on **237 / 237 (`100%`)** snapshot candidates.
 
 ---
 
 ### Stage 8: Public Release & UI Presentation (`archive_format.py`, `archive.ts`, `ArchiveDetail.tsx`)
 
 #### 1. Where the Step Lives
-- [archive_format.py](file:///Users/mikewolfd/Work/congressional-tech/packages/viewer_publication/src/viewer_publication/archive_format.py#L65-L82): `_lookup_steps`
-- [archive_format.py](file:///Users/mikewolfd/Work/congressional-tech/packages/viewer_publication/src/viewer_publication/archive_format.py#L190-L211): `urls` table (`lookup_key = sha256(lookup_url)`)
+- [archive_format.py](file:///Users/mikewolfd/Work/congressional-tech/packages/viewer_publication/src/viewer_publication/archive_format.py#L61-L82): `_key_hash`, `_lookup_steps`
+- [archive_format.py](file:///Users/mikewolfd/Work/congressional-tech/packages/viewer_publication/src/viewer_publication/archive_format.py#L190-L211): `urls` table (`lookup_key = first 8 bytes of sha256('lookup:' || lookup_url)`)
 - [document-addresses.sql](file:///Users/mikewolfd/Work/congressional-tech/model/sql/document-addresses.sql#L1-L4), [document-source-input.sql](file:///Users/mikewolfd/Work/congressional-tech/model/sql/document-source-input.sql#L1-L27), [document-recovery-input.sql](file:///Users/mikewolfd/Work/congressional-tech/model/sql/document-recovery-input.sql#L1-L6)
 - [archive.ts](file:///Users/mikewolfd/Work/congressional-tech/apps/site/src/components/explorer/reader/archive.ts#L25-L36): `lookupUrl(value: string)`
 - [archive.ts](file:///Users/mikewolfd/Work/congressional-tech/apps/site/src/components/explorer/reader/archive.ts#L178-L199): `findUrl`, `findLink`
@@ -448,41 +402,46 @@ Across the 8 stages of the `congressional-tech` pipeline, URLs pass through **fo
 #### 2. Input & Output Columns
 - **Inputs**: `document_addresses(document_id, url)` (union of `document_source_input.url`, `document_recovery_input.original_url`, `document_recovery_input.recovered_url`).
 - **Outputs**:
-  - `release/urls.parquet`: `(lookup_key BLOB, list_row UINTEGER)` sorted by `lookup_key = sha256(lookup_url)`.
-  - `release/document_rows.parquet`: `(list_row, ..., public_url, link_key BLOB)` where `link_key = sha256(public_url)`.
+  - `release/urls.parquet`: `(lookup_key FixedSizeBinary(8), list_row UINTEGER)` sorted by `lookup_key = substr(sha256('lookup:' || lookup_url), 1, 8)`.
+  - `release/links.parquet` & `release/detail.parquet`: `link_key FixedSizeBinary(8)` (first 8 bytes of `body_hex` for saved bodies, or `substr(sha256('url:' || original_url), 1, 8)` for recoveries).
   - `release/sources.parquet` & `release/recoveries.parquet`: literal `url`, `original_url`, `recovered_url`.
 
 #### 3. Exact Transformations Applied
-- **Backend (`archive_format.py:65-82` `_lookup_steps`)** and **Frontend (`archive.ts:25-36` `lookupUrl`)** compute `lookup_url`:
+- **Backend (`archive_format.py:61-82` `_key_hash` & `_lookup_steps`)** and **Frontend (`archive.ts:25-36` `lookupUrl`)** compute `lookup_url`:
   ```ts
   // apps/site/src/components/explorer/reader/archive.ts:25-36
   export function lookupUrl(value: string): string | null {
-    const trimmed = value.trim()
-    const match = trimmed.match(/^[a-zA-Z][a-zA-Z0-9+.-]*:\/\/([^/?#]+)([^?#]*)(?:\?([^#]*))?/)
+    try {
+      const parsed = new URL(value)
+      if (!/^https?:$/.test(parsed.protocol) || parsed.username || parsed.password) return null
+    } catch {
+      return null
+    }
+    const match = /^([a-zA-Z][a-zA-Z0-9+.-]*):\/\/([^/?#]*)([^?#]*)(\?[^#]*)?(?:#.*)?$/.exec(value)
     if (!match) return null
-    const authority = match[1].toLowerCase().replace(/^www\./, '').replace(/:(80|443)$/, '')
-    const path = (match[2] || '').replace(/\/+$/, '')
-    const query = match[3] ? `?${match[3]}` : ''
-    return `${authority}${path}${query}`
+    const scheme = match[1].toLowerCase()
+    const host = match[2].toLowerCase().replace(/^www\./, '')
+    const authority =
+      (scheme === 'http' && host.endsWith(':80')) || (scheme === 'https' && host.endsWith(':443'))
+        ? host.replace(/:(80|443)$/, '')
+        : host
+    const path = (match[3] || '').replace(/\/$/, '')
+    return `${authority}${path}${match[4] ?? ''}`
   }
   ```
-- Hashes `lookup_url` with SHA-256 (`sha256(lookup_url)`) and performs binary search over `urls.parquet` (`findUrl` in `archive.ts:178-190`).
-- Meanwhile, `findLink` (`archive.ts:192-199`) hashes the **exact trimmed `public_url` literal** (`sha256(value.trim())`) against `document_rows.link_key`.
+- Computes the first 8 bytes of `sha256('lookup:' + lookup_url)` and performs binary search over `urls.parquet` (`findUrl` in `archive.ts:178-190`).
 
 #### 4. Why It Does This
-- Provides fast client-side SHA-256 binary search in the browser so users can paste a source URL and find the corresponding archived document without shipping `url-rules.json` or Rust UDFs to the browser.
+- Provides fast client-side 8-byte SHA-256 prefix binary search in the browser so users can paste a source URL and find the corresponding archived document without shipping `url-rules.json` or Rust UDFs to the browser.
 
 #### 5. What It SHOULD Be (Gaps, Bugs & Corpus Counts)
 - **Architectural Design Note (`DM8.2` Fixed Lookup Key vs. Alternate User Spellings)**:
   - `_lookup_steps` (`archive_format.py:65-82`, `# DM8.2's fixed lookup spelling; the query remains byte-for-byte intact`) and `lookupUrl` (`archive.ts:25-36`) implement the locked `DM8.2` release lookup key. All **605,848** published rows in `sources.parquet` match their own expected `DM8.2` lookup entry in `urls.parquet`.
   - Exact percent-encoding breakdown in `publish_v20/release/sources.parquet` (`605,848` rows):
-    - **16,543** rows contain numeric escapes `%[0-9]{2}` (such as `%20`).
-    - **987** rows contain uppercase hex escapes `%[0-9A-F][A-F]` (such as `%2F` or `%E2%80%99`).
-    - **0** rows contain lowercase hex escapes `%[0-9a-f][a-f]` (because `resolved_links` and `source_addresses` passed through Rust `url_resolve` / `uri_normalize_encoding`).
-  - Where `findUrl` (`archive.ts:178-190`) does not match is **only on cross-spelling user pastes** where a user pastes an alternate spelling that differs from the published `sources.parquet` literal in ways `url_key` normalizes but `lookupUrl` does not:
-    1. **Raw spaces vs. `%20`**: `472` rows in `sources.parquet` have raw unencoded spaces `' '` (browsers percent-encode `' '` as `%20` when copied).
-    2. **Lowercase vs. uppercase `%XX` hex escapes**: `987` rows in `sources.parquet` have uppercase hex escapes (`%2F`, `%E2%80%99`), whereas a user may paste lowercase `%2f`.
-    3. **Wrapper / Query variants**: `4,270` rows with `&download=1` vs `913` with `?download=1`; `174` Congress.gov `?q=...` rows; `13` `utm_*` rows; `68` `web.archive.org` rows.
+    - **16,543** rows match `regexp_matches(url, '%[0-9]{2}')` (two numeric digits, such as `%20`).
+    - **987** rows match `regexp_matches(url, '%([0-9A-Fa-f][A-F]|[A-F][0-9A-Fa-f])')` (either hex digit uppercase `A-F`; **826** match `%[0-9A-F][A-F]` where the second hex digit is uppercase `A-F`).
+    - **0** rows match `regexp_matches(url, '%([0-9A-Fa-f][a-f]|[a-f][0-9A-Fa-f])')` (either hex digit lowercase `a-f`).
+  - Where `findUrl` (`archive.ts:178-190`) does not match is **only on cross-spelling user pastes** where a user pastes an alternate spelling that differs from the published `sources.parquet` literal in ways `url_key` normalizes but `lookupUrl` does not (`472` raw-space URLs vs browser `%20`, `987` uppercase hex URLs vs lowercase user input, `4,270` `&download=1` vs `913` `?download=1`, `174` Congress.gov `?q=...`, `13` `utm_*`, `68` `web.archive.org`).
 
 ---
 
@@ -506,19 +465,19 @@ Across the 8 stages of the `congressional-tech` pipeline, URLs pass through **fo
 ---
 
 ### Trace 2: `https://democrats-science.house.gov/download/ashley-nunes-witness-testimony&download=1`
-*(Representative of **3,231** pre-Wave 4 / **1,668** post-Wave 4 `needs_acquisition` `&download=1` URLs, **1,563** Wave 4 `repaired_download_query` recoveries, and **8,023** total `&download=1` CreativeEngine URLs)*
+*(Representative of **3,231** `plan` `needs_acquisition` `&download=1` URLs, **1,792 / 1,804 (`99.33%`)** Wave 4–5 repaired-query recoveries, and **12** attempted House targets where `?download=1` routed to `/imo/media/doc/...` but failed qualification due to a `0`-byte origin file or size limit)*
 
 | Stage | Behavior & Exact Column Values |
 | :--- | :--- |
-| **Stage 1 (Extraction & Resolution)** | A witness page links to the base URL `https://democrats-science.house.gov/download/ashley-nunes-witness-testimony`. When that base URL was fetched (`source_id = 3746c1fd50afd3403269d7d86c854f020424bd0610181046e2f6115cae89cc86`, HTTP 200, `body_sha = ae5ee73d95a8fada1e9491574799cf263d03114d3f84d830ed26a9f6e1e0934c`), it was classified as `record_role = 'wrapper', is_real_file = false`. In `readings_full_0cb`, `ae5ee73d...` yielded **87 extracted HTML links**, including `href = '//democrats-science.house.gov/download/ashley-nunes-witness-testimony&download=1'` and 4 self-fragment links (`#main-nav`, `#skip-nav`, `#`, `#`). All 87 entered `resolved_links` and `url_state_queue`. **However**, `model/sql/publisher-links.sql:4` is an `INNER JOIN` against `copy_url_keys` (already-captured sources): the 4 `#fragment` links stripped `#...` and self-joined to the wrapper page's own `url_key` (`source_id = 3746c1fd...`, contributing 4 rows to `publisher_links.parquet`), whereas `.../ashley-nunes-witness-testimony&download=1` had `0` captures and a different `url_key`, so `publisher-links.sql` dropped it! |
-| **Stage 2 (Scheduler)** | Enters `url_state_queue` (`archive_url_state.py:77-85`) from `resolved_links` on `url_state_page_contexts`. Because `url-normalized.sql` does not mutate literal URLs (and `min(url)` picks `&download=1` over `?download=1`), it was queued with literal `requested_url = 'https://democrats-science.house.gov/download/ashley-nunes-witness-testimony&download=1'`. |
-| **Stage 3 (Fetch)** | Base URL `.../ashley-nunes-witness-testimony` was fetched (HTTP 200 HTML wrapper `ae5ee73d...`). The `&download=1` URL had `attempts = 0` in `publish_v20/release/url_state.parquet`. Across the entire corpus (`capture_sources.parquet`), **100% (`4,062 / 4,062`) of historical HTTP 200 real-file captures with literal `&download=1` were on 4 Senate ColdFusion hosts (`*.senate.gov`), while `0 / 4,062` (`0%`) were on `*.house.gov`!** On House CreativeEngine servers, literal `&download=1` in the path fails unless rewritten to `?download=1`. |
+| **Stage 1 (Extraction & Resolution)** | A witness page links to the base URL `https://democrats-science.house.gov/download/ashley-nunes-witness-testimony`. When that base URL was fetched (`source_id = 3746c1fd50afd3403269d7d86c854f020424bd0610181046e2f6115cae89cc86`, HTTP 200, `body_sha = ae5ee73d95a8fada1e9491574799cf263d03114d3f84d830ed26a9f6e1e0934c`), it was classified as `record_role = 'wrapper', is_real_file = false`. In `page_facts.parquet` and `readings_full_0cb`, `ae5ee73d...` has `link_count = 87, status = 'completed'`, including `href = '//democrats-science.house.gov/download/ashley-nunes-witness-testimony&download=1'` and 4 self-fragment links (`#main-nav`, `#skip-nav`, `#`, `#`). `model/sql/publisher-links.sql:4` associates links with already-captured sources (`INNER JOIN copy_url_keys`), so the 4 `#fragment` links match the wrapper's own `source_id = 3746c1fd...` (`4` rows in `publisher_links.parquet`), while the unfetched `&download=1` link is discovered by `resolved_link_targets` in `archive_url_state.py:70`. |
+| **Stage 2 (Scheduler)** | Enters `url_state_queue` (`archive_url_state.py:77-85`, which excludes the 4 self-fragment links via `NOT EXISTS ... url_state_fetched_keys` at line 84 and admits the unfetched `&download=1` target). Queued with literal `requested_url = 'https://democrats-science.house.gov/download/ashley-nunes-witness-testimony&download=1'`. |
+| **Stage 3 (Fetch)** | Base URL `.../ashley-nunes-witness-testimony` was fetched (HTTP 200 HTML wrapper `ae5ee73d...`). The `&download=1` URL had `attempts = 0` in `publish_v20/release/url_state.parquet`. Across `capture_sources.parquet`, **100% (`4,062 / 4,062`) of historical HTTP 200 real-file captures with literal `&download=1` were on 4 Senate hosts (`*.senate.gov`), while `0 / 4,062` (`0%`) were on `*.house.gov`** (`19` HTTP attempts on `democrats-transportation.house.gov`, all returning HTTP `410`). |
 | **Stage 4 (Lake & Universe)** | Base URL is in `capture_sources.parquet` with `outcome = 'stored', http_status = 200, record_role = 'wrapper', is_real_file = false`. Both the base URL and `&download=1` enter `raw_universe.parquet` and `targets.parquet`. |
-| **Stage 5 (`url_key`)** | In `publish_v20` and `plan`, `url_key` was `democrats-science.house.gov/download/ashley-nunes-witness-testimony&download=1`. With `download-ampersand-query` (`url-rules.json:82-91`), `url_key` becomes `democrats-science.house.gov/download/ashley-nunes-witness-testimony?download=1` — which still differs from the base URL's `url_key` (`democrats-science.house.gov/download/ashley-nunes-witness-testimony`). |
-| **Stage 6 (URL State)** | In `publish_v20/release/url_state.parquet` (v1 7-col schema) and `release_v2/url_state.parquet` (v2 10-col schema):<br>- Base URL `.../ashley-nunes-witness-testimony`: `attempts = 1, last_status = 200, last_outcome = 'stored'` (`capture_disposition = 'satisfied', capture_reason = 'stored'` in `release_v2`, even though only the HTML wrapper was stored!).<br>- `&download=1` URL: in `publish_v20`, `attempts = 0, last_status = NULL`; in Wave 4 (`release_v2`), `ashley-nunes-witness-testimony&download=1` was **recovered via `repaired_download_query`** (`?download=1`) and is now `capture_disposition = 'satisfied', capture_reason = 'accepted_recovery'`! |
-| **Stage 7 (Recovery)** | In `plan/url-dispositions.parquet` (pre-Wave 4), `3,231` `&download=1` targets (including `ashley-nunes-witness-testimony&download=1`) were `needs_acquisition`. In Wave 4 (`plan_v2/url-dispositions.parquet`), **1,563** House `&download=1` targets (including `ashley-nunes-witness-testimony&download=1`) moved to **`accepted_recovery` (`retained_candidate_repaired_download_query`)** by fetching the repaired `?download=1` URL, leaving **1,668** (`1,664` on `*.house.gov`) in `needs_acquisition`. |
-| **Stage 8 (Release & UI)** | Missing from `publish_v20/release/document_rows.parquet` and `sources.parquet` (`0` rows), and recovered in `release_v2/recoveries.parquet` via Wave 4's `?download=1` repair! |
-| **What Should Happen** | Rewrite `/download/<slug>(?:%20|\s)*&download=1(?:#.*)?$` $\rightarrow$ `/download/<slug>?download=1` when selecting candidate fetch literals in `capture_scheduler.py` and `archive_url_state.py` so the HTTP client requests `?download=1` directly (including for the remaining **1,664** `*.house.gov` `needs_acquisition` targets). |
+| **Stage 5 (`url_key`)** | In `publish_v20` and `plan`, `url_key` was `democrats-science.house.gov/download/ashley-nunes-witness-testimony&download=1`. With `download-ampersand-query` (`url-rules.json:82-91`), `url_key` becomes `democrats-science.house.gov/download/ashley-nunes-witness-testimony?download=1` (distinct from the wrapper landing page's `url_key = democrats-science.house.gov/download/ashley-nunes-witness-testimony`). |
+| **Stage 6 (URL State)** | In `release_v2/url_state.parquet` (v2 10-col schema):<br>- Base URL `.../ashley-nunes-witness-testimony`: `attempts = 1, last_status = 200, last_outcome = 'stored', capture_disposition = 'eligible', capture_reason = 'no_satisfying_recovery'`.<br>- `&download=1` URL: `attempts = 0, last_status = NULL, last_outcome = NULL, capture_disposition = 'eligible', capture_reason = 'no_satisfying_recovery'`. |
+| **Stage 7 (Recovery)** | In Wave 4 (`receipts/documents/2026-10-31/track-b-wave4-20261031-a13ed292de0ec3429d9594f856c98e74fd59c9a4673dce91e0b0b1e4aa267669.jsonl.gz`), `ashley-nunes-witness-testimony&download=1` was requested via `candidate_url = 'https://democrats-science.house.gov/download/ashley-nunes-witness-testimony?download=1'`. **The `?download=1` rewrite succeeded at HTTP routing**: the server redirected (`302`) to `https://democrats-science.house.gov/imo/media/doc/Ashley%20Nunes%20Witness%20Testimony.pdf` and returned `http_status = 200, outcome = 'stored'`. **However**, the PDF file hosted on the committee's origin server at that path is **`0 bytes` (`sha256 = e3b0c44...`, `sniffed_format = 'empty'`)** across all 3 rungs (`direct`, `zyte`, `firecrawl`), so `qualification_status = 'unresolved'`, it is absent from `selected_recoveries_v2_plus.parquet`, and it remains `needs_acquisition` in `plan_v2` (one of only `12` attempted House targets out of `1,804` that did not qualify, alongside `1,792` (`99.33%`) that became `accepted_recovery`!). |
+| **Stage 8 (Release & UI)** | Absent from `publish_v20/release/sources.parquet` and `track_a/selected_recoveries_v2_plus.parquet` because the committee server's `/imo/media/doc/Ashley%20Nunes%20Witness%20Testimony.pdf` file is `0 bytes` (`release_v2/` contains capture control files and `url_state.parquet`, not `recoveries.parquet`). |
+| **What Should Happen** | Generate `/download/<slug>?download=1` as the repaired fetch candidate for House `/download/<slug>&download=1` targets in `capture_scheduler.py` and campaign discovery while preserving `target_url` and existing `url_state` history. |
 
 ---
 
@@ -531,8 +490,8 @@ Across the 8 stages of the `congressional-tech` pipeline, URLs pass through **fo
 | **Stage 2 & 3 (Scheduler & Fetch)** | When the original Senate hearing/download URL was fetched, ColdFusion responded with `302 Found` $\rightarrow$ `Location: /404?notfound=...`. In `assemble-20260930.jsonl.gz` (line 138314 for `aging.senate.gov`), the redirect target `https://www.aging.senate.gov/404?notfound=/hearings/...xml` was recorded as both `requested_url` and `url` with `http_status = 404, outcome = 'failed'`. |
 | **Stage 4 (Lake & Universe)** | In `capture_sources.parquet` (**337 rows** with `/404?notfound=`), all are classified as `record_role = 'error_response'`. Because `model-url-inputs.sql:7-8` unnests `make_array(requested_url, url)` for all `mode = 'fetch'` captures regardless of `outcome = 'failed'` or `record_role = 'error_response'`, all `/404?notfound=` URLs enter `url_inputs`. |
 | **Stage 5 (`url_key`)** | In `publish_v20` and `plan_v2` (built before `senate-notfound`), `url_key` was `aging.senate.gov/404?notfound=/hearings/half-the-country-zero-hearings-meeting-the-moment-to-end-the-menopause-care-gap-in-america.xml`. At commit `535375d1` (`url-rules.json:72-81`), `senate-notfound` unwraps `aging.senate.gov` and `judiciary.senate.gov`, **but fails on `finance.senate.gov/404?notfound=hearings%2F...#main-nav` for two reasons**: (1) `([^#]+)$` fails to match at all when `#main-nav` is present (since `wrapper` rules run before `#fragment` stripping in `url-normalized.sql`), and (2) `"decoder": "none"` leaves `%2F` un-decoded (`finance.senate.gov/hearings%2F...`)! |
-| **Stage 6 (URL State)** | In `url_state.parquet`, **53 `/404?notfound=` URLs** appear as standalone `requested_url` rows (`last_status = 404, last_outcome = 'failed'`, and `capture_disposition = 'exhausted'` in `release_v2`). |
-| **Stage 7 (Recovery)** | In `plan/url-dispositions.parquet`, **52** `/404?notfound=` URLs were classified as **`needs_acquisition` (`needs_acquisition_purged_404_410`)** and **1** (`finance.senate.gov`) as **`usable_direct`** (in Wave 4, **22** of those `/404?notfound=` rows were recovered by fetching the unwrapped target path!). |
+| **Stage 6 (URL State)** | In `release_v2/url_state.parquet`, **53 `/404?notfound=` URLs** appear as standalone `requested_url` rows: **37** have `capture_disposition = 'eligible', capture_reason = 'no_satisfying_recovery'` and **16** have `capture_disposition = 'satisfied', capture_reason = 'qualified_recovery'`. |
+| **Stage 7 (Recovery)** | In `plan/url-dispositions.parquet`, **52** `/404?notfound=` URLs were classified as **`needs_acquisition` (`needs_acquisition_purged_404_410`)** and **1** (`finance.senate.gov`) as **`usable_direct`** (in Waves 4–5, **32** `/404?notfound=` targets were recovered under `notfound_404_search_recovery`). |
 | **Stage 8 (Release & UI)** | Excluded from `sources.parquet` (0 rows) because `record_role = 'error_response'`. |
 | **What Should Happen** | 1. Exclude `record_role = 'error_response'` / `/404?notfound=` redirect targets from `model-url-inputs.sql` and `url-state.sql`.<br>2. Change `senate-notfound` in `url-rules.json:72-81` to `"decoder": "percent"` with pattern `(?i)^(https?://(?:[a-z0-9-]+\.)+senate\.gov)/404\?notfound=(?:%2f|/)?([^#]+)(?:#.*)?$`.<br>3. When recovering any historical `/404?notfound=` `requested_url`, query CDX / live origin using the unwrapped URL, not the `/404?notfound=` literal. |
 
@@ -546,8 +505,8 @@ Across the 8 stages of the `congressional-tech` pipeline, URLs pass through **fo
 | **Stage 1–4 (Ingestion & Universe)** | In `current_recoveries.parquet` (`id = 06768a003a24a46f592de7de7d4a595c6858a5be1dd99e1a036c2f4bd024fd10`), `original_url = 'https://waysandmeans.house.gov/event/h-r-586-the-fairness-for-foster-care-families-act-of-2001/fullcomm/107cong/fc-7act.htm'` and `recovered_url = 'https://web.archive.org/web/20010913024957id_/http://waysandmeans.house.gov:80/fullcomm/107cong/fc-7act.htm'`. Also in `capture_sources.parquet`, 6 direct GPO fetches have `requested_url = 'http://www.gpo.gov:80/fdsys/pkg/CHRG-112hhrg.../pdf/...'`. |
 | **Stage 5 (`url_key`)** | In `url-normalized.sql`, Pass 1 of `wrapper` rule `wayback` (`url-rules.json:4-11`) extracts `$1 = 'http://waysandmeans.house.gov:80/fullcomm/107cong/fc-7act.htm'`. Next, `url_resolve($1, NULL)` (Rust `url::Url::parse`) strips default port `:80` (since scheme is `http`), producing `parsed = 'http://waysandmeans.house.gov/fullcomm/107cong/fc-7act.htm'` and `url_key = 'waysandmeans.house.gov/fullcomm/107cong/fc-7act.htm'`. |
 | **Stage 6 (URL State & Provenance)** | `provenance-recovery-attachments.sql` joins on `original_url`'s `url_key` (`waysandmeans.house.gov/event/h-r-586-.../fullcomm/107cong/fc-7act.htm`), attaching the recovery to document `130775` (`list_row = 123613`). |
-| **Stage 7 (Recovery & CDX Discovery)** | **Breaks in `discovery.py:178-184` and `117-126`!** While historical recoveries (`current_recoveries.parquet` has 22 `web.archive.org/...:80/` rows) were imported earlier, the new `corpus_recovery/discovery.py` (`wayback_lookup`) checks `if row['original'] != original: raise ValueError('CDX result outside query')`. When querying CDX for `https://www.irs.gov/pub/irs-utl/20-Immigration%20and%20Taxation.pdf`, Wayback returns `original = 'http://www.irs.gov:80/pub/irs-utl/20-Immigration%20and%20Taxation.pdf'`, causing `wayback_lookup` to throw `ValueError` and fail with `cdx_reason = 'invalid_index_response'`! Also, in `url-dispositions.parquet`, the 6 `http://www.gpo.gov:80/...` rows have `host = 'www.gpo.gov:80'` because `campaign.py` extracted `host` without stripping `:80`. |
-| **Stage 8 (Release & UI)** | Published in `release/recoveries.parquet` (`list_row = 123613`) with `recovered_url = 'https://web.archive.org/web/20010913024957id_/http://waysandmeans.house.gov:80/fullcomm/107cong/fc-7act.htm'`. In `archive_format.py:65-82` (`_lookup_steps`) and `archive.ts:25-36` (`lookupUrl`), `recovered_url` is hashed **without** unwrapping `web.archive.org`, so its `lookup_url` in `urls.parquet` is `web.archive.org/web/20010913024957id_/http://waysandmeans.house.gov:80/fullcomm/107cong/fc-7act.htm` (where `:80` is not even stripped because `:80` is inside the path of `web.archive.org`, not the authority!). |
+| **Stage 7 (Recovery & CDX Discovery)** | **Breaks in `discovery.py:178-184`!** While historical recoveries (`current_recoveries.parquet` has 22 `web.archive.org/...:80/` rows) were imported earlier, `corpus_recovery/discovery.py` (`wayback_lookup`) checks `if row['original'] != original: raise ValueError('CDX result outside query')`. When querying CDX for `https://www.irs.gov/pub/irs-utl/20-Immigration%20and%20Taxation.pdf`, Wayback returns `original = 'http://www.irs.gov:80/pub/irs-utl/20-Immigration%20and%20Taxation.pdf'`, causing `wayback_lookup` to throw `ValueError` and fail with `cdx_reason = 'invalid_index_response'`! Also, in `url-dispositions.parquet`, the 6 `http://www.gpo.gov:80/...` rows have `host = 'www.gpo.gov:80'` because `campaign.py` extracted `host` without stripping `:80`. |
+| **Stage 8 (Release & UI)** | Published in `release/recoveries.parquet` (`list_row = 123613`) with `recovered_url = 'https://web.archive.org/web/20010913024957id_/http://waysandmeans.house.gov:80/fullcomm/107cong/fc-7act.htm'`. In `archive_format.py:65-82` (`_lookup_steps`) and `archive.ts:25-36` (`lookupUrl`), `recovered_url` is hashed **without** unwrapping `web.archive.org`, so its `lookup_url` in `urls.parquet` is `web.archive.org/web/20010913024957id_/http://waysandmeans.house.gov:80/fullcomm/107cong/fc-7act.htm`. |
 
 ---
 
@@ -565,34 +524,44 @@ Across the 8 stages of the `congressional-tech` pipeline, URLs pass through **fo
 
 ---
 
-## Ranked Summary of Architectural Findings & Exact Fixes
-*(See also the full post-audit validation matrix and empirical verification in [docs/url-normalization-defense.md](file:///Users/mikewolfd/Work/congressional-tech/docs/url-normalization-defense.md).)*
+## Aggregated Empirical Findings Across Holistic Recovery Waves 1–6
 
-1. **[P0 — Stage 7] `wayback_lookup` rejects 85% (51/60) of HTTP 200 Wayback CDX responses (`packages/corpus_recovery/src/corpus_recovery/discovery.py:117-126, 167-190`)**:
-   - **Fix**:
-     - Treat `rows == []` as an empty result (`complete=True, reason='complete', candidates=()`), not `ValueError('Empty or non-list Wayback JSON')`.
-     - Replace `row['original'] != original` with `cdx.key(row['original']) != cdx.key(original)`.
-     - Build `replay = f"https://web.archive.org/web/{row['timestamp']}id_/{row['original']}"` using `row['original']`, and relax `validate_wayback_replay` to compare `cdx.key(target) == cdx.key(original)`.
+Across Holistic Recovery Waves 1–6 (**`35,552` accepted recoveries in Waves 1–5 + `1,375+` in Wave 6**, reducing `needs_acquisition` from `41,111` baseline by over `91%`), seven empirical URL parsing, normalization, candidate-generation, and qualification patterns accounted for the overwhelming majority of recoveries:
+
+1. **Scheme Upgrade (`http://` $\rightarrow$ `https://`) & `.xml` $\leftrightarrow$ `.pdf` Representation Siblings (`17,447` in Wave 1 + `61` in Wave 6)**:
+   - On `docs.house.gov/meetings/...` and `docs.house.gov/billsthisweek/...`, `http://` links failed `capture-scope.json`'s `^https://` regexes when `min(url)` picked `http://`, and `.xml` witness/bill files had already-captured `.pdf` siblings at the identical path stem (`s/\.xml$/.pdf/i`).
+2. **Committee Subdomain & Majority/Minority Host Aliasing (`12,592` `v1_recovery_provenance` + `2,008` `stored_r2_exact_filename` + `1,093` Wave 6 `democrats-transportation.house.gov` witness-date matches + `31` `edlabor.house.gov` $\rightarrow$ `democrats-edworkforce.house.gov`)**:
+   - Committees rename or split subdomains across Congresses while storing files in shared or parallel buckets:
+     - `edlabor.house.gov/download/...&download=1` (`31` rows) $\rightarrow$ `democrats-edworkforce.house.gov/download/...?download=1` (HTTP 200 over `$0` Direct).
+     - `democrats-transportation.house.gov/download/<mm>/<dd>/<yyyy>/<slug>&download=1` (`1,369` rows): `?download=1` redirects (`302`) to `//democrats-transportation.house.gov/imo/media/doc/<file>.pdf` which returns `403 Forbidden`, **but `1,093` of those witness testimonies are already captured in `capture_evidence.parquet` under the `PW` committee's `transportation.house.gov/uploadedfiles/...` and `docs.house.gov/meetings/PW/...` buckets**!
+     - Drupal multisite authoring hosts (`edit-republicans.veterans.house.gov/sites/republicans.veterans.house.gov/files/...`, `222` rows; `archives-agriculture.house.gov/sites/republicans.agriculture.house.gov/files/...`, `31` rows) embed the canonical host directly inside `/sites/<canonical-host>/files/...`.
+3. **Path Case-Sensitivity (`url-normalized.sql` preserves `c.path` case) vs. Case-Insensitive Committee File Servers (`174` in Wave 2 + `174` in Wave 6)**:
+   - In Wave 6, **155 of 158** `https://democrats-naturalresources.house.gov/UploadedFiles/<file>.pdf` targets were already captured in `capture_evidence.parquet` under `https://naturalresources.house.gov/uploadedfiles/<file>.pdf` (lowercase `/uploadedfiles/` on the majority domain). Case-insensitive path matching in candidate discovery recovers these at `$0` without altering `url_key` case semantics globally.
+4. **House `/download/<slug>&download=1` $\rightarrow$ `?download=1` (`1,792 / 1,804 = 99.33%` qualified) + Redirect-Location Filename Extraction (`25` recoveries)**:
+   - Even when `/imo/media/doc/<Actual_Filename>.pdf` returns `403` or `404` on the origin host, capturing the `302` `Location` header from `/download/<slug>?download=1` reveals the true underlying filename and matches existing corpus documents (`redirect_location_corpus_match`).
+5. **Deterministic Cross-Host Coordinate Rewriting (`www.congress.gov` Meeting Docs $\rightarrow$ `docs.house.gov/meetings/...`, `173` targets in Wave 6, plus `t2GPO`/`fdsys` $\rightarrow$ `govinfo.gov/content/pkg/...`)**:
+   - `www.congress.gov/<cong>/meeting/house/<event_id>/.../HHRG-<cong>-<cmte><subcmte>-...-<YYYYMMDD>.pdf` encodes the exact `docs.house.gov` coordinates (`<cmte>`, `<cmte><subcmte>`, `<YYYYMMDD>`, `<event_id>`, `<filename>`), recovering authoritative PDFs over `$0` Direct HTTP.
+6. **WordPress REST API Discovery Links (`/wp-json/wp/v2/...`, `578` in Waves 4–5 + `858` in Wave 6) vs. `/wp-json/oembed/1.0/embed` (`2,862` excluded)**:
+   - `<link rel="alternate" type="application/json" href=".../wp-json/wp/v2/hearings/<id>">` tags on Senate committee pages yield structured JSON metadata whose `"link"` field points back to the already-captured HTML hearing page.
+7. **Post-Fetch Qualification Bottlenecks Masquerading as URL/Acquisition Failures (`227` Poppler-verified owner-flagged PDFs + `3` DOCX + `3` `0`-byte origin files + `15` `>16 MB` PDFs)**:
+   - Standard Adobe owner-permission flags (`encryption: yes (owner:...)`) caused `227` valid Wave 4 PDFs to be marked `qualification_status = 'unresolved'` until verified via `qpdf`/Poppler in Wave 5; `15` multi-hundred-page hearing volumes (`17 MB–157 MB`) hit `spool_limit = 16 MB` / `max_input_bytes = 16 MB` until raised to `256 MB` in Wave 6; and `3` origin files (including `ashley-nunes-witness-testimony`) are literally `0 bytes` on the committee server.
+
+---
+
+## Ranked Summary of Architectural Findings & Converged Fixes
+*(See also the full convergence matrix and empirical verification in [docs/url-normalization-defense.md](file:///Users/mikewolfd/Work/congressional-tech/docs/url-normalization-defense.md).)*
+
+1. **[P0 — Stage 7] Fix Wayback CDX Empty-List & SURT-Alias Handling in `discovery.py:129-215` While Preserving `validate_wayback_replay` Intact**:
+   - In `_wayback_page(body)`: return `([], None)` when `data == []` so `wayback_lookup` retains prior pages' candidates/evidence/window and terminates cleanly with `complete=True, reason='complete'`.
+   - In `wayback_lookup`: validate non-null `query_key = key(original)` against both `row['urlkey'] == query_key` and `key(row['original']) == query_key` (plus `_source_url(row['original'])`), preserve `candidate['target_url'] = original`, set `candidate['original_url'] = row['original']`, and use `row['original']` in both `replay` and `ident`. Leave `validate_wayback_replay` (`lines 117–126`) unchanged.
 
 2. **[P0 — Stage 5] Fix `senate-notfound` (`%2F` + `#fragment`) and `download-ampersand-query` (`#fragment`) in `model/registries/url-rules.json:72-92`**:
-   - **Fix**:
-     - Set `"decoder": "percent"` on `senate-notfound` with pattern `(?i)^(https?://(?:[a-z0-9-]+\.)+senate\.gov)/404\?notfound=(?:%2f|/)?([^#]+)(?:#.*)?$` so `%2F` is decoded and `#main-nav` (`20` rows in `publisher_links.parquet`) matches before `#fragment` stripping.
-     - Add `(?:#.*)?$` to `download-ampersand-query`: `(?i)^(https?://(?:[a-z0-9-]+\.)*(?:house|senate)\.gov/download/[^?#]+?)(?:%20|\s)*&download=1(?:#.*)?$`.
+   - Set `"decoder": "percent"` on `senate-notfound` with pattern `(?i)^(https?://(?:[a-z0-9-]+\.)+senate\.gov)/404\?notfound=(?:%2f|/)?([^#]+)(?:#.*)?$` so `%2F` is decoded and `#main-nav` (`20` rows in `publisher_links.parquet`) matches before `#fragment` stripping.
+   - Add `(?:#.*)?$` to `download-ampersand-query`: `(?i)^(https?://(?:[a-z0-9-]+\.)*(?:house|senate)\.gov/download/[^?#]+?)(?:%20|\s)*&download=1(?:#.*)?$`.
+   - Do **not** replace `/$` with `(?:%20|/)+$` in `model/sql/url-normalized.sql:48` (global trailing-space/multi-slash trim is withdrawn).
 
-3. **[P0 — Stages 2 & 6] Select repaired/unwrapped & `https://`-preferred fetch literals in `capture_scheduler.py:383-405` and `archive_url_state.py:70-85`**:
-   - **Fix**:
-     - Instead of `min(raw_literal_url)` (which picks `&download=1` over `?download=1` and `http://` over `https://`), select candidate fetch URLs from the unwrapped/repaired `u.value` (or prefer `https://` and `?download=1` via `CASE` ordering) before evaluating `capture-scope.json`.
-     - Directly addresses the remaining **1,664** `*.house.gov` `&download=1` `needs_acquisition` targets in `plan_v2` (following the **1,563** already recovered in Wave 4 via `repaired_download_query`).
+3. **[P0 — Stages 2 & 6] Generate Admissible Repaired Fetch Candidates While Preserving Existing `url_state` & Campaign Target Membership (`capture_scheduler.py` & `archive_url_state.py`)**:
+   - Prefer admissible repaired candidates (`?download=1` and `https://`) while retaining the observed `requested_url` state history and `campaign_targets.target_url` membership across lone `&download=1` seeds, mixed spellings, existing `url_state_latest` rows (`capture_scheduler.py:392`), and campaign targets (`capture_scheduler.py:381`).
 
-4. **[P1 — Stage 5] Strip trailing `%20` on URL paths in `model/sql/url-normalized.sql:48`**:
-   - **Fix**:
-     - Replace `regexp_replace(c.path, '/$', '')` with `regexp_replace(c.path, '(?:%20|/)+$', '')` to fix **38** URLs in `url-dispositions.parquet` whose paths end in `%20` (e.g. `https://democrats-transportation.house.gov/download/09/09/2020/flynn-testimony%20`).
-
-5. **[P1 — Stage 6] Preserve literal `original_url` custody joins in `archive_url_state.py:129-166` while resolving `url_key` aliases in `stored_url_key_alias`**:
-   - **Design**:
-     - Keep literal `original_url` joins in `archive_url_state.py:129-166` so per-target `recovery_requirements`, `refresh_policy = 'historical_only'`, receipt custody, and unambiguous 1:1 checks remain enforced; resolve `url_key` aliases via explicit `stored_url_key_alias` candidate decisions (which resolved **35** of **36** alias targets into `accepted_recovery` in `plan_v2`).
-
-6. **[P2 — Stages 4 & 5] Filter `record_role = 'error_response'` redirect URLs from `model-url-inputs.sql:7-8` and unwrap `mailto:https://...` / `congress.gov/cgi-lis/t2GPO/`**:
-   - **Fix**:
-     - Filter `record_role = 'error_response'` out of `model-url-inputs.sql:7-8` when unnesting redirect `url`s (**53** `/404?notfound=` disposition targets).
-     - Add `^(?i)mailto:(https?://.+)$` $\rightarrow$ `$1` and expand `lis-gpo` to `^https?://(?:www\.)?(?:lis|congress)\.gov/cgi-lis/t2GPO/(https?://.+)$`.
+4. **[P1 — Stage 6] Preserve Literal `original_url` Custody Joins in `archive_url_state.py:129-166` While Resolving `url_key` Aliases in Candidate Discovery (`stored_url_key_alias`)**:
+   - Keep literal `original_url` joins in `archive_url_state.py:129-166` so per-target `recovery_requirements`, `refresh_policy = 'historical_only'`, receipt custody, and unambiguous 1:1 checks remain enforced; resolve `url_key` aliases via explicit candidate decisions (`35` of `36` alias targets accepted in `plan_v2`).
