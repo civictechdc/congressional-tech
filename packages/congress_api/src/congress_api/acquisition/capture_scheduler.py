@@ -845,6 +845,7 @@ def _run_capture(release,*,engine,work,as_of,request_budget,byte_budget,spool_bu
 
 def run_capture(release,**options):
     """Resume one pinned campaign, with one active local writer per work root."""
+    _require_capture_authority(release)
     import fcntl
     work=Path(options['work']);work.mkdir(parents=True,exist_ok=True)
     with (work/'capture.lock').open('a') as lock:
