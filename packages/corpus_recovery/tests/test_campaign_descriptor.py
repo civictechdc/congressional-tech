@@ -43,3 +43,14 @@ def test_invalid_requirement_refused(tmp_path):
     path.write_text(json.dumps(value))
     with pytest.raises(ValueError, match='requirement'):
         load_campaign(path)
+
+
+def test_rejects_ambiguous_json_and_table_replacement(tmp_path):
+    path = descriptor(tmp_path)
+    campaign = load_campaign(path)
+    with pytest.raises(TypeError):
+        campaign.tables['targets'] = campaign.tables['candidates']
+    raw = path.read_text().replace('"version": 1', '"version": 1, "version": 1')
+    path.write_text(raw)
+    with pytest.raises(ValueError, match='Duplicate'):
+        load_campaign(path)

@@ -6,6 +6,7 @@ any effect based on them. A fresh process must load and verify the descriptor ag
 from dataclasses import dataclass
 import json
 from pathlib import Path
+from types import MappingProxyType
 import re
 
 from congress_shared.custody import bounded_control_read, verify_local_file
@@ -35,6 +36,15 @@ class Campaign:
         return self.tables[name].path
 
 
+def _object_without_duplicates(pairs):
+    value = {}
+    for key, item in pairs:
+        if key in value:
+            raise ValueError(f'Duplicate campaign descriptor field: {key}')
+        value[key] = item
+    return value
+
+
 def load_campaign(path):
     """Verify exact metadata bytes before exposing campaign table paths.
 
@@ -47,7 +57,7 @@ def load_campaign(path):
         raw = bounded_control_read(stream)
     from hashlib import sha256
     descriptor_sha256 = sha256(raw).hexdigest()
-    value = json.loads(raw)
+    value = json.loads(raw, object_pairs_hook=_object_without_duplicates)
     if not isinstance(value, dict) or set(value) != {
         'version', 'campaign_id', 'requirement', 'tables', 'target_table', 'candidate_table'
     } or type(value['version']) is not int or value['version'] != 1:
@@ -74,5 +84,5 @@ def load_campaign(path):
         if not table_path.is_absolute():
             table_path = path.parent / table_path
         result[name] = verify_local_file(table_path, expected_sha256=pin['sha256'])
-    return Campaign(value['campaign_id'], value['requirement'], result,
+    return Campaign(value['campaign_id'], value['requirement'], MappingProxyType(result),
                     value['target_table'], value['candidate_table'], descriptor_sha256)
