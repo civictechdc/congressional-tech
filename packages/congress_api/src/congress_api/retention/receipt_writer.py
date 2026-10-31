@@ -2,7 +2,9 @@
 from datetime import date
 from dataclasses import replace
 import gzip
+import hashlib
 import json
+import os
 from pathlib import Path
 import re
 from tempfile import TemporaryDirectory
@@ -72,7 +74,21 @@ class ReceiptWriter:
         self.archive_limits, self.sequence = archive_limits,0
         self._lock, self._archive_lock = threading.Lock(), threading.Lock()
 
-    def write(self, result: FetchResult, *, family=None, observations=(), mode='fetch', recovery_evidence=None, fidelity=None):
+    def write(self, result: FetchResult, *, family=None, observations=(), mode='fetch', recovery_evidence=None, fidelity=None,
+              operation_id=None, freeze_dir=None):
+        if (operation_id is None) != (freeze_dir is None):
+            raise ValueError('Stable receipt needs an operation ID and freeze directory')
+        if operation_id is not None:
+            if not _part(operation_id):
+                raise ValueError('Invalid stable receipt operation ID')
+            frozen=Path(freeze_dir)/operation_id
+            if (frozen/'receipt.gz').exists() and not (frozen/'receipt.json').exists():
+                raw=(frozen/'receipt.gz').read_bytes()
+                prepared=json.loads(gzip.decompress(raw))
+                key=f"receipts/{prepared['family']}/{self.write_date}/{prepared['run_id']}-{operation_id}.jsonl.gz"
+                self._durable_file(frozen/'receipt.json',json.dumps(dict(key=key,sha256=hashlib.sha256(raw).hexdigest()),separators=(',',':')).encode())
+            if (frozen/'receipt.json').exists():
+                return self._apply_frozen(frozen,result=result)
         final = result.final
         family = family or source_family(url=final.requested_url)
         if not family or not all(_part(part) for part in family.split('/')):
@@ -106,8 +122,11 @@ class ReceiptWriter:
         validate_record([line,*[dict(requested_url=a.requested_url,url=a.url,redirects=list(a.redirects)) for a in attempts]])
         line = public_receipt(line)
         final_write = None
-        with TemporaryDirectory(prefix='raw-receipt-') as temporary:
+        with TemporaryDirectory(prefix='raw-receipt-',dir=Path(freeze_dir).parent if freeze_dir is not None else None) as temporary:
             temporary = Path(temporary)
+            if operation_id is not None:
+                from congress_api.acquisition.capture_journal import durable_json
+                durable_json(temporary/'capture-owner.json',dict(kind='receipt-scratch-v1',operation_id=operation_id))
             for attempt_index, attempt in enumerate(attempts):
                 if attempt.body is None:
                     continue
@@ -137,27 +156,81 @@ class ReceiptWriter:
                                 line['captures'].append(self._capture(member.body,attempt,attempt_index,retained,
                                                                       member.member_path,member.entry_index,fidelity))
                     else:
-                        expansion = expand_archive(body.path,directory=temporary/str(attempt_index),limits=self.archive_limits)
-                        capture['expansion'] = expansion.status
-                        for member in expansion.members:
-                            member_key = f'bodies/sha256/{member.body.sha256[:2]}/{member.body.sha256}'
-                            try:
-                                retained = self.store.put(member_key,member.body.path,
-                                                          member.body.media_type or 'application/octet-stream')
-                            finally:
-                                member.body.path.unlink(missing_ok=True)
-                            line['captures'].append(self._capture(member.body,attempt,attempt_index,retained,
-                                                                  member.member_path,member.entry_index,fidelity))
+                        with self._archive_lock:
+                            expansion = expand_archive(body.path,directory=temporary/str(attempt_index),limits=self.archive_limits)
+                            capture['expansion'] = expansion.status
+                            for member in expansion.members:
+                                member_key = f'bodies/sha256/{member.body.sha256[:2]}/{member.body.sha256}'
+                                try:
+                                    retained = self.store.put(member_key,member.body.path,
+                                                              member.body.media_type or 'application/octet-stream')
+                                finally:
+                                    member.body.path.unlink(missing_ok=True)
+                                line['captures'].append(self._capture(member.body,attempt,attempt_index,retained,
+                                                                      member.member_path,member.entry_index,fidelity))
             line['outcome'] = outcome(final,final_write)
-            with self._lock:
-                self.sequence += 1
-                seq = self.sequence
-            key = f'receipts/{family}/{self.write_date}/{self.run_id}-{seq:06d}.jsonl.gz'
+            if operation_id is None:
+                with self._lock:
+                    self.sequence += 1
+                    seq = self.sequence
+                key = f'receipts/{family}/{self.write_date}/{self.run_id}-{seq:06d}.jsonl.gz'
+            else:
+                key = f'receipts/{family}/{self.write_date}/{self.run_id}-{operation_id}.jsonl.gz'
             path = temporary/'receipt.jsonl.gz'
             payload = (json.dumps(line,ensure_ascii=False,separators=(',',':'))+'\n').encode()
             path.write_bytes(gzip.compress(payload,compresslevel=6,mtime=0))
+            if operation_id is not None:
+                frozen.mkdir(parents=True,exist_ok=True)
+                self._durable_file(frozen/'receipt.gz',path.read_bytes())
+                self._durable_file(frozen/'receipt.json',json.dumps(dict(key=key,sha256=hashlib.sha256(path.read_bytes()).hexdigest()),
+                    separators=(',',':')).encode())
+                directory=os.open(frozen,os.O_RDONLY)
+                try:os.fsync(directory)
+                finally:os.close(directory)
+                directory=os.open(frozen.parent,os.O_RDONLY)
+                try:os.fsync(directory)
+                finally:os.close(directory)
+                return self._apply_frozen(frozen)
             self.store.put(key,path,'application/x-ndjson')
         return key,line
+
+    @staticmethod
+    def _durable_file(path, data):
+        from uuid import uuid4
+        temporary=path.with_name(path.name+'.'+uuid4().hex+'.tmp')
+        with temporary.open('xb') as stream:
+            stream.write(data)
+            stream.flush()
+            os.fsync(stream.fileno())
+        os.replace(temporary,path)
+        descriptor=os.open(path.parent,os.O_RDONLY)
+        try:os.fsync(descriptor)
+        finally:os.close(descriptor)
+
+    def _apply_frozen(self, frozen, *, result=None):
+        metadata=json.loads((frozen/'receipt.json').read_text())
+        path=frozen/'receipt.gz'
+        raw=path.read_bytes()
+        if set(metadata)!={'key','sha256'} or hashlib.sha256(raw).hexdigest()!=metadata['sha256']:
+            raise ValueError('Frozen receipt identity changed')
+        line=json.loads(gzip.decompress(raw))
+        if result is not None:
+            final=result.final
+            captures=[c for c in line['captures'] if c['attempt']==0 and c['member_path'] is None]
+            body_identity=(final.body.sha256,final.body.size) if final.body else None
+            frozen_identity=(captures[0]['sha256'],captures[0]['bytes']) if captures else None
+            if (line['requested_url']!=final.requested_url or line['retrieved_at']!=final.retrieved_at
+                    or line['url']!=final.url or line['transport']!=final.transport or line['http_status']!=final.http_status
+                    or body_identity!=frozen_identity):
+                raise ValueError('Stable receipt operation was reused for another attempt')
+        try:
+            self.store.put(metadata['key'],path,'application/x-ndjson')
+        except Exception:
+            existing=self.store.adapter.head(metadata['key'])
+            if (existing is None or existing.get('size')!=len(raw)
+                    or existing.get('etag','').strip('"')!=hashlib.md5(raw).hexdigest()):
+                raise
+        return metadata['key'],line
 
     @staticmethod
     def _capture(body,attempt,index,stored,member_path,entry_index,fidelity):

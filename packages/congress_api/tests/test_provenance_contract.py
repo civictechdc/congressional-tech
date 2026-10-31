@@ -68,6 +68,22 @@ def test_nullable_audit_text_and_digest_preserve_honest_unknowns():
     assert validate_provenance('reviews',dict(review(),note=None))['note'] is None
 
 
+def test_recovery_v2_requires_complete_qualified_acceptance():
+    row=dict(recovery(),kind='recovered_document',recovery_record_version=2,
+             target_requirement='historical_exact',acceptance_status='accepted',
+             acceptance_policy='recovery-identity-v1',qualification_sha256='b'*64)
+    assert validate_provenance('recoveries',row)==row
+    for change in (dict(acceptance_status='rejected'),dict(qualification_sha256='B'*64),
+                   dict(evidence_sha256=None),dict(target_requirement='live'),
+                   dict(recovery_record_version=True),dict(acceptance_policy=' ')):
+        with pytest.raises(ValueError):validate_provenance('recoveries',dict(row,**change))
+    for field in ('target_requirement','acceptance_status','acceptance_policy','qualification_sha256'):
+        incomplete=dict(row);del incomplete[field]
+        with pytest.raises(ValueError):validate_provenance('recoveries',incomplete)
+    withdrawal=dict(row,kind='rejected',acceptance_status='rejected',supersedes='previous')
+    assert validate_provenance('recoveries',withdrawal)==withdrawal
+
+
 def test_url_spelling_and_category_vocabulary_are_not_rewritten():
     row=dict(recovery(),original_url='HTTPS://Docs.House.Gov/Some File.pdf?Document=MixedCase',
         recovered_url='https://Archive.Example/COPY.PDF',recovered_filename='Original File.PDF',

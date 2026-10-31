@@ -5,6 +5,7 @@ to the caller. This module accepts pinned actual model artifacts, never a passed
 flag or an injectable model-policy implementation. Reader probes are external.
 """
 from base64 import b64decode
+import fcntl
 from hashlib import md5,sha256
 from io import BytesIO
 import json
@@ -14,6 +15,8 @@ from time import perf_counter
 from urllib.parse import urlsplit
 
 from congress_api.retention.derived_files import copy_checked
+from congress_shared.custody import custody_identity,write_atomic_bytes
+from congress_shared.storage import single_put_md5
 from viewer_publication.archive_gate import gate_and_flip,validate_receipt
 from viewer_publication.archive_format import release_identity
 from viewer_publication.client import require_publication_client
@@ -126,7 +129,7 @@ class NativeArchiveStore:
     Metadata GET/LIST remains in the injected SDK. The same get/keys interface
     supports receipt_pins.kept_receipt_keys in the separate maintenance job.
     """
-    def __init__(self,*,client,engine,bucket,work,comparison_acceptance=None):
+    def __init__(self,*,client,engine,bucket,work,comparison_acceptance=None,asset_journal=None):
         require_comparison(comparison_acceptance)
         self.comparison_acceptance=comparison_acceptance
         require_publication_client(client)
@@ -136,6 +139,7 @@ class NativeArchiveStore:
             raise ValueError('Publication requires an explicitly configured remote native engine')
         self.client,self.engine,self.bucket=client,engine,bucket
         self.work=Path(work);self.serial=0
+        self.asset_journal=Path(asset_journal) if asset_journal is not None else None
         self.work.mkdir(parents=True,exist_ok=False)
     @staticmethod
     def _key(key):
@@ -162,7 +166,7 @@ class NativeArchiveStore:
             next_token=page.get('NextContinuationToken')
             if not next_token or next_token==token:raise ValueError('Archive listing did not advance')
             token=next_token
-    def upload_file(self,key,source,facts,*,content_type):
+    def upload_file(self,key,source,facts,*,content_type,_bind_source=True):
         require_comparison(self.comparison_acceptance)
         key=self._key(key)
         source=Path(source)
@@ -170,6 +174,65 @@ class NativeArchiveStore:
         if (not isinstance(facts['md5'],str) or re.fullmatch('[a-f0-9]{32}',facts['md5']) is None
                 or type(facts['size']) is not int or facts['size']<0):
             raise ValueError('Native upload requires exact file facts')
+        if self.asset_journal is not None:
+            return self._resumable_upload(key,source,facts,content_type=content_type,bind_source=_bind_source)
+        return self._transfer_file(key,source,facts,content_type=content_type)
+
+    def _remote_asset_identity(self,key,facts):
+        if not callable(getattr(self.client,'head_object',None)):
+            raise ValueError('Publication continuation requires metadata-only asset HEAD')
+        metadata=self.client.head_object(Bucket=self.bucket,Key=key)
+        if (metadata.get('ContentLength')!=facts['size'] or single_put_md5(metadata.get('ETag'))!=facts['md5']):
+            raise ValueError('Remote publication asset identity changed: '+key)
+
+    def _resumable_upload(self,key,source,facts,*,content_type,bind_source):
+        # Retained local stage files have one owner. Persist their exact inode
+        # custody after native transfer; a restart checks custody before opening
+        # any payload, then verifies the immutable object's HEAD identity.
+        path=self.asset_journal;path.parent.mkdir(parents=True,exist_ok=True)
+        expected={name:facts[name] for name in ('sha256','md5','size')}
+        expected['content_type']=content_type
+        local=dict(path=str(source.resolve()),custody=list(custody_identity(source))) if bind_source else None
+        if local is not None and local['custody'][2]!=facts['size']:
+            raise ValueError('Local publication asset size changed: '+key)
+        with path.with_suffix(path.suffix+'.lock').open('a') as lock:
+            fcntl.flock(lock,fcntl.LOCK_EX)
+            if path.is_symlink():raise ValueError('Unsafe publication asset journal')
+            state=dict(version=1,bucket=self.bucket,assets={})
+            if path.exists():
+                if path.stat().st_size>CONTROL_BYTES:raise ValueError('Publication asset journal is oversized')
+                try:state=json.loads(path.read_text())
+                except ValueError as error:raise ValueError('Corrupt publication asset journal') from error
+                if (not isinstance(state,dict) or set(state)!={'version','bucket','assets'} or state['version']!=1
+                        or state['bucket']!=self.bucket or not isinstance(state['assets'],dict)):
+                    raise ValueError('Publication asset journal identity changed')
+            def save():write_atomic_bytes(path,_encoded(state),fsync_dir=True)
+            saved=state['assets'].get(key)
+            if saved is not None:
+                if (not isinstance(saved,dict) or set(saved)!={'facts','source','phase'}
+                        or saved['facts']!=expected or saved['source']!=local
+                        or saved['phase'] not in ('started','acknowledged')):
+                    raise ValueError('Local publication asset identity changed: '+key)
+                try:self._remote_asset_identity(key,facts)
+                except Exception as error:
+                    if _status_code(error)!=404 or saved['phase']=='acknowledged':raise
+                    # The previous outcome was unknown and HEAD proves no object
+                    # exists. Only this unfinished transfer can be attempted again.
+                else:
+                    if saved['phase']!='acknowledged':
+                        saved['phase']='acknowledged';save()
+                    return 'already_exists'
+            else:
+                saved=dict(facts=expected,source=local,phase='started')
+                state['assets'][key]=saved;save()
+            outcome=self._transfer_file(key,source,facts,content_type=content_type)
+            if bind_source and local['custody']!=list(custody_identity(source)):
+                raise ValueError('Local publication asset changed during transfer: '+key)
+            self._remote_asset_identity(key,facts)
+            saved['phase']='acknowledged';save()
+            return outcome
+
+    def _transfer_file(self,key,source,facts,*,content_type):
         self.serial+=1
         destination='s3://'+self.bucket+'/'+key
         spec=dict(source=str(source.resolve()),destination=destination,sha256=facts['sha256'],
@@ -191,8 +254,8 @@ class NativeArchiveStore:
         if len(checksum)!=32:raise ValueError('Invalid Content-MD5')
         self.serial+=1
         source=self.work/f'cx_control_{self.serial:06d}.bin';source.write_bytes(body)
-        outcome=self.upload_file(key,source,dict(sha256=sha256(body).hexdigest(),md5=checksum,size=len(body)),content_type=content_type)
-        if outcome=='already_exists' and self.get(key)!=body:
+        outcome=self.upload_file(key,source,dict(sha256=sha256(body).hexdigest(),md5=checksum,size=len(body)),content_type=content_type,_bind_source=False)
+        if outcome=='already_exists' and self.asset_journal is None and self.get(key)!=body:
             label='input record' if re.search('/inputs/[a-f0-9]{64}[.]json$',key) else 'receipt list'
             raise ValueError('Existing '+label+' differs from the requested exact bytes')
 
@@ -324,7 +387,7 @@ def _candidate(release,manifest_pin,result_pin,*,input_record,receipt_keys):
 
 
 def publish_candidate(*,client,engine,bucket,work,release,manifest_pin,result_pin,
-                      input_record,receipt_keys,pointer,expected_etag,public_origin,contract,canary,measured_release_id=None,comparison_acceptance=None):
+                      input_record,receipt_keys,pointer,expected_etag,public_origin,contract,canary,measured_release_id=None,comparison_acceptance=None,asset_journal=None):
     """Upload a pinned model candidate and use the existing reader gates and CAS.
 
     The caller owns actual model planning, completeness and early skip. This stage
@@ -345,7 +408,7 @@ def publish_candidate(*,client,engine,bucket,work,release,manifest_pin,result_pi
             raise ValueError('Outgoing pointer and ETag must be pinned together')
         status.update(live_release=live,live_release_basis='pinned_at_start')
         require_comparison(comparison_acceptance)
-        store=NativeArchiveStore(client=client,engine=engine,bucket=bucket,work=Path(work)/'uploads',comparison_acceptance=comparison_acceptance)
+        store=NativeArchiveStore(client=client,engine=engine,bucket=bucket,work=Path(work)/'uploads',comparison_acceptance=comparison_acceptance,asset_journal=asset_journal)
         receipt_keys=sorted(set(receipt_keys))
         digest=input_digest(receipt_keys=receipt_keys,provenance=input_record['provenance'],
             profile=input_record['profile'],entity_digests=input_record['entity_digests'])
@@ -389,7 +452,8 @@ def publish_candidate(*,client,engine,bucket,work,release,manifest_pin,result_pi
             status.update(live_release=None,live_release_basis='unacknowledged_pointer_write')
             raise ValueError('Publication requires an acknowledged pointer ETag')
         status['durations']['gates_and_flip']=perf_counter()-begin
-        status.update(status='published',live_release=release_id,live_release_basis='conditional_flip_acknowledged')
+        status.update(status='published',live_release=release_id,live_release_basis=(
+            'selected_pointer_reconciled' if transfer.reconciled else 'conditional_flip_acknowledged'))
         return dict(status)
     except BaseException as error:
         failure=error;status['error_type']=type(error).__name__

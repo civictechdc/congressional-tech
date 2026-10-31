@@ -5,7 +5,9 @@ from congress_api.retention.provenance import field,json_input
 
 ROOT=Path(__file__).parents[4]
 RECOVERY_FIELDS={name:'Utf8' for name in ('id','body_sha256','original_url','recovered_filename',
-    'recovered_url','kind','identity_note','decided_at','supersedes')}
+    'recovered_url','kind','identity_note','decided_at','supersedes','target_requirement',
+    'acceptance_status','acceptance_policy','qualification_sha256','evidence_sha256')}
+RECOVERY_FIELDS['recovery_record_version']='Int32'
 REVIEW_FIELDS={name:'Utf8' for name in ('id','target','verdict','note','reviewer','decided_at','supersedes')}
 
 

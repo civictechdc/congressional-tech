@@ -42,10 +42,11 @@ class CaptureScope:
 
 
 class Fetcher:
-    def __init__(self, *, scope, direct, provider, pace, directory, spool_limit, headers=None, clock=None):
+    def __init__(self, *, scope, direct, provider, pace, directory, spool_limit, headers=None, clock=None, firecrawl=None):
         if not spool_limit > 0:
             raise ValueError('Spool limit must be positive')
         self.scope, self.direct, self.provider, self.pace = scope, direct, provider, pace
+        self.firecrawl=firecrawl
         self.directory, self.spool_limit = Path(directory), spool_limit
         self.headers = headers or (lambda url: {})
         self.clock = clock or (lambda: datetime.now(timezone.utc).isoformat())
@@ -53,17 +54,34 @@ class Fetcher:
     def fetch(self, url):
         if not self.scope(url):
             raise ValueError('URL is outside capture scope')
-        first = self._attempt(url, self.direct, 'direct', self.spool_limit)
-        # A received HTTP failure is evidence; provider fallback is for failed
-        # transfers and access refusal, never for document/page classification.
-        retry_after = 'retry-after' in first.headers or first.http_status in {429,503}
-        if (self.provider is None or retry_after or first.error in {'excluded_redirect','redirect_limit'}
-                or first.complete and first.http_status not in {401,403}):
-            return FetchResult(first)
-        remaining = self.spool_limit-(first.body.size if first.body else 0)
-        if remaining <= 0:
-            return FetchResult(first)
-        return FetchResult(self._attempt(url, self.provider, 'zyte',remaining), (first,))
+        attempts=[];remaining=self.spool_limit
+        for adapter,transport in ((self.direct,'direct'),(self.provider,'zyte'),(self.firecrawl,'firecrawl')):
+            if adapter is None:continue
+            current=self._attempt(url,adapter,transport,remaining)
+            attempts.append(current)
+            remaining-=current.body.size if current.body else 0
+            if (remaining<=0 or not self._escalate(current)):
+                break
+        return FetchResult(attempts[-1],tuple(attempts[:-1]))
+
+    @staticmethod
+    def _escalate(attempt):
+        # An origin throttle applies to every provider; a provider quota applies
+        # only to that provider and does not invent an origin HTTP status.
+        if attempt.transport!='direct' and (attempt.provider_status in {401,402,403,429}
+                or attempt.error in {'provider_quota','provider_credits','provider_http_error','invalid_provider_response'}):
+            return False
+        if ('retry-after' in attempt.headers or attempt.http_status in {429,503,404,410}
+                or attempt.error in {'excluded_redirect','redirect_limit','size_limit'}):
+            return False
+        if not attempt.complete or attempt.error or attempt.http_status in {401,403}:return True
+        if attempt.http_status is None or not 200<=attempt.http_status<300 or attempt.body is None:return False
+        with attempt.body.path.open('rb') as source:prefix=source.read(65536)
+        lowered=prefix.lower().lstrip()
+        html=lowered.startswith((b'<!doctype html',b'<html')) or b'<html' in lowered[:1024]
+        expected_pdf=urlsplit(attempt.requested_url).path.lower().endswith('.pdf') or 'application/pdf' in (attempt.headers.get('content-type','').lower())
+        wall=html and any(marker in lowered for marker in (b'captcha',b'access denied',b'just a moment',b'cf-chl-',b'cloudflare ray id',b'verify you are human'))
+        return bool(wall or expected_pdf and not prefix.startswith(b'%PDF-'))
 
     def _attempt(self, requested, adapter, transport, limit):
         target, redirects, timestamp = requested, [], self.clock()
@@ -122,12 +140,12 @@ class HostPacer:
             raise ValueError('Host pacing values must be finite and nonnegative')
         self.clock,self.sleep,self.utc_now = clock or time.monotonic,sleep or time.sleep,utc_now or time.time
         self.lock,self.deadlines,self.starts = threading.Lock(),{},{}
-        self.new_lock = threading.Lock
+        self.new_lock, self.origin_deadlines = threading.Lock, {}
 
     def __call__(self,url,transport):
         host = urlsplit(url).hostname
         key = (host,transport)
-        gap = self.provider_gap if transport == 'zyte' else self.hosts.get(host,{}).get('gap_seconds',self.default_gap)
+        gap = self.provider_gap if transport in {'zyte','firecrawl'} else self.hosts.get(host,{}).get('gap_seconds',self.default_gap)
         with self.lock:
             gate = self.starts.setdefault(key,self.new_lock())
         # Serialize starts for this host only. Observations use the short
@@ -135,7 +153,7 @@ class HostPacer:
         with gate:
             while True:
                 with self.lock:
-                    delay = max(0,self.deadlines.get(key,0)-self.clock())
+                    delay = max(0,max(self.deadlines.get(key,0),self.origin_deadlines.get(host,0))-self.clock())
                     if not delay:
                         self.deadlines[key] = self.clock()+gap
                         return
@@ -155,3 +173,5 @@ class HostPacer:
         with self.lock:
             key = (host,transport)
             self.deadlines[key] = max(self.deadlines.get(key,0),self.clock()+delay)
+            if status in {429,503} or value:
+                self.origin_deadlines[host] = max(self.origin_deadlines.get(host,0),self.clock()+delay)

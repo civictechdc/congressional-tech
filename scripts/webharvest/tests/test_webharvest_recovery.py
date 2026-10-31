@@ -325,8 +325,8 @@ def test_new_classifier_source_invalidates_cache(tmp_path, monkeypatch):
     package = tmp_path / 'package'
     package.mkdir()
     real = validation.classifier_directory()
-    for name in ['html.py']:
-        (package / name).write_bytes((real / name).read_bytes() + b'\n# newer classifier source\n')
+    for name in ['html.py', 'qualification.py']:
+        (package / name).write_bytes((real / name).read_bytes() + (b'\n# newer classifier source\n' if name == 'html.py' else b''))
     monkeypatch.setattr(validation, 'classifier_directory', lambda: package)
     second = validation.freeze(tmp_path / 'second', {})
     assert first['classifier_sha256'] != second['classifier_sha256']
@@ -335,7 +335,7 @@ def test_new_classifier_source_invalidates_cache(tmp_path, monkeypatch):
     assert a['path'] != b['path']
 
 
-def test_pdf_qualification_reuses_frozen_acceptance_and_checks_retained_bytes(tmp_path):
+def test_pdf_qualification_reuses_frozen_acceptance_and_checks_retained_bytes(tmp_path,monkeypatch):
     import gzip
     raw = gzip.decompress((CAPTURE_FAILURES / 'numeric-operand.pdf.gz').read_bytes())
     body = tmp_path / 'retained.pdf'
@@ -346,6 +346,11 @@ def test_pdf_qualification_reuses_frozen_acceptance_and_checks_retained_bytes(tm
                   'complete': True, 'status': 200, 'kind': 'pdf'})
     deferred = dump(tmp_path / 'deferred.json', [])
     output = tmp_path / 'qualified'
+    original_read=Path.read_bytes
+    def bounded_read(path):
+        if path==body: raise AssertionError('PDF caller materialized the entire body')
+        return original_read(path)
+    monkeypatch.setattr(Path,'read_bytes',bounded_read)
     assert recovery.qualify([source], output, deferred, kind='pdf')['qualified'] == 1
     assert recovery.qualify([source], output, deferred, kind='pdf')['qualified'] == 1
     assert len(list((output / 'pdf-cache').glob('*/acceptance.json'))) == 1
@@ -353,7 +358,7 @@ def test_pdf_qualification_reuses_frozen_acceptance_and_checks_retained_bytes(tm
     assert result['source_receipt_sha256'] == recovery.sha(source.read_bytes())
     assert not result['source_bytes_identity_claimed']
     body.write_bytes(b'changed')
-    with pytest.raises(ValueError, match='hash or length'):
+    with pytest.raises(ValueError, match='hash or length|size mismatch|SHA-256 mismatch'):
         recovery.qualify([source], output, deferred, kind='pdf')
 
 
@@ -527,3 +532,79 @@ def test_frozen_classifier_preserves_printed_transcript_and_historical_snapshots
     prior = dict(validator, classifier_sha256=validation.digest(source), validator_sha256='historical')
     original, _ = validation.classify_cached(raw, tmp_path / 'cache', historical, prior)
     assert original['subtype'] == 'historical'
+
+
+def test_frozen_pdf_validator_pins_shared_implementation(tmp_path):
+    import gzip
+    import webharvest_validation as validation
+    snapshot = tmp_path / 'snapshot'
+    validator = validation.freeze(snapshot, {})
+    body = tmp_path / 'body.pdf'
+    body.write_bytes(gzip.decompress((CAPTURE_FAILURES / 'numeric-operand.pdf.gz').read_bytes()))
+    assert validation.validate_pdf_frozen(body, tmp_path / 'result', snapshot, validator)['valid_pdf']
+    with (snapshot / 'qualification.py').open('ab') as stream:
+        stream.write(b'\n# modified\n')
+    with pytest.raises(ValueError, match='Frozen qualification'):
+        validation.validate_pdf_frozen(body, tmp_path / 'other', snapshot, validator)
+
+
+def test_frozen_pdf_uses_pinned_shared_code_despite_maintained_import_change(tmp_path, monkeypatch):
+    import gzip
+    import webharvest_validation as validation
+    from corpus_recovery import qualification
+    snapshot = tmp_path / 'snapshot'
+    validator = validation.freeze(snapshot, {})
+    body = tmp_path / 'body.pdf'
+    body.write_bytes(gzip.decompress((CAPTURE_FAILURES / 'numeric-operand.pdf.gz').read_bytes()))
+    monkeypatch.setattr(qualification, 'qualify', lambda *a, **k: (_ for _ in ()).throw(AssertionError('mutable import used')))
+    result = validation.validate_pdf_frozen(body, tmp_path / 'result', snapshot, validator)
+    assert result['valid_pdf']
+    assert result['validator']['implementation_sha256'] == validator['qualification_sha256']
+    assert result['content_parser_fallback'] == 'decoded_streams_and_all_page_poppler'
+
+
+def test_legacy_standalone_pdf_snapshot_runs_its_retained_implementation(tmp_path):
+    import webharvest_validation as validation
+    snapshot = tmp_path / 'snapshot'
+    snapshot.mkdir()
+    source = b'def validate_pdf(body, directory, *, preview=False):\n    return {"valid_pdf": False, "legacy": True}\n'
+    (snapshot / 'validation.py').write_bytes(source)
+    validator = {'implementation_sha256': validation.digest(source)}
+    assert validation.validate_pdf_frozen(tmp_path / 'unread', tmp_path / 'out', snapshot, validator) == {'valid_pdf': False, 'legacy': True}
+
+
+def test_shared_pdf_snapshot_without_shared_pin_fails_closed(tmp_path):
+    import webharvest_validation as validation
+    snapshot = tmp_path / 'snapshot'
+    validator = validation.freeze(snapshot, {})
+    del validator['qualification_sha256']
+    with pytest.raises(ValueError, match='missing its pinned'):
+        validation.validate_pdf_frozen(tmp_path / 'unread', tmp_path / 'out', snapshot, validator)
+
+
+def test_pdf_qualification_retries_incomplete_shared_check_without_finalizing_failure(tmp_path, monkeypatch):
+    import gzip
+    raw = gzip.decompress((CAPTURE_FAILURES / 'numeric-operand.pdf.gz').read_bytes())
+    body = tmp_path / 'body.pdf'
+    body.write_bytes(raw)
+    source = dump(tmp_path / 'source.json', {'original_url': 'https://example.gov/file.pdf',
+                  'body_path': str(body), 'sha256': recovery.sha(raw), 'bytes': len(raw),
+                  'complete': True, 'status': 200, 'kind': 'pdf'})
+    deferred = dump(tmp_path / 'deferred.json', [])
+    output = tmp_path / 'out'
+    original = recovery.validate_pdf_frozen
+    calls = []
+    def flaky(*args, **kwargs):
+        calls.append(args)
+        if len(calls) == 1:
+            return {'valid_pdf': False, 'status': 'unresolved', 'reason': 'worker_timeout', 'retryable': True}
+        return original(*args, **kwargs)
+    monkeypatch.setattr(recovery, 'validate_pdf_frozen', flaky)
+    assert recovery.qualify([source], output, deferred, kind='pdf')['qualified'] == 0
+    assert not list((output / 'pdf-cache').glob('*/acceptance.json'))
+    assert not recovery.receipt_rows(output)
+    assert len(list((output / 'pdf-cache').glob('*/attempts/*.json'))) == 1
+    assert len(list((output / 'requests').glob('*/attempts/*.json'))) == 1
+    assert recovery.qualify([source], output, deferred, kind='pdf')['qualified'] == 1
+    assert len(calls) == 2 and len(recovery.receipt_rows(output)) == 1
+    assert not recovery.receipt_rows(output)[0]['validation']['retryable']

@@ -46,7 +46,7 @@ def capture_profile_record(*,engine_revision,root=ROOT):
 
 def profile_record(*,parser_versions,catalog_version,engine_revision,runtime_pins,
                    lake_versions,writer_settings,snapshots,file_hashes=None,root=ROOT,
-                   relationship_metadata_update=None):
+                   relationship_metadata_update=None,recovery_policy=None):
     """Pin semantic definitions; retain exact physical selectors outside their digest."""
     if (not isinstance(parser_versions,dict) or not set(PARSERS)<=parser_versions.keys()
             or any(not isinstance(v,str) or not v for v in parser_versions.values())
@@ -61,6 +61,7 @@ def profile_record(*,parser_versions,catalog_version,engine_revision,runtime_pin
     profile=_copy(dict(parser_versions=parser_versions,catalog_version=catalog_version,
         engine_revision=engine_revision,runtime_pins=runtime_pins,lake_versions=lake_versions,
         writer_settings=writer_settings,file_hashes=hashes))
+    if recovery_policy is not None:profile['recovery_policy']=_copy(recovery_policy)
     if relationship_metadata_update is not None:
         update=relationship_metadata_update
         digests={'base_release_id','registry_sha256','schema_sha256'}

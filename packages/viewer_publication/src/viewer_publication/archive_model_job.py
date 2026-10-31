@@ -18,7 +18,7 @@ from congress_shared.storage import single_put_md5 as provenance_etag_md5
 
 TABLES=('captures','readings','filename_readings')
 OPTIONAL_TABLES=('meeting_records','appearance_records')
-OPTIONAL={*OPTIONAL_TABLES,'spicy_regs','entity_digests'}
+OPTIONAL={*OPTIONAL_TABLES,'spicy_regs','entity_digests','recovery_requirements'}
 PROVENANCE={'recovery_files':'recoveries','review_files':'reviews','verification_files':'verification',
             'unreadable_files':'unreadable','variant_files':'url_variants'}
 REQUIRED={'version','engine_config',*TABLES,'parser_versions','catalog_version','output','scratch'}
@@ -87,6 +87,12 @@ def validate_spec(value,*,base):
     if not REQUIRED<=value.keys() or type(value['version']) is not int or value['version']!=1:
         raise ValueError('Model job requires version 1 and all explicit inputs')
     result=dict(value,**{name:_selector(value[name],base) for name in TABLES})
+    if value.get('recovery_requirements') is not None:
+        requirement=value['recovery_requirements']
+        _pin(requirement,{'path','sha256','size','acceptance_policy'})
+        if not isinstance(requirement['acceptance_policy'],str) or not requirement['acceptance_policy'].strip():
+            raise ValueError('Recovery requirements need a policy version')
+        result['recovery_requirements']=dict(requirement,path=_local(requirement['path'],base))
     for name in OPTIONAL_TABLES:
         if value.get(name) is not None:
             result[name]=_selector(value[name],base)
@@ -117,7 +123,7 @@ def validate_spec(value,*,base):
 
 
 @contextmanager
-def model_arguments(spec, *, provenance_etags=None,verified_files=None):
+def model_arguments(spec, *, provenance_etags=None,verified_files=None,allow_existing_output=False):
     """Hold verified local inputs until native consumption completes successfully.
 
     The retained names prevent original-path replacement from selecting new bytes.
@@ -126,7 +132,8 @@ def model_arguments(spec, *, provenance_etags=None,verified_files=None):
     """
     for name in ['output','scratch']:
         path=Path(spec[name])
-        if path.exists() or path.is_symlink():raise ValueError('Model output and scratch must be fresh')
+        if (path.exists() or path.is_symlink()) and not allow_existing_output:
+            raise ValueError('Model output and scratch must be fresh')
     if verified_files is None:verified_files={}
     if not isinstance(verified_files,Mapping):raise ValueError('Verified input custody must be a path mapping')
     etags=None
@@ -185,6 +192,9 @@ def model_arguments(spec, *, provenance_etags=None,verified_files=None):
                 value=spec[name]
                 arguments[name]=(dict(kind='parquet',path=hold(value))
                                  if value['kind']=='parquet' else dict(value))
+        if spec.get('recovery_requirements') is not None:
+            value=spec['recovery_requirements']
+            arguments['recovery_requirements']=dict(value,path=hold(value))
         if spec.get('spicy_regs') is not None:
             arguments['spicy_regs']=spec['spicy_regs']
         for _source,verified in retained.values():verified.require(verified.path)

@@ -20,6 +20,7 @@ from pathlib import Path
 import subprocess
 import threading
 import time
+import uuid
 from urllib.parse import urlsplit
 
 import requests
@@ -454,6 +455,15 @@ def qualify(sources, directory, deferred, *, kind='html', preview=False):
         snapshot = directory / 'validator'
         validator = freeze(snapshot, config)
         qualified = 0
+        verified_files = {}
+        def verified_body(record):
+            from congress_shared.custody import verify_local_file
+            key=(record['body_path'],record['sha256'],record['bytes'])
+            if key not in verified_files:
+                verified_files[key]=verify_local_file(record['body_path'],record['sha256'],record['bytes'])
+            result=verified_files[key]
+            result._require_custody(record['body_path'])
+            return result
         for source in sources:
             raw_receipt = Path(source).read_bytes()
             record = json.loads(raw_receipt)
@@ -462,7 +472,7 @@ def qualify(sources, directory, deferred, *, kind='html', preview=False):
             if output.exists():
                 prior = read(output)
                 if prior.get('body_path'):
-                    checked_body(prior)
+                    verified_body(prior)
                 qualified += bool(prior['valid'])
                 continue
             result = {'source_receipt': str(Path(source).resolve()), 'source_receipt_sha256': source_sha,
@@ -475,21 +485,34 @@ def qualify(sources, directory, deferred, *, kind='html', preview=False):
                       'final_url': record.get('final_url', record.get('metadata', {}).get('url')),
                       'provider_metadata': record.get('provider_metadata', record.get('metadata'))}
             try:
-                raw = checked_body(record)
-                result.update(body_path=record['body_path'], bytes=len(raw), sha256=sha(raw))
-                if sha(raw) in forbidden_hashes or any(u in forbidden_urls for u in result['original_urls']):
+                body = verified_body(record)
+                result.update(body_path=record['body_path'], bytes=body.size_bytes, sha256=body.sha256)
+                if body.sha256 in forbidden_hashes or any(u in forbidden_urls for u in result['original_urls']):
                     result['reason'] = 'deferred_exclusion'
                 elif not record.get('complete', False) or record.get('status', record.get('http_status')) != 200:
                     result['reason'] = 'incomplete_or_unsuccessful_source'
                 elif kind == 'pdf':
                     # Cache by body plus validator, shared by repeated source receipts.
-                    cached = directory / 'pdf-cache' / (sha(raw) + '-' + validator['validator_sha256'])
+                    cached = directory / 'pdf-cache' / (body.sha256 + '-' + validator['validator_sha256'])
                     acceptance = cached / 'acceptance.json'
                     if not acceptance.exists():
-                        immutable(acceptance, validate_pdf_frozen(Path(record['body_path']), cached, snapshot, validator, preview=preview))
-                    result['validation'] = read(acceptance)
+                        validation = validate_pdf_frozen(Path(record['body_path']), cached, snapshot, validator, preview=preview, verified_body=body)
+                        # Incomplete shared checks retain attempt evidence and
+                        # retry on the next invocation. Legacy frozen validators
+                        # retain their historical completed-result semantics.
+                        if validation.get('retryable', False):
+                            immutable(cached / 'attempts' / (uuid.uuid4().hex + '.json'), validation)
+                        else:
+                            immutable(acceptance, validation)
+                    else:
+                        validation = read(acceptance)
+                    result['validation'] = validation
                     result['valid'] = result['validation']['valid_pdf']
                 else:
+                    if body.size_bytes > 8 * 1024**2:
+                        raise ValueError('HTML qualification body exceeds 8 MiB')
+                    raw = Path(record['body_path']).read_bytes()
+                    body._require_custody(record['body_path'])
                     result['content'], result['classification'] = classify_cached(raw, directory / 'classification-cache', snapshot, validator)
                     candidate = record.get('candidate', {})
                     rendered = result['rendered_copy']
@@ -505,7 +528,10 @@ def qualify(sources, directory, deferred, *, kind='html', preview=False):
             except Exception as error:
                 result['error_type'] = type(error).__name__
             result['disposition'] = disposition(result)
-            immutable(output, result)
+            if result.get('validation', {}).get('retryable', False):
+                immutable(output.parent / 'attempts' / (uuid.uuid4().hex + '.json'), result)
+            else:
+                immutable(output, result)
             qualified += bool(result['valid'])
         save(directory / 'qualification-summary.json', {'source_receipts': len(sources), 'qualified': qualified,
              'worker_completion_claimed': False, 'validator_sha256': validator['validator_sha256']})

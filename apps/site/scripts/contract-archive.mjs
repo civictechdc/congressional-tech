@@ -49,7 +49,8 @@ try{
       started=performance.now();await page.locator('.archive-document').first().click();await page.locator('[data-archive-detail]').waitFor();const detailMs=performance.now()-started;
       const measuredHeap=await sampler.stop();
       let publicKey=new URL(page.url()).searchParams.get('key');if(!publicKey){assert((await page.locator('[data-archive-detail]').innerText()).includes('No original saved copy is recorded.'));publicKey=args['link-key'];if(!publicKey)throw new Error('Supply --link-key from the real release when its first row is metadata-only.');await page.goto(server.pageUrl+'?key='+publicKey);await page.locator('[data-archive-detail]').waitFor();}assert.match(publicKey,/^[a-f0-9]{16}$/);
-      assert((await page.locator('[data-archive-detail]').innerText()).includes('Sources'));
+      // Recovery-only documents present their provenance in the recovery section.
+      await page.locator('[data-archive-detail]').getByRole('heading',{name:/^(Sources|Recovered and related files)$/}).first().waitFor();
       assert((await page.locator('[data-archive-detail]').innerText()).includes('Saved copies'));
       if(args.hand==='true'){
         await page.getByRole('link',{name:'Open saved PDF',exact:true}).click();await page.getByRole('alert').filter({hasText:'Saved copy not found'}).waitFor();

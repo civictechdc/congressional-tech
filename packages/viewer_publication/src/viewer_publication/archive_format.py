@@ -1,5 +1,6 @@
 """Shared native release layout; application models supply complete document rows."""
 from hashlib import md5, sha256
+from congress_shared.custody import write_atomic_bytes
 
 from viewer_publication.archive_model_lifetimes import retire_relations
 import json
@@ -129,7 +130,7 @@ def _core(steps, output,*,lookup_extra=None):
 
 def _content(path, value):
     data = (json.dumps(value, ensure_ascii=False, separators=(',', ':'), allow_nan=False) + '\n').encode()
-    path.write_bytes(data)
+    write_atomic_bytes(path,data,fsync_dir=True)
     return dict(name=path.name, sha256=sha256(data).hexdigest(), md5=md5(data).hexdigest(), size=len(data), rows=0, producer='archive', coverage={})
 
 
@@ -185,6 +186,9 @@ def _execute(inputs, steps, *, output, scratch, engine, origin, auxiliary=None, 
         outputs.append(dict(name=name + '.parquet', path=str(output / (name + '.parquet')), sql='SELECT * FROM ' + name + '_export',
             settings=_settings('whole', keys, dictionary=dictionary)))
     schema = _release_schema([item['name'] for item in outputs])
+    if (content_files or {}).get('capture_profile.json',{}).get('version')==2:
+        fields=json.loads((ROOT/'model/registries/capture-eligibility-fields.json').read_text())
+        next(item for item in schema['files'] if item['name']=='url_state.parquet')['columns'].extend(fields)
     from viewer_publication.archive_schema import publication_checks
     diagnostics = [*diagnostics, *publication_checks(schema, aux_names)]
     outputs.extend(extra_outputs)
@@ -251,7 +255,7 @@ def _execute(inputs, steps, *, output, scratch, engine, origin, auxiliary=None, 
         if error.completed is not None:
             (scratch / 'result.json').write_text(error.stdout)
         raise
-    (scratch / 'result.json').write_text(json.dumps(result, ensure_ascii=False, separators=(',', ':')))
+    write_atomic_bytes(scratch/'result.json',json.dumps(result,ensure_ascii=False,separators=(',',':')).encode(),fsync_dir=True)
     reports = {query['name']: query['data'] for query in result['queries']}
     if any(reports['invariants'][0].values()) or any(any(row.values()) for query in diagnostics for row in reports[query['name']]):
         raise ValueError('Release key invariant failed; native results retained in scratch')

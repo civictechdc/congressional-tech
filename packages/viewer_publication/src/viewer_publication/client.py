@@ -16,6 +16,7 @@ class VerifiedTransfer:
     bytes: int
     sha256: str
     etag: str
+    reconciled: bool = False
 
 
 class _HashingUpload:

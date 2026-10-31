@@ -409,7 +409,7 @@ def probe_selectors_query(*,root=ROOT):
 def prepare_model_inputs(*,captures,readings,filename_readings,parser_versions,catalog_version,
                          engine,scratch,recovery_files=(),review_files=(),verification_files=(),
                          unreadable_files=(),variant_files=(),meeting_records=None,appearance_records=None,
-                         spicy_regs=None,include_entities=False,root=ROOT):
+                         spicy_regs=None,include_entities=False,recovery_requirements=None,root=ROOT):
     """Freeze current input selectors and the shared prefix in fresh private scratch."""
     from viewer_publication.archive_format import _settings
     from viewer_publication.archive_model_profile import profile_record
@@ -430,6 +430,17 @@ def prepare_model_inputs(*,captures,readings,filename_readings,parser_versions,c
     from viewer_publication.archive_provenance import provenance_inputs
     provenance,prelude=provenance_inputs(scratch/'provenance',recovery_files=recovery_files,review_files=review_files)
     inputs += provenance
+    recovery_policy=None
+    if recovery_requirements is not None:
+        recovery_policy=dict(acceptance_policy=recovery_requirements['acceptance_policy'],
+                             requirements_sha256=recovery_requirements['sha256'])
+        # Releases created before refresh policy was explicit conservatively keep
+        # live refresh eligible. The exact original requirements remain pinned.
+        import pyarrow.parquet as pq
+        fields=pq.read_schema(recovery_requirements['path']).names
+        inputs.append(dict(name='recovery_requirements_input',kind='parquet',path=recovery_requirements['path']))
+        refresh='refresh_policy' if 'refresh_policy' in fields else "cast('refresh_live' AS VARCHAR) AS refresh_policy"
+        prelude.append(dict(name='recovery_requirements',sql='SELECT original_url,target_requirement,acceptance_policy,'+refresh+' FROM recovery_requirements_input',materialize=True))
     def _record_table_sql(table_name,value,payload_col):
         parquet_path=value.get('path') if isinstance(value,dict) and value.get('kind')=='parquet' else (value if isinstance(value,(str,Path)) else None)
         sha_expr="lower(record_sha)"
@@ -481,7 +492,7 @@ def prepare_model_inputs(*,captures,readings,filename_readings,parser_versions,c
     capture_profile=build_capture_profile(engine_revision=engine.source_revision,
         url_normalized_sql=(Path(root)/'model/sql/url-normalized.sql').read_text(),
         url_keys_sql=(Path(root)/'model/sql/url-keys.sql').read_text(),
-        url_rules=json.loads((Path(root)/'model/registries/url-rules.json').read_text()))
+        url_rules=json.loads((Path(root)/'model/registries/url-rules.json').read_text()),recovery_policy=recovery_policy)
     from congress_api.retention.provenance import file_pin
     selectors={item['name']:dict(item) if item['kind']=='native_table' else dict(kind='parquet',path=item['path'],**file_pin(item['path'])) for item in data_inputs}
     lake_tables=['captures','readings','filename_readings']+(['meeting_records','appearance_records'] if include_entities else [])
@@ -490,24 +501,26 @@ def prepare_model_inputs(*,captures,readings,filename_readings,parser_versions,c
             binary_sha256=engine.binary_sha256,limits=json.loads(engine.limits.read_text())),
         lake_versions={name:dict(schema_sha256=file_pin(Path(root)/'model/lake'/(name.replace('_','-')+'.schema.json'))['sha256']) for name in lake_tables},
         snapshots=selectors,writer_settings=dict(schema_version=1,whole=_settings('whole',['list_row']),
-            ranged=_settings('ranged',['list_row']),lookup=_settings('lookup',['link_key'])),root=root)
+            ranged=_settings('ranged',['list_row']),lookup=_settings('lookup',['link_key'])),root=root,
+        recovery_policy=recovery_policy)
     (scratch/'profile.json').write_text(json.dumps(model_profile,ensure_ascii=False,sort_keys=True,separators=(',',':'))+'\n')
     return dict(inputs=inputs,prelude=prelude,steps=admission_steps(prelude=prelude,root=root),
         profile=model_profile,capture_profile=capture_profile,scratch=scratch,evidence=evidence,
         parser_versions=dict(parser_versions),catalog_version=catalog_version,
-        include_entities=include_entities,entity_digests=entity_digests)
+        include_entities=include_entities,entity_digests=entity_digests,recovery_policy=recovery_policy)
 
 
 def build_release(*,captures,readings,filename_readings,parser_versions,catalog_version,
                   engine,output,scratch,recovery_files=(),review_files=(),verification_files=(),
                   unreadable_files=(),variant_files=(),meeting_records=None,appearance_records=None,
-                  spicy_regs=None,include_entities=False,root=ROOT):
+                  spicy_regs=None,include_entities=False,recovery_requirements=None,root=ROOT):
     """Prepare inputs once and run the document model's maintained full job."""
     prepared=prepare_model_inputs(captures=captures,readings=readings,filename_readings=filename_readings,
         parser_versions=parser_versions,catalog_version=catalog_version,engine=engine,scratch=scratch,
         recovery_files=recovery_files,review_files=review_files,verification_files=verification_files,
         unreadable_files=unreadable_files,variant_files=variant_files,meeting_records=meeting_records,
-        appearance_records=appearance_records,spicy_regs=spicy_regs,include_entities=include_entities,root=root)
+        appearance_records=appearance_records,spicy_regs=spicy_regs,include_entities=include_entities,
+        recovery_requirements=recovery_requirements,root=root)
     return build_prepared_release(prepared,engine=engine,output=output,root=root)
 
 
@@ -581,7 +594,7 @@ def build_prepared_release(prepared,*,engine,output,root=ROOT):
             WHERE m.meeting_date IS NOT NULL"""
     steps += [dict(name='url_state_meeting_dates',sql=url_state_meeting_dates_sql,materialize=True)]
     from viewer_publication.archive_url_state import url_state_steps,url_state_diagnostics
-    steps += url_state_steps(root=root)
+    steps += url_state_steps(root=root,recovery_policy=prepared.get('recovery_policy'))
     meetings_sql=(Path(root)/'model/sql/entity-meetings.sql').read_text()
     auxiliary=[('meetings',meetings_sql,['event_id'],['chamber','meeting_type','status','committees.list.item.system_code','committees.list.item.role','subject_keys.list.item'])]
     if prepared.get('include_entities'):

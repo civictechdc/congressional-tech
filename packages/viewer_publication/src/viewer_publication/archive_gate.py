@@ -40,5 +40,26 @@ def gate_and_flip(client, *, bucket, release_id, previous_release_id, expected_e
         validate_receipt(check(), release_id=release_id, name=name,manifest_origin=manifest_origin)
         require_comparison(comparison_acceptance)
     require_comparison(comparison_acceptance)
-    return publish_manifest_pointer(client, bucket=bucket,
-        pointer={'release_id': release_id, 'previous_release_id': previous_release_id}, expected_etag=expected_etag)
+    pointer={'release_id': release_id, 'previous_release_id': previous_release_id}
+    try:
+        transfer=publish_manifest_pointer(client, bucket=bucket, pointer=pointer, expected_etag=expected_etag)
+        if not isinstance(transfer.etag,str) or not transfer.etag.strip():
+            raise ValueError('Pointer PUT returned no ETag')
+        return transfer
+    except Exception as error:
+        # The conditional PUT may have committed before its response was lost.
+        # Only the exact selected pointer and its observed ETag settle that uncertainty.
+        try:
+            from viewer_publication.archive_publish import read_pointer
+            selected,etag=read_pointer(client,bucket=bucket)
+        except Exception as read_error:
+            error.add_note('Pointer reconciliation failed: '+type(read_error).__name__)
+            raise error
+        if selected!=pointer:
+            raise
+        from viewer_publication.client import VerifiedTransfer
+        import hashlib
+        import json
+        raw=json.dumps(pointer,ensure_ascii=False,sort_keys=True,separators=(',', ':'),allow_nan=False).encode('utf-8')
+        return VerifiedTransfer(bucket=bucket,key='viewer-publications/manifest.json',bytes=len(raw),
+            sha256=hashlib.sha256(raw).hexdigest(),etag=etag,reconciled=True)

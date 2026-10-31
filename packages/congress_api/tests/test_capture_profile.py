@@ -29,6 +29,15 @@ def test_public_profile_contains_the_exact_shared_definition_and_active_variant_
     assert validate_capture_profile(value,engine_revision=REVISION)==value
 
 
+def test_recovery_profile_binds_policy_and_requirements():
+    value=profile()
+    value.update(version=2,recovery_policy=dict(acceptance_policy='recovery-identity-v1',requirements_sha256='a'*64))
+    assert validate_capture_profile(value,engine_revision=REVISION)==value
+    for update in (dict(requirements_sha256='A'*64),dict(acceptance_policy=' ')):
+        invalid=deepcopy(value);invalid['recovery_policy'].update(update)
+        with pytest.raises(ValueError):validate_capture_profile(invalid,engine_revision=REVISION)
+
+
 @pytest.mark.parametrize('change', ['engine','sql','path','version','version_bool',
                                    'duplicate_rule','kind_list','decoder_list','missing_replacement'])
 def test_changed_or_incompatible_profile_refuses_before_capture(change):

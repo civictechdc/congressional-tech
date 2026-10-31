@@ -51,9 +51,15 @@ export async function verifyArchive({pointerUrl,releaseId,rawBase,local=false,fe
     const term=String(searchable.filename||searchable.title).slice(0,24);if(!(await timed('search',()=>reader.search({text:term,limit:30},controller.signal))).total)throw new Error('Archive search did not find its own document label.');
     const linked=entries.find(entry=>entry.detail.link_key);if(!linked)throw new Error('Archive candidate did not exercise a public link.');
     if(await timed('link',()=>reader.resolve(hex(linked.detail.link_key)))===null)throw new Error('Archive link did not resolve to its document.');
-    const sourceEntry=entries.find(entry=>entry.sources.length)??await reader.entry(initial.rows[0].list_row,controller.signal);
-    if(!sourceEntry.sources.length)throw new Error('Archive candidate did not exercise a source range.');
-    operations.sources=sourceEntry.sources.length;
+    let sourceEntry=entries.find(entry=>entry.sources.length);
+    if(!sourceEntry){
+      const sourceCount=reader.manifest.files.filter(file=>file.name==='sources.parquet'||file.shard==='sources').reduce((sum,file)=>sum+file.rows,0);
+      const [source]=await timed('sourceRange',()=>reader.sourceRange(0,Math.min(1,sourceCount),controller.signal));
+      if(sourceCount&&!source)throw new Error('Archive candidate did not exercise a declared source range.');
+      if(source)sourceEntry=await timed('sourceAttachment',()=>reader.entry(source.list_row,controller.signal));
+      if(source&&!sourceEntry.sources.some(item=>item.ordinal===source.ordinal))throw new Error('Archive source range is not attached to its document.');
+    }
+    operations.sources=sourceEntry?.sources.length??0;
     const recoveryCount=reader.manifest.files.find(file=>file.name==='recoveries.parquet').rows;
     const [probe]=await timed('recoveryRange',()=>reader.recoveryRange(0,Math.min(1,recoveryCount),controller.signal));
     let recovery;

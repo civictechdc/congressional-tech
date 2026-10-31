@@ -32,6 +32,11 @@ class Store:
         if Key not in self.objects:raise StorageError(404)
         body=self.objects[Key]
         return dict(Body=BytesIO(body),ContentLength=len(body),ETag=self.etag)
+    def head_object(self,*,Bucket,Key):
+        self.events.append(('head',Key))
+        if Key not in self.objects:raise StorageError(404)
+        raw=self.objects[Key]
+        return dict(ContentLength=len(raw),ETag=md5(raw).hexdigest())
     def put_object(self,**request):
         key=request['Key'];self.events.append(('put',key));self.requests.append(request)
         if key=='viewer-publications/manifest.json':
@@ -260,16 +265,17 @@ def test_generator_receipt_keys_keep_replay_evidence(tmp_path):
 
 
 @pytest.mark.parametrize('ack',[None,{},dict(ETag='')])
-def test_missing_pointer_acknowledgement_never_claims_publication(tmp_path,ack):
+def test_missing_pointer_acknowledgement_requires_exact_readback(tmp_path,ack):
     class NoPointerAck(Store):
         def put_object(self,**request):
             result=super().put_object(**request)
             return ack if request['Key']=='viewer-publications/manifest.json' else result
     store=NoPointerAck()
-    with pytest.raises(ValueError,match='acknowledged.*ETag'):
-        launch(tmp_path/'run',store=store)
+    result,store,_=launch(tmp_path/'run',store=store)
     report=json.loads(store.objects['viewer-publications/status.json'])
-    assert report['status']=='failed' and report['live_release_basis']=='unacknowledged_pointer_write'
+    assert result['status']=='published'
+    assert report['live_release_basis']=='selected_pointer_reconciled'
+    assert store.pointer_gets==2
 
 
 @pytest.mark.parametrize('unchanged',[False,True])
@@ -293,3 +299,93 @@ def test_raw_measured_candidate_identity_precedes_upload_or_pointer_effects(tmp_
         with pytest.raises(ValueError,match='Measured.*release'):publish()
         assert native.calls==[]
         assert not any('/inputs/' in key or key.endswith('/manifest.json') for key in store.objects)
+
+
+def test_publisher_reports_pointer_readback_after_lost_acknowledgment(tmp_path):
+    class LostPointerAck(Store):
+        def put_object(self,**request):
+            result=super().put_object(**request)
+            if request['Key']=='viewer-publications/manifest.json':
+                raise OSError('lost acknowledgment')
+            return result
+    store=LostPointerAck()
+    result,store,_=launch(tmp_path/'run',store=store)
+    assert result['status']=='published'
+    assert result['live_release_basis']=='selected_pointer_reconciled'
+    assert store.pointer_gets==2
+    assert len([r for r in store.requests if r['Key']=='viewer-publications/manifest.json'])==1
+    report=json.loads(store.objects['viewer-publications/status.json'])
+    assert report['live_release_basis']=='selected_pointer_reconciled'
+
+
+def test_asset_journal_reuses_acknowledged_transfer_without_payload_reads(tmp_path,monkeypatch):
+    payload=b'one qualified release asset';source=tmp_path/'asset.parquet';source.write_bytes(payload)
+    facts=dict(sha256=sha256(payload).hexdigest(),md5=md5(payload).hexdigest(),size=len(payload))
+    key='viewer-publications/releases/'+'a'*64+'/list.parquet';store=Store();native=Native(store)
+    journal=tmp_path/'asset-journal.json'
+    def adapter(name):return NativeArchiveStore(client=store,engine=native,bucket='derived-fixture',work=tmp_path/name,asset_journal=journal)
+    adapter('first').upload_file(key,source,facts,content_type='application/vnd.apache.parquet')
+    assert len(native.calls)==1
+    original=Path.open
+    def no_payload_read(path,*args,**kwargs):
+        if path==source:raise AssertionError('Acknowledged payload reopened')
+        return original(path,*args,**kwargs)
+    monkeypatch.setattr(Path,'open',no_payload_read)
+    assert adapter('fresh-process-files').upload_file(key,source,facts,content_type='application/vnd.apache.parquet')=='already_exists'
+    assert len(native.calls)==1 and ('head',key) in store.events
+
+
+@pytest.mark.parametrize('damage',['local','remote'])
+def test_asset_journal_refuses_changed_identity_before_retransfer(tmp_path,monkeypatch,damage):
+    payload=b'original';source=tmp_path/'asset.parquet';source.write_bytes(payload)
+    facts=dict(sha256=sha256(payload).hexdigest(),md5=md5(payload).hexdigest(),size=len(payload))
+    key='viewer-publications/releases/'+'a'*64+'/list.parquet';store=Store();native=Native(store)
+    journal=tmp_path/'asset-journal.json'
+    options=dict(client=store,engine=native,bucket='derived-fixture',asset_journal=journal)
+    NativeArchiveStore(work=tmp_path/'first',**options).upload_file(key,source,facts,content_type='application/vnd.apache.parquet')
+    if damage=='local':source.write_bytes(b'changed!')
+    else:store.objects[key]=b'changed!'
+    original=Path.open
+    def no_payload_read(path,*args,**kwargs):
+        if path==source:raise AssertionError('Changed payload opened')
+        return original(path,*args,**kwargs)
+    monkeypatch.setattr(Path,'open',no_payload_read)
+    with pytest.raises(ValueError,match='asset.*changed|asset identity changed'):
+        NativeArchiveStore(work=tmp_path/'resume',**options).upload_file(key,source,facts,content_type='application/vnd.apache.parquet')
+    assert len(native.calls)==1
+
+
+def test_asset_journal_reconciles_unknown_native_acknowledgment_by_head(tmp_path,monkeypatch):
+    payload=b'qualified';source=tmp_path/'asset.parquet';source.write_bytes(payload)
+    facts=dict(sha256=sha256(payload).hexdigest(),md5=md5(payload).hexdigest(),size=len(payload))
+    key='viewer-publications/releases/'+'a'*64+'/list.parquet';store=Store()
+    class LostAck(Native):
+        def create_file(self,spec):
+            super().create_file(spec)
+            raise RuntimeError('lost native acknowledgment')
+    native=LostAck(store);journal=tmp_path/'asset-journal.json'
+    options=dict(client=store,engine=native,bucket='derived-fixture',asset_journal=journal)
+    with pytest.raises(RuntimeError,match='lost native'):
+        NativeArchiveStore(work=tmp_path/'first',**options).upload_file(key,source,facts,content_type='application/vnd.apache.parquet')
+    assert json.loads(journal.read_text())['assets'][key]['phase']=='started'
+    original=Path.open
+    def no_payload_read(path,*args,**kwargs):
+        if path==source:raise AssertionError('Uncertain acknowledged payload reopened')
+        return original(path,*args,**kwargs)
+    monkeypatch.setattr(Path,'open',no_payload_read)
+    NativeArchiveStore(work=tmp_path/'resume',**options).upload_file(key,source,facts,content_type='application/vnd.apache.parquet')
+    assert len(native.calls)==1 and json.loads(journal.read_text())['assets'][key]['phase']=='acknowledged'
+
+
+def test_release_manifest_is_visible_only_after_complete_atomic_write(tmp_path,monkeypatch):
+    from viewer_publication.archive_format import _content
+    target=tmp_path/'manifest.json';observed=[]
+    def stop_before_rename(temporary,destination):
+        assert Path(destination)==target and not target.exists()
+        assert json.loads(temporary.read_bytes())=={'release_id':'a'*64}
+        observed.append(temporary)
+        raise RuntimeError('interrupted final rename')
+    monkeypatch.setattr(Path,'replace',stop_before_rename)
+    with pytest.raises(RuntimeError,match='interrupted final rename'):
+        _content(target,{'release_id':'a'*64})
+    assert observed and not target.exists()

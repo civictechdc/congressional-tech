@@ -15,6 +15,9 @@ from congress_api.retention.receipt_privacy import cut_paths
 
 KINDS=frozenset({'recoveries','reviews','unreadable'})
 VERDICTS=frozenset({'hide','duplicate_of','title_override','kind_override','withdraw'})
+TARGET_REQUIREMENTS=frozenset({'historical_exact','requested_content','current_official_counterpart'})
+RECOVERY_V2_FIELDS=frozenset({'recovery_record_version','target_requirement','acceptance_status',
+                              'acceptance_policy','qualification_sha256'})
 
 
 def instant(value):
@@ -39,6 +42,8 @@ def validate_provenance(kind,row):
         required=({'id','target','verdict','value','note','reviewer','decided_at','supersedes'} if kind=='reviews' else
             {'id','original_url','recovered_url','recovered_filename','body_sha256','kind','match_basis',
              'evidence_sha256','identity_note','decided_by','decided_at','supersedes'})
+        if kind=='recoveries' and set(row)&RECOVERY_V2_FIELDS:
+            required |= RECOVERY_V2_FIELDS
     if set(row)!=required or not isinstance(row['id'],str) or not row['id'].strip():
         raise ValueError('Incomplete provenance record')
     def text(name,*,nullable=False,allow_blank=False):
@@ -98,6 +103,18 @@ def validate_provenance(kind,row):
         text('match_basis',nullable=True)
         text('recovered_filename',nullable=True,allow_blank=True)
         text('identity_note',nullable=True,allow_blank=True)
+        if 'recovery_record_version' in row:
+            if type(row['recovery_record_version']) is not int or row['recovery_record_version']!=2:
+                raise ValueError('Invalid recovery record version')
+            if not isinstance(row['target_requirement'],str) or row['target_requirement'] not in TARGET_REQUIREMENTS:
+                raise ValueError('Invalid recovery target requirement')
+            if row['acceptance_status'] != ('rejected' if row['kind']=='rejected' else 'accepted'):
+                raise ValueError('Recovery acceptance status disagrees with kind')
+            text('acceptance_policy')
+            if not isinstance(row['qualification_sha256'],str) or re.fullmatch('[0-9a-f]{64}',row['qualification_sha256']) is None:
+                raise ValueError('Invalid recovery qualification identity')
+            if row['evidence_sha256'] is None:
+                raise ValueError('Recovery acceptance requires evidence identity')
     validate_record(row)
     def paths(value):
         if isinstance(value,str) and cut_paths(value)[1]:raise ValueError('Local path in public provenance')
@@ -107,6 +124,18 @@ def validate_provenance(kind,row):
             for child in value:paths(child)
     paths(row)
     return row
+
+
+def _put_identical(store,key,path):
+    """Reconcile create-only provenance against exact frozen bytes after a lost ACK."""
+    try:return store.put(key,path,'application/x-ndjson')
+    except Exception:
+        import hashlib
+        with Path(path).open('rb') as source:md5=hashlib.file_digest(source,'md5').hexdigest()
+        existing=store.adapter.head(key)
+        if existing is None or existing.get('size')!=Path(path).stat().st_size or existing.get('etag','').strip('"')!=md5:
+            raise
+        return None
 
 
 def write_records(store,kind,records,*,timestamp):
@@ -125,7 +154,7 @@ def write_records(store,kind,records,*,timestamp):
                 out.write(json.dumps(row,ensure_ascii=False,separators=(',',':'),allow_nan=False)+'\n')
                 count+=1
         if not count:raise ValueError('Empty provenance batch')
-        store.put(key,path,'application/x-ndjson')
+        _put_identical(store,key,path)
     return key,count
 
 
@@ -219,7 +248,8 @@ def finish_stage(root,*,kind,provenance,records,inputs,extra=None):
     root=Path(root)
     value=dict(version=1,kind=kind,provenance=provenance,records=records,inputs=inputs,
                files=[dict(path=provenance,**file_pin(root/provenance))],**(extra or {}))
-    (root/'manifest.json').write_text(json.dumps(value,ensure_ascii=False,sort_keys=True,indent=2)+'\n')
+    from congress_api.acquisition.capture_journal import durable_json
+    durable_json(root/'manifest.json',value)
     return value
 
 
@@ -262,7 +292,7 @@ def apply_staged(root,store):
             import_unreadable(store,root/item['path'],decided_at=value['decided_at'],
                 expected={name:item[name] for name in ('sha256','size')})
         else:
-            store.put(item['path'],root/item['path'],'application/x-ndjson')
+            _put_identical(store,item['path'],root/item['path'])
     return dict(objects=len(value['files']),records=value['records'])
 
 
