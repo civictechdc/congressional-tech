@@ -77,7 +77,9 @@ class Fetcher:
                 transfer = adapter.hop(target,destination,limit=min(limit,5*1024**3),headers=self.headers(target))
             except (requests.RequestException, OSError) as exc:
                 destination.unlink(missing_ok=True)
-                return FetchAttempt(requested,target,timestamp,transport,None,None,{},tuple(redirects),False,None,type(exc).__name__)
+                code = getattr(exc, 'capture_error', None)
+                return FetchAttempt(requested,target,timestamp,transport,None,None,{},tuple(redirects),False,None,
+                    code if isinstance(code, str) and code else type(exc).__name__)
             headers = {k.lower(): v for k,v in transfer.headers.items()}
             observe = getattr(self.pace,'observe',None)
             if observe is not None:

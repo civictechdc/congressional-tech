@@ -13,16 +13,31 @@ def url_state_steps(*,root=ROOT):
         SELECT * FROM captures WHERE {acquisition}
     ), companion_keys AS (
         SELECT DISTINCT receipt_key,receipt_line,requested_url FROM base_captures WHERE family<>'external/provider-responses'
+    ), stored_contexts AS (
+        SELECT DISTINCT receipt_key,context_url FROM captures
+        WHERE mode='fetch' AND complete AND outcome IN ('stored','unchanged')
+          AND sha256 IS NOT NULL AND requested_url IS NULL AND context_url IS NOT NULL
     ), folded_captures AS (
-        SELECT b.* FROM base_captures b
+        SELECT b.receipt_key,b.receipt_line,b.requested_url,b.family,b.retrieved_at,b.http_status,
+            CASE WHEN b.outcome='failed' AND b.complete AND b.http_status BETWEEN 200 AND 299 AND sc.context_url IS NOT NULL
+                 THEN 'stored' ELSE b.outcome END AS outcome,
+            (b.outcome='failed' AND b.complete AND b.http_status BETWEEN 200 AND 299 AND sc.context_url IS NOT NULL) AS context_good
+        FROM base_captures b
         LEFT JOIN companion_keys c ON b.receipt_key=c.receipt_key AND b.receipt_line=c.receipt_line AND b.requested_url=c.requested_url
+        LEFT JOIN stored_contexts sc ON b.receipt_key=sc.receipt_key AND b.requested_url=sc.context_url
         WHERE b.family<>'external/provider-responses' OR c.receipt_key IS NULL
     ) SELECT receipt_key,receipt_line,requested_url,max(family) AS family,
         max(arrow_cast(cast(retrieved_at AS TIMESTAMP WITH TIME ZONE),'Timestamp(Microsecond, Some("UTC"))')) AS retrieved_at,
         max(http_status) AS http_status,max(outcome) AS outcome,
+        bool_or(context_good) AS context_good,
         count(DISTINCT json_array(family,http_status,outcome)) AS variants
         FROM folded_captures GROUP BY receipt_key,receipt_line,requested_url"""),
-        ('good_lines',"SELECT DISTINCT receipt_key,receipt_line FROM good_fetch_contexts"),
+        ('good_lines',"""SELECT DISTINCT receipt_key,receipt_line FROM good_fetch_contexts
+            UNION
+            SELECT DISTINCT receipt_key,receipt_line FROM captures
+            WHERE mode='fetch' AND complete AND outcome IN ('stored','unchanged') AND sha256 IS NOT NULL AND http_status IS NULL
+            UNION
+            SELECT DISTINCT receipt_key,receipt_line FROM url_state_lines WHERE context_good"""),
         ('latest',"""SELECT * FROM (SELECT *,row_number() OVER(PARTITION BY requested_url ORDER BY
             retrieved_at DESC NULLS LAST,receipt_key DESC,receipt_line DESC) AS preference FROM url_state_lines
             WHERE requested_url IS NOT NULL) WHERE preference=1"""),

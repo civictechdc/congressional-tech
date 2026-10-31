@@ -1,5 +1,6 @@
 """Execute B14 meeting fetchers through the shared raw Fetcher, ReceiptWriter and BodyStore."""
 import argparse
+from contextlib import ExitStack
 from datetime import datetime, timezone
 import json
 import os
@@ -13,6 +14,7 @@ from congress_api.acquisition import meetings as meetings_acq
 from congress_api.acquisition import senate as senate_acq
 from congress_api.acquisition.capture_scheduler import CapturePolicy, PACING, resolve_host
 from congress_api.acquisition.fetcher import Fetcher, HostPacer
+from congress_api.cli.capture_schedule import _default_fetcher_binary
 from congress_api.retention.archive_members import ZipLimits
 from congress_api.retention.body_store import BodyStore, LocalAdapter, R2Adapter
 from congress_api.retention.pipeline_raw import new_run_id
@@ -171,6 +173,7 @@ def main(argv=None):
     parser.add_argument('--gpo-package', action='append', default=[])
     parser.add_argument('--senate-url', action='append', default=[])
     parser.add_argument('--congress-detail-url', action='append', default=[])
+    parser.add_argument('--fetcher-binary', type=Path, default=_default_fetcher_binary())
     parser.add_argument('--apply', action='store_true')
     args = parser.parse_args(argv)
 
@@ -207,34 +210,40 @@ def main(argv=None):
 
     import requests
     from congress_api.transport.raw_adapters import DirectAdapter, ProviderAdapter
-    session = requests.Session()
-    provider = None
-    if os.environ.get('ZYTE_TOKEN'):
-        from congress_api.transport import zyte
-        provider = ProviderAdapter(
-            lambda payload: session.post(
-                zyte.API,
-                json=payload,
-                auth=(zyte.token(), ''),
-                stream=True,
-                allow_redirects=False,
-                timeout=(15, 300),
+    from congress_api.transport.rust_fetch import RustFetcher
+    with ExitStack() as stack:
+        if args.fetcher_binary and Path(args.fetcher_binary).is_file():
+            session = stack.enter_context(RustFetcher(args.fetcher_binary))
+        else:
+            session = requests.Session()
+        provider_session = requests.Session() if os.environ.get('ZYTE_TOKEN') else None
+        provider = None
+        if provider_session is not None:
+            from congress_api.transport import zyte
+            provider = ProviderAdapter(
+                lambda payload: provider_session.post(
+                    zyte.API,
+                    json=payload,
+                    auth=(zyte.token(), ''),
+                    stream=True,
+                    allow_redirects=False,
+                    timeout=(15, 300),
+                )
             )
-        )
 
-    result = run_meeting_fetchers(
-        store=store,
-        identity=identity,
-        direct=DirectAdapter(session),
-        provider=provider,
-        scope_path=args.scope,
-        congress_endpoints=spec_data.get('congress_endpoints', ()),
-        congress_detail_urls=list(spec_data.get('congress_detail_urls', ())) + list(args.congress_detail_url),
-        gpo_since=spec_data.get('gpo_since'),
-        gpo_packages=list(spec_data.get('gpo_packages', ())) + list(args.gpo_package),
-        house_meetings=spec_data.get('house_meetings', ()),
-        senate_urls=list(spec_data.get('senate_urls', ())) + list(args.senate_url),
-    )
+        result = run_meeting_fetchers(
+            store=store,
+            identity=identity,
+            direct=DirectAdapter(session),
+            provider=provider,
+            scope_path=args.scope,
+            congress_endpoints=spec_data.get('congress_endpoints', ()),
+            congress_detail_urls=list(spec_data.get('congress_detail_urls', ())) + list(args.congress_detail_url),
+            gpo_since=spec_data.get('gpo_since'),
+            gpo_packages=list(spec_data.get('gpo_packages', ())) + list(args.gpo_package),
+            house_meetings=spec_data.get('house_meetings', ()),
+            senate_urls=list(spec_data.get('senate_urls', ())) + list(args.senate_url),
+        )
     print(json.dumps(result, indent=2, sort_keys=True))
     return result
 

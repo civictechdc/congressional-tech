@@ -103,12 +103,13 @@ class RustResponse:
 class _NativeSession:
     """The requests-compatible methods used by the shared capture reader."""
 
-    def get(self, url, *, headers, timeout, stream, allow_redirects):
+    def get(self, url, *, headers, timeout, stream, allow_redirects, max_bytes=None):
         if allow_redirects or not stream:
             raise RuntimeError("Native capture requires explicit redirects and bounded bodies")
-        return self._request(url, "direct", headers=headers)
+        extra = {} if max_bytes is None else {"max_bytes": max_bytes}
+        return self._request(url, "direct", headers=headers, **extra)
 
-    def post(self, url, *, json, auth, timeout, stream):
+    def post(self, url, *, json, auth, timeout, stream, allow_redirects=False):
         if url != zyte.API or not stream:
             raise RuntimeError("Unexpected provider request")
         # Credentials stay in the inherited environment, never in request JSON.
@@ -185,7 +186,7 @@ class RustFetcher(_NativeSession):
         for future in pending.values():
             future.set_exception(RuntimeError(message))
 
-    def _request(self, url, transport, *, headers=None, new_file=True):
+    def _request(self, url, transport, *, headers=None, new_file=True, max_bytes=None):
         future = Future()
         with self.lock:
             if self.failure:
@@ -194,9 +195,10 @@ class RustFetcher(_NativeSession):
             self.file_dispatches += int(new_file)
             request_id = self.sequence
             self.pending[request_id] = future
+        cap = self.max_bytes if max_bytes is None else max_bytes
         request = dict(
             id=request_id, url=url, transport=transport, headers=headers or {}, new_file=new_file,
-            max_bytes=self.max_bytes if transport == "direct" else self.max_bytes * 4 // 3 + 1024**2,
+            max_bytes=cap if transport == "direct" else cap * 4 // 3 + 1024**2,
             timeout_ms=math.ceil(self.request_timeout * 1000),
         )
         try:

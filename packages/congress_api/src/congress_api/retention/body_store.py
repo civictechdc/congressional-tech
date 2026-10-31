@@ -10,6 +10,7 @@ from pathlib import Path
 import re
 import shutil
 import tempfile
+import threading
 from urllib.parse import parse_qsl, urlsplit
 
 from congress_shared.custody import VerifiedFile
@@ -126,7 +127,7 @@ def compressible(media):
 
 class BodyStore:
     def __init__(self, adapter):
-        self.adapter, self.known = adapter, {}
+        self.adapter, self.known, self._lock = adapter, {}, threading.Lock()
         self._provenance_cache,self._provenance_acks,self._provenance_epoch={},{},0
 
     def remember_provenance(self,public,custody):
@@ -137,36 +138,41 @@ class BodyStore:
         custody._require_custody(public['path'])
         if isinstance(self.adapter,R2Adapter) and custody.get('md5')!=single_put_md5(public['etag']):
             raise ValueError('Provenance cache differs from its listed MD5')
-        previous=self._provenance_cache.get(public['key'])
-        if previous and any(previous[0][k]!=public[k] for k in ('sha256','size','etag')):
-            raise ValueError('Previously checked raw provenance changed')
-        acknowledgement=self._provenance_acks.get(public['key'])
-        epoch=acknowledgement[2] if acknowledgement else 0
-        if acknowledgement and (acknowledgement[1]!=public['size'] or
-                (public['etag'] is not None and acknowledgement[0]!=public['etag'])):
-            raise ValueError('Provenance cache differs from its durable acknowledgment')
-        self._provenance_cache[public['key']]=(dict(public),custody,epoch)
+        with self._lock:
+            previous=self._provenance_cache.get(public['key'])
+            if previous and any(previous[0][k]!=public[k] for k in ('sha256','size','etag')):
+                raise ValueError('Previously checked raw provenance changed')
+            acknowledgement=self._provenance_acks.get(public['key'])
+            epoch=acknowledgement[2] if acknowledgement else 0
+            if acknowledgement and (acknowledgement[1]!=public['size'] or
+                    (public['etag'] is not None and acknowledgement[0]!=public['etag'])):
+                raise ValueError('Provenance cache differs from its durable acknowledgment')
+            self._provenance_cache[public['key']]=(dict(public),custody,epoch)
 
     def reference(self, key, *, stored_suffix):
         """Verify an existing raw reference; recovery imports need no whole reread."""
         validate_key(key)
         if not key.startswith('bodies/') or key.endswith(('.gz','.pdf')) or stored_suffix not in {'','.gz'}:
             raise ValueError('Invalid retained body reference')
-        if key in self.known and self.known[key].suffix==stored_suffix:
-            return replace(self.known[key],outcome='unchanged',md5=None,size=None)
+        with self._lock:
+            if key in self.known and self.known[key].suffix==stored_suffix:
+                return replace(self.known[key],outcome='unchanged',md5=None,size=None)
         if self.adapter.head(key+stored_suffix) is None:
             raise ValueError('Missing retained body reference')
         result=WriteResult('unchanged',stored_suffix)
-        self.known[key]=result
+        with self._lock:
+            self.known[key]=result
         return result
 
     def existing(self, key):
         """The run set and one legacy-key HEAD, without reading body bytes."""
-        if key in self.known:
-            return replace(self.known[key], outcome='unchanged', md5=None, size=None)
+        with self._lock:
+            if key in self.known:
+                return replace(self.known[key], outcome='unchanged', md5=None, size=None)
         if self.adapter.head(key + '.gz') is not None:
             result = WriteResult('unchanged', '.gz')
-            self.known[key] = result
+            with self._lock:
+                self.known[key] = result
             return result
         return None
 
@@ -180,7 +186,8 @@ class BodyStore:
             with Path(file).open('rb') as source:
                 result = create_stored(self.adapter, key, source, media, encoding=encoding,
                                        expected_md5=expected_md5, expected_size=expected_size)
-            self.known[key] = result
+            with self._lock:
+                self.known[key] = result
         return result
 
     def put_pdf_copy(self, key, file, *, expected_md5, expected_size, operation='create'):
@@ -208,30 +215,44 @@ class BodyStore:
             with Path(file).open('rb') as source:
                 result=create_stored(self.adapter, key, source, media)
             if key.startswith('provenance/unreadable/'):
-                self._provenance_epoch+=1
-                self._provenance_acks[key]=(result.md5,result.size,self._provenance_epoch)
+                with self._lock:
+                    self._provenance_epoch+=1
+                    self._provenance_acks[key]=(result.md5,result.size,self._provenance_epoch)
             return result
         if key.endswith(('.gz', '.pdf')):
             raise ValueError('New body writes require a suffix-free identity')
         result = self.existing(key)
         if result is None:
-            with Path(file).open('rb') as source, tempfile.TemporaryFile() as prepared:
-                identity = hashlib.sha256()
-                def copy(destination):
+            if compressible(media):
+                with Path(file).open('rb') as source, tempfile.TemporaryFile() as prepared:
+                    identity = hashlib.sha256()
+                    with gzip.GzipFile(filename='', fileobj=prepared, mode='wb', compresslevel=6, mtime=0) as zipped:
+                        while chunk := source.read(1024**2):
+                            identity.update(chunk)
+                            zipped.write(chunk)
+                    if identity.hexdigest() != key.rsplit('/',1)[1]:
+                        raise ValueError('Original body identity differs from its key')
+                    prepared.seek(0)
+                    result = create_stored(self.adapter, key, prepared, media, encoding='gzip')
+            else:
+                with Path(file).open('rb') as source:
+                    identity = hashlib.sha256()
+                    md5 = hashlib.md5()
+                    size = 0
                     while chunk := source.read(1024**2):
                         identity.update(chunk)
-                        destination.write(chunk)
-                if compressible(media):
-                    with gzip.GzipFile(filename='', fileobj=prepared, mode='wb', mtime=0) as zipped:
-                        copy(zipped)
-                else:
-                    copy(prepared)
-                if identity.hexdigest() != key.rsplit('/',1)[1]:
-                    raise ValueError('Original body identity differs from its key')
-                prepared.seek(0)
-                result = create_stored(self.adapter, key, prepared, media,
-                                       encoding='gzip' if compressible(media) else None)
-        self.known[key] = result
+                        md5.update(chunk)
+                        size += len(chunk)
+                    if identity.hexdigest() != key.rsplit('/',1)[1]:
+                        raise ValueError('Original body identity differs from its key')
+                    if size > 5 * 1024**3:
+                        raise ValueError('Single-PUT size limit exceeded')
+                    source.seek(0)
+                    created = self.adapter.create(key, source, media=media, encoding=None,
+                                                  md5=md5.hexdigest(), size=size)
+                    result = write_result(key, created, md5=md5.hexdigest(), size=size)
+            with self._lock:
+                self.known[key] = result
         return result
 
 

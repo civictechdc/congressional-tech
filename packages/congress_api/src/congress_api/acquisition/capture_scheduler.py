@@ -1,4 +1,5 @@
 """Public release scheduling and bounded, append-only raw capture."""
+from concurrent.futures import FIRST_COMPLETED, ThreadPoolExecutor, wait
 from datetime import datetime, timezone
 from contextlib import ExitStack
 import hashlib
@@ -7,6 +8,7 @@ from pathlib import Path
 import re
 import socket
 from tempfile import TemporaryDirectory
+import threading
 from urllib.parse import parse_qsl, urljoin, urlsplit
 
 import pyarrow as pa
@@ -94,9 +96,11 @@ def _safe_reference(value):
     """Check URI references without resolving or rewriting their identity."""
     if not isinstance(value,str):return False
     try:
-        if len(value.encode('utf-8'))>16384:return False
+        if len(value.encode('utf-8'))>16384 or any(ord(c)<0x20 or ord(c)==0x7f for c in value):return False
         validate_record(value)
         parts=urlsplit(value)
+        if parts.scheme.lower() not in {'','http','https'} or (parts.scheme and not parts.hostname):
+            return False
         names={row['parameter'].casefold() for row in credential_parameters()}
         return (parts.username is None and parts.password is None and
             not any(name.casefold() in names for name,_ in parse_qsl(parts.query,keep_blank_values=True)))
@@ -247,7 +251,7 @@ def _record_attempt(path,url,*,attempted,complete=None,outcome=None,http_status=
             http_status=http_status,error_type=error_type))+'\n')
 
 
-def cutoff_report(release,*,urls,attempted,engine,work,as_of,stop_reason):
+def cutoff_report(release,*,urls,attempted,engine,work,as_of,stop_reason,_keyed_states_cache=None):
     """Account for every reviewed URL, including deadline/budget/scope deferrals."""
     _require_capture_authority(release)
     urls=_reviewed_cutoffs(urls)
@@ -255,17 +259,25 @@ def cutoff_report(release,*,urls,attempted,engine,work,as_of,stop_reason):
     binding,_=_url_binding(release,engine)
     work=Path(work);work.mkdir(parents=True,exist_ok=False)
     policy=CapturePolicy(release['scope'])
-    inputs=[dict(name='states',kind='parquet',path=str(Path(release['state']).resolve())),
+    reuse_keyed_states=_keyed_states_cache is not None and Path(_keyed_states_cache).is_file()
+    inputs=[dict(name='keyed_states' if reuse_keyed_states else 'states',kind='parquet',
+                 path=str(Path(_keyed_states_cache if reuse_keyed_states else release['state']).resolve())),
         json_input(work,'cutoffs',(dict(url=url) for url in urls),url='Utf8'),
         dict(name='attempted',kind='json_lines',
             files=[dict(key='attempted',path=str(attempted))] if attempted.exists() else [],
             schema=dict(fields=[field('url','Utf8'),field('attempted','Boolean'),field('complete','Boolean'),
                 field('outcome','Utf8'),field('http_status','Int32'),field('error_type','Utf8')],metadata={}))]
     inputs.extend(_profile_inputs(release,binding,work))
-    steps=_key_steps(binding,[('states','state','requested_url'),('attempted','attempted','url'),('cutoffs','cutoff','url')])
-    steps.extend([dict(name='selected_states',sql=f"""SELECT s.requested_url,s.next_attempt_at,
+    key_sources=[('attempted','attempted','url'),('cutoffs','cutoff','url')]
+    if not reuse_keyed_states:
+        key_sources.insert(0,('states','state','requested_url'))
+    steps=_key_steps(binding,key_sources)
+    selected_states_sql=(f"SELECT s.requested_url,s.next_attempt_at,{policy.sql('s.requested_url')} AS family,s.url_key FROM keyed_states s"
+        if reuse_keyed_states else
+        f"""SELECT s.requested_url,s.next_attempt_at,
         {policy.sql('s.requested_url')} AS family,k.url_key FROM states s JOIN url_keys k
-        ON k.input_id='state:' || s.requested_url"""),
+        ON k.input_id='state:' || s.requested_url""")
+    steps.extend([dict(name='selected_states',sql=selected_states_sql),
         dict(name='selected_attempts',sql="""SELECT a.*,k.url_key FROM attempted a JOIN url_keys k
             ON k.input_id='attempted:' || a.url"""),
         dict(name='reviewed_cutoffs',sql="""SELECT DISTINCT c.url,k.url_key FROM cutoffs c JOIN url_keys k
@@ -291,7 +303,7 @@ def cutoff_report(release,*,urls,attempted,engine,work,as_of,stop_reason):
 
 
 def plan_queue(release,*,engine,work,as_of,request_budget,seed_inventories=(),
-               seed_files=(),discovery_files=(),attempted=None,cutoff_urls=()):
+               seed_files=(),discovery_files=(),attempted=None,cutoff_urls=(),_keyed_states_cache=None):
     """Use shared URL keys for matching, retaining literal requested URL outputs."""
     _require_capture_authority(release)
     _positive(request_budget,'request budget');as_of=_utc(as_of)
@@ -308,7 +320,10 @@ def plan_queue(release,*,engine,work,as_of,request_budget,seed_inventories=(),
             or not pa.types.is_timestamp(timestamp) or timestamp.unit!='us' or timestamp.tz!='UTC'):
         raise ValueError('url_state has incompatible scheduler column types')
     policy=CapturePolicy(release['scope'])
-    inputs=[dict(name='states',kind='parquet',path=str(Path(release['state']).resolve()))]
+    reuse_keyed_states=_keyed_states_cache is not None and Path(_keyed_states_cache).is_file()
+    export_keyed_states=_keyed_states_cache is not None and not reuse_keyed_states
+    inputs=[dict(name='keyed_states' if reuse_keyed_states else 'states',kind='parquet',
+                 path=str(Path(_keyed_states_cache if reuse_keyed_states else release['state']).resolve()))]
     files=list(seed_files)
     if seed_inventories:
         seeded=json_input(work,'weekly',inventories(seed_inventories),url='Utf8',source='Utf8',pointer='Utf8')
@@ -323,10 +338,14 @@ def plan_queue(release,*,engine,work,as_of,request_budget,seed_inventories=(),
     inputs.extend(_profile_inputs(release,binding,work))
     steps=[dict(name='seed_rows',sql="""SELECT url,source,pointer FROM seeds UNION ALL
         SELECT url_resolve(href,coalesce(url_resolve(base_href,context),context)) AS url,source,pointer FROM discovery""")]
-    steps.extend(_key_steps(binding,[('states','state','requested_url'),('seed_rows','seed','url'),
-        ('attempted','attempted','url'),('cutoffs','cutoff','url')]))
-    steps.extend([dict(name='keyed_states',sql="""SELECT s.*,k.url_key FROM states s JOIN url_keys k
-        ON k.input_id='state:' || s.requested_url"""),
+    key_sources=[('seed_rows','seed','url'),('attempted','attempted','url'),('cutoffs','cutoff','url')]
+    if not reuse_keyed_states:
+        key_sources.insert(0,('states','state','requested_url'))
+    steps.extend(_key_steps(binding,key_sources))
+    if not reuse_keyed_states:
+        steps.append(dict(name='keyed_states',sql="""SELECT s.*,k.url_key FROM states s JOIN url_keys k
+            ON k.input_id='state:' || s.requested_url"""))
+    steps.extend([
         dict(name='keyed_seeds',sql="""SELECT s.*,k.url_key FROM seed_rows s JOIN url_keys k
             ON k.input_id='seed:' || s.url"""),
         dict(name='keyed_attempts',sql="""SELECT DISTINCT k.url_key FROM attempted a JOIN url_keys k
@@ -335,26 +354,39 @@ def plan_queue(release,*,engine,work,as_of,request_budget,seed_inventories=(),
             ON k.input_id='cutoff:' || c.url"""),
         dict(name='observations',sql="""SELECT url_key,min(url) AS url,array_agg(DISTINCT json_array(url,source,pointer)
             ORDER BY json_array(url,source,pointer)) AS observations FROM keyed_seeds GROUP BY url_key"""),
-        dict(name='candidates',sql=f"""SELECT requested_url,attempts,cast(last_outcome AS VARCHAR) AS last_outcome,next_attempt_at,
-                coalesce(o.observations,make_array(json_array(requested_url,{_literal('release:'+release['release_id'])},'[]'))) AS observations,s.url_key
-            FROM keyed_states s LEFT JOIN observations o ON s.url_key=o.url_key
+        dict(name='seed_urls',sql="""SELECT url_key,min(url) AS url FROM keyed_seeds GROUP BY url_key"""),
+        dict(name='candidates',sql="""SELECT requested_url,attempts,cast(last_outcome AS VARCHAR) AS last_outcome,next_attempt_at,s.url_key
+            FROM keyed_states s
             UNION ALL SELECT o.url AS requested_url,0 AS attempts,cast(NULL AS VARCHAR) AS last_outcome,
-                cast(NULL AS TIMESTAMP) AS next_attempt_at,o.observations,o.url_key
-            FROM observations o LEFT ANTI JOIN keyed_states s ON o.url_key=s.url_key"""),
+                cast(NULL AS TIMESTAMP) AS next_attempt_at,o.url_key
+            FROM seed_urls o LEFT ANTI JOIN keyed_states s ON o.url_key=s.url_key"""),
         dict(name='scoped',sql=f"""SELECT c.*,{policy.sql('requested_url')} AS family,
             CASE WHEN attempts=0 THEN 0 WHEN last_outcome='size_limit' OR k.url_key IS NOT NULL
-            THEN 1 ELSE 2 END AS priority FROM candidates c LEFT JOIN keyed_cutoffs k ON c.url_key=k.url_key
+            THEN 1 WHEN last_outcome IN ('stored','unchanged') AND next_attempt_at IS NULL THEN 3 ELSE 2 END AS priority
+            FROM candidates c LEFT JOIN keyed_cutoffs k ON c.url_key=k.url_key
             LEFT ANTI JOIN keyed_attempts a ON c.url_key=a.url_key"""),
         dict(name='eligible',sql=f"SELECT * FROM scoped WHERE family IS NOT NULL AND (next_attempt_at IS NULL OR next_attempt_at<=to_timestamp({_literal(as_of)}))"),
         dict(name='due',sql="""SELECT * FROM (SELECT *,row_number() OVER(PARTITION BY url_key
-            ORDER BY priority,next_attempt_at NULLS FIRST,requested_url) AS ordinal FROM eligible) WHERE ordinal=1""")])
-    values=run_job(work,engine,inputs=inputs,steps=steps,outputs=[parquet_output(work,'queue',
-        f'SELECT requested_url,family,priority,next_attempt_at,observations FROM due ORDER BY priority,next_attempt_at NULLS FIRST,requested_url LIMIT {request_budget}',
-        ['priority','next_attempt_at','requested_url'])],queries=[
+            ORDER BY priority,next_attempt_at NULLS FIRST,requested_url) AS ordinal FROM eligible) WHERE ordinal=1"""),
+        dict(name='top_due',sql=f"""SELECT requested_url,family,priority,next_attempt_at,url_key FROM due
+            ORDER BY priority,next_attempt_at NULLS FIRST,requested_url LIMIT {request_budget}""")])
+    outputs=[parquet_output(work,'queue',
+        f"""SELECT d.requested_url,d.family,d.priority,d.next_attempt_at,
+            coalesce(o.observations,make_array(json_array(d.requested_url,{_literal('release:'+release['release_id'])},'[]'))) AS observations
+            FROM top_due d LEFT JOIN observations o ON d.url_key=o.url_key
+            ORDER BY d.priority,d.next_attempt_at NULLS FIRST,d.requested_url""",
+        ['priority','next_attempt_at','requested_url'])]
+    if export_keyed_states:
+        outputs.append(parquet_output(work,'keyed_states',
+            """SELECT requested_url,attempts,cast(last_outcome AS VARCHAR) AS last_outcome,next_attempt_at,url_key
+               FROM keyed_states ORDER BY url_key,requested_url""",
+            ['url_key','requested_url']))
+    states_table='keyed_states' if reuse_keyed_states else 'states'
+    values=run_job(work,engine,inputs=inputs,steps=steps,outputs=outputs,queries=[
         *_key_queries(),dict(name='counts',sql="SELECT count(*) AS due,count(*) FILTER(WHERE priority=0) AS queue,count(*) FILTER(WHERE priority=1) AS cutoffs FROM due"),
-        dict(name='bad_states',sql="SELECT count(*) AS violations FROM states WHERE requested_url IS NULL OR attempts IS NULL OR attempts<0 OR octet_length(requested_url)>16384"),
+        dict(name='bad_states',sql=f"SELECT count(*) AS violations FROM {states_table} WHERE requested_url IS NULL OR attempts IS NULL OR attempts<0 OR octet_length(requested_url)>16384"),
         dict(name='large_observations',sql='SELECT count(*) AS violations FROM observations WHERE array_length(observations)>256'),
-        dict(name='duplicates',sql='SELECT count(*) AS violations FROM (SELECT requested_url FROM states GROUP BY requested_url HAVING count(*)>1)')])
+        dict(name='duplicates',sql=f'SELECT count(*) AS violations FROM (SELECT requested_url FROM {states_table} GROUP BY requested_url HAVING count(*)>1)')])
     _check_keys(values)
     if any(values[name][0]['violations'] for name in ('bad_states','duplicates','large_observations')):
         raise ValueError('Invalid or duplicate url_state rows')
@@ -398,10 +430,10 @@ def read_discovery_payload(payload):
 def run_capture(release,*,engine,work,as_of,request_budget,byte_budget,spool_budget,
                 store,identity,direct,provider=None,resolve=resolve_host,pace=None,
                 archive_limits=None,seed_inventories=(),cutoff_urls=(),
-                discover=None,max_discovery_jobs=8,headers=None,worker_factory=None):
-    """One sequential raw writer. No state/index or table writes occur here."""
+                discover=None,max_discovery_jobs=8,headers=None,worker_factory=None,workers=1):
+    """Bounded raw writer. No state/index or table writes occur here."""
     _require_capture_authority(release)
-    for name,value in [('request budget',request_budget),('byte budget',byte_budget),('spool budget',spool_budget),('discovery jobs',max_discovery_jobs)]:
+    for name,value in [('request budget',request_budget),('byte budget',byte_budget),('spool budget',spool_budget),('discovery jobs',max_discovery_jobs),('workers',workers)]:
         _positive(value,name)
     _,url_key_digest=_url_binding(release,engine)
     release=dict(release,url_key_definition_sha256=url_key_digest)
@@ -414,7 +446,15 @@ def run_capture(release,*,engine,work,as_of,request_budget,byte_budget,spool_bud
         worker_factory=ParserWorker
     as_of=_utc(as_of);cutoff_urls=_reviewed_cutoffs(cutoff_urls)
     work=Path(work);work.mkdir(parents=True,exist_ok=False)
-    policy=CapturePolicy(release['scope'],resolve=resolve);policy.require_capture()
+    dns_cache,dns_lock={},threading.Lock()
+    def cached_resolve(host):
+        with dns_lock:
+            if host in dns_cache:return dns_cache[host]
+        addrs=resolve(host)
+        with dns_lock:
+            dns_cache[host]=addrs
+        return addrs
+    policy=CapturePolicy(release['scope'],resolve=cached_resolve);policy.require_capture()
     archive_limits=archive_limits or ZipLimits();hops=14 if provider is not None else 7
     stats=dict(release_id=release['release_id'],as_of=as_of,run_id=new_run_id(),requests=0,
         fetched_bytes=0,captures=0,receipts=[],refusals=[],discovery_errors=[],discovery_refused=0,cutoffs=[],cutoff_attempts=[],
@@ -422,89 +462,146 @@ def run_capture(release,*,engine,work,as_of,request_budget,byte_budget,spool_bud
         url_key_definition_sha256=url_key_digest,stop_reason=None)
     writer=ReceiptWriter(store,identity=identity,run_id=stats['run_id'],write_date=datetime.now(timezone.utc).date().isoformat(),archive_limits=archive_limits)
     attempted=work/'attempted.jsonl.gz';discovered=[];generation=0
-    workers={};worker_stack=ExitStack()
+    parser_workers={};worker_stack=ExitStack();parser_lock=threading.Lock()
     worker_version=hashlib.sha256(json.dumps(['capture-discovery',identity['commit'],
         identity['lockfile_digest']],separators=(',',':')).encode()).hexdigest()
+    keyed_states_cache=work/'plan-0/keyed_states.parquet'
     plan=plan_queue(release,engine=engine,work=work/'plan-0',as_of=as_of,
-        request_budget=request_budget,seed_inventories=seed_inventories,cutoff_urls=cutoff_urls)
+        request_budget=request_budget,seed_inventories=seed_inventories,cutoff_urls=cutoff_urls,
+        _keyed_states_cache=keyed_states_cache)
     stats['initial_counts']=plan['counts'];seed_files=plan['seed_files']
     pending=iter(_records(plan['queue']))
     pace=pace or HostPacer(PACING)
-    try:
-        while True:
-            if request_budget-stats['requests']<hops:
-                stats['stop_reason']='request_budget';break
-            limit,reserved=_allowance(byte_budget-stats['fetched_bytes'],spool_budget,archive_limits,hops)
-            if limit<=0:
-                stats['stop_reason']='byte_or_spool_budget';break
-            stats['spool_reserved_bound']=max(stats['spool_reserved_bound'],reserved)
-            row=next(pending,None)
-            if row is None:stats['stop_reason']='queue_empty';break
-            url=row['requested_url']
-            try:validate_record(url)
-            except ValueError:
-                stats['refusals'].append(dict(reason='unsafe_recorded_url'))
-                continue
-            family=policy.family(url)
-            if family is None:
-                stats['refusals'].append(dict(url=url,reason='outside_capture_scope'))
-                _record_attempt(attempted,url,attempted=False,error_type='outside_capture_scope')
-                continue
-            observations=[dict(url=value[0],source=value[1],pointer=json.loads(value[2]))
-                          for value in map(json.loads,row['observations'])]
-            with TemporaryDirectory(prefix='body-',dir=work) as spool:
-                fetcher=Fetcher(scope=policy,direct=_Counted(direct,stats),
-                    provider=_Counted(provider,stats) if provider is not None else None,
-                    pace=pace,directory=spool,spool_limit=limit,headers=headers)
-                result=fetcher.fetch(url)
-                key,line=writer.write(result,family=family,observations=observations)
-                stats['receipts'].append(key);stats['captures']+=1
-                if row['priority']==1:
-                    stats['cutoff_attempts'].append(dict(url=url,outcome=line['outcome'],complete=result.final.complete,
-                        reason=result.final.error))
-                _record_attempt(attempted,url,attempted=True,complete=result.final.complete,
-                    outcome=line['outcome'],http_status=line['http_status'],error_type=result.final.error)
-                body=result.final.body;links=[]
-                parser=line['captures'][0]['sniffed_format'] if body is not None else None
-                if (generation<max_discovery_jobs and body is not None and result.final.complete
-                        and result.final.http_status is not None and 200<=result.final.http_status<300
-                        and parser in {'html','xml','json'}):
-                    if body.size>PAGE_BYTES:
-                        stats['discovery_errors'].append(dict(url=url,reason='discovery_size_limit'))
+
+    def _capture_one(row,url,family,limit,allow_discovery):
+        local_stats=dict(requests=0,fetched_bytes=0)
+        observations=[dict(url=value[0],source=value[1],pointer=json.loads(value[2]))
+                      for value in map(json.loads,row['observations'])]
+        links=[];disc_errors=[];disc_refused=0
+        with TemporaryDirectory(prefix='body-',dir=work) as spool:
+            fetcher=Fetcher(scope=policy,direct=_Counted(direct,local_stats),
+                provider=_Counted(provider,local_stats) if provider is not None else None,
+                pace=pace,directory=spool,spool_limit=limit,headers=headers)
+            result=fetcher.fetch(url)
+            key,line=writer.write(result,family=family,observations=observations)
+            body=result.final.body
+            parser=line['captures'][0]['sniffed_format'] if body is not None else None
+            if (allow_discovery and body is not None and result.final.complete
+                    and result.final.http_status is not None and 200<=result.final.http_status<300
+                    and parser in {'html','xml','json'}):
+                if body.size>PAGE_BYTES:
+                    disc_errors.append(dict(url=url,reason='discovery_size_limit'))
+                else:
+                    if discover is not None:
+                        facts=discover(body.path.read_bytes(),parser)
                     else:
-                        if discover is not None:
-                            facts=discover(body.path.read_bytes(),parser)
-                        else:
-                            if parser not in workers:
-                                workers[parser]=worker_stack.enter_context(worker_factory(parser,worker_version,
+                        with parser_lock:
+                            if parser not in parser_workers:
+                                parser_workers[parser]=worker_stack.enter_context(worker_factory(parser,worker_version,
                                     'congress_api.acquisition.capture_scheduler:read_discovery_payload',
                                     timeout_seconds=30,memory_bytes=512<<20,max_input_bytes=PAGE_BYTES+16384))
-                            outcome=workers[parser].parse(body.sha256,json.dumps(dict(path=str(body.path),bytes=body.size,
+                            outcome=parser_workers[parser].parse(body.sha256,json.dumps(dict(path=str(body.path),bytes=body.size,
                                 sha256=body.sha256,parser=parser),ensure_ascii=False,separators=(',',':')).encode('utf-8'))
-                            if outcome['status'] in {'unreadable','size_limit'}:
-                                facts=dict(status='error',error_type=outcome.get('reason',outcome['status']))
-                            elif outcome['status']=='completed':facts=outcome['value']
-                            else:raise ValueError('Invalid bounded discovery worker result')
-                        if facts['status']!='completed':
-                            stats['discovery_errors'].append(dict(url=url,reason=facts['error_type']))
-                        else:
-                            for index,link in enumerate(facts['links']):
-                                if (not _safe_reference(link['href']) or facts['base_href'] is not None
-                                        and not _safe_reference(facts['base_href'])):
-                                    stats['discovery_refused']+=1
-                                    continue
-                                links.append(dict(href=link['href'],base_href=facts['base_href'],context=result.final.url,
-                                    source=key,pointer=json.dumps([index])))
-                # The surrounding spool owns every original attempt file and
-                # removes them only after body+receipt storage has completed.
-            if links:
+                        if outcome['status'] in {'unreadable','size_limit'}:
+                            facts=dict(status='error',error_type=outcome.get('reason',outcome['status']))
+                        elif outcome['status']=='completed':facts=outcome['value']
+                        else:raise ValueError('Invalid bounded discovery worker result')
+                    if facts['status']!='completed':
+                        disc_errors.append(dict(url=url,reason=facts['error_type']))
+                    else:
+                        for index,link in enumerate(facts['links']):
+                            if (not _safe_reference(link['href']) or facts['base_href'] is not None
+                                    and not _safe_reference(facts['base_href'])):
+                                disc_refused+=1
+                                continue
+                            links.append(dict(href=link['href'],base_href=facts['base_href'],context=result.final.url,
+                                source=key,pointer=json.dumps([index])))
+            # The surrounding spool owns every original attempt file and
+            # removes them only after body+receipt storage has completed.
+        return row,url,result,key,line,local_stats,links,disc_errors,disc_refused
+
+    def _commit(outcome_tuple):
+        row,url,result,key,line,local_stats,links,disc_errors,disc_refused=outcome_tuple
+        stats['requests']+=local_stats['requests']
+        stats['fetched_bytes']+=local_stats['fetched_bytes']
+        stats['receipts'].append(key);stats['captures']+=1
+        if row['priority']==1:
+            stats['cutoff_attempts'].append(dict(url=url,outcome=line['outcome'],complete=result.final.complete,
+                reason=result.final.error))
+        _record_attempt(attempted,url,attempted=True,complete=result.final.complete,
+            outcome=line['outcome'],http_status=line['http_status'],error_type=result.final.error)
+        stats['discovery_errors'].extend(disc_errors)
+        stats['discovery_refused']+=disc_refused
+        return links
+
+    try:
+        pool=worker_stack.enter_context(ThreadPoolExecutor(max_workers=workers)) if workers>1 else None
+        inflight=set();exhausted=False
+        while True:
+            while len(inflight)<workers and not exhausted:
+                if request_budget-(stats['requests']+len(inflight)*hops)<hops:
+                    if not inflight:stats['stop_reason']='request_budget'
+                    break
+                active=len(inflight)+1
+                _,min_overhead=_allowance(0,0,archive_limits,hops)
+                worker_spool=(min_overhead+(spool_budget-min_overhead)//workers) if spool_budget>=min_overhead else spool_budget//workers
+                limit,reserved=_allowance((byte_budget-stats['fetched_bytes'])//active,worker_spool,archive_limits,hops)
+                if limit<=0:
+                    if not inflight:stats['stop_reason']='byte_or_spool_budget'
+                    break
+                row=next(pending,None)
+                if row is None:
+                    exhausted=True
+                    if not inflight:stats['stop_reason']='queue_empty'
+                    break
+                url=row['requested_url']
+                try:validate_record(url)
+                except ValueError:
+                    stats['refusals'].append(dict(reason='unsafe_recorded_url'))
+                    continue
+                family=policy.family(url)
+                if family is None:
+                    stats['refusals'].append(dict(url=url,reason='outside_capture_scope'))
+                    _record_attempt(attempted,url,attempted=False,error_type='outside_capture_scope')
+                    continue
+                stats['spool_reserved_bound']=max(stats['spool_reserved_bound'],min_overhead+active*3*limit)
+                if pool is None:
+                    links=_commit(_capture_one(row,url,family,limit,generation<max_discovery_jobs))
+                    if links and generation<max_discovery_jobs:
+                        generation+=1
+                        entry=json_input(work,f'discovered-{generation}',links,href='Utf8',base_href='Utf8',context='Utf8',source='Utf8',pointer='Utf8')
+                        discovered.extend(entry['files'])
+                        plan=plan_queue(release,engine=engine,work=work/f'plan-{generation}',as_of=as_of,
+                            request_budget=request_budget-stats['requests'],seed_files=seed_files,
+                            discovery_files=discovered,attempted=attempted,cutoff_urls=cutoff_urls,
+                            _keyed_states_cache=keyed_states_cache)
+                        pending=iter(_records(plan['queue']));exhausted=False
+                else:
+                    inflight.add(pool.submit(_capture_one,row,url,family,limit,generation<max_discovery_jobs))
+            if stats['stop_reason'] is not None:
+                break
+            if not inflight:
+                if exhausted:
+                    stats['stop_reason']='queue_empty';break
+                continue
+            done,inflight=wait(inflight,return_when=FIRST_COMPLETED)
+            batch_links=[]
+            for fut in done:
+                batch_links.extend(_commit(fut.result()))
+            if batch_links and generation<max_discovery_jobs:
+                if inflight:
+                    rest,_=wait(inflight)
+                    inflight=set()
+                    for fut in rest:
+                        batch_links.extend(_commit(fut.result()))
                 generation+=1
-                entry=json_input(work,f'discovered-{generation}',links,href='Utf8',base_href='Utf8',context='Utf8',source='Utf8',pointer='Utf8')
+                entry=json_input(work,f'discovered-{generation}',batch_links,href='Utf8',base_href='Utf8',context='Utf8',source='Utf8',pointer='Utf8')
                 discovered.extend(entry['files'])
                 plan=plan_queue(release,engine=engine,work=work/f'plan-{generation}',as_of=as_of,
                     request_budget=request_budget-stats['requests'],seed_files=seed_files,
-                    discovery_files=discovered,attempted=attempted,cutoff_urls=cutoff_urls)
-                pending=iter(_records(plan['queue']))
+                    discovery_files=discovered,attempted=attempted,cutoff_urls=cutoff_urls,
+                    _keyed_states_cache=keyed_states_cache)
+                pending=iter(_records(plan['queue']));exhausted=False
         return stats
     except Exception as error:
         stats.update(stop_reason='error',error_type=type(error).__name__)
@@ -516,6 +613,7 @@ def run_capture(release,*,engine,work,as_of,request_budget,byte_budget,spool_bud
         try:
             worker_stack.close()
             stats['cutoffs']=cutoff_report(release,urls=cutoff_urls,attempted=attempted,engine=engine,
-                work=work/'cutoff-report',as_of=as_of,stop_reason=stats['stop_reason'])
+                work=work/'cutoff-report',as_of=as_of,stop_reason=stats['stop_reason'],
+                _keyed_states_cache=keyed_states_cache)
         finally:
             (work/'summary.json').write_text(json.dumps(stats,ensure_ascii=False,indent=2)+'\n')

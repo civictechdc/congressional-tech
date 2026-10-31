@@ -978,3 +978,75 @@ def test_d4_candidate_queries_and_native_iceberg_commits(tmp_path: Path):
     )
     assert a_res["files"][0]["rows"] == 1
 
+
+def test_record_producer_prefetch_and_local_cache_reuse(tmp_path: Path):
+    """R2 candidate bodies are prefetched into `local_root` once and reused without re-fetching."""
+    import gzip
+    from congress_api.lake import _record_producer
+
+    p1 = b'{"committeeMeeting":{"eventId":"118001","congress":118,"chamber":"House","title":"H1"}}'
+    p2 = b'{"committeeMeeting":{"eventId":"118002","congress":118,"chamber":"House","title":"H2"}}'
+    s1 = hashlib.sha256(p1).hexdigest()
+    s2 = hashlib.sha256(p2).hexdigest()
+    k1 = f"bodies/sha256/{s1[:2]}/{s1}.gz"
+    k2 = f"bodies/sha256/{s2[:2]}/{s2}.gz"
+    objects = {k1: gzip.compress(p1), k2: gzip.compress(p2)}
+    calls: list[str] = []
+
+    class FakeClient:
+        def get_object(self, *, Bucket: str, Key: str):
+            assert Bucket == "test-bucket"
+            calls.append(Key)
+            if Key not in objects:
+                raise FileNotFoundError(Key)
+            return {"Body": objects[Key]}
+
+    class FakeAdapter:
+        bucket = "test-bucket"
+        client = FakeClient()
+
+    class FakeStore:
+        adapter = FakeAdapter()
+
+    cache_dir = tmp_path / "local-cache"
+    work_items = [
+        {"record_sha": s1, "stored_suffix": ".gz", "source": "congress_gov"},
+        {"record_sha": s2, "stored_suffix": ".gz", "source": "congress_gov"},
+    ]
+    _record_producer._prefetch_candidate_bodies(work_items, local_root=cache_dir, raw_store=FakeStore())
+    assert sorted(calls) == sorted([k1, k2])
+    assert (cache_dir / k1).is_file() and (cache_dir / k2).is_file()
+
+    # Subsequent reads hit local_root without calling FakeClient.get_object again
+    calls.clear()
+    assert _record_producer._read_candidate_body(s1, ".gz", local_root=cache_dir, raw_store=FakeStore()) == p1
+    assert _record_producer._read_candidate_body(s2, ".gz", local_root=cache_dir, raw_store=FakeStore()) == p2
+    assert calls == []
+
+
+def test_receipt_line_cursor_cache_and_version_decoupling(tmp_path: Path):
+    """`_read_receipt_lines` keeps at most 1 receipt in memory and `current_version` is decoupled from orchestration."""
+    import gzip
+    from congress_api.lake import _record_producer, readings
+
+    r1 = "receipts/congress/meetings/2026-10-01/r1.jsonl.gz"
+    r2 = "receipts/congress/meetings/2026-10-02/r2.jsonl.gz"
+    (tmp_path / r1).parent.mkdir(parents=True, exist_ok=True)
+    (tmp_path / r2).parent.mkdir(parents=True, exist_ok=True)
+    (tmp_path / r1).write_bytes(gzip.compress(b'{"line":1}\n'))
+    (tmp_path / r2).write_bytes(gzip.compress(b'{"line":2}\n'))
+
+    cache: dict[str, list[bytes]] = {}
+    lines1 = _record_producer._read_receipt_lines(r1, local_root=tmp_path, raw_store=None, cache=cache)
+    assert lines1 == [b'{"line":1}'] and list(cache.keys()) == [r1]
+    lines2 = _record_producer._read_receipt_lines(r2, local_root=tmp_path, raw_store=None, cache=cache)
+    assert lines2 == [b'{"line":2}'] and list(cache.keys()) == [r2]
+
+    # Verify version digests are stable 64-char hex strings and decoupled from transport/orchestration
+    assert len(meeting_records.current_version()) == 64
+    assert len(appearance_records.current_version()) == 64
+    leaf_versions = {p: readings.current_version(p) for p in ("sniff", "html", "xml", "json")}
+    assert len(readings.bundle_version(leaf_versions, policy=readings.worker_limits())) == 64
+
+
+

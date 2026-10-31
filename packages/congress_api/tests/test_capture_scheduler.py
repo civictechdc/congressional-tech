@@ -429,7 +429,7 @@ def test_single_put_entity_boundary_is_admitted_when_resources_fit(tmp_path):
     assert result['spool_reserved_bound']<=result['budgets']['spool']
 
 
-@pytest.mark.parametrize('unsafe',['/unsafe?token=secret','/unsafe?%74oken=secret','//user:secret@fixture.test/unsafe'])
+@pytest.mark.parametrize('unsafe',['/unsafe?token=secret','/unsafe?%74oken=secret','//user:secret@fixture.test/unsafe','mailto:info@fixture.test?subject=Hello','javascript:void(0)','tel:+12022252171'])
 def test_unsafe_discovered_target_is_refused_without_aborting_other_work(tmp_path,unsafe):
     data=('<html><a href="'+unsafe+'">unsafe link</a></html>').encode()
     result,adapter,raw=run_fixture(tmp_path,[dict(requested_url='https://fixture.test/a',attempts=0),
@@ -593,3 +593,47 @@ def test_missing_release_profile_has_no_workspace_fallback(tmp_path):
     (root/'manifest.json').write_text(json.dumps(manifest))
     with pytest.raises(ValueError,match='scheduler input'):
         load_release(release_root=root,work=tmp_path/'read')
+
+
+def test_concurrent_workers_respect_budgets_and_create_unique_receipts(tmp_path):
+    urls=[f'https://fixture.test/doc-{i}.pdf' for i in range(12)]
+    rows=[dict(requested_url=u,attempts=0) for u in urls]
+    responses={u:(200,f'%PDF-1.7\ncontent-{i}\n%%EOF'.encode(),{'content-type':'application/pdf'}) for i,u in enumerate(urls)}
+    result,adapter,raw=run_fixture(tmp_path,rows,responses,workers=4)
+    assert result['captures']==12 and result['requests']==12 and len(result['receipts'])==12
+    assert len(set(result['receipts']))==12
+    assert result['stop_reason']=='queue_empty'
+    assert result['spool_reserved_bound']<=result['budgets']['spool']
+    assert not list((tmp_path/'capture').rglob('*.body'))
+
+
+def test_undated_stored_state_has_lower_priority_than_due_failures(tmp_path):
+    from congress_api.acquisition.capture_scheduler import plan_queue
+    root=release(tmp_path,[
+        dict(requested_url='https://fixture.test/undated-stored',attempts=1,
+             last_outcome='stored',next_attempt_at=None),
+        dict(requested_url='https://fixture.test/due-failed',attempts=1,
+             last_outcome='failed',next_attempt_at=datetime(2026,10,1,tzinfo=timezone.utc)),
+    ])
+    selected=load(root,tmp_path/'read')
+    plan=plan_queue(selected,engine=engine(),work=tmp_path/'plan',as_of=ASOF,request_budget=10)
+    rows=pq.read_table(plan['queue']).to_pylist()
+    assert [r['requested_url'] for r in rows]==['https://fixture.test/due-failed','https://fixture.test/undated-stored']
+    assert [r['priority'] for r in rows]==[2,3]
+
+
+def test_keyed_states_cache_reused_across_discovery_and_cutoff_report(tmp_path):
+    result,adapter,raw=run_fixture(tmp_path,[dict(requested_url='https://fixture.test/a',attempts=0)],{
+        'https://fixture.test/a':(200,b'<html><a href="/b">b</a></html>',{'content-type':'text/html'}),
+        'https://fixture.test/b':(200,b'%PDF-1.7\n%%EOF',{})},
+        cutoff_urls=['https://fixture.test/a'])
+    assert result['captures']==2
+    cache_file=tmp_path/'capture'/'plan-0'/'keyed_states.parquet'
+    assert cache_file.is_file()
+    plan1_job=json.loads((tmp_path/'capture'/'plan-1'/'job.json').read_text())
+    cutoff_job=json.loads((tmp_path/'capture'/'cutoff-report'/'job.json').read_text())
+    assert any(inp['name']=='keyed_states' for inp in plan1_job['inputs'])
+    assert not any(inp['name']=='states' for inp in plan1_job['inputs'])
+    assert any(inp['name']=='keyed_states' for inp in cutoff_job['inputs'])
+
+

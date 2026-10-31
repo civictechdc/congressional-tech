@@ -186,6 +186,29 @@ def _is_missing_key_error(exc: Exception) -> bool:
     return False
 
 
+def _candidate_rel_paths(record_sha: str, stored_suffix: str | None) -> list[str]:
+    suffix = stored_suffix if stored_suffix is not None else ".gz"
+    rel_candidates = [f"bodies/sha256/{record_sha[:2]}/{record_sha}{suffix}"]
+    if suffix != "":
+        rel_candidates.append(f"bodies/sha256/{record_sha[:2]}/{record_sha}")
+    if suffix != ".gz":
+        rel_candidates.append(f"bodies/sha256/{record_sha[:2]}/{record_sha}.gz")
+    return rel_candidates
+
+
+def _atomic_write_cache(target: Path, data: bytes) -> None:
+    import os
+    import threading
+
+    try:
+        target.parent.mkdir(parents=True, exist_ok=True)
+        tmp = target.with_name(f".{target.name}.{os.getpid()}.{threading.get_ident()}.tmp")
+        tmp.write_bytes(data)
+        os.replace(tmp, target)
+    except OSError:
+        pass
+
+
 def _read_candidate_body(
     record_sha: str,
     stored_suffix: str | None,
@@ -195,12 +218,7 @@ def _read_candidate_body(
 ) -> bytes:
     import gzip as _gzip
 
-    suffix = stored_suffix if stored_suffix is not None else ".gz"
-    rel_candidates = [f"bodies/sha256/{record_sha[:2]}/{record_sha}{suffix}"]
-    if suffix != "":
-        rel_candidates.append(f"bodies/sha256/{record_sha[:2]}/{record_sha}")
-    if suffix != ".gz":
-        rel_candidates.append(f"bodies/sha256/{record_sha[:2]}/{record_sha}.gz")
+    rel_candidates = _candidate_rel_paths(record_sha, stored_suffix)
 
     raw_bytes: bytes | None = None
     if local_root is not None:
@@ -225,6 +243,8 @@ def _read_candidate_body(
                     resp = adapter.client.get_object(Bucket=adapter.bucket, Key=rel)
                     body = resp["Body"]
                     raw_bytes = body.read() if hasattr(body, "read") else bytes(body)
+                    if local_root is not None:
+                        _atomic_write_cache(Path(local_root) / rel, raw_bytes)
                     break
                 except Exception as exc:
                     if _is_missing_key_error(exc):
@@ -243,6 +263,80 @@ def _read_candidate_body(
     if actual_sha != record_sha:
         raise ValueError(f"Body SHA-256 mismatch for record_sha={record_sha}: got {actual_sha}")
     return payload
+
+
+def _prefetch_candidate_bodies(
+    work_items: Sequence[Mapping[str, Any]],
+    *,
+    local_root: Path,
+    raw_store: Any,
+    max_workers: int = 32,
+) -> None:
+    """Concurrently prefetch R2 candidate bodies into `local_root` so subsequent stages read locally."""
+    from concurrent.futures import ThreadPoolExecutor
+
+    if not work_items or raw_store is None:
+        return
+    adapter = getattr(raw_store, "adapter", None)
+    if getattr(adapter, "root", None) is not None or not (
+        hasattr(adapter, "client") and hasattr(adapter, "bucket")
+    ):
+        return
+
+    missing: list[tuple[str, str | None]] = []
+    seen: set[str] = set()
+    for item in work_items:
+        rec_sha = item["record_sha"]
+        if rec_sha in seen:
+            continue
+        seen.add(rec_sha)
+        suffix = item["stored_suffix"] if item.get("stored_suffix") is not None else ".gz"
+        rels = _candidate_rel_paths(rec_sha, suffix)
+        if not any((local_root / rel).is_file() for rel in rels):
+            missing.append((rec_sha, suffix))
+
+    if len(missing) <= 1:
+        return
+
+    def _fetch_one(pair: tuple[str, str | None]) -> None:
+        rec_sha, suffix = pair
+        for rel in _candidate_rel_paths(rec_sha, suffix):
+            target = local_root / rel
+            if target.is_file():
+                return
+            try:
+                resp = adapter.client.get_object(Bucket=adapter.bucket, Key=rel)
+                body = resp["Body"]
+                raw_bytes = body.read() if hasattr(body, "read") else bytes(body)
+                _atomic_write_cache(target, raw_bytes)
+                return
+            except Exception as exc:
+                if _is_missing_key_error(exc):
+                    continue
+                raise
+
+    with ThreadPoolExecutor(max_workers=min(max_workers, len(missing))) as pool:
+        list(pool.map(_fetch_one, missing))
+
+
+_INLINE_LINE_SHA_CACHE: dict[tuple[Any, ...], str] = {}
+
+
+def _receipt_cache_identity(
+    receipt_key: str,
+    *,
+    local_root: Path | None,
+    raw_store: Any,
+) -> tuple[Any, ...]:
+    for base in (local_root, getattr(getattr(raw_store, "adapter", None), "root", None)):
+        if base is not None:
+            candidate = Path(base) / receipt_key
+            try:
+                st = candidate.stat()
+                return ("file", str(candidate.resolve()), st.st_size, st.st_mtime_ns)
+            except OSError:
+                continue
+    return ("store", id(raw_store), receipt_key)
 
 
 def _read_receipt_lines(
@@ -272,11 +366,15 @@ def _read_receipt_lines(
             resp = adapter.client.get_object(Bucket=adapter.bucket, Key=receipt_key)
             body = resp["Body"]
             raw_bytes = body.read() if hasattr(body, "read") else bytes(body)
+            if local_root is not None:
+                _atomic_write_cache(Path(local_root) / receipt_key, raw_bytes)
     if raw_bytes is None:
         raise FileNotFoundError(f"Missing receipt object for key={receipt_key}")
     if raw_bytes[:2] == b"\x1f\x8b":
         raw_bytes = _gzip.decompress(raw_bytes)
     lines = raw_bytes.splitlines()
+    # INLINE_CONGRESS_MEETINGS_SQL is ordered by receipt_key, receipt_line; keep at most one receipt in memory.
+    cache.clear()
     cache[receipt_key] = lines
     return lines
 
@@ -290,6 +388,62 @@ INLINE_CONGRESS_MEETINGS_SQL = """SELECT DISTINCT receipt_key, receipt_line,
            OR coalesce(url, requested_url, '') ILIKE '%api.congress.gov%/committee-meeting%'
            OR coalesce(url, requested_url, '') ILIKE '%congress.gov/committee-meeting%')
     ORDER BY receipt_key, receipt_line"""
+
+
+CANDIDATE_MEETING_RECORDS_SQL = """SELECT encode(sha256, 'hex') AS record_sha,
+    min(coalesce(stored_suffix, '')) AS stored_suffix,
+    max(coalesce(url, requested_url, context_url, '')) AS source_url,
+    CASE
+        WHEN bool_or(family = 'congress/meetings'
+            OR coalesce(url, requested_url, '') ILIKE '%api.congress.gov%/committee-meeting%'
+            OR coalesce(url, requested_url, '') ILIKE '%congress.gov/committee-meeting%') THEN 'congress_gov'
+        WHEN bool_or(family IN ('house/meeting-xml', 'house/witness-xml')
+            OR (coalesce(url, requested_url, context_url, '') ILIKE '%docs.house.gov%'
+                AND (coalesce(url, requested_url, '') ILIKE '%.xml%' OR sniffed_format = 'xml'))) THEN 'house_xml'
+    END AS source
+    FROM captures
+    WHERE sha256 IS NOT NULL
+      AND coalesce(complete, true)
+      AND coalesce(http_status, 200) BETWEEN 200 AND 299
+      AND (family IN ('congress/meetings', 'house/meeting-xml', 'house/witness-xml')
+           OR coalesce(url, requested_url, '') ILIKE '%api.congress.gov%/committee-meeting%'
+           OR coalesce(url, requested_url, '') ILIKE '%congress.gov/committee-meeting%'
+           OR (coalesce(url, requested_url, context_url, '') ILIKE '%docs.house.gov%'
+               AND (coalesce(url, requested_url, '') ILIKE '%.xml%' OR sniffed_format = 'xml')))
+    GROUP BY sha256"""
+
+
+CANDIDATE_APPEARANCE_RECORDS_SQL = """SELECT encode(sha256, 'hex') AS record_sha,
+    min(coalesce(stored_suffix, '')) AS stored_suffix,
+    max(coalesce(url, requested_url, context_url, '')) AS source_url,
+    CASE
+        WHEN bool_or(family = 'congress/meetings'
+            OR coalesce(url, requested_url, '') ILIKE '%api.congress.gov%/committee-meeting%'
+            OR coalesce(url, requested_url, '') ILIKE '%congress.gov/committee-meeting%') THEN 'congress_gov'
+        WHEN bool_or(family IN ('house/witness-xml', 'house/meeting-xml')
+            OR (coalesce(url, requested_url, context_url, '') ILIKE '%docs.house.gov%'
+                AND (coalesce(url, requested_url, '') ILIKE '%.xml%' OR sniffed_format = 'xml'))) THEN 'house_xml'
+        WHEN bool_or(family IN ('gpo/chrg', 'govinfo/mods')
+            OR coalesce(url, requested_url, '') ILIKE '%govinfo.gov%CHRG%mods%'
+            OR coalesce(member_path, '') ILIKE '%mods.xml') THEN 'mods'
+        WHEN bool_or(family = 'senate/hearings'
+            OR (coalesce(url, requested_url, '') ILIKE '%.senate.gov%'
+                AND coalesce(sniffed_format, 'html') = 'html')) THEN 'senate_page'
+    END AS source
+    FROM captures
+    WHERE sha256 IS NOT NULL
+      AND coalesce(complete, true)
+      AND coalesce(http_status, 200) BETWEEN 200 AND 299
+      AND (family IN ('congress/meetings', 'house/witness-xml', 'house/meeting-xml', 'gpo/chrg', 'govinfo/mods', 'senate/hearings')
+           OR coalesce(url, requested_url, '') ILIKE '%api.congress.gov%/committee-meeting%'
+           OR coalesce(url, requested_url, '') ILIKE '%congress.gov/committee-meeting%'
+           OR (coalesce(url, requested_url, context_url, '') ILIKE '%docs.house.gov%'
+               AND (coalesce(url, requested_url, '') ILIKE '%.xml%' OR sniffed_format = 'xml'))
+           OR coalesce(url, requested_url, '') ILIKE '%govinfo.gov%CHRG%mods%'
+           OR coalesce(member_path, '') ILIKE '%mods.xml'
+           OR (coalesce(url, requested_url, '') ILIKE '%.senate.gov%'
+               AND coalesce(sniffed_format, 'html') = 'html'))
+    GROUP BY sha256"""
 
 
 def stage_record_table(
@@ -408,10 +562,16 @@ def stage_record_table(
     for inline_ref in reports.get("inline_candidates", []):
         r_key = inline_ref["receipt_key"]
         r_line = int(inline_ref["receipt_line"])
+        cache_id = (*_receipt_cache_identity(r_key, local_root=local_root_path, raw_store=raw_store), r_line)
+        cached_sha = _INLINE_LINE_SHA_CACHE.get(cache_id)
+        if cached_sha is not None and (cached_sha in excluded_shas or cached_sha in seen_shas):
+            continue
         lines = _read_receipt_lines(r_key, local_root=local_root_path, raw_store=raw_store, cache=receipt_cache)
         if 1 <= r_line <= len(lines):
             line_bytes = lines[r_line - 1]
-            rec_sha = sha256(line_bytes).hexdigest()
+            rec_sha = cached_sha or sha256(line_bytes).hexdigest()
+            if len(_INLINE_LINE_SHA_CACHE) < 65536:
+                _INLINE_LINE_SHA_CACHE[cache_id] = rec_sha
             if rec_sha not in excluded_shas and rec_sha not in seen_shas:
                 seen_shas.add(rec_sha)
                 inline_items.append(
@@ -436,6 +596,9 @@ def stage_record_table(
             max_work_items,
         )
 
+    effective_local_root = local_root_path if local_root_path is not None else (work / "body-cache")
+    _prefetch_candidate_bodies(work_items, local_root=effective_local_root, raw_store=raw_store)
+
     rows: list[dict[str, Any]] = []
     unreadable_records: list[dict[str, Any]] = []
     decision_time = decided_at or "2026-10-30T00:00:00Z"
@@ -447,7 +610,7 @@ def stage_record_table(
             payload_bytes = _read_candidate_body(
                 rec_sha,
                 suffix,
-                local_root=local_root_path,
+                local_root=effective_local_root,
                 raw_store=raw_store,
             )
             kwargs: dict[str, Any] = {

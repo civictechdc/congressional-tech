@@ -53,6 +53,16 @@ def run_state(tmp_path,change=None):
         rows[1]['requested_url']=BASE+'second-report.pdf'
         rows[1]['url']=rows[1]['requested_url']
     if change=='collision':targets.append((url+'?api_key=example',None,'b'*64))
+    if change=='split_and_migrated':
+        mods_url='https://www.govinfo.gov/metadata/pkg/CHRG-119shrg62381/mods.xml'
+        rows.extend([
+            row(12,None,url=None,context_url=mods_url,family='govinfo/mods',
+                retrieved_at='2026-09-28T10:00:00Z',http_status=None,outcome='stored',complete=True,body_hex='d'*64),
+            row(13,mods_url,url=mods_url,context_url=None,family='govinfo/mods',
+                retrieved_at='2026-09-28T10:00:00Z',http_status=200,outcome='failed',complete=True,body_hex=None),
+            row(14,BASE+'migrated.pdf',retrieved_at='2026-09-28T11:00:00Z',
+                http_status=None,outcome='stored',complete=True,body_hex='e'*64),
+        ])
     links=[dict(target_url=target,target_member_path=member,page_body=body,
         context_url=BASE+('error.html' if body=='c'*64 else 'wrapper.html'),member_path=None) for target,member,body in targets]
     inputs=registry_inputs(tmp_path/'registries')
@@ -134,3 +144,20 @@ def test_only_metadata_mentions_leave_linked_addresses_unfetched(tmp_path,outcom
         for url in (BASE+'mentioned.pdf',BASE+'mentioned-final.pdf'):
             assert states[url]['attempts']==0
             assert states[url]['last_status'] is None and states[url]['last_attempt'] is None
+
+
+def test_split_context_stored_captures_and_statusless_migrated_good_fetches(tmp_path):
+    result=run_state(tmp_path,'split_and_migrated')
+    assert not any(result['url_state_invariants'][0].values())
+    states={r['requested_url']:r for r in result['state']}
+    mods=states['https://www.govinfo.gov/metadata/pkg/CHRG-119shrg62381/mods.xml']
+    assert mods['attempts']==1
+    assert mods['last_outcome']=='stored'
+    assert mods['last_good_at'].startswith('2026-09-28T10:00:00')
+    assert mods['next_attempt_at'] is not None
+    migrated=states[BASE+'migrated.pdf']
+    assert migrated['attempts']==1
+    assert migrated['last_outcome']=='stored'
+    assert migrated['last_good_at'].startswith('2026-09-28T11:00:00')
+    assert migrated['next_attempt_at'] is not None
+

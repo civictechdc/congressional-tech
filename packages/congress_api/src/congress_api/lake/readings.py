@@ -115,9 +115,7 @@ def bundle_version(versions,*,policy):
     from congress_api.lake.versions import version_digest
     files={'producer':Path(__file__),
         'supervisor':Path(__file__).parents[1]/'retention/parser_worker.py',
-        'resources':Path(__file__).parents[1]/'retention/process_resources.py',
-        'concurrency':Path(__file__).parents[1]/'retention/concurrency.py',
-        'raw_transport':Path(__file__).parents[1]/'retention/r2.py'}
+        'resources':Path(__file__).parents[1]/'retention/process_resources.py'}
     files.update({name:ROOT/'model/sql'/(name+'.sql') for name in
         ['pinned-readings','sniff-observations','sniff-conflicts','sniff-facts','body-admissions']})
     return version_digest(packages={},files=files,values=dict(leaf_versions=versions,policy=policy))

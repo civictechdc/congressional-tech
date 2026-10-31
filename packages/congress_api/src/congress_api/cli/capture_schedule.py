@@ -1,5 +1,6 @@
 """Capture from one verified public release; --apply is the owner live gate."""
 import argparse
+from contextlib import ExitStack
 from datetime import datetime, timezone
 import json
 import os
@@ -12,6 +13,13 @@ from congress_api.retention.writer_identity import writer_identity
 from docspec_client.client import NativeDatasets
 
 ROOT=Path(__file__).resolve().parents[5]
+DEFAULT_FETCHER_BINARY=ROOT/'packages/source-fetch/target/release/source-fetch'
+
+
+def _default_fetcher_binary():
+    env_bin=os.environ.get('SOURCE_FETCH_BINARY')
+    if env_bin:return Path(env_bin)
+    return DEFAULT_FETCHER_BINARY if DEFAULT_FETCHER_BINARY.is_file() else None
 
 
 def main(argv=None):
@@ -29,10 +37,13 @@ def main(argv=None):
     parser.add_argument('--local-store',type=Path,help='Local create-only body/receipt destination')
     parser.add_argument('--bucket',default='congressional-tech-raw')
     parser.add_argument('--max-discovery-jobs',type=int,default=8)
+    parser.add_argument('--fetcher-binary',type=Path,default=_default_fetcher_binary())
+    parser.add_argument('--workers',type=int,default=int(os.environ.get('CAPTURE_WORKERS','16')))
+    parser.add_argument('--files-per-second',type=int,default=int(os.environ.get('CAPTURE_FILES_PER_SECOND','60')))
     parser.add_argument('--apply',action='store_true')
     args=parser.parse_args(argv)
     if not args.engine_config:parser.error('An explicit native engine configuration is required')
-    if any(value<=0 for value in (args.request_budget,args.byte_budget,args.spool_budget,args.max_discovery_jobs)):
+    if any(value<=0 for value in (args.request_budget,args.byte_budget,args.spool_budget,args.max_discovery_jobs,args.workers,args.files_per_second)):
         parser.error('Resource budgets must be positive')
     if args.work.resolve().is_relative_to(ROOT):
         parser.error('Keep capture work outside the clean writer checkout')
@@ -51,28 +62,38 @@ def main(argv=None):
         CapturePolicy(release['scope']).require_capture()
         import requests
         from congress_api.transport.raw_adapters import DirectAdapter,ProviderAdapter
-        session=requests.Session()
-        provider=None
-        if os.environ.get('ZYTE_TOKEN'):
-            from congress_api.transport import zyte
-            provider=ProviderAdapter(lambda payload:session.post(zyte.API,json=payload,
-                auth=(zyte.token(),''),stream=True,allow_redirects=False,timeout=(15,300)))
-        if args.local_store:
-            store=BodyStore(LocalAdapter(args.local_store))
-        else:
-            from congress_shared.storage import connect_r2
-            store=BodyStore(R2Adapter(connect_r2(bucket=args.bucket,
-                retries={'mode':'standard','max_attempts':5}),args.bucket))
-        def headers(url):
-            if urlsplit(url).hostname in {'api.congress.gov','api.govinfo.gov'}:
-                key=os.environ.get('DATA_GOV_API_KEY')
-                if not key:raise ValueError('DATA_GOV_API_KEY is required for API capture')
-                return {'X-Api-Key':key}
-            return {}
-        result=run_capture(release,engine=engine,work=args.work/'capture',as_of=args.as_of,
-            request_budget=args.request_budget,byte_budget=args.byte_budget,spool_budget=args.spool_budget,
-            store=store,identity=identity,direct=DirectAdapter(session),provider=provider,
-            cutoff_urls=cutoffs,max_discovery_jobs=args.max_discovery_jobs,headers=headers)
+        from congress_api.transport.rust_fetch import RustFetcher
+        with ExitStack() as stack:
+            if args.fetcher_binary and Path(args.fetcher_binary).is_file():
+                session=stack.enter_context(RustFetcher(args.fetcher_binary,
+                    files_per_second=args.files_per_second,workers=max(args.workers,1)))
+                workers=args.workers
+            else:
+                session=requests.Session()
+                workers=1
+            provider_session=requests.Session() if os.environ.get('ZYTE_TOKEN') else None
+            provider=None
+            if provider_session is not None:
+                from congress_api.transport import zyte
+                provider=ProviderAdapter(lambda payload:provider_session.post(zyte.API,json=payload,
+                    auth=(zyte.token(),''),stream=True,allow_redirects=False,timeout=(15,300)))
+            if args.local_store:
+                store=BodyStore(LocalAdapter(args.local_store))
+            else:
+                from congress_shared.storage import connect_r2
+                store=BodyStore(R2Adapter(connect_r2(bucket=args.bucket,
+                    max_pool_connections=max(32,workers*2),
+                    retries={'mode':'standard','max_attempts':5}),args.bucket))
+            def headers(url):
+                if urlsplit(url).hostname in {'api.congress.gov','api.govinfo.gov'}:
+                    key=os.environ.get('DATA_GOV_API_KEY')
+                    if not key:raise ValueError('DATA_GOV_API_KEY is required for API capture')
+                    return {'X-Api-Key':key}
+                return {}
+            result=run_capture(release,engine=engine,work=args.work/'capture',as_of=args.as_of,
+                request_budget=args.request_budget,byte_budget=args.byte_budget,spool_budget=args.spool_budget,
+                store=store,identity=identity,direct=DirectAdapter(session),provider=provider,
+                cutoff_urls=cutoffs,max_discovery_jobs=args.max_discovery_jobs,headers=headers,workers=workers)
     (args.work/'summary.json').write_text(json.dumps(result,ensure_ascii=False,indent=2)+'\n')
     print(json.dumps(result,ensure_ascii=False,indent=2))
 

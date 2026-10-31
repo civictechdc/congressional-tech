@@ -31,6 +31,7 @@ from ..parsers.house_xml import (
 from ..parsers.media import recording_reference, youtube_video_id
 from ..parsers.senate_player import parse_player_url
 from ._record_producer import (
+    CANDIDATE_MEETING_RECORDS_SQL,
     INLINE_CONGRESS_MEETINGS_SQL,
     PK,
     _is_missing_key_error,
@@ -118,7 +119,6 @@ def current_version(*, root: Path = ROOT) -> str:
         packages={},
         files={
             "producer": Path(__file__),
-            "record_producer": pkg_dir / "lake/_record_producer.py",
             "models_congress": pkg_dir / "models/congress.py",
             "parsers_congress": pkg_dir / "parsers/congress.py",
             "parsers_house_xml": pkg_dir / "parsers/house_xml.py",
@@ -754,22 +754,6 @@ def query_candidate_house_xml(*, engine: Any, work: Path, captures: Any, reading
         queries=[{"name": "house_cm", "sql": CANDIDATE_HOUSE_XML_SQL}],
     )
     return list(res["house_cm"])
-
-
-CANDIDATE_MEETING_RECORDS_SQL = """SELECT encode(sha256, 'hex') AS record_sha,
-    min(coalesce(stored_suffix, '')) AS stored_suffix,
-    max(coalesce(url, requested_url, context_url, '')) AS source_url,
-    CASE
-        WHEN bool_or(family = 'congress/meetings'
-            OR coalesce(url, requested_url, '') ILIKE '%api.congress.gov%/committee-meeting%'
-            OR coalesce(url, requested_url, '') ILIKE '%congress.gov/committee-meeting%') THEN 'congress_gov'
-        WHEN bool_or(family IN ('house/meeting-xml', 'house/witness-xml')
-            OR (coalesce(url, requested_url, context_url, '') ILIKE '%docs.house.gov%'
-                AND (coalesce(url, requested_url, '') ILIKE '%.xml%' OR sniffed_format = 'xml'))) THEN 'house_xml'
-    END AS source
-    FROM captures
-    WHERE sha256 IS NOT NULL AND coalesce(complete, true) AND coalesce(http_status, 200) BETWEEN 200 AND 299
-    GROUP BY sha256"""
 
 
 def stage(

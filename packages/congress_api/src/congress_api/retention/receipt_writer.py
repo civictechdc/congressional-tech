@@ -6,6 +6,7 @@ import json
 from pathlib import Path
 import re
 from tempfile import TemporaryDirectory
+import threading
 
 from congress_api.models.raw_fetch import FetchResult
 from congress_api.parsers.source_family import family as source_family
@@ -69,6 +70,7 @@ class ReceiptWriter:
             raise ValueError('Receipt needs a fresh run ID and UTC write date')
         self.store, self.run_id, self.write_date = store,run_id,write_date
         self.archive_limits, self.sequence = archive_limits,0
+        self._lock, self._archive_lock = threading.Lock(), threading.Lock()
 
     def write(self, result: FetchResult, *, family=None, observations=(), mode='fetch', recovery_evidence=None, fidelity=None):
         final = result.final
@@ -119,21 +121,41 @@ class ReceiptWriter:
                 capture = self._capture(body,attempt,attempt_index,stored,None,None,fidelity)
                 line['captures'].append(capture)
                 if (body.path is not None and body.sniff_error is None and attempt.complete
-                        and self.archive_limits is not None):
-                    expansion = expand_archive(body.path,directory=temporary/str(attempt_index),limits=self.archive_limits)
-                    capture['expansion'] = expansion.status
-                    for member in expansion.members:
-                        member_key = f'bodies/sha256/{member.body.sha256[:2]}/{member.body.sha256}'
-                        retained = self.store.put(member_key,member.body.path,
-                                                  member.body.media_type or 'application/octet-stream')
-                        line['captures'].append(self._capture(member.body,attempt,attempt_index,retained,
-                                                              member.member_path,member.entry_index,fidelity))
+                        and self.archive_limits is not None
+                        and body.sniffed_format not in {'pdf','html','xml','json','text','image'}):
+                    if body.sniffed_format == 'zip':
+                        with self._archive_lock:
+                            expansion = expand_archive(body.path,directory=temporary/str(attempt_index),limits=self.archive_limits)
+                            capture['expansion'] = expansion.status
+                            for member in expansion.members:
+                                member_key = f'bodies/sha256/{member.body.sha256[:2]}/{member.body.sha256}'
+                                try:
+                                    retained = self.store.put(member_key,member.body.path,
+                                                              member.body.media_type or 'application/octet-stream')
+                                finally:
+                                    member.body.path.unlink(missing_ok=True)
+                                line['captures'].append(self._capture(member.body,attempt,attempt_index,retained,
+                                                                      member.member_path,member.entry_index,fidelity))
+                    else:
+                        expansion = expand_archive(body.path,directory=temporary/str(attempt_index),limits=self.archive_limits)
+                        capture['expansion'] = expansion.status
+                        for member in expansion.members:
+                            member_key = f'bodies/sha256/{member.body.sha256[:2]}/{member.body.sha256}'
+                            try:
+                                retained = self.store.put(member_key,member.body.path,
+                                                          member.body.media_type or 'application/octet-stream')
+                            finally:
+                                member.body.path.unlink(missing_ok=True)
+                            line['captures'].append(self._capture(member.body,attempt,attempt_index,retained,
+                                                                  member.member_path,member.entry_index,fidelity))
             line['outcome'] = outcome(final,final_write)
-            self.sequence += 1
-            key = f'receipts/{family}/{self.write_date}/{self.run_id}-{self.sequence:06d}.jsonl.gz'
+            with self._lock:
+                self.sequence += 1
+                seq = self.sequence
+            key = f'receipts/{family}/{self.write_date}/{self.run_id}-{seq:06d}.jsonl.gz'
             path = temporary/'receipt.jsonl.gz'
             payload = (json.dumps(line,ensure_ascii=False,separators=(',',':'))+'\n').encode()
-            path.write_bytes(gzip.compress(payload,mtime=0))
+            path.write_bytes(gzip.compress(payload,compresslevel=6,mtime=0))
             self.store.put(key,path,'application/x-ndjson')
         return key,line
 

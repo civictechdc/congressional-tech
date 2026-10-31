@@ -6,6 +6,7 @@ import json
 import mmap
 from pathlib import Path
 import re
+import shutil
 
 import requests
 
@@ -17,8 +18,22 @@ SINGLE_PUT_LIMIT = 5 * 1024**3
 
 
 def _spool(response, destination, limit):
+    destination = Path(destination)
+    native_path = getattr(response, 'path', None)
+    if isinstance(native_path, Path) and getattr(response, 'detached', None) is False:
+        size = native_path.stat().st_size
+        if size <= limit:
+            with destination.open('xb'):
+                pass
+            with native_path.open('rb') as source:
+                sha = hashlib.file_digest(source, 'sha256').hexdigest()
+            shutil.move(str(native_path), str(destination))
+            response.detached = True
+            complete = getattr(response, 'capture_complete', True)
+            error = None if complete else getattr(response, 'capture_error', None) or 'size_limit'
+            return sha, size, complete, error
     digest, size, complete = hashlib.sha256(), 0, True
-    with Path(destination).open('xb') as target:
+    with destination.open('xb') as target:
         try:
             for chunk in response.iter_content(chunk_size=CHUNK):
                 if not chunk:
@@ -48,8 +63,9 @@ class DirectAdapter:
         self.session = session
 
     def hop(self, url, destination, *, limit, headers):
+        extra = {'max_bytes': limit} if hasattr(self.session, '_request') else {}
         with self.session.get(url, headers={**UA, **headers}, timeout=(15, 300),
-                              stream=True, allow_redirects=False) as response:
+                              stream=True, allow_redirects=False, **extra) as response:
             sha, size, complete, error = _spool(response, destination, limit)
             if _partial_response(response.status_code,response.headers):
                 complete, error = False, error or 'partial_response'

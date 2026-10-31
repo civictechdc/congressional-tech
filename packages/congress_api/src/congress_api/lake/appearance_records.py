@@ -44,6 +44,7 @@ from ..parsers.senate_page import source_details, witnesses as senate_witnesses
 from ..parsers.text import text as clean_text
 from ..parsers.witness_names import is_name, witness as parse_gpo_witness
 from ._record_producer import (
+    CANDIDATE_APPEARANCE_RECORDS_SQL,
     INLINE_CONGRESS_MEETINGS_SQL,
     PK,
     append_record_table,
@@ -112,7 +113,6 @@ def current_version(*, root: Path = ROOT) -> str:
         packages={},
         files={
             "producer": Path(__file__),
-            "record_producer": pkg_dir / "lake/_record_producer.py",
             "models_congress": pkg_dir / "models/congress.py",
             "parsers_congress": pkg_dir / "parsers/congress.py",
             "parsers_house_xml": pkg_dir / "parsers/house_xml.py",
@@ -823,28 +823,6 @@ def query_candidate_inputs(*, engine: Any, work: Path, captures: Any, readings: 
         ],
     )
     return {k: list(v) for k, v in res.items()}
-
-
-CANDIDATE_APPEARANCE_RECORDS_SQL = """SELECT encode(sha256, 'hex') AS record_sha,
-    min(coalesce(stored_suffix, '')) AS stored_suffix,
-    max(coalesce(url, requested_url, context_url, '')) AS source_url,
-    CASE
-        WHEN bool_or(family = 'congress/meetings'
-            OR coalesce(url, requested_url, '') ILIKE '%api.congress.gov%/committee-meeting%'
-            OR coalesce(url, requested_url, '') ILIKE '%congress.gov/committee-meeting%') THEN 'congress_gov'
-        WHEN bool_or(family IN ('house/witness-xml', 'house/meeting-xml')
-            OR (coalesce(url, requested_url, context_url, '') ILIKE '%docs.house.gov%'
-                AND (coalesce(url, requested_url, '') ILIKE '%.xml%' OR sniffed_format = 'xml'))) THEN 'house_xml'
-        WHEN bool_or(family IN ('gpo/chrg', 'govinfo/mods')
-            OR coalesce(url, requested_url, '') ILIKE '%govinfo.gov%CHRG%mods%'
-            OR coalesce(member_path, '') ILIKE '%mods.xml') THEN 'mods'
-        WHEN bool_or(family = 'senate/hearings'
-            OR (coalesce(url, requested_url, '') ILIKE '%.senate.gov%'
-                AND coalesce(sniffed_format, 'html') = 'html')) THEN 'senate_page'
-    END AS source
-    FROM captures
-    WHERE sha256 IS NOT NULL AND coalesce(complete, true) AND coalesce(http_status, 200) BETWEEN 200 AND 299
-    GROUP BY sha256"""
 
 
 def stage(

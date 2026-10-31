@@ -197,3 +197,21 @@ def test_native_interrupted_body_is_not_a_timeout():
         server.shutdown()
         server.server_close()
         thread.join()
+
+
+def test_direct_adapter_with_rust_fetcher_moves_body_and_honors_per_hop_limit(server, tmp_path):
+    from congress_api.transport.raw_adapters import DirectAdapter
+    url, _, _ = server
+    with RustFetcher(BINARY, files_per_second=60, workers=16, max_bytes=256) as fetcher:
+        adapter = DirectAdapter(fetcher)
+        # Per-hop limit (32 KiB) overrides RustFetcher's default 256-byte cap
+        dest_ok = tmp_path / 'large_ok.body'
+        tr_ok = adapter.hop(f'{url}/large', dest_ok, limit=32768, headers={})
+        assert tr_ok.complete and tr_ok.size > 8192 and dest_ok.stat().st_size == tr_ok.size
+        assert not list(fetcher.root.glob('*.body'))
+        # Per-hop limit (512 bytes) truncates / rejects oversized response
+        dest_cut = tmp_path / 'large_cut.body'
+        tr_cut = adapter.hop(f'{url}/gzip-large', dest_cut, limit=512, headers={})
+        assert not tr_cut.complete and tr_cut.error == 'response_limit' and tr_cut.size == 512
+        assert not list(fetcher.root.glob('*.body'))
+
