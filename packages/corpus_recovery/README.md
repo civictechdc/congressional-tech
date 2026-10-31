@@ -121,7 +121,9 @@ administrative entry points.
 queries only an admitted target. Web Harvest additionally takes
 `--source webharvest --collection congress118th`. Use the **same admission database
 and caps** for capture (`congress_api.cli.capture_schedule --admission-db ...`) and
-discovery. The database persists reservations, including uncertain outcomes.
+discovery. The database persists reservations, including uncertain outcomes. Keep campaign
+work directories and the shared database outside the clean writer checkout, as
+the capture CLI requires.
 The work directory freezes response evidence; use a new explicitly chosen work
 scope for a later discovery observation rather than treating a cached negative as
 permanent absence.

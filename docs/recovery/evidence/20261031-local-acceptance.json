@@ -1,0 +1,105 @@
+{
+  "version": 1,
+  "code_commit": "4924d06c3109b2926f6a13fb81c3f93d2547f11c",
+  "result": "local_acceptance_passed",
+  "tests": {
+    "tests": 630,
+    "failures": 0,
+    "errors": 0,
+    "skipped": 0,
+    "seconds": 98.869
+  },
+  "test_paths": [
+    "packages/congress_shared/tests",
+    "packages/corpus_recovery/tests",
+    "scripts/webharvest/tests",
+    "packages/congress_api/tests/test_capture_scheduler.py",
+    "packages/congress_api/tests/test_capture_scheduler_seed_refusal.py",
+    "packages/congress_api/tests/test_capture_profile.py",
+    "packages/congress_api/tests/test_capture_durable.py",
+    "packages/congress_api/tests/test_capture_admission.py",
+    "packages/congress_api/tests/test_capture_resources.py",
+    "packages/congress_api/tests/test_raw_fetcher_contract.py",
+    "packages/congress_api/tests/test_file_backed_capture.py",
+    "packages/congress_api/tests/test_receipt_writer_contract.py",
+    "packages/congress_api/tests/test_public_receipts.py",
+    "packages/congress_api/tests/test_provenance_contract.py",
+    "packages/congress_api/tests/test_provenance_job.py",
+    "packages/congress_api/tests/test_provenance_inventory.py",
+    "packages/viewer_publication/tests/test_archive_controller.py",
+    "packages/viewer_publication/tests/test_archive_publish.py",
+    "packages/viewer_publication/tests/test_archive_publish_job.py",
+    "packages/viewer_publication/tests/test_archive_model_job.py",
+    "packages/viewer_publication/tests/test_archive_gate.py",
+    "packages/viewer_publication/tests/test_archive_gate_reconcile.py",
+    "packages/viewer_publication/tests/test_recovery_eligibility.py",
+    "packages/viewer_publication/tests/test_recovery_publication_journey.py",
+    "packages/viewer_publication/tests/test_archive_reader.py"
+  ],
+  "resource_measurement": {
+    "samples": 34,
+    "peak_tree_rss_bytes": 239534080,
+    "peak_owned_disk_bytes": 72766125,
+    "byte_budget_bytes": 1073741824,
+    "verified_complete_body": true,
+    "qualified_all_pages": true,
+    "qualification_memory_bytes": 1073741824,
+    "qualification_input_bytes": 16777216,
+    "qualification_decoded_bytes": 268435456,
+    "qualification_max_pages": 2000,
+    "body_bytes": 16777216,
+    "entity_limit_bytes": 16777216,
+    "spool_limit_bytes": 268435456,
+    "workers": 1,
+    "native_threads": 2,
+    "native_memory_bytes": 536870912,
+    "native_scratch_bytes": 268435456,
+    "scope": "capture and qualification Python plus native/Poppler descendants; 10ms nominal sampling",
+    "fetched_wire_bytes": 22369790,
+    "requests": 2,
+    "admission": {
+      "requests": 2,
+      "committed_cost": 1,
+      "unknown": 0
+    },
+    "wire_admission": {
+      "requests": 2,
+      "committed_cost": 22369790,
+      "unknown": 0
+    },
+    "total_filesystem_io_bytes": null
+  },
+  "reviews": {
+    "capture": "approved",
+    "recovery_qualification_discovery": "approved",
+    "greybeard_native_publication": "approved",
+    "model": "gpt-6.1-sol",
+    "reasoning": "high",
+    "skills": [
+      "etl-workflow",
+      "greybeard",
+      "semi-formal-code-review"
+    ]
+  },
+  "stopped_task_sessions": 5,
+  "production_acquisition": false,
+  "production_publication": false,
+  "limits": [
+    "Production baseline and membership unavailable",
+    "No live paid provider or archive acceptance",
+    "One measured worker and PDF workload; sampled RSS is not a hard transient ceiling",
+    "Local storage adapter does not establish production upload capacity or machine power-loss durability",
+    "Logical wire/body sizes and peak disk measured; total filesystem I/O bytes not instrumented"
+  ],
+  "environment": {
+    "python": "3.12.13",
+    "platform": "macOS-26.6-arm64-arm-64bit",
+    "packages": {
+      "pypdf": "6.19.0",
+      "lxml": "6.0.2",
+      "requests": "2.32.5",
+      "pyarrow": "25.0.1"
+    },
+    "pdfinfo": "pdfinfo version 26.06.0"
+  }
+}

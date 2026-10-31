@@ -2,7 +2,7 @@
 
 **Updated:** 2026-10-31
 **Directly reviewed baseline:** `72d0349838de7a0a9c5fceb9030d4a23dd34dc2c`
-**Status:** All seven findings have local implementations and maintained tests. Final independent-review corrections and integrated acceptance checks are in progress. Production corpus totals remain unverified. See the [implementation and verification record](holistic-recovery-execution-20261031.md).
+**Status:** All seven fixes are implemented and locally verified. Independent review findings are resolved; the final combined run passed 630 tests, including browser/reader, scheduler, crash/restart and resource acceptance. Production corpus totals remain unverified. See the [implementation and verification record](holistic-recovery-execution-20261031.md).
 
 ## Decision and scope
 
