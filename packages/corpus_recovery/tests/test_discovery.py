@@ -1,5 +1,5 @@
 import pytest
-from corpus_recovery.discovery import Response, webharvest_lookup, acquire_wayback, relocated_search, govinfo_document_candidate
+from corpus_recovery.discovery import Response, webharvest_lookup, acquire_wayback, relocated_search, govinfo_document_candidate, govinfo_bill_candidate
 from webharvest_cdx import key, parse_cdx
 
 TARGET = 'https://example.gov/report.pdf'
@@ -31,7 +31,7 @@ def test_partial_denied_and_invalid_are_not_negative():
 def test_wayback_binary_identity():
     replay = 'https://web.archive.org/web/20200102030405id_/' + TARGET
     data = b'%PDF-1.7\x00\xff'
-    assert acquire_wayback(replay, TARGET, '20200102030405', lambda *_: response(data)).body == data
+    assert acquire_wayback(replay, TARGET, '20200102030405', lambda *_: Response(200, data, True, 'receipt', final_url=replay)).body == data
     for bad in [replay.replace('web.archive.org', 'evil.example'), replay.replace('20200102030405', '20210102030405'), replay.replace('report.pdf', 'other.pdf')]:
         with pytest.raises(ValueError):
             acquire_wayback(bad, TARGET, '20200102030405', lambda *_: response(data))
@@ -49,3 +49,16 @@ def test_scoped_deduplicated_search_and_limits():
 def test_govinfo_identifier_mismatch():
     assert govinfo_document_candidate(TARGET, 'CDOC-105hdoc123', expected_package_id='CDOC-105hdoc124') is None
     assert govinfo_document_candidate(TARGET, 'CDOC-105hdoc123', expected_package_id='CDOC-105hdoc123')['url'].endswith('/CDOC-105hdoc123.pdf')
+
+
+def test_wayback_rejects_unknown_or_changed_final_url():
+    replay = 'https://web.archive.org/web/20200102030405id_/' + TARGET
+    for final_url in [None, replay.replace('report.pdf', 'other.pdf')]:
+        with pytest.raises(ValueError):
+            acquire_wayback(replay, TARGET, '20200102030405', lambda *_: Response(200, b'data', True, 'receipt', final_url=final_url))
+
+def test_bill_package_preserves_version():
+    identity = {'congress': 118, 'bill_type': 'hr', 'number': 123, 'version': 'ih'}
+    candidate = govinfo_bill_candidate(TARGET, 118, 'hr', 123, 'ih', source_identity=identity, evidence='source:1')
+    assert candidate['package_id'] == 'BILLS-118hr123ih'
+    assert govinfo_bill_candidate(TARGET, 118, 'hr', 123, 'enr', source_identity=identity, evidence='source:1') is None

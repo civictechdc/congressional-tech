@@ -15,6 +15,7 @@ class Response:
     complete: bool
     evidence: str
     content_type: str = ''
+    final_url: str | None = None
 
 
 def _source_url(url):
@@ -105,7 +106,10 @@ def validate_wayback_replay(replay, original, timestamp):
 def acquire_wayback(replay, original, timestamp, call):
     if not validate_wayback_replay(replay, original, timestamp):
         raise ValueError('wayback replay identity mismatch')
-    return _capture(call, 'replay_raw', replay)
+    response = _capture(call, 'replay_raw', replay)
+    if response.final_url != replay:
+        raise ValueError('wayback final URL mismatch or unavailable')
+    return response
 
 
 def relocated_search(target, stems, allowed_hosts, search, seen_identities, *, max_queries, max_pages, max_candidates):
@@ -164,6 +168,22 @@ def govinfo_document_candidate(target, package_id, *, expected_package_id):
     return {'target_url': target, 'url': f'https://www.govinfo.gov/content/pkg/{package_id}/pdf/{package_id}.pdf',
             'source': 'govinfo', 'package_id': package_id, 'identifier_evidence': expected_package_id,
             'mapping': 'govinfo-cdoc-package-pdf-v1'}
+
+
+def govinfo_bill_candidate(target, congress, bill_type, number, version, *, source_identity, evidence):
+    """Lead for a documented bill package with an explicitly evidenced version."""
+    identity = {'congress': congress, 'bill_type': bill_type, 'number': number, 'version': version}
+    if not _source_url(target) or not evidence or source_identity != identity:
+        return None
+    if (not isinstance(congress, int) or not 103 <= congress <= 999
+            or bill_type not in {'hr', 's', 'hjres', 'sjres', 'hconres', 'sconres', 'hres', 'sres'}
+            or not isinstance(number, int) or number < 1
+            or not isinstance(version, str) or not re.fullmatch(r'[a-z]{1,12}', version)):
+        return None
+    package = f'BILLS-{congress}{bill_type}{number}{version}'
+    return {'target_url': target, 'url': f'https://www.govinfo.gov/content/pkg/{package}/pdf/{package}.pdf',
+            'source': 'govinfo', 'package_id': package, 'identity': identity,
+            'evidence': evidence, 'mapping': 'govinfo-bills-package-pdf-v1'}
 
 
 def main():
