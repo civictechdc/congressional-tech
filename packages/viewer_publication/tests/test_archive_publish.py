@@ -293,3 +293,20 @@ def test_raw_measured_candidate_identity_precedes_upload_or_pointer_effects(tmp_
         with pytest.raises(ValueError,match='Measured.*release'):publish()
         assert native.calls==[]
         assert not any('/inputs/' in key or key.endswith('/manifest.json') for key in store.objects)
+
+
+def test_publisher_reports_pointer_readback_after_lost_acknowledgment(tmp_path):
+    class LostPointerAck(Store):
+        def put_object(self,**request):
+            result=super().put_object(**request)
+            if request['Key']=='viewer-publications/manifest.json':
+                raise OSError('lost acknowledgment')
+            return result
+    store=LostPointerAck()
+    result,store,_=launch(tmp_path/'run',store=store)
+    assert result['status']=='published'
+    assert result['live_release_basis']=='selected_pointer_reconciled'
+    assert store.pointer_gets==2
+    assert len([r for r in store.requests if r['Key']=='viewer-publications/manifest.json'])==1
+    report=json.loads(store.objects['viewer-publications/status.json'])
+    assert report['live_release_basis']=='selected_pointer_reconciled'

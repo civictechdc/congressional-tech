@@ -389,7 +389,8 @@ def publish_candidate(*,client,engine,bucket,work,release,manifest_pin,result_pi
             status.update(live_release=None,live_release_basis='unacknowledged_pointer_write')
             raise ValueError('Publication requires an acknowledged pointer ETag')
         status['durations']['gates_and_flip']=perf_counter()-begin
-        status.update(status='published',live_release=release_id,live_release_basis='conditional_flip_acknowledged')
+        status.update(status='published',live_release=release_id,live_release_basis=(
+            'selected_pointer_reconciled' if transfer.reconciled else 'conditional_flip_acknowledged'))
         return dict(status)
     except BaseException as error:
         failure=error;status['error_type']=type(error).__name__
