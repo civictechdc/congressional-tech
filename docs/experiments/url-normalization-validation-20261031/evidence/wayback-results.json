@@ -1,0 +1,1282 @@
+{
+  "transitions": [
+    {
+      "before": "denied",
+      "after": "denied",
+      "http_status": 429,
+      "calls": 60
+    },
+    {
+      "before": "invalid_index_response",
+      "after": "complete",
+      "http_status": 200,
+      "calls": 46
+    },
+    {
+      "before": "invalid_index_response",
+      "after": "page_limit",
+      "http_status": 200,
+      "calls": 5
+    },
+    {
+      "before": "page_limit",
+      "after": "page_limit",
+      "http_status": 200,
+      "calls": 2
+    },
+    {
+      "before": "complete",
+      "after": "complete",
+      "http_status": 200,
+      "calls": 7
+    }
+  ],
+  "new_candidate_rows": 145,
+  "new_candidate_targets": 15,
+  "retained_verified_replays": [
+    {
+      "target": "https://www.hcfa.house.gov/110/41994.pdf",
+      "replay": "https://web.archive.org/web/20081126220109id_/http://www.hcfa.house.gov/110/41994.pdf",
+      "body_sha256": "8f3462953446723471cffe80276ed3d92322afa97d3c95fc78493831ac74e239",
+      "qualification_sha256": "ddc8d7ad2808127bf895b16d4645694abf57c08ef6f6b0edbd79e84d92eb0c84",
+      "body_path": "/private/tmp/claude-501/-Users-mikewolfd-Work/71969fc5-4a0f-4f4e-aa49-d2dd9f4c2272/scratchpad/codex-impl/cx_model_design/recovery_campaign_v1/track_b/b2_discovery/extra_replays/8f3462953446723471cffe80276ed3d92322afa97d3c95fc78493831ac74e239.body",
+      "body_available": true,
+      "sha256_verified": true,
+      "cdx_digest_verified": true,
+      "pdf_header": true,
+      "bytes": 979993,
+      "exact_replay_validation": true
+    },
+    {
+      "target": "https://www.irs.gov/pub/irs-utl/20-Immigration%20and%20Taxation.pdf",
+      "replay": "https://web.archive.org/web/20210301060422id_/https://www.irs.gov/pub/irs-utl/20-Immigration%20and%20Taxation.pdf",
+      "body_sha256": "58b7c12e1780c0c07feede49996f4e7ce0156464cda223c04eb779b250616227",
+      "qualification_sha256": "5ad7e70475b76075b10836bf1d1ef6821a2c20b52c77f4c2e20523934b24a624",
+      "body_path": "/private/tmp/claude-501/-Users-mikewolfd-Work/71969fc5-4a0f-4f4e-aa49-d2dd9f4c2272/scratchpad/codex-impl/cx_model_design/recovery_campaign_v1/track_b/b2_discovery/extra_replays/58b7c12e1780c0c07feede49996f4e7ce0156464cda223c04eb779b250616227.body",
+      "body_available": true,
+      "sha256_verified": true,
+      "cdx_digest_verified": true,
+      "pdf_header": true,
+      "bytes": 201539,
+      "exact_replay_validation": true
+    },
+    {
+      "target": "https://www.piie.com/system/files/documents/pb19-2.pdf",
+      "replay": "https://web.archive.org/web/20220901050236id_/https://www.piie.com/system/files/documents/pb19-2.pdf",
+      "body_sha256": "f4cedd92788b3d7471c2cdf2f6aabef94960fc8fec16a5d9d55e33f8b710e674",
+      "qualification_sha256": "6b87f1a7cc52710236c612add4d16349abc7e51ba191fc1ee59de57a8ee91cb8",
+      "body_path": "/private/tmp/claude-501/-Users-mikewolfd-Work/71969fc5-4a0f-4f4e-aa49-d2dd9f4c2272/scratchpad/codex-impl/cx_model_design/recovery_campaign_v1/track_b/b2_discovery/extra_replays/f4cedd92788b3d7471c2cdf2f6aabef94960fc8fec16a5d9d55e33f8b710e674.body",
+      "body_available": true,
+      "sha256_verified": true,
+      "cdx_digest_verified": true,
+      "pdf_header": true,
+      "bytes": 314438,
+      "exact_replay_validation": true
+    },
+    {
+      "target": "https://www.integration.samhsa.gov/clinical-practice/SAMSA_TIP_Trauma.pdf",
+      "replay": "https://web.archive.org/web/20200501221605id_/https://www.integration.samhsa.gov/clinical-practice/SAMSA_TIP_Trauma.pdf",
+      "body_sha256": "9a948c836a0f5a96bb20ebd669ef4c9d2d618d282aeaba9c7c093c26c12eb208",
+      "qualification_sha256": "f577bfce99b713ff77cd479b56a8683072724f6a660e6eb0d15df27b179663c7",
+      "body_path": "/private/tmp/claude-501/-Users-mikewolfd-Work/71969fc5-4a0f-4f4e-aa49-d2dd9f4c2272/scratchpad/codex-impl/cx_model_design/recovery_campaign_v1/track_b/b2_discovery/extra_replays/9a948c836a0f5a96bb20ebd669ef4c9d2d618d282aeaba9c7c093c26c12eb208.body",
+      "body_available": true,
+      "sha256_verified": true,
+      "cdx_digest_verified": true,
+      "pdf_header": true,
+      "bytes": 5522412,
+      "exact_replay_validation": true
+    },
+    {
+      "target": "https://crr.bc.edu/wp-content/uploads/2017/12/IB_18-1.pdf",
+      "replay": "https://web.archive.org/web/20180127074102id_/http://crr.bc.edu:80/wp-content/uploads/2017/12/IB_18-1.pdf",
+      "body_sha256": "c4d28047d62b1140b41c605c7ab91f85770cc08798811f03e902c6704d4081c5",
+      "qualification_sha256": "62c89fcfd3d9007294772f76c8c191dd3cb3ed16b7547ae6fa01f3fa256d378d",
+      "body_path": "/private/tmp/claude-501/-Users-mikewolfd-Work/71969fc5-4a0f-4f4e-aa49-d2dd9f4c2272/scratchpad/codex-impl/cx_model_design/recovery_campaign_v1/track_b/b2_discovery/extra_replays/c4d28047d62b1140b41c605c7ab91f85770cc08798811f03e902c6704d4081c5.body",
+      "body_available": true,
+      "sha256_verified": true,
+      "cdx_digest_verified": true,
+      "pdf_header": true,
+      "bytes": 388406,
+      "exact_replay_validation": true
+    },
+    {
+      "target": "http://www.legion.org/documents/legion/pdf/womens_veterans_survey_report.pdf",
+      "replay": "https://web.archive.org/web/20220315173541id_/https://www.legion.org/documents/legion/pdf/womens_veterans_survey_report.pdf",
+      "body_sha256": "57f137e17c4f8ab3308570741aa9371889ea8f9e503e014207498ff86b586234",
+      "qualification_sha256": "48c56e4921db58e446781a9303314936635da61fa5a6544f604f1fbfa151e415",
+      "body_path": "/private/tmp/claude-501/-Users-mikewolfd-Work/71969fc5-4a0f-4f4e-aa49-d2dd9f4c2272/scratchpad/codex-impl/cx_model_design/recovery_campaign_v1/track_b/b2_discovery/extra_replays/57f137e17c4f8ab3308570741aa9371889ea8f9e503e014207498ff86b586234.body",
+      "body_available": true,
+      "sha256_verified": true,
+      "cdx_digest_verified": true,
+      "pdf_header": true,
+      "bytes": 11268337,
+      "exact_replay_validation": true
+    },
+    {
+      "target": "http://archives113.transportation.house.gov/sites/republicans.transportation.house.gov/files/documents/FEMA.pdf",
+      "replay": "https://web.archive.org/web/20161231051026id_/http://archives113.transportation.house.gov//sites/republicans.transportation.house.gov/files/documents/FEMA.pdf",
+      "body_sha256": "d1380aeb8404e6f7b1f8b5c73105e5339ff22633058a463509d98fae18564d8b",
+      "qualification_sha256": "975400e3bba1c2a6723f4bb82fab18cc724a2819e398c6326cc3ecb5c7d3ae63",
+      "body_path": "/private/tmp/claude-501/-Users-mikewolfd-Work/71969fc5-4a0f-4f4e-aa49-d2dd9f4c2272/scratchpad/codex-impl/cx_model_design/recovery_campaign_v1/track_b/b2_discovery/extra_replays/d1380aeb8404e6f7b1f8b5c73105e5339ff22633058a463509d98fae18564d8b.body",
+      "body_available": true,
+      "sha256_verified": true,
+      "cdx_digest_verified": true,
+      "pdf_header": true,
+      "bytes": 1431223,
+      "exact_replay_validation": true
+    },
+    {
+      "target": "http://clairemontialoux.com/files/montialoux_jmp_2018.pdf",
+      "replay": "https://web.archive.org/web/20190810040518id_/http://clairemontialoux.com/files/montialoux_jmp_2018.pdf",
+      "body_sha256": "7822370d805520d60749b405fd946a658b127cee086f66d31870adb723dfed60",
+      "qualification_sha256": "6477b303a9bc2955dade074380be2b407174e381c8a688d0ec342b794db63bcd",
+      "body_path": "/private/tmp/claude-501/-Users-mikewolfd-Work/71969fc5-4a0f-4f4e-aa49-d2dd9f4c2272/scratchpad/codex-impl/cx_model_design/recovery_campaign_v1/track_b/b2_discovery/extra_replays/7822370d805520d60749b405fd946a658b127cee086f66d31870adb723dfed60.body",
+      "body_available": true,
+      "sha256_verified": true,
+      "cdx_digest_verified": true,
+      "pdf_header": true,
+      "bytes": 4058958,
+      "exact_replay_validation": true
+    },
+    {
+      "target": "http://www.napawash.org/wp-content/uploads/2011/11/White_Paper11012011webposting.pdf",
+      "replay": "https://web.archive.org/web/20160222043857id_/http://www.napawash.org:80/wp-content/uploads/2011/11/White_Paper11012011webposting.pdf",
+      "body_sha256": "390af4681123c0bd9f0d650cf63ece718ac651d3580600f4a3c12a364fbd1f6d",
+      "qualification_sha256": "c890fa4ea4fe348df2e4f0b53be0c2291f71cc1e3f54fb365de24c0e1dd93e5f",
+      "body_path": "/private/tmp/claude-501/-Users-mikewolfd-Work/71969fc5-4a0f-4f4e-aa49-d2dd9f4c2272/scratchpad/codex-impl/cx_model_design/recovery_campaign_v1/track_b/b2_discovery/extra_replays/390af4681123c0bd9f0d650cf63ece718ac651d3580600f4a3c12a364fbd1f6d.body",
+      "body_available": true,
+      "sha256_verified": true,
+      "cdx_digest_verified": true,
+      "pdf_header": true,
+      "bytes": 1259970,
+      "exact_replay_validation": true
+    },
+    {
+      "target": "http://developingchild.harvard.edu/wp-content/uploads/2005/05/Stress_Disrupts_Architecture_Developing_Brain-1.pdf",
+      "replay": "https://web.archive.org/web/20201029045245id_/https://developingchild.harvard.edu/wp-content/uploads/2005/05/Stress_Disrupts_Architecture_Developing_Brain-1.pdf",
+      "body_sha256": "28a55c07abb0fab83d93017f7848794a570729458cfdef3b527a76d30e28742d",
+      "qualification_sha256": "2bc18f5f6c336c230ff2a18551c163f6b484a8932bc57dd648eb71ba6bb9fee5",
+      "body_path": "/private/tmp/claude-501/-Users-mikewolfd-Work/71969fc5-4a0f-4f4e-aa49-d2dd9f4c2272/scratchpad/codex-impl/cx_model_design/recovery_campaign_v1/track_b/b2_discovery/extra_replays/28a55c07abb0fab83d93017f7848794a570729458cfdef3b527a76d30e28742d.body",
+      "body_available": true,
+      "sha256_verified": true,
+      "cdx_digest_verified": true,
+      "pdf_header": true,
+      "bytes": 518378,
+      "exact_replay_validation": true
+    },
+    {
+      "target": "https://www.cssp.org/publications/documents/Balancing-ACEs-with-HOPE-FINAL.pdf",
+      "replay": "https://web.archive.org/web/20170609161147id_/http://www.cssp.org/publications/documents/Balancing-ACEs-with-HOPE-FINAL.pdf",
+      "body_sha256": "2b684b80ab2b8ba11778e3b19de6bbadd37b899117ecb43e98caa1834452e358",
+      "qualification_sha256": "d448db01513b4f529e20aeb9a94ecb64df520bb5c12b7a079569f477861ddd4b",
+      "body_path": "/private/tmp/claude-501/-Users-mikewolfd-Work/71969fc5-4a0f-4f4e-aa49-d2dd9f4c2272/scratchpad/codex-impl/cx_model_design/recovery_campaign_v1/track_b/b2_discovery/extra_replays/2b684b80ab2b8ba11778e3b19de6bbadd37b899117ecb43e98caa1834452e358.body",
+      "body_available": true,
+      "sha256_verified": true,
+      "cdx_digest_verified": true,
+      "pdf_header": true,
+      "bytes": 2268317,
+      "exact_replay_validation": true
+    },
+    {
+      "target": "http://www.healthquality.va.gov/guidelines/MH/ptsd/cpg_PTSD-FULL-201011612.pdf",
+      "replay": "https://web.archive.org/web/20190925081130id_/https://www.healthquality.va.gov/guidelines/MH/ptsd/cpg_PTSD-full-201011612.PDF",
+      "body_sha256": "b45dcddf906046e1756763dfde633bf92a72088615e861dac4d42d0c19a4cf8a",
+      "qualification_sha256": "a8d88c6e6a612b5586386904e00e9cdca7f7d864b240c23c998fa584d52710b4",
+      "body_path": "/private/tmp/claude-501/-Users-mikewolfd-Work/71969fc5-4a0f-4f4e-aa49-d2dd9f4c2272/scratchpad/codex-impl/cx_model_design/recovery_campaign_v1/track_b/b2_discovery/extra_replays/b45dcddf906046e1756763dfde633bf92a72088615e861dac4d42d0c19a4cf8a.body",
+      "body_available": true,
+      "sha256_verified": true,
+      "cdx_digest_verified": true,
+      "pdf_header": true,
+      "bytes": 3161384,
+      "exact_replay_validation": true
+    }
+  ],
+  "details": [
+    {
+      "target": "https://www.bea.gov/system/files/2020-06/Effects-of-Selected-Federal-Pandemic-Response-Programs-on-Personal-Income-May-2020.xlsx",
+      "status": 429,
+      "before": "denied",
+      "after": "denied",
+      "before_candidates": 0,
+      "after_candidates": 0,
+      "evidence": "/private/tmp/claude-501/-Users-mikewolfd-Work/71969fc5-4a0f-4f4e-aa49-d2dd9f4c2272/scratchpad/codex-impl/cx_model_design/recovery_campaign_v1/track_b/b2_discovery/calls/00ab17314d141248c7aaf173c3d5992f29b75b060de550eb475e892d75f23b35/downloaded.json"
+    },
+    {
+      "target": "https://democrats.oversight.hdvdevedit1.house.gov/imo/media/doc/documents/Norton.pdf",
+      "status": 200,
+      "before": "invalid_index_response",
+      "after": "complete",
+      "before_candidates": 0,
+      "after_candidates": 0,
+      "evidence": "/private/tmp/claude-501/-Users-mikewolfd-Work/71969fc5-4a0f-4f4e-aa49-d2dd9f4c2272/scratchpad/codex-impl/cx_model_design/recovery_campaign_v1/track_b/b2_discovery/calls/0323c1ba7a1161ef4d719175b725908bf0defaf246774a4a640fa783aaa7ff17/downloaded.json"
+    },
+    {
+      "target": "https://www-cdn.law.stanford.edu/wp-content/uploads/2020/02/ACUS-AI-Report.pdf",
+      "status": 429,
+      "before": "denied",
+      "after": "denied",
+      "before_candidates": 0,
+      "after_candidates": 0,
+      "evidence": "/private/tmp/claude-501/-Users-mikewolfd-Work/71969fc5-4a0f-4f4e-aa49-d2dd9f4c2272/scratchpad/codex-impl/cx_model_design/recovery_campaign_v1/track_b/b2_discovery/calls/039b48751790a78a0af8ff50230700e0ac7a0b11e0b67073874006e21241023e/downloaded.json"
+    },
+    {
+      "target": "https://www.hcfa.house.gov/110/41994.pdf",
+      "status": 200,
+      "before": "invalid_index_response",
+      "after": "page_limit",
+      "before_candidates": 0,
+      "after_candidates": 8,
+      "evidence": "/private/tmp/claude-501/-Users-mikewolfd-Work/71969fc5-4a0f-4f4e-aa49-d2dd9f4c2272/scratchpad/codex-impl/cx_model_design/recovery_campaign_v1/track_b/b2_discovery/calls/0626d44ae03f32c707a883e18082fbcaf636a626225e45bd7e24ebda09fc8fa9/downloaded.json"
+    },
+    {
+      "target": "https://www.armed-services.senate.gov/404?notfound=/hearings/19-07-11-nomination_--milley.xml",
+      "status": 429,
+      "before": "denied",
+      "after": "denied",
+      "before_candidates": 0,
+      "after_candidates": 0,
+      "evidence": "/private/tmp/claude-501/-Users-mikewolfd-Work/71969fc5-4a0f-4f4e-aa49-d2dd9f4c2272/scratchpad/codex-impl/cx_model_design/recovery_campaign_v1/track_b/b2_discovery/calls/090b651bc816d77709ce68d49fd9872a124e98ca7b31e45960e4beb5026fbf79/downloaded.json"
+    },
+    {
+      "target": "https://www.urban.org/sites/default/files/monthlystrh_april2020.pdf",
+      "status": 429,
+      "before": "denied",
+      "after": "denied",
+      "before_candidates": 0,
+      "after_candidates": 0,
+      "evidence": "/private/tmp/claude-501/-Users-mikewolfd-Work/71969fc5-4a0f-4f4e-aa49-d2dd9f4c2272/scratchpad/codex-impl/cx_model_design/recovery_campaign_v1/track_b/b2_discovery/calls/092500d6cc8a5f8ef0fe88e6584aa33c8b786ec77f9b739f0d090b6936fcacce/downloaded.json"
+    },
+    {
+      "target": "http://www.nist.gov/sites/default/files/documents/2019/04/15/frvt_report_2019_04_12.pdf",
+      "status": 200,
+      "before": "invalid_index_response",
+      "after": "complete",
+      "before_candidates": 0,
+      "after_candidates": 1,
+      "evidence": "/private/tmp/claude-501/-Users-mikewolfd-Work/71969fc5-4a0f-4f4e-aa49-d2dd9f4c2272/scratchpad/codex-impl/cx_model_design/recovery_campaign_v1/track_b/b2_discovery/calls/0d266fc7b36bf0859e4147a8fb1d4dc6ececbd8fa44d61517380068a13ac4c97/downloaded.json"
+    },
+    {
+      "target": "https://www.commerce.senate.gov/meetings/examining-technological-innovations-in-transportation.xml",
+      "status": 429,
+      "before": "denied",
+      "after": "denied",
+      "before_candidates": 0,
+      "after_candidates": 0,
+      "evidence": "/private/tmp/claude-501/-Users-mikewolfd-Work/71969fc5-4a0f-4f4e-aa49-d2dd9f4c2272/scratchpad/codex-impl/cx_model_design/recovery_campaign_v1/track_b/b2_discovery/calls/0de57610572749cd8b57ee56245703e584e24f51e71e4f936c841a701692891f/downloaded.json"
+    },
+    {
+      "target": "https://energycommerce.house.gov/sites/democrats.energycommerce.house.gov/files/documents/2020.9.16.FCC%20Oversight%20Hearing%20FP%20Statement.CAT_.xml",
+      "status": 429,
+      "before": "denied",
+      "after": "denied",
+      "before_candidates": 0,
+      "after_candidates": 0,
+      "evidence": "/private/tmp/claude-501/-Users-mikewolfd-Work/71969fc5-4a0f-4f4e-aa49-d2dd9f4c2272/scratchpad/codex-impl/cx_model_design/recovery_campaign_v1/track_b/b2_discovery/calls/0fe9817498e01dc70add067b6e4b69cd1d39c2cb294381e4d3a62ca45b003e14/downloaded.json"
+    },
+    {
+      "target": "https://www.banking.senate.gov/hearings/01/09/2025/nomination-hearing.xml",
+      "status": 429,
+      "before": "denied",
+      "after": "denied",
+      "before_candidates": 0,
+      "after_candidates": 0,
+      "evidence": "/private/tmp/claude-501/-Users-mikewolfd-Work/71969fc5-4a0f-4f4e-aa49-d2dd9f4c2272/scratchpad/codex-impl/cx_model_design/recovery_campaign_v1/track_b/b2_discovery/calls/11d4a676379aca011be84b8ee7c782a66bbd32ed156871fd75d453850cf96707/downloaded.json"
+    },
+    {
+      "target": "http://science.house.gov/sites/republicans.science.house.gov/files/documents/HHRG-113-SY18-20130226-SD001.xml",
+      "status": 429,
+      "before": "denied",
+      "after": "denied",
+      "before_candidates": 0,
+      "after_candidates": 0,
+      "evidence": "/private/tmp/claude-501/-Users-mikewolfd-Work/71969fc5-4a0f-4f4e-aa49-d2dd9f4c2272/scratchpad/codex-impl/cx_model_design/recovery_campaign_v1/track_b/b2_discovery/calls/1294b02e42a9b6c2de6624480cb70fa1e9da4bf0ec0af8e8deef8d05f3624991/downloaded.json"
+    },
+    {
+      "target": "https://edlabor.house.gov/download/09/25/2019/hr2474-roea11&download=1",
+      "status": 429,
+      "before": "denied",
+      "after": "denied",
+      "before_candidates": 0,
+      "after_candidates": 0,
+      "evidence": "/private/tmp/claude-501/-Users-mikewolfd-Work/71969fc5-4a0f-4f4e-aa49-d2dd9f4c2272/scratchpad/codex-impl/cx_model_design/recovery_campaign_v1/track_b/b2_discovery/calls/1cb93d5f726c51a006d65c0b8c45e5f62c0f963defd2ba4400efc5f142284777/downloaded.json"
+    },
+    {
+      "target": "http://edworkforce.house.gov/uploadedfiles/truth_in_testimony__fairbanks..pdf",
+      "status": 429,
+      "before": "denied",
+      "after": "denied",
+      "before_candidates": 0,
+      "after_candidates": 0,
+      "evidence": "/private/tmp/claude-501/-Users-mikewolfd-Work/71969fc5-4a0f-4f4e-aa49-d2dd9f4c2272/scratchpad/codex-impl/cx_model_design/recovery_campaign_v1/track_b/b2_discovery/calls/1f5ee859abca2899becdc7c9bcd2ff1a235d624bc1df5a3e6f570ad1cc84649c/downloaded.json"
+    },
+    {
+      "target": "https://www.appropriations.senate.gov/hearings/a-review-of-the-fy-2022-department-of-defense-budget-request.xml",
+      "status": 429,
+      "before": "denied",
+      "after": "denied",
+      "before_candidates": 0,
+      "after_candidates": 0,
+      "evidence": "/private/tmp/claude-501/-Users-mikewolfd-Work/71969fc5-4a0f-4f4e-aa49-d2dd9f4c2272/scratchpad/codex-impl/cx_model_design/recovery_campaign_v1/track_b/b2_discovery/calls/1fbfd56fdd93940989be4a915316f7bb4fd60665b5d858586920724268c81394/downloaded.json"
+    },
+    {
+      "target": "https://democrats-foreignaffairs.house.gov/07-02-2020%20HFAC%20Full%20Committee%20Hearing%20Notice.pdf",
+      "status": 200,
+      "before": "invalid_index_response",
+      "after": "complete",
+      "before_candidates": 0,
+      "after_candidates": 0,
+      "evidence": "/private/tmp/claude-501/-Users-mikewolfd-Work/71969fc5-4a0f-4f4e-aa49-d2dd9f4c2272/scratchpad/codex-impl/cx_model_design/recovery_campaign_v1/track_b/b2_discovery/calls/201a6f82234fe362b62232fa326e61049d16c387e03112d87c92ec7b129527af/downloaded.json"
+    },
+    {
+      "target": "https://www.irs.gov/pub/irs-utl/20-Immigration%20and%20Taxation.pdf",
+      "status": 200,
+      "before": "invalid_index_response",
+      "after": "page_limit",
+      "before_candidates": 0,
+      "after_candidates": 20,
+      "evidence": "/private/tmp/claude-501/-Users-mikewolfd-Work/71969fc5-4a0f-4f4e-aa49-d2dd9f4c2272/scratchpad/codex-impl/cx_model_design/recovery_campaign_v1/track_b/b2_discovery/calls/21b892fe01897ab3a7cde2a1e7d57eabc6f1e7d5deccea58db5996ab8e77e505/downloaded.json"
+    },
+    {
+      "target": "http://maplight.org/files/map_research/AmericanLegion.pdf",
+      "status": 429,
+      "before": "denied",
+      "after": "denied",
+      "before_candidates": 0,
+      "after_candidates": 0,
+      "evidence": "/private/tmp/claude-501/-Users-mikewolfd-Work/71969fc5-4a0f-4f4e-aa49-d2dd9f4c2272/scratchpad/codex-impl/cx_model_design/recovery_campaign_v1/track_b/b2_discovery/calls/228f2678163b014ae6225430c5d2360f4b22239e656a4d1db0f47eb75ad7cf6f/downloaded.json"
+    },
+    {
+      "target": "http://amendments-rules.house.gov/amendments/3451027152158245824.xml",
+      "status": 200,
+      "before": "invalid_index_response",
+      "after": "complete",
+      "before_candidates": 0,
+      "after_candidates": 0,
+      "evidence": "/private/tmp/claude-501/-Users-mikewolfd-Work/71969fc5-4a0f-4f4e-aa49-d2dd9f4c2272/scratchpad/codex-impl/cx_model_design/recovery_campaign_v1/track_b/b2_discovery/calls/22ab6b37cef7e382b19327cd5731fd8d792a84b516d27dcbc04089d93ed6d6dd/downloaded.json"
+    },
+    {
+      "target": "https://www.pgpf.org/sites/default/files/10112013_crisis_driven_report_fullreport.pdf",
+      "status": 200,
+      "before": "invalid_index_response",
+      "after": "page_limit",
+      "before_candidates": 0,
+      "after_candidates": 20,
+      "evidence": "/private/tmp/claude-501/-Users-mikewolfd-Work/71969fc5-4a0f-4f4e-aa49-d2dd9f4c2272/scratchpad/codex-impl/cx_model_design/recovery_campaign_v1/track_b/b2_discovery/calls/25d5825de5ed0593a5f3784574bbbff045e1e0fa9c33a7be7b8bac2f280b9cbb/downloaded.json"
+    },
+    {
+      "target": "http://edit-republicans.energycommerce.house.gov/sites/republicans.energycommerce.house.gov/files/Markups/FullCmte/20120731/HMTG-112-HMKP-IF00-20120731.pdf",
+      "status": 200,
+      "before": "invalid_index_response",
+      "after": "complete",
+      "before_candidates": 0,
+      "after_candidates": 0,
+      "evidence": "/private/tmp/claude-501/-Users-mikewolfd-Work/71969fc5-4a0f-4f4e-aa49-d2dd9f4c2272/scratchpad/codex-impl/cx_model_design/recovery_campaign_v1/track_b/b2_discovery/calls/25e8de227ac4cec461ea671f44c7fe9335af61649ad99fcefaaff92c8bd72d1a/downloaded.json"
+    },
+    {
+      "target": "https://www.piie.com/system/files/documents/pb19-2.pdf",
+      "status": 200,
+      "before": "invalid_index_response",
+      "after": "complete",
+      "before_candidates": 0,
+      "after_candidates": 15,
+      "evidence": "/private/tmp/claude-501/-Users-mikewolfd-Work/71969fc5-4a0f-4f4e-aa49-d2dd9f4c2272/scratchpad/codex-impl/cx_model_design/recovery_campaign_v1/track_b/b2_discovery/calls/288b3f89c2308a4ec7af80b21b8d9b30b36df3a8f139a65e97aa75824c9c3676/downloaded.json"
+    },
+    {
+      "target": "https://democrats-homeland.house.gov/download/0611-bgt-cti-anti-israel-open",
+      "status": 200,
+      "before": "invalid_index_response",
+      "after": "complete",
+      "before_candidates": 0,
+      "after_candidates": 0,
+      "evidence": "/private/tmp/claude-501/-Users-mikewolfd-Work/71969fc5-4a0f-4f4e-aa49-d2dd9f4c2272/scratchpad/codex-impl/cx_model_design/recovery_campaign_v1/track_b/b2_discovery/calls/29ea92e69f7f6a4671c59ab8482df4d53b147bafd6a8c909421dca575c7c6ef4/downloaded.json"
+    },
+    {
+      "target": "https://www.judiciary.senate.gov/404?notfound=/committee-activity/hearings/breaking-the-news-censorship-suppression-and-the-2020-election.xml",
+      "status": 200,
+      "before": "invalid_index_response",
+      "after": "complete",
+      "before_candidates": 0,
+      "after_candidates": 0,
+      "evidence": "/private/tmp/claude-501/-Users-mikewolfd-Work/71969fc5-4a0f-4f4e-aa49-d2dd9f4c2272/scratchpad/codex-impl/cx_model_design/recovery_campaign_v1/track_b/b2_discovery/calls/2a84978cb0f2e93b598493d70773d968919be44f262cbba20cbabce8e8b0f55d/downloaded.json"
+    },
+    {
+      "target": "http://budget.house.gov/uploadedfiles/donovan_budget_testimony_final_house.xml",
+      "status": 200,
+      "before": "invalid_index_response",
+      "after": "complete",
+      "before_candidates": 0,
+      "after_candidates": 0,
+      "evidence": "/private/tmp/claude-501/-Users-mikewolfd-Work/71969fc5-4a0f-4f4e-aa49-d2dd9f4c2272/scratchpad/codex-impl/cx_model_design/recovery_campaign_v1/track_b/b2_discovery/calls/2abb0057a5e800c043dfd41b080e954741f4e8f1532d8504e7587f66f8002fa8/downloaded.json"
+    },
+    {
+      "target": "https://coronavirus.house.gov/sites/evo-subsites/democrats-coronavirus.house.gov/files/Barnett_Written_Statement.pdf",
+      "status": 200,
+      "before": "invalid_index_response",
+      "after": "complete",
+      "before_candidates": 0,
+      "after_candidates": 0,
+      "evidence": "/private/tmp/claude-501/-Users-mikewolfd-Work/71969fc5-4a0f-4f4e-aa49-d2dd9f4c2272/scratchpad/codex-impl/cx_model_design/recovery_campaign_v1/track_b/b2_discovery/calls/309901c7339df275a5fcefd8f0355c4bc321c4a34e7198205d2b244b322af4f8/downloaded.json"
+    },
+    {
+      "target": "https://wdr.doleta.gov/research/FullText_Documents/ETAOP2010-10.pdf",
+      "status": 429,
+      "before": "denied",
+      "after": "denied",
+      "before_candidates": 0,
+      "after_candidates": 0,
+      "evidence": "/private/tmp/claude-501/-Users-mikewolfd-Work/71969fc5-4a0f-4f4e-aa49-d2dd9f4c2272/scratchpad/codex-impl/cx_model_design/recovery_campaign_v1/track_b/b2_discovery/calls/31ea89df623ca072c05e0a063cabadecf30c4531429b45421945390ef1d9b375/downloaded.json"
+    },
+    {
+      "target": "https://ai100.stanford.edu/sites/g/files/sbiybj9861/f/ai100report10032016fnl_singles.pdf",
+      "status": 200,
+      "before": "page_limit",
+      "after": "page_limit",
+      "before_candidates": 19,
+      "after_candidates": 19,
+      "evidence": "/private/tmp/claude-501/-Users-mikewolfd-Work/71969fc5-4a0f-4f4e-aa49-d2dd9f4c2272/scratchpad/codex-impl/cx_model_design/recovery_campaign_v1/track_b/b2_discovery/calls/32589fc27c584ccf9c5c80675cedf2eee28cde35c26d214eecfdcbfc9bcc78ad/downloaded.json"
+    },
+    {
+      "target": "http://www.aha.org/advocacy-issues/letter/2015/150302-cl-rin2900-ap24.pdf",
+      "status": 429,
+      "before": "denied",
+      "after": "denied",
+      "before_candidates": 0,
+      "after_candidates": 0,
+      "evidence": "/private/tmp/claude-501/-Users-mikewolfd-Work/71969fc5-4a0f-4f4e-aa49-d2dd9f4c2272/scratchpad/codex-impl/cx_model_design/recovery_campaign_v1/track_b/b2_discovery/calls/383bb9f100edf0c087b174f49f1b0a18a74fe5472bb733b3ed8a34dac7fea25f/downloaded.json"
+    },
+    {
+      "target": "https://congress.gov/116/chrg/CHRG-116hhrg35338/CHRG-116hhrg35338.pdf",
+      "status": 200,
+      "before": "invalid_index_response",
+      "after": "complete",
+      "before_candidates": 0,
+      "after_candidates": 0,
+      "evidence": "/private/tmp/claude-501/-Users-mikewolfd-Work/71969fc5-4a0f-4f4e-aa49-d2dd9f4c2272/scratchpad/codex-impl/cx_model_design/recovery_campaign_v1/track_b/b2_discovery/calls/3db16f13de5b855743de4729520b09edd5069296a4627c71366ace6d56d9d625/downloaded.json"
+    },
+    {
+      "target": "https://www.speaker.gov/wp-content/uploads/2023/04/LSGA_xml.xml",
+      "status": 429,
+      "before": "denied",
+      "after": "denied",
+      "before_candidates": 0,
+      "after_candidates": 0,
+      "evidence": "/private/tmp/claude-501/-Users-mikewolfd-Work/71969fc5-4a0f-4f4e-aa49-d2dd9f4c2272/scratchpad/codex-impl/cx_model_design/recovery_campaign_v1/track_b/b2_discovery/calls/3e0efff4ab1d26ea0c0eb94b96cc97840d6e29f1ab2cb1c65dab4215c5af37be/downloaded.json"
+    },
+    {
+      "target": "https://www.agriculture.senate.gov/404?notfound=/hearings/horticulture-title-how-the-farm-bill-works-for-specialty-crop-producers.xml",
+      "status": 429,
+      "before": "denied",
+      "after": "denied",
+      "before_candidates": 0,
+      "after_candidates": 0,
+      "evidence": "/private/tmp/claude-501/-Users-mikewolfd-Work/71969fc5-4a0f-4f4e-aa49-d2dd9f4c2272/scratchpad/codex-impl/cx_model_design/recovery_campaign_v1/track_b/b2_discovery/calls/40a7986ad962d5211497b150e96dae3a35a4d340b7073ad2c6f6994fc7487d36/downloaded.json"
+    },
+    {
+      "target": "https://www.budget.senate.gov/hearings/fairness-and-fiscal-responsibility-cracking-down-on-wealthy-tax-cheats.xml",
+      "status": 429,
+      "before": "denied",
+      "after": "denied",
+      "before_candidates": 0,
+      "after_candidates": 0,
+      "evidence": "/private/tmp/claude-501/-Users-mikewolfd-Work/71969fc5-4a0f-4f4e-aa49-d2dd9f4c2272/scratchpad/codex-impl/cx_model_design/recovery_campaign_v1/track_b/b2_discovery/calls/42e7d274d418110f624fdb83714b69f193e7a8bad59912b40dcd061cfadf8cc4/downloaded.json"
+    },
+    {
+      "target": "https://rules.house.gov/sites/democrats.rules.house.gov/files/7.12.22%20-Report.xml",
+      "status": 429,
+      "before": "denied",
+      "after": "denied",
+      "before_candidates": 0,
+      "after_candidates": 0,
+      "evidence": "/private/tmp/claude-501/-Users-mikewolfd-Work/71969fc5-4a0f-4f4e-aa49-d2dd9f4c2272/scratchpad/codex-impl/cx_model_design/recovery_campaign_v1/track_b/b2_discovery/calls/430f99ad0f18bdd67ceb175f6133c748737baa0405ca7ff77bd657071ca88283/downloaded.json"
+    },
+    {
+      "target": "https://democrats-naturalresources.house.gov/UploadedFiles/6.26_DiscussionDraft_--_HR.PDF",
+      "status": 200,
+      "before": "invalid_index_response",
+      "after": "complete",
+      "before_candidates": 0,
+      "after_candidates": 0,
+      "evidence": "/private/tmp/claude-501/-Users-mikewolfd-Work/71969fc5-4a0f-4f4e-aa49-d2dd9f4c2272/scratchpad/codex-impl/cx_model_design/recovery_campaign_v1/track_b/b2_discovery/calls/44fd299ba59d0876b3299b0006b227569da15c7057f1f4c0aa5c95ecac4c69bb/downloaded.json"
+    },
+    {
+      "target": "https://www.integration.samhsa.gov/clinical-practice/SAMSA_TIP_Trauma.pdf",
+      "status": 200,
+      "before": "invalid_index_response",
+      "after": "complete",
+      "before_candidates": 0,
+      "after_candidates": 10,
+      "evidence": "/private/tmp/claude-501/-Users-mikewolfd-Work/71969fc5-4a0f-4f4e-aa49-d2dd9f4c2272/scratchpad/codex-impl/cx_model_design/recovery_campaign_v1/track_b/b2_discovery/calls/47ffeb566dbff872597c9e364acc0d515983b87ab6f0161120babac4b0650d99/downloaded.json"
+    },
+    {
+      "target": "https://crr.bc.edu/wp-content/uploads/2017/12/IB_18-1.pdf",
+      "status": 200,
+      "before": "invalid_index_response",
+      "after": "complete",
+      "before_candidates": 0,
+      "after_candidates": 1,
+      "evidence": "/private/tmp/claude-501/-Users-mikewolfd-Work/71969fc5-4a0f-4f4e-aa49-d2dd9f4c2272/scratchpad/codex-impl/cx_model_design/recovery_campaign_v1/track_b/b2_discovery/calls/487eb3d3a9bb8e7b1b27c1fd290ba61894b4a5709afce64c74b91b174e83e41b/downloaded.json"
+    },
+    {
+      "target": "https://democrats-transportation.house.gov/sites/transportation.creativengine.com/files/NJR.pdf",
+      "status": 200,
+      "before": "invalid_index_response",
+      "after": "complete",
+      "before_candidates": 0,
+      "after_candidates": 0,
+      "evidence": "/private/tmp/claude-501/-Users-mikewolfd-Work/71969fc5-4a0f-4f4e-aa49-d2dd9f4c2272/scratchpad/codex-impl/cx_model_design/recovery_campaign_v1/track_b/b2_discovery/calls/4a4b4212acd9a9b3b74ac805c325d0aec40c34a0bcb42aa3e54dbc0228a11dc2/downloaded.json"
+    },
+    {
+      "target": "https://2009-2017.state.gov/documents/organization/111812.pdf",
+      "status": 200,
+      "before": "page_limit",
+      "after": "page_limit",
+      "before_candidates": 20,
+      "after_candidates": 20,
+      "evidence": "/private/tmp/claude-501/-Users-mikewolfd-Work/71969fc5-4a0f-4f4e-aa49-d2dd9f4c2272/scratchpad/codex-impl/cx_model_design/recovery_campaign_v1/track_b/b2_discovery/calls/4b03380544f7b0932ab769b4df69a717298971f30bed2cf573322a7ea0fa382f/downloaded.json"
+    },
+    {
+      "target": "https://www.perseus-strategies.com/wp-content/uploads/2023/12/Bialiatski-WGAD-Petition-12.4.23.pdf",
+      "status": 200,
+      "before": "complete",
+      "after": "complete",
+      "before_candidates": 2,
+      "after_candidates": 2,
+      "evidence": "/private/tmp/claude-501/-Users-mikewolfd-Work/71969fc5-4a0f-4f4e-aa49-d2dd9f4c2272/scratchpad/codex-impl/cx_model_design/recovery_campaign_v1/track_b/b2_discovery/calls/4c48a0031aed56a613b8a04281054b07e161e95ee950f5c4ac407e907b169c5a/downloaded.json"
+    },
+    {
+      "target": "https://static1.squarespace.com/static/5743308460b5e922a25a6dc7/t/61e73f1169294a3cba6af9d9/1642544913557/Monthly-poverty-December-2021-CPSP.pdf",
+      "status": 429,
+      "before": "denied",
+      "after": "denied",
+      "before_candidates": 0,
+      "after_candidates": 0,
+      "evidence": "/private/tmp/claude-501/-Users-mikewolfd-Work/71969fc5-4a0f-4f4e-aa49-d2dd9f4c2272/scratchpad/codex-impl/cx_model_design/recovery_campaign_v1/track_b/b2_discovery/calls/4f296b8541d517a0fafeebb545f0f5b95f37dbba22100822fa1e67ac14fa4684/downloaded.json"
+    },
+    {
+      "target": "https://www.1888932-2946.ws/vetscommission/e-documentmanager/gallery/Documents/2007_April/Scott_Testimony_4-12-07_SASC-SVACJointHearing.pdf",
+      "status": 429,
+      "before": "denied",
+      "after": "denied",
+      "before_candidates": 0,
+      "after_candidates": 0,
+      "evidence": "/private/tmp/claude-501/-Users-mikewolfd-Work/71969fc5-4a0f-4f4e-aa49-d2dd9f4c2272/scratchpad/codex-impl/cx_model_design/recovery_campaign_v1/track_b/b2_discovery/calls/520f595bd6589a41a371898a9ba255e101277c892042651dec20cc65c7e49ed1/downloaded.json"
+    },
+    {
+      "target": "https://www.energy.senate.gov/hearings/2019-6-subcommittee-on-water-and-power-legislative-hearing.xml",
+      "status": 200,
+      "before": "invalid_index_response",
+      "after": "complete",
+      "before_candidates": 0,
+      "after_candidates": 0,
+      "evidence": "/private/tmp/claude-501/-Users-mikewolfd-Work/71969fc5-4a0f-4f4e-aa49-d2dd9f4c2272/scratchpad/codex-impl/cx_model_design/recovery_campaign_v1/track_b/b2_discovery/calls/55f1cb3d06b97311cc21925539dec96898ce73dfc9034bb1def91de5fc157c56/downloaded.json"
+    },
+    {
+      "target": "http://www.cahmi.org/wp-content/uploads/2015/01/ACEs-Measurement-paper-Technical-Appendix.pdf",
+      "status": 429,
+      "before": "denied",
+      "after": "denied",
+      "before_candidates": 0,
+      "after_candidates": 0,
+      "evidence": "/private/tmp/claude-501/-Users-mikewolfd-Work/71969fc5-4a0f-4f4e-aa49-d2dd9f4c2272/scratchpad/codex-impl/cx_model_design/recovery_campaign_v1/track_b/b2_discovery/calls/5ac8c51acc2a2a00f689db1b80671663c9cf36d0317f4b1f685de340ead1b4c2/downloaded.json"
+    },
+    {
+      "target": "http://www.legion.org/documents/legion/pdf/womens_veterans_survey_report.pdf",
+      "status": 200,
+      "before": "invalid_index_response",
+      "after": "complete",
+      "before_candidates": 0,
+      "after_candidates": 10,
+      "evidence": "/private/tmp/claude-501/-Users-mikewolfd-Work/71969fc5-4a0f-4f4e-aa49-d2dd9f4c2272/scratchpad/codex-impl/cx_model_design/recovery_campaign_v1/track_b/b2_discovery/calls/5eea6ed72aaf5e105dfc81fd892fd7e40bef29724033446ebf334a0bfa61fe3c/downloaded.json"
+    },
+    {
+      "target": "https://www.indian.senate.gov/hearings/hearing-native-priorities-2023-farm-bill-reauthorization.xml",
+      "status": 200,
+      "before": "invalid_index_response",
+      "after": "complete",
+      "before_candidates": 0,
+      "after_candidates": 0,
+      "evidence": "/private/tmp/claude-501/-Users-mikewolfd-Work/71969fc5-4a0f-4f4e-aa49-d2dd9f4c2272/scratchpad/codex-impl/cx_model_design/recovery_campaign_v1/track_b/b2_discovery/calls/60504c19cd241736b80ea6bd5bbb925701bcfaf048d606733dc54e1cdc481a99/downloaded.json"
+    },
+    {
+      "target": "http://archives113.transportation.house.gov/sites/republicans.transportation.house.gov/files/documents/FEMA.pdf",
+      "status": 200,
+      "before": "invalid_index_response",
+      "after": "complete",
+      "before_candidates": 0,
+      "after_candidates": 12,
+      "evidence": "/private/tmp/claude-501/-Users-mikewolfd-Work/71969fc5-4a0f-4f4e-aa49-d2dd9f4c2272/scratchpad/codex-impl/cx_model_design/recovery_campaign_v1/track_b/b2_discovery/calls/62035cf140343fe8f1b68ef88b776a47627c648f5627a1b8c2851cb7e4f23d91/downloaded.json"
+    },
+    {
+      "target": "http://www.congress.gov/cgi-lis/t2GPO/http://www.gpo.gov/fdsys/pkg/BILLS-113hr4005ih/pdf/BILLS-113hr4005ih.xml",
+      "status": 200,
+      "before": "invalid_index_response",
+      "after": "complete",
+      "before_candidates": 0,
+      "after_candidates": 0,
+      "evidence": "/private/tmp/claude-501/-Users-mikewolfd-Work/71969fc5-4a0f-4f4e-aa49-d2dd9f4c2272/scratchpad/codex-impl/cx_model_design/recovery_campaign_v1/track_b/b2_discovery/calls/6408d83e42c3c311bb491e66ddc611fdabb55dac80a34dbba7da6fb7f491cbd9/downloaded.json"
+    },
+    {
+      "target": "https://financialservices.house.gov/calendar/www.house.gov/apps/list/speech/financialsvcs_dem/3-11-09_fc_markup-bachman_opening_stmnt.pdf",
+      "status": 429,
+      "before": "denied",
+      "after": "denied",
+      "before_candidates": 0,
+      "after_candidates": 0,
+      "evidence": "/private/tmp/claude-501/-Users-mikewolfd-Work/71969fc5-4a0f-4f4e-aa49-d2dd9f4c2272/scratchpad/codex-impl/cx_model_design/recovery_campaign_v1/track_b/b2_discovery/calls/69c536c9789c0acd7da11d2c65256e1da1dfc94d9f577a3a3cb063f1e370a52f/downloaded.json"
+    },
+    {
+      "target": "http://democrats-edworkforce.house.gov/markups/pdfs/HR4137/Andrews29.pdf",
+      "status": 200,
+      "before": "invalid_index_response",
+      "after": "complete",
+      "before_candidates": 0,
+      "after_candidates": 0,
+      "evidence": "/private/tmp/claude-501/-Users-mikewolfd-Work/71969fc5-4a0f-4f4e-aa49-d2dd9f4c2272/scratchpad/codex-impl/cx_model_design/recovery_campaign_v1/track_b/b2_discovery/calls/6a3075736f862ed87a6893b0e891ba78576e588672e61c4f4e8ce93031aca121/downloaded.json"
+    },
+    {
+      "target": "https://www.aap.org/en-us/Documents/journals_research_update.pdf",
+      "status": 429,
+      "before": "denied",
+      "after": "denied",
+      "before_candidates": 0,
+      "after_candidates": 0,
+      "evidence": "/private/tmp/claude-501/-Users-mikewolfd-Work/71969fc5-4a0f-4f4e-aa49-d2dd9f4c2272/scratchpad/codex-impl/cx_model_design/recovery_campaign_v1/track_b/b2_discovery/calls/6bee50055a29335fb861e2cd2cd3b1c9b91f0906bc5f17cc00ca9b4bbf1201be/downloaded.json"
+    },
+    {
+      "target": "https://democrats-energycommerce.house.gov/sites/evo-subsites/democrats-energycommerce.house.gov/files/BILLS-114-4427-P000034-Amdt-5-Rush.pdf",
+      "status": 200,
+      "before": "invalid_index_response",
+      "after": "complete",
+      "before_candidates": 0,
+      "after_candidates": 0,
+      "evidence": "/private/tmp/claude-501/-Users-mikewolfd-Work/71969fc5-4a0f-4f4e-aa49-d2dd9f4c2272/scratchpad/codex-impl/cx_model_design/recovery_campaign_v1/track_b/b2_discovery/calls/6d12372def62410f5d26d06c6f61c3b2eb4881a509c3a935affef5f0b912e1a7/downloaded.json"
+    },
+    {
+      "target": "http://www.va.gov/oig/pubs/VAOIG-12-00849-120.pdf",
+      "status": 429,
+      "before": "denied",
+      "after": "denied",
+      "before_candidates": 0,
+      "after_candidates": 0,
+      "evidence": "/private/tmp/claude-501/-Users-mikewolfd-Work/71969fc5-4a0f-4f4e-aa49-d2dd9f4c2272/scratchpad/codex-impl/cx_model_design/recovery_campaign_v1/track_b/b2_discovery/calls/6e97c896d598ce47b5fe0469af6071a92da5569b25af61acaa8f5738586d6cd4/downloaded.json"
+    },
+    {
+      "target": "http://www.oregon-pip.org/resources/November%20webinar%20ACE%20in%20practice_2013.pdf",
+      "status": 200,
+      "before": "invalid_index_response",
+      "after": "complete",
+      "before_candidates": 0,
+      "after_candidates": 1,
+      "evidence": "/private/tmp/claude-501/-Users-mikewolfd-Work/71969fc5-4a0f-4f4e-aa49-d2dd9f4c2272/scratchpad/codex-impl/cx_model_design/recovery_campaign_v1/track_b/b2_discovery/calls/712e688c8dc09c86803ef90cc28c6f1a40f0d22071f2902d74852063056f7826/downloaded.json"
+    },
+    {
+      "target": "https://docsadmin-clerk.house.gov/billsthisweek/20201130/CP-116HR3884RH-COMPARED-RCP116-67.xml",
+      "status": 200,
+      "before": "invalid_index_response",
+      "after": "complete",
+      "before_candidates": 0,
+      "after_candidates": 0,
+      "evidence": "/private/tmp/claude-501/-Users-mikewolfd-Work/71969fc5-4a0f-4f4e-aa49-d2dd9f4c2272/scratchpad/codex-impl/cx_model_design/recovery_campaign_v1/track_b/b2_discovery/calls/77f45b9df6ab8b6a9f4bd0dd51cb40897ce2adf0c5d6482c06e5bc4cc2b383d2/downloaded.json"
+    },
+    {
+      "target": "https://www.ncsbn.org/13_NCSBNAnalysis_MilitaryLPNVN_final_April2013.pdf",
+      "status": 200,
+      "before": "complete",
+      "after": "complete",
+      "before_candidates": 2,
+      "after_candidates": 2,
+      "evidence": "/private/tmp/claude-501/-Users-mikewolfd-Work/71969fc5-4a0f-4f4e-aa49-d2dd9f4c2272/scratchpad/codex-impl/cx_model_design/recovery_campaign_v1/track_b/b2_discovery/calls/79ce22ecd2059cd133e784f754073a827cbc7faef34b964f40006946303c786b/downloaded.json"
+    },
+    {
+      "target": "https://republicans-naturalresources.house.gov/UploadedFiles/HR_2925_Leger_Fern\u00e1ndez_1_to_ANS.pdf",
+      "status": 429,
+      "before": "denied",
+      "after": "denied",
+      "before_candidates": 0,
+      "after_candidates": 0,
+      "evidence": "/private/tmp/claude-501/-Users-mikewolfd-Work/71969fc5-4a0f-4f4e-aa49-d2dd9f4c2272/scratchpad/codex-impl/cx_model_design/recovery_campaign_v1/track_b/b2_discovery/calls/7b7b1a3c05be6a3839cc064c24d001350131f53e6217186f37feafc9d04bf89f/downloaded.json"
+    },
+    {
+      "target": "https://pstrust.org/docs/shortbio-weimer.xml",
+      "status": 429,
+      "before": "denied",
+      "after": "denied",
+      "before_candidates": 0,
+      "after_candidates": 0,
+      "evidence": "/private/tmp/claude-501/-Users-mikewolfd-Work/71969fc5-4a0f-4f4e-aa49-d2dd9f4c2272/scratchpad/codex-impl/cx_model_design/recovery_campaign_v1/track_b/b2_discovery/calls/7d4ec718a9cfe760e87e24e8b766f4606f5d50dc02d759869401d1acb85eb875/downloaded.json"
+    },
+    {
+      "target": "http://archive.legion.org/bitstream/handle/123456789/1065/2007s024.pdf?sequence=2&isAllowed=y",
+      "status": 200,
+      "before": "complete",
+      "after": "complete",
+      "before_candidates": 1,
+      "after_candidates": 1,
+      "evidence": "/private/tmp/claude-501/-Users-mikewolfd-Work/71969fc5-4a0f-4f4e-aa49-d2dd9f4c2272/scratchpad/codex-impl/cx_model_design/recovery_campaign_v1/track_b/b2_discovery/calls/7d9064d209c9113f90ffe4cc8884de0babfa837ea6aa11ba5eaac535c6995d79/downloaded.json"
+    },
+    {
+      "target": "https://archives-agriculture.house.gov/sites/republicans.agriculture.house.gov/files/transcripts/112/112-1.pdf",
+      "status": 200,
+      "before": "complete",
+      "after": "complete",
+      "before_candidates": 13,
+      "after_candidates": 13,
+      "evidence": "/private/tmp/claude-501/-Users-mikewolfd-Work/71969fc5-4a0f-4f4e-aa49-d2dd9f4c2272/scratchpad/codex-impl/cx_model_design/recovery_campaign_v1/track_b/b2_discovery/calls/7eafd7a9a25d9d29f54452d9e5e2458cabe1a89746c9abcc904fc3c5467d66a3/downloaded.json"
+    },
+    {
+      "target": "http://democrats-agriculture.house.gov/testimony/111/h121510/Duffy.pdf",
+      "status": 200,
+      "before": "invalid_index_response",
+      "after": "complete",
+      "before_candidates": 0,
+      "after_candidates": 0,
+      "evidence": "/private/tmp/claude-501/-Users-mikewolfd-Work/71969fc5-4a0f-4f4e-aa49-d2dd9f4c2272/scratchpad/codex-impl/cx_model_design/recovery_campaign_v1/track_b/b2_discovery/calls/80e034246f87295f4f0de42e5306f14cde5529055e6bb74bb247b8c4cddcdd72/downloaded.json"
+    },
+    {
+      "target": "http://thomas.loc.gov/home/gpoxmlc113/h2642_eah.xml",
+      "status": 429,
+      "before": "denied",
+      "after": "denied",
+      "before_candidates": 0,
+      "after_candidates": 0,
+      "evidence": "/private/tmp/claude-501/-Users-mikewolfd-Work/71969fc5-4a0f-4f4e-aa49-d2dd9f4c2272/scratchpad/codex-impl/cx_model_design/recovery_campaign_v1/track_b/b2_discovery/calls/824341a518a973d07544f8a2f3744456966e74bfd6d13dcfa421643852f9eeb6/downloaded.json"
+    },
+    {
+      "target": "https://www.csce.gov/hearings/behind-enemy-lines.xml",
+      "status": 200,
+      "before": "invalid_index_response",
+      "after": "complete",
+      "before_candidates": 0,
+      "after_candidates": 0,
+      "evidence": "/private/tmp/claude-501/-Users-mikewolfd-Work/71969fc5-4a0f-4f4e-aa49-d2dd9f4c2272/scratchpad/codex-impl/cx_model_design/recovery_campaign_v1/track_b/b2_discovery/calls/83e1d2c440d11e6d4aade067e844e3dd6743b7e562f2c28a837c165d042b04e2/downloaded.json"
+    },
+    {
+      "target": "http://legion.org/documents/legion/pdf/american-legion-war-within.pdf",
+      "status": 429,
+      "before": "denied",
+      "after": "denied",
+      "before_candidates": 0,
+      "after_candidates": 0,
+      "evidence": "/private/tmp/claude-501/-Users-mikewolfd-Work/71969fc5-4a0f-4f4e-aa49-d2dd9f4c2272/scratchpad/codex-impl/cx_model_design/recovery_campaign_v1/track_b/b2_discovery/calls/87810fbe8959a10461bdc1f73cbbc903d452f862adab3655cc27a4364c229166/downloaded.json"
+    },
+    {
+      "target": "https://edit-rules.house.gov/sites/evo-subsites/rules.house.gov/files/documents/bill-to-bill_119hr1897rh_to_rcp_h1897-2_xml.xml",
+      "status": 429,
+      "before": "denied",
+      "after": "denied",
+      "before_candidates": 0,
+      "after_candidates": 0,
+      "evidence": "/private/tmp/claude-501/-Users-mikewolfd-Work/71969fc5-4a0f-4f4e-aa49-d2dd9f4c2272/scratchpad/codex-impl/cx_model_design/recovery_campaign_v1/track_b/b2_discovery/calls/88f6cc9072b01e41e1fd8f4538687550e481705a222238ac8ac429dfccea5a80/downloaded.json"
+    },
+    {
+      "target": "https://www.finance.senate.gov/hearings/2020-filing-season-and-irs-covid-19-recovery.xml",
+      "status": 200,
+      "before": "invalid_index_response",
+      "after": "complete",
+      "before_candidates": 0,
+      "after_candidates": 0,
+      "evidence": "/private/tmp/claude-501/-Users-mikewolfd-Work/71969fc5-4a0f-4f4e-aa49-d2dd9f4c2272/scratchpad/codex-impl/cx_model_design/recovery_campaign_v1/track_b/b2_discovery/calls/8d0ad38a4a45648b584ebb4a11c14bb5a5d3324ecd16c53c23eace90c9f461dc/downloaded.json"
+    },
+    {
+      "target": "https://www.veterans.senate.gov/2023/2/legislative-presentation-of-disabled-american-veterans.xml",
+      "status": 429,
+      "before": "denied",
+      "after": "denied",
+      "before_candidates": 0,
+      "after_candidates": 0,
+      "evidence": "/private/tmp/claude-501/-Users-mikewolfd-Work/71969fc5-4a0f-4f4e-aa49-d2dd9f4c2272/scratchpad/codex-impl/cx_model_design/recovery_campaign_v1/track_b/b2_discovery/calls/8f0733b3c4331418cc80a1163fbfe6e3f89095f15da7d6cdbc97a925f135d570/downloaded.json"
+    },
+    {
+      "target": "http://www.who.int/violence_injury_prevention/violence/activities/adverse_childhood_experiences/global_research_network_may_2009.pdf?ua=1",
+      "status": 429,
+      "before": "denied",
+      "after": "denied",
+      "before_candidates": 0,
+      "after_candidates": 0,
+      "evidence": "/private/tmp/claude-501/-Users-mikewolfd-Work/71969fc5-4a0f-4f4e-aa49-d2dd9f4c2272/scratchpad/codex-impl/cx_model_design/recovery_campaign_v1/track_b/b2_discovery/calls/90e50df2c9a850d8e298213d06e3533fe1739fb6921e7a41317f5df5c64bebb2/downloaded.json"
+    },
+    {
+      "target": "http://www.rules.house.gov/Media/file/PDF_113_1/Reports/HRPT-113-HR1911.pdf",
+      "status": 429,
+      "before": "denied",
+      "after": "denied",
+      "before_candidates": 0,
+      "after_candidates": 0,
+      "evidence": "/private/tmp/claude-501/-Users-mikewolfd-Work/71969fc5-4a0f-4f4e-aa49-d2dd9f4c2272/scratchpad/codex-impl/cx_model_design/recovery_campaign_v1/track_b/b2_discovery/calls/91a563c3b1b8e2e19de8ce71a7a127a8aed805901b8ab3db7906c7634fce4af2/downloaded.json"
+    },
+    {
+      "target": "http://orourke.house.gov/sites/orourke.house.gov/files/VAFinal6-3-2014.pdf",
+      "status": 429,
+      "before": "denied",
+      "after": "denied",
+      "before_candidates": 0,
+      "after_candidates": 0,
+      "evidence": "/private/tmp/claude-501/-Users-mikewolfd-Work/71969fc5-4a0f-4f4e-aa49-d2dd9f4c2272/scratchpad/codex-impl/cx_model_design/recovery_campaign_v1/track_b/b2_discovery/calls/94b56b32af0036607a618b40c95bc06902ce81a2ce1ed11dc6596cad560aab95/downloaded.json"
+    },
+    {
+      "target": "https://oversight.house.gov/images/stories/Legislation/NORTON_110_xml.pdf",
+      "status": 429,
+      "before": "denied",
+      "after": "denied",
+      "before_candidates": 0,
+      "after_candidates": 0,
+      "evidence": "/private/tmp/claude-501/-Users-mikewolfd-Work/71969fc5-4a0f-4f4e-aa49-d2dd9f4c2272/scratchpad/codex-impl/cx_model_design/recovery_campaign_v1/track_b/b2_discovery/calls/957fc6808fcda3183e45aed0569a2b19f9fcdee906956001a0314666e3602dda/downloaded.json"
+    },
+    {
+      "target": "https://itmodernization.cio.gov/assets/report/Report%20to%20the%20President%20on%20IT%20Modernization%20-%20Final.pdf",
+      "status": 429,
+      "before": "denied",
+      "after": "denied",
+      "before_candidates": 0,
+      "after_candidates": 0,
+      "evidence": "/private/tmp/claude-501/-Users-mikewolfd-Work/71969fc5-4a0f-4f4e-aa49-d2dd9f4c2272/scratchpad/codex-impl/cx_model_design/recovery_campaign_v1/track_b/b2_discovery/calls/95cff8e1956f3a8f2a77ccb97d17f01140b31c387d770e334a313454bdb0b350/downloaded.json"
+    },
+    {
+      "target": "https://www.aging.senate.gov/404?notfound=/hearings/experience-matters-seniors-and-the-workforce.xml",
+      "status": 429,
+      "before": "denied",
+      "after": "denied",
+      "before_candidates": 0,
+      "after_candidates": 0,
+      "evidence": "/private/tmp/claude-501/-Users-mikewolfd-Work/71969fc5-4a0f-4f4e-aa49-d2dd9f4c2272/scratchpad/codex-impl/cx_model_design/recovery_campaign_v1/track_b/b2_discovery/calls/96c017de61aa9aced1e51ca2bbf80d8b0e8dc11574ebfa0d5ec731d50ff93425/downloaded.json"
+    },
+    {
+      "target": "http://beta.congress.gov/113/crpt/hrpt350/CRPT-113hrpt350.xml",
+      "status": 200,
+      "before": "invalid_index_response",
+      "after": "complete",
+      "before_candidates": 0,
+      "after_candidates": 0,
+      "evidence": "/private/tmp/claude-501/-Users-mikewolfd-Work/71969fc5-4a0f-4f4e-aa49-d2dd9f4c2272/scratchpad/codex-impl/cx_model_design/recovery_campaign_v1/track_b/b2_discovery/calls/9911fb2e75e10c2d20f2122478b2b5ad0331609c7b1dc6e66da1da44f805422b/downloaded.json"
+    },
+    {
+      "target": "http://ext100.wsu.edu/cafru/wp-content/uploads/sites/65/2015/03/Complex-Trauma-Research-ACE-Screening-and-Assessment-in-Child-Serving-Systems-7-12-final.pdf",
+      "status": 429,
+      "before": "denied",
+      "after": "denied",
+      "before_candidates": 0,
+      "after_candidates": 0,
+      "evidence": "/private/tmp/claude-501/-Users-mikewolfd-Work/71969fc5-4a0f-4f4e-aa49-d2dd9f4c2272/scratchpad/codex-impl/cx_model_design/recovery_campaign_v1/track_b/b2_discovery/calls/9f23585032273da0336a02da6cdd0d4929a7ed01a5413b14c74239c8ba854e8c/downloaded.json"
+    },
+    {
+      "target": "http://www.cbo.gov/sites/default/files/cbofiles/attachments/44602-LTBO_Testimony.xml",
+      "status": 429,
+      "before": "denied",
+      "after": "denied",
+      "before_candidates": 0,
+      "after_candidates": 0,
+      "evidence": "/private/tmp/claude-501/-Users-mikewolfd-Work/71969fc5-4a0f-4f4e-aa49-d2dd9f4c2272/scratchpad/codex-impl/cx_model_design/recovery_campaign_v1/track_b/b2_discovery/calls/a101e030ccd768cfae530d6c5558a9440d7230d9fa291c86c7738f86f257d20b/downloaded.json"
+    },
+    {
+      "target": "https://veterans.house.gov/Media/Image/110/4-18-07/dooley.pdf",
+      "status": 429,
+      "before": "denied",
+      "after": "denied",
+      "before_candidates": 0,
+      "after_candidates": 0,
+      "evidence": "/private/tmp/claude-501/-Users-mikewolfd-Work/71969fc5-4a0f-4f4e-aa49-d2dd9f4c2272/scratchpad/codex-impl/cx_model_design/recovery_campaign_v1/track_b/b2_discovery/calls/a171240d3651674baa7d7602a61493fea028679d375d769a36a09a296ad9d333/downloaded.json"
+    },
+    {
+      "target": "https://web.archive.org/web/20220920015127id_/http://archives-financialservices.house.gov/media/pdf/111-B.pdf",
+      "status": 429,
+      "before": "denied",
+      "after": "denied",
+      "before_candidates": 0,
+      "after_candidates": 0,
+      "evidence": "/private/tmp/claude-501/-Users-mikewolfd-Work/71969fc5-4a0f-4f4e-aa49-d2dd9f4c2272/scratchpad/codex-impl/cx_model_design/recovery_campaign_v1/track_b/b2_discovery/calls/a8123b457e403689bf12daf7140b43e9a42f91ff56adf1d746ba1f62d5973a1e/downloaded.json"
+    },
+    {
+      "target": "http://clairemontialoux.com/files/montialoux_jmp_2018.pdf",
+      "status": 200,
+      "before": "invalid_index_response",
+      "after": "complete",
+      "before_candidates": 0,
+      "after_candidates": 3,
+      "evidence": "/private/tmp/claude-501/-Users-mikewolfd-Work/71969fc5-4a0f-4f4e-aa49-d2dd9f4c2272/scratchpad/codex-impl/cx_model_design/recovery_campaign_v1/track_b/b2_discovery/calls/ae3c938fd438c566a732db5b673380ca762fce1597962799ff49a4f8e0e01f5b/downloaded.json"
+    },
+    {
+      "target": "https://www.foreign.senate.gov/404?notfound=/hearings/nominations-07-16-2026.xml",
+      "status": 200,
+      "before": "invalid_index_response",
+      "after": "complete",
+      "before_candidates": 0,
+      "after_candidates": 0,
+      "evidence": "/private/tmp/claude-501/-Users-mikewolfd-Work/71969fc5-4a0f-4f4e-aa49-d2dd9f4c2272/scratchpad/codex-impl/cx_model_design/recovery_campaign_v1/track_b/b2_discovery/calls/aeb08437f594c4373a067ff7d0be02c0780dc8eaf34bdab7a9076e067eea876c/downloaded.json"
+    },
+    {
+      "target": "https://judiciary.house.gov/_files/hearings/Markups%202012/PDF/Mark%2007182012/7%2018%2012%20HR%206062%20HR%203796%20HR%203803.pdf",
+      "status": 429,
+      "before": "denied",
+      "after": "denied",
+      "before_candidates": 0,
+      "after_candidates": 0,
+      "evidence": "/private/tmp/claude-501/-Users-mikewolfd-Work/71969fc5-4a0f-4f4e-aa49-d2dd9f4c2272/scratchpad/codex-impl/cx_model_design/recovery_campaign_v1/track_b/b2_discovery/calls/b362788b342d1d29b3be6746ff651909cb0eb0f834d319b7150ee00f4f06a7a1/downloaded.json"
+    },
+    {
+      "target": "http://docsadmin.clerk.house.gov/billsthisweek/20131118/CPRT-113-HPRT-RU00-HR1900.xml",
+      "status": 200,
+      "before": "invalid_index_response",
+      "after": "complete",
+      "before_candidates": 0,
+      "after_candidates": 0,
+      "evidence": "/private/tmp/claude-501/-Users-mikewolfd-Work/71969fc5-4a0f-4f4e-aa49-d2dd9f4c2272/scratchpad/codex-impl/cx_model_design/recovery_campaign_v1/track_b/b2_discovery/calls/b3d88dc1dcce4d43f5f7bb555362557df25ec85f04db8a2b6cd4d360a221f4b4/downloaded.json"
+    },
+    {
+      "target": "https://transportation.house.gov/sites/republicans.transportation.house.gov/files/documents/Keystone_Background_Info.pdf",
+      "status": 429,
+      "before": "denied",
+      "after": "denied",
+      "before_candidates": 0,
+      "after_candidates": 0,
+      "evidence": "/private/tmp/claude-501/-Users-mikewolfd-Work/71969fc5-4a0f-4f4e-aa49-d2dd9f4c2272/scratchpad/codex-impl/cx_model_design/recovery_campaign_v1/track_b/b2_discovery/calls/b435855cf0d48a43f0750029e5f1d95c5b892712bc6b807b9a3609ead6d0e5bb/downloaded.json"
+    },
+    {
+      "target": "https://www.whitehouse.gov/sites/default/files/omb/assets/legislative_reports/fy13ombjcsequestrationreport.pdf",
+      "status": 429,
+      "before": "denied",
+      "after": "denied",
+      "before_candidates": 0,
+      "after_candidates": 0,
+      "evidence": "/private/tmp/claude-501/-Users-mikewolfd-Work/71969fc5-4a0f-4f4e-aa49-d2dd9f4c2272/scratchpad/codex-impl/cx_model_design/recovery_campaign_v1/track_b/b2_discovery/calls/b7e672755275039b39582df87a0e05f3cebfaf4c4d18364eb359274a5cf22cea/downloaded.json"
+    },
+    {
+      "target": "https://edit-republicans.rules.house.gov/sites/republicans.rules.house.gov/files/HRPT-114-HR3009.xml",
+      "status": 429,
+      "before": "denied",
+      "after": "denied",
+      "before_candidates": 0,
+      "after_candidates": 0,
+      "evidence": "/private/tmp/claude-501/-Users-mikewolfd-Work/71969fc5-4a0f-4f4e-aa49-d2dd9f4c2272/scratchpad/codex-impl/cx_model_design/recovery_campaign_v1/track_b/b2_discovery/calls/b93633fa363c4ac8234e881768c7c941c9465b5a4747cc900f7d86dfdc59c5da/downloaded.json"
+    },
+    {
+      "target": "http://www.napawash.org/wp-content/uploads/2011/11/White_Paper11012011webposting.pdf",
+      "status": 200,
+      "before": "invalid_index_response",
+      "after": "complete",
+      "before_candidates": 0,
+      "after_candidates": 5,
+      "evidence": "/private/tmp/claude-501/-Users-mikewolfd-Work/71969fc5-4a0f-4f4e-aa49-d2dd9f4c2272/scratchpad/codex-impl/cx_model_design/recovery_campaign_v1/track_b/b2_discovery/calls/b9bed270de13705ad73fb202218ec95eb63843a17180b8b91ab1f9a65a4c8186/downloaded.json"
+    },
+    {
+      "target": "https://democrats-science.house.gov/Commdocs/hearings/energy03/sep25/smith.pdf",
+      "status": 200,
+      "before": "invalid_index_response",
+      "after": "complete",
+      "before_candidates": 0,
+      "after_candidates": 0,
+      "evidence": "/private/tmp/claude-501/-Users-mikewolfd-Work/71969fc5-4a0f-4f4e-aa49-d2dd9f4c2272/scratchpad/codex-impl/cx_model_design/recovery_campaign_v1/track_b/b2_discovery/calls/b9f29e4189bf2b13abff2dbfbe7e310bdf3218403c6ddaebd23e69bff4016547/downloaded.json"
+    },
+    {
+      "target": "http://www.mresearch.com/wp-content/uploads/20200723-Robert-McCullough-Longform-Vita.xml",
+      "status": 200,
+      "before": "invalid_index_response",
+      "after": "complete",
+      "before_candidates": 0,
+      "after_candidates": 0,
+      "evidence": "/private/tmp/claude-501/-Users-mikewolfd-Work/71969fc5-4a0f-4f4e-aa49-d2dd9f4c2272/scratchpad/codex-impl/cx_model_design/recovery_campaign_v1/track_b/b2_discovery/calls/bac05f86db8fe1b3448d9ef709f22752ffca525b37329027e8f7181722713d51/downloaded.json"
+    },
+    {
+      "target": "https://naturalresources.house.gov/News.xml",
+      "status": 429,
+      "before": "denied",
+      "after": "denied",
+      "before_candidates": 0,
+      "after_candidates": 0,
+      "evidence": "/private/tmp/claude-501/-Users-mikewolfd-Work/71969fc5-4a0f-4f4e-aa49-d2dd9f4c2272/scratchpad/codex-impl/cx_model_design/recovery_campaign_v1/track_b/b2_discovery/calls/bbb4f43c05c143097d0f5465975897c044ef205fc87a0efea972bbe0f20d410a/downloaded.json"
+    },
+    {
+      "target": "http://mfile3.akamai.com/65687/wmv/sos1462-1.streamos.download.akamai.com/65691/full+committee+2012/cjfc04262012.asx",
+      "status": 429,
+      "before": "denied",
+      "after": "denied",
+      "before_candidates": 0,
+      "after_candidates": 0,
+      "evidence": "/private/tmp/claude-501/-Users-mikewolfd-Work/71969fc5-4a0f-4f4e-aa49-d2dd9f4c2272/scratchpad/codex-impl/cx_model_design/recovery_campaign_v1/track_b/b2_discovery/calls/be570b6a08eb432c6d7271354b697af9dd49c31582d91a5eebc1d51b2f75135c/downloaded.json"
+    },
+    {
+      "target": "http://store.samhsa.gov/shin/content/PEP13-RTC-BHWORK/PEP13-RTC-BHWORK.pdf",
+      "status": 429,
+      "before": "denied",
+      "after": "denied",
+      "before_candidates": 0,
+      "after_candidates": 0,
+      "evidence": "/private/tmp/claude-501/-Users-mikewolfd-Work/71969fc5-4a0f-4f4e-aa49-d2dd9f4c2272/scratchpad/codex-impl/cx_model_design/recovery_campaign_v1/track_b/b2_discovery/calls/be68aa7d5f15caa007cf2b2638b0326ceb7addd29d0ca90698ca67541a62d41f/downloaded.json"
+    },
+    {
+      "target": "https://edit-republicans-veterans.house.gov/sites/republicans.veterans.house.gov/files/113-42.pdf",
+      "status": 200,
+      "before": "invalid_index_response",
+      "after": "complete",
+      "before_candidates": 0,
+      "after_candidates": 0,
+      "evidence": "/private/tmp/claude-501/-Users-mikewolfd-Work/71969fc5-4a0f-4f4e-aa49-d2dd9f4c2272/scratchpad/codex-impl/cx_model_design/recovery_campaign_v1/track_b/b2_discovery/calls/c067080f90704a3ee627cbd80850db07b289a77c433069c4f6d3f71288426749/downloaded.json"
+    },
+    {
+      "target": "https://waysandmeans.house.gov/UploadedFiles/Corum_WT.pdf",
+      "status": 429,
+      "before": "denied",
+      "after": "denied",
+      "before_candidates": 0,
+      "after_candidates": 0,
+      "evidence": "/private/tmp/claude-501/-Users-mikewolfd-Work/71969fc5-4a0f-4f4e-aa49-d2dd9f4c2272/scratchpad/codex-impl/cx_model_design/recovery_campaign_v1/track_b/b2_discovery/calls/c1919a7f1eed6455db5de278e0ae6aeddc3698bf6cecd320bb9b38a144f0e4f4/downloaded.json"
+    },
+    {
+      "target": "https://gop-foreignaffairs.house.gov/wp-content/uploads/2024/05/HR-8315.pdf",
+      "status": 429,
+      "before": "denied",
+      "after": "denied",
+      "before_candidates": 0,
+      "after_candidates": 0,
+      "evidence": "/private/tmp/claude-501/-Users-mikewolfd-Work/71969fc5-4a0f-4f4e-aa49-d2dd9f4c2272/scratchpad/codex-impl/cx_model_design/recovery_campaign_v1/track_b/b2_discovery/calls/c314e78e7b95cca03de01caee92129391753a94b855bfd0a05712b40d300780b/downloaded.json"
+    },
+    {
+      "target": "https://www.epw.senate.gov/public/index.cfm/hearings.xml?ID=5DD22444-52B1-483D-927E-5DE6965B7B6D",
+      "status": 200,
+      "before": "invalid_index_response",
+      "after": "complete",
+      "before_candidates": 0,
+      "after_candidates": 0,
+      "evidence": "/private/tmp/claude-501/-Users-mikewolfd-Work/71969fc5-4a0f-4f4e-aa49-d2dd9f4c2272/scratchpad/codex-impl/cx_model_design/recovery_campaign_v1/track_b/b2_discovery/calls/c3c97b7013cc303fc9ad56c32554e29bdc44dbe0372deb3da7cf230a3cc506f7/downloaded.json"
+    },
+    {
+      "target": "http://developingchild.harvard.edu/wp-content/uploads/2005/05/Stress_Disrupts_Architecture_Developing_Brain-1.pdf",
+      "status": 200,
+      "before": "invalid_index_response",
+      "after": "page_limit",
+      "before_candidates": 0,
+      "after_candidates": 19,
+      "evidence": "/private/tmp/claude-501/-Users-mikewolfd-Work/71969fc5-4a0f-4f4e-aa49-d2dd9f4c2272/scratchpad/codex-impl/cx_model_design/recovery_campaign_v1/track_b/b2_discovery/calls/c4d0faa0795ab0eb2475105e3103dcdf60a597ab25504b8a8d2074f2937d6f60/downloaded.json"
+    },
+    {
+      "target": "http://www.indian.authoring.testing.senate.gov/sites/default/files/Peggy%20O%27Dell%20testimony.docx",
+      "status": 200,
+      "before": "invalid_index_response",
+      "after": "complete",
+      "before_candidates": 0,
+      "after_candidates": 0,
+      "evidence": "/private/tmp/claude-501/-Users-mikewolfd-Work/71969fc5-4a0f-4f4e-aa49-d2dd9f4c2272/scratchpad/codex-impl/cx_model_design/recovery_campaign_v1/track_b/b2_discovery/calls/c69aad5979eed1eb13b26bea0ef8828dfdcff8d08548aebc7c4536fc8ca2aa56/downloaded.json"
+    },
+    {
+      "target": "http://docs.house.gov/billsthisweek/20140113/CPRT-113-HPRT-RU00-h3547-hamdt2samdt_xml.xml",
+      "status": 200,
+      "before": "invalid_index_response",
+      "after": "complete",
+      "before_candidates": 0,
+      "after_candidates": 0,
+      "evidence": "/private/tmp/claude-501/-Users-mikewolfd-Work/71969fc5-4a0f-4f4e-aa49-d2dd9f4c2272/scratchpad/codex-impl/cx_model_design/recovery_campaign_v1/track_b/b2_discovery/calls/cb744a261e502a4d703c9e633e7e31a1f5a6216c0975c48f195f962545757802/downloaded.json"
+    },
+    {
+      "target": "https://www.compete.org/storage/reports/2018%20clarion%20call%20final.pdf",
+      "status": 200,
+      "before": "complete",
+      "after": "complete",
+      "before_candidates": 7,
+      "after_candidates": 7,
+      "evidence": "/private/tmp/claude-501/-Users-mikewolfd-Work/71969fc5-4a0f-4f4e-aa49-d2dd9f4c2272/scratchpad/codex-impl/cx_model_design/recovery_campaign_v1/track_b/b2_discovery/calls/cbaaa0041ab2b2cce46a2d493b0971c3dc18f9bb5dc2662a0236a77184bc5369/downloaded.json"
+    },
+    {
+      "target": "https://www.cantwell.senate.gov/download/www.senate.gov",
+      "status": 429,
+      "before": "denied",
+      "after": "denied",
+      "before_candidates": 0,
+      "after_candidates": 0,
+      "evidence": "/private/tmp/claude-501/-Users-mikewolfd-Work/71969fc5-4a0f-4f4e-aa49-d2dd9f4c2272/scratchpad/codex-impl/cx_model_design/recovery_campaign_v1/track_b/b2_discovery/calls/cdebed490c1de51ee6c896d3aacb8611cfbf670c1253d13d4ebdba7b9b529b7d/downloaded.json"
+    },
+    {
+      "target": "https://www.jec.senate.gov/public/index.cfm/hearings-calendar.xml?id=4D9B34A7-0D42-4C60-B922-1A1343861386",
+      "status": 200,
+      "before": "invalid_index_response",
+      "after": "complete",
+      "before_candidates": 0,
+      "after_candidates": 0,
+      "evidence": "/private/tmp/claude-501/-Users-mikewolfd-Work/71969fc5-4a0f-4f4e-aa49-d2dd9f4c2272/scratchpad/codex-impl/cx_model_design/recovery_campaign_v1/track_b/b2_discovery/calls/cef969d0c4e22eee0b2f9803124eeab3987785f1c980034364d0797e04878515/downloaded.json"
+    },
+    {
+      "target": "https://www.govinfo.gov/content/pkg/CHRG-118hhrg64154/pdf/CHRG-118hhrg64154-err.pdf",
+      "status": 200,
+      "before": "invalid_index_response",
+      "after": "complete",
+      "before_candidates": 0,
+      "after_candidates": 0,
+      "evidence": "/private/tmp/claude-501/-Users-mikewolfd-Work/71969fc5-4a0f-4f4e-aa49-d2dd9f4c2272/scratchpad/codex-impl/cx_model_design/recovery_campaign_v1/track_b/b2_discovery/calls/d4ccad3d1147f5fee560036feb70294e11dee0a5ab2fce5d1ad457ab0b6f7606/downloaded.json"
+    },
+    {
+      "target": "https://maloney.house.gov/sites/maloney.house.gov/files/MaloneyCummings%20ICE%20Child%20Separation%20OGR%20Hearing%20Request.pdf",
+      "status": 429,
+      "before": "denied",
+      "after": "denied",
+      "before_candidates": 0,
+      "after_candidates": 0,
+      "evidence": "/private/tmp/claude-501/-Users-mikewolfd-Work/71969fc5-4a0f-4f4e-aa49-d2dd9f4c2272/scratchpad/codex-impl/cx_model_design/recovery_campaign_v1/track_b/b2_discovery/calls/d58de99fa4d53b0b73aec3dc92bf59c0e97ab446758577aae1d9d5e61d04cb26/downloaded.json"
+    },
+    {
+      "target": "https://fas.org/sgp/crs/misc/R43305.pdf",
+      "status": 429,
+      "before": "denied",
+      "after": "denied",
+      "before_candidates": 0,
+      "after_candidates": 0,
+      "evidence": "/private/tmp/claude-501/-Users-mikewolfd-Work/71969fc5-4a0f-4f4e-aa49-d2dd9f4c2272/scratchpad/codex-impl/cx_model_design/recovery_campaign_v1/track_b/b2_discovery/calls/d6b04dbf95121a582bce1091640db04196777dbcf8d3a5ccea6c017adac87ca6/downloaded.json"
+    },
+    {
+      "target": "https://democrats-financialservices.house.gov/uploadedfiles/02.04.2015_-_cfpb_by_the_numbers.pdf",
+      "status": 200,
+      "before": "invalid_index_response",
+      "after": "complete",
+      "before_candidates": 0,
+      "after_candidates": 0,
+      "evidence": "/private/tmp/claude-501/-Users-mikewolfd-Work/71969fc5-4a0f-4f4e-aa49-d2dd9f4c2272/scratchpad/codex-impl/cx_model_design/recovery_campaign_v1/track_b/b2_discovery/calls/daabaf45e19c45bd052a40af47114fb615ad54717dd96ba21f0cff21138a8d0f/downloaded.json"
+    },
+    {
+      "target": "https://assets.aspeninstitute.org/content/uploads/2019/04/Automation-and-a-Changing-Economy_Policies-for-Shared-Prosperity_April-2019.pdf?_",
+      "status": 200,
+      "before": "complete",
+      "after": "complete",
+      "before_candidates": 2,
+      "after_candidates": 2,
+      "evidence": "/private/tmp/claude-501/-Users-mikewolfd-Work/71969fc5-4a0f-4f4e-aa49-d2dd9f4c2272/scratchpad/codex-impl/cx_model_design/recovery_campaign_v1/track_b/b2_discovery/calls/dd958114379c06fe2d5af068291d8952257592bc143291334829039faffd890c/downloaded.json"
+    },
+    {
+      "target": "https://www.help.senate.gov/404?notfound=/hearings/covid-19-an-update-on-the-federal-response.xml",
+      "status": 200,
+      "before": "invalid_index_response",
+      "after": "complete",
+      "before_candidates": 0,
+      "after_candidates": 0,
+      "evidence": "/private/tmp/claude-501/-Users-mikewolfd-Work/71969fc5-4a0f-4f4e-aa49-d2dd9f4c2272/scratchpad/codex-impl/cx_model_design/recovery_campaign_v1/track_b/b2_discovery/calls/e0ac6223219107462ddfa18225ab26cd7fd408343a9b2452f632d67aee1a0b0e/downloaded.json"
+    },
+    {
+      "target": "https://www.rules.senate.gov/404?notfound=/hearings/nomination-hearing-for-members-of-the-federal-election-commission.xml",
+      "status": 429,
+      "before": "denied",
+      "after": "denied",
+      "before_candidates": 0,
+      "after_candidates": 0,
+      "evidence": "/private/tmp/claude-501/-Users-mikewolfd-Work/71969fc5-4a0f-4f4e-aa49-d2dd9f4c2272/scratchpad/codex-impl/cx_model_design/recovery_campaign_v1/track_b/b2_discovery/calls/e21999712a499c76751872a0336846fba59b3462c1a8dd3ee8fb1b77a7174a30/downloaded.json"
+    },
+    {
+      "target": "https://oversightdemocrats.house.gov/imo/media/doc/documents/EEC_9.pdf",
+      "status": 429,
+      "before": "denied",
+      "after": "denied",
+      "before_candidates": 0,
+      "after_candidates": 0,
+      "evidence": "/private/tmp/claude-501/-Users-mikewolfd-Work/71969fc5-4a0f-4f4e-aa49-d2dd9f4c2272/scratchpad/codex-impl/cx_model_design/recovery_campaign_v1/track_b/b2_discovery/calls/e432906160dcb99f8cb9d3cb46e954dd8a18a44794de5787ab54e25d95e14669/downloaded.json"
+    },
+    {
+      "target": "https://www.cssp.org/publications/documents/Balancing-ACEs-with-HOPE-FINAL.pdf",
+      "status": 200,
+      "before": "invalid_index_response",
+      "after": "complete",
+      "before_candidates": 0,
+      "after_candidates": 1,
+      "evidence": "/private/tmp/claude-501/-Users-mikewolfd-Work/71969fc5-4a0f-4f4e-aa49-d2dd9f4c2272/scratchpad/codex-impl/cx_model_design/recovery_campaign_v1/track_b/b2_discovery/calls/e588af0817212b7aafbd513a2f1be9dbc95b4469073c7b89ab501ca3f222a096/downloaded.json"
+    },
+    {
+      "target": "https://www.sbc.senate.gov/public/_cache/files/9/4/94219f96-579c-4876-abd1-ed16c156a6a0/73A32BAD9B2136F477E1E437D97A32EDBFEE215C2ED6F372E84ADB821FDB944F.baker-testimony.pdf",
+      "status": 429,
+      "before": "denied",
+      "after": "denied",
+      "before_candidates": 0,
+      "after_candidates": 0,
+      "evidence": "/private/tmp/claude-501/-Users-mikewolfd-Work/71969fc5-4a0f-4f4e-aa49-d2dd9f4c2272/scratchpad/codex-impl/cx_model_design/recovery_campaign_v1/track_b/b2_discovery/calls/e7d1aefa9e7f0e7920a5b1ef211373b6a5ccfcedeba29a5e8751c4ee159fe9b5/downloaded.json"
+    },
+    {
+      "target": "https://d1dth6e84htgma.cloudfront.net/legacy/uploads/Hearings/CMT/20120322/HMTG-112-HHRG-IF17-20120322.pdf",
+      "status": 200,
+      "before": "invalid_index_response",
+      "after": "complete",
+      "before_candidates": 0,
+      "after_candidates": 0,
+      "evidence": "/private/tmp/claude-501/-Users-mikewolfd-Work/71969fc5-4a0f-4f4e-aa49-d2dd9f4c2272/scratchpad/codex-impl/cx_model_design/recovery_campaign_v1/track_b/b2_discovery/calls/e835cb4158fc2ad51a417ad55934e788fbb7d038c4d62ee2880c17c2c496e252/downloaded.json"
+    },
+    {
+      "target": "https://vrnetapp/Printers/Printers/113th%20Congress/FC/Second%20Session/7-14-14/Linda%20Halliday,%20VA%20OIG.docx",
+      "status": 429,
+      "before": "denied",
+      "after": "denied",
+      "before_candidates": 0,
+      "after_candidates": 0,
+      "evidence": "/private/tmp/claude-501/-Users-mikewolfd-Work/71969fc5-4a0f-4f4e-aa49-d2dd9f4c2272/scratchpad/codex-impl/cx_model_design/recovery_campaign_v1/track_b/b2_discovery/calls/ead45252337efd80fb32af4708fffe2e9da4c3eb4cd86db669925d3433c6762f/downloaded.json"
+    },
+    {
+      "target": "https://www.dol.gov/sites/dolgov/files/ilab/child_labor_reports/tda2023/2024-tvpra-list-of-goods.xml",
+      "status": 200,
+      "before": "invalid_index_response",
+      "after": "complete",
+      "before_candidates": 0,
+      "after_candidates": 0,
+      "evidence": "/private/tmp/claude-501/-Users-mikewolfd-Work/71969fc5-4a0f-4f4e-aa49-d2dd9f4c2272/scratchpad/codex-impl/cx_model_design/recovery_campaign_v1/track_b/b2_discovery/calls/eb2943bb89363ef6c2d4f8392b40e8593965f50558b29fbcf257aa84d6c46d48/downloaded.json"
+    },
+    {
+      "target": "http://www.healthquality.va.gov/guidelines/MH/ptsd/cpg_PTSD-FULL-201011612.pdf",
+      "status": 200,
+      "before": "invalid_index_response",
+      "after": "page_limit",
+      "before_candidates": 0,
+      "after_candidates": 19,
+      "evidence": "/private/tmp/claude-501/-Users-mikewolfd-Work/71969fc5-4a0f-4f4e-aa49-d2dd9f4c2272/scratchpad/codex-impl/cx_model_design/recovery_campaign_v1/track_b/b2_discovery/calls/ebf87dc15bcb86e41228add2fd2edd9b7947fe1165d380c63e834cceced4c220/downloaded.json"
+    },
+    {
+      "target": "https://edit-republicans.veterans.house.gov/sites/republicans.veterans.house.gov/files/2015_12_8_Attachment%20to%20Rep.%20Mica%20Testimony_Subcommittee%20Legislative%20Hearing.pdf",
+      "status": 429,
+      "before": "denied",
+      "after": "denied",
+      "before_candidates": 0,
+      "after_candidates": 0,
+      "evidence": "/private/tmp/claude-501/-Users-mikewolfd-Work/71969fc5-4a0f-4f4e-aa49-d2dd9f4c2272/scratchpad/codex-impl/cx_model_design/recovery_campaign_v1/track_b/b2_discovery/calls/ed7baed3ac806e2440702c45c1831973f1c47b0bd1cad835e5b87092e7646523/downloaded.json"
+    },
+    {
+      "target": "https://smallbusiness.house.gov/uploadedfiles/01-12-22_mr._ware_testimony.xml",
+      "status": 429,
+      "before": "denied",
+      "after": "denied",
+      "before_candidates": 0,
+      "after_candidates": 0,
+      "evidence": "/private/tmp/claude-501/-Users-mikewolfd-Work/71969fc5-4a0f-4f4e-aa49-d2dd9f4c2272/scratchpad/codex-impl/cx_model_design/recovery_campaign_v1/track_b/b2_discovery/calls/ed9c72f59155ef7e011da79571889820320d54aea4ff41f8e6ddbec91b8d9cef/downloaded.json"
+    },
+    {
+      "target": "https://www.healthmanagement.com/wp-content/uploads/The-Case-for-RCC-final-2-9-2017.pdf",
+      "status": 200,
+      "before": "complete",
+      "after": "complete",
+      "before_candidates": 5,
+      "after_candidates": 5,
+      "evidence": "/private/tmp/claude-501/-Users-mikewolfd-Work/71969fc5-4a0f-4f4e-aa49-d2dd9f4c2272/scratchpad/codex-impl/cx_model_design/recovery_campaign_v1/track_b/b2_discovery/calls/f3e15bb1bfa9fd9f94d41163e343ed78ade1ae8abce4590ec12d7c9b0c6152f6/downloaded.json"
+    },
+    {
+      "target": "https://www.hsgac.senate.gov/hearings/05-04-2022-resources-and-authorities-needed-to-protect-and-secure-the-homeland.xml",
+      "status": 200,
+      "before": "invalid_index_response",
+      "after": "complete",
+      "before_candidates": 0,
+      "after_candidates": 0,
+      "evidence": "/private/tmp/claude-501/-Users-mikewolfd-Work/71969fc5-4a0f-4f4e-aa49-d2dd9f4c2272/scratchpad/codex-impl/cx_model_design/recovery_campaign_v1/track_b/b2_discovery/calls/f3f0210704148622437293e346cd688abf9274fb0eea044e0995525880762bf7/downloaded.json"
+    },
+    {
+      "target": "https://www.ranepa.ru/images/News/2018-11/20-11-2018-monitoring.pdf",
+      "status": 429,
+      "before": "denied",
+      "after": "denied",
+      "before_candidates": 0,
+      "after_candidates": 0,
+      "evidence": "/private/tmp/claude-501/-Users-mikewolfd-Work/71969fc5-4a0f-4f4e-aa49-d2dd9f4c2272/scratchpad/codex-impl/cx_model_design/recovery_campaign_v1/track_b/b2_discovery/calls/f9b2cb56de4da642c702ad949554c3dd29645a6ee0118b91d4c36a708b1822ca/downloaded.json"
+    },
+    {
+      "target": "https://republicans.science.hdvdevedit1.house.gov/index.cfm?a=Files.serve&file_id=2A27CF22-C535-4D8D-866B-0FA6FA45EA83",
+      "status": 429,
+      "before": "denied",
+      "after": "denied",
+      "before_candidates": 0,
+      "after_candidates": 0,
+      "evidence": "/private/tmp/claude-501/-Users-mikewolfd-Work/71969fc5-4a0f-4f4e-aa49-d2dd9f4c2272/scratchpad/codex-impl/cx_model_design/recovery_campaign_v1/track_b/b2_discovery/calls/fdb898ddc18c04f9cedf0efc29ebb5782ffb1a71d23b8daf8942156c2cad2c95/downloaded.json"
+    }
+  ],
+  "pagination_control": {
+    "complete": true,
+    "evidence_pages": 2,
+    "candidates_preserved": 8,
+    "constructed_resume_trailer": true
+  }
+}

@@ -1,0 +1,67 @@
+[
+  {
+    "target": "https://appropriations.house.gov/sites/evo-subsites/republicans-appropriations.house.gov/files/evo-media-document/fs-notice-of-subcommittee-markup-fy27.pdf%20",
+    "url": "https://appropriations.house.gov/sites/evo-subsites/republicans-appropriations.house.gov/files/evo-media-document/fs-notice-of-subcommittee-markup-fy27.pdf",
+    "checked_at": "2026-10-31T20:42:56.621227+00:00",
+    "status": 200,
+    "final_url": "https://appropriations.house.gov/sites/evo-subsites/republicans-appropriations.house.gov/files/evo-media-document/fs-notice-of-subcommittee-markup-fy27.pdf",
+    "bytes": 153359,
+    "sha256": "c8c26dc9c1701620fa6d4c0630eee3b364eb719ffb19a4b75fc8d9bdb59a467f",
+    "path": "/var/folders/g8/10vdwk2n07z85vqn_vlv2lfc0000gn/T/url-complete-validation-gwr26twu/live-trim/c8c26dc9c1701620fa6d4c0630eee3b364eb719ffb19a4b75fc8d9bdb59a467f.pdf",
+    "pdf_header": true,
+    "text_exit": 0,
+    "already_published_body": true
+  },
+  {
+    "target": "https://appropriations.house.gov/sites/evo-subsites/republicans-appropriations.house.gov/files/evo-media-document/mc-notice-of-subcommittee-markup-fy27.pdf%20",
+    "url": "https://appropriations.house.gov/sites/evo-subsites/republicans-appropriations.house.gov/files/evo-media-document/mc-notice-of-subcommittee-markup-fy27.pdf",
+    "checked_at": "2026-10-31T20:42:56.621537+00:00",
+    "status": 200,
+    "final_url": "https://appropriations.house.gov/sites/evo-subsites/republicans-appropriations.house.gov/files/evo-media-document/mc-notice-of-subcommittee-markup-fy27.pdf",
+    "bytes": 158031,
+    "sha256": "946602dd45a3806a9e7e247d2a5db5b2933bffbb464f43905942adf6f44aed19",
+    "path": "/var/folders/g8/10vdwk2n07z85vqn_vlv2lfc0000gn/T/url-complete-validation-gwr26twu/live-trim/946602dd45a3806a9e7e247d2a5db5b2933bffbb464f43905942adf6f44aed19.pdf",
+    "pdf_header": true,
+    "text_exit": 0,
+    "already_published_body": true
+  },
+  {
+    "target": "https://democrats-edworkforce.house.gov/imo/media/doc/rc41_H.R.4674MurphyA54.pdf%20",
+    "url": "https://democrats-edworkforce.house.gov/imo/media/doc/rc41_H.R.4674MurphyA54.pdf",
+    "checked_at": "2026-10-31T20:42:56.865681+00:00",
+    "status": 200,
+    "final_url": "https://democrats-edworkforce.house.gov/imo/media/doc/rc41_H.R.4674MurphyA54.pdf",
+    "bytes": 206485,
+    "sha256": "68d82677b2d28ed37d7948b40cc7118fc871cf86352d3ebef81480e6dd59ed52",
+    "path": "/var/folders/g8/10vdwk2n07z85vqn_vlv2lfc0000gn/T/url-complete-validation-gwr26twu/live-trim/68d82677b2d28ed37d7948b40cc7118fc871cf86352d3ebef81480e6dd59ed52.pdf",
+    "pdf_header": true,
+    "text_exit": 0,
+    "already_published_body": true
+  },
+  {
+    "target": "https://humanrightscommission.house.gov/sites/evo-subsites/humanrightscommission.house.gov/files/evo-media-document/hr-in-central-america.pdf%20",
+    "url": "https://humanrightscommission.house.gov/sites/evo-subsites/humanrightscommission.house.gov/files/evo-media-document/hr-in-central-america.pdf",
+    "checked_at": "2026-10-31T20:42:56.865867+00:00",
+    "status": 200,
+    "final_url": "https://humanrightscommission.house.gov/sites/evo-subsites/humanrightscommission.house.gov/files/evo-media-document/hr-in-central-america.pdf",
+    "bytes": 5256496,
+    "sha256": "da5c14f1ac896aaf2c95fa9fd1169c5d1a4032e88f532a9035d04458be56b653",
+    "path": "/var/folders/g8/10vdwk2n07z85vqn_vlv2lfc0000gn/T/url-complete-validation-gwr26twu/live-trim/da5c14f1ac896aaf2c95fa9fd1169c5d1a4032e88f532a9035d04458be56b653.pdf",
+    "pdf_header": true,
+    "text_exit": 0,
+    "already_published_body": true
+  },
+  {
+    "target": "https://permanent.access.gpo.gov/gpo2978/DEEPWATER_ReporttothePresident_FINAL.pdf%20",
+    "url": "https://permanent.access.gpo.gov/gpo2978/DEEPWATER_ReporttothePresident_FINAL.pdf",
+    "checked_at": "2026-10-31T20:42:56.948475+00:00",
+    "status": 200,
+    "final_url": "https://permanent.access.gpo.gov/gpo2978/DEEPWATER_ReporttothePresident_FINAL.pdf",
+    "bytes": 17746116,
+    "sha256": "f0a242909914e4d00200005734ce9b240b1b4c58e0e8af04e95387717780b23c",
+    "path": "/var/folders/g8/10vdwk2n07z85vqn_vlv2lfc0000gn/T/url-complete-validation-gwr26twu/live-trim/f0a242909914e4d00200005734ce9b240b1b4c58e0e8af04e95387717780b23c.pdf",
+    "pdf_header": true,
+    "text_exit": 0,
+    "already_published_body": true
+  }
+]

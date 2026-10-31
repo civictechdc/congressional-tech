@@ -1,0 +1,907 @@
+{
+  "alias_keys": [
+    {
+      "target_url": "http://archives113.transportation.house.gov/sites/republicans.transportation.house.gov/files/documents/Rob%20Atkinson--Testimony.pdf",
+      "candidate_url": "https://web.archive.org/web/20170201050748id_/http://archives113.transportation.house.gov/sites/republicans.transportation.house.gov/files/documents/Rob%20Atkinson--Testimony.pdf",
+      "body_sha256": "a9d571b2e8d62107f8d165dc6e66fd1dbb6f408c7cbaad0bb42ce2d5661557a5",
+      "target_key": "archives113.transportation.house.gov/sites/republicans.transportation.house.gov/files/documents/Rob%20Atkinson--Testimony.pdf",
+      "candidate_key": "archives113.transportation.house.gov/sites/republicans.transportation.house.gov/files/documents/Rob%20Atkinson--Testimony.pdf",
+      "target_error": null,
+      "candidate_error": null
+    },
+    {
+      "target_url": "http://democrats.oversight.house.gov/sites/democrats.oversight.house.gov/files/documents/Final%20OGR%20EpiPen%20Letter.pdf",
+      "candidate_url": "https://web.archive.org/web/20161212204544id_/http://democrats.oversight.house.gov/sites/democrats.oversight.house.gov/files/documents/Final%20OGR%20EpiPen%20Letter.pdf",
+      "body_sha256": "bd6b4bcc5f20b6918dbdac0687fbb4cc291bdcb77e34019f9f5144b12ce7aef2",
+      "target_key": "democrats.oversight.house.gov/sites/democrats.oversight.house.gov/files/documents/Final%20OGR%20EpiPen%20Letter.pdf",
+      "candidate_key": "democrats.oversight.house.gov/sites/democrats.oversight.house.gov/files/documents/Final%20OGR%20EpiPen%20Letter.pdf",
+      "target_error": null,
+      "candidate_error": null
+    },
+    {
+      "target_url": "http://law.fordham.edu/assets/CLIP/CLIP_Report_Childrens_Privacy_Final.pdf",
+      "candidate_url": "https://web.archive.org/web/20130522223026id_/http://law.fordham.edu/assets/CLIP/CLIP_Report_Childrens_Privacy_Final.pdf",
+      "body_sha256": "a9d7c66b84cc525472cd14b794788f87b0bccd29ec1b4b2c4352a0b18e04a98a",
+      "target_key": "law.fordham.edu/assets/CLIP/CLIP_Report_Childrens_Privacy_Final.pdf",
+      "candidate_key": "law.fordham.edu/assets/CLIP/CLIP_Report_Childrens_Privacy_Final.pdf",
+      "target_error": null,
+      "candidate_error": null
+    },
+    {
+      "target_url": "http://thomas.loc.gov/cgi-bin/cpquery/R?cp105:FLD010:@1(hr085):",
+      "candidate_url": "https://web.archive.org/web/20121217101907id_/http://thomas.loc.gov/cgi-bin/cpquery/R?cp105:FLD010:@1(hr085):",
+      "body_sha256": "92f4d54501c7bff79f1a40fcbc085615c903adf0d24872116d358064f463782f",
+      "target_key": "thomas.loc.gov/cgi-bin/cpquery/R?cp105:FLD010:@1(hr085):",
+      "candidate_key": "thomas.loc.gov/cgi-bin/cpquery/R?cp105:FLD010:@1(hr085):",
+      "target_error": null,
+      "candidate_error": null
+    },
+    {
+      "target_url": "http://thomas.loc.gov/home/gpoxmlc113/h1300_ih.xml",
+      "candidate_url": "https://web.archive.org/web/20141209223846id_/http://thomas.loc.gov/home/gpoxmlc113/h1300_ih.xml",
+      "body_sha256": "2890a77093a0bb467e00ca8c801d9d3296ca2ea6c4744900c59bd4a915fc81d9",
+      "target_key": "thomas.loc.gov/home/gpoxmlc113/h1300_ih.xml",
+      "candidate_key": "thomas.loc.gov/home/gpoxmlc113/h1300_ih.xml",
+      "target_error": null,
+      "candidate_error": null
+    },
+    {
+      "target_url": "http://www.lis.gov/cgi-lis/t2GPO/http://www.gpo.gov/fdsys/pkg/BILLS-114hr456ih/pdf/BILLS-114hr456ih.pdf",
+      "candidate_url": "http://www.gpo.gov/fdsys/pkg/BILLS-114hr456ih/pdf/BILLS-114hr456ih.pdf",
+      "body_sha256": "44417d127b4b0940a78b26fee8c29f03b64e5eaf46229ea5fa3c48d20ee01b4f",
+      "target_key": "gpo.gov/fdsys/pkg/BILLS-114hr456ih/pdf/BILLS-114hr456ih.pdf",
+      "candidate_key": "gpo.gov/fdsys/pkg/BILLS-114hr456ih/pdf/BILLS-114hr456ih.pdf",
+      "target_error": null,
+      "candidate_error": null
+    },
+    {
+      "target_url": "http://www.lis.gov/cgi-lis/t2GPO/http://www.gpo.gov/fdsys/pkg/BILLS-114hr456ih/pdf/BILLS-114hr456ih.xml",
+      "candidate_url": "http://www.gpo.gov/fdsys/pkg/BILLS-114hr456ih/pdf/BILLS-114hr456ih.xml",
+      "body_sha256": "9144437b0a2342ce8da1ee6298027f78ec9e91bdd6080e0255ba856845caf320",
+      "target_key": "gpo.gov/fdsys/pkg/BILLS-114hr456ih/pdf/BILLS-114hr456ih.xml",
+      "candidate_key": "gpo.gov/fdsys/pkg/BILLS-114hr456ih/pdf/BILLS-114hr456ih.xml",
+      "target_error": null,
+      "candidate_error": null
+    },
+    {
+      "target_url": "http://www.lis.gov/cgi-lis/t2GPO/http://www.gpo.gov/fdsys/pkg/BILLS-114hr456ih/xml/BILLS-114hr456ih.xml",
+      "candidate_url": "http://www.gpo.gov/fdsys/pkg/BILLS-114hr456ih/xml/BILLS-114hr456ih.xml",
+      "body_sha256": "9144437b0a2342ce8da1ee6298027f78ec9e91bdd6080e0255ba856845caf320",
+      "target_key": "gpo.gov/fdsys/pkg/BILLS-114hr456ih/xml/BILLS-114hr456ih.xml",
+      "candidate_key": "gpo.gov/fdsys/pkg/BILLS-114hr456ih/xml/BILLS-114hr456ih.xml",
+      "target_error": null,
+      "candidate_error": null
+    },
+    {
+      "target_url": "https://archives-energycommerce.house.gov/sites/republicans.energycommerce.house.gov/files/Hearings/Joint/20120712_EP_OI/HMTG-112-HHRG-IF03-IF02-20120712.pdf",
+      "candidate_url": "https://web.archive.org/web/20180926105220id_/https://archives-energycommerce.house.gov/sites/republicans.energycommerce.house.gov/files/Hearings/Joint/20120712_EP_OI/HMTG-112-HHRG-IF03-IF02-20120712.pdf",
+      "body_sha256": "d765cf410a6e1dc832200791110b12d1fd49d534bdde5b4b84b633ae65b97762",
+      "target_key": "archives-energycommerce.house.gov/sites/republicans.energycommerce.house.gov/files/Hearings/Joint/20120712_EP_OI/HMTG-112-HHRG-IF03-IF02-20120712.pdf",
+      "candidate_key": "archives-energycommerce.house.gov/sites/republicans.energycommerce.house.gov/files/Hearings/Joint/20120712_EP_OI/HMTG-112-HHRG-IF03-IF02-20120712.pdf",
+      "target_error": null,
+      "candidate_error": null
+    },
+    {
+      "target_url": "https://cue.usc.edu/files/2018/04/Vital-Signs-Report-FINAL-032818-V2.pdf",
+      "candidate_url": "https://web.archive.org/web/20210318020227id_/https://cue.usc.edu/files/2018/04/Vital-Signs-Report-FINAL-032818-V2.pdf",
+      "body_sha256": "72764eacc7579b63bd1e23cfd0367f8907a4d54e8169b1044fb6a8d08d1b312e",
+      "target_key": "cue.usc.edu/files/2018/04/Vital-Signs-Report-FINAL-032818-V2.pdf",
+      "candidate_key": "cue.usc.edu/files/2018/04/Vital-Signs-Report-FINAL-032818-V2.pdf",
+      "target_error": null,
+      "candidate_error": null
+    },
+    {
+      "target_url": "https://democrats.veterans.house.gov/\u201chonoring-commitment-overcoming-barriers-quality-mental-health-care-veterans\u201d",
+      "candidate_url": "https://web.archive.org/web/20141206152938id_/http://democrats.veterans.house.gov/%E2%80%9Chonoring-commitment-overcoming-barriers-quality-mental-health-care-veterans%E2%80%9D",
+      "body_sha256": "a18a0b86356d1cb2c2ddd002f8f99af0e413af4e674807b317eade6c81d61f65",
+      "target_key": "democrats.veterans.house.gov/%E2%80%9Chonoring-commitment-overcoming-barriers-quality-mental-health-care-veterans%E2%80%9D",
+      "candidate_key": "democrats.veterans.house.gov/%E2%80%9Chonoring-commitment-overcoming-barriers-quality-mental-health-care-veterans%E2%80%9D",
+      "target_error": null,
+      "candidate_error": null
+    },
+    {
+      "target_url": "https://docs.house.gov/meetings/ED/ED00/20180130/106808/HHRG-115-ED00-Bio-OhmP-20180130.pdf",
+      "candidate_url": "http://docs.house.gov/meetings/ED/ED00/20180130/106808/HHRG-115-ED00-Bio-OhmP-20180130.pdf",
+      "body_sha256": "d299d4c438eed52547b1c6c97e2c37740becb0b51308eb524a804aa20520a72e",
+      "target_key": "docs.house.gov/meetings/ED/ED00/20180130/106808/HHRG-115-ED00-Bio-OhmP-20180130.pdf",
+      "candidate_key": "docs.house.gov/meetings/ED/ED00/20180130/106808/HHRG-115-ED00-Bio-OhmP-20180130.pdf",
+      "target_error": null,
+      "candidate_error": null
+    },
+    {
+      "target_url": "https://docs.house.gov/meetings/GO/GO00/20130919/101313/HHRG-113-GO00-Transcript-20130919.pdf",
+      "candidate_url": "http://docs.house.gov/meetings/GO/GO00/20130919/101313/HHRG-113-GO00-Transcript-20130919.pdf",
+      "body_sha256": "38ba3a793e72ec57988eb9a878bd9e3cc602a4431b57850ef3317c7f520ef1ea",
+      "target_key": "docs.house.gov/meetings/GO/GO00/20130919/101313/HHRG-113-GO00-Transcript-20130919.pdf",
+      "candidate_key": "docs.house.gov/meetings/GO/GO00/20130919/101313/HHRG-113-GO00-Transcript-20130919.pdf",
+      "target_error": null,
+      "candidate_error": null
+    },
+    {
+      "target_url": "https://oig.ssa.gov/sites/default/files/audit/full/pdf/A-14-16-50037.pdf",
+      "candidate_url": "https://web.archive.org/web/20210803164648id_/https://oig.ssa.gov/sites/default/files/audit/full/pdf/A-14-16-50037.pdf",
+      "body_sha256": "78127d8fdee1c805703bf084d8d19fc0dba1166951e34e3bae90b22fd0975a99",
+      "target_key": "oig.ssa.gov/sites/default/files/audit/full/pdf/A-14-16-50037.pdf",
+      "candidate_key": "oig.ssa.gov/sites/default/files/audit/full/pdf/A-14-16-50037.pdf",
+      "target_error": null,
+      "candidate_error": null
+    },
+    {
+      "target_url": "https://oversight.house.gov/hearing/reinventing-government/oversight.house.gov/wp-content/uploads/2013/06/David-Walker-Testimony.pdf",
+      "candidate_url": "https://web.archive.org/web/20141206135509id_/http://oversight.house.gov/hearing/reinventing-government/oversight.house.gov/wp-content/uploads/2013/06/David-Walker-Testimony.pdf",
+      "body_sha256": "cd154f18020d95913df70f5e1f6066fadbc7534c1f16d684b968a07e1a9c8cce",
+      "target_key": "oversight.house.gov/hearing/reinventing-government/oversight.house.gov/wp-content/uploads/2013/06/David-Walker-Testimony.pdf",
+      "candidate_key": "oversight.house.gov/hearing/reinventing-government/oversight.house.gov/wp-content/uploads/2013/06/David-Walker-Testimony.pdf",
+      "target_error": null,
+      "candidate_error": null
+    },
+    {
+      "target_url": "https://reliefweb.int/sites/reliefweb.int/files/resources/A_HRC_46_20_AEV.pdf",
+      "candidate_url": "https://web.archive.org/web/20210511112431id_/https://reliefweb.int/sites/reliefweb.int/files/resources/A_HRC_46_20_AEV.pdf",
+      "body_sha256": "aa5ecc24528435f8b950c788d0af6867fefd79a6debc91724c9a45871878f692",
+      "target_key": "reliefweb.int/sites/reliefweb.int/files/resources/A_HRC_46_20_AEV.pdf",
+      "candidate_key": "reliefweb.int/sites/reliefweb.int/files/resources/A_HRC_46_20_AEV.pdf",
+      "target_error": null,
+      "candidate_error": null
+    },
+    {
+      "target_url": "https://republicans.transportation.house.gov/Media/file/TestimonyWater/2012-09-20-Darcy.pdf",
+      "candidate_url": "https://web.archive.org/web/20121212062841id_/http://republicans.transportation.house.gov/Media/file/TestimonyWater/2012-09-20-Darcy.pdf",
+      "body_sha256": "1f6e5510aae02a1a0c4025686d94bdb09e6feaaa49de7a86d6c36f2ce6b41b4e",
+      "target_key": "republicans.transportation.house.gov/Media/file/TestimonyWater/2012-09-20-Darcy.pdf",
+      "candidate_key": "republicans.transportation.house.gov/Media/file/TestimonyWater/2012-09-20-Darcy.pdf",
+      "target_error": null,
+      "candidate_error": null
+    },
+    {
+      "target_url": "https://s3-ap-southeast-2.amazonaws.com/ad-aspi/2020-07/Uyghurs%20for%20sale%2028%20July%202020.pdf?xxhaH3mgIIRkbww1o26KF3cNTCDGAyVT=",
+      "candidate_url": "https://web.archive.org/web/20201026164834id_/https://s3-ap-southeast-2.amazonaws.com/ad-aspi/2020-07/Uyghurs%20for%20sale%2028%20July%202020.pdf?xxhaH3mgIIRkbww1o26KF3cNTCDGAyVT=",
+      "body_sha256": "0f4a3b7925215dbc4a1f9e04f6d7bd51cd86bcd07b306d2bf67418a62204fc81",
+      "target_key": "s3-ap-southeast-2.amazonaws.com/ad-aspi/2020-07/Uyghurs%20for%20sale%2028%20July%202020.pdf?xxhaH3mgIIRkbww1o26KF3cNTCDGAyVT=",
+      "candidate_key": "s3-ap-southeast-2.amazonaws.com/ad-aspi/2020-07/Uyghurs%20for%20sale%2028%20July%202020.pdf?xxhaH3mgIIRkbww1o26KF3cNTCDGAyVT=",
+      "target_error": null,
+      "candidate_error": null
+    },
+    {
+      "target_url": "https://science.house.gov/sites/republicans.science.house.gov/files/documents/071409_Bacon_0.pdf",
+      "candidate_url": "https://web.archive.org/web/20180924193748id_/https://science.house.gov/sites/republicans.science.house.gov/files/documents/071409_Bacon_0.pdf",
+      "body_sha256": "a7b52581b433aa90a44fa1293dce1d0b56bef577b6dd8ca2fc8a2b41de365191",
+      "target_key": "science.house.gov/sites/republicans.science.house.gov/files/documents/071409_Bacon_0.pdf",
+      "candidate_key": "science.house.gov/sites/republicans.science.house.gov/files/documents/071409_Bacon_0.pdf",
+      "target_error": null,
+      "candidate_error": null
+    },
+    {
+      "target_url": "https://science.house.gov/sites/republicans.science.house.gov/files/documents/HHRG-114-SY16-WState-JShin-20150611.pdf",
+      "candidate_url": "https://web.archive.org/web/20180923210615id_/https://science.house.gov/sites/republicans.science.house.gov/files/documents/HHRG-114-SY16-WState-JShin-20150611.pdf",
+      "body_sha256": "66751b9545375ee5cc42e929c1b9782604871a068ea15b37f8a20e7df08c38a6",
+      "target_key": "science.house.gov/sites/republicans.science.house.gov/files/documents/HHRG-114-SY16-WState-JShin-20150611.pdf",
+      "candidate_key": "science.house.gov/sites/republicans.science.house.gov/files/documents/HHRG-114-SY16-WState-JShin-20150611.pdf",
+      "target_error": null,
+      "candidate_error": null
+    },
+    {
+      "target_url": "https://sciencedems.house.gov/Media/File/ForHearings/06aug02Renew/larsen_testimony_02aug06.pdf",
+      "candidate_url": "https://web.archive.org/web/20110203234921id_/http://sciencedems.house.gov/Media/File/ForHearings/06aug02Renew/larsen_testimony_02aug06.pdf",
+      "body_sha256": "aff92569ac93b49d20d265257ac6a75ba9d95c92b611da943a1dcb35d2e23f08",
+      "target_key": "sciencedems.house.gov/Media/File/ForHearings/06aug02Renew/larsen_testimony_02aug06.pdf",
+      "candidate_key": "sciencedems.house.gov/Media/File/ForHearings/06aug02Renew/larsen_testimony_02aug06.pdf",
+      "target_error": null,
+      "candidate_error": null
+    },
+    {
+      "target_url": "https://waysandmeans.house.gov/Legacy/fullcomm/107cong/fc-21act.htm",
+      "candidate_url": "https://web.archive.org/web/20180926133535id_/https://waysandmeans.house.gov/Legacy/fullcomm/107cong/fc-21act.htm",
+      "body_sha256": "a8b5d817aa436ffdadafec57b1b2f61d1dce2a9af335a9d47eb4488ca737c1d5",
+      "target_key": "waysandmeans.house.gov/Legacy/fullcomm/107cong/fc-21act.htm",
+      "candidate_key": "waysandmeans.house.gov/Legacy/fullcomm/107cong/fc-21act.htm",
+      "target_error": null,
+      "candidate_error": null
+    },
+    {
+      "target_url": "https://web.archive.org/web/20201028144930id_/http://agriculture.edgeboss.net/wmedia/agriculture/20110210.wvx",
+      "candidate_url": "http://agriculture.edgeboss.net/wmedia/agriculture/20110210.wvx",
+      "body_sha256": "24e5987d0cd3cf5ec5e41d085779ac0fa95fb9c6c25d02c29dee04fe797f3437",
+      "target_key": "agriculture.edgeboss.net/wmedia/agriculture/20110210.wvx",
+      "candidate_key": "agriculture.edgeboss.net/wmedia/agriculture/20110210.wvx",
+      "target_error": null,
+      "candidate_error": null
+    },
+    {
+      "target_url": "https://web.archive.org/web/20220107081614id_/https://beatty.house.gov/media-center/in-the-news/beatty-highlights-need-for-transparency-and-clarity-in-mortgage-loan",
+      "candidate_url": "http://beatty.house.gov/media-center/in-the-news/beatty-highlights-need-for-transparency-and-clarity-in-mortgage-loan",
+      "body_sha256": "19928a9a1678352c6bcd22332251a15d4df2ad79eb4b70e625936f36c7926abb",
+      "target_key": "beatty.house.gov/media-center/in-the-news/beatty-highlights-need-for-transparency-and-clarity-in-mortgage-loan",
+      "candidate_key": "beatty.house.gov/media-center/in-the-news/beatty-highlights-need-for-transparency-and-clarity-in-mortgage-loan",
+      "target_error": null,
+      "candidate_error": null
+    },
+    {
+      "target_url": "https://web.archive.org/web/20220328073809id_/https://archives-agriculture.house.gov/sites/republicans.agriculture.house.gov/files/pdf/4.29.14%20113-12%20-%2087765.pdf",
+      "candidate_url": "https://archives-agriculture.house.gov/sites/republicans.agriculture.house.gov/files/pdf/4.29.14%20113-12%20-%2087765.pdf",
+      "body_sha256": "0d5d4776feb5f665b8923435de672f86cf141eed3aecacb08ff98ef8c4092587",
+      "target_key": "archives-agriculture.house.gov/sites/republicans.agriculture.house.gov/files/pdf/4.29.14%20113-12%20-%2087765.pdf",
+      "candidate_key": "archives-agriculture.house.gov/sites/republicans.agriculture.house.gov/files/pdf/4.29.14%20113-12%20-%2087765.pdf",
+      "target_error": null,
+      "candidate_error": null
+    },
+    {
+      "target_url": "https://web.archive.org/web/20220823180207id_/https://republicans-energycommerce.house.gov/sites/republicans.energycommerce.house.gov/files/Hearings/Health/20120209/HHRG-112-IF14-MState-P000373-20120209.pdf",
+      "candidate_url": "https://republicans-energycommerce.house.gov/sites/republicans.energycommerce.house.gov/files/Hearings/Health/20120209/HHRG-112-IF14-MState-P000373-20120209.pdf",
+      "body_sha256": "d3bac9a1234eaf11d7df69a8cc47801a851a978162e60124f518eb0053df5cec",
+      "target_key": "republicans-energycommerce.house.gov/sites/republicans.energycommerce.house.gov/files/Hearings/Health/20120209/HHRG-112-IF14-MState-P000373-20120209.pdf",
+      "candidate_key": "republicans-energycommerce.house.gov/sites/republicans.energycommerce.house.gov/files/Hearings/Health/20120209/HHRG-112-IF14-MState-P000373-20120209.pdf",
+      "target_error": null,
+      "candidate_error": null
+    },
+    {
+      "target_url": "https://web.archive.org/web/20220919221959id_/https://republicans-intelligence.house.gov/uploadedfiles/nunes_opening_statement_for_hill_and_holmes_hearing_on_impeachment.pdf",
+      "candidate_url": "https://republicans-intelligence.house.gov/uploadedfiles/nunes_opening_statement_for_hill_and_holmes_hearing_on_impeachment.pdf",
+      "body_sha256": "7811ec9e29742fcf5700a320162d43fcf80412ede75548315faeda2c13e7cf47",
+      "target_key": "republicans-intelligence.house.gov/uploadedfiles/nunes_opening_statement_for_hill_and_holmes_hearing_on_impeachment.pdf",
+      "candidate_key": "republicans-intelligence.house.gov/uploadedfiles/nunes_opening_statement_for_hill_and_holmes_hearing_on_impeachment.pdf",
+      "target_error": null,
+      "candidate_error": null
+    },
+    {
+      "target_url": "https://web.archive.org/web/20220920043401id_/https://edlabor.house.gov/download/morellea14",
+      "candidate_url": "https://edlabor.house.gov/download/morellea14",
+      "body_sha256": "1b5facc7dfe4707f44f21a6b75f0e29d9ab3579e325398edfdca70511240d345",
+      "target_key": "edlabor.house.gov/download/morellea14",
+      "candidate_key": "edlabor.house.gov/download/morellea14",
+      "target_error": null,
+      "candidate_error": null
+    },
+    {
+      "target_url": "https://web.archive.org/web/20221221061754id_/https://khanna.house.gov/sites/khanna.house.gov/files/032117_TransDigm_Letter.pdf",
+      "candidate_url": "https://khanna.house.gov/sites/khanna.house.gov/files/032117_TransDigm_Letter.pdf",
+      "body_sha256": "2cb3703907c8ea90400fd5524d4874b8adff45e356b3e615b0734629052f4f46",
+      "target_key": "khanna.house.gov/sites/khanna.house.gov/files/032117_TransDigm_Letter.pdf",
+      "candidate_key": "khanna.house.gov/sites/khanna.house.gov/files/032117_TransDigm_Letter.pdf",
+      "target_error": null,
+      "candidate_error": null
+    },
+    {
+      "target_url": "https://web.archive.org/web/20240929075621id_/https://docstore.ohchr.org/SelfServices/FilesHandler.ashx?enc=4slQ6QSmlBEDzFEovLCuW%2BKyH%2BnXprasyMzd2e8mx4fouQpDVshj73SoMLU1JTdjtZDTDYerYia%2BctGqO8NrWmRL%2Ft1OyyKtqjxnygkOzYPp9tCfBWVc0bkQ1mCWULU7",
+      "candidate_url": "https://docstore.ohchr.org/SelfServices/FilesHandler.ashx?enc=4slQ6QSmlBEDzFEovLCuW%2BKyH%2BnXprasyMzd2e8mx4fouQpDVshj73SoMLU1JTdjtZDTDYerYia%2BctGqO8NrWmRL%2Ft1OyyKtqjxnygkOzYPp9tCfBWVc0bkQ1mCWULU7",
+      "body_sha256": "149e43143e5aeabfbe0a535d8ea63025940a88049ca39cebd5e515c43b0a40b9",
+      "target_key": "docstore.ohchr.org/SelfServices/FilesHandler.ashx?enc=4slQ6QSmlBEDzFEovLCuW%2BKyH%2BnXprasyMzd2e8mx4fouQpDVshj73SoMLU1JTdjtZDTDYerYia%2BctGqO8NrWmRL%2Ft1OyyKtqjxnygkOzYPp9tCfBWVc0bkQ1mCWULU7",
+      "candidate_key": "docstore.ohchr.org/SelfServices/FilesHandler.ashx?enc=4slQ6QSmlBEDzFEovLCuW%2BKyH%2BnXprasyMzd2e8mx4fouQpDVshj73SoMLU1JTdjtZDTDYerYia%2BctGqO8NrWmRL%2Ft1OyyKtqjxnygkOzYPp9tCfBWVc0bkQ1mCWULU7",
+      "target_error": null,
+      "candidate_error": null
+    },
+    {
+      "target_url": "https://web.archive.org/web/20250420084413id_/https://www.ethics.harvard.edu/files/center-for-ethics/files/roadmaptopandemicresilience_final_0.pdf",
+      "candidate_url": "https://www.ethics.harvard.edu/files/center-for-ethics/files/roadmaptopandemicresilience_final_0.pdf",
+      "body_sha256": "34d226d192af4565d6fd4694b3c9b0f6e5e2a2029120e4d05f39a6d801edded8",
+      "target_key": "ethics.harvard.edu/files/center-for-ethics/files/roadmaptopandemicresilience_final_0.pdf",
+      "candidate_key": "ethics.harvard.edu/files/center-for-ethics/files/roadmaptopandemicresilience_final_0.pdf",
+      "target_error": null,
+      "candidate_error": null
+    },
+    {
+      "target_url": "https://web.archive.org/web/20250627030927id_/https://foreignaffairs.house.gov/wp-content/uploads/2024/07/HR8934.pdf",
+      "candidate_url": "https://foreignaffairs.house.gov/wp-content/uploads/2024/07/HR8934.pdf",
+      "body_sha256": "82f3774eb00e60dc17a3cb4aa48817a712c74fa0016962cc35adafb894f1ecb1",
+      "target_key": "foreignaffairs.house.gov/wp-content/uploads/2024/07/HR8934.pdf",
+      "candidate_key": "foreignaffairs.house.gov/wp-content/uploads/2024/07/HR8934.pdf",
+      "target_error": null,
+      "candidate_error": null
+    },
+    {
+      "target_url": "https://web.archive.org/web/20250903225915id_/https://oig.justice.gov/reports/2017/o1701.pdf",
+      "candidate_url": "https://oig.justice.gov/reports/2017/o1701.pdf",
+      "body_sha256": "80c1c2e970bfed741e6f198a234025faba64aafa9207039914ad4249581bfc79",
+      "target_key": "oig.justice.gov/reports/2017/o1701.pdf",
+      "candidate_key": "oig.justice.gov/reports/2017/o1701.pdf",
+      "target_error": null,
+      "candidate_error": null
+    },
+    {
+      "target_url": "https://www.help.senate.gov/hearings/a-dire-shortage-and-getting-worse-solving-the-crisis-in-the-health-care-workforce/",
+      "candidate_url": "https://web.archive.org/web/20260414145403id_/https://www.help.senate.gov/hearings/a-dire-shortage-and-getting-worse-solving-the-crisis-in-the-health-care-workforce",
+      "body_sha256": "7653f19fd819b75101a3dbe1a1bc3893f38a8a26ba65160df3ecb3acce1de83c",
+      "target_key": "help.senate.gov/hearings/a-dire-shortage-and-getting-worse-solving-the-crisis-in-the-health-care-workforce",
+      "candidate_key": "help.senate.gov/hearings/a-dire-shortage-and-getting-worse-solving-the-crisis-in-the-health-care-workforce",
+      "target_error": null,
+      "candidate_error": null
+    },
+    {
+      "target_url": "https://www.help.senate.gov/hearings/nomination-of-gordon-hartogensis",
+      "candidate_url": "https://web.archive.org/web/20260617004735id_/https://www.help.senate.gov/hearings/nomination-of-gordon-hartogensis",
+      "body_sha256": "d7eeae2a8d796d4a51ce2629966f7e9d42c0b1a627609cc1d55ac1ac7045faf4",
+      "target_key": "help.senate.gov/hearings/nomination-of-gordon-hartogensis",
+      "candidate_key": "help.senate.gov/hearings/nomination-of-gordon-hartogensis",
+      "target_error": null,
+      "candidate_error": null
+    }
+  ],
+  "malformed": [
+    {
+      "audit_row": 11057,
+      "page_body": "4216c8ee98c214894adbee5102b1e8a80ca8be1a5dc79d50d6570624b0e00fa0",
+      "title": "The Power of the Purse: Reasserting Congress' Authority and Protecting our Democracy through the Congressional Power of the Purse Act | House Budget Committee Democrats",
+      "base_href": null,
+      "href": "mailto:https://uscode.house.gov/view.xhtml?req=(title:31%20section:1341%20edition:prelim)%20OR%20(granuleid:USC-prelim-title31-section1341)&f=treesort&edition=prelim&num=0&jumpTo=true",
+      "text": "Antideficiency Act",
+      "context": "https://democrats-budget.house.gov/resources/reports/power-purse-reasserting-congress-authority-and-protecting-our-democracy-through",
+      "candidate": "https://uscode.house.gov/view.xhtml?req=(title:31%20section:1341%20edition:prelim)%20OR%20(granuleid:USC-prelim-title31-section1341)&f=treesort&edition=prelim&num=0&jumpTo=true",
+      "baseline_resolved": "mailto:https://uscode.house.gov/view.xhtml?req=(title:31%20section:1341%20edition:prelim)%20OR%20(granuleid:USC-prelim-title31-section1341)&f=treesort&edition=prelim&num=0&jumpTo=true",
+      "proposed_resolved": "https://uscode.house.gov/view.xhtml?req=(title:31%20section:1341%20edition:prelim)%20OR%20(granuleid:USC-prelim-title31-section1341)&f=treesort&edition=prelim&num=0&jumpTo=true",
+      "baseline_admitted": false,
+      "proposed_admitted": true,
+      "retained_exact": [],
+      "bill_published": []
+    },
+    {
+      "audit_row": 17368,
+      "page_body": "679c191df4feb44afc36a301017a1b801a69c4775a49189f7b84604c66464fa0",
+      "title": "Oversight Field Hearing on \u201cCultural Sovereignty Series: Modernizing the Indian Arts and Crafts Act to Honor Native Identity and Expression.\u201d - Indian Affairs Committee",
+      "base_href": null,
+      "href": "http://File URL path: /sites/default/files/documents/7.7.17DallinMaybeeTestimoney.pdf",
+      "text": "",
+      "context": "https://www.indian.senate.gov/hearings/oversight-field-hearing-cultural-sovereignty-series-modernizing-indian-arts-and-crafts-act/",
+      "candidate": "/sites/default/files/documents/7.7.17DallinMaybeeTestimoney.pdf",
+      "baseline_resolved": null,
+      "proposed_resolved": "https://www.indian.senate.gov/sites/default/files/documents/7.7.17DallinMaybeeTestimoney.pdf",
+      "baseline_admitted": false,
+      "proposed_admitted": true,
+      "retained_exact": [
+        {
+          "requested_url": "https://www.indian.senate.gov/sites/default/files/documents/7.7.17DallinMaybeeTestimoney.pdf",
+          "url": "https://www.indian.senate.gov/sites/default/files/documents/7.7.17DallinMaybeeTestimoney.pdf",
+          "body_sha": "42eaec409b24d2130b2dfd14184fbd2b37d816d5003e80c38f88af4c32a347a1",
+          "format": "pdf",
+          "is_real_file": true,
+          "record_role": "document",
+          "outcome": "stored"
+        },
+        {
+          "requested_url": "https://www.indian.senate.gov/sites/default/files/documents/7.7.17DallinMaybeeTestimoney.pdf",
+          "url": "https://www.indian.senate.gov/sites/default/files/documents/7.7.17DallinMaybeeTestimoney.pdf",
+          "body_sha": "42eaec409b24d2130b2dfd14184fbd2b37d816d5003e80c38f88af4c32a347a1",
+          "format": null,
+          "is_real_file": false,
+          "record_role": null,
+          "outcome": "reference"
+        }
+      ],
+      "bill_published": []
+    },
+    {
+      "audit_row": 36798,
+      "page_body": "dd7d39cec5e0c0b66be69421b61316585401385cad5dbfb9a5c2d8bb61c8f8b4",
+      "title": "To consider the following bills and other legislative business: H.R. 3676 - Prohibiting In-Flight Voice Communications on Mobile Wireless Devices Act of 2013. General Services Administration Capital Investment and Leasing Program Resolutions H.R. 1378 - To designate the United States courthouse located at 333 West Broadway in San Diego, California, as the \u201cJames M. Carter and Judith N. Keep United States Courthouse\u201d. H.R. 4005 - Coast Guard and Maritime Transportation Act of 2014. | Committee Repository | U.S. House of Representatives",
+      "base_href": null,
+      "href": "http://www.congress.gov/cgi-lis/t2GPO/http://www.gpo.gov/fdsys/pkg/BILLS-113hr4005ih/pdf/BILLS-113hr4005ih.pdf",
+      "text": "PDF",
+      "context": null,
+      "candidate": "http://www.gpo.gov/fdsys/pkg/BILLS-113hr4005ih/pdf/BILLS-113hr4005ih.pdf",
+      "baseline_resolved": "http://www.congress.gov/cgi-lis/t2GPO/http://www.gpo.gov/fdsys/pkg/BILLS-113hr4005ih/pdf/BILLS-113hr4005ih.pdf",
+      "proposed_resolved": "http://www.gpo.gov/fdsys/pkg/BILLS-113hr4005ih/pdf/BILLS-113hr4005ih.pdf",
+      "baseline_admitted": true,
+      "proposed_admitted": true,
+      "retained_exact": [],
+      "bill_published": [
+        {
+          "url": "https://www.govinfo.gov/content/pkg/BILLS-113hr4005ih/pdf/BILLS-113hr4005ih.pdf",
+          "document_id": "2b3e967b544386227cb6ea71bd64151580173a0d0021efe18f4da7881c4745e8",
+          "title": null,
+          "format": "pdf",
+          "body": "f8e3519df9a89ddcd56cb3ce17d789980276265e663605db2d33dcd2ee952205"
+        }
+      ]
+    },
+    {
+      "audit_row": 41059,
+      "page_body": "f6f54c4abb3e79c9267b3e7de9787fb902055f73f35db92ff0f3b27a17abb0ef",
+      "title": "FC Markup on Multiple Bills | Committee Repository | U.S. House of Representatives",
+      "base_href": null,
+      "href": "mailto:https://www.congress.gov/116/bills/hr5040/BILLS-116hr5040ih.pdf",
+      "text": "PDF",
+      "context": null,
+      "candidate": "https://www.congress.gov/116/bills/hr5040/BILLS-116hr5040ih.pdf",
+      "baseline_resolved": "mailto:https://www.congress.gov/116/bills/hr5040/BILLS-116hr5040ih.pdf",
+      "proposed_resolved": "https://www.congress.gov/116/bills/hr5040/BILLS-116hr5040ih.pdf",
+      "baseline_admitted": false,
+      "proposed_admitted": true,
+      "retained_exact": [
+        {
+          "requested_url": "https://www.congress.gov/116/bills/hr5040/BILLS-116hr5040ih.pdf",
+          "url": "https://www.congress.gov/116/bills/hr5040/BILLS-116hr5040ih.pdf",
+          "body_sha": "f49da0b1d0eed3c00fba7d2ae97f92119da9cc460c8b6edb661f1157edd079e5",
+          "format": "pdf",
+          "is_real_file": true,
+          "record_role": "document",
+          "outcome": "stored"
+        },
+        {
+          "requested_url": "https://www.congress.gov/116/bills/hr5040/BILLS-116hr5040ih.pdf",
+          "url": "https://www.congress.gov/116/bills/hr5040/BILLS-116hr5040ih.pdf",
+          "body_sha": "f49da0b1d0eed3c00fba7d2ae97f92119da9cc460c8b6edb661f1157edd079e5",
+          "format": null,
+          "is_real_file": false,
+          "record_role": null,
+          "outcome": "reference"
+        }
+      ],
+      "bill_published": [
+        {
+          "url": "https://www.congress.gov/116/bills/hr5040/BILLS-116hr5040ih.pdf",
+          "document_id": "cf31c24d8c449ad19f32bcd28fb88b8c20becd54c30f0b73e8514bc4ab3cd7c9",
+          "title": null,
+          "format": "pdf",
+          "body": "f49da0b1d0eed3c00fba7d2ae97f92119da9cc460c8b6edb661f1157edd079e5"
+        }
+      ]
+    },
+    {
+      "audit_row": 41060,
+      "page_body": "f6f54c4abb3e79c9267b3e7de9787fb902055f73f35db92ff0f3b27a17abb0ef",
+      "title": "FC Markup on Multiple Bills | Committee Repository | U.S. House of Representatives",
+      "base_href": null,
+      "href": "mailto:https://www.congress.gov/116/bills/hr6237/BILLS-116hr6237ih.pdf",
+      "text": "PDF",
+      "context": null,
+      "candidate": "https://www.congress.gov/116/bills/hr6237/BILLS-116hr6237ih.pdf",
+      "baseline_resolved": "mailto:https://www.congress.gov/116/bills/hr6237/BILLS-116hr6237ih.pdf",
+      "proposed_resolved": "https://www.congress.gov/116/bills/hr6237/BILLS-116hr6237ih.pdf",
+      "baseline_admitted": false,
+      "proposed_admitted": true,
+      "retained_exact": [
+        {
+          "requested_url": "https://www.congress.gov/116/bills/hr6237/BILLS-116hr6237ih.pdf",
+          "url": "https://www.congress.gov/116/bills/hr6237/BILLS-116hr6237ih.pdf",
+          "body_sha": "407a6d04798950b32f76eb9272078e345ce603340f9b833f980c6a054ddd4df8",
+          "format": "pdf",
+          "is_real_file": true,
+          "record_role": "document",
+          "outcome": "stored"
+        },
+        {
+          "requested_url": "https://www.congress.gov/116/bills/hr6237/BILLS-116hr6237ih.pdf",
+          "url": "https://www.congress.gov/116/bills/hr6237/BILLS-116hr6237ih.pdf",
+          "body_sha": "407a6d04798950b32f76eb9272078e345ce603340f9b833f980c6a054ddd4df8",
+          "format": null,
+          "is_real_file": false,
+          "record_role": null,
+          "outcome": "reference"
+        }
+      ],
+      "bill_published": [
+        {
+          "url": "https://www.congress.gov/116/bills/hr6237/BILLS-116hr6237ih.pdf",
+          "document_id": "b53f5d79314215f4477ea2e2a324380b87f53b9010566e64465d161e88e29381",
+          "title": null,
+          "format": "pdf",
+          "body": "407a6d04798950b32f76eb9272078e345ce603340f9b833f980c6a054ddd4df8"
+        }
+      ]
+    },
+    {
+      "audit_row": 41061,
+      "page_body": "f6f54c4abb3e79c9267b3e7de9787fb902055f73f35db92ff0f3b27a17abb0ef",
+      "title": "FC Markup on Multiple Bills | Committee Repository | U.S. House of Representatives",
+      "base_href": null,
+      "href": "mailto:https://www.congress.gov/116/bills/hr6636/BILLS-116hr6636ih.pdf",
+      "text": "PDF",
+      "context": null,
+      "candidate": "https://www.congress.gov/116/bills/hr6636/BILLS-116hr6636ih.pdf",
+      "baseline_resolved": "mailto:https://www.congress.gov/116/bills/hr6636/BILLS-116hr6636ih.pdf",
+      "proposed_resolved": "https://www.congress.gov/116/bills/hr6636/BILLS-116hr6636ih.pdf",
+      "baseline_admitted": false,
+      "proposed_admitted": true,
+      "retained_exact": [
+        {
+          "requested_url": "https://www.congress.gov/116/bills/hr6636/BILLS-116hr6636ih.pdf",
+          "url": "https://www.congress.gov/116/bills/hr6636/BILLS-116hr6636ih.pdf",
+          "body_sha": "4bbe5e3aebc416a520e65268a2589ad05e66c7a47c9c7eea11c761f570924608",
+          "format": "pdf",
+          "is_real_file": true,
+          "record_role": "document",
+          "outcome": "stored"
+        },
+        {
+          "requested_url": "https://www.congress.gov/116/bills/hr6636/BILLS-116hr6636ih.pdf",
+          "url": "https://www.congress.gov/116/bills/hr6636/BILLS-116hr6636ih.pdf",
+          "body_sha": "4bbe5e3aebc416a520e65268a2589ad05e66c7a47c9c7eea11c761f570924608",
+          "format": null,
+          "is_real_file": false,
+          "record_role": null,
+          "outcome": "reference"
+        }
+      ],
+      "bill_published": [
+        {
+          "url": "https://www.congress.gov/116/bills/hr6636/BILLS-116hr6636ih.pdf",
+          "document_id": "d118f9585f9a77c6599d71d4ee8ec0e45ff57388340c583902eabe47e66afcf0",
+          "title": null,
+          "format": "pdf",
+          "body": "4bbe5e3aebc416a520e65268a2589ad05e66c7a47c9c7eea11c761f570924608"
+        }
+      ]
+    },
+    {
+      "audit_row": 41062,
+      "page_body": "f6f54c4abb3e79c9267b3e7de9787fb902055f73f35db92ff0f3b27a17abb0ef",
+      "title": "FC Markup on Multiple Bills | Committee Repository | U.S. House of Representatives",
+      "base_href": null,
+      "href": "mailto:https://www.congress.gov/116/bills/hr7045/BILLS-116hr7045ih.pdf",
+      "text": "PDF",
+      "context": null,
+      "candidate": "https://www.congress.gov/116/bills/hr7045/BILLS-116hr7045ih.pdf",
+      "baseline_resolved": "mailto:https://www.congress.gov/116/bills/hr7045/BILLS-116hr7045ih.pdf",
+      "proposed_resolved": "https://www.congress.gov/116/bills/hr7045/BILLS-116hr7045ih.pdf",
+      "baseline_admitted": false,
+      "proposed_admitted": true,
+      "retained_exact": [
+        {
+          "requested_url": "https://www.congress.gov/116/bills/hr7045/BILLS-116hr7045ih.pdf",
+          "url": "https://www.congress.gov/116/bills/hr7045/BILLS-116hr7045ih.pdf",
+          "body_sha": "e5c1e3a04efe305bc288903d803920803d7e2446b5451862ef4499e6e65e1686",
+          "format": "pdf",
+          "is_real_file": true,
+          "record_role": "document",
+          "outcome": "stored"
+        },
+        {
+          "requested_url": "https://www.congress.gov/116/bills/hr7045/BILLS-116hr7045ih.pdf",
+          "url": "https://www.congress.gov/116/bills/hr7045/BILLS-116hr7045ih.pdf",
+          "body_sha": "e5c1e3a04efe305bc288903d803920803d7e2446b5451862ef4499e6e65e1686",
+          "format": null,
+          "is_real_file": false,
+          "record_role": null,
+          "outcome": "reference"
+        }
+      ],
+      "bill_published": [
+        {
+          "url": "https://www.congress.gov/116/bills/hr7045/BILLS-116hr7045ih.pdf",
+          "document_id": "20964491b42c0ae17208a5cd857706f58a529a687cf3a5e42e5ae77ef5196d56",
+          "title": null,
+          "format": "pdf",
+          "body": "e5c1e3a04efe305bc288903d803920803d7e2446b5451862ef4499e6e65e1686"
+        }
+      ]
+    }
+  ],
+  "alias_publication": [
+    {
+      "target_url": "http://archives113.transportation.house.gov/sites/republicans.transportation.house.gov/files/documents/Rob%20Atkinson--Testimony.pdf",
+      "candidate_url": "https://web.archive.org/web/20170201050748id_/http://archives113.transportation.house.gov/sites/republicans.transportation.house.gov/files/documents/Rob%20Atkinson--Testimony.pdf",
+      "body_sha256": "a9d571b2e8d62107f8d165dc6e66fd1dbb6f408c7cbaad0bb42ce2d5661557a5",
+      "exact_target_source_rows": 0,
+      "exact_candidate_source_rows": 1,
+      "saved_document_rows": 1,
+      "published_recovery_rows": 0
+    },
+    {
+      "target_url": "http://democrats.oversight.house.gov/sites/democrats.oversight.house.gov/files/documents/Final%20OGR%20EpiPen%20Letter.pdf",
+      "candidate_url": "https://web.archive.org/web/20161212204544id_/http://democrats.oversight.house.gov/sites/democrats.oversight.house.gov/files/documents/Final%20OGR%20EpiPen%20Letter.pdf",
+      "body_sha256": "bd6b4bcc5f20b6918dbdac0687fbb4cc291bdcb77e34019f9f5144b12ce7aef2",
+      "exact_target_source_rows": 0,
+      "exact_candidate_source_rows": 1,
+      "saved_document_rows": 1,
+      "published_recovery_rows": 0
+    },
+    {
+      "target_url": "http://law.fordham.edu/assets/CLIP/CLIP_Report_Childrens_Privacy_Final.pdf",
+      "candidate_url": "https://web.archive.org/web/20130522223026id_/http://law.fordham.edu/assets/CLIP/CLIP_Report_Childrens_Privacy_Final.pdf",
+      "body_sha256": "a9d7c66b84cc525472cd14b794788f87b0bccd29ec1b4b2c4352a0b18e04a98a",
+      "exact_target_source_rows": 0,
+      "exact_candidate_source_rows": 1,
+      "saved_document_rows": 1,
+      "published_recovery_rows": 0
+    },
+    {
+      "target_url": "http://thomas.loc.gov/cgi-bin/cpquery/R?cp105:FLD010:@1(hr085):",
+      "candidate_url": "https://web.archive.org/web/20121217101907id_/http://thomas.loc.gov/cgi-bin/cpquery/R?cp105:FLD010:@1(hr085):",
+      "body_sha256": "92f4d54501c7bff79f1a40fcbc085615c903adf0d24872116d358064f463782f",
+      "exact_target_source_rows": 0,
+      "exact_candidate_source_rows": 1,
+      "saved_document_rows": 1,
+      "published_recovery_rows": 0
+    },
+    {
+      "target_url": "http://thomas.loc.gov/home/gpoxmlc113/h1300_ih.xml",
+      "candidate_url": "https://web.archive.org/web/20141209223846id_/http://thomas.loc.gov/home/gpoxmlc113/h1300_ih.xml",
+      "body_sha256": "2890a77093a0bb467e00ca8c801d9d3296ca2ea6c4744900c59bd4a915fc81d9",
+      "exact_target_source_rows": 0,
+      "exact_candidate_source_rows": 1,
+      "saved_document_rows": 1,
+      "published_recovery_rows": 0
+    },
+    {
+      "target_url": "http://www.lis.gov/cgi-lis/t2GPO/http://www.gpo.gov/fdsys/pkg/BILLS-114hr456ih/pdf/BILLS-114hr456ih.pdf",
+      "candidate_url": "http://www.gpo.gov/fdsys/pkg/BILLS-114hr456ih/pdf/BILLS-114hr456ih.pdf",
+      "body_sha256": "44417d127b4b0940a78b26fee8c29f03b64e5eaf46229ea5fa3c48d20ee01b4f",
+      "exact_target_source_rows": 0,
+      "exact_candidate_source_rows": 0,
+      "saved_document_rows": 2,
+      "published_recovery_rows": 1
+    },
+    {
+      "target_url": "http://www.lis.gov/cgi-lis/t2GPO/http://www.gpo.gov/fdsys/pkg/BILLS-114hr456ih/pdf/BILLS-114hr456ih.xml",
+      "candidate_url": "http://www.gpo.gov/fdsys/pkg/BILLS-114hr456ih/pdf/BILLS-114hr456ih.xml",
+      "body_sha256": "9144437b0a2342ce8da1ee6298027f78ec9e91bdd6080e0255ba856845caf320",
+      "exact_target_source_rows": 0,
+      "exact_candidate_source_rows": 0,
+      "saved_document_rows": 2,
+      "published_recovery_rows": 1
+    },
+    {
+      "target_url": "http://www.lis.gov/cgi-lis/t2GPO/http://www.gpo.gov/fdsys/pkg/BILLS-114hr456ih/xml/BILLS-114hr456ih.xml",
+      "candidate_url": "http://www.gpo.gov/fdsys/pkg/BILLS-114hr456ih/xml/BILLS-114hr456ih.xml",
+      "body_sha256": "9144437b0a2342ce8da1ee6298027f78ec9e91bdd6080e0255ba856845caf320",
+      "exact_target_source_rows": 0,
+      "exact_candidate_source_rows": 0,
+      "saved_document_rows": 2,
+      "published_recovery_rows": 1
+    },
+    {
+      "target_url": "https://archives-energycommerce.house.gov/sites/republicans.energycommerce.house.gov/files/Hearings/Joint/20120712_EP_OI/HMTG-112-HHRG-IF03-IF02-20120712.pdf",
+      "candidate_url": "https://web.archive.org/web/20180926105220id_/https://archives-energycommerce.house.gov/sites/republicans.energycommerce.house.gov/files/Hearings/Joint/20120712_EP_OI/HMTG-112-HHRG-IF03-IF02-20120712.pdf",
+      "body_sha256": "d765cf410a6e1dc832200791110b12d1fd49d534bdde5b4b84b633ae65b97762",
+      "exact_target_source_rows": 0,
+      "exact_candidate_source_rows": 1,
+      "saved_document_rows": 1,
+      "published_recovery_rows": 0
+    },
+    {
+      "target_url": "https://cue.usc.edu/files/2018/04/Vital-Signs-Report-FINAL-032818-V2.pdf",
+      "candidate_url": "https://web.archive.org/web/20210318020227id_/https://cue.usc.edu/files/2018/04/Vital-Signs-Report-FINAL-032818-V2.pdf",
+      "body_sha256": "72764eacc7579b63bd1e23cfd0367f8907a4d54e8169b1044fb6a8d08d1b312e",
+      "exact_target_source_rows": 0,
+      "exact_candidate_source_rows": 1,
+      "saved_document_rows": 1,
+      "published_recovery_rows": 0
+    },
+    {
+      "target_url": "https://democrats.veterans.house.gov/\u201chonoring-commitment-overcoming-barriers-quality-mental-health-care-veterans\u201d",
+      "candidate_url": "https://web.archive.org/web/20141206152938id_/http://democrats.veterans.house.gov/%E2%80%9Chonoring-commitment-overcoming-barriers-quality-mental-health-care-veterans%E2%80%9D",
+      "body_sha256": "a18a0b86356d1cb2c2ddd002f8f99af0e413af4e674807b317eade6c81d61f65",
+      "exact_target_source_rows": 0,
+      "exact_candidate_source_rows": 1,
+      "saved_document_rows": 1,
+      "published_recovery_rows": 0
+    },
+    {
+      "target_url": "https://docs.house.gov/meetings/ED/ED00/20180130/106808/HHRG-115-ED00-Bio-OhmP-20180130.pdf",
+      "candidate_url": "http://docs.house.gov/meetings/ED/ED00/20180130/106808/HHRG-115-ED00-Bio-OhmP-20180130.pdf",
+      "body_sha256": "d299d4c438eed52547b1c6c97e2c37740becb0b51308eb524a804aa20520a72e",
+      "exact_target_source_rows": 1,
+      "exact_candidate_source_rows": 0,
+      "saved_document_rows": 1,
+      "published_recovery_rows": 0
+    },
+    {
+      "target_url": "https://docs.house.gov/meetings/GO/GO00/20130919/101313/HHRG-113-GO00-Transcript-20130919.pdf",
+      "candidate_url": "http://docs.house.gov/meetings/GO/GO00/20130919/101313/HHRG-113-GO00-Transcript-20130919.pdf",
+      "body_sha256": "38ba3a793e72ec57988eb9a878bd9e3cc602a4431b57850ef3317c7f520ef1ea",
+      "exact_target_source_rows": 1,
+      "exact_candidate_source_rows": 0,
+      "saved_document_rows": 1,
+      "published_recovery_rows": 0
+    },
+    {
+      "target_url": "https://oig.ssa.gov/sites/default/files/audit/full/pdf/A-14-16-50037.pdf",
+      "candidate_url": "https://web.archive.org/web/20210803164648id_/https://oig.ssa.gov/sites/default/files/audit/full/pdf/A-14-16-50037.pdf",
+      "body_sha256": "78127d8fdee1c805703bf084d8d19fc0dba1166951e34e3bae90b22fd0975a99",
+      "exact_target_source_rows": 0,
+      "exact_candidate_source_rows": 1,
+      "saved_document_rows": 1,
+      "published_recovery_rows": 0
+    },
+    {
+      "target_url": "https://oversight.house.gov/hearing/reinventing-government/oversight.house.gov/wp-content/uploads/2013/06/David-Walker-Testimony.pdf",
+      "candidate_url": "https://web.archive.org/web/20141206135509id_/http://oversight.house.gov/hearing/reinventing-government/oversight.house.gov/wp-content/uploads/2013/06/David-Walker-Testimony.pdf",
+      "body_sha256": "cd154f18020d95913df70f5e1f6066fadbc7534c1f16d684b968a07e1a9c8cce",
+      "exact_target_source_rows": 0,
+      "exact_candidate_source_rows": 1,
+      "saved_document_rows": 1,
+      "published_recovery_rows": 0
+    },
+    {
+      "target_url": "https://reliefweb.int/sites/reliefweb.int/files/resources/A_HRC_46_20_AEV.pdf",
+      "candidate_url": "https://web.archive.org/web/20210511112431id_/https://reliefweb.int/sites/reliefweb.int/files/resources/A_HRC_46_20_AEV.pdf",
+      "body_sha256": "aa5ecc24528435f8b950c788d0af6867fefd79a6debc91724c9a45871878f692",
+      "exact_target_source_rows": 0,
+      "exact_candidate_source_rows": 1,
+      "saved_document_rows": 1,
+      "published_recovery_rows": 0
+    },
+    {
+      "target_url": "https://republicans.transportation.house.gov/Media/file/TestimonyWater/2012-09-20-Darcy.pdf",
+      "candidate_url": "https://web.archive.org/web/20121212062841id_/http://republicans.transportation.house.gov/Media/file/TestimonyWater/2012-09-20-Darcy.pdf",
+      "body_sha256": "1f6e5510aae02a1a0c4025686d94bdb09e6feaaa49de7a86d6c36f2ce6b41b4e",
+      "exact_target_source_rows": 0,
+      "exact_candidate_source_rows": 1,
+      "saved_document_rows": 1,
+      "published_recovery_rows": 0
+    },
+    {
+      "target_url": "https://s3-ap-southeast-2.amazonaws.com/ad-aspi/2020-07/Uyghurs%20for%20sale%2028%20July%202020.pdf?xxhaH3mgIIRkbww1o26KF3cNTCDGAyVT=",
+      "candidate_url": "https://web.archive.org/web/20201026164834id_/https://s3-ap-southeast-2.amazonaws.com/ad-aspi/2020-07/Uyghurs%20for%20sale%2028%20July%202020.pdf?xxhaH3mgIIRkbww1o26KF3cNTCDGAyVT=",
+      "body_sha256": "0f4a3b7925215dbc4a1f9e04f6d7bd51cd86bcd07b306d2bf67418a62204fc81",
+      "exact_target_source_rows": 0,
+      "exact_candidate_source_rows": 1,
+      "saved_document_rows": 1,
+      "published_recovery_rows": 0
+    },
+    {
+      "target_url": "https://science.house.gov/sites/republicans.science.house.gov/files/documents/071409_Bacon_0.pdf",
+      "candidate_url": "https://web.archive.org/web/20180924193748id_/https://science.house.gov/sites/republicans.science.house.gov/files/documents/071409_Bacon_0.pdf",
+      "body_sha256": "a7b52581b433aa90a44fa1293dce1d0b56bef577b6dd8ca2fc8a2b41de365191",
+      "exact_target_source_rows": 0,
+      "exact_candidate_source_rows": 1,
+      "saved_document_rows": 1,
+      "published_recovery_rows": 0
+    },
+    {
+      "target_url": "https://science.house.gov/sites/republicans.science.house.gov/files/documents/HHRG-114-SY16-WState-JShin-20150611.pdf",
+      "candidate_url": "https://web.archive.org/web/20180923210615id_/https://science.house.gov/sites/republicans.science.house.gov/files/documents/HHRG-114-SY16-WState-JShin-20150611.pdf",
+      "body_sha256": "66751b9545375ee5cc42e929c1b9782604871a068ea15b37f8a20e7df08c38a6",
+      "exact_target_source_rows": 0,
+      "exact_candidate_source_rows": 1,
+      "saved_document_rows": 1,
+      "published_recovery_rows": 0
+    },
+    {
+      "target_url": "https://sciencedems.house.gov/Media/File/ForHearings/06aug02Renew/larsen_testimony_02aug06.pdf",
+      "candidate_url": "https://web.archive.org/web/20110203234921id_/http://sciencedems.house.gov/Media/File/ForHearings/06aug02Renew/larsen_testimony_02aug06.pdf",
+      "body_sha256": "aff92569ac93b49d20d265257ac6a75ba9d95c92b611da943a1dcb35d2e23f08",
+      "exact_target_source_rows": 0,
+      "exact_candidate_source_rows": 1,
+      "saved_document_rows": 1,
+      "published_recovery_rows": 0
+    },
+    {
+      "target_url": "https://waysandmeans.house.gov/Legacy/fullcomm/107cong/fc-21act.htm",
+      "candidate_url": "https://web.archive.org/web/20180926133535id_/https://waysandmeans.house.gov/Legacy/fullcomm/107cong/fc-21act.htm",
+      "body_sha256": "a8b5d817aa436ffdadafec57b1b2f61d1dce2a9af335a9d47eb4488ca737c1d5",
+      "exact_target_source_rows": 0,
+      "exact_candidate_source_rows": 1,
+      "saved_document_rows": 1,
+      "published_recovery_rows": 0
+    },
+    {
+      "target_url": "https://web.archive.org/web/20201028144930id_/http://agriculture.edgeboss.net/wmedia/agriculture/20110210.wvx",
+      "candidate_url": "http://agriculture.edgeboss.net/wmedia/agriculture/20110210.wvx",
+      "body_sha256": "24e5987d0cd3cf5ec5e41d085779ac0fa95fb9c6c25d02c29dee04fe797f3437",
+      "exact_target_source_rows": 0,
+      "exact_candidate_source_rows": 1,
+      "saved_document_rows": 0,
+      "published_recovery_rows": 1
+    },
+    {
+      "target_url": "https://web.archive.org/web/20220107081614id_/https://beatty.house.gov/media-center/in-the-news/beatty-highlights-need-for-transparency-and-clarity-in-mortgage-loan",
+      "candidate_url": "http://beatty.house.gov/media-center/in-the-news/beatty-highlights-need-for-transparency-and-clarity-in-mortgage-loan",
+      "body_sha256": "19928a9a1678352c6bcd22332251a15d4df2ad79eb4b70e625936f36c7926abb",
+      "exact_target_source_rows": 0,
+      "exact_candidate_source_rows": 1,
+      "saved_document_rows": 1,
+      "published_recovery_rows": 0
+    },
+    {
+      "target_url": "https://web.archive.org/web/20220328073809id_/https://archives-agriculture.house.gov/sites/republicans.agriculture.house.gov/files/pdf/4.29.14%20113-12%20-%2087765.pdf",
+      "candidate_url": "https://archives-agriculture.house.gov/sites/republicans.agriculture.house.gov/files/pdf/4.29.14%20113-12%20-%2087765.pdf",
+      "body_sha256": "0d5d4776feb5f665b8923435de672f86cf141eed3aecacb08ff98ef8c4092587",
+      "exact_target_source_rows": 0,
+      "exact_candidate_source_rows": 2,
+      "saved_document_rows": 1,
+      "published_recovery_rows": 0
+    },
+    {
+      "target_url": "https://web.archive.org/web/20220823180207id_/https://republicans-energycommerce.house.gov/sites/republicans.energycommerce.house.gov/files/Hearings/Health/20120209/HHRG-112-IF14-MState-P000373-20120209.pdf",
+      "candidate_url": "https://republicans-energycommerce.house.gov/sites/republicans.energycommerce.house.gov/files/Hearings/Health/20120209/HHRG-112-IF14-MState-P000373-20120209.pdf",
+      "body_sha256": "d3bac9a1234eaf11d7df69a8cc47801a851a978162e60124f518eb0053df5cec",
+      "exact_target_source_rows": 0,
+      "exact_candidate_source_rows": 2,
+      "saved_document_rows": 1,
+      "published_recovery_rows": 0
+    },
+    {
+      "target_url": "https://web.archive.org/web/20220919221959id_/https://republicans-intelligence.house.gov/uploadedfiles/nunes_opening_statement_for_hill_and_holmes_hearing_on_impeachment.pdf",
+      "candidate_url": "https://republicans-intelligence.house.gov/uploadedfiles/nunes_opening_statement_for_hill_and_holmes_hearing_on_impeachment.pdf",
+      "body_sha256": "7811ec9e29742fcf5700a320162d43fcf80412ede75548315faeda2c13e7cf47",
+      "exact_target_source_rows": 0,
+      "exact_candidate_source_rows": 2,
+      "saved_document_rows": 1,
+      "published_recovery_rows": 0
+    },
+    {
+      "target_url": "https://web.archive.org/web/20220920043401id_/https://edlabor.house.gov/download/morellea14",
+      "candidate_url": "https://edlabor.house.gov/download/morellea14",
+      "body_sha256": "1b5facc7dfe4707f44f21a6b75f0e29d9ab3579e325398edfdca70511240d345",
+      "exact_target_source_rows": 0,
+      "exact_candidate_source_rows": 0,
+      "saved_document_rows": 0,
+      "published_recovery_rows": 0
+    },
+    {
+      "target_url": "https://web.archive.org/web/20221221061754id_/https://khanna.house.gov/sites/khanna.house.gov/files/032117_TransDigm_Letter.pdf",
+      "candidate_url": "https://khanna.house.gov/sites/khanna.house.gov/files/032117_TransDigm_Letter.pdf",
+      "body_sha256": "2cb3703907c8ea90400fd5524d4874b8adff45e356b3e615b0734629052f4f46",
+      "exact_target_source_rows": 0,
+      "exact_candidate_source_rows": 2,
+      "saved_document_rows": 1,
+      "published_recovery_rows": 0
+    },
+    {
+      "target_url": "https://web.archive.org/web/20240929075621id_/https://docstore.ohchr.org/SelfServices/FilesHandler.ashx?enc=4slQ6QSmlBEDzFEovLCuW%2BKyH%2BnXprasyMzd2e8mx4fouQpDVshj73SoMLU1JTdjtZDTDYerYia%2BctGqO8NrWmRL%2Ft1OyyKtqjxnygkOzYPp9tCfBWVc0bkQ1mCWULU7",
+      "candidate_url": "https://docstore.ohchr.org/SelfServices/FilesHandler.ashx?enc=4slQ6QSmlBEDzFEovLCuW%2BKyH%2BnXprasyMzd2e8mx4fouQpDVshj73SoMLU1JTdjtZDTDYerYia%2BctGqO8NrWmRL%2Ft1OyyKtqjxnygkOzYPp9tCfBWVc0bkQ1mCWULU7",
+      "body_sha256": "149e43143e5aeabfbe0a535d8ea63025940a88049ca39cebd5e515c43b0a40b9",
+      "exact_target_source_rows": 0,
+      "exact_candidate_source_rows": 2,
+      "saved_document_rows": 1,
+      "published_recovery_rows": 0
+    },
+    {
+      "target_url": "https://web.archive.org/web/20250420084413id_/https://www.ethics.harvard.edu/files/center-for-ethics/files/roadmaptopandemicresilience_final_0.pdf",
+      "candidate_url": "https://www.ethics.harvard.edu/files/center-for-ethics/files/roadmaptopandemicresilience_final_0.pdf",
+      "body_sha256": "34d226d192af4565d6fd4694b3c9b0f6e5e2a2029120e4d05f39a6d801edded8",
+      "exact_target_source_rows": 0,
+      "exact_candidate_source_rows": 2,
+      "saved_document_rows": 1,
+      "published_recovery_rows": 0
+    },
+    {
+      "target_url": "https://web.archive.org/web/20250627030927id_/https://foreignaffairs.house.gov/wp-content/uploads/2024/07/HR8934.pdf",
+      "candidate_url": "https://foreignaffairs.house.gov/wp-content/uploads/2024/07/HR8934.pdf",
+      "body_sha256": "82f3774eb00e60dc17a3cb4aa48817a712c74fa0016962cc35adafb894f1ecb1",
+      "exact_target_source_rows": 0,
+      "exact_candidate_source_rows": 2,
+      "saved_document_rows": 1,
+      "published_recovery_rows": 0
+    },
+    {
+      "target_url": "https://web.archive.org/web/20250903225915id_/https://oig.justice.gov/reports/2017/o1701.pdf",
+      "candidate_url": "https://oig.justice.gov/reports/2017/o1701.pdf",
+      "body_sha256": "80c1c2e970bfed741e6f198a234025faba64aafa9207039914ad4249581bfc79",
+      "exact_target_source_rows": 0,
+      "exact_candidate_source_rows": 2,
+      "saved_document_rows": 1,
+      "published_recovery_rows": 0
+    },
+    {
+      "target_url": "https://www.help.senate.gov/hearings/a-dire-shortage-and-getting-worse-solving-the-crisis-in-the-health-care-workforce/",
+      "candidate_url": "https://web.archive.org/web/20260414145403id_/https://www.help.senate.gov/hearings/a-dire-shortage-and-getting-worse-solving-the-crisis-in-the-health-care-workforce",
+      "body_sha256": "7653f19fd819b75101a3dbe1a1bc3893f38a8a26ba65160df3ecb3acce1de83c",
+      "exact_target_source_rows": 0,
+      "exact_candidate_source_rows": 1,
+      "saved_document_rows": 1,
+      "published_recovery_rows": 0
+    },
+    {
+      "target_url": "https://www.help.senate.gov/hearings/nomination-of-gordon-hartogensis",
+      "candidate_url": "https://web.archive.org/web/20260617004735id_/https://www.help.senate.gov/hearings/nomination-of-gordon-hartogensis",
+      "body_sha256": "d7eeae2a8d796d4a51ce2629966f7e9d42c0b1a627609cc1d55ac1ac7045faf4",
+      "exact_target_source_rows": 0,
+      "exact_candidate_source_rows": 1,
+      "saved_document_rows": 1,
+      "published_recovery_rows": 0
+    }
+  ],
+  "exception_readings": [
+    {
+      "body_sha": "1b5facc7dfe4707f44f21a6b75f0e29d9ab3579e325398edfdca70511240d345",
+      "parser": "html",
+      "parser_version": "f90d96a2f3196e14c70d7e7642ff8a23d7ceb5b8938408fa4373b949f18eaf89",
+      "status": "completed",
+      "error_type": null,
+      "format": null,
+      "xml_root": null,
+      "title": "House Committee on Education and Labor",
+      "heading": "Download File",
+      "content_date": null,
+      "base_href": null,
+      "text_bytes": 1841,
+      "link_count": 97,
+      "link_text_bytes": 1527,
+      "intact": null,
+      "named_meetings": [],
+      "fingerprint": "6e104c712d3fa7cb2c179a2e00d49d20b6bdfe6db7db2656f976099b0e144490",
+      "fields": []
+    }
+  ]
+}

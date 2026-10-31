@@ -1,0 +1,44 @@
+{
+  "decisions": {
+    "source": "/private/tmp/claude-501/-Users-mikewolfd-Work/71969fc5-4a0f-4f4e-aa49-d2dd9f4c2272/scratchpad/codex-impl/cx_model_design/recovery_campaign_v1/track_a/recovery_decisions.parquet",
+    "path": "/var/folders/g8/10vdwk2n07z85vqn_vlv2lfc0000gn/T/url-complete-validation-gwr26twu/inputs/decisions.parquet",
+    "size": 7792478,
+    "sha256": "9d7b40ffee770353a62053a09e5a59a7cab48ed1ed42a814cd232058fea740d2"
+  },
+  "retained": {
+    "source": "/private/tmp/claude-501/-Users-mikewolfd-Work/71969fc5-4a0f-4f4e-aa49-d2dd9f4c2272/scratchpad/codex-impl/cx_model_design/recovery_campaign_v1/track_a/retained_captures.parquet",
+    "path": "/var/folders/g8/10vdwk2n07z85vqn_vlv2lfc0000gn/T/url-complete-validation-gwr26twu/inputs/retained.parquet",
+    "size": 1949402,
+    "sha256": "f7f90542829d3126730bfcdbb6365a43b9aca5b2eda0fb2f7fa125b8456252a5"
+  },
+  "requirements": {
+    "source": "/private/tmp/claude-501/-Users-mikewolfd-Work/71969fc5-4a0f-4f4e-aa49-d2dd9f4c2272/scratchpad/codex-impl/cx_model_design/recovery_campaign_v1/plan_v2/recovery-requirements.parquet",
+    "path": "/var/folders/g8/10vdwk2n07z85vqn_vlv2lfc0000gn/T/url-complete-validation-gwr26twu/inputs/requirements.parquet",
+    "size": 4502990,
+    "sha256": "9f7249e84cf358380c02a3579ead65fff2507397a3bc59ef8087fb496db4f3e7"
+  },
+  "variants": {
+    "source": "/private/tmp/claude-501/-Users-mikewolfd-Work/71969fc5-4a0f-4f4e-aa49-d2dd9f4c2272/scratchpad/codex-impl/cx_model_design/recovery_campaign_v1/release_v2/url_variants.parquet",
+    "path": "/var/folders/g8/10vdwk2n07z85vqn_vlv2lfc0000gn/T/url-complete-validation-gwr26twu/inputs/variants.parquet",
+    "size": 380,
+    "sha256": "7fbde8fa5eb17e628b217972b42dd1192a8af76d8f4254153dba123799f56928"
+  },
+  "wave4qualified": {
+    "source": "/private/tmp/claude-501/-Users-mikewolfd-Work/71969fc5-4a0f-4f4e-aa49-d2dd9f4c2272/scratchpad/codex-impl/cx_model_design/recovery_campaign_v1/track_b/b1_wave4_qualified.json",
+    "path": "/var/folders/g8/10vdwk2n07z85vqn_vlv2lfc0000gn/T/url-complete-validation-gwr26twu/inputs/wave4qualified.json",
+    "size": 1368068,
+    "sha256": "2cfa9faa562b983a7144a3bbe455335887c49a69c50b1760f3f86f03dbd04d7f"
+  },
+  "wave5results": {
+    "source": "/private/tmp/claude-501/-Users-mikewolfd-Work/71969fc5-4a0f-4f4e-aa49-d2dd9f4c2272/scratchpad/codex-impl/cx_model_design/recovery_campaign_v1/track_b/b1_wave5_results.json",
+    "path": "/var/folders/g8/10vdwk2n07z85vqn_vlv2lfc0000gn/T/url-complete-validation-gwr26twu/inputs/wave5results.json",
+    "size": 580922,
+    "sha256": "ef224d23cf231547259064d8019e62d81e381ee233528351e137ab8573e4aea1"
+  },
+  "wave5qualified": {
+    "source": "/private/tmp/claude-501/-Users-mikewolfd-Work/71969fc5-4a0f-4f4e-aa49-d2dd9f4c2272/scratchpad/codex-impl/cx_model_design/recovery_campaign_v1/track_b/b1_wave5_qualified.json",
+    "path": "/var/folders/g8/10vdwk2n07z85vqn_vlv2lfc0000gn/T/url-complete-validation-gwr26twu/inputs/wave5qualified.json",
+    "size": 761404,
+    "sha256": "92cffed964f59796c186311726b4b9feba8b44dd25ccf39bb513826fb5bc1c15"
+  }
+}

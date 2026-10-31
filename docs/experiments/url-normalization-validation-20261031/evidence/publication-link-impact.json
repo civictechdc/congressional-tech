@@ -1,0 +1,466 @@
+[
+  {
+    "target_url": "https://www.finance.senate.gov/download/03182021-vandenberg-testimony&download=1#",
+    "source_id": "9f6066305978e7ae3c7f85549fc1b068140f1450bb69b3fcb24313e1aae2f077",
+    "context_url": "https://www.finance.senate.gov/download/03182021-vandenberg-testimony&download=1",
+    "baseline_key": "finance.senate.gov/download/03182021-vandenberg-testimony&download=1",
+    "proposed_key": "finance.senate.gov/download/03182021-vandenberg-testimony?download=1",
+    "published_target_documents": 0
+  },
+  {
+    "target_url": "https://democrats-transportation.house.gov/download/mary-lerdahl-testimony%20#aria-skip-nav",
+    "source_id": "af5bd67493eb69c07402b6557d01f98ed5dfa23e55c8905dfbaa6536a115cd69",
+    "context_url": "https://democrats-transportation.house.gov/download/mary-lerdahl-testimony%20",
+    "baseline_key": "democrats-transportation.house.gov/download/mary-lerdahl-testimony%20",
+    "proposed_key": "democrats-transportation.house.gov/download/mary-lerdahl-testimony",
+    "published_target_documents": 0
+  },
+  {
+    "target_url": "https://www.finance.senate.gov/404?notfound=hearings%2Fthe-presidents-fiscal-year-2024-irs-budget-and-the-irss-2023-filing-season#skip-nav",
+    "source_id": "693092e2ab944166c00ab7610a4beaccf8771e4e2a398fd8808574ea2e959d93",
+    "context_url": "https://www.finance.senate.gov/404?notfound=hearings%2Fthe-presidents-fiscal-year-2024-irs-budget-and-the-irss-2023-filing-season",
+    "baseline_key": "finance.senate.gov/404?notfound=hearings%2Fthe-presidents-fiscal-year-2024-irs-budget-and-the-irss-2023-filing-season",
+    "proposed_key": "finance.senate.gov/hearings/the-presidents-fiscal-year-2024-irs-budget-and-the-irss-2023-filing-season",
+    "published_target_documents": 0
+  },
+  {
+    "target_url": "https://www.finance.senate.gov/404?notfound=hearings%2Fthe-presidents-fiscal-year-2024-irs-budget-and-the-irss-2023-filing-season#",
+    "source_id": "693092e2ab944166c00ab7610a4beaccf8771e4e2a398fd8808574ea2e959d93",
+    "context_url": "https://www.finance.senate.gov/404?notfound=hearings%2Fthe-presidents-fiscal-year-2024-irs-budget-and-the-irss-2023-filing-season",
+    "baseline_key": "finance.senate.gov/404?notfound=hearings%2Fthe-presidents-fiscal-year-2024-irs-budget-and-the-irss-2023-filing-season",
+    "proposed_key": "finance.senate.gov/hearings/the-presidents-fiscal-year-2024-irs-budget-and-the-irss-2023-filing-season",
+    "published_target_documents": 0
+  },
+  {
+    "target_url": "https://www.finance.senate.gov/download/06172020-lighthizer&download=1#",
+    "source_id": "d1070c37d60b5b7c44cb9660e517b90cf9888c3a7f15114036e033881eda1077",
+    "context_url": "https://www.finance.senate.gov/download/06172020-lighthizer&download=1",
+    "baseline_key": "finance.senate.gov/download/06172020-lighthizer&download=1",
+    "proposed_key": "finance.senate.gov/download/06172020-lighthizer?download=1",
+    "published_target_documents": 0
+  },
+  {
+    "target_url": "https://www.finance.senate.gov/download/02132020-wyden-testimony&download=1#skip-nav",
+    "source_id": "e8cfac6ef1b9c941016b1ff56cb791e8c140a9e9e95f2c737c1a3ac76ab4d472",
+    "context_url": "https://www.finance.senate.gov/download/02132020-wyden-testimony&download=1",
+    "baseline_key": "finance.senate.gov/download/02132020-wyden-testimony&download=1",
+    "proposed_key": "finance.senate.gov/download/02132020-wyden-testimony?download=1",
+    "published_target_documents": 0
+  },
+  {
+    "target_url": "https://democrats-transportation.house.gov/download/honorable-chauncey-p-goss-ii-testimony%20#aria-skip-nav",
+    "source_id": "0b83f05b921350e5f055eeeb6283961b26ef69a91be2f67cf81d1ab6b5d048a6",
+    "context_url": "https://democrats-transportation.house.gov/download/honorable-chauncey-p-goss-ii-testimony%20",
+    "baseline_key": "democrats-transportation.house.gov/download/honorable-chauncey-p-goss-ii-testimony%20",
+    "proposed_key": "democrats-transportation.house.gov/download/honorable-chauncey-p-goss-ii-testimony",
+    "published_target_documents": 0
+  },
+  {
+    "target_url": "https://democrats-transportation.house.gov/download/sandra-norman-testimony%20#aria-skip-nav",
+    "source_id": "8263dead6909e54599b7a65ddd5d728d95e59564bcd8018fd081330856262439",
+    "context_url": "https://democrats-transportation.house.gov/download/sandra-norman-testimony%20",
+    "baseline_key": "democrats-transportation.house.gov/download/sandra-norman-testimony%20",
+    "proposed_key": "democrats-transportation.house.gov/download/sandra-norman-testimony",
+    "published_target_documents": 0
+  },
+  {
+    "target_url": "https://democrats-transportation.house.gov/download/ans-to-hr-4611%20#aria-skip-nav",
+    "source_id": "6c58d77172617778296181d096f58376dad577efe9a4eb2519d704788a542192",
+    "context_url": "https://democrats-transportation.house.gov/download/ans-to-hr-4611%20",
+    "baseline_key": "democrats-transportation.house.gov/download/ans-to-hr-4611%20",
+    "proposed_key": "democrats-transportation.house.gov/download/ans-to-hr-4611",
+    "published_target_documents": 0
+  },
+  {
+    "target_url": "https://democrats-transportation.house.gov/download/noah-valenstein-testimony%20#aria-skip-nav",
+    "source_id": "d88e49bc108b5a7476e5e2c725ad2912185aea79e1888f26a12935b7be1b5256",
+    "context_url": "https://democrats-transportation.house.gov/download/noah-valenstein-testimony%20",
+    "baseline_key": "democrats-transportation.house.gov/download/noah-valenstein-testimony%20",
+    "proposed_key": "democrats-transportation.house.gov/download/noah-valenstein-testimony",
+    "published_target_documents": 0
+  },
+  {
+    "target_url": "https://democrats-transportation.house.gov/download/jon-wainwright-testimony%20#aria-skip-nav",
+    "source_id": "ee5af4d53bd6bb6dbdeb03c5595879b85a3bcd41ece0a4e637cc7ce95ab5290f",
+    "context_url": "https://democrats-transportation.house.gov/download/jon-wainwright-testimony%20",
+    "baseline_key": "democrats-transportation.house.gov/download/jon-wainwright-testimony%20",
+    "proposed_key": "democrats-transportation.house.gov/download/jon-wainwright-testimony",
+    "published_target_documents": 0
+  },
+  {
+    "target_url": "https://www.finance.senate.gov/download/03182021-vandenberg-testimony&download=1#skip-nav",
+    "source_id": "9f6066305978e7ae3c7f85549fc1b068140f1450bb69b3fcb24313e1aae2f077",
+    "context_url": "https://www.finance.senate.gov/download/03182021-vandenberg-testimony&download=1",
+    "baseline_key": "finance.senate.gov/download/03182021-vandenberg-testimony&download=1",
+    "proposed_key": "finance.senate.gov/download/03182021-vandenberg-testimony?download=1",
+    "published_target_documents": 0
+  },
+  {
+    "target_url": "https://www.finance.senate.gov/download/open-executive-session-to-consider-the-nominations-of-lily-lawrence-batchelder-benjamin-harris-j-nellie-liang-and-jonathan-davidson-june-9-10-2021&download=1#skip-nav",
+    "source_id": "ca9e55cd72434628eb8d00dc19b74f079cb78f11e6ce8c876874cbe65dc5db86",
+    "context_url": "https://www.finance.senate.gov/download/open-executive-session-to-consider-the-nominations-of-lily-lawrence-batchelder-benjamin-harris-j-nellie-liang-and-jonathan-davidson-june-9-10-2021&download=1",
+    "baseline_key": "finance.senate.gov/download/open-executive-session-to-consider-the-nominations-of-lily-lawrence-batchelder-benjamin-harris-j-nellie-liang-and-jonathan-davidson-june-9-10-2021&download=1",
+    "proposed_key": "finance.senate.gov/download/open-executive-session-to-consider-the-nominations-of-lily-lawrence-batchelder-benjamin-harris-j-nellie-liang-and-jonathan-davidson-june-9-10-2021?download=1",
+    "published_target_documents": 0
+  },
+  {
+    "target_url": "https://www.finance.senate.gov/404?notfound=hearings%2Fthe-presidents-fiscal-year-2024-irs-budget-and-the-irss-2023-filing-season#main-nav",
+    "source_id": "693092e2ab944166c00ab7610a4beaccf8771e4e2a398fd8808574ea2e959d93",
+    "context_url": "https://www.finance.senate.gov/404?notfound=hearings%2Fthe-presidents-fiscal-year-2024-irs-budget-and-the-irss-2023-filing-season",
+    "baseline_key": "finance.senate.gov/404?notfound=hearings%2Fthe-presidents-fiscal-year-2024-irs-budget-and-the-irss-2023-filing-season",
+    "proposed_key": "finance.senate.gov/hearings/the-presidents-fiscal-year-2024-irs-budget-and-the-irss-2023-filing-season",
+    "published_target_documents": 0
+  },
+  {
+    "target_url": "https://www.finance.senate.gov/download/06172020-lighthizer&download=1#main-nav",
+    "source_id": "d1070c37d60b5b7c44cb9660e517b90cf9888c3a7f15114036e033881eda1077",
+    "context_url": "https://www.finance.senate.gov/download/06172020-lighthizer&download=1",
+    "baseline_key": "finance.senate.gov/download/06172020-lighthizer&download=1",
+    "proposed_key": "finance.senate.gov/download/06172020-lighthizer?download=1",
+    "published_target_documents": 0
+  },
+  {
+    "target_url": "https://www.finance.senate.gov/download/06172020-lighthizer&download=1#skip-nav",
+    "source_id": "d1070c37d60b5b7c44cb9660e517b90cf9888c3a7f15114036e033881eda1077",
+    "context_url": "https://www.finance.senate.gov/download/06172020-lighthizer&download=1",
+    "baseline_key": "finance.senate.gov/download/06172020-lighthizer&download=1",
+    "proposed_key": "finance.senate.gov/download/06172020-lighthizer?download=1",
+    "published_target_documents": 0
+  },
+  {
+    "target_url": "https://www.finance.senate.gov/download/02132020-wyden-testimony&download=1#",
+    "source_id": "e8cfac6ef1b9c941016b1ff56cb791e8c140a9e9e95f2c737c1a3ac76ab4d472",
+    "context_url": "https://www.finance.senate.gov/download/02132020-wyden-testimony&download=1",
+    "baseline_key": "finance.senate.gov/download/02132020-wyden-testimony&download=1",
+    "proposed_key": "finance.senate.gov/download/02132020-wyden-testimony?download=1",
+    "published_target_documents": 0
+  },
+  {
+    "target_url": "https://www.finance.senate.gov/download/08222018-faulkender-testimony&download=1#main-nav",
+    "source_id": "cebc61bda13161e5c3e8b623bfe4f37c42d7bb46d0408ccf2355f0e42aa434ff",
+    "context_url": "https://www.finance.senate.gov/download/08222018-faulkender-testimony&download=1",
+    "baseline_key": "finance.senate.gov/download/08222018-faulkender-testimony&download=1",
+    "proposed_key": "finance.senate.gov/download/08222018-faulkender-testimony?download=1",
+    "published_target_documents": 0
+  },
+  {
+    "target_url": "https://www.finance.senate.gov/download/08222018-faulkender-testimony&download=1#",
+    "source_id": "cebc61bda13161e5c3e8b623bfe4f37c42d7bb46d0408ccf2355f0e42aa434ff",
+    "context_url": "https://www.finance.senate.gov/download/08222018-faulkender-testimony&download=1",
+    "baseline_key": "finance.senate.gov/download/08222018-faulkender-testimony&download=1",
+    "proposed_key": "finance.senate.gov/download/08222018-faulkender-testimony?download=1",
+    "published_target_documents": 0
+  },
+  {
+    "target_url": "https://democrats-transportation.house.gov/download/shannon-estenoz-testimony%20#aria-skip-nav",
+    "source_id": "2abc26b3d1da8c66ae29bf73aeab02a573da8a8e806c6ca08976ce5741943003",
+    "context_url": "https://democrats-transportation.house.gov/download/shannon-estenoz-testimony%20",
+    "baseline_key": "democrats-transportation.house.gov/download/shannon-estenoz-testimony%20",
+    "proposed_key": "democrats-transportation.house.gov/download/shannon-estenoz-testimony",
+    "published_target_documents": 0
+  },
+  {
+    "target_url": "https://democrats-transportation.house.gov/download/mucarsel-powell-037%20#aria-skip-nav",
+    "source_id": "a30130a77c0b701f4db2aec60dc2d66d6d5363134a559758ba6198b9fe4c7a5b",
+    "context_url": "https://democrats-transportation.house.gov/download/mucarsel-powell-037%20",
+    "baseline_key": "democrats-transportation.house.gov/download/mucarsel-powell-037%20",
+    "proposed_key": "democrats-transportation.house.gov/download/mucarsel-powell-037",
+    "published_target_documents": 0
+  },
+  {
+    "target_url": "https://www.finance.senate.gov/download/open-executive-session-to-consider-an-original-bill-entitled-helping-to-end-addiction-and-lessen-heal-substance-use-disorders-act-of-2018&download=1#main-nav",
+    "source_id": "536ed1e387c205b99de96feb0a564b6631dfd9487471ed6e2749bac20c513a5f",
+    "context_url": "https://www.finance.senate.gov/download/open-executive-session-to-consider-an-original-bill-entitled-helping-to-end-addiction-and-lessen-heal-substance-use-disorders-act-of-2018&download=1",
+    "baseline_key": "finance.senate.gov/download/open-executive-session-to-consider-an-original-bill-entitled-helping-to-end-addiction-and-lessen-heal-substance-use-disorders-act-of-2018&download=1",
+    "proposed_key": "finance.senate.gov/download/open-executive-session-to-consider-an-original-bill-entitled-helping-to-end-addiction-and-lessen-heal-substance-use-disorders-act-of-2018?download=1",
+    "published_target_documents": 0
+  },
+  {
+    "target_url": "https://www.cantwell.senate.gov/download/rail-safety-presser-may-17%20#top",
+    "source_id": "0086d68221fedd1fb08c7ad566fe2ba1dc9c32dc1bf8d82fcdbf3e1b13371eb8",
+    "context_url": "https://www.cantwell.senate.gov/download/rail-safety-presser-may-17%20",
+    "baseline_key": "cantwell.senate.gov/download/rail-safety-presser-may-17%20",
+    "proposed_key": "cantwell.senate.gov/download/rail-safety-presser-may-17",
+    "published_target_documents": 0
+  },
+  {
+    "target_url": "https://www.finance.senate.gov/404?notfound=hearings%2Fthe-presidents-fiscal-year-2024-irs-budget-and-the-irss-2023-filing-season#main-nav",
+    "source_id": "71ca455c1b3d8a93729803cd1dd90f8005b4d67a04f78a7f6f678c27f693913b",
+    "context_url": "https://www.finance.senate.gov/404?notfound=hearings%2Fthe-presidents-fiscal-year-2024-irs-budget-and-the-irss-2023-filing-season",
+    "baseline_key": "finance.senate.gov/404?notfound=hearings%2Fthe-presidents-fiscal-year-2024-irs-budget-and-the-irss-2023-filing-season",
+    "proposed_key": "finance.senate.gov/hearings/the-presidents-fiscal-year-2024-irs-budget-and-the-irss-2023-filing-season",
+    "published_target_documents": 0
+  },
+  {
+    "target_url": "https://www.finance.senate.gov/download/national-partnership-for-women-and-families-statement-by-erika-moritsugu-at-sfc-family-paid-leave-working-group-round-table-on-june-18-2020&download=1#skip-nav",
+    "source_id": "b6ea5704fb0fbdaff55141826baff151a121282abc6596c73bd0d3be8a6846db",
+    "context_url": "https://www.finance.senate.gov/download/national-partnership-for-women-and-families-statement-by-erika-moritsugu-at-sfc-family-paid-leave-working-group-round-table-on-june-18-2020&download=1",
+    "baseline_key": "finance.senate.gov/download/national-partnership-for-women-and-families-statement-by-erika-moritsugu-at-sfc-family-paid-leave-working-group-round-table-on-june-18-2020&download=1",
+    "proposed_key": "finance.senate.gov/download/national-partnership-for-women-and-families-statement-by-erika-moritsugu-at-sfc-family-paid-leave-working-group-round-table-on-june-18-2020?download=1",
+    "published_target_documents": 0
+  },
+  {
+    "target_url": "https://democrats-transportation.house.gov/download/eve-williams-testimony%20#aria-skip-nav",
+    "source_id": "e5dcbc2e59f7f0e3c6197d9f68fd4b28b576542e51169bbf02001710c4322d91",
+    "context_url": "https://democrats-transportation.house.gov/download/eve-williams-testimony%20",
+    "baseline_key": "democrats-transportation.house.gov/download/eve-williams-testimony%20",
+    "proposed_key": "democrats-transportation.house.gov/download/eve-williams-testimony",
+    "published_target_documents": 0
+  },
+  {
+    "target_url": "https://democrats-transportation.house.gov/download/graves-la-234%20#aria-skip-nav",
+    "source_id": "affd3433a8026e7a1ef4dfb68c60c2ab639b8a66ad8d2abb7a44d3de4bf0ae58",
+    "context_url": "https://democrats-transportation.house.gov/download/graves-la-234%20",
+    "baseline_key": "democrats-transportation.house.gov/download/graves-la-234%20",
+    "proposed_key": "democrats-transportation.house.gov/download/graves-la-234",
+    "published_target_documents": 0
+  },
+  {
+    "target_url": "https://www.finance.senate.gov/download/03182021-vandenberg-testimony&download=1#main-nav",
+    "source_id": "9f6066305978e7ae3c7f85549fc1b068140f1450bb69b3fcb24313e1aae2f077",
+    "context_url": "https://www.finance.senate.gov/download/03182021-vandenberg-testimony&download=1",
+    "baseline_key": "finance.senate.gov/download/03182021-vandenberg-testimony&download=1",
+    "proposed_key": "finance.senate.gov/download/03182021-vandenberg-testimony?download=1",
+    "published_target_documents": 0
+  },
+  {
+    "target_url": "https://www.finance.senate.gov/download/nominations-of-kipp-kranbuhl-sarah-c-arbes-and-jason-j-fichtner&download=1#",
+    "source_id": "73da8b7f31a58f0eb1afe01ffe67a461a083c20b4088f762e81e6f0949f8dfb5",
+    "context_url": "https://www.finance.senate.gov/download/nominations-of-kipp-kranbuhl-sarah-c-arbes-and-jason-j-fichtner&download=1",
+    "baseline_key": "finance.senate.gov/download/nominations-of-kipp-kranbuhl-sarah-c-arbes-and-jason-j-fichtner&download=1",
+    "proposed_key": "finance.senate.gov/download/nominations-of-kipp-kranbuhl-sarah-c-arbes-and-jason-j-fichtner?download=1",
+    "published_target_documents": 0
+  },
+  {
+    "target_url": "https://www.finance.senate.gov/download/02132020-wyden-testimony&download=1#main-nav",
+    "source_id": "e8cfac6ef1b9c941016b1ff56cb791e8c140a9e9e95f2c737c1a3ac76ab4d472",
+    "context_url": "https://www.finance.senate.gov/download/02132020-wyden-testimony&download=1",
+    "baseline_key": "finance.senate.gov/download/02132020-wyden-testimony&download=1",
+    "proposed_key": "finance.senate.gov/download/02132020-wyden-testimony?download=1",
+    "published_target_documents": 0
+  },
+  {
+    "target_url": "https://democrats-transportation.house.gov/download/elizabeth-jolin-testimony%20#aria-skip-nav",
+    "source_id": "80bea672cdd90732bb0a37378a701819bdecf68375facd1a6fd6b1383f75ce88",
+    "context_url": "https://democrats-transportation.house.gov/download/elizabeth-jolin-testimony%20",
+    "baseline_key": "democrats-transportation.house.gov/download/elizabeth-jolin-testimony%20",
+    "proposed_key": "democrats-transportation.house.gov/download/elizabeth-jolin-testimony",
+    "published_target_documents": 0
+  },
+  {
+    "target_url": "https://www.cantwell.senate.gov/download/rail-safety-presser-may-17%20#",
+    "source_id": "0086d68221fedd1fb08c7ad566fe2ba1dc9c32dc1bf8d82fcdbf3e1b13371eb8",
+    "context_url": "https://www.cantwell.senate.gov/download/rail-safety-presser-may-17%20",
+    "baseline_key": "cantwell.senate.gov/download/rail-safety-presser-may-17%20",
+    "proposed_key": "cantwell.senate.gov/download/rail-safety-presser-may-17",
+    "published_target_documents": 0
+  },
+  {
+    "target_url": "https://www.finance.senate.gov/404?notfound=hearings%2Fthe-presidents-fiscal-year-2024-irs-budget-and-the-irss-2023-filing-season#",
+    "source_id": "71ca455c1b3d8a93729803cd1dd90f8005b4d67a04f78a7f6f678c27f693913b",
+    "context_url": "https://www.finance.senate.gov/404?notfound=hearings%2Fthe-presidents-fiscal-year-2024-irs-budget-and-the-irss-2023-filing-season",
+    "baseline_key": "finance.senate.gov/404?notfound=hearings%2Fthe-presidents-fiscal-year-2024-irs-budget-and-the-irss-2023-filing-season",
+    "proposed_key": "finance.senate.gov/hearings/the-presidents-fiscal-year-2024-irs-budget-and-the-irss-2023-filing-season",
+    "published_target_documents": 0
+  },
+  {
+    "target_url": "https://www.finance.senate.gov/download/national-partnership-for-women-and-families-statement-by-erika-moritsugu-at-sfc-family-paid-leave-working-group-round-table-on-june-18-2020&download=1#",
+    "source_id": "b6ea5704fb0fbdaff55141826baff151a121282abc6596c73bd0d3be8a6846db",
+    "context_url": "https://www.finance.senate.gov/download/national-partnership-for-women-and-families-statement-by-erika-moritsugu-at-sfc-family-paid-leave-working-group-round-table-on-june-18-2020&download=1",
+    "baseline_key": "finance.senate.gov/download/national-partnership-for-women-and-families-statement-by-erika-moritsugu-at-sfc-family-paid-leave-working-group-round-table-on-june-18-2020&download=1",
+    "proposed_key": "finance.senate.gov/download/national-partnership-for-women-and-families-statement-by-erika-moritsugu-at-sfc-family-paid-leave-working-group-round-table-on-june-18-2020?download=1",
+    "published_target_documents": 0
+  },
+  {
+    "target_url": "https://www.finance.senate.gov/download/bipartisan-policy-center-statement-by-adrienne-schweer-at-sfc-family-paid-leave-working-group-round-table-on-june-18-2020&download=1#skip-nav",
+    "source_id": "d4ea31229f6a7cf1138dbe2031af2754429865cf2c17b8151b284839cf47c13c",
+    "context_url": "https://www.finance.senate.gov/download/bipartisan-policy-center-statement-by-adrienne-schweer-at-sfc-family-paid-leave-working-group-round-table-on-june-18-2020&download=1",
+    "baseline_key": "finance.senate.gov/download/bipartisan-policy-center-statement-by-adrienne-schweer-at-sfc-family-paid-leave-working-group-round-table-on-june-18-2020&download=1",
+    "proposed_key": "finance.senate.gov/download/bipartisan-policy-center-statement-by-adrienne-schweer-at-sfc-family-paid-leave-working-group-round-table-on-june-18-2020?download=1",
+    "published_target_documents": 0
+  },
+  {
+    "target_url": "https://www.finance.senate.gov/download/bipartisan-policy-center-statement-by-adrienne-schweer-at-sfc-family-paid-leave-working-group-round-table-on-june-18-2020&download=1#",
+    "source_id": "d4ea31229f6a7cf1138dbe2031af2754429865cf2c17b8151b284839cf47c13c",
+    "context_url": "https://www.finance.senate.gov/download/bipartisan-policy-center-statement-by-adrienne-schweer-at-sfc-family-paid-leave-working-group-round-table-on-june-18-2020&download=1",
+    "baseline_key": "finance.senate.gov/download/bipartisan-policy-center-statement-by-adrienne-schweer-at-sfc-family-paid-leave-working-group-round-table-on-june-18-2020&download=1",
+    "proposed_key": "finance.senate.gov/download/bipartisan-policy-center-statement-by-adrienne-schweer-at-sfc-family-paid-leave-working-group-round-table-on-june-18-2020?download=1",
+    "published_target_documents": 0
+  },
+  {
+    "target_url": "https://democrats-transportation.house.gov/download/griffin-testimony%20#aria-skip-nav",
+    "source_id": "c12913a0f602769a806aa7566fe01233e4f549c636af4c31c6f70cdf6138b55d",
+    "context_url": "https://democrats-transportation.house.gov/download/griffin-testimony%20",
+    "baseline_key": "democrats-transportation.house.gov/download/griffin-testimony%20",
+    "proposed_key": "democrats-transportation.house.gov/download/griffin-testimony",
+    "published_target_documents": 0
+  },
+  {
+    "target_url": "https://www.finance.senate.gov/download/drug-pricing-in-america-a-prescription-for-change-part-iii&download=1#main-nav",
+    "source_id": "9580839c8789bf7573cc93aa2f04f671848d4a0f57d818e5a0e6c29d3b9a87d9",
+    "context_url": "https://www.finance.senate.gov/download/drug-pricing-in-america-a-prescription-for-change-part-iii&download=1",
+    "baseline_key": "finance.senate.gov/download/drug-pricing-in-america-a-prescription-for-change-part-iii&download=1",
+    "proposed_key": "finance.senate.gov/download/drug-pricing-in-america-a-prescription-for-change-part-iii?download=1",
+    "published_target_documents": 0
+  },
+  {
+    "target_url": "https://www.finance.senate.gov/download/drug-pricing-in-america-a-prescription-for-change-part-iii&download=1#skip-nav",
+    "source_id": "9580839c8789bf7573cc93aa2f04f671848d4a0f57d818e5a0e6c29d3b9a87d9",
+    "context_url": "https://www.finance.senate.gov/download/drug-pricing-in-america-a-prescription-for-change-part-iii&download=1",
+    "baseline_key": "finance.senate.gov/download/drug-pricing-in-america-a-prescription-for-change-part-iii&download=1",
+    "proposed_key": "finance.senate.gov/download/drug-pricing-in-america-a-prescription-for-change-part-iii?download=1",
+    "published_target_documents": 0
+  },
+  {
+    "target_url": "https://www.finance.senate.gov/download/drug-pricing-in-america-a-prescription-for-change-part-iii&download=1#",
+    "source_id": "9580839c8789bf7573cc93aa2f04f671848d4a0f57d818e5a0e6c29d3b9a87d9",
+    "context_url": "https://www.finance.senate.gov/download/drug-pricing-in-america-a-prescription-for-change-part-iii&download=1",
+    "baseline_key": "finance.senate.gov/download/drug-pricing-in-america-a-prescription-for-change-part-iii&download=1",
+    "proposed_key": "finance.senate.gov/download/drug-pricing-in-america-a-prescription-for-change-part-iii?download=1",
+    "published_target_documents": 0
+  },
+  {
+    "target_url": "https://democrats-transportation.house.gov/download/09/09/2020/mathews-testimony%20#aria-skip-nav",
+    "source_id": "ec256e6fcd627275c8865aca4d0b636f2b7cc723a5d50e95336ba6200c1f84ce",
+    "context_url": "https://democrats-transportation.house.gov/download/09/09/2020/mathews-testimony%20",
+    "baseline_key": "democrats-transportation.house.gov/download/09/09/2020/mathews-testimony%20",
+    "proposed_key": "democrats-transportation.house.gov/download/09/09/2020/mathews-testimony",
+    "published_target_documents": 0
+  },
+  {
+    "target_url": "https://democrats-transportation.house.gov/download/farad-ali-testimony%20#aria-skip-nav",
+    "source_id": "fde2911fa2c509c5b7711e4163d802b139d017424d8265829d6142e92b485066",
+    "context_url": "https://democrats-transportation.house.gov/download/farad-ali-testimony%20",
+    "baseline_key": "democrats-transportation.house.gov/download/farad-ali-testimony%20",
+    "proposed_key": "democrats-transportation.house.gov/download/farad-ali-testimony",
+    "published_target_documents": 0
+  },
+  {
+    "target_url": "https://democrats-transportation.house.gov/download/ans-to-hr-4358%20#aria-skip-nav",
+    "source_id": "0ef52560d1e02d31d28dcea47313660f21c90f03b73d85df45716c5e05882e9a",
+    "context_url": "https://democrats-transportation.house.gov/download/ans-to-hr-4358%20",
+    "baseline_key": "democrats-transportation.house.gov/download/ans-to-hr-4358%20",
+    "proposed_key": "democrats-transportation.house.gov/download/ans-to-hr-4358",
+    "published_target_documents": 0
+  },
+  {
+    "target_url": "https://www.finance.senate.gov/download/open-executive-session-to-consider-the-nominations-of-lily-lawrence-batchelder-benjamin-harris-j-nellie-liang-and-jonathan-davidson-june-9-10-2021&download=1#main-nav",
+    "source_id": "ca9e55cd72434628eb8d00dc19b74f079cb78f11e6ce8c876874cbe65dc5db86",
+    "context_url": "https://www.finance.senate.gov/download/open-executive-session-to-consider-the-nominations-of-lily-lawrence-batchelder-benjamin-harris-j-nellie-liang-and-jonathan-davidson-june-9-10-2021&download=1",
+    "baseline_key": "finance.senate.gov/download/open-executive-session-to-consider-the-nominations-of-lily-lawrence-batchelder-benjamin-harris-j-nellie-liang-and-jonathan-davidson-june-9-10-2021&download=1",
+    "proposed_key": "finance.senate.gov/download/open-executive-session-to-consider-the-nominations-of-lily-lawrence-batchelder-benjamin-harris-j-nellie-liang-and-jonathan-davidson-june-9-10-2021?download=1",
+    "published_target_documents": 0
+  },
+  {
+    "target_url": "https://www.finance.senate.gov/download/open-executive-session-to-consider-the-nominations-of-lily-lawrence-batchelder-benjamin-harris-j-nellie-liang-and-jonathan-davidson-june-9-10-2021&download=1#",
+    "source_id": "ca9e55cd72434628eb8d00dc19b74f079cb78f11e6ce8c876874cbe65dc5db86",
+    "context_url": "https://www.finance.senate.gov/download/open-executive-session-to-consider-the-nominations-of-lily-lawrence-batchelder-benjamin-harris-j-nellie-liang-and-jonathan-davidson-june-9-10-2021&download=1",
+    "baseline_key": "finance.senate.gov/download/open-executive-session-to-consider-the-nominations-of-lily-lawrence-batchelder-benjamin-harris-j-nellie-liang-and-jonathan-davidson-june-9-10-2021&download=1",
+    "proposed_key": "finance.senate.gov/download/open-executive-session-to-consider-the-nominations-of-lily-lawrence-batchelder-benjamin-harris-j-nellie-liang-and-jonathan-davidson-june-9-10-2021?download=1",
+    "published_target_documents": 0
+  },
+  {
+    "target_url": "https://www.finance.senate.gov/download/nominations-of-kipp-kranbuhl-sarah-c-arbes-and-jason-j-fichtner&download=1#main-nav",
+    "source_id": "73da8b7f31a58f0eb1afe01ffe67a461a083c20b4088f762e81e6f0949f8dfb5",
+    "context_url": "https://www.finance.senate.gov/download/nominations-of-kipp-kranbuhl-sarah-c-arbes-and-jason-j-fichtner&download=1",
+    "baseline_key": "finance.senate.gov/download/nominations-of-kipp-kranbuhl-sarah-c-arbes-and-jason-j-fichtner&download=1",
+    "proposed_key": "finance.senate.gov/download/nominations-of-kipp-kranbuhl-sarah-c-arbes-and-jason-j-fichtner?download=1",
+    "published_target_documents": 0
+  },
+  {
+    "target_url": "https://www.finance.senate.gov/download/nominations-of-kipp-kranbuhl-sarah-c-arbes-and-jason-j-fichtner&download=1#skip-nav",
+    "source_id": "73da8b7f31a58f0eb1afe01ffe67a461a083c20b4088f762e81e6f0949f8dfb5",
+    "context_url": "https://www.finance.senate.gov/download/nominations-of-kipp-kranbuhl-sarah-c-arbes-and-jason-j-fichtner&download=1",
+    "baseline_key": "finance.senate.gov/download/nominations-of-kipp-kranbuhl-sarah-c-arbes-and-jason-j-fichtner&download=1",
+    "proposed_key": "finance.senate.gov/download/nominations-of-kipp-kranbuhl-sarah-c-arbes-and-jason-j-fichtner?download=1",
+    "published_target_documents": 0
+  },
+  {
+    "target_url": "https://www.finance.senate.gov/download/08222018-faulkender-testimony&download=1#skip-nav",
+    "source_id": "cebc61bda13161e5c3e8b623bfe4f37c42d7bb46d0408ccf2355f0e42aa434ff",
+    "context_url": "https://www.finance.senate.gov/download/08222018-faulkender-testimony&download=1",
+    "baseline_key": "finance.senate.gov/download/08222018-faulkender-testimony&download=1",
+    "proposed_key": "finance.senate.gov/download/08222018-faulkender-testimony?download=1",
+    "published_target_documents": 0
+  },
+  {
+    "target_url": "https://democrats-transportation.house.gov/download/09/09/2020/flynn-testimony%20#aria-skip-nav",
+    "source_id": "f8160f28bd7e34409f5ad4195f15a57d8352500b7420b6ea1bdb7c35b03e9d00",
+    "context_url": "https://democrats-transportation.house.gov/download/09/09/2020/flynn-testimony%20",
+    "baseline_key": "democrats-transportation.house.gov/download/09/09/2020/flynn-testimony%20",
+    "proposed_key": "democrats-transportation.house.gov/download/09/09/2020/flynn-testimony",
+    "published_target_documents": 0
+  },
+  {
+    "target_url": "https://www.finance.senate.gov/download/open-executive-session-to-consider-an-original-bill-entitled-helping-to-end-addiction-and-lessen-heal-substance-use-disorders-act-of-2018&download=1#skip-nav",
+    "source_id": "536ed1e387c205b99de96feb0a564b6631dfd9487471ed6e2749bac20c513a5f",
+    "context_url": "https://www.finance.senate.gov/download/open-executive-session-to-consider-an-original-bill-entitled-helping-to-end-addiction-and-lessen-heal-substance-use-disorders-act-of-2018&download=1",
+    "baseline_key": "finance.senate.gov/download/open-executive-session-to-consider-an-original-bill-entitled-helping-to-end-addiction-and-lessen-heal-substance-use-disorders-act-of-2018&download=1",
+    "proposed_key": "finance.senate.gov/download/open-executive-session-to-consider-an-original-bill-entitled-helping-to-end-addiction-and-lessen-heal-substance-use-disorders-act-of-2018?download=1",
+    "published_target_documents": 0
+  },
+  {
+    "target_url": "https://www.finance.senate.gov/download/open-executive-session-to-consider-an-original-bill-entitled-helping-to-end-addiction-and-lessen-heal-substance-use-disorders-act-of-2018&download=1#",
+    "source_id": "536ed1e387c205b99de96feb0a564b6631dfd9487471ed6e2749bac20c513a5f",
+    "context_url": "https://www.finance.senate.gov/download/open-executive-session-to-consider-an-original-bill-entitled-helping-to-end-addiction-and-lessen-heal-substance-use-disorders-act-of-2018&download=1",
+    "baseline_key": "finance.senate.gov/download/open-executive-session-to-consider-an-original-bill-entitled-helping-to-end-addiction-and-lessen-heal-substance-use-disorders-act-of-2018&download=1",
+    "proposed_key": "finance.senate.gov/download/open-executive-session-to-consider-an-original-bill-entitled-helping-to-end-addiction-and-lessen-heal-substance-use-disorders-act-of-2018?download=1",
+    "published_target_documents": 0
+  },
+  {
+    "target_url": "https://www.cantwell.senate.gov/download/rail-safety-presser-may-17%20",
+    "source_id": "0086d68221fedd1fb08c7ad566fe2ba1dc9c32dc1bf8d82fcdbf3e1b13371eb8",
+    "context_url": "https://www.commerce.senate.gov/meetings/press-conference-railway-safety-act/",
+    "baseline_key": "cantwell.senate.gov/download/rail-safety-presser-may-17%20",
+    "proposed_key": "cantwell.senate.gov/download/rail-safety-presser-may-17",
+    "published_target_documents": 0
+  },
+  {
+    "target_url": "https://www.finance.senate.gov/404?notfound=hearings%2Fthe-presidents-fiscal-year-2024-irs-budget-and-the-irss-2023-filing-season#skip-nav",
+    "source_id": "71ca455c1b3d8a93729803cd1dd90f8005b4d67a04f78a7f6f678c27f693913b",
+    "context_url": "https://www.finance.senate.gov/404?notfound=hearings%2Fthe-presidents-fiscal-year-2024-irs-budget-and-the-irss-2023-filing-season",
+    "baseline_key": "finance.senate.gov/404?notfound=hearings%2Fthe-presidents-fiscal-year-2024-irs-budget-and-the-irss-2023-filing-season",
+    "proposed_key": "finance.senate.gov/hearings/the-presidents-fiscal-year-2024-irs-budget-and-the-irss-2023-filing-season",
+    "published_target_documents": 0
+  },
+  {
+    "target_url": "https://www.finance.senate.gov/download/national-partnership-for-women-and-families-statement-by-erika-moritsugu-at-sfc-family-paid-leave-working-group-round-table-on-june-18-2020&download=1#main-nav",
+    "source_id": "b6ea5704fb0fbdaff55141826baff151a121282abc6596c73bd0d3be8a6846db",
+    "context_url": "https://www.finance.senate.gov/download/national-partnership-for-women-and-families-statement-by-erika-moritsugu-at-sfc-family-paid-leave-working-group-round-table-on-june-18-2020&download=1",
+    "baseline_key": "finance.senate.gov/download/national-partnership-for-women-and-families-statement-by-erika-moritsugu-at-sfc-family-paid-leave-working-group-round-table-on-june-18-2020&download=1",
+    "proposed_key": "finance.senate.gov/download/national-partnership-for-women-and-families-statement-by-erika-moritsugu-at-sfc-family-paid-leave-working-group-round-table-on-june-18-2020?download=1",
+    "published_target_documents": 0
+  },
+  {
+    "target_url": "https://www.hsgac.senate.gov/download/threats-to-us-networks-oversight-of-chinese-government-owned-carriers%20",
+    "source_id": "ceb9066837efb47786733c1d532ae98e5673637b8c5788898074f20e1e8de790",
+    "context_url": "https://www.hsgac.senate.gov/subcommittees/investigations/hearings/majority-and-minority-staff-report_-threats-to-us-networks-oversight-of-chinese-government-owned-carriers/",
+    "baseline_key": "hsgac.senate.gov/download/threats-to-us-networks-oversight-of-chinese-government-owned-carriers%20",
+    "proposed_key": "hsgac.senate.gov/download/threats-to-us-networks-oversight-of-chinese-government-owned-carriers",
+    "published_target_documents": 0
+  },
+  {
+    "target_url": "https://www.finance.senate.gov/download/bipartisan-policy-center-statement-by-adrienne-schweer-at-sfc-family-paid-leave-working-group-round-table-on-june-18-2020&download=1#main-nav",
+    "source_id": "d4ea31229f6a7cf1138dbe2031af2754429865cf2c17b8151b284839cf47c13c",
+    "context_url": "https://www.finance.senate.gov/download/bipartisan-policy-center-statement-by-adrienne-schweer-at-sfc-family-paid-leave-working-group-round-table-on-june-18-2020&download=1",
+    "baseline_key": "finance.senate.gov/download/bipartisan-policy-center-statement-by-adrienne-schweer-at-sfc-family-paid-leave-working-group-round-table-on-june-18-2020&download=1",
+    "proposed_key": "finance.senate.gov/download/bipartisan-policy-center-statement-by-adrienne-schweer-at-sfc-family-paid-leave-working-group-round-table-on-june-18-2020?download=1",
+    "published_target_documents": 0
+  },
+  {
+    "target_url": "https://democrats-transportation.house.gov/download/sandy-michael-mcdonald-testimony%20#aria-skip-nav",
+    "source_id": "67dddfa01f24e7ab76e22d068ac7429be5ab89017f137f2578aacc706e49e8e0",
+    "context_url": "https://democrats-transportation.house.gov/download/sandy-michael-mcdonald-testimony%20",
+    "baseline_key": "democrats-transportation.house.gov/download/sandy-michael-mcdonald-testimony%20",
+    "proposed_key": "democrats-transportation.house.gov/download/sandy-michael-mcdonald-testimony",
+    "published_target_documents": 0
+  },
+  {
+    "target_url": "https://democrats-transportation.house.gov/download/gary-ritter-testimony%20#aria-skip-nav",
+    "source_id": "b654961c41b98fa8883bd5de6cd6baff69197547a7dd965ff7d8f81a93cd8f19",
+    "context_url": "https://democrats-transportation.house.gov/download/gary-ritter-testimony%20",
+    "baseline_key": "democrats-transportation.house.gov/download/gary-ritter-testimony%20",
+    "proposed_key": "democrats-transportation.house.gov/download/gary-ritter-testimony",
+    "published_target_documents": 0
+  }
+]

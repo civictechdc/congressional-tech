@@ -1,0 +1,133 @@
+{
+  "counts": {
+    "empty_pages": 36,
+    "nonempty_pages": 24,
+    "row_occurrences": 237,
+    "different_original": 88,
+    "surt_equal": 237,
+    "exact_returned_replay_valid": 237,
+    "rows_on_rejected_pages": 165
+  },
+  "pages": [
+    {
+      "target": "https://www.hcfa.house.gov/110/41994.pdf",
+      "rows": 20,
+      "different_original": 20
+    },
+    {
+      "target": "http://www.nist.gov/sites/default/files/documents/2019/04/15/frvt_report_2019_04_12.pdf",
+      "rows": 1,
+      "different_original": 1
+    },
+    {
+      "target": "https://www.irs.gov/pub/irs-utl/20-Immigration%20and%20Taxation.pdf",
+      "rows": 20,
+      "different_original": 1
+    },
+    {
+      "target": "https://www.pgpf.org/sites/default/files/10112013_crisis_driven_report_fullreport.pdf",
+      "rows": 20,
+      "different_original": 20
+    },
+    {
+      "target": "https://www.piie.com/system/files/documents/pb19-2.pdf",
+      "rows": 16,
+      "different_original": 1
+    },
+    {
+      "target": "https://ai100.stanford.edu/sites/g/files/sbiybj9861/f/ai100report10032016fnl_singles.pdf",
+      "rows": 20,
+      "different_original": 0
+    },
+    {
+      "target": "https://www.integration.samhsa.gov/clinical-practice/SAMSA_TIP_Trauma.pdf",
+      "rows": 10,
+      "different_original": 7
+    },
+    {
+      "target": "https://crr.bc.edu/wp-content/uploads/2017/12/IB_18-1.pdf",
+      "rows": 1,
+      "different_original": 1
+    },
+    {
+      "target": "https://2009-2017.state.gov/documents/organization/111812.pdf",
+      "rows": 20,
+      "different_original": 0
+    },
+    {
+      "target": "https://www.perseus-strategies.com/wp-content/uploads/2023/12/Bialiatski-WGAD-Petition-12.4.23.pdf",
+      "rows": 2,
+      "different_original": 0
+    },
+    {
+      "target": "http://www.legion.org/documents/legion/pdf/womens_veterans_survey_report.pdf",
+      "rows": 14,
+      "different_original": 3
+    },
+    {
+      "target": "http://archives113.transportation.house.gov/sites/republicans.transportation.house.gov/files/documents/FEMA.pdf",
+      "rows": 13,
+      "different_original": 6
+    },
+    {
+      "target": "http://www.oregon-pip.org/resources/November%20webinar%20ACE%20in%20practice_2013.pdf",
+      "rows": 1,
+      "different_original": 1
+    },
+    {
+      "target": "https://www.ncsbn.org/13_NCSBNAnalysis_MilitaryLPNVN_final_April2013.pdf",
+      "rows": 2,
+      "different_original": 0
+    },
+    {
+      "target": "http://archive.legion.org/bitstream/handle/123456789/1065/2007s024.pdf?sequence=2&isAllowed=y",
+      "rows": 1,
+      "different_original": 0
+    },
+    {
+      "target": "https://archives-agriculture.house.gov/sites/republicans.agriculture.house.gov/files/transcripts/112/112-1.pdf",
+      "rows": 13,
+      "different_original": 0
+    },
+    {
+      "target": "http://clairemontialoux.com/files/montialoux_jmp_2018.pdf",
+      "rows": 3,
+      "different_original": 1
+    },
+    {
+      "target": "http://www.napawash.org/wp-content/uploads/2011/11/White_Paper11012011webposting.pdf",
+      "rows": 5,
+      "different_original": 3
+    },
+    {
+      "target": "http://developingchild.harvard.edu/wp-content/uploads/2005/05/Stress_Disrupts_Architecture_Developing_Brain-1.pdf",
+      "rows": 20,
+      "different_original": 9
+    },
+    {
+      "target": "https://www.compete.org/storage/reports/2018%20clarion%20call%20final.pdf",
+      "rows": 7,
+      "different_original": 0
+    },
+    {
+      "target": "https://assets.aspeninstitute.org/content/uploads/2019/04/Automation-and-a-Changing-Economy_Policies-for-Shared-Prosperity_April-2019.pdf?_",
+      "rows": 2,
+      "different_original": 0
+    },
+    {
+      "target": "https://www.cssp.org/publications/documents/Balancing-ACEs-with-HOPE-FINAL.pdf",
+      "rows": 1,
+      "different_original": 1
+    },
+    {
+      "target": "http://www.healthquality.va.gov/guidelines/MH/ptsd/cpg_PTSD-FULL-201011612.pdf",
+      "rows": 20,
+      "different_original": 13
+    },
+    {
+      "target": "https://www.healthmanagement.com/wp-content/uploads/The-Case-for-RCC-final-2-9-2017.pdf",
+      "rows": 5,
+      "different_original": 0
+    }
+  ]
+}

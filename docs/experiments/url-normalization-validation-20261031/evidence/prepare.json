@@ -1,0 +1,8 @@
+{
+  "all_urls": 1418211,
+  "risk_urls": 34258,
+  "relevant_captures": 55218,
+  "screen": "%20|[[:space:]]|[^:]//|/404[?]notfound=|&download=1|^mailto:|File URL path:",
+  "wrapper_patterns": "(?:^https?://web\\.archive\\.org/web/[0-9]{14}(?:[a-z]+_)?/(https?://.+)$)|(?:^https?://webarchive\\.loc\\.gov/all/[0-9]{14}(?:[a-z]+_)?/(https?://.+)$)|(?:^https?://(?:urldefense\\.proofpoint\\.com|urldefense\\.com)/v2/url\\?u=([^&]+).*$)|(?:^https?://(?:www\\.)?lis\\.gov/cgi-lis/t2GPO/(https?://(?:www\\.)?gpo\\.gov/fdsys/pkg/.+)$)|(?:^(https?://(?:[a-z0-9-]+\\.)+senate\\.gov)/404\\?notfound=/?([^#]+)$)|(?:^(https?://(?:[a-z0-9-]+\\.)*(?:house|senate)\\.gov/download/[^?#]+?)(?:%20|\\s)*&download=1$)",
+  "variants": []
+}

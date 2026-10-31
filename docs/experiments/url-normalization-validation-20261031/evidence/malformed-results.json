@@ -1,0 +1,100 @@
+{
+  "counts": [
+    {
+      "category": "other_nested",
+      "link_rows": 42427,
+      "literals": 39877
+    },
+    {
+      "category": "wayback_wrapper",
+      "link_rows": 82,
+      "literals": 76
+    },
+    {
+      "category": "mailto_http",
+      "link_rows": 5,
+      "literals": 5
+    },
+    {
+      "category": "file_url_prefix",
+      "link_rows": 1,
+      "literals": 1
+    },
+    {
+      "category": "gpo_wrapper",
+      "link_rows": 2,
+      "literals": 2
+    }
+  ],
+  "prefixes": [
+    {
+      "audit_row": 17368,
+      "page_body": "679c191df4feb44afc36a301017a1b801a69c4775a49189f7b84604c66464fa0",
+      "title": "Oversight Field Hearing on \u201cCultural Sovereignty Series: Modernizing the Indian Arts and Crafts Act to Honor Native Identity and Expression.\u201d - Indian Affairs Committee",
+      "base_href": null,
+      "href": "http://File URL path: /sites/default/files/documents/7.7.17DallinMaybeeTestimoney.pdf",
+      "text": "",
+      "context_url": null
+    },
+    {
+      "audit_row": 11057,
+      "page_body": "4216c8ee98c214894adbee5102b1e8a80ca8be1a5dc79d50d6570624b0e00fa0",
+      "title": "The Power of the Purse: Reasserting Congress' Authority and Protecting our Democracy through the Congressional Power of the Purse Act | House Budget Committee Democrats",
+      "base_href": null,
+      "href": "mailto:https://uscode.house.gov/view.xhtml?req=(title:31%20section:1341%20edition:prelim)%20OR%20(granuleid:USC-prelim-title31-section1341)&f=treesort&edition=prelim&num=0&jumpTo=true",
+      "text": "Antideficiency Act",
+      "context_url": "https://democrats-budget.house.gov/resources/reports/power-purse-reasserting-congress-authority-and-protecting-our-democracy-through"
+    },
+    {
+      "audit_row": 41061,
+      "page_body": "f6f54c4abb3e79c9267b3e7de9787fb902055f73f35db92ff0f3b27a17abb0ef",
+      "title": "FC Markup on Multiple Bills | Committee Repository | U.S. House of Representatives",
+      "base_href": null,
+      "href": "mailto:https://www.congress.gov/116/bills/hr6636/BILLS-116hr6636ih.pdf",
+      "text": "PDF",
+      "context_url": null
+    },
+    {
+      "audit_row": 41060,
+      "page_body": "f6f54c4abb3e79c9267b3e7de9787fb902055f73f35db92ff0f3b27a17abb0ef",
+      "title": "FC Markup on Multiple Bills | Committee Repository | U.S. House of Representatives",
+      "base_href": null,
+      "href": "mailto:https://www.congress.gov/116/bills/hr6237/BILLS-116hr6237ih.pdf",
+      "text": "PDF",
+      "context_url": null
+    },
+    {
+      "audit_row": 17368,
+      "page_body": "679c191df4feb44afc36a301017a1b801a69c4775a49189f7b84604c66464fa0",
+      "title": "Oversight Field Hearing on \u201cCultural Sovereignty Series: Modernizing the Indian Arts and Crafts Act to Honor Native Identity and Expression.\u201d - Indian Affairs Committee",
+      "base_href": null,
+      "href": "http://File URL path: /sites/default/files/documents/7.7.17DallinMaybeeTestimoney.pdf",
+      "text": "",
+      "context_url": "https://www.indian.senate.gov/hearings/oversight-field-hearing-cultural-sovereignty-series-modernizing-indian-arts-and-crafts-act/"
+    },
+    {
+      "audit_row": 41062,
+      "page_body": "f6f54c4abb3e79c9267b3e7de9787fb902055f73f35db92ff0f3b27a17abb0ef",
+      "title": "FC Markup on Multiple Bills | Committee Repository | U.S. House of Representatives",
+      "base_href": null,
+      "href": "mailto:https://www.congress.gov/116/bills/hr7045/BILLS-116hr7045ih.pdf",
+      "text": "PDF",
+      "context_url": null
+    },
+    {
+      "audit_row": 41059,
+      "page_body": "f6f54c4abb3e79c9267b3e7de9787fb902055f73f35db92ff0f3b27a17abb0ef",
+      "title": "FC Markup on Multiple Bills | Committee Repository | U.S. House of Representatives",
+      "base_href": null,
+      "href": "mailto:https://www.congress.gov/116/bills/hr5040/BILLS-116hr5040ih.pdf",
+      "text": "PDF",
+      "context_url": null
+    }
+  ],
+  "unrecognized_wrappers": [
+    {
+      "href": "http://www.congress.gov/cgi-lis/t2GPO/http://www.gpo.gov/fdsys/pkg/BILLS-113hr4005ih/pdf/BILLS-113hr4005ih.pdf",
+      "text": "PDF"
+    }
+  ]
+}

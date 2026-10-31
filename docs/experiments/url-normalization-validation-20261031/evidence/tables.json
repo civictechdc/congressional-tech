@@ -1,0 +1,307 @@
+{
+  "k": {
+    "path": "/private/tmp/claude-501/-Users-mikewolfd-Work/71969fc5-4a0f-4f4e-aa49-d2dd9f4c2272/scratchpad/codex-impl/cx_model_design/recovery_campaign_v1/key_prep/keyed_universe.parquet",
+    "rows": 1202155,
+    "columns": [
+      "target_url",
+      "membership_origin",
+      "normalized_url",
+      "url_key"
+    ]
+  },
+  "raw": {
+    "path": "/private/tmp/claude-501/-Users-mikewolfd-Work/71969fc5-4a0f-4f4e-aa49-d2dd9f4c2272/scratchpad/codex-impl/cx_model_design/recovery_campaign_v1/inputs/raw_universe.parquet",
+    "rows": 1202155,
+    "columns": [
+      "url",
+      "membership_origin"
+    ]
+  },
+  "d0": {
+    "path": "/var/folders/g8/10vdwk2n07z85vqn_vlv2lfc0000gn/T/url-trace-validation-9vlmw_gm/defense-inputs/plan.parquet",
+    "rows": 1202155,
+    "columns": [
+      "target_url",
+      "normalized_url",
+      "url_key",
+      "membership_origin",
+      "host",
+      "subtype",
+      "disposition",
+      "reason",
+      "evidence_id",
+      "target_requirement",
+      "acceptance_policy",
+      "refresh_policy",
+      "candidates"
+    ]
+  },
+  "d": {
+    "path": "/var/folders/g8/10vdwk2n07z85vqn_vlv2lfc0000gn/T/url-trace-validation-9vlmw_gm/defense-inputs/plan_v2.parquet",
+    "rows": 1202155,
+    "columns": [
+      "target_url",
+      "normalized_url",
+      "url_key",
+      "membership_origin",
+      "host",
+      "subtype",
+      "disposition",
+      "reason",
+      "evidence_id",
+      "target_requirement",
+      "acceptance_policy",
+      "refresh_policy",
+      "candidates"
+    ]
+  },
+  "selected": {
+    "path": "/var/folders/g8/10vdwk2n07z85vqn_vlv2lfc0000gn/T/url-trace-validation-9vlmw_gm/defense-inputs/selected.parquet",
+    "rows": 35558,
+    "columns": [
+      "target_url",
+      "candidate_url",
+      "candidate_source",
+      "body_sha256",
+      "evidence_id",
+      "receipt_key",
+      "sniffed_format",
+      "content_type",
+      "stored_bytes",
+      "retrieved_at",
+      "record_role"
+    ]
+  },
+  "st": {
+    "path": "/var/folders/g8/10vdwk2n07z85vqn_vlv2lfc0000gn/T/url-trace-validation-9vlmw_gm/defense-inputs/state.parquet",
+    "rows": 1202155,
+    "columns": [
+      "requested_url",
+      "attempts",
+      "last_attempt",
+      "last_status",
+      "last_outcome",
+      "last_good_at",
+      "next_attempt_at",
+      "capture_disposition",
+      "capture_reason",
+      "capture_decision_id"
+    ]
+  },
+  "captures": {
+    "path": "/private/tmp/claude-501/-Users-mikewolfd-Work/71969fc5-4a0f-4f4e-aa49-d2dd9f4c2272/scratchpad/codex-impl/cx_model_design/publish_v20/model/evidence/capture_sources.parquet",
+    "rows": 4129878,
+    "columns": [
+      "receipt_key",
+      "receipt_line",
+      "capture_index",
+      "run_id",
+      "mode",
+      "outcome",
+      "family",
+      "requested_url",
+      "url",
+      "context_url",
+      "member_path",
+      "h_content_disposition",
+      "http_status",
+      "complete",
+      "retrieved_at",
+      "sha256",
+      "bytes",
+      "media_type",
+      "fidelity",
+      "sniffed_format",
+      "sniff_version",
+      "expansion",
+      "stored_suffix",
+      "stored_bytes",
+      "stored_md5",
+      "recovery_category",
+      "original_url",
+      "recovered_url",
+      "match_basis",
+      "evidence_sha256",
+      "imported_at",
+      "writer_job",
+      "writer_commit",
+      "format",
+      "intact",
+      "intact_basis",
+      "error_type",
+      "is_real_file",
+      "record_role",
+      "import_date",
+      "body_sha",
+      "filename",
+      "source_url",
+      "source_id"
+    ]
+  },
+  "sources": {
+    "path": "/private/tmp/claude-501/-Users-mikewolfd-Work/71969fc5-4a0f-4f4e-aa49-d2dd9f4c2272/scratchpad/codex-impl/cx_model_design/publish_v20/release/sources.parquet",
+    "rows": 605848,
+    "columns": [
+      "list_row",
+      "ordinal",
+      "url",
+      "member_path",
+      "is_saved",
+      "first_seen",
+      "listed_on",
+      "link_text",
+      "doc_type",
+      "posted"
+    ]
+  },
+  "urls": {
+    "path": "/private/tmp/claude-501/-Users-mikewolfd-Work/71969fc5-4a0f-4f4e-aa49-d2dd9f4c2272/scratchpad/codex-impl/cx_model_design/publish_v20/release/urls.parquet",
+    "rows": 587616,
+    "columns": [
+      "lookup_key",
+      "list_row"
+    ]
+  },
+  "docs": {
+    "path": "/private/tmp/claude-501/-Users-mikewolfd-Work/71969fc5-4a0f-4f4e-aa49-d2dd9f4c2272/scratchpad/codex-impl/cx_model_design/publish_v20/model/evidence/document_rows.parquet",
+    "rows": 367008,
+    "columns": [
+      "list_row",
+      "document_id",
+      "filename",
+      "title",
+      "document_kind",
+      "document_family",
+      "committee_keys",
+      "chambers",
+      "congress",
+      "format",
+      "document_date",
+      "first_captured",
+      "date_kind",
+      "saved_kind",
+      "hidden",
+      "meeting_keys",
+      "measure_keys",
+      "bioguide_ids",
+      "witness_keys",
+      "version_keys",
+      "link_key",
+      "saved_body",
+      "saved_suffix",
+      "saved_media_type",
+      "saved_bytes",
+      "document_date_source",
+      "in_archive_since",
+      "removed_on",
+      "review_note",
+      "review_decided_at",
+      "src_start",
+      "src_len",
+      "rec_start",
+      "rec_len",
+      "alternates",
+      "package_id",
+      "facts"
+    ]
+  },
+  "links": {
+    "path": "/private/tmp/claude-501/-Users-mikewolfd-Work/71969fc5-4a0f-4f4e-aa49-d2dd9f4c2272/scratchpad/codex-impl/cx_model_design/publish_v20/model/evidence/publisher_links.parquet",
+    "rows": 913034,
+    "columns": [
+      "page_body",
+      "context_url",
+      "member_path",
+      "first_good_at",
+      "last_good_at",
+      "base_href",
+      "link_index",
+      "href",
+      "text",
+      "tag",
+      "basis",
+      "group_path",
+      "doc_type",
+      "add_date",
+      "publish_date",
+      "remove_date",
+      "split_position",
+      "target_literal",
+      "target_url",
+      "target_member_path",
+      "url_key",
+      "source_id",
+      "context"
+    ]
+  },
+  "facts": {
+    "path": "/private/tmp/claude-501/-Users-mikewolfd-Work/71969fc5-4a0f-4f4e-aa49-d2dd9f4c2272/scratchpad/codex-impl/cx_model_design/publish_v20/model/evidence/page_facts.parquet",
+    "rows": 312682,
+    "columns": [
+      "body_sha",
+      "parser",
+      "parser_version",
+      "status",
+      "error_type",
+      "format",
+      "xml_root",
+      "title",
+      "heading",
+      "text_head",
+      "content_date",
+      "base_href",
+      "text_bytes",
+      "link_count",
+      "link_text_bytes",
+      "intact",
+      "named_meetings",
+      "fingerprint",
+      "fields"
+    ]
+  },
+  "decisions": {
+    "path": "/var/folders/g8/10vdwk2n07z85vqn_vlv2lfc0000gn/T/url-complete-validation-gwr26twu/inputs/decisions.parquet",
+    "rows": 59643,
+    "columns": [
+      "id",
+      "original_url",
+      "body_sha256",
+      "kind",
+      "target_requirement",
+      "acceptance_policy",
+      "acceptance_status",
+      "evidence_sha256",
+      "qualification_sha256",
+      "recovery_record_version",
+      "supersedes"
+    ]
+  },
+  "retained": {
+    "path": "/var/folders/g8/10vdwk2n07z85vqn_vlv2lfc0000gn/T/url-complete-validation-gwr26twu/inputs/retained.parquet",
+    "rows": 39762,
+    "columns": [
+      "original_url",
+      "sha256",
+      "mode",
+      "complete"
+    ]
+  },
+  "requirements": {
+    "path": "/var/folders/g8/10vdwk2n07z85vqn_vlv2lfc0000gn/T/url-complete-validation-gwr26twu/inputs/requirements.parquet",
+    "rows": 1202155,
+    "columns": [
+      "original_url",
+      "target_requirement",
+      "acceptance_policy",
+      "refresh_policy"
+    ]
+  },
+  "variants": {
+    "path": "/var/folders/g8/10vdwk2n07z85vqn_vlv2lfc0000gn/T/url-complete-validation-gwr26twu/inputs/variants.parquet",
+    "rows": 0,
+    "columns": [
+      "canonical_url",
+      "variant_url"
+    ]
+  }
+}

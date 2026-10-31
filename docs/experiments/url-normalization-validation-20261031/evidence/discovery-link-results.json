@@ -1,0 +1,558 @@
+{
+  "contexts": 14157,
+  "native_counts": {
+    "counts": [
+      {
+        "rows": 1,
+        "stage": "errors"
+      },
+      {
+        "rows": 1193035,
+        "stage": "resolved"
+      },
+      {
+        "rows": 1193036,
+        "stage": "extracted"
+      }
+    ]
+  },
+  "amp_discovery": [
+    {
+      "amp_targets": 8053,
+      "in_state": 8035,
+      "in_publisher_links": 4096,
+      "selected_recovery": 2565
+    }
+  ],
+  "ashley": [
+    {
+      "href": "https://democrats-science.house.gov/themes/science/images/favicon.ico",
+      "text": "",
+      "target_url": "https://democrats-science.house.gov/themes/science/images/favicon.ico",
+      "exact_state": false
+    },
+    {
+      "href": "/themes/default_v6/scripts/font-awesome/css/all.min.css",
+      "text": "",
+      "target_url": "https://democrats-science.house.gov/themes/default_v6/scripts/font-awesome/css/all.min.css",
+      "exact_state": false
+    },
+    {
+      "href": "/themes/default_v6/styles/vendors/bootstrap.min.css",
+      "text": "",
+      "target_url": "https://democrats-science.house.gov/themes/default_v6/styles/vendors/bootstrap.min.css",
+      "exact_state": false
+    },
+    {
+      "href": "/themes/science/styles/common.css?cachebuster=1787892299",
+      "text": "",
+      "target_url": "https://democrats-science.house.gov/themes/science/styles/common.css?cachebuster=1787892299",
+      "exact_state": false
+    },
+    {
+      "href": "https://fonts.gstatic.com",
+      "text": "",
+      "target_url": "https://fonts.gstatic.com/",
+      "exact_state": false
+    },
+    {
+      "href": "https://fonts.googleapis.com/css2?family=Karla:wght@400;700&family=Montserrat:wght@400;700&family=Bebas+Neue&display=swap",
+      "text": "",
+      "target_url": "https://fonts.googleapis.com/css2?family=Karla:wght@400;700&family=Montserrat:wght@400;700&family=Bebas+Neue&display=swap",
+      "exact_state": false
+    },
+    {
+      "href": "#main-nav",
+      "text": "Skip to primary navigation",
+      "target_url": "https://democrats-science.house.gov/download/ashley-nunes-witness-testimony#main-nav",
+      "exact_state": false
+    },
+    {
+      "href": "#skip-nav",
+      "text": "Skip to content",
+      "target_url": "https://democrats-science.house.gov/download/ashley-nunes-witness-testimony#skip-nav",
+      "exact_state": false
+    },
+    {
+      "href": "sciencefirings",
+      "text": "Fired by President Trump? We want to hear from you.",
+      "target_url": "https://democrats-science.house.gov/download/sciencefirings",
+      "exact_state": true
+    },
+    {
+      "href": "/grantcancelations",
+      "text": "Was your grant canceled by President Trump? We want to hear from you.",
+      "target_url": "https://democrats-science.house.gov/grantcancelations",
+      "exact_state": false
+    },
+    {
+      "href": "https://democrats-science.house.gov/about/membership",
+      "text": "About",
+      "target_url": "https://democrats-science.house.gov/about/membership",
+      "exact_state": false
+    },
+    {
+      "href": "https://democrats-science.house.gov/about/membership",
+      "text": "Membership",
+      "target_url": "https://democrats-science.house.gov/about/membership",
+      "exact_state": false
+    },
+    {
+      "href": "https://democrats-science.house.gov/about/committee-rules-oversight-plan",
+      "text": "Committee Rules + Oversight Plan",
+      "target_url": "https://democrats-science.house.gov/about/committee-rules-oversight-plan",
+      "exact_state": false
+    },
+    {
+      "href": "https://democrats-science.house.gov/about/history-and-jurisdiction",
+      "text": "History and Jurisdiction",
+      "target_url": "https://democrats-science.house.gov/about/history-and-jurisdiction",
+      "exact_state": false
+    },
+    {
+      "href": "https://democrats-science.house.gov/action",
+      "text": "Committee in Action",
+      "target_url": "https://democrats-science.house.gov/action",
+      "exact_state": false
+    },
+    {
+      "href": "https://democrats-science.house.gov/hearings",
+      "text": "Hearings & Legislation",
+      "target_url": "https://democrats-science.house.gov/hearings",
+      "exact_state": false
+    },
+    {
+      "href": "https://democrats-science.house.gov/hearings",
+      "text": "Hearings",
+      "target_url": "https://democrats-science.house.gov/hearings",
+      "exact_state": false
+    },
+    {
+      "href": "https://democrats-science.house.gov/markups",
+      "text": "Markups",
+      "target_url": "https://democrats-science.house.gov/markups",
+      "exact_state": false
+    },
+    {
+      "href": "https://democrats-science.house.gov/events",
+      "text": "Events",
+      "target_url": "https://democrats-science.house.gov/events",
+      "exact_state": false
+    },
+    {
+      "href": "https://democrats-science.house.gov/bills",
+      "text": "Bills",
+      "target_url": "https://democrats-science.house.gov/bills",
+      "exact_state": false
+    },
+    {
+      "href": "https://democrats-science.house.gov/staff-reports",
+      "text": "Staff Reports",
+      "target_url": "https://democrats-science.house.gov/staff-reports",
+      "exact_state": false
+    },
+    {
+      "href": "https://democrats-science.house.gov/views-and-estimates",
+      "text": "Views and Estimates",
+      "target_url": "https://democrats-science.house.gov/views-and-estimates",
+      "exact_state": false
+    },
+    {
+      "href": "https://democrats-science.house.gov/news/fact-sheets",
+      "text": "Fact Sheets",
+      "target_url": "https://democrats-science.house.gov/news/fact-sheets",
+      "exact_state": false
+    },
+    {
+      "href": "https://democrats-science.house.gov/news",
+      "text": "News",
+      "target_url": "https://democrats-science.house.gov/news",
+      "exact_state": false
+    },
+    {
+      "href": "https://democrats-science.house.gov/news/letters",
+      "text": "Letters",
+      "target_url": "https://democrats-science.house.gov/news/letters",
+      "exact_state": false
+    },
+    {
+      "href": "https://democrats-science.house.gov/news/press-releases",
+      "text": "Press Releases",
+      "target_url": "https://democrats-science.house.gov/news/press-releases",
+      "exact_state": false
+    },
+    {
+      "href": "https://democrats-science.house.gov/news/in-the-news",
+      "text": "In the News",
+      "target_url": "https://democrats-science.house.gov/news/in-the-news",
+      "exact_state": false
+    },
+    {
+      "href": "https://democrats-science.house.gov/news/statements",
+      "text": "Statements",
+      "target_url": "https://democrats-science.house.gov/news/statements",
+      "exact_state": false
+    },
+    {
+      "href": "https://democrats-science.house.gov/subcommittees",
+      "text": "Subcommittees",
+      "target_url": "https://democrats-science.house.gov/subcommittees",
+      "exact_state": false
+    },
+    {
+      "href": "https://democrats-science.house.gov/subcommittees/energy-118th-congress",
+      "text": "Energy",
+      "target_url": "https://democrats-science.house.gov/subcommittees/energy-118th-congress",
+      "exact_state": false
+    },
+    {
+      "href": "https://democrats-science.house.gov/subcommittees/environment-118th-congress",
+      "text": "Environment",
+      "target_url": "https://democrats-science.house.gov/subcommittees/environment-118th-congress",
+      "exact_state": false
+    },
+    {
+      "href": "https://democrats-science.house.gov/subcommittees/investigations-and-oversight-118th-congress",
+      "text": "Investigations and Oversight",
+      "target_url": "https://democrats-science.house.gov/subcommittees/investigations-and-oversight-118th-congress",
+      "exact_state": false
+    },
+    {
+      "href": "https://democrats-science.house.gov/subcommittees/research-and-technology-118th-congress",
+      "text": "Research and Technology",
+      "target_url": "https://democrats-science.house.gov/subcommittees/research-and-technology-118th-congress",
+      "exact_state": false
+    },
+    {
+      "href": "https://democrats-science.house.gov/subcommittees/space-and-aeronautics-118th-congress",
+      "text": "Space and Aeronautics",
+      "target_url": "https://democrats-science.house.gov/subcommittees/space-and-aeronautics-118th-congress",
+      "exact_state": false
+    },
+    {
+      "href": "https://democrats-science.house.gov/contact-info",
+      "text": "Contact",
+      "target_url": "https://democrats-science.house.gov/contact-info",
+      "exact_state": false
+    },
+    {
+      "href": "https://democrats-science.house.gov/contact-info",
+      "text": "Contact Information",
+      "target_url": "https://democrats-science.house.gov/contact-info",
+      "exact_state": false
+    },
+    {
+      "href": "https://democrats-science.house.gov/contact/internships",
+      "text": "Internships",
+      "target_url": "https://democrats-science.house.gov/contact/internships",
+      "exact_state": false
+    },
+    {
+      "href": "https://democrats-science.house.gov/newsletter",
+      "text": "Newsletter Signup",
+      "target_url": "https://democrats-science.house.gov/newsletter",
+      "exact_state": false
+    },
+    {
+      "href": "https://democrats-science.house.gov/contact/whistleblower",
+      "text": "Science & Tech Whistleblower",
+      "target_url": "https://democrats-science.house.gov/contact/whistleblower",
+      "exact_state": false
+    },
+    {
+      "href": "//www.facebook.com/ScienceDemocrats/",
+      "text": "facebook",
+      "target_url": "https://www.facebook.com/ScienceDemocrats/",
+      "exact_state": false
+    },
+    {
+      "href": "https://twitter.com/sciencedems",
+      "text": "twitter",
+      "target_url": "https://twitter.com/sciencedems",
+      "exact_state": false
+    },
+    {
+      "href": "//www.youtube.com/housescience",
+      "text": "youtube",
+      "target_url": "https://www.youtube.com/housescience",
+      "exact_state": false
+    },
+    {
+      "href": "//housesciencecommittee.medium.com/",
+      "text": "Medium",
+      "target_url": "https://housesciencecommittee.medium.com/",
+      "exact_state": false
+    },
+    {
+      "href": "/",
+      "text": "",
+      "target_url": "https://democrats-science.house.gov/",
+      "exact_state": false
+    },
+    {
+      "href": "https://democrats-science.house.gov/about/membership",
+      "text": "About",
+      "target_url": "https://democrats-science.house.gov/about/membership",
+      "exact_state": false
+    },
+    {
+      "href": "https://democrats-science.house.gov/about/membership",
+      "text": "Membership",
+      "target_url": "https://democrats-science.house.gov/about/membership",
+      "exact_state": false
+    },
+    {
+      "href": "https://democrats-science.house.gov/about/committee-rules-oversight-plan",
+      "text": "Committee Rules + Oversight Plan",
+      "target_url": "https://democrats-science.house.gov/about/committee-rules-oversight-plan",
+      "exact_state": false
+    },
+    {
+      "href": "https://democrats-science.house.gov/about/history-and-jurisdiction",
+      "text": "History and Jurisdiction",
+      "target_url": "https://democrats-science.house.gov/about/history-and-jurisdiction",
+      "exact_state": false
+    },
+    {
+      "href": "https://democrats-science.house.gov/action",
+      "text": "Committee in Action",
+      "target_url": "https://democrats-science.house.gov/action",
+      "exact_state": false
+    },
+    {
+      "href": "https://democrats-science.house.gov/hearings",
+      "text": "Hearings & Legislation",
+      "target_url": "https://democrats-science.house.gov/hearings",
+      "exact_state": false
+    },
+    {
+      "href": "https://democrats-science.house.gov/hearings",
+      "text": "Hearings",
+      "target_url": "https://democrats-science.house.gov/hearings",
+      "exact_state": false
+    },
+    {
+      "href": "https://democrats-science.house.gov/markups",
+      "text": "Markups",
+      "target_url": "https://democrats-science.house.gov/markups",
+      "exact_state": false
+    },
+    {
+      "href": "https://democrats-science.house.gov/events",
+      "text": "Events",
+      "target_url": "https://democrats-science.house.gov/events",
+      "exact_state": false
+    },
+    {
+      "href": "https://democrats-science.house.gov/bills",
+      "text": "Bills",
+      "target_url": "https://democrats-science.house.gov/bills",
+      "exact_state": false
+    },
+    {
+      "href": "https://democrats-science.house.gov/staff-reports",
+      "text": "Staff Reports",
+      "target_url": "https://democrats-science.house.gov/staff-reports",
+      "exact_state": false
+    },
+    {
+      "href": "https://democrats-science.house.gov/views-and-estimates",
+      "text": "Views and Estimates",
+      "target_url": "https://democrats-science.house.gov/views-and-estimates",
+      "exact_state": false
+    },
+    {
+      "href": "https://democrats-science.house.gov/news/fact-sheets",
+      "text": "Fact Sheets",
+      "target_url": "https://democrats-science.house.gov/news/fact-sheets",
+      "exact_state": false
+    },
+    {
+      "href": "https://democrats-science.house.gov/news",
+      "text": "News",
+      "target_url": "https://democrats-science.house.gov/news",
+      "exact_state": false
+    },
+    {
+      "href": "https://democrats-science.house.gov/news/letters",
+      "text": "Letters",
+      "target_url": "https://democrats-science.house.gov/news/letters",
+      "exact_state": false
+    },
+    {
+      "href": "https://democrats-science.house.gov/news/press-releases",
+      "text": "Press Releases",
+      "target_url": "https://democrats-science.house.gov/news/press-releases",
+      "exact_state": false
+    },
+    {
+      "href": "https://democrats-science.house.gov/news/in-the-news",
+      "text": "In the News",
+      "target_url": "https://democrats-science.house.gov/news/in-the-news",
+      "exact_state": false
+    },
+    {
+      "href": "https://democrats-science.house.gov/news/statements",
+      "text": "Statements",
+      "target_url": "https://democrats-science.house.gov/news/statements",
+      "exact_state": false
+    },
+    {
+      "href": "https://democrats-science.house.gov/subcommittees",
+      "text": "Subcommittees",
+      "target_url": "https://democrats-science.house.gov/subcommittees",
+      "exact_state": false
+    },
+    {
+      "href": "https://democrats-science.house.gov/subcommittees/energy-118th-congress",
+      "text": "Energy",
+      "target_url": "https://democrats-science.house.gov/subcommittees/energy-118th-congress",
+      "exact_state": false
+    },
+    {
+      "href": "https://democrats-science.house.gov/subcommittees/environment-118th-congress",
+      "text": "Environment",
+      "target_url": "https://democrats-science.house.gov/subcommittees/environment-118th-congress",
+      "exact_state": false
+    },
+    {
+      "href": "https://democrats-science.house.gov/subcommittees/investigations-and-oversight-118th-congress",
+      "text": "Investigations and Oversight",
+      "target_url": "https://democrats-science.house.gov/subcommittees/investigations-and-oversight-118th-congress",
+      "exact_state": false
+    },
+    {
+      "href": "https://democrats-science.house.gov/subcommittees/research-and-technology-118th-congress",
+      "text": "Research and Technology",
+      "target_url": "https://democrats-science.house.gov/subcommittees/research-and-technology-118th-congress",
+      "exact_state": false
+    },
+    {
+      "href": "https://democrats-science.house.gov/subcommittees/space-and-aeronautics-118th-congress",
+      "text": "Space and Aeronautics",
+      "target_url": "https://democrats-science.house.gov/subcommittees/space-and-aeronautics-118th-congress",
+      "exact_state": false
+    },
+    {
+      "href": "https://democrats-science.house.gov/contact-info",
+      "text": "Contact",
+      "target_url": "https://democrats-science.house.gov/contact-info",
+      "exact_state": false
+    },
+    {
+      "href": "https://democrats-science.house.gov/contact-info",
+      "text": "Contact Information",
+      "target_url": "https://democrats-science.house.gov/contact-info",
+      "exact_state": false
+    },
+    {
+      "href": "https://democrats-science.house.gov/contact/internships",
+      "text": "Internships",
+      "target_url": "https://democrats-science.house.gov/contact/internships",
+      "exact_state": false
+    },
+    {
+      "href": "https://democrats-science.house.gov/newsletter",
+      "text": "Newsletter Signup",
+      "target_url": "https://democrats-science.house.gov/newsletter",
+      "exact_state": false
+    },
+    {
+      "href": "https://democrats-science.house.gov/contact/whistleblower",
+      "text": "Science & Tech Whistleblower",
+      "target_url": "https://democrats-science.house.gov/contact/whistleblower",
+      "exact_state": false
+    },
+    {
+      "href": "/",
+      "text": "",
+      "target_url": "https://democrats-science.house.gov/",
+      "exact_state": false
+    },
+    {
+      "href": "#",
+      "text": "search",
+      "target_url": "https://democrats-science.house.gov/download/ashley-nunes-witness-testimony#",
+      "exact_state": false
+    },
+    {
+      "href": "#",
+      "text": "MENU",
+      "target_url": "https://democrats-science.house.gov/download/ashley-nunes-witness-testimony#",
+      "exact_state": false
+    },
+    {
+      "href": "/contact/whistleblower",
+      "text": "report a concern",
+      "target_url": "https://democrats-science.house.gov/contact/whistleblower",
+      "exact_state": false
+    },
+    {
+      "href": "//democrats-science.house.gov/download/ashley-nunes-witness-testimony&download=1",
+      "text": "please click here",
+      "target_url": "https://democrats-science.house.gov/download/ashley-nunes-witness-testimony&download=1",
+      "exact_state": true
+    },
+    {
+      "href": "/copyright",
+      "text": "Copyright",
+      "target_url": "https://democrats-science.house.gov/copyright",
+      "exact_state": false
+    },
+    {
+      "href": "/privacy",
+      "text": "Privacy",
+      "target_url": "https://democrats-science.house.gov/privacy",
+      "exact_state": false
+    },
+    {
+      "href": "/accessibility",
+      "text": "Accessibility",
+      "target_url": "https://democrats-science.house.gov/accessibility",
+      "exact_state": false
+    },
+    {
+      "href": "https://republicans-science.house.gov/",
+      "text": "Majority Website",
+      "target_url": "https://republicans-science.house.gov/",
+      "exact_state": false
+    },
+    {
+      "href": "/117th-in-review",
+      "text": "117th In Review",
+      "target_url": "https://democrats-science.house.gov/117th-in-review",
+      "exact_state": false
+    },
+    {
+      "href": "//www.facebook.com/ScienceDemocrats/",
+      "text": "facebook",
+      "target_url": "https://www.facebook.com/ScienceDemocrats/",
+      "exact_state": false
+    },
+    {
+      "href": "https://twitter.com/sciencedems",
+      "text": "twitter",
+      "target_url": "https://twitter.com/sciencedems",
+      "exact_state": false
+    },
+    {
+      "href": "//www.youtube.com/housescience",
+      "text": "youtube",
+      "target_url": "https://www.youtube.com/housescience",
+      "exact_state": false
+    },
+    {
+      "href": "//housesciencecommittee.medium.com/",
+      "text": "Medium",
+      "target_url": "https://housesciencecommittee.medium.com/",
+      "exact_state": false
+    }
+  ],
+  "bill_4824": [
+    {
+      "href": "//democrats-science.house.gov/download/hr-4824&download=1",
+      "text": "please click here",
+      "target_url": "https://democrats-science.house.gov/download/hr-4824&download=1"
+    }
+  ]
+}

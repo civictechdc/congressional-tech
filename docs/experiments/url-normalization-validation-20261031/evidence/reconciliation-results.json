@@ -1,0 +1,615 @@
+{
+  "scope": "Status and lineage reconciliation only; no new independent semantic qualification of Wave 6 bodies.",
+  "head": "2716e9dcaf6326feacc9e597399334bcc79de637",
+  "inputs": {
+    "latest_plan": {
+      "source": "/private/tmp/claude-501/-Users-mikewolfd-Work/71969fc5-4a0f-4f4e-aa49-d2dd9f4c2272/scratchpad/codex-impl/cx_model_design/recovery_campaign_v1/plan_v2/url-dispositions.parquet",
+      "path": "/var/folders/g8/10vdwk2n07z85vqn_vlv2lfc0000gn/T/url-complete-validation-gwr26twu/reconciliation/latest_plan.parquet",
+      "sha256": "5e02698d18d4a931b4867ee52c2c21b425765b240633200e7e80f1cfbceec980",
+      "bytes": 15105128
+    },
+    "latest_selected": {
+      "source": "/private/tmp/claude-501/-Users-mikewolfd-Work/71969fc5-4a0f-4f4e-aa49-d2dd9f4c2272/scratchpad/codex-impl/cx_model_design/recovery_campaign_v1/track_a/selected_recoveries_v2_plus.parquet",
+      "path": "/var/folders/g8/10vdwk2n07z85vqn_vlv2lfc0000gn/T/url-complete-validation-gwr26twu/reconciliation/latest_selected.parquet",
+      "sha256": "ae78b6492c47391a2588af57061828d72b311095cab062fea5b42f9967ca75b1",
+      "bytes": 4904082
+    },
+    "latest_state": {
+      "source": "/private/tmp/claude-501/-Users-mikewolfd-Work/71969fc5-4a0f-4f4e-aa49-d2dd9f4c2272/scratchpad/codex-impl/cx_model_design/recovery_campaign_v1/release_v2/url_state.parquet",
+      "path": "/var/folders/g8/10vdwk2n07z85vqn_vlv2lfc0000gn/T/url-complete-validation-gwr26twu/reconciliation/latest_state.parquet",
+      "sha256": "24c3bdbc3589fd3de8f24c7429d0db63e481db9c95f613b54546a635a39ecaa2",
+      "bytes": 14784487
+    },
+    "wave6_qualified": {
+      "source": "/private/tmp/claude-501/-Users-mikewolfd-Work/71969fc5-4a0f-4f4e-aa49-d2dd9f4c2272/scratchpad/codex-impl/cx_model_design/recovery_campaign_v1/track_b/b1_wave6_qualified.json",
+      "path": "/var/folders/g8/10vdwk2n07z85vqn_vlv2lfc0000gn/T/url-complete-validation-gwr26twu/reconciliation/wave6_qualified.json",
+      "sha256": "1b63caee2b071dae2eef9bde19fd6911e88b819cc5ced30c1f8f2f56c8dfc711",
+      "bytes": 1647848
+    },
+    "wave6_results": {
+      "source": "/private/tmp/claude-501/-Users-mikewolfd-Work/71969fc5-4a0f-4f4e-aa49-d2dd9f4c2272/scratchpad/codex-impl/cx_model_design/recovery_campaign_v1/track_b/b1_wave6_results.json",
+      "path": "/var/folders/g8/10vdwk2n07z85vqn_vlv2lfc0000gn/T/url-complete-validation-gwr26twu/reconciliation/wave6_results.json",
+      "sha256": "c90b1343985e80c180ae346db4107e648e6da251aa553e7d8e097dc83dea44af",
+      "bytes": 1079943
+    },
+    "trace_before": {
+      "source": "/Users/mikewolfd/Work/congressional-tech/docs/url-normalization-trace.md",
+      "path": "/var/folders/g8/10vdwk2n07z85vqn_vlv2lfc0000gn/T/url-complete-validation-gwr26twu/reconciliation/trace_before.md",
+      "sha256": "1f0126252ba4254236cef8c9b079493807209fb718ee4c9306e82da9701ca9f5",
+      "bytes": 80707
+    },
+    "defense_before": {
+      "source": "/Users/mikewolfd/Work/congressional-tech/docs/url-normalization-defense.md",
+      "path": "/var/folders/g8/10vdwk2n07z85vqn_vlv2lfc0000gn/T/url-complete-validation-gwr26twu/reconciliation/defense_before.md",
+      "sha256": "a11de52dbcda4aa193519506428c259b88db2e35d32ee0ae8727ce4c9cc62fd7",
+      "bytes": 32466
+    },
+    "response_before": {
+      "source": "/Users/mikewolfd/Work/congressional-tech/docs/url-normalization-defense-response.md",
+      "path": "/var/folders/g8/10vdwk2n07z85vqn_vlv2lfc0000gn/T/url-complete-validation-gwr26twu/reconciliation/response_before.md",
+      "sha256": "9c2b731a7abc434f022c1b2c04b04e8e8bd8dff38dcc01d89aafc03df928f549",
+      "bytes": 12189
+    }
+  },
+  "dispositions": {
+    "baseline": [
+      {
+        "disposition": "acquisition_excluded",
+        "targets": 604
+      },
+      {
+        "disposition": "needs_acquisition",
+        "targets": 10924
+      },
+      {
+        "disposition": "retained_candidate_pending",
+        "targets": 32161
+      },
+      {
+        "disposition": "usable_direct",
+        "targets": 1158466
+      }
+    ],
+    "gen2": [
+      {
+        "disposition": "accepted_recovery",
+        "targets": 35552
+      },
+      {
+        "disposition": "acquisition_excluded",
+        "targets": 3548
+      },
+      {
+        "disposition": "needs_acquisition",
+        "targets": 4589
+      },
+      {
+        "disposition": "usable_direct",
+        "targets": 1158466
+      }
+    ],
+    "latest_plan": [
+      {
+        "disposition": "accepted_recovery",
+        "targets": 37536
+      },
+      {
+        "disposition": "acquisition_excluded",
+        "targets": 3548
+      },
+      {
+        "disposition": "needs_acquisition",
+        "targets": 2605
+      },
+      {
+        "disposition": "usable_direct",
+        "targets": 1158466
+      }
+    ]
+  },
+  "baseline_pending_transitions": [
+    {
+      "disposition": "accepted_recovery",
+      "targets": 5442
+    },
+    {
+      "disposition": "acquisition_excluded",
+      "targets": 2944
+    },
+    {
+      "disposition": "needs_acquisition",
+      "targets": 2538
+    }
+  ],
+  "gen2_pending_transitions": [
+    {
+      "disposition": "accepted_recovery",
+      "targets": 1984
+    },
+    {
+      "disposition": "needs_acquisition",
+      "targets": 2605
+    }
+  ],
+  "latest_selected_sources": [
+    {
+      "candidate_source": "stored_https_or_pdf_sibling",
+      "targets": 17447,
+      "bodies": 17152
+    },
+    {
+      "candidate_source": "v1_recovery_provenance",
+      "targets": 12592,
+      "bodies": 12317
+    },
+    {
+      "candidate_source": "stored_r2_exact_filename",
+      "targets": 2008,
+      "bodies": 1849
+    },
+    {
+      "candidate_source": "repaired_download_query",
+      "targets": 1606,
+      "bodies": 1604
+    },
+    {
+      "candidate_source": "pw_committee_witness_corpus_match",
+      "targets": 1093,
+      "bodies": 718
+    },
+    {
+      "candidate_source": "wp_v2_structured_api_wave6",
+      "targets": 573,
+      "bodies": 573
+    },
+    {
+      "candidate_source": "wp_v2_structured_api",
+      "targets": 392,
+      "bodies": 392
+    },
+    {
+      "candidate_source": "v1_retained_import_receipt",
+      "targets": 290,
+      "bodies": 215
+    },
+    {
+      "candidate_source": "repaired_download_query_poppler_verified",
+      "targets": 227,
+      "bodies": 226
+    },
+    {
+      "candidate_source": "wp_v2_structured_api_json",
+      "targets": 186,
+      "bodies": 186
+    },
+    {
+      "candidate_source": "exact_path_sibling",
+      "targets": 174,
+      "bodies": 134
+    },
+    {
+      "candidate_source": "case_insensitive_or_sibling_corpus_match",
+      "targets": 174,
+      "bodies": 172
+    },
+    {
+      "candidate_source": "unique_filestem_document",
+      "targets": 141,
+      "bodies": 101
+    },
+    {
+      "candidate_source": "track_b1_zyte",
+      "targets": 140,
+      "bodies": 139
+    },
+    {
+      "candidate_source": "live_walled_pdf_wave5",
+      "targets": 110,
+      "bodies": 110
+    },
+    {
+      "candidate_source": "live_walled_3rung",
+      "targets": 107,
+      "bodies": 107
+    },
+    {
+      "candidate_source": "congress_gov_to_docs_house_rewrite",
+      "targets": 92,
+      "bodies": 91
+    },
+    {
+      "candidate_source": "repaired_host_or_download_query_wave6",
+      "targets": 37,
+      "bodies": 37
+    },
+    {
+      "candidate_source": "stored_url_key_alias",
+      "targets": 35,
+      "bodies": 34
+    },
+    {
+      "candidate_source": "notfound_404_search_recovery",
+      "targets": 32,
+      "bodies": 16
+    },
+    {
+      "candidate_source": "redirect_location_corpus_match",
+      "targets": 25,
+      "bodies": 25
+    },
+    {
+      "candidate_source": "wayback_cdx_replay",
+      "targets": 18,
+      "bodies": 18
+    },
+    {
+      "candidate_source": "spicyregs_raw_filename",
+      "targets": 8,
+      "bodies": 4
+    },
+    {
+      "candidate_source": "firecrawl_relocated_search",
+      "targets": 8,
+      "bodies": 8
+    },
+    {
+      "candidate_source": "large_pdf_256mb_retry",
+      "targets": 6,
+      "bodies": 6
+    },
+    {
+      "candidate_source": "track_b1_firecrawl",
+      "targets": 5,
+      "bodies": 5
+    },
+    {
+      "candidate_source": "frozen_receipt_verified_pdf",
+      "targets": 4,
+      "bodies": 4
+    },
+    {
+      "candidate_source": "govinfo_package_pdf",
+      "targets": 4,
+      "bodies": 1
+    },
+    {
+      "candidate_source": "govinfo_pkg_pdf_rewrite",
+      "targets": 3,
+      "bodies": 3
+    },
+    {
+      "candidate_source": "repaired_download_query_docx",
+      "targets": 3,
+      "bodies": 3
+    },
+    {
+      "candidate_source": "congress_gov_direct_or_zyte",
+      "targets": 2,
+      "bodies": 2
+    }
+  ],
+  "selected_additions": [
+    {
+      "candidate_source": "pw_committee_witness_corpus_match",
+      "targets": 1093,
+      "bodies": 718
+    },
+    {
+      "candidate_source": "wp_v2_structured_api_wave6",
+      "targets": 573,
+      "bodies": 573
+    },
+    {
+      "candidate_source": "case_insensitive_or_sibling_corpus_match",
+      "targets": 174,
+      "bodies": 172
+    },
+    {
+      "candidate_source": "congress_gov_to_docs_house_rewrite",
+      "targets": 92,
+      "bodies": 91
+    },
+    {
+      "candidate_source": "repaired_host_or_download_query_wave6",
+      "targets": 37,
+      "bodies": 37
+    },
+    {
+      "candidate_source": "large_pdf_256mb_retry",
+      "targets": 6,
+      "bodies": 6
+    },
+    {
+      "candidate_source": "frozen_receipt_verified_pdf",
+      "targets": 4,
+      "bodies": 4
+    },
+    {
+      "candidate_source": "govinfo_pkg_pdf_rewrite",
+      "targets": 3,
+      "bodies": 3
+    },
+    {
+      "candidate_source": "congress_gov_direct_or_zyte",
+      "targets": 2,
+      "bodies": 2
+    }
+  ],
+  "selected_totals": [
+    {
+      "targets": 37542,
+      "unique_targets": 37542,
+      "bodies": 35691
+    }
+  ],
+  "selected2_totals": [
+    {
+      "targets": 35558,
+      "unique_targets": 35558,
+      "bodies": 34251
+    }
+  ],
+  "selected_but_excluded": [
+    {
+      "target_url": "https://www.drugcaucus.senate.gov/wp-json/oembed/1.0/embed?url=https%3A%2F%2Fwww.drugcaucus.senate.gov%2Fhearings%2Fadapting-u-s-counternarcotics-efforts-in-colombia%2F",
+      "candidate_source": "track_b1_zyte",
+      "disposition": "acquisition_excluded",
+      "subtype": "retained_candidate_track_b1_zyte"
+    },
+    {
+      "target_url": "https://www.drugcaucus.senate.gov/wp-json/oembed/1.0/embed?url=https%3A%2F%2Fwww.drugcaucus.senate.gov%2Fhearings%2Fadapting-u-s-counternarcotics-efforts-in-colombia%2F&format=xml",
+      "candidate_source": "track_b1_zyte",
+      "disposition": "acquisition_excluded",
+      "subtype": "retained_candidate_track_b1_zyte"
+    },
+    {
+      "target_url": "https://www.drugcaucus.senate.gov/wp-json/oembed/1.0/embed?url=https%3A%2F%2Fwww.drugcaucus.senate.gov%2Fhearings%2Fbeyond-our-shores-the-global-reach-of-mexican-drug-cartels-and-risks-to-u-s-national-security%2F",
+      "candidate_source": "track_b1_zyte",
+      "disposition": "acquisition_excluded",
+      "subtype": "retained_candidate_track_b1_zyte"
+    },
+    {
+      "target_url": "https://www.drugcaucus.senate.gov/wp-json/oembed/1.0/embed?url=https%3A%2F%2Fwww.drugcaucus.senate.gov%2Fhearings%2Fbeyond-our-shores-the-global-reach-of-mexican-drug-cartels-and-risks-to-u-s-national-security%2F&format=xml",
+      "candidate_source": "track_b1_zyte",
+      "disposition": "acquisition_excluded",
+      "subtype": "retained_candidate_track_b1_zyte"
+    },
+    {
+      "target_url": "https://www.indian.senate.gov/wp-json/oembed/1.0/embed?url=https%3A%2F%2Fwww.indian.senate.gov%2Fhearings%2Fbriefing-senate-committee-indian-affairs-tribal-transportation-briefing%2F",
+      "candidate_source": "track_b1_zyte",
+      "disposition": "acquisition_excluded",
+      "subtype": "retained_candidate_track_b1_zyte"
+    },
+    {
+      "target_url": "https://www.indian.senate.gov/wp-json/oembed/1.0/embed?url=https%3A%2F%2Fwww.indian.senate.gov%2Fhearings%2Fbriefing-senate-committee-indian-affairs-tribal-transportation-briefing%2F&format=xml",
+      "candidate_source": "track_b1_zyte",
+      "disposition": "acquisition_excluded",
+      "subtype": "retained_candidate_track_b1_zyte"
+    }
+  ],
+  "all_baseline_transitions": [
+    {
+      "before": "acquisition_excluded",
+      "after": "acquisition_excluded",
+      "targets": 604
+    },
+    {
+      "before": "needs_acquisition",
+      "after": "accepted_recovery",
+      "targets": 5442
+    },
+    {
+      "before": "needs_acquisition",
+      "after": "acquisition_excluded",
+      "targets": 2944
+    },
+    {
+      "before": "needs_acquisition",
+      "after": "needs_acquisition",
+      "targets": 2538
+    },
+    {
+      "before": "retained_candidate_pending",
+      "after": "accepted_recovery",
+      "targets": 32094
+    },
+    {
+      "before": "retained_candidate_pending",
+      "after": "needs_acquisition",
+      "targets": 67
+    },
+    {
+      "before": "usable_direct",
+      "after": "usable_direct",
+      "targets": 1158466
+    }
+  ],
+  "amp_generations": {
+    "baseline": [
+      {
+        "disposition": "needs_acquisition",
+        "targets": 3231
+      },
+      {
+        "disposition": "retained_candidate_pending",
+        "targets": 749
+      },
+      {
+        "disposition": "usable_direct",
+        "targets": 4075
+      }
+    ],
+    "gen2": [
+      {
+        "disposition": "accepted_recovery",
+        "targets": 2565
+      },
+      {
+        "disposition": "needs_acquisition",
+        "targets": 1415
+      },
+      {
+        "disposition": "usable_direct",
+        "targets": 4075
+      }
+    ],
+    "latest_plan": [
+      {
+        "disposition": "accepted_recovery",
+        "targets": 3701
+      },
+      {
+        "disposition": "needs_acquisition",
+        "targets": 279
+      },
+      {
+        "disposition": "usable_direct",
+        "targets": 4075
+      }
+    ]
+  },
+  "retained_amp_subtypes": [
+    {
+      "disposition": "accepted_recovery",
+      "subtype": "retained_candidate_repaired_download_query",
+      "targets": 1563
+    },
+    {
+      "disposition": "accepted_recovery",
+      "subtype": "retained_candidate_v1_recovery_provenance",
+      "targets": 749
+    },
+    {
+      "disposition": "accepted_recovery",
+      "subtype": "retained_candidate_repaired_download_query_poppler_verified",
+      "targets": 226
+    },
+    {
+      "disposition": "accepted_recovery",
+      "subtype": "retained_candidate_redirect_location_corpus_match",
+      "targets": 24
+    },
+    {
+      "disposition": "accepted_recovery",
+      "subtype": "retained_candidate_repaired_download_query_docx",
+      "targets": 3
+    }
+  ],
+  "bill_4824_current": [
+    {
+      "target_url": "https://democrats-science.house.gov/download/hr-4824&download=1",
+      "disposition": "accepted_recovery",
+      "subtype": "retained_candidate_repaired_download_query",
+      "body_sha256": "f984b8439d21b0ef80f8a6f2e16f1dfc20d1ff57a53afe3f65ceefca67b551ee",
+      "candidate_source": "repaired_download_query"
+    },
+    {
+      "target_url": "https://democrats-science.house.gov/download/hr-4824",
+      "disposition": "usable_direct",
+      "subtype": "usable_direct_baseline",
+      "body_sha256": null,
+      "candidate_source": null
+    }
+  ],
+  "ashley_current": [
+    {
+      "requested_url": "https://democrats-science.house.gov/download/ashley-nunes-witness-testimony",
+      "attempts": 1,
+      "last_attempt": "2026-10-12 10:27:13.210570-04:00",
+      "last_status": 200,
+      "last_outcome": "stored",
+      "last_good_at": "2026-10-12 10:27:13.210570-04:00",
+      "next_attempt_at": null,
+      "capture_disposition": "eligible",
+      "capture_reason": "no_satisfying_recovery",
+      "capture_decision_id": null
+    },
+    {
+      "requested_url": "https://democrats-science.house.gov/download/ashley-nunes-witness-testimony&download=1",
+      "attempts": 0,
+      "last_attempt": null,
+      "last_status": null,
+      "last_outcome": null,
+      "last_good_at": null,
+      "next_attempt_at": null,
+      "capture_disposition": "eligible",
+      "capture_reason": "no_satisfying_recovery",
+      "capture_decision_id": null
+    }
+  ],
+  "wave6_qualified_sources": [
+    {
+      "source_kind": "pw_committee_witness_corpus_match",
+      "rows": 1093
+    },
+    {
+      "source_kind": "wp_v2_structured_api_wave6",
+      "rows": 573
+    },
+    {
+      "source_kind": "case_insensitive_or_sibling_corpus_match",
+      "rows": 174
+    },
+    {
+      "source_kind": "congress_gov_to_docs_house_rewrite",
+      "rows": 92
+    },
+    {
+      "source_kind": "repaired_host_or_download_query_wave6",
+      "rows": 37
+    },
+    {
+      "source_kind": "large_pdf_256mb_retry",
+      "rows": 6
+    },
+    {
+      "source_kind": "frozen_receipt_verified_pdf",
+      "rows": 4
+    },
+    {
+      "source_kind": "govinfo_pkg_pdf_rewrite",
+      "rows": 3
+    },
+    {
+      "source_kind": "congress_gov_direct_or_zyte",
+      "rows": 2
+    }
+  ],
+  "wave6_result_sources": [
+    {
+      "source_kind": "wp_v2_structured_api_wave6",
+      "rows": 858,
+      "qualified": 573
+    },
+    {
+      "source_kind": "repaired_host_or_download_query_wave6",
+      "rows": 360,
+      "qualified": 37
+    },
+    {
+      "source_kind": "congress_gov_to_docs_house_rewrite",
+      "rows": 159,
+      "qualified": 92
+    },
+    {
+      "source_kind": "govinfo_pkg_pdf_rewrite",
+      "rows": 18,
+      "qualified": 3
+    },
+    {
+      "source_kind": "large_pdf_256mb_retry",
+      "rows": 11,
+      "qualified": 6
+    },
+    {
+      "source_kind": "congress_gov_canonical",
+      "rows": 10,
+      "qualified": 0
+    },
+    {
+      "source_kind": "congress_gov_direct_or_zyte",
+      "rows": 4,
+      "qualified": 2
+    }
+  ]
+}

@@ -1,0 +1,214 @@
+{
+  "census": [
+    {
+      "groups_http_before_scope": 26777,
+      "groups_amp_preferred": 24,
+      "groups_with_better_scope_choice": 26880
+    }
+  ],
+  "http_examples": [
+    {
+      "current_key": "docs.house.gov/billsthisweek/20130304/BILLS-113hr933ih.xml",
+      "urls": [
+        "http://docs.house.gov/billsthisweek/20130304/BILLS-113hr933ih.xml",
+        "https://docs.house.gov/billsthisweek/20130304/BILLS-113hr933ih.xml"
+      ]
+    },
+    {
+      "current_key": "docs.house.gov/billsthisweek/20130318/BILLS-113hres115rh.xml",
+      "urls": [
+        "http://docs.house.gov/billsthisweek/20130318/BILLS-113hres115rh.xml",
+        "https://docs.house.gov/billsthisweek/20130318/BILLS-113hres115rh.xml"
+      ]
+    },
+    {
+      "current_key": "docs.house.gov/billsthisweek/20130422/CPRT-113-HPRT-RU00-HR1549.xml",
+      "urls": [
+        "http://docs.house.gov/billsthisweek/20130422/CPRT-113-HPRT-RU00-HR1549.xml",
+        "https://docs.house.gov/billsthisweek/20130422/CPRT-113-HPRT-RU00-HR1549.xml"
+      ]
+    }
+  ],
+  "scenarios": {
+    "mixed_amp_seeds": {
+      "input_states": [],
+      "input_seeds": [
+        "https://democrats-science.house.gov/download/ashley-nunes-witness-testimony&download=1",
+        "https://democrats-science.house.gov/download/ashley-nunes-witness-testimony?download=1"
+      ],
+      "queue": [
+        {
+          "requested_url": "https://democrats-science.house.gov/download/ashley-nunes-witness-testimony&download=1",
+          "family": "documents",
+          "priority": 0,
+          "next_attempt_at": null,
+          "observations": [
+            "[\"https://democrats-science.house.gov/download/ashley-nunes-witness-testimony&download=1\",\"seeds.json\",\"[\\\"urls\\\",0]\"]",
+            "[\"https://democrats-science.house.gov/download/ashley-nunes-witness-testimony?download=1\",\"seeds.json\",\"[\\\"urls\\\",1]\"]"
+          ]
+        }
+      ],
+      "candidate_substitution": false,
+      "campaign": false
+    },
+    "lone_amp_seed": {
+      "input_states": [],
+      "input_seeds": [
+        "https://democrats-science.house.gov/download/ashley-nunes-witness-testimony&download=1"
+      ],
+      "queue": [
+        {
+          "requested_url": "https://democrats-science.house.gov/download/ashley-nunes-witness-testimony&download=1",
+          "family": "documents",
+          "priority": 0,
+          "next_attempt_at": null,
+          "observations": [
+            "[\"https://democrats-science.house.gov/download/ashley-nunes-witness-testimony&download=1\",\"seeds.json\",\"[\\\"urls\\\",0]\"]"
+          ]
+        }
+      ],
+      "candidate_substitution": false,
+      "campaign": false
+    },
+    "existing_bad_state": {
+      "input_states": [
+        {
+          "requested_url": "https://democrats-science.house.gov/download/ashley-nunes-witness-testimony&download=1",
+          "attempts": 0,
+          "last_attempt": null,
+          "last_status": null,
+          "last_outcome": null,
+          "last_good_at": null,
+          "next_attempt_at": null,
+          "capture_disposition": "eligible",
+          "capture_reason": "no_satisfying_recovery",
+          "capture_decision_id": null
+        }
+      ],
+      "input_seeds": [
+        "https://democrats-science.house.gov/download/ashley-nunes-witness-testimony?download=1"
+      ],
+      "queue": [
+        {
+          "requested_url": "https://democrats-science.house.gov/download/ashley-nunes-witness-testimony&download=1",
+          "family": "documents",
+          "priority": 0,
+          "next_attempt_at": null,
+          "observations": [
+            "[\"https://democrats-science.house.gov/download/ashley-nunes-witness-testimony?download=1\",\"seeds.json\",\"[\\\"urls\\\",0]\"]"
+          ]
+        }
+      ],
+      "candidate_substitution": false,
+      "campaign": false
+    },
+    "mixed_http_seeds": {
+      "input_states": [],
+      "input_seeds": [
+        "http://docs.house.gov/billsthisweek/20130304/BILLS-113hr933ih.xml",
+        "https://docs.house.gov/billsthisweek/20130304/BILLS-113hr933ih.xml"
+      ],
+      "queue": [],
+      "candidate_substitution": false,
+      "campaign": false
+    },
+    "existing_http_states": {
+      "input_states": [
+        {
+          "requested_url": "http://docs.house.gov/billsthisweek/20130304/BILLS-113hr933ih.xml",
+          "attempts": 1,
+          "last_attempt": "2026-09-28 22:19:12.326567-04:00",
+          "last_status": 200,
+          "last_outcome": "stored",
+          "last_good_at": "2026-09-28 22:19:12.326567-04:00",
+          "next_attempt_at": null,
+          "capture_disposition": "eligible",
+          "capture_reason": "no_satisfying_recovery",
+          "capture_decision_id": null
+        },
+        {
+          "requested_url": "https://docs.house.gov/billsthisweek/20130304/BILLS-113hr933ih.xml",
+          "attempts": 1,
+          "last_attempt": "2026-10-02 18:40:55.066127-04:00",
+          "last_status": 200,
+          "last_outcome": "stored",
+          "last_good_at": "2026-10-02 18:40:55.066127-04:00",
+          "next_attempt_at": null,
+          "capture_disposition": "eligible",
+          "capture_reason": "no_satisfying_recovery",
+          "capture_decision_id": null
+        }
+      ],
+      "input_seeds": [],
+      "queue": [
+        {
+          "requested_url": "https://docs.house.gov/billsthisweek/20130304/BILLS-113hr933ih.xml",
+          "family": "documents",
+          "priority": 3,
+          "next_attempt_at": null,
+          "observations": [
+            "[\"https://docs.house.gov/billsthisweek/20130304/BILLS-113hr933ih.xml\",\"release:34ba90cf5f6dbee0329e23c74c2d14a4b592ef95eea5ac3502b7f7356b17bf40\",\"[]\"]"
+          ]
+        }
+      ],
+      "candidate_substitution": false,
+      "campaign": false
+    },
+    "campaign_actual": {
+      "input_states": [
+        {
+          "requested_url": "https://democrats-science.house.gov/download/ashley-nunes-witness-testimony&download=1",
+          "attempts": 0,
+          "last_attempt": null,
+          "last_status": null,
+          "last_outcome": null,
+          "last_good_at": null,
+          "next_attempt_at": null,
+          "capture_disposition": "eligible",
+          "capture_reason": "no_satisfying_recovery",
+          "capture_decision_id": null
+        }
+      ],
+      "input_seeds": [
+        "https://democrats-science.house.gov/download/ashley-nunes-witness-testimony?download=1"
+      ],
+      "queue": [
+        {
+          "requested_url": "https://democrats-science.house.gov/download/ashley-nunes-witness-testimony&download=1",
+          "family": "documents",
+          "priority": 0,
+          "next_attempt_at": null,
+          "observations": [
+            "[\"https://democrats-science.house.gov/download/ashley-nunes-witness-testimony&download=1\",\"campaign\",\"[]\"]",
+            "[\"https://democrats-science.house.gov/download/ashley-nunes-witness-testimony?download=1\",\"seeds.json\",\"[\\\"urls\\\",0]\"]"
+          ]
+        }
+      ],
+      "candidate_substitution": false,
+      "campaign": true
+    },
+    "campaign_naive_substitution": {
+      "input_states": [
+        {
+          "requested_url": "https://democrats-science.house.gov/download/ashley-nunes-witness-testimony&download=1",
+          "attempts": 0,
+          "last_attempt": null,
+          "last_status": null,
+          "last_outcome": null,
+          "last_good_at": null,
+          "next_attempt_at": null,
+          "capture_disposition": "eligible",
+          "capture_reason": "no_satisfying_recovery",
+          "capture_decision_id": null
+        }
+      ],
+      "input_seeds": [
+        "https://democrats-science.house.gov/download/ashley-nunes-witness-testimony?download=1"
+      ],
+      "queue": [],
+      "candidate_substitution": true,
+      "campaign": true
+    }
+  },
+  "note": "Census uses retained campaign address groups, not the unavailable historical seed batches. Empty-state scenarios are explicitly counterfactual runs using real addresses; existing-state scenarios preserve retained state rows."
+}

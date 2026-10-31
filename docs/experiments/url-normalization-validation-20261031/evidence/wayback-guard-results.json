@@ -1,0 +1,89 @@
+{
+  "control_basis": "Real retained alias row and replay bytes; named fields changed only for negative controls.",
+  "results": [
+    {
+      "case": "retained_alias",
+      "reason": "complete",
+      "candidates": 1,
+      "complete": true
+    },
+    {
+      "case": "wrong_surt",
+      "reason": "invalid_index_response",
+      "candidates": 0,
+      "complete": false
+    },
+    {
+      "case": "wrong_original",
+      "reason": "invalid_index_response",
+      "candidates": 0,
+      "complete": false
+    },
+    {
+      "case": "wrong_status",
+      "reason": "invalid_index_response",
+      "candidates": 0,
+      "complete": false
+    },
+    {
+      "case": "invalid_timestamp",
+      "reason": "invalid_index_response",
+      "candidates": 0,
+      "complete": false
+    },
+    {
+      "case": "outside_window",
+      "reason": "invalid_index_response",
+      "candidates": 0,
+      "complete": false
+    },
+    {
+      "case": "truncated_response",
+      "reason": "incomplete_response",
+      "candidates": 0,
+      "complete": false
+    },
+    {
+      "case": "rate_limit",
+      "reason": "denied",
+      "candidates": 0,
+      "complete": false
+    },
+    {
+      "case": "redirected_index",
+      "reason": "incomplete_response",
+      "candidates": 0,
+      "complete": false
+    },
+    {
+      "case": "retained_replay",
+      "accepted": true,
+      "error": null
+    },
+    {
+      "case": "wrong_body_digest",
+      "accepted": false,
+      "error": "archive replay digest mismatch"
+    },
+    {
+      "case": "redirected_replay",
+      "accepted": false,
+      "error": "wayback final URL mismatch or unavailable"
+    },
+    {
+      "case": "wrong_replay_timestamp",
+      "accepted": false,
+      "error": "wayback replay identity mismatch"
+    },
+    {
+      "case": "incomplete_replay",
+      "accepted": false,
+      "error": "wayback replay incomplete"
+    },
+    {
+      "case": "error_replay",
+      "accepted": false,
+      "error": "wayback replay incomplete"
+    }
+  ]
+}

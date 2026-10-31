@@ -1,0 +1,122 @@
+[
+  {
+    "kind": "unwrapped_wayback",
+    "original": "https://web.archive.org/web/20260210123543id_/https://www.help.senate.gov/hearings/financial-literacy-the-starting-point-for-a-secure-retirement",
+    "expected": 324832,
+    "actual": 324833,
+    "expected_title": "Financial Literacy: the Starting Point f... | Senate Committee on Health, Education, Labor and Pensions",
+    "expected_format": "html",
+    "expected_body": "b25e4864b81a8199c3cb783dd88747acbdfa10bceb28996bb46db3ae3368b7e9",
+    "actual_title": "Financial Literacy: the Starting Point f... | Senate Committee on Health, Education, Labor and Pensions",
+    "actual_format": "html",
+    "actual_body": "375e219e61e5efc9bd457d177eb58b6720c5a224605650a94959f473b66a0a76"
+  },
+  {
+    "kind": "repaired_download",
+    "original": "https://www.finance.senate.gov/download/promoting-elder-justice-a-call-for-reform&download=1",
+    "expected": 351908,
+    "actual": 351907,
+    "expected_title": "please click here",
+    "expected_format": "json",
+    "expected_body": "f3b6879a701932a7aa7301f3b0cf69323f4c1da92b01537bd6c0bf9694d75acd",
+    "actual_title": null,
+    "actual_format": "json",
+    "actual_body": "bc78716910d862a390efb22a5fac13df894c0f242aaf0445feec99c3b4fd376d"
+  },
+  {
+    "kind": "repaired_download",
+    "original": "https://www.finance.senate.gov/download/protecting-youth-mental-health-part-ian-advisory-and-call-to-action&download=1",
+    "expected": 351962,
+    "actual": 351960,
+    "expected_title": "please click here",
+    "expected_format": "json",
+    "expected_body": "3f4456de4ab2a688b93b666aa7d2990da58dc81935cb1772de407150f9c774d7",
+    "actual_title": null,
+    "actual_format": "json",
+    "actual_body": "ae06686b1468fac82684ec1970c07168680a5c940078f3bbfe25724fe876bc2f"
+  },
+  {
+    "kind": "repaired_download",
+    "original": "https://www.finance.senate.gov/download/promoting-elder-justice-a-call-for-reform&download=1",
+    "expected": 351908,
+    "actual": 351906,
+    "expected_title": "please click here",
+    "expected_format": "json",
+    "expected_body": "f3b6879a701932a7aa7301f3b0cf69323f4c1da92b01537bd6c0bf9694d75acd",
+    "actual_title": null,
+    "actual_format": "pdf",
+    "actual_body": "50b4e3b1219cabc8d5db71fa605f096f4f2a37b7e991c476c8c88b2f2e24c0b9"
+  },
+  {
+    "kind": "unwrapped_wayback",
+    "original": "https://web.archive.org/web/20251222222315id_/https://www.help.senate.gov/hearings/reducing-health-care-costs-examining-how-transparency-can-lower-spending-and-empower-patients",
+    "expected": 353514,
+    "actual": 353515,
+    "expected_title": "Reducing Health Care Costs: Examining Ho... | Senate Committee on Health, Education, Labor and Pensions",
+    "expected_format": "html",
+    "expected_body": "319c1ed3a25d48f780966b27916d817cc7153f0c02d583572e60e17acbf1e43c",
+    "actual_title": "Reducing Health Care Costs: Examining Ho... | Senate Committee on Health, Education, Labor and Pensions",
+    "actual_format": "html",
+    "actual_body": "2c8b829b8f2dd80ab556b258d5d161bd2fc5df00203f81eb4fd9e122752578ed"
+  },
+  {
+    "kind": "repaired_download",
+    "original": "https://www.banking.senate.gov/download/seitz-testimony-9-12-19&download=1",
+    "expected": 357393,
+    "actual": 357392,
+    "expected_title": "please click here",
+    "expected_format": "json",
+    "expected_body": "92e74ba0b2260e793f3995a4528b997a7449433d9eccdaaadd4ccadbcf6efcd7",
+    "actual_title": null,
+    "actual_format": "pdf",
+    "actual_body": "9c64cb02b68b121791bfb228f4a1ff6ab8811f28e9e29da71b2bdcba3cdbbf91"
+  },
+  {
+    "kind": "repaired_download",
+    "original": "https://www.finance.senate.gov/download/protecting-youth-mental-health-part-iiidentifying-and-addressing-barriers-to-care&download=1",
+    "expected": 351966,
+    "actual": 351965,
+    "expected_title": "please click here",
+    "expected_format": "json",
+    "expected_body": "e64f08e0b7d7bf371601aadd798491deac11c391c97c49cc68c9336eb0aa50de",
+    "actual_title": null,
+    "actual_format": "json",
+    "actual_body": "e68a530d655573c0052fa71f2f453e04dc621dd4dbd4cb5213a4e8ccb6a4e9ea"
+  },
+  {
+    "kind": "repaired_download",
+    "original": "https://www.finance.senate.gov/download/protecting-youth-mental-health-part-ian-advisory-and-call-to-action&download=1",
+    "expected": 351962,
+    "actual": 351961,
+    "expected_title": "please click here",
+    "expected_format": "json",
+    "expected_body": "3f4456de4ab2a688b93b666aa7d2990da58dc81935cb1772de407150f9c774d7",
+    "actual_title": null,
+    "actual_format": "pdf",
+    "actual_body": "a4f6c8b9996054ad5334941679a607b3be5e5602aa8445eba78b685a22091dd1"
+  },
+  {
+    "kind": "repaired_download",
+    "original": "https://www.finance.senate.gov/download/protecting-youth-mental-health-part-iiidentifying-and-addressing-barriers-to-care&download=1",
+    "expected": 351966,
+    "actual": 351964,
+    "expected_title": "please click here",
+    "expected_format": "json",
+    "expected_body": "e64f08e0b7d7bf371601aadd798491deac11c391c97c49cc68c9336eb0aa50de",
+    "actual_title": null,
+    "actual_format": "pdf",
+    "actual_body": "3a6aaab345c6a52667a9212408b796abc557d1d192d7905c497013e70e0d94e5"
+  },
+  {
+    "kind": "unwrapped_wayback",
+    "original": "https://web.archive.org/web/20230612171518id_/https://www.help.senate.gov/hearings/s-133-s-134-s-265-s-1844-s-1852-and-s-1855",
+    "expected": 355508,
+    "actual": 355509,
+    "expected_title": "S. 133, S. 134, S. 265, S. 1844, S. 1852... | Senate Committee on Health, Education, Labor and Pensions",
+    "expected_format": "html",
+    "expected_body": "d4e5de3f07140cb220fb2d92e01b874e4058aaca9f243c7f7b6ab20a6954244b",
+    "actual_title": "S. 133, S. 134, S. 265, S. 1844, S. 1852... | Senate Committee on Health, Education, Labor and Pensions",
+    "actual_format": "html",
+    "actual_body": "67877b5c1204aba22084a1ff645247c374426f635d3a66807da3b869daacade5"
+  }
+]

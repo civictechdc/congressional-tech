@@ -1,0 +1,122 @@
+{
+  "checked_start_commit": "cafb1b43d4ede3738f2f9e17a4b70ecf02b00f8b",
+  "checked_end_commit": "2716e9dcaf6326feacc9e597399334bcc79de637",
+  "code_drift": [],
+  "native_binary_sha256": "8d33f1d03540fb0bc8160eac18e0121c0cde428feaeb77b4e815abf805f2d819",
+  "native_source_revision": "eb40c5457a450c3820900583af5b4da13313ca96",
+  "native_limits": {
+    "threads": 2,
+    "memory_bytes": 2147483648
+  },
+  "duckdb_limits": {
+    "threads": 2,
+    "memory": "1GB"
+  },
+  "scratch": "/var/folders/g8/10vdwk2n07z85vqn_vlv2lfc0000gn/T/url-complete-validation-gwr26twu",
+  "inputs": {
+    "/private/tmp/claude-501/-Users-mikewolfd-Work/71969fc5-4a0f-4f4e-aa49-d2dd9f4c2272/scratchpad/codex-impl/cx_model_design/publish_v20/model/job.json": {
+      "bytes": 228219,
+      "sha256": "5761bb6346b4c25e82c16fba0a68fca32a4b6dc228bbe4ce4800f561b9b0b13a"
+    },
+    "/private/tmp/claude-501/-Users-mikewolfd-Work/71969fc5-4a0f-4f4e-aa49-d2dd9f4c2272/scratchpad/codex-impl/cx_model_design/recovery_campaign_v1/key_prep/keyed_universe.parquet": {
+      "bytes": 13394888,
+      "sha256": "295a44dc5fe28ae3203837735010da2da5450a30db53e394ae4e26ac71f8c8d7"
+    },
+    "/private/tmp/claude-501/-Users-mikewolfd-Work/71969fc5-4a0f-4f4e-aa49-d2dd9f4c2272/scratchpad/codex-impl/cx_model_design/publish_v20/release/sources.parquet": {
+      "bytes": 8092414,
+      "sha256": "f0b470f92537ef7a289ee72269a1354a0a8b4544ee4eb3e074a5fdac99a713e4"
+    },
+    "/var/folders/g8/10vdwk2n07z85vqn_vlv2lfc0000gn/T/url-complete-validation-gwr26twu/inputs/wave5qualified.json": {
+      "bytes": 761404,
+      "sha256": "92cffed964f59796c186311726b4b9feba8b44dd25ccf39bb513826fb5bc1c15"
+    },
+    "/var/folders/g8/10vdwk2n07z85vqn_vlv2lfc0000gn/T/url-trace-validation-9vlmw_gm/defense-inputs/plan.parquet": {
+      "bytes": 14154786,
+      "sha256": "77f52032b8aea6dc308dd7d910843d8ac561bc5a960bd8663ba164cf1a0cf1f2"
+    },
+    "/Users/mikewolfd/Work/congressional-tech/packages/congress_api/src/congress_api/acquisition/capture_scheduler.py": {
+      "bytes": 55334,
+      "sha256": "499929b17c9f4f312531eaa970217d578424736e4ca140ddc9cc7b053e10fc4a"
+    },
+    "/var/folders/g8/10vdwk2n07z85vqn_vlv2lfc0000gn/T/url-complete-validation-gwr26twu/inputs/retained.parquet": {
+      "bytes": 1949402,
+      "sha256": "f7f90542829d3126730bfcdbb6365a43b9aca5b2eda0fb2f7fa125b8456252a5"
+    },
+    "/private/tmp/claude-501/-Users-mikewolfd-Work/71969fc5-4a0f-4f4e-aa49-d2dd9f4c2272/scratchpad/codex-impl/cx_model_design/publish_v20/release/urls.parquet": {
+      "bytes": 5376548,
+      "sha256": "9879369d194d5ace318f14e809ed95e4ea628c35fe2acd815fcb4d3c00b5cdfb"
+    },
+    "/Users/mikewolfd/Work/congressional-tech/packages/corpus_recovery/src/corpus_recovery/discovery.py": {
+      "bytes": 21082,
+      "sha256": "aca2dffeb8ba69515859608454fc4b5ee7bff060baa7f1df66d457813428abed"
+    },
+    "/private/tmp/claude-501/-Users-mikewolfd-Work/71969fc5-4a0f-4f4e-aa49-d2dd9f4c2272/scratchpad/codex-impl/cx_model_design/publish_v20/model/evidence/document_rows.parquet": {
+      "bytes": 38622940,
+      "sha256": "f4879e4b6ea7118e33f1bb70373cb4299cdc977ce338ea155174eac30a6b222e"
+    },
+    "/var/folders/g8/10vdwk2n07z85vqn_vlv2lfc0000gn/T/url-complete-validation-gwr26twu/inputs/wave5results.json": {
+      "bytes": 580922,
+      "sha256": "ef224d23cf231547259064d8019e62d81e381ee233528351e137ab8573e4aea1"
+    },
+    "/var/folders/g8/10vdwk2n07z85vqn_vlv2lfc0000gn/T/url-trace-validation-9vlmw_gm/defense-inputs/plan_v2.parquet": {
+      "bytes": 15030584,
+      "sha256": "b551043dac48970c961f0329cf8b89f8917c873608a95399aa3e590511d0aa0b"
+    },
+    "/var/folders/g8/10vdwk2n07z85vqn_vlv2lfc0000gn/T/url-complete-validation-gwr26twu/inputs/wave4qualified.json": {
+      "bytes": 1368068,
+      "sha256": "2cfa9faa562b983a7144a3bbe455335887c49a69c50b1760f3f86f03dbd04d7f"
+    },
+    "/var/folders/g8/10vdwk2n07z85vqn_vlv2lfc0000gn/T/url-trace-validation-9vlmw_gm/defense-inputs/state.parquet": {
+      "bytes": 14711714,
+      "sha256": "5ada99f9406449870e4633c75abad0af71967017a1a69f971c3648ae088da3fa"
+    },
+    "/var/folders/g8/10vdwk2n07z85vqn_vlv2lfc0000gn/T/url-complete-validation-gwr26twu/inputs/variants.parquet": {
+      "bytes": 380,
+      "sha256": "7fbde8fa5eb17e628b217972b42dd1192a8af76d8f4254153dba123799f56928"
+    },
+    "/var/folders/g8/10vdwk2n07z85vqn_vlv2lfc0000gn/T/url-trace-validation-9vlmw_gm/defense-inputs/selected.parquet": {
+      "bytes": 4653768,
+      "sha256": "d25202c859dc2e46347d3c8408204a702b00efdc944f53c8d222f383af24043a"
+    },
+    "/private/tmp/claude-501/-Users-mikewolfd-Work/71969fc5-4a0f-4f4e-aa49-d2dd9f4c2272/scratchpad/codex-impl/cx_model_design/recovery_campaign_v1/inputs/raw_universe.parquet": {
+      "bytes": 13644932,
+      "sha256": "1cd56380567c70118e393f1fb19c2c34eca388a7e1afefdb7b8fc1d9b53e1bd3"
+    },
+    "/Users/mikewolfd/Work/congressional-tech/apps/site/src/components/explorer/reader/archive.ts": {
+      "bytes": 28630,
+      "sha256": "e7fe40a1d89091636e65d72360ff757a4c30d3abd697b8a3d3b198cf21acb777"
+    },
+    "/private/tmp/claude-501/-Users-mikewolfd-Work/71969fc5-4a0f-4f4e-aa49-d2dd9f4c2272/scratchpad/codex-impl/cx_model_design/publish_v20/model/evidence/page_facts.parquet": {
+      "bytes": 88194481,
+      "sha256": "af460cd89af2ef4ab35b8dd6aabe5948a79c9f408075e71b744495a746851dc2"
+    },
+    "/Users/mikewolfd/Work/congressional-tech/model/sql/url-normalized.sql": {
+      "bytes": 2958,
+      "sha256": "0999b70068d23ff02a5fb9e79a710fee349891f00590c14366fa1615cbd7cfce"
+    },
+    "/private/tmp/claude-501/-Users-mikewolfd-Work/71969fc5-4a0f-4f4e-aa49-d2dd9f4c2272/scratchpad/codex-impl/cx_model_design/publish_v20/model/evidence/publisher_links.parquet": {
+      "bytes": 94235742,
+      "sha256": "40e3df74a47af9482e7e34dde464512b39bc1ee0896c23fb94da0280c21cd2c2"
+    },
+    "/var/folders/g8/10vdwk2n07z85vqn_vlv2lfc0000gn/T/url-complete-validation-gwr26twu/inputs/decisions.parquet": {
+      "bytes": 7792478,
+      "sha256": "9d7b40ffee770353a62053a09e5a59a7cab48ed1ed42a814cd232058fea740d2"
+    },
+    "/private/tmp/claude-501/-Users-mikewolfd-Work/71969fc5-4a0f-4f4e-aa49-d2dd9f4c2272/scratchpad/codex-impl/cx_model_design/publish_v20/model/evidence/capture_sources.parquet": {
+      "bytes": 471549010,
+      "sha256": "d5a98cf46e189d95f03f6929392bb70412aa1b9eebdc1b96937db53da2bb4ed0"
+    },
+    "/var/folders/g8/10vdwk2n07z85vqn_vlv2lfc0000gn/T/url-complete-validation-gwr26twu/inputs/requirements.parquet": {
+      "bytes": 4502990,
+      "sha256": "9f7249e84cf358380c02a3579ead65fff2507397a3bc59ef8087fb496db4f3e7"
+    },
+    "/Users/mikewolfd/Work/congressional-tech/model/registries/url-rules.json": {
+      "bytes": 3938,
+      "sha256": "c9569acd8c2c711244c080a601d872380ba0e99523f17d2ef43ef1e95f4eeeff"
+    },
+    "/var/folders/g8/10vdwk2n07z85vqn_vlv2lfc0000gn/T/url-trace-validation-9vlmw_gm/defense-inputs/wave4.json": {
+      "bytes": 1755581,
+      "sha256": "8639e53d235da5d51eed70b56566415066d40c393d1cfc885010b3ee380b2fec"
+    }
+  }
+}

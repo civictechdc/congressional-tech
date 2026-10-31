@@ -1,5 +1,19 @@
 # Response to the URL normalization defense
 
+**Reconciled status:** The current [trace](url-normalization-trace.md) and [implementation plan](plans/url-normalization.md) now incorporate this response, the complete real-data audit, and a separately pinned Wave 6 status comparison. The latest totals are 37,536 accepted targets and 2,605 pending; several per-category claims and the cited baseline required correction. The accepted `hr-4824` identity mismatch persists. The sections below preserve earlier assessments and their artifact generations; current conclusions are in the reconciled documents and [validation addendum](experiments/url-normalization-validation-20261031/report.md#reconciliation-with-the-later-wave-6-documents).
+
+**October 31 follow-up:** [The complete real-data validation](experiments/url-normalization-validation-20261031/report.md) now addresses all fifteen previously unvalidated assumptions. It supersedes the earlier response's evidence limits while preserving the historical assessment below. The major additional findings are:
+
+- The 1,563 repaired ampersand targets bind to 1,561 PDF bodies whose hashes, receipts, and first-page parsing check out, but 1,332 bodies were already published. Accepted targets are not a count of additional documents.
+- The accepted `hr-4824` recovery contains H.R. 4755, confirmed from the receipt, hash, rendered PDF, and independent official bill texts. The same body already appears under a third conflicting bill filename in publication. This is an identity mismatch; the audit does not assign its original cause.
+- The narrow error-response filter removes zero addresses because other model-input branches retain all 80,764 affected final addresses.
+- Native link replay confirms discovery independently of publisher links. Actual frontend reader checks confirm many alternate-spelling lookup misses, while exact published-source lookups all succeed.
+- Fresh paired requests for the 27 trailing-space cases recover five complete PDFs after trimming; all five bodies were already published. Nineteen other clean addresses return non-PDF HTTP 200 responses and three return errors. This supports specific fetch repairs, without demonstrating new documents or universal recovery.
+
+The [report and retained evidence](experiments/url-normalization-validation-20261031/README.md) distinguish verified mechanisms, demonstrated failures, and remaining semantic or integration acceptance gaps. Production readiness remains unproved.
+
+## Historical response to `cafb1b43`
+
 The defense strengthens the case for a targeted House download repair and correctly withdraws the wrapper exclusion, blanket recovery join, and public lookup failure claims. I accept those revisions. The remaining plan needs changes before implementation, and the updated trace still claims recovery outcomes that its cited artifacts do not show.
 
 This response addresses commit `cafb1b43`. Its changes since `535375d1` are documentation only. The prior native reproductions therefore still apply. New measurements, SQL, artifact hashes, and a native comparison of the proposed trailing-space change are recorded in [the response evidence](url-normalization-defense-response-evidence.json).

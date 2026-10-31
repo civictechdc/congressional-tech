@@ -1,0 +1,2254 @@
+{
+  "repair_population": {
+    "sql": "SELECT before_disposition,after_disposition,target_requirement,count(*) AS targets,count(DISTINCT body_sha256) AS distinct_bodies FROM repairs GROUP BY ALL",
+    "rows": [
+      {
+        "before_disposition": "needs_acquisition",
+        "after_disposition": "accepted_recovery",
+        "target_requirement": "historical_exact",
+        "targets": 1606,
+        "distinct_bodies": 1604
+      }
+    ]
+  },
+  "repair_body_novelty": {
+    "sql": "WITH bodies AS (SELECT DISTINCT body_sha256 FROM repairs WHERE before_disposition='needs_acquisition' AND after_disposition='accepted_recovery')\nSELECT count(*) AS bodies,count(*) FILTER(WHERE EXISTS(SELECT 1 FROM relevant_captures c WHERE c.body_sha=b.body_sha256 AND c.is_real_file)) AS prior_real_file_bodies,\ncount(*) FILTER(WHERE EXISTS(SELECT 1 FROM docs d WHERE lower(hex(d.saved_body))=b.body_sha256)) AS published_saved_bodies FROM bodies b",
+    "rows": [
+      {
+        "bodies": 1604,
+        "prior_real_file_bodies": 1371,
+        "published_saved_bodies": 1372
+      }
+    ]
+  },
+  "repair_duplicate_examples": {
+    "sql": "SELECT body_sha256,count(*) AS targets,list(target_url) AS urls FROM repairs WHERE before_disposition='needs_acquisition' AND after_disposition='accepted_recovery' GROUP BY ALL HAVING count(*)>1 ORDER BY targets DESC LIMIT 12",
+    "rows": [
+      {
+        "body_sha256": "f984b8439d21b0ef80f8a6f2e16f1dfc20d1ff57a53afe3f65ceefca67b551ee",
+        "targets": 2,
+        "urls": [
+          "https://democrats-science.house.gov/download/hr-4755&download=1",
+          "https://democrats-science.house.gov/download/hr-4824&download=1"
+        ]
+      },
+      {
+        "body_sha256": "e9b047a091b41af2f06d837d8395e12de50a7ebb75a851362ce101443c83ee5e",
+        "targets": 2,
+        "urls": [
+          "https://democrats-science.house.gov/download/hr-988-the-near-act-of-2019&download=1",
+          "https://democrats-science.house.gov/download/hr-988-the-near-act-of-2019-&download=1"
+        ]
+      }
+    ]
+  },
+  "repair_receipt_bindings": {
+    "sql": "SELECT count(*) AS selected_targets,\ncount(*) FILTER(WHERE EXISTS(SELECT 1 FROM wave4 w WHERE w.final_url=r.candidate_url AND w.body_sha256=r.body_sha256 AND w.qualification_status='qualified')) AS wave4_body_bound,\ncount(*) FILTER(WHERE EXISTS(SELECT 1 FROM retained c WHERE c.original_url=r.target_url AND lower(hex(c.sha256))=r.body_sha256 AND c.complete AND c.mode='retained_import')) AS retained_bound,\ncount(*) FILTER(WHERE EXISTS(SELECT 1 FROM decisions d WHERE d.original_url=r.target_url AND d.body_sha256=r.body_sha256 AND d.acceptance_status='accepted')) AS decision_bound\nFROM repairs r",
+    "rows": [
+      {
+        "selected_targets": 1606,
+        "wave4_body_bound": 1606,
+        "retained_bound": 1606,
+        "decision_bound": 1606
+      }
+    ]
+  },
+  "remaining_house_wave4": {
+    "sql": "SELECT w.http_status,w.outcome,w.qualification_status,count(DISTINCT d.target_url) AS targets\nFROM d LEFT JOIN wave4 w ON w.candidate_url=regexp_replace(d.target_url,'(?:%20|\\s)*&download=1$','?download=1')\nWHERE d.disposition='needs_acquisition' AND ends_with(d.target_url,'&download=1') AND contains(d.target_url,'.house.gov/') GROUP BY ALL",
+    "rows": [
+      {
+        "http_status": null,
+        "outcome": null,
+        "qualification_status": null,
+        "targets": 1399
+      },
+      {
+        "http_status": 200,
+        "outcome": "size_limit",
+        "qualification_status": null,
+        "targets": 3
+      },
+      {
+        "http_status": 302,
+        "outcome": "failed",
+        "qualification_status": null,
+        "targets": 2
+      },
+      {
+        "http_status": 200,
+        "outcome": "unchanged",
+        "qualification_status": "unresolved",
+        "targets": 2
+      },
+      {
+        "http_status": null,
+        "outcome": "request_failed",
+        "qualification_status": null,
+        "targets": 2
+      },
+      {
+        "http_status": 200,
+        "outcome": "stored",
+        "qualification_status": "unresolved",
+        "targets": 3
+      }
+    ]
+  },
+  "remaining_house_wave5": {
+    "sql": "SELECT w.http_status,w.outcome,w.qualification_status,count(DISTINCT d.target_url) AS targets\nFROM d LEFT JOIN wave5 w ON w.candidate_url=regexp_replace(d.target_url,'(?:%20|\\s)*&download=1$','?download=1')\nWHERE d.disposition='needs_acquisition' AND ends_with(d.target_url,'&download=1') AND contains(d.target_url,'.house.gov/') GROUP BY ALL",
+    "rows": [
+      {
+        "http_status": null,
+        "outcome": null,
+        "qualification_status": null,
+        "targets": 1411
+      }
+    ]
+  },
+  "changed_key_capture_shapes": {
+    "sql": "SELECT n.url,n.baseline_key,n.proposed_key,c.http_status,c.record_role,c.is_real_file,c.body_sha,c.bytes,count(*) AS rows\nFROM normalized n LEFT JOIN relevant_captures c ON c.requested_url=n.url\nWHERE n.baseline_key IS DISTINCT FROM n.proposed_key GROUP BY ALL ORDER BY n.url",
+    "rows": [
+      {
+        "url": "https://appropriations.house.gov/sites/evo-subsites/republicans-appropriations.house.gov/files/evo-media-document/fs-notice-of-subcommittee-markup-fy27.pdf%20",
+        "baseline_key": "appropriations.house.gov/sites/evo-subsites/republicans-appropriations.house.gov/files/evo-media-document/fs-notice-of-subcommittee-markup-fy27.pdf%20",
+        "proposed_key": "appropriations.house.gov/sites/evo-subsites/republicans-appropriations.house.gov/files/evo-media-document/fs-notice-of-subcommittee-markup-fy27.pdf",
+        "http_status": 404,
+        "record_role": "error_response",
+        "is_real_file": false,
+        "body_sha": "8749883cebca90a2ff6d6f08f734a4e9bda5b0bab01d5ef5eac33dd1b14ae198",
+        "bytes": 106308,
+        "rows": 2
+      },
+      {
+        "url": "https://appropriations.house.gov/sites/evo-subsites/republicans-appropriations.house.gov/files/evo-media-document/fs-notice-of-subcommittee-markup-fy27.pdf%20",
+        "baseline_key": "appropriations.house.gov/sites/evo-subsites/republicans-appropriations.house.gov/files/evo-media-document/fs-notice-of-subcommittee-markup-fy27.pdf%20",
+        "proposed_key": "appropriations.house.gov/sites/evo-subsites/republicans-appropriations.house.gov/files/evo-media-document/fs-notice-of-subcommittee-markup-fy27.pdf",
+        "http_status": 404,
+        "record_role": "error_response",
+        "is_real_file": false,
+        "body_sha": "84c4f346347bd0fb21a3b2b45e1af8ac18bdc3407ec17399559959feb9e00bd3",
+        "bytes": 106307,
+        "rows": 1
+      },
+      {
+        "url": "https://appropriations.house.gov/sites/evo-subsites/republicans-appropriations.house.gov/files/evo-media-document/mc-notice-of-subcommittee-markup-fy27.pdf%20",
+        "baseline_key": "appropriations.house.gov/sites/evo-subsites/republicans-appropriations.house.gov/files/evo-media-document/mc-notice-of-subcommittee-markup-fy27.pdf%20",
+        "proposed_key": "appropriations.house.gov/sites/evo-subsites/republicans-appropriations.house.gov/files/evo-media-document/mc-notice-of-subcommittee-markup-fy27.pdf",
+        "http_status": 404,
+        "record_role": "error_response",
+        "is_real_file": false,
+        "body_sha": "aa4f3312a97486522501a24dc5a640b65e727648fecb74faef05ffa37aa12bfd",
+        "bytes": 106310,
+        "rows": 1
+      },
+      {
+        "url": "https://appropriations.house.gov/sites/evo-subsites/republicans-appropriations.house.gov/files/evo-media-document/mc-notice-of-subcommittee-markup-fy27.pdf%20",
+        "baseline_key": "appropriations.house.gov/sites/evo-subsites/republicans-appropriations.house.gov/files/evo-media-document/mc-notice-of-subcommittee-markup-fy27.pdf%20",
+        "proposed_key": "appropriations.house.gov/sites/evo-subsites/republicans-appropriations.house.gov/files/evo-media-document/mc-notice-of-subcommittee-markup-fy27.pdf",
+        "http_status": 404,
+        "record_role": "error_response",
+        "is_real_file": false,
+        "body_sha": "6c7c0ada0dd2ba301d04d415ee013d5f3748f92f51d25d5b4eee3e911b6c5dc3",
+        "bytes": 106308,
+        "rows": 2
+      },
+      {
+        "url": "https://democrats-edworkforce.house.gov/imo/media/doc/rc41_H.R.4674MurphyA54.pdf%20",
+        "baseline_key": "democrats-edworkforce.house.gov/imo/media/doc/rc41_H.R.4674MurphyA54.pdf%20",
+        "proposed_key": "democrats-edworkforce.house.gov/imo/media/doc/rc41_H.R.4674MurphyA54.pdf",
+        "http_status": 404,
+        "record_role": "error_response",
+        "is_real_file": false,
+        "body_sha": "80c3fe2ae1062abf56456f52518bd670f9ec3917b7f85e152b347ac6b6faf880",
+        "bytes": 196,
+        "rows": 3
+      },
+      {
+        "url": "https://democrats-transportation.house.gov/download/09/09/2020/flynn-testimony%20",
+        "baseline_key": "democrats-transportation.house.gov/download/09/09/2020/flynn-testimony%20",
+        "proposed_key": "democrats-transportation.house.gov/download/09/09/2020/flynn-testimony",
+        "http_status": 200,
+        "record_role": "wrapper",
+        "is_real_file": false,
+        "body_sha": "3e50af7310cd5388769834f4cabfe9037cfd595539365a3b6ab8855d20a51ec9",
+        "bytes": 79226,
+        "rows": 1
+      },
+      {
+        "url": "https://democrats-transportation.house.gov/download/09/09/2020/flynn-testimony%20#aria-skip-nav",
+        "baseline_key": "democrats-transportation.house.gov/download/09/09/2020/flynn-testimony%20",
+        "proposed_key": "democrats-transportation.house.gov/download/09/09/2020/flynn-testimony",
+        "http_status": null,
+        "record_role": null,
+        "is_real_file": null,
+        "body_sha": null,
+        "bytes": null,
+        "rows": 1
+      },
+      {
+        "url": "https://democrats-transportation.house.gov/download/09/09/2020/mathews-testimony%20",
+        "baseline_key": "democrats-transportation.house.gov/download/09/09/2020/mathews-testimony%20",
+        "proposed_key": "democrats-transportation.house.gov/download/09/09/2020/mathews-testimony",
+        "http_status": 200,
+        "record_role": "wrapper",
+        "is_real_file": false,
+        "body_sha": "4d5b46213a43e9317e1e1cd87f87c992ab5482f7129dc85261f1b522f0e1ea54",
+        "bytes": 79228,
+        "rows": 1
+      },
+      {
+        "url": "https://democrats-transportation.house.gov/download/09/09/2020/mathews-testimony%20#aria-skip-nav",
+        "baseline_key": "democrats-transportation.house.gov/download/09/09/2020/mathews-testimony%20",
+        "proposed_key": "democrats-transportation.house.gov/download/09/09/2020/mathews-testimony",
+        "http_status": null,
+        "record_role": null,
+        "is_real_file": null,
+        "body_sha": null,
+        "bytes": null,
+        "rows": 1
+      },
+      {
+        "url": "https://democrats-transportation.house.gov/download/ans-to-hr-4358%20",
+        "baseline_key": "democrats-transportation.house.gov/download/ans-to-hr-4358%20",
+        "proposed_key": "democrats-transportation.house.gov/download/ans-to-hr-4358",
+        "http_status": 200,
+        "record_role": "wrapper",
+        "is_real_file": false,
+        "body_sha": "4ed6e2eca06ae52d5e4d5c895c180fe49ae8b8b0e0022884c32c6632895f3ad1",
+        "bytes": 79199,
+        "rows": 1
+      },
+      {
+        "url": "https://democrats-transportation.house.gov/download/ans-to-hr-4358%20#aria-skip-nav",
+        "baseline_key": "democrats-transportation.house.gov/download/ans-to-hr-4358%20",
+        "proposed_key": "democrats-transportation.house.gov/download/ans-to-hr-4358",
+        "http_status": null,
+        "record_role": null,
+        "is_real_file": null,
+        "body_sha": null,
+        "bytes": null,
+        "rows": 1
+      },
+      {
+        "url": "https://democrats-transportation.house.gov/download/ans-to-hr-4611%20",
+        "baseline_key": "democrats-transportation.house.gov/download/ans-to-hr-4611%20",
+        "proposed_key": "democrats-transportation.house.gov/download/ans-to-hr-4611",
+        "http_status": 200,
+        "record_role": "wrapper",
+        "is_real_file": false,
+        "body_sha": "4746724e9e1522a6e261244c1a7993682af609aa48e5d148a50c53d37a202df3",
+        "bytes": 79162,
+        "rows": 1
+      },
+      {
+        "url": "https://democrats-transportation.house.gov/download/ans-to-hr-4611%20#aria-skip-nav",
+        "baseline_key": "democrats-transportation.house.gov/download/ans-to-hr-4611%20",
+        "proposed_key": "democrats-transportation.house.gov/download/ans-to-hr-4611",
+        "http_status": null,
+        "record_role": null,
+        "is_real_file": null,
+        "body_sha": null,
+        "bytes": null,
+        "rows": 1
+      },
+      {
+        "url": "https://democrats-transportation.house.gov/download/elizabeth-jolin-testimony%20",
+        "baseline_key": "democrats-transportation.house.gov/download/elizabeth-jolin-testimony%20",
+        "proposed_key": "democrats-transportation.house.gov/download/elizabeth-jolin-testimony",
+        "http_status": 200,
+        "record_role": "wrapper",
+        "is_real_file": false,
+        "body_sha": "d87d41d61835b96106dd1db5c35e2f452bfe9ffbb63b2b577c5bb21d0385f02f",
+        "bytes": 79224,
+        "rows": 1
+      },
+      {
+        "url": "https://democrats-transportation.house.gov/download/elizabeth-jolin-testimony%20#aria-skip-nav",
+        "baseline_key": "democrats-transportation.house.gov/download/elizabeth-jolin-testimony%20",
+        "proposed_key": "democrats-transportation.house.gov/download/elizabeth-jolin-testimony",
+        "http_status": null,
+        "record_role": null,
+        "is_real_file": null,
+        "body_sha": null,
+        "bytes": null,
+        "rows": 1
+      },
+      {
+        "url": "https://democrats-transportation.house.gov/download/eve-williams-testimony%20",
+        "baseline_key": "democrats-transportation.house.gov/download/eve-williams-testimony%20",
+        "proposed_key": "democrats-transportation.house.gov/download/eve-williams-testimony",
+        "http_status": 200,
+        "record_role": "wrapper",
+        "is_real_file": false,
+        "body_sha": "85fd43f764d39b7d23ac9028dee6962dbb3c4d5474e1ff0aca872c203b629171",
+        "bytes": 79218,
+        "rows": 1
+      },
+      {
+        "url": "https://democrats-transportation.house.gov/download/eve-williams-testimony%20#aria-skip-nav",
+        "baseline_key": "democrats-transportation.house.gov/download/eve-williams-testimony%20",
+        "proposed_key": "democrats-transportation.house.gov/download/eve-williams-testimony",
+        "http_status": null,
+        "record_role": null,
+        "is_real_file": null,
+        "body_sha": null,
+        "bytes": null,
+        "rows": 1
+      },
+      {
+        "url": "https://democrats-transportation.house.gov/download/farad-ali-testimony%20",
+        "baseline_key": "democrats-transportation.house.gov/download/farad-ali-testimony%20",
+        "proposed_key": "democrats-transportation.house.gov/download/farad-ali-testimony",
+        "http_status": 200,
+        "record_role": "wrapper",
+        "is_real_file": false,
+        "body_sha": "f2fbeec98ad0a46daeac8dd6ed9e03f61f22cd34f3a0d9aff6e6289ecc5f417f",
+        "bytes": 79212,
+        "rows": 1
+      },
+      {
+        "url": "https://democrats-transportation.house.gov/download/farad-ali-testimony%20#aria-skip-nav",
+        "baseline_key": "democrats-transportation.house.gov/download/farad-ali-testimony%20",
+        "proposed_key": "democrats-transportation.house.gov/download/farad-ali-testimony",
+        "http_status": null,
+        "record_role": null,
+        "is_real_file": null,
+        "body_sha": null,
+        "bytes": null,
+        "rows": 1
+      },
+      {
+        "url": "https://democrats-transportation.house.gov/download/gary-ritter-testimony%20",
+        "baseline_key": "democrats-transportation.house.gov/download/gary-ritter-testimony%20",
+        "proposed_key": "democrats-transportation.house.gov/download/gary-ritter-testimony",
+        "http_status": 200,
+        "record_role": "wrapper",
+        "is_real_file": false,
+        "body_sha": "f4b3d3ec9c9f235cdab1a19010740a07880039d302d55a76abf52acdd04fb860",
+        "bytes": 79216,
+        "rows": 1
+      },
+      {
+        "url": "https://democrats-transportation.house.gov/download/gary-ritter-testimony%20#aria-skip-nav",
+        "baseline_key": "democrats-transportation.house.gov/download/gary-ritter-testimony%20",
+        "proposed_key": "democrats-transportation.house.gov/download/gary-ritter-testimony",
+        "http_status": null,
+        "record_role": null,
+        "is_real_file": null,
+        "body_sha": null,
+        "bytes": null,
+        "rows": 1
+      },
+      {
+        "url": "https://democrats-transportation.house.gov/download/graves-la-234%20",
+        "baseline_key": "democrats-transportation.house.gov/download/graves-la-234%20",
+        "proposed_key": "democrats-transportation.house.gov/download/graves-la-234",
+        "http_status": 200,
+        "record_role": "wrapper",
+        "is_real_file": false,
+        "body_sha": "4ea2c84ac4cae2a8175d6fabab600d646c8ed3f5f3a6e9fb6a8db94a85569abc",
+        "bytes": 79200,
+        "rows": 1
+      },
+      {
+        "url": "https://democrats-transportation.house.gov/download/graves-la-234%20#aria-skip-nav",
+        "baseline_key": "democrats-transportation.house.gov/download/graves-la-234%20",
+        "proposed_key": "democrats-transportation.house.gov/download/graves-la-234",
+        "http_status": null,
+        "record_role": null,
+        "is_real_file": null,
+        "body_sha": null,
+        "bytes": null,
+        "rows": 1
+      },
+      {
+        "url": "https://democrats-transportation.house.gov/download/griffin-testimony%20",
+        "baseline_key": "democrats-transportation.house.gov/download/griffin-testimony%20",
+        "proposed_key": "democrats-transportation.house.gov/download/griffin-testimony",
+        "http_status": 200,
+        "record_role": "wrapper",
+        "is_real_file": false,
+        "body_sha": "8081465d225768266e010f0a2b3091f4e01dbe513e7ce15a3a2b3cbb9923c842",
+        "bytes": 79208,
+        "rows": 1
+      },
+      {
+        "url": "https://democrats-transportation.house.gov/download/griffin-testimony%20#aria-skip-nav",
+        "baseline_key": "democrats-transportation.house.gov/download/griffin-testimony%20",
+        "proposed_key": "democrats-transportation.house.gov/download/griffin-testimony",
+        "http_status": null,
+        "record_role": null,
+        "is_real_file": null,
+        "body_sha": null,
+        "bytes": null,
+        "rows": 1
+      },
+      {
+        "url": "https://democrats-transportation.house.gov/download/honorable-chauncey-p-goss-ii-testimony%20",
+        "baseline_key": "democrats-transportation.house.gov/download/honorable-chauncey-p-goss-ii-testimony%20",
+        "proposed_key": "democrats-transportation.house.gov/download/honorable-chauncey-p-goss-ii-testimony",
+        "http_status": 200,
+        "record_role": "wrapper",
+        "is_real_file": false,
+        "body_sha": "78d3dd21a173b6976ca1135ceb73cb08e71b75f59cd6e92d4c827777b8ee54e7",
+        "bytes": 79315,
+        "rows": 1
+      },
+      {
+        "url": "https://democrats-transportation.house.gov/download/honorable-chauncey-p-goss-ii-testimony%20#aria-skip-nav",
+        "baseline_key": "democrats-transportation.house.gov/download/honorable-chauncey-p-goss-ii-testimony%20",
+        "proposed_key": "democrats-transportation.house.gov/download/honorable-chauncey-p-goss-ii-testimony",
+        "http_status": null,
+        "record_role": null,
+        "is_real_file": null,
+        "body_sha": null,
+        "bytes": null,
+        "rows": 1
+      },
+      {
+        "url": "https://democrats-transportation.house.gov/download/jon-wainwright-testimony%20",
+        "baseline_key": "democrats-transportation.house.gov/download/jon-wainwright-testimony%20",
+        "proposed_key": "democrats-transportation.house.gov/download/jon-wainwright-testimony",
+        "http_status": 200,
+        "record_role": "wrapper",
+        "is_real_file": false,
+        "body_sha": "e8ebb5232e6688cbfa113fa8bf92fd816cff45861cf4ef22131719b355c60b91",
+        "bytes": 79222,
+        "rows": 1
+      },
+      {
+        "url": "https://democrats-transportation.house.gov/download/jon-wainwright-testimony%20#aria-skip-nav",
+        "baseline_key": "democrats-transportation.house.gov/download/jon-wainwright-testimony%20",
+        "proposed_key": "democrats-transportation.house.gov/download/jon-wainwright-testimony",
+        "http_status": null,
+        "record_role": null,
+        "is_real_file": null,
+        "body_sha": null,
+        "bytes": null,
+        "rows": 1
+      },
+      {
+        "url": "https://democrats-transportation.house.gov/download/mary-lerdahl-testimony%20",
+        "baseline_key": "democrats-transportation.house.gov/download/mary-lerdahl-testimony%20",
+        "proposed_key": "democrats-transportation.house.gov/download/mary-lerdahl-testimony",
+        "http_status": 200,
+        "record_role": "wrapper",
+        "is_real_file": false,
+        "body_sha": "8aba15f136a2b83a026733f1693bd34112394cac2c579cfa577fb01686d38c28",
+        "bytes": 79226,
+        "rows": 1
+      },
+      {
+        "url": "https://democrats-transportation.house.gov/download/mary-lerdahl-testimony%20#aria-skip-nav",
+        "baseline_key": "democrats-transportation.house.gov/download/mary-lerdahl-testimony%20",
+        "proposed_key": "democrats-transportation.house.gov/download/mary-lerdahl-testimony",
+        "http_status": null,
+        "record_role": null,
+        "is_real_file": null,
+        "body_sha": null,
+        "bytes": null,
+        "rows": 1
+      },
+      {
+        "url": "https://democrats-transportation.house.gov/download/mucarsel-powell-037%20",
+        "baseline_key": "democrats-transportation.house.gov/download/mucarsel-powell-037%20",
+        "proposed_key": "democrats-transportation.house.gov/download/mucarsel-powell-037",
+        "http_status": 200,
+        "record_role": "wrapper",
+        "is_real_file": false,
+        "body_sha": "58a8fe8fc6d26f84da00cf5d1266474ea7cd6752a750d5f02c33a7d6328a8048",
+        "bytes": 79212,
+        "rows": 1
+      },
+      {
+        "url": "https://democrats-transportation.house.gov/download/mucarsel-powell-037%20#aria-skip-nav",
+        "baseline_key": "democrats-transportation.house.gov/download/mucarsel-powell-037%20",
+        "proposed_key": "democrats-transportation.house.gov/download/mucarsel-powell-037",
+        "http_status": null,
+        "record_role": null,
+        "is_real_file": null,
+        "body_sha": null,
+        "bytes": null,
+        "rows": 1
+      },
+      {
+        "url": "https://democrats-transportation.house.gov/download/noah-valenstein-testimony%20",
+        "baseline_key": "democrats-transportation.house.gov/download/noah-valenstein-testimony%20",
+        "proposed_key": "democrats-transportation.house.gov/download/noah-valenstein-testimony",
+        "http_status": 200,
+        "record_role": "wrapper",
+        "is_real_file": false,
+        "body_sha": "66f0b35d0994ec551fa12f8e3d033c5142134fda34abe866096bb86f60b2186a",
+        "bytes": 79224,
+        "rows": 1
+      },
+      {
+        "url": "https://democrats-transportation.house.gov/download/noah-valenstein-testimony%20#aria-skip-nav",
+        "baseline_key": "democrats-transportation.house.gov/download/noah-valenstein-testimony%20",
+        "proposed_key": "democrats-transportation.house.gov/download/noah-valenstein-testimony",
+        "http_status": null,
+        "record_role": null,
+        "is_real_file": null,
+        "body_sha": null,
+        "bytes": null,
+        "rows": 1
+      },
+      {
+        "url": "https://democrats-transportation.house.gov/download/sandra-norman-testimony%20",
+        "baseline_key": "democrats-transportation.house.gov/download/sandra-norman-testimony%20",
+        "proposed_key": "democrats-transportation.house.gov/download/sandra-norman-testimony",
+        "http_status": 200,
+        "record_role": "wrapper",
+        "is_real_file": false,
+        "body_sha": "f1448f5ceef09c74ec8f435ba9ad311270618b7e9f6b665c050fd51da05e192b",
+        "bytes": 79220,
+        "rows": 1
+      },
+      {
+        "url": "https://democrats-transportation.house.gov/download/sandra-norman-testimony%20#aria-skip-nav",
+        "baseline_key": "democrats-transportation.house.gov/download/sandra-norman-testimony%20",
+        "proposed_key": "democrats-transportation.house.gov/download/sandra-norman-testimony",
+        "http_status": null,
+        "record_role": null,
+        "is_real_file": null,
+        "body_sha": null,
+        "bytes": null,
+        "rows": 1
+      },
+      {
+        "url": "https://democrats-transportation.house.gov/download/sandy-michael-mcdonald-testimony%20",
+        "baseline_key": "democrats-transportation.house.gov/download/sandy-michael-mcdonald-testimony%20",
+        "proposed_key": "democrats-transportation.house.gov/download/sandy-michael-mcdonald-testimony",
+        "http_status": 200,
+        "record_role": "wrapper",
+        "is_real_file": false,
+        "body_sha": "44c6b97e482004e57de2b3ce134006cb5d219bb3e4d232c0e109cf40ae26c530",
+        "bytes": 79238,
+        "rows": 1
+      },
+      {
+        "url": "https://democrats-transportation.house.gov/download/sandy-michael-mcdonald-testimony%20#aria-skip-nav",
+        "baseline_key": "democrats-transportation.house.gov/download/sandy-michael-mcdonald-testimony%20",
+        "proposed_key": "democrats-transportation.house.gov/download/sandy-michael-mcdonald-testimony",
+        "http_status": null,
+        "record_role": null,
+        "is_real_file": null,
+        "body_sha": null,
+        "bytes": null,
+        "rows": 1
+      },
+      {
+        "url": "https://democrats-transportation.house.gov/download/shannon-estenoz-testimony%20",
+        "baseline_key": "democrats-transportation.house.gov/download/shannon-estenoz-testimony%20",
+        "proposed_key": "democrats-transportation.house.gov/download/shannon-estenoz-testimony",
+        "http_status": 200,
+        "record_role": "wrapper",
+        "is_real_file": false,
+        "body_sha": "daf1bef24ea6af637c59494fba1beadfb7e947c6cecd9a7ed08f9abc7fb802f0",
+        "bytes": 79242,
+        "rows": 1
+      },
+      {
+        "url": "https://democrats-transportation.house.gov/download/shannon-estenoz-testimony%20#aria-skip-nav",
+        "baseline_key": "democrats-transportation.house.gov/download/shannon-estenoz-testimony%20",
+        "proposed_key": "democrats-transportation.house.gov/download/shannon-estenoz-testimony",
+        "http_status": null,
+        "record_role": null,
+        "is_real_file": null,
+        "body_sha": null,
+        "bytes": null,
+        "rows": 1
+      },
+      {
+        "url": "https://democrats-transportation.house.gov/sites/transportation.creativengine.com/files/costello.pdf%20",
+        "baseline_key": "democrats-transportation.house.gov/sites/transportation.creativengine.com/files/costello.pdf%20",
+        "proposed_key": "democrats-transportation.house.gov/sites/transportation.creativengine.com/files/costello.pdf",
+        "http_status": 410,
+        "record_role": "error_response",
+        "is_real_file": false,
+        "body_sha": "5aef98d1f066051625509da47512a32e9f5b12933d84c8afc427f4fb14ad7ab7",
+        "bytes": 386,
+        "rows": 3
+      },
+      {
+        "url": "https://humanrightscommission.house.gov/sites/evo-subsites/humanrightscommission.house.gov/files/evo-media-document/hr-in-central-america.pdf%20",
+        "baseline_key": "humanrightscommission.house.gov/sites/evo-subsites/humanrightscommission.house.gov/files/evo-media-document/hr-in-central-america.pdf%20",
+        "proposed_key": "humanrightscommission.house.gov/sites/evo-subsites/humanrightscommission.house.gov/files/evo-media-document/hr-in-central-america.pdf",
+        "http_status": 404,
+        "record_role": "error_response",
+        "is_real_file": false,
+        "body_sha": "c8d8c714a0d8db98d9a2c4938c4274b96fda9152188002f40c8862d80a22693b",
+        "bytes": 82708,
+        "rows": 1
+      },
+      {
+        "url": "https://humanrightscommission.house.gov/sites/evo-subsites/humanrightscommission.house.gov/files/evo-media-document/hr-in-central-america.pdf%20",
+        "baseline_key": "humanrightscommission.house.gov/sites/evo-subsites/humanrightscommission.house.gov/files/evo-media-document/hr-in-central-america.pdf%20",
+        "proposed_key": "humanrightscommission.house.gov/sites/evo-subsites/humanrightscommission.house.gov/files/evo-media-document/hr-in-central-america.pdf",
+        "http_status": 404,
+        "record_role": "error_response",
+        "is_real_file": false,
+        "body_sha": "135c851568e5fe1c3b9f18eb6f73a40d17e57809db7cea4e5bbad2f59aa2b998",
+        "bytes": 82708,
+        "rows": 2
+      },
+      {
+        "url": "https://permanent.access.gpo.gov/gpo2978/DEEPWATER_ReporttothePresident_FINAL.pdf%20",
+        "baseline_key": "permanent.access.gpo.gov/gpo2978/DEEPWATER_ReporttothePresident_FINAL.pdf%20",
+        "proposed_key": "permanent.access.gpo.gov/gpo2978/DEEPWATER_ReporttothePresident_FINAL.pdf",
+        "http_status": 404,
+        "record_role": "error_response",
+        "is_real_file": false,
+        "body_sha": "80c3fe2ae1062abf56456f52518bd670f9ec3917b7f85e152b347ac6b6faf880",
+        "bytes": 196,
+        "rows": 3
+      },
+      {
+        "url": "https://waysandmeans.house.gov/UploadedFiles/Burman_TIT_9.20.2012.pdf%20",
+        "baseline_key": "waysandmeans.house.gov/UploadedFiles/Burman_TIT_9.20.2012.pdf%20",
+        "proposed_key": "waysandmeans.house.gov/UploadedFiles/Burman_TIT_9.20.2012.pdf",
+        "http_status": 404,
+        "record_role": "error_response",
+        "is_real_file": false,
+        "body_sha": "d465172175d35d493fb1633e237700022bd849fa123164790b168b8318acb090",
+        "bytes": 548,
+        "rows": 3
+      },
+      {
+        "url": "https://www.cantwell.senate.gov/download/rail-safety-presser-may-17%20",
+        "baseline_key": "cantwell.senate.gov/download/rail-safety-presser-may-17%20",
+        "proposed_key": "cantwell.senate.gov/download/rail-safety-presser-may-17",
+        "http_status": null,
+        "record_role": "document",
+        "is_real_file": false,
+        "body_sha": "3460294b37e39dfd03803e622a0f05c37b3c1ebf8e4eecb156c807c095268134",
+        "bytes": 21865,
+        "rows": 5
+      },
+      {
+        "url": "https://www.cantwell.senate.gov/download/rail-safety-presser-may-17%20",
+        "baseline_key": "cantwell.senate.gov/download/rail-safety-presser-may-17%20",
+        "proposed_key": "cantwell.senate.gov/download/rail-safety-presser-may-17",
+        "http_status": null,
+        "record_role": null,
+        "is_real_file": false,
+        "body_sha": null,
+        "bytes": null,
+        "rows": 4
+      },
+      {
+        "url": "https://www.cantwell.senate.gov/download/rail-safety-presser-may-17%20",
+        "baseline_key": "cantwell.senate.gov/download/rail-safety-presser-may-17%20",
+        "proposed_key": "cantwell.senate.gov/download/rail-safety-presser-may-17",
+        "http_status": 200,
+        "record_role": "document",
+        "is_real_file": false,
+        "body_sha": "3460294b37e39dfd03803e622a0f05c37b3c1ebf8e4eecb156c807c095268134",
+        "bytes": 21865,
+        "rows": 1
+      },
+      {
+        "url": "https://www.cantwell.senate.gov/download/rail-safety-presser-may-17%20#",
+        "baseline_key": "cantwell.senate.gov/download/rail-safety-presser-may-17%20",
+        "proposed_key": "cantwell.senate.gov/download/rail-safety-presser-may-17",
+        "http_status": null,
+        "record_role": null,
+        "is_real_file": null,
+        "body_sha": null,
+        "bytes": null,
+        "rows": 1
+      },
+      {
+        "url": "https://www.cantwell.senate.gov/download/rail-safety-presser-may-17%20#top",
+        "baseline_key": "cantwell.senate.gov/download/rail-safety-presser-may-17%20",
+        "proposed_key": "cantwell.senate.gov/download/rail-safety-presser-may-17",
+        "http_status": null,
+        "record_role": null,
+        "is_real_file": null,
+        "body_sha": null,
+        "bytes": null,
+        "rows": 1
+      },
+      {
+        "url": "https://www.finance.senate.gov/404?notfound=hearings%2Fthe-presidents-fiscal-year-2024-irs-budget-and-the-irss-2023-filing-season",
+        "baseline_key": "finance.senate.gov/hearings%2Fthe-presidents-fiscal-year-2024-irs-budget-and-the-irss-2023-filing-season",
+        "proposed_key": "finance.senate.gov/hearings/the-presidents-fiscal-year-2024-irs-budget-and-the-irss-2023-filing-season",
+        "http_status": 200,
+        "record_role": "error_response",
+        "is_real_file": false,
+        "body_sha": "f5a8cc66ecce2838faff2af8c396214090082985093231a932cda3a8c3e833da",
+        "bytes": 35317,
+        "rows": 1
+      },
+      {
+        "url": "https://www.finance.senate.gov/404?notfound=hearings%2Fthe-presidents-fiscal-year-2024-irs-budget-and-the-irss-2023-filing-season#",
+        "baseline_key": "finance.senate.gov/404?notfound=hearings%2Fthe-presidents-fiscal-year-2024-irs-budget-and-the-irss-2023-filing-season",
+        "proposed_key": "finance.senate.gov/hearings/the-presidents-fiscal-year-2024-irs-budget-and-the-irss-2023-filing-season",
+        "http_status": null,
+        "record_role": null,
+        "is_real_file": null,
+        "body_sha": null,
+        "bytes": null,
+        "rows": 1
+      },
+      {
+        "url": "https://www.finance.senate.gov/404?notfound=hearings%2Fthe-presidents-fiscal-year-2024-irs-budget-and-the-irss-2023-filing-season#main-nav",
+        "baseline_key": "finance.senate.gov/404?notfound=hearings%2Fthe-presidents-fiscal-year-2024-irs-budget-and-the-irss-2023-filing-season",
+        "proposed_key": "finance.senate.gov/hearings/the-presidents-fiscal-year-2024-irs-budget-and-the-irss-2023-filing-season",
+        "http_status": null,
+        "record_role": null,
+        "is_real_file": null,
+        "body_sha": null,
+        "bytes": null,
+        "rows": 1
+      },
+      {
+        "url": "https://www.finance.senate.gov/404?notfound=hearings%2Fthe-presidents-fiscal-year-2024-irs-budget-and-the-irss-2023-filing-season#skip-nav",
+        "baseline_key": "finance.senate.gov/404?notfound=hearings%2Fthe-presidents-fiscal-year-2024-irs-budget-and-the-irss-2023-filing-season",
+        "proposed_key": "finance.senate.gov/hearings/the-presidents-fiscal-year-2024-irs-budget-and-the-irss-2023-filing-season",
+        "http_status": null,
+        "record_role": null,
+        "is_real_file": null,
+        "body_sha": null,
+        "bytes": null,
+        "rows": 1
+      },
+      {
+        "url": "https://www.finance.senate.gov/download/02132020-wyden-testimony&download=1#",
+        "baseline_key": "finance.senate.gov/download/02132020-wyden-testimony&download=1",
+        "proposed_key": "finance.senate.gov/download/02132020-wyden-testimony?download=1",
+        "http_status": null,
+        "record_role": null,
+        "is_real_file": null,
+        "body_sha": null,
+        "bytes": null,
+        "rows": 1
+      },
+      {
+        "url": "https://www.finance.senate.gov/download/02132020-wyden-testimony&download=1#main-nav",
+        "baseline_key": "finance.senate.gov/download/02132020-wyden-testimony&download=1",
+        "proposed_key": "finance.senate.gov/download/02132020-wyden-testimony?download=1",
+        "http_status": null,
+        "record_role": null,
+        "is_real_file": null,
+        "body_sha": null,
+        "bytes": null,
+        "rows": 1
+      },
+      {
+        "url": "https://www.finance.senate.gov/download/02132020-wyden-testimony&download=1#skip-nav",
+        "baseline_key": "finance.senate.gov/download/02132020-wyden-testimony&download=1",
+        "proposed_key": "finance.senate.gov/download/02132020-wyden-testimony?download=1",
+        "http_status": null,
+        "record_role": null,
+        "is_real_file": null,
+        "body_sha": null,
+        "bytes": null,
+        "rows": 1
+      },
+      {
+        "url": "https://www.finance.senate.gov/download/03182021-vandenberg-testimony&download=1#",
+        "baseline_key": "finance.senate.gov/download/03182021-vandenberg-testimony&download=1",
+        "proposed_key": "finance.senate.gov/download/03182021-vandenberg-testimony?download=1",
+        "http_status": null,
+        "record_role": null,
+        "is_real_file": null,
+        "body_sha": null,
+        "bytes": null,
+        "rows": 1
+      },
+      {
+        "url": "https://www.finance.senate.gov/download/03182021-vandenberg-testimony&download=1#main-nav",
+        "baseline_key": "finance.senate.gov/download/03182021-vandenberg-testimony&download=1",
+        "proposed_key": "finance.senate.gov/download/03182021-vandenberg-testimony?download=1",
+        "http_status": null,
+        "record_role": null,
+        "is_real_file": null,
+        "body_sha": null,
+        "bytes": null,
+        "rows": 1
+      },
+      {
+        "url": "https://www.finance.senate.gov/download/03182021-vandenberg-testimony&download=1#skip-nav",
+        "baseline_key": "finance.senate.gov/download/03182021-vandenberg-testimony&download=1",
+        "proposed_key": "finance.senate.gov/download/03182021-vandenberg-testimony?download=1",
+        "http_status": null,
+        "record_role": null,
+        "is_real_file": null,
+        "body_sha": null,
+        "bytes": null,
+        "rows": 1
+      },
+      {
+        "url": "https://www.finance.senate.gov/download/06172020-lighthizer&download=1#",
+        "baseline_key": "finance.senate.gov/download/06172020-lighthizer&download=1",
+        "proposed_key": "finance.senate.gov/download/06172020-lighthizer?download=1",
+        "http_status": null,
+        "record_role": null,
+        "is_real_file": null,
+        "body_sha": null,
+        "bytes": null,
+        "rows": 1
+      },
+      {
+        "url": "https://www.finance.senate.gov/download/06172020-lighthizer&download=1#main-nav",
+        "baseline_key": "finance.senate.gov/download/06172020-lighthizer&download=1",
+        "proposed_key": "finance.senate.gov/download/06172020-lighthizer?download=1",
+        "http_status": null,
+        "record_role": null,
+        "is_real_file": null,
+        "body_sha": null,
+        "bytes": null,
+        "rows": 1
+      },
+      {
+        "url": "https://www.finance.senate.gov/download/06172020-lighthizer&download=1#skip-nav",
+        "baseline_key": "finance.senate.gov/download/06172020-lighthizer&download=1",
+        "proposed_key": "finance.senate.gov/download/06172020-lighthizer?download=1",
+        "http_status": null,
+        "record_role": null,
+        "is_real_file": null,
+        "body_sha": null,
+        "bytes": null,
+        "rows": 1
+      },
+      {
+        "url": "https://www.finance.senate.gov/download/08222018-faulkender-testimony&download=1#",
+        "baseline_key": "finance.senate.gov/download/08222018-faulkender-testimony&download=1",
+        "proposed_key": "finance.senate.gov/download/08222018-faulkender-testimony?download=1",
+        "http_status": null,
+        "record_role": null,
+        "is_real_file": null,
+        "body_sha": null,
+        "bytes": null,
+        "rows": 1
+      },
+      {
+        "url": "https://www.finance.senate.gov/download/08222018-faulkender-testimony&download=1#main-nav",
+        "baseline_key": "finance.senate.gov/download/08222018-faulkender-testimony&download=1",
+        "proposed_key": "finance.senate.gov/download/08222018-faulkender-testimony?download=1",
+        "http_status": null,
+        "record_role": null,
+        "is_real_file": null,
+        "body_sha": null,
+        "bytes": null,
+        "rows": 1
+      },
+      {
+        "url": "https://www.finance.senate.gov/download/08222018-faulkender-testimony&download=1#skip-nav",
+        "baseline_key": "finance.senate.gov/download/08222018-faulkender-testimony&download=1",
+        "proposed_key": "finance.senate.gov/download/08222018-faulkender-testimony?download=1",
+        "http_status": null,
+        "record_role": null,
+        "is_real_file": null,
+        "body_sha": null,
+        "bytes": null,
+        "rows": 1
+      },
+      {
+        "url": "https://www.finance.senate.gov/download/bipartisan-policy-center-statement-by-adrienne-schweer-at-sfc-family-paid-leave-working-group-round-table-on-june-18-2020&download=1#",
+        "baseline_key": "finance.senate.gov/download/bipartisan-policy-center-statement-by-adrienne-schweer-at-sfc-family-paid-leave-working-group-round-table-on-june-18-2020&download=1",
+        "proposed_key": "finance.senate.gov/download/bipartisan-policy-center-statement-by-adrienne-schweer-at-sfc-family-paid-leave-working-group-round-table-on-june-18-2020?download=1",
+        "http_status": null,
+        "record_role": null,
+        "is_real_file": null,
+        "body_sha": null,
+        "bytes": null,
+        "rows": 1
+      },
+      {
+        "url": "https://www.finance.senate.gov/download/bipartisan-policy-center-statement-by-adrienne-schweer-at-sfc-family-paid-leave-working-group-round-table-on-june-18-2020&download=1#main-nav",
+        "baseline_key": "finance.senate.gov/download/bipartisan-policy-center-statement-by-adrienne-schweer-at-sfc-family-paid-leave-working-group-round-table-on-june-18-2020&download=1",
+        "proposed_key": "finance.senate.gov/download/bipartisan-policy-center-statement-by-adrienne-schweer-at-sfc-family-paid-leave-working-group-round-table-on-june-18-2020?download=1",
+        "http_status": null,
+        "record_role": null,
+        "is_real_file": null,
+        "body_sha": null,
+        "bytes": null,
+        "rows": 1
+      },
+      {
+        "url": "https://www.finance.senate.gov/download/bipartisan-policy-center-statement-by-adrienne-schweer-at-sfc-family-paid-leave-working-group-round-table-on-june-18-2020&download=1#skip-nav",
+        "baseline_key": "finance.senate.gov/download/bipartisan-policy-center-statement-by-adrienne-schweer-at-sfc-family-paid-leave-working-group-round-table-on-june-18-2020&download=1",
+        "proposed_key": "finance.senate.gov/download/bipartisan-policy-center-statement-by-adrienne-schweer-at-sfc-family-paid-leave-working-group-round-table-on-june-18-2020?download=1",
+        "http_status": null,
+        "record_role": null,
+        "is_real_file": null,
+        "body_sha": null,
+        "bytes": null,
+        "rows": 1
+      },
+      {
+        "url": "https://www.finance.senate.gov/download/drug-pricing-in-america-a-prescription-for-change-part-iii&download=1#",
+        "baseline_key": "finance.senate.gov/download/drug-pricing-in-america-a-prescription-for-change-part-iii&download=1",
+        "proposed_key": "finance.senate.gov/download/drug-pricing-in-america-a-prescription-for-change-part-iii?download=1",
+        "http_status": null,
+        "record_role": null,
+        "is_real_file": null,
+        "body_sha": null,
+        "bytes": null,
+        "rows": 1
+      },
+      {
+        "url": "https://www.finance.senate.gov/download/drug-pricing-in-america-a-prescription-for-change-part-iii&download=1#main-nav",
+        "baseline_key": "finance.senate.gov/download/drug-pricing-in-america-a-prescription-for-change-part-iii&download=1",
+        "proposed_key": "finance.senate.gov/download/drug-pricing-in-america-a-prescription-for-change-part-iii?download=1",
+        "http_status": null,
+        "record_role": null,
+        "is_real_file": null,
+        "body_sha": null,
+        "bytes": null,
+        "rows": 1
+      },
+      {
+        "url": "https://www.finance.senate.gov/download/drug-pricing-in-america-a-prescription-for-change-part-iii&download=1#skip-nav",
+        "baseline_key": "finance.senate.gov/download/drug-pricing-in-america-a-prescription-for-change-part-iii&download=1",
+        "proposed_key": "finance.senate.gov/download/drug-pricing-in-america-a-prescription-for-change-part-iii?download=1",
+        "http_status": null,
+        "record_role": null,
+        "is_real_file": null,
+        "body_sha": null,
+        "bytes": null,
+        "rows": 1
+      },
+      {
+        "url": "https://www.finance.senate.gov/download/national-partnership-for-women-and-families-statement-by-erika-moritsugu-at-sfc-family-paid-leave-working-group-round-table-on-june-18-2020&download=1#",
+        "baseline_key": "finance.senate.gov/download/national-partnership-for-women-and-families-statement-by-erika-moritsugu-at-sfc-family-paid-leave-working-group-round-table-on-june-18-2020&download=1",
+        "proposed_key": "finance.senate.gov/download/national-partnership-for-women-and-families-statement-by-erika-moritsugu-at-sfc-family-paid-leave-working-group-round-table-on-june-18-2020?download=1",
+        "http_status": null,
+        "record_role": null,
+        "is_real_file": null,
+        "body_sha": null,
+        "bytes": null,
+        "rows": 1
+      },
+      {
+        "url": "https://www.finance.senate.gov/download/national-partnership-for-women-and-families-statement-by-erika-moritsugu-at-sfc-family-paid-leave-working-group-round-table-on-june-18-2020&download=1#main-nav",
+        "baseline_key": "finance.senate.gov/download/national-partnership-for-women-and-families-statement-by-erika-moritsugu-at-sfc-family-paid-leave-working-group-round-table-on-june-18-2020&download=1",
+        "proposed_key": "finance.senate.gov/download/national-partnership-for-women-and-families-statement-by-erika-moritsugu-at-sfc-family-paid-leave-working-group-round-table-on-june-18-2020?download=1",
+        "http_status": null,
+        "record_role": null,
+        "is_real_file": null,
+        "body_sha": null,
+        "bytes": null,
+        "rows": 1
+      },
+      {
+        "url": "https://www.finance.senate.gov/download/national-partnership-for-women-and-families-statement-by-erika-moritsugu-at-sfc-family-paid-leave-working-group-round-table-on-june-18-2020&download=1#skip-nav",
+        "baseline_key": "finance.senate.gov/download/national-partnership-for-women-and-families-statement-by-erika-moritsugu-at-sfc-family-paid-leave-working-group-round-table-on-june-18-2020&download=1",
+        "proposed_key": "finance.senate.gov/download/national-partnership-for-women-and-families-statement-by-erika-moritsugu-at-sfc-family-paid-leave-working-group-round-table-on-june-18-2020?download=1",
+        "http_status": null,
+        "record_role": null,
+        "is_real_file": null,
+        "body_sha": null,
+        "bytes": null,
+        "rows": 1
+      },
+      {
+        "url": "https://www.finance.senate.gov/download/nominations-of-kipp-kranbuhl-sarah-c-arbes-and-jason-j-fichtner&download=1#",
+        "baseline_key": "finance.senate.gov/download/nominations-of-kipp-kranbuhl-sarah-c-arbes-and-jason-j-fichtner&download=1",
+        "proposed_key": "finance.senate.gov/download/nominations-of-kipp-kranbuhl-sarah-c-arbes-and-jason-j-fichtner?download=1",
+        "http_status": null,
+        "record_role": null,
+        "is_real_file": null,
+        "body_sha": null,
+        "bytes": null,
+        "rows": 1
+      },
+      {
+        "url": "https://www.finance.senate.gov/download/nominations-of-kipp-kranbuhl-sarah-c-arbes-and-jason-j-fichtner&download=1#main-nav",
+        "baseline_key": "finance.senate.gov/download/nominations-of-kipp-kranbuhl-sarah-c-arbes-and-jason-j-fichtner&download=1",
+        "proposed_key": "finance.senate.gov/download/nominations-of-kipp-kranbuhl-sarah-c-arbes-and-jason-j-fichtner?download=1",
+        "http_status": null,
+        "record_role": null,
+        "is_real_file": null,
+        "body_sha": null,
+        "bytes": null,
+        "rows": 1
+      },
+      {
+        "url": "https://www.finance.senate.gov/download/nominations-of-kipp-kranbuhl-sarah-c-arbes-and-jason-j-fichtner&download=1#skip-nav",
+        "baseline_key": "finance.senate.gov/download/nominations-of-kipp-kranbuhl-sarah-c-arbes-and-jason-j-fichtner&download=1",
+        "proposed_key": "finance.senate.gov/download/nominations-of-kipp-kranbuhl-sarah-c-arbes-and-jason-j-fichtner?download=1",
+        "http_status": null,
+        "record_role": null,
+        "is_real_file": null,
+        "body_sha": null,
+        "bytes": null,
+        "rows": 1
+      },
+      {
+        "url": "https://www.finance.senate.gov/download/open-executive-session-to-consider-an-original-bill-entitled-helping-to-end-addiction-and-lessen-heal-substance-use-disorders-act-of-2018&download=1#",
+        "baseline_key": "finance.senate.gov/download/open-executive-session-to-consider-an-original-bill-entitled-helping-to-end-addiction-and-lessen-heal-substance-use-disorders-act-of-2018&download=1",
+        "proposed_key": "finance.senate.gov/download/open-executive-session-to-consider-an-original-bill-entitled-helping-to-end-addiction-and-lessen-heal-substance-use-disorders-act-of-2018?download=1",
+        "http_status": null,
+        "record_role": null,
+        "is_real_file": null,
+        "body_sha": null,
+        "bytes": null,
+        "rows": 1
+      },
+      {
+        "url": "https://www.finance.senate.gov/download/open-executive-session-to-consider-an-original-bill-entitled-helping-to-end-addiction-and-lessen-heal-substance-use-disorders-act-of-2018&download=1#main-nav",
+        "baseline_key": "finance.senate.gov/download/open-executive-session-to-consider-an-original-bill-entitled-helping-to-end-addiction-and-lessen-heal-substance-use-disorders-act-of-2018&download=1",
+        "proposed_key": "finance.senate.gov/download/open-executive-session-to-consider-an-original-bill-entitled-helping-to-end-addiction-and-lessen-heal-substance-use-disorders-act-of-2018?download=1",
+        "http_status": null,
+        "record_role": null,
+        "is_real_file": null,
+        "body_sha": null,
+        "bytes": null,
+        "rows": 1
+      },
+      {
+        "url": "https://www.finance.senate.gov/download/open-executive-session-to-consider-an-original-bill-entitled-helping-to-end-addiction-and-lessen-heal-substance-use-disorders-act-of-2018&download=1#skip-nav",
+        "baseline_key": "finance.senate.gov/download/open-executive-session-to-consider-an-original-bill-entitled-helping-to-end-addiction-and-lessen-heal-substance-use-disorders-act-of-2018&download=1",
+        "proposed_key": "finance.senate.gov/download/open-executive-session-to-consider-an-original-bill-entitled-helping-to-end-addiction-and-lessen-heal-substance-use-disorders-act-of-2018?download=1",
+        "http_status": null,
+        "record_role": null,
+        "is_real_file": null,
+        "body_sha": null,
+        "bytes": null,
+        "rows": 1
+      },
+      {
+        "url": "https://www.finance.senate.gov/download/open-executive-session-to-consider-the-nominations-of-lily-lawrence-batchelder-benjamin-harris-j-nellie-liang-and-jonathan-davidson-june-9-10-2021&download=1#",
+        "baseline_key": "finance.senate.gov/download/open-executive-session-to-consider-the-nominations-of-lily-lawrence-batchelder-benjamin-harris-j-nellie-liang-and-jonathan-davidson-june-9-10-2021&download=1",
+        "proposed_key": "finance.senate.gov/download/open-executive-session-to-consider-the-nominations-of-lily-lawrence-batchelder-benjamin-harris-j-nellie-liang-and-jonathan-davidson-june-9-10-2021?download=1",
+        "http_status": null,
+        "record_role": null,
+        "is_real_file": null,
+        "body_sha": null,
+        "bytes": null,
+        "rows": 1
+      },
+      {
+        "url": "https://www.finance.senate.gov/download/open-executive-session-to-consider-the-nominations-of-lily-lawrence-batchelder-benjamin-harris-j-nellie-liang-and-jonathan-davidson-june-9-10-2021&download=1#main-nav",
+        "baseline_key": "finance.senate.gov/download/open-executive-session-to-consider-the-nominations-of-lily-lawrence-batchelder-benjamin-harris-j-nellie-liang-and-jonathan-davidson-june-9-10-2021&download=1",
+        "proposed_key": "finance.senate.gov/download/open-executive-session-to-consider-the-nominations-of-lily-lawrence-batchelder-benjamin-harris-j-nellie-liang-and-jonathan-davidson-june-9-10-2021?download=1",
+        "http_status": null,
+        "record_role": null,
+        "is_real_file": null,
+        "body_sha": null,
+        "bytes": null,
+        "rows": 1
+      },
+      {
+        "url": "https://www.finance.senate.gov/download/open-executive-session-to-consider-the-nominations-of-lily-lawrence-batchelder-benjamin-harris-j-nellie-liang-and-jonathan-davidson-june-9-10-2021&download=1#skip-nav",
+        "baseline_key": "finance.senate.gov/download/open-executive-session-to-consider-the-nominations-of-lily-lawrence-batchelder-benjamin-harris-j-nellie-liang-and-jonathan-davidson-june-9-10-2021&download=1",
+        "proposed_key": "finance.senate.gov/download/open-executive-session-to-consider-the-nominations-of-lily-lawrence-batchelder-benjamin-harris-j-nellie-liang-and-jonathan-davidson-june-9-10-2021?download=1",
+        "http_status": null,
+        "record_role": null,
+        "is_real_file": null,
+        "body_sha": null,
+        "bytes": null,
+        "rows": 1
+      },
+      {
+        "url": "https://www.hsgac.senate.gov/download/threats-to-us-networks-oversight-of-chinese-government-owned-carriers%20",
+        "baseline_key": "hsgac.senate.gov/download/threats-to-us-networks-oversight-of-chinese-government-owned-carriers%20",
+        "proposed_key": "hsgac.senate.gov/download/threats-to-us-networks-oversight-of-chinese-government-owned-carriers",
+        "http_status": 404,
+        "record_role": "error_response",
+        "is_real_file": false,
+        "body_sha": "a2303655af12d72586446651896477a013c857f959565137eb78e41737bab5c2",
+        "bytes": 117051,
+        "rows": 3
+      },
+      {
+        "url": "https://www.hsgac.senate.gov/download/threats-to-us-networks-oversight-of-chinese-government-owned-carriers%20",
+        "baseline_key": "hsgac.senate.gov/download/threats-to-us-networks-oversight-of-chinese-government-owned-carriers%20",
+        "proposed_key": "hsgac.senate.gov/download/threats-to-us-networks-oversight-of-chinese-government-owned-carriers",
+        "http_status": 404,
+        "record_role": "error_response",
+        "is_real_file": false,
+        "body_sha": "b07238698e88d7114b73cc31cbbdab05b7e428ee15f4d81cde16f0642b51891b",
+        "bytes": 117051,
+        "rows": 1
+      },
+      {
+        "url": "https://www.hsgac.senate.gov/download/threats-to-us-networks-oversight-of-chinese-government-owned-carriers%20",
+        "baseline_key": "hsgac.senate.gov/download/threats-to-us-networks-oversight-of-chinese-government-owned-carriers%20",
+        "proposed_key": "hsgac.senate.gov/download/threats-to-us-networks-oversight-of-chinese-government-owned-carriers",
+        "http_status": null,
+        "record_role": null,
+        "is_real_file": false,
+        "body_sha": null,
+        "bytes": null,
+        "rows": 1
+      },
+      {
+        "url": "https://www.hsgac.senate.gov/download/threats-to-us-networks-oversight-of-chinese-government-owned-carriers%20",
+        "baseline_key": "hsgac.senate.gov/download/threats-to-us-networks-oversight-of-chinese-government-owned-carriers%20",
+        "proposed_key": "hsgac.senate.gov/download/threats-to-us-networks-oversight-of-chinese-government-owned-carriers",
+        "http_status": null,
+        "record_role": "error_response",
+        "is_real_file": false,
+        "body_sha": "b07238698e88d7114b73cc31cbbdab05b7e428ee15f4d81cde16f0642b51891b",
+        "bytes": 117051,
+        "rows": 2
+      }
+    ]
+  },
+  "finance_clean_target": {
+    "sql": "SELECT requested_url,url,http_status,record_role,is_real_file,body_sha,bytes FROM relevant_captures\nWHERE contains(requested_url,'the-presidents-fiscal-year-2024-irs-budget-and-the-irss-2023-filing-season')",
+    "rows": [
+      {
+        "requested_url": "https://www.finance.senate.gov/hearings/the-presidents-fiscal-year-2024-irs-budget-and-the-irss-2023-filing-season",
+        "url": "https://www.finance.senate.gov/404?notfound=hearings%2Fthe-presidents-fiscal-year-2024-irs-budget-and-the-irss-2023-filing-season",
+        "http_status": 200,
+        "record_role": "error_response",
+        "is_real_file": false,
+        "body_sha": "f5a8cc66ecce2838faff2af8c396214090082985093231a932cda3a8c3e833da",
+        "bytes": 35317
+      },
+      {
+        "requested_url": "https://www.finance.senate.gov/404?notfound=hearings%2Fthe-presidents-fiscal-year-2024-irs-budget-and-the-irss-2023-filing-season",
+        "url": "https://www.finance.senate.gov/404?notfound=hearings%2Fthe-presidents-fiscal-year-2024-irs-budget-and-the-irss-2023-filing-season",
+        "http_status": 200,
+        "record_role": "error_response",
+        "is_real_file": false,
+        "body_sha": "f5a8cc66ecce2838faff2af8c396214090082985093231a932cda3a8c3e833da",
+        "bytes": 35317
+      },
+      {
+        "requested_url": "https://www.finance.senate.gov/hearings/the-presidents-fiscal-year-2024-irs-budget-and-the-irss-2023-filing-season",
+        "url": "https://www.finance.senate.gov/404?notfound=hearings%2Fthe-presidents-fiscal-year-2024-irs-budget-and-the-irss-2023-filing-season",
+        "http_status": 200,
+        "record_role": "error_response",
+        "is_real_file": false,
+        "body_sha": "6cf3c81bb7edf2640ad4abbf03b52f9669da7d028242dcd41b184e30a2f561d7",
+        "bytes": 35317
+      },
+      {
+        "requested_url": "https://www.finance.senate.gov/hearings/the-presidents-fiscal-year-2024-irs-budget-and-the-irss-2023-filing-season",
+        "url": "https://www.finance.senate.gov/404?notfound=hearings%2Fthe-presidents-fiscal-year-2024-irs-budget-and-the-irss-2023-filing-season",
+        "http_status": 200,
+        "record_role": "error_response",
+        "is_real_file": false,
+        "body_sha": "6cf3c81bb7edf2640ad4abbf03b52f9669da7d028242dcd41b184e30a2f561d7",
+        "bytes": 35317
+      }
+    ]
+  },
+  "aliases": {
+    "sql": "SELECT s.*,d.disposition,st.capture_disposition,\nEXISTS(SELECT 1 FROM relevant_captures c WHERE c.body_sha=s.body_sha256 AND c.is_real_file) AS prior_real_file,\nEXISTS(SELECT 1 FROM docs x WHERE lower(hex(x.saved_body))=s.body_sha256) AS published_saved_body,\nEXISTS(SELECT 1 FROM retained c WHERE c.original_url=s.target_url AND lower(hex(c.sha256))=s.body_sha256 AND c.complete) AS retained_bound,\nEXISTS(SELECT 1 FROM decisions z JOIN requirements r ON z.original_url=r.original_url WHERE z.original_url=s.target_url AND z.body_sha256=s.body_sha256 AND z.acceptance_status='accepted' AND z.target_requirement=r.target_requirement AND z.acceptance_policy=r.acceptance_policy) AS decision_requirement_bound\nFROM selected s LEFT JOIN d ON s.target_url=d.target_url LEFT JOIN st ON s.target_url=st.requested_url WHERE candidate_source='stored_url_key_alias'",
+    "rows": [
+      {
+        "target_url": "http://archives113.transportation.house.gov/sites/republicans.transportation.house.gov/files/documents/Rob%20Atkinson--Testimony.pdf",
+        "candidate_url": "https://web.archive.org/web/20170201050748id_/http://archives113.transportation.house.gov/sites/republicans.transportation.house.gov/files/documents/Rob%20Atkinson--Testimony.pdf",
+        "candidate_source": "stored_url_key_alias",
+        "body_sha256": "a9d571b2e8d62107f8d165dc6e66fd1dbb6f408c7cbaad0bb42ce2d5661557a5",
+        "evidence_id": "receipts/documents/2026-10-13/download-20261013T013243Z-c5d1bbc14981-000001.jsonl.gz",
+        "receipt_key": "receipts/documents/2026-10-13/download-20261013T013243Z-c5d1bbc14981-000001.jsonl.gz",
+        "sniffed_format": null,
+        "content_type": "application/pdf",
+        "stored_bytes": 307650,
+        "retrieved_at": "2026-10-12 21:36:07.893698-04",
+        "record_role": "document",
+        "disposition": "accepted_recovery",
+        "capture_disposition": "satisfied",
+        "prior_real_file": true,
+        "published_saved_body": true,
+        "retained_bound": true,
+        "decision_requirement_bound": true
+      },
+      {
+        "target_url": "http://democrats.oversight.house.gov/sites/democrats.oversight.house.gov/files/documents/Final%20OGR%20EpiPen%20Letter.pdf",
+        "candidate_url": "https://web.archive.org/web/20161212204544id_/http://democrats.oversight.house.gov/sites/democrats.oversight.house.gov/files/documents/Final%20OGR%20EpiPen%20Letter.pdf",
+        "candidate_source": "stored_url_key_alias",
+        "body_sha256": "bd6b4bcc5f20b6918dbdac0687fbb4cc291bdcb77e34019f9f5144b12ce7aef2",
+        "evidence_id": "receipts/documents/2026-10-13/download-20261013T013243Z-c5d1bbc14981-000001.jsonl.gz",
+        "receipt_key": "receipts/documents/2026-10-13/download-20261013T013243Z-c5d1bbc14981-000001.jsonl.gz",
+        "sniffed_format": null,
+        "content_type": "application/pdf",
+        "stored_bytes": 235052,
+        "retrieved_at": "2026-10-12 21:36:06.888909-04",
+        "record_role": "document",
+        "disposition": "accepted_recovery",
+        "capture_disposition": "satisfied",
+        "prior_real_file": true,
+        "published_saved_body": true,
+        "retained_bound": true,
+        "decision_requirement_bound": true
+      },
+      {
+        "target_url": "https://democrats.veterans.house.gov/\u201chonoring-commitment-overcoming-barriers-quality-mental-health-care-veterans\u201d",
+        "candidate_url": "https://web.archive.org/web/20141206152938id_/http://democrats.veterans.house.gov/%E2%80%9Chonoring-commitment-overcoming-barriers-quality-mental-health-care-veterans%E2%80%9D",
+        "candidate_source": "stored_url_key_alias",
+        "body_sha256": "a18a0b86356d1cb2c2ddd002f8f99af0e413af4e674807b317eade6c81d61f65",
+        "evidence_id": "receipts/documents/2026-10-13/download-20261013T013243Z-c5d1bbc14981-000001.jsonl.gz",
+        "receipt_key": "receipts/documents/2026-10-13/download-20261013T013243Z-c5d1bbc14981-000001.jsonl.gz",
+        "sniffed_format": null,
+        "content_type": "text/html; charset=utf-8",
+        "stored_bytes": 8435,
+        "retrieved_at": "2026-10-12 21:36:05.989256-04",
+        "record_role": "document",
+        "disposition": "accepted_recovery",
+        "capture_disposition": "satisfied",
+        "prior_real_file": true,
+        "published_saved_body": true,
+        "retained_bound": true,
+        "decision_requirement_bound": true
+      },
+      {
+        "target_url": "https://docs.house.gov/meetings/ED/ED00/20180130/106808/HHRG-115-ED00-Bio-OhmP-20180130.pdf",
+        "candidate_url": "http://docs.house.gov/meetings/ED/ED00/20180130/106808/HHRG-115-ED00-Bio-OhmP-20180130.pdf",
+        "candidate_source": "stored_url_key_alias",
+        "body_sha256": "d299d4c438eed52547b1c6c97e2c37740becb0b51308eb524a804aa20520a72e",
+        "evidence_id": "receipts/documents/2026-10-01/download-20261001T135420Z-7cbee94b5f41-000021.jsonl.gz",
+        "receipt_key": "receipts/documents/2026-10-01/download-20261001T135420Z-7cbee94b5f41-000021.jsonl.gz",
+        "sniffed_format": null,
+        "content_type": "application/pdf",
+        "stored_bytes": 143481,
+        "retrieved_at": "2026-10-01 10:07:56.107468-04",
+        "record_role": "document",
+        "disposition": "accepted_recovery",
+        "capture_disposition": "satisfied",
+        "prior_real_file": true,
+        "published_saved_body": true,
+        "retained_bound": true,
+        "decision_requirement_bound": true
+      },
+      {
+        "target_url": "http://law.fordham.edu/assets/CLIP/CLIP_Report_Childrens_Privacy_Final.pdf",
+        "candidate_url": "https://web.archive.org/web/20130522223026id_/http://law.fordham.edu/assets/CLIP/CLIP_Report_Childrens_Privacy_Final.pdf",
+        "candidate_source": "stored_url_key_alias",
+        "body_sha256": "a9d7c66b84cc525472cd14b794788f87b0bccd29ec1b4b2c4352a0b18e04a98a",
+        "evidence_id": "receipts/documents/2026-10-13/download-20261013T013243Z-c5d1bbc14981-000001.jsonl.gz",
+        "receipt_key": "receipts/documents/2026-10-13/download-20261013T013243Z-c5d1bbc14981-000001.jsonl.gz",
+        "sniffed_format": null,
+        "content_type": "application/pdf",
+        "stored_bytes": 858954,
+        "retrieved_at": "2026-10-12 21:35:59.393813-04",
+        "record_role": "document",
+        "disposition": "accepted_recovery",
+        "capture_disposition": "satisfied",
+        "prior_real_file": true,
+        "published_saved_body": true,
+        "retained_bound": true,
+        "decision_requirement_bound": true
+      },
+      {
+        "target_url": "http://thomas.loc.gov/cgi-bin/cpquery/R?cp105:FLD010:@1(hr085):",
+        "candidate_url": "https://web.archive.org/web/20121217101907id_/http://thomas.loc.gov/cgi-bin/cpquery/R?cp105:FLD010:@1(hr085):",
+        "candidate_source": "stored_url_key_alias",
+        "body_sha256": "92f4d54501c7bff79f1a40fcbc085615c903adf0d24872116d358064f463782f",
+        "evidence_id": "receipts/documents/2026-10-13/download-20261013T012346Z-d084ddc5f91c-000001.jsonl.gz",
+        "receipt_key": "receipts/documents/2026-10-13/download-20261013T012346Z-d084ddc5f91c-000001.jsonl.gz",
+        "sniffed_format": null,
+        "content_type": "text/html",
+        "stored_bytes": 3397,
+        "retrieved_at": "2026-10-12 20:58:28.753862-04",
+        "record_role": "document",
+        "disposition": "accepted_recovery",
+        "capture_disposition": "satisfied",
+        "prior_real_file": true,
+        "published_saved_body": true,
+        "retained_bound": true,
+        "decision_requirement_bound": true
+      },
+      {
+        "target_url": "http://thomas.loc.gov/home/gpoxmlc113/h1300_ih.xml",
+        "candidate_url": "https://web.archive.org/web/20141209223846id_/http://thomas.loc.gov/home/gpoxmlc113/h1300_ih.xml",
+        "candidate_source": "stored_url_key_alias",
+        "body_sha256": "2890a77093a0bb467e00ca8c801d9d3296ca2ea6c4744900c59bd4a915fc81d9",
+        "evidence_id": "receipts/documents/2026-10-13/download-20261013T012346Z-d084ddc5f91c-000001.jsonl.gz",
+        "receipt_key": "receipts/documents/2026-10-13/download-20261013T012346Z-d084ddc5f91c-000001.jsonl.gz",
+        "sniffed_format": null,
+        "content_type": "text/xml",
+        "stored_bytes": 1334,
+        "retrieved_at": "2026-10-12 20:58:25.638948-04",
+        "record_role": "document",
+        "disposition": "accepted_recovery",
+        "capture_disposition": "satisfied",
+        "prior_real_file": true,
+        "published_saved_body": true,
+        "retained_bound": true,
+        "decision_requirement_bound": true
+      },
+      {
+        "target_url": "http://www.lis.gov/cgi-lis/t2GPO/http://www.gpo.gov/fdsys/pkg/BILLS-114hr456ih/pdf/BILLS-114hr456ih.pdf",
+        "candidate_url": "http://www.gpo.gov/fdsys/pkg/BILLS-114hr456ih/pdf/BILLS-114hr456ih.pdf",
+        "candidate_source": "stored_url_key_alias",
+        "body_sha256": "44417d127b4b0940a78b26fee8c29f03b64e5eaf46229ea5fa3c48d20ee01b4f",
+        "evidence_id": "receipts/documents/2026-09-29/assemble-20260930.jsonl.gz",
+        "receipt_key": "receipts/documents/2026-09-29/assemble-20260930.jsonl.gz",
+        "sniffed_format": null,
+        "content_type": "application/pdf",
+        "stored_bytes": 206791,
+        "retrieved_at": "2026-09-28 22:42:00.832102-04",
+        "record_role": "document",
+        "disposition": "accepted_recovery",
+        "capture_disposition": "satisfied",
+        "prior_real_file": true,
+        "published_saved_body": true,
+        "retained_bound": true,
+        "decision_requirement_bound": true
+      },
+      {
+        "target_url": "http://www.lis.gov/cgi-lis/t2GPO/http://www.gpo.gov/fdsys/pkg/BILLS-114hr456ih/pdf/BILLS-114hr456ih.xml",
+        "candidate_url": "http://www.gpo.gov/fdsys/pkg/BILLS-114hr456ih/pdf/BILLS-114hr456ih.xml",
+        "candidate_source": "stored_url_key_alias",
+        "body_sha256": "9144437b0a2342ce8da1ee6298027f78ec9e91bdd6080e0255ba856845caf320",
+        "evidence_id": "receipts/documents/2026-10-11/download-20261011T012723Z-041460584855-000004.jsonl.gz",
+        "receipt_key": "receipts/documents/2026-10-11/download-20261011T012723Z-041460584855-000004.jsonl.gz",
+        "sniffed_format": null,
+        "content_type": "application/xml",
+        "stored_bytes": 3141,
+        "retrieved_at": "2026-10-10 21:36:12.834298-04",
+        "record_role": "document",
+        "disposition": "accepted_recovery",
+        "capture_disposition": "satisfied",
+        "prior_real_file": true,
+        "published_saved_body": true,
+        "retained_bound": true,
+        "decision_requirement_bound": true
+      },
+      {
+        "target_url": "http://www.lis.gov/cgi-lis/t2GPO/http://www.gpo.gov/fdsys/pkg/BILLS-114hr456ih/xml/BILLS-114hr456ih.xml",
+        "candidate_url": "http://www.gpo.gov/fdsys/pkg/BILLS-114hr456ih/xml/BILLS-114hr456ih.xml",
+        "candidate_source": "stored_url_key_alias",
+        "body_sha256": "9144437b0a2342ce8da1ee6298027f78ec9e91bdd6080e0255ba856845caf320",
+        "evidence_id": "receipts/documents/2026-10-11/download-20261011T012723Z-041460584855-000004.jsonl.gz",
+        "receipt_key": "receipts/documents/2026-10-11/download-20261011T012723Z-041460584855-000004.jsonl.gz",
+        "sniffed_format": null,
+        "content_type": "application/xml",
+        "stored_bytes": 3141,
+        "retrieved_at": "2026-10-10 21:36:12.834298-04",
+        "record_role": "document",
+        "disposition": "accepted_recovery",
+        "capture_disposition": "satisfied",
+        "prior_real_file": true,
+        "published_saved_body": true,
+        "retained_bound": true,
+        "decision_requirement_bound": true
+      },
+      {
+        "target_url": "https://archives-energycommerce.house.gov/sites/republicans.energycommerce.house.gov/files/Hearings/Joint/20120712_EP_OI/HMTG-112-HHRG-IF03-IF02-20120712.pdf",
+        "candidate_url": "https://web.archive.org/web/20180926105220id_/https://archives-energycommerce.house.gov/sites/republicans.energycommerce.house.gov/files/Hearings/Joint/20120712_EP_OI/HMTG-112-HHRG-IF03-IF02-20120712.pdf",
+        "candidate_source": "stored_url_key_alias",
+        "body_sha256": "d765cf410a6e1dc832200791110b12d1fd49d534bdde5b4b84b633ae65b97762",
+        "evidence_id": "receipts/documents/2026-10-13/download-20261013T013243Z-c5d1bbc14981-000001.jsonl.gz",
+        "receipt_key": "receipts/documents/2026-10-13/download-20261013T013243Z-c5d1bbc14981-000001.jsonl.gz",
+        "sniffed_format": null,
+        "content_type": "application/pdf",
+        "stored_bytes": 104341,
+        "retrieved_at": "2026-10-12 21:36:14.183066-04",
+        "record_role": "document",
+        "disposition": "accepted_recovery",
+        "capture_disposition": "satisfied",
+        "prior_real_file": true,
+        "published_saved_body": true,
+        "retained_bound": true,
+        "decision_requirement_bound": true
+      },
+      {
+        "target_url": "https://cue.usc.edu/files/2018/04/Vital-Signs-Report-FINAL-032818-V2.pdf",
+        "candidate_url": "https://web.archive.org/web/20210318020227id_/https://cue.usc.edu/files/2018/04/Vital-Signs-Report-FINAL-032818-V2.pdf",
+        "candidate_source": "stored_url_key_alias",
+        "body_sha256": "72764eacc7579b63bd1e23cfd0367f8907a4d54e8169b1044fb6a8d08d1b312e",
+        "evidence_id": "receipts/documents/2026-10-13/download-20261013T013243Z-c5d1bbc14981-000001.jsonl.gz",
+        "receipt_key": "receipts/documents/2026-10-13/download-20261013T013243Z-c5d1bbc14981-000001.jsonl.gz",
+        "sniffed_format": null,
+        "content_type": "application/pdf",
+        "stored_bytes": 3608163,
+        "retrieved_at": "2026-10-12 21:36:28.748748-04",
+        "record_role": "document",
+        "disposition": "accepted_recovery",
+        "capture_disposition": "satisfied",
+        "prior_real_file": true,
+        "published_saved_body": true,
+        "retained_bound": true,
+        "decision_requirement_bound": true
+      },
+      {
+        "target_url": "https://docs.house.gov/meetings/GO/GO00/20130919/101313/HHRG-113-GO00-Transcript-20130919.pdf",
+        "candidate_url": "http://docs.house.gov/meetings/GO/GO00/20130919/101313/HHRG-113-GO00-Transcript-20130919.pdf",
+        "candidate_source": "stored_url_key_alias",
+        "body_sha256": "38ba3a793e72ec57988eb9a878bd9e3cc602a4431b57850ef3317c7f520ef1ea",
+        "evidence_id": "receipts/documents/2026-09-29/assemble-20260930.jsonl.gz",
+        "receipt_key": "receipts/documents/2026-09-29/assemble-20260930.jsonl.gz",
+        "sniffed_format": null,
+        "content_type": "application/pdf",
+        "stored_bytes": 10014910,
+        "retrieved_at": "2026-09-28 23:06:58.579589-04",
+        "record_role": "document",
+        "disposition": "accepted_recovery",
+        "capture_disposition": "satisfied",
+        "prior_real_file": true,
+        "published_saved_body": true,
+        "retained_bound": true,
+        "decision_requirement_bound": true
+      },
+      {
+        "target_url": "https://oig.ssa.gov/sites/default/files/audit/full/pdf/A-14-16-50037.pdf",
+        "candidate_url": "https://web.archive.org/web/20210803164648id_/https://oig.ssa.gov/sites/default/files/audit/full/pdf/A-14-16-50037.pdf",
+        "candidate_source": "stored_url_key_alias",
+        "body_sha256": "78127d8fdee1c805703bf084d8d19fc0dba1166951e34e3bae90b22fd0975a99",
+        "evidence_id": "receipts/documents/2026-10-13/download-20261013T013243Z-c5d1bbc14981-000001.jsonl.gz",
+        "receipt_key": "receipts/documents/2026-10-13/download-20261013T013243Z-c5d1bbc14981-000001.jsonl.gz",
+        "sniffed_format": null,
+        "content_type": "application/pdf",
+        "stored_bytes": 545185,
+        "retrieved_at": "2026-10-12 21:37:37.952914-04",
+        "record_role": "document",
+        "disposition": "accepted_recovery",
+        "capture_disposition": "satisfied",
+        "prior_real_file": true,
+        "published_saved_body": true,
+        "retained_bound": true,
+        "decision_requirement_bound": true
+      },
+      {
+        "target_url": "https://oversight.house.gov/hearing/reinventing-government/oversight.house.gov/wp-content/uploads/2013/06/David-Walker-Testimony.pdf",
+        "candidate_url": "https://web.archive.org/web/20141206135509id_/http://oversight.house.gov/hearing/reinventing-government/oversight.house.gov/wp-content/uploads/2013/06/David-Walker-Testimony.pdf",
+        "candidate_source": "stored_url_key_alias",
+        "body_sha256": "cd154f18020d95913df70f5e1f6066fadbc7534c1f16d684b968a07e1a9c8cce",
+        "evidence_id": "receipts/documents/2026-09-29/assemble-20260930.jsonl.gz",
+        "receipt_key": "receipts/documents/2026-09-29/assemble-20260930.jsonl.gz",
+        "sniffed_format": null,
+        "content_type": "application/pdf",
+        "stored_bytes": 465851,
+        "retrieved_at": "2026-09-29 00:01:55.41578-04",
+        "record_role": "document",
+        "disposition": "accepted_recovery",
+        "capture_disposition": "satisfied",
+        "prior_real_file": true,
+        "published_saved_body": true,
+        "retained_bound": true,
+        "decision_requirement_bound": true
+      },
+      {
+        "target_url": "https://reliefweb.int/sites/reliefweb.int/files/resources/A_HRC_46_20_AEV.pdf",
+        "candidate_url": "https://web.archive.org/web/20210511112431id_/https://reliefweb.int/sites/reliefweb.int/files/resources/A_HRC_46_20_AEV.pdf",
+        "candidate_source": "stored_url_key_alias",
+        "body_sha256": "aa5ecc24528435f8b950c788d0af6867fefd79a6debc91724c9a45871878f692",
+        "evidence_id": "receipts/documents/2026-10-13/download-20261013T013243Z-c5d1bbc14981-000001.jsonl.gz",
+        "receipt_key": "receipts/documents/2026-10-13/download-20261013T013243Z-c5d1bbc14981-000001.jsonl.gz",
+        "sniffed_format": null,
+        "content_type": "application/pdf",
+        "stored_bytes": 379357,
+        "retrieved_at": "2026-10-12 21:37:35.24221-04",
+        "record_role": "document",
+        "disposition": "accepted_recovery",
+        "capture_disposition": "satisfied",
+        "prior_real_file": true,
+        "published_saved_body": true,
+        "retained_bound": true,
+        "decision_requirement_bound": true
+      },
+      {
+        "target_url": "https://republicans.transportation.house.gov/Media/file/TestimonyWater/2012-09-20-Darcy.pdf",
+        "candidate_url": "https://web.archive.org/web/20121212062841id_/http://republicans.transportation.house.gov/Media/file/TestimonyWater/2012-09-20-Darcy.pdf",
+        "candidate_source": "stored_url_key_alias",
+        "body_sha256": "1f6e5510aae02a1a0c4025686d94bdb09e6feaaa49de7a86d6c36f2ce6b41b4e",
+        "evidence_id": "receipts/documents/2026-10-13/download-20261013T013243Z-c5d1bbc14981-000001.jsonl.gz",
+        "receipt_key": "receipts/documents/2026-10-13/download-20261013T013243Z-c5d1bbc14981-000001.jsonl.gz",
+        "sniffed_format": null,
+        "content_type": "application/pdf",
+        "stored_bytes": 46827,
+        "retrieved_at": "2026-10-12 21:35:56.047968-04",
+        "record_role": "document",
+        "disposition": "accepted_recovery",
+        "capture_disposition": "satisfied",
+        "prior_real_file": true,
+        "published_saved_body": true,
+        "retained_bound": true,
+        "decision_requirement_bound": true
+      },
+      {
+        "target_url": "https://s3-ap-southeast-2.amazonaws.com/ad-aspi/2020-07/Uyghurs%20for%20sale%2028%20July%202020.pdf?xxhaH3mgIIRkbww1o26KF3cNTCDGAyVT=",
+        "candidate_url": "https://web.archive.org/web/20201026164834id_/https://s3-ap-southeast-2.amazonaws.com/ad-aspi/2020-07/Uyghurs%20for%20sale%2028%20July%202020.pdf?xxhaH3mgIIRkbww1o26KF3cNTCDGAyVT=",
+        "candidate_source": "stored_url_key_alias",
+        "body_sha256": "0f4a3b7925215dbc4a1f9e04f6d7bd51cd86bcd07b306d2bf67418a62204fc81",
+        "evidence_id": "receipts/documents/2026-10-13/download-20261013T013243Z-c5d1bbc14981-000001.jsonl.gz",
+        "receipt_key": "receipts/documents/2026-10-13/download-20261013T013243Z-c5d1bbc14981-000001.jsonl.gz",
+        "sniffed_format": null,
+        "content_type": "application/pdf",
+        "stored_bytes": 8747440,
+        "retrieved_at": "2026-10-12 21:36:23.526883-04",
+        "record_role": "document",
+        "disposition": "accepted_recovery",
+        "capture_disposition": "satisfied",
+        "prior_real_file": true,
+        "published_saved_body": true,
+        "retained_bound": true,
+        "decision_requirement_bound": true
+      },
+      {
+        "target_url": "https://science.house.gov/sites/republicans.science.house.gov/files/documents/071409_Bacon_0.pdf",
+        "candidate_url": "https://web.archive.org/web/20180924193748id_/https://science.house.gov/sites/republicans.science.house.gov/files/documents/071409_Bacon_0.pdf",
+        "candidate_source": "stored_url_key_alias",
+        "body_sha256": "a7b52581b433aa90a44fa1293dce1d0b56bef577b6dd8ca2fc8a2b41de365191",
+        "evidence_id": "receipts/documents/2026-10-13/download-20261013T012346Z-d084ddc5f91c-000001.jsonl.gz",
+        "receipt_key": "receipts/documents/2026-10-13/download-20261013T012346Z-d084ddc5f91c-000001.jsonl.gz",
+        "sniffed_format": null,
+        "content_type": "application/pdf",
+        "stored_bytes": 128087,
+        "retrieved_at": "2026-10-12 20:58:19.172191-04",
+        "record_role": "document",
+        "disposition": "accepted_recovery",
+        "capture_disposition": "satisfied",
+        "prior_real_file": true,
+        "published_saved_body": true,
+        "retained_bound": true,
+        "decision_requirement_bound": true
+      },
+      {
+        "target_url": "https://science.house.gov/sites/republicans.science.house.gov/files/documents/HHRG-114-SY16-WState-JShin-20150611.pdf",
+        "candidate_url": "https://web.archive.org/web/20180923210615id_/https://science.house.gov/sites/republicans.science.house.gov/files/documents/HHRG-114-SY16-WState-JShin-20150611.pdf",
+        "candidate_source": "stored_url_key_alias",
+        "body_sha256": "66751b9545375ee5cc42e929c1b9782604871a068ea15b37f8a20e7df08c38a6",
+        "evidence_id": "receipts/documents/2026-09-29/assemble-20260930.jsonl.gz",
+        "receipt_key": "receipts/documents/2026-09-29/assemble-20260930.jsonl.gz",
+        "sniffed_format": null,
+        "content_type": "application/pdf",
+        "stored_bytes": 178573,
+        "retrieved_at": "2026-09-28 23:47:22.285846-04",
+        "record_role": "document",
+        "disposition": "accepted_recovery",
+        "capture_disposition": "satisfied",
+        "prior_real_file": true,
+        "published_saved_body": true,
+        "retained_bound": true,
+        "decision_requirement_bound": true
+      },
+      {
+        "target_url": "https://sciencedems.house.gov/Media/File/ForHearings/06aug02Renew/larsen_testimony_02aug06.pdf",
+        "candidate_url": "https://web.archive.org/web/20110203234921id_/http://sciencedems.house.gov/Media/File/ForHearings/06aug02Renew/larsen_testimony_02aug06.pdf",
+        "candidate_source": "stored_url_key_alias",
+        "body_sha256": "aff92569ac93b49d20d265257ac6a75ba9d95c92b611da943a1dcb35d2e23f08",
+        "evidence_id": "receipts/documents/2026-10-13/download-20261013T013243Z-c5d1bbc14981-000001.jsonl.gz",
+        "receipt_key": "receipts/documents/2026-10-13/download-20261013T013243Z-c5d1bbc14981-000001.jsonl.gz",
+        "sniffed_format": null,
+        "content_type": "application/pdf",
+        "stored_bytes": 8538,
+        "retrieved_at": "2026-10-12 21:35:55.215718-04",
+        "record_role": "document",
+        "disposition": "accepted_recovery",
+        "capture_disposition": "satisfied",
+        "prior_real_file": true,
+        "published_saved_body": true,
+        "retained_bound": true,
+        "decision_requirement_bound": true
+      },
+      {
+        "target_url": "https://waysandmeans.house.gov/Legacy/fullcomm/107cong/fc-21act.htm",
+        "candidate_url": "https://web.archive.org/web/20180926133535id_/https://waysandmeans.house.gov/Legacy/fullcomm/107cong/fc-21act.htm",
+        "candidate_source": "stored_url_key_alias",
+        "body_sha256": "a8b5d817aa436ffdadafec57b1b2f61d1dce2a9af335a9d47eb4488ca737c1d5",
+        "evidence_id": "receipts/documents/2026-10-13/download-20261013T012346Z-d084ddc5f91c-000001.jsonl.gz",
+        "receipt_key": "receipts/documents/2026-10-13/download-20261013T012346Z-d084ddc5f91c-000001.jsonl.gz",
+        "sniffed_format": null,
+        "content_type": "text/html; charset=UTF-8",
+        "stored_bytes": 830,
+        "retrieved_at": "2026-10-12 20:58:03.425738-04",
+        "record_role": "document",
+        "disposition": "accepted_recovery",
+        "capture_disposition": "satisfied",
+        "prior_real_file": true,
+        "published_saved_body": true,
+        "retained_bound": true,
+        "decision_requirement_bound": true
+      },
+      {
+        "target_url": "https://web.archive.org/web/20201028144930id_/http://agriculture.edgeboss.net/wmedia/agriculture/20110210.wvx",
+        "candidate_url": "http://agriculture.edgeboss.net/wmedia/agriculture/20110210.wvx",
+        "candidate_source": "stored_url_key_alias",
+        "body_sha256": "24e5987d0cd3cf5ec5e41d085779ac0fa95fb9c6c25d02c29dee04fe797f3437",
+        "evidence_id": "receipts/documents/2026-10-15/download-filename-recovery-all-20261015-000001.jsonl.gz",
+        "receipt_key": "receipts/documents/2026-10-15/download-filename-recovery-all-20261015-000001.jsonl.gz",
+        "sniffed_format": null,
+        "content_type": "video/x-ms-wmv",
+        "stored_bytes": 350680718,
+        "retrieved_at": "2011-03-03 08:11:14-05",
+        "record_role": "document",
+        "disposition": "accepted_recovery",
+        "capture_disposition": "satisfied",
+        "prior_real_file": false,
+        "published_saved_body": false,
+        "retained_bound": true,
+        "decision_requirement_bound": true
+      },
+      {
+        "target_url": "https://web.archive.org/web/20220107081614id_/https://beatty.house.gov/media-center/in-the-news/beatty-highlights-need-for-transparency-and-clarity-in-mortgage-loan",
+        "candidate_url": "http://beatty.house.gov/media-center/in-the-news/beatty-highlights-need-for-transparency-and-clarity-in-mortgage-loan",
+        "candidate_source": "stored_url_key_alias",
+        "body_sha256": "19928a9a1678352c6bcd22332251a15d4df2ad79eb4b70e625936f36c7926abb",
+        "evidence_id": "receipts/house/pages/2026-10-13/download-20261013T174642Z-615e219517e8-000003.jsonl.gz",
+        "receipt_key": "receipts/house/pages/2026-10-13/download-20261013T174642Z-615e219517e8-000003.jsonl.gz",
+        "sniffed_format": null,
+        "content_type": "text/html; charset=utf-8",
+        "stored_bytes": 13834,
+        "retrieved_at": "2017-01-25 11:45:56-05",
+        "record_role": "document",
+        "disposition": "accepted_recovery",
+        "capture_disposition": "satisfied",
+        "prior_real_file": true,
+        "published_saved_body": true,
+        "retained_bound": true,
+        "decision_requirement_bound": true
+      },
+      {
+        "target_url": "https://web.archive.org/web/20220328073809id_/https://archives-agriculture.house.gov/sites/republicans.agriculture.house.gov/files/pdf/4.29.14%20113-12%20-%2087765.pdf",
+        "candidate_url": "https://archives-agriculture.house.gov/sites/republicans.agriculture.house.gov/files/pdf/4.29.14%20113-12%20-%2087765.pdf",
+        "candidate_source": "stored_url_key_alias",
+        "body_sha256": "0d5d4776feb5f665b8923435de672f86cf141eed3aecacb08ff98ef8c4092587",
+        "evidence_id": "receipts/documents/2026-10-13/download-20261013T174642Z-615e219517e8-000002.jsonl.gz",
+        "receipt_key": "receipts/documents/2026-10-13/download-20261013T174642Z-615e219517e8-000002.jsonl.gz",
+        "sniffed_format": null,
+        "content_type": "application/pdf",
+        "stored_bytes": 170706,
+        "retrieved_at": "2021-03-26 07:45:23-04",
+        "record_role": "document",
+        "disposition": "accepted_recovery",
+        "capture_disposition": "satisfied",
+        "prior_real_file": true,
+        "published_saved_body": true,
+        "retained_bound": true,
+        "decision_requirement_bound": true
+      },
+      {
+        "target_url": "https://web.archive.org/web/20220823180207id_/https://republicans-energycommerce.house.gov/sites/republicans.energycommerce.house.gov/files/Hearings/Health/20120209/HHRG-112-IF14-MState-P000373-20120209.pdf",
+        "candidate_url": "https://republicans-energycommerce.house.gov/sites/republicans.energycommerce.house.gov/files/Hearings/Health/20120209/HHRG-112-IF14-MState-P000373-20120209.pdf",
+        "candidate_source": "stored_url_key_alias",
+        "body_sha256": "d3bac9a1234eaf11d7df69a8cc47801a851a978162e60124f518eb0053df5cec",
+        "evidence_id": "receipts/documents/2026-10-13/download-20261013T174642Z-615e219517e8-000002.jsonl.gz",
+        "receipt_key": "receipts/documents/2026-10-13/download-20261013T174642Z-615e219517e8-000002.jsonl.gz",
+        "sniffed_format": null,
+        "content_type": "application/pdf",
+        "stored_bytes": 56097,
+        "retrieved_at": "2021-05-05 12:42:59-04",
+        "record_role": "document",
+        "disposition": "accepted_recovery",
+        "capture_disposition": "satisfied",
+        "prior_real_file": true,
+        "published_saved_body": true,
+        "retained_bound": true,
+        "decision_requirement_bound": true
+      },
+      {
+        "target_url": "https://web.archive.org/web/20220919221959id_/https://republicans-intelligence.house.gov/uploadedfiles/nunes_opening_statement_for_hill_and_holmes_hearing_on_impeachment.pdf",
+        "candidate_url": "https://republicans-intelligence.house.gov/uploadedfiles/nunes_opening_statement_for_hill_and_holmes_hearing_on_impeachment.pdf",
+        "candidate_source": "stored_url_key_alias",
+        "body_sha256": "7811ec9e29742fcf5700a320162d43fcf80412ede75548315faeda2c13e7cf47",
+        "evidence_id": "receipts/documents/2026-10-13/download-20261013T173015Z-dc7a07912f45-000003.jsonl.gz",
+        "receipt_key": "receipts/documents/2026-10-13/download-20261013T173015Z-dc7a07912f45-000003.jsonl.gz",
+        "sniffed_format": null,
+        "content_type": "application/pdf",
+        "stored_bytes": 91681,
+        "retrieved_at": "2021-03-25 19:34:47-04",
+        "record_role": "document",
+        "disposition": "accepted_recovery",
+        "capture_disposition": "satisfied",
+        "prior_real_file": true,
+        "published_saved_body": true,
+        "retained_bound": true,
+        "decision_requirement_bound": true
+      },
+      {
+        "target_url": "https://web.archive.org/web/20220920043401id_/https://edlabor.house.gov/download/morellea14",
+        "candidate_url": "https://edlabor.house.gov/download/morellea14",
+        "candidate_source": "stored_url_key_alias",
+        "body_sha256": "1b5facc7dfe4707f44f21a6b75f0e29d9ab3579e325398edfdca70511240d345",
+        "evidence_id": "receipts/house/pages/2026-10-13/download-20261013T174642Z-615e219517e8-000003.jsonl.gz",
+        "receipt_key": "receipts/house/pages/2026-10-13/download-20261013T174642Z-615e219517e8-000003.jsonl.gz",
+        "sniffed_format": null,
+        "content_type": "text/html;charset=UTF-8",
+        "stored_bytes": 7657,
+        "retrieved_at": "2021-03-20 08:08:27-04",
+        "record_role": "wrapper",
+        "disposition": "accepted_recovery",
+        "capture_disposition": "satisfied",
+        "prior_real_file": false,
+        "published_saved_body": false,
+        "retained_bound": true,
+        "decision_requirement_bound": true
+      },
+      {
+        "target_url": "https://web.archive.org/web/20221221061754id_/https://khanna.house.gov/sites/khanna.house.gov/files/032117_TransDigm_Letter.pdf",
+        "candidate_url": "https://khanna.house.gov/sites/khanna.house.gov/files/032117_TransDigm_Letter.pdf",
+        "candidate_source": "stored_url_key_alias",
+        "body_sha256": "2cb3703907c8ea90400fd5524d4874b8adff45e356b3e615b0734629052f4f46",
+        "evidence_id": "receipts/documents/2026-10-13/download-20261013T174642Z-615e219517e8-000002.jsonl.gz",
+        "receipt_key": "receipts/documents/2026-10-13/download-20261013T174642Z-615e219517e8-000002.jsonl.gz",
+        "sniffed_format": null,
+        "content_type": "application/warc+gzip",
+        "stored_bytes": 1236570,
+        "retrieved_at": "2021-03-20 16:14:22-04",
+        "record_role": "document",
+        "disposition": "accepted_recovery",
+        "capture_disposition": "satisfied",
+        "prior_real_file": true,
+        "published_saved_body": true,
+        "retained_bound": true,
+        "decision_requirement_bound": true
+      },
+      {
+        "target_url": "https://web.archive.org/web/20240929075621id_/https://docstore.ohchr.org/SelfServices/FilesHandler.ashx?enc=4slQ6QSmlBEDzFEovLCuW%2BKyH%2BnXprasyMzd2e8mx4fouQpDVshj73SoMLU1JTdjtZDTDYerYia%2BctGqO8NrWmRL%2Ft1OyyKtqjxnygkOzYPp9tCfBWVc0bkQ1mCWULU7",
+        "candidate_url": "https://docstore.ohchr.org/SelfServices/FilesHandler.ashx?enc=4slQ6QSmlBEDzFEovLCuW%2BKyH%2BnXprasyMzd2e8mx4fouQpDVshj73SoMLU1JTdjtZDTDYerYia%2BctGqO8NrWmRL%2Ft1OyyKtqjxnygkOzYPp9tCfBWVc0bkQ1mCWULU7",
+        "candidate_source": "stored_url_key_alias",
+        "body_sha256": "149e43143e5aeabfbe0a535d8ea63025940a88049ca39cebd5e515c43b0a40b9",
+        "evidence_id": "receipts/documents/2026-10-12/download-20261012T135713Z-2d7114fabc2a-000006.jsonl.gz",
+        "receipt_key": "receipts/documents/2026-10-12/download-20261012T135713Z-2d7114fabc2a-000006.jsonl.gz",
+        "sniffed_format": null,
+        "content_type": "application/pdf",
+        "stored_bytes": 19331,
+        "retrieved_at": "2024-09-29 03:56:21-04",
+        "record_role": "document",
+        "disposition": "accepted_recovery",
+        "capture_disposition": "satisfied",
+        "prior_real_file": true,
+        "published_saved_body": true,
+        "retained_bound": true,
+        "decision_requirement_bound": true
+      },
+      {
+        "target_url": "https://web.archive.org/web/20250420084413id_/https://www.ethics.harvard.edu/files/center-for-ethics/files/roadmaptopandemicresilience_final_0.pdf",
+        "candidate_url": "https://www.ethics.harvard.edu/files/center-for-ethics/files/roadmaptopandemicresilience_final_0.pdf",
+        "candidate_source": "stored_url_key_alias",
+        "body_sha256": "34d226d192af4565d6fd4694b3c9b0f6e5e2a2029120e4d05f39a6d801edded8",
+        "evidence_id": "receipts/documents/2026-10-13/download-20261013T173015Z-dc7a07912f45-000003.jsonl.gz",
+        "receipt_key": "receipts/documents/2026-10-13/download-20261013T173015Z-dc7a07912f45-000003.jsonl.gz",
+        "sniffed_format": null,
+        "content_type": "application/pdf",
+        "stored_bytes": 3349602,
+        "retrieved_at": "2025-01-10 06:20:47-05",
+        "record_role": "document",
+        "disposition": "accepted_recovery",
+        "capture_disposition": "satisfied",
+        "prior_real_file": true,
+        "published_saved_body": true,
+        "retained_bound": true,
+        "decision_requirement_bound": true
+      },
+      {
+        "target_url": "https://web.archive.org/web/20250627030927id_/https://foreignaffairs.house.gov/wp-content/uploads/2024/07/HR8934.pdf",
+        "candidate_url": "https://foreignaffairs.house.gov/wp-content/uploads/2024/07/HR8934.pdf",
+        "candidate_source": "stored_url_key_alias",
+        "body_sha256": "82f3774eb00e60dc17a3cb4aa48817a712c74fa0016962cc35adafb894f1ecb1",
+        "evidence_id": "receipts/documents/2026-10-13/download-20261013T174642Z-615e219517e8-000002.jsonl.gz",
+        "receipt_key": "receipts/documents/2026-10-13/download-20261013T174642Z-615e219517e8-000002.jsonl.gz",
+        "sniffed_format": null,
+        "content_type": "application/warc+gzip",
+        "stored_bytes": 56753,
+        "retrieved_at": "2025-03-14 16:14:15-04",
+        "record_role": "document",
+        "disposition": "accepted_recovery",
+        "capture_disposition": "satisfied",
+        "prior_real_file": true,
+        "published_saved_body": true,
+        "retained_bound": true,
+        "decision_requirement_bound": true
+      },
+      {
+        "target_url": "https://web.archive.org/web/20250903225915id_/https://oig.justice.gov/reports/2017/o1701.pdf",
+        "candidate_url": "https://oig.justice.gov/reports/2017/o1701.pdf",
+        "candidate_source": "stored_url_key_alias",
+        "body_sha256": "80c1c2e970bfed741e6f198a234025faba64aafa9207039914ad4249581bfc79",
+        "evidence_id": "receipts/documents/2026-10-13/download-20261013T174642Z-615e219517e8-000002.jsonl.gz",
+        "receipt_key": "receipts/documents/2026-10-13/download-20261013T174642Z-615e219517e8-000002.jsonl.gz",
+        "sniffed_format": null,
+        "content_type": "application/pdf",
+        "stored_bytes": 22380808,
+        "retrieved_at": "2025-03-17 16:49:58-04",
+        "record_role": "document",
+        "disposition": "accepted_recovery",
+        "capture_disposition": "satisfied",
+        "prior_real_file": true,
+        "published_saved_body": true,
+        "retained_bound": true,
+        "decision_requirement_bound": true
+      },
+      {
+        "target_url": "https://www.help.senate.gov/hearings/a-dire-shortage-and-getting-worse-solving-the-crisis-in-the-health-care-workforce/",
+        "candidate_url": "https://web.archive.org/web/20260414145403id_/https://www.help.senate.gov/hearings/a-dire-shortage-and-getting-worse-solving-the-crisis-in-the-health-care-workforce",
+        "candidate_source": "stored_url_key_alias",
+        "body_sha256": "7653f19fd819b75101a3dbe1a1bc3893f38a8a26ba65160df3ecb3acce1de83c",
+        "evidence_id": "receipts/external/wayback/2026-09-29/assemble-20260930.jsonl.gz",
+        "receipt_key": "receipts/external/wayback/2026-09-29/assemble-20260930.jsonl.gz",
+        "sniffed_format": null,
+        "content_type": "text/html",
+        "stored_bytes": 41320,
+        "retrieved_at": "2026-09-28 22:33:34.325063-04",
+        "record_role": "document",
+        "disposition": "accepted_recovery",
+        "capture_disposition": "satisfied",
+        "prior_real_file": true,
+        "published_saved_body": true,
+        "retained_bound": true,
+        "decision_requirement_bound": true
+      },
+      {
+        "target_url": "https://www.help.senate.gov/hearings/nomination-of-gordon-hartogensis",
+        "candidate_url": "https://web.archive.org/web/20260617004735id_/https://www.help.senate.gov/hearings/nomination-of-gordon-hartogensis",
+        "candidate_source": "stored_url_key_alias",
+        "body_sha256": "d7eeae2a8d796d4a51ce2629966f7e9d42c0b1a627609cc1d55ac1ac7045faf4",
+        "evidence_id": "receipts/external/wayback/2026-09-29/assemble-20260930.jsonl.gz",
+        "receipt_key": "receipts/external/wayback/2026-09-29/assemble-20260930.jsonl.gz",
+        "sniffed_format": null,
+        "content_type": "text/html",
+        "stored_bytes": 44915,
+        "retrieved_at": "2026-09-28 23:26:37.680337-04",
+        "record_role": "document",
+        "disposition": "accepted_recovery",
+        "capture_disposition": "satisfied",
+        "prior_real_file": true,
+        "published_saved_body": true,
+        "retained_bound": true,
+        "decision_requirement_bound": true
+      }
+    ]
+  },
+  "error_address_removal": {
+    "sql": "SELECT count(*) AS error_urls,\ncount(*) FILTER(WHERE EXISTS(SELECT 1 FROM captures c WHERE c.requested_url=e.url AND c.mode='fetch' AND c.outcome NOT IN ('reference','saved-record'))) AS also_requested,\ncount(*) FILTER(WHERE EXISTS(SELECT 1 FROM sources s WHERE s.url=e.url)) AS published_sources,\ncount(*) FILTER(WHERE EXISTS(SELECT 1 FROM links l WHERE l.target_url=e.url)) AS published_link_targets,\ncount(*) FILTER(WHERE EXISTS(SELECT 1 FROM d WHERE d.target_url=e.url AND d.disposition='accepted_recovery')) AS accepted_recovery_targets,\ncount(*) FILTER(WHERE EXISTS(SELECT 1 FROM captures c WHERE c.url=e.url AND c.is_real_file)) AS also_real_file\nFROM error_addresses e",
+    "rows": [
+      {
+        "error_urls": 80764,
+        "also_requested": 71593,
+        "published_sources": 40157,
+        "published_link_targets": 27104,
+        "accepted_recovery_targets": 25273,
+        "also_real_file": 40156
+      }
+    ]
+  },
+  "senate_error_candidates": {
+    "sql": "SELECT e.url,d.disposition,st.capture_disposition,s.candidate_url,s.body_sha256\nFROM error_addresses e LEFT JOIN d ON e.url=d.target_url LEFT JOIN st ON e.url=st.requested_url LEFT JOIN selected s ON e.url=s.target_url WHERE contains(e.url,'/404?notfound=')",
+    "rows": [
+      {
+        "url": "https://www.finance.senate.gov/404?notfound=hearings%2Fthe-presidents-fiscal-year-2024-irs-budget-and-the-irss-2023-filing-season",
+        "disposition": "usable_direct",
+        "capture_disposition": "eligible",
+        "candidate_url": null,
+        "body_sha256": null
+      },
+      {
+        "url": "https://www.foreign.senate.gov/404?notfound=/hearings/nominations-07-16-2026.xml",
+        "disposition": "needs_acquisition",
+        "capture_disposition": "eligible",
+        "candidate_url": null,
+        "body_sha256": null
+      },
+      {
+        "url": "https://www.foreign.senate.gov/404?notfound=/hearings/the-jcpoa-negotiations-and-united-states-policy-on-iran-moving-forward.xml",
+        "disposition": "needs_acquisition",
+        "capture_disposition": "eligible",
+        "candidate_url": null,
+        "body_sha256": null
+      },
+      {
+        "url": "https://www.foreign.senate.gov/404?notfound=/hearings/us-strategy-in-the-pacific-island-region.xml",
+        "disposition": "needs_acquisition",
+        "capture_disposition": "eligible",
+        "candidate_url": null,
+        "body_sha256": null
+      },
+      {
+        "url": "https://www.rules.senate.gov/404?notfound=/hearings/nomination-hearing-for-members-of-the-federal-election-commission.xml",
+        "disposition": "needs_acquisition",
+        "capture_disposition": "eligible",
+        "candidate_url": null,
+        "body_sha256": null
+      },
+      {
+        "url": "https://www.rules.senate.gov/404?notfound=/hearings/oversight-of-the-government-publishing-office_-office-of-the-inspector-general.xml",
+        "disposition": "needs_acquisition",
+        "capture_disposition": "eligible",
+        "candidate_url": null,
+        "body_sha256": null
+      },
+      {
+        "url": "https://www.rules.senate.gov/404?notfound=/hearings/oversight-of-the-us-capitol-police-following-the-january-6th-attack-on-the-capitol-part-iii.xml",
+        "disposition": "needs_acquisition",
+        "capture_disposition": "eligible",
+        "candidate_url": null,
+        "body_sha256": null
+      },
+      {
+        "url": "https://www.armed-services.senate.gov/404?notfound=download/chaplain_03-27-19",
+        "disposition": "accepted_recovery",
+        "capture_disposition": "satisfied",
+        "candidate_url": "https://www.armed-services.senate.gov/imo/media/doc/BILLS-115s2987pcs.pdf",
+        "body_sha256": "55cf964056cc01380c629e3f2bd43325c514f090fae459ca452a5a240ed3b223"
+      },
+      {
+        "url": "https://www.judiciary.senate.gov/404?notfound=download/04/15/2026/powell-sjq",
+        "disposition": "accepted_recovery",
+        "capture_disposition": "satisfied",
+        "candidate_url": "https://www.judiciary.senate.gov/imo/media/doc/powell_sjq.pdf",
+        "body_sha256": "731200da5cc06097ebee93c47a8a5d8bbc625bb21c261f32fd8fc52599fb21a0"
+      },
+      {
+        "url": "https://www.judiciary.senate.gov/404?notfound=download/04/15/2026/smith-sjq",
+        "disposition": "accepted_recovery",
+        "capture_disposition": "satisfied",
+        "candidate_url": "https://www.judiciary.senate.gov/imo/media/doc/smith_sjq.pdf",
+        "body_sha256": "1dd7341548ccdf1b9d9141f82ec4e6c29b9d87d45ad6cd6f42f4f685d20a8104"
+      },
+      {
+        "url": "https://www.judiciary.senate.gov/404?notfound=download/04/28/2026/jones-sjq",
+        "disposition": "accepted_recovery",
+        "capture_disposition": "satisfied",
+        "candidate_url": "https://www.judiciary.senate.gov/imo/media/doc/jones_sjq.pdf",
+        "body_sha256": "df11ba7e21867a3e0b084ad00047b0ad0b24228f1a9b92edb7b2366df0d4a141"
+      },
+      {
+        "url": "https://www.judiciary.senate.gov/404?notfound=download/04/28/2026/marck-sjq",
+        "disposition": "accepted_recovery",
+        "capture_disposition": "satisfied",
+        "candidate_url": "https://www.judiciary.senate.gov/imo/media/doc/marck_sjq.pdf",
+        "body_sha256": "385a0c1f6481fab18c4a4c758be6ebd022a4b6a01ea70f21744427d37d9077c3"
+      },
+      {
+        "url": "https://www.judiciary.senate.gov/404?notfound=download/06/10/2026/colmenero-sjq",
+        "disposition": "accepted_recovery",
+        "capture_disposition": "satisfied",
+        "candidate_url": "https://www.judiciary.senate.gov/imo/media/doc/colmenero_sjq.pdf",
+        "body_sha256": "72f1857c205641367a74c202ee5d0683e8ade0d28770fa595dc86bb4ba9be3b4"
+      },
+      {
+        "url": "https://www.judiciary.senate.gov/404?notfound=download/06/10/2026/mitchell-sjq",
+        "disposition": "accepted_recovery",
+        "capture_disposition": "satisfied",
+        "candidate_url": "https://www.judiciary.senate.gov/imo/media/doc/mitchell_sjq.pdf",
+        "body_sha256": "9d51418d54bdbac09c3e01c229162d10dd4cbaadb1150f26fbafdbd11858bb3f"
+      },
+      {
+        "url": "https://www.judiciary.senate.gov/404?notfound=download/06/10/2026/pozos-sjq",
+        "disposition": "accepted_recovery",
+        "capture_disposition": "satisfied",
+        "candidate_url": "https://www.judiciary.senate.gov/imo/media/doc/pozos_sjq.pdf",
+        "body_sha256": "80c6bff73308bec110ffa6f701b401ddbde082a977a6b7e66f007fd85f2b9220"
+      },
+      {
+        "url": "https://www.judiciary.senate.gov/404?notfound=download/clarke-sjq",
+        "disposition": "accepted_recovery",
+        "capture_disposition": "satisfied",
+        "candidate_url": "https://www.judiciary.senate.gov/imo/media/doc/clarke_sjq.pdf",
+        "body_sha256": "0b1ddb276785bfced227c017db62facfe646a56a149e545646aeef3dd16b616e"
+      },
+      {
+        "url": "https://www.judiciary.senate.gov/404?notfound=download/davis-sjq",
+        "disposition": "accepted_recovery",
+        "capture_disposition": "satisfied",
+        "candidate_url": "https://www.judiciary.senate.gov/imo/media/doc/davis_sjq.pdf",
+        "body_sha256": "da528cc46f8ead3edc79e005ef9344e0fb3cc1b115d1e61cea395e19de25c84c"
+      },
+      {
+        "url": "https://www.judiciary.senate.gov/404?notfound=download/lane-sjq",
+        "disposition": "accepted_recovery",
+        "capture_disposition": "satisfied",
+        "candidate_url": "https://www.judiciary.senate.gov/imo/media/doc/lane_sjq.pdf",
+        "body_sha256": "85aad7107440a3345bb19600272f5a69ebf61d51c3623da47648795082d6c04b"
+      },
+      {
+        "url": "https://www.judiciary.senate.gov/404?notfound=download/olson-sjq",
+        "disposition": "accepted_recovery",
+        "capture_disposition": "satisfied",
+        "candidate_url": "https://www.judiciary.senate.gov/imo/media/doc/olson_sjq.pdf",
+        "body_sha256": "ab72550499827354d74f753cb319719d3d5150929d47acdfb479900bae50fefa"
+      },
+      {
+        "url": "https://www.judiciary.senate.gov/404?notfound=download/shepherd-sjq",
+        "disposition": "accepted_recovery",
+        "capture_disposition": "satisfied",
+        "candidate_url": "https://www.judiciary.senate.gov/imo/media/doc/shepherd_sjq.pdf",
+        "body_sha256": "01954c5e7d0d0ac1ced74aeea3420a675746379cc0ca368ace605c7ea61dfe6b"
+      },
+      {
+        "url": "https://www.judiciary.senate.gov/404?notfound=download/st-john-sjq",
+        "disposition": "accepted_recovery",
+        "capture_disposition": "satisfied",
+        "candidate_url": "https://www.judiciary.senate.gov/imo/media/doc/st_john_sjq.pdf",
+        "body_sha256": "00bb6beea4db58192c8a56bd755acaf9a9e36d0f47dcb48217cbf3d0fa8db1b9"
+      },
+      {
+        "url": "https://www.judiciary.senate.gov/404?notfound=download/westercamp-sjq",
+        "disposition": "accepted_recovery",
+        "capture_disposition": "satisfied",
+        "candidate_url": "https://www.judiciary.senate.gov/imo/media/doc/westercamp_sjq.pdf",
+        "body_sha256": "3e4a469e8f9f1c63093d33f0f9e1d9a60faef69a8166dfee7e369d68d8893a59"
+      },
+      {
+        "url": "https://www.judiciary.senate.gov/404?notfound=download/wolfe-sjq",
+        "disposition": "accepted_recovery",
+        "capture_disposition": "satisfied",
+        "candidate_url": "https://www.judiciary.senate.gov/imo/media/doc/wolfe_sjq.pdf",
+        "body_sha256": "96d16e4de6d1a5278636a2053c9ce6a90eeb633813f961fc10e33d3a6bd316fe"
+      },
+      {
+        "url": "https://www.aging.senate.gov/404?notfound=/hearings/experience-matters-seniors-and-the-workforce.xml",
+        "disposition": "needs_acquisition",
+        "capture_disposition": "eligible",
+        "candidate_url": null,
+        "body_sha256": null
+      },
+      {
+        "url": "https://www.aging.senate.gov/404?notfound=/hearings/half-the-country-zero-hearings-meeting-the-moment-to-end-the-menopause-care-gap-in-america.xml",
+        "disposition": "needs_acquisition",
+        "capture_disposition": "eligible",
+        "candidate_url": null,
+        "body_sha256": null
+      },
+      {
+        "url": "https://www.aging.senate.gov/404?notfound=/hearings/understanding-a-growing-crisis-substance-use-trends-among-older-adults.xml",
+        "disposition": "needs_acquisition",
+        "capture_disposition": "eligible",
+        "candidate_url": null,
+        "body_sha256": null
+      },
+      {
+        "url": "https://www.agriculture.senate.gov/404?notfound=/hearings/horticulture-title-how-the-farm-bill-works-for-specialty-crop-producers.xml",
+        "disposition": "needs_acquisition",
+        "capture_disposition": "eligible",
+        "candidate_url": null,
+        "body_sha256": null
+      },
+      {
+        "url": "https://www.agriculture.senate.gov/404?notfound=/hearings/implementation-of-the-2018-farm-bill-rural-development-and-energy-programs.xml",
+        "disposition": "needs_acquisition",
+        "capture_disposition": "eligible",
+        "candidate_url": null,
+        "body_sha256": null
+      },
+      {
+        "url": "https://www.agriculture.senate.gov/404?notfound=/hearings/to-consider-the-following-nominations-the-honorable-christy-goldsmith-romero-ms-kristin-n-johnson-mrs-summer-kristine-mersinger-and-ms-caroline-d-pham-03-02-2022.xml",
+        "disposition": "needs_acquisition",
+        "capture_disposition": "eligible",
+        "candidate_url": null,
+        "body_sha256": null
+      },
+      {
+        "url": "https://www.armed-services.senate.gov/404?notfound=/download/www.senate.gov",
+        "disposition": "needs_acquisition",
+        "capture_disposition": "eligible",
+        "candidate_url": null,
+        "body_sha256": null
+      },
+      {
+        "url": "https://www.armed-services.senate.gov/404?notfound=/hearings/19-07-11-nomination_--milley.xml",
+        "disposition": "needs_acquisition",
+        "capture_disposition": "eligible",
+        "candidate_url": null,
+        "body_sha256": null
+      },
+      {
+        "url": "https://www.armed-services.senate.gov/404?notfound=/hearings/nominations_-storch-martinez-lopez-lowman-beshar.xml",
+        "disposition": "needs_acquisition",
+        "capture_disposition": "eligible",
+        "candidate_url": null,
+        "body_sha256": null
+      },
+      {
+        "url": "https://www.armed-services.senate.gov/404?notfound=/hearings/to-receive-testimony-on-potential-budgetary-efficiencies-achieved-through-improvement-to-management-and-planning-processes-within-department-of-defense-personnel-programs.xml",
+        "disposition": "needs_acquisition",
+        "capture_disposition": "eligible",
+        "candidate_url": null,
+        "body_sha256": null
+      },
+      {
+        "url": "https://www.armed-services.senate.gov/404?notfound=download/kurilla-testimony",
+        "disposition": "needs_acquisition",
+        "capture_disposition": "eligible",
+        "candidate_url": null,
+        "body_sha256": null
+      },
+      {
+        "url": "https://www.armed-services.senate.gov/404?notfound=download/testimony/caine-testimony",
+        "disposition": "needs_acquisition",
+        "capture_disposition": "eligible",
+        "candidate_url": null,
+        "body_sha256": null
+      },
+      {
+        "url": "https://www.armed-services.senate.gov/404?notfound=download/testimony/hegseth-testimony",
+        "disposition": "needs_acquisition",
+        "capture_disposition": "eligible",
+        "candidate_url": null,
+        "body_sha256": null
+      },
+      {
+        "url": "https://www.armed-services.senate.gov/404?notfound=download/testimony/kilby-testimony",
+        "disposition": "needs_acquisition",
+        "capture_disposition": "eligible",
+        "candidate_url": null,
+        "body_sha256": null
+      },
+      {
+        "url": "https://www.help.senate.gov/404?notfound=/hearings/covid-19-an-update-on-the-federal-response.xml",
+        "disposition": "needs_acquisition",
+        "capture_disposition": "eligible",
+        "candidate_url": null,
+        "body_sha256": null
+      },
+      {
+        "url": "https://www.help.senate.gov/404?notfound=/hearings/covid-19-lessons-learned-to-prepare-for-the-next-pandemic.xml",
+        "disposition": "needs_acquisition",
+        "capture_disposition": "eligible",
+        "candidate_url": null,
+        "body_sha256": null
+      },
+      {
+        "url": "https://www.help.senate.gov/404?notfound=/hearings/labor-law-reform-part-1-diagnosing-the-issues-exploring-current-proposals.xml",
+        "disposition": "needs_acquisition",
+        "capture_disposition": "eligible",
+        "candidate_url": null,
+        "body_sha256": null
+      },
+      {
+        "url": "https://www.judiciary.senate.gov/404?notfound=/committee-activity/hearings/breaking-the-news-censorship-suppression-and-the-2020-election.xml",
+        "disposition": "needs_acquisition",
+        "capture_disposition": "eligible",
+        "candidate_url": null,
+        "body_sha256": null
+      },
+      {
+        "url": "https://www.judiciary.senate.gov/404?notfound=/committee-activity/hearings/examining-best-practices-for-incarceration-and-detention-during-covid-19.xml",
+        "disposition": "needs_acquisition",
+        "capture_disposition": "eligible",
+        "candidate_url": null,
+        "body_sha256": null
+      },
+      {
+        "url": "https://www.judiciary.senate.gov/404?notfound=/committee-activity/hearings/reining-in-dominant-digital-platforms-restoring-competition-to-our-digital-markets.xml",
+        "disposition": "needs_acquisition",
+        "capture_disposition": "eligible",
+        "candidate_url": null,
+        "body_sha256": null
+      },
+      {
+        "url": "https://www.judiciary.senate.gov/404?notfound=download/01/06/2026/benton-sjq",
+        "disposition": "needs_acquisition",
+        "capture_disposition": "eligible",
+        "candidate_url": null,
+        "body_sha256": null
+      },
+      {
+        "url": "https://www.judiciary.senate.gov/404?notfound=download/01/06/2026/lea-sjq",
+        "disposition": "needs_acquisition",
+        "capture_disposition": "eligible",
+        "candidate_url": null,
+        "body_sha256": null
+      },
+      {
+        "url": "https://www.judiciary.senate.gov/404?notfound=download/02/02/2026/peterson-sjq",
+        "disposition": "needs_acquisition",
+        "capture_disposition": "eligible",
+        "candidate_url": null,
+        "body_sha256": null
+      },
+      {
+        "url": "https://www.judiciary.senate.gov/404?notfound=download/04/15/2026/kuhlman-sjq",
+        "disposition": "needs_acquisition",
+        "capture_disposition": "eligible",
+        "candidate_url": null,
+        "body_sha256": null
+      },
+      {
+        "url": "https://www.judiciary.senate.gov/404?notfound=download/04/15/2026/mattivi-sjq",
+        "disposition": "needs_acquisition",
+        "capture_disposition": "eligible",
+        "candidate_url": null,
+        "body_sha256": null
+      },
+      {
+        "url": "https://www.judiciary.senate.gov/404?notfound=download/04/28/2026/hendershot-sjq",
+        "disposition": "needs_acquisition",
+        "capture_disposition": "eligible",
+        "candidate_url": null,
+        "body_sha256": null
+      },
+      {
+        "url": "https://www.judiciary.senate.gov/404?notfound=download/05/21/2026/flowers-sjq",
+        "disposition": "needs_acquisition",
+        "capture_disposition": "eligible",
+        "candidate_url": null,
+        "body_sha256": null
+      },
+      {
+        "url": "https://www.judiciary.senate.gov/404?notfound=download/06/10/2026/martin-sjq",
+        "disposition": "needs_acquisition",
+        "capture_disposition": "eligible",
+        "candidate_url": null,
+        "body_sha256": null
+      },
+      {
+        "url": "https://www.judiciary.senate.gov/404?notfound=download/06/24/2026/byrne-sjq",
+        "disposition": "needs_acquisition",
+        "capture_disposition": "eligible",
+        "candidate_url": null,
+        "body_sha256": null
+      },
+      {
+        "url": "https://www.judiciary.senate.gov/404?notfound=download/van-hook-sjq",
+        "disposition": "needs_acquisition",
+        "capture_disposition": "eligible",
+        "candidate_url": null,
+        "body_sha256": null
+      },
+      {
+        "url": "https://www.help.senate.gov/404?notfound=/hearings/nominations-and-s-4428-no-aid-for-ghost-students-act-of-2026",
+        "disposition": null,
+        "capture_disposition": null,
+        "candidate_url": null,
+        "body_sha256": null
+      },
+      {
+        "url": "https://www.judiciary.senate.gov/404?notfound=/hearings/09/09/2021/executive-business-meeting",
+        "disposition": null,
+        "capture_disposition": null,
+        "candidate_url": null,
+        "body_sha256": null
+      }
+    ]
+  },
+  "malformed_families": {
+    "sql": "SELECT CASE WHEN starts_with(url,'mailto:') THEN 'mailto' WHEN contains(url,'File URL path:') THEN 'File URL path' WHEN contains(url,'/cgi-lis/t2GPO/') THEN 'lis_gpo_wrapper' WHEN contains(url,'exit.asp?link=') THEN 'exit_wrapper' WHEN contains(url,'web.archive.org/web/') THEN 'wayback_wrapper' ELSE 'other_nested' END AS category,count(*) AS urls FROM all_urls WHERE starts_with(url,'mailto:') OR contains(url,'File URL path:') OR regexp_matches(url,'(?i)^https?://.+https?://') GROUP BY ALL",
+    "rows": [
+      {
+        "category": "other_nested",
+        "urls": 1733
+      },
+      {
+        "category": "wayback_wrapper",
+        "urls": 545
+      },
+      {
+        "category": "File URL path",
+        "urls": 1
+      },
+      {
+        "category": "lis_gpo_wrapper",
+        "urls": 12
+      },
+      {
+        "category": "exit_wrapper",
+        "urls": 1
+      }
+    ]
+  },
+  "wrapper_doc_pairs": {
+    "sql": "WITH pairs AS (SELECT DISTINCT d.target_url,regexp_replace(d.target_url,'&download=1$','') AS base_url FROM d WHERE ends_with(d.target_url,'&download=1'))\nSELECT count(*) AS pairs,count(*) FILTER(WHERE EXISTS(SELECT 1 FROM captures c WHERE c.requested_url=p.base_url AND c.record_role='wrapper')) AS with_wrapper,\ncount(*) FILTER(WHERE EXISTS(SELECT 1 FROM captures c WHERE c.requested_url=p.base_url AND c.record_role='wrapper') AND EXISTS(SELECT 1 FROM selected s WHERE s.target_url=p.target_url)) AS wrapper_and_selected_file,\ncount(*) FILTER(WHERE EXISTS(SELECT 1 FROM sources s WHERE s.url=p.base_url)) AS base_published,\ncount(*) FILTER(WHERE EXISTS(SELECT 1 FROM sources s WHERE s.url=p.target_url)) AS amp_published\nFROM pairs p",
+    "rows": [
+      {
+        "pairs": 8055,
+        "with_wrapper": 8021,
+        "wrapper_and_selected_file": 2564,
+        "base_published": 1,
+        "amp_published": 4024
+      }
+    ]
+  },
+  "amp_repair_novelty": {
+    "sql": "SELECT count(*) AS targets,count(DISTINCT body_sha256) AS bodies,\ncount(DISTINCT body_sha256) FILTER(WHERE EXISTS(SELECT 1 FROM docs d WHERE lower(hex(d.saved_body))=r.body_sha256)) AS prior_published_bodies,\ncount(*) FILTER(WHERE EXISTS(SELECT 1 FROM wave4 w WHERE w.final_url=r.candidate_url AND w.body_sha256=r.body_sha256 AND w.qualification_status='qualified')) AS wave4_body_bound\nFROM repairs r WHERE ends_with(target_url,'&download=1')",
+    "rows": [
+      {
+        "targets": 1563,
+        "bodies": 1561,
+        "prior_published_bodies": 1332,
+        "wave4_body_bound": 1563
+      }
+    ]
+  }
+}

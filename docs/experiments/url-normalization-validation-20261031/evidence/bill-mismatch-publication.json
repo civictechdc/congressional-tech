@@ -1,0 +1,83 @@
+{
+  "body_sha256": "f984b8439d21b0ef80f8a6f2e16f1dfc20d1ff57a53afe3f65ceefca67b551ee",
+  "documents": [
+    {
+      "document_id": "9ad7ef59a70fd920308d9a5debef6dafeefff85a0791e432ccaf6839b344afc0",
+      "list_row": 59142,
+      "title": null,
+      "format": "pdf"
+    }
+  ],
+  "source_rows": [
+    {
+      "list_row": 59142,
+      "ordinal": 0,
+      "url": "https://www.congress.gov/118/meeting/house/115732/documents/BILLS-118HR4775ih.pdf",
+      "member_path": null,
+      "is_saved": true,
+      "first_seen": "2026-10-05",
+      "listed_on": null,
+      "link_text": null,
+      "doc_type": null,
+      "posted": null
+    },
+    {
+      "list_row": 59142,
+      "ordinal": 1,
+      "url": "https://docs.house.gov/meetings/SY/SY00/20230727/115732/BILLS-118HR4775ih.pdf",
+      "member_path": null,
+      "is_saved": false,
+      "first_seen": "2026-10-02",
+      "listed_on": null,
+      "link_text": null,
+      "doc_type": null,
+      "posted": null
+    }
+  ],
+  "selected_targets": [
+    {
+      "target_url": "https://democrats-science.house.gov/download/hr-4755&download=1",
+      "candidate_url": "https://democrats-science.house.gov/imo/media/doc/HR%204755.pdf",
+      "candidate_source": "repaired_download_query",
+      "body_sha256": "f984b8439d21b0ef80f8a6f2e16f1dfc20d1ff57a53afe3f65ceefca67b551ee",
+      "evidence_id": "receipts/documents/2026-10-31/track-b-wave4-20261031-d8d252ac52cf0159f6ae6898c3766bc32e444b6be7c73b54d0071545747f90dd.jsonl.gz",
+      "receipt_key": "receipts/documents/2026-10-31/track-b-wave4-20261031-d8d252ac52cf0159f6ae6898c3766bc32e444b6be7c73b54d0071545747f90dd.jsonl.gz",
+      "sniffed_format": "pdf",
+      "content_type": "application/pdf",
+      "stored_bytes": 66128,
+      "retrieved_at": "2026-10-31T18:45:00Z",
+      "record_role": "document"
+    },
+    {
+      "target_url": "https://democrats-science.house.gov/download/hr-4824&download=1",
+      "candidate_url": "https://democrats-science.house.gov/imo/media/doc/HR%204824.pdf",
+      "candidate_source": "repaired_download_query",
+      "body_sha256": "f984b8439d21b0ef80f8a6f2e16f1dfc20d1ff57a53afe3f65ceefca67b551ee",
+      "evidence_id": "receipts/documents/2026-10-31/track-b-wave4-20261031-83448f0e27b7fa3cb14580ebbfd023aac6ec838fefb65f1438fad7b627d8d9b5.jsonl.gz",
+      "receipt_key": "receipts/documents/2026-10-31/track-b-wave4-20261031-83448f0e27b7fa3cb14580ebbfd023aac6ec838fefb65f1438fad7b627d8d9b5.jsonl.gz",
+      "sniffed_format": "pdf",
+      "content_type": "application/pdf",
+      "stored_bytes": 66128,
+      "retrieved_at": "2026-10-31T18:45:00Z",
+      "record_role": "document"
+    }
+  ],
+  "visual_check": "Rendered retained first page confirms H. R. 4755, 118th Congress. No text-extraction ambiguity.",
+  "official_bill_sources": [
+    {
+      "bill": "118-HR-4755",
+      "title": "Privacy Enhancing Technology Research Act",
+      "url": "https://www.govinfo.gov/content/pkg/BILLS-118hr4755ih/html/BILLS-118hr4755ih.htm"
+    },
+    {
+      "bill": "118-HR-4824",
+      "title": "Carbon Sequestration Collaboration Act",
+      "url": "https://www.govinfo.gov/content/pkg/BILLS-118hr4824ih/html/BILLS-118hr4824ih.htm"
+    },
+    {
+      "bill": "118-HR-4775",
+      "title": "Helping Tobacco Users Quit Act",
+      "url": "https://www.govinfo.gov/content/pkg/BILLS-118hr4775ih/html/BILLS-118hr4775ih.htm"
+    }
+  ]
+}

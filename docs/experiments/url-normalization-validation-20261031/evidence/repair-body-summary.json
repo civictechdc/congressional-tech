@@ -1,0 +1,120 @@
+{
+  "targets": 1563,
+  "unique_bodies": 1561,
+  "available": 1561,
+  "hash_matches": 1561,
+  "pdf_headers": 1561,
+  "text_success": 1561,
+  "text_nonempty": 1218,
+  "receipt_bound_targets": 1563,
+  "repaired_requested_targets": 1563,
+  "first_page_slug_corroboration": 1144,
+  "bytes_read": 592783286,
+  "duplicate_bodies": [
+    {
+      "sha256": "f984b8439d21b0ef80f8a6f2e16f1dfc20d1ff57a53afe3f65ceefca67b551ee",
+      "targets": [
+        "https://democrats-science.house.gov/download/hr-4755&download=1",
+        "https://democrats-science.house.gov/download/hr-4824&download=1"
+      ],
+      "path": "/private/tmp/claude-501/-Users-mikewolfd-Work/71969fc5-4a0f-4f4e-aa49-d2dd9f4c2272/scratchpad/codex-impl/cx_model_design/recovery_campaign_v1/track_b/raw_store/bodies/sha256/f9/f984b8439d21b0ef80f8a6f2e16f1dfc20d1ff57a53afe3f65ceefca67b551ee",
+      "exists": true,
+      "bytes": 66128,
+      "sha256_matches": true,
+      "pdf_header": true,
+      "bindings": [
+        {
+          "target": "https://democrats-science.house.gov/download/hr-4755&download=1",
+          "final_url": "https://democrats-science.house.gov/imo/media/doc/HR%204755.pdf",
+          "receipt": "/private/tmp/claude-501/-Users-mikewolfd-Work/71969fc5-4a0f-4f4e-aa49-d2dd9f4c2272/scratchpad/codex-impl/cx_model_design/recovery_campaign_v1/track_b/raw_store/receipts/documents/2026-10-31/track-b-wave4-20261031-d8d252ac52cf0159f6ae6898c3766bc32e444b6be7c73b54d0071545747f90dd.jsonl.gz",
+          "receipt_bound": true,
+          "repaired_requested_url": true,
+          "redirects": [
+            {
+              "url": "https://democrats-science.house.gov/download/hr-4755?download=1",
+              "http_status": 302
+            }
+          ],
+          "intact": true
+        },
+        {
+          "target": "https://democrats-science.house.gov/download/hr-4824&download=1",
+          "final_url": "https://democrats-science.house.gov/imo/media/doc/HR%204824.pdf",
+          "receipt": "/private/tmp/claude-501/-Users-mikewolfd-Work/71969fc5-4a0f-4f4e-aa49-d2dd9f4c2272/scratchpad/codex-impl/cx_model_design/recovery_campaign_v1/track_b/raw_store/receipts/documents/2026-10-31/track-b-wave4-20261031-83448f0e27b7fa3cb14580ebbfd023aac6ec838fefb65f1438fad7b627d8d9b5.jsonl.gz",
+          "receipt_bound": true,
+          "repaired_requested_url": true,
+          "redirects": [
+            {
+              "url": "https://democrats-science.house.gov/download/hr-4824?download=1",
+              "http_status": 302
+            }
+          ],
+          "intact": true
+        }
+      ],
+      "text_exit": 0,
+      "text_chars": 1230,
+      "parse_diagnostic": "",
+      "slug_tokens_found": [
+        "4755"
+      ],
+      "slug_tokens": [
+        "4755"
+      ],
+      "content_identifier": "118th Congress, H. R. 4755, Privacy Enhancing Technology Research Act"
+    },
+    {
+      "sha256": "e9b047a091b41af2f06d837d8395e12de50a7ebb75a851362ce101443c83ee5e",
+      "targets": [
+        "https://democrats-science.house.gov/download/hr-988-the-near-act-of-2019&download=1",
+        "https://democrats-science.house.gov/download/hr-988-the-near-act-of-2019-&download=1"
+      ],
+      "path": "/private/tmp/claude-501/-Users-mikewolfd-Work/71969fc5-4a0f-4f4e-aa49-d2dd9f4c2272/scratchpad/codex-impl/cx_model_design/recovery_campaign_v1/track_b/raw_store/bodies/sha256/e9/e9b047a091b41af2f06d837d8395e12de50a7ebb75a851362ce101443c83ee5e",
+      "exists": true,
+      "bytes": 159370,
+      "sha256_matches": true,
+      "pdf_header": true,
+      "bindings": [
+        {
+          "target": "https://democrats-science.house.gov/download/hr-988-the-near-act-of-2019&download=1",
+          "final_url": "https://democrats-science.house.gov/imo/media/doc/HR%20988.pdf",
+          "receipt": "/private/tmp/claude-501/-Users-mikewolfd-Work/71969fc5-4a0f-4f4e-aa49-d2dd9f4c2272/scratchpad/codex-impl/cx_model_design/recovery_campaign_v1/track_b/raw_store/receipts/documents/2026-10-31/track-b-wave4-20261031-b9a3045d6f15d717dec590915f0e4037d5c391f37844be181e35f976c9ed2bfc.jsonl.gz",
+          "receipt_bound": true,
+          "repaired_requested_url": true,
+          "redirects": [
+            {
+              "url": "https://democrats-science.house.gov/download/hr-988-the-near-act-of-2019?download=1",
+              "http_status": 302
+            }
+          ],
+          "intact": true
+        },
+        {
+          "target": "https://democrats-science.house.gov/download/hr-988-the-near-act-of-2019-&download=1",
+          "final_url": "https://democrats-science.house.gov/imo/media/doc/BILLS-116hr988ih.pdf",
+          "receipt": "/private/tmp/claude-501/-Users-mikewolfd-Work/71969fc5-4a0f-4f4e-aa49-d2dd9f4c2272/scratchpad/codex-impl/cx_model_design/recovery_campaign_v1/track_b/raw_store/receipts/documents/2026-10-31/track-b-wave4-20261031-46b19a9758d0c37183a9546b2bc9aecf3a1d9dd7b8998c50b006bb859d5789b1.jsonl.gz",
+          "receipt_bound": true,
+          "repaired_requested_url": true,
+          "redirects": [
+            {
+              "url": "https://democrats-science.house.gov/download/hr-988-the-near-act-of-2019-?download=1",
+              "http_status": 302
+            }
+          ],
+          "intact": true
+        }
+      ],
+      "text_exit": 0,
+      "text_chars": 1265,
+      "parse_diagnostic": "",
+      "slug_tokens_found": [
+        "2019",
+        "near"
+      ],
+      "slug_tokens": [
+        "2019",
+        "near"
+      ]
+    }
+  ]
+}

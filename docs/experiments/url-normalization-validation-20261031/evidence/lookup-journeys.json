@@ -1,0 +1,67 @@
+{
+  "source_rows": 605848,
+  "journeys": [
+    {
+      "kind": "repaired_download",
+      "original": "https://www.finance.senate.gov/download/-7202023-cardin-statement&download=1",
+      "url": "https://www.finance.senate.gov/download/-7202023-cardin-statement?download=1",
+      "list_row": 2883,
+      "exact_rows": [
+        2883
+      ],
+      "variant_rows": []
+    },
+    {
+      "kind": "lowercase_hex",
+      "original": "https://democrats-energycommerce.house.gov/sites/evo-subsites/democrats-energycommerce.house.gov/files/evo-media-document/01-h.r-1442%2C-youth-poisoning-protection-act.pdf",
+      "url": "https://democrats-energycommerce.house.gov/sites/evo-subsites/democrats-energycommerce.house.gov/files/evo-media-document/01-h.r-1442%2c-youth-poisoning-protection-act.pdf",
+      "list_row": 3197,
+      "exact_rows": [
+        3197
+      ],
+      "variant_rows": []
+    },
+    {
+      "kind": "unwrapped_wayback",
+      "original": "https://web.archive.org/web/20180926162814id_/http://www.judiciary.house.gov/_files/hearings/Markups%202012/PDF/HR%202299/032712RC3%20-%20Scott%20Amdt3.pdf",
+      "url": "http://www.judiciary.house.gov/_files/hearings/Markups%202012/PDF/HR%202299/032712RC3%20-%20Scott%20Amdt3.pdf",
+      "list_row": 5479,
+      "exact_rows": [
+        5479
+      ],
+      "variant_rows": [
+        5479
+      ]
+    },
+    {
+      "kind": "strip_congress_q",
+      "original": "https://www.congress.gov/bill/116th-congress/house-bill/1004?q=%7B%22search%22%3A%22H.R.+1004%22%7D&s=9&r=1",
+      "url": "https://www.congress.gov/bill/116th-congress/house-bill/1004?s=9&r=1",
+      "list_row": 12172,
+      "exact_rows": [
+        12172
+      ],
+      "variant_rows": []
+    },
+    {
+      "kind": "browser_spaces",
+      "original": "https://www.hsgac.senate.gov/wp-content/uploads/imo/media/doc/2019-07-17 Chairman Paul Opening Statement.pdf",
+      "url": "https://www.hsgac.senate.gov/wp-content/uploads/imo/media/doc/2019-07-17%20Chairman%20Paul%20Opening%20Statement.pdf",
+      "list_row": 23407,
+      "exact_rows": [
+        23407
+      ],
+      "variant_rows": []
+    },
+    {
+      "kind": "strip_tracker",
+      "original": "https://smallbusiness.house.gov/uploadedfiles/5-17-17_hearing_notice.pdf?utm_campaign=195918-231",
+      "url": "https://smallbusiness.house.gov/uploadedfiles/5-17-17_hearing_notice.pdf",
+      "list_row": 29764,
+      "exact_rows": [
+        29764
+      ],
+      "variant_rows": []
+    }
+  ]
+}

@@ -1,0 +1,44 @@
+[
+  {
+    "kind": "browser_spaces",
+    "source_rows": 472,
+    "same_document_found": 2,
+    "no_document_found": 470
+  },
+  {
+    "kind": "exact",
+    "source_rows": 605848,
+    "same_document_found": 605848,
+    "no_document_found": 0
+  },
+  {
+    "kind": "lowercase_hex",
+    "source_rows": 987,
+    "same_document_found": 1,
+    "no_document_found": 986
+  },
+  {
+    "kind": "repaired_download",
+    "source_rows": 4270,
+    "same_document_found": 10,
+    "no_document_found": 4256
+  },
+  {
+    "kind": "strip_congress_q",
+    "source_rows": 174,
+    "same_document_found": 0,
+    "no_document_found": 174
+  },
+  {
+    "kind": "strip_tracker",
+    "source_rows": 13,
+    "same_document_found": 0,
+    "no_document_found": 13
+  },
+  {
+    "kind": "unwrapped_wayback",
+    "source_rows": 67,
+    "same_document_found": 10,
+    "no_document_found": 54
+  }
+]
