@@ -7,6 +7,7 @@ from hashlib import sha256
 import json
 import os
 from pathlib import Path
+import re
 import shutil
 import subprocess
 import sys
@@ -73,6 +74,26 @@ def inventory(config):
     return tests
 
 
+def html_metadata_errors(timeout):
+    """Compare the sidecar's pins with this environment; uv sync removes these packages."""
+    sidecar = 'packages/congress_api/html-metadata.lock.txt'
+    remedy = f'run uv pip install --python .venv/bin/python --no-deps --require-hashes -r {sidecar}'
+    pins = re.findall(r'^([a-z0-9-]+)==(\S+)', (ROOT / sidecar).read_text(), re.M)
+    probe = ('import importlib.metadata as m,json,sys\n'
+             'def v(n):\n'
+             '    try: return m.version(n)\n'
+             '    except m.PackageNotFoundError: return None\n'
+             'print(json.dumps({n: v(n) for n in sys.argv[1:]}))')
+    try:
+        installed = json.loads(run([sys.executable, '-c', probe, *(name for name, _ in pins)], timeout=timeout).stdout)
+    except (OSError, ValueError, subprocess.SubprocessError) as error:
+        return [f'HTML metadata sidecar: {error}; {remedy}']
+    wrong = [f'{name} expected {version}, got {installed[name]}' for name, version in pins if installed[name] != version]
+    if not wrong:
+        print(f'HTML metadata sidecar: {len(pins)} packages')
+    return [f'HTML metadata sidecar: {"; ".join(wrong)}; {remedy}'] if wrong else []
+
+
 def doctor(config, lane_name=None):
     """Verify local runtime prerequisites, Python version, native CLI dependencies, and imports."""
     errors = []
@@ -109,6 +130,7 @@ def doctor(config, lane_name=None):
         print(f'PyArrow: {version}')
     except (OSError, ValueError, subprocess.SubprocessError) as error:
         errors.append(f'PyArrow: {error}; run uv sync --locked')
+    errors += html_metadata_errors(import_timeout)
     for command, native in config['environment']['native'].items():
         remedy = native['macos_remedy' if sys.platform == 'darwin' else 'linux_remedy']
         executable = shutil.which(command)

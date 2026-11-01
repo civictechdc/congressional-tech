@@ -28,6 +28,12 @@ any direct `.venv/bin/pytest` run over native lake/model tests require
 `runtime.json` that includes `remote` or `credentials` fails `doctor` and raises
 `validate_catalog_authority` errors in local Iceberg tests.
 
+`uv.lock` bytes feed every parser version, so the HTML metadata reader's extruct
+closure lives in a hash-pinned sidecar. `uv sync` removes it: after every sync run
+`uv pip install --python .venv/bin/python --no-deps --require-hashes -r packages/congress_api/html-metadata.lock.txt`.
+`doctor` fails with that command when it is missing. Move extruct into `uv.lock` at
+the next intentional pin move, then delete the sidecar.
+
 For `apps/site` browser contract checks (`npm --prefix apps/site run contract:archive`),
 set `VIEWER_BENCHMARK_MODULES` to a `node_modules` directory whose `playwright`
 matches an installed `~/Library/Caches/ms-playwright/chromium_headless_shell-*` revision

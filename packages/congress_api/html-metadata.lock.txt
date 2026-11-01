@@ -1,0 +1,38 @@
+# Hash-pinned closure of the HTML metadata reader, beyond the packages uv.lock pins.
+# uv.lock's bytes feed every parser version, so adding extruct there moves every
+# sealed pin. Regenerate by compiling html-metadata.in with the lock as constraints
+# and keeping only packages the lock does not already pin.
+# Install: uv pip install --python .venv/bin/python --no-deps --require-hashes -r packages/congress_api/html-metadata.lock.txt
+# Remove: at the next intentional pin move, move extruct into congress_api's archive extra and delete this file and html-metadata.in.
+beautifulsoup4==4.15.0 \
+    --hash=sha256:288e3ca7d54b06f2ac191970bc275c1939cb46d450b255bf6718b04aa37ab4f7 \
+    --hash=sha256:d6f88de62e1d4e38ecb1077eb9724cd0eff29d2a08ca16a401e9b9e93f117cf9
+extruct==0.18.0 \
+    --hash=sha256:1e739985da705c3348c7614dc169e7780caf20908338fa5f4c6e48576df6f000 \
+    --hash=sha256:b5b48d459003b27c05ee91527b14a5a31735231aaf85d2b1f331d4db879318dd
+html-text==0.7.1 \
+    --hash=sha256:87fd194310a9f54be32c7b18a70180dfa72a6b4d01cca35ac813c4d2b2b2ed8b \
+    --hash=sha256:acf13aa1412e559f84f4617fba419720cb8732861736fe07a8dfdafcbdbb8cad
+html5lib==1.1 \
+    --hash=sha256:0d78f8fde1c230e99fe37986a60526d7049ed4bf8a9fadbad5f00e22e58e041d \
+    --hash=sha256:b2e5b40261e20f354d198eae92afc10d750afb487ed5e50f9c4eaf07c184146f
+jstyleson==0.0.2 \
+    --hash=sha256:680003f3b15a2959e4e6a351f3b858e3c07dd3e073a0d54954e34d8ea5e1308e
+mf2py==2.0.2 \
+    --hash=sha256:2851972e514673add74cd2f2898453a50945029ea4a7d32cfdbf231985282ee9 \
+    --hash=sha256:edc5b433e970e5e9a480e112b2ca5b203299b7c918127501fcb823b5c8fbb905
+pyrdfa3==3.6.5 \
+    --hash=sha256:0fc28ff1426af805b100aff7162db6a43fa215e37f92bce9b113b465feb563ea \
+    --hash=sha256:3c0d22e2949e7b3abd004fff7c7f110faa83a18bec06f590bdab2ef0f1ee3c02
+rdflib==7.6.0 \
+    --hash=sha256:30c0a3ebf4c0e09215f066be7246794b6492e054e782d7ac2a34c9f70a15e0dd \
+    --hash=sha256:6c831288d5e4a5a7ece85d0ccde9877d512a3d0f02d7c06455d00d6d0ea379df
+soupsieve==3.0.4 \
+    --hash=sha256:8412826614f9c632227067d0985aeb9f584bd15efc852955430e097a9fe7afbf \
+    --hash=sha256:924fab84ae21604c19e175e1f39815eb6fa83ba23836e09e9de180925e5bc4c0
+w3lib==2.5.0 \
+    --hash=sha256:136fd5edfe64b53b8579838e2a7e803495bbbe6b69ddfaeed3c29a794b44f6ba \
+    --hash=sha256:a7ddf714508ddc1b8563bd19ace2feb28080bbaca39326cbc964359f6754f615
+webencodings==0.6.1 \
+    --hash=sha256:565f9ad031c702dae404e27a099e3e09186a3ab1b9520f06d215502b651fd910 \
+    --hash=sha256:7fab6269c8bf237c657876b52058ccb182e861518d1c695c1a9aaa8c1c105d5b
