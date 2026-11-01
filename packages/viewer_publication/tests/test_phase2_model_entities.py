@@ -9,7 +9,7 @@ from pathlib import Path
 import pyarrow.parquet as pq
 import pytest
 
-from congress_api.lake import filenames, readings
+from congress_api.lake import appearance_records as ar_lake, filenames, meeting_records as mr_lake, readings
 from congress_api.lake.captures import stage_captures
 from congress_api.retention.provenance import parquet_output, run_job
 from docspec_client.client import NativeDatasets
@@ -109,7 +109,11 @@ def _stage_raw_fixture(tmp_path, engine, capture_specs):
         captures=captures,
         readings=pages['readings'],
         filename_readings=names['readings'],
-        parser_versions={p: readings.current_version(p) for p in ['sniff', 'html', 'xml', 'json']},
+        parser_versions={
+            **{p: readings.current_version(p) for p in ['sniff', 'html', 'xml', 'json']},
+            'meeting_records': mr_lake.current_versions(),
+            'appearance_records': ar_lake.current_versions(),
+        },
         catalog_version=names['catalog_version'],
     )
 
@@ -279,15 +283,16 @@ def test_phase2_entities_meetings_witnesses_recordings_and_spicy_projections(tmp
                     testified=True,
                     document_urls=['https://docs.house.gov/meetings/AG/AG00/20230510/115538/HHRG-118-AG00-Wstate-SmithJ-20230510.pdf'],
                 ),
-                # Duplicate name_key in same record & occasion: second row must be dropped
+                # Repeated name_key in same record & occasion with distinct display_order / locator:
+                # ct-30fp AC 4 & 6: both occurrences are preserved with distinct source_locators and witness_keys
                 dict(
                     event_id='115538',
                     name_key='smith_jane',
-                    name='Dr. Jane Smith Duplicate',
-                    position='Duplicate',
-                    organization='Duplicate Org',
-                    panel='Panel I',
-                    panel_order=1,
+                    name='Dr. Jane Smith Second Panel',
+                    position='Senior Advisor',
+                    organization='Advisory Board',
+                    panel='Panel II',
+                    panel_order=2,
                     display_order=2,
                     witness_type='non-government',
                     testified=True,
@@ -311,19 +316,25 @@ def test_phase2_entities_meetings_witnesses_recordings_and_spicy_projections(tmp
             ],
         ),
         # mods appearance for CHRG-118hhrg55555 (maps to meeting:115538, so loses to house_xml)
-        # and mods appearance for unlinked CHRG-118shrg77777 (stays package:CHRG-118shrg77777)
         dict(
             record_sha='cc' * 32,
             source='mods',
+            package_id='CHRG-118hhrg55555',
             appearances=[
                 dict(
-                    package_id='CHRG-118hhrg55555',
                     name_key='mods_loser',
                     name='MODS Witness For Linked Package',
                     document_urls=['https://www.govinfo.gov/content/pkg/CHRG-118hhrg55555/pdf/CHRG-118hhrg55555.pdf'],
                 ),
+            ],
+        ),
+        # mods appearance for unlinked CHRG-118shrg77777 (stays package:CHRG-118shrg77777)
+        dict(
+            record_sha='ce' * 32,
+            source='mods',
+            package_id='CHRG-118shrg77777',
+            appearances=[
                 dict(
-                    package_id='CHRG-118shrg77777',
                     name_key='roe_richard',
                     name='Hon. Richard Roe',
                     bioguide_id='R000001',
@@ -596,7 +607,7 @@ def test_phase2_entities_meetings_witnesses_recordings_and_spicy_projections(tmp
         'occasion', 'panel_order', 'display_order', 'witness_key',
     ]
     assert [f['field'] for f in outputs_by_name['rosters.parquet']['settings']['order_by']] == [
-        'system_code', 'rank', 'bioguide_id',
+        'congress', 'system_code', 'rank', 'bioguide_id',
     ]
     assert [f['field'] for f in outputs_by_name['url_variants.parquet']['settings']['order_by']] == [
         'variant_url', 'canonical_url',
@@ -647,11 +658,13 @@ def test_phase2_entities_meetings_witnesses_recordings_and_spicy_projections(tmp
 
     # 2. Verify witnesses.parquet
     witnesses = pq.read_table(release_dir / 'witnesses.parquet').to_pylist()
-    by_occasion = {w['occasion']: w for w in witnesses}
-    assert len(witnesses) == 3
-    assert 'meeting:115538' in by_occasion
-    assert by_occasion['meeting:115538']['name'] == 'Dr. Jane Smith'
-    assert by_occasion['meeting:115538']['witness_key'] == stmt_doc['witness_keys'][0]
+    assert len(witnesses) == 4
+    meeting_witnesses = [w for w in witnesses if w['occasion'] == 'meeting:115538']
+    assert len(meeting_witnesses) == 2
+    assert [w['name'] for w in meeting_witnesses] == ['Dr. Jane Smith', 'Dr. Jane Smith Second Panel']
+    assert meeting_witnesses[0]['witness_key'] != meeting_witnesses[1]['witness_key']
+    assert meeting_witnesses[0]['witness_key'] == stmt_doc['witness_keys'][0]
+    by_occasion = {w['occasion']: w for w in witnesses if w['occasion'] != 'meeting:115538'}
     assert 'package:CHRG-118shrg77777' in by_occasion
     assert by_occasion['package:CHRG-118shrg77777']['bioguide_id'] == 'R000001'
     page_occasions = [k for k in by_occasion if k.startswith('page:')]
@@ -800,8 +813,32 @@ def test_phase2_invariant15_diagnostics_and_entity_completeness_guards(tmp_path)
             retrieved_at='2023-05-20T12:00:00Z',
         ),
     ])
+    min_spicy = dict(
+        spicy_committees=[
+            dict(
+                system_code='HSAG00',
+                name='Committee on Agriculture',
+                chamber='House',
+                committee_type='Standing',
+                parent_system_code=None,
+                website_url='https://agriculture.house.gov/',
+                is_current=True,
+                history=[],
+            ),
+            dict(
+                system_code='HSIF00',
+                name='Committee on Energy and Commerce',
+                chamber='House',
+                committee_type='Standing',
+                parent_system_code=None,
+                website_url='https://energycommerce.house.gov/',
+                is_current=True,
+                history=[],
+            ),
+        ],
+    )
 
-    # 1. Verify non-fatal appearance_name_key_variants report detects title/initial variants within one occasion
+    # 1. Verify non-fatal appearance_name_key_variants report detects multi-title and multi-initial variants within one occasion
     valid_meetings = [
         dict(
             record_sha='11' * 32,
@@ -817,7 +854,7 @@ def test_phase2_invariant15_diagnostics_and_entity_completeness_guards(tmp_path)
                 meeting_type='Hearing',
                 status='Published',
                 sittings=[],
-                committees=[],
+                committees=[dict(system_code='hsif00', role='host')],
                 subject_keys=[],
                 transcript_jackets=[],
                 videos=[],
@@ -831,8 +868,8 @@ def test_phase2_invariant15_diagnostics_and_entity_completeness_guards(tmp_path)
             appearances=[
                 dict(
                     event_id='115538',
-                    name_key='dr jane a smith',
-                    name='Dr. Jane A. Smith',
+                    name_key='the honorable dr jane smith',
+                    name='The Honorable Dr. Jane Smith',
                     panel_order=1,
                     display_order=1,
                     document_urls=['https://docs.house.gov/meetings/AG/AG00/20230510/115538/HHRG-118-AG00-Wstate-SmithJ-20230510.pdf'],
@@ -845,6 +882,22 @@ def test_phase2_invariant15_diagnostics_and_entity_completeness_guards(tmp_path)
                     display_order=2,
                     document_urls=[],
                 ),
+                dict(
+                    event_id='115538',
+                    name_key='john q p public',
+                    name='John Q. P. Public',
+                    panel_order=1,
+                    display_order=3,
+                    document_urls=[],
+                ),
+                dict(
+                    event_id='115538',
+                    name_key='john public',
+                    name='John Public',
+                    panel_order=1,
+                    display_order=4,
+                    document_urls=[],
+                ),
             ],
         ),
     ]
@@ -852,6 +905,7 @@ def test_phase2_invariant15_diagnostics_and_entity_completeness_guards(tmp_path)
         **staged,
         meeting_records=valid_meetings,
         appearance_records=variant_appearances,
+        spicy_regs=min_spicy,
         engine=engine,
         output=tmp_path / 'release-variants',
         scratch=tmp_path / 'model-variants',
@@ -862,11 +916,33 @@ def test_phase2_invariant15_diagnostics_and_entity_completeness_guards(tmp_path)
         dict(
             occasion='meeting:115538',
             base_key='jane smith',
-            first_name_key='dr jane a smith',
-            second_name_key='jane smith',
+            first_name_key='jane smith',
+            second_name_key='the honorable dr jane smith',
             variant_count=2,
-        )
+        ),
+        dict(
+            occasion='meeting:115538',
+            base_key='john public',
+            first_name_key='john public',
+            second_name_key='john q p public',
+            variant_count=2,
+        ),
     ]
+
+    # 1b. Verify Invariant 15 missing_committee_keys refuses when committees_export is empty (0 rows) and committee_keys exist
+    with pytest.raises(ValueError, match='Release key invariant failed'):
+        build_release(
+            **staged,
+            meeting_records=valid_meetings,
+            appearance_records=variant_appearances,
+            spicy_regs=None,
+            engine=engine,
+            output=tmp_path / 'release-empty-committees',
+            scratch=tmp_path / 'model-empty-committees',
+        )
+    res_empty_comm = json.loads((tmp_path / 'model-empty-committees/result.json').read_text())
+    inv_empty_comm = next(q['data'][0] for q in res_empty_comm['queries'] if q['name'] == 'model_invariants')
+    assert inv_empty_comm['missing_committee_keys'] > 0
 
     # 2. Verify Invariant 15 multi_chamber_events refuses a release when one event_id names two chambers
     conflicting_meetings = valid_meetings + [
@@ -896,6 +972,7 @@ def test_phase2_invariant15_diagnostics_and_entity_completeness_guards(tmp_path)
             **staged,
             meeting_records=conflicting_meetings,
             appearance_records=variant_appearances,
+            spicy_regs=min_spicy,
             engine=engine,
             output=tmp_path / 'release-conflict',
             scratch=tmp_path / 'model-conflict',
@@ -907,7 +984,386 @@ def test_phase2_invariant15_diagnostics_and_entity_completeness_guards(tmp_path)
             **staged,
             meeting_records=valid_meetings + valid_meetings,
             appearance_records=variant_appearances,
+            spicy_regs=min_spicy,
             engine=engine,
             output=tmp_path / 'release-dup',
             scratch=tmp_path / 'model-dup',
         )
+
+
+def test_senate_coldfusion_download_query_stripped_in_witness_document_matching(tmp_path):
+    """ct-v51p: aging, appropriations, banking, budget, finance, and veterans strip ?download=1 / &download=1 in url_key."""
+    from viewer_publication.archive_model import build_release
+
+    engine = NativeDatasets.from_config(os.environ['DOCSPEC_JOB_CONFIG'])
+    hosts = ('aging', 'appropriations', 'banking', 'budget', 'finance', 'veterans')
+    pdf_bytes = b'%PDF-1.7\nsenate testimony pdf bytes\n%%EOF\n'
+    capture_specs = []
+    appearances = []
+    for idx, host in enumerate(hosts, start=1):
+        # Exercise all 4 combinations required by ct-v51p AC 4 across the 6 Senate ColdFusion hosts:
+        # 1 (testimony-a): capture ?download=1 vs card bare
+        # 2 (testimony-b): capture bare vs card ?download=1
+        # 3 (testimony-c): capture ?download=1 vs card &download=1
+        # 4 (testimony-d): capture bare vs card &download=1
+        combo = (idx - 1) % 4
+        if combo == 0:
+            base = f'https://www.{host}.senate.gov/download/testimony-a' if idx == 1 else f'https://www.{host}.senate.gov/download/witness-{host}-statement'
+            capture_url = f'{base}?download=1'
+            card_url = base
+        elif combo == 1:
+            base = f'https://www.{host}.senate.gov/download/testimony-b' if idx == 2 else f'https://www.{host}.senate.gov/download/witness-{host}-statement'
+            capture_url = base
+            card_url = f'{base}?download=1'
+        elif combo == 2:
+            base = f'https://www.{host}.senate.gov/download/testimony-c'
+            capture_url = f'{base}?download=1'
+            card_url = f'{base}&download=1'
+        else:
+            base = f'https://www.{host}.senate.gov/download/testimony-d'
+            capture_url = base
+            card_url = f'{base}&download=1'
+        capture_specs.append(dict(
+            url=capture_url,
+            data=pdf_bytes + f'\n% {host}\n'.encode(),
+            format='pdf',
+            compress=False,
+            family='documents',
+            retrieved_at='2023-05-20T12:00:00Z',
+        ))
+        appearances.append(dict(
+            event_id='335001',
+            page_url='https://www.finance.senate.gov/hearings/senate-coldfusion-hearing',
+            name_key=f'witness {host}',
+            name=f'Witness {host.title()}',
+            panel_order=1,
+            display_order=idx,
+            document_urls=[card_url],
+        ))
+
+    staged = _stage_raw_fixture(tmp_path, engine, capture_specs)
+    meetings = [dict(
+        record_sha='33' * 32,
+        source='congress_gov',
+        meetings=[dict(
+            event_id='335001',
+            chamber='senate',
+            congress=118,
+            session=1,
+            updated='2023-05-10T14:00:00Z',
+            title='Senate Hearing',
+            meeting_date='2023-05-10',
+            meeting_type='Hearing',
+            status='Scheduled',
+            sittings=[],
+            committees=[],
+            subject_keys=[],
+            transcript_jackets=[],
+            videos=[],
+        )],
+    )]
+    appearance_rows = [dict(
+        record_sha='44' * 32,
+        source='senate_page',
+        appearances=appearances,
+    )]
+    build_release(
+        **staged,
+        meeting_records=meetings,
+        appearance_records=appearance_rows,
+        engine=engine,
+        output=tmp_path / 'release-senate-dl',
+        scratch=tmp_path / 'model-senate-dl',
+    )
+    list_rows = pq.read_table(tmp_path / 'release-senate-dl/list.parquet').to_pylist()
+    assert len(list_rows) == 6
+    assert all(row['witness_keys'] and len(row['witness_keys']) == 1 for row in list_rows)
+    # urls.parquet lookup_url remains untouched (only #fragment stripped, query preserved)
+    url_rows = pq.read_table(tmp_path / 'release-senate-dl/urls.parquet').to_pylist()
+    assert len(url_rows) == 6
+
+
+def test_context_free_a_then_b_capture_binding_and_collection_states(tmp_path):
+    """ct-30fp AC 1, 2, 3 & Note:
+    - Context-free senate_page bytes captured first at URL A and later at URL B resolve to both contexts,
+      and capturing at B does NOT refresh A's older observation over a newer distinct body at A.
+    - Explicit empty ('empty') replaces lower-priority sources without falling back.
+    - 'absent' falls back to lower-priority sources.
+    - 'unrecognized' blocks fallback to lower-priority sources.
+    """
+    from viewer_publication.archive_model import build_release
+
+    engine = NativeDatasets.from_config(os.environ['DOCSPEC_JOB_CONFIG'])
+    shared_html = (
+        b'<html><head><title>Senate Hearing Shared</title></head><body>'
+        + b'<p>Substantive Senate hearing page content for shared body. ' * 50 + b'</p>'
+        + b'<div class="paragraph--witness"><div class="witness__field-name">Shared Body Witness</div></div>'
+        + b'</body></html>'
+    )
+    updated_a_html = (
+        b'<html><head><title>Senate Hearing A Updated</title></head><body>'
+        + b'<p>Updated substantive Senate hearing page content for URL A. ' * 50 + b'</p>'
+        + b'<div class="paragraph--witness"><div class="witness__field-name">Updated A Witness</div></div>'
+        + b'</body></html>'
+    )
+    sha_shared = hashlib.sha256(shared_html).hexdigest()
+    sha_updated_a = hashlib.sha256(updated_a_html).hexdigest()
+    url_a = 'https://www.banking.senate.gov/hearings/hearing-a'
+    url_b = 'https://www.banking.senate.gov/hearings/hearing-b'
+    pdf_bytes = b'%PDF-1.7\nstatement\n%%EOF\n'
+    wlist_old = b'<?xml version="1.0"?><witness-list meeting-id="HHRG2004"><panel sort-order="1"><witness display-order="1"><witness-name><firstname>Stale</firstname><lastname>Witness</lastname></witness-name></witness></panel></witness-list>'
+    wlist_empty = b'<?xml version="1.0"?><witness-list meeting-id="HHRG2004"></witness-list>'
+    wlist_dup1 = b'<?xml version="1.0"?><witness-list meeting-id="HHRG2005"><panel sort-order="1"><witness display-order="1"><witness-name><firstname>Earlier</firstname><lastname>Witness</lastname></witness-name></witness></panel></witness-list>'
+    wlist_dup2 = b'<?xml version="1.0"?><witness-list meeting-id="HHRG2005"><panel sort-order="1"><witness display-order="1"><witness-name><firstname>Fresher</firstname><lastname>Witness</lastname></witness-name></witness></panel></witness-list>'
+    sha_wlist_old = hashlib.sha256(wlist_old).hexdigest()
+    sha_wlist_empty = hashlib.sha256(wlist_empty).hexdigest()
+    sha_wlist_dup1 = hashlib.sha256(wlist_dup1).hexdigest()
+    sha_wlist_dup2 = hashlib.sha256(wlist_dup2).hexdigest()
+
+    staged = _stage_raw_fixture(tmp_path, engine, [
+        dict(url=url_a, data=shared_html, format='html', family='senate/pages', retrieved_at='2023-05-10T12:00:00Z'),
+        dict(url=url_a, data=updated_a_html, format='html', family='senate/pages', retrieved_at='2023-05-20T12:00:00Z'),
+        dict(url=url_b, data=shared_html, format='html', family='senate/pages', retrieved_at='2023-05-25T12:00:00Z'),
+        dict(url='https://docs.house.gov/meetings/AG/AG00/20230510/2001/HHRG-118-AG00-Wstate-Test-20230510.pdf',
+             data=pdf_bytes, format='pdf', compress=False, family='documents', retrieved_at='2023-05-20T12:00:00Z'),
+        # 2004: older URL 1 has 'present' witness list, newer URL 2 has revised 'empty' witness list
+        dict(url='https://docs.house.gov/meetings/AG/AG00/20230510/2004/HHRG-118-AG00-WList-20230510-v1.xml',
+             data=wlist_old, format='xml', media_type='text/xml', family='house/witness-xml', retrieved_at='2023-05-10T12:00:00Z'),
+        dict(url='https://docs.house.gov/meetings/AG/AG00/20230510/2004/HHRG-118-AG00-WList-20230510-v2.xml',
+             data=wlist_empty, format='xml', media_type='text/xml', family='house/witness-xml', retrieved_at='2023-05-11T12:00:00Z'),
+        # 2005: two 'present' captures at different URLs for the same (occasion, source) -> only fresher one wins without duplication
+        dict(url='https://docs.house.gov/meetings/AG/AG00/20230510/2005/HHRG-118-AG00-WList-20230510-a.xml',
+             data=wlist_dup1, format='xml', media_type='text/xml', family='house/witness-xml', retrieved_at='2023-05-10T12:00:00Z'),
+        dict(url='https://docs.house.gov/meetings/AG/AG00/20230510/2005/HHRG-118-AG00-WList-20230510-b.xml',
+             data=wlist_dup2, format='xml', media_type='text/xml', family='house/witness-xml', retrieved_at='2023-05-12T12:00:00Z'),
+    ])
+    import pyarrow as pa
+    xml_pages = readings.stage(
+        captures=staged['captures'],
+        body_inventory=tmp_path / 'inventory/bodies.parquet',
+        local_root=tmp_path / 'raw',
+        engine=engine,
+        work=tmp_path / 'reading-xml-ctx-stage',
+        decided_at='2026-10-27T12:00:00Z',
+        parser='xml',
+        existing=staged['readings'],
+    )
+    combined_readings = tmp_path / 'combined-ctx-readings.parquet'
+    pq.write_table(
+        pa.concat_tables([pq.read_table(staged['readings']), pq.read_table(xml_pages['readings'])]),
+        combined_readings,
+    )
+    staged['readings'] = combined_readings
+
+    meetings = [
+        dict(
+            record_sha='11' * 32,
+            source='house_xml',
+            meetings=[
+                dict(event_id=str(eid), chamber='house', congress=118, session=1, updated='2023-05-10T14:00:00Z',
+                     title=f'Hearing {eid}', meeting_date='2023-05-10', meeting_type='Hearing', status='Published',
+                     sittings=[], committees=[], subject_keys=[], transcript_jackets=[], videos=[])
+                for eid in (2001, 2002, 2003, 2004, 2005)
+            ],
+        ),
+    ]
+    appearances = [
+        # Context-free senate_page observations (no context_url stored in the observation rows!)
+        ar_lake.build_appearance_record_row(sha_shared, 'senate_page', shared_html,
+                                            parser_version=ar_lake.current_version('senate_page')),
+        ar_lake.build_appearance_record_row(sha_updated_a, 'senate_page', updated_a_html,
+                                            parser_version=ar_lake.current_version('senate_page')),
+        # 2001: house_xml 'empty' replaces congress_gov 'present' -> 0 witnesses on meeting:2001
+        dict(record_sha='a1' * 32, source='house_xml', event_id=2001, collection_state='empty', appearances=[]),
+        dict(record_sha='b1' * 32, source='congress_gov', event_id=2001, collection_state='present',
+             appearances=[dict(source_locator='congress_gov:witness[1]', name_key='cg fallback 2001', name='CG Fallback 2001', document_links=[])]),
+        # 2002: house_xml 'absent' falls back to congress_gov 'present' -> 'CG Fallback 2002'
+        dict(record_sha='a2' * 32, source='house_xml', event_id=2002, collection_state='absent', appearances=[]),
+        dict(record_sha='b2' * 32, source='congress_gov', event_id=2002, collection_state='present',
+             appearances=[dict(source_locator='congress_gov:witness[1]', name_key='cg fallback 2002', name='CG Fallback 2002', document_links=[])]),
+        # 2003: house_xml 'unrecognized' blocks fallback to congress_gov 'present' -> 0 witnesses on meeting:2003
+        dict(record_sha='a3' * 32, source='house_xml', event_id=2003, collection_state='unrecognized', appearances=[]),
+        dict(record_sha='b3' * 32, source='congress_gov', event_id=2003, collection_state='present',
+             appearances=[dict(source_locator='congress_gov:witness[1]', name_key='cg blocked 2003', name='CG Blocked 2003', document_links=[])]),
+        # 2004: multi-context supersession where newer 'empty' at URL v2 supersedes older 'present' at URL v1
+        ar_lake.build_appearance_record_row(sha_wlist_old, 'house_xml', wlist_old,
+                                            parser_version=ar_lake.current_version('house_xml')),
+        ar_lake.build_appearance_record_row(sha_wlist_empty, 'house_xml', wlist_empty,
+                                            parser_version=ar_lake.current_version('house_xml')),
+        # 2005: multi-context supersession where newer 'present' at URL b supersedes older 'present' at URL a without duplicating witnesses
+        ar_lake.build_appearance_record_row(sha_wlist_dup1, 'house_xml', wlist_dup1,
+                                            parser_version=ar_lake.current_version('house_xml')),
+        ar_lake.build_appearance_record_row(sha_wlist_dup2, 'house_xml', wlist_dup2,
+                                            parser_version=ar_lake.current_version('house_xml')),
+    ]
+
+    spicy_regs = dict(
+        spicy_committees=[
+            dict(
+                system_code='HSAG00',
+                name='Committee on Agriculture',
+                chamber='House',
+                committee_type='Standing',
+                parent_system_code=None,
+                website_url='https://agriculture.house.gov/',
+                is_current=True,
+                history=[],
+            ),
+        ],
+    )
+    build_release(
+        **staged,
+        spicy_regs=spicy_regs,
+        meeting_records=meetings,
+        appearance_records=appearances,
+        engine=engine,
+        output=tmp_path / 'release-ctx',
+        scratch=tmp_path / 'model-ctx',
+    )
+    witnesses = pq.read_table(tmp_path / 'release-ctx/witnesses.parquet').to_pylist()
+    by_occ = {}
+    for w in witnesses:
+        by_occ.setdefault(w['occasion'], []).append(w['name'])
+
+    # Both page occasions resolve, and URL A has Updated A Witness (not overwritten by URL B's later capture of shared_html)
+    page_witnesses = {occ: names for occ, names in by_occ.items() if occ.startswith('page:')}
+    assert len(page_witnesses) == 2
+    assert sorted(names[0] for names in page_witnesses.values()) == ['Shared Body Witness', 'Updated A Witness']
+
+    # Collection state replacement rules on 2001, 2002, 2003, 2004, 2005
+    assert 'meeting:2001' not in by_occ  # 'empty' replaced congress_gov with []
+    assert by_occ.get('meeting:2002') == ['CG Fallback 2002']  # 'absent' fell back to congress_gov
+    assert 'meeting:2003' not in by_occ  # 'unrecognized' blocked fallback to congress_gov
+    assert 'meeting:2004' not in by_occ  # newer 'empty' at v2 superseded older 'present' at v1
+    assert by_occ.get('meeting:2005') == ['Fresher Witness']  # only fresher context selected without duplication
+
+
+def test_entity_record_version_selection_and_completeness_admission(tmp_path):
+    """ct-kw9b AC 1-6 & ct-vpo2:
+    - Multiple parser_version rows for the same (record_sha, source) select only the pinned current version.
+    - Expected candidates in captures + readings must be settled in meeting_records / appearance_records or active_unreadable.
+    """
+    from viewer_publication.archive_model import build_release
+
+    engine = NativeDatasets.from_config(os.environ['DOCSPEC_JOB_CONFIG'])
+    house_cm_xml = b"""<?xml version="1.0" encoding="UTF-8"?>
+<committee-meeting congress-num="118" session-num="1" meeting-id="HHRG118888" meeting-type="HHRG">
+  <meeting-details>
+    <meeting-title>Current Version Title</meeting-title>
+    <meeting-date><calendar-date>2023-06-01</calendar-date></meeting-date>
+    <committees><committee-name id="AG00">Committee on Agriculture</committee-name></committees>
+  </meeting-details>
+</committee-meeting>"""
+    house_wl_xml = b"""<?xml version="1.0" encoding="UTF-8"?>
+<witness-list meeting-id="HHRG118888">
+  <panel sort-order="1">
+    <witness display-order="1">
+      <witness-name><firstname>Current</firstname><lastname>Witness</lastname></witness-name>
+    </witness>
+  </panel>
+</witness-list>"""
+    pdf_bytes = b'%PDF-1.7\nstatement\n%%EOF\n'
+    sha_cm = hashlib.sha256(house_cm_xml).hexdigest()
+    sha_wl = hashlib.sha256(house_wl_xml).hexdigest()
+
+    staged = _stage_raw_fixture(tmp_path, engine, [
+        dict(url='https://docs.house.gov/meetings/AG/AG00/20230601/118888/HHRG-118-AG00-20230601.xml',
+             data=house_cm_xml, format='xml', media_type='text/xml', family='house/meeting-xml', retrieved_at='2023-06-01T12:00:00Z'),
+        dict(url='https://docs.house.gov/meetings/AG/AG00/20230601/118888/HHRG-118-AG00-WList-20230601.xml',
+             data=house_wl_xml, format='xml', media_type='text/xml', family='house/witness-xml', retrieved_at='2023-06-01T12:00:00Z'),
+        dict(url='https://docs.house.gov/meetings/AG/AG00/20230601/118888/HHRG-118-AG00-Wstate-W-20230601.pdf',
+             data=pdf_bytes, format='pdf', compress=False, family='documents', retrieved_at='2023-06-01T12:00:00Z'),
+    ])
+    # Also stage XML readings so readings table has xml_root='committee-meeting' and 'witness-list'
+    raw = tmp_path / 'raw'
+    xml_pages = readings.stage(
+        captures=staged['captures'],
+        body_inventory=tmp_path / 'inventory/bodies.parquet',
+        local_root=raw,
+        engine=engine,
+        work=tmp_path / 'reading-xml-stage',
+        decided_at='2026-10-27T12:00:00Z',
+        parser='xml',
+        existing=staged['readings'],
+    )
+    import pyarrow as pa
+    combined_readings = tmp_path / 'combined-readings.parquet'
+    pq.write_table(
+        pa.concat_tables([pq.read_table(staged['readings']), pq.read_table(xml_pages['readings'])]),
+        combined_readings,
+    )
+    staged['readings'] = combined_readings
+
+    cur_mr_ver = mr_lake.current_version('house_xml')
+    cur_ar_ver = ar_lake.current_version('house_xml')
+    cur_mr_row = mr_lake.build_meeting_record_row(sha_cm, 'house_xml', house_cm_xml, parser_version=cur_mr_ver)
+    old_mr_row = dict(cur_mr_row, parser_version='old-mr-v0',
+                      meetings=[dict(cur_mr_row['meetings'][0], title='Stale Old Version Title')])
+    cur_ar_row = ar_lake.build_appearance_record_row(sha_wl, 'house_xml', house_wl_xml, parser_version=cur_ar_ver)
+    old_ar_row = dict(cur_ar_row, parser_version='old-ar-v0',
+                      appearances=[dict(cur_ar_row['appearances'][0], name='Stale Old Version Witness')])
+
+    spicy_regs = dict(
+        spicy_committees=[
+            dict(
+                system_code='HSAG00',
+                name='Committee on Agriculture',
+                chamber='House',
+                committee_type='Standing',
+                parent_system_code=None,
+                website_url='https://agriculture.house.gov/',
+                is_current=True,
+                history=[],
+            ),
+        ],
+    )
+
+    # 1. Both old and current versions present: SQL selects only current version and completeness succeeds
+    build_release(
+        **staged,
+        spicy_regs=spicy_regs,
+        meeting_records=[old_mr_row, cur_mr_row],
+        appearance_records=[old_ar_row, cur_ar_row],
+        engine=engine,
+        output=tmp_path / 'release-ok',
+        scratch=tmp_path / 'model-ok',
+    )
+    m_out = pq.read_table(tmp_path / 'release-ok/meetings.parquet').to_pylist()
+    assert len(m_out) == 1 and m_out[0]['title'] == 'Current Version Title'
+    w_out = pq.read_table(tmp_path / 'release-ok/witnesses.parquet').to_pylist()
+    assert len(w_out) == 1 and w_out[0]['name'] == 'Current Witness'
+
+    # 2. Only old version present (missing current reading): refused by entity_profile_completeness
+    with pytest.raises(ValueError, match='Release key invariant failed'):
+        build_release(
+            **staged,
+            spicy_regs=spicy_regs,
+            meeting_records=[old_mr_row],
+            appearance_records=[cur_ar_row],
+            engine=engine,
+            output=tmp_path / 'release-old-mr',
+            scratch=tmp_path / 'model-old-mr',
+        )
+
+    # 3. Missing current reading settled via active_unreadable for meeting_records.house_xml at cur_mr_ver: succeeds!
+    unreadable_file = tmp_path / 'unreadable-mr.jsonl'
+    unreadable_file.write_text(json.dumps(dict(
+        id='u1',
+        body_sha256=None,
+        record_sha=sha_cm,
+        parser='meeting_records.house_xml',
+        parser_version=cur_mr_ver,
+        supersedes=None,
+    )) + '\n')
+    build_release(
+        **staged,
+        spicy_regs=spicy_regs,
+        unreadable_files=[dict(key='unreadable/mr.jsonl', path=str(unreadable_file))],
+        meeting_records=[old_mr_row],
+        appearance_records=[cur_ar_row],
+        engine=engine,
+        output=tmp_path / 'release-unreadable-settled',
+        scratch=tmp_path / 'model-unreadable-settled',
+    )
+
+

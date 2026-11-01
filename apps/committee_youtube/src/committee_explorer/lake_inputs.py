@@ -90,14 +90,15 @@ def input_digest(spec: Any) -> str | None:
 
 
 def _parse_subject_keys(subject_keys: Sequence[str], default_congress: int) -> dict[str, list[dict[str, Any]]]:
-    """Translate normalized `subject_keys` (e.g. `119:hr:1`, `119:pn:12-01`, `119:treaty:3`) to `relatedItems`."""
+    """Translate normalized `subject_keys` (e.g. `119-hr-1` or `119:hr:1`, `119-pn-12-01`, `119-treaty-3`) to `relatedItems`."""
     bills: list[dict[str, Any]] = []
     nominations: list[dict[str, Any]] = []
     treaties: list[dict[str, Any]] = []
     for raw_key in subject_keys or ():
         if not raw_key or not isinstance(raw_key, str):
             continue
-        parts = raw_key.strip().split(":")
+        cleaned = raw_key.strip()
+        parts = cleaned.split(":") if ":" in cleaned else cleaned.split("-", 2)
         if len(parts) == 3:
             cong_str, kind, number_part = parts
             cong = int(cong_str) if cong_str.isdigit() else default_congress
@@ -163,6 +164,8 @@ def adapt_lake_meetings_and_appearances(
     senate_pages: dict[str, dict[str, dict[str, Any]]] = defaultdict(dict)
 
     for row in raw_appearance_rows:
+        row_event_id = row.get("event_id")
+        row_page_url = row.get("page_url") or row.get("context_url") or row.get("declared_base")
         if "appearances" in row and isinstance(row["appearances"], Iterable):
             source = str(row.get("source") or "congress_gov")
             items = list(row["appearances"] or ())
@@ -170,8 +173,8 @@ def adapt_lake_meetings_and_appearances(
             source = str(row.get("source") or "congress_gov")
             items = [row]
         for app in items:
-            event_id = str(app.get("event_id") or "").strip()
-            page_url = str(app.get("page_url") or "").strip()
+            event_id = str(app.get("event_id") if app.get("event_id") is not None else (row_event_id or "")).strip()
+            page_url = str(app.get("page_url") or row_page_url or "").strip()
             if event_id:
                 appearances_by_event[event_id].append((source, dict(app)))
             if source == "senate_page" and page_url:
@@ -195,7 +198,7 @@ def adapt_lake_meetings_and_appearances(
                     "page": page_url,
                 }
                 page_entry["witnesses"].append(witness_entry)
-                for doc_url in app.get("document_urls") or ():
+                for doc_url in (app.get("document_links") or app.get("document_urls") or ()):
                     if doc_url:
                         page_entry["documents"].append({"url": doc_url, "witness": app.get("name")})
 
@@ -271,7 +274,7 @@ def adapt_lake_meetings_and_appearances(
                     "position": a.get("position"),
                     "organization": a.get("organization"),
                 })
-            for doc_url in a.get("document_urls") or ():
+            for doc_url in (a.get("document_links") or a.get("document_urls") or ()):
                 if doc_url:
                     witness_documents.append({
                         "name": f"Statement of {a.get('name')}" if a.get("name") else "Witness Statement",

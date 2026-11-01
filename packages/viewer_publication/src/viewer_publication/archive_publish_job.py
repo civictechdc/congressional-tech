@@ -26,6 +26,14 @@ FIELDS={'version','model_spec','bucket','work','public_origin','receipt_keys','p
 METADATA_BYTES=1<<20
 
 
+def _expected_entity_versions():
+    from congress_api.lake import appearance_records,meeting_records
+    return {
+        'meeting_records':meeting_records.current_versions(),
+        'appearance_records':appearance_records.current_versions(),
+    }
+
+
 def completed_daily_inputs(template,production,records):
     """Bind only a completed producer's fresh pins and complete receipt set."""
     if not isinstance(production,dict) or production.get('status')!='completed':
@@ -36,13 +44,18 @@ def completed_daily_inputs(template,production,records):
             or keys!=sorted(set(keys)) or not isinstance(versions,dict)
             or not {'parsers','filename_readings'}<=versions.keys()):
         raise ValueError('Daily publication requires fresh pins, complete receipt keys and definitions')
+    if not isinstance(versions.get('parsers'),dict):
+        raise ValueError('Daily publication requires page parser versions')
+    merged_parsers=dict(versions['parsers'])
     if 'meeting_records' in pins or 'appearance_records' in pins:
-        from congress_api.lake import appearance_records,meeting_records
-        if (versions.get('meeting_records')!=meeting_records.current_version()
-                or versions.get('appearance_records')!=appearance_records.current_version()):
-            raise ValueError('Daily publication meeting or appearance producer version differs from current definition')
+        for entity_name,expected_ver in _expected_entity_versions().items():
+            ver=versions.get(entity_name)
+            if not isinstance(ver,dict) or ver!=expected_ver:
+                raise ValueError(f'Daily publication {entity_name} producer version differs from current source-scoped definitions')
+            if entity_name in pins:
+                merged_parsers[entity_name]=dict(ver)
     receipt_list(keys)
-    value=dict(template,parser_versions=versions['parsers'],catalog_version=versions['filename_readings'])
+    value=dict(template,parser_versions=merged_parsers,catalog_version=versions['filename_readings'])
     for name in (*TABLES,*(n for n in OPTIONAL_TABLES if n in pins)):
         if (not isinstance(pins[name],dict)
                 or set(pins[name])!={'metadata_location','table_uuid','snapshot','schema_id'}):

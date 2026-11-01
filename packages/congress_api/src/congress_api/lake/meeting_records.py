@@ -14,6 +14,7 @@ from __future__ import annotations
 
 from functools import lru_cache
 import re
+from urllib.parse import unquote
 import xml.etree.ElementTree as ET
 from pathlib import Path
 from typing import Any, Iterable, Mapping, Sequence
@@ -42,6 +43,7 @@ from ._record_producer import (
     create_record_table,
     filter_unprocessed_inputs as _shared_filter_unprocessed_inputs,
     normalize_record_sha,
+    source_ast_digest,
     stage_record_table,
     unwrap_congress_gov_payload,
 )
@@ -82,6 +84,17 @@ VIDEO_STRUCT = pa.struct(
     ]
 )
 
+COLLECTION_STATES_STRUCT = pa.struct(
+    [
+        pa.field("sittings", pa.string(), nullable=True),
+        pa.field("committees", pa.string(), nullable=True),
+        pa.field("subject_keys", pa.string(), nullable=True),
+        pa.field("transcript_jackets", pa.string(), nullable=True),
+        pa.field("videos", pa.string(), nullable=True),
+        pa.field("document_urls", pa.string(), nullable=True),
+    ]
+)
+
 MEETING_STRUCT = pa.struct(
     [
         pa.field("event_id", pa.string(), nullable=False),
@@ -98,38 +111,110 @@ MEETING_STRUCT = pa.struct(
         pa.field("subject_keys", pa.list_(pa.field("element", pa.string(), nullable=False)), nullable=False),
         pa.field("transcript_jackets", pa.list_(pa.field("element", pa.int32(), nullable=False)), nullable=False),
         pa.field("videos", pa.list_(pa.field("element", VIDEO_STRUCT, nullable=False)), nullable=False),
+        pa.field("document_urls", pa.list_(pa.field("element", pa.string(), nullable=False)), nullable=True),
+        pa.field("collection_states", COLLECTION_STATES_STRUCT, nullable=True),
     ]
 )
 
 ARROW_SCHEMA = pa.schema(
     [
-        pa.field("record_sha", pa.string(), nullable=False),
+        pa.field("record_sha", pa.binary(32), nullable=False),
         pa.field("parser_version", pa.string(), nullable=False),
+        pa.field("status", pa.string(), nullable=False),
+        pa.field("error_type", pa.string(), nullable=True),
         pa.field("source", pa.string(), nullable=False),
         pa.field("meetings", pa.list_(pa.field("element", MEETING_STRUCT, nullable=False)), nullable=False),
     ]
 )
 SCHEMA = ARROW_SCHEMA
 
+_SOURCE_SYMBOLS: dict[str, tuple[str, ...]] = {
+    "congress_gov": (
+        "SITTING_STRUCT",
+        "COMMITTEE_STRUCT",
+        "VIDEO_STRUCT",
+        "COLLECTION_STATES_STRUCT",
+        "MEETING_STRUCT",
+        "ARROW_SCHEMA",
+        "normalize_chamber",
+        "format_subject_key_bill",
+        "format_subject_key_nomination",
+        "format_subject_key_treaty",
+        "extract_video_key",
+        "_convert_congress_meeting_dict",
+        "extract_congress_gov_meetings",
+    ),
+    "house_xml": (
+        "SITTING_STRUCT",
+        "COMMITTEE_STRUCT",
+        "VIDEO_STRUCT",
+        "COLLECTION_STATES_STRUCT",
+        "MEETING_STRUCT",
+        "ARROW_SCHEMA",
+        "_HOUSE_SELECT_CODES",
+        "normalize_house_committee_code",
+        "format_subject_key_bill",
+        "_HOUSE_BILL_RE",
+        "_CROSS_CONGRESS_RE",
+        "_PRE_CONGRESS_RE",
+        "_ACT_YEAR_RE",
+        "_THOMAS_GPOXML_RE",
+        "_DATE_PATH_RE",
+        "_THOMAS_TYPE_MAP",
+        "_congress_from_year",
+        "_extract_prose_bill_keys",
+        "_extract_bill_keys_from_doc_url",
+        "_iter_active_meeting_documents",
+        "extract_house_xml_meetings",
+    ),
+}
 
-def current_version(*, root: Path = ROOT) -> str:
+
+def current_version(source: str | None = None, *, root: Path = ROOT) -> str:
+    """Return the source-scoped parser version for `source`, or the composite digest when `source` is None."""
     root = Path(root)
+    if source is None:
+        return version_digest(packages={}, files={}, values=current_versions(root=root))
+    if source not in VALID_SOURCES:
+        raise ValueError(f"Unknown meeting_records source: {source!r}")
     pkg_dir = Path(__file__).resolve().parents[1]
+    producer_path = Path(__file__)
+    ast_hash = source_ast_digest(producer_path, _SOURCE_SYMBOLS[source])
+    if source == "congress_gov":
+        return version_digest(
+            packages={},
+            files={
+                "shared_producer": pkg_dir / "lake/_record_producer.py",
+                "models_congress": pkg_dir / "models/congress.py",
+                "parsers_congress": pkg_dir / "parsers/congress.py",
+                "parsers_media": pkg_dir / "parsers/media.py",
+                "parsers_senate_player": pkg_dir / "parsers/senate_player.py",
+                "lock": root / "uv.lock",
+                "lake_schema": root / "model/lake/meeting-records.schema.json",
+            },
+            values={"source": "congress_gov", "ast": ast_hash},
+        )
     return version_digest(
-        packages={},
+        packages={"house-naming": root / "packages/house-naming/src/house_naming"},
         files={
-            "producer": Path(__file__),
-            "models_congress": pkg_dir / "models/congress.py",
-            "parsers_congress": pkg_dir / "parsers/congress.py",
+            "shared_producer": pkg_dir / "lake/_record_producer.py",
             "parsers_house_xml": pkg_dir / "parsers/house_xml.py",
             "parsers_house_documents": pkg_dir / "parsers/house_documents.py",
-            "parsers_media": pkg_dir / "parsers/media.py",
-            "parsers_senate_player": pkg_dir / "parsers/senate_player.py",
             "lock": root / "uv.lock",
             "lake_schema": root / "model/lake/meeting-records.schema.json",
         },
-        values={"prefixes": list(HOUSE_MEETING_PREFIXES)},
+        values={
+            "source": "house_xml",
+            "prefixes": list(HOUSE_MEETING_PREFIXES),
+            "ast": ast_hash,
+        },
     )
+
+
+def current_versions(*, root: Path = ROOT) -> dict[str, str]:
+    """Return the per-source parser version mapping `{source: version}`."""
+    root = Path(root)
+    return {src: current_version(src, root=root) for src in sorted(VALID_SOURCES)}
 
 
 DEFAULT_PARSER_VERSION = "meeting-records-v1"
@@ -405,6 +490,15 @@ def _convert_congress_meeting_dict(m: Mapping[str, Any]) -> dict[str, Any]:
         "subject_keys": subject_keys,
         "transcript_jackets": jackets,
         "videos": videos,
+        "document_urls": [],
+        "collection_states": {
+            "sittings": "present" if sittings else ("empty" if ("location" in m or "continuations" in m) else "absent"),
+            "committees": "present" if committees else ("empty" if m.get("committees") is not None else "absent"),
+            "subject_keys": "present" if subject_keys else ("empty" if m.get("relatedItems") is not None else "absent"),
+            "transcript_jackets": "present" if jackets else ("empty" if m.get("hearingTranscript") is not None else "absent"),
+            "videos": "present" if videos else ("empty" if m.get("videos") is not None else "absent"),
+            "document_urls": "absent",
+        },
     }
 
 
@@ -421,16 +515,88 @@ def extract_congress_gov_meetings(
 
 
 # Hardened bill designator pattern aligned with `spicy_docs.interpretation.citations.BILL_NUMBER_PATTERN`:
-# - Rejects `U.S.`, `R.S. 2477`, and `W.S.` prefixes
-# - Accepts both dotted (`H.R. 1234`) and undotted (`HR 1234`) bill designators
+# - Rejects `U.S.`, `R.S. 2477`, `W.S.`, and possessives (`GAO's 2013`, `Navy’s 30`)
+# - Accepts both dotted (`H.R. 1234`) and undotted (`HR 1234`) House bill designators and dotted Senate (`S. 744`)
 # - Rejects clause subdivisions (`S 2(N)`) and year headings (`S. Con. Res.\n2022:`)
 _HOUSE_BILL_RE = re.compile(
-    r"(?<![A-Za-z]\.)(?<!U\.\s)(?<![A-Za-z])"
+    r"(?<![A-Za-z]\.)(?<!U\.\s)(?<![A-Za-z.\x27\u2018\u2019])"
     r"(H\.?\s*R\.?|H\.?\s*J\.?\s*Res\.?|H\.?\s*Con\.?\s*Res\.?|H\.?\s*Res\.?"
-    r"|S\.?\s*J\.?\s*Res\.?|S\.?\s*Con\.?\s*Res\.?|S\.?\s*Res\.?|S\.?)"
-    r"[.\s]\s*([0-9]{1,5})\b(?!\()(?!(?<=\n(?:19|20)\d\d):)",
+    r"|S\.?\s*J\.?\s*Res\.?|S\.?\s*Con\.?\s*Res\.?|S\.?\s*Res\.?|S\.)"
+    r"(?:(?<=\.)\s*|[.\s]\s*)([0-9]{1,5})\b(?!\()(?!(?<=\n(?:19|20)\d\d):)",
     re.IGNORECASE,
 )
+
+_CROSS_CONGRESS_RE = re.compile(
+    r"^\s*(?:\(\s*|\bof\s+the\s+|,\s*|\bin\s+the\s+)?([0-9]{2,3})\s*(?:st|nd|rd|th)?\s+Congress\b",
+    re.IGNORECASE,
+)
+
+_PRE_CONGRESS_RE = re.compile(
+    r"(?:([0-9]{2,3})\s*(?:st|nd|rd|th)\s+Congress\s*[,):;-]*|(?:Public\s+Law|P\.?\s*L\.?)\s+([0-9]{2,3})-[0-9]+\s*\()\s*$",
+    re.IGNORECASE,
+)
+
+_ACT_YEAR_RE = re.compile(
+    r"^\s*[,:;.\-–—()\'\"\u2018\u2019\u201c\u201d\s]*"
+    r"(?!(?:(?:a\s+bill|an\s+act)\s+)?to\s+\w+\b|"
+    r"(?:amend|reauthoriz|repeal|extend|modif|clarif)\w*\b|"
+    r"(?:under|pursuant\s+to)\b)"
+    r"(?:the\s+)?(?:(?!(?:to|amend|reauthoriz|repeal|extend|modif|clarif)\b)[A-Za-z0-9][A-Za-z0-9'\u2019.-]*\s+){1,8}?Act\s+of\s+((?:19|20)[0-9]{2})\b",
+    re.IGNORECASE,
+)
+
+_THOMAS_GPOXML_RE = re.compile(
+    r"/gpoxmlc([0-9]{2,3})/(hr|h|hj|hc|sr|s|sj|sc)([0-9]+)(?:_[a-z0-9]+)?\.xml$",
+    re.IGNORECASE,
+)
+
+_DATE_PATH_RE = re.compile(
+    r"/(?:billsthisweek|meetings/[A-Za-z0-9]+/[A-Za-z0-9]+)/((?:19|20)[0-9]{2})([0-1][0-9])([0-3][0-9])/",
+    re.IGNORECASE,
+)
+
+_THOMAS_TYPE_MAP: dict[str, str] = {
+    "h": "hr",
+    "hr": "hres",
+    "hj": "hjres",
+    "hc": "hconres",
+    "s": "s",
+    "sr": "sres",
+    "sj": "sjres",
+    "sc": "sconres",
+}
+
+
+def _congress_from_year(year: int) -> int | None:
+    if year < 1789 or year > 2100:
+        return None
+    return ((year - 1789) // 2) + 1
+
+
+def _extract_prose_bill_keys(text: str | None, congress: int | None) -> list[str]:
+    """Extract `{congress}-{type}-{number}` keys from prose with cross-Congress and Act-year guards."""
+    if not text or congress is None:
+        return []
+    keys: list[str] = []
+    for match in _HOUSE_BILL_RE.finditer(text):
+        after = text[match.end() : match.end() + 80]
+        before = text[max(0, match.start() - 48) : match.start()]
+        post_c = _CROSS_CONGRESS_RE.search(after)
+        if post_c and int(post_c.group(1)) != congress:
+            continue
+        pre_c = _PRE_CONGRESS_RE.search(before)
+        if pre_c and int(pre_c.group(1) or pre_c.group(2)) != congress:
+            continue
+        # Guard against prior-Congress Act-year prose attributing a historical bill to the current Congress
+        act_m = _ACT_YEAR_RE.search(after)
+        if act_m:
+            act_cong = _congress_from_year(int(act_m.group(1)))
+            if act_cong is not None and act_cong != congress:
+                continue
+        b_key = format_subject_key_bill(congress, match.group(1), match.group(2))
+        if b_key and b_key not in keys:
+            keys.append(b_key)
+    return keys
 
 
 @lru_cache(maxsize=1)
@@ -440,11 +606,26 @@ def _house_naming_engine():
     return Engine()
 
 
-def _extract_bill_keys_from_doc_url(doc_url: str | None, congress: int) -> list[str]:
+def _extract_bill_keys_from_doc_url(doc_url: str | None, congress: int | None) -> list[str]:
     """Extract `{congress}-{type}-{number}` bill keys from a document URL's filename via `house-naming`."""
     if not doc_url or not isinstance(doc_url, str):
         return []
-    basename = doc_url.strip().rsplit("/", 1)[-1].split("?", 1)[0]
+    cleaned_url = unquote(doc_url.strip()).split("?", 1)[0]
+    if not cleaned_url:
+        return []
+
+    # Check legacy THOMAS gpoxmlc{congress}/{type}{num}_{stage}.xml
+    thomas_m = _THOMAS_GPOXML_RE.search(cleaned_url)
+    if thomas_m:
+        t_cong = int(thomas_m.group(1))
+        if congress is not None and t_cong != congress:
+            return []
+        t_type = _THOMAS_TYPE_MAP.get(thomas_m.group(2).lower())
+        t_num = thomas_m.group(3)
+        b_key = format_subject_key_bill(t_cong, t_type, t_num)
+        return [b_key] if b_key else []
+
+    basename = cleaned_url.rsplit("/", 1)[-1].replace(" ", "")
     if not basename:
         return []
     try:
@@ -452,10 +633,29 @@ def _extract_bill_keys_from_doc_url(doc_url: str | None, congress: int) -> list[
     except Exception:
         return []
     metadata = res.get("metadata") or {}
-    file_cong_vals = metadata.get("congress") or []
-    if len(file_cong_vals) == 1 and str(file_cong_vals[0]).isdigit():
-        if int(file_cong_vals[0]) != congress:
-            return []
+    file_cong: int | None = None
+    for field_name in ("congress", "print_congress"):
+        vals = metadata.get(field_name) or []
+        if len(vals) == 1 and str(vals[0]).isdigit():
+            file_cong = int(vals[0])
+            break
+    if file_cong is None:
+        for gen_id in metadata.get("generic_identifier") or []:
+            m_cong = re.match(r"^([0-9]{3})-", str(gen_id))
+            if m_cong:
+                file_cong = int(m_cong.group(1))
+                break
+    if file_cong is None:
+        date_m = _DATE_PATH_RE.search(cleaned_url)
+        if date_m:
+            file_cong = _congress_from_year(int(date_m.group(1)))
+
+    if file_cong is not None and congress is not None and file_cong != congress:
+        return []
+    effective_cong = file_cong if file_cong is not None else congress
+    if effective_cong is None:
+        return []
+
     measures = list(metadata.get("measure_references") or [])
     m_types = metadata.get("measure_type") or []
     m_nums = metadata.get("measure_number") or []
@@ -465,7 +665,7 @@ def _extract_bill_keys_from_doc_url(doc_url: str | None, congress: int) -> list[
     for ref in measures:
         m = re.fullmatch(r"(hr|s|hjres|sjres|hconres|sconres|hres|sres)([0-9]+)", str(ref).lower())
         if m:
-            key = format_subject_key_bill(congress, m.group(1), m.group(2))
+            key = format_subject_key_bill(effective_cong, m.group(1), m.group(2))
             if key and key not in keys:
                 keys.append(key)
     return keys
@@ -607,38 +807,35 @@ def extract_house_xml_meetings(payload: bytes | str | HouseMeetingXML) -> list[d
 
     subject_keys: list[str] = []
     seen_subjects: set[str] = set()
-    if congress is not None:
-        for doc in _iter_active_meeting_documents(root.find("meeting-documents")):
-            doc_type = (doc.get("type") or value(doc, "type") or "").strip().upper()
-            # Support documents (`SD`, such as hearing notices) mention bills in prose
-            # without placing them on the legislative agenda.
-            if doc_type == "SD":
+    document_urls: list[str] = []
+    seen_doc_urls: set[str] = set()
+    docs_root = root.find("meeting-documents")
+    for doc in _iter_active_meeting_documents(docs_root):
+        files_container = doc.find("files")
+        file_elems = (
+            files_container.findall("file")
+            if files_container is not None
+            else doc.findall("file")
+        )
+        for f_elem in file_elems:
+            if not active(f_elem):
                 continue
-            files_container = doc.find("files")
-            file_elems = (
-                files_container.findall("file")
-                if files_container is not None
-                else doc.findall("file")
-            )
-            for f_elem in file_elems:
-                if not active(f_elem):
-                    continue
-                doc_url = f_elem.get("doc-url") or f_elem.get("url") or (f_elem.text or "")
-                for b_key in _extract_bill_keys_from_doc_url(doc_url, congress):
-                    if b_key not in seen_subjects:
-                        seen_subjects.add(b_key)
-                        subject_keys.append(b_key)
+            doc_url = (f_elem.get("doc-url") or f_elem.get("url") or (f_elem.text or "")).strip()
+            if doc_url and doc_url not in seen_doc_urls:
+                seen_doc_urls.add(doc_url)
+                document_urls.append(doc_url)
+            for b_key in _extract_bill_keys_from_doc_url(doc_url, congress):
+                if b_key not in seen_subjects:
+                    seen_subjects.add(b_key)
+                    subject_keys.append(b_key)
 
-            legis_num = value(doc, "legis-num")
-            desc = value(doc, "description")
-            for candidate in (legis_num, desc):
-                if not candidate:
-                    continue
-                for match in _HOUSE_BILL_RE.finditer(candidate):
-                    b_key = format_subject_key_bill(congress, match.group(1), match.group(2))
-                    if b_key and b_key not in seen_subjects:
-                        seen_subjects.add(b_key)
-                        subject_keys.append(b_key)
+        legis_num = value(doc, "legis-num")
+        desc = value(doc, "description")
+        for candidate in (legis_num, desc):
+            for b_key in _extract_prose_bill_keys(candidate, congress):
+                if b_key not in seen_subjects:
+                    seen_subjects.add(b_key)
+                    subject_keys.append(b_key)
 
     chamber = "joint" if any(c["chamber"] == "joint" for c in committees) else "house"
     updated = (root.get("update-date") or "").strip() or None
@@ -650,9 +847,23 @@ def extract_house_xml_meetings(payload: bytes | str | HouseMeetingXML) -> list[d
         or value(root, "heading")
         or None
     )
+    for b_key in _extract_prose_bill_keys(title, congress):
+        if b_key not in seen_subjects:
+            seen_subjects.add(b_key)
+            subject_keys.append(b_key)
+
     meeting_type = (root.get("meeting-type") or "").strip() or None
     current_status = value(details, "current-status") if details is not None else ""
     status = current_status or None
+
+    has_loc_elems = details is not None and (
+        details.find("meeting-date") is not None
+        or details.find("capitol-complex-location") is not None
+        or details.find("field-location") is not None
+    )
+    has_comm_elems = details is not None and (
+        details.find("committees") is not None or details.find("subcommittees") is not None
+    )
 
     return [
         {
@@ -670,6 +881,15 @@ def extract_house_xml_meetings(payload: bytes | str | HouseMeetingXML) -> list[d
             "subject_keys": subject_keys,
             "transcript_jackets": [],
             "videos": [],
+            "document_urls": document_urls,
+            "collection_states": {
+                "sittings": "present" if sittings else ("empty" if has_loc_elems else "absent"),
+                "committees": "present" if committees else ("empty" if has_comm_elems else "absent"),
+                "subject_keys": "present" if subject_keys else "empty",
+                "transcript_jackets": "absent",
+                "videos": "absent",
+                "document_urls": "present" if document_urls else ("empty" if docs_root is not None else "absent"),
+            },
         }
     ]
 
@@ -692,6 +912,8 @@ def build_meeting_record_row(
     return {
         "record_sha": sha_hex,
         "parser_version": str(parser_version),
+        "status": "completed",
+        "error_type": None,
         "source": source,
         "meetings": meetings,
     }
@@ -706,9 +928,9 @@ def filter_unprocessed_inputs(
     inputs: Iterable[Mapping[str, Any]],
     existing: pa.Table | Sequence[Mapping[str, Any]] | None = None,
     *,
-    parser_version: str = DEFAULT_PARSER_VERSION,
+    parser_version: str | Mapping[str, str] = DEFAULT_PARSER_VERSION,
 ) -> list[dict[str, Any]]:
-    """Anti-join candidate inputs on `(record_sha, parser_version)` before parsing payloads."""
+    """Anti-join candidate inputs on `(record_sha, source, parser_version)` before parsing payloads."""
     return _shared_filter_unprocessed_inputs(inputs, existing, parser_version=parser_version)
 
 
@@ -716,9 +938,9 @@ def produce_meeting_records(
     inputs: Iterable[Mapping[str, Any]],
     *,
     existing: pa.Table | Sequence[Mapping[str, Any]] | None = None,
-    parser_version: str = DEFAULT_PARSER_VERSION,
+    parser_version: str | Mapping[str, str] = DEFAULT_PARSER_VERSION,
 ) -> pa.Table:
-    """Incrementally parse only unprocessed `(record_sha, parser_version)` inputs into a PyArrow Table."""
+    """Incrementally parse only unprocessed `(record_sha, source, parser_version)` inputs into a PyArrow Table."""
     todo = filter_unprocessed_inputs(inputs, existing, parser_version=parser_version)
     rows = [
         build_meeting_record_row(
@@ -765,13 +987,13 @@ def stage(
     local_root: Path | str | None = None,
     raw_store: Any = None,
     unreadable_files: Sequence[Mapping[str, Any]] = (),
-    parser_version: str | None = None,
+    parser_version: str | Mapping[str, str] | None = None,
     max_work_items: int | None = None,
     decided_at: str | None = None,
     unreadable_store: Any = None,
 ) -> dict[str, Any]:
     """Stage missing `meeting_records` rows from `captures` via native anti-join."""
-    version = current_version() if parser_version is None else str(parser_version)
+    version = current_versions() if parser_version is None else parser_version
     return stage_record_table(
         parser_name="meeting_records",
         out_filename="meeting-records.parquet",
@@ -821,13 +1043,13 @@ def append(
     work: Path,
     catalog_root: Path | None,
     table: dict[str, Any],
-    parser_version: str | None = None,
+    parser_version: str | Mapping[str, str] | None = None,
 ) -> Any:
     return append_record_table(
         staged_parquet,
         parser_name="meeting_records",
         default_version=DEFAULT_PARSER_VERSION,
-        current_version_fn=current_version,
+        current_version_fn=current_versions,
         engine=engine,
         work=work,
         catalog_root=catalog_root,

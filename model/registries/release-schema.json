@@ -516,12 +516,32 @@
         {
           "name": "witness_key",
           "type": "string",
-          "meaning": "Lowercase hex of first 8 bytes of SHA-256 of [\"witness\", occasion, name_key]"
+          "meaning": "Lowercase hex of first 8 bytes of SHA-256 of [\"witness-occurrence-v2\", occasion, source, record_sha_hex, source_locator, context_key]"
         },
         {
           "name": "occasion",
           "type": "dict",
           "meaning": "Appearance occasion key (meeting:{event_id}, package:{package_id}, or page:{sha256_prefix})"
+        },
+        {
+          "name": "source",
+          "type": "dict",
+          "meaning": "Observation source family (house_xml, congress_gov, senate_page, or mods)"
+        },
+        {
+          "name": "record_sha",
+          "type": "fixed[32]",
+          "meaning": "SHA-256 of the source body or inline record supplying this witness observation"
+        },
+        {
+          "name": "source_locator",
+          "type": "string",
+          "meaning": "Deterministic occurrence locator within the retained source record"
+        },
+        {
+          "name": "context_key",
+          "type": "string",
+          "meaning": "Lowercase hex SHA-256 of compact JSON [source_url, member_path] for the bound capture context"
         },
         {
           "name": "event_id",
@@ -610,7 +630,7 @@
       ],
       "gaps": [],
       "purpose": "Witness appearances",
-      "row_meaning": "One named witness appearance at a meeting, package, or page; not a deduplicated person",
+      "row_meaning": "One source-occurrence witness observation at a meeting, package, or page; not a deduplicated person",
       "identity": {
         "fields": [
           "witness_key"
@@ -620,7 +640,7 @@
         "kind": "primary_key"
       },
       "notes": {
-        "occasion": "meeting:{event_id}, package:{package_id}, or page:{sha256_prefix}. Witness keys hash the occasion and normalized name; names alone never join appearances."
+        "occasion": "meeting:{event_id}, package:{package_id}, or page:{sha256_prefix}. Witness keys hash the occasion, source, record_sha, source_locator, and context_key; names alone never join or deduplicate appearances."
       }
     },
     {

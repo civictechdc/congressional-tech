@@ -380,8 +380,8 @@ def test_native_daily_producer_refreshes_and_pins_all_five_tables(tmp_path):
     value['tables']=five_tables
     first=produce_daily(value,engine=engine,raw_store=store)
     assert first['status']=='completed' and set(first['pins'])==set(ALL_TABLE_NAMES)
-    assert first['currentversions']['meeting_records']==meeting_records.current_version()
-    assert first['currentversions']['appearance_records']==appearance_records.current_version()
+    assert first['currentversions']['meeting_records']==meeting_records.current_versions()
+    assert first['currentversions']['appearance_records']==appearance_records.current_versions()
     assert first['producerreports']['meeting_records']['produced']==1
     assert first['producerreports']['appearance_records']['produced']==1
     second=produce_daily(dict(value,work=str(tmp_path/'second')),engine=engine,raw_store=store)
@@ -443,5 +443,46 @@ def test_inline_saved_record_and_govinfo_mods_staging_with_anti_join(tmp_path):
         a_stage2=appearance_records.stage(captures=cap_stage,existing=a_stage['records'],engine=eng,
             work=tmp_path/'a2',local_root=raw,raw_store=store,decided_at=STAMP,unreadable_store=store)
         assert a_stage2['work_items']==0 and a_stage2['produced']==0
+
+        # Unreadable decisions with short parser ('meetings'/'appearances') or scoped parser ('meeting_records.congress_gov')
+        # and body_sha256 (with record_sha=None) also settle inline/body candidates in stage_record_table
+        inline_sha=m_rows[0]['record_sha'].hex()
+        unr_path=tmp_path/'unreadable-short-scoped.jsonl'
+        unr_path.write_text(
+            json.dumps(dict(
+                id='u-mr',
+                body_sha256=inline_sha,
+                record_sha=None,
+                parser='meetings',
+                parser_version=meeting_records.current_version('congress_gov'),
+                supersedes=None,
+            )) + '\n' +
+            json.dumps(dict(
+                id='u-ar',
+                body_sha256=inline_sha,
+                record_sha=None,
+                parser='appearance_records.congress_gov',
+                parser_version=appearance_records.current_version('congress_gov'),
+                supersedes=None,
+            )) + '\n'
+        )
+        m_stage_unr=meeting_records.stage(captures=cap_stage,unreadable_files=[dict(key='provenance/unreadable/u.jsonl',path=str(unr_path))],
+            engine=eng,work=tmp_path/'m-unr',local_root=raw,raw_store=store,decided_at=STAMP,unreadable_store=store)
+        assert m_stage_unr['work_items']==0 and m_stage_unr['produced']==0
+        a_stage_unr=appearance_records.stage(captures=cap_stage,unreadable_files=[dict(key='provenance/unreadable/u.jsonl',path=str(unr_path))],
+            engine=eng,work=tmp_path/'a-unr',local_root=raw,raw_store=store,decided_at=STAMP,unreadable_store=store)
+        assert a_stage_unr['work_items']==0 and a_stage_unr['produced']==0
     finally:
         eng.close()
+
+
+@pytest.mark.parametrize('table',['meeting_records','appearance_records'])
+@pytest.mark.parametrize('kind',['composite_scalar','arbitrary_scalar'])
+def test_daily_entity_version_check_rejects_scalar_composite_versions(table,kind):
+    from congress_api.lake import appearance_records,meeting_records
+    from congress_api.lake.daily import _check_entity_versions
+    mod=meeting_records if table=='meeting_records' else appearance_records
+    bad=mod.current_version() if kind=='composite_scalar' else 'scalar-hash'
+    with pytest.raises(ValueError,match=table):
+        _check_entity_versions(table,bad,mod)
+

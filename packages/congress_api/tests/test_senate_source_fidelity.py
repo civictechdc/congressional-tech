@@ -144,3 +144,58 @@ def test_attachment_identity_rejects_different_owners_and_types():
     assert len(of_kind(adapt(saved), "material")) == 4
     saved.pop("attachments")
     assert len(of_kind(adapt(saved), "material")) == 6
+
+
+@pytest.mark.parametrize("number,people,owned", [(1, 3, 0), (2, 1, 1), (3, 3, 0), (4, 2, 2), (5, 1, 0), (6, 7, 7), (7, 3, 3)])
+def test_witness_occurrences_matches_all_seven_real_card_layouts(number, people, owned):
+    from congress_api.parsers.senate_page import witness_occurrences
+
+    html_text = (FIXTURES / f"senate-{number}.html").read_text()
+    rows = witness_occurrences(html_text)
+    assert len(rows) == people
+    assert sum(bool(r["document_links"]) for r in rows) == owned
+    assert all(r["name"] != "Download File" for r in rows)
+    if number == 6:
+        assert [r["organization"] for r in rows] == [
+            "Veterans Health Administration, U.S. Department of Veterans Affairs",
+            "Louisiana Department of Veterans Affairs",
+            "Hope Center, Inc.",
+            "Longbranch Recovery and Wellness",
+            "Bastion Community of Resilience",
+            "Crescent City Surgical Centre",
+            "Department of Louisiana",
+        ]
+
+
+def test_witness_occurrences_scopes_cards_after_witnesses_heading_and_honors_base_and_senate_routes():
+    from congress_api.parsers.senate_page import witness_occurrences
+
+    pre_heading_collision_html = """
+    <html>
+      <head><base href="https://www.energy.senate.gov/hearings/2025/"/></head>
+      <body>
+        <div class="Summary">
+          <li class="vcard"><span class="fn">Jane Doe</span><div class="org">Pre-Heading Summary</div></li>
+        </div>
+        <h2>Witnesses</h2>
+        <li class="vcard">
+          <span class="fn">Jane Doe</span>
+          <div class="title">Director</div>
+          <div class="org">Energy Institute</div>
+          <a href="files/doe-statement.pdf">Download Testimony</a>
+          <a href="/witness-testimony/jane-doe">Written Testimony</a>
+          <a href="testimony?download=1">Supplement</a>
+        </li>
+      </body>
+    </html>
+    """
+    rows = witness_occurrences(pre_heading_collision_html)
+    assert len(rows) == 1
+    assert rows[0]["name"] == "Jane Doe"
+    assert rows[0]["organization"] == "Energy Institute"
+    assert rows[0]["document_links"] == [
+        "files/doe-statement.pdf",
+        "/witness-testimony/jane-doe",
+        "testimony?download=1",
+    ]
+

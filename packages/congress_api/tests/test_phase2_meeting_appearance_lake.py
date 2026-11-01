@@ -68,9 +68,9 @@ def test_meeting_and_appearance_lake_schemas_and_table_profiles():
     a_schema = json.loads(appearance_schema_path.read_text(encoding="utf-8"))
 
     assert m_schema["type"] == "struct"
-    assert m_schema["identifier-field-ids"] == [1, 2]
+    assert m_schema["identifier-field-ids"] == [1, 5, 2]
     m_top_names = [f["name"] for f in m_schema["fields"]]
-    assert m_top_names == ["record_sha", "parser_version", "source", "meetings"]
+    assert m_top_names == ["record_sha", "parser_version", "status", "error_type", "source", "meetings"]
 
     meetings_field = next(f for f in m_schema["fields"] if f["name"] == "meetings")
     meeting_elem_fields = {f["name"]: f for f in meetings_field["type"]["element"]["fields"]}
@@ -89,20 +89,31 @@ def test_meeting_and_appearance_lake_schemas_and_table_profiles():
         "subject_keys",
         "transcript_jackets",
         "videos",
+        "document_urls",
+        "collection_states",
     }
     assert meeting_elem_fields["transcript_jackets"]["type"]["element"] == "int"
 
     assert a_schema["type"] == "struct"
-    assert a_schema["identifier-field-ids"] == [1, 2]
+    assert a_schema["identifier-field-ids"] == [1, 5, 2]
     a_top_names = [f["name"] for f in a_schema["fields"]]
-    assert a_top_names == ["record_sha", "parser_version", "source", "appearances"]
+    assert a_top_names == [
+        "record_sha",
+        "parser_version",
+        "status",
+        "error_type",
+        "source",
+        "event_id",
+        "package_id",
+        "declared_base",
+        "collection_state",
+        "appearances",
+    ]
 
     appearances_field = next(f for f in a_schema["fields"] if f["name"] == "appearances")
     app_elem_fields = {f["name"]: f for f in appearances_field["type"]["element"]["fields"]}
     assert set(app_elem_fields) == {
-        "event_id",
-        "package_id",
-        "page_url",
+        "source_locator",
         "name_key",
         "name",
         "honorific",
@@ -120,16 +131,17 @@ def test_meeting_and_appearance_lake_schemas_and_table_profiles():
         "witness_type",
         "testified",
         "bioguide_id",
-        "document_urls",
+        "document_links",
     }
-    assert app_elem_fields["name_key"]["required"] is True
-    assert app_elem_fields["document_urls"]["required"] is True
+    assert app_elem_fields["source_locator"]["required"] is True
+    assert app_elem_fields["name_key"]["required"] is False
+    assert app_elem_fields["document_links"]["required"] is True
 
     # Verify registration in congress_api.lake.tables
     assert "meeting_records" in tables.TABLE_SPECS
     assert "appearance_records" in tables.TABLE_SPECS
-    assert tables.table_spec("meeting_records")["primary_key"] == ("record_sha", "parser_version")
-    assert tables.table_spec("appearance_records")["primary_key"] == ("record_sha", "parser_version")
+    assert tables.table_spec("meeting_records")["primary_key"] == ("record_sha", "source", "parser_version")
+    assert tables.table_spec("appearance_records")["primary_key"] == ("record_sha", "source", "parser_version")
     assert meetings.ARROW_SCHEMA == meeting_records.ARROW_SCHEMA
     assert appearances.ARROW_SCHEMA == appearance_records.ARROW_SCHEMA
 
@@ -211,6 +223,7 @@ def test_meeting_records_from_congress_gov_body_and_inline_receipt():
         parser_version="v1",
     )
     assert row_body["record_sha"] == sha_body
+    assert meeting_records.table([row_body]).to_pylist()[0]["record_sha"] == bytes.fromhex(sha_body)
     assert row_body["source"] == "congress_gov"
     assert len(row_body["meetings"]) == 1
     m = row_body["meetings"][0]
@@ -343,14 +356,19 @@ def test_house_xml_meeting_bills_from_house_naming_and_sd_refusal():
     xml_bytes = b"""<?xml version="1.0" encoding="UTF-8"?>
 <committee-meeting congress-num="118" session-num="2" meeting-id="HHRG118777" meeting-type="HHRG">
   <meeting-details>
-    <meeting-title>Legislative Hearing on Wildfire Management</meeting-title>
+    <meeting-title>Legislative Hearing on Wildfire Management and H.J. Res. 77</meeting-title>
     <meeting-date><calendar-date>2024-06-15</calendar-date></meeting-date>
     <committees><committee-name id="IG00">Permanent Select Committee on Intelligence</committee-name></committees>
   </meeting-details>
   <meeting-documents>
     <meeting-document type="SD">
-      <description>Hearing Notice mentioning H.R. 9999 and S. 8888</description>
-      <files><file doc-url="https://docs.house.gov/118/BILLS-118hr9999ih.pdf"/></files>
+      <description>Hearing Notice mentioning H.R. 9999 and S. 8888, plus Director's 2025 budget and H.R. 2 in the 117th Congress and Public Law 110-246 (H.R. 2419)</description>
+      <files>
+        <file doc-url="https://docs.house.gov/118/BILLS-118hr9999ih.pdf"/>
+        <file doc-url="http://thomas.loc.gov/home/gpoxmlc118/hr123_rh.xml"/>
+        <file doc-url="http://thomas.loc.gov/home/gpoxmlc118/h456_ih.xml"/>
+        <file doc-url="http://thomas.loc.gov/home/gpoxmlc113/hr99_rh.xml"/>
+      </files>
     </meeting-document>
     <meeting-document type="BR">
       <description>Discussion of R.S. 2477, W.S. 11-6-302, U.S. 500, and Clause S 2(N) alongside HR 1234</description>
@@ -363,9 +381,69 @@ def test_house_xml_meeting_bills_from_house_naming_and_sd_refusal():
     assert m["event_id"] == "118777"
     assert m["congress"] == 118
     assert m["session"] == 2
-    assert m["title"] == "Legislative Hearing on Wildfire Management"
+    assert m["title"] == "Legislative Hearing on Wildfire Management and H.J. Res. 77"
     assert m["committees"][0]["system_code"] == "hlig00"
-    assert m["subject_keys"] == ["118-hr-3522", "118-hr-1234"]
+    assert m["subject_keys"] == [
+        "118-hr-9999",
+        "118-hres-123",
+        "118-hr-456",
+        "118-s-8888",
+        "118-hr-3522",
+        "118-hr-1234",
+        "118-hjres-77",
+    ]
+    assert m["document_urls"] == [
+        "https://docs.house.gov/118/BILLS-118hr9999ih.pdf",
+        "http://thomas.loc.gov/home/gpoxmlc118/hr123_rh.xml",
+        "http://thomas.loc.gov/home/gpoxmlc118/h456_ih.xml",
+        "http://thomas.loc.gov/home/gpoxmlc113/hr99_rh.xml",
+        "https://docs.house.gov/118/BILLS-118HR3522ih-FIRESHEDSAct.pdf",
+    ]
+    assert m["collection_states"] == {
+        "sittings": "present",
+        "committees": "present",
+        "subject_keys": "present",
+        "transcript_jackets": "absent",
+        "videos": "absent",
+        "document_urls": "present",
+    }
+
+
+def test_source_scoped_version_independence_for_meeting_and_appearance_records(monkeypatch):
+    """ct-h1nd AC 1 & 2: source-scoped current_version(source) digests are independent per source."""
+    m_vers = meeting_records.current_versions()
+    assert set(m_vers) == {"congress_gov", "house_xml"}
+    assert m_vers["congress_gov"] != m_vers["house_xml"]
+
+    a_vers = appearance_records.current_versions()
+    assert set(a_vers) == {"house_xml", "congress_gov", "senate_page", "mods"}
+    assert len(set(a_vers.values())) == 4
+
+    # Simulate an edit to a house_xml-only symbol in meeting_records without touching congress_gov symbols
+    orig_digest = meeting_records.source_ast_digest
+
+    def fake_meeting_ast_digest(path, symbols):
+        if "extract_house_xml_meetings" in symbols:
+            return "f" * 64
+        return orig_digest(path, symbols)
+
+    monkeypatch.setattr(meeting_records, "source_ast_digest", fake_meeting_ast_digest)
+    assert meeting_records.current_version("congress_gov") == m_vers["congress_gov"]
+    assert meeting_records.current_version("house_xml") != m_vers["house_xml"]
+
+    # Simulate an edit to a senate_page-only symbol in appearance_records
+    orig_app_digest = appearance_records.source_ast_digest
+
+    def fake_app_ast_digest(path, symbols):
+        if "extract_senate_page_observation" in symbols:
+            return "e" * 64
+        return orig_app_digest(path, symbols)
+
+    monkeypatch.setattr(appearance_records, "source_ast_digest", fake_app_ast_digest)
+    assert appearance_records.current_version("house_xml") == a_vers["house_xml"]
+    assert appearance_records.current_version("congress_gov") == a_vers["congress_gov"]
+    assert appearance_records.current_version("mods") == a_vers["mods"]
+    assert appearance_records.current_version("senate_page") != a_vers["senate_page"]
 
 
 # ---------------------------------------------------------------------------
@@ -377,15 +455,16 @@ def test_name_key_normalization_and_unnamed_witnesses():
     # NFKC + casefold + punctuation removal + whitespace collapse
     assert appearance_records.compute_name_key("  Dr. María-José   O’Connor, Jr.! ", 1) == "dr maríajosé oconnor jr"
     assert appearance_records.compute_name_key("THE HONORABLE JOHN\tQ.\nPUBLIC", 2) == "the honorable john q public"
-    # Unnamed or punctuation-only witnesses get #<1-based-position> so they stay apart
-    assert appearance_records.compute_name_key(None, 1) == "#1"
-    assert appearance_records.compute_name_key("", 2) == "#2"
-    assert appearance_records.compute_name_key(" --- ... ", 3) == "#3"
+    # Unnamed or punctuation-only witnesses have nullable name_key (None); source_locator distinguishes them
+    assert appearance_records.compute_name_key(None, 1) is None
+    assert appearance_records.compute_name_key("", 2) is None
+    assert appearance_records.compute_name_key(" --- ... ", 3) is None
 
 
-def test_s2_fixture_1_duplicate_name_key_deduplication_and_unnamed_kept_apart():
-    """S2 Fixture 1: Duplicate `name_key` within a single `record_sha` keeps the first
-    entry in source order, while multiple unnamed witnesses get distinct `#1`, `#3` keys.
+def test_s2_fixture_1_repeated_names_and_unnamed_witnesses_preserved_with_locators():
+    """ct-30fp AC 4 & 5: Repeated normalized `name_key` across panels/roles/documents and
+    multiple unnamed witnesses are preserved as separate occurrences with stable `source_locator`s,
+    and `resolve_old_witness_key` classifies unambiguous, ambiguous, and unresolved v1 keys.
     """
     house_wlist_xml = b"""<?xml version="1.0" encoding="UTF-8"?>
 <witness-list meeting-id="HHRG118999">
@@ -432,8 +511,15 @@ def test_s2_fixture_1_duplicate_name_key_deduplication_and_unnamed_kept_apart():
         <middlename>M</middlename>
         <lastname>SMITH,</lastname>
       </witness-name>
-      <position>Duplicate Entry Should Be Dropped</position>
+      <position>Acting Director</position>
       <organization>Agency Y</organization>
+      <witness-documents>
+        <witness-document>
+          <files>
+            <file doc-url="/118/HHRG-118-WState-Smith-Panel2.pdf"/>
+          </files>
+        </witness-document>
+      </witness-documents>
     </witness>
   </panel>
 </witness-list>"""
@@ -443,61 +529,100 @@ def test_s2_fixture_1_duplicate_name_key_deduplication_and_unnamed_kept_apart():
         "house_xml",
         house_wlist_xml,
         parser_version="v1",
-        source_url="https://docs.house.gov/meetings/JU/JU00/20240510/118999/HHRG-118-JU00-WList-20240510.xml",
     )
+    assert row["event_id"] == 118999
+    assert row["collection_state"] == "present"
     apps = row["appearances"]
-    # 4 input witnesses -> 3 kept (unnamed #1, "hon jane m smith", unnamed #3; duplicate "hon jane m smith" dropped)
-    assert [a["name_key"] for a in apps] == ["#1", "hon jane m smith", "#3"]
+    assert len(apps) == 4
+    assert [a["source_locator"] for a in apps] == [
+        "house_xml:panel[1]/witness[1]",
+        "house_xml:panel[1]/witness[2]",
+        "house_xml:panel[2]/witness[1]",
+        "house_xml:panel[2]/witness[2]",
+    ]
+    assert [a["name_key"] for a in apps] == [None, "hon jane m smith", None, "hon jane m smith"]
     assert apps[0]["name"] is None
     assert apps[0]["position"] == "Anonymous Whistleblower"
     assert apps[1]["name"] == "Hon. Jane M. Smith"
     assert apps[1]["position"] == "Administrator"
     assert apps[1]["bioguide_id"] == "S000148"
     assert apps[1]["testified"] is True
-    assert apps[1]["document_urls"] == ["https://docs.house.gov/118/HHRG-118-WTTF-Smith.pdf"]
+    assert apps[1]["document_links"] == ["/118/HHRG-118-WTTF-Smith.pdf"]
     assert apps[2]["name"] is None
     assert apps[2]["position"] == "Second Unnamed Witness"
+    assert apps[3]["name"] == "HON JANE M SMITH,"
+    assert apps[3]["position"] == "Acting Director"
+    assert apps[3]["organization"] == "Agency Y"
+    assert apps[3]["document_links"] == ["/118/HHRG-118-WState-Smith-Panel2.pdf"]
+
+    # Verify v1 -> v2 old-key resolution (mapped, ambiguous, unresolved)
+    occasion = "meeting:118999"
+    v1_smith = appearance_records.compute_v1_witness_key(occasion, "hon jane m smith")
+    v1_single = appearance_records.compute_v1_witness_key(occasion, "dr single witness")
+    v1_missing = appearance_records.compute_v1_witness_key(occasion, "nobody here")
+    resolved_rows = [
+        {"occasion": occasion, "name_key": "hon jane m smith", "witness_key": "v2key_panel1"},
+        {"occasion": occasion, "name_key": "hon jane m smith", "witness_key": "v2key_panel2"},
+        {"occasion": occasion, "name_key": "dr single witness", "witness_key": "v2key_single"},
+    ]
+    assert appearance_records.resolve_old_witness_key(v1_single, resolved_rows) == {
+        "old_witness_key": v1_single,
+        "status": "mapped",
+        "witness_key": "v2key_single",
+        "witness_keys": ["v2key_single"],
+    }
+    assert appearance_records.resolve_old_witness_key(v1_smith, resolved_rows) == {
+        "old_witness_key": v1_smith,
+        "status": "ambiguous",
+        "witness_key": None,
+        "witness_keys": ["v2key_panel1", "v2key_panel2"],
+    }
+    assert appearance_records.resolve_old_witness_key(v1_missing, resolved_rows) == {
+        "old_witness_key": v1_missing,
+        "status": "unresolved",
+        "witness_key": None,
+        "witness_keys": [],
+    }
 
 
 def test_s2_fixture_2_empty_witness_and_meeting_rows_retained_for_anti_join():
     """S2 Fixture 2: An input verified to have zero witnesses or zero meetings still emits
-    a row with `appearances = []` or `meetings = []`, and the anti-join on
-    `(record_sha, parser_version)` skips it on subsequent runs unless `parser_version` bumps.
+    a row with `appearances = []` (`collection_state = 'empty'`) or `meetings = []`, and the
+    anti-join on `(record_sha, source, parser_version)` skips it on subsequent runs unless
+    that source's `parser_version` bumps.
     """
     empty_wlist_xml = b'<?xml version="1.0"?><witness-list meeting-id="HHRG118000"></witness-list>'
     sha_empty = _sha("s2-empty-wlist")
 
-    parse_calls = 0
-    orig_extract = appearance_records.extract_house_xml_appearances
-
-    def counted_extract(*args, **kwargs):
-        nonlocal parse_calls
-        parse_calls += 1
-        return orig_extract(*args, **kwargs)
-
     inputs = [{"record_sha": sha_empty, "source": "house_xml", "payload": empty_wlist_xml}]
 
-    # First run parses the empty witness list and emits a row with appearances = []
+    # First run parses the empty witness list and emits a row with appearances = [] and collection_state = 'empty'
     first_table = appearance_records.produce_appearance_records(inputs, parser_version="v1")
     assert first_table.num_rows == 1
     row_dict = first_table.to_pylist()[0]
     assert row_dict == {
-        "record_sha": sha_empty,
+        "record_sha": bytes.fromhex(sha_empty),
         "parser_version": "v1",
+        "status": "completed",
+        "error_type": None,
         "source": "house_xml",
+        "event_id": 118000,
+        "package_id": None,
+        "declared_base": None,
+        "collection_state": "empty",
         "appearances": [],
     }
 
     # Second run at the same parser_version skips via anti-join before touching payload
     bad_inputs = [{"record_sha": sha_empty, "source": "house_xml", "payload": b"should-not-be-read"}]
     second_table = appearance_records.produce_appearance_records(
-        bad_inputs, existing=first_table, parser_version="v1"
+        bad_inputs, existing=first_table, parser_version={"house_xml": "v1", "congress_gov": "v99"}
     )
     assert second_table.num_rows == 0
 
-    # Bumping parser_version to "v2" re-runs the input
+    # Bumping house_xml parser_version to "v2" re-runs the input
     third_table = appearance_records.produce_appearance_records(
-        inputs, existing=first_table, parser_version="v2"
+        inputs, existing=first_table, parser_version={"house_xml": "v2", "congress_gov": "v99"}
     )
     assert third_table.num_rows == 1
     assert third_table.to_pylist()[0]["parser_version"] == "v2"
@@ -508,7 +633,9 @@ def test_s2_fixture_2_empty_witness_and_meeting_rows_retained_for_anti_join():
     m_first = meeting_records.produce_meeting_records(m_inputs, parser_version="v1")
     assert m_first.num_rows == 1
     assert m_first.to_pylist()[0]["meetings"] == []
-    m_second = meeting_records.produce_meeting_records(m_inputs, existing=m_first, parser_version="v1")
+    m_second = meeting_records.produce_meeting_records(
+        m_inputs, existing=m_first, parser_version={"congress_gov": "v1", "house_xml": "v99"}
+    )
     assert m_second.num_rows == 0
 
 
@@ -534,14 +661,19 @@ def test_appearance_records_from_congress_gov_senate_page_and_mods():
     cg_row = appearance_records.build_appearance_record_row(
         _sha("cg-app"), "congress_gov", cg_payload, parser_version="v1"
     )
-    assert [a["name_key"] for a in cg_row["appearances"]] == ["the honorable janet yellen", "#2"]
-    assert cg_row["appearances"][0]["event_id"] == "116010"
+    assert cg_row["event_id"] == 116010
+    assert cg_row["collection_state"] == "present"
+    assert [a["name_key"] for a in cg_row["appearances"]] == ["the honorable janet yellen", None]
+    assert [a["source_locator"] for a in cg_row["appearances"]] == [
+        "congress_gov:witness[1]",
+        "congress_gov:witness[2]",
+    ]
     assert cg_row["appearances"][0]["position"] == "Secretary of the Treasury"
-    assert cg_row["appearances"][0]["document_urls"] == []
+    assert cg_row["appearances"][0]["document_links"] == []
 
-    # 2. senate_page (with card-scoped testimony links resolved against page_url)
+    # 2. senate_page (context-free: retains literal document_links and optional <base href>)
     senate_html = """
-    <html><body>
+    <html><head><base href="https://www.banking.senate.gov/hearings/nomination-hearing"/></head><body>
       <h2>Witnesses</h2>
       <div class="paragraph--witness">
         <div class="witness__field-name">Dr. Saule T. Omarova</div>
@@ -553,21 +685,21 @@ def test_appearance_records_from_congress_gov_senate_page_and_mods():
       </div>
     </body></html>
     """
-    senate_url = "https://www.banking.senate.gov/hearings/nomination-hearing"
     senate_row = appearance_records.build_appearance_record_row(
         _sha("senate-app"),
         "senate_page",
         senate_html,
         parser_version="v1",
-        source_url=senate_url,
     )
+    assert senate_row["collection_state"] == "present"
+    assert senate_row["declared_base"] == "https://www.banking.senate.gov/hearings/nomination-hearing"
     assert len(senate_row["appearances"]) == 1
     s_app = senate_row["appearances"][0]
-    assert s_app["page_url"] == senate_url
+    assert s_app["source_locator"] == "senate_page:witness[1]"
     assert s_app["name_key"] == "saule t omarova"
     assert s_app["position"] == "Professor of Law"
     assert s_app["organization"] == "Cornell Law School"
-    assert s_app["document_urls"] == ["https://www.banking.senate.gov/imo/media/doc/Omarova_Testimony.pdf"]
+    assert s_app["document_links"] == ["/imo/media/doc/Omarova_Testimony.pdf"]
 
     # 3. mods (GovInfo MODS XML with witness lines and member bioguideId)
     mods_fixture = ROOT / "packages/congress_api/tests/fixtures/gpo_metadata/CHRG-113hhrg21122.xml"
@@ -577,12 +709,12 @@ def test_appearance_records_from_congress_gov_senate_page_and_mods():
         "mods",
         mods_bytes,
         parser_version="v1",
-        source_url="https://www.govinfo.gov/metadata/pkg/CHRG-113hhrg21122/mods.xml",
     )
     assert mods_row["source"] == "mods"
+    assert mods_row["collection_state"] == "present"
     assert len(mods_row["appearances"]) >= 1
-    assert all(a["package_id"] == "CHRG-113hhrg21122" for a in mods_row["appearances"])
-    assert all(a["document_urls"] == [] for a in mods_row["appearances"])
+    assert all(a["source_locator"].startswith("mods:witness[") for a in mods_row["appearances"])
+    assert all(a["document_links"] == [] for a in mods_row["appearances"])
 
     # Round-trip through PyArrow table builder
     tbl = appearance_records.table([cg_row, senate_row, mods_row])
@@ -1047,6 +1179,750 @@ def test_receipt_line_cursor_cache_and_version_decoupling(tmp_path: Path):
     assert len(appearance_records.current_version()) == 64
     leaf_versions = {p: readings.current_version(p) for p in ("sniff", "html", "xml", "json")}
     assert len(readings.bundle_version(leaf_versions, policy=readings.worker_limits())) == 64
+
+    # Verify meetings.py is a thin re-export wrapper of meeting_records.py
+    assert meetings.stage is meeting_records.stage
+    assert meetings.current_versions is meeting_records.current_versions
+    assert meetings._extract_prose_bill_keys is meeting_records._extract_prose_bill_keys
+    assert meetings._extract_bill_keys_from_doc_url is meeting_records._extract_bill_keys_from_doc_url
+    assert meetings.COLLECTION_STATES_STRUCT is meeting_records.COLLECTION_STATES_STRUCT
+
+
+def test_candidate_eligibility_mods_senate_predicates_and_budget_fast_fail(tmp_path: Path):
+    """ct-h1nd / ct-30fp / ct-kw9b:
+    - CANDIDATE_MEETING_RECORDS_SQL and CANDIDATE_APPEARANCE_RECORDS_SQL require mode='fetch',
+      complete=true, outcome IN ('stored','unchanged'), http_status BETWEEN 200 AND 299, sha256 IS NOT NULL.
+    - Non-XML gpo/chrg captures (PDF/HTML transcripts) are NOT staged as 'mods', while lowercase
+      'chrg' zip URLs with 'CHRG-.../mods.xml' member_path ARE staged as 'mods'.
+    - .senate.gov PDF captures are NOT staged as 'senate_page', while family IN ('senate/hearings', 'senate/pages')
+      and .senate.gov hearing HTMLs ARE staged as 'senate_page'.
+    - max_work_items fast-fails before reading inline receipts when work_items exceeds budget.
+    """
+    import os
+    import pyarrow.parquet as pq
+    from docspec_client.client import NativeDatasets
+    from congress_api.lake import readings
+
+    cfg = os.environ.get("DOCSPEC_JOB_CONFIG")
+    if not cfg:
+        pytest.skip("DOCSPEC_JOB_CONFIG required for native candidate SQL test")
+    engine = NativeDatasets.from_config(cfg)
+
+    sha_incomplete = bytes.fromhex(_sha("incomplete-cg"))
+    sha_chrg_pdf = bytes.fromhex(_sha("chrg-pdf"))
+    sha_chrg_mods_zip = bytes.fromhex(_sha("chrg-mods-zip"))
+    sha_senate_pdf = bytes.fromhex(_sha("senate-pdf"))
+    sha_senate_pages = bytes.fromhex(_sha("senate-pages-html"))
+
+    captures_path = tmp_path / "captures_eligibility.parquet"
+    pq.write_table(
+        pa.Table.from_pylist(
+            [
+                {
+                    "mode": "fetch",
+                    "complete": None,
+                    "outcome": "failed",
+                    "http_status": None,
+                    "sha256": sha_incomplete,
+                    "stored_suffix": ".gz",
+                    "family": "congress/meetings",
+                    "url": "https://api.congress.gov/v3/committee-meeting/118/house/115538",
+                    "requested_url": None,
+                    "context_url": None,
+                    "member_path": None,
+                    "sniffed_format": "json",
+                    "media_type": "application/json",
+                    "receipt_key": "r1",
+                    "receipt_line": 1,
+                },
+                {
+                    "mode": "fetch",
+                    "complete": True,
+                    "outcome": "stored",
+                    "http_status": 200,
+                    "sha256": sha_chrg_pdf,
+                    "stored_suffix": "",
+                    "family": "gpo/chrg",
+                    "url": "https://www.govinfo.gov/content/pkg/CHRG-118hhrg55555/pdf/CHRG-118hhrg55555.pdf",
+                    "requested_url": None,
+                    "context_url": None,
+                    "member_path": None,
+                    "sniffed_format": "pdf",
+                    "media_type": "application/pdf",
+                    "receipt_key": "r1",
+                    "receipt_line": 2,
+                },
+                {
+                    "mode": "fetch",
+                    "complete": True,
+                    "outcome": "stored",
+                    "http_status": 200,
+                    "sha256": sha_chrg_mods_zip,
+                    "stored_suffix": ".gz",
+                    "family": "documents",
+                    "url": "https://www.govinfo.gov/bulkdata/chrg/118/chrg-118.zip",
+                    "requested_url": "https://www.govinfo.gov/bulkdata/chrg/118/chrg-118.zip",
+                    "context_url": None,
+                    "member_path": "CHRG-118shrg99999/mods.xml",
+                    "sniffed_format": "xml",
+                    "media_type": "application/xml",
+                    "receipt_key": "r1",
+                    "receipt_line": 3,
+                },
+                {
+                    "mode": "fetch",
+                    "complete": True,
+                    "outcome": "stored",
+                    "http_status": 200,
+                    "sha256": sha_senate_pdf,
+                    "stored_suffix": "",
+                    "family": "documents",
+                    "url": "https://www.banking.senate.gov/imo/media/doc/hearing_statement.pdf",
+                    "requested_url": None,
+                    "context_url": None,
+                    "member_path": None,
+                    "sniffed_format": None,
+                    "media_type": "application/pdf",
+                    "receipt_key": "r1",
+                    "receipt_line": 4,
+                },
+                {
+                    "mode": "fetch",
+                    "complete": True,
+                    "outcome": "stored",
+                    "http_status": 200,
+                    "sha256": sha_senate_pages,
+                    "stored_suffix": ".gz",
+                    "family": "senate/pages",
+                    "url": "https://www.banking.senate.gov/hearings/nomination-hearing",
+                    "requested_url": None,
+                    "context_url": None,
+                    "member_path": None,
+                    "sniffed_format": "html",
+                    "media_type": "text/html",
+                    "receipt_key": "r1",
+                    "receipt_line": 5,
+                },
+            ],
+            schema=pa.schema(
+                [
+                    ("mode", pa.string()),
+                    ("complete", pa.bool_()),
+                    ("outcome", pa.string()),
+                    ("http_status", pa.int32()),
+                    ("sha256", pa.binary(32)),
+                    ("stored_suffix", pa.string()),
+                    ("family", pa.string()),
+                    ("url", pa.string()),
+                    ("requested_url", pa.string()),
+                    ("context_url", pa.string()),
+                    ("member_path", pa.string()),
+                    ("sniffed_format", pa.string()),
+                    ("media_type", pa.string()),
+                    ("receipt_key", pa.string()),
+                    ("receipt_line", pa.int64()),
+                ]
+            ),
+        ),
+        captures_path,
+    )
+
+    with pytest.raises(readings.BackfillRequired) as exc_info:
+        appearance_records.stage(
+            captures=captures_path,
+            engine=engine,
+            work=tmp_path / "ar_budget",
+            max_work_items=1,
+        )
+    assert exc_info.value.report["work_items"] == 2
+    work_rows = pq.read_table(tmp_path / "ar_budget/work-list.parquet").to_pylist()
+    assert {(r["record_sha"], r["source"]) for r in work_rows} == {
+        (sha_chrg_mods_zip.hex(), "mods"),
+        (sha_senate_pages.hex(), "senate_page"),
+    }
+
+
+def test_ct_h1nd_compact_dotted_senate_bills_amendatory_act_years_and_source_symbols():
+    """ct-h1nd:
+    - Compact dotted Senate bill designators ('S.140', 'S.744') extract '{congress}-s-140' and '{congress}-s-744',
+      while 'U.S. 2023', 'R.S. 2477', 'W.S. 11-6-302', 'S 2(N)', and \"GAO's 2013\" remain rejected.
+    - Amendatory bill descriptions like 'H.R. 2215, To amend the Help America Vote Act of 2002' in the 118th Congress
+      extract '118-hr-2215', while 'H.R. 2, Agriculture Improvement Act of 2018' in a non-115th Congress remains suppressed.
+    - SITTING_STRUCT, COMMITTEE_STRUCT, and VIDEO_STRUCT are included in meeting_records._SOURCE_SYMBOLS.
+    """
+    for src in ("congress_gov", "house_xml"):
+        for struct_sym in ("SITTING_STRUCT", "COMMITTEE_STRUCT", "VIDEO_STRUCT"):
+            assert struct_sym in meeting_records._SOURCE_SYMBOLS[src]
+
+    xml_bytes = b"""<?xml version="1.0" encoding="UTF-8"?>
+<committee-meeting congress-num="118" session-num="2" meeting-id="HHRG118888" meeting-type="HHRG">
+  <meeting-details>
+    <meeting-title>Legislative Hearing on S.140 and U.S. 2023</meeting-title>
+    <meeting-date><calendar-date>2024-06-20</calendar-date></meeting-date>
+    <committees><committee-name id="II00">Committee on Natural Resources</committee-name></committees>
+  </meeting-details>
+  <meeting-documents>
+    <meeting-document type="BR">
+      <legis-num>S.744</legis-num>
+      <description>H.R. 2215, To amend the Help America Vote Act of 2002; H.R. 2, Agriculture Improvement Act of 2018; R.S. 2477; W.S. 11-6-302; S 2(N); GAO's 2013</description>
+    </meeting-document>
+  </meeting-documents>
+</committee-meeting>"""
+    row = meeting_records.build_meeting_record_row(_sha("ct-h1nd-compact"), "house_xml", xml_bytes, parser_version="v1")
+    m = row["meetings"][0]
+    assert m["subject_keys"] == [
+        "118-s-744",
+        "118-hr-2215",
+        "118-s-140",
+    ]
+    assert meeting_records._extract_prose_bill_keys("H.R. 2, Agriculture Improvement Act of 2018", 116) == []
+    assert meeting_records._extract_prose_bill_keys("H.R. 2, Agriculture Improvement Act of 2018", 115) == ["115-hr-2"]
+    assert (
+        meeting_records._extract_prose_bill_keys(
+            "H.R. 2215. To amend the Help America Vote Act of 2002", 118
+        )
+        == ["118-hr-2215"]
+    )
+    assert (
+        meeting_records._extract_prose_bill_keys(
+            "H.R. 2215 -- To amend the Help America Vote Act of 2002", 118
+        )
+        == ["118-hr-2215"]
+    )
+    assert (
+        meeting_records._extract_prose_bill_keys(
+            "H.R. 1732\u2014Regulatory Integrity Protection Act of 2015", 118
+        )
+        == []
+    )
+    assert (
+        meeting_records._extract_prose_bill_keys(
+            "H.R. 1732\u2014Regulatory Integrity Protection Act of 2015", 114
+        )
+        == ["114-hr-1732"]
+    )
+
+
+def test_ct_30fp_senate_page_repeated_witness_names_and_relative_document_links():
+    """ct-30fp:
+    - Two witness cards on a Senate hearing page sharing the same normalized name ('John Smith' from 'Org A'
+      with href='smith-a.pdf' and 'John Smith' from 'Org B' with href='smith-b.pdf') are both preserved with
+      distinct source_locator ('senate_page:witness[1]', 'senate_page:witness[2]'), their respective organization,
+      and their respective document_links (['smith-a.pdf'], ['smith-b.pdf']).
+    - Relative href='testimony.pdf' and href='../media/bio.pdf' (with no <base href>) are preserved literally
+      in document_links rather than rewritten against https://senate-page.local/ to '/testimony.pdf' and '/media/bio.pdf'.
+    """
+    repeated_html = """
+    <html><body>
+      <h2>Witnesses</h2>
+      <div class="paragraph--witness">
+        <div class="witness__field-name">John Smith</div>
+        <div class="witness__field-position">Director</div>
+        <div class="witness__field-organization">Org A</div>
+        <div class="witness__field-testimony">
+          <a href="smith-a.pdf">Download Testimony</a>
+        </div>
+      </div>
+      <div class="paragraph--witness">
+        <div class="witness__field-name">John Smith</div>
+        <div class="witness__field-position">President</div>
+        <div class="witness__field-organization">Org B</div>
+        <div class="witness__field-testimony">
+          <a href="smith-b.pdf">Download Testimony</a>
+        </div>
+      </div>
+    </body></html>
+    """
+    row_rep = appearance_records.build_appearance_record_row(
+        _sha("senate-repeated-smith"), "senate_page", repeated_html, parser_version="v1"
+    )
+    assert row_rep["collection_state"] == "present"
+    assert row_rep["declared_base"] is None
+    apps = row_rep["appearances"]
+    assert len(apps) == 2
+    assert [a["source_locator"] for a in apps] == ["senate_page:witness[1]", "senate_page:witness[2]"]
+    assert [a["name_key"] for a in apps] == ["john smith", "john smith"]
+    assert [a["organization"] for a in apps] == ["Org A", "Org B"]
+    assert [a["document_links"] for a in apps] == [["smith-a.pdf"], ["smith-b.pdf"]]
+
+    rel_html = """
+    <html><body>
+      <h2>Witnesses</h2>
+      <div class="paragraph--witness">
+        <div class="witness__field-name">Dr. Alice Example</div>
+        <div class="witness__field-position">Senior Fellow</div>
+        <div class="witness__field-organization">Policy Institute</div>
+        <div class="witness__field-testimony">
+          <a href="testimony.pdf">Prepared Statement</a>
+          <a href="../media/bio.pdf">Witness Biography</a>
+        </div>
+      </div>
+    </body></html>
+    """
+    row_rel = appearance_records.build_appearance_record_row(
+        _sha("senate-relative-links"), "senate_page", rel_html, parser_version="v1"
+    )
+    assert row_rel["declared_base"] is None
+    assert len(row_rel["appearances"]) == 1
+    assert row_rel["appearances"][0]["document_links"] == ["testimony.pdf", "../media/bio.pdf"]
+
+    senate6_html = (ROOT / "packages/congress_api/tests/fixtures/meeting_inventory/senate-6.html").read_text(encoding="utf-8")
+    row_s6 = appearance_records.build_appearance_record_row(
+        _sha("senate-6"), "senate_page", senate6_html, parser_version="v1"
+    )
+    assert len(row_s6["appearances"]) == 7
+    assert all(a["name"] != "Download File" for a in row_s6["appearances"])
+    assert all(len(a["document_links"]) == 1 for a in row_s6["appearances"])
+    assert row_s6["appearances"][0]["organization"] == "Veterans Health Administration, U.S. Department of Veterans Affairs"
+
+    bad_senate_dict = {"witnesses": ["not-a-dict", {"name": "   "}]}
+    row_bad_senate = appearance_records.build_appearance_record_row(
+        _sha("senate-bad-dict"), "senate_page", bad_senate_dict, parser_version="v1"
+    )
+    assert row_bad_senate["collection_state"] == "unrecognized"
+
+    bad_mods_dict = {"package_id": "CHRG-118shrg1", "witnesses": [123, {"name": ""}]}
+    row_bad_mods = appearance_records.build_appearance_record_row(
+        _sha("mods-bad-dict"), "mods", bad_mods_dict, parser_version="v1"
+    )
+    assert row_bad_mods["collection_state"] == "unrecognized"
+
+
+def test_ct_30fp_congress_gov_invalid_witness_items_and_sql_per_context_freshness_and_failed_state(tmp_path: Path):
+    """ct-30fp:
+    - Congress.gov JSON payload with 'witnesses': [123, 'bad'] maps to collection_state = 'unrecognized' (not 'empty').
+    - status IN ('error', 'size_limit') on appearance_records_input maps to collection_state = 'failed'
+      (distinct from 'unrecognized' in appearance-records-resolved.sql while blocking lower-priority fallback).
+    - Multi-context update ordering (X@A -> Y@A -> X@B): body X captured at URL A (t=1), updated body Y captured at
+      URL A (t=2), then old body X captured at mirror URL B (t=3); X@B does not resurrect X at A or beat Y when A
+      has already superseded X with Y.
+    """
+    import os
+    import pyarrow.parquet as pq
+    from docspec_client.client import NativeDatasets
+    from congress_api.lake.tables import table_input
+    from congress_api.retention.provenance import json_input, list_of, run_job, struct
+
+    bad_cg = {"committeeMeeting": {"eventId": "118901", "witnesses": [123, "bad"]}}
+    bad_row = appearance_records.build_appearance_record_row(
+        _sha("cg-bad-items"), "congress_gov", bad_cg, parser_version="v1"
+    )
+    assert bad_row["collection_state"] == "unrecognized"
+    assert bad_row["appearances"] == []
+
+    cfg = os.environ.get("DOCSPEC_JOB_CONFIG")
+    if not cfg:
+        pytest.skip("DOCSPEC_JOB_CONFIG required for appearance-records-resolved.sql test")
+    engine = NativeDatasets.from_config(cfg)
+
+    sha_x = _sha("body-x")
+    sha_y = _sha("body-y")
+    sha_err = _sha("body-err")
+    sha_cg_fb = _sha("body-cg-fb")
+    sha_cg_present = _sha("body-cg-present-joint")
+    sha_cg_unres = _sha("body-cg-unres-joint")
+    url_a = "https://docs.house.gov/meetings/JU/JU00/20240510/3001/HHRG-118-JU00-WList-20240510-a.xml"
+    url_b = "https://docs.house.gov/meetings/JU/JU00/20240510/3001/HHRG-118-JU00-WList-20240510-b.xml"
+    url_err = "https://docs.house.gov/meetings/JU/JU00/20240510/3002/HHRG-118-JU00-WList-20240510.xml"
+    url_cg_fb = "https://api.congress.gov/v3/committee-meeting/118/house/3002"
+    url_cg_joint_1 = "https://www.congress.gov/committee-meeting/118/joint/3003"
+    url_cg_joint_2 = "https://api.congress.gov/v3/committee-meeting/118/joint/3003"
+
+    work = tmp_path / "sql_check"
+    work.mkdir(parents=True, exist_ok=True)
+    captures_path = work / "captures.parquet"
+    pq.write_table(
+        pa.Table.from_pylist(
+            [
+                {
+                    "mode": "fetch",
+                    "complete": True,
+                    "outcome": "stored",
+                    "http_status": 200,
+                    "sha256": bytes.fromhex(sha_x),
+                    "family": "house/witness-xml",
+                    "url": url_a,
+                    "requested_url": url_a,
+                    "context_url": None,
+                    "member_path": None,
+                    "sniffed_format": "xml",
+                    "media_type": "text/xml",
+                    "retrieved_at": "2024-05-10T10:00:00Z",
+                },
+                {
+                    "mode": "fetch",
+                    "complete": True,
+                    "outcome": "stored",
+                    "http_status": 200,
+                    "sha256": bytes.fromhex(sha_y),
+                    "family": "house/witness-xml",
+                    "url": url_a,
+                    "requested_url": url_a,
+                    "context_url": None,
+                    "member_path": None,
+                    "sniffed_format": "xml",
+                    "media_type": "text/xml",
+                    "retrieved_at": "2024-05-10T12:00:00Z",
+                },
+                {
+                    "mode": "fetch",
+                    "complete": True,
+                    "outcome": "stored",
+                    "http_status": 200,
+                    "sha256": bytes.fromhex(sha_x),
+                    "family": "house/witness-xml",
+                    "url": url_b,
+                    "requested_url": url_b,
+                    "context_url": None,
+                    "member_path": None,
+                    "sniffed_format": "xml",
+                    "media_type": "text/xml",
+                    "retrieved_at": "2024-05-10T14:00:00Z",
+                },
+                {
+                    "mode": "fetch",
+                    "complete": True,
+                    "outcome": "stored",
+                    "http_status": 200,
+                    "sha256": bytes.fromhex(sha_err),
+                    "family": "house/witness-xml",
+                    "url": url_err,
+                    "requested_url": url_err,
+                    "context_url": None,
+                    "member_path": None,
+                    "sniffed_format": "xml",
+                    "media_type": "text/xml",
+                    "retrieved_at": "2024-05-10T15:00:00Z",
+                },
+                {
+                    "mode": "fetch",
+                    "complete": True,
+                    "outcome": "stored",
+                    "http_status": 200,
+                    "sha256": bytes.fromhex(sha_cg_fb),
+                    "family": "congress/meetings",
+                    "url": url_cg_fb,
+                    "requested_url": url_cg_fb,
+                    "context_url": None,
+                    "member_path": None,
+                    "sniffed_format": "json",
+                    "media_type": "application/json",
+                    "retrieved_at": "2024-05-10T16:00:00Z",
+                },
+                {
+                    "mode": "fetch",
+                    "complete": True,
+                    "outcome": "stored",
+                    "http_status": 200,
+                    "sha256": bytes.fromhex(sha_cg_present),
+                    "family": "congress/meetings",
+                    "url": url_cg_joint_1,
+                    "requested_url": url_cg_joint_1,
+                    "context_url": None,
+                    "member_path": None,
+                    "sniffed_format": "json",
+                    "media_type": "application/json",
+                    "retrieved_at": "2024-05-10T17:00:00Z",
+                },
+                {
+                    "mode": "fetch",
+                    "complete": True,
+                    "outcome": "stored",
+                    "http_status": 200,
+                    "sha256": bytes.fromhex(sha_cg_unres),
+                    "family": "congress/meetings",
+                    "url": url_cg_joint_2,
+                    "requested_url": url_cg_joint_2,
+                    "context_url": None,
+                    "member_path": None,
+                    "sniffed_format": "json",
+                    "media_type": "application/json",
+                    "retrieved_at": "2024-05-10T18:00:00Z",
+                },
+            ],
+            schema=pa.schema(
+                [
+                    ("mode", pa.string()),
+                    ("complete", pa.bool_()),
+                    ("outcome", pa.string()),
+                    ("http_status", pa.int32()),
+                    ("sha256", pa.binary(32)),
+                    ("family", pa.string()),
+                    ("url", pa.string()),
+                    ("requested_url", pa.string()),
+                    ("context_url", pa.string()),
+                    ("member_path", pa.string()),
+                    ("sniffed_format", pa.string()),
+                    ("media_type", pa.string()),
+                    ("retrieved_at", pa.string()),
+                ]
+            ),
+        ),
+        captures_path,
+    )
+    inputs = [
+        table_input("captures", captures_path),
+        json_input(
+            work,
+            "parser_versions",
+            [
+                {"parser": "appearance_records.house_xml", "version": "v1"},
+                {"parser": "appearance_records.congress_gov", "version": "v1"},
+            ],
+            parser="Utf8",
+            version="Utf8",
+        ),
+        json_input(
+            work,
+            "meeting_sources",
+            [
+                {"kind": "appearance", "source": "house_xml", "priority": 1},
+                {"kind": "appearance", "source": "congress_gov", "priority": 2},
+            ],
+            kind="Utf8",
+            source="Utf8",
+            priority="Int32",
+        ),
+        json_input(
+            work,
+            "meeting_records_input",
+            [],
+            record_sha_hex="Utf8",
+            parser_version="Utf8",
+            status="Utf8",
+            source="Utf8",
+            meetings=list_of(struct(updated="Utf8")),
+        ),
+        json_input(work, "meeting_transcript_links", [], package_id="Utf8", event_id="Int64"),
+        json_input(work, "appearance_url_keys", [], url="Utf8", url_key="Utf8", error="Utf8"),
+        json_input(
+            work,
+            "appearance_records_input",
+            [
+                {
+                    "record_sha_hex": sha_x,
+                    "parser_version": "v1",
+                    "status": "completed",
+                    "error_type": None,
+                    "source": "house_xml",
+                    "event_id": 3001,
+                    "package_id": None,
+                    "declared_base": None,
+                    "collection_state": "present",
+                    "context_url": None,
+                    "appearances": [
+                        {
+                            "source_locator": "house_xml:panel[1]/witness[1]",
+                            "name_key": "stale witness x",
+                            "name": "Stale Witness X",
+                            "honorific": None,
+                            "given": "Stale",
+                            "middle": None,
+                            "family": "X",
+                            "suffix": None,
+                            "position": None,
+                            "organization": None,
+                            "on_behalf_of": None,
+                            "location": None,
+                            "panel": None,
+                            "panel_order": 1,
+                            "display_order": 1,
+                            "witness_type": None,
+                            "testified": None,
+                            "bioguide_id": None,
+                            "document_links": [],
+                        }
+                    ],
+                },
+                {
+                    "record_sha_hex": sha_y,
+                    "parser_version": "v1",
+                    "status": "completed",
+                    "error_type": None,
+                    "source": "house_xml",
+                    "event_id": 3001,
+                    "package_id": None,
+                    "declared_base": None,
+                    "collection_state": "present",
+                    "context_url": None,
+                    "appearances": [
+                        {
+                            "source_locator": "house_xml:panel[1]/witness[1]",
+                            "name_key": "updated witness y",
+                            "name": "Updated Witness Y",
+                            "honorific": None,
+                            "given": "Updated",
+                            "middle": None,
+                            "family": "Y",
+                            "suffix": None,
+                            "position": None,
+                            "organization": None,
+                            "on_behalf_of": None,
+                            "location": None,
+                            "panel": None,
+                            "panel_order": 1,
+                            "display_order": 1,
+                            "witness_type": None,
+                            "testified": None,
+                            "bioguide_id": None,
+                            "document_links": [],
+                        }
+                    ],
+                },
+                {
+                    "record_sha_hex": sha_err,
+                    "parser_version": "v1",
+                    "status": "error",
+                    "error_type": "ParseError",
+                    "source": "house_xml",
+                    "event_id": 3002,
+                    "package_id": None,
+                    "declared_base": None,
+                    "collection_state": None,
+                    "context_url": None,
+                    "appearances": [],
+                },
+                {
+                    "record_sha_hex": sha_cg_fb,
+                    "parser_version": "v1",
+                    "status": "completed",
+                    "error_type": None,
+                    "source": "congress_gov",
+                    "event_id": 3002,
+                    "package_id": None,
+                    "declared_base": None,
+                    "collection_state": "present",
+                    "context_url": None,
+                    "appearances": [
+                        {
+                            "source_locator": "congress_gov:witness[1]",
+                            "name_key": "should be blocked",
+                            "name": "Should Be Blocked",
+                            "honorific": None,
+                            "given": None,
+                            "middle": None,
+                            "family": None,
+                            "suffix": None,
+                            "position": None,
+                            "organization": None,
+                            "on_behalf_of": None,
+                            "location": None,
+                            "panel": None,
+                            "panel_order": 1,
+                            "display_order": 1,
+                            "witness_type": None,
+                            "testified": None,
+                            "bioguide_id": None,
+                            "document_links": [],
+                        }
+                    ],
+                },
+                {
+                    "record_sha_hex": sha_cg_present,
+                    "parser_version": "v1",
+                    "status": "completed",
+                    "error_type": None,
+                    "source": "congress_gov",
+                    "event_id": None,
+                    "package_id": None,
+                    "declared_base": None,
+                    "collection_state": "present",
+                    "context_url": None,
+                    "appearances": [
+                        {
+                            "source_locator": "congress_gov:witness[1]",
+                            "name_key": "joint witness z",
+                            "name": "Joint Witness Z",
+                            "honorific": None,
+                            "given": None,
+                            "middle": None,
+                            "family": None,
+                            "suffix": None,
+                            "position": None,
+                            "organization": None,
+                            "on_behalf_of": None,
+                            "location": None,
+                            "panel": None,
+                            "panel_order": 1,
+                            "display_order": 1,
+                            "witness_type": None,
+                            "testified": None,
+                            "bioguide_id": None,
+                            "document_links": [],
+                        }
+                    ],
+                },
+                {
+                    "record_sha_hex": sha_cg_unres,
+                    "parser_version": "v1",
+                    "status": "completed",
+                    "error_type": None,
+                    "source": "congress_gov",
+                    "event_id": None,
+                    "package_id": None,
+                    "declared_base": None,
+                    "collection_state": "unrecognized",
+                    "context_url": None,
+                    "appearances": [],
+                },
+            ],
+            record_sha_hex="Utf8",
+            parser_version="Utf8",
+            status="Utf8",
+            error_type="Utf8",
+            source="Utf8",
+            event_id="Int64",
+            package_id="Utf8",
+            declared_base="Utf8",
+            collection_state="Utf8",
+            context_url="Utf8",
+            appearances=list_of(
+                struct(
+                    source_locator="Utf8",
+                    name_key="Utf8",
+                    name="Utf8",
+                    honorific="Utf8",
+                    given="Utf8",
+                    middle="Utf8",
+                    family="Utf8",
+                    suffix="Utf8",
+                    position="Utf8",
+                    organization="Utf8",
+                    on_behalf_of="Utf8",
+                    location="Utf8",
+                    panel="Utf8",
+                    panel_order="Int32",
+                    display_order="Int32",
+                    witness_type="Utf8",
+                    testified="Boolean",
+                    bioguide_id="Utf8",
+                    document_links=list_of("Utf8"),
+                )
+            ),
+        ),
+    ]
+    resolved_sql = (ROOT / "model/sql/appearance-records-resolved.sql").read_text(encoding="utf-8")
+    state_sql = resolved_sql.rsplit("SELECT\n w.witness_key,", 1)[0] + "SELECT record_sha_hex, collection_state, effective_state FROM valid_observations WHERE record_sha_hex='" + sha_err + "'"
+    res = run_job(
+        work,
+        engine,
+        inputs=inputs,
+        steps=[{"name": "resolved", "sql": resolved_sql, "materialize": True}],
+        outputs=[],
+        queries=[
+            {"name": "rows", "sql": "SELECT occasion, name, record_sha_hex FROM resolved ORDER BY occasion, display_order"},
+            {"name": "err_state", "sql": state_sql},
+        ],
+    )
+    assert res["err_state"] == [
+        {"record_sha_hex": sha_err, "collection_state": "failed", "effective_state": "unresolved"}
+    ]
+    assert res["rows"] == [
+        {"occasion": "meeting:3001", "name": "Updated Witness Y", "record_sha_hex": sha_y},
+        {"occasion": "meeting:3003", "name": "Joint Witness Z", "record_sha_hex": sha_cg_present},
+    ]
+
+
 
 
 

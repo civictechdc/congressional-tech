@@ -527,9 +527,134 @@ def test_daily_handoff_binds_all_five_table_pins_when_present(tmp_path):
     for idx,name in enumerate(['meeting_records','appearance_records'],start=4):
         report['pins'][name]=dict(metadata_location='s3://derived-fixture/lake/'+name+'/metadata/00001.json',
             table_uuid='00000000-0000-4000-8000-000000000001',snapshot=idx,schema_id=0)
-    report['currentversions']['meeting_records']=meeting_records.current_version()
-    report['currentversions']['appearance_records']=appearance_records.current_version()
+    report['currentversions']['meeting_records']=meeting_records.current_versions()
+    report['currentversions']['appearance_records']=appearance_records.current_versions()
     selected,receipts=completed_daily_inputs(load_spec(path),report,records)
     assert receipts==report['receipt_keys']
     for name in ALL_TABLES:
         assert selected[name]==dict(kind='native_table',**report['pins'][name])
+    assert selected['parser_versions']['meeting_records']==meeting_records.current_versions()
+    assert selected['parser_versions']['appearance_records']==appearance_records.current_versions()
+
+
+@pytest.mark.parametrize('table',['meeting_records','appearance_records'])
+@pytest.mark.parametrize('kind',['composite_scalar','arbitrary_scalar'])
+def test_daily_handoff_rejects_scalar_composite_entity_versions(tmp_path,table,kind):
+    from congress_api.lake import appearance_records,meeting_records
+    from viewer_publication.archive_model_job import load_spec
+    from viewer_publication.archive_publish_job import completed_daily_inputs
+    template=model_spec(tmp_path);path=tmp_path/'template.json';path.write_text(json.dumps(template))
+    report,records=daily_report(tmp_path)
+    for idx,name in enumerate(['meeting_records','appearance_records'],start=4):
+        report['pins'][name]=dict(metadata_location='s3://derived-fixture/lake/'+name+'/metadata/00001.json',
+            table_uuid='00000000-0000-4000-8000-000000000001',snapshot=idx,schema_id=0)
+    report['currentversions']['meeting_records']=meeting_records.current_versions()
+    report['currentversions']['appearance_records']=appearance_records.current_versions()
+    mod=meeting_records if table=='meeting_records' else appearance_records
+    report['currentversions'][table]=mod.current_version() if kind=='composite_scalar' else 'scalar-hash'
+    with pytest.raises(ValueError,match=table):
+        completed_daily_inputs(load_spec(path),report,records)
+
+
+def test_daily_produce_to_publish_handoff_to_completeness_checks_end_to_end(tmp_path):
+    """ct-yymr: End-to-end daily.produce_daily -> completed_daily_inputs -> completeness_checks."""
+    import hashlib
+    import pyarrow as pa
+    import pyarrow.parquet as pq
+    from capture_qualification_helpers import write_qualified_bytes
+    from congress_api.lake import appearance_records,filenames,meeting_records,readings,tables
+    from congress_api.lake.daily import ALL_TABLE_NAMES,produce_daily
+    from congress_api.models.raw_fetch import BodyFile,FetchAttempt,FetchResult
+    from congress_api.retention.body_store import BodyStore,LocalAdapter
+    from congress_api.retention.receipt_writer import ReceiptWriter
+    from congress_api.retention.provenance import run_job
+    from docspec_client.client import NativeDatasets
+    from viewer_publication.archive_model import admission_checks,prepare_model_inputs
+    from viewer_publication.archive_model_job import load_spec,model_arguments
+    from viewer_publication.archive_publish_job import completed_daily_inputs
+
+    engine=NativeDatasets.from_config(os.environ['DOCSPEC_JOB_CONFIG'])
+    root=tmp_path/'raw';qualifications={}
+    class QualifiedAdapter(LocalAdapter):
+        def create(self,key,source,**kwargs):
+            if key.startswith('receipts/'):
+                qualifications[key]=write_qualified_bytes(root/key,source.read());return True
+            return super().create(key,source,**kwargs)
+    store=BodyStore(QualifiedAdapter(root))
+    writer=ReceiptWriter(store,identity=dict(job='capture',commit='a'*40,lockfile_digest='b'*64),
+        run_id='daily',write_date='2026-10-28',archive_limits=None)
+    detail_payload=json.dumps({
+        'committeeMeeting':{
+            'eventId':'115538',
+            'congress':118,
+            'chamber':'House',
+            'title':'Daily Hearing E2E',
+            'date':'2024-07-09T14:00:00Z',
+            'committees':[{'systemCode':'hsju00','name':'Judiciary','chamber':'House'}],
+            'witnesses':[{'name':'Dr. Jane Doe','organization':'ACME'}],
+        }
+    }).encode()
+    entity=tmp_path/'body0';entity.write_bytes(detail_payload);digest=hashlib.sha256(detail_payload).hexdigest()
+    body=BodyFile(entity,digest,len(detail_payload),'application/json',None,None,None)
+    url='https://api.congress.gov/v3/committee-meeting/118/house/115538'
+    attempt=FetchAttempt(url,url,'2026-10-28T12:00:00Z','direct',200,None,{},(),True,body)
+    key,line=writer.write(FetchResult(attempt),family='congress/meetings')
+    capture=line['captures'][0];physical='bodies/sha256/'+digest[:2]+'/'+digest+capture['stored_suffix']
+    with (root/physical).open('rb') as stored:stored_gzip=stored.read(2)==b'\x1f\x8b'
+    body_inv_path=tmp_path/'body-inventory.parquet'
+    pq.write_table(pa.Table.from_pylist([dict(body_sha=bytes.fromhex(digest),physical_key=physical,
+        relative_path=physical,stored_bytes=capture['stored_bytes'],stored_gzip=stored_gzip)],
+        schema=pa.schema([('body_sha',pa.binary(32)),('physical_key',pa.string()),('relative_path',pa.string()),
+            ('stored_bytes',pa.int64()),('stored_gzip',pa.bool_())])),body_inv_path)
+
+    catalog_root=str(tmp_path/'catalog')
+    five_tables={name:dict(namespace=['archive'],name=name) for name in ALL_TABLE_NAMES}
+    schema=json.loads((Path(__file__).resolve().parents[3]/'model/lake/captures.schema.json').read_text())
+    tables.create_table(engine=engine,work=tmp_path/'create-captures',catalog_root=catalog_root,
+        table=five_tables['captures'],schema=schema,location=tmp_path/'lake-captures',create_namespace=True)
+    readings.create_table(engine=engine,work=tmp_path/'create-readings',catalog_root=catalog_root,
+        table=five_tables['readings'],location=tmp_path/'lake-readings')
+    filenames.create_table(engine=engine,work=tmp_path/'create-filenames',catalog_root=catalog_root,
+        table=five_tables['filename_readings'],location=tmp_path/'lake-filenames')
+    meeting_records.create_table(engine=engine,work=tmp_path/'create-meetings',catalog_root=catalog_root,
+        table=five_tables['meeting_records'],location=tmp_path/'lake-meetings')
+    appearance_records.create_table(engine=engine,work=tmp_path/'create-appearances',catalog_root=catalog_root,
+        table=five_tables['appearance_records'],location=tmp_path/'lake-appearances')
+
+    daily_spec=dict(
+        work=str(tmp_path/'daily-work'),
+        decided_at='2026-10-28T12:00:00Z',
+        catalog_root=catalog_root,
+        tables=five_tables,
+        receipt_inventory=[dict(key=key,path=str(root/key),qualification=qualifications[key])],
+        body_inventory=str(body_inv_path),
+        local_root=str(root),
+        max_work_items=25,
+        provenance={kind:[] for kind in ['recoveries','reviews','unreadable']},
+    )
+    report=produce_daily(daily_spec,engine=engine,raw_store=store)
+    assert report['status']=='completed'
+
+    template=model_spec(tmp_path);path=tmp_path/'template.json';path.write_text(json.dumps(template))
+    selected,receipts=completed_daily_inputs(load_spec(path),report,[])
+    assert receipts==[key]
+    with model_arguments(selected) as arguments:
+        prepared=prepare_model_inputs(
+            **arguments,
+            parser_versions=selected['parser_versions'],
+            catalog_version=selected['catalog_version'],
+            engine=engine,
+            scratch=tmp_path/'e2e-scratch',
+        )
+        assert prepared['include_entities'] is True
+        checks=admission_checks(
+            parser_versions=prepared['parser_versions'],
+            catalog_version=prepared['catalog_version'],
+            include_entities=True,
+        )
+        adm_dir=prepared['scratch']/'admission';adm_dir.mkdir()
+        reports=run_job(adm_dir,engine,inputs=prepared['inputs'],steps=prepared['steps'],outputs=[],queries=checks)
+    for query_name in ('profile_completeness','entity_profile_completeness'):
+        assert query_name in reports
+        assert {k:v for k,v in reports[query_name][0].items() if v}=={}
+

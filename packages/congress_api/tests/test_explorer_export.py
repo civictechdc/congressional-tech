@@ -540,8 +540,7 @@ def test_official_nominee_csv_and_senate_state_share_one_appearance(tmp_path):
 def test_export_from_lake_meeting_and_appearance_records_and_spicy_regs(tmp_path):
     import pyarrow as pa
     import pyarrow.parquet as pq
-    from congress_api.lake.appearance_records import ARROW_SCHEMA as APP_SCHEMA
-    from congress_api.lake.meeting_records import ARROW_SCHEMA as MTG_SCHEMA
+    from congress_api.lake import appearance_records, meeting_records
 
     mtg_path = tmp_path / "meeting_records.parquet"
     app_path = tmp_path / "appearance_records.parquet"
@@ -549,7 +548,7 @@ def test_export_from_lake_meeting_and_appearance_records_and_spicy_regs(tmp_path
     spicy_dir.mkdir()
 
     pq.write_table(
-        pa.Table.from_pylist(
+        meeting_records.table(
             [
                 {
                     "record_sha": "a" * 64,
@@ -583,7 +582,7 @@ def test_export_from_lake_meeting_and_appearance_records_and_spicy_regs(tmp_path
                                     "role": "convening",
                                 }
                             ],
-                            "subject_keys": ["119:hr:42"],
+                            "subject_keys": ["119-hr-42"],
                             "transcript_jackets": [],
                             "videos": [
                                 {
@@ -595,24 +594,23 @@ def test_export_from_lake_meeting_and_appearance_records_and_spicy_regs(tmp_path
                         }
                     ],
                 }
-            ],
-            schema=MTG_SCHEMA,
+            ]
         ),
         mtg_path,
     )
 
     pq.write_table(
-        pa.Table.from_pylist(
+        appearance_records.table(
             [
                 {
                     "record_sha": "b" * 64,
                     "parser_version": "appearance-records-v1",
                     "source": "congress_gov",
+                    "event_id": 119001,
+                    "collection_state": "present",
                     "appearances": [
                         {
-                            "event_id": "119001",
-                            "package_id": None,
-                            "page_url": None,
+                            "source_locator": "congress_gov:witness[1]",
                             "name_key": "jane doe",
                             "name": "Dr. Jane Doe",
                             "honorific": "Dr.",
@@ -630,12 +628,11 @@ def test_export_from_lake_meeting_and_appearance_records_and_spicy_regs(tmp_path
                             "witness_type": "nongovernmental",
                             "testified": True,
                             "bioguide_id": None,
-                            "document_urls": ["https://docs.house.gov/meetings/RU/RU00/20261001/119001/HHRG-119-RU00-Wstate-DoeJ-20261001.pdf"],
+                            "document_links": ["https://docs.house.gov/meetings/RU/RU00/20261001/119001/HHRG-119-RU00-Wstate-DoeJ-20261001.pdf"],
                         }
                     ],
                 }
-            ],
-            schema=APP_SCHEMA,
+            ]
         ),
         app_path,
     )

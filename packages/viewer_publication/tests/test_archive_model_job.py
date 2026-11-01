@@ -201,3 +201,19 @@ def test_checked_provenance_cache_refuses_invalid_custody_before_consumption(tmp
     with pytest.raises(ValueError,match='custody|checksum|provenance'):
         with model_arguments(value,provenance_etags={item['key']:etag},verified_files={item['path']:checked}):
             pytest.fail('Unchecked cache reached native consumption')
+
+
+@pytest.mark.parametrize('table',['meeting_records','appearance_records'])
+@pytest.mark.parametrize('kind',['composite_scalar','arbitrary_scalar'])
+def test_validate_spec_rejects_scalar_composite_entity_versions(tmp_path,table,kind):
+    from congress_api.lake import appearance_records,meeting_records
+    from viewer_publication.archive_model_job import load_spec
+    value=spec(tmp_path)
+    value['parser_versions']['meeting_records']=meeting_records.current_versions()
+    value['parser_versions']['appearance_records']=appearance_records.current_versions()
+    assert load_spec(write_spec(tmp_path,value))['parser_versions']['meeting_records']==meeting_records.current_versions()
+    mod=meeting_records if table=='meeting_records' else appearance_records
+    value['parser_versions'][table]=mod.current_version() if kind=='composite_scalar' else 'scalar-hash'
+    with pytest.raises(ValueError,match='Parser versions must match the current definitions'):
+        load_spec(write_spec(tmp_path,value))
+

@@ -1,6 +1,6 @@
 """Lake producer and parsers for `appearance_records` (Phase 2 Track D4).
 
-Extracts normalized `appearance_records` rows from four sources:
+Extracts context-free `appearance_records` rows from four sources:
 - `house_xml`: `docs.house.gov` `<witness-list>` XML (`HouseWitnessListXML`).
 - `congress_gov`: Congress.gov `/v3/committee-meeting` detail JSON/XML bodies and inline
   `congress/meetings` receipt records (`CommitteeMeeting.witnesses`).
@@ -8,19 +8,22 @@ Extracts normalized `appearance_records` rows from four sources:
 - `mods`: GovInfo `CHRG` MODS XML (`parsers.gpo.parse_mods_document` + `parsers.witness_names`).
 
 Rules ([[PHASE-2]] §1.3 & [[DATA-MODEL]] §3, §7.2):
+- Context-free parsing: reads body facts once per `(record_sha, source, parser_version)`.
+  Does not select a capture URL or resolve relative links; literal links are stored in
+  `document_links` and resolved per eligible context in the model.
+- Subject identity (`event_id`, `package_id`), `declared_base`, and `collection_state`
+  (`present`, `empty`, `absent`, `unrecognized`) are stored on the row outside `appearances`
+  so an explicit empty list retains its subject and collection state.
+- Every source occurrence is preserved in source order with a deterministic `source_locator`.
 - `name_key`: `NFKC` -> `casefold()` -> strip Unicode punctuation (`category.startswith('P')`)
-  -> collapse whitespace (`" ".join(s.split())`).
-- When a witness has no recorded name (or it normalizes to `""`), `name_key` is `f"#{pos}"`
-  using the witness's 1-based position in the source's witness list, keeping unnamed
-  witnesses distinct.
-- Within a single `record_sha`, entries sharing a `name_key` keep the **first** in source
-  order (`witness_key` is unique per occasion).
-- An input with zero witnesses still emits a row with `appearances = []` so the anti-join
-  on `(record_sha, parser_version)` does not re-parse it on future runs.
+  -> collapse whitespace (`" ".join(s.split())`); `None` when unnamed. `name_key` is a
+  grouping/diagnostic attribute, never used to deduplicate occurrences.
 """
 
 from __future__ import annotations
 
+from hashlib import sha256
+import json
 import re
 import unicodedata
 import xml.etree.ElementTree as ET
@@ -40,7 +43,7 @@ from ..parsers.house_xml import (
     parse_house_witnesses,
     strip_house_meeting_prefix,
 )
-from ..parsers.senate_page import source_details, witnesses as senate_witnesses
+from ..parsers.senate_page import witness_occurrences as senate_witness_occurrences
 from ..parsers.text import text as clean_text
 from ..parsers.witness_names import is_name, witness as parse_gpo_witness
 from ._record_producer import (
@@ -52,6 +55,7 @@ from ._record_producer import (
     create_record_table,
     filter_unprocessed_inputs as _shared_filter_unprocessed_inputs,
     normalize_record_sha,
+    source_ast_digest,
     stage_record_table,
     unwrap_congress_gov_payload,
 )
@@ -71,10 +75,8 @@ DEFAULT_BASE_URLS = {
 
 APPEARANCE_STRUCT = pa.struct(
     [
-        pa.field("event_id", pa.string(), nullable=True),
-        pa.field("package_id", pa.string(), nullable=True),
-        pa.field("page_url", pa.string(), nullable=True),
-        pa.field("name_key", pa.string(), nullable=False),
+        pa.field("source_locator", pa.string(), nullable=False),
+        pa.field("name_key", pa.string(), nullable=True),
         pa.field("name", pa.string(), nullable=True),
         pa.field("honorific", pa.string(), nullable=True),
         pa.field("given", pa.string(), nullable=True),
@@ -91,43 +93,173 @@ APPEARANCE_STRUCT = pa.struct(
         pa.field("witness_type", pa.string(), nullable=True),
         pa.field("testified", pa.bool_(), nullable=True),
         pa.field("bioguide_id", pa.string(), nullable=True),
-        pa.field("document_urls", pa.list_(pa.field("element", pa.string(), nullable=False)), nullable=False),
+        pa.field("document_links", pa.list_(pa.field("element", pa.string(), nullable=False)), nullable=False),
     ]
 )
 
 ARROW_SCHEMA = pa.schema(
     [
-        pa.field("record_sha", pa.string(), nullable=False),
+        pa.field("record_sha", pa.binary(32), nullable=False),
         pa.field("parser_version", pa.string(), nullable=False),
+        pa.field("status", pa.string(), nullable=False),
+        pa.field("error_type", pa.string(), nullable=True),
         pa.field("source", pa.string(), nullable=False),
+        pa.field("event_id", pa.int64(), nullable=True),
+        pa.field("package_id", pa.string(), nullable=True),
+        pa.field("declared_base", pa.string(), nullable=True),
+        pa.field("collection_state", pa.string(), nullable=True),
         pa.field("appearances", pa.list_(pa.field("element", APPEARANCE_STRUCT, nullable=False)), nullable=False),
     ]
 )
 SCHEMA = ARROW_SCHEMA
 
+_EXTRA_COLS = ("event_id", "package_id", "declared_base", "collection_state")
 
-def current_version(*, root: Path = ROOT) -> str:
+_SOURCE_SYMBOLS: dict[str, tuple[str, ...]] = {
+    "house_xml": (
+        "APPEARANCE_STRUCT",
+        "ARROW_SCHEMA",
+        "normalize_name_key",
+        "compute_name_key",
+        "_opt_str",
+        "_opt_int",
+        "_opt_bool",
+        "_clean_links",
+        "preserve_appearances",
+        "extract_house_xml_observation",
+        "extract_house_xml_appearances",
+    ),
+    "congress_gov": (
+        "APPEARANCE_STRUCT",
+        "ARROW_SCHEMA",
+        "normalize_name_key",
+        "compute_name_key",
+        "_opt_str",
+        "_opt_int",
+        "_opt_bool",
+        "_clean_links",
+        "preserve_appearances",
+        "extract_congress_gov_observation",
+        "extract_congress_gov_appearances",
+    ),
+    "senate_page": (
+        "APPEARANCE_STRUCT",
+        "ARROW_SCHEMA",
+        "normalize_name_key",
+        "compute_name_key",
+        "_opt_str",
+        "_opt_int",
+        "_opt_bool",
+        "_clean_links",
+        "preserve_appearances",
+        "_extract_declared_base",
+        "_fallback_senate_cards",
+        "_classify_senate_empty_state",
+        "extract_senate_page_observation",
+        "extract_senate_page_appearances",
+    ),
+    "mods": (
+        "APPEARANCE_STRUCT",
+        "ARROW_SCHEMA",
+        "normalize_name_key",
+        "compute_name_key",
+        "_opt_str",
+        "_opt_int",
+        "_opt_bool",
+        "_clean_links",
+        "preserve_appearances",
+        "_PACKAGE_ID_IN_URL_RE",
+        "extract_mods_observation",
+        "extract_mods_appearances",
+    ),
+}
+
+
+def current_version(source: str | None = None, *, root: Path = ROOT) -> str:
     root = Path(root)
     pkg_dir = Path(__file__).resolve().parents[1]
-    return version_digest(
-        packages={},
-        files={
-            "producer": Path(__file__),
-            "models_congress": pkg_dir / "models/congress.py",
-            "parsers_congress": pkg_dir / "parsers/congress.py",
-            "parsers_house_xml": pkg_dir / "parsers/house_xml.py",
-            "parsers_house_documents": pkg_dir / "parsers/house_documents.py",
-            "parsers_senate_page": pkg_dir / "parsers/senate_page.py",
-            "parsers_gpo": pkg_dir / "parsers/gpo.py",
-            "parsers_witness_names": pkg_dir / "parsers/witness_names.py",
-            "lock": root / "uv.lock",
-            "lake_schema": root / "model/lake/appearance-records.schema.json",
-        },
-        values={"prefixes": list(HOUSE_MEETING_PREFIXES)},
-    )
+    this_file = Path(__file__)
+    if source is None:
+        return version_digest(
+            packages={},
+            files={},
+            values={"sources": current_versions(root=root)},
+        )
+    if source == "mods":
+        return version_digest(
+            packages={},
+            files={
+                "record_producer": pkg_dir / "lake/_record_producer.py",
+                "models_gpo": pkg_dir / "models/gpo.py",
+                "parsers_gpo": pkg_dir / "parsers/gpo.py",
+                "parsers_xml": pkg_dir / "parsers/xml.py",
+                "parsers_witness_names": pkg_dir / "parsers/witness_names.py",
+                "lock": root / "uv.lock",
+                "lake_schema": root / "model/lake/appearance-records.schema.json",
+            },
+            values={
+                "source": "mods",
+                "ast": source_ast_digest(this_file, _SOURCE_SYMBOLS["mods"]),
+            },
+        )
+    if source == "congress_gov":
+        return version_digest(
+            packages={},
+            files={
+                "record_producer": pkg_dir / "lake/_record_producer.py",
+                "models_congress": pkg_dir / "models/congress.py",
+                "parsers_congress": pkg_dir / "parsers/congress.py",
+                "lock": root / "uv.lock",
+                "lake_schema": root / "model/lake/appearance-records.schema.json",
+            },
+            values={
+                "source": "congress_gov",
+                "ast": source_ast_digest(this_file, _SOURCE_SYMBOLS["congress_gov"]),
+            },
+        )
+    if source == "house_xml":
+        return version_digest(
+            packages={},
+            files={
+                "record_producer": pkg_dir / "lake/_record_producer.py",
+                "parsers_house_xml": pkg_dir / "parsers/house_xml.py",
+                "parsers_house_documents": pkg_dir / "parsers/house_documents.py",
+                "lock": root / "uv.lock",
+                "lake_schema": root / "model/lake/appearance-records.schema.json",
+            },
+            values={
+                "source": "house_xml",
+                "prefixes": list(HOUSE_MEETING_PREFIXES),
+                "parsers_text_ast": source_ast_digest(pkg_dir / "parsers/text.py", ("text",)),
+                "ast": source_ast_digest(this_file, _SOURCE_SYMBOLS["house_xml"]),
+            },
+        )
+    if source == "senate_page":
+        return version_digest(
+            packages={},
+            files={
+                "record_producer": pkg_dir / "lake/_record_producer.py",
+                "parsers_senate_page": pkg_dir / "parsers/senate_page.py",
+                "lock": root / "uv.lock",
+                "lake_schema": root / "model/lake/appearance-records.schema.json",
+            },
+            values={
+                "source": "senate_page",
+                "parsers_text_ast": source_ast_digest(pkg_dir / "parsers/text.py", ("text",)),
+                "ast": source_ast_digest(this_file, _SOURCE_SYMBOLS["senate_page"]),
+            },
+        )
+    raise ValueError(f"Unsupported appearance_records source {source!r}; expected one of {sorted(VALID_SOURCES)}")
 
 
-DEFAULT_PARSER_VERSION = "appearance-records-v1"
+def current_versions(*, root: Path = ROOT) -> dict[str, str]:
+    return {
+        source: current_version(source, root=root)
+        for source in ("house_xml", "congress_gov", "senate_page", "mods")
+    }
+
+
+DEFAULT_PARSER_VERSION = "appearance-records-v2"
 
 
 def normalize_name_key(name: str | None) -> str:
@@ -139,24 +271,23 @@ def normalize_name_key(name: str | None) -> str:
     return " ".join(no_punct.split())
 
 
-def compute_name_key(name: str | None, position_1based: int) -> str:
-    """Return normalized `name_key`, or `f'#{position_1based}'` when unnamed/empty."""
-    if position_1based < 1:
+def compute_name_key(name: str | None, position_1based: int | None = None) -> str | None:
+    """Return normalized `name_key`, or `None` when unnamed/empty ([[PHASE-2]] §1.3)."""
+    if position_1based is not None and position_1based < 1:
         raise ValueError(f"position_1based must be >= 1, got {position_1based}")
     key = normalize_name_key(name)
-    if not key:
-        return f"#{position_1based}"
-    return key
+    return key if key else None
 
 
-def resolve_document_url(href: str | None, base_url: str) -> str | None:
-    """Resolve a witness document link against its source URL ([[DATA-MODEL]] §7.2)."""
+def resolve_document_url(href: str | None, base_url: str, declared_base: str | None = None) -> str | None:
+    """Resolve a witness document link against an optional declared base and source URL ([[DATA-MODEL]] §7.2)."""
     if not href or not isinstance(href, str):
         return None
     cleaned = href.strip()
     if not cleaned:
         return None
-    return urljoin(base_url, cleaned)
+    effective_base = urljoin(base_url, declared_base.strip()) if declared_base and declared_base.strip() else base_url
+    return urljoin(effective_base, cleaned)
 
 
 def _opt_str(val: Any) -> str | None:
@@ -192,28 +323,44 @@ def _opt_bool(val: Any) -> bool | None:
     return None
 
 
-def deduplicate_appearances(raw_appearances: Sequence[Mapping[str, Any]]) -> list[dict[str, Any]]:
-    """Assign `name_key` by 1-based input position and keep the first entry per `name_key`."""
-    deduped: list[dict[str, Any]] = []
-    seen_keys: set[str] = set()
+def _clean_links(links: Iterable[Any] | None) -> list[str]:
+    cleaned: list[str] = []
+    seen: set[str] = set()
+    for raw in links or ():
+        href = raw.get("url") if isinstance(raw, Mapping) else raw
+        s = _opt_str(href)
+        if s and s not in seen:
+            seen.add(s)
+            cleaned.append(s)
+    return cleaned
+
+
+def preserve_appearances(
+    raw_appearances: Sequence[Mapping[str, Any]],
+    *,
+    default_source: str = "occurrence",
+) -> list[dict[str, Any]]:
+    """Normalize appearance occurrence fields while preserving every occurrence in source order."""
+    preserved: list[dict[str, Any]] = []
+    seen_locators: set[str] = set()
     for pos, item in enumerate(raw_appearances, start=1):
         name_val = _opt_str(item.get("name"))
-        name_key = _opt_str(item.get("name_key")) or compute_name_key(name_val, pos)
-        if name_key in seen_keys:
-            continue
-        seen_keys.add(name_key)
-        doc_urls: list[str] = []
-        seen_urls: set[str] = set()
-        for u in item.get("document_urls") or []:
-            u_clean = _opt_str(u)
-            if u_clean and u_clean not in seen_urls:
-                seen_urls.add(u_clean)
-                doc_urls.append(u_clean)
-        deduped.append(
+        raw_nk = _opt_str(item.get("name_key"))
+        if raw_nk and not raw_nk.startswith("#"):
+            name_key = normalize_name_key(raw_nk) or raw_nk
+        else:
+            name_key = compute_name_key(name_val)
+        loc = _opt_str(item.get("source_locator")) or f"{default_source}:witness[{pos}]"
+        if loc in seen_locators:
+            loc = f"{loc}@{pos}"
+        seen_locators.add(loc)
+        raw_links = item.get("document_links")
+        if raw_links is None:
+            raw_links = item.get("document_urls")
+        doc_links = _clean_links(raw_links)
+        preserved.append(
             {
-                "event_id": _opt_str(item.get("event_id")),
-                "package_id": _opt_str(item.get("package_id")),
-                "page_url": _opt_str(item.get("page_url")),
+                "source_locator": loc,
                 "name_key": name_key,
                 "name": name_val,
                 "honorific": _opt_str(item.get("honorific")),
@@ -227,40 +374,83 @@ def deduplicate_appearances(raw_appearances: Sequence[Mapping[str, Any]]) -> lis
                 "location": _opt_str(item.get("location")),
                 "panel": _opt_str(item.get("panel")),
                 "panel_order": _opt_int(item.get("panel_order")),
-                "display_order": _opt_int(item.get("display_order")),
+                "display_order": _opt_int(item.get("display_order")) or pos,
                 "witness_type": _opt_str(item.get("witness_type")),
                 "testified": _opt_bool(item.get("testified")),
                 "bioguide_id": _opt_str(item.get("bioguide_id")),
-                "document_urls": doc_urls,
+                "document_links": doc_links,
             }
         )
-    return deduped
+    return preserved
 
 
-def extract_house_xml_appearances(
+# Backward-compatible alias that now preserves all source occurrences per PHASE-2 §1.3 / GB5.
+deduplicate_appearances = preserve_appearances
+
+
+def extract_house_xml_observation(
     payload: bytes | str | HouseWitnessListXML,
     *,
-    source_url: str | None = None,
-    event_id: str | None = None,
-) -> list[dict[str, Any]]:
-    """Extract appearances from a `docs.house.gov` `<witness-list>` XML body."""
-    base_url = source_url or DEFAULT_BASE_URLS["house_xml"]
+    event_id: int | str | None = None,
+) -> dict[str, Any]:
+    """Extract context-free observation metadata and appearances from a `docs.house.gov` `<witness-list>` XML body."""
+    explicit_event_id = _opt_int(strip_house_meeting_prefix(str(event_id)) if event_id is not None else None)
     if isinstance(payload, HouseWitnessListXML):
         root = payload
     else:
         raw_bytes = payload.encode("utf-8") if isinstance(payload, str) else bytes(payload)
         if not raw_bytes.strip():
-            return []
+            return {
+                "event_id": explicit_event_id,
+                "package_id": None,
+                "declared_base": None,
+                "collection_state": "unrecognized",
+                "appearances": [],
+            }
         try:
             root = parse_house_witnesses(raw_bytes)
-        except (ET.ParseError, ValueError):
-            return []
-
-    if root.tag != "witness-list" or not active(root):
-        return []
+        except ET.ParseError:
+            return {
+                "event_id": explicit_event_id,
+                "package_id": None,
+                "declared_base": None,
+                "collection_state": "unrecognized",
+                "appearances": [],
+            }
+        except ValueError:
+            try:
+                xml_root = ET.fromstring(raw_bytes)
+            except ET.ParseError:
+                xml_root = None
+            if xml_root is not None and xml_root.tag == "committee-meeting":
+                raw_mid = (xml_root.get("meeting-id") or "").strip()
+                resolved_eid = _opt_int(strip_house_meeting_prefix(raw_mid)) or explicit_event_id
+                return {
+                    "event_id": resolved_eid,
+                    "package_id": None,
+                    "declared_base": None,
+                    "collection_state": "absent",
+                    "appearances": [],
+                }
+            return {
+                "event_id": explicit_event_id,
+                "package_id": None,
+                "declared_base": None,
+                "collection_state": "unrecognized",
+                "appearances": [],
+            }
 
     raw_meeting_id = (root.get("meeting-id") or "").strip()
-    resolved_event_id = strip_house_meeting_prefix(raw_meeting_id) or _opt_str(event_id)
+    resolved_event_id = _opt_int(strip_house_meeting_prefix(raw_meeting_id)) or explicit_event_id
+
+    if root.tag != "witness-list" or not active(root):
+        return {
+            "event_id": resolved_event_id,
+            "package_id": None,
+            "declared_base": None,
+            "collection_state": "absent",
+            "appearances": [],
+        }
 
     panels = [p for p in root.findall("panel") if active(p)]
     panels.sort(key=lambda p: number(p.get("sort-order", "")))
@@ -309,7 +499,7 @@ def extract_house_xml_appearances(
                 or value(w_elem, "bioguide-id")
             )
 
-            doc_urls: list[str] = []
+            doc_links: list[str] = []
             w_docs_container = w_elem.find("witness-documents")
             doc_elems = (
                 w_docs_container.findall("witness-document")
@@ -326,16 +516,17 @@ def extract_house_xml_appearances(
                     else doc_elem.findall("file")
                 )
                 for f_elem in file_elems:
-                    raw_href = f_elem.get("doc-url") or f_elem.get("url") or (f_elem.text or "")
-                    resolved = resolve_document_url(raw_href, base_url)
-                    if resolved:
-                        doc_urls.append(resolved)
+                    if not active(f_elem):
+                        continue
+                    raw_href = _opt_str(f_elem.get("doc-url") or f_elem.get("url") or (f_elem.text or ""))
+                    if raw_href and raw_href not in doc_links:
+                        doc_links.append(raw_href)
 
+            w_id = _opt_str(w_elem.get("id") or w_elem.get("witness-id"))
+            locator = f"house_xml:id[{w_id}]" if w_id else f"house_xml:panel[{p_idx}]/witness[{w_idx}]"
             raw_rows.append(
                 {
-                    "event_id": resolved_event_id,
-                    "package_id": None,
-                    "page_url": None,
+                    "source_locator": locator,
                     "name": full_name,
                     "honorific": honorific,
                     "given": given,
@@ -352,30 +543,77 @@ def extract_house_xml_appearances(
                     "witness_type": witness_type,
                     "testified": testified,
                     "bioguide_id": bioguide_id,
-                    "document_urls": doc_urls,
+                    "document_links": doc_links,
                 }
             )
 
-    return deduplicate_appearances(raw_rows)
+    appearances = preserve_appearances(raw_rows, default_source="house_xml")
+    return {
+        "event_id": resolved_event_id,
+        "package_id": None,
+        "declared_base": None,
+        "collection_state": "present" if appearances else "empty",
+        "appearances": appearances,
+    }
 
 
-def extract_congress_gov_appearances(
-    payload: bytes | str | Mapping[str, Any] | CommitteeMeeting,
+def extract_house_xml_appearances(
+    payload: bytes | str | HouseWitnessListXML,
     *,
     source_url: str | None = None,
-    event_id: str | None = None,
+    event_id: int | str | None = None,
 ) -> list[dict[str, Any]]:
-    """Extract appearances from a Congress.gov meeting detail body or inline receipt record."""
-    base_url = source_url or DEFAULT_BASE_URLS["congress_gov"]
-    unwrapped = unwrap_congress_gov_payload(payload, allow_list_page=False)
-    if not unwrapped:
-        return []
-    meeting_dict = unwrapped[0]
+    """Extract appearances from a `docs.house.gov` `<witness-list>` XML body."""
+    del source_url
+    return extract_house_xml_observation(payload, event_id=event_id)["appearances"]
 
-    resolved_event_id = _opt_str(meeting_dict.get("eventId") or meeting_dict.get("event_id") or event_id)
+
+def extract_congress_gov_observation(
+    payload: bytes | str | Mapping[str, Any] | CommitteeMeeting,
+    *,
+    event_id: int | str | None = None,
+) -> dict[str, Any]:
+    """Extract context-free observation metadata and appearances from a Congress.gov meeting payload."""
+    explicit_event_id = _opt_int(event_id)
+    try:
+        unwrapped = unwrap_congress_gov_payload(payload, allow_list_page=False)
+    except Exception:
+        return {
+            "event_id": explicit_event_id,
+            "package_id": None,
+            "declared_base": None,
+            "collection_state": "unrecognized",
+            "appearances": [],
+        }
+    if not unwrapped:
+        return {
+            "event_id": explicit_event_id,
+            "package_id": None,
+            "declared_base": None,
+            "collection_state": "absent",
+            "appearances": [],
+        }
+    meeting_dict = unwrapped[0]
+    resolved_event_id = _opt_int(meeting_dict.get("eventId") or meeting_dict.get("event_id")) or explicit_event_id
+
+    if "witnesses" not in meeting_dict or meeting_dict.get("witnesses") is None:
+        return {
+            "event_id": resolved_event_id,
+            "package_id": None,
+            "declared_base": None,
+            "collection_state": "absent",
+            "appearances": [],
+        }
+
     witness_list = meeting_dict.get("witnesses")
     if not isinstance(witness_list, Sequence) or isinstance(witness_list, (str, bytes)):
-        return []
+        return {
+            "event_id": resolved_event_id,
+            "package_id": None,
+            "declared_base": None,
+            "collection_state": "unrecognized",
+            "appearances": [],
+        }
 
     raw_rows: list[dict[str, Any]] = []
     for idx, w in enumerate(witness_list, start=1):
@@ -393,18 +631,11 @@ def extract_congress_gov_appearances(
         w_testified = _opt_bool(w.get("testified"))
         w_bioguide = _opt_str(w.get("bioguideId") or w.get("bioguide_id") or w.get("bioguideID"))
 
-        doc_urls: list[str] = []
-        for raw_u in w.get("document_urls") or w.get("documents") or []:
-            href = raw_u.get("url") if isinstance(raw_u, Mapping) else raw_u
-            resolved = resolve_document_url(href, base_url)
-            if resolved:
-                doc_urls.append(resolved)
+        doc_links = _clean_links(w.get("document_links") or w.get("document_urls") or w.get("documents"))
 
         raw_rows.append(
             {
-                "event_id": resolved_event_id,
-                "package_id": None,
-                "page_url": None,
+                "source_locator": _opt_str(w.get("source_locator")) or f"congress_gov:witness[{idx}]",
                 "name": w_name,
                 "honorific": _opt_str(w.get("honorific")),
                 "given": _opt_str(w.get("given") or w.get("firstName")),
@@ -421,14 +652,45 @@ def extract_congress_gov_appearances(
                 "witness_type": w_type,
                 "testified": w_testified,
                 "bioguide_id": w_bioguide,
-                "document_urls": doc_urls,
+                "document_links": doc_links,
             }
         )
 
-    return deduplicate_appearances(raw_rows)
+    appearances = preserve_appearances(raw_rows, default_source="congress_gov")
+    return {
+        "event_id": resolved_event_id,
+        "package_id": None,
+        "declared_base": None,
+        "collection_state": "present" if appearances else ("unrecognized" if witness_list else "empty"),
+        "appearances": appearances,
+    }
 
 
-def _fallback_senate_cards(html_text: str, page_url: str) -> list[dict[str, Any]]:
+def extract_congress_gov_appearances(
+    payload: bytes | str | Mapping[str, Any] | CommitteeMeeting,
+    *,
+    source_url: str | None = None,
+    event_id: int | str | None = None,
+) -> list[dict[str, Any]]:
+    """Extract appearances from a Congress.gov meeting detail body or inline receipt record."""
+    del source_url
+    return extract_congress_gov_observation(payload, event_id=event_id)["appearances"]
+
+
+def _extract_declared_base(html_text: str) -> str | None:
+    """Extract literal `<base href='...'>` from HTML if present."""
+    try:
+        root = lhtml.fromstring(html_text)
+    except Exception:
+        return None
+    for b in root.xpath("//base[@href]"):
+        href = _opt_str(b.get("href"))
+        if href:
+            return href
+    return None
+
+
+def _fallback_senate_cards(html_text: str) -> list[dict[str, Any]]:
     """Fallback witness card parser for generic `<div/li class='...witness...'>` structures."""
     try:
         root = lhtml.fromstring(html_text)
@@ -458,26 +720,172 @@ def _fallback_senate_cards(html_text: str, page_url: str) -> list[dict[str, Any]
         loc_nodes = card.xpath('.//*[contains(@class, "location") or contains(@class, "locality")]')
         loc_val = clean_text(loc_nodes[0].text_content()) if loc_nodes else None
 
-        doc_urls: list[str] = []
+        doc_links: list[str] = []
         for a in card.xpath(".//a[@href]"):
-            resolved = resolve_document_url(a.get("href"), page_url)
-            if resolved:
-                doc_urls.append(resolved)
+            raw_href = _opt_str(a.get("href"))
+            if raw_href and raw_href not in doc_links:
+                doc_links.append(raw_href)
 
         rows.append(
             {
-                "event_id": None,
-                "package_id": None,
-                "page_url": page_url,
+                "source_locator": f"senate_page:card[{idx}]",
                 "name": raw_name,
                 "position": pos_val,
                 "organization": org_val,
                 "location": loc_val,
                 "display_order": idx,
-                "document_urls": doc_urls,
+                "document_links": doc_links,
             }
         )
     return rows
+
+
+def _classify_senate_empty_state(html_text: str) -> str:
+    """Classify a zero-witness Senate HTML page as `empty`, `absent`, or `unrecognized`."""
+    try:
+        root = lhtml.fromstring(html_text)
+    except Exception:
+        return "unrecognized"
+
+    if re.search(r"\bwitness(?:es|\s+list)?\s*:\s*(?:none|n/a|no\s+witnesses)\b", html_text, re.IGNORECASE):
+        return "empty"
+
+    containers = root.xpath(
+        '//*[@id="witnesses" or @id="witness-list" '
+        'or contains(normalize-space(@class), "witness-list") '
+        'or contains(normalize-space(@class), "witnesses-container")]'
+    )
+    for c in containers:
+        txt = clean_text(c.text_content() or "").lower()
+        if not txt or txt in ("witnesses", "witness list", "none", "no witnesses"):
+            return "empty"
+        return "unrecognized"
+
+    headings = root.xpath("//h1 | //h2 | //h3 | //h4")
+    for h in headings:
+        htxt = clean_text(h.text_content() or "").lower().rstrip(":")
+        if htxt in ("witnesses", "witness list"):
+            sibs = [s for s in h.itersiblings() if clean_text(s.text_content() or "")]
+            if not sibs:
+                return "empty"
+            first_sib_txt = clean_text(sibs[0].text_content() or "").lower()
+            if first_sib_txt in ("none", "no witnesses"):
+                return "empty"
+            return "unrecognized"
+
+    return "absent"
+
+
+def extract_senate_page_observation(
+    payload: bytes | str | Mapping[str, Any],
+) -> dict[str, Any]:
+    """Extract context-free observation metadata and appearances from a Senate committee hearing page."""
+    explicit_state: str | None = None
+    explicit_base: str | None = None
+
+    if isinstance(payload, Mapping):
+        explicit_state = _opt_str(payload.get("collection_state"))
+        explicit_base = _opt_str(payload.get("declared_base"))
+        if isinstance(payload.get("raw_html"), Mapping):
+            from ..retention.body_files import content_bytes
+
+            html_text = content_bytes(payload["raw_html"]).decode("utf-8", "replace")
+        elif isinstance(payload.get("html"), str):
+            html_text = payload["html"]
+        elif isinstance(payload.get("witnesses"), Sequence) and not isinstance(
+            payload.get("witnesses"), (str, bytes, bytearray)
+        ):
+            raw_witnesses = list(payload.get("witnesses") or ())
+            raw_rows: list[dict[str, Any]] = []
+            for idx, w in enumerate(raw_witnesses, start=1):
+                if isinstance(w, Mapping):
+                    w_name = _opt_str(w.get("name"))
+                    if not w_name:
+                        continue
+                    doc_links = _clean_links(w.get("document_links") or w.get("document_urls") or w.get("documents"))
+                    raw_rows.append(
+                        {
+                            "source_locator": _opt_str(w.get("source_locator")) or f"senate_page:witness[{idx}]",
+                            "name": w_name,
+                            "honorific": _opt_str(w.get("honorific")),
+                            "position": _opt_str(w.get("position") or w.get("title")),
+                            "organization": _opt_str(w.get("organization")),
+                            "location": _opt_str(w.get("location")),
+                            "panel": _opt_str(w.get("panel")),
+                            "display_order": _opt_int(w.get("display_order")) or idx,
+                            "document_links": doc_links,
+                        }
+                    )
+            appearances = preserve_appearances(raw_rows, default_source="senate_page")
+            return {
+                "event_id": None,
+                "package_id": None,
+                "declared_base": explicit_base,
+                "collection_state": explicit_state
+                or ("present" if appearances else ("unrecognized" if raw_witnesses else "empty")),
+                "appearances": appearances,
+            }
+        else:
+            return {
+                "event_id": None,
+                "package_id": None,
+                "declared_base": explicit_base,
+                "collection_state": explicit_state or "absent",
+                "appearances": [],
+            }
+    elif isinstance(payload, (bytes, bytearray, memoryview)):
+        html_text = bytes(payload).decode("utf-8", "replace")
+    elif isinstance(payload, str):
+        html_text = payload
+    else:
+        raise TypeError(f"Unsupported senate_page payload type: {type(payload)!r}")
+
+    if not html_text.strip():
+        return {
+            "event_id": None,
+            "package_id": None,
+            "declared_base": explicit_base,
+            "collection_state": explicit_state or "unrecognized",
+            "appearances": [],
+        }
+
+    declared_base = explicit_base or _extract_declared_base(html_text)
+    people = senate_witness_occurrences(html_text, plain=True)
+    if people:
+        raw_rows = []
+        for idx, p in enumerate(people):
+            raw_rows.append(
+                {
+                    "source_locator": f"senate_page:witness[{idx + 1}]",
+                    "name": _opt_str(p.get("name")),
+                    "honorific": _opt_str(p.get("honorific")),
+                    "position": _opt_str(p.get("position")),
+                    "organization": _opt_str(p.get("organization")),
+                    "location": _opt_str(p.get("location")),
+                    "panel": _opt_str(p.get("panel")),
+                    "display_order": idx + 1,
+                    "document_links": list(p.get("document_links") or ()),
+                }
+            )
+        appearances = preserve_appearances(raw_rows, default_source="senate_page")
+        return {
+            "event_id": None,
+            "package_id": None,
+            "declared_base": declared_base,
+            "collection_state": explicit_state or "present",
+            "appearances": appearances,
+        }
+
+    fallback_rows = _fallback_senate_cards(html_text)
+    appearances = preserve_appearances(fallback_rows, default_source="senate_page")
+    state = explicit_state or ("present" if appearances else _classify_senate_empty_state(html_text))
+    return {
+        "event_id": None,
+        "package_id": None,
+        "declared_base": declared_base,
+        "collection_state": state,
+        "appearances": appearances,
+    }
 
 
 def extract_senate_page_appearances(
@@ -485,110 +893,33 @@ def extract_senate_page_appearances(
     *,
     source_url: str | None = None,
 ) -> list[dict[str, Any]]:
-    """Extract appearances and card-scoped `document_urls` from a Senate committee hearing page."""
-    base_url = source_url or DEFAULT_BASE_URLS["senate_page"]
-
-    if isinstance(payload, Mapping):
-        page_url = _opt_str(payload.get("page_url") or payload.get("url") or source_url) or base_url
-        if isinstance(payload.get("raw_html"), Mapping):
-            from ..retention.body_files import content_bytes
-
-            html_text = content_bytes(payload["raw_html"]).decode("utf-8", "replace")
-        elif isinstance(payload.get("html"), str):
-            html_text = payload["html"]
-        elif isinstance(payload.get("witnesses"), Sequence):
-            raw_rows: list[dict[str, Any]] = []
-            for idx, w in enumerate(payload["witnesses"], start=1):
-                if isinstance(w, Mapping):
-                    doc_urls = [
-                        u
-                        for raw_u in (w.get("document_urls") or w.get("documents") or [])
-                        if (u := resolve_document_url(raw_u.get("url") if isinstance(raw_u, Mapping) else raw_u, page_url))
-                    ]
-                    raw_rows.append(
-                        {
-                            "event_id": None,
-                            "package_id": None,
-                            "page_url": page_url,
-                            "name": _opt_str(w.get("name")),
-                            "honorific": _opt_str(w.get("honorific")),
-                            "position": _opt_str(w.get("position") or w.get("title")),
-                            "organization": _opt_str(w.get("organization")),
-                            "location": _opt_str(w.get("location")),
-                            "panel": _opt_str(w.get("panel")),
-                            "display_order": _opt_int(w.get("display_order")) or idx,
-                            "document_urls": doc_urls,
-                        }
-                    )
-            return deduplicate_appearances(raw_rows)
-        else:
-            return []
-    elif isinstance(payload, (bytes, bytearray, memoryview)):
-        page_url = source_url or base_url
-        html_text = bytes(payload).decode("utf-8", "replace")
-    elif isinstance(payload, str):
-        page_url = source_url or base_url
-        html_text = payload
-    else:
-        raise TypeError(f"Unsupported senate_page payload type: {type(payload)!r}")
-
-    if not html_text.strip():
-        return []
-
-    people = senate_witnesses(html_text, page_url, plain=True)
-    if people:
-        files, witness_metadata, _ = source_details(html_text, page_url, people, plain=True)
-        urls_by_index: dict[int, list[str]] = {i: [] for i in range(len(people))}
-        for href, entry in files.items():
-            resolved = resolve_document_url(href, page_url)
-            if not resolved:
-                continue
-            for w_idx in entry.get("witness_indexes") or []:
-                if w_idx in urls_by_index and resolved not in urls_by_index[w_idx]:
-                    urls_by_index[w_idx].append(resolved)
-
-        raw_rows = []
-        for idx, p in enumerate(people):
-            meta = witness_metadata.get(str(idx)) or {}
-            raw_rows.append(
-                {
-                    "event_id": None,
-                    "package_id": None,
-                    "page_url": page_url,
-                    "name": _opt_str(p.get("name")),
-                    "honorific": _opt_str(p.get("honorific")),
-                    "position": _opt_str(p.get("position")),
-                    "organization": _opt_str(p.get("organization")),
-                    "location": _opt_str(meta.get("location") or p.get("location")),
-                    "panel": _opt_str(meta.get("panel")),
-                    "display_order": idx + 1,
-                    "document_urls": urls_by_index.get(idx, []),
-                }
-            )
-        return deduplicate_appearances(raw_rows)
-
-    fallback_rows = _fallback_senate_cards(html_text, page_url)
-    return deduplicate_appearances(fallback_rows)
+    """Extract appearances and card-scoped `document_links` from a Senate committee hearing page."""
+    del source_url
+    return extract_senate_page_observation(payload)["appearances"]
 
 
 _PACKAGE_ID_IN_URL_RE = re.compile(r"\b(CHRG-\d+[hsj]hrg\d+)\b", re.IGNORECASE)
 
 
-def extract_mods_appearances(
+def extract_mods_observation(
     payload: bytes | str | Mapping[str, Any] | ModsDocument,
     *,
-    source_url: str | None = None,
     package_id: str | None = None,
-) -> list[dict[str, Any]]:
-    """Extract appearances from a GovInfo MODS XML document (`mods_witnesses`)."""
+) -> dict[str, Any]:
+    """Extract context-free observation metadata and appearances from a GovInfo MODS XML document."""
     resolved_pkg = _opt_str(package_id)
-    if not resolved_pkg and source_url:
-        m = _PACKAGE_ID_IN_URL_RE.search(source_url)
-        if m:
-            resolved_pkg = m.group(1)
 
     if isinstance(payload, Mapping) and not isinstance(payload, ModsDocument):
         resolved_pkg = resolved_pkg or _opt_str(payload.get("package_id") or payload.get("packageId"))
+        explicit_state = _opt_str(payload.get("collection_state"))
+        if "witnesses" not in payload or payload.get("witnesses") is None:
+            return {
+                "event_id": None,
+                "package_id": resolved_pkg,
+                "declared_base": None,
+                "collection_state": explicit_state or "absent",
+                "appearances": [],
+            }
         raw_witnesses = payload.get("witnesses") or []
         raw_rows: list[dict[str, Any]] = []
         for idx, w in enumerate(raw_witnesses, start=1):
@@ -599,44 +930,63 @@ def extract_mods_appearances(
                     continue
                 raw_rows.append(
                     {
-                        "event_id": None,
-                        "package_id": resolved_pkg,
-                        "page_url": None,
+                        "source_locator": f"mods:witness[{idx}]",
                         "name": w_name,
                         "honorific": _opt_str(parsed.get("honorific")),
                         "position": _opt_str(parsed.get("position")),
                         "organization": _opt_str(parsed.get("organization")),
                         "display_order": idx,
-                        "document_urls": [],
+                        "document_links": [],
                     }
                 )
             elif isinstance(w, Mapping):
+                w_name = _opt_str(w.get("name"))
+                if not w_name:
+                    continue
                 raw_rows.append(
                     {
-                        "event_id": None,
-                        "package_id": resolved_pkg,
-                        "page_url": None,
-                        "name": _opt_str(w.get("name")),
+                        "source_locator": _opt_str(w.get("source_locator")) or f"mods:witness[{idx}]",
+                        "name": w_name,
                         "honorific": _opt_str(w.get("honorific")),
                         "position": _opt_str(w.get("position")),
                         "organization": _opt_str(w.get("organization")),
                         "bioguide_id": _opt_str(w.get("bioguide_id") or w.get("bioGuideId")),
                         "display_order": _opt_int(w.get("display_order")) or idx,
-                        "document_urls": [],
+                        "document_links": _clean_links(w.get("document_links") or w.get("document_urls")),
                     }
                 )
-        return deduplicate_appearances(raw_rows)
+        appearances = preserve_appearances(raw_rows, default_source="mods")
+        return {
+            "event_id": None,
+            "package_id": resolved_pkg,
+            "declared_base": None,
+            "collection_state": explicit_state
+            or ("present" if appearances else ("unrecognized" if raw_witnesses else "empty")),
+            "appearances": appearances,
+        }
 
     if isinstance(payload, ModsDocument):
         doc = payload
     else:
         raw_xml_bytes = payload.encode("utf-8") if isinstance(payload, str) else bytes(payload)
         if not raw_xml_bytes.strip():
-            return []
+            return {
+                "event_id": None,
+                "package_id": resolved_pkg,
+                "declared_base": None,
+                "collection_state": "unrecognized",
+                "appearances": [],
+            }
         try:
             doc = parse_mods_document(raw_xml_bytes)
         except Exception:
-            return []
+            return {
+                "event_id": None,
+                "package_id": resolved_pkg,
+                "declared_base": None,
+                "collection_state": "unrecognized",
+                "appearances": [],
+            }
 
     if not resolved_pkg:
         for scope in (doc.root, *(doc.related_items or ())):
@@ -649,7 +999,6 @@ def extract_mods_appearances(
             if resolved_pkg:
                 break
 
-    # Map any `<congMember role="WITNESS" bioGuideId="...">` names to bioguide_id
     member_bioguides: dict[str, str] = {}
     for mem in doc.members or []:
         role = (getattr(mem, "role", None) or "").strip().upper()
@@ -661,18 +1010,26 @@ def extract_mods_appearances(
                     if nk:
                         member_bioguides[nk] = bg
 
+    raw_witness_lines = list(doc.witnesses or ())
+    if not raw_witness_lines:
+        return {
+            "event_id": None,
+            "package_id": resolved_pkg,
+            "declared_base": None,
+            "collection_state": "absent",
+            "appearances": [],
+        }
+
     raw_rows = []
-    for idx, w_line in enumerate(doc.witnesses or [], start=1):
+    for idx, w_line in enumerate(raw_witness_lines, start=1):
         cleaned_line = (w_line or "").strip()
         if not cleaned_line:
             raw_rows.append(
                 {
-                    "event_id": None,
-                    "package_id": resolved_pkg,
-                    "page_url": None,
+                    "source_locator": f"mods:witness[{idx}]",
                     "name": None,
-                    "display_order": idx,
-                    "document_urls": [],
+                    "display_order": len(raw_rows) + 1,
+                    "document_links": [],
                 }
             )
             continue
@@ -687,20 +1044,36 @@ def extract_mods_appearances(
         bg = member_bioguides.get(nk) if nk else None
         raw_rows.append(
             {
-                "event_id": None,
-                "package_id": resolved_pkg,
-                "page_url": None,
+                "source_locator": f"mods:witness[{idx}]",
                 "name": w_name,
                 "honorific": _opt_str(parsed.get("honorific")),
                 "position": _opt_str(parsed.get("position")),
                 "organization": _opt_str(parsed.get("organization")),
                 "bioguide_id": bg,
                 "display_order": len(raw_rows) + 1,
-                "document_urls": [],
+                "document_links": [],
             }
         )
 
-    return deduplicate_appearances(raw_rows)
+    appearances = preserve_appearances(raw_rows, default_source="mods")
+    return {
+        "event_id": None,
+        "package_id": resolved_pkg,
+        "declared_base": None,
+        "collection_state": "present" if appearances else "empty",
+        "appearances": appearances,
+    }
+
+
+def extract_mods_appearances(
+    payload: bytes | str | Mapping[str, Any] | ModsDocument,
+    *,
+    source_url: str | None = None,
+    package_id: str | None = None,
+) -> list[dict[str, Any]]:
+    """Extract appearances from a GovInfo MODS XML document (`mods_witnesses`)."""
+    del source_url
+    return extract_mods_observation(payload, package_id=package_id)["appearances"]
 
 
 def build_appearance_record_row(
@@ -710,42 +1083,125 @@ def build_appearance_record_row(
     *,
     parser_version: str = DEFAULT_PARSER_VERSION,
     source_url: str | None = None,
-    event_id: str | None = None,
+    event_id: int | str | None = None,
     package_id: str | None = None,
 ) -> dict[str, Any]:
-    """Parse one input from `house_xml`, `congress_gov`, `senate_page`, or `mods` into an `appearance_records` row."""
+    """Parse one input from `house_xml`, `congress_gov`, `senate_page`, or `mods` into a context-free `appearance_records` row."""
+    del source_url
     if source not in VALID_SOURCES:
         raise ValueError(f"Unsupported appearance_records source {source!r}; expected one of {sorted(VALID_SOURCES)}")
     sha_hex = normalize_record_sha(record_sha)
     if source == "house_xml":
-        appearances = extract_house_xml_appearances(payload, source_url=source_url, event_id=event_id)
+        obs = extract_house_xml_observation(payload, event_id=event_id)
     elif source == "congress_gov":
-        appearances = extract_congress_gov_appearances(payload, source_url=source_url, event_id=event_id)
+        obs = extract_congress_gov_observation(payload, event_id=event_id)
     elif source == "senate_page":
-        appearances = extract_senate_page_appearances(payload, source_url=source_url)
+        obs = extract_senate_page_observation(payload)
     else:
-        appearances = extract_mods_appearances(payload, source_url=source_url, package_id=package_id)
+        obs = extract_mods_observation(payload, package_id=package_id)
 
     return {
         "record_sha": sha_hex,
         "parser_version": str(parser_version),
+        "status": "completed",
+        "error_type": None,
         "source": source,
-        "appearances": appearances,
+        "event_id": obs["event_id"],
+        "package_id": obs["package_id"],
+        "declared_base": obs["declared_base"],
+        "collection_state": obs["collection_state"],
+        "appearances": obs["appearances"],
+    }
+
+
+def compute_v1_witness_key(occasion: str, name_key: str) -> str:
+    """Compute the legacy v1 name-derived `witness_key` for migration/redirect checks."""
+    payload = json.dumps(["witness", occasion, name_key], separators=(",", ":"), ensure_ascii=False).encode("utf-8")
+    return sha256(payload).hexdigest()[:16]
+
+
+def resolve_old_witness_key(
+    old_key: str,
+    resolved_rows: Sequence[Mapping[str, Any]],
+) -> dict[str, Any]:
+    """Map a legacy v1 name-derived `witness_key` to v2 occurrence key(s), preserving 1-to-many and unresolved cases."""
+    matches: list[str] = []
+    for row in resolved_rows:
+        occ = _opt_str(row.get("occasion"))
+        w_key = _opt_str(row.get("witness_key"))
+        nk = _opt_str(row.get("name_key")) or normalize_name_key(_opt_str(row.get("name")))
+        if not occ or not w_key or not nk:
+            continue
+        if compute_v1_witness_key(occ, nk) == old_key and w_key not in matches:
+            matches.append(w_key)
+    if len(matches) == 1:
+        return {
+            "old_witness_key": old_key,
+            "status": "mapped",
+            "witness_key": matches[0],
+            "witness_keys": matches,
+        }
+    if len(matches) > 1:
+        return {
+            "old_witness_key": old_key,
+            "status": "ambiguous",
+            "witness_key": None,
+            "witness_keys": matches,
+        }
+    return {
+        "old_witness_key": old_key,
+        "status": "unresolved",
+        "witness_key": None,
+        "witness_keys": [],
+    }
+
+
+def _normalize_row_for_table(row: Mapping[str, Any]) -> dict[str, Any]:
+    src = str(row["source"])
+    status = row.get("status") or "completed"
+    raw_apps = list(row.get("appearances") or ())
+    norm_apps = preserve_appearances(raw_apps, default_source=src)
+    ev_id = _opt_int(row.get("event_id"))
+    if ev_id is None and raw_apps:
+        ev_id = _opt_int(raw_apps[0].get("event_id"))
+    pkg_id = _opt_str(row.get("package_id"))
+    if pkg_id is None and raw_apps:
+        pkg_id = _opt_str(raw_apps[0].get("package_id"))
+    coll_state = _opt_str(row.get("collection_state")) or (
+        "failed" if status != "completed" else ("present" if norm_apps else "empty")
+    )
+    return {
+        "record_sha": row["record_sha"],
+        "parser_version": row.get("parser_version") or DEFAULT_PARSER_VERSION,
+        "status": status,
+        "error_type": row.get("error_type"),
+        "source": src,
+        "event_id": ev_id,
+        "package_id": pkg_id,
+        "declared_base": _opt_str(row.get("declared_base")),
+        "collection_state": coll_state,
+        "appearances": norm_apps,
     }
 
 
 def table(rows: Sequence[Mapping[str, Any]]) -> pa.Table:
     """Convert `appearance_records` row dicts into a sorted PyArrow Table conforming to `ARROW_SCHEMA`."""
-    return build_record_table(rows, payload_col="appearances", schema=ARROW_SCHEMA)
+    normalized = [_normalize_row_for_table(r) for r in rows]
+    return build_record_table(
+        normalized,
+        payload_col="appearances",
+        schema=ARROW_SCHEMA,
+        extra_cols=_EXTRA_COLS,
+    )
 
 
 def filter_unprocessed_inputs(
     inputs: Iterable[Mapping[str, Any]],
     existing: pa.Table | Sequence[Mapping[str, Any]] | None = None,
     *,
-    parser_version: str = DEFAULT_PARSER_VERSION,
+    parser_version: str | Mapping[str, str] = DEFAULT_PARSER_VERSION,
 ) -> list[dict[str, Any]]:
-    """Anti-join candidate inputs on `(record_sha, parser_version)` before parsing payloads."""
+    """Anti-join candidate inputs on `(record_sha, source, parser_version)` before parsing payloads."""
     return _shared_filter_unprocessed_inputs(inputs, existing, parser_version=parser_version)
 
 
@@ -753,9 +1209,9 @@ def produce_appearance_records(
     inputs: Iterable[Mapping[str, Any]],
     *,
     existing: pa.Table | Sequence[Mapping[str, Any]] | None = None,
-    parser_version: str = DEFAULT_PARSER_VERSION,
+    parser_version: str | Mapping[str, str] = DEFAULT_PARSER_VERSION,
 ) -> pa.Table:
-    """Incrementally parse only unprocessed `(record_sha, parser_version)` inputs into a PyArrow Table."""
+    """Incrementally parse only unprocessed `(record_sha, source, parser_version)` inputs into a PyArrow Table."""
     todo = filter_unprocessed_inputs(inputs, existing, parser_version=parser_version)
     rows = [
         build_appearance_record_row(
@@ -763,7 +1219,6 @@ def produce_appearance_records(
             item["source"],
             item["payload"],
             parser_version=item["parser_version"],
-            source_url=item.get("source_url"),
             event_id=item.get("event_id"),
             package_id=item.get("package_id"),
         )
@@ -785,7 +1240,12 @@ SELECT encode(r.body_sha, 'hex') AS sha, min(coalesce(c.url, c.requested_url, c.
 FROM readings r
 JOIN captures c ON r.body_sha = c.sha256
 WHERE r.parser='xml' AND r.status='completed' AND r.xml_root='mods'
-  AND coalesce(c.url, c.requested_url, c.context_url, c.member_path) LIKE '%CHRG%'
+  AND (
+      upper(coalesce(c.url, '')) LIKE '%CHRG%'
+      OR upper(coalesce(c.requested_url, '')) LIKE '%CHRG%'
+      OR upper(coalesce(c.context_url, '')) LIKE '%CHRG%'
+      OR upper(coalesce(c.member_path, '')) LIKE '%CHRG%'
+  )
 GROUP BY r.body_sha
 """.strip()
 
@@ -834,13 +1294,13 @@ def stage(
     local_root: Path | str | None = None,
     raw_store: Any = None,
     unreadable_files: Sequence[Mapping[str, Any]] = (),
-    parser_version: str | None = None,
+    parser_version: str | Mapping[str, str] | None = None,
     max_work_items: int | None = None,
     decided_at: str | None = None,
     unreadable_store: Any = None,
 ) -> dict[str, Any]:
     """Stage missing `appearance_records` rows from `captures` via native anti-join."""
-    version = current_version() if parser_version is None else str(parser_version)
+    version = current_versions() if parser_version is None else parser_version
     return stage_record_table(
         parser_name="appearance_records",
         out_filename="appearance-records.parquet",
@@ -859,7 +1319,7 @@ def stage(
         max_work_items=max_work_items,
         decided_at=decided_at,
         unreadable_store=unreadable_store,
-        pass_source_url=True,
+        pass_source_url=False,
     )
 
 
@@ -890,13 +1350,13 @@ def append(
     work: Path,
     catalog_root: Path | None,
     table: dict[str, Any],
-    parser_version: str | None = None,
+    parser_version: str | Mapping[str, str] | None = None,
 ) -> Any:
     return append_record_table(
         staged_parquet,
         parser_name="appearance_records",
         default_version=DEFAULT_PARSER_VERSION,
-        current_version_fn=current_version,
+        current_version_fn=current_versions,
         engine=engine,
         work=work,
         catalog_root=catalog_root,

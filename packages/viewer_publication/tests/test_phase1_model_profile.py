@@ -127,3 +127,240 @@ def test_semantic_profile_pins_the_failure_producer_separately_from_leaf_parsers
         'packages/congress_api/src/congress_api/retention/parser_worker.py',
         'packages/congress_api/src/congress_api/retention/process_resources.py',
     } <= hashes.keys()
+
+
+def test_validate_parser_versions_rejects_scalar_entity_versions():
+    from viewer_publication.archive_model_profile import validate_parser_versions
+    with pytest.raises(ValueError, match='source-scoped'):
+        validate_parser_versions(dict(VERSIONS, meeting_records='scalar-hash'))
+    with pytest.raises(ValueError, match='source-scoped'):
+        validate_parser_versions(dict(VERSIONS, appearance_records='scalar-hash'))
+
+
+def test_entity_completeness_and_record_producer_candidates_agree_1_for_1(tmp_path):
+    """ct-kw9b: completeness_checks(include_entities=True) and _record_producer candidate SQL agree 1-for-1."""
+    from congress_api.lake._record_producer import (
+        CANDIDATE_APPEARANCE_RECORDS_SQL,
+        CANDIDATE_MEETING_RECORDS_SQL,
+    )
+    from viewer_publication.archive_model_profile import (
+        APPEARANCE_SOURCES,
+        MEETING_SOURCES,
+        completeness_checks,
+        completeness_steps,
+        expand_parser_version_rows,
+        readings_bundle_version,
+    )
+
+    mr_vers = {s: f'mr-{s}-1' for s in MEETING_SOURCES}
+    ar_vers = {s: f'ar-{s}-1' for s in APPEARANCE_SOURCES}
+    all_versions = dict(VERSIONS, meeting_records=mr_vers, appearance_records=ar_vers)
+
+    sha_non_house_cm = '11' * 32
+    sha_non_house_wl = '22' * 32
+    sha_non_mods_xml = '33' * 32
+    sha_cg_web_url = '44' * 32
+    sha_house_cm = '55' * 32
+    sha_house_wl = '66' * 32
+    sha_mods_xml = '77' * 32
+    sha_cg_sizelimit = '88' * 32
+    sha_inline_cg = '99' * 32
+
+    capture_rows = [
+        # 1. Non-House XML with xml_root='committee-meeting' -> NOT a candidate
+        dict(
+            receipt_key='r1', receipt_line=1, capture_index=0, body_hex=sha_non_house_cm,
+            mode='fetch', complete=True, outcome='stored', http_status=200, stored_suffix='.gz',
+            family='documents', url='https://example.org/other.xml',
+            requested_url='https://example.org/other.xml', context_url=None, member_path=None,
+            sniffed_format='xml', media_type='application/xml',
+        ),
+        # 2. Non-House XML with xml_root='witness-list' -> NOT a candidate
+        dict(
+            receipt_key='r1', receipt_line=2, capture_index=0, body_hex=sha_non_house_wl,
+            mode='fetch', complete=True, outcome='stored', http_status=200, stored_suffix='.gz',
+            family='documents', url='https://example.org/witnesses.xml',
+            requested_url='https://example.org/witnesses.xml', context_url=None, member_path=None,
+            sniffed_format='xml', media_type='application/xml',
+        ),
+        # 3. Non-MODS XML with xml_root='mods' and CHRG in URL but no 'mods' in family/URL -> NOT a candidate
+        dict(
+            receipt_key='r1', receipt_line=3, capture_index=0, body_hex=sha_non_mods_xml,
+            mode='fetch', complete=True, outcome='stored', http_status=200, stored_suffix='.gz',
+            family='documents', url='https://example.org/CHRG-118hhrg12345/other.xml',
+            requested_url='https://example.org/CHRG-118hhrg12345/other.xml', context_url=None, member_path=None,
+            sniffed_format='xml', media_type='application/xml',
+        ),
+        # 4. Congress.gov committee-meeting JSON without /v3/ prefix -> candidate for both mr and ar
+        dict(
+            receipt_key='r1', receipt_line=4, capture_index=0, body_hex=sha_cg_web_url,
+            mode='fetch', complete=True, outcome='stored', http_status=200, stored_suffix='.gz',
+            family='congress/meetings', url='https://www.congress.gov/committee-meeting/118/house/115538',
+            requested_url='https://www.congress.gov/committee-meeting/118/house/115538', context_url=None, member_path=None,
+            sniffed_format='json', media_type='application/json',
+        ),
+        # 5. House committee-meeting XML -> candidate for mr
+        dict(
+            receipt_key='r1', receipt_line=5, capture_index=0, body_hex=sha_house_cm,
+            mode='fetch', complete=True, outcome='stored', http_status=200, stored_suffix='.gz',
+            family='house/Committees', url='https://docs.house.gov/meetings/IF/IF00/20230510/115538/HHRG-118-IF00-20230510.xml',
+            requested_url='https://docs.house.gov/meetings/IF/IF00/20230510/115538/HHRG-118-IF00-20230510.xml',
+            context_url=None, member_path=None, sniffed_format='xml', media_type='application/xml',
+        ),
+        # 6. House witness-list XML -> candidate for ar
+        dict(
+            receipt_key='r1', receipt_line=6, capture_index=0, body_hex=sha_house_wl,
+            mode='fetch', complete=True, outcome='stored', http_status=200, stored_suffix='.gz',
+            family='house/Committees', url='https://docs.house.gov/meetings/IF/IF00/20230510/115538/HHRG-118-IF00-WList-20230510.xml',
+            requested_url='https://docs.house.gov/meetings/IF/IF00/20230510/115538/HHRG-118-IF00-WList-20230510.xml',
+            context_url=None, member_path=None, sniffed_format='xml', media_type='application/xml',
+        ),
+        # 7. GovInfo MODS XML -> candidate for ar
+        dict(
+            receipt_key='r1', receipt_line=7, capture_index=0, body_hex=sha_mods_xml,
+            mode='fetch', complete=True, outcome='stored', http_status=200, stored_suffix='.gz',
+            family='govinfo/mods', url='https://www.govinfo.gov/metadata/pkg/CHRG-118hhrg55555/mods.xml',
+            requested_url='https://www.govinfo.gov/metadata/pkg/CHRG-118hhrg55555/mods.xml',
+            context_url=None, member_path=None, sniffed_format='xml', media_type='application/xml',
+        ),
+        # 8. Congress.gov JSON whose page reading status='size_limit' -> still a candidate for both mr and ar
+        dict(
+            receipt_key='r1', receipt_line=8, capture_index=0, body_hex=sha_cg_sizelimit,
+            mode='fetch', complete=True, outcome='stored', http_status=200, stored_suffix='.gz',
+            family='congress/meetings', url='https://api.congress.gov/v3/committee-meeting/118/house/115777',
+            requested_url='https://api.congress.gov/v3/committee-meeting/118/house/115777', context_url=None, member_path=None,
+            sniffed_format='json', media_type='application/json',
+        ),
+        # 9. Inline saved-record Congress.gov meeting (sha256 IS NULL, outcome='saved-record') -> candidate for both mr and ar
+        dict(
+            receipt_key='r1', receipt_line=9, capture_index=0, body_hex=None,
+            mode='fetch', complete=True, outcome='saved-record', http_status=200, stored_suffix=None,
+            family='congress/meetings', url='https://api.congress.gov/v3/committee-meeting/118/house/115999',
+            requested_url='https://api.congress.gov/v3/committee-meeting/118/house/115999', context_url=None, member_path=None,
+            sniffed_format=None, media_type=None,
+        ),
+    ]
+
+    reading_rows = []
+    sniff_rows = []
+    for row in capture_rows:
+        bhex = row['body_hex']
+        if bhex is None:
+            continue
+        fmt = row['sniffed_format']
+        sniff_rows.append(dict(body_hex=bhex, format=fmt))
+        reading_rows.append(dict(body_hex=bhex, parser='sniff', parser_version='sniff-1', status='completed', xml_root=None))
+        xml_root = None
+        if bhex in (sha_non_house_cm, sha_house_cm):
+            xml_root = 'committee-meeting'
+        elif bhex in (sha_non_house_wl, sha_house_wl):
+            xml_root = 'witness-list'
+        elif bhex in (sha_non_mods_xml, sha_mods_xml):
+            xml_root = 'mods'
+        r_status = 'size_limit' if bhex == sha_cg_sizelimit else 'completed'
+        reading_rows.append(dict(body_hex=bhex, parser=fmt, parser_version=f'{fmt}-1', status=r_status, xml_root=xml_root))
+
+    # Settled entity rows for ONLY the genuine candidates (4, 5, 6, 7, 8, 9)
+    mr_input = [
+        dict(record_sha_hex=sha_cg_web_url, source='congress_gov', parser_version=mr_vers['congress_gov'], status='completed'),
+        dict(record_sha_hex=sha_house_cm, source='house_xml', parser_version=mr_vers['house_xml'], status='completed'),
+        dict(record_sha_hex=sha_cg_sizelimit, source='congress_gov', parser_version=mr_vers['congress_gov'], status='completed'),
+        dict(record_sha_hex=sha_inline_cg, source='congress_gov', parser_version=mr_vers['congress_gov'], status='completed'),
+    ]
+    ar_input = [
+        dict(record_sha_hex=sha_cg_web_url, source='congress_gov', parser_version=ar_vers['congress_gov'], status='completed'),
+        dict(record_sha_hex=sha_house_wl, source='house_xml', parser_version=ar_vers['house_xml'], status='completed'),
+        dict(record_sha_hex=sha_mods_xml, source='mods', parser_version=ar_vers['mods'], status='completed'),
+        dict(record_sha_hex=sha_cg_sizelimit, source='congress_gov', parser_version=ar_vers['congress_gov'], status='completed'),
+        dict(record_sha_hex=sha_inline_cg, source='congress_gov', parser_version=ar_vers['congress_gov'], status='completed'),
+    ]
+
+    def _run_completeness(sub_dir, mr_rows, ar_rows):
+        sub_dir.mkdir(parents=True, exist_ok=True)
+        inputs = [
+            json_input(
+                sub_dir, 'capture_rows', capture_rows,
+                receipt_key='Utf8', receipt_line='Int32', capture_index='Int32', body_hex='Utf8',
+                mode='Utf8', complete='Boolean', outcome='Utf8', http_status='Int32', stored_suffix='Utf8',
+                family='Utf8', url='Utf8', requested_url='Utf8', context_url='Utf8', member_path='Utf8',
+                sniffed_format='Utf8', media_type='Utf8',
+            ),
+            json_input(
+                sub_dir, 'reading_rows', reading_rows,
+                body_hex='Utf8', parser='Utf8', parser_version='Utf8', status='Utf8', xml_root='Utf8',
+            ),
+            json_input(sub_dir, 'sniff_rows', sniff_rows, body_hex='Utf8', format='Utf8'),
+            json_input(sub_dir, 'admission_rows', [], body_hex='Utf8', format='Utf8', basis='Utf8'),
+            json_input(sub_dir, 'filename_readings', [], filename='Utf8', source_url='Utf8', catalog_version='Utf8', status='Utf8'),
+            json_input(sub_dir, 'unreadable_rows', [], body_sha256='Utf8', record_sha='Utf8', parser='Utf8', parser_version='Utf8'),
+            json_input(sub_dir, 'parser_versions', expand_parser_version_rows(all_versions), parser='Utf8', version='Utf8'),
+            json_input(sub_dir, 'meeting_records_input', mr_rows, record_sha_hex='Utf8', source='Utf8', parser_version='Utf8', status='Utf8'),
+            json_input(sub_dir, 'appearance_records_input', ar_rows, record_sha_hex='Utf8', source='Utf8', parser_version='Utf8', status='Utf8'),
+        ]
+        steps = [
+            dict(name='captures', sql="SELECT *,decode(body_hex,'hex') AS sha256 FROM capture_rows"),
+            dict(name='readings', sql="SELECT *,decode(body_hex,'hex') AS body_sha FROM reading_rows"),
+            dict(name='sniff_facts', sql="SELECT decode(body_hex,'hex') AS body_sha,format FROM sniff_rows"),
+            dict(name='body_admissions', sql="SELECT decode(body_hex,'hex') AS body_sha,format,basis FROM admission_rows"),
+            dict(name='source_files', sql="SELECT cast(NULL AS VARCHAR) AS filename,cast(NULL AS VARCHAR) AS source_url WHERE false"),
+            dict(name='active_unreadable', sql="SELECT body_sha256,record_sha,parser,parser_version FROM unreadable_rows"),
+        ] + completeness_steps()
+        queries = completeness_checks(
+            catalog_version='catalog-1',
+            readings_version=readings_bundle_version(VERSIONS),
+            include_entities=True,
+            meeting_records_version=mr_vers,
+            appearance_records_version=ar_vers,
+        ) + [
+            dict(name='producer_mr', sql=CANDIDATE_MEETING_RECORDS_SQL),
+            dict(name='producer_ar', sql=CANDIDATE_APPEARANCE_RECORDS_SQL),
+        ]
+        return run_job(
+            sub_dir,
+            NativeDatasets.from_config(os.environ['DOCSPEC_JOB_CONFIG']),
+            inputs=inputs,
+            steps=steps,
+            outputs=[],
+            queries=queries,
+        )
+
+    res_settled = _run_completeness(tmp_path / 'settled', mr_input, ar_input)
+    # Producer SQL must not select non-House XML or non-MODS XML captures
+    prod_mr = {(r['record_sha'], r['source']) for r in res_settled['producer_mr']}
+    prod_ar = {(r['record_sha'], r['source']) for r in res_settled['producer_ar']}
+    assert (sha_non_house_cm, 'house_xml') not in prod_mr
+    assert (sha_non_house_wl, 'house_xml') not in prod_ar
+    assert (sha_non_mods_xml, 'mods') not in prod_ar
+    assert {(sha_cg_web_url, 'congress_gov'), (sha_house_cm, 'house_xml')} <= prod_mr
+    assert {(sha_cg_web_url, 'congress_gov'), (sha_house_wl, 'house_xml'), (sha_mods_xml, 'mods')} <= prod_ar
+
+    # Completeness checks must agree 1-for-1: 0 unsettled when genuine candidates are settled
+    ent_settled = res_settled['entity_profile_completeness'][0]
+    assert {k: v for k, v in ent_settled.items() if v} == {}
+
+    # Omitting the Congress.gov web URL candidate must be flagged as unsettled in both mr and ar
+    res_missing_cg = _run_completeness(tmp_path / 'missing-cg', mr_input[1:], ar_input[1:])
+    ent_missing_cg = res_missing_cg['entity_profile_completeness'][0]
+    assert ent_missing_cg['unsettled_meeting_records'] == 1
+    assert ent_missing_cg['unsettled_appearance_records'] == 1
+
+    # Omitting the size_limit reading candidate must also be flagged as unsettled in both mr and ar
+    res_missing_sl = _run_completeness(
+        tmp_path / 'missing-sl',
+        [r for r in mr_input if r['record_sha_hex'] != sha_cg_sizelimit],
+        [r for r in ar_input if r['record_sha_hex'] != sha_cg_sizelimit],
+    )
+    ent_missing_sl = res_missing_sl['entity_profile_completeness'][0]
+    assert ent_missing_sl['unsettled_meeting_records'] == 1
+    assert ent_missing_sl['unsettled_appearance_records'] == 1
+
+    # Omitting the inline saved-record Congress.gov candidate must also be flagged as unsettled in both mr and ar
+    res_missing_inline = _run_completeness(
+        tmp_path / 'missing-inline',
+        [r for r in mr_input if r['record_sha_hex'] != sha_inline_cg],
+        [r for r in ar_input if r['record_sha_hex'] != sha_inline_cg],
+    )
+    ent_missing_inline = res_missing_inline['entity_profile_completeness'][0]
+    assert ent_missing_inline['unsettled_meeting_records'] == 1
+    assert ent_missing_inline['unsettled_appearance_records'] == 1
+

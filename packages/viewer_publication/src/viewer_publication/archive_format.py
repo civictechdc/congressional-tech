@@ -224,16 +224,20 @@ def _execute(inputs, steps, *, output, scratch, engine, origin, auxiliary=None, 
         coverage_parts.append("SELECT 'meetings.parquet' AS file,cast(NULL AS SMALLINT) AS congress_start,cast(NULL AS SMALLINT) AS congress_end,min(meeting_date) AS date_start,max(meeting_date) AS date_end FROM meetings_export")
     if 'witnesses' in aux_names and 'meetings_resolved' in step_names:
         coverage_parts.append("""SELECT 'witnesses.parquet' AS file,
-            min(coalesce(cast(m.congress AS SMALLINT),o.congress)) AS congress_start,
-            max(coalesce(cast(m.congress AS SMALLINT),o.congress)) AS congress_end,
-            min(coalesce(m.meeting_date,o.document_date)) AS date_start,
-            max(coalesce(m.meeting_date,o.document_date)) AS date_end
+            min(coalesce(cast(m.congress AS SMALLINT),o.congress_min,p.congress_min,try_cast((regexp_match(w.package_id,'(?i)^CHRG-([0-9]+)'))[1] AS SMALLINT))) AS congress_start,
+            max(coalesce(cast(m.congress AS SMALLINT),o.congress_max,p.congress_max,try_cast((regexp_match(w.package_id,'(?i)^CHRG-([0-9]+)'))[1] AS SMALLINT))) AS congress_end,
+            min(coalesce(m.meeting_date,o.date_min,p.date_min)) AS date_start,
+            max(coalesce(m.meeting_date,o.date_max,p.date_max)) AS date_end
             FROM witnesses_export w
             LEFT JOIN meetings_resolved m ON w.event_id=m.event_id
             LEFT JOIN (
-                SELECT unnest(witness_keys) AS witness_key,min(congress) AS congress,min(document_date) AS document_date
+                SELECT unnest(witness_keys) AS witness_key,min(congress) AS congress_min,max(congress) AS congress_max,min(document_date) AS date_min,max(document_date) AS date_max
                 FROM ordered WHERE witness_keys IS NOT NULL GROUP BY 1
-            ) o ON w.witness_key=o.witness_key""")
+            ) o ON w.witness_key=o.witness_key
+            LEFT JOIN (
+                SELECT package_id,min(congress) AS congress_min,max(congress) AS congress_max,min(document_date) AS date_min,max(document_date) AS date_max
+                FROM ordered WHERE package_id IS NOT NULL GROUP BY 1
+            ) p ON w.package_id=p.package_id""")
     if 'committees' in aux_names:
         coverage_parts.append("SELECT 'committees.parquet' AS file,cast(NULL AS SMALLINT) AS congress_start,cast(NULL AS SMALLINT) AS congress_end,min(n['start']) AS date_start,max(n['end']) AS date_end FROM (SELECT unnest(names) AS n FROM committees_export WHERE names IS NOT NULL)")
     if 'members' in aux_names:

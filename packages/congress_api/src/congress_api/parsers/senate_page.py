@@ -88,7 +88,7 @@ def sections(page_html, levels):
     return [s for s in re.split(rf"(?=<h[{levels}]\b)", page_html) if not (s.startswith("<h") and re.search(r"statement|remarks", text(s.split("</h")[0]), re.I))]
 
 
-def witnesses(page_html, url, *, plain=False):
+def witnesses(page_html, url, *, plain=False, deduplicate=True):
     """The witnesses a hearing page lists, by whichever of the seven layouts it uses."""
     page_html, out = re.sub(r"<!--.*?-->", "", page_html, flags=re.S), []
     if "capigacr-widget-card" in page_html:
@@ -143,9 +143,17 @@ def witnesses(page_html, url, *, plain=False):
                 out.append(person(" ".join(names), re.findall(r"<(?:div|p) class=\"jet-listing-dynamic-field__content\">(.*?)</(?:div|p)>", item, re.S), url))
     if plain:
         root = dom.fromstring(page_html)
-        out += [{**witness(line), 'page': url} for _, line in plain_witness_links(root)]
+        card_nodes = {node for node in root.iter() if participant_card_identity(node)}
+        out += [
+            {**witness(line), 'page': url}
+            for anchor, line in plain_witness_links(root)
+            if not any(parent in card_nodes for parent in anchor.iterancestors())
+        ]
+    valid = [w for w in out if is_name(w["name"])]
+    if not deduplicate:
+        return valid
     seen = set()
-    return [w for w in out if is_name(w["name"]) and not (w["name"] in seen or seen.add(w["name"]))]
+    return [w for w in valid if not (w["name"] in seen or seen.add(w["name"]))]
 
 
 def section_document_kind(metadata):
@@ -525,7 +533,8 @@ def link_headings(anchor, *, skip_panels=False, nodes=False, classification=Fals
         classes = set((ancestor.get("class") or "").split())
         if ancestor.tag in {"section", "article", "nav", "aside", "footer", "main"} or classes & {
                 "Hearing__section", "vcard", "capigacr-widget-card", "paragraph--witness",
-                "field-collection-item-field-hearing-new-witness", "jet-listing-grid__item"}:
+                "field-collection-item-field-hearing-new-witness", "jet-listing-grid__item",
+                "list-group-item", "witness-content"}:
             break
         if ancestor.tag in {'td', 'th'} and (heading := table_column_heading(anchor)):
             if nodes:
@@ -973,14 +982,21 @@ def document_labels(page_html, url):
     return {target: text(link.group(2)) for link, target in file_anchors(page_html, url)}
 
 
-def source_details(page_html, url, people, *, plain=False, include_link=None):
+def source_details(page_html, url, people, *, plain=False, include_link=None, preserve_occurrences=False):
     if not page_html.strip():
         return {}, {}, {}
     root = dom.fromstring(page_html, parser=dom.HTMLParser(remove_comments=True))
-    return source_details_tree(root, url, people, plain=plain, include_link=include_link)
+    return source_details_tree(
+        root,
+        url,
+        people,
+        plain=plain,
+        include_link=include_link,
+        preserve_occurrences=preserve_occurrences,
+    )
 
 
-def source_details_tree(root, url, people, *, plain=False, include_link=None, exclude_link=None):
+def source_details_tree(root, url, people, *, plain=False, include_link=None, exclude_link=None, preserve_occurrences=False):
     """Keep page content, links and explicit witness-card ownership.
 
     Existing witness rows and document triples remain unchanged for stable source
@@ -1035,10 +1051,37 @@ def source_details_tree(root, url, people, *, plain=False, include_link=None, ex
     by_name = {}
     for index, row in enumerate(people):
         by_name.setdefault(row["name"], []).append(index)
-    cards = []
-    for node in root.iter():
-        if identity := participant_card_identity(node):
-            cards.append((node, *identity))
+    all_nodes = list(root.iter())
+    witness_heading_idx = next(
+        (
+            i
+            for i, node in enumerate(all_nodes)
+            if isinstance(node.tag, str)
+            and not any(participant_card_identity(a) for a in node.iterancestors())
+            and (
+                (
+                    node.tag in {"h1", "h2", "h3", "h4", "h5", "h6"}
+                    and re.fullmatch(r"(?:Witnesses|Witness List|Nominees|Panel)\s*:?", value(node), re.I)
+                )
+                or (
+                    node.tag in {"h1", "h2", "h3", "h4", "h5", "h6", "div", "p", "span", "strong", "b"}
+                    and re.match(r"^\s*(?:Witnesses|Nominees|Panel)\b", node.text or "")
+                )
+            )
+        ),
+        None,
+    )
+    cards = [(node, *identity) for node in all_nodes if (identity := participant_card_identity(node))]
+    post_heading_cards = (
+        {
+            node
+            for node, _, _ in cards
+            if all_nodes.index(node) > witness_heading_idx
+            and participant_card_role(node) != "member"
+        }
+        if witness_heading_idx is not None
+        else set()
+    )
     witnesses_by_node, witness_metadata, cards_by_node = {}, {}, {}
     for card, family, raw_name in cards:
         matches = by_name.get(witness(raw_name)["name"], [])
@@ -1065,7 +1108,12 @@ def source_details_tree(root, url, people, *, plain=False, include_link=None, ex
         if location:
             metadata["location"] = location
         cards_by_node[card] = metadata
-        if len(matches) == 1:
+        if (
+            len(matches) == 1
+            and metadata.get("role") != "member"
+            and (not post_heading_cards or card in post_heading_cards)
+            and not re.search(r"statement", metadata.get("panel") or "", re.I)
+        ):
             index = matches[0]
             witness_metadata[str(index)] = metadata
             witnesses_by_node[card] = index
@@ -1079,6 +1127,22 @@ def source_details_tree(root, url, people, *, plain=False, include_link=None, ex
             if len(matches) == 1:
                 witnesses_by_node[anchor] = matches[0]
                 witness_metadata[str(matches[0])] = metadata
+    if preserve_occurrences:
+        for parsed_name, matches in by_name.items():
+            if len(matches) <= 1:
+                continue
+            candidates = [
+                node
+                for node, meta in cards_by_node.items()
+                if witness(meta["name"])["name"] == parsed_name
+                and meta.get("role") != "member"
+                and (not post_heading_cards or node in post_heading_cards or meta.get("layout") == "plain-witness-line")
+                and not re.search(r"statement", meta.get("panel") or "", re.I)
+            ]
+            if len(candidates) == len(matches):
+                for node, index in zip(candidates, matches):
+                    witnesses_by_node[node] = index
+                    witness_metadata[str(index)] = cards_by_node[node]
     # Separate cards with the same parsed name are not proof that their people
     # are identical. The older witness list may already have deduplicated names.
     repeated = {index for index, count in Counter(witnesses_by_node.values()).items() if count > 1}
@@ -1143,3 +1207,77 @@ def source_details_tree(root, url, people, *, plain=False, include_link=None, ex
             entry['related_page'] = related
         page_metadata['links'].append(entry)
     return files, witness_metadata, page_metadata
+
+
+def witness_occurrences(page_html, url=None, *, plain=True):
+    """Return every witness occurrence in source order with its card-scoped literal document links."""
+    if not page_html or not page_html.strip():
+        return []
+    base_url = url or "https://www.senate.gov/hearings/page"
+    effective_base = base_url
+    try:
+        tree = dom.fromstring(page_html, parser=dom.HTMLParser(remove_comments=True))
+        for b in tree.xpath("//base[@href]"):
+            bh = (b.get("href") or "").strip()
+            if bh:
+                effective_base = urljoin(base_url, bh)
+                break
+    except Exception:
+        pass
+    people = witnesses(page_html, effective_base, plain=plain, deduplicate=False)
+    if not people:
+        return []
+    files, witness_metadata, _ = source_details(
+        page_html,
+        effective_base,
+        people,
+        plain=plain,
+        include_link=lambda anchor: (
+            bool((related_page(anchor, effective_base) or {}).get("document_kind"))
+            or anchor.get("download") is not None
+            or bool(re.search(r"(?:^|[?&])download=(?:1|true)\b", anchor.get("href") or "", re.I))
+        ),
+        preserve_occurrences=True,
+    )
+    links_by_index = {i: [] for i in range(len(people))}
+    for entry in files.values():
+        for occ in entry.get("occurrences") or []:
+            for attr in occ.get("attributes") or []:
+                raw_href = html.unescape(attr.get("href") or "").strip()
+                if not raw_href:
+                    continue
+                for w_idx in occ.get("witness_indexes") or []:
+                    if w_idx in links_by_index and raw_href not in links_by_index[w_idx]:
+                        links_by_index[w_idx].append(raw_href)
+    occurrences = []
+    for idx, row in enumerate(people):
+        meta = witness_metadata.get(str(idx)) or {}
+        pos = row.get("position") or ""
+        org = row.get("organization") or ""
+        fields = meta.get("fields") or []
+        org_fields = [
+            f["text"]
+            for f in fields
+            if set((f.get("class") or "").split())
+            & {"org", "organization", "witness__field-organization"}
+        ]
+        pos_fields = [
+            f["text"]
+            for f in fields
+            if set((f.get("class") or "").split())
+            & {"title", "occupation", "witness__field-position"}
+        ]
+        if not org and org_fields and not pos_fields and pos == org_fields[0]:
+            pos, org = "", ", ".join(org_fields[:2])
+        occurrences.append(
+            {
+                **row,
+                "position": pos,
+                "organization": org,
+                "location": meta.get("location") or row.get("location") or "",
+                "panel": meta.get("panel") or row.get("panel") or "",
+                "document_links": links_by_index.get(idx, []),
+            }
+        )
+    return occurrences
+

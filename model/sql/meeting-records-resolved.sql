@@ -1,4 +1,14 @@
-WITH fetch_times AS (
+WITH selected_meeting_records AS (
+ SELECT r.*
+ FROM meeting_records_input r
+ WHERE (
+  NOT EXISTS (SELECT 1 FROM parser_versions WHERE parser LIKE 'meeting_records.%')
+  OR EXISTS (
+   SELECT 1 FROM parser_versions v
+   WHERE v.parser='meeting_records.'||r.source AND v.version=r.parser_version
+  )
+ )
+), fetch_times AS (
  SELECT encode(sha256,'hex') AS record_sha_hex,
   max(arrow_cast(cast(retrieved_at AS TIMESTAMP WITH TIME ZONE),'Timestamp(Microsecond, Some("UTC"))')) AS retrieved_at
  FROM captures
@@ -6,7 +16,7 @@ WITH fetch_times AS (
  GROUP BY sha256
 ), expanded AS (
  SELECT r.record_sha_hex,r.source,ms.priority,f.retrieved_at,unnest(r.meetings) AS m
- FROM meeting_records_input r
+ FROM selected_meeting_records r
  JOIN meeting_sources ms ON ms.kind='meeting' AND r.source=ms.source
  LEFT JOIN fetch_times f ON r.record_sha_hex=f.record_sha_hex
  WHERE r.status='completed' AND r.meetings IS NOT NULL
@@ -25,7 +35,8 @@ WITH fetch_times AS (
   m['committees'] AS committees,
   m['subject_keys'] AS subject_keys,
   m['transcript_jackets'] AS transcript_jackets,
-  m['videos'] AS videos
+  m['videos'] AS videos,
+  m['collection_states'] AS collection_states
  FROM expanded WHERE m['event_id'] IS NOT NULL
 ), ranked AS (
  SELECT *,row_number() OVER(
@@ -33,7 +44,12 @@ WITH fetch_times AS (
   ORDER BY updated DESC NULLS LAST,retrieved_at DESC NULLS LAST,record_sha_hex ASC
  ) AS rn FROM extracted
 ), current_source AS (
- SELECT * FROM ranked WHERE rn=1
+ SELECT *,
+  coalesce(nullif(trim(collection_states['sittings']),''),CASE WHEN coalesce(array_length(sittings),0)>0 THEN 'present' ELSE 'absent' END) AS sittings_state,
+  coalesce(nullif(trim(collection_states['committees']),''),CASE WHEN coalesce(array_length(committees),0)>0 THEN 'present' ELSE 'absent' END) AS committees_state,
+  coalesce(nullif(trim(collection_states['transcript_jackets']),''),CASE WHEN coalesce(array_length(transcript_jackets),0)>0 THEN 'present' ELSE 'absent' END) AS jackets_state,
+  coalesce(nullif(trim(collection_states['videos']),''),CASE WHEN coalesce(array_length(videos),0)>0 THEN 'present' ELSE 'absent' END) AS videos_state
+ FROM ranked WHERE rn=1
 ), event_keys AS (
  SELECT DISTINCT event_id FROM current_source
 ), merged AS (
@@ -46,23 +62,27 @@ WITH fetch_times AS (
   coalesce(h.meeting_date,c.meeting_date) AS meeting_date,
   coalesce(h.meeting_type,c.meeting_type) AS meeting_type,
   coalesce(h.status,c.status) AS status,
-  CASE WHEN coalesce(array_length(h.sittings),0)>0 THEN h.sittings
-       WHEN coalesce(array_length(c.sittings),0)>0 THEN c.sittings END AS raw_sittings,
-  CASE WHEN coalesce(array_length(h.committees),0)>0 THEN h.committees
-       WHEN coalesce(array_length(c.committees),0)>0 THEN c.committees END AS raw_committees,
-  CASE WHEN coalesce(array_length(h.subject_keys),0)>0 THEN h.subject_keys
-       WHEN coalesce(array_length(c.subject_keys),0)>0 THEN c.subject_keys END AS raw_subjects,
-  CASE WHEN coalesce(array_length(h.transcript_jackets),0)>0 THEN h.transcript_jackets
-       WHEN coalesce(array_length(c.transcript_jackets),0)>0 THEN c.transcript_jackets END AS raw_jackets,
-  CASE WHEN coalesce(array_length(h.videos),0)>0 THEN h.videos
-       WHEN coalesce(array_length(c.videos),0)>0 THEN c.videos END AS raw_videos
+  CASE WHEN h.sittings_state='present' THEN h.sittings
+       WHEN h.sittings_state IN ('empty','unrecognized') THEN NULL
+       WHEN c.sittings_state='present' THEN c.sittings END AS raw_sittings,
+  CASE WHEN h.committees_state='present' THEN h.committees
+       WHEN h.committees_state IN ('empty','unrecognized') THEN NULL
+       WHEN c.committees_state='present' THEN c.committees END AS raw_committees,
+  h.subject_keys AS house_subjects,
+  c.subject_keys AS congress_subjects,
+  CASE WHEN h.jackets_state='present' THEN h.transcript_jackets
+       WHEN h.jackets_state IN ('empty','unrecognized') THEN NULL
+       WHEN c.jackets_state='present' THEN c.transcript_jackets END AS raw_jackets,
+  CASE WHEN h.videos_state='present' THEN h.videos
+       WHEN h.videos_state IN ('empty','unrecognized') THEN NULL
+       WHEN c.videos_state='present' THEN c.videos END AS raw_videos
  FROM event_keys k
  LEFT JOIN current_source h ON k.event_id=h.event_id AND h.source='house_xml'
  LEFT JOIN current_source c ON k.event_id=c.event_id AND c.source='congress_gov'
 ), sitting_rows AS (
  SELECT event_id,unnest(raw_sittings) AS s,
   unnest(range(0,cast(array_length(raw_sittings) AS BIGINT))) AS idx
- FROM merged WHERE raw_sittings IS NOT NULL
+ FROM merged WHERE raw_sittings IS NOT NULL AND coalesce(array_length(raw_sittings),0)>0
 ), sittings_agg AS (
  SELECT event_id,array_agg(named_struct(
   'start',arrow_cast(try_cast(s['start'] AS TIMESTAMP WITH TIME ZONE),'Timestamp(Microsecond, Some("UTC"))'),
@@ -73,7 +93,7 @@ WITH fetch_times AS (
 ), committee_rows AS (
  SELECT event_id,unnest(raw_committees) AS c,
   unnest(range(0,cast(array_length(raw_committees) AS BIGINT))) AS idx
- FROM merged WHERE raw_committees IS NOT NULL
+ FROM merged WHERE raw_committees IS NOT NULL AND coalesce(array_length(raw_committees),0)>0
 ), committees_agg AS (
  SELECT event_id,array_agg(named_struct(
   'system_code',lower(c['system_code']),
@@ -81,21 +101,24 @@ WITH fetch_times AS (
  ) ORDER BY idx) AS committees
  FROM committee_rows WHERE c['system_code'] IS NOT NULL GROUP BY event_id
 ), subject_rows AS (
- SELECT event_id,lower(trim(unnest(raw_subjects))) AS subject_key
- FROM merged WHERE raw_subjects IS NOT NULL
+ SELECT event_id,lower(trim(unnest(house_subjects))) AS subject_key
+ FROM merged WHERE house_subjects IS NOT NULL AND coalesce(array_length(house_subjects),0)>0
+ UNION ALL
+ SELECT event_id,lower(trim(unnest(congress_subjects))) AS subject_key
+ FROM merged WHERE congress_subjects IS NOT NULL AND coalesce(array_length(congress_subjects),0)>0
 ), subjects_agg AS (
  SELECT event_id,array_sort(array_distinct(array_agg(subject_key))) AS subject_keys
  FROM subject_rows WHERE subject_key IS NOT NULL AND subject_key<>'' GROUP BY event_id
 ), jacket_rows AS (
  SELECT event_id,cast(unnest(raw_jackets) AS BIGINT) AS jacket
- FROM merged WHERE raw_jackets IS NOT NULL
+ FROM merged WHERE raw_jackets IS NOT NULL AND coalesce(array_length(raw_jackets),0)>0
 ), jackets_agg AS (
  SELECT event_id,array_sort(array_distinct(array_agg(jacket))) AS transcript_jackets
  FROM jacket_rows WHERE jacket IS NOT NULL GROUP BY event_id
 ), video_unnested AS (
  SELECT event_id,unnest(raw_videos) AS v,
   unnest(range(0,cast(array_length(raw_videos) AS BIGINT))) AS idx
- FROM merged WHERE raw_videos IS NOT NULL
+ FROM merged WHERE raw_videos IS NOT NULL AND coalesce(array_length(raw_videos),0)>0
 ), video_rows AS (
  SELECT event_id,idx,
   v['title'] AS video_title,

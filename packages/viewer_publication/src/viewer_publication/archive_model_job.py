@@ -113,9 +113,21 @@ def validate_spec(value,*,base):
                 raise ValueError('Expected a provenance record of the declared object family')
             validate_key(key)
             result[name].append(dict(item,path=_local(item['path'],base)))
-    from congress_api.lake import readings,filenames
+    from congress_api.lake import readings,filenames,meeting_records,appearance_records
     current={name:readings.current_version(name) for name in ['sniff','html','xml','json']}
-    if value['parser_versions']!=current:
+    pv=value.get('parser_versions')
+    if not isinstance(pv,dict):
+        raise ValueError('Parser versions must match the current definitions')
+    expected_pv=dict(current)
+    if 'meeting_records' in pv:
+        expected_pv['meeting_records']=meeting_records.current_versions()
+    elif value.get('meeting_records') is not None:
+        raise ValueError('Model job with meeting_records requires pinned meeting_records parser_versions')
+    if 'appearance_records' in pv:
+        expected_pv['appearance_records']=appearance_records.current_versions()
+    elif value.get('appearance_records') is not None:
+        raise ValueError('Model job with appearance_records requires pinned appearance_records parser_versions')
+    if pv!=expected_pv:
         raise ValueError('Parser versions must match the current definitions')
     if value['catalog_version']!=filenames.current_version():
         raise ValueError('Catalog version must match the current definition')

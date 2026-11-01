@@ -3,9 +3,17 @@ WITH candidate_packages AS (
  UNION
  SELECT DISTINCT package_id FROM document_packages WHERE package_id IS NOT NULL
  UNION
- SELECT DISTINCT a['package_id'] AS package_id FROM (
-  SELECT unnest(appearances) AS a FROM appearance_records_input WHERE status='completed' AND appearances IS NOT NULL
- ) WHERE a['package_id'] IS NOT NULL
+ SELECT DISTINCT nullif(trim(r.package_id),'') AS package_id
+ FROM appearance_records_input r
+ WHERE r.status='completed' AND r.package_id IS NOT NULL AND trim(r.package_id)<>''
+  AND (
+   NOT EXISTS (SELECT 1 FROM parser_versions WHERE parser LIKE 'appearance_records.%')
+   OR EXISTS (SELECT 1 FROM parser_versions v WHERE v.parser='appearance_records.'||r.source AND v.version=r.parser_version)
+  )
+ UNION
+ SELECT DISTINCT (regexp_match(coalesce(c.url,c.requested_url,c.context_url,c.member_path,''),'(?i)(CHRG-[0-9]+[hsj]hrg[0-9]+)'))[1] AS package_id
+ FROM captures c
+ WHERE regexp_like(coalesce(c.url,c.requested_url,c.context_url,c.member_path,''),'(?i)CHRG-[0-9]+[hsj]hrg[0-9]+')
 ), parsed_packages AS (
  SELECT package_id,
   try_cast((regexp_match(package_id,'(?i)^CHRG-([0-9]+)([hsj])hrg0*([0-9]+)$'))[1] AS INT) AS congress,

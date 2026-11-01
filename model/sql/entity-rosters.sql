@@ -6,4 +6,4 @@ SELECT
  try_cast(cast(rank AS VARCHAR) AS SMALLINT) AS rank,
  nullif(trim(party),'') AS party
 FROM spicy_committee_assignments
-WHERE system_code IS NOT NULL AND bioguide_id IS NOT NULL
+WHERE congress IS NOT NULL AND system_code IS NOT NULL AND bioguide_id IS NOT NULL

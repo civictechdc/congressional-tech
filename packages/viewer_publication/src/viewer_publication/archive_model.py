@@ -45,6 +45,15 @@ MEETING_RECORD_FIELDS=dict(
         subject_keys=list_of('Utf8'),
         transcript_jackets=list_of('Utf8'),
         videos=list_of(struct(video_key='Utf8',url='Utf8',title='Utf8')),
+        document_urls=list_of('Utf8'),
+        collection_states=struct(
+            sittings='Utf8',
+            committees='Utf8',
+            subject_keys='Utf8',
+            transcript_jackets='Utf8',
+            videos='Utf8',
+            document_urls='Utf8',
+        ),
     )),
 )
 
@@ -54,10 +63,13 @@ APPEARANCE_RECORD_FIELDS=dict(
     status='Utf8',
     error_type='Utf8',
     source='Utf8',
+    event_id='Int64',
+    package_id='Utf8',
+    declared_base='Utf8',
+    collection_state='Utf8',
+    context_url='Utf8',
     appearances=list_of(struct(
-        event_id='Utf8',
-        package_id='Utf8',
-        page_url='Utf8',
+        source_locator='Utf8',
         name_key='Utf8',
         name='Utf8',
         honorific='Utf8',
@@ -75,7 +87,7 @@ APPEARANCE_RECORD_FIELDS=dict(
         witness_type='Utf8',
         testified='Boolean',
         bioguide_id='Utf8',
-        document_urls=list_of('Utf8'),
+        document_links=list_of('Utf8'),
     )),
 )
 
@@ -145,11 +157,20 @@ def _hex_sha(value,index):
     return hashlib.sha256(f'record:{index}'.encode()).hexdigest()
 
 
-def _normalize_meeting_rows(rows):
+def _default_entity_version(selected_versions,source,fallback):
+    if isinstance(selected_versions,str) and selected_versions:
+        return selected_versions
+    if isinstance(selected_versions,dict) and source in selected_versions and isinstance(selected_versions[source],str) and selected_versions[source]:
+        return selected_versions[source]
+    return fallback
+
+
+def _normalize_meeting_rows(rows,selected_versions=None):
     normalized=[]
     for idx,raw in enumerate(rows):
         row=dict(raw)
         record_sha_hex=row.get('record_sha_hex') or _hex_sha(row.get('record_sha'),idx)
+        source=row.get('source')
         meetings=[]
         for m in (row.get('meetings') or ()):
             item=dict(m)
@@ -174,42 +195,68 @@ def _normalize_meeting_rows(rows):
                     title=vd.get('title') if vd.get('title') is not None else vd.get('name'),
                 ))
             item['videos']=videos
+            item['document_urls']=[str(u) for u in (item.get('document_urls') or []) if u is not None]
+            cs=dict(item.get('collection_states') or {})
+            item['collection_states']={
+                k:cs.get(k)
+                for k in ('sittings','committees','subject_keys','transcript_jackets','videos','document_urls')
+            }
             meetings.append(item)
         normalized.append(dict(
             record_sha_hex=record_sha_hex,
-            parser_version=row.get('parser_version','meeting-v1'),
+            parser_version=row.get('parser_version') or _default_entity_version(selected_versions,source,'meeting-v1'),
             status=row.get('status','completed'),
             error_type=row.get('error_type'),
-            source=row.get('source'),
+            source=source,
             meetings=meetings,
         ))
     return normalized
 
 
-def _normalize_appearance_rows(rows):
+def _normalize_appearance_rows(rows,selected_versions=None):
     normalized=[]
     for idx,raw in enumerate(rows):
         row=dict(raw)
         record_sha_hex=row.get('record_sha_hex') or _hex_sha(row.get('record_sha'),idx)
+        source=row.get('source')
+        top_event_id=row.get('event_id')
+        top_package_id=row.get('package_id')
+        top_context_url=row.get('context_url') or row.get('page_url') or row.get('source_url')
         appearances=[]
-        for a in (row.get('appearances') or ()):
+        for idx_a,a in enumerate(row.get('appearances') or (),start=1):
             item=dict(a)
-            if item.get('event_id') is not None:
-                item['event_id']=str(item['event_id'])
+            if top_event_id is None and item.get('event_id') is not None:
+                top_event_id=item['event_id']
+            if top_package_id is None and item.get('package_id') is not None:
+                top_package_id=item['package_id']
+            if top_context_url is None and item.get('page_url') is not None:
+                top_context_url=item['page_url']
             if item.get('panel') is not None:
                 item['panel']=str(item['panel'])
-            doc_urls=list(item.get('document_urls') or [])
+            raw_links=item.get('document_links')
+            if raw_links is None:
+                raw_links=item.get('document_urls') or []
+            doc_links=list(raw_links)
             for extra_urls in ('statement_urls','bio_urls','truth_urls','answer_urls','supplement_urls'):
                 if item.get(extra_urls):
-                    doc_urls.extend(item[extra_urls])
-            item['document_urls']=doc_urls
+                    doc_links.extend(item[extra_urls])
+            item['source_locator']=str(item.get('source_locator') or f"{source or 'appearance'}:witness[{idx_a}]")
+            item['document_links']=[str(u) for u in doc_links if u is not None]
             appearances.append(item)
+        parsed_event_id=None
+        if top_event_id is not None and str(top_event_id).strip()!='':
+            parsed_event_id=int(top_event_id)
         normalized.append(dict(
             record_sha_hex=record_sha_hex,
-            parser_version=row.get('parser_version','appearance-v1'),
+            parser_version=row.get('parser_version') or _default_entity_version(selected_versions,source,'appearance-v1'),
             status=row.get('status','completed'),
             error_type=row.get('error_type'),
-            source=row.get('source'),
+            source=source,
+            event_id=parsed_event_id,
+            package_id=str(top_package_id) if top_package_id is not None else None,
+            declared_base=str(row['declared_base']) if row.get('declared_base') is not None else None,
+            collection_state=str(row['collection_state']) if row.get('collection_state') is not None else None,
+            context_url=str(top_context_url) if top_context_url is not None else None,
             appearances=appearances,
         ))
     return normalized
@@ -383,12 +430,15 @@ def admission_steps(*,prelude=(),root=ROOT):
 
 def admission_checks(*,parser_versions,catalog_version,include_entities=False,root=ROOT):
     """Check current pinned inputs without exporting public release files."""
-    from viewer_publication.archive_model_profile import completeness_checks
-    from congress_api.lake.readings import bundle_version,worker_limits
+    from viewer_publication.archive_model_profile import completeness_checks,readings_bundle_version,validate_parser_versions
+    validate_parser_versions(parser_versions,require_entities=include_entities)
     checks=','.join(sql+' AS '+name for name,sql in evidence_checks().items())
     return [dict(name='model_invariants',sql='SELECT '+checks)]+completeness_checks(
-        catalog_version=catalog_version,readings_version=bundle_version(parser_versions,policy=worker_limits()),
-        include_entities=include_entities,root=root)
+        catalog_version=catalog_version,readings_version=readings_bundle_version(parser_versions),
+        include_entities=include_entities,
+        meeting_records_version=parser_versions.get('meeting_records') if isinstance(parser_versions,dict) else None,
+        appearance_records_version=parser_versions.get('appearance_records') if isinstance(parser_versions,dict) else None,
+        root=root)
 
 
 def input_receipts_query():
@@ -412,7 +462,9 @@ def prepare_model_inputs(*,captures,readings,filename_readings,parser_versions,c
                          spicy_regs=None,include_entities=False,recovery_requirements=None,root=ROOT):
     """Freeze current input selectors and the shared prefix in fresh private scratch."""
     from viewer_publication.archive_format import _settings
-    from viewer_publication.archive_model_profile import profile_record
+    from viewer_publication.archive_model_profile import expand_parser_version_rows,profile_record,validate_parser_versions
+    include_entities=bool(include_entities or meeting_records is not None or appearance_records is not None or spicy_regs is not None)
+    validate_parser_versions(parser_versions,require_entities=include_entities)
     scratch=Path(scratch).resolve();scratch.mkdir(parents=True,exist_ok=False)
     evidence=scratch/'evidence';evidence.mkdir()
     inputs=registry_inputs(scratch/'registries',root=root)
@@ -424,7 +476,7 @@ def prepare_model_inputs(*,captures,readings,filename_readings,parser_versions,c
     data_inputs=[dict(value,name=name) if isinstance(value,dict) else
         dict(name=name,kind='parquet',path=str(Path(value).resolve())) for name,value in raw_data_inputs]
     inputs += data_inputs
-    inputs.append(json_input(scratch,'parser_versions',[dict(parser=p,version=v) for p,v in sorted(parser_versions.items())],parser='Utf8',version='Utf8'))
+    inputs.append(json_input(scratch,'parser_versions',expand_parser_version_rows(parser_versions),parser='Utf8',version='Utf8'))
     # Provenance is immutable input data; JSON columns with heterogeneous values
     # are projected once by the native reader before policy joins.
     from viewer_publication.archive_provenance import provenance_inputs
@@ -443,31 +495,40 @@ def prepare_model_inputs(*,captures,readings,filename_readings,parser_versions,c
         prelude.append(dict(name='recovery_requirements',sql='SELECT original_url,target_requirement,acceptance_policy,'+refresh+' FROM recovery_requirements_input',materialize=True))
     def _record_table_sql(table_name,value,payload_col):
         parquet_path=value.get('path') if isinstance(value,dict) and value.get('kind')=='parquet' else (value if isinstance(value,(str,Path)) else None)
-        sha_expr="lower(record_sha)"
-        status_expr="'completed'"
-        error_expr="cast(NULL AS VARCHAR)"
+        sha_expr="lower(encode(record_sha,'hex'))"
+        status_expr='status'
+        error_expr='error_type'
+        extra_select=''
+        if table_name=='appearance_records':
+            extra_select='event_id,package_id,declared_base,collection_state,cast(NULL AS VARCHAR) AS context_url,'
         if parquet_path is not None and Path(parquet_path).is_file():
             import pyarrow as pa
             import pyarrow.parquet as pq
             schema=pq.read_schema(parquet_path)
-            if 'record_sha' in schema.names and (pa.types.is_binary(schema.field('record_sha').type) or pa.types.is_fixed_size_binary(schema.field('record_sha').type)):
-                sha_expr="lower(encode(record_sha,'hex'))"
-            if 'status' in schema.names:
-                status_expr='status'
-            if 'error_type' in schema.names:
-                error_expr='error_type'
-        return f"SELECT {sha_expr} AS record_sha_hex,parser_version,{status_expr} AS status,{error_expr} AS error_type,source,{payload_col} FROM {table_name}"
+            if 'record_sha' in schema.names and not (pa.types.is_binary(schema.field('record_sha').type) or pa.types.is_fixed_size_binary(schema.field('record_sha').type)):
+                sha_expr='lower(record_sha)'
+            if 'status' not in schema.names:
+                status_expr="'completed'"
+            if 'error_type' not in schema.names:
+                error_expr='cast(NULL AS VARCHAR)'
+            if table_name=='appearance_records':
+                ev_expr='event_id' if 'event_id' in schema.names else 'cast(NULL AS BIGINT) AS event_id'
+                pkg_expr='package_id' if 'package_id' in schema.names else 'cast(NULL AS VARCHAR) AS package_id'
+                base_expr='declared_base' if 'declared_base' in schema.names else 'cast(NULL AS VARCHAR) AS declared_base'
+                cs_expr='collection_state' if 'collection_state' in schema.names else 'cast(NULL AS VARCHAR) AS collection_state'
+                ctx_expr='context_url' if 'context_url' in schema.names else 'cast(NULL AS VARCHAR) AS context_url'
+                extra_select=f'{ev_expr},{pkg_expr},{base_expr},{cs_expr},{ctx_expr},'
+        return f"SELECT {sha_expr} AS record_sha_hex,parser_version,{status_expr} AS status,{error_expr} AS error_type,source,{extra_select}{payload_col} FROM {table_name}"
     if meeting_records is None or isinstance(meeting_records,(list,tuple)):
-        inputs.append(json_input(scratch,'meeting_records_input',_normalize_meeting_rows(meeting_records or ()),**MEETING_RECORD_FIELDS))
+        inputs.append(json_input(scratch,'meeting_records_input',_normalize_meeting_rows(meeting_records or (),parser_versions.get('meeting_records')),**MEETING_RECORD_FIELDS))
     else:
         prelude += [dict(name='meeting_records_input',sql=_record_table_sql('meeting_records',meeting_records,'meetings'),materialize=True)]
     if appearance_records is None or isinstance(appearance_records,(list,tuple)):
-        inputs.append(json_input(scratch,'appearance_records_input',_normalize_appearance_rows(appearance_records or ()),**APPEARANCE_RECORD_FIELDS))
+        inputs.append(json_input(scratch,'appearance_records_input',_normalize_appearance_rows(appearance_records or (),parser_versions.get('appearance_records')),**APPEARANCE_RECORD_FIELDS))
     else:
         prelude += [dict(name='appearance_records_input',sql=_record_table_sql('appearance_records',appearance_records,'appearances'),materialize=True)]
     spicy_inputs,entity_digests=_prepare_spicy_inputs(scratch,spicy_regs)
     inputs += spicy_inputs
-    include_entities=bool(include_entities or meeting_records is not None or appearance_records is not None or spicy_regs is not None)
     if include_entities and entity_digests is None:
         entity_digests={fam:hashlib.sha256(f'spicy-regs:{fam}'.encode()).hexdigest() for fam in ('committee-rosters','members','bill-family','nominations','roll-call-votes')}
     verification_schema=dict(key='Utf8',size='Int64',intact='Boolean',sha256_verified='Boolean',checked_at='Utf8')
@@ -552,11 +613,45 @@ def build_prepared_release(prepared,*,engine,output,root=ROOT):
         'document-version-keys','document-versions','document-metadata','document-addresses','saved-recoveries','document-removals','document-packages'],root=root)
     steps += [dict(name='meetings_resolved',sql=(Path(root)/'model/sql/meeting-records-resolved.sql').read_text(),materialize=True),
         dict(name='meeting_transcript_links',sql=(Path(root)/'model/sql/meeting-transcript-links.sql').read_text(),materialize=True)]
-    app_url_inputs_sql="""WITH apps AS (
-        SELECT unnest(appearances) AS app FROM appearance_records_input WHERE status='completed' AND appearances IS NOT NULL
+    app_url_inputs_sql="""WITH distinct_capture_urls AS (
+        SELECT DISTINCT encode(sha256,'hex') AS record_sha_hex,
+            coalesce(url,requested_url,context_url) AS source_url
+        FROM captures
+        WHERE mode='fetch' AND complete AND outcome IN ('stored','unchanged')
+          AND http_status BETWEEN 200 AND 299 AND sha256 IS NOT NULL
+    ), app_contexts AS (
+        SELECT r.record_sha_hex,r.source,nullif(trim(r.declared_base),'') AS declared_base,
+            coalesce(c.source_url,r.context_url) AS source_url,
+            r.appearances
+        FROM appearance_records_input r
+        LEFT JOIN distinct_capture_urls c ON c.record_sha_hex=r.record_sha_hex
+        WHERE r.status='completed'
+          AND (
+            NOT EXISTS (SELECT 1 FROM parser_versions WHERE parser LIKE 'appearance_records.%')
+            OR EXISTS (SELECT 1 FROM parser_versions v WHERE v.parser='appearance_records.'||r.source AND v.version=r.parser_version)
+          )
+    ), with_base AS (
+        SELECT source_url,appearances,
+            CASE
+                WHEN source_url IS NOT NULL AND declared_base IS NOT NULL
+                    THEN coalesce(url_resolve(declared_base,source_url),source_url)
+                ELSE source_url
+            END AS resolved_base
+        FROM app_contexts
+    ), apps AS (
+        SELECT source_url,resolved_base,unnest(appearances) AS app
+        FROM with_base WHERE appearances IS NOT NULL
+    ), raw_links AS (
+        SELECT resolved_base,
+            nullif(trim(unnest(coalesce(app['document_links'],arrow_cast(make_array(),'List(Utf8)')))),'') AS raw_link
+        FROM apps
     ), raw_urls AS (
-        SELECT app['page_url'] AS raw_url FROM apps
-        UNION SELECT unnest(coalesce(app['document_urls'],arrow_cast(make_array(),'List(Utf8)'))) AS raw_url FROM apps
+        SELECT source_url AS raw_url FROM with_base WHERE source_url IS NOT NULL
+        UNION
+        SELECT CASE WHEN resolved_base IS NOT NULL THEN coalesce(url_resolve(raw_link,resolved_base),raw_link) ELSE raw_link END AS raw_url
+        FROM raw_links WHERE raw_link IS NOT NULL
+        UNION
+        SELECT raw_link AS raw_url FROM raw_links WHERE raw_link IS NOT NULL
     ), distinct_urls AS (
         SELECT DISTINCT raw_url AS url FROM raw_urls WHERE raw_url IS NOT NULL AND trim(raw_url)<>''
     ) SELECT encode(sha256(json_array(url)),'hex') AS input_id,url FROM distinct_urls"""
@@ -569,8 +664,7 @@ def build_prepared_release(prepared,*,engine,output,root=ROOT):
         dict(name='document_witness_keys',sql=(Path(root)/'model/sql/document-witness-keys.sql').read_text(),materialize=True),
         dict(name='component_meeting_links',sql=(Path(root)/'model/sql/component-meeting-links.sql').read_text(),materialize=True)]
     steps += [dict(name='base_normalized',sql=(Path(root)/'model/sql/document-normalized.sql').read_text()+' UNION ALL '+(Path(root)/'model/sql/document-recovery-normalized.sql').read_text(),materialize=True)]
-    from viewer_publication.archive_model_profile import completeness_checks
-    from congress_api.lake.readings import bundle_version,worker_limits
+    from viewer_publication.archive_model_profile import completeness_checks,readings_bundle_version
     steps += application_steps(root=root)
     steps += [dict(name='normalized',sql="""SELECT n.* EXCLUDE(title,document_kind,hidden,review_note,review_decided_at,removed_on),
         coalesce(r.title_override,n.title) AS title,coalesce(r.kind_override,n.document_kind) AS document_kind,
@@ -659,11 +753,11 @@ def build_prepared_release(prepared,*,engine,output,root=ROOT):
             )""",materialize=True),
         ]
         auxiliary += [
-            ('witnesses','SELECT witness_key,occasion,event_id,package_id,page_url,name,position,organization,on_behalf_of,location,panel,panel_order,display_order,witness_type,testified,bioguide_id FROM appearance_records_resolved',['occasion','panel_order','display_order','witness_key'],['occasion','witness_type','bioguide_id']),
+            ('witnesses','SELECT witness_key,occasion,source,record_sha,source_locator,context_key,event_id,package_id,page_url,name,position,organization,on_behalf_of,location,panel,panel_order,display_order,witness_type,testified,bioguide_id FROM appearance_records_resolved',['occasion','panel_order','display_order','witness_key'],['occasion','source','witness_type','bioguide_id']),
             ('recordings',(Path(root)/'model/sql/entity-recordings.sql').read_text(),['video_key'],['tracks.list.item.suffix','tracks.list.item.format','tracks.list.item.language','tracks.list.item.production']),
             ('committees',(Path(root)/'model/sql/entity-committees.sql').read_text(),['system_code'],['chamber','committee_type','parent_system_code']),
             ('members',(Path(root)/'model/sql/entity-members.sql').read_text(),['bioguide_id'],['terms.list.item.chamber','terms.list.item.state','terms.list.item.party']),
-            ('rosters',(Path(root)/'model/sql/entity-rosters.sql').read_text(),['system_code','rank','bioguide_id'],['system_code','bioguide_id','title','party']),
+            ('rosters',(Path(root)/'model/sql/entity-rosters.sql').read_text(),['congress','system_code','rank','bioguide_id'],['system_code','bioguide_id','title','party']),
             ('bills',(Path(root)/'model/sql/entity-bills.sql').read_text(),['bill_id'],['sponsor_bioguide_id','stage','policy_area','committees.list.item','floor_votes.list.item.basis','floor_votes.list.item.chamber','amendments.list.item.sponsor_bioguide_id','committee_activities.list.item.system_code','committee_activities.list.item.activity']),
             ('nominations',(Path(root)/'model/sql/entity-nominations.sql').read_text(),['nomination_id'],['committees.list.item']),
         ]
@@ -700,23 +794,26 @@ def build_prepared_release(prepared,*,engine,output,root=ROOT):
             (SELECT count(*) FROM (
                 SELECT DISTINCT unnest(witness_keys) AS witness_key FROM ordered WHERE witness_keys IS NOT NULL
             ) k WHERE NOT EXISTS (SELECT 1 FROM witnesses_export w WHERE w.witness_key=k.witness_key)) AS missing_witness_keys,
-            (SELECT CASE WHEN (SELECT count(*) FROM committees_export)=0 THEN 0 ELSE (
-                SELECT count(*) FROM (
-                    SELECT DISTINCT unnest(committee_keys) AS system_code FROM ordered WHERE committee_keys IS NOT NULL
-                ) k WHERE NOT EXISTS (SELECT 1 FROM committees_export c WHERE c.system_code=k.system_code)
-            ) END) AS missing_committee_keys"""
+            (SELECT count(*) FROM (
+                SELECT DISTINCT unnest(committee_keys) AS system_code FROM ordered WHERE committee_keys IS NOT NULL
+                UNION
+                SELECT DISTINCT cm['system_code'] AS system_code FROM (
+                    SELECT unnest(committees) AS cm FROM meetings_export WHERE committees IS NOT NULL
+                ) WHERE cm['system_code'] IS NOT NULL
+            ) k WHERE NOT EXISTS (SELECT 1 FROM committees_export c WHERE c.system_code=k.system_code)) AS missing_committee_keys"""
         meta_queries += [
             dict(name='appearance_name_key_variants',sql="""WITH stripped AS (
                 SELECT occasion,name_key,
                     trim(regexp_replace(
                         regexp_replace(
                             ' '||name_key||' ',
-                            '(?i)\\s+(?:dr|mr|ms|mrs|miss|hon|the honorable|rep|sen|prof|gen|lt gen|maj gen|brig gen|adm|rear adm|vice adm|col|lt col|maj|capt|lt|cmdr|sgt|rev|fr|rabbi|amb|sec|gov|mayor|judge|justice|esq|phd|md|jd|jr|sr|ii|iii|iv|v|usa|usn|usaf|usmc|uscg|ret)\\s+',
+                            '(?i)\\s+(?:(?:dr|mr|ms|mrs|miss|hon|the honorable|rep|sen|prof|gen|lt gen|maj gen|brig gen|adm|rear adm|vice adm|col|lt col|maj|capt|lt|cmdr|sgt|rev|fr|rabbi|amb|sec|gov|mayor|judge|justice|esq|phd|md|jd|jr|sr|ii|iii|iv|v|usa|usn|usaf|usmc|uscg|ret)\\s+)+',
                             ' ','g'
                         ),
-                        '\\s+[a-z]\\s+',' ','g'
+                        '\\s+(?:[a-z]\\s+)+',' ','g'
                     )) AS base_key
                 FROM appearance_records_resolved
+                WHERE name_key IS NOT NULL
             )
             SELECT occasion,base_key,min(name_key) AS first_name_key,max(name_key) AS second_name_key,count(DISTINCT name_key) AS variant_count
             FROM stripped
@@ -724,13 +821,9 @@ def build_prepared_release(prepared,*,engine,output,root=ROOT):
             GROUP BY occasion,base_key
             HAVING count(DISTINCT name_key)>1
             ORDER BY occasion,base_key"""),
-            dict(name='senate_cards_without_links',sql="""SELECT record_sha_hex,app['page_url'] AS page_url,app['name_key'] AS name_key,app['name'] AS name
-            FROM (
-                SELECT record_sha_hex,unnest(appearances) AS app
-                FROM appearance_records_input
-                WHERE status='completed' AND source='senate_page' AND appearances IS NOT NULL
-            )
-            WHERE coalesce(array_length(app['document_urls']),0)=0
+            dict(name='senate_cards_without_links',sql="""SELECT record_sha_hex,page_url,name_key,name
+            FROM appearance_records_resolved
+            WHERE source='senate_page' AND coalesce(array_length(document_urls),0)=0
             ORDER BY record_sha_hex,page_url,name_key"""),
         ]
     manifest=_execute(inputs,steps,output=output,scratch=scratch,engine=engine,
@@ -748,7 +841,15 @@ def build_prepared_release(prepared,*,engine,output,root=ROOT):
             (SELECT count(*) FROM (SELECT unnest(alternates) AS alt FROM document_alternates) WHERE alt['size'] IS NULL) AS missing_alternate_sizes,
             (SELECT count(*) FROM (
                 SELECT cast(m['event_id'] AS BIGINT) AS event_id
-                FROM (SELECT unnest(meetings) AS m FROM meeting_records_input WHERE status='completed' AND meetings IS NOT NULL)
+                FROM (
+                    SELECT unnest(r.meetings) AS m
+                    FROM meeting_records_input r
+                    WHERE r.status='completed' AND r.meetings IS NOT NULL
+                      AND (
+                        NOT EXISTS (SELECT 1 FROM parser_versions WHERE parser LIKE 'meeting_records.%')
+                        OR EXISTS (SELECT 1 FROM parser_versions v WHERE v.parser='meeting_records.'||r.source AND v.version=r.parser_version)
+                      )
+                )
                 WHERE m['event_id'] IS NOT NULL AND nullif(trim(m['chamber']),'') IS NOT NULL
                 GROUP BY cast(m['event_id'] AS BIGINT)
                 HAVING count(DISTINCT CASE
@@ -781,7 +882,9 @@ def build_prepared_release(prepared,*,engine,output,root=ROOT):
                 ) rev ON substr(o.bh,1,16)=rev.prefix
             ) merged_docs ON single_vk.doc_key=merged_docs.doc_key) AS single_doc_version_keys{entity_invariant_sql}""")]+url_state_diagnostics()+completeness_checks(
             catalog_version=catalog_version,
-            readings_version=bundle_version(parser_versions,policy=worker_limits()),
+            readings_version=readings_bundle_version(parser_versions),
             include_entities=bool(prepared.get('include_entities')),
+            meeting_records_version=parser_versions.get('meeting_records') if isinstance(parser_versions,dict) else None,
+            appearance_records_version=parser_versions.get('appearance_records') if isinstance(parser_versions,dict) else None,
             root=root))
     return manifest

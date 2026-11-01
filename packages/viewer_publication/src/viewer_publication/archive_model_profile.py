@@ -3,6 +3,14 @@ import json
 from pathlib import Path
 import re
 
+from congress_api.lake._record_producer import (
+    CONGRESS_GOV_CAPTURE_SQL,
+    GOOD_FETCH_CAPTURE_SQL,
+    HOUSE_XML_CAPTURE_SQL,
+    INLINE_CONGRESS_MEETINGS_SQL,
+    MODS_CAPTURE_SQL,
+    SENATE_PAGE_CAPTURE_SQL,
+)
 from congress_api.lake.readings import bundle_version,worker_limits
 from congress_api.lake.versions import version_digest
 from congress_api.models.archive_profile import build_capture_profile
@@ -10,11 +18,48 @@ from congress_api.retention.provenance import file_pin
 
 ROOT=Path(__file__).parents[4]
 PARSERS=('sniff','html','xml','json')
+MEETING_SOURCES=('congress_gov','house_xml')
+APPEARANCE_SOURCES=('house_xml','congress_gov','senate_page','mods')
+ENTITY_SOURCES={'meeting_records':MEETING_SOURCES,'appearance_records':APPEARANCE_SOURCES}
 
 
 def readings_bundle_version(versions):
     """Use the same current worker policy as the combined producer."""
-    return bundle_version(versions,policy=worker_limits())
+    page_versions={p:versions[p] for p in PARSERS if p in versions} if isinstance(versions,dict) else versions
+    return bundle_version(page_versions,policy=worker_limits())
+
+
+def validate_parser_versions(parser_versions,*,require_entities=False):
+    """Validate page-parser and optional/required entity-parser version selections."""
+    if (not isinstance(parser_versions,dict) or not set(PARSERS)<=parser_versions.keys()
+            or not set(parser_versions)<=set(PARSERS)|set(ENTITY_SOURCES)):
+        raise ValueError('Model profile requires pinned parsers, catalog, engine, runtime, tables and writer')
+    for name in PARSERS:
+        val=parser_versions.get(name)
+        if not isinstance(val,str) or not val:
+            raise ValueError('Model profile requires pinned parsers, catalog, engine, runtime, tables and writer')
+    for entity_name,expected_sources in ENTITY_SOURCES.items():
+        if entity_name not in parser_versions:
+            if require_entities:
+                raise ValueError(f'Model profile with {entity_name} requires pinned {entity_name} parser_versions')
+            continue
+        val=parser_versions[entity_name]
+        if (not isinstance(val,dict) or set(val)!=set(expected_sources)
+                or any(not isinstance(v,str) or not v for v in val.values())):
+            raise ValueError(f'Model profile requires exact source-scoped {entity_name} parser_versions')
+
+
+def expand_parser_version_rows(parser_versions):
+    """Flatten page and source-scoped entity parser versions into (parser, version) rows."""
+    validate_parser_versions(parser_versions)
+    rows=[dict(parser=name,version=parser_versions[name]) for name in sorted(PARSERS)]
+    for entity_name,expected_sources in sorted(ENTITY_SOURCES.items()):
+        if entity_name not in parser_versions:
+            continue
+        val=parser_versions[entity_name]
+        for source in sorted(expected_sources):
+            rows.append(dict(parser=f'{entity_name}.{source}',version=val[source]))
+    return rows
 
 
 def _copy(value):
@@ -48,9 +93,10 @@ def profile_record(*,parser_versions,catalog_version,engine_revision,runtime_pin
                    lake_versions,writer_settings,snapshots,file_hashes=None,root=ROOT,
                    relationship_metadata_update=None,recovery_policy=None):
     """Pin semantic definitions; retain exact physical selectors outside their digest."""
-    if (not isinstance(parser_versions,dict) or not set(PARSERS)<=parser_versions.keys()
-            or any(not isinstance(v,str) or not v for v in parser_versions.values())
-            or not isinstance(catalog_version,str) or not catalog_version
+    require_entities=(isinstance(lake_versions,dict)
+        and ('meeting_records' in lake_versions or 'appearance_records' in lake_versions))
+    validate_parser_versions(parser_versions,require_entities=require_entities)
+    if (not isinstance(catalog_version,str) or not catalog_version
             or not isinstance(engine_revision,str) or re.fullmatch('[0-9a-f]{40}',engine_revision) is None
             or any(not isinstance(v,dict) or not v for v in (runtime_pins,lake_versions,writer_settings,snapshots))):
         raise ValueError('Model profile requires pinned parsers, catalog, engine, runtime, tables and writer')
@@ -82,6 +128,33 @@ def completeness_steps(*,root=ROOT):
         for name in ['profile-bodies','profile-filename-pairs']]
 
 
+def _entity_version_cte(table_prefix,expected_sources,override_version):
+    if override_version is not None:
+        if (not isinstance(override_version,dict) or set(override_version)!=set(expected_sources)
+                or any(not isinstance(v,str) or not v for v in override_version.values())):
+            raise ValueError(f'Invalid {table_prefix} version override')
+        mapping=dict(override_version)
+        values_sql=','.join(
+            f"('{s}','{mapping[s].replace(chr(39),chr(39)*2)}')"
+            for s in sorted(expected_sources)
+        )
+        return f"""SELECT o.source,
+            CASE
+                WHEN pv_scoped.parser IS NULL AND pv_table.parser IS NULL THEN o.version
+                WHEN coalesce(pv_scoped.version,pv_table.version)=o.version THEN o.version
+                ELSE NULL
+            END AS version
+            FROM (SELECT column1 AS source,column2 AS version FROM (VALUES {values_sql})) o
+            LEFT JOIN parser_versions pv_scoped ON pv_scoped.parser='{table_prefix}.'||o.source
+            LEFT JOIN parser_versions pv_table ON pv_table.parser='{table_prefix}'"""
+    sources_sql=','.join(f"('{s}')" for s in sorted(expected_sources))
+    return f"""SELECT s.source,
+        coalesce(pv_scoped.version,pv_table.version) AS version
+        FROM (SELECT column1 AS source FROM (VALUES {sources_sql})) s
+        LEFT JOIN parser_versions pv_scoped ON pv_scoped.parser='{table_prefix}.'||s.source
+        LEFT JOIN parser_versions pv_table ON pv_table.parser='{table_prefix}'"""
+
+
 def completeness_checks(*,catalog_version,readings_version,include_entities=False,
                         meeting_records_version=None,appearance_records_version=None,root=ROOT):
     """Return native counts; every positive value refuses accepted model output.
@@ -99,48 +172,186 @@ def completeness_checks(*,catalog_version,readings_version,include_entities=Fals
         sql=sql.replace(token,"'"+value.replace("'","''")+"'")
     checks=[dict(name='profile_completeness',sql=sql)]
     if include_entities:
-        mr_ver_filter=(f" AND parser_version='{meeting_records_version.replace(chr(39),chr(39)*2)}'"
-            if isinstance(meeting_records_version,str) and meeting_records_version else '')
-        ar_ver_filter=(f" AND parser_version='{appearance_records_version.replace(chr(39),chr(39)*2)}'"
-            if isinstance(appearance_records_version,str) and appearance_records_version else '')
-        entity_sql=f"""WITH mr_dup AS (
+        mr_versions_sql=_entity_version_cte('meeting_records',MEETING_SOURCES,meeting_records_version)
+        ar_versions_sql=_entity_version_cte('appearance_records',APPEARANCE_SOURCES,appearance_records_version)
+        entity_sql=f"""WITH selected_mr_versions AS (
+            {mr_versions_sql}
+        ), selected_ar_versions AS (
+            {ar_versions_sql}
+        ), mr_dup AS (
             SELECT count(*) AS cnt FROM (
-                SELECT record_sha_hex,parser_version FROM meeting_records_input
-                GROUP BY record_sha_hex,parser_version HAVING count(*)>1
+                SELECT record_sha_hex,source,parser_version FROM meeting_records_input
+                GROUP BY record_sha_hex,source,parser_version HAVING count(*)>1
             )
         ), ar_dup AS (
             SELECT count(*) AS cnt FROM (
-                SELECT record_sha_hex,parser_version FROM appearance_records_input
-                GROUP BY record_sha_hex,parser_version HAVING count(*)>1
+                SELECT record_sha_hex,source,parser_version FROM appearance_records_input
+                GROUP BY record_sha_hex,source,parser_version HAVING count(*)>1
             )
         ), mr_invalid AS (
-            SELECT count(*) AS cnt FROM meeting_records_input
-            WHERE record_sha_hex IS NULL OR trim(record_sha_hex)=''
-               OR parser_version IS NULL OR trim(parser_version)=''
-               OR status IS NULL OR status NOT IN ('completed','error','size_limit')
-               OR source IS NULL OR source NOT IN ('congress_gov','house_xml')
+            SELECT (
+                SELECT count(*) FROM meeting_records_input
+                WHERE record_sha_hex IS NULL OR trim(record_sha_hex)=''
+                   OR parser_version IS NULL OR trim(parser_version)=''
+                   OR status IS NULL OR status NOT IN ('completed','error','size_limit')
+                   OR source IS NULL OR source NOT IN ('congress_gov','house_xml')
+            ) + (
+                SELECT count(*) FROM selected_mr_versions WHERE version IS NULL OR trim(version)=''
+            ) AS cnt
         ), ar_invalid AS (
-            SELECT count(*) AS cnt FROM appearance_records_input
-            WHERE record_sha_hex IS NULL OR trim(record_sha_hex)=''
-               OR parser_version IS NULL OR trim(parser_version)=''
-               OR status IS NULL OR status NOT IN ('completed','error','size_limit')
-               OR source IS NULL OR source NOT IN ('house_xml','congress_gov','senate_page','mods')
+            SELECT (
+                SELECT count(*) FROM appearance_records_input
+                WHERE record_sha_hex IS NULL OR trim(record_sha_hex)=''
+                   OR parser_version IS NULL OR trim(parser_version)=''
+                   OR status IS NULL OR status NOT IN ('completed','error','size_limit')
+                   OR source IS NULL OR source NOT IN ('house_xml','congress_gov','senate_page','mods')
+            ) + (
+                SELECT count(*) FROM selected_ar_versions WHERE version IS NULL OR trim(version)=''
+            ) AS cnt
+        ), current_page_readings AS (
+            SELECT r.body_sha,r.parser,r.status,r.xml_root
+            FROM readings r
+            JOIN parser_versions pv ON r.parser=pv.parser AND r.parser_version=pv.version
+            WHERE r.status IN ('completed','error','size_limit')
+        ), expected_mr AS (
+            SELECT DISTINCT lower(encode(c.sha256,'hex')) AS record_sha_hex,'congress_gov' AS source
+            FROM captures c
+            LEFT JOIN current_page_readings r ON c.sha256=r.body_sha AND r.parser IN ('json','xml')
+            WHERE {GOOD_FETCH_CAPTURE_SQL}
+              AND {CONGRESS_GOV_CAPTURE_SQL}
+            UNION
+            SELECT DISTINCT lower(encode(c.sha256,'hex')) AS record_sha_hex,'house_xml' AS source
+            FROM captures c
+            LEFT JOIN current_page_readings r ON c.sha256=r.body_sha AND r.parser='xml'
+            WHERE {GOOD_FETCH_CAPTURE_SQL}
+              AND {HOUSE_XML_CAPTURE_SQL}
+              AND (
+                  (r.status='completed' AND r.xml_root='committee-meeting')
+                  OR (coalesce(r.status,'')<>'completed' AND coalesce(c.family,'')<>'house/witness-xml'
+                      AND lower(coalesce(c.url,c.requested_url,c.context_url,'')) NOT LIKE '%wlist%')
+              )
+        ), expected_ar AS (
+            SELECT DISTINCT lower(encode(c.sha256,'hex')) AS record_sha_hex,'house_xml' AS source
+            FROM captures c
+            LEFT JOIN current_page_readings r ON c.sha256=r.body_sha AND r.parser='xml'
+            WHERE {GOOD_FETCH_CAPTURE_SQL}
+              AND {HOUSE_XML_CAPTURE_SQL}
+              AND (
+                  (r.status='completed' AND r.xml_root='witness-list')
+                  OR (coalesce(r.status,'')<>'completed' AND (
+                      c.family='house/witness-xml'
+                      OR lower(coalesce(c.url,c.requested_url,c.context_url,'')) LIKE '%wlist%'
+                  ))
+              )
+            UNION
+            SELECT DISTINCT lower(encode(c.sha256,'hex')) AS record_sha_hex,'congress_gov' AS source
+            FROM captures c
+            LEFT JOIN current_page_readings r ON c.sha256=r.body_sha AND r.parser IN ('json','xml')
+            WHERE {GOOD_FETCH_CAPTURE_SQL}
+              AND {CONGRESS_GOV_CAPTURE_SQL}
+            UNION
+            SELECT DISTINCT lower(encode(c.sha256,'hex')) AS record_sha_hex,'mods' AS source
+            FROM captures c
+            LEFT JOIN current_page_readings r ON c.sha256=r.body_sha AND r.parser='xml'
+            WHERE {GOOD_FETCH_CAPTURE_SQL}
+              AND {MODS_CAPTURE_SQL}
+              AND (coalesce(r.status,'')<>'completed' OR r.xml_root IS NULL OR r.xml_root='mods')
+            UNION
+            SELECT DISTINCT lower(encode(c.sha256,'hex')) AS record_sha_hex,'senate_page' AS source
+            FROM captures c
+            LEFT JOIN current_page_readings r ON c.sha256=r.body_sha AND r.parser='html'
+            WHERE {GOOD_FETCH_CAPTURE_SQL}
+              AND {SENATE_PAGE_CAPTURE_SQL}
+        ), inline_cg_expected AS (
+            SELECT DISTINCT CASE
+                WHEN source_url<>'' THEN source_url
+                ELSE receipt_key||':'||cast(receipt_line AS VARCHAR)
+            END AS inline_key
+            FROM ({INLINE_CONGRESS_MEETINGS_SQL})
+        ), mr_settled AS (
+            SELECT DISTINCT m.record_sha_hex,m.source
+            FROM meeting_records_input m
+            JOIN selected_mr_versions v ON m.source=v.source AND m.parser_version=v.version
+            WHERE m.status IN ('completed','error','size_limit')
+        ), mr_unreadable AS (
+            SELECT DISTINCT lower(coalesce(u.record_sha,u.body_sha256)) AS record_sha_hex,v.source
+            FROM active_unreadable u
+            JOIN selected_mr_versions v ON u.parser_version=v.version
+            WHERE u.parser IN ('meeting_records','meetings','meeting_records.'||v.source)
+              AND coalesce(u.record_sha,u.body_sha256) IS NOT NULL
+        ), mr_inline_unsettled AS (
+            SELECT greatest(
+                (SELECT count(*) FROM inline_cg_expected) - (
+                    SELECT count(DISTINCT record_sha_hex) FROM (
+                        SELECT record_sha_hex FROM mr_settled WHERE source='congress_gov'
+                        UNION
+                        SELECT record_sha_hex FROM mr_unreadable WHERE source='congress_gov'
+                    ) s WHERE NOT EXISTS (
+                        SELECT 1 FROM expected_mr e WHERE e.source='congress_gov' AND e.record_sha_hex=s.record_sha_hex
+                    )
+                ),
+                0
+            ) AS cnt
         ), mr_unsettled AS (
-            SELECT count(*) AS cnt FROM meeting_records_input m
-            WHERE (m.status NOT IN ('completed','error','size_limit'){mr_ver_filter})
-              AND NOT EXISTS (
-                  SELECT 1 FROM active_unreadable u
-                  WHERE (u.record_sha=m.record_sha_hex OR u.body_sha256=m.record_sha_hex)
-                    AND u.parser IN ('meeting_records','meetings')
-              )
+            SELECT (SELECT count(*) FROM (
+                SELECT e.record_sha_hex,e.source
+                FROM expected_mr e
+                WHERE NOT EXISTS (
+                    SELECT 1 FROM mr_settled s WHERE s.record_sha_hex=e.record_sha_hex AND s.source=e.source
+                ) AND NOT EXISTS (
+                    SELECT 1 FROM mr_unreadable u WHERE u.record_sha_hex=e.record_sha_hex AND u.source=e.source
+                )
+                UNION
+                SELECT m.record_sha_hex,m.source
+                FROM meeting_records_input m
+                JOIN selected_mr_versions v ON m.source=v.source AND m.parser_version=v.version
+                WHERE m.status NOT IN ('completed','error','size_limit')
+                  AND NOT EXISTS (
+                      SELECT 1 FROM mr_unreadable u WHERE u.record_sha_hex=m.record_sha_hex AND u.source=m.source
+                  )
+            )) + (SELECT cnt FROM mr_inline_unsettled) AS cnt
+        ), ar_settled AS (
+            SELECT DISTINCT a.record_sha_hex,a.source
+            FROM appearance_records_input a
+            JOIN selected_ar_versions v ON a.source=v.source AND a.parser_version=v.version
+            WHERE a.status IN ('completed','error','size_limit')
+        ), ar_unreadable AS (
+            SELECT DISTINCT lower(coalesce(u.record_sha,u.body_sha256)) AS record_sha_hex,v.source
+            FROM active_unreadable u
+            JOIN selected_ar_versions v ON u.parser_version=v.version
+            WHERE u.parser IN ('appearance_records','appearances','appearance_records.'||v.source)
+              AND coalesce(u.record_sha,u.body_sha256) IS NOT NULL
+        ), ar_inline_unsettled AS (
+            SELECT greatest(
+                (SELECT count(*) FROM inline_cg_expected) - (
+                    SELECT count(DISTINCT record_sha_hex) FROM (
+                        SELECT record_sha_hex FROM ar_settled WHERE source='congress_gov'
+                        UNION
+                        SELECT record_sha_hex FROM ar_unreadable WHERE source='congress_gov'
+                    ) s WHERE NOT EXISTS (
+                        SELECT 1 FROM expected_ar e WHERE e.source='congress_gov' AND e.record_sha_hex=s.record_sha_hex
+                    )
+                ),
+                0
+            ) AS cnt
         ), ar_unsettled AS (
-            SELECT count(*) AS cnt FROM appearance_records_input a
-            WHERE (a.status NOT IN ('completed','error','size_limit'){ar_ver_filter})
-              AND NOT EXISTS (
-                  SELECT 1 FROM active_unreadable u
-                  WHERE (u.record_sha=a.record_sha_hex OR u.body_sha256=a.record_sha_hex)
-                    AND u.parser IN ('appearance_records','appearances')
-              )
+            SELECT (SELECT count(*) FROM (
+                SELECT e.record_sha_hex,e.source
+                FROM expected_ar e
+                WHERE NOT EXISTS (
+                    SELECT 1 FROM ar_settled s WHERE s.record_sha_hex=e.record_sha_hex AND s.source=e.source
+                ) AND NOT EXISTS (
+                    SELECT 1 FROM ar_unreadable u WHERE u.record_sha_hex=e.record_sha_hex AND u.source=e.source
+                )
+                UNION
+                SELECT a.record_sha_hex,a.source
+                FROM appearance_records_input a
+                JOIN selected_ar_versions v ON a.source=v.source AND a.parser_version=v.version
+                WHERE a.status NOT IN ('completed','error','size_limit')
+                  AND NOT EXISTS (
+                      SELECT 1 FROM ar_unreadable u WHERE u.record_sha_hex=a.record_sha_hex AND u.source=a.source
+                  )
+            )) + (SELECT cnt FROM ar_inline_unsettled) AS cnt
         )
         SELECT
             (SELECT cnt FROM mr_dup) AS duplicate_meeting_records,

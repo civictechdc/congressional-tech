@@ -178,6 +178,12 @@ def _final_provenance(initial,raw_store,imported,identities,*,acknowledgements=N
     return result
 
 
+def _check_entity_versions(table_name,actual,mod):
+    expected=mod.current_versions()
+    if not isinstance(actual,dict) or actual!=expected:
+        raise ValueError(f'Daily producer definitions for {table_name} must match current source-scoped versions')
+
+
 def produce_daily(spec,*,engine,raw_store):
     """D1 then budgeted D2 then D3, returning fresh pins only after completion.
 
@@ -292,10 +298,12 @@ def produce_daily(spec,*,engine,raw_store):
     if (captures.current_version()!=versions['captures']
             or filenames.current_version(vocabularies=spec.get('vocabularies'))!=versions['filename_readings']
             or {p:readings.current_version(p) for p in versions['parsers']}!=versions['parsers']
-            or readings.bundle_version(versions['parsers'],policy=readings.worker_limits())!=versions['readings']
-            or ('meeting_records' in versions and meeting_records.current_version()!=versions['meeting_records'])
-            or ('appearance_records' in versions and appearance_records.current_version()!=versions['appearance_records'])):
+            or readings.bundle_version(versions['parsers'],policy=readings.worker_limits())!=versions['readings']):
         raise ValueError('Daily producer definitions changed during execution')
+    if 'meeting_records' in versions:
+        _check_entity_versions('meeting_records',versions['meeting_records'],meeting_records)
+    if 'appearance_records' in versions:
+        _check_entity_versions('appearance_records',versions['appearance_records'],appearance_records)
     report['pins']=final
     report['receipt_keys']=_complete_receipt_keys(final['captures'],engine=engine,work=work/'receipt-identity')
     report['status']='completed'
