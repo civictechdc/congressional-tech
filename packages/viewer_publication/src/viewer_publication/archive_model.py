@@ -452,6 +452,12 @@ def _sql_steps(names,*,root=ROOT):
     return [dict(name=name.replace('-','_'),sql=(Path(root)/'model/sql'/(name+'.sql')).read_text(),materialize=True) for name in names]
 
 
+def meeting_steps(*,root=ROOT):
+    """Select once, merge once, then resolve: CTEs are inlined per reader, so these must be steps."""
+    return _sql_steps(['meeting-records-current','meeting-records-merged'],root=root)+[
+        dict(name='meetings_resolved',sql=(Path(root)/'model/sql/meeting-records-resolved.sql').read_text(),materialize=True)]
+
+
 def admission_steps(*,prelude=(),root=ROOT):
     """Use the full model's maintained input prefix before accepting a skip."""
     from viewer_publication.archive_provenance import current_steps
@@ -648,8 +654,7 @@ def build_prepared_release(prepared,*,engine,output,root=ROOT):
     steps += annotation_steps(catalog_version=catalog_version,root=root)
     steps += _sql_steps(['document-members','document-bodies','document-identities','saved-files','document-alternates',
         'document-version-keys','document-versions','document-metadata','document-addresses','saved-recoveries','document-removals','document-packages'],root=root)
-    steps += [dict(name='meetings_resolved',sql=(Path(root)/'model/sql/meeting-records-resolved.sql').read_text(),materialize=True),
-        dict(name='meeting_transcript_links',sql=(Path(root)/'model/sql/meeting-transcript-links.sql').read_text(),materialize=True)]
+    steps += meeting_steps(root=root)+[dict(name='meeting_transcript_links',sql=(Path(root)/'model/sql/meeting-transcript-links.sql').read_text(),materialize=True)]
     app_url_inputs_sql="""WITH selected_app_records AS (
         SELECT r.record_sha_hex,r.source,nullif(trim(r.declared_base),'') AS declared_base,
             r.context_url,r.appearances

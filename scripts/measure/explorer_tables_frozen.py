@@ -15,7 +15,7 @@ from docspec_client.client import NativeDatasets
 from viewer_publication.archive_format import _settings
 from viewer_publication.archive_model_lifetimes import retire_relations
 from viewer_publication.archive_model_profile import expand_parser_version_rows
-from viewer_publication.archive_model import (EXPLORER_TABLES, RECORDING_DECISION_FIELDS, ROOT, channel_directory_rows,
+from viewer_publication.archive_model import (EXPLORER_TABLES, RECORDING_DECISION_FIELDS, ROOT, channel_directory_rows, meeting_steps,
     registry_inputs)
 from congress_api.retention.provenance import field, json_input, run_job
 
@@ -64,7 +64,7 @@ def main(argv=None):
         dict(name='meeting_records_input', sql="SELECT lower(encode(record_sha,'hex')) AS record_sha_hex,parser_version,status,error_type,source,meetings FROM meeting_records", materialize=True),
         dict(name='active_recording_decisions', sql='SELECT r.* FROM recording_decision_records r WHERE NOT EXISTS(SELECT 1 FROM recording_decision_records s WHERE s.supersedes=r.id)', materialize=True),
         dict(name='youtube_cache_bodies', sql=sql('youtube-cache-bodies'), materialize=True),
-        dict(name='meetings_resolved', sql=sql('meeting-records-resolved'), materialize=True),
+        *meeting_steps(),
         dict(name='ordered', sql='SELECT meeting_keys FROM "list"', materialize=True),
         dict(name='meetings_export', sql='SELECT * FROM released_meetings', materialize=True),
         dict(name='meeting_transcript_links', sql="SELECT event_id,t['package_id'] AS package_id FROM (SELECT event_id,unnest(transcripts) AS t FROM released_meetings)", materialize=True),
