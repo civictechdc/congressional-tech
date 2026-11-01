@@ -1,0 +1,64 @@
+{
+ "cannot_see": [
+  "The differential covers 458 bodies, not the corpus: replay must sample marker-bypassed bodies.",
+  "One extruct version only.",
+  "Timed-out formats are not deterministic and must be treated as partial."
+ ],
+ "cohort": "458 retained bodies, the sample behind F12-F13; recursion bodies include 22c57e71 and ba0e1102",
+ "determinism": {
+  "all_results_sha256": "da1ee3a61ea7a0f6c342b7b38f33cf825b15f1d77b50974ced9463f840e94f2c",
+  "finding": "pyRdfa blank-node IDs are random per run as well as ordered by hash seed; 170 of 458 bodies differed until labels were canonicalized",
+  "note": "all_results_sha256 equal for PYTHONHASHSEED=1,2,3, in separate processes"
+ },
+ "gated": {
+  "all_results_sha256": "da1ee3a61ea7a0f6c342b7b38f33cf825b15f1d77b50974ced9463f840e94f2c",
+  "bodies": 458,
+  "mean_ms": 29.0,
+  "peak_rss_mb": 148.0,
+  "statuses": {
+   "dublincore:absent:extractor:": 280,
+   "dublincore:ok:extractor:": 178,
+   "json-ld:absent:extractor:": 423,
+   "json-ld:ok:extractor:": 35,
+   "microdata:absent:extractor:": 454,
+   "microdata:ok:extractor:": 4,
+   "microformat:absent:extractor:": 35,
+   "microformat:absent:marker:": 384,
+   "microformat:ok:extractor:": 39,
+   "opengraph:absent:extractor:": 219,
+   "opengraph:ok:extractor:": 239,
+   "rdfa:absent:extractor:": 34,
+   "rdfa:absent:marker:": 117,
+   "rdfa:ok:extractor:": 307
+  },
+  "wall_seconds": 13.3
+ },
+ "marker_differential": {
+  "counts": {
+   "microformat": {
+    "marker_absent:absent:": 376,
+    "marker_absent:failed:RecursionError": 8,
+    "marker_present:absent:": 35,
+    "marker_present:ok:": 39
+   },
+   "rdfa": {
+    "marker_absent:absent:": 116,
+    "marker_absent:failed:format_timeout": 1,
+    "marker_present:absent:": 34,
+    "marker_present:ok:": 307
+   }
+  },
+  "misses": [],
+  "seconds": {
+   "microformat": 28.5,
+   "microformat:bypassed": 25.4,
+   "rdfa": 50.6,
+   "rdfa:bypassed": 45.7
+  }
+ },
+ "runtime": {
+  "extruct": "0.18.0",
+  "lxml": "6.0.2",
+  "python": "3.12.13"
+ }
+}
