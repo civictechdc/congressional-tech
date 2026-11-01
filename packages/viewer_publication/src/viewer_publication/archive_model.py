@@ -149,6 +149,22 @@ SPICY_SCHEMAS={
 }
 
 
+CHANNEL_DIRECTORY=Path('packages/congress_shared/src/congress_shared/youtube/youtube-accounts.csv')
+
+
+def channel_directory_rows(root=ROOT):
+    """One row per curated handle. The CSV stays the one authority: youtube-fetch depends on its row order."""
+    import csv
+    rows=[]
+    with (Path(root)/CHANNEL_DIRECTORY).open(newline='') as source:
+        for row in csv.DictReader(source):
+            ids=json.loads(row['channel_ids'] or '{}')
+            for role,handles in (('primary',[row['handle']]),('secondary',row['secondary'].split(';')),('member',row['member_channels'].split(';'))):
+                rows += [dict(handle=handle,channel_id=ids.get(handle),system_code=row['systemCode'],committee_label=row['committee'],role=role)
+                    for handle in map(str.strip,handles) if handle]
+    return rows
+
+
 def _hex_sha(value,index):
     if isinstance(value,(bytes,bytearray)):
         return bytes(value).hex()
@@ -587,7 +603,7 @@ def build_release(*,captures,readings,filename_readings,parser_versions,catalog_
 
 def build_prepared_release(prepared,*,engine,output,root=ROOT):
     """Continue one prepared plan through grouping and the shared native exporter."""
-    from viewer_publication.archive_format import _execute,_settings,LIST_COLUMNS,DETAIL_COLUMNS
+    from viewer_publication.archive_format import _execute,_settings,LIST_COLUMNS,DETAIL_COLUMNS,MEETING_DICTIONARY
     from viewer_publication.archive_annotations import annotation_steps
     from viewer_publication.archive_provenance import attachment_steps,body_review_steps
     scratch=prepared['scratch'];evidence=prepared['evidence'];output=Path(output).resolve()
@@ -697,7 +713,7 @@ def build_prepared_release(prepared,*,engine,output,root=ROOT):
     from viewer_publication.archive_url_state import url_state_steps,url_state_diagnostics
     steps += url_state_steps(root=root,recovery_policy=prepared.get('recovery_policy'))
     meetings_sql=(Path(root)/'model/sql/entity-meetings.sql').read_text()
-    auxiliary=[('meetings',meetings_sql,['event_id'],['chamber','meeting_type','status','committees.list.item.system_code','committees.list.item.role','subject_keys.list.item'])]
+    auxiliary=[('meetings',meetings_sql,['event_id'],MEETING_DICTIONARY)]
     if prepared.get('include_entities'):
         steps += [
             dict(name='recording_url_sources',sql="SELECT pattern,key_template,format,default_language,default_production FROM recording_sources WHERE kind='video_url'",materialize=True),

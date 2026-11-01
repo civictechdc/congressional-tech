@@ -32,6 +32,7 @@ import re
 
 from congress_api.parsers.gpo_hearings import is_multi_hearing_volume
 from congress_api.parsers.text import STOP, words
+from congress_api.parsers.youtube_video import EVENT_ID
 
 
 CLIP_SECONDS = 1200
@@ -42,9 +43,6 @@ CLIP_TITLE_SECONDS = 1800
 
 CLIP_TITLE = re.compile(r"\b(q&a|questions?|opening statement|opening remarks|statement|remarks|round of questions|closing)\b"
                         r"|^(sen\.|senator|rep\.|chairman|chair|ranking member|subcommittee chairman|vice chair)\s", re.I)
-
-
-EVENT_ID = re.compile(r"(?:event\s*id|\bid)\s*[:=#]?\s*(1\d{5})(?!\d)|house-event/(1\d{5})(?!\d)", re.I)
 
 
 SENATE_VIDEO = re.compile(r"https?://www\.senate\.gov/isvp/")
