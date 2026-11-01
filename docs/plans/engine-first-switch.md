@@ -59,6 +59,10 @@ evidence. It does not close the following remaining sequence:
    [PHASE-2 §4.6](phase-2-annex-20261028.md#46-explorer-migration-and-data-coverage),
    preserve legacy-only evidence, and produce the shared native release from
    pinned lake/reference inputs through the actual production job configuration.
+   First satisfy the accepted correctness cases in PHASE-2 §4.7: attempt-specific
+   capture eligibility (`ct-sh4j`), contextual witness occurrences and replacement
+   state (`ct-30fp`), and version/completeness admission (`ct-yymr`, `ct-kw9b`,
+   `ct-vpo2`). Reuse prior evidence only where the corrected semantics leave it valid.
 2. `ct-t915`: make `/archive/` and `/dashboard/` use that release. Redirect or
    replace the dashboard, or retain only Coverage/Gaps backed by the same release.
 3. `ct-m104`: verify producer-to-site/MCP parity and real release discovery/query

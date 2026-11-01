@@ -1,8 +1,8 @@
 ---
 id: ct-cov3
-status: open
+status: closed
 deps: []
-links: []
+links: [ct-vnkf]
 created: 2026-10-30T18:34:44Z
 type: feature
 priority: 2
@@ -50,3 +50,22 @@ Owners: `packages/viewer_publication/src/viewer_publication/archive_maintenance.
 **2026-10-30T19:28:54Z**
 
 Also linked with ct-vnkf maintenance spec alignment: ensure archive_maintenance.py fetches spicy-regs' published archive release pin list (failing closed if unreachable), syncs viewer-publications/pins/spicy-generations.json across all kept releases, and binds raw_verification and lake_maintenance in model/jobs/maintenance.json.
+
+**2026-11-01T03:12:32Z**
+
+Implemented external release pin wire contract (ARCHIVE_RELEASE_PINS = 'viewer-publications/pins/archive-releases.json', read_archive_release_pins v1 schema validation failing closed before inventory/deletion, stale external pin filtering with stale_external_pins reporting while keeping strict live/previous_release_id checks, and unconditional spicy_generations write when execute=True) in packages/viewer_publication/src/viewer_publication/archive_maintenance.py and packages/viewer_publication/tests/test_phase2_release_pruning.py. Verified 87 passed.
+
+**2026-11-01T10:38:19Z**
+
+Independent Validation Audit (2026-11-01, validator 2366732b):
+- Verdict: PASS-WITH-CAVEATS (4/4 ACs met; 87/87 tests pass).
+- Remaining work before closure:
+  1. [Priority 2] In `packages/viewer_publication/src/viewer_publication/archive_maintenance.py:224-228,268-277` (`maintain_releases` / `kept_input_records`), handle the case where an externally pinned `release_id` still has objects under `releases/<id>/` (`release.json`) but its `releases/<id>/inputs/<input_digest>.json` record was already pruned before the pin appeared: treat missing `inputs/` on an external pin as a stale/partially-pruned external pin (while keeping `live` and `last_good` strict fail-closed).
+  2. Commit working-tree changes.
+
+**2026-11-01T12:05:49Z**
+
+Evolutionary Refactoring & Recursive Review Swarm Audit (2026-11-01):
+- Refactored by Cluster 5 Engineer (4c90d67e, 99% confidence):
+  1. Added `_has_input_record` in `archive_maintenance.py:270-284` so partially pruned external release pins missing `inputs/<digest>.json` are classified into `stale_external_pins` while keeping `pointer_kept` (`live`, `previous_release_id`) strictly fail-closed (`test_phase2_release_pruning.py:171-202`).
+- Recursive Review Swarm Verdicts (Round 2): Red Team PASS (99%), Green Team PASS (100%), Greybeard PASS (99%), Evolutionary Refactoring PASS (99%).

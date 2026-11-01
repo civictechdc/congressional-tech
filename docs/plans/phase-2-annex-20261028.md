@@ -2,6 +2,12 @@
 
 **Note, 2026-10-28.** What phase 2 adds: hearings, witnesses, recordings and the spicy-regs entities. Its rules were moved here unchanged from [[DATA-MODEL]] (§1–3, formerly DM §6.4, §6.5, §6.7, §7.11 and the entity rows of §8.1) and [[IMPLEMENTATION-PLAN]] (§4), so phase 1 can be built without reading them. §1–3 are normative as [[DATA-MODEL]] §2 says, from phase 2 on.
 
+**Accepted review corrections, 2026-10-30.** §1–3 now specify context-free
+appearance readings, explicit collection state and source-occurrence identity.
+These are target rules awaiting implementation and versioned schema migration,
+not descriptions of the currently published witness data. §4.7 maps all five
+blind-review findings to existing or focused follow-up tickets and required checks.
+
 ## 1. Lake and Reference Inputs
 
 ### 1.1 Reference Inputs
@@ -59,11 +65,15 @@ Each `meetings` element:
 - **Sources:** Congress.gov meeting records for both chambers (18,140 meetings, about 11 identical inline copies each, which `record_sha` collapses) and House `committee-meeting` XML. Senate committee pages carry no meeting ID; they give documents and appearances (§1.3).
 - **Work list:** good-fetched bodies and inline records whose URL matches the meeting-source registry ([[DATA-MODEL]] §7.1) with no row at the pinned version. Inline records are read once from the four `congress/meetings` receipt files (77 MB, 199,156 lines) by their `captures` pointers, and `record_sha` is computed then.
 - **PK:** `(record_sha, parser_version)`; tens of thousands of rows. The model unnests `meetings`.
-- **Current records:** per `(event_id, source)`, the latest by `(updated desc nulls last, latest good fetch's retrieved_at desc nulls last, record_sha)`. Each field of a meeting comes from its current `house_xml` record when that states it, else its current `congress_gov` record.
+- **Current records:** first filter the selected source/parser versions; then, per `(event_id, source)`, choose the latest by `(updated desc nulls last, latest good fetch's retrieved_at desc nulls last, record_sha)`. Each replacement field comes from the current `house_xml` record when that explicitly states it, else its current `congress_gov` record. Replacement collections carry `present`, `empty`, `absent` or `unrecognized` state: an explicitly empty higher-precedence list replaces the old list and is not filled from another source. Only an absent declaration permits normal fallback; failed or unrecognized extraction remains an explicit coverage problem. Fields deliberately combining assertions, such as `subject_keys` under `ct-h1nd`, keep their separately stated union policy and provenance.
 
 ### 1.3 `appearance_records`
 
-One row per input and parser version, with the witnesses it lists in `appearances`. An appearance is keyed, not matched: the model gives it a `witness_key` (§2), which a later witness table keys on.
+One row per input body/inline record, source kind and selected parser version,
+with source occurrences in `appearances`. Parsing reads body facts once; it does
+not select a capture URL or resolve relative links. The model binds each eligible
+source context afterward, using the same principle as page-link resolution.
+An appearance is a source observation, not a person identified by normalized name.
 
 | Column | Type | Notes |
 |---|---|---|
@@ -71,16 +81,17 @@ One row per input and parser version, with the witnesses it lists in `appearance
 | `parser_version` | string | — |
 | `status`, `error_type` | string | [[DATA-MODEL]] §6. |
 | `source` | string | `house_xml`, `congress_gov`, `senate_page` or `mods`. |
-| `appearances` | list<struct> | One element per witness, in source order; an input's entries sharing a `name_key` keep the first, so `witness_key` (§2) is unique per occasion. Empty when it lists none. Fields below. |
+| `event_id`, `package_id` | long nullable, string nullable | Subject identifiers stated in the input, outside the list so an empty observation retains its subject. Identifiers derivable only from a URL are assigned in the contextual model step. |
+| `declared_base` | string, nullable | Literal base address declared by the body, if any; resolve it per source context, never against an arbitrary selected capture URL. |
+| `collection_state` | string, nullable | `present` for a recognized nonempty collection; `empty` for a recognized explicit zero; `absent` when the supported input makes no collection declaration; `unrecognized` when its collection layout cannot be interpreted. Failed reads retain their `status`/`error_type`, not an invented empty list. |
+| `appearances` | list<struct> | One element per source occurrence in source order, including repeated names. Empty lists do not erase subject identity or collection state. Fields below. |
 
 Each `appearances` element:
 
 | Field | Type | Notes |
 |---|---|---|
-| `event_id` | long, nullable | The meeting, for a House witness list or a Congress.gov record. |
-| `package_id` | string, nullable | The GovInfo package, for a MODS record. |
-| `page_url` | string, nullable | The hearing page's source URL, for a Senate page. |
-| `name_key` | string | The recorded name, NFKC, casefolded, punctuation dropped, whitespace collapsed. It survives re-parsing and reordering; two spellings give two keys. With no recorded name, `#` and the entry's 1-based position in the source's list, so unnamed witnesses stay apart. |
+| `source_locator` | string | A deterministic locator of this occurrence in the retained input: a publisher-supplied occurrence ID where unique, otherwise a source-node selector under a versioned locator rule. It is not the entry's position in a filtered output list or a normalized name. |
+| `name_key` | string, nullable | The recorded name, NFKC, casefolded, punctuation dropped, whitespace collapsed; null when unnamed. A grouping/diagnostic attribute, never sufficient evidence to merge two observations. |
 | `name` | string, nullable | As recorded. |
 | `honorific`, `given`, `middle`, `family`, `suffix` | string, nullable | When the source splits the name (House XML). |
 | `position`, `organization`, `on_behalf_of`, `location` | string, nullable | As recorded. |
@@ -89,15 +100,17 @@ Each `appearances` element:
 | `witness_type` | string, nullable | As recorded. |
 | `testified` | boolean, nullable | Whether the source marks the witness as having testified. |
 | `bioguide_id` | string, nullable | Given by the source for a member witness; never inferred. |
-| `document_urls` | list<string> | The witness's own document links, resolved against the source's URL as [[DATA-MODEL]] §7.2 resolves links: a House witness list's `witness-document` entries, a Senate page card's links. Empty for Congress.gov and MODS. |
+| `document_links` | list<string> | The witness occurrence's literal document links, including relative addresses. The model resolves these into `document_urls` against each eligible source context and declared base using DATA-MODEL §7.2. Missing context remains unresolved, not guessed. Empty where the source supplies no links. |
 
 - **Sources:**
   - House `witness-list` XML, beside the meeting's `committee-meeting` record: split names, panels, witness documents and member bioguide IDs;
   - Congress.gov meeting records: name, position and organization; they list no Senate witnesses (0 of 4,575 Senate events);
   - Senate committee hearing pages, whose layout puts each witness's links inside that witness's card: 90.7% of senate.gov testimony files;
   - GovInfo MODS records already in raw, which list a printed hearing's witnesses for both chambers, at granule level too.
-- **Work list:** good-fetched witness lists, Congress.gov records and MODS records, and Senate hearing pages, matching the meeting-source registry ([[DATA-MODEL]] §7.1), with no row at the pinned version.
-- **PK:** `(record_sha, parser_version)`; one input lists one meeting, page or package. The model unnests `appearances`.
+- **Work list:** eligible witness lists, Congress.gov records, MODS records and Senate hearing pages matching the meeting-source registry, for every applicable source kind with no reading or valid unreadable disposition at its selected version. Reuse body parsing across capture addresses; do not choose one source or URL by `max()` when several contexts exist.
+- **PK:** `(record_sha, source, parser_version)`. The row remains even with no appearances. Source classification and parser identity are inputs to reuse; neither may be lost in a body-only anti-join.
+- **Context binding:** the model joins readings to every eligible capture/inline context, assigns URL-derived subject facts and `page_url`, and resolves literal links. `context_key` is the lowercase hex SHA-256 of compact JSON `[source_url, member_path]` for that context (null members retained); the referenced input and raw locator remain available. Repeated captures of the same body at the same context reuse one observation. A new context adds observations without re-parsing unchanged bytes. Current-record ordering uses retrieval evidence for that subject/context; a later capture of the same body elsewhere must not refresh an older observation at this address.
+- **Replacement:** choose the current record for each source/subject/context before unnesting. A current explicit empty list suppresses that source's older list. An absent declaration may use the documented lower-precedence source; unrecognized/failed extraction produces an explicit unresolved state, not silent stale fallback. Preserve candidates and reasons in evidence even when they are not selected for display.
 
 ## 2. Hearings, Witnesses and Reference Entities
 
@@ -113,12 +126,13 @@ occasion       := 'meeting:{event_id}' for a House witness list or Congress.gov 
                   for a MODS appearance, the meeting whose transcripts hold its package
                   when exactly one does, else 'package:{package_id}'; for a Senate page,
                   'page:' and the hex of the first 8 bytes of sha256(url_key(page_url))
-witness_key    := the lowercase hex of the first 8 bytes of the SHA-256 of the compact
-                  JSON ["witness", occasion, name_key]
-witnesses      := per occasion, the appearances of its highest-precedence source that
-                  lists any (House witness list, then Congress.gov, then MODS; a page is
-                  its own occasion), each source's latest record for the occasion in the
-                  order of §1.2
+witness_key    := the lowercase hex of the first 8 bytes of the SHA-256 of compact JSON
+                  ["witness-occurrence-v2", occasion, source, record_sha_hex,
+                   source_locator, context_key]; an observation key, not a person key
+witnesses      := filter pinned source/parser versions; select each source's current
+                  subject/context observation in §1.2 order before unnesting; apply
+                  House, Congress.gov, then MODS precedence to explicit collection
+                  states (a page is its own occasion); retain every selected occurrence
 witness_keys   := per document, the witness_key of every appearance one of whose
                   document_urls matches one of its document members (DATA-MODEL §7.2
                   matching); a printed hearing's witnesses are the transcript's, through
@@ -151,26 +165,29 @@ nominations    := per nomination_id a meeting's subject_keys names, the pinned r
                   whose documents name it, by (vote_day, vote_id)
 ```
 
-- No witness is matched across occasions or sources beyond the current records and the transcript link; the witness table that matches them comes later and keys on `witness_key`.
+- No person is matched across source occurrences by name. A later person-identity table may relate supported observations; its identity is separate from `witness_key`.
+- Equal names with different panels, roles, organizations or documents remain distinct observations. Presentation may group demonstrably equivalent observations only while retaining all contributing keys, locators and evidence; uniqueness obtained by discarding unequal observations is not preservation.
 - A name or role a later reading supplies, such as a structured transcript from captions, subtitles or `pdf_text`, is an attribute of the appearance and never part of `witness_key`, so links survive it.
+- The v2 key is stable for the same retained input, locator and context; a changed source record is a new observation. This replaces the old name-derived identity rule. Keep old releases readable with their original keys and version the new release schema/relationship definitions. Any old-to-new mapping must preserve one-to-many and unresolved cases; never redirect an ambiguous old key to an arbitrary occurrence.
 - The model reports appearances whose `name_key` differs only by a title or initial within one occasion, as input for that table, and Senate page cards with no links.
 
 ## 3. Entity Release Files
 
 These files join [[DATA-MODEL]] §8.1's table, with its shared writer settings and profiles.
 
-These definitions are the baseline release schema. The migration requirements
-in §4.6 identify additional retained facts that this baseline does not yet expose.
-Their exact typed schema changes must land with the native producer and release
-registry; this document does not claim those additions are already published.
+These definitions specify the target release, including the accepted witness
+corrections awaiting implementation under §4.7. The migration requirements in
+§4.6 identify additional retained facts to expose. Typed schema changes must land
+with the native producer and release registry; this document does not claim the
+currently published release already contains them.
 
 | File | Columns | Order | Writer settings | Size |
 |---|---|---|---|---|
-| `witnesses.parquet` | `witness_key` string, `occasion` dict, `event_id` int64 nullable, `package_id` string nullable, `page_url` string nullable, `name` string nullable, `position`, `organization`, `on_behalf_of`, `location`, `panel` (strings, nullable), `panel_order`, `display_order` int16 nullable, `witness_type` dict nullable, `testified` bool nullable, `bioguide_id` dict nullable | `(occasion, panel_order, display_order, witness_key)` | Whole | *est.* a few MB |
+| `witnesses.parquet` | `witness_key` string (v2 source-occurrence identity), `occasion` dict, `source` dict, `record_sha` fsb(32), `source_locator`, `context_key` strings, `event_id` int64 nullable, `package_id` string nullable, `page_url` string nullable, `name` string nullable, `position`, `organization`, `on_behalf_of`, `location`, `panel` (strings, nullable), `panel_order`, `display_order` int16 nullable, `witness_type` dict nullable, `testified` bool nullable, `bioguide_id` dict nullable | `(occasion, panel_order, display_order, witness_key)` | Whole | Re-measure after occurrence preservation; historical few-MB estimate is not an acceptance bound |
 | `recordings.parquet` | `video_key` string, `event_ids` List<int64>, `tracks` List<Struct<body fsb(32), suffix dict, format dict, language dict nullable, production dict nullable>> | `video_key` | Whole | *est.*, measured with S2 |
 | `committees.parquet` | `system_code` string, `name` string, `chamber` dict, `committee_type` dict nullable, `parent_system_code` dict nullable, `names` List<Struct<name string, start date32, end date32>>, `website` string nullable, `is_current` bool nullable | `system_code` | Whole | Under 1 MB |
 | `members.parquet` | `bioguide_id` string, `name` string, `terms` List<Struct<chamber dict, state dict, district int16, party dict, start date32, end date32>>, latest first, `cross_ids` Struct<lis, opensecrets, govtrack, icpsr, wikidata string; fec List<string>> | `bioguide_id` | Whole | *est.* about 2 MB |
-| `rosters.parquet` | `congress` int16, `system_code` dict, `bioguide_id` dict, `title` dict nullable, `rank` int16 nullable, `party` dict nullable | `(system_code, rank, bioguide_id)` | Whole | Under 1 MB |
+| `rosters.parquet` | `congress` int16, `system_code` dict, `bioguide_id` dict, `title` dict nullable, `rank` int16 nullable, `party` dict nullable | `(congress, system_code, rank, bioguide_id)` | Whole | Under 1 MB |
 | `bills.parquet` | `bill_id` string, `title` string nullable, `short_title` string nullable, `sponsor_bioguide_id` dict nullable, `introduced`, `latest_action_date` date32 nullable, `latest_action_text` string nullable, `stage` dict nullable, `policy_area` dict nullable, `committees` List<dict> (system codes), `cbo_estimates` List<Struct<publication_id string, date date32, description string>>, `floor_votes` List<Struct<vote_id string, basis dict, chamber dict, date date32, question string, result string, yea int16, nay int16>>, `amendments` List<Struct<amendment_id string, purpose string, sponsor_bioguide_id dict, latest_action_date date32, latest_action_text string>>, `committee_activities` List<Struct<system_code dict, activity dict, date date32>> | `bill_id` | Whole | *est.* a few MB |
 | `nominations.parquet` | `nomination_id` string, `description` string, `organization` string nullable, `received` date32 nullable, `latest_action_date` date32 nullable, `latest_action_text` string nullable (the outcome, such as a voice vote), `committees` List<dict>, `transcripts` List<string> (package IDs), `floor_votes` List<Struct<vote_id string, date date32, question string, result string, yea int16, nay int16>> (cloture, then confirmation, as cast) | `nomination_id` | Whole | Under 1 MB |
 
@@ -179,6 +196,7 @@ registry; this document does not claim those additions are already published.
 ### 4.1 Phase-2 Exit Checklist
 
 Phase 2 is done when, beyond [[IMPLEMENTATION-PLAN]] §6.6's phase-1 checklist:
+- the accepted review corrections and transition fixtures in §4.7 pass; prior shape/count/query checks do not substitute for their semantic checks;
 - every older gzip PDF has a recorded `.pdf` copy (B13), and the full re-hash has run (B10);
 - the actual production jobs use lake meeting/witness records and pinned SpicyRegs inputs, and all retained Explorer field families have the destinations and parity evidence required by §4.6 (`ct-gi01`, F3);
 - site entity browsing and Congress MCP consume the shared release; `/dashboard/` is replaced/redirected or serves only Coverage/Gaps from that release (`ct-t915`, `ct-m104`);
@@ -199,9 +217,14 @@ As in [[IMPLEMENTATION-PLAN]] §8, each row closes only with its measurement.
 | Senate card coverage by committee site (judiciary 98.6%, hsgac 64.8%, indian 54.8%, jec 0%) | **Settled by D4 full-corpus measurement** across **6,685** candidate `senate_page` captures (**5,030** non-empty pages, **17,687** witnesses, **16,496** card links) and **8,946** listed Senate testimony documents: **5,638 / 8,946 (63.0%)** match strictly under current `url_key`; stripping ColdFusion `[?&]download=1` suffixes on `banking`, `finance`, `appropriations`, `aging`, `budget` and `veterans` raises coverage to **8,096 / 8,946 (90.5%)** | Normalize `[?&]download=1` on ColdFusion `/download/` URLs; second page layouts only needed for `environment`, `intelligence` and `jec` |
 | Event IDs never name two chambers (observed on 18,140, not promised by the publishers) | Invariant 15 at every publish (**0** multi-chamber `event_id`s across all **18,140** Congress.gov + **6,164** House XML `meeting_records`, **18,225** resolved meetings) | The meeting key, if one ever does |
 | Nominations before the 119th Congress | spicy-stack ss-vhi2's backfill | How far back nomination pages reach |
-| How often one witness gets two keys at one meeting (spelling, titles, initials) | **Settled by D4 full-corpus measurement:** intra-record duplicate `name_key`s occur in **0.64%** of `mods` records (**220 / 34,559**, **534** rows dropped), **0.61%** of `congress_gov` records (**110 / 18,140**, **478** rows dropped), and **0.44%** of `house_xml` records (**15 / 3,398**, **23** rows dropped), leaving **0** duplicate `(occasion, witness_key)` rows in `witnesses.parquet` (**109,572** rows across **28,392** occasions); **138 / 28,392 (0.49%)** occasions (**152** pairs) have distinct `name_key`s sharing surname + first initial (49 honorific/title pairs, plus middle-initial and suffix variants) | `deduplicate_appearances` + `ROW_NUMBER() OVER (PARTITION BY occasion, name_key)` guarantees unique `(occasion, witness_key)`; later witness entity table matches honorific/initial pairs |
+| Repeated names, panels and source occurrences | **Historical lossy baseline:** first-name dedup dropped 534 MODS, 478 Congress.gov and 23 House XML occurrences; 138 / 28,392 occasions also had distinct name keys sharing surname/initial. These counts describe the old output, not proof of equivalent people or observations. | `ct-30fp` preserves occurrences and compares the changed rows/evidence; name-only uniqueness no longer establishes acceptance |
 
 #### 4.2.1 D4 Measurement Details
+
+The measurements below describe the earlier parser/name-deduplication model.
+Retain them as a comparison baseline. Accepted §4.7 corrections can change row
+counts and witness keys; zero duplicate name-derived keys is not proof of
+preservation. No corrected full-corpus result is claimed here.
 
 1. **Multi-meeting MODS packages (`meeting_records` = 24,304 rows; `appearance_records` = 62,782 rows including 34,559 `mods` rows):**
    - **Meeting count distribution across the 10,723 linked `CHRG-*` packages in `meetings.parquet`:** `1 meeting: 6,917 (64.5%)`, `2: 2,696 (25.1%)`, `3: 750 (7.0%)`, `4: 199 (1.9%)`, `5: 52`, `6: 48`, `7: 14`, `8: 19`, `9: 8`, `10: 5`, `11: 3`, `12: 1`, `13: 5`, `14: 5`, `15: 1` (total `>1 meetings`: **3,806 / 10,723 = 35.5%**).
@@ -378,8 +401,8 @@ scope decision; it cannot silently satisfy migration acceptance.
 | HTML descriptions, dates, classifications and source evidence | Publish the selected typed fields through the maintained model, with stable evidence references and field meanings shared by site and MCP. | `ct-082q`, `ct-93zs`, `ct-jnm9`, `ct-0a37` |
 | Remaining old Explorer fields and reference inputs | Inventory all six old entity/research tables and their source inputs, including archive routes, session dates and chamber control where retained. The named rows above are a minimum, not an exhaustive field list. | `ct-gi01` |
 
-The exact additions are pending implementation: §3 and DATA-MODEL §8.1 still
-describe the baseline, and `model/registries/release-schema.json` must change
+The exact additions are pending implementation: §3 includes accepted target
+corrections, and `model/registries/release-schema.json` must change
 together with producer SQL and checks. Do not publish invented rows, missing
 values as empty tables, or a second MCP schema to conceal a producer gap.
 Full-text search, new source acquisition and speaker-turn reconstruction remain
@@ -415,6 +438,36 @@ separate deferred work; preserving existing caption/text references is required.
 children. DocSpec's superseded `ss-55jg` does not prove consumer adoption;
 `ss-oxg1` owns only generic engine gaps demonstrated by this work. Reuse existing
 native job/table/export operations and link a specific engine gap if one is found.
+
+### 4.7 Accepted blind-review corrections — 2026-10-30
+
+The independent greybeard review used ETL workflow and data-intensive systems
+lenses against the whole current model, producer SQL and fixtures. The parent
+verified the cited paths. All five findings are accepted; this section records
+required work, not a successful implementation or a measured live impact.
+
+| Finding | Required correction and acceptance case | Owner |
+|---|---|---|
+| GB1, P1: final fetch facts promote a prior incomplete/error body | DATA-MODEL §6.1/§7.3/§7.7: preserve narrow attempt-specific eligibility and separate final scheduling state. Exercise prior 206/incomplete or 403 followed by final success, valid prior followed by final failure, and unknown prior facts. | `ct-sh4j` |
+| GB2, P1: body-only appearance reuse omits context | §1.3: parse context-free facts keyed by body/source/version, bind every eligible context in SQL, and retain literal links/locators. An A-then-B capture of identical bytes must match a clean rebuild and preserve both contexts. | `ct-30fp`; coordinate source versions with `ct-h1nd` |
+| GB3, P1: version selection and expected-candidate completeness are lost before publication | Carry all selected versions from daily production through admission; filter before interpretation and anti-join expected candidates against selected-version results/dispositions. Cover mixed versions, a missing reading, empty expected/nonempty expected sets, and the early-skip path. | `ct-yymr` handoff; `ct-kw9b` admission; `ct-vpo2` schemas/invariants |
+| GB4, P2: empty current lists revive old witnesses | §1.2–1.3: subject/context identity and collection state survive outside lists; select current observations before unnesting. Verify nonempty → empty, absent declaration, unrecognized layout and extraction failure with explicit fallback outcomes. | `ct-30fp` |
+| GB5, P2: name-only dedup removes unequal observations | §1.3/§2: preserve source occurrences and evidence; version public key changes. Verify repeated names across panels/organizations/documents, unchanged-input replay, and ambiguous old-key mappings. | `ct-30fp` |
+
+Existing fixtures that bless incomplete-to-complete promotion or dropping unequal
+same-name entries must change with the implementation. The required cases are in
+`model/fixtures/manifest.md`; listing a case there does not mean it already runs.
+`ct-kw9b` and `ct-yymr` are reopened rather than replaced by duplicate tickets;
+the earlier completeness note on `ct-vpo2` now points to those concrete owners.
+
+Implementation order: settle these semantics and small transition fixtures;
+update the maintained schemas, producers, selection/admission and consumers;
+reuse unchanged completions and recompute affected derived versions; then perform
+the §4.6 shared-release and live-switch checks. Preserve raw evidence, selected
+releases and previous keys. Do not expand affected production backfills or close
+data-preservation acceptance using only table availability, counts or runnable
+SQL recipes. No new engine, separate MCP data model or full-corpus replay is
+required merely to resolve the design.
 
 ## References
 

@@ -24,3 +24,7 @@ Full D4 corpus backfill commits meeting_records and appearance_records to remote
 **2026-10-30T15:36:29Z**
 
 Committed D4 candidate queries (fixing CHRG-* MODS member_path/context_url filter), materialized full-corpus meeting_records (24,304 rows) and appearance_records (62,782 rows including 34,559 mods rows) into native Iceberg tables, and recorded all three Annex §4.2 uncertainty measurements in docs/plans/phase-2-annex-20261028.md.
+
+**2026-10-30T21:20:21Z**
+
+The earlier backfill and counts remain historical evidence for that parser/schema version. Accepted review corrections in PHASE-2 §4.7 may change observations, keys and eligibility; these counts do not qualify the corrected model. ct-30fp and ct-sh4j own semantic changes, ct-kw9b owns selected-version completeness. Reuse unaffected data and produce new measurements only after focused transition fixtures pass; this note does not initiate a backfill.

@@ -2,6 +2,13 @@
 
 **Editor's Draft, 2026-10-24**
 
+**Review update, 2026-10-30.** The blind greybeard/data-engineering findings are
+accepted in this draft. Corrections to capture eligibility, contextual witness
+readings, collection replacement, occurrence identity and publication admission
+are specified below and tracked in [[PHASE-2]] §4.7. Their implementation and
+qualification remain open; existing published schemas and results do not yet
+establish conformance to these corrections.
+
 ## Abstract
 
 - **Single home** of every schema, derivation, order, registry, key between layers and invariant of the [[ARCHITECTURE]] system.
@@ -179,7 +186,7 @@ Iceberg tables in Basin Catalog, append-only ([[ARCHITECTURE]] §8).
 - Each input is parsed within the version's time and memory bounds. A parse that crashes, hangs or exceeds them is retried once in the run; a second failure writes an `unreadable` decision naming the producer (§5.3), so one bad input cannot hold the work list open. The decision is in raw, so a rebuild skips the same inputs even though a crash depends on the run; a new version retries them.
 - A failure to read the input (raw, network or catalog) writes no row, so the input stays on the work list.
 
-**Versions.** The model reads only pinned parser versions (§7.1); a table keeps the versions any kept release's profile names, and its next table-version rebuild omits the rest.
+**Versions.** The model reads only pinned parser versions (§7.1); a table keeps the versions any kept release's profile names, and its next table-version rebuild omits the rest. Meeting and appearance versions are included explicitly, by source when source-scoped versions are used. The daily producer's version selections MUST reach the model profile unchanged and filter inputs before current-record selection or joins. A snapshot containing several versions is not itself a selection of one version.
 
 ### 6.1 `captures`
 
@@ -190,14 +197,16 @@ One row per body a line references (each `captures[]` entry or, on an older line
 | `receipt_key` | string | Immutable raw receipt key. |
 | `receipt_line` | int | Source line, starting at 1. |
 | `capture_index` | int | Primary capture/file-reference positions stay unchanged. Items of a list-valued `record` without a primary reference append after them in record order, with null `sha256`; without references, their positions start at 0. An ordinary bodiless line uses 0. A file reference retained without a body also has null `sha256`. |
-| `run_id`, `mode`, `outcome` | string | The producing run, mode and final acquisition facts, or the enumerated non-acquisition outcomes `reference` and `saved-record`. Ordinary records use line facts; list items use their own acquisition values, with line fallback only when absent and the named domain exclusions below. The mapping translates the older vocabulary. |
+| `run_id`, `mode`, `outcome` | string, string, string nullable | The producing run and mode; for a body, the acquisition outcome of its own attempt, null when it cannot be established. A bodiless acquisition uses final line/item facts. `reference` and `saved-record` retain their enumerated non-acquisition meanings. The mapping translates the older vocabulary without substituting another attempt's success or failure. |
 | `family` | string | The entry's family, else the line's, else the receipt key's `<family>` segment. |
 | `requested_url`, `url` | string, nullable | Older lines take `_url`, `final_url`, `resolved_url` or `source_url`, the first present, when their ordinary address fields are absent. |
 | `context_url` | string, nullable | The source endpoint for this body. |
 | `member_path` | string, nullable | The endpoint is `(context_url, member_path)`. |
 | `h_content_disposition` | string, nullable | The flat download-name header: when root `writer.job` and `writer.commit` are both non-null, root `response_headers["content-disposition"]`, else root `response_headers["Content-Disposition"]`; then legacy `record.response_headers["content-disposition"]`, else `record.response_headers["Content-Disposition"]`. Unqualified root headers are ignored. The existing filename function reads it (§7.4). |
-| `http_status` | int, nullable | Final line or item response status, from `http_status` or `status_code`; only when absent, the primary capture entry's explicit `status_code`. `capture_status` and `meetingStatus` are not HTTP statuses. |
-| `complete` | boolean, nullable | The entry's recorded completeness, else a recorded final-line value for the final response, else the older-line derivation below; `good_fetch` (§7.3) reads it. |
+| `attempt` | int, nullable | 0 for the final response, 1-based position for a referenced `prior_attempts` entry; null when a legacy reference cannot establish its attempt. Archive members retain their enclosing attempt plus their own completeness evidence. |
+| `http_status` | int, nullable | The referenced attempt's response status, from its explicit capture/attempt `http_status` or `status_code`. Final line/item status applies only to the final response or a bodiless acquisition. `capture_status` and `meetingStatus` are not HTTP statuses. |
+| `complete` | boolean, nullable | The entry's recorded completeness or its own pointed attempt's recorded value, with final-line fallback only for a confirmed final response. Unknown prior completeness remains null; `good_fetch` (§7.3) requires true. |
+| `fetch_http_status`, `fetch_outcome` | int nullable, string nullable | Final line/item acquisition state used by URL scheduling, kept separately from body eligibility. Repeated values on one fetch must agree. `reference` and `saved-record` rows do not establish a fetch state. |
 | `retrieved_at` | timestamptz, nullable | Fetch time, with the older-entry fallbacks below. |
 | `sha256` | fixed[32], nullable | Digest of the referenced body. |
 | `bytes` | long, nullable | Body size. |
@@ -214,13 +223,13 @@ Everything else stays in raw and is read **on demand**; this table is the single
 
 | Raw evidence or derived value | Use |
 |---|---|
-| Prior attempts, their status and completeness | Read the pointed receipt when an individual attempt needs examination; bulk ingest does not expand or sort them. |
+| Full prior-attempt payloads and ancillary metadata | Stay in raw for inspection. Bulk ingest reads only the referenced attempt's narrow eligibility scalars while that receipt is open; it does not expand all attempt payloads or add another receipt pass. |
 | Other response headers, header items and `retry_after` | Retained in raw. Bulk ingest reads only the two flat download-name header names at the admitted root or legacy locations above, not prior copies or `source_metadata`; scheduling uses the phase-1 intervals (§7.7). |
 | `record_sha` and inline meeting records | D4, phase 2 ([[PHASE-2]] §1.2), which reads them once by their pointers. |
 | Other writer metadata and supplements, and `links` | Raw receipts and pinned producer/profile metadata retain these facts. |
 
 - **PK:** `(receipt_key, receipt_line, capture_index)`.
-- For an ordinary record, the line's final status, mode and outcome accompany its referenced bodies; a list item keeps its own final facts with line fallbacks only when absent. Completeness uses the entry's recorded value, else the referenced item's final value only for the final response, else its legacy derivation. No bulk prior-attempt lookup fills a missing fact.
+- Body eligibility comes from the referenced attempt, identified by the capture's pointer. Read its narrow status, acquisition outcome and completeness together with the receipt. Entry and pointed-attempt facts must agree when both are explicit; contradictions refuse or receive a named unresolved disposition, never a successful default. A later final response neither promotes an earlier failed/incomplete body nor suppresses an earlier eligible one. Final line/item facts populate `fetch_http_status` and `fetch_outcome` for scheduling. List items keep their own acquisition facts and named domain exclusions.
 - **Older lines** keep their fields under `record`, in shapes the mapping reads individually; §5.2 binds new lines. The narrow mapping:
   - uses `captures[]` for row grain when both lists exist, filling missing storage metadata only from `file_references[]` with the same body key and digest. A secondary non-null body absent from the primary list refuses ingest with its receipt and line. Conflicting storage facts also refuse; the 285 duplicate-reference lines in the pinned input do not create extra capture rows;
   - takes `run_id` from `source_file` and defaults the older stored suffix to `.gz`;
@@ -230,8 +239,8 @@ Everything else stays in raw and is read **on demand**; this table is the single
   - translates the versioned acquisition outcome/mode vocabulary. A line or item with its own mode, acquisition outcome, final HTTP status or error remains an acquisition row unless it matches one of the finite successful inline or descriptor shapes below; explicit failures and request failures are preserved. With no primary body and none of those acquisition facts, the finite family, object/list-item and URL cases in `model/registries/receipt-line-kinds.json` classify supported assembly records as `reference` (a document URL mentioned by the line) or `saved-record` (content retained inline in the receipt). Unknown shapes refuse instead of defaulting to failure or success. List items are classified independently: URL/digest pairs retain only the URL as a reference; local-path/digest pairs and identifier lists retain inline metadata as `saved-record`, without promoting a tuple digest to body custody. Enumerated empty collections keep one `saved-record` row. The eight malformed document addresses listed literally in the registry remain references with their exact strings, without repair; their receipt locators and strings remain in the data-quality list. Registry bytes bind the mapping version. These non-acquisition rows remain available to filename and provenance readers but never enter `url_state` attempts or latest-state selection. No file digest is copied from another capture onto D1; the model links a reference to an owned file only by an exact normalized URL, and filename-only matches remain possible matches;
   - retains three demonstrated successful inline object shapes as `saved-record`, without manufacturing a body digest: a `congress/committees` assembly record with `outcome = captured`, a committee API address and substantive `detail` (nonempty `systemCode` and `type`, plus a website, named history entry or reports count); and a URL-less documents journal-metadata `package-outcome` event with `outcome = complete`, a package ID, rule version and valid last-modified, observed and recorded times. The versioned `inline_payloads` registry binds their family, marker and address/filename scope. A `congress/meetings` assembly object with `outcome = captured`, a committee-meeting API address, positive event ID and congress, valid event date, nonempty title and a committee system code is the third inline shape. All three require no primary body, no acquisition mode or explicit error, and final status absent or 2xx. Explicit failure outcomes, HTTP errors, unknown acquisition vocabulary and list-item semantics retain their priority. A descriptor's URL, digest and byte count do not establish inline payload custody;
   - classifies the qualified GovInfo MODS assembly descriptor as `reference` only with exactly the nine keys `package_id`, `status`, `url`, `sha256`, `bytes`, `http_status`, `retrieved_at`, `etag`, and `http_last_modified`: status `captured`, HTTP200, positive integer bytes, a lowercase 64-hex digest, and the exact `https://www.govinfo.gov/metadata/pkg/{package_id}/mods.xml` address. It requires no primary body, acquisition mode, acquisition outcome or explicit error. The current 34,584 descriptors separately match stored captures by digest and original byte count. No per-run cross-receipt lookup enters D1, no descriptor digest or byte count becomes public body custody, and a future reference alone does not prove a stored body. The model still resolves only actual stored captures through its existing URL rules;
-  - derives an absent acquisition outcome from the qualified final status and body presence only for acquisition rows. When the final line or item has no status, the primary entry's own explicit `http_status`, then `status_code`, is the fallback; a known final status always wins, so a prior 403 body does not replace a final 404. Every recorded legacy label uses its declared dictionary translation: failure labels never become stored merely because a body and 2xx status exist. Success-like labels explicitly declared `derive` retain that interpretation. Unknown acquisition vocabulary refuses ingest rather than guessing success;
-  - keeps recorded completeness. Otherwise it sets `complete` true unless the body is exactly 64 MiB or the outcome is `size_limit` or `request_failed`. Declared lengths are unused: about 61% of older 2xx HTML responses with full recorded headers declare none, and nearly all others name a `Content-Encoding`, so the length is the compressed transfer's. The pinned census has 657,713 2xx lines without recorded completeness (451,414 senate/captions and 125,245 documents); this derivation preserves their eligibility for `good_fetch`;
+  - derives an absent acquisition outcome from that attempt's qualified status and body presence only for acquisition rows. A final 404 remains the final scheduling status while a prior 403 body retains 403; a final 200 cannot promote that prior body. Every recorded legacy failure keeps its dictionary meaning. Success-like labels explicitly declared `derive` retain that interpretation within their own attempt. Unknown acquisition vocabulary refuses ingest rather than guessing success;
+  - keeps recorded completeness from the entry or referenced attempt. Only a confirmed legacy final response may use the existing scoped derivation: true unless the body is exactly 64 MiB or its outcome is `size_limit` or `request_failed`. An unknown prior response or archive member does not borrow that final-response derivation. Declared transfer lengths remain unsuitable as unqualified completeness proof. The historical census of 657,713 2xx lines without recorded completeness is a coverage baseline, not authority to overwrite explicit incomplete facts or assume all attempts completed;
   - maps a confirmed legacy final response at its writer's 64 MiB cap with explicit `complete = false` to outcome `size_limit`, preserving an explicit more-specific outcome or error. Incomplete prior attempts and archive members do not trigger that inference when the final response completed;
   - keeps `expansion` and records `expanded` on an archive line whose members were captured; it keeps `writer_job` and `writer_commit` from the line's writer identity for invariant 3;
   - takes fetch time from the row's entry, then its line: `retrieved_at`, `captured_at`, `observed_at`, `parent_retrieved_at` or `_retrieved_at`, then `capture_date` at the start of its day, else null. `started_at`, `checked_at` and content dates are not fetch times. End of Term times remain the archive capture times;
@@ -332,6 +341,16 @@ The model is one engine job of named steps ([[ARCHITECTURE]] §9.1) over `captur
 
 The **model profile** is the set of versions one publish reads. Publish MUST refuse when a pinned version's work list is not empty, or a lake PK is duplicated, at the pinned snapshot, and the refusal names the inputs. An input that crashes its parser twice is settled by a provenance `unreadable` decision (§5.3, §6), which removes it from that parser's work list. A missing or failed raw read stays pending; it never creates an unreadable decision.
 
+Completeness is an anti-join from each producer's expected candidates at that
+snapshot to readings or valid unreadable decisions at the selected source/version.
+Checking only rows already present is insufficient: an empty table passes only
+when the expected candidate set is empty. Apply this same admission before full
+execution and any early reuse/skip decision. Filter selected versions before
+interpreting payloads; do not let old and new versions compete by fetch time or
+physical row order. Reuse the maintained producer candidate definitions and
+admission path rather than adding an independent validation pipeline (`ct-kw9b`,
+daily handoff `ct-yymr`, source-scoped version work `ct-h1nd`).
+
 - It pins: the model SQL (the SHA-256 of its files), the engine revision, each lake table version (§6) with its table's exact metadata location, each parser, the catalog, each registry the model or a producer reads, and the release writer settings (§8.1); until the engine's export meets [[ARCHITECTURE]] §10.2 by itself (spicy-stack ss-iwqu), also the runner class and the engine's limits (threads, batch rows, batch bytes).
 - A parser or catalog version is the SHA-256 of its source files, the vocabularies it reads and its locked dependencies.
 - A new version is backfilled while the profile still pins the old one; the profile moves only when the new version's work list is empty. The daily run produces every pinned version for new inputs.
@@ -410,6 +429,8 @@ Each capture row takes one record role; a real file is a good fetch whose role i
 ```
 good_fetch  := rows of c where mode = 'fetch' and complete
                and outcome in ('stored', 'unchanged') and http_status between 200 and 299
+               (all three eligibility facts belong to this body's attempt, §6.1;
+                unknown facts do not pass)
                (import-run rows included; capture dates exclude them, §7.4)
 format      := r[sniff].format from a completed reading at the pinned sniff version
 intact      := for a PDF, its .pdf copy's verification record (§5.3), else
@@ -618,8 +639,8 @@ Every list and fold column MUST be written in a fixed order: structs by their fi
 One row per requested URL, plus the queue: `requested_url` string, `attempts` int32, `last_attempt` ts nullable, `last_status` int16 nullable, `last_outcome` dict nullable, `last_good_at` ts nullable, `next_attempt_at` ts nullable.
 
 - Excludes `reference` and `saved-record` rows before counting attempts or selecting the latest state; those records cannot shadow a real acquisition.
-- Aggregated per requested URL over distinct `(receipt_key, receipt_line)`, so a fetch line counts once for each requested address however many bodies it references. Its `retrieved_at` is the latest non-null retained entry time on that line; recorded entry times and completeness may differ without contradicting the line's final status, outcome or family.
-- The latest `mode = fetch` line wins, in the order `(retrieved_at nulls first, receipt_key, receipt_line)`, and gives `last_status` from its `http_status`; `last_good_at` is the `retrieved_at` of its latest good fetch (§7.3). Recovery rows MUST NOT appear.
+- Aggregated per requested URL over distinct `(receipt_key, receipt_line)`, so a fetch line counts once for each requested address however many bodies it references. Its `retrieved_at` is the latest non-null retained entry time on that line. Final `fetch_http_status`/`fetch_outcome` values must agree within that fetch; attempt-level body status and completeness may differ.
+- The latest `mode = fetch` line wins, in the order `(retrieved_at nulls first, receipt_key, receipt_line)`, and gives `last_status`/`last_outcome` from `fetch_http_status`/`fetch_outcome`. `last_good_at` is the `retrieved_at` of its latest eligible body acquisition (§7.3). Recovery rows MUST NOT appear. A valid prior body followed by a final failure does not hide that final scheduling failure.
 - **`next_attempt_at`:**
   - in phase 1, `last_attempt` plus the family's recheck interval for every outcome; `Retry-After` stays in raw and is not a bulk model input; for a banded family, the band is the age at `last_attempt` of the URL's earliest meeting date (§7.5), else of the date in its docs.house.gov `/meetings/` path, else the family's shortest band applies, so the job's clock never enters.
   - null, and so due now, when `last_attempt` is null (about 25,500 requested URLs today, nearly all from two undated backfill shapes).
@@ -851,12 +872,12 @@ A conforming implementation MUST satisfy, and SHOULD test, each of the following
 1. Every lake PK is unique. `captures` rebuilt from all receipts equals the appended table. A parser version re-run on a sample of its inputs reproduces its rows, links included. Every completed HTML reading has `text_bytes`, `text_head`, `link_count` and `link_text_bytes`; every completed XML reading has `xml_root`.
 2. Every `sha256` in `captures` has a body object under its recorded suffix; every body's size and ETag equal its creating line's `stored_bytes` and `stored_md5`, or its verification record's; no body a new line created has an ETag containing `-` (no multipart upload); a body with no creating line has a verification record.
 3. New receipt keys are date-shaped; every `stored` line carries `stored_md5`; every new capture entry with a body carries `attempt`, `complete`, `sniffed_format`, `sniff_version`, `stored_suffix` and, for a PDF, `intact`; every new row carries `writer_job` and `writer_commit`. No receipt line carries a credential parameter in a recorded URL, a cookie or a local file path, and every cleaned older receipt has a verification record.
-4. Every pinned version has an empty work list at the pinned snapshot, and a maintained lake and a clean rebuild from the same raw at the same profile give byte-identical releases.
+4. Every pinned version, including meeting/appearance source versions, has an empty expected-candidate work list at the pinned snapshot. The model interprets only selected versions. A maintained lake and a clean rebuild from the same raw at the same profile give byte-identical releases, including when identical bodies gain additional capture contexts.
 **Model**
 
 5. Every source file of a listed document is in exactly one document; every listed document has at least one document member, and at least one real file or recovery.
 6. Every real body belongs to exactly one document.
-7. Every body in a document's body set is a real body: none is non-2xx, incomplete, empty, a placeholder, known only from a recovery, or held only by rows whose role is not `document` (listing, wrapper, error, envelope, damaged or failed reading).
+7. Every body in a document's body set is a real body: none is non-2xx, incomplete, empty, a placeholder, known only from a recovery, or held only by rows whose role is not `document` (listing, wrapper, error, envelope, damaged or failed reading). Eligibility facts belong to that body's own attempt; a final response cannot replace prior-attempt status or completeness. Unknown prior eligibility does not establish a real body.
 8. `document_id` and `source_id` recompute from their formulas (golden vectors).
 9. `saved_body`, `alternates` and `saved_kind` recompute from §7.5. Every physical key a release names is recorded by a capture's `stored_suffix` or a verification record.
 10. `first_captured` comes from neither an import run nor a recovery row; `document_date_source` is set exactly when `document_date` is.

@@ -7,7 +7,7 @@
 | `capture-archive.yml` | Daily at `03:23 UTC` or `workflow_dispatch` (when `vars.ARCHIVE_CAPTURE_ENABLED == 'true'` on `main`) | Run `congress_api.cli.capture_schedule` against the public release pointer and weekly seed inventories |
 | `archive-jobs.yml` (`publish`) | `workflow_run` after successful **Capture archive sources** on `main`, or `workflow_dispatch` with `operation=publish` | Execute the committed model publish specification (`viewer_publication.archive_publish_job`), run local browser contract and HTTPS canary gates, and atomically advance the release pointer |
 | `archive-jobs.yml` (`backfill`) | `workflow_dispatch` on `main` with `operation=backfill` | Execute the committed producer backfill specification (`viewer_publication.archive_backfill_job`) |
-| `archive-jobs.yml` (`maintenance`) | Weekly on Sundays at `07:17 UTC` or `workflow_dispatch` on `main` with `operation=maintenance` | Verify raw archive integrity, check retained receipt evidence, and prune unreferenced derived releases (`viewer_publication.archive_maintenance_job`) |
+| `archive-jobs.yml` (`maintenance`) | Weekly on Sundays at `07:17 UTC` or `workflow_dispatch` on `main` with `operation=maintenance` | Verify raw archive integrity, check retained receipt evidence, and prune unreferenced derived releases (`viewer_publication.archive_maintenance`) |
 
 ## Shared concurrency and runtime admission
 
@@ -41,7 +41,7 @@ The `capture` job runs in the `archive-capture` environment on `ubuntu-24.04` wi
 2. **Backfill (`backfill`)**:
    - Runs `.github/scripts/run-archive-job.py backfill --check-binding`, installs the pinned runtime, and executes `.github/scripts/run-archive-job.py backfill` (`python -I -m viewer_publication.archive_backfill_job --spec <spec> --execute`) to admit and record historical or producer backfill batches into the native dataset tables.
 3. **Maintenance (`maintenance`)**:
-   - Runs `.github/scripts/run-archive-job.py maintenance --check-binding`, installs the pinned runtime, and executes `.github/scripts/run-archive-job.py maintenance` (`python -I -m viewer_publication.archive_maintenance_job --spec <spec> --execute`).
+   - Runs `.github/scripts/run-archive-job.py maintenance --check-binding`, installs the pinned runtime, and executes `.github/scripts/run-archive-job.py maintenance` (`python -I -m viewer_publication.archive_maintenance --spec <spec> --execute`).
    - Verifies raw capture custody in `congressional-tech-raw` (`congress_api.retention.raw_verifier`), validates retained receipt evidence (`viewer_publication.receipt_evidence`), and runs derived release retention (`viewer_publication.archive_maintenance`) to keep the current release plus the previous two verified releases while refusing to delete any referenced object.
 
 ## Local CLI reference

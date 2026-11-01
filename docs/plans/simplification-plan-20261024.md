@@ -38,6 +38,16 @@ design was superseded, not the requirement to move Explorer. Existing native
 input flags, passing local tests and completed deletion groups do not establish
 that the production workflows or every research field have moved.
 
+**Accepted blind review, 2026-10-30.** Before affected backfills or final
+shared-release acceptance, complete [[PHASE-2]] §4.7: `ct-sh4j` separates body
+attempt eligibility from final scheduling facts; `ct-30fp` preserves contextual
+witness occurrences and empty replacement state; reopened `ct-yymr` and `ct-kw9b`
+carry selected versions into the model and check expected-candidate completeness.
+`ct-vpo2` retains its schema/invariant work. Start with the small transition
+fixtures in `model/fixtures/manifest.md`, then recompute only affected derived
+versions using retained inputs. The review changes design and acceptance, not the
+recorded implementation or live state.
+
 ## 3. Constraints and Rules
 
 **What must survive:** objects in `congressional-tech-raw` under `bodies/`, `receipts/` and `provenance/`, plus any source facts or decisions still held only in legacy files until their preserved equivalents are verified. Derived tables may be rebuilt only after that evidence is accounted for. The site and MCP now consume published releases; preserve their selected release and rollback references during migration.
@@ -211,7 +221,7 @@ Each producer is built to [[ARCHITECTURE]] §8 and [[DATA-MODEL]] §6.
      - the final response's completeness (per-attempt completeness stays in raw);
      - `stored_md5` and `stored_suffix` new, `stored_sha256` gone.
      - old bodiless metadata's `saved-record` fidelity becomes null only with proof that the receipt retains an object; a missing context becomes the mapped final URL only with its receipt-derived proof;
-     - an old per-entry HTTP status becomes the known final line or item status only when both explicit receipt facts match their respective sides; a `digest_verified` resolver's stored size becomes null only when the creating body reference lacks that size fact;
+     - per-attempt eligibility and final scheduling facts are compared separately under DATA-MODEL §6.1; replacing a prior response's status/completeness with final success is no longer an allowed comparison disposition (`ct-sh4j`). A `digest_verified` resolver's stored size becomes null only when the creating body reference lacks that size fact;
      - the measured family changes use the receipt family only for `govinfo/mods` ↔ `govinfo/transcript-html`, `house/witness-xml` → `house/meeting-xml`, and `senate/players` → `senate/captions`; `documents` → `committee-reports` requires an explicit record family. Every other non-null family change remains an owner gate. Small scalar proofs live only in private comparison evidence, outside the public captures schema;
      - new-only rows from record-list items the old index collapsed: source evidence must prove the list and the distinct item's ordinal; count and report those rows as expected. Unproved new-only rows remain owner gates.
 

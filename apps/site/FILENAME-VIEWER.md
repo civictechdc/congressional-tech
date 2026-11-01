@@ -22,7 +22,7 @@ the six committee explorer workspaces (`meetings`, `committees`, `materials`, `w
 `sources`, `meetings`, `committees`, `materials`, `witnesses`, `issues`, and search/detail
 sidecars). It retains direct file links, saved-body links, source evidence, filtering,
 coverage, witnesses, and issues, and no longer opens a separate weekly committee publication
-or the retired filename catalog. Requests to `/dashboard/` redirect to `/archive/`.
+or the retired filename catalog. The `/dashboard/` route coexists for coverage and issues views rather than redirecting to `/archive/`.
 
 Pages builds run the explorer checks and the native archive contract before
 uploading the static site. Archive releases publish separately through the engine

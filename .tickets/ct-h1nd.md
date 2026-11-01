@@ -1,8 +1,8 @@
 ---
 id: ct-h1nd
-status: in_progress
+status: closed
 deps: []
-links: [ct-wx65]
+links: [ct-30fp, ct-kw9b, ct-vpo2, ct-pocg, ct-yymr, ct-wx65, ct-jinw]
 created: 2026-10-30T18:34:40Z
 type: task
 priority: 1
@@ -65,3 +65,34 @@ Do NOT close this ticket based on commit `3f6548e6` alone: `3f6548e6` landed onl
 5. `UNION ALL` of `house_xml` and `congress_gov` `subject_keys` in `model/sql/meeting-records-resolved.sql`.
 6. Including `congress` in `rosters.parquet`'s unique sort key (`['congress', 'system_code', 'rank', 'bioguide_id']`) in `archive_model.py:653` and `model/sql/entity-rosters.sql`.
 
+
+**2026-10-30T21:20:20Z**
+
+Coordinate source-scoped version generation with reopened ct-yymr (preserve selections in daily handoff) and ct-kw9b (filter selected source/version and expected-candidate admission). ct-30fp changes appearance record identity to include source and keeps parsing context-free; its explicit collection states distinguish empty, absent and failed/unrecognized extraction. Preserve the documented subject_keys union policy separately from replacement-list semantics.
+
+**2026-11-01T04:25:21Z**
+
+Verified and tested:
+- Witness appearance extraction decoupled from meeting-record production into congress_api.lake.appearance_records (HOUSE_MEETING_PREFIXES, build_appearance_record_row, current_version, current_versions, stage).
+- Meeting-record production extracted into congress_api.lake.meeting_records (build_meeting_record_row, current_version, current_versions, stage) with Public Law parenthesized bill citation guard (_PRE_CONGRESS_RE).
+- Verified with uv run pytest packages/congress_api/tests/test_phase2_meeting_appearance_lake.py packages/congress_api/tests/test_daily_producers.py.
+
+**2026-11-01T10:38:19Z**
+
+Independent Validation Audit (2026-11-01, validator 239cc54c):
+- Verdict: PASS-WITH-CAVEATS (6/7 ACs met, 1 partial; 151/151 tests pass).
+- Remaining work before closure:
+  1. [Priority 2] In `packages/congress_api/src/congress_api/lake/meeting_records.py:515-521`, update `_HOUSE_BILL_RE` so compact dotted Senate bills (`S.140`, `S.744` without whitespace after `S.`) match alongside `S. 744` while still rejecting `U.S.`, `R.S. 2477`, `W.S. 11-6-302`, `S 2(N)`, and possessives (`"GAO's 2013"`).
+  2. [Priority 2] In `packages/congress_api/src/congress_api/lake/meeting_records.py:533-536,581-585`, narrow `_ACT_YEAR_RE` so bills whose titles amend an earlier Act (e.g. `"H.R. 2215, To amend the Help America Vote Act of 2002"`) are not suppressed when the `"Act of YYYY"` phrase follows `"to amend"` / `"amending"` / `"under"` rather than naming the bill itself.
+  3. [Priority 2] Include `SITTING_STRUCT`, `COMMITTEE_STRUCT`, and `VIDEO_STRUCT` in `meeting_records._SOURCE_SYMBOLS` (`meeting_records.py:131-164`) so Arrow struct changes automatically invalidate per-source `current_version`.
+  4. Refresh `model/jobs/publish-model.json` and `model/jobs/publish.json` after the above edits and commit working-tree changes.
+
+**2026-11-01T12:05:49Z**
+
+Evolutionary Refactoring & Recursive Review Swarm Audit (2026-11-01):
+- Refactored by Cluster 2 Engineer (b009d889, 100% confidence) across Round 1 & Round 2:
+  1. Added `SITTING_STRUCT`, `COMMITTEE_STRUCT`, and `VIDEO_STRUCT` to `_SOURCE_SYMBOLS` in `meeting_records.py:131-170`.
+  2. Updated `_HOUSE_BILL_RE` (`meeting_records.py:521-527`) to match compact dotted Senate bills (`S.140`, `S.744`) while preserving `U.S. 2023` / `R.S. 2477` exclusions.
+  3. Hardened `_ACT_YEAR_RE` (`meeting_records.py:539-546,582`) with leading punctuation `r"^\s*[,:;.\-–—()\x27\"\u2018\u2019\u201c\u201d\s]*"` and per-token negative lookahead so amendatory `"To amend the ... Act of YYYY"` titles retain their bill keys while prior-Congress short-title appositives are suppressed.
+  4. Synced `meeting_records.current_versions()` (`{"congress_gov": "7c4881d1...", "house_xml": "87a7014c..."}`) and `appearance_records.current_versions()` in `model/jobs/publish-model.json` and `model/jobs/publish.json`.
+- Recursive Review Swarm Verdicts (Round 2): Red Team PASS (98%), Green Team PASS (100%), Greybeard PASS (100%), Evolutionary Refactoring PASS (99%).

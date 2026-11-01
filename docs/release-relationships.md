@@ -199,14 +199,18 @@ Incoming: `document_meetings`, `recording_meetings`, `witness_meeting`.
 
 ## `witnesses` — Witness appearances
 
-One named witness appearance at a meeting, package, or page; not a deduplicated person.
+One source-occurrence witness observation at a meeting, package, or page; not a deduplicated person.
 
 Identity: `witness_key` (primary_key; published identifier).
 
 | Field | Published type | Meaning |
 | --- | --- | --- |
-| `witness_key` | `string` | Lowercase hex of first 8 bytes of SHA-256 of ["witness", occasion, name_key] |
+| `witness_key` | `string` | Lowercase hex of first 8 bytes of SHA-256 of ["witness-occurrence-v2", occasion, source, record_sha_hex, source_locator, context_key] |
 | `occasion` | `dict` | Appearance occasion key (meeting:{event_id}, package:{package_id}, or page:{sha256_prefix}) |
+| `source` | `dict` | Observation source family (house_xml, congress_gov, senate_page, or mods) |
+| `record_sha` | `fixed[32]` | SHA-256 of the source body or inline record supplying this witness observation |
+| `source_locator` | `string` | Deterministic occurrence locator within the retained source record |
+| `context_key` | `string` | Lowercase hex SHA-256 of compact JSON [source_url, member_path] for the bound capture context |
 | `event_id` | `int64` | Meeting event ID when occasion is a meeting |
 | `package_id` | `string` | GovInfo CHRG package ID when occasion is a package or matched transcript |
 | `page_url` | `string` | Senate hearing page URL when occasion is a page |
@@ -222,7 +226,7 @@ Identity: `witness_key` (primary_key; published identifier).
 | `testified` | `boolean` | Whether the witness testified |
 | `bioguide_id` | `dict` | Bioguide identifier when the witness is a Member of Congress |
 
-- `occasion`: meeting:{event_id}, package:{package_id}, or page:{sha256_prefix}. Witness keys hash the occasion and normalized name; names alone never join appearances.
+- `occasion`: meeting:{event_id}, package:{package_id}, or page:{sha256_prefix}. Witness keys hash the occasion, source, record_sha, source_locator, and context_key; names alone never join or deduplicate appearances.
 
 Outgoing: `witness_meeting`, `witness_transcript_documents`, `witness_member`, `witness_package`, `witness_page`.
 

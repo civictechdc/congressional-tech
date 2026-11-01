@@ -2,7 +2,7 @@
 id: cefr-xjsp
 status: closed
 deps: []
-links: [ct-4jms]
+links: [ct-4jms, ct-v967, ct-aapl, cef-vai0]
 created: 2026-10-27T18:55:33Z
 type: task
 priority: 2
@@ -66,3 +66,7 @@ Seed refusal contracts5dd031da failed19 cases before implementation. Final focus
 **2026-10-28T10:30:30Z**
 
 Seed authority correction reviewed APPROVE, no findings: codex-raw/run2/seed-progress-code-review/review.md. Contracts5dd031da ->6636eb6d; 52 focused scheduler checks passed13.60s, including local/public pre-download refusal and direct entrypoints. Local scope closed; first live remains exact owner command in docs/measurements/engine-first-20261027/f2/README.md. No live action.
+
+**2026-11-01T02:34:12Z**
+
+Extended capture_scheduler.py per docs/plans/url-normalization.md (ct-aapl): bound ADDRESS_REPAIR_RULES and TRAILING_SPACES to release url_rules, added done_keys/done_urls and untried-candidate prioritization in seed_urls, state_candidates reset/keep substitution, and attempt_aliases in cutoff_report.

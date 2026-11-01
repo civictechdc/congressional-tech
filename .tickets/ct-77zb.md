@@ -1,7 +1,7 @@
 ---
 id: ct-77zb
 status: open
-deps: [ct-gi01, ct-t915, ct-m104, ct-5kto, cef-96wc]
+deps: [ct-gi01, ct-t915, ct-m104, ct-5kto, cef-96wc, ct-sh4j, ct-30fp, ct-kw9b, ct-yymr, ct-vpo2, ct-aapl, ct-v51p, ct-jinw, ct-l9g0, ct-cov3, ct-vnkf, ct-h1nd, ct-wx65, ct-9wl3]
 links: [cef-96wc, cef-jh7i, ct-t906, ct-8kl2, ct-98sm]
 created: 2026-10-30T14:32:30Z
 type: epic
@@ -45,3 +45,14 @@ All 25 child/linked tasks across Tracks 1-7 and the 10 frontend visual review sw
 **2026-10-30T19:29:04Z**
 
 Reopened per Greybeard implementation parity audit on main (04d76024): reopened ct-l9g0 (default runtime pin digest check in setup-native-runtime.py & check-native-runtime.py), ct-vpo2 (D4 lake schemas & E3 profile-completeness.sql work-list anti-join + publish-model.json parser_versions pins), ct-vnkf / ct-cov3 (maintenance.json raw_verification/lake_maintenance binding, spicy-regs release pin preservation, raw-source-tables.md & FILENAME-VIEWER.md doc fixes), and cef-96wc (live operational cut-over execution against production R2/Basin/real devices).
+
+**2026-10-30T21:20:20Z**
+
+Accepted blind-review follow-through: new ct-sh4j owns GB1; new ct-30fp owns the related GB2/GB4/GB5 observation semantics; reopened ct-yymr and ct-kw9b own GB3 handoff/admission, coordinated with existing ct-vpo2 and ct-h1nd. Model, annex, implementation plan, bindings, switch checklist and fixture manifest now specify the corrected target. All implementation/qualification remains open.
+
+**2026-11-01T10:39:01Z**
+
+Independent 13-Ticket Validation Swarm Reconciliation (2026-11-01):
+- Executed independent subagent validation across all 13 recently closed tickets (`ct-aapl`, `ct-v51p`, `ct-jinw`, `ct-l9g0`, `ct-cov3`, `ct-vnkf`, `ct-h1nd`, `ct-30fp`, `ct-vpo2`, `ct-yymr`, `ct-kw9b`, `ct-wx65`, `ct-sh4j`) plus cross-cutting binding, byte-hashed parser, and 5-suite regression checks (`9,734` tests).
+- Reopened all 13 tickets with exact per-ticket audit notes to track their 5 Priority 1 functional/operational defects (`ct-30fp`, `ct-vnkf`, `ct-kw9b`, `ct-sh4j`), 8 Priority 2 edge-case/tightening items (`ct-30fp`, `ct-h1nd`, `ct-wx65`, `ct-yymr`, `ct-vpo2`, `ct-l9g0`, `ct-jinw`, `ct-cov3`, `ct-aapl`, `ct-v51p`), uncommitted working-tree state, and downstream publication/reconciliation steps.
+- Created `ct-9wl3` to track the 3 pre-existing commit `12ac8bf2` test regressions uncovered by the 5-suite cross-cutting run (`test_review_provenance.py`, `test_capture_review_contract.py`, `test_congress_api_imports.py`).

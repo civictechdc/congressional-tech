@@ -2,7 +2,7 @@
 id: ct-adtz
 status: closed
 deps: []
-links: [cefr-3w18]
+links: [cefr-3w18, ct-9wl3, ct-aapl]
 created: 2026-10-30T14:32:31Z
 type: task
 priority: 2

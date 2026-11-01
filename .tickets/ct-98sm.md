@@ -51,3 +51,7 @@ Paired docspec-rs epic in spicy-stack: ss-oxg1. Its children: WS1 engine half ss
 **2026-10-30T17:48:00Z**
 
 All Archive/Explorer/Engine-First workstreams (WS1-WS7, WS9-WS12) and F5 18-group legacy deletions (ct-5kto, -58,500+ net lines removed across G01-G18; zero PYTEST_CURRENT_TEST sites enforced in 3014737a; docspec/docspec_host shims deleted in 176cd4a1) are completed and closed. Kept open per WS12 Rule 1 solely for the parked news_lake workstream (WS8 / ct-d8cf, deferred per user decision A4) and live R2 bucket-lock application (ct-1l1h / ct-v967).
+
+**2026-10-30T21:20:21Z**
+
+The accepted blind-review correctness work is part of the active Explorer migration: ct-sh4j, ct-30fp, reopened ct-yymr / ct-kw9b and existing ct-vpo2. PHASE-2 §4.7 records dependencies and acceptance. No generic engine redesign or reopening of deferred lifecycle work is implied.

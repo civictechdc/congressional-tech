@@ -2,7 +2,7 @@
 id: ct-pocg
 status: open
 deps: [ct-73oe]
-links: []
+links: [ct-30fp, ct-kw9b, ct-vpo2, ct-h1nd]
 created: 2026-10-30T14:10:02Z
 type: feature
 priority: 1

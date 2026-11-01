@@ -1,7 +1,7 @@
 ---
 id: ct-gi01
 status: open
-deps: []
+deps: [ct-sh4j, ct-30fp, ct-kw9b, ct-wx65, ct-h1nd, ct-v51p]
 links: [ct-8kl2, ct-mi03, ct-czsd, ct-2ukk, ct-oc2g, ct-xu1o, ct-8ax6, ct-dzyf, ct-13cn, ct-dmca, ct-gziq, ct-n6lj, ct-sb0s, ct-te1p, ct-aia9, ct-2yl5, ct-bwac, ct-a3le, ct-0odd, ct-ec91, ct-3ttc, ct-84xa, ct-h23e, ct-f7p8, ct-98sm, ct-r6xw, ct-jnw5, ct-4g55, ct-xx7q, ct-s9p2, ct-w8dc, ct-93zs, ct-m104, ct-t915, ct-5kto, ct-m94a]
 created: 2026-10-21T20:53:31Z
 type: feature
@@ -74,3 +74,12 @@ Completed Phase 2 F3 in 909b9c72: added apps/committee_youtube/src/committee_exp
 **2026-10-30T20:37:05Z**
 
 Reopened and reconciled at the user’s request on 2026-10-30. Current scope and acceptance above supersede the earlier closure where it claimed the remaining Explorer migration was complete. Canonical coverage and order: docs/plans/phase-2-annex-20261028.md §4.6. No implementation, live publication or deletion was performed by this reconciliation.
+
+**2026-10-30T21:20:20Z**
+
+Accepted blind-review prerequisites are ct-sh4j (per-attempt capture eligibility), ct-30fp (contextual witness observations, explicit-empty replacement and occurrence preservation), ct-yymr / ct-kw9b (version handoff/admission), and ct-vpo2 (schemas/invariants). PHASE-2 §4.7 and model/fixtures/manifest.md define the transition cases. Correct these semantics before expanding affected backfills or claiming migration preservation; reuse unaffected completions.
+
+**2026-11-01T10:39:01Z**
+
+Independent Validation Reconciliation (2026-11-01):
+- Reopened prerequisite/child tickets `ct-sh4j`, `ct-30fp`, `ct-kw9b`, `ct-wx65`, `ct-h1nd`, and `ct-v51p` with concrete validation findings (Senate repeated witness name deduplication and relative link resolution in `ct-30fp`, candidate-vs-completeness SQL alignment in `ct-kw9b`, 512 MiB HashJoin build-side order and per-attempt conflict/url_state grain fixes in `ct-sh4j`, and edge-case tightening in `ct-wx65`, `ct-h1nd`, `ct-v51p`) so these defects are resolved before final Phase-2 backfill/publication.
