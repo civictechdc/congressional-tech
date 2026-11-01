@@ -70,3 +70,42 @@ def test_native_producer_release_through_stdio(tmp_path, request):
             entity = await call('get_entity', {'table':'witnesses','id':witness['witness_key']})
             assert entity['rows'][0]['witness_key']==witness['witness_key']
     asyncio.run(run())
+
+
+def test_repaired_bill_filenames_through_stdio(tmp_path, request):
+    source = request.config.getoption('--native-fixture-root')
+    if source is None:
+        pytest.skip('Native integration requires --native-fixture-root from the producer test runner')
+    candidates = {p.resolve() for p in Path(source).glob('test_repaired_bill_filename_*/release/manifest.json')}
+    assert len(candidates)==1, f'Expected one retained repaired filename fixture, found {len(candidates)}'
+    prepare(tmp_path, candidates.pop(), archive_origin='https://archive.example')
+
+    async def run():
+        transport = StdioTransport(sys.executable, ['-m','congressional_explorer_mcp.cli','serve',
+                                  '--data-dir',str(tmp_path)], keep_alive=False)
+        async with Client(transport) as client:
+            found = (await client.call_tool('search_documents', {'query':{'limit':20}})).data
+            details = {}
+            for row in found['rows']:
+                document = (await client.call_tool('get_document', {'query':row['reference']})).data
+                details[row['filename']] = document['rows'][0]
+            return found['rows'], details
+    docs, details = asyncio.run(run())
+    by_name = {row['filename']: row for row in docs}
+    assert by_name['hearing_memo_--_leg_hrg_on_h.r._2199_05.23.17.pdf']['document_date'] == '2017-05-23'
+    assert by_name['hearing_memo_--_leg_hrg_on_hr_2167_06.23.16.pdf']['document_date'] == '2016-06-23'
+    assert by_name['hearing_memo_--_leg_hrg_on_h.r._2199_05.23.2017.pdf']['document_date'] == '2017-05-23'
+    assert by_name['hearing_memo_--_leg_hrg_on_hr_2167_06.23.2016.pdf']['document_date'] == '2016-06-23'
+    assert not any(str(row.get('document_date', '')).startswith(('2199-', '2167-')) for row in docs)
+    for fname, expected_date, expected_source, expected_ref in [
+        ('hearing_memo_--_leg_hrg_on_h.r._2199_05.23.17.pdf', '2017-05-23', 'meeting', 'hr2199'),
+        ('hearing_memo_--_leg_hrg_on_hr_2167_06.23.16.pdf', '2016-06-23', 'meeting', 'hr2167'),
+        ('hearing_memo_--_leg_hrg_on_h.r._2199_05.23.2017.pdf', '2017-05-23', 'filename', 'hr2199'),
+        ('hearing_memo_--_leg_hrg_on_hr_2167_06.23.2016.pdf', '2016-06-23', 'filename', 'hr2167'),
+    ]:
+        detail = details[fname]
+        assert detail['document_date'] == expected_date
+        assert detail['document_date_source'] == expected_source
+        facts = {(f['field'], f['value']) for f in detail['facts']}
+        assert ('measure_references', expected_ref) in facts
+        assert not any(f['field'] == 'date_token_candidates' and f['value'].startswith(('2199-', '2167-')) for f in detail['facts'])

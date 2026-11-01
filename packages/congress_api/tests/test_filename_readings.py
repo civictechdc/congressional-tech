@@ -524,9 +524,9 @@ def test_module_cli_and_worker_callback_keep_the_public_package_path(tmp_path):
     assert row['status']=='completed' and row['measure_keys']==['119-hr-6028']
 
 
-def test_repaired_bill_filename_dates_publish_and_read_back_through_mcp(tmp_path):
+def test_repaired_bill_filename_dates_publish(tmp_path):
+    """Producer half; test_native_release.py reads this release back through MCP stdio."""
     import hashlib
-    import subprocess
     from congress_api.lake import appearance_records as ar_lake, meeting_records as mr_lake, readings
     from congress_api.lake.captures import stage_captures
     from congress_api.retention.provenance import parquet_output, run_job
@@ -750,60 +750,24 @@ def test_repaired_bill_filename_dates_publish_and_read_back_through_mcp(tmp_path
         scratch=tmp_path / 'model',
     )
 
-    mcp_data = tmp_path / 'mcp-data'
-    mcp_python = reader().ROOT / 'apps/explorer_mcp/.venv/bin/python'
-    assert mcp_python.is_file(), f'Expected explorer_mcp runtime at {mcp_python}'
-    probe = subprocess.run(
-        [
-            str(mcp_python),
-            '-c',
-            (
-                'import asyncio, json, pathlib, sys\n'
-                'from congressional_explorer_mcp.release import prepare\n'
-                'from fastmcp import Client\n'
-                'from fastmcp.client.transports import StdioTransport\n'
-                'async def main():\n'
-                '    mcp_data = pathlib.Path(sys.argv[1])\n'
-                '    manifest = pathlib.Path(sys.argv[2])\n'
-                '    prepare(mcp_data, manifest, archive_origin="https://archive.example")\n'
-                '    transport = StdioTransport(sys.executable, ["-m", "congressional_explorer_mcp.cli", "serve", "--data-dir", str(mcp_data)], keep_alive=False)\n'
-                '    async with Client(transport) as client:\n'
-                '        res = (await client.call_tool("search_documents", {"query": {"limit": 20}})).data\n'
-                '        details = {}\n'
-                '        for row in res["rows"]:\n'
-                '            doc = (await client.call_tool("get_document", {"query": row["reference"]})).data\n'
-                '            details[row["filename"]] = doc["rows"][0]\n'
-                '        print(json.dumps({"rows": res["rows"], "details": details}))\n'
-                'asyncio.run(main())\n'
-            ),
-            str(mcp_data),
-            str(release_dir / 'manifest.json'),
-        ],
-        capture_output=True,
-        text=True,
-        check=True,
-    )
-    payload = json.loads(probe.stdout)
-    docs = payload['rows']
-    by_name = {row['filename']: row for row in docs}
-    assert by_name['hearing_memo_--_leg_hrg_on_h.r._2199_05.23.17.pdf']['document_date'] == '2017-05-23'
-    assert by_name['hearing_memo_--_leg_hrg_on_hr_2167_06.23.16.pdf']['document_date'] == '2016-06-23'
-    assert by_name['hearing_memo_--_leg_hrg_on_h.r._2199_05.23.2017.pdf']['document_date'] == '2017-05-23'
-    assert by_name['hearing_memo_--_leg_hrg_on_hr_2167_06.23.2016.pdf']['document_date'] == '2016-06-23'
-    assert not any(
-        str(row.get('document_date', '')).startswith(('2199-', '2167-'))
-        for row in docs
-    )
-    for fname, expected_date, expected_source, expected_ref in [
-        ('hearing_memo_--_leg_hrg_on_h.r._2199_05.23.17.pdf', '2017-05-23', 'meeting', 'hr2199'),
-        ('hearing_memo_--_leg_hrg_on_hr_2167_06.23.16.pdf', '2016-06-23', 'meeting', 'hr2167'),
-        ('hearing_memo_--_leg_hrg_on_h.r._2199_05.23.2017.pdf', '2017-05-23', 'filename', 'hr2199'),
-        ('hearing_memo_--_leg_hrg_on_hr_2167_06.23.2016.pdf', '2016-06-23', 'filename', 'hr2167'),
-    ]:
-        detail = payload['details'][fname]
-        assert detail['document_date'] == expected_date
-        assert detail['document_date_source'] == expected_source
-        facts = {(f['field'], f['value']) for f in detail['facts']}
-        assert ('measure_references', expected_ref) in facts
-        assert not any(f['field'] == 'date_token_candidates' and f['value'].startswith(('2199-', '2167-')) for f in detail['facts'])
-
+    # detail.parquet has no key of its own: it aligns with list.parquet by row position.
+    published = {
+        row['filename']: (str(row['document_date']), detail['document_date_source'])
+        for row, detail in zip(
+            pq.read_table(release_dir / 'list.parquet', columns=['filename', 'document_date']).to_pylist(),
+            pq.read_table(release_dir / 'detail.parquet', columns=['document_date_source']).to_pylist(),
+            strict=True,
+        )
+    }
+    assert {name: published[name] for name in (
+        'hearing_memo_--_leg_hrg_on_h.r._2199_05.23.17.pdf',
+        'hearing_memo_--_leg_hrg_on_hr_2167_06.23.16.pdf',
+        'hearing_memo_--_leg_hrg_on_h.r._2199_05.23.2017.pdf',
+        'hearing_memo_--_leg_hrg_on_hr_2167_06.23.2016.pdf',
+    )} == {
+        'hearing_memo_--_leg_hrg_on_h.r._2199_05.23.17.pdf': ('2017-05-23', 'meeting'),
+        'hearing_memo_--_leg_hrg_on_hr_2167_06.23.16.pdf': ('2016-06-23', 'meeting'),
+        'hearing_memo_--_leg_hrg_on_h.r._2199_05.23.2017.pdf': ('2017-05-23', 'filename'),
+        'hearing_memo_--_leg_hrg_on_hr_2167_06.23.2016.pdf': ('2016-06-23', 'filename'),
+    }
+    assert not any(date.startswith(('2199-', '2167-')) for date, _ in published.values())

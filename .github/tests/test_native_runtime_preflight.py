@@ -110,6 +110,17 @@ def test_runtime_preflight_reads_committed_pin_file_and_binary_forbids_path_fall
     monkeypatch.setenv('PATH', str(fake_bin_dir))
     monkeypatch.delenv('DOCSPEC_BINARY', raising=False)
     monkeypatch.delenv('DOCSPEC_BIN', raising=False)
+    # A docspec beside the job config is a deliberate source, unlike PATH; CI sets one.
+    monkeypatch.delenv('DOCSPEC_JOB_CONFIG', raising=False)
+    monkeypatch.delenv('QUALIFIED_DOCSPEC_RUNTIME', raising=False)
     monkeypatch.chdir(tmp_path)
     with pytest.raises(FileNotFoundError, match='Unable to locate native docspec binary'):
         resolve_docspec_binary()
+
+    runtime_dir = tmp_path / 'runtime'
+    runtime_dir.mkdir()
+    sibling = runtime_dir / 'docspec'
+    sibling.write_bytes(b'#!/bin/sh\nexit 0\n')
+    sibling.chmod(0o755)
+    monkeypatch.setenv('DOCSPEC_JOB_CONFIG', str(runtime_dir / 'runtime.json'))
+    assert resolve_docspec_binary() == sibling.resolve()

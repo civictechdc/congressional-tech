@@ -87,6 +87,8 @@ def test_batch_record_captures_extended_prior_attempts_and_intra_item_fetch_cons
     from congress_api.lake.captures import stage_captures
     from test_captures_ingest import files
     config=json.loads(Path(os.environ['DOCSPEC_JOB_CONFIG']).read_text())
+    # This config moves to tmp_path, so a binary named relative to the original must be resolved first.
+    config['binary']=str((Path(os.environ['DOCSPEC_JOB_CONFIG']).parent/config['binary']).resolve())
     limits=tmp_path/'tight-limits.json'
     limits.write_text(json.dumps(dict(compute_threads=2,memory_bytes=512<<20,scratch_bytes=256<<20,
         batch_rows=2,max_batch_bytes=4<<20,max_metadata_bytes=8<<20)))
