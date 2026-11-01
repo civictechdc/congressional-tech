@@ -75,7 +75,11 @@ def test_generated_descriptor_passes_setup_native_runtime_validation(tmp_path: P
     )
     assert rc == 0
     raw_json = output_file.read_text(encoding="utf-8")
-    validated = setup_runtime.artifact_descriptor(raw_json)
+    pin_data = json.loads((ROOT / "model" / "docspec-runtime-pin.json").read_text(encoding="utf-8"))
+    pin_data["platforms"]["linux-amd64"]["sha256"] = expected_sha
+    pin_file = tmp_path / "pin.json"
+    pin_file.write_text(json.dumps(pin_data), encoding="utf-8")
+    validated = setup_runtime.artifact_descriptor(raw_json, pin_file=pin_file)
 
     assert validated["version"] == 1
     assert validated["platform"] == "linux-amd64"
@@ -120,7 +124,11 @@ def test_upload_verifies_exact_byte_length_and_sha256(tmp_path: Path):
     assert put_call["ContentLength"] == len(payload)
     assert put_call["IfNoneMatch"] == "*"
     assert sha256(put_call["Body"]).hexdigest() == expected_sha
-    assert setup_runtime.artifact_descriptor(json.dumps(descriptor))["sha256"] == expected_sha
+    pin_data = json.loads((ROOT / "model" / "docspec-runtime-pin.json").read_text(encoding="utf-8"))
+    pin_data["platforms"]["linux-amd64"]["sha256"] = expected_sha
+    pin_file = tmp_path / "pin.json"
+    pin_file.write_text(json.dumps(pin_data), encoding="utf-8")
+    assert setup_runtime.artifact_descriptor(json.dumps(descriptor), pin_file=pin_file)["sha256"] == expected_sha
 
 
 def test_upload_rejects_corrupted_readback(tmp_path: Path):

@@ -192,6 +192,8 @@ class NativeDatasets:
             pin = load_runtime_pin(pin_file)
             if expected_source_revision is None:
                 expected_source_revision = pin['source_revision']
+            elif expected_source_revision != pin['source_revision']:
+                raise ValueError('Configured source_revision differs from expected source revision')
             if not required_features:
                 required_features = tuple(pin['build_features'])
             required_capabilities = tuple(dict.fromkeys([*required_capabilities, *pin['required_capabilities']]))

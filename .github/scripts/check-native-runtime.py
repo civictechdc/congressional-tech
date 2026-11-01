@@ -29,10 +29,12 @@ def check(path, binary_sha256=None, *, expected_platform=None,
           expected_source_revision=None, required_features=(),
           required_capabilities=REQUIRED_LOOPBACK_CAPABILITIES,
           pin_file=RUNTIME_PIN_FILE):
+    pin = load_runtime_pin(pin_file) if pin_file is not None else None
+    config_payload = json.loads(Path(path).read_text(encoding='utf-8'))
+    platform_name = expected_platform or config_payload.get('platform')
     if binary_sha256 is None:
-        pin = load_runtime_pin(pin_file)
-        config_payload = json.loads(Path(path).read_text(encoding='utf-8'))
-        platform_name = expected_platform or config_payload.get('platform')
+        if pin is None:
+            raise ValueError('An approved native binary SHA-256 or pin file is required')
         if not isinstance(platform_name, str) or not platform_name:
             raise ValueError('An explicit platform or runtime.json platform is required to resolve the committed pin')
         binary_sha256 = runtime_pin_digest(platform_name, pin_path=pin_file)
@@ -40,9 +42,33 @@ def check(path, binary_sha256=None, *, expected_platform=None,
             expected_platform = platform_name
         if expected_source_revision is None:
             expected_source_revision = pin['source_revision']
+        elif expected_source_revision != pin['source_revision']:
+            raise ValueError('Explicit source_revision differs from the committed runtime pin file')
         if not required_features:
             required_features = tuple(pin['build_features'])
         required_capabilities = tuple(pin['required_capabilities'])
+    elif pin is not None:
+        if not isinstance(binary_sha256, str) or re.fullmatch('[0-9a-f]{64}', binary_sha256) is None:
+            raise ValueError('An approved native binary SHA-256 is required')
+        if isinstance(platform_name, str) and platform_name:
+            pinned_sha256 = runtime_pin_digest(platform_name, pin_path=pin_file)
+            if binary_sha256 != pinned_sha256:
+                raise ValueError('Explicit binary_sha256 differs from the committed runtime pin file')
+        else:
+            matched_platforms = [
+                plat for plat, entry in pin.get('platforms', {}).items()
+                if isinstance(entry, dict) and entry.get('sha256') == binary_sha256
+            ]
+            if not matched_platforms:
+                raise ValueError('Explicit binary_sha256 differs from the committed runtime pin file')
+            platform_name = matched_platforms[0]
+            if expected_platform is None:
+                expected_platform = platform_name
+        if expected_source_revision is None:
+            if config_payload.get('source_revision') is not None:
+                expected_source_revision = pin['source_revision']
+        elif expected_source_revision != pin['source_revision']:
+            raise ValueError('Explicit source_revision differs from the committed runtime pin file')
     if not isinstance(binary_sha256, str) or re.fullmatch('[0-9a-f]{64}', binary_sha256) is None:
         raise ValueError('An approved native binary SHA-256 is required')
     native = NativeDatasets.from_config(path)
@@ -52,7 +78,7 @@ def check(path, binary_sha256=None, *, expected_platform=None,
         expected_source_revision=expected_source_revision,
         required_features=required_features,
         required_capabilities=required_capabilities,
-        pin_file=pin_file if binary_sha256 is None else None,
+        pin_file=pin_file if (pin is not None and isinstance(platform_name, str) and platform_name) else None,
     )
     return dict(
         verified=True,

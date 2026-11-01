@@ -68,9 +68,7 @@ def artifact_descriptor(raw, *, pin_file=RUNTIME_PIN_FILE, enforce_platform_dige
     if value['source_revision'] != pin['source_revision']:
         raise SetupFailure('Runtime artifact revision differs from the qualified DocSpec revision '
                            f"{pin['source_revision']}")
-    should_enforce = enforce_platform_digest if enforce_platform_digest is not None else (
-        Path(pin_file).resolve() != Path(RUNTIME_PIN_FILE).resolve()
-    )
+    should_enforce = True if enforce_platform_digest is None else bool(enforce_platform_digest)
     if should_enforce:
         pinned_digest = pin['platforms'].get(value['platform'], {}).get('sha256')
         if value['sha256'] != pinned_digest:
@@ -94,7 +92,7 @@ def private_write(path, raw):
         os.fsync(target.fileno())
 
 
-def install(artifact, credentials, remote, directory, *, client, local_limits=None):
+def install(artifact, credentials, remote, directory, *, client, local_limits=None, pin_file=RUNTIME_PIN_FILE):
     """Read exactly one selected private object; create no native workspace/provider state."""
     directory = Path(directory)
     if directory.is_symlink() or directory.exists():
@@ -163,6 +161,7 @@ def install(artifact, credentials, remote, directory, *, client, local_limits=No
         expected_source_revision=artifact['source_revision'],
         required_features=build_features,
         required_capabilities=required_capabilities,
+        pin_file=pin_file,
     )
     report.update(platform=artifact['platform'], source_revision=artifact['source_revision'],
                   build_features=build_features, required_capabilities=required_capabilities,
@@ -205,7 +204,8 @@ def main(argv=None):
         if args.credentials_file and args.credentials_file.stat().st_mode & 0o077:
             raise SetupFailure('Local DocSpec credentials require private file permissions (0600)')
         config, report = install(artifact, credentials, args.remote, args.directory,
-            client=make_client(credentials), local_limits=args.local_limits if args.local else None)
+            client=make_client(credentials), local_limits=args.local_limits if args.local else None,
+            pin_file=args.pin_file)
         if args.local:
             subprocess.run([sys.executable, str(Path(__file__).resolve().parents[2]/'scripts/dev.py'),
                 'doctor', '--lane', 'production-offline'],

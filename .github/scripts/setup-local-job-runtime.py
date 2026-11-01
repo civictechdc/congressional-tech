@@ -134,7 +134,7 @@ def main(argv=None):
                                      if args.archive_sha256 is not None else None)
                 proof = copy_checked(source, archive, size=size, expected=expected_download, exclusive=True)
             config = install_archive(archive, args.archive_sha256, args.directory, proof=proof,
-                                     pin_file=args.pin_file if args.archive_sha256 is None else None)
+                                     pin_file=args.pin_file)
         env = {**os.environ, 'DOCSPEC_JOB_CONFIG':str(config)}
         root = Path(__file__).resolve().parents[2]
         subprocess.run([sys.executable, str(root/'scripts/dev.py'), 'doctor', '--lane', 'production-offline'],

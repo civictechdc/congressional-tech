@@ -21,9 +21,15 @@ def module():
 
 
 @pytest.fixture
-def inputs():
+def inputs(tmp_path, monkeypatch):
+    import docspec_client
     binary = b'\x7fELF-qualified-private-runtime-fixture'
     digest, revision = sha256(binary).hexdigest(), module().QUALIFIED_DOCSPEC_RUNTIME['source_revision']
+    pin_data = json.loads(Path(docspec_client.RUNTIME_PIN_FILE).read_text())
+    pin_data['platforms']['linux-amd64']['sha256'] = digest
+    fixture_pin = tmp_path / 'fixture-pin.json'
+    fixture_pin.write_text(json.dumps(pin_data))
+    monkeypatch.setattr(docspec_client, 'RUNTIME_PIN_FILE', fixture_pin)
     descriptor = dict(version=1, platform='linux-amd64', source_revision=revision,
         bucket='private-runtime-fixture', key=f'runtime/docspec/{revision}/linux-amd64/{digest}/docspec',
         bytes=len(binary), sha256=digest)
@@ -88,6 +94,15 @@ def test_descriptor_refuses_a_self_consistent_artifact_from_another_revision(inp
     changed = {**descriptor, 'source_revision': stale,
                'key': f"runtime/docspec/{stale}/linux-amd64/{descriptor['sha256']}/docspec"}
     with pytest.raises(ValueError, match='qualified DocSpec revision'):
+        module().artifact_descriptor(json.dumps(changed))
+
+
+def test_descriptor_refuses_digest_mismatch_against_default_pin_file(inputs):
+    _, descriptor, _ = inputs
+    other_digest = '1' * 64
+    changed = {**descriptor, 'sha256': other_digest,
+               'key': f"runtime/docspec/{descriptor['source_revision']}/linux-amd64/{other_digest}/docspec"}
+    with pytest.raises(ValueError, match='committed DocSpec runtime pin'):
         module().artifact_descriptor(json.dumps(changed))
 
 
