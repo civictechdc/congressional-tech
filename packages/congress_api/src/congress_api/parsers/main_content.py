@@ -1,9 +1,10 @@
-"""Select a page's main text from explicit article-body markup, with an extractor fallback.
+"""Select a page's main text from explicit article-body markup.
 
 Class-name heuristics such as ``entry-content`` are not explicit markup and are not
 candidates. Marked text under ``SHORT_MARKED_CHARS`` is not testimony ("No prepared
-statement.") and never falls back: the extractor would present other page text as
-the statement.
+statement.") and never falls back: an extractor would present other page text as
+the statement. Everything else is ``fallback_required``: the caller reuses the stored
+trafilatura reading (archive_readings), rather than a second unbounded run of it here.
 """
 from lxml import etree
 
@@ -84,15 +85,6 @@ def _dom_candidates(tree, metadata: HtmlMetadata) -> list[ContentCandidate]:
     return out
 
 
-def _fallback(body: bytes) -> tuple[str | None, str | None]:
-    from trafilatura import extract  # the archive extra; the same call as archive_readings
-
-    try:
-        return extract(body, include_comments=False, output_format='txt') or None, None
-    except (etree.Error, UnicodeError, ValueError, RuntimeError) as error:
-        return None, 'extractor_error:' + type(error).__name__
-
-
 def select_main_content(body: bytes, metadata: HtmlMetadata) -> MainContent:
     common = dict(body_sha256=metadata.body_sha256)
     def result(outcome, *, text=None, selected=None, candidates=(), reason=None):
@@ -100,9 +92,11 @@ def select_main_content(body: bytes, metadata: HtmlMetadata) -> MainContent:
                            property=selected.property if selected else None, candidates=list(candidates), fallback_reason=reason)
     if metadata.document_kind != 'html' or metadata.error_title_hint:
         return result('none', reason='not_substantive')
+    if metadata.document_truncated:  # a marked element may be among what the parser dropped
+        return result('failed', reason='document_too_deep')
     tree = parse_document(body)
     if tree is None:
-        return result('none', reason='unparseable')
+        return result('fallback_required', reason='unparseable')
     candidates = _dom_candidates(tree, metadata)
     for path, value in _json_ld_bodies(metadata.formats['json-ld'].items, '/formats/json-ld/items'):
         candidates.append(ContentCandidate(selector=path, property='json-ld:articleBody', text=value, char_count=len(value), links=[], rdfa_confirmed=False))
@@ -112,9 +106,5 @@ def select_main_content(body: bytes, metadata: HtmlMetadata) -> MainContent:
         return result('marked', text=substantive[0].text, selected=substantive[0], candidates=candidates)
     if distinct and not substantive:
         return result('marked_no_content', selected=distinct[0], candidates=candidates, reason='short_marked_text')
-    conflict = len(substantive) > 1
-    text, error = _fallback(body)
-    reason = error or ('conflicting_candidates' if conflict else 'empty_candidate' if candidates else 'no_candidate')
-    if conflict:
-        return result('conflicting_candidates', text=text, candidates=candidates, reason=reason)
-    return result('fallback_extractor' if text else 'none', text=text, candidates=candidates, reason=reason)
+    reason = 'conflicting_candidates' if substantive else 'empty_candidate' if candidates else 'no_candidate'
+    return result('fallback_required', candidates=candidates, reason=reason)

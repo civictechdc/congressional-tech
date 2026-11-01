@@ -9,7 +9,6 @@ from pathlib import Path
 import pytest
 
 from congress_api.models.html_metadata import MainContent
-from congress_api.parsers import main_content
 from congress_api.parsers.html_metadata import read_html_metadata
 from congress_api.parsers.main_content import SHORT_MARKED_CHARS, block_text, select_main_content
 from lxml import etree, html as dom
@@ -36,8 +35,7 @@ def test_real_marked_testimony_excludes_page_chrome_and_is_cited():
     assert content.candidates[0].rdfa_confirmed
 
 
-def test_real_no_statement_page_is_not_replaced_by_other_page_text(monkeypatch):
-    monkeypatch.setattr(main_content, '_fallback', lambda body: pytest.fail('short marked text must not fall back'))
+def test_real_no_statement_page_is_not_replaced_by_other_page_text():
     content = select((FIXTURES / 'marked-no-statement.html').read_bytes())
     assert content.outcome == 'marked_no_content' and content.text is None
     assert content.candidates[0].text == 'No prepared statement.'
@@ -59,7 +57,7 @@ def test_itemprop_and_json_ld_are_candidates():
 
 def test_class_names_are_not_explicit_markup():
     content = select(page(f'<div class="entry-content">{LONG}</div>'))
-    assert content.outcome in {'fallback_extractor', 'none'} and content.candidates == []
+    assert content.outcome == 'fallback_required' and content.candidates == []
 
 
 def test_nested_candidates_resolve_to_the_outermost():
@@ -72,33 +70,32 @@ def test_identical_candidates_dedupe():
     assert content.outcome == 'marked' and len(content.candidates) == 2
 
 
-def test_distinct_candidates_are_retained_and_fall_back(monkeypatch):
-    monkeypatch.setattr(main_content, '_fallback', lambda body: ('extracted', None))
+def test_distinct_candidates_are_retained_and_require_the_stored_reading():
     content = select(page(f'<div property="content:encoded">{LONG}</div><div property="articleBody">Other. {LONG}</div>'))
-    assert content.outcome == 'conflicting_candidates' and content.text == 'extracted' and len(content.candidates) == 2
+    assert content.outcome == 'fallback_required' and content.fallback_reason == 'conflicting_candidates'
+    assert content.text is None and len(content.candidates) == 2
 
 
-def test_empty_candidate_and_no_candidate_fall_back(monkeypatch):
-    monkeypatch.setattr(main_content, '_fallback', lambda body: ('extracted', None))
+def test_empty_and_missing_candidates_require_the_stored_reading():
     assert select(page('<div property="content:encoded"> </div>')).fallback_reason == 'empty_candidate'
-    assert select(page('<p>Words</p>')).outcome == 'fallback_extractor'
-    monkeypatch.setattr(main_content, '_fallback', lambda body: (None, None))
-    content = select(page('<p>Words</p>'))
-    assert content.outcome == 'none' and content.text is None
+    assert select(page('<p>Words</p>')).fallback_reason == 'no_candidate'
 
 
-def test_fallback_is_the_archive_reader_call(monkeypatch):
+def test_no_extractor_runs_here(monkeypatch):
     import trafilatura
-    calls = []
-    monkeypatch.setattr(trafilatura, 'extract', lambda body, **kwargs: calls.append(kwargs) or 'text')
-    select(page('<p>Words</p>'))
-    assert calls == [dict(include_comments=False, output_format='txt')]
+    monkeypatch.setattr(trafilatura, 'extract', lambda *a, **k: pytest.fail('reuse the stored reading'))
+    assert select(page('<p>Words</p>')).outcome == 'fallback_required'
 
 
-def test_non_substantive_pages_are_never_marked(monkeypatch):
-    monkeypatch.setattr(main_content, '_fallback', lambda body: pytest.fail('nothing to extract'))
+def test_non_substantive_pages_are_never_marked():
     assert select(page(f'<div property="content:encoded">{LONG}</div>', title='Page Not Found')).outcome == 'none'
     assert select(b'%PDF-1.7').outcome == 'none'
+
+
+def test_a_candidate_past_the_parser_depth_is_failed_not_none():
+    deep = '<div>' * 300 + f'<p property="content:encoded">{LONG}</p>' + '</div>' * 300
+    content = select(page(deep))
+    assert content.outcome == 'failed' and content.fallback_reason == 'document_too_deep'
 
 
 def test_walker_keeps_words_order_tails_and_drops_code():
