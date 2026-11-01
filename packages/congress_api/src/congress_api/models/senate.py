@@ -4,7 +4,7 @@ Strings retain publisher spelling, URLs and dates. HTML attributes are named by
 publishers and remain string maps; the surrounding records have explicit shapes.
 """
 from datetime import date
-from typing import Annotated
+from typing import Annotated, Literal
 
 from pydantic import BeforeValidator, Field, JsonValue, TypeAdapter
 
@@ -219,6 +219,10 @@ class ListingColumns(SourceModel):
     time: str | None = None
     room: str | None = None
     type: str | None = None
+    date_text: str | None = None
+    encoded_start: str | None = None
+    time_evidence: Literal['displayed_matches_encoded', 'displayed_conflicts_encoded',
+                           'encoded_only_ambiguous', 'displayed_only'] | None = None
 
 
 class CollectionScope(SourceModel):

@@ -25,6 +25,52 @@ from congress_api.parsers.text import text
 
 PARSER_VERSION = 20
 
+_EVENT = ('contains(concat(" ",normalize-space(@class)," ")," vevent ") '
+          'or contains(concat(" ",normalize-space(@class)," ")," h-event ")')
+_CLOCK = re.compile(r"(\d{1,2}):(\d{2})\s*([AP])\.?M", re.I)
+_ENCODED_CLOCK = re.compile(r"T(\d{2}):(\d{2})")
+
+
+def _event_rows(tree) -> dict:
+    """Map each link to its nearest event row in one walk: O(links), not O(links x depth)."""
+    return {anchor: row for row in tree.xpath(f"//*[{_EVENT}]") for anchor in row.xpath("descendant-or-self::a[@href]")}
+
+
+def _time_evidence(displayed: str, encoded: str | None) -> str:
+    """How a displayed clock relates to the encoded one; the displayed clock is the selection.
+
+    These templates drop the meridiem when encoding, so 03:00PM is encoded 03:00: an
+    encoded hour from 1 to 11 with no displayed clock cannot be read as AM or PM.
+    """
+    shown, coded = _CLOCK.search(displayed), _ENCODED_CLOCK.search(encoded or "")
+    if not coded:
+        return "displayed_only"
+    if not shown:
+        return "encoded_only_ambiguous"
+    hour = int(shown[1]) % 12 + (12 if shown[3].upper() == "P" else 0)
+    return "displayed_matches_encoded" if (hour, int(shown[2])) == (int(coded[1]), int(coded[2])) else "displayed_conflicts_encoded"
+
+
+def _event_columns(row) -> dict[str, str]:
+    """Columns of one semantic event row: visible text selects, the encoded value is retained."""
+    cols: dict[str, str] = {}
+    for key, name in (("room", "location"), ("type", "type")):
+        nodes = row.xpath(f".//*[contains(concat(' ', normalize-space(@class), ' '), ' {name} ')]")
+        if nodes and (value := text(nodes[0].text_content())):
+            cols[key] = value
+    if times := row.xpath(".//time"):
+        raw = times[0].text_content()
+        match = DATE.search(raw)
+        displayed = text(raw)
+        if match:
+            cols["date_text"] = text(match.group())
+        if remainder := text(raw[match.end():] if match else raw):
+            cols["time"] = remainder
+        if encoded := times[0].get("datetime"):
+            cols["encoded_start"] = encoded
+        cols["time_evidence"] = _time_evidence(displayed, encoded)
+    return cols
+
 
 def parse_page(page: str | bytes, url: str) -> SenatePage:
     """Read source bytes into a source model before normalization or storage.
@@ -66,7 +112,9 @@ def parse_listing_details(page: str, site: str) -> dict[str, dict]:
     details: dict[str, dict] = {}
     if not page.strip():
         return details
-    for anchor in dom.fromstring(page).xpath(".//a[@href]"):
+    tree = dom.fromstring(page)
+    event_rows = _event_rows(tree)
+    for anchor in tree.xpath(".//a[@href]"):
         href = anchor.get("href") or ""
         if not href or "#" in href:
             continue
@@ -82,6 +130,8 @@ def parse_listing_details(page: str, site: str) -> dict[str, dict]:
         ]
         if len(item_texts) == 3:
             cols["type"], cols["room"], cols["time"] = item_texts
+        elif anchor in event_rows:
+            cols = _event_columns(event_rows[anchor])
         elif table_rows := anchor.xpath("ancestor::tr[1]"):
             tr = table_rows[0]
             types = [
@@ -124,9 +174,13 @@ def parse_listing_page(page, site):
         return rows
     # Source row boundaries take precedence over proximity to another row.
     row_days = {}
-    for anchor in dom.fromstring(page).xpath(".//a[@href]"):
+    tree = dom.fromstring(page)
+    event_rows = _event_rows(tree)
+    for anchor in tree.xpath(".//a[@href]"):
         dates = anchor.xpath(".//time")
-        if not dates:
+        if not dates and anchor in event_rows:
+            dates = event_rows[anchor].xpath(".//time")
+        elif not dates:
             table_rows = anchor.xpath("ancestor::tr[1]")
             if table_rows:
                 dates = table_rows[0].xpath(".//td[contains(concat(' ', normalize-space(@class), ' '), ' recordListDate ')]")

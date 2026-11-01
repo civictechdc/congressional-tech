@@ -1,0 +1,333 @@
+{
+ "provenance": "Rebuilt by scanning retained senate/pages bodies for a vevent or h-event class; the earlier output/extruct-metadata-20261030 artifacts no longer exist.",
+ "baseline": {
+  "rows": 1225,
+  "matched": 1191,
+  "listing_absent": 34,
+  "matched_wrong_day": 938,
+  "details_rows_with_time": 0,
+  "rows_with_room_in_dom": 883
+ },
+ "expected": {
+  "rows": 1225,
+  "matched": 1191,
+  "listing_absent": 34,
+  "matched_wrong_day": 0,
+  "details_rows_with_time": 750,
+  "rows_with_room_in_dom": 883,
+  "extruct_row_count_differs": 0,
+  "evidence:displayed_conflicts_encoded": 177,
+  "evidence:displayed_matches_encoded": 573,
+  "evidence:encoded_only_ambiguous": 473,
+  "evidence:displayed_only": 2
+ },
+ "differential": {
+  "pages": 11139,
+  "non_utf8_skipped": 2804,
+  "not_markup_skipped": 88,
+  "unmarked_changed": 0,
+  "marked_changed": 49,
+  "marked_changed_rows": 48,
+  "marked_changed_details_only": {
+   "sha": "fd63890cf8e2b3a85ea8345fab5e59c241cbf405e200de9b66881cd7d61914e3",
+   "reason": "budget.senate.gov: HEARING_LINK lists 0 rows, so parse_listing_page is unchanged; parse_listing_details gains date_text, encoded_start and time_evidence on its 25 rows."
+  }
+ },
+ "open_item": "34 listing_absent rows (28 Budget, 6 Appropriations) have slugs outside HEARING_LINK in byte-hashed senate_page.py.",
+ "bodies": [
+  {
+   "sha": "164462a6bf076684f5c190b458667f05e6961eb45f03444bcbf5a77ca9f70ee4",
+   "declared": "https://www.finance.senate.gov/hearings",
+   "rows": 25,
+   "bytes": 79370
+  },
+  {
+   "sha": "ff5a0901a60892a4ac75f43f798a9c23c75aec23679c3afe6df8dc109dd0e01a",
+   "declared": "https://www.appropriations.senate.gov/hearings",
+   "rows": 25,
+   "bytes": 80679
+  },
+  {
+   "sha": "0a83f76a413ac5eef79cbc30c088249698c0465bfd9e3a269ef841809ea81621",
+   "declared": "https://www.banking.senate.gov/hearings",
+   "rows": 25,
+   "bytes": 111249
+  },
+  {
+   "sha": "c8ebbe041641ab68e2983b171368d3833b4e8d6384922f3253b4bb4bb63869f1",
+   "declared": "https://www.banking.senate.gov/hearings",
+   "rows": 25,
+   "bytes": 111778
+  },
+  {
+   "sha": "c181d43035c00cc3bcd3c2aa05ac2c903a337e3171b47c327bb32e008b0100dc",
+   "declared": "https://www.banking.senate.gov/hearings",
+   "rows": 25,
+   "bytes": 111077
+  },
+  {
+   "sha": "906f7f62c30c0d8703ff84b409f4d8d71a2ed940ff06ba624e26c3003aef7859",
+   "declared": "https://www.finance.senate.gov/hearings",
+   "rows": 25,
+   "bytes": 78472
+  },
+  {
+   "sha": "d20d330661b5769de0f9abcc1df0a74b5bdd82293302035df2f6eabbf5816d0a",
+   "declared": "https://www.appropriations.senate.gov/hearings",
+   "rows": 25,
+   "bytes": 81601
+  },
+  {
+   "sha": "8c9d1f94cb4185fc89fc841a16b43474e88391a16495a609191582e7169c0fbe",
+   "declared": "https://www.banking.senate.gov/hearings",
+   "rows": 25,
+   "bytes": 112647
+  },
+  {
+   "sha": "e62e850aa31fdff611f374fb30ced8c0650817510087dafb9cd38fb379158f3f",
+   "declared": "https://www.banking.senate.gov/hearings",
+   "rows": 25,
+   "bytes": 110296
+  },
+  {
+   "sha": "031a8349eba10e1d239fa939a82c5a693118558860aa9205a3d2b92438b0e6d0",
+   "declared": "https://www.appropriations.senate.gov/hearings",
+   "rows": 25,
+   "bytes": 79103
+  },
+  {
+   "sha": "fd63890cf8e2b3a85ea8345fab5e59c241cbf405e200de9b66881cd7d61914e3",
+   "declared": "https://www.budget.senate.gov/hearings",
+   "rows": 25,
+   "bytes": 67716
+  },
+  {
+   "sha": "42de17124d9536a2bbec3c3ca72279fcca97ce3a04dc61ff4ef3c645b497413c",
+   "declared": "https://www.banking.senate.gov/hearings",
+   "rows": 25,
+   "bytes": 111737
+  },
+  {
+   "sha": "8ca7175658f41235a7e26a9f93ca057197a187b6bf63bad81e23cee9007e46b1",
+   "declared": "https://www.budget.senate.gov/hearings",
+   "rows": 25,
+   "bytes": 68555
+  },
+  {
+   "sha": "e3cc182e68809b188b0fb019d9eafdb0390f4c04dcc9491ecdb92c9e0f3f6809",
+   "declared": "https://www.finance.senate.gov/hearings",
+   "rows": 25,
+   "bytes": 78968
+  },
+  {
+   "sha": "06c0f58e477d8107f46a8a5112b9df38ed3e290e8367c40cb87a117b0dcdf62d",
+   "declared": "https://www.appropriations.senate.gov/hearings",
+   "rows": 25,
+   "bytes": 81136
+  },
+  {
+   "sha": "ac9590747a895a616a126ac14e0f175e0b5ee8ce4528f2436a069e12abf04abd",
+   "declared": "https://www.finance.senate.gov/hearings",
+   "rows": 25,
+   "bytes": 83125
+  },
+  {
+   "sha": "f9035384e0b87b48d6934eee6c44152eb05f5309c502fbb55b83b24a102ee283",
+   "declared": "https://www.appropriations.senate.gov/hearings",
+   "rows": 25,
+   "bytes": 81314
+  },
+  {
+   "sha": "0a9a6a6956a9482c71ed9074a2a09d50b32d274857245ce60fec778d038c1665",
+   "declared": "https://www.finance.senate.gov/hearings",
+   "rows": 25,
+   "bytes": 88033
+  },
+  {
+   "sha": "5e7c241c4425928f562b10d168f034435db56cec05fc3f4824538a1a4af48782",
+   "declared": "https://www.banking.senate.gov/hearings",
+   "rows": 25,
+   "bytes": 111064
+  },
+  {
+   "sha": "b05b30db0a203a817e800b782092c45006f22f623447b3a6802b35986ae27cb9",
+   "declared": "https://www.banking.senate.gov/hearings",
+   "rows": 25,
+   "bytes": 111835
+  },
+  {
+   "sha": "d85bc5fa6264a6066c640eef7d74c192ccea219094a6e191f15f5fa418d4fb14",
+   "declared": "https://www.appropriations.senate.gov/hearings",
+   "rows": 25,
+   "bytes": 79334
+  },
+  {
+   "sha": "81e5e1e0c8ab0d95d83bda5eaa2d38bf3f0f8182c8c3cbaf60b5e6e263e566f9",
+   "declared": "https://www.finance.senate.gov/hearings",
+   "rows": 25,
+   "bytes": 79873
+  },
+  {
+   "sha": "8730775c9f13c474cc07e3b034e5e4c58fcdd825870db8ff9a07ff4d0c6df9e5",
+   "declared": "https://www.budget.senate.gov/hearings",
+   "rows": 25,
+   "bytes": 68323
+  },
+  {
+   "sha": "f205fa5e15b53e3f8e5ad6de0ea994ad27b24df84c0ab3a216b3a492e648d9af",
+   "declared": "https://www.banking.senate.gov/hearings",
+   "rows": 25,
+   "bytes": 112644
+  },
+  {
+   "sha": "a0abd169aebf7edee92bcb95f18b6077e2e7cdb600dba0891e4630cf09cc5bf5",
+   "declared": "https://www.finance.senate.gov/hearings",
+   "rows": 25,
+   "bytes": 78175
+  },
+  {
+   "sha": "aaf57b477a656aeb157dae24a4f2321123fe70a6eacd5cf233052997403f0b57",
+   "declared": "https://www.banking.senate.gov/hearings",
+   "rows": 25,
+   "bytes": 111841
+  },
+  {
+   "sha": "57096ed668a826e1cba679785837b2aec36d92d3ef928264b3a2b589d46c212d",
+   "declared": "https://www.appropriations.senate.gov/hearings",
+   "rows": 25,
+   "bytes": 80769
+  },
+  {
+   "sha": "a8a4b03f24b9e3ca812966bb39aa83154fca62916b1adac5f4b840b975fdfcb1",
+   "declared": "https://www.budget.senate.gov/hearings",
+   "rows": 25,
+   "bytes": 68559
+  },
+  {
+   "sha": "68c301735f1958717b0d6ae6dcdb90d577f7c3e2390aec3309c8cf8f2e27b267",
+   "declared": "https://www.finance.senate.gov/hearings",
+   "rows": 25,
+   "bytes": 80839
+  },
+  {
+   "sha": "9ec2803f6d4a8d418592ef1124f6dab66db66132dcfc9a8789657904fd262bba",
+   "declared": "https://www.banking.senate.gov/hearings",
+   "rows": 25,
+   "bytes": 112651
+  },
+  {
+   "sha": "01d7cbfd2adc71286e7de804014766ab08e5e2b81867499519d6b500ddd8c7e6",
+   "declared": "https://www.appropriations.senate.gov/hearings",
+   "rows": 25,
+   "bytes": 80363
+  },
+  {
+   "sha": "603f1b588c261453eb3d0109e64dd3b08702d83b11982de7c50dc2ee37622180",
+   "declared": "https://www.finance.senate.gov/hearings",
+   "rows": 25,
+   "bytes": 88029
+  },
+  {
+   "sha": "9ebb17157d78ff60a6d8019e8d21348d64070b63b3ad8f0d769113eda792d4b9",
+   "declared": "https://www.appropriations.senate.gov/hearings",
+   "rows": 25,
+   "bytes": 79311
+  },
+  {
+   "sha": "8770a51406879d6925627a89a4227805c39295e797c373d72e664ea150d520b8",
+   "declared": "https://www.banking.senate.gov/hearings",
+   "rows": 25,
+   "bytes": 110890
+  },
+  {
+   "sha": "6663f19cfdf57ead0c0c3efbe098df1b35816c44cbe9135ef7383776fa3c5468",
+   "declared": "https://www.finance.senate.gov/hearings",
+   "rows": 25,
+   "bytes": 88026
+  },
+  {
+   "sha": "b1dd0bd209db4d21e09151c6ce9ea3a05942a7b4273560ac7c6326a876d5351e",
+   "declared": "https://www.finance.senate.gov/hearings",
+   "rows": 25,
+   "bytes": 78535
+  },
+  {
+   "sha": "cdde6f42e43339d59067ae52e844ac87a02f916af258b9ceb0da1b9c62724e6e",
+   "declared": "https://www.budget.senate.gov/hearings",
+   "rows": 25,
+   "bytes": 68552
+  },
+  {
+   "sha": "094cc221e34610ed9d8b4f13728a8ea5fae2d2b748529557a9acd23f06d4004b",
+   "declared": "https://www.budget.senate.gov/hearings",
+   "rows": 25,
+   "bytes": 68509
+  },
+  {
+   "sha": "5c8ca384e499a845ed8ccbcd0d9ab789a216edd9e269f5a0d54290b5bfc195cb",
+   "declared": "https://www.banking.senate.gov/hearings",
+   "rows": 25,
+   "bytes": 110620
+  },
+  {
+   "sha": "eee13a03913a5086b4266656625e82a52e1f98f622580f45be15dcd15cf43b36",
+   "declared": "https://www.appropriations.senate.gov/hearings",
+   "rows": 25,
+   "bytes": 81528
+  },
+  {
+   "sha": "c4385eb2ee5b40f61b07e082b9adc51e449eb6fe1466c6e80924f3f1cb11eb80",
+   "declared": "https://www.appropriations.senate.gov/hearings",
+   "rows": 25,
+   "bytes": 78955
+  },
+  {
+   "sha": "2b73128548134284671fd87cbe6622012fdf88f7aabef0db8ff7cca47eeb57fd",
+   "declared": "https://www.finance.senate.gov/hearings",
+   "rows": 25,
+   "bytes": 78901
+  },
+  {
+   "sha": "9c97d1c63e886ab50b3bb81111bd88f96fd51f146b50e580966694f8ca05e36d",
+   "declared": "https://www.appropriations.senate.gov/hearings",
+   "rows": 25,
+   "bytes": 81131
+  },
+  {
+   "sha": "fb7d13f1602de37f3af0c3232d0a128fb41e0b5dd707e8a107d160027e8dd6eb",
+   "declared": "https://www.finance.senate.gov/hearings",
+   "rows": 25,
+   "bytes": 82593
+  },
+  {
+   "sha": "640384452fe76711c64a59768f474b32cf7a427de8371a9773d881963a347ec2",
+   "declared": "https://www.appropriations.senate.gov/hearings",
+   "rows": 25,
+   "bytes": 81130
+  },
+  {
+   "sha": "25f63dad49a6416da446634765e544dc527cde331ea3546a2cb619324a918fe0",
+   "declared": "https://www.banking.senate.gov/hearings",
+   "rows": 25,
+   "bytes": 111589
+  },
+  {
+   "sha": "04c23bef462f1771bd0fe95e1343dda1a4e5411afb2b6b7bdbc1a1a557cb7eb8",
+   "declared": "https://www.appropriations.senate.gov/hearings",
+   "rows": 25,
+   "bytes": 80090
+  },
+  {
+   "sha": "ac1ecfd2950c92d6557cb372d41c12dae5bad9617ca163736ead04252fc3835b",
+   "declared": "https://www.appropriations.senate.gov/hearings",
+   "rows": 25,
+   "bytes": 81033
+  },
+  {
+   "sha": "ab872f2677d6ce823e416ef1e79ccafe5c3faa4af5dac52b543651135537e423",
+   "declared": "https://www.appropriations.senate.gov/hearings",
+   "rows": 25,
+   "bytes": 80893
+  }
+ ]
+}
