@@ -123,24 +123,53 @@ The documents conflict, and that is the owner's call. §6.1 (line 243) says a me
 
 **Likely false merge.** Row 421951 now joins O'Malley's testimony and an unrelated Coss document. The hearing page's list item links "Testimony_O'Malley 03.20.24.pdf" to the Coss address, and the new URL rule lets that link resolve. Publisher error is the likely origin; the merge still needs a decision.
 
-**Empty caption tracks.** The tracks on `youtube:Mv5g5Bn4AD8` (new) and `youtube:R0h33K7rw7Q` (changed) have body `e3b0c442...`, the SHA-256 of empty input. Both videos' captures became real in this release.
+**Empty caption tracks.** The tracks on `youtube:Mv5g5Bn4AD8` (new) and `youtube:R0h33K7rw7Q` (changed) have body `e3b0c442...`, the SHA-256 of empty input. The source returned nothing; see the correction above.
 
-## Root causes of the remaining items
+## Root causes, from raw receipts and bodies
 
-No engine job ran. **Proven** means shown by row-level evidence plus the code named. **Inferred** means the code path fits but no row-level tie was made. A machine crash wiped the build evidence (`capture_sources`, parser inputs, job files) mid-way, so results marked "before the crash" cannot be re-derived now, and the verifier's evidence routes cannot rerun until those files are rebuilt. The public-body scan was rerun after the crash.
+Read in full from the local mirror, with public bodies where the mirror lacks them. No engine job ran. **Proven** means shown on raw records for the whole set. Comparisons with v20 use public v20 files plus measurements taken before a machine crash wiped the v20 build evidence; v20 row states cannot be re-read.
 
-| Item | Cause | Status | Where |
+### D1: raw facts on every affected member row
+
+**All 68,785 affected rows were read, and the raw record contradicts ineligibility on every one.** They sit on 34,323 ZIP receipt lines.
+
+| Raw fact | Rows |
+|---|---|
+| ZIP `complete` true, `outcome` saved, `archive_processing.status` completed | 68,785 |
+| Member entry `status` completed, with no `error_type` | 68,785 |
+| Member entry's digest and path match the captures row | 68,785 |
+| Member entry has its own `complete` field | **0** |
+| ZIP HTTP 200 / HTTP 206 | 68,773 / 12 |
+
+So the members were not lost through failed captures. The receipt format never recorded member completeness, `captures.py:433` keeps that absent value for non-top-level entries, and `good-fetches.sql` requires `complete`. **Eligibility is proven to fail on the missing field and on nothing in the raw record.** The split's dependence on those rows is still not rebuild-tested.
+
+Facts for the owner's decision:
+
+- **HTTP 206:** the 12 rows sit on 6 ZIPs of 794 MB to 1.07 GB. Their receipts have no `content-range` header, yet expansion completed.
+- **Raw `mode`:** 238 rows are `retained_import` and 2 `replay` in the raw record, while the captures table says `fetch` for all.
+- **Not read:** ZIP bytes. All 34,323 ZIP bodies and 68,779 of the member bodies are absent from the mirror, so these facts are the receipts' own statements, and archive integrity was not re-tested.
+
+### Other sets
+
+| Set | Records read | Result | Status |
 |---|---|---|---|
-| Empty caption tracks (2) | ct-sh4j moved these rows' `http_status` from NULL to 200, so empty bodies became track candidates; that step has no real-file or size filter. Ties resolve to the highest `capture_index`, so the empty row beats the real caption on the same receipt line: index 5 over 4 (`DE7207FE`, 1,003 bytes) and index 2 over 1 (`2E784842`, 1,026 bytes). **Real captions are hidden: a defect** | Proven, before the crash | `archive_model.py:728`, `model/sql/entity-recordings.sql:39` |
-| `url_state` +21, 8 URLs | The URL appears only on saved bodies absent from the previous release. Queue literals come from links on good pages | Proven by public-body scan | `archive_url_state.py:109` |
-| `url_state` +21, other 13 | 11 `/event/` pages, `wp/v2/categories/9`, `wp/v2/event-category/8`. Not on any of the 397 saved bodies for `intelligence.house.gov` rows. Non-saved or newly good bodies are the likely source, and those lists were lost in the crash | Inferred | same |
-| Recordings: `senate:help031820`, `youtube:Qfjzf5als_I` | The id is on newly real pages (`92AAD76F`, on `help.senate.gov`, before the crash; `3A0CA5A5`, on `intelligence.house.gov`) | Proven | `archive_model.py:706` |
-| Recordings: `youtube:6xt7nTuO85A`, `youtube:f1J38FlDKxo` | Not on any scanned body. Same path presumed | **Unexplained** | same |
-| `last_good_at`, 57 keys | Rows that fail the good predicate in v20 and pass in v21: 43 URLs were stored with NULL status, now 200; 10 were `failed` with 202, now stored. A row-by-row tie for all 57 did not run before the crash | Inferred (53 are NULL to a value, 4 later) | `archive_url_state.py:47`, `model/sql/url-state.sql:5` |
-| Witnesses, +758 | v20 kept one row per name per record; v21 keeps every occurrence. All 758 extras are in the same record as their pair, and they account for every duplicate group in the release (628) | Proven, before the crash | `model/sql/appearance-records-resolved.sql:276` |
-| Witnesses, -530 | Senate page names in the v19 parser input and absent from the v21 parser's output on any record. 318 start with a link word, such as "download general", so this is largely a correction | Proven, before the crash | Parser version `0271cb3f` (input change) |
-| Witnesses, +604 | All on records absent from the previous parser input, on 149 new occasions. Records changed 62,782 to 66,483 (22,002 new, 18,301 gone) | Proven for the records; why they are new is inferred | Same input change |
-| Witnesses, -61 and +69 | -56 and +69 are on `meeting:` occasions whose package moved, such as event 100039 from `CHRG-112hhrg72233` to `72232`; names exist in the v21 input, so this is selection, not parsing. -5 are page names, not traced. Which package is right was not checked | Inferred | `appearance-records-resolved.sql:107-111`, `archive_model.py:615` |
+| `url_state` +21 | 1,349,139 reading rows; hit bodies confirmed raw | **21 of 21 are links on raw bodies.** 13 are on two listing pages, `intelligence.house.gov/event-category/meetings/page/3/` (`6324e3ed`, 12 URLs) and `.../category/press-releases/page/34/` (`b0fe3f4c`, 1), which are good but not real files. 8 are on newly real pages (`archive_url_state.py:109`) | Proven links. That those pages were newly good rests on the v20 flip measurement |
+| 2 recordings | Same scan; 6 hit bodies each, raw | `6xt7nTuO85A` and `f1J38FlDKxo` are links on 6 Facebook video pages captured through a provider (`221da9b3`, `383235d8`, others). No meeting record lists them, so `event_ids` is empty (`archive_model.py:706`). Whether they are the hearing's video or page furniture was not judged | Proven source |
+| 57 `last_good_at` | 98 capture rows on 76 raw lines | Every URL has a row passing the good predicate, and on 55 its `retrieved_at` equals the live value. 40 passing rows have a provider body with no top-level status, and take 200 from the reference | Proven. See the 202 defect below |
+| Witnesses -591 | 626 record bodies, all readable | 317 link words such as "download general" and 216 name-like strings are in raw as text but are no longer parsed as these names (205 only as scattered tokens, such as a name joined to a role). 56 are moved meetings. 2 have no live record | Proven as parser corrections, except the moved meetings |
+| Witnesses +673 | Same | All 673 are in raw: 592 as a whole name, 81 by tokens. All 167 of their records were captured before the v20 build | Proven real and not newly captured. **Why v20 lacked them is not proven**, because the v19 parser input was lost in the crash |
+| Witnesses +758 | Earlier query on live rows | All in the same record as their pair; v21 keeps each occurrence (`appearance-records-resolved.sql:276`) | Proven |
+| Moved meetings, 17 events | 34 raw MODS records | See below | **Defect** |
+| 34,593 ZIP intervals | 115,760 raw lines | See below | Proven for 34,124, 469 unexplained |
+
+### Defects these reads found
+
+- **Witnesses from the wrong hearing.** All 17 events link two or three transcript packages. `single_package_meetings` (`appearance-records-resolved.sql:107-111`) checks only that a package has one event, not that an event has one package, so one record wins for the event. Comparing each raw MODS title to the meeting title: v21's choice is better on 8, **worse on 3 (100202, 101167, 335827)**, and tied on 6, several with neither package matching (100540 "Fulfilling the Good Friday Agreement" has Syria and Hezbollah packages). Adjacent jacket numbers suggest the event-to-package links themselves are wrong. Title overlap is a rough test.
+- **HTTP 202 counted as good.** 23 capture rows have raw `outcome` `http_error` at HTTP 202, yet are `stored` in the table and pass the good predicate, because it accepts 200-299.
+
+### Correction: no real captions are hidden
+
+An earlier version of this file called the two empty tracks a defect that hid real captions. **That was wrong.** The two provider responses thought to be the real captions are JSON wrappers whose whole body has `statusCode` 200 and `httpResponseBody` empty. The direct rows are 0 bytes on raw read. The source returned nothing, so the tracks state an empty capture accurately. What remains open is whether an empty track should be published: 5 recordings carry them, 3 from before this release. ct-sh4j's status change is still why these two appeared (`archive_model.py:728`).
 
 ### Does the interval shift recur weekly?
 
@@ -148,13 +177,15 @@ No engine job ran. **Proven** means shown by row-level evidence plus the code na
 
 - **Path, proven by code:** a URL with no meeting date has NULL age, so all three registry bands match and the shortest, 7 days, wins (`archive_url_state.py:60`). `next_attempt_at` is the last attempt plus that interval (`model/sql/url-state.sql:10`). The scheduler treats due rows as eligible (`capture_scheduler.py:521`), and `CHRG-*.zip` URLs are in the `documents` scope. Age stays NULL after a refetch, so the URL comes due again.
 - **Not running:** `capture-archive.yml:19` requires `ARCHIVE_CAPTURE_ENABLED`, which `gh variable get` did not find, and the workflow has 0 runs. These ZIPs were last fetched in bulk on 2026-10-05 and 10-06, with 123 on 10-16.
+- **Whole-set check:** every one of the 34,593 live ZIP URLs is on 7 days with no meeting date. In the previous release, 23,929 had no date and 7 days, 9,300 had age at least 731 and 365 days, and 895 had age 31-730 and 28 days, exactly the registry bands, computed from public meeting dates. **469 had a date through `list.meeting_keys` and 7 days anyway; those are unexplained**, since the model's date path differs from `meeting_keys`. On raw lines, `last_attempt` matches the latest `retrieved_at` on 34,565; 28 of the others are `request_failed`.
 - **Load if enabled:** the 84 GB is not the whole weekly set. 24,398 `CHRG-*.zip` URLs were already on 7 days in the previous release, so all 34,593 are now on 7 days and already due, 183.5 GB across the 34,019 with a saved row. D1 added about 10,195 of those URLs. Actual volume is capped by `ARCHIVE_CAPTURE_REQUEST_BUDGET` and `ARCHIVE_CAPTURE_BYTE_BUDGET`, and state moves only when a new release publishes. Whether the fetch is conditional was not checked.
 - **Meeting link, proven by code and public files:** the meeting-date union joins through `component_meeting_links` (`archive_model.py:684-692`), and the changed URLs on meeting-linked documents went 10,202 to 2.
 
 ## Still open
 
-- **Unexplained:** 13 of the `url_state` +21; 2 recordings; 18 rows between the split routes.
-- **Witnesses:** which package is right for the moved meetings; 65 of the 758 extra occurrences look like documents rather than people, such as "prepared statement on h.r. _", going from 1 to 7.
+- **Unexplained:** why v20 lacked the +604 witnesses' records; 469 prior ZIP intervals; 18 rows between the split routes.
+- **Not readable:** ZIP bytes and most member bodies (absent from the mirror); v19 and v20 build evidence (lost in the crash). The 3 `receipts/pipeline-data/2026-10-28/*` receipts missing from the mirror were not needed by these sets.
+- **65 of the 758 extra occurrences** look like documents rather than people, such as "prepared statement on h.r. _" going from 1 to 7.
 
 ## ct-opy0 and ct-db3w on 448651e7
 
