@@ -20,7 +20,7 @@ SCHEMAS = {
     'sources': [('list_row', I), ('url', S), ('member_path', S)],
     'recoveries': [('body', B), ('recovered_url', S), ('kind', S)],
     'meetings': [('event_id', pa.int64()), ('subject_keys', pa.list_(S))],
-    'witnesses': [('occasion', S), ('name', S)], 'recordings': [('video_key', S)],
+    'witnesses': [('occasion', S), ('name', S)], 'recordings': [('video_key', S), ('event_ids', pa.list_(pa.int64()))],
     'bills': [('bill_id', S)], 'url_state': [('requested_url', S), ('attempts', I)],
 }
 SCOPE = {'version': 1, 'entries': [{'family': 'x', 'patterns': [], 'exclusions': ['/oembed/']}]}
@@ -30,7 +30,7 @@ def key(letter):
     return (letter * 8).encode()
 
 
-def release(directory, *, documents, sources=(), **tables):
+def release(directory, *, documents, sources=(), schemas=SCHEMAS, **tables):
     """`documents` lists each row's link-key letters; list and links follow from it."""
     directory.mkdir()
     data = {'list': [{'filename': keys} for keys in documents],
@@ -38,7 +38,7 @@ def release(directory, *, documents, sources=(), **tables):
             'links': [{'link_key': key(k), 'list_row': i} for i, keys in enumerate(documents) for k in keys],
             'sources': [dict(zip(('list_row', 'url', 'member_path'), s)) for s in sources], **tables}
     files = []
-    for name, fields in SCHEMAS.items():
+    for name, fields in schemas.items():
         rows = data.get(name, [])
         path = directory / f'{name}.parquet'
         pq.write_table(pa.Table.from_pylist(rows, schema=pa.schema(fields)), path)
@@ -60,9 +60,10 @@ def counts(result, name):
 
 def evidence(path, rows):
     """Each row is (key letter, real, member path); the triple comes from its position."""
-    table = [{'receipt_key': 'r', 'receipt_line': i, 'capture_index': 0, 'member_path': member,
-              'sha256': key(letter) + b'\0' * 24, 'is_real_file': real} for i, (letter, real, member) in enumerate(rows)]
-    fields = [('receipt_key', S), ('receipt_line', I), ('capture_index', I), ('member_path', S), ('sha256', B), ('is_real_file', pa.bool_())]
+    table = [{'receipt_key': 'r', 'receipt_line': i, 'capture_index': 0, 'member_path': member, 'url': address, 'requested_url': None,
+              'sha256': key(letter) + b'\0' * 24, 'is_real_file': real} for i, (letter, real, member, address) in enumerate(r + (None,) * (4 - len(r)) for r in rows)]
+    fields = [('receipt_key', S), ('receipt_line', I), ('capture_index', I), ('member_path', S), ('sha256', B),
+              ('is_real_file', pa.bool_()), ('url', S), ('requested_url', S)]
     pq.write_table(pa.Table.from_pylist(table, schema=pa.schema(fields)), path)
     return str(path)
 
@@ -77,9 +78,11 @@ def pair(tmp_path):
     return prev, live
 
 
-def test_split_merge_removal_and_addition_sum_to_the_delta(tmp_path, pair):
+def test_split_merge_removal_and_addition_are_sized_but_fail_unverified(tmp_path, pair):
     code, result = run(tmp_path, *pair)
-    assert code == 0 and result['ok']
+    assert code == 1 and not result['ok']
+    assert all(f['check']['ok'] for f in result['files'].values())
+    assert {'unverified', 'defect'} == {g['status'] for g in result['failing']}
     assert counts(result, 'list') == {
         ('split rows', 'previous row had a member source'): 1,
         ('merged rows', 'previous rows now share one document'): -1,
@@ -107,7 +110,7 @@ def test_shifted_list_rows_with_identical_keys_report_no_change(tmp_path):
     prev = release(tmp_path / 'prev', documents=['A', 'B', 'C'], sources=[(0, 'a', None), (1, 'b', None), (2, 'c', None)])
     live = release(tmp_path / 'live', documents=['C', 'A', 'B'], sources=[(0, 'c', None), (1, 'a', None), (2, 'b', None)])
     code, result = run(tmp_path, prev, live)
-    assert code == 0
+    assert code == 0, result['failing']
     assert result['files']['links.parquet']['digest_identical'] is False
     for name in ('list', 'links', 'sources'):
         assert counts(result, name) == {}
@@ -139,7 +142,8 @@ def test_url_state_removal_needs_a_scope_exclusion(tmp_path):
     live = release(tmp_path / 'live', documents=['A'], url_state=[
         {'requested_url': 'https://x/kept', 'attempts': 1}, {'requested_url': 'https://x/new', 'attempts': 0}])
     code, result = run(tmp_path, prev, live)
-    assert code == 0
+    assert code == 1  # the queued URL's source page was not traced
+    assert [g['group'] for g in result['failing']] == ['added URLs']
     assert counts(result, 'url_state') == {('removed URLs', 'matches a live capture scope exclusion'): -1,
                                            ('added URLs', 'queued link with no attempts yet'): 1}
 
@@ -167,3 +171,50 @@ def test_removed_key_without_a_flip_is_unexplained(tmp_path):
     code, result = run(tmp_path, prev, live, '--evidence-prev', same, '--evidence-live', same)
     assert code == 1
     assert counts(result, 'links') == {('removed keys', 'unexplained'): -1}
+
+
+def test_all_link_keys_replaced_cannot_pass(tmp_path):
+    prev = release(tmp_path / 'prev', documents=['A', 'B'])
+    live = release(tmp_path / 'live', documents=['C', 'D'])
+    code, result = run(tmp_path, prev, live)
+    assert code == 1
+    assert {('links.parquet', 'no evidence given'), ('list.parquet', 'no surviving link key')} <= {
+        (g['file'], g['cause']) for g in result['failing']}
+
+
+def test_all_witnesses_replaced_cannot_pass(tmp_path):
+    prev = release(tmp_path / 'prev', documents=['A'], witnesses=[{'occasion': 'o', 'name': 'a'}])
+    live = release(tmp_path / 'live', documents=['A'], witnesses=[{'occasion': 'o', 'name': 'b'}])
+    code, result = run(tmp_path, prev, live)
+    assert code == 1
+    assert {g['file'] for g in result['failing']} == {'witnesses.parquet'}
+
+
+def test_all_source_urls_null_cannot_pass(tmp_path):
+    prev = release(tmp_path / 'prev', documents=['A'], sources=[(0, 'a', None)])
+    live = release(tmp_path / 'live', documents=['A'], sources=[(0, None, None)])
+    code, result = run(tmp_path, prev, live)
+    assert code == 1
+    assert ('NULL url', 'defect') in {(g['group'], g['status']) for g in result['failing']}
+
+
+def test_recordings_need_a_readable_event_ids_column(tmp_path):
+    bare = {**SCHEMAS, 'recordings': [('video_key', S)]}
+    prev = release(tmp_path / 'prev', documents=['A'], recordings=[{'video_key': 'youtube:a'}], schemas=bare)
+    live = release(tmp_path / 'live', documents=['A'], recordings=[{'video_key': 'youtube:a'}, {'video_key': 'youtube:b'}], schemas=bare)
+    code, result = run(tmp_path, prev, live)
+    assert code == 1
+    assert ('event_ids column missing', 'unexplained') in {(g['group'], g['status']) for g in result['failing']}
+
+
+def test_recording_is_verified_only_when_a_new_capture_names_it(tmp_path):
+    prev = release(tmp_path / 'prev', documents=['A', 'M'])
+    rows = [{'video_key': 'youtube:vid', 'event_ids': []}, {'video_key': 'youtube:other', 'event_ids': [7]}]
+    live = release(tmp_path / 'live', documents=['A', 'N'], recordings=rows)
+    before = evidence(tmp_path / 'a.parquet', [('A', True, None), ('M', True, 'm'), ('N', False, None, 'https://y/watch?v=vid')])
+    after = evidence(tmp_path / 'b.parquet', [('A', True, None), ('M', False, 'm'), ('N', True, None, 'https://y/watch?v=vid')])
+    code, result = run(tmp_path, prev, live, '--evidence-prev', before, '--evidence-live', after)
+    assert code == 1
+    assert counts(result, 'recordings') == {('added keys', 'empty event_ids; capture newly real'): 1,
+                                            ('added keys', 'with event_ids; source not traced'): 1}
+    assert [g['status'] for g in result['failing']] == ['unverified']

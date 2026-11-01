@@ -2,7 +2,9 @@
 
 Measured 2026-11-01 at 3df9bdf6 for ct-qg8e, ct-opy0 and ct-db3w. Nothing here was repaired or published.
 
-**Result:** every row change in all 19 manifest files is accounted for, and `release_diff.py` exits 0. The largest change is a regression: archive members stopped being real files (D1). The counterfactual rebuild was not run, so D1's causation is strong correlation, not proof.
+**Result:** every row change in all 19 manifest files is sized, but not every cause is established, so `release_diff.py` exits 1 on this pair. The JSON's `failing` list names each group whose cause was not checked or is a defect, and "Still open" below covers the same gaps. The largest change is a regression: archive members stopped being real files (D1). No rebuild has run, so D1's causation is strong correlation, not proof.
+
+`release_diff.py` is a diagnostic, not a gate, and is not in the publish path. Its group sums are close to an identity, and the `list` sum always is, so a matching sum shows only that no row was dropped.
 
 ## Inputs and commands
 
@@ -19,11 +21,11 @@ These paths are machine-local, in another session's temporary directory, and may
   --evidence-prev V20_CAPTURE_SOURCES --evidence-live V21_CAPTURE_SOURCES --record-digest CAPTURES \
   --removed-keys docs/measurements/release-diff-c94bfedc-448651e7-removed-link-keys.csv.gz \
   --output docs/measurements/release-diff-c94bfedc-448651e7-20261101.json
-.venv/bin/python -I docs/measurements/release-diff-c94bfedc-448651e7-verify.py DOWNLOADS BUILD
+.venv/bin/python -I docs/measurements/release-diff-c94bfedc-448651e7-verify.py DOWNLOADS BUILD docs/measurements/release-diff-c94bfedc-448651e7-20261101.json
 DOCSPEC_JOB_CONFIG=... .venv/bin/python scripts/dev.py test production-offline --path scripts/measure/tests/test_release_diff.py
 ```
 
-The independent verifier uses pyarrow and Python sets, with no SQL. It reproduced the link, member, NULL URL, `url_state`, bills, list, witness, sources, `urls` and recordings numbers. All 19 files in each release also match the build's own copy, which comes from the same pipeline.
+The verifier uses pyarrow with no SQL and asserts against the JSON by other routes: Parquet footers for deltas, capture real-file sets instead of flips or links for removed keys, and bodies instead of link keys for splits. It exits 0. **The bodies route gives 60,628 split rows against 60,616 by link key; the gap of 12 is unexplained** and pinned in the script. An earlier pass found all 19 files in each release match the build's own copy, which comes from the same pipeline.
 
 ## Reconciliation
 
@@ -52,7 +54,7 @@ The independent count of 7,266 removed link keys is right. The earlier 7,194 cou
 | `stored` to `failed`, HTTP 500 | 1 |
 | `stored` to `failed`, HTTP 404 | 1 |
 
-Every removed key has a matching flip, as does every one of the 31 added keys. The number 72 also appears for NULL URLs and same-URL rows; these are three separate groups that happen to match.
+Every removed key has a matching flip, as does every one of the 31 added keys. The 72 same-URL rows are the same event: all sit on the top-level-removed documents (70 of the 71 rows, none with a member source). The 72 NULL URLs are a separate group, and that count matching is a coincidence.
 
 ### Groups the first pass left open
 
@@ -84,11 +86,27 @@ The `url_state_lines`, `url_state_good_lines` and `url_state` SQL all changed be
 | `last_good_at` | 62,934 | `context_good` 34,932; the stored-with-no-status clause 27,945; neither 57 (unclassified) |
 | `next_attempt_at` | 10,205 | see below |
 
-`next_attempt_at` moved earlier on 10,202 keys and later on 3, with `last_attempt` unchanged on all. 10,201 are `govinfo.gov` `CHRG-*.zip` URLs; the shifts are -358 days (9,301), -21 days (901) and +358 days (3). **As of 2026-11-01, 10,199 URLs are newly due and 3 are no longer due.** The likely cause is that a split-off ZIP row has no meeting, so its age is unknown and the shortest interval applies. That is inferred from the SQL and not proven; the intermediate meeting dates are not retained.
+`next_attempt_at` moved earlier on 10,202 keys and later on 3, with `last_attempt` unchanged on all. 10,201 are `govinfo.gov` `CHRG-*.zip` URLs; the shifts are -358 days (9,301), -21 days (901) and +358 days (3). **As of 2026-11-01, 10,199 URLs are newly due and 3 are no longer due.** The likely cause is that a split-off ZIP row has no meeting, so its age is unknown and the shortest interval applies. The public files support this directly: of the 10,204 changed URLs that appear in `sources`, 10,202 sat on meeting-linked documents in the previous release and 2 do in the live one. The chain through the unretained meeting dates is still inferred from the SQL.
+
+## Consumer impact
+
+Measured from the public files.
+
+| Area | Measured | Note |
+|---|---|---|
+| Scheduling | Interval 365 to 7 days on 9,301 URLs, 28 to 7 on 901, 7 to 365 on 3 | The 10,202 URLs now on 7 days have 84.3 GB of saved bytes. **Recurrence is inferred:** about 84 GB weekly if capture-archive follows these intervals and they do not settle |
+| Transcripts | Entries 20,531 to 32,882 on about 16,470 distinct `(event, package)` pairs | 9,248 of 9,249 changed events keep the same package set and now hold duplicates. `HearingDetail.tsx:172` maps entries without deduplicating, so a hearing lists a transcript repeatedly. Duplicates are not new: 1,184 of those events already had them. The other change is event 336500, which lost `CHRG-119shrg58631` |
+| Search | `published-hearing` rows 78,603 to 138,980; 34,019 live rows titled "ZIP" with no meeting or date | **The title is not new.** The previous release had 34,184 rows titled "ZIP", 33,842 of them PDFs and 23,934 with no meeting or date. What changed is that these rows are now separate ZIP documents |
+| Identifiers | 0 of 147,048 `witness_key`s survive; 7,266 link keys no longer resolve | `archive.ts:238-241` returns null for a missing key. Neither change has a published mapping |
+| D2 | 12 documents have only a NULL address; 31 NULL rows that hold the row's saved body have `is_saved` false | §7.10 requires `is_saved` true on each address of the saved file. The 32nd false row, on 409584, holds a non-saved body |
 
 ## Defects
 
 **D1, needs an owner decision: archive members stopped being real files.** All 171,894 member rows in the input have `complete` NULL, and 68,785 member capture rows flipped from real to not real. Valid publisher rendition groups fell from 35,936 to 1,726, the likely mechanism of the split. Member rows in `sources` went from 68,785 to 0, and every split row had a member source. Removed keys are listed by cause in `release-diff-c94bfedc-448651e7-removed-link-keys.csv.gz`.
+
+The documents conflict, and that is the owner's call. §6.1 (line 243) says a member does not borrow the final-response derivation, which is what ct-sh4j implemented. §7.3 (line 476) still assumes real members: "34,331 HTML members sit at good-fetched ZIP URLs". A blanket restore would also be wrong: 12 of the flipped members are HTTP 206. The owner has indicated that a ZIP is capture transport rather than a document; that framing is pending, not decided, and this file does not assume it.
+
+"Members alone cause the split" stays unproven until a rebuild compares them, and this work has no engine slot for one.
 
 **D2: `sources.url` NULL on 72 rows.** The chain, now traced:
 
@@ -122,12 +140,12 @@ Both are unchanged by this release. The comparison ran with explicit pins, and `
 | House missing | 117688 | 117688, 119588 |
 | Senate missing | 335202, 335760, 335780, 337725, 338764, 338786 | same |
 | `archive_chamber_null` (House / nochamber) | 1 / 71 | 1 / 71 |
-| Archive NULL chamber | 713 rows: 72 matched, 95 before window, 547 no date | same |
+| Archive NULL chamber | 713 rows: 72 matched, 95 before window, 547 no date; 119583 is in both the matched and no-date counts, so these sum to 714 | same |
 
 - **Correction to ct-opy0:** the House row with NULL archive chamber is event 119583, not 117688, which is absent. Dated NULL-chamber rows are 166: 165 have joint codes (`jcse00` 116, `jjec00` 40, `jslc00` 4, `jspr00` 4, `jsec00` 1), and 104064 has `ssga00` and `hshm09`.
 - **The seven:** all absent from `meetings.parquet` and `meeting_records`, with 0 exact-number matches in `url_state` or captures. Bare substring hits exist for 117688 (6 in `url_state`, 17 in captures) and 335202 (1 and 3); the samples inspected were other numbers, such as `BILLS-1176880ih`, and the exact-number search confirms this.
 - **119588:** new since the tickets, dated at the window end, 2026-11-13, and also has 0 matches. Its "Scheduled" status is the planner's reading, not re-read here. It is not one of the seven.
-- **The 547:** 0 in `meeting_records`. Substring and exact-number searches both hit all 547, so they cannot discriminate. By URL position, 546 appear only in `docs.house.gov` document paths and 1 in a congress.gov document path. A record-bearing address (`ByEvent` or the meeting API) exists for only 1, in `url_state`. No capture of a record-bearing page exists for any of them.
+- **The 547:** 0 in `meeting_records`. Substring and exact-number searches both hit all 547, so they cannot discriminate. By URL position, 546 appear only in `docs.house.gov` document paths. The other is 119583, the matched row above: it has a congress.gov document path and the only record-bearing address (`ByEvent`), which is in `url_state` with no capture. So 546 events have no record-bearing address at all.
 
 The helper crashes on D2 and, run with no arguments, silently reports its `bound` pin c94bfedc. This wrapper called it without editing spicy-regs:
 
@@ -148,7 +166,8 @@ The control rebuild was stopped before it finished, because free disk (14 GiB) w
 
 - **Link-key matching** cannot see a one-to-one row whose content got worse, or match a document with no surviving key.
 - **Flips** do not show v20 was right. v20's `complete = true` on members was itself borrowed. 17,254 input rows never reach `capture_sources` in either build, and this comparison cannot see them.
-- **`release_diff.py` rules** name a mechanism for a group, not proof for each row. Only evidence-backed link and document causes are checked against flips; other cause labels come from counts or a rule, such as new bills matching any live meeting subject.
+- **`release_diff.py` statuses:** `verified` means a stated check passed, such as a key matching a flip or a bill matching a live meeting subject. It does not mean the row is right or that the cause is the only one.
+- **The verifier** reads the same published files, and its hard-coded public counts were first measured in this work, so they catch later change rather than prove the first reading.
 - **Hash checks** show consistency, not truth.
 - **The spicy-regs comparison** reports only what its queries project, with 72 rows removed. Its `lookup_key_self_check` is self-referential, and its table is a moving window.
 - **Viewer effects** were not measured.

@@ -1,10 +1,12 @@
 #!/usr/bin/env python3
-"""Account for every row-count change between two published archive releases.
+"""Diagnostic: size row-count changes between two published releases. Not a publish gate.
 
 Rows are matched on published identity, never on `list_row`, which is release-local.
-Each file's groups must sum to its manifest delta; rows no rule explains go to an
-`unexplained` group. Either failure exits 1. Evidence, when given, ties body keys to
-capture eligibility flips. A clean result proves accounting, not that a row is right.
+Group sums are close to an identity (the `list` sum always is), so a matching sum proves
+only that no row was dropped. Each group therefore carries a status, and only `verified`
+means a cause was checked against data; any other status, or a sum miss, exits 1:
+`unverified` (sized, cause not checked), `defect`, `unexplained`. A verified group still
+says nothing about whether a row is right.
 """
 from __future__ import annotations
 
@@ -64,15 +66,18 @@ class Diff:
         return out
 
 
-def group(name, cause, count):
-    return {'group': name, 'cause': cause, 'count': int(count)}
+def group(name, cause, count, status='unverified'):
+    if cause == 'unexplained':
+        status = 'unexplained'
+    return {'group': name, 'cause': cause, 'count': int(count), 'status': status}
 
 
 def add_evidence(diff: Diff, prev_path: str, live_path: str):
     """Attribute link keys through capture eligibility flips; a flip never proves v20 was right."""
-    diff.table('flips', f"""SELECT {TRIPLE},a.member_path,left(hex(a.sha256),16) k,a.is_real_file a_real,b.is_real_file b_real
+    diff.table('flips', f"""SELECT {TRIPLE},a.member_path,left(hex(a.sha256),16) k,a.is_real_file a_real,b.is_real_file b_real,
+      coalesce(b.url,b.requested_url,'') address
       FROM (SELECT {TRIPLE},member_path,sha256,is_real_file FROM read_parquet('{prev_path}')) a
-      JOIN (SELECT {TRIPLE},is_real_file FROM read_parquet('{live_path}')) b USING({TRIPLE})
+      JOIN (SELECT {TRIPLE},is_real_file,url,requested_url FROM read_parquet('{live_path}')) b USING({TRIPLE})
       WHERE a.is_real_file IS DISTINCT FROM b.is_real_file""")
     diff.table('real_prev', f"""SELECT left(hex(sha256),16) k,bool_or(member_path IS NULL) top
       FROM read_parquet('{prev_path}') WHERE is_real_file GROUP BY 1""")
@@ -93,7 +98,7 @@ def add_evidence(diff: Diff, prev_path: str, live_path: str):
 
 def links(d: Diff):
     if d.link_causes:
-        return [group(f'{"added" if s > 0 else "removed"} keys', c, s * n)
+        return [group(f'{"added" if s > 0 else "removed"} keys', c, s * n, 'verified')
                 for s, c, n in d.rows('SELECT sign,cause,count(*) FROM link_causes GROUP BY ALL ORDER BY 1,2')], {}
     removed = d.one('SELECT count(*) FROM prev_links ANTI JOIN live_links USING(link_key)')
     added = d.one('SELECT count(*) FROM live_links ANTI JOIN prev_links USING(link_key)')
@@ -122,8 +127,8 @@ def documents(d: Diff):
             want = sign
             for cause, n in d.rows(f"""SELECT coalesce(c.cause,'unexplained'),count(*) FROM (
               SELECT r,min(cause) cause FROM {label}_rows JOIN link_causes ON list_row=r AND sign={want} GROUP BY 1) c
-              GROUP BY 1"""):
-                out.append(group(f'{label} rows', cause, sign * n))
+              GROUP BY 1 ORDER BY 1"""):
+                out.append(group(f'{label} rows', cause, sign * n, 'verified'))
                 total -= n
             if total:
                 out.append(group(f'{label} rows', 'unexplained', sign * total))
@@ -179,9 +184,17 @@ def sources(d: Diff):
            group('same-URL rows added', 'more documents list the address', q('url IS NOT NULL AND member_path IS NULL AND pn>0 AND ln>pn'))]
     notes = {'null_url_rows': {s: d.one(f'SELECT count(*) FROM {s}_sources WHERE url IS NULL') for s in d.dirs},
              'member_rows': {s: d.one(f'SELECT count(*) FROM {s}_sources WHERE member_path IS NOT NULL') for s in d.dirs},
-             'same_url_rows_on_removed_documents': d.one("""SELECT count(*) FROM prev_sources s JOIN sources_diff x
+             'same_url_rows_on_removed_documents': (on_removed := d.one("""SELECT count(*) FROM prev_sources s JOIN sources_diff x
                ON s.url=x.url AND x.member_path IS NULL AND x.pn>x.ln AND x.ln>0 WHERE s.member_path IS NULL
-               AND s.list_row IN (SELECT r FROM removed_rows)""")}
+               AND s.list_row IN (SELECT r FROM removed_rows)"""))}
+    for g in out:
+        if g['group'] == 'same-URL rows removed' and on_removed == -g['count']:
+            g.update(status='verified', cause='every such row sat on a removed document')
+        if g['group'] == 'NULL url':
+            g['status'] = 'defect'
+        if g['group'] == 'member rows removed' and d.link_causes and -g['count'] == d.one(
+                'SELECT count(*) FROM flips WHERE member_path IS NOT NULL AND a_real AND NOT b_real'):
+            g['status'] = 'verified'
     return out, notes
 
 
@@ -209,7 +222,7 @@ def bills(d: Diff):
     d.table('bill_refs', """SELECT DISTINCT lower(unnest(subject_keys)) k,'new meeting subject' cause FROM live_meetings""")
     added = d.rows("""SELECT coalesce(r.cause,'unexplained'),count(*) FROM (SELECT bill_id FROM live_bills ANTI JOIN prev_bills USING(bill_id)) b
       LEFT JOIN bill_refs r ON r.k=lower(b.bill_id) GROUP BY 1""")
-    out = [group('added bills', cause, n) for cause, n in added]
+    out = [group('added bills', cause, n, 'verified') for cause, n in added]
     if removed:
         out.append(group('removed bills', 'unexplained', -removed))
     return out, {'shared_field_changes': d.changed('bills', 'prev_bills p JOIN live_bills l USING(bill_id)', exclude=set())}
@@ -217,7 +230,19 @@ def bills(d: Diff):
 
 def recordings(d: Diff):
     groups, _ = key_file('recordings', 'video_key')(d)
-    groups = [g | {'cause': 'new key with empty event_ids'} if g['group'] == 'added keys' else g for g in groups]
+    groups = [g for g in groups if g['group'] != 'added keys']
+    if 'event_ids' not in {r[0] for r in d.rows('DESCRIBE live_recordings')}:
+        groups.append(group('event_ids column missing', 'unexplained', 0))
+        added = d.one('SELECT count(*) FROM live_recordings ANTI JOIN prev_recordings USING(video_key)')
+        groups.append(group('added keys', 'event_ids unreadable', added))
+    else:
+        flips = ("EXISTS (SELECT 1 FROM flips f WHERE f.b_real AND NOT f.a_real AND contains(f.address,split_part(l.video_key,':',2)))"
+                 if d.link_causes else 'false')
+        for empty, tied, n in d.rows(f'''SELECT coalesce(len(event_ids),0)=0,{flips},count(*) FROM live_recordings l
+          ANTI JOIN prev_recordings USING(video_key) GROUP BY ALL ORDER BY ALL'''):
+            events = 'empty event_ids' if empty else 'with event_ids'
+            groups.append(group('added keys', f"{events}; {'capture newly real' if tied else 'source not traced'}", n,
+                                'verified' if tied else 'unverified'))
     tracks = {'tracks': 'list_transform(X.{c},t->t.body)'}
     return groups, {'shared_field_changes': d.changed('recordings', 'prev_recordings p JOIN live_recordings l USING(video_key)', tracks, set())}
 
@@ -247,7 +272,7 @@ def url_state(d: Diff):
     removed = [r[0] for r in d.rows('SELECT requested_url FROM prev_url_state ANTI JOIN live_url_state USING(requested_url)')]
     excluded = sum(any(p.search(u) for p in patterns) for u in removed)
     added = d.rows("""SELECT attempts=0,count(*) FROM live_url_state ANTI JOIN prev_url_state USING(requested_url) GROUP BY 1""")
-    out = [group('removed URLs', 'matches a live capture scope exclusion', -excluded)]
+    out = [group('removed URLs', 'matches a live capture scope exclusion', -excluded, 'verified')]
     if len(removed) - excluded:
         out.append(group('removed URLs', 'unexplained', excluded - len(removed)))
     out += [group('added URLs', 'queued link with no attempts yet' if queued else 'new attempts', n) for queued, n in added]
@@ -275,7 +300,7 @@ def account(d: Diff):
                 actual = d.one(f'SELECT count(*) FROM {side}_{stem}')
                 if entry and actual != entry['rows']:
                     groups.append(group(f'{side} manifest disagrees with file', 'unexplained', entry['rows'] - actual))
-        groups = [g for g in groups if g['count']]
+        groups = [g for g in groups if g['count'] or g['status'] == 'unexplained']
         residual = delta - sum(g['count'] for g in groups)
         if residual:
             groups.append(group('residual', 'unexplained', residual))
@@ -325,12 +350,13 @@ def main(argv=None):
               'inputs': [digest(p) for p in [args.evidence_prev, args.evidence_live, *args.record_digest] if p]}
     if args.removed_keys:
         result['removed_keys_written'] = write_removed_keys(d, args.removed_keys)
-    unexplained = [(n, g) for n, f in files.items() for g in f['groups'] if g['cause'] == 'unexplained']
+    failing = [{'file': n, **g} for n, f in files.items() for g in f['groups'] if g['status'] != 'verified']
     failed = [n for n, f in files.items() if not f['check']['ok']]
-    result['ok'] = not unexplained and not failed
+    result['ok'] = not failing and not failed
+    result['failing'] = failing
     args.output.write_text(json.dumps(result, indent=1, default=str) + '\n')
-    for name, group_ in unexplained:
-        print(f'unexplained {name}: {group_}', file=sys.stderr)
+    for entry in failing:
+        print(f"{entry['status']} {entry['file']}: {entry['count']} {entry['group']} ({entry['cause']})", file=sys.stderr)
     return 0 if result['ok'] else 1
 
 

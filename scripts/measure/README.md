@@ -22,7 +22,7 @@ Run from the repository root with the locked environment, for example:
 
 **`benchmark_viewer_browser.mjs`** drives Chromium against that local server. It does not publish.
 
-**`release_diff.py`** accounts for every row-count change between two local copies of published releases, matching rows on published identity rather than `list_row`. It exits 1 if a file's groups miss its manifest delta or a row is `unexplained`. With capture evidence it also ties link keys to eligibility flips. Run it with `.venv/bin/python -I`.
+**`release_diff.py`** is a diagnostic, not a publish gate. It sizes row-count changes between two local copies of published releases, matching rows on published identity rather than `list_row`. It exits 1 unless every group's cause was checked against data; with capture evidence it ties link keys to eligibility flips. Run it with `.venv/bin/python -I`.
 
 ## Cost and memory samples
 

@@ -33,7 +33,8 @@
     {
      "group": "added bills",
      "cause": "new meeting subject",
-     "count": 1402
+     "count": 1402,
+     "status": "verified"
     }
    ],
    "shared_field_changes": {},
@@ -92,27 +93,32 @@
     {
      "group": "split rows",
      "cause": "previous row had a member source",
-     "count": 60616
+     "count": 60616,
+     "status": "unverified"
     },
     {
      "group": "merged rows",
      "cause": "previous rows now share one document",
-     "count": -22
+     "count": -22,
+     "status": "unverified"
     },
     {
      "group": "removed rows",
      "cause": "member-only body no longer real",
-     "count": -41
+     "count": -41,
+     "status": "verified"
     },
     {
      "group": "removed rows",
      "cause": "top-level body no longer eligible",
-     "count": -71
+     "count": -71,
+     "status": "verified"
     },
     {
      "group": "added rows",
      "cause": "newly eligible body",
-     "count": 27
+     "count": 27,
+     "status": "verified"
     }
    ],
    "one_to_one_field_changes": {
@@ -143,17 +149,20 @@
     {
      "group": "removed keys",
      "cause": "member-only body no longer real",
-     "count": -7194
+     "count": -7194,
+     "status": "verified"
     },
     {
      "group": "removed keys",
      "cause": "top-level body no longer eligible",
-     "count": -72
+     "count": -72,
+     "status": "verified"
     },
     {
      "group": "added keys",
      "cause": "newly eligible body",
-     "count": 31
+     "count": 31,
+     "status": "verified"
     }
    ],
    "check": {
@@ -172,27 +181,32 @@
     {
      "group": "split rows",
      "cause": "previous row had a member source",
-     "count": 60616
+     "count": 60616,
+     "status": "unverified"
     },
     {
      "group": "merged rows",
      "cause": "previous rows now share one document",
-     "count": -22
+     "count": -22,
+     "status": "unverified"
     },
     {
      "group": "removed rows",
      "cause": "member-only body no longer real",
-     "count": -41
+     "count": -41,
+     "status": "verified"
     },
     {
      "group": "removed rows",
      "cause": "top-level body no longer eligible",
-     "count": -71
+     "count": -71,
+     "status": "verified"
     },
     {
      "group": "added rows",
      "cause": "newly eligible body",
-     "count": 27
+     "count": 27,
+     "status": "verified"
     }
    ],
    "prev_rows_by_live_rows": {
@@ -286,8 +300,15 @@
    "groups": [
     {
      "group": "added keys",
-     "cause": "new key with empty event_ids",
-     "count": 5
+     "cause": "empty event_ids; source not traced",
+     "count": 4,
+     "status": "unverified"
+    },
+    {
+     "group": "added keys",
+     "cause": "empty event_ids; capture newly real",
+     "count": 1,
+     "status": "verified"
     }
    ],
    "shared_field_changes": {
@@ -348,32 +369,38 @@
     {
      "group": "member rows removed",
      "cause": "archive member no longer a real file",
-     "count": -68785
+     "count": -68785,
+     "status": "verified"
     },
     {
      "group": "NULL url",
      "cause": "defect: a published source address must not be null",
-     "count": 72
+     "count": 72,
+     "status": "defect"
     },
     {
      "group": "URLs gone",
      "cause": "no live row has this address",
-     "count": -2
+     "count": -2,
+     "status": "unverified"
     },
     {
      "group": "new URLs",
      "cause": "no previous row has this address",
-     "count": 14
+     "count": 14,
+     "status": "unverified"
     },
     {
      "group": "same-URL rows removed",
-     "cause": "fewer documents list the address",
-     "count": -72
+     "cause": "every such row sat on a removed document",
+     "count": -72,
+     "status": "verified"
     },
     {
      "group": "same-URL rows added",
      "cause": "more documents list the address",
-     "count": 2
+     "count": 2,
+     "status": "unverified"
     }
    ],
    "null_url_rows": {
@@ -401,12 +428,14 @@
     {
      "group": "removed URLs",
      "cause": "matches a live capture scope exclusion",
-     "count": -2940
+     "count": -2940,
+     "status": "verified"
     },
     {
      "group": "added URLs",
      "cause": "queued link with no attempts yet",
-     "count": 21
+     "count": 21,
+     "status": "unverified"
     }
    ],
    "shared_field_changes": {
@@ -444,22 +473,26 @@
     {
      "group": "keys gone",
      "cause": "every row for the key was removed",
-     "count": -639
+     "count": -639,
+     "status": "unverified"
     },
     {
      "group": "keys new",
      "cause": "key absent from the previous release",
-     "count": 14
+     "count": 14,
+     "status": "unverified"
     },
     {
      "group": "keys with fewer rows",
      "cause": "fewer documents answer the key",
-     "count": -453
+     "count": -453,
+     "status": "unverified"
     },
     {
      "group": "keys with more rows",
      "cause": "more documents answer the key",
-     "count": 2
+     "count": 2,
+     "status": "unverified"
     }
    ],
    "histogram": [
@@ -560,27 +593,32 @@
     {
      "group": "pairs only previous, occasion gone",
      "cause": "occasion absent from live",
-     "count": -2
+     "count": -2,
+     "status": "unverified"
     },
     {
      "group": "pairs only previous, occasion kept",
      "cause": "name absent from this occasion in live",
-     "count": -589
+     "count": -589,
+     "status": "unverified"
     },
     {
      "group": "pairs only live, new occasion",
      "cause": "occasion absent from previous",
-     "count": 604
+     "count": 604,
+     "status": "unverified"
     },
     {
      "group": "pairs only live, occasion kept",
      "cause": "name absent from this occasion in previous",
-     "count": 69
+     "count": 69,
+     "status": "unverified"
     },
     {
      "group": "repeated occurrences",
      "cause": "same name counted more often on a shared occasion",
-     "count": 758
+     "count": 758,
+     "status": "unverified"
     }
    ],
    "occasions": {
@@ -612,5 +650,140 @@
   }
  ],
  "removed_keys_written": 7266,
- "ok": true
+ "ok": false,
+ "failing": [
+  {
+   "file": "detail.parquet",
+   "group": "split rows",
+   "cause": "previous row had a member source",
+   "count": 60616,
+   "status": "unverified"
+  },
+  {
+   "file": "detail.parquet",
+   "group": "merged rows",
+   "cause": "previous rows now share one document",
+   "count": -22,
+   "status": "unverified"
+  },
+  {
+   "file": "list.parquet",
+   "group": "split rows",
+   "cause": "previous row had a member source",
+   "count": 60616,
+   "status": "unverified"
+  },
+  {
+   "file": "list.parquet",
+   "group": "merged rows",
+   "cause": "previous rows now share one document",
+   "count": -22,
+   "status": "unverified"
+  },
+  {
+   "file": "recordings.parquet",
+   "group": "added keys",
+   "cause": "empty event_ids; source not traced",
+   "count": 4,
+   "status": "unverified"
+  },
+  {
+   "file": "sources.parquet",
+   "group": "NULL url",
+   "cause": "defect: a published source address must not be null",
+   "count": 72,
+   "status": "defect"
+  },
+  {
+   "file": "sources.parquet",
+   "group": "URLs gone",
+   "cause": "no live row has this address",
+   "count": -2,
+   "status": "unverified"
+  },
+  {
+   "file": "sources.parquet",
+   "group": "new URLs",
+   "cause": "no previous row has this address",
+   "count": 14,
+   "status": "unverified"
+  },
+  {
+   "file": "sources.parquet",
+   "group": "same-URL rows added",
+   "cause": "more documents list the address",
+   "count": 2,
+   "status": "unverified"
+  },
+  {
+   "file": "url_state.parquet",
+   "group": "added URLs",
+   "cause": "queued link with no attempts yet",
+   "count": 21,
+   "status": "unverified"
+  },
+  {
+   "file": "urls.parquet",
+   "group": "keys gone",
+   "cause": "every row for the key was removed",
+   "count": -639,
+   "status": "unverified"
+  },
+  {
+   "file": "urls.parquet",
+   "group": "keys new",
+   "cause": "key absent from the previous release",
+   "count": 14,
+   "status": "unverified"
+  },
+  {
+   "file": "urls.parquet",
+   "group": "keys with fewer rows",
+   "cause": "fewer documents answer the key",
+   "count": -453,
+   "status": "unverified"
+  },
+  {
+   "file": "urls.parquet",
+   "group": "keys with more rows",
+   "cause": "more documents answer the key",
+   "count": 2,
+   "status": "unverified"
+  },
+  {
+   "file": "witnesses.parquet",
+   "group": "pairs only previous, occasion gone",
+   "cause": "occasion absent from live",
+   "count": -2,
+   "status": "unverified"
+  },
+  {
+   "file": "witnesses.parquet",
+   "group": "pairs only previous, occasion kept",
+   "cause": "name absent from this occasion in live",
+   "count": -589,
+   "status": "unverified"
+  },
+  {
+   "file": "witnesses.parquet",
+   "group": "pairs only live, new occasion",
+   "cause": "occasion absent from previous",
+   "count": 604,
+   "status": "unverified"
+  },
+  {
+   "file": "witnesses.parquet",
+   "group": "pairs only live, occasion kept",
+   "cause": "name absent from this occasion in previous",
+   "count": 69,
+   "status": "unverified"
+  },
+  {
+   "file": "witnesses.parquet",
+   "group": "repeated occurrences",
+   "cause": "same name counted more often on a shared occasion",
+   "count": 758,
+   "status": "unverified"
+  }
+ ]
 }
