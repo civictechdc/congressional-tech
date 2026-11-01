@@ -11,7 +11,7 @@ from congress_api.lake.daily import ALL_TABLE_NAMES
 from viewer_publication.archive_model_job import _local,provenance_record_kind
 
 FIELDS={'version','bucket','catalog_root','work','tables','batch_size','max_batches'}
-OPTIONAL={'engine_config','decided_at','max_work_items','body_inventory','receipt_inventory','local_root'}
+OPTIONAL={'engine_config','decided_at','max_work_items','body_inventory','receipt_inventory','local_root','selective','resume'}
 
 
 def _bucket(value):
@@ -91,12 +91,29 @@ def load_spec(path):
         if not isinstance(value['receipt_inventory'],list) or any(not isinstance(item,dict) for item in value['receipt_inventory']):
             raise ValueError('Backfill receipt_inventory must be a list of objects')
         result['receipt_inventory']=list(value['receipt_inventory'])
+    if 'resume' in value and type(value['resume']) is not bool:
+        raise ValueError('Backfill resume must be boolean')
+    result['resume']=value.get('resume',False)
+    if 'selective' in value:
+        from viewer_publication.archive_selective import validate_selective
+        result['selective']=validate_selective(value['selective'],base=base,catalog_root=catalog_root,tables=result['tables'])
+    elif result['resume']:
+        raise ValueError('Only a selective backfill can resume')
     return result
+
+
+def write_empty_body_inventory(path):
+    import pyarrow as pa
+    import pyarrow.parquet as pq
+    path=Path(path);path.parent.mkdir(parents=True,exist_ok=True)
+    schema=pa.schema([('body_sha',pa.binary(32)),('physical_key',pa.string()),('relative_path',pa.string()),
+        ('stored_bytes',pa.int64()),('stored_gzip',pa.bool_())])
+    pq.write_table(pa.Table.from_pylist([],schema=schema),path)
 
 
 def plan(spec):
     if spec.get('status')=='blocked':return dict(spec)
-    return dict(
+    planned=dict(
         status='planned',
         executed=False,
         bucket=spec['bucket'],
@@ -106,11 +123,17 @@ def plan(spec):
         batch_size=spec['batch_size'],
         max_batches=spec['max_batches'],
     )
+    if 'selective' in spec:
+        planned.update(where=spec['selective']['where'],base=spec['selective']['base'],resume=spec['resume'])
+    return planned
 
 
 def execute(spec,*,runtime_factory=None,storage_factory=None,producer=None):
     """Run bounded lake backfill batches against the configured remote runtime and raw store."""
     if spec.get('status')=='blocked':return dict(spec)
+    if 'selective' in spec:
+        from viewer_publication.archive_selective import execute_selective
+        return execute_selective(spec,runtime_factory=runtime_factory)
     work=Path(spec['work'])
     if work.exists() or work.is_symlink():
         raise ValueError('Backfill work directory must be fresh')
@@ -149,18 +172,7 @@ def execute(spec,*,runtime_factory=None,storage_factory=None,producer=None):
             provenance=provenance,
         )
         body_inv_path=Path(daily_spec['body_inventory'])
-        if not body_inv_path.exists():
-            import pyarrow as pa
-            import pyarrow.parquet as pq
-            body_inv_path.parent.mkdir(parents=True,exist_ok=True)
-            empty_schema=pa.schema([
-                ('body_sha',pa.binary(32)),
-                ('physical_key',pa.string()),
-                ('relative_path',pa.string()),
-                ('stored_bytes',pa.int64()),
-                ('stored_gzip',pa.bool_()),
-            ])
-            pq.write_table(pa.Table.from_pylist([],schema=empty_schema),body_inv_path)
+        if not body_inv_path.exists():write_empty_body_inventory(body_inv_path)
         production=producer(daily_spec,engine=engine,raw_store=raw_store)
     work.mkdir(parents=True,exist_ok=True)
     report=dict(
