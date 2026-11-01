@@ -223,3 +223,45 @@ def test_bodiless_prior_capture_entry_agrees_with_generation_guard(tmp_path):
         counts=[dict(key=key,expected_captures=4)],
     )
     assert report['status']=='validated' and report['violations']==0
+
+
+def test_zyte_provider_envelope_previous_receipt_and_unaddressed_containers(tmp_path):
+    provider_line=dict(
+        record=dict(url='https://example.test/zyte-410',http_status=410,outcome='failed'),
+        file_references=[
+            body(http_status=200,pointer=['provider_response','raw_path']),
+            body(http_status=410,pointer=['raw_path']),
+        ],
+    )
+    list_provider_line=dict(
+        record=[dict(url='https://example.test/list-zyte-404')],
+        file_references=[
+            body(http_status=200,pointer=[0,'prior','provider_response','raw_path']),
+            body(http_status=404,pointer=[0,'prior','raw_path']),
+        ],
+    )
+    previous_receipt_line=dict(
+        record=dict(url='https://example.test/followup-520'),
+        file_references=[
+            body(http_status=200,pointer=['previous_receipt','raw_path']),
+            body(http_status=520,pointer=['provider_response','raw_path']),
+        ],
+    )
+    container_line=dict(
+        record=dict(source_file='wayback/report.json'),
+        captures=[
+            body(http_status=200,pointer=['results',0,'raw','path']),
+            body(http_status=429,pointer=['results',1,'raw','path']),
+        ],
+    )
+    stage=ingest(tmp_path,[provider_line,list_provider_line,previous_receipt_line,container_line])
+    rows=pq.read_table(stage/'captures.parquet').to_pylist()
+    by_line={line:[r for r in rows if r['receipt_line']==line] for line in range(1,5)}
+    assert [(r['attempt'],r['http_status'],r['outcome'],r['fetch_http_status'],r['fetch_outcome']) for r in by_line[1]]==[
+        (0,410,'failed',410,'failed'),(0,410,'failed',410,'failed')]
+    assert [(r['attempt'],r['http_status'],r['outcome'],r['fetch_http_status'],r['fetch_outcome']) for r in by_line[2]]==[
+        (0,404,'failed',404,'failed'),(0,404,'failed',404,'failed')]
+    assert [(r['attempt'],r['http_status'],r['outcome'],r['fetch_http_status'],r['fetch_outcome']) for r in by_line[3]]==[
+        (1,200,'stored',520,'failed'),(0,520,'failed',520,'failed')]
+    assert [(r['attempt'],r['http_status'],r['outcome'],r['fetch_http_status'],r['fetch_outcome']) for r in by_line[4]]==[
+        (0,200,'stored',200,'stored'),(0,429,'retry_later',429,'retry_later')]
