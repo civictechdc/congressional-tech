@@ -154,9 +154,9 @@ def release_identity(schema_version,files):
     return sha256(json.dumps(identity,ensure_ascii=False,separators=(',',':'),allow_nan=False).encode()).hexdigest()
 
 
-def _release_schema(available=None):
+def _release_schema(available=None, stated_digests=None):
     from viewer_publication.archive_schema import build_schema
-    return build_schema(available)
+    return build_schema(available, entity_digests=stated_digests)
 
 
 NORMAL_DEFAULTS = dict(body_expected='true', title='cast(NULL AS VARCHAR)', document_kind=EMPTY_STRINGS,
@@ -183,12 +183,12 @@ SPICY_PRODUCER_FAMILIES = {
     'committees.parquet': ('committee-rosters',),
     'members.parquet': ('members',),
     'rosters.parquet': ('committee-rosters',),
-    'bills.parquet': ('bill-family', 'roll-call-votes'),
+    'bills.parquet': ('bill-family', 'roll-call-votes', 'amendments'),
     'nominations.parquet': ('nominations', 'roll-call-votes'),
 }
 
 
-def _execute(inputs, steps, *, output, scratch, engine, origin, auxiliary=None, capture_scope=None, extra_outputs=(), diagnostics=(), metadata_queries=(), content_files=None, lookup_extra=None, entity_digests=None):
+def _execute(inputs, steps, *, output, scratch, engine, origin, auxiliary=None, capture_scope=None, extra_outputs=(), diagnostics=(), metadata_queries=(), content_files=None, lookup_extra=None, entity_digests=None, stated_digests=None):
     output.mkdir(parents=True, exist_ok=False)
     outputs = _core(steps, output,lookup_extra=lookup_extra)
     # Entity files and the capture fixture have their full declared schema,
@@ -199,7 +199,7 @@ def _execute(inputs, steps, *, output, scratch, engine, origin, auxiliary=None, 
         steps.append(_step(name + '_export', sql, materialize=True))
         outputs.append(dict(name=name + '.parquet', path=str(output / (name + '.parquet')), sql='SELECT * FROM ' + name + '_export',
             settings=_settings('whole', keys, dictionary=dictionary)))
-    schema = _release_schema([item['name'] for item in outputs])
+    schema = _release_schema([item['name'] for item in outputs], stated_digests)
     if (content_files or {}).get('capture_profile.json',{}).get('version')==2:
         fields=json.loads((ROOT/'model/registries/capture-eligibility-fields.json').read_text())
         next(item for item in schema['files'] if item['name']=='url_state.parquet')['columns'].extend(fields)

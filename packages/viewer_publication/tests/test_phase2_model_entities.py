@@ -736,6 +736,10 @@ def test_phase2_entities_meetings_witnesses_recordings_and_spicy_projections(tmp
     assert nom['floor_votes'][0]['vote_id'] == '118-s-1-99'
 
 
+    # A digest the input never stated must not become an upstream URL.
+    released_schema = json.loads((release_dir / 'schema.json').read_text())
+    assert not any('path' in relation for relation in released_schema['upstream_relations'] if relation['family'] not in (spicy_regs.get('generations') or {}))
+
     # The same inputs with the Explorer tables: all five appear, and old-shaped outputs do not move.
     from congress_api.lake import committee_records as cr_lake, video_records as vr_lake
     video_path, committee_path, decisions = tmp_path / 'video.parquet', tmp_path / 'committee.parquet', tmp_path / 'decisions.jsonl'

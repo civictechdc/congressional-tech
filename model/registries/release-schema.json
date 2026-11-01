@@ -3205,5 +3205,140 @@
         "unknown and not_stated are not absence."
       ]
     }
+  ],
+  "upstream_relations": [
+    {
+      "id": "bill_actions",
+      "family": "bill-family",
+      "table": "bill_actions",
+      "key_columns": [
+        "bill_id"
+      ],
+      "joins": [
+        {
+          "table": "bills",
+          "field": "bill_id"
+        }
+      ],
+      "row_meaning": "One recorded action on a bill",
+      "limits": "bills carries only the latest action: a summary is not a history."
+    },
+    {
+      "id": "bill_cosponsors",
+      "family": "bill-family",
+      "table": "bill_cosponsors",
+      "key_columns": [
+        "bill_id",
+        "bioguide_id"
+      ],
+      "joins": [
+        {
+          "table": "bills",
+          "field": "bill_id"
+        },
+        {
+          "table": "members",
+          "field": "bioguide_id"
+        }
+      ],
+      "row_meaning": "One cosponsorship",
+      "limits": "bills does not carry cosponsors."
+    },
+    {
+      "id": "member_votes",
+      "family": "roll-call-votes",
+      "table": "member_votes",
+      "key_columns": [
+        "vote_id",
+        "bioguide_id"
+      ],
+      "joins": [
+        {
+          "table": "bills",
+          "field": "floor_votes[].vote_id"
+        },
+        {
+          "table": "nominations",
+          "field": "floor_votes[].vote_id"
+        },
+        {
+          "table": "members",
+          "field": "bioguide_id"
+        }
+      ],
+      "row_meaning": "One member ballot",
+      "limits": "Local floor_votes hold totals, not ballots."
+    },
+    {
+      "id": "roll_call_votes",
+      "family": "roll-call-votes",
+      "table": "roll_call_votes",
+      "key_columns": [
+        "vote_id"
+      ],
+      "joins": [
+        {
+          "table": "bills",
+          "field": "floor_votes[].vote_id"
+        },
+        {
+          "table": "nominations",
+          "field": "floor_votes[].vote_id"
+        }
+      ],
+      "row_meaning": "One roll-call vote",
+      "limits": "Includes votes not tied to a local bill or nomination."
+    },
+    {
+      "id": "amendments",
+      "family": "amendments",
+      "table": "amendments",
+      "key_columns": [
+        "amendment_id"
+      ],
+      "joins": [
+        {
+          "table": "bills",
+          "field": "amendments[].amendment_id"
+        }
+      ],
+      "row_meaning": "One floor amendment",
+      "limits": "Coverage is limited by upstream; committee_records holds different, committee-stage documents."
+    },
+    {
+      "id": "nominations",
+      "family": "nominations",
+      "table": "nominations",
+      "key_columns": [
+        "congress",
+        "number",
+        "part_number"
+      ],
+      "joins": [],
+      "row_meaning": "One nomination part",
+      "limits": "Coverage is limited by upstream; local nominations cover what that generation holds."
+    },
+    {
+      "id": "committee_assignments",
+      "family": "committee-rosters",
+      "table": "committee_assignments",
+      "key_columns": [
+        "congress",
+        "system_code",
+        "bioguide_id"
+      ],
+      "joins": [
+        {
+          "table": "rosters",
+          "field": "system_code"
+        },
+        {
+          "table": "members",
+          "field": "bioguide_id"
+        }
+      ],
+      "row_meaning": "One committee assignment",
+      "limits": "Current Congress only: not a historical roster."
+    }
   ]
 }

@@ -977,6 +977,20 @@ many-to-one; match: `equal`; nullable: false; resolution: `required`. Scope: sel
 
 many-to-one; match: `equal`; nullable: false; resolution: `unresolved_allowed`. Scope: selected release.
 
+## Pinned upstream relations
+
+Held upstream and never mirrored here. A release names a relation’s generation and path only when it states that family’s digest.
+
+| Relation | Family and table | Keys | Local joins | Row | Limits |
+| --- | --- | --- | --- | --- | --- |
+| `bill_actions` | `bill-family/bill_actions` | `bill_id` | `bills.bill_id` | One recorded action on a bill | bills carries only the latest action: a summary is not a history. |
+| `bill_cosponsors` | `bill-family/bill_cosponsors` | `bill_id, bioguide_id` | `bills.bill_id`, `members.bioguide_id` | One cosponsorship | bills does not carry cosponsors. |
+| `member_votes` | `roll-call-votes/member_votes` | `vote_id, bioguide_id` | `bills.floor_votes[].vote_id`, `nominations.floor_votes[].vote_id`, `members.bioguide_id` | One member ballot | Local floor_votes hold totals, not ballots. |
+| `roll_call_votes` | `roll-call-votes/roll_call_votes` | `vote_id` | `bills.floor_votes[].vote_id`, `nominations.floor_votes[].vote_id` | One roll-call vote | Includes votes not tied to a local bill or nomination. |
+| `amendments` | `amendments/amendments` | `amendment_id` | `bills.amendments[].amendment_id` | One floor amendment | Coverage is limited by upstream; committee_records holds different, committee-stage documents. |
+| `nominations` | `nominations/nominations` | `congress, number, part_number` | none | One nomination part | Coverage is limited by upstream; local nominations cover what that generation holds. |
+| `committee_assignments` | `committee-rosters/committee_assignments` | `congress, system_code, bioguide_id` | `rosters.system_code`, `members.bioguide_id` | One committee assignment | Current Congress only: not a historical roster. |
+
 ## Query recipes (DuckDB)
 
 ### `bill_documents` — Documents directly annotated with a bill

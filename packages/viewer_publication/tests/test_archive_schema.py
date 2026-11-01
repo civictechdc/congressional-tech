@@ -29,6 +29,18 @@ def test_reference_matches_registry_and_nested_paths_are_explicit():
                 assert any(p == path or p.startswith(path + '[]') or p.startswith(path + '.') for p in covered), (name, path)
 
 
+def test_upstream_relations_name_only_stated_generations():
+    schema = build_schema(['list.parquet'], entity_digests={'bill-family': 'a' * 64})
+    relations = {r['id']: r for r in schema['upstream_relations']}
+    assert relations['bill_actions']['available'] and relations['bill_actions']['generation'] == 'a' * 64
+    assert relations['bill_actions']['path'] == f"generations/bill-family/{'a' * 64}/bill_actions.parquet"
+    assert not relations['member_votes']['available'] and 'path' not in relations['member_votes']
+    assert 'generation' not in relations['member_votes']
+    unpinned = build_schema(['list.parquet'])
+    assert not any(r['available'] or 'path' in r for r in unpinned['upstream_relations'])
+    assert 'available' not in build_schema()['upstream_relations'][0]
+
+
 def test_detail_declares_the_keyed_document_table():
     schema = build_schema()
     tables = {t['name']: t for t in schema['files']}

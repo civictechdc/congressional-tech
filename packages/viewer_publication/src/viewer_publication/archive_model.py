@@ -290,7 +290,7 @@ def _normalize_appearance_rows(rows,selected_versions=None):
     return normalized
 
 
-def _prepare_spicy_inputs(scratch,spicy_regs):
+def _prepare_spicy_inputs(scratch,spicy_regs,stated_digests):
     spicy_dir=scratch/'spicy'
     spicy_dir.mkdir(parents=True,exist_ok=True)
     inputs=[]
@@ -350,6 +350,9 @@ def _prepare_spicy_inputs(scratch,spicy_regs):
             inputs.append(dict(name=table_name,kind='parquet',path=str(Path(val).resolve())))
         else:
             raise ValueError('Unsupported spicy_regs table input: '+table_name)
+    # Only what the spec really stated may become an upstream URL; the fabricated
+    # defaults below keep existing manifests stable and never leave this module's result.
+    stated_digests.update(entity_digests)
     for fam in ('committee-rosters','members','bill-family','nominations','roll-call-votes'):
         entity_digests.setdefault(fam,hashlib.sha256(f'spicy-regs:{fam}'.encode()).hexdigest())
     return inputs,entity_digests
@@ -562,7 +565,8 @@ def prepare_model_inputs(*,captures,readings,filename_readings,parser_versions,c
         inputs.append(json_input(scratch,'appearance_records_input',_normalize_appearance_rows(appearance_records or (),parser_versions.get('appearance_records')),**APPEARANCE_RECORD_FIELDS))
     else:
         prelude += [dict(name='appearance_records_input',sql=_record_table_sql('appearance_records',appearance_records,'appearances'),materialize=True)]
-    spicy_inputs,entity_digests=_prepare_spicy_inputs(scratch,spicy_regs)
+    stated_digests={}
+    spicy_inputs,entity_digests=_prepare_spicy_inputs(scratch,spicy_regs,stated_digests)
     inputs += spicy_inputs
     if include_entities and entity_digests is None:
         entity_digests={fam:hashlib.sha256(f'spicy-regs:{fam}'.encode()).hexdigest() for fam in ('committee-rosters','members','bill-family','nominations','roll-call-votes')}
@@ -599,7 +603,7 @@ def prepare_model_inputs(*,captures,readings,filename_readings,parser_versions,c
     return dict(inputs=inputs,prelude=prelude,steps=admission_steps(prelude=prelude,root=root),
         profile=model_profile,capture_profile=capture_profile,scratch=scratch,evidence=evidence,
         parser_versions=dict(parser_versions),catalog_version=catalog_version,
-        include_entities=include_entities,entity_digests=entity_digests,recovery_policy=recovery_policy,explorer_inputs=explorer_inputs)
+        include_entities=include_entities,entity_digests=entity_digests,stated_digests=stated_digests,recovery_policy=recovery_policy,explorer_inputs=explorer_inputs)
 
 
 def build_release(*,captures,readings,filename_readings,parser_versions,catalog_version,
@@ -877,7 +881,7 @@ def build_prepared_release(prepared,*,engine,output,root=ROOT):
         lookup_extra="SELECT o.list_row,a.url FROM source_addresses a JOIN document_members m ON a.source_id=m.source_id JOIN document_identities d ON m.component=d.component JOIN ordered o ON d.document_id=o.doc_key WHERE m.is_real_file",
         metadata_queries=meta_queries,origin=dict(kind='model',gaps=[]),content_files={'capture_profile.json':capture_profile},auxiliary=auxiliary,extra_outputs=extra,
         capture_scope=json.loads((Path(root)/'model/registries/capture-scope.json').read_text()),
-        entity_digests=prepared.get('entity_digests'),
+        entity_digests=prepared.get('entity_digests'),stated_digests=prepared.get('stated_digests'),
         diagnostics=[dict(name='model_invariants',sql=f"""SELECT {prefix_checks},
             (SELECT count(*) FROM model_url_keys WHERE error IS NOT NULL) AS invalid_url_keys,
             (SELECT count(*) FROM recovery_attachment_diagnostics) AS invalid_recovery_attachments,

@@ -141,11 +141,22 @@ def validate_schema(schema):
     return schema
 
 
-def build_schema(available=None, *, registry=None):
+def _pin_upstream(relations, digests):
+    """Name the pinned generation file; an unpinned family has no URL to invent."""
+    for relation in relations:
+        digest = (digests or {}).get(relation['family'])
+        relation['available'] = digest is not None
+        if digest is not None:
+            relation['generation'] = digest
+            relation['path'] = f"generations/{relation['family']}/{digest}/{relation['table']}.parquet"
+
+
+def build_schema(available=None, *, registry=None, entity_digests=None):
     """Add release-specific availability without inventing absent table contents."""
     schema = validate_schema(deepcopy(registry) if registry is not None else json.loads(REGISTRY.read_text()))
     if available is None:
         return schema
+    _pin_upstream(schema.get('upstream_relations', ()), entity_digests)
     available = {name.removesuffix('.parquet') for name in available}
     for table in schema['files']:
         table['available'] = table['name'].removesuffix('.parquet') in available
@@ -261,6 +272,13 @@ def render_reference(schema):
         dest = f'`{target["table"]}.{", ".join(target["fields"])}`' if 'table' in target else target['external']
         lines += [f'### `{r["id"]}`', '', f'`{source["table"]}.{", ".join(source["fields"])}` → {dest}. {r["meaning"]}', '',
             f'{r["cardinality"]}; match: `{r["match"]}`; nullable: {str(r["nullable"]).lower()}; resolution: `{r["resolution"]}`. Scope: {r["scope"]}.', '']
+    lines += ['## Pinned upstream relations', '',
+        'Held upstream and never mirrored here. A release names a relation\u2019s generation and path only when it states that family\u2019s digest.', '',
+        '| Relation | Family and table | Keys | Local joins | Row | Limits |', '| --- | --- | --- | --- | --- | --- |']
+    for u in schema.get('upstream_relations', ()):
+        joins = ', '.join(f'`{j["table"]}.{j["field"]}`' for j in u['joins']) or 'none'
+        lines.append(f'| `{u["id"]}` | `{u["family"]}/{u["table"]}` | `{", ".join(u["key_columns"])}` | {joins} | {u["row_meaning"]} | {u["limits"]} |')
+    lines.append('')
     lines += ['## Query recipes (DuckDB)', '']
     for recipe in schema['recipes']:
         lines += [f'### `{recipe["id"]}` — {recipe["title"]}', '',
