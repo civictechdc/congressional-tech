@@ -46,3 +46,7 @@ publish_v21 live viewer release 448651e720833d42d565ead119f59b893936626f680fdae4
 Correction to the 2026-11-01T17:43:18Z note. Its release facts were independently confirmed. Item 2 is not the only work left. Remaining: items 1-4 of the 2026-10-30T19:28:54Z note, the annex §4.6 child tickets and a durable copy of the inputs (local copy at .cache/archive-release/publish_v21/inputs). Basin work is ct-itcg; row-count explanation is ct-qg8e; CI runtime is ct-2c0w.
 
 The owner confirmed approving the targets used for publish_v21. No device evidence is recorded and apps/site/archive-targets.json remains owner-gated with null ceilings, so A11 real-device timing stays open before archive-jobs.yml can publish. Owner rule: no further live publishes from scratch scripts (ct-9gmr).
+
+**2026-11-01T20:47:10Z**
+
+Owner decision 2026-11-01: B13 and B10 run unattended and out of band; they no longer gate the Phase 2 exit (annex §4.1). Offered and not approved, so they remain required: pinning Explorer CSVs as model inputs in place of native producers, deferring the HTML metadata chain from ct-m104, and removing ct-9gmr from this ticket.

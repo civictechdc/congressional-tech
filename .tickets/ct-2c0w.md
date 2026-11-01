@@ -24,3 +24,9 @@ Cross-build eb40c54 from git archive with the retained Dockerfile.cross recipe, 
 - Validate Congress MCP and Validate Committee Explorer get past runtime setup.
 - No disabled workflow is enabled by this ticket.
 
+
+## Notes
+
+**2026-11-01T21:08:34Z**
+
+2026-11-01: built eb40c54 linux-amd64 from git archive with --release (rust 1.94.0, stripped): 195,663,208 bytes, SHA-256 c7b411adc3ef3d625e09b2c1d7be063a8398b7264eae43cd4a862854a743ee92. Under emulated linux/amd64: 54 tests passed, including native capture tests; serve flags and glibc 2.36 resolve. Not a live Ubuntu runner, and no corpus-scale check. Local files are in .cache/runtime-eb40c54. Pending: upload credential, pin digest, repository variable.

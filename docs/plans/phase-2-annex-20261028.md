@@ -197,7 +197,7 @@ currently published release already contains them.
 
 Phase 2 is done when, beyond [[IMPLEMENTATION-PLAN]] §6.6's phase-1 checklist:
 - the accepted review corrections and transition fixtures in §4.7 pass; prior shape/count/query checks do not substitute for their semantic checks;
-- every older gzip PDF has a recorded `.pdf` copy (B13), and the full re-hash has run (B10);
+- the PDF-copy job (B13) and full re-hash (B10) are running or scheduled out of band. Owner decision, 2026-11-01: they no longer gate this exit. A damaged PDF they find leaves the list in a following release, so their findings still need a recorded owner after Phase 2 closes;
 - the actual production jobs use lake meeting/witness records and pinned SpicyRegs inputs, and all retained Explorer field families have the destinations and parity evidence required by §4.6 (`ct-gi01`, F3);
 - site entity browsing and Congress MCP consume the shared release; `/dashboard/` is replaced/redirected or serves only Coverage/Gaps from that release (`ct-t915`, `ct-m104`);
 - after the replacement is verified live, the separate Explorer publishing route and `pipeline-data/committee-explorer/public` staging are retired (`ct-5kto`); preservation and rollback references remain;

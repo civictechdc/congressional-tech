@@ -60,3 +60,7 @@ Independent 13-Ticket Validation Swarm Reconciliation (2026-11-01):
 **2026-11-01T20:08:15Z**
 
 Reconciliation 2026-11-01: the 13 tickets reopened at 10:39Z were re-closed at 12:05Z. New or changed: ct-itcg (Basin), ct-9gmr (checked-in selective backfill), ct-qg8e (row counts), ct-2c0w (CI runtime), ct-deh9 (version selection), ct-nkw9 (stale docs), ct-p3ff (SQL rule). ct-kac4 rejected. ct-4jms and ct-klyz reopened.
+
+**2026-11-01T20:47:10Z**
+
+Owner decision 2026-11-01: B10 and B13 no longer gate the exit (annex §4.1). ct-gi01 stays native with the weekly job removed, ct-m104 keeps its ct-0a37 dependency, and cef-96wc keeps ct-9gmr.
