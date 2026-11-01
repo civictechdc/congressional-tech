@@ -2,7 +2,7 @@
 id: ct-sh4j
 status: closed
 deps: []
-links: [ct-v967]
+links: [ct-v967, ct-77zb, cef-nkzp, ct-h1nd, ct-d0o0, cefr-7sar, ct-kac4]
 created: 2026-10-30T21:13:37Z
 type: bug
 priority: 1

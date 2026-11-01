@@ -2,7 +2,7 @@
 id: cefr-7sar
 status: closed
 deps: []
-links: []
+links: [ct-77zb, cef-nkzp, ct-h1nd, ct-d0o0, ct-sh4j]
 created: 2026-10-27T17:09:26Z
 type: task
 priority: 2

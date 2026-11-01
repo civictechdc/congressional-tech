@@ -2,7 +2,7 @@
 id: cef-zrhq
 status: closed
 deps: []
-links: []
+links: [ct-77zb, ct-3vub]
 created: 2026-10-27T18:29:08Z
 type: task
 priority: 1

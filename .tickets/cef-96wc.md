@@ -2,7 +2,7 @@
 id: cef-96wc
 status: open
 deps: []
-links: [ct-klyz, ct-4jms, ct-5kto, ct-77zb, cef-jh7i, ct-t906]
+links: [ct-klyz, ct-4jms, ct-5kto, ct-77zb, cef-jh7i, ct-t906, ct-1mbc, ct-kw9b, ct-9gmr, ct-pocg]
 created: 2026-10-28T05:00:43Z
 type: task
 priority: 1
@@ -36,3 +36,7 @@ Closed: all linked engine-first cut-over checklist items (ct-klyz in c5297fa7, c
 **2026-10-30T19:28:54Z**
 
 Reopened per Greybeard parity audit to track live operational cut-over execution against production R2 and Basin (docs/plans/engine-first-switch.md): (1) R2 bucket object locks on receipts/, bodies/, provenance/ (ct-1l1h) and live R2 runs of B0 privacy scrub, B7/B8 provenance uploads, B9 listing baseline, B13 .pdf copy backfill, and B10 full re-hash; (2) Live Basin D1-D4 Iceberg table creation/backfill and binding live metadata_location/table_uuid/snapshot/receipt_inventory/spicy_regs into model/jobs/{publish-model,publish,publish-daily,maintenance}.json; (3) M1 live Basin maintenance validation and enabling model/basin-maintenance.json; (4) A11 real desktop and phone browser timing capture into apps/site/archive-targets.json to unlock live archive-jobs.yml publish.
+
+**2026-11-01T17:43:18Z**
+
+publish_v21 live viewer release 448651e720833d42d565ead119f59b893936626f680fdae4d13b6297e296c419 published to R2 and verified via HTTPS canary:archive (2026-11-01). Verified D1-D4 Parquet snapshots are staged at /private/tmp/claude-501/-Users-mikewolfd-Work/71969fc5-4a0f-4f4e-aa49-d2dd9f4c2272/scratchpad/codex-impl/cx_model_design/publish_v21/inputs/ (captures: 4,147,132 rows, readings: 1,349,139 rows, filename_readings: 1,311,075 rows, meeting_records: 24,430 rows, appearance_records: 66,483 rows) and unreadable provenance 20261101T153500+0000-34c66cf22e4550f910fa2805bf57a89d7edf05e7cdfcd1f3afe8545930055fff.jsonl is imported to R2; item (2) remote Basin Iceberg table commit/binding remains to sync remote catalog tables with publish-model.json.
