@@ -24,3 +24,7 @@ Every retained body in R2 has a sha256_verified = true record in provenance/veri
 **2026-10-30T15:21:37Z**
 
 Committed at 7bab5c8d: added full_rehash=True parameter to raw_verifier.verify() and --full-rehash CLI flag to congress_api.cli.raw_verify, selecting all non-missing bodies lacking a matching sha256_verified=True record and skipping bodies already verified by B13 or prior samples. Verified by test_raw_verifier.py (12 passed).
+
+**2026-11-01T20:08:14Z**
+
+Annotated 2026-11-01: closure records code and tests only, not a live B10 run. cef-96wc owns the live run.

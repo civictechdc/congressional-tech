@@ -56,3 +56,7 @@ Independent 13-Ticket Validation Swarm Reconciliation (2026-11-01):
 - Executed independent subagent validation across all 13 recently closed tickets (`ct-aapl`, `ct-v51p`, `ct-jinw`, `ct-l9g0`, `ct-cov3`, `ct-vnkf`, `ct-h1nd`, `ct-30fp`, `ct-vpo2`, `ct-yymr`, `ct-kw9b`, `ct-wx65`, `ct-sh4j`) plus cross-cutting binding, byte-hashed parser, and 5-suite regression checks (`9,734` tests).
 - Reopened all 13 tickets with exact per-ticket audit notes to track their 5 Priority 1 functional/operational defects (`ct-30fp`, `ct-vnkf`, `ct-kw9b`, `ct-sh4j`), 8 Priority 2 edge-case/tightening items (`ct-30fp`, `ct-h1nd`, `ct-wx65`, `ct-yymr`, `ct-vpo2`, `ct-l9g0`, `ct-jinw`, `ct-cov3`, `ct-aapl`, `ct-v51p`), uncommitted working-tree state, and downstream publication/reconciliation steps.
 - Created `ct-9wl3` to track the 3 pre-existing commit `12ac8bf2` test regressions uncovered by the 5-suite cross-cutting run (`test_review_provenance.py`, `test_capture_review_contract.py`, `test_congress_api_imports.py`).
+
+**2026-11-01T20:08:15Z**
+
+Reconciliation 2026-11-01: the 13 tickets reopened at 10:39Z were re-closed at 12:05Z. New or changed: ct-itcg (Basin), ct-9gmr (checked-in selective backfill), ct-qg8e (row counts), ct-2c0w (CI runtime), ct-deh9 (version selection), ct-nkw9 (stale docs), ct-p3ff (SQL rule). ct-kac4 rejected. ct-4jms and ct-klyz reopened.

@@ -19,3 +19,9 @@ Owner action (plan P4, owner decision 4). Add R2 bucket lock rules with indefini
 - The rules are read back (API or dashboard) and recorded in this ticket.
 - After any later infra change, R2 check 4 reads the rules back again.
 
+
+## Notes
+
+**2026-11-01T20:08:14Z**
+
+Owner decision 2026-11-01: hold the locks until cut-over. Before locking receipts/, settle the B0 conflict: cef-sqyq records completion on 2026-10-30T14:32Z, while the later cef-96wc note (19:28Z) lists B0 as pending. Rescan receipts first, because B0 rewrites them.

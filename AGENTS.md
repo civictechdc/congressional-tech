@@ -29,8 +29,9 @@ any direct `.venv/bin/pytest` run over native lake/model tests require
 `validate_catalog_authority` errors in local Iceberg tests.
 
 For `apps/site` browser contract checks (`npm --prefix apps/site run contract:archive`),
-set `VIEWER_BENCHMARK_MODULES` to a `node_modules` directory whose `playwright-core`
-matches the installed `.cache/ms-playwright/chromium_headless_shell-*` revision.
+set `VIEWER_BENCHMARK_MODULES` to a `node_modules` directory whose `playwright`
+matches an installed `~/Library/Caches/ms-playwright/chromium_headless_shell-*` revision
+(CI's `playwright@1.64.1` uses revision 1248; several revisions may be installed).
 
 # Byte-hashed parser pins
 
@@ -68,9 +69,11 @@ extraction semantics. When a parser change is intentional, update
   6 model invariant suites (`invariants`, `model_invariants`,
   `url_state_invariants`, `profile_completeness`, `entity_profile_completeness`,
   `relationship_invariants`).
-- **Producer/guard & reference-key parity:** Keep `captures.py` and
-  `capture_backfill_guard.py` aligned on receipt envelope and nested `error`
-  object handling, and keep House select/task-force committee code normalization
-  (`hs*` → `hl*`/`ht*`) in `meeting_records.py` and
+- **Capture guard scope:** `capture_backfill_guard.py` checks final public rows
+  and supplied per-receipt counts. It does not parse receipts, so envelope and
+  nested `error` handling live only in `captures.py`, and the guard cannot see a
+  wrong value that is still in-domain.
+- **Reference-key parity:** Keep House select/task-force committee code
+  normalization (`hs*` → `hl*`/`ht*`) in `meeting_records.py` and
   `model/sql/meeting-records-resolved.sql` aligned with `committees.parquet`
   (`missing_committee_keys = 0`).

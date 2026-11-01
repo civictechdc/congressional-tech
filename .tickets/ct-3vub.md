@@ -10,18 +10,17 @@ assignee: mikewolfd
 parent: ct-77zb
 tags: [dx, testing, playwright, docspec]
 ---
-# Pin playwright-core for contract:archive and add explicit write-local-runtime helper in scripts/dev.py
+# Pin playwright for contract:archive and add a verified local runtime helper to scripts/dev.py
 
-Remove manual VIEWER_BENCHMARK_MODULES discovery for npm --prefix apps/site run contract:archive and provide an explicit command to generate a local-only DOCSPEC_JOB_CONFIG file while preserving cef-zrhq's no-implicit-default gate.
+Remove manual VIEWER_BENCHMARK_MODULES discovery and provide a checked way to create a local-only DOCSPEC_JOB_CONFIG. Reshaped after independent review: the scripts load playwright, not playwright-core; and stripping keys from a pipeline runtime fails doctor because the result has no pins and a different binary.
 
 ## Design
 
-1. Pin playwright-core in apps/site/package.json devDependencies (matching the repo's installed Chromium headless shell revision) so npm --prefix apps/site run contract:archive resolves playwright-core from apps/site/node_modules without requiring VIEWER_BENCHMARK_MODULES.
-2. Add a write-local-runtime subcommand to scripts/dev.py that writes a validated local-only runtime JSON (stripping remote and credentials keys) to a caller-specified path or .cache/docspec-catalog/runtime-local.json and prints the export DOCSPEC_JOB_CONFIG=... command, while keeping cef-zrhq's strict refusal when DOCSPEC_JOB_CONFIG is unset.
+1. Exact devDependency playwright@1.64.1, with the composite action reading that one pin. The browser resolver tries local require first (archive-browser.mjs:5), so a differing site pin would silently override CI.
+2. write-local-runtime takes --binary and --limits, verifies against load_runtime_pin and runtime_pin_digest, and writes absolute paths. Keep the cef-zrhq refusal when DOCSPEC_JOB_CONFIG is unset.
 
 ## Acceptance Criteria
 
-- npm --prefix apps/site run contract:archive locates playwright-core without setting VIEWER_BENCHMARK_MODULES.
-- python scripts/dev.py write-local-runtime produces a local runtime JSON that passes python scripts/dev.py doctor --lane production-offline.
-- cef-zrhq regression tests continue to pass (missing DOCSPEC_JOB_CONFIG still fails fast before pytest).
+- browserDependency("playwright") resolves without VIEWER_BENCHMARK_MODULES, tested directly, since contract:archive needs --next-release.
+- A helper-written runtime passes scripts/dev.py doctor --lane production-offline; a wrong binary is refused.
 

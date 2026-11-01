@@ -1,6 +1,6 @@
 ---
 id: ct-kac4
-status: open
+status: closed
 deps: []
 links: [ct-77zb, ct-h1nd, ct-d0o0, ct-sh4j]
 created: 2026-11-01T17:43:18Z
@@ -26,3 +26,9 @@ Eliminate split-brain receipt attempt/error extraction between captures.py and c
 - All model SQL steps in archive_model.py load from model/sql/*.sql files with no multi-hundred-line inline SQL strings remaining.
 - All offline regression and model tests pass.
 
+
+## Notes
+
+**2026-11-01T20:08:14Z**
+
+Rejected 2026-11-01 after independent review. capture_backfill_guard.py has no envelope parsing to unify: it checks public rows and supplied per-receipt counts. The SQL rule matches 0 v21 rows, so delete it (ct-p3ff) rather than share it. The largest inline SQL string is 50 lines, so the extraction criterion is already met, and moving SQL changes file_hashes and input_digest, forcing a rebuild.

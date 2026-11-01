@@ -5,23 +5,25 @@ deps: []
 links: [ct-77zb, cef-nkzp, ct-h1nd, ct-sh4j, cefr-7sar, ct-kac4]
 created: 2026-11-01T17:43:18Z
 type: task
-priority: 1
+priority: 2
 assignee: mikewolfd
 parent: ct-77zb
 tags: [testing, datafusion, captures, committees, phase2]
 ---
-# Add fast production-offline gate for receipt-envelope variety, committee reference keys, and SQL pre-aggregation semi-join pushdown
+# Add offline gates for the fb408404 receipt lines, committee code mapping and three model query plans
 
-Catch real-corpus receipt envelope shapes, House select/task-force committee code mappings, and unfiltered DataFusion captures/readings aggregations in <5s during production-offline pytest runs before launching full pipeline runs.
+Catch the failures found during publish_v21 in production-offline. Reshaped after independent review: "every distinct envelope shape" has no fixed answer (3, 729 or 12,188 depending on the definition, and the 729 had not saturated), and a static SQL guard flagged 27 of 31 statements while the old failing queries passed alone.
 
 ## Design
 
-1. Add packages/congress_api/tests/test_corpus_variety_gate.py with a compact fixture containing one anonymized line from every distinct historical receipt envelope shape across the 2,292 production receipts (including 2026-10-12 nested error: {"type": "http_error"} dicts on prior_attempts, prior_attempts slots 0..3, Zyte provider_response, previous_receipt, and Wayback container lines) and assert 100% parity between captures.py and capture_backfill_guard.validate_generation.
-2. In test_corpus_variety_gate.py, cross-check normalize_house_committee_code (_HOUSE_SELECT_CODES and task-force mappings in meeting_records.py) against all hl* and ht* codes in reference committees data so missing_committee_keys cannot regress.
-3. Add packages/viewer_publication/tests/test_sql_plan_guards.py inspecting all model/sql/*.sql and archive_model.py queries to forbid FROM captures or FROM readings GROUP BY / DISTINCT CTEs that do not join a candidate_* SHA CTE or selective filter.
+1. Fixture of the receipt lines fb408404 actually concerns, with per-line expected rows derived from raw facts rather than guard parity, because the guard cannot see wrong in-domain values.
+2. A checked-in script reports fixture paths against a mapper path list, so coverage gaps are visible.
+3. EXPLAIN assertions that the candidate join sits below the aggregate on the three named steps, through run_job.
+4. Check committee mapping against committee-codes.json only. The release has 51 hl/ht codes and 20+ stems outside _HOUSE_SELECT_CODES, so testing against it fails at HEAD. Keep missing_committee_keys as the real gate.
 
 ## Acceptance Criteria
 
-- Both new test modules are enrolled in test-suites.toml (production-offline) and execute in <5s total.
-- Reverting the nested-error fix in captures.py, removing any hl*/ht* code from normalize_house_committee_code, or removing candidate_*_shas joins from appearance-records-resolved.sql / meeting-records-resolved.sql / archive_model.py deterministically fails the gate.
+- Runs within 30s on the pinned runtime.
+- Reverting the fb408404 behavior, removing a mapped code, or removing a candidate join fails the gate.
+- The original memory failure needs a full job; this gate does not claim to detect shared-pool pressure.
 

@@ -18,3 +18,9 @@ list.parquet carries no id by design; the stable key link_key lives in detail.pa
 
 A release carries the document key in the same table as title and facets; meetings.parquet has congress; SpicyEngine's row-aligned document source is retired in favour of one keyed table.
 
+
+## Notes
+
+**2026-11-01T20:08:14Z**
+
+Owner decision 2026-11-01: detail.parquet becomes the keyed document table by adding list columns; list.parquet stays the no-ID browser projection (data model §8.1). Measure both options on the live release before changing the schema. congress on meetings is delivered with ct-r4rd; do not implement it twice.

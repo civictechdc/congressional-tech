@@ -24,3 +24,7 @@ pdf_backfill.py uses BodyStore over sniff='pdf' candidates without accepted_file
 **2026-10-30T15:21:37Z**
 
 Committed at 7bab5c8d: replaced accepted_files / in-memory / ZIP / 512MiB cap / pre-upload HEAD in pdf_backfill.py and backfill_uncompressed_pdfs.py with BodyStore streaming copier (put_pdf_copy + select_pdf_candidates over sniff='pdf' .gz bodies), non-fatal SHA-256 mismatch recording, %%EOF + check_pdf intact check, 412 single-HEAD MD5 check, and provenance/verification/ JSONL records for both .gz and .pdf. 224 tests pass.
+
+**2026-11-01T20:08:14Z**
+
+Annotated 2026-11-01: closure records code and tests only, not a live B13 run. cef-96wc owns the live run.

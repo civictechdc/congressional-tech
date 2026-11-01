@@ -18,3 +18,9 @@ spicy-regs will retire its committee_meetings capture and read meetings.parquet 
 
 meetings.parquet (or a declared companion keyed by event_id) publishes congress, update_date, location building and room, and the Congress.gov meeting type label, documented in schema.json; spicy-regs' compare_committee_meetings_archive.py reports each with a destination and value agreement on matched event_ids.
 
+
+## Notes
+
+**2026-11-01T20:08:14Z**
+
+Owner decision 2026-11-01: this ticket delivers congress on meetings.parquet, shared with ct-mt0h, which keeps the document-key work.

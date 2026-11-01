@@ -1,7 +1,7 @@
 ---
 id: cef-96wc
 status: open
-deps: []
+deps: [ct-itcg, ct-9gmr, ct-qg8e, ct-2c0w]
 links: [ct-klyz, ct-4jms, ct-5kto, ct-77zb, cef-jh7i, ct-t906, ct-1mbc, ct-kw9b, ct-9gmr, ct-pocg]
 created: 2026-10-28T05:00:43Z
 type: task
@@ -40,3 +40,9 @@ Reopened per Greybeard parity audit to track live operational cut-over execution
 **2026-11-01T17:43:18Z**
 
 publish_v21 live viewer release 448651e720833d42d565ead119f59b893936626f680fdae4d13b6297e296c419 published to R2 and verified via HTTPS canary:archive (2026-11-01). Verified D1-D4 Parquet snapshots are staged at /private/tmp/claude-501/-Users-mikewolfd-Work/71969fc5-4a0f-4f4e-aa49-d2dd9f4c2272/scratchpad/codex-impl/cx_model_design/publish_v21/inputs/ (captures: 4,147,132 rows, readings: 1,349,139 rows, filename_readings: 1,311,075 rows, meeting_records: 24,430 rows, appearance_records: 66,483 rows) and unreadable provenance 20261101T153500+0000-34c66cf22e4550f910fa2805bf57a89d7edf05e7cdfcd1f3afe8545930055fff.jsonl is imported to R2; item (2) remote Basin Iceberg table commit/binding remains to sync remote catalog tables with publish-model.json.
+
+**2026-11-01T20:08:15Z**
+
+Correction to the 2026-11-01T17:43:18Z note. Its release facts were independently confirmed. Item 2 is not the only work left. Remaining: items 1-4 of the 2026-10-30T19:28:54Z note, the annex §4.6 child tickets and a durable copy of the inputs (local copy at .cache/archive-release/publish_v21/inputs). Basin work is ct-itcg; row-count explanation is ct-qg8e; CI runtime is ct-2c0w.
+
+The owner confirmed approving the targets used for publish_v21. No device evidence is recorded and apps/site/archive-targets.json remains owner-gated with null ceilings, so A11 real-device timing stays open before archive-jobs.yml can publish. Owner rule: no further live publishes from scratch scripts (ct-9gmr).

@@ -5,7 +5,7 @@ deps: [ct-sh4j, ct-30fp, ct-kw9b, ct-wx65, ct-h1nd, ct-v51p]
 links: [ct-8kl2, ct-mi03, ct-czsd, ct-2ukk, ct-oc2g, ct-xu1o, ct-8ax6, ct-dzyf, ct-13cn, ct-dmca, ct-gziq, ct-n6lj, ct-sb0s, ct-te1p, ct-aia9, ct-2yl5, ct-bwac, ct-a3le, ct-0odd, ct-ec91, ct-3ttc, ct-84xa, ct-h23e, ct-f7p8, ct-98sm, ct-r6xw, ct-jnw5, ct-4g55, ct-xx7q, ct-s9p2, ct-w8dc, ct-93zs, ct-m104, ct-t915, ct-5kto, ct-m94a]
 created: 2026-10-21T20:53:31Z
 type: feature
-priority: 2
+priority: 1
 assignee: mikewolfd
 external-ref: ss-023x,ss-65bz,ss-6gwu
 parent: ct-7uit
@@ -83,3 +83,7 @@ Accepted blind-review prerequisites are ct-sh4j (per-attempt capture eligibility
 
 Independent Validation Reconciliation (2026-11-01):
 - Reopened prerequisite/child tickets `ct-sh4j`, `ct-30fp`, `ct-kw9b`, `ct-wx65`, `ct-h1nd`, and `ct-v51p` with concrete validation findings (Senate repeated witness name deduplication and relative link resolution in `ct-30fp`, candidate-vs-completeness SQL alignment in `ct-kw9b`, 512 MiB HashJoin build-side order and per-attempt conflict/url_state grain fixes in `ct-sh4j`, and edge-case tightening in `ct-wx65`, `ct-h1nd`, `ct-v51p`) so these defects are resolved before final Phase-2 backfill/publication.
+
+**2026-11-01T20:08:14Z**
+
+Owner scope decision 2026-11-01 (annex §4.6, data model §8): raised to P1. Typed release tables for channels, videos, recording matches, completeness and committee amendments/votes. Pinned upstream relations for SpicyRegs detail. Evidence references only for bulky raw material: YouTube caches, captions and per-match evidence files. Nothing is deferred.

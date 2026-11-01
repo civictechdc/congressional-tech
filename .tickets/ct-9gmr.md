@@ -10,19 +10,20 @@ assignee: mikewolfd
 parent: ct-77zb
 tags: [etl, backfill, viewer-publication, phase2]
 ---
-# Add checked-in predicate-scoped backfill CLI, compatible parser_versions priority selection, and Step-0 readings key-uniqueness preflight
+# Run selective backfill and release through the existing archive jobs
 
-Replace ad-hoc /private/tmp/publish_v* backfill scripts with a checked-in backfill/release CLI and allow multi-version parser_versions priority selection so narrow parser fixes do not require re-stamping unchanged rows.
+publish_v21 was built with ad hoc /private/tmp/publish_v* scripts outside the guarded controller. Owner decision 2026-11-01: extend the checked-in jobs rather than add a CLI, and make no further live publishes from scratch scripts. Parser-version selection moved to a separate ticket.
 
 ## Design
 
-1. In packages/viewer_publication/src/viewer_publication/{archive_model_job.py,archive_model.py,archive_publish_job.py} and model/sql/*.sql, allow parser_versions in publish-model.json to accept either a single hash or an ordered list of compatible hashes per parser, selecting 1 row per natural key ((body_sha, parser) for readings, url for filename_readings, record_sha_hex for D4) by declared version priority.
-2. Add a Step-0 preflight check in archive_model.py (build_prepared_release) asserting COUNT(*) == COUNT(DISTINCT (body_sha, parser)) on selected readings in <1s before executing the 180-step SQL DAG.
-3. Add a checked-in CLI (packages/viewer_publication/src/viewer_publication/archive_backfill.py) using a gitignored .cache/archive-release/ workspace that supports predicate-scoped selective recomputation for captures (receipt predicate + capture_backfill_guard.validate_generation), filename_readings (URL regex predicate), and D4 (meeting_records/appearance_records with R2 candidate body prefetching), plus completed-model.json resume and remote R2 Iceberg table sync.
+1. Reuse archive_backfill_job.py, capture_backfill.py and archive_controller.py resume.
+2. Add predicate-scoped recomputation for captures (receipt predicate plus capture_backfill_guard.validate_generation), filename_readings (URL predicate) and D4 (meeting_records and appearance_records).
+3. Use a gitignored .cache/archive-release/ workspace.
+4. Coordinate replay planning with ct-pocg; do not build a second metadata replay path.
 
 ## Acceptance Criteria
 
-- A narrow parser fix can append only recomputed rows with the new parser_version without re-stamping unchanged rows.
-- Duplicate (body_sha, parser) rows in readings are deterministically deduplicated by declared parser_version priority or rejected at Step 0 in <1s rather than failing at final export ordering.
-- Predicate-scoped selective backfill and release resume run via a checked-in CLI command backed by .cache/ with unit test coverage in packages/viewer_publication/tests/.
+- A narrow parser fix runs through a checked-in job spec with no scratch script.
+- Unaffected rows are reused, and the combined output passes the guard and all model invariant suites.
+- Resume works after an interrupted run, with unit tests in packages/viewer_publication/tests/.
 
