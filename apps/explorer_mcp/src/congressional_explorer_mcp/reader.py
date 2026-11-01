@@ -28,7 +28,10 @@ class Reader:
                     queries.append(f'SELECT * EXCLUDE(file_row_number){extra} FROM read_parquet('
                                    f"{literal(part['path'])},file_row_number=true)")
                 self.db.execute(f'CREATE VIEW {quote(table)} AS ' + ' UNION ALL '.join(queries))
-            self.db.execute('CREATE VIEW documents AS SELECT l.*,d.* EXCLUDE(list_row) '
+            # Newer detail files repeat list's columns; older ones share only list_row.
+            list_names = {row[0] for row in self.db.execute('DESCRIBE "list"').fetchall()}
+            repeated = [row[0] for row in self.db.execute('DESCRIBE detail').fetchall() if row[0] in list_names]
+            self.db.execute('CREATE VIEW documents AS SELECT l.*,d.* EXCLUDE(' + ','.join(map(quote, repeated)) + ') '
                             'FROM "list" l JOIN detail d USING(list_row)')
             allowed = [part['path'] for parts in selection['tables'].values() for part in parts]
             self.db.execute('SET allowed_paths=[' + ','.join(map(literal, allowed)) + ']')

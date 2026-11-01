@@ -154,17 +154,24 @@ export async function openArchive(pointerUrl: string, options: any = {}) {
   tables.delete('list.parquet'); // The compressed list is released after its columns are packed.
   const value=(name: string,i: number)=>columns.get(name)?.get(i);
   const row=(i: number)=>Object.fromEntries([...columns].map(([name,col])=>[name,col.get(i)]).concat([['list_row',i]]));
+  // Newer detail files repeat every list column; the packed list already holds them.
+  const projection=(name: string,input: any)=>{
+    if(name!=='detail.parquet')return {};
+    const selected=detailProjection(input.names,[...columns.keys()]);
+    metrics.detailColumns=selected.length;
+    return {columns:selected};
+  };
   async function read(name: string,start?: number,end?: number,filter?: any){
     const group=shards.get(name.replace('.parquet',''));
     if(group){
       if(start===undefined||end===undefined||filter)throw new Error('Archive shards require a row range.');
       if(start<0||end<start||end>group.at(-1).row_range[1])throw new Error('Invalid archive shard row range.');
       const ranges=group.filter(item=>item.row_range[0]<end&&item.row_range[1]>start);
-      return (await Promise.all(ranges.map(async item=>{const input=await table(item.name);return parquetReadObjects({...input,compressors,rowStart:Math.max(start!,item.row_range[0])-item.row_range[0],rowEnd:Math.min(end!,item.row_range[1])-item.row_range[0],useOffsetIndex:true});}))).flat();
+      return (await Promise.all(ranges.map(async item=>{const input=await table(item.name);return parquetReadObjects({...input,...projection(name,input),compressors,rowStart:Math.max(start!,item.row_range[0])-item.row_range[0],rowEnd:Math.min(end!,item.row_range[1])-item.row_range[0],useOffsetIndex:true});}))).flat();
     }
     const input=await table(name);
     if(start!==undefined&&(start<0||end===undefined||end<start||end>Number(input.metadata.num_rows)))throw new Error('Invalid archive row range.');
-    return parquetReadObjects({...input,compressors,rowStart:start,rowEnd:end,filter,useOffsetIndex:true,usePageIndex:Boolean(filter)});
+    return parquetReadObjects({...input,...projection(name,input),compressors,rowStart:start,rowEnd:end,filter,useOffsetIndex:true,usePageIndex:Boolean(filter)});
   }
   const entities=new Map<string,Promise<any[]>>();
   const entity=(name: string)=>{
@@ -365,6 +372,11 @@ export async function openArchive(pointerUrl: string, options: any = {}) {
     }
   };
   return reader;
+}
+
+export function detailProjection(detailNames: string[],listNames: string[]){
+  const held=new Set(listNames);
+  return detailNames.filter(name=>!held.has(name));
 }
 
 export function savedCopy(detail: any,rawBase: string){
