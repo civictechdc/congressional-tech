@@ -44,9 +44,11 @@ def test_source_projection_selects_disjoint_bulk_leaves(tmp_path):
     plan=source_plan(counter=counter)
     assert len(plan['inputs'])==1 and plan['inputs'][0]['path']==str(counter)
     sql=plan['steps'][0]['sql']
-    assert 'json_get_many' in sql and "json_get_array(__raw_line,'record')" in sql
+    assert sql.count('json_get_many(')==1 and "json_get_array(__raw_line,'record')" in sql
     assert 'list_raw' not in sql and 'source_row_id' in sql
-    for excluded in ('prior_attempts','response_header_items','lockfile_digest','record_sha'):
+    assert '["prior_attempts",0,"http_status"]' in sql and '["record","prior_attempts",0,"http_status"]' in sql
+    assert '["prior_attempts",15,"http_status"]' in sql and '["record","prior_attempts",15,"http_status"]' in sql
+    for excluded in ('["prior_attempts"]','["record","prior_attempts"]','response_header_items','lockfile_digest','record_sha'):
         assert excluded not in sql
     assert plan['steps'][0]['materialize'] is True
 
@@ -57,3 +59,24 @@ def test_source_directory_counter_refuses_before_registration(tmp_path,operation
     directory=tmp_path/'counter';directory.mkdir()
     with pytest.raises(ValueError,match='single.*file'):
         (source_plan if operation=='plan' else source_pins)(counter=directory)
+
+
+def test_record_pointer_index_ignores_prior_attempt_slot_on_list_records(tmp_path):
+    from test_captures_ingest import body,ingest
+    stage=ingest(tmp_path,[dict(
+        record=[
+            dict(url='https://example.org/item0',http_status=200,outcome='stored',complete=True,
+                 prior_attempts=[dict(http_status=200,complete=False),dict(http_status=206,complete=False)]),
+            dict(url='https://example.org/item1',http_status=404,outcome='failed',complete=False),
+        ],
+        captures=[
+            body(pointer=['prior_attempts',1,'body']),
+            body(pointer=[0,'body']),
+        ],
+    )])
+    evidence=pq.read_table(stage/'capture-evidence.parquet').to_pylist()
+    assert [(r['attempt'],r['source_record_index'],r['url'],r['http_status'],r['fetch_http_status']) for r in evidence]==[
+        (2,0,'https://example.org/item0',206,200),
+        (0,0,'https://example.org/item0',200,200),
+        (0,1,'https://example.org/item1',404,404),
+    ]

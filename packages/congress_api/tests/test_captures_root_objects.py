@@ -89,7 +89,7 @@ def test_actual_writer_root_facts_equal_direct_and_missing_typed_counter(tmp_pat
     captured=pq.read_table(actual/'captures.parquet')
     values=captured.to_pylist()
     fetched=[row for row in values if row['receipt_key']==files[0]['key']]
-    assert [(row['http_status'],row['complete']) for row in fetched]==[(200,True),(200,False)]
+    assert [(row['attempt'],row['http_status'],row['complete'],row['fetch_http_status'],row['fetch_outcome']) for row in fetched]==[(0,200,True,200,'stored'),(1,206,False,200,'stored')]
     assert {(row['writer_job'],row['writer_commit']) for row in fetched}=={(WRITER['job'],WRITER['commit'])}
     assert [(row['sniffed_format'],row['sniff_version'],row['intact']) for row in fetched]==[
         (entry['sniffed_format'],entry['sniff_version'],entry['intact']) for entry in rows[0][1]['captures']]

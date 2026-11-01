@@ -48,7 +48,11 @@
     ]
   },
   "expected": {
+    "attempt": null,
     "http_status": 200,
+    "complete": null,
+    "fetch_http_status": 200,
+    "fetch_outcome": "stored",
     "outcome": "stored",
     "sha256": "402e151c3e23471fd472872f7decad3a236a7ce0cba9f95295e0c4f5af5a55d9"
   }

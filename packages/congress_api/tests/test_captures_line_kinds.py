@@ -50,8 +50,13 @@ def test_array_items_keep_separate_record_and_acquisition_outcomes(tmp_path):
 def test_entry_status_code_fills_only_an_absent_final_status(tmp_path,final,expected):
     line=dict(captures=[body(status_code=200)])
     if final is not None:line['http_status']=final
+    if final is not None:
+        with pytest.raises(ValueError,match='conflicting attempt facts'):
+            ingest(tmp_path,[line])
+        return
     stage=ingest(tmp_path,[line])
-    [row]=pq.read_table(stage/'captures.parquet').to_pylist();assert row['http_status']==expected
+    [row]=pq.read_table(stage/'captures.parquet').to_pylist()
+    assert row['http_status']==expected and row['fetch_http_status']==expected
 
 def test_line_kind_registry_is_complete_and_version_bound(tmp_path):
     registry=ROOT/'model/registries/receipt-line-kinds.json'

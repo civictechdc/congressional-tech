@@ -14,9 +14,20 @@ BASE='https://docs.house.gov/meetings/AG/AG03/20261101/123/'
 def run_state(tmp_path,change=None):
     from viewer_publication.archive_url_state import url_state_steps,url_state_diagnostics
     def row(line,requested,**extra):
-        return dict(dict(receipt_key='r',receipt_line=line,capture_index=0,mode='fetch',requested_url=requested,
+        base=dict(receipt_key='r',receipt_line=line,capture_index=0,attempt=0,mode='fetch',requested_url=requested,
             url=requested,context_url=requested,member_path=None,family='documents',retrieved_at='2026-11-20T12:00:00Z',
-            http_status=200,outcome='stored',complete=True,body_hex='a'*64,record_role='document'),**extra)
+            http_status=200,outcome='stored',complete=True,fetch_http_status=200,fetch_outcome='stored',
+            body_hex='a'*64,record_role='document')
+        base.update(extra)
+        if 'http_status' in extra and 'fetch_http_status' not in extra:
+            base['fetch_http_status']=extra['http_status']
+        if 'outcome' in extra and 'fetch_outcome' not in extra:
+            base['fetch_outcome']=extra['outcome']
+        if base['outcome'] in ('reference','saved-record') and 'attempt' not in extra:
+            base['attempt']=None
+            base['fetch_http_status']=None
+            base['fetch_outcome']=None
+        return base
     url=BASE+'report.pdf'
     rows=[row(1,url,retrieved_at='2026-11-01T12:00:00Z'),
           row(1,url,capture_index=1,retrieved_at='2026-11-01T12:00:00Z'),
@@ -45,13 +56,35 @@ def run_state(tmp_path,change=None):
             body_hex=None,http_status=404 if outcome=='failed' else None))
         targets.extend((target,None,'b'*64) for target in (BASE+'mentioned.pdf',BASE+'mentioned-final.pdf'))
     if change=='unknown_family':rows[3]['family']='not-registered'
-    if change=='line_conflict':rows[1]['http_status']=503
+    if change=='line_conflict':
+        rows[1]['http_status']=503
+        rows[1]['fetch_http_status']=503
+    if change=='prior_good_final_failure':
+        split_fail_url='https://www.govinfo.gov/metadata/pkg/CHRG-119shrg99999/mods.xml'
+        rows.extend([
+            row(15,BASE+'retry-after-good.pdf',capture_index=0,attempt=1,retrieved_at='2026-11-15T12:00:00Z',
+                http_status=200,outcome='stored',complete=True,fetch_http_status=503,fetch_outcome='retry_later'),
+            row(15,BASE+'retry-after-good.pdf',capture_index=1,attempt=0,retrieved_at='2026-11-15T12:00:00Z',
+                http_status=503,outcome='retry_later',complete=False,fetch_http_status=503,fetch_outcome='retry_later',body_hex=None),
+            row(16,BASE+'transport-after-403.pdf',capture_index=0,attempt=1,retrieved_at='2026-11-16T12:00:00Z',
+                http_status=403,outcome='failed',complete=True,fetch_http_status=None,fetch_outcome='request_failed'),
+            row(16,BASE+'transport-after-403.pdf',capture_index=1,attempt=0,retrieved_at='2026-11-16T12:00:00Z',
+                http_status=None,outcome='request_failed',complete=False,fetch_http_status=None,fetch_outcome='request_failed',body_hex=None),
+            row(17,None,url=None,context_url=split_fail_url,family='govinfo/mods',
+                retrieved_at='2026-11-16T10:00:00Z',http_status=None,outcome='stored',complete=True,body_hex='f'*64),
+            row(18,split_fail_url,url=split_fail_url,context_url=None,family='govinfo/mods',capture_index=0,attempt=1,
+                retrieved_at='2026-11-16T12:00:00Z',http_status=403,outcome='failed',complete=True,
+                fetch_http_status=200,fetch_outcome='failed',body_hex=None),
+            row(18,split_fail_url,url=split_fail_url,context_url=None,family='govinfo/mods',capture_index=1,attempt=0,
+                retrieved_at='2026-11-16T12:00:00Z',http_status=200,outcome='failed',complete=False,
+                fetch_http_status=200,fetch_outcome='failed',body_hex=None),
+        ])
     if change=='entry_facts':
         rows[0]['complete']=False
         rows[1]['retrieved_at']='2026-11-01T13:00:00Z'
     if change=='batched_urls':
-        rows[1]['requested_url']=BASE+'second-report.pdf'
-        rows[1]['url']=rows[1]['requested_url']
+        rows[1].update(requested_url=BASE+'second-report.pdf',url=BASE+'second-report.pdf',context_url=BASE+'second-report.pdf',
+            http_status=404,fetch_http_status=404,outcome='failed',fetch_outcome='failed',complete=False,body_hex=None)
     if change=='collision':targets.append((url+'?api_key=example',None,'b'*64))
     if change=='split_and_migrated':
         mods_url='https://www.govinfo.gov/metadata/pkg/CHRG-119shrg62381/mods.xml'
@@ -67,8 +100,8 @@ def run_state(tmp_path,change=None):
         context_url=BASE+('error.html' if body=='c'*64 else 'wrapper.html'),member_path=None) for target,member,body in targets]
     inputs=registry_inputs(tmp_path/'registries')
     inputs.append(json_input(tmp_path,'fixture_captures',rows,receipt_key='Utf8',receipt_line='Int32',capture_index='Int32',
-        mode='Utf8',requested_url='Utf8',url='Utf8',context_url='Utf8',member_path='Utf8',family='Utf8',retrieved_at='Utf8',
-        http_status='Int32',outcome='Utf8',complete='Boolean',body_hex='Utf8',record_role='Utf8'))
+        attempt='Int32',mode='Utf8',requested_url='Utf8',url='Utf8',context_url='Utf8',member_path='Utf8',family='Utf8',retrieved_at='Utf8',
+        http_status='Int32',outcome='Utf8',complete='Boolean',fetch_http_status='Int32',fetch_outcome='Utf8',body_hex='Utf8',record_role='Utf8'))
     inputs.append(json_input(tmp_path,'resolved_links',links,target_url='Utf8',target_member_path='Utf8',page_body='Utf8',context_url='Utf8',member_path='Utf8'))
     inputs.append(json_input(tmp_path,'url_state_meeting_dates',[dict(requested_url=url,meeting_date='2026-10-10')],requested_url='Utf8',meeting_date='Utf8'))
     inputs.append(json_input(tmp_path,'url_variants',[],canonical_url='Utf8',variant_url='Utf8'))
@@ -122,6 +155,8 @@ def test_url_state_keeps_per_entry_facts_and_each_requested_address(tmp_path,sha
         assert states[BASE+'report.pdf']['last_good_at'].startswith('2026-11-01T13:00:00')
     else:
         assert states[BASE+'second-report.pdf']['attempts']==1
+        assert states[BASE+'second-report.pdf']['last_good_at'] is None
+        assert states[BASE+'report.pdf']['last_good_at'].startswith('2026-11-01')
 
 
 def test_references_and_inline_records_cannot_shadow_a_real_fetch(tmp_path):
@@ -160,4 +195,22 @@ def test_split_context_stored_captures_and_statusless_migrated_good_fetches(tmp_
     assert migrated['last_outcome']=='stored'
     assert migrated['last_good_at'].startswith('2026-09-28T11:00:00')
     assert migrated['next_attempt_at'] is not None
+
+
+def test_prior_good_attempt_feeds_last_good_while_final_fetch_drives_line_schedule(tmp_path):
+    result=run_state(tmp_path,'prior_good_final_failure')
+    assert not any(result['url_state_invariants'][0].values())
+    states={r['requested_url']:r for r in result['state']}
+    retry=states[BASE+'retry-after-good.pdf']
+    assert retry['attempts']==1
+    assert retry['last_status']==503 and retry['last_outcome']=='retry_later'
+    assert retry['last_good_at'].startswith('2026-11-15T12:00:00')
+    assert retry['next_attempt_at'] is not None
+    transport=states[BASE+'transport-after-403.pdf']
+    assert transport['attempts']==1
+    assert transport['last_status'] is None and transport['last_outcome']=='request_failed'
+    split_fail=states['https://www.govinfo.gov/metadata/pkg/CHRG-119shrg99999/mods.xml']
+    assert split_fail['attempts']==1
+    assert split_fail['last_status']==200 and split_fail['last_outcome']=='failed'
+    assert split_fail['last_good_at'] is None
 

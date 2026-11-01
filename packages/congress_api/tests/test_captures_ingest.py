@@ -57,7 +57,8 @@ def test_body_attempts_keep_final_line_facts(tmp_path):
         captures=[dict(body(), attempt=1, complete=False, stored_suffix=''),
                   dict(body(), attempt=0, complete=True, stored_suffix='.gz')])])
     a, b = pq.read_table(stage / 'captures.parquet').to_pylist()
-    assert a['http_status'] == b['http_status'] == 200
+    assert (a['attempt'], a['http_status'], a['outcome'], a['fetch_http_status'], a['fetch_outcome']) == (1, 206, 'stored', 200, 'stored')
+    assert (b['attempt'], b['http_status'], b['outcome'], b['fetch_http_status'], b['fetch_outcome']) == (0, 200, 'stored', 200, 'stored')
     assert a['complete'] is False and b['complete'] is True
     assert a['stored_suffix'] == '' and a['sha256'] == bytes.fromhex(SHA)
     assert a['mode'] == b['mode'] == 'fetch'
@@ -67,11 +68,13 @@ def test_body_attempts_keep_final_line_facts(tmp_path):
 
 def test_old_capture_and_matching_reference_enrich_storage_only(tmp_path):
     stage = ingest(tmp_path, [dict(record=dict(url='https://example.org/a', http_status=200,
-        retrieved_at=STAMP, outcome='saved', complete=False), captures=[body(status_code=206, complete=False)],
+        retrieved_at=STAMP, outcome='saved', complete=False,
+        prior_attempts=[dict(http_status=206, complete=False)]),
+        captures=[body(status_code=206, complete=False, pointer=['prior_attempts', 0, 'content', 'body'])],
         file_references=[body(http_status=200, complete=True, stored_bytes=42)])])
     [row] = pq.read_table(stage / 'captures.parquet').to_pylist()
     assert row['stored_bytes'] == 42 and row['stored_suffix'] == '.gz'
-    assert row['http_status'] == 200 and row['complete'] is False
+    assert (row['attempt'], row['http_status'], row['complete'], row['outcome'], row['fetch_http_status'], row['fetch_outcome']) == (1, 206, False, 'stored', 200, 'failed')
 
 
 def test_unmatched_secondary_reference_refuses_with_locator(tmp_path):
@@ -201,7 +204,7 @@ def test_verified_counter_projection_keeps_raw_metadata_missing_from_typed_field
         prior_attempts=[dict(http_status=206)],response_header_items=[
             dict(name='Content-Disposition',value='attachment; filename=retained.pdf')])
     source=dict(source_file='run',record=record,captures=[body(pointer=['content','body'],
-        status_code=206,complete=False),body(pointer=['prior_attempts',0,'content','body'],complete=False)])
+        status_code=200,complete=False),body(pointer=['prior_attempts',0,'content','body'],complete=False)])
     receipt_key='receipts/documents/2026-10-20/run.jsonl.gz'
     captures_type=pa.list_(pa.struct([('body_key',pa.string()),('sha256',pa.string()),('bytes',pa.int64())]))
     schema=pa.schema([('source_file',pa.string()),
@@ -227,8 +230,8 @@ def test_prior_body_keeps_final_status_and_legacy_completeness(tmp_path):
             dict(body(),bytes=64<<20,pointer=['prior_attempts',0,'content','body']),
             body(pointer=['content','body'])])])
     a,b=pq.read_table(stage/'captures.parquet').to_pylist()
-    assert (a['http_status'],a['complete'])==(200,False)
-    assert (b['http_status'],b['complete'])==(200,True)
+    assert (a['attempt'],a['http_status'],a['complete'],a['outcome'],a['fetch_http_status'],a['fetch_outcome'])==(1,206,None,'stored',200,'stored')
+    assert (b['attempt'],b['http_status'],b['complete'],b['outcome'],b['fetch_http_status'],b['fetch_outcome'])==(0,200,True,'stored',200,'stored')
 
 
 @pytest.mark.parametrize('which,expected',[
@@ -246,7 +249,9 @@ def test_confirmed_legacy_cutoff_is_a_line_outcome_only_for_its_final_response(t
     captures=[cap]
     if which in {'prior','member'}:captures.append(body(complete=True,pointer=['content','body']))
     stage=ingest(tmp_path,[dict(record=record,captures=captures)])
-    assert {r['outcome'] for r in pq.read_table(stage/'captures.parquet').to_pylist()}=={expected}
+    rows=pq.read_table(stage/'captures.parquet').to_pylist()
+    assert {r['outcome'] for r in rows}=={expected}
+    assert {r['fetch_outcome'] for r in rows}=={expected}
 
 
 def test_new_failed_outcome_is_not_reinterpreted_as_stored(tmp_path):
@@ -271,8 +276,43 @@ def test_prior_body_does_not_borrow_recorded_final_completeness(tmp_path):
             body(pointer=['prior_attempts',0,'content','body']),
             body(pointer=['content','body'])])])
     prior,final=pq.read_table(stage/'captures.parquet').to_pylist()
-    assert (prior['http_status'],prior['complete'])==(200,True)
-    assert (final['http_status'],final['complete'])==(200,False)
+    assert (prior['attempt'],prior['http_status'],prior['complete'],prior['outcome'],prior['fetch_http_status'],prior['fetch_outcome'])==(1,206,False,'stored',200,'stored')
+    assert (final['attempt'],final['http_status'],final['complete'],final['outcome'],final['fetch_http_status'],final['fetch_outcome'])==(0,200,False,'stored',200,'stored')
+
+
+def test_unpointered_file_reference_with_prior_attempts_does_not_borrow_final_eligibility(tmp_path):
+    stage=ingest(tmp_path,[dict(record=dict(url='https://example.org/a',http_status=200,
+        retrieved_at=STAMP,outcome='saved',complete=True,
+        prior_attempts=[dict(http_status=206,complete=False)]),
+        file_references=[body()])])
+    [row]=pq.read_table(stage/'captures.parquet').to_pylist()
+    assert (row['attempt'],row['http_status'],row['complete'],row['fetch_http_status'],row['fetch_outcome'])==(
+        None,None,None,200,'failed')
+
+
+def test_good_fetches_filters_per_attempt_while_preserving_final_fetch_state(tmp_path):
+    from congress_api.retention.provenance import run_job
+    root=Path(__file__).resolve().parents[3]
+    stage=ingest(tmp_path,[
+        dict(run_id='r1',mode='fetch',family='documents',requested_url='https://example.org/one',
+             url='https://example.org/one',retrieved_at=STAMP,http_status=200,outcome='stored',complete=True,
+             prior_attempts=[dict(url='https://example.org/one',retrieved_at=STAMP,http_status=503,complete=False)],
+             captures=[dict(body(),sha256='b'*64,body_key='bodies/sha256/bb/'+'b'*64+'.gz',attempt=1,complete=False),
+                       dict(body(),attempt=0,complete=True)]),
+        dict(run_id='r2',mode='fetch',family='documents',requested_url='https://example.org/two',
+             url='https://example.org/two',retrieved_at=STAMP,http_status=503,outcome='retry_later',complete=False,
+             prior_attempts=[dict(url='https://example.org/two',retrieved_at=STAMP,http_status=200,complete=True)],
+             captures=[dict(body(),sha256='c'*64,body_key='bodies/sha256/cc/'+'c'*64+'.gz',attempt=1,complete=True)]),
+    ])
+    work=tmp_path/'good';work.mkdir()
+    result=run_job(work,NativeDatasets.from_config(os.environ['DOCSPEC_JOB_CONFIG']),
+        inputs=[dict(name='capture_evidence',kind='parquet',path=str(stage/'captures.parquet'))],
+        steps=[dict(name='good_fetches',sql=(root/'model/sql/good-fetches.sql').read_text())],outputs=[],
+        queries=[dict(name='rows',sql='SELECT receipt_line,capture_index,attempt,http_status,outcome,fetch_http_status,fetch_outcome FROM good_fetches ORDER BY receipt_line,capture_index')])
+    assert result['rows']==[
+        dict(receipt_line=1,capture_index=1,attempt=0,http_status=200,outcome='stored',fetch_http_status=200,fetch_outcome='stored'),
+        dict(receipt_line=2,capture_index=0,attempt=1,http_status=200,outcome='stored',fetch_http_status=503,fetch_outcome='retry_later'),
+    ]
 
 
 

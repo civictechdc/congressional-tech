@@ -9,8 +9,9 @@ from test_captures_ingest import body, ingest, STAMP
 
 NARROW_COLUMNS = [
     'receipt_key', 'receipt_line', 'capture_index', 'run_id', 'mode', 'outcome',
-    'family', 'requested_url', 'url', 'context_url', 'member_path', 'h_content_disposition', 'http_status',
-    'complete', 'retrieved_at', 'sha256', 'bytes', 'media_type', 'fidelity',
+    'family', 'requested_url', 'url', 'context_url', 'member_path', 'h_content_disposition',
+    'attempt', 'http_status', 'complete', 'fetch_http_status', 'fetch_outcome',
+    'retrieved_at', 'sha256', 'bytes', 'media_type', 'fidelity',
     'sniffed_format', 'sniff_version', 'intact', 'expansion', 'stored_suffix', 'stored_bytes', 'stored_md5', 'recovery_category',
     'original_url', 'recovered_url', 'match_basis', 'evidence_sha256', 'imported_at', 'writer_job', 'writer_commit',
 ]
@@ -19,6 +20,7 @@ NARROW_COLUMNS = [
 def test_public_index_has_only_the_34_bulk_columns(tmp_path):
     stage = ingest(tmp_path, [dict(record=dict(url='https://example.test/a'),
                                     captures=[body()])])
+    assert len(NARROW_COLUMNS) == 37
     assert pq.read_schema(stage/'captures.parquet').names == NARROW_COLUMNS
 
 
@@ -33,8 +35,11 @@ def test_entry_completeness_precedes_root_and_selected_record(tmp_path, complete
                  pointer=['archive_members', 0, 'body'])])
     stage = ingest(tmp_path, [source])
     rows = pq.read_table(stage/'captures.parquet').to_pylist()
+    assert [row['attempt'] for row in rows] == [1, 0, 0]
     assert [row['complete'] for row in rows] == [not complete, complete, not complete]
-    assert [row['http_status'] for row in rows] == [200]*3
+    assert [row['http_status'] for row in rows] == [206, 200, 200]
+    assert [row['fetch_http_status'] for row in rows] == [200]*3
+    assert [row['fetch_outcome'] for row in rows] == ['stored']*3
     assert [row['capture_index'] for row in rows] == [0, 1, 2]
 
 

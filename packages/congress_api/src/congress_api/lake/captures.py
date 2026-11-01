@@ -4,7 +4,11 @@ import json
 from pathlib import Path
 
 from congress_api.retention.provenance import parquet_output, run_job, json_input, file_pin
-from congress_api.lake.receipt_metadata import get, lit as literal, obj, projection, scalar, SCALARS, RECOVERY, DOWNLOAD_HEADERS, record_pointer_index
+from congress_api.lake.receipt_metadata import (
+    ATTEMPT_FIELDS, DOWNLOAD_HEADERS, PRIOR_ATTEMPT_LIMIT, RECOVERY, SCALARS,
+    attempt_facts, attempt_slot_terms, get, lit as literal, obj, projection,
+    record_pointer_index, scalar,
+)
 
 
 LEGACY_OUTCOMES = {
@@ -37,7 +41,8 @@ LEGACY_MODES = {
 PK = ['receipt_key', 'receipt_line', 'capture_index']
 ROW_KEYS=['source_row_id','receipt_key','receipt_line','selected_record_index','capture_index']
 COLUMNS = [*PK, 'run_id', 'mode', 'outcome', 'family', 'requested_url', 'url',
-    'context_url', 'member_path', 'h_content_disposition', 'http_status', 'complete', 'retrieved_at',
+    'context_url', 'member_path', 'h_content_disposition', 'attempt', 'http_status', 'complete',
+    'fetch_http_status', 'fetch_outcome', 'retrieved_at',
     'sha256', 'bytes', 'media_type', 'fidelity', 'sniffed_format', 'sniff_version',
     'intact', 'expansion', 'stored_suffix', 'stored_bytes',
     'stored_md5', 'recovery_category', 'original_url', 'recovered_url', 'match_basis',
@@ -143,10 +148,14 @@ def mapping_steps():
         " AND starts_with(json_get_str(item,0),'/') THEN 'path-digest-pair' "
         "WHEN regexp_match(json_get_str(item),'^[A-Za-z0-9_-]{1,64}$') IS NOT NULL THEN 'identifier' "
         "ELSE 'unsupported' END AS item_shape FROM item_entries")
-    paths=[(name,) for name in SCALARS]+list(RECOVERY.values())+DOWNLOAD_HEADERS+[('error',),('kind',)]
+    paths=[(name,) for name in SCALARS]+list(RECOVERY.values())+DOWNLOAD_HEADERS+[('error',),('kind',),('body_complete',)]
     paths += [('receipt',name) for name in SCALARS]+[('receipt','body_complete'),('receipt','error')]
-    slots=projection('item',paths)
+    paths += [prefix+('prior_attempts',index,name) for prefix in [(),('receipt',)]
+              for index in range(PRIOR_ATTEMPT_LIMIT) for name in ATTEMPT_FIELDS]
+    paths += [('captures',index,name) for index in range(PRIOR_ATTEMPT_LIMIT) for name in ATTEMPT_FIELDS]
+    item_bundle,slots=projection('item',paths)
     item_fields={name:scalar(slots[(name,)],kind) for name,kind in SCALARS.items()}
+    item_fields['complete']=first(item_fields['complete'],scalar(slots[('body_complete',)],'bool'))
     registry=json.loads(DOMAIN_OUTCOMES.read_bytes())
     values=lambda mapping:','.join(literal(v) for v in sorted(mapping))
     provider=registry['external_provider']
@@ -172,13 +181,23 @@ def mapping_steps():
         item_fields[name]=f'CASE WHEN {domain} THEN {selected} ELSE {item_fields[name]} END'
     for name in ('requested_url','url'):
         item_fields[name]="CASE WHEN item_shape='url-digest-pair' THEN json_get_str(item,0) ELSE "+item_fields[name]+' END'
+    top_prior=attempt_facts(slots,(),'prior_attempts')
+    nested_prior='json_array('+','.join(
+        f'({nested} OR {top})' if offset>=3 else f'coalesce({nested},{top})'
+        for index in range(PRIOR_ATTEMPT_LIMIT)
+        for offset,(top,nested) in enumerate(zip(
+            attempt_slot_terms(slots,('prior_attempts',index)),
+            attempt_slot_terms(slots,('receipt','prior_attempts',index)))))+')'
+    item_fields['prior_attempts']=f'CASE WHEN {domain} THEN {nested_prior} ELSE {top_prior} END'
+    item_fields['record_captures']=attempt_facts(slots,(),'captures')
     item_fields['kind']=scalar(slots[('kind',)],'str')
     item_fields['line_kind_shape']='item_shape'
     item_fields.update({name:scalar(slots[path],'str') for name,path in RECOVERY.items()})
     item_fields['h_content_disposition']=first(*(scalar(slots[path],'str') for path in DOWNLOAD_HEADERS))
     item_fields['error_present']='('+get(slots[('error',)],kind='json')+' IS NOT NULL OR ('+domain+' AND '+get(slots[('receipt','error')],kind='json')+' IS NOT NULL))'
     step('items','SELECT source_row_id,receipt_key,receipt_line,item_index,'+
-        ','.join(value+' AS i_'+name for name,value in item_fields.items())+' FROM item_shapes',materialize=True)
+        ','.join(value+' AS i_'+name for name,value in item_fields.items())+
+        f' FROM (SELECT *,{item_bundle} AS __slots FROM item_shapes)',materialize=True)
     step('reference_lists', """SELECT * EXCEPT(record_items),
         CASE WHEN coalesce(array_length(caps),0)>0 THEN 'capture'
              WHEN coalesce(array_length(refs),0)>0 THEN 'file' ELSE 'line' END AS reference_kind,
@@ -212,15 +231,16 @@ def mapping_steps():
         'parent_retrieved_at','_retrieved_at','capture_date')
     kinds={**dict.fromkeys(strings,'str'),**dict.fromkeys(('bytes','size','attempt','stored_bytes','status_code','http_status'),'int'),
            **dict.fromkeys(('complete','intact'),'bool')}
-    entry_slots=projection('entry',[(name,) for name in kinds])
-    step('entry_facts','SELECT * EXCEPT(entry),'+','.join(
-        scalar(entry_slots[(name,)],kind)+' AS e_'+name for name,kind in kinds.items())+' FROM entry_positions')
+    entry_bundle,entry_slots=projection('entry',[(name,) for name in kinds])
+    step('entry_facts','SELECT * EXCEPT(entry,__slots),'+','.join(
+        scalar(entry_slots[(name,)],kind)+' AS e_'+name for name,kind in kinds.items())+
+        f' FROM (SELECT *,{entry_bundle} AS __slots FROM entry_positions)')
     step('selected_records',"""SELECT e.* EXCEPT(reference_kind),
         CASE WHEN is_placeholder THEN 'line' ELSE e.reference_kind END AS reference_kind,
         CASE WHEN is_placeholder OR e.reference_kind='line' THEN selected_record_index ELSE 0 END AS list_ordinal,
         ordinal AS capture_index,"""+','.join('i.i_'+name for name in item_fields)+"""
-        FROM entry_facts e LEFT JOIN (SELECT * FROM items
-            WHERE source_row_id IS NOT NULL AND item_index IS NOT NULL) i
+        FROM (SELECT * FROM items
+            WHERE source_row_id IS NOT NULL AND item_index IS NOT NULL) i RIGHT JOIN entry_facts e
         ON (e.source_row_id IS NOT DISTINCT FROM i.source_row_id)
         AND (e.receipt_key IS NOT DISTINCT FROM i.receipt_key)
         AND (e.receipt_line IS NOT DISTINCT FROM i.receipt_line)
@@ -281,26 +301,204 @@ def mapping_steps():
     step('classified',"SELECT *,"+record_only+" AS record_only,CASE WHEN "+record_only+
         " THEN "+record_kind_sql()+" WHEN "+inline_candidate+" THEN "+retained_record_sql()+" END AS record_outcome FROM mapped")
     # Pointers can prefix a source record number before the attempt path.
-    prior_index=first(*(f"CASE WHEN json_get_str(pointer_json,{i})='prior_attempts' THEN coalesce(json_get_int(pointer_json,{i+1}),try_cast(json_get_str(pointer_json,{i+1}) AS BIGINT),0)+1 END" for i in (0,1,2)),'0')
-    step('attempts',f"""SELECT *,record_only AND record_outcome IS NULL AS unknown_line_kind,coalesce(e_attempt,{prior_index}) AS attempt,
-        e_member_path IS NULL AND NOT coalesce(array_has(json_get_array(pointer_json),'\"archive_members\"'),false) AS top_level
+    def slot_token(pos):
+        return (f"CASE WHEN json_get_int(pointer_json,{pos}) IS NOT NULL THEN json_get_int(pointer_json,{pos}) "
+                f"WHEN regexp_match(json_get_str(pointer_json,{pos}),'^\\d+$') IS NOT NULL "
+                f"THEN try_cast(json_get_str(pointer_json,{pos}) AS BIGINT) END")
+    pointer_array="json_get_array(pointer_json)"
+    has_prior_pointer=f"coalesce(array_has({pointer_array},'\"prior_attempts\"'),false)"
+    prior_pointer_slot=first(*(
+        f"CASE WHEN json_get_str(pointer_json,{i})='prior_attempts' THEN {slot_token(i+1)} END"
+        for i in (0,1,2,3)))
+    has_captures_pointer=(
+        f"coalesce((json_get_str(pointer_json,0)='captures' "
+        f"OR ((json_get_str(pointer_json,0)='record' OR ({slot_token(0)}) IS NOT NULL) AND json_get_str(pointer_json,1)='captures') "
+        f"OR (json_get_str(pointer_json,0)='record' AND ({slot_token(1)}) IS NOT NULL AND json_get_str(pointer_json,2)='captures')),false)")
+    captures_pointer_slot=(
+        f"CASE WHEN json_get_str(pointer_json,0)='captures' THEN {slot_token(1)} "
+        f"WHEN (json_get_str(pointer_json,0)='record' OR ({slot_token(0)}) IS NOT NULL) AND json_get_str(pointer_json,1)='captures' "
+        f"THEN {slot_token(2)} "
+        f"WHEN json_get_str(pointer_json,0)='record' AND ({slot_token(1)}) IS NOT NULL AND json_get_str(pointer_json,2)='captures' "
+        f"THEN {slot_token(3)} END")
+    pointer_attempt=(
+        f"CASE WHEN {has_prior_pointer} THEN ({prior_pointer_slot})+1 "
+        f"WHEN pointer_json IS NOT NULL AND pointer_json<>'[]' AND NOT {has_captures_pointer} THEN 0 END")
+    attempt_expr=(
+        "CASE WHEN record_outcome IS NOT NULL THEN cast(NULL AS BIGINT) "
+        "WHEN reference_kind='line' THEN 0 "
+        "WHEN e_attempt IS NOT NULL THEN e_attempt "
+        f"WHEN ({pointer_attempt}) IS NOT NULL THEN {pointer_attempt} "
+        f"WHEN reference_kind='capture' AND NOT {has_captures_pointer} THEN 0 "
+        "ELSE cast(NULL AS BIGINT) END")
+    step('attempts',f"""SELECT *,record_only AND record_outcome IS NULL AS unknown_line_kind,
+        {has_prior_pointer} AS has_prior_pointer,
+        {prior_pointer_slot} AS prior_pointer_slot,
+        {has_captures_pointer} AS has_captures_pointer,
+        {captures_pointer_slot} AS captures_pointer_slot,
+        {pointer_attempt} AS pointer_attempt,
+        {attempt_expr} AS attempt,
+        {entry_status} AS entry_status,
+        e_member_path IS NULL AND NOT coalesce(array_has({pointer_array},'\"archive_members\"'),false) AS top_level
         FROM classified""")
-    recorded=first('e_complete',"CASE WHEN attempt=0 THEN "+both('complete')+' END')
-    step('decisions',f"""SELECT *,{recorded} AS recorded_complete,
-        {first(recorded,"NOT(coalesce(body_bytes,0)=67108864 OR mapped_outcome IN ('size_limit','request_failed'))")} AS capture_complete,
+    line_priors=metadata_field('line','prior_attempts')
+    record_priors=metadata_field('record','prior_attempts')
+    record_caps=metadata_field('record','record_captures')
+    def prior_slot_value(offset,kind,boolean_or=False):
+        branches=[]
+        for idx in range(PRIOR_ATTEMPT_LIMIT):
+            pos=idx*5+offset
+            line_val=get(line_priors,pos,kind=kind)
+            rec_val=get(record_priors,pos,kind=kind)
+            if boolean_or:
+                val=f"(coalesce({line_val},false) OR coalesce({rec_val},false))"
+                if offset==4:
+                    ls=get(line_priors,idx*5,kind='int')
+                    rs=get(record_priors,idx*5,kind='int')
+                    lc=get(line_priors,idx*5+1,kind='bool')
+                    rc=get(record_priors,idx*5+1,kind='bool')
+                    val=(f"({val} OR (NOT record_is_list AND (({ls} IS NOT NULL AND {rs} IS NOT NULL AND {ls}<>{rs}) "
+                         f"OR ({lc} IS NOT NULL AND {rc} IS NOT NULL AND {lc}<>{rc}))))")
+            else:
+                val=item_first(first(line_val,rec_val),rec_val)
+            branches.append(f"WHEN {idx+1} THEN {val}")
+        default='false' if boolean_or else f"cast(NULL AS {'BIGINT' if kind=='int' else 'BOOLEAN' if kind=='bool' else 'VARCHAR'})"
+        return f"CASE attempt {' '.join(branches)} ELSE {default} END"
+    def cap_slot_value(offset,kind,boolean_or=False):
+        branches=[]
+        for idx in range(PRIOR_ATTEMPT_LIMIT):
+            pos=idx*5+offset
+            val=get(record_caps,pos,kind=kind)
+            if boolean_or:
+                val=f"coalesce({val},false)"
+            branches.append(f"WHEN {idx} THEN {val}")
+        default='false' if boolean_or else f"cast(NULL AS {'BIGINT' if kind=='int' else 'BOOLEAN' if kind=='bool' else 'VARCHAR'})"
+        return f"CASE captures_pointer_slot {' '.join(branches)} ELSE {default} END"
+    step('pointed_attempts',f"""SELECT *,
+        {prior_slot_value(0,'int')} AS prior_status,
+        {prior_slot_value(1,'bool')} AS prior_complete,
+        {prior_slot_value(2,'str')} AS prior_outcome,
+        {prior_slot_value(3,'bool',True)} AS prior_error,
+        {prior_slot_value(4,'bool',True)} AS prior_conflict,
+        {cap_slot_value(0,'int')} AS cap_status,
+        {cap_slot_value(1,'bool')} AS cap_complete,
+        {cap_slot_value(2,'str')} AS cap_outcome,
+        {cap_slot_value(3,'bool',True)} AS cap_error,
+        {cap_slot_value(4,'bool',True)} AS cap_conflict
+        FROM attempts""")
+    line_status_only=first(metadata_field('line','http_status'),metadata_field('line','status_code'))
+    record_status_only=first(metadata_field('record','http_status'),metadata_field('record','status_code'))
+    final_internal_conflict=(
+        f"(({metadata_field('line','http_status')} IS NOT NULL AND {metadata_field('line','status_code')} IS NOT NULL "
+        f"AND {metadata_field('line','http_status')}<>{metadata_field('line','status_code')}) "
+        f"OR ({metadata_field('record','http_status')} IS NOT NULL AND {metadata_field('record','status_code')} IS NOT NULL "
+        f"AND {metadata_field('record','http_status')}<>{metadata_field('record','status_code')}) "
+        f"OR (NOT record_is_list AND {line_status_only} IS NOT NULL AND {record_status_only} IS NOT NULL "
+        f"AND {line_status_only}<>{record_status_only}))")
+    invalid_attempt=(
+        f"((e_attempt IS NOT NULL AND (e_attempt<0 OR e_attempt>{PRIOR_ATTEMPT_LIMIT})) "
+        f"OR (has_prior_pointer AND (prior_pointer_slot IS NULL OR prior_pointer_slot<0 OR prior_pointer_slot>={PRIOR_ATTEMPT_LIMIT})) "
+        f"OR (has_captures_pointer AND (captures_pointer_slot IS NULL OR captures_pointer_slot<0 OR (captures_pointer_slot>={PRIOR_ATTEMPT_LIMIT} AND entry_status IS NULL))) "
+        f"OR (e_attempt IS NOT NULL AND pointer_attempt IS NOT NULL AND e_attempt<>pointer_attempt) "
+        f"OR (e_attempt IS NOT NULL AND has_captures_pointer AND e_attempt<>0))")
+    entry_internal_conflict="(e_http_status IS NOT NULL AND e_status_code IS NOT NULL AND e_http_status<>e_status_code)"
+    status_conflict=(
+        f"((attempt>=1 AND (prior_conflict OR (entry_status IS NOT NULL AND prior_status IS NOT NULL AND entry_status<>prior_status))) "
+        f"OR (has_captures_pointer AND (cap_conflict OR (entry_status IS NOT NULL AND cap_status IS NOT NULL AND entry_status<>cap_status) "
+        f"OR (entry_status IS NOT NULL AND source_final_status IS NOT NULL AND entry_status<>source_final_status) "
+        f"OR (cap_status IS NOT NULL AND source_final_status IS NOT NULL AND cap_status<>source_final_status))) "
+        f"OR (attempt=0 AND NOT has_captures_pointer AND ({final_internal_conflict} "
+        f"OR (entry_status IS NOT NULL AND source_final_status IS NOT NULL AND entry_status<>source_final_status))))")
+    complete_conflict=(
+        "((attempt>=1 AND top_level AND e_complete IS NOT NULL AND prior_complete IS NOT NULL AND e_complete<>prior_complete) "
+        "OR (has_captures_pointer AND top_level AND e_complete IS NOT NULL AND cap_complete IS NOT NULL AND e_complete<>cap_complete))")
+    confirmed_final="(attempt=0 AND top_level AND NOT has_captures_pointer AND (reference_kind<>'file' OR pointer_attempt=0 OR e_attempt=0))"
+    attempt_http_status=(
+        "CASE WHEN record_outcome IS NOT NULL THEN line_status "
+        "WHEN attempt>=1 THEN coalesce(entry_status,prior_status) "
+        "WHEN has_captures_pointer THEN coalesce(entry_status,cap_status,source_final_status) "
+        "WHEN attempt=0 THEN coalesce(entry_status,source_final_status) "
+        "ELSE entry_status END")
+    fetch_status_expr=(
+        "CASE WHEN record_outcome IS NOT NULL THEN cast(NULL AS BIGINT) "
+        "ELSE coalesce(source_final_status,CASE WHEN attempt=0 OR has_captures_pointer THEN coalesce(entry_status,cap_status) END) END")
+    recorded=(
+        "CASE WHEN NOT top_level THEN e_complete "
+        "WHEN attempt>=1 THEN coalesce(e_complete,prior_complete) "
+        "WHEN has_captures_pointer THEN coalesce(e_complete,cap_complete) "
+        f"WHEN {confirmed_final} THEN {first('e_complete',both('complete'))} "
+        "ELSE e_complete END")
+    prior_mapped=f"CASE WHEN prior_outcome IS NOT NULL THEN CASE prior_outcome {cases} ELSE 'derive' END END"
+    cap_mapped=f"CASE WHEN cap_outcome IS NOT NULL THEN CASE cap_outcome {cases} ELSE 'derive' END END"
+    final_error=f"({both('error_type')} IS NOT NULL OR coalesce(get_field(line,'error_present'),false) OR coalesce(get_field(record,'error_present'),false))"
+    outcome_conflict=(
+        f"((attempt>=1 AND ({prior_mapped})='stored' AND (prior_error OR ({attempt_http_status} IS NOT NULL AND {attempt_http_status} NOT BETWEEN 200 AND 299))) "
+        f"OR (has_captures_pointer AND (({cap_mapped})='stored' OR mapped_outcome='stored') AND (cap_error OR {final_error} OR ({attempt_http_status} IS NOT NULL AND {attempt_http_status} NOT BETWEEN 200 AND 299))) "
+        f"OR (attempt=0 AND NOT has_captures_pointer AND mapped_outcome='stored' AND ({final_error} OR ({attempt_http_status} IS NOT NULL AND {attempt_http_status} NOT BETWEEN 200 AND 299))))")
+    attempt_conflict_expr=(
+        f"(NOT is_secondary AND record_outcome IS NULL AND ({invalid_attempt} OR {entry_internal_conflict} "
+        f"OR {status_conflict} OR {complete_conflict} OR {outcome_conflict}))")
+    unknown_outcome_expr=(
+        f"(unknown_outcome OR (attempt>=1 AND prior_outcome IS NOT NULL AND prior_outcome NOT IN ({outcomes})) "
+        f"OR (has_captures_pointer AND cap_outcome IS NOT NULL AND cap_outcome NOT IN ({outcomes})))")
+    step('decisions',f"""SELECT * EXCEPT(unknown_outcome),
+        {unknown_outcome_expr} AS unknown_outcome,
+        {attempt_conflict_expr} AS attempt_conflict,
+        {attempt_http_status} AS attempt_http_status,
+        {fetch_status_expr} AS fetch_status,
+        {prior_mapped} AS prior_mapped_outcome,
+        {cap_mapped} AS cap_mapped_outcome,
+        {recorded} AS recorded_complete,
+        CASE WHEN record_outcome IS NOT NULL THEN TRUE
+             WHEN ({recorded}) IS NOT NULL THEN {recorded}
+             WHEN {confirmed_final} THEN NOT(coalesce(body_bytes,0)=67108864 OR mapped_outcome IN ('size_limit','request_failed'))
+             ELSE cast(NULL AS BOOLEAN) END AS capture_complete,
         capture_mode='fetch' AND get_field(line,'mode') IS NULL
         AND (raw_outcome IS NULL OR raw_outcome IN ('saved','captured','complete','html','html_body','pdf','retained'))
         AND {both('error_type')} IS NULL AND NOT coalesce(get_field(line,'error_present'),false)
         AND NOT coalesce(get_field(record,'error_present'),false) AS cutoff_eligible
-        FROM attempts""")
+        FROM pointed_attempts""")
+    attempt_outcome_sql=(
+        "CASE WHEN record_outcome IS NOT NULL THEN record_outcome "
+        "WHEN attempt>=1 THEN CASE "
+        "WHEN attempt_http_status IN (429,503) THEN 'retry_later' "
+        "WHEN attempt_http_status=304 THEN 'unchanged' "
+        "WHEN prior_mapped_outcome IS NOT NULL AND prior_mapped_outcome NOT IN ('derive','stored') THEN prior_mapped_outcome "
+        "WHEN prior_error THEN 'request_failed' "
+        "WHEN body_sha IS NOT NULL AND (attempt_http_status BETWEEN 200 AND 299 OR (attempt_http_status IS NULL AND prior_mapped_outcome IN ('derive','stored'))) THEN 'stored' "
+        "WHEN body_sha IS NULL OR attempt_http_status IS NOT NULL THEN 'failed' "
+        "ELSE cast(NULL AS VARCHAR) END "
+        "WHEN has_captures_pointer THEN CASE "
+        "WHEN attempt_http_status IN (429,503) THEN 'retry_later' "
+        "WHEN attempt_http_status=304 THEN 'unchanged' "
+        "WHEN cap_mapped_outcome IS NOT NULL AND cap_mapped_outcome NOT IN ('derive','stored') THEN cap_mapped_outcome "
+        f"WHEN cap_error OR (attempt_http_status IS NULL AND {final_error}) THEN 'request_failed' "
+        "WHEN mapped_outcome NOT IN ('derive','stored') THEN mapped_outcome "
+        "WHEN body_sha IS NOT NULL AND (attempt_http_status BETWEEN 200 AND 299 OR attempt_http_status IS NULL) THEN 'stored' "
+        "ELSE 'failed' END "
+        "ELSE CASE "
+        "WHEN attempt_http_status IN (429,503) THEN 'retry_later' "
+        "WHEN attempt_http_status=304 THEN 'unchanged' "
+        "WHEN mapped_outcome NOT IN ('derive','stored') THEN mapped_outcome "
+        "WHEN body_sha IS NOT NULL AND (attempt_http_status BETWEEN 200 AND 299 OR attempt_http_status IS NULL) THEN 'stored' "
+        "ELSE 'failed' END END")
+    fetch_outcome_sql=(
+        "CASE WHEN record_outcome IS NOT NULL THEN cast(NULL AS VARCHAR) "
+        "WHEN fetch_status IN (429,503) THEN 'retry_later' "
+        "WHEN fetch_status=304 THEN 'unchanged' "
+        "WHEN mapped_outcome NOT IN ('derive','stored') THEN mapped_outcome "
+        "WHEN (coalesce(attempt,0)<>0 OR body_sha IS NOT NULL) AND (fetch_status BETWEEN 200 AND 299 OR fetch_status IS NULL) THEN 'stored' "
+        "ELSE 'failed' END")
     columns=dict(receipt_key='receipt_key',receipt_line='receipt_line',capture_index='capture_index',
         run_id='source_run',mode='capture_mode',
-        outcome="CASE WHEN record_outcome IS NOT NULL THEN record_outcome WHEN line_status IN (429,503) THEN 'retry_later' WHEN line_status=304 THEN 'unchanged' WHEN mapped_outcome<>'derive' THEN mapped_outcome WHEN body_sha IS NOT NULL AND (line_status BETWEEN 200 AND 299 OR line_status IS NULL) THEN 'stored' ELSE 'failed' END",
+        outcome=attempt_outcome_sql,
         family='entry_family',requested_url='requested',url='final_url',
         context_url=first('e_context_url','final_url'),
         member_path=first('e_member_path',"CASE WHEN NOT top_level AND reference_kind='capture' THEN e_original_path END"),
         h_content_disposition=first(metadata_field('line','h_content_disposition'),metadata_field('record','h_content_disposition')),
-        http_status='cast(line_status AS INT)',complete='capture_complete',retrieved_at='fetched',
+        attempt='attempt',
+        http_status='cast(attempt_http_status AS INT)',complete='capture_complete',
+        fetch_http_status='cast(fetch_status AS INT)',fetch_outcome=fetch_outcome_sql,
+        retrieved_at='fetched',
         sha256="arrow_cast(decode(body_sha,'hex'),'FixedSizeBinary(32)')",bytes='body_bytes',
         media_type='e_media_type',fidelity='e_fidelity',sniffed_format='e_sniffed_format',
         sniff_version='e_sniff_version',intact="CASE WHEN get_field(line,'writer_job') IS NOT NULL AND get_field(line,'writer_commit') IS NOT NULL THEN e_intact END",expansion='e_expansion',
@@ -313,11 +511,12 @@ def mapping_steps():
         imported_at="CASE WHEN capture_mode='retained_import' THEN coalesce(try_cast("+both('recovery_imported')+" AS TIMESTAMP WITH TIME ZONE),try_cast(array_element(regexp_match(receipt_key,'/(\\d{4}-\\d{2}-\\d{2})/'),1) AS TIMESTAMP WITH TIME ZONE)) END",
         writer_job=metadata_field('line','writer_job'),writer_commit=metadata_field('line','writer_commit'))
     diagnostics=['source_row_id','reference_kind','pointer_json','body_key','unknown_mode','unknown_outcome',
-                 'unknown_line_kind','is_secondary','list_ordinal','selected_record_index','body_sha','attempt','top_level','cutoff_eligible','invalid_lists',
+                 'attempt_conflict','unknown_line_kind','is_secondary','list_ordinal','selected_record_index','body_sha',
+                 'top_level','cutoff_eligible','invalid_lists','mapped_outcome','has_captures_pointer',
                  'record_is_list','source_record_count','is_placeholder','primary_count']
     witnesses=dict(source_context_from_final='e_context_url IS NULL AND final_url IS NOT NULL',
         source_retained_record=metadata_field('record','line_kind_shape')+"='object'",
-        source_entry_status=entry_status,source_final_status='source_final_status',
+        source_entry_status='coalesce(entry_status,prior_status)',source_final_status='source_final_status',
         source_creating_size_absent="reference_kind IN ('capture','embedded','file','retained-file') AND body_sha IS NOT NULL AND e_stored_bytes IS NULL",
         source_family_basis="CASE WHEN e_family IS NOT NULL THEN 'entry' WHEN record_is_list AND "+metadata_field('record','family')+" IS NOT NULL THEN 'record' WHEN "+metadata_field('line','family')+" IS NOT NULL THEN 'line' WHEN "+metadata_field('record','family')+" IS NOT NULL THEN 'record' ELSE 'receipt' END")
     flags=dict(cutoff_candidate='attempt=0 AND top_level AND body_bytes=67108864 AND recorded_complete IS FALSE',
@@ -329,32 +528,49 @@ def mapping_steps():
         count(DISTINCT stored_bytes) AS size_variants,count(DISTINCT stored_md5) AS md5_variants,
         count(DISTINCT stored_suffix) AS suffix_variants
         FROM scalar_rows WHERE is_secondary GROUP BY receipt_key,receipt_line,body_key,body_sha""")
-    step('enriched',"""SELECT p.*,s.secondary_bytes,s.secondary_md5,s.secondary_suffix
-        FROM secondary s RIGHT JOIN scalar_rows p
-        ON p.receipt_key=s.receipt_key AND p.receipt_line=s.receipt_line
-        AND p.body_key=s.body_key AND p.body_sha=s.body_sha
-        WHERE NOT p.is_secondary""")
+    item_keys=['receipt_key','receipt_line','selected_record_index']
+    step('item_status',"""SELECT source_row_id,receipt_key,receipt_line,selected_record_index,
+        CASE WHEN count(DISTINCT fetch_http_status)=1 THEN max(fetch_http_status) END AS item_fetch_http_status,
+        (count(DISTINCT fetch_http_status)>1
+         OR count(DISTINCT CASE WHEN attempt IS NOT NULL AND http_status IS NOT NULL THEN json_array(attempt,http_status) END)
+            >count(DISTINCT CASE WHEN attempt IS NOT NULL AND http_status IS NOT NULL THEN attempt END)
+         OR count(DISTINCT CASE WHEN attempt IS NOT NULL AND complete IS NOT NULL AND top_level AND coalesce(bytes,0)<>67108864 THEN json_array(attempt,complete) END)
+            >count(DISTINCT CASE WHEN attempt IS NOT NULL AND complete IS NOT NULL AND top_level AND coalesce(bytes,0)<>67108864 THEN attempt END)
+         OR count(DISTINCT CASE WHEN has_captures_pointer THEN outcome END)>1
+         OR count(DISTINCT CASE WHEN has_captures_pointer THEN complete END)>1
+         OR (bool_or(has_captures_pointer AND http_status BETWEEN 200 AND 299)
+             AND bool_or(has_captures_pointer AND http_status IS NULL AND mapped_outcome NOT IN ('derive','stored')))) AS item_status_conflict
+        FROM scalar_rows WHERE NOT is_secondary AND NOT is_placeholder
+        GROUP BY source_row_id,receipt_key,receipt_line,selected_record_index""")
+    step('enriched',"""SELECT p.*,s.secondary_bytes,s.secondary_md5,s.secondary_suffix,i.item_fetch_http_status
+        FROM item_status i RIGHT JOIN (
+            secondary s RIGHT JOIN scalar_rows p
+            ON p.receipt_key=s.receipt_key AND p.receipt_line=s.receipt_line
+            AND p.body_key=s.body_key AND p.body_sha=s.body_sha
+        ) ON """+same('p','i',['source_row_id',*item_keys])+' WHERE NOT p.is_secondary')
     # Flags share the old partition keys. Only placeholder ranks need ordering;
     # carry their narrow keys through that sort, never the wide capture fields.
     # Hash groups/joins are expected O(N). The four consumers share one narrow
     # retained_keys materialization; only P placeholders need O(P log P) order.
-    item_keys=['receipt_key','receipt_line','selected_record_index']
     row_keys=ROW_KEYS
     member_keys=[*item_keys,'attempt','context_url']
     inputs=[*row_keys,'is_placeholder','reference_kind','cutoff_candidate','completed_final',
-            'attempt','context_url','body_sha IS NOT NULL AND NOT top_level AS member_candidate']
+            'attempt','context_url','body_sha IS NOT NULL AND NOT top_level AS member_candidate',
+            'NOT is_placeholder AND attempt=0 AND body_sha IS NOT NULL AS final_body_candidate']
     step('window_inputs','SELECT '+','.join(inputs)+' FROM scalar_rows WHERE NOT is_secondary')
     step('item_references','SELECT '+','.join(item_keys)+""",
         bool_or(NOT is_placeholder AND reference_kind IN ('capture','file')) AS has_primary_reference
         FROM window_inputs GROUP BY """+','.join(item_keys))
-    kept=[*row_keys,'is_placeholder','cutoff_candidate','completed_final','attempt','context_url','member_candidate']
+    kept=[*row_keys,'is_placeholder','cutoff_candidate','completed_final','attempt','context_url',
+          'member_candidate','final_body_candidate']
     step('retained_keys','SELECT '+','.join('n.'+name for name in kept)+',r.has_primary_reference '+
         'FROM window_inputs n JOIN item_references r ON '+same('n','r',item_keys)+
         ' WHERE NOT n.is_placeholder OR NOT r.has_primary_reference',materialize=True)
     step('retained_items','SELECT p.*,k.has_primary_reference FROM retained_keys k JOIN enriched p ON '+
         same('p','k',row_keys))
     step('cutoff_flags','SELECT '+','.join(item_keys)+""",
-        bool_or(cutoff_candidate) AS has_cutoff,bool_or(completed_final) AS has_completed_final
+        bool_or(cutoff_candidate) AS has_cutoff,bool_or(completed_final) AS has_completed_final,
+        bool_or(final_body_candidate) AS has_final_reference
         FROM retained_keys GROUP BY """+','.join(item_keys))
     step('member_flags','SELECT '+','.join(member_keys)+""",
         bool_or(member_candidate) AS has_member FROM retained_keys GROUP BY """+','.join(member_keys))
@@ -362,14 +578,27 @@ def mapping_steps():
         sum(1) OVER (PARTITION BY receipt_key,receipt_line ORDER BY selected_record_index,capture_index
             ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW) AS appended_index
         FROM retained_keys WHERE is_placeholder""")
-    step('windowed','SELECT p.*,r.appended_index,c.has_cutoff,c.has_completed_final,m.has_member '+
+    step('windowed','SELECT p.*,r.appended_index,c.has_cutoff,c.has_completed_final,c.has_final_reference,m.has_member '+
         'FROM append_ranks r RIGHT JOIN (cutoff_flags c JOIN member_flags m ON '+same('c','m',item_keys)+
         ' JOIN retained_items p ON '+same('p','m',member_keys)+') ON '+same('p','r',row_keys))
+    eff_fetch_status='coalesce(fetch_http_status,item_fetch_http_status)'
+    final_fetch_outcome=(
+        "CASE WHEN fetch_outcome IS NULL THEN cast(NULL AS VARCHAR) "
+        f"WHEN {eff_fetch_status} IN (429,503) THEN 'retry_later' "
+        f"WHEN {eff_fetch_status}=304 THEN 'unchanged' "
+        "WHEN cutoff_eligible AND has_cutoff AND NOT coalesce(has_completed_final,false) THEN 'size_limit' "
+        "WHEN mapped_outcome NOT IN ('derive','stored') THEN mapped_outcome "
+        f"WHEN (coalesce(has_final_reference,false) OR (has_captures_pointer AND body_sha IS NOT NULL)) AND ({eff_fetch_status} BETWEEN 200 AND 299 OR {eff_fetch_status} IS NULL) THEN 'stored' "
+        "ELSE 'failed' END")
     final={name:name for name in COLUMNS}
-    final.update(stored_suffix="coalesce(stored_suffix,secondary_suffix,'.gz')",
+    final.update(
+        attempt='cast(attempt AS INT)',
+        stored_suffix="coalesce(stored_suffix,secondary_suffix,'.gz')",
         stored_bytes='coalesce(stored_bytes,secondary_bytes)',
         stored_md5="arrow_cast(decode(coalesce(stored_md5,secondary_md5),'hex'),'FixedSizeBinary(16)')",
-        outcome="CASE WHEN cutoff_eligible AND has_cutoff AND NOT coalesce(has_completed_final,false) AND outcome NOT IN ('retry_later','unchanged') THEN 'size_limit' ELSE outcome END",
+        outcome="CASE WHEN coalesce(attempt,0)=0 AND cutoff_eligible AND has_cutoff AND NOT coalesce(has_completed_final,false) AND outcome NOT IN ('retry_later','unchanged') THEN 'size_limit' ELSE outcome END",
+        fetch_http_status=f'cast({eff_fetch_status} AS INT)',
+        fetch_outcome=final_fetch_outcome,
         expansion="coalesce(expansion,CASE WHEN top_level AND has_member THEN 'expanded' END)")
     locator='arrow_cast(named_struct(\'key\',receipt_key,\'line\',cast(receipt_line AS INT),\n        \'index\',cast(CASE WHEN is_placeholder THEN primary_count+appended_index-1 ELSE capture_index END AS INT)), \'Struct("key": Utf8, "line": Int32, "index": Int32)\')'
     for name,member in zip(PK,['key','line','index']):
@@ -389,9 +618,13 @@ def capture_checks():
         dict(name='reference_shapes',sql="""SELECT receipt_key,receipt_line,'unsupported reference list shape' AS reason
         FROM scalar_rows WHERE invalid_lists LIMIT 1"""),
         dict(name='invalid',sql="""SELECT p.receipt_key,p.receipt_line,
-        CASE WHEN unknown_mode THEN 'unknown mode' WHEN unknown_outcome THEN 'unknown outcome' ELSE 'unknown record-only line kind' END AS reason
+        CASE WHEN unknown_mode THEN 'unknown mode' WHEN unknown_outcome THEN 'unknown outcome'
+             WHEN attempt_conflict THEN 'conflicting attempt facts'
+             ELSE 'unknown record-only line kind' END AS reason
         FROM retained_keys k JOIN scalar_rows p ON """+same('k','p',ROW_KEYS)+"""
-        WHERE unknown_mode OR unknown_outcome OR unknown_line_kind LIMIT 1"""),
+        WHERE unknown_mode OR unknown_outcome OR attempt_conflict OR unknown_line_kind
+        UNION ALL SELECT receipt_key,receipt_line,'conflicting attempt facts' AS reason
+        FROM item_status WHERE item_status_conflict LIMIT 1"""),
         dict(name='secondary',sql="""SELECT s.receipt_key,s.receipt_line,'secondary body not represented' AS reason
         FROM secondary s LEFT ANTI JOIN scalar_rows p ON NOT p.is_secondary
         AND s.receipt_key=p.receipt_key AND s.receipt_line=p.receipt_line

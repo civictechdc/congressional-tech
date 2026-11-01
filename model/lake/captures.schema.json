@@ -40,7 +40,7 @@
     {
       "id": 6,
       "name": "outcome",
-      "required": true,
+      "required": false,
       "type": "string"
     },
     {
@@ -80,6 +80,12 @@
       "type": "string"
     },
     {
+      "id": 38,
+      "name": "attempt",
+      "required": false,
+      "type": "int"
+    },
+    {
       "id": 11,
       "name": "http_status",
       "required": false,
@@ -90,6 +96,18 @@
       "name": "complete",
       "required": false,
       "type": "boolean"
+    },
+    {
+      "id": 39,
+      "name": "fetch_http_status",
+      "required": false,
+      "type": "int"
+    },
+    {
+      "id": 40,
+      "name": "fetch_outcome",
+      "required": false,
+      "type": "string"
     },
     {
       "id": 19,

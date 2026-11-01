@@ -29,6 +29,8 @@ INLINE_PAYLOAD_PATHS = [('detail','systemCode'),('detail','type'),
     ('meeting','committees',0,'systemCode')]
 MODS_DESCRIPTOR_FIELDS = ('package_id','status','url','sha256','bytes','http_status',
     'retrieved_at','etag','http_last_modified')
+PRIOR_ATTEMPT_LIMIT = 16
+ATTEMPT_FIELDS = ('http_status','status_code','outcome','complete','body_complete','error_type','error')
 # Only the recovery leaves consumed by the narrow index are selected in bulk.
 RECOVERY = {
     'recovery_original': ('recovery_evidence','original_url'),
@@ -53,9 +55,9 @@ def get(value,*path,kind='str'):
 
 
 def record_pointer_index(pointer):
-    """The first numeric token in the first two canonical pointer components."""
-    values=[value for index in (0,1) for value in
-        (get(pointer,index,kind='int'),'try_cast('+get(pointer,index)+' AS BIGINT)')]
+    """The first numeric token in slot zero, or slot one after 'record'."""
+    values=[get(pointer,0,kind='int'),'try_cast('+get(pointer,0)+' AS BIGINT)',
+        f"CASE WHEN {get(pointer,0)}='record' THEN coalesce({get(pointer,1,kind='int')},try_cast({get(pointer,1)} AS BIGINT)) END"]
     return 'coalesce('+','.join(values+['0'])+')'
 
 
@@ -78,16 +80,34 @@ def source_schema():
         file_references=list_of(struct(sha256='Utf8'))).items()],metadata={})
 
 
-def projection(raw,paths):
+def projection(raw,paths,slot='__slots'):
     """A literal, prefix-disjoint C8 bundle and its scalar JSON slots."""
     unique=list(dict.fromkeys(tuple(path) for path in paths))
     expression='json_get_many('+raw+','+lit(json.dumps(unique,separators=(',',':')))+')'
-    slots={path:f'array_element({expression},{index+1})' for index,path in enumerate(unique)}
-    return slots
+    slots={path:f'array_element({slot},{index+1})' for index,path in enumerate(unique)}
+    return expression,slots
 
 
 def scalar(slot,kind):
     return f'try_cast(json_as_text({slot}) AS BIGINT)' if kind=='int' else get(slot,kind=kind)
+
+
+def attempt_slot_terms(slots,base):
+    http_status=scalar(slots[base+('http_status',)],'int')
+    status_code=scalar(slots[base+('status_code',)],'int')
+    complete=scalar(slots[base+('complete',)],'bool')
+    body_complete=scalar(slots[base+('body_complete',)],'bool')
+    outcome=scalar(slots[base+('outcome',)],'str')
+    error=f"({scalar(slots[base+('error_type',)],'str')} IS NOT NULL OR {get(slots[base+('error',)],kind='json')} IS NOT NULL)"
+    conflict=f"coalesce(({http_status}<>{status_code}) OR ({complete}<>{body_complete}),false)"
+    return [f'coalesce({http_status},{status_code})',f'coalesce({complete},{body_complete})',
+            outcome,error,conflict]
+
+
+def attempt_facts(slots,prefix,collection):
+    terms=[term for index in range(PRIOR_ATTEMPT_LIMIT)
+           for term in attempt_slot_terms(slots,prefix+(collection,index))]
+    return 'json_array('+','.join(terms)+')'
 
 
 def inline_payload_kind(slots):
@@ -145,12 +165,16 @@ def source_plan(*,counter=None,files=None,receipt_keys=None):
         locator='__source_key AS receipt_key,__source_line AS receipt_line'
         selected='true'
     paths=[prefix+(name,) for prefix in [(),('record',)] for name in SCALARS]
+    paths += [('record','body_complete')]
     paths += [prefix+path for prefix in [(),('record',)] for path in RECOVERY.values()]
     paths += [prefix+path for prefix in [(),('record',)] for path in DOWNLOAD_HEADERS]
+    paths += [prefix+('prior_attempts',index,name) for prefix in [(),('record',)]
+              for index in range(PRIOR_ATTEMPT_LIMIT) for name in ATTEMPT_FIELDS]
+    paths += [('record','captures',index,name) for index in range(PRIOR_ATTEMPT_LIMIT) for name in ATTEMPT_FIELDS]
     paths += [('captures',),('file_references',),('writer','job'),('writer','commit'),('error',),('record','error')]
     paths += [('record',*path) for path in INLINE_PAYLOAD_PATHS]
     paths += [('record',name) for name in MODS_DESCRIPTOR_FIELDS]
-    slots=projection('__raw_line',paths)
+    bundle,slots=projection('__raw_line',paths)
     def typed(name,kind,record=False):
         path=('record',name) if record else (name,)
         fallback=scalar(slots[path],kind)
@@ -164,6 +188,10 @@ def source_plan(*,counter=None,files=None,receipt_keys=None):
         return f'CASE WHEN {conflict} THEN {fallback} ELSE {value} END'
     roots={name:typed(name,kind) for name,kind in SCALARS.items()}
     records={name:typed(name,kind,True) for name,kind in SCALARS.items()}
+    records['complete']=f"coalesce({records['complete']},{scalar(slots[('record','body_complete')],'bool')})"
+    roots['prior_attempts']=attempt_facts(slots,(),'prior_attempts')
+    records['prior_attempts']=attempt_facts(slots,('record',),'prior_attempts')
+    records['record_captures']=attempt_facts(slots,('record',),'captures')
     roots.update(writer_job=scalar(slots[('writer','job')],'str'),
                  writer_commit=scalar(slots[('writer','commit')],'str'))
     roots['h_content_disposition']='CASE WHEN '+roots['writer_job']+' IS NOT NULL AND '+roots['writer_commit']+\
@@ -194,7 +222,7 @@ def source_plan(*,counter=None,files=None,receipt_keys=None):
         {get(slots[('file_references',)],kind='array')} AS refs,
         {is_list} AS record_is_list,
         CASE WHEN {is_list} THEN json_get_array(__raw_line,'record') ELSE make_array() END AS record_items
-        FROM source WHERE {selected}"""
+        FROM (SELECT *,{bundle} AS __slots FROM source WHERE {selected}) source"""
     sql='SELECT *,array_length(record_items) AS record_count FROM ('+sql+')'
     return dict(inputs=inputs,steps=[dict(name='lines',sql=sql,materialize=True)])
 

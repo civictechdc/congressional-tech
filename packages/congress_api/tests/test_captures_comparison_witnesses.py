@@ -17,6 +17,7 @@ def test_private_comparison_proof_is_derived_once_and_never_appended(tmp_path):
     assert b['source_retained_record'] is True and b['source_family_basis']=='record'
     assert c['source_context_from_final'] is False and c['source_creating_size_absent'] is False
     assert c['source_entry_status']==200 and c['source_final_status'] is None and c['source_family_basis']=='entry'
+    assert (a['attempt'],a['http_status'],a['fetch_http_status'])==(1,403,404)
     public=pq.read_schema(stage/'captures.parquet').names
     assert not any(name.startswith('source_') for name in public)
-    assert len(public)==34
+    assert len(public)==37

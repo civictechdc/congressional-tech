@@ -2,7 +2,7 @@
 WITH history AS (
  SELECT l.requested_url,cast(count(*) AS INT) AS attempts,
  max(CASE WHEN g.receipt_key IS NOT NULL THEN l.retrieved_at END) AS last_good_at
- FROM url_state_good_lines g RIGHT JOIN url_state_lines l USING(receipt_key,receipt_line)
+ FROM url_state_good_lines g RIGHT JOIN url_state_lines l USING(receipt_key,receipt_line,requested_url)
  WHERE l.requested_url IS NOT NULL GROUP BY l.requested_url
 )
 SELECT h.requested_url,h.attempts,l.retrieved_at AS last_attempt,

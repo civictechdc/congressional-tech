@@ -31,7 +31,7 @@ def test_provider_line489_uses_receipt_facts_and_preserves_each_item(tmp_path):
     stage=ingest(tmp_path,[dict(http_status=404,complete=False,retrieved_at='2020-01-01T00:00:00Z',
         record=items,captures=[body(pointer=[0,'receipt','body']),body(pointer=[1,'receipt','body'])])],key=PROVIDER)
     table=pq.read_table(stage/'captures.parquet');rows=table.to_pylist()
-    assert table.schema.names==NARROW_COLUMNS and len(table.schema)==34
+    assert table.schema.names==NARROW_COLUMNS and len(table.schema)==37
     assert len(receipt_metadata.source_schema()['fields'])==24
     assert [(r['receipt_line'],r['capture_index']) for r in rows]==[(1,0),(1,1),(1,2)]
     assert [r['http_status'] for r in rows]==[200,200,200]
@@ -76,6 +76,18 @@ def test_nested_receipt_aliases_precede_top_level_item_aliases(tmp_path):
     assert (row['http_status'],row['outcome'])==(200,'stored')
     assert row['retrieved_at'].isoformat()==TIMES[0]
     assert row['requested_url']==row['url']=='https://fixture.test/source'
+
+
+def test_prefixed_domain_item_prior_attempt_pointer_resolves_slot(tmp_path):
+    item=provider_item(0,'captured_original_page')
+    item['receipt']['prior_attempts']=[dict(http_status=206,complete=False)]
+    stage=ingest(tmp_path,[dict(record=[item],captures=[
+        body(pointer=['record',0,'receipt','prior_attempts',0,'body']),
+        body(pointer=['record',0,'receipt','body']),
+    ])],key=PROVIDER)
+    prior,final=pq.read_table(stage/'captures.parquet').to_pylist()
+    assert (prior['attempt'],prior['http_status'],prior['complete'],prior['outcome'],prior['fetch_http_status'],prior['fetch_outcome'])==(1,206,False,'stored',200,'stored')
+    assert (final['attempt'],final['http_status'],final['complete'],final['outcome'],final['fetch_http_status'],final['fetch_outcome'])==(0,200,True,'stored',200,'stored')
 
 
 def test_domain_registry_bytes_are_part_of_the_mapping_identity(tmp_path):

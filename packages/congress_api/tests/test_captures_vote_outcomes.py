@@ -24,7 +24,7 @@ def test_list_vote_domain_outcomes_keep_sibling_and_line_acquisition_facts(tmp_p
             captures=[body(pointer=[0,'content','body'],complete=True)])]
     stage=ingest(tmp_path,source,key='receipts/house/meeting-xml/undated/assemble-vote-domain.jsonl.gz')
     table=pq.read_table(stage/'captures.parquet');rows=table.to_pylist()
-    assert table.schema.names==NARROW_COLUMNS and len(table.schema.names)==34
+    assert table.schema.names==NARROW_COLUMNS and len(table.schema.names)==37
     assert [(r['receipt_line'],r['capture_index']) for r in rows]==[(1,0),(1,1),(2,0),(3,0)]
     assert len({(r['receipt_key'],r['receipt_line'],r['capture_index']) for r in rows})==4
     # The retained vote has no acquisition facts; the explicit HTTP failure on

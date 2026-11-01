@@ -23,7 +23,7 @@ def tagged_group_sql(source,keys,*,left='old',right='new',left_count='old_n',rig
 
 RULES = {
     'secondary_duplicates': 'Remove only a file/retained-file row duplicating a capture body on the same line and context whose non-null stored size and location agree with the target; preserve contradictions and other occurrences.',
-    'http_status': 'A missing old status may be restored. An old per-entry status may change to the final line/item status only when both explicit receipt facts independently match their respective sides; other changes and losses remain owner gates.',
+    'http_status': 'A missing old status may be restored; other status changes and losses remain owner gates.',
     'retrieved_at': 'Compare equivalent UTC instants. Only a missing old time restored to a valid new time is accepted; invalid, lost or conflicting times remain owner gates.',
     'family_run': 'Compare old family and source_file directly with family and run_id. Missing values may be restored. Only the five measured family pairs are accepted with their exact receipt-family fallback or explicit record-family witness. Never strip ci/ or generalize the pairs.',
     'member_path': 'Compare original_path only for a capture with the exact archive_members pointer component. Retained file local paths do not establish member names.',
@@ -40,9 +40,10 @@ COVERAGE = dict(
     compared=['bytes','stored_bytes','media_type','fidelity','context_url','http_status',
               'retrieved_at','family','run_id','member_path','body_key'],
     not_compared=['capture_index','mode','complete','outcome','requested_url','url',
-        'h_content_disposition','stored_md5','sniffed_format','sniff_version','intact',
-        'expansion','writer_job','writer_commit','recovery_category','original_url',
-        'recovered_url','match_basis','evidence_sha256','imported_at'],
+        'h_content_disposition','attempt','fetch_http_status','fetch_outcome','stored_md5',
+        'sniffed_format','sniff_version','intact','expansion','writer_job','writer_commit',
+        'recovery_category','original_url','recovered_url','match_basis','evidence_sha256',
+        'imported_at'],
     unqualified_old_fields=['resolution','capture_date','source_line','stored_sha256',
                             'original_path outside archive captures'])
 
@@ -250,7 +251,6 @@ def compare_old(evidence, old_index, *, engine, work, receipt_keys=None):
     def proven(sql):return 'coalesce(('+sql+'),false)'
     restored_fidelity=proven("o.qualified_bodiless AND n.body_sha IS NULL AND n.reference_kind='line' AND o.fidelity='saved-record' AND n.fidelity IS NULL AND n.source_retained_record IS TRUE")
     restored_context=proven('o.context_url IS NULL AND n.context_url IS NOT NULL AND n.source_context_from_final IS TRUE')
-    restored_status=proven('(o.http_status IS DISTINCT FROM n.http_status) AND o.http_status BETWEEN 100 AND 599 AND n.http_status BETWEEN 100 AND 599 AND o.http_status=n.source_entry_status AND n.http_status=n.source_final_status')
     restored_storage=proven("o.stored_bytes IS NOT NULL AND n.stored_bytes IS NULL AND o.resolution='digest_verified' AND n.body_sha IS NOT NULL AND n.reference_kind IN ('capture','embedded','file','retained-file') AND n.source_creating_size_absent IS TRUE")
     receipt_family="regexp_replace(n.receipt_key,'^receipts/(.*)/[^/]+/[^/]+$','\\1')"
     family_pairs=[('govinfo/mods','govinfo/transcript-html'),('govinfo/transcript-html','govinfo/mods'),
@@ -277,12 +277,12 @@ def compare_old(evidence, old_index, *, engine, work, receipt_keys=None):
         OR (o.member_path IS NOT NULL AND (o.member_path IS DISTINCT FROM n.member_path))
         OR (o.body_key IS NOT NULL AND (o.body_key IS DISTINCT FROM n.body_key))
         OR (o.stored_bytes IS NOT NULL AND (o.stored_bytes IS DISTINCT FROM n.stored_bytes) AND NOT {restored_storage})
-        OR (o.http_status IS NOT NULL AND (o.http_status IS DISTINCT FROM n.http_status) AND NOT {restored_status})
+        OR (o.http_status IS NOT NULL AND (o.http_status IS DISTINCT FROM n.http_status))
         OR {unexplained_time}'''
     expected = f'''(o.http_status IS NULL AND n.http_status IS NOT NULL)
         OR {restored_time}
         OR (o.stored_bytes IS NULL AND n.stored_bytes IS NOT NULL)
-        OR {restored_fidelity} OR {restored_context} OR {restored_status} OR {restored_storage} OR {restored_family}
+        OR {restored_fidelity} OR {restored_context} OR {restored_storage} OR {restored_family}
         OR (o.family IS NULL AND n.family IS NOT NULL)
         OR (o.run_id IS NULL AND n.run_id IS NOT NULL)'''
     fact_values=[]
