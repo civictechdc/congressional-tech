@@ -4,6 +4,7 @@
   "catalog_root": null,
   "work": "../../output/archive-maintenance",
   "external_pins": [],
+  "external_pins_source": "viewer-publications/pins/archive-releases.json",
   "tables": {
     "captures": {
       "namespace": [
@@ -40,5 +41,16 @@
     "file_count": 256,
     "manifest_count": 64,
     "scan_planning_seconds": 30.0
+  },
+  "raw_verification": {
+    "captures": "../../output/archive-maintenance-inputs/captures.parquet",
+    "receipt_inventory": "../../output/archive-maintenance-inputs/receipt-inventory.json",
+    "verification_inventory": "../../output/archive-maintenance-inputs/verification-inventory.json",
+    "apply_staged": true
+  },
+  "lake_maintenance": {
+    "observations": {},
+    "rebuild": {},
+    "purge": []
   }
 }

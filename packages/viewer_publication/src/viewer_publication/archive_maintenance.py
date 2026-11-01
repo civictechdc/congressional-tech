@@ -11,10 +11,12 @@ from pathlib import Path
 import re
 from urllib.parse import urlsplit
 
-from viewer_publication.archive_publish import (NativeArchiveStore,SPICY_PINS,_encoded,
+from viewer_publication.archive_publish import (CONTROL_BYTES,NativeArchiveStore,SPICY_PINS,_encoded,
     _read,input_digest,read_pointer,write_spicy_generations)
 from viewer_publication.client import require_publication_client
 from viewer_publication.receipt_pins import PREFIX
+
+ARCHIVE_RELEASE_PINS='viewer-publications/pins/archive-releases.json'
 
 
 class ArchiveMaintenanceStore:
@@ -28,6 +30,12 @@ class ArchiveMaintenanceStore:
     def get(self,key):
         NativeArchiveStore._key(key)
         return _read(self.client,self.bucket,key)[0]
+    def read_archive_release_pins(self):
+        try:
+            raw=_read(self.client,self.bucket,ARCHIVE_RELEASE_PINS)[0]
+        except Exception as error:
+            raise ValueError('Failed to read archive release pins from store') from error
+        return read_archive_release_pins(raw)
     def write_spicy_generations(self,generations):
         return write_spicy_generations(self.client,bucket=self.bucket,generations=generations)
     def inventory(self):
@@ -119,7 +127,113 @@ def _validate_kept_model(record,receipt_keys):
         raise ValueError('Kept model profile has unsupported fields')
 
 
-def maintain_releases(store,*,now,external_pins=(),execute=False):
+def read_archive_release_pins(source,*,key=ARCHIVE_RELEASE_PINS):
+    """Parse and validate the v1 pins/archive-releases.json wire contract, failing closed."""
+    if source is None:
+        raise ValueError('Archive release pin source is required')
+    if isinstance(source,dict):
+        payload=source
+    elif isinstance(source,(bytes,bytearray)):
+        try:
+            payload=json.loads(bytes(source).decode('utf-8'))
+        except (UnicodeDecodeError,json.JSONDecodeError) as error:
+            raise ValueError('Invalid archive release pins JSON') from error
+    elif isinstance(source,Path):
+        try:
+            payload=json.loads(source.read_text(encoding='utf-8'))
+        except (OSError,UnicodeDecodeError,json.JSONDecodeError) as error:
+            raise ValueError('Unreadable archive release pins file') from error
+    elif isinstance(source,str):
+        stripped=source.lstrip()
+        if stripped.startswith(('{','[')):
+            try:
+                payload=json.loads(source)
+            except json.JSONDecodeError as error:
+                raise ValueError('Invalid archive release pins JSON') from error
+        else:
+            uri=urlsplit(source)
+            if uri.scheme in {'http','https','file'}:
+                from urllib.request import urlopen
+                try:
+                    with urlopen(source,timeout=30) as response:
+                        raw=response.read(CONTROL_BYTES+1)
+                    if len(raw)>CONTROL_BYTES:
+                        raise ValueError('Archive release pins exceed control byte limit')
+                    payload=json.loads(raw.decode('utf-8'))
+                except Exception as error:
+                    if isinstance(error,ValueError):raise
+                    raise ValueError('Failed to fetch archive release pins') from error
+            elif uri.scheme:
+                raise ValueError(f'Unsupported archive release pin URI scheme: {uri.scheme}')
+            else:
+                try:
+                    payload=json.loads(Path(source).read_text(encoding='utf-8'))
+                except (OSError,UnicodeDecodeError,json.JSONDecodeError) as error:
+                    raise ValueError('Unreadable archive release pins path') from error
+    elif isinstance(source,ArchiveMaintenanceStore):
+        try:
+            raw=_read(source.client,source.bucket,key)[0]
+        except Exception as error:
+            raise ValueError('Failed to read archive release pins from store') from error
+        return read_archive_release_pins(raw,key=key)
+    elif callable(getattr(source,'read_archive_release_pins',None)):
+        try:
+            loaded=source.read_archive_release_pins()
+        except Exception as error:
+            if isinstance(error,ValueError):raise
+            raise ValueError('Failed to read archive release pins') from error
+        if isinstance(loaded,list) and all(isinstance(item,str) for item in loaded):
+            return list(dict.fromkeys(_release(item) for item in loaded))
+        return read_archive_release_pins(loaded,key=key)
+    elif callable(getattr(source,'get',None)):
+        try:
+            raw=source.get(key)
+        except Exception as error:
+            raise ValueError('Failed to read archive release pins from store') from error
+        if raw is None:
+            raise ValueError('Missing archive release pins in store')
+        return read_archive_release_pins(raw,key=key)
+    elif hasattr(source,'objects') and isinstance(getattr(source,'objects'),dict):
+        if key not in source.objects:
+            raise ValueError('Missing archive release pins in store')
+        return read_archive_release_pins(source.objects[key],key=key)
+    elif callable(getattr(source,'read',None)):
+        try:
+            raw=source.read()
+        except Exception as error:
+            raise ValueError('Failed to read archive release pins stream') from error
+        return read_archive_release_pins(raw,key=key)
+    elif callable(source):
+        try:
+            raw=source()
+        except Exception as error:
+            if isinstance(error,ValueError):raise
+            raise ValueError('Failed to read archive release pins') from error
+        return read_archive_release_pins(raw,key=key)
+    else:
+        raise ValueError('Unsupported archive release pin source')
+    if not isinstance(payload,dict) or set(payload)!={'version','updated_at','releases'}:
+        raise ValueError('Archive release pins require version, updated_at and releases')
+    if type(payload.get('version')) is not int or payload['version']!=1:
+        raise ValueError('Archive release pins require version 1')
+    updated_at=payload.get('updated_at')
+    if not isinstance(updated_at,str) or not updated_at.strip():
+        raise ValueError('Archive release pins require a non-empty updated_at timestamp')
+    releases=payload.get('releases')
+    if not isinstance(releases,list):
+        raise ValueError('Archive release pins releases must be a list')
+    return list(dict.fromkeys(_release(item) for item in releases))
+
+
+def prunable_release_ids(newest,*,kept,now,min_age=timedelta(days=1)):
+    """Return sorted release IDs outside kept whose newest object is older than min_age."""
+    cutoff=_time(now)-min_age
+    kept_set={_release(value) for value in kept}
+    return sorted(release for release,modified in newest.items()
+                  if _release(release) not in kept_set and _time(modified)<cutoff)
+
+
+def maintain_releases(store,*,now,external_pins=(),external_pins_source=None,execute=False):
     """Collect all kept inputs before planning or deleting unkept release keys.
 
     Inventory work is linear in object count; input identity canonicalizes each
@@ -129,10 +243,16 @@ def maintain_releases(store,*,now,external_pins=(),execute=False):
     """
     now=_time(now)
     if isinstance(external_pins,str):raise ValueError('External pins must be release IDs')
-    pins={_release(value) for value in external_pins}
+    if isinstance(external_pins,dict):
+        pins=set(read_archive_release_pins(external_pins))
+    else:
+        pins={_release(value) for value in external_pins}
+    if external_pins_source is not None:
+        pins.update(read_archive_release_pins(store if external_pins_source is True else external_pins_source))
     pointer,etag=_pointer(store)
-    kept=pins|{pointer['release_id']}
-    if pointer.get('previous_release_id') is not None:kept.add(pointer['previous_release_id'])
+    pointer_kept={pointer['release_id']}
+    if pointer.get('previous_release_id') is not None:pointer_kept.add(pointer['previous_release_id'])
+    kept=pins|pointer_kept
     objects={};newest={};seen=set();ignored_legacy_objects=0
     for item in store.inventory():
         key=item['Key']
@@ -145,11 +265,23 @@ def maintain_releases(store,*,now,external_pins=(),execute=False):
         modified=_time(item['LastModified'])
         objects.setdefault(release,[]).append(key)
         newest[release]=max(newest.get(release,modified),modified)
+    existing_releases=set(objects)
     evidence=_InventoryEvidence(store,objects)
+    def _has_input_record(release):
+        if callable(getattr(store,'input_records',None)):
+            return bool(store.input_records(release))
+        prefix=PREFIX+release+'/inputs/'
+        return any(re.fullmatch(re.escape(prefix)+'[a-f0-9]{64}[.]json',key)
+                   for key in evidence.keys(prefix))
+    external_only=pins-pointer_kept
+    active_external_pins={release for release in (external_only&existing_releases) if _has_input_record(release)}
+    stale_external_pins=sorted(external_only-active_external_pins)
     from viewer_publication.receipt_pins import kept_input_records
     # Reuse the maintained parse/receipt validation, then validate semantic identity
     # from its already parsed records and receipt keys without more GETs or parses.
-    entries,protected=kept_input_records(evidence,sorted(kept))
+    # live and last_good must strictly exist; external pins absent from releases/
+    # or whose inputs/ prefix was already pruned are recorded in stale_external_pins.
+    entries,protected=kept_input_records(evidence,sorted(pointer_kept|active_external_pins))
     records=[]
     for entry in entries:
         record=entry['record']
@@ -162,20 +294,18 @@ def maintain_releases(store,*,now,external_pins=(),execute=False):
         except (KeyError,TypeError) as error:
             raise ValueError('Kept input record has an invalid identity shape') from error
         records.append(record)
-    cutoff=now-timedelta(days=1)
-    delete_keys=sorted(key for release,keys in objects.items()
-                       if release not in kept and newest[release]<cutoff for key in keys)
+    prunable=set(prunable_release_ids(newest,kept=kept,now=now))
+    delete_keys=sorted(key for release in sorted(prunable) for key in objects.get(release,()))
     spicy_pairs=sorted({(family,digest) for record in records
                         for family,digest in (record.get('entity_digests') or {}).items()})
     spicy_generations=[dict(family=family,digest=digest) for family,digest in spicy_pairs]
-    if execute and (delete_keys or spicy_generations):
+    if execute:
         if _pointer(store)!=(pointer,etag):
             raise ValueError('Live pointer changed before maintenance deletion')
-        if spicy_generations:
-            if callable(getattr(store,'write_spicy_generations',None)):
-                store.write_spicy_generations(spicy_generations)
-            elif callable(getattr(store,'create',None)):
-                store.create(SPICY_PINS,_encoded(dict(version=1,generations=spicy_generations)))
+        if callable(getattr(store,'write_spicy_generations',None)):
+            store.write_spicy_generations(spicy_generations)
+        elif callable(getattr(store,'create',None)):
+            store.create(SPICY_PINS,_encoded(dict(version=1,generations=spicy_generations)))
         for key in delete_keys:
             # Keep the destructive boundary self-contained even for injected stores.
             NativeArchiveStore._key(key)
@@ -183,12 +313,13 @@ def maintain_releases(store,*,now,external_pins=(),execute=False):
                 raise ValueError('Maintenance cannot delete a kept release')
             store.delete(key)
     return dict(status='executed' if execute else 'planned',pointer=pointer,pointer_etag=etag,
-        kept_releases=sorted(kept),kept_inputs=records,protected_keys=sorted(protected),delete_keys=delete_keys,
-        spicy_generations=spicy_generations,ignored_legacy_objects=ignored_legacy_objects)
+        kept_releases=sorted(kept),stale_external_pins=stale_external_pins,kept_inputs=records,
+        protected_keys=sorted(protected),delete_keys=delete_keys,spicy_generations=spicy_generations,
+        ignored_legacy_objects=ignored_legacy_objects)
 
 
 JOB_FIELDS={'version','bucket','catalog_root','work','external_pins','tables','thresholds'}
-JOB_OPTIONAL={'engine_config','raw_verification','lake_maintenance'}
+JOB_OPTIONAL={'engine_config','external_pins_source','raw_verification','lake_maintenance'}
 
 
 def load_spec(path):
@@ -238,14 +369,33 @@ def load_spec(path):
     )
     if 'engine_config' in value and value['engine_config'] is not None:
         result['engine_config']=_local(value['engine_config'],base)
+    if 'external_pins_source' in value and value['external_pins_source'] is not None:
+        pin_src=value['external_pins_source']
+        if isinstance(pin_src,bool):
+            if not pin_src:raise ValueError('Maintenance external_pins_source cannot be False')
+            result['external_pins_source']=True
+        elif isinstance(pin_src,str) and pin_src.strip():
+            uri=urlsplit(pin_src)
+            if not uri.scheme and pin_src!=ARCHIVE_RELEASE_PINS and not pin_src.lstrip().startswith('{'):
+                pin_src=_local(pin_src,base)
+            result['external_pins_source']=pin_src
+        else:
+            raise ValueError('Maintenance external_pins_source must be a valid source')
     if 'raw_verification' in value and value['raw_verification'] is not None:
+        from viewer_publication.archive_model_job import _selector
         raw_cfg=value['raw_verification']
         if not isinstance(raw_cfg,dict) or not {'captures','receipt_inventory','verification_inventory'}<=set(raw_cfg):
             raise ValueError('Maintenance raw_verification requires captures, receipt_inventory and verification_inventory')
+        captures_cfg=(_selector(raw_cfg['captures'],base)
+            if isinstance(raw_cfg['captures'],dict) else _local(raw_cfg['captures'],base))
+        receipt_inv=(list(raw_cfg['receipt_inventory'])
+            if isinstance(raw_cfg['receipt_inventory'],list) else _local(raw_cfg['receipt_inventory'],base))
+        verify_inv=(list(raw_cfg['verification_inventory'])
+            if isinstance(raw_cfg['verification_inventory'],list) else _local(raw_cfg['verification_inventory'],base))
         result['raw_verification']=dict(
-            captures=_local(raw_cfg['captures'],base),
-            receipt_inventory=_local(raw_cfg['receipt_inventory'],base),
-            verification_inventory=_local(raw_cfg['verification_inventory'],base),
+            captures=captures_cfg,
+            receipt_inventory=receipt_inv,
+            verification_inventory=verify_inv,
             seed=raw_cfg.get('seed'),
             apply_staged=bool(raw_cfg.get('apply_staged',True)),
         )
@@ -259,7 +409,7 @@ def load_spec(path):
 
 def plan(spec):
     if spec.get('status')=='blocked':return dict(spec)
-    return dict(
+    result=dict(
         status='planned',
         executed=False,
         bucket=spec['bucket'],
@@ -269,10 +419,51 @@ def plan(spec):
         tables=spec['tables'],
         thresholds=spec['thresholds'],
     )
+    for key in ('external_pins_source','raw_verification','lake_maintenance'):
+        if key in spec:
+            result[key]=spec[key]
+    return result
 
 
-def execute(spec,*,runtime_factory=None,storage_factory=None,now=None):
+def _prepare_raw_verification_inputs(raw_cfg):
+    for extra_key in ('inventory','baseline','scope'):
+        if extra_key in raw_cfg and isinstance(raw_cfg[extra_key],(str,Path)):
+            if not Path(raw_cfg[extra_key]).is_file():
+                raise ValueError(f'Missing raw_verification {extra_key} input')
+    captures_spec=raw_cfg['captures']
+    if isinstance(captures_spec,dict):
+        old_native='inputs' in captures_spec
+        d1_native=not old_native and (captures_spec.get('kind')=='native_table' or 'metadata_location' in captures_spec)
+        if not old_native and not d1_native:
+            cap_path=Path(captures_spec['path'])
+            if not cap_path.is_file():
+                raise ValueError('Missing raw_verification captures input')
+        captures=captures_spec
+    else:
+        cap_path=Path(captures_spec)
+        if not cap_path.is_file():
+            raise ValueError('Missing raw_verification captures input')
+        captures=cap_path
+    if isinstance(raw_cfg['receipt_inventory'],list):
+        receipts=raw_cfg['receipt_inventory']
+    else:
+        try:
+            receipts=json.loads(Path(raw_cfg['receipt_inventory']).read_text(encoding='utf-8'))
+        except (OSError,UnicodeDecodeError,json.JSONDecodeError) as error:
+            raise ValueError('Missing or unreadable raw_verification receipt_inventory') from error
+    if isinstance(raw_cfg['verification_inventory'],list):
+        previous=raw_cfg['verification_inventory']
+    else:
+        try:
+            previous=json.loads(Path(raw_cfg['verification_inventory']).read_text(encoding='utf-8'))
+        except (OSError,UnicodeDecodeError,json.JSONDecodeError) as error:
+            raise ValueError('Missing or unreadable raw_verification verification_inventory') from error
+    return captures,receipts,previous
+
+
+def execute(spec,*,runtime_factory=None,storage_factory=None,now=None,execute=True):
     """Execute weekly release retention, raw verification and lake maintenance."""
+    if isinstance(spec,(str,Path)):spec=load_spec(spec)
     if spec.get('status')=='blocked':return dict(spec)
     work=Path(spec['work'])
     if work.exists() or work.is_symlink():
@@ -281,7 +472,7 @@ def execute(spec,*,runtime_factory=None,storage_factory=None,now=None):
     from congress_api.cli.raw_verify import apply_staged
     from congress_api.lake.maintenance import maintenance_decision,purge_generation,rebuild_generation
     from congress_api.retention.body_store import BodyStore,R2Adapter,R2Source
-    from congress_api.retention.raw_verifier import verify as verify_raw
+    import congress_api.retention.raw_verifier as raw_verifier
     from congress_shared.storage import connect_r2
     from docspec_client.client import NativeDatasets
     runtime_factory=runtime_factory or NativeDatasets.from_config
@@ -298,26 +489,39 @@ def execute(spec,*,runtime_factory=None,storage_factory=None,now=None):
     with (runtime_factory(engine_config) if engine_config else nullcontext(None)) as engine:
         if engine is not None:
             engine.verify_runtime()
+        raw_inputs=_prepare_raw_verification_inputs(spec['raw_verification']) if spec.get('raw_verification') else None
         client=storage_factory(bucket=spec['bucket'],retries={'total_max_attempts':1})
-        store=ArchiveMaintenanceStore(client=client,bucket=spec['bucket'])
-        releases=maintain_releases(store,now=current_time,external_pins=spec['external_pins'],execute=True)
         if spec.get('raw_verification'):
             raw_cfg=spec['raw_verification']
+            raw_captures,raw_receipts,raw_previous=raw_inputs
             raw_work=work/'raw-verify'
-            verified=verify_raw(
+            verified=raw_verifier.verify(
                 R2Source(client,spec['bucket']),
-                captures=Path(raw_cfg['captures']),
-                receipts=json.loads(Path(raw_cfg['receipt_inventory']).read_text(encoding='utf-8')),
-                previous=json.loads(Path(raw_cfg['verification_inventory']).read_text(encoding='utf-8')),
+                captures=raw_captures,
+                receipts=raw_receipts,
+                previous=raw_previous,
                 engine=engine,
                 work=raw_work,
                 checked_at=current_time.isoformat(),
                 seed=raw_cfg.get('seed'),
             )
+            if execute and not verified.get('valid',False):
+                raise RuntimeError('raw verification failed; refusing release pruning')
             applied=None
             if raw_cfg.get('apply_staged',True) and verified.get('valid'):
                 applied=apply_staged(raw_work,BodyStore(R2Adapter(client,spec['bucket'])))
             raw_report=dict(verification=verified,applied=applied)
+        store=ArchiveMaintenanceStore(client=client,bucket=spec['bucket'])
+        pin_src=spec.get('external_pins_source')
+        if pin_src==ARCHIVE_RELEASE_PINS:
+            pin_src=store
+        releases=maintain_releases(
+            store,
+            now=current_time,
+            external_pins=spec['external_pins'],
+            external_pins_source=pin_src,
+            execute=bool(execute),
+        )
         if spec.get('lake_maintenance'):
             lake_cfg=spec['lake_maintenance']
             for table_name,obs in (lake_cfg.get('observations') or {}).items():
@@ -376,7 +580,7 @@ def main(argv=None):
             print(json.dumps(spec,sort_keys=True))
             return 2
         result=execute(spec) if args.execute else plan(spec)
-    except (ValueError,OSError) as error:
+    except (ValueError,OSError,RuntimeError) as error:
         parser.error(str(error))
     print(json.dumps(result,sort_keys=True))
     return 0
