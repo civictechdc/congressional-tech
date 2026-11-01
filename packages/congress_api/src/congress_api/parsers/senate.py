@@ -32,14 +32,21 @@ _ENCODED_CLOCK = re.compile(r"T(\d{2}):(\d{2})")
 
 
 def _event_rows(tree) -> dict:
-    """Map each link to its nearest event row in one walk: O(links), not O(links x depth)."""
-    return {anchor: row for row in tree.xpath(f"//*[{_EVENT}]") for anchor in row.xpath("descendant-or-self::a[@href]")}
+    """Map each link to its nearest event row in one walk: O(links), not O(links x depth).
+
+    Only an element with exactly one <time> is a row. A vevent class on a wrapper would
+    give every link the first date; on a row dated by a table cell it would hide that cell.
+    """
+    return {anchor: row for row in tree.xpath(f"//*[{_EVENT}]") if len(row.xpath(".//time")) == 1
+            for anchor in row.xpath("descendant-or-self::a[@href]")}
 
 
 def displayed_clock(displayed: str) -> tuple[int, int] | None:
     """(hour, minute) of a written 12-hour clock; no meridiem is ever inferred."""
     shown = _CLOCK.search(displayed)
-    return (int(shown[1]) % 12 + (12 if shown[3].upper() == "P" else 0), int(shown[2])) if shown else None
+    if not shown or not 1 <= int(shown[1]) <= 12 or int(shown[2]) > 59:
+        return None
+    return int(shown[1]) % 12 + (12 if shown[3].upper() == "P" else 0), int(shown[2])
 
 
 def _time_evidence(displayed: str, encoded: str | None) -> str:
@@ -63,17 +70,16 @@ def _event_columns(row) -> dict[str, str]:
         nodes = row.xpath(f".//*[contains(concat(' ', normalize-space(@class), ' '), ' {name} ')]")
         if nodes and (value := text(nodes[0].text_content())):
             cols[key] = value
-    if times := row.xpath(".//time"):
-        raw = times[0].text_content()
-        match = DATE.search(raw)
-        displayed = text(raw)
-        if match:
-            cols["date_text"] = text(match.group())
-        if remainder := text(raw[match.end():] if match else raw):
-            cols["time"] = remainder
-        if encoded := times[0].get("datetime"):
-            cols["encoded_start"] = encoded
-        cols["time_evidence"] = _time_evidence(displayed, encoded)
+    time, = row.xpath(".//time")
+    raw = time.text_content()
+    match = DATE.search(raw)
+    if match:
+        cols["date_text"] = text(match.group())
+    if remainder := text(raw[match.end():] if match else raw):
+        cols["time"] = remainder
+    if encoded := time.get("datetime"):
+        cols["encoded_start"] = encoded
+    cols["time_evidence"] = _time_evidence(text(raw), encoded)
     return cols
 
 
@@ -204,4 +210,26 @@ def parse_listing_page(page, site):
             href = unescape(link.group(1))
             row = ListingRow(day=day, url=href if href.startswith("http") else f"https://www.{site}{href}", title=text(link.group(2)))
             rows.append((row.day, row.url, row.title))
-    return rows
+    return rows + _rows_outside_hearing_link(event_rows, row_days, {row[1] for row in rows}, site)
+
+
+def _rows_outside_hearing_link(event_rows, row_days, listed, site):
+    """Event-row links whose slug HEARING_LINK misses (/some-hearing at the site root).
+
+    The row boundary already dates them. HEARING_LINK stays as it is: it lives in the
+    byte-hashed senate_page.py. These pages reach Materials only: event_details admits
+    only /hearings/ paths, so they create no meeting until that file's next re-version.
+    """
+    found = []
+    for anchor, row in event_rows.items():
+        href = anchor.get("href") or ""
+        marked = "url" in (anchor.get("class") or "").split()
+        if "#" in href or not href.startswith(("/", "http")) or not (marked or len(row.xpath(".//a[@href]")) == 1):
+            continue
+        title = text(dom.tostring(anchor, encoding="unicode", with_tail=False))
+        url = href if href.startswith("http") else f"https://www.{site}{href}"
+        day = row_days.get((href, title))
+        if day and title and url not in listed:
+            listed.add(url)
+            found.append((day, url, title))
+    return found

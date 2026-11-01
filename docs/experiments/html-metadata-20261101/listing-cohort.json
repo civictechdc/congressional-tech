@@ -10,12 +10,11 @@
  },
  "expected": {
   "rows": 1225,
-  "matched": 1191,
-  "listing_absent": 34,
+  "listing_absent": 0,
+  "matched": 1223,
+  "matched_no_encoded_day": 2,
   "matched_wrong_day": 0,
   "details_rows_with_time": 750,
-  "rows_with_room_in_dom": 883,
-  "extruct_row_count_differs": 0,
   "evidence:displayed_conflicts_encoded": 177,
   "evidence:displayed_matches_encoded": 573,
   "evidence:encoded_only_ambiguous": 473,
@@ -31,9 +30,9 @@
   "marked_changed_details_only": {
    "sha": "fd63890cf8e2b3a85ea8345fab5e59c241cbf405e200de9b66881cd7d61914e3",
    "reason": "budget.senate.gov: HEARING_LINK lists 0 rows, so parse_listing_page is unchanged; parse_listing_details gains date_text, encoded_start and time_evidence on its 25 rows."
-  }
+  },
+  "scope": "Run before the one-time rule and discovery landed, and not rerun. Of 14,217 senate/pages bodies, 734 came from scratch and 13,483 from the local cache; 186 at or above 2 MB were excluded by the script, 2,804 non-UTF-8 and 88 non-markup bodies were skipped, 11,139 compared, with a synthetic site name. A page with no event class cannot reach either change."
  },
- "open_item": "34 listing_absent rows (28 Budget, 6 Appropriations) have slugs outside HEARING_LINK in byte-hashed senate_page.py.",
  "bodies": [
   {
    "sha": "164462a6bf076684f5c190b458667f05e6961eb45f03444bcbf5a77ca9f70ee4",
@@ -329,5 +328,7 @@
    "rows": 25,
    "bytes": 80893
   }
- ]
+ ],
+ "expected_status": "Derived, not rerun. The 49 bodies were removed from scratch before the mf2py comparison and event-row discovery landed. The earlier parser-read replay gave 0 wrong days of 1,191; a scratch prototype of the discovery gave 1,194 to 1,227 rows, 33 added, 0 wrong days, on the parser's own date reading. The mf2py comparison has run on the committed fixtures only.",
+ "open_item": "The 33 pages now discovered reach Materials only: event_details in byte-hashed senate_page.py admits only /hearings/ paths."
 }

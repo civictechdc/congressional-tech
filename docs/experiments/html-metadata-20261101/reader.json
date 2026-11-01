@@ -56,6 +56,7 @@
    "rdfa:bypassed": 45.7
   }
  },
+ "reconciliation": "gated is one run over all 458 bodies: mean 29 ms, peak 148 MB. A later per-step profile reported mean 25 ms over the 350 randomly chosen bodies only, and peak 152 MB from its own run; peak varies by a few MB between runs. These predate the later reader fixes and were not rerun, because the bodies were removed.",
  "runtime": {
   "extruct": "0.18.0",
   "lxml": "6.0.2",

@@ -139,7 +139,7 @@ def listed(site, get, saved=None, since=FIRST_RECORD):
             break
     kept = [row for row in out if row[0] >= since]
     kept_urls = {row[1] for row in kept}
-    listing_details = {**(saved.get("listing_details") if saved else {}), **{u: d for u, d in details.items() if u in kept_urls}}
+    listing_details = {**((saved or {}).get("listing_details") or {}), **{u: d for u, d in details.items() if u in kept_urls}}
     route = {"form": form, "from_0": bool(from_0)}
     if listing_details:
         route["listing_details"] = listing_details

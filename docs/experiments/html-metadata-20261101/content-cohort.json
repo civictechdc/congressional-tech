@@ -101,5 +101,6 @@
  ],
  "no_real_instances": [
   "multiple distinct candidates"
- ]
+ ],
+ "outcome_note": "Counts are from the removed trafilatura fallback and were not rerun. outcome:fallback_extractor and outcome:none now both become fallback_required, apart from any not_substantive pages among those 109, which stay none; marked and marked_no_content are unaffected."
 }
