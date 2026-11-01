@@ -81,7 +81,7 @@ def test_deadline_marks_timeout_and_restores_handler(monkeypatch):
     previous = signal.getsignal(signal.SIGALRM)
     result = read_html_metadata(FIXTURE, format_timeout_seconds=0.05)
     assert result.formats['rdfa'].status == 'failed' and result.formats['rdfa'].error_type == 'format_timeout'
-    assert result.formats['opengraph'].status == 'ok'
+    assert result.formats['opengraph'].status == 'ok' and result.wall_clock_dependent
     assert signal.getsignal(signal.SIGALRM) == previous and signal.getitimer(signal.ITIMER_REAL)[0] == 0
 
 
@@ -155,7 +155,66 @@ def test_rdfa_blank_nodes_keep_their_references():
     canonical = reader._canonical_rdfa(items)
     by_value = next(item for item in canonical if 'http://q' in item)
     assert next(item for item in canonical if 'http://p' in item)['http://p'] == [{'@id': by_value['@id']}]
-    assert {item['@id'] for item in canonical} == {'_:b0', '_:b1'}
+    assert 'random' not in json.dumps(canonical) and 'other' not in json.dumps(canonical)
+
+
+def relabelled(items, prefix):
+    return json.loads(json.dumps(items).replace('_:n', '_:' + prefix))
+
+
+@pytest.mark.parametrize('items', [
+    [{'@id': f'_:n{i}', 'http://p': [{'@id': f'_:n{i + 1}'}]} for i in range(40)] + [{'@id': '_:n40', 'http://q': [{'@value': 'end'}]}],
+    [item for i in range(6) for item in ({'@id': f'_:n{i}', 'http://p': [{'@id': f'_:nc{i}'}]}, {'@id': f'_:nc{i}', 'http://q': [{'@value': 'same'}]})],
+], ids=['chain-past-any-round-cap', 'identical-pairs'])
+def test_rdfa_labels_do_not_depend_on_input_ids_or_order(items):
+    first = reader._canonical_rdfa(items)
+    assert first == reader._canonical_rdfa(list(reversed(relabelled(items, 'zz'))))
+
+
+def test_rdfa_cycle_of_alike_nodes_fails_the_format(monkeypatch):
+    # Two 2-cycles and one 4-cycle look alike to refinement; merging them would invent a fact.
+    cycle = [{'@id': f'_:n{i}', 'http://p': [{'@id': f'_:n{(i + 1) % 4}'}]} for i in range(4)]
+    with pytest.raises(ValueError, match='cycle'):
+        reader._canonical_rdfa(cycle)
+    import extruct
+    monkeypatch.setattr(extruct, 'extract', lambda body, **kwargs: {'rdfa': cycle})
+    assert reader._read_format(b'<html></html>', 'rdfa', 1.0).status == 'failed'
+
+
+@pytest.mark.parametrize('charset', ['zlib', 'undefined', 'rot13', 'hex', 'no-such-codec'])
+def test_a_declared_charset_never_raises(charset):
+    body = f'<html><head><meta charset={charset}><title>Caf\u00e9</title><meta property="og:title" content="t"></head></html>'.encode()
+    result = read_html_metadata(body)
+    assert result.title == 'Caf\u00e9' and result.formats['opengraph'].status == 'ok'
+
+
+def test_content_past_the_parser_depth_is_failed_not_absent():
+    deep = b'<div>' * 300 + b'<p property="schema:name" itemprop="name">x</p>' + b'</div>' * 300
+    result = read_html_metadata(b'<html><head><title>t</title><meta property="og:title" content="o"></head><body>' + deep + b'</body></html>')
+    assert result.document_truncated
+    assert result.formats['rdfa'].error_type == 'document_too_deep' and result.formats['microdata'].error_type == 'document_too_deep'
+    assert result.formats['opengraph'].status == 'ok'
+
+
+def test_depth_is_detected_past_many_earlier_parser_errors():
+    noisy = b'<div></span></div>' * 5000 + b'<div>' * 300 + b'x' + b'</div>' * 300
+    assert read_html_metadata(b'<html><body>' + noisy + b'</body></html>').document_truncated
+
+
+def test_shallow_document_is_not_truncated():
+    assert not read_html_metadata(FIXTURE).document_truncated
+
+
+def test_machine_dependent_failures_are_marked_not_reusable(monkeypatch):
+    assert not read_html_metadata(FIXTURE).wall_clock_dependent
+    import extruct
+    real = extruct.extract
+    def fail(body, **kwargs):
+        if kwargs['syntaxes'] == ['rdfa']:
+            raise MemoryError
+        return real(body, **kwargs)
+    monkeypatch.setattr(extruct, 'extract', fail)
+    assert read_html_metadata(FIXTURE).wall_clock_dependent
 
 
 def test_legacy_roots_cover_the_installed_mf2py_rules():

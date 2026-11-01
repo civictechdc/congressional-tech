@@ -1,8 +1,10 @@
 """Read declared metadata from one retained HTML body, without fetching anything.
 
 The reader is pure per (body, version): it takes no URL and records no timing, so
-one result can be reused for every capture of a body. Page payloads and parser
-versions stay untouched; a result is its own source record.
+one result can be reused for every capture of a body. The exception is a result whose
+``wall_clock_dependent`` is true: a deadline or memory failure depends on the machine,
+so never reuse it as a complete reading. Page payloads and parser versions stay
+untouched; a result is its own source record.
 
 extruct is imported on call because it lives in the hash-pinned sidecar
 (``html-metadata.lock.txt``), not in every environment that imports this package.
@@ -14,6 +16,7 @@ import json
 import re
 import signal
 import threading
+from collections import Counter, defaultdict
 from contextlib import contextmanager
 from hashlib import sha256
 from typing import Any
@@ -44,7 +47,13 @@ _MARKERS = {
 }
 _HTML_START = re.compile(rb'<(?:!doctype\s+html|html|head|body|title|meta|div|p|script)\b', re.I)
 _MESSAGE_LIMIT = 500
-_RDFA_ROUNDS = 8
+# Read in a libxml2 tree, which silently stops at depth 256. Mf2py parses separately;
+# OpenGraph and Dublin Core read the head, which precedes any such depth.
+_TRUNCATION_MARKERS = {
+    'rdfa': _MARKERS['rdfa'],
+    'microdata': re.compile(r'\bitem(?:scope|prop)\b', re.I),
+    'json-ld': re.compile(r'ld\+json', re.I),
+}
 
 
 class _FormatDeadline(BaseException):
@@ -91,9 +100,12 @@ def _compact(value: Any) -> str:
 def _canonical_rdfa(items: list) -> list:
     """Remove pyRdfa's run-to-run noise: random blank-node IDs and hash-seeded order.
 
-    Blank nodes are labelled by what they say and what refers to them, refined over a
-    bounded number of rounds (O(rounds x output)). Nodes still alike after that are
-    interchangeable, so the order among them cannot change the serialized result.
+    A blank node's label is a digest of what it says and what refers to it, refined to
+    a fixed point: O(rounds x output), with rounds bounded by the longest chain and the
+    format deadline. Alike nodes share one label, so no tie is ever broken by input
+    order. That merges only interchangeable nodes unless they form a cycle, which this
+    refinement cannot tell apart, so a cycle fails the format.
+    rdflib.compare was tried first: over 60 s on 200 identical pairs, against 0.5 s on a chain.
     """
     def blank(value):
         if isinstance(value, dict):
@@ -102,26 +114,43 @@ def _canonical_rdfa(items: list) -> list:
         return set().union(*map(blank, value)) if isinstance(value, list) else set()
 
     nodes = blank(items)
-    colors = {node: '_:' for node in nodes}
-    for _ in range(_RDFA_ROUNDS if nodes else 0):
+    edges = [(item.get('@id'), predicate, value['@id']) for item in items for predicate, values in item.items()
+             if isinstance(values, list) for value in values if isinstance(value, dict) and value.get('@id') in nodes]
+    colors = dict.fromkeys(nodes, '_:')
+    for _ in range(len(nodes) + 1):
         said = dict.fromkeys(nodes, '')
-        heard = {node: [] for node in nodes}
         for item in items:
-            subject = item.get('@id')
-            if subject in nodes:
-                said[subject] = _compact(_relabel(item, colors))
-            for predicate, values in item.items():
-                for value in values if isinstance(values, list) else ():
-                    target = value.get('@id') if isinstance(value, dict) else None
-                    if target in nodes:
-                        heard[target].append(f'{predicate} {colors.get(subject, subject)}')
-        refined = {node: '_:' + sha256(_compact([said[node], sorted(heard[node])]).encode()).hexdigest() for node in nodes}
+            if item.get('@id') in nodes:
+                said[item['@id']] = _compact(_relabel(item, colors))
+        heard = {node: [] for node in nodes}
+        for subject, predicate, target in edges:
+            heard[target].append(f'{predicate} {colors.get(subject, subject)}')
+        refined = {node: '_:' + sha256(_compact([said[node], sorted(heard[node])]).encode()).hexdigest()[:32] for node in nodes}
         settled = len(set(refined.values())) == len(set(colors.values()))
         colors = refined
         if settled:
             break
-    labels = {node: f'_:b{index}' for index, node in enumerate(sorted(nodes, key=lambda node: (colors[node], node)))}
-    return sorted((_relabel(item, labels) for item in items), key=lambda item: item.get('@id', ''))
+    counts = Counter(colors.values())
+    _refuse_tied_cycle({node for node in nodes if counts[colors[node]] > 1}, edges)
+    return sorted((_relabel(item, colors) for item in items), key=lambda item: item.get('@id', ''))
+
+
+def _refuse_tied_cycle(tied: set[str], edges: list) -> None:
+    """Kahn's algorithm over the tied nodes; anything left over is on a cycle."""
+    pending = Counter()
+    outgoing = defaultdict(list)
+    for subject, _, target in edges:
+        if subject in tied and target in tied:
+            pending[target] += 1
+            outgoing[subject].append(target)
+    ready = [node for node in tied if not pending[node]]
+    for node in ready:
+        for target in outgoing[node]:
+            pending[target] -= 1
+            if not pending[target]:
+                ready.append(target)
+    if len(ready) != len(tied):
+        raise ValueError('RDFa blank nodes form a cycle of indistinguishable nodes')
 
 
 def _meaningful(name: str, items: list) -> bool:
@@ -156,24 +185,29 @@ def _transcode(body: bytes) -> tuple[str, str, bytes]:
     so every parser reads the one transcoded form."""
     from w3lib.encoding import html_to_unicode
 
-    encoding, decoded = html_to_unicode(None, body, default_encoding='utf-8')
+    try:
+        encoding, decoded = html_to_unicode(None, body, default_encoding='utf-8')
+    except Exception:  # a declared charset can name any Python codec: zlib, rot13, undefined
+        encoding, decoded = 'utf-8', body.decode('utf-8', errors='replace')
     return encoding, decoded, decoded.encode('utf-8', errors='replace')
 
 
 def _tree(utf8_body: bytes):
+    """(tree or None, whether libxml2 stopped at its depth limit and dropped content)."""
+    parser = dom.HTMLParser(encoding='utf-8')
     try:
-        return dom.document_fromstring(utf8_body, parser=dom.HTMLParser(encoding='utf-8'))
+        tree = dom.document_fromstring(utf8_body, parser=parser)
     except Exception:  # an empty or unparseable document; the formats report it separately
-        return None
+        return None, False
+    return tree, any(error.type_name == 'ERR_RESOURCE_LIMIT' for error in parser.error_log)
 
 
 def parse_document(body: bytes):
     """The reader's own DOM of a body, or None, so text selection sees the same document."""
-    return _tree(_transcode(body)[2])
+    return _tree(_transcode(body)[2])[0]
 
 
-def _head(utf8_body: bytes) -> tuple[str | None, str | None, list[dict], list[dict]]:
-    tree = _tree(utf8_body)
+def _head(tree) -> tuple[str | None, str | None, list[dict], list[dict]]:
     if tree is None:
         return None, None, [], []
     title = next((node.text_content().strip() for node in tree.xpath('//title')), None)
@@ -189,10 +223,11 @@ def read_html_metadata(body: bytes, *, formats: tuple[str, ...] = FORMATS,
     common = dict(schema_version=METADATA_SCHEMA, body_sha256=sha256(body).hexdigest(), body_bytes=len(body))
     if not is_html(body):
         return HtmlMetadata(**common, encoding=None, document_kind='non_html', error_title_hint=False, title=None,
-                            declared_base=None, head_meta=[], head_links=[],
+                            declared_base=None, head_meta=[], head_links=[], document_truncated=False,
                             formats={name: FormatResult(status='skipped', skip_reason='non_html') for name in FORMATS})
     encoding, decoded, utf8_body = _transcode(body)
-    title, base, meta, links = _head(utf8_body)
+    tree, truncated = _tree(utf8_body)
+    title, base, meta, links = _head(tree)
     results = {}
     for name in FORMATS:
         marker = _MARKERS.get(name)
@@ -200,6 +235,9 @@ def read_html_metadata(body: bytes, *, formats: tuple[str, ...] = FORMATS,
             results[name] = FormatResult(status='skipped', skip_reason='not_requested')
         elif marker is not None and not marker.search(decoded):
             results[name] = FormatResult(status='absent', basis='marker')
+        elif truncated and name in _TRUNCATION_MARKERS and _TRUNCATION_MARKERS[name].search(decoded):
+            results[name] = FormatResult(status='failed', error_type='document_too_deep',
+                                         error_message='The parser dropped content past depth 256.')
         else:
             results[name] = _read_format(utf8_body, name, format_timeout_seconds)
     micro = results['microformat']
@@ -208,7 +246,8 @@ def read_html_metadata(body: bytes, *, formats: tuple[str, ...] = FORMATS,
     folded = (title or '').casefold()
     return HtmlMetadata(**common, encoding=encoding, document_kind='html',
                         error_title_hint=any(marker in folded for marker in ERROR_TITLE_MARKERS),
-                        title=title, declared_base=base, formats=results, head_meta=meta, head_links=links)
+                        title=title, declared_base=base, formats=results, head_meta=meta, head_links=links,
+                        document_truncated=truncated)
 
 
 def page_is_substantive(metadata: HtmlMetadata, http_status: int) -> bool:

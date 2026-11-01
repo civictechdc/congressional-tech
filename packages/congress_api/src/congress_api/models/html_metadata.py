@@ -34,6 +34,11 @@ class HtmlMetadata(SourceModel):
     formats: dict[str, FormatResult]
     head_meta: list[dict[str, str]]
     head_links: list[dict[str, str]]
+    document_truncated: bool
+
+    @property
+    def wall_clock_dependent(self) -> bool:
+        return any(result.error_type in {'format_timeout', 'MemoryError'} for result in self.formats.values())
 
 
 class PageFact(NamedTuple):
@@ -72,7 +77,7 @@ class MainContentRef(SourceModel):
 
 
 class MainContent(SourceModel):
-    outcome: Literal['marked', 'marked_no_content', 'conflicting_candidates', 'fallback_extractor', 'none']
+    outcome: Literal['marked', 'marked_no_content', 'fallback_required', 'failed', 'none']
     body_sha256: str
     text: str | None
     selector: str | None
