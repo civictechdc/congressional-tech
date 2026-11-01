@@ -214,3 +214,49 @@ def read_html_metadata(body: bytes, *, formats: tuple[str, ...] = FORMATS,
 def page_is_substantive(metadata: HtmlMetadata, http_status: int) -> bool:
     """Extraction values never admit a page; rich metadata on an error page is still an error page."""
     return metadata.document_kind == 'html' and not metadata.error_title_hint and 200 <= http_status < 300
+
+
+_OPENGRAPH_FACTS = {'article:published_time': 'published_time', 'article:modified_time': 'modified_time',
+                    'og:description': 'description', 'article:section': 'section', 'og:url': 'declared_url'}
+_JSON_LD_FACTS = {'datePublished': 'published_time', 'dateModified': 'modified_time', 'description': 'description',
+                  'articleSection': 'section', '@type': 'declared_type', 'author': 'person_card'}
+
+
+def _json_ld_facts(node: dict, path: str):
+    for key, field in _JSON_LD_FACTS.items():
+        value = node.get(key)
+        if isinstance(value, list):
+            yield from (PageFact(field, item, 'json-ld', f'{path}/{key}/{index}') for index, item in enumerate(value))
+        elif value is not None:
+            yield PageFact(field, value, 'json-ld', f'{path}/{key}')
+
+
+def page_facts(metadata: HtmlMetadata) -> tuple[PageFact, ...]:
+    """Every declared value of the field vocabulary, unselected, each with its JSON Pointer.
+
+    The one authority for field meanings, so the retained store and publication read
+    the same facts. JSON-LD is read at its top level and in @graph, not nested deeper.
+    """
+    facts = []
+    for index, item in enumerate(metadata.formats['json-ld'].items):
+        path = f'/formats/json-ld/items/{index}'
+        if isinstance(item, dict):
+            facts += _json_ld_facts(item, path)
+            graph = item.get('@graph')
+            for position, node in enumerate(graph if isinstance(graph, list) else ()):
+                if isinstance(node, dict):
+                    facts += _json_ld_facts(node, f'{path}/@graph/{position}')
+    for index, item in enumerate(metadata.formats['opengraph'].items):
+        for position, (name, value) in enumerate(item.get('properties', ())):
+            if name in _OPENGRAPH_FACTS:
+                facts.append(PageFact(_OPENGRAPH_FACTS[name], value, 'opengraph', f'/formats/opengraph/items/{index}/properties/{position}/1'))
+    for index, meta in enumerate(metadata.head_meta):
+        if meta.get('name', '').casefold() == 'description' and 'content' in meta:
+            facts.append(PageFact('description', meta['content'], 'head_meta', f'/head_meta/{index}/content'))
+    for index, link in enumerate(metadata.head_links):
+        if 'canonical' in link['rel'].casefold().split() and 'href' in link:
+            facts.append(PageFact('declared_url', link['href'], 'head_links', f'/head_links/{index}/href'))
+    for index, item in enumerate(metadata.formats['microformat'].items):
+        if 'h-card' in item.get('type', ()):
+            facts.append(PageFact('person_card', item, 'microformat', f'/formats/microformat/items/{index}'))
+    return tuple(facts)

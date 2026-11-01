@@ -86,6 +86,7 @@ class Material(Record):
 
     kind: Literal["material"] = "material"
     title: str | None = None
+    description: str | None = None
     congress: PositiveInt | None = None
     chamber: Chamber = "unknown"
     proceeding_dates: tuple[ReportedTime, ...] = ()

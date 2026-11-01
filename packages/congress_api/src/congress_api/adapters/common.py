@@ -10,6 +10,8 @@ from urllib.parse import urlsplit
 
 from congress_shared.dates import parse_utc_timestamp
 
+from congress_api.models.html_metadata import HtmlMetadata
+
 # Adapter meeting maps: (congress, chamber, event id). Not the congress.gov string id.
 MeetingLookupKey = tuple[int, str, str]
 
@@ -91,6 +93,8 @@ class AdapterContext:
     ids: Callable[[str, str], str]
     # Exact, unambiguous publisher files already imported by the application.
     known_materials: Mapping[str, tuple[Material, MaterialVersion]] | None = None
+    # Declared page metadata by exact URL, like known_materials. None changes nothing.
+    page_metadata: Mapping[str, HtmlMetadata] | None = None
 
     def source(self, native_key, payload, url=None):
         scheme = f"{self.provider}:record"
@@ -109,7 +113,19 @@ class AdapterContext:
                                                selector=selector),), basis=basis, method=method)
 
 
-def material_records(
+def material_records(context, evidence, key, **fields):
+    """Map one material, then apply declared metadata when a result is supplied for its page."""
+    records = _material_records(context, evidence, key, **fields)
+    supplied = getattr(context, 'page_metadata', None)
+    urls = tuple(fields.get('urls', ()))
+    url = next((url for url in urls if supplied and url in supplied), None)
+    if url is None:
+        return records
+    from congress_api.adapters.page_metadata import material_page_records
+    return material_page_records(context, records, url, supplied[url])
+
+
+def _material_records(
     context,
     evidence,
     key,

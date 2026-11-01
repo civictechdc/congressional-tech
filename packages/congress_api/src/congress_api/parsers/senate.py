@@ -36,19 +36,24 @@ def _event_rows(tree) -> dict:
     return {anchor: row for row in tree.xpath(f"//*[{_EVENT}]") for anchor in row.xpath("descendant-or-self::a[@href]")}
 
 
+def displayed_clock(displayed: str) -> tuple[int, int] | None:
+    """(hour, minute) of a written 12-hour clock; no meridiem is ever inferred."""
+    shown = _CLOCK.search(displayed)
+    return (int(shown[1]) % 12 + (12 if shown[3].upper() == "P" else 0), int(shown[2])) if shown else None
+
+
 def _time_evidence(displayed: str, encoded: str | None) -> str:
     """How a displayed clock relates to the encoded one; the displayed clock is the selection.
 
     These templates drop the meridiem when encoding, so 03:00PM is encoded 03:00: an
     encoded hour from 1 to 11 with no displayed clock cannot be read as AM or PM.
     """
-    shown, coded = _CLOCK.search(displayed), _ENCODED_CLOCK.search(encoded or "")
+    shown, coded = displayed_clock(displayed), _ENCODED_CLOCK.search(encoded or "")
     if not coded:
         return "displayed_only"
     if not shown:
         return "encoded_only_ambiguous"
-    hour = int(shown[1]) % 12 + (12 if shown[3].upper() == "P" else 0)
-    return "displayed_matches_encoded" if (hour, int(shown[2])) == (int(coded[1]), int(coded[2])) else "displayed_conflicts_encoded"
+    return "displayed_matches_encoded" if shown == (int(coded[1]), int(coded[2])) else "displayed_conflicts_encoded"
 
 
 def _event_columns(row) -> dict[str, str]:

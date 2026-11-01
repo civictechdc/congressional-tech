@@ -10,6 +10,7 @@ from committee_meeting.materials import DocumentDetails, MaterialLink
 from committee_meeting.meetings import Affiliation, Appearance, Panel, Person, RecordedName
 
 from congress_api.adapters.common import digest, material_records, observed_time, ref, web_url, witness_roles
+from congress_api.adapters.page_metadata import page_source
 from congress_api.adapters.documents import HOUSE_DOCUMENT_CATEGORIES as DOCUMENT_CATEGORIES, category
 from congress_api.models.house import HouseParsedRecord
 from congress_api.parsers.house_documents import XML_KINDS
@@ -79,7 +80,11 @@ def records(state, context, *, meetings):
         observed = observed_time(saved.get("retrieved_at"), context.now) if check.get("mode") == "live" and not saved.get("replay") else None
         if observed is not None:
             source = source.model_copy(update={"retrieved_at": observed})
+        declared = ()
+        for url in (saved.get("urls") or [])[:1]:
+            source, declared = page_source(context, url, source)
         yield source
+        yield from declared
         evidence = context.evidence(source, basis="derived", method="congress_api.house.retained-output")
         if check.get("mode") == "live" and not saved.get("replay") and saved.get("retrieved_at") is not None and observed is None:
             yield DataIssue(id=context.ids("data_issue", key + "|invalid-retrieval-time"), subject=ref(source), category="unverified",
