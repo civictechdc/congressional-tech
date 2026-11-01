@@ -125,15 +125,36 @@ The documents conflict, and that is the owner's call. §6.1 (line 243) says a me
 
 **Empty caption tracks.** The tracks on `youtube:Mv5g5Bn4AD8` (new) and `youtube:R0h33K7rw7Q` (changed) have body `e3b0c442...`, the SHA-256 of empty input. Both videos' captures became real in this release.
 
+## Root causes of the remaining items
+
+No engine job ran. **Proven** means shown by row-level evidence plus the code named. **Inferred** means the code path fits but no row-level tie was made. A machine crash wiped the build evidence (`capture_sources`, parser inputs, job files) mid-way, so results marked "before the crash" cannot be re-derived now, and the verifier's evidence routes cannot rerun until those files are rebuilt. The public-body scan was rerun after the crash.
+
+| Item | Cause | Status | Where |
+|---|---|---|---|
+| Empty caption tracks (2) | ct-sh4j moved these rows' `http_status` from NULL to 200, so empty bodies became track candidates; that step has no real-file or size filter. Ties resolve to the highest `capture_index`, so the empty row beats the real caption on the same receipt line: index 5 over 4 (`DE7207FE`, 1,003 bytes) and index 2 over 1 (`2E784842`, 1,026 bytes). **Real captions are hidden: a defect** | Proven, before the crash | `archive_model.py:728`, `model/sql/entity-recordings.sql:39` |
+| `url_state` +21, 8 URLs | The URL appears only on saved bodies absent from the previous release. Queue literals come from links on good pages | Proven by public-body scan | `archive_url_state.py:109` |
+| `url_state` +21, other 13 | 11 `/event/` pages, `wp/v2/categories/9`, `wp/v2/event-category/8`. Not on any of the 397 saved bodies for `intelligence.house.gov` rows. Non-saved or newly good bodies are the likely source, and those lists were lost in the crash | Inferred | same |
+| Recordings: `senate:help031820`, `youtube:Qfjzf5als_I` | The id is on newly real pages (`92AAD76F`, on `help.senate.gov`, before the crash; `3A0CA5A5`, on `intelligence.house.gov`) | Proven | `archive_model.py:706` |
+| Recordings: `youtube:6xt7nTuO85A`, `youtube:f1J38FlDKxo` | Not on any scanned body. Same path presumed | **Unexplained** | same |
+| `last_good_at`, 57 keys | Rows that fail the good predicate in v20 and pass in v21: 43 URLs were stored with NULL status, now 200; 10 were `failed` with 202, now stored. A row-by-row tie for all 57 did not run before the crash | Inferred (53 are NULL to a value, 4 later) | `archive_url_state.py:47`, `model/sql/url-state.sql:5` |
+| Witnesses, +758 | v20 kept one row per name per record; v21 keeps every occurrence. All 758 extras are in the same record as their pair, and they account for every duplicate group in the release (628) | Proven, before the crash | `model/sql/appearance-records-resolved.sql:276` |
+| Witnesses, -530 | Senate page names in the v19 parser input and absent from the v21 parser's output on any record. 318 start with a link word, such as "download general", so this is largely a correction | Proven, before the crash | Parser version `0271cb3f` (input change) |
+| Witnesses, +604 | All on records absent from the previous parser input, on 149 new occasions. Records changed 62,782 to 66,483 (22,002 new, 18,301 gone) | Proven for the records; why they are new is inferred | Same input change |
+| Witnesses, -61 and +69 | -56 and +69 are on `meeting:` occasions whose package moved, such as event 100039 from `CHRG-112hhrg72233` to `72232`; names exist in the v21 input, so this is selection, not parsing. -5 are page names, not traced. Which package is right was not checked | Inferred | `appearance-records-resolved.sql:107-111`, `archive_model.py:615` |
+
+### Does the interval shift recur weekly?
+
+**The code path recurs; the load is not happening today.**
+
+- **Path, proven by code:** a URL with no meeting date has NULL age, so all three registry bands match and the shortest, 7 days, wins (`archive_url_state.py:60`). `next_attempt_at` is the last attempt plus that interval (`model/sql/url-state.sql:10`). The scheduler treats due rows as eligible (`capture_scheduler.py:521`), and `CHRG-*.zip` URLs are in the `documents` scope. Age stays NULL after a refetch, so the URL comes due again.
+- **Not running:** `capture-archive.yml:19` requires `ARCHIVE_CAPTURE_ENABLED`, which `gh variable get` did not find, and the workflow has 0 runs. These ZIPs were last fetched in bulk on 2026-10-05 and 10-06, with 123 on 10-16.
+- **Load if enabled:** the 84 GB is not the whole weekly set. 24,398 `CHRG-*.zip` URLs were already on 7 days in the previous release, so all 34,593 are now on 7 days and already due, 183.5 GB across the 34,019 with a saved row. D1 added about 10,195 of those URLs. Actual volume is capped by `ARCHIVE_CAPTURE_REQUEST_BUDGET` and `ARCHIVE_CAPTURE_BYTE_BUDGET`, and state moves only when a new release publishes. Whether the fetch is conditional was not checked.
+- **Meeting link, proven by code and public files:** the meeting-date union joins through `component_meeting_links` (`archive_model.py:684-692`), and the changed URLs on meeting-linked documents went 10,202 to 2.
+
 ## Still open
 
-- **`url_state` +21 is not proven row by row.** All 21 are on `intelligence.house.gov` hosts, have 0 attempts, and six pages there became real. The queue is built from links in page bodies, which are not retained here, and none of the 21 appear in `publisher_links`.
-- **Recordings:** `Mv5g5Bn4AD8` ties to flips. `6xt7nTuO85A`, `Qfjzf5als_I`, `f1J38FlDKxo` and `senate:help031820` have no real capture and no publisher link or meeting video; their source is unknown.
-- **Witnesses are sized, not fully classified.**
-  - Of the 591 only-previous pairs, 535 are on `page:` occasions and 56 on `meeting:` occasions. Only 1 is a surname-matching respelling.
-  - Removed names include non-people such as "download general", which looks like a correction.
-  - Some meetings changed package: event 100039 moved from `CHRG-112hhrg72233` to `CHRG-112hhrg72232`, replacing its witnesses. Which is right was not checked.
-  - The 758 extra occurrences include non-people, for example "prepared statement on h.r. _" going from 1 to 7.
+- **Unexplained:** 13 of the `url_state` +21; 2 recordings; 18 rows between the split routes.
+- **Witnesses:** which package is right for the moved meetings; 65 of the 758 extra occurrences look like documents rather than people, such as "prepared statement on h.r. _", going from 1 to 7.
 
 ## ct-opy0 and ct-db3w on 448651e7
 
