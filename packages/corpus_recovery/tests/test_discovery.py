@@ -103,6 +103,22 @@ def test_wayback_pagination_resume_and_replay_digest():
 
 def test_wayback_incomplete_denied_and_wrong_identity():
     wrong = [K, '20200102030405', 'https://example.gov/other.pdf', 'application/pdf', '200', '-', '0']
+    wrong_urlkey = ['gov,other)/report.pdf', '20200102030405', TARGET, 'application/pdf', '200', '-', '0']
+    non_200_row = [K, '20200102030405', TARGET, 'application/pdf', '404', '-', '0']
+    bad_ts_row = [K, '20201302030405', TARGET, 'application/pdf', '200', '-', '0']
+    out_of_window_row = [K, '20190102030405', TARGET, 'application/pdf', '200', '-', '0']
+    for row in [wrong, wrong_urlkey, non_200_row, bad_ts_row]:
+        res = wayback_lookup(TARGET, lambda kind, url: Response(200, wayback_page([row]), True, 'receipt', final_url=url), max_pages=1)
+        assert not res['complete'] and res['reason'] == 'invalid_index_response' and res['candidates'] == []
+    res_win = wayback_lookup(TARGET, lambda kind, url: Response(200, wayback_page([out_of_window_row]), True, 'receipt', final_url=url), max_pages=1, from_timestamp='2020', to_timestamp='2020')
+    assert not res_win['complete'] and res_win['reason'] == 'invalid_index_response' and res_win['candidates'] == []
+    res_redirect = wayback_lookup(TARGET, lambda kind, url: Response(200, wayback_page(), True, 'receipt', final_url='https://evil.example/cdx'), max_pages=1)
+    assert not res_redirect['complete'] and res_redirect['reason'] == 'incomplete_response'
+    res_429 = wayback_lookup(TARGET, lambda kind, url: Response(429, b'', True, 'receipt', final_url=url), max_pages=1)
+    assert not res_429['complete'] and res_429['reason'] == 'denied'
+    valid_row = [K, '20200102030405', TARGET, 'application/pdf', '200', '-', '0']
+    res_page_limit = wayback_lookup(TARGET, lambda kind, url: Response(200, wayback_page([valid_row], 'next-token'), True, 'receipt', final_url=url), max_pages=1)
+    assert not res_page_limit['complete'] and res_page_limit['reason'] == 'page_limit' and len(res_page_limit['candidates']) == 1
     for body, status, complete in [(wayback_page([wrong]), 200, True), (b'bad', 200, True), (b'', 403, True), (b'', 200, False)]:
         result = wayback_lookup(TARGET, lambda kind, url: Response(status, body, complete, 'receipt', final_url=url), max_pages=1)
         assert not result['complete']

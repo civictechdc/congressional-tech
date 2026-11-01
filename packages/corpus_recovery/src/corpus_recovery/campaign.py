@@ -60,8 +60,11 @@ def plan(descriptor, *, output, engine):
     # does not elevate arbitrary accepted mapping rows into recovery evidence.
     state="SELECT cast(NULL AS VARCHAR) AS url,cast(NULL AS VARCHAR) AS capture_disposition,cast(NULL AS VARCHAR) AS capture_decision_id WHERE false"
     if 'state' in campaign.tables:
-        required={'url','capture_disposition','capture_decision_id'}
-        if not required.issubset(pq.read_schema(campaign.table_path('state')).names):
+        # url_state.parquet (model/sql/url-state.sql) names the literal 'requested_url';
+        # older state tables name it 'url'. Either is the same literal address.
+        state_names=set(pq.read_schema(campaign.table_path('state')).names)
+        state_url='url' if 'url' in state_names else 'requested_url' if 'requested_url' in state_names else None
+        if state_url is None or not {'capture_disposition','capture_decision_id'}.issubset(state_names):
             raise ValueError('State table lacks versioned capture eligibility')
         if not {'state_profile','state_requirements'}.issubset(campaign.tables):
             raise ValueError('State requires its pinned capture profile and requirements')
@@ -73,10 +76,10 @@ def plan(descriptor, *, output, engine):
         if policy!={'acceptance_policy':VERSION,'requirements_sha256':campaign.tables['state_requirements'].sha256}:
             raise ValueError('State requirements or acceptance policy do not match its profile')
         inputs.extend([_input(campaign,'state','state_input'),_input(campaign,'state_requirements','state_requirements')])
-        state=f"""SELECT s.url,CASE WHEN s.capture_disposition='satisfied' AND
+        state=f"""SELECT s.{state_url} AS url,CASE WHEN s.capture_disposition='satisfied' AND
             NOT coalesce(r.target_requirement={_q(campaign.requirement)} AND r.acceptance_policy={_q(VERSION)},false)
             THEN 'eligible' ELSE s.capture_disposition END AS capture_disposition,s.capture_decision_id
-            FROM state_input s LEFT JOIN state_requirements r ON s.url=r.original_url"""
+            FROM state_input s LEFT JOIN state_requirements r ON s.{state_url}=r.original_url"""
     steps=[dict(name='targets',sql=raw),dict(name='state',sql=state),
         dict(name='candidate_counts',sql='SELECT target_url,count(*) AS candidates FROM candidates_input GROUP BY target_url'),
         dict(name='ledger',sql=f'''SELECT t.target_url,t.normalized_url,t.url_key,t.membership_origin,

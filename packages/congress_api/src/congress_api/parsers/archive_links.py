@@ -74,7 +74,7 @@ def capture_links(item, base=""):
         return [{**item, 'url': target}]
     if not isinstance(value, str) or re.search(r'[\s?#]', value):
         return []  # Query/fragment boundaries and whitespace are ambiguous.
-    wrapper = re.fullmatch(r'https?://(?:www\.)?lis\.gov/cgi-lis/t2GPO/(https?://.+)', value, re.I)
+    wrapper = re.fullmatch(r'https?://(?:www\.)?(?:lis|congress)\.gov/cgi-lis/t2GPO/(https?://.+)', value, re.I)
     if wrapper:
         targets = [wrapper[1]]
         if not allowed_url(targets[0]):

@@ -115,13 +115,38 @@
     "source": "test_capture_url_admission.py literals from failed CI37420553827"
   },
   {
+    "id": "congress-lis-gpo",
+    "url": "http://www.congress.gov/cgi-lis/t2GPO/http://www.gpo.gov/fdsys/pkg/BILLS-113hr4005ih/pdf/BILLS-113hr4005ih.pdf",
+    "key": "gpo.gov/fdsys/pkg/BILLS-113hr4005ih/pdf/BILLS-113hr4005ih.pdf"
+  },
+  {
     "id": "senate-notfound",
     "url": "https://www.judiciary.senate.gov/404?notfound=download/01/06/2026/benton-sjq",
+    "key": "judiciary.senate.gov/download/01/06/2026/benton-sjq"
+  },
+  {
+    "id": "senate-notfound-percent-fragment",
+    "url": "https://www.judiciary.senate.gov/404?notfound=%2fdownload%2f01%2f06%2f2026%2fbenton-sjq#page=1",
     "key": "judiciary.senate.gov/download/01/06/2026/benton-sjq"
   },
   {
     "id": "download-ampersand-query",
     "url": "https://democrats-science.house.gov/download/ashley-nunes-witness-testimony&download=1",
     "key": "democrats-science.house.gov/download/ashley-nunes-witness-testimony?download=1"
+  },
+  {
+    "id": "download-ampersand-space-fragment",
+    "url": "https://democrats-science.house.gov/download/ashley-nunes-witness-testimony%20&download=1#page=2",
+    "key": "democrats-science.house.gov/download/ashley-nunes-witness-testimony?download=1"
+  },
+  {
+    "id": "senate-coldfusion-download-strip",
+    "url": "https://www.finance.senate.gov/download/testimony-pdf?download=1",
+    "key": "finance.senate.gov/download/testimony-pdf"
+  },
+  {
+    "id": "senate-coldfusion-download-ampersand-strip",
+    "url": "https://www.appropriations.senate.gov/download/testimony-pdf&download=1",
+    "key": "appropriations.senate.gov/download/testimony-pdf"
   }
 ]

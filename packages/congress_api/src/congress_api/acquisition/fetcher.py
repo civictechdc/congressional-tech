@@ -22,16 +22,24 @@ class CaptureScope:
         self.exclusions = tuple(map(re.compile, exclusions))
         self.resolve = resolve
 
-    def __call__(self, url):
+    def matches_static(self, url):
+        """Check URL syntax, allowlist and exclusions without resolving the host."""
         try:
             validate_record(url)
             parts = urlsplit(url)
             host = parts.hostname
-            if (parts.scheme not in {'http','https'} or not host or parts.username is not None
+        except ValueError:
+            return False
+        return not (parts.scheme not in {'http','https'} or not host or parts.username is not None
                     or parts.password is not None or host == 'localhost' or host.endswith(('.local','.internal'))
                     or not any(p.fullmatch(url) for p in self.patterns)
-                    or any(p.search(url) for p in self.exclusions)):
-                return False
+                    or any(p.search(url) for p in self.exclusions))
+
+    def __call__(self, url):
+        if not self.matches_static(url):
+            return False
+        try:
+            host = urlsplit(url).hostname
             try:
                 addresses = [str(ipaddress.ip_address(host))]
             except ValueError:

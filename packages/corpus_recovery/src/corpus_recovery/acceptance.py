@@ -121,6 +121,131 @@ def identity_source(spec, base):
             'relationship_evidence':row.get(spec['relationship_field']) if spec.get('relationship_field') else None}
 
 
+def _bill_kinds(space):
+    """Bill-type alternation (longest first); `space` is the whitespace allowed inside a kind token."""
+    s = space
+    return (rf'h\.?{s}con\.?{s}res\.?|s\.?{s}con\.?{s}res\.?|h\.?{s}j\.?{s}res\.?|s\.?{s}j\.?{s}res\.?'
+            rf'|h\.?{s}res\.?|s\.?{s}res\.?|h\.?{s}r\.?|s\.?')
+
+
+# Metadata identifiers such as 'HR-4824', 'H.R. 4824' or 'hr7'.
+_BILL_TOKEN_RE = re.compile(rf'(?i)\b({_bill_kinds(r"\s*")})\s*[-.]?\s*([0-9]{{1,5}})\b')
+# GPO package/file names: BILLS-118hr4824ih, BILLS-118-hr-4824.pdf.
+_GPO_BILLS_RE = re.compile(
+    r'(?i)\bBILLS-[0-9]{2,3}-?(hconres|sconres|hjres|sjres|hres|sres|hr|s)-?([0-9]{1,5})(?![0-9])'
+)
+_URL_BILL_SLUG_RE = re.compile(
+    r'(?i)(?:^|/)(hr|s|hres|sres|hjres|sjres|hconres|sconres)-([0-9]{1,5})(?:$|[.?&#])'
+)
+# Page-text headings stay on one line and never follow a single-letter
+# abbreviation ('U.S. 2023', 'U. S. 2023'), a word character or an apostrophe
+# ("Member's 12"). Sentence ends ("purposes. H.R. 12") still match.
+_PAGE_BILL_RE = re.compile(
+    rf"(?i)(?<![\w.'’])(?<!\b[a-z]\.[ \t])\b({_bill_kinds('[ \t]*')})[ \t]*-?[ \t]*([0-9]{{1,5}})\b"
+)
+# GPO typeset bills print '1ST SESSION H. R.' with the bill number either inline,
+# on the next line, or as the large stamp emitted after the GPO job footer at the
+# end of the page stream. Margin line numbers are never consulted.
+_SESSION_HEADING_RE = re.compile(
+    rf'(?im)\bSESSION[ \t]+({_bill_kinds("[ \t]*")})(?![a-z])[ \t]*(?:\n[ \t]*)?([0-9]{{1,5}})?(?![0-9])'
+)
+_GPO_FOOTER_STAMP_RE = re.compile(r'(?:\([0-9]+\|[0-9]+\)|\.xml[^\n]*)[ \t]*\n\s*([0-9]{1,5})\s*\Z', re.IGNORECASE)
+# Identity corroboration is a bounded read of an already qualified body.
+_PDF_IDENTITY_MAX_BYTES = 128 * 1024 * 1024
+BODY_BILL_CONFLICT = 'conflicting_body_bill_identifier'
+BODY_BILL_UNVERIFIED = 'body_bill_identifier_unverified'
+
+
+def _normalize_bill_kind(raw_kind):
+    return re.sub(r'[^a-z]', '', raw_kind.lower())
+
+
+def _bill_pair(match):
+    return _normalize_bill_kind(match.group(1)), str(int(match.group(2)))
+
+
+def _extract_expected_bill(target):
+    """Return the target's (kind, number) from source-native identifiers, then its URL."""
+    identifiers = target.get('identifiers') or {}
+    for name in ('bill', 'document', 'package'):
+        value = identifiers.get(name)
+        if value is None:
+            continue
+        # Only 'bill' is free-form; document/package IDs are matched as GPO names so
+        # unrelated IDs (for example witness 'S0001') never become bill numbers.
+        patterns = (_GPO_BILLS_RE, _BILL_TOKEN_RE) if name == 'bill' else (_GPO_BILLS_RE,)
+        for pattern in patterns:
+            m = pattern.search(str(value))
+            if m:
+                return _bill_pair(m)
+    url = target.get('url') or ''
+    for pattern in (_GPO_BILLS_RE, _URL_BILL_SLUG_RE):
+        m = pattern.search(url)
+        if m:
+            return _bill_pair(m)
+    return None
+
+
+def page_bill_identifiers(text):
+    """All (kind, number) bill headings named by first-page PDF text."""
+    found = {_bill_pair(m) for m in _PAGE_BILL_RE.finditer(text)}
+    for heading in _SESSION_HEADING_RE.finditer(text):
+        kind = _normalize_bill_kind(heading.group(1))
+        if heading.group(2):
+            found.add((kind, str(int(heading.group(2)))))
+            continue
+        stamp = _GPO_FOOTER_STAMP_RE.search(text)
+        if stamp:
+            found.add((kind, str(int(stamp.group(1)))))
+    return found
+
+
+def bill_text_disagreement(expected, text):
+    """None when page text names only the expected bill, else a review reason."""
+    found = page_bill_identifiers(text or '')
+    if not found:
+        return BODY_BILL_UNVERIFIED
+    if found != {expected}:
+        return BODY_BILL_CONFLICT
+    return None
+
+
+def _read_first_page_text(body):
+    """Read verified body bytes once, bounded, and confirm they are the qualified bytes."""
+    import io
+    import pypdf
+    with Path(body.path).open('rb') as stream:
+        raw = stream.read(_PDF_IDENTITY_MAX_BYTES + 1)
+    if len(raw) > _PDF_IDENTITY_MAX_BYTES or len(raw) != body.size_bytes or sha256(raw).hexdigest() != body.sha256:
+        raise ValueError('PDF identity read does not match the verified body')
+    body._require_custody(body.path)
+    if Path(body.path).suffix == '.gz':
+        with gzip.GzipFile(fileobj=io.BytesIO(raw)) as stream:
+            raw = stream.read(_PDF_IDENTITY_MAX_BYTES + 1)
+        if len(raw) > _PDF_IDENTITY_MAX_BYTES:
+            raise ValueError('PDF identity decompression limit exceeded')
+    reader = pypdf.PdfReader(io.BytesIO(raw))
+    return (reader.pages[0].extract_text() or '') if reader.pages else ''
+
+
+def _corroborate_pdf_bill_identifier(body, target, *, media_type=None, revision_fields=frozenset()):
+    """Return None when a PDF body does not contradict the target bill, else a review reason.
+
+    Fails closed: unreadable, image-only or heading-free first pages cannot
+    corroborate an expected bill. HTML bodies and bill-free targets are unaffected.
+    """
+    if 'bill' in revision_fields or media_type != 'application/pdf':
+        return None
+    expected = _extract_expected_bill(target)
+    if expected is None:
+        return None
+    try:
+        text = _read_first_page_text(body)
+    except Exception:  # Any read, custody or parser failure leaves identity unverified.
+        return BODY_BILL_UNVERIFIED
+    return bill_text_disagreement(expected, text)
+
+
 def decide(target, candidate, *, requirement, relationship, body, qualification, receipt, receipt_sha256):
     """Compare all target facts, binding the decision to qualified captured bytes."""
     from corpus_recovery.qualification import verify_qualification_record
@@ -164,4 +289,12 @@ def decide(target, candidate, *, requirement, relationship, body, qualification,
         a,b = (str(v).strip() if v is not None else '' for v in (a,b))
         if not a or not b: return result('review_required','missing_'+name)
         if a != b and name not in revision_fields: return result('rejected','conflicting_'+name)
+    body_reason = _corroborate_pdf_bill_identifier(
+        body,
+        target,
+        media_type=qualification.get('media_type'),
+        revision_fields=revision_fields,
+    )
+    if body_reason is not None:
+        return result('review_required', body_reason)
     return result('accepted','source_identifiers_match')

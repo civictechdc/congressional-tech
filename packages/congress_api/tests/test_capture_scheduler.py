@@ -672,3 +672,308 @@ def test_campaign_queue_uses_exact_membership_and_feedback(tmp_path):
     result=plan_queue(load(root,tmp_path/'read-campaign'),engine=engine(),work=tmp_path/'campaign-plan',
                       as_of=ASOF,request_budget=10,campaign=campaign)
     assert {row['requested_url'] for row in pq.read_table(result['queue']).to_pylist()} == {targets[0],targets[2]}
+
+
+def test_pattern_family_does_not_call_dns_resolver(tmp_path):
+    from congress_api.acquisition.capture_scheduler import CapturePolicy
+    scope_file = tmp_path / 'capture_scope.json'
+    scope_file.write_text(json.dumps(dict(
+        version=1,
+        entries=[dict(
+            family='committee_documents',
+            patterns=[r'https://(?:[a-z0-9-]+\.)*house\.gov/download/[^#]*'],
+            exclusions=[r'.*&download=1$'],
+        )],
+    )))
+    calls = []
+    def fail_resolve(host):
+        calls.append(host)
+        raise OSError('offline')
+    policy = CapturePolicy(scope_file, resolve=fail_resolve)
+    assert len(policy.digest) == 64
+    assert policy.pattern_family('https://selectcommittee.house.gov/download/doc.pdf?download=1') == 'committee_documents'
+    assert policy.pattern_family('https://selectcommittee.house.gov/download/doc.pdf&download=1') is None
+    assert policy.pattern_family('http://selectcommittee.house.gov/download/doc.pdf') is None
+    assert calls == []
+    assert policy.family('https://selectcommittee.house.gov/download/doc.pdf?download=1') is None
+    assert calls == ['selectcommittee.house.gov']
+
+
+def test_queue_repairs_amp_download_and_prefers_in_scope_https(tmp_path):
+    from congress_api.acquisition.capture_scheduler import plan_queue
+    from congress_shared.campaign import load_campaign
+    entries = [dict(
+        family='committee_documents',
+        patterns=[r'https://(?:[a-z0-9-]+\.)*house\.gov/(?:download|files)/[^#]*'],
+        exclusions=[r'.*&download=1$'],
+    )]
+    amp = 'https://democrats-science.house.gov/download/ashley-nunes-witness-testimony&download=1'
+    good = 'https://democrats-science.house.gov/download/ashley-nunes-witness-testimony?download=1'
+    http_url = 'http://appropriations.house.gov/files/report.pdf'
+    https_url = 'https://appropriations.house.gov/files/report.pdf'
+
+    # 1. Lone &download=1 seed is repaired to ?download=1
+    w1 = tmp_path / 'lone_amp'
+    w1.mkdir()
+    r1 = release(w1, [], entries=entries)
+    s1 = w1 / 'seeds.json'
+    s1.write_text(json.dumps({'urls': [amp, http_url, https_url]}))
+    q1 = plan_queue(load(r1, w1 / 'read'), engine=engine(), work=w1 / 'plan', as_of=ASOF, request_budget=10, seed_inventories=[s1])
+    assert {r['requested_url'] for r in pq.read_table(q1['queue']).to_pylist()} == {good, https_url}
+
+    # 2. Existing failed state with &download=1 is substituted by repaired ?download=1 in campaign mode
+    w2 = tmp_path / 'campaign_amp'
+    w2.mkdir()
+    r2 = release(w2, [dict(
+        requested_url=amp,
+        attempts=1,
+        last_status=404,
+        last_outcome='http_status',
+        next_attempt_at=datetime(2026, 1, 1, tzinfo=timezone.utc),
+    )], entries=entries)
+    table = pq.read_table(r2 / 'url_state.parquet')
+    for name, values in [('capture_disposition', ['eligible']), ('capture_reason', ['pending']), ('capture_decision_id', [None])]:
+        table = table.append_column(name, pa.array(values, type=pa.string()))
+    pq.write_table(table, r2 / 'url_state.parquet')
+    req = w2 / 'requirements.parquet'
+    tgt = w2 / 'targets.parquet'
+    cand = w2 / 'candidates.parquet'
+    pq.write_table(pa.table({'original_url': [amp], 'target_requirement': ['historical_exact'], 'acceptance_policy': ['policy']}), req)
+    pq.write_table(pa.table({'target_url': [amp]}), tgt)
+    pq.write_table(pa.table({'target_url': [amp], 'candidate_url': [good]}), cand)
+    profile = json.loads((r2 / 'capture_profile.json').read_text())
+    profile.update(version=2, recovery_policy={'acceptance_policy': 'policy', 'requirements_sha256': hashlib.sha256(req.read_bytes()).hexdigest()})
+    (r2 / 'capture_profile.json').write_text(json.dumps(profile))
+    write_manifest(r2)
+    def pin(path):
+        return {'path': str(path), 'sha256': hashlib.sha256(path.read_bytes()).hexdigest()}
+    desc = w2 / 'campaign.json'
+    desc.write_text(json.dumps(dict(
+        version=1,
+        campaign_id='amp-repair',
+        requirement='historical_exact',
+        tables={'targets': pin(tgt), 'candidates': pin(cand), 'requirements': pin(req)},
+        target_table='targets',
+        candidate_table='candidates',
+    )))
+    q2 = plan_queue(load(r2, w2 / 'read'), engine=engine(), work=w2 / 'plan', as_of=ASOF, request_budget=10, campaign=load_campaign(desc))
+    assert [r['requested_url'] for r in pq.read_table(q2['queue']).to_pylist()] == [good]
+
+
+
+# Work Item 3: retained-address scenarios (docs/experiments/url-normalization-validation-20261031
+# evidence/scheduler-results.json) run against the real capture scope and URL rules.
+PROJECT=Path(__file__).resolve().parents[3]
+SCOPE_ENTRIES=json.loads((PROJECT/'model/registries/capture-scope.json').read_text())['entries']
+AMP='https://democrats-science.house.gov/download/ashley-nunes-witness-testimony&download=1'
+GOOD='https://democrats-science.house.gov/download/ashley-nunes-witness-testimony?download=1'
+HTTP='http://docs.house.gov/billsthisweek/20130304/BILLS-113hr933ih.xml'
+HTTPS='https://docs.house.gov/billsthisweek/20130304/BILLS-113hr933ih.xml'
+WSTATE='https://docs.house.gov/meetings/IF/IF00/20261010/118001/HHRG-118-IF00-Wstate-A.pdf'
+GOVINFO='https://www.govinfo.gov/content/pkg/CHRG-119hhrg12345/pdf/CHRG-119hhrg12345.pdf'
+RETAINED_ASOF='2026-10-31T23:59:59Z'
+PAST=datetime(2026,1,1,tzinfo=timezone.utc)
+FUTURE=datetime(2027,1,1,tzinfo=timezone.utc)
+AMP_STATE=dict(requested_url=AMP,attempts=0,last_attempt=None,last_status=None,last_outcome=None,last_good_at=None,
+    next_attempt_at=None,capture_disposition='eligible',capture_reason='no_satisfying_recovery',capture_decision_id=None)
+HTTP_STATES=[dict(requested_url=url,attempts=1,last_attempt=stamp,last_status=200,last_outcome='stored',last_good_at=stamp,
+    next_attempt_at=None,capture_disposition='eligible',capture_reason='no_satisfying_recovery',capture_decision_id=None)
+    for url,stamp in ((HTTP,datetime(2026,9,29,2,19,12,326567,tzinfo=timezone.utc)),
+                      (HTTPS,datetime(2026,10,2,22,40,55,66127,tzinfo=timezone.utc)))]
+
+
+def _attempted(path,urls):
+    with gzip.open(path,'wt') as out:
+        for url in urls:out.write(json.dumps(dict(url=url,attempted=True,complete=True,outcome='http_status',
+            http_status=404,error_type=None))+'\n')
+    return path
+
+
+def _plan(work,states,seeds=(),*,targets=None,candidates=(),requirements=None,recovery=False,attempted=None,as_of=RETAINED_ASOF):
+    """Plan one queue over the real scope; return (queue rows, release id, campaign)."""
+    from congress_api.acquisition.capture_scheduler import plan_queue
+    from congress_shared.campaign import load_campaign
+    work.mkdir(parents=True,exist_ok=True)
+    root=release(work,states,entries=SCOPE_ENTRIES)
+    campaign=None
+    if recovery or targets is not None:
+        table=pq.read_table(root/'url_state.parquet')
+        for name,default in (('capture_disposition','eligible'),('capture_reason','pending'),('capture_decision_id',None)):
+            table=table.append_column(name,pa.array([row.get(name,default) for row in states],type=pa.string()))
+        pq.write_table(table,root/'url_state.parquet')
+        originals=list(targets or []) if requirements is None else list(requirements)
+        req=work/'requirements.parquet'
+        pq.write_table(pa.table({'original_url':pa.array(originals,type=pa.string()),
+            'target_requirement':pa.array(['historical_exact']*len(originals),type=pa.string()),
+            'acceptance_policy':pa.array(['policy']*len(originals),type=pa.string())}),req)
+        profile=json.loads((root/'capture_profile.json').read_text())
+        profile.update(version=2,recovery_policy={'acceptance_policy':'policy',
+            'requirements_sha256':hashlib.sha256(req.read_bytes()).hexdigest()})
+        (root/'capture_profile.json').write_text(json.dumps(profile));write_manifest(root)
+        if targets is not None:
+            tgt=work/'targets.parquet';cand=work/'candidates.parquet'
+            pq.write_table(pa.table({'target_url':pa.array(list(targets),type=pa.string())}),tgt)
+            pq.write_table(pa.table({'target_url':pa.array([t for t,_ in candidates],type=pa.string()),
+                'candidate_url':pa.array([c for _,c in candidates],type=pa.string())}),cand)
+            def pin(path):return {'path':str(path),'sha256':hashlib.sha256(path.read_bytes()).hexdigest()}
+            descriptor=work/'campaign.json'
+            descriptor.write_text(json.dumps(dict(version=1,campaign_id='work-item-3',requirement='historical_exact',
+                tables={'targets':pin(tgt),'candidates':pin(cand),'requirements':pin(req)},
+                target_table='targets',candidate_table='candidates')))
+            campaign=load_campaign(descriptor)
+    seed=work/'seeds.json';seed.write_text(json.dumps({'urls':list(seeds)}))
+    selected=load(root,work/'read')
+    result=plan_queue(selected,engine=engine(),work=work/'plan',as_of=as_of,request_budget=20,
+        seed_inventories=[seed],campaign=campaign,attempted=attempted)
+    return pq.read_table(result['queue']).to_pylist(),selected,campaign
+
+
+def _observed(row):
+    return [json.loads(value)[:2] for value in row['observations']]
+
+
+@pytest.mark.parametrize('name,states,seeds,campaign,expected,observed',[
+    ('mixed_amp_seeds',[],[AMP,GOOD],False,[(GOOD,0)],[[AMP,'seeds.json'],[GOOD,'seeds.json']]),
+    ('lone_amp_seed',[],[AMP],False,[(GOOD,0)],[[AMP,'seeds.json']]),
+    ('existing_bad_state',[AMP_STATE],[GOOD],False,[(GOOD,0)],[[GOOD,'seeds.json']]),
+    ('mixed_http_seeds',[],[HTTP,HTTPS],False,[(HTTPS,0)],[[HTTP,'seeds.json'],[HTTPS,'seeds.json']]),
+    ('existing_http_states',HTTP_STATES,[],False,[(HTTPS,3)],[[HTTPS,'release']]),
+    ('campaign_actual',[AMP_STATE],[GOOD],True,[(GOOD,0)],[[AMP,'campaign'],[GOOD,'seeds.json']]),
+    # Same retained inputs; native substitution keeps the repaired address inside campaign membership.
+    ('campaign_naive_substitution',[AMP_STATE],[GOOD],True,[(GOOD,0)],[[AMP,'campaign'],[GOOD,'seeds.json']]),
+])
+def test_retained_address_scenarios(tmp_path,name,states,seeds,campaign,expected,observed):
+    rows,selected,_=_plan(tmp_path/name,states,seeds,targets=[AMP] if campaign else None,
+        candidates=[(AMP,GOOD)] if campaign else ())
+    assert [(row['requested_url'],row['priority']) for row in rows]==expected
+    assert all(row['family']=='documents' for row in rows)
+    release_source='release:'+selected['release_id']
+    assert [[url,'release' if source==release_source else source] for url,source in _observed(rows[0])]==observed
+
+
+@pytest.mark.parametrize('next_attempt_at,expected',[(FUTURE,[]),(None,[(GOOD,3)])])
+def test_stale_failed_amp_row_does_not_preempt_stored_repair(tmp_path,next_attempt_at,expected):
+    rows,_,_=_plan(tmp_path,[
+        dict(requested_url=AMP,attempts=1,last_status=404,last_outcome='http_status',next_attempt_at=PAST),
+        dict(requested_url=GOOD,attempts=1,last_status=200,last_outcome='stored',next_attempt_at=next_attempt_at)])
+    assert [(row['requested_url'],row['priority']) for row in rows]==expected
+
+
+@pytest.mark.parametrize('target,candidate',[(AMP,GOOD),(WSTATE,GOVINFO)])
+def test_satisfied_target_suppresses_its_eligible_candidates(tmp_path,target,candidate):
+    rows,_,_=_plan(tmp_path,[
+        dict(requested_url=target,attempts=1,last_outcome='stored',capture_disposition='satisfied',
+             capture_reason='accepted',capture_decision_id='decision-1'),
+        dict(requested_url=candidate,attempts=0)],targets=[target],candidates=[(target,candidate)])
+    assert rows==[]
+
+
+def test_out_of_scope_http_state_moves_to_in_scope_https_seed(tmp_path):
+    rows,_,_=_plan(tmp_path,[dict(requested_url=HTTP,attempts=1,last_status=404,last_outcome='http_status',
+        next_attempt_at=PAST)],[HTTPS])
+    assert [(row['requested_url'],row['priority']) for row in rows]==[(HTTPS,2)]
+    assert _observed(rows[0])==[[HTTPS,'seeds.json']]
+
+
+def test_state_only_repair_keeps_original_address_in_observations(tmp_path):
+    rows,selected,_=_plan(tmp_path,[dict(requested_url=AMP,attempts=1,last_status=404,last_outcome='http_status',
+        next_attempt_at=PAST)])
+    assert [(row['requested_url'],row['priority']) for row in rows]==[(GOOD,2)]
+    assert _observed(rows[0])==[[AMP,'release:'+selected['release_id']]]
+
+
+def test_cross_key_campaign_candidate_is_suppressed_after_attempt(tmp_path):
+    from congress_api.acquisition.capture_scheduler import cutoff_report
+    states=[dict(requested_url=WSTATE,attempts=1,last_status=404,last_outcome='http_status',next_attempt_at=PAST)]
+    rows,_,_=_plan(tmp_path/'first',states,targets=[WSTATE],candidates=[(WSTATE,GOVINFO)])
+    assert [row['requested_url'] for row in rows]==[GOVINFO]
+    attempted=_attempted(tmp_path/'attempted.jsonl.gz',[GOVINFO])
+    rows,selected,campaign=_plan(tmp_path/'replan',states,targets=[WSTATE],candidates=[(WSTATE,GOVINFO)],attempted=attempted)
+    assert rows==[]
+    [report]=cutoff_report(selected,urls=[WSTATE],attempted=attempted,engine=engine(),work=tmp_path/'cutoff',
+        as_of=RETAINED_ASOF,stop_reason='queue_empty',campaign=campaign)
+    assert report['disposition']=='attempted' and report['http_status']==404
+
+
+def test_trimmed_space_repair_is_suppressed_after_attempt(tmp_path):
+    spaced='https://democrats-science.house.gov/uploads/report.pdf%20'
+    trimmed='https://democrats-science.house.gov/uploads/report.pdf'
+    states=[dict(requested_url=spaced,attempts=1,last_status=404,last_outcome='http_status',next_attempt_at=PAST)]
+    rows,_,_=_plan(tmp_path/'first',states)
+    assert [row['requested_url'] for row in rows]==[trimmed]
+    rows,_,_=_plan(tmp_path/'replan',states,attempted=_attempted(tmp_path/'attempted.jsonl.gz',[trimmed]))
+    assert rows==[]
+
+
+@pytest.mark.parametrize('seed,expected',[
+    ('https://www.judiciary.senate.gov/404?notfound=download/01/06/2026/benton-sjq',
+     'https://www.judiciary.senate.gov/download/01/06/2026/benton-sjq'),
+    ('https://www.judiciary.senate.gov/404?notfound=%2Fdownload%2Fbenton%20testimony.pdf#main',
+     'https://www.judiciary.senate.gov/download/benton%20testimony.pdf'),
+    ('https://www.foreign.senate.gov/download/smith-testimony&download=1',
+     'https://www.foreign.senate.gov/download/smith-testimony?download=1'),
+])
+def test_lone_senate_seed_is_repaired_from_bound_rules(tmp_path,seed,expected):
+    rows,_,_=_plan(tmp_path,[],[seed])
+    assert [(row['requested_url'],row['priority']) for row in rows]==[(expected,0)]
+    assert _observed(rows[0])==[[seed,'seeds.json']]
+
+
+@pytest.mark.parametrize('next_attempt_at',[None,FUTURE])
+def test_stored_html_wrapper_amp_row_is_repaired_once(tmp_path,next_attempt_at):
+    wrapper=dict(requested_url=AMP,attempts=1,last_status=200,last_outcome='stored',next_attempt_at=next_attempt_at)
+    rows,selected,_=_plan(tmp_path/'eligible',[wrapper],recovery=True)
+    assert [(row['requested_url'],row['priority']) for row in rows]==[(GOOD,2)]
+    assert _observed(rows[0])==[[AMP,'release:'+selected['release_id']]]
+    stored=dict(requested_url=GOOD,attempts=1,last_status=200,last_outcome='stored',next_attempt_at=FUTURE)
+    rows,_,_=_plan(tmp_path/'repaired',[wrapper,stored],recovery=True)
+    assert rows==[]
+
+
+def test_campaign_target_without_requirement_is_refused(tmp_path):
+    with pytest.raises(ValueError,match='campaign membership'):
+        _plan(tmp_path,[dict(AMP_STATE)],targets=[AMP,WSTATE],requirements=[AMP])
+
+
+def test_address_repair_rules_are_bound_from_the_url_rule_registry():
+    from congress_api.acquisition.capture_scheduler import ADDRESS_REPAIR_RULES
+    rules={rule['id']:rule for rule in json.loads((PROJECT/'model/registries/url-rules.json').read_text())}
+    assert all(rules[name]['kind']=='wrapper' and rules[name]['decoder'] in {'none','percent'} for name in ADDRESS_REPAIR_RULES)
+    assert '(?:house|senate)' in rules['download-ampersand-query']['pattern']
+
+
+def test_static_scope_match_is_shared_and_resolver_free():
+    from congress_api.acquisition.fetcher import CaptureScope
+    def fail(host):raise AssertionError(host)
+    scope=CaptureScope([r'https://fixture\.test/[^#]*'],[r'\.css$'],resolve=fail)
+    assert scope.matches_static('https://fixture.test/a.pdf')
+    assert not scope.matches_static('https://fixture.test/a.css')
+    assert not scope.matches_static('https://user:secret@fixture.test/a.pdf')
+    assert not scope.matches_static('http://fixture.test/a.pdf')
+    assert not scope.matches_static('https://[::1')
+
+
+def test_satisfied_row_suppresses_other_spellings_of_its_key(tmp_path):
+    variant=GOVINFO.replace('https://www.','https://')
+    rows,_,_=_plan(tmp_path,[
+        dict(requested_url=GOVINFO,attempts=1,last_outcome='stored',capture_disposition='satisfied',
+             capture_reason='accepted',capture_decision_id='decision-1'),
+        dict(requested_url=variant,attempts=1,last_status=404,last_outcome='http_status',next_attempt_at=PAST)],recovery=True)
+    assert rows==[]
+
+
+def test_failed_first_campaign_candidate_falls_through_to_untried_second_candidate(tmp_path):
+    """R3-F2: an already-attempted campaign candidate with its own state row must not starve an untried candidate."""
+    cand_a='https://www.govinfo.gov/content/pkg/CHRG-118hhrg00001/pdf/CHRG-118hhrg00001.pdf'
+    cand_b='https://www.govinfo.gov/content/pkg/CHRG-118hhrg99999/pdf/CHRG-118hhrg99999.pdf'
+    states=[
+        dict(requested_url=WSTATE,attempts=1,last_status=404,last_outcome='http_status',next_attempt_at=PAST,
+             capture_disposition='eligible',capture_reason='no_accepted_recovery',capture_decision_id='d-w'),
+        dict(requested_url=cand_a,attempts=1,last_status=404,last_outcome='http_status',next_attempt_at=FUTURE,
+             capture_disposition='eligible',capture_reason='no_accepted_recovery',capture_decision_id='d-a'),
+    ]
+    rows,_,_=_plan(tmp_path,states,targets=[WSTATE],
+        candidates=[(WSTATE,cand_a),(WSTATE,cand_b)],requirements=[WSTATE])
+    assert [row['requested_url'] for row in rows]==[cand_b]
+    assert _observed(rows[0])==[[WSTATE,'campaign']]
+

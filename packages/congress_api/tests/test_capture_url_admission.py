@@ -56,11 +56,13 @@ GPO_PDF = 'https://www.gpo.gov/fdsys/pkg/BILLS-114hr456ih/pdf/BILLS-114hr456ih.p
 GPO_XML = [f'https://www.gpo.gov/fdsys/pkg/BILLS-115s585{version}/xml/BILLS-115s585{version}.xml'
            for version in ('rfh', 'es')]
 LIS_WRAPPER = 'https://www.lis.gov/cgi-lis/t2GPO/' + GPO_PDF
+CONGRESS_LIS_WRAPPER = 'http://www.congress.gov/cgi-lis/t2GPO/http://www.gpo.gov/fdsys/pkg/BILLS-113hr4005ih/pdf/BILLS-113hr4005ih.pdf'
 CONCATENATED = ''.join(GPO_XML)
 
 
 @pytest.mark.parametrize('original, targets, reason', [
     (LIS_WRAPPER, [GPO_PDF], 'lis_gpo_wrapper'),
+    (CONGRESS_LIS_WRAPPER, ['http://www.gpo.gov/fdsys/pkg/BILLS-113hr4005ih/pdf/BILLS-113hr4005ih.pdf'], 'lis_gpo_wrapper'),
     (CONCATENATED, GPO_XML, 'concatenated_file_urls'),
 ])
 def test_known_source_defects_recover_literal_targets_with_provenance(original, targets, reason):

@@ -4,6 +4,7 @@ from datetime import datetime, timezone
 from dataclasses import replace
 from contextlib import ExitStack
 import hashlib
+import ipaddress
 from itertools import chain
 import json
 import os
@@ -75,10 +76,22 @@ class CapturePolicy:
             families.add(entry['family'])
             scope=CaptureScope(entry['patterns'],entry['exclusions'],resolve=resolve)
             self.entries.append((entry,scope))
+        self.digest=hashlib.sha256(
+            json.dumps({'version':1,'entries':[entry for entry,_ in self.entries]},sort_keys=True,separators=(',',':')).encode('utf-8')
+        ).hexdigest()
 
     def require_capture(self):
         if not self.entries:
             raise ValueError('Cannot capture with an empty scope registry')
+
+    def pattern_family(self,url):
+        """Check static URL syntax and capture-scope regexes without live DNS resolution."""
+        if not _safe_reference(url):return None
+        try:
+            if not ipaddress.ip_address(urlsplit(url).hostname).is_global:return None
+        except ValueError:
+            pass
+        return next((entry['family'] for entry,scope in self.entries if scope.matches_static(url)),None)
 
     def family(self,url):
         if not isinstance(url,str) or len(url.encode('utf-8'))>16384:return None
@@ -239,6 +252,37 @@ def _check_keys(values):
         raise ValueError('Shared url_key definition did not preserve one key per input')
 
 
+# Fetch-address repairs reuse the release's bound url_rules: these wrapper rules
+# already give the observed and repaired spellings one url_key. Trailing encoded
+# spaces have no keying rule, so a trimmed spelling is a separate-key candidate
+# that stays bound to the observed row's key.
+ADDRESS_REPAIR_RULES=('download-ampersand-query','senate-notfound','lis-gpo')
+TRAILING_SPACES=r'(?:%20)+$'
+
+
+def _repair_spelling(rules):
+    """One regex for observed spellings that have a repaired fetch address."""
+    patterns=[rule['pattern'] for rule in rules if rule['id'] in ADDRESS_REPAIR_RULES]
+    return '|'.join(f'(?:{pattern})' for pattern in [*patterns,TRAILING_SPACES])
+
+
+def _address_repairs_sql(source):
+    """Repaired fetch spellings of (url,url_key) rows; each keeps its source key."""
+    ids=','.join(map(_literal,ADDRESS_REPAIR_RULES))
+    return f"""SELECT CASE r.decoder WHEN 'percent' THEN uri_normalize_encoding(url_resolve(
+            percent_decode_utf8(regexp_replace(s.url,r.pattern,r.replacement)),cast(NULL AS VARCHAR)))
+        ELSE regexp_replace(s.url,r.pattern,r.replacement) END AS url,s.url_key
+        FROM ({source}) s JOIN url_rules r ON r.id IN ({ids}) AND regexp_like(s.url,r.pattern)
+        UNION ALL SELECT regexp_replace(s.url,{_literal(TRAILING_SPACES)},'') AS url,s.url_key
+        FROM ({source}) s WHERE regexp_like(s.url,{_literal(TRAILING_SPACES)})"""
+
+
+def _campaign_candidates_sql(targets):
+    """Explicit campaign candidates carry their target's url_key, not their own."""
+    return f"""SELECT cc.candidate_url AS url,kt.url_key FROM campaign_candidates cc
+        JOIN ({targets}) kt ON kt.url=cc.target_url WHERE kt.url_key IS NOT NULL"""
+
+
 def _reviewed_cutoffs(urls):
     urls=tuple(urls)
     if len(urls)>1024 or any(not isinstance(url,str) or not url or len(url.encode('utf-8'))>16384 for url in urls):
@@ -255,7 +299,7 @@ def _record_attempt(path,url,*,attempted,complete=None,outcome=None,http_status=
             http_status=http_status,error_type=error_type))+'\n')
 
 
-def cutoff_report(release,*,urls,attempted,engine,work,as_of,stop_reason,_keyed_states_cache=None):
+def cutoff_report(release,*,urls,attempted,engine,work,as_of,stop_reason,_keyed_states_cache=None,campaign=None):
     """Account for every reviewed URL, including deadline/budget/scope deferrals."""
     _require_capture_authority(release)
     urls=_reviewed_cutoffs(urls)
@@ -275,6 +319,10 @@ def cutoff_report(release,*,urls,attempted,engine,work,as_of,stop_reason,_keyed_
     key_sources=[('attempted','attempted','url'),('cutoffs','cutoff','url')]
     if not reuse_keyed_states:
         key_sources.insert(0,('states','state','requested_url'))
+    if campaign is not None:
+        inputs.extend([dict(name='campaign_targets',kind='parquet',path=str(campaign.table_path(campaign.target_table))),
+                       dict(name='campaign_candidates',kind='parquet',path=str(campaign.table_path(campaign.candidate_table)))])
+        key_sources.append(('campaign_targets','target','target_url'))
     steps=_key_steps(binding,key_sources)
     selected_states_sql=(f"SELECT s.requested_url,s.next_attempt_at,{policy.sql('s.requested_url')} AS family,s.url_key FROM keyed_states s"
         if reuse_keyed_states else
@@ -282,10 +330,16 @@ def cutoff_report(release,*,urls,attempted,engine,work,as_of,stop_reason,_keyed_
         {policy.sql('s.requested_url')} AS family,k.url_key FROM states s JOIN url_keys k
         ON k.input_id='state:' || s.requested_url""")
     steps.extend([dict(name='selected_states',sql=selected_states_sql),
-        dict(name='selected_attempts',sql="""SELECT a.*,k.url_key FROM attempted a JOIN url_keys k
-            ON k.input_id='attempted:' || a.url"""),
         dict(name='reviewed_cutoffs',sql="""SELECT DISTINCT c.url,k.url_key FROM cutoffs c JOIN url_keys k
-            ON k.input_id='cutoff:' || c.url""")])
+            ON k.input_id='cutoff:' || c.url"""),
+        # Same candidate addresses plan_queue requests on behalf of a key.
+        dict(name='attempt_aliases',sql=_address_repairs_sql("""SELECT url,url_key FROM reviewed_cutoffs
+            UNION SELECT requested_url AS url,url_key FROM selected_states""")+(" UNION ALL "+_campaign_candidates_sql(
+            """SELECT t.target_url AS url,k.url_key FROM campaign_targets t JOIN url_keys k
+            ON k.input_id='target:' || t.target_url""") if campaign is not None else '')),
+        dict(name='selected_attempts',sql="""SELECT a.*,k.url_key FROM attempted a JOIN url_keys k
+                ON k.input_id='attempted:' || a.url
+            UNION SELECT a.*,x.url_key FROM attempted a JOIN attempt_aliases x ON x.url=a.url""")])
     values=run_job(work,engine,inputs=inputs,outputs=[],steps=steps,
         queries=[*_key_queries(),dict(name='cutoffs',sql=f"""SELECT requested_url,disposition,reason,
             next_attempt_at,complete,outcome,http_status FROM (SELECT k.url AS requested_url,
@@ -299,10 +353,12 @@ def cutoff_report(release,*,urls,attempted,engine,work,as_of,stop_reason,_keyed_
                  ELSE {_literal(stop_reason or 'not_attempted')} END AS reason,
             s.next_attempt_at,a.complete,a.outcome,a.http_status,
             row_number() OVER(PARTITION BY k.url ORDER BY CASE WHEN k.url=s.requested_url THEN 0 ELSE 1 END,
-                s.next_attempt_at DESC NULLS LAST,s.requested_url) AS ordinal
+                s.next_attempt_at DESC NULLS LAST,s.requested_url,a.attempted DESC NULLS LAST,a.url) AS ordinal
             FROM reviewed_cutoffs k LEFT JOIN selected_states s ON k.url_key=s.url_key
             LEFT JOIN selected_attempts a ON k.url_key=a.url_key) WHERE ordinal=1 ORDER BY requested_url""")])
     _check_keys(values)
+    if campaign is not None:
+        campaign.require_custody()
     return values['cutoffs']
 
 
@@ -377,36 +433,103 @@ def plan_queue(release,*,engine,work,as_of,request_budget,seed_inventories=(),
         steps.append(dict(name='keyed_states',sql="""SELECT s.*,k.url_key FROM states s JOIN url_keys k
             ON k.input_id='state:' || s.requested_url"""))
     disposition = 's.capture_disposition' if recovery_eligibility else 'cast(NULL AS VARCHAR)'
+    outcome = "coalesce(cast(s.last_outcome AS VARCHAR),'')"
     campaign_filter = " AND (capture_disposition IS NULL OR capture_disposition='eligible')" if recovery_eligibility else ''
-    if campaign is not None:campaign_filter+=" AND EXISTS (SELECT 1 FROM campaign_targets t WHERE t.target_url=scoped.requested_url)"
+    if campaign is not None:
+        campaign_filter += " AND EXISTS (SELECT 1 FROM campaign_allowed ca WHERE ca.url=scoped.requested_url)"
+    repair_sources = """SELECT url,url_key FROM keyed_seeds WHERE url_key IS NOT NULL
+        UNION SELECT requested_url AS url,url_key FROM keyed_states WHERE url_key IS NOT NULL"""
+    explicit_candidates = (" UNION ALL SELECT url,url_key,'campaign' AS tier FROM ("
+        + _campaign_candidates_sql('SELECT url,url_key FROM keyed_seeds') + ")") if campaign is not None else ''
+    bad_spelling = _literal(_repair_spelling(binding['rules']))
     steps.extend([
         dict(name='keyed_seeds',sql="""SELECT s.*,k.url_key FROM seed_rows s JOIN url_keys k
             ON k.input_id='seed:' || s.url"""),
-        dict(name='keyed_attempts',sql="""SELECT DISTINCT k.url_key FROM attempted a JOIN url_keys k
-            ON k.input_id='attempted:' || a.url"""),
         dict(name='keyed_cutoffs',sql="""SELECT DISTINCT k.url_key FROM cutoffs c JOIN url_keys k
             ON k.input_id='cutoff:' || c.url"""),
         dict(name='observations',sql="""SELECT url_key,min(url) AS url,array_agg(DISTINCT json_array(url,source,pointer)
             ORDER BY json_array(url,source,pointer)) AS observations FROM keyed_seeds GROUP BY url_key"""),
-        dict(name='seed_urls',sql="""SELECT url_key,min(url) AS url FROM keyed_seeds GROUP BY url_key"""),
-        dict(name='candidates',sql=f"""SELECT requested_url,attempts,cast(last_outcome AS VARCHAR) AS last_outcome,next_attempt_at,s.url_key,{disposition} AS capture_disposition
-            FROM keyed_states s
-            UNION ALL SELECT o.url AS requested_url,0 AS attempts,cast(NULL AS VARCHAR) AS last_outcome,
+        # Fetch addresses per target key: observed seeds, repaired spellings of
+        # seeds/states, and explicit campaign candidates (bound to the target key).
+        dict(name='candidate_urls',sql=f"""SELECT DISTINCT url,url_key,tier FROM (
+            SELECT url,url_key,'seed' AS tier FROM keyed_seeds WHERE url_key IS NOT NULL
+            UNION ALL SELECT url,url_key,'repair' AS tier FROM ({_address_repairs_sql(repair_sources)}){explicit_candidates})
+            WHERE url IS NOT NULL"""),
+        # An attempted candidate suppresses its own key and every target key it serves.
+        dict(name='keyed_attempts',sql="""SELECT k.url_key FROM attempted a JOIN url_keys k
+                ON k.input_id='attempted:' || a.url
+            UNION SELECT c.url_key FROM attempted a JOIN candidate_urls c ON c.url=a.url"""),
+        dict(name='state_urls',sql="SELECT DISTINCT requested_url AS url FROM keyed_states"),
+        # A key is done when any of its rows is satisfied/excluded; its candidates
+        # are done unless they also serve another open key.
+        dict(name='done_keys',sql=f"SELECT DISTINCT url_key FROM keyed_states s WHERE {disposition} IN ('satisfied','excluded')"),
+        dict(name='done_urls',sql="""SELECT c.url FROM candidate_urls c JOIN done_keys d ON c.url_key=d.url_key
+            EXCEPT SELECT c.url FROM candidate_urls c LEFT ANTI JOIN done_keys d ON c.url_key=d.url_key"""),
+        # The observed target address has failed or yielded only an unsatisfying body.
+        dict(name='unusable_keys',sql=f"""SELECT DISTINCT url_key FROM keyed_states s
+            WHERE (s.attempts>0 AND {outcome} NOT IN ('stored','unchanged'))
+               OR ({outcome} IN ('stored','unchanged') AND {disposition}='eligible')"""),
+        dict(name='seed_urls',sql=f"""SELECT url_key,url,tier,in_scope FROM (
+            SELECT *,row_number() OVER(PARTITION BY url_key ORDER BY
+                CASE WHEN in_scope THEN 0 ELSE 1 END,CASE WHEN bad THEN 1 ELSE 0 END,
+                CASE WHEN tier='campaign' AND unusable AND NOT has_state THEN 0
+                     WHEN tier='seed' THEN 1
+                     WHEN tier='campaign' AND NOT has_state THEN 2
+                     WHEN NOT has_state THEN 3
+                     WHEN tier='campaign' THEN 4
+                     ELSE 5 END,url) AS ordinal FROM (
+                SELECT c.url_key,c.url,c.tier,{policy.sql('c.url')} IS NOT NULL AS in_scope,
+                    regexp_like(c.url,{bad_spelling}) AS bad,u.url_key IS NOT NULL AS unusable,
+                    su.url IS NOT NULL AS has_state
+                FROM candidate_urls c LEFT JOIN unusable_keys u ON c.url_key=u.url_key
+                LEFT JOIN state_urls su ON su.url=c.url)) WHERE ordinal=1""")]
+        + ([dict(name='campaign_allowed',sql="""SELECT target_url AS url FROM campaign_targets
+            UNION SELECT c.candidate_url AS url FROM campaign_candidates c JOIN campaign_targets t ON c.target_url=t.target_url
+            UNION SELECT o.url FROM seed_urls o JOIN keyed_seeds ks ON o.url_key=ks.url_key JOIN campaign_targets t ON ks.url=t.target_url""")] if campaign is not None else [])
+        + [
+        # 'keep' moves the row's schedule to a better address; 'reset' repairs a
+        # stored-but-unsatisfying observed address that the candidate never had.
+        dict(name='state_candidates',sql=f"""SELECT s.requested_url,s.attempts,cast(s.last_outcome AS VARCHAR) AS last_outcome,
+            s.next_attempt_at,s.url_key,{disposition} AS capture_disposition,o.url AS candidate_url,
+            own.url IS NOT NULL AS candidate_has_state,CASE
+            WHEN o.url IS NULL OR o.url=s.requested_url OR NOT o.in_scope THEN cast(NULL AS VARCHAR)
+            WHEN {outcome} IN ('stored','unchanged') AND {disposition}='eligible'
+                 AND (regexp_like(s.requested_url,{bad_spelling}) OR o.tier='campaign') THEN 'reset'
+            WHEN {policy.sql('s.requested_url')} IS NULL THEN 'keep'
+            WHEN {outcome} NOT IN ('stored','unchanged') AND regexp_like(s.requested_url,{bad_spelling}) THEN 'keep'
+            WHEN {outcome} NOT IN ('stored','unchanged') AND s.attempts>0 AND o.tier='campaign' THEN 'keep'
+            END AS repair
+            FROM keyed_states s LEFT JOIN seed_urls o ON s.url_key=o.url_key LEFT JOIN state_urls own ON own.url=o.url"""),
+        # A candidate with its own state row is governed by that row, never by a stale spelling.
+        dict(name='candidates',sql="""SELECT CASE WHEN repair IS NULL THEN requested_url ELSE candidate_url END AS requested_url,
+                requested_url AS observed_url,attempts,
+                CASE WHEN repair IS DISTINCT FROM 'reset' THEN last_outcome END AS last_outcome,
+                CASE WHEN repair IS DISTINCT FROM 'reset' THEN next_attempt_at END AS next_attempt_at,
+                url_key,capture_disposition
+            FROM state_candidates WHERE repair IS NULL OR NOT candidate_has_state
+            UNION ALL SELECT o.url AS requested_url,o.url AS observed_url,0 AS attempts,cast(NULL AS VARCHAR) AS last_outcome,
                 cast(NULL AS TIMESTAMP) AS next_attempt_at,o.url_key,cast(NULL AS VARCHAR) AS capture_disposition
-            FROM seed_urls o LEFT ANTI JOIN keyed_states s ON o.url_key=s.url_key"""),
+            FROM seed_urls o LEFT ANTI JOIN keyed_states s ON o.url_key=s.url_key
+            LEFT ANTI JOIN state_urls own ON own.url=o.url"""),
         dict(name='scoped',sql=f"""SELECT c.*,{policy.sql('requested_url')} AS family,
             CASE WHEN attempts=0 THEN 0 WHEN last_outcome='size_limit' OR k.url_key IS NOT NULL
             THEN 1 WHEN last_outcome IN ('stored','unchanged') AND next_attempt_at IS NULL THEN 3 ELSE 2 END AS priority
             FROM candidates c LEFT JOIN keyed_cutoffs k ON c.url_key=k.url_key
-            LEFT ANTI JOIN keyed_attempts a ON c.url_key=a.url_key"""),
+            LEFT ANTI JOIN keyed_attempts a ON c.url_key=a.url_key
+            LEFT ANTI JOIN done_keys dk ON c.url_key=dk.url_key
+            LEFT ANTI JOIN done_urls du ON c.requested_url=du.url"""),
         dict(name='eligible',sql=f"SELECT * FROM scoped WHERE family IS NOT NULL AND (next_attempt_at IS NULL OR next_attempt_at<=to_timestamp({_literal(as_of)})){campaign_filter}"),
-        dict(name='due',sql="""SELECT * FROM (SELECT *,row_number() OVER(PARTITION BY url_key
+        dict(name='due_keys',sql="""SELECT * FROM (SELECT *,row_number() OVER(PARTITION BY url_key
             ORDER BY priority,next_attempt_at NULLS FIRST,requested_url) AS ordinal FROM eligible) WHERE ordinal=1"""),
-        dict(name='top_due',sql=f"""SELECT requested_url,family,priority,next_attempt_at,url_key FROM due
+        # A repaired address can serve more than one key; request it once.
+        dict(name='due',sql="""SELECT requested_url,observed_url,family,priority,next_attempt_at,url_key FROM (
+            SELECT *,row_number() OVER(PARTITION BY requested_url ORDER BY priority,next_attempt_at NULLS FIRST,url_key) AS url_ordinal
+            FROM due_keys) WHERE url_ordinal=1"""),
+        dict(name='top_due',sql=f"""SELECT requested_url,observed_url,family,priority,next_attempt_at,url_key FROM due
             ORDER BY priority,next_attempt_at NULLS FIRST,requested_url LIMIT {request_budget}""")])
     outputs=[parquet_output(work,'queue',
         f"""SELECT d.requested_url,d.family,d.priority,d.next_attempt_at,
-            coalesce(o.observations,make_array(json_array(d.requested_url,{_literal('release:'+release['release_id'])},'[]'))) AS observations
+            coalesce(o.observations,make_array(json_array(d.observed_url,{_literal('release:'+release['release_id'])},'[]'))) AS observations
             FROM top_due d LEFT JOIN observations o ON d.url_key=o.url_key
             ORDER BY d.priority,d.next_attempt_at NULLS FIRST,d.requested_url""",
         ['priority','next_attempt_at','requested_url'])]
@@ -423,7 +546,8 @@ def plan_queue(release,*,engine,work,as_of,request_budget,seed_inventories=(),
             dict(name='duplicate_campaign_targets',sql="SELECT count(*) AS violations FROM (SELECT target_url FROM campaign_targets GROUP BY target_url HAVING count(*)>1)"),
             dict(name='bad_campaign_candidates',sql="SELECT count(*) AS violations FROM campaign_candidates c LEFT ANTI JOIN campaign_targets t ON c.target_url=t.target_url"),
             dict(name='null_campaign_candidates',sql="SELECT count(*) AS violations FROM campaign_candidates WHERE target_url IS NULL OR candidate_url IS NULL OR candidate_url=''"),
-            dict(name='bad_campaign_requirements',sql=f"SELECT count(*) AS violations FROM campaign_requirements r JOIN campaign_targets t ON r.original_url=t.target_url WHERE r.target_requirement IS NULL OR r.acceptance_policy IS NULL OR r.target_requirement<>{_literal(campaign.requirement)} OR r.acceptance_policy<>{_literal(profile['recovery_policy']['acceptance_policy'])}"),
+            # Every target needs its requirement (as campaign.plan's state check enforces).
+            dict(name='bad_campaign_requirements',sql=f"SELECT count(*) AS violations FROM campaign_targets t LEFT JOIN campaign_requirements r ON r.original_url=t.target_url WHERE r.original_url IS NULL OR r.target_requirement IS NULL OR r.acceptance_policy IS NULL OR r.target_requirement<>{_literal(campaign.requirement)} OR r.acceptance_policy<>{_literal(profile['recovery_policy']['acceptance_policy'])}"),
             dict(name='bad_campaign_state',sql=f"SELECT count(*) AS violations FROM {states_table} WHERE capture_disposition IS NULL OR capture_disposition NOT IN ('eligible','satisfied','excluded')")]
     values=run_job(work,engine,inputs=inputs,steps=steps,outputs=outputs,queries=[
         *campaign_queries,
@@ -838,7 +962,7 @@ def _run_capture(release,*,engine,work,as_of,request_budget,byte_budget,spool_bu
         try:
             stats['cutoffs']=cutoff_report(release,urls=cutoff_urls,attempted=attempted,engine=engine,
                 work=plan_work/'cutoff-report',as_of=as_of,stop_reason=stats['stop_reason'],
-                _keyed_states_cache=keyed_states_cache)
+                _keyed_states_cache=keyed_states_cache,campaign=campaign)
         finally:
             (work/'summary.json').write_text(json.dumps(stats,ensure_ascii=False,indent=2)+'\n')
 

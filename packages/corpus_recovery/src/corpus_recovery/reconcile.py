@@ -1,7 +1,7 @@
 """Native recovery reconciliation and thin imports through the common raw writer."""
 from datetime import timezone
 import gzip
-from hashlib import file_digest
+from hashlib import file_digest, sha256
 import json
 import re
 from pathlib import Path
@@ -11,6 +11,7 @@ from urllib.parse import urlsplit
 import pyarrow as pa
 import pyarrow.parquet as pq
 
+from congress_shared.custody import canonical_json_bytes, verify_local_file
 from congress_api.models.raw_fetch import BodyFile,FetchAttempt,FetchResult
 from congress_api.retention.provenance import (
     file_pin,finish_stage,instant,json_input,parquet_output,parquet_records,run_job,stage_records,
@@ -224,12 +225,80 @@ def reconcile(accepted,captures,registry,*,output,engine,decided_at,decided_by):
 
 
 
+def import_reconciled_stage(
+    stage_dir,
+    *,
+    writer=None,
+    ready_only=False,
+    imported_at=None,
+    body_paths_by_sha256=None,
+):
+    """Validate a sealed reconciliation stage and optionally import ready rows via ReceiptWriter."""
+    from datetime import datetime
+    from congress_api.retention.body_keys import body_key_digest
+    from congress_api.retention.provenance import load_stage
+
+    root, value = load_stage(stage_dir)
+    if value.get('kind') != 'recoveries' or 'missing_imports' not in value or 'ready_imports' not in value:
+        raise ValueError('Import needs a recovery reconciliation stage')
+    if value['import_counts']['unresolved'] and not ready_only:
+        raise ValueError('Unresolved source times remain; inspect the report or explicitly select --ready-only')
+    selected = value['ready_imports'] if ready_only else value['missing_imports']
+    if selected not in {item['path'] for item in value.get('artifacts', [])}:
+        raise ValueError('Import request artifact is not pinned by the stage')
+
+    at = imported_at or datetime.now(timezone.utc).isoformat()
+    instant(at)
+
+    def source_row(row):
+        key = row.get('body_key')
+        if not key or body_key_digest(key) != row.get('body_sha256'):
+            raise ValueError('Import request has a mismatched physical body key')
+        if row.get('status') != 'ready_for_owner_import':
+            raise ValueError('Import request lacks original source evidence')
+        suffix = row['stored_suffix'] if row.get('stored_suffix') is not None else '.gz'
+        source = dict(row, stored_suffix=suffix, imported_at=at)
+        sha = row['body_sha256']
+        verified = None
+        if body_paths_by_sha256 and sha in body_paths_by_sha256:
+            # A local replacement body must be the exact decoded bytes named by the stage.
+            size = row.get('bytes') if type(row.get('bytes')) is int else None
+            verified = verify_local_file(body_paths_by_sha256[sha], expected_sha256=sha, expected_size=size)
+            source['body_path'] = str(verified.path)
+            source['retained_reference'] = False
+        else:
+            source['retained_reference'] = True
+        # Stable per-row receipt identity: a retry after partial failure reuses the
+        # frozen receipt instead of writing another one under a new run ID.
+        operation = 'reconciled-' + sha256(canonical_json_bytes(dict(
+            provenance=value['provenance'], original_url=row.get('original_url'), body_sha256=sha))).hexdigest()
+        return source, verified, operation
+
+    # Validate (and verify local bodies for) every pinned import request in one
+    # pass before writing any receipts.
+    sources = [source_row(row) for row in parquet_records(root / selected)]
+
+    imported_receipts = []
+    if writer is not None:
+        freeze_dir = root / 'frozen-receipts'
+        for source, verified, operation in sources:
+            key, line = import_retained(writer, source, operation_id=operation,
+                                        freeze_dir=freeze_dir, verified_body=verified)
+            imported_receipts.append({'receipt_key': key, 'record': line})
+
+    return dict(
+        records=len(sources),
+        unresolved=value['import_counts']['unresolved'],
+        apply=writer is not None,
+        imported_receipts=imported_receipts,
+    )
+
+
 def main(argv=None):
     import argparse
     from datetime import datetime
     from uuid import uuid4
     from docspec_client.client import NativeDatasets
-    from congress_api.retention.provenance import load_stage
     parser=argparse.ArgumentParser(description=__doc__)
     commands=parser.add_subparsers(dest='command',required=True)
     stage=commands.add_parser('stage',help='Stage local native reconciliation; no live storage')
@@ -258,28 +327,9 @@ def main(argv=None):
         result=reconcile(args.accepted,captures,args.kind_registry,output=args.stage,engine=engine,
                          decided_at=args.decided_at,decided_by=args.decided_by)
         print(json.dumps(result,indent=2));return
-    root,value=load_stage(args.stage)
-    if value['kind']!='recoveries' or 'missing_imports' not in value or 'ready_imports' not in value:
-        raise ValueError('Import needs a recovery reconciliation stage')
-    if value['import_counts']['unresolved'] and not args.ready_only:
-        raise ValueError('Unresolved source times remain; inspect the report or explicitly select --ready-only')
-    selected=value['ready_imports'] if args.ready_only else value['missing_imports']
-    if selected not in {item['path'] for item in value.get('artifacts',[])}:
-        raise ValueError('Import request artifact is not pinned by the stage')
-    def source_row(row,at):
-        key=row['body_key']
-        from congress_api.retention.body_keys import body_key_digest
-        if body_key_digest(key)!=row['body_sha256']:
-            raise ValueError('Import request has a mismatched physical body key')
-        if row['status']!='ready_for_owner_import':raise ValueError('Import request lacks original source evidence')
-        return dict(row,retained_reference=True,imported_at=at)
-
-    # Validate every pinned import request before connection. Existing bodies
-    # are referenced by exact physical keys; no PDF/body bytes are reread.
     now=datetime.now(timezone.utc).isoformat()
-    count=0
-    for row in parquet_records(root/selected):source_row(row,now);count+=1
-    result=dict(records=count,unresolved=value['import_counts']['unresolved'],apply=False)
+    check_res=import_reconciled_stage(args.stage,writer=None,ready_only=args.ready_only,imported_at=now)
+    result=dict(records=check_res['records'],unresolved=check_res['unresolved'],apply=False)
     if args.apply:
         from congress_api.retention.writer_identity import writer_identity
         from congress_api.retention.body_store import BodyStore,R2Adapter
@@ -290,7 +340,7 @@ def main(argv=None):
         writer=ReceiptWriter(BodyStore(R2Adapter(client,args.bucket)),identity=identity,
             run_id='recovery-'+datetime.now(timezone.utc).strftime('%Y%m%dT%H%M%SZ')+'-'+uuid4().hex[:12],
             write_date=datetime.now(timezone.utc).date().isoformat(),archive_limits=None)
-        for row in parquet_records(root/selected):import_retained(writer,source_row(row,now))
+        import_reconciled_stage(args.stage,writer=writer,ready_only=args.ready_only,imported_at=now)
         result.update(apply=True,writer=identity,run_id=writer.run_id)
     print(json.dumps(result,indent=2))
 

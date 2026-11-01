@@ -15,6 +15,13 @@ import json
 from pathlib import Path
 import re
 
+from corpus_recovery.url_normalization import (
+    _normalize_and_key_url,
+    narrow_address_repairs,
+    scope_probe_urls,
+    url_identity,
+)
+
 
 def compare_loaded_digest(data, expected, error):
     """Hash bytes the caller already loaded and raise that caller's error on mismatch."""
@@ -136,6 +143,159 @@ def sealed_inputs(batch):
     return files, inventory, dict(receipt_records=len(prepared), capture_rows=len(captures), distinct_bodies=len(inventory))
 
 
+_DOCUMENT_EXTENSIONS = ('.pdf', '.xml', '.doc', '.docx', '.xls', '.xlsx', '.ppt', '.pptx', '.zip', '.rtf', '.csv')
+_ROW_URL_COLUMNS = ('url', 'context_url', 'requested_url')
+# Every column the history scan reads; Parquet scans project only these.
+_HISTORY_COLUMNS = (
+    *_ROW_URL_COLUMNS, 'family', 'body_key', 'sha256', 'body_sha256', 'media_type', 'fidelity',
+    'retrieved_at', 'checked_at', 'last_attempt', 'outcome', 'resolution', 'last_outcome',
+    'http_status', 'last_status', 'complete', 'intact', 'mode', 'receipt_key', 'receipt_line',
+    'evidence_id', 'record_role', 'is_real_file', 'placeholder_body', 'usable_direct', 'subtype',
+    'attempts',
+)
+
+
+def _row_outcome(row):
+    return row.get('resolution') or row.get('outcome') or row.get('last_outcome')
+
+
+def _row_status(row):
+    status = row.get('http_status')
+    return row.get('last_status') if status is None else status
+
+
+def _expects_document(url):
+    lower = (url or '').lower()
+    path = lower.split('#', 1)[0].split('?', 1)[0]
+    return ('/404?notfound=' in lower or '/download/' in lower or 'download=1' in lower
+            or path.endswith(_DOCUMENT_EXTENSIONS))
+
+
+def _is_usable_direct_row(row, url=''):
+    """Check whether a single capture/state row represents a usable direct body.
+
+    Rows must carry receipt evidence, a document role (when stated), a complete
+    (where the column exists) and intact body, and must not be retained imports.
+    """
+    if not isinstance(row, dict) or row.get('usable_direct') is False:
+        return False
+    if _row_evidence_id(row) is None or row.get('mode') == 'retained_import':
+        return False
+    if 'complete' in row and row['complete'] is not True:
+        return False
+    if row.get('intact') is False:
+        return False
+    if row.get('record_role') is not None and row['record_role'] != 'document':
+        return False
+    if row.get('usable_direct') is True:
+        return True
+    if not (row.get('body_key') or row.get('sha256') or row.get('body_sha256')):
+        return False
+    if row.get('is_real_file') is False or bool(row.get('placeholder_body')):
+        return False
+    outcome = _row_outcome(row)
+    status = _row_status(row)
+    if status is not None:
+        if int(status) != 200 or outcome not in ('stored', 'unchanged', 'ok', 'usable_direct', 'verified'):
+            return False
+    # Never treat status-less 'unchanged' state rows as usable direct bodies.
+    elif outcome not in ('stored', 'ok', 'usable_direct', 'verified'):
+        return False
+    media_type = (row.get('media_type') or '').split(';', 1)[0].strip().lower()
+    if media_type in ('text/html', 'application/xhtml+xml'):
+        row_urls = (url, *(row.get(c) for c in (*_ROW_URL_COLUMNS, 'raw_url')))
+        if any(_expects_document(u) for u in row_urls if isinstance(u, str)):
+            return False
+    return True
+
+
+def _iso_instant(value):
+    """Render datetimes and ISO strings as comparable UTC ``YYYY-MM-DDTHH:MM:SS.ffffffZ``."""
+    if value is None or value == '':
+        return ''
+    instant = value
+    if isinstance(value, str):
+        try:
+            instant = datetime.fromisoformat(value.replace('Z', '+00:00').replace('z', '+00:00'))
+        except ValueError:
+            return value
+    if not isinstance(instant, datetime):
+        return str(value)
+    if instant.tzinfo is not None:
+        instant = instant.astimezone(timezone.utc).replace(tzinfo=None)
+    return instant.strftime('%Y-%m-%dT%H:%M:%S.%fZ')
+
+
+def _row_order_key(row):
+    return (
+        _iso_instant(row.get('checked_at') or row.get('retrieved_at') or row.get('last_attempt')),
+        str(row.get('receipt_key') or ''),
+        int(row.get('receipt_line') or 0),
+    )
+
+
+def _row_evidence_id(row):
+    if not isinstance(row, dict):
+        return None
+    return (
+        row.get('evidence_id')
+        or (
+            f"{row['receipt_key']}#{row.get('receipt_line') or 1}"
+            if row.get('receipt_key')
+            else None
+        )
+        or row.get('body_key')
+    )
+
+
+def _matching_row_urls(row, wanted):
+    urls = []
+    for key in _ROW_URL_COLUMNS:
+        val = row.get(key)
+        if isinstance(val, str) and val and val not in urls:
+            if wanted is None or val in wanted:
+                urls.append(val)
+    return urls
+
+
+def _iter_table_rows(table_src, *, wanted=None, wanted_arr=None):
+    """Yield history rows matching ``wanted`` URLs, projecting only ``_HISTORY_COLUMNS``."""
+    import pyarrow as pa
+    import pyarrow.compute as pc
+    import pyarrow.parquet as pq
+
+    if wanted is not None and not wanted:
+        return
+    if isinstance(table_src, (str, Path)):
+        table_src = pq.ParquetFile(table_src)
+    if isinstance(table_src, pq.ParquetFile):
+        names = table_src.schema_arrow.names
+        batches = table_src.iter_batches(batch_size=65536, columns=[c for c in _HISTORY_COLUMNS if c in names])
+    elif isinstance(table_src, pa.Table):
+        names = table_src.schema.names
+        batches = table_src.select([c for c in _HISTORY_COLUMNS if c in names]).to_batches(max_chunksize=65536)
+    else:
+        for row in table_src:
+            if wanted is None or _matching_row_urls(row, wanted):
+                yield row
+        return
+
+    if wanted is not None and wanted_arr is None:
+        wanted_arr = pa.array(sorted(wanted), type=pa.string())
+    for batch in batches:
+        if wanted_arr is not None:
+            mask = None
+            for col in _ROW_URL_COLUMNS:
+                if col in batch.schema.names:
+                    col_in = pc.is_in(batch.column(col), value_set=wanted_arr)
+                    mask = col_in if mask is None else pc.or_kleene(mask, col_in)
+            if mask is None:
+                continue
+            batch = batch.filter(mask)
+        if batch.num_rows:
+            yield from batch.to_pylist()
+
+
 def scan_receipt_history(
     source_or_store=None,
     *,
@@ -143,126 +303,246 @@ def scan_receipt_history(
     states=None,
     fetch_outcomes=None,
     urls=None,
-    read_receipt=None,
 ):
     """Read URL recovery history from raw_archive tables directly when available.
 
-    Prefers ``fetch_outcomes``, ``states``, and ``captures`` tables (or a ``RawSnapshot``)
-    and falls back to scanning ``.jsonl.gz`` receipt files only when bootstrapping
-    without a table store.
+    Streams ``fetch_outcomes``, ``states``, and ``captures`` Parquet tables (or a ``RawSnapshot``)
+    with predicate pushdown over ``urls``.
     """
     import pyarrow as pa
     import pyarrow.parquet as pq
 
     wanted = set(urls) if urls is not None else None
     history = {}
-    used_tables = False
+    if wanted is not None and not wanted:
+        return history
+    wanted_arr = pa.array(sorted(wanted), type=pa.string()) if wanted is not None else None
+
+    def observe(url, cand, row):
+        entry = history.setdefault(
+            url,
+            dict(attempts=0, latest_state=cand, usable_attempt=None, outcomes=[], body_keys=[], source='table'),
+        )
+        if _row_order_key(cand) >= _row_order_key(entry['latest_state']):
+            entry['latest_state'] = cand
+        if _is_usable_direct_row(row, url):
+            if entry.get('usable_attempt') is None or _row_order_key(cand) >= _row_order_key(entry['usable_attempt']):
+                entry['usable_attempt'] = cand
+        outcome = _row_outcome(row)
+        if outcome and outcome not in entry['outcomes']:
+            entry['outcomes'].append(outcome)
+        if row.get('body_key') and row['body_key'] not in entry['body_keys']:
+            entry['body_keys'].append(row['body_key'])
+        return entry
 
     if hasattr(source_or_store, 'captures') and callable(getattr(source_or_store, 'captures', None)):
         if captures is None:
             captures = source_or_store.captures()
-        used_tables = True
     if hasattr(source_or_store, 'states_for') and callable(getattr(source_or_store, 'states_for', None)) and wanted:
         for url, state_row in source_or_store.states_for(wanted).items():
+            cand = dict(state_row, url=url, raw_url=state_row.get('url'))
             history[url] = dict(
                 attempts=int(state_row.get('attempts') or 0),
-                latest_state=dict(state_row, url=url),
+                latest_state=cand,
+                usable_attempt=cand if _is_usable_direct_row(state_row, url) else None,
                 outcomes=[state_row['outcome']] if state_row.get('outcome') else [],
                 body_keys=[state_row['body_key']] if state_row.get('body_key') else [],
                 source='table',
             )
-        used_tables = True
 
     root_path = Path(source_or_store) if isinstance(source_or_store, (str, Path)) else None
     if root_path is not None:
         if fetch_outcomes is None and (root_path / 'indexes/fetch-outcomes.parquet').exists():
-            fetch_outcomes = pq.read_table(root_path / 'indexes/fetch-outcomes.parquet')
+            fetch_outcomes = pq.ParquetFile(root_path / 'indexes/fetch-outcomes.parquet')
         if states is None and (root_path / 'indexes/download-state.parquet').exists():
-            states = pq.read_table(root_path / 'indexes/download-state.parquet')
+            states = pq.ParquetFile(root_path / 'indexes/download-state.parquet')
         if captures is None and (root_path / 'indexes/captures.parquet').exists():
-            captures = pq.read_table(root_path / 'indexes/captures.parquet')
+            captures = pq.ParquetFile(root_path / 'indexes/captures.parquet')
 
     for table_src in (fetch_outcomes, states):
         if table_src is None:
             continue
-        used_tables = True
-        rows_iter = (
-            table_src.to_pylist()
-            if isinstance(table_src, pa.Table)
-            else (table_src.read().to_pylist() if isinstance(table_src, pq.ParquetFile) else list(table_src))
-        )
-        for row in rows_iter:
-            url = row.get('url') or row.get('context_url')
-            if not url or (wanted is not None and url not in wanted):
-                continue
-            entry = history.setdefault(
-                url,
-                dict(
-                    attempts=0,
-                    latest_state=dict(row, url=url),
-                    outcomes=[],
-                    body_keys=[],
-                    source='table',
-                ),
-            )
-            attempts = int(row.get('attempts') if row.get('attempts') is not None else 1)
-            entry['attempts'] = max(entry['attempts'], attempts)
-            prev_checked = (entry['latest_state'].get('checked_at') or '')
-            curr_checked = (row.get('checked_at') or '')
-            if curr_checked >= prev_checked:
-                entry['latest_state'] = dict(row, url=url)
-            outcome = row.get('outcome') or row.get('resolution')
-            if outcome and outcome not in entry['outcomes']:
-                entry['outcomes'].append(outcome)
-            if row.get('body_key') and row['body_key'] not in entry['body_keys']:
-                entry['body_keys'].append(row['body_key'])
+        for row in _iter_table_rows(table_src, wanted=wanted, wanted_arr=wanted_arr):
+            for url in _matching_row_urls(row, wanted):
+                entry = observe(url, dict(row, url=url, raw_url=row.get('url')), row)
+                attempts = int(row.get('attempts') if row.get('attempts') is not None else 1)
+                entry['attempts'] = max(entry['attempts'], attempts)
 
     if captures is not None:
-        used_tables = True
-        rows_iter = (
-            captures.to_pylist()
-            if isinstance(captures, pa.Table)
-            else (captures.read().to_pylist() if isinstance(captures, pq.ParquetFile) else list(captures))
-        )
         capture_attempts = Counter()
-        for row in rows_iter:
-            url = row.get('context_url') or row.get('url')
-            if not url or (wanted is not None and url not in wanted):
-                continue
-            capture_attempts[(url, row.get('receipt_key'), row.get('receipt_line'))] += 1
-            entry = history.setdefault(
-                url,
-                dict(
-                    attempts=0,
-                    latest_state=dict(
-                        url=url,
-                        family=row.get('family'),
-                        body_key=row.get('body_key'),
-                        sha256=row.get('sha256'),
-                        media_type=row.get('media_type'),
-                        fidelity=row.get('fidelity'),
-                        retrieved_at=row.get('retrieved_at'),
-                        outcome=row.get('resolution') or row.get('outcome'),
-                        http_status=row.get('http_status'),
-                        attempts=1,
-                    ),
-                    outcomes=[],
-                    body_keys=[],
-                    source='table',
-                ),
-            )
-            outcome = row.get('resolution') or row.get('outcome')
-            if outcome and outcome not in entry['outcomes']:
-                entry['outcomes'].append(outcome)
-            if row.get('body_key') and row['body_key'] not in entry['body_keys']:
-                entry['body_keys'].append(row['body_key'])
+        for row in _iter_table_rows(captures, wanted=wanted, wanted_arr=wanted_arr):
+            for url in _matching_row_urls(row, wanted):
+                capture_attempts[(url, row.get('receipt_key'), row.get('receipt_line'))] += 1
+                # Keep only columns the row has: an absent ``complete`` is not ``True``.
+                cand = dict(
+                    row, url=url, raw_url=row.get('url'),
+                    checked_at=row.get('checked_at') or row.get('retrieved_at'),
+                    outcome=_row_outcome(row),
+                    attempts=1,
+                )
+                observe(url, cand, row)
         by_url_attempts = Counter(u for (u, _, _) in capture_attempts)
         for url, count in by_url_attempts.items():
-            if url in history and history[url]['attempts'] == 0:
+            if url in history and count > history[url]['attempts']:
                 history[url]['attempts'] = count
                 history[url]['latest_state']['attempts'] = count
 
     return history
+
+
+def _target_rows(targets):
+    import pyarrow as pa
+    import pyarrow.parquet as pq
+
+    if isinstance(targets, (str, Path)):
+        return pq.read_table(targets).to_pylist()
+    if isinstance(targets, pa.Table):
+        return targets.to_pylist()
+    return [dict(target_url=t) if isinstance(t, str) else dict(t) for t in targets]
+
+
+def build_target_inventory(
+    targets,
+    *,
+    policy=None,
+    history=None,
+    source_or_store=None,
+    captures=None,
+    states=None,
+    fetch_outcomes=None,
+    output=None,
+    membership_origin='baseline',
+    refresh_policy='historical_only',
+):
+    """Build target inventory rows (and optional Parquet table) from receipt history and CapturePolicy.
+
+    Direct usability is derived from `scan_receipt_history`. Scope exclusion
+    (`acquisition_excluded`) is determined strictly by static `CapturePolicy.pattern_family(url) is None`
+    (falling back to `CapturePolicy.family(url)`) for every spelling in `scope_probe_urls`
+    (the literal and its narrow repairs, resolved against an optional row `context_url`),
+    binding `evidence_id` to `capture_scope:{policy.digest}`.
+    """
+    import pyarrow as pa
+    import pyarrow.parquet as pq
+
+    raw_targets = _target_rows(targets)
+
+    if history is None:
+        target_urls = [
+            r.get('target_url') or r.get('url')
+            for r in raw_targets
+            if r.get('target_url') or r.get('url')
+        ]
+        history = scan_receipt_history(
+            source_or_store,
+            captures=captures,
+            states=states,
+            fetch_outcomes=fetch_outcomes,
+            urls=target_urls,
+        )
+
+    policy_digest = None
+    scope_fn = None
+    if policy is not None:
+        scope_fn = getattr(policy, 'pattern_family', policy.family)
+        policy_digest = getattr(policy, 'digest', None)
+        if not policy_digest and hasattr(policy, 'entries'):
+            from congress_shared.custody import canonical_json_bytes
+            policy_digest = hashlib.sha256(
+                canonical_json_bytes({'version': 1, 'entries': [entry for entry, _ in policy.entries]})
+            ).hexdigest()
+
+    rows = []
+    for raw in raw_targets:
+        target_url = raw.get('target_url') or raw.get('url')
+        if not isinstance(target_url, str) or not target_url.strip():
+            raise ValueError('Target inventory row requires a non-empty target_url')
+        context_url = raw.get('context_url') if isinstance(raw.get('context_url'), str) else None
+        hist = history.get(target_url) if history else None
+        latest = (hist.get('latest_state') or {}) if hist else {}
+
+        if hist is not None:
+            usable_row = hist.get('usable_attempt')
+            if usable_row is None and 'usable_attempt' not in hist and _is_usable_direct_row(latest, target_url):
+                usable_row = latest
+            usable_direct = usable_row is not None
+            hist_evidence_id = _row_evidence_id(usable_row) if usable_row is not None else _row_evidence_id(latest)
+        else:
+            usable_direct = bool(raw.get('usable_direct', False))
+            hist_evidence_id = raw.get('evidence_id')
+
+        if usable_direct:
+            acquisition_excluded = False
+            evidence_id = hist_evidence_id or raw.get('evidence_id')
+            if not evidence_id:
+                raise ValueError(f'Usable direct target requires receipt evidence_id: {target_url}')
+            subtype = raw.get('subtype') or (usable_row or latest).get('subtype') or 'usable_direct'
+            unresolved_reason = None
+        elif policy is not None:
+            in_scope = any(scope_fn(probe) is not None for probe in scope_probe_urls(target_url, context_url))
+            if not in_scope:
+                acquisition_excluded = True
+                if not policy_digest:
+                    raise ValueError('CapturePolicy requires a digest or entries to bind scope exclusion evidence')
+                evidence_id = f'capture_scope:{policy_digest}'
+                subtype = 'capture_scope_excluded'
+                unresolved_reason = None
+            else:
+                acquisition_excluded = False
+                evidence_id = hist_evidence_id or raw.get('evidence_id')
+                subtype = raw.get('subtype') or latest.get('outcome') or latest.get('last_outcome') or 'missing_direct'
+                unresolved_reason = raw.get('unresolved_reason')
+        else:
+            acquisition_excluded = bool(raw.get('acquisition_excluded', False))
+            evidence_id = hist_evidence_id or raw.get('evidence_id')
+            if acquisition_excluded and not evidence_id:
+                raise ValueError(f'Excluded target requires evidence_id: {target_url}')
+            subtype = raw.get('subtype') or latest.get('outcome') or latest.get('last_outcome')
+            unresolved_reason = raw.get('unresolved_reason')
+
+        computed_norm, computed_key = _normalize_and_key_url(target_url)
+        normalized_url = raw.get('normalized_url') or computed_norm
+        url_key = raw.get('url_key') or computed_key
+        row_refresh = (
+            raw['refresh_policy']
+            if 'refresh_policy' in raw and raw['refresh_policy'] is not None
+            else refresh_policy
+        )
+        rows.append(
+            dict(
+                target_url=target_url,
+                normalized_url=normalized_url,
+                url_key=url_key,
+                usable_direct=bool(usable_direct),
+                acquisition_excluded=bool(acquisition_excluded),
+                evidence_id=evidence_id,
+                subtype=subtype,
+                unresolved_reason=unresolved_reason,
+                refresh_policy=row_refresh,
+                membership_origin=raw.get('membership_origin') or membership_origin,
+                context_url=context_url,
+            )
+        )
+
+    if output is not None:
+        schema = pa.schema([
+            ('target_url', pa.string()),
+            ('normalized_url', pa.string()),
+            ('url_key', pa.string()),
+            ('usable_direct', pa.bool_()),
+            ('acquisition_excluded', pa.bool_()),
+            ('evidence_id', pa.string()),
+            ('subtype', pa.string()),
+            ('unresolved_reason', pa.string()),
+            ('refresh_policy', pa.string()),
+            ('membership_origin', pa.string()),
+            ('context_url', pa.string()),
+        ])
+        out_path = Path(output)
+        out_path.parent.mkdir(parents=True, exist_ok=True)
+        pq.write_table(pa.Table.from_pylist(rows, schema=schema), out_path)
+
+    return rows
 
 
 def run(args):

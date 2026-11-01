@@ -130,6 +130,8 @@ def _wayback_page(body):
     """Parse the documented JSON CDX result, including its resume trailer."""
     data = json.loads(body)
     fields = ['urlkey', 'timestamp', 'original', 'mimetype', 'statuscode', 'digest', 'length']
+    if data == []:
+        return [], None
     if not isinstance(data, list) or not data or data[0] != fields:
         raise ValueError('invalid CDX header')
     rows, resume = [], None
@@ -147,9 +149,13 @@ def _wayback_page(body):
 
 
 def wayback_lookup(original, call, *, max_pages, page_size=1000, from_timestamp=None, to_timestamp=None):
-    """Find exact literal-URL captures; a negative covers only this query window."""
+    """Find SURT-matched captures with exact archived replay identity; a negative covers only this query window."""
+    from corpus_recovery.cdx import key
     if not _source_url(original) or max_pages < 1 or not 1 <= page_size <= 50000:
         raise ValueError('invalid target or limits')
+    expected = key(original)
+    if expected is None:
+        raise ValueError('invalid target key')
     for bound in (from_timestamp, to_timestamp):
         if bound is not None and not re.fullmatch(r'\d{4}(?:\d{2}){0,5}', bound):
             raise ValueError('invalid archive time bound')
@@ -177,7 +183,10 @@ def wayback_lookup(original, call, *, max_pages, page_size=1000, from_timestamp=
             rows, next_resume = _wayback_page(response.body)
             for row in rows:
                 ts = row['timestamp']
-                if (row['original'] != original or row['statuscode'] != '200'
+                if (not _source_url(row['original'])
+                        or row['urlkey'] != expected
+                        or key(row['original']) != expected
+                        or row['statuscode'] != '200'
                         or not _timestamp(ts)
                         or (from_timestamp and ts < from_timestamp.ljust(14, '0'))
                         or (to_timestamp and ts > to_timestamp.ljust(14, '9'))):
@@ -186,9 +195,9 @@ def wayback_lookup(original, call, *, max_pages, page_size=1000, from_timestamp=
             reason = 'invalid_index_response'
             break
         for row in rows:
-            replay = f"https://web.archive.org/web/{row['timestamp']}id_/{original}"
-            ident = (row['timestamp'], original, row['digest'])
-            candidates[ident] = {'target_url': original, 'url': replay, 'original_url': original,
+            replay = f"https://web.archive.org/web/{row['timestamp']}id_/{row['original']}"
+            ident = (row['timestamp'], row['original'], row['digest'])
+            candidates[ident] = {'target_url': original, 'url': replay, 'original_url': row['original'],
                                  'timestamp': row['timestamp'], 'digest': row['digest'],
                                  'source': 'wayback', 'evidence': response.evidence}
         if not next_resume:
