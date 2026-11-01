@@ -48,13 +48,13 @@ Outgoing: `document_detail`, `document_meetings`, `document_committees`, `docume
 
 Incoming: `links_document`, `urls_document`, `sources_document`, `recoveries_document`, `document_editions`, `meeting_transcript_documents`.
 
-## `detail` — Document files and metadata
+## `detail` — The keyed document table: one row per document with its stable link_key, files and every list field; list is its no-ID browser projection
 
 One document edition, in exactly the same order as list.
 
-Identity: `list_row` (row_position; release).
+Identity: `link_key` (primary_key; release; a recovery-only document's key can move in a later release only as the data model section 8.2 states).
 
-list_row is virtual: zero-based physical row position, continued across manifest shard row ranges. Never reuse it across releases.
+list_row stays virtual: zero-based physical row position, continued across manifest shard row ranges; never reuse it across releases. Older releases carry only the detail columns; their rows pair with list by list_row.
 
 | Field | Published type | Meaning |
 | --- | --- | --- |
@@ -75,11 +75,39 @@ list_row is virtual: zero-based physical row position, continued across manifest
 | `alternates` | `list<struct<format dict,body fixed[32],suffix dict,size int64>>` | One saved file per other format |
 | `package_id` | `string` | GovInfo package identifier |
 | `facts` | `list<struct<field dict,value string>>` | Selected filename facts, one value per entry |
+| `filename` | `string` | Displayed filename |
+| `title` | `string` | Document or publisher title when known |
+| `document_kind` | `list<dict>` | Document kinds |
+| `document_family` | `list<dict>` | Filename document families |
+| `committee_keys` | `list<dict>` | Congress.gov committee system codes |
+| `chambers` | `list<dict>` | Chambers associated with the document |
+| `congress` | `int16` | Congress number when unambiguous |
+| `format` | `dict` | Original file format |
+| `document_date` | `date32` | Date of the document |
+| `first_captured` | `date32` | First good fetch date |
+| `date_kind` | `dict` | Basis of the archive date |
+| `saved_kind` | `dict` | Original file or recovery |
+| `hidden` | `boolean` | Excluded from search by review; public links still resolve |
+| `meeting_keys` | `list<dict>` | Decimal event IDs |
+| `measure_keys` | `list<dict>` | Bill and nomination identifiers |
+| `bioguide_ids` | `list<dict>` | Member Bioguide identifiers |
+| `witness_keys` | `list<dict>` | Witness appearance identifiers |
+| `version_keys` | `list<dict>` | Hex endpoint keys shared by editions |
 
 - `alternates[]`: Other formats of the same document; each has its own body and suffix.
 - `facts[]`: Embedded selected filename field/value observations; not a generic entity join.
 - `src_start`: Zero-based physical sources row offset; src_len is the contiguous row count.
 - `rec_start`: Zero-based physical recoveries row offset; rec_len is the contiguous row count.
+- `list_row`: This table repeats every list column, so a bare column name in `"list" JOIN detail USING (list_row)` is ambiguous on new releases; qualify columns (l.filename, d.link_key).
+- `document_kind[]`: Same values as list.document_kind; see that field.
+- `document_family[]`: Same values as list.document_family; see that field.
+- `committee_keys[]`: Same values as list.committee_keys; see that field.
+- `chambers[]`: Same values as list.chambers; see that field.
+- `meeting_keys[]`: Same values as list.meeting_keys; see that field.
+- `measure_keys[]`: Same values as list.measure_keys; see that field.
+- `bioguide_ids[]`: Same values as list.bioguide_ids; see that field.
+- `witness_keys[]`: Same values as list.witness_keys; see that field.
+- `version_keys[]`: Same values as list.version_keys; see that field.
 
 Outgoing: `document_public_link`, `document_body`, `alternate_bodies`, `document_package`.
 

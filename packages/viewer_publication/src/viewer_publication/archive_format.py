@@ -47,6 +47,17 @@ DETAIL_COLUMNS = ['link_key', 'saved_body', 'saved_suffix', 'saved_media_type', 
     'src_start', 'src_len', 'rec_start', 'rec_len', 'alternates', 'package_id', 'facts']
 
 
+# The keyed document table: detail-only columns, then the list projection. A new
+# document field needs one entry in a constant above; detail carries it from there.
+DOCUMENT_COLUMNS = [*DETAIL_COLUMNS, *LIST_COLUMNS]
+
+
+LIST_DICTIONARY = [*(f'{name}.list.item' for name in ['document_kind', 'document_family', 'committee_keys', 'chambers', 'meeting_keys', 'measure_keys', 'bioguide_ids', 'witness_keys', 'version_keys']), 'format', 'date_kind', 'saved_kind']
+
+
+DETAIL_DICTIONARY = ['saved_suffix', 'saved_media_type', 'document_date_source', 'alternates.list.item.format', 'alternates.list.item.suffix', 'facts.list.item.field']
+
+
 def _step(name, sql, *, materialize=False, release_after=()):
     step = dict(name=name, sql=sql, materialize=materialize)
     if release_after:
@@ -117,8 +128,8 @@ def _core(steps, output,*,lookup_extra=None):
     steps += _lookup_steps('lookup_sources')
     specs = [
         ('list', 'ordered', _settings('whole', order, columns=LIST_COLUMNS,
-            dictionary=[*(f'{name}.list.item' for name in ['document_kind', 'document_family', 'committee_keys', 'chambers', 'meeting_keys', 'measure_keys', 'bioguide_ids', 'witness_keys', 'version_keys']), 'format', 'date_kind', 'saved_kind'], delta=['filename', 'title'])),
-        ('detail', 'details', _settings('ranged', order, columns=DETAIL_COLUMNS, dictionary=['saved_suffix', 'saved_media_type', 'document_date_source', 'alternates.list.item.format', 'alternates.list.item.suffix', 'facts.list.item.field'])),
+            dictionary=LIST_DICTIONARY, delta=['filename', 'title'])),
+        ('detail', 'details', _settings('ranged', order, columns=DOCUMENT_COLUMNS, dictionary=[*DETAIL_DICTIONARY, *LIST_DICTIONARY], delta=['filename', 'title'])),
         ('links', 'links', _settings('lookup', ['link_key'])),
         ('urls', 'url_keys', _settings('lookup', ['lookup_key', 'list_row'])),
         ('sources', 'source_rows', _settings('ranged', ['list_row', 'ordinal'], columns=['list_row', 'ordinal', 'url', 'member_path', 'is_saved', 'first_seen', 'listed_on', 'link_text', 'doc_type', 'posted'])),

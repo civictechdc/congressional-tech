@@ -208,19 +208,109 @@
           "name": "facts",
           "type": "list<struct<field dict,value string>>",
           "meaning": "Selected filename facts, one value per entry"
+        },
+        {
+          "name": "filename",
+          "type": "string",
+          "meaning": "Displayed filename"
+        },
+        {
+          "name": "title",
+          "type": "string",
+          "meaning": "Document or publisher title when known"
+        },
+        {
+          "name": "document_kind",
+          "type": "list<dict>",
+          "meaning": "Document kinds"
+        },
+        {
+          "name": "document_family",
+          "type": "list<dict>",
+          "meaning": "Filename document families"
+        },
+        {
+          "name": "committee_keys",
+          "type": "list<dict>",
+          "meaning": "Congress.gov committee system codes"
+        },
+        {
+          "name": "chambers",
+          "type": "list<dict>",
+          "meaning": "Chambers associated with the document"
+        },
+        {
+          "name": "congress",
+          "type": "int16",
+          "meaning": "Congress number when unambiguous"
+        },
+        {
+          "name": "format",
+          "type": "dict",
+          "meaning": "Original file format"
+        },
+        {
+          "name": "document_date",
+          "type": "date32",
+          "meaning": "Date of the document"
+        },
+        {
+          "name": "first_captured",
+          "type": "date32",
+          "meaning": "First good fetch date"
+        },
+        {
+          "name": "date_kind",
+          "type": "dict",
+          "meaning": "Basis of the archive date"
+        },
+        {
+          "name": "saved_kind",
+          "type": "dict",
+          "meaning": "Original file or recovery"
+        },
+        {
+          "name": "hidden",
+          "type": "boolean",
+          "meaning": "Excluded from search by review; public links still resolve"
+        },
+        {
+          "name": "meeting_keys",
+          "type": "list<dict>",
+          "meaning": "Decimal event IDs"
+        },
+        {
+          "name": "measure_keys",
+          "type": "list<dict>",
+          "meaning": "Bill and nomination identifiers"
+        },
+        {
+          "name": "bioguide_ids",
+          "type": "list<dict>",
+          "meaning": "Member Bioguide identifiers"
+        },
+        {
+          "name": "witness_keys",
+          "type": "list<dict>",
+          "meaning": "Witness appearance identifiers"
+        },
+        {
+          "name": "version_keys",
+          "type": "list<dict>",
+          "meaning": "Hex endpoint keys shared by editions"
         }
       ],
       "gaps": [],
-      "purpose": "Document files and metadata",
+      "purpose": "The keyed document table: one row per document with its stable link_key, files and every list field; list is its no-ID browser projection",
       "row_meaning": "One document edition, in exactly the same order as list",
       "identity": {
         "fields": [
-          "list_row"
+          "link_key"
         ],
-        "scope": "release",
-        "validation": "shared ordered native export",
-        "kind": "row_position",
-        "note": "list_row is virtual: zero-based physical row position, continued across manifest shard row ranges. Never reuse it across releases."
+        "scope": "release; a recovery-only document's key can move in a later release only as the data model section 8.2 states",
+        "validation": "native publication key checks",
+        "kind": "primary_key",
+        "note": "list_row stays virtual: zero-based physical row position, continued across manifest shard row ranges; never reuse it across releases. Older releases carry only the detail columns; their rows pair with list by list_row."
       },
       "virtual_columns": [
         {
@@ -233,7 +323,17 @@
         "alternates[]": "Other formats of the same document; each has its own body and suffix.",
         "facts[]": "Embedded selected filename field/value observations; not a generic entity join.",
         "src_start": "Zero-based physical sources row offset; src_len is the contiguous row count.",
-        "rec_start": "Zero-based physical recoveries row offset; rec_len is the contiguous row count."
+        "rec_start": "Zero-based physical recoveries row offset; rec_len is the contiguous row count.",
+        "list_row": "This table repeats every list column, so a bare column name in `\"list\" JOIN detail USING (list_row)` is ambiguous on new releases; qualify columns (l.filename, d.link_key).",
+        "document_kind[]": "Same values as list.document_kind; see that field.",
+        "document_family[]": "Same values as list.document_family; see that field.",
+        "committee_keys[]": "Same values as list.committee_keys; see that field.",
+        "chambers[]": "Same values as list.chambers; see that field.",
+        "meeting_keys[]": "Same values as list.meeting_keys; see that field.",
+        "measure_keys[]": "Same values as list.measure_keys; see that field.",
+        "bioguide_ids[]": "Same values as list.bioguide_ids; see that field.",
+        "witness_keys[]": "Same values as list.witness_keys; see that field.",
+        "version_keys[]": "Same values as list.version_keys; see that field."
       }
     },
     {
@@ -969,7 +1069,9 @@
           "meaning": "Senate roll-call votes on the nomination"
         }
       ],
-      "gaps": ["Nominations cover the 119th Congress only until spicy-regs backfills"],
+      "gaps": [
+        "Nominations cover the 119th Congress only until spicy-regs backfills"
+      ],
       "purpose": "Referenced nominations and embedded legislative facts",
       "row_meaning": "One nomination including its part when present; bounded by upstream retained data",
       "identity": {
@@ -1107,7 +1209,7 @@
           "link_key"
         ]
       },
-      "meaning": "Resolve the document’s primary public link to the canonical document row; the lookup key identifies one row even when several records reference the same body.",
+      "meaning": "Resolve the document\u2019s primary public link to the canonical document row; the lookup key identifies one row even when several records reference the same body.",
       "cardinality": "many-to-one",
       "nullable": true,
       "resolution": "required",
@@ -1359,7 +1461,7 @@
           "witness_key"
         ]
       },
-      "meaning": "Documents attached from this witness appearance’s own document URLs; not every document from the meeting.",
+      "meaning": "Documents attached from this witness appearance\u2019s own document URLs; not every document from the meeting.",
       "cardinality": "many-to-many",
       "nullable": true,
       "resolution": "required",
@@ -1548,7 +1650,7 @@
           "system_code"
         ]
       },
-      "meaning": "Subcommittee’s parent committee when identified.",
+      "meaning": "Subcommittee\u2019s parent committee when identified.",
       "cardinality": "many-to-one",
       "nullable": true,
       "resolution": "unresolved_allowed",

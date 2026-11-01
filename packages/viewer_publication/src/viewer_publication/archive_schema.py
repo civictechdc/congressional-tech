@@ -112,7 +112,9 @@ def validate_schema(schema):
                 raise ValueError(f'Invalid external reference: {rid}')
             continue
         destination = endpoint(target)
-        if relationship['cardinality'] in ('one-to-one', 'many-to-one') and target['fields'] != tables[target['table']]['identity']['fields']:
+        destination_table = tables[target['table']]
+        unique_keys = [destination_table['identity']['fields'], *([c['name']] for c in destination_table.get('virtual_columns', []))]
+        if relationship['cardinality'] in ('one-to-one', 'many-to-one') and target['fields'] not in unique_keys:
             raise ValueError(f'Target is not a declared unique key: {rid}')
         if len(source) != len(destination):
             raise ValueError(f'Unequal join key lengths: {rid}')
@@ -206,7 +208,9 @@ def publication_checks(schema, auxiliary):
     Existing materialized export relations are reused, not exported files.
     """
     checks = ['''(SELECT count(*) FROM details d WHERE d.link_key IS NOT NULL
-        AND NOT EXISTS (SELECT 1 FROM links l WHERE l.link_key=d.link_key)) AS missing_primary_link''']
+        AND NOT EXISTS (SELECT 1 FROM links l WHERE l.link_key=d.link_key)) AS missing_primary_link''',
+        '''(SELECT count(*) FROM (SELECT link_key FROM details WHERE link_key IS NOT NULL
+        GROUP BY link_key HAVING count(*)>1)) AS duplicate_document_key''']
     for table in schema['files']:
         name = table['name'].removesuffix('.parquet')
         if name not in auxiliary or name == 'url_state':

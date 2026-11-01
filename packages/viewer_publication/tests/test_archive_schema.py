@@ -4,6 +4,7 @@ import os
 
 import pytest
 
+from viewer_publication.archive_format import DETAIL_COLUMNS, LIST_COLUMNS
 from viewer_publication.archive_schema import (REFERENCE, build_schema, field_types,
     publication_checks, render_reference, validate_schema)
 
@@ -26,6 +27,21 @@ def test_reference_matches_registry_and_nested_paths_are_explicit():
         for path, kind in field_types(table).items():
             if kind.startswith(('list<', 'struct<')):
                 assert any(p == path or p.startswith(path + '[]') or p.startswith(path + '.') for p in covered), (name, path)
+
+
+def test_detail_declares_the_keyed_document_table():
+    schema = build_schema()
+    tables = {t['name']: t for t in schema['files']}
+    detail, listed = tables['detail.parquet'], tables['list.parquet']
+    assert detail['identity']['fields'] == ['link_key'] and detail['identity']['kind'] == 'primary_key'
+    assert [c['name'] for c in detail['columns']] == [*DETAIL_COLUMNS, *LIST_COLUMNS]
+    assert detail['columns'][len(DETAIL_COLUMNS):] == listed['columns']
+    assert 'link_key' not in {c['name'] for c in listed['columns']}
+    assert [c['name'] for c in detail['virtual_columns']] == ['list_row']  # document_detail still pairs by position.
+    bad = deepcopy(schema)
+    next(r for r in bad['relationships'] if r['id'] == 'document_detail')['target']['fields'] = ['package_id']
+    with pytest.raises(ValueError, match='unique key'):
+        validate_schema(bad)
 
 
 def test_release_availability_keeps_unavailable_definitions_and_identity():
@@ -70,7 +86,7 @@ def test_native_checks_detect_duplicates_nulls_and_missing_nested_targets(tmp_pa
     engine = NativeDatasets.from_config(os.environ['DOCSPEC_JOB_CONFIG'])
     steps = [dict(name=name, sql=sql) for name, sql in [
         ('ordered', "SELECT 0 AS list_row,make_array('999','not-a-number') AS meeting_keys,make_array('missing-witness') AS witness_keys"),
-        ('details', "SELECT 0 AS list_row,'missing-link' AS link_key"),
+        ('details', "SELECT 0 AS list_row,'missing-link' AS link_key UNION ALL SELECT 1,'missing-link'"),
         ('links', "SELECT 0 AS list_row,'present-link' AS link_key"),
         ('members_export', "SELECT 'A000001' AS bioguide_id UNION ALL SELECT 'A000001' UNION ALL SELECT cast(NULL AS VARCHAR)"),
         ('meetings_export', "SELECT cast(118001 AS BIGINT) AS event_id,make_array(named_struct('list_row',99)) AS transcripts"),
@@ -78,7 +94,7 @@ def test_native_checks_detect_duplicates_nulls_and_missing_nested_targets(tmp_pa
     ]]
     result = run_job(tmp_path, engine, inputs=[], steps=steps, outputs=[],
                      queries=publication_checks(build_schema(), {'members', 'meetings', 'witnesses'}))
-    assert result['relationship_invariants'] == [dict(missing_primary_link=1, invalid_members_key=2,
+    assert result['relationship_invariants'] == [dict(missing_primary_link=2, duplicate_document_key=1, invalid_members_key=2,
         invalid_meetings_key=0, invalid_witnesses_key=0, missing_document_meeting=2,
         missing_transcript_document=1, missing_document_witness=1)]
 
