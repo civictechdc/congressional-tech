@@ -6,6 +6,6 @@ WITH cache_fetches AS (
  WHERE c.family='pipeline-data' AND c.mode='fetch' AND c.complete AND c.outcome IN ('stored','unchanged') AND c.sha256 IS NOT NULL
   AND regexp_like(coalesce(c.url,c.requested_url),'/youtube/youtube_[0-9]+[.]json$')
 ), ranked AS (
- SELECT *,row_number() OVER(PARTITION BY cache_path ORDER BY retrieved_at DESC,sha256) AS rn FROM cache_fetches
+ SELECT *,row_number() OVER(PARTITION BY cache_path ORDER BY retrieved_at DESC,encode(sha256,'hex')) AS rn FROM cache_fetches
 )
 SELECT cache_path,encode(sha256,'hex') AS record_sha,stored_suffix FROM ranked WHERE rn=1

@@ -9,7 +9,8 @@ from concurrent.futures import ThreadPoolExecutor
 import gzip
 from hashlib import sha256
 from pathlib import Path
-from urllib.error import HTTPError
+import time
+from urllib.error import HTTPError, URLError
 from urllib.request import Request, urlopen
 
 import pyarrow.parquet as pq
@@ -27,6 +28,19 @@ def original_bytes(data, relative):
     return gzip.decompress(data) if relative.endswith('.gz') else data
 
 
+def _read(url, opener, attempts=5):
+    for attempt in range(attempts):
+        try:
+            with opener(Request(url, headers={'User-Agent': AGENT}), timeout=120) as response:
+                return response.read()
+        except HTTPError:
+            raise  # A status is an answer; only transport failures are retried.
+        except (URLError, TimeoutError):
+            if attempt == attempts - 1:
+                raise
+            time.sleep(2 ** attempt)
+
+
 def fetch(root, sha, suffix, *, opener=urlopen):
     """Return bytes on disk for one body, or raise when no spelling verifies."""
     for relative in relative_paths(sha, suffix):
@@ -35,8 +49,7 @@ def fetch(root, sha, suffix, *, opener=urlopen):
             return target.stat().st_size
     for relative in relative_paths(sha, suffix):
         try:
-            with opener(Request(BASE + relative, headers={'User-Agent': AGENT}), timeout=120) as response:
-                data = response.read()
+            data = _read(BASE + relative, opener)
         except HTTPError as error:
             if error.code in (403, 404):
                 continue

@@ -228,7 +228,7 @@ Identity: `event_id` (primary_key; published identifier).
 
 Outgoing: `meeting_bills`, `meeting_nominations`, `meeting_committees`, `meeting_transcript_documents`, `meeting_recordings`, `meeting_transcript_packages`, `meeting_video_address`, `meeting_treaties`.
 
-Incoming: `document_meetings`, `recording_meetings`, `witness_meeting`.
+Incoming: `document_meetings`, `recording_meetings`, `witness_meeting`, `match_meeting`, `committee_record_meeting`, `coverage_meeting`.
 
 ## `witnesses` — Witness appearances
 
@@ -304,7 +304,7 @@ Identity: `system_code` (primary_key; published identifier).
 
 Outgoing: `committee_parent`, `committee_website`.
 
-Incoming: `document_committees`, `meeting_committees`, `committee_parent`, `roster_committee`, `bill_activity_committee`, `bills_committees`, `nominations_committees`.
+Incoming: `document_committees`, `meeting_committees`, `committee_parent`, `roster_committee`, `bill_activity_committee`, `bills_committees`, `nominations_committees`, `channel_committee`.
 
 ## `members` — Current and historical members
 
@@ -324,7 +324,7 @@ Identity: `bioguide_id` (primary_key; published identifier).
 
 Outgoing: `member_lis`, `member_opensecrets`, `member_govtrack`, `member_icpsr`, `member_wikidata`, `member_fec`.
 
-Incoming: `document_members`, `witness_member`, `roster_member`, `bill_sponsor`, `amendment_sponsor`.
+Incoming: `document_members`, `witness_member`, `roster_member`, `bill_sponsor`, `amendment_sponsor`, `committee_record_sponsor`.
 
 ## `rosters` — Current-Congress committee seats
 
@@ -445,6 +445,137 @@ Identity: `canonical_url, variant_url` (primary_key; published identifier).
 - `canonical_url`: Capture-profile aliases only. Do not use this table to reproduce the fixed public URL lookup hash.
 
 Outgoing: `capture_canonical_address`, `capture_variant_address`.
+
+Incoming: none.
+
+## `videos` — Collected committee channel uploads, matched or not
+
+One upload a retained YouTube cache lists.
+
+Identity: `video_key` (primary_key; published identifier).
+
+| Field | Published type | Meaning |
+| --- | --- | --- |
+| `video_key` | `string` | youtube:{id} video identity |
+| `handle` | `dict` | Channel handle whose cache table lists it |
+| `channel_id` | `string` | YouTube channel ID, null when the cache has none |
+| `system_code` | `dict` | Committee of the curated channel; channel membership does not make a video a hearing |
+| `title` | `string` | Title as the channel states it |
+| `source_description` | `string` | Description as the channel states it, distinct from any HTML description |
+| `published_at` | `timestamp` | YouTube's publication time for the upload |
+| `video_published_at` | `timestamp` | YouTube's video publication time |
+| `duration_seconds` | `int32` | Duration in seconds when retained |
+| `available` | `bool` | Whether the last check found it available |
+| `has_caption` | `bool` | Whether YouTube states a caption exists |
+| `details_checked_at` | `timestamp` | When details were last checked |
+| `stated_event_ids` | `list<int64>` | Event IDs the video's own text names: claims, since committees mistag |
+| `record_sha` | `fixed[32]` | SHA-256 of the cache body, which also holds upstream API JSON and is the evidence reference |
+
+- `stated_event_ids[]`: A claim the video makes, not a verified link; recording_matches keeps it as claimed.
+
+Outgoing: `video_channel`.
+
+Incoming: `match_recording`.
+
+## `channels` — Curated committee YouTube channel directory
+
+One curated channel handle.
+
+Identity: `handle` (primary_key; published identifier).
+
+| Field | Published type | Meaning |
+| --- | --- | --- |
+| `handle` | `string` | Channel handle |
+| `channel_id` | `string` | YouTube channel ID |
+| `system_code` | `dict` | Committee the directory maps it to |
+| `committee_label` | `string` | Committee label in the directory |
+| `role` | `dict` | primary, secondary or member |
+| `title` | `string` | Channel's own title when cached |
+| `custom_url` | `string` | Channel's custom URL when cached |
+| `uploads_scan_complete` | `bool` | Whether the cache scanned every upload |
+| `mapping_basis` | `dict` | curated_directory: a curated mapping with no further evidence column |
+| `record_sha` | `fixed[32]` | SHA-256 of the cache body, null with no cached channel row |
+
+
+Outgoing: `channel_committee`.
+
+Incoming: `video_channel`.
+
+## `recording_matches` — Recording links and decisions with their basis
+
+One observation that a subject has, or lacks, a recording.
+
+Identity: `match_id` (primary_key; published identifier).
+
+Coverage: Scored date and title matches arrive with the native matcher; gpo_hearing_videos.csv stays a parity oracle until then.
+
+| Field | Published type | Meaning |
+| --- | --- | --- |
+| `match_id` | `string` | Hex SHA-256 of the compact JSON [subject_kind, subject_id, video ref, basis] |
+| `subject_kind` | `dict` | event or package |
+| `event_id` | `int64` | Meeting subject; null for a package or a stated number no meeting has |
+| `package_id` | `string` | GPO package subject |
+| `video_key` | `string` | Video identity; can lack a video row |
+| `url` | `string` | Off-channel recording URL |
+| `basis` | `dict` | publisher_link, video_states_event_id or curated |
+| `decision` | `dict` | The verdict as stated, or linked |
+| `score` | `int16` | 100 publisher link, 95 stated event ID; null otherwise |
+| `recording_scope` | `dict` | full, excerpt or unknown |
+| `status` | `dict` | asserted, claimed, decided or conflicting |
+| `note` | `string` | Curator note, or the unmatched stated number |
+| `source_ref` | `string` | Evidence reference: the record or decision |
+
+
+Outgoing: `match_meeting`, `match_recording`.
+
+Incoming: none.
+
+## `committee_records` — Amendment and vote documents House meeting XML lists
+
+One document link in a meeting record; a vote row is a document link, not a ballot or tally.
+
+Identity: `record_key` (primary_key; published identifier).
+
+| Field | Published type | Meaning |
+| --- | --- | --- |
+| `record_key` | `string` | Hex SHA-256 of the compact JSON [record_sha hex, ordinal as text] |
+| `event_id` | `int64` | Meeting event ID |
+| `kind` | `dict` | amendment or vote |
+| `bill` | `string` | Bill as stated |
+| `number` | `string` | Amendment or vote number as stated |
+| `sponsor_bioguide` | `dict` | Sponsor as stated |
+| `amendment_type` | `dict` | Amendment type as stated |
+| `enbloc` | `string` | En bloc number as stated |
+| `source_description` | `string` | Description as stated |
+| `url` | `string` | Document URL, null when the record states none |
+| `record_sha` | `fixed[32]` | SHA-256 of the House XML body |
+| `ordinal` | `int32` | Position in that record, so duplicate links stay distinct |
+
+
+Outgoing: `committee_record_meeting`, `committee_record_sponsor`.
+
+Incoming: none.
+
+## `meeting_coverage` — Typed coverage facts per meeting
+
+One aspect of one meeting: recording, transcript, documents, witnesses or captions.
+
+Identity: `event_id, aspect` (primary_key; published identifier).
+
+Coverage: Access, closed, not-held and rescheduled facts arrive with the native hearing records.
+
+| Field | Published type | Meaning |
+| --- | --- | --- |
+| `event_id` | `int64` | Meeting event ID |
+| `aspect` | `dict` | recording, transcript, documents, witnesses or captions |
+| `state` | `dict` | present, empty, not_stated, unresolved, confirmed_absent or unknown; these never merge |
+| `basis` | `dict` | Which relation states it |
+| `count` | `int32` | Rows behind present |
+| `reason` | `dict` | Reason when known; null this round |
+
+- `state`: confirmed_absent only from a curated negative verdict on a package linked to exactly one meeting; zero rows never prove absence.
+
+Outgoing: `coverage_meeting`.
 
 Incoming: none.
 
@@ -804,6 +935,48 @@ many-to-one; match: `identifier`; nullable: true; resolution: `external`. Scope:
 
 many-to-many; match: `identifier`; nullable: true; resolution: `external`. Scope: typed treaty identifiers only.
 
+### `video_channel`
+
+`videos.handle` → `channels.handle`. The curated channel whose cache lists the video.
+
+many-to-one; match: `equal`; nullable: false; resolution: `unresolved_allowed`. Scope: selected release.
+
+### `match_meeting`
+
+`recording_matches.event_id` → `meetings.event_id`. The meeting an observation concerns.
+
+many-to-one; match: `equal`; nullable: true; resolution: `required`. Scope: selected release.
+
+### `match_recording`
+
+`recording_matches.video_key` → `videos.video_key`. The collected video; a publisher or curated key can lack one.
+
+many-to-one; match: `equal`; nullable: true; resolution: `unresolved_allowed`. Scope: selected release.
+
+### `committee_record_meeting`
+
+`committee_records.event_id` → `meetings.event_id`. The meeting whose record lists the document.
+
+many-to-one; match: `equal`; nullable: false; resolution: `required`. Scope: selected release.
+
+### `committee_record_sponsor`
+
+`committee_records.sponsor_bioguide` → `members.bioguide_id`. The sponsor as stated.
+
+many-to-one; match: `equal`; nullable: true; resolution: `unresolved_allowed`. Scope: selected release.
+
+### `coverage_meeting`
+
+`meeting_coverage.event_id` → `meetings.event_id`. The meeting a coverage fact describes.
+
+many-to-one; match: `equal`; nullable: false; resolution: `required`. Scope: selected release.
+
+### `channel_committee`
+
+`channels.system_code` → `committees.system_code`. The committee of a curated mapping.
+
+many-to-one; match: `equal`; nullable: false; resolution: `unresolved_allowed`. Scope: selected release.
+
 ## Query recipes (DuckDB)
 
 ### `bill_documents` — Documents directly annotated with a bill
@@ -992,3 +1165,48 @@ WHERE selected.list_row=? AND other.list_row<>selected.list_row ORDER BY other.l
 ```
 
 list_row belongs only to the selected release. Multiple shared endpoint keys must not duplicate a document.
+
+### `meeting_recordings` — A meeting's recordings with basis and status
+
+Requires: `recording_matches`.
+
+Result: One observation.
+
+Parameters, in order: `event_id` (example `115538`).
+
+```sql
+SELECT video_key,url,basis,decision,score,recording_scope,status,note
+FROM recording_matches WHERE event_id=? ORDER BY basis,video_key,url
+```
+
+claimed rows are what a video says about itself; conflicting rows are retained, not settled.
+
+### `channel_unmatched_videos` — Videos of a channel with no recording match
+
+Requires: `videos`, `recording_matches`.
+
+Result: One upload.
+
+Parameters, in order: `handle` (example `@AgRepublicans`).
+
+```sql
+SELECT v.video_key,v.title,v.published_at FROM videos v
+WHERE v.handle=? AND NOT EXISTS (SELECT 1 FROM recording_matches m WHERE m.video_key=v.video_key)
+ORDER BY v.published_at DESC NULLS LAST LIMIT 100
+```
+
+Channel membership is not evidence that a video is a hearing.
+
+### `coverage_counts` — Coverage counts for an aspect
+
+Requires: `meeting_coverage`.
+
+Result: One state.
+
+Parameters, in order: `aspect` (example `recording`).
+
+```sql
+SELECT state,count(*) AS meetings FROM meeting_coverage WHERE aspect=? GROUP BY state ORDER BY state
+```
+
+unknown and not_stated are not absence.

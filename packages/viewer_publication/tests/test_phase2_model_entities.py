@@ -736,6 +736,28 @@ def test_phase2_entities_meetings_witnesses_recordings_and_spicy_projections(tmp
     assert nom['floor_votes'][0]['vote_id'] == '118-s-1-99'
 
 
+    # The same inputs with the Explorer tables: all five appear, and old-shaped outputs do not move.
+    from congress_api.lake import committee_records as cr_lake, video_records as vr_lake
+    video_path, committee_path, decisions = tmp_path / 'video.parquet', tmp_path / 'committee.parquet', tmp_path / 'decisions.jsonl'
+    pq.write_table(vr_lake.table([]), video_path)
+    pq.write_table(cr_lake.table([]), committee_path)
+    decisions.write_text(json.dumps(dict(id='a' * 64, subject_kind='event', subject_id='115538', verdict='found',
+        video_refs=['https://example.test/watch'], note=None, decided_at=None, supersedes=None)) + '\n')
+    explorer = build_release(**staged, meeting_records=meeting_records, appearance_records=appearance_records, spicy_regs=spicy_regs,
+        video_records=video_path, committee_records=committee_path,
+        recording_decision_files=[dict(key='provenance/recording_decisions/a.jsonl', path=str(decisions))],
+        engine=engine, output=tmp_path / 'release-explorer', scratch=tmp_path / 'model-explorer')
+    with_tables = {f['name']: f for f in explorer['files']}
+    assert {'videos.parquet', 'channels.parquet', 'recording_matches.parquet', 'committee_records.parquet', 'meeting_coverage.parquet'} <= with_tables.keys()
+    assert not {'videos.parquet', 'meeting_coverage.parquet'} & files_by_name.keys()
+    for name in ('list.parquet', 'detail.parquet', 'meetings.parquet', 'witnesses.parquet'):
+        assert with_tables[name]['sha256'] == files_by_name[name]['sha256'], name
+    assert with_tables['channels.parquet']['rows'] == 119 and with_tables['videos.parquet']['rows'] == 0
+    assert with_tables['meeting_coverage.parquet']['rows'] == 5 * with_tables['meetings.parquet']['rows']
+    curated = pq.read_table(tmp_path / 'release-explorer/recording_matches.parquet').to_pylist()
+    assert [(r['event_id'], r['url'], r['status']) for r in curated if r['basis'] == 'curated'] == [(115538, 'https://example.test/watch', 'decided')]
+
+
 def test_spicy_generations_pinned_by_publish_and_maintenance():
     from viewer_publication.archive_maintenance import maintain_releases
     from viewer_publication.archive_publish import SPICY_PINS, input_digest
