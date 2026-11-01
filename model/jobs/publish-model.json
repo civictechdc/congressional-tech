@@ -43,12 +43,12 @@
     "json": "5d79e149b01e060c2abae435163e875a00c9e3e3c543be4da06a99cfd43cca91",
     "meeting_records": {
       "congress_gov": "7c4881d137e3243d819b8b948f05322685834b7980a16f175eb620d7c9f9a432",
-      "house_xml": "87a7014c57c53aa3139f3f101ca89ff0500e308ba4602800968182340c8239c0"
+      "house_xml": "b9805a61d75b32daf0406b62be4c82ba3c4019daa12ef733d07b809e70bb7f90"
     },
     "appearance_records": {
       "house_xml": "a9f2780926c18e9cb44524e97dc4b928de491df19edfb1c60f13547efd4da1f5",
       "congress_gov": "8ab26c86be1962c1c93776ecefa119573c1a835ccd49bb34259ebfa3dfce56a6",
-      "senate_page": "5bceaf903a11a1cb69b993ccebf5eccf574a4e2441df61835e0041ec12767c18",
+      "senate_page": "0271cb3f7b59f56d471e187f3df0e17a671bdd5ffea8ac4012df07efc5b717d8",
       "mods": "687fbc86f1e0a3973d4f98cc39b3fafb07f14ac84ee9894fa4009f384915f451"
     }
   },

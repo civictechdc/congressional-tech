@@ -613,23 +613,30 @@ def build_prepared_release(prepared,*,engine,output,root=ROOT):
         'document-version-keys','document-versions','document-metadata','document-addresses','saved-recoveries','document-removals','document-packages'],root=root)
     steps += [dict(name='meetings_resolved',sql=(Path(root)/'model/sql/meeting-records-resolved.sql').read_text(),materialize=True),
         dict(name='meeting_transcript_links',sql=(Path(root)/'model/sql/meeting-transcript-links.sql').read_text(),materialize=True)]
-    app_url_inputs_sql="""WITH distinct_capture_urls AS (
-        SELECT DISTINCT encode(sha256,'hex') AS record_sha_hex,
-            coalesce(url,requested_url,context_url) AS source_url
-        FROM captures
-        WHERE mode='fetch' AND complete AND outcome IN ('stored','unchanged')
-          AND http_status BETWEEN 200 AND 299 AND sha256 IS NOT NULL
-    ), app_contexts AS (
+    app_url_inputs_sql="""WITH selected_app_records AS (
         SELECT r.record_sha_hex,r.source,nullif(trim(r.declared_base),'') AS declared_base,
-            coalesce(c.source_url,r.context_url) AS source_url,
-            r.appearances
+            r.context_url,r.appearances
         FROM appearance_records_input r
-        LEFT JOIN distinct_capture_urls c ON c.record_sha_hex=r.record_sha_hex
         WHERE r.status='completed'
           AND (
             NOT EXISTS (SELECT 1 FROM parser_versions WHERE parser LIKE 'appearance_records.%')
             OR EXISTS (SELECT 1 FROM parser_versions v WHERE v.parser='appearance_records.'||r.source AND v.version=r.parser_version)
           )
+    ), candidate_app_shas AS (
+        SELECT DISTINCT record_sha_hex FROM selected_app_records WHERE record_sha_hex IS NOT NULL
+    ), distinct_capture_urls AS (
+        SELECT DISTINCT encode(c.sha256,'hex') AS record_sha_hex,
+            coalesce(c.url,c.requested_url,c.context_url) AS source_url
+        FROM captures c
+        JOIN candidate_app_shas cas ON encode(c.sha256,'hex')=cas.record_sha_hex
+        WHERE c.mode='fetch' AND c.complete AND c.outcome IN ('stored','unchanged')
+          AND c.http_status BETWEEN 200 AND 299 AND c.sha256 IS NOT NULL
+    ), app_contexts AS (
+        SELECT r.record_sha_hex,r.source,r.declared_base,
+            coalesce(c.source_url,r.context_url) AS source_url,
+            r.appearances
+        FROM selected_app_records r
+        LEFT JOIN distinct_capture_urls c ON c.record_sha_hex=r.record_sha_hex
     ), with_base AS (
         SELECT source_url,appearances,
             CASE

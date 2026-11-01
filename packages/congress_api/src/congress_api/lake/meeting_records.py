@@ -55,7 +55,9 @@ TABLE_SCHEMA = ROOT / "model/lake/meeting-records.schema.json"
 VALID_SOURCES = frozenset({"congress_gov", "house_xml"})
 
 # House select/permanent committees that use `hl` rather than `hs` in 6-char system codes
-_HOUSE_SELECT_CODES = frozenset({"ig", "vc", "fd", "qj"})
+_HOUSE_SELECT_CODES = frozenset(
+    {"ig", "vc", "fd", "qj", "cn", "ef", "gw", "hk", "ie", "ij", "mh", "rk", "zi", "zs"}
+)
 
 SITTING_STRUCT = pa.struct(
     [
@@ -244,12 +246,19 @@ def normalize_house_committee_code(code: str | None) -> str | None:
     if not cleaned:
         return None
     if re.fullmatch(r"[hsj][a-z]{3}[0-9]{2}", cleaned):
+        if cleaned.startswith("hs"):
+            stem = cleaned[2:4]
+            if stem in _HOUSE_SELECT_CODES:
+                return f"hl{cleaned[2:]}"
+            if stem == "zt":
+                return f"ht{cleaned[2:]}"
         return cleaned
     if re.fullmatch(r"[a-z]{2}[0-9]{2}", cleaned):
-        prefix = "hl" if cleaned[:2] in _HOUSE_SELECT_CODES else "hs"
+        stem = cleaned[:2]
+        prefix = "hl" if stem in _HOUSE_SELECT_CODES else ("ht" if stem == "zt" else "hs")
         return f"{prefix}{cleaned}"
     if re.fullmatch(r"[a-z]{2}", cleaned):
-        prefix = "hl" if cleaned in _HOUSE_SELECT_CODES else "hs"
+        prefix = "hl" if cleaned in _HOUSE_SELECT_CODES else ("ht" if cleaned == "zt" else "hs")
         return f"{prefix}{cleaned}00"
     return cleaned
 

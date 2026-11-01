@@ -8,12 +8,17 @@ WITH selected_meeting_records AS (
    WHERE v.parser='meeting_records.'||r.source AND v.version=r.parser_version
   )
  )
+), candidate_meeting_shas AS (
+ SELECT DISTINCT record_sha_hex
+ FROM selected_meeting_records
+ WHERE record_sha_hex IS NOT NULL
 ), fetch_times AS (
- SELECT encode(sha256,'hex') AS record_sha_hex,
-  max(arrow_cast(cast(retrieved_at AS TIMESTAMP WITH TIME ZONE),'Timestamp(Microsecond, Some("UTC"))')) AS retrieved_at
- FROM captures
- WHERE sha256 IS NOT NULL AND mode='fetch' AND complete AND outcome IN ('stored','unchanged') AND http_status BETWEEN 200 AND 299
- GROUP BY sha256
+ SELECT encode(c.sha256,'hex') AS record_sha_hex,
+  max(arrow_cast(cast(c.retrieved_at AS TIMESTAMP WITH TIME ZONE),'Timestamp(Microsecond, Some("UTC"))')) AS retrieved_at
+ FROM captures c
+ JOIN candidate_meeting_shas cms ON encode(c.sha256,'hex')=cms.record_sha_hex
+ WHERE c.sha256 IS NOT NULL AND c.mode='fetch' AND c.complete AND c.outcome IN ('stored','unchanged') AND c.http_status BETWEEN 200 AND 299
+ GROUP BY c.sha256
 ), expanded AS (
  SELECT r.record_sha_hex,r.source,ms.priority,f.retrieved_at,unnest(r.meetings) AS m
  FROM selected_meeting_records r
@@ -96,7 +101,12 @@ WITH selected_meeting_records AS (
  FROM merged WHERE raw_committees IS NOT NULL AND coalesce(array_length(raw_committees),0)>0
 ), committees_agg AS (
  SELECT event_id,array_agg(named_struct(
-  'system_code',lower(c['system_code']),
+  'system_code',CASE
+   WHEN lower(c['system_code'])='hszt00' THEN 'htzt00'
+   WHEN regexp_like(lower(c['system_code']),'^hs(?:cn|ef|fd|gw|hk|ie|ig|ij|mh|qj|rk|vc|zi|zs)[0-9]{2}$')
+    THEN 'hl'||substr(lower(c['system_code']),3)
+   ELSE lower(c['system_code'])
+  END,
   'role',c['role']
  ) ORDER BY idx) AS committees
  FROM committee_rows WHERE c['system_code'] IS NOT NULL GROUP BY event_id

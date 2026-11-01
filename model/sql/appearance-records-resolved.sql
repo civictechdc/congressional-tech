@@ -8,6 +8,10 @@ WITH selected_appearance_records AS (
    WHERE v.parser='appearance_records.'||r.source AND v.version=r.parser_version
   )
  )
+), candidate_appearance_shas AS (
+ SELECT DISTINCT record_sha_hex
+ FROM selected_appearance_records
+ WHERE record_sha_hex IS NOT NULL
 ), capture_contexts AS (
  SELECT
   encode(c.sha256,'hex') AS record_sha_hex,
@@ -49,6 +53,7 @@ WITH selected_appearance_records AS (
   c.member_path,
   max(arrow_cast(try_cast(c.retrieved_at AS TIMESTAMP WITH TIME ZONE),'Timestamp(Microsecond, Some("UTC"))')) AS retrieved_at
  FROM captures c
+ JOIN candidate_appearance_shas cas ON encode(c.sha256,'hex')=cas.record_sha_hex
  WHERE c.mode='fetch' AND c.complete AND c.outcome IN ('stored','unchanged')
   AND c.http_status BETWEEN 200 AND 299 AND c.sha256 IS NOT NULL
  GROUP BY c.sha256,
