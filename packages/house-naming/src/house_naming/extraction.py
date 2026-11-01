@@ -1167,7 +1167,20 @@ class Extractor:
             reason = None
             if number := rule.get('reference_number'):
                 date_hit = separated_date.match(stem, hit.start(number))
-                if date_hit and date_hit.end() > hit.end(number) and date_candidates(date_hit['date_token'])[1]:
+                following_date = separated_date.match(stem, hit.end(number) + 1)
+                plausible_iso_year = (
+                    1789 <= int(hit[number]) <= 2099
+                    and re.fullmatch(r'[0-9]{4}([-_.])[0-9]{2}\1[0-9]{2}', date_hit['date_token']) is not None
+                ) if date_hit and len(hit[number]) == 4 and hit[number].isdigit() else False
+                later_measure_date = (
+                    number == 'measure_number'
+                    and len(hit[number]) >= 3
+                    and date_hit is not None
+                    and not plausible_iso_year
+                )
+                if (date_hit and date_hit.end() > hit.end(number) and date_candidates(date_hit['date_token'])[1]
+                        and not later_measure_date
+                        and not (following_date and date_candidates(following_date['date_token'])[1])):
                     reason = 'Reference would consume only a prefix of a complete separated date.'
             if self._overlaps(a, b, protected):
                 reason = 'Overlaps a structured or already assigned token.'

@@ -522,3 +522,288 @@ def test_module_cli_and_worker_callback_keep_the_public_package_path(tmp_path):
     staged=json.loads(result.stdout)
     [row]=pq.read_table(staged['readings']).to_pylist()
     assert row['status']=='completed' and row['measure_keys']==['119-hr-6028']
+
+
+def test_repaired_bill_filename_dates_publish_and_read_back_through_mcp(tmp_path):
+    import hashlib
+    import subprocess
+    from congress_api.lake import appearance_records as ar_lake, meeting_records as mr_lake, readings
+    from congress_api.lake.captures import stage_captures
+    from congress_api.retention.provenance import parquet_output, run_job
+    from viewer_publication.archive_model import build_release
+
+    raw = tmp_path / 'raw'
+    raw.mkdir()
+    specs = [
+        (
+            'https://www.congress.gov/115/meeting/house/106046/overview.html',
+            (
+                b'<html><head><title>Hearing on H.R. 2199</title></head><body><p>'
+                + b'Substantive hearing overview for H.R. 2199 on May 23, 2017. ' * 60
+                + b'</p><a href="https://naturalresources.house.gov/uploadedfiles/hearing_memo_--_leg_hrg_on_h.r._2199_05.23.17.pdf">Memo</a></body></html>'
+            ),
+            'html',
+            'congress/meetings',
+        ),
+        (
+            'https://www.congress.gov/114/meeting/house/105000/overview.html',
+            (
+                b'<html><head><title>Hearing on H.R. 2167</title></head><body><p>'
+                + b'Substantive hearing overview for H.R. 2167 on June 23, 2016. ' * 60
+                + b'</p><a href="https://naturalresources.house.gov/uploadedfiles/hearing_memo_--_leg_hrg_on_hr_2167_06.23.16.pdf">Memo</a></body></html>'
+            ),
+            'html',
+            'congress/meetings',
+        ),
+        (
+            'https://naturalresources.house.gov/uploadedfiles/hearing_memo_--_leg_hrg_on_h.r._2199_05.23.17.pdf',
+            b'%PDF-1.7\nhearing memo 2199 short year\n%%EOF\n',
+            'pdf',
+            'documents',
+        ),
+        (
+            'https://naturalresources.house.gov/uploadedfiles/hearing_memo_--_leg_hrg_on_hr_2167_06.23.16.pdf',
+            b'%PDF-1.7\nhearing memo 2167 short year\n%%EOF\n',
+            'pdf',
+            'documents',
+        ),
+        (
+            'https://naturalresources.house.gov/uploadedfiles/hearing_memo_--_leg_hrg_on_h.r._2199_05.23.2017.pdf',
+            b'%PDF-1.7\nhearing memo 2199 full year\n%%EOF\n',
+            'pdf',
+            'documents',
+        ),
+        (
+            'https://naturalresources.house.gov/uploadedfiles/hearing_memo_--_leg_hrg_on_hr_2167_06.23.2016.pdf',
+            b'%PDF-1.7\nhearing memo 2167 full year\n%%EOF\n',
+            'pdf',
+            'documents',
+        ),
+    ]
+    rows = []
+    for url, data, fmt, family in specs:
+        compress = fmt == 'html'
+        stored = gzip.compress(data, mtime=0) if compress else data
+        digest = hashlib.sha256(data).hexdigest()
+        suffix = '.gz' if compress else ''
+        key = f'bodies/sha256/{digest[:2]}/{digest}{suffix}'
+        path = raw / key
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_bytes(stored)
+        rows.append(dict(
+            writer=dict(job='fixture', commit='a' * 40),
+            run_id='fixture',
+            mode='fetch',
+            family=family,
+            outcome='stored',
+            requested_url=url,
+            url=url,
+            response_headers={},
+            http_status=200,
+            complete=True,
+            retrieved_at=STAMP,
+            captures=[dict(
+                sha256=digest,
+                bytes=len(data),
+                media_type='text/html' if fmt == 'html' else 'application/pdf',
+                fidelity='exact-bytes',
+                sniffed_format=fmt,
+                sniff_version=readings.current_version('sniff'),
+                intact=True if fmt == 'pdf' else None,
+                stored_suffix=suffix,
+                stored_bytes=len(stored),
+                stored_md5=hashlib.md5(stored).hexdigest(),
+            )],
+        ))
+    receipt = raw / 'receipts/documents/2026-10-27/slice.jsonl.gz'
+    receipt.parent.mkdir(parents=True, exist_ok=True)
+    encoded = gzip.compress((''.join(json.dumps(r) + '\n' for r in rows)).encode(), mtime=0)
+    receipt.write_bytes(encoded)
+    qualification = tmp_path / 'receipt-pin.json'
+    qualification.write_text(json.dumps(dict(
+        path=str(receipt),
+        size=len(encoded),
+        sha256=hashlib.sha256(encoded).hexdigest(),
+        producer='fixture creation',
+    )))
+    eng = engine()
+    captures = stage_captures(
+        [dict(key=receipt.relative_to(raw).as_posix(), path=str(receipt), qualification=str(qualification))],
+        engine=eng,
+        work=tmp_path / 'capture-stage',
+    ) / 'captures.parquet'
+    inventory = tmp_path / 'inventory'
+    inventory.mkdir()
+    run_job(
+        inventory,
+        eng,
+        inputs=[dict(name='captures', kind='parquet', path=str(captures))],
+        steps=[],
+        outputs=[parquet_output(
+            inventory,
+            'bodies',
+            """SELECT DISTINCT sha256 AS body_sha,
+            'bodies/sha256/'||substr(encode(sha256,'hex'),1,2)||'/'||encode(sha256,'hex')||stored_suffix AS physical_key,
+            'bodies/sha256/'||substr(encode(sha256,'hex'),1,2)||'/'||encode(sha256,'hex')||stored_suffix AS relative_path,
+            stored_bytes,stored_suffix='.gz' AS stored_gzip FROM captures WHERE sha256 IS NOT NULL""",
+            ['body_sha'],
+        )],
+    )
+    pages = readings.stage(
+        captures=captures,
+        body_inventory=inventory / 'bodies.parquet',
+        local_root=raw,
+        engine=eng,
+        work=tmp_path / 'reading-stage',
+        decided_at=STAMP,
+        parser='html',
+    )
+    names = reader().stage(
+        worker_factory=Worker,
+        captures=captures,
+        recovery_files=(),
+        engine=eng,
+        work=tmp_path / 'filename-stage',
+        decided_at=STAMP,
+    )
+    meeting_records = [
+        dict(
+            record_sha='11' * 32,
+            source='house_xml',
+            meetings=[dict(
+                event_id='106046',
+                chamber='House',
+                congress=115,
+                session=1,
+                updated='2017-05-23T14:00:00Z',
+                title='Legislative Hearing on H.R. 2199',
+                meeting_date='2017-05-23',
+                meeting_type='Hearing',
+                status='Published',
+                sittings=[],
+                committees=[dict(system_code='HSII10', role='primary')],
+                subject_keys=['115-hr-2199'],
+                transcript_jackets=[],
+                videos=[],
+            )],
+        ),
+        dict(
+            record_sha='22' * 32,
+            source='house_xml',
+            meetings=[dict(
+                event_id='105000',
+                chamber='House',
+                congress=114,
+                session=2,
+                updated='2016-06-23T14:00:00Z',
+                title='Legislative Hearing on H.R. 2167',
+                meeting_date='2016-06-23',
+                meeting_type='Hearing',
+                status='Published',
+                sittings=[],
+                committees=[dict(system_code='HSII10', role='primary')],
+                subject_keys=['114-hr-2167'],
+                transcript_jackets=[],
+                videos=[],
+            )],
+        ),
+    ]
+    release_dir = tmp_path / 'release'
+    build_release(
+        captures=captures,
+        readings=pages['readings'],
+        filename_readings=names['readings'],
+        parser_versions={
+            **{p: readings.current_version(p) for p in ['sniff', 'html', 'xml', 'json']},
+            'meeting_records': mr_lake.current_versions(),
+            'appearance_records': ar_lake.current_versions(),
+        },
+        catalog_version=names['catalog_version'],
+        meeting_records=meeting_records,
+        appearance_records=[],
+        spicy_regs=dict(
+            spicy_committees=[
+                dict(
+                    system_code='HSII00',
+                    name='Committee on Natural Resources',
+                    chamber='House',
+                    committee_type='Standing',
+                    parent_system_code=None,
+                    website_url='https://naturalresources.house.gov/',
+                    is_current=True,
+                    history=[],
+                ),
+                dict(
+                    system_code='HSII10',
+                    name='Subcommittee on Federal Lands',
+                    chamber='House',
+                    committee_type='Subcommittee',
+                    parent_system_code='HSII00',
+                    website_url=None,
+                    is_current=True,
+                    history=[],
+                ),
+            ],
+        ),
+        engine=eng,
+        output=release_dir,
+        scratch=tmp_path / 'model',
+    )
+
+    mcp_data = tmp_path / 'mcp-data'
+    mcp_python = reader().ROOT / 'apps/explorer_mcp/.venv/bin/python'
+    assert mcp_python.is_file(), f'Expected explorer_mcp runtime at {mcp_python}'
+    probe = subprocess.run(
+        [
+            str(mcp_python),
+            '-c',
+            (
+                'import asyncio, json, pathlib, sys\n'
+                'from congressional_explorer_mcp.release import prepare\n'
+                'from fastmcp import Client\n'
+                'from fastmcp.client.transports import StdioTransport\n'
+                'async def main():\n'
+                '    mcp_data = pathlib.Path(sys.argv[1])\n'
+                '    manifest = pathlib.Path(sys.argv[2])\n'
+                '    prepare(mcp_data, manifest, archive_origin="https://archive.example")\n'
+                '    transport = StdioTransport(sys.executable, ["-m", "congressional_explorer_mcp.cli", "serve", "--data-dir", str(mcp_data)], keep_alive=False)\n'
+                '    async with Client(transport) as client:\n'
+                '        res = (await client.call_tool("search_documents", {"query": {"limit": 20}})).data\n'
+                '        details = {}\n'
+                '        for row in res["rows"]:\n'
+                '            doc = (await client.call_tool("get_document", {"query": row["reference"]})).data\n'
+                '            details[row["filename"]] = doc["rows"][0]\n'
+                '        print(json.dumps({"rows": res["rows"], "details": details}))\n'
+                'asyncio.run(main())\n'
+            ),
+            str(mcp_data),
+            str(release_dir / 'manifest.json'),
+        ],
+        capture_output=True,
+        text=True,
+        check=True,
+    )
+    payload = json.loads(probe.stdout)
+    docs = payload['rows']
+    by_name = {row['filename']: row for row in docs}
+    assert by_name['hearing_memo_--_leg_hrg_on_h.r._2199_05.23.17.pdf']['document_date'] == '2017-05-23'
+    assert by_name['hearing_memo_--_leg_hrg_on_hr_2167_06.23.16.pdf']['document_date'] == '2016-06-23'
+    assert by_name['hearing_memo_--_leg_hrg_on_h.r._2199_05.23.2017.pdf']['document_date'] == '2017-05-23'
+    assert by_name['hearing_memo_--_leg_hrg_on_hr_2167_06.23.2016.pdf']['document_date'] == '2016-06-23'
+    assert not any(
+        str(row.get('document_date', '')).startswith(('2199-', '2167-'))
+        for row in docs
+    )
+    for fname, expected_date, expected_source, expected_ref in [
+        ('hearing_memo_--_leg_hrg_on_h.r._2199_05.23.17.pdf', '2017-05-23', 'meeting', 'hr2199'),
+        ('hearing_memo_--_leg_hrg_on_hr_2167_06.23.16.pdf', '2016-06-23', 'meeting', 'hr2167'),
+        ('hearing_memo_--_leg_hrg_on_h.r._2199_05.23.2017.pdf', '2017-05-23', 'filename', 'hr2199'),
+        ('hearing_memo_--_leg_hrg_on_hr_2167_06.23.2016.pdf', '2016-06-23', 'filename', 'hr2167'),
+    ]:
+        detail = payload['details'][fname]
+        assert detail['document_date'] == expected_date
+        assert detail['document_date_source'] == expected_source
+        facts = {(f['field'], f['value']) for f in detail['facts']}
+        assert ('measure_references', expected_ref) in facts
+        assert not any(f['field'] == 'date_token_candidates' and f['value'].startswith(('2199-', '2167-')) for f in detail['facts'])
+
