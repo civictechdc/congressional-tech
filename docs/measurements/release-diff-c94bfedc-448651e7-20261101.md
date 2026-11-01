@@ -25,7 +25,12 @@ These paths are machine-local, in another session's temporary directory, and may
 DOCSPEC_JOB_CONFIG=... .venv/bin/python scripts/dev.py test production-offline --path scripts/measure/tests/test_release_diff.py
 ```
 
-The verifier uses pyarrow with no SQL and asserts against the JSON by other routes: Parquet footers for deltas, capture real-file sets instead of flips or links for removed keys, and bodies instead of link keys for splits. It exits 0. **The bodies route gives 60,628 split rows against 60,616 by link key; the gap of 12 is unexplained** and pinned in the script. An earlier pass found all 19 files in each release match the build's own copy, which comes from the same pipeline.
+The verifier uses pyarrow with no SQL and asserts against the JSON by other routes: Parquet footers for deltas, capture real-file sets instead of flips or links for removed keys, and bodies instead of link keys for splits. It exits 0. **The bodies route gives 60,630 split rows against 60,616 by link key; the gap of 14 is unexplained** and pinned in the script. Compared row by row, 18 rows differ (+16, -2), all PDFs:
+
+- Body route higher: previous rows 48603, 49194, 49304, 49305, 58931, 59615, 59881, 337427 (1 link-key row, 2 by body) and 145824, 145849, 145856, 145922, 145944, 145969, 146012, 146015 (2 and 3).
+- Body route lower: 73315, 81344 (4 and 3).
+
+About 4,000 bodies sit on several live rows, so the route counts distinct holder sets, which needs no tie-break. Counting every holder gives 70,747, and an earlier tie-breaking version gave a gap of 12 on 16 rows; both depended on how those shared bodies were handled. An earlier pass found all 19 files in each release match the build's own copy, which comes from the same pipeline.
 
 ## Reconciliation
 
@@ -95,8 +100,8 @@ Measured from the public files.
 | Area | Measured | Note |
 |---|---|---|
 | Scheduling | Interval 365 to 7 days on 9,301 URLs, 28 to 7 on 901, 7 to 365 on 3 | The 10,202 URLs now on 7 days have 84.3 GB of saved bytes. **Recurrence is inferred:** about 84 GB weekly if capture-archive follows these intervals and they do not settle |
-| Transcripts | Entries 20,531 to 32,882 on about 16,470 distinct `(event, package)` pairs | 9,248 of 9,249 changed events keep the same package set and now hold duplicates. `HearingDetail.tsx:172` maps entries without deduplicating, so a hearing lists a transcript repeatedly. Duplicates are not new: 1,184 of those events already had them. The other change is event 336500, which lost `CHRG-119shrg58631` |
-| Search | `published-hearing` rows 78,603 to 138,980; 34,019 live rows titled "ZIP" with no meeting or date | **The title is not new.** The previous release had 34,184 rows titled "ZIP", 33,842 of them PDFs and 23,934 with no meeting or date. What changed is that these rows are now separate ZIP documents |
+| Transcripts | **8,064 events are newly duplicated: events with duplicate transcripts went 3,199 to 11,263.** Entries 20,531 to 32,882 on about 16,470 distinct `(event, package)` pairs | 9,248 of 9,249 changed events keep the same package set and now hold duplicates. `HearingDetail.tsx:172` maps entries without deduplicating, so a hearing lists a transcript repeatedly. The other change is event 336500, which lost `CHRG-119shrg58631` |
+| Search | `published-hearing` rows 78,603 to 138,980; 34,019 live rows titled "ZIP" with no meeting or date | **The title is not new.** The previous release had 34,184 rows titled "ZIP", 33,842 of them PDFs and 23,934 with no meeting or date. What changed is that these rows are now separate ZIP documents: ZIP-titled rows with a meeting went 10,250 to 0 |
 | Identifiers | 0 of 147,048 `witness_key`s survive; 7,266 link keys no longer resolve | `archive.ts:238-241` returns null for a missing key. Neither change has a published mapping |
 | D2 | 12 documents have only a NULL address; 31 NULL rows that hold the row's saved body have `is_saved` false | §7.10 requires `is_saved` true on each address of the saved file. The 32nd false row, on 409584, holds a non-saved body |
 
@@ -166,7 +171,7 @@ The control rebuild was stopped before it finished, because free disk (14 GiB) w
 
 - **Link-key matching** cannot see a one-to-one row whose content got worse, or match a document with no surviving key.
 - **Flips** do not show v20 was right. v20's `complete = true` on members was itself borrowed. 17,254 input rows never reach `capture_sources` in either build, and this comparison cannot see them.
-- **`release_diff.py` statuses:** `verified` means a stated check passed, such as a key matching a flip or a bill matching a live meeting subject. It does not mean the row is right or that the cause is the only one.
+- **`release_diff.py` statuses:** `verified` means a stated check passed, such as a key matching a flip while its body is no longer real, or a bill matching a meeting subject new to this release. Field changes on matched rows are reported but fail only for wiped subject keys. It does not mean the row is right or that the cause is the only one.
 - **The verifier** reads the same published files, and its hard-coded public counts were first measured in this work, so they catch later change rather than prove the first reading.
 - **Hash checks** show consistency, not truth.
 - **The spicy-regs comparison** reports only what its queries project, with 72 rows removed. Its `lookup_key_self_check` is self-referential, and its table is a moving window.

@@ -60,10 +60,10 @@ def counts(result, name):
 
 def evidence(path, rows):
     """Each row is (key letter, real, member path); the triple comes from its position."""
-    table = [{'receipt_key': 'r', 'receipt_line': i, 'capture_index': 0, 'member_path': member, 'url': address, 'requested_url': None,
+    table = [{'receipt_key': 'r', 'receipt_line': i, 'capture_index': 0, 'member_path': member, 'url': address, 'requested_url': None, 'context_url': address,
               'sha256': key(letter) + b'\0' * 24, 'is_real_file': real} for i, (letter, real, member, address) in enumerate(r + (None,) * (4 - len(r)) for r in rows)]
     fields = [('receipt_key', S), ('receipt_line', I), ('capture_index', I), ('member_path', S), ('sha256', B),
-              ('is_real_file', pa.bool_()), ('url', S), ('requested_url', S)]
+              ('is_real_file', pa.bool_()), ('url', S), ('requested_url', S), ('context_url', S)]
     pq.write_table(pa.Table.from_pylist(table, schema=pa.schema(fields)), path)
     return str(path)
 
@@ -103,7 +103,8 @@ def test_null_source_urls_match_with_null_safe_comparison(tmp_path, pair):
     a = release(tmp_path / 'a', documents=['A'], sources=[(0, None, None)])
     b = release(tmp_path / 'b', documents=['A'], sources=[(0, None, None), (0, 'new', None)])
     _, same = run(tmp_path, a, b)
-    assert counts(same, 'sources') == {('new URLs', 'no previous row has this address'): 1}
+    assert counts(same, 'sources') == {('new URLs', 'no previous row has this address'): 1,
+                                       ('1 NULL urls also present in the previous release', 'a published source address must not be null'): 0}
 
 
 def test_shifted_list_rows_with_identical_keys_report_no_change(tmp_path):
@@ -138,13 +139,13 @@ def test_manifest_that_disagrees_with_the_file_fails(tmp_path):
 
 def test_url_state_removal_needs_a_scope_exclusion(tmp_path):
     prev = release(tmp_path / 'prev', documents=['A'], url_state=[
-        {'requested_url': 'https://x/oembed/1', 'attempts': 1}, {'requested_url': 'https://x/kept', 'attempts': 1}])
+        {'requested_url': 'https://x/oembed/1', 'attempts': 0}, {'requested_url': 'https://x/kept', 'attempts': 1}])
     live = release(tmp_path / 'live', documents=['A'], url_state=[
         {'requested_url': 'https://x/kept', 'attempts': 1}, {'requested_url': 'https://x/new', 'attempts': 0}])
     code, result = run(tmp_path, prev, live)
     assert code == 1  # the queued URL's source page was not traced
     assert [g['group'] for g in result['failing']] == ['added URLs']
-    assert counts(result, 'url_state') == {('removed URLs', 'matches a live capture scope exclusion'): -1,
+    assert counts(result, 'url_state') == {('removed URLs', 'never attempted and matches a live capture scope exclusion'): -1,
                                            ('added URLs', 'queued link with no attempts yet'): 1}
 
 
@@ -218,3 +219,79 @@ def test_recording_is_verified_only_when_a_new_capture_names_it(tmp_path):
     assert counts(result, 'recordings') == {('added keys', 'empty event_ids; capture newly real'): 1,
                                             ('added keys', 'with event_ids; source not traced'): 1}
     assert [g['status'] for g in result['failing']] == ['unverified']
+
+
+def failing(result):
+    return {(g['file'], g['status']) for g in result['failing']}
+
+
+def test_null_urls_persisting_across_releases_still_fail(tmp_path):
+    prev = release(tmp_path / 'prev', documents=['A'], sources=[(0, None, None)])
+    live = release(tmp_path / 'live', documents=['A'], sources=[(0, None, None), (0, None, None)][:1] + [(0, 'x', None)])
+    code, result = run(tmp_path, prev, live)
+    assert code == 1
+    assert ('sources.parquet', 'defect') in failing(result)
+    assert any('NULL urls also present' in g['group'] for g in result['failing'])
+    same = release(tmp_path / 'same', documents=['A'], sources=[(0, None, None)])
+    code, result = run(tmp_path, prev, same)  # identical sources digest: the check must still run
+    assert code == 1 and ('sources.parquet', 'defect') in failing(result)
+
+
+def test_wiped_subject_keys_raise_a_group_with_no_row_change(tmp_path):
+    prev = release(tmp_path / 'prev', documents=['A'], meetings=[{'event_id': 1, 'subject_keys': ['hr1']}])
+    live = release(tmp_path / 'live', documents=['A'], meetings=[{'event_id': 1, 'subject_keys': []}])
+    code, result = run(tmp_path, prev, live)
+    assert code == 1 and failing(result) == {('meetings.parquet', 'unverified')}
+
+
+def test_false_manifest_digest_raises_a_group(tmp_path):
+    prev = release(tmp_path / 'prev', documents=['A'])
+    live = release(tmp_path / 'live', documents=['A'])
+    manifest = json.loads((live / 'manifest.json').read_text())
+    next(f for f in manifest['files'] if f['name'] == 'bills.parquet')['sha256'] = '0' * 64
+    (live / 'manifest.json').write_text(json.dumps(manifest))
+    code, result = run(tmp_path, prev, live)
+    assert code == 1 and failing(result) == {('bills.parquet', 'unexplained')}
+
+
+def test_removed_url_with_attempts_is_not_verified_by_a_matching_exclusion(tmp_path):
+    prev = release(tmp_path / 'prev', documents=['A'], url_state=[{'requested_url': 'https://x/oembed/1', 'attempts': 9}])
+    live = release(tmp_path / 'live', documents=['A'])
+    code, result = run(tmp_path, prev, live)
+    assert code == 1 and failing(result) == {('url_state.parquet', 'unverified')}
+
+
+def test_bill_already_a_previous_subject_is_not_a_new_subject(tmp_path):
+    subject = [{'event_id': 1, 'subject_keys': ['hr1']}]
+    prev = release(tmp_path / 'prev', documents=['A'], meetings=subject)
+    live = release(tmp_path / 'live', documents=['A'], meetings=subject, bills=[{'bill_id': 'hr1'}])
+    code, result = run(tmp_path, prev, live)
+    assert code == 1 and failing(result) == {('bills.parquet', 'unexplained')}
+
+
+def test_removed_key_whose_body_is_still_real_is_unexplained(tmp_path):
+    prev = release(tmp_path / 'prev', documents=['A', 'M'])
+    live = release(tmp_path / 'live', documents=['A'])
+    before = evidence(tmp_path / 'a.parquet', [('A', True, None), ('M', True, None), ('M', True, None)])
+    after = evidence(tmp_path / 'b.parquet', [('A', True, None), ('M', False, None), ('M', True, None)])
+    code, result = run(tmp_path, prev, live, '--evidence-prev', before, '--evidence-live', after)
+    assert code == 1
+    assert counts(result, 'links') == {('removed keys', 'unexplained'): -1}
+
+
+def test_recording_key_without_a_colon_does_not_match_every_flip(tmp_path):
+    prev = release(tmp_path / 'prev', documents=['A', 'M'])
+    live = release(tmp_path / 'live', documents=['A', 'N'], recordings=[{'video_key': 'nocolon', 'event_ids': []}])
+    before = evidence(tmp_path / 'a.parquet', [('A', True, None), ('M', True, None), ('N', False, None, 'https://y/z')])
+    after = evidence(tmp_path / 'b.parquet', [('A', True, None), ('M', False, None), ('N', True, None, 'https://y/z')])
+    code, result = run(tmp_path, prev, live, '--evidence-prev', before, '--evidence-live', after)
+    assert code == 1 and ('recordings.parquet', 'unverified') in failing(result)
+
+
+def test_member_row_needs_its_own_flip_not_an_equal_count(tmp_path):
+    prev = release(tmp_path / 'prev', documents=['A', 'M'], sources=[(0, 'u', 'real.htm')])
+    live = release(tmp_path / 'live', documents=['A', 'M'])
+    before = evidence(tmp_path / 'a.parquet', [('A', True, None), ('M', True, 'unrelated.htm')])
+    after = evidence(tmp_path / 'b.parquet', [('A', True, None), ('M', False, 'unrelated.htm')])
+    code, result = run(tmp_path, prev, live, '--evidence-prev', before, '--evidence-live', after)
+    assert code == 1 and ('sources.parquet', 'unverified') in failing(result)

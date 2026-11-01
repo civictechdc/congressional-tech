@@ -368,7 +368,7 @@
    "groups": [
     {
      "group": "member rows removed",
-     "cause": "archive member no longer a real file",
+     "cause": "every removed address has its own real-to-not flip",
      "count": -68785,
      "status": "verified"
     },
@@ -427,7 +427,7 @@
    "groups": [
     {
      "group": "removed URLs",
-     "cause": "matches a live capture scope exclusion",
+     "cause": "never attempted and matches a live capture scope exclusion",
      "count": -2940,
      "status": "verified"
     },
