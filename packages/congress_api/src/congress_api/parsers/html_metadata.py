@@ -151,10 +151,30 @@ def _read_format(utf8_body: bytes, name: str, timeout: float) -> FormatResult:
                             error_message=str(error)[:_MESSAGE_LIMIT])
 
 
-def _head(utf8_body: bytes) -> tuple[str | None, str | None, list[dict], list[dict]]:
+def _transcode(body: bytes) -> tuple[str, str, bytes]:
+    """Detected encoding, text and UTF-8 form. lxml rejects w3lib's names for UTF-16,
+    so every parser reads the one transcoded form."""
+    from w3lib.encoding import html_to_unicode
+
+    encoding, decoded = html_to_unicode(None, body, default_encoding='utf-8')
+    return encoding, decoded, decoded.encode('utf-8', errors='replace')
+
+
+def _tree(utf8_body: bytes):
     try:
-        tree = dom.document_fromstring(utf8_body, parser=dom.HTMLParser(encoding='utf-8'))
-    except Exception:  # an empty or unparseable document has no head tags; formats report it separately
+        return dom.document_fromstring(utf8_body, parser=dom.HTMLParser(encoding='utf-8'))
+    except Exception:  # an empty or unparseable document; the formats report it separately
+        return None
+
+
+def parse_document(body: bytes):
+    """The reader's own DOM of a body, or None, so text selection sees the same document."""
+    return _tree(_transcode(body)[2])
+
+
+def _head(utf8_body: bytes) -> tuple[str | None, str | None, list[dict], list[dict]]:
+    tree = _tree(utf8_body)
+    if tree is None:
         return None, None, [], []
     title = next((node.text_content().strip() for node in tree.xpath('//title')), None)
     base = next(iter(tree.xpath('//base/@href')), None)
@@ -171,11 +191,7 @@ def read_html_metadata(body: bytes, *, formats: tuple[str, ...] = FORMATS,
         return HtmlMetadata(**common, encoding=None, document_kind='non_html', error_title_hint=False, title=None,
                             declared_base=None, head_meta=[], head_links=[],
                             formats={name: FormatResult(status='skipped', skip_reason='non_html') for name in FORMATS})
-    from w3lib.encoding import html_to_unicode
-
-    encoding, decoded = html_to_unicode(None, body, default_encoding='utf-8')
-    # lxml rejects w3lib's names for UTF-16, so every parser reads one transcoded form.
-    utf8_body = decoded.encode('utf-8', errors='replace')
+    encoding, decoded, utf8_body = _transcode(body)
     title, base, meta, links = _head(utf8_body)
     results = {}
     for name in FORMATS:

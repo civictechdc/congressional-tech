@@ -1,4 +1,5 @@
 """Publisher-declared metadata read from one retained HTML body, without page context."""
+from hashlib import sha256
 from typing import Any, Literal, NamedTuple
 
 from pydantic import Field
@@ -6,6 +7,7 @@ from pydantic import Field
 from .base import SourceModel
 
 METADATA_SCHEMA = 1
+SNIPPET_CHARS = 280
 
 
 class FormatResult(SourceModel):
@@ -79,13 +81,11 @@ class MainContent(SourceModel):
     fallback_reason: str | None
 
     def ref(self, reader_version: str | None = None) -> MainContentRef:
-        from hashlib import sha256
         encoded = self.text.encode('utf-8') if self.text is not None else None
-        snippet = None
-        if self.text:
-            snippet = self.text[:280]
-            if len(self.text) > 280:
-                snippet = snippet.rsplit(None, 1)[0] if ' ' in snippet else snippet
+        snippet = self.text
+        if snippet and len(snippet) > SNIPPET_CHARS:
+            cut = snippet[:SNIPPET_CHARS]
+            snippet = cut.rsplit(None, 1)[0] if len(cut.split(None, 1)) > 1 else cut
         return MainContentRef(body_sha256=self.body_sha256, reader_version=reader_version, outcome=self.outcome,
                               selector=self.selector, property=self.property,
                               text_sha256=sha256(encoded).hexdigest() if encoded is not None else None,

@@ -1,0 +1,105 @@
+{
+ "cohort": {
+  "bodies": 458,
+  "limit": "The planned extension to about 300 marked candidates and 200 other-host bodies needs bodies this run may not fetch."
+ },
+ "counts": {
+  "candidates:0": 412,
+  "candidates:1": 46,
+  "outcome:fallback_extractor": 303,
+  "outcome:marked": 35,
+  "outcome:marked_no_content": 11,
+  "outcome:none": 109,
+  "property:articleBody": 1,
+  "property:content:encoded": 45,
+  "with_candidate": 46
+ },
+ "hosts": {
+  "veterans.house.gov": 45,
+  "www.academicpedsjnl.net": 1
+ },
+ "marked": {
+  "n": 35,
+  "median_chars_removed_against_whole_page": 2762,
+  "selected_chars": {
+   "min": 2461,
+   "median": 14726,
+   "max": 67155
+  },
+  "bodies_with_marked_words_not_in_trafilatura": 2,
+  "bodies_with_marked_words_not_in_whole_page": 0
+ },
+ "marked_no_content": [
+  {
+   "sha": "5ebb45b691df9b695aa628f8694334b6748e5e166243675306aac94e596360cf",
+   "chars": 22,
+   "text": "No prepared statement.",
+   "links": []
+  },
+  {
+   "sha": "18bec372b5bc1584eb85c644831c033d72586d454e064398a0653f99ad5327c4",
+   "chars": 22,
+   "text": "No prepared statement.",
+   "links": []
+  },
+  {
+   "sha": "f28d60bc91774acbe8463c2e3e12f3df3658adc7bfce19b3fa4dd732920b0609",
+   "chars": 22,
+   "text": "No prepared statement.",
+   "links": []
+  },
+  {
+   "sha": "376c119f7950b8f9e527ec291236be4921c77a60ec2f645747aa938694acb523",
+   "chars": 22,
+   "text": "No prepared statement.",
+   "links": []
+  },
+  {
+   "sha": "013bb124b2da396fb193d2cdc620a980435153105eb10a20d9393aaf66e3a396",
+   "chars": 22,
+   "text": "No prepared statement.",
+   "links": []
+  },
+  {
+   "sha": "9aeeb713467e964f0a096074981fa7cbd3f7e66b59dcecd9de700b441b6d551d",
+   "chars": 22,
+   "text": "No prepared statement.",
+   "links": []
+  },
+  {
+   "sha": "6234e2204fa15a4b07d0f5b2fe02283e82605cef31e2e10dcbd39044e8b5f058",
+   "chars": 70,
+   "text": "Click on the link for participant submission. (PDF Download is 4.7MB.)",
+   "links": [
+    "http://veterans.house.gov/Media/file/111/7-21-10/Gonzalezsubmission.pdf"
+   ]
+  },
+  {
+   "sha": "f0a3bcfb1bd3ca0ef599fd32fe17bb55cdde4ba8fffb0ee61c82995ca7b50666",
+   "chars": 22,
+   "text": "No prepared statement.",
+   "links": []
+  },
+  {
+   "sha": "9697796262f1b5211e3d69c9fde558a3617f0873bbd155df860718dc6865a895",
+   "chars": 22,
+   "text": "No prepared statement.",
+   "links": []
+  },
+  {
+   "sha": "98c27a02de92ade90bccdaf981af89f5865efbec9f6411eaaf34bfb91dbd06cf",
+   "chars": 22,
+   "text": "No prepared statement.",
+   "links": []
+  },
+  {
+   "sha": "ece10d729d686d230a84d5ea6707ab763a0794f27d0fa90df43653a5f304a7a8",
+   "chars": 22,
+   "text": "No prepared statement.",
+   "links": []
+  }
+ ],
+ "no_real_instances": [
+  "multiple distinct candidates"
+ ]
+}
