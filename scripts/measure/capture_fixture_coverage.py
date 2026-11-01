@@ -61,10 +61,14 @@ def pointers(value):
 
 def report(rows):
     fixture = {path for row in rows for path in walk(row)}
-    read = mapper_paths()
+    declared = mapper_paths()
+    # A declared container is read whole, so its descendants are read too. A path
+    # that merely contains read fields is neither: it is left out of both sets.
+    read = {path for path in fixture if any(path[:n] in declared for n in range(1, len(path) + 1))}
+    holders = {path[:n] for path in read for n in range(1, len(path))}
     text = lambda paths: sorted('/'.join(path) for path in paths)
-    return dict(read_by_mapper=text(read & fixture), fixture_paths_not_read=text(fixture - read),
-                mapper_paths_not_exercised=text(read - fixture),
+    return dict(read_by_mapper=text(read), fixture_paths_not_read=text(fixture - read - holders),
+                mapper_paths_not_exercised=text(declared - fixture),
                 pointers=text({pointer for row in rows for pointer in pointers(row)}))
 
 

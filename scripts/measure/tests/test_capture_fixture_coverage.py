@@ -18,8 +18,11 @@ def test_report_names_the_fb408404_pointer_classes_and_partitions_paths():
     assert read and unread and unexercised
     assert not (read & unread or read & unexercised or unread & unexercised)
     assert 'record/http_status' in read
-    # The unread fact behind the ct-d0o0 report: the mapper never reads this path.
-    assert 'record/previous_receipt/body_complete' in unread
+    # file_references is projected whole, so its fields are read.
+    assert 'file_references/*/http_status' in read
+    # A container of read fields is not itself reported as unread.
+    assert 'record' not in unread
+    assert 'record/recovery_basis' in unread
 
 
 def test_spy_restores_the_projection():
