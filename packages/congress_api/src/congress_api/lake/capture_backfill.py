@@ -340,8 +340,11 @@ def runtime_identity(engine,engine_config,*,files=()):
 def execute_batches(files,counts,*,engine,engine_config,work,table,catalog_root,location=None,
                     create_table=False,create_namespace=False,byte_target=256<<20,item_target=200000,
                     validated_counter=None,source_qualifications=None,scratch_root=None,
-                    progress_log=None,progress_step='d1_backfill'):
+                    progress_log=None,progress_step='d1_backfill',reused_counts=()):
     """Call the incremental CLI once per whole batch; never run downstream jobs.
+
+    `reused_counts` names receipts already in the table but outside `files`. The
+    plan never sees them; the whole-generation guard checks them with the rest.
 
     A fresh invocation replans from the pinned inputs. Each child resolves fresh
     native heads and skips committed receipt keys before source admission. No
@@ -382,7 +385,7 @@ def execute_batches(files,counts,*,engine,engine_config,work,table,catalog_root,
     scratch_root=check_scratch(scratch_root or work,work)
     work.mkdir(parents=True,exist_ok=False)
     (work/'plan.json').write_text(json.dumps(dict(plan,mapping_digest=definition,runtime=runtime),indent=2)+'\n')
-    counts_path=work/'source-counts.json';counts_path.write_text(json.dumps(counts,indent=2)+'\n')
+    counts_path=work/'source-counts.json';counts_path.write_text(json.dumps([*counts,*reused_counts],indent=2)+'\n')
     try:
         if create_table:
             schema=json.loads((Path(__file__).resolve().parents[5]/'model/lake/captures.schema.json').read_text())
