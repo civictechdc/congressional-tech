@@ -413,6 +413,9 @@ values as empty tables, or a second MCP schema to conceal a producer gap.
 Full-text search, new source acquisition and speaker-turn reconstruction remain
 separate deferred work; preserving existing caption/text references is required.
 
+The frozen-input comparison and field inventory evidence is in
+[`explorer-native-comparison-20261101.md`](../measurements/explorer-native-comparison-20261101.md).
+
 #### Closure evidence and order
 
 1. **Native data and jobs — `ct-gi01`.** Complete the inventory, preserve facts

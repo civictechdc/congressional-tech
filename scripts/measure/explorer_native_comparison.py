@@ -37,6 +37,7 @@ REASONS = {
     'release_delta_unexplained_see_ct-qg8e': 'Release delta on row counts owned by the ct-qg8e accounting.',
     'superseded_by_newer_record': 'The key is in an older retained record of this event; the current record replaced it.',
     'other_source_meeting': 'An old meeting from a Senate page or House XML with no Congress.gov event ID.',
+    'old_text_mojibake': 'The old CSV stored this text double-encoded; once repaired it equals the native value, which is the correct one.',
     'unexplained': 'No reason established. Reported, not hidden.',
 }
 # A title's first matching pattern gives its disposition; section 6 of the cluster plan.
@@ -135,8 +136,10 @@ def compare(db, *, old, table, data, lake, decisions):
     out['amendments'] = account(db, 'amendments',
         f"SELECT {amendment_key('event_id', 'description')} AS key,event_id AS context FROM {c('house_amendments_found')}",
         f"SELECT {amendment_key('cast(event_id AS VARCHAR)', 'source_description')} AS key,record_key AS context FROM {new_amendments}",
-        old_reason="CASE WHEN x.key IN (SELECT key FROM lake_amendments) THEN 'superseded_by_newer_record' ELSE 'unexplained' END",
-        new_reason="'native_found_more'", multiset=True)
+        old_reason="""CASE WHEN x.key IN (SELECT key FROM lake_amendments) THEN 'superseded_by_newer_record'
+            WHEN replace(x.key,'\u00c3\u00a1','\u00e1') IN (SELECT key FROM lake_amendments) THEN 'old_text_mojibake' ELSE 'unexplained' END""",
+        new_reason="""CASE WHEN regexp_matches(x.key,'[^\\x00-\\x7f]') AND x.context IS NOT NULL
+            AND x.key IN (SELECT replace(y.key,'\u00c3\u00a1','\u00e1') FROM o y) THEN 'old_text_mojibake' ELSE 'native_found_more' END""", multiset=True)
     # Pairs: curated rows directly, publisher links and claims through a meeting's transcripts.
     db.execute(f"""CREATE TEMP TABLE new_pairs AS
         SELECT package_id,video_key FROM {table('recording_matches')} WHERE package_id IS NOT NULL AND video_key IS NOT NULL
@@ -204,7 +207,7 @@ def value_checks(db, *, old, table, data, decisions, channels):
         ON m.source_ref='recording_decisions:'||json_extract_string(d.json,'$.id')""")
     out |= sample('meeting_date', f"""SELECT e.event_id AS key,cast(m.date AS VARCHAR) AS expected,cast(n.meeting_date AS VARCHAR) AS actual
         FROM {o('meetings')} m JOIN old_meeting_event e ON m.id=e.id JOIN {table('meetings')} n ON n.event_id=e.event_id""")
-    out |= sample('video_title', f"""SELECT 'youtube:'||regexp_extract(url,'[?&]v=([^&]+)',1) AS key,title AS expected,v.title AS actual FROM {o('sources')} s
+    out |= sample('video_title', f"""SELECT 'youtube:'||regexp_extract(s.url,'[?&]v=([^&]+)',1) AS key,s.title AS expected,v.title AS actual FROM {o('sources')} s
         JOIN {table('videos')} v ON v.video_key='youtube:'||regexp_extract(s.url,'[?&]v=([^&]+)',1) WHERE s.identifier_scheme='youtube:record'""")
     db.execute('CREATE TEMP TABLE directory(handle VARCHAR,channel_id VARCHAR)')
     db.executemany('INSERT INTO directory VALUES (?,?)', [(r['handle'], r['channel_id']) for r in channels])
@@ -245,10 +248,10 @@ def run(args):
         input_sha256={Path(p).name: file_sha(p) for p in inputs}, reasons=REASONS, families=families,
         old_issues=issue_classes(db, args.old), value_checks=value_checks(db, old=args.old, table=table, data=args.data, decisions=args.decisions, channels=channels),
         old_meeting_uuid_to_event=dict(rows=len(meetings_map), sha256=sha256(json.dumps(meetings_map).encode()).hexdigest(), file=args.uuid_map and Path(args.uuid_map).name))
+    Path(args.output).write_text(json.dumps(result, indent=1, sort_keys=True, default=str) + '\n')
     for family in ('curated_decisions', 'amendments'):
         if families[family]['old_only_by_reason'].get('unexplained'):
-            raise ValueError(f'{family} has unexplained rows: stop condition')
-    Path(args.output).write_text(json.dumps(result, indent=1, sort_keys=True, default=str) + '\n')
+            raise ValueError(f'{family} has unexplained rows: stop condition; ledger written to {args.output}')
     return result
 
 
