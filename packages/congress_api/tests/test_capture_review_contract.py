@@ -167,7 +167,7 @@ def test_missing_capture_inspection_stays_on_the_existing_sniff_work_list(tmp_pa
     assert result['pending_reads'] == 1 and result['unreadable_path'] is None
 
 
-@pytest.mark.parametrize('budget', [100, 9])
+@pytest.mark.parametrize('budget', [100, 3])
 def test_discovery_bound_drains_existing_queue_and_reports_real_resource_stop(tmp_path, budget):
     a, b, queued, cutoff, old, late = ['https://fixture.test/'+name for name in
                                      ('a', 'b', 'queued.pdf', 'cut', 'z', 'deferred.pdf')]
@@ -188,7 +188,7 @@ def test_discovery_bound_drains_existing_queue_and_reports_real_resource_stop(tm
     assert (raw/body_key(b'<html><a href="/a">cycle</a><a href="/deferred.pdf">later</a></html>')).is_file()
     [disposition] = result['cutoffs']
     assert disposition['disposition'] == ('attempted' if budget == 100 else 'deferred')
-    if budget == 9:
+    if budget == 3:
         assert disposition['reason'] == 'request_budget'
 
 

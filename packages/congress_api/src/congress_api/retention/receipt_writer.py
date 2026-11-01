@@ -125,7 +125,7 @@ class ReceiptWriter:
         with TemporaryDirectory(prefix='raw-receipt-',dir=Path(freeze_dir).parent if freeze_dir is not None else None) as temporary:
             temporary = Path(temporary)
             if operation_id is not None:
-                from congress_api.acquisition.capture_journal import durable_json
+                from congress_api.retention.provenance import durable_json
                 durable_json(temporary/'capture-owner.json',dict(kind='receipt-scratch-v1',operation_id=operation_id))
             for attempt_index, attempt in enumerate(attempts):
                 if attempt.body is None:

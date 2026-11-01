@@ -2,10 +2,12 @@
 from datetime import datetime
 from hashlib import file_digest, sha256
 import json
+import os
 from pathlib import Path
 import re
 from tempfile import TemporaryDirectory,mkdtemp
 from urllib.parse import urlsplit
+from uuid import uuid4
 
 from congress_shared.custody import custody_identity,issue_verified_file,verify_local_file
 
@@ -232,6 +234,18 @@ def record_review(store,record,*,timestamp):
     return write_records(store,'reviews',[record],timestamp=timestamp)[0]
 
 
+def durable_json(path, value):
+    path=Path(path);path.parent.mkdir(parents=True,exist_ok=True)
+    temporary=path.with_name(path.name+'.'+uuid4().hex+'.tmp')
+    with temporary.open('x') as target:
+        json.dump(value,target,ensure_ascii=False,separators=(',',':'),sort_keys=True)
+        target.flush();os.fsync(target.fileno())
+    os.replace(temporary,path)
+    descriptor=os.open(path.parent,os.O_RDONLY)
+    try:os.fsync(descriptor)
+    finally:os.close(descriptor)
+
+
 def file_pin(path):
     with Path(path).open('rb') as source:
         digest=file_digest(source,'sha256').hexdigest()
@@ -248,7 +262,6 @@ def finish_stage(root,*,kind,provenance,records,inputs,extra=None):
     root=Path(root)
     value=dict(version=1,kind=kind,provenance=provenance,records=records,inputs=inputs,
                files=[dict(path=provenance,**file_pin(root/provenance))],**(extra or {}))
-    from congress_api.acquisition.capture_journal import durable_json
     durable_json(root/'manifest.json',value)
     return value
 

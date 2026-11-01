@@ -72,8 +72,11 @@ def test_new_review_and_withdrawal_remain_append_only(tmp_path):
     other=record_review(store,withdrawn,timestamp='20261027T120001Z')
     assert key!=other and json.loads((tmp_path/'raw'/key).read_text())==row
     assert json.loads((tmp_path/'raw'/other).read_text())==withdrawn
+    # Exact frozen bytes replay idempotently after a lost ACK; conflicting reuse fails closed.
+    assert record_review(store,row,timestamp='20261027T120000Z')==key
     with pytest.raises(RuntimeError,match='reused'):
-        record_review(store,row,timestamp='20261027T120000Z')
+        record_review(store,withdrawn,timestamp='20261027T120000Z')
+    assert json.loads((tmp_path/'raw'/key).read_text())==row
 
 
 def test_new_review_cli_stages_before_explicit_owner_apply(tmp_path,capsys):
@@ -189,6 +192,19 @@ def test_interactive_review_forms_emit_provenance_records_without_legacy_catalog
     )
     assert direct['key'].startswith('provenance/reviews/')
     assert json.loads((tmp_path/'raw-direct'/direct['key']).read_text())['value']==['letter']
+    assert cli.record_interactive_verdict(
+        store,
+        dict(id='direct-1',body_sha256=body_hex,observed_forms=['letter'],note='Direct form submit',reviewer='owner'),
+        decided_at=STAMP,
+        require_supported_forms=True,
+    )==direct
+    with pytest.raises(RuntimeError,match='reused'):
+        cli.record_interactive_verdict(
+            store,
+            dict(id='direct-2',body_sha256=body_hex,observed_forms=['biography'],note='Conflicting timestamp',reviewer='owner'),
+            decided_at=STAMP,
+            require_supported_forms=True,
+        )
 
     with pytest.raises(ValueError,match='Unsupported document review form'):
         build_review_verdict(

@@ -12,22 +12,11 @@ import re
 from uuid import uuid4
 
 from congress_api.models.raw_fetch import BodyFile, FetchAttempt, FetchResult, Transfer
+from congress_api.retention.provenance import durable_json
 
 
 class UnknownRemoteOutcome(RuntimeError):
     pass
-
-
-def durable_json(path, value):
-    path=Path(path);path.parent.mkdir(parents=True,exist_ok=True)
-    temporary=path.with_name(path.name+'.'+uuid4().hex+'.tmp')
-    with temporary.open('x') as target:
-        json.dump(value,target,ensure_ascii=False,separators=(',',':'),sort_keys=True)
-        target.flush();os.fsync(target.fileno())
-    os.replace(temporary,path)
-    descriptor=os.open(path.parent,os.O_RDONLY)
-    try:os.fsync(descriptor)
-    finally:os.close(descriptor)
 
 
 def encode_result(result):
