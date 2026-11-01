@@ -210,16 +210,21 @@ Identity: `event_id` (primary_key; published identifier).
 | `meeting_type` | `dict` | Publisher meeting category |
 | `session` | `int16` | Congress session number |
 | `status` | `dict` | Current meeting status |
-| `sittings` | `list<struct<start timestamp,end timestamp,place string>>` | Scheduled times and locations |
+| `sittings` | `list<struct<start timestamp,end timestamp,place string,room string,building string,address string>>` | Scheduled times and locations, as Congress.gov states them when it has a sitting |
 | `committees` | `list<struct<system_code dict,role dict>>` | Host committee codes and roles |
 | `subject_keys` | `list<dict>` | Bill, nomination and treaty subjects |
 | `transcripts` | `list<struct<package_id string,list_row int32>>` | Official hearing transcripts |
 | `videos` | `list<struct<name string,url string,video_key string>>` | Recorded meeting links |
+| `congress` | `int16` | Congress the publisher record states; null when no record states it, never inferred from documents |
+| `congress_gov_updated` | `timestamp` | Congress.gov's updateDate for this record: a publisher record update, distinct from the hearing date and capture time |
+| `house_xml_updated` | `string` | House XML update-date, literally as stated with no zone: a publisher record update, distinct from the hearing date and capture time |
+| `congress_gov_meeting_type` | `dict` | Congress.gov's type label (Hearing, Markup, Meeting) |
 
-- `sittings[]`: Embedded scheduled intervals and places. Times retain published precision; do not invent a Congress from the session number.
+- `sittings[]`: Embedded scheduled intervals and places. Congress.gov states instants and places, so its sitting is used when present; a House-only sitting's unzoned Eastern local time is converted to an instant. An explicit empty House state stays empty. Times retain published precision; do not invent a Congress from the session number.
 - `committees[]`: Host/participant roles belong to this meeting-committee association.
 - `transcripts[]`: Package identifier and release-local document row identify the same retained hearing transcript.
 - `videos[]`: Publisher recording links; video_key joins retained recordings when available.
+- `meeting_type`: As stated, with House XML codes (HHRG, HMKP, HMTG) on House rows; congress_gov_meeting_type carries the shared label.
 
 Outgoing: `meeting_bills`, `meeting_nominations`, `meeting_committees`, `meeting_transcript_documents`, `meeting_recordings`, `meeting_transcript_packages`, `meeting_video_address`, `meeting_treaties`.
 

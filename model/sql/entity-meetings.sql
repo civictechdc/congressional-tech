@@ -29,14 +29,18 @@ SELECT k.event_id,
  coalesce(m.sittings,array_slice(make_array(named_struct(
   'start',arrow_cast(NULL,'Timestamp(Microsecond, Some("UTC"))'),
   'end',arrow_cast(NULL,'Timestamp(Microsecond, Some("UTC"))'),
-  'place',cast(NULL AS VARCHAR))),1,0)) AS sittings,
+  'place',cast(NULL AS VARCHAR),'room',cast(NULL AS VARCHAR),'building',cast(NULL AS VARCHAR),'address',cast(NULL AS VARCHAR))),1,0)) AS sittings,
  coalesce(m.committees,array_slice(make_array(named_struct(
   'system_code',cast(NULL AS VARCHAR),'role',cast(NULL AS VARCHAR))),1,0)) AS committees,
  coalesce(m.subject_keys,arrow_cast(array_slice(make_array(cast(NULL AS VARCHAR)),1,0),'List(Utf8)')) AS subject_keys,
  coalesce(t.transcripts,array_slice(make_array(named_struct(
   'package_id',cast(NULL AS VARCHAR),'list_row',cast(NULL AS INT))),1,0)) AS transcripts,
  coalesce(m.videos,array_slice(make_array(named_struct(
-  'name',cast(NULL AS VARCHAR),'url',cast(NULL AS VARCHAR),'video_key',cast(NULL AS VARCHAR))),1,0)) AS videos
+  'name',cast(NULL AS VARCHAR),'url',cast(NULL AS VARCHAR),'video_key',cast(NULL AS VARCHAR))),1,0)) AS videos,
+ cast(m.congress AS SMALLINT) AS congress,
+ m.congress_gov_updated,
+ m.house_xml_updated,
+ m.congress_gov_meeting_type
 FROM keys k
 LEFT JOIN meetings_resolved m ON k.event_id=m.event_id
 LEFT JOIN transcripts_agg t ON k.event_id=t.event_id

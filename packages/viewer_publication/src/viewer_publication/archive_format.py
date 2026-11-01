@@ -58,6 +58,9 @@ LIST_DICTIONARY = [*(f'{name}.list.item' for name in ['document_kind', 'document
 DETAIL_DICTIONARY = ['saved_suffix', 'saved_media_type', 'document_date_source', 'alternates.list.item.format', 'alternates.list.item.suffix', 'facts.list.item.field']
 
 
+MEETING_DICTIONARY = ['chamber', 'meeting_type', 'status', 'congress_gov_meeting_type', 'committees.list.item.system_code', 'committees.list.item.role', 'subject_keys.list.item']
+
+
 def _step(name, sql, *, materialize=False, release_after=()):
     step = dict(name=name, sql=sql, materialize=materialize)
     if release_after:
@@ -307,7 +310,8 @@ def _execute(inputs, steps, *, output, scratch, engine, origin, auxiliary=None, 
 
 
 def _auxiliary():
-    sittings = _empty_struct(start=TS, end=TS, place='cast(NULL AS VARCHAR)')
+    sittings = _empty_struct(start=TS, end=TS, place='cast(NULL AS VARCHAR)', room='cast(NULL AS VARCHAR)',
+        building='cast(NULL AS VARCHAR)', address='cast(NULL AS VARCHAR)')
     committees = _empty_struct(system_code='cast(NULL AS VARCHAR)', role='cast(NULL AS VARCHAR)')
     transcripts = _empty_struct(package_id='cast(NULL AS VARCHAR)', list_row='cast(NULL AS INT)')
     videos = _empty_struct(name='cast(NULL AS VARCHAR)', url='cast(NULL AS VARCHAR)', video_key='cast(NULL AS VARCHAR)')
@@ -319,8 +323,9 @@ def _auxiliary():
             SELECT event_id,max(chamber) AS chamber,max(title) AS title,max(meeting_date) AS meeting_date,
                 cast(NULL AS VARCHAR) AS meeting_type,cast(NULL AS SMALLINT) AS session,cast(NULL AS VARCHAR) AS status,
                 {sittings} AS sittings,{committees} AS committees,{EMPTY_STRINGS} AS subject_keys,
-                {transcripts} AS transcripts,{videos} AS videos FROM meta GROUP BY event_id""", ['event_id'],
-            ['chamber', 'meeting_type', 'status', 'committees.list.item.system_code', 'committees.list.item.role', 'subject_keys.list.item']),
+                {transcripts} AS transcripts,{videos} AS videos,cast(NULL AS SMALLINT) AS congress,{TS} AS congress_gov_updated,
+                cast(NULL AS VARCHAR) AS house_xml_updated,cast(NULL AS VARCHAR) AS congress_gov_meeting_type FROM meta GROUP BY event_id""", ['event_id'],
+            MEETING_DICTIONARY),
         ('committees', f"""SELECT system_code,name,chamber,cast(NULL AS VARCHAR) AS committee_type,
             cast(NULL AS VARCHAR) AS parent_system_code,{names} AS names,cast(NULL AS VARCHAR) AS website,
             cast(NULL AS BOOLEAN) AS is_current FROM committee_input""", ['system_code'], ['chamber', 'committee_type', 'parent_system_code']),

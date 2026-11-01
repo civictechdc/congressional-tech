@@ -65,7 +65,7 @@ Each `meetings` element:
 - **Sources:** Congress.gov meeting records for both chambers (18,140 meetings, about 11 identical inline copies each, which `record_sha` collapses) and House `committee-meeting` XML. Senate committee pages carry no meeting ID; they give documents and appearances (§1.3).
 - **Work list:** good-fetched bodies and inline records whose URL matches the meeting-source registry ([[DATA-MODEL]] §7.1) with no row at the pinned version. Inline records are read once from the four `congress/meetings` receipt files (77 MB, 199,156 lines) by their `captures` pointers, and `record_sha` is computed then.
 - **PK:** `(record_sha, parser_version)`; tens of thousands of rows. The model unnests `meetings`.
-- **Current records:** first filter the selected source/parser versions; then, per `(event_id, source)`, choose the latest by `(updated desc nulls last, latest good fetch's retrieved_at desc nulls last, record_sha)`. Each replacement field comes from the current `house_xml` record when that explicitly states it, else its current `congress_gov` record. Replacement collections carry `present`, `empty`, `absent` or `unrecognized` state: an explicitly empty higher-precedence list replaces the old list and is not filled from another source. Only an absent declaration permits normal fallback; failed or unrecognized extraction remains an explicit coverage problem. Fields deliberately combining assertions, such as `subject_keys` under `ct-h1nd`, keep their separately stated union policy and provenance.
+- **Current records:** first filter the selected source/parser versions; then, per `(event_id, source)`, choose the latest by `(updated desc nulls last, latest good fetch's retrieved_at desc nulls last, record_sha)`. Each replacement field comes from the current `house_xml` record when that explicitly states it, else its current `congress_gov` record. Replacement collections carry `present`, `empty`, `absent` or `unrecognized` state: an explicitly empty higher-precedence list replaces the old list and is not filled from another source. Only an absent declaration permits normal fallback; failed or unrecognized extraction remains an explicit coverage problem. **Sittings differ:** `sittings` come from the current `congress_gov` record when it states any, else from `house_xml`, whose times convert from Eastern local to an instant. Congress.gov states instants and places; House XML states unzoned local times and its parsed sittings carry no place. An explicit `empty` or `unrecognized` House state still replaces the list without fallback. Fields deliberately combining assertions, such as `subject_keys` under `ct-h1nd`, keep their separately stated union policy and provenance.
 
 ### 1.3 `appearance_records`
 
@@ -180,6 +180,11 @@ corrections awaiting implementation under §4.7. The migration requirements in
 §4.6 identify additional retained facts to expose. Typed schema changes must land
 with the native producer and release registry; this document does not claim the
 currently published release already contains them.
+
+`meetings.parquet` ([[DATA-MODEL]] §8.1) gains `congress`, `congress_gov_updated`,
+`house_xml_updated` and `congress_gov_meeting_type`, and each sitting gains `room`,
+`building` and `address`. Publisher updates remain distinct from hearing dates and
+capture times; `congress` is null when no record states it.
 
 | File | Columns | Order | Writer settings | Size |
 |---|---|---|---|---|

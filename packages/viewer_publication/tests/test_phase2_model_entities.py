@@ -1367,3 +1367,64 @@ def test_entity_record_version_selection_and_completeness_admission(tmp_path):
     )
 
 
+def _resolved_meetings(tmp_path, records):
+    """Run only the maintained meeting SQL over stated records, with no capture history."""
+    from congress_api.retention.provenance import json_input, run_job
+    from docspec_client.client import NativeDatasets
+    from viewer_publication.archive_model import MEETING_RECORD_FIELDS, ROOT, _normalize_meeting_rows
+    engine = NativeDatasets.from_config(os.environ['DOCSPEC_JOB_CONFIG'])
+    inputs = [json_input(tmp_path, 'meeting_records_input', _normalize_meeting_rows(records, 'v'), **MEETING_RECORD_FIELDS),
+        json_input(tmp_path, 'parser_versions', [], parser='Utf8', version='Utf8'),
+        json_input(tmp_path, 'meeting_sources', [dict(kind='meeting', source='house_xml', priority=1), dict(kind='meeting', source='congress_gov', priority=2)], kind='Utf8', source='Utf8', priority='Int64'),
+        json_input(tmp_path, 'recording_sources', [], kind='Utf8', pattern='Utf8', key_template='Utf8')]
+    captures = """SELECT arrow_cast(NULL,'FixedSizeBinary(32)') AS sha256,cast(NULL AS VARCHAR) AS retrieved_at,cast(NULL AS VARCHAR) AS mode,
+        cast(NULL AS BOOLEAN) AS complete,cast(NULL AS VARCHAR) AS outcome,cast(NULL AS INT) AS http_status WHERE false"""
+    sql = (ROOT / 'model/sql/meeting-records-resolved.sql').read_text()
+    result = run_job(tmp_path, engine, inputs=inputs, outputs=[],
+        steps=[dict(name='captures', sql=captures), dict(name='resolved', sql=sql, materialize=True)],
+        queries=[dict(name='rows', sql=f"""SELECT event_id,congress,congress_gov_updated,house_xml_updated,congress_gov_meeting_type,
+            sittings[1]['start'] AS s_start,sittings[1]['end'] AS s_end,sittings[1]['place'] AS place,sittings[1]['room'] AS room,
+            coalesce(array_length(sittings),0) AS sitting_count FROM resolved ORDER BY event_id""")])
+    return result['rows']
+
+
+def _record(sha, source, *, states=None, sittings=(), **fields):
+    return dict(record_sha=sha * 32, source=source, meetings=[dict(dict(event_id='100', chamber='house', congress=118,
+        sittings=list(sittings), collection_states=states or {}), **fields)])
+
+
+CONGRESS_SITTING = dict(start='2019-11-13T19:00:00Z', room='1300', building='Longworth House Office Building')
+
+
+def test_congress_gov_states_the_sitting_over_unzoned_house_time(tmp_path):
+    rows = _resolved_meetings(tmp_path, [
+        _record('11', 'house_xml', updated='2019-11-10T08:00:00', meeting_type='HHRG', sittings=[dict(start='2019-11-13T14:00:00')]),
+        _record('22', 'congress_gov', updated='2019-11-11T00:00:00Z', meeting_type='Hearing', sittings=[CONGRESS_SITTING])])
+    assert str(rows[0]['s_start']).startswith('2019-11-13T19:00:00') and rows[0]['room'] == '1300'
+    assert rows[0]['place'] == '1300, Longworth House Office Building'
+    assert rows[0]['house_xml_updated'] == '2019-11-10T08:00:00' and rows[0]['congress_gov_meeting_type'] == 'Hearing'
+    assert str(rows[0]['congress_gov_updated']).startswith('2019-11-11T00:00:00')
+
+
+@pytest.mark.parametrize('local,instant', [('2012-09-13T14:00:00', '2012-09-13T18:00:00'), ('2019-11-13T14:00:00', '2019-11-13T19:00:00')])
+def test_house_only_sitting_converts_from_eastern_local(tmp_path, local, instant):
+    rows = _resolved_meetings(tmp_path, [_record('11', 'house_xml', sittings=[dict(start=local, end=local)])])
+    assert str(rows[0]['s_start']).startswith(instant) and str(rows[0]['s_end']).startswith(instant)
+    assert rows[0]['congress_gov_updated'] is None
+
+
+def test_zoned_house_instant_is_not_shifted(tmp_path):
+    rows = _resolved_meetings(tmp_path, [_record('11', 'house_xml', sittings=[dict(start='2019-11-13T14:00:00Z')])])
+    assert str(rows[0]['s_start']).startswith('2019-11-13T14:00:00')
+
+
+@pytest.mark.parametrize('state', ['empty', 'unrecognized'])
+def test_explicit_empty_house_sittings_never_fall_back(tmp_path, state):
+    rows = _resolved_meetings(tmp_path, [_record('11', 'house_xml', states=dict(sittings=state)),
+        _record('22', 'congress_gov', sittings=[CONGRESS_SITTING])])
+    assert rows[0]['sitting_count'] == 0
+
+
+def test_congress_is_only_what_a_record_states(tmp_path):
+    rows = _resolved_meetings(tmp_path, [_record('11', 'congress_gov', congress=None, sittings=[CONGRESS_SITTING])])
+    assert rows[0]['congress'] is None

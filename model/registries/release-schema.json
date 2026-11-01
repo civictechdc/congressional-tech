@@ -568,8 +568,8 @@
         },
         {
           "name": "sittings",
-          "type": "list<struct<start timestamp,end timestamp,place string>>",
-          "meaning": "Scheduled times and locations"
+          "type": "list<struct<start timestamp,end timestamp,place string,room string,building string,address string>>",
+          "meaning": "Scheduled times and locations, as Congress.gov states them when it has a sitting"
         },
         {
           "name": "committees",
@@ -590,6 +590,26 @@
           "name": "videos",
           "type": "list<struct<name string,url string,video_key string>>",
           "meaning": "Recorded meeting links"
+        },
+        {
+          "name": "congress",
+          "type": "int16",
+          "meaning": "Congress the publisher record states; null when no record states it, never inferred from documents"
+        },
+        {
+          "name": "congress_gov_updated",
+          "type": "timestamp",
+          "meaning": "Congress.gov's updateDate for this record: a publisher record update, distinct from the hearing date and capture time"
+        },
+        {
+          "name": "house_xml_updated",
+          "type": "string",
+          "meaning": "House XML update-date, literally as stated with no zone: a publisher record update, distinct from the hearing date and capture time"
+        },
+        {
+          "name": "congress_gov_meeting_type",
+          "type": "dict",
+          "meaning": "Congress.gov's type label (Hearing, Markup, Meeting)"
         }
       ],
       "gaps": [],
@@ -604,10 +624,11 @@
         "kind": "primary_key"
       },
       "notes": {
-        "sittings[]": "Embedded scheduled intervals and places. Times retain published precision; do not invent a Congress from the session number.",
+        "sittings[]": "Embedded scheduled intervals and places. Congress.gov states instants and places, so its sitting is used when present; a House-only sitting's unzoned Eastern local time is converted to an instant. An explicit empty House state stays empty. Times retain published precision; do not invent a Congress from the session number.",
         "committees[]": "Host/participant roles belong to this meeting-committee association.",
         "transcripts[]": "Package identifier and release-local document row identify the same retained hearing transcript.",
-        "videos[]": "Publisher recording links; video_key joins retained recordings when available."
+        "videos[]": "Publisher recording links; video_key joins retained recordings when available.",
+        "meeting_type": "As stated, with House XML codes (HHRG, HMKP, HMTG) on House rows; congress_gov_meeting_type carries the shared label."
       }
     },
     {

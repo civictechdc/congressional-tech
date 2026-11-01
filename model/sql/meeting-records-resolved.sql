@@ -32,6 +32,7 @@ WITH selected_meeting_records AS (
   cast(m['congress'] AS INT) AS congress,
   cast(m['session'] AS SMALLINT) AS session,
   arrow_cast(try_cast(m['updated'] AS TIMESTAMP WITH TIME ZONE),'Timestamp(Microsecond, Some("UTC"))') AS updated,
+  nullif(trim(m['updated']),'') AS updated_literal,
   nullif(trim(m['title']),'') AS title,
   try_cast(m['meeting_date'] AS DATE) AS meeting_date,
   nullif(trim(m['meeting_type']),'') AS meeting_type,
@@ -63,13 +64,20 @@ WITH selected_meeting_records AS (
   coalesce(h.congress,c.congress) AS congress,
   coalesce(h.session,c.session) AS session,
   coalesce(h.updated,c.updated) AS updated,
+  c.updated AS congress_gov_updated,
+  h.updated_literal AS house_xml_updated,
+  c.meeting_type AS congress_gov_meeting_type,
   coalesce(h.title,c.title) AS title,
   coalesce(h.meeting_date,c.meeting_date) AS meeting_date,
   coalesce(h.meeting_type,c.meeting_type) AS meeting_type,
   coalesce(h.status,c.status) AS status,
-  CASE WHEN h.sittings_state='present' THEN h.sittings
-       WHEN h.sittings_state IN ('empty','unrecognized') THEN NULL
-       WHEN c.sittings_state='present' THEN c.sittings END AS raw_sittings,
+  -- Congress.gov states instants and places; House XML states unzoned Eastern
+  -- local times and, today, no parsed place. So Congress.gov leads for sittings,
+  -- while an explicit empty or unrecognized House state still blocks any fallback.
+  CASE WHEN h.sittings_state IN ('empty','unrecognized') THEN NULL
+       WHEN c.sittings_state='present' THEN c.sittings
+       WHEN h.sittings_state='present' THEN h.sittings END AS raw_sittings,
+  coalesce(h.sittings_state='present' AND coalesce(c.sittings_state,'')<>'present',false) AS sittings_are_eastern,
   CASE WHEN h.committees_state='present' THEN h.committees
        WHEN h.committees_state IN ('empty','unrecognized') THEN NULL
        WHEN c.committees_state='present' THEN c.committees END AS raw_committees,
@@ -85,14 +93,19 @@ WITH selected_meeting_records AS (
  LEFT JOIN current_source h ON k.event_id=h.event_id AND h.source='house_xml'
  LEFT JOIN current_source c ON k.event_id=c.event_id AND c.source='congress_gov'
 ), sitting_rows AS (
- SELECT event_id,unnest(raw_sittings) AS s,
+ SELECT event_id,sittings_are_eastern,unnest(raw_sittings) AS s,
   unnest(range(0,cast(array_length(raw_sittings) AS BIGINT))) AS idx
  FROM merged WHERE raw_sittings IS NOT NULL AND coalesce(array_length(raw_sittings),0)>0
 ), sittings_agg AS (
  SELECT event_id,array_agg(named_struct(
-  'start',arrow_cast(try_cast(s['start'] AS TIMESTAMP WITH TIME ZONE),'Timestamp(Microsecond, Some("UTC"))'),
-  'end',arrow_cast(try_cast(s['end'] AS TIMESTAMP WITH TIME ZONE),'Timestamp(Microsecond, Some("UTC"))'),
-  'place',nullif(concat_ws(', ',nullif(trim(s['room']),''),nullif(trim(s['building']),''),nullif(trim(s['address']),'')),'')
+  'start',CASE WHEN sittings_are_eastern AND NOT regexp_like(s['start'],'T.*(Z|[+-][0-9:]+)$') THEN arrow_cast(try_cast(s['start'] AS TIMESTAMP) AT TIME ZONE 'America/New_York','Timestamp(Microsecond, Some("UTC"))')
+   ELSE arrow_cast(try_cast(s['start'] AS TIMESTAMP WITH TIME ZONE),'Timestamp(Microsecond, Some("UTC"))') END,
+  'end',CASE WHEN sittings_are_eastern AND NOT regexp_like(s['end'],'T.*(Z|[+-][0-9:]+)$') THEN arrow_cast(try_cast(s['end'] AS TIMESTAMP) AT TIME ZONE 'America/New_York','Timestamp(Microsecond, Some("UTC"))')
+   ELSE arrow_cast(try_cast(s['end'] AS TIMESTAMP WITH TIME ZONE),'Timestamp(Microsecond, Some("UTC"))') END,
+  'place',nullif(concat_ws(', ',nullif(trim(s['room']),''),nullif(trim(s['building']),''),nullif(trim(s['address']),'')),''),
+  'room',nullif(trim(s['room']),''),
+  'building',nullif(trim(s['building']),''),
+  'address',nullif(trim(s['address']),'')
  ) ORDER BY idx) AS sittings
  FROM sitting_rows GROUP BY event_id
 ), committee_rows AS (
@@ -149,11 +162,11 @@ WITH selected_meeting_records AS (
  ) ORDER BY idx) AS videos
  FROM video_matched GROUP BY event_id
 )
-SELECT m.event_id,m.chamber,m.congress,m.session,m.updated,m.title,m.meeting_date,m.meeting_type,m.status,
+SELECT m.event_id,m.chamber,m.congress,m.session,m.updated,m.congress_gov_updated,m.house_xml_updated,m.congress_gov_meeting_type,m.title,m.meeting_date,m.meeting_type,m.status,
  coalesce(sa.sittings,array_slice(make_array(named_struct(
   'start',arrow_cast(NULL,'Timestamp(Microsecond, Some("UTC"))'),
   'end',arrow_cast(NULL,'Timestamp(Microsecond, Some("UTC"))'),
-  'place',cast(NULL AS VARCHAR))),1,0)) AS sittings,
+  'place',cast(NULL AS VARCHAR),'room',cast(NULL AS VARCHAR),'building',cast(NULL AS VARCHAR),'address',cast(NULL AS VARCHAR))),1,0)) AS sittings,
  coalesce(ca.committees,array_slice(make_array(named_struct(
   'system_code',cast(NULL AS VARCHAR),'role',cast(NULL AS VARCHAR))),1,0)) AS committees,
  coalesce(sba.subject_keys,arrow_cast(array_slice(make_array(cast(NULL AS VARCHAR)),1,0),'List(Utf8)')) AS subject_keys,
