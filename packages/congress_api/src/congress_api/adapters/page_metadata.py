@@ -11,6 +11,7 @@ page authors are CMS accounts ("admin"), and witness parsers stay the only sourc
 appearances. ``declared_url`` is never an identifier or a merge key.
 """
 from datetime import datetime
+import re
 from urllib.parse import urlsplit
 
 from committee_meeting.common import ReportedTime
@@ -18,7 +19,7 @@ from committee_meeting.issues import DataIssue
 from committee_meeting.materials import Material, Representation
 from committee_meeting.provenance import AlternativeValue, Citation, FieldEvidence, Method, Provenance
 
-from congress_api.adapters.common import digest, ref, reported_time
+from congress_api.adapters.common import digest, ref
 from congress_api.models.html_metadata import HtmlMetadata, MainContentRef
 from congress_api.parsers.html_metadata import page_facts
 
@@ -37,6 +38,8 @@ TEMPLATE_DESCRIPTIONS = (
 )
 # A JSON-LD description on these nodes describes the site, not the page.
 _SITE_NODES = {'WebSite', 'Organization', 'Person'}
+_NODE_PATH = re.compile(r'/(?:@type|description)(?:/\d+)?$')
+_DECLARED_TIME = re.compile(r'\d{4}-\d{2}-\d{2}(?P<clock>[T ]\d{2}:\d{2}(?P<seconds>:\d{2}(?:\.\d+)?)?(?:Z|[+-]\d{2}(?::?\d{2})?)?)?')
 _DESCRIPTION_ORDER = {'opengraph': 0, 'json-ld': 1, 'head_meta': 2}
 
 
@@ -46,22 +49,32 @@ def lookup(context, urls) -> HtmlMetadata | None:
 
 
 def metadata_source(context, url, metadata):
+    """One source record per body, whatever URL first supplies it.
+
+    Two URLs serving one body give one source ID, and a catalog refuses duplicate
+    identities (committee_meeting/catalog.py). ct-pocg, which supplies page_metadata, must
+    emit each body's source once and cite it from every capture, or key this by URL.
+    """
     return context.source(f'html-metadata|{metadata.body_sha256}', metadata.source_dict(), url)
 
 
 def _time(value):
-    """A declared time at its own precision; an unzoned value gets no invented zone."""
-    if not isinstance(value, str):
+    """A declared time on its own local date at its own precision.
+
+    reported_time converts to UTC, which moves 22:15-04:00 to the next day, so it is not
+    reused here. A form this cannot read stays only in the metadata source.
+    """
+    match = _DECLARED_TIME.fullmatch(value.strip()) if isinstance(value, str) else None
+    if not match:
         return None
     try:
-        return reported_time(value)
-    except (ValueError, TypeError):  # reported_time refuses unzoned values
-        pass
-    try:
-        parsed = datetime.fromisoformat(value)
-    except ValueError:  # the literal stays in the metadata source
+        parsed = datetime.fromisoformat(match[0])
+    except ValueError:
         return None
-    return None if parsed.tzinfo else ReportedTime(date=parsed.date(), time=parsed.time(), precision='second' if parsed.second else 'minute', original=value)
+    if not match['clock']:
+        return ReportedTime(date=parsed.date(), original=value)
+    return ReportedTime(date=parsed.date(), time=parsed.time().replace(microsecond=0, tzinfo=None), timezone=str(parsed.tzinfo) if parsed.tzinfo else None,
+                        precision='second' if match['seconds'] else 'minute', original=value)
 
 
 def _times(facts, field):
@@ -111,9 +124,9 @@ def _descriptions(metadata, title):
     facts = page_facts(metadata)
     sites = {value.casefold() for name, value in _opengraph(metadata) if name == 'og:site_name' and isinstance(value, str)}
     rejected = {(title or '').casefold(), *sites, ''}
-    types = {fact.path.rsplit('/', 1)[0]: fact.value for fact in facts if fact.field == 'declared_type'}
+    site_nodes = {_NODE_PATH.sub('', fact.path) for fact in facts if fact.field == 'declared_type' and fact.value in _SITE_NODES}
     usable = (fact for fact in facts if fact.field == 'description' and isinstance(fact.value, str)
-              and types.get(fact.path.rsplit('/', 1)[0]) not in _SITE_NODES)
+              and _NODE_PATH.sub('', fact.path) not in site_nodes)
     kept = [fact for fact in usable if fact.value.strip().casefold() not in rejected
             and not fact.value.strip().casefold().startswith(TEMPLATE_DESCRIPTIONS)]
     return sorted(kept, key=lambda fact: _DESCRIPTION_ORDER[fact.format])
@@ -169,7 +182,8 @@ def material_page_records(context, records, url, metadata):
     """Apply one page's metadata to freshly mapped material records."""
     source = metadata_source(context, url, metadata)
     mapped = [enrich_material(context, record, metadata, source) if isinstance(record, Material) else record for record in records]
-    return [source, *declared_url_issues(context, f'material|{url}', metadata, source, url), *mapped]
+    # Callers unpack the material and version from the front of this list.
+    return [*mapped, source, *declared_url_issues(context, f'material|{url}', metadata, source, url)]
 
 
 def main_content_representation(context, key, version, reference: MainContentRef, source):

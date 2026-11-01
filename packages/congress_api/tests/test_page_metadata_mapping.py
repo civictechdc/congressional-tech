@@ -117,6 +117,17 @@ def test_date_only_and_unzoned_precision_is_preserved():
     assert material.source_modified_at.timezone is None and material.source_modified_at.time.hour == 12 and material.source_modified_at.original == '2025-04-01T12:30:00'
 
 
+def test_declared_local_date_is_kept_and_compact_dates_invent_nothing():
+    def published(value):
+        body = f'<html><head><meta property="article:published_time" content="{value}"></head></html>'.encode()
+        return material_row(supplied(**{PAGE_URL: read_html_metadata(body)}))[1].published_at
+    evening = published('2025-04-01T22:15-04:00')
+    assert (evening.date.isoformat(), evening.time.hour, evening.precision) == ('2025-04-01', 22, 'minute')
+    assert evening.timezone and '04:00' in evening.timezone and evening.original == '2025-04-01T22:15-04:00'
+    assert published('2025-04-01T22:15:30Z').precision == 'second'
+    assert published('20250401') is None
+
+
 def test_unparseable_declared_date_stays_in_the_source_only():
     _, material = material_row(supplied(**{PAGE_URL: read_html_metadata(b'<html><head><meta property="article:published_time" content="soon"></head></html>')}))
     assert material.published_at is None
@@ -133,6 +144,7 @@ def test_empty_title_site_and_template_descriptions_are_rejected():
     assert described('<meta name="description" content="A real summary">') == 'A real summary'
     website = '<script type="application/ld+json">{"@type":"WebSite","description":"Whole site"}</script>'
     assert described(website) is None
+    assert described(website.replace('"WebSite"', '["WebSite"]')) is None
 
 
 def test_description_order_and_disagreement_is_kept_as_an_alternative():
@@ -176,6 +188,48 @@ def test_main_content_is_an_ordinary_representation():
     assert (row.media_type, row.sha256, row.byte_size, row.retained) == ('text/plain', 'a' * 64, 5, None)
     assert (row.provenance.citations[0].selector_type, row.provenance.citations[0].selector) == ('xpath', '/html/body/div')
     assert main_content_representation(ctx, 'k', version, reference.model_copy(update={'text_sha256': None}), source) is None
+
+
+def link_pairs(rows):
+    return {(row.material.id, row.version.id) for row in of_kind(rows, 'material_link')}
+
+
+def test_senate_documents_stay_material_first_through_the_real_adapter():
+    saved = page()
+    plain = adapt_senate(context(), saved)
+    document = next(location.url for row in of_kind(plain, 'representation') for location in row.locations)
+    rows = adapt_senate(supplied(**{document: metadata('ways-and-means.html')}), saved)
+    enriched, = [row for row in of_kind(rows, 'material') if row.description]
+    assert enriched.id in {row.id for row in of_kind(plain, 'material')}
+    assert link_pairs(rows) == link_pairs(plain)
+    assert any(row.identifier.value.startswith('html-metadata|') for row in of_kind(rows, 'source_record'))
+
+
+def test_senate_recordings_stay_material_first_through_the_real_adapter():
+    video = 'https://example.senate.gov/video.mp4'
+    saved = page(page_metadata={'media': [{'tag': 'video', 'attributes': {'src': video, 'title': 'Hearing video'}}]})
+    plain = adapt_senate(context(), saved)
+    assert video in {location.url for row in of_kind(plain, 'representation') for location in row.locations}
+    rows = adapt_senate(supplied(**{video: metadata('ways-and-means.html')}), saved)
+    assert link_pairs(rows) == link_pairs(plain)
+    assert any(row.description for row in of_kind(rows, 'material'))
+
+
+def test_house_documents_and_action_files_stay_material_first_through_the_real_adapter():
+    from congress_api.adapters.house import records as house_records
+    pdf = 'https://docs.house.gov/meetings/FA/FA00/20260920/1/amendment.pdf'
+    other = 'https://docs.house.gov/meetings/FA/FA00/20260920/1/vote.pdf'
+    saved = {'documents': [['bill or amendment', 'Amendment 79', pdf, ['amendment.pdf']]],
+             'amendments': [{'kind': 'amendment', 'bill': '5300', 'number': '79', 'description': 'Amendment 79', 'url': pdf},
+                            {'kind': 'amendment', 'bill': '5300', 'number': '80', 'description': 'Amendment 80', 'url': other}]}
+    def adapt(ctx):
+        return list(house_records({'1': saved}, ctx, meetings={(119, 'house', '1'): Ref(kind='meeting', id='meeting-1')}))
+    def house(**pages):
+        return AdapterContext(now=NOW, input_id='i', provider='docs.house.gov', ids=lambda kind, key: kind + ':' + key, page_metadata=pages)
+    plain = adapt(house())
+    rows = adapt(house(**{pdf: metadata('ways-and-means.html'), other: metadata('indian-affairs.html')}))
+    assert link_pairs(rows) == link_pairs(plain)
+    assert sum(bool(row.source_document_groups or row.source_modified_at) for row in of_kind(rows, 'material')) == 2
 
 
 def test_every_fact_pointer_resolves_to_its_value():
