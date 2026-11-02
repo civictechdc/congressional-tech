@@ -618,12 +618,11 @@ def test_daily_produce_to_publish_handoff_to_completeness_checks_end_to_end(tmp_
     attempt=FetchAttempt(url,url,'2026-10-28T12:00:00Z','direct',200,None,{},(),True,body)
     key,line=writer.write(FetchResult(attempt),family='congress/meetings')
     capture=line['captures'][0];physical='bodies/sha256/'+digest[:2]+'/'+digest+capture['stored_suffix']
-    with (root/physical).open('rb') as stored:stored_gzip=stored.read(2)==b'\x1f\x8b'
     body_inv_path=tmp_path/'body-inventory.parquet'
     pq.write_table(pa.Table.from_pylist([dict(body_sha=bytes.fromhex(digest),physical_key=physical,
-        relative_path=physical,stored_bytes=capture['stored_bytes'],stored_gzip=stored_gzip)],
+        relative_path=physical,stored_bytes=capture['stored_bytes'])],
         schema=pa.schema([('body_sha',pa.binary(32)),('physical_key',pa.string()),('relative_path',pa.string()),
-            ('stored_bytes',pa.int64()),('stored_gzip',pa.bool_())])),body_inv_path)
+            ('stored_bytes',pa.int64())])),body_inv_path)
 
     catalog_root=str(tmp_path/'catalog')
     five_tables={name:dict(namespace=['archive'],name=name) for name in ALL_TABLE_NAMES}

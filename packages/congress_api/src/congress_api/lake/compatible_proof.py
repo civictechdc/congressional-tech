@@ -15,6 +15,7 @@ Cost: the base readings column scan is O(N) narrow; the local-body listing is O(
 mirror); ranking is O(L log L) over local candidates; recompute is O(sample) body reads.
 """
 import argparse
+import contextlib
 from hashlib import sha256
 import json
 from pathlib import Path
@@ -111,9 +112,10 @@ def recompute(*, bodies, local, captures, raw_root, engine, work, decided_at):
         shutil.copyfile(Path(raw_root) / local[b], target)
     inventory = work / 'inventory.parquet'
     rows = [dict(body_sha=bytes.fromhex(b), physical_key=local[b], relative_path=local[b],
-                 stored_bytes=(root / local[b]).stat().st_size, stored_gzip=local[b].endswith('.gz')) for b in bodies]
+                 stored_bytes=(root / local[b]).stat().st_size) for b in bodies]
+    # No storage encoding here: the reader decides it from the body's hash, never from a name.
     pq.write_table(pa.Table.from_pylist(rows, schema=pa.schema([('body_sha', pa.binary(32)), ('physical_key', pa.string()),
-        ('relative_path', pa.string()), ('stored_bytes', pa.int64()), ('stored_gzip', pa.bool_())])), inventory)
+        ('relative_path', pa.string()), ('stored_bytes', pa.int64())])), inventory)
     # The recompute reads no existing rows, so the registry cannot matter to it; an empty one
     # keeps a stale entry (the one being re-proved) from blocking its own replacement.
     empty = work / 'empty-registry.json'
@@ -135,14 +137,19 @@ for payload in request['payloads']:
     data = open(payload['path'], 'rb').read()
     if request['parser'] == 'sniff':
         from congress_api.retention.sniff import read_sniff
-        read_sniff(lambda start, length: data[start:start + length], stored_size=len(data), stored_gzip=payload['path'].endswith('.gz'))
+        read_sniff(lambda start, length: data[start:start + length], stored_size=len(data), stored_gzip=payload['stored_gzip'])
     else:
         from congress_api.parsers.archive_readings import read_page
-        read_page(gzip.decompress(data) if data[:2] == b'\x1f\x8b' else data, request['parser'])
+        read_page(gzip.decompress(data) if payload['stored_gzip'] else data, request['parser'])
 owners = importlib.metadata.packages_distributions()
 loaded = sorted({d.lower() for m in list(sys.modules) for d in owners.get(m.split('.')[0], [])})
 print(json.dumps(dict(version=version, loaded=loaded)))
 '''
+
+
+def _stored_gzip(path, body):
+    with open(path, 'rb') as stream:
+        return readings._storage_gzip(stream, body, raw_io=contextlib.nullcontext)
 
 
 def _locked(path):
@@ -158,8 +165,9 @@ def attest_lock_only(*, parser, old, old_lock, raw_root, local, bodies, work):
     subprocess.run(['tar', '-x', '-C', str(tree)], input=archive, check=True)
     (tree / 'uv.lock').write_bytes(Path(old_lock).read_bytes())
     paths = [str(p) for p in sorted((tree / 'packages').glob('*/src'))]
+    # The old tree may predate the hash rule, so the encoding is decided here, by the current one.
     payloads = [dict(path=str(Path(raw_root) / local[b]), parser=parser, stored_bytes=(Path(raw_root) / local[b]).stat().st_size,
-                     stored_gzip=False) for b in bodies[:ATTEST_BODIES]]
+                     stored_gzip=_stored_gzip(Path(raw_root) / local[b], b)) for b in bodies[:ATTEST_BODIES]]
     done = subprocess.run([sys.executable, '-I', '-c', ATTEST, json.dumps(paths), json.dumps(dict(parser=parser, payloads=payloads))],
         capture_output=True, text=True, cwd=tree)
     if done.returncode:

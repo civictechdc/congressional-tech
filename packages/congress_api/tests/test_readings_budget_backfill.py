@@ -26,13 +26,13 @@ def inputs(root,count=3):
         digest=hashlib.sha256(data).digest();key='bodies/sha256/'+digest.hex()[:2]+'/'+digest.hex()
         path=raw/key;path.parent.mkdir(parents=True,exist_ok=True);path.write_bytes(data)
         captures.append(dict(sha256=digest,bytes=len(data),media_type='application/json',fidelity='exact-bytes'))
-        inventory.append(dict(body_sha=digest,physical_key=key,relative_path=key,stored_bytes=len(data),stored_gzip=False))
+        inventory.append(dict(body_sha=digest,physical_key=key,relative_path=key,stored_bytes=len(data)))
     cap=root/'captures.parquet';inv=root/'inventory.parquet'
     pq.write_table(pa.Table.from_pylist(captures,schema=pa.schema([('sha256',pa.binary(32)),('bytes',pa.int64()),
         ('media_type',pa.string()),('fidelity',pa.string()),('sniffed_format',pa.string()),
         ('sniff_version',pa.string()),('intact',pa.bool_())])),cap)
     pq.write_table(pa.Table.from_pylist(inventory,schema=pa.schema([('body_sha',pa.binary(32)),
-        ('physical_key',pa.string()),('relative_path',pa.string()),('stored_bytes',pa.int64()),('stored_gzip',pa.bool_())])),inv)
+        ('physical_key',pa.string()),('relative_path',pa.string()),('stored_bytes',pa.int64())])),inv)
     return dict(captures=cap,body_inventory=inv,local_root=raw,decided_at=STAMP,
         engine=NativeDatasets.from_config(os.environ['DOCSPEC_JOB_CONFIG']))
 

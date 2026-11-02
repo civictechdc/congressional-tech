@@ -34,8 +34,8 @@ def inputs(tmp_path,*,missing=None):
     captures=tmp_path/'captures.parquet';pq.write_table(pa.Table.from_pylist([capture,alternate],schema=schema),captures)
     inventory=tmp_path/'inventory.parquet'
     pq.write_table(pa.Table.from_pylist([dict(body_sha=digest,physical_key=key,relative_path=key,
-        stored_bytes=len(stored),stored_gzip=False)],schema=pa.schema([('body_sha',pa.binary(32)),
-        ('physical_key',pa.string()),('relative_path',pa.string()),('stored_bytes',pa.int64()),('stored_gzip',pa.bool_())])),inventory)
+        stored_bytes=len(stored))],schema=pa.schema([('body_sha',pa.binary(32)),
+        ('physical_key',pa.string()),('relative_path',pa.string()),('stored_bytes',pa.int64())])),inventory)
     return dict(captures=captures,body_inventory=inventory,local_root=tmp_path/'absent',decided_at=STAMP,
         engine=NativeDatasets.from_config(os.environ['DOCSPEC_JOB_CONFIG'])),stored,key
 

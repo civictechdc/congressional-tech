@@ -41,7 +41,7 @@ def model_inputs(tmp_path,*,conflict=False):
         parquet_output(inventory,'bodies',"""SELECT DISTINCT sha256 AS body_sha,
         'bodies/sha256/'||substr(encode(sha256,'hex'),1,2)||'/'||encode(sha256,'hex') AS physical_key,
         'bodies/sha256/'||substr(encode(sha256,'hex'),1,2)||'/'||encode(sha256,'hex') AS relative_path,
-        stored_bytes,false AS stored_gzip FROM captures WHERE sha256 IS NOT NULL""",['body_sha'])])
+        stored_bytes FROM captures WHERE sha256 IS NOT NULL""",['body_sha'])])
     pages=readings.stage(captures=captures,body_inventory=inventory/'bodies.parquet',local_root=raw,engine=engine,
         work=tmp_path/'page-stage',decided_at='2026-10-27T12:00:00Z',parser='html')
     names=filenames.stage(captures=captures,recovery_files=(),engine=engine,work=tmp_path/'name-stage',decided_at='2026-10-27T12:00:00Z')

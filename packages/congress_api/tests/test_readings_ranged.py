@@ -38,10 +38,10 @@ class Client(BaseClient):
     def head_object(self,**_):raise AssertionError('No per-body HEAD')
 
 
-def payload(tmp_path,entity,stored,*,suffix='',stored_gzip=False,known=None,prefetched=False):
+def payload(tmp_path,entity,stored,*,suffix='',known=None,prefetched=False):
     digest=hashlib.sha256(entity).hexdigest();key=f'bodies/sha256/{digest[:2]}/{digest}{suffix}'
     value=dict(path=str(tmp_path/'absent'),cache=str(tmp_path/'ranges'),body_sha=digest,
-        stored_bytes=len(stored),stored_gzip=stored_gzip,known_format=known,skip_parsers=[],
+        stored_bytes=len(stored),known_format=known,skip_parsers=[],
         versions={p:readings.current_version(p) for p in ['sniff','html','xml','json']},prefetched=prefetched)
     if prefetched:
         (tmp_path/'cached').write_bytes(stored);value['path']=str(tmp_path/'cached')
@@ -72,12 +72,13 @@ def test_unknown_or_mislabelled_page_reads_each_physical_byte_once(tmp_path,kind
     assert intervals==[(0,8191),(8192,len(data)-1)] and result['read_bytes']==len(data)
 
 
-@pytest.mark.parametrize('suffix,declared,encoding',[('',False,'gzip'),('.gz',True,None)])
-def test_canonical_and_legacy_storage_gzip_use_actual_encoding_facts(tmp_path,suffix,declared,encoding):
+# Storage encoding is the object's Content-Encoding, whatever its key suffix; no inventory flag.
+@pytest.mark.parametrize('suffix,encoding',[('','gzip'),('.gz','gzip')])
+def test_canonical_and_legacy_storage_gzip_use_actual_encoding_facts(tmp_path,suffix,encoding):
     entity=b'<html><body>'+b'Evidence '*2000+b'</body></html>';stored=gzip.compress(entity,mtime=0)
     client=Client(stored,encoding);store=R2Store(client,'bucket')
     with phase(tmp_path):result=readings.parse_once_payload(
-        payload(tmp_path,entity,stored,suffix=suffix,stored_gzip=declared),body_store=store)
+        payload(tmp_path,entity,stored,suffix=suffix),body_store=store)
     assert result['rows'][0]['format']=='html' and result['rows'][1]['parser']=='html'
     assert len(client.reads)==1 and result['read_bytes']==len(stored)
 
@@ -88,14 +89,14 @@ def test_original_gzip_warc_is_not_confused_with_storage_compression(tmp_path,st
     stored=gzip.compress(entity,mtime=0) if storage_gzip else entity
     client=Client(stored,'gzip' if storage_gzip else None);store=R2Store(client,'bucket')
     with phase(tmp_path):result=readings.parse_once_payload(payload(tmp_path,entity,stored,
-        suffix='.gz' if storage_gzip else '',stored_gzip=storage_gzip),body_store=store)
+        suffix='.gz' if storage_gzip else ''),body_store=store)
     assert [r['format'] for r in result['rows']]==['warc'] and len(client.reads)==1
 
 
 def test_known_canonical_gzip_json_is_decoded_and_verified_before_parse(tmp_path):
     entity=b'{"title":"A report","padding":"'+b'x'*12000+b'"}';stored=gzip.compress(entity,mtime=0)
     with phase(tmp_path):result=readings.parse_once_payload(payload(tmp_path,entity,stored,
-        known='json',stored_gzip=False,prefetched=True))
+        known='json',prefetched=True))
     assert result['rows'][-1]['parser']=='json' and result['rows'][-1]['status']=='completed'
 
 
@@ -111,7 +112,7 @@ def test_headerless_gzip_beyond_prefix_stays_pending_without_full_fetch(tmp_path
     entity=b'%PDF-1.7\n'+b''.join(hashlib.sha256(str(i).encode()).digest() for i in range(900))+b'%%EOF'
     stored=gzip.compress(entity,mtime=0);client=Client(stored,None)
     with phase(tmp_path):result=readings.parse_once_payload(payload(tmp_path,entity,stored,
-        suffix='.gz',stored_gzip=False),body_store=R2Store(client,'bucket'))
+        suffix='.gz'),body_store=R2Store(client,'bucket'))
     assert result['read_error'] and result['ambiguous_gzip'] and result['rows']==[]
     assert result['read_bytes']==8192
     assert [r['Range'] for r in client.reads]==['bytes=0-8191']
@@ -121,5 +122,5 @@ def test_headerless_original_gzip_remains_original_after_identity_proof(tmp_path
     entity=gzip.compress(b'WARC/1.1\r\nWARC-Type: response\r\n\r\n',mtime=0)
     client=Client(entity,None)
     with phase(tmp_path):result=readings.parse_once_payload(payload(tmp_path,entity,entity,
-        suffix='.gz',stored_gzip=False),body_store=R2Store(client,'bucket'))
+        suffix='.gz'),body_store=R2Store(client,'bucket'))
     assert result['rows'][0]['format']=='warc' and result['read_bytes']==len(entity)

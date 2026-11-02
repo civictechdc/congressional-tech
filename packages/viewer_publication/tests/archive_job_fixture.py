@@ -66,7 +66,7 @@ def derive_model_spec(tmp_path,*,raw,captures,entities=False):
             parquet_output(inventory,'bodies',"""SELECT DISTINCT sha256 AS body_sha,
             'bodies/sha256/'||substr(encode(sha256,'hex'),1,2)||'/'||encode(sha256,'hex')||stored_suffix AS physical_key,
             'bodies/sha256/'||substr(encode(sha256,'hex'),1,2)||'/'||encode(sha256,'hex')||stored_suffix AS relative_path,
-            stored_bytes,stored_suffix='.gz' AS stored_gzip FROM captures WHERE sha256 IS NOT NULL""",['body_sha'])])
+            stored_bytes FROM captures WHERE sha256 IS NOT NULL""",['body_sha'])])
         pages=readings.stage_once(captures=captures,body_inventory=inventory/'bodies.parquet',local_root=raw,
             engine=engine,work=tmp_path/'reading-stage',decided_at='2026-10-27T12:00:00Z')
         names=filenames.stage(captures=captures,recovery_files=(),engine=engine,work=tmp_path/'filename-stage',decided_at='2026-10-27T12:00:00Z')
@@ -172,7 +172,7 @@ def selective_base(root):
             parquet_output(bodies,'bodies',"""SELECT DISTINCT sha256 AS body_sha,
             'bodies/sha256/'||substr(encode(sha256,'hex'),1,2)||'/'||encode(sha256,'hex')||stored_suffix AS physical_key,
             'bodies/sha256/'||substr(encode(sha256,'hex'),1,2)||'/'||encode(sha256,'hex')||stored_suffix AS relative_path,
-            stored_bytes,stored_suffix='.gz' AS stored_gzip FROM captures WHERE sha256 IS NOT NULL""",['body_sha'])])
+            stored_bytes FROM captures WHERE sha256 IS NOT NULL""",['body_sha'])])
         pages=readings.stage_once(captures=captures,body_inventory=bodies/'bodies.parquet',local_root=raw,engine=engine,work=root/'reading-stage',decided_at=SELECTIVE_STAMP)
         names=filenames.stage(captures=captures,recovery_files=(),engine=engine,work=root/'filename-stage',decided_at=SELECTIVE_STAMP)
         common=dict(captures=captures,engine=engine,local_root=raw,decided_at=SELECTIVE_STAMP,readings=pages['readings'])

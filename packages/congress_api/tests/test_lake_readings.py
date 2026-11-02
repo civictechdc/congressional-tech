@@ -30,9 +30,8 @@ def setup(tmp_path, body=b'<html><body><p>Evidence</p><a href="a.pdf">PDF</a></b
         status='completed',format=body_format)]),existing)
     inventory=tmp_path/'bodies.parquet'
     pq.write_table(pa.Table.from_pylist([dict(body_sha=digest,physical_key=key,relative_path=key,
-        stored_bytes=len(body) if size is None else size,stored_gzip=False)],schema=pa.schema([
-        ('body_sha',pa.binary(32)),('physical_key',pa.string()),('relative_path',pa.string()),('stored_bytes',pa.int64()),
-        ('stored_gzip',pa.bool_())])),inventory)
+        stored_bytes=len(body) if size is None else size)],schema=pa.schema([
+        ('body_sha',pa.binary(32)),('physical_key',pa.string()),('relative_path',pa.string()),('stored_bytes',pa.int64())])),inventory)
     return dict(captures=captures,body_inventory=inventory,local_root=raw,existing=existing,
                 engine=NativeDatasets.from_config(os.environ['DOCSPEC_JOB_CONFIG']),
                 decided_at='2026-10-27T12:00:00Z'),digest
@@ -164,9 +163,7 @@ def test_post_read_decoded_bound_is_an_error_not_pre_read_size_limit(tmp_path):
     decoded=b'x'*(readings.MAX_DECODED_BYTES+1)
     body=gzip.compress(decoded,mtime=0)
     args,_=setup(tmp_path,body=body,logical_body=decoded)
-    rows=pq.read_table(args['body_inventory']).to_pylist()
-    rows[0]['stored_gzip']=True
-    pq.write_table(pa.Table.from_pylist(rows),args['body_inventory'])
+    # The stored object is gzip storage of the decoded body: the reader finds that by hash.
     result=stage(args,tmp_path/'stage')
     row=pq.read_table(result['readings']).to_pylist()[0]
     assert row['status']=='error' and row['error_type']=='decoded_size_limit'
@@ -290,7 +287,7 @@ def test_d2_rebuild_uses_only_raw_receipts_bodies_and_durable_decisions(tmp_path
             parquet_output(inventory,'bodies',"""SELECT DISTINCT sha256 AS body_sha,
             'bodies/sha256/'||substr(encode(sha256,'hex'),1,2)||'/'||encode(sha256,'hex')||stored_suffix AS physical_key,
             'bodies/sha256/'||substr(encode(sha256,'hex'),1,2)||'/'||encode(sha256,'hex')||stored_suffix AS relative_path,
-            stored_bytes,stored_suffix='.gz' AS stored_gzip FROM captures WHERE sha256 IS NOT NULL""",['body_sha'])])
+            stored_bytes FROM captures WHERE sha256 IS NOT NULL""",['body_sha'])])
         return dict(captures=captures,body_inventory=inventory/'bodies.parquet',local_root=raw,engine=engine,
             decided_at='2026-10-27T12:00:00Z',sniff_version=sniff_version,parser='html')
     first=readings.stage(**rebuild([retained]),work=stages/'readings',worker_factory=_TerminalReadingWorker,

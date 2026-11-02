@@ -99,7 +99,7 @@ def test_direct_listing_chooses_recorded_copy_then_falls_back_by_owner_rule(tmp_
     assert report['missing_pins']==(1 if bare=='neither' else 0)
     assert report['fallback_missing']==(1 if bare=='missing' else 2 if bare=='neither' else 0)
     assert report['fallback_conflict']==(1 if bare=='conflict' else 0)
-    assert row['stored_gzip'] is False # An object suffix is not a storage-encoding observation.
+    assert 'stored_gzip' not in row # No storage-encoding claim travels with the work list; the reader decides.
 
 
 def test_direct_listing_never_uses_an_unrecorded_alternative(tmp_path):
