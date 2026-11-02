@@ -28,3 +28,7 @@ Round 1b 2026-11-02 (lead): The old index lacks complete and outcome, so it can'
 **2026-11-02T13:54:36Z**
 
 2026-11-02 (lead): compare_generations implemented on r1b-e1.
+
+**2026-11-02T17:21:55Z**
+
+2026-11-02 impl-e1/spec-run: the D1 captures rebuild vs v21 is ACCEPTED by compare_generations with the expected-change-class file (r1b-captures-causes cabfffb9, off candidate-r1b). 4,147,132 rows on both sides, 0 rows on one side only, 0 unexpected changes. An independent raw judge read the receipt lines (status, body size, content_range) of all 111,324 changed rows and left none unexplained. Result: .cache/archive-release/r1b-run/compare/generations-expected.json. Limit: like the backfill guard, this sees changed rows only; an unchanged value that is wrong but in-domain is not covered here (gate 1 and the raw value comparison cover that).

@@ -44,3 +44,7 @@ Ordering constraint 2026-11-02 (lead): v21 is the first snapshot of the canonica
 **2026-11-02T17:13:22Z**
 
 2026-11-02 spec-run: the real captures rebuild (D1) passed the backfill guard on candidate-r1b 9faf86df, peaking at 6.93 GiB under the 14 GiB pool (staging batch cap). compare_generations against v21 refuses until an expected-change-class file exists: about 59k outcome and 65k good_fetch changes. impl-e1 is building the class file, and an independent raw judge is verifying every changed row; unexplained rows are defects. Size-bound registry rule committed (r1b-det 3a3d2560): only c90e782a is recomputed.
+
+**2026-11-02T17:21:55Z**
+
+2026-11-02 impl-e1/spec-run: the D1 captures rebuild vs v21 is ACCEPTED by compare_generations with the expected-change-class file (r1b-captures-causes cabfffb9, off candidate-r1b). 4,147,132 rows on both sides, 0 rows on one side only, 0 unexpected changes. An independent raw judge read the receipt lines (status, body size, content_range) of all 111,324 changed rows and left none unexplained. Result: .cache/archive-release/r1b-run/compare/generations-expected.json. Limit: like the backfill guard, this sees changed rows only; an unchanged value that is wrong but in-domain is not covered here (gate 1 and the raw value comparison cover that).
