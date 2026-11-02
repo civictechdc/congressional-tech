@@ -44,3 +44,7 @@ Round 1b 2026-11-02 (lead): Two-way package-to-meeting rule moves 392 rows on 93
 **2026-11-02T16:11:20Z**
 
 2026-11-02 impl-f r1b-f (rebased on 3e68b62b, engine 5dae611): all red-f2 items fixed. Witness precedence is per person (witness_precedence step; superseded_by column; nickname, spelling, rank and particle matching); letters and Member statements are labelled statements. A print links by shared witnesses (half of the shorter list, at least 2); titles decide only when a side lists none; an eventId never vetoes. Raw check on v21: not_held 430/430; rescheduled 84/86 (2 ambiguous); print attachments 6,909/6,972 (31 matching the old state, 31 a best pick, 1 contradicted: 50139, a seven-day print); red-f2's lost cases 185/192 published (7 are memo/QFR lines). Witness rows: 173,067 published, 141,255 shown, 31,812 superseded, 7,230 statements. red-f3 is checking false-match risk. Frozen inputs: .cache/archive-release/r1b-frozen/.
+
+**2026-11-02T16:28:40Z**
+
+2026-11-02 red-f3 (merge with fixes): 0 false matches among all 31,812 superseded rows, read against raw. Fixes sent to impl-f: the statement labeller mislabels witnesses (at least 21 of 50 sampled testified, including nominees whose counts drop to zero; 702 suspicious rows); matching is brittle (reversed nickname pairs, credential and state tokens as keys, 'Van' as a particle; 8 wrong superseded_by targets); an empty House list created before its hearing (111420) isn't authoritative; a duplicate key at appearance_records.py:1062 (byte-hashed).
