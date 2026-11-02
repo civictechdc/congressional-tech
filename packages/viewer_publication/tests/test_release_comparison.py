@@ -416,3 +416,14 @@ def test_a_changed_shared_subfield_surfaces_beside_an_added_subfield(tmp_path):
         ('changed sittings[].start', 'value differs on matched key'): 1,
         ('added subfield sittings[].room', 'subfield new in the candidate, set on matched rows'): 2}
     assert result['cannot_see'] == ['meetings.not_held: new in the candidate; no base values to compare']
+
+
+def test_null_urls_removed_from_the_candidate_are_not_reported_as_persisting(tmp_path):
+    """Base has 2 NULL source URLs and the candidate none: the NULL url group is -2, and no
+    'also present in the previous release' defect may appear (causes agent, 72 on 448651e7)."""
+    prev = release(tmp_path / 'prev', documents=['A'], sources=[(0, None, None), (0, None, None), (0, 'a', None)])
+    live = release(tmp_path / 'live', documents=['A'], sources=[(0, 'a', None)])
+    _, result = run(tmp_path, prev, live)
+    groups = counts(result, 'sources')
+    assert groups[('NULL url', 'defect: a published source address must not be null')] == -2
+    assert not any('also present' in name for name, _ in groups)

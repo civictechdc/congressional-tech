@@ -457,7 +457,10 @@ def account(d: Diff):
             if entry and path.exists() and digest(path)['sha256'] != entry['sha256']:
                 groups.append(flag(f'{side} manifest digest disagrees with file', 'unexplained'))
         if stem == 'sources' and candidate:
-            persisting = d.one('SELECT count(*) FROM candidate_sources WHERE url IS NULL') - sum(g['count'] for g in groups if g['group'] == 'NULL url')
+            # The 'NULL url' group is net (candidate minus base): only a positive part is new NULLs.
+            # Subtracting a negative net (NULLs removed) used to report removed NULLs as persisting.
+            persisting = d.one('SELECT count(*) FROM candidate_sources WHERE url IS NULL') - max(
+                sum(g['count'] for g in groups if g['group'] == 'NULL url'), 0)
             if persisting:
                 groups.append(flag(f'{persisting} NULL urls also present in the previous release', 'a published source address must not be null', 'defect'))
         if base and candidate and not same and handler is None:
