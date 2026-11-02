@@ -107,8 +107,8 @@ def test_below_the_machine_floor_the_youngest_running_job_stops_first(tmp_path, 
     younger = subprocess.Popen([sys.executable, '-c', 'import time;time.sleep(60)'])
     try:
         private_state.mkdir()
-        (private_state / f'{younger.pid}.json').write_text(json.dumps(entry(younger.pid, time.time(), 1,
-                                                                            admitted=time.time() + 3600)))
+        (private_state / f'{younger.pid}.json').write_text(json.dumps(dict(entry(younger.pid, time.time(), 1,
+            admitted=time.time() + 3600), started=watchdog.start_times([younger.pid])[younger.pid])))
         always_short = ['--rss-gb', '4', '--min-available-gb', '1000000']
         older = run(tmp_path, *always_short, command=[sys.executable, '-c', 'import time;time.sleep(1)'])
         assert older.returncode == 0, older.stderr  # A younger job is running, so this one is kept.
@@ -232,3 +232,19 @@ def test_jobs_from_every_worktree_share_one_admission_state(monkeypatch):
     common = subprocess.run(['git', 'rev-parse', '--path-format=absolute', '--git-common-dir'], cwd=ROOT,
                             check=True, capture_output=True, text=True).stdout.strip()
     assert watchdog.default_state() == Path(common).parent / '.cache/watchdog'
+
+
+def test_an_entry_whose_pid_now_names_another_process_is_dropped(tmp_path):
+    """green-rca: a dead watchdog's PID can be reused; its entry must not count as a running job,
+    or the floor would pick a victim that is no watchdog and no live job would stop."""
+    stranger = subprocess.Popen([sys.executable, '-c', 'import time;time.sleep(60)'])
+    try:
+        registry = watchdog.Registry(tmp_path / 'state')
+        started = watchdog.start_times([stranger.pid])[stranger.pid]
+        registry.put(dict(entry(stranger.pid, 0, 1, admitted=time.time()), started=started))
+        assert [e['pid'] for e in registry.live()] == [stranger.pid]
+        registry.put(dict(entry(stranger.pid, 0, 1, admitted=time.time()), started='Thu Jan  1 00:00:00 1970'))
+        assert registry.live() == [] and list((tmp_path / 'state').glob('*.json')) == []
+    finally:
+        stranger.kill()
+        stranger.wait()

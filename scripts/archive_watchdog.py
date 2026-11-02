@@ -98,14 +98,17 @@ def floor_victim(entries):
     return max(running, key=lambda entry: (entry['admitted'], entry['pid']))['pid'] if running else None
 
 
-def _alive(pid):
-    try:
-        os.kill(pid, 0)
-        return True
-    except ProcessLookupError:
-        return False
-    except PermissionError:
-        return True
+def start_times(pids):
+    """Each live process's start time as ps prints it; a PID absent from the result is dead.
+
+    A PID alone is not an identity: once a watchdog dies its number can name another
+    process, so an entry counts only while its PID still has the start time it recorded.
+    """
+    if not pids:
+        return {}
+    rows = subprocess.run(['ps', '-o', 'pid=,lstart=', '-p', ','.join(map(str, pids))],
+                          capture_output=True, text=True).stdout.splitlines()
+    return {int(row.split(None, 1)[0]): ' '.join(row.split()[1:]) for row in rows if row.strip()}
 
 
 class Registry:
@@ -122,16 +125,19 @@ class Registry:
             yield self.live()
 
     def live(self):
-        entries = []
+        found = {}
         for path in self.root.glob('*.json'):
             try:
-                entry = json.loads(path.read_text())
-                if _alive(entry['pid']):
-                    entries.append(entry)
-                    continue
-            except (OSError, ValueError, KeyError):
-                pass
-            path.unlink(missing_ok=True)  # Its watchdog died without cleaning up.
+                found[path] = json.loads(path.read_text())
+            except (OSError, ValueError):
+                path.unlink(missing_ok=True)
+        started = start_times([entry['pid'] for entry in found.values() if isinstance(entry.get('pid'), int)])
+        entries = []
+        for path, entry in found.items():
+            if entry.get('started') is not None and started.get(entry.get('pid')) == entry['started']:
+                entries.append(entry)
+            else:
+                path.unlink(missing_ok=True)  # Its watchdog died; the PID may now name another process.
         return entries
 
     def put(self, entry):
@@ -249,7 +255,8 @@ def main(argv=None):
             print(f'archive_watchdog: cannot create the report directory: {error}', file=sys.stderr)
             return REFUSED
     registry = Registry(args.state or default_state())
-    me = dict(pid=os.getpid(), queued=time.time(), admitted=None, expect_gb=args.expect_gb, command=command[:8])
+    me = dict(pid=os.getpid(), started=start_times([os.getpid()])[os.getpid()], queued=time.time(), admitted=None,
+              expect_gb=args.expect_gb, command=command[:8])
 
     def youngest():
         with registry.locked() as entries:
