@@ -42,14 +42,14 @@
     "xml": "ce4b2ee29179355369cad8d6a1db2963626a10ee60f95f0fecc0b0d17ea88e2e",
     "json": "5d79e149b01e060c2abae435163e875a00c9e3e3c543be4da06a99cfd43cca91",
     "meeting_records": {
-      "congress_gov": "7c4881d137e3243d819b8b948f05322685834b7980a16f175eb620d7c9f9a432",
-      "house_xml": "b9805a61d75b32daf0406b62be4c82ba3c4019daa12ef733d07b809e70bb7f90"
+      "congress_gov": "df5ea0b831a0fadbcee8c41f9b4a304c1977f1ac701310791998d370c859718d",
+      "house_xml": "cec7bb9efb232584625abae447a5a3e536a27f78f435a8edc34ea476723ee903"
     },
     "appearance_records": {
-      "house_xml": "a9f2780926c18e9cb44524e97dc4b928de491df19edfb1c60f13547efd4da1f5",
-      "congress_gov": "8ab26c86be1962c1c93776ecefa119573c1a835ccd49bb34259ebfa3dfce56a6",
-      "senate_page": "0271cb3f7b59f56d471e187f3df0e17a671bdd5ffea8ac4012df07efc5b717d8",
-      "mods": "687fbc86f1e0a3973d4f98cc39b3fafb07f14ac84ee9894fa4009f384915f451"
+      "house_xml": "444cbf2cdd4076b4acd6a40708c0d2087503b414a9faa2ab25c68744df2b85b6",
+      "congress_gov": "d75aa78c99ea9f3cc8dc68a285ba1b8b1ecadc75c8094a5c0ff27e94920e1ce6",
+      "senate_page": "ebbffcf56bdcf7cf006d547e69a3b008568df30f58949949ec371c43f2d97dde",
+      "mods": "fe9bd58f1312b9598cbc7a173524b2e00c7ef32baab828407f8215e30c0321bc"
     }
   },
   "catalog_version": "de3da574511eacedeb389344818afc10bb73e29452c097891b00281be28b0a83",
