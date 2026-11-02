@@ -241,3 +241,82 @@ def test_a_spec_pin_for_a_table_the_helper_omits_is_refused(tmp_path):
             archive_model_job.load_spec(path)
     finally:
         path.unlink(missing_ok=True)
+
+
+def entity_spec(tmp_path,*,spicy=True):
+    """A model spec with entity inputs and, unless refused, the production spicy-regs pin shape."""
+    from congress_api.lake import appearance_records,meeting_records
+    from archive_job_fixture import spicy_pin
+    value=spec(tmp_path)
+    value['parser_versions'].update(meeting_records=meeting_records.current_versions(),
+                                    appearance_records=appearance_records.current_versions())
+    value['meeting_records']=dict(kind='parquet',path=str(tmp_path/'meeting_records.parquet'),sha256='a'*64,size=17)
+    if spicy:value['spicy_regs']=spicy_pin(tmp_path)
+    return value
+
+
+def test_entity_inputs_refuse_without_pinned_spicy_regs(tmp_path):
+    from viewer_publication.archive_model_job import load_spec
+    value=entity_spec(tmp_path,spicy=False)
+    with pytest.raises(ValueError,match='require pinned spicy-regs generations'):load_spec(write_spec(tmp_path,value))
+    # A bare path names no content: it must carry its SHA-256 and size (F2).
+    value['spicy_regs']=str(tmp_path/'spicy-regs.json')
+    with pytest.raises(ValueError,match='immutable fields'):load_spec(write_spec(tmp_path,value))
+
+
+def test_spicy_regs_arguments_carry_exactly_the_stated_generations(tmp_path):
+    from archive_job_fixture import SPICY_GENERATIONS
+    from viewer_publication.archive_model import SPICY_SCHEMAS
+    from viewer_publication.archive_model_job import _spicy_arguments,load_spec
+    value=load_spec(write_spec(tmp_path,entity_spec(tmp_path)))
+    held=[]
+    def hold(item):held.append(item['path']);return item['path']
+    arguments=_spicy_arguments(value['spicy_regs'],hold)
+    assert arguments['generations']==SPICY_GENERATIONS
+    assert set(arguments['tables'])==set(SPICY_SCHEMAS)
+    # The spec file and every table go through custody; nothing else is read.
+    assert held[0]==value['spicy_regs']['path'] and len(held)==1+len(SPICY_SCHEMAS)
+
+
+@pytest.mark.parametrize('change',['missing_family','made_up_digest','other_generation','unpinned_table','changed_bytes'])
+def test_spicy_regs_input_refuses_anything_not_stated_and_pinned(tmp_path,change):
+    from congress_api.retention.provenance import file_pin
+    from viewer_publication.archive_model_job import model_arguments,load_spec
+    value=entity_spec(tmp_path)
+    path=Path(value['spicy_regs']['path']);stated=json.loads(path.read_text())
+    table=stated['tables']['spicy_committees']
+    if change=='missing_family':del stated['generations']['amendments']
+    elif change=='made_up_digest':stated['generations']['members']='spicy-regs:members'
+    elif change=='other_generation':table['path']=table['path'].replace('1'*64,'2'*64)
+    elif change=='unpinned_table':del table['sha256']
+    if change=='changed_bytes':(path.parent/table['path']).write_bytes(b'not the pinned table')
+    else:path.write_text(json.dumps(stated))
+    value['spicy_regs']=dict(path=str(path),**file_pin(path))
+    for name in ['captures','readings','filename_readings','meeting_records']:
+        source=tmp_path/(name+'.parquet');source.write_bytes(name.encode())
+        value[name]=dict(kind='parquet',path=str(source),**file_pin(source))
+    expected={'missing_family':'generation digest for each','made_up_digest':'generation digest for each',
+              'other_generation':'not under its stated generation','unpinned_table':'immutable fields',
+              'changed_bytes':'Pinned model input changed'}[change]
+    with pytest.raises(ValueError,match=expected):
+        with model_arguments(load_spec(write_spec(tmp_path,value))):
+            pytest.fail('Unpinned spicy-regs input reached the producer')
+
+
+def test_entity_release_never_fabricates_a_generation(tmp_path):
+    from archive_job_fixture import SPICY_GENERATIONS,spicy_input
+    from viewer_publication.archive_model import _prepare_spicy_inputs
+    with pytest.raises(ValueError,match='require pinned spicy-regs generations'):
+        _prepare_spicy_inputs(tmp_path/'a',None,True)
+    stated={k:v for k,v in SPICY_GENERATIONS.items() if k!='nominations'}
+    with pytest.raises(ValueError,match='generation digest for each'):
+        _prepare_spicy_inputs(tmp_path/'b',spicy_input(generations=stated),True)
+    # Without entity files no generation is named at all.
+    assert _prepare_spicy_inputs(tmp_path/'c',None,False)[1] is None
+    assert _prepare_spicy_inputs(tmp_path/'d',spicy_input(),True)[1]==SPICY_GENERATIONS
+
+
+def test_production_spec_pins_the_spicy_regs_input():
+    """The production job states its spicy-regs pin; the producer cannot run without it."""
+    value=json.loads((Path(__file__).parents[3]/'model/jobs/publish-model.json').read_text())
+    assert set(value['spicy_regs'])=={'path','sha256','size'}

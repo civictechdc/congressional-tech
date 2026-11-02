@@ -560,7 +560,7 @@ def test_repaired_bill_filename_dates_publish(tmp_path):
     from congress_api.lake import appearance_records as ar_lake, meeting_records as mr_lake, readings
     from congress_api.lake.capture_staging import stage_captures
     from congress_api.retention.provenance import parquet_output, run_job
-    from viewer_publication.archive_model import build_release
+    from viewer_publication.archive_model import SPICY_FAMILIES, SPICY_SCHEMAS, build_release
 
     raw = tmp_path / 'raw'
     raw.mkdir()
@@ -751,8 +751,9 @@ def test_repaired_bill_filename_dates_publish(tmp_path):
         catalog_version=names['catalog_version'],
         meeting_records=meeting_records,
         appearance_records=[],
-        spicy_regs=dict(
-            spicy_committees=[
+        # Stated fixture generations; every other spicy table is explicitly empty.
+        spicy_regs=dict(generations={family: '1' * 64 for family in SPICY_FAMILIES}, tables={**{name: [] for name in SPICY_SCHEMAS},
+            'spicy_committees': [
                 dict(
                     system_code='HSII00',
                     name='Committee on Natural Resources',
@@ -773,7 +774,7 @@ def test_repaired_bill_filename_dates_publish(tmp_path):
                     is_current=True,
                     history=[],
                 ),
-            ],
+            ]},
         ),
         engine=eng,
         output=release_dir,

@@ -14,6 +14,8 @@ from congress_api.lake.capture_staging import stage_captures
 from congress_api.retention.provenance import parquet_output, run_job
 from docspec_client.client import NativeDatasets
 
+from archive_job_fixture import SPICY_GENERATIONS, spicy_input
+
 
 def _stage_raw_fixture(tmp_path, engine, capture_specs):
     raw = tmp_path / 'raw'
@@ -417,14 +419,7 @@ def test_phase2_entities_meetings_witnesses_recordings_and_spicy_projections(tmp
         ),
     ]
 
-    spicy_regs = dict(
-        generations={
-            'committee-rosters': '1' * 64,
-            'members': '2' * 64,
-            'bill-family': '3' * 64,
-            'nominations': '4' * 64,
-            'roll-call-votes': '5' * 64,
-        },
+    spicy_regs = spicy_input(
         spicy_committees=[
             dict(
                 system_code='HSAG00',
@@ -638,7 +633,7 @@ def test_phase2_entities_meetings_witnesses_recordings_and_spicy_projections(tmp
     assert files_by_name['rosters.parquet']['coverage']['congress_start'] == 118
     assert files_by_name['rosters.parquet']['coverage']['congress_end'] == 118
     assert files_by_name['rosters.parquet']['coverage']['gaps'] == ['Current-Congress seats only; spicy-regs keeps no roster history']
-    assert files_by_name['bills.parquet']['generations'] == {'bill-family': '3' * 64, 'roll-call-votes': '5' * 64}
+    assert files_by_name['bills.parquet']['generations'] == {'bill-family': '3' * 64, 'roll-call-votes': '5' * 64, 'amendments': '6' * 64}
     assert files_by_name['bills.parquet']['coverage']['gaps'] == ['Amendments cover the 119th Congress only until spicy-regs backfills']
     assert files_by_name['nominations.parquet']['generations'] == {'nominations': '4' * 64, 'roll-call-votes': '5' * 64}
     assert files_by_name['nominations.parquet']['coverage']['gaps'] == ['Nominations cover the 119th Congress only until spicy-regs backfills']
@@ -812,7 +807,11 @@ def test_phase2_entities_meetings_witnesses_recordings_and_spicy_projections(tmp
 
     # A digest the input never stated must not become an upstream URL.
     released_schema = json.loads((release_dir / 'schema.json').read_text())
-    assert not any('path' in relation for relation in released_schema['upstream_relations'] if relation['family'] not in (spicy_regs.get('generations') or {}))
+    for relation in released_schema['upstream_relations']:
+        digest = spicy_regs['generations'][relation['family']]
+        assert relation['path'] == f"generations/{relation['family']}/{digest}/{relation['table']}.parquet"
+    assert files_by_name['bills.parquet']['generations'] == {
+        family: spicy_regs['generations'][family] for family in ('bill-family', 'roll-call-votes', 'amendments')}
 
     # Explorer tables need their own version pins, and only pinned copies count.
     explorer_versions = dict(staged['parser_versions'], video_records={'youtube_cache': 'pv', 'youtube_api': 'pa'}, committee_records={'house_xml': 'pc'})
@@ -916,7 +915,7 @@ def test_phase2_invariant15_diagnostics_and_entity_completeness_guards(tmp_path)
             retrieved_at='2023-05-20T12:00:00Z',
         ),
     ])
-    min_spicy = dict(
+    min_spicy = spicy_input(
         spicy_committees=[
             dict(
                 system_code='HSAG00',
@@ -1038,7 +1037,7 @@ def test_phase2_invariant15_diagnostics_and_entity_completeness_guards(tmp_path)
             **staged,
             meeting_records=valid_meetings,
             appearance_records=variant_appearances,
-            spicy_regs=None,
+            spicy_regs=spicy_input(),
             engine=engine,
             output=tmp_path / 'release-empty-committees',
             scratch=tmp_path / 'model-empty-committees',
@@ -1174,6 +1173,7 @@ def test_senate_coldfusion_download_query_stripped_in_witness_document_matching(
         **staged,
         meeting_records=meetings,
         appearance_records=appearance_rows,
+        spicy_regs=spicy_input(),
         engine=engine,
         output=tmp_path / 'release-senate-dl',
         scratch=tmp_path / 'model-senate-dl',
@@ -1300,7 +1300,7 @@ def test_context_free_a_then_b_capture_binding_and_collection_states(tmp_path):
                                             parser_version=ar_lake.current_version('house_xml')),
     ]
 
-    spicy_regs = dict(
+    spicy_regs = spicy_input(
         spicy_committees=[
             dict(
                 system_code='HSAG00',
@@ -1406,7 +1406,7 @@ def test_entity_record_version_selection_and_completeness_admission(tmp_path):
     old_ar_row = dict(cur_ar_row, parser_version='old-ar-v0',
                       appearances=[dict(cur_ar_row['appearances'][0], name='Stale Old Version Witness')])
 
-    spicy_regs = dict(
+    spicy_regs = spicy_input(
         spicy_committees=[
             dict(
                 system_code='HSAG00',
