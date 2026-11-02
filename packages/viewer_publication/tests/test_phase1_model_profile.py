@@ -81,8 +81,8 @@ def test_native_profile_completeness_counts_pending_and_settled_inputs(tmp_path,
             parser_version=readings_bundle_version(VERSIONS) if case in {'bundle-current','bundle-sniff-current'} else
                 'old' if case in {'old-unreadable','old-bundle','covered-old-bundle'} else 'html-1')]
     # Registry coverage, as the model renders it: whole-version entries for the old pins.
-    entries=([dict(parser='html',version='old',current=VERSIONS['html'],recompute_sql='none')] if case=='covered-old-page' else
-             [dict(parser='readings',version='old',current=readings_bundle_version(VERSIONS),recompute_sql='none')] if case=='covered-old-bundle' else [])
+    entries=([dict(parser='html',version='old',current=VERSIONS['html'],basis='predicate',recompute_sql='none')] if case=='covered-old-page' else
+             [dict(parser='readings',version='old',current=readings_bundle_version(VERSIONS),basis='bundle',recompute_sql='none')] if case=='covered-old-bundle' else [])
     pins={**VERSIONS,'readings':readings_bundle_version(VERSIONS)}
     if case in {'missing-filename','filename-unreadable','old-filename-unreadable'}:filenames=[]
     if case in {'filename-unreadable','old-filename-unreadable'}:
@@ -92,7 +92,7 @@ def test_native_profile_completeness_counts_pending_and_settled_inputs(tmp_path,
     if case=='duplicate-capture':captures*=2
     if case=='duplicate-reading':readings.append(dict(readings[1]))
     if case=='duplicate-filename':filenames*=2
-    inputs=[json_input(tmp_path,'capture_rows',captures,receipt_key='Utf8',receipt_line='Int32',capture_index='Int32',body_hex='Utf8'),
+    inputs=[json_input(tmp_path,'capture_rows',captures,receipt_key='Utf8',receipt_line='Int32',capture_index='Int32',body_hex='Utf8',bytes='Int64'),
         json_input(tmp_path,'reading_rows',readings,body_hex='Utf8',parser='Utf8',parser_version='Utf8',status='Utf8'),
         json_input(tmp_path,'sniff_rows',sniff,body_hex='Utf8',format='Utf8'),
         json_input(tmp_path,'admission_rows',admissions,body_hex='Utf8',format='Utf8',basis='Utf8'),

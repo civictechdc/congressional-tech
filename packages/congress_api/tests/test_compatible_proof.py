@@ -35,7 +35,7 @@ def mirror(tmp_path):
     return raw, captures
 
 
-def test_a_whole_version_proof_over_a_local_sample_binds_its_entry(tmp_path, monkeypatch):
+def test_a_full_page_proof_over_local_bodies_binds_its_entry(tmp_path, monkeypatch):
     import congress_api.parsers.archive_readings as reader
     monkeypatch.delattr(reader, 'HTML_REREAD_SQL', raising=False)  # a reader with no recompute set
     raw, captures = mirror(tmp_path)
@@ -61,14 +61,16 @@ def test_a_whole_version_proof_over_a_local_sample_binds_its_entry(tmp_path, mon
         '--raw-root', str(raw), '--work', str(tmp_path / 'proof'), '--write',
         '--engine-config', os.environ['DOCSPEC_JOB_CONFIG']])
     [entry] = json.loads(registry.read_text())['entries']
-    assert entry['basis'] == 'whole' and entry['current'] == readings.current_version('html')
+    assert entry['basis'] == 'predicate' and entry['current'] == readings.current_version('html')
+    assert entry['proof']['scope'] == 'full' and entry['proof']['page_parse_max_bytes'] == readings.PAGE_PARSE_MAX_BYTES
     assert entry['proof']['rows'] == 3 and entry['proof']['strata'] == dict(completed=dict(population=3, local=3, sampled=3)) and entry['proof']['differences'] == entry['proof']['only_old'] == entry['proof']['only_new'] == 0
     assert cv.load_registry() == [entry]
-    # Fewer than the minimum local rows sampled: refused before it reaches the registry.
+    # A predicate entry compares every kept row: with one kept body not local, it refuses.
     import pytest
-    with pytest.raises(ValueError, match='too small'):
+    next(path for path in (raw / 'bodies').rglob('*') if path.is_file()).unlink()
+    with pytest.raises(ValueError, match='needs every kept body local'):
         compatible_proof.main(['--parser', 'html', '--old', 'old-html', '--base', str(base / 'readings.parquet'), '--captures', str(captures),
-            '--raw-root', str(raw), '--work', str(tmp_path / 'small'), '--sample', '2', '--write', '--engine-config', os.environ['DOCSPEC_JOB_CONFIG']])
+            '--raw-root', str(raw), '--work', str(tmp_path / 'missing'), '--write', '--engine-config', os.environ['DOCSPEC_JOB_CONFIG']])
 
 
 def test_a_bundle_proof_states_strata_the_registry_accepts(tmp_path, monkeypatch):
