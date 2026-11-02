@@ -85,7 +85,22 @@ MEETINGS = [
     # Its own transcript file alone shows a Rescheduled meeting sat (same-kind twin, nothing else).
     meeting(21, '2023-11-09', BILLS + ' transcript', 'Rescheduled'),
     meeting(22, '2023-11-30', BILLS + ' transcript', 'Scheduled'),
+    # ct-1i4q transcript sources: committee file only, captions only, segment-only recording.
+    meeting(23, '2023-11-08', NEVER + ' committee file', 'Scheduled'),
+    meeting(24, '2023-11-15', NEVER + ' captions', 'Scheduled'),
+    meeting(25, '2023-11-16', NEVER + ' segments', 'Scheduled'),
 ]
+TRACK = "named_struct('body',{body},'suffix','.gz','format','{format}','language','en','production','{production}')"
+SHA = "arrow_cast(decode(repeat('ab',32),'hex'),'FixedSizeBinary(32)')"
+RECORDINGS = (f"SELECT 'youtube:abc' AS video_key,arrow_cast(make_array(cast(24 AS BIGINT)),'List(Int64)') AS event_ids,"
+              f"make_array({TRACK.format(body=SHA, format='vtt', production='asr')}) AS tracks "
+              # A Senate stream: its vtt is one segment of the caption playlist (ct-9s7b), and one vtt holds no body.
+              f"UNION ALL SELECT 'senate:x',arrow_cast(make_array(cast(25 AS BIGINT)),'List(Int64)'),"
+              f"make_array({TRACK.format(body=SHA, format='vtt', production='caption')},{TRACK.format(body=SHA, format='m3u8', production='caption')},"
+              f"{TRACK.format(body="arrow_cast(NULL,'FixedSizeBinary(32)')", format='vtt', production='live')})")
+ORDERED = ("SELECT arrow_cast(make_array('23'),'List(Utf8)') AS meeting_keys,'HHRG-118-VR09-Transcript-20231108.pdf' AS filename,cast(3 AS INT) AS list_row "
+           "UNION ALL SELECT arrow_cast(make_array('23'),'List(Utf8)'),'Hearing-transcript-request-letter.pdf',cast(4 AS INT) "
+           "UNION ALL SELECT arrow_cast(make_array('23'),'List(Utf8)'),'HHRG-118-VR09-Transcript-20231109.pdf',cast(5 AS INT)")
 
 
 @pytest.fixture(scope='module')
@@ -94,7 +109,8 @@ def meetings(tmp_path_factory):
     engine = NativeDatasets.from_config(os.environ['DOCSPEC_JOB_CONFIG'])
     steps = [
         dict(name='meetings_resolved', sql=' UNION ALL '.join(MEETINGS), materialize=True),
-        dict(name='ordered', sql="SELECT arrow_cast(array_slice(make_array('1'),1,0),'List(Utf8)') AS meeting_keys", materialize=True),
+        dict(name='ordered', sql=ORDERED, materialize=True),
+        dict(name='recordings_entity', sql=RECORDINGS, materialize=True),
         dict(name='meeting_transcript_links', sql="SELECT cast(NULL AS VARCHAR) AS package_id,cast(NULL AS BIGINT) AS event_id WHERE false", materialize=True),
         dict(name='details', sql="""SELECT 'CHRG-own' AS package_id,cast(7 AS INT) AS list_row,'pdf' AS format,
             array_slice(make_array(named_struct('format',cast(NULL AS VARCHAR))),1,0) AS alternates""", materialize=True),
@@ -108,8 +124,27 @@ def meetings(tmp_path_factory):
     run_job(work, engine, inputs=[], steps=steps,
             outputs=[parquet_output(work, 'meetings', 'SELECT * FROM meetings_export', ['event_id'])])
     with duckdb.connect() as db:
-        found = db.execute(f"SELECT event_id,rescheduled_to,rescheduled_basis,not_held FROM read_parquet('{work / 'meetings.parquet'}')").fetchall()
+        found = db.execute(f"""SELECT event_id,rescheduled_to,rescheduled_basis,not_held,
+            [concat(t.source,':',coalesce(t.package_id,cast(t.list_row AS VARCHAR),t.video_key||'/'||t.production)) FOR t IN transcripts]
+            FROM read_parquet('{work / 'meetings.parquet'}')""").fetchall()
     return {row[0]: row[1:] for row in found}
+
+
+def test_a_meeting_with_only_a_print_lists_the_print(meetings):
+    assert meetings[19][3] == ['printed_hearing:CHRG-own']
+
+
+def test_a_meeting_with_only_its_committee_transcript_lists_it(meetings):
+    # Only the file in the House transcript form dated the meeting's day; a letter that says "transcript" is not one.
+    assert meetings[23][3] == ['committee_transcript:3']
+
+
+def test_a_meeting_with_only_captions_lists_the_track(meetings):
+    assert meetings[24][3] == ['captions:youtube:abc/asr']
+
+
+def test_a_recording_with_only_segments_or_empty_tracks_gives_no_transcript(meetings):
+    assert meetings[25][3] == []
 
 
 def test_rescheduled_with_its_own_recording_sat(meetings):

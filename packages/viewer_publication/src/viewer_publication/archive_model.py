@@ -534,6 +534,9 @@ def meeting_steps(*,root=ROOT):
         dict(name='meetings_resolved',sql=(Path(root)/'model/sql/meeting-records-resolved.sql').read_text(),materialize=True)]
 
 
+EMPTY_RECORDINGS_SQL="""SELECT cast(NULL AS VARCHAR) AS video_key,arrow_cast(array_slice(make_array(cast(NULL AS BIGINT)),1,0),'List(Int64)') AS event_ids,
+ array_slice(make_array(named_struct('body',arrow_cast(NULL,'FixedSizeBinary(32)'),'suffix',cast(NULL AS VARCHAR),'format',cast(NULL AS VARCHAR),
+  'language',cast(NULL AS VARCHAR),'production',cast(NULL AS VARCHAR))),1,0) AS tracks WHERE false"""
 WITNESSES_SQL='SELECT r.witness_key,r.occasion,r.source,r.record_sha,r.source_locator,r.context_key,r.event_id,r.package_id,r.page_url,r.name,r.position,r.organization,r.on_behalf_of,r.location,r.panel,r.panel_order,r.display_order,r.witness_type,r.testified,r.bioguide_id,p.superseded_by FROM appearance_records_resolved r LEFT JOIN witness_precedence p ON p.witness_key=r.witness_key'
 
 
@@ -852,6 +855,9 @@ def build_prepared_release(prepared,*,engine,output,root=ROOT):
     steps += url_state_steps(root=root,recovery_policy=prepared.get('recovery_policy'))
     meetings_sql=(Path(root)/'model/sql/entity-meetings.sql').read_text()
     auxiliary=[('meetings',meetings_sql,['event_id'],MEETING_DICTIONARY)]
+    if not prepared.get('include_entities'):
+        # Meetings list caption tracks among their transcripts (ct-1i4q); without entities there are none.
+        steps += [dict(name='recordings_entity',sql=EMPTY_RECORDINGS_SQL,materialize=True)]
     if prepared.get('include_entities'):
         steps += [
             dict(name='recording_url_sources',sql="SELECT pattern,key_template,format,default_language,default_production FROM recording_sources WHERE kind='video_url'",materialize=True),
@@ -913,9 +919,11 @@ def build_prepared_release(prepared,*,engine,output,root=ROOT):
                 SELECT 1 FROM recording_segment_exclusions ex WHERE regexp_like(mf.fetch_url,ex.pattern)
             )""",materialize=True),
         ]
+        # A step, not only an export: meetings read it to list caption tracks among their transcripts.
+        steps += [dict(name='recordings_entity',sql=(Path(root)/'model/sql/entity-recordings.sql').read_text(),materialize=True)]
         auxiliary += [
             ('witnesses',WITNESSES_SQL,['occasion','panel_order','display_order','witness_key'],['occasion','source','witness_type','bioguide_id']),
-            ('recordings',(Path(root)/'model/sql/entity-recordings.sql').read_text(),['video_key'],['tracks.list.item.suffix','tracks.list.item.format','tracks.list.item.language','tracks.list.item.production']),
+            ('recordings','SELECT * FROM recordings_entity',['video_key'],['tracks.list.item.suffix','tracks.list.item.format','tracks.list.item.language','tracks.list.item.production']),
             ('committees',(Path(root)/'model/sql/entity-committees.sql').read_text(),['system_code'],['chamber','committee_type','parent_system_code']),
             ('members',(Path(root)/'model/sql/entity-members.sql').read_text(),['bioguide_id'],['terms.list.item.chamber','terms.list.item.state','terms.list.item.party']),
             ('rosters',(Path(root)/'model/sql/entity-rosters.sql').read_text(),['congress','system_code','rank','bioguide_id'],['system_code','bioguide_id','title','party']),
