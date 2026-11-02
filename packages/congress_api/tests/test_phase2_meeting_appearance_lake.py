@@ -2092,6 +2092,8 @@ def test_the_lake_table_keeps_each_records_held_dates_title_and_created():
     ("Rep. Napolitano Submission Napolitano, Hon. Grace F., Letter to Secretary of the Interior, dated August 28, 2009", "statement_for_record"),
     ("Letter dated January 31, 2017 to Michael Flores, President, California Fish and Game Commission", "statement_for_record"),
     ("The Honorable Tom Lantos, a Representative in Congress From the State of California, and Ranking Member Prepared Statement", "member_statement"),
+    ("Kingston, Hon. Jack, a Representative in Congress from the State of Georgia, Oral statement of", None),
+    ("Statement of Honorable Amy Klobuchar, A United States Senator from the State of Minnesota", None),
     ("Response to posthearing questions submitted by: Hon. Jon Tester", "statement_for_record"),
     ("Responses to questions for the record from the following Representatives: Hon. Andre Carson, of Indiana", "statement_for_record"),
 ])

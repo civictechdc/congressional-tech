@@ -931,8 +931,9 @@ _RECORD_ENTRY = re.compile(
     r"\b(?:statements? (?:for|submitted for) the record|submitted for the record|submissions? (?:for|to) the record"
     r"|(?:statements?|letters?|information|materials?|testimony) submitted by|prepared statement only"
     r"|letters? (?:dated|from|to|of|submitted|regarding|re\b|in support|on behalf))", re.I)
-# A Member's statement: a Member's line that names a statement (a Member who appears is a witness, red-f3).
-_STATEMENT_WORD = re.compile(r"\bstatements?\b", re.I)
+# A Member's statement: a Member's line that names a prepared statement or a submission. A Member who appears,
+# or gives an oral statement, is a witness (red-f3).
+_STATEMENT_WORD = re.compile(r"\bprepared statements?\b", re.I)
 # A line that says the person testified or was the nominee is a witness whatever else it says.
 _TESTIFIED_WORDS = re.compile(r"\b(?:testimony|testified|nominee|nominated)\b", re.I)
 # ...unless the line opens with a record entry's own marker ("Letter from the nominee to the Office of General
