@@ -28,3 +28,7 @@ Round 1b 2026-11-02 (lead): plan-e1 raw read: 3,159 body entries state 404/202/4
 **2026-11-02T13:54:36Z**
 
 2026-11-02 (lead): impl-e1 r1b-e1 (4 commits): status is read from 6 owner shapes; origin 72d03498; 13 deep 404 rows stay a residual. Staged before/after on 40,881 of 40,883 lines (2 lines over 36 MB not staged: youtube/api :1, documents :50170): 0 violations, 7,379 stored to failed, 18 to retry_later, 0 stored non-documents, good fetches -232/+30,178. APPROVED_MAPPING is now 9bb28646. Under red/green review.
+
+**2026-11-02T14:20:30Z**
+
+2026-11-02 green-e1 (request changes): the rule checks out against raw: all 7,401 outcome changes supported (6,971 empty bodies, 405 404s with a body, 18 429/503, 5 envelopes, 1 403, 1 empty ZIP member); 32,895/32,895 filled statuses match the raw owner status; non-document rows among good URL lines 2,759 to 0. Good fetches -237/+30,236 (58 rows on 5 lines missed by the candidate set). The 83 MB line youtube/api/2026-09-29:1 (22,364 rows) exceeds the engine's line allowance and was never staged; it explains the +51,979 vs +30,178 gap, and the rebuild must admit it. Defects sent to impl-e1: MP2T 206 samples become documents (media rule keys on NULL legacy media_type); refuse_local_paths rejects ~.docx ZIP members and aborts the run; duplicated rules (archive_model.py:440, local path twice); compare_generations fails on v21's 37 columns; the guard accepts a stale 64-hex mapping_version.

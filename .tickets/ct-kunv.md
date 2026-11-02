@@ -36,3 +36,7 @@ Round 1b 2026-11-02 (lead): Captures gain per-row mapping_version (Utf8, field 4
 **2026-11-02T12:39:55Z**
 
 Ordering constraint 2026-11-02 (lead): v21 is the first snapshot of the canonical archive.captures (ct-itcg). The daily producer must not run against it before this rebuild replaces captures as a full overwrite snapshot; otherwise its receipt anti-join treats v21's roughly 51k wrong rows as present. Daily stays owner-gated (archive-targets.json) until then. Lasting fix: the anti-join treats rows at a non-current mapping_version as not present (impl-e2).
+
+**2026-11-02T14:20:30Z**
+
+2026-11-02 impl-e2: daily refuses with backfill_required when rows are at a non-current or NULL mapping_version, naming each stale mapping with its receipt and row counts; the selective backfill rebuilds them (085f35bd on r1b-e2-map, which needs e1's column; merge after e1). prove_unchanged fix: 8240567c on r1b-e2.
