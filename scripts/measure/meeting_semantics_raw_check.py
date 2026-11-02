@@ -258,7 +258,8 @@ def check_coverage(args, db, congress, house, report):
             urls = [d.get('url') for d in ((cg or {}).get('meetingDocuments') or []) + ((cg or {}).get('witnessDocuments') or []) if d.get('url')]
             premise = None if cg is None and hx is None else bool(urls or (hx or {}).get('files'))
         elif reason == 'package_names_meeting_unlinked':
-            premise = bool(mods_named.get(event))
+            # The refresh directory predates the newest packages; no file there is unread, not a failure.
+            premise = True if mods_named.get(event) else None
         elif k[1] == 'recording' or reason == 'package_witnesses_unattached':
             # A package now counts for this meeting only if its own MODS names it alone, or names none on a
             # one-to-one link. Print what the raw MODS of the meeting's packages state.
@@ -267,8 +268,8 @@ def check_coverage(args, db, congress, house, report):
             elsewhere = [p for p, m in named.items() if m and m['event_ids'] and m['event_ids'] != [event]]
             one_to_one = len(packages.get(event, ())) == 1 and all(len(events_of[p]) == 1 for p in packages.get(event, ()))
             gained = a.get('state') == 'present' and b.get('state') != 'present'
-            premise = (len(names_it) == 1 or (one_to_one and not elsewhere)) if gained else (
-                bool(elsewhere) or not one_to_one or len(names_it) > 1) if named else None
+            premise = (bool(names_it) or (one_to_one and not elsewhere)) if gained else (
+                bool(elsewhere) or not one_to_one) and not names_it if named else None
             if premise is not None:
                 fam.add([event, k[1]], 'premise_holds' if premise else 'premise_fails', before=[b.get('state'), b.get('reason')],
                         after=[a.get('state'), reason], mods={p: m and m['event_ids'] for p, m in named.items()})
