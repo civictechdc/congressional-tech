@@ -34,6 +34,7 @@ WITH candidate_meeting_shas AS (
   m['subject_keys'] AS subject_keys,
   m['transcript_jackets'] AS transcript_jackets,
   m['videos'] AS videos,
+  m['document_urls'] AS document_urls,
   m['collection_states'] AS collection_states,
   m['access'] AS access,
   m['access_basis'] AS access_basis,
