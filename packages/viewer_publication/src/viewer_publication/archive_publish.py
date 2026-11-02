@@ -354,6 +354,10 @@ def _candidate(release,manifest_pin,result_pin,*,input_record,receipt_keys):
             isinstance(manifest.get('origin'),dict) and (manifest['origin'].get('kind')=='seed_v5'
             or manifest['origin'].get('display_only') is True)):
         raise ValueError('Seed manifest requires its pinned seed profile')
+    if isinstance(manifest.get('origin'),dict) and manifest['origin'].get('kind')=='converted_catalog':
+        # A converted legacy catalog skips the unique document-key check (its
+        # documents can share a saved body); it is a parity fixture, never a release.
+        raise ValueError('A converted catalog is a parity fixture and is never published')
     for name in ['invariants','model_invariants','url_state_invariants','profile_completeness']:
         checks=[entry for entry in result['queries'] if entry['name']==name]
         if (len(checks)!=1 or len(checks[0]['data'])!=1 or not checks[0]['data'][0]

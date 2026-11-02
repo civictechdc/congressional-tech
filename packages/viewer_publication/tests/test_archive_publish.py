@@ -254,6 +254,18 @@ def test_wrong_content_release_identity_refuses_before_upload(tmp_path):
     assert native.calls==[] and 'viewer-publications/manifest.json' not in store.objects
 
 
+@pytest.mark.parametrize('origin,message',[(dict(kind='converted_catalog',gaps=[]),'converted catalog'),
+    (dict(kind='seed_v5',gaps=[]),'seed profile'),(dict(kind='model',gaps=[],display_only=True),'seed profile')])
+def test_non_model_origins_refuse_before_upload(tmp_path,origin,message):
+    artifacts,_=candidate(tmp_path/'run')
+    manifest=Path(artifacts['manifest_pin']['path']);value=json.loads(manifest.read_text())
+    value['origin']=origin;manifest.write_bytes(encoded(value));artifacts['manifest_pin']=pin(manifest)
+    store=Store();native=Native(store)
+    with pytest.raises(ValueError,match=message):
+        launch(tmp_path/'run',store=store,native=native,artifacts=artifacts)
+    assert native.calls==[] and 'viewer-publications/manifest.json' not in store.objects
+
+
 def test_generator_receipt_keys_keep_replay_evidence(tmp_path):
     artifacts,manifest=candidate(tmp_path/'run');entry,keys=record();store=Store();native=Native(store)
     def passed(**context):return dict(status='passed',releaseId=context['release_id'],targets='owner-approved')
