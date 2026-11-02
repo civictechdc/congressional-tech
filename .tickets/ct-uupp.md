@@ -28,3 +28,7 @@ Staging splits a receipt above a byte or line threshold into line ranges, with r
 **2026-11-02T16:17:42Z**
 
 2026-11-02 spec-run profile (correction to the earlier hypothesis): the jump is in the docspec engine, not Python. The Python CLI stays at 0.05-0.11 GiB; the docspec child goes from 0.42 to 17.1 GiB in about 6 s, peaking at 22.45 GiB RSS / 26.63 GiB physical at an 18 GiB pool, so above its own pool. Samples: jiter json_get_*/json_contains over receipt lines, string-view copies, memory accounting; the whole 581 MB receipt is decoded at once. Decision (lead): stage oversized receipts in bounded line ranges in the batching layer, not the mapping, so APPROVED_MAPPING doesn't move; output byte-identical; implemented by etl-staging on r4-staging. An engine-gap ticket follows for JSON extraction exceeding the pool in RSS. Profiles: .cache/archive-release/r1b-run/logs/batch3-profile/.
+
+**2026-11-02T16:28:15Z**
+
+2026-11-02 etl-staging: root cause found. DataFusion 53.1 array_concat on string views (the capture 'entries' step) grows with batch_rows². At batch_rows=1024 and a 14 GiB pool, the whole 581 MB receipt stages through the production CLI at 6.49 GiB peak with 808,680 rows; the other 9 oversized receipts peak at 1.0-6.2 GiB; A/B on 7 receipts at 8192 vs 1024 rows is byte-identical. Fix (lead-approved): a derived stage-limits file with batch_rows=1024 in capture_backfill on r4-staging (the mapping doesn't move), plus an engine ticket under ss-oxg1 to bound array_concat on views as ss-x71z did for array_agg. Line-range splitting isn't needed.
