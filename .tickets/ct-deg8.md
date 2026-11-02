@@ -41,3 +41,7 @@ Round 1b 2026-11-02 (lead): Cause found (plan-engine): ordered array_agg keeps a
 **2026-11-02T13:14:11Z**
 
 2026-11-02 (lead): both engine fixes are on docspec-rs main 939c14b: 3f274ad (ct-deg8, ss-x71z) and 84745f0 (the aggregate-slice over-charge, ss-ud8y), plus a GitHub Actions workflow for the native linux-amd64 build. scripts/check passed. The darwin and Actions builds of 939c14b are the release build for the runtime re-pin.
+
+**2026-11-02T14:42:47Z**
+
+2026-11-02 (lead): the engine release is docspec-rs 5a3121c: ss-x71z (3f274ad, closed), ss-ud8y (84745f0, the slice and hash-join over-charge: 200k-key build 195 MB for 9.5 MB of data, now under 4x), ss-ezin (425e346, one 8 MiB S3 part size), the Actions linux workflow (939c14b), and 5a3121c (the DISTINCT ORDER BY planning follow-up that failed 46 lane tests). ct-deg8 shapes at 3,000 rows: 0.12-0.14 s, 0.09 GiB (the guard used to kill them at 14.6-17.3 GiB). congressional-tech production-offline on the darwin binary: 10,795 passed, 0 failed. Lesson: the engine's 54-test Linux qualification passed the DISTINCT regression because it runs no model SQL; the release gate for an engine build is this repo's production-offline lane. Local config switched; the repo pin and DOCSPEC_RUNTIME_ARTIFACT move together at the merge to main.
