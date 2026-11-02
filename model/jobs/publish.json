@@ -23,5 +23,6 @@
     "path": "../../apps/site/archive-targets.json",
     "sha256": "4d1f8921ef739cce8936bc913061d7fc4c0d92adb061a81de17a0434b4060284",
     "size": 83
-  }
+  },
+  "automatic_causes": true
 }

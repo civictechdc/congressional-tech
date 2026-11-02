@@ -256,3 +256,80 @@ def test_fetch_release_keeps_files_it_already_holds(pair, tmp_path):
     (tmp_path / 'copy/links.parquet').write_bytes(b'tampered')
     with pytest.raises(ValueError, match='differs from its manifest entry'):
         fetch_release(reader(base, []), release_id, tmp_path / 'copy')
+
+
+# ct-ud0b: nightly publication when every difference is a new row from new receipts.
+LIVE_RECEIPTS = {'receipts/documents/2026-11-01/live.jsonl.gz'}
+NEW_RECEIPT = 'receipts/documents/2026-11-03/nightly.jsonl.gz'
+
+
+def nightly(tmp_path, base_docs, candidate_docs, *, receipt=NEW_RECEIPT, raw_names_body=True, filenames=None):
+    """Releases plus a captures file and raw receipts; returns the gate's automatic callback."""
+    import gzip
+    import os
+    from docspec_client.client import NativeDatasets
+    from viewer_publication.release_gate import automatic_causes
+    base, candidate = tmp_path / 'base', tmp_path / 'candidate'
+    release_dir(base, base_docs)
+    release_dir(candidate, candidate_docs, retired=[])
+    if filenames:
+        table = pq.read_table(candidate / 'list.parquet')
+        pq.write_table(pa.table({'filename': filenames}), candidate / 'list.parquet')
+        manifest = json.loads((candidate / 'manifest.json').read_text())
+        data = (candidate / 'list.parquet').read_bytes()
+        entry = next(f for f in manifest['files'] if f['name'] == 'list.parquet')
+        entry.update(sha256=sha256(data).hexdigest(), md5=md5(data).hexdigest(), size=len(data))
+        manifest['release_id'] = release_identity(1, manifest['files'])
+        (candidate / 'manifest.json').write_text(json.dumps(manifest))
+    new = [k for keys in candidate_docs for k in keys if not any(k in b for b in base_docs)]
+    bodies = {k: K(k) + sha256(k.encode()).digest()[:24] for k in new}
+    pq.write_table(pa.table({'receipt_key': [receipt] * len(bodies), 'receipt_line': pa.array([1] * len(bodies), pa.int32()),
+                             'sha256': pa.array(list(bodies.values()), pa.binary(32))}), tmp_path / 'captures.parquet')
+    line = json.dumps(dict(captures=[dict(sha256=b.hex() if raw_names_body else '0' * 64) for b in bodies.values()]))
+    raw = {receipt: gzip.compress((line + '\n').encode(), mtime=0)}
+    engine = NativeDatasets.from_config(os.environ['DOCSPEC_JOB_CONFIG'])
+    def automatic(report):
+        return automatic_causes(report, base, candidate, engine=engine, captures=dict(kind='parquet', path=str(tmp_path / 'captures.parquet')),
+                                live_receipt_keys=LIVE_RECEIPTS, read_receipt=raw.__getitem__, work=tmp_path / 'auto')
+    return base, candidate, automatic
+
+
+def test_additions_from_new_receipts_pass_unattended(tmp_path):
+    base, candidate, automatic = nightly(tmp_path, ['A'], ['A', 'N'])
+    report = require_release_gates(base, candidate, None, report_path=tmp_path / 'r.json', automatic=automatic)
+    assert report['reasons'] == [] and {e['tickets'][0] for e in report['automatic_causes']} == {'ct-ud0b'}
+    assert {e['id'].split('|')[1] for e in report['automatic_causes']} >= {'added rows', 'added keys'}
+
+
+@pytest.mark.parametrize('receipt,rule', [
+    (sorted(LIVE_RECEIPTS)[0], 'is already in the live release'),
+    ('receipts/documents/2026-10-30/older.jsonl.gz', 'is not dated after the live release'),
+    ('receipts/documents/undated/assemble.jsonl.gz', 'is not dated after the live release'),
+])
+def test_an_added_row_from_an_old_receipt_refuses(tmp_path, receipt, rule):
+    base, candidate, automatic = nightly(tmp_path, ['A'], ['A', 'N'], receipt=receipt)
+    with pytest.raises(ValueError, match='no recorded cause'):
+        require_release_gates(base, candidate, None, report_path=tmp_path / 'r.json', automatic=automatic)
+    assert any(rule in reason for reason in json.loads((tmp_path / 'r.json').read_text())['automatic_reasons'])
+
+
+def test_a_raw_line_that_does_not_name_the_body_refuses(tmp_path):
+    base, candidate, automatic = nightly(tmp_path, ['A'], ['A', 'N'], raw_names_body=False)
+    with pytest.raises(ValueError, match='no recorded cause'):
+        require_release_gates(base, candidate, None, report_path=tmp_path / 'r.json', automatic=automatic)
+    assert any('does not name body' in r for r in json.loads((tmp_path / 'r.json').read_text())['automatic_reasons'])
+
+
+def test_a_changed_value_refuses_even_beside_new_rows(tmp_path):
+    base, candidate, automatic = nightly(tmp_path, ['A'], ['A', 'N'], filenames=['A-renamed.pdf', 'N.pdf'])
+    with pytest.raises(ValueError, match='changed filename'):
+        require_release_gates(base, candidate, None, report_path=tmp_path / 'r.json', automatic=automatic)
+    assert any('is not an addition' in r for r in json.loads((tmp_path / 'r.json').read_text())['automatic_reasons'])
+
+
+def test_a_removed_row_refuses(tmp_path):
+    base, candidate, automatic = nightly(tmp_path, ['A', 'B'], ['A', 'N'])
+    with pytest.raises(ValueError):
+        require_release_gates(base, candidate, None, report_path=tmp_path / 'r.json', automatic=automatic)
+    report = json.loads((tmp_path / 'r.json').read_text())
+    assert any('is not an addition' in r or 'link rule' in r for r in report['automatic_reasons'])

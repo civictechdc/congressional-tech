@@ -14,6 +14,8 @@ and, when the base has no ledger, the explicitly named earlier releases.
 """
 import argparse
 from datetime import date
+import gzip
+from io import BytesIO
 import json
 from pathlib import Path
 import re
@@ -226,6 +228,102 @@ def load_causes(pin):
     return record
 
 
+# ct-ud0b (owner decision 2026-11-02): nightly publication without a person when every
+# difference is a new row traced to receipts newer than the live release. These are the
+# only groups that can receive an automatic cause; anything else still needs a record.
+AUTOMATIC_GROUPS = {('list.parquet', 'added rows'), ('detail.parquet', 'added rows'), ('links.parquet', 'added keys'),
+                    ('urls.parquet', 'keys new'), ('urls.parquet', 'keys with more rows'),
+                    ('sources.parquet', 'new URLs'), ('sources.parquet', 'member rows added'),
+                    ('sources.parquet', 'same-URL rows added')}
+AUTOMATIC_CAUSE = 'addition traced to receipts newer than every receipt of the live release (automatic, ct-ud0b)'
+DATED = re.compile(r'/(\d{4}-\d{2}-\d{2})/')
+
+
+def automatic_causes(report, base_dir, candidate_dir, *, engine, captures, live_receipt_keys, read_receipt, work):
+    """Cause entries for an addition-only difference whose every new row comes from new receipts.
+
+    Returns (entries, reasons); entries is empty unless every check passes. A new document is
+    a candidate row none of whose link keys an earlier release published. Its body keys are
+    joined to `captures` (the capture mapping, not the archive model) to find the receipt
+    lines holding those bodies. Each line is then read from raw: its key must be outside the
+    live release's receipt set and dated after the newest of them, and the line itself must
+    name the body's SHA-256. Source and lookup additions must sit on new documents only.
+    Cannot see: a bug that adds only wrong rows (wrong values on genuinely new receipts), or a
+    new row whose receipts are new while the code that made it changed; the other gates still run.
+    """
+    import duckdb
+    from congress_api.lake.tables import table_input
+    from congress_api.retention.provenance import run_job
+    from viewer_publication.release_comparison import Diff, documents
+    reasons = []
+    groups = report['failing']
+    if not groups or not report['link_rule']['ok']:
+        return [], ['automatic causes: nothing to explain or the link rule failed']
+    other = [g for g in groups if g.get('value') or g['count'] <= 0 or (g['file'], g['group']) not in AUTOMATIC_GROUPS]
+    if other:
+        return [], [f'automatic causes: {group_id(g)} ({g["count"]}) is not an addition that can be traced' for g in other]
+    live = sorted(live_receipt_keys)
+    live_dates = [m.group(1) for m in map(DATED.search, live) if m]
+    if not live or len(live_dates) != len(live):
+        return [], ['automatic causes: the live release has no dated receipt set to compare with']
+    cutoff = max(live_dates)
+    d = Diff(Path(base_dir), Path(candidate_dir))
+    d.documents = documents(d)
+    d.table('added_documents', 'SELECT file_row_number::INT r FROM candidate_list ANTI JOIN pairs ON file_row_number=lr')
+    for table, fields in (('sources', 'url,member_path'), ('urls', 'lookup_key')):
+        if d.has('candidate', table) and d.has('base', table):
+            stray = d.one(f"""SELECT count(*) FROM (SELECT list_row,{fields} FROM candidate_{table}
+                WHERE list_row NOT IN (SELECT r FROM added_documents)
+                EXCEPT SELECT x.lr,{','.join('p.' + f for f in fields.split(','))} FROM base_{table} p JOIN pairs x ON p.list_row=x.pr)""")
+            if stray:
+                reasons.append(f'automatic causes: {stray} {table} rows were added to existing documents')
+    keys = [r[0] for r in d.rows("SELECT DISTINCT lower(hex(link_key)) FROM candidate_links WHERE list_row IN (SELECT r FROM added_documents) ORDER BY 1")]
+    if not keys:
+        reasons.append('automatic causes: no new document carries a key to trace')
+    if reasons:
+        return [], reasons
+    work = Path(work)
+    work.mkdir(parents=True, exist_ok=True)
+    pq.write_table(pa.table({'prefix': keys}), work / 'added-keys.parquet')
+    source = captures['path'] if captures.get('kind') == 'parquet' else {k: v for k, v in captures.items() if k != 'kind'}
+    lines = run_job(work / 'trace', engine, inputs=[table_input('captures', source),
+        dict(name='added_keys', kind='parquet', path=str(work / 'added-keys.parquet'))], steps=[], outputs=[],
+        queries=[dict(name='lines', sql="""SELECT DISTINCT k.prefix,c.receipt_key,c.receipt_line,lower(encode(c.sha256,'hex')) AS sha
+            FROM added_keys k JOIN captures c ON substr(lower(encode(c.sha256,'hex')),1,16)=k.prefix
+            WHERE c.sha256 IS NOT NULL ORDER BY 1,2,3""")])['lines']
+    traced = {}
+    for row in lines:
+        traced.setdefault(row['prefix'], []).append(row)
+    untraced = [k for k in keys if k not in traced]
+    if untraced:
+        reasons.append(f'automatic causes: {len(untraced)} new document keys have no capture to trace (first {untraced[:3]})')
+    held = set(live)
+    raw = {}
+    for row in lines:
+        key = row['receipt_key']
+        date = DATED.search(key)
+        if key in held:
+            reasons.append(f'automatic causes: {key} is already in the live release')
+        elif date is None or date.group(1) <= cutoff:
+            reasons.append(f'automatic causes: {key} is not dated after the live release ({cutoff})')
+        else:
+            if key not in raw:
+                with gzip.open(BytesIO(read_receipt(key)), 'rt') as stream:
+                    raw[key] = stream.read().splitlines()
+            text = raw[key]
+            line = row['receipt_line']
+            if not (isinstance(line, int) and 1 <= line <= len(text) and row['sha'] in text[line - 1]):
+                reasons.append(f'automatic causes: {key}:{line} does not name body {row["sha"][:12]} in raw')
+    if reasons:
+        return [], sorted(set(reasons))
+    evidence = work / 'automatic-trace.json'
+    evidence.write_text(json.dumps(dict(cutoff=cutoff, live_receipts=len(live), lines=lines), indent=1, default=str) + '\n')
+    from congress_api.retention.provenance import file_pin
+    pin = dict(path=str(evidence), **file_pin(evidence))
+    return [dict(id=group_id(g), count=g['count'], disposition='explained', cause=AUTOMATIC_CAUSE,
+                 tickets=['ct-ud0b'], evidence=[pin], automatic=True) for g in groups], []
+
+
 def group_id(group):
     return f'{group["file"]}|{group["group"]}|{group["cause"]}'
 
@@ -254,8 +352,13 @@ def verdict(report, causes):
     return reasons
 
 
-def require_release_gates(base_dir, candidate_dir, causes, *, report_path, evidence_base=None, evidence_candidate=None, history=()):
-    """Write the comparison report, then refuse on any gate 1 or gate 2 finding."""
+def require_release_gates(base_dir, candidate_dir, causes, *, report_path, evidence_base=None, evidence_candidate=None, history=(),
+                          automatic=None):
+    """Write the comparison report, then refuse on any gate 1 or gate 2 finding.
+
+    `automatic(report)` (ct-ud0b), when given, returns (entries, reasons) for an addition-only
+    difference; its entries join the recorded causes for groups the record does not name.
+    """
     from viewer_publication.release_comparison import compare
     report_path = Path(report_path)
     if base_dir is None:
@@ -263,6 +366,14 @@ def require_release_gates(base_dir, candidate_dir, causes, *, report_path, evide
         report_path.write_text(json.dumps(report, indent=1) + '\n')
         return report
     report = compare(base_dir, candidate_dir, evidence_base=evidence_base, evidence_candidate=evidence_candidate, history=history)
+    if automatic is not None:
+        entries, report['automatic_reasons'] = automatic(report)
+        if entries:
+            named = {e['id'] for e in (causes or {}).get('groups', [])}
+            causes = dict(causes or dict(version=1, base_release_id=report['base_release'],
+                                          candidate_release_id=report['candidate_release'], groups=[]))
+            causes['groups'] = [*causes['groups'], *(e for e in entries if e['id'] not in named)]
+            report['automatic_causes'] = entries
     report['reasons'] = verdict(report, causes)
     report_path.write_text(json.dumps(report, indent=1, default=str) + '\n')
     if report['reasons']:

@@ -158,7 +158,7 @@ def load_spec(path):
         if set(value)!={'status','reason'} or not isinstance(value['reason'],str) or not value['reason'].strip():
             raise ValueError('Blocked publication job requires exactly its reason')
         return value
-    if set(value)-FIELDS-{'site_dist','daily','model_kind','comparison_acceptance','resume','release_causes','link_history','first_release','producers'}:raise ValueError('Publication job has unknown fields')
+    if set(value)-FIELDS-{'site_dist','daily','model_kind','comparison_acceptance','resume','release_causes','link_history','first_release','producers','automatic_causes'}:raise ValueError('Publication job has unknown fields')
     if not FIELDS<=value.keys() or type(value['version']) is not int or value['version']!=1:
         raise ValueError('Publication job requires version 1 and all explicit inputs')
     base=path.parent
@@ -188,6 +188,7 @@ def load_spec(path):
         raise ValueError('link_history must list distinct 64-hex release IDs')
     result['link_history']=list(history)
     if type(value.get('first_release',False)) is not bool:raise ValueError('first_release must be boolean')
+    if type(value.get('automatic_causes',False)) is not bool:raise ValueError('automatic_causes must be boolean')
     if value.get('first_release') and history:raise ValueError('A first release has no link history')
     for name in ['work','contract_next_release']:result[name]=_local(value[name],base)
     result['site_dist']=_local(value['site_dist'],base) if 'site_dist' in value else str(SITE/'dist')
@@ -441,7 +442,7 @@ def execute(spec,*,runtime_factory=None,storage_factory=None,process_runner=None
             result=run_publish(selected_model,receipt_keys=keys,provenance=provenance,verified_files=verified,
                 measured_release_id=measured_release_id,comparison_acceptance=acceptance,resume=spec.get('resume',False),
                 release_causes=causes,link_history=spec.get('link_history',[]),
-                first_release=spec.get('first_release',False),**options)
+                first_release=spec.get('first_release',False),automatic_causes=spec.get('automatic_causes',False),**options)
             spec['_model_identity'].require(spec['model_spec']['path']);require_configuration()
             return dict(result,daily=daily['daily']) if daily is not None else result
 
