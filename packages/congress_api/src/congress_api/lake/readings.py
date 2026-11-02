@@ -41,18 +41,30 @@ PAGE_PARSE_MAX_BYTES=24<<20
 PARSER_MEMORY_BYTES=10<<30
 WORKER_TIMEOUT_SECONDS=15
 LINK_FIELDS=('href','text','tag','basis','group_path','doc_type','add_date','publish_date','remove_date')
+# A derived parser reads bodies another leaf already classified, in its own pass and
+# partition, outside the combined bundle: its failure never erases a leaf's reading.
+READ_AS={'html_metadata':'html'}
 STRINGS=('parser','parser_version','status','error_type','format','xml_root','title','heading',
          'text_head','content_date','base_href')
 INTEGERS=('text_bytes','link_count','link_text_bytes')
 
 
-def current_version(parser):
+def current_version(parser,*,root=ROOT):
+    """Content version of one readings parser. `root` relocates html_metadata's inputs (tests)."""
     if parser=='sniff':
         from congress_api.retention.sniff import sniff_version
         return sniff_version()
+    from congress_api.lake.versions import version_digest
+    if parser=='html_metadata':
+        # Not in bundle_version or LEAF_PARSERS: a main_content.py fix moves only this pin.
+        from congress_api.parsers.html_metadata import FORMAT_TIMEOUT_SECONDS,FORMATS
+        source=Path(root)/'packages/congress_api/src/congress_api'
+        return version_digest(packages={},files={'lock':Path(root)/'uv.lock',
+            **{name:source/name for name in ('models/html_metadata.py','parsers/html_metadata.py','parsers/main_content.py')}},
+            values=dict(parser=parser,options=dict(formats=list(FORMATS),format_timeout_seconds=FORMAT_TIMEOUT_SECONDS,base_url=None),
+                stored_bytes=MAX_STORED_BYTES,decoded_bytes=MAX_DECODED_BYTES,policy=worker_limits(parser)))
     if parser not in {'html','xml','json'}:
         raise ValueError('Unsupported reading parser')
-    from congress_api.lake.versions import version_digest
     return version_digest(packages={},files={
         'parser':Path(__file__).parents[1]/'parsers/archive_readings.py',
         'xml_helper':Path(__file__).parents[1]/'parsers/xml.py',
@@ -105,6 +117,15 @@ class _SourceStream:
         data=self.source.read(self.position,size) if size>0 else b'';self.position+=len(data);return data
 
 
+def read_body(data,parser):
+    """One decoded body's reading row for a page or derived parser."""
+    if parser=='html_metadata':
+        from congress_api.parsers.html_metadata import reading_row
+        return reading_row(data)
+    from congress_api.parsers.archive_readings import read_page
+    return read_page(data,parser)
+
+
 def parse_payload(payload):
     """Read only a named local body; read failures remain pending, not verdicts."""
     source=json.loads(payload)
@@ -144,8 +165,7 @@ def parse_payload(payload):
                     return dict(row=dict(status='error',error_type='decoded_size_limit'),read_bytes=count)
                 _bound_page_parse(data)
         if source['parser']!='sniff':
-            from congress_api.parsers.archive_readings import read_page
-            row=read_page(data,source['parser'])
+            row=read_body(data,source['parser'])
         return dict(row=row,read_bytes=count)
     except (OSError, EOFError) as exc:
         return dict(read_error=type(exc).__name__,read_bytes=count)
@@ -181,9 +201,16 @@ def _reading_fields():
 _LAKE_READING_COLUMNS=_lake_reading_columns()
 
 
-def worker_limits():
-    """Name the exact resource policy passed to the supervised producer."""
-    return dict(timeout_seconds=WORKER_TIMEOUT_SECONDS,memory_bytes=WORKER_MEMORY_BYTES,
+def worker_limits(parser=None):
+    """Name the exact resource policy passed to the supervised producer.
+
+    html_metadata's worst case is every format at its own deadline, plus the page read.
+    """
+    timeout=WORKER_TIMEOUT_SECONDS
+    if parser=='html_metadata':
+        from congress_api.parsers.html_metadata import FORMAT_TIMEOUT_SECONDS,FORMATS
+        timeout=int(len(FORMATS)*FORMAT_TIMEOUT_SECONDS)+WORKER_TIMEOUT_SECONDS
+    return dict(timeout_seconds=timeout,memory_bytes=WORKER_MEMORY_BYTES,
                 max_input_bytes=65536,max_output_bytes=8<<20)
 
 
@@ -268,8 +295,9 @@ def plan(*,captures,body_inventory,local_root,engine,work,decided_at,parser,
     instant(decided_at)
     combined=parser is None
     versions={p:current_version(p) for p in ['sniff','html','xml','json']}
-    limits=worker_limits()
-    version=(bundle_version(versions,policy=limits) if combined else versions[parser])
+    bundle=bundle_version(versions,policy=worker_limits())
+    limits=worker_limits(parser)
+    version=bundle if combined else versions[parser] if parser in versions else current_version(parser)
     parser='readings' if combined else parser
     if parser_version is not None and parser_version!=version:
         raise ValueError('Parser version does not match its current definition')
@@ -279,11 +307,12 @@ def plan(*,captures,body_inventory,local_root,engine,work,decided_at,parser,
         sniff_version=versions['sniff']
     work=Path(work).resolve();work.mkdir(parents=True,exist_ok=False)
     raw=Path(local_root).resolve()
-    pins={**versions,'readings':bundle_version(versions,policy=limits)}
+    derived={parser:version} if parser in READ_AS else {}
+    pins={**versions,**derived,'readings':bundle}
     entries=compatible_versions.load_registry(current=pins,**({} if registry is None else dict(path=registry)))
-    selected={**versions,'sniff':sniff_version}
+    selected={**versions,'sniff':sniff_version,**derived}
     # A legacy plan at another sniff pin selects no older sniff rows on that pin's behalf.
-    covered=[p for p in compatible_versions.LEAF_PARSERS if selected[p]==versions[p]]
+    covered=[p for p in (*compatible_versions.LEAF_PARSERS,*derived) if selected[p]==pins[p]]
     inputs=[json_input(work,'parser_versions',[dict(parser=p,version=v) for p,v in selected.items()],parser='Utf8',version='Utf8'),
             compatible_versions.accepted_versions_input(work,[e for e in entries if e['parser'] in covered+['readings']],
                 pins={**selected,'readings':pins['readings']}),
@@ -368,7 +397,7 @@ def plan(*,captures,body_inventory,local_root,engine,work,decided_at,parser,
     if combined:
         steps.append(writer_admission_step())
     candidate=(f"NOT EXISTS(SELECT 1 FROM known_formats f WHERE f.body_sha=b.body_sha)" if parser=='sniff' else
-               f"EXISTS(SELECT 1 FROM known_formats f WHERE f.body_sha=b.body_sha AND f.format={quote(parser)})")
+               f"EXISTS(SELECT 1 FROM known_formats f WHERE f.body_sha=b.body_sha AND f.format={quote(READ_AS.get(parser,parser))})")
     if combined:
         steps.append(dict(name='settled_parsers',sql="""SELECT body_sha,array_agg(DISTINCT parser) AS parsers FROM (
             SELECT body_sha,parser FROM pinned_readings UNION
@@ -495,7 +524,7 @@ def _execute_plan(planned,*,engine,worker_factory=ParserWorker,unreadable_store=
             raise ValueError('Ranged reads require an owned cache below the producer work directory')
         items=list(items)
         candidates=[item for item in items if item['physical_key'] is not None and item['stored_bytes'] is not None and item['stored_bytes']<=MAX_STORED_BYTES
-            and (item.get('page_hint') or item.get('known_format') in {'html','xml','json'} or parser in {'html','xml','json'})
+            and (item.get('page_hint') or item.get('known_format') in {'html','xml','json'} or parser in {'html','xml','json',*READ_AS})
             and body_store._immutable_cache_path(item['physical_key']) is not None]
         # Identity plus at most three disjoint sniff/page ranges, in filesystem blocks.
         cache_use['reserve']=len(items)*4*max(4096,os.statvfs(cache_root).f_frsize)
@@ -538,10 +567,11 @@ def _execute_plan(planned,*,engine,worker_factory=ParserWorker,unreadable_store=
             request['unpinned']=True
         if combined or body_store is not None:
             request.update(cache=str(cache),versions=versions,
-                known_format=item['known_format'] if combined else None if parser=='sniff' else parser,
+                known_format=item['known_format'] if combined else None if parser=='sniff' else READ_AS.get(parser,parser),
                 skip_parsers=sorted(set(item.get('skip_parsers') or []) |
                     ({'sniff'} if item.get('known_format') is not None else set()) |
                     (set(versions)-{parser} if not combined else set())))
+            if parser in READ_AS:request.update(derived=parser,derived_version=version)
             if body_store is not None:
                 request['original_bytes']=item['captured_bytes']
                 if request_timings:request['request_timings']=True
@@ -931,7 +961,6 @@ def _page_entity(stored,body_sha):
 def parse_once_payload(payload,*,body_store=None):
     """Use one bounded source read for sniff and its actual page parser."""
     from congress_api.retention.sniff import read_sniff
-    from congress_api.parsers.archive_readings import read_page
     request=json.loads(payload);source=None
     def result(**value):
         if request.get('request_timings'):
@@ -978,8 +1007,10 @@ def parse_once_payload(payload,*,body_store=None):
             read_sniff(source.read,stored_size=source.size,stored_gzip=source.stored_gzip))
         if 'sniff' not in skip:
             rows.append(dict(sniff,parser='sniff',parser_version=versions['sniff']))
-        parser=sniff.get('format')
-        if sniff['status']=='completed' and parser in {'html','xml','json'} and parser not in skip:
+        parser=sniff.get('format');derived=request.get('derived')
+        if derived is not None:  # a derived pass reads only its own parser over the leaf's format
+            parser=derived if parser==READ_AS[derived] else None;versions={**versions,derived:request['derived_version']}
+        if sniff['status']=='completed' and parser is not None and parser in {'html','xml','json',*READ_AS} and parser not in skip:
             if request['stored_bytes']>MAX_STORED_BYTES:
                 row=dict(status='size_limit',error_type='stored_size_limit')
             else:
@@ -987,7 +1018,7 @@ def parse_once_payload(payload,*,body_store=None):
                 if not request.get('prefetched') and data is None:
                     data,source.stored_gzip=_page_entity(source.read(0,source.size),request['body_sha'])
                 if data is not None:_bound_page_parse(data)
-                row=(dict(status='error',error_type='decoded_size_limit') if data is None else read_page(data,parser))
+                row=(dict(status='error',error_type='decoded_size_limit') if data is None else read_body(data,parser))
             rows.append(dict(row,parser=parser,parser_version=versions[parser]))
         return result(rows=rows,gzip_rule=gzip_rule,read_bytes=0 if source is None else source.read_bytes)
     except (OSError,EOFError) as error:

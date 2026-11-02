@@ -87,8 +87,11 @@ class MainContent(SourceModel):
     fallback_reason: str | None
 
     def ref(self, reader_version: str | None = None) -> MainContentRef:
-        encoded = self.text.encode('utf-8') if self.text is not None else None
-        snippet = self.text
+        text = self.text
+        if self.outcome == 'marked_no_content':
+            text = next(candidate.text for candidate in self.candidates if candidate.selector == self.selector)
+        encoded = text.encode('utf-8') if text is not None else None
+        snippet = text
         if snippet and len(snippet) > SNIPPET_CHARS:
             cut = snippet[:SNIPPET_CHARS]
             snippet = cut.rsplit(None, 1)[0] if len(cut.split(None, 1)) > 1 else cut

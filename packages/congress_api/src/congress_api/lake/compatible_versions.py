@@ -2,8 +2,9 @@
 
 A version digest moves when any hashed byte moves, including a lock-file pin or a code path
 another parser owns. An entry lets readings rows at `version` stand in for `current` instead
-of re-stamping them. Only readings parsers qualify: the four leaf parsers and the `readings`
-bundle (unreadable-decision authority). Catalog and record tables (D3/D4) are recomputed.
+of re-stamping them. Only readings parsers qualify: the four leaf parsers, the derived
+`html_metadata` parser (its own pass, outside the bundle) and the `readings` bundle
+(unreadable-decision authority). Catalog and record tables (D3/D4) are recomputed.
 
 Bases:
 - lock_only: only lock pins moved; the old tree must recompute the old pin (attestation).
@@ -37,7 +38,8 @@ LEAF_PARSERS = ('sniff', 'html', 'xml', 'json')
 # (ct-61ys): a body above it is refused under the current rule. Every page entry therefore
 # recomputes those bodies, by rule, sized from captures (`bytes` is the decoded size).
 PAGE_PARSERS = ('html', 'xml', 'json')
-PARSERS = (*LEAF_PARSERS, 'readings')
+DERIVED_PARSERS = ('html_metadata',)
+PARSERS = (*LEAF_PARSERS, *DERIVED_PARSERS, 'readings')
 ENTRY = {'parser', 'version', 'current', 'basis', 'recompute_sql', 'reason', 'proof'}
 BINDING = {'scope', 'version', 'current', 'recompute_sha256', 'old_input_sha256', 'new_input_sha256'}
 COUNTS = {'rows', 'columns', 'differences', 'only_old', 'only_new'}
@@ -56,10 +58,11 @@ RECOMPUTE_SOURCES = {'html': ('congress_api.parsers.archive_readings', 'HTML_RER
 
 
 def current_pins():
-    """The four leaf pins plus the bundle they make under the current worker policy."""
+    """The four leaf pins, the derived pins beside them, and the bundle the leaves make."""
     from congress_api.lake import readings
     leaf = {p: readings.current_version(p) for p in LEAF_PARSERS}
-    return {**leaf, 'readings': readings.bundle_version(leaf, policy=readings.worker_limits())}
+    derived = {p: readings.current_version(p) for p in DERIVED_PARSERS}
+    return {**leaf, **derived, 'readings': readings.bundle_version(leaf, policy=readings.worker_limits())}
 
 
 def page_parse_max_bytes():
