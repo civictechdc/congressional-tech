@@ -1768,3 +1768,27 @@ def test_govinfo_member_and_its_direct_copy_are_one_document(tmp_path):
     assert len(versions) == 2
     shared = [set(rows[r]['version_keys']) for r in versions]
     assert shared[0] and shared[0] == shared[1]
+
+
+def test_a_page_never_groups_itself_through_its_own_navigation_links(tmp_path):
+    """green-g: alert_act_title_ii_ans_section_by_section.pdf took a press release's <title> because the
+    release page's share ('#') and skip ('#main') links sit in the PDF link's row and resolve to the page."""
+    from viewer_publication.archive_model import build_release
+    engine = NativeDatasets.from_config(os.environ['DOCSPEC_JOB_CONFIG'])
+    page_url = 'https://armedservices.house.gov/news/documentsingle.aspx?DocumentID=6459'
+    pdf_url = 'https://armedservices.house.gov/uploadedfiles/alert_act_title_ii_ans_section_by_section.pdf'
+    words = 'The committee passed the air safety bill with bipartisan support. ' * 30
+    page = (f'<html><head><title>Chairman Praises Committee Passage of Air Safety Bill</title></head><body>'
+            f'<a href="#main">Skip to Content</a><main id="main"><p>{words}</p><table><tr><td>'
+            f'<a href="#">Share on Facebook</a><a href="#">Print this Page</a> Read the section by section '
+            f'<a href="{pdf_url}">here</a></td></tr></table></main><a href="#wrapper">Back to top</a></body></html>').encode()
+    pdf = b'%PDF-1.7\nALERT Act Title II section by section\n%%EOF\n'
+    staged = _stage_raw_fixture(tmp_path, engine, [dict(url=page_url, data=page, format='html'),
+                                                   dict(url=pdf_url, data=pdf, format='pdf', compress=False)])
+    build_release(captures=staged['captures'], readings=staged['readings'], filename_readings=staged['filename_readings'],
+        parser_versions={p: staged['parser_versions'][p] for p in ['sniff', 'html', 'xml', 'json']},
+        catalog_version=staged['catalog_version'], engine=engine, output=tmp_path / 'release', scratch=tmp_path / 'model')
+    rows = pq.read_table(tmp_path / 'release/detail.parquet').to_pylist()
+    saved = next(r for r in rows if r['filename'] == 'alert_act_title_ii_ans_section_by_section.pdf')
+    assert not saved['alternates'] and saved['title'] is None  # 'here' is a link word; the page is not a rendition.
+    assert len(rows) == 2
