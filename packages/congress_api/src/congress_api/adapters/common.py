@@ -3,7 +3,7 @@
 import hashlib
 import json
 import re
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from datetime import date, datetime
 from typing import Callable, Mapping
 from urllib.parse import urlsplit
@@ -105,6 +105,15 @@ class AdapterContext:
     known_materials: Mapping[str, tuple[Material, MaterialVersion]] | None = None
     # Declared page metadata by exact URL, like known_materials. None changes nothing.
     page_metadata: Mapping[str, HtmlMetadata] | None = None
+    _emitted: set = field(default_factory=set, repr=False, compare=False)
+
+    def first_emission(self, record) -> bool:
+        """True once per (kind, id) for this run; a Catalog refuses a repeated identity."""
+        identity = record.kind, record.id
+        if identity in self._emitted:
+            return False
+        self._emitted.add(identity)
+        return True
 
     def source(self, native_key, payload, url=None):
         scheme = f"{self.provider}:record"

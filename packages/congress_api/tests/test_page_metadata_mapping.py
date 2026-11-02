@@ -10,6 +10,7 @@ from pathlib import Path
 import pytest
 
 from committee_meeting.common import Ref, ReportedTime
+from committee_meeting import Catalog
 from committee_meeting.materials import DocumentDetails, Material
 from congress_api.adapters.common import AdapterContext, material_and_version, material_records
 from congress_api.adapters.page_metadata import enrich_material, main_content_representation, metadata_source, page_source
@@ -186,7 +187,7 @@ def test_page_source_payload_and_id_are_stable_and_existing_modified_time_kept()
     source = ctx.source('page', {'a': 1}, PAGE_URL)
     updated, extra = page_source(ctx, PAGE_URL, source)
     assert updated.id == source.id and updated.payload == source.payload
-    assert extra[0].identifier.value == 'html-metadata|' + extra[0].payload['body_sha256']
+    assert extra[0].identifier.value == f"html-metadata|{extra[0].payload['body_sha256']}|{PAGE_URL}"
     kept = source.model_copy(update={'source_modified_at': ReportedTime(date='2000-01-01', original='2000-01-01')})
     assert page_source(ctx, PAGE_URL, kept)[0].source_modified_at.date.isoformat() == '2000-01-01'
 
@@ -201,6 +202,50 @@ def test_main_content_is_an_ordinary_representation():
     assert (row.media_type, row.sha256, row.byte_size, row.retained) == ('text/plain', 'a' * 64, 5, None)
     assert (row.provenance.citations[0].selector_type, row.provenance.citations[0].selector) == ('xpath', '/html/body/div')
     assert main_content_representation(ctx, 'k', version, reference.model_copy(update={'text_sha256': None}), source) is None
+
+
+def catalog_of(rows):
+    return Catalog(sources=tuple(of_kind(rows, 'source_record')), records=tuple(row for row in rows if row.kind != 'source_record'))
+
+
+def adapt_unlinked(ctx, saved):
+    state = {'example.senate.gov': {'listings': {PAGE: ['2026-09-20', 'Evidence hearing']}, 'pages': {PAGE: saved}}}
+    return list(records(state, ctx, meetings={}))
+
+
+def test_catalog_accepts_a_page_and_its_document_at_one_url():
+    saved = page(documents=[['witness statement', 'Testimony', PAGE]])
+    rows = adapt_unlinked(supplied(**{PAGE: metadata('ways-and-means.html')}), saved)
+    catalog = catalog_of(rows)
+    assert sum(source.identifier.value.startswith('html-metadata|') for source in catalog.sources) == 1
+
+
+def test_catalog_accepts_one_body_at_two_urls():
+    other = 'https://example.senate.gov/other'
+    facts = metadata('ways-and-means.html')
+    saved = page(documents=[['witness statement', 'Testimony', other]])
+    catalog = catalog_of(adapt_unlinked(supplied(**{PAGE: facts, other: facts}), saved))
+    declared = [source for source in catalog.sources if source.identifier.value.startswith('html-metadata|')]
+    assert {source.url for source in declared} == {PAGE, other}
+
+
+def test_catalog_accepts_two_materials_at_one_url():
+    ctx = supplied(**{PAGE_URL: metadata('ways-and-means.html')})
+    base = ctx.source('page', {'x': 1})
+    evidence = ctx.evidence(base)
+    rows = [base, *material_records(ctx, evidence, 'first', urls=[PAGE_URL]), *material_records(ctx, evidence, 'second', urls=[PAGE_URL])]
+    catalog = catalog_of(rows)
+    assert len(of_kind(rows, 'material')) == 2 and all(row.description for row in of_kind(rows, 'material'))
+    assert sum(source.identifier.value.startswith('html-metadata|') for source in catalog.sources) == 1
+
+
+def test_a_repeated_declared_host_issue_is_emitted_once():
+    body = b'<html><head><meta property="og:url" content="https://admin-intelligence.house.gov/x"></head></html>'
+    ctx = supplied(**{PAGE_URL: read_html_metadata(body)})
+    base = ctx.source('page', {'x': 1})
+    evidence = ctx.evidence(base)
+    rows = [base, *material_records(ctx, evidence, 'first', urls=[PAGE_URL]), *material_records(ctx, evidence, 'second', urls=[PAGE_URL])]
+    assert len(of_kind(catalog_of(rows).records, 'data_issue')) == 1
 
 
 def link_pairs(rows):

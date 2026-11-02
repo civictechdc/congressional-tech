@@ -46,13 +46,15 @@ def lookup(context, urls) -> HtmlMetadata | None:
 
 
 def metadata_source(context, url, metadata):
-    """One source record per body, whatever URL first supplies it.
+    """The record citing one body as served at one URL; emit it through ``_once``.
 
-    Two URLs serving one body give one source ID, and a catalog refuses duplicate
-    identities (committee_meeting/catalog.py). ct-pocg, which supplies page_metadata, must
-    emit each body's source once and cite it from every capture, or key this by URL.
+    A body can serve two URLs, and one URL can back a page and several materials.
     """
-    return context.source(f'html-metadata|{metadata.body_sha256}', metadata.source_dict(), url)
+    return context.source(f'html-metadata|{metadata.body_sha256}|{url}', metadata.source_dict(), url)
+
+
+def _once(context, records):
+    return [record for record in records if context.first_emission(record)]
 
 
 def _time(value):
@@ -102,7 +104,7 @@ def page_source(context, url, source):
     modified = _times(page_facts(metadata), 'modified_time')
     if modified and source.source_modified_at is None:
         source = source.model_copy(update={'source_modified_at': modified[0][0]})
-    return source, [declared, *declared_url_issues(context, f'page|{url}', metadata, declared, url)]
+    return source, _once(context, [declared, *declared_url_issues(context, url, metadata, declared, url)])
 
 
 def _descriptions(metadata, title):
@@ -167,7 +169,7 @@ def material_page_records(context, records, url, metadata):
     """Apply one page's metadata to freshly mapped material records."""
     source = metadata_source(context, url, metadata)
     mapped = [enrich_material(context, record, metadata, source) if isinstance(record, Material) else record for record in records]
-    return [*mapped, source, *declared_url_issues(context, f'material|{url}', metadata, source, url)]
+    return [*mapped, *_once(context, [source, *declared_url_issues(context, url, metadata, source, url)])]
 
 
 def main_content_representation(context, key, version, reference: MainContentRef, source):
