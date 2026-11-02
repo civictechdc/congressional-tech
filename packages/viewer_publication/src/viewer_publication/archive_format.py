@@ -43,14 +43,33 @@ EMPTY_ALTERNATES = _empty_struct(format='cast(NULL AS VARCHAR)', body="arrow_cas
 EMPTY_FACTS = _empty_struct(field='cast(NULL AS VARCHAR)', value='cast(NULL AS VARCHAR)')
 
 
+EMPTY_PAGE_METADATA = _empty_struct(field='cast(NULL AS VARCHAR)', value='cast(NULL AS VARCHAR)', format='cast(NULL AS VARCHAR)',
+    path='cast(NULL AS VARCHAR)', date='cast(NULL AS DATE)', precision='cast(NULL AS VARCHAR)', resolved='cast(NULL AS VARCHAR)',
+    selected='cast(NULL AS BOOLEAN)')
+
+
+# A document with no html reading has no main content: a NULL struct of the declared shape.
+NO_MAIN_CONTENT = ("CASE WHEN false THEN named_struct('outcome',cast(NULL AS VARCHAR),'selector',cast(NULL AS VARCHAR),"
+    "'text_sha256',cast(NULL AS VARCHAR),'text_bytes',cast(NULL AS INT),'snippet',cast(NULL AS VARCHAR)) END")
+
+
+PAGE_DEFAULTS = dict(description='cast(NULL AS VARCHAR)', published_on='cast(NULL AS DATE)', modified_on='cast(NULL AS DATE)',
+    publisher_labels="arrow_cast(array_slice(make_array(cast(NULL AS VARCHAR)),1,0),'List(Utf8)')",
+    page_metadata=EMPTY_PAGE_METADATA, main_content=NO_MAIN_CONTENT)
+
+
 LIST_COLUMNS = ['filename', 'title', 'document_kind', 'document_family', 'committee_keys', 'chambers',
     'congress', 'format', 'document_date', 'first_captured', 'date_kind', 'saved_kind', 'hidden',
     'meeting_keys', 'measure_keys', 'bioguide_ids', 'witness_keys', 'version_keys']
 
 
+# Declared page metadata (ct-93zs D5): detail only, selected by model SQL and page-signals.json.
+PAGE_COLUMNS = ['description', 'published_on', 'modified_on', 'publisher_labels', 'page_metadata', 'main_content']
+
+
 DETAIL_COLUMNS = ['link_key', 'saved_body', 'saved_suffix', 'saved_media_type', 'saved_bytes',
     'document_date_source', 'document_date_status', 'in_archive_since', 'removed_on', 'review_note', 'review_decided_at',
-    'src_start', 'src_len', 'rec_start', 'rec_len', 'alternates', 'package_id', 'facts']
+    'src_start', 'src_len', 'rec_start', 'rec_len', 'alternates', 'package_id', 'facts', *PAGE_COLUMNS]
 
 
 # A filename date is suspect when it is more than 30 days after the archive's first capture
@@ -72,7 +91,8 @@ DOCUMENT_COLUMNS = [*DETAIL_COLUMNS, *LIST_COLUMNS]
 LIST_DICTIONARY = [*(f'{name}.list.item' for name in ['document_kind', 'document_family', 'committee_keys', 'chambers', 'meeting_keys', 'measure_keys', 'bioguide_ids', 'witness_keys', 'version_keys']), 'format', 'date_kind', 'saved_kind']
 
 
-DETAIL_DICTIONARY = ['saved_suffix', 'saved_media_type', 'document_date_source', 'document_date_status', 'alternates.list.item.format', 'alternates.list.item.suffix', 'facts.list.item.field']
+DETAIL_DICTIONARY = ['saved_suffix', 'saved_media_type', 'document_date_source', 'document_date_status', 'alternates.list.item.format', 'alternates.list.item.suffix', 'facts.list.item.field',
+    'publisher_labels.list.item', 'page_metadata.list.item.field', 'page_metadata.list.item.format', 'page_metadata.list.item.precision', 'main_content.outcome']
 
 
 MEETING_DICTIONARY = ['chamber', 'meeting_type', 'status', 'congress_gov_meeting_type', 'access', 'access_basis', 'rescheduled_basis', 'committees.list.item.system_code', 'committees.list.item.role', 'subject_keys.list.item', 'transcripts.list.item.source', 'transcripts.list.item.language', 'transcripts.list.item.production']
@@ -129,7 +149,7 @@ def _core(steps, output,*,lookup_extra=None):
     order = ['filename', 'document_date', 'first_captured', 'doc_key']
     detail_inputs = ','.join('o.'+name for name in dict.fromkeys([*order,*LIST_COLUMNS,'list_row',
         'document_date_source','document_date_status','in_archive_since','removed_on','review_note','review_decided_at',
-        'alternates','package_id','facts']))
+        'alternates','package_id','facts',*PAGE_COLUMNS]))
     steps += [_step('ordered', f"SELECT *,{DOCUMENT_DATE_STATUS} AS document_date_status,cast(row_number() OVER(ORDER BY filename,document_date NULLS LAST,first_captured NULLS LAST,doc_key)-1 AS INT) AS list_row FROM normalized", materialize=True),
         _step('source_rows', """SELECT o.list_row,s.*,cast(row_number() OVER(PARTITION BY o.list_row ORDER BY s.is_saved DESC,s.first_seen NULLS LAST,s.url,s.member_path NULLS LAST)-1 AS INT) AS ordinal,
             cast(row_number() OVER(ORDER BY o.list_row,s.is_saved DESC,s.first_seen NULLS LAST,s.url,s.member_path NULLS LAST)-1 AS INT) AS source_index
@@ -190,7 +210,7 @@ NORMAL_DEFAULTS = dict(body_expected='true', title='cast(NULL AS VARCHAR)', docu
     witness_keys=EMPTY_STRINGS, version_keys=EMPTY_STRINGS, suffix="'.gz'", media_type="'application/octet-stream'",
     bytes='cast(0 AS BIGINT)', document_date_source='cast(NULL AS VARCHAR)', in_archive_since='cast(NULL AS DATE)',
     removed_on='cast(NULL AS DATE)', review_note='cast(NULL AS VARCHAR)', review_decided_at='cast(NULL AS DATE)',
-    alternates=EMPTY_ALTERNATES, package_id='cast(NULL AS VARCHAR)', facts=EMPTY_FACTS, link_bodies=EMPTY_STRINGS)
+    alternates=EMPTY_ALTERNATES, package_id='cast(NULL AS VARCHAR)', facts=EMPTY_FACTS, link_bodies=EMPTY_STRINGS, **PAGE_DEFAULTS)
 
 
 def _normal(table, **values):

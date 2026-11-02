@@ -119,6 +119,9 @@ Nullability: Nullability transcribes data model §8.1 (list and detail bullets).
 - `bioguide_ids[]`: Same values as list.bioguide_ids; see that field.
 - `witness_keys[]`: Same values as list.witness_keys; see that field.
 - `version_keys[]`: Same values as list.version_keys; see that field.
+- `publisher_labels[]`: Embedded declared section labels; not a key into another table.
+- `page_metadata[]`: Embedded declared values with their JSON Pointer path into the pinned html_metadata reading; path is evidence, not a key. Reproduce it from saved_body with the release pin.
+- `main_content`: Embedded reference to selected text; text_sha256 identifies text the pinned reader reproduces from saved_body, not a row elsewhere.
 
 Outgoing: `document_public_link`, `document_body`, `alternate_bodies`, `document_package`.
 

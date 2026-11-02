@@ -254,6 +254,42 @@
           "nullable": false
         },
         {
+          "name": "description",
+          "type": "string",
+          "meaning": "The publisher's page summary as declared, never the title or the site's own description; NULL when none survives selection",
+          "nullable": true
+        },
+        {
+          "name": "published_on",
+          "type": "date32",
+          "meaning": "The page's declared publication date on its stated local date; a page date, never a hearing or document date",
+          "nullable": true
+        },
+        {
+          "name": "modified_on",
+          "type": "date32",
+          "meaning": "The page's declared modification date on its stated local date; never changes document_date, date_kind or first_captured",
+          "nullable": true
+        },
+        {
+          "name": "publisher_labels",
+          "type": "list<dict>",
+          "meaning": "The page's declared sections (article:section, articleSection) as stated",
+          "nullable": false
+        },
+        {
+          "name": "page_metadata",
+          "type": "list<struct<field dict,value string,format dict,path string,date date32,precision dict,resolved string,selected boolean>>",
+          "meaning": "Every declared value considered, with its JSON Pointer into the pinned reader's result; more than one distinct value for a field is a conflict, shown with one selected. resolved is declared_url against this document's address (declared base first), NULL without one",
+          "nullable": false
+        },
+        {
+          "name": "main_content",
+          "type": "struct<outcome dict,selector string,text_sha256 string,text_bytes int32,snippet string>",
+          "meaning": "Publisher-marked main text: marked, marked_no_content, fallback (the html reading stays the authority), failed, none, or unread (an html document with no reading: a gap); NULL for other formats. The full text is reproduced from saved_body by the pinned reader",
+          "nullable": true
+        },
+        {
           "name": "filename",
           "type": "string",
           "meaning": "Displayed filename",
@@ -397,7 +433,10 @@
         "measure_keys[]": "Same values as list.measure_keys; see that field.",
         "bioguide_ids[]": "Same values as list.bioguide_ids; see that field.",
         "witness_keys[]": "Same values as list.witness_keys; see that field.",
-        "version_keys[]": "Same values as list.version_keys; see that field."
+        "version_keys[]": "Same values as list.version_keys; see that field.",
+        "publisher_labels[]": "Embedded declared section labels; not a key into another table.",
+        "page_metadata[]": "Embedded declared values with their JSON Pointer path into the pinned html_metadata reading; path is evidence, not a key. Reproduce it from saved_body with the release pin.",
+        "main_content": "Embedded reference to selected text; text_sha256 identifies text the pinned reader reproduces from saved_body, not a row elsewhere."
       },
       "nullability": "Nullability transcribes data model \u00a78.1 (list and detail bullets)."
     },

@@ -9412,6 +9412,70 @@
       "value": "Version 2",
       "expected": false,
       "source": "Authored boundary (red-g2): a version or file number is a title, not a format word"
+    },
+    {
+      "id": "page-signals:description_templates",
+      "registry": "page-signals",
+      "entry": "description_templates",
+      "value": "the official website of the u.s. house committee on veterans' affairs",
+      "expected": true,
+      "source": "Moved from adapters/page_metadata.py (ct-93zs D6); measured over 458 retained bodies there"
+    },
+    {
+      "id": "page-signals:site_node_types",
+      "registry": "page-signals",
+      "entry": "site_node_types",
+      "value": "WebSite",
+      "expected": true,
+      "source": "adapters/page_metadata._SITE_NODES (ct-w8dc): a JSON-LD description on these nodes describes the site"
+    },
+    {
+      "id": "page-signals:description_opengraph",
+      "registry": "page-signals",
+      "entry": "description_opengraph",
+      "value": "opengraph",
+      "expected": 0,
+      "source": "adapters/page_metadata._DESCRIPTION_ORDER: og:description first"
+    },
+    {
+      "id": "page-signals:description_json_ld",
+      "registry": "page-signals",
+      "entry": "description_json_ld",
+      "value": "json-ld",
+      "expected": 1,
+      "source": "adapters/page_metadata._DESCRIPTION_ORDER: JSON-LD second"
+    },
+    {
+      "id": "page-signals:description_head_meta",
+      "registry": "page-signals",
+      "entry": "description_head_meta",
+      "value": "head_meta",
+      "expected": 2,
+      "source": "adapters/page_metadata._DESCRIPTION_ORDER: the description meta tag last"
+    },
+    {
+      "id": "page-signals:date_json_ld",
+      "registry": "page-signals",
+      "entry": "date_json_ld",
+      "value": "json-ld",
+      "expected": 0,
+      "source": "adapters/page_metadata enrich_material: first declared value in page_facts order (JSON-LD first)"
+    },
+    {
+      "id": "page-signals:date_opengraph",
+      "registry": "page-signals",
+      "entry": "date_opengraph",
+      "value": "opengraph",
+      "expected": 1,
+      "source": "adapters/page_metadata enrich_material: OpenGraph after JSON-LD in page_facts order"
+    },
+    {
+      "id": "page-signals:description_repeat",
+      "registry": "page-signals",
+      "entry": "description_repeat",
+      "value": "description_repeat",
+      "expected": 50,
+      "source": "Provisional: Round 2 Unit F sets it from the top 50 (host, description) repeats over the replay rows"
     }
   ]
 }
