@@ -86,8 +86,12 @@ def recompute(*, bodies, local, captures, raw_root, engine, work, decided_at):
                  stored_bytes=(root / local[b]).stat().st_size, stored_gzip=local[b].endswith('.gz')) for b in bodies]
     pq.write_table(pa.Table.from_pylist(rows, schema=pa.schema([('body_sha', pa.binary(32)), ('physical_key', pa.string()),
         ('relative_path', pa.string()), ('stored_bytes', pa.int64()), ('stored_gzip', pa.bool_())])), inventory)
+    # The recompute reads no existing rows, so the registry cannot matter to it; an empty one
+    # keeps a stale entry (the one being re-proved) from blocking its own replacement.
+    empty = work / 'empty-registry.json'
+    empty.write_text(json.dumps(dict(version=2, entries=[])))
     staged = readings.stage_once(captures=work / 'subset/captures.parquet', body_inventory=inventory, local_root=root,
-        engine=engine, work=work / 'stage', decided_at=decided_at)
+        engine=engine, work=work / 'stage', decided_at=decided_at, registry=empty)
     return keys, staged
 
 

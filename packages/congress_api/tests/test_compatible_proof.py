@@ -51,7 +51,9 @@ def test_a_whole_version_proof_over_a_local_sample_binds_its_entry(tmp_path, mon
     run_job(base, engine, inputs=[dict(name='r', kind='parquet', path=str(staged['readings']))], steps=[], queries=[],
         outputs=[parquet_output(base, 'readings', "SELECT * EXCLUDE(parser_version),CASE WHEN parser='html' THEN 'old-html' ELSE parser_version END AS parser_version FROM r", readings.PK)])
     registry = tmp_path / 'registry.json'
-    registry.write_text(json.dumps(dict(version=2, entries=[])))
+    # A stale entry (its current pin superseded) must not block the proof that replaces it.
+    stale = dict(parser='html', version='old-html', current='superseded', basis='whole', recompute_sql='none', reason='stale', proof={})
+    registry.write_text(json.dumps(dict(version=2, entries=[stale])))
     monkeypatch.setattr(cv, 'REGISTRY', registry)
     compatible_proof.main(['--parser', 'html', '--old', 'old-html', '--base', str(base / 'readings.parquet'), '--captures', str(captures),
         '--raw-root', str(raw), '--work', str(tmp_path / 'proof'), '--sample', '2', '--write',
