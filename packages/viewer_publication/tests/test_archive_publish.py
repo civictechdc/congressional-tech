@@ -460,7 +460,7 @@ def test_release_gate_pass_reaches_contract(tmp_path,real_gates):
     artifacts,_=real_release(tmp_path/'next',['A'],retired)
     with pytest.raises(ValueError,match='no recorded cause'):
         launch(tmp_path/'first',store=store,artifacts=artifacts)
-    causes=record_for(json.loads((tmp_path/'first/publish/release-gate.json').read_text()),tmp_path)
+    causes=record_for(live,json.loads((tmp_path/'next/release/manifest.json').read_text())['release_id'],tmp_path)
     result,store,_=launch(tmp_path/'second',store=store,artifacts=artifacts,release_causes=causes)
     assert result['status']=='published' and result['release_gates']=='passed'
     assert json.loads(store.objects['viewer-publications/manifest.json'])['previous_release_id']==live
