@@ -56,9 +56,14 @@ def test_a_whole_version_proof_over_a_local_sample_binds_its_entry(tmp_path, mon
     registry.write_text(json.dumps(dict(version=2, entries=[stale])))
     monkeypatch.setattr(cv, 'REGISTRY', registry)
     compatible_proof.main(['--parser', 'html', '--old', 'old-html', '--base', str(base / 'readings.parquet'), '--captures', str(captures),
-        '--raw-root', str(raw), '--work', str(tmp_path / 'proof'), '--sample', '2', '--write',
+        '--raw-root', str(raw), '--work', str(tmp_path / 'proof'), '--write',
         '--engine-config', os.environ['DOCSPEC_JOB_CONFIG']])
     [entry] = json.loads(registry.read_text())['entries']
     assert entry['basis'] == 'whole' and entry['current'] == readings.current_version('html')
-    assert entry['proof']['rows'] == 2 and entry['proof']['differences'] == entry['proof']['only_old'] == entry['proof']['only_new'] == 0
+    assert entry['proof']['rows'] == 3 and entry['proof']['strata'] == dict(completed=dict(population=3, local=3, sampled=3)) and entry['proof']['differences'] == entry['proof']['only_old'] == entry['proof']['only_new'] == 0
     assert cv.load_registry() == [entry]
+    # Fewer than the minimum local rows sampled: refused before it reaches the registry.
+    import pytest
+    with pytest.raises(ValueError, match='too small'):
+        compatible_proof.main(['--parser', 'html', '--old', 'old-html', '--base', str(base / 'readings.parquet'), '--captures', str(captures),
+            '--raw-root', str(raw), '--work', str(tmp_path / 'small'), '--sample', '2', '--write', '--engine-config', os.environ['DOCSPEC_JOB_CONFIG']])

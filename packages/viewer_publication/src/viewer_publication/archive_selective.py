@@ -26,7 +26,7 @@ import pyarrow.parquet as pq
 
 import shutil
 
-from congress_api.lake import capture_backfill,captures,compatible_versions,filenames,readings,tables
+from congress_api.lake import capture_backfill,captures,compatible_proof,compatible_versions,filenames,readings,tables
 from congress_api.lake.capture_backfill_guard import validate_generation
 from congress_api.lake.daily import ALL_TABLE_NAMES,PROVENANCE_KINDS,produce_daily
 from congress_api.retention.body_store import BodyStore,LocalAdapter
@@ -230,7 +230,7 @@ def _select(run):
     Version checks group by version columns only (a handful of groups per table).
     """
     if 'selection' in run.state:return
-    compatible_versions.preflight(engine=run.engine,work=run.attempt/'preflight',
+    compatible_proof.preflight(engine=run.engine,work=run.attempt/'preflight',
         inputs={name:_source(pin) for name,pin in run.base.items()})
     where=run.selective['where'];versions=_versions();selection={}
     registry=compatible_versions.load_registry();pins=compatible_versions.current_pins()

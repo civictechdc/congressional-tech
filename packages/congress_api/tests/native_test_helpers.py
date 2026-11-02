@@ -117,3 +117,17 @@ def empty_readings(directory):
     path.parent.mkdir(parents=True, exist_ok=True)
     pq.write_table(lake_readings_table([]), path)
     return path
+
+
+def compatible_entry(parser, old, current, *, rows=1):
+    """A registry entry with a fixture proof shaped like the CLI's: its binding and strata are
+    checked, its counts are not re-derived. A parser whose reader names a recompute set gets a
+    full predicate entry (the only kind allowed for it); others a sampled whole-version one."""
+    from congress_api.lake import compatible_versions as cv
+    recompute = cv.reader_recompute_sql(parser) or cv.WHOLE
+    basis = 'predicate' if recompute != cv.WHOLE else 'lock_only' if parser == 'sniff' else 'whole'
+    proof = dict(scope='full' if basis == 'predicate' else 'sample', version=old, current=current,
+        recompute_sha256=cv.recompute_sha256(recompute), old_input_sha256='a' * 64, new_input_sha256='a' * 64,
+        rows=rows, columns=1, differences=0, only_old=0, only_new=0,
+        strata=dict(completed=dict(population=rows, local=rows, sampled=rows)), lock_only=dict(recomputed=old))
+    return dict(parser=parser, version=old, current=current, basis=basis, recompute_sql=recompute, reason='fixture', proof=proof)

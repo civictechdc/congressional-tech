@@ -6,8 +6,8 @@
     python -m congress_api.lake.compatible_proof --parser readings --old <bundle pin> \
         --decisions <unreadable.jsonl>... --captures ... --raw-root ... --work <dir> [--write]
 
-Kept apart from compatible_versions (which the readings bundle hashes) so proof tooling can
-change without moving a pin. Every recompute runs the current producer (readings.stage_once)
+Kept apart from compatible_versions (which the readings bundle hashes), with the comparison
+(prove_unchanged) and the raw-key preflight, so tooling edits move no pin. Every recompute runs the current producer (readings.stage_once)
 over a pinned subset; the comparison is compatible_versions.prove_unchanged, so the proof is
 over lake rows, not a reader's in-process output.
 
@@ -28,7 +28,8 @@ import pyarrow as pa
 import pyarrow.parquet as pq
 
 from congress_api.lake import compatible_versions as cv
-from congress_api.lake import readings
+from congress_api.lake import readings, tables
+from congress_api.lake.tables import TABLE_SPECS, table_input
 from congress_api.retention.provenance import file_pin, parquet_output, run_job
 
 SUFFIXES = ('', '.gz', '.pdf')
@@ -46,18 +47,35 @@ def local_bodies(raw_root):
     return found
 
 
-def choose_sample(*, base, parser, old, local, size, engine, work):
-    """Pre-chosen keys: the `size` lowest sha256(body_sha) local bodies plus every local error path."""
+def kept_rows(*, base, parser, old, recompute_sql, engine, work):
+    """(body hex, status) of every old row the entry keeps: outside its recompute set."""
     # Narrow keys only, through a file: a query result is bounded by the metadata allowance.
     directory = work / 'candidates'
-    run_job(directory, engine, inputs=[dict(name='r', kind='parquet', path=str(base))], steps=[], queries=[],
-        outputs=[parquet_output(directory, 'keys', f"SELECT encode(body_sha,'hex') AS body,status FROM r "
-            f"WHERE parser='{parser}' AND parser_version='{old}'", ['body'])])
-    rows = pq.read_table(directory / 'keys.parquet').to_pylist()
+    p, v = cv._quote(parser), cv._quote(old)
+    run_job(directory, engine, inputs=[dict(name='r', kind='parquet', path=str(base))], queries=[],
+        steps=[dict(name='old_rows', sql=f'SELECT * FROM r WHERE parser={p} AND parser_version={v}'),
+               dict(name='recompute', sql=cv.recompute_set_sql(recompute_sql, 'old_rows'), materialize=True)],
+        outputs=[parquet_output(directory, 'keys', "SELECT encode(o.body_sha,'hex') AS body,o.status FROM old_rows o "
+            'WHERE NOT EXISTS (SELECT 1 FROM recompute x WHERE x.body_sha=o.body_sha)', ['body'])])
+    return pq.read_table(directory / 'keys.parquet').to_pylist()
+
+
+def choose_sample(rows, *, local, size, full):
+    """Pre-chosen keys and their strata. A sample takes the `size` lowest sha256(body_sha) local
+    completed rows and every local error/size_limit row; `full` takes every kept row and needs
+    every body local."""
     candidates = [r for r in rows if r['body'] in local]
-    ranked = sorted(candidates, key=lambda r: sha256(bytes.fromhex(r['body'])).digest())
-    chosen = {r['body'] for r in ranked[:size]} | {r['body'] for r in candidates if r['status'] in ('error', 'size_limit')}
-    return sorted(chosen), len(rows), len(candidates)
+    if full and len(candidates) != len(rows):
+        raise ValueError(f'A full proof needs every kept body local; {len(rows) - len(candidates)} of {len(rows)} are not')
+    ranked = sorted((r for r in candidates if r['status'] not in cv.ERROR_STRATA), key=lambda r: sha256(bytes.fromhex(r['body'])).digest())
+    chosen = {r['body'] for r in (candidates if full else ranked[:size])} | {r['body'] for r in candidates if r['status'] in cv.ERROR_STRATA}
+    strata = {}
+    for r in rows:
+        stratum = strata.setdefault(r['status'], dict(population=0, local=0, sampled=0))
+        stratum['population'] += 1
+        stratum['local'] += r['body'] in local
+        stratum['sampled'] += r['body'] in chosen
+    return sorted(chosen), strata
 
 
 def write_keys(path, bodies):
@@ -169,6 +187,61 @@ def prove_bundle(*, old, decisions, captures, raw_root, engine, work, decided_at
     return proof
 
 
+def duplicate_keys_sql(name, input_name='t'):
+    keys = ','.join(TABLE_SPECS[name]['primary_key'])
+    return f'SELECT count(*) AS duplicate_keys FROM (SELECT {keys} FROM {input_name} GROUP BY {keys} HAVING count(*)>1)'
+
+
+def preflight(*, engine, work, inputs):
+    """Reject raw duplicate primary keys before selection. `inputs` maps table name to its source."""
+    work = Path(work)
+    found = {}
+    for name, source in inputs.items():
+        rows = run_job(work / name, engine, inputs=[table_input('t', source)], steps=[], outputs=[],
+            queries=[dict(name='keys', sql=duplicate_keys_sql(name))])['keys']
+        found[name] = rows[0]['duplicate_keys']
+    bad = {name: count for name, count in found.items() if count}
+    if bad:
+        raise ValueError(f'Raw primary keys are duplicated before selection: {bad}')
+    return found
+
+
+def prove_unchanged(*, engine, work, old, new, parser, version, current, recompute_sql=cv.WHOLE, sample_keys=None):
+    """Every old row at `version` outside the recompute set must equal its row at `current`.
+
+    The compared domain K is the old rows outside the old side's recompute set: those are the
+    rows an entry keeps. A K row that changes or vanishes is a difference; a row inside the
+    set may change on purpose (its re-read can even move it out of the set, e.g. filling a
+    fingerprint) and is not compared. With `sample_keys` (a parquet of body_sha chosen before
+    the recompute) K is further limited to those. Queries only: no sorted export.
+    """
+    name = 'readings'
+    schema = [f['name'] for f in tables.load_schema(name)['fields']]
+    keys = [k for k in TABLE_SPECS[name]['primary_key'] if k != 'parser_version']
+    compared = [c for c in schema if c not in keys and c != 'parser_version']
+    on = lambda a, b: ' AND '.join(f'{a}.{k}={b}.{k}' for k in keys)
+    p, old_v, new_v = map(cv._quote, (parser, version, current))
+    inputs = [table_input('old_input', old), table_input('new_input', new)]
+    steps = [dict(name='old_rows', sql=f'SELECT * FROM old_input r WHERE r.parser={p} AND r.parser_version={old_v}'),
+             dict(name='new_rows', sql=f'SELECT * FROM new_input r WHERE r.parser={p} AND r.parser_version={new_v}'),
+             dict(name='old_recompute', sql=cv.recompute_set_sql(recompute_sql, 'old_rows'), materialize=True)]
+    held = (f'SELECT {",".join(keys)} FROM old_rows r '
+            'WHERE NOT EXISTS (SELECT 1 FROM old_recompute x WHERE x.body_sha=r.body_sha)')
+    if sample_keys is not None:
+        inputs.append(table_input('sample_keys', sample_keys))
+        held = f'SELECT h.* FROM ({held}) h WHERE h.body_sha IN (SELECT body_sha FROM sample_keys)'
+    steps += [dict(name='k', sql=held, materialize=True),
+              dict(name='o', sql=f'SELECT r.* FROM old_rows r WHERE EXISTS (SELECT 1 FROM k WHERE {on("k", "r")})'),
+              dict(name='n', sql=f'SELECT r.* FROM new_rows r WHERE EXISTS (SELECT 1 FROM k WHERE {on("k", "r")})')]
+    present = f'o.{keys[0]} IS NOT NULL AND n.{keys[0]} IS NOT NULL'
+    columns = ['count(*) AS total', f'count(*) FILTER (WHERE n.{keys[0]} IS NULL) AS only_old', f'count(*) FILTER (WHERE o.{keys[0]} IS NULL) AS only_new']
+    columns += [f'count(*) FILTER (WHERE {present} AND o."{c}" IS DISTINCT FROM n."{c}") AS "{c}"' for c in compared]
+    row = run_job(work, engine, inputs=inputs, steps=steps, outputs=[],
+        queries=[dict(name='proof', sql='SELECT ' + ','.join(columns) + f' FROM o FULL JOIN n ON {on("o", "n")}')])['proof'][0]
+    differing = {c: row[c] for c in compared if row[c]}
+    return dict(rows=row['total'], columns=len(compared), differences=sum(differing.values()), only_old=row['only_old'], only_new=row['only_new']), differing
+
+
 def main(argv=None):
     parser = argparse.ArgumentParser(description=__doc__.split('\n')[0])
     for name in ('--parser', '--old', '--captures', '--raw-root', '--work'):
@@ -177,7 +250,8 @@ def main(argv=None):
     parser.add_argument('--base')
     parser.add_argument('--decisions', action='append', default=[])
     parser.add_argument('--sample', type=int, default=2000)
-    parser.add_argument('--sample-keys')
+    parser.add_argument('--sample-keys', help='CSV with a sha column: only these local bodies may be sampled')
+    parser.add_argument('--full', action='store_true', help='Compare every kept row (always, for a predicate entry)')
     parser.add_argument('--evidence', action='append', default=[], help='Supporting files recorded by sha256')
     parser.add_argument('--decided-at', default='2026-11-02T00:00:00Z')
     parser.add_argument('--engine-config', default=None)
@@ -199,25 +273,25 @@ def main(argv=None):
             recompute_sql = cv.reader_recompute_sql(args.parser) or cv.WHOLE
             basis = 'predicate' if recompute_sql != cv.WHOLE else 'lock_only' if args.parser == 'sniff' else 'whole'
             local = local_bodies(args.raw_root)
+            rows = kept_rows(base=args.base, parser=args.parser, old=args.old, recompute_sql=recompute_sql, engine=engine, work=work)
+            full = basis == 'predicate' or args.full
             if args.sample_keys:
                 import csv
                 with open(args.sample_keys) as stream:
-                    bodies = sorted({row['sha'] for row in csv.DictReader(stream)} & set(local))
-                total = candidates = None
-            else:
-                bodies, total, candidates = choose_sample(base=args.base, parser=args.parser, old=args.old, local=local,
-                    size=args.sample, engine=engine, work=work)
+                    given = {row['sha'] for row in csv.DictReader(stream)}
+                local = {b: k for b, k in local.items() if b in given}
+            bodies, strata = choose_sample(rows, local=local, size=args.sample, full=full)
             keys, staged = recompute(bodies=bodies, local=local, captures=args.captures, raw_root=args.raw_root,
                 engine=engine, work=work, decided_at=args.decided_at)
-            counts, differing = cv.prove_unchanged(engine=engine, work=work / 'proof', old=args.base, new=staged['readings'],
+            counts, differing = prove_unchanged(engine=engine, work=work / 'proof', old=args.base, new=staged['readings'],
                 parser=args.parser, version=args.old, current=pins[args.parser], recompute_sql=recompute_sql, sample_keys=keys)
-            proof = dict(scope='sample', version=args.old, current=pins[args.parser], recompute_sha256=cv.recompute_sha256(recompute_sql),
+            proof = dict(scope='full' if full else 'sample', strata=strata, version=args.old, current=pins[args.parser], recompute_sha256=cv.recompute_sha256(recompute_sql),
                 old_input_sha256=file_pin(args.base)['sha256'], new_input_sha256=file_pin(staged['readings'])['sha256'],
                 sample_keys_sha256=file_pin(keys)['sha256'], **counts)
             if basis == 'lock_only':
                 proof['lock_only'] = attest_lock_only(parser=args.parser, old=args.old, old_lock=args.old_lock,
                     raw_root=args.raw_root, local=local, bodies=bodies, work=work)
-            report = dict(proof=proof, differing=differing, sampled=len(bodies), rows_at_old=total, local_at_old=candidates)
+            report = dict(proof=proof, differing=differing, sampled=len(bodies))
         if args.evidence:
             proof['evidence'] = {Path(f).name: file_pin(f)['sha256'] for f in args.evidence}
         entry = dict(parser=args.parser, version=args.old, current=pins[args.parser], basis=basis, recompute_sql=recompute_sql,

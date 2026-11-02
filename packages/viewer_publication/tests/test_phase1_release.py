@@ -12,6 +12,7 @@ from congress_api.lake import readings,filenames
 from congress_api.lake.captures import stage_captures
 from congress_api.retention.provenance import parquet_output,run_job
 from docspec_client.client import NativeDatasets
+from native_test_helpers import compatible_entry
 
 
 def test_raw_lake_model_exports_one_group_and_keeps_download_names(tmp_path):
@@ -93,11 +94,7 @@ def test_raw_lake_model_exports_one_group_and_keeps_download_names(tmp_path):
         parquet_output(old,'captures',"SELECT * EXCLUDE(sniff_version),CASE WHEN sniff_version IS NOT NULL THEN 'old-sniff' END AS sniff_version FROM c",
             ['receipt_key','receipt_line','capture_index'])])
     pins=cv.current_pins()
-    def entry(parser):
-        proof=dict(scope='sample',version='old-'+parser,current=pins[parser],recompute_sha256=cv.recompute_sha256('none'),old_input_sha256='a'*64,
-            new_input_sha256='a'*64,rows=1,columns=1,differences=0,only_old=0,only_new=0,lock_only=dict(recomputed='old-'+parser))
-        return dict(parser=parser,version='old-'+parser,current=pins[parser],basis='lock_only' if parser=='sniff' else 'whole',recompute_sql='none',reason='fixture',proof=proof)
-    covered=tmp_path/'covered.json';covered.write_text(json.dumps(dict(version=2,entries=[entry('sniff'),entry('html')])))
+    covered=tmp_path/'covered.json';covered.write_text(json.dumps(dict(version=2,entries=[compatible_entry(p,'old-'+p,pins[p]) for p in ('sniff','html')])))
     build_release(**dict(arguments,readings=old/'readings.parquet',captures=old/'captures.parquet'),registry=covered,
         output=tmp_path/'old-release',scratch=tmp_path/'old-model')
     for name in ('list.parquet','detail.parquet','links.parquet','urls.parquet','sources.parquet'):

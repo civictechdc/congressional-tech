@@ -16,6 +16,7 @@ from congress_api.lake.capture_backfill_guard import GenerationViolation
 from congress_api.lake.filenames import current_version as catalog_version
 from congress_api.retention.provenance import parquet_output,run_job
 from docspec_client.client import NativeDatasets
+from native_test_helpers import compatible_entry
 from viewer_publication.archive_backfill_job import execute
 from viewer_publication.archive_selective_records import SelectiveStop
 
@@ -117,14 +118,8 @@ def test_covered_readings_are_copied_verbatim_at_their_old_versions(tmp_path,fix
     pins=cv.current_pins()
     def relabel(rows):
         for row in rows:row['parser_version']='old-'+row['parser']
-    def entry(parser):
-        proof=dict(scope='sample',version='old-'+parser,current=pins[parser],recompute_sha256=cv.recompute_sha256('none'),
-            old_input_sha256='a'*64,new_input_sha256='a'*64,rows=1,columns=1,differences=0,only_old=0,only_new=0,
-            lock_only=dict(recomputed='old-'+parser))
-        return dict(parser=parser,version='old-'+parser,current=pins[parser],basis='lock_only' if parser=='sniff' else 'whole',
-            recompute_sql='none',reason='fixture',proof=proof)
     registry=tmp_path/'registry.json'
-    registry.write_text(json.dumps(dict(version=2,entries=[entry(p) for p in cv.LEAF_PARSERS])))
+    registry.write_text(json.dumps(dict(version=2,entries=[compatible_entry(p,'old-'+p,pins[p]) for p in cv.LEAF_PARSERS])))
     monkeypatch.setattr(cv,'REGISTRY',registry)
     base=changed(tmp_path,fixture,'readings',relabel)
     spec=selective_spec(tmp_path,fixture,dict(captures=B),differential_rows=0,base=dict(readings=base),through='tables')

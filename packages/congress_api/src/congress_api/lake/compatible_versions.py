@@ -18,17 +18,15 @@ Every proof is bound to its entry: both pins, the recompute-set digest and the t
 read. `selected_readings_steps` is the single selection every reader uses; `accepted_versions`
 is for existence checks only, because selecting rows with it would admit old and new duplicates.
 
-The preflight runs on raw primary keys before any selection: selecting first would hide a
-duplicate, not detect it. It groups narrow keys only, O(N) expected per table.
+Proof tooling (prove_unchanged, the raw-key preflight) lives in compatible_proof, which no
+pin hashes.
 """
 import hashlib
 import importlib
 import json
 from pathlib import Path
 
-from congress_api.lake import tables
-from congress_api.lake.tables import TABLE_SPECS, table_input
-from congress_api.retention.provenance import json_input, run_job
+from congress_api.retention.provenance import json_input
 
 ROOT = Path(__file__).resolve().parents[5]
 REGISTRY = ROOT / 'model/registries/compatible-versions.json'
@@ -38,9 +36,14 @@ ENTRY = {'parser', 'version', 'current', 'basis', 'recompute_sql', 'reason', 'pr
 BINDING = {'scope', 'version', 'current', 'recompute_sha256', 'old_input_sha256', 'new_input_sha256'}
 COUNTS = {'rows', 'columns', 'differences', 'only_old', 'only_new'}
 WHOLE = 'none'
-# Most bodies are not local, so a leaf proof may be a sample whose keys were fixed before recompute.
-SCOPES = {'lock_only': {'sample', 'full'}, 'whole': {'sample', 'full'}, 'predicate': {'sample', 'full'},
+# A lock-only or whole proof may be a sample whose keys were fixed before recompute; a
+# predicate entry changes semantics, so it compares every row it keeps.
+SCOPES = {'lock_only': {'sample', 'full'}, 'whole': {'sample', 'full'}, 'predicate': {'full'},
           'bundle': {'full', 'static'}}
+# A sample compares at least this many completed rows (or all local ones), and every local
+# error/size_limit row: those exercise the paths a few successes do not.
+MIN_SAMPLE_ROWS = 2000
+ERROR_STRATA = ('error', 'size_limit')
 # The one place each recompute set is defined: the reader that changed. An entry carries a
 # digest-bound copy and must equal it; a reader that names none cannot have a predicate entry.
 RECOMPUTE_SOURCES = {'html': ('congress_api.parsers.archive_readings', 'HTML_REREAD_SQL')}
@@ -98,8 +101,34 @@ def _validate_proof(entry, name, by_version):
         _refuse('Compatible version requires a differential proof', name)
     if proof['rows'] <= 0 or proof['columns'] <= 0:
         _refuse('Compatible version proof compared nothing', name)
+    _validate_coverage(proof, name)
     if proof['differences'] or proof['only_old'] or proof['only_new']:
         _refuse('Compatible version proof found differences', name)
+
+
+def _validate_coverage(proof, name):
+    """Bind how much was compared: all kept rows for `full`, a stratified minimum for `sample`.
+
+    `strata` maps status to {population, local, sampled}: old rows the entry keeps, those with a
+    local body, and those compared. The counts are the proof tool's; a forged count is not
+    detected here, only an inconsistent or too-small one.
+    """
+    strata = proof.get('strata')
+    fields = {'population', 'local', 'sampled'}
+    if (not isinstance(strata, dict) or not strata or any(not isinstance(v, dict) or set(v) != fields
+            or any(type(v[k]) is not int or v[k] < 0 for k in fields) or not v['sampled'] <= v['local'] <= v['population']
+            for v in strata.values())):
+        _refuse('Compatible version proof must state its strata', name)
+    if sum(v['sampled'] for v in strata.values()) != proof['rows']:
+        _refuse('Compatible version proof strata do not add up to its rows', name)
+    if proof['scope'] == 'full':
+        if any(v['sampled'] != v['population'] for v in strata.values()):
+            _refuse('A full proof compares every row the entry keeps', name)
+        return
+    for status, v in strata.items():
+        least = v['local'] if status in ERROR_STRATA else min(v['local'], MIN_SAMPLE_ROWS)
+        if v['sampled'] < least:
+            _refuse(f'Compatible version sample is too small in its {status} stratum', name)
 
 
 def validate_entries(entries, *, current):
@@ -117,6 +146,8 @@ def validate_entries(entries, *, current):
             _refuse('The readings bundle, and only it, uses the bundle basis', name)
         if entry['basis'] != 'predicate' and entry['recompute_sql'] != WHOLE:
             _refuse('Only a predicate entry names a recompute set', name)
+        if entry['basis'] in ('lock_only', 'whole') and reader_recompute_sql(entry['parser']) is not None:
+            _refuse('Its reader names a recompute set; a whole-version entry would keep rows it changes', name)
         if entry['basis'] == 'predicate':
             source = reader_recompute_sql(entry['parser'])
             if source is None:
@@ -164,12 +195,19 @@ def selected_readings_steps(entries, *, parsers=LEAF_PARSERS):
     With no entries it equals the plain pin join.
     """
     steps, sql = [], 'SELECT r.* FROM parser_versions v JOIN readings r ON r.parser=v.parser AND r.parser_version=v.version'
-    for i, e in enumerate(entries):
+    earlier = {}
+    for i, e in enumerate(sorted(entries, key=lambda e: (e['parser'], e['version']))):
         if e['parser'] not in parsers:
             continue
         p, old, new = map(_quote, (e['parser'], e['version'], e['current']))
+        # One row per body: an earlier old version of this parser takes precedence, even where
+        # its own recompute set leaves the body out (then the producer re-reads it).
+        prior = ''.join(f' AND NOT EXISTS (SELECT 1 FROM readings o WHERE o.body_sha=r.body_sha AND o.parser={p} AND o.parser_version={v})'
+                        for v in earlier.get(e['parser'], []))
+        earlier.setdefault(e['parser'], []).append(old)
         sql += (f"\nUNION ALL\nSELECT r.* FROM readings r WHERE r.parser={p} AND r.parser_version={old} "
-                f"AND NOT EXISTS (SELECT 1 FROM readings c WHERE c.body_sha=r.body_sha AND c.parser={p} AND c.parser_version={new})")
+                f"AND NOT EXISTS (SELECT 1 FROM readings c WHERE c.body_sha=r.body_sha AND c.parser={p} AND c.parser_version={new})"
+                + prior)
         if e['recompute_sql'] != WHOLE:
             name = f'recompute_{i}'
             steps.append(dict(name=name, materialize=True, sql=recompute_set_sql(
@@ -187,58 +225,3 @@ def accepted_version_rows(entries, *, pins):
 
 def accepted_versions_input(work, entries, *, pins):
     return json_input(work, 'accepted_versions', accepted_version_rows(entries, pins=pins), parser='Utf8', version='Utf8')
-
-
-def duplicate_keys_sql(name, input_name='t'):
-    keys = ','.join(TABLE_SPECS[name]['primary_key'])
-    return f'SELECT count(*) AS duplicate_keys FROM (SELECT {keys} FROM {input_name} GROUP BY {keys} HAVING count(*)>1)'
-
-
-def preflight(*, engine, work, inputs):
-    """Reject raw duplicate primary keys before selection. `inputs` maps table name to its source."""
-    work = Path(work)
-    found = {}
-    for name, source in inputs.items():
-        rows = run_job(work / name, engine, inputs=[table_input('t', source)], steps=[], outputs=[],
-            queries=[dict(name='keys', sql=duplicate_keys_sql(name))])['keys']
-        found[name] = rows[0]['duplicate_keys']
-    bad = {name: count for name, count in found.items() if count}
-    if bad:
-        raise ValueError(f'Raw primary keys are duplicated before selection: {bad}')
-    return found
-
-
-def prove_unchanged(*, engine, work, old, new, parser, version, current, recompute_sql=WHOLE, sample_keys=None):
-    """Every old row at `version` outside the recompute set must equal its row at `current`.
-
-    The compared domain K is the old rows outside the old side's recompute set: those are the
-    rows an entry keeps. A K row that changes or vanishes is a difference; a row inside the
-    set may change on purpose (its re-read can even move it out of the set, e.g. filling a
-    fingerprint) and is not compared. With `sample_keys` (a parquet of body_sha chosen before
-    the recompute) K is further limited to those. Queries only: no sorted export.
-    """
-    name = 'readings'
-    schema = [f['name'] for f in tables.load_schema(name)['fields']]
-    keys = [k for k in TABLE_SPECS[name]['primary_key'] if k != 'parser_version']
-    compared = [c for c in schema if c not in keys and c != 'parser_version']
-    on = lambda a, b: ' AND '.join(f'{a}.{k}={b}.{k}' for k in keys)
-    p, old_v, new_v = map(_quote, (parser, version, current))
-    inputs = [table_input('old_input', old), table_input('new_input', new)]
-    steps = [dict(name='old_rows', sql=f'SELECT * FROM old_input r WHERE r.parser={p} AND r.parser_version={old_v}'),
-             dict(name='new_rows', sql=f'SELECT * FROM new_input r WHERE r.parser={p} AND r.parser_version={new_v}'),
-             dict(name='old_recompute', sql=recompute_set_sql(recompute_sql, 'old_rows'), materialize=True)]
-    held = (f'SELECT {",".join(keys)} FROM old_rows r '
-            'WHERE NOT EXISTS (SELECT 1 FROM old_recompute x WHERE x.body_sha=r.body_sha)')
-    if sample_keys is not None:
-        inputs.append(table_input('sample_keys', sample_keys))
-        held = f'SELECT h.* FROM ({held}) h WHERE h.body_sha IN (SELECT body_sha FROM sample_keys)'
-    steps += [dict(name='k', sql=held, materialize=True),
-              dict(name='o', sql=f'SELECT r.* FROM old_rows r WHERE EXISTS (SELECT 1 FROM k WHERE {on("k", "r")})'),
-              dict(name='n', sql=f'SELECT r.* FROM new_rows r WHERE EXISTS (SELECT 1 FROM k WHERE {on("k", "r")})')]
-    present = f'o.{keys[0]} IS NOT NULL AND n.{keys[0]} IS NOT NULL'
-    columns = ['count(*) AS total', f'count(*) FILTER (WHERE n.{keys[0]} IS NULL) AS only_old', f'count(*) FILTER (WHERE o.{keys[0]} IS NULL) AS only_new']
-    columns += [f'count(*) FILTER (WHERE {present} AND o."{c}" IS DISTINCT FROM n."{c}") AS "{c}"' for c in compared]
-    row = run_job(work, engine, inputs=inputs, steps=steps, outputs=[],
-        queries=[dict(name='proof', sql='SELECT ' + ','.join(columns) + f' FROM o FULL JOIN n ON {on("o", "n")}')])['proof'][0]
-    differing = {c: row[c] for c in compared if row[c]}
-    return dict(rows=row['total'], columns=len(compared), differences=sum(differing.values()), only_old=row['only_old'], only_new=row['only_new']), differing
