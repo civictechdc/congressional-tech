@@ -375,6 +375,42 @@ def _guard(run):
     run.state['pins']=pins;run.save()
 
 
+PRODUCER_JOB='packages/viewer_publication/src/viewer_publication/archive_backfill_job.py'
+
+
+def _writer(run):
+    """The checked-in code running this invocation, or None when the tree is not clean."""
+    from congress_api.retention.writer_identity import writer_identity
+    from viewer_publication.producer_proof import ROOT
+    try:return writer_identity(ROOT,PRODUCER_JOB)
+    except (ValueError,OSError):return None
+
+
+def _producers(run):
+    """Step 8b (gate 5): one producer record per pinned snapshot, written by this job.
+
+    This job created every pinned snapshot here: fresh tables seeded from the base and then
+    appended. A record names exactly that: this job, the commit whose code ran, the snapshot,
+    rows reused from the base and rows appended. `recorded` says whether the commit was held
+    from the start of production or only known when this step ran on a resume; gate 5
+    recomputes the versions at that commit either way. With an unclean tree nothing is
+    written, and gate 5 refuses.
+    """
+    if 'producers' in run.state:return
+    writer=_writer(run)
+    if writer is None:
+        run.state['producers']=dict(unavailable='the checkout was not clean, so no commit can be named');run.save();return
+    recorded='with production' if run.state.get('writer_commit')==writer['commit'] else 'after production, on resume'
+    directory=run.work/'producers';directory.mkdir(exist_ok=True);pins={}
+    for name,pin in sorted(run.state['pins'].items()):
+        record=dict(version=1,input=name,selector=dict(kind='native_table',**pin),job=PRODUCER_JOB,commit=writer['commit'],
+            lockfile_digest=writer['lockfile_digest'],recorded=recorded,run_identity=run.state.get('identity'),
+            reused_rows=run.state.get('seeded',{}).get(name),appended=run.state.get('d4',{}).get(name,{}).get('appended'))
+        path=directory/(name+'.json');path.write_text(json.dumps(record,indent=1,sort_keys=True)+'\n')
+        pins[name]=dict(path=str(path),**file_pin(path))
+    run.state['producers']=pins;run.save()
+
+
 def _model_value(run):
     from viewer_publication.archive_model_profile import current_parser_versions
     model=run.selective['model'];value=json.loads(Path(model['template']).read_text())
@@ -419,6 +455,7 @@ def _tables_report(run,started):
     """The `through: tables` stop: every table built and guarded, no model run."""
     state=run.state
     report=dict(status='tables_built',executed=True,work=str(run.work),seconds=round(time.monotonic()-started,1),pins=state['pins'],
+        producers=state.get('producers'),
         differential=state['differential'],rebuilt_diff=state.get('rebuilt_diff'),completion=state.get('completion'),
         tables={name:dict(base=state['selection'][name]['base'],hits=state['selection'][name]['hits'],selected=state['selection'][name]['selected'],
             reused=state['seeded'][name],appended=state.get('d4',{}).get(name,{}).get('appended')) for name in ALL_TABLE_NAMES})
@@ -437,9 +474,12 @@ def _outputs(run,started):
     publish.update(model_spec=dict(path=str(model_path),**file_pin(model_path)),receipt_keys=sorted(row['key'] for row in run.counts()),work=str(work/'publish'),
         provenance=[dict(key=row['key'],etag='"'+md5(Path(row['path']).read_bytes()).hexdigest()+'"') for row in rows])
     publish['contract_next_release']=str((template.parent/publish['contract_next_release']).resolve())
+    if isinstance(state.get('producers'),dict) and 'unavailable' not in state['producers']:
+        publish['producers']=state['producers']  # gate 5's per-snapshot records, pinned
     publish['targets']=dict(publish['targets'],path=str((template.parent/publish['targets']['path']).resolve()))
     (work/'candidate-publish.json').write_text(json.dumps(publish,indent=1,sort_keys=True))
     report=dict(status='built',executed=True,work=str(work),release_id=state['model']['release_id'],release=state['model']['output'],seconds=round(time.monotonic()-started,1),
+        producers=state.get('producers'),
         differential=state['differential'],rebuilt_diff=state.get('rebuilt_diff'),filenames_recomputed=state['daily']['filenames_recomputed'],
         tables={name:dict(base=state['selection'][name]['base'],hits=state['selection'][name]['hits'],selected=state['selection'][name]['selected'],
             reused=state['seeded'][name],appended=state.get('d4',{}).get(name,{}).get('appended')) for name in ALL_TABLE_NAMES},
@@ -459,6 +499,8 @@ def execute_selective(spec,*,runtime_factory=None):
         state=_open_state(spec,engine)
         attempt=Path(spec['work'])/'attempts'/('attempt-'+uuid4().hex);attempt.mkdir(parents=True)
         run=Run(spec,engine,state,attempt);_clear_unaccepted_model(run);run.check_scratch();bodies=Bodies(run)
+        if 'writer_commit' not in run.state and (writer:=_writer(run)) is not None:
+            run.state['writer_commit']=writer['commit'];run.save()
         _select(run)
         differential(run,bodies)
         run.check_scratch()
@@ -468,6 +510,7 @@ def execute_selective(spec,*,runtime_factory=None):
         stage_d4(run,bodies)
         complete_d4(run,bodies)
         _guard(run)
+        _producers(run)
     if spec.get('through')=='tables':return _tables_report(run,started)
     _model(run)
     return _outputs(run,started)
