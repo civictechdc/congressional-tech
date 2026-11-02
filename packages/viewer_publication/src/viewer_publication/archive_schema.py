@@ -264,6 +264,13 @@ def publication_checks(schema, auxiliary, published=None, *, keyed_documents=Tru
             WHERE key IS NOT NULL AND NOT EXISTS (SELECT 1 FROM meetings_export m WHERE m.event_id=try_cast(refs.key AS BIGINT))) AS missing_document_meeting''')
         checks.append('''(SELECT count(*) FROM (SELECT unnest(transcripts) AS item FROM meetings_export) refs
             WHERE item['list_row'] IS NOT NULL AND NOT EXISTS (SELECT 1 FROM ordered o WHERE o.list_row=refs.item['list_row'])) AS missing_transcript_document''')
+    if 'retired_links' in auxiliary:
+        # Data model §8.2, Retired keys: a ledger key is never also published, and
+        # every redirect lands on a published key.
+        checks.append('''(SELECT count(*) FROM retired_links_export r
+            WHERE EXISTS (SELECT 1 FROM links l WHERE l.link_key=r.link_key)) AS retired_key_still_published''')
+        checks.append('''(SELECT count(*) FROM retired_links_export r WHERE r.successor_key IS NOT NULL
+            AND NOT EXISTS (SELECT 1 FROM links l WHERE l.link_key=r.successor_key)) AS missing_retired_successor''')
     if 'witnesses' in auxiliary:
         checks.append('''(SELECT count(*) FROM (SELECT unnest(witness_keys) AS key FROM ordered) refs
             WHERE key IS NOT NULL AND NOT EXISTS (SELECT 1 FROM witnesses_export w WHERE w.witness_key=refs.key)) AS missing_document_witness''')
