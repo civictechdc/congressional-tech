@@ -14,6 +14,7 @@ import sys
 import tomllib
 
 ROOT = Path(__file__).resolve().parents[1]
+PIN_FILE = ROOT / 'model/docspec-runtime-pin.json'
 
 
 def declaration():
@@ -165,8 +166,13 @@ def _spec_origin(name):
     return Path(spec.origin).resolve()
 
 
-def job_runtime(config, lane_name):
-    """Verify explicit local native-job setup without executing or loading secrets."""
+def job_runtime(config, lane_name, *, pin_file=PIN_FILE):
+    """Verify the lane's local engine is the one this checkout pins, without executing it.
+
+    The config's own binary_sha256 is a claim by the thing being checked; until
+    2026-11-02 doctor compared the binary only with it, so a shared config moved
+    branches onto engines their pins did not name. The pin decides.
+    """
     variable = config['lanes'].get(lane_name, {}).get('required_job_config_env')
     if not variable:
         return
@@ -181,11 +187,17 @@ def job_runtime(config, lane_name):
                 or not all(settings.get(key) for key in ('limits', 'source_revision',
                                                          'binary_sha256', 'platform', 'build_features'))):
             raise ValueError('local job pins and limits are required; remote/credentials are forbidden')
-        from docspec_client import NativeDatasets
+        from docspec_client import NativeDatasets, load_runtime_pin
+        pin = load_runtime_pin(pin_file)
+        pinned = pin['platforms'].get(settings['platform'], {}).get('sha256', 'none')
+        if (settings['source_revision'], settings['binary_sha256']) != (pin['source_revision'], pinned):
+            raise ValueError(f"it names engine {settings['source_revision'][:8]}/{settings['binary_sha256'][:12]} "
+                             f"but this checkout pins {pin['source_revision'][:8]}/{pinned[:12]} "
+                             f"for {settings['platform']}")
         with NativeDatasets.from_config(location) as native:
             if native.limits is None or not native.limits.is_file():
                 raise ValueError('configured limits file is unavailable')
-            native.verify_runtime()
+            native.verify_runtime(pin_file=pin_file)
     except (OSError, ValueError, TypeError) as error:
         raise ValueError(f'{remedy}: {error}') from None
 
@@ -200,27 +212,81 @@ def host_platform():
     return f'{system}-{machine}'
 
 
-def write_local_runtime(*, binary, limits, out, workspace=None, platform=None, pin_file=None):
-    """Write a local-only DOCSPEC_JOB_CONFIG for a binary that matches the committed pin.
+def runtime_store():
+    """Engine binaries shared by every worktree of this clone, one read-only file per digest.
+
+    Layout <store>/<platform>/<sha256>/docspec. It sits beside the main checkout (git's
+    common directory), not in a worktree that a prune can delete. An entry is written
+    once and never replaced: a new engine gets a new address, so a running job's binary
+    cannot change under it (an in-place swap broke running jobs on 2026-11-02).
+    """
+    if location := os.environ.get('DOCSPEC_RUNTIME_STORE'):
+        return Path(location)
+    common = run(['git', 'rev-parse', '--path-format=absolute', '--git-common-dir']).stdout.strip()
+    return Path(common).parent / '.cache/docspec-runtime'
+
+
+def install_runtime(binary, digest, platform, store):
+    """Return the store path for a pinned digest, copying binary there once if absent."""
+    target = Path(store) / platform / digest / 'docspec'
+    if target.exists():
+        with target.open('rb') as source:
+            if (actual := stream_sha256(source)) != digest:
+                raise ValueError(f'{target} holds other bytes than its address ({actual[:12]}); '
+                                 'it is left as found for inspection')
+        return target
+    if binary is None:
+        raise ValueError(f'engine {digest[:12]} for {platform} is not in the runtime store {store}; '
+                         'pass --binary once to add it')
+    target.parent.mkdir(parents=True, exist_ok=True)
+    staged = target.with_name(f'.docspec.{os.getpid()}')
+    try:
+        with Path(binary).open('rb') as source, staged.open('xb') as copy:
+            actual = stream_sha256(source, copy)
+        if actual != digest:
+            raise ValueError(f'{binary} has SHA-256 {actual[:12]} but this checkout pins {digest[:12]} for {platform}')
+        staged.chmod(0o555)
+        os.link(staged, target)  # Never replaces: a concurrent install of the same digest wins once.
+    except FileExistsError:
+        pass
+    finally:
+        staged.unlink(missing_ok=True)
+    return install_runtime(None, digest, platform, store)
+
+
+def stream_sha256(source, copy=None):
+    """SHA-256 of a stream in one pass, optionally copying it."""
+    digest = sha256()
+    while chunk := source.read(1 << 20):
+        digest.update(chunk)
+        if copy is not None:
+            copy.write(chunk)
+    return digest.hexdigest()
+
+
+def write_local_runtime(*, binary=None, limits, out, workspace=None, platform=None, pin_file=PIN_FILE, store=None):
+    """Write a local-only DOCSPEC_JOB_CONFIG naming the engine this checkout pins.
 
     The pins come from model/docspec-runtime-pin.json, never from the binary, so a
-    stale or rebuilt engine is refused instead of being described. Paths are
-    absolute; remote and credentials are never written.
+    stale or rebuilt engine is refused instead of being described. The config names
+    the engine's content-addressed store path, copied there from --binary on first
+    use. Paths are absolute; remote and credentials are never written.
     """
-    from docspec_client import RUNTIME_PIN_FILE, NativeDatasets, load_runtime_pin, runtime_pin_digest
-    pin_file = pin_file or RUNTIME_PIN_FILE
+    from docspec_client import NativeDatasets, load_runtime_pin, runtime_pin_digest
     pin = load_runtime_pin(pin_file)
     platform = platform or host_platform()
-    binary, limits, out = Path(binary).resolve(), Path(limits).resolve(), Path(out).resolve()
+    digest = runtime_pin_digest(platform, pin_path=pin_file)
+    binary = install_runtime(binary, digest, platform, runtime_store() if store is None else store)
+    limits, out = Path(limits).resolve(), Path(out).resolve()
     values = json.loads(limits.read_text())
     if (not isinstance(values, dict) or not values
             or any(type(value) is not int or value <= 0 for value in values.values())):
         raise ValueError(f'{limits} must hold positive integer engine limits')
-    settings = dict(version=1, binary=str(binary), limits=str(limits),
+    settings = dict(version=1, binary=str(binary.resolve()), limits=str(limits),
                     workspace=str(Path(workspace).resolve() if workspace else out.parent / 'workspace'),
                     source_revision=pin['source_revision'], platform=platform,
                     build_features=pin['build_features'], required_capabilities=pin['required_capabilities'],
-                    binary_sha256=runtime_pin_digest(platform, pin_path=pin_file))
+                    binary_sha256=digest)
     out.parent.mkdir(parents=True, exist_ok=True)
     staged = out.with_name(f'.{out.name}.{os.getpid()}')
     try:
@@ -379,7 +445,8 @@ def main(argv=None):
     sub.add_parser('inventory')
     local = sub.add_parser('write-local-runtime',
                            help='Write a local-only DOCSPEC_JOB_CONFIG for a binary matching the committed runtime pin')
-    local.add_argument('--binary', type=Path, required=True)
+    local.add_argument('--binary', type=Path,
+                       help='Engine to add to the runtime store once (default: the pinned engine already there)')
     local.add_argument('--limits', type=Path, required=True)
     local.add_argument('--out', type=Path, required=True)
     local.add_argument('--workspace', type=Path, help='Engine workspace (default: <out dir>/workspace)')

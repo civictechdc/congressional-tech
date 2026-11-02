@@ -17,8 +17,10 @@ source .venv/bin/activate
 python scripts/dev.py doctor
 python scripts/dev.py prepare-baseline
 python scripts/dev.py inventory
-# Checks the binary against model/docspec-runtime-pin.json; prints the export line.
-python scripts/dev.py write-local-runtime --binary /path/to/docspec \
+# Names the engine model/docspec-runtime-pin.json pins, from the shared store
+# <main checkout>/.cache/docspec-runtime; prints the export line. The first use of
+# a new engine adds it with --binary /path/to/docspec (refused unless pinned).
+python scripts/dev.py write-local-runtime \
   --limits .github/docspec-local-limits.json --out .cache/local-runtime/runtime.json
 export DOCSPEC_JOB_CONFIG=$PWD/.cache/local-runtime/runtime.json
 python scripts/dev.py test production-offline
@@ -32,9 +34,10 @@ the PDF memory guard. Import and command probes have
 bounded timeouts. Missing native commands fail before pytest starts.
 The `production-offline` lane also requires `DOCSPEC_JOB_CONFIG`: an explicit
 local DocSpec runtime configuration with executable SHA-256, source revision,
-platform, build features and a limits file. Doctor reuses the client's runtime
-verifier before starting pytest, and the root `conftest.py` repeats the checkout
-and runtime checks for direct pytest runs. Missing or invalid setup gives one actionable
+platform, build features and a limits file, for the engine this checkout's
+`model/docspec-runtime-pin.json` names; the config's own digest is not trusted.
+Doctor reuses the client's runtime verifier before starting pytest, and the root
+`conftest.py` repeats the checkout and engine checks for direct pytest runs. Missing or invalid setup gives one actionable
 error; native checks never silently become skipped. This lane refuses remote or
 credential-file configuration before loading it. It neither searches for an
 executable nor starts the engine during preflight. CI must supply its approved

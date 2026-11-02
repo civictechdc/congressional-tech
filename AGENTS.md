@@ -26,14 +26,18 @@ through `PYTHONPATH`. A `--path`, `-k` or shard run ends with a `partial` or
 `shard` line; call a branch tested only from a `(full lane): exit 0` line or
 all shards.
 
-The `production-offline` lane and any direct pytest run over native lake/model
-tests require
-`DOCSPEC_JOB_CONFIG` pointing to a pinned **local-only** runtime JSON. Write one
-with `.venv/bin/python scripts/dev.py write-local-runtime --binary <docspec>
---limits .github/docspec-local-limits.json --out <dir>/runtime.json`: it takes
-the pins from `model/docspec-runtime-pin.json`, refuses a binary whose SHA-256
-differs, and never writes `remote` or `credentials` (a pipeline `runtime.json`
-with those keys fails `doctor` and `validate_catalog_authority`).
+Native lake/model tests require `DOCSPEC_JOB_CONFIG` naming a **local-only**
+runtime for the engine this checkout pins in `model/docspec-runtime-pin.json`;
+`doctor` and pytest refuse any other engine. Write one with
+`.venv/bin/python scripts/dev.py write-local-runtime --limits
+.github/docspec-local-limits.json --out .cache/local-runtime/runtime.json`. It
+names the pinned binary in the shared store
+`<main checkout>/.cache/docspec-runtime/<platform>/<sha256>/docspec`; add a new
+engine there once with `--binary <docspec>`, which refuses bytes the pin does
+not name. Store entries are read-only and never replaced, so never copy a new
+build over a configured path. The helper never writes `remote` or `credentials`
+(a pipeline `runtime.json` with those keys fails `doctor` and
+`validate_catalog_authority`).
 
 For `apps/site` browser checks (`npm --prefix apps/site run contract:archive`),
 `npm --prefix apps/site ci` installs the exact `playwright` that

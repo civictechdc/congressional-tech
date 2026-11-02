@@ -152,15 +152,93 @@ def test_native_runtime_verifies_pins_without_starting_engine(tmp_path, monkeypa
                     source_revision='1' * 40, binary_sha256=sha256(binary.read_bytes()).hexdigest(),
                     platform='darwin-arm64', build_features=['remote'])
     config.write_text(json.dumps(settings))
+    pin = write_pin(tmp_path / 'pin.json', binary)
     monkeypatch.setenv('DOCSPEC_JOB_CONFIG', str(config))
     def forbidden(*args, **kwargs):
         pytest.fail('preflight must not execute native code')
     monkeypatch.setattr(dev.subprocess, 'run', forbidden)
-    dev.job_runtime(dev.declaration(), 'production-offline')
+    dev.job_runtime(dev.declaration(), 'production-offline', pin_file=pin)
     assert not (tmp_path / 'workspace').exists()
     binary.write_bytes(b'changed')
     with pytest.raises(ValueError, match='DOCSPEC_JOB_CONFIG.*approved SHA-256'):
-        dev.job_runtime(dev.declaration(), 'production-offline')
+        dev.job_runtime(dev.declaration(), 'production-offline', pin_file=pin)
+
+
+def write_pin(path, binary, *, revision='1' * 40):
+    import json
+    from hashlib import sha256
+    path.write_text(json.dumps(dict(version=1, source_revision=revision, build_features=['remote'],
+                                    required_capabilities=['request-deadline', 'owned-stdin-eof'],
+                                    platforms={'darwin-arm64': {'sha256': sha256(binary.read_bytes()).hexdigest()}})))
+    return path
+
+
+def fake_engine(path, body=b'authored fixture'):
+    path.write_bytes(b'\xcf\xfa\xed\xfe' + body)
+    path.chmod(0o755)
+    return path
+
+
+def test_doctor_runs_the_lane_only_on_the_engine_this_checkout_pins(tmp_path, monkeypatch):
+    """A config can describe its own binary truthfully and still name an engine the branch does not pin.
+
+    Until 2026-11-02 doctor compared the binary only with the config's own claim, so
+    branches pinned to eb40c54 tested on 5dae611 through the shared config, and a
+    fallback config sent a 5dae611 branch back to eb40c54, both without a word.
+    """
+    import json
+    from hashlib import sha256
+    engine = fake_engine(tmp_path / 'engine')
+    limits = tmp_path / 'limits.json'
+    limits.write_text('{}')
+    config = tmp_path / 'runtime.json'
+    config.write_text(json.dumps(dict(version=1, binary=str(engine), workspace=str(tmp_path / 'workspace'),
+                                      limits=str(limits), source_revision='1' * 40, platform='darwin-arm64',
+                                      binary_sha256=sha256(engine.read_bytes()).hexdigest(), build_features=['remote'])))
+    monkeypatch.setenv('DOCSPEC_JOB_CONFIG', str(config))
+    other = write_pin(tmp_path / 'other-pin.json', fake_engine(tmp_path / 'other', b'other engine'), revision='2' * 40)
+    with pytest.raises(ValueError, match='this checkout pins 22222222'):
+        dev.job_runtime(dev.declaration(), 'production-offline', pin_file=other)
+    dev.job_runtime(dev.declaration(), 'production-offline', pin_file=write_pin(tmp_path / 'pin.json', engine))
+
+
+def test_each_engine_is_installed_once_at_its_content_address(tmp_path):
+    """A rebuilt or swapped binary can never change under a config that names the pinned one.
+
+    On 2026-11-02 a pinned binary was replaced in place and running jobs failed; the
+    eb40c54 config still names a cargo target/ path that every build overwrites.
+    """
+    import json
+    import os
+    (tmp_path / 'target').mkdir()
+    engine = fake_engine(tmp_path / 'target' / 'docspec')
+    pin = write_pin(tmp_path / 'pin.json', engine)
+    limits = tmp_path / 'limits.json'
+    limits.write_text(json.dumps(dict(compute_threads=4)))
+    store = tmp_path / 'store'
+    first = dev.write_local_runtime(binary=engine, limits=limits, out=tmp_path / 'a' / 'runtime.json',
+                                    platform='darwin-arm64', pin_file=pin, store=store)
+    digest = json.loads(pin.read_text())['platforms']['darwin-arm64']['sha256']
+    installed = store / 'darwin-arm64' / digest / 'docspec'
+    assert json.loads(first.read_text())['binary'] == str(installed)
+    assert installed.read_bytes() == engine.read_bytes() and not os.access(installed, os.W_OK)
+    engine.write_bytes(b'rebuilt in place')
+    second = dev.write_local_runtime(binary=None, limits=limits, out=tmp_path / 'b' / 'runtime.json',
+                                     platform='darwin-arm64', pin_file=pin, store=store)
+    assert json.loads(second.read_text())['binary'] == str(installed)
+    with pytest.raises(ValueError, match='this checkout pins'):
+        dev.write_local_runtime(binary=engine, limits=limits, out=tmp_path / 'c' / 'runtime.json',
+                                platform='darwin-arm64', pin_file=write_pin(tmp_path / 'p2.json', fake_engine(
+                                    tmp_path / 'e2', b'pinned elsewhere')), store=store)
+    with pytest.raises(ValueError, match='not in the runtime store'):
+        dev.write_local_runtime(binary=None, limits=limits, out=tmp_path / 'd' / 'runtime.json',
+                                platform='darwin-arm64', pin_file=tmp_path / 'p2.json', store=store)
+    installed.chmod(0o755)
+    installed.write_bytes(b'tampered')
+    with pytest.raises(ValueError, match='other bytes than its address'):
+        dev.write_local_runtime(binary=None, limits=limits, out=tmp_path / 'e' / 'runtime.json',
+                                platform='darwin-arm64', pin_file=pin, store=store)
+    assert installed.read_bytes() == b'tampered'  # Evidence stays for inspection; never repaired in place.
 
 
 def test_a_direct_pytest_session_refuses_another_checkouts_workspace_code(tmp_path):
@@ -209,23 +287,23 @@ def test_write_local_runtime_passes_preflight_and_refuses_an_unpinned_binary(tmp
     binary = tmp_path / 'engine'
     binary.write_bytes(b'\xcf\xfa\xed\xfeauthored fixture')
     binary.chmod(0o755)
-    pin = tmp_path / 'pin.json'
-    pin.write_text(json.dumps(dict(version=1, source_revision='1' * 40, build_features=['remote'],
-                                   required_capabilities=['request-deadline', 'owned-stdin-eof'],
-                                   platforms={'darwin-arm64': {'sha256': sha256(binary.read_bytes()).hexdigest()}})))
+    pin = write_pin(tmp_path / 'pin.json', binary)
     limits = tmp_path / 'limits.json'
     limits.write_text(json.dumps(dict(compute_threads=4, memory_bytes=1 << 30)))
     out = tmp_path / 'local' / 'runtime.json'
+    store = tmp_path / 'store'
     monkeypatch.setenv('DOCSPEC_JOB_CONFIG', str(out))
-    assert dev.write_local_runtime(binary=binary, limits=limits, out=out, platform='darwin-arm64', pin_file=pin) == out
+    assert dev.write_local_runtime(binary=binary, limits=limits, out=out, platform='darwin-arm64', pin_file=pin,
+                                   store=store) == out
     settings = json.loads(out.read_text())
     assert 'remote' not in settings and 'credentials' not in settings
     assert all(Path(settings[key]).is_absolute() for key in ('binary', 'limits', 'workspace'))
-    dev.job_runtime(dev.declaration(), 'production-offline')
+    dev.job_runtime(dev.declaration(), 'production-offline', pin_file=pin)
     other = tmp_path / 'other-engine'
     other.write_bytes(b'\xcf\xfa\xed\xferebuilt engine')
     other.chmod(0o755)
     refused = tmp_path / 'refused.json'
-    with pytest.raises(ValueError, match='approved SHA-256'):
-        dev.write_local_runtime(binary=other, limits=limits, out=refused, platform='darwin-arm64', pin_file=pin)
+    with pytest.raises(ValueError, match='this checkout pins'):
+        dev.write_local_runtime(binary=other, limits=limits, out=refused, platform='darwin-arm64', pin_file=pin,
+                                store=tmp_path / 'other-store')
     assert list(tmp_path.glob('*refused.json*')) == []
