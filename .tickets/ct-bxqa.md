@@ -36,3 +36,7 @@ Round 1b 2026-11-02 (lead): plan-e1 raw read: 3,159 body entries state 404/202/4
 **2026-11-02T15:34:13Z**
 
 2026-11-02 impl-e1 r1b-e1 04e20965: all green-e1 and red-e1 items fixed; production-offline 10,849 passed. A 206 counts only when content_range covers the whole body (the 3 senate samples now fail); segments get role media by the registry .ts pattern; one absolute-path rule (member names never refused; the writer refuses before storing; per-item failure); one empty-body rule; compare_generations on shared columns (works on v21); the guard accepts only a current or registered-compatible mapping; url prefers record.final_url (34,658 v21 rows; 249 queued URLs leave the queue). Staged all 40,887 lines including the 83 MB line (max_batch_bytes >= 84 MB): 7,880 stored to failed, 18 retry_later, good fetches -232/+52,089; +2,389 m3u8 tracks; 5 empty tracks dropped. red-e1b is doing a light re-check before the first merge.
+
+**2026-11-02T15:46:32Z**
+
+2026-11-02 red-e1b: merge with one fix. The final-URL move makes locator-signals.sql test only url, so a Senate WAF block page (3460294b, 'Request not Accepted – Security Risk Detected', at senate.gov/…/waf.htm) becomes a real file and would be listed on 5 Armed Services transcripts and 1 release. Fix: evaluate requested_url and url, and recognize the WAF page. Held: 249 queue leavers (248 whole PDFs; S.3492 cut short by the server), no real document's link changed target, the 206 and segment rules, and -237.
