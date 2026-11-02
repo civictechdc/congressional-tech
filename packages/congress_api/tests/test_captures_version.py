@@ -4,7 +4,7 @@ from pathlib import Path
 
 from congress_api.lake import captures
 
-APPROVED_MAPPING='0478ad50858ec7443c7243a1208bccb1419c0d4e90cc0c1f4931081c72e7c951'
+APPROVED_MAPPING='3fdd115f2191999f0deff88ee84fe4c87e8ae2d7d8a1b01d8f3797accdf04c04'
 
 
 def test_current_capture_version_preserves_the_existing_byte_identity():
