@@ -84,7 +84,7 @@ def test_qualified_new_writer_header_precedence_stays_line_owned(tmp_path):
 
 
 def test_conflicting_duplicate_counter_facts_within_one_list_item_still_refuse(tmp_path):
-    from congress_api.lake.captures import stage_captures
+    from congress_api.lake.capture_staging import stage_captures
     key='receipts/documents/2026-10-20/assemble-duplicate.gz'
     counter=minimal_counter(tmp_path,[(key,dict(record=[dict(url=url)],captures=[]))
         for url in ('https://fixture.test/a','https://fixture.test/b')],False)
@@ -116,7 +116,7 @@ def test_expansion_isolation_keeps_members_with_their_selected_record_item(tmp_p
 @pytest.mark.parametrize('primary',['captures','file_references'])
 @pytest.mark.parametrize('counter',[False,True])
 def test_mixed_primary_ordinals_stay_stable_and_bodiless_items_append(tmp_path,primary,counter):
-    from congress_api.lake.captures import stage_captures
+    from congress_api.lake.capture_staging import stage_captures
     source=dict(record=[dict(url='https://fixture.test/a',http_status=200,outcome='saved'),
         dict(url='https://fixture.test/b',http_status=404,outcome='request_or_parse_error')],
         captures=[],file_references=[])

@@ -17,7 +17,7 @@ def engine():
 
 
 def test_counter_and_direct_have_equal_rows_and_pinned_inputs(tmp_path):
-    from congress_api.lake.captures import stage_captures
+    from congress_api.lake.capture_staging import stage_captures
     counter,files=counter_fixture(tmp_path)
     native=engine()
     direct=stage_captures(files,engine=native,work=tmp_path/'direct')
@@ -66,7 +66,7 @@ def test_counter_and_direct_have_equal_rows_and_pinned_inputs(tmp_path):
 
 
 def test_fused_counter_refuses_absent_selected_key_before_public_output(tmp_path):
-    from congress_api.lake.captures import stage_captures
+    from congress_api.lake.capture_staging import stage_captures
     counter,_=counter_fixture(tmp_path)
     work=tmp_path/'refused'
     with pytest.raises(ValueError,match='selected receipt not present'):
@@ -77,7 +77,7 @@ def test_fused_counter_refuses_absent_selected_key_before_public_output(tmp_path
 
 
 def test_fused_counter_refuses_unknown_vocabulary_before_public_output(tmp_path):
-    from congress_api.lake.captures import stage_captures
+    from congress_api.lake.capture_staging import stage_captures
     counter,files=counter_fixture(tmp_path)
     table=pq.read_table(counter)
     rows=table.to_pylist()

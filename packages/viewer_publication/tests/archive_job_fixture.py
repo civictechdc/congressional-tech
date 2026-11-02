@@ -41,7 +41,7 @@ def rebuild_model_spec(tmp_path,*,raw,qualification):
     """Run the same producers from retained raw, with no earlier derived inputs."""
     from pathlib import Path
     from congress_api.lake import readings,filenames
-    from congress_api.lake.captures import stage_captures
+    from congress_api.lake.capture_staging import stage_captures
     from congress_api.retention.provenance import file_pin,parquet_output,run_job
     from docspec_client.client import NativeDatasets
     runtime=os.environ['DOCSPEC_JOB_CONFIG'];raw=Path(raw)
@@ -110,7 +110,7 @@ def selective_base(root):
     import gzip
     from pathlib import Path
     from congress_api.lake import appearance_records,filenames,meeting_records,readings
-    from congress_api.lake.captures import stage_captures
+    from congress_api.lake.capture_staging import stage_captures
     from congress_api.retention.provenance import file_pin,parquet_output,run_job
     from docspec_client.client import NativeDatasets
     root=Path(root);raw=root/'raw';raw.mkdir(parents=True)

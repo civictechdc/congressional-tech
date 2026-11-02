@@ -42,7 +42,7 @@ def test_raw_only_rebuild_excludes_unreadable_and_retries_unavailable(tmp_path):
     raw=tmp_path/'raw'; store=BodyStore(LocalAdapter(raw))
     bad=dict(receipt_key='r',receipt_line=1,capture_index=0,mode='fetch',url='https://a.test/Bad.pdf')
     pending=dict(receipt_key='r',receipt_line=2,capture_index=0,mode='fetch',url='https://a.test/Later.pdf')
-    from congress_api.lake.captures import stage_captures
+    from congress_api.lake.capture_staging import stage_captures
     def retain_receipt(row):
         key='receipts/documents/2026-10-27/'+str(row['receipt_line'])+'.jsonl.gz'
         record=dict(run_id='fixture',mode='fetch',outcome='failed',family='documents',

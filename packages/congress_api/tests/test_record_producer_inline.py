@@ -8,7 +8,7 @@ from pathlib import Path
 import pyarrow.parquet as pq
 
 from capture_qualification_helpers import write_qualified_bytes
-from congress_api.lake import captures, meeting_records
+from congress_api.lake import capture_staging,captures,meeting_records
 from docspec_client.client import NativeDatasets
 from native_test_helpers import empty_readings
 
@@ -51,7 +51,7 @@ def stage_receipts(tmp_path, receipts, engine, name, existing=None, record_engin
         path.parent.mkdir(parents=True, exist_ok=True)
         qualification = write_qualified_bytes(path, gzip.compress((''.join(text + '\n' for text in lines)).encode(), mtime=0))
         files.append(dict(key=key, path=str(path), qualification=qualification))
-    stage = captures.stage_captures(files, engine=engine, work=tmp_path / f'captures-{name}') / 'captures.parquet'
+    stage = capture_staging.stage_captures(files, engine=engine, work=tmp_path / f'captures-{name}') / 'captures.parquet'
     return meeting_records.stage(captures=stage, engine=record_engine or engine, work=tmp_path / f'meetings-{name}', local_root=raw,
         existing=existing, decided_at=STAMP, readings=empty_readings(tmp_path / f'readings-{name}'))
 

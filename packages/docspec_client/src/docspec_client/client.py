@@ -383,6 +383,16 @@ class NativeDatasets:
     def __exit__(self, *exc: Any) -> None:
         self.close()
 
+    def with_limits(self, limits: Path | str) -> 'NativeDatasets':
+        """Return a client for the same pinned runtime and secrets under another limits file."""
+        other = NativeDatasets(self.binary, self.workspace, remote=self.remote, limits=limits,
+            timeout=self.timeout, source_revision=self.source_revision, platform=self.platform,
+            build_features=self.build_features, binary_sha256=self.binary_sha256,
+            required_capabilities=self.required_capabilities)
+        other._remote_secrets = dict(self._remote_secrets)
+        other._configuration_path = self._configuration_path
+        return other
+
     def _request(self, path: str, request: Any, *, dispatch: dict[str, Any] | None = None) -> Any:
         payload = json.dumps(request, ensure_ascii=False, separators=(',', ':'), allow_nan=False)
         return self._host_request('POST', path, content=payload,

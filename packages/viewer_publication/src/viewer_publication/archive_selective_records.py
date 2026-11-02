@@ -17,7 +17,7 @@ from pathlib import Path
 import pyarrow as pa
 import pyarrow.parquet as pq
 
-from congress_api.lake import appearance_records,captures,filenames,meeting_records,tables
+from congress_api.lake import appearance_records,capture_staging,captures,filenames,meeting_records,tables
 from congress_api.lake._record_producer import INLINE_CONGRESS_MEETINGS_SQL,_candidate_rel_paths,stage_record_table
 from congress_api.lake.readings import BackfillRequired
 from congress_api.retention.provenance import parquet_output,run_job
@@ -203,7 +203,7 @@ def _captures_differential(run,n):
         if row['receipt_key'] in inventory and Path(inventory[row['receipt_key']]['path']).is_file() and total+row['n']<=n:
             chosen.append(inventory[row['receipt_key']]);total+=row['n']
     if not chosen:return 0
-    stage=captures.stage_captures(chosen,engine=run.engine,work=directory/'stage',source_qualifications=run.qualifications())
+    stage=capture_staging.stage_captures(chosen,engine=run.engine,work=directory/'stage',source_qualifications=run.qualifications())
     listed=','.join("'"+row['key'].replace("'","''")+"'" for row in chosen);pk=list(captures.PK)
     run_job(directory/'base',run.engine,inputs=[_input('base',run.base['captures'])],steps=[],
         outputs=[parquet_output(directory/'base','rows',f'SELECT * FROM base WHERE receipt_key IN ({listed})',pk)])

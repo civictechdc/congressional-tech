@@ -25,7 +25,7 @@ def files(root, rows, key='receipts/documents/2026-10-20/run.jsonl.gz'):
 
 
 def ingest(root, rows, *, key='receipts/documents/2026-10-20/run.jsonl.gz', **kwargs):
-    from congress_api.lake.captures import stage_captures
+    from congress_api.lake.capture_staging import stage_captures
     engine = NativeDatasets.from_config(os.environ['DOCSPEC_JOB_CONFIG'])
     return stage_captures(files(root / 'input', rows, key), engine=engine, work=root / 'stage', **kwargs)
 
@@ -113,7 +113,7 @@ def test_entry_time_precedes_line_with_legacy_completeness(tmp_path):
 
 
 def test_rebuild_and_incremental_missing_receipt_equivalence(tmp_path):
-    from congress_api.lake.captures import stage_captures
+    from congress_api.lake.capture_staging import stage_captures
     engine = NativeDatasets.from_config(os.environ['DOCSPEC_JOB_CONFIG'])
     one = files(tmp_path/'one', [dict(record=dict(url='https://example.org/one'))],
                 key='receipts/documents/undated/assemble-one.jsonl.gz')
@@ -131,7 +131,7 @@ def test_rebuild_and_incremental_missing_receipt_equivalence(tmp_path):
 
 
 def test_ingested_receipt_is_never_reopened_by_stage(tmp_path):
-    from congress_api.lake.captures import stage_captures
+    from congress_api.lake.capture_staging import stage_captures
     engine=NativeDatasets.from_config(os.environ['DOCSPEC_JOB_CONFIG'])
     key='receipts/documents/2026-10-19/already.jsonl.gz'
     prior=tmp_path/'existing.parquet'
@@ -198,7 +198,7 @@ def test_exact_arrow_schema_and_unchanged_source_receipt(tmp_path):
 
 
 def test_verified_counter_projection_keeps_raw_metadata_missing_from_typed_fields(tmp_path):
-    from congress_api.lake.captures import stage_captures
+    from congress_api.lake.capture_staging import stage_captures
     engine=NativeDatasets.from_config(os.environ['DOCSPEC_JOB_CONFIG'])
     record=dict(url='https://example.org/a',http_status=200,retrieved_at=STAMP,
         prior_attempts=[dict(http_status=206)],response_header_items=[
