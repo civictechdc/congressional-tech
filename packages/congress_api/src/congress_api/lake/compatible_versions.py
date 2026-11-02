@@ -136,8 +136,8 @@ def validate_entries(entries, *, current):
     return entries
 
 
-def load_registry(*, current=None, path=REGISTRY):
-    value = json.loads(Path(path).read_text())
+def load_registry(*, current=None, path=None):
+    value = json.loads(Path(path or REGISTRY).read_text())
     if not isinstance(value, dict) or set(value) != {'version', 'entries'} or value['version'] != 2 or not isinstance(value['entries'], list):
         raise ValueError('Invalid compatible version registry')
     return validate_entries(value['entries'], current=current_pins() if current is None else current)

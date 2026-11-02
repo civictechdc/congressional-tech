@@ -184,7 +184,7 @@ def selective_spec(tmp_path,fixture,where,*,base=None,differential_rows=50,count
         selective=dict(base=pins,raw_root=str(fixture['raw']),receipt_inventory=written('inventory.json',fixture['inventory']),
             source_counts=written('counts.json',fixture['counts'] if counts is None else counts),provenance=dict(recoveries=[],reviews=[],unreadable=[]),
             where=where,differential_rows=differential_rows,publish_template=publish['path'],
-            model=dict(template=model['path'],engine_config=os.environ['DOCSPEC_JOB_CONFIG'],spicy_regs=spicy,output=str(tmp_path/'release'),scratch=str(tmp_path/'model'))))
+            model=dict(template=model['path'],engine_config=os.environ['DOCSPEC_JOB_CONFIG'],spicy_regs=spicy)))
     value.update(more)
     path=tmp_path/'spec.json';path.write_text(json.dumps(value))
     return load_spec(path)

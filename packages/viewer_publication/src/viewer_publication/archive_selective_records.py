@@ -1,8 +1,8 @@
 """Row-driven D4 stages and the unselected-row differential for selective backfill.
 
-Candidate SQL disagrees with the published tables in both directions and overflows the
-metadata allowance on the inline lines, so D4 here runs from the base table's own keys.
-Row-driven D4 cannot add a new candidate by construction.
+D4 runs first from the base table's own selected keys (row-driven), then once through the
+producers' own candidate SQL (completion), which adds candidates the base never had.
+Completion refuses before any body read when a work item's body is not available.
 
 Cost: the inline index reads each inline receipt once per run, O(L); the MODS sidecar is
 read once. Each stage holds its rows in Python memory and re-reads inline receipts once
@@ -19,6 +19,7 @@ import pyarrow.parquet as pq
 
 from congress_api.lake import appearance_records,captures,filenames,meeting_records,tables
 from congress_api.lake._record_producer import INLINE_CONGRESS_MEETINGS_SQL,_candidate_rel_paths,stage_record_table
+from congress_api.lake.readings import BackfillRequired
 from congress_api.retention.provenance import parquet_output,run_job
 
 RECORD_TABLES={'meeting_records':(meeting_records,meeting_records.build_meeting_record_row),
@@ -69,6 +70,9 @@ class Bodies:
         target.write_bytes(gzip.compress(data,mtime=0))
         return True
 
+    def available(self,sha,source,suffix='.gz'):
+        return any((self.mirror/rel).is_file() for rel in _candidate_rel_paths(sha,suffix)) or (source=='mods' and self._fallback(sha))
+
     def selection(self,name,keys):
         """Rows for the producer's captures seam, or a stop listing every missing body."""
         rows=[];gaps=[]
@@ -77,7 +81,7 @@ class Bodies:
             sha,source=key['record_sha'],key['source']
             if source=='congress_gov' and sha in index:
                 rows.append(dict(record_sha=None,source=None,stored_suffix=None,receipt_key=index[sha][0],receipt_line=index[sha][1],source_url=''))
-            elif any((self.mirror/rel).is_file() for rel in _candidate_rel_paths(sha,'.gz')) or (source=='mods' and self._fallback(sha)):
+            elif self.available(sha,source):
                 rows.append(dict(record_sha=sha,source=source,stored_suffix='.gz',receipt_key=None,receipt_line=None,source_url=None))
             else:gaps.append(dict(record_sha=sha,source=source))
         if gaps:raise BodiesUnavailable(f'{name}: selected bodies are not available: '+json.dumps(gaps))
@@ -106,7 +110,7 @@ def _stage(run,bodies,name,keys,work,*,existing,raw_store,unreadable):
 
 def stage_d4(run,bodies):
     """Step 7: row-driven stages, reconciled against the table afterward."""
-    from viewer_publication.archive_selective import _versions,restamp
+    from viewer_publication.archive_selective import _versions,current_version_sql
     done=run.state.setdefault('d4',{});raw_store,_=run.raw_store()
     for name,(module,_build) in RECORD_TABLES.items():
         keys_path=run.state['selection'][name]['keys']
@@ -117,11 +121,47 @@ def stage_d4(run,bodies):
         if staged['unreadable_pending']:raise SelectiveStop(f'{name}: new unreadable decisions await the owner: '+str(staged['unreadable_path']))
         if pq.ParquetFile(staged['records']).metadata.num_rows:
             module.append(staged,engine=run.engine,work=directory/'append',catalog_root=run.catalog,table=run.spec['tables'][name])
-        pin=run.head(name,'d4-'+name+'/final');_,version=restamp(name,_versions(),'t')
+        pin=run.head(name,'d4-'+name+'/final');_,version=current_version_sql(name,_versions(),'t')
         found=run_job(directory/'reconcile',run.engine,inputs=[tables.table_input('t',pin),dict(name='k',kind='parquet',path=keys_path)],steps=[],outputs=[],
             queries=[dict(name='n',sql=f"SELECT count(*) AS n FROM k JOIN t ON k.record_sha=encode(t.record_sha,'hex') AND k.source=t.source AND t.parser_version={version}")])['n'][0]['n']
         if found!=len(keys):raise SelectiveStop(f'{name}: {len(keys)} selected, {found} present; a row was lost')
         done[name]=dict(selected=len(keys),appended=staged['produced']);run.save()
+
+
+def complete_d4(run,bodies):
+    """Step 7b: the producers' own candidates over the new captures and readings heads.
+
+    Row-driven D4 cannot add a candidate the base never had (ct-kn6d). Planning runs once
+    with no budget so the work list exists before any body is opened; every unavailable
+    body is listed at once. The second pass repeats the O(captures) planning, named.
+    """
+    done=run.state.setdefault('completion',{});raw_store,_=run.raw_store()
+    limit=run.spec['batch_size']*run.spec['max_batches']
+    for name,(module,_build) in RECORD_TABLES.items():
+        if name in done:continue
+        directory=run.attempt/('complete-'+name);directory.mkdir()
+        common=dict(captures=run.head('captures','complete-'+name+'/captures'),readings=run.head('readings','complete-'+name+'/readings'),
+            existing=run.head(name,'complete-'+name+'/head'),engine=run.engine,local_root=bodies.root,raw_store=raw_store,
+            unreadable_files=run.state['daily']['unreadable'],decided_at=run.decided_at,unreadable_store=None)
+        bodies.root.mkdir(parents=True,exist_ok=True)
+        try:
+            module.stage(work=directory/'plan',max_work_items=0,**common)
+            done[name]=dict(appended=0,sources={});run.save();continue
+        except BackfillRequired as planned:
+            items=pq.read_table(planned.report['work_list']).to_pylist()
+        gaps=[dict(record_sha=i['record_sha'],source=i['source']) for i in items
+              if i['record_sha'] and not bodies.available(i['record_sha'],i['source'],i['stored_suffix'] or '')]
+        if gaps:raise BodiesUnavailable(f'{name}: completion bodies are not available: '+json.dumps(gaps))
+        try:
+            staged=module.stage(work=directory/'stage',max_work_items=limit,**common)
+        except BackfillRequired as error:
+            raise SelectiveStop(f'{name}: completion has {error.report["work_items"]} work items, over max_work_items {limit}') from error
+        if staged['unreadable_pending']:raise SelectiveStop(f'{name}: new unreadable decisions await the owner: '+str(staged['unreadable_path']))
+        sources={}
+        if pq.ParquetFile(staged['records']).metadata.num_rows:
+            for source in pq.read_table(staged['records'],columns=['source']).column('source').to_pylist():sources[source]=sources.get(source,0)+1
+            module.append(staged,engine=run.engine,work=directory/'append',catalog_root=run.catalog,table=run.spec['tables'][name])
+        done[name]=dict(appended=staged['produced'],sources=sources);run.save()
 
 
 def _compare(name,keys,base,fresh,ignore=None):
