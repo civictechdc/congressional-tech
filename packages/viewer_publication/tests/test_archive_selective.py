@@ -133,6 +133,27 @@ def test_covered_readings_are_copied_verbatim_at_their_old_versions(tmp_path,fix
     assert sorted_rows(head(spec,'readings'))==sorted_rows(pq.read_table(base).to_pylist())
 
 
+def test_a_base_that_predates_a_nullable_column_seeds_null_and_reports_it_added(tmp_path,fixture):
+    # Defect guarded: seeding and diffing every current schema column against a base written
+    # before the column existed (v21 captures before mapping_version/original_path).
+    table=pq.read_table(fixture['base']['captures']);old=tmp_path/'old-captures.parquet'
+    pq.write_table(table.drop(['h_content_disposition']),old)
+    spec=selective_spec(tmp_path,fixture,dict(captures=B),differential_rows=0,base=dict(captures=str(old)),through='tables')
+    report=execute(spec)
+    assert report['status']=='tables_built' and report['rebuilt_diff'].get('added_columns')==['h_content_disposition']
+    rows=head(spec,'captures')
+    assert all(row['h_content_disposition'] is None for row in rows if not row['receipt_key'].endswith('/b.jsonl.gz'))
+    assert len(rows)==table.num_rows
+
+
+def test_an_all_selected_table_seeds_nothing_without_reading_its_shape(tmp_path,fixture):
+    table=pq.read_table(fixture['base']['captures']);old=tmp_path/'old-captures.parquet'
+    pq.write_table(table.drop(['receipt_line_bytes'] if 'receipt_line_bytes' in table.column_names else ['h_content_disposition']),old)
+    spec=selective_spec(tmp_path,fixture,dict(captures='true'),differential_rows=0,base=dict(captures=str(old)),through='tables')
+    report=execute(spec)
+    assert report['tables']['captures']['reused']==0 and report['tables']['captures']['selected']==table.num_rows
+
+
 def test_narrow_fix_rebuilds_the_whole_receipt_and_reuses_the_rest_untouched(tmp_path,fixture):
     def stale(rows):
         on_receipt(rows,'/b.jsonl.gz')[0]['http_status']=299

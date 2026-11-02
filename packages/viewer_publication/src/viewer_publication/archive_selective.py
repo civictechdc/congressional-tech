@@ -120,6 +120,29 @@ def _source(pin):
     return pin['path'] if pin['kind']=='parquet' else {k:pin[k] for k in ('metadata_location','table_uuid','snapshot','schema_id')}
 
 
+NULL_TYPES={'string':'VARCHAR','int':'INT','long':'BIGINT','boolean':'BOOLEAN'}
+
+
+def _base_columns(pin):
+    """Column names a parquet base actually has; None for a native table (it carries the lake schema)."""
+    return set(pq.read_schema(pin['path']).names) if pin['kind']=='parquet' else None
+
+
+def _seed_columns(name,pin):
+    """The lake schema's columns from the base, verbatim; a nullable column the base predates is NULL.
+
+    A base written before a schema gained a column (v21 captures before mapping_version and
+    original_path) is still copied verbatim: the absent value is unknown, and NULL says so.
+    """
+    have=_base_columns(pin);columns=[];added=[]
+    for field in tables.load_schema(name)['fields']:
+        if have is None or field['name'] in have:columns.append(f'i."{field["name"]}"');continue
+        if field.get('required') or field['type'] not in NULL_TYPES:
+            raise SelectiveStop(f'{name}: the base lacks required or untyped column {field["name"]}')
+        columns.append(f'cast(NULL AS {NULL_TYPES[field["type"]]}) AS "{field["name"]}"');added.append(field['name'])
+    return ','.join(columns),added
+
+
 def _input(name,pin):
     return tables.table_input(name,_source(pin))
 
@@ -275,7 +298,11 @@ def _seed(run):
     for name in ALL_TABLE_NAMES:
         if name in seeded:continue
         directory=run.attempt/('seed-'+name);directory.mkdir();_ensure_table(run,name,directory)
-        columns=','.join(f'i."{f["name"]}"' for f in tables.load_schema(name)['fields'])
+        expected=run.state['selection'][name]['base']-run.state['selection'][name]['selected']
+        if not expected:
+            # Everything is selected: nothing to copy, and no reason to read the base's shape.
+            seeded[name]=0;run.save();continue
+        columns,_=_seed_columns(name,run.base[name])
         same=' AND '.join(f'(i.{k} IS NOT DISTINCT FROM e.{k})' for k in SEED_KEYS[name])
         inputs=[_input('incoming',run.base[name])];joins=f'LEFT ANTI JOIN existing e ON {same}';keep=f'NOT {row_predicate(name,where)}'
         if name=='captures' and name in where:
@@ -286,7 +313,6 @@ def _seed(run):
             sql=f'SELECT {columns} FROM incoming i {joins} WHERE {keep}',identity_sql=f"SELECT '{prefix}' AS identity",
             layout=dict(file_bytes=128<<20,row_group_rows=8192,row_group_bytes=32<<20))
         tables._job(run.engine,directory/'append',catalog_root=run.catalog,inputs=inputs,operations=[operation])
-        expected=run.state['selection'][name]['base']-run.state['selection'][name]['selected']
         pin=tables.resolve_tables(engine=run.engine,work=directory/'seeded',catalog_root=run.catalog,tables={name:run.spec['tables'][name]})[name]
         actual=run_job(directory/'count',run.engine,inputs=[tables.table_input('t',pin)],steps=[],outputs=[],
             queries=[dict(name='n',sql='SELECT count(*) AS n FROM t')])['n'][0]['n']
@@ -308,7 +334,9 @@ def _d1(run):
 
 def _rebuilt_diff(run,keys,pin):
     """Per column base versus rebuilt, both ways by primary key: the guard cannot see wrong in-domain values."""
-    pk=list(captures.PK);fields=[f['name'] for f in tables.load_schema('captures')['fields'] if f['name'] not in pk]
+    pk=list(captures.PK);have=_base_columns(run.base['captures'])
+    schema=[f['name'] for f in tables.load_schema('captures')['fields'] if f['name'] not in pk]
+    fields=[c for c in schema if have is None or c in have];added=[c for c in schema if c not in fields]
     same=' AND '.join(f'b.{k}=h.{k}' for k in pk)
     columns=[f"count(*) FILTER (WHERE h.{pk[0]} IS NULL) AS only_base",f"count(*) FILTER (WHERE b.{pk[0]} IS NULL) AS only_rebuilt"]
     columns+=[f'count(*) FILTER (WHERE b.{pk[0]} IS NOT NULL AND h.{pk[0]} IS NOT NULL AND b."{c}" IS DISTINCT FROM h."{c}") AS "{c}"' for c in fields]
@@ -317,7 +345,8 @@ def _rebuilt_diff(run,keys,pin):
             dict(name='old',sql='SELECT base.* FROM base JOIN selected s ON base.receipt_key=s.receipt_key'),
             dict(name='new',sql='SELECT head.* FROM head JOIN selected s ON head.receipt_key=s.receipt_key')],outputs=[],
         queries=[dict(name='diff',sql='SELECT '+','.join(columns)+f' FROM old b FULL JOIN new h ON {same}')])['diff'][0]
-    return {k:v for k,v in rows.items() if v}
+    # Columns the base predates are added values, not differences.
+    return {**{k:v for k,v in rows.items() if v},**({'added_columns':added} if added else {})}
 
 
 def _daily(run):
