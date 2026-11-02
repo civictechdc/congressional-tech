@@ -236,6 +236,15 @@ def check_coverage(args, db, congress, house, report):
     for path in Path(args.mods).glob('CHRG-*.xml'):
         for value in re.findall(r'<eventId>\s*(\d+)\s*</eventId>', path.read_text(errors='replace')):
             mods_named[int(value)].add(path.stem)
+    packages = defaultdict(set)
+    for directory in (args.before, args.after):
+        for event, package in db.execute(f"""SELECT event_id,t['package_id'] FROM (SELECT event_id,unnest(transcripts) AS t
+            FROM read_parquet('{Path(directory) / 'meetings.parquet'}'))""").fetchall():
+            packages[event].add(package)
+    events_of = defaultdict(set)
+    for event, items in packages.items():
+        for package in items:
+            events_of[package].add(event)
     for k in sorted(set(before) | set(after)):
         b, a = before.get(k) or {}, after.get(k) or {}
         if (b.get('state'), b.get('reason')) == (a.get('state'), a.get('reason')):
@@ -250,6 +259,20 @@ def check_coverage(args, db, congress, house, report):
             premise = None if cg is None and hx is None else bool(urls or (hx or {}).get('files'))
         elif reason == 'package_names_meeting_unlinked':
             premise = bool(mods_named.get(event))
+        elif k[1] == 'recording' or reason == 'package_witnesses_unattached':
+            # A package now counts for this meeting only if its own MODS names it alone, or names none on a
+            # one-to-one link. Print what the raw MODS of the meeting's packages state.
+            named = {p: mods(args.mods, p) for p in packages.get(event, ())}
+            names_it = [p for p, m in named.items() if m and m['event_ids'] == [event]]
+            elsewhere = [p for p, m in named.items() if m and m['event_ids'] and m['event_ids'] != [event]]
+            one_to_one = len(packages.get(event, ())) == 1 and all(len(events_of[p]) == 1 for p in packages.get(event, ()))
+            gained = a.get('state') == 'present' and b.get('state') != 'present'
+            premise = (len(names_it) == 1 or (one_to_one and not elsewhere)) if gained else (
+                bool(elsewhere) or not one_to_one or len(names_it) > 1) if named else None
+            if premise is not None:
+                fam.add([event, k[1]], 'premise_holds' if premise else 'premise_fails', before=[b.get('state'), b.get('reason')],
+                        after=[a.get('state'), reason], mods={p: m and m['event_ids'] for p, m in named.items()})
+                continue
         else:
             premise = 'not_checked'
         verdict = 'unread' if premise is None else 'premise_holds' if premise is True else 'premise_fails' if premise is False else 'ambiguous'

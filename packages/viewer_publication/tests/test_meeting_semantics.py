@@ -167,6 +167,13 @@ def test_the_package_whose_mods_names_the_event_attaches(tmp_path):
     assert got == {'A': ('meeting:9001', 9001), 'B': ('package:CHRG-b', None)}
 
 
+def test_a_print_and_its_errata_whose_mods_both_name_the_event_both_attach(tmp_path):
+    # CHRG-117shrg45636 and its errata CHRG-117shrg49900 both state <eventId>321961</eventId>.
+    got = resolve(tmp_path, [record('a', 'mods', [witness('A')], package_id='CHRG-a'), record('b', 'mods', [witness('B')], package_id='CHRG-b')],
+                  [('CHRG-a', 9001), ('CHRG-b', 9001)], {'CHRG-a': [9001], 'CHRG-b': [9001]})
+    assert {occasion for occasion, _ in got.values()} == {'meeting:9001'}
+
+
 def test_an_exclusive_link_whose_mods_names_another_event_stays_a_package(tmp_path):
     got = resolve(tmp_path, [record('a', 'mods', [witness('A')], package_id='CHRG-a')], [('CHRG-a', 9001)], {'CHRG-a': [9002]})
     assert got == {'A': ('package:CHRG-a', None)}

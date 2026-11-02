@@ -69,7 +69,7 @@ def main(argv=None):
     inputs = registry_inputs(work / 'registries') + [
         parquet('captures', scoped_captures(spec, work)),
         parquet('meeting_records', spec['meeting_records']['path']),
-        parquet('appearance_records_input', spec['appearance_records']['path']),
+        parquet('appearance_records_lake', spec['appearance_records']['path']),
         parquet('video_records', args.lake / 'video_records.parquet'),
         parquet('committee_records', args.lake / 'committee_records.parquet'),
         parquet('list', args.release / 'list.parquet'),
@@ -85,6 +85,8 @@ def main(argv=None):
     steps = [
         dict(name='meeting_records_input', sql="SELECT lower(encode(record_sha,'hex')) AS record_sha_hex,parser_version,status,error_type,source,meetings FROM meeting_records", materialize=True),
         selected_record_step('meeting_records', 'meeting_records_input'),
+        # The lake table as the model's prepared appearance input (archive_model._normalize_appearance_rows).
+        dict(name='appearance_records_input', sql="SELECT lower(encode(record_sha,'hex')) AS record_sha_hex,* EXCLUDE(record_sha),cast(NULL AS VARCHAR) AS context_url FROM appearance_records_lake", materialize=True),
         selected_record_step('appearance_records', 'appearance_records_input'),
         selected_record_step('video_records', 'video_records'),
         selected_record_step('committee_records', 'committee_records'),
@@ -97,6 +99,9 @@ def main(argv=None):
         dict(name='meeting_transcript_links', sql="""SELECT event_id,t['package_id'] AS package_id FROM (SELECT event_id,unnest(transcripts) AS t FROM released_meetings)
             UNION SELECT event_id,package_id FROM meeting_mods_links""", materialize=True),
         dict(name='package_meeting_links', sql=sql('package-meeting-links'), materialize=True),
+        # Curated URL variants live outside the frozen inputs; with none, Senate page keys may differ
+        # from the release, equally on both sides of a before/after comparison.
+        dict(name='url_variants', sql='SELECT cast(NULL AS VARCHAR) AS canonical_url,cast(NULL AS VARCHAR) AS variant_url WHERE false', materialize=True),
         *appearance_steps(),
         dict(name='witnesses_export', sql=WITNESSES_SQL, materialize=True),
         dict(name='meeting_document_urls', sql=sql('meeting-document-urls'), materialize=True),
