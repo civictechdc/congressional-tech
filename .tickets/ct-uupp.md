@@ -18,3 +18,9 @@ spec-run 2026-11-02: D1 batch 3 is the single assembly receipt receipts/document
 
 Staging splits a receipt above a byte or line threshold into line ranges, with resume per range and identical output to whole-receipt staging (a test proves equality on a split receipt); peak RSS on the 581 MB receipt is bounded (measured) at the normal batch budget.
 
+
+## Notes
+
+**2026-11-02T15:56:08Z**
+
+2026-11-02 spec-run: two attempts on the 581 MB receipt. At guard 16 GiB the guard stopped it at 16.1 (physical 15.1); at guard 20 the batch monitor's 16 GiB physical cap (14 GiB pool, capture_backfill.receipt_profile) stopped it at 18.0 RSS / 18.8 physical. In both, RSS rose about 8 GiB in about 1 s, roughly 6 s into staging, before any engine step metrics, which points at Python-side receipt loading rather than the engine. Workaround for this run: pool 18 GiB (24 GiB physical cap), guard 24, per e2's plan; a profile of the jump is requested.
