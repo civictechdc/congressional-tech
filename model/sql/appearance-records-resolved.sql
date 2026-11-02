@@ -96,10 +96,18 @@ WITH candidate_appearance_shas AS (
 ), house_list_links AS (
  SELECT record_sha_hex,trim(unnest(a['document_links'])) AS link FROM linked_house_lists
 ), stated_list_events AS (
- -- ct-x78c: a House witness list with no meeting-id still states its event in its own document
- -- links (/meetings/<c>/<sc>/<yyyymmdd>/<event>/).
+ -- ct-x78c: a House witness list with no meeting-id still states its event, in its own document
+ -- links (/meetings/<c>/<sc>/<yyyymmdd>/<event>/) and in its retained file name (wlist/<event>.xml).
  SELECT record_sha_hex,try_cast((regexp_match(link,'(?i)/meetings/[A-Za-z0-9]+/[A-Za-z0-9]+/[0-9]{8}/([0-9]+)/'))[1] AS BIGINT) AS event_id
  FROM house_list_links
+ UNION ALL
+ -- Retained lists name their event only in the receipt's file path; those rows are not good fetches,
+ -- so every capture row of the body counts (captures.original_path, relative paths only).
+ SELECT encode(c.sha256,'hex'),try_cast((regexp_match(c.original_path,'(?i)(?:^|/)wlist/([0-9]+)[.]xml$'))[1] AS BIGINT)
+ FROM captures c
+ JOIN (SELECT DISTINCT record_sha_hex FROM selected_appearance_records
+  WHERE source='house_xml' AND status='completed' AND event_id IS NULL) h ON encode(c.sha256,'hex')=h.record_sha_hex
+ WHERE c.original_path IS NOT NULL
 ), list_events AS (
  -- One event only: links or paths that disagree state no event.
  SELECT record_sha_hex,min(event_id) AS event_id FROM stated_list_events WHERE event_id IS NOT NULL

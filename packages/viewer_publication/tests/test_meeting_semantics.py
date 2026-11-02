@@ -131,7 +131,7 @@ def record(tag, source, appearances, event_id=None, package_id=None):
 LIST = 'https://docs.house.gov/meetings/HM/HM00/20130718/{}/HHRG-113-HM00-Wstate-X-20130718.pdf'
 
 
-def resolve(tmp_path, records, links, named):
+def resolve(tmp_path, records, links, named, paths=()):
     """Witness rows per name, from the maintained package-link and appearance SQL."""
     engine = NativeDatasets.from_config(os.environ['DOCSPEC_JOB_CONFIG'])
     inputs = [
@@ -147,7 +147,12 @@ def resolve(tmp_path, records, links, named):
         json_input(tmp_path, 'selected_meeting_records', [], record_sha_hex='Utf8', status='Utf8', meetings=list_of(struct(updated='Utf8'))),
     ]
     steps = [dict(name='selected_appearance_records', sql='SELECT * FROM appearance_records_input', materialize=True),
-             dict(name='captures', sql=CAPTURES, materialize=True),
+             dict(name='captures', sql=CAPTURES + ''.join(
+                 f" UNION ALL SELECT 'fetch' AS mode,cast(NULL AS BOOLEAN) AS complete,'failed' AS outcome,cast(NULL AS INT) AS http_status,"
+                 f"arrow_cast(decode('{sha}','hex'),'FixedSizeBinary(32)') AS sha256,'house/witness-xml' AS family,cast(NULL AS VARCHAR) AS url,"
+                 f"cast(NULL AS VARCHAR) AS requested_url,cast(NULL AS VARCHAR) AS context_url,cast(NULL AS VARCHAR) AS member_path,"
+                 f"cast(NULL AS VARCHAR) AS sniffed_format,cast(NULL AS VARCHAR) AS media_type,cast(NULL AS VARCHAR) AS retrieved_at,"
+                 f"'{path}' AS original_path" for sha, path in paths), materialize=True),
              dict(name='package_meeting_links', sql=sql('package-meeting-links'), materialize=True),
              dict(name='appearance_records_resolved', sql=sql('appearance-records-resolved'), materialize=True)]
     found = run_job(tmp_path, engine, inputs=inputs, steps=steps, outputs=[], queries=[
@@ -194,3 +199,9 @@ def test_a_package_mods_names_its_meeting_as_a_link(tmp_path):
     found = run_job(tmp_path, engine, inputs=inputs, steps=steps, outputs=[], queries=[
         dict(name='links', sql='SELECT package_id,event_id FROM meeting_mods_links')])['links']
     assert found == [dict(package_id='CHRG-m', event_id=5)]  # 404 is no meeting held here.
+
+
+def test_a_retained_house_list_takes_the_event_its_file_name_states(tmp_path):
+    house = record('wl', 'house_xml', [witness('W')])
+    got = resolve(tmp_path, [house], [], {}, paths=[(house['record_sha_hex'], 'external-sources/hearing-text/docs_house_xml/wlist/108265.xml')])
+    assert got == {'W': ('meeting:108265', 108265)}
