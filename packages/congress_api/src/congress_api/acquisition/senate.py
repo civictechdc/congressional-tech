@@ -163,6 +163,8 @@ def request(url, receipts, *, allowed=(200, 404)):
         response = http.get_with_retry(None, url, allowed=allowed)
     except (ValueError, RuntimeError, OSError) as error:
         receipt.update(completed_at=timestamp(), outcome="error", error=str(error))
+        if isinstance(getattr(error, "status", None), int):
+            receipt["status_code"] = error.status  # the host answered, with a refusal
         raise
     receipt.update(completed_at=timestamp(), status_code=response.status_code,
                    outcome="retrieved" if response.status_code == 200 else "not_found" if response.status_code == 404 else "unsupported")
@@ -365,12 +367,14 @@ def main(meetings, state_dir, output_dir, seed_cache=None, offline=False, as_of=
                     aged.append(url)
             aged.sort(key=lambda u: (pages.get(u, {})["checked"], u))
             page_failures, failed_here = [], []
-            fresh_failures = in_a_row = answered = 0
+            fresh_failures = in_a_row = answered = attempted = 0
+            last_answer = -1
             outage = None
             for url in urgent + aged:
                 if limit is not None and live_pages >= limit and not importing:
                     break
                 page_check = {}
+                attempted += 1
                 # Only a failure seen while its host was answering is a known page failure.
                 # A page that never answered because the site was down is not.
                 already_failed = pages.get(url, {}).get("status") == "error" and bool(
@@ -388,7 +392,10 @@ def main(meetings, state_dir, output_dir, seed_cache=None, offline=False, as_of=
                     if already_failed:
                         page_check["host_answered"] = True  # still a known page failure until it answers
                     saved.setdefault("workflow", {}).setdefault(url, {})["last_check"] = page_check
-                    failed_here.append(url)
+                    # Whether the host sent any HTTP status for this page at all.
+                    got_status = any("status_code" in receipt for receipt in page_check.get("receipts", []))
+                    if not already_failed:
+                        failed_here.append((url, attempted, got_status))
                     totals["pages failed"] += 1
                     page_failures.append(f"{url}: {error}")
                     print(f"{host}: page failed, retained with its reason: {page_failures[-1]}", flush=True)
@@ -400,7 +407,7 @@ def main(meetings, state_dir, output_dir, seed_cache=None, offline=False, as_of=
                         outage = f"{host}: site-wide page outage; {in_a_row} pages failed in a row; last: {page_failures[-1]}"
                         break
                     continue
-                answered, in_a_row = answered + 1, 0
+                answered, in_a_row, last_answer = answered + 1, 0, attempted
                 totals["pages seeded" if importing else "pages fetched"] += 1
                 if not importing and totals["pages fetched"] % 25 == 0:
                     print(f"{host}: {totals['pages fetched']} pages refreshed; checkpoint saved", flush=True)
@@ -411,15 +418,17 @@ def main(meetings, state_dir, output_dir, seed_cache=None, offline=False, as_of=
                 pages = saved["pages"]  # normalizing replaces the site, so keep writing to the live one
                 if not importing:
                     live_pages += 1
-            if fresh_failures >= OUTAGE_MIN_FAILURES and not answered:
-                # Every fresh attempt failed and no page answered at all: the site, not its pages.
-                outage = f"{host}: site-wide page outage; {fresh_failures} pages failed, none answered; first: {page_failures[0]}"
+            # A fresh failure is a known page failure only if it got an HTTP status and the host
+            # answered a later page: failures after the last answer may be the site going down.
+            unconfirmed = [url for url, position, got_status in failed_here if not got_status or position > last_answer]
+            if not outage and len(unconfirmed) >= OUTAGE_MIN_FAILURES:
+                outage = (f"{host}: site-wide page outage; {len(unconfirmed)} of {fresh_failures} failed pages had no "
+                          f"HTTP status or no answered page after them; first: {unconfirmed[0]}")
             if outage:
                 # Recorded above as page outcomes; the host error makes the run fail.
                 raise RuntimeError(outage)
-            if answered:
-                # The host answered in this run, so its failed pages are known page failures.
-                for url in failed_here:
+            for url, position, got_status in failed_here:
+                if got_status and position < last_answer:
                     saved["workflow"][url]["last_check"]["host_answered"] = True
             if (limit is None or live_pages < limit) and not page_failures:
                 saved["versions"] = versions[host]

@@ -314,8 +314,9 @@ def test_a_failed_listing_still_fails_the_run(tmp_path, monkeypatch):
         records.main(path, tmp_path, tmp_path, as_of=date(2026,9,28), site=[host])
 
 
-def outage_run(tmp_path, monkeypatch, urls, *, answering=(), **kwargs):
+def outage_run(tmp_path, monkeypatch, urls, *, answering=(), statusless=(), **kwargs):
     import gzip
+    from congress_api.transport.http import HttpRequestError
     host = 'indian.senate.gov'
     path = tmp_path/'native.jsonl.gz'; path.write_bytes(gzip.compress(b''))
     monkeypatch.setattr(records, 'listed', lambda *a, **k: ([(date(2026,8,26), url, 'Hearing') for url in urls], {'wordpress': True}))
@@ -324,7 +325,9 @@ def outage_run(tmp_path, monkeypatch, urls, *, answering=(), **kwargs):
         fetched.append(target)
         if target in answering:
             return SimpleNamespace(status_code=404, content=b'')
-        raise RuntimeError('403 Forbidden')
+        if target in statusless:
+            raise OSError('connection refused')
+        raise HttpRequestError('403 Forbidden', 403)
     monkeypatch.setattr(records_http, 'get_with_retry', fetch)
     records.main(path, tmp_path, tmp_path, as_of=date(2026,9,28), site=[host], **kwargs)
     return fetched
@@ -403,6 +406,27 @@ def test_known_page_failures_do_not_trip_an_outage(tmp_path, monkeypatch):
     assert list(tmp_path.glob('*.csv'))
     saved = records_read_state(tmp_path/'senate.json.gz')['indian.senate.gov']
     assert all(saved['workflow'][url]['last_check']['host_answered'] for url in urls)
+
+
+def test_failures_after_the_last_answer_are_not_confirmed_and_fail_the_run(tmp_path, monkeypatch):
+    # Red-e2: one page answers, then the site goes down. Defect: marking every failure known
+    # because some page answered, so the next run exits 0 over the outage.
+    urls = hearing_urls(6)
+    with pytest.raises(RuntimeError, match='site-wide page outage'):
+        outage_run(tmp_path, monkeypatch, urls, answering={urls[0]})
+    saved = records_read_state(tmp_path/'senate.json.gz')['indian.senate.gov']
+    assert not any(record.get('last_check', {}).get('host_answered') for record in saved['workflow'].values())
+    with pytest.raises(RuntimeError, match='site-wide page outage'):
+        outage_run(tmp_path, monkeypatch, urls, answering={urls[0]})
+
+
+def test_failures_with_no_http_status_are_not_known_page_failures(tmp_path, monkeypatch):
+    # Pages that got no HTTP status at all, even before a later answer, are not page outcomes.
+    urls = hearing_urls(6)
+    with pytest.raises(RuntimeError, match='no\nHTTP status|no HTTP status'):
+        outage_run(tmp_path, monkeypatch, urls, answering={urls[-1]}, statusless=set(urls[:3]))
+    saved = records_read_state(tmp_path/'senate.json.gz')['indian.senate.gov']
+    assert not any(saved['workflow'][url]['last_check'].get('host_answered') for url in urls[:3])
 
 
 def test_the_host_answered_marker_survives_a_round_trip(tmp_path, monkeypatch):
