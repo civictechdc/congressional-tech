@@ -389,6 +389,9 @@ def execute(spec,*,runtime_factory=None,storage_factory=None,process_runner=None
                 spec['_model_identity'].require(spec['model_spec']['path']);require_configuration()
                 if daily['status']!='ready':return daily
                 selected_model=daily['model'];keys=daily['receipt_keys'];provenance=daily['provenance'];verified=daily['verified_files']
+            # Gate 5: every pinned derived row names a current or compatible producer, before any build.
+            from viewer_publication.producer_proof import require_producers
+            require_producers(selected_model,engine=model,work=directory/'producer-proof')
             def probe(name,context):
                 target_identity.require(spec['targets']['path']);require_configuration()
                 probe_spec=spec

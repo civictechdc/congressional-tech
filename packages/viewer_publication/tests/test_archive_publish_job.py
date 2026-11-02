@@ -309,6 +309,13 @@ def test_metadata_first_probe_selectors_are_required_and_not_daily_owner_options
             probe_commands(spec,release=tmp_path/'release',release_id='a'*64,probe_selectors=invalid)
 
 
+# Gate 5 (ct-tk10) refuses captures without mapping_version; cluster e1 stages that column.
+# Strict: these flip to failures, and the marks must go, once e1's captures carry it.
+GATE5_PENDING_E1=pytest.mark.xfail(strict=True,raises=ValueError,
+    reason='gate 5 refuses captures without mapping_version until cluster e1 lands')
+
+
+@GATE5_PENDING_E1
 def test_execute_binds_matching_destination_and_records_actual_native_probe_commands(tmp_path):
     from docspec_client.client import NativeDatasets
     from viewer_publication.archive_publish_job import execute,load_spec
@@ -404,7 +411,7 @@ def test_raw_startup_refuses_unqualified_or_unmeasured_targets_before_sdk(tmp_pa
     assert not Path(value['work']).exists()
 
 
-@pytest.mark.parametrize('outcome',['completed','pending','backfill_required'])
+@pytest.mark.parametrize('outcome',[pytest.param('completed',marks=GATE5_PENDING_E1),'pending','backfill_required'])
 def test_actual_execute_daily_path_publishes_only_completed_work(tmp_path,outcome):
     """Only external catalog storage, SDK and browser execution are adapted."""
     from copy import deepcopy
