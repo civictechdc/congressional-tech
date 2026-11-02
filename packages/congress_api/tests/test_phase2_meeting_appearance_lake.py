@@ -1061,18 +1061,8 @@ def test_d4_candidate_queries_and_native_iceberg_commits(tmp_path: Path):
     )
 
     engine = NativeDatasets.from_config(cfg)
-    cm_candidates = meeting_records.query_candidate_house_xml(
-        engine=engine, work=tmp_path / "q_cm", captures=captures_path, readings=readings_path
-    )
-    assert [r["sha"] for r in cm_candidates] == [sha_cm.hex()]
-
-    app_candidates = appearance_records.query_candidate_inputs(
-        engine=engine, work=tmp_path / "q_app", captures=captures_path, readings=readings_path
-    )
-    assert [r["sha"] for r in app_candidates["house_xml"]] == [sha_wl.hex()]
-    assert {r["sha"] for r in app_candidates["mods"]} == {sha_mods_member.hex(), sha_mods_context.hex()}
-    assert [r["sha"] for r in app_candidates["senate_page"]] == [sha_senate.hex()]
-
+    # Candidate routing is _record_producer.ROUTES, checked against the model's expected
+    # sets in test_phase1_model_profile; the readings-only route queries are gone (ct-kn6d).
     # Stage and commit both tables to a local Iceberg catalog
     m_row = meeting_records.build_meeting_record_row(
         sha_cm.hex(),

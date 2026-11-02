@@ -1014,30 +1014,6 @@ def produce_meeting_records(
     return table(rows)
 
 
-CANDIDATE_HOUSE_XML_SQL = """
-SELECT encode(r.body_sha, 'hex') AS sha
-FROM readings r
-WHERE r.parser='xml' AND r.status='completed' AND r.xml_root='committee-meeting'
-GROUP BY r.body_sha
-""".strip()
-
-
-def query_candidate_house_xml(*, engine: Any, work: Path, captures: Any, readings: Any) -> list[dict[str, Any]]:
-    """Query `readings` via the native engine for `<committee-meeting>` XML body SHAs."""
-    from ..retention.provenance import run_job
-    from .tables import table_input
-
-    res = run_job(
-        Path(work),
-        engine,
-        inputs=[table_input("captures", captures), table_input("readings", readings)],
-        steps=[],
-        outputs=[],
-        queries=[{"name": "house_cm", "sql": CANDIDATE_HOUSE_XML_SQL}],
-    )
-    return list(res["house_cm"])
-
-
 def stage(
     *,
     captures: Any,

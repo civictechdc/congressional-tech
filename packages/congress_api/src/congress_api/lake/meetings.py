@@ -2,7 +2,6 @@
 
 from .meeting_records import (
     ARROW_SCHEMA,
-    CANDIDATE_HOUSE_XML_SQL,
     COLLECTION_STATES_STRUCT,
     COMMITTEE_STRUCT,
     DEFAULT_PARSER_VERSION,
@@ -44,14 +43,12 @@ from .meeting_records import (
     normalize_house_committee_code,
     normalize_record_sha,
     produce_meeting_records,
-    query_candidate_house_xml,
     stage,
     table,
 )
 
 __all__ = [
     "ARROW_SCHEMA",
-    "CANDIDATE_HOUSE_XML_SQL",
     "COLLECTION_STATES_STRUCT",
     "COMMITTEE_STRUCT",
     "DEFAULT_PARSER_VERSION",
@@ -93,7 +90,6 @@ __all__ = [
     "normalize_house_committee_code",
     "normalize_record_sha",
     "produce_meeting_records",
-    "query_candidate_house_xml",
     "stage",
     "table",
 ]
