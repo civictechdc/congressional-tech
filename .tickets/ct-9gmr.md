@@ -41,3 +41,7 @@ Code on worktree-agent-a5550c04138214670 @ b3c4aa3c. Review verdict: merge, stay
 **2026-11-02T16:28:57Z**
 
 2026-11-02 (lead): impl-e2: r1b-e2 rebased onto d5574752 at 2ace3363, r1b-e2-map at f37e55ea; red-e2's 7 items done (the != to < mutant is equivalent); green's (b) and (c) done; (a) archive-jobs.json rss_gb stays unset until R3 measures peaks, and must be set before the merge to main. Integration conflict: the e1 guard read a v1 registry; the guard now accepts only the current mapping unless explicitly overridden (fix in progress).
+
+**2026-11-02T16:30:23Z**
+
+2026-11-02 (lead): r1b-e2 (6141a794) and r1b-e2-map (80b7ff85) merged into integrate-round1 by fast-forward (23 commits). Before the merge to main: archive-jobs.json rss_gb must be set from measured peaks (green-e2 gap a).
