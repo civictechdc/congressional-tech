@@ -105,11 +105,53 @@ def test_native_checks_detect_duplicates_nulls_and_missing_nested_targets(tmp_pa
         ('meetings_export', "SELECT cast(118001 AS BIGINT) AS event_id,make_array(named_struct('list_row',99)) AS transcripts"),
         ('witnesses_export', "SELECT 'present-witness' AS witness_key"),
     ]]
+    schema = build_schema()
+    for table in schema['files']:  # This fixture writes only the columns it checks.
+        for column in table['columns']:
+            column['nullable'] = not (table['name'], column['name']) in {('sources.parquet', 'url'), ('members.parquet', 'bioguide_id')}
     result = run_job(tmp_path, engine, inputs=[], steps=steps, outputs=[],
-                     queries=publication_checks(build_schema(), {'members', 'meetings', 'witnesses'}))
-    assert result['relationship_invariants'] == [dict(missing_primary_link=2, duplicate_document_key=1, null_sources_url=1, invalid_members_key=2,
+                     queries=publication_checks(schema, {'members', 'meetings', 'witnesses'}))
+    assert result['relationship_invariants'] == [dict(missing_primary_link=2, duplicate_document_key=1, null_sources_url=1, null_members_bioguide_id=1, invalid_members_key=2,
         invalid_meetings_key=0, invalid_witnesses_key=0, missing_document_meeting=2,
         missing_transcript_document=1, missing_document_witness=1)]
+
+
+def test_every_registry_column_declares_nullability():
+    schema = build_schema()
+    for table in schema['files']:
+        assert table['nullability'], table['name']
+        assert all(isinstance(column['nullable'], bool) for column in table['columns']), table['name']
+    tables = {t['name'].removesuffix('.parquet'): t for t in schema['files']}
+    required = lambda name: {c['name'] for c in tables[name]['columns'] if not c['nullable']}
+    # Data model §8.1 spot checks: types stated without "nullable" are required.
+    assert {'url', 'is_saved', 'list_row', 'ordinal'} <= required('sources')
+    assert {'filename', 'format', 'date_kind', 'saved_kind', 'hidden'} <= required('list')
+    assert 'title' not in required('list') and 'member_path' not in required('sources')
+
+
+@pytest.mark.parametrize('mutation,expected', [
+    (lambda s: s['files'][0]['columns'][0].pop('nullable'), 'without a boolean nullable'),
+    (lambda s: s['files'][0]['columns'][0].update(nullable='no'), 'without a boolean nullable'),
+    (lambda s: s['files'][0].pop('nullability'), 'nullability basis'),
+])
+def test_column_without_nullable_is_refused(mutation, expected):
+    schema = build_schema()
+    mutation(schema)
+    with pytest.raises(ValueError, match=expected):
+        validate_schema(schema)
+
+
+def test_non_null_column_without_relation_is_refused():
+    schema = build_schema()
+    # Published but neither core nor auxiliary: the old code skipped its checks silently.
+    with pytest.raises(ValueError, match='no export relation: members.bioguide_id'):
+        publication_checks(schema, set(), published=['list.parquet', 'members.parquet'])
+    # An unpublished table writes nothing, so it has nothing to check.
+    assert publication_checks(schema, set(), published=['list.parquet'])
+    sql = publication_checks(schema, set(), published=['list.parquet'])[0]['sql']
+    for core in ['ordered WHERE "filename"', 'details WHERE "link_key"', 'links WHERE "list_row"',
+                 'url_keys WHERE "lookup_key"', 'source_rows WHERE "url"', 'recovery_rows WHERE "body"']:
+        assert core in sql
 
 
 def test_output_footers_cannot_silently_drift_from_reference_types(tmp_path):
@@ -120,3 +162,33 @@ def test_output_footers_cannot_silently_drift_from_reference_types(tmp_path):
     pq.write_table(pa.table({'bioguide_id': [1]}), path)
     with pytest.raises(ValueError, match='members.bioguide_id'):
         validate_parquet_fields(build_schema(), [path])
+
+
+def test_null_in_declared_list_column_refuses_before_manifest(tmp_path):
+    """Injected defect: the model emits a NULL filename; the writing job refuses it."""
+    import json
+    import shutil
+    from pathlib import Path
+    from archive_job_fixture import real_model_spec
+    from docspec_client.client import NativeDatasets
+    from viewer_publication.archive_model import build_release
+    from viewer_publication.archive_model_profile import ROOT, _definition_hashes
+    spec, _, _ = real_model_spec(tmp_path)
+    broken = tmp_path / 'broken-root'
+    for relative in _definition_hashes(ROOT):
+        target = broken / relative
+        target.parent.mkdir(parents=True, exist_ok=True)
+        shutil.copyfile(ROOT / relative, target)
+    sql = broken / 'model/sql/document-normalized.sql'
+    text = sql.read_text()
+    assert 's.filename,a.title' in text
+    sql.write_text(text.replace('s.filename,a.title', 'cast(NULL AS VARCHAR) AS filename,a.title', 1))
+    output = tmp_path / 'release'
+    with NativeDatasets.from_config(os.environ['DOCSPEC_JOB_CONFIG']) as engine:
+        with pytest.raises(ValueError, match='Release key invariant failed'):
+            build_release(**{name: spec[name]['path'] for name in ['captures', 'readings', 'filename_readings']},
+                parser_versions=spec['parser_versions'], catalog_version=spec['catalog_version'],
+                engine=engine, output=output, scratch=tmp_path / 'model', root=broken)
+    assert not (output / 'manifest.json').exists()
+    reports = {q['name']: q['data'] for q in json.loads((tmp_path / 'model/result.json').read_text())['queries']}
+    assert reports['relationship_invariants'][0]['null_list_filename'] == 1

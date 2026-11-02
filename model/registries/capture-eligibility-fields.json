@@ -1,5 +1,5 @@
 [
-  {"name":"capture_disposition","type":"string","meaning":"Eligibility under the pinned recovery and capture scope policy"},
-  {"name":"capture_reason","type":"string","meaning":"Reason for the capture eligibility decision"},
-  {"name":"capture_decision_id","type":"string","meaning":"Qualified recovery decision supporting satisfaction, when present"}
+  {"name":"capture_disposition","type":"string","nullable":false,"meaning":"Eligibility under the pinned recovery and capture scope policy"},
+  {"name":"capture_reason","type":"string","nullable":false,"meaning":"Reason for the capture eligibility decision"},
+  {"name":"capture_decision_id","type":"string","nullable":true,"meaning":"Qualified recovery decision supporting satisfaction, when present"}
 ]

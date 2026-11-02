@@ -67,3 +67,26 @@ def test_compound_binary_work_key_appends_and_repeats_as_noop(tmp_path,binary_ty
     stored=pa.concat_tables([pq.read_table(f['path']) for f in first['files']+third['files']])
     assert set(zip(stored['body_sha'].to_pylist(),stored['parser_version'].to_pylist()))=={
         (b'a'*32,'v1'),(b'a'*32,'v2'),(b'b'*32,'v1')}
+
+
+def test_append_refuses_null_required_field(tmp_path):
+    """Gate 4 at the lake: a NULL in a required (non-key) field never commits.
+
+    Characterization pin: the pinned engine already refuses the batch, so
+    append_rows adds no second NULL scan. Parquet-kind model inputs never pass
+    through append_rows, so this cannot see NULLs in them.
+    """
+    from congress_api.lake.tables import create_table, append_rows
+    engine=NativeDatasets.from_config(os.environ['DOCSPEC_JOB_CONFIG'])
+    schema={'type':'struct','schema-id':0,'identifier-field-ids':[1],
+            'fields':[{'id':1,'name':'receipt_key','required':True,'type':'string'},
+                      {'id':2,'name':'mode','required':True,'type':'string'}]}
+    table=dict(namespace=['archive'],name='captures_null')
+    create_table(engine=engine,work=tmp_path/'create',catalog_root=tmp_path/'catalog',
+        table=table,schema=schema,location=tmp_path/'data',create_namespace=True)
+    source=tmp_path/'source.parquet'
+    pq.write_table(pa.table({'receipt_key':['one','two'],'mode':['fetch',None]}),source)
+    from docspec_client.models import DocSpecFailure
+    with pytest.raises(DocSpecFailure, match="Column 'mode' is declared as non-nullable but contains null values"):
+        append_rows(source,engine=engine,work=tmp_path/'append',catalog_root=tmp_path/'catalog',
+            table=table,keys=['receipt_key'],definition='mapping-v1')

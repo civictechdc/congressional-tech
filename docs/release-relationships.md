@@ -18,26 +18,28 @@ Identity: `list_row` (row_position; release).
 
 list_row is virtual: zero-based physical row position, continued across manifest shard row ranges. Never reuse it across releases.
 
-| Field | Published type | Meaning |
-| --- | --- | --- |
-| `filename` | `string` | Displayed filename |
-| `title` | `string` | Document or publisher title when known |
-| `document_kind` | `list<dict>` | Document kinds |
-| `document_family` | `list<dict>` | Filename document families |
-| `committee_keys` | `list<dict>` | Congress.gov committee system codes |
-| `chambers` | `list<dict>` | Chambers associated with the document |
-| `congress` | `int16` | Congress number when unambiguous |
-| `format` | `dict` | Original file format |
-| `document_date` | `date32` | Date of the document |
-| `first_captured` | `date32` | First good fetch date |
-| `date_kind` | `dict` | Basis of the archive date |
-| `saved_kind` | `dict` | Original file or recovery |
-| `hidden` | `boolean` | Excluded from search by review; public links still resolve |
-| `meeting_keys` | `list<dict>` | Decimal event IDs |
-| `measure_keys` | `list<dict>` | Bill and nomination identifiers |
-| `bioguide_ids` | `list<dict>` | Member Bioguide identifiers |
-| `witness_keys` | `list<dict>` | Witness appearance identifiers |
-| `version_keys` | `list<dict>` | Hex endpoint keys shared by editions |
+| Field | Published type | Nullable | Meaning |
+| --- | --- | --- | --- |
+| `filename` | `string` | no | Displayed filename |
+| `title` | `string` | yes | Document or publisher title when known |
+| `document_kind` | `list<dict>` | no | Document kinds |
+| `document_family` | `list<dict>` | no | Filename document families |
+| `committee_keys` | `list<dict>` | no | Congress.gov committee system codes |
+| `chambers` | `list<dict>` | no | Chambers associated with the document |
+| `congress` | `int16` | yes | Congress number when unambiguous |
+| `format` | `dict` | no | Original file format |
+| `document_date` | `date32` | yes | Date of the document |
+| `first_captured` | `date32` | yes | First good fetch date |
+| `date_kind` | `dict` | no | Basis of the archive date |
+| `saved_kind` | `dict` | no | Original file or recovery |
+| `hidden` | `boolean` | no | Excluded from search by review; public links still resolve |
+| `meeting_keys` | `list<dict>` | no | Decimal event IDs |
+| `measure_keys` | `list<dict>` | no | Bill and nomination identifiers |
+| `bioguide_ids` | `list<dict>` | no | Member Bioguide identifiers |
+| `witness_keys` | `list<dict>` | no | Witness appearance identifiers |
+| `version_keys` | `list<dict>` | no | Hex endpoint keys shared by editions |
+
+Nullability: Nullability transcribes data model §8.1 (list.parquet bullet): a type without "nullable" there is required. A required column is refused at write time.
 
 - `version_keys[]`: Shared lowercase hexadecimal endpoint keys identify different editions, not alternate formats of one document. A document can have several keys.
 - `document_kind[]`: Embedded classification values, not foreign keys.
@@ -56,43 +58,45 @@ Identity: `link_key` (primary_key; release; a recovery-only document's key can m
 
 list_row stays virtual: zero-based physical row position, continued across manifest shard row ranges; never reuse it across releases. Older releases carry only the detail columns; their rows pair with list by list_row.
 
-| Field | Published type | Meaning |
-| --- | --- | --- |
-| `link_key` | `fixed[8]` | Stable public body or original-link key |
-| `saved_body` | `fixed[32]` | SHA-256 of original bytes |
-| `saved_suffix` | `dict` | Recorded physical object suffix |
-| `saved_media_type` | `dict` | Media type of the saved file |
-| `saved_bytes` | `int64` | Size of original bytes before storage compression |
-| `document_date_source` | `dict` | Filename, content or meeting date basis |
-| `in_archive_since` | `date32` | Earliest known archive import date |
-| `removed_on` | `date32` | Date the publisher removed the document |
-| `review_note` | `string` | Review explanation |
-| `review_decided_at` | `date32` | Date of the applying review |
-| `src_start` | `int32` | First source row for this document |
-| `src_len` | `int32` | Number of source rows for this document |
-| `rec_start` | `int32` | First recovery row for this document |
-| `rec_len` | `int32` | Number of recovery rows for this document |
-| `alternates` | `list<struct<format dict,body fixed[32],suffix dict,size int64>>` | One saved file per other format |
-| `package_id` | `string` | GovInfo package identifier |
-| `facts` | `list<struct<field dict,value string>>` | Selected filename facts, one value per entry |
-| `filename` | `string` | Displayed filename |
-| `title` | `string` | Document or publisher title when known |
-| `document_kind` | `list<dict>` | Document kinds |
-| `document_family` | `list<dict>` | Filename document families |
-| `committee_keys` | `list<dict>` | Congress.gov committee system codes |
-| `chambers` | `list<dict>` | Chambers associated with the document |
-| `congress` | `int16` | Congress number when unambiguous |
-| `format` | `dict` | Original file format |
-| `document_date` | `date32` | Date of the document |
-| `first_captured` | `date32` | First good fetch date |
-| `date_kind` | `dict` | Basis of the archive date |
-| `saved_kind` | `dict` | Original file or recovery |
-| `hidden` | `boolean` | Excluded from search by review; public links still resolve |
-| `meeting_keys` | `list<dict>` | Decimal event IDs |
-| `measure_keys` | `list<dict>` | Bill and nomination identifiers |
-| `bioguide_ids` | `list<dict>` | Member Bioguide identifiers |
-| `witness_keys` | `list<dict>` | Witness appearance identifiers |
-| `version_keys` | `list<dict>` | Hex endpoint keys shared by editions |
+| Field | Published type | Nullable | Meaning |
+| --- | --- | --- | --- |
+| `link_key` | `fixed[8]` | no | Stable public body or original-link key |
+| `saved_body` | `fixed[32]` | no | SHA-256 of original bytes |
+| `saved_suffix` | `dict` | no | Recorded physical object suffix |
+| `saved_media_type` | `dict` | no | Media type of the saved file |
+| `saved_bytes` | `int64` | no | Size of original bytes before storage compression |
+| `document_date_source` | `dict` | yes | Filename, content or meeting date basis |
+| `in_archive_since` | `date32` | yes | Earliest known archive import date |
+| `removed_on` | `date32` | yes | Date the publisher removed the document |
+| `review_note` | `string` | yes | Review explanation |
+| `review_decided_at` | `date32` | yes | Date of the applying review |
+| `src_start` | `int32` | no | First source row for this document |
+| `src_len` | `int32` | no | Number of source rows for this document |
+| `rec_start` | `int32` | no | First recovery row for this document |
+| `rec_len` | `int32` | no | Number of recovery rows for this document |
+| `alternates` | `list<struct<format dict,body fixed[32],suffix dict,size int64>>` | no | One saved file per other format |
+| `package_id` | `string` | yes | GovInfo package identifier |
+| `facts` | `list<struct<field dict,value string>>` | no | Selected filename facts, one value per entry |
+| `filename` | `string` | no | Displayed filename |
+| `title` | `string` | yes | Document or publisher title when known |
+| `document_kind` | `list<dict>` | no | Document kinds |
+| `document_family` | `list<dict>` | no | Filename document families |
+| `committee_keys` | `list<dict>` | no | Congress.gov committee system codes |
+| `chambers` | `list<dict>` | no | Chambers associated with the document |
+| `congress` | `int16` | yes | Congress number when unambiguous |
+| `format` | `dict` | no | Original file format |
+| `document_date` | `date32` | yes | Date of the document |
+| `first_captured` | `date32` | yes | First good fetch date |
+| `date_kind` | `dict` | no | Basis of the archive date |
+| `saved_kind` | `dict` | no | Original file or recovery |
+| `hidden` | `boolean` | no | Excluded from search by review; public links still resolve |
+| `meeting_keys` | `list<dict>` | no | Decimal event IDs |
+| `measure_keys` | `list<dict>` | no | Bill and nomination identifiers |
+| `bioguide_ids` | `list<dict>` | no | Member Bioguide identifiers |
+| `witness_keys` | `list<dict>` | no | Witness appearance identifiers |
+| `version_keys` | `list<dict>` | no | Hex endpoint keys shared by editions |
+
+Nullability: Nullability transcribes data model §8.1 (list and detail bullets). A required column is refused at write time.
 
 - `alternates[]`: Other formats of the same document; each has its own body and suffix.
 - `facts[]`: Embedded selected filename field/value observations; not a generic entity join.
@@ -119,10 +123,12 @@ One stable link key mapped to one release-local document row.
 
 Identity: `link_key` (primary_key; published identifier).
 
-| Field | Published type | Meaning |
-| --- | --- | --- |
-| `link_key` | `fixed[8]` | Stable public body or original-link key |
-| `list_row` | `int32` | Zero-based row in list.parquet |
+| Field | Published type | Nullable | Meaning |
+| --- | --- | --- | --- |
+| `link_key` | `fixed[8]` | no | Stable public body or original-link key |
+| `list_row` | `int32` | no | Zero-based row in list.parquet |
+
+Nullability: Both columns are required by data model §8.1. A required column is refused at write time.
 
 - `link_key`: First 8 body SHA-256 bytes, or first 8 SHA-256 bytes of url: plus exact original URL for recovery links. Binary key; hex is a display encoding.
 
@@ -136,10 +142,12 @@ One lookup key and document row pair; an address can identify several editions.
 
 Identity: `lookup_key, list_row` (primary_key; release).
 
-| Field | Published type | Meaning |
-| --- | --- | --- |
-| `lookup_key` | `fixed[8]` | Fixed normalized address lookup key |
-| `list_row` | `int32` | Zero-based row in list.parquet |
+| Field | Published type | Nullable | Meaning |
+| --- | --- | --- | --- |
+| `lookup_key` | `fixed[8]` | no | Fixed normalized address lookup key |
+| `list_row` | `int32` | no | Zero-based row in list.parquet |
+
+Nullability: Both columns are required by data model §8.1. A required column is refused at write time.
 
 - `lookup_key`: First 8 SHA-256 bytes of lookup: plus fixed lookup_url(u): remove scheme, leading www, default port, fragment and one trailing path slash; lowercase host; preserve query bytes. This is not capture-profile url_key.
 
@@ -153,18 +161,20 @@ One source address/context occurrence within a document.
 
 Identity: `list_row, ordinal` (primary_key; release).
 
-| Field | Published type | Meaning |
-| --- | --- | --- |
-| `list_row` | `int32` | Zero-based row in list.parquet |
-| `ordinal` | `int32` | Order within a document |
-| `url` | `string` | Source address |
-| `member_path` | `string` | Path inside an archive container |
-| `is_saved` | `boolean` | Whether this source names the saved file |
-| `first_seen` | `date32` | First observed date of this source |
-| `listed_on` | `string` | Publisher page listing the source |
-| `link_text` | `string` | Publisher link label |
-| `doc_type` | `string` | Publisher document type |
-| `posted` | `date32` | Publisher link posting date |
+| Field | Published type | Nullable | Meaning |
+| --- | --- | --- | --- |
+| `list_row` | `int32` | no | Zero-based row in list.parquet |
+| `ordinal` | `int32` | no | Order within a document |
+| `url` | `string` | no | Source address |
+| `member_path` | `string` | yes | Path inside an archive container |
+| `is_saved` | `boolean` | no | Whether this source names the saved file |
+| `first_seen` | `date32` | yes | First observed date of this source |
+| `listed_on` | `string` | yes | Publisher page listing the source |
+| `link_text` | `string` | yes | Publisher link label |
+| `doc_type` | `string` | yes | Publisher document type |
+| `posted` | `date32` | yes | Publisher link posting date |
+
+Nullability: Nullability transcribes data model §8.1 (sources.parquet row). A required column is refused at write time.
 
 - `member_path`: Path inside a captured archive container. Interpret together with the source URL; not a document key.
 - `url`: Required. A member of a ZIP keeps the ZIP URL here and its place in member_path; the ZIP itself is never a document when its contents were captured.
@@ -179,17 +189,19 @@ One recovered file occurrence within a document.
 
 Identity: `list_row, ordinal` (primary_key; release).
 
-| Field | Published type | Meaning |
-| --- | --- | --- |
-| `list_row` | `int32` | Zero-based row in list.parquet |
-| `ordinal` | `int32` | Order within a document |
-| `kind` | `dict` | Recovery display kind |
-| `body` | `fixed[32]` | SHA-256 of original recovered bytes |
-| `suffix` | `dict` | Physical recovered body suffix |
-| `bytes` | `int64` | Original recovered byte count |
-| `imported_at` | `date32` | Recovery import date; unknown when the input has no import record, as in the v5 seed |
-| `recovered_url` | `string` | Address where the recovered copy was found |
-| `identity_note` | `string` | Explanation identifying the recovery |
+| Field | Published type | Nullable | Meaning |
+| --- | --- | --- | --- |
+| `list_row` | `int32` | no | Zero-based row in list.parquet |
+| `ordinal` | `int32` | no | Order within a document |
+| `kind` | `dict` | no | Recovery display kind |
+| `body` | `fixed[32]` | no | SHA-256 of original recovered bytes |
+| `suffix` | `dict` | no | Physical recovered body suffix |
+| `bytes` | `int64` | no | Original recovered byte count |
+| `imported_at` | `date32` | yes | Recovery import date; unknown when the input has no import record, as in the v5 seed |
+| `recovered_url` | `string` | no | Address where the recovered copy was found |
+| `identity_note` | `string` | yes | Explanation identifying the recovery |
+
+Nullability: Nullability transcribes data model §8.1 (recoveries.parquet row). A required column is refused at write time.
 
 
 Outgoing: `recoveries_document`, `recovery_body`, `recovery_address`.
@@ -202,29 +214,31 @@ One event, shared House/Senate event ID namespace.
 
 Identity: `event_id` (primary_key; published identifier).
 
-| Field | Published type | Meaning |
-| --- | --- | --- |
-| `event_id` | `int64` | Congressional meeting event ID |
-| `chamber` | `dict` | House, Senate or joint |
-| `title` | `string` | Document or publisher title when known |
-| `meeting_date` | `date32` | Meeting date |
-| `meeting_type` | `dict` | Publisher meeting category |
-| `session` | `int16` | Congress session number |
-| `status` | `dict` | Current meeting status |
-| `sittings` | `list<struct<start timestamp,end timestamp,place string,room string,building string,address string>>` | Scheduled times and locations, as Congress.gov states them when it has a sitting |
-| `committees` | `list<struct<system_code dict,role dict>>` | Host committee codes and roles |
-| `subject_keys` | `list<dict>` | Bill, nomination and treaty subjects |
-| `transcripts` | `list<struct<package_id string,list_row int32>>` | Official hearing transcripts |
-| `videos` | `list<struct<name string,url string,video_key string>>` | Recorded meeting links |
-| `congress` | `int16` | Congress the publisher record states; null when no record states it, never inferred from documents |
-| `congress_gov_updated` | `timestamp` | Congress.gov's updateDate for this record: a publisher record update, distinct from the hearing date and capture time |
-| `house_xml_updated` | `string` | House XML update-date, literally as stated with no zone: a publisher record update, distinct from the hearing date and capture time |
-| `congress_gov_meeting_type` | `dict` | Congress.gov's type label (Hearing, Markup, Meeting) |
-| `access` | `dict` | open, closed, partly_closed or unknown, as the publisher type or title states |
-| `access_basis` | `dict` | The source and field that state access, such as congress_gov/title |
-| `not_held` | `bool` | The publisher title opens with postponed, canceled, rescheduled or test; null with no record |
-| `rescheduled_to` | `int64` | Later meeting of the same committees and title within 60 days, when the publisher states Rescheduled or only the later twin has a recording; derived |
-| `rescheduled_basis` | `dict` | publisher_status or recording_on_later_twin |
+| Field | Published type | Nullable | Meaning |
+| --- | --- | --- | --- |
+| `event_id` | `int64` | no | Congressional meeting event ID |
+| `chamber` | `dict` | yes | House, Senate or joint |
+| `title` | `string` | yes | Document or publisher title when known |
+| `meeting_date` | `date32` | yes | Meeting date |
+| `meeting_type` | `dict` | yes | Publisher meeting category |
+| `session` | `int16` | yes | Congress session number |
+| `status` | `dict` | yes | Current meeting status |
+| `sittings` | `list<struct<start timestamp,end timestamp,place string,room string,building string,address string>>` | no | Scheduled times and locations, as Congress.gov states them when it has a sitting |
+| `committees` | `list<struct<system_code dict,role dict>>` | no | Host committee codes and roles |
+| `subject_keys` | `list<dict>` | no | Bill, nomination and treaty subjects |
+| `transcripts` | `list<struct<package_id string,list_row int32>>` | no | Official hearing transcripts |
+| `videos` | `list<struct<name string,url string,video_key string>>` | no | Recorded meeting links |
+| `congress` | `int16` | yes | Congress the publisher record states; null when no record states it, never inferred from documents |
+| `congress_gov_updated` | `timestamp` | yes | Congress.gov's updateDate for this record: a publisher record update, distinct from the hearing date and capture time |
+| `house_xml_updated` | `string` | yes | House XML update-date, literally as stated with no zone: a publisher record update, distinct from the hearing date and capture time |
+| `congress_gov_meeting_type` | `dict` | yes | Congress.gov's type label (Hearing, Markup, Meeting) |
+| `access` | `dict` | yes | open, closed, partly_closed or unknown, as the publisher type or title states |
+| `access_basis` | `dict` | yes | The source and field that state access, such as congress_gov/title |
+| `not_held` | `bool` | yes | The publisher title opens with postponed, canceled, rescheduled or test; null with no record |
+| `rescheduled_to` | `int64` | yes | Later meeting of the same committees and title within 60 days, when the publisher states Rescheduled or only the later twin has a recording; derived |
+| `rescheduled_basis` | `dict` | yes | publisher_status or recording_on_later_twin |
+
+Nullability: Nullability transcribes data model §8.1 (meetings.parquet row); access fields, not_held and rescheduling are null with no record, as their meanings state. List columns are empty, never null. A required column is refused at write time.
 
 - `sittings[]`: Embedded scheduled intervals and places. Congress.gov states instants and places, so its sitting is used when present; a House-only sitting's unzoned Eastern local time is converted to an instant. An explicit empty House state stays empty. Times retain published precision; do not invent a Congress from the session number.
 - `committees[]`: Host/participant roles belong to this meeting-committee association.
@@ -242,28 +256,30 @@ One source-occurrence witness observation at a meeting, package, or page; not a 
 
 Identity: `witness_key` (primary_key; published identifier).
 
-| Field | Published type | Meaning |
-| --- | --- | --- |
-| `witness_key` | `string` | Lowercase hex of first 8 bytes of SHA-256 of ["witness-occurrence-v2", occasion, source, record_sha_hex, source_locator, context_key] |
-| `occasion` | `dict` | Appearance occasion key (meeting:{event_id}, package:{package_id}, or page:{sha256_prefix}) |
-| `source` | `dict` | Observation source family (house_xml, congress_gov, senate_page, or mods) |
-| `record_sha` | `fixed[32]` | SHA-256 of the source body or inline record supplying this witness observation |
-| `source_locator` | `string` | Deterministic occurrence locator within the retained source record |
-| `context_key` | `string` | Lowercase hex SHA-256 of compact JSON [source_url, member_path] for the bound capture context |
-| `event_id` | `int64` | Meeting event ID when occasion is a meeting |
-| `package_id` | `string` | GovInfo CHRG package ID when occasion is a package or matched transcript |
-| `page_url` | `string` | Senate hearing page URL when occasion is a page |
-| `name` | `string` | Display name of the witness |
-| `position` | `string` | Witness title or position |
-| `organization` | `string` | Witness organization or affiliation |
-| `on_behalf_of` | `string` | Represented entity when distinct from organization |
-| `location` | `string` | Witness locality or state |
-| `panel` | `string` | Panel heading or label |
-| `panel_order` | `int16` | 1-based panel order within the occasion |
-| `display_order` | `int16` | 1-based witness display order within the occasion or panel |
-| `witness_type` | `dict` | Source witness classification |
-| `testified` | `boolean` | Whether the witness testified |
-| `bioguide_id` | `dict` | Bioguide identifier when the witness is a Member of Congress |
+| Field | Published type | Nullable | Meaning |
+| --- | --- | --- | --- |
+| `witness_key` | `string` | no | Lowercase hex of first 8 bytes of SHA-256 of ["witness-occurrence-v2", occasion, source, record_sha_hex, source_locator, context_key] |
+| `occasion` | `dict` | no | Appearance occasion key (meeting:{event_id}, package:{package_id}, or page:{sha256_prefix}) |
+| `source` | `dict` | no | Observation source family (house_xml, congress_gov, senate_page, or mods) |
+| `record_sha` | `fixed[32]` | no | SHA-256 of the source body or inline record supplying this witness observation |
+| `source_locator` | `string` | no | Deterministic occurrence locator within the retained source record |
+| `context_key` | `string` | no | Lowercase hex SHA-256 of compact JSON [source_url, member_path] for the bound capture context |
+| `event_id` | `int64` | yes | Meeting event ID when occasion is a meeting |
+| `package_id` | `string` | yes | GovInfo CHRG package ID when occasion is a package or matched transcript |
+| `page_url` | `string` | yes | Senate hearing page URL when occasion is a page |
+| `name` | `string` | yes | Display name of the witness |
+| `position` | `string` | yes | Witness title or position |
+| `organization` | `string` | yes | Witness organization or affiliation |
+| `on_behalf_of` | `string` | yes | Represented entity when distinct from organization |
+| `location` | `string` | yes | Witness locality or state |
+| `panel` | `string` | yes | Panel heading or label |
+| `panel_order` | `int16` | yes | 1-based panel order within the occasion |
+| `display_order` | `int16` | yes | 1-based witness display order within the occasion or panel |
+| `witness_type` | `dict` | yes | Source witness classification |
+| `testified` | `boolean` | yes | Whether the witness testified |
+| `bioguide_id` | `dict` | yes | Bioguide identifier when the witness is a Member of Congress |
+
+Nullability: occasion, source, record_sha, source_locator and context_key are required: every witness row is read from one located source record. A required column is refused at write time.
 
 - `occasion`: meeting:{event_id}, package:{package_id}, or page:{sha256_prefix}. Witness keys hash the occasion, source, record_sha, source_locator, and context_key; names alone never join or deduplicate appearances.
 
@@ -277,11 +293,13 @@ One provider-prefixed recording.
 
 Identity: `video_key` (primary_key; published identifier).
 
-| Field | Published type | Meaning |
-| --- | --- | --- |
-| `video_key` | `string` | Provider-prefixed recording identifier |
-| `event_ids` | `list<int64>` | Sorted meeting event IDs associated with this recording |
-| `tracks` | `list<struct<body fixed[32],suffix dict,format dict,language dict,production dict>>` | Captured caption, subtitle, and playlist tracks from their latest good fetch |
+| Field | Published type | Nullable | Meaning |
+| --- | --- | --- | --- |
+| `video_key` | `string` | no | Provider-prefixed recording identifier |
+| `event_ids` | `list<int64>` | no | Sorted meeting event IDs associated with this recording |
+| `tracks` | `list<struct<body fixed[32],suffix dict,format dict,language dict,production dict>>` | no | Captured caption, subtitle, and playlist tracks from their latest good fetch |
+
+Nullability: The documents are silent; decided from the row meaning: a recording row always has its key, and event_ids and tracks are empty lists when nothing is associated. A required column is refused at write time.
 
 - `tracks[]`: Embedded captured caption/subtitle/playlist files. Language and production describe each track; these are not document-list rows.
 
@@ -295,16 +313,18 @@ One Congress.gov system code.
 
 Identity: `system_code` (primary_key; published identifier).
 
-| Field | Published type | Meaning |
-| --- | --- | --- |
-| `system_code` | `string` | Congress.gov committee system code |
-| `name` | `string` | Official committee name |
-| `chamber` | `dict` | House, Senate or joint |
-| `committee_type` | `dict` | Committee category |
-| `parent_system_code` | `dict` | Parent committee code |
-| `names` | `list<struct<name string,start date32,end date32>>` | Dated committee names |
-| `website` | `string` | Official committee website |
-| `is_current` | `boolean` | Current committee record |
+| Field | Published type | Nullable | Meaning |
+| --- | --- | --- | --- |
+| `system_code` | `string` | no | Congress.gov committee system code |
+| `name` | `string` | no | Official committee name |
+| `chamber` | `dict` | yes | House, Senate or joint |
+| `committee_type` | `dict` | yes | Committee category |
+| `parent_system_code` | `dict` | yes | Parent committee code |
+| `names` | `list<struct<name string,start date32,end date32>>` | no | Dated committee names |
+| `website` | `string` | yes | Official committee website |
+| `is_current` | `boolean` | yes | Current committee record |
+
+Nullability: The documents are silent; decided from the row meaning: the key and the fields that define the row are required, descriptive fields from upstream records can be absent, and list columns are empty, never null. A required column is refused at write time.
 
 - `names[]`: Embedded names with half-open [start,end) dates, ordered latest start first. Null endpoints mean unknown or open-ended.
 
@@ -318,12 +338,14 @@ One Bioguide member.
 
 Identity: `bioguide_id` (primary_key; published identifier).
 
-| Field | Published type | Meaning |
-| --- | --- | --- |
-| `bioguide_id` | `string` | Bioguide member identifier |
-| `name` | `string` | Member display name ({name_first} {name_last}) |
-| `terms` | `list<struct<chamber dict,state dict,district int16,party dict,start date32,end date32>>` | Congressional service terms ordered latest first |
-| `cross_ids` | `struct<lis string,opensecrets string,govtrack string,icpsr string,wikidata string,fec list<string>>` | Cross-walk identifiers across legislative datasets |
+| Field | Published type | Nullable | Meaning |
+| --- | --- | --- | --- |
+| `bioguide_id` | `string` | no | Bioguide member identifier |
+| `name` | `string` | no | Member display name ({name_first} {name_last}) |
+| `terms` | `list<struct<chamber dict,state dict,district int16,party dict,start date32,end date32>>` | no | Congressional service terms ordered latest first |
+| `cross_ids` | `struct<lis string,opensecrets string,govtrack string,icpsr string,wikidata string,fec list<string>>` | yes | Cross-walk identifiers across legislative datasets |
+
+Nullability: The documents are silent; decided from the row meaning: the key and the fields that define the row are required, descriptive fields from upstream records can be absent, and list columns are empty, never null. A required column is refused at write time.
 
 - `terms[]`: Embedded service terms with half-open [start,end) dates, latest first. Terms do not establish historical committee seats.
 - `cross_ids`: External dataset identifiers; an identifier does not imply that dataset is included in this release.
@@ -340,14 +362,16 @@ Identity: `congress, system_code, bioguide_id` (primary_key; published identifie
 
 Coverage: Current-Congress seats only; spicy-regs keeps no roster history.
 
-| Field | Published type | Meaning |
-| --- | --- | --- |
-| `congress` | `int16` | Congress number for the committee assignment |
-| `system_code` | `dict` | Lowercase committee or subcommittee system code |
-| `bioguide_id` | `dict` | Assigned member Bioguide identifier |
-| `title` | `dict` | Committee leadership or seat position title |
-| `rank` | `int16` | Numeric party rank on the committee |
-| `party` | `dict` | Party caucus for the committee assignment |
+| Field | Published type | Nullable | Meaning |
+| --- | --- | --- | --- |
+| `congress` | `int16` | no | Congress number for the committee assignment |
+| `system_code` | `dict` | no | Lowercase committee or subcommittee system code |
+| `bioguide_id` | `dict` | no | Assigned member Bioguide identifier |
+| `title` | `dict` | yes | Committee leadership or seat position title |
+| `rank` | `int16` | yes | Numeric party rank on the committee |
+| `party` | `dict` | yes | Party caucus for the committee assignment |
+
+Nullability: The documents are silent; decided from the row meaning: the key and the fields that define the row are required, descriptive fields from upstream records can be absent, and list columns are empty, never null. A required column is refused at write time.
 
 
 Outgoing: `roster_committee`, `roster_member`.
@@ -362,22 +386,24 @@ Identity: `bill_id` (primary_key; published identifier).
 
 Coverage: Amendments cover the 119th Congress only until spicy-regs backfills.
 
-| Field | Published type | Meaning |
-| --- | --- | --- |
-| `bill_id` | `string` | Canonical bill identifier ({congress}-{type}-{number}) |
-| `title` | `string` | Official or primary bill title |
-| `short_title` | `string` | Short title when present |
-| `sponsor_bioguide_id` | `dict` | Primary sponsor Bioguide identifier |
-| `introduced` | `date32` | Date the measure was introduced |
-| `latest_action_date` | `date32` | Date of the latest recorded action |
-| `latest_action_text` | `string` | Text of the latest recorded action |
-| `stage` | `dict` | Lifecycle stage derived by spicy-regs |
-| `policy_area` | `dict` | CRS policy area |
-| `committees` | `list<dict>` | Referred committee system codes |
-| `cbo_estimates` | `list<struct<publication_id string,date date32,description string>>` | CBO cost estimates associated with the bill |
-| `floor_votes` | `list<struct<vote_id string,basis dict,chamber dict,date date32,question string,result string,yea int16,nay int16>>` | Roll-call votes tied by vote record or bill action |
-| `amendments` | `list<struct<amendment_id string,purpose string,sponsor_bioguide_id dict,latest_action_date date32,latest_action_text string>>` | Direct and chained amendments to the bill |
-| `committee_activities` | `list<struct<system_code dict,activity dict,date date32>>` | Committee referral, markup, and report activities |
+| Field | Published type | Nullable | Meaning |
+| --- | --- | --- | --- |
+| `bill_id` | `string` | no | Canonical bill identifier ({congress}-{type}-{number}) |
+| `title` | `string` | yes | Official or primary bill title |
+| `short_title` | `string` | yes | Short title when present |
+| `sponsor_bioguide_id` | `dict` | yes | Primary sponsor Bioguide identifier |
+| `introduced` | `date32` | yes | Date the measure was introduced |
+| `latest_action_date` | `date32` | yes | Date of the latest recorded action |
+| `latest_action_text` | `string` | yes | Text of the latest recorded action |
+| `stage` | `dict` | yes | Lifecycle stage derived by spicy-regs |
+| `policy_area` | `dict` | yes | CRS policy area |
+| `committees` | `list<dict>` | no | Referred committee system codes |
+| `cbo_estimates` | `list<struct<publication_id string,date date32,description string>>` | no | CBO cost estimates associated with the bill |
+| `floor_votes` | `list<struct<vote_id string,basis dict,chamber dict,date date32,question string,result string,yea int16,nay int16>>` | no | Roll-call votes tied by vote record or bill action |
+| `amendments` | `list<struct<amendment_id string,purpose string,sponsor_bioguide_id dict,latest_action_date date32,latest_action_text string>>` | no | Direct and chained amendments to the bill |
+| `committee_activities` | `list<struct<system_code dict,activity dict,date date32>>` | no | Committee referral, markup, and report activities |
+
+Nullability: The documents are silent; decided from the row meaning: the key and the fields that define the row are required, descriptive fields from upstream records can be absent, and list columns are empty, never null. A required column is refused at write time.
 
 - `cbo_estimates[]`: Embedded publication IDs, dates and descriptions, not full CBO estimate text.
 - `floor_votes[]`: One embedded vote per vote_id per bill; basis distinguishes vote_record from bill_action. Counts are vote totals, not member positions.
@@ -396,17 +422,19 @@ Identity: `nomination_id` (primary_key; published identifier).
 
 Coverage: Nominations cover the 119th Congress only until spicy-regs backfills.
 
-| Field | Published type | Meaning |
-| --- | --- | --- |
-| `nomination_id` | `string` | Canonical nomination identifier ({congress}-pn-{number}[-{part}]) |
-| `description` | `string` | Nomination description |
-| `organization` | `string` | Executive or independent agency name |
-| `received` | `date32` | Date received in the Senate |
-| `latest_action_date` | `date32` | Date of latest action |
-| `latest_action_text` | `string` | Text of latest action |
-| `committees` | `list<dict>` | Referred Senate committee system codes |
-| `transcripts` | `list<string>` | Printed hearing package IDs from nomination hearing references |
-| `floor_votes` | `list<struct<vote_id string,date date32,question string,result string,yea int16,nay int16>>` | Senate roll-call votes on the nomination |
+| Field | Published type | Nullable | Meaning |
+| --- | --- | --- | --- |
+| `nomination_id` | `string` | no | Canonical nomination identifier ({congress}-pn-{number}[-{part}]) |
+| `description` | `string` | yes | Nomination description |
+| `organization` | `string` | yes | Executive or independent agency name |
+| `received` | `date32` | yes | Date received in the Senate |
+| `latest_action_date` | `date32` | yes | Date of latest action |
+| `latest_action_text` | `string` | yes | Text of latest action |
+| `committees` | `list<dict>` | no | Referred Senate committee system codes |
+| `transcripts` | `list<string>` | no | Printed hearing package IDs from nomination hearing references |
+| `floor_votes` | `list<struct<vote_id string,date date32,question string,result string,yea int16,nay int16>>` | no | Senate roll-call votes on the nomination |
+
+Nullability: The documents are silent; decided from the row meaning: the key and the fields that define the row are required, descriptive fields from upstream records can be absent, and list columns are empty, never null. A required column is refused at write time.
 
 - `floor_votes[]`: Embedded Senate roll-call summaries; no individual member positions.
 - `transcripts[]`: GovInfo CHRG package identifiers; a retained transcript can have multiple document formats or editions.
@@ -421,15 +449,17 @@ One exact requested URL, including requests without a successful capture.
 
 Identity: `requested_url` (primary_key; published identifier).
 
-| Field | Published type | Meaning |
-| --- | --- | --- |
-| `requested_url` | `string` | Exact address scheduled for capture |
-| `attempts` | `int32` | Number of fetch lines for the address |
-| `last_attempt` | `timestamp<microsecond,UTC>` | Latest attempt time |
-| `last_status` | `int16` | Latest attempt HTTP status |
-| `last_outcome` | `dict` | Latest attempt outcome |
-| `last_good_at` | `timestamp<microsecond,UTC>` | Latest good fetch time |
-| `next_attempt_at` | `timestamp<microsecond,UTC>` | Next scheduled fetch time |
+| Field | Published type | Nullable | Meaning |
+| --- | --- | --- | --- |
+| `requested_url` | `string` | no | Exact address scheduled for capture |
+| `attempts` | `int32` | no | Number of fetch lines for the address |
+| `last_attempt` | `timestamp<microsecond,UTC>` | yes | Latest attempt time |
+| `last_status` | `int16` | yes | Latest attempt HTTP status |
+| `last_outcome` | `dict` | yes | Latest attempt outcome |
+| `last_good_at` | `timestamp<microsecond,UTC>` | yes | Latest good fetch time |
+| `next_attempt_at` | `timestamp<microsecond,UTC>` | yes | Next scheduled fetch time |
+
+Nullability: Nullability transcribes data model §7.7. A required column is refused at write time.
 
 - `requested_url`: Exact scheduled address. Missing success is not missing publication; this is operational capture state, not an entity or document catalogue.
 
@@ -443,10 +473,12 @@ One canonical/variant URL pair used by capture policy.
 
 Identity: `canonical_url, variant_url` (primary_key; published identifier).
 
-| Field | Published type | Meaning |
-| --- | --- | --- |
-| `canonical_url` | `string` | Active canonical URL for capture joins |
-| `variant_url` | `string` | Active alternate URL for capture joins |
+| Field | Published type | Nullable | Meaning |
+| --- | --- | --- | --- |
+| `canonical_url` | `string` | no | Active canonical URL for capture joins |
+| `variant_url` | `string` | no | Active alternate URL for capture joins |
+
+Nullability: The documents are silent; decided from the row meaning: the key and the fields that define the row are required, descriptive fields from upstream records can be absent, and list columns are empty, never null. A required column is refused at write time.
 
 - `canonical_url`: Capture-profile aliases only. Do not use this table to reproduce the fixed public URL lookup hash.
 
@@ -460,22 +492,24 @@ One upload a retained YouTube cache lists.
 
 Identity: `video_key` (primary_key; published identifier).
 
-| Field | Published type | Meaning |
-| --- | --- | --- |
-| `video_key` | `string` | youtube:{id} video identity |
-| `handle` | `dict` | Channel handle whose cache table lists it |
-| `channel_id` | `string` | YouTube channel ID, null when the cache has none |
-| `system_code` | `dict` | Committee of the curated channel; channel membership does not make a video a hearing |
-| `title` | `string` | Title as the channel states it |
-| `source_description` | `string` | Description as the channel states it, distinct from any HTML description |
-| `published_at` | `timestamp` | YouTube's publication time for the upload |
-| `video_published_at` | `timestamp` | YouTube's video publication time |
-| `duration_seconds` | `int32` | Duration in seconds when retained |
-| `available` | `bool` | Whether the last check found it available |
-| `has_caption` | `bool` | Whether YouTube states a caption exists |
-| `details_checked_at` | `timestamp` | When details were last checked |
-| `stated_event_ids` | `list<int64>` | Event IDs the video's own text names: claims, since committees mistag |
-| `record_sha` | `fixed[32]` | SHA-256 of the cache body, which also holds upstream API JSON and is the evidence reference |
+| Field | Published type | Nullable | Meaning |
+| --- | --- | --- | --- |
+| `video_key` | `string` | no | youtube:{id} video identity |
+| `handle` | `dict` | no | Channel handle whose cache table lists it |
+| `channel_id` | `string` | yes | YouTube channel ID, null when the cache has none |
+| `system_code` | `dict` | yes | Committee of the curated channel; channel membership does not make a video a hearing |
+| `title` | `string` | yes | Title as the channel states it |
+| `source_description` | `string` | yes | Description as the channel states it, distinct from any HTML description |
+| `published_at` | `timestamp` | yes | YouTube's publication time for the upload |
+| `video_published_at` | `timestamp` | yes | YouTube's video publication time |
+| `duration_seconds` | `int32` | yes | Duration in seconds when retained |
+| `available` | `bool` | yes | Whether the last check found it available |
+| `has_caption` | `bool` | yes | Whether YouTube states a caption exists |
+| `details_checked_at` | `timestamp` | yes | When details were last checked |
+| `stated_event_ids` | `list<int64>` | no | Event IDs the video's own text names: claims, since committees mistag |
+| `record_sha` | `fixed[32]` | no | SHA-256 of the cache body, which also holds upstream API JSON and is the evidence reference |
+
+Nullability: The documents are silent; decided from the row meaning: the key and the fields that define the row are required, descriptive fields from upstream records can be absent, and list columns are empty, never null. A required column is refused at write time.
 
 - `stated_event_ids[]`: A claim the video makes, not a verified link; recording_matches keeps it as claimed.
 
@@ -489,18 +523,20 @@ One curated channel handle.
 
 Identity: `handle` (primary_key; published identifier).
 
-| Field | Published type | Meaning |
-| --- | --- | --- |
-| `handle` | `string` | Channel handle |
-| `channel_id` | `string` | YouTube channel ID |
-| `system_code` | `dict` | Committee the directory maps it to |
-| `committee_label` | `string` | Committee label in the directory |
-| `role` | `dict` | primary, secondary or member |
-| `title` | `string` | Channel's own title when cached |
-| `custom_url` | `string` | Channel's custom URL when cached |
-| `uploads_scan_complete` | `bool` | Whether the cache scanned every upload |
-| `mapping_basis` | `dict` | curated_directory: a curated mapping with no further evidence column |
-| `record_sha` | `fixed[32]` | SHA-256 of the cache body, null with no cached channel row |
+| Field | Published type | Nullable | Meaning |
+| --- | --- | --- | --- |
+| `handle` | `string` | no | Channel handle |
+| `channel_id` | `string` | yes | YouTube channel ID |
+| `system_code` | `dict` | no | Committee the directory maps it to |
+| `committee_label` | `string` | yes | Committee label in the directory |
+| `role` | `dict` | no | primary, secondary or member |
+| `title` | `string` | yes | Channel's own title when cached |
+| `custom_url` | `string` | yes | Channel's custom URL when cached |
+| `uploads_scan_complete` | `bool` | yes | Whether the cache scanned every upload |
+| `mapping_basis` | `dict` | no | curated_directory: a curated mapping with no further evidence column |
+| `record_sha` | `fixed[32]` | yes | SHA-256 of the cache body, null with no cached channel row |
+
+Nullability: The documents are silent; decided from the row meaning: the key and the fields that define the row are required, descriptive fields from upstream records can be absent, and list columns are empty, never null. A required column is refused at write time.
 
 
 Outgoing: `channel_committee`.
@@ -515,21 +551,23 @@ Identity: `match_id` (primary_key; published identifier).
 
 Coverage: Scored date and title matches arrive with the native matcher; gpo_hearing_videos.csv stays a parity oracle until then.
 
-| Field | Published type | Meaning |
-| --- | --- | --- |
-| `match_id` | `string` | Hex SHA-256 of the compact JSON [subject_kind, subject_id, video ref, basis] |
-| `subject_kind` | `dict` | event or package |
-| `event_id` | `int64` | Meeting subject; null for a package or a stated number no meeting has |
-| `package_id` | `string` | GPO package subject |
-| `video_key` | `string` | Video identity; can lack a video row |
-| `url` | `string` | Off-channel recording URL |
-| `basis` | `dict` | publisher_link, video_states_event_id or curated |
-| `decision` | `dict` | The verdict as stated, or linked |
-| `score` | `int16` | 100 publisher link, 95 stated event ID; null otherwise |
-| `recording_scope` | `dict` | full, excerpt or unknown |
-| `status` | `dict` | asserted, claimed, decided, conflicting or unresolved; unresolved is a negative verdict that old matcher evidence disputes |
-| `note` | `string` | Curator note, or the unmatched stated number |
-| `source_ref` | `string` | Evidence reference: the record or decision |
+| Field | Published type | Nullable | Meaning |
+| --- | --- | --- | --- |
+| `match_id` | `string` | no | Hex SHA-256 of the compact JSON [subject_kind, subject_id, video ref, basis] |
+| `subject_kind` | `dict` | no | event or package |
+| `event_id` | `int64` | yes | Meeting subject; null for a package or a stated number no meeting has |
+| `package_id` | `string` | yes | GPO package subject |
+| `video_key` | `string` | yes | Video identity; can lack a video row |
+| `url` | `string` | yes | Off-channel recording URL |
+| `basis` | `dict` | no | publisher_link, video_states_event_id or curated |
+| `decision` | `dict` | yes | The verdict as stated, or linked |
+| `score` | `int16` | yes | 100 publisher link, 95 stated event ID; null otherwise |
+| `recording_scope` | `dict` | yes | full, excerpt or unknown |
+| `status` | `dict` | no | asserted, claimed, decided, conflicting or unresolved; unresolved is a negative verdict that old matcher evidence disputes |
+| `note` | `string` | yes | Curator note, or the unmatched stated number |
+| `source_ref` | `string` | yes | Evidence reference: the record or decision |
+
+Nullability: The documents are silent; decided from the row meaning: the key and the fields that define the row are required, descriptive fields from upstream records can be absent, and list columns are empty, never null. A required column is refused at write time.
 
 
 Outgoing: `match_meeting`, `match_recording`.
@@ -542,20 +580,22 @@ One document link in a meeting record; a vote row is a document link, not a ball
 
 Identity: `record_key` (primary_key; published identifier).
 
-| Field | Published type | Meaning |
-| --- | --- | --- |
-| `record_key` | `string` | Hex SHA-256 of the compact JSON [record_sha hex, ordinal as text] |
-| `event_id` | `int64` | Meeting event ID |
-| `kind` | `dict` | amendment or vote |
-| `bill` | `string` | Bill as stated |
-| `number` | `string` | Amendment or vote number as stated |
-| `sponsor_bioguide` | `dict` | Sponsor as stated |
-| `amendment_type` | `dict` | Amendment type as stated |
-| `enbloc` | `string` | En bloc number as stated |
-| `source_description` | `string` | Description as stated |
-| `url` | `string` | Document URL, null when the record states none |
-| `record_sha` | `fixed[32]` | SHA-256 of the House XML body |
-| `ordinal` | `int32` | Position in that record, so duplicate links stay distinct |
+| Field | Published type | Nullable | Meaning |
+| --- | --- | --- | --- |
+| `record_key` | `string` | no | Hex SHA-256 of the compact JSON [record_sha hex, ordinal as text] |
+| `event_id` | `int64` | no | Meeting event ID |
+| `kind` | `dict` | no | amendment or vote |
+| `bill` | `string` | yes | Bill as stated |
+| `number` | `string` | yes | Amendment or vote number as stated |
+| `sponsor_bioguide` | `dict` | yes | Sponsor as stated |
+| `amendment_type` | `dict` | yes | Amendment type as stated |
+| `enbloc` | `string` | yes | En bloc number as stated |
+| `source_description` | `string` | yes | Description as stated |
+| `url` | `string` | yes | Document URL, null when the record states none |
+| `record_sha` | `fixed[32]` | no | SHA-256 of the House XML body |
+| `ordinal` | `int32` | no | Position in that record, so duplicate links stay distinct |
+
+Nullability: The documents are silent; decided from the row meaning: the key and the fields that define the row are required, descriptive fields from upstream records can be absent, and list columns are empty, never null. A required column is refused at write time.
 
 
 Outgoing: `committee_record_meeting`, `committee_record_sponsor`.
@@ -568,14 +608,16 @@ One aspect of one meeting: recording, transcript, documents, witnesses or captio
 
 Identity: `event_id, aspect` (primary_key; published identifier).
 
-| Field | Published type | Meaning |
-| --- | --- | --- |
-| `event_id` | `int64` | Meeting event ID |
-| `aspect` | `dict` | recording, transcript, documents, witnesses or captions |
-| `state` | `dict` | present, partial, claimed, empty, not_stated, unresolved, not_public, confirmed_absent or unknown; these never merge |
-| `basis` | `dict` | Which relation states it |
-| `count` | `int32` | Rows behind present |
-| `reason` | `dict` | Why a state holds, when known, such as old_evidence_disputes_negative_verdict |
+| Field | Published type | Nullable | Meaning |
+| --- | --- | --- | --- |
+| `event_id` | `int64` | no | Meeting event ID |
+| `aspect` | `dict` | no | recording, transcript, documents, witnesses or captions |
+| `state` | `dict` | no | present, partial, claimed, empty, not_stated, unresolved, not_public, confirmed_absent or unknown; these never merge |
+| `basis` | `dict` | yes | Which relation states it |
+| `count` | `int32` | yes | Rows behind present |
+| `reason` | `dict` | yes | Why a state holds, when known, such as old_evidence_disputes_negative_verdict |
+
+Nullability: The documents are silent; decided from the row meaning: the key and the fields that define the row are required, descriptive fields from upstream records can be absent, and list columns are empty, never null. A required column is refused at write time.
 
 - `state`: confirmed_absent only from undisputed curated negative verdicts on every package of the meeting, each linked to that meeting alone; zero rows never prove absence. partial means excerpts only; claimed means only a video’s own text; for captions, no observation is unknown, never empty.
 

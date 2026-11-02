@@ -102,6 +102,12 @@ def _settings(profile, order, *, columns=None, dictionary=(), delta=(), footer_l
         key_column=order[0] if profile == 'lookup' else None, created_by='docspec archive release v1', footer_limit=footer_limit)
 
 
+# The one map from core release file to the native relation that writes it.
+# Write-time checks (archive_schema.publication_checks) read the same relations.
+CORE_RELATIONS = {'list': 'ordered', 'detail': 'details', 'links': 'links', 'urls': 'url_keys',
+    'sources': 'source_rows', 'recoveries': 'recovery_rows'}
+
+
 def _core(steps, output,*,lookup_extra=None):
     order = ['filename', 'document_date', 'first_captured', 'doc_key']
     detail_inputs = ','.join('o.'+name for name in dict.fromkeys([*order,*LIST_COLUMNS,'list_row',
@@ -130,13 +136,13 @@ def _core(steps, output,*,lookup_extra=None):
     ]
     steps += _lookup_steps('lookup_sources')
     specs = [
-        ('list', 'ordered', _settings('whole', order, columns=LIST_COLUMNS,
+        ('list', CORE_RELATIONS['list'], _settings('whole', order, columns=LIST_COLUMNS,
             dictionary=LIST_DICTIONARY, delta=['filename', 'title'])),
-        ('detail', 'details', _settings('ranged', order, columns=DOCUMENT_COLUMNS, dictionary=[*DETAIL_DICTIONARY, *LIST_DICTIONARY], delta=['filename', 'title'])),
-        ('links', 'links', _settings('lookup', ['link_key'])),
-        ('urls', 'url_keys', _settings('lookup', ['lookup_key', 'list_row'])),
-        ('sources', 'source_rows', _settings('ranged', ['list_row', 'ordinal'], columns=['list_row', 'ordinal', 'url', 'member_path', 'is_saved', 'first_seen', 'listed_on', 'link_text', 'doc_type', 'posted'])),
-        ('recoveries', 'recovery_rows', _settings('ranged', ['list_row', 'ordinal'], columns=['list_row', 'ordinal', 'kind', 'body', 'suffix', 'bytes', 'imported_at', 'recovered_url', 'identity_note'], dictionary=['kind', 'suffix'])),
+        ('detail', CORE_RELATIONS['detail'], _settings('ranged', order, columns=DOCUMENT_COLUMNS, dictionary=[*DETAIL_DICTIONARY, *LIST_DICTIONARY], delta=['filename', 'title'])),
+        ('links', CORE_RELATIONS['links'], _settings('lookup', ['link_key'])),
+        ('urls', CORE_RELATIONS['urls'], _settings('lookup', ['lookup_key', 'list_row'])),
+        ('sources', CORE_RELATIONS['sources'], _settings('ranged', ['list_row', 'ordinal'], columns=['list_row', 'ordinal', 'url', 'member_path', 'is_saved', 'first_seen', 'listed_on', 'link_text', 'doc_type', 'posted'])),
+        ('recoveries', CORE_RELATIONS['recoveries'], _settings('ranged', ['list_row', 'ordinal'], columns=['list_row', 'ordinal', 'kind', 'body', 'suffix', 'bytes', 'imported_at', 'recovered_url', 'identity_note'], dictionary=['kind', 'suffix'])),
     ]
     outputs = [dict(name=name + '.parquet', path=str(output / (name + '.parquet')), sql='SELECT * FROM ' + table, settings=settings) for name, table, settings in specs]
     return outputs
@@ -204,7 +210,8 @@ def _execute(inputs, steps, *, output, scratch, engine, origin, auxiliary=None, 
         fields=json.loads((ROOT/'model/registries/capture-eligibility-fields.json').read_text())
         next(item for item in schema['files'] if item['name']=='url_state.parquet')['columns'].extend(fields)
     from viewer_publication.archive_schema import publication_checks
-    diagnostics = [*diagnostics, *publication_checks(schema, aux_names, keyed_documents=origin['kind'] != 'converted_catalog')]
+    diagnostics = [*diagnostics, *publication_checks(schema, aux_names, published=[item['name'] for item in outputs],
+        keyed_documents=origin['kind'] != 'converted_catalog')]
     outputs.extend(extra_outputs)
     facets = [f"SELECT '{name}' AS facet,cast({name} AS VARCHAR) AS value,count(*) AS count FROM ordered WHERE NOT hidden GROUP BY {name}" for name in ['format', 'congress', 'saved_kind']]
     facets += [f"SELECT '{name}' AS facet,value,count(*) AS count FROM (SELECT unnest({name}) AS value FROM ordered WHERE NOT hidden) GROUP BY value" for name in ['document_kind', 'document_family', 'committee_keys', 'chambers', 'meeting_keys']]
