@@ -76,5 +76,29 @@
     "kind": "feed_url",
     "pattern": "(?i)/(rss|feed|sitemap)([/.?]|$)",
     "sample_id": "page-signals:feed_urls"
+  },
+  {
+    "id": "link_word_formats",
+    "kind": "link_word",
+    "pattern": "(?i)^(zip|pdf|html?|xml|docx?|txt|text|json|csv|xlsx?|pptx?|mp3|mp4)[.!:]*$",
+    "sample_id": "page-signals:link_word_formats"
+  },
+  {
+    "id": "link_word_actions",
+    "kind": "link_word",
+    "pattern": "(?i)^(click here|please click here|here|link|document|file|download|download file|download pdf|download testimony|download witness testimony|download executive business meeting results|view|view pdf|view testimony|open|read more|more|email|print|share|website|webpage|untitled|attachment)[.!:]*$",
+    "sample_id": "page-signals:link_word_actions"
+  },
+  {
+    "id": "link_word_click_here",
+    "kind": "link_word",
+    "pattern": "(?i)^(please\\s+)?click\\s+here\\b",
+    "sample_id": "page-signals:link_word_click_here"
+  },
+  {
+    "id": "link_word_download",
+    "kind": "link_word",
+    "pattern": "(?i)^(download|view|open)\\s+(witness\\s+)?(testimony|statement|document|pdf|file|results)\\b",
+    "sample_id": "page-signals:link_word_download"
   }
 ]

@@ -1749,6 +1749,7 @@ def test_govinfo_member_and_its_direct_copy_are_one_document(tmp_path):
     assert [r for r, d in enumerate(details) if d['package_id'] == 'CHRG-119hhrg1'] == [row]
     assert rows[row]['format'] == 'pdf' and not rows[row]['version_keys']
     assert [a['format'] for a in details[row]['alternates']] == ['html']
+    assert rows[row]['title'] == 'Hearing 1'  # The HTML rendition's title, never the link word "PDF".
     mine = {(s['url'], s['member_path']) for s in release['sources'] if s['list_row'] == row}
     assert ('https://www.govinfo.gov/content/pkg/CHRG-119hhrg1.zip', 'CHRG-119hhrg1/html/CHRG-119hhrg1.htm') in mine
     two = bodies['CHRG-119hhrg2']

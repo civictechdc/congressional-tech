@@ -40,10 +40,15 @@ def test_source_annotations_keep_pins_names_keys_and_publisher_priority(tmp_path
     inputs.append(json_input(tmp_path,'capture_sources',captures,source_id='Utf8',body_sha='Utf8',context_url='Utf8',member_path='Utf8'))
     pages=[dict(body_hex='a'*64,status='completed',title='Reading title',heading='Heading A',content_date='2026-10-18',named_meetings=[]),
            dict(body_hex='b'*64,status='completed',title='',heading='Heading B',content_date='2026-10-19',named_meetings=[]),
-           dict(body_hex='c'*64,status='completed',title='Metadata',heading=None,content_date=None,named_meetings=[999])]
+           dict(body_hex='c'*64,status='completed',title='Metadata',heading=None,content_date=None,named_meetings=[999]),
+           dict(body_hex='d'*64,status='completed',title=' Email ',heading=None,content_date=None,named_meetings=[])]
     inputs.append(json_input(tmp_path,'page_inputs',pages,body_hex='Utf8',status='Utf8',title='Utf8',heading='Utf8',content_date='Utf8',named_meetings=list_of('Int64')))
     links=[dict(source_id='s1',doc_type='br',text='Hearing transcript',page_body='page',context='https://publisher.test/index',first_good_at='2026-10-21T12:00:00Z',link_index=0,split_position=0),
-           dict(source_id='s2',doc_type='br',text='Hearing transcript',page_body='page',context='https://publisher.test/index',first_good_at='2026-10-21T12:00:00Z',link_index=1,split_position=0),
+           dict(source_id='s2',doc_type='br',text='PDF',page_body='page',context='https://publisher.test/index',first_good_at='2026-10-21T12:00:00Z',link_index=1,split_position=0),
+           # A link word says what a link does; a later descriptive label is the title.
+           dict(source_id='s4',doc_type=None,text='ZIP',page_body='page',context='https://publisher.test/index',first_good_at='2026-10-20T12:00:00Z',link_index=3,split_position=0),
+           dict(source_id='s4',doc_type=None,text=' Download\n  PDF ',page_body='page',context='https://publisher.test/index',first_good_at='2026-10-20T12:00:00Z',link_index=4,split_position=0),
+           dict(source_id='s4',doc_type=None,text='Hearing on Rural Lands',page_body='page',context='https://publisher.test/index',first_good_at='2026-10-23T12:00:00Z',link_index=5,split_position=0),
            dict(source_id='s3',doc_type=None,text='Hearing transcript',page_body='page',context='https://www.congress.gov/119/meeting/house/888',first_good_at='2026-10-21T12:00:00Z',link_index=2,split_position=0),
            dict(source_id='s3',doc_type=None,text='Later label',page_body='other',context='https://publisher.test/later',first_good_at='2026-10-22T12:00:00Z',link_index=0,split_position=0)]
     for row in links:row['context_url']=row['context'];row['context']='endpoint:'+row['context']
@@ -51,17 +56,19 @@ def test_source_annotations_keep_pins_names_keys_and_publisher_priority(tmp_path
     steps=[dict(name='capture_source_contexts',sql='SELECT * FROM capture_sources'),dict(name='page_facts',sql="SELECT decode(body_hex,'hex') AS body_sha,* EXCLUDE(body_hex),cast(content_date AS DATE) AS day FROM page_inputs")]
     result=run_job(tmp_path,NativeDatasets.from_config(os.environ['DOCSPEC_JOB_CONFIG']),inputs=inputs,
         steps=steps+annotation_steps('current'),outputs=[],queries=[
-            dict(name='sources',sql='SELECT source_id,document_kind,document_family,congress,package_id,cast(filename_date AS VARCHAR) AS filename_date,cast(content_date AS VARCHAR) AS content_date,title,meeting_keys,measure_keys,bioguide_ids,committee_keys,chambers,facts FROM source_annotations ORDER BY source_id'),
+            dict(name='sources',sql='SELECT source_id,document_kind,document_family,congress,package_id,cast(filename_date AS VARCHAR) AS filename_date,cast(content_date AS VARCHAR) AS content_date,title,listing_title,reading_title,meeting_keys,measure_keys,bioguide_ids,committee_keys,chambers,facts FROM source_annotations ORDER BY source_id'),
             dict(name='unmapped',sql='SELECT code,count(*) AS n FROM source_annotation_unmapped_committees GROUP BY code ORDER BY code')])
     one,two,three,four=result['sources']
     assert one==dict(source_id='s1',document_kind=['committee-report'],document_family=['hearings'],congress=119,
         package_id='CHRG-119hhrg11111',filename_date='2026-10-20',content_date='2026-10-18',title='Reading title',
+        listing_title='Hearing transcript',reading_title='Reading title',
         meeting_keys=['123'],measure_keys=['119-hr-7'],bioguide_ids=['A000001'],committee_keys=['hsag03'],chambers=['house'],
         facts=[dict(field='congress',value='119'),dict(field='date_token_candidates',value='2026-10-20'),dict(field='document_kind',value='committee-report')])
-    assert two['document_kind']==['legislative-text'] and two['title']=='Heading B'
+    assert two['document_kind']==['legislative-text'] and two['title']=='Heading B' and two['listing_title'] is None
     assert two['package_id']=='CHRG-119hhrg55555' and two['meeting_keys']==['999']
-    assert three['document_kind']==['transcript'] and three['title']=='Hearing transcript'
+    assert three['document_kind']==['transcript'] and three['title']=='Hearing transcript' and three['reading_title'] is None
     assert three['meeting_keys']==['456','888'] and three['chambers']==['house']
     assert four['meeting_keys']==['777'] and four['chambers']==['senate']
     assert four['document_kind']==[] and four['facts']==[]
+    assert four['title']==four['listing_title']=='Hearing on Rural Lands' and four['reading_title'] is None
     assert result['unmapped']==[dict(code='UNKNOWN',n=1)]

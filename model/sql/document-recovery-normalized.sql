@@ -1,4 +1,4 @@
-SELECT d.document_id AS doc_key,false AS body_expected,n.filename,cast(NULL AS VARCHAR) AS title,
+SELECT d.document_id AS doc_key,false AS body_expected,n.filename,coalesce(t.title,a.title) AS title,
  a.document_kind,a.document_family,a.committee_keys,a.chambers,cast(a.congress AS SMALLINT) AS congress,
  coalesce(b.format,'other') AS format,coalesce(a.filename_date,ml.meeting_date) AS document_date,cast(NULL AS DATE) AS first_captured,
  'import_day' AS date_kind,'recovery' AS saved_kind,false AS hidden,
@@ -19,7 +19,11 @@ JOIN effective_filenames n ON n.input_id='recovery:'||r.id
 JOIN source_files f ON f.body_sha IS NULL AND f.source_url=r.original_url AND f.filename=n.filename
 JOIN source_annotations a ON f.source_id=a.source_id
 JOIN body_evidence b ON r.body_sha=b.body_sha
-LEFT JOIN (SELECT encode(sha256,'hex') AS body_sha,max(media_type) AS media_type FROM captures GROUP BY sha256) c ON r.body_sha=c.body_sha
+-- Only the saved recovered bodies are read from captures and page_facts (candidate semi-join).
+LEFT JOIN (SELECT encode(c.sha256,'hex') AS body_sha,max(c.media_type) AS media_type
+ FROM captures c JOIN (SELECT DISTINCT decode(body_sha,'hex') AS sha256 FROM saved_recoveries WHERE saved_rank=1) s ON c.sha256=s.sha256 GROUP BY c.sha256) c ON r.body_sha=c.body_sha
+LEFT JOIN (SELECT encode(p.body_sha,'hex') AS body_sha,coalesce(nullif(trim(max(p.title)),''),nullif(trim(max(p.heading)),'')) AS title
+ FROM page_facts p JOIN (SELECT DISTINCT decode(body_sha,'hex') AS sha256 FROM saved_recoveries WHERE saved_rank=1) s ON p.body_sha=s.sha256 WHERE p.status='completed' GROUP BY p.body_sha) t ON r.body_sha=t.body_sha
 LEFT JOIN component_meeting_links ml ON d.component=ml.component
 LEFT JOIN document_witness_keys wk ON d.component=wk.component
 WHERE NOT d.has_real
