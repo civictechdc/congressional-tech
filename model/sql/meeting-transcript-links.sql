@@ -29,3 +29,5 @@ WHERE m.chamber IS NULL
    OR (m.chamber='house' AND p.chamber_letter='h')
    OR (m.chamber='senate' AND p.chamber_letter='s')
    OR (m.chamber='joint' AND p.chamber_letter='j')
+UNION
+SELECT package_id,event_id,meeting_date,chamber FROM meeting_mods_links

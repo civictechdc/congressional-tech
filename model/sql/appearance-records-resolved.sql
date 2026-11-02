@@ -90,10 +90,20 @@ WITH candidate_appearance_shas AS (
   FROM selected_meeting_records r
   WHERE r.status='completed' AND r.meetings IS NOT NULL
  ) GROUP BY record_sha_hex
-), single_package_meetings AS (
- SELECT package_id,min(event_id) AS event_id
- FROM meeting_transcript_links
- GROUP BY package_id HAVING count(DISTINCT event_id)=1
+), linked_house_lists AS (
+ SELECT record_sha_hex,unnest(appearances) AS a FROM selected_appearance_records
+ WHERE source='house_xml' AND status='completed' AND event_id IS NULL AND appearances IS NOT NULL
+), house_list_links AS (
+ SELECT record_sha_hex,trim(unnest(a['document_links'])) AS link FROM linked_house_lists
+), stated_list_events AS (
+ -- ct-x78c: a House witness list with no meeting-id still states its event in its own document
+ -- links (/meetings/<c>/<sc>/<yyyymmdd>/<event>/).
+ SELECT record_sha_hex,try_cast((regexp_match(link,'(?i)/meetings/[A-Za-z0-9]+/[A-Za-z0-9]+/[0-9]{8}/([0-9]+)/'))[1] AS BIGINT) AS event_id
+ FROM house_list_links
+), list_events AS (
+ -- One event only: links or paths that disagree state no event.
+ SELECT record_sha_hex,min(event_id) AS event_id FROM stated_list_events WHERE event_id IS NOT NULL
+ GROUP BY record_sha_hex HAVING count(DISTINCT event_id)=1
 ), bound_contexts AS (
  SELECT
   r.record_sha_hex,
@@ -111,7 +121,8 @@ WITH candidate_appearance_shas AS (
    try_cast(r.event_id AS BIGINT),
    try_cast((regexp_match(coalesce(cc.source_url,r.context_url,''),'(?i)/committee-meeting/[0-9]+/(?:house|senate|joint|nochamber)/([0-9]+)'))[1] AS BIGINT),
    try_cast((regexp_match(coalesce(cc.source_url,r.context_url,''),'(?i)/meetings/[A-Za-z0-9]+/[A-Za-z0-9]+/[0-9]{8}/([0-9]+)/'))[1] AS BIGINT),
-   try_cast((regexp_match(coalesce(cc.source_url,r.context_url,''),'(?i)[?&]eventid=([0-9]+)'))[1] AS BIGINT)
+   try_cast((regexp_match(coalesce(cc.source_url,r.context_url,''),'(?i)[?&]eventid=([0-9]+)'))[1] AS BIGINT),
+   le.event_id
   ) AS raw_event_id,
   coalesce(
    nullif(trim(r.package_id),''),
@@ -136,6 +147,7 @@ WITH candidate_appearance_shas AS (
  JOIN meeting_sources ms ON ms.kind='appearance' AND r.source=ms.source
  LEFT JOIN capture_contexts cc ON r.record_sha_hex=cc.record_sha_hex AND r.source=cc.source
  LEFT JOIN meeting_updates u ON r.record_sha_hex=u.record_sha_hex
+ LEFT JOIN list_events le ON r.source='house_xml' AND r.record_sha_hex=le.record_sha_hex
 ), observations_with_occasion AS (
  SELECT
   b.*,
@@ -160,7 +172,7 @@ WITH candidate_appearance_shas AS (
    ELSE b.source_url
   END AS resolved_base
  FROM bound_contexts b
- LEFT JOIN single_package_meetings spm ON b.source='mods' AND b.package_id=spm.package_id
+ LEFT JOIN package_meeting_links spm ON b.source='mods' AND b.package_id=spm.package_id
  LEFT JOIN appearance_url_keys pk ON b.source='senate_page' AND b.page_url=pk.url AND pk.error IS NULL
 ), valid_observations AS (
  SELECT *,
