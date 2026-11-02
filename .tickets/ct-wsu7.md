@@ -18,3 +18,9 @@ etl-model 2026-11-02 (.cache/archive-release/investigations/model/): the release
 
 Fixes 1-5 land with byte-identical release files on v21 frozen inputs (every sha256 equal before and after); per-step peak and materialized bytes measured before and after; the release config (16 GiB, 2 threads) passes the full model; only the model profile digest moves.
 
+
+## Notes
+
+**2026-11-02T17:17:02Z**
+
+Owner decision 2026-11-02: run the full model only after the witness-step fix lands on meetings, at the release's own settings (16 GiB, 2 threads); no 4-thread stop-gap or larger pool.

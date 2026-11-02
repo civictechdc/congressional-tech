@@ -17,3 +17,9 @@ etl-storage 2026-11-02 (.cache/archive-release/investigations/storage/): ~233 Gi
 
 Fetch refspec excludes pipeline-data (or it's fetched shallow), with a gc in a quiet window; proofs hardlink or clone bodies; the guard or watchdog deletes a killed job's spill dir; dev.py clean has a retention list; footprint re-measured.
 
+
+## Notes
+
+**2026-11-02T17:17:02Z**
+
+Owner decision 2026-11-02: stop fetching pipeline-data locally (done: fetch refspec ^refs/heads/pipeline-data, remote-tracking ref removed); gc after the release when agents are idle; keep the NARA files.

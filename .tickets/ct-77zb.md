@@ -88,3 +88,7 @@ Round 1b 2026-11-02 (lead): Integration of clusters B/C/D: 63 lane failures, non
 **2026-11-02T16:28:57Z**
 
 2026-11-02 (lead): etl-rca correction: cluster C's integration failures were NOT from running main's code. C's tests ran the branch's code but only --path subsets, which hid the failures. Fix 9631f1be on r4-rca: pytest and doctor refuse another checkout's interpreter or imports, and every run prints whether it was a partial or full lane. e13a3382 binds the engine to the branch pin through a content-addressed store (.cache/docspec-runtime); before it, verify_runtime didn't enforce the pin, so several branches pinning eb40c54 tested on 5dae611.
+
+**2026-11-02T17:17:02Z**
+
+Owner decision 2026-11-02: runner fixes (r4-rca: refuse another checkout's code or a mismatched engine pin; partial/full lane line) ship with this release after a light check.

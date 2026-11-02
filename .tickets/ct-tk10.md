@@ -61,3 +61,7 @@ Round 1b 2026-11-02 (lead): impl-h done: 13 commits on r1b-h (1055fefb..36ac49a0
 **2026-11-02T16:40:28Z**
 
 2026-11-02 (lead): r1b-h merged into integrate-round1 by fast-forward at 0f4711bb (27 commits, rebased onto f5f647da): retired_links, nullable flags merged with g's meanings, lifetimes 177, and fixtures adapted to e1's mapping_version and its build-time refusal of the 202 mutant.
+
+**2026-11-02T17:17:02Z**
+
+Owner decision 2026-11-02: any gate-1 difference group the cause catalog can't match is brought to the owner with evidence and a recommendation before publish. Catalog: .cache/archive-release/causes/ (19 causes, matcher match.py; probe matched 10/11, the 11th being live's 72 NULL source URLs). Gate fix requested (r1b-h2): compare struct subfields individually (meetings.sittings gained fields, 17,441/18,687 rows differ wholesale) and state the 'cannot see' for columns new in the candidate.
