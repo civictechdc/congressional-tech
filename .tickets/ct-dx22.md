@@ -56,3 +56,7 @@ Round 1b 2026-11-02 (lead): Two-way package-to-meeting rule moves 392 rows on 93
 **2026-11-02T17:45:21Z**
 
 2026-11-02 impl-f: r1b-f eeccda09 and r1b-transcripts d8ae25d8 on 44785aee. Independent judge over 1,091 statements: 934 supported by raw, 42 shown by another row, 79 ambiguous, 7 lines not found. Over 32,725 superseded rows: 32,427 supported; the 151 flagged were all read by hand and all are the same person. Red-f3 items (a)-(d) map to tests in e19d5cfa and 07f7809a. Open before merge: 129 names carry GPO's literal footnote marker ('Prepared statement \\1\\'), to be fixed at the root; 55 unlabelled 'for the record' or 'Letter' lines to read in full; 7 lines not found to explain. Integrate blocker: staging video_records fails on unreadable bodies (producer identity keys and reason vs the validator), sent to impl-h as r1b-h3.
+
+**2026-11-02T18:20:46Z**
+
+2026-11-02 green-f4 (light check, r1b-transcripts a437bfd1): MERGE WITH FIXES. (a)-(e) hold in code and data: Vought, Duffy and Al Green are not statements; nicknames are one-way; no \\N\\ markers remain in published fields; 235 prefix-only matches checked with no different people; all 108,506 MODS lines scanned. Remaining, same class: footnote text leaks into names, creating duplicate statement rows (103551, 101897, 105942, 110313, 110380: 11 shown rows), and contents labels survive as names ('Submitted questions' 12, 'Prepared statement' 14; 114537 duplicates Erik Olson). Sent to impl-f to fix before D4 starts.
