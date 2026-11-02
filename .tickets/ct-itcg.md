@@ -38,3 +38,7 @@ Root cause work by impl-d-jobs, 2026-11-01. Proven: none of fb408404, its parent
 **2026-11-02T00:36:42Z**
 
 Owner decision 2026-11-01: commit the v21 inputs as they are, and rebuild captures in parallel under ct-kunv. This supersedes the earlier do-not-commit note and the main recommendation against it. The criterion that a rebuild reproduces 448651e7 no longer applies as a target, because that release has known defects; instead every difference is explained. Inputs are at .cache/archive-release/publish_v21/inputs, the only copy.
+
+**2026-11-02T10:24:10Z**
+
+Owner decision 2026-11-02: merge B/C/D first; Claude runs this commit afterwards from a checkout pinned at 6a36e54c (pre-merge code), through the checked-in native jobs, with per-key read-back.

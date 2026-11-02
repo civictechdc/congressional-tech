@@ -2,7 +2,7 @@
 id: ct-n2cy
 status: open
 deps: []
-links: [ct-sh4j, ct-qg8e, ct-yf1c]
+links: [ct-sh4j, ct-qg8e, ct-yf1c, cef-96wc, ct-tk10, ct-d0o0]
 created: 2026-11-02T00:36:42Z
 type: bug
 priority: 2

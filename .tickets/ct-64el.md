@@ -28,3 +28,7 @@ Owner decision 2026-11-01: ZIPs are capture transport and do not belong in the d
 **2026-11-02T04:01:45Z**
 
 Code on worktree-agent-a704015cc138b456b @ da425206. Review verdict: merge, stay open. Raw: 15/15 ZIPs and 149/149 members rehash equal. Owner decided imported contents count when the ZIP matches by digest. Open: rebuild counts, and bytes of 12 HTTP 206 ZIPs unread. Body 5e9b5643 is an older edition of the 64404 transcript, the only wrongly excluded body; two later bodies list that URL. All branches: not merged; parser pins are recomputed once at integration; no backfill, lake write or full model run has happened.
+
+**2026-11-02T10:24:10Z**
+
+Owner decision 2026-11-02: restore body 5e9b5643 (older CHRG-119hhrg64404 edition) under the general rule, no exception. Data model §7.5: editions at one address are separate documents sharing version_keys, and the site lists all versions (ArchiveRows.tsx:41), not only the latest.

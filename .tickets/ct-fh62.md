@@ -18,3 +18,9 @@ tags: [release, phase2]
 
 The owner decides whether an empty capture is a track, and a native check enforces it.
 
+
+## Notes
+
+**2026-11-02T10:24:10Z**
+
+Owner decision 2026-11-02: empty caption bodies are not tracks; same rule as ct-3l1c. A native check refuses a published track whose body is the SHA-256 of empty input.

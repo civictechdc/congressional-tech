@@ -18,3 +18,9 @@ review-d-jobs measured 281 eligible rows with zero bytes.
 
 The owner decides; good_fetches follows, with a fixture.
 
+
+## Notes
+
+**2026-11-02T10:24:10Z**
+
+Owner decision 2026-11-02: an empty 2xx body is not a document or caption track. Record the attempt, list nothing, recheck on schedule. Read all 281 raw receipts in full before applying; same rule as ct-fh62.

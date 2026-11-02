@@ -95,3 +95,7 @@ Owner decision 2026-11-01: revise the memory criterion. Measure and report memor
 **2026-11-02T04:01:45Z**
 
 Code on worktree-agent-a704015cc138b456b @ da425206. Review verdict: merge, stay open. Frozen-input tables built, and 217,794 meeting values compared to raw with 0 differing. Open: byte identity, memory and release ID need a full run; publisher, claims and coverage only restate the rule; coverage disagrees with raw on weak classes such as 1,450 documents and 1,906 witnesses not_stated despite evidence, and the owner decides how to treat them; c.* chain still hits 2 GiB spill at capture_sources. All branches: not merged; parser pins are recomputed once at integration; no backfill, lake write or full model run has happened.
+
+**2026-11-02T10:24:10Z**
+
+Owner decision 2026-11-02: coverage. Fix document linking at its source (list.meeting_keys misses 1,450 meetings). Where evidence is held but not yet linked (matcher pending), coverage says unknown, never not_stated. Every present value has a link the user can open.

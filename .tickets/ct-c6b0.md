@@ -24,3 +24,7 @@ The owner decides whether 202 is good; captures and good_fetches follow, with a 
 **2026-11-02T04:01:45Z**
 
 Code on worktree-agent-a5550c04138214670 @ b3c4aa3c (3bf52b65); 15 HTTP 202 rows flip from stored. Review: merge, stay open. receipt_writer.py:44 still writes 202 as stored, and removing the archive_url_state.py:28 exclusion fails no test, so add one. Owner ruling on 202 still to record; main treated firewall 202s as not good under the batched fix.
+
+**2026-11-02T10:24:10Z**
+
+Owner decision 2026-11-02: an HTTP 202 is never a good fetch. Treat it as a failed attempt, keep the receipt, retry on schedule. Fix receipt_writer.py:44 and add the test that fails if the archive_url_state.py:28 exclusion is removed.

@@ -38,3 +38,7 @@ Keep title, short publisher description, and full article text distinct. Boilerp
 **2026-11-02T04:01:45Z**
 
 Code on worktree-agent-ae42a8cf7a429ba24 @ 180a49b1. Review verdict: merge, stay open for the owner's 20-page read of docs/experiments/html-metadata-20261101/content-cohort.md. Scope reduced to marked and no-content pages.
+
+**2026-11-02T10:24:10Z**
+
+Owner decision 2026-11-02: the 20-page side-by-side read is required before content selection is used. Under the 2026-11-02 autonomy grant, Claude reads all 20 in full and an independent reviewer repeats it; content selection ships only if neither finds dropped testimony. The owner may still read the cohort file.

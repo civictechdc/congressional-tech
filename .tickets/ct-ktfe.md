@@ -18,3 +18,9 @@ tags: [release, phase2]
 
 The owner decides whether to publish a mapping, and the release notes state the decision.
 
+
+## Notes
+
+**2026-11-02T10:24:10Z**
+
+Owner decision 2026-11-02: release note only. No old-to-new witness_key mapping; the release notes state that witness IDs changed and old ?witness= links no longer resolve.

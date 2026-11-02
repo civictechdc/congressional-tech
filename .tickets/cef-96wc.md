@@ -2,7 +2,7 @@
 id: cef-96wc
 status: open
 deps: [ct-itcg, ct-9gmr, ct-qg8e, ct-2c0w, ct-31e2, ct-kn6d, ct-r8jd]
-links: [ct-klyz, ct-4jms, ct-5kto, ct-77zb, cef-jh7i, ct-t906, ct-1mbc, ct-kw9b, ct-9gmr, ct-pocg, ct-64el]
+links: [ct-klyz, ct-4jms, ct-5kto, ct-77zb, cef-jh7i, ct-t906, ct-1mbc, ct-kw9b, ct-9gmr, ct-pocg, ct-64el, ct-n2cy, ct-tk10, ct-qg8e, ct-d0o0]
 created: 2026-10-28T05:00:43Z
 type: task
 priority: 1
@@ -58,3 +58,7 @@ Owner decisions 2026-11-01: keep 448651e7 live until a fixed release ships; ZIP 
 **2026-11-02T00:40:43Z**
 
 New blockers: ct-r8jd (runaway limit).
+
+**2026-11-02T10:24:10Z**
+
+Owner decision 2026-11-02: add all five publish gates before the next publish: key-by-key comparison with live where every difference has a recorded cause; a link rule (a published link redirects or shows a removal notice, never silently vanishes, covering the 7,266 lost links); one end-to-end receipts-to-release test; write-time refusal of missing required fields; producer proof for every input. Full model run on the Mac under the guard. Autonomy grant: Claude takes the release through merged, tested and live, including the pointer flip.

@@ -25,3 +25,7 @@ The reproduction and evidence are reported under docspec-rs ss-oxg1. Either the 
 **2026-11-02T04:01:45Z**
 
 Corrected trigger: a computed CASE branch in an ordered array_agg, not a regexp. Evidence in explorer-native-comparison-20261101.md on worktree-agent-a704015cc138b456b @ da425206. Still to report under ss-oxg1; engine unfixed.
+
+**2026-11-02T10:24:10Z**
+
+Owner decision 2026-11-02: file under docspec-rs ss-oxg1 and fix it in the engine too; commit, merge and push the engine fix and re-pin the runtime.

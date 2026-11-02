@@ -2,7 +2,7 @@
 id: ct-qg8e
 status: open
 deps: []
-links: [ct-64el, ct-n2cy, ct-ktfe, ct-5f3e, ct-fh62, ct-dx22, ct-c6b0, ct-o2pr, ct-lgxk, ct-d3tk]
+links: [ct-64el, ct-n2cy, ct-ktfe, ct-5f3e, ct-fh62, ct-dx22, ct-c6b0, ct-o2pr, ct-lgxk, ct-d3tk, cef-96wc, ct-tk10, ct-d0o0]
 created: 2026-11-01T20:08:13Z
 type: task
 priority: 1
