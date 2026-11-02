@@ -219,6 +219,10 @@ Identity: `event_id` (primary_key; published identifier).
 | `congress_gov_updated` | `timestamp` | Congress.gov's updateDate for this record: a publisher record update, distinct from the hearing date and capture time |
 | `house_xml_updated` | `string` | House XML update-date, literally as stated with no zone: a publisher record update, distinct from the hearing date and capture time |
 | `congress_gov_meeting_type` | `dict` | Congress.gov's type label (Hearing, Markup, Meeting) |
+| `access` | `dict` | open, closed, partly_closed or unknown, as the publisher type or title states |
+| `access_basis` | `dict` | The source and field that state access, such as congress_gov/title |
+| `not_held` | `bool` | The publisher title opens with postponed, canceled, rescheduled or test; null with no record |
+| `rescheduled_to` | `int64` | Later meeting of the same committees and title within 60 days, when this one has no recording or transcript; derived, not publisher-stated |
 
 - `sittings[]`: Embedded scheduled intervals and places. Congress.gov states instants and places, so its sitting is used when present; a House-only sitting's unzoned Eastern local time is converted to an instant. An explicit empty House state stays empty. Times retain published precision; do not invent a Congress from the session number.
 - `committees[]`: Host/participant roles belong to this meeting-committee association.
@@ -562,18 +566,16 @@ One aspect of one meeting: recording, transcript, documents, witnesses or captio
 
 Identity: `event_id, aspect` (primary_key; published identifier).
 
-Coverage: Access, closed, not-held and rescheduled facts arrive with the native hearing records.
-
 | Field | Published type | Meaning |
 | --- | --- | --- |
 | `event_id` | `int64` | Meeting event ID |
 | `aspect` | `dict` | recording, transcript, documents, witnesses or captions |
-| `state` | `dict` | present, empty, not_stated, unresolved, confirmed_absent or unknown; these never merge |
+| `state` | `dict` | present, partial, claimed, empty, not_stated, unresolved, not_public, confirmed_absent or unknown; these never merge |
 | `basis` | `dict` | Which relation states it |
 | `count` | `int32` | Rows behind present |
 | `reason` | `dict` | Why a state holds, when known, such as old_evidence_disputes_negative_verdict |
 
-- `state`: confirmed_absent only from undisputed curated negative verdicts on every package of the meeting, each linked to that meeting alone; zero rows never prove absence.
+- `state`: confirmed_absent only from undisputed curated negative verdicts on every package of the meeting, each linked to that meeting alone; zero rows never prove absence. partial means excerpts only; claimed means only a video’s own text; for captions, no observation is unknown, never empty.
 
 Outgoing: `coverage_meeting`.
 

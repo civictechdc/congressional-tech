@@ -1,6 +1,6 @@
 WITH selected AS (
  SELECT record_sha,try_cast(event_id AS BIGINT) AS event_id,updated,records
- FROM committee_records
+ FROM selected_committee_records
  WHERE status='completed' AND event_id IS NOT NULL
 ), ranked AS (
  SELECT *,row_number() OVER(PARTITION BY event_id ORDER BY updated DESC NULLS LAST,encode(record_sha,'hex')) AS rn FROM selected

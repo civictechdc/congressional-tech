@@ -610,6 +610,26 @@
           "name": "congress_gov_meeting_type",
           "type": "dict",
           "meaning": "Congress.gov's type label (Hearing, Markup, Meeting)"
+        },
+        {
+          "name": "access",
+          "type": "dict",
+          "meaning": "open, closed, partly_closed or unknown, as the publisher type or title states"
+        },
+        {
+          "name": "access_basis",
+          "type": "dict",
+          "meaning": "The source and field that state access, such as congress_gov/title"
+        },
+        {
+          "name": "not_held",
+          "type": "bool",
+          "meaning": "The publisher title opens with postponed, canceled, rescheduled or test; null with no record"
+        },
+        {
+          "name": "rescheduled_to",
+          "type": "int64",
+          "meaning": "Later meeting of the same committees and title within 60 days, when this one has no recording or transcript; derived, not publisher-stated"
         }
       ],
       "gaps": [],
@@ -1525,7 +1545,7 @@
         {
           "name": "state",
           "type": "dict",
-          "meaning": "present, empty, not_stated, unresolved, confirmed_absent or unknown; these never merge"
+          "meaning": "present, partial, claimed, empty, not_stated, unresolved, not_public, confirmed_absent or unknown; these never merge"
         },
         {
           "name": "basis",
@@ -1543,9 +1563,7 @@
           "meaning": "Why a state holds, when known, such as old_evidence_disputes_negative_verdict"
         }
       ],
-      "gaps": [
-        "Access, closed, not-held and rescheduled facts arrive with the native hearing records"
-      ],
+      "gaps": [],
       "purpose": "Typed coverage facts per meeting",
       "row_meaning": "One aspect of one meeting: recording, transcript, documents, witnesses or captions",
       "identity": {
@@ -1558,7 +1576,7 @@
         "kind": "primary_key"
       },
       "notes": {
-        "state": "confirmed_absent only from undisputed curated negative verdicts on every package of the meeting, each linked to that meeting alone; zero rows never prove absence."
+        "state": "confirmed_absent only from undisputed curated negative verdicts on every package of the meeting, each linked to that meeting alone; zero rows never prove absence. partial means excerpts only; claimed means only a video\u2019s own text; for captions, no observation is unknown, never empty."
       }
     }
   ],

@@ -54,6 +54,11 @@ MEETING_RECORD_FIELDS=dict(
             videos='Utf8',
             document_urls='Utf8',
         ),
+        access='Utf8',
+        access_basis='Utf8',
+        not_held='Boolean',
+        title_key='Utf8',
+        reschedule_candidate='Boolean',
     )),
 )
 
@@ -453,6 +458,12 @@ def _sql_steps(names,*,root=ROOT):
     return [dict(name=name.replace('-','_'),sql=(Path(root)/'model/sql'/(name+'.sql')).read_text(),materialize=True) for name in names]
 
 
+def selected_record_step(table,record_input,*,root=ROOT):
+    """The one version selection each record table's readers share, in both dialects' place."""
+    sql=(Path(root)/'model/sql/selected-records.sql').read_text().replace('{{TABLE}}',table).replace('{{INPUT}}',record_input)
+    return dict(name='selected_'+table,sql=sql,materialize=True)
+
+
 def meeting_steps(*,root=ROOT):
     """Select once, merge once, then resolve: CTEs are inlined per reader, so these must be steps."""
     return _sql_steps(['meeting-records-current','meeting-records-merged'],root=root)+[
@@ -507,7 +518,7 @@ def prepare_model_inputs(*,captures,readings,filename_readings,parser_versions,c
     explorer_inputs=video_records is not None or committee_records is not None or bool(recording_decision_files)
     if explorer_inputs and (video_records is None or committee_records is None or not recording_decision_files or not include_entities):
         raise ValueError('Explorer tables require entity inputs, video_records, committee_records and recording decisions together')
-    validate_parser_versions(parser_versions,require_entities=include_entities)
+    validate_parser_versions(parser_versions,require_entities=include_entities,require_explorer=explorer_inputs)
     scratch=Path(scratch).resolve();scratch.mkdir(parents=True,exist_ok=False)
     evidence=scratch/'evidence';evidence.mkdir()
     inputs=registry_inputs(scratch/'registries',root=root)
@@ -584,11 +595,14 @@ def prepare_model_inputs(*,captures,readings,filename_readings,parser_versions,c
     inputs.append(_provenance_input('verification_records',verification_files,dict(key='Utf8',size='Int64',intact='Boolean',sha256_verified='Boolean',checked_at='Utf8')))
     inputs.append(json_input(scratch,'url_state_meeting_dates_input',[],requested_url='Utf8',meeting_date='Date32'))
     inputs.append(_provenance_input('url_variant_records',variant_files,{name:'Utf8' for name in ['id','canonical_url','variant_url','basis','decided_at','supersedes']}))
+    prelude += [selected_record_step('meeting_records','meeting_records_input',root=root),
+        selected_record_step('appearance_records','appearance_records_input',root=root)]
     prelude += [dict(name='url_variants',sql='SELECT DISTINCT canonical_url,variant_url FROM url_variant_records r WHERE NOT EXISTS(SELECT 1 FROM url_variant_records s WHERE s.supersedes=r.id)',materialize=True)]
     inputs.append(_provenance_input('unreadable_records',unreadable_files,dict(id='Utf8',body_sha256='Utf8',record_sha='Utf8',parser='Utf8',parser_version='Utf8',supersedes='Utf8')))
     if explorer_inputs:
         inputs.append(_provenance_input('recording_decision_records',recording_decision_files,RECORDING_DECISION_FIELDS))
         inputs.append(json_input(scratch,'channel_directory',channel_directory_rows(root),handle='Utf8',channel_id='Utf8',system_code='Utf8',committee_label='Utf8',role='Utf8'))
+        prelude += [selected_record_step('video_records','video_records',root=root),selected_record_step('committee_records','committee_records',root=root)]
         prelude += [dict(name='active_recording_decisions',sql='SELECT r.* FROM recording_decision_records r WHERE NOT EXISTS(SELECT 1 FROM recording_decision_records s WHERE s.supersedes=r.id)',materialize=True)]
     prelude += [dict(name='active_unreadable',sql='SELECT u.* FROM unreadable_records u WHERE NOT EXISTS(SELECT 1 FROM unreadable_records s WHERE s.supersedes=u.id)',materialize=True)]
     from congress_api.models.archive_profile import build_capture_profile
@@ -659,12 +673,8 @@ def build_prepared_release(prepared,*,engine,output,root=ROOT):
     app_url_inputs_sql="""WITH selected_app_records AS (
         SELECT r.record_sha_hex,r.source,nullif(trim(r.declared_base),'') AS declared_base,
             r.context_url,r.appearances
-        FROM appearance_records_input r
+        FROM selected_appearance_records r
         WHERE r.status='completed'
-          AND (
-            NOT EXISTS (SELECT 1 FROM parser_versions WHERE parser LIKE 'appearance_records.%')
-            OR EXISTS (SELECT 1 FROM parser_versions v WHERE v.parser='appearance_records.'||r.source AND v.version=r.parser_version)
-          )
     ), candidate_app_shas AS (
         SELECT DISTINCT record_sha_hex FROM selected_app_records WHERE record_sha_hex IS NOT NULL
     ), distinct_capture_urls AS (
@@ -815,8 +825,13 @@ def build_prepared_release(prepared,*,engine,output,root=ROOT):
     if prepared.get('explorer_inputs'):
         steps += [dict(name='youtube_cache_bodies',sql=(Path(root)/'model/sql/youtube-cache-bodies.sql').read_text(),materialize=True)]
         auxiliary += [(name,(Path(root)/'model/sql'/(file+'.sql')).read_text(),keys,dictionary) for name,file,keys,dictionary in EXPLORER_TABLES]
-        explorer_diagnostics=[dict(name='explorer_invariants',sql="SELECT (SELECT count(*) FROM meeting_coverage_export)-5*(SELECT count(*) FROM meetings_export) AS coverage_row_mismatch")]
-        meta_explorer=[dict(name='videos_in_several_channels',sql="SELECT count(*) AS videos FROM (SELECT v['video_id'] AS video_id FROM (SELECT unnest(r.videos) AS v FROM video_records r JOIN youtube_cache_bodies b ON encode(r.record_sha,'hex')=b.record_sha) GROUP BY v['video_id'] HAVING count(DISTINCT v['handle'])>1)")]
+        from congress_api.lake.committee_records import CANDIDATE_SQL
+        settled=lambda table:f"""SELECT lower(encode(record_sha,'hex')) AS sha FROM selected_{table} WHERE status IN ('completed','error','size_limit')
+            UNION SELECT lower(coalesce(record_sha,body_sha256)) FROM active_unreadable WHERE parser='{table}'"""
+        explorer_diagnostics=[dict(name='explorer_invariants',sql=f"""SELECT (SELECT count(*) FROM meeting_coverage_export)-5*(SELECT count(*) FROM meetings_export) AS coverage_row_mismatch,
+            (SELECT count(*) FROM youtube_cache_bodies b WHERE b.record_sha NOT IN ({settled('video_records')})) AS unsettled_video_records,
+            (SELECT count(*) FROM ({CANDIDATE_SQL}) c WHERE c.record_sha NOT IN ({settled('committee_records')})) AS unsettled_committee_records""")]
+        meta_explorer=[dict(name='videos_in_several_channels',sql="SELECT count(*) AS videos FROM (SELECT v['video_id'] AS video_id FROM (SELECT unnest(r.videos) AS v FROM selected_video_records r JOIN youtube_cache_bodies b ON encode(r.record_sha,'hex')=b.record_sha) GROUP BY v['video_id'] HAVING count(DISTINCT v['handle'])>1)")]
     auxiliary += [('url_state','SELECT * FROM url_state',['requested_url'],['last_outcome']),
         ('url_variants','SELECT * FROM url_variants',['variant_url','canonical_url'],[])]
     extra=[dict(name='document_rows.parquet',path=str(evidence/'document_rows.parquet'),sql='SELECT list_row,doc_key AS document_id,'+','.join(LIST_COLUMNS+DETAIL_COLUMNS)+' FROM details',settings=_settings('whole',['list_row'],footer_limit=4 << 20)),
@@ -900,12 +915,8 @@ def build_prepared_release(prepared,*,engine,output,root=ROOT):
                 SELECT cast(m['event_id'] AS BIGINT) AS event_id
                 FROM (
                     SELECT unnest(r.meetings) AS m
-                    FROM meeting_records_input r
+                    FROM selected_meeting_records r
                     WHERE r.status='completed' AND r.meetings IS NOT NULL
-                      AND (
-                        NOT EXISTS (SELECT 1 FROM parser_versions WHERE parser LIKE 'meeting_records.%')
-                        OR EXISTS (SELECT 1 FROM parser_versions v WHERE v.parser='meeting_records.'||r.source AND v.version=r.parser_version)
-                      )
                 )
                 WHERE m['event_id'] IS NOT NULL AND nullif(trim(m['chamber']),'') IS NOT NULL
                 GROUP BY cast(m['event_id'] AS BIGINT)

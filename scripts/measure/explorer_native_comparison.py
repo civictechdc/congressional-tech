@@ -11,21 +11,24 @@ family where a source value exists. Name normalization can merge two different p
 """
 import argparse
 import csv
+import gzip
 from hashlib import sha256
 import json
 from pathlib import Path
-import re
 import subprocess
 import sys
+from urllib.error import HTTPError, URLError
+from urllib.request import Request, urlopen
+import xml.etree.ElementTree as ET
 
 import duckdb
 
 SAMPLES = 20
+PUBLIC = 'https://congressional-data.spicygov.ai/'
 REASONS = {
     'pending_r2_matcher': 'Scored date and title matches arrive with the native decide() producer.',
     'pending_r2_senate_page_link': 'Senate page-to-event links are held only in derived data until the derived-link layer.',
     'pending_r2_print_link': 'Print-to-meeting links are derived; they arrive with native hearing records.',
-    'pending_r2_access_state': 'Access, closed, not-held and rescheduled facts arrive with native hearing records.',
     'old_state_only': 'Rows the old exporter built from state files with no native source yet; kept by old-release reference.',
     'new_snapshot_only': 'The frozen captures end at the 2026-10-28 snapshot, after the retained old inputs.',
     'native_found_more': 'The native record states rows the old derived file lacks.',
@@ -162,10 +165,19 @@ def compare(db, *, old, table, data, lake, decisions):
     out['completeness'] = account(db, 'completeness',
         f"SELECT event_id AS key,recording AS context FROM {c('meeting_completeness')}",
         f"SELECT DISTINCT cast(event_id AS VARCHAR) AS key,cast(NULL AS VARCHAR) AS context FROM {table('meeting_coverage')}", new_reason="'new_snapshot_only'")
-    out['completeness']['column_agreement'] = {
-        name: dict(db.execute(f"""SELECT coalesce(old.{source},'')||' -> '||n.state AS pair,count(*) FROM {c('meeting_completeness')} old
-            JOIN {table('meeting_coverage')} n ON cast(n.event_id AS VARCHAR)=old.event_id AND n.aspect='{aspect}' GROUP BY pair ORDER BY pair""").fetchall())
-        for name, source, aspect in (('recording', 'recording', 'recording'), ('text_source', 'text_source', 'transcript'))}
+    # Event IDs alone cannot see values, so each old column is compared with what replaces it.
+    state = lambda aspect: f"(SELECT event_id,state FROM {table('meeting_coverage')} WHERE aspect='{aspect}')"
+    pairs = lambda column, new, source: dict(db.execute(f"""SELECT coalesce(old.{column},'')||' -> '||coalesce(cast({new} AS VARCHAR),'') AS pair,count(*) FROM {c('meeting_completeness')} old
+        JOIN {source} n ON cast(n.event_id AS VARCHAR)=old.event_id GROUP BY pair ORDER BY pair""").fetchall())
+    out['completeness']['column_values'] = dict(recording=pairs('recording', 'n.state', state('recording')),
+        transcript=pairs('text_source', 'n.state', state('transcript')), captions=pairs('text_source', 'n.state', state('captions')),
+        witnesses=pairs('witnesses', "CASE WHEN n.state='present' THEN 'present' ELSE n.state END", state('witnesses')),
+        documents=pairs('meeting_documents', 'n.state', state('documents')),
+        closed=pairs('closed', 'n.access', table('meetings')), not_held=pairs('not_held', 'n.not_held', table('meetings')),
+        rescheduled_to=dict(db.execute(f"""SELECT CASE WHEN coalesce(old.rescheduled_to,'')='' AND n.rescheduled_to IS NULL THEN 'both_none'
+            WHEN old.rescheduled_to=cast(n.rescheduled_to AS VARCHAR) THEN 'same_event' WHEN coalesce(old.rescheduled_to,'')='' THEN 'new_only'
+            WHEN n.rescheduled_to IS NULL THEN 'old_only' ELSE 'different_event' END AS pair,count(*) FROM {c('meeting_completeness')} old
+            JOIN {table('meetings')} n ON cast(n.event_id AS VARCHAR)=old.event_id GROUP BY pair""").fetchall()))
     video_of = "regexp_extract(url,'[?&]v=([^&]+)',1)"
     out['videos'] = account(db, 'videos',
         f"SELECT 'youtube:'||{video_of} AS key,id AS context FROM {o('sources')} WHERE identifier_scheme='youtube:record'",
@@ -199,26 +211,71 @@ def issue_classes(db, old):
         unexplained=sum(c['rows'] for c in classes if c['disposition'] == 'unexplained'))
 
 
-def value_checks(db, *, old, table, data, decisions, channels):
-    """200 rows per family by fixed hash, source value against published value."""
+def value_checks(db, *, old, table, data, mirror):
+    """200 rows per family by fixed hash, from a source the published value was not derived through."""
     def sample(name, sql):
         rows = db.execute(f"""SELECT * FROM ({sql}) ORDER BY sha256(cast(key AS VARCHAR)) LIMIT 200""").fetchall()
         bad = [list(map(str, r)) for r in rows if r[1] != r[2]]
         return {name: dict(checked=len(rows), mismatched=len(bad), samples=bad[:SAMPLES])}
     o = lambda name: f"read_parquet('{Path(old) / (name + '.parquet')}')"
-    out = {}
-    out |= sample('curated_verdict', f"""SELECT json_extract_string(d.json,'$.id') AS key,json_extract_string(d.json,'$.verdict') AS expected,m.decision AS actual
-        FROM read_ndjson_objects('{decisions}') d JOIN {table('recording_matches')} m
-        ON m.source_ref='recording_decisions:'||json_extract_string(d.json,'$.id')""")
+    out = sample('curated_verdict', f"""SELECT o.package_id AS key,o.verdict AS expected,m.decision AS actual FROM {csv_view(data, 'hearing_video_overrides')} o
+        JOIN (SELECT DISTINCT package_id,decision FROM {table('recording_matches')} WHERE basis='curated') m USING(package_id)""")
     out |= sample('meeting_date', f"""SELECT e.event_id AS key,cast(m.date AS VARCHAR) AS expected,cast(n.meeting_date AS VARCHAR) AS actual
-        FROM {o('meetings')} m JOIN old_meeting_event e ON m.id=e.id JOIN {table('meetings')} n ON n.event_id=e.event_id""")
+        FROM {o('meetings')} m JOIN old_meeting_event e ON m.id=e.id JOIN {table('resolved_meetings')} n ON n.event_id=e.event_id""")
     out |= sample('video_title', f"""SELECT 'youtube:'||regexp_extract(s.url,'[?&]v=([^&]+)',1) AS key,s.title AS expected,v.title AS actual FROM {o('sources')} s
         JOIN {table('videos')} v ON v.video_key='youtube:'||regexp_extract(s.url,'[?&]v=([^&]+)',1) WHERE s.identifier_scheme='youtube:record'""")
-    db.execute('CREATE TEMP TABLE directory(handle VARCHAR,channel_id VARCHAR)')
-    db.executemany('INSERT INTO directory VALUES (?,?)', [(r['handle'], r['channel_id']) for r in channels])
-    out |= sample('channel_id', f"SELECT d.handle AS key,d.channel_id AS expected,c.channel_id AS actual FROM directory d JOIN {table('channels')} c ON c.handle=d.handle")
-    out['amendments'] = dict(checked=0, mismatched=0, note='The amendment key is every value, so its multiset comparison is the value check.')
+    out |= raw_value_checks(db, table=table, mirror=mirror)
     return out
+
+
+def _body(mirror, sha):
+    for suffix in ('.gz', ''):
+        path = Path(mirror) / 'bodies/sha256' / sha[:2] / (sha + suffix)
+        if path.is_file():
+            data = path.read_bytes()
+            return gzip.decompress(data) if suffix else data
+    for suffix in ('.gz', ''):  # Latest pipeline-data bodies are public but not in the local mirror.
+        try:
+            request = Request(f'{PUBLIC}bodies/sha256/{sha[:2]}/{sha}{suffix}', headers={'User-Agent': 'congressional-tech-measure/1'})
+            with urlopen(request, timeout=120) as response:
+                data = response.read()
+            return gzip.decompress(data) if suffix else data
+        except (HTTPError, URLError, TimeoutError):
+            continue
+    return None
+
+
+def raw_value_checks(db, *, table, mirror):
+    """Channel IDs from raw cache JSON, and amendments re-read from raw XML by this script's own walk."""
+    channels, unread = {}, 0
+    for sha, in db.execute(f"SELECT DISTINCT lower(hex(record_sha)) FROM {table('channels')} WHERE record_sha IS NOT NULL").fetchall():
+        data = _body(mirror, sha)
+        if data is None:
+            unread += 1
+            continue
+        for row in json.loads(data).get('youtube_channels', {}).values():
+            channels[row['handle']] = row.get('channelId')
+    published = db.execute(f"SELECT handle,channel_id FROM {table('channels')} WHERE record_sha IS NOT NULL").fetchall()
+    bad = [[h, channels.get(h), c] for h, c in published if channels.get(h) != c]
+    result = dict(channel_id=dict(checked=len(published), unread_bodies=unread, mismatched=len(bad), samples=bad[:SAMPLES]))
+    rows = db.execute(f"""SELECT lower(hex(record_sha)),ordinal,kind,url,source_description FROM {table('committee_records')}
+        ORDER BY sha256(record_key) LIMIT 200""").fetchall()
+    bad, unread = [], 0
+    for sha, ordinal, kind, url, description in rows:
+        data = _body(mirror, sha)
+        if data is None:
+            unread += 1
+            continue
+        found = []
+        for document in ET.fromstring(data).iter('meeting-document'):
+            code = document.get('type') or ''
+            if code in ('CA', 'HA', 'FA', 'CV'):
+                files = [f.get('doc-url', '').replace('http://', 'https://') for f in document.iter('file') if f.get('doc-url')]
+                found += [('vote' if code == 'CV' else 'amendment', u or None) for u in files or ['']]
+        if (kind, url) not in found:
+            bad.append([sha, ordinal, kind, url])
+    result['amendment_raw_xml'] = dict(checked=len(rows), unread_bodies=unread, mismatched=len(bad), samples=bad[:SAMPLES])
+    return result
 
 
 def file_sha(path):
@@ -251,7 +308,7 @@ def run(args):
     result = dict(old_release=Path(args.old).name, new_release=args.release_id, commit=args.commit,
         release_files={p.name: file_sha(p) for d in search for p in sorted(d.glob('*.parquet'))},
         input_sha256={Path(p).name: file_sha(p) for p in inputs}, reasons=REASONS, families=families,
-        old_issues=issue_classes(db, args.old), value_checks=value_checks(db, old=args.old, table=table, data=args.data, decisions=args.decisions, channels=channels),
+        old_issues=issue_classes(db, args.old), value_checks=value_checks(db, old=args.old, table=table, data=args.data, mirror=args.mirror),
         old_meeting_uuid_to_event=dict(rows=len(meetings_map), sha256=sha256(json.dumps(meetings_map).encode()).hexdigest(), file=args.uuid_map and Path(args.uuid_map).name))
     Path(args.output).write_text(json.dumps(result, indent=1, sort_keys=True, default=str) + '\n')
     for family in ('curated_decisions', 'amendments'):
@@ -262,7 +319,7 @@ def run(args):
 
 def main(argv=None):
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-    for name in ('old', 'release', 'data', 'lake', 'decisions', 'output', 'release-id', 'commit'):
+    for name in ('old', 'release', 'data', 'lake', 'decisions', 'mirror', 'output', 'release-id', 'commit'):
         parser.add_argument('--' + name, required=True)
     parser.add_argument('--overlay')
     parser.add_argument('--uuid-map')

@@ -133,7 +133,12 @@
                   {"id": 47, "name": "document_urls", "required": false, "type": "string"}
                 ]
               }
-            }
+            },
+            {"id": 48, "name": "access", "required": false, "type": "string"},
+            {"id": 49, "name": "access_basis", "required": false, "type": "string"},
+            {"id": 50, "name": "not_held", "required": false, "type": "boolean"},
+            {"id": 51, "name": "title_key", "required": false, "type": "string"},
+            {"id": 52, "name": "reschedule_candidate", "required": false, "type": "boolean"}
           ]
         }
       }

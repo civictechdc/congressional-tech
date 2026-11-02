@@ -1,6 +1,6 @@
 WITH selected AS (
  SELECT v.record_sha,v.channels
- FROM video_records v
+ FROM selected_video_records v
  JOIN youtube_cache_bodies b ON encode(v.record_sha,'hex')=b.record_sha
  WHERE v.status='completed'
 ), expanded AS (

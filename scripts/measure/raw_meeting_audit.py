@@ -12,12 +12,14 @@ import gzip
 from hashlib import sha256
 import json
 from pathlib import Path
+import re
 import xml.etree.ElementTree as ET
 from zoneinfo import ZoneInfo
 
 import pyarrow.parquet as pq
 
 EASTERN = ZoneInfo('America/New_York')
+PLACEHOLDER = re.compile(r'^(?:-+|select one)$', re.I)
 
 
 def body(mirror, sha):
@@ -75,7 +77,9 @@ def house_facts(data):
     text = lambda parent, name: ((parent.find(name).text or '').strip() if parent is not None and parent.find(name) is not None else '')
     day, start = text(date, 'calendar-date'), text(date, 'start-time')
     place = details.find('meeting-location/capitol-complex') if details is not None else None
-    return dict(day=day, start=start, update=(root.get('update-date') or '').strip(), room=text(place, 'room'), building=text(place, 'building'),
+    field = details.find('meeting-location/field') if details is not None else None
+    return dict(day=day, start=start, end=text(date, 'end-time'), update=(root.get('update-date') or '').strip(), room=text(place, 'room'), building=text(place, 'building'),
+        field_building=text(field, 'building-name'), field_street=text(field, 'street-address'), field_city=text(field, 'city'),
         has_old_location_tag=details is not None and details.find('capitol-complex-location') is not None)
 
 
@@ -93,6 +97,8 @@ def main(argv=None):
             by_event[meeting['event_id']][row['source']].append((row['record_sha'].hex(), meeting))
     published = {str(r['event_id']): r for r in pq.read_table(args.resolved, columns=['event_id', 'sittings', 'house_xml_updated']).to_pylist()}
     affected = sorted(e for e, sources in by_event.items() if 'house_xml' in sources)
+    if not affected:
+        raise SystemExit('No records at these pins: an empty audit proves nothing')
     congress_shas = {sha for e in affected for sha, _ in by_event[e].get('congress_gov', ())}
     lines = inline_lines(args.mirror, congress_shas)
     tally = defaultdict(int)
@@ -149,14 +155,31 @@ def main(argv=None):
         else:
             tally['start_equals_raw_congress'] += 1
         location = current.get('location') if isinstance(current.get('location'), dict) else {}
-        if sitting and (sitting.get('room') or None) != (str(location.get('room')).strip() if location.get('room') else None):
-            note('room_differs_from_raw_congress', event, [location.get('room'), sitting.get('room')])
-        else:
-            tally['room_equals_raw_congress'] += 1
-        if sitting and (sitting.get('building') or None) != (str(location.get('building')).strip() if location.get('building') else None):
-            note('building_differs_from_raw_congress', event, [location.get('building'), sitting.get('building')])
-        else:
-            tally['building_equals_raw_congress'] += 1
+        latest = max(house, key=lambda facts: facts['update']) if house else {}
+        for name, stated_by_house in (('room', latest.get('room')), ('building', latest.get('building') or latest.get('field_building'))):
+            published_value = (sitting or {}).get(name)
+            congress_value = PLACEHOLDER.sub('', str(location.get(name) or '').strip()) or None
+            house_value = PLACEHOLDER.sub('', stated_by_house or '') or None
+            if congress_value is not None:
+                tally[f'{name}_equals_raw_congress' if published_value == congress_value else f'{name}_differs_from_raw_congress'] += 1
+            elif house_value is not None:
+                tally[f'{name}_filled_from_raw_house' if published_value else f'{name}_lost_though_raw_house_states_it'] += 1
+                if not published_value:
+                    note(f'{name}_lost', event, house_value)
+            else:
+                tally[f'{name}_stated_by_neither' if not published_value else f'{name}_published_without_raw_source'] += 1
+        if latest.get('end'):
+            expected = datetime.fromisoformat(f"{latest['day']}T{latest['end']}").replace(tzinfo=EASTERN).astimezone(timezone.utc)
+            if sitting and sitting['end'] and sitting['end'].astimezone(timezone.utc) == expected:
+                tally['end_equals_raw_house'] += 1
+            else:
+                note('end_lost_or_differs', event, [latest['end'], str((sitting or {}).get('end'))])
+        if latest.get('field_street') or latest.get('field_city'):
+            address = (sitting or {}).get('address') or ''
+            if all(part in address for part in (latest.get('field_street'), latest.get('field_city')) if part):
+                tally['field_address_in_published_place'] += 1
+            else:
+                note('field_address_lost', event, [latest.get('field_street'), latest.get('field_city'), address])
         for facts in house:
             if facts['has_old_location_tag']:
                 tally['house_has_capitol_complex_location_tag'] += 1
@@ -173,6 +196,8 @@ def main(argv=None):
                     offsets[round((stated - local.replace(tzinfo=timezone.utc)).total_seconds() / 3600, 2)] += 1
                 else:
                     tally['house_literal_zoned'] += 1
+        if not house:
+            continue
         if row['house_xml_updated'] not in {facts['update'] for facts in house}:
             note('house_update_not_in_raw', event, row['house_xml_updated'])
     result = dict(affected_events=len(affected), congress_records_named=len(congress_shas), inline_lines_found=len(lines), tally=dict(sorted(tally.items())),

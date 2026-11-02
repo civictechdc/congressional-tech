@@ -740,6 +740,9 @@ def test_phase2_entities_meetings_witnesses_recordings_and_spicy_projections(tmp
     released_schema = json.loads((release_dir / 'schema.json').read_text())
     assert not any('path' in relation for relation in released_schema['upstream_relations'] if relation['family'] not in (spicy_regs.get('generations') or {}))
 
+    # Explorer tables need their own version pins, and only pinned copies count.
+    explorer_versions = dict(staged['parser_versions'], video_records={'youtube_cache': 'pv'}, committee_records={'house_xml': 'pc'})
+    staged = dict(staged, parser_versions=explorer_versions)
     # The same inputs with the Explorer tables: all five appear, and old-shaped outputs do not move.
     from congress_api.lake import committee_records as cr_lake, video_records as vr_lake
     video_path, committee_path, decisions = tmp_path / 'video.parquet', tmp_path / 'committee.parquet', tmp_path / 'decisions.jsonl'
@@ -1397,7 +1400,7 @@ def _resolved_meetings(tmp_path, records, pins=()):
     """Run only the maintained meeting SQL over stated records, with no capture history."""
     from congress_api.retention.provenance import json_input, run_job
     from docspec_client.client import NativeDatasets
-    from viewer_publication.archive_model import MEETING_RECORD_FIELDS, _normalize_meeting_rows, meeting_steps
+    from viewer_publication.archive_model import MEETING_RECORD_FIELDS, _normalize_meeting_rows, meeting_steps, selected_record_step
     engine = NativeDatasets.from_config(os.environ['DOCSPEC_JOB_CONFIG'])
     inputs = [json_input(tmp_path, 'meeting_records_input', _normalize_meeting_rows(records, 'v'), **MEETING_RECORD_FIELDS),
         json_input(tmp_path, 'parser_versions', list(pins), parser='Utf8', version='Utf8'),
@@ -1406,7 +1409,7 @@ def _resolved_meetings(tmp_path, records, pins=()):
     captures = """SELECT arrow_cast(NULL,'FixedSizeBinary(32)') AS sha256,cast(NULL AS VARCHAR) AS retrieved_at,cast(NULL AS VARCHAR) AS mode,
         cast(NULL AS BOOLEAN) AS complete,cast(NULL AS VARCHAR) AS outcome,cast(NULL AS INT) AS http_status WHERE false"""
     result = run_job(tmp_path, engine, inputs=inputs, outputs=[],
-        steps=[dict(name='captures', sql=captures), *meeting_steps()],
+        steps=[dict(name='captures', sql=captures), selected_record_step('meeting_records', 'meeting_records_input'), *meeting_steps()],
         queries=[dict(name='rows', sql=f"""SELECT event_id,congress,congress_gov_updated,house_xml_updated,congress_gov_meeting_type,
             sittings[1]['start'] AS s_start,sittings[1]['end'] AS s_end,sittings[1]['place'] AS place,sittings[1]['room'] AS room,
             coalesce(array_length(sittings),0) AS sitting_count FROM meetings_resolved ORDER BY event_id""")])
@@ -1419,28 +1422,30 @@ def _record(sha, source, *, states=None, sittings=(), **fields):
 
 
 CONGRESS_SITTING = dict(start='2019-11-13T19:00:00Z', room='1300', building='Longworth House Office Building')
+HOUSE_SITTING = dict(start='2019-11-13T14:00:00-05:00', end='2019-11-13T16:30:00-05:00', room='9', building='LHOB', address='DC 20515')
 
 
-def test_congress_gov_states_the_sitting_over_unzoned_house_time(tmp_path):
+def test_congress_gov_leads_and_house_fills_only_what_it_lacks(tmp_path):
     rows = _resolved_meetings(tmp_path, [
-        _record('11', 'house_xml', updated='2019-11-10T08:00:00', meeting_type='HHRG', sittings=[dict(start='2019-11-13T14:00:00')]),
+        _record('11', 'house_xml', updated='2019-11-10T08:00:00', meeting_type='HHRG', sittings=[HOUSE_SITTING]),
         _record('22', 'congress_gov', updated='2019-11-11T00:00:00Z', meeting_type='Hearing', sittings=[CONGRESS_SITTING])])
     assert str(rows[0]['s_start']).startswith('2019-11-13T19:00:00') and rows[0]['room'] == '1300'
-    assert rows[0]['place'] == '1300, Longworth House Office Building'
+    assert str(rows[0]['s_end']).startswith('2019-11-13T21:30:00')  # Only House states the end.
+    assert rows[0]['place'] == '1300, Longworth House Office Building, DC 20515'  # Only House states the address.
     assert rows[0]['house_xml_updated'] == '2019-11-10T08:00:00' and rows[0]['congress_gov_meeting_type'] == 'Hearing'
     assert str(rows[0]['congress_gov_updated']).startswith('2019-11-11T00:00:00')
 
 
-@pytest.mark.parametrize('local,instant', [('2012-09-13T14:00:00', '2012-09-13T18:00:00'), ('2019-11-13T14:00:00', '2019-11-13T19:00:00')])
-def test_house_only_sitting_converts_from_eastern_local(tmp_path, local, instant):
-    rows = _resolved_meetings(tmp_path, [_record('11', 'house_xml', sittings=[dict(start=local, end=local)])])
-    assert str(rows[0]['s_start']).startswith(instant) and str(rows[0]['s_end']).startswith(instant)
-    assert rows[0]['congress_gov_updated'] is None
+def test_field_hearing_place_comes_from_the_house_record(tmp_path):
+    field = dict(start='2019-11-13T14:00:00-05:00', building='City Hall', address='1 Main St, Richmond, MI, 48062')
+    rows = _resolved_meetings(tmp_path, [_record('11', 'house_xml', sittings=[field]),
+        _record('22', 'congress_gov', sittings=[dict(start='2019-11-13T19:00:00Z')])])
+    assert rows[0]['place'] == 'City Hall, 1 Main St, Richmond, MI, 48062'
 
 
-def test_zoned_house_instant_is_not_shifted(tmp_path):
-    rows = _resolved_meetings(tmp_path, [_record('11', 'house_xml', sittings=[dict(start='2019-11-13T14:00:00Z')])])
-    assert str(rows[0]['s_start']).startswith('2019-11-13T14:00:00')
+def test_house_only_sitting_keeps_its_stated_instant(tmp_path):
+    rows = _resolved_meetings(tmp_path, [_record('11', 'house_xml', sittings=[HOUSE_SITTING])])
+    assert str(rows[0]['s_start']).startswith('2019-11-13T19:00:00') and rows[0]['congress_gov_updated'] is None
 
 
 @pytest.mark.parametrize('state', ['empty', 'unrecognized'])

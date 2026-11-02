@@ -1,19 +1,26 @@
 WITH sitting_rows AS (
- SELECT event_id,sittings_are_eastern,unnest(raw_sittings) AS s,
+ SELECT event_id,house_sitting AS h,unnest(raw_sittings) AS s,
   unnest(range(0,cast(array_length(raw_sittings) AS BIGINT))) AS idx
  FROM meeting_records_merged WHERE raw_sittings IS NOT NULL AND coalesce(array_length(raw_sittings),0)>0
+), sitting_fields AS (
+ -- A first sitting fills each fact Congress.gov lacks from the House record, field by field.
+ SELECT event_id,idx,
+  CASE WHEN idx=0 THEN coalesce(nullif(trim(s['start']),''),nullif(trim(h['start']),'')) ELSE nullif(trim(s['start']),'') END AS start_text,
+  CASE WHEN idx=0 THEN coalesce(nullif(trim(s['end']),''),nullif(trim(h['end']),'')) ELSE nullif(trim(s['end']),'') END AS end_text,
+  CASE WHEN idx=0 THEN coalesce(nullif(trim(s['room']),''),nullif(trim(h['room']),'')) ELSE nullif(trim(s['room']),'') END AS room,
+  CASE WHEN idx=0 THEN coalesce(nullif(trim(s['building']),''),nullif(trim(h['building']),'')) ELSE nullif(trim(s['building']),'') END AS building,
+  CASE WHEN idx=0 THEN coalesce(nullif(trim(s['address']),''),nullif(trim(h['address']),'')) ELSE nullif(trim(s['address']),'') END AS address
+ FROM sitting_rows
 ), sittings_agg AS (
  SELECT event_id,array_agg(named_struct(
-  'start',CASE WHEN sittings_are_eastern AND NOT regexp_like(s['start'],'T.*(Z|[+-][0-9:]+)$') THEN arrow_cast(try_cast(s['start'] AS TIMESTAMP) AT TIME ZONE 'America/New_York','Timestamp(Microsecond, Some("UTC"))')
-   ELSE arrow_cast(try_cast(s['start'] AS TIMESTAMP WITH TIME ZONE),'Timestamp(Microsecond, Some("UTC"))') END,
-  'end',CASE WHEN sittings_are_eastern AND NOT regexp_like(s['end'],'T.*(Z|[+-][0-9:]+)$') THEN arrow_cast(try_cast(s['end'] AS TIMESTAMP) AT TIME ZONE 'America/New_York','Timestamp(Microsecond, Some("UTC"))')
-   ELSE arrow_cast(try_cast(s['end'] AS TIMESTAMP WITH TIME ZONE),'Timestamp(Microsecond, Some("UTC"))') END,
-  'place',nullif(concat_ws(', ',nullif(trim(s['room']),''),nullif(trim(s['building']),''),nullif(trim(s['address']),'')),''),
-  'room',nullif(trim(s['room']),''),
-  'building',nullif(trim(s['building']),''),
-  'address',nullif(trim(s['address']),'')
+  'start',arrow_cast(try_cast(start_text AS TIMESTAMP WITH TIME ZONE),'Timestamp(Microsecond, Some("UTC"))'),
+  'end',arrow_cast(try_cast(end_text AS TIMESTAMP WITH TIME ZONE),'Timestamp(Microsecond, Some("UTC"))'),
+  'place',nullif(concat_ws(', ',room,building,address),''),
+  'room',room,
+  'building',building,
+  'address',address
  ) ORDER BY idx) AS sittings
- FROM sitting_rows GROUP BY event_id
+ FROM sitting_fields GROUP BY event_id
 ), committee_rows AS (
  SELECT event_id,unnest(raw_committees) AS c,
   unnest(range(0,cast(array_length(raw_committees) AS BIGINT))) AS idx
@@ -30,6 +37,9 @@ WITH sitting_rows AS (
  FROM committee_rows WHERE c['system_code'] IS NOT NULL
 ), committees_agg AS (
  SELECT event_id,array_agg(named_struct('system_code',system_code,'role',role) ORDER BY idx) AS committees
+ FROM committee_codes GROUP BY event_id
+), committee_keys AS (
+ SELECT event_id,array_to_string(array_sort(array_agg(DISTINCT system_code)),';') AS committee_key
  FROM committee_codes GROUP BY event_id
 ), subject_rows AS (
  SELECT event_id,lower(trim(unnest(house_subjects))) AS subject_key
@@ -70,7 +80,7 @@ WITH sitting_rows AS (
  ) ORDER BY idx) AS videos
  FROM video_matched GROUP BY event_id
 )
-SELECT m.event_id,m.chamber,m.congress,m.session,m.updated,m.congress_gov_updated,m.house_xml_updated,m.congress_gov_meeting_type,m.title,m.meeting_date,m.meeting_type,m.status,
+SELECT m.event_id,m.chamber,m.congress,m.session,m.updated,m.congress_gov_updated,m.house_xml_updated,m.congress_gov_meeting_type,m.access,m.access_basis,m.not_held,m.title_key,m.reschedule_candidate,ck.committee_key,m.title,m.meeting_date,m.meeting_type,m.status,
  coalesce(sa.sittings,array_slice(make_array(named_struct(
   'start',arrow_cast(NULL,'Timestamp(Microsecond, Some("UTC"))'),
   'end',arrow_cast(NULL,'Timestamp(Microsecond, Some("UTC"))'),
@@ -84,6 +94,7 @@ SELECT m.event_id,m.chamber,m.congress,m.session,m.updated,m.congress_gov_update
 FROM meeting_records_merged m
 LEFT JOIN sittings_agg sa ON m.event_id=sa.event_id
 LEFT JOIN committees_agg ca ON m.event_id=ca.event_id
+LEFT JOIN committee_keys ck ON m.event_id=ck.event_id
 LEFT JOIN subjects_agg sba ON m.event_id=sba.event_id
 LEFT JOIN jackets_agg ja ON m.event_id=ja.event_id
 LEFT JOIN videos_agg va ON m.event_id=va.event_id

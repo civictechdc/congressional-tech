@@ -13,13 +13,19 @@ WITH event_keys AS (
   coalesce(h.meeting_date,c.meeting_date) AS meeting_date,
   coalesce(h.meeting_type,c.meeting_type) AS meeting_type,
   coalesce(h.status,c.status) AS status,
-  -- Congress.gov states instants and places; House XML states unzoned Eastern
-  -- local times and, today, no parsed place. So Congress.gov leads for sittings,
-  -- while an explicit empty or unrecognized House state still blocks any fallback.
+  -- The first source stating access decides; unknown states nothing.
+  coalesce(nullif(c.access,'unknown'),nullif(h.access,'unknown'),c.access,h.access) AS access,
+  CASE WHEN nullif(c.access,'unknown') IS NOT NULL THEN concat('congress_gov',c.access_basis)
+       WHEN nullif(h.access,'unknown') IS NOT NULL THEN concat('house_xml',h.access_basis) END AS access_basis,
+  coalesce(c.not_held,false) OR coalesce(h.not_held,false) AS not_held,
+  coalesce(c.title_key,h.title_key) AS title_key,
+  coalesce(c.reschedule_candidate,h.reschedule_candidate) AS reschedule_candidate,
+  -- Congress.gov leads for sittings and House XML fills what it lacks, because each states
+  -- facts the other omits. An explicit empty or unrecognized House state still blocks fallback.
   CASE WHEN h.sittings_state IN ('empty','unrecognized') THEN NULL
        WHEN c.sittings_state='present' THEN c.sittings
        WHEN h.sittings_state='present' THEN h.sittings END AS raw_sittings,
-  coalesce(h.sittings_state='present' AND coalesce(c.sittings_state,'')<>'present',false) AS sittings_are_eastern,
+  CASE WHEN h.sittings_state='present' THEN h.sittings[1] END AS house_sitting,
   CASE WHEN h.committees_state='present' THEN h.committees
        WHEN h.committees_state IN ('empty','unrecognized') THEN NULL
        WHEN c.committees_state='present' THEN c.committees END AS raw_committees,

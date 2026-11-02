@@ -48,9 +48,11 @@ def tables(tmp_path_factory):
         dict(name='meeting_transcript_links', sql=f"""SELECT '{CONFLICT_PKG}' AS package_id,cast(1001 AS BIGINT) AS event_id UNION ALL SELECT '{SHARED_PKG}',1003 UNION ALL SELECT '{SHARED_PKG}',1004 UNION ALL SELECT '{SOLO_PKG}',1002 UNION ALL SELECT 'CHRG-alone',1005 UNION ALL SELECT 'CHRG-disputed',1006 UNION ALL SELECT 'CHRG-sibling',1007 UNION ALL SELECT 'CHRG-no-verdict',1007""", materialize=True),
         dict(name='videos_export', sql="""SELECT 'youtube:pub' AS video_key,arrow_cast(decode(repeat('ab',32),'hex'),'FixedSizeBinary(32)') AS record_sha,arrow_cast(make_array(cast(1003 AS BIGINT),cast(777777 AS BIGINT)),'List(Int64)') AS stated_event_ids,true AS has_caption
             UNION ALL SELECT 'youtube:unmatched',arrow_cast(decode(repeat('ab',32),'hex'),'FixedSizeBinary(32)'),arrow_cast(array_slice(make_array(cast(1 AS BIGINT)),1,0),'List(Int64)'),false""", materialize=True),
+        dict(name='selected_appearance_records', sql='SELECT * FROM appearance_records_input', materialize=True),
         dict(name='recording_matches_export', sql=sql('entity-recording-matches'), materialize=True),
         dict(name='ordered', sql="SELECT arrow_cast(make_array('1001'),'List(Utf8)') AS meeting_keys", materialize=True),
         dict(name='witnesses_export', sql="SELECT cast(1001 AS BIGINT) AS event_id,'Jane' AS name", materialize=True),
+        dict(name='recordings_export', sql="SELECT 'youtube:unmatched' AS video_key,make_array(1) AS tracks", materialize=True),
         dict(name='meeting_coverage_export', sql=sql('entity-meeting-coverage'), materialize=True),
     ]
     inputs += [json_input(work, 'appearance_records_input', [
@@ -115,6 +117,11 @@ def test_only_a_negative_on_one_meeting_package_is_absence(tables):
     assert state(tables, 1005, 'recording') == 'confirmed_absent'
 
 
+def test_recording_states_keep_excerpts_claims_and_access_apart(tables):
+    assert state(tables, 1002, 'recording') == 'present'
+    assert state(tables, 1003, 'recording') == 'claimed'  # Only the video's own text names it.
+
+
 def test_a_sibling_package_without_a_verdict_blocks_absence(tables):
     assert state(tables, 1007, 'recording') == 'unknown'
 
@@ -135,6 +142,8 @@ def test_coverage_is_meetings_times_aspects_and_states_stay_distinct(tables):
     assert state(tables, 1001, 'transcript') == 'unresolved'
     assert state(tables, 1003, 'transcript') == 'not_stated'
     assert state(tables, 1001, 'captions') == 'present'
+    assert state(tables, 1004, 'captions') == 'not_stated'
+    assert 'empty' not in {r['state'] for r in found if r['aspect'] == 'captions'}
 
 
 def test_old_release_omits_the_tables_and_says_so():
@@ -162,14 +171,16 @@ def test_videos_channels_and_committee_records_from_lake_rows(tmp_path):
     import pyarrow.parquet as pq
     from congress_api.lake import committee_records, video_records
     from congress_api.parsers.youtube_video import cache_rows
-    from viewer_publication.archive_model import channel_directory_rows
+    from viewer_publication.archive_model import channel_directory_rows, selected_record_step
     engine = NativeDatasets.from_config(os.environ['DOCSPEC_JOB_CONFIG'])
     cache = json.dumps({'youtube_channels': {'1': dict(handle='@AgRepublicans', channelId='UCX', title='Ag', uploads_scan_complete=True)},
         'youtube_videos_@AgRepublicans': {'1': dict(videoId='v1', title='EventID=117681', publishedAt='2020-01-02T03:04:05Z', channelId='UCX', duration='9', available=True),
                                          '2': dict(videoId='v2')},
         'youtube_videos_@HouseAgDems': {'1': dict(videoId='v1', title='second copy')}}).encode()
     sha_new, sha_old = 'ab' * 32, 'cd' * 32
-    pq.write_table(video_records.table([video_records.build_row(sha_new, 'youtube_cache', cache, parser_version='p'),
+    # An old-version copy of the same body must lose before ranking, whatever its order.
+    pq.write_table(video_records.table([video_records.build_row(sha_new, 'youtube_cache', b'{"youtube_videos_@AgRepublicans":{"1":{"videoId":"old-version"}}}', parser_version='older'),
+        video_records.build_row(sha_new, 'youtube_cache', cache, parser_version='p'),
         video_records.build_row(sha_old, 'youtube_cache', b'{"youtube_videos_@AgRepublicans":{"1":{"videoId":"stale"}}}', parser_version='p')]), tmp_path / 'videos.parquet')
     amendment = dict(kind='amendment', bill='H.R. 1', number='1', sponsor_bioguide='A000001', amendment_type=None, enbloc=None, description='d', url='https://a')
     records = lambda sha, updated, count: dict(record_sha=sha, parser_version='p', status='completed', source='house_xml', event_id='100', updated=updated,
@@ -178,8 +189,10 @@ def test_videos_channels_and_committee_records_from_lake_rows(tmp_path):
     directory = channel_directory_rows()
     inputs = [dict(name='video_records', kind='parquet', path=str(tmp_path / 'videos.parquet')),
         dict(name='committee_records', kind='parquet', path=str(tmp_path / 'committee.parquet')),
+        json_input(tmp_path, 'parser_versions', [dict(parser='video_records.youtube_cache', version='p'), dict(parser='committee_records.house_xml', version='p')], parser='Utf8', version='Utf8'),
         json_input(tmp_path, 'channel_directory', directory, handle='Utf8', channel_id='Utf8', system_code='Utf8', committee_label='Utf8', role='Utf8')]
-    steps = [dict(name='youtube_cache_bodies', sql=f"SELECT 'youtube/youtube_00.json' AS cache_path,'{sha_new}' AS record_sha,'' AS stored_suffix")]
+    steps = [dict(name='youtube_cache_bodies', sql=f"SELECT 'youtube/youtube_00.json' AS cache_path,'{sha_new}' AS record_sha,'' AS stored_suffix"),
+        selected_record_step('video_records', 'video_records'), selected_record_step('committee_records', 'committee_records')]
     outputs = [parquet_output(tmp_path, 'v', sql('entity-videos'), ['video_key']), parquet_output(tmp_path, 'c', sql('entity-channels'), ['handle']),
         parquet_output(tmp_path, 'r', sql('entity-committee-records'), ['record_key'])]
     run_job(tmp_path / 'job', engine, inputs=inputs, steps=steps, outputs=outputs, queries=[])

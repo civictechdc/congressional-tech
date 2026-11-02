@@ -1,17 +1,6 @@
 -- Its own materialized step: the steps after it read this many times, and the engine
 -- inlines a CTE per reader, so one statement evaluated this ranking and captures join 21 times.
-WITH pinned_meeting_versions AS (
- SELECT DISTINCT parser,version FROM parser_versions WHERE parser LIKE 'meeting_records.%'
-), selected_meeting_records AS (
- -- An equality key exists: a pinned job selects by (parser, version). Only an unpinned job takes all.
- SELECT r.*
- FROM meeting_records_input r
- JOIN pinned_meeting_versions v ON v.parser=concat('meeting_records.',r.source) AND v.version=r.parser_version
- UNION ALL
- SELECT r.*
- FROM meeting_records_input r
- WHERE (SELECT count(*) FROM pinned_meeting_versions)=0
-), candidate_meeting_shas AS (
+WITH candidate_meeting_shas AS (
  SELECT DISTINCT record_sha_hex
  FROM selected_meeting_records
  WHERE record_sha_hex IS NOT NULL
@@ -45,7 +34,12 @@ WITH pinned_meeting_versions AS (
   m['subject_keys'] AS subject_keys,
   m['transcript_jackets'] AS transcript_jackets,
   m['videos'] AS videos,
-  m['collection_states'] AS collection_states
+  m['collection_states'] AS collection_states,
+  m['access'] AS access,
+  m['access_basis'] AS access_basis,
+  m['not_held'] AS not_held,
+  m['title_key'] AS title_key,
+  m['reschedule_candidate'] AS reschedule_candidate
  FROM expanded WHERE m['event_id'] IS NOT NULL
 ), ranked AS (
  SELECT *,row_number() OVER(

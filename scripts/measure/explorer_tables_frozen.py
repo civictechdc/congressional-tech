@@ -12,10 +12,10 @@ from pathlib import Path
 
 import duckdb
 from docspec_client.client import NativeDatasets
-from viewer_publication.archive_format import _settings
+from viewer_publication.archive_format import MEETING_DICTIONARY, _settings
 from viewer_publication.archive_model_lifetimes import retire_relations
 from viewer_publication.archive_model_profile import expand_parser_version_rows
-from viewer_publication.archive_model import (EXPLORER_TABLES, RECORDING_DECISION_FIELDS, ROOT, channel_directory_rows, meeting_steps,
+from viewer_publication.archive_model import (EXPLORER_TABLES, RECORDING_DECISION_FIELDS, ROOT, channel_directory_rows, meeting_steps, selected_record_step,
     registry_inputs)
 from congress_api.retention.provenance import field, json_input, run_job
 
@@ -54,7 +54,9 @@ def main(argv=None):
         parquet('committee_records', args.lake / 'committee_records.parquet'),
         parquet('list', args.release / 'list.parquet'),
         parquet('released_meetings', args.release / 'meetings.parquet'),
+        parquet('released_detail', args.release / 'detail.parquet'),
         parquet('witnesses_export', args.release / 'witnesses.parquet'),
+        parquet('recordings_export', args.release / 'recordings.parquet'),
         dict(name='recording_decision_records', kind='json_lines', files=[dict(key='decisions', path=str(args.decisions))],
              schema=dict(fields=[field(k, v) for k, v in RECORDING_DECISION_FIELDS.items()], metadata={})),
         json_input(work, 'channel_directory', channel_directory_rows(), handle='Utf8', channel_id='Utf8', system_code='Utf8', committee_label='Utf8', role='Utf8'),
@@ -62,16 +64,22 @@ def main(argv=None):
     ]
     steps = [
         dict(name='meeting_records_input', sql="SELECT lower(encode(record_sha,'hex')) AS record_sha_hex,parser_version,status,error_type,source,meetings FROM meeting_records", materialize=True),
+        selected_record_step('meeting_records', 'meeting_records_input'),
+        selected_record_step('appearance_records', 'appearance_records_input'),
+        selected_record_step('video_records', 'video_records'),
+        selected_record_step('committee_records', 'committee_records'),
         dict(name='active_recording_decisions', sql='SELECT r.* FROM recording_decision_records r WHERE NOT EXISTS(SELECT 1 FROM recording_decision_records s WHERE s.supersedes=r.id)', materialize=True),
         dict(name='youtube_cache_bodies', sql=sql('youtube-cache-bodies'), materialize=True),
         *meeting_steps(),
         dict(name='ordered', sql='SELECT meeting_keys FROM "list"', materialize=True),
-        dict(name='meetings_export', sql='SELECT * FROM released_meetings', materialize=True),
         dict(name='meeting_transcript_links', sql="SELECT event_id,t['package_id'] AS package_id FROM (SELECT event_id,unnest(transcripts) AS t FROM released_meetings)", materialize=True),
+        dict(name='details', sql='SELECT package_id,cast(row_number() OVER()-1 AS INT) AS list_row FROM released_detail', materialize=True),
+        dict(name='meetings_export', sql=sql('entity-meetings'), materialize=True),
     ]
     outputs = [dict(name='resolved_meetings.parquet', path=str(args.output / 'resolved_meetings.parquet'),
-        sql="SELECT event_id,congress,congress_gov_updated,house_xml_updated,congress_gov_meeting_type,meeting_type,sittings FROM meetings_resolved",
+        sql="SELECT event_id,chamber,title,meeting_date,session,status,committees,subject_keys,videos,congress,congress_gov_updated,house_xml_updated,congress_gov_meeting_type,meeting_type,sittings,access,access_basis,not_held,title_key,reschedule_candidate,committee_key,transcript_jackets FROM meetings_resolved",
         settings=_settings('whole', ['event_id']))]
+    outputs.append(dict(name='meetings.parquet', path=str(args.output / 'meetings.parquet'), sql='SELECT * FROM meetings_export', settings=_settings('whole', ['event_id'], dictionary=MEETING_DICTIONARY)))
     for name, file, keys, dictionary in EXPLORER_TABLES:
         steps.append(dict(name=name + '_export', sql=sql(file), materialize=True))
         outputs.append(dict(name=name + '.parquet', path=str(args.output / (name + '.parquet')), sql=f'SELECT * FROM {name}_export',
