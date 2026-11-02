@@ -106,3 +106,41 @@ def test_saved_file_order_picks_the_body_then_a_named_addressed_source_of_it(tmp
         queries=[dict(name='saved',sql='SELECT component,source_id,body_sha FROM saved_files WHERE saved_rank=1 ORDER BY component')])
     assert result['saved']==[dict(component='pdf',source_id='later',body_sha='c'*64),
                              dict(component='xml',source_id='named',body_sha='b'*64)]
+
+
+def test_recovery_only_document_takes_the_recovered_reading_title_else_the_original_label(tmp_path):
+    """068f2a40 hard-coded NULL; DM 7.5 gives a recovery-only row a title like any other."""
+    from congress_api.retention.provenance import list_of, struct
+    strings = list_of('Utf8')
+    recoveries = [dict(component=c, saved_rank=1, id=c, body_sha=b, original_url=f'https://x.test/{c}.pdf', bytes=10,
+                       imported_at='2026-10-01T00:00:00Z') for c, b in [('read', 'a' * 64), ('label', 'b' * 64)]]
+    annotation = dict(document_kind=[], document_family=[], committee_keys=[], chambers=[], congress=None, filename_date=None,
+                      meeting_keys=[], measure_keys=[], bioguide_ids=[], package_id=None, facts=[])
+    inputs = [json_input(tmp_path, 'saved_recoveries', recoveries, component='Utf8', saved_rank='Int64', id='Utf8', body_sha='Utf8',
+                         original_url='Utf8', bytes='Int64', imported_at='Utf8'),
+        json_input(tmp_path, 'document_identities', [dict(component=c, document_id='doc:' + c, has_real=False) for c in ('read', 'label')],
+                   component='Utf8', document_id='Utf8', has_real='Boolean'),
+        json_input(tmp_path, 'effective_filenames', [dict(input_id='recovery:' + c, filename=c + '.pdf') for c in ('read', 'label')],
+                   input_id='Utf8', filename='Utf8'),
+        json_input(tmp_path, 'source_files', [dict(source_id='s:' + c, body_sha=None, source_url=f'https://x.test/{c}.pdf', filename=c + '.pdf')
+                   for c in ('read', 'label')], source_id='Utf8', body_sha='Utf8', source_url='Utf8', filename='Utf8'),
+        json_input(tmp_path, 'source_annotations', [dict(annotation, source_id='s:read', title='Original label'),
+                   dict(annotation, source_id='s:label', title='Hearing on Rural Lands')], source_id='Utf8', title='Utf8',
+                   document_kind=strings, document_family=strings, committee_keys=strings, chambers=strings, congress='Int32',
+                   filename_date='Utf8', meeting_keys=strings, measure_keys=strings, bioguide_ids=strings, package_id='Utf8',
+                   facts=list_of(struct(field='Utf8', value='Utf8'))),
+        json_input(tmp_path, 'evidence', [dict(body_sha=b, format='html', suffix='') for b in ('a' * 64, 'b' * 64)],
+                   body_sha='Utf8', format='Utf8', suffix='Utf8'),
+        json_input(tmp_path, 'pages', [dict(body_hex='a' * 64, status='completed', title='Recovered hearing record', heading=None)],
+                   body_hex='Utf8', status='Utf8', title='Utf8', heading='Utf8'),
+        json_input(tmp_path, 'capture_rows', [dict(body_hex='a' * 64, media_type='text/html')], body_hex='Utf8', media_type='Utf8'),
+        json_input(tmp_path, 'component_meeting_links', [], component='Utf8', meeting_date='Utf8', meeting_keys=strings),
+        json_input(tmp_path, 'document_witness_keys', [], component='Utf8', witness_keys=strings)]
+    steps = [dict(name='body_evidence', sql='SELECT * FROM evidence'),
+             dict(name='page_facts', sql="SELECT decode(body_hex,'hex') AS body_sha,status,title,heading FROM pages"),
+             dict(name='captures', sql="SELECT decode(body_hex,'hex') AS sha256,media_type FROM capture_rows"),
+             dict(name='recovery_rows', sql=(ROOT / 'model/sql/document-recovery-normalized.sql').read_text())]
+    result = run_job(tmp_path, NativeDatasets.from_config(os.environ['DOCSPEC_JOB_CONFIG']), inputs=inputs, steps=steps, outputs=[],
+        queries=[dict(name='titles', sql='SELECT doc_key,title,media_type FROM recovery_rows ORDER BY doc_key')])
+    assert result['titles'] == [dict(doc_key='doc:label', title='Hearing on Rural Lands', media_type='application/octet-stream'),
+                                dict(doc_key='doc:read', title='Recovered hearing record', media_type='text/html')]
