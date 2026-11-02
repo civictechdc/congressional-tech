@@ -39,15 +39,20 @@ WITH package_meetings AS (
   LEFT JOIN recording_disputed d ON e.event_id=d.event_id
 ), mods_named AS (
  SELECT DISTINCT event_id FROM (SELECT unnest(named_meetings) AS event_id FROM package_mods_facts) WHERE event_id IS NOT NULL
+), transcript_sources AS (
+ SELECT event_id,array_to_string(array_sort(array_agg(DISTINCT source)),',') AS sources
+ FROM (SELECT event_id,unnest(transcripts)['source'] AS source FROM meetings_export) GROUP BY event_id
 ), transcript_rows AS (
  SELECT e.event_id,'transcript' AS aspect,
   CASE WHEN coalesce(array_length(e.transcripts),0)>0 THEN 'present'
        WHEN coalesce(array_length(r.transcript_jackets),0)>0 THEN 'unresolved'
        WHEN n.event_id IS NOT NULL THEN 'unknown' ELSE 'not_stated' END AS state,
   'meetings.transcripts' AS basis,cast(coalesce(array_length(e.transcripts),0) AS INT) AS count,
-  CASE WHEN coalesce(array_length(e.transcripts),0)=0 AND coalesce(array_length(r.transcript_jackets),0)=0 AND n.event_id IS NOT NULL
-   THEN 'package_names_meeting_unlinked' END AS reason
+  -- Present names its sources (ct-1i4q): printed_hearing, committee_transcript and captions, sorted.
+  CASE WHEN coalesce(array_length(e.transcripts),0)>0 THEN ts.sources
+   WHEN coalesce(array_length(r.transcript_jackets),0)=0 AND n.event_id IS NOT NULL THEN 'package_names_meeting_unlinked' END AS reason
  FROM meetings_export e LEFT JOIN meetings_resolved r ON e.event_id=r.event_id LEFT JOIN mods_named n ON e.event_id=n.event_id
+ LEFT JOIN transcript_sources ts ON e.event_id=ts.event_id
 ), document_counts AS (
  SELECT event_id,count(*) AS n FROM (SELECT try_cast(unnest(meeting_keys) AS BIGINT) AS event_id FROM ordered WHERE meeting_keys IS NOT NULL) GROUP BY event_id
 ), stated_documents AS (

@@ -50,6 +50,19 @@ const pushMap = <K, V>(map: Map<K, V[]>, key: K, item: V) => {
   list.push(item);
 };
 
+const TRANSCRIPT_SOURCE_LABELS: Record<string, string> = {
+  printed_hearing: 'Printed hearing',
+  committee_transcript: 'Committee transcript',
+  captions: 'Captions or subtitles',
+};
+
+/** The labelled sources of a meeting's transcripts (ct-1i4q), in the order the release lists them. */
+export function transcriptSourceLabels(transcripts: unknown): string[] {
+  if (!Array.isArray(transcripts)) return [];
+  const labels = transcripts.map((t: any) => TRANSCRIPT_SOURCE_LABELS[String(t?.source ?? 'printed_hearing')] ?? String(t?.source));
+  return [...new Set(labels)];
+}
+
 export function createArchiveEntities(ctx: ArchiveEntityContext) {
   const { count, files, columns, value, row, entity } = ctx;
   const invertedColumns = new Map<string, Map<string, number[]>>();
@@ -108,6 +121,7 @@ export function createArchiveEntities(ctx: ArchiveEntityContext) {
     return {
       ...m, event_id: eventKey, congress: derivedCong, session: m.session != null ? Number(m.session) : null,
       meeting_key: eventKey, meeting_date: mDate, committees: committeeObjs, committee_keys: committeeKeys, subject_keys: subjectKeys,
+      transcript_sources: transcriptSourceLabels(m.transcripts),
       sittings,
       transcripts: Array.isArray(m.transcripts) ? m.transcripts.map((t: any) => ({ ...t, list_row: t?.list_row != null ? Number(t.list_row) : null })) : [],
       videos: Array.isArray(m.videos) ? m.videos.map((v: any) => ({ ...v, title: v?.title ?? v?.name ?? null, name: v?.name ?? v?.title ?? null })) : [],

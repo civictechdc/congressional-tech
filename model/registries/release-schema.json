@@ -726,8 +726,8 @@
         },
         {
           "name": "transcripts",
-          "type": "list<struct<package_id string,list_row int32,formats list<string>>>",
-          "meaning": "Official hearing transcripts, one per package",
+          "type": "list<struct<source dict,package_id string,list_row int32,formats list<string>,video_key string,language dict,production dict>>",
+          "meaning": "Every transcript the archive holds for the meeting, labelled by source: printed_hearing (a GPO print whose own MODS records the meeting, one per package: package_id, list_row of its preferred-format document, formats), committee_transcript (the committee's own transcript file, H{HRG,MKP,MTG}-<congress>-<committee>-Transcript-<meeting date>.pdf, linked to the meeting; list_row, formats), captions (a complete caption or subtitle track of the meeting's recording, never a stream segment; formats, video_key, language, production)",
           "nullable": false
         },
         {
@@ -1853,7 +1853,7 @@
         {
           "name": "reason",
           "type": "dict",
-          "meaning": "Why a state holds, when known: old_evidence_disputes_negative_verdict, video_text_only, excerpts_only, stated_documents_not_held, senate_page_links_pending, package_witnesses_unattached, package_names_meeting_unlinked, recording_link_pending or recording_without_video_record",
+          "meaning": "Why a state holds, when known: old_evidence_disputes_negative_verdict, video_text_only, excerpts_only, stated_documents_not_held, senate_page_links_pending, package_witnesses_unattached, package_names_meeting_unlinked, recording_link_pending or recording_without_video_record; for a present transcript, the sources held (printed_hearing, committee_transcript, captions)",
           "nullable": true
         }
       ],
