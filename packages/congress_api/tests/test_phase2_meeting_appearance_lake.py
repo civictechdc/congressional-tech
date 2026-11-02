@@ -1925,7 +1925,8 @@ def test_ct_30fp_congress_gov_invalid_witness_items_and_sql_per_context_freshnes
         ),
     ]
     resolved_sql = (ROOT / "model/sql/appearance-records-resolved.sql").read_text(encoding="utf-8")
-    state_sql = resolved_sql.rsplit("SELECT\n w.witness_key,", 1)[0] + "SELECT record_sha_hex, collection_state, effective_state FROM valid_observations WHERE record_sha_hex='" + sha_err + "'"
+    observations_sql = (ROOT / "model/sql/appearance-observations.sql").read_text(encoding="utf-8")
+    state_sql = "SELECT record_sha_hex, collection_state, effective_state FROM appearance_observations WHERE record_sha_hex='" + sha_err + "'"
     res = run_job(
         work,
         engine,
@@ -1934,6 +1935,7 @@ def test_ct_30fp_congress_gov_invalid_witness_items_and_sql_per_context_freshnes
                {"name": "selected_meeting_records", "sql": "SELECT * FROM meeting_records_input", "materialize": True},
                {"name": "meetings_resolved", "sql": "SELECT cast(NULL AS BIGINT) AS event_id,cast(NULL AS DATE) AS meeting_date WHERE false", "materialize": True},
                {"name": "appearance_people", "sql": (ROOT / "model/sql/appearance-people.sql").read_text(encoding="utf-8"), "materialize": True},
+               {"name": "appearance_observations", "sql": observations_sql, "materialize": True},
                {"name": "resolved", "sql": resolved_sql, "materialize": True}],
         outputs=[],
         queries=[
