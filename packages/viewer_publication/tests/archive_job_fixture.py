@@ -4,6 +4,47 @@ import json
 import os
 
 
+#: Fixture generations, stated explicitly: the producer never derives one.
+SPICY_GENERATIONS={'amendments':'6'*64,'bill-family':'3'*64,'committee-rosters':'1'*64,
+                   'members':'2'*64,'nominations':'4'*64,'roll-call-votes':'5'*64}
+
+
+def spicy_input(generations=None,**tables):
+    """In-memory spicy-regs input: every table stated, absent ones as explicitly empty rows."""
+    from viewer_publication.archive_model import SPICY_SCHEMAS
+    if set(tables)-set(SPICY_SCHEMAS):raise ValueError('Unknown spicy fixture table')
+    return dict(generations=dict(SPICY_GENERATIONS if generations is None else generations),
+                tables={name:tables.get(name,[]) for name in SPICY_SCHEMAS})
+
+
+def spicy_file(directory,**tables):
+    """The production spicy-regs input shape: Parquet tables under their stated generation's prefix."""
+    import pyarrow as pa
+    import pyarrow.parquet as pq
+    from congress_api.retention.provenance import file_pin
+    from viewer_publication.archive_model import SPICY_SCHEMAS
+    def arrow(kind):
+        if isinstance(kind,str):return dict(Utf8=pa.string(),Int32=pa.int32(),Boolean=pa.bool_())[kind]
+        if 'List' in kind:return pa.list_(arrow(kind['List']['data_type']))
+        return pa.struct([(item['name'],arrow(item['data_type'])) for item in kind['Struct']])
+    stated=spicy_input(**tables);pinned={}
+    for name,rows in stated['tables'].items():
+        family='committee-rosters';key=name.removeprefix('spicy_')+'.parquet'
+        path='generations/'+family+'/'+stated['generations'][family]+'/'+key
+        (directory/path).parent.mkdir(parents=True,exist_ok=True)
+        schema=pa.schema([(k,arrow(v)) for k,v in SPICY_SCHEMAS[name].items()])
+        pq.write_table(pa.Table.from_pylist(rows,schema=schema),directory/path)
+        pinned[name]=dict(family=family,key=key,path=path,rows=len(rows),**file_pin(directory/path))
+    return dict(version=1,source='fixture',generations=stated['generations'],tables=pinned)
+
+
+def spicy_pin(directory,**tables):
+    """Write the spicy-regs input file under `directory` and return its model-spec pin."""
+    from congress_api.retention.provenance import file_pin
+    path=directory/'spicy-regs.json';path.write_text(json.dumps(spicy_file(directory,**tables)))
+    return dict(path=str(path),**file_pin(path))
+
+
 def versions():
     from congress_api.lake import readings,filenames
     return {p:readings.current_version(p) for p in ['sniff','html','xml','json']},filenames.current_version()
@@ -196,8 +237,8 @@ def selective_spec(tmp_path,fixture,where,*,base=None,differential_rows=50,count
         captures=unused,readings=unused,filename_readings=unused))
     publish=written('publish-template.json',dict(version=1,model_spec=dict(path='x',sha256='a'*64,size=1),daily=dict(path='x',sha256='a'*64,size=1),bucket='derived-fixture',work='x',
         public_origin='https://archive.fixture.test',receipt_keys=[],provenance=[],run=dict(id='selective'),contract_next_release='contract',targets=dict(path='targets.json',**file_pin(tmp_path/'targets.json'))))
-    spicy=dict(spicy_committees=[dict(system_code='HSAG00',name='Committee on Agriculture',chamber='House',committee_type='Standing',
-        parent_system_code=None,website_url='https://agriculture.house.gov/',is_current=True,history=[])])
+    spicy=spicy_pin(tmp_path,spicy_committees=[dict(system_code='HSAG00',name='Committee on Agriculture',
+        chamber='House',committee_type='Standing',parent_system_code=None,website_url='https://agriculture.house.gov/',is_current=True,history=[])])
     pins={name:dict(kind='parquet',path=str(path),**file_pin(path)) for name,path in {**fixture['base'],**(base or {})}.items()}
     value=dict(version=1,bucket='derived-fixture',catalog_root=str(tmp_path/'catalog'),work=str(tmp_path/'work'),batch_size=100,max_batches=2,
         decided_at=SELECTIVE_STAMP,engine_config=os.environ['DOCSPEC_JOB_CONFIG'],

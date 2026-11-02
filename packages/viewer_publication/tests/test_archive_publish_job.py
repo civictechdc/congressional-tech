@@ -5,7 +5,7 @@ from pathlib import Path
 
 import pytest
 
-from archive_job_fixture import model_spec
+from archive_job_fixture import model_spec, spicy_pin
 from congress_api.retention.provenance import file_pin
 
 
@@ -576,7 +576,7 @@ def test_daily_handoff_binds_all_five_table_pins_when_present(tmp_path):
     from congress_api.lake import appearance_records,meeting_records
     from viewer_publication.archive_model_job import load_spec
     from viewer_publication.archive_publish_job import ALL_TABLES,completed_daily_inputs
-    template=model_spec(tmp_path);path=tmp_path/'template.json';path.write_text(json.dumps(template))
+    template=dict(model_spec(tmp_path),spicy_regs=spicy_pin(tmp_path));path=tmp_path/'template.json';path.write_text(json.dumps(template))
     report,records=daily_report(tmp_path)
     for idx,name in enumerate(['meeting_records','appearance_records'],start=4):
         report['pins'][name]=dict(metadata_location='s3://derived-fixture/lake/'+name+'/metadata/00001.json',
@@ -688,7 +688,7 @@ def test_daily_produce_to_publish_handoff_to_completeness_checks_end_to_end(tmp_
     report=produce_daily(daily_spec,engine=engine,raw_store=store)
     assert report['status']=='completed'
 
-    template=model_spec(tmp_path);path=tmp_path/'template.json';path.write_text(json.dumps(template))
+    template=dict(model_spec(tmp_path),spicy_regs=spicy_pin(tmp_path));path=tmp_path/'template.json';path.write_text(json.dumps(template))
     selected,receipts=completed_daily_inputs(load_spec(path),report,[])
     assert receipts==[key]
     with model_arguments(selected) as arguments:

@@ -1,10 +1,12 @@
 """Application-owned policy inputs and native SQL for raw-derived releases."""
 import hashlib
 import json
+import re
 from pathlib import Path
 
 from congress_api.lake.receipt_metadata import document_status_sql,empty_body_sql
 from congress_api.retention.provenance import json_input,list_of,struct
+from viewer_publication.archive_format import SPICY_PRODUCER_FAMILIES
 
 ROOT=Path(__file__).parents[4]
 REGISTRIES={
@@ -304,72 +306,48 @@ def _normalize_appearance_rows(rows,selected_versions=None):
     return normalized
 
 
-def _prepare_spicy_inputs(scratch,spicy_regs,stated_digests):
+# Every family an entity file cites; archive_format owns which file reads which family.
+SPICY_FAMILIES=frozenset().union(*SPICY_PRODUCER_FAMILIES.values())
+SPICY_DIGEST=re.compile('[0-9a-f]{64}')
+
+
+def spicy_generations(value):
+    """Exactly one stated generation digest per family the entity files read; none is ever derived here."""
+    if not isinstance(value,dict) or set(value)!=SPICY_FAMILIES or any(
+            not isinstance(digest,str) or SPICY_DIGEST.fullmatch(digest) is None for digest in value.values()):
+        raise ValueError('spicy-regs input must state a generation digest for each of '+', '.join(sorted(SPICY_FAMILIES)))
+    return dict(sorted(value.items()))
+
+
+def _prepare_spicy_inputs(scratch,spicy_regs,include_entities):
+    """Stage the spicy-regs tables; the returned digests are exactly the generations the input states.
+
+    Without spicy-regs input only a release without entity files may proceed; its spicy
+    tables are empty and it names no generation (DM8: absent is unavailable, never empty).
+    """
     spicy_dir=scratch/'spicy'
     spicy_dir.mkdir(parents=True,exist_ok=True)
-    inputs=[]
     if spicy_regs is None:
-        for table_name,schema in SPICY_SCHEMAS.items():
-            inputs.append(json_input(spicy_dir,table_name,[],**schema))
-        return inputs,None
-    spec=spicy_regs
-    base_dir=None
-    if isinstance(spicy_regs,(str,Path)):
-        p=Path(spicy_regs)
-        if p.is_file():
-            spec=json.loads(p.read_text())
-            base_dir=p.parent
+        if include_entities:raise ValueError('Entity files require pinned spicy-regs generations')
+        return [json_input(spicy_dir,name,[],**schema) for name,schema in SPICY_SCHEMAS.items()],None
+    if not isinstance(spicy_regs,dict) or set(spicy_regs)!={'generations','tables'}:
+        raise ValueError('spicy-regs input requires exactly its generations and tables')
+    generations=spicy_generations(spicy_regs['generations'])
+    tables=spicy_regs['tables']
+    if not isinstance(tables,dict) or set(tables)!=set(SPICY_SCHEMAS):
+        raise ValueError('spicy-regs input must state every table: '+', '.join(sorted(SPICY_SCHEMAS)))
+    inputs=[]
+    for name,schema in SPICY_SCHEMAS.items():
+        value=tables[name]
+        if isinstance(value,list):
+            rows=[{k:(r.get(k) if r.get(k) is not None or not (isinstance(kind,dict) and 'List' in kind) else [])
+                   for k,kind in schema.items()} for r in value]
+            inputs.append(json_input(spicy_dir,name,rows,**schema))
+        elif isinstance(value,dict) and value.get('kind')=='parquet' and isinstance(value.get('path'),str):
+            inputs.append(dict(name=name,kind='parquet',path=value['path']))
         else:
-            base_dir=p
-            manifest_path=base_dir/'publication.v2.json'
-            spec=json.loads(manifest_path.read_text()) if manifest_path.is_file() else {}
-    if not isinstance(spec,dict):
-        raise ValueError('Unsupported spicy_regs specification')
-    raw_gens=spec.get('generations') or spec.get('entity_digests') or spec.get('families') or {}
-    entity_digests={}
-    if isinstance(raw_gens,dict):
-        for fam,val in raw_gens.items():
-            if isinstance(val,str):
-                entity_digests[fam]=val
-            elif isinstance(val,dict) and isinstance(val.get('generation'),str):
-                entity_digests[fam]=val['generation']
-    tables_map=spec.get('tables') if isinstance(spec.get('tables'),dict) else spec
-    aliases={'spicy_congress_bills':'bills','spicy_committee_assignments':'rosters'}
-    for table_name,schema in SPICY_SCHEMAS.items():
-        short_name=table_name.removeprefix('spicy_')
-        val=tables_map.get(table_name,tables_map.get(short_name))
-        if val is None and table_name in aliases:
-            val=tables_map.get(aliases[table_name])
-        if val is None and base_dir is not None:
-            for candidate in (base_dir/(table_name+'.parquet'),base_dir/(short_name+'.parquet')):
-                if candidate.is_file():
-                    val=candidate
-                    break
-        if val is None:
-            inputs.append(json_input(spicy_dir,table_name,[],**schema))
-        elif isinstance(val,(list,tuple)):
-            rows=[]
-            for r in val:
-                row={}
-                for k,kind in schema.items():
-                    v=r.get(k)
-                    if v is None and isinstance(kind,dict) and 'List' in kind:
-                        v=[]
-                    row[k]=v
-                rows.append(row)
-            inputs.append(json_input(spicy_dir,table_name,rows,**schema))
-        elif isinstance(val,dict) and 'kind' in val:
-            inputs.append(dict(val,name=table_name))
-        elif isinstance(val,(str,Path)):
-            inputs.append(dict(name=table_name,kind='parquet',path=str(Path(val).resolve())))
-        else:
-            raise ValueError('Unsupported spicy_regs table input: '+table_name)
-    # Only what the spec really stated may become an upstream URL; the fabricated
-    # defaults below keep existing manifests stable and never leave this module's result.
-    stated_digests.update(entity_digests)
-    for fam in ('committee-rosters','members','bill-family','nominations','roll-call-votes'):
-        entity_digests.setdefault(fam,hashlib.sha256(f'spicy-regs:{fam}'.encode()).hexdigest())
-    return inputs,entity_digests
+            raise ValueError('Unsupported spicy-regs table input: '+name)
+    return inputs,generations
 
 
 def registry_inputs(directory,*,root=ROOT):
@@ -732,11 +710,8 @@ def prepare_model_inputs(*,captures,readings,filename_readings,parser_versions,c
         inputs.append(json_input(scratch,'appearance_records_input',_normalize_appearance_rows(appearance_records or (),parser_versions.get('appearance_records')),**APPEARANCE_RECORD_FIELDS))
     else:
         prelude += [dict(name='appearance_records_input',sql=_record_table_sql('appearance_records',appearance_records,'appearances'),materialize=True)]
-    stated_digests={}
-    spicy_inputs,entity_digests=_prepare_spicy_inputs(scratch,spicy_regs,stated_digests)
+    spicy_inputs,entity_digests=_prepare_spicy_inputs(scratch,spicy_regs,include_entities)
     inputs += spicy_inputs
-    if include_entities and entity_digests is None:
-        entity_digests={fam:hashlib.sha256(f'spicy-regs:{fam}'.encode()).hexdigest() for fam in ('committee-rosters','members','bill-family','nominations','roll-call-votes')}
     def _provenance_input(name,files,fields):
         from congress_api.retention.provenance import field
         if files:return dict(name=name,kind='json_lines',files=list(files),schema=dict(fields=[field(k,v) for k,v in fields.items()],metadata={}))
@@ -773,7 +748,7 @@ def prepare_model_inputs(*,captures,readings,filename_readings,parser_versions,c
     return dict(inputs=inputs,prelude=prelude,steps=admission_steps(prelude=prelude,root=root),
         profile=model_profile,capture_profile=capture_profile,scratch=scratch,evidence=evidence,
         parser_versions=dict(parser_versions),catalog_version=catalog_version,
-        include_entities=include_entities,entity_digests=entity_digests,stated_digests=stated_digests,recovery_policy=recovery_policy,explorer_inputs=explorer_inputs)
+        include_entities=include_entities,entity_digests=entity_digests,recovery_policy=recovery_policy,explorer_inputs=explorer_inputs)
 
 
 def build_release(*,captures,readings,filename_readings,parser_versions,catalog_version,
@@ -1036,7 +1011,7 @@ def build_prepared_release(prepared,*,engine,output,root=ROOT):
         lookup_extra="SELECT o.list_row,a.url FROM source_addresses a JOIN document_members m ON a.source_id=m.source_id JOIN document_identities d ON m.component=d.component JOIN ordered o ON d.document_id=o.doc_key WHERE m.is_real_file",
         metadata_queries=meta_queries,origin=dict(kind='model',gaps=[]),content_files={'capture_profile.json':capture_profile},auxiliary=auxiliary,extra_outputs=extra,
         capture_scope=json.loads((Path(root)/'model/registries/capture-scope.json').read_text()),
-        entity_digests=prepared.get('entity_digests'),stated_digests=prepared.get('stated_digests'),
+        entity_digests=prepared.get('entity_digests'),
         diagnostics=[dict(name='model_invariants',sql=f"""SELECT {prefix_checks},
             (SELECT count(*) FROM model_url_keys WHERE error IS NOT NULL) AS invalid_url_keys,
             (SELECT count(*) FROM recovery_attachment_diagnostics) AS invalid_recovery_attachments,

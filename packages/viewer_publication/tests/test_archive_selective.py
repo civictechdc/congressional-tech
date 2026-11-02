@@ -73,6 +73,18 @@ def test_refuses_bad_predicates_before_any_effect(tmp_path,fixture,where,message
     assert not (tmp_path/'work').exists()
 
 
+def test_the_job_owns_model_output_while_a_pinned_spicy_regs_is_accepted(tmp_path,fixture):
+    # Contract: the selective job owns work/model-{output,scratch} (db7345c8); spicy-regs is a pin (925036be).
+    from viewer_publication.archive_backfill_job import load_spec
+    spec=selective_spec(tmp_path,fixture,dict(captures=B))
+    pinned=spec['selective']['model']['spicy_regs']
+    assert set(pinned)=={'path','sha256','size'} and Path(pinned['path']).is_file()
+    path=tmp_path/'spec.json';value=json.loads(path.read_text())
+    value['selective']['model']['output']=str(tmp_path/'caller-output');path.write_text(json.dumps(value))
+    with pytest.raises(ValueError,match='the job owns work/model'):load_spec(path)
+    assert not (tmp_path/'work').exists()
+
+
 def test_refuses_a_digest_mismatch_and_absent_raw_root_before_any_effect(tmp_path,fixture):
     spec=selective_spec(tmp_path/'digest',fixture,dict(captures=B))
     spec['selective']['base']['captures']['sha256']='0'*64

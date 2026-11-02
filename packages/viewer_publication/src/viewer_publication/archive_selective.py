@@ -94,7 +94,7 @@ def validate_selective(value,*,base,catalog_root,tables):
     if not isinstance(model,dict) or {'template','engine_config'}-model.keys() or model.keys()-{'template','engine_config','spicy_regs'}:
         raise ValueError('Selective model requires its template and runtime; the job owns work/model-{output,scratch}')
     result['model']=dict(model,**{name:_local(model[name],base) for name in ('template','engine_config')})
-    if isinstance(model.get('spicy_regs'),str):result['model']['spicy_regs']=_local(model['spicy_regs'],base)
+    if model.get('spicy_regs') is not None:result['model']['spicy_regs']=pinned(model['spicy_regs'])
     result['publish_template']=_local(value['publish_template'],base)
     return result
 

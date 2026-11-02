@@ -36,6 +36,11 @@
     "snapshot": null,
     "schema_id": 0
   },
+  "spicy_regs": {
+    "path": "../../.cache/archive-release/r1b/inputs/spicy_regs/spicy-regs.json",
+    "sha256": "7188109eff68ea6268751a5ff2c53c80ae8c92bfcbdf83e7e0e3cc07dc87b61e",
+    "size": 5042
+  },
   "parser_versions": {
     "sniff": "01bf09000fce8229a468583c23f869fc639c56e3e87a1ca447dd66c5f99bff6b",
     "html": "61d7904883f042f48d3732d0518adaa5cf5084790ebc9d5411aad7a6ab605969",

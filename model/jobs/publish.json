@@ -2,8 +2,8 @@
   "version": 1,
   "model_spec": {
     "path": "publish-model.json",
-    "sha256": "b5a1cd791bfd86524950f146006205cf6b4f38a0a3ca7e03b8e34519c16bd2e2",
-    "size": 2911
+    "sha256": "551c08209e703aeda9aa3223c5da15d7be148458dcfc8018a0c72e37ec08514b",
+    "size": 3115
   },
   "daily": {
     "path": "publish-daily.json",

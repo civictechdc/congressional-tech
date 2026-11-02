@@ -11,7 +11,7 @@ import re
 import pyarrow.parquet as pq
 import pytest
 
-from archive_job_fixture import real_model_spec
+from archive_job_fixture import real_model_spec, spicy_input
 from congress_api.lake import appearance_records, meeting_records
 from congress_api.retention.provenance import run_job
 from docspec_client.client import NativeDatasets
@@ -35,7 +35,7 @@ def planned(tmp_path_factory):
         prepared = prepare_model_inputs(**empty, parser_versions=dict(value['parser_versions'],
                 meeting_records=meeting_records.current_versions(), appearance_records=appearance_records.current_versions()),
             catalog_version=value['catalog_version'], engine=engine, scratch=root / 'prepared',
-            meeting_records=[], appearance_records=[], include_entities=True)
+            meeting_records=[], appearance_records=[], spicy_regs=spicy_input(), include_entities=True)
         class Stop(Exception):
             pass
         seen = []

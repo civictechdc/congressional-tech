@@ -18,7 +18,7 @@ from congress_shared.storage import single_put_md5 as provenance_etag_md5
 
 TABLES=('captures','readings','filename_readings')
 OPTIONAL_TABLES=('meeting_records','appearance_records')
-OPTIONAL={*OPTIONAL_TABLES,'spicy_regs','entity_digests','recovery_requirements'}
+OPTIONAL={*OPTIONAL_TABLES,'spicy_regs','recovery_requirements'}
 PROVENANCE={'recovery_files':'recoveries','review_files':'reviews','verification_files':'verification',
             'unreadable_files':'unreadable','variant_files':'url_variants'}
 REQUIRED={'version','engine_config',*TABLES,'parser_versions','catalog_version','output','scratch'}
@@ -96,8 +96,11 @@ def validate_spec(value,*,base):
     for name in OPTIONAL_TABLES:
         if value.get(name) is not None:
             result[name]=_selector(value[name],base)
-    if isinstance(value.get('spicy_regs'),str):
-        result['spicy_regs']=_local(value['spicy_regs'],base)
+    if value.get('spicy_regs') is not None:
+        _pin(value['spicy_regs'],{'path','sha256','size'})
+        result['spicy_regs']=dict(value['spicy_regs'],path=_local(value['spicy_regs']['path'],base))
+    elif any(value.get(name) is not None for name in OPTIONAL_TABLES):
+        raise ValueError('Entity inputs require pinned spicy-regs generations')
     for name in ['engine_config','output','scratch']:result[name]=_local(value[name],base)
     output,scratch=Path(result['output']),Path(result['scratch'])
     if output.is_relative_to(scratch) or scratch.is_relative_to(output):
@@ -128,6 +131,30 @@ def validate_spec(value,*,base):
     if value['catalog_version']!=filenames.current_version():
         raise ValueError('Catalog version must match the current definition')
     return result
+
+
+def _spicy_arguments(pin,hold):
+    """Read the pinned spicy-regs input and hold each table it binds to a stated generation.
+
+    Each table path is ``generations/<family>/<digest>/<key>``, spicy-regs' own layout, so a
+    table cannot be read under a generation other than the one its family states.
+    """
+    from viewer_publication.archive_model import SPICY_SCHEMAS,spicy_generations
+    value=json.loads(Path(hold(pin)).read_text())
+    if not isinstance(value,dict) or set(value)!={'version','source','generations','tables'} or value['version']!=1:
+        raise ValueError('spicy-regs input requires version 1, its source, generations and tables')
+    generations=spicy_generations(value['generations'])
+    tables=value['tables']
+    if not isinstance(tables,dict) or set(tables)!=set(SPICY_SCHEMAS):
+        raise ValueError('spicy-regs input must pin every table: '+', '.join(sorted(SPICY_SCHEMAS)))
+    base=Path(pin['path']).parent;held={}
+    for name,table in sorted(tables.items()):
+        _pin(table,{'family','key','path','sha256','size','rows'})
+        if table['family'] not in generations or table['path']!=(
+                f"generations/{table['family']}/{generations[table['family']]}/{table['key']}"):
+            raise ValueError('spicy-regs table is not under its stated generation: '+name)
+        held[name]=dict(kind='parquet',path=hold(dict(table,path=_local(table['path'],base))))
+    return dict(generations=generations,tables=held)
 
 
 @contextmanager
@@ -204,7 +231,7 @@ def model_arguments(spec, *, provenance_etags=None,verified_files=None,allow_exi
             value=spec['recovery_requirements']
             arguments['recovery_requirements']=dict(value,path=hold(value))
         if spec.get('spicy_regs') is not None:
-            arguments['spicy_regs']=spec['spicy_regs']
+            arguments['spicy_regs']=_spicy_arguments(spec['spicy_regs'],hold)
         for _source,verified in retained.values():verified.require(verified.path)
         yield arguments
         for _source,verified in retained.values():verified.require(verified.path)
