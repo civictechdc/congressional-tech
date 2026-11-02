@@ -499,7 +499,9 @@ def execute_selective(spec,*,runtime_factory=None):
         state=_open_state(spec,engine)
         attempt=Path(spec['work'])/'attempts'/('attempt-'+uuid4().hex);attempt.mkdir(parents=True)
         run=Run(spec,engine,state,attempt);_clear_unaccepted_model(run);run.check_scratch();bodies=Bodies(run)
-        if 'writer_commit' not in run.state and (writer:=_writer(run)) is not None:
+        # Held only from the start of production: a resume of an already-built state must not
+        # claim, after the fact, that its commit was there from the start.
+        if not run.state.get('seeded') and 'writer_commit' not in run.state and (writer:=_writer(run)) is not None:
             run.state['writer_commit']=writer['commit'];run.save()
         _select(run)
         differential(run,bodies)

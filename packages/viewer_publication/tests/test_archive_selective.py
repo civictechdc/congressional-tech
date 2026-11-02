@@ -520,3 +520,18 @@ def test_an_unclean_tree_writes_no_producer_record_and_says_so(tmp_path,fixture,
     report=execute(spec)
     assert report['producers']=={'unavailable':'the checkout was not clean, so no commit can be named'}
     assert 'producers' not in json.loads((Path(spec['work'])/'candidate-publish.json').read_text())
+
+
+def test_records_written_on_a_resume_of_an_older_build_say_so(tmp_path,fixture,monkeypatch):
+    """spec-run's case: tables built before producer records existed, recorded on resume."""
+    import subprocess as sp
+    import viewer_publication.archive_selective as selective
+    head_commit=sp.run(['git','rev-parse','HEAD'],capture_output=True,text=True,check=True).stdout.strip()
+    monkeypatch.setattr(selective,'_writer',lambda run:None)  # first run: no clean identity, no records
+    spec=selective_spec(tmp_path,fixture,dict(captures=B),differential_rows=0)
+    assert 'unavailable' in execute(spec)['producers']
+    state_path=Path(spec['work'])/'state.json';state=json.loads(state_path.read_text());state.pop('producers');state_path.write_text(json.dumps(state))
+    monkeypatch.setattr(selective,'_writer',lambda run:dict(job=selective.PRODUCER_JOB,commit=head_commit,lockfile_digest='0'*64))
+    report=execute(dict(spec,resume=True))
+    records=[json.loads(Path(pin['path']).read_text()) for pin in report['producers'].values()]
+    assert records and all(r['recorded']=='after production, on resume' for r in records)
