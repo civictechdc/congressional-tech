@@ -515,3 +515,48 @@ def test_candidate_goes_through_the_controller_and_resumes_after_canary_failure(
             assert controller.run_publish(load_spec(candidate),canary=passed,resume=True,**kwargs)['status']=='published'
         finally:patch.undo()
     assert len(built)==1
+
+
+def test_the_selective_job_records_the_producer_of_every_snapshot_it_pins(tmp_path,fixture,monkeypatch):
+    """Gate 5 refused spec-run's D1-D4 candidate: nothing wrote a producer record. The job that
+    made the snapshots now writes them, named honestly, and pins them in candidate-publish.json."""
+    import subprocess as sp
+    import viewer_publication.archive_selective as selective
+    from viewer_publication.producer_proof import snapshot_reasons
+    head_commit=sp.run(['git','rev-parse','HEAD'],capture_output=True,text=True,check=True).stdout.strip()
+    # The test tree may be dirty; the identity is the checked-in HEAD, as writer_identity names it on a clean tree.
+    monkeypatch.setattr(selective,'_writer',lambda run:dict(job=selective.PRODUCER_JOB,commit=head_commit,lockfile_digest='0'*64))
+    spec=selective_spec(tmp_path,fixture,dict(captures=B),differential_rows=0)
+    report=execute(spec)
+    assert set(report['producers'])==set(report['tables'])
+    publish=json.loads((Path(spec['work'])/'candidate-publish.json').read_text())
+    assert publish['producers']==report['producers']
+    model=json.loads((Path(spec['work'])/'candidate-model.json').read_text())
+    records={name:json.loads(Path(pin['path']).read_text()) for name,pin in report['producers'].items()}
+    assert all(r['job']==selective.PRODUCER_JOB and r['commit']==head_commit and r['recorded']=='with production' for r in records.values())
+    from congress_api.lake import captures as lake_captures
+    assert snapshot_reasons(model,records,mapping_current=lake_captures.current_version())==[]
+
+
+def test_an_unclean_tree_writes_no_producer_record_and_says_so(tmp_path,fixture,monkeypatch):
+    import viewer_publication.archive_selective as selective
+    monkeypatch.setattr(selective,'_writer',lambda run:None)
+    spec=selective_spec(tmp_path,fixture,dict(captures=B),differential_rows=0)
+    report=execute(spec)
+    assert report['producers']=={'unavailable':'the checkout was not clean, so no commit can be named'}
+    assert 'producers' not in json.loads((Path(spec['work'])/'candidate-publish.json').read_text())
+
+
+def test_records_written_on_a_resume_of_an_older_build_say_so(tmp_path,fixture,monkeypatch):
+    """spec-run's case: tables built before producer records existed, recorded on resume."""
+    import subprocess as sp
+    import viewer_publication.archive_selective as selective
+    head_commit=sp.run(['git','rev-parse','HEAD'],capture_output=True,text=True,check=True).stdout.strip()
+    monkeypatch.setattr(selective,'_writer',lambda run:None)  # first run: no clean identity, no records
+    spec=selective_spec(tmp_path,fixture,dict(captures=B),differential_rows=0)
+    assert 'unavailable' in execute(spec)['producers']
+    state_path=Path(spec['work'])/'state.json';state=json.loads(state_path.read_text());state.pop('producers');state_path.write_text(json.dumps(state))
+    monkeypatch.setattr(selective,'_writer',lambda run:dict(job=selective.PRODUCER_JOB,commit=head_commit,lockfile_digest='0'*64))
+    report=execute(dict(spec,resume=True))
+    records=[json.loads(Path(pin['path']).read_text()) for pin in report['producers'].values()]
+    assert records and all(r['recorded']=='after production, on resume' for r in records)
