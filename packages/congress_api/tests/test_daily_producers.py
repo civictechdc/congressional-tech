@@ -276,6 +276,23 @@ def test_native_daily_identity_includes_existing_and_new_receipts(tmp_path):
     assert third['receipt_keys']==keys and third['new_receipt_keys']==[]
 
 
+def test_native_daily_refuses_receipts_built_by_another_capture_mapping(tmp_path,monkeypatch):
+    # Defect guarded: rows from an older mapping look present to the receipt anti-join, so
+    # daily never corrects them (v21's ~51k wrong rows after the Basin snapshot).
+    from congress_api.lake import daily
+    value,engine,store=native_fixture(tmp_path,2)
+    first=daily.produce_daily(dict(value,receipt_inventory=value['receipt_inventory'][:1]),engine=engine,raw_store=store)
+    assert first['status']=='completed'
+    built=first['currentversions']['captures']
+    monkeypatch.setattr(daily.captures,'current_version',lambda:'next-mapping')
+    second=daily.produce_daily(dict(value,work=str(tmp_path/'second')),engine=engine,raw_store=store)
+    assert second['status']=='backfill_required' and second['pins'] is None
+    [stale]=second['producerreports']['captures']['stale_mappings']
+    assert stale['mapping_version']==built and stale['receipts']==1 and stale['captures']>=1
+    # Nothing was staged: neither the stale receipt again nor the new one.
+    assert not (tmp_path/'second/captures').exists() and not (tmp_path/'second/readings').exists()
+
+
 def replace_spec(value,**changes):
     return dict(value,**changes)
 

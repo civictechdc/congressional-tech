@@ -184,6 +184,18 @@ def _check_entity_versions(table_name,actual,mod):
         raise ValueError(f'Daily producer definitions for {table_name} must match current source-scoped versions')
 
 
+def _stale_mapping_receipts(captures_pin,current,*,engine,work):
+    """Receipts whose rows another capture mapping built (or none recorded), by mapping.
+
+    One narrow-column scan grouped by mapping_version, a handful of groups. A head without
+    the column fails here, before any effect.
+    """
+    rows=run_job(work,engine,inputs=[tables.table_input('captures',captures_pin)],steps=[],outputs=[],queries=[dict(name='stale',
+        sql="SELECT mapping_version,count(DISTINCT receipt_key) AS receipts,count(*) AS captures FROM captures "
+            "WHERE mapping_version IS DISTINCT FROM '"+current.replace("'","''")+"' GROUP BY mapping_version")])['stale']
+    return sorted(rows,key=lambda row:str(row['mapping_version']))
+
+
 def produce_daily(spec,*,engine,raw_store):
     """D1 then budgeted D2 then D3, returning fresh pins only after completion.
 
@@ -206,6 +218,13 @@ def produce_daily(spec,*,engine,raw_store):
     versions=dict(captures=captures.current_version())
     report=dict(status='running',pins=None,receipt_keys=None,new_receipt_keys=[],provenance=provenance,
                 currentversions=versions,producerreports={})
+    stale=_stale_mapping_receipts(heads['captures'],versions['captures'],engine=engine,work=work/'mapping-check')
+    if stale:
+        # The receipt anti-join would count these receipts as present forever, and re-staging
+        # them would duplicate their keys: only the selective backfill rebuilds them.
+        report.update(status='backfill_required')
+        report['producerreports']['captures']=dict(status='backfill_required',stale_mappings=stale)
+        return report
     selected=select_receipts(spec['receipt_inventory'],heads['captures'],engine=engine,work=work/'receipt-selection')
     if selected:
         stage=captures.stage_captures(selected,engine=engine,work=work/'captures',
