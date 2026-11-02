@@ -40,3 +40,7 @@ Ordering constraint 2026-11-02 (lead): v21 is the first snapshot of the canonica
 **2026-11-02T14:20:30Z**
 
 2026-11-02 impl-e2: daily refuses with backfill_required when rows are at a non-current or NULL mapping_version, naming each stale mapping with its receipt and row counts; the selective backfill rebuilds them (085f35bd on r1b-e2-map, which needs e1's column; merge after e1). prove_unchanged fix: 8240567c on r1b-e2.
+
+**2026-11-02T17:13:22Z**
+
+2026-11-02 spec-run: the real captures rebuild (D1) passed the backfill guard on candidate-r1b 9faf86df, peaking at 6.93 GiB under the 14 GiB pool (staging batch cap). compare_generations against v21 refuses until an expected-change-class file exists: about 59k outcome and 65k good_fetch changes. impl-e1 is building the class file, and an independent raw judge is verifying every changed row; unexplained rows are defects. Size-bound registry rule committed (r1b-det 3a3d2560): only c90e782a is recomputed.
