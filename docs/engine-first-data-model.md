@@ -520,6 +520,7 @@ One row per source file: 1,683,430 today.
   4. the value of the first filename-parameter registry entry present in the source URL's query, else the requested URL's, at its first occurrence;
   5. the source URL's last path segment;
   6. the requested URL's last path segment.
+  7. for a source, then a requested, URL with no query that ends in `/`: its last non-empty path segment (`…/X.pdf/` gives `X.pdf`, `/hearings/nominations-6/` gives `nominations-6`; a bare host gives none). Trailing-slash hearing pages and press releases were 1,240 of the 2,901 blank names in 448651e7 (ct-yf1c).
 - **Decoding:** URL segments and query values are percent-decoded once as strict UTF-8, `+` kept literal; an invalid sequence stays encoded.
 - **One name per capture row.** Each admitted effective name is its own source file, joined by the same-body edge. Other header copies stay in raw behind the capture pointer. The document shows the saved file's effective name.
 - **Grain:** two archive members with the same body and name at different paths are one source file; `sources` keeps each path.

@@ -34,6 +34,11 @@ SELECT i.input_id, i.source_url,
         nullif(disposition_filename(i.h_content_disposition), ''),
         nullif(p.filename, ''),
         nullif(url_filename(i.source_url), ''),
-        nullif(url_filename(i.requested_url), ''), '') AS filename
+        nullif(url_filename(i.requested_url), ''),
+        -- A query-free URL ending in '/' names its last non-empty path segment.
+        nullif(CASE WHEN strpos(i.source_url, '?') = 0
+            THEN url_filename(regexp_replace(i.source_url, '/+(#.*)?$', '')) END, ''),
+        nullif(CASE WHEN strpos(i.requested_url, '?') = 0
+            THEN url_filename(regexp_replace(i.requested_url, '/+(#.*)?$', '')) END, ''), '') AS filename
 FROM parameter_values p RIGHT JOIN filename_inputs i
     ON i.input_id = p.input_id AND p.preference = 1
