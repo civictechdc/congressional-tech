@@ -73,6 +73,7 @@ def test_native_references_preserve_occurrences_without_inventing_acquisitions(t
         dict(name='copy_url_keys',sql=(ROOT/'model/sql/copy-url-keys.sql').read_text(),materialize=True),
         dict(name='source_endpoints',sql=(ROOT/'model/sql/source-endpoints.sql').read_text(),materialize=True),
         dict(name='document_members',sql='SELECT *,source_id AS component FROM source_files',materialize=True),
+        dict(name='recovered_copy_members',sql='SELECT cast(NULL AS VARCHAR) AS source_id,cast(NULL AS VARCHAR) AS component WHERE false'),
         dict(name='document_addresses',sql=(ROOT/'model/sql/document-addresses.sql').read_text(),materialize=True)]
     for name in ('addresses','meetings'):
         steps.append(dict(name='source_annotation_'+name,
