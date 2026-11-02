@@ -41,3 +41,7 @@ Round 1b 2026-11-02 (lead): impl-h done: 13 commits on r1b-h (1055fefb..36ac49a0
 **2026-11-02T13:13:51Z**
 
 2026-11-02 red-h (merge with fixes; 179 passed): gate 1 passes, with no cause record, a witness organization rewrite, a source moved between documents, and a url key repointed; link_history is unchecked; strict xfails hide every path to published; evidence on explained entries is optional; the gates pass with nothing checked when the pointer is missing or in legacy format. Every path (CLI, CI, daily) goes through execute, and gate_and_flip is the only pointer writer. Combined red+green fix list (11 items) sent to impl-h.
+
+**2026-11-02T13:59:45Z**
+
+2026-11-02 impl-h: all 11 review fixes on r1b-h (head 5810b591, 19 commits on 98fb1424); full production-offline lane green with no xfails left (3.6 GiB). Gate 1 now refuses red-h's three probes and silent handlers; explained causes need evidence pins. Gate 2 adds address successors (§8.2) and the history chain from the pointer's previous release. The 7,266 lost links become 7,203 redirects and 63 notices (61 ZIP-member keys to recheck on the rebuilt candidate; 1 HTTP-500 ZIP; 1 unlisted sciencedirect article). Gate 3: dip.xml is not a document (§7.3), all six suites run. Missing or legacy pointer refuses unless first_release is declared. Resume after a flip returns release_unchanged. Gate 5 also checks a per-snapshot producer record. Gate 4 finds 17 NULL nominations.description in 448651e7 (upstream check in progress). red-h2 is re-reviewing. Next: ct-ud0b.
