@@ -54,3 +54,7 @@ Round 1b 2026-11-02 (lead): basin-commit: no checked-in job could commit the par
 **2026-11-02T12:39:55Z**
 
 Retargeted to canonical archive.<name> tables 2026-11-02; nothing had been written under the release-named tables. Provenance: import-report.json (the commit record) and the append writer definition. publish-model.json table uuids are placeholders; the real ones get pinned from the commit.
+
+**2026-11-02T13:14:38Z**
+
+2026-11-02 (lead): the live write failed with no data written. R2 refused the 133 MB captures data file upload ('InvalidPart: All non-trailing parts must have the same length'). Engine cause: Iceberg FileIO data writes through OpenDalStorageFactory::S3 use no fixed multipart chunk; only upload_file pins 8 MiB (docspec-rs src/storage/remote/objects.rs around line 419). Left in Basin: namespace archive (generation 65356e21) and an empty archive.captures (uuid 01a19c60-7769-73c1-ab9a-b13a9a2857f1, no snapshot); the other 4 tables were not created. The job now resumes into an empty table (3e30b977). The fix is going into the engine release build with ct-deg8's two fixes; after the re-pin, the same command finishes. This affects every remote lake write, the daily job included.
