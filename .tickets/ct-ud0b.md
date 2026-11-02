@@ -39,3 +39,7 @@ Owner decision 2026-11-02: after the fixed release, publish nightly without a pe
 **2026-11-02T20:21:07Z**
 
 2026-11-02 measurement for the runner decision: the full model at release settings on engine b0342a7 peaked at 9.40 GiB RSS (16 GiB pool, 2 threads), under the 16 GB ubuntu-24.04 runner; the capture_dup spill drops to about 0.4 GB with the backport. Disk and runtime on a runner are still unmeasured.
+
+**2026-11-02T20:55:01Z**
+
+2026-11-02 train/spec-run: setup-native-runtime.py hard-codes a 120 s engine-call timeout, which would kill a hosted full model run (the local release run needed more). It must come from the job's declared limits before any hosted model or nightly run.

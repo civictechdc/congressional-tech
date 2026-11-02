@@ -108,3 +108,7 @@ Owner decision 2026-11-02: runner fixes (r4-rca: refuse another checkout's code 
 **2026-11-02T18:29:11Z**
 
 2026-11-02 lead RCA: train's first full lane on release-train exited 143 at 49% (13:27:10), killed by impl-f's `pkill -f "scripts/dev.py test production-offline$"`, which matches every agent's full lane. spec-run and impl-model also stop jobs with pattern kills (pkill -f on run_release.py, chain.sh, 'guard.py --rss-gb 16 .*archive_backfill_job'). Cause: on a shared machine where agents run identical commands, a pattern is not an identity. Rule added to the agent brief: stop only the PID you started (signalling the guard takes down its child group). Follow-up: have the guard print its PID at start, so agents can record it.
+
+**2026-11-02T20:55:01Z**
+
+2026-11-02 release-train 8244904f full lane: 'production-offline (full lane): exit 0', 11,244 passed, 37 skipped, 3 xfailed, peak 1.92 GiB, on engine b0342a7's config; archive_schema --check passes. 82e5b35d adds ci-poppler c006c4fa (CI and setup only; 43 own tests pass; doctor passes). Pins moved vs candidate-r1b: D4 record pins (meeting congress_gov and house_xml, four appearance pins, committee house_xml), readings bundle a7a8c404, model_spec 551c0820 (size 3115); captures, the four reading pins, catalog and video unchanged. Open: release key invariant (54 rows, inv-rca); the DOCSPEC_RUNTIME_ARTIFACT switch at the main merge.
