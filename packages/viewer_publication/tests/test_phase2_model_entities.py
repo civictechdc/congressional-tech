@@ -785,7 +785,7 @@ def test_phase2_entities_meetings_witnesses_recordings_and_spicy_projections(tmp
     assert not any('path' in relation for relation in released_schema['upstream_relations'] if relation['family'] not in (spicy_regs.get('generations') or {}))
 
     # Explorer tables need their own version pins, and only pinned copies count.
-    explorer_versions = dict(staged['parser_versions'], video_records={'youtube_cache': 'pv'}, committee_records={'house_xml': 'pc'})
+    explorer_versions = dict(staged['parser_versions'], video_records={'youtube_cache': 'pv', 'youtube_api': 'pa'}, committee_records={'house_xml': 'pc'})
     staged = dict(staged, parser_versions=explorer_versions)
     # The same inputs with the Explorer tables: all five appear, and old-shaped outputs do not move.
     from congress_api.lake import committee_records as cr_lake, video_records as vr_lake
