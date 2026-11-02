@@ -42,3 +42,7 @@ Coordinate with reopened ct-gi01 under PHASE-2 §4.6. The end state is one nativ
 **2026-11-02T13:05:13Z**
 
 2026-11-02 (lead): publish HTML metadata as native release columns through the shared release, not through adapters/page_metadata.py, which is reachable only from the old Explorer and is retired in ct-5kto. Round 3 (ct-4thc, ct-jnm9) depends on those columns.
+
+**2026-11-02T13:14:11Z**
+
+2026-11-02 (lead): publication: six new detail.parquet columns, list unchanged; selection logic moves into model SQL and page-signals.json; adapters/page_metadata.py does not survive (it's deleted with ct-5kto).

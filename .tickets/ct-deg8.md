@@ -37,3 +37,7 @@ Round 1b 2026-11-02 (lead): Cause found (plan-engine): ordered array_agg keeps a
 **2026-11-02T12:43:18Z**
 
 2026-11-02 (lead): second engine memory gap from impl-e2's in-situ profile. Aggregate output leaves as slices of one array and the pool charges each slice for the whole array (5.3 GB charged for 118 MB; hash-join build 5.77 GB; quadratic in groups per partition). This shape (aggregate feeds a hash-join build) is in 39 model steps; query-by-query fixes only move the failure (1dbd70ea fixed url_state_intervals, identical output 1,165,986 rows; step 139 url_state_fetched_keys then failed with HashJoinInput). Fix in docspec-rs with the ct-deg8 rule, one re-pin: compact or charge the build input by referenced size, as CompactViews does before SortExec. impl-engine to file a separate ss ticket.
+
+**2026-11-02T13:14:11Z**
+
+2026-11-02 (lead): both engine fixes are on docspec-rs main 939c14b: 3f274ad (ct-deg8, ss-x71z) and 84745f0 (the aggregate-slice over-charge, ss-ud8y), plus a GitHub Actions workflow for the native linux-amd64 build. scripts/check passed. The darwin and Actions builds of 939c14b are the release build for the runtime re-pin.
