@@ -33,8 +33,8 @@ uv pip install -e packages/committee_meeting -e packages/congress_shared \
 
 Optional tests: `uv pip install -e "packages/congress_api[test]"` (adds `pytest>=9,<10`).
 
-PDF recovery requires Poppler's `pdfinfo` and `pdftotext`: install `poppler-utils`
-on Debian/Ubuntu or `poppler` with Homebrew. The normal cover reader remains
+PDF recovery requires Poppler's `pdfinfo` and `pdftotext` at the release pinned in
+the root `test-suites.toml`: their `-v` lines enter the sniff parser_version. The normal cover reader remains
 pypdf. Poppler handles rejected PDF structure and unsupported text operands,
 with a 16 MiB input limit, a ten-second deadline per invocation, and bounded
 stdout/stderr. It reads only the requested opening page. New metadata fingerprints

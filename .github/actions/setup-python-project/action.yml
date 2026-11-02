@@ -10,11 +10,46 @@ runs:
       with:
         version: "0.11.21"
         enable-cache: true
-    - name: Install PDF and process tools
+    # Poppler is pinned in test-suites.toml ([environment.poppler]): the sniff
+    # parser_version hashes its -v lines, and apt ships another release.
+    - name: Read the Poppler pin
+      id: poppler
       shell: bash
       run: |
+        version=$(python -c 'import tomllib; print(tomllib.load(open("test-suites.toml", "rb"))["environment"]["poppler"]["version"])')
+        echo "version=$version" >> "$GITHUB_OUTPUT"
+        echo "prefix=$HOME/.local/poppler-$version" >> "$GITHUB_OUTPUT"
+        echo "key=poppler-$version-$RUNNER_OS-$RUNNER_ARCH-${{ hashFiles('.github/scripts/install-poppler.sh') }}" >> "$GITHUB_OUTPUT"
+    - name: Restore the pinned Poppler build
+      id: poppler-cache
+      uses: actions/cache/restore@v4
+      with:
+        path: ${{ steps.poppler.outputs.prefix }}
+        key: ${{ steps.poppler.outputs.key }}
+    - name: Install PDF and process tools
+      shell: bash
+      env:
+        POPPLER_PREFIX: ${{ steps.poppler.outputs.prefix }}
+        POPPLER_CACHED: ${{ steps.poppler-cache.outputs.cache-hit }}
+      run: |
         sudo apt-get update
-        sudo apt-get install -y --no-install-recommends poppler-utils procps
+        libraries="libfreetype6 libfontconfig1 libjpeg-turbo8 libpng16-16t64 libtiff6 libopenjp2-7 liblcms2-2"
+        if [ "$POPPLER_CACHED" != true ]; then
+          libraries="ninja-build pkg-config libfreetype-dev libfontconfig-dev libjpeg-dev libpng-dev libtiff-dev libopenjp2-7-dev liblcms2-dev zlib1g-dev"
+        fi
+        sudo apt-get install -y --no-install-recommends procps poppler-data $libraries
+        if [ "$POPPLER_CACHED" != true ]; then
+          .github/scripts/install-poppler.sh "$POPPLER_PREFIX"
+        fi
+        echo "$POPPLER_PREFIX/bin" >> "$GITHUB_PATH"
+    # Saved at once, not in a post step: a later failing test must not discard the build.
+    - name: Save the pinned Poppler build
+      if: steps.poppler-cache.outputs.cache-hit != 'true'
+      uses: actions/cache/save@v4
+      continue-on-error: true  # Parallel shards race for the same key; one save suffices.
+      with:
+        path: ${{ steps.poppler.outputs.prefix }}
+        key: ${{ steps.poppler.outputs.key }}
     - name: Sync the locked workspace
       shell: bash
       run: |

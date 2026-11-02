@@ -8,10 +8,10 @@ CI and `uv sync --locked` read that pin. A future runtime update is deliberate a
 old accepted attempts require their original revision and runtime. The workspace is not a distributable package.
 
 ```bash
-# macOS prerequisite; doctor reports this remedy without installing it.
-brew install poppler
-# Ubuntu prerequisite:
-# sudo apt-get install poppler-utils procps
+# Poppler must be exactly the release test-suites.toml pins ([environment.poppler]).
+# macOS: Homebrew poppler at that release, held with `brew pin poppler`.
+# Ubuntu: build it (dependencies: see .github/actions/setup-python-project):
+# .github/scripts/install-poppler.sh ~/.local/poppler && export PATH=~/.local/poppler/bin:$PATH
 uv sync --locked
 source .venv/bin/activate
 python scripts/dev.py doctor
@@ -29,8 +29,10 @@ python scripts/dev.py test active-experiment-regression
 
 `doctor` checks Python, that the interpreter is this checkout's `.venv`, every
 maintained import location, the locked PyArrow version and
-both Poppler commands (`pdfinfo`, `pdftotext`) and the `ps` command used by
-the PDF memory guard. Import and command probes have
+the Poppler commands (`pdfinfo`, `pdftotext`, `pdftoppm`) and the `ps` command used by
+the PDF memory guard. Each Poppler command's `-v` first line must name the pinned
+release: the sniff parser_version hashes those lines, so another release (apt's
+24.02, a `brew upgrade`) makes every stored sniff reading look stale. Import and command probes have
 bounded timeouts. Missing native commands fail before pytest starts.
 The `production-offline` lane also requires `DOCSPEC_JOB_CONFIG`: an explicit
 local DocSpec runtime configuration with executable SHA-256, source revision,

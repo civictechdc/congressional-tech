@@ -81,8 +81,8 @@ python scripts/dev.py test active-experiment-regression
 
 Other commands in [`scripts/`](scripts/README.md) publish the filename viewer, add recovered documents to the archive, query the Library of Congress Web Harvest, and measure local rebuilds. Those jobs are separate from the CLIs below.
 
-Install Poppler with `brew install poppler` on macOS or
-`sudo apt-get install poppler-utils procps` on Ubuntu. See the
+Install the Poppler release pinned in `test-suites.toml` (Homebrew held with
+`brew pin poppler` on macOS, `.github/scripts/install-poppler.sh` on Ubuntu). See the
 [development guide](docs/development.md) for test lanes, native checks and frozen
 research boundaries. The CLIs are then on your PATH:
 

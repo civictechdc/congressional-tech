@@ -3,20 +3,32 @@
 [environment]
 python_version_file = ".python-version"
 
+# The sniff parser_version hashes the first line of `pdfinfo -v` and `pdftotext -v`
+# (congress_api/retention/pdf_tools.py reader_versions), so every machine runs this
+# exact Poppler release; any other release makes stored sniff readings look stale.
+# CI builds it from source (.github/scripts/install-poppler.sh): no maintained
+# Linux distribution ships 26.06.0.
+[environment.poppler]
+version = "26.06.0"
+source_sha256 = "4cb4e5a3dc8cb5eec751c8a23c8ba19f61f96dedc0cd07d2aee6b0c8e2cf6ba4"
+
 [environment.native.pdfinfo]
 arguments = ["-v"]
-macos_remedy = "brew install poppler"
-linux_remedy = "sudo apt-get install poppler-utils"
+first_line = "pdfinfo version {poppler}"
+macos_remedy = "keep Homebrew poppler at {poppler} with brew pin poppler; brew upgrade moves it off the pin"
+linux_remedy = ".github/scripts/install-poppler.sh PREFIX and put PREFIX/bin first on PATH"
 
 [environment.native.pdftotext]
 arguments = ["-v"]
-macos_remedy = "brew install poppler"
-linux_remedy = "sudo apt-get install poppler-utils"
+first_line = "pdftotext version {poppler}"
+macos_remedy = "keep Homebrew poppler at {poppler} with brew pin poppler; brew upgrade moves it off the pin"
+linux_remedy = ".github/scripts/install-poppler.sh PREFIX and put PREFIX/bin first on PATH"
 
 [environment.native.pdftoppm]
 arguments = ["-v"]
-macos_remedy = "brew install poppler"
-linux_remedy = "sudo apt-get install poppler-utils"
+first_line = "pdftoppm version {poppler}"
+macos_remedy = "keep Homebrew poppler at {poppler} with brew pin poppler; brew upgrade moves it off the pin"
+linux_remedy = ".github/scripts/install-poppler.sh PREFIX and put PREFIX/bin first on PATH"
 
 [environment.native.ps]
 arguments = ["-o", "pid=", "-p", "{pid}"]

@@ -31,8 +31,8 @@ digest does not establish integrity. Cache hits check process-local file custody
 before reopening body bytes; mutable files need verification after restart.
 
 PDF qualification requires `pypdf>=6.19,<7`, `pdfinfo`, and `pdftoppm`. Install
-Poppler with `brew install poppler` on macOS or `apt-get install poppler-utils`
-on Linux. Every page must decode and render. Historical malformed text operands
+the Poppler release pinned in the root `test-suites.toml` (see
+[development](../../docs/development.md)). Every page must decode and render. Historical malformed text operands
 may use a recorded fallback to decoded streams plus Poppler; decoder warnings,
 corrupt streams, missing EOF, encryption, and incomplete rendering do not pass.
 Readability does not establish the requested document's identity.
