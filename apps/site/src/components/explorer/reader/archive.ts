@@ -62,7 +62,7 @@ function column(values: any[], isArray: boolean) {
 export async function openArchive(pointerUrl: string, options: any = {}) {
   const fetcher=options.fetcher??fetch, heapBytes=options.heapBytes??256*1024*1024;
   options.signal?.throwIfAborted();
-  const metrics={rangeRequests:0,rangeBytes:0,decodedBytes:0,decodedPeak:0,listColumns:0};
+  const metrics={rangeRequests:0,rangeBytes:0,decodedBytes:0,decodedPeak:0,listColumns:0,detailColumns:0};
   const retained={entries:new Map<string,any>(),bytes:0,maxBytes:options.indexBytes??32*1024*1024};
   const compressed=byteCache(options.cacheBytes??48*1024*1024,options.cacheBytes??48*1024*1024);
   const pointer=async()=>{
