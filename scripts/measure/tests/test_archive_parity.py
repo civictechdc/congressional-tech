@@ -148,7 +148,7 @@ def test_descriptor_requires_the_pinned_pair_and_actual_candidate_files(tmp_path
         parity.load_descriptor(path)
 
 
-def _convert_f0_fixture_catalog(documents, filenames, captures, committees, *, catalog_id, output, scratch, engine):
+def _convert_f0_fixture_catalog(documents, filenames, captures, committees, *, catalog_id, output, scratch, engine, origin_kind='converted_catalog'):
     from viewer_publication.archive_format import _step, _normal, _execute, legacy_meeting_keys
     output, scratch = Path(output), Path(scratch); scratch.mkdir(parents=True, exist_ok=False)
     inputs = [dict(name=n, kind='parquet', path=str(Path(p).resolve())) for n, p in [
@@ -175,10 +175,10 @@ def _convert_f0_fixture_catalog(documents, filenames, captures, committees, *, c
         _step('recovery_input', "SELECT cast(NULL AS VARCHAR) AS doc_key,cast(NULL AS VARCHAR) AS recovery_key,cast(NULL AS VARCHAR) AS original_url,cast(NULL AS VARCHAR) AS kind,arrow_cast(NULL,'FixedSizeBinary(32)') AS body,cast(NULL AS VARCHAR) AS suffix,cast(NULL AS BIGINT) AS bytes,cast(NULL AS DATE) AS imported_at,cast(NULL AS VARCHAR) AS recovered_url,cast(NULL AS VARCHAR) AS identity_note WHERE false"),
         _step('meeting_input', 'SELECT cast(NULL AS BIGINT) AS event_id,cast(NULL AS VARCHAR) AS chamber,cast(NULL AS VARCHAR) AS title,cast(NULL AS DATE) AS meeting_date WHERE false'),
         _step('committee_input', 'SELECT system_code,name,lower(chamber) AS chamber FROM committee_source')]
-    return _execute(inputs, steps, output=output, scratch=scratch, engine=engine, origin=dict(kind='converted_catalog', catalog_id=catalog_id, gaps=[]))
+    return _execute(inputs, steps, output=output, scratch=scratch, engine=engine, origin=dict(kind=origin_kind, catalog_id=catalog_id, gaps=[]))
 
 
-def f0_fixture(tmp_path, *, bad_filename=False, bad_metadata=False, bad_ranges=False, bad_lookup=False, bad_sort=None):
+def f0_fixture(tmp_path, *, bad_filename=False, bad_metadata=False, bad_ranges=False, bad_lookup=False, bad_sort=None, origin_kind='converted_catalog'):
     import pyarrow as pa
     import pyarrow.parquet as pq
     from congress_api.retention.provenance import file_pin
@@ -195,7 +195,7 @@ def f0_fixture(tmp_path, *, bad_filename=False, bad_metadata=False, bad_ranges=F
     pq.write_table(pa.table(dict(body_key=[r['body_key'] for r in data['files']],bytes=[100]*4,media_type=['text/html','text/html','application/pdf','application/xml'])),tmp_path/'captures.parquet')
     pq.write_table(pa.table(dict(system_code=['hsag00'],name=['Agriculture'],chamber=['house'])),tmp_path/'committees.parquet')
     manifest=_convert_f0_fixture_catalog(tmp_path/'documents.parquet',tmp_path/'filenames.parquet',tmp_path/'captures.parquet',tmp_path/'committees.parquet',
-        catalog_id=parity.ORACLE_GENERATION,output=tmp_path/'release',scratch=tmp_path/'converter',engine=engine())
+        catalog_id=parity.ORACLE_GENERATION,output=tmp_path/'release',scratch=tmp_path/'converter',engine=engine(),origin_kind=origin_kind)
     release=tmp_path/'release';producer=tmp_path/'converter'
     if bad_filename or bad_metadata or bad_ranges or bad_lookup or bad_sort:
         # This is an authored bad native job, not a patch to production code.
@@ -258,6 +258,17 @@ def f0_fixture(tmp_path, *, bad_filename=False, bad_metadata=False, bad_ranges=F
     example['cause_relations']={}
     path=tmp_path/'f0-template.json';path.write_text(json.dumps(example))
     return path
+
+
+@pytest.mark.parametrize('origin_kind', ['model', 'hand_fixture'])
+def test_shared_saved_body_refuses_every_origin_but_a_converted_catalog(tmp_path, origin_kind):
+    # Only the legacy catalog lacks the same-body edge; any other producer
+    # sharing a saved body between documents has a duplicate document key.
+    with pytest.raises(ValueError, match='Release key invariant failed'):
+        f0_fixture(tmp_path, origin_kind=origin_kind)
+    result = json.loads((tmp_path/'converter/result.json').read_text())
+    invariants = next(q['data'][0] for q in result['queries'] if q['name'] == 'relationship_invariants')
+    assert invariants['duplicate_document_key'] == 1
 
 
 def test_actual_f0_candidate_has_only_converter_gaps(tmp_path):
