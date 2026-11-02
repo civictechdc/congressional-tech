@@ -291,8 +291,8 @@ def test_unpointered_file_reference_with_prior_attempts_does_not_borrow_final_el
 
 
 def test_good_fetches_filters_per_attempt_while_preserving_final_fetch_state(tmp_path):
+    from congress_api.lake.model_sql import model_steps
     from congress_api.retention.provenance import run_job
-    root=Path(__file__).resolve().parents[3]
     stage=ingest(tmp_path,[
         dict(run_id='r1',mode='fetch',family='documents',requested_url='https://example.org/one',
              url='https://example.org/one',retrieved_at=STAMP,http_status=200,outcome='stored',complete=True,
@@ -307,7 +307,7 @@ def test_good_fetches_filters_per_attempt_while_preserving_final_fetch_state(tmp
     work=tmp_path/'good';work.mkdir()
     result=run_job(work,NativeDatasets.from_config(os.environ['DOCSPEC_JOB_CONFIG']),
         inputs=[dict(name='capture_evidence',kind='parquet',path=str(stage/'captures.parquet'))],
-        steps=[dict(name='good_fetches',sql=(root/'model/sql/good-fetches.sql').read_text())],outputs=[],
+        steps=model_steps(['good-fetches'],provided=['capture_evidence']),outputs=[],
         queries=[dict(name='rows',sql='SELECT receipt_line,capture_index,attempt,http_status,outcome,fetch_http_status,fetch_outcome FROM good_fetches ORDER BY receipt_line,capture_index')])
     assert result['rows']==[
         dict(receipt_line=1,capture_index=1,attempt=0,http_status=200,outcome='stored',fetch_http_status=200,fetch_outcome='stored'),

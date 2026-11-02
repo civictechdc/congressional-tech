@@ -93,6 +93,7 @@ def test_both_pointer_representations_select_items_before_coverage(tmp_path,repr
 
 
 def test_every_explicit_failure_translation_survives_a_success_http_code(tmp_path):
+    from congress_api.lake.model_sql import model_steps
     from congress_api.retention.provenance import run_job
     from docspec_client.client import NativeDatasets
     import os
@@ -105,6 +106,6 @@ def test_every_explicit_failure_translation_survives_a_success_http_code(tmp_pat
     work=tmp_path/'good-fetch-check';work.mkdir()
     result=run_job(work,NativeDatasets.from_config(os.environ['DOCSPEC_JOB_CONFIG']),
         inputs=[dict(name='capture_evidence',kind='parquet',path=str(stage/'captures.parquet'))],
-        steps=[dict(name='good_fetches',sql=(ROOT/'model/sql/good-fetches.sql').read_text())],outputs=[],
+        steps=model_steps(['good-fetches'],provided=['capture_evidence']),outputs=[],
         queries=[dict(name='rows',sql='SELECT count(*) AS n FROM good_fetches')])
     assert result['rows']==[{'n':0}]

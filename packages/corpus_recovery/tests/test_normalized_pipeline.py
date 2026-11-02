@@ -12,6 +12,7 @@ import pyarrow.parquet as pq
 import pytest
 
 from congress_api.acquisition.admission import Admission
+from congress_api.lake.model_sql import model_steps
 from congress_api.acquisition.capture_scheduler import CapturePolicy
 from congress_api.models.raw_fetch import BodyFile, FetchAttempt, FetchResult
 from congress_api.retention.body_store import BodyStore, LocalAdapter
@@ -579,7 +580,7 @@ def test_end_to_end_recovery_campaign_plan_import_reconcile_and_url_state(tmp_pa
             {
                 'name': 'captures',
                 'sql': (
-                    'SELECT * EXCLUDE(body_hex,record_role,retrieved_at),'
+                    'SELECT * EXCLUDE(body_hex,record_role,retrieved_at),cast(NULL AS VARCHAR) AS expansion,'
                     "decode(body_hex,'hex') AS sha256,"
                     'arrow_cast(cast(retrieved_at AS TIMESTAMP WITH TIME ZONE),'
                     '\'Timestamp(Microsecond, Some("UTC"))\') AS retrieved_at FROM fixture_captures'
@@ -587,7 +588,7 @@ def test_end_to_end_recovery_campaign_plan_import_reconcile_and_url_state(tmp_pa
             },
             {'name': 'record_roles', 'sql': 'SELECT receipt_key,receipt_line,capture_index,record_role FROM fixture_captures'},
             {'name': 'capture_evidence', 'sql': 'SELECT * FROM captures'},
-            {'name': 'good_fetches', 'sql': (ROOT / 'model/sql/good-fetches.sql').read_text()},
+            *model_steps(['good-fetches'], provided=['capture_evidence']),
             {'name': 'good_fetch_contexts', 'sql': 'SELECT receipt_key,receipt_line,capture_index,sha256,context_url,member_path FROM good_fetches'},
             {
                 'name': 'resolved_link_targets',
