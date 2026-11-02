@@ -453,7 +453,10 @@ def publish_candidate(*,client,engine,bucket,work,release,manifest_pin,result_pi
                 request=dict(Bucket=bucket,Prefix=PREFIX)
                 if token is not None:request['ContinuationToken']=token
                 page=client.list_objects_v2(**request)
-                if any(not item['Key'].startswith(PREFIX+release_id+'/') for item in page.get('Contents',[])):
+                # Only engine releases count (PREFIX + 64-hex id); legacy viewer files under the same
+                # prefix and this candidate's own objects from an interrupted attempt do not.
+                if any(re.match(re.escape(PREFIX)+'[a-f0-9]{64}/',item['Key']) and not item['Key'].startswith(PREFIX+release_id+'/')
+                       for item in page.get('Contents',[])):
                     raise ValueError('first_release declared, but releases already exist under '+PREFIX)
                 token=page.get('NextContinuationToken')
                 if not page.get('IsTruncated') or not token:break
