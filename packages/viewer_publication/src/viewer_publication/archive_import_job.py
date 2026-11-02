@@ -101,7 +101,7 @@ def execute(spec,*,runtime_factory=None):
     if not isinstance(engine_config,str) or not engine_config.strip():
         raise ValueError('Import execution requires engine_config or DOCSPEC_RUNTIME_CONFIG')
     from congress_api.lake.maintenance import verify_generations
-    from congress_api.lake.tables import TABLE_SPECS,WRITER_PROFILES,append_rows,create_table,validate_catalog_authority
+    from congress_api.lake.tables import TABLE_SPECS,WRITER_PROFILES,_job,append_rows,create_table,validate_catalog_authority
     from docspec_client.client import NativeDatasets
     runtime_factory=runtime_factory or NativeDatasets.from_config
     work.mkdir(parents=True)
@@ -112,14 +112,28 @@ def execute(spec,*,runtime_factory=None):
         engine.verify_runtime()
         validate_catalog_authority(engine,spec['catalog_root'])
         report['engine']=dict(source_revision=engine.source_revision,binary_sha256=engine.binary_sha256)
-        first=spec['create_namespace']
+        # One read-only head per target. A table left empty by an interrupted run
+        # (created, append failed) is adopted; a table holding any snapshot is refused.
+        # A local catalog that was never created holds no tables and cannot be opened.
+        if spec['catalog_root'] is not None and not Path(spec['catalog_root']).exists():
+            heads={name:{} for name in spec['tables']}
+        else:
+            heads={row['name']:row for row in _job(engine,work/'heads',catalog_root=spec['catalog_root'],
+                operations=[dict(kind='resolve',name=name,table=item['table'])
+                    for name,item in spec['tables'].items()])['table_operations']}
+        if any(head.get('exists') and head.get('snapshot') is not None for head in heads.values()):
+            raise ValueError('Import refuses a target table that already holds rows')
+        report['adopted_empty']=sorted(name for name,head in heads.items() if head.get('exists'))
+        first=spec['create_namespace'] and not report['adopted_empty']
         for name,item in spec['tables'].items():
             table_work=work/name
             keys=list(TABLE_SPECS[name]['primary_key'])
-            created=create_table(engine=engine,work=table_work/'create',catalog_root=spec['catalog_root'],
-                table=item['table'],schema=schemas[name],location=spec['location']+'/'+item['table']['name'],
-                create_namespace=first,partition_spec=item['partition_spec'])
-            first=False
+            created=None
+            if not heads[name].get('exists'):
+                created=create_table(engine=engine,work=table_work/'create',catalog_root=spec['catalog_root'],
+                    table=item['table'],schema=schemas[name],location=spec['location']+'/'+item['table']['name'],
+                    create_namespace=first,partition_spec=item['partition_spec'])['table_operations']
+                first=False
             # A whole table in one append: the table's declared part layout, not the
             # small-batch default, keeps row-group metadata inside the writer allowance.
             layout=WRITER_PROFILES[TABLE_SPECS[name]['writer_profile']]['layout']
@@ -128,7 +142,7 @@ def execute(spec,*,runtime_factory=None):
                 **layout)
             pin=dict(kind='native_table',**{k:appended[k] for k in ('metadata_location','table_uuid','snapshot','schema_id')})
             entry=dict(table=item['table'],source=item['source'],schema=item['schema'],keys=keys,pin=pin,
-                files=appended.get('files'),created=created.get('table_operations'),verified=False)
+                files=appended.get('files'),created=created,verified=False)
             report['tables'][name]=entry;save()
             verify_generations(dict(kind='parquet',**item['source']),pin,keys=keys,engine=engine,
                 work=table_work/'verify',exact=False)

@@ -65,3 +65,20 @@ def test_import_spec_requires_a_location_matching_its_catalog(tmp_path):
         load_spec(_spec(tmp_path,source,location='s3://bucket/prefix'))
     with pytest.raises(ValueError,match='s3 location'):
         load_spec(_spec(tmp_path,source,catalog_root=None))
+
+
+def test_import_adopts_an_empty_table_and_refuses_one_with_rows(tmp_path):
+    from viewer_publication.archive_import_job import execute,load_spec
+    from congress_api.lake.tables import create_table
+    from docspec_client.client import NativeDatasets
+    source=tmp_path/'rows.parquet';pq.write_table(ROWS,source)
+    spec=load_spec(_spec(tmp_path,source))
+    item=spec['tables']['meeting_records']
+    # An interrupted run: the table was created, the append never committed.
+    create_table(engine=NativeDatasets.from_config(os.environ['DOCSPEC_JOB_CONFIG']),work=tmp_path/'interrupted',
+        catalog_root=spec['catalog_root'],table=item['table'],schema=SCHEMA,
+        location=spec['location']+'/'+item['table']['name'],create_namespace=True)
+    report=execute(spec)
+    assert report['adopted_empty']==['meeting_records'] and report['tables']['meeting_records']['verified']
+    again=load_spec(_spec(tmp_path,source,work=str(tmp_path/'again')))
+    with pytest.raises(ValueError,match='already holds rows'):execute(again)
