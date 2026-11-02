@@ -1,5 +1,0 @@
-# The HTML metadata reader's extractor, kept out of uv.lock because that file's bytes
-# move every parser pin. Its version does not gate parser versions; each reading records it.
-# Install after every uv sync, which removes it. Already-installed locked packages stay put.
-# Move into congress_api's archive extra at the next intentional pin move, then delete this file.
-extruct>=0.18,<0.19

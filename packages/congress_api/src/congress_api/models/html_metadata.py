@@ -35,7 +35,7 @@ class HtmlMetadata(SourceModel):
     head_meta: list[dict[str, str]]
     head_links: list[dict[str, str]]
     document_truncated: bool
-    extruct_version: str | None  # provenance only; None when no extractor ran
+    extruct_version: str | None  # provenance on the reading; never in a source payload
 
     @property
     def wall_clock_dependent(self) -> bool:

@@ -7,7 +7,6 @@ from hashlib import sha256
 import json
 import os
 from pathlib import Path
-import re
 import shutil
 import subprocess
 import sys
@@ -74,21 +73,6 @@ def inventory(config):
     return tests
 
 
-def html_metadata_errors(timeout):
-    """Require the reader's extractor, which uv sync removes; its exact version does not gate."""
-    declared = 'packages/congress_api/html-metadata.in'
-    remedy = f'run uv pip install --python .venv/bin/python -r {declared}'
-    low, high = re.search(r'^extruct>=([\d.]+),<([\d.]+)', (ROOT / declared).read_text(), re.M).groups()
-    try:
-        version = run([sys.executable, '-c', 'import importlib.metadata as m; print(m.version("extruct"))'], timeout=timeout).stdout.strip()
-    except (OSError, subprocess.SubprocessError) as error:
-        return [f'HTML metadata extractor: extruct is not installed ({type(error).__name__}); {remedy}']
-    parts = lambda value: tuple(map(int, value.split('.')))
-    in_range = parts(low) <= parts(version) < parts(high)
-    print(f'extruct: {version}' if in_range else f'WARNING: extruct {version} is outside {low} to {high}; readings record the version')
-    return []
-
-
 def doctor(config, lane_name=None):
     """Verify local runtime prerequisites, Python version, native CLI dependencies, and imports."""
     errors = []
@@ -125,7 +109,6 @@ def doctor(config, lane_name=None):
         print(f'PyArrow: {version}')
     except (OSError, ValueError, subprocess.SubprocessError) as error:
         errors.append(f'PyArrow: {error}; run uv sync --locked')
-    errors += html_metadata_errors(import_timeout)
     for command, native in config['environment']['native'].items():
         remedy = native['macos_remedy' if sys.platform == 'darwin' else 'linux_remedy']
         executable = shutil.which(command)

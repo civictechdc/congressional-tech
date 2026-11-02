@@ -19,7 +19,6 @@ runs:
       shell: bash
       run: |
         uv sync --locked
-        uv pip install --python .venv/bin/python -r packages/congress_api/html-metadata.in
         echo "$GITHUB_WORKSPACE/.venv/bin" >> "$GITHUB_PATH"
     - name: Prepare historical baseline and check prerequisites
       shell: bash

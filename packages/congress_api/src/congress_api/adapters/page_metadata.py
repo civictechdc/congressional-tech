@@ -49,8 +49,11 @@ def metadata_source(context, url, metadata):
     """The record citing one body as served at one URL; emit it through ``_once``.
 
     A body can serve two URLs, and one URL can back a page and several materials.
+    The extractor version stays on the reading: the source ID digests this payload and
+    should move only when extracted content changes.
     """
-    return context.source(f'html-metadata|{metadata.body_sha256}|{url}', metadata.source_dict(), url)
+    payload = {key: value for key, value in metadata.source_dict().items() if key != 'extruct_version'}
+    return context.source(f'html-metadata|{metadata.body_sha256}|{url}', payload, url)
 
 
 def _once(context, records):

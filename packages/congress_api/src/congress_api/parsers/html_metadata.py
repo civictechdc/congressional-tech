@@ -6,8 +6,8 @@ one result can be reused for every capture of a body. The exception is a result 
 so never reuse it as a complete reading. Page payloads and parser versions stay
 untouched; a result is its own source record.
 
-extruct is imported on call because it is a separate install (``html-metadata.in``),
-not in every environment that imports this package.
+extruct is imported on call because it is in the archive extra, not in every
+environment that imports this package.
 
 Without a main thread there is no signal deadline, so ``format_timeout_seconds``
 applies only on the main thread. Run this in a supervised worker's main thread.

@@ -192,6 +192,17 @@ def test_page_source_payload_and_id_are_stable_and_existing_modified_time_kept()
     assert page_source(ctx, PAGE_URL, kept)[0].source_modified_at.date.isoformat() == '2000-01-01'
 
 
+def test_extruct_version_is_on_the_reading_and_does_not_move_the_source_id():
+    ctx = supplied()
+    facts = metadata('ways-and-means.html')
+    assert facts.extruct_version
+    newer = facts.model_copy(update={'extruct_version': '99.0'})
+    source = metadata_source(ctx, PAGE_URL, facts)
+    assert source.id == metadata_source(ctx, PAGE_URL, newer).id and 'extruct_version' not in source.payload
+    changed = facts.model_copy(update={'title': 'Other'})
+    assert metadata_source(ctx, PAGE_URL, changed).id != source.id
+
+
 def test_main_content_is_an_ordinary_representation():
     ctx = supplied()
     source = ctx.source('s', {'x': 1})

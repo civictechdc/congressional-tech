@@ -13,8 +13,6 @@ brew install poppler
 # Ubuntu prerequisite:
 # sudo apt-get install poppler-utils procps
 uv sync --locked
-# uv sync removes this sidecar; repeat after every sync. See AGENTS.md for why it is separate.
-uv pip install --python .venv/bin/python -r packages/congress_api/html-metadata.in
 source .venv/bin/activate
 python scripts/dev.py doctor
 python scripts/dev.py prepare-baseline
