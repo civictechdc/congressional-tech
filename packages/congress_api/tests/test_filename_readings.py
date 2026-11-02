@@ -183,10 +183,15 @@ def test_actual_model_factory_and_producer_keep_complete_filename_pair_parity(tm
             h_content_disposition='attachment; filename=ignored.pdf'),
         dict(url=None,requested_url='https://fixture.test/Requested%20Name.pdf'),
         dict(url='https://fixture.test/one/Same.pdf'),
-        dict(url='https://fixture.test/two/Same.pdf')]
+        dict(url='https://fixture.test/two/Same.pdf'),
+        dict(url='https://fixture.test/floor/X.pdf/'),
+        dict(url='https://fixture.test/hearings/nominations-6/'),
+        dict(url='https://fixture.test/public/?a=Files.Serve&File_id=1'),
+        dict(url='https://fixture.test/'),
+        dict(url=None,requested_url='https://fixture.test/press-release/statement/')]
     rows=[dict(receipt_key='r',receipt_line=index,capture_index=0,mode='fetch',**row)
         for index,row in enumerate(cases,1)]
-    rows.append(dict(receipt_key='r',receipt_line=7,capture_index=0,mode='retained_import',
+    rows.append(dict(receipt_key='r',receipt_line=len(rows)+1,capture_index=0,mode='retained_import',
         url='https://fixture.test/ignored-import.pdf'))
     captures=input_tables(tmp_path,rows)
     # Both callers receive these already-current decisions. Rejection retains the
@@ -216,7 +221,11 @@ def test_actual_model_factory_and_producer_keep_complete_filename_pair_parity(tm
         ('Requested Name.pdf',''),('Same.pdf','https://fixture.test/one/Same.pdf'),
         ('Same.pdf','https://fixture.test/two/Same.pdf'),
         ('Named.pdf','https://fixture.test/Accepted.pdf'),
-        ('Original.pdf','https://fixture.test/Original.pdf')}
+        ('Original.pdf','https://fixture.test/Original.pdf'),
+        ('X.pdf','https://fixture.test/floor/X.pdf/'),
+        ('nominations-6','https://fixture.test/hearings/nominations-6/'),
+        ('','https://fixture.test/public/?a=Files.Serve&File_id=1'),('','https://fixture.test/'),
+        ('statement','')}
     for path in [model/'model-names.parquet',producer['work_list']]:
         pairs=[(row['filename'],row['source_url']) for row in pq.read_table(path).to_pylist()]
         assert set(pairs)==expected and len(pairs)==len(expected)
