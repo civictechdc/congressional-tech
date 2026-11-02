@@ -46,7 +46,7 @@ from ..parsers.house_xml import (
 )
 from ..parsers.senate_page import witness_occurrences as senate_witness_occurrences
 from ..parsers.text import text as clean_text
-from ..parsers.witness_names import is_name, witness as parse_gpo_witness
+from ..parsers.witness_names import CONTENTS_LABEL, LABEL_NAME, UNMARKED_LABEL, drop_footnote_text, is_name, witness as parse_gpo_witness
 from ._record_producer import (
     CANDIDATE_APPEARANCE_RECORDS_SQL,
     INLINE_CONGRESS_MEETINGS_SQL,
@@ -180,6 +180,7 @@ _SOURCE_SYMBOLS: dict[str, tuple[str, ...]] = {
         "_RECORD_ENTRY",
         "_RECORD_OPENING",
         "_RETAINED_IN_FILES",
+        "_WITNESS_HEADING",
         "_TESTIFIED_WORDS",
         "mods_entry_kind",
         "extract_mods_observation",
@@ -934,8 +935,10 @@ _TESTIFIED_WORDS = re.compile(r"\b(?:testimony|testified|nominee|nominated)\b", 
 _RECORD_OPENING = re.compile(
     r"^\W*(?:letters?\b|(?:additional |supplemental )?(?:information|material|materials|submissions?|submittals?|(?:oral )?comments)"
     r"(?: (?:presented|submitted))? for the record\b|questions? for the record|responses? to (?:additional |written )?questions"
-    r"|answers? to (?:submitted |additional )?questions)", re.I)
-_RETAINED_IN_FILES = re.compile(r"\bhas been retained in committee files\b", re.I)
+    r"|answers? to (?:submitted |additional )?questions|submitted questions\b|additional information\b)", re.I)
+_WITNESS_HEADING = re.compile(r"^\W*(?:opening )?statements?\b", re.I)
+# GPO's note that an item has been retained, when it is the line's opening and no name follows it.
+_RETAINED_IN_FILES = re.compile(r"^\W*[^\\]*?\b(?:has|have|are) been retained in (?:committee|the files)", re.I)
 
 
 def mods_entry_kind(line: str, name: str | None) -> str | None:
@@ -943,9 +946,15 @@ def mods_entry_kind(line: str, name: str | None) -> str | None:
     record) or a Member's prepared statement, not a witness. Only explicit markers say so; a Member who
     appears (Member Day panels, "Green, Hon. Al") and a nominee or anyone said to testify is a witness.
     The model also treats anyone the meeting's own list names as a witness."""
-    text = line or ""
-    if _RECORD_OPENING.match(text) or _RETAINED_IN_FILES.search(text):
-        return "member_statement" if _MEMBER_STATEMENT.search(text) else "statement_for_record"
+    line = line or ""
+    # A contents label that opens the line ("Prepared statement \\1\\ ...", "Submitted questions: ...") names an entry.
+    # A bare "Statement of ..." is how some prints list each witness, so it is not one.
+    opening = _RECORD_OPENING.match(line) or (
+        (CONTENTS_LABEL.match(line) or UNMARKED_LABEL.match(line)) and not _WITNESS_HEADING.match(line))
+    if opening or (_RETAINED_IN_FILES.match(line) and not drop_footnote_text(line)):
+        return "member_statement" if _MEMBER_STATEMENT.search(line) else "statement_for_record"
+    # Footnote text that runs into a witness's line says nothing about that witness (green-f4).
+    text = drop_footnote_text(line)
     # "to be Director" names a nomination; "to be included in the record" does not (capital follows).
     if _TESTIFIED_WORDS.search(text) or re.search(r"\b[Tt]o be (?:an? |the )?[A-Z]", text) or not _RECORD_ENTRY.search(text):
         return None
@@ -1102,6 +1111,9 @@ def extract_mods_observation(
             continue
         parsed = parse_gpo_witness(cleaned_line)
         w_name = _opt_str(parsed.get("name"))
+        # "Prepared statement, dated October 22, 2015" is an entry of the witness above it (green-f4).
+        if w_name and LABEL_NAME.match(w_name) and not _WITNESS_HEADING.match(w_name):
+            continue
         if w_name and not is_name(w_name) and any(
             phrase in cleaned_line.lower()
             for phrase in ("answers to questions", "printed hearing record", "submitted for the record")

@@ -4,6 +4,63 @@ from congress_api.parsers.witness_names import is_name, witness
 from congress_api.parsers.xml import parse_xml
 
 
+FOOTNOTE_TEXT_LINES = [
+    # GPO's footnote text runs into the next witness's line; the name follows its last sentence (green-f4).
+    ("Prepared statement \\2\\ \\1\\ The information has been retained in committee files and also is available at "
+     "http://docs.house.gov/meetings/IF/IF03/20150603/103551/ BILLS-114pih-SubtitleA-EnergyEfficiency.pdf. \\2\\ Ms. Kelly's "
+     "statement has been retained in committee files and also is available at http://docs.house.gov/meetings/IF/IF03/20150603/ "
+     "103551/HHRG-114-IF03-Wstate-KellyS-20150603.pdf. John E. Shelk, President and Chief Executive Officer, Electric Power "
+     "Supply Association", "John E. Shelk"),
+    ("Science, Changing the Culture'' and the accompanying slide presentation have been retained in committee records and also are "
+     "available at http://docs.house.gov/Committee/Calendar/ByEvent.aspx?EventID=101897. Gerard A. Gioia, Chief, Division of "
+     "Pediatric Neuropsychology, Children's National Health System", "Gerard A. Gioia"),
+    ("and also is available at https://docs.house.gov/meetings/IF/IF14/ 20191210/110313/HHRG-116-IF14-Wstate-RossJ-20191210.pdf. "
+     "Scott W. Atlas, M.D., David and Joan Traitel Senior Fellow, Hoover Institution, Stanford University", "Scott W. Atlas"),
+    ("is available at https://docs.house.gov/meetings/IF/IF14/ 20200129/110423/HHRG-116-IF14-Wstate-ChuaK-20200129.pdf. \\2\\ "
+     "Nancy Perry, did not answer the question by the time of publication. Melanie Benesh, Legislative Attorney, Environmental "
+     "Working Group", "Melanie Benesh"),
+    ("is available at https://docs.house.gov/meetings/IF/IF03/ 20200205/110468/HHRG-116-IF03-Wstate-McMahonM-20200205.pdf. \\2\\ "
+     "Mr. Peress did not answer submitted questions for the record by the time of publication. \\3\\ The information has been "
+     "retained in committee files and also is available at https://docs.house.gov/meetings/IF/IF03/ 20200205/110468/"
+     "HHRG-116-IF03-Wstate-vanRossumM-20200205.pdf. David Mallino, Legislative and Political Director, Laborers International "
+     "Union of North America", "David Mallino"),
+    ("time of printing. \\2\\ Additional material submitted for the record has been retained in committee files and also is "
+     "available at http://docs.house.gov/ Committee/Calendar/ByEvent.aspx?EventID=104765. Mae C. Wu, Senior Attorney, Health and "
+     "Environment Program, Natural Resources Defense Council", "Mae C. Wu"),
+    ("Attatchments to Lt. General Semonite's responses to Questions for the Record are retained in the files of the Committee "
+     "Corbett, Hon. Ron, Mayor, Cedar Rapids, Iowa", "Ron Corbett"),
+    # A line that is footnote text to its end names no one.
+    ("Investing in Racial Diversity in Tech\" has been retained in committee files and also is available as part of Ms. Kim's "
+     "written testimony at https://docs.house.gov/meetings/IF/IF17/ 20190306/108901/HHRG-116-IF17-Wstate-KimJ-20190306.pdf. \\2\\ "
+     "Ms. Oliverio did not answer submitted questions for the record by the time of publication. \\3\\ A report entitled \"The "
+     "2018 Disability Equality Index: A Record Year for Corporate Disability Inclusion and Leadership\" has been retained in "
+     "committee files and", ""),
+    # A contents label followed directly by a name, with no marker (green-f4).
+    ("Prepared statement Erik D. Olson, Senior Strategic Director for Health And Food, Natural Resources Defense Counsel", "Erik D. Olson"),
+    ("Submitted questions: Avalos, Hon. Edward M", "Edward M Avalos"),
+    ("Submitted questions \\2\\...................................... Mark Johnson, Senior Environmental Health Scientist, Agency "
+     "for Toxic Substances and Disease Registry--Region 5", "Mark Johnson"),
+    ("Submitted questions.......................................... Beachy, Ph.D., Roger N., President Emeritus, Donald Danforth "
+     "Plant Science Center", "Roger N. Beachy"),
+    ("Additional information \\1\\ Kevin Sunday, Director, Government Affairs, Pennsylvania Chamber of Business and Industry", "Kevin Sunday"),
+    ("Additional information from Michael R. Lemov, Winston & Strawn", "Michael R. Lemov"),
+    ("Prepared statements: Weber, Peter", "Peter Weber"),
+    ("Prepared statements:..................................... LaMura, Marianne", "Marianne LaMura"),
+    ("Prepared statement and attachments..........................124-136 Paperiello, Carl, Deputy Executive Director for "
+     "Materials, Research and State Programs, Nuclear Regulatory Commission", "Carl Paperiello"),
+    ("Prepared Statement 4........................................... David S. McClimon, President, Conway Freight Inc.", "David S. McClimon"),
+    # A label followed by what is not a name stays as GPO wrote it.
+    ("Prepared statement on H.R. 841, H.R. 931, and H.R. 1410", "Prepared statement on H.R. 841"),
+    ("Prepared statements: April 5, 2001", "Prepared statements: April 5"),
+    ("Prepared statement dated July 30, 2020 before the Senate Committee on Commerce, Science and Transportation", "Prepared statement dated July 30"),
+]
+
+
+@pytest.mark.parametrize("line,name", FOOTNOTE_TEXT_LINES)
+def test_footnote_text_and_unmarked_labels_leave_the_name(line, name):
+    assert witness(line)["name"] == name
+
+
 @pytest.mark.parametrize("line,name,position,organization", [
     ("Mr. Nels Leader, Vice President, Bread Alone Bakery", "Nels Leader", "Vice President", "Bread Alone Bakery"),
     ("Richard J. Powell, Executive Director, ClearPath", "Richard J. Powell", "Executive Director", "ClearPath"),
