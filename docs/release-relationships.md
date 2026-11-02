@@ -251,7 +251,7 @@ Identity: `event_id` (primary_key; published identifier).
 | `sittings` | `list<struct<start timestamp,end timestamp,place string,room string,building string,address string>>` | no | Scheduled times and locations, as Congress.gov states them when it has a sitting |
 | `committees` | `list<struct<system_code dict,role dict>>` | no | Host committee codes and roles |
 | `subject_keys` | `list<dict>` | no | Bill, nomination and treaty subjects |
-| `transcripts` | `list<struct<package_id string,list_row int32,formats list<string>>>` | no | Official hearing transcripts, one per package |
+| `transcripts` | `list<struct<source dict,package_id string,list_row int32,formats list<string>,video_key string,language dict,production dict>>` | no | Every transcript the archive holds for the meeting, labelled by source: printed_hearing (a GPO print whose own MODS records the meeting, one per package: package_id, list_row of its preferred-format document, formats), committee_transcript (the committee's own transcript file, H{HRG,MKP,MTG}-<congress>-<committee>-Transcript-<meeting date>.pdf, linked to the meeting; list_row, formats), captions (a complete caption or subtitle track of the meeting's recording, never a stream segment; formats, video_key, language, production) |
 | `videos` | `list<struct<name string,url string,video_key string>>` | no | Recorded meeting links |
 | `congress` | `int16` | yes | Congress the publisher record states; null when no record states it, never inferred from documents |
 | `congress_gov_updated` | `timestamp` | yes | Congress.gov's updateDate for this record: a publisher record update, distinct from the hearing date and capture time |
@@ -642,7 +642,7 @@ Identity: `event_id, aspect` (primary_key; published identifier).
 | `state` | `dict` | no | present, partial, claimed, empty, not_stated, unresolved, not_public, confirmed_absent or unknown; these never merge |
 | `basis` | `dict` | no | Which relation states it |
 | `count` | `int32` | no | Rows behind present |
-| `reason` | `dict` | yes | Why a state holds, when known: old_evidence_disputes_negative_verdict, video_text_only, excerpts_only, stated_documents_not_held, senate_page_links_pending, package_witnesses_unattached, package_names_meeting_unlinked, recording_link_pending or recording_without_video_record |
+| `reason` | `dict` | yes | Why a state holds, when known: old_evidence_disputes_negative_verdict, video_text_only, excerpts_only, stated_documents_not_held, senate_page_links_pending, package_witnesses_unattached, package_names_meeting_unlinked, recording_link_pending or recording_without_video_record; for a present transcript, the sources held (printed_hearing, committee_transcript, captions) |
 
 Nullability: The documents are silent; entity-meeting-coverage.sql always sets basis (a CASE with an else) and count (coalesced), so both are required; reason is stated only when known. A required column is refused at write time.
 

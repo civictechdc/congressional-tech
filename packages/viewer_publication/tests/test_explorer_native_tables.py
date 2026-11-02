@@ -47,7 +47,12 @@ def tables(tmp_path_factory):
             UNION ALL SELECT 1002,array_slice(make_array(named_struct('name',cast(NULL AS VARCHAR),'url',cast(NULL AS VARCHAR),'video_key',cast(NULL AS VARCHAR))),1,0),arrow_cast(make_array(cast(9 AS BIGINT)),'List(Int64)')""", materialize=True),
         # 1008 is a Senate meeting with nothing linked; 1009 lists documents not held; 1010 has a linked
         # package whose witnesses are unattached; 1011 is named only by a package's MODS.
-        dict(name='meetings_export', sql="""SELECT cast(event_id AS BIGINT) AS event_id,chamber,array_slice(make_array(named_struct('package_id',cast(NULL AS VARCHAR),'list_row',cast(NULL AS INT))),1,0) AS transcripts
+        # 1009 holds a caption track and its committee's transcript file (ct-1i4q).
+        dict(name='meetings_export', sql="""SELECT cast(event_id AS BIGINT) AS event_id,chamber,CASE WHEN event_id=1009 THEN make_array(
+              named_struct('source','captions','package_id',cast(NULL AS VARCHAR),'list_row',cast(NULL AS INT),'video_key','youtube:v','language','en','production','asr'),
+              named_struct('source','committee_transcript','package_id',cast(NULL AS VARCHAR),'list_row',cast(3 AS INT),'video_key',cast(NULL AS VARCHAR),'language',cast(NULL AS VARCHAR),'production',cast(NULL AS VARCHAR)))
+             ELSE array_slice(make_array(named_struct('source',cast(NULL AS VARCHAR),'package_id',cast(NULL AS VARCHAR),'list_row',cast(NULL AS INT),
+              'video_key',cast(NULL AS VARCHAR),'language',cast(NULL AS VARCHAR),'production',cast(NULL AS VARCHAR))),1,0) END AS transcripts
             FROM (SELECT 1001 AS event_id,'house' AS chamber UNION ALL SELECT 1002,'house' UNION ALL SELECT 1003,'house' UNION ALL SELECT 1004,'house' UNION ALL SELECT 1005,'house'
              UNION ALL SELECT 1006,'house' UNION ALL SELECT 1007,'house' UNION ALL SELECT 1008,'senate' UNION ALL SELECT 1009,'house' UNION ALL SELECT 1010,'house' UNION ALL SELECT 1011,'house')""", materialize=True),
         dict(name='meeting_transcript_links', sql=f"""SELECT '{CONFLICT_PKG}' AS package_id,cast(1001 AS BIGINT) AS event_id UNION ALL SELECT '{SHARED_PKG}',1003 UNION ALL SELECT '{SHARED_PKG}',1004 UNION ALL SELECT '{SOLO_PKG}',1002 UNION ALL SELECT 'CHRG-alone',1005 UNION ALL SELECT 'CHRG-disputed',1006 UNION ALL SELECT 'CHRG-sibling',1007 UNION ALL SELECT 'CHRG-no-verdict',1007 UNION ALL SELECT 'CHRG-unattached',1010""", materialize=True),
@@ -178,6 +183,7 @@ def reason(work, event, aspect):
     (1010, 'witnesses', 'unknown', 'package_witnesses_unattached'),
     (1011, 'transcript', 'unknown', 'package_names_meeting_unlinked'),
     (1004, 'captions', 'unknown', 'recording_link_pending'),
+    (1009, 'transcript', 'present', 'captions,committee_transcript'),
     (1001, 'documents', 'present', None),
 ])
 def test_held_but_unlinked_evidence_is_unknown_never_not_stated(tables, event, aspect, expected, why):
