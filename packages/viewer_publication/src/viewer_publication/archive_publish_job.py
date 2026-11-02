@@ -223,8 +223,11 @@ def load_spec(path):
             raise ValueError('Daily publication selects provenance from the current raw inventory')
         if daily.get('catalog_root','missing') is not None:
             raise ValueError('Daily publisher requires its configured remote lake catalog')
+        # body_inventory and local_root are optional (daily reads bodies through raw_store
+        # unless the spec pins an inventory); only paths that are given are resolved.
         for name in ['work','body_inventory','local_root']:
-            daily[name]=_local(daily.get(name),Path(result['daily']['path']).parent)
+            if name=='work' or daily.get(name) is not None:
+                daily[name]=_local(daily.get(name),Path(result['daily']['path']).parent)
         result['_daily']=daily
         daywork=Path(daily['work']);directories.extend([daywork,daywork.with_name(daywork.name+'-provenance')])
     if any(left.is_relative_to(right) or right.is_relative_to(left)
