@@ -11,6 +11,10 @@ WITH roles AS (
             WHEN c.format = 'vtt' THEN 'caption'
             WHEN a.sha256 IS NOT NULL THEN 'archive'
             WHEN c.format = 'm3u8' THEN 'playlist'
+            -- A stream segment or other unrecognized audio/video body is media, never a document
+            -- (senate/players MP2T samples once their stated 200 is read; none listed in v21).
+            WHEN c.format = 'other'
+                 AND split_part(lower(c.media_type), '/', 1) IN ('video', 'audio') THEN 'media'
             WHEN c.format = 'warc' THEN 'envelope'
             WHEN c.format = 'pdf' AND c.intact IS NOT TRUE
                  AND c.intact_basis <> 'unchecked' THEN 'damaged'

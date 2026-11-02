@@ -33,7 +33,7 @@ RULES = {
     'source_list_items': 'Only a new bodiless line row with a true source-list proof, list length greater than one, a valid distinct item ordinal appearing once after independently decoding primary pointer coverage, and an old row on the same receipt line is an expected restoration. Preserve and gate every unproved new-only row.',
     'old_only': 'Every remaining old-only row is an owner gate; preserve all original columns. No automatic dismissal or invented capture row.',
     'occurrences': 'Match repeated receipt/body/pointer facts one-to-one; keep multiplicity after qualified secondary normalization.',
-    'coverage': 'The oracle does not independently establish new mode, completeness, outcome priorities, endpoint/header/sniff/writer facts or recovery fields. Report those gaps; qualify them with receipt and rebuild tests.',
+    'coverage': 'The oracle does not independently establish new mode, completeness, outcome priorities, endpoint/header/sniff/writer facts or recovery fields. Report those gaps; qualify them with receipt and rebuild tests. Generation-to-generation changes in those fields are reported and gated by compare_generations (ct-5f3e).',
 }
 COVERAGE = dict(
     matched_by=['receipt_key','receipt_line','sha256','pointer_json','occurrence'],
@@ -374,3 +374,79 @@ def compare_old(evidence, old_index, *, engine, work, receipt_keys=None):
         excluded_new_receipts=native['excluded_new_receipts'])
     (work/'comparison.json').write_text(json.dumps(result,indent=2,sort_keys=True)+'\n')
     return result
+
+
+# ct-5f3e: a rebuilt generation is compared with the previous one, every column both
+# ways. Eligibility facts are reported by raw value pair and refuse unless expected.
+GENERATION_VALUES = ('good_fetch','outcome','complete','attempt','http_status','fetch_http_status',
+                     'fetch_outcome','mode','mapping_version')
+GENERATION_REFUSED = ('good_fetch','outcome','complete','http_status','fetch_outcome','fetch_http_status')
+
+
+class GenerationChange(ValueError):
+    def __init__(self, report):
+        self.report = report
+        super().__init__('Capture generation differs beyond the expected changes: '
+                         + json.dumps(report['unexpected'], sort_keys=True))
+
+
+def _pair_counts(pairs, column):
+    return {(old, new): rows for name, old, new, rows in pairs if name == column}
+
+
+def compare_generations(old_pin, new_pin, *, engine, work, expected=None, receipt_keys=None, batch=250):
+    """Report every column change between two capture generations; refuse unexpected eligibility.
+
+    `expected` is {"pairs": [[column, old, new, rows], ...], "only_old": n, "only_new": n};
+    values are the raw text of each side (None for NULL). Every observed pair of a refused
+    column must be expected with its exact row count, and every expected pair observed.
+    Receipt batches bound each join; the per-batch sums are exact. O(N) expected.
+    """
+    from congress_api.lake.captures import COLUMNS, PK
+    from congress_api.lake.tables import column_differential
+    from congress_api.lake._record_producer import GOOD_FETCH_CAPTURE_SQL
+    work = Path(work).resolve()
+    work.mkdir(parents=True, exist_ok=False)
+    if receipt_keys is not None:
+        if not receipt_keys or len(set(receipt_keys)) != len(receipt_keys):
+            raise ValueError('Generation comparison scope requires unique receipt keys')
+        for key in receipt_keys: validate_key(key)
+        batches = [sorted(receipt_keys)[i:i+batch] for i in range(0, len(receipt_keys), batch)]
+        predicates = ['c.receipt_key IN (' + ','.join("'" + k.replace("'", "''") + "'" for k in keys) + ')'
+                      for keys in batches]
+    else:
+        predicates = ['true']
+    compared = [c for c in COLUMNS if c not in PK] + ['good_fetch']
+    total = dict(rows=0, only_old=0, only_new=0, changes={c: 0 for c in compared}, pairs={})
+    for index, predicate in enumerate(predicates):
+        part = column_differential(engine, work / f'batch-{index:05d}', old_pin, new_pin, keys=PK,
+            compared=compared, value_columns=GENERATION_VALUES, predicate_sql=predicate,
+            derived=dict(good_fetch=f'coalesce({GOOD_FETCH_CAPTURE_SQL},false)'))
+        for name in ('rows', 'only_old', 'only_new'):
+            total[name] += part[name]
+        for column, rows in part['changes'].items():
+            total['changes'][column] += rows
+        for column, old, new, rows in part['pairs']:
+            key = (column, old, new)
+            total['pairs'][key] = total['pairs'].get(key, 0) + rows
+    pairs = [[c, o, n, rows] for (c, o, n), rows in sorted(total['pairs'].items(), key=lambda item: tuple(map(str, item[0])))]
+    report = dict(rows=total['rows'], only_old=total['only_old'], only_new=total['only_new'],
+                  changes=total['changes'], pairs=pairs, refused_columns=list(GENERATION_REFUSED))
+    expected = expected or dict(pairs=[], only_old=0, only_new=0)
+    unexpected = []
+    for name in ('only_old', 'only_new'):
+        if report[name] != expected.get(name, 0):
+            unexpected.append([name, expected.get(name, 0), report[name]])
+    wanted = [tuple(p) for p in expected.get('pairs', [])]
+    for column in GENERATION_REFUSED:
+        seen = _pair_counts(pairs, column)
+        want = _pair_counts(wanted, column)
+        for pair in sorted(set(seen) | set(want), key=lambda p: tuple(map(str, p))):
+            if seen.get(pair) != want.get(pair):
+                unexpected.append([column, *pair, want.get(pair), seen.get(pair)])
+    report['unexpected'] = unexpected
+    report['status'] = 'refused' if unexpected else 'accepted'
+    (work / 'generation-comparison.json').write_text(json.dumps(report, indent=2, sort_keys=True, default=str) + '\n')
+    if unexpected:
+        raise GenerationChange(report)
+    return report

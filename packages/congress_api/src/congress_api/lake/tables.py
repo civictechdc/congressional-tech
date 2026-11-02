@@ -216,3 +216,41 @@ def append_rows(source, *, engine,work,catalog_root,table,keys,definition,
     result=_job(engine,work,catalog_root=catalog_root,
         inputs=[dict(name='incoming',kind='parquet',path=str(source))],operations=[operation])
     return result['table_operations'][0]
+
+
+def column_differential(engine, work, old, new, *, keys, compared, value_columns=(), predicate_sql='true', derived=None):
+    """Join two tables on `keys` once, both ways, and report each column's changes.
+
+    `predicate_sql` selects rows on both sides (alias c); `derived` adds named boolean
+    or scalar expressions over the same alias before comparison. Returns the joined
+    row count, rows only on either side, a change count for every compared column, and
+    (column, old, new, rows) value pairs for `value_columns`. One hash join and one
+    narrow grouped pass per value column over the materialized join: O(N) expected.
+    """
+    derived = dict(derived or {})
+    extra = ''.join(f',({sql}) AS "{name}"' for name, sql in derived.items())
+    same = ' AND '.join(f'(o."{k}" IS NOT DISTINCT FROM n."{k}")' for k in keys)
+    present = f'o_present AND n_present'
+    side = lambda alias, table: (f'SELECT c.*{extra},true AS {alias}_present FROM {table} c '
+                                 f'WHERE coalesce(({predicate_sql}),false)')
+    selected = ','.join([f'o."{keys[0]}" IS NOT NULL AS o_present', f'n."{keys[0]}" IS NOT NULL AS n_present']
+        + [f'o."{c}" IS DISTINCT FROM n."{c}" AS "d_{c}"' for c in compared]
+        + [f'cast(o."{c}" AS VARCHAR) AS "o_{c}",cast(n."{c}" AS VARCHAR) AS "n_{c}"' for c in value_columns])
+    steps = [dict(name='o_rows', sql=side('o', 'old')), dict(name='n_rows', sql=side('n', 'new')),
+             dict(name='joined', sql=f'SELECT {selected} FROM o_rows o FULL JOIN n_rows n ON {same}', materialize=True)]
+    counts = ['count(*) AS total', 'count(*) FILTER (WHERE NOT n_present) AS only_old',
+              'count(*) FILTER (WHERE NOT o_present) AS only_new']
+    counts += [f'count(*) FILTER (WHERE {present} AND "d_{c}") AS "{c}"' for c in compared]
+    pairs = ' UNION ALL '.join(
+        f"""SELECT '{c}' AS "column","o_{c}" AS old,"n_{c}" AS new,count(*) AS rows FROM joined
+            WHERE {present} AND "d_{c}" GROUP BY "o_{c}","n_{c}\"""" for c in value_columns)
+    queries = [dict(name='counts', sql='SELECT ' + ','.join(counts) + ' FROM joined')]
+    if value_columns:
+        queries.append(dict(name='pairs', sql=f'SELECT * FROM ({pairs}) ORDER BY "column",old,new'))
+    from congress_api.retention.provenance import run_job
+    result = run_job(work, engine, inputs=[table_input('old', old), table_input('new', new)],
+                     steps=steps, outputs=[], queries=queries)
+    row = result['counts'][0]
+    return dict(rows=row['total'], only_old=row['only_old'], only_new=row['only_new'],
+                changes={c: row[c] for c in compared},
+                pairs=[(p['column'], p['old'], p['new'], p['rows']) for p in result.get('pairs', [])])

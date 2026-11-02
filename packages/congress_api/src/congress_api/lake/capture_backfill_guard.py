@@ -2,7 +2,8 @@
 import json
 from pathlib import Path
 
-from congress_api.lake.captures import PK
+from congress_api.lake.captures import LOCAL_PATH,PK
+from congress_api.lake.receipt_metadata import document_status_sql,empty_body_sql
 from congress_api.lake.tables import table_input
 from congress_api.retention.body_store import validate_key
 from congress_api.retention.provenance import json_input,parquet_output,run_job
@@ -58,6 +59,14 @@ def validate_generation(*,engine,work,pin,counts):
         OR (c.evidence_sha256 IS NOT NULL AND length(encode(c.evidence_sha256,'hex'))<>64)
         OR (c.stored_suffix IS NOT NULL AND c.stored_suffix NOT IN ('','.gz','.pdf'))
         OR (c.fidelity IS NOT NULL AND c.fidelity NOT IN ('exact-bytes','saved-text','saved-record','retained-file'))"""
+    # A stored outcome is a document: 2xx other than 202 and a non-empty body. The
+    # mapping and every writer own that rule; this refuses any table that broke it.
+    domains+=f"""
+        OR (c.outcome='stored' AND c.sha256 IS NOT NULL AND {empty_body_sql("encode(c.sha256,'hex')",'c.bytes')})
+        OR (c.outcome='stored' AND c.http_status IS NOT NULL AND NOT {document_status_sql('c.http_status')})
+        OR (c.fetch_outcome='stored' AND c.fetch_http_status IS NOT NULL AND NOT {document_status_sql('c.fetch_http_status')})
+        OR c.mapping_version IS NULL OR NOT regexp_like(c.mapping_version,'^[0-9a-f]{{64}}$')
+        OR regexp_like(c.original_path,{LOCAL_PATH})"""
     keycols=','.join('c.'+k for k in PK)
     same_pk=' AND '.join('(c.'+k+' IS NOT DISTINCT FROM p.'+k+')' for k in PK)
     steps=[
@@ -73,6 +82,8 @@ def validate_generation(*,engine,work,pin,counts):
             FROM expected e FULL OUTER JOIN per_receipt a ON e.receipt_key=a.receipt_key
             WHERE e.receipt_key IS NULL OR a.receipt_key IS NULL OR e.expected_captures<>a.actual_captures''',materialize=True),
         dict(name='duplicate_keys',sql='SELECT '+','.join(PK)+' FROM captures GROUP BY '+','.join(PK)+' HAVING count(*)>1',materialize=True),
+        dict(name='mapping_versions',sql='''SELECT receipt_key FROM captures
+            GROUP BY receipt_key HAVING count(DISTINCT mapping_version)>1''',materialize=True),
         dict(name='body_sizes',sql='''SELECT sha256 FROM captures WHERE sha256 IS NOT NULL
             GROUP BY sha256 HAVING min(bytes)<>max(bytes)''',materialize=True),
         dict(name='physical_facts',sql='''SELECT sha256,coalesce(stored_suffix,'.gz') AS physical_suffix,
@@ -82,6 +93,7 @@ def validate_generation(*,engine,work,pin,counts):
             HAVING min(stored_bytes)<>max(stored_bytes)
                 OR min(encode(stored_md5,'hex'))<>max(encode(stored_md5,'hex'))''',materialize=True),
         dict(name='bad_capture_keys',sql=f'''SELECT 'public_domain' AS reason,{keycols} FROM captures c WHERE {domains}
+            UNION ALL SELECT 'receipt_mapping_versions' AS reason,{keycols} FROM captures c JOIN mapping_versions m ON c.receipt_key=m.receipt_key
             UNION ALL SELECT 'duplicate_pk' AS reason,{keycols} FROM captures c JOIN duplicate_keys p ON {same_pk}
             UNION ALL SELECT 'decoded_bytes_conflict' AS reason,{keycols} FROM captures c JOIN body_sizes b ON c.sha256=b.sha256
             UNION ALL SELECT 'stored_bytes_conflict' AS reason,{keycols} FROM captures c JOIN physical_facts p

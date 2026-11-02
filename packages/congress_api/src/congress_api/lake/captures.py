@@ -5,16 +5,10 @@ from pathlib import Path
 
 from congress_api.retention.provenance import parquet_output, run_job, json_input, file_pin
 from congress_api.lake.receipt_metadata import (
-    ATTEMPT_FIELDS, DOWNLOAD_HEADERS, PRIOR_ATTEMPT_LIMIT, RECOVERY, SCALARS,
-    attempt_facts, attempt_slot_terms, get, lit as literal, obj, projection,
-    record_pointer_index, scalar,
+    ATTEMPT_FIELDS, DOWNLOAD_HEADERS, OWNER_STATUS, PRIOR_ATTEMPT_LIMIT, RECOVERY, SCALARS,
+    attempt_facts, attempt_slot_terms, document_status_sql as document_status, empty_body_sql,
+    get, lit as literal, obj, owner_status_paths, projection, record_pointer_index, scalar,
 )
-
-
-# 202 Accepted means the resource was not produced. In the corpus every 202 row is an
-# empty body or a firewall challenge, so a 202 never proves a stored document.
-def document_status(status):
-    return f"({status} BETWEEN 200 AND 299 AND {status}<>202)"
 
 
 LEGACY_OUTCOMES = {
@@ -47,12 +41,14 @@ LEGACY_MODES = {
 PK = ['receipt_key', 'receipt_line', 'capture_index']
 ROW_KEYS=['source_row_id','receipt_key','receipt_line','selected_record_index','capture_index']
 COLUMNS = [*PK, 'run_id', 'mode', 'outcome', 'family', 'requested_url', 'url',
-    'context_url', 'member_path', 'h_content_disposition', 'attempt', 'http_status', 'complete',
+    'context_url', 'member_path', 'original_path', 'h_content_disposition', 'attempt', 'http_status', 'complete',
     'fetch_http_status', 'fetch_outcome', 'retrieved_at',
     'sha256', 'bytes', 'media_type', 'fidelity', 'sniffed_format', 'sniff_version',
     'intact', 'expansion', 'stored_suffix', 'stored_bytes',
     'stored_md5', 'recovery_category', 'original_url', 'recovered_url', 'match_basis',
-    'evidence_sha256', 'imported_at', 'writer_job', 'writer_commit']
+    'evidence_sha256', 'imported_at', 'writer_job', 'writer_commit', 'mapping_version']
+# A path is relative only when it names no root, home or drive (invariant 3: no local path).
+LOCAL_PATH = "'^(/|~|[A-Za-z]:)'"
 
 
 DOMAIN_OUTCOMES = Path(__file__).resolve().parents[5]/'model/registries/receipt-domain-outcomes.json'
@@ -138,7 +134,18 @@ def retained_record_sql():
     return 'CASE '+' '.join(branches)+' END'
 
 
-def mapping_steps():
+def item_paths():
+    """Every item-relative JSON path read from a list record (ct-mrgt)."""
+    paths=[(name,) for name in SCALARS]+list(RECOVERY.values())+DOWNLOAD_HEADERS+[('error',),('kind',),('body_complete',),('previous_receipt','body_complete')]
+    paths += [('receipt',name) for name in SCALARS]+[('receipt','body_complete'),('receipt','error')]
+    paths += [prefix+('prior_attempts',index,name) for prefix in [(),('receipt',)]
+              for index in range(PRIOR_ATTEMPT_LIMIT) for name in ATTEMPT_FIELDS]
+    paths += [('captures',index,name) for index in range(PRIOR_ATTEMPT_LIMIT) for name in ATTEMPT_FIELDS]
+    paths += list(owner_status_paths())
+    return paths
+
+
+def mapping_steps(mapping_version=None):
     steps=[]
     def step(name,sql,**options):
         steps.append(dict(name=name,sql=sql,**options))
@@ -154,12 +161,7 @@ def mapping_steps():
         " AND starts_with(json_get_str(item,0),'/') THEN 'path-digest-pair' "
         "WHEN regexp_match(json_get_str(item),'^[A-Za-z0-9_-]{1,64}$') IS NOT NULL THEN 'identifier' "
         "ELSE 'unsupported' END AS item_shape FROM item_entries")
-    paths=[(name,) for name in SCALARS]+list(RECOVERY.values())+DOWNLOAD_HEADERS+[('error',),('kind',),('body_complete',),('previous_receipt','body_complete')]
-    paths += [('receipt',name) for name in SCALARS]+[('receipt','body_complete'),('receipt','error')]
-    paths += [prefix+('prior_attempts',index,name) for prefix in [(),('receipt',)]
-              for index in range(PRIOR_ATTEMPT_LIMIT) for name in ATTEMPT_FIELDS]
-    paths += [('captures',index,name) for index in range(PRIOR_ATTEMPT_LIMIT) for name in ATTEMPT_FIELDS]
-    item_bundle,slots=projection('item',paths)
+    item_bundle,slots=projection('item',item_paths())
     item_fields={name:scalar(slots[(name,)],kind) for name,kind in SCALARS.items()}
     item_fields['complete']=first(item_fields['complete'],scalar(slots[('body_complete',)],'bool'))
     registry=json.loads(DOMAIN_OUTCOMES.read_bytes())
@@ -199,6 +201,7 @@ def mapping_steps():
     item_fields['kind']=scalar(slots[('kind',)],'str')
     item_fields['previous_receipt_complete']=scalar(slots[('previous_receipt','body_complete')],'bool')
     item_fields['line_kind_shape']='item_shape'
+    item_fields.update({name:scalar(slots[path],'int') for path,name in owner_status_paths().items()})
     item_fields.update({name:scalar(slots[path],'str') for name,path in RECOVERY.items()})
     item_fields['h_content_disposition']=first(*(scalar(slots[path],'str') for path in DOWNLOAD_HEADERS))
     item_fields['error_present']='('+get(slots[('error',)],kind='json')+' IS NOT NULL OR ('+domain+' AND '+get(slots[('receipt','error')],kind='json')+' IS NOT NULL))'
@@ -342,6 +345,27 @@ def mapping_steps():
         f"WHEN ({pointer_attempt}) IS NOT NULL THEN {pointer_attempt} "
         f"WHEN reference_kind='capture' AND NOT {has_captures_pointer} THEN 0 "
         "ELSE cast(NULL AS BIGINT) END")
+    # The status a body's own attempt states on its owning object (ct-bxqa): strip
+    # a leading item index (or record, k) and the body key, then match the owner.
+    def owner_match(offset,prefix_ok):
+        length=f"json_length(pointer_json)-{offset+1}"
+        branches=[f"WHEN {length}=0 THEN get_field(record,'{OWNER_STATUS[()]}')"]
+        branches+=[f"WHEN {length}={len(owner)} AND "+' AND '.join(
+            f"json_get_str(pointer_json,{offset+i})={literal(part)}" for i,part in enumerate(owner))+
+            f" THEN get_field(record,'{name}')" for owner,name in OWNER_STATUS.items() if owner]
+        index=slot_token(offset+1)
+        branches.append(f"WHEN {length}=2 AND json_get_str(pointer_json,{offset})='master_attempts' THEN CASE {index} "+
+            ' '.join(f"WHEN {i} THEN get_field(record,'status_master_{i}')" for i in range(PRIOR_ATTEMPT_LIMIT))+' END')
+        return prefix_ok,'CASE '+' '.join(branches)+' END',f"{length}=0",(
+            f"({length}=2 AND json_get_str(pointer_json,{offset})='master_attempts' "
+            f"AND (({index}) IS NULL OR ({index})<0 OR ({index})>={PRIOR_ATTEMPT_LIMIT}))")
+    owner_cases=[owner_match(1,f"({slot_token(0)}) IS NOT NULL"),
+        owner_match(2,f"json_get_str(pointer_json,0)='record' AND ({slot_token(1)}) IS NOT NULL"),
+        owner_match(0,'true')]
+    owner_ready="pointer_json IS NOT NULL AND pointer_json<>'[]'"
+    def owner_value(part):
+        return f"CASE WHEN NOT ({owner_ready}) THEN NULL "+' '.join(
+            f"WHEN {case[0]} THEN {case[part]}" for case in owner_cases)+' END'
     effective_entry_status=(
         f"CASE WHEN {is_provider_raw_file} AND ({entry_status})=200 THEN source_final_status ELSE {entry_status} END")
     step('attempts',f"""SELECT *,record_only AND record_outcome IS NULL AS unknown_line_kind,
@@ -353,6 +377,9 @@ def mapping_steps():
         {pointer_attempt} AS pointer_attempt,
         {attempt_expr} AS attempt,
         {effective_entry_status} AS entry_status,
+        cast({owner_value(1)} AS BIGINT) AS owner_status,
+        coalesce({owner_value(2)},false) AS owner_is_level,
+        coalesce({owner_value(3)},false) AS invalid_owner_slot,
         e_member_path IS NULL AND NOT coalesce(array_has({pointer_array},'\"archive_members\"'),false) AS top_level
         FROM classified""")
     line_priors=metadata_field('line','prior_attempts')
@@ -414,7 +441,7 @@ def mapping_steps():
         f"OR (has_prior_pointer AND (prior_pointer_slot IS NULL OR prior_pointer_slot<0 OR prior_pointer_slot>={PRIOR_ATTEMPT_LIMIT})) "
         f"OR (has_captures_pointer AND (captures_pointer_slot IS NULL OR captures_pointer_slot<0 OR (captures_pointer_slot>={PRIOR_ATTEMPT_LIMIT} AND entry_status IS NULL))) "
         f"OR (e_attempt IS NOT NULL AND pointer_attempt IS NOT NULL AND e_attempt<>pointer_attempt) "
-        f"OR (e_attempt IS NOT NULL AND has_captures_pointer AND e_attempt<>0))")
+        f"OR (e_attempt IS NOT NULL AND has_captures_pointer AND e_attempt<>0) OR invalid_owner_slot)")
     entry_internal_conflict="(e_http_status IS NOT NULL AND e_status_code IS NOT NULL AND e_http_status<>e_status_code)"
     status_conflict=(
         f"((attempt>=1 AND (prior_conflict OR (entry_status IS NOT NULL AND prior_status IS NOT NULL AND entry_status<>prior_status))) "
@@ -422,7 +449,8 @@ def mapping_steps():
         f"OR (entry_status IS NOT NULL AND source_final_status IS NOT NULL AND entry_status<>source_final_status) "
         f"OR (cap_status IS NOT NULL AND source_final_status IS NOT NULL AND cap_status<>source_final_status))) "
         f"OR (attempt=0 AND NOT has_captures_pointer AND ({final_internal_conflict} "
-        f"OR (entry_status IS NOT NULL AND source_final_status IS NOT NULL AND entry_status<>source_final_status))))")
+        f"OR (entry_status IS NOT NULL AND source_final_status IS NOT NULL AND entry_status<>source_final_status) "
+        f"OR (owner_is_level AND owner_status IS NOT NULL AND source_final_status IS NOT NULL AND owner_status<>source_final_status))))")
     complete_conflict=(
         "((attempt>=1 AND top_level AND e_complete IS NOT NULL AND prior_complete IS NOT NULL AND e_complete<>prior_complete) "
         "OR (has_captures_pointer AND top_level AND e_complete IS NOT NULL AND cap_complete IS NOT NULL AND e_complete<>cap_complete))")
@@ -431,11 +459,12 @@ def mapping_steps():
         "CASE WHEN record_outcome IS NOT NULL THEN line_status "
         "WHEN attempt>=1 THEN coalesce(entry_status,prior_status) "
         "WHEN has_captures_pointer THEN coalesce(entry_status,cap_status,source_final_status) "
-        "WHEN attempt=0 THEN coalesce(entry_status,source_final_status) "
-        "ELSE entry_status END")
+        "WHEN attempt=0 THEN coalesce(entry_status,owner_status,source_final_status) "
+        "ELSE coalesce(entry_status,owner_status) END")
     fetch_status_expr=(
         "CASE WHEN record_outcome IS NOT NULL THEN cast(NULL AS BIGINT) "
-        "ELSE coalesce(source_final_status,CASE WHEN attempt=0 OR has_captures_pointer THEN coalesce(entry_status,cap_status) END) END")
+        "ELSE coalesce(source_final_status,CASE WHEN attempt=0 OR has_captures_pointer THEN coalesce(entry_status,cap_status) END,"
+        "CASE WHEN owner_is_level THEN owner_status END) END")
     recorded=(
         "CASE WHEN NOT top_level THEN e_complete "
         "WHEN attempt>=1 THEN coalesce(e_complete,prior_complete) "
@@ -479,6 +508,7 @@ def mapping_steps():
         "WHEN attempt_http_status=304 THEN 'unchanged' "
         "WHEN prior_mapped_outcome IS NOT NULL AND prior_mapped_outcome NOT IN ('derive','stored') THEN prior_mapped_outcome "
         "WHEN prior_error THEN 'request_failed' "
+        f"WHEN {empty_body_sql('body_sha','body_bytes')} THEN 'failed' "
         f"WHEN body_sha IS NOT NULL AND ({document_status('attempt_http_status')} OR (attempt_http_status IS NULL AND prior_mapped_outcome IN ('derive','stored'))) THEN 'stored' "
         "WHEN body_sha IS NULL OR attempt_http_status IS NOT NULL THEN 'failed' "
         "ELSE cast(NULL AS VARCHAR) END "
@@ -488,12 +518,14 @@ def mapping_steps():
         "WHEN cap_mapped_outcome IS NOT NULL AND cap_mapped_outcome NOT IN ('derive','stored') THEN cap_mapped_outcome "
         f"WHEN cap_error OR (attempt_http_status IS NULL AND {final_error}) THEN 'request_failed' "
         "WHEN mapped_outcome NOT IN ('derive','stored') THEN mapped_outcome "
+        f"WHEN {empty_body_sql('body_sha','body_bytes')} THEN 'failed' "
         f"WHEN body_sha IS NOT NULL AND ({document_status('attempt_http_status')} OR attempt_http_status IS NULL) THEN 'stored' "
         "ELSE 'failed' END "
         "ELSE CASE "
         "WHEN attempt_http_status IN (429,503) THEN 'retry_later' "
         "WHEN attempt_http_status=304 THEN 'unchanged' "
         "WHEN mapped_outcome NOT IN ('derive','stored') THEN mapped_outcome "
+        f"WHEN {empty_body_sql('body_sha','body_bytes')} THEN 'failed' "
         f"WHEN body_sha IS NOT NULL AND ({document_status('attempt_http_status')} OR attempt_http_status IS NULL) THEN 'stored' "
         "ELSE 'failed' END END")
     fetch_outcome_sql=(
@@ -509,6 +541,7 @@ def mapping_steps():
         family='entry_family',requested_url='requested',url='final_url',
         context_url=first('e_context_url','final_url'),
         member_path=first('e_member_path',"CASE WHEN NOT top_level AND reference_kind='capture' THEN e_original_path END"),
+        original_path=f"CASE WHEN top_level AND reference_kind='file' AND NOT regexp_like(e_original_path,{LOCAL_PATH}) THEN e_original_path END",
         h_content_disposition=first(metadata_field('line','h_content_disposition'),metadata_field('record','h_content_disposition')),
         attempt='attempt',
         http_status='cast(attempt_http_status AS INT)',complete='capture_complete',
@@ -524,7 +557,8 @@ def mapping_steps():
         match_basis="CASE WHEN capture_mode='retained_import' THEN "+first(both('recovery_basis'),both('association_basis'))+' END',
         evidence_sha256="arrow_cast(decode("+both('recovery_sha')+",'hex'),'FixedSizeBinary(32)')",
         imported_at="CASE WHEN capture_mode='retained_import' THEN coalesce(try_cast("+both('recovery_imported')+" AS TIMESTAMP WITH TIME ZONE),try_cast(array_element(regexp_match(receipt_key,'/(\\d{4}-\\d{2}-\\d{2})/'),1) AS TIMESTAMP WITH TIME ZONE)) END",
-        writer_job=metadata_field('line','writer_job'),writer_commit=metadata_field('line','writer_commit'))
+        writer_job=metadata_field('line','writer_job'),writer_commit=metadata_field('line','writer_commit'),
+        mapping_version=literal(mapping_version or current_version()))
     diagnostics=['source_row_id','reference_kind','pointer_json','body_key','unknown_mode','unknown_outcome',
                  'attempt_conflict','unknown_line_kind','is_secondary','list_ordinal','selected_record_index','body_sha',
                  'top_level','cutoff_eligible','invalid_lists','mapped_outcome','has_captures_pointer',
@@ -548,8 +582,8 @@ def mapping_steps():
     step('item_status',f"""SELECT source_row_id,receipt_key,receipt_line,selected_record_index,
         CASE WHEN bool_or({addressed_item}) AND count(DISTINCT fetch_http_status)=1 THEN max(fetch_http_status) END AS item_fetch_http_status,
         (bool_or({addressed_item}) AND (count(DISTINCT fetch_http_status)>1
-         OR count(DISTINCT CASE WHEN attempt IS NOT NULL AND http_status IS NOT NULL THEN json_array(attempt,http_status) END)
-            >count(DISTINCT CASE WHEN attempt IS NOT NULL AND http_status IS NOT NULL THEN attempt END)
+         OR count(DISTINCT CASE WHEN attempt IS NOT NULL AND http_status IS NOT NULL THEN json_array(attempt,context_url,http_status) END)
+            >count(DISTINCT CASE WHEN attempt IS NOT NULL AND http_status IS NOT NULL THEN json_array(attempt,context_url) END)
          OR count(DISTINCT CASE WHEN attempt IS NOT NULL AND complete IS NOT NULL AND top_level AND coalesce(bytes,0)<>67108864 THEN json_array(attempt,complete) END)
             >count(DISTINCT CASE WHEN attempt IS NOT NULL AND complete IS NOT NULL AND top_level AND coalesce(bytes,0)<>67108864 THEN attempt END)
          OR count(DISTINCT CASE WHEN has_captures_pointer THEN outcome END)>1
@@ -572,13 +606,18 @@ def mapping_steps():
     member_keys=[*item_keys,'attempt','context_url']
     inputs=[*row_keys,'is_placeholder','reference_kind','cutoff_candidate','completed_final',
             'attempt','context_url','body_sha IS NOT NULL AND NOT top_level AS member_candidate',
-            'NOT is_placeholder AND attempt=0 AND body_sha IS NOT NULL AS final_body_candidate']
+            f"NOT is_placeholder AND attempt=0 AND body_sha IS NOT NULL AND NOT {empty_body_sql('body_sha','bytes')} "
+            f"AND (http_status IS NULL OR {document_status('http_status')}) AS final_body_candidate",
+            'is_provider_raw_file',
+            f"has_captures_pointer AND body_sha IS NOT NULL AND NOT {empty_body_sql('body_sha','bytes')} AS captures_body",
+            f"NOT is_placeholder AND top_level AND NOT is_provider_raw_file AND body_sha IS NOT NULL AND NOT {empty_body_sql('body_sha','bytes')} AS origin_body",
+            f"NOT is_placeholder AND top_level AND NOT is_provider_raw_file AND {empty_body_sql('body_sha','bytes')} AS origin_empty"]
     step('window_inputs','SELECT '+','.join(inputs)+' FROM scalar_rows WHERE NOT is_secondary')
     step('item_references','SELECT '+','.join(item_keys)+""",
         bool_or(NOT is_placeholder AND reference_kind IN ('capture','file')) AS has_primary_reference
         FROM window_inputs GROUP BY """+','.join(item_keys))
     kept=[*row_keys,'is_placeholder','cutoff_candidate','completed_final','attempt','context_url',
-          'member_candidate','final_body_candidate']
+          'member_candidate','final_body_candidate','is_provider_raw_file','captures_body','origin_body','origin_empty']
     step('retained_keys','SELECT '+','.join('n.'+name for name in kept)+',r.has_primary_reference '+
         'FROM window_inputs n JOIN item_references r ON '+same('n','r',item_keys)+
         ' WHERE NOT n.is_placeholder OR NOT r.has_primary_reference',materialize=True)
@@ -586,7 +625,10 @@ def mapping_steps():
         same('p','k',row_keys))
     step('cutoff_flags','SELECT '+','.join(item_keys)+""",
         bool_or(cutoff_candidate) AS has_cutoff,bool_or(completed_final) AS has_completed_final,
-        bool_or(final_body_candidate) AS has_final_reference
+        bool_or(captures_body) AS has_captures_body,
+        bool_or(origin_empty) AND NOT bool_or(origin_body) AS wrapper_over_empty,
+        bool_or(final_body_candidate AND NOT is_provider_raw_file)
+          OR (bool_or(final_body_candidate AND is_provider_raw_file) AND NOT (bool_or(origin_empty) AND NOT bool_or(origin_body))) AS has_final_reference
         FROM retained_keys GROUP BY """+','.join(item_keys))
     step('member_flags','SELECT '+','.join(member_keys)+""",
         bool_or(member_candidate) AS has_member FROM retained_keys GROUP BY """+','.join(member_keys))
@@ -594,18 +636,18 @@ def mapping_steps():
         sum(1) OVER (PARTITION BY receipt_key,receipt_line ORDER BY selected_record_index,capture_index
             ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW) AS appended_index
         FROM retained_keys WHERE is_placeholder""")
-    step('windowed','SELECT p.*,r.appended_index,c.has_cutoff,c.has_completed_final,c.has_final_reference,m.has_member '+
+    step('windowed','SELECT p.*,r.appended_index,c.has_cutoff,c.has_completed_final,c.has_final_reference,c.has_captures_body,c.wrapper_over_empty,m.has_member '+
         'FROM append_ranks r RIGHT JOIN (cutoff_flags c JOIN member_flags m ON '+same('c','m',item_keys)+
         ' JOIN retained_items p ON '+same('p','m',member_keys)+') ON '+same('p','r',row_keys))
     eff_fetch_status='coalesce(fetch_http_status,item_fetch_http_status)'
-    has_addressed_final='(CASE WHEN requested_url IS NOT NULL OR url IS NOT NULL THEN coalesce(has_final_reference,false) ELSE body_sha IS NOT NULL END)'
+    has_addressed_final=f"(CASE WHEN requested_url IS NOT NULL OR url IS NOT NULL THEN coalesce(has_final_reference,false) ELSE body_sha IS NOT NULL AND NOT {empty_body_sql('body_sha','bytes')} AND (http_status IS NULL OR {document_status('http_status')}) END)"
     final_fetch_outcome=(
         "CASE WHEN fetch_outcome IS NULL THEN cast(NULL AS VARCHAR) "
         f"WHEN {eff_fetch_status} IN (429,503) THEN 'retry_later' "
         f"WHEN {eff_fetch_status}=304 THEN 'unchanged' "
         "WHEN cutoff_eligible AND has_cutoff AND NOT coalesce(has_completed_final,false) THEN 'size_limit' "
         "WHEN mapped_outcome NOT IN ('derive','stored') THEN mapped_outcome "
-        f"WHEN ({has_addressed_final} OR (has_captures_pointer AND body_sha IS NOT NULL)) AND ({document_status(eff_fetch_status)} OR {eff_fetch_status} IS NULL) THEN 'stored' "
+        f"WHEN ({has_addressed_final} OR (has_captures_pointer AND body_sha IS NOT NULL AND coalesce(has_captures_body,false))) AND ({document_status(eff_fetch_status)} OR {eff_fetch_status} IS NULL) THEN 'stored' "
         "ELSE 'failed' END")
     final={name:name for name in COLUMNS}
     final.update(
@@ -614,7 +656,7 @@ def mapping_steps():
         stored_suffix="coalesce(stored_suffix,secondary_suffix,'.gz')",
         stored_bytes='coalesce(stored_bytes,secondary_bytes)',
         stored_md5="arrow_cast(decode(coalesce(stored_md5,secondary_md5),'hex'),'FixedSizeBinary(16)')",
-        outcome=f"CASE WHEN coalesce(attempt,0)=0 AND cutoff_eligible AND has_cutoff AND NOT coalesce(has_completed_final,false) AND outcome NOT IN ('retry_later','unchanged') THEN 'size_limit' WHEN is_provider_raw_file AND http_status IS NULL AND item_fetch_http_status IS NOT NULL THEN ({final_fetch_outcome}) ELSE outcome END",
+        outcome=f"CASE WHEN coalesce(attempt,0)=0 AND cutoff_eligible AND has_cutoff AND NOT coalesce(has_completed_final,false) AND outcome NOT IN ('retry_later','unchanged') THEN 'size_limit' WHEN is_provider_raw_file AND coalesce(wrapper_over_empty,false) AND outcome='stored' THEN 'failed' WHEN is_provider_raw_file AND http_status IS NULL AND item_fetch_http_status IS NOT NULL THEN ({final_fetch_outcome}) ELSE outcome END",
         fetch_http_status=f'cast({eff_fetch_status} AS INT)',
         fetch_outcome=final_fetch_outcome,
         expansion="coalesce(expansion,CASE WHEN top_level AND has_member THEN 'expanded' END)")
@@ -703,7 +745,7 @@ def stage_captures(files, *, engine, work, existing=None, validated_counter=None
         producer=producer(engine),sources=sources)
     inputs.append(json_input(work,'selected_receipts',[dict(receipt_key=k) for k in keys],
                              receipt_key='Utf8'))
-    mapping=mapping_steps()
+    mapping=mapping_steps(mapping_digest)
     steps+=mapping
     steps.append(dict(name='source_counts',sql='''SELECT count(*) AS rows,count(DISTINCT receipt_key) AS receipts
         FROM (SELECT receipt_key,receipt_line FROM scalar_rows WHERE NOT is_secondary AND list_ordinal=0

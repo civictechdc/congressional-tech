@@ -15,8 +15,11 @@ def test_approved_schema_names_order_and_original_field_ids():
     assert [f['name'] for f in schema['fields']]==NARROW_COLUMNS
     fields={f['name']:f for f in schema['fields']}
     assert fields['outcome']['required'] is False
-    assert {k:fields[k]['id'] for k in ('expansion','sniffed_format','sniff_version','intact','writer_job','writer_commit','attempt','fetch_http_status','fetch_outcome')}==dict(
-        expansion=16,sniffed_format=24,sniff_version=25,intact=26,writer_job=36,writer_commit=37,attempt=38,fetch_http_status=39,fetch_outcome=40)
+    assert {k:fields[k]['id'] for k in ('expansion','sniffed_format','sniff_version','intact','writer_job','writer_commit','attempt','fetch_http_status','fetch_outcome','mapping_version','original_path')}==dict(
+        expansion=16,sniffed_format=24,sniff_version=25,intact=26,writer_job=36,writer_commit=37,attempt=38,fetch_http_status=39,fetch_outcome=40,
+        mapping_version=41,original_path=42)
+    # Added to a populated table, so optional in the schema; the generation guard requires mapping_version.
+    assert fields['mapping_version']['required'] is False and fields['original_path']['required'] is False
 
 
 def test_entry_readings_and_root_writer_repeat_without_inventing_older_readings(tmp_path):

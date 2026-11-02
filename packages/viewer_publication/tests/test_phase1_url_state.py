@@ -79,6 +79,15 @@ def run_state(tmp_path,change=None):
                 retrieved_at='2026-11-16T12:00:00Z',http_status=200,outcome='failed',complete=False,
                 fetch_http_status=200,fetch_outcome='failed',body_hex=None),
         ])
+    if change in ('context_202','context_200'):
+        # A failed line rescued only by a stored companion context body (ct-c6b0).
+        status=int(change[-3:]);ctx_url='https://www.govinfo.gov/metadata/pkg/CHRG-119shrg77777/mods.xml'
+        rows.extend([
+            row(19,None,url=None,context_url=ctx_url,family='govinfo/mods',
+                retrieved_at='2026-11-17T10:00:00Z',http_status=None,outcome='stored',complete=True,body_hex='9'*64),
+            row(20,ctx_url,url=ctx_url,context_url=None,family='govinfo/mods',retrieved_at='2026-11-17T12:00:00Z',
+                http_status=status,outcome='failed',complete=True,fetch_http_status=status,fetch_outcome='failed',
+                body_hex='8'*64)])
     if change=='entry_facts':
         rows[0]['complete']=False
         rows[1]['retrieved_at']='2026-11-01T13:00:00Z'
@@ -215,3 +224,13 @@ def test_prior_good_attempt_feeds_last_good_while_final_fetch_drives_line_schedu
     assert split_fail['last_status']==200 and split_fail['last_outcome']=='failed'
     assert split_fail['last_good_at'] is None
 
+
+
+@pytest.mark.parametrize(('change','good'),[('context_202',False),('context_200',True)])
+def test_a_202_line_is_never_rescued_by_a_stored_context(tmp_path,change,good):
+    """The control proves the rescue branch runs; a non-empty 202 still is not a document."""
+    result=run_state(tmp_path,change)
+    assert not any(result['url_state_invariants'][0].values())
+    state={r['requested_url']:r for r in result['state']}['https://www.govinfo.gov/metadata/pkg/CHRG-119shrg77777/mods.xml']
+    assert state['last_outcome']==('stored' if good else 'failed')
+    assert (state['last_good_at'] is not None)==good

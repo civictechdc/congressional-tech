@@ -9,18 +9,19 @@ from test_captures_ingest import body, ingest, STAMP
 
 NARROW_COLUMNS = [
     'receipt_key', 'receipt_line', 'capture_index', 'run_id', 'mode', 'outcome',
-    'family', 'requested_url', 'url', 'context_url', 'member_path', 'h_content_disposition',
+    'family', 'requested_url', 'url', 'context_url', 'member_path', 'original_path', 'h_content_disposition',
     'attempt', 'http_status', 'complete', 'fetch_http_status', 'fetch_outcome',
     'retrieved_at', 'sha256', 'bytes', 'media_type', 'fidelity',
     'sniffed_format', 'sniff_version', 'intact', 'expansion', 'stored_suffix', 'stored_bytes', 'stored_md5', 'recovery_category',
     'original_url', 'recovered_url', 'match_basis', 'evidence_sha256', 'imported_at', 'writer_job', 'writer_commit',
+    'mapping_version',
 ]
 
 
 def test_public_index_has_only_the_34_bulk_columns(tmp_path):
     stage = ingest(tmp_path, [dict(record=dict(url='https://example.test/a'),
                                     captures=[body()])])
-    assert len(NARROW_COLUMNS) == 37
+    assert len(NARROW_COLUMNS) == 39
     assert pq.read_schema(stage/'captures.parquet').names == NARROW_COLUMNS
 
 

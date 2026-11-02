@@ -136,6 +136,7 @@ def test_phase2_entities_meetings_witnesses_recordings_and_spicy_projections(tmp
     vtt_new = b'WEBVTT\n\n00:00:00.000 --> 00:00:02.000\nNew caption track\n'
     vtt_asr = b'WEBVTT\n\n00:00:00.000 --> 00:00:02.000\nAuto caption track\n'
     m3u8_bytes = b'#EXTM3U\n#EXT-X-VERSION:3\n#EXT-X-TARGETDURATION:10\n'
+    segment_bytes = b'G@\x00\x10' + bytes(184)
 
     staged = _stage_raw_fixture(tmp_path, engine, [
         dict(
@@ -192,6 +193,25 @@ def test_phase2_entities_meetings_witnesses_recordings_and_spicy_projections(tmp
             media_type='application/vnd.apple.mpegurl',
             family='senate/captions',
             retrieved_at='2023-05-21T12:00:00Z',
+        ),
+        # A stream segment is media, never a track or a document (annex §2), even when fetched.
+        dict(
+            url='https://www-senate-gov-media-srs.akamaized.net/hls/live/2034567/ag/ag051023/master0.ts',
+            data=segment_bytes,
+            format='other',
+            media_type='video/MP2T',
+            compress=False,
+            family='senate/players',
+            retrieved_at='2023-05-22T12:00:00Z',
+        ),
+        # A newer empty caption body is a failed attempt, not a track (ct-fh62).
+        dict(
+            url='https://www.youtube.com/api/timedtext?v=dQw4w9WgXcQ&lang=en&fmt=vtt',
+            data=b'',
+            format='empty',
+            media_type='text/vtt',
+            family='youtube/captions',
+            retrieved_at='2023-05-22T12:00:00Z',
         ),
     ])
 
@@ -651,6 +671,7 @@ def test_phase2_entities_meetings_witnesses_recordings_and_spicy_projections(tmp
     listed = pq.read_table(release_dir / 'list.parquet').to_pylist()
     chrg_doc = next(r for r in listed if r['filename'] == 'CHRG-118hhrg55555.pdf')
     stmt_doc = next(r for r in listed if 'Wstate-SmithJ' in r['filename'])
+    assert not any(r['filename'].endswith('.ts') for r in listed)
     assert chrg_doc['meeting_keys'] == ['115538']
     assert chrg_doc['document_date'] == date(2023, 5, 10)
     assert chrg_doc['witness_keys'] == []
@@ -682,6 +703,7 @@ def test_phase2_entities_meetings_witnesses_recordings_and_spicy_projections(tmp
     assert tracks[('vtt', 'en', 'asr')]['body'] == hashlib.sha256(vtt_asr).digest()
     assert recordings['senate:ag051023']['tracks'][0]['format'] == 'm3u8'
     assert recordings['senate:ag051023']['tracks'][0]['body'] == hashlib.sha256(m3u8_bytes).digest()
+    assert hashlib.sha256(segment_bytes).digest() not in {t['body'] for t in recordings['senate:ag051023']['tracks']}
 
     # 4. Verify committees.parquet (including Eastern date conversion)
     committees = pq.read_table(release_dir / 'committees.parquet').to_pylist()

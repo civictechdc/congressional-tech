@@ -147,3 +147,68 @@ def test_frozen_receipt_reconciles_lost_ack_and_reuses_exact_bytes(tmp_path):
     key2,line2=fresh.write(None,operation_id='op1',freeze_dir=tmp_path/'frozen')
     assert (key2,line2)==(key,line)
     assert (tmp_path/'raw'/key).read_bytes()==first
+
+
+@pytest.mark.parametrize(('status','data','outcome'), [
+    (202,b'<html>challenge</html>','failed'), (200,b'','failed'), (204,b'','failed'),
+    (200,b'%PDF-1.7\n%%EOF','stored')])
+def test_a_document_is_2xx_other_than_202_with_a_body(tmp_path, status, data, outcome):
+    """ct-c6b0/ct-3l1c: the writer applies the one shared document rule."""
+    from congress_api.models.raw_fetch import FetchResult
+    from congress_api.retention.receipt_writer import ReceiptWriter
+    from congress_api.retention.body_store import BodyStore, LocalAdapter
+    writer = ReceiptWriter(BodyStore(LocalAdapter(tmp_path/'raw')), identity=WRITER, run_id='run',
+                           write_date='2026-10-27', archive_limits=None)
+    line = writer.write(FetchResult(attempt(tmp_path, data=data, status=status)), family='documents')[1]
+    assert line['outcome'] == outcome and line['captures'][0]['bytes'] == len(data)
+
+
+def test_document_rule_has_one_definition_in_python_and_sql(tmp_path):
+    """The SQL rendering the mapping uses agrees with the writer's Python rule on every case."""
+    import os
+    from congress_api.lake.receipt_metadata import (EMPTY_SHA256, document_status, document_status_sql,
+                                                    empty_body, empty_body_sql)
+    from congress_api.retention.provenance import json_input, run_job
+    from docspec_client.client import NativeDatasets
+    cases = [dict(status=s, size=n, sha=(EMPTY_SHA256 if n == 0 else None if n is None else 'ab'*32))
+             for s in (None,199,200,201,202,204,206,299,300,304,404,429,503) for n in (None,0,1)]
+    with NativeDatasets.from_config(os.environ['DOCSPEC_JOB_CONFIG']) as engine:
+        rows = run_job(tmp_path, engine, inputs=[json_input(tmp_path, 'cases', cases, status='Int64', size='Int64', sha='Utf8')],
+            steps=[], outputs=[], queries=[dict(name='rule', sql=f"""SELECT status,size,sha,
+                coalesce({document_status_sql('status')},false) AS document,{empty_body_sql('sha','size')} AS empty
+                FROM cases ORDER BY status NULLS FIRST,size NULLS FIRST""")])['rule']
+    assert len(rows) == len(cases)
+    for row in rows:
+        assert row['document'] == document_status(row['status']), row
+        assert row['empty'] == empty_body(row['sha'], row['size']), row
+
+
+def test_a_local_path_is_refused_at_write(tmp_path, monkeypatch):
+    """Receipts are immutable: an absolute path can only be kept out when the line is written."""
+    from congress_api.models.raw_fetch import BodyFile, FetchResult
+    from congress_api.retention import receipt_writer
+    from congress_api.retention.archive_expander import Expansion, ExpandedMember
+    from congress_api.retention.body_store import BodyStore, LocalAdapter
+    member = tmp_path/'member.pdf'
+    member.write_bytes(b'%PDF-1.7\n%%EOF')
+    def expand(path, *, directory, limits):
+        body = BodyFile(member, hashlib.sha256(member.read_bytes()).hexdigest(), member.stat().st_size,
+                        'application/pdf', 'pdf', 'v1', True)
+        return Expansion('expanded', (ExpandedMember('/Users/someone/report.pdf', 0, body),))
+    monkeypatch.setattr(receipt_writer, 'expand_archive', expand)
+    a = attempt(tmp_path, data=b'PK\x05\x06' + bytes(18))
+    a = replace(a, body=replace(a.body, media_type='application/zip', sniffed_format='zip'))
+    root = tmp_path/'raw'
+    writer = receipt_writer.ReceiptWriter(BodyStore(LocalAdapter(root)), identity=WRITER, run_id='run',
+                                          write_date='2026-10-27', archive_limits=object())
+    with pytest.raises(ValueError, match='local path at captures.1.member_path'):
+        writer.write(FetchResult(a), family='documents')
+    assert not list(root.glob('receipts/**/*.gz'))
+
+
+@pytest.mark.parametrize('value', ['/Users/me/x.pdf', 'C:\\data\\x.pdf', '~/x.pdf'])
+def test_every_writer_shares_the_relative_path_rule(value):
+    from congress_api.retention.receipt_privacy import refuse_local_paths
+    with pytest.raises(ValueError, match='local path'):
+        refuse_local_paths(dict(file_references=[dict(original_path=value)]))
+    assert refuse_local_paths(dict(original_path='external-sources/a/b.xml', url='https://x.gov/Users/a'))

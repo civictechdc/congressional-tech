@@ -22,7 +22,7 @@ def rows():
         row.update(receipt_key=key,receipt_line=1,capture_index=0,run_id='run',mode='fetch',outcome='stored',
             family='documents',requested_url='https://example.org/shared',url='https://example.org/shared',
             http_status=200,complete=True,sha256=b'a'*32,bytes=10,stored_suffix='.gz',stored_bytes=5,
-            stored_md5=b'm'*16,fidelity='exact-bytes')
+            stored_md5=b'm'*16,fidelity='exact-bytes',mapping_version='f'*64)
         result.append(row)
     return result
 
@@ -87,6 +87,11 @@ def test_different_urls_and_physical_suffixes_can_share_decoded_bytes(tmp_path,s
     dict(http_status=99),dict(http_status=600),
     dict(bytes=-1),dict(stored_bytes=-1),dict(sha256=b'a'*31),dict(stored_md5=b'm'*15),
     dict(evidence_sha256=b'e'*31),dict(stored_suffix='.unknown'),dict(fidelity='invented'),
+    # A stored outcome is a document (ct-c6b0, ct-3l1c), and each row names its mapping.
+    dict(http_status=202),dict(fetch_outcome='stored',fetch_http_status=202),dict(fetch_outcome='stored',fetch_http_status=404),
+    dict(bytes=0),dict(sha256=bytes.fromhex('e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855')),
+    dict(mapping_version=None),dict(mapping_version='F'*64),dict(mapping_version='f'*63),
+    dict(original_path='/Users/me/wlist/1.xml'),dict(original_path='C:\\data\\1.xml'),
 ])
 def test_public_domain_violations_export_exact_rows(tmp_path,change):
     values=rows();values[0].update(change)
@@ -133,4 +138,16 @@ def test_cross_receipt_body_conflicts_export_both_sides(tmp_path,change,reason):
 
 def test_null_metadata_is_not_a_conflicting_observation(tmp_path):
     values=rows();values[1].update(bytes=None,stored_bytes=None,stored_md5=None)
+    assert check(tmp_path,values)['status']=='validated'
+
+
+def test_one_mapping_version_per_receipt(tmp_path):
+    values=rows();values.append(dict(values[0],capture_index=1,mapping_version='e'*64))
+    counts=[dict(key=KEYS[0],expected_captures=2),dict(key=KEYS[1],expected_captures=1)]
+    _,facts=rejected(tmp_path,values,'receipt_mapping_versions',counts)
+    assert {row['mapping_version'] for row in facts}=={'e'*64,'f'*64}
+
+
+def test_a_failed_empty_or_202_row_and_a_relative_path_pass(tmp_path):
+    values=rows();values[0].update(outcome='failed',http_status=202,bytes=0,sha256=b'z'*32,original_path='external-sources/wlist/1.xml')
     assert check(tmp_path,values)['status']=='validated'

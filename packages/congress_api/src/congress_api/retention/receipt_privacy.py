@@ -114,6 +114,34 @@ def clean_older_line(line):
 
 
 
+PATH_KEYS = re.compile(r'(?:^|_)(?:path|file)$')
+
+
+def refuse_local_paths(line):
+    """Refuse a public receipt carrying any local filesystem path, at write time.
+
+    Receipts are immutable once written, so a local path can only be kept out here.
+    Every string and key is scanned for named local roots and drive paths outside URL
+    spans; a value under a path-named key (member_path, original_path, source_file, ...)
+    must also be relative: no leading '/', '~' or drive. O(size of the line).
+    """
+    def walk(value, path):
+        if isinstance(value, str):
+            if cut_paths(value)[1] or (path and isinstance(path[-1], str) and PATH_KEYS.search(path[-1])
+                                       and re.match(r'^(?:/|~|[A-Za-z]:)', value)):
+                raise ValueError('Public receipt carries a local path at ' + '.'.join(map(str, path)))
+        elif isinstance(value, list):
+            for index, child in enumerate(value):
+                walk(child, (*path, index))
+        elif isinstance(value, dict):
+            for key, child in value.items():
+                if cut_paths(str(key))[1]:
+                    raise ValueError('Public receipt carries a local path key at ' + '.'.join(map(str, path)))
+                walk(child, (*path, key))
+    walk(line, ())
+    return line
+
+
 @cache
 def credential_parameters():
     """The raw writer's versioned parameter policy; bare YouTube key is excluded."""

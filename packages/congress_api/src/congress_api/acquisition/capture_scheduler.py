@@ -793,8 +793,8 @@ def _run_capture(release,*,engine,work,as_of,request_budget,byte_budget,spool_bu
                               operation_id=operation_id,freeze_dir=work/'frozen-receipts')
         body=result.final.body
         parser=line['captures'][0]['sniffed_format'] if body is not None else None
-        if (allow_discovery and body is not None and result.final.complete
-                and result.final.http_status is not None and 200<=result.final.http_status<300
+        # The writer's outcome owns "this is a document": no discovery on a 202 or empty page.
+        if (allow_discovery and body is not None and line['outcome'] in ('stored','unchanged')
                 and parser in {'html','xml','json'}):
             if body.size>PAGE_BYTES:
                 disc_errors.append(dict(url=url,reason='discovery_size_limit'))

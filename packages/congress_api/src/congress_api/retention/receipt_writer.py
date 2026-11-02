@@ -10,11 +10,12 @@ import re
 from tempfile import TemporaryDirectory
 import threading
 
+from congress_api.lake.receipt_metadata import document_status, empty_body
 from congress_api.models.raw_fetch import FetchResult
 from congress_api.parsers.source_family import family as source_family
 from congress_api.retention.archive_expander import expand_archive
 from congress_api.retention.body_store import validate_record
-from congress_api.retention.receipt_privacy import public_receipt
+from congress_api.retention.receipt_privacy import public_receipt, refuse_local_paths
 from congress_api.retention.sniff import read_sniff_file, SniffResourceError
 
 HEADERS = frozenset('content-type content-length content-disposition last-modified etag content-encoding retry-after date cache-control accept-ranges'.split())
@@ -44,6 +45,9 @@ def outcome(attempt, stored):
     if attempt.http_status is not None and 200 <= attempt.http_status < 300:
         if stored is None:
             raise ValueError('Complete successful attempt has no body')
+        # A 202 or an empty body is a failed attempt, not a document (ct-c6b0, ct-3l1c).
+        if not document_status(attempt.http_status) or empty_body(attempt.body.sha256,attempt.body.size):
+            return 'failed'
         return stored.outcome
     return 'failed'
 
@@ -169,6 +173,8 @@ class ReceiptWriter:
                                 line['captures'].append(self._capture(member.body,attempt,attempt_index,retained,
                                                                       member.member_path,member.entry_index,fidelity))
             line['outcome'] = outcome(final,final_write)
+            # Captures join the line after privacy cleaning; refuse any local path in the whole line.
+            refuse_local_paths(line)
             if operation_id is None:
                 with self._lock:
                     self.sequence += 1

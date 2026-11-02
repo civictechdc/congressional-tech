@@ -1,31 +1,21 @@
 """Report which receipt JSON paths a fixture holds and which the capture mapper reads.
 
 Gaps are reported, not failed. This shows whether a path is read, not whether it is
-interpreted correctly. The mapper's path list is local to the byte-hashed
-receipt_metadata.source_plan, so this spies on its projection call.
+interpreted correctly. The mapper exposes both of its path lists (ct-mrgt): the line
+projection in receipt_metadata.source_paths and the list-item projection in
+captures.item_paths, read relative to each item of a list record.
 """
 import argparse
 import json
 from pathlib import Path
 import sys
 
-from congress_api.lake import receipt_metadata
+from congress_api.lake import captures, receipt_metadata
 
 
 def mapper_paths():
-    seen = []
-    original = receipt_metadata.projection
-
-    def spy(raw, paths, slot='__slots'):
-        seen.extend(tuple(path) for path in paths)
-        return original(raw, paths, slot)
-
-    receipt_metadata.projection = spy
-    try:
-        receipt_metadata.source_plan(files=[])
-    finally:
-        receipt_metadata.projection = original
-    return {normalized(path) for path in seen}
+    return ({normalized(path) for path in receipt_metadata.source_paths()}
+            | {normalized(('record', '*') + tuple(path)) for path in captures.item_paths()})
 
 
 def normalized(path):

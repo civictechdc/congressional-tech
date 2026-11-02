@@ -20,6 +20,7 @@ from uuid import uuid4
 from urllib.parse import quote
 
 from congress_api.retention.body_files import CHUNK, file_digest
+from congress_api.retention.receipt_privacy import refuse_local_paths
 
 FAMILY = 'pipeline-data'
 SKIP_PREFIXES = ('committee-explorer/',)  # Build output, rebuilt from the records.
@@ -173,13 +174,13 @@ def receipt_line(item, *, run_id, writer, sha256, outcome, stored=None, suffix='
     )
     if stored:
         capture.update(stored_md5=stored[0], stored_bytes=stored[1])
-    return dict(
+    return refuse_local_paths(dict(
         run_id=run_id, mode='fetch', family=FAMILY,
         requested_url=f'{REPOSITORY}/raw/{BRANCH}/{path}', url=url,
         retrieved_at=item.committed_at, http_status=None, provider_status=None,
         outcome=outcome, transport='git', response_headers={}, redirects=[], prior_attempts=[],
         source_context=dict(observations=[]), writer=writer, captures=[capture],
-    )
+    ))
 
 
 def receipt_keys(run_id, count, day):

@@ -25,7 +25,12 @@ def test_report_names_the_fb408404_pointer_classes_and_partitions_paths():
     assert 'record/recovery_basis' in unread
 
 
-def test_spy_restores_the_projection():
-    original = coverage.receipt_metadata.projection
-    assert coverage.mapper_paths()
-    assert coverage.receipt_metadata.projection is original
+def test_report_uses_the_paths_the_plan_projects():
+    from congress_api.lake import receipt_metadata
+    sql = receipt_metadata.source_plan(files=[])['steps'][0]['sql']
+    # The plan's projection is built from exactly the exposed list, so the report cannot drift.
+    assert receipt_metadata.projection('__raw_line', receipt_metadata.source_paths())[0] in sql
+    declared = {'/'.join(path) for path in coverage.mapper_paths()}
+    # ct-bxqa: the owner status keys are read at record and list-item level.
+    assert {'record/status', 'record/master_attempts/*/status', 'record/receipt/status',
+            'record/*/master_attempts/*/status', 'record/*/receipt/status'} <= declared

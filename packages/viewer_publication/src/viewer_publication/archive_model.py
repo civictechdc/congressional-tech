@@ -3,6 +3,7 @@ import hashlib
 import json
 from pathlib import Path
 
+from congress_api.lake.receipt_metadata import EMPTY_SHA256,document_status_sql
 from congress_api.retention.provenance import json_input,list_of,struct
 
 ROOT=Path(__file__).parents[4]
@@ -437,7 +438,11 @@ def evidence_steps(*,root=ROOT):
 def evidence_checks():
     """Expose current prefix checks for admission and the full invariant report."""
     from congress_api.lake.readings import writer_admission_conflict_sql
-    return dict(conflicting_writer_formats='(SELECT n FROM ('+writer_admission_conflict_sql()+') writer_conflicts)',
+    return dict(
+        # A good fetch is a document response: 2xx other than 202 with a non-empty body.
+        non_document_good_fetches=f'''(SELECT count(*) FROM good_fetches WHERE (sha256 IS NOT NULL
+            AND (bytes=0 OR encode(sha256,'hex')='{EMPTY_SHA256}')) OR NOT {document_status_sql('http_status')})''',
+        conflicting_writer_formats='(SELECT n FROM ('+writer_admission_conflict_sql()+') writer_conflicts)',
         conflicting_sniffs='(SELECT count(*) FROM sniff_conflicts)',
         conflicting_original_sizes='(SELECT count(*) FROM (SELECT sha256 FROM captures WHERE sha256 IS NOT NULL GROUP BY sha256 HAVING count(DISTINCT bytes)>1))',
         conflicting_verifications='(SELECT count(*) FROM verification_conflicts)',
@@ -452,6 +457,11 @@ def evidence_checks():
             OR (category IS NOT NULL AND trim(category)='')
             OR (match_basis IS NOT NULL AND trim(match_basis)='')
             OR kind IS NULL OR trim(kind)='')''')
+
+
+def entity_track_checks():
+    """Build-blocking: an empty body is never a recording track (ct-fh62)."""
+    return dict(empty_body_tracks=f"(SELECT count(*) FROM recording_track_candidates WHERE encode(sha256,'hex')='{EMPTY_SHA256}')")
 
 
 def _sql_steps(names,*,root=ROOT):
@@ -878,7 +888,7 @@ def build_prepared_release(prepared,*,engine,output,root=ROOT):
                 SELECT DISTINCT cm['system_code'] AS system_code FROM (
                     SELECT unnest(committees) AS cm FROM meetings_export WHERE committees IS NOT NULL
                 ) WHERE cm['system_code'] IS NOT NULL
-            ) k WHERE NOT EXISTS (SELECT 1 FROM committees_export c WHERE c.system_code=k.system_code)) AS missing_committee_keys"""
+            ) k WHERE NOT EXISTS (SELECT 1 FROM committees_export c WHERE c.system_code=k.system_code)) AS missing_committee_keys"""+''.join(f',\n            {sql} AS {name}' for name,sql in entity_track_checks().items())
         meta_queries += [
             dict(name='appearance_name_key_variants',sql="""WITH stripped AS (
                 SELECT occasion,name_key,

@@ -219,6 +219,17 @@ def test_discovery_failure_does_not_change_stored_capture_outcome(tmp_path):
         assert json.loads(source.readline())['outcome']=='stored'
 
 
+@pytest.mark.parametrize(('status','data','jobs'), [(202,b'<html><a href="/b">challenge</a></html>',0),
+    (200,b'',0),(200,b'<html><a href="/b">b</a></html>',1)])
+def test_discovery_runs_only_on_a_document(tmp_path,status,data,jobs):
+    """A 202 or empty page is a failed attempt (writer outcome), so its links are never followed."""
+    result,adapter,raw=run_fixture(tmp_path,[dict(requested_url='https://fixture.test/a',attempts=0)],{
+        'https://fixture.test/a':(status,data,{'content-type':'text/html'}),
+        'https://fixture.test/b':(200,b'<html>b</html>',{'content-type':'text/html'})},max_discovery_jobs=1)
+    assert result['discovery_jobs']==jobs
+    assert adapter.calls==['https://fixture.test/a','https://fixture.test/b'][:1+jobs]
+
+
 def test_discovery_budget_and_cycles_terminate_without_index_state(tmp_path):
     result,adapter,_=run_fixture(tmp_path,[dict(requested_url='https://fixture.test/a',attempts=0)],{
         'https://fixture.test/a':(200,b'<html><a href="/b">b</a></html>',{}),
