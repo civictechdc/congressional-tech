@@ -35,7 +35,7 @@ def test_meeting_validation_runs_declared_offline_suite(tmp_path, monkeypatch, c
     shutil.copyfile(ROOT / 'pytest.ini', tmp_path / 'pytest.ini')
     monkeypatch.setattr(dev, 'ROOT', tmp_path)
     # Preflight failure cases are checked independently in test_dev_environment.py.
-    monkeypatch.setattr(dev, 'inventory', lambda config: None)
+    monkeypatch.setattr(dev, 'inventory', lambda config: set())  # inventory returns a set
     monkeypatch.setattr(dev, 'doctor', lambda *args: None)
     monkeypatch.setenv('PYTEST_ADDOPTS', '')
     assert dev.test(config, 'production-offline', [], []) == 0

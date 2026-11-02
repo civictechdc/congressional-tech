@@ -7,6 +7,16 @@ import {fileURLToPath} from 'node:url';
 import {startArchiveServer} from './archive-server.mjs';
 import {verifyArchive} from './verify-archive.mjs';
 import {writeTargets,checkTargets} from './archive-targets.mjs';
+import {browserDependency} from './archive-browser.mjs';
+
+test('the site pins the one playwright that contract:archive loads',async()=>{
+  const pin=JSON.parse(await readFile(new URL('../package.json',import.meta.url))).devDependencies.playwright;
+  assert.match(pin??'',/^\d+\.\d+\.\d+$/,'playwright needs an exact site devDependency');
+  const {chromium}=browserDependency('playwright');
+  assert.equal(typeof chromium.launch,'function');
+  const installed=JSON.parse(await readFile(new URL('../node_modules/playwright/package.json',import.meta.url))).version;
+  assert.equal(installed,pin);
+});
 
 test('canary refuses unsafe transport before opening a reader',async()=>{
   await assert.rejects(verifyArchive({pointerUrl:'http://public.test/manifest.json'}),/HTTPS/i);

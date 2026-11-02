@@ -139,8 +139,6 @@ jobs:
         run: npm run build
       - uses: ./.github/actions/setup-publication-browser
       - name: Require the archive contract against native hand releases
-        env:
-          VIEWER_BENCHMARK_MODULES: ${{ env.PUBLICATION_BROWSER_MODULES }}
         run: .venv/bin/python -I .github/scripts/verify-archive-contract.py --work "$RUNNER_TEMP/archive-contract"
       - name: Enforce the Pages publication size limit
         run: python .github/scripts/publication-budget.py apps/site/dist --total-limit 1000000000

@@ -33,6 +33,7 @@ on:
       - ".python-version"
       - "uv.lock"
       - "pytest.ini"
+      - "conftest.py"
       - "test-suites.toml"
       - "scripts/dev.py"
       - "docs/experiments/**"
@@ -125,9 +126,6 @@ jobs:
       - name: Test real sockets and spawned workers on loopback
         env:
           SOURCE_FETCH_BINARY: ${{ github.workspace }}/packages/source-fetch/target/release/source-fetch
-          VIEWER_BENCHMARK_MODULES: ${{ env.PUBLICATION_BROWSER_MODULES }}
         run: python scripts/dev.py test native-loopback
       - name: Require the archive contract against native hand releases
-        env:
-          VIEWER_BENCHMARK_MODULES: ${{ env.PUBLICATION_BROWSER_MODULES }}
         run: .venv/bin/python -I .github/scripts/verify-archive-contract.py --work "$RUNNER_TEMP/archive-contract"

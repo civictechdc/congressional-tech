@@ -38,7 +38,8 @@ def test_all_fourteen_experiment_files_are_explicit_active_regressions():
     assert not config['lanes']['frozen-reproduction']['roots']
 
 
-@pytest.mark.parametrize('failure', ['missing_poppler', 'missing_ps', 'wrong_checkout', 'wrong_pyarrow', 'wrong_python'])
+@pytest.mark.parametrize('failure', ['missing_poppler', 'missing_ps', 'wrong_checkout', 'wrong_pyarrow', 'wrong_python',
+                                     'foreign_interpreter'])
 def test_doctor_fails_before_pytest_with_actionable_reason(monkeypatch, failure):
     config = dev.declaration()
     calls = []
@@ -56,13 +57,16 @@ def test_doctor_fails_before_pytest_with_actionable_reason(monkeypatch, failure)
     monkeypatch.setattr(dev, 'run', run)
     if failure == 'wrong_python':
         monkeypatch.setattr(dev.sys, 'version_info', (3, 12, 99))
+    if failure == 'foreign_interpreter':  # Another checkout's .venv, with PYTHONPATH aimed here (cluster C).
+        monkeypatch.setattr(dev.sys, 'prefix', '/other-checkout/.venv')
     monkeypatch.setattr(dev.shutil, 'which', lambda command: None
                         if failure == 'missing_poppler' or (failure == 'missing_ps' and command == 'ps')
                         else '/bin/' + command)
     monkeypatch.setattr(dev, 'inventory', lambda config: None)
     expected = {'missing_poppler': 'Missing pdfinfo; remedy:', 'missing_ps': 'Missing ps; remedy:',
                 'wrong_checkout': 'outside this checkout', 'wrong_pyarrow': 'expected locked 25.0.1',
-                'wrong_python': 'Python 3.12.13 required by .python-version'}
+                'wrong_python': 'Python 3.12.13 required by .python-version',
+                'foreign_interpreter': "not this checkout's .venv"}
     with pytest.raises(ValueError, match=expected[failure]):
         dev.test(config, 'production-offline', [], [])
     assert not any('pytest' in command for command in calls)
@@ -148,12 +152,233 @@ def test_native_runtime_verifies_pins_without_starting_engine(tmp_path, monkeypa
                     source_revision='1' * 40, binary_sha256=sha256(binary.read_bytes()).hexdigest(),
                     platform='darwin-arm64', build_features=['remote'])
     config.write_text(json.dumps(settings))
+    pin = write_pin(tmp_path / 'pin.json', binary)
     monkeypatch.setenv('DOCSPEC_JOB_CONFIG', str(config))
     def forbidden(*args, **kwargs):
         pytest.fail('preflight must not execute native code')
     monkeypatch.setattr(dev.subprocess, 'run', forbidden)
-    dev.job_runtime(dev.declaration(), 'production-offline')
+    dev.job_runtime(dev.declaration(), 'production-offline', pin_file=pin)
     assert not (tmp_path / 'workspace').exists()
     binary.write_bytes(b'changed')
     with pytest.raises(ValueError, match='DOCSPEC_JOB_CONFIG.*approved SHA-256'):
-        dev.job_runtime(dev.declaration(), 'production-offline')
+        dev.job_runtime(dev.declaration(), 'production-offline', pin_file=pin)
+
+
+def write_pin(path, binary, *, revision='1' * 40):
+    import json
+    from hashlib import sha256
+    path.write_text(json.dumps(dict(version=1, source_revision=revision, build_features=['remote'],
+                                    required_capabilities=['request-deadline', 'owned-stdin-eof'],
+                                    platforms={'darwin-arm64': {'sha256': sha256(binary.read_bytes()).hexdigest()}})))
+    return path
+
+
+def fake_engine(path, body=b'authored fixture'):
+    path.write_bytes(b'\xcf\xfa\xed\xfe' + body)
+    path.chmod(0o755)
+    return path
+
+
+def test_doctor_runs_the_lane_only_on_the_engine_this_checkout_pins(tmp_path, monkeypatch):
+    """A config can describe its own binary truthfully and still name an engine the branch does not pin.
+
+    Until 2026-11-02 doctor compared the binary only with the config's own claim, so
+    branches pinned to eb40c54 tested on 5dae611 through the shared config, and a
+    fallback config sent a 5dae611 branch back to eb40c54, both without a word.
+    """
+    import json
+    from hashlib import sha256
+    engine = fake_engine(tmp_path / 'engine')
+    limits = tmp_path / 'limits.json'
+    limits.write_text('{}')
+    config = tmp_path / 'runtime.json'
+    config.write_text(json.dumps(dict(version=1, binary=str(engine), workspace=str(tmp_path / 'workspace'),
+                                      limits=str(limits), source_revision='1' * 40, platform='darwin-arm64',
+                                      binary_sha256=sha256(engine.read_bytes()).hexdigest(), build_features=['remote'])))
+    monkeypatch.setenv('DOCSPEC_JOB_CONFIG', str(config))
+    other = write_pin(tmp_path / 'other-pin.json', fake_engine(tmp_path / 'other', b'other engine'), revision='2' * 40)
+    with pytest.raises(ValueError, match='this checkout pins 22222222'):
+        dev.job_runtime(dev.declaration(), 'production-offline', pin_file=other)
+    dev.job_runtime(dev.declaration(), 'production-offline', pin_file=write_pin(tmp_path / 'pin.json', engine))
+
+
+def test_each_engine_is_installed_once_at_its_content_address(tmp_path):
+    """A rebuilt or swapped binary can never change under a config that names the pinned one.
+
+    On 2026-11-02 a pinned binary was replaced in place and running jobs failed; the
+    eb40c54 config still names a cargo target/ path that every build overwrites.
+    """
+    import json
+    import os
+    (tmp_path / 'target').mkdir()
+    engine = fake_engine(tmp_path / 'target' / 'docspec')
+    pin = write_pin(tmp_path / 'pin.json', engine)
+    limits = tmp_path / 'limits.json'
+    limits.write_text(json.dumps(dict(compute_threads=4)))
+    store = tmp_path / 'store'
+    first = dev.write_local_runtime(binary=engine, limits=limits, out=tmp_path / 'a' / 'runtime.json',
+                                    platform='darwin-arm64', pin_file=pin, store=store)
+    digest = json.loads(pin.read_text())['platforms']['darwin-arm64']['sha256']
+    installed = store / 'darwin-arm64' / digest / 'docspec'
+    assert json.loads(first.read_text())['binary'] == str(installed)
+    assert installed.read_bytes() == engine.read_bytes() and not os.access(installed, os.W_OK)
+    engine.write_bytes(b'rebuilt in place')
+    second = dev.write_local_runtime(binary=None, limits=limits, out=tmp_path / 'b' / 'runtime.json',
+                                     platform='darwin-arm64', pin_file=pin, store=store)
+    assert json.loads(second.read_text())['binary'] == str(installed)
+    with pytest.raises(ValueError, match='this checkout pins'):
+        dev.write_local_runtime(binary=engine, limits=limits, out=tmp_path / 'c' / 'runtime.json',
+                                platform='darwin-arm64', pin_file=write_pin(tmp_path / 'p2.json', fake_engine(
+                                    tmp_path / 'e2', b'pinned elsewhere')), store=store)
+    with pytest.raises(ValueError, match='not in the runtime store'):
+        dev.write_local_runtime(binary=None, limits=limits, out=tmp_path / 'd' / 'runtime.json',
+                                platform='darwin-arm64', pin_file=tmp_path / 'p2.json', store=store)
+    installed.chmod(0o755)
+    installed.write_bytes(b'tampered')
+    with pytest.raises(ValueError, match='other bytes than its address'):
+        dev.write_local_runtime(binary=None, limits=limits, out=tmp_path / 'e' / 'runtime.json',
+                                platform='darwin-arm64', pin_file=pin, store=store)
+    assert installed.read_bytes() == b'tampered'  # Evidence stays for inspection; never repaired in place.
+
+
+def test_a_direct_pytest_session_refuses_another_checkouts_workspace_code(tmp_path):
+    """pytest itself, not only dev.py doctor, refuses code that resolves outside this checkout.
+
+    The 2026-11-02 re-check of cluster C ran another checkout's .venv/bin/pytest here;
+    doctor never ran, and that checkout's packages were imported silently.
+    """
+    import os
+    import sys
+    shadow = tmp_path / 'shadow' / 'house_naming'
+    shadow.mkdir(parents=True)
+    (shadow / '__init__.py').write_text('')
+    node = '.github/tests/test_dev_environment.py::test_frozen_reproduction_requires_separate_runtime'
+    clean = {key: value for key, value in os.environ.items() if key not in ('PYTHONPATH', 'DOCSPEC_JOB_CONFIG')}
+    command = [sys.executable, '-m', 'pytest', '-q', '-p', 'no:cacheprovider', node]
+    shadowed = subprocess.run(command, cwd=ROOT, env={**clean, 'PYTHONPATH': str(tmp_path / 'shadow')},
+                              capture_output=True, text=True, timeout=120)
+    assert shadowed.returncode != 0
+    assert 'house_naming: import resolves outside this checkout' in shadowed.stdout + shadowed.stderr
+    assert subprocess.run(command, cwd=ROOT, env=clean, capture_output=True, timeout=120).returncode == 0
+
+
+def test_a_path_run_says_it_is_not_a_lane_result(monkeypatch, capsys):
+    """Cluster C reported 724 passing tests from --path runs; the 63 failures were in files it never ran."""
+    config = dev.declaration()
+    files = dev.inventory(config)
+    total = sum(1 for path in files if any(
+        path.startswith(root.rstrip('/') + '/') or path == root for root in config['lanes']['production-offline']['roots']))
+    monkeypatch.setattr(dev, 'inventory', lambda config: files)
+    monkeypatch.setattr(dev, 'doctor', lambda config, lane: None)
+    monkeypatch.setattr(dev.subprocess, 'run', lambda *a, **kw: SimpleNamespace(returncode=0))
+    capsys.readouterr()
+    dev.test(config, 'production-offline', ['scripts/tests/test_process_rss.py'], [])
+    assert f'production-offline (partial: 1 of {total} lane files; not a lane result): exit 0' in capsys.readouterr().out
+    dev.test(config, 'production-offline', [], ['-k', 'anything'])
+    assert 'not a lane result' in capsys.readouterr().out
+    dev.test(config, 'production-offline', [], [])
+    assert 'production-offline (full lane): exit 0' in capsys.readouterr().out
+
+
+def test_write_local_runtime_passes_preflight_and_refuses_an_unpinned_binary(tmp_path, monkeypatch):
+    """ct-3vub: pins come from the committed pin file; a different binary is refused."""
+    import json
+    from hashlib import sha256
+    binary = tmp_path / 'engine'
+    binary.write_bytes(b'\xcf\xfa\xed\xfeauthored fixture')
+    binary.chmod(0o755)
+    pin = write_pin(tmp_path / 'pin.json', binary)
+    limits = tmp_path / 'limits.json'
+    limits.write_text(json.dumps(dict(compute_threads=4, memory_bytes=1 << 30)))
+    out = tmp_path / 'local' / 'runtime.json'
+    store = tmp_path / 'store'
+    monkeypatch.setenv('DOCSPEC_JOB_CONFIG', str(out))
+    assert dev.write_local_runtime(binary=binary, limits=limits, out=out, platform='darwin-arm64', pin_file=pin,
+                                   store=store) == out
+    settings = json.loads(out.read_text())
+    assert 'remote' not in settings and 'credentials' not in settings
+    assert all(Path(settings[key]).is_absolute() for key in ('binary', 'limits', 'workspace'))
+    dev.job_runtime(dev.declaration(), 'production-offline', pin_file=pin)
+    other = tmp_path / 'other-engine'
+    other.write_bytes(b'\xcf\xfa\xed\xferebuilt engine')
+    other.chmod(0o755)
+    refused = tmp_path / 'refused.json'
+    with pytest.raises(ValueError, match='this checkout pins'):
+        dev.write_local_runtime(binary=other, limits=limits, out=refused, platform='darwin-arm64', pin_file=pin,
+                                store=tmp_path / 'other-store')
+    assert list(tmp_path.glob('*refused.json*')) == []
+
+
+def linked_worktree(tmp_path):
+    """A repository whose .gitignore covers data and environments, with one linked worktree."""
+    repo, tree = tmp_path / 'repo', tmp_path / 'tree'
+    git = lambda *args, cwd=repo: subprocess.run(['git', *args], cwd=cwd, check=True, capture_output=True)
+    repo.mkdir()
+    git('init', '-q')
+    (repo / '.gitignore').write_text('output/\n.venv/\n.cache\ndata/\n')
+    git('add', '.gitignore')
+    git('-c', 'user.name=t', '-c', 'user.email=t@example.invalid', 'commit', '-q', '-m', 'init')
+    git('worktree', 'add', '-q', str(tree))
+    (tree / '.venv' / 'lib').mkdir(parents=True)
+    (tree / '.venv' / 'lib' / 'site.py').write_text('environment')
+    (tree / '.cache' / 'local-runtime').mkdir(parents=True)
+    (tree / '.cache' / 'local-runtime' / 'runtime.json').write_text('{}')
+    return repo, tree
+
+
+def test_a_worktree_holding_ignored_data_is_not_removed(tmp_path):
+    """2026-11-02: removing cluster C's worktree deleted its ignored output/c-probe/, impl-f's frozen inputs."""
+    repo, tree = linked_worktree(tmp_path)
+    (tree / 'output' / 'c-probe').mkdir(parents=True)
+    (tree / 'output' / 'c-probe' / 'frozen.parquet').write_bytes(b'v21')
+    with pytest.raises(ValueError, match='ignored data: output/c-probe/frozen.parquet'):
+        dev.prune_worktree(tree, repo=repo, execute=True)
+    assert (tree / 'output' / 'c-probe' / 'frozen.parquet').exists()
+    dev.prune_worktree(tree, repo=repo, discard=['output/*'], execute=True)
+    assert not tree.exists()
+
+
+def test_a_worktree_with_only_rebuildable_files_is_removed(tmp_path):
+    repo, tree = linked_worktree(tmp_path)
+    assert dev.worktree_blockers(tree, repo=repo) == []
+    dev.prune_worktree(tree, repo=repo, execute=True)
+    assert not tree.exists()
+
+
+def test_a_worktree_a_process_works_in_is_not_removed(tmp_path):
+    import sys
+    repo, tree = linked_worktree(tmp_path)
+    reader = subprocess.Popen([sys.executable, '-c', 'import time;time.sleep(60)'], cwd=tree)
+    try:
+        with pytest.raises(ValueError, match=f'in use by process {reader.pid}'):
+            dev.prune_worktree(tree, repo=repo, execute=True)
+    finally:
+        reader.kill()
+        reader.wait()
+    assert tree.exists()
+
+
+def test_only_linked_worktrees_can_be_pruned(tmp_path):
+    repo, _ = linked_worktree(tmp_path)
+    with pytest.raises(ValueError, match='not a linked worktree'):
+        dev.prune_worktree(repo, repo=repo)
+
+
+@pytest.mark.parametrize('relative', ['output/c-probe/build/frozen.parquet', '.cache/archive-release/target/x.json',
+                                      'output/dist/run.json', 'data/.astro/notes.json'])
+def test_data_under_a_build_named_directory_blocks_a_prune(tmp_path, relative):
+    """green-rca: build/, dist/ and target/ at any depth counted as rebuildable, so --execute would delete data."""
+    repo, tree = linked_worktree(tmp_path)
+    data = tree / relative
+    data.parent.mkdir(parents=True, exist_ok=True)
+    data.write_text('frozen')
+    with pytest.raises(ValueError, match=f'ignored data: {relative}'):
+        dev.prune_worktree(tree, repo=repo, execute=True)
+    assert data.exists()
+
+
+@pytest.mark.parametrize('relative', ['apps/site/dist/index.html', 'packages/source-fetch/target/release/x',
+                                      'packages/congress_api/build/lib/a.py', 'apps/site/node_modules/a/b.js',
+                                      'packages/a/src/b/__pycache__/c.pyc', '.cache/local-runtime/runtime.json'])
+def test_rebuildable_output_at_a_package_root_does_not_block(relative):
+    assert dev._disposable(relative)

@@ -19,19 +19,58 @@ location, multi-repository roots and verification.
 
 # Test execution & local runtime
 
-Run Python suites through `.venv/bin/python scripts/dev.py test <lane>` (or pass
-`--path <file_or_node>` for targeted runs). The `production-offline` lane and
-any direct `.venv/bin/pytest` run over native lake/model tests require
-`DOCSPEC_JOB_CONFIG` pointing to a pinned **local-only** runtime JSON (`binary`,
-`binary_sha256`, `source_revision`, `platform`, `build_features`, `limits`,
-`workspace`) with **no** `remote` or `credentials` keys. Passing a pipeline
-`runtime.json` that includes `remote` or `credentials` fails `doctor` and raises
-`validate_catalog_authority` errors in local Iceberg tests.
+Run `uv sync --frozen` in every checkout or worktree, then run Python suites
+through its own `.venv/bin/python scripts/dev.py test <lane>`. Every pytest
+session (and `doctor`) refuses another checkout's interpreter or packages, even
+through `PYTHONPATH`. A `--path`, `-k` or shard run ends with a `partial` or
+`shard` line; call a branch tested only from a `(full lane): exit 0` line or
+all shards.
 
-For `apps/site` browser contract checks (`npm --prefix apps/site run contract:archive`),
-set `VIEWER_BENCHMARK_MODULES` to a `node_modules` directory whose `playwright`
-matches an installed `~/Library/Caches/ms-playwright/chromium_headless_shell-*` revision
-(CI's `playwright@1.64.1` uses revision 1248; several revisions may be installed).
+Native lake/model tests require `DOCSPEC_JOB_CONFIG` naming a **local-only**
+runtime for the engine this checkout pins in `model/docspec-runtime-pin.json`;
+`doctor` and pytest refuse any other engine. Write one with
+`.venv/bin/python scripts/dev.py write-local-runtime --limits
+.github/docspec-local-limits.json --out .cache/local-runtime/runtime.json`. It
+names the pinned binary in the shared store
+`<main checkout>/.cache/docspec-runtime/<platform>/<sha256>/docspec`; add a new
+engine there once with `--binary <docspec>`, which refuses bytes the pin does
+not name. Store entries are read-only and never replaced, so never copy a new
+build over a configured path. The helper never writes `remote` or `credentials`
+(a pipeline `runtime.json` with those keys fails `doctor` and
+`validate_catalog_authority`).
+
+Run heavy local work (engine runs, full lanes, cargo builds, multi-GB scans)
+under `python3 scripts/archive_watchdog.py --rss-gb <kill limit> --expect-gb
+<measured peak> --start-available-gb 6 --interval 0.2 -- <command>`. It starts
+the job once measured free memory covers the expected peak beside other jobs
+still ramping, stops it at the kill limit, stops only the youngest job below
+4 GiB machine memory, and takes the job down if the watchdog itself is killed.
+Its stderr and `--report` give the peak to pass as `--expect-gb` next time.
+
+Data another agent or a later run reads (frozen inputs, run outputs,
+measurements) lives under `<main checkout>/.cache/archive-release/`, never only
+in a worktree or `/private/tmp`, which a prune or a reboot deletes. Remove a
+worktree with `.venv/bin/python scripts/dev.py prune-worktree <path>
+[--execute]`, not `git worktree remove`: it refuses while the tree holds
+uncommitted work, ignored data other than rebuildable environments, or a
+process working in it.
+
+For `apps/site` browser checks (`npm --prefix apps/site run contract:archive`),
+`npm --prefix apps/site ci` installs the exact `playwright` that
+`apps/site/package.json` pins; install its browser with
+`node apps/site/node_modules/playwright/cli.js install --only-shell chromium`.
+
+# Raw checks
+
+A raw check (`raw_*.py` or `*_raw_check.py` anywhere under `scripts/measure/`) judges a rule's
+output from the raw record with its own reading. It must not import the
+producer, parser or model package, nor read model SQL or a registry
+(`scripts/measure/tests/test_raw_check_independence.py` enforces that much). It
+must also not restate the rule in its own words, which no test can see: judge
+from raw facts the rule does not use, or by a different measure; compare both
+directions; name every record not read; and before trusting a pass, plant one
+wrong value the rule would produce and show the check flags it. A reviewer
+other than the rule's author confirms the planted case.
 
 # Byte-hashed parser pins
 
