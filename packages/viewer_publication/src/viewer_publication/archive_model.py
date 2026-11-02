@@ -516,8 +516,13 @@ def prepare_model_inputs(*,captures,readings,filename_readings,parser_versions,c
                          engine,scratch,recovery_files=(),review_files=(),verification_files=(),
                          unreadable_files=(),variant_files=(),meeting_records=None,appearance_records=None,
                          spicy_regs=None,include_entities=False,recovery_requirements=None,
-                         video_records=None,committee_records=None,recording_decision_files=(),root=ROOT):
-    """Freeze current input selectors and the shared prefix in fresh private scratch."""
+                         video_records=None,committee_records=None,recording_decision_files=(),
+                         prior_links=None,base_retired=None,root=ROOT):
+    """Freeze current input selectors and the shared prefix in fresh private scratch.
+
+    prior_links/base_retired (release_gate.prior_links) feed only the retired-key
+    ledger; absent, the ledger starts empty. They stay out of the input identity.
+    """
     from viewer_publication.archive_format import _settings
     from viewer_publication.archive_model_profile import expand_parser_version_rows,profile_record,validate_parser_versions
     include_entities=bool(include_entities or meeting_records is not None or appearance_records is not None or spicy_regs is not None)
@@ -540,6 +545,8 @@ def prepare_model_inputs(*,captures,readings,filename_readings,parser_versions,c
         dict(name=name,kind='parquet',path=str(Path(value).resolve())) for name,value in raw_data_inputs]
     inputs += data_inputs
     inputs.append(json_input(scratch,'parser_versions',expand_parser_version_rows(parser_versions),parser='Utf8',version='Utf8'))
+    from viewer_publication.release_gate import ledger_inputs
+    inputs += ledger_inputs(scratch/'ledger',prior_links=prior_links,base_retired=base_retired)
     # Provenance is immutable input data; JSON columns with heterogeneous values
     # are projected once by the native reader before policy joins.
     from viewer_publication.archive_provenance import provenance_inputs
@@ -638,7 +645,8 @@ def build_release(*,captures,readings,filename_readings,parser_versions,catalog_
                   engine,output,scratch,recovery_files=(),review_files=(),verification_files=(),
                   unreadable_files=(),variant_files=(),meeting_records=None,appearance_records=None,
                   spicy_regs=None,include_entities=False,recovery_requirements=None,
-                  video_records=None,committee_records=None,recording_decision_files=(),root=ROOT):
+                  video_records=None,committee_records=None,recording_decision_files=(),
+                  prior_links=None,base_retired=None,root=ROOT):
     """Prepare inputs once and run the document model's maintained full job."""
     prepared=prepare_model_inputs(captures=captures,readings=readings,filename_readings=filename_readings,
         parser_versions=parser_versions,catalog_version=catalog_version,engine=engine,scratch=scratch,
@@ -646,7 +654,7 @@ def build_release(*,captures,readings,filename_readings,parser_versions,catalog_
         unreadable_files=unreadable_files,variant_files=variant_files,meeting_records=meeting_records,
         appearance_records=appearance_records,spicy_regs=spicy_regs,include_entities=include_entities,
         recovery_requirements=recovery_requirements,video_records=video_records,committee_records=committee_records,
-        recording_decision_files=recording_decision_files,root=root)
+        recording_decision_files=recording_decision_files,prior_links=prior_links,base_retired=base_retired,root=root)
     return build_prepared_release(prepared,engine=engine,output=output,root=root)
 
 
@@ -838,7 +846,8 @@ def build_prepared_release(prepared,*,engine,output,root=ROOT):
             (SELECT count(*) FROM ({CANDIDATE_SQL}) c WHERE c.record_sha NOT IN ({explorer_settled_sql('committee_records')})) AS unsettled_committee_records""")]
         meta_explorer=[dict(name='videos_in_several_channels',sql="SELECT count(*) AS videos FROM (SELECT v['video_id'] AS video_id FROM (SELECT unnest(r.videos) AS v FROM selected_video_records r JOIN youtube_cache_bodies b ON encode(r.record_sha,'hex')=b.record_sha) GROUP BY v['video_id'] HAVING count(DISTINCT v['handle'])>1)")]
     auxiliary += [('url_state','SELECT * FROM url_state',['requested_url'],['last_outcome']),
-        ('url_variants','SELECT * FROM url_variants',['variant_url','canonical_url'],[])]
+        ('url_variants','SELECT * FROM url_variants',['variant_url','canonical_url'],[]),
+        ('retired_links',(Path(root)/'model/sql/retired-links.sql').read_text(),['link_key'],[])]
     extra=[dict(name='document_rows.parquet',path=str(evidence/'document_rows.parquet'),sql='SELECT list_row,doc_key AS document_id,'+','.join(LIST_COLUMNS+DETAIL_COLUMNS)+' FROM details',settings=_settings('whole',['list_row'],footer_limit=4 << 20)),
         dict(name='source_members.parquet',path=str(evidence/'source_members.parquet'),sql="""SELECT DISTINCT o.doc_key AS document_id,o.list_row,
         m.source_id,CASE WHEN m.body_sha IS NOT NULL THEN 'bodies/sha256/'||substr(m.body_sha,1,2)||'/'||m.body_sha||'.gz' END AS body_key,
