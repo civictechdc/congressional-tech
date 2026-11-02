@@ -64,3 +64,11 @@ Reconciliation 2026-11-01: the 13 tickets reopened at 10:39Z were re-closed at 1
 **2026-11-01T20:47:10Z**
 
 Owner decision 2026-11-01: B10 and B13 no longer gate the exit (annex §4.1). ct-gi01 stays native with the weekly job removed, ct-m104 keeps its ct-0a37 dependency, and cef-96wc keeps ct-9gmr.
+
+**2026-11-02T01:18:04Z**
+
+Owner decisions 2026-11-01: batch all parser fixes into one version move (uv pin for extruct, House times and rooms ct-cjwx, HTTP 202 ct-c6b0, body_complete ct-v8y0, daily D4 ct-kn6d, Senate pages ct-egg6), and use a compatible-version rule (ct-deh9, moved into Round 1) rather than re-stamping every row. Merge order: Basin commit of v21 inputs by the owner first, then clusters, with pins recomputed once at integration, then one backfill and one model run.
+
+**2026-11-02T04:01:45Z**
+
+Round 1 stopped at owner direction 2026-11-01 after reviewing and fixing. Unmerged: worktree-agent-ae42a8cf7a429ba24 @ 180a49b1; worktree-agent-a704015cc138b456b @ da425206; worktree-agent-a5550c04138214670 @ b3c4aa3c. Worktrees retained. Next steps, not started: owner Basin commit, integration with one pin recompute, wiring ct-deh9, captures rebuild, backfill, one full model run, key comparison, publish.

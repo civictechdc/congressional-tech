@@ -2,7 +2,7 @@
 id: ct-r4rd
 status: open
 deps: []
-links: []
+links: [ct-asdg, ct-n61r, ct-zhta]
 created: 2026-10-31T07:22:48Z
 type: feature
 priority: 2
@@ -24,3 +24,7 @@ meetings.parquet (or a declared companion keyed by event_id) publishes congress,
 **2026-11-01T20:08:14Z**
 
 Owner decision 2026-11-01: this ticket delivers congress on meetings.parquet, shared with ct-mt0h, which keeps the document-key work.
+
+**2026-11-02T04:01:45Z**
+
+Code on worktree-agent-a704015cc138b456b @ da425206. Review verdict: merge, stay open. Sittings rule owner-approved as Congress.gov first plus House fill. Open: full-run release check, and spicy-regs value agreement.

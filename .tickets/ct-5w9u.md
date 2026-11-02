@@ -32,3 +32,9 @@ Listing dates guide discovery, not final event identity. Keep the separate heari
 - Time/room outputs are associated with the correct hearing URL, existing layouts still parse, and cutoff/pagination tests cover an affected boundary.
 - Final meeting identity still requires its own evidence; no false witness or meeting admission is introduced by generic page metadata.
 
+
+## Notes
+
+**2026-11-02T04:01:45Z**
+
+Code on worktree-agent-ae42a8cf7a429ba24 @ 180a49b1. Review verdict: merge. Raw replay 49/49, 0 wrong days of 1,223 rows.

@@ -32,3 +32,9 @@ Retain publisher document labels and article sections separately from normalized
 - Internal admin-host canonical declarations and conflicting dates do not silently rewrite established document/meeting identity.
 - Date-only and unzoned values retain their precision; model/schema/generated-client compatibility and old-record round trips pass with the optional description field.
 
+
+## Notes
+
+**2026-11-02T04:01:45Z**
+
+Code on worktree-agent-ae42a8cf7a429ba24 @ 180a49b1. Review verdict: merge. Real material-page data waits on ct-pocg; one context per run is required.

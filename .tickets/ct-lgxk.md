@@ -2,7 +2,7 @@
 id: ct-lgxk
 status: open
 deps: []
-links: [ct-qg8e, ct-64el]
+links: [ct-qg8e, ct-64el, ct-yf1c]
 created: 2026-11-02T00:36:42Z
 type: bug
 priority: 3
@@ -18,3 +18,9 @@ tags: [release, model, phase2]
 
 A format word is never a title; affected rows use the document title or stay null, with a check. Recheck after the ZIP rule.
 
+
+## Notes
+
+**2026-11-02T04:01:45Z**
+
+No confirmed code; recheck after a rebuild.

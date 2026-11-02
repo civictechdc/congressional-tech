@@ -2,7 +2,7 @@
 id: ct-d0o0
 status: open
 deps: []
-links: [ct-77zb, cef-nkzp, ct-h1nd, ct-sh4j, cefr-7sar, ct-kac4, ct-v8y0]
+links: [ct-77zb, cef-nkzp, ct-h1nd, ct-sh4j, cefr-7sar, ct-kac4, ct-v8y0, ct-mrgt]
 created: 2026-11-01T17:43:18Z
 type: task
 priority: 2
@@ -27,3 +27,9 @@ Catch the failures found during publish_v21 in production-offline. Reshaped afte
 - Reverting the fb408404 behavior, removing a mapped code, or removing a candidate join fails the gate.
 - The original memory failure needs a full job; this gate does not claim to detect shared-pool pressure.
 
+
+## Notes
+
+**2026-11-02T04:01:45Z**
+
+Code on worktree-agent-a5550c04138214670 @ b3c4aa3c. Review verdict: merge and close once merged. Follow-up: ct-mrgt.

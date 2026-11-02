@@ -27,3 +27,9 @@ publish_v21 was built with ad hoc /private/tmp/publish_v* scripts outside the gu
 - Unaffected rows are reused, and the combined output passes the guard and all model invariant suites.
 - Resume works after an interrupted run, with unit tests in packages/viewer_publication/tests/.
 
+
+## Notes
+
+**2026-11-02T04:01:45Z**
+
+Code on worktree-agent-a5550c04138214670 @ b3c4aa3c. Review verdict: merge, stay open. Open: reconcile and check_scratch mutants survive, so add tests; the checked-in spec is blocked, so run C7 (40 GiB free before start, up to 64 GiB scratch); remove re-stamp when ct-deh9 wires.

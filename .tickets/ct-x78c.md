@@ -18,3 +18,9 @@ Owner decision 2026-11-01: keep these facts. 6,955 old Explorer witness rows are
 
 Every distinct row is migrated with evidence, or has a named reason and owner; duplicates are counted once; site and MCP checks cover the migrated rows.
 
+
+## Notes
+
+**2026-11-02T04:01:45Z**
+
+Final review correction: all 976 docs.house.gov rows are in raw witness XML (226 bodies), parsed in appearance_records, but 225 have NULL event_id. Rows have no URL; receipts' original_path wlist/{event}.xml states it. The 98 searched meeting XML only. 19,475 distinct rows; 849 and 1,300 are named with owners, not migrated. Code on worktree-agent-a704015cc138b456b @ da425206. All branches: not merged; parser pins are recomputed once at integration; no backfill, lake write or full model run has happened.

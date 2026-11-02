@@ -24,3 +24,7 @@ A release carries the document key in the same table as title and facets; meetin
 **2026-11-01T20:08:14Z**
 
 Owner decision 2026-11-01: detail.parquet becomes the keyed document table by adding list columns; list.parquet stays the no-ID browser projection (data model §8.1). Measure both options on the live release before changing the schema. congress on meetings is delivered with ct-r4rd; do not implement it twice.
+
+**2026-11-02T04:01:45Z**
+
+Code on worktree-agent-a704015cc138b456b @ da425206. Review verdict: merge. Open: detail size after rebuild; SpicyEngine retirement not verified.

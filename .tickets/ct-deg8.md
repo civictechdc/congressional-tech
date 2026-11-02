@@ -19,3 +19,9 @@ Measured by impl-c-explorer 2026-11-01: an ordered array_agg over named_struct c
 
 The reproduction and evidence are reported under docspec-rs ss-oxg1. Either the engine bounds this allocation, or a recorded rule says pool settings do not bound RSS and jobs need an external guard.
 
+
+## Notes
+
+**2026-11-02T04:01:45Z**
+
+Corrected trigger: a computed CASE branch in an ordered array_agg, not a regexp. Evidence in explorer-native-comparison-20261101.md on worktree-agent-a704015cc138b456b @ da425206. Still to report under ss-oxg1; engine unfixed.

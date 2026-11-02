@@ -22,3 +22,9 @@ Owner decision 2026-11-01: ZIPs are capture transport and do not belong in the d
 - Published ZIP link keys and URLs resolve to the document; sources keep the ZIP URL and member path.
 - A rebuild shows grouping and links, accounted by key against c94bfedc and 448651e7. Also measure from raw how many of the 242,293 top-level NULL-complete rows are wrongly excluded.
 
+
+## Notes
+
+**2026-11-02T04:01:45Z**
+
+Code on worktree-agent-a704015cc138b456b @ da425206. Review verdict: merge, stay open. Raw: 15/15 ZIPs and 149/149 members rehash equal. Owner decided imported contents count when the ZIP matches by digest. Open: rebuild counts, and bytes of 12 HTTP 206 ZIPs unread. Body 5e9b5643 is an older edition of the 64404 transcript, the only wrongly excluded body; two later bodies list that URL. All branches: not merged; parser pins are recomputed once at integration; no backfill, lake write or full model run has happened.

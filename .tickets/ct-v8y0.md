@@ -28,3 +28,7 @@ Corpus count recorded. Either the recorded value is read, with version move and 
 **2026-11-01T23:03:05Z**
 
 Measured by impl-d-jobs in the local receipt mirror: previous_receipt.body_complete has 16 values on 13 of 2,596,054 lines, all true. Lowered to P3: the unread field is real but small, so fix it only if captures.py moves for another reason.
+
+**2026-11-02T04:01:45Z**
+
+Code on worktree-agent-a5550c04138214670 @ b3c4aa3c (0043edfe). Review verdict: merge and close once merged. Correction: 16 values on 9 lines, all mapping true, not 13 lines.

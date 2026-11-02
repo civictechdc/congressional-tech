@@ -2,7 +2,7 @@
 id: ct-n2cy
 status: open
 deps: []
-links: [ct-sh4j, ct-qg8e]
+links: [ct-sh4j, ct-qg8e, ct-yf1c]
 created: 2026-11-02T00:36:42Z
 type: bug
 priority: 2
@@ -18,3 +18,9 @@ tags: [release, model, phase2]
 
 0 NULL sources.url, and a native check at write time that refuses one.
 
+
+## Notes
+
+**2026-11-02T04:01:45Z**
+
+Code on worktree-agent-a704015cc138b456b @ da425206. Review verdict: merge, stay open until a full run shows 0 NULL URLs. The 12 NULL-only rows are raw YouTube API responses, now non-document by role; 345 JSON rows read by the implementer.

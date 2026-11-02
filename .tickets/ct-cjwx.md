@@ -18,3 +18,9 @@ Owner decision 2026-11-01: do both. Congress.gov comes first for sittings now (a
 
 House records state correct local times and rooms against raw XML; House building names are reconciled with Congress.gov's so ct-r4rd value agreement holds; pin and backfill recorded.
 
+
+## Notes
+
+**2026-11-02T04:01:45Z**
+
+Code on worktree-agent-a704015cc138b456b @ da425206. Review verdict: merge. Open: backfill, and House and Congress.gov building names not shown reconciled.

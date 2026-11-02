@@ -2,7 +2,7 @@
 id: ct-gi01
 status: open
 deps: [ct-sh4j, ct-30fp, ct-kw9b, ct-wx65, ct-h1nd, ct-v51p]
-links: [ct-8kl2, ct-mi03, ct-czsd, ct-2ukk, ct-oc2g, ct-xu1o, ct-8ax6, ct-dzyf, ct-13cn, ct-dmca, ct-gziq, ct-n6lj, ct-sb0s, ct-te1p, ct-aia9, ct-2yl5, ct-bwac, ct-a3le, ct-0odd, ct-ec91, ct-3ttc, ct-84xa, ct-h23e, ct-f7p8, ct-98sm, ct-r6xw, ct-jnw5, ct-4g55, ct-xx7q, ct-s9p2, ct-w8dc, ct-93zs, ct-m104, ct-t915, ct-5kto, ct-m94a, ct-64el]
+links: [ct-8kl2, ct-mi03, ct-czsd, ct-2ukk, ct-oc2g, ct-xu1o, ct-8ax6, ct-dzyf, ct-13cn, ct-dmca, ct-gziq, ct-n6lj, ct-sb0s, ct-te1p, ct-aia9, ct-2yl5, ct-bwac, ct-a3le, ct-0odd, ct-ec91, ct-3ttc, ct-84xa, ct-h23e, ct-f7p8, ct-98sm, ct-r6xw, ct-jnw5, ct-4g55, ct-xx7q, ct-s9p2, ct-w8dc, ct-93zs, ct-m104, ct-t915, ct-5kto, ct-m94a, ct-64el, ct-asdg, ct-n61r, ct-66ns, ct-n6fz]
 created: 2026-10-21T20:53:31Z
 type: feature
 priority: 1
@@ -91,3 +91,7 @@ Owner scope decision 2026-11-01 (annex §4.6, data model §8): raised to P1. Typ
 **2026-11-02T00:40:43Z**
 
 Owner decision 2026-11-01: revise the memory criterion. Measure and report memory, with a high runaway limit (ct-r8jd) instead of a <2 GB target. Sittings: Congress.gov first and the House fix both (ct-cjwx). Old witness rows are kept (ct-x78c).
+
+**2026-11-02T04:01:45Z**
+
+Code on worktree-agent-a704015cc138b456b @ da425206. Review verdict: merge, stay open. Frozen-input tables built, and 217,794 meeting values compared to raw with 0 differing. Open: byte identity, memory and release ID need a full run; publisher, claims and coverage only restate the rule; coverage disagrees with raw on weak classes such as 1,450 documents and 1,906 witnesses not_stated despite evidence, and the owner decides how to treat them; c.* chain still hits 2 GiB spill at capture_sources. All branches: not merged; parser pins are recomputed once at integration; no backfill, lake write or full model run has happened.

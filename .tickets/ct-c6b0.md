@@ -2,7 +2,7 @@
 id: ct-c6b0
 status: open
 deps: []
-links: [ct-sh4j, ct-qg8e]
+links: [ct-sh4j, ct-qg8e, ct-bxqa]
 created: 2026-11-02T00:36:42Z
 type: bug
 priority: 2
@@ -18,3 +18,9 @@ tags: [captures, phase2]
 
 The owner decides whether 202 is good; captures and good_fetches follow, with a fixture. The other 2xx tests are checked.
 
+
+## Notes
+
+**2026-11-02T04:01:45Z**
+
+Code on worktree-agent-a5550c04138214670 @ b3c4aa3c (3bf52b65); 15 HTTP 202 rows flip from stored. Review: merge, stay open. receipt_writer.py:44 still writes 202 as stored, and removing the archive_url_state.py:28 exclusion fails no test, so add one. Owner ruling on 202 still to record; main treated firewall 202s as not good under the batched fix.

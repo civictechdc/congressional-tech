@@ -32,3 +32,9 @@ Keep title, short publisher description, and full article text distinct. Boilerp
 - Report candidate/selected/fallback counts and output sizes; presence of RDFa alone is not counted as an improvement.
 - Publishable content references and bounded snippets are available to downstream mapping without duplicating full text across document rows.
 
+
+## Notes
+
+**2026-11-02T04:01:45Z**
+
+Code on worktree-agent-ae42a8cf7a429ba24 @ 180a49b1. Review verdict: merge, stay open for the owner's 20-page read of docs/experiments/html-metadata-20261101/content-cohort.md. Scope reduced to marked and no-content pages.

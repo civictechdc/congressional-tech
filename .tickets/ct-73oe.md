@@ -38,3 +38,11 @@ Retain raw values, ordering/multiplicity, declared base, generic meta/link field
 **2026-11-02T00:40:43Z**
 
 Owner note 2026-11-01: in the owner's experience the extruct version doesn't matter. Don't let it gate parser versions or trigger re-reads; record the version on readings as provenance.
+
+**2026-11-02T00:58:33Z**
+
+Owner decision 2026-11-01, replacing the earlier note: pin extruct exactly in uv and depend on tests. uv.lock bytes feed every parser version, so merging this moves all parser pins and needs a re-stamp or compatible-version selection (ct-deh9) before admission passes.
+
+**2026-11-02T04:01:45Z**
+
+Code on worktree-agent-ae42a8cf7a429ba24 @ 180a49b1. Review verdict: merge, with a gate: no deployment until the re-stamp is approved. Lock adds 11 packages, no upgrades. All ten parser pins move.
