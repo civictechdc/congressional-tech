@@ -14,7 +14,9 @@ WITH roles AS (
             WHEN c.format = 'warc' THEN 'envelope'
             WHEN c.format = 'pdf' AND c.intact IS NOT TRUE
                  AND c.intact_basis <> 'unchecked' THEN 'damaged'
-            WHEN c.format = 'json' AND l.api THEN 'api'
+            -- JSON here is an API page or a provider's envelope, never a document: all 345 once listed
+            -- were, and their contents have their own rows.
+            WHEN c.format = 'json' THEN 'api'
             WHEN c.format IN ('html', 'xml', 'json')
                  AND (b.status IS DISTINCT FROM 'completed') THEN NULL
             WHEN c.format = 'xml' AND b.source_record THEN 'source_record'

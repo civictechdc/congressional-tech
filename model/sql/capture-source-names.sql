@@ -5,4 +5,4 @@ SELECT c.*,f.filename,f.source_url,r.is_real_file,r.record_role,
   (effective_filenames f JOIN record_roles r
    ON f.input_id=encode(sha256(json_array(r.receipt_key,r.receipt_line,r.capture_index)),'hex'))
   JOIN capture_evidence c USING(receipt_key,receipt_line,capture_index)
- ) ON c.run_id=i.run_id WHERE c.mode='fetch'
+ ) ON c.run_id=i.run_id WHERE c.mode='fetch' OR (c.mode='retained_import' AND c.member_path IS NOT NULL)

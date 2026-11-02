@@ -427,7 +427,7 @@ def evidence_steps(*,root=ROOT):
     """Join pinned parser facts and physical evidence before source/link expansion."""
     from congress_api.lake.readings import writer_admission_step
     names=['pinned-readings','sniff-observations','sniff-conflicts','sniff-facts','page-facts','verification-conflicts','storage-verifications','copy-verifications','body-evidence','capture-evidence',
-        'good-fetches','good-fetch-keys','capture-locators','body-signals','locator-signals','placeholders','archive-bodies','record-roles',
+        'good-archive-containers','good-fetches','good-fetch-keys','capture-locators','body-signals','locator-signals','placeholders','archive-bodies','record-roles',
         'page-contexts','link-inputs']
     # good_fetches is a filter over retained capture_evidence; a second copy costs 1.3 GB of scratch.
     return [writer_admission_step(root=root)]+[dict(name=name.replace('-','_'),sql=(Path(root)/'model/sql'/(name+'.sql')).read_text(),materialize=name!='good-fetches')
@@ -456,6 +456,13 @@ def evidence_checks():
 
 def _sql_steps(names,*,root=ROOT):
     return [dict(name=name.replace('-','_'),sql=(Path(root)/'model/sql'/(name+'.sql')).read_text(),materialize=True) for name in names]
+
+
+def explorer_settled_sql(table):
+    """Settled at the pinned version only: an old version's failure says nothing about the new one."""
+    return f"""SELECT lower(encode(record_sha,'hex')) AS sha FROM selected_{table} WHERE status IN ('completed','error','size_limit')
+        UNION SELECT lower(coalesce(u.record_sha,u.body_sha256)) FROM active_unreadable u JOIN parser_versions v
+         ON v.parser LIKE '{table}.%' AND u.parser_version=v.version WHERE u.parser IN ('{table}',v.parser)"""
 
 
 def selected_record_step(table,record_input,*,root=ROOT):
@@ -826,11 +833,9 @@ def build_prepared_release(prepared,*,engine,output,root=ROOT):
         steps += [dict(name='youtube_cache_bodies',sql=(Path(root)/'model/sql/youtube-cache-bodies.sql').read_text(),materialize=True)]
         auxiliary += [(name,(Path(root)/'model/sql'/(file+'.sql')).read_text(),keys,dictionary) for name,file,keys,dictionary in EXPLORER_TABLES]
         from congress_api.lake.committee_records import CANDIDATE_SQL
-        settled=lambda table:f"""SELECT lower(encode(record_sha,'hex')) AS sha FROM selected_{table} WHERE status IN ('completed','error','size_limit')
-            UNION SELECT lower(coalesce(record_sha,body_sha256)) FROM active_unreadable WHERE parser='{table}'"""
         explorer_diagnostics=[dict(name='explorer_invariants',sql=f"""SELECT (SELECT count(*) FROM meeting_coverage_export)-5*(SELECT count(*) FROM meetings_export) AS coverage_row_mismatch,
-            (SELECT count(*) FROM youtube_cache_bodies b WHERE b.record_sha NOT IN ({settled('video_records')})) AS unsettled_video_records,
-            (SELECT count(*) FROM ({CANDIDATE_SQL}) c WHERE c.record_sha NOT IN ({settled('committee_records')})) AS unsettled_committee_records""")]
+            (SELECT count(*) FROM youtube_cache_bodies b WHERE b.record_sha NOT IN ({explorer_settled_sql('video_records')})) AS unsettled_video_records,
+            (SELECT count(*) FROM ({CANDIDATE_SQL}) c WHERE c.record_sha NOT IN ({explorer_settled_sql('committee_records')})) AS unsettled_committee_records""")]
         meta_explorer=[dict(name='videos_in_several_channels',sql="SELECT count(*) AS videos FROM (SELECT v['video_id'] AS video_id FROM (SELECT unnest(r.videos) AS v FROM selected_video_records r JOIN youtube_cache_bodies b ON encode(r.record_sha,'hex')=b.record_sha) GROUP BY v['video_id'] HAVING count(DISTINCT v['handle'])>1)")]
     auxiliary += [('url_state','SELECT * FROM url_state',['requested_url'],['last_outcome']),
         ('url_variants','SELECT * FROM url_variants',['variant_url','canonical_url'],[])]

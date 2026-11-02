@@ -207,3 +207,20 @@ def test_videos_channels_and_committee_records_from_lake_rows(tmp_path):
     kept = pq.read_table(tmp_path / 'r.parquet').to_pylist()
     assert [row['ordinal'] for row in sorted(kept, key=lambda row: row['ordinal'])] == [0, 1]  # Latest record; duplicates keep two keys.
     assert len({row['record_key'] for row in kept}) == 2 and kept[0]['record_sha'] == bytes.fromhex(sha_new)
+
+
+def test_only_a_pinned_version_failure_settles_an_explorer_record():
+    from viewer_publication.archive_model import explorer_settled_sql
+    from congress_api.retention.provenance import run_job as run
+    engine = NativeDatasets.from_config(os.environ['DOCSPEC_JOB_CONFIG'])
+    import tempfile
+    with tempfile.TemporaryDirectory() as folder:
+        work = Path(folder)
+        inputs = [json_input(work, 'active_unreadable', [
+                dict(record_sha='old', body_sha256=None, parser='video_records', parser_version='v1'),
+                dict(record_sha='new', body_sha256=None, parser='video_records', parser_version='v2')],
+                record_sha='Utf8', body_sha256='Utf8', parser='Utf8', parser_version='Utf8'),
+            json_input(work, 'parser_versions', [dict(parser='video_records.youtube_cache', version='v2')], parser='Utf8', version='Utf8')]
+        steps = [dict(name='selected_video_records', sql="SELECT arrow_cast(decode(repeat('ab',32),'hex'),'FixedSizeBinary(32)') AS record_sha,'completed' AS status")]
+        result = run(work / 'job', engine, inputs=inputs, steps=steps, outputs=[], queries=[dict(name='s', sql=explorer_settled_sql('video_records') + ' ORDER BY sha')])
+    assert [row['sha'] for row in result['s']] == ['ab' * 32, 'new']  # The old version's failure settles nothing.

@@ -108,6 +108,7 @@ def run_state(tmp_path,change=None):
     steps=[dict(name='captures',sql="SELECT * EXCLUDE(body_hex,record_role,retrieved_at),cast(NULL AS VARCHAR) AS expansion,decode(body_hex,'hex') AS sha256,arrow_cast(cast(retrieved_at AS TIMESTAMP WITH TIME ZONE),'Timestamp(Microsecond, Some(\"UTC\"))') AS retrieved_at FROM fixture_captures"),
         dict(name='record_roles',sql='SELECT receipt_key,receipt_line,capture_index,record_role FROM fixture_captures'),
         dict(name='capture_evidence',sql='SELECT * FROM captures'),
+        dict(name='good_archive_containers',sql=(ROOT/'model/sql/good-archive-containers.sql').read_text()),
         dict(name='good_fetches',sql=(ROOT/'model/sql/good-fetches.sql').read_text()),
         dict(name='good_fetch_contexts',sql="SELECT receipt_key,receipt_line,capture_index,sha256,context_url,member_path FROM good_fetches"),
         dict(name='resolved_link_targets',sql="SELECT DISTINCT page_body,context_url,member_path,target_url,cast(NULL AS VARCHAR) AS target_member_path FROM resolved_links WHERE target_member_path IS NULL"),

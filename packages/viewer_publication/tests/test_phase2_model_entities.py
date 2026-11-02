@@ -1552,3 +1552,72 @@ def test_zip_contents_are_the_documents_from_receipts_to_release(tmp_path):
     mine = [s for s in sources if s['list_row'] == row_of_member]
     assert {(s['url'], s['member_path']) for s in mine} == {(good_url, 'CHRG-1/pdf/CHRG-1.pdf')}
     assert all(s['url'] for s in sources)
+
+
+def test_imported_zip_identical_to_a_good_download_keeps_its_members(tmp_path):
+    """The Senate Finance shape, as raw lines: a direct good fetch with no expansion, and a retained
+    import of the same bytes that expanded it. Its members have no other good row."""
+    from viewer_publication.archive_model import build_release
+    import io, zipfile
+    engine = NativeDatasets.from_config(os.environ['DOCSPEC_JOB_CONFIG'])
+    pdf = b'%PDF-1.7\nimported member only\n%%EOF\n'
+    buffer = io.BytesIO()
+    with zipfile.ZipFile(buffer, 'w') as archive:
+        archive.writestr('A/one.pdf', pdf)
+    data = buffer.getvalue()
+    other = b'PK\x03\x04 an import with no good download'
+    orphan = b'%PDF-1.7\nmember of an unverified import\n%%EOF\n'
+    raw = tmp_path / 'raw'
+    url = 'https://fixture.test/download/appendix&download=1'
+    def body(content):
+        digest = hashlib.sha256(content).hexdigest()
+        path = raw / f'bodies/sha256/{digest[:2]}/{digest}'
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_bytes(content)
+        return dict(sha256=digest, bytes=len(content), fidelity='exact-bytes', stored_suffix='', stored_bytes=len(content),
+            stored_md5=hashlib.md5(content).hexdigest(), sniff_version=readings.current_version('sniff'))
+    def entry(content, fmt, **extra):
+        return dict(body(content), media_type='application/octet-stream', sniffed_format=fmt, **extra)
+    direct = dict(writer=dict(job='fixture', commit='a' * 40), run_id='fixture', mode='fetch', family='documents', outcome='stored', requested_url=url, url=url,
+        response_headers={}, http_status=200, complete=True, retrieved_at='2026-09-29T00:00:00Z', captures=[entry(data, 'zip')])
+    def imported(page, zipped, member, name):
+        return dict(direct, mode='retained_import', requested_url=page, url=page, retrieved_at='2026-10-16T00:00:00Z',
+            source_associations=[dict(original_url=page + '-original', basis='explicit_retained_download_wrapper')],
+            captures=[entry(zipped, 'zip', expansion='expanded'), entry(member, 'pdf', intact=True, member_path=name)])
+    lines = [direct, imported(url, data, pdf, 'A/one.pdf'), imported('https://fixture.test/unverified', other, orphan, 'B/two.pdf')]
+    receipt = raw / 'receipts/documents/2026-10-16/slice.jsonl.gz'
+    receipt.parent.mkdir(parents=True, exist_ok=True)
+    encoded = gzip.compress(''.join(json.dumps(r) + '\n' for r in lines).encode(), mtime=0)
+    receipt.write_bytes(encoded)
+    pin = tmp_path / 'pin.json'
+    pin.write_text(json.dumps(dict(path=str(receipt), size=len(encoded), sha256=hashlib.sha256(encoded).hexdigest(), producer='fixture creation')))
+    decisions = tmp_path / 'recoveries.jsonl'
+    decisions.write_text(''.join(json.dumps(dict(id=name, body_sha256=hashlib.sha256(content).hexdigest(), original_url=page + '-original', recovered_filename=None,
+        recovered_url=page, kind='recovered_document', identity_note=None, decided_at='2026-10-16T00:00:00Z', supersedes=None, recovery_record_version=2)) + '\n'
+        for name, content, page in (('one', data, url), ('two', other, 'https://fixture.test/unverified'))))
+    recovery_files = [dict(key='provenance/recoveries/fixture.jsonl', path=str(decisions))]
+    captures = stage_captures([dict(key=receipt.relative_to(raw).as_posix(), path=str(receipt), qualification=str(pin))], engine=engine, work=tmp_path / 'stage') / 'captures.parquet'
+    modes = {(r['mode'], r['member_path']) for r in pq.read_table(captures, columns=['mode', 'member_path']).to_pylist()}
+    assert ('retained_import', 'A/one.pdf') in modes, modes
+    inventory = tmp_path / 'inventory'
+    inventory.mkdir()
+    run_job(inventory, engine, inputs=[dict(name='captures', kind='parquet', path=str(captures))], steps=[], outputs=[parquet_output(inventory, 'bodies',
+        """SELECT DISTINCT sha256 AS body_sha,'bodies/sha256/'||substr(encode(sha256,'hex'),1,2)||'/'||encode(sha256,'hex') AS physical_key,
+        'bodies/sha256/'||substr(encode(sha256,'hex'),1,2)||'/'||encode(sha256,'hex') AS relative_path,stored_bytes,false AS stored_gzip FROM captures WHERE sha256 IS NOT NULL""", ['body_sha'])])
+    pages = readings.stage(captures=captures, body_inventory=inventory / 'bodies.parquet', local_root=raw, engine=engine, work=tmp_path / 'read', decided_at='2026-10-27T12:00:00Z', parser='html')
+    names = filenames.stage(captures=captures, recovery_files=recovery_files, engine=engine, work=tmp_path / 'names', decided_at='2026-10-27T12:00:00Z')
+    build_release(captures=captures, readings=pages['readings'], filename_readings=names['readings'], recovery_files=recovery_files,
+        parser_versions={p: readings.current_version(p) for p in ['sniff', 'html', 'xml', 'json']}, catalog_version=names['catalog_version'],
+        engine=engine, output=tmp_path / 'release', scratch=tmp_path / 'model')
+    release = tmp_path / 'release'
+    details = pq.read_table(release / 'detail.parquet').to_pylist()
+    bodies = {d['saved_body'] for d in details}
+    assert hashlib.sha256(pdf).digest() in bodies
+    assert hashlib.sha256(orphan).digest() not in bodies  # No good download proves that import's bytes.
+    member = next(i for i, d in enumerate(details) if d['saved_body'] == hashlib.sha256(pdf).digest())
+    links = {row['link_key']: row['list_row'] for row in pq.read_table(release / 'links.parquet').to_pylist()}
+    assert links[hashlib.sha256(data).digest()[:8]] == member
+    assert hashlib.sha256(data).digest() not in bodies  # The ZIP is a source record, not a document.
+    assert {(s['url'], s['member_path']) for s in pq.read_table(release / 'sources.parquet').to_pylist() if s['list_row'] == member} == {(url, 'A/one.pdf')}
+    lookup = hashlib.sha256(b'lookup:fixture.test/download/appendix&download=1').digest()[:8]
+    assert [r['list_row'] for r in pq.read_table(release / 'urls.parquet').to_pylist() if r['lookup_key'] == lookup] == [member]
