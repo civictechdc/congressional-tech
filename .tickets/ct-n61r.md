@@ -28,3 +28,7 @@ Round 1b 2026-11-02 (lead): Cause: the House parser never read the House meeting
 **2026-11-02T12:36:53Z**
 
 Round 1b 2026-11-02 (lead): impl-f: 10 commits on r1b-f. Frozen before/after and raw check: access 7/7, not_held 409/409, House witness lists 187/187; the 3 same-day status conflicts resolved as held, from a registry. The path arm waits on e1's captures.original_path.
+
+**2026-11-02T13:22:51Z**
+
+2026-11-02 impl-f (r1b-f, 12 commits): current-status misread since 9e656389; not_held +404/-5, 409 supported by raw. The 3 same-day conflicts (110924, 116426, 116998) each have their own YouTube video named for the meeting, streamed live on its date; they keep publisher status with not_held=false via model/registries/meeting-status-conflicts.json, evidence quoted.

@@ -103,3 +103,7 @@ Owner decision 2026-11-02: coverage. Fix document linking at its source (list.me
 **2026-11-02T12:28:28Z**
 
 Round 1b 2026-11-02 (lead): Coverage rule (lead decision): a Senate meeting with no linked document or witness is unknown until the Senate page links land; old page decisions are not imported. Same two-way check applies to recording coverage (172 events). impl-f.
+
+**2026-11-02T13:22:51Z**
+
+2026-11-02 impl-f (r1b-f, 12 commits): Senate meetings unknown until page links land; 7,837 caption coverage rows go from not_stated to unknown. Evidence: docs/measurements/meeting-semantics-raw-check-20261102.json on r1b-f.

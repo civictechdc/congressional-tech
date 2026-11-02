@@ -24,3 +24,7 @@ Coverage counts real document evidence, and those events are linked or explained
 **2026-11-02T12:28:28Z**
 
 Round 1b 2026-11-02 (lead): source-annotations-meetings joins the URLs the House record lists: +2,089 links on 458 meetings, and 38 meetings go from not_stated to present. impl-f.
+
+**2026-11-02T13:22:51Z**
+
+2026-11-02 impl-f (r1b-f, 12 commits): about 2,089 document link pairs on 458 events (a DuckDB estimate until the full run); 38 events gain their first document.

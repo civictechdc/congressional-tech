@@ -24,3 +24,7 @@ Those are partly_closed, with a test.
 **2026-11-02T12:28:27Z**
 
 Round 1b 2026-11-02 (lead): Access fix changes exactly the 7 meetings. impl-f.
+
+**2026-11-02T13:22:51Z**
+
+2026-11-02 impl-f (r1b-f, 12 commits): 7 rows changed, all supported by the raw check; the one-way rule dates from 2351caf4.

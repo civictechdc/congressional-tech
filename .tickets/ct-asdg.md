@@ -24,3 +24,7 @@ entity-meetings.sql is fixed before publishing, checked against raw per row.
 **2026-11-02T12:28:27Z**
 
 Round 1b 2026-11-02 (lead): The meeting's own recording decides; transcript jackets are not evidence (Congress.gov lists same-day jackets from other hearings). Expected 46 links to 83, with 4 removed (106383, 112524, 104049, 106136). Title keys keep Part/Day. impl-f.
+
+**2026-11-02T13:22:51Z**
+
+2026-11-02 impl-f (r1b-f, 12 commits): rescheduled_to 46 to 82: 64 supported, 6 ambiguous (reworded titles); 4 removed, 40 added; title keys keep Part/Day.
