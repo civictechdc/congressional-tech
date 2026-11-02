@@ -988,6 +988,7 @@ def build_prepared_release(prepared,*,engine,output,root=ROOT):
             (SELECT count(*) FROM (
                 SELECT event_id,tr['package_id'] AS package_id FROM (
                     SELECT event_id,unnest(transcripts) AS tr FROM meetings_export WHERE transcripts IS NOT NULL)
+                WHERE tr['package_id'] IS NOT NULL  -- printed hearings; committee files and captions carry no package
                 GROUP BY event_id,tr['package_id'] HAVING count(*)>1
             )) AS duplicate_transcript_packages"""+''.join(f',\n            {sql} AS {name}' for name,sql in entity_track_checks().items())
         meta_queries += [
@@ -1069,7 +1070,10 @@ def build_prepared_release(prepared,*,engine,output,root=ROOT):
             ) k WHERE k.event_id IS NULL OR NOT EXISTS (SELECT 1 FROM meetings_export m WHERE m.event_id=k.event_id)) AS missing_meeting_keys,
             (SELECT count(*) FROM (
                 SELECT unnest(transcripts) AS tr FROM meetings_export WHERE transcripts IS NOT NULL
-            ) WHERE tr['list_row'] IS NULL OR tr['list_row']<0 OR tr['list_row']>=(SELECT count(*) FROM ordered)) AS invalid_transcript_rows,
+            ) WHERE CASE WHEN tr['source']='captions'
+                -- A caption track is a recording's file, named by video_key, never a listed document.
+                THEN tr['video_key'] IS NULL OR tr['list_row'] IS NOT NULL
+                ELSE tr['list_row'] IS NULL OR tr['list_row']<0 OR tr['list_row']>=(SELECT count(*) FROM ordered) END) AS invalid_transcript_rows,
             (SELECT count(*) FROM url_keys WHERE list_row IS NULL OR list_row<0 OR list_row>=(SELECT count(*) FROM ordered)) AS invalid_url_rows,
             (SELECT count(*) FROM (
                 SELECT vk,min(doc_key) AS doc_key
