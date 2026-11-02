@@ -138,6 +138,31 @@ def require_ledger_history(base_dir, link_history):
         raise ValueError('The base release has no retired_links; the publish must name link_history')
 
 
+def fetch_base(read_release, release_id, work, link_history=()):
+    """Fetch the live release and, without its own ledger, the named history; build the ledger inputs.
+
+    `read_release(release_id)` returns a reader for that release's files. Returns
+    (base_dir, prior_links, base_retired), or Nones when nothing is live.
+    """
+    if release_id is None:
+        if link_history:
+            raise ValueError('link_history names earlier releases, but nothing is live')
+        return None, None, None
+    work = Path(work)
+    base = work / 'base-release'
+    # Only what the ledger reads; publish_candidate completes the copy for gate 1 only when
+    # a new release is actually published, so an input-unchanged skip reads no more.
+    fetch_release(read_release(release_id), release_id, base, (*LEDGER_FILES, 'retired_links.parquet'))
+    require_ledger_history(base, link_history)
+    history = []
+    for earlier in link_history:
+        target = work / 'link-history' / _sha(earlier, 'link_history release')
+        fetch_release(read_release(earlier), earlier, target, LEDGER_FILES)
+        history.append(target)
+    prior, retired = prior_links(base, history, work / 'ledger')
+    return base, prior, retired
+
+
 def load_causes(pin):
     """Read a pinned cause record and custody-check every evidence pin it names."""
     from congress_shared.custody import verify_local_file

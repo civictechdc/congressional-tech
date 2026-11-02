@@ -155,7 +155,7 @@ def _probe_evidence(reports):
 
 def run_publish(model_spec,*,client,engine,bucket,work,receipt_keys,provenance,run,
                 public_origin,contract,canary,verified_files=None,measured_release_id=None,comparison_acceptance=None,
-                resume=False):
+                resume=False,release_causes=None,link_history=()):
     """Prepare once, admit before a skip, otherwise export once and publish.
 
     SQL, graphs, grouping and file writing use the maintained native model.
@@ -212,6 +212,14 @@ def run_publish(model_spec,*,client,engine,bucket,work,receipt_keys,provenance,r
             provenance=_provenance_snapshot(client,bucket,provenance)
             pointer,etag=read_pointer(client,bucket=bucket,evidence=work/'outgoing-pointer.json')
             status.update(live_release=pointer['release_id'] if pointer else None,live_release_basis='pinned_at_start')
+            # Gates 1 and 2 read the pinned live release; the ledger also reads its link history.
+            # These stay out of the input identity (data model §8.3), so a resume keeps its
+            # checkpoint. Fetched only after the selected-release checks below.
+            from viewer_publication.release_gate import client_reader,fetch_base
+            def held_base():
+                return fetch_base(lambda rid:client_reader(client,bucket,rid),
+                    pointer['release_id'] if pointer else None,work,list(link_history))
+            base_release=prior=retired=None
             if pending is not None:
                 _require_model_definition(pending,engine)
                 if pointer!=pending['pointer'] or etag!=pending['pointer_etag']:
@@ -220,8 +228,10 @@ def run_publish(model_spec,*,client,engine,bucket,work,receipt_keys,provenance,r
                 _save_continuation(attempt/'prior-intent.json',pending)
                 stage=dict(output=str(attempt/'release'),scratch=str(attempt/'scratch'))
             if checkpoint is None:
+                base_release,prior,retired=held_base()
                 prepared=prepare_model_inputs(**arguments,parser_versions=model_spec['parser_versions'],
-                    catalog_version=model_spec['catalog_version'],engine=engine,scratch=stage['scratch'])
+                    catalog_version=model_spec['catalog_version'],engine=engine,scratch=stage['scratch'],
+                    prior_links=prior,base_retired=retired)
                 profile=prepared['profile']
                 entity_digests=prepared.get('entity_digests') or {}
             else:
@@ -283,6 +293,11 @@ def run_publish(model_spec,*,client,engine,bucket,work,receipt_keys,provenance,r
             return dict(status)
         record=dict(input_digest=digest,profile=profile['profile'],snapshots=profile['snapshots'],
             provenance=provenance,entity_digests=entity_digests,run=run)
+        if base_release is None and pointer:
+            base_release,prior,retired=held_base()
+        if base_release is not None:
+            record['base_release']=dict(release_id=pointer['release_id'],link_history=list(link_history),
+                prior_links=file_pin(prior))
         pin=lambda path:dict(path=str(path),**file_pin(path))
         artifacts=(dict(manifest_pin=pin(Path(stage['output'])/'manifest.json'),
             result_pin=pin(prepared['scratch']/'result.json')) if checkpoint is None else
@@ -298,6 +313,7 @@ def run_publish(model_spec,*,client,engine,bucket,work,receipt_keys,provenance,r
             asset_journal=work/'publication-assets.json',
             measured_release_id=measured_release_id,comparison_acceptance=comparison_acceptance,
             pointer=pointer,expected_etag=etag,public_origin=public_origin,
+            base_release=base_release,release_causes=release_causes,
             contract=lambda **context:contract(**context,probe_selectors=probe_selectors),
             canary=lambda **context:canary(**context,probe_selectors=probe_selectors))
     except BaseException as error:
