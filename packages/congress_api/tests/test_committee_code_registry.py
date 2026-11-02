@@ -39,7 +39,12 @@ def test_removing_a_select_stem_is_detected(monkeypatch):
 def test_the_parser_alone_maps_select_codes():
     """ct-p3ff: the model SQL keeps no hs-to-hl copy that could drift from _HOUSE_SELECT_CODES."""
     texts = {path.name: path.read_text() for path in (ROOT / 'model/sql').rglob('*.sql')}
-    assert [name for name, text in texts.items() if re.search(r"'hl'\s*\|\|", text) or SELECT_RULE.search(text)] == []
+    assert [name for name, text in texts.items()
+            if re.search(r"'hl'\s*\|\|", text) or SELECT_RULE.search(text) or re.search(r"'h[slt]zt00'", text)] == []
+
+
+def test_the_task_force_code_reaches_its_registry_code_from_the_parser():
+    assert normalize_house_committee_code('hszt00') == 'htzt00' and 'htzt00' in {r['system_code'] for r in REGISTRY}
 
 
 def test_a_house_select_committee_meeting_reaches_a_registry_code_without_sql_help():
