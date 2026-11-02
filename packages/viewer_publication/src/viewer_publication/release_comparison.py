@@ -1,12 +1,19 @@
-#!/usr/bin/env python3
-"""Diagnostic: size row-count changes between two published releases. Not a publish gate.
+"""Gate 1 (ct-tk10): compare a candidate release with the live (base) release, key by key and value by value.
 
 Rows are matched on published identity, never on `list_row`, which is release-local.
-Group sums are close to an identity (the `list` sum always is), so a matching sum proves
-only that no row was dropped. Each group therefore carries a status, and only `verified`
-means a cause was checked against data; any other status, or a sum miss, exits 1:
-`unverified` (sized, cause not checked), `defect`, `unexplained`. A verified group still
-says nothing about whether a row is right.
+Every manifest file is covered: a special handler, the registry's primary key, a
+`file added`/`file removed` group, or a refusal for a changed file with no comparison.
+Row groups sum to the file's row delta (the `list` sum always does), so a matching sum
+proves only that no row was dropped. Value groups (`changed <column>`) count matched rows
+whose column differs and stand outside that sum. Only `verified` means a cause was checked
+against data; any other status, or a sum miss, fails: `unverified` (sized, cause not
+checked), `defect`, `unexplained`. `release_gate` accepts a failing group only with a
+recorded cause of the exact count.
+
+Cannot see: a defect present in both releases (no difference); content of split, merged
+or added rows (no matched partner); a second cause hiding inside one column group of the
+same count; whether a recorded cause is true. Witness rows are compared by
+(occasion, name) only, because witness keys were redefined in 448651e7.
 """
 from __future__ import annotations
 
@@ -22,7 +29,6 @@ from pathlib import Path
 
 import duckdb
 
-PARQUETS = 'list detail links urls sources recoveries meetings witnesses recordings bills url_state'.split()
 OFFSETS = {'src_start', 'rec_start', 'file_row_number'}  # shift whenever an earlier row changes
 TRIPLE = 'receipt_key,receipt_line,capture_index'
 
@@ -34,12 +40,20 @@ class Diff:
         self.entry = {s: {f['name']: f for f in m['files']} for s, m in self.manifest.items()}
         self.con = duckdb.connect()
         for side, directory in self.dirs.items():
-            for name in PARQUETS:
-                path = directory / f'{name}.parquet'
-                if path.exists():
+            for entry in self.manifest[side]['files']:
+                name = entry['name'].removesuffix('.parquet')
+                path = directory / entry['name']
+                if entry['name'].endswith('.parquet') and path.exists():
                     extra = ',file_row_number=true' if name in ('list', 'detail') else ''
                     self.view(f'{side}_{name}', f"SELECT * FROM read_parquet('{path}'{extra})")
+        self.identities = identities(self.dirs)
         self.link_causes = False
+
+    def has(self, side, table):
+        return bool(self.rows(f"SELECT 1 FROM duckdb_views() WHERE view_name='{side}_{table}'"))
+
+    def columns(self, side, table):
+        return [r[0] for r in self.rows(f'DESCRIBE {side}_{table}')]
 
     def view(self, name, sql):
         self.con.execute(f'CREATE TEMP VIEW {name} AS {sql}')
@@ -53,23 +67,51 @@ class Diff:
     def rows(self, sql):
         return self.con.execute(sql).fetchall()
 
-    def changed(self, table, join, compare=None, exclude=OFFSETS):
-        """Count per column how many matched rows differ; `join` must alias sides p and l."""
-        columns = {r[0] for r in self.rows(f'DESCRIBE base_{table}')} & {r[0] for r in self.rows(f'DESCRIBE candidate_{table}')}
-        out = {}
-        for column in sorted(columns - set(exclude)):
+    def changed(self, table, join, compare=None, exclude=OFFSETS, only=None):
+        """One value group per column whose matched rows differ; `join` must alias sides p and l.
+
+        One query per table: each column costs one IS DISTINCT FROM per matched row,
+        O(matched rows x columns), with no per-column rescan.
+        """
+        columns = set(self.columns('base', table)) & set(self.columns('candidate', table))
+        if only is not None:
+            columns &= set(only)
+        selected = sorted(columns - set(exclude))
+        if not selected:
+            return []
+        terms = []
+        for column in selected:
             template = (compare or {}).get(column, 'X.{c}')
             left, right = (template.replace('X', s).format(c=f'"{column}"') for s in 'pl')
-            count = self.one(f'SELECT count(*) FROM {join} WHERE {left} IS DISTINCT FROM {right}')
-            if count:
-                out[column] = count
-        return out
+            terms.append(f'count(*) FILTER (WHERE {left} IS DISTINCT FROM {right})')
+        counts = self.con.execute(f'SELECT {",".join(terms)} FROM {join}').fetchone()
+        return [value_group(column, n) for column, n in zip(selected, counts) if n]
 
 
 def group(name, cause, count, status='unverified'):
     if cause == 'unexplained':
         status = 'unexplained'
     return {'group': name, 'cause': cause, 'count': int(count), 'status': status}
+
+
+def value_group(column, count):
+    """A matched-key value change: sized, outside the row-delta sum, unverified until a cause is recorded."""
+    return {'group': f'changed {column}', 'cause': 'value differs on matched key', 'count': int(count),
+            'status': 'unverified', 'value': True}
+
+
+def identities(dirs):
+    """Primary keys from the candidate's published schema, else the base's, else the registry."""
+    found = {}
+    sources = [d / 'schema.json' for d in (dirs['candidate'], dirs['base'])]
+    for path in sources:
+        if path.exists():
+            for table in json.loads(path.read_text()).get('files', []):
+                found.setdefault(table['name'].removesuffix('.parquet'), table['identity'])
+    from viewer_publication.archive_schema import build_schema
+    for table in build_schema()['files']:
+        found.setdefault(table['name'].removesuffix('.parquet'), table['identity'])
+    return found
 
 
 def flag(name, cause, status='unverified'):
@@ -153,7 +195,7 @@ def document_file(table):
     def run(d: Diff):
         groups, shape = d.documents
         join = f'one_to_one JOIN base_{table} p ON p.file_row_number=pr JOIN candidate_{table} l ON l.file_row_number=lr'
-        return groups, {**(shape if table == 'list' else {}), 'one_to_one_field_changes': d.changed(table, join)}
+        return [*groups, *d.changed(table, join, exclude=OFFSETS | {'file_row_number'})], shape if table == 'list' else {}
     return run
 
 
@@ -203,7 +245,40 @@ def sources(d: Diff):
                 WHERE x.member_path IS NOT NULL AND x.ln<x.pn AND NOT EXISTS (SELECT 1 FROM flips f WHERE f.a_real AND NOT f.b_real
                 AND f.member_path=x.member_path AND f.context_url IS NOT DISTINCT FROM x.url)"""):
             g.update(status='verified', cause='every removed address has its own real-to-not flip')
-    return [g for g in out if g['count']], notes
+    out = [g for g in out if g['count']]
+    if {'list_row', 'url', 'member_path'} <= set(d.columns('base', 'sources')) & set(d.columns('candidate', 'sources')):
+        out += d.changed('sources', paired('sources', ['url', 'member_path']),
+                         only=['is_saved', 'first_seen', 'listed_on', 'link_text', 'doc_type', 'posted'])
+    return out, notes
+
+
+def paired(table, fields):
+    """Rows on one-to-one document pairs whose address is unique on both sides, aliased p and l."""
+    on = ' AND '.join(f'p.{f} IS NOT DISTINCT FROM l.{f}' for f in fields)
+    unique = lambda side, alias: (f"""(SELECT * FROM {side}_{table} QUALIFY count(*) OVER
+        (PARTITION BY list_row,{','.join(fields)})=1) {alias}""")
+    return (f"one_to_one o JOIN {unique('base', 'p')} ON p.list_row=o.pr "
+            f"JOIN {unique('candidate', 'l')} ON l.list_row=o.lr AND {on}")
+
+
+def recoveries(d: Diff):
+    groups, notes = key_file('recoveries', 'body,recovered_url,kind')(d)
+    if 'list_row' in set(d.columns('base', 'recoveries')) & set(d.columns('candidate', 'recoveries')):
+        groups += d.changed('recoveries', paired('recoveries', ['body', 'recovered_url', 'kind']),
+                            only=['suffix', 'bytes', 'imported_at', 'identity_note'])
+    return groups, notes
+
+
+def generic(table):
+    """Registry primary key: rows added and removed by identity, then value groups on matched rows."""
+    def run(d: Diff):
+        fields = d.identities[table]['fields']
+        using = ','.join(f'"{f}"' for f in fields)
+        removed = d.one(f'SELECT count(*) FROM base_{table} ANTI JOIN candidate_{table} USING({using})')
+        added = d.one(f'SELECT count(*) FROM candidate_{table} ANTI JOIN base_{table} USING({using})')
+        out = [group('removed keys', 'no evidence given', -removed), group('added keys', 'no evidence given', added)]
+        return out + d.changed(table, f'base_{table} p JOIN candidate_{table} l USING({using})', exclude=set(fields)), {}
+    return run
 
 
 def key_file(table, key):
@@ -222,11 +297,8 @@ def key_file(table, key):
 def meetings(d: Diff):
     groups, _ = key_file('meetings', 'event_id')(d)
     compare = {'transcripts': 'list_transform(X.{c},t->t.package_id)'}  # transcript list_row is release-local
-    wiped = d.one("""SELECT count(*) FROM base_meetings p JOIN candidate_meetings l USING(event_id)
-      WHERE len(coalesce(p.subject_keys,[]))>0 AND len(coalesce(l.subject_keys,[]))=0""")
-    if wiped:
-        groups.append(flag(f'{wiped} meetings lost every subject key', 'row count unchanged, content lost'))
-    return groups, {'shared_field_changes': d.changed('meetings', 'base_meetings p JOIN candidate_meetings l USING(event_id)', compare, set())}
+    # A swapped or wiped subject key is a `changed subject_keys` group.
+    return groups + d.changed('meetings', 'base_meetings p JOIN candidate_meetings l USING(event_id)', compare, set()), {}
 
 
 def bills(d: Diff):
@@ -238,7 +310,7 @@ def bills(d: Diff):
     out = [group('added bills', cause, n, 'verified') for cause, n in added]
     if removed:
         out.append(group('removed bills', 'unexplained', -removed))
-    return out, {'shared_field_changes': d.changed('bills', 'base_bills p JOIN candidate_bills l USING(bill_id)', exclude=set())}
+    return out + d.changed('bills', 'base_bills p JOIN candidate_bills l USING(bill_id)', exclude=set()), {}
 
 
 def recordings(d: Diff):
@@ -257,7 +329,7 @@ def recordings(d: Diff):
             groups.append(group('added keys', f"{events}; {'capture newly real' if tied else 'source not traced'}", n,
                                 'verified' if tied else 'unverified'))
     tracks = {'tracks': 'list_transform(X.{c},t->t.body)'}
-    return groups, {'shared_field_changes': d.changed('recordings', 'base_recordings p JOIN candidate_recordings l USING(video_key)', tracks, set())}
+    return groups + d.changed('recordings', 'base_recordings p JOIN candidate_recordings l USING(video_key)', tracks, set()), {}
 
 
 def witnesses(d: Diff):
@@ -293,11 +365,11 @@ def url_state(d: Diff):
     if len(removed) - len(matching):
         out.append(group('removed URLs', 'unexplained', len(matching) - len(removed)))
     out += [group('added URLs', 'queued link with no attempts yet' if queued else 'new attempts', n) for queued, n in added]
-    return out, {'shared_field_changes': d.changed('url_state', 'base_url_state p JOIN candidate_url_state l USING(requested_url)', exclude=set())}
+    return out + d.changed('url_state', 'base_url_state p JOIN candidate_url_state l USING(requested_url)', exclude=set()), {}
 
 
 HANDLERS = {'list': document_file('list'), 'detail': document_file('detail'), 'links': links, 'urls': urls, 'sources': sources, 'meetings': meetings,
-            'recoveries': key_file('recoveries', 'body,recovered_url,kind'), 'witnesses': witnesses,
+            'recoveries': recoveries, 'witnesses': witnesses,
             'recordings': recordings, 'bills': bills, 'url_state': url_state}
 
 
@@ -311,8 +383,14 @@ def account(d: Diff):
         delta = rows['candidate'] - rows['base']
         same = bool(base and candidate and base['sha256'] == candidate['sha256'])
         groups, notes = [], {}
-        if not same and stem in HANDLERS:
-            groups, notes = HANDLERS[stem](d)
+        handler = HANDLERS.get(stem)
+        if handler is None and name.endswith('.parquet') and d.identities.get(stem, {}).get('kind') == 'primary_key':
+            handler = generic(stem)
+        if base is None or candidate is None:
+            side = 'base' if base is None else 'candidate'
+            groups = [group('file added' if base is None else 'file removed', f'file absent from the {side} release', delta)]
+        elif not same and handler is not None:
+            groups, notes = handler(d)
             for side, entry in (('base', base), ('candidate', candidate)):
                 actual = d.one(f'SELECT count(*) FROM {side}_{stem}')
                 if entry and actual != entry['rows']:
@@ -326,11 +404,16 @@ def account(d: Diff):
             persisting = d.one('SELECT count(*) FROM candidate_sources WHERE url IS NULL') - sum(g['count'] for g in groups if g['group'] == 'NULL url')
             if persisting:
                 groups.append(flag(f'{persisting} NULL urls also present in the previous release', 'a published source address must not be null', 'defect'))
-        residual = delta - sum(g['count'] for g in groups)
+        if base and candidate and not same and handler is None:
+            # A digest change that no comparison explains, such as an equal-count value change
+            # in a file without a handler, used to pass silently.
+            groups.append(flag('changed file without a comparison', 'unexplained'))
+        rowsum = sum(g['count'] for g in groups if not g.get('value'))
+        residual = delta - rowsum
         if residual:
             groups.append(group('residual', 'unexplained', residual))
         report[name] = {'rows': rows, 'delta': delta, 'digest_identical': same, 'groups': groups, **notes,
-                        'check': {'sum': sum(g['count'] for g in groups), 'ok': not residual}}
+                        'check': {'sum': delta - residual if residual else rowsum, 'ok': not residual}}
     return report
 
 
@@ -355,6 +438,51 @@ def write_removed_keys(d: Diff, path: Path):
     return len(rows)
 
 
+def link_rule(d: Diff, sample=100):
+    """Gate 2's publish check: no key published by the base or its ledger may vanish.
+
+    missing: (base links ∪ base retired_links) minus (candidate links ∪ candidate retired_links).
+    dangling: a candidate successor_key that is not a candidate link. No record overrides either.
+    Cannot see whether a successor is the right document, or keys outside links (lookup keys,
+    event IDs, witness keys, bill IDs), which value groups and release notes cover.
+    """
+    def keys(side):
+        parts = [f'SELECT link_key FROM {side}_links']
+        if d.has(side, 'retired_links'):
+            parts.append(f'SELECT link_key FROM {side}_retired_links')
+        return ' UNION '.join(parts)
+    d.table('rule_missing', f"SELECT lower(hex(link_key)) k FROM ({keys('base')}) EXCEPT SELECT lower(hex(link_key)) FROM ({keys('candidate')})")
+    dangling_sql = ("SELECT lower(hex(successor_key)) k FROM candidate_retired_links WHERE successor_key IS NOT NULL "
+                    "EXCEPT SELECT lower(hex(link_key)) FROM candidate_links") if d.has('candidate', 'retired_links') else \
+                   "SELECT cast(NULL AS VARCHAR) k WHERE false"
+    d.table('rule_dangling', dangling_sql)
+    out = {}
+    for name in ('missing', 'dangling'):
+        out[name] = d.one(f'SELECT count(*) FROM rule_{name}')
+        out[name + '_keys'] = [r[0] for r in d.rows(f'SELECT k FROM rule_{name} ORDER BY k LIMIT {int(sample)}')]
+    out['ok'] = not out['missing'] and not out['dangling']
+    return out
+
+
+def compare(base, candidate, *, evidence_base=None, evidence_candidate=None, record_digest=(), removed_keys=None):
+    """Compare two local release directories; the report is the gate's only input."""
+    if bool(evidence_base) != bool(evidence_candidate):
+        raise ValueError('--evidence-base and --evidence-candidate go together')
+    d = Diff(Path(base), Path(candidate))
+    flips = add_evidence(d, evidence_base, evidence_candidate) if evidence_base else None
+    files = account(d)
+    result = {'base_release': d.manifest['base']['release_id'], 'candidate_release': d.manifest['candidate']['release_id'],
+              'capture_flips': flips, 'files': files, 'link_rule': link_rule(d),
+              'inputs': [digest(p) for p in [evidence_base, evidence_candidate, *record_digest] if p]}
+    if removed_keys:
+        result['removed_keys_written'] = write_removed_keys(d, removed_keys)
+    failing = [{'file': n, **g} for n, f in files.items() for g in f['groups'] if g['status'] != 'verified']
+    failed = [n for n, f in files.items() if not f['check']['ok']]
+    result['ok'] = not failing and not failed and result['link_rule']['ok']
+    result['failing'] = failing
+    return result
+
+
 def main(argv=None):
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--base', type=Path, required=True)
@@ -367,21 +495,14 @@ def main(argv=None):
     args = parser.parse_args(argv)
     if bool(args.evidence_base) != bool(args.evidence_candidate):
         parser.error('--evidence-base and --evidence-candidate go together')
-    d = Diff(args.base, args.candidate)
-    flips = add_evidence(d, args.evidence_base, args.evidence_candidate) if args.evidence_base else None
-    files = account(d)
-    result = {'base_release': d.manifest['base']['release_id'], 'candidate_release': d.manifest['candidate']['release_id'],
-              'capture_flips': flips, 'files': files,
-              'inputs': [digest(p) for p in [args.evidence_base, args.evidence_candidate, *args.record_digest] if p]}
-    if args.removed_keys:
-        result['removed_keys_written'] = write_removed_keys(d, args.removed_keys)
-    failing = [{'file': n, **g} for n, f in files.items() for g in f['groups'] if g['status'] != 'verified']
-    failed = [n for n, f in files.items() if not f['check']['ok']]
-    result['ok'] = not failing and not failed
-    result['failing'] = failing
+    result = compare(args.base, args.candidate, evidence_base=args.evidence_base, evidence_candidate=args.evidence_candidate,
+                     record_digest=args.record_digest, removed_keys=args.removed_keys)
     args.output.write_text(json.dumps(result, indent=1, default=str) + '\n')
-    for entry in failing:
+    for entry in result['failing']:
         print(f"{entry['status']} {entry['file']}: {entry['count']} {entry['group']} ({entry['cause']})", file=sys.stderr)
+    rule = result['link_rule']
+    if not rule['ok']:
+        print(f"link rule: {rule['missing']} missing, {rule['dangling']} dangling", file=sys.stderr)
     return 0 if result['ok'] else 1
 
 

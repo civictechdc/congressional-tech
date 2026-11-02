@@ -33,7 +33,7 @@ def release(directory, *, documents, sources=(), schemas=SCHEMAS, **tables):
     data = {'list': [{'filename': keys} for keys in documents],
             'detail': [{'saved_body': None} for _ in documents],
             'links': [{'link_key': key(k), 'list_row': i} for i, keys in enumerate(documents) for k in keys],
-            'sources': [dict(zip(('list_row', 'url', 'member_path'), s)) for s in sources], **tables}
+            'sources': [s if isinstance(s, dict) else dict(zip(('list_row', 'url', 'member_path'), s)) for s in sources], **tables}
     files = []
     for name, fields in schemas.items():
         rows = data.get(name, [])
@@ -153,7 +153,10 @@ def test_evidence_ties_removed_and_added_keys_to_eligibility_flips(tmp_path):
     after = evidence(tmp_path / 'after.parquet', [('A', True, None), ('M', False, 'm.htm'), ('N', True, None)])
     code, result = run(tmp_path, prev, live, '--evidence-base', before, '--evidence-candidate', after,
                        '--removed-keys', str(tmp_path / 'removed.csv.gz'))
-    assert code == 0
+    # Every group is verified, yet the removed key M has no redirect or removal notice:
+    # the link rule alone refuses (gate 2).
+    assert code == 1 and result['failing'] == []
+    assert result['link_rule']['missing_keys'] == [key('M').hex()] and result['link_rule']['dangling'] == 0
     assert counts(result, 'links') == {('removed keys', 'member-only body no longer real'): -1,
                                        ('added keys', 'newly eligible body'): 1}
     assert counts(result, 'list') == {('removed rows', 'member-only body no longer real'): -1,
@@ -239,6 +242,76 @@ def test_wiped_subject_keys_raise_a_group_with_no_row_change(tmp_path):
     live = release(tmp_path / 'live', documents=['A'], meetings=[{'event_id': 1, 'subject_keys': []}])
     code, result = run(tmp_path, prev, live)
     assert code == 1 and failing(result) == {('meetings.parquet', 'unverified')}
+    assert counts(result, 'meetings') == {('changed subject_keys', 'value differs on matched key'): 1}
+
+
+def test_swapped_subject_key_is_a_value_group(tmp_path):
+    """ct-d3tk: release_diff exited 0 on a swapped key; the comparison now refuses it."""
+    prev = release(tmp_path / 'prev', documents=['A'], meetings=[{'event_id': 1, 'subject_keys': ['hr1']}])
+    live = release(tmp_path / 'live', documents=['A'], meetings=[{'event_id': 1, 'subject_keys': ['hr2']}])
+    code, result = run(tmp_path, prev, live)
+    assert code == 1
+    assert counts(result, 'meetings') == {('changed subject_keys', 'value differs on matched key'): 1}
+    assert result['files']['meetings.parquet']['check']['ok']  # a value group is outside the row sum
+
+
+COMMITTEES = [('system_code', S), ('name', S), ('chamber', S)]
+
+
+def test_changed_file_without_handler_fails(tmp_path):
+    """committees has no special handler: its registry key compares values at equal row counts."""
+    schemas = {**SCHEMAS, 'committees': COMMITTEES}
+    prev = release(tmp_path / 'prev', documents=['A'], schemas=schemas,
+                   committees=[{'system_code': 'hsag00', 'name': 'Agriculture', 'chamber': 'House'}])
+    live = release(tmp_path / 'live', documents=['A'], schemas=schemas,
+                   committees=[{'system_code': 'hsag00', 'name': 'Agriculture!', 'chamber': 'House'}])
+    code, result = run(tmp_path, prev, live)
+    assert code == 1 and result['files']['committees.parquet']['delta'] == 0
+    assert counts(result, 'committees') == {('changed name', 'value differs on matched key'): 1}
+
+
+def test_changed_file_with_no_comparison_at_all_is_refused(tmp_path):
+    schemas = {**SCHEMAS, 'mystery': [('x', S)]}
+    prev = release(tmp_path / 'prev', documents=['A'], schemas=schemas, mystery=[{'x': 'a'}])
+    live = release(tmp_path / 'live', documents=['A'], schemas=schemas, mystery=[{'x': 'b'}])
+    code, result = run(tmp_path, prev, live)
+    assert code == 1
+    assert counts(result, 'mystery') == {('changed file without a comparison', 'unexplained'): 0}
+
+
+def test_added_and_removed_files_are_groups(tmp_path):
+    prev = release(tmp_path / 'prev', documents=['A'], schemas={**SCHEMAS, 'committees': COMMITTEES},
+                   committees=[{'system_code': 'a', 'name': 'n', 'chamber': 'c'}])
+    live = release(tmp_path / 'live', documents=['A'], schemas={**SCHEMAS, 'url_variants': [('canonical_url', S), ('variant_url', S)]},
+                   url_variants=[{'canonical_url': 'a', 'variant_url': 'b'}, {'canonical_url': 'c', 'variant_url': 'd'}])
+    code, result = run(tmp_path, prev, live)
+    assert code == 1
+    assert counts(result, 'committees') == {('file removed', 'file absent from the candidate release'): -1}
+    assert counts(result, 'url_variants') == {('file added', 'file absent from the base release'): 2}
+
+
+SOURCES_FULL = [('list_row', I), ('url', S), ('member_path', S), ('is_saved', pa.bool_()), ('first_seen', pa.date32())]
+
+
+def test_sources_value_change_on_matched_address_is_a_group(tmp_path):
+    from datetime import date
+    schemas = {**SCHEMAS, 'sources': SOURCES_FULL}
+    row = lambda saved: {'list_row': 0, 'url': 'u', 'member_path': None, 'is_saved': saved, 'first_seen': date(2026, 1, 1)}
+    prev = release(tmp_path / 'prev', documents=['A'], schemas=schemas, sources=[row(True)])
+    live = release(tmp_path / 'live', documents=['A'], schemas=schemas, sources=[row(False)])
+    code, result = run(tmp_path, prev, live)
+    assert code == 1
+    assert counts(result, 'sources') == {('changed is_saved', 'value differs on matched key'): 1}
+
+
+def test_recovery_value_change_is_a_group(tmp_path):
+    schemas = {**SCHEMAS, 'recoveries': [('list_row', I), ('body', B), ('recovered_url', S), ('kind', S), ('bytes', pa.int64())]}
+    row = lambda size: {'list_row': 0, 'body': b'b' * 32, 'recovered_url': 'r', 'kind': 'recovered_document', 'bytes': size}
+    prev = release(tmp_path / 'prev', documents=['A'], schemas=schemas, recoveries=[row(10)])
+    live = release(tmp_path / 'live', documents=['A'], schemas=schemas, recoveries=[row(11)])
+    code, result = run(tmp_path, prev, live)
+    assert code == 1
+    assert counts(result, 'recoveries') == {('changed bytes', 'value differs on matched key'): 1}
 
 
 def test_false_manifest_digest_raises_a_group(tmp_path):
