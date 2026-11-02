@@ -62,9 +62,10 @@ WITH prints AS (
  LEFT JOIN shared s ON s.package_id=c.package_id AND s.event_id=c.event_id
  LEFT JOIN titled t ON t.package_id=c.package_id AND t.event_id=c.event_id
 ), agreeing AS (
- SELECT *,bool_or(NOT not_held) OVER(PARTITION BY package_id,day) AS some_sat FROM decided WHERE agrees
+ -- Ordered windows (first_value), not unbounded aggregates over the partition (join audit).
+ SELECT *,NOT first_value(not_held) OVER(PARTITION BY package_id,day ORDER BY not_held ASC) AS some_sat FROM decided WHERE agrees
 ), sat AS (
- SELECT *,max(score) OVER(PARTITION BY package_id,day) AS best FROM agreeing WHERE NOT (not_held AND some_sat)
+ SELECT *,first_value(score) OVER(PARTITION BY package_id,day ORDER BY score DESC) AS best FROM agreeing WHERE NOT (not_held AND some_sat)
 )
 -- One print records one meeting a day: of several same-day meetings that agree (a hearing and a markup of
 -- the same bills, 100692 and 100693), the best match keeps it; ties stay.

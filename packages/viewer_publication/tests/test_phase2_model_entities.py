@@ -373,8 +373,14 @@ def test_phase2_entities_meetings_witnesses_recordings_and_spicy_projections(tmp
             title='HOUSE XML OFFICIAL TITLE',
             appearances=[
                 dict(
-                    name_key='mods_loser',
-                    name='MODS Witness For Linked Package',
+                    # The print names the meeting's own Congress.gov witness, so it records 115538 (DATA-MODEL 7.11).
+                    name_key='other person',
+                    name='Other Person',
+                    document_urls=[],
+                ),
+                dict(
+                    name_key='jane smith',
+                    name='Dr. Jane Smith',
                     document_urls=['https://www.govinfo.gov/content/pkg/CHRG-118hhrg55555/pdf/CHRG-118hhrg55555.pdf'],
                 ),
             ],
@@ -716,10 +722,15 @@ def test_phase2_entities_meetings_witnesses_recordings_and_spicy_projections(tmp
 
     # 2. Verify witnesses.parquet
     witnesses = pq.read_table(release_dir / 'witnesses.parquet').to_pylist()
-    assert len(witnesses) == 4
-    meeting_witnesses = [w for w in witnesses if w['occasion'] == 'meeting:115538']
-    assert len(meeting_witnesses) == 2
+    # Precedence is per person (red-f2): the print's Jane Smith is superseded by the House row, and the
+    # Congress.gov list's Other Person, whom no higher source names, is shown.
+    superseded = [w for w in witnesses if w['superseded_by']]
+    assert sorted((w['source'], w['name']) for w in superseded) == [('mods', 'Dr. Jane Smith'), ('mods', 'Other Person')]
+    witnesses = [w for w in witnesses if not w['superseded_by']]
+    assert len(witnesses) == 5
+    meeting_witnesses = [w for w in witnesses if w['occasion'] == 'meeting:115538' and w['source'] == 'house_xml']
     assert [w['name'] for w in meeting_witnesses] == ['Dr. Jane Smith', 'Dr. Jane Smith Second Panel']
+    assert [w['name'] for w in witnesses if w['occasion'] == 'meeting:115538' and w['source'] == 'congress_gov'] == ['Other Person']
     assert meeting_witnesses[0]['witness_key'] != meeting_witnesses[1]['witness_key']
     assert meeting_witnesses[0]['witness_key'] == stmt_doc['witness_keys'][0]
     by_occasion = {w['occasion']: w for w in witnesses if w['occasion'] != 'meeting:115538'}

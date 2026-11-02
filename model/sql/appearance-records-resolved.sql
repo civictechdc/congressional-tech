@@ -233,7 +233,8 @@ WITH candidate_appearance_shas AS (
  -- One window over the occasion, as before: the lowest code is 2*priority for a present top source and
  -- 2*priority-1 when a top-priority body states none or failed. Joins or repeated references to these
  -- rows, which carry their appearance lists, made the engine sort them again.
- SELECT *,min(CASE WHEN effective_state='present' THEN 2*priority ELSE 2*priority-1 END) OVER(PARTITION BY occasion) AS top_code
+ SELECT *,first_value(CASE WHEN effective_state='present' THEN 2*priority ELSE 2*priority-1 END) OVER(
+  PARTITION BY occasion ORDER BY CASE WHEN effective_state='present' THEN 2*priority ELSE 2*priority-1 END ASC) AS top_code
  FROM current_source_observations
  WHERE effective_state IN ('present','empty','unresolved')
 ), selected_observations AS (
