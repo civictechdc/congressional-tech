@@ -8,7 +8,7 @@
 - **Two phases:** phase 1 is the documents-only switch; phase 2 adds hearings, witnesses, the spicy-regs entities and the large one-time raw jobs. §4 scopes both; [[PHASE-2]] holds phase 2's rules and gates.
 - **First:** B15 (the weekly job's records into raw), the lock probe, the lock on `bodies/` and `provenance/`, B0, then the lock on `receipts/`; the Basin smoke check and S1 run beside them, since they touch no raw (§4–5).
 - **Open (§8):** the rules on real data (S1, S2); the widest is the model (track E).
-- **Owner actions,** each before the step it blocks: the rescued batch's import and the weekly job's raw token (B15); the bucket lock (B1); B0's two patterns and scan report, and its live run; the Basin smoke check (§5.1); the credentials (B0's rewriter; the capture, publish and maintenance tokens before F1); facts only derived tables hold (D1, E4), before the switch; the real-device speed runs (A11); widening fingerprint candidates (S2).
+- **Owner actions,** each before the step it blocks: the rescued batch's import and the weekly job's raw token (B15); the bucket lock (B1); B0's two patterns and scan report, and its live run; the Basin smoke check (§5.1); the credentials (B0's rewriter; the capture, publish and maintenance tokens before F1); facts only derived tables hold (D1, E4), before the switch; widening fingerprint candidates (S2).
 - **Detail:** behavior in [[ARCHITECTURE]]; schemas, derivations, registries and invariants in [[DATA-MODEL]] and, for phase 2, [[PHASE-2]]; code and its state in [[BINDINGS]].
 
 ## 1. Introduction
@@ -279,7 +279,7 @@ The first engine-era release may be seeded by an engine SQL conversion of the pi
 - tracks A to E meet their done-when;
 - the cut-over ran in order: old capture disabled; a final ingest and publish; the flip; the new capture's first run on the target writers, whose `stored` lines carry MD5s matching their ETags and every line its stored suffix;
 - the explorer serves an engine-built release, and the reader opens saved files, alternates and recoveries from it;
-- the canary and contract test pass on that release, with the speed targets set on real devices against it (A11);
+- the canary and contract test pass on that release, with the speed targets set by emulated phone- and desktop-profile runs against it (A11; owner decision, 2026-11-02: no real-device gate);
 - C3's export is byte-identical across reruns and input orders on the pinned runner class and limits;
 - a failed canary is shown to leave the previous release live;
 - capture runs from `url_state` with no raw-index read, and every cut-off URL has a complete copy or a recorded reason;
@@ -315,7 +315,7 @@ Each row names an unknown, the step that settles it and what it decides, and clo
 | The 33,369 never-sniffed PDF candidates are PDFs | Phase 1's `sniff` | The copy count |
 | No older body beyond the 61 known has a multipart ETag | B9's first run | Nothing, unless the count changes |
 | The numbers in the specifications reproduce: each review round found 10–20 of about 370 wrong | Each load-bearing number re-derived from its committed script before a rule relies on it | Corrections in place |
-| Speed and heap targets on real phones and desktops | A11, on the first engine-built release | The canary's and contract test's thresholds |
+| Speed and heap targets from emulated phone and desktop profiles (owner decision, 2026-11-02) | A11, on the first engine-built release | The canary's and contract test's thresholds |
 | Whether `list` with titles fits the phone heap budget (*est.* 17–30 MB more; 46% of documents have a publisher label) | A11 on the first engine-built release; F0 gives a provisional budget | Titles stay in `list`, or move back to `detail` |
 | How many House event pages only the committee explorer's POST calendar API finds, which capture's scope drops ([[BINDINGS]] §3.1) | A count from the explorer's discovery before the switch | Whether capture needs that API as a seed |
 
