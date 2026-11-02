@@ -32,7 +32,7 @@ from ..parsers.house_xml import (
     strip_house_meeting_prefix,
 )
 from ..parsers.media import recording_reference, youtube_video_id
-from ..parsers.meeting_facts import stated_facts
+from ..parsers.meeting_facts import publisher_status, stated_facts
 from ..parsers.senate_player import parse_player_url
 from ._record_producer import (
     CANDIDATE_MEETING_RECORDS_SQL,
@@ -512,6 +512,13 @@ def _convert_congress_meeting_dict(m: Mapping[str, Any]) -> dict[str, Any]:
                     }
                 )
 
+    document_urls: list[str] = []
+    for key in ("meetingDocuments", "witnessDocuments"):
+        for doc in m.get(key) or []:
+            url = str(doc.get("url") or "").strip() if isinstance(doc, Mapping) else ""
+            if url and url not in document_urls:
+                document_urls.append(url)
+
     return {
         "event_id": event_id,
         "chamber": chamber,
@@ -527,16 +534,18 @@ def _convert_congress_meeting_dict(m: Mapping[str, Any]) -> dict[str, Any]:
         "subject_keys": subject_keys,
         "transcript_jackets": jackets,
         "videos": videos,
-        "document_urls": [],
+        "document_urls": document_urls,
         "collection_states": {
             "sittings": "present" if sittings else ("empty" if ("location" in m or "continuations" in m) else "absent"),
             "committees": "present" if committees else ("empty" if m.get("committees") is not None else "absent"),
             "subject_keys": "present" if subject_keys else ("empty" if m.get("relatedItems") is not None else "absent"),
             "transcript_jackets": "present" if jackets else ("empty" if m.get("hearingTranscript") is not None else "absent"),
             "videos": "present" if videos else ("empty" if m.get("videos") is not None else "absent"),
-            "document_urls": "absent",
+            # Entries with no URL are agenda items ("A bill to ..."), not files.
+            "document_urls": "present" if document_urls else (
+                "empty" if ("meetingDocuments" in m or "witnessDocuments" in m) else "absent"),
         },
-        **stated_facts(meeting_type, title),
+        **stated_facts(meeting_type, title, status),
     }
 
 
@@ -913,8 +922,9 @@ def extract_house_xml_meetings(payload: bytes | str | HouseMeetingXML) -> list[d
             subject_keys.append(b_key)
 
     meeting_type = (root.get("meeting-type") or "").strip() or None
-    current_status = value(details, "current-status") if details is not None else ""
-    status = current_status or None
+    # Raw House XML puts <current-status> (S, R or P) directly under the root,
+    # not inside <meeting-details>: 6,176 of 6,179 retained bodies.
+    status = publisher_status(value(root, "current-status"))
 
     has_loc_elems = details is not None and (
         details.find("meeting-date") is not None
@@ -949,7 +959,7 @@ def extract_house_xml_meetings(payload: bytes | str | HouseMeetingXML) -> list[d
                 "videos": "absent",
                 "document_urls": "present" if document_urls else ("empty" if docs_root is not None else "absent"),
             },
-            **stated_facts(meeting_type, title),
+            **stated_facts(meeting_type, title, status),
         }
     ]
 

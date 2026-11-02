@@ -6,6 +6,7 @@ import pytest
 from congress_api.adapters.common import AdapterContext
 from congress_api.adapters.meetings import records
 from congress_api.matching.meetings import meeting_access, meeting_type
+from congress_api.parsers.meeting_facts import stated_facts, title_key
 
 
 @pytest.mark.parametrize('title,expected', [
@@ -96,7 +97,6 @@ def test_topics_and_uncertain_or_secondary_access_do_not_classify_entire_meeting
 @pytest.mark.parametrize('native,title,expected', [
     ('Open Hearing', 'Open borders policy', 'open'),
     ('Open Business Meeting', 'Closed session', 'open'),
-    ('Closed Hearing', 'Closed hearings followed by an open session', 'closed'),
     ('Closed Markup Session', 'Markup', 'closed'),
     ('Open and Closed Hearing', 'Hearing', 'partly_closed'),
 ])
@@ -135,3 +135,48 @@ def test_derived_classification_preserves_native_payload_and_field_evidence():
 ])
 def test_a_separate_or_named_closed_session_is_stated_from_raw_titles(native, title, expected):
     assert meeting_access({'type': native, 'title': title})[0] == expected
+
+
+# Raw Congress.gov titles (events 338162, 338680): the separate-session rule holds both ways.
+@pytest.mark.parametrize('native,title,expected', [
+    ('Closed Hearing', 'Closed hearings to examine the posture of United States Indo-Pacific Command and United States '
+     'Forces Korea in review of the Defense Authorization Request for Fiscal Year 2027 and the Future Years Defense '
+     'Program; to be immediately followed by an open session at 9:30 a.m. in SD-G50.', 'partly_closed'),
+    ('Closed Hearing', 'Closed hearings followed by an open session', 'partly_closed'),
+    ('Open Business Meeting', 'Business meeting to consider the nominations of Christopher Phelan; to be immediately '
+     'followed by an opening hearing to examine the nominations of Brian Johnson.', 'open'),
+])
+def test_a_separate_session_of_the_other_access_counts_in_either_direction(native, title, expected):
+    assert meeting_access({'type': native, 'title': title})[0] == expected
+
+
+@pytest.mark.parametrize('status,title,expected', [
+    ('Postponed', 'Oversight of federal grant programs topic', True),
+    ('Canceled', 'Oversight of federal grant programs topic', True),
+    ('P', 'Oversight of federal grant programs topic', True),
+    ('Scheduled', 'Oversight of federal grant programs topic', False),
+    (None, 'Oversight of federal grant programs topic', False),
+    ('Rescheduled', 'RESCHEDULED: Markup on H.R. 1', False),
+    ('R', 'RESCHEDULED: Oversight of the Office of Advocacy and the Office of the National Ombudsman at the SBA', False),
+    ('Rescheduled', 'POSTPONED UNTIL 12:00 PM\r\n\r\nA Cautionary Tale: A Review of SBA’s Failed FY 2014 Agency Restructure', False),
+    ('Scheduled', 'POSTPONED: Hearing on wildfire funding', True),
+    ('Scheduled', 'Test', True),
+])
+def test_not_held_reads_publisher_status_then_title(status, title, expected):
+    assert stated_facts('Hearing', title, status=status)['not_held'] is expected
+
+
+@pytest.mark.parametrize('left,right', [
+    ('Part I: Powering America: Defining Reliability in a Transforming Electricity Industry',
+     'Part II: Powering America: Defining Reliability in a Transforming Electricity Industry'),
+    ('“The Capitol Insurrection: Unexplained Delays and Unanswered Questions”',
+     '“The Capitol Insurrection:  Unexplained Delays and Unanswered Questions (Part II)”'),
+    ('Budget hearing for the Forest Service programs, Day 1', 'Budget hearing for the Forest Service programs, Day 2'),
+])
+def test_title_key_keeps_parts_and_days_apart(left, right):
+    assert title_key(left) and title_key(right) and title_key(left) != title_key(right)
+
+
+def test_title_key_does_not_read_a_program_letter_as_a_part():
+    title = 'Medicare Part D drug pricing negotiation program review'
+    assert title_key(title) == title_key(title.upper()) and ':' not in title_key(title)
