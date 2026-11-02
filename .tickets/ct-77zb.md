@@ -92,3 +92,7 @@ Round 1b 2026-11-02 (lead): Integration of clusters B/C/D: 63 lane failures, non
 **2026-11-02T17:17:02Z**
 
 Owner decision 2026-11-02: runner fixes (r4-rca: refuse another checkout's code or a mismatched engine pin; partial/full lane line) ship with this release after a light check.
+
+**2026-11-02T17:41:18Z**
+
+2026-11-02 etl-rca done (RCA: .cache/archive-release/investigations/rca/RCA.md). Ships with the release after a light check (owner decision): r4-rca~1 = 0ece1bb8, rebased as r4-rca-rel onto 44785aee. Item 3: tests refuse another checkout's interpreter or imports and print the run scope (4b74befd, d8d5149b); C's failures hid behind --path subsets, not main's code. Item 4: doctor binds to the branch pin, and binaries are installed read-only and content-addressed (9beffd76). Item 6: the watchdog admits on measured free memory and stops the youngest at the floor (1a0bb6d9, 0ece1bb8). Item 7: dev.py prune-worktree refuses on ignored data or a running process (908059de). Item 5: docspec-rs CI runs this repo's whole lane in 6 shards (797083f, 0d65b47, 5a7fa9f on docspec-rs main; the probe on 425e346 failed first with the ss-x71z error), plus a raw-check rule and lint (f5fa384c). Held: item 1 (1f6effdf: parser versions hash only the locked packages they import) and item 2, unfixed (compatible_proof.py and 2-17 imported workspace modules are hashed by nothing); timing goes to the owner. Follow-up: production jobs still trust the config's own binary claim; flip after the release. Brief now requires a (full lane) line at hand-off.
