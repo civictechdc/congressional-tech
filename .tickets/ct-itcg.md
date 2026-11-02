@@ -50,3 +50,7 @@ Round 1b 2026-11-02 (lead): Run inputs lost with /private/tmp are regenerated fr
 **2026-11-02T12:36:53Z**
 
 Round 1b 2026-11-02 (lead): basin-commit: no checked-in job could commit the parquet files as they are (captures_ingest accepts only current-mapping stages). Added archive_import_job and generalized verify_generations on branch basin-commit (3 commits plus a test). Local dry run passed for all 5 tables (engine EXCEPT ALL and a separate Arrow comparison). No archive.* tables exist in Basin yet. Lead direction: commit into the canonical archive.<name> tables the specs reference, not release-named tables; v21 is the first snapshot and ct-kunv's rebuild the next.
+
+**2026-11-02T12:39:55Z**
+
+Retargeted to canonical archive.<name> tables 2026-11-02; nothing had been written under the release-named tables. Provenance: import-report.json (the commit record) and the append writer definition. publish-model.json table uuids are placeholders; the real ones get pinned from the commit.

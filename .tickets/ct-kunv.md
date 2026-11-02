@@ -32,3 +32,7 @@ Raw pass complete on the fixed mapping (0043edfe): 2,598,311 lines, 4,147,132 ro
 **2026-11-02T12:28:27Z**
 
 Round 1b 2026-11-02 (lead): Captures gain per-row mapping_version (Utf8, field 41, = APPROVED_MAPPING; guard refuses NULL, non-hex or >1 per receipt) for publish gate 5, and relative original_path (field 42; 415,134 relative values, absolute ones dropped, see ct-f9hw). Reading status adds m3u8 tracks to 2,389 Senate recordings (1,359 to 3,746 with any track); accepted because annex §2 defines playlist bodies as tracks; MP2T segments become role media, never tracks. Custody verify of v21 captures against independent counts (2,292 receipts, 4,147,132 rows): validated, 0 violations (counts and domain only).
+
+**2026-11-02T12:39:55Z**
+
+Ordering constraint 2026-11-02 (lead): v21 is the first snapshot of the canonical archive.captures (ct-itcg). The daily producer must not run against it before this rebuild replaces captures as a full overwrite snapshot; otherwise its receipt anti-join treats v21's roughly 51k wrong rows as present. Daily stays owner-gated (archive-targets.json) until then. Lasting fix: the anti-join treats rows at a non-current mapping_version as not present (impl-e2).

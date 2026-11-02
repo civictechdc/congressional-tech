@@ -33,3 +33,7 @@ Owner decision 2026-11-02: file under docspec-rs ss-oxg1 and fix it in the engin
 **2026-11-02T12:28:27Z**
 
 Round 1b 2026-11-02 (lead): Cause found (plan-engine): ordered array_agg keeps a per-row copy of a shared string-view buffer (DataFusion 53.1 scalar/mod.rs:4439); merging states makes N^2 references and the spill IPC encoder writes N^3 bytes outside the pool (row_hash.rs:1176). A DataFusion 55.2 bump and the upstream #21934 patch both failed when measured. Fix: a generic docspec planner rule casting view arguments to plain strings for ordered or distinct array_agg/string_agg (3k-30k rows: 0.12-0.14 s, at most 173 MiB). impl-engine is implementing, filing the ss ticket under ss-oxg1, and building both binaries; the lead uploads and re-pins.
+
+**2026-11-02T12:43:18Z**
+
+2026-11-02 (lead): second engine memory gap from impl-e2's in-situ profile. Aggregate output leaves as slices of one array and the pool charges each slice for the whole array (5.3 GB charged for 118 MB; hash-join build 5.77 GB; quadratic in groups per partition). This shape (aggregate feeds a hash-join build) is in 39 model steps; query-by-query fixes only move the failure (1dbd70ea fixed url_state_intervals, identical output 1,165,986 rows; step 139 url_state_fetched_keys then failed with HashJoinInput). Fix in docspec-rs with the ct-deg8 rule, one re-pin: compact or charge the build input by referenced size, as CompactViews does before SortExec. impl-engine to file a separate ss ticket.
