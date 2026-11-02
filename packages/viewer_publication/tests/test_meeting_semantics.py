@@ -93,14 +93,16 @@ MEETINGS = [
 TRACK = "named_struct('body',{body},'suffix','.gz','format','{format}','language','en','production','{production}')"
 SHA = "arrow_cast(decode(repeat('ab',32),'hex'),'FixedSizeBinary(32)')"
 RECORDINGS = (f"SELECT 'youtube:abc' AS video_key,arrow_cast(make_array(cast(24 AS BIGINT)),'List(Int64)') AS event_ids,"
-              f"make_array({TRACK.format(body=SHA, format='vtt', production='asr')}) AS tracks "
+              f"make_array({TRACK.format(body=SHA, format='vtt', production='asr')},"
+              f"{TRACK.format(body="arrow_cast(decode('e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855','hex'),'FixedSizeBinary(32)')", format='vtt', production='caption')}) AS tracks "
               # A Senate stream: its vtt is one segment of the caption playlist (ct-9s7b), and one vtt holds no body.
               f"UNION ALL SELECT 'senate:x',arrow_cast(make_array(cast(25 AS BIGINT)),'List(Int64)'),"
               f"make_array({TRACK.format(body=SHA, format='vtt', production='caption')},{TRACK.format(body=SHA, format='m3u8', production='caption')},"
               f"{TRACK.format(body="arrow_cast(NULL,'FixedSizeBinary(32)')", format='vtt', production='live')})")
-ORDERED = ("SELECT arrow_cast(make_array('23'),'List(Utf8)') AS meeting_keys,'HHRG-118-VR09-Transcript-20231108.pdf' AS filename,cast(3 AS INT) AS list_row "
-           "UNION ALL SELECT arrow_cast(make_array('23'),'List(Utf8)'),'Hearing-transcript-request-letter.pdf',cast(4 AS INT) "
-           "UNION ALL SELECT arrow_cast(make_array('23'),'List(Utf8)'),'HHRG-118-VR09-Transcript-20231109.pdf',cast(5 AS INT)")
+ORDERED = ("SELECT arrow_cast(make_array('23'),'List(Utf8)') AS meeting_keys,'HHRG-118-VR09-Transcript-20231108.pdf' AS filename,'pdf' AS format,cast(3 AS INT) AS list_row "
+           "UNION ALL SELECT arrow_cast(make_array('23'),'List(Utf8)'),'HMKP-118-VR09-Transcript-20231108.pdf','pdf',cast(6 AS INT) "
+           "UNION ALL SELECT arrow_cast(make_array('23'),'List(Utf8)'),'Hearing-transcript-request-letter.pdf','pdf',cast(4 AS INT) "
+           "UNION ALL SELECT arrow_cast(make_array('23'),'List(Utf8)'),'HHRG-118-VR09-Transcript-20231109.pdf','pdf',cast(5 AS INT)")
 
 
 @pytest.fixture(scope='module')
@@ -115,7 +117,9 @@ def meetings(tmp_path_factory):
         dict(name='details', sql="""SELECT 'CHRG-own' AS package_id,cast(7 AS INT) AS list_row,'pdf' AS format,
             array_slice(make_array(named_struct('format',cast(NULL AS VARCHAR))),1,0) AS alternates""", materialize=True),
         dict(name='formats', sql="SELECT 'preference' AS kind,'pdf' AS value,cast(1 AS INT) AS rank", materialize=True),
-        dict(name='meeting_document_urls', sql="SELECT cast(11 AS BIGINT) AS event_id,'https://www.congress.gov/118/meeting/house/116450/documents/HHRG-118-VR09-Transcript-20231108.pdf' AS url UNION ALL SELECT 21,'https://www.congress.gov/118/meeting/house/9/documents/HHRG-118-XX00-Transcript-20231109.pdf'", materialize=True),
+        dict(name='meeting_document_urls', sql="SELECT cast(11 AS BIGINT) AS event_id,'https://www.congress.gov/118/meeting/house/116450/documents/HHRG-118-VR09-Transcript-20231108.pdf' AS url UNION ALL SELECT 21,'https://www.congress.gov/118/meeting/house/9/documents/HHRG-118-XX00-Transcript-20231109.pdf' "
+             # 23's record lists its transcript; the other dated file is held and linked but not listed by the record.
+             "UNION ALL SELECT 23,'http://docs.house.gov/meetings/VR/VR09/20231108/23/HHRG-118-VR09-Transcript-20231108.pdf'", materialize=True),
         dict(name='appearance_records_resolved', sql="SELECT cast(15 AS BIGINT) AS event_id,'Jane Witness' AS name,'congress_gov' AS source UNION ALL SELECT 17,'PPACA Witness','mods'", materialize=True),
         dict(name='package_meeting_links', sql="SELECT 'CHRG-own' AS package_id,cast(19 AS BIGINT) AS event_id", materialize=True),
         dict(name='package_mods_facts', sql="SELECT 'CHRG-own' AS package_id", materialize=True),

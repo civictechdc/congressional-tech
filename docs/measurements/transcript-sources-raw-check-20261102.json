@@ -1,0 +1,385 @@
+{
+ "raw_meeting_records": {
+  "read": 24430,
+  "unread": 0
+ },
+ "meetings_changed": 2599,
+ "committee_transcript": {
+  "rows": 2606,
+  "verdicts": {
+   "raw_supports_after": 2602,
+   "raw_contradicts_after": 4
+  },
+  "unread": [],
+  "samples": {
+   "raw_supports_after": [
+    {
+     "key": [
+      100139,
+      "HMTG-113-IF00-Transcript-20130122.pdf"
+     ],
+     "listed_as": "Hearing: Transcript",
+     "meeting_date": "2013-01-22"
+    },
+    {
+     "key": [
+      100218,
+      "HHRG-113-JU00-Transcript-20130205.PDF"
+     ],
+     "listed_as": "Hearing: Transcript",
+     "meeting_date": "2013-02-05"
+    },
+    {
+     "key": [
+      100219,
+      "HHRG-113-GO00-Transcript-20130205.pdf"
+     ],
+     "listed_as": "Hearing: Transcript",
+     "meeting_date": "2013-02-05"
+    },
+    {
+     "key": [
+      100242,
+      "HHRG-113-IF18-Transcript-20130215.pdf"
+     ],
+     "listed_as": "Hearing: Transcript",
+     "meeting_date": "2013-02-15"
+    },
+    {
+     "key": [
+      100262,
+      "HHRG-113-GO06-Transcript-20130213.pdf"
+     ],
+     "listed_as": "Hearing: Transcript",
+     "meeting_date": "2013-02-13"
+    },
+    {
+     "key": [
+      100264,
+      "HHRG-113-GO28-Transcript-20130214.pdf"
+     ],
+     "listed_as": "Hearing: Transcript",
+     "meeting_date": "2013-02-14"
+    },
+    {
+     "key": [
+      100265,
+      "HHRG-113-IF14-Transcript-20130214.pdf"
+     ],
+     "listed_as": "Hearing: Transcript",
+     "meeting_date": "2013-02-14"
+    },
+    {
+     "key": [
+      100268,
+      "HHRG-113-IF17-Transcript-20130214.pdf"
+     ],
+     "listed_as": "Hearing: Transcript",
+     "meeting_date": "2013-02-14"
+    },
+    {
+     "key": [
+      100311,
+      "HHRG-113-GO28-Transcript-20130226.pdf"
+     ],
+     "listed_as": "Hearing: Transcript",
+     "meeting_date": "2013-02-26"
+    },
+    {
+     "key": [
+      100312,
+      "HHRG-113-GO25-Transcript-20130227.pdf"
+     ],
+     "listed_as": "Hearing: Transcript",
+     "meeting_date": "2013-02-27"
+    },
+    {
+     "key": [
+      100325,
+      "HHRG-113-JU00-Transcript-20130227.PDF"
+     ],
+     "listed_as": "Hearing: Transcript",
+     "meeting_date": "2013-02-27"
+    },
+    {
+     "key": [
+      100326,
+      "HHRG-113-JU01-Transcript-20130226.PDF"
+     ],
+     "listed_as": "Hearing: Transcript",
+     "meeting_date": "2013-02-26"
+    },
+    {
+     "key": [
+      100327,
+      "HHRG-113-JU05-Transcript-20130226.PDF"
+     ],
+     "listed_as": "Hearing: Transcript",
+     "meeting_date": "2013-02-26"
+    },
+    {
+     "key": [
+      100328,
+      "HHRG-113-JU01-Transcript-20130227.PDF"
+     ],
+     "listed_as": "Hearing: Transcript",
+     "meeting_date": "2013-02-27"
+    },
+    {
+     "key": [
+      100329,
+      "HMTG-113-IF14-Transcript-20130227.pdf"
+     ],
+     "listed_as": "Hearing: Transcript",
+     "meeting_date": "2013-02-27"
+    },
+    {
+     "key": [
+      100334,
+      "HHRG-113-WM03-Transcript-20130227.pdf"
+     ],
+     "listed_as": "Hearing: Transcript",
+     "meeting_date": "2013-02-27"
+    },
+    {
+     "key": [
+      100391,
+      "HHRG-113-JU05-Transcript-20130305.PDF"
+     ],
+     "listed_as": "Hearing: Transcript",
+     "meeting_date": "2013-03-05"
+    },
+    {
+     "key": [
+      100452,
+      "HMTG-113-GO24-Transcript-20130308.pdf"
+     ],
+     "listed_as": "Hearing: Transcript",
+     "meeting_date": "2013-03-08"
+    },
+    {
+     "key": [
+      100457,
+      "HHRG-113-GO00-Transcript-20130305.pdf"
+     ],
+     "listed_as": "Hearing: Transcript",
+     "meeting_date": "2013-03-05"
+    },
+    {
+     "key": [
+      100526,
+      "HMTG-113-JU01-Transcript-20130314.pdf"
+     ],
+     "listed_as": "Hearing: Transcript",
+     "meeting_date": "2013-03-14"
+    },
+    {
+     "key": [
+      100539,
+      "HHRG-113-JU03-Transcript-20130320.PDF"
+     ],
+     "listed_as": "Hearing: Transcript",
+     "meeting_date": "2013-03-20"
+    },
+    {
+     "key": [
+      100543,
+      "HHRG-113-IF17-Transcript-20130321.pdf"
+     ],
+     "listed_as": "Hearing: Transcript",
+     "meeting_date": "2013-03-21"
+    },
+    {
+     "key": [
+      100606,
+      "HHRG-113-GO00-Transcript-20130410.pdf"
+     ],
+     "listed_as": "Hearing: Transcript",
+     "meeting_date": "2013-04-10"
+    },
+    {
+     "key": [
+      100607,
+      "HHRG-113-IF17-Transcript-20130410.pdf"
+     ],
+     "listed_as": "Hearing: Transcript",
+     "meeting_date": "2013-04-10"
+    },
+    {
+     "key": [
+      100613,
+      "HHRG-113-GO25-Transcript-20130411.pdf"
+     ],
+     "listed_as": "Hearing: Transcript",
+     "meeting_date": "2013-04-11"
+    },
+    {
+     "key": [
+      100614,
+      "HHRG-113-GO00-Transcript-20130409.pdf"
+     ],
+     "listed_as": "Hearing: Transcript",
+     "meeting_date": "2013-04-09"
+    },
+    {
+     "key": [
+      100615,
+      "HMTG-113-GO25-Transcript-20130410.pdf"
+     ],
+     "listed_as": "Hearing: Transcript",
+     "meeting_date": "2013-04-10"
+    },
+    {
+     "key": [
+      100628,
+      "HHRG-113-IF14-Transcript-20130411.pdf"
+     ],
+     "listed_as": "Hearing: Transcript",
+     "meeting_date": "2013-04-11"
+    },
+    {
+     "key": [
+      100629,
+      "HHRG-113-IF18-Transcript-20130411.pdf"
+     ],
+     "listed_as": "Hearing: Transcript",
+     "meeting_date": "2013-04-11"
+    },
+    {
+     "key": [
+      100654,
+      "HHRG-113-JU08-Transcript-20130410.PDF"
+     ],
+     "listed_as": "Hearing: Transcript",
+     "meeting_date": "2013-04-10"
+    },
+    {
+     "key": [
+      100669,
+      "HHRG-113-GO06-Transcript-20130417.pdf"
+     ],
+     "listed_as": "Hearing: Transcript",
+     "meeting_date": "2013-04-17"
+    },
+    {
+     "key": [
+      100672,
+      "HHRG-113-JU03-Transcript-20130416.PDF"
+     ],
+     "listed_as": "Hearing: Transcript",
+     "meeting_date": "2013-04-16"
+    },
+    {
+     "key": [
+      100673,
+      "HHRG-113-JU00-Transcript-20130416.PDF"
+     ],
+     "listed_as": "Hearing: Transcript",
+     "meeting_date": "2013-04-16"
+    },
+    {
+     "key": [
+      100675,
+      "HHRG-113-FA16-Transcript-20130416.pdf"
+     ],
+     "listed_as": "Hearing: Transcript",
+     "meeting_date": "2013-04-16"
+    },
+    {
+     "key": [
+      100688,
+      "HHRG-113-GO00-Transcript-20130416.pdf"
+     ],
+     "listed_as": "Hearing: Transcript",
+     "meeting_date": "2013-04-16"
+    },
+    {
+     "key": [
+      100690,
+      "HHRG-113-GO06-Transcript-20130418.pdf"
+     ],
+     "listed_as": "Hearing: Transcript",
+     "meeting_date": "2013-04-18"
+    },
+    {
+     "key": [
+      100694,
+      "HHRG-113-IF17-Transcript-20130418.pdf"
+     ],
+     "listed_as": "Hearing: Transcript",
+     "meeting_date": "2013-04-18"
+    },
+    {
+     "key": [
+      100695,
+      "HHRG-113-IF14-Transcript-20130418.pdf"
+     ],
+     "listed_as": "Hearing: Transcript",
+     "meeting_date": "2013-04-18"
+    },
+    {
+     "key": [
+      100752,
+      "HHRG-113-JU08-Transcript-20130425.PDF"
+     ],
+     "listed_as": "Hearing: Transcript",
+     "meeting_date": "2013-04-25"
+    },
+    {
+     "key": [
+      100753,
+      "HHRG-113-JU10-Transcript-20130425.PDF"
+     ],
+     "listed_as": "Hearing: Transcript",
+     "meeting_date": "2013-04-25"
+    }
+   ],
+   "raw_contradicts_after": [
+    {
+     "key": [
+      101567,
+      "HMKP-113-JU00-Transcript-20131204.pdf"
+     ],
+     "listed_as": "Support Document",
+     "meeting_date": "2013-12-04"
+    },
+    {
+     "key": [
+      102191,
+      "HHRG-113-II13-Transcript-20140507-U1.pdf"
+     ],
+     "listed_as": "Support Document",
+     "meeting_date": "2014-05-07"
+    },
+    {
+     "key": [
+      102718,
+      "HHRG-113-IF02-Transcript-20141016-U5.pdf"
+     ],
+     "listed_as": "Support Document",
+     "meeting_date": "2014-10-16"
+    },
+    {
+     "key": [
+      115633,
+      "HHRG-118-II13-Transcript-20230323-U6.pdf"
+     ],
+     "listed_as": "Support Document",
+     "meeting_date": "2023-03-23"
+    }
+   ]
+  }
+ },
+ "captions": {
+  "rows": 0,
+  "verdicts": {},
+  "unread": [],
+  "samples": {}
+ },
+ "removed": {
+  "rows": 0,
+  "verdicts": {},
+  "unread": [],
+  "samples": {}
+ }
+}

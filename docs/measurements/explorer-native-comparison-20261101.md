@@ -221,3 +221,12 @@ the meeting that sat.
 
 Witness rows: 173,067 published, 141,255 shown (`superseded_by` null), 31,812 superseded by the same person
 from a higher-ranked source, 7,230 labelled statements.
+
+### ct-1i4q: transcripts labelled by source (branch r1b-transcripts)
+
+Frozen build over r1b-frozen against r1b-f's: 2,599 meetings gain a committee transcript (2,606 files); 378
+move from not_stated and 150 from unresolved to present. No caption track qualifies on v21: every Senate vtt
+sits beside its caption playlist (a segment, ct-9s7b) and the one YouTube vtt linked to a meeting (338611)
+is an empty body. `transcript_sources_raw_check.py` read every changed meeting's raw record: 2,602 files are
+listed by the meeting's own Congress.gov or House XML record on its date; 4 are -U files Congress.gov types
+"Support Document" (101567, 102191, 102718 and one more), kept by the filename rule.
