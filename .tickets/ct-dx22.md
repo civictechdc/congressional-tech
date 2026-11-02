@@ -48,3 +48,7 @@ Round 1b 2026-11-02 (lead): Two-way package-to-meeting rule moves 392 rows on 93
 **2026-11-02T16:28:40Z**
 
 2026-11-02 red-f3 (merge with fixes): 0 false matches among all 31,812 superseded rows, read against raw. Fixes sent to impl-f: the statement labeller mislabels witnesses (at least 21 of 50 sampled testified, including nominees whose counts drop to zero; 702 suspicious rows); matching is brittle (reversed nickname pairs, credential and state tokens as keys, 'Van' as a particle; 8 wrong superseded_by targets); an empty House list created before its hearing (111420) isn't authoritative; a duplicate key at appearance_records.py:1062 (byte-hashed).
+
+**2026-11-02T17:20:32Z**
+
+2026-11-02 impl-f: r1b-f a4fbceb7 and r1b-transcripts edf7a130, rebased onto 0f4711bb; 888 and 897 passed, the only failure being the pin test; statements down from 7,230 to 1,093. Before merge: rebase onto 44785aee, rebuild the frozen after-out, independently re-judge the statements and superseded rows, map each red-f3 item to its test; then a light independent check.
