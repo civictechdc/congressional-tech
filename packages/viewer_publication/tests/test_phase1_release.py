@@ -82,6 +82,30 @@ def test_raw_lake_model_exports_one_group_and_keeps_download_names(tmp_path):
     assert repeated==manifest
     for item in manifest['files']:
         assert (tmp_path/'release'/item['name']).read_bytes()==(tmp_path/'repeat-release'/item['name']).read_bytes()
+
+    # All readers share one readings selection. The same rows at older pins, each covered by a
+    # registry entry, build the same release; a reader still joined on parser_versions (or a
+    # sniff check still on the pin alone) loses them and the output differs or fails its suites.
+    from congress_api.lake import compatible_versions as cv
+    old=tmp_path/'old-pins';old.mkdir()
+    run_job(old,engine,inputs=[dict(name='r',kind='parquet',path=str(pages['readings'])),dict(name='c',kind='parquet',path=str(captures))],steps=[],queries=[],outputs=[
+        parquet_output(old,'readings',"SELECT * EXCLUDE(parser_version),concat('old-',parser) AS parser_version FROM r",readings.PK),
+        parquet_output(old,'captures',"SELECT * EXCLUDE(sniff_version),CASE WHEN sniff_version IS NOT NULL THEN 'old-sniff' END AS sniff_version FROM c",
+            ['receipt_key','receipt_line','capture_index'])])
+    pins=cv.current_pins()
+    def entry(parser):
+        proof=dict(scope='sample',version='old-'+parser,current=pins[parser],recompute_sha256=cv.recompute_sha256('none'),old_input_sha256='a'*64,
+            new_input_sha256='a'*64,rows=1,columns=1,differences=0,only_old=0,only_new=0,lock_only=dict(recomputed='old-'+parser))
+        return dict(parser=parser,version='old-'+parser,current=pins[parser],basis='lock_only' if parser=='sniff' else 'whole',recompute_sql='none',reason='fixture',proof=proof)
+    covered=tmp_path/'covered.json';covered.write_text(json.dumps(dict(version=2,entries=[entry('sniff'),entry('html')])))
+    build_release(**dict(arguments,readings=old/'readings.parquet',captures=old/'captures.parquet'),registry=covered,
+        output=tmp_path/'old-release',scratch=tmp_path/'old-model')
+    for name in ('list.parquet','detail.parquet','links.parquet','urls.parquet','sources.parquet'):
+        assert pq.read_table(tmp_path/'old-release'/name).to_pylist()==pq.read_table(tmp_path/'release'/name).to_pylist(),name
+    uncovered=tmp_path/'uncovered.json';uncovered.write_text(json.dumps(dict(version=2,entries=[])))
+    with pytest.raises(ValueError,match='invariant'):
+        build_release(**dict(arguments,readings=old/'readings.parquet',captures=old/'captures.parquet'),registry=uncovered,
+            output=tmp_path/'uncovered-release',scratch=tmp_path/'uncovered-model')
     for missing,column in [('page','readings'),('filename','filename_readings')]:
         source=arguments[column];empty=tmp_path/(missing+'-empty.parquet')
         pq.write_table(pq.read_table(source).slice(0,0),empty)
