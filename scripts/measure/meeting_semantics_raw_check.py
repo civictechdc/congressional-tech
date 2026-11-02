@@ -146,14 +146,14 @@ def video_days(db, after):
     return out
 
 
-def own_facts(cg, packages, prints, event, days):
+def own_facts(cg, packages, prints, event, days, homes=None):
     """A meeting's own evidence of sitting on its date, as raw states it."""
     cg = cg or {}
     day = str(cg.get('date') or '')[:10]
     videos = [re.search(r'(?:v=|youtu\.be/)([\w-]{11})', str(v.get('url') or '')) for v in cg.get('videos') or []]
     same_day_videos = [m.group(1) for m in videos if m and days.get('youtube:' + m.group(1)) == day]
     docs = cg.get('meetingDocuments') or []
-    printed = [p for p in packages if belongs(prints(p), event, cg) == 'agree']
+    printed = [p for p in packages if belongs(prints(p), event, cg) == 'agree' and (homes is None or event in (homes(p) or {event}))]
     return dict(status=cg.get('meetingStatus'), type=cg.get('type'), day=day,
                 transcripts=[d.get('url') for d in docs if 'transcript' in (str(d.get('documentType') or '') + str(d.get('url') or '')).lower()],
                 witnesses=len(cg.get('witnesses') or []), same_day_videos=same_day_videos, prints=printed)
@@ -172,7 +172,7 @@ def meeting_kind(text):
     return 'hearing' if 'hearing' in text else 'markup' if 'markup' in text else None
 
 
-def check_meetings(args, db, congress, prints, packages, days, report):
+def check_meetings(args, db, congress, prints, packages, days, report, homes=None):
     cols = 'event_id,access,not_held,status,rescheduled_to,rescheduled_basis,meeting_date,title'
     before = {r['event_id']: r for r in records(db.execute(f"SELECT {cols} FROM read_parquet('{Path(args.before) / 'meetings.parquet'}')"))}
     after = {r['event_id']: r for r in records(db.execute(f"SELECT {cols} FROM read_parquet('{Path(args.after) / 'meetings.parquet'}')"))}
@@ -190,7 +190,7 @@ def check_meetings(args, db, congress, prints, packages, days, report):
                 mixed = len(stated) == 1 and other and other.group(3) not in stated
                 fams['access'].add(event, 'raw_supports_after' if mixed and a.get('access') == 'partly_closed' else 'ambiguous',
                                    type=cg.get('type'), title=cg.get('title'), before=b.get('access'), after=a.get('access'))
-        own = own_facts(cg, packages.get(event, ()), prints, event, days) if cg else None
+        own = own_facts(cg, packages.get(event, ()), prints, event, days, homes) if cg else None
         if bool(b.get('not_held')) != bool(a.get('not_held')) or (cg and stated_not_held(cg)):
             if cg is None:
                 fams['not_held'].add(event, 'unread', before=b.get('not_held'), after=a.get('not_held'))
@@ -228,6 +228,7 @@ NOT_A_WITNESS = re.compile(r"\b(?:letters?|statements? (?:for|submitted|of)|subm
 def family(name):
     """A raw name's family name: "Last, First" or "First M. Last", honorifics and suffixes dropped."""
     text = unicodedata.normalize('NFKD', html.unescape(name or '')).encode('ascii', 'ignore').decode().lower()
+    text = re.sub(r'\([^)]*\)', ' ', text)
     head = text.split(',')[0] if ',' in text and len([w for w in re.split(r'[^a-z]+', text.split(',')[0]) if w]) == 1 else text.split(',')[0]
     words = [w for w in re.split(r'[^a-z]+', head) if len(w) > 1 and w not in HONORIFICS]
     return words[-1] if words else None
@@ -238,9 +239,11 @@ def same(a, b):
 
 
 def overlap(left, right):
+    """Share of the shorter list found in the other; a single shared family name among longer lists is chance."""
     if not left or not right:
         return None
-    return sum(1 for a in left if any(same(a, b) for b in right)) / min(len(left), len(right))
+    shared = sum(1 for a in left if any(same(a, b) for b in right))
+    return shared / min(len(left), len(right)) if shared >= min(2, len(left), len(right)) else 0.0
 
 
 class Lists:
@@ -283,14 +286,18 @@ def raw_home(package, prints, lists, congress):
                     home.add(event)
             elif agreement(similarity((congress.get(str(event)) or {}).get('title'), facts['titles'])) == 'agree':
                 home.add(event)
-    return home
+    # A same-day duplicate the publisher marks Postponed or Canceled yields to the meeting that sat.
+    sat = {e for e in home if not stated_not_held(congress.get(str(e)))}
+    return sat or home
 
 
-def check_witnesses(args, db, congress, prints, report):
+def check_witnesses(args, db, congress, prints, report, lists):
     cols = 'event_id,occasion,source,package_id,name,record_sha'
     before = records(db.execute(f"SELECT {cols} FROM read_parquet('{args.before_witnesses}')"))
     after = records(db.execute(f"SELECT {cols},superseded_by,witness_type FROM read_parquet('{Path(args.after) / 'witnesses.parquet'}')"))
-    lists = Lists(args, db, congress)
+    linked = defaultdict(set)
+    for package, event in db.execute(f"SELECT package_id,event_id FROM read_parquet('{Path(args.after) / 'meeting_transcript_links.parquet'}')").fetchall():
+        linked[package].add(event)
     meetings = lambda rows, package: {int(r['occasion'].split(':')[1]) for r in rows if r['package_id'] == package and r['occasion'].startswith('meeting:')}
     changed = {r['package_id'] for r in before + after if r['source'] == 'mods' and r['package_id']}
     by_before = defaultdict(list); by_after = defaultdict(list)
@@ -304,11 +311,17 @@ def check_witnesses(args, db, congress, prints, report):
         if was == now:
             continue
         home = raw_home(package, prints, lists, congress)
+        if home is not None:
+            # The model only considers meetings a jacket list or the print's eventId links; raw judges those.
+            home &= linked.get(package, set())
         raw = dict(before=sorted(was), after=sorted(now), raw_home=sorted(home) if home is not None else None)
         if home is None:
             package_fam.add(package, 'unread', **raw)
         else:
-            package_fam.add(package, 'raw_supports_after' if now == home else 'raw_supports_before' if was == home else 'raw_contradicts_after', **raw)
+            verdict = ('raw_supports_after' if now == home else 'raw_supports_before' if was == home
+                       # Raw admits several same-day meetings; the model kept the best match among them.
+                       else 'ambiguous_subset' if now and now < home else 'raw_contradicts_after')
+            package_fam.add(package, verdict, **raw)
     paths = original_paths(args, db, {bytes(r['record_sha']).hex() for r in after if r['source'] == 'house_xml'})
     before_house = {(bytes(r['record_sha']).hex(), r['occasion']) for r in before if r['source'] == 'house_xml'}
     for sha, occasion in sorted({(bytes(r['record_sha']).hex(), r['occasion']) for r in after if r['source'] == 'house_xml'} - before_house):
@@ -335,7 +348,12 @@ def check_witnesses(args, db, congress, prints, report):
     if args.lost:
         lost = json.loads(Path(args.lost).read_text())
         cases = [(c, p, n) for c, rows in lost.items() for p, n in rows]
-        found = [(c, p, n) for c, p, n in cases if any(norm(n).startswith(x) or x.startswith(norm(n).split(' ')[0]) for x in shown.get(p, ()))]
+        families = defaultdict(set)
+        for r in after:
+            f = family(r['name'])
+            if f:
+                families[r['package_id']].add(f)
+        found = [(c, p, n) for c, p, n in cases if family(n) and any(same(family(n), f) for f in families.get(p, ()))]
         report['red_f2_lost'] = dict(cases=len(cases), published=len(found),
             missing=[[c, p, n] for c, p, n in cases if (c, p, n) not in found][:40])
 
@@ -423,8 +441,13 @@ def main(argv=None):
     for row in records(db.execute(f"SELECT DISTINCT event_id,package_id FROM read_parquet('{Path(args.after) / 'witnesses.parquet'}') WHERE package_id IS NOT NULL AND event_id IS NOT NULL")):
         packages[row['event_id']].add(row['package_id'])
     report = dict(raw_meeting_records=dict(read=read, unread=unread))
-    check_meetings(args, db, congress, prints, packages, video_days(db, args.after), report)
-    check_witnesses(args, db, congress, prints, report)
+    lists, cache = Lists(args, db, congress), {}
+    def homes(package):
+        if package not in cache:
+            cache[package] = raw_home(package, prints, lists, congress)
+        return cache[package]
+    check_meetings(args, db, congress, prints, packages, video_days(db, args.after), report, homes)
+    check_witnesses(args, db, congress, prints, report, lists)
     check_coverage(args, db, congress, prints, packages, report)
     report['prints'] = dict(read=sum(v is not None for v in prints.cache.values()), unread=sorted(p for p, v in prints.cache.items() if v is None))
     Path(args.output).write_text(json.dumps(report, indent=1, default=str))

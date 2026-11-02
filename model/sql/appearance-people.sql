@@ -10,11 +10,14 @@ WITH rows AS (
  SELECT record_sha_hex,source,event_id,print_id AS package_id,ordinal,a['witness_type'] AS witness_type,
   array_except(string_to_array(trim(regexp_replace(lower(coalesce(a['name_key'],'')),'[^a-z ]+','','g')),' '),
    make_array('','mr','mrs','ms','miss','mx','dr','hon','honorable','the','rev','sen','senator','rep','representative',
-    'gen','general','lt','col','maj','adm','capt','sgt','jr','sr','ii','iii','iv','phd','md','esq','ret','usa','usn','usaf','usmc')) AS t
+    'gen','general','lt','lieutenant','col','colonel','maj','major','adm','admiral','vice','rear','capt','captain','sgt',
+    'sergeant','brigadier','chief','ambassador','secretary','judge','governor','mayor','professor','prof','commissioner',
+    'jr','sr','ii','iii','iv','phd','md','esq','ret','usa','usn','usaf','usmc')) AS t
  FROM rows
 )
 SELECT record_sha_hex,source,event_id,package_id,ordinal,
  coalesce(witness_type IN ('statement_for_record','member_statement'),false) AS statement,
  CASE WHEN cardinality(t)>0 THEN t[cast(cardinality(t) AS BIGINT)] END AS family,
- CASE WHEN cardinality(t)>1 THEN substr(t[1],1,1) END AS initial
+ -- "Del Toro" alone states no first name: a surname particle is not an initial.
+ CASE WHEN cardinality(t)>1 AND t[1] NOT IN ('del','de','della','van','von','la','le','di','da','du','st','mac','mc') THEN substr(t[1],1,1) END AS initial
 FROM tokens

@@ -532,7 +532,7 @@ def meeting_steps(*,root=ROOT):
         dict(name='meetings_resolved',sql=(Path(root)/'model/sql/meeting-records-resolved.sql').read_text(),materialize=True)]
 
 
-WITNESSES_SQL='SELECT witness_key,occasion,source,record_sha,source_locator,context_key,event_id,package_id,page_url,name,position,organization,on_behalf_of,location,panel,panel_order,display_order,witness_type,testified,bioguide_id,superseded_by FROM appearance_records_resolved'
+WITNESSES_SQL='SELECT r.witness_key,r.occasion,r.source,r.record_sha,r.source_locator,r.context_key,r.event_id,r.package_id,r.page_url,r.name,r.position,r.organization,r.on_behalf_of,r.location,r.panel,r.panel_order,r.display_order,r.witness_type,r.testified,r.bioguide_id,p.superseded_by FROM appearance_records_resolved r LEFT JOIN witness_precedence p ON p.witness_key=r.witness_key'
 
 
 def appearance_steps(*,root=ROOT):
@@ -587,7 +587,7 @@ def appearance_steps(*,root=ROOT):
     return [dict(name='appearance_url_inputs',sql=app_url_inputs_sql,materialize=True),
         dict(name='appearance_url_normalized',sql=app_normalize,materialize=True),
         dict(name='appearance_url_keys',sql=app_keys,materialize=True),
-        dict(name='appearance_records_resolved',sql=(Path(root)/'model/sql/appearance-records-resolved.sql').read_text(),materialize=True)]
+        dict(name='appearance_records_resolved',sql=(Path(root)/'model/sql/appearance-records-resolved.sql').read_text(),materialize=True)]+_sql_steps(['witness-precedence'],root=root)
 
 
 def package_link_steps(*,root=ROOT):

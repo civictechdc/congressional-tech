@@ -184,7 +184,7 @@ def facts(named=(), held=(DAY,), title=TITLE):
     return dict(named_meetings=list(named), held_dates=list(held), title=title)
 
 
-def resolve(tmp_path, records, links, prints, paths=(), meetings=((9001, DAY, TITLE),), full=False):
+def resolve(tmp_path, records, links, prints, paths=(), meetings=((9001, DAY, TITLE),), full=False, rows=False):
     """Witness rows per name, from the maintained package-link and appearance SQL."""
     engine = NativeDatasets.from_config(os.environ['DOCSPEC_JOB_CONFIG'])
     inputs = [
@@ -212,10 +212,14 @@ def resolve(tmp_path, records, links, prints, paths=(), meetings=((9001, DAY, TI
                  f"'{path}' AS original_path" for sha, path in paths), materialize=True),
              dict(name='print_meeting_agreement', sql=sql('print-meeting-agreement'), materialize=True),
              dict(name='package_meeting_links', sql=sql('package-meeting-links'), materialize=True),
-             dict(name='appearance_records_resolved', sql=sql('appearance-records-resolved'), materialize=True)]
+             dict(name='appearance_records_resolved', sql=sql('appearance-records-resolved'), materialize=True),
+             dict(name='witness_precedence', sql=sql('witness-precedence'), materialize=True)]
     found = run_job(tmp_path, engine, inputs=inputs, steps=steps, outputs=[], queries=[
         dict(name='rows', sql='''SELECT r.name,r.occasion,r.event_id,r.witness_type,s.name AS superseded_by FROM appearance_records_resolved r
-            LEFT JOIN appearance_records_resolved s ON s.witness_key=r.superseded_by ORDER BY r.name''')])['rows']
+            LEFT JOIN witness_precedence p ON p.witness_key=r.witness_key
+            LEFT JOIN appearance_records_resolved s ON s.witness_key=p.superseded_by ORDER BY r.name''')])['rows']
+    if rows:
+        return found
     if full:
         return {r['name']: (r['occasion'], r['superseded_by']) for r in found}
     return {r['name']: (r['occasion'], r['event_id']) for r in found}
@@ -283,6 +287,29 @@ def test_witnesses_decide_before_titles(tmp_path):
                              record('b', 'mods', [witness('Carl Other'), witness('Dana Else')], package_id='CHRG-b')],
                   [('CHRG-a', 9001), ('CHRG-b', 9001)], {'CHRG-a': facts(title='PENDING LEGISLATION'), 'CHRG-b': facts()}, full=True)
     assert got['Carl Other'] == ('package:CHRG-b', None) and got['Jane Doe'][0] == 'meeting:9001'
+
+
+def test_ranks_and_surname_particles_do_not_hide_the_same_people(tmp_path):
+    # 114750 lists "The Honorable Carlos Del Toro", "Admiral Michael Gilday"; its print lists "Del Toro", "Michael M. Gilday".
+    own = record('cg', 'congress_gov', [witness('The Honorable Carlos Del Toro'), witness('Admiral Michael Gilday'), witness('General David Berger')], event_id=9001)
+    got = resolve(tmp_path, [own, record('a', 'mods', [witness('Del Toro'), witness('Michael M. Gilday'), witness('David H. Berger')], package_id='CHRG-a')],
+                  [('CHRG-a', 9001)], {'CHRG-a': facts(title='Missile defense budget request')}, full=True)
+    assert got['Del Toro'] == ('meeting:9001', 'The Honorable Carlos Del Toro')
+
+
+def test_one_shared_family_name_is_chance_not_agreement(tmp_path):
+    own = record('cg', 'congress_gov', [witness('Jane Doe'), witness('John Roe')], event_id=9001)
+    got = resolve(tmp_path, [own, record('a', 'mods', [witness('Joan Roe'), witness('Carl Other'), witness('Dana Else')], package_id='CHRG-a')],
+                  [('CHRG-a', 9001)], {'CHRG-a': facts()}, full=True)
+    assert got['Carl Other'] == ('package:CHRG-a', None)
+
+
+def test_of_two_agreeing_same_day_meetings_the_better_match_keeps_the_print(tmp_path):
+    # 100692 and 100693 share part of a panel; the print is the one whose list matches it fully.
+    lists = [OWN_LIST, record('cg2', 'congress_gov', [witness('Jane Doe'), witness('John Roe'), witness('Zed Last'), witness('Yan Next')], event_id=9002)]
+    got = resolve(tmp_path, lists + [record('a', 'mods', [witness(n) for n in PANEL], package_id='CHRG-a')],
+                  [('CHRG-a', 9001), ('CHRG-a', 9002)], {'CHRG-a': facts()}, meetings=((9001, DAY, TITLE), (9002, DAY, TITLE)), rows=True)
+    assert {r['occasion'] for r in got if r['name'] == 'Mary Major'} == {'meeting:9001'}
 
 
 def test_a_wrong_eventid_never_vetoes_the_same_witnesses(tmp_path):
