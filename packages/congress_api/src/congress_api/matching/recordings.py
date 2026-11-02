@@ -15,7 +15,7 @@ import re
 from congress_api.matching.captions import text_source
 from congress_api.matching.committees import codes_of
 from congress_api.matching.gpo_videos import EVENT_ID
-from congress_api.matching.meetings import NOT_HELD, TRANSCRIPT, meeting_access, meeting_type
+from congress_api.matching.meetings import NOT_HELD, TRANSCRIPT, meeting_access, meeting_type, reschedule_candidate
 from congress_api.matching.prints import attached_prints, match_prints, same_day_title_groups, title_key
 from congress_api.parsers.senate_player import COMM, STREAM
 from congress_api.parsers.media import youtube_video_id, senate_player_reference
@@ -55,17 +55,6 @@ def senate_comms(m, codes):
 def bills(title):
     """Bill numbers named in a title, normalised: {("HR", "2810"), ("SJRES", "7")}."""
     return {(re.sub(r"[\s.]", "", kind).upper(), num) for kind, num in BILL.findall(title)}
-
-
-def reschedule_candidate(row):
-    """Missing video alone cannot move a closed session or recurring briefing.
-
-    Briefing/deposition exclusions are conservative matching policy, not evidence
-    of closed access. Explicit open access still wins over words in the topic.
-    """
-    return (meeting_access(row)[0] not in ("closed", "partly_closed")
-            and meeting_type(row)[0] != "briefing"
-            and not re.search(r"\bdeposition\b", row.get("title") or "", re.I))
 
 
 def title_dates(title):

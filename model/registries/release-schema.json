@@ -208,19 +208,109 @@
           "name": "facts",
           "type": "list<struct<field dict,value string>>",
           "meaning": "Selected filename facts, one value per entry"
+        },
+        {
+          "name": "filename",
+          "type": "string",
+          "meaning": "Displayed filename"
+        },
+        {
+          "name": "title",
+          "type": "string",
+          "meaning": "Document or publisher title when known"
+        },
+        {
+          "name": "document_kind",
+          "type": "list<dict>",
+          "meaning": "Document kinds"
+        },
+        {
+          "name": "document_family",
+          "type": "list<dict>",
+          "meaning": "Filename document families"
+        },
+        {
+          "name": "committee_keys",
+          "type": "list<dict>",
+          "meaning": "Congress.gov committee system codes"
+        },
+        {
+          "name": "chambers",
+          "type": "list<dict>",
+          "meaning": "Chambers associated with the document"
+        },
+        {
+          "name": "congress",
+          "type": "int16",
+          "meaning": "Congress number when unambiguous"
+        },
+        {
+          "name": "format",
+          "type": "dict",
+          "meaning": "Original file format"
+        },
+        {
+          "name": "document_date",
+          "type": "date32",
+          "meaning": "Date of the document"
+        },
+        {
+          "name": "first_captured",
+          "type": "date32",
+          "meaning": "First good fetch date"
+        },
+        {
+          "name": "date_kind",
+          "type": "dict",
+          "meaning": "Basis of the archive date"
+        },
+        {
+          "name": "saved_kind",
+          "type": "dict",
+          "meaning": "Original file or recovery"
+        },
+        {
+          "name": "hidden",
+          "type": "boolean",
+          "meaning": "Excluded from search by review; public links still resolve"
+        },
+        {
+          "name": "meeting_keys",
+          "type": "list<dict>",
+          "meaning": "Decimal event IDs"
+        },
+        {
+          "name": "measure_keys",
+          "type": "list<dict>",
+          "meaning": "Bill and nomination identifiers"
+        },
+        {
+          "name": "bioguide_ids",
+          "type": "list<dict>",
+          "meaning": "Member Bioguide identifiers"
+        },
+        {
+          "name": "witness_keys",
+          "type": "list<dict>",
+          "meaning": "Witness appearance identifiers"
+        },
+        {
+          "name": "version_keys",
+          "type": "list<dict>",
+          "meaning": "Hex endpoint keys shared by editions"
         }
       ],
       "gaps": [],
-      "purpose": "Document files and metadata",
+      "purpose": "The keyed document table: one row per document with its stable link_key, files and every list field; list is its no-ID browser projection",
       "row_meaning": "One document edition, in exactly the same order as list",
       "identity": {
         "fields": [
-          "list_row"
+          "link_key"
         ],
-        "scope": "release",
-        "validation": "shared ordered native export",
-        "kind": "row_position",
-        "note": "list_row is virtual: zero-based physical row position, continued across manifest shard row ranges. Never reuse it across releases."
+        "scope": "release; a recovery-only document's key can move in a later release only as the data model section 8.2 states",
+        "validation": "native publication key checks",
+        "kind": "primary_key",
+        "note": "list_row stays virtual: zero-based physical row position, continued across manifest shard row ranges; never reuse it across releases. Older releases carry only the detail columns; their rows pair with list by list_row."
       },
       "virtual_columns": [
         {
@@ -233,7 +323,17 @@
         "alternates[]": "Other formats of the same document; each has its own body and suffix.",
         "facts[]": "Embedded selected filename field/value observations; not a generic entity join.",
         "src_start": "Zero-based physical sources row offset; src_len is the contiguous row count.",
-        "rec_start": "Zero-based physical recoveries row offset; rec_len is the contiguous row count."
+        "rec_start": "Zero-based physical recoveries row offset; rec_len is the contiguous row count.",
+        "list_row": "This table repeats every list column, so a bare column name in `\"list\" JOIN detail USING (list_row)` is ambiguous on new releases; qualify columns (l.filename, d.link_key).",
+        "document_kind[]": "Same values as list.document_kind; see that field.",
+        "document_family[]": "Same values as list.document_family; see that field.",
+        "committee_keys[]": "Same values as list.committee_keys; see that field.",
+        "chambers[]": "Same values as list.chambers; see that field.",
+        "meeting_keys[]": "Same values as list.meeting_keys; see that field.",
+        "measure_keys[]": "Same values as list.measure_keys; see that field.",
+        "bioguide_ids[]": "Same values as list.bioguide_ids; see that field.",
+        "witness_keys[]": "Same values as list.witness_keys; see that field.",
+        "version_keys[]": "Same values as list.version_keys; see that field."
       }
     },
     {
@@ -311,7 +411,8 @@
         {
           "name": "url",
           "type": "string",
-          "meaning": "Source address"
+          "meaning": "Source address",
+          "nullable": false
         },
         {
           "name": "member_path",
@@ -362,7 +463,8 @@
         "kind": "primary_key"
       },
       "notes": {
-        "member_path": "Path inside a captured archive container. Interpret together with the source URL; not a document key."
+        "member_path": "Path inside a captured archive container. Interpret together with the source URL; not a document key.",
+        "url": "Required. A member of a ZIP keeps the ZIP URL here and its place in member_path; the ZIP itself is never a document when its contents were captured."
       }
     },
     {
@@ -468,8 +570,8 @@
         },
         {
           "name": "sittings",
-          "type": "list<struct<start timestamp,end timestamp,place string>>",
-          "meaning": "Scheduled times and locations"
+          "type": "list<struct<start timestamp,end timestamp,place string,room string,building string,address string>>",
+          "meaning": "Scheduled times and locations, as Congress.gov states them when it has a sitting"
         },
         {
           "name": "committees",
@@ -490,6 +592,51 @@
           "name": "videos",
           "type": "list<struct<name string,url string,video_key string>>",
           "meaning": "Recorded meeting links"
+        },
+        {
+          "name": "congress",
+          "type": "int16",
+          "meaning": "Congress the publisher record states; null when no record states it, never inferred from documents"
+        },
+        {
+          "name": "congress_gov_updated",
+          "type": "timestamp",
+          "meaning": "Congress.gov's updateDate for this record: a publisher record update, distinct from the hearing date and capture time"
+        },
+        {
+          "name": "house_xml_updated",
+          "type": "string",
+          "meaning": "House XML update-date, literally as stated with no zone: a publisher record update, distinct from the hearing date and capture time"
+        },
+        {
+          "name": "congress_gov_meeting_type",
+          "type": "dict",
+          "meaning": "Congress.gov's type label (Hearing, Markup, Meeting)"
+        },
+        {
+          "name": "access",
+          "type": "dict",
+          "meaning": "open, closed, partly_closed or unknown, as the publisher type or title states"
+        },
+        {
+          "name": "access_basis",
+          "type": "dict",
+          "meaning": "The source and field that state access, such as congress_gov/title"
+        },
+        {
+          "name": "not_held",
+          "type": "bool",
+          "meaning": "The publisher title opens with postponed, canceled, rescheduled or test; null with no record"
+        },
+        {
+          "name": "rescheduled_to",
+          "type": "int64",
+          "meaning": "Later meeting of the same committees and title within 60 days, when the publisher states Rescheduled or only the later twin has a recording; derived"
+        },
+        {
+          "name": "rescheduled_basis",
+          "type": "dict",
+          "meaning": "publisher_status or recording_on_later_twin"
         }
       ],
       "gaps": [],
@@ -504,10 +651,11 @@
         "kind": "primary_key"
       },
       "notes": {
-        "sittings[]": "Embedded scheduled intervals and places. Times retain published precision; do not invent a Congress from the session number.",
+        "sittings[]": "Embedded scheduled intervals and places. Congress.gov states instants and places, so its sitting is used when present; a House-only sitting's unzoned Eastern local time is converted to an instant. An explicit empty House state stays empty. Times retain published precision; do not invent a Congress from the session number.",
         "committees[]": "Host/participant roles belong to this meeting-committee association.",
         "transcripts[]": "Package identifier and release-local document row identify the same retained hearing transcript.",
-        "videos[]": "Publisher recording links; video_key joins retained recordings when available."
+        "videos[]": "Publisher recording links; video_key joins retained recordings when available.",
+        "meeting_type": "As stated, with House XML codes (HHRG, HMKP, HMTG) on House rows; congress_gov_meeting_type carries the shared label."
       }
     },
     {
@@ -969,7 +1117,9 @@
           "meaning": "Senate roll-call votes on the nomination"
         }
       ],
-      "gaps": ["Nominations cover the 119th Congress only until spicy-regs backfills"],
+      "gaps": [
+        "Nominations cover the 119th Congress only until spicy-regs backfills"
+      ],
       "purpose": "Referenced nominations and embedded legislative facts",
       "row_meaning": "One nomination including its part when present; bounded by upstream retained data",
       "identity": {
@@ -1068,6 +1218,373 @@
       "notes": {
         "canonical_url": "Capture-profile aliases only. Do not use this table to reproduce the fixed public URL lookup hash."
       }
+    },
+    {
+      "name": "videos.parquet",
+      "columns": [
+        {
+          "name": "video_key",
+          "type": "string",
+          "meaning": "youtube:{id} video identity"
+        },
+        {
+          "name": "handle",
+          "type": "dict",
+          "meaning": "Channel handle whose cache table lists it"
+        },
+        {
+          "name": "channel_id",
+          "type": "string",
+          "meaning": "YouTube channel ID, null when the cache has none"
+        },
+        {
+          "name": "system_code",
+          "type": "dict",
+          "meaning": "Committee of the curated channel; channel membership does not make a video a hearing"
+        },
+        {
+          "name": "title",
+          "type": "string",
+          "meaning": "Title as the channel states it"
+        },
+        {
+          "name": "source_description",
+          "type": "string",
+          "meaning": "Description as the channel states it, distinct from any HTML description"
+        },
+        {
+          "name": "published_at",
+          "type": "timestamp",
+          "meaning": "YouTube's publication time for the upload"
+        },
+        {
+          "name": "video_published_at",
+          "type": "timestamp",
+          "meaning": "YouTube's video publication time"
+        },
+        {
+          "name": "duration_seconds",
+          "type": "int32",
+          "meaning": "Duration in seconds when retained"
+        },
+        {
+          "name": "available",
+          "type": "bool",
+          "meaning": "Whether the last check found it available"
+        },
+        {
+          "name": "has_caption",
+          "type": "bool",
+          "meaning": "Whether YouTube states a caption exists"
+        },
+        {
+          "name": "details_checked_at",
+          "type": "timestamp",
+          "meaning": "When details were last checked"
+        },
+        {
+          "name": "stated_event_ids",
+          "type": "list<int64>",
+          "meaning": "Event IDs the video's own text names: claims, since committees mistag"
+        },
+        {
+          "name": "record_sha",
+          "type": "fixed[32]",
+          "meaning": "SHA-256 of the cache body, which also holds upstream API JSON and is the evidence reference"
+        }
+      ],
+      "gaps": [],
+      "purpose": "Collected committee channel uploads, matched or not",
+      "row_meaning": "One upload a retained YouTube cache lists",
+      "identity": {
+        "fields": [
+          "video_key"
+        ],
+        "scope": "published identifier",
+        "validation": "native publication key checks",
+        "kind": "primary_key"
+      },
+      "notes": {
+        "stated_event_ids[]": "A claim the video makes, not a verified link; recording_matches keeps it as claimed."
+      }
+    },
+    {
+      "name": "channels.parquet",
+      "columns": [
+        {
+          "name": "handle",
+          "type": "string",
+          "meaning": "Channel handle"
+        },
+        {
+          "name": "channel_id",
+          "type": "string",
+          "meaning": "YouTube channel ID"
+        },
+        {
+          "name": "system_code",
+          "type": "dict",
+          "meaning": "Committee the directory maps it to"
+        },
+        {
+          "name": "committee_label",
+          "type": "string",
+          "meaning": "Committee label in the directory"
+        },
+        {
+          "name": "role",
+          "type": "dict",
+          "meaning": "primary, secondary or member"
+        },
+        {
+          "name": "title",
+          "type": "string",
+          "meaning": "Channel's own title when cached"
+        },
+        {
+          "name": "custom_url",
+          "type": "string",
+          "meaning": "Channel's custom URL when cached"
+        },
+        {
+          "name": "uploads_scan_complete",
+          "type": "bool",
+          "meaning": "Whether the cache scanned every upload"
+        },
+        {
+          "name": "mapping_basis",
+          "type": "dict",
+          "meaning": "curated_directory: a curated mapping with no further evidence column"
+        },
+        {
+          "name": "record_sha",
+          "type": "fixed[32]",
+          "meaning": "SHA-256 of the cache body, null with no cached channel row"
+        }
+      ],
+      "gaps": [],
+      "purpose": "Curated committee YouTube channel directory",
+      "row_meaning": "One curated channel handle",
+      "identity": {
+        "fields": [
+          "handle"
+        ],
+        "scope": "published identifier",
+        "validation": "native publication key checks",
+        "kind": "primary_key"
+      },
+      "notes": {}
+    },
+    {
+      "name": "recording_matches.parquet",
+      "columns": [
+        {
+          "name": "match_id",
+          "type": "string",
+          "meaning": "Hex SHA-256 of the compact JSON [subject_kind, subject_id, video ref, basis]"
+        },
+        {
+          "name": "subject_kind",
+          "type": "dict",
+          "meaning": "event or package"
+        },
+        {
+          "name": "event_id",
+          "type": "int64",
+          "meaning": "Meeting subject; null for a package or a stated number no meeting has"
+        },
+        {
+          "name": "package_id",
+          "type": "string",
+          "meaning": "GPO package subject"
+        },
+        {
+          "name": "video_key",
+          "type": "string",
+          "meaning": "Video identity; can lack a video row"
+        },
+        {
+          "name": "url",
+          "type": "string",
+          "meaning": "Off-channel recording URL"
+        },
+        {
+          "name": "basis",
+          "type": "dict",
+          "meaning": "publisher_link, video_states_event_id or curated"
+        },
+        {
+          "name": "decision",
+          "type": "dict",
+          "meaning": "The verdict as stated, or linked"
+        },
+        {
+          "name": "score",
+          "type": "int16",
+          "meaning": "100 publisher link, 95 stated event ID; null otherwise"
+        },
+        {
+          "name": "recording_scope",
+          "type": "dict",
+          "meaning": "full, excerpt or unknown"
+        },
+        {
+          "name": "status",
+          "type": "dict",
+          "meaning": "asserted, claimed, decided, conflicting or unresolved; unresolved is a negative verdict that old matcher evidence disputes"
+        },
+        {
+          "name": "note",
+          "type": "string",
+          "meaning": "Curator note, or the unmatched stated number"
+        },
+        {
+          "name": "source_ref",
+          "type": "string",
+          "meaning": "Evidence reference: the record or decision"
+        }
+      ],
+      "gaps": [
+        "Scored date and title matches arrive with the native matcher; gpo_hearing_videos.csv stays a parity oracle until then"
+      ],
+      "purpose": "Recording links and decisions with their basis",
+      "row_meaning": "One observation that a subject has, or lacks, a recording",
+      "identity": {
+        "fields": [
+          "match_id"
+        ],
+        "scope": "published identifier",
+        "validation": "native publication key checks",
+        "kind": "primary_key"
+      },
+      "notes": {}
+    },
+    {
+      "name": "committee_records.parquet",
+      "columns": [
+        {
+          "name": "record_key",
+          "type": "string",
+          "meaning": "Hex SHA-256 of the compact JSON [record_sha hex, ordinal as text]"
+        },
+        {
+          "name": "event_id",
+          "type": "int64",
+          "meaning": "Meeting event ID"
+        },
+        {
+          "name": "kind",
+          "type": "dict",
+          "meaning": "amendment or vote"
+        },
+        {
+          "name": "bill",
+          "type": "string",
+          "meaning": "Bill as stated"
+        },
+        {
+          "name": "number",
+          "type": "string",
+          "meaning": "Amendment or vote number as stated"
+        },
+        {
+          "name": "sponsor_bioguide",
+          "type": "dict",
+          "meaning": "Sponsor as stated"
+        },
+        {
+          "name": "amendment_type",
+          "type": "dict",
+          "meaning": "Amendment type as stated"
+        },
+        {
+          "name": "enbloc",
+          "type": "string",
+          "meaning": "En bloc number as stated"
+        },
+        {
+          "name": "source_description",
+          "type": "string",
+          "meaning": "Description as stated"
+        },
+        {
+          "name": "url",
+          "type": "string",
+          "meaning": "Document URL, null when the record states none"
+        },
+        {
+          "name": "record_sha",
+          "type": "fixed[32]",
+          "meaning": "SHA-256 of the House XML body"
+        },
+        {
+          "name": "ordinal",
+          "type": "int32",
+          "meaning": "Position in that record, so duplicate links stay distinct"
+        }
+      ],
+      "gaps": [],
+      "purpose": "Amendment and vote documents House meeting XML lists",
+      "row_meaning": "One document link in a meeting record; a vote row is a document link, not a ballot or tally",
+      "identity": {
+        "fields": [
+          "record_key"
+        ],
+        "scope": "published identifier",
+        "validation": "native publication key checks",
+        "kind": "primary_key"
+      },
+      "notes": {}
+    },
+    {
+      "name": "meeting_coverage.parquet",
+      "columns": [
+        {
+          "name": "event_id",
+          "type": "int64",
+          "meaning": "Meeting event ID"
+        },
+        {
+          "name": "aspect",
+          "type": "dict",
+          "meaning": "recording, transcript, documents, witnesses or captions"
+        },
+        {
+          "name": "state",
+          "type": "dict",
+          "meaning": "present, partial, claimed, empty, not_stated, unresolved, not_public, confirmed_absent or unknown; these never merge"
+        },
+        {
+          "name": "basis",
+          "type": "dict",
+          "meaning": "Which relation states it"
+        },
+        {
+          "name": "count",
+          "type": "int32",
+          "meaning": "Rows behind present"
+        },
+        {
+          "name": "reason",
+          "type": "dict",
+          "meaning": "Why a state holds, when known, such as old_evidence_disputes_negative_verdict"
+        }
+      ],
+      "gaps": [],
+      "purpose": "Typed coverage facts per meeting",
+      "row_meaning": "One aspect of one meeting: recording, transcript, documents, witnesses or captions",
+      "identity": {
+        "fields": [
+          "event_id",
+          "aspect"
+        ],
+        "scope": "published identifier",
+        "validation": "native publication key checks",
+        "kind": "primary_key"
+      },
+      "notes": {
+        "state": "confirmed_absent only from undisputed curated negative verdicts on every package of the meeting, each linked to that meeting alone; zero rows never prove absence. partial means excerpts only; claimed means only a video\u2019s own text; for captions, no observation is unknown, never empty."
+      }
     }
   ],
   "relationships_version": 1,
@@ -1107,7 +1624,7 @@
           "link_key"
         ]
       },
-      "meaning": "Resolve the document’s primary public link to the canonical document row; the lookup key identifies one row even when several records reference the same body.",
+      "meaning": "Resolve the document\u2019s primary public link to the canonical document row; the lookup key identifies one row even when several records reference the same body.",
       "cardinality": "many-to-one",
       "nullable": true,
       "resolution": "required",
@@ -1359,7 +1876,7 @@
           "witness_key"
         ]
       },
-      "meaning": "Documents attached from this witness appearance’s own document URLs; not every document from the meeting.",
+      "meaning": "Documents attached from this witness appearance\u2019s own document URLs; not every document from the meeting.",
       "cardinality": "many-to-many",
       "nullable": true,
       "resolution": "required",
@@ -1548,7 +2065,7 @@
           "system_code"
         ]
       },
-      "meaning": "Subcommittee’s parent committee when identified.",
+      "meaning": "Subcommittee\u2019s parent committee when identified.",
       "cardinality": "many-to-one",
       "nullable": true,
       "resolution": "unresolved_allowed",
@@ -2230,6 +2747,153 @@
       "resolution": "external",
       "match": "identifier",
       "scope": "typed treaty identifiers only"
+    },
+    {
+      "id": "video_channel",
+      "source": {
+        "table": "videos",
+        "fields": [
+          "handle"
+        ]
+      },
+      "target": {
+        "table": "channels",
+        "fields": [
+          "handle"
+        ]
+      },
+      "meaning": "The curated channel whose cache lists the video.",
+      "cardinality": "many-to-one",
+      "nullable": false,
+      "resolution": "unresolved_allowed",
+      "match": "equal",
+      "scope": "selected release"
+    },
+    {
+      "id": "match_meeting",
+      "source": {
+        "table": "recording_matches",
+        "fields": [
+          "event_id"
+        ]
+      },
+      "target": {
+        "table": "meetings",
+        "fields": [
+          "event_id"
+        ]
+      },
+      "meaning": "The meeting an observation concerns.",
+      "cardinality": "many-to-one",
+      "nullable": true,
+      "resolution": "required",
+      "match": "equal",
+      "scope": "selected release"
+    },
+    {
+      "id": "match_recording",
+      "source": {
+        "table": "recording_matches",
+        "fields": [
+          "video_key"
+        ]
+      },
+      "target": {
+        "table": "videos",
+        "fields": [
+          "video_key"
+        ]
+      },
+      "meaning": "The collected video; a publisher or curated key can lack one.",
+      "cardinality": "many-to-one",
+      "nullable": true,
+      "resolution": "unresolved_allowed",
+      "match": "equal",
+      "scope": "selected release"
+    },
+    {
+      "id": "committee_record_meeting",
+      "source": {
+        "table": "committee_records",
+        "fields": [
+          "event_id"
+        ]
+      },
+      "target": {
+        "table": "meetings",
+        "fields": [
+          "event_id"
+        ]
+      },
+      "meaning": "The meeting whose record lists the document.",
+      "cardinality": "many-to-one",
+      "nullable": false,
+      "resolution": "required",
+      "match": "equal",
+      "scope": "selected release"
+    },
+    {
+      "id": "committee_record_sponsor",
+      "source": {
+        "table": "committee_records",
+        "fields": [
+          "sponsor_bioguide"
+        ]
+      },
+      "target": {
+        "table": "members",
+        "fields": [
+          "bioguide_id"
+        ]
+      },
+      "meaning": "The sponsor as stated.",
+      "cardinality": "many-to-one",
+      "nullable": true,
+      "resolution": "unresolved_allowed",
+      "match": "equal",
+      "scope": "selected release"
+    },
+    {
+      "id": "coverage_meeting",
+      "source": {
+        "table": "meeting_coverage",
+        "fields": [
+          "event_id"
+        ]
+      },
+      "target": {
+        "table": "meetings",
+        "fields": [
+          "event_id"
+        ]
+      },
+      "meaning": "The meeting a coverage fact describes.",
+      "cardinality": "many-to-one",
+      "nullable": false,
+      "resolution": "required",
+      "match": "equal",
+      "scope": "selected release"
+    },
+    {
+      "id": "channel_committee",
+      "source": {
+        "table": "channels",
+        "fields": [
+          "system_code"
+        ]
+      },
+      "target": {
+        "table": "committees",
+        "fields": [
+          "system_code"
+        ]
+      },
+      "meaning": "The committee of a curated mapping.",
+      "cardinality": "many-to-one",
+      "nullable": false,
+      "resolution": "unresolved_allowed",
+      "match": "equal",
+      "scope": "selected release"
     }
   ],
   "recipes": [
@@ -2498,6 +3162,208 @@
       "notes": [
         "list_row belongs only to the selected release. Multiple shared endpoint keys must not duplicate a document."
       ]
+    },
+    {
+      "id": "meeting_recordings",
+      "title": "A meeting's recordings with basis and status",
+      "dialect": "duckdb",
+      "requires": [
+        "recording_matches"
+      ],
+      "relationships": [
+        "match_meeting"
+      ],
+      "parameters": [
+        {
+          "name": "event_id",
+          "example": "115538"
+        }
+      ],
+      "sql": "SELECT video_key,url,basis,decision,score,recording_scope,status,note\nFROM recording_matches WHERE event_id=? ORDER BY basis,video_key,url",
+      "result_row": "One observation",
+      "notes": [
+        "claimed rows are what a video says about itself; conflicting rows are retained, not settled."
+      ]
+    },
+    {
+      "id": "channel_unmatched_videos",
+      "title": "Videos of a channel with no recording match",
+      "dialect": "duckdb",
+      "requires": [
+        "videos",
+        "recording_matches"
+      ],
+      "relationships": [
+        "match_recording"
+      ],
+      "parameters": [
+        {
+          "name": "handle",
+          "example": "@AgRepublicans"
+        }
+      ],
+      "sql": "SELECT v.video_key,v.title,v.published_at FROM videos v\nWHERE v.handle=? AND NOT EXISTS (SELECT 1 FROM recording_matches m WHERE m.video_key=v.video_key)\nORDER BY v.published_at DESC NULLS LAST LIMIT 100",
+      "result_row": "One upload",
+      "notes": [
+        "Channel membership is not evidence that a video is a hearing."
+      ]
+    },
+    {
+      "id": "coverage_counts",
+      "title": "Coverage counts for an aspect",
+      "dialect": "duckdb",
+      "requires": [
+        "meeting_coverage"
+      ],
+      "relationships": [
+        "coverage_meeting"
+      ],
+      "parameters": [
+        {
+          "name": "aspect",
+          "example": "recording"
+        }
+      ],
+      "sql": "SELECT state,count(*) AS meetings FROM meeting_coverage WHERE aspect=? GROUP BY state ORDER BY state",
+      "result_row": "One state",
+      "notes": [
+        "unknown and not_stated are not absence."
+      ]
+    }
+  ],
+  "upstream_relations": [
+    {
+      "id": "bill_actions",
+      "family": "bill-family",
+      "table": "bill_actions",
+      "key_columns": [
+        "bill_id"
+      ],
+      "joins": [
+        {
+          "table": "bills",
+          "field": "bill_id"
+        }
+      ],
+      "row_meaning": "One recorded action on a bill",
+      "limits": "bills carries only the latest action: a summary is not a history."
+    },
+    {
+      "id": "bill_cosponsors",
+      "family": "bill-family",
+      "table": "bill_cosponsors",
+      "key_columns": [
+        "bill_id",
+        "bioguide_id"
+      ],
+      "joins": [
+        {
+          "table": "bills",
+          "field": "bill_id"
+        },
+        {
+          "table": "members",
+          "field": "bioguide_id"
+        }
+      ],
+      "row_meaning": "One cosponsorship",
+      "limits": "bills does not carry cosponsors."
+    },
+    {
+      "id": "member_votes",
+      "family": "roll-call-votes",
+      "table": "member_votes",
+      "key_columns": [
+        "vote_id",
+        "bioguide_id"
+      ],
+      "joins": [
+        {
+          "table": "bills",
+          "field": "floor_votes[].vote_id"
+        },
+        {
+          "table": "nominations",
+          "field": "floor_votes[].vote_id"
+        },
+        {
+          "table": "members",
+          "field": "bioguide_id"
+        }
+      ],
+      "row_meaning": "One member ballot",
+      "limits": "Local floor_votes hold totals, not ballots."
+    },
+    {
+      "id": "roll_call_votes",
+      "family": "roll-call-votes",
+      "table": "roll_call_votes",
+      "key_columns": [
+        "vote_id"
+      ],
+      "joins": [
+        {
+          "table": "bills",
+          "field": "floor_votes[].vote_id"
+        },
+        {
+          "table": "nominations",
+          "field": "floor_votes[].vote_id"
+        }
+      ],
+      "row_meaning": "One roll-call vote",
+      "limits": "Includes votes not tied to a local bill or nomination."
+    },
+    {
+      "id": "amendments",
+      "family": "amendments",
+      "table": "amendments",
+      "key_columns": [
+        "amendment_id"
+      ],
+      "joins": [
+        {
+          "table": "bills",
+          "field": "amendments[].amendment_id"
+        }
+      ],
+      "row_meaning": "One floor amendment",
+      "limits": "Coverage is limited by upstream; committee_records holds different, committee-stage documents."
+    },
+    {
+      "id": "nominations",
+      "family": "nominations",
+      "table": "nominations",
+      "key_columns": [
+        "congress",
+        "number",
+        "part_number"
+      ],
+      "joins": [],
+      "row_meaning": "One nomination part",
+      "limits": "Coverage is limited by upstream; local nominations cover what that generation holds."
+    },
+    {
+      "id": "committee_assignments",
+      "family": "committee-rosters",
+      "table": "committee_assignments",
+      "key_columns": [
+        "congress",
+        "system_code",
+        "bioguide_id"
+      ],
+      "joins": [
+        {
+          "table": "rosters",
+          "field": "system_code"
+        },
+        {
+          "table": "members",
+          "field": "bioguide_id"
+        }
+      ],
+      "row_meaning": "One committee assignment",
+      "limits": "Current Congress only: not a historical roster."
     }
   ]
 }

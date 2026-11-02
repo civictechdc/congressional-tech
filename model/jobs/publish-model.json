@@ -37,19 +37,25 @@
     "schema_id": 0
   },
   "parser_versions": {
-    "sniff": "01bf09000fce8229a468583c23f869fc639c56e3e87a1ca447dd66c5f99bff6b",
-    "html": "aedd1e67ec4c240693657099bd1e979596eb1dbb3754612fbfcb2aadd58ef9ec",
-    "xml": "d5dceca22f8c6b4dfce01011e246d0e131e8ab46914120f59ed314ef76cdf5b3",
-    "json": "0110a9ea2979fb32fff62ef855c28d7a95b461caf641430adf1b4351da9ecb9b",
+    "sniff": "6290b30b8d8851c434b981835e82c28bb96e7de80e8ccfc14b7c86b3eb4fd746",
+    "html": "2cd57b091e1bed0b49ddfec06107623cde3dbdc12e902c129f2ac42a8003290b",
+    "xml": "ce4b2ee29179355369cad8d6a1db2963626a10ee60f95f0fecc0b0d17ea88e2e",
+    "json": "5d79e149b01e060c2abae435163e875a00c9e3e3c543be4da06a99cfd43cca91",
     "meeting_records": {
-      "congress_gov": "c45819b59f02de555642b7cdab940caafa14435f94eef62a12f0b5f0ddfec517",
-      "house_xml": "c3667550f626d6a7b2ed4a114a11c2ef5e8608ce664dbbe3d6c47f8d81ea74a5"
+      "congress_gov": "4ecfb6133207f0c459a4c1aa538af3faf98867dc9a42411c7fb68b52755484c3",
+      "house_xml": "7118d6360829c39ccc2de0c4fb234b305f5fb8cc591f531b0af39b9252b6780e"
     },
     "appearance_records": {
-      "house_xml": "07e85620e310c7b215b6bb13d72475183e82dca421b057246f277995f4ded19c",
-      "congress_gov": "2387ccbe714449de42a3de7f62cdd5cd490ceaa18c0b2c52b03c3ba8ee335372",
-      "senate_page": "1081f849e75e2fc0baf9a13b9c340ee4e305edb2c8b8eba4441b85e5b8533792",
-      "mods": "6f7bfd702dbac94cd223b6853ce12b6b4b2fbbeaac7b9cc4fdaefa543dbf58cd"
+      "house_xml": "a9f2780926c18e9cb44524e97dc4b928de491df19edfb1c60f13547efd4da1f5",
+      "congress_gov": "8ab26c86be1962c1c93776ecefa119573c1a835ccd49bb34259ebfa3dfce56a6",
+      "senate_page": "0271cb3f7b59f56d471e187f3df0e17a671bdd5ffea8ac4012df07efc5b717d8",
+      "mods": "687fbc86f1e0a3973d4f98cc39b3fafb07f14ac84ee9894fa4009f384915f451"
+    },
+    "video_records": {
+      "youtube_cache": "4ceee06d02828da0cc9834d1ccd17946bed8b0eea08e72d962a880ca0151bbab"
+    },
+    "committee_records": {
+      "house_xml": "89241b745c1692f0bf3daf63d4719b2a4b58fcf7f87067ff1bfa63b4991846e1"
     }
   },
   "catalog_version": "de3da574511eacedeb389344818afc10bb73e29452c097891b00281be28b0a83",

@@ -30,7 +30,7 @@ historical measurements and old-release readability.
 | S1 | 1 | Re-packaged copies of each edition, each paired with one XML, never at a shared address | The known limit: such a copy can join the XML; the edition count measures how often |
 | S1 | 1 | A ZIP repacked so `report.pdf` moves to another position, with mirrors pairing each edition with the same XML | One edition-ambiguous endpoint; the editions stay apart |
 | S1 | 1 | Two archive members with one name and different bytes | An edition-ambiguous endpoint; neither member takes a rendition edge |
-| S1 | 1 | A linked GovInfo ZIP holding one hearing's HTML and PDF with its METS (`dip.xml`), MODS and PREMIS manifests; a linked ZIP holding two different PDFs | The ZIP, HTML and PDF form one document and the manifests join none; no rendition edges |
+| S1 | 1 | A linked GovInfo ZIP holding one hearing's HTML and PDF with its METS (`dip.xml`), MODS and PREMIS manifests; a linked ZIP holding two different PDFs | The HTML and PDF form one document and the manifests join none; the ZIP is a source record whose link key and URL resolve to that document. A ZIP's contents are the documents; a ZIP with no expanded contents stays a document. No rendition edge joins the two different PDFs |
 | S1 | 1 | Several same-format files listed together; unrelated files on one page outside any list item | Each stays its own document; the unlisted files get no publisher group |
 | S1 | 1 | One source file at several archive-member paths and directories | One source identity, every address retained; same-stem memberships consider every directory |
 | S1 | 1 | One PDF body under two download names, listed with its XML | One document with both names and the XML; the group counts one PDF body |

@@ -3,3 +3,6 @@ SELECT r.*,row_number() OVER(PARTITION BY component ORDER BY
  WHEN 'requested_content_in_official_hearing' THEN 2 ELSE 1 END,
  cast(imported_at AS TIMESTAMP WITH TIME ZONE) DESC NULLS LAST,body_sha,receipt_key,receipt_line,capture_index) AS saved_rank
 FROM final_recovery_attachments r
+-- A ZIP with good contents is a source record, whichever way it entered, and its members are documents rather than recoveries.
+WHERE r.body_sha NOT IN (SELECT lower(encode(sha256,'hex')) FROM archive_bodies)
+ AND NOT EXISTS (SELECT 1 FROM good_archive_containers z WHERE z.receipt_key=r.receipt_key AND z.receipt_line=r.receipt_line)

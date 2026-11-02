@@ -1,6 +1,6 @@
 import {test} from 'node:test';
 import assert from 'node:assert/strict';
-import {dateLabels, lookupUrl, recoveryLabel, savedCopy, openArchive} from './archive.ts';
+import {dateLabels, detailProjection, lookupUrl, recoveryLabel, savedCopy, openArchive} from './archive.ts';
 import {
   cleanIdentityNote,
   committeeLabel,
@@ -21,6 +21,11 @@ import {
 import {rangeFile} from './range-file.ts';
 import {readFile} from 'node:fs/promises';
 import {byteCache} from './cache.ts';
+
+test('a detail read requests only columns the packed list does not hold',()=>{
+  assert.deepEqual(detailProjection(['link_key','saved_body','filename','title'],['filename','title','hidden']),['link_key','saved_body']);
+  assert.deepEqual(detailProjection(['link_key','saved_body'],['filename']),['link_key','saved_body']);
+});
 
 test('public lookup spelling preserves queries and rejects credentials',()=>{
   assert.equal(lookupUrl('http://www.EXAMPLE.test:80/report.pdf/#old'),'example.test/report.pdf');

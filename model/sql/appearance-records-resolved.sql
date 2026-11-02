@@ -1,14 +1,4 @@
-WITH selected_appearance_records AS (
- SELECT r.*
- FROM appearance_records_input r
- WHERE (
-  NOT EXISTS (SELECT 1 FROM parser_versions WHERE parser LIKE 'appearance_records.%')
-  OR EXISTS (
-   SELECT 1 FROM parser_versions v
-   WHERE v.parser='appearance_records.'||r.source AND v.version=r.parser_version
-  )
- )
-), candidate_appearance_shas AS (
+WITH candidate_appearance_shas AS (
  SELECT DISTINCT record_sha_hex
  FROM selected_appearance_records
  WHERE record_sha_hex IS NOT NULL
@@ -97,12 +87,8 @@ WITH selected_appearance_records AS (
   max(arrow_cast(try_cast(m['updated'] AS TIMESTAMP WITH TIME ZONE),'Timestamp(Microsecond, Some("UTC"))')) AS updated
  FROM (
   SELECT r.record_sha_hex,unnest(r.meetings) AS m
-  FROM meeting_records_input r
+  FROM selected_meeting_records r
   WHERE r.status='completed' AND r.meetings IS NOT NULL
-   AND (
-    NOT EXISTS (SELECT 1 FROM parser_versions WHERE parser LIKE 'meeting_records.%')
-    OR EXISTS (SELECT 1 FROM parser_versions v WHERE v.parser='meeting_records.'||r.source AND v.version=r.parser_version)
-   )
  ) GROUP BY record_sha_hex
 ), single_package_meetings AS (
  SELECT package_id,min(event_id) AS event_id

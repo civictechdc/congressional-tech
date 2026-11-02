@@ -21,6 +21,8 @@ PARSERS=('sniff','html','xml','json')
 MEETING_SOURCES=('congress_gov','house_xml')
 APPEARANCE_SOURCES=('house_xml','congress_gov','senate_page','mods')
 ENTITY_SOURCES={'meeting_records':MEETING_SOURCES,'appearance_records':APPEARANCE_SOURCES}
+EXPLORER_SOURCES={'video_records':('youtube_cache',),'committee_records':('house_xml',)}
+SELECTED_SOURCES={**ENTITY_SOURCES,**EXPLORER_SOURCES}
 
 
 def readings_bundle_version(versions):
@@ -29,18 +31,18 @@ def readings_bundle_version(versions):
     return bundle_version(page_versions,policy=worker_limits())
 
 
-def validate_parser_versions(parser_versions,*,require_entities=False):
+def validate_parser_versions(parser_versions,*,require_entities=False,require_explorer=False):
     """Validate page-parser and optional/required entity-parser version selections."""
     if (not isinstance(parser_versions,dict) or not set(PARSERS)<=parser_versions.keys()
-            or not set(parser_versions)<=set(PARSERS)|set(ENTITY_SOURCES)):
+            or not set(parser_versions)<=set(PARSERS)|set(SELECTED_SOURCES)):
         raise ValueError('Model profile requires pinned parsers, catalog, engine, runtime, tables and writer')
     for name in PARSERS:
         val=parser_versions.get(name)
         if not isinstance(val,str) or not val:
             raise ValueError('Model profile requires pinned parsers, catalog, engine, runtime, tables and writer')
-    for entity_name,expected_sources in ENTITY_SOURCES.items():
+    for entity_name,expected_sources in SELECTED_SOURCES.items():
         if entity_name not in parser_versions:
-            if require_entities:
+            if require_explorer if entity_name in EXPLORER_SOURCES else require_entities:
                 raise ValueError(f'Model profile with {entity_name} requires pinned {entity_name} parser_versions')
             continue
         val=parser_versions[entity_name]
@@ -53,7 +55,7 @@ def expand_parser_version_rows(parser_versions):
     """Flatten page and source-scoped entity parser versions into (parser, version) rows."""
     validate_parser_versions(parser_versions)
     rows=[dict(parser=name,version=parser_versions[name]) for name in sorted(PARSERS)]
-    for entity_name,expected_sources in sorted(ENTITY_SOURCES.items()):
+    for entity_name,expected_sources in sorted(SELECTED_SOURCES.items()):
         if entity_name not in parser_versions:
             continue
         val=parser_versions[entity_name]
@@ -76,6 +78,7 @@ def _definition_hashes(root):
     files += [package/name for name in ('archive_model.py','archive_model_profile.py','archive_format.py','archive_schema.py','archive_model_lifetimes.py',
         'archive_annotations.py','archive_provenance.py','archive_reviews.py','archive_url_state.py')]
     files += [root/'packages/congress_api/src/congress_api/models/archive_profile.py',root/'uv.lock']
+    files += [root/'packages/congress_shared/src/congress_shared/youtube/youtube-accounts.csv']
     files += [root/'packages/congress_api/src/congress_api'/name for name in ['lake/readings.py','lake/_record_producer.py','lake/meeting_records.py','lake/appearance_records.py','retention/parser_worker.py','retention/process_resources.py']]
     return {path.relative_to(root).as_posix():file_pin(path)['sha256'] for path in sorted(set(files))}
 

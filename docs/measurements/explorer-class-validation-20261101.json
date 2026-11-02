@@ -1,0 +1,881 @@
+{
+ "null_complete": {
+  "all": {
+   "rows": 242293,
+   "any_url_field": 383,
+   "url": 16,
+   "requested_url": 16,
+   "context_url": 383,
+   "original_url": 0,
+   "recovered_url": 0,
+   "http_status": 383,
+   "http_2xx": 383,
+   "fetch_http_status": 375
+  },
+  "no_good_row": {
+   "rows": 73308,
+   "any_url_field": 1,
+   "url": 0,
+   "requested_url": 0,
+   "context_url": 1,
+   "original_url": 0,
+   "recovered_url": 0,
+   "http_status": 1,
+   "http_2xx": 1,
+   "fetch_http_status": 1
+  },
+  "no_good_row_with_address": [
+   [
+    "govinfo/transcript-html",
+    null,
+    null,
+    "https://www.govinfo.gov/content/pkg/CHRG-119hhrg64404/html/CHRG-119hhrg64404.htm",
+    200,
+    "receipts/documents/2026-09-21/assemble-20260930.jsonl.gz",
+    1,
+    "5e9b5643073b5e09bd8815b2eda0dbafb1b32d4c313befcf7ae733206ed58b02"
+   ]
+  ]
+ },
+ "imported_zips": {
+  "zip_lines_read": 15,
+  "zip_bytes_rehashed_equal": 15,
+  "zip_has_good_download_by_digest": 15,
+  "line_states_200_complete": 15,
+  "line_processing_completed": 15,
+  "members_read": 149,
+  "member_status_completed": 149,
+  "member_bytes_rehashed_equal": 149
+ },
+ "raw_meeting_records": {
+  "read": 24430,
+  "unread": 0
+ },
+ "transcript": {
+  "records": 18687,
+  "table": {
+   "present | raw_jackets=yes,old_gpo=yes": 10624,
+   "not_stated | raw_jackets=no,old_gpo=no": 5479,
+   "not_stated | raw_jackets=no,old_gpo=none": 875,
+   "not_stated | raw_jackets=no,old_gpo=yes": 785,
+   "present | raw_jackets=yes,old_gpo=no": 640,
+   "present | raw_jackets=yes,old_gpo=none": 202,
+   "unresolved | raw_jackets=yes,old_gpo=yes": 50,
+   "unresolved | raw_jackets=yes,old_gpo=no": 28,
+   "unresolved | raw_jackets=yes,old_gpo=none": 4
+  },
+  "samples": {
+   "present | raw_jackets=yes,old_gpo=none": [
+    "100031",
+    "100032",
+    "100035",
+    "100036",
+    "100037"
+   ],
+   "not_stated | raw_jackets=no,old_gpo=none": [
+    "100033",
+    "100034",
+    "100040",
+    "100045",
+    "100046"
+   ],
+   "unresolved | raw_jackets=yes,old_gpo=none": [
+    "100049",
+    "110658",
+    "116498",
+    "116499"
+   ],
+   "not_stated | raw_jackets=no,old_gpo=no": [
+    "100052",
+    "100097",
+    "100139",
+    "100201",
+    "100269"
+   ],
+   "present | raw_jackets=yes,old_gpo=yes": [
+    "100140",
+    "100141",
+    "100217",
+    "100218",
+    "100219"
+   ],
+   "present | raw_jackets=yes,old_gpo=no": [
+    "100224",
+    "100290",
+    "100312",
+    "100333",
+    "100367"
+   ],
+   "not_stated | raw_jackets=no,old_gpo=yes": [
+    "100308",
+    "100353",
+    "100355",
+    "100372",
+    "100435"
+   ],
+   "unresolved | raw_jackets=yes,old_gpo=no": [
+    "103146",
+    "104194",
+    "104203",
+    "105611",
+    "105612"
+   ],
+   "unresolved | raw_jackets=yes,old_gpo=yes": [
+    "104192",
+    "104199",
+    "108928",
+    "110537",
+    "111067"
+   ]
+  }
+ },
+ "documents": {
+  "records": 18687,
+  "table": {
+   "present | raw=yes,old_found=no": 10976,
+   "present | raw=no,old_found=yes": 2115,
+   "present | raw=yes,old_found=yes": 1994,
+   "not_stated | raw=no,old_found=no": 1130,
+   "present | raw=no,old_found=no": 1022,
+   "not_stated | raw=yes,old_found=no": 672,
+   "not_stated | raw=no,old_found=yes": 490,
+   "not_stated | raw=yes,old_found=yes": 288
+  },
+  "samples": {
+   "present | raw=yes,old_found=no": [
+    "100031",
+    "100032",
+    "100033",
+    "100034",
+    "100035"
+   ],
+   "not_stated | raw=no,old_found=no": [
+    "100046",
+    "100117",
+    "100351",
+    "100369",
+    "100587"
+   ],
+   "present | raw=no,old_found=no": [
+    "100057",
+    "100100",
+    "100103",
+    "100134",
+    "100166"
+   ],
+   "present | raw=yes,old_found=yes": [
+    "100097",
+    "100218",
+    "100219",
+    "100220",
+    "100221"
+   ],
+   "present | raw=no,old_found=yes": [
+    "100217",
+    "100245",
+    "100246",
+    "100247",
+    "100303"
+   ],
+   "not_stated | raw=yes,old_found=no": [
+    "100821",
+    "101372",
+    "101393",
+    "103195",
+    "106885"
+   ],
+   "not_stated | raw=no,old_found=yes": [
+    "104231",
+    "108493",
+    "108804",
+    "325120",
+    "325920"
+   ],
+   "not_stated | raw=yes,old_found=yes": [
+    "105475",
+    "105628",
+    "105714",
+    "105815",
+    "105838"
+   ]
+  }
+ },
+ "witnesses": {
+  "records": 18687,
+  "table": {
+   "present | raw_congress=yes,old=no": 8293,
+   "not_stated | raw_congress=no,old=no": 5128,
+   "present | raw_congress=no,old=yes": 3161,
+   "not_stated | raw_congress=no,old=yes": 1906,
+   "present | raw_congress=no,old=no": 197,
+   "empty | raw_congress=no,old=no": 2
+  },
+  "samples": {
+   "present | raw_congress=no,old=no": [
+    "100031",
+    "100032",
+    "100035",
+    "100036",
+    "100037"
+   ],
+   "not_stated | raw_congress=no,old=no": [
+    "100033",
+    "100034",
+    "100040",
+    "100045",
+    "100046"
+   ],
+   "present | raw_congress=no,old=yes": [
+    "100217",
+    "100218",
+    "100219",
+    "100220",
+    "100221"
+   ],
+   "not_stated | raw_congress=no,old=yes": [
+    "100225",
+    "100226",
+    "100238",
+    "100239",
+    "100245"
+   ],
+   "present | raw_congress=yes,old=no": [
+    "100240",
+    "100309",
+    "100334",
+    "100538",
+    "100667"
+   ],
+   "empty | raw_congress=no,old=no": [
+    "105459",
+    "111420"
+   ]
+  }
+ },
+ "caption_tracks": {
+  "bodies_read": 774,
+  "not_read_or_not_captions": 1,
+  "examples": [
+   "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  ]
+ },
+ "captions": {
+  "records": 18687,
+  "table": {
+   "unknown | track=no,old=gpo": 6849,
+   "not_stated | track=no,old=gpo": 4464,
+   "unknown | track=no,old=youtube_captions": 1377,
+   "not_stated | track=no,old=no_video": 1019,
+   "unknown | track=no,old=video_no_captions": 877,
+   "not_stated | track=no,old=video_no_captions": 820,
+   "not_stated | track=no,old=none": 809,
+   "present | track=yes,old=senate_captions": 579,
+   "not_stated | track=no,old=youtube_captions": 553,
+   "unknown | track=no,old=committee_transcript": 330,
+   "unknown | track=no,old=none": 272,
+   "not_stated | track=no,old=committee_transcript": 198,
+   "present | track=no,old=youtube_captions": 146,
+   "present | track=yes,old=gpo": 86,
+   "not_stated | track=no,old=senate_captions": 80,
+   "present | track=no,old=gpo": 60,
+   "present | track=no,old=committee_transcript": 58,
+   "present | track=no,old=video_no_captions": 41,
+   "present | track=yes,old=committee_transcript": 28,
+   "unknown | track=no,old=senate_captions": 19,
+   "present | track=yes,old=video_no_captions": 12,
+   "present | track=yes,old=youtube_captions": 7,
+   "unknown | track=no,old=no_video": 3
+  },
+  "samples": {
+   "not_stated | track=no,old=none": [
+    "100031",
+    "100032",
+    "100033",
+    "100034",
+    "100035"
+   ],
+   "unknown | track=no,old=youtube_captions": [
+    "100052",
+    "100431",
+    "100542",
+    "100771",
+    "100772"
+   ],
+   "not_stated | track=no,old=no_video": [
+    "100097",
+    "100201",
+    "100269",
+    "100290",
+    "100333"
+   ],
+   "not_stated | track=no,old=committee_transcript": [
+    "100139",
+    "100312",
+    "100615",
+    "100632",
+    "100775"
+   ],
+   "not_stated | track=no,old=gpo": [
+    "100140",
+    "100217",
+    "100219",
+    "100220",
+    "100221"
+   ],
+   "unknown | track=no,old=gpo": [
+    "100141",
+    "100218",
+    "100225",
+    "100241",
+    "100261"
+   ],
+   "unknown | track=no,old=none": [
+    "100175",
+    "100400",
+    "100419",
+    "100441",
+    "100532"
+   ],
+   "not_stated | track=no,old=video_no_captions": [
+    "100224",
+    "100376",
+    "100548",
+    "100778",
+    "100792"
+   ],
+   "unknown | track=no,old=video_no_captions": [
+    "100373",
+    "100477",
+    "100497",
+    "100822",
+    "100841"
+   ],
+   "not_stated | track=no,old=youtube_captions": [
+    "100432",
+    "100549",
+    "100674",
+    "100735",
+    "100774"
+   ],
+   "unknown | track=no,old=committee_transcript": [
+    "100526",
+    "101168",
+    "101182",
+    "101201",
+    "101247"
+   ],
+   "unknown | track=no,old=no_video": [
+    "100671",
+    "101331",
+    "103766"
+   ],
+   "present | track=no,old=gpo": [
+    "108857",
+    "108967",
+    "109900",
+    "114978",
+    "118403"
+   ],
+   "present | track=yes,old=committee_transcript": [
+    "115378",
+    "335343",
+    "335371",
+    "335984",
+    "336169"
+   ],
+   "present | track=no,old=video_no_captions": [
+    "117814",
+    "117816",
+    "118561",
+    "118710",
+    "118752"
+   ],
+   "present | track=no,old=youtube_captions": [
+    "118394",
+    "118447",
+    "118498",
+    "118558",
+    "118597"
+   ],
+   "present | track=no,old=committee_transcript": [
+    "118560",
+    "118594",
+    "118639",
+    "118669",
+    "118685"
+   ],
+   "not_stated | track=no,old=senate_captions": [
+    "325920",
+    "325940",
+    "326705",
+    "327528",
+    "327529"
+   ],
+   "present | track=yes,old=senate_captions": [
+    "335286",
+    "335301",
+    "335362",
+    "335369",
+    "335380"
+   ],
+   "unknown | track=no,old=senate_captions": [
+    "335320",
+    "335561",
+    "335630",
+    "335668",
+    "335783"
+   ],
+   "present | track=yes,old=gpo": [
+    "335321",
+    "335356",
+    "335365",
+    "335424",
+    "335483"
+   ],
+   "present | track=yes,old=youtube_captions": [
+    "336609",
+    "337729",
+    "338359",
+    "338568",
+    "338652"
+   ],
+   "present | track=yes,old=video_no_captions": [
+    "337115",
+    "337766",
+    "337767",
+    "338006",
+    "338758"
+   ]
+  }
+ },
+ "recording": {
+  "records": 18687,
+  "table": {
+   "present | raw_videos=yes,old=yes": 7893,
+   "unknown | raw_videos=no,old=yes": 4477,
+   "unknown | raw_videos=no,old=none": 1995,
+   "claimed | raw_videos=no,old=yes": 1995,
+   "present | raw_videos=no,old=yes": 1802,
+   "claimed | raw_videos=no,old=none": 258,
+   "confirmed_absent | raw_videos=no,old=none": 89,
+   "partial | raw_videos=no,old=none": 73,
+   "unresolved | raw_videos=no,old=yes": 43,
+   "partial | raw_videos=no,old=yes": 37,
+   "present | raw_videos=no,old=none": 15,
+   "present | raw_videos=yes,old=none": 9,
+   "not_public | raw_videos=no,old=yes": 1
+  },
+  "samples": {
+   "unknown | raw_videos=no,old=none": [
+    "100031",
+    "100032",
+    "100033",
+    "100034",
+    "100035"
+   ],
+   "claimed | raw_videos=no,old=yes": [
+    "100052",
+    "100225",
+    "100281",
+    "100282",
+    "100283"
+   ],
+   "unknown | raw_videos=no,old=yes": [
+    "100139",
+    "100140",
+    "100219",
+    "100220",
+    "100221"
+   ],
+   "present | raw_videos=no,old=yes": [
+    "100141",
+    "100218",
+    "100241",
+    "100263",
+    "100266"
+   ],
+   "claimed | raw_videos=no,old=none": [
+    "100175",
+    "100400",
+    "100419",
+    "100441",
+    "100532"
+   ],
+   "confirmed_absent | raw_videos=no,old=none": [
+    "100217",
+    "100260",
+    "100393",
+    "100394",
+    "100395"
+   ],
+   "partial | raw_videos=no,old=none": [
+    "100261",
+    "100473",
+    "100503",
+    "100609",
+    "100669"
+   ],
+   "present | raw_videos=no,old=none": [
+    "100449",
+    "100526",
+    "100540",
+    "101498",
+    "101500"
+   ],
+   "unresolved | raw_videos=no,old=yes": [
+    "100538",
+    "100835",
+    "101327",
+    "101560",
+    "102061"
+   ],
+   "partial | raw_videos=no,old=yes": [
+    "100667",
+    "100757",
+    "100818",
+    "100843",
+    "100874"
+   ],
+   "present | raw_videos=yes,old=yes": [
+    "102207",
+    "102540",
+    "102542",
+    "102583",
+    "102817"
+   ],
+   "present | raw_videos=yes,old=none": [
+    "108889",
+    "110924",
+    "114353",
+    "115406",
+    "116426"
+   ],
+   "not_public | raw_videos=no,old=yes": [
+    "113933"
+   ]
+  }
+ },
+ "old_witness_rows_without_home": {
+  "rows": 1300,
+  "table": {
+   "no_native_witness_on_event | docs.house.gov | not_in_held_meeting_records": 561,
+   "event_has_other_witnesses | docs.house.gov | not_in_held_meeting_records": 317,
+   "no_native_witness_on_event | senate committee page | not_in_held_meeting_records": 221,
+   "event_has_other_witnesses | docs.house.gov | name_in_raw_house_record": 80,
+   "event_has_other_witnesses | senate committee page | not_in_held_meeting_records": 40,
+   "no_native_witness_on_event | meeting title (nominees) | name_in_raw_meeting_title": 39,
+   "no_native_witness_on_event | docs.house.gov | name_in_raw_house_record": 18,
+   "event_has_other_witnesses | meeting title (nominees) | name_in_raw_meeting_title": 11,
+   "no_native_witness_on_event | senate committee page | name_in_raw_meeting_title": 5,
+   "no_native_witness_on_event | witness list document | not_in_held_meeting_records": 3,
+   "event_has_other_witnesses | senate committee page | name_in_raw_meeting_title": 3,
+   "no_native_witness_on_event | gpo | not_in_held_meeting_records": 2
+  },
+  "samples": {
+   "event_has_other_witnesses | docs.house.gov | not_in_held_meeting_records": [
+    [
+     "100217",
+     "Dr. Jared Bernstein",
+     [
+      "None"
+     ],
+     null
+    ],
+    [
+     "100217",
+     "Mr. Jay Timmons",
+     [
+      "None"
+     ],
+     null
+    ],
+    [
+     "100217",
+     "The Honorable Gary Herbert",
+     [
+      "None"
+     ],
+     null
+    ]
+   ],
+   "no_native_witness_on_event | docs.house.gov | name_in_raw_house_record": [
+    [
+     "100225",
+     "Matthew Levitt, Ph.D.",
+     [
+      "None"
+     ],
+     null
+    ],
+    [
+     "100225",
+     "Michael Rubin, Ph.D.",
+     [
+      "None"
+     ],
+     null
+    ],
+    [
+     "100389",
+     "Mr. Douglas Holtz-Eakin Ph.D.",
+     [
+      "None"
+     ],
+     null
+    ]
+   ],
+   "no_native_witness_on_event | docs.house.gov | not_in_held_meeting_records": [
+    [
+     "100225",
+     "Mr. David Makovsky",
+     [
+      "None"
+     ],
+     null
+    ],
+    [
+     "100226",
+     "Dr. Heather Shotton",
+     [
+      "None"
+     ],
+     null
+    ],
+    [
+     "100226",
+     "Mr. George A. Scott",
+     [
+      "None"
+     ],
+     null
+    ]
+   ],
+   "event_has_other_witnesses | docs.house.gov | name_in_raw_house_record": [
+    [
+     "100267",
+     "Dr. Douglas Hotlz-Eakin",
+     [
+      "None"
+     ],
+     null
+    ],
+    [
+     "100267",
+     "Mr. Kevin Tindall",
+     [
+      "None"
+     ],
+     null
+    ],
+    [
+     "100267",
+     "Mr. William Gouldin",
+     [
+      "None"
+     ],
+     null
+    ]
+   ],
+   "no_native_witness_on_event | witness list document | not_in_held_meeting_records": [
+    [
+     "105634",
+     "Hannibal \u201cMike\u201d Ware",
+     [
+      "https://www.congress.gov/115/meeting/house/105634/documents/HHRG-115-SM23-WList-20170202.pdf"
+     ],
+     null
+    ],
+    [
+     "105634",
+     "Shirley Bailey",
+     [
+      "https://www.congress.gov/115/meeting/house/105634/documents/HHRG-115-SM23-WList-20170202.pdf"
+     ],
+     null
+    ],
+    [
+     "105634",
+     "William B. Shear",
+     [
+      "https://www.congress.gov/115/meeting/house/105634/documents/HHRG-115-SM23-WList-20170202.pdf"
+     ],
+     null
+    ]
+   ],
+   "no_native_witness_on_event | senate committee page | not_in_held_meeting_records": [
+    [
+     "325614",
+     "H.E. Miroslav Lajcak",
+     [
+      "https://www.csce.gov/hearings/slovakia-s-chairmanship-of-the-osce"
+     ],
+     null
+    ],
+    [
+     "325987",
+     "Mariya Y. Omelicheva",
+     [
+      "https://www.csce.gov/hearings/russia-s-counterproductive-counterterrorism"
+     ],
+     null
+    ],
+    [
+     "325987",
+     "Michael Carpenter",
+     [
+      "https://www.csce.gov/hearings/russia-s-counterproductive-counterterrorism"
+     ],
+     null
+    ]
+   ],
+   "no_native_witness_on_event | meeting title (nominees) | name_in_raw_meeting_title": [
+    [
+     "326205",
+     "Carl Whitney Bentzel",
+     [
+      "https://api.congress.gov/v3/committee-meeting/116/senate/326205"
+     ],
+     null
+    ],
+    [
+     "326205",
+     "Ian Paul Steff",
+     [
+      "https://api.congress.gov/v3/committee-meeting/116/senate/326205"
+     ],
+     null
+    ],
+    [
+     "326205",
+     "Michael J.K. Kratsios",
+     [
+      "https://api.congress.gov/v3/committee-meeting/116/senate/326205"
+     ],
+     null
+    ]
+   ],
+   "no_native_witness_on_event | senate committee page | name_in_raw_meeting_title": [
+    [
+     "326300",
+     "Bruno Min",
+     [
+      "https://www.csce.gov/hearings/tools-of-transnational-repression"
+     ],
+     null
+    ],
+    [
+     "326640",
+     "Gonul Tol",
+     [
+      "https://www.csce.gov/hearings/at-what-cost"
+     ],
+     null
+    ],
+    [
+     "327324",
+     "Valeriu Pa\u0219a",
+     [
+      "https://www.csce.gov/hearings/moldova"
+     ],
+     null
+    ]
+   ],
+   "event_has_other_witnesses | senate committee page | not_in_held_meeting_records": [
+    [
+     "326682",
+     "Kameron Matthews",
+     [
+      "https://www.indian.senate.gov/hearings/oversight-hearing-recognizing-sacrifice-honoring-nation-s-promise-native-veterans/"
+     ],
+     null
+    ],
+    [
+     "326682",
+     "Robert Wilkie",
+     [
+      "https://www.indian.senate.gov/hearings/oversight-hearing-recognizing-sacrifice-honoring-nation-s-promise-native-veterans/"
+     ],
+     null
+    ],
+    [
+     "327746",
+     "Tony Dearman",
+     [
+      "https://www.indian.senate.gov/hearings/oversight-hearing-preparing-head-back-class-addressing-how-safely-reopen-bureau-indian/"
+     ],
+     null
+    ]
+   ],
+   "event_has_other_witnesses | senate committee page | name_in_raw_meeting_title": [
+    [
+     "326762",
+     "Michael D. Weahkee",
+     [
+      "https://www.indian.senate.gov/hearings/nomination-hearing-consider-radm-michael-d-weahkee-new-mexico-be-director-indian-health/"
+     ],
+     null
+    ],
+    [
+     "334521",
+     "Frank Star Comes Out",
+     [
+      "https://www.indian.senate.gov/hearings/business-meeting-consider-s-195-s-382-s-910-s-1286-s-1322-s-1987-s-2273-s-2285-and/"
+     ],
+     null
+    ],
+    [
+     "337180",
+     "William Kirkland",
+     [
+      "https://www.indian.senate.gov/hearings/nomination-hearing-to-consider-mr-william-kirkland-to-be-assistant-secretary-for-indian-affairs-within-the-department-of-the-interior/"
+     ],
+     null
+    ]
+   ],
+   "event_has_other_witnesses | meeting title (nominees) | name_in_raw_meeting_title": [
+    [
+     "327606",
+     "Derek Kan",
+     [
+      "https://api.congress.gov/v3/committee-meeting/116/senate/327606"
+     ],
+     null
+    ],
+    [
+     "336623",
+     "James Bishop",
+     [
+      "https://api.congress.gov/v3/committee-meeting/119/senate/336623"
+     ],
+     null
+    ],
+    [
+     "337283",
+     "Anthony Lomangino",
+     [
+      "https://api.congress.gov/v3/committee-meeting/119/senate/337283"
+     ],
+     null
+    ]
+   ],
+   "no_native_witness_on_event | gpo | not_in_held_meeting_records": [
+    [
+     "332419",
+     "Nathaniel Persily",
+     [
+      "CHRG-117shrg56698"
+     ],
+     null
+    ],
+    [
+     "337935",
+     "Robert Ritchie \"Kid Rock\"",
+     [
+      "CHRG-119shrg64113"
+     ],
+     null
+    ]
+   ]
+  }
+ }
+}

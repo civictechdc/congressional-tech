@@ -1013,8 +1013,8 @@
         "http_status": 200
       },
       "expected": {
-        "record_role": "document",
-        "real_file": true
+        "record_role": "api",
+        "real_file": false
       }
     },
     {

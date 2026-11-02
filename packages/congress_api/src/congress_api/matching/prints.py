@@ -14,17 +14,12 @@ import re
 
 from congress_api.matching.committees import codes_of, occupancy_codes_of
 from congress_api.matching.gpo_videos import matching_days, similarity, words
-from congress_api.matching.meetings import meeting_type
+from congress_api.matching.meetings import meeting_type, title_key
 
 PRINT_FILE = re.compile(r"/(CHRG-\d{3}[hsj]hrg[\w\-]+?)(?:\.\w+)?$", re.I)
 
 
 COLLECTION = re.compile(r"APPROPRIATIONS FOR (FISCAL YEAR )?\d{4}|AUTHORIZATION FOR APPROPRIATIONS|NOMINATIONS OF THE \d+\w* CONGRESS|NOMINATIONS BEFORE THE", re.I)
-
-
-def title_key(title):
-    distinct = words(title)
-    return " ".join(sorted(distinct)) if len(distinct) >= 4 else ""
 
 
 def same_day_title_groups(rows):

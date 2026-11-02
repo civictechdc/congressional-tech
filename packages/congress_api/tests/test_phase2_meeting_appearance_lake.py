@@ -91,6 +91,11 @@ def test_meeting_and_appearance_lake_schemas_and_table_profiles():
         "videos",
         "document_urls",
         "collection_states",
+        "access",
+        "access_basis",
+        "not_held",
+        "title_key",
+        "reschedule_candidate",
     }
     assert meeting_elem_fields["transcript_jackets"]["type"]["element"] == "int"
 
@@ -294,10 +299,12 @@ def test_meeting_records_from_house_xml_strips_all_prefixes(prefix: str):
       <start-time>10:00:00</start-time>
       <end-time>12:30:00</end-time>
     </meeting-date>
-    <capitol-complex-location>
-      <room>2141</room>
-      <building>Rayburn</building>
-    </capitol-complex-location>
+    <meeting-location>
+      <capitol-complex>
+        <room>2141</room>
+        <building>Rayburn</building>
+      </capitol-complex>
+    </meeting-location>
     <committees>
       <committee-name id="JU00">Committee on the Judiciary</committee-name>
     </committees>
@@ -326,8 +333,8 @@ def test_meeting_records_from_house_xml_strips_all_prefixes(prefix: str):
     assert m["meeting_date"] == "2024-05-10"
     assert m["sittings"] == [
         {
-            "start": "2024-05-10T10:00:00",
-            "end": "2024-05-10T12:30:00",
+            "start": "2024-05-10T10:00:00-04:00",
+            "end": "2024-05-10T12:30:00-04:00",
             "room": "2141",
             "building": "Rayburn",
             "address": None,
@@ -1907,7 +1914,9 @@ def test_ct_30fp_congress_gov_invalid_witness_items_and_sql_per_context_freshnes
         work,
         engine,
         inputs=inputs,
-        steps=[{"name": "resolved", "sql": resolved_sql, "materialize": True}],
+        steps=[{"name": "selected_appearance_records", "sql": "SELECT * FROM appearance_records_input", "materialize": True},
+               {"name": "selected_meeting_records", "sql": "SELECT * FROM meeting_records_input", "materialize": True},
+               {"name": "resolved", "sql": resolved_sql, "materialize": True}],
         outputs=[],
         queries=[
             {"name": "rows", "sql": "SELECT occasion, name, record_sha_hex FROM resolved ORDER BY occasion, display_order"},
@@ -1923,6 +1932,33 @@ def test_ct_30fp_congress_gov_invalid_witness_items_and_sql_per_context_freshnes
     ]
 
 
+def _house_location(location):
+    xml = f"""<committee-meeting meeting-id="HHRG-118-JU00-20240510" update-date="2024-05-09T10:00:00" meeting-status="1">
+    <meeting-details><meeting-date><calendar-date>{{day}}</calendar-date><start-time>10:00:00</start-time><end-time>12:30:00</end-time></meeting-date>
+    <meeting-location>{location}</meeting-location></meeting-details></committee-meeting>"""
+    return xml
 
 
+@pytest.mark.parametrize("day,start,end", [("2012-09-13", "2012-09-13T10:00:00-04:00", "2012-09-13T12:30:00-04:00"),
+                                          ("2019-11-13", "2019-11-13T10:00:00-05:00", "2019-11-13T12:30:00-05:00")])
+def test_house_times_state_their_eastern_offset(day, start, end):
+    xml = _house_location("<capitol-complex><room>2141</room><building>RHOB</building></capitol-complex>").replace("{day}", day).encode()
+    sitting = meeting_records.extract_house_xml_meetings(xml)[0]["sittings"][0]
+    assert (sitting["start"], sitting["end"], sitting["room"], sitting["building"]) == (start, end, "2141", "Rayburn House Office Building")
 
+
+def test_house_field_location_states_building_and_address_once():
+    xml = _house_location("""<field><building-name>Richmond City Hall</building-name><street-address>36725 Division Road</street-address>
+    <city>Richmond</city><state postal-code="MI"><state-fullname>Michigan</state-fullname></state><zip>48062</zip></field>""").replace("{day}", "2019-11-13").encode()
+    sitting = meeting_records.extract_house_xml_meetings(xml)[0]["sittings"][0]
+    assert sitting["building"] == "Richmond City Hall" and sitting["room"] is None
+    assert sitting["address"] == "36725 Division Road, Richmond, MI, 48062"
+
+
+@pytest.mark.parametrize("placeholder", ["Select one", "----------", "---"])
+def test_unset_form_values_state_no_place(placeholder):
+    xml = _house_location(f"<capitol-complex><room>{placeholder}</room><building>{placeholder}</building></capitol-complex>").replace("{day}", "2019-11-13").encode()
+    sitting = meeting_records.extract_house_xml_meetings(xml)[0]["sittings"][0]
+    assert sitting["room"] is None and sitting["building"] is None
+    congress = meeting_records._convert_congress_meeting_dict({"eventId": "1", "date": "2019-11-13T19:00:00Z", "location": {"room": placeholder, "building": placeholder}})
+    assert congress["sittings"][0]["room"] is None and congress["sittings"][0]["building"] is None

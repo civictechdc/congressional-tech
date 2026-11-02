@@ -736,6 +736,35 @@ def test_phase2_entities_meetings_witnesses_recordings_and_spicy_projections(tmp
     assert nom['floor_votes'][0]['vote_id'] == '118-s-1-99'
 
 
+    # A digest the input never stated must not become an upstream URL.
+    released_schema = json.loads((release_dir / 'schema.json').read_text())
+    assert not any('path' in relation for relation in released_schema['upstream_relations'] if relation['family'] not in (spicy_regs.get('generations') or {}))
+
+    # Explorer tables need their own version pins, and only pinned copies count.
+    explorer_versions = dict(staged['parser_versions'], video_records={'youtube_cache': 'pv'}, committee_records={'house_xml': 'pc'})
+    staged = dict(staged, parser_versions=explorer_versions)
+    # The same inputs with the Explorer tables: all five appear, and old-shaped outputs do not move.
+    from congress_api.lake import committee_records as cr_lake, video_records as vr_lake
+    video_path, committee_path, decisions = tmp_path / 'video.parquet', tmp_path / 'committee.parquet', tmp_path / 'decisions.jsonl'
+    pq.write_table(vr_lake.table([]), video_path)
+    pq.write_table(cr_lake.table([]), committee_path)
+    decisions.write_text(json.dumps(dict(id='a' * 64, subject_kind='event', subject_id='115538', verdict='found',
+        video_refs=['https://example.test/watch'], note=None, disputed_by=None, decided_at=None, supersedes=None)) + '\n')
+    explorer = build_release(**staged, meeting_records=meeting_records, appearance_records=appearance_records, spicy_regs=spicy_regs,
+        video_records=video_path, committee_records=committee_path,
+        recording_decision_files=[dict(key='provenance/recording_decisions/a.jsonl', path=str(decisions))],
+        engine=engine, output=tmp_path / 'release-explorer', scratch=tmp_path / 'model-explorer')
+    with_tables = {f['name']: f for f in explorer['files']}
+    assert {'videos.parquet', 'channels.parquet', 'recording_matches.parquet', 'committee_records.parquet', 'meeting_coverage.parquet'} <= with_tables.keys()
+    assert not {'videos.parquet', 'meeting_coverage.parquet'} & files_by_name.keys()
+    for name in ('list.parquet', 'detail.parquet', 'meetings.parquet', 'witnesses.parquet'):
+        assert with_tables[name]['sha256'] == files_by_name[name]['sha256'], name
+    assert with_tables['channels.parquet']['rows'] == 119 and with_tables['videos.parquet']['rows'] == 0
+    assert with_tables['meeting_coverage.parquet']['rows'] == 5 * with_tables['meetings.parquet']['rows']
+    curated = pq.read_table(tmp_path / 'release-explorer/recording_matches.parquet').to_pylist()
+    assert [(r['event_id'], r['url'], r['status']) for r in curated if r['basis'] == 'curated'] == [(115538, 'https://example.test/watch', 'decided')]
+
+
 def test_spicy_generations_pinned_by_publish_and_maintenance():
     from viewer_publication.archive_maintenance import maintain_releases
     from viewer_publication.archive_publish import SPICY_PINS, input_digest
@@ -1367,3 +1396,228 @@ def test_entity_record_version_selection_and_completeness_admission(tmp_path):
     )
 
 
+def _resolved_meetings(tmp_path, records, pins=()):
+    """Run only the maintained meeting SQL over stated records, with no capture history."""
+    from congress_api.retention.provenance import json_input, run_job
+    from docspec_client.client import NativeDatasets
+    from viewer_publication.archive_model import MEETING_RECORD_FIELDS, _normalize_meeting_rows, meeting_steps, selected_record_step
+    engine = NativeDatasets.from_config(os.environ['DOCSPEC_JOB_CONFIG'])
+    inputs = [json_input(tmp_path, 'meeting_records_input', _normalize_meeting_rows(records, 'v'), **MEETING_RECORD_FIELDS),
+        json_input(tmp_path, 'parser_versions', list(pins), parser='Utf8', version='Utf8'),
+        json_input(tmp_path, 'meeting_sources', [dict(kind='meeting', source='house_xml', priority=1), dict(kind='meeting', source='congress_gov', priority=2)], kind='Utf8', source='Utf8', priority='Int64'),
+        json_input(tmp_path, 'recording_sources', [], kind='Utf8', pattern='Utf8', key_template='Utf8')]
+    captures = """SELECT arrow_cast(NULL,'FixedSizeBinary(32)') AS sha256,cast(NULL AS VARCHAR) AS retrieved_at,cast(NULL AS VARCHAR) AS mode,
+        cast(NULL AS BOOLEAN) AS complete,cast(NULL AS VARCHAR) AS outcome,cast(NULL AS INT) AS http_status WHERE false"""
+    result = run_job(tmp_path, engine, inputs=inputs, outputs=[],
+        steps=[dict(name='captures', sql=captures), selected_record_step('meeting_records', 'meeting_records_input'), *meeting_steps()],
+        queries=[dict(name='rows', sql=f"""SELECT event_id,congress,congress_gov_updated,house_xml_updated,congress_gov_meeting_type,
+            sittings[1]['start'] AS s_start,sittings[1]['end'] AS s_end,sittings[1]['place'] AS place,sittings[1]['room'] AS room,
+            coalesce(array_length(sittings),0) AS sitting_count FROM meetings_resolved ORDER BY event_id""")])
+    return result['rows']
+
+
+def _record(sha, source, *, states=None, sittings=(), **fields):
+    return dict(record_sha=sha * 32, source=source, meetings=[dict(dict(event_id='100', chamber='house', congress=118,
+        sittings=list(sittings), collection_states=states or {}), **fields)])
+
+
+CONGRESS_SITTING = dict(start='2019-11-13T19:00:00Z', room='1300', building='Longworth House Office Building')
+HOUSE_SITTING = dict(start='2019-11-13T14:00:00-05:00', end='2019-11-13T16:30:00-05:00', room='9', building='LHOB', address='DC 20515')
+
+
+def test_congress_gov_leads_and_house_fills_only_what_it_lacks(tmp_path):
+    rows = _resolved_meetings(tmp_path, [
+        _record('11', 'house_xml', updated='2019-11-10T08:00:00', meeting_type='HHRG', sittings=[HOUSE_SITTING]),
+        _record('22', 'congress_gov', updated='2019-11-11T00:00:00Z', meeting_type='Hearing', sittings=[CONGRESS_SITTING])])
+    assert str(rows[0]['s_start']).startswith('2019-11-13T19:00:00') and rows[0]['room'] == '1300'
+    assert str(rows[0]['s_end']).startswith('2019-11-13T21:30:00')  # Only House states the end.
+    assert rows[0]['place'] == '1300, Longworth House Office Building, DC 20515'  # Only House states the address.
+    assert rows[0]['house_xml_updated'] == '2019-11-10T08:00:00' and rows[0]['congress_gov_meeting_type'] == 'Hearing'
+    assert str(rows[0]['congress_gov_updated']).startswith('2019-11-11T00:00:00')
+
+
+def test_field_hearing_place_comes_from_the_house_record(tmp_path):
+    field = dict(start='2019-11-13T14:00:00-05:00', building='City Hall', address='1 Main St, Richmond, MI, 48062')
+    rows = _resolved_meetings(tmp_path, [_record('11', 'house_xml', sittings=[field]),
+        _record('22', 'congress_gov', sittings=[dict(start='2019-11-13T19:00:00Z')])])
+    assert rows[0]['place'] == 'City Hall, 1 Main St, Richmond, MI, 48062'
+
+
+def test_house_only_sitting_keeps_its_stated_instant(tmp_path):
+    rows = _resolved_meetings(tmp_path, [_record('11', 'house_xml', sittings=[HOUSE_SITTING])])
+    assert str(rows[0]['s_start']).startswith('2019-11-13T19:00:00') and rows[0]['congress_gov_updated'] is None
+
+
+@pytest.mark.parametrize('state', ['empty', 'unrecognized'])
+def test_explicit_empty_house_sittings_never_fall_back(tmp_path, state):
+    rows = _resolved_meetings(tmp_path, [_record('11', 'house_xml', states=dict(sittings=state)),
+        _record('22', 'congress_gov', sittings=[CONGRESS_SITTING])])
+    assert rows[0]['sitting_count'] == 0
+
+
+def test_congress_is_only_what_a_record_states(tmp_path):
+    rows = _resolved_meetings(tmp_path, [_record('11', 'congress_gov', congress=None, sittings=[CONGRESS_SITTING])])
+    assert rows[0]['congress'] is None
+
+
+def _versioned(sha, event, version):
+    record = _record(sha, 'house_xml', event_id=event)
+    return dict(record, parser_version=version)
+
+
+def test_pinned_versions_select_by_equality_and_an_unpinned_job_takes_all(tmp_path):
+    records = [_versioned('11', '100', 'pinned'), _versioned('22', '200', 'other'), _versioned('33', '300', 'pinned')]
+    selected = lambda work, pins: [row['event_id'] for row in _resolved_meetings(tmp_path / work, records, pins)]
+    for work in ('all', 'one', 'absent', 'repeat'):
+        (tmp_path / work).mkdir()
+    assert selected('all', []) == [100, 200, 300]
+    pin = dict(parser='meeting_records.house_xml', version='pinned')
+    assert selected('one', [pin]) == [100, 300]  # An extra version in the input is refused.
+    assert selected('repeat', [pin, pin]) == [100, 300]  # A repeated pin cannot duplicate records.
+    # A pin no record has selects nothing rather than falling back to every record.
+    assert selected('absent', [dict(pin, version='missing')]) == []
+
+
+def test_another_chambers_pin_does_not_select_this_source(tmp_path):
+    rows = _resolved_meetings(tmp_path, [_versioned('11', '100', 'pinned')], [dict(parser='meeting_records.congress_gov', version='pinned')])
+    assert rows == []
+
+
+def test_zip_contents_are_the_documents_from_receipts_to_release(tmp_path):
+    """Real receipt lines through captures, readings and the model, not model-only rows."""
+    from viewer_publication.archive_model import build_release
+    import io, zipfile
+    engine = NativeDatasets.from_config(os.environ['DOCSPEC_JOB_CONFIG'])
+    pdf = b'%PDF-1.7\nzip member transcript bytes\n%%EOF\n'
+    buffer = io.BytesIO()
+    with zipfile.ZipFile(buffer, 'w') as archive:
+        archive.writestr('CHRG-1/pdf/CHRG-1.pdf', pdf)
+    zip_bytes = buffer.getvalue()
+    lone_zip = b'PK\x05\x06' + bytes(18)
+    direct = b'%PDF-1.7\ndirect document bytes\n%%EOF\n'
+    bad = b'%PDF-1.7\nmember of a failed container\n%%EOF\n'
+    raw = tmp_path / 'raw'
+    def body(data, gz=False):
+        digest = hashlib.sha256(data).hexdigest()
+        path = raw / f'bodies/sha256/{digest[:2]}/{digest}'
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_bytes(data)
+        return dict(sha256=digest, bytes=len(data), media_type='application/octet-stream', fidelity='exact-bytes', stored_suffix='', stored_bytes=len(data),
+            stored_md5=hashlib.md5(data).hexdigest(), sniff_version=readings.current_version('sniff'))
+    def line(url, entries, **extra):
+        return dict(writer=dict(job='fixture', commit='a' * 40), run_id='fixture', mode='fetch', family='documents', outcome='stored', requested_url=url, url=url,
+            response_headers={}, http_status=200, complete=True, retrieved_at='2026-10-27T12:00:00Z', captures=entries, **extra)
+    good_url, failed_url = 'https://fixture.test/CHRG-1.zip', 'https://fixture.test/failed.zip'
+    lines = [
+        line(good_url, [dict(body(zip_bytes), sniffed_format='zip', expansion='expanded'),
+            dict(body(pdf), sniffed_format='pdf', intact=True, member_path='CHRG-1/pdf/CHRG-1.pdf')]),
+        # A repeated container row on another attempt must not fan the member out.
+        line(good_url, [dict(body(zip_bytes), sniffed_format='zip', expansion='expanded'),
+            dict(body(pdf), sniffed_format='pdf', intact=True, member_path='CHRG-1/pdf/CHRG-1.pdf')]),
+        line(failed_url, [dict(body(bad), sniffed_format='pdf', intact=True, member_path='x/bad.pdf')], complete=False) if False else
+        dict(line(failed_url, [dict(body(bad), sniffed_format='pdf', intact=True, member_path='x/bad.pdf')]), complete=False),
+        line('https://fixture.test/lone.zip', [dict(body(lone_zip), sniffed_format='zip')]),
+        line('https://fixture.test/direct.pdf', [dict(body(direct), sniffed_format='pdf', intact=True)]),
+    ]
+    receipt = raw / 'receipts/documents/2026-10-27/slice.jsonl.gz'
+    receipt.parent.mkdir(parents=True, exist_ok=True)
+    encoded = gzip.compress(''.join(json.dumps(r) + '\n' for r in lines).encode(), mtime=0)
+    receipt.write_bytes(encoded)
+    pin = tmp_path / 'pin.json'
+    pin.write_text(json.dumps(dict(path=str(receipt), size=len(encoded), sha256=hashlib.sha256(encoded).hexdigest(), producer='fixture creation')))
+    captures = stage_captures([dict(key=receipt.relative_to(raw).as_posix(), path=str(receipt), qualification=str(pin))], engine=engine, work=tmp_path / 'stage') / 'captures.parquet'
+    inventory = tmp_path / 'inventory'
+    inventory.mkdir()
+    run_job(inventory, engine, inputs=[dict(name='captures', kind='parquet', path=str(captures))], steps=[], outputs=[parquet_output(inventory, 'bodies',
+        """SELECT DISTINCT sha256 AS body_sha,'bodies/sha256/'||substr(encode(sha256,'hex'),1,2)||'/'||encode(sha256,'hex') AS physical_key,
+        'bodies/sha256/'||substr(encode(sha256,'hex'),1,2)||'/'||encode(sha256,'hex') AS relative_path,stored_bytes,false AS stored_gzip FROM captures WHERE sha256 IS NOT NULL""", ['body_sha'])])
+    pages = readings.stage(captures=captures, body_inventory=inventory / 'bodies.parquet', local_root=raw, engine=engine, work=tmp_path / 'read', decided_at='2026-10-27T12:00:00Z', parser='html')
+    names = filenames.stage(captures=captures, recovery_files=(), engine=engine, work=tmp_path / 'names', decided_at='2026-10-27T12:00:00Z')
+    build_release(captures=captures, readings=pages['readings'], filename_readings=names['readings'],
+        parser_versions={p: readings.current_version(p) for p in ['sniff', 'html', 'xml', 'json']}, catalog_version=names['catalog_version'],
+        engine=engine, output=tmp_path / 'release', scratch=tmp_path / 'model')
+    release = tmp_path / 'release'
+    rows = pq.read_table(release / 'list.parquet').to_pylist()
+    formats = sorted(row['format'] for row in rows)
+    assert formats == ['pdf', 'pdf', 'zip'], rows  # Member and direct PDFs, and the ZIP with no contents.
+    key = lambda data: hashlib.sha256(data).digest()[:8]
+    details = pq.read_table(release / 'detail.parquet').to_pylist()
+    member = next(d for d in details if d['saved_body'] == hashlib.sha256(pdf).digest())
+    assert not member['alternates']
+    links = {row['link_key']: row['list_row'] for row in pq.read_table(release / 'links.parquet').to_pylist()}
+    row_of_member = details.index(member)
+    assert links[key(zip_bytes)] == links[key(pdf)] == row_of_member  # The ZIP's public key finds its document.
+    assert key(bad) not in links  # A failed container's member stays out.
+    sources = pq.read_table(release / 'sources.parquet').to_pylist()
+    mine = [s for s in sources if s['list_row'] == row_of_member]
+    assert {(s['url'], s['member_path']) for s in mine} == {(good_url, 'CHRG-1/pdf/CHRG-1.pdf')}
+    assert all(s['url'] for s in sources)
+
+
+def test_imported_zip_identical_to_a_good_download_keeps_its_members(tmp_path):
+    """The Senate Finance shape, as raw lines: a direct good fetch with no expansion, and a retained
+    import of the same bytes that expanded it. Its members have no other good row."""
+    from viewer_publication.archive_model import build_release
+    import io, zipfile
+    engine = NativeDatasets.from_config(os.environ['DOCSPEC_JOB_CONFIG'])
+    pdf = b'%PDF-1.7\nimported member only\n%%EOF\n'
+    buffer = io.BytesIO()
+    with zipfile.ZipFile(buffer, 'w') as archive:
+        archive.writestr('A/one.pdf', pdf)
+    data = buffer.getvalue()
+    other = b'PK\x03\x04 an import with no good download'
+    orphan = b'%PDF-1.7\nmember of an unverified import\n%%EOF\n'
+    raw = tmp_path / 'raw'
+    url = 'https://fixture.test/download/appendix&download=1'
+    def body(content):
+        digest = hashlib.sha256(content).hexdigest()
+        path = raw / f'bodies/sha256/{digest[:2]}/{digest}'
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_bytes(content)
+        return dict(sha256=digest, bytes=len(content), fidelity='exact-bytes', stored_suffix='', stored_bytes=len(content),
+            stored_md5=hashlib.md5(content).hexdigest(), sniff_version=readings.current_version('sniff'))
+    def entry(content, fmt, **extra):
+        return dict(body(content), media_type='application/octet-stream', sniffed_format=fmt, **extra)
+    direct = dict(writer=dict(job='fixture', commit='a' * 40), run_id='fixture', mode='fetch', family='documents', outcome='stored', requested_url=url, url=url,
+        response_headers={}, http_status=200, complete=True, retrieved_at='2026-09-29T00:00:00Z', captures=[entry(data, 'zip')])
+    def imported(page, zipped, member, name):
+        return dict(direct, mode='retained_import', requested_url=page, url=page, retrieved_at='2026-10-16T00:00:00Z',
+            source_associations=[dict(original_url=page + '-original', basis='explicit_retained_download_wrapper')],
+            captures=[entry(zipped, 'zip', expansion='expanded'), entry(member, 'pdf', intact=True, member_path=name)])
+    lines = [direct, imported(url, data, pdf, 'A/one.pdf'), imported('https://fixture.test/unverified', other, orphan, 'B/two.pdf')]
+    receipt = raw / 'receipts/documents/2026-10-16/slice.jsonl.gz'
+    receipt.parent.mkdir(parents=True, exist_ok=True)
+    encoded = gzip.compress(''.join(json.dumps(r) + '\n' for r in lines).encode(), mtime=0)
+    receipt.write_bytes(encoded)
+    pin = tmp_path / 'pin.json'
+    pin.write_text(json.dumps(dict(path=str(receipt), size=len(encoded), sha256=hashlib.sha256(encoded).hexdigest(), producer='fixture creation')))
+    decisions = tmp_path / 'recoveries.jsonl'
+    decisions.write_text(''.join(json.dumps(dict(id=name, body_sha256=hashlib.sha256(content).hexdigest(), original_url=page + '-original', recovered_filename=None,
+        recovered_url=page, kind='recovered_document', identity_note=None, decided_at='2026-10-16T00:00:00Z', supersedes=None, recovery_record_version=2)) + '\n'
+        for name, content, page in (('one', data, url), ('two', other, 'https://fixture.test/unverified'))))
+    recovery_files = [dict(key='provenance/recoveries/fixture.jsonl', path=str(decisions))]
+    captures = stage_captures([dict(key=receipt.relative_to(raw).as_posix(), path=str(receipt), qualification=str(pin))], engine=engine, work=tmp_path / 'stage') / 'captures.parquet'
+    modes = {(r['mode'], r['member_path']) for r in pq.read_table(captures, columns=['mode', 'member_path']).to_pylist()}
+    assert ('retained_import', 'A/one.pdf') in modes, modes
+    inventory = tmp_path / 'inventory'
+    inventory.mkdir()
+    run_job(inventory, engine, inputs=[dict(name='captures', kind='parquet', path=str(captures))], steps=[], outputs=[parquet_output(inventory, 'bodies',
+        """SELECT DISTINCT sha256 AS body_sha,'bodies/sha256/'||substr(encode(sha256,'hex'),1,2)||'/'||encode(sha256,'hex') AS physical_key,
+        'bodies/sha256/'||substr(encode(sha256,'hex'),1,2)||'/'||encode(sha256,'hex') AS relative_path,stored_bytes,false AS stored_gzip FROM captures WHERE sha256 IS NOT NULL""", ['body_sha'])])
+    pages = readings.stage(captures=captures, body_inventory=inventory / 'bodies.parquet', local_root=raw, engine=engine, work=tmp_path / 'read', decided_at='2026-10-27T12:00:00Z', parser='html')
+    names = filenames.stage(captures=captures, recovery_files=recovery_files, engine=engine, work=tmp_path / 'names', decided_at='2026-10-27T12:00:00Z')
+    build_release(captures=captures, readings=pages['readings'], filename_readings=names['readings'], recovery_files=recovery_files,
+        parser_versions={p: readings.current_version(p) for p in ['sniff', 'html', 'xml', 'json']}, catalog_version=names['catalog_version'],
+        engine=engine, output=tmp_path / 'release', scratch=tmp_path / 'model')
+    release = tmp_path / 'release'
+    details = pq.read_table(release / 'detail.parquet').to_pylist()
+    bodies = {d['saved_body'] for d in details}
+    assert hashlib.sha256(pdf).digest() in bodies
+    assert hashlib.sha256(orphan).digest() not in bodies  # No good download proves that import's bytes.
+    member = next(i for i, d in enumerate(details) if d['saved_body'] == hashlib.sha256(pdf).digest())
+    links = {row['link_key']: row['list_row'] for row in pq.read_table(release / 'links.parquet').to_pylist()}
+    assert links[hashlib.sha256(data).digest()[:8]] == member
+    assert hashlib.sha256(data).digest() not in bodies  # The ZIP is a source record, not a document.
+    assert {(s['url'], s['member_path']) for s in pq.read_table(release / 'sources.parquet').to_pylist() if s['list_row'] == member} == {(url, 'A/one.pdf')}
+    lookup = hashlib.sha256(b'lookup:fixture.test/download/appendix&download=1').digest()[:8]
+    assert [r['list_row'] for r in pq.read_table(release / 'urls.parquet').to_pylist() if r['lookup_key'] == lookup] == [member]

@@ -47,6 +47,20 @@ DETAIL_COLUMNS = ['link_key', 'saved_body', 'saved_suffix', 'saved_media_type', 
     'src_start', 'src_len', 'rec_start', 'rec_len', 'alternates', 'package_id', 'facts']
 
 
+# The keyed document table: detail-only columns, then the list projection. A new
+# document field needs one entry in a constant above; detail carries it from there.
+DOCUMENT_COLUMNS = [*DETAIL_COLUMNS, *LIST_COLUMNS]
+
+
+LIST_DICTIONARY = [*(f'{name}.list.item' for name in ['document_kind', 'document_family', 'committee_keys', 'chambers', 'meeting_keys', 'measure_keys', 'bioguide_ids', 'witness_keys', 'version_keys']), 'format', 'date_kind', 'saved_kind']
+
+
+DETAIL_DICTIONARY = ['saved_suffix', 'saved_media_type', 'document_date_source', 'alternates.list.item.format', 'alternates.list.item.suffix', 'facts.list.item.field']
+
+
+MEETING_DICTIONARY = ['chamber', 'meeting_type', 'status', 'congress_gov_meeting_type', 'access', 'access_basis', 'rescheduled_basis', 'committees.list.item.system_code', 'committees.list.item.role', 'subject_keys.list.item']
+
+
 def _step(name, sql, *, materialize=False, release_after=()):
     step = dict(name=name, sql=sql, materialize=materialize)
     if release_after:
@@ -117,8 +131,8 @@ def _core(steps, output,*,lookup_extra=None):
     steps += _lookup_steps('lookup_sources')
     specs = [
         ('list', 'ordered', _settings('whole', order, columns=LIST_COLUMNS,
-            dictionary=[*(f'{name}.list.item' for name in ['document_kind', 'document_family', 'committee_keys', 'chambers', 'meeting_keys', 'measure_keys', 'bioguide_ids', 'witness_keys', 'version_keys']), 'format', 'date_kind', 'saved_kind'], delta=['filename', 'title'])),
-        ('detail', 'details', _settings('ranged', order, columns=DETAIL_COLUMNS, dictionary=['saved_suffix', 'saved_media_type', 'document_date_source', 'alternates.list.item.format', 'alternates.list.item.suffix', 'facts.list.item.field'])),
+            dictionary=LIST_DICTIONARY, delta=['filename', 'title'])),
+        ('detail', 'details', _settings('ranged', order, columns=DOCUMENT_COLUMNS, dictionary=[*DETAIL_DICTIONARY, *LIST_DICTIONARY], delta=['filename', 'title'])),
         ('links', 'links', _settings('lookup', ['link_key'])),
         ('urls', 'url_keys', _settings('lookup', ['lookup_key', 'list_row'])),
         ('sources', 'source_rows', _settings('ranged', ['list_row', 'ordinal'], columns=['list_row', 'ordinal', 'url', 'member_path', 'is_saved', 'first_seen', 'listed_on', 'link_text', 'doc_type', 'posted'])),
@@ -140,9 +154,9 @@ def release_identity(schema_version,files):
     return sha256(json.dumps(identity,ensure_ascii=False,separators=(',',':'),allow_nan=False).encode()).hexdigest()
 
 
-def _release_schema(available=None):
+def _release_schema(available=None, stated_digests=None):
     from viewer_publication.archive_schema import build_schema
-    return build_schema(available)
+    return build_schema(available, entity_digests=stated_digests)
 
 
 NORMAL_DEFAULTS = dict(body_expected='true', title='cast(NULL AS VARCHAR)', document_kind=EMPTY_STRINGS,
@@ -169,12 +183,12 @@ SPICY_PRODUCER_FAMILIES = {
     'committees.parquet': ('committee-rosters',),
     'members.parquet': ('members',),
     'rosters.parquet': ('committee-rosters',),
-    'bills.parquet': ('bill-family', 'roll-call-votes'),
+    'bills.parquet': ('bill-family', 'roll-call-votes', 'amendments'),
     'nominations.parquet': ('nominations', 'roll-call-votes'),
 }
 
 
-def _execute(inputs, steps, *, output, scratch, engine, origin, auxiliary=None, capture_scope=None, extra_outputs=(), diagnostics=(), metadata_queries=(), content_files=None, lookup_extra=None, entity_digests=None):
+def _execute(inputs, steps, *, output, scratch, engine, origin, auxiliary=None, capture_scope=None, extra_outputs=(), diagnostics=(), metadata_queries=(), content_files=None, lookup_extra=None, entity_digests=None, stated_digests=None):
     output.mkdir(parents=True, exist_ok=False)
     outputs = _core(steps, output,lookup_extra=lookup_extra)
     # Entity files and the capture fixture have their full declared schema,
@@ -185,7 +199,7 @@ def _execute(inputs, steps, *, output, scratch, engine, origin, auxiliary=None, 
         steps.append(_step(name + '_export', sql, materialize=True))
         outputs.append(dict(name=name + '.parquet', path=str(output / (name + '.parquet')), sql='SELECT * FROM ' + name + '_export',
             settings=_settings('whole', keys, dictionary=dictionary)))
-    schema = _release_schema([item['name'] for item in outputs])
+    schema = _release_schema([item['name'] for item in outputs], stated_digests)
     if (content_files or {}).get('capture_profile.json',{}).get('version')==2:
         fields=json.loads((ROOT/'model/registries/capture-eligibility-fields.json').read_text())
         next(item for item in schema['files'] if item['name']=='url_state.parquet')['columns'].extend(fields)
@@ -296,7 +310,8 @@ def _execute(inputs, steps, *, output, scratch, engine, origin, auxiliary=None, 
 
 
 def _auxiliary():
-    sittings = _empty_struct(start=TS, end=TS, place='cast(NULL AS VARCHAR)')
+    sittings = _empty_struct(start=TS, end=TS, place='cast(NULL AS VARCHAR)', room='cast(NULL AS VARCHAR)',
+        building='cast(NULL AS VARCHAR)', address='cast(NULL AS VARCHAR)')
     committees = _empty_struct(system_code='cast(NULL AS VARCHAR)', role='cast(NULL AS VARCHAR)')
     transcripts = _empty_struct(package_id='cast(NULL AS VARCHAR)', list_row='cast(NULL AS INT)')
     videos = _empty_struct(name='cast(NULL AS VARCHAR)', url='cast(NULL AS VARCHAR)', video_key='cast(NULL AS VARCHAR)')
@@ -308,8 +323,10 @@ def _auxiliary():
             SELECT event_id,max(chamber) AS chamber,max(title) AS title,max(meeting_date) AS meeting_date,
                 cast(NULL AS VARCHAR) AS meeting_type,cast(NULL AS SMALLINT) AS session,cast(NULL AS VARCHAR) AS status,
                 {sittings} AS sittings,{committees} AS committees,{EMPTY_STRINGS} AS subject_keys,
-                {transcripts} AS transcripts,{videos} AS videos FROM meta GROUP BY event_id""", ['event_id'],
-            ['chamber', 'meeting_type', 'status', 'committees.list.item.system_code', 'committees.list.item.role', 'subject_keys.list.item']),
+                {transcripts} AS transcripts,{videos} AS videos,cast(NULL AS SMALLINT) AS congress,{TS} AS congress_gov_updated,
+                cast(NULL AS VARCHAR) AS house_xml_updated,cast(NULL AS VARCHAR) AS congress_gov_meeting_type,
+                cast(NULL AS VARCHAR) AS access,cast(NULL AS VARCHAR) AS access_basis,cast(NULL AS BOOLEAN) AS not_held,cast(NULL AS BIGINT) AS rescheduled_to,cast(NULL AS VARCHAR) AS rescheduled_basis FROM meta GROUP BY event_id""", ['event_id'],
+            MEETING_DICTIONARY),
         ('committees', f"""SELECT system_code,name,chamber,cast(NULL AS VARCHAR) AS committee_type,
             cast(NULL AS VARCHAR) AS parent_system_code,{names} AS names,cast(NULL AS VARCHAR) AS website,
             cast(NULL AS BOOLEAN) AS is_current FROM committee_input""", ['system_code'], ['chamber', 'committee_type', 'parent_system_code']),

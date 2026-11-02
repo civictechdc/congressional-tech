@@ -112,7 +112,9 @@ def validate_schema(schema):
                 raise ValueError(f'Invalid external reference: {rid}')
             continue
         destination = endpoint(target)
-        if relationship['cardinality'] in ('one-to-one', 'many-to-one') and target['fields'] != tables[target['table']]['identity']['fields']:
+        destination_table = tables[target['table']]
+        unique_keys = [destination_table['identity']['fields'], *([c['name']] for c in destination_table.get('virtual_columns', []))]
+        if relationship['cardinality'] in ('one-to-one', 'many-to-one') and target['fields'] not in unique_keys:
             raise ValueError(f'Target is not a declared unique key: {rid}')
         if len(source) != len(destination):
             raise ValueError(f'Unequal join key lengths: {rid}')
@@ -139,11 +141,22 @@ def validate_schema(schema):
     return schema
 
 
-def build_schema(available=None, *, registry=None):
+def _pin_upstream(relations, digests):
+    """Name the pinned generation file; an unpinned family has no URL to invent."""
+    for relation in relations:
+        digest = (digests or {}).get(relation['family'])
+        relation['available'] = digest is not None
+        if digest is not None:
+            relation['generation'] = digest
+            relation['path'] = f"generations/{relation['family']}/{digest}/{relation['table']}.parquet"
+
+
+def build_schema(available=None, *, registry=None, entity_digests=None):
     """Add release-specific availability without inventing absent table contents."""
     schema = validate_schema(deepcopy(registry) if registry is not None else json.loads(REGISTRY.read_text()))
     if available is None:
         return schema
+    _pin_upstream(schema.get('upstream_relations', ()), entity_digests)
     available = {name.removesuffix('.parquet') for name in available}
     for table in schema['files']:
         table['available'] = table['name'].removesuffix('.parquet') in available
@@ -198,6 +211,10 @@ def validate_parquet_fields(schema, paths):
                 raise ValueError(f'Published key/reference type differs: {name}.{field}: {actual.get(field)} != {expected[field]}')
 
 
+def relation_available(name, auxiliary, core):
+    return name in auxiliary or name in core
+
+
 def publication_checks(schema, auxiliary):
     """Check new entity keys and required nested references in the native job.
 
@@ -206,7 +223,17 @@ def publication_checks(schema, auxiliary):
     Existing materialized export relations are reused, not exported files.
     """
     checks = ['''(SELECT count(*) FROM details d WHERE d.link_key IS NOT NULL
-        AND NOT EXISTS (SELECT 1 FROM links l WHERE l.link_key=d.link_key)) AS missing_primary_link''']
+        AND NOT EXISTS (SELECT 1 FROM links l WHERE l.link_key=d.link_key)) AS missing_primary_link''',
+        '''(SELECT count(*) FROM (SELECT link_key FROM details WHERE link_key IS NOT NULL
+        GROUP BY link_key HAVING count(*)>1)) AS duplicate_document_key''']
+    # Declared required columns are refused at write time, in the job that writes them.
+    core = {'sources': 'source_rows'}
+    for table in schema['files']:
+        name = table['name'].removesuffix('.parquet')
+        relation = core.get(name) or (f'{name}_export' if name in auxiliary else None)
+        for column in table['columns']:
+            if column.get('nullable') is False and relation and relation_available(name, auxiliary, core):
+                checks.append(f'(SELECT count(*) FROM {relation} WHERE "{column["name"]}" IS NULL) AS null_{name}_{column["name"]}')
     for table in schema['files']:
         name = table['name'].removesuffix('.parquet')
         if name not in auxiliary or name == 'url_state':
@@ -257,6 +284,13 @@ def render_reference(schema):
         dest = f'`{target["table"]}.{", ".join(target["fields"])}`' if 'table' in target else target['external']
         lines += [f'### `{r["id"]}`', '', f'`{source["table"]}.{", ".join(source["fields"])}` → {dest}. {r["meaning"]}', '',
             f'{r["cardinality"]}; match: `{r["match"]}`; nullable: {str(r["nullable"]).lower()}; resolution: `{r["resolution"]}`. Scope: {r["scope"]}.', '']
+    lines += ['## Pinned upstream relations', '',
+        'Held upstream and never mirrored here. A release names a relation\u2019s generation and path only when it states that family\u2019s digest.', '',
+        '| Relation | Family and table | Keys | Local joins | Row | Limits |', '| --- | --- | --- | --- | --- | --- |']
+    for u in schema.get('upstream_relations', ()):
+        joins = ', '.join(f'`{j["table"]}.{j["field"]}`' for j in u['joins']) or 'none'
+        lines.append(f'| `{u["id"]}` | `{u["family"]}/{u["table"]}` | `{", ".join(u["key_columns"])}` | {joins} | {u["row_meaning"]} | {u["limits"]} |')
+    lines.append('')
     lines += ['## Query recipes (DuckDB)', '']
     for recipe in schema['recipes']:
         lines += [f'### `{recipe["id"]}` — {recipe["title"]}', '',

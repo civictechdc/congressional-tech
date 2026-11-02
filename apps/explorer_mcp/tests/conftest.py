@@ -86,6 +86,10 @@ def phase2(tmp_path_factory):
             'Transportation' AS organization,DATE '2025-01-03' AS received,DATE '2025-02-01' AS latest_action_date,
             'Confirmed' AS latest_action_text,['hsif00'] AS committees,['CHRG-118hhrg1'] AS transcripts,
             [struct_pack(vote_id:='119-s-1',date:=DATE '2025-02-01',question:='Confirmation',result:='Confirmed',yea:=70::SMALLINT,nay:=30::SMALLINT)] AS floor_votes""")
+        write('videos', """SELECT 'youtube:free' AS video_key,'@AgRepublicans' AS handle,'Unmatched upload' AS title,TIMESTAMP '2025-01-03 00:00:00' AS published_at""")
+        write('recording_matches', """SELECT 'a' AS match_id,115538::BIGINT AS event_id,'youtube:abc' AS video_key,NULL::VARCHAR AS url,'publisher_link' AS basis,
+            'linked' AS decision,100::SMALLINT AS score,'unknown' AS recording_scope,'asserted' AS status,NULL::VARCHAR AS note""")
+        write('meeting_coverage', """SELECT 118001::BIGINT AS event_id,'recording' AS aspect,'present' AS state""")
         write('future_data', "SELECT 'new published column' AS future_field,42.123456789012345678::DECIMAL(38,18) AS amount")
     # Read only the producer-owned JSON. The MCP runtime has no producer dependency.
     (root / 'schema.json').write_bytes((REPO / 'model/registries/release-schema.json').read_bytes())

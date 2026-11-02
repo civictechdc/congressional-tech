@@ -1,0 +1,226 @@
+"""The five Explorer tables, run from their maintained SQL over hand-derived rows."""
+import json
+import os
+from pathlib import Path
+
+import duckdb
+import pytest
+
+from congress_api.retention.provenance import json_input, parquet_output, run_job
+from docspec_client.client import NativeDatasets
+from viewer_publication.archive_schema import build_schema
+
+ROOT = Path(__file__).parents[3]
+UTC = "arrow_cast(NULL,'Timestamp(Microsecond, Some(\"UTC\"))')"
+LINKED, CONFLICT_PKG, SHARED_PKG, SOLO_PKG = 1001, 'CHRG-conflict', 'CHRG-shared', 'CHRG-solo'
+
+
+def sql(name):
+    return (ROOT / 'model/sql' / (name + '.sql')).read_text()
+
+
+def decision(id, kind, subject, verdict, refs=(), note=None, disputed_by=None):
+    return dict(id=id, subject_kind=kind, subject_id=subject, verdict=verdict, video_refs=list(refs), note=note, disputed_by=disputed_by, decided_at=None, supersedes=None)
+
+
+@pytest.fixture(scope='module')
+def tables(tmp_path_factory):
+    """Meetings 1001 (publisher link), 1002, 1003, 1004; three packages; three videos."""
+    work = tmp_path_factory.mktemp('explorer')
+    engine = NativeDatasets.from_config(os.environ['DOCSPEC_JOB_CONFIG'])
+    inputs = [
+        json_input(work, 'active_recording_decisions', [
+            decision('a' * 64, 'package', CONFLICT_PKG, 'no_video_found', note='not on the channel'),
+            decision('b' * 64, 'package', SHARED_PKG, 'no_video_found'),
+            decision('c' * 64, 'package', SOLO_PKG, 'no_video_found'),
+            decision('e' * 64, 'package', 'CHRG-alone', 'no_video_found'),
+            decision('9' * 64, 'package', 'CHRG-sibling', 'no_video_found'),
+            decision('f' * 64, 'package', 'CHRG-disputed', 'no_video_found', disputed_by='old matcher says full_recording'),
+            decision('d' * 64, 'event', '1002', 'found', ['https://example.test/watch']),
+        ], id='Utf8', subject_kind='Utf8', subject_id='Utf8', verdict='Utf8', video_refs=_list(),
+           note='Utf8', disputed_by='Utf8', decided_at='Utf8', supersedes='Utf8'),
+    ]
+    steps = [
+        dict(name='meetings_resolved', sql=f"""SELECT cast(1001 AS BIGINT) AS event_id,make_array(named_struct('name','Stream','url','https://youtu.be/pub','video_key','youtube:pub')) AS videos,arrow_cast(make_array(cast(9 AS BIGINT)),'List(Int64)') AS transcript_jackets
+            UNION ALL SELECT 1002,array_slice(make_array(named_struct('name',cast(NULL AS VARCHAR),'url',cast(NULL AS VARCHAR),'video_key',cast(NULL AS VARCHAR))),1,0),arrow_cast(make_array(cast(9 AS BIGINT)),'List(Int64)')""", materialize=True),
+        dict(name='meetings_export', sql="""SELECT cast(event_id AS BIGINT) AS event_id,array_slice(make_array(named_struct('package_id',cast(NULL AS VARCHAR),'list_row',cast(NULL AS INT))),1,0) AS transcripts
+            FROM (SELECT 1001 AS event_id UNION ALL SELECT 1002 UNION ALL SELECT 1003 UNION ALL SELECT 1004 UNION ALL SELECT 1005 UNION ALL SELECT 1006 UNION ALL SELECT 1007)""", materialize=True),
+        dict(name='meeting_transcript_links', sql=f"""SELECT '{CONFLICT_PKG}' AS package_id,cast(1001 AS BIGINT) AS event_id UNION ALL SELECT '{SHARED_PKG}',1003 UNION ALL SELECT '{SHARED_PKG}',1004 UNION ALL SELECT '{SOLO_PKG}',1002 UNION ALL SELECT 'CHRG-alone',1005 UNION ALL SELECT 'CHRG-disputed',1006 UNION ALL SELECT 'CHRG-sibling',1007 UNION ALL SELECT 'CHRG-no-verdict',1007""", materialize=True),
+        dict(name='videos_export', sql="""SELECT 'youtube:pub' AS video_key,arrow_cast(decode(repeat('ab',32),'hex'),'FixedSizeBinary(32)') AS record_sha,arrow_cast(make_array(cast(1003 AS BIGINT),cast(777777 AS BIGINT)),'List(Int64)') AS stated_event_ids,true AS has_caption
+            UNION ALL SELECT 'youtube:unmatched',arrow_cast(decode(repeat('ab',32),'hex'),'FixedSizeBinary(32)'),arrow_cast(array_slice(make_array(cast(1 AS BIGINT)),1,0),'List(Int64)'),false""", materialize=True),
+        dict(name='selected_appearance_records', sql='SELECT * FROM appearance_records_input', materialize=True),
+        dict(name='recording_matches_export', sql=sql('entity-recording-matches'), materialize=True),
+        dict(name='ordered', sql="SELECT arrow_cast(make_array('1001'),'List(Utf8)') AS meeting_keys", materialize=True),
+        dict(name='witnesses_export', sql="SELECT cast(1001 AS BIGINT) AS event_id,'Jane' AS name", materialize=True),
+        dict(name='recordings_export', sql="SELECT 'youtube:unmatched' AS video_key,make_array(1) AS tracks", materialize=True),
+        dict(name='meeting_coverage_export', sql=sql('entity-meeting-coverage'), materialize=True),
+    ]
+    inputs += [json_input(work, 'appearance_records_input', [
+            dict(event_id=1002, source='house_xml', parser_version='v', status='completed', collection_state='empty', appearances=[]),
+            dict(event_id=1003, source='house_xml', parser_version='v', status='completed', collection_state='failed', appearances=[])],
+            event_id='Int64', source='Utf8', parser_version='Utf8', status='Utf8', collection_state='Utf8', appearances=_list()),
+        json_input(work, 'parser_versions', [], parser='Utf8', version='Utf8')]
+    outputs = [parquet_output(work, name, 'SELECT * FROM ' + name + '_export', keys)
+               for name, keys in (('recording_matches', ['match_id']), ('meeting_coverage', ['event_id', 'aspect']))]
+    run_job(work, engine, inputs=inputs, steps=steps, outputs=outputs, queries=[])
+    return work
+
+
+def _list():
+    from congress_api.retention.provenance import list_of
+    return list_of('Utf8')
+
+
+def rows(work, table):
+    with duckdb.connect() as db:
+        cursor = db.execute(f"SELECT * FROM read_parquet('{work / (table + '.parquet')}')")
+        names = [item[0] for item in cursor.description]
+        return [dict(zip(names, row)) for row in cursor.fetchall()]
+
+
+def state(work, event, aspect):
+    return next(r['state'] for r in rows(work, 'meeting_coverage') if r['event_id'] == event and r['aspect'] == aspect)
+
+
+def test_unmatched_video_has_no_match_row_and_stays_out_of_coverage(tables):
+    assert not [r for r in rows(tables, 'recording_matches') if r['video_key'] == 'youtube:unmatched']
+
+
+def test_conflict_keeps_both_rows(tables):
+    found = rows(tables, 'recording_matches')
+    assert [r['status'] for r in found if r['event_id'] == LINKED and r['basis'] == 'publisher_link'] == ['asserted']
+    negative = [r for r in found if r['package_id'] == CONFLICT_PKG]
+    assert [(r['decision'], r['status'], r['score']) for r in negative] == [('no_video_found', 'conflicting', None)]
+
+
+def test_stale_event_id_stays_claimed_and_an_unknown_number_stays_visible(tables):
+    stated = [r for r in rows(tables, 'recording_matches') if r['basis'] == 'video_states_event_id']
+    known = next(r for r in stated if r['event_id'] == 1003)
+    assert known['status'] == 'claimed' and known['score'] == 95
+    unknown = next(r for r in stated if r['event_id'] is None)
+    assert unknown['status'] == 'claimed' and '777777' in unknown['note'] and unknown['score'] is None
+
+
+def test_match_ids_are_unique(tables):
+    found = rows(tables, 'recording_matches')
+    assert len({r['match_id'] for r in found}) == len(found) and all(len(r['match_id']) == 64 for r in found)
+
+
+def test_negative_verdict_on_a_shared_print_is_not_confirmed_absent(tables):
+    assert state(tables, 1004, 'recording') == 'unknown'
+
+
+def test_only_a_negative_on_one_meeting_package_is_absence(tables):
+    # 1002 also has a curated positive, which wins; 1001 has a publisher link.
+    assert state(tables, 1002, 'recording') == 'present'
+    assert state(tables, 1001, 'recording') == 'present'
+    assert state(tables, 1005, 'recording') == 'confirmed_absent'
+
+
+def test_recording_states_keep_excerpts_claims_and_access_apart(tables):
+    assert state(tables, 1002, 'recording') == 'present'
+    assert state(tables, 1003, 'recording') == 'claimed'  # Only the video's own text names it.
+
+
+def test_a_sibling_package_without_a_verdict_blocks_absence(tables):
+    assert state(tables, 1007, 'recording') == 'unknown'
+
+
+def test_disputed_negative_verdict_is_unresolved_with_its_evidence(tables):
+    assert state(tables, 1006, 'recording') == 'unresolved'
+    row = next(r for r in rows(tables, 'recording_matches') if r['package_id'] == 'CHRG-disputed')
+    assert row['status'] == 'unresolved' and 'old matcher says full_recording' in row['note']
+
+
+def test_coverage_is_meetings_times_aspects_and_states_stay_distinct(tables):
+    found = rows(tables, 'meeting_coverage')
+    assert len(found) == 7 * 5
+    assert state(tables, 1001, 'witnesses') == 'present'
+    assert state(tables, 1002, 'witnesses') == 'empty'
+    assert state(tables, 1003, 'witnesses') == 'unresolved'
+    assert state(tables, 1004, 'witnesses') == 'not_stated'
+    assert state(tables, 1001, 'transcript') == 'unresolved'
+    assert state(tables, 1003, 'transcript') == 'not_stated'
+    assert state(tables, 1001, 'captions') == 'present'
+    assert state(tables, 1004, 'captions') == 'not_stated'
+    assert 'empty' not in {r['state'] for r in found if r['aspect'] == 'captions'}
+
+
+def test_old_release_omits_the_tables_and_says_so():
+    schema = build_schema(['list.parquet', 'detail.parquet', 'meetings.parquet'])
+    tables = {t['name']: t for t in schema['files']}
+    assert not tables['videos.parquet']['available']
+    recipe = next(r for r in schema['recipes'] if r['id'] == 'coverage_counts')
+    assert recipe['missing_tables'] == ['meeting_coverage'] and not recipe['available']
+
+
+def test_recipes_run_under_duckdb(tables):
+    schema = build_schema()
+    with duckdb.connect() as db:
+        db.execute(f"CREATE VIEW recording_matches AS SELECT * FROM read_parquet('{tables / 'recording_matches.parquet'}')")
+        db.execute(f"CREATE VIEW meeting_coverage AS SELECT * FROM read_parquet('{tables / 'meeting_coverage.parquet'}')")
+        db.execute("CREATE TABLE videos(video_key VARCHAR,handle VARCHAR,title VARCHAR,published_at TIMESTAMP)")
+        db.execute("INSERT INTO videos VALUES ('youtube:unmatched','@A','t',NULL),('youtube:pub','@A','p',NULL)")
+        recipes = {r['id']: r for r in schema['recipes']}
+        assert db.execute(recipes['channel_unmatched_videos']['sql'], ['@A']).fetchall()[0][0] == 'youtube:unmatched'
+        assert db.execute(recipes['meeting_recordings']['sql'], [LINKED]).fetchall()
+        assert dict(db.execute(recipes['coverage_counts']['sql'], ['witnesses']).fetchall())['empty'] == 1
+
+
+def test_videos_channels_and_committee_records_from_lake_rows(tmp_path):
+    import pyarrow.parquet as pq
+    from congress_api.lake import committee_records, video_records
+    from congress_api.parsers.youtube_video import cache_rows
+    from viewer_publication.archive_model import channel_directory_rows, selected_record_step
+    engine = NativeDatasets.from_config(os.environ['DOCSPEC_JOB_CONFIG'])
+    cache = json.dumps({'youtube_channels': {'1': dict(handle='@AgRepublicans', channelId='UCX', title='Ag', uploads_scan_complete=True)},
+        'youtube_videos_@AgRepublicans': {'1': dict(videoId='v1', title='EventID=117681', publishedAt='2020-01-02T03:04:05Z', channelId='UCX', duration='9', available=True),
+                                         '2': dict(videoId='v2')},
+        'youtube_videos_@HouseAgDems': {'1': dict(videoId='v1', title='second copy')}}).encode()
+    sha_new, sha_old = 'ab' * 32, 'cd' * 32
+    # An old-version copy of the same body must lose before ranking, whatever its order.
+    pq.write_table(video_records.table([video_records.build_row(sha_new, 'youtube_cache', b'{"youtube_videos_@AgRepublicans":{"1":{"videoId":"old-version"}}}', parser_version='older'),
+        video_records.build_row(sha_new, 'youtube_cache', cache, parser_version='p'),
+        video_records.build_row(sha_old, 'youtube_cache', b'{"youtube_videos_@AgRepublicans":{"1":{"videoId":"stale"}}}', parser_version='p')]), tmp_path / 'videos.parquet')
+    amendment = dict(kind='amendment', bill='H.R. 1', number='1', sponsor_bioguide='A000001', amendment_type=None, enbloc=None, description='d', url='https://a')
+    records = lambda sha, updated, count: dict(record_sha=sha, parser_version='p', status='completed', source='house_xml', event_id='100', updated=updated,
+        records=[dict(amendment, ordinal=i) for i in range(count)])
+    pq.write_table(committee_records.table([records(sha_old, '2020-01-01T00:00:00', 1), records(sha_new, '2021-01-01T00:00:00', 2)]), tmp_path / 'committee.parquet')
+    directory = channel_directory_rows()
+    inputs = [dict(name='video_records', kind='parquet', path=str(tmp_path / 'videos.parquet')),
+        dict(name='committee_records', kind='parquet', path=str(tmp_path / 'committee.parquet')),
+        json_input(tmp_path, 'parser_versions', [dict(parser='video_records.youtube_cache', version='p'), dict(parser='committee_records.house_xml', version='p')], parser='Utf8', version='Utf8'),
+        json_input(tmp_path, 'channel_directory', directory, handle='Utf8', channel_id='Utf8', system_code='Utf8', committee_label='Utf8', role='Utf8')]
+    steps = [dict(name='youtube_cache_bodies', sql=f"SELECT 'youtube/youtube_00.json' AS cache_path,'{sha_new}' AS record_sha,'' AS stored_suffix"),
+        selected_record_step('video_records', 'video_records'), selected_record_step('committee_records', 'committee_records')]
+    outputs = [parquet_output(tmp_path, 'v', sql('entity-videos'), ['video_key']), parquet_output(tmp_path, 'c', sql('entity-channels'), ['handle']),
+        parquet_output(tmp_path, 'r', sql('entity-committee-records'), ['record_key'])]
+    run_job(tmp_path / 'job', engine, inputs=inputs, steps=steps, outputs=outputs, queries=[])
+    videos = {row['video_key']: row for row in pq.read_table(tmp_path / 'v.parquet').to_pylist()}
+    assert set(videos) == {'youtube:v1', 'youtube:v2'}  # The unmatched stays; a stale body and a repeat do not add rows.
+    assert videos['youtube:v1']['handle'] == '@AgRepublicans' and videos['youtube:v1']['duration_seconds'] == 9
+    assert videos['youtube:v1']['stated_event_ids'] == [117681] and videos['youtube:v1']['system_code'] == 'hsag00'
+    assert videos['youtube:v2']['available'] is None and videos['youtube:v1']['published_at'] is not None
+    channels = pq.read_table(tmp_path / 'c.parquet').to_pylist()
+    assert len(channels) == len(directory) == 119 and {row['mapping_basis'] for row in channels} == {'curated_directory'}
+    assert next(row for row in channels if row['handle'] == '@AgRepublicans')['uploads_scan_complete'] is True
+    kept = pq.read_table(tmp_path / 'r.parquet').to_pylist()
+    assert [row['ordinal'] for row in sorted(kept, key=lambda row: row['ordinal'])] == [0, 1]  # Latest record; duplicates keep two keys.
+    assert len({row['record_key'] for row in kept}) == 2 and kept[0]['record_sha'] == bytes.fromhex(sha_new)
+
+
+def test_only_a_pinned_version_failure_settles_an_explorer_record():
+    from viewer_publication.archive_model import explorer_settled_sql
+    from congress_api.retention.provenance import run_job as run
+    engine = NativeDatasets.from_config(os.environ['DOCSPEC_JOB_CONFIG'])
+    import tempfile
+    with tempfile.TemporaryDirectory() as folder:
+        work = Path(folder)
+        inputs = [json_input(work, 'active_unreadable', [
+                dict(record_sha='old', body_sha256=None, parser='video_records', parser_version='v1'),
+                dict(record_sha='new', body_sha256=None, parser='video_records', parser_version='v2')],
+                record_sha='Utf8', body_sha256='Utf8', parser='Utf8', parser_version='Utf8'),
+            json_input(work, 'parser_versions', [dict(parser='video_records.youtube_cache', version='v2')], parser='Utf8', version='Utf8')]
+        steps = [dict(name='selected_video_records', sql="SELECT arrow_cast(decode(repeat('ab',32),'hex'),'FixedSizeBinary(32)') AS record_sha,'completed' AS status")]
+        result = run(work / 'job', engine, inputs=inputs, steps=steps, outputs=[], queries=[dict(name='s', sql=explorer_settled_sql('video_records') + ' ORDER BY sha')])
+    assert [row['sha'] for row in result['s']] == ['ab' * 32, 'new']  # The old version's failure settles nothing.

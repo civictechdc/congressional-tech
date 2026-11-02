@@ -54,6 +54,11 @@ MEETING_RECORD_FIELDS=dict(
             videos='Utf8',
             document_urls='Utf8',
         ),
+        access='Utf8',
+        access_basis='Utf8',
+        not_held='Boolean',
+        title_key='Utf8',
+        reschedule_candidate='Boolean',
     )),
 )
 
@@ -90,6 +95,18 @@ APPEARANCE_RECORD_FIELDS=dict(
         document_links=list_of('Utf8'),
     )),
 )
+
+RECORDING_DECISION_FIELDS=dict(id='Utf8',subject_kind='Utf8',subject_id='Utf8',verdict='Utf8',video_refs=list_of('Utf8'),
+    note='Utf8',disputed_by='Utf8',decided_at='Utf8',supersedes='Utf8')
+
+# Dependency order: matches read videos, coverage reads matches.
+EXPLORER_TABLES=[
+    ('videos','entity-videos',['video_key'],['handle','system_code']),
+    ('channels','entity-channels',['handle'],['system_code','role','mapping_basis']),
+    ('recording_matches','entity-recording-matches',['match_id'],['subject_kind','basis','decision','recording_scope','status']),
+    ('committee_records','entity-committee-records',['record_key'],['kind','sponsor_bioguide','amendment_type']),
+    ('meeting_coverage','entity-meeting-coverage',['event_id','aspect'],['aspect','state','basis','reason']),
+]
 
 SPICY_SCHEMAS={
     'spicy_committees':dict(
@@ -147,6 +164,22 @@ SPICY_SCHEMAS={
         committees_json='Utf8',hearings_json='Utf8',
     ),
 }
+
+
+CHANNEL_DIRECTORY=Path('packages/congress_shared/src/congress_shared/youtube/youtube-accounts.csv')
+
+
+def channel_directory_rows(root=ROOT):
+    """One row per curated handle. The CSV stays the one authority: youtube-fetch depends on its row order."""
+    import csv
+    rows=[]
+    with (Path(root)/CHANNEL_DIRECTORY).open(newline='') as source:
+        for row in csv.DictReader(source):
+            ids=json.loads(row['channel_ids'] or '{}')
+            for role,handles in (('primary',[row['handle']]),('secondary',row['secondary'].split(';')),('member',row['member_channels'].split(';'))):
+                rows += [dict(handle=handle,channel_id=ids.get(handle),system_code=row['systemCode'],committee_label=row['committee'],role=role)
+                    for handle in map(str.strip,handles) if handle]
+    return rows
 
 
 def _hex_sha(value,index):
@@ -262,7 +295,7 @@ def _normalize_appearance_rows(rows,selected_versions=None):
     return normalized
 
 
-def _prepare_spicy_inputs(scratch,spicy_regs):
+def _prepare_spicy_inputs(scratch,spicy_regs,stated_digests):
     spicy_dir=scratch/'spicy'
     spicy_dir.mkdir(parents=True,exist_ok=True)
     inputs=[]
@@ -322,6 +355,9 @@ def _prepare_spicy_inputs(scratch,spicy_regs):
             inputs.append(dict(name=table_name,kind='parquet',path=str(Path(val).resolve())))
         else:
             raise ValueError('Unsupported spicy_regs table input: '+table_name)
+    # Only what the spec really stated may become an upstream URL; the fabricated
+    # defaults below keep existing manifests stable and never leave this module's result.
+    stated_digests.update(entity_digests)
     for fam in ('committee-rosters','members','bill-family','nominations','roll-call-votes'):
         entity_digests.setdefault(fam,hashlib.sha256(f'spicy-regs:{fam}'.encode()).hexdigest())
     return inputs,entity_digests
@@ -391,9 +427,10 @@ def evidence_steps(*,root=ROOT):
     """Join pinned parser facts and physical evidence before source/link expansion."""
     from congress_api.lake.readings import writer_admission_step
     names=['pinned-readings','sniff-observations','sniff-conflicts','sniff-facts','page-facts','verification-conflicts','storage-verifications','copy-verifications','body-evidence','capture-evidence',
-        'good-fetches','capture-locators','body-signals','locator-signals','placeholders','record-roles',
+        'good-archive-containers','good-fetches','good-fetch-keys','capture-locators','body-signals','locator-signals','placeholders','archive-bodies','record-roles',
         'page-contexts','link-inputs']
-    return [writer_admission_step(root=root)]+[dict(name=name.replace('-','_'),sql=(Path(root)/'model/sql'/(name+'.sql')).read_text(),materialize=True)
+    # good_fetches is a filter over retained capture_evidence; a second copy costs 1.3 GB of scratch.
+    return [writer_admission_step(root=root)]+[dict(name=name.replace('-','_'),sql=(Path(root)/'model/sql'/(name+'.sql')).read_text(),materialize=name!='good-fetches')
         for name in names]
 
 
@@ -419,6 +456,25 @@ def evidence_checks():
 
 def _sql_steps(names,*,root=ROOT):
     return [dict(name=name.replace('-','_'),sql=(Path(root)/'model/sql'/(name+'.sql')).read_text(),materialize=True) for name in names]
+
+
+def explorer_settled_sql(table):
+    """Settled at the pinned version only: an old version's failure says nothing about the new one."""
+    return f"""SELECT lower(encode(record_sha,'hex')) AS sha FROM selected_{table} WHERE status IN ('completed','error','size_limit')
+        UNION SELECT lower(coalesce(u.record_sha,u.body_sha256)) FROM active_unreadable u JOIN parser_versions v
+         ON v.parser LIKE '{table}.%' AND u.parser_version=v.version WHERE u.parser IN ('{table}',v.parser)"""
+
+
+def selected_record_step(table,record_input,*,root=ROOT):
+    """The one version selection each record table's readers share, in both dialects' place."""
+    sql=(Path(root)/'model/sql/selected-records.sql').read_text().replace('{{TABLE}}',table).replace('{{INPUT}}',record_input)
+    return dict(name='selected_'+table,sql=sql,materialize=True)
+
+
+def meeting_steps(*,root=ROOT):
+    """Select once, merge once, then resolve: CTEs are inlined per reader, so these must be steps."""
+    return _sql_steps(['meeting-records-current','meeting-records-merged'],root=root)+[
+        dict(name='meetings_resolved',sql=(Path(root)/'model/sql/meeting-records-resolved.sql').read_text(),materialize=True)]
 
 
 def admission_steps(*,prelude=(),root=ROOT):
@@ -459,12 +515,17 @@ def probe_selectors_query(*,root=ROOT):
 def prepare_model_inputs(*,captures,readings,filename_readings,parser_versions,catalog_version,
                          engine,scratch,recovery_files=(),review_files=(),verification_files=(),
                          unreadable_files=(),variant_files=(),meeting_records=None,appearance_records=None,
-                         spicy_regs=None,include_entities=False,recovery_requirements=None,root=ROOT):
+                         spicy_regs=None,include_entities=False,recovery_requirements=None,
+                         video_records=None,committee_records=None,recording_decision_files=(),root=ROOT):
     """Freeze current input selectors and the shared prefix in fresh private scratch."""
     from viewer_publication.archive_format import _settings
     from viewer_publication.archive_model_profile import expand_parser_version_rows,profile_record,validate_parser_versions
     include_entities=bool(include_entities or meeting_records is not None or appearance_records is not None or spicy_regs is not None)
-    validate_parser_versions(parser_versions,require_entities=include_entities)
+    # All or none: an omitted table means unavailable, never empty (DM8).
+    explorer_inputs=video_records is not None or committee_records is not None or bool(recording_decision_files)
+    if explorer_inputs and (video_records is None or committee_records is None or not recording_decision_files or not include_entities):
+        raise ValueError('Explorer tables require entity inputs, video_records, committee_records and recording decisions together')
+    validate_parser_versions(parser_versions,require_entities=include_entities,require_explorer=explorer_inputs)
     scratch=Path(scratch).resolve();scratch.mkdir(parents=True,exist_ok=False)
     evidence=scratch/'evidence';evidence.mkdir()
     inputs=registry_inputs(scratch/'registries',root=root)
@@ -473,6 +534,8 @@ def prepare_model_inputs(*,captures,readings,filename_readings,parser_versions,c
         raw_data_inputs.append(('meeting_records',meeting_records))
     if appearance_records is not None and not isinstance(appearance_records,(list,tuple)):
         raw_data_inputs.append(('appearance_records',appearance_records))
+    if explorer_inputs:
+        raw_data_inputs += [('video_records',video_records),('committee_records',committee_records)]
     data_inputs=[dict(value,name=name) if isinstance(value,dict) else
         dict(name=name,kind='parquet',path=str(Path(value).resolve())) for name,value in raw_data_inputs]
     inputs += data_inputs
@@ -527,27 +590,27 @@ def prepare_model_inputs(*,captures,readings,filename_readings,parser_versions,c
         inputs.append(json_input(scratch,'appearance_records_input',_normalize_appearance_rows(appearance_records or (),parser_versions.get('appearance_records')),**APPEARANCE_RECORD_FIELDS))
     else:
         prelude += [dict(name='appearance_records_input',sql=_record_table_sql('appearance_records',appearance_records,'appearances'),materialize=True)]
-    spicy_inputs,entity_digests=_prepare_spicy_inputs(scratch,spicy_regs)
+    stated_digests={}
+    spicy_inputs,entity_digests=_prepare_spicy_inputs(scratch,spicy_regs,stated_digests)
     inputs += spicy_inputs
     if include_entities and entity_digests is None:
         entity_digests={fam:hashlib.sha256(f'spicy-regs:{fam}'.encode()).hexdigest() for fam in ('committee-rosters','members','bill-family','nominations','roll-call-votes')}
-    verification_schema=dict(key='Utf8',size='Int64',intact='Boolean',sha256_verified='Boolean',checked_at='Utf8')
-    if verification_files:
+    def _provenance_input(name,files,fields):
         from congress_api.retention.provenance import field
-        inputs.append(dict(name='verification_records',kind='json_lines',files=list(verification_files),schema=dict(fields=[field(k,v) for k,v in verification_schema.items()],metadata={})))
-    else:inputs.append(json_input(scratch,'verification_records',[],**verification_schema))
+        if files:return dict(name=name,kind='json_lines',files=list(files),schema=dict(fields=[field(k,v) for k,v in fields.items()],metadata={}))
+        return json_input(scratch,name,[],**fields)
+    inputs.append(_provenance_input('verification_records',verification_files,dict(key='Utf8',size='Int64',intact='Boolean',sha256_verified='Boolean',checked_at='Utf8')))
     inputs.append(json_input(scratch,'url_state_meeting_dates_input',[],requested_url='Utf8',meeting_date='Date32'))
-    variant_fields={name:'Utf8' for name in ['id','canonical_url','variant_url','basis','decided_at','supersedes']}
-    if variant_files:
-        from congress_api.retention.provenance import field
-        inputs.append(dict(name='url_variant_records',kind='json_lines',files=list(variant_files),schema=dict(fields=[field(k,v) for k,v in variant_fields.items()],metadata={})))
-    else:inputs.append(json_input(scratch,'url_variant_records',[],**variant_fields))
+    inputs.append(_provenance_input('url_variant_records',variant_files,{name:'Utf8' for name in ['id','canonical_url','variant_url','basis','decided_at','supersedes']}))
+    prelude += [selected_record_step('meeting_records','meeting_records_input',root=root),
+        selected_record_step('appearance_records','appearance_records_input',root=root)]
     prelude += [dict(name='url_variants',sql='SELECT DISTINCT canonical_url,variant_url FROM url_variant_records r WHERE NOT EXISTS(SELECT 1 FROM url_variant_records s WHERE s.supersedes=r.id)',materialize=True)]
-    unreadable_fields=dict(id='Utf8',body_sha256='Utf8',record_sha='Utf8',parser='Utf8',parser_version='Utf8',supersedes='Utf8')
-    if unreadable_files:
-        from congress_api.retention.provenance import field
-        inputs.append(dict(name='unreadable_records',kind='json_lines',files=list(unreadable_files),schema=dict(fields=[field(k,v) for k,v in unreadable_fields.items()],metadata={})))
-    else:inputs.append(json_input(scratch,'unreadable_records',[],**unreadable_fields))
+    inputs.append(_provenance_input('unreadable_records',unreadable_files,dict(id='Utf8',body_sha256='Utf8',record_sha='Utf8',parser='Utf8',parser_version='Utf8',supersedes='Utf8')))
+    if explorer_inputs:
+        inputs.append(_provenance_input('recording_decision_records',recording_decision_files,RECORDING_DECISION_FIELDS))
+        inputs.append(json_input(scratch,'channel_directory',channel_directory_rows(root),handle='Utf8',channel_id='Utf8',system_code='Utf8',committee_label='Utf8',role='Utf8'))
+        prelude += [selected_record_step('video_records','video_records',root=root),selected_record_step('committee_records','committee_records',root=root)]
+        prelude += [dict(name='active_recording_decisions',sql='SELECT r.* FROM recording_decision_records r WHERE NOT EXISTS(SELECT 1 FROM recording_decision_records s WHERE s.supersedes=r.id)',materialize=True)]
     prelude += [dict(name='active_unreadable',sql='SELECT u.* FROM unreadable_records u WHERE NOT EXISTS(SELECT 1 FROM unreadable_records s WHERE s.supersedes=u.id)',materialize=True)]
     from congress_api.models.archive_profile import build_capture_profile
     capture_profile=build_capture_profile(engine_revision=engine.source_revision,
@@ -556,7 +619,7 @@ def prepare_model_inputs(*,captures,readings,filename_readings,parser_versions,c
         url_rules=json.loads((Path(root)/'model/registries/url-rules.json').read_text()),recovery_policy=recovery_policy)
     from congress_api.retention.provenance import file_pin
     selectors={item['name']:dict(item) if item['kind']=='native_table' else dict(kind='parquet',path=item['path'],**file_pin(item['path'])) for item in data_inputs}
-    lake_tables=['captures','readings','filename_readings']+(['meeting_records','appearance_records'] if include_entities else [])
+    lake_tables=['captures','readings','filename_readings']+(['meeting_records','appearance_records'] if include_entities else [])+(['video_records','committee_records'] if explorer_inputs else [])
     model_profile=profile_record(parser_versions=parser_versions,catalog_version=catalog_version,
         engine_revision=engine.source_revision,runtime_pins=dict(platform=engine.platform,build_features=list(engine.build_features),
             binary_sha256=engine.binary_sha256,limits=json.loads(engine.limits.read_text())),
@@ -568,26 +631,28 @@ def prepare_model_inputs(*,captures,readings,filename_readings,parser_versions,c
     return dict(inputs=inputs,prelude=prelude,steps=admission_steps(prelude=prelude,root=root),
         profile=model_profile,capture_profile=capture_profile,scratch=scratch,evidence=evidence,
         parser_versions=dict(parser_versions),catalog_version=catalog_version,
-        include_entities=include_entities,entity_digests=entity_digests,recovery_policy=recovery_policy)
+        include_entities=include_entities,entity_digests=entity_digests,stated_digests=stated_digests,recovery_policy=recovery_policy,explorer_inputs=explorer_inputs)
 
 
 def build_release(*,captures,readings,filename_readings,parser_versions,catalog_version,
                   engine,output,scratch,recovery_files=(),review_files=(),verification_files=(),
                   unreadable_files=(),variant_files=(),meeting_records=None,appearance_records=None,
-                  spicy_regs=None,include_entities=False,recovery_requirements=None,root=ROOT):
+                  spicy_regs=None,include_entities=False,recovery_requirements=None,
+                  video_records=None,committee_records=None,recording_decision_files=(),root=ROOT):
     """Prepare inputs once and run the document model's maintained full job."""
     prepared=prepare_model_inputs(captures=captures,readings=readings,filename_readings=filename_readings,
         parser_versions=parser_versions,catalog_version=catalog_version,engine=engine,scratch=scratch,
         recovery_files=recovery_files,review_files=review_files,verification_files=verification_files,
         unreadable_files=unreadable_files,variant_files=variant_files,meeting_records=meeting_records,
         appearance_records=appearance_records,spicy_regs=spicy_regs,include_entities=include_entities,
-        recovery_requirements=recovery_requirements,root=root)
+        recovery_requirements=recovery_requirements,video_records=video_records,committee_records=committee_records,
+        recording_decision_files=recording_decision_files,root=root)
     return build_prepared_release(prepared,engine=engine,output=output,root=root)
 
 
 def build_prepared_release(prepared,*,engine,output,root=ROOT):
     """Continue one prepared plan through grouping and the shared native exporter."""
-    from viewer_publication.archive_format import _execute,_settings,LIST_COLUMNS,DETAIL_COLUMNS
+    from viewer_publication.archive_format import _execute,_settings,LIST_COLUMNS,DETAIL_COLUMNS,MEETING_DICTIONARY
     from viewer_publication.archive_annotations import annotation_steps
     from viewer_publication.archive_provenance import attachment_steps,body_review_steps
     scratch=prepared['scratch'];evidence=prepared['evidence'];output=Path(output).resolve()
@@ -609,19 +674,14 @@ def build_prepared_release(prepared,*,engine,output,root=ROOT):
     steps += [dict(name='review_components',components=dict(sql='SELECT left_node,right_node FROM duplicate_component_edges',left='left_node',right='right_node',node_limit=10_000_000))]
     steps += _sql_steps(['final-source-labels','final-recovery-attachments','document-link-keys'],root=root)
     steps += annotation_steps(catalog_version=catalog_version,root=root)
-    steps += _sql_steps(['document-members','document-bodies','document-identities','saved-files','document-alternates',
+    steps += _sql_steps(['document-members','archive-container-links','document-bodies','document-identities','saved-files','document-alternates',
         'document-version-keys','document-versions','document-metadata','document-addresses','saved-recoveries','document-removals','document-packages'],root=root)
-    steps += [dict(name='meetings_resolved',sql=(Path(root)/'model/sql/meeting-records-resolved.sql').read_text(),materialize=True),
-        dict(name='meeting_transcript_links',sql=(Path(root)/'model/sql/meeting-transcript-links.sql').read_text(),materialize=True)]
+    steps += meeting_steps(root=root)+[dict(name='meeting_transcript_links',sql=(Path(root)/'model/sql/meeting-transcript-links.sql').read_text(),materialize=True)]
     app_url_inputs_sql="""WITH selected_app_records AS (
         SELECT r.record_sha_hex,r.source,nullif(trim(r.declared_base),'') AS declared_base,
             r.context_url,r.appearances
-        FROM appearance_records_input r
+        FROM selected_appearance_records r
         WHERE r.status='completed'
-          AND (
-            NOT EXISTS (SELECT 1 FROM parser_versions WHERE parser LIKE 'appearance_records.%')
-            OR EXISTS (SELECT 1 FROM parser_versions v WHERE v.parser='appearance_records.'||r.source AND v.version=r.parser_version)
-          )
     ), candidate_app_shas AS (
         SELECT DISTINCT record_sha_hex FROM selected_app_records WHERE record_sha_hex IS NOT NULL
     ), distinct_capture_urls AS (
@@ -697,7 +757,7 @@ def build_prepared_release(prepared,*,engine,output,root=ROOT):
     from viewer_publication.archive_url_state import url_state_steps,url_state_diagnostics
     steps += url_state_steps(root=root,recovery_policy=prepared.get('recovery_policy'))
     meetings_sql=(Path(root)/'model/sql/entity-meetings.sql').read_text()
-    auxiliary=[('meetings',meetings_sql,['event_id'],['chamber','meeting_type','status','committees.list.item.system_code','committees.list.item.role','subject_keys.list.item'])]
+    auxiliary=[('meetings',meetings_sql,['event_id'],MEETING_DICTIONARY)]
     if prepared.get('include_entities'):
         steps += [
             dict(name='recording_url_sources',sql="SELECT pattern,key_template,format,default_language,default_production FROM recording_sources WHERE kind='video_url'",materialize=True),
@@ -768,6 +828,15 @@ def build_prepared_release(prepared,*,engine,output,root=ROOT):
             ('bills',(Path(root)/'model/sql/entity-bills.sql').read_text(),['bill_id'],['sponsor_bioguide_id','stage','policy_area','committees.list.item','floor_votes.list.item.basis','floor_votes.list.item.chamber','amendments.list.item.sponsor_bioguide_id','committee_activities.list.item.system_code','committee_activities.list.item.activity']),
             ('nominations',(Path(root)/'model/sql/entity-nominations.sql').read_text(),['nomination_id'],['committees.list.item']),
         ]
+    explorer_diagnostics=[]
+    if prepared.get('explorer_inputs'):
+        steps += [dict(name='youtube_cache_bodies',sql=(Path(root)/'model/sql/youtube-cache-bodies.sql').read_text(),materialize=True)]
+        auxiliary += [(name,(Path(root)/'model/sql'/(file+'.sql')).read_text(),keys,dictionary) for name,file,keys,dictionary in EXPLORER_TABLES]
+        from congress_api.lake.committee_records import CANDIDATE_SQL
+        explorer_diagnostics=[dict(name='explorer_invariants',sql=f"""SELECT (SELECT count(*) FROM meeting_coverage_export)-5*(SELECT count(*) FROM meetings_export) AS coverage_row_mismatch,
+            (SELECT count(*) FROM youtube_cache_bodies b WHERE b.record_sha NOT IN ({explorer_settled_sql('video_records')})) AS unsettled_video_records,
+            (SELECT count(*) FROM ({CANDIDATE_SQL}) c WHERE c.record_sha NOT IN ({explorer_settled_sql('committee_records')})) AS unsettled_committee_records""")]
+        meta_explorer=[dict(name='videos_in_several_channels',sql="SELECT count(*) AS videos FROM (SELECT v['video_id'] AS video_id FROM (SELECT unnest(r.videos) AS v FROM selected_video_records r JOIN youtube_cache_bodies b ON encode(r.record_sha,'hex')=b.record_sha) GROUP BY v['video_id'] HAVING count(DISTINCT v['handle'])>1)")]
     auxiliary += [('url_state','SELECT * FROM url_state',['requested_url'],['last_outcome']),
         ('url_variants','SELECT * FROM url_variants',['variant_url','canonical_url'],[])]
     extra=[dict(name='document_rows.parquet',path=str(evidence/'document_rows.parquet'),sql='SELECT list_row,doc_key AS document_id,'+','.join(LIST_COLUMNS+DETAIL_COLUMNS)+' FROM details',settings=_settings('whole',['list_row'],footer_limit=4 << 20)),
@@ -795,7 +864,9 @@ def build_prepared_release(prepared,*,engine,output,root=ROOT):
         sql=("SELECT r.*,r.body_sha AS body_sha256,d.decided_at,d.recovered_url,d.identity_note FROM current_recoveries r LEFT JOIN remaining_recovery_decisions d ON r.decision_id=d.id" if name=='current_recoveries' else 'SELECT * FROM '+name),settings=_settings('whole',keys,footer_limit=4 << 20)) for name,keys in causes.items()]
     prefix_checks=','.join(sql+' AS '+name for name,sql in evidence_checks().items())
     entity_invariant_sql=''
-    meta_queries=[input_receipts_query(),probe_selectors_query(root=root)]
+    meta_queries=[input_receipts_query(),probe_selectors_query(root=root),
+        # The recorded disposition: a ZIP with no expanded contents stays a document, listed here.
+        dict(name='unexpanded_zip_documents',sql="SELECT count(*) AS documents FROM ordered WHERE format='zip'")]
     if prepared.get('include_entities'):
         entity_invariant_sql=""",
             (SELECT count(*) FROM (
@@ -833,11 +904,12 @@ def build_prepared_release(prepared,*,engine,output,root=ROOT):
             WHERE source='senate_page' AND coalesce(array_length(document_urls),0)=0
             ORDER BY record_sha_hex,page_url,name_key"""),
         ]
+    if prepared.get('explorer_inputs'):meta_queries+=meta_explorer
     manifest=_execute(inputs,steps,output=output,scratch=scratch,engine=engine,
         lookup_extra="SELECT o.list_row,a.url FROM source_addresses a JOIN document_members m ON a.source_id=m.source_id JOIN document_identities d ON m.component=d.component JOIN ordered o ON d.document_id=o.doc_key WHERE m.is_real_file",
         metadata_queries=meta_queries,origin=dict(kind='model',gaps=[]),content_files={'capture_profile.json':capture_profile},auxiliary=auxiliary,extra_outputs=extra,
         capture_scope=json.loads((Path(root)/'model/registries/capture-scope.json').read_text()),
-        entity_digests=prepared.get('entity_digests'),
+        entity_digests=prepared.get('entity_digests'),stated_digests=prepared.get('stated_digests'),
         diagnostics=[dict(name='model_invariants',sql=f"""SELECT {prefix_checks},
             (SELECT count(*) FROM model_url_keys WHERE error IS NOT NULL) AS invalid_url_keys,
             (SELECT count(*) FROM recovery_attachment_diagnostics) AS invalid_recovery_attachments,
@@ -850,12 +922,8 @@ def build_prepared_release(prepared,*,engine,output,root=ROOT):
                 SELECT cast(m['event_id'] AS BIGINT) AS event_id
                 FROM (
                     SELECT unnest(r.meetings) AS m
-                    FROM meeting_records_input r
+                    FROM selected_meeting_records r
                     WHERE r.status='completed' AND r.meetings IS NOT NULL
-                      AND (
-                        NOT EXISTS (SELECT 1 FROM parser_versions WHERE parser LIKE 'meeting_records.%')
-                        OR EXISTS (SELECT 1 FROM parser_versions v WHERE v.parser='meeting_records.'||r.source AND v.version=r.parser_version)
-                      )
                 )
                 WHERE m['event_id'] IS NOT NULL AND nullif(trim(m['chamber']),'') IS NOT NULL
                 GROUP BY cast(m['event_id'] AS BIGINT)
@@ -887,7 +955,7 @@ def build_prepared_release(prepared,*,engine,output,root=ROOT):
                     UNION SELECT substr(left_node,3,16) AS prefix FROM body_review_edges WHERE left_node IS NOT NULL
                     UNION SELECT substr(right_node,3,16) AS prefix FROM body_review_edges WHERE right_node IS NOT NULL
                 ) rev ON substr(o.bh,1,16)=rev.prefix
-            ) merged_docs ON single_vk.doc_key=merged_docs.doc_key) AS single_doc_version_keys{entity_invariant_sql}""")]+url_state_diagnostics()+completeness_checks(
+            ) merged_docs ON single_vk.doc_key=merged_docs.doc_key) AS single_doc_version_keys{entity_invariant_sql}""")]+explorer_diagnostics+url_state_diagnostics()+completeness_checks(
             catalog_version=catalog_version,
             readings_version=readings_bundle_version(parser_versions),
             include_entities=bool(prepared.get('include_entities')),

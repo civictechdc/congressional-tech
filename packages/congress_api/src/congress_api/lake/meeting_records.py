@@ -12,12 +12,14 @@ so the anti-join on `(record_sha, parser_version)` never re-parses it on future 
 
 from __future__ import annotations
 
+from datetime import datetime
 from functools import lru_cache
 import re
 from urllib.parse import unquote
 import xml.etree.ElementTree as ET
 from pathlib import Path
 from typing import Any, Iterable, Mapping, Sequence
+from zoneinfo import ZoneInfo
 
 import pyarrow as pa
 
@@ -30,6 +32,7 @@ from ..parsers.house_xml import (
     strip_house_meeting_prefix,
 )
 from ..parsers.media import recording_reference, youtube_video_id
+from ..parsers.meeting_facts import stated_facts
 from ..parsers.senate_player import parse_player_url
 from ._record_producer import (
     CANDIDATE_MEETING_RECORDS_SQL,
@@ -115,6 +118,11 @@ MEETING_STRUCT = pa.struct(
         pa.field("videos", pa.list_(pa.field("element", VIDEO_STRUCT, nullable=False)), nullable=False),
         pa.field("document_urls", pa.list_(pa.field("element", pa.string(), nullable=False)), nullable=True),
         pa.field("collection_states", COLLECTION_STATES_STRUCT, nullable=True),
+        pa.field("access", pa.string(), nullable=True),
+        pa.field("access_basis", pa.string(), nullable=True),
+        pa.field("not_held", pa.bool_(), nullable=True),
+        pa.field("title_key", pa.string(), nullable=True),
+        pa.field("reschedule_candidate", pa.bool_(), nullable=True),
     ]
 )
 
@@ -138,6 +146,8 @@ _SOURCE_SYMBOLS: dict[str, tuple[str, ...]] = {
         "COLLECTION_STATES_STRUCT",
         "MEETING_STRUCT",
         "ARROW_SCHEMA",
+        "_FORM_PLACEHOLDER",
+        "_stated_place",
         "normalize_chamber",
         "format_subject_key_bill",
         "format_subject_key_nomination",
@@ -154,6 +164,11 @@ _SOURCE_SYMBOLS: dict[str, tuple[str, ...]] = {
         "MEETING_STRUCT",
         "ARROW_SCHEMA",
         "_HOUSE_SELECT_CODES",
+        "_FORM_PLACEHOLDER",
+        "_stated_place",
+        "_HOUSE_BUILDINGS",
+        "_HOUSE_ZONE",
+        "_house_instant",
         "normalize_house_committee_code",
         "format_subject_key_bill",
         "_HOUSE_BILL_RE",
@@ -191,6 +206,8 @@ def current_version(source: str | None = None, *, root: Path = ROOT) -> str:
                 "parsers_congress": pkg_dir / "parsers/congress.py",
                 "parsers_media": pkg_dir / "parsers/media.py",
                 "parsers_senate_player": pkg_dir / "parsers/senate_player.py",
+                "parsers_meeting_facts": pkg_dir / "parsers/meeting_facts.py",
+                "parsers_text": pkg_dir / "parsers/text.py",
                 "lock": root / "uv.lock",
                 "lake_schema": root / "model/lake/meeting-records.schema.json",
             },
@@ -202,6 +219,8 @@ def current_version(source: str | None = None, *, root: Path = ROOT) -> str:
             "shared_producer": pkg_dir / "lake/_record_producer.py",
             "parsers_house_xml": pkg_dir / "parsers/house_xml.py",
             "parsers_house_documents": pkg_dir / "parsers/house_documents.py",
+            "parsers_meeting_facts": pkg_dir / "parsers/meeting_facts.py",
+            "parsers_text": pkg_dir / "parsers/text.py",
             "lock": root / "uv.lock",
             "lake_schema": root / "model/lake/meeting-records.schema.json",
         },
@@ -220,6 +239,15 @@ def current_versions(*, root: Path = ROOT) -> dict[str, str]:
 
 
 DEFAULT_PARSER_VERSION = "meeting-records-v1"
+
+
+# Both publishers leave unset form values in location fields; these state no place.
+_FORM_PLACEHOLDER = re.compile(r"^(?:-+|select one)$", re.I)
+
+
+def _stated_place(value: Any) -> str | None:
+    text = str(value).strip() if value else ""
+    return None if not text or _FORM_PLACEHOLDER.match(text) else text
 
 
 def normalize_chamber(value: str | None) -> str | None:
@@ -376,8 +404,8 @@ def _convert_congress_meeting_dict(m: Mapping[str, Any]) -> dict[str, Any]:
 
     sittings: list[dict[str, str | None]] = []
     loc = m.get("location") if isinstance(m.get("location"), Mapping) else None
-    room = str(loc.get("room")).strip() if loc and loc.get("room") and str(loc.get("room")).strip() else None
-    building = str(loc.get("building")).strip() if loc and loc.get("building") and str(loc.get("building")).strip() else None
+    room = _stated_place(loc.get("room")) if loc else None
+    building = _stated_place(loc.get("building")) if loc else None
     addr = None
     if loc and isinstance(loc.get("address"), Mapping):
         addr_map = loc["address"]
@@ -508,6 +536,7 @@ def _convert_congress_meeting_dict(m: Mapping[str, Any]) -> dict[str, Any]:
             "videos": "present" if videos else ("empty" if m.get("videos") is not None else "absent"),
             "document_urls": "absent",
         },
+        **stated_facts(meeting_type, title),
     }
 
 
@@ -695,6 +724,25 @@ def _iter_active_meeting_documents(docs_elem: ET.Element | None) -> Iterable[ET.
                 yield doc
 
 
+# House XML codes, spelled as Congress.gov spells them for the same events in all 5,510 paired records.
+_HOUSE_BUILDINGS = {
+    "CAPITOL": "Capitol",
+    "CHOB": "Cannon House Office Building",
+    "DSOB": "Dirksen Senate Office Building",
+    "HSOB": "Hart Senate Office Building",
+    "LHOB": "Longworth House Office Building",
+    "RHOB": "Rayburn House Office Building",
+}
+
+# House XML states committee times as unzoned Eastern local time.
+_HOUSE_ZONE = ZoneInfo("America/New_York")
+
+
+def _house_instant(day: str, clock: str) -> str:
+    """An offset-bearing timestamp, so no reader has to know the House's zone."""
+    return datetime.fromisoformat(f"{day}T{clock}").replace(tzinfo=_HOUSE_ZONE).isoformat()
+
+
 def extract_house_xml_meetings(payload: bytes | str | HouseMeetingXML) -> list[dict[str, Any]]:
     """Extract normalized meeting structs from a `docs.house.gov` `<committee-meeting>` XML body."""
     if isinstance(payload, HouseMeetingXML):
@@ -750,24 +798,27 @@ def extract_house_xml_meetings(payload: bytes | str | HouseMeetingXML) -> list[d
             e_time = value(m_date, "end-time") or None
             meeting_date = cal
             if cal and s_time:
-                start_ts = f"{cal}T{s_time}"
+                start_ts = _house_instant(cal, s_time)
             elif cal:
                 start_ts = cal
             if cal and e_time:
-                end_ts = f"{cal}T{e_time}"
+                end_ts = _house_instant(cal, e_time)
 
-        cap_loc = details.find("capitol-complex-location")
+        cap_loc = details.find("meeting-location/capitol-complex")
         if cap_loc is not None:
-            room = value(cap_loc, "room") or None
-            building = value(cap_loc, "building") or None
+            room = _stated_place(value(cap_loc, "room"))
+            building = _stated_place(value(cap_loc, "building"))
+            building = _HOUSE_BUILDINGS.get(building, building)
 
-        field_loc = details.find("field-location")
+        field_loc = details.find("meeting-location/field")
         if field_loc is not None:
-            if not building:
-                building = value(field_loc, "building-name") or None
+            building = building or _stated_place(value(field_loc, "building-name"))
+            state_elem = field_loc.find("state")
             addr_parts = [
-                value(field_loc, tag)
-                for tag in ("building-name", "street-address", "city", "state", "zip")
+                value(field_loc, "street-address"),
+                value(field_loc, "city"),
+                (state_elem.get("postal-code") or "").strip() if state_elem is not None else "",
+                value(field_loc, "zip"),
             ]
             addr_parts = [p for p in addr_parts if p]
             if addr_parts:
@@ -867,8 +918,7 @@ def extract_house_xml_meetings(payload: bytes | str | HouseMeetingXML) -> list[d
 
     has_loc_elems = details is not None and (
         details.find("meeting-date") is not None
-        or details.find("capitol-complex-location") is not None
-        or details.find("field-location") is not None
+        or details.find("meeting-location") is not None
     )
     has_comm_elems = details is not None and (
         details.find("committees") is not None or details.find("subcommittees") is not None
@@ -899,6 +949,7 @@ def extract_house_xml_meetings(payload: bytes | str | HouseMeetingXML) -> list[d
                 "videos": "absent",
                 "document_urls": "present" if document_urls else ("empty" if docs_root is not None else "absent"),
             },
+            **stated_facts(meeting_type, title),
         }
     ]
 

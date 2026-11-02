@@ -9,6 +9,7 @@ import pyarrow.parquet as pq
 import pytest
 
 from docspec_client.client import NativeDatasets
+from viewer_publication.archive_format import LIST_COLUMNS
 
 
 ROOT = Path(__file__).parents[3]
@@ -90,6 +91,10 @@ def test_hand_release_covers_the_reader_outcomes(engine, tmp_path):
     assert 'document_id' not in rows[0]
     details = pq.read_table(output / 'detail.parquet').to_pylist()
     assert [item['format'] for item in details[0]['alternates']] == ['xml']
+    # detail is the keyed document table: list's values in list's order, under a unique key.
+    assert {name: [item[name] for item in details] for name in LIST_COLUMNS} == {name: [row[name] for row in rows] for name in LIST_COLUMNS}
+    assert len({item['link_key'] for item in details}) == len(details) and all(item['link_key'] for item in details)
+    assert 'link_key' not in rows[0]
     links = pq.read_table(output / 'links.parquet').to_pylist()
     assert next(row['list_row'] for row in links if row['link_key'] == bytes([17]) * 8) == 0
     assert rows[2]['hidden'] and any(row['list_row'] == 2 for row in links)

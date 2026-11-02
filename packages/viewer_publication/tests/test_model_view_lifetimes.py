@@ -42,8 +42,8 @@ def test_source_annotation_addresses_single_union_no_hash_join():
 
 
 def test_page_facts_excludes_links_and_recomputes_for_export():
-    sql = (Path(__file__).parents[3] / 'model/sql/page-facts.sql').read_text()
-    assert 'EXCLUDE(links)' in sql, "page-facts.sql must exclude links column"
+    sql = (Path(__file__).parents[3] / 'model/sql/pinned-readings.sql').read_text()
+    assert 'EXCLUDE(links)' in sql, "pinned-readings.sql must exclude links column"
 
     link_sql = (Path(__file__).parents[3] / 'model/sql/link-inputs.sql').read_text()
     assert 'FROM readings r' in link_sql, "link-inputs.sql must read links directly from readings"

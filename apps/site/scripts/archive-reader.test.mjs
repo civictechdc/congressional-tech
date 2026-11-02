@@ -36,6 +36,10 @@ test('one reader opens native releases, searches arrays and resolves indexed key
   assert.equal(await reader.resolve('ff'.repeat(8)),null);
   const entry = await reader.entry(0);
   assert.equal(entry.detail.alternates[0].format,'xml');
+  // A keyed detail repeats 18 list columns; this read requests only the 17 detail ones.
+  assert.equal(reader.metrics.detailColumns,17);
+  assert.equal(entry.detail.filename,undefined);
+  assert.equal(entry.document.filename,'Agenda.pdf');
   assert.equal(entry.sources.length,1);
   assert.equal(entry.sources[0].url,'https://fixture.test/agenda.pdf');
   assert.deepEqual(await reader.sourceRange(0,1),entry.sources);
@@ -171,7 +175,8 @@ test('Phase-2 entity Parquet files load lazily, support cross-filtering, and res
     try {
       bytes = await readFile(new URL(name, phase2Dir));
     } catch {
-      bytes = await readFile(join(folder, name));
+      // This manifest pins the committed old-shaped files, which stay readable as they are.
+      bytes = await readFile(new URL('../../../model/fixtures/archive-contract/current/'+name, import.meta.url));
     }
     const range = options.headers?.Range;
     if (!range) return new Response(bytes);

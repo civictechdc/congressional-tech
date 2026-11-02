@@ -1,0 +1,31 @@
+{
+ "affected_events": 6157,
+ "congress_records_named": 6165,
+ "inline_lines_found": 6157,
+ "tally": {
+  "building_equals_raw_congress": 5478,
+  "building_filled_from_raw_house": 107,
+  "building_stated_by_neither": 572,
+  "congress_raw_records_read": 6165,
+  "end_equals_raw_house": 532,
+  "events_with_raw_congress": 6157,
+  "field_address_in_published_place": 109,
+  "house_eastern_equals_congress": 6179,
+  "house_literal_unzoned": 6179,
+  "house_raw_records_read": 6179,
+  "house_states_meeting_location_capitol_complex": 6037,
+  "room_equals_raw_congress": 5490,
+  "room_filled_from_raw_house": 146,
+  "room_stated_by_neither": 521,
+  "start_equals_raw_congress": 6157
+ },
+ "examples": {},
+ "house_minus_congress_hours": {
+  "4.0": 4475,
+  "5.0": 1704
+ },
+ "unreadable": {
+  "congress": [],
+  "house": []
+ }
+}

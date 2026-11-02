@@ -1,11 +1,14 @@
 import json
+import shutil
+
 import duckdb
+import pyarrow.parquet as pq
 import pytest
 
 from congressional_explorer_mcp.models import ExplorerError, ENTITY_KEYS, MAX_BYTES
 from congressional_explorer_mcp.release import encoded, prepare
 from congressional_explorer_mcp.reader import Reader
-from conftest import CURRENT
+from conftest import CURRENT, manifest
 
 
 def test_all_tables_and_nested_fields_are_available(reader):
@@ -21,6 +24,26 @@ def test_all_tables_and_nested_fields_are_available(reader):
         {'name': 'Sam Example', 'fec': ['H1', 'H2'], 'district': 1}]
     assert reader.query_sql({'sql': 'SELECT bill_id,floor_votes[1].yea AS yea,amendments[1].purpose AS purpose FROM bills'})['rows'] == [
         {'bill_id': '119-hr-1', 'yea': 220, 'purpose': 'Add transit safety'}]
+
+
+def test_documents_view_holds_one_copy_of_each_column_on_keyed_detail(tmp_path):
+    # Older releases pair list and detail; newer detail files also repeat list's columns.
+    root = tmp_path / 'release'
+    shutil.copytree(CURRENT, root)
+    listed = pq.read_table(root / 'list.parquet')
+    detail = pq.read_table(root / 'detail.parquet')
+    for name in listed.column_names:
+        detail = detail.append_column(name, listed[name])
+    pq.write_table(detail, root / 'detail.parquet')
+    keyed = Reader(prepare(tmp_path / 'keyed', manifest(root)))
+    old = Reader(prepare(tmp_path / 'old', CURRENT / 'manifest.json'))
+    try:
+        assert list(keyed.schemas['documents']) == list(old.schemas['documents'])
+        assert keyed.query_sql({'sql': 'SELECT filename FROM documents ORDER BY list_row'})['rows'] == \
+            old.query_sql({'sql': 'SELECT filename FROM documents ORDER BY list_row'})['rows']
+    finally:
+        keyed.close()
+        old.close()
 
 
 def test_native_sql_joins_friendly_sql_and_parameters(reader):

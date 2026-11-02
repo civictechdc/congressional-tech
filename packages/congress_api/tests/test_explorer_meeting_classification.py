@@ -87,9 +87,6 @@ def test_access_requires_an_explicit_source_phrase(title, expected):
     'Hearing on open-source software cybersecurity',
     'Hearing to consider S.2009, allowing disciplinary proceedings to be open to the public.',
     'Hearings with the possibility of a closed session.',
-    'Hearings; to be immediately followed by a closed session.',
-    'Hearings; to be immediately preceded by a closed hearing.',
-    'Business meeting; to be followed by a closed briefing.',
     'A briefing on the annual budget',
 ])
 def test_topics_and_uncertain_or_secondary_access_do_not_classify_entire_meeting(title):
@@ -124,3 +121,17 @@ def test_derived_classification_preserves_native_payload_and_field_evidence():
         assert evidence.selected.basis == 'derived'
         assert evidence.selected.citations[0].source.id == source.id
         assert evidence.selected.citations[0].selector == '/title'
+
+
+@pytest.mark.parametrize('native,title,expected', [
+    ('Hearing', 'Hearings; to be immediately followed by a closed session.', 'partly_closed'),
+    ('Hearing', 'Hearings; to be immediately preceded by a closed hearing.', 'partly_closed'),
+    ('Meeting', 'Business meeting; to be followed by a closed briefing.', 'partly_closed'),
+    ('Open Hearing', 'Hearings to examine the F-35; to be immediately followed by a closed session in SVC-217.', 'partly_closed'),
+    ('Meeting', 'Closed Interior Subcommittee Member Roundtable: Office of Navajo and Hopi Indian Relocation', 'closed'),
+    ('Meeting', 'A closed pass-the-gavel/general provisions panel meeting with the House Committee', 'closed'),
+    ('Meeting', 'Hearings with the possibility of a closed session in SVC-217.', 'unknown'),
+    ('Hearing', 'Business Meeting: Public Release of Committee Document (Open in a Closed Space)', 'open'),
+])
+def test_a_separate_or_named_closed_session_is_stated_from_raw_titles(native, title, expected):
+    assert meeting_access({'type': native, 'title': title})[0] == expected

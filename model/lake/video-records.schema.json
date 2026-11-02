@@ -1,0 +1,34 @@
+{
+  "type": "struct",
+  "schema-id": 0,
+  "identifier-field-ids": [1, 5, 2],
+  "fields": [
+    {"id": 1, "name": "record_sha", "required": true, "type": "fixed[32]"},
+    {"id": 2, "name": "parser_version", "required": true, "type": "string"},
+    {"id": 3, "name": "status", "required": true, "type": "string"},
+    {"id": 4, "name": "error_type", "required": false, "type": "string"},
+    {"id": 5, "name": "source", "required": true, "type": "string"},
+    {"id": 6, "name": "channels", "required": true, "type": {"type": "list", "element-id": 7, "element-required": true, "element": {"type": "struct", "fields": [
+      {"id": 8, "name": "handle", "required": true, "type": "string"},
+      {"id": 9, "name": "channel_id", "required": false, "type": "string"},
+      {"id": 10, "name": "title", "required": false, "type": "string"},
+      {"id": 11, "name": "custom_url", "required": false, "type": "string"},
+      {"id": 12, "name": "uploads_scan_complete", "required": false, "type": "boolean"}
+    ]}}},
+    {"id": 13, "name": "videos", "required": true, "type": {"type": "list", "element-id": 14, "element-required": true, "element": {"type": "struct", "fields": [
+      {"id": 15, "name": "handle", "required": true, "type": "string"},
+      {"id": 16, "name": "video_id", "required": true, "type": "string"},
+      {"id": 17, "name": "channel_id", "required": false, "type": "string"},
+      {"id": 18, "name": "channel_title", "required": false, "type": "string"},
+      {"id": 19, "name": "title", "required": false, "type": "string"},
+      {"id": 20, "name": "description", "required": false, "type": "string"},
+      {"id": 21, "name": "published_at", "required": false, "type": "string"},
+      {"id": 22, "name": "video_published_at", "required": false, "type": "string"},
+      {"id": 23, "name": "duration_seconds", "required": false, "type": "int"},
+      {"id": 24, "name": "available", "required": false, "type": "boolean"},
+      {"id": 25, "name": "has_caption", "required": false, "type": "boolean"},
+      {"id": 26, "name": "details_checked_at", "required": false, "type": "string"},
+      {"id": 27, "name": "stated_event_ids", "required": true, "type": {"type": "list", "element-id": 28, "element-required": true, "element": "long"}}
+    ]}}}
+  ]
+}

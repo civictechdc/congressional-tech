@@ -1,0 +1,3356 @@
+{
+ "commit": "worktree",
+ "families": {
+  "amendments": {
+   "matched": 19984,
+   "matched_new": 19984,
+   "new_only_by_reason": {
+    "old_text_mojibake": 1
+   },
+   "new_rows": 19985,
+   "old_only_by_reason": {
+    "old_text_mojibake": 1
+   },
+   "old_rows": 19985,
+   "samples": {
+    "new_only": {
+     "old_text_mojibake": [
+      [
+       "115405|amendment|https://docs.house.gov/meetings/RU/RU00/20230307/115405/BILLS-118-20-L000273-Amdt-20.pdf|20|20|The Honorable Ms. Leger Fern\u00e1ndez",
+       "d204918456661f382ba21d1d7b32ca663c779e03e68603fd39501b183ea2ff40"
+      ]
+     ]
+    },
+    "old_only": {
+     "old_text_mojibake": [
+      [
+       "115405|amendment|https://docs.house.gov/meetings/RU/RU00/20230307/115405/BILLS-118-20-L000273-Amdt-20.pdf|20|20|The Honorable Ms. Leger Fern\u00c3\u00a1ndez",
+       "115405"
+      ]
+     ]
+    }
+   }
+  },
+  "channels": {
+   "matched": 119,
+   "matched_new": 119,
+   "new_only_by_reason": {},
+   "new_rows": 119,
+   "old_only_by_reason": {},
+   "old_rows": 119,
+   "samples": {}
+  },
+  "committees": {
+   "matched": 3432,
+   "matched_new": 462,
+   "new_only_by_reason": {
+    "native_found_more": 355
+   },
+   "new_rows": 817,
+   "old_only_by_reason": {},
+   "old_rows": 3432,
+   "samples": {
+    "new_only": {
+     "native_found_more": [
+      [
+       "ssae00",
+       "Aeronautical and Space Sciences Committee"
+      ],
+      [
+       "no94032278",
+       "Railroads"
+      ],
+      [
+       "hsii01",
+       "National Parks and Public Lands Subcommittee"
+      ],
+      [
+       "hlhn01",
+       "International Task Force Subcommittee"
+      ],
+      [
+       "hsmm22",
+       "Environment and Natural Resources Subcommittee"
+      ],
+      [
+       "hsmm06",
+       "Merchant Marine Subcommittee"
+      ],
+      [
+       "nr95012879",
+       "Militia Committee"
+      ],
+      [
+       "htht00",
+       "Hostages Committee"
+      ],
+      [
+       "jsec07",
+       "Economic Resources and Competitiveness Subcommittee"
+      ],
+      [
+       "hsat00",
+       "Joint Atomic Energy Committee"
+      ],
+      [
+       "hssm03",
+       "Regulation and Business Opportunities Subcommittee"
+      ],
+      [
+       "ssfi01",
+       "Medicaid and Health Care for Low-Income Families Subcommittee"
+      ],
+      [
+       "hlse06",
+       "Task Force on the Rural Elderly Subcommittee"
+      ],
+      [
+       "hsfa02",
+       "International Operations Subcommittee"
+      ],
+      [
+       "hlse03",
+       "Housing and Consumer Interests Subcommittee"
+      ],
+      [
+       "hsfa11",
+       "International Security, International Organizations, and Human Rights Subcommittee"
+      ],
+      [
+       "hsha05",
+       "Personnel and Police Subcommittee"
+      ],
+      [
+       "ssga06",
+       "Financial Management and Accountability Subcommittee"
+      ],
+      [
+       "n85185939",
+       "Rivers and Harbors Committee"
+      ],
+      [
+       "n79043122",
+       "Irrigation and Reclamation"
+      ]
+     ]
+    },
+    "old_only": {}
+   }
+  },
+  "completeness": {
+   "column_values": {
+    "captions": {
+     "committee_transcript -> not_stated": 198,
+     "committee_transcript -> present": 86,
+     "committee_transcript -> unknown": 330,
+     "gpo -> not_stated": 4464,
+     "gpo -> present": 146,
+     "gpo -> unknown": 6849,
+     "no_video -> not_stated": 1019,
+     "no_video -> unknown": 3,
+     "senate_captions -> not_stated": 80,
+     "senate_captions -> present": 579,
+     "senate_captions -> unknown": 19,
+     "video_no_captions -> not_stated": 820,
+     "video_no_captions -> present": 53,
+     "video_no_captions -> unknown": 877,
+     "youtube_captions -> not_stated": 553,
+     "youtube_captions -> present": 153,
+     "youtube_captions -> unknown": 1377
+    },
+    "closed": {
+     " -> open": 256,
+     " -> unknown": 16531,
+     "yes -> closed": 660,
+     "yes -> open": 8,
+     "yes -> partly_closed": 85,
+     "yes -> unknown": 66
+    },
+    "documents": {
+     "0 -> not_stated": 2406,
+     "0 -> present": 5550,
+     "1 -> not_stated": 2,
+     "1 -> present": 1699,
+     "10 -> present": 275,
+     "100 -> present": 2,
+     "104 -> present": 4,
+     "105 -> present": 3,
+     "106 -> present": 1,
+     "108 -> present": 1,
+     "11 -> present": 201,
+     "110 -> present": 1,
+     "111 -> present": 1,
+     "114 -> present": 1,
+     "115 -> present": 3,
+     "118 -> present": 1,
+     "12 -> present": 171,
+     "127 -> present": 1,
+     "129 -> present": 1,
+     "13 -> present": 170,
+     "135 -> present": 1,
+     "138 -> present": 1,
+     "14 -> present": 136,
+     "142 -> present": 2,
+     "15 -> present": 113,
+     "150 -> present": 1,
+     "152 -> present": 1,
+     "159 -> present": 1,
+     "16 -> present": 93,
+     "17 -> present": 103,
+     "176 -> present": 1,
+     "18 -> present": 98,
+     "19 -> present": 87,
+     "190 -> present": 1,
+     "2 -> present": 1832,
+     "20 -> present": 68,
+     "21 -> present": 77,
+     "219 -> present": 1,
+     "22 -> present": 77,
+     "224 -> present": 1,
+     "228 -> present": 1,
+     "23 -> present": 56,
+     "24 -> present": 55,
+     "248 -> present": 1,
+     "25 -> present": 46,
+     "26 -> present": 45,
+     "27 -> present": 36,
+     "277 -> present": 1,
+     "28 -> present": 41,
+     "29 -> present": 32,
+     "3 -> present": 872,
+     "30 -> present": 23,
+     "31 -> present": 36,
+     "311 -> present": 1,
+     "32 -> present": 30,
+     "33 -> present": 19,
+     "34 -> present": 23,
+     "35 -> present": 29,
+     "36 -> present": 25,
+     "37 -> present": 27,
+     "38 -> present": 21,
+     "39 -> present": 22,
+     "4 -> not_stated": 1,
+     "4 -> present": 613,
+     "40 -> present": 24,
+     "404 -> present": 1,
+     "41 -> present": 14,
+     "42 -> present": 18,
+     "43 -> present": 17,
+     "44 -> present": 13,
+     "45 -> present": 15,
+     "46 -> present": 16,
+     "47 -> present": 9,
+     "48 -> present": 9,
+     "49 -> present": 9,
+     "5 -> present": 457,
+     "50 -> present": 14,
+     "51 -> present": 3,
+     "52 -> present": 5,
+     "53 -> present": 9,
+     "537 -> present": 1,
+     "54 -> present": 11,
+     "55 -> present": 9,
+     "56 -> present": 7,
+     "57 -> present": 10,
+     "58 -> present": 10,
+     "59 -> present": 8,
+     "6 -> present": 411,
+     "60 -> present": 4,
+     "61 -> present": 5,
+     "62 -> present": 4,
+     "63 -> present": 5,
+     "64 -> present": 6,
+     "65 -> present": 4,
+     "66 -> present": 5,
+     "664 -> present": 1,
+     "67 -> present": 6,
+     "68 -> present": 2,
+     "69 -> present": 5,
+     "7 -> present": 381,
+     "70 -> present": 2,
+     "71 -> present": 4,
+     "72 -> present": 2,
+     "73 -> present": 5,
+     "74 -> present": 3,
+     "75 -> present": 3,
+     "76 -> present": 4,
+     "77 -> present": 4,
+     "78 -> present": 2,
+     "79 -> present": 1,
+     "8 -> present": 363,
+     "80 -> present": 3,
+     "81 -> present": 2,
+     "82 -> present": 5,
+     "83 -> present": 3,
+     "85 -> present": 2,
+     "867 -> present": 1,
+     "87 -> present": 2,
+     "88 -> present": 3,
+     "89 -> present": 2,
+     "9 -> present": 404,
+     "90 -> present": 2,
+     "91 -> present": 1,
+     "92 -> present": 2,
+     "93 -> present": 2,
+     "94 -> present": 2,
+     "95 -> present": 2,
+     "96 -> present": 1,
+     "97 -> present": 1
+    },
+    "not_held": {
+     " -> false": 17593,
+     "yes -> false": 2,
+     "yes -> true": 11
+    },
+    "recording": {
+     " -> confirmed_absent": 88,
+     " -> partial": 73,
+     " -> present": 8,
+     " -> unknown": 1189,
+     "yes -> claimed": 1995,
+     "yes -> not_public": 1,
+     "yes -> partial": 37,
+     "yes -> present": 9695,
+     "yes -> unknown": 4477,
+     "yes -> unresolved": 43
+    },
+    "rescheduled_to": {
+     "both_none": 17554,
+     "new_only": 8,
+     "old_only": 32,
+     "same_event": 12
+    },
+    "transcript": {
+     "committee_transcript -> not_stated": 482,
+     "committee_transcript -> present": 127,
+     "committee_transcript -> unresolved": 5,
+     "gpo -> not_stated": 785,
+     "gpo -> present": 10624,
+     "gpo -> unresolved": 50,
+     "no_video -> not_stated": 915,
+     "no_video -> present": 106,
+     "no_video -> unresolved": 1,
+     "senate_captions -> not_stated": 638,
+     "senate_captions -> present": 36,
+     "senate_captions -> unresolved": 4,
+     "video_no_captions -> not_stated": 1392,
+     "video_no_captions -> present": 350,
+     "video_no_captions -> unresolved": 8,
+     "youtube_captions -> not_stated": 2052,
+     "youtube_captions -> present": 21,
+     "youtube_captions -> unresolved": 10
+    },
+    "witnesses": {
+     "0 -> empty": 2,
+     "0 -> not_stated": 4226,
+     "0 -> present": 121,
+     "1 -> not_stated": 449,
+     "1 -> present": 1693,
+     "10 -> not_stated": 3,
+     "10 -> present": 94,
+     "11 -> not_stated": 2,
+     "11 -> present": 51,
+     "12 -> present": 50,
+     "13 -> not_stated": 1,
+     "13 -> present": 26,
+     "14 -> present": 25,
+     "15 -> not_stated": 3,
+     "15 -> present": 23,
+     "16 -> present": 27,
+     "17 -> present": 7,
+     "18 -> present": 16,
+     "19 -> not_stated": 1,
+     "19 -> present": 5,
+     "2 -> not_stated": 233,
+     "2 -> present": 977,
+     "20 -> present": 11,
+     "21 -> present": 13,
+     "22 -> present": 10,
+     "23 -> present": 8,
+     "24 -> present": 10,
+     "25 -> not_stated": 2,
+     "25 -> present": 3,
+     "26 -> present": 2,
+     "27 -> present": 5,
+     "29 -> present": 1,
+     "3 -> not_stated": 378,
+     "3 -> present": 1682,
+     "30 -> present": 1,
+     "31 -> not_stated": 1,
+     "31 -> present": 2,
+     "32 -> present": 4,
+     "34 -> present": 2,
+     "35 -> present": 1,
+     "36 -> present": 1,
+     "37 -> present": 1,
+     "38 -> present": 1,
+     "39 -> present": 1,
+     "4 -> not_stated": 386,
+     "4 -> present": 3272,
+     "41 -> present": 2,
+     "42 -> present": 1,
+     "43 -> not_stated": 1,
+     "43 -> present": 1,
+     "5 -> not_stated": 271,
+     "5 -> present": 1741,
+     "53 -> present": 1,
+     "55 -> present": 2,
+     "6 -> not_stated": 100,
+     "6 -> present": 732,
+     "60 -> present": 1,
+     "7 -> not_stated": 42,
+     "7 -> present": 406,
+     "72 -> present": 1,
+     "8 -> not_stated": 23,
+     "8 -> present": 250,
+     "82 -> present": 1,
+     "9 -> not_stated": 10,
+     "9 -> present": 186,
+     "90 -> present": 1
+    }
+   },
+   "matched": 17606,
+   "matched_new": 17606,
+   "new_only_by_reason": {
+    "new_snapshot_only": 1081
+   },
+   "new_rows": 18687,
+   "old_only_by_reason": {},
+   "old_rows": 17606,
+   "samples": {
+    "new_only": {
+     "new_snapshot_only": [
+      [
+       "104690",
+       "None"
+      ],
+      [
+       "103915",
+       "None"
+      ],
+      [
+       "100319",
+       "None"
+      ],
+      [
+       "105550",
+       "None"
+      ],
+      [
+       "102692",
+       "None"
+      ],
+      [
+       "100123",
+       "None"
+      ],
+      [
+       "118524",
+       "None"
+      ],
+      [
+       "106151",
+       "None"
+      ],
+      [
+       "100059",
+       "None"
+      ],
+      [
+       "104367",
+       "None"
+      ],
+      [
+       "101934",
+       "None"
+      ],
+      [
+       "103760",
+       "None"
+      ],
+      [
+       "106964",
+       "None"
+      ],
+      [
+       "101659",
+       "None"
+      ],
+      [
+       "100103",
+       "None"
+      ],
+      [
+       "104625",
+       "None"
+      ],
+      [
+       "101595",
+       "None"
+      ],
+      [
+       "108992",
+       "None"
+      ],
+      [
+       "103354",
+       "None"
+      ],
+      [
+       "110658",
+       "None"
+      ]
+     ]
+    },
+    "old_only": {}
+   }
+  },
+  "curated_decisions": {
+   "matched": 7200,
+   "matched_new": 8616,
+   "new_only_by_reason": {},
+   "new_rows": 8616,
+   "old_only_by_reason": {},
+   "old_rows": 7200,
+   "samples": {
+    "new_only": {},
+    "old_only": {}
+   }
+  },
+  "document_files": {
+   "matched": 325590,
+   "matched_new": 324184,
+   "new_only_by_reason": {
+    "native_found_more": 200245
+   },
+   "new_rows": 524429,
+   "old_only_by_reason": {
+    "pending_r2_print_link": 10383
+   },
+   "old_rows": 335973,
+   "samples": {
+    "new_only": {
+     "native_found_more": [
+      [
+       "https://www.govinfo.gov/content/pkg/CHRG-113shrg92529.zip",
+       "None"
+      ],
+      [
+       "https://docs.house.gov/meetings/AP/AP06/20200211/110491/HHRG-116-AP06-TTF-JohnstoneE-20200211.pdf",
+       "None"
+      ],
+      [
+       "https://docs.house.gov/meetings/FA/FA00/20190307/109048/BILLS-116HRes156ih.pdf",
+       "None"
+      ],
+      [
+       "https://docs.house.gov/meetings/FA/FA00/20151202/104244/HHRG-114-FA00-Wstate-BenjaminD-20151202.pdf",
+       "None"
+      ],
+      [
+       "https://oversight.house.gov/wp-content/uploads/2024/07/Hedtler-Gaudette-Testimony.pdf",
+       "None"
+      ],
+      [
+       "https://naturalresources.house.gov/uploadedfiles/testiomony_kargi.pdf",
+       "None"
+      ],
+      [
+       "https://science.house.gov/_cache/files/e/9/e9c2b6a9-2ebd-43e7-b422-ceb6c4749274/ACCEFB9231FACE001CCD73CD055982CA557FD9B0825E7E7A05C333A4A2111552.bucshon-441.pdf",
+       "None"
+      ],
+      [
+       "https://www.govinfo.gov/app/details/CHRG-112jhrg74026",
+       "None"
+      ],
+      [
+       "https://www.govinfo.gov/content/pkg/CHRG-118hhrg57120.zip",
+       "None"
+      ],
+      [
+       "https://www.govinfo.gov/app/details/CHRG-107hhrg76448",
+       "None"
+      ],
+      [
+       "https://democrats-edworkforce.house.gov/imo/media/doc/documents/112/pdf/statements/Furchtgott-Roth03312011.pdf",
+       "None"
+      ],
+      [
+       "https://www.govinfo.gov/content/pkg/CRPT-117hrpt333/pdf/CRPT-117hrpt333.pdf",
+       "None"
+      ],
+      [
+       "https://docs.house.gov/billsthisweek/20221212/BILLS-117HR1948RH-RCP117-71.xml",
+       "None"
+      ],
+      [
+       "https://www.govinfo.gov/app/details/CHRG-112hhrg86227",
+       "None"
+      ],
+      [
+       "https://financialservices.house.gov/uploadedfiles/hhrg-112-ba04-ttf-clewis-20120911.pdf",
+       "None"
+      ],
+      [
+       "https://www.govinfo.gov/app/details/CHRG-119hhrg61124",
+       "None"
+      ],
+      [
+       "https://www.foreign.senate.gov/hearings/us-strategy-in-the-pacific-island-region",
+       "None"
+      ],
+      [
+       "https://docs.house.gov/billsthisweek/20240108/HR%20540%20-%20Kim.pdf",
+       "None"
+      ],
+      [
+       "https://www.govinfo.gov/app/details/CHRG-113hhrg79726",
+       "None"
+      ],
+      [
+       "https://www.epw.senate.gov/public/index.cfm/hearings?ID=A654BF51-1207-411A-BD0E-914CCFBDB60B",
+       "None"
+      ]
+     ]
+    },
+    "old_only": {
+     "pending_r2_print_link": [
+      [
+       "https://www.congress.gov/118/meeting/house/116892/documents/HHRG-118-II13-20240306-SD011.pdf",
+       "b1ca0a4a-e3cf-4fc2-8efc-01671f4acf00"
+      ],
+      [
+       "https://www.finance.senate.gov/download/10082025-crapo-statement",
+       "50b31bba-7a89-47df-bd7a-80e85a43a3d4"
+      ],
+      [
+       "https://www.govinfo.gov/content/pkg/CHRG-113hhrg87667/html/CHRG-113hhrg87667.htm",
+       "959c5bc9-9cf0-427e-acdc-b309a61acf2f"
+      ],
+      [
+       "https://www.banking.senate.gov/download/toomey-statement-11-30-22",
+       "4edb8965-812c-41d5-a0c0-f6ae42787050"
+      ],
+      [
+       "https://www.aging.senate.gov/download/sca_cook_11_15_19",
+       "f8b31b6a-7a85-4626-8a07-31c07086b80c"
+      ],
+      [
+       "https://www.congress.gov/114/meeting/house/102818/documents/HHRG-114-VR09-20150122-SD001.pdf",
+       "51d2525d-c6c6-4059-8a5f-a70238d5385d"
+      ],
+      [
+       "https://www.budget.senate.gov/download/102523-chairman-whitehouse-opening-statement",
+       "7a4606c9-cde8-431a-bcd9-e32526840eb2"
+      ],
+      [
+       "https://docs.house.gov/meetings/II/II10/20190430/109354/HHRG-116-II10-Bio-RadliffB-20190430.pdf",
+       "a0c553a6-b0da-4998-8fdc-afaa5c9f7aed"
+      ],
+      [
+       "https://www.govinfo.gov/content/pkg/CHRG-118hhrg53012/html/CHRG-118hhrg53012.htm",
+       "8bd86ad6-b311-4534-83dd-1021e6a36bb5"
+      ],
+      [
+       "https://beta.congress.gov/113/crpt/hrpt472/CRPT-113hrpt472.pdf",
+       "9421a011-f095-4e5f-9ca6-710a8abc09ca"
+      ],
+      [
+       "https://www.banking.senate.gov/download/crenshaw-testimony-7-21-20",
+       "bfc887a0-c367-418b-9497-f2e8e810842d"
+      ],
+      [
+       "https://www.gpo.gov/fdsys/pkg/BILLS-113hr2218rh/pdf/BILLS-113hr2218rh.pdf",
+       "dd72925f-41eb-4691-ac35-1e6de17a98fb"
+      ],
+      [
+       "https://www.finance.senate.gov/download/10202021-testimony",
+       "f97bc426-b7e6-4dbe-aa56-05bde0137fd3"
+      ],
+      [
+       "https://www.congress.gov/113/meeting/house/101166/documents/HHRG-113-HM11-20130723-SD001-U1.pdf",
+       "67bab61d-dc03-467a-bee1-12f0f50a8efd"
+      ],
+      [
+       "https://www.congress.gov/119/meeting/house/118438/documents/HMKP-119-IF00-MState-T000469-20250625.pdf",
+       "e8fbc6d9-a696-4d61-90f2-d224cca9a339"
+      ],
+      [
+       "https://www.congress.gov/114/meeting/house/104107/documents/HHRG-114-VR08-20151027-SD001.pdf",
+       "65264545-c1cd-406e-99d5-2aff3415405e"
+      ],
+      [
+       "https://www.congress.gov/117/meeting/house/114903/documents/HHRG-117-VR08-WList-20220616-U1.pdf",
+       "c509659d-8bca-431a-82d8-0b6e513fa537"
+      ],
+      [
+       "https://www.energy.senate.gov/index.cfm?a=Files.Serve&File_id=683201ED-394F-4347-9C1A-683310029A2E",
+       "5becf9d3-3865-44a4-ad89-f64dea5d99d3"
+      ],
+      [
+       "https://www.finance.senate.gov/download/06302020-gere-statement",
+       "cde1ade5-df39-4287-b94b-9112bd71f53c"
+      ],
+      [
+       "https://www.finance.senate.gov/download/cattle-supply-chains-and-deforestation-of-the-amazon",
+       "420bc680-f160-42d8-bdbd-4d45b1305993"
+      ]
+     ]
+    }
+   }
+  },
+  "house_documents_found": {
+   "matched": 17993,
+   "matched_new": 17818,
+   "new_only_by_reason": {
+    "native_found_more": 506611
+   },
+   "new_rows": 524429,
+   "old_only_by_reason": {
+    "old_state_only": 133
+   },
+   "old_rows": 18126,
+   "samples": {
+    "new_only": {
+     "native_found_more": [
+      [
+       "https://www.govinfo.gov/content/pkg/CHRG-113shrg92529.zip",
+       "None"
+      ],
+      [
+       "https://docs.house.gov/meetings/AP/AP06/20200211/110491/HHRG-116-AP06-TTF-JohnstoneE-20200211.pdf",
+       "None"
+      ],
+      [
+       "https://www.congress.gov/119/meeting/house/118355/witnesses/HHRG-119-ED14-Bio-TwengeJ-20250610.pdf",
+       "None"
+      ],
+      [
+       "https://docs.house.gov/meetings/FA/FA00/20190307/109048/BILLS-116HRes156ih.pdf",
+       "None"
+      ],
+      [
+       "https://docs.house.gov/meetings/II/II10/20220301/114452/HHRG-117-II10-MState-N000191-20220301.pdf",
+       "None"
+      ],
+      [
+       "https://docs.house.gov/meetings/FA/FA00/20151202/104244/HHRG-114-FA00-Wstate-BenjaminD-20151202.pdf",
+       "None"
+      ],
+      [
+       "https://www.govinfo.gov/content/pkg/CHRG-111hhrg56336/pdf/CHRG-111hhrg56336.pdf",
+       "None"
+      ],
+      [
+       "https://www.congress.gov/116/meeting/house/109586/documents/HHRG-116-II10-20190605-SD013.pdf",
+       "None"
+      ],
+      [
+       "https://www.congress.gov/117/meeting/house/114039/documents/BILLS-117-D-B001248-Amdt-13.pdf",
+       "None"
+      ],
+      [
+       "https://www.govinfo.gov/content/pkg/CHRG-116hhrg38305/html/CHRG-116hhrg38305.htm",
+       "None"
+      ],
+      [
+       "https://www.govinfo.gov/content/pkg/CHRG-114shrg59104643/html/CHRG-114shrg59104643.htm",
+       "None"
+      ],
+      [
+       "https://www.govinfo.gov/content/pkg/CHRG-117shrg59798/pdf/CHRG-117shrg59798.pdf",
+       "None"
+      ],
+      [
+       "https://oversight.house.gov/wp-content/uploads/2024/07/Hedtler-Gaudette-Testimony.pdf",
+       "None"
+      ],
+      [
+       "https://www.congress.gov/117/meeting/house/115197/witnesses/HHRG-117-II00-Bio-PardoE-20221117.pdf",
+       "None"
+      ],
+      [
+       "https://www.govinfo.gov/content/pkg/CHRG-112shrg93596/html/CHRG-112shrg93596.htm",
+       "None"
+      ],
+      [
+       "https://www.congress.gov/117/meeting/house/115193/documents/BILLS-117-HRes1378-G000551-Amdt-1.pdf",
+       "None"
+      ],
+      [
+       "https://www.congress.gov/115/meeting/house/107983/witnesses/HHRG-115-AP10-Wstate-BurmanB-20180314.pdf",
+       "None"
+      ],
+      [
+       "https://www.sbc.senate.gov/public/?a=Files.Serve&File_id=46A6C159-CA85-4193-B5A7-5B6CD25ADA27",
+       "None"
+      ],
+      [
+       "https://naturalresources.house.gov/uploadedfiles/testiomony_kargi.pdf",
+       "None"
+      ],
+      [
+       "https://www.congress.gov/117/meeting/house/114399/witnesses/HHRG-117-CN00-TTF-WaylandK-20220215.pdf",
+       "None"
+      ]
+     ]
+    },
+    "old_only": {
+     "old_state_only": [
+      [
+       "mailto:https://www.congress.gov/116/bills/hr7045/BILLS-116hr7045ih.pdf",
+       "110944"
+      ],
+      [
+       "https://docs.house.gov/meetings/AP/AP20/20180516/108309/HMKP-115-AP20-20180516-SD001.pdf",
+       "108309"
+      ],
+      [
+       "https://docs.house.gov/meetings/II/II06/20130613/100965/HHRG-113-II06-TTF-PagelL-20130613.pdf",
+       "100965"
+      ],
+      [
+       "https://docs.house.gov/meetings/ED/ED02/20140909/102621/HHRG-113-ED02-Wstate-DuffieldT-20140909.PDF",
+       "102621"
+      ],
+      [
+       "https://docs.house.gov/meetings/WM/WM00/20260609/119368/BILLS-119pih-Attheendofsection1400W-2boftheInternalRevenueCodeof1986asproposedtobeaddedbysection2aoftheTaxClarityforMiningandStakingActaddthefoll",
+       "119368"
+      ],
+      [
+       "https://docs.house.gov/meetings/VR/VR03/20151117/104139/HHRG-114-VR03-20151117-SD010.pdf",
+       "104139"
+      ],
+      [
+       "https://docs.house.gov/meetings/AP/AP07/20150318/103142/HHRG-114-AP07-Bio-ThompsonA-20150318.pdf",
+       "103142"
+      ],
+      [
+       "https://docs.house.gov/meetings/II/II13/20250903/118558/HHRG-119-II13-20250903-SD030.PDF",
+       "118558"
+      ],
+      [
+       "https://docs.house.gov/meetings/II/II13/20131010/101411/BILLS-113HR3189ih-ToprohibittheconditioningofanypermitleaseorotheruseagreementonthetransferrelinquishmentorotherimpairmentofanywaterrighttotheUni",
+       "101411"
+      ],
+      [
+       "https://docs.house.gov/meetings/SY/SY00/20230308/115410/HHRG-118-SY00-Bio-MorganM-20230308.pdf",
+       "115410"
+      ],
+      [
+       "https://docs.house.gov/meetings/VR/VR09/20220329/114539/HHRG-117-VR09-20220329-SD001-U1.pdf",
+       "114539"
+      ],
+      [
+       "https://www.congress.gov/cgi-lis/t2GPO/https://www.gpo.gov/fdsys/pkg/BILLS-113hr4005ih/pdf/BILLS-113hr4005ih.pdf",
+       "101750"
+      ],
+      [
+       "https://docs.house.gov/meetings/AS/AS29/20151208/104276/HHRG-114-AS29-Bio-ScheberT-20151208.pdf",
+       "104276"
+      ],
+      [
+       "https://docs.house.gov/meetings/IF/IF14/20260429/119246/BILLS-119HR8432ToprovidetheFoodandDrugAdministrationneededauthoritiestocarryoutitsregulatorymissionwithrespecttohumanfoodstoprovideadditionalreso",
+       "119246"
+      ],
+      [
+       "https://docsadmin-clerk.house.gov/billsthisweek/20201130/CP-116HR3884RH-COMPARED-RCP116-67.pdf",
+       "111109"
+      ],
+      [
+       "https://docs.house.gov/meetings/AG/AG00/20250123/117840/HMKP-119-AG00-20250123-SD005.pdf",
+       "117840"
+      ],
+      [
+       "https://www.cbo.gov/sites/default/files/cbofiles/attachments/44602-LTBO_Testimony.pdf",
+       "101352"
+      ],
+      [
+       "https://edit-rules.house.gov/sites/evo-subsites/rules.house.gov/files/documents/bill-to-bill_119hr1897rh_to_rcp_h1897-2_xml.pdf",
+       "118846"
+      ],
+      [
+       "https://docsadmin-clerk.house.gov/billsthisweek/20260601/BILL-TO-BILL_119hr7892%20as%20reported%20to%20RCP%20119-31.pdf",
+       "118850"
+      ],
+      [
+       "https://docs.house.gov/meetings/SM/SM00/20151007/103863/HHRG-114-SM00-Bio-WestonP-20151007.pdf",
+       "103863"
+      ]
+     ]
+    }
+   }
+  },
+  "house_witnesses_found": {
+   "matched": 6956,
+   "matched_new": 6956,
+   "new_only_by_reason": {
+    "native_found_more": 41977
+   },
+   "new_rows": 48933,
+   "old_only_by_reason": {
+    "house_xml_witness_not_parsed": 586,
+    "witness_name_normalization": 397
+   },
+   "old_rows": 7939,
+   "samples": {
+    "new_only": {
+     "native_found_more": [
+      [
+       "330860|rohit chopra",
+       "4b43a4c38662f9dd"
+      ],
+      [
+       "100144|john s beutlich",
+       "bc84778daca45203"
+      ],
+      [
+       "335935|gemayel keyes",
+       "4935df26be19b7a1"
+      ],
+      [
+       "116531|ms amy shallcross",
+       "1443fecd2d3e2d8e"
+      ],
+      [
+       "115426|dr jamie metzl",
+       "5b3a9e63b6997799"
+      ],
+      [
+       "115115|dr jay olshansky",
+       "e34711bf7c292a75"
+      ],
+      [
+       "337281|peter huntsman",
+       "043b2eedc27e9b5f"
+      ],
+      [
+       "333444|carolyn richardson",
+       "59f7b450a1459507"
+      ],
+      [
+       "334882|mike rounds",
+       "04ee6f495c9c7635"
+      ],
+      [
+       "118713|mr kevin sears",
+       "d9b6422963d28df9"
+      ],
+      [
+       "104943|david weiss",
+       "ce16d5c1d4afe1ab"
+      ],
+      [
+       "118368|the honorable brooke rollins",
+       "cc7fa5f80299f472"
+      ],
+      [
+       "104274|the honorable mark lipparelli",
+       "04ba4ae38a215807"
+      ],
+      [
+       "112660|mr matthew l m fletcher",
+       "f04e162c9b3df439"
+      ],
+      [
+       "115682|the honorable anna paulina luna",
+       "1a16d52ef19ee6db"
+      ],
+      [
+       "117009|mr craig cress",
+       "e96b33bbd656c335"
+      ],
+      [
+       "114089|ms marie tran leung",
+       "61b0f61425911327"
+      ],
+      [
+       "110015|ms april kuehnhoff",
+       "e1d0ddd2b8d95dc7"
+      ],
+      [
+       "331200|kurt d delbene",
+       "9800b395480c729d"
+      ],
+      [
+       "105892|dr lisa cook",
+       "f2d19391d08ad4dc"
+      ]
+     ]
+    },
+    "old_only": {
+     "house_xml_witness_not_parsed": [
+      [
+       "100772|the honorable rush holt",
+       "100772|docs.house.gov"
+      ],
+      [
+       "100608|the honorable jeffrey zients",
+       "100608|docs.house.gov"
+      ],
+      [
+       "100368|dr keith b payne",
+       "100368|docs.house.gov"
+      ],
+      [
+       "100350|gary gensler",
+       "100350|docs.house.gov"
+      ],
+      [
+       "100520|bud lane",
+       "100520|docs.house.gov"
+      ],
+      [
+       "100518|pete demarco",
+       "100518|docs.house.gov"
+      ],
+      [
+       "100965|ms lauren pagel",
+       "100965|docs.house.gov"
+      ],
+      [
+       "100755|mr erik milito",
+       "100755|docs.house.gov"
+      ],
+      [
+       "100736|rosemary morillo",
+       "100736|docs.house.gov"
+      ],
+      [
+       "100238|dr don cook",
+       "100238|docs.house.gov"
+      ],
+      [
+       "100717|general david m rodriguez",
+       "100717|docs.house.gov"
+      ],
+      [
+       "101102|mr donald f santa jr ",
+       "101102|docs.house.gov"
+      ],
+      [
+       "100588|the honorable arne duncan",
+       "100588|docs.house.gov"
+      ],
+      [
+       "101209|the honorable alcee l hastings",
+       "101209|docs.house.gov"
+      ],
+      [
+       "101209|the honorable alcee l hastings",
+       "101209|docs.house.gov"
+      ],
+      [
+       "100792|the honorable alan olson",
+       "100792|docs.house.gov"
+      ],
+      [
+       "101221|rear admiral timothy s matthews usn",
+       "101221|docs.house.gov"
+      ],
+      [
+       "101187|the honorable jared polis",
+       "101187|docs.house.gov"
+      ],
+      [
+       "100324|lieutenant general michael r moeller usaf",
+       "100324|docs.house.gov"
+      ],
+      [
+       "100245|mr jim shelton",
+       "100245|docs.house.gov"
+      ]
+     ],
+     "witness_name_normalization": [
+      [
+       "100733|dr donald e heller",
+       "100733|docs.house.gov"
+      ],
+      [
+       "100572|mr mike bergmeier",
+       "100572|docs.house.gov"
+      ],
+      [
+       "101088|dr joann a boughman",
+       "101088|docs.house.gov"
+      ],
+      [
+       "100733|mr travis reindl",
+       "100733|docs.house.gov"
+      ],
+      [
+       "100429|mr roger natsuhara",
+       "100429|docs.house.gov"
+      ],
+      [
+       "100956|ms kathryn brigham",
+       "100956|docs.house.gov"
+      ],
+      [
+       "100572|mr jim allen",
+       "100572|docs.house.gov"
+      ],
+      [
+       "100267|dr douglas hotlz eakin",
+       "100267|docs.house.gov"
+      ],
+      [
+       "100455|mr jim colby",
+       "100455|docs.house.gov"
+      ],
+      [
+       "100610|dr ioannis miaoulis",
+       "100610|docs.house.gov"
+      ],
+      [
+       "100611|lieutenant general thomas w travis",
+       "100611|docs.house.gov"
+      ],
+      [
+       "100458|mr ken bjurstrom",
+       "100458|docs.house.gov"
+      ],
+      [
+       "101167|the honorable robert griffin",
+       "101167|docs.house.gov"
+      ],
+      [
+       "101160|ms janice k sheppard",
+       "101160|docs.house.gov"
+      ],
+      [
+       "100958|mr jeffrey d morgan",
+       "100958|docs.house.gov"
+      ],
+      [
+       "100429|ms kathleen ferguson",
+       "100429|docs.house.gov"
+      ],
+      [
+       "100261|dr mark t lewellyn",
+       "100261|docs.house.gov"
+      ],
+      [
+       "100738|ms shirley cloyes dioguardi",
+       "100738|docs.house.gov"
+      ],
+      [
+       "100798|mr brian merrill",
+       "100798|docs.house.gov"
+      ],
+      [
+       "100547|mr michael mazza",
+       "100547|docs.house.gov"
+      ]
+     ]
+    }
+   }
+  },
+  "materials": {
+   "matched": 358708,
+   "matched_new": 358708,
+   "new_only_by_reason": {},
+   "new_rows": 358708,
+   "old_only_by_reason": {
+    "not_a_row_fact": 6179,
+    "pending_r2_print_link": 13102
+   },
+   "old_rows": 377989,
+   "samples": {
+    "new_only": {},
+    "old_only": {
+     "not_a_row_fact": [
+      [
+       "cb223996-ddc7-4f11-b582-22f01cf0875e",
+       "recording"
+      ],
+      [
+       "058a8f91-9d52-4c4c-a605-4dbc75d77853",
+       "recording"
+      ],
+      [
+       "931fc0f1-9015-4c9e-acd2-b90e1eb44aa8",
+       "recording"
+      ],
+      [
+       "17b483a7-97e6-4bfe-9399-9d2bca37e4b0",
+       "recording"
+      ],
+      [
+       "cf780aa7-2b76-4137-9dd3-5ea123b7c335",
+       "recording"
+      ],
+      [
+       "6572be35-27a5-4574-a33c-9e70d763d90b",
+       "recording"
+      ],
+      [
+       "55d5386a-b168-4210-aa05-2cff34a62fab",
+       "recording"
+      ],
+      [
+       "f4c3e604-0a96-434f-acca-1ac2a9f53950",
+       "recording"
+      ],
+      [
+       "4b471007-68f7-4cba-a351-e73a053651d2",
+       "recording"
+      ],
+      [
+       "5a26c47d-abeb-45a7-b8bb-1abe88f6fdf7",
+       "recording"
+      ],
+      [
+       "83e6aca9-cf16-4f31-9f7a-c2d0c670883a",
+       "recording"
+      ],
+      [
+       "c612527a-4720-497c-b6ff-48c40954f54c",
+       "recording"
+      ],
+      [
+       "69419cbe-9cb5-4598-aa4a-c6b2d66e02c2",
+       "recording"
+      ],
+      [
+       "e1d982c1-d05c-4cfb-9b30-670551bf4b86",
+       "recording"
+      ],
+      [
+       "2ab81bdf-8c44-4d9b-bb64-31854a2f7948",
+       "recording"
+      ],
+      [
+       "51d21a4c-386e-442c-9f79-4e0defe62119",
+       "recording"
+      ],
+      [
+       "a2aa0c38-f158-4914-ad79-8ab7b296f64f",
+       "recording"
+      ],
+      [
+       "ec08920d-d2dc-423b-bd33-812846f014a5",
+       "recording"
+      ],
+      [
+       "4bc86841-0830-44f1-9a89-9a7cf7479a3f",
+       "recording"
+      ],
+      [
+       "9f306b00-9cc1-48d5-b477-00ef8f7028f6",
+       "recording"
+      ]
+     ],
+     "pending_r2_print_link": [
+      [
+       "7d6b777f-1291-4ba0-b633-1a388ff4830e",
+       "document"
+      ],
+      [
+       "8bd637ca-2778-467a-9690-7491e86a2f0d",
+       "document"
+      ],
+      [
+       "09e2d43e-e20f-4cfb-b070-4616dd171f09",
+       "document"
+      ],
+      [
+       "77fdecf4-382c-4581-81f5-891ec5b16fc3",
+       "document"
+      ],
+      [
+       "1fef6d8d-525a-451f-8fd1-49c91c101c1a",
+       "document"
+      ],
+      [
+       "42a70a55-b22c-409d-a1af-fb19b6a06765",
+       "document"
+      ],
+      [
+       "c0ddf7a9-68ce-4bc2-9fb9-5d9d0387a4f8",
+       "document"
+      ],
+      [
+       "c3bc6a51-8e9c-48ca-9d5d-256d55836152",
+       "document"
+      ],
+      [
+       "83d68292-7cb6-4360-ac04-faedca79c3dc",
+       "document"
+      ],
+      [
+       "34265a98-7a8a-4a7c-9dc5-dd5e47e318ef",
+       "document"
+      ],
+      [
+       "a8b2603c-f914-4029-89c3-d422efb367e7",
+       "document"
+      ],
+      [
+       "8c0d72cc-91ba-4afc-9f9c-6ec2c8ca980f",
+       "document"
+      ],
+      [
+       "18be6813-1096-4b62-be70-bc5957f17185",
+       "document"
+      ],
+      [
+       "94b085c6-5d4c-4b4f-bc5b-48c6e981907a",
+       "document"
+      ],
+      [
+       "effcda5c-9eb9-4357-8ce1-de648f045a4f",
+       "document"
+      ],
+      [
+       "ff228c5b-a4f0-4d49-b40d-44ad8b5677ee",
+       "document"
+      ],
+      [
+       "1c2a879f-e8f3-4091-bf9a-d08f781a7730",
+       "document"
+      ],
+      [
+       "e10c09af-a4d3-428a-97d5-9c42175353c4",
+       "document"
+      ],
+      [
+       "893bb1ea-9055-46b2-b621-3c92fea69435",
+       "document"
+      ],
+      [
+       "802408d5-9f36-4d9d-8bed-79f18b7dab72",
+       "document"
+      ]
+     ]
+    }
+   }
+  },
+  "meeting_witnesses": {
+   "matched": 11792,
+   "matched_new": 11792,
+   "new_only_by_reason": {
+    "native_found_more": 37141
+   },
+   "new_rows": 48933,
+   "old_only_by_reason": {
+    "derived_from_title_or_document": 43,
+    "house_xml_witness_not_parsed": 586,
+    "pending_r2_package_event_link": 926,
+    "pending_r2_senate_page_link": 4814,
+    "witness_name_normalization": 530
+   },
+   "old_rows": 18691,
+   "samples": {
+    "new_only": {
+     "native_found_more": [
+      [
+       "100144|john s beutlich",
+       "bc84778daca45203"
+      ],
+      [
+       "116531|ms amy shallcross",
+       "1443fecd2d3e2d8e"
+      ],
+      [
+       "115426|dr jamie metzl",
+       "5b3a9e63b6997799"
+      ],
+      [
+       "115115|dr jay olshansky",
+       "e34711bf7c292a75"
+      ],
+      [
+       "118713|mr kevin sears",
+       "d9b6422963d28df9"
+      ],
+      [
+       "104943|david weiss",
+       "ce16d5c1d4afe1ab"
+      ],
+      [
+       "118368|the honorable brooke rollins",
+       "cc7fa5f80299f472"
+      ],
+      [
+       "104274|the honorable mark lipparelli",
+       "04ba4ae38a215807"
+      ],
+      [
+       "112660|mr matthew l m fletcher",
+       "f04e162c9b3df439"
+      ],
+      [
+       "115682|the honorable anna paulina luna",
+       "1a16d52ef19ee6db"
+      ],
+      [
+       "117009|mr craig cress",
+       "e96b33bbd656c335"
+      ],
+      [
+       "114089|ms marie tran leung",
+       "61b0f61425911327"
+      ],
+      [
+       "110015|ms april kuehnhoff",
+       "e1d0ddd2b8d95dc7"
+      ],
+      [
+       "105892|dr lisa cook",
+       "f2d19391d08ad4dc"
+      ],
+      [
+       "103338|mark hughes",
+       "635bd1a8d2afcc4f"
+      ],
+      [
+       "108576|mr lloyd thrower",
+       "847f62059e2563ff"
+      ],
+      [
+       "108265|robert flying hawk",
+       "b2e1c05f68e9ac9c"
+      ],
+      [
+       "110026|mr david gardiner",
+       "5a5023bc17c74273"
+      ],
+      [
+       "104234|robert stack",
+       "e6453bfc4974594b"
+      ],
+      [
+       "115819|mr edward britan",
+       "188ede6fe8ebb8ea"
+      ]
+     ]
+    },
+    "old_only": {
+     "derived_from_title_or_document": [
+      [
+       "333660|dilawar syed",
+       "333660|meeting title (nominees)"
+      ],
+      [
+       "336565|kelly loeffler",
+       "336565|meeting title (nominees)"
+      ],
+      [
+       "326205|carl whitney bentzel",
+       "326205|meeting title (nominees)"
+      ],
+      [
+       "338006|casey means",
+       "338006|meeting title (nominees)"
+      ],
+      [
+       "338581|kaveh farzad",
+       "338581|meeting title (nominees)"
+      ],
+      [
+       "328164|amy coney barrett",
+       "328164|meeting title (nominees)"
+      ],
+      [
+       "327533|russell vought",
+       "327533|meeting title (nominees)"
+      ],
+      [
+       "328163|amy coney barrett",
+       "328163|meeting title (nominees)"
+      ],
+      [
+       "337127|john dever",
+       "337127|meeting title (nominees)"
+      ],
+      [
+       "336703|william briggs",
+       "336703|meeting title (nominees)"
+      ],
+      [
+       "338525|michael vance",
+       "338525|meeting title (nominees)"
+      ],
+      [
+       "333597|daniel i werfel",
+       "333597|meeting title (nominees)"
+      ],
+      [
+       "328182|thompson michael dietz",
+       "328182|meeting title (nominees)"
+      ],
+      [
+       "338032|arvind raman",
+       "338032|meeting title (nominees)"
+      ],
+      [
+       "105634|shirley bailey",
+       "105634|witness list document"
+      ],
+      [
+       "338581|kevin lilly",
+       "338581|meeting title (nominees)"
+      ],
+      [
+       "338525|roger mason",
+       "338525|meeting title (nominees)"
+      ],
+      [
+       "338032|matthew anderson",
+       "338032|meeting title (nominees)"
+      ],
+      [
+       "337127|george wesley street",
+       "337127|meeting title (nominees)"
+      ],
+      [
+       "105634|hannibal mike ware",
+       "105634|witness list document"
+      ]
+     ],
+     "house_xml_witness_not_parsed": [
+      [
+       "100772|the honorable rush holt",
+       "100772|docs.house.gov"
+      ],
+      [
+       "100608|the honorable jeffrey zients",
+       "100608|docs.house.gov"
+      ],
+      [
+       "100368|dr keith b payne",
+       "100368|docs.house.gov"
+      ],
+      [
+       "100350|gary gensler",
+       "100350|docs.house.gov"
+      ],
+      [
+       "100520|bud lane",
+       "100520|docs.house.gov"
+      ],
+      [
+       "100518|pete demarco",
+       "100518|docs.house.gov"
+      ],
+      [
+       "100965|ms lauren pagel",
+       "100965|docs.house.gov"
+      ],
+      [
+       "100755|mr erik milito",
+       "100755|docs.house.gov"
+      ],
+      [
+       "100736|rosemary morillo",
+       "100736|docs.house.gov"
+      ],
+      [
+       "100238|dr don cook",
+       "100238|docs.house.gov"
+      ],
+      [
+       "100717|general david m rodriguez",
+       "100717|docs.house.gov"
+      ],
+      [
+       "101102|mr donald f santa jr ",
+       "101102|docs.house.gov"
+      ],
+      [
+       "100588|the honorable arne duncan",
+       "100588|docs.house.gov"
+      ],
+      [
+       "101209|the honorable alcee l hastings",
+       "101209|docs.house.gov"
+      ],
+      [
+       "101209|the honorable alcee l hastings",
+       "101209|docs.house.gov"
+      ],
+      [
+       "100792|the honorable alan olson",
+       "100792|docs.house.gov"
+      ],
+      [
+       "101221|rear admiral timothy s matthews usn",
+       "101221|docs.house.gov"
+      ],
+      [
+       "101187|the honorable jared polis",
+       "101187|docs.house.gov"
+      ],
+      [
+       "100324|lieutenant general michael r moeller usaf",
+       "100324|docs.house.gov"
+      ],
+      [
+       "100245|mr jim shelton",
+       "100245|docs.house.gov"
+      ]
+     ],
+     "pending_r2_package_event_link": [
+      [
+       "326350|patricia f s cogswell",
+       "326350|gpo"
+      ],
+      [
+       "337649|roy boyd",
+       "337649|gpo"
+      ],
+      [
+       "327722|jeff kosseff",
+       "327722|gpo"
+      ],
+      [
+       "336628|mary graw leary",
+       "336628|gpo"
+      ],
+      [
+       "332187|ben r wagner",
+       "332187|gpo"
+      ],
+      [
+       "329721|eddie lazarus",
+       "329721|gpo"
+      ],
+      [
+       "326410|robert spottswood",
+       "326410|gpo"
+      ],
+      [
+       "337946|joel borkert",
+       "337946|gpo"
+      ],
+      [
+       "334244|laura sheridan",
+       "334244|gpo"
+      ],
+      [
+       "327662|andrew smith",
+       "327662|gpo"
+      ],
+      [
+       "337468|sue peschin",
+       "337468|gpo"
+      ],
+      [
+       "337119|david a wright",
+       "337119|gpo"
+      ],
+      [
+       "326008|harry wingo",
+       "326008|gpo"
+      ],
+      [
+       "337763|anna m gomez",
+       "337763|gpo"
+      ],
+      [
+       "327622|jane terry",
+       "327622|gpo"
+      ],
+      [
+       "330625|kristen clarke",
+       "330625|gpo"
+      ],
+      [
+       "326694|james c owens",
+       "326694|gpo"
+      ],
+      [
+       "336184|william saunders",
+       "336184|gpo"
+      ],
+      [
+       "326585|j c watts",
+       "326585|gpo"
+      ],
+      [
+       "327003|john mccarthy",
+       "327003|gpo"
+      ]
+     ],
+     "pending_r2_senate_page_link": [
+      [
+       "335706|kemp chester",
+       "335706|senate committee page"
+      ],
+      [
+       "338409|todd blanche",
+       "338409|senate committee page"
+      ],
+      [
+       "338399|scott turner",
+       "338399|senate committee page"
+      ],
+      [
+       "333137|rosa maria paya acevedo",
+       "333137|senate committee page"
+      ],
+      [
+       "333391|james edward simmons jr ",
+       "333391|senate committee page"
+      ],
+      [
+       "335832|j thomas manger",
+       "335832|senate committee page"
+      ],
+      [
+       "330128|angela walch",
+       "330128|senate committee page"
+      ],
+      [
+       "332871|robert califf",
+       "332871|senate committee page"
+      ],
+      [
+       "333598|marian f gaston",
+       "333598|senate committee page"
+      ],
+      [
+       "327413|helen hill",
+       "327413|senate committee page"
+      ],
+      [
+       "338084|kathleen s lane",
+       "338084|senate committee page"
+      ],
+      [
+       "338027|diana c maurer",
+       "338027|senate committee page"
+      ],
+      [
+       "326053|douglas russell cole",
+       "326053|senate committee page"
+      ],
+      [
+       "334923|john a kazen",
+       "334923|senate committee page"
+      ],
+      [
+       "330930|thomas barrett",
+       "330930|senate committee page"
+      ],
+      [
+       "338578|todd hauptli",
+       "338578|senate committee page"
+      ],
+      [
+       "333140|heidi todacheene",
+       "333140|senate committee page"
+      ],
+      [
+       "337925|dan schwager",
+       "337925|senate committee page"
+      ],
+      [
+       "335749|gloria o neill",
+       "335749|senate committee page"
+      ],
+      [
+       "333661|craig garthwaite",
+       "333661|senate committee page"
+      ]
+     ],
+     "witness_name_normalization": [
+      [
+       "100733|dr donald e heller",
+       "100733|docs.house.gov"
+      ],
+      [
+       "100572|mr mike bergmeier",
+       "100572|docs.house.gov"
+      ],
+      [
+       "101088|dr joann a boughman",
+       "101088|docs.house.gov"
+      ],
+      [
+       "100733|mr travis reindl",
+       "100733|docs.house.gov"
+      ],
+      [
+       "326046|thomas sexton",
+       "326046|senate committee page"
+      ],
+      [
+       "100429|mr roger natsuhara",
+       "100429|docs.house.gov"
+      ],
+      [
+       "336230|frank white clay",
+       "336230|senate committee page"
+      ],
+      [
+       "100956|ms kathryn brigham",
+       "100956|docs.house.gov"
+      ],
+      [
+       "333171|robert h shriver iii",
+       "333171|senate committee page"
+      ],
+      [
+       "100572|mr jim allen",
+       "100572|docs.house.gov"
+      ],
+      [
+       "326046|walter lukken",
+       "326046|senate committee page"
+      ],
+      [
+       "100267|dr douglas hotlz eakin",
+       "100267|docs.house.gov"
+      ],
+      [
+       "331960|andrew marshall",
+       "331960|senate committee page"
+      ],
+      [
+       "100455|mr jim colby",
+       "100455|docs.house.gov"
+      ],
+      [
+       "100610|dr ioannis miaoulis",
+       "100610|docs.house.gov"
+      ],
+      [
+       "100611|lieutenant general thomas w travis",
+       "100611|docs.house.gov"
+      ],
+      [
+       "100458|mr ken bjurstrom",
+       "100458|docs.house.gov"
+      ],
+      [
+       "337548|william kirk",
+       "337548|senate committee page"
+      ],
+      [
+       "333171|richard l revesz",
+       "333171|senate committee page"
+      ],
+      [
+       "101167|the honorable robert griffin",
+       "101167|docs.house.gov"
+      ]
+     ]
+    }
+   }
+  },
+  "meetings": {
+   "matched": 18141,
+   "matched_new": 18141,
+   "new_only_by_reason": {
+    "new_snapshot_only": 546
+   },
+   "new_rows": 18687,
+   "old_only_by_reason": {
+    "other_source_meeting": 312
+   },
+   "old_rows": 18453,
+   "samples": {
+    "new_only": {
+     "new_snapshot_only": [
+      [
+       "104690",
+       "None"
+      ],
+      [
+       "100319",
+       "None"
+      ],
+      [
+       "102692",
+       "None"
+      ],
+      [
+       "104367",
+       "None"
+      ],
+      [
+       "101934",
+       "None"
+      ],
+      [
+       "103760",
+       "None"
+      ],
+      [
+       "101659",
+       "None"
+      ],
+      [
+       "104625",
+       "None"
+      ],
+      [
+       "101595",
+       "None"
+      ],
+      [
+       "103354",
+       "None"
+      ],
+      [
+       "104198",
+       "None"
+      ],
+      [
+       "105159",
+       "None"
+      ],
+      [
+       "102991",
+       "None"
+      ],
+      [
+       "104868",
+       "None"
+      ],
+      [
+       "100685",
+       "None"
+      ],
+      [
+       "104645",
+       "None"
+      ],
+      [
+       "103782",
+       "None"
+      ],
+      [
+       "101933",
+       "None"
+      ],
+      [
+       "105061",
+       "None"
+      ],
+      [
+       "100469",
+       "None"
+      ]
+     ]
+    },
+    "old_only": {
+     "other_source_meeting": [
+      [
+       "None",
+       "e95c139a-d79c-4025-8055-36928545ab24"
+      ],
+      [
+       "None",
+       "0ad4e0e8-5f1c-47c3-a1ab-32eb10fed69b"
+      ],
+      [
+       "None",
+       "006543d9-cbbb-4479-b060-d4cb55e52595"
+      ],
+      [
+       "None",
+       "96cb7ce4-e317-4b46-a7ab-ac6b604a0e14"
+      ],
+      [
+       "None",
+       "93344e0f-2be6-468c-bfff-92a88c97f121"
+      ],
+      [
+       "None",
+       "19f4db34-9475-4258-aacc-d8526c66fd43"
+      ],
+      [
+       "None",
+       "60071874-9f1a-4422-bc4e-28488bd665bb"
+      ],
+      [
+       "None",
+       "2cd8039a-a3f0-4af9-83bf-9c0f766f96db"
+      ],
+      [
+       "None",
+       "f77af2ae-12ee-4625-815f-699aa7af2bb0"
+      ],
+      [
+       "None",
+       "9219730a-33a3-41ab-baad-46b015f84eb6"
+      ],
+      [
+       "None",
+       "c650b7fa-ab2c-4a1b-9485-e872e796a00e"
+      ],
+      [
+       "None",
+       "bbd6d029-5a3f-4ddf-9d02-ad680ec566ab"
+      ],
+      [
+       "None",
+       "fadd5a75-98b6-4066-838d-71a7ef9a6063"
+      ],
+      [
+       "None",
+       "1a028472-932c-4408-bf5c-eb77c02eb70d"
+      ],
+      [
+       "None",
+       "7be92119-ff36-41be-b223-c2c8b3ac9b3d"
+      ],
+      [
+       "None",
+       "02893af5-d703-4095-be0b-20a94cf7488e"
+      ],
+      [
+       "None",
+       "38701fe4-9afc-4bea-9e6c-8dc40099dbce"
+      ],
+      [
+       "None",
+       "756af3d9-82ac-4ad5-bd4e-6eb0e26285ef"
+      ],
+      [
+       "None",
+       "1e689dc0-c807-4902-897e-3401c4546438"
+      ],
+      [
+       "None",
+       "34cf97d8-261c-48b7-8105-34e48b56b4ba"
+      ]
+     ]
+    }
+   }
+  },
+  "old_sources": {
+   "by_scheme": {
+    "committee-review:record": 77,
+    "congress.gov:committees:record": 3424,
+    "congress.gov:record": 18141,
+    "congress_api.inventory.prints:record": 21760,
+    "curated-issue-decisions:record": 7502,
+    "curated-recordings:record": 44,
+    "docs.house.gov:record": 5741,
+    "govinfo:record": 34641,
+    "gpo-video-matches:record": 16868,
+    "gpo.committee-review:record": 11,
+    "meeting-inventory:record": 11163,
+    "recovered-witnesses:record": 18675,
+    "senate.committees:record": 8147,
+    "youtube:record": 67351
+   },
+   "note": "Source rows are evidence for the families above and stay by old-release reference; each scheme is compared through its family, not row by row.",
+   "old_rows": 213545
+  },
+  "old_witness_rows": {
+   "distinct_rows": 19475,
+   "event_has_other_witnesses": 451,
+   "no_native_row": 849,
+   "note": "Distinct by event and normalized name. on_package and on_page rows are held natively without an event link, which is the remaining migration.",
+   "on_event": 11779,
+   "on_package_occasion": 924,
+   "on_page_occasion": 5472,
+   "owner": "ct-x78c"
+  },
+  "recording_pairs": {
+   "matched": 8100,
+   "matched_new": 8100,
+   "new_only_by_reason": {
+    "native_found_more": 5219
+   },
+   "new_rows": 13319,
+   "old_only_by_reason": {
+    "pending_r2_matcher": 8213
+   },
+   "old_rows": 16313,
+   "samples": {
+    "new_only": {
+     "native_found_more": [
+      [
+       "CHRG-118hhrg54637|youtube:QRj7_bXN9mA",
+       "None"
+      ],
+      [
+       "CHRG-116hhrg36826|youtube:kzG0YwcGbII",
+       "None"
+      ],
+      [
+       "CHRG-118shrg55698|senate:budget050124",
+       "None"
+      ],
+      [
+       "CHRG-119shrg60018|senate:ag040825",
+       "None"
+      ],
+      [
+       "CHRG-118hhrg60350|youtube:reTzLI0MLP8",
+       "None"
+      ],
+      [
+       "CHRG-115hhrg31370|youtube:XtyZgJgvd0Y",
+       "None"
+      ],
+      [
+       "CHRG-118shrg57226|senate:judiciary012324",
+       "None"
+      ],
+      [
+       "CHRG-114hhrg23193|youtube:FhUj8Fp4hmQ",
+       "None"
+      ],
+      [
+       "CHRG-114hhrg99649|youtube:dJB8cPl7W4s",
+       "None"
+      ],
+      [
+       "CHRG-114hhrg98572|youtube:hSsMw9cNtg8",
+       "None"
+      ],
+      [
+       "CHRG-116hhrg37950|youtube:nmr6eyTXEKs",
+       "None"
+      ],
+      [
+       "CHRG-114hhrg94094|youtube:Kh4coy168T0",
+       "None"
+      ],
+      [
+       "CHRG-113hhrg88163|youtube:a1eHrR4vUe4",
+       "None"
+      ],
+      [
+       "CHRG-116hhrg39742|youtube:N8IcKafFdrg",
+       "None"
+      ],
+      [
+       "CHRG-115hhrg25844|youtube:Xhi8VjF7Npw",
+       "None"
+      ],
+      [
+       "CHRG-116hhrg53687|youtube:-juAWx8_X-o",
+       "None"
+      ],
+      [
+       "CHRG-115hhrg35837|youtube:SzQUaoX9yOE",
+       "None"
+      ],
+      [
+       "CHRG-117hhrg48471|youtube:hlYJ4aa8k2I",
+       "None"
+      ],
+      [
+       "CHRG-116hhrg41443|youtube:3nG6dhw4xmg",
+       "None"
+      ],
+      [
+       "CHRG-118hhrg54180|youtube:yDZK9dbOvWI",
+       "None"
+      ]
+     ]
+    },
+    "old_only": {
+     "pending_r2_matcher": [
+      [
+       "CHRG-114hhrg25928|youtube:10DZWC4-KLo",
+       "date window + title"
+      ],
+      [
+       "CHRG-112hhrg78870|youtube:2wS_2mkRO2I",
+       "date in video + title"
+      ],
+      [
+       "CHRG-114hhrg20912|youtube:YbeKjR2u5ZY",
+       "date in video + title"
+      ],
+      [
+       "CHRG-117hhrg45892|youtube:EjGvvhdWL8I",
+       "date in video + title; date window + subcommittee; date window + title"
+      ],
+      [
+       "CHRG-112hhrg71258|youtube:-DzPSzPhbgk",
+       "date in video + title"
+      ],
+      [
+       "CHRG-115hhrg25085|youtube:IudRaK2zuDw",
+       "date in video + title"
+      ],
+      [
+       "CHRG-111hhrg57791|youtube:1wL6TrBt1nU",
+       "date in video + title"
+      ],
+      [
+       "CHRG-115hhrg25839|youtube:HBkm0DH_AKs",
+       "date window + title; event ID in video"
+      ],
+      [
+       "CHRG-119hhrg64229|youtube:D-9j5YngDos",
+       "congress.gov link; date window + title"
+      ],
+      [
+       "CHRG-116hhrg45400|youtube:q9inxQcPBLc",
+       "date window + title; event ID in video"
+      ],
+      [
+       "CHRG-113hhrg87962|youtube:J1zqTqZ14ao",
+       "date window + title"
+      ],
+      [
+       "CHRG-117hhrg44383|youtube:yRUm8veLKlk",
+       "date in video + title"
+      ],
+      [
+       "CHRG-113hhrg81199|youtube:dpwo7YZJb9s",
+       "date in video + title"
+      ],
+      [
+       "CHRG-114hhrg24362|youtube:2YwxXAV5c2Y",
+       "date in video + title"
+      ],
+      [
+       "CHRG-118hhrg54986|youtube:5oEWcfDAoBw",
+       "congress.gov link; date window + title; event ID in video"
+      ],
+      [
+       "CHRG-112hhrg70948|youtube:JsgkGBZGmOk",
+       "date in video + title"
+      ],
+      [
+       "CHRG-118hhrg54880|youtube:AyQmBuity94",
+       "date window + title"
+      ],
+      [
+       "CHRG-118hhrg57437|youtube:eksA8LMHxdw",
+       "congress.gov link; date in video + title"
+      ],
+      [
+       "CHRG-113hhrg85789|youtube:szmxps6DXWM",
+       "date in video + title"
+      ],
+      [
+       "CHRG-114hhrg95073|youtube:z8n93N_y2tQ",
+       "date window + title"
+      ]
+     ]
+    }
+   }
+  },
+  "senate_documents_found": {
+   "matched": 11172,
+   "matched_new": 11148,
+   "new_only_by_reason": {
+    "native_found_more": 513281
+   },
+   "new_rows": 524429,
+   "old_only_by_reason": {
+    "pending_r2_senate_page_link": 3434
+   },
+   "old_rows": 14606,
+   "samples": {
+    "new_only": {
+     "native_found_more": [
+      [
+       "https://docs.house.gov/meetings/AS/AS29/20151201/104253/HHRG-114-AS29-Bio-McKeonB-20151201.pdf",
+       "None"
+      ],
+      [
+       "https://www.govinfo.gov/content/pkg/CHRG-113shrg92529.zip",
+       "None"
+      ],
+      [
+       "https://docs.house.gov/meetings/AP/AP06/20200211/110491/HHRG-116-AP06-TTF-JohnstoneE-20200211.pdf",
+       "None"
+      ],
+      [
+       "https://www.congress.gov/119/meeting/house/118355/witnesses/HHRG-119-ED14-Bio-TwengeJ-20250610.pdf",
+       "None"
+      ],
+      [
+       "https://docs.house.gov/meetings/FA/FA00/20190307/109048/BILLS-116HRes156ih.pdf",
+       "None"
+      ],
+      [
+       "https://docs.house.gov/meetings/II/II10/20220301/114452/HHRG-117-II10-MState-N000191-20220301.pdf",
+       "None"
+      ],
+      [
+       "https://docs.house.gov/meetings/FA/FA00/20151202/104244/HHRG-114-FA00-Wstate-BenjaminD-20151202.pdf",
+       "None"
+      ],
+      [
+       "https://www.govinfo.gov/content/pkg/CHRG-111hhrg56336/pdf/CHRG-111hhrg56336.pdf",
+       "None"
+      ],
+      [
+       "https://www.congress.gov/116/meeting/house/109586/documents/HHRG-116-II10-20190605-SD013.pdf",
+       "None"
+      ],
+      [
+       "https://www.congress.gov/117/meeting/house/114039/documents/BILLS-117-D-B001248-Amdt-13.pdf",
+       "None"
+      ],
+      [
+       "https://www.govinfo.gov/content/pkg/CHRG-116hhrg38305/html/CHRG-116hhrg38305.htm",
+       "None"
+      ],
+      [
+       "https://www.govinfo.gov/content/pkg/CHRG-114shrg59104643/html/CHRG-114shrg59104643.htm",
+       "None"
+      ],
+      [
+       "https://www.govinfo.gov/content/pkg/CHRG-117shrg59798/pdf/CHRG-117shrg59798.pdf",
+       "None"
+      ],
+      [
+       "https://oversight.house.gov/wp-content/uploads/2024/07/Hedtler-Gaudette-Testimony.pdf",
+       "None"
+      ],
+      [
+       "https://www.congress.gov/117/meeting/house/115197/witnesses/HHRG-117-II00-Bio-PardoE-20221117.pdf",
+       "None"
+      ],
+      [
+       "https://www.govinfo.gov/content/pkg/CHRG-112shrg93596/html/CHRG-112shrg93596.htm",
+       "None"
+      ],
+      [
+       "https://www.congress.gov/117/meeting/house/115193/documents/BILLS-117-HRes1378-G000551-Amdt-1.pdf",
+       "None"
+      ],
+      [
+       "https://www.congress.gov/115/meeting/house/107983/witnesses/HHRG-115-AP10-Wstate-BurmanB-20180314.pdf",
+       "None"
+      ],
+      [
+       "https://naturalresources.house.gov/uploadedfiles/testiomony_kargi.pdf",
+       "None"
+      ],
+      [
+       "https://www.congress.gov/117/meeting/house/114399/witnesses/HHRG-117-CN00-TTF-WaylandK-20220215.pdf",
+       "None"
+      ]
+     ]
+    },
+    "old_only": {
+     "pending_r2_senate_page_link": [
+      [
+       "https://www.finance.senate.gov/download/06052024-nelson-testimony",
+       "335876"
+      ],
+      [
+       "https://www.aging.senate.gov/download/testimony_lowy-03092023",
+       "333739"
+      ],
+      [
+       "https://www.budget.senate.gov/download/testimony-JWeinkle",
+       "333710"
+      ],
+      [
+       "https://www.budget.senate.gov/download/dr-molly-dahl_-testimony---senate-budget-committee",
+       "336163"
+      ],
+      [
+       "https://www.finance.senate.gov/download/080526-wyden-statement",
+       "338701"
+      ],
+      [
+       "https://www.appropriations.senate.gov/download/240430-cardona-testimony",
+       "335700"
+      ],
+      [
+       "https://www.aging.senate.gov/download/09/16/2025/2262025-aging-committee-hearing-keg-opening-statementpdf",
+       "336645"
+      ],
+      [
+       "https://www.budget.senate.gov/download/011024-senator-grassley-opening-statement",
+       "335283"
+      ],
+      [
+       "https://www.appropriations.senate.gov/download/240508-brown-testimony",
+       "335742"
+      ],
+      [
+       "https://www.drugcaucus.senate.gov/media-center/files/pompeo-responses-to-questions-for-the-record-for-countering-the-global-narcotics-epidemic-the-united-states-counternarcotics-strategy-2/",
+       "325980"
+      ],
+      [
+       "https://www.banking.senate.gov/download/07/29/2020/crapo-statement-",
+       "327642"
+      ],
+      [
+       "https://www.finance.senate.gov/download/responses-to-questions-for-the-record-to-the-honorable-michael-faulkender",
+       "336695"
+      ],
+      [
+       "https://www.finance.senate.gov/download/0417-crapo-statement",
+       "335676"
+      ],
+      [
+       "https://www.finance.senate.gov/download/03162021-hanlon-testimony",
+       "328882"
+      ],
+      [
+       "https://www.budget.senate.gov/download/101823-grassley-opening-statement",
+       "334989"
+      ],
+      [
+       "https://www.aging.senate.gov/download/07/27/2026/testimony_schondelmeyer-012926pdf",
+       "337937"
+      ],
+      [
+       "https://www.aging.senate.gov/download/sca_landers_05_21_20",
+       "327447"
+      ],
+      [
+       "https://www.govinfo.gov/content/pkg/CHRG-117shrg45210/pdf/CHRG-117shrg45210.pdf",
+       "329320"
+      ],
+      [
+       "https://www.finance.senate.gov/download/07272021-davis-testimony",
+       "330122"
+      ],
+      [
+       "https://www.aging.senate.gov/download/03/30/2026/testimony_raymond-062525pdf",
+       "337120"
+      ]
+     ]
+    }
+   }
+  },
+  "senate_witnesses_found": {
+   "matched": 3270,
+   "matched_new": 3270,
+   "new_only_by_reason": {
+    "native_found_more": 45663
+   },
+   "new_rows": 48933,
+   "old_only_by_reason": {
+    "pending_r2_senate_page_link": 5623,
+    "witness_name_normalization": 778
+   },
+   "old_rows": 9671,
+   "samples": {
+    "new_only": {
+     "native_found_more": [
+      [
+       "100144|john s beutlich",
+       "bc84778daca45203"
+      ],
+      [
+       "116531|ms amy shallcross",
+       "1443fecd2d3e2d8e"
+      ],
+      [
+       "115426|dr jamie metzl",
+       "5b3a9e63b6997799"
+      ],
+      [
+       "115115|dr jay olshansky",
+       "e34711bf7c292a75"
+      ],
+      [
+       "337281|peter huntsman",
+       "043b2eedc27e9b5f"
+      ],
+      [
+       "118713|mr kevin sears",
+       "d9b6422963d28df9"
+      ],
+      [
+       "104943|david weiss",
+       "ce16d5c1d4afe1ab"
+      ],
+      [
+       "118368|the honorable brooke rollins",
+       "cc7fa5f80299f472"
+      ],
+      [
+       "104274|the honorable mark lipparelli",
+       "04ba4ae38a215807"
+      ],
+      [
+       "112660|mr matthew l m fletcher",
+       "f04e162c9b3df439"
+      ],
+      [
+       "115682|the honorable anna paulina luna",
+       "1a16d52ef19ee6db"
+      ],
+      [
+       "117009|mr craig cress",
+       "e96b33bbd656c335"
+      ],
+      [
+       "114089|ms marie tran leung",
+       "61b0f61425911327"
+      ],
+      [
+       "110015|ms april kuehnhoff",
+       "e1d0ddd2b8d95dc7"
+      ],
+      [
+       "105892|dr lisa cook",
+       "f2d19391d08ad4dc"
+      ],
+      [
+       "103338|mark hughes",
+       "635bd1a8d2afcc4f"
+      ],
+      [
+       "103128|the honorable france a cordova",
+       "f33694161823c717"
+      ],
+      [
+       "108576|mr lloyd thrower",
+       "847f62059e2563ff"
+      ],
+      [
+       "108265|robert flying hawk",
+       "b2e1c05f68e9ac9c"
+      ],
+      [
+       "103139|mr daimon e geopfert",
+       "ee95afc41593e6f1"
+      ]
+     ]
+    },
+    "old_only": {
+     "pending_r2_senate_page_link": [
+      [
+       "335706|kemp chester",
+       "335706|senate committee page"
+      ],
+      [
+       "338409|todd blanche",
+       "338409|senate committee page"
+      ],
+      [
+       "334994|sirisha bandla",
+       "334994|senate committee page"
+      ],
+      [
+       "334150|mark l wolf",
+       "334150|senate committee page"
+      ],
+      [
+       "338399|scott turner",
+       "338399|senate committee page"
+      ],
+      [
+       "333137|rosa maria paya acevedo",
+       "333137|senate committee page"
+      ],
+      [
+       "326785|maureen ohlhausen",
+       "326785|senate committee page"
+      ],
+      [
+       "333391|james edward simmons jr ",
+       "333391|senate committee page"
+      ],
+      [
+       "335832|j thomas manger",
+       "335832|senate committee page"
+      ],
+      [
+       "330128|angela walch",
+       "330128|senate committee page"
+      ],
+      [
+       "332871|robert califf",
+       "332871|senate committee page"
+      ],
+      [
+       "333598|marian f gaston",
+       "333598|senate committee page"
+      ],
+      [
+       "327413|helen hill",
+       "327413|senate committee page"
+      ],
+      [
+       "338084|kathleen s lane",
+       "338084|senate committee page"
+      ],
+      [
+       "338027|diana c maurer",
+       "338027|senate committee page"
+      ],
+      [
+       "326053|douglas russell cole",
+       "326053|senate committee page"
+      ],
+      [
+       "334923|john a kazen",
+       "334923|senate committee page"
+      ],
+      [
+       "330930|thomas barrett",
+       "330930|senate committee page"
+      ],
+      [
+       "326122|mary dittmar",
+       "326122|senate committee page"
+      ],
+      [
+       "338578|todd hauptli",
+       "338578|senate committee page"
+      ]
+     ],
+     "witness_name_normalization": [
+      [
+       "337614|michelle schultz",
+       "337614|senate committee page"
+      ],
+      [
+       "329741|patrick murray",
+       "329741|senate committee page"
+      ],
+      [
+       "328771|michael hancock",
+       "328771|senate committee page"
+      ],
+      [
+       "332447|jc scott",
+       "332447|senate committee page"
+      ],
+      [
+       "331024|michael kubayanda",
+       "331024|senate committee page"
+      ],
+      [
+       "335068|charlton chuck bonham",
+       "335068|senate committee page"
+      ],
+      [
+       "335084|jennifer homendy",
+       "335084|senate committee page"
+      ],
+      [
+       "329104|dorothy brown",
+       "329104|senate committee page"
+      ],
+      [
+       "326046|thomas sexton",
+       "326046|senate committee page"
+      ],
+      [
+       "332179|reginald d williams ii",
+       "332179|senate committee page"
+      ],
+      [
+       "329144|randall atkins",
+       "329144|senate committee page"
+      ],
+      [
+       "336230|frank white clay",
+       "336230|senate committee page"
+      ],
+      [
+       "329583|adrian v stevens",
+       "329583|senate committee page"
+      ],
+      [
+       "336085|dillon davidson",
+       "336085|senate committee page"
+      ],
+      [
+       "326153|james greenberger",
+       "326153|senate committee page"
+      ],
+      [
+       "332846|grant harris",
+       "332846|senate committee page"
+      ],
+      [
+       "334063|jack resneck jr ",
+       "334063|senate committee page"
+      ],
+      [
+       "336953|john mickelson",
+       "336953|senate committee page"
+      ],
+      [
+       "334446|linda fagan",
+       "334446|senate committee page"
+      ],
+      [
+       "331201|michael j roark",
+       "331201|senate committee page"
+      ]
+     ]
+    }
+   }
+  },
+  "videos": {
+   "matched": 67351,
+   "matched_new": 67351,
+   "new_only_by_reason": {
+    "new_snapshot_only": 22
+   },
+   "new_rows": 67373,
+   "old_only_by_reason": {},
+   "old_rows": 67351,
+   "samples": {
+    "new_only": {
+     "new_snapshot_only": [
+      [
+       "youtube:SZGUEB7QWTg",
+       "Ranking Member Smith on News Nation:"
+      ],
+      [
+       "youtube:ZJfQG5kVoTA",
+       "No one is safe while ICE is terrorizing us."
+      ],
+      [
+       "youtube:08j6EXz1Ayk",
+       "Field Hearing:  \u201cMore Choices, Brighter Futures: Expanding Education Freedom\u201d"
+      ],
+      [
+       "youtube:_nJImpc6RwM",
+       "NEW REPORT: Sen. Merkley Breaks Down 11 of Trump\u2019s Most Harmful, Costly Broken Promises"
+      ],
+      [
+       "youtube:IC8YWA9dOjU",
+       "\u201cMore Choices, Brighter Futures: Expanding Education Freedom\u201d"
+      ],
+      [
+       "youtube:fHJFBrgsgWc",
+       "Laughing but it\u2019s not funny."
+      ],
+      [
+       "youtube:mePOQi5HUyw",
+       "\u201cMore Choices, Brighter Futures: Expanding Education Freedom\u201d"
+      ],
+      [
+       "youtube:cdgsxM_-upc",
+       "Gao Zhen and Gao Jia"
+      ],
+      [
+       "youtube:_UnIk8oxMz4",
+       "Ranking Member Smith on The Contrarian: Stopping the war in Iran would be job one"
+      ],
+      [
+       "youtube:3KVDHD-jZ5o",
+       "Ranking Member Smith on Cuomo with Rep Carter: Trump's 2nd Admin is Total Economic & NatSec Disaster"
+      ],
+      [
+       "youtube:ByKhMPgMnjs",
+       "Ranking Member Smith on News Nation: Trump's mistake from the very start was aligning with Putin"
+      ],
+      [
+       "youtube:Gv2XjnIdym4",
+       "Ranking Member Smith on CNN: Trump, Musk siding with Putin because they're \"fascists.\""
+      ],
+      [
+       "youtube:F4fmWvdjnNE",
+       "Min Zin"
+      ],
+      [
+       "youtube:FoIMdCdA108",
+       "Wanying Heather Zhang"
+      ],
+      [
+       "youtube:7HvH51XIodc",
+       "Ranking Member Smith: Republicans need to wake up and help us stop Trump's support for Putin"
+      ],
+      [
+       "youtube:vRn2AphZxq0",
+       "\u201cMore Choices, Brighter Futures: Expanding Education Freedom\u201d"
+      ],
+      [
+       "youtube:ofx3tFfwUIY",
+       "Anderson Cooper 360 - HASC Ranking Member Adam Smith on Ukraine"
+      ],
+      [
+       "youtube:JnM4b39WA_o",
+       "Treasury Secretary Fails to Answer Economic Questions"
+      ],
+      [
+       "youtube:YN_7BDyE2Bk",
+       "Chairman Murkowski Speaks at the 2026 Alaska Federation of Natives"
+      ],
+      [
+       "youtube:GIhgkwN472Q",
+       "We visited an ICE detention facility. What we saw was horrific."
+      ]
+     ]
+    },
+    "old_only": {}
+   }
+  },
+  "witnesses": {
+   "matched": 55689,
+   "matched_new": 47459,
+   "new_only_by_reason": {
+    "native_found_more": 1474
+   },
+   "new_rows": 48933,
+   "old_only_by_reason": {
+    "pending_r2_senate_page_link": 990,
+    "witness_name_normalization": 9886
+   },
+   "old_rows": 66565,
+   "samples": {
+    "new_only": {
+     "native_found_more": [
+      [
+       "100144|john s beutlich",
+       "bc84778daca45203"
+      ],
+      [
+       "103338|mark hughes",
+       "635bd1a8d2afcc4f"
+      ],
+      [
+       "101202|lois n epstein",
+       "81dc1abe81a55ac7"
+      ],
+      [
+       "100116|adam cox",
+       "8d694d3645c8fdfe"
+      ],
+      [
+       "109902|mrs denise r rutherford",
+       "6c5bd32652f470cb"
+      ],
+      [
+       "100777|paul goble",
+       "52b1037132d46365"
+      ],
+      [
+       "100572|anthony wanger",
+       "2d5306d9b5109aa2"
+      ],
+      [
+       "330322|roberta elias",
+       "c7ae12e5f5c7382c"
+      ],
+      [
+       "100100|guy ben ari",
+       "e3ae339864c79686"
+      ],
+      [
+       "105334|paul black",
+       "b1e7bd796ea1c006"
+      ],
+      [
+       "328936|douglas r hooker",
+       "37b8013ab15bd6bf"
+      ],
+      [
+       "327084|george fareed",
+       "88e52f1a2fc61157"
+      ],
+      [
+       "327084|brett p giroir",
+       "946bb2b32e67cf84"
+      ],
+      [
+       "106895|dr morris kleiner ph d ",
+       "5efa31d3b27e30bc"
+      ],
+      [
+       "100266|walter l nelson",
+       "331f1e3eb01cfe1b"
+      ],
+      [
+       "100455|larry e thompson",
+       "ba7f6460950896c3"
+      ],
+      [
+       "100134|david starr",
+       "541cf7c16ee7c1f8"
+      ],
+      [
+       "330720|ernest w dubester to be a member",
+       "72e713871289e3f2"
+      ],
+      [
+       "328765|melissa smislova",
+       "39137bc4ba47b72a"
+      ],
+      [
+       "103766|j richard cohen",
+       "faff9375d0b36b55"
+      ]
+     ]
+    },
+    "old_only": {
+     "pending_r2_senate_page_link": [
+      [
+       "None",
+       "7de0d932-4602-45e7-b76f-0fcd1f3f43d0"
+      ],
+      [
+       "None",
+       "40a3f878-092b-4133-b1a1-bb4c2d1bcdce"
+      ],
+      [
+       "None",
+       "3c44ea51-1317-453f-b4f0-7cc9edfe1174"
+      ],
+      [
+       "None",
+       "8ab872a0-a82c-4037-a59b-bed4b261bc18"
+      ],
+      [
+       "None",
+       "7bbcefe5-56f5-42aa-8d54-e8513bda53a2"
+      ],
+      [
+       "None",
+       "9faba2ca-c3dc-4d91-8395-c8a4ef1b48cf"
+      ],
+      [
+       "None",
+       "309872a5-cb89-4fd9-89ab-9424be1ed93d"
+      ],
+      [
+       "None",
+       "cff542e3-754b-4ce1-8ffd-ff6a88082d88"
+      ],
+      [
+       "None",
+       "0ee1f7cf-cc7a-4419-9058-4d54be47754b"
+      ],
+      [
+       "None",
+       "d997f2ba-2289-4b1e-8c00-01163ef0f45b"
+      ],
+      [
+       "None",
+       "1980434b-2a6f-4a85-ba39-2e3f2ba36bdf"
+      ],
+      [
+       "None",
+       "6c98e719-2978-4bb8-a6c5-cc3b40243f01"
+      ],
+      [
+       "None",
+       "4540d20d-68c7-447f-8952-22445941a1db"
+      ],
+      [
+       "None",
+       "6ab37142-2c5f-4d26-b5de-55a1ae0cfc02"
+      ],
+      [
+       "None",
+       "3c9c9af8-0cad-47f0-b3f9-af500ad510fe"
+      ],
+      [
+       "None",
+       "0fde7ad9-b582-4948-8faf-7b67f121fb58"
+      ],
+      [
+       "None",
+       "3f7d7a57-155d-4277-840f-02b8f5fd6feb"
+      ],
+      [
+       "None",
+       "fa4c5f51-d609-4543-9aa2-da3baf96dc79"
+      ],
+      [
+       "None",
+       "05de3f61-a075-4ca0-91ca-4f17f060ae66"
+      ],
+      [
+       "None",
+       "eeaf145a-c061-4b5b-80cd-b3c054b2338a"
+      ]
+     ],
+     "witness_name_normalization": [
+      [
+       "332413|ann m ravel",
+       "6cc5cadc-1eef-47f9-b0fb-0bee2c35d45f"
+      ],
+      [
+       "100962|ms anne d neal",
+       "43618c45-0174-4664-8061-4d2ad536cbb8"
+      ],
+      [
+       "327743|leann bosarge",
+       "07cb62ce-6f25-40c6-86ed-329e6c5297e9"
+      ],
+      [
+       "325999|paul a thomsen",
+       "1a66d922-db3d-4d94-b777-265333a02363"
+      ],
+      [
+       "333127|elizabeth rosenberg",
+       "25186a8a-14c9-4825-b3c3-e6e0aefad7a9"
+      ],
+      [
+       "331263|oren e whyche shaw",
+       "e2092e2e-0687-446c-8e77-595d6b9aa840"
+      ],
+      [
+       "327290|gerard anderson",
+       "756eb8ef-d3eb-4888-b155-90189e1f7269"
+      ],
+      [
+       "335909|jennifer d gavito",
+       "72a379a4-3600-4b4e-9655-861722a7a4b2"
+      ],
+      [
+       "100518|florentino gregorio",
+       "992af66f-019d-4c99-8548-765ee6ab4720"
+      ],
+      [
+       "334009|b chance saltzman",
+       "8189de05-1765-4801-8cbd-58645d3b8fc6"
+      ],
+      [
+       "332384|james f glynn",
+       "901292a5-3b2b-44bd-bd0c-80be28a0d64e"
+      ],
+      [
+       "337949|andrew b davis",
+       "d219de7e-3636-463d-bf5d-d87729870698"
+      ],
+      [
+       "118550|the honorable mark amodei",
+       "20e973d4-0cdc-4756-a57c-cd5e0bfafc51"
+      ],
+      [
+       "336977|michael lindsay",
+       "2b174291-c63b-4923-b505-ac3902b5d10d"
+      ],
+      [
+       "327288|ajit pai",
+       "7899d636-9447-490e-892f-ee31cb6895d1"
+      ],
+      [
+       "326344|anuraag singhal",
+       "4803f857-9233-40e1-8994-b3679b1532ec"
+      ],
+      [
+       "336808|mike howell",
+       "91477f49-af48-41ca-b96a-823e774156bd"
+      ],
+      [
+       "337860|abraham cooper",
+       "d6f52e62-1236-40d3-bfea-f1fc6bd12b65"
+      ],
+      [
+       "326260|winsome lenfert",
+       "e52fe1e7-d2a2-4479-ab7f-7987d7e4b4f3"
+      ],
+      [
+       "108545|the honorable mark amodei",
+       "72d9f214-64af-4a28-9d3f-77ccd7e5a1de"
+      ]
+     ]
+    }
+   }
+  }
+ },
+ "input_sha256": {
+  "committee_records.parquet": "bd40781b7be47da55ea21a9f9df63f070f94dbe2e56e3e8dfb1b196c633981a6",
+  "decisions.jsonl": "2f546d4eeea83b99c122e55210f1e8dea5fac866c48ed82a0af58e7bb96c7498",
+  "gpo_hearing_video_coverage.csv": "5358a4f80cb8bfc6d8473307a4769a29aadaec3700f7d8adcac6397e2bc36476",
+  "gpo_hearing_videos.csv": "db41119803b97ebbf583eaa5a28cfd255d2dbad37d2db26fdea620da2903cb7d",
+  "gpo_hearings.csv": "da7967e27754a5380cc8d2265d1c1706a67b64f86cc21f78b4ce0a6505804706",
+  "hearing_text_sources.csv": "464427d7f63807b87f0d95707e67c8d5364afd7a7df04f3886dca136bdc2a65c",
+  "hearing_video_overrides.csv": "d38a8c1a34624ebe3f537d98799a132006a42bfe547b9100547e108dcfebd437",
+  "house_amendments_found.csv": "c30da15581828247adbbb638d7a2d500569ece7052ab16231a4d777954fee253",
+  "house_documents_found.csv": "3fa995876f11f1e918e376f3e672c75e955a96ab6d634525356db6ec5efafc9d",
+  "house_witnesses_found.csv": "3fe5a37b7e108665b34d1659811fee952fbff3ee26183da2722aa95ff93ac118",
+  "meeting_completeness.csv": "5eebdc1a114426e628f302ca7a807258ae8e0f420e672e6bc7381f68fda5719f",
+  "meeting_recordings_found.csv": "0107f49ed9a3c81e332ac62d236a21f635d9b2d8772460ee35ed94c16766f45d",
+  "meeting_witnesses.csv": "55f24b14ed986373a5b354594c051034f6f5e1fc5f0c99d5db40a2506bba94e9",
+  "meetings_without_records.csv": "1c3487e6eaabea77134da0ad68de85eeb731b538886dda48ae5f7583b176ac2b",
+  "senate_documents_found.csv": "d9293580b6dfc87577f7f0ea1c5f8e1c103c9c9c43b28241383a50cfae551c1a",
+  "senate_hearing_pages_found.csv": "9c67d0cc264c142bc03acc00e509e0940ade10971c4f806b13093197509fc4a5",
+  "senate_witnesses_found.csv": "95d722e13b974064127feba1375e15409eeb2f99812ab7861b7011c0f60a19f5",
+  "video_records.parquet": "cec2365263ace2de2d55e1d2e2de0192980174d1add7289df91b299eba837a58",
+  "youtube_event_id_report.csv": "13e296ceda8e8f49cedcdc024e7d96de9265431d2b81cca89947ff3a9dc95093"
+ },
+ "new_release": "frozen-partial-on-448651e7",
+ "old_issues": {
+  "classes": [
+   {
+    "disposition": "old_uuid_diagnostic",
+    "rows": 67246,
+    "status": "open",
+    "title": "The original video publication time is not established by this cache."
+   },
+   {
+    "disposition": "not_a_row_fact",
+    "rows": 59867,
+    "status": "open",
+    "title": "This recording has no verified meeting association."
+   },
+   {
+    "disposition": "not_a_row_fact",
+    "rows": 24319,
+    "status": "open",
+    "title": "This package has no verified meeting association."
+   },
+   {
+    "disposition": "pending_r2_matcher",
+    "rows": 16143,
+    "status": "open",
+    "title": "The retained decision aggregates its recording evidence."
+   },
+   {
+    "disposition": "old_uuid_diagnostic",
+    "rows": 11500,
+    "status": "open",
+    "title": "The caption observation has no supported observation date."
+   },
+   {
+    "disposition": "not_a_row_fact",
+    "rows": 9274,
+    "status": "open",
+    "title": "This document has no supported meeting association."
+   },
+   {
+    "disposition": "old_uuid_diagnostic",
+    "rows": 8293,
+    "status": "open",
+    "title": "Sources disagree about details"
+   },
+   {
+    "disposition": "old_uuid_diagnostic",
+    "rows": 7502,
+    "status": "dismissed",
+    "title": "Sources disagree about label"
+   },
+   {
+    "disposition": "not_a_row_fact",
+    "rows": 7229,
+    "status": "resolved",
+    "title": "This package has no verified meeting association."
+   },
+   {
+    "disposition": "pending_r2_matcher",
+    "rows": 6838,
+    "status": "open",
+    "title": "Package-level recordings cannot yet be assigned to individual meetings."
+   },
+   {
+    "disposition": "old_uuid_diagnostic",
+    "rows": 6536,
+    "status": "open",
+    "title": "The probe has no supported live check date."
+   },
+   {
+    "disposition": "not_a_row_fact",
+    "rows": 6473,
+    "status": "open",
+    "title": "This committee/day probe has no known recording association."
+   },
+   {
+    "disposition": "old_state_only",
+    "rows": 5741,
+    "status": "open",
+    "title": "Legacy House state omits alternate file URLs and source ownership"
+   },
+   {
+    "disposition": "old_uuid_diagnostic",
+    "rows": 5283,
+    "status": "open",
+    "title": "Sources disagree about name"
+   },
+   {
+    "disposition": "old_uuid_diagnostic",
+    "rows": 4925,
+    "status": "open",
+    "title": "This page has no retained live retrieval receipt."
+   },
+   {
+    "disposition": "old_uuid_diagnostic",
+    "rows": 4290,
+    "status": "open",
+    "title": "The retained witness source has no supported live retrieval check."
+   },
+   {
+    "disposition": "not_a_row_fact",
+    "rows": 3164,
+    "status": "open",
+    "title": "Witness rows have no meeting ownership in this source record."
+   },
+   {
+    "disposition": "old_uuid_diagnostic",
+    "rows": 2882,
+    "status": "open",
+    "title": "Sources disagree about participation"
+   },
+   {
+    "disposition": "not_a_row_fact",
+    "rows": 2034,
+    "status": "open",
+    "title": "This retained committee page has no supported meeting association."
+   },
+   {
+    "disposition": "old_uuid_diagnostic",
+    "rows": 1765,
+    "status": "open",
+    "title": "Sources disagree about title"
+   },
+   {
+    "disposition": "old_uuid_diagnostic",
+    "rows": 1301,
+    "status": "open",
+    "title": "This caption observation has no known recording identity."
+   },
+   {
+    "disposition": "pending_r2_matcher",
+    "rows": 725,
+    "status": "open",
+    "title": "The retained clips_only verdict omits the clip identifiers."
+   },
+   {
+    "disposition": "old_uuid_diagnostic",
+    "rows": 535,
+    "status": "open",
+    "title": "Sources disagree about document_type"
+   },
+   {
+    "disposition": "old_uuid_diagnostic",
+    "rows": 490,
+    "status": "open",
+    "title": "Same-name witness rows need identity review"
+   },
+   {
+    "disposition": "old_uuid_diagnostic",
+    "rows": 168,
+    "status": "open",
+    "title": "Sources disagree about label"
+   },
+   {
+    "disposition": "old_uuid_diagnostic",
+    "rows": 61,
+    "status": "open",
+    "title": "Sources disagree about proceeding_dates"
+   },
+   {
+    "disposition": "old_uuid_diagnostic",
+    "rows": 61,
+    "status": "open",
+    "title": "The reported held date differs from the transcript's retained day headers."
+   },
+   {
+    "disposition": "old_uuid_diagnostic",
+    "rows": 27,
+    "status": "open",
+    "title": "Sources disagree about role"
+   },
+   {
+    "disposition": "old_uuid_diagnostic",
+    "rows": 23,
+    "status": "open",
+    "title": "Same-name House witnesses need correspondence review"
+   },
+   {
+    "disposition": "old_uuid_diagnostic",
+    "rows": 17,
+    "status": "open",
+    "title": "Source repeats the same convening committee"
+   },
+   {
+    "disposition": "old_uuid_diagnostic",
+    "rows": 8,
+    "status": "open",
+    "title": "Sources disagree about meeting_type"
+   },
+   {
+    "disposition": "old_uuid_diagnostic",
+    "rows": 8,
+    "status": "open",
+    "title": "A House source file URL is malformed"
+   },
+   {
+    "disposition": "not_a_row_fact",
+    "rows": 2,
+    "status": "resolved",
+    "title": "This document has no supported meeting association."
+   },
+   {
+    "disposition": "old_uuid_diagnostic",
+    "rows": 1,
+    "status": "open",
+    "title": "This retained page may contain binary document data decoded as text."
+   },
+   {
+    "disposition": "old_uuid_diagnostic",
+    "rows": 1,
+    "status": "open",
+    "title": "Sources disagree about chamber"
+   }
+  ],
+  "old_rows": 264732,
+  "unexplained": 0
+ },
+ "old_meeting_uuid_to_event": {
+  "file": "uuid.csv",
+  "rows": 18141,
+  "sha256": "e66967a8afa330ce62393002785bc0b9fe0f9d9ed9d4205092b1932767f982e3"
+ },
+ "old_release": "56c87f8a7e29314d9e1477c0",
+ "reasons": {
+  "derived_from_title_or_document": "The old row came from a meeting title or a witness list PDF, which no native parser reads.",
+  "house_xml_witness_not_parsed": "The event has House XML but native witnesses have no row for it; a family name in the raw XML is a lead, so this needs a parser check.",
+  "member_ineligible_split_see_ct-qg8e": "Archive-member eligibility split, awaiting the ct-qg8e owner decision.",
+  "native_found_more": "The native record states rows the old derived file lacks.",
+  "new_snapshot_only": "The frozen captures end at the 2026-10-28 snapshot, after the retained old inputs.",
+  "no_public_url": "The source states no URL, so a URL key cannot match.",
+  "not_a_row_fact": "A condition, not a stored fact: it is derived by query from native tables.",
+  "old_state_only": "Rows the old exporter built from state files with no native source yet; kept by old-release reference.",
+  "old_text_mojibake": "The old CSV stored this text double-encoded; once repaired it equals the native value, which is the correct one.",
+  "old_uuid_diagnostic": "A diagnostic about an old UUID row; the fact it concerns is carried natively, or by old-release reference.",
+  "other_source_meeting": "An old meeting from a Senate page or House XML with no Congress.gov event ID.",
+  "pending_r2_matcher": "Scored date and title matches arrive with the native decide() producer.",
+  "pending_r2_package_event_link": "Raw MODS states the name, and native witnesses hold it on a package occasion with no event; the package-to-event link arrives with native hearing records.",
+  "pending_r2_print_link": "Print-to-meeting links are derived; they arrive with native hearing records.",
+  "pending_r2_senate_page_link": "Senate page-to-event links are held only in derived data until the derived-link layer.",
+  "release_delta_unexplained_see_ct-qg8e": "Release delta on row counts owned by the ct-qg8e accounting.",
+  "superseded_by_newer_record": "The key is in an older retained record of this event; the current record replaced it.",
+  "unexplained": "No reason established. Reported, not hidden.",
+  "witness_name_normalization": "The event matches but the name spelling differs; not proof of a different person."
+ },
+ "release_files": {
+  "channels.parquet": "85a9eccc7f7c1d4ef00ed41eb0e3f8bb8a6928e2d325fd0ba574229dd17abcb8",
+  "committee_records.parquet": "5d5376233ca44cdfc6786d6ceefc6e6dd04753151451b375a5ed54f6314ca3b1",
+  "committees.parquet": "6a6c7cda9edf92e58954db397213bfc732e226f3322094143c661a5f58b82809",
+  "detail.parquet": "ba48255cd678f9a7fedf44f282ea941d0af1fcde67dac12b7ff7274f07502a3f",
+  "list.parquet": "442a6c00eaf51ba8cf04d3fe9548145eb282c78339dec0d27ffd105a04393338",
+  "meeting_coverage.parquet": "d16d5ab8e4afbd65ea5f905146900a9ffe497e16253a29837456a7d115489589",
+  "meetings.parquet": "cc88279cbaa5a203ade24192478aaf99bf326ffa27f9fb2e8ea10de0d4e18ca0",
+  "recording_matches.parquet": "767fe6b9df0eaf1784d9ab17f492c4e9c0cf0d319c110e70409dae979fddbfd2",
+  "recordings.parquet": "a900a9be70ae1f875844dabf5e2e453093e44d3ffbad491a70c8eab3424348a0",
+  "resolved_meetings.parquet": "a580322cf2add00ee38d85be256541d03ca5255856278ea3963a2d0c7934b614",
+  "sources.parquet": "c4d47a665907f95d6021a593f5b22c0a02d57a5d5a41303ddde0fc7bf7e439af",
+  "videos.parquet": "f90811e4108ed482f5bd0e46c027372e41684468c7f9c64464b75a6718948eba",
+  "witnesses.parquet": "9b3bd6c2d60d102d431cf59414cc8886c4d25082c4d0b81c3a4d47a409d7a28c"
+ },
+ "value_checks": {
+  "amendment_raw_xml": {
+   "checked": 200,
+   "mismatched": 0,
+   "samples": [],
+   "unread_bodies": 0
+  },
+  "channel_id": {
+   "checked": 119,
+   "mismatched": 0,
+   "samples": [],
+   "unread_bodies": 0
+  },
+  "curated_verdict": {
+   "checked": 200,
+   "mismatched": 0,
+   "samples": []
+  },
+  "meeting_date": {
+   "checked": 200,
+   "mismatched": 0,
+   "samples": []
+  },
+  "video_title": {
+   "checked": 200,
+   "mismatched": 0,
+   "samples": []
+  }
+ }
+}

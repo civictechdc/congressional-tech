@@ -1,0 +1,1392 @@
+{
+ "raw_cache_files_read": 52,
+ "raw_videos": 67373,
+ "amendment": {
+  "affected": 1,
+  "records": [
+   {
+    "sha": "428f9c36cfc5482588d706fb5b2d7b9c79386d1943488eb03e80ba11c05af243",
+    "read": true,
+    "utf8_fernandez": true,
+    "double_encoded": false
+   }
+  ]
+ },
+ "confirmed_absent": {
+  "affected": 45,
+  "raw_meeting_records_read": 55,
+  "raw_meeting_records_unread": [],
+  "events_with_a_raw_record": 45,
+  "videos_named": 53,
+  "videos_read_in_raw_cache": 53,
+  "classes": {
+   "matcher_overrode_research_verdict": 42,
+   "other_package_or_source_says_yes": 3
+  },
+  "rows": [
+   {
+    "event_id": "100538",
+    "packages": [
+     "CHRG-113hhrg89589",
+     "CHRG-113hhrg89589"
+    ],
+    "class_": "matcher_overrode_research_verdict",
+    "videos": [
+     "86K8YSZtVfw",
+     "_brrgRRV_ek"
+    ],
+    "raw_cached": 2,
+    "raw_records": 2,
+    "notes": [
+     "The 2011-18 majority committee channel's videos are gone (committee-site embeds from 2016-18 no longer resolve; 2013-15 pages have no video) and @waysandmeansde",
+     "The 2011-18 majority committee channel's videos are gone (committee-site embeds from 2016-18 no longer resolve; 2013-15 pages have no video) and @waysandmeansde"
+    ],
+    "titles": [
+     "W&M Hearing: Mar 20, 2013",
+     "W&M Hearing: Mar 20, 2013"
+    ]
+   },
+   {
+    "event_id": "100835",
+    "packages": [
+     "CHRG-113hhrg94397",
+     "CHRG-113hhrg94397"
+    ],
+    "class_": "matcher_overrode_research_verdict",
+    "videos": [
+     "WQcbRVM9J7c"
+    ],
+    "raw_cached": 1,
+    "raw_records": 1,
+    "notes": [
+     "The 2011-18 majority committee channel's videos are gone (committee-site embeds from 2016-18 no longer resolve; 2013-15 pages have no video) and @waysandmeansde",
+     "The 2011-18 majority committee channel's videos are gone (committee-site embeds from 2016-18 no longer resolve; 2013-15 pages have no video) and @waysandmeansde"
+    ],
+    "titles": [
+     "W&M Hearing: May 15, 2013"
+    ]
+   },
+   {
+    "event_id": "101327",
+    "packages": [
+     "CHRG-113hhrg89581",
+     "CHRG-113hhrg89581"
+    ],
+    "class_": "matcher_overrode_research_verdict",
+    "videos": [
+     "v-2iAVni6QQ"
+    ],
+    "raw_cached": 1,
+    "raw_records": 1,
+    "notes": [
+     "No recording or clip of the 9/19/13 Puerto Rico SSDI fraud conspiracy hearing found. The Sam Johnson and Kelly disability-fraud clips found are from the 2014 Ne",
+     "No recording or clip of the 9/19/13 Puerto Rico SSDI fraud conspiracy hearing found. The Sam Johnson and Kelly disability-fraud clips found are from the 2014 Ne"
+    ],
+    "titles": [
+     "W&M Hearing: Sep 19, 2013 PM"
+    ]
+   },
+   {
+    "event_id": "101560",
+    "packages": [
+     "CHRG-113hhrg21102",
+     "CHRG-113hhrg21102"
+    ],
+    "class_": "matcher_overrode_research_verdict",
+    "videos": [
+     "7XkuVBFG-Mo"
+    ],
+    "raw_cached": 1,
+    "raw_records": 1,
+    "notes": [
+     "No recording or clip of the 12/4/13 Health Subcommittee hearing (witnesses Turner, Gottlieb, Carlson, Kreidler) found. Brady's ACA clips from that period are fr",
+     "No recording or clip of the 12/4/13 Health Subcommittee hearing (witnesses Turner, Gottlieb, Carlson, Kreidler) found. Brady's ACA clips from that period are fr"
+    ],
+    "titles": [
+     "W&M Hearing: Dec 4, 2013"
+    ]
+   },
+   {
+    "event_id": "102061",
+    "packages": [
+     "CHRG-113hhrg87424",
+     "CHRG-113hhrg87424",
+     "CHRG-113hhrg87425",
+     "CHRG-113hhrg87425"
+    ],
+    "class_": "other_package_or_source_says_yes",
+    "videos": [
+     "R0_352llDyQ",
+     "boJKtsg4pbs"
+    ],
+    "raw_cached": 2,
+    "raw_records": 2,
+    "notes": [
+     "SMARTER Act hearing, Apr 3, 2014, 1:00 PM in 2237 per docs.house.gov. There is no JudiciaryDems backfill (only the 2015 H.R. 2745 hearing), and no clips were fo",
+     "SMARTER Act hearing, Apr 3, 2014, 1:00 PM in 2237 per docs.house.gov. There is no JudiciaryDems backfill (only the 2015 H.R. 2745 hearing), and no clips were fo"
+    ],
+    "titles": [
+     "Joint Hearing: Overturning 30 Years of Precedent (EventID=101983)",
+     "4-3-2014 Afghanistan: Identifying and Addressing Wasteful U.S. Government Spending"
+    ]
+   },
+   {
+    "event_id": "102169",
+    "packages": [
+     "CHRG-113hhrg20999",
+     "CHRG-113hhrg20999"
+    ],
+    "class_": "matcher_overrode_research_verdict",
+    "videos": [
+     "X8FEF2Zw_1Q"
+    ],
+    "raw_cached": 1,
+    "raw_records": 1,
+    "notes": [
+     "The W&M event page (migrated 2014-15 page) has no video embed. The committee GOP channel's pre-2023 uploads are no longer public, and title and topic searches f",
+     "The W&M event page (migrated 2014-15 page) has no video embed. The committee GOP channel's pre-2023 uploads are no longer public, and title and topic searches f"
+    ],
+    "titles": [
+     "W&M Hearing: Apr 30, 2014 PM"
+    ]
+   },
+   {
+    "event_id": "102190",
+    "packages": [
+     "CHRG-113hhrg94426",
+     "CHRG-113hhrg94426"
+    ],
+    "class_": "matcher_overrode_research_verdict",
+    "videos": [
+     "aJmKULNWgGc"
+    ],
+    "raw_cached": 1,
+    "raw_records": 2,
+    "notes": [
+     "The W&M event page (migrated 2014-15 page) has no video embed. The committee GOP channel's pre-2023 uploads are no longer public, and title and topic searches f",
+     "The W&M event page (migrated 2014-15 page) has no video embed. The committee GOP channel's pre-2023 uploads are no longer public, and title and topic searches f"
+    ],
+    "titles": [
+     "W&M Hearing: May 7, 2014"
+    ]
+   },
+   {
+    "event_id": "102228",
+    "packages": [
+     "CHRG-113hhrg87963",
+     "CHRG-113hhrg87963",
+     "CHRG-113hhrg87964",
+     "CHRG-113hhrg87964"
+    ],
+    "class_": "other_package_or_source_says_yes",
+    "videos": [
+     "zTuViusq_j4"
+    ],
+    "raw_cached": 1,
+    "raw_records": 2,
+    "notes": [
+     "Public but not on YouTube: the committee's hearing page embeds only a Ustream recording (defunct), not YouTube; nothing found on T&I channels or YouTube search.",
+     "Public but not on YouTube: the committee's hearing page embeds only a Ustream recording (defunct), not YouTube; nothing found on T&I channels or YouTube search."
+    ],
+    "titles": [
+     "Examining the Federal Protective Service: Are Federal Facilities Secure?"
+    ]
+   },
+   {
+    "event_id": "102295",
+    "packages": [
+     "CHRG-113hhrg94399",
+     "CHRG-113hhrg94399"
+    ],
+    "class_": "matcher_overrode_research_verdict",
+    "videos": [
+     "8lMUyChe_-g",
+     "MzmIDzttPHs"
+    ],
+    "raw_cached": 2,
+    "raw_records": 2,
+    "notes": [
+     "The 2011-18 majority committee channel's videos are gone (committee-site embeds from 2016-18 no longer resolve; 2013-15 pages have no video) and @waysandmeansde",
+     "The 2011-18 majority committee channel's videos are gone (committee-site embeds from 2016-18 no longer resolve; 2013-15 pages have no video) and @waysandmeansde"
+    ],
+    "titles": [
+     "W&M Hearing: May 29, 2014",
+     "W&M Hearing: May 29, 2014 PM"
+    ]
+   },
+   {
+    "event_id": "102311",
+    "packages": [
+     "CHRG-113hhrg94427",
+     "CHRG-113hhrg94427"
+    ],
+    "class_": "matcher_overrode_research_verdict",
+    "videos": [
+     "k9LP6VAcN-g"
+    ],
+    "raw_cached": 1,
+    "raw_records": 1,
+    "notes": [
+     "The W&M event page (migrated 2014-15 page) has no video embed. The committee GOP channel's pre-2023 uploads are no longer public, and title and topic searches f",
+     "The W&M event page (migrated 2014-15 page) has no video embed. The committee GOP channel's pre-2023 uploads are no longer public, and title and topic searches f"
+    ],
+    "titles": [
+     "W&M Hearing: Jun 10, 2014"
+    ]
+   },
+   {
+    "event_id": "102318",
+    "packages": [
+     "CHRG-113hhrg88351",
+     "CHRG-113hhrg88351",
+     "CHRG-113hhrg88353",
+     "CHRG-113hhrg88353"
+    ],
+    "class_": "other_package_or_source_says_yes",
+    "videos": [
+     "m9EYFXOuw1I"
+    ],
+    "raw_cached": 1,
+    "raw_records": 2,
+    "notes": [
+     "Public but not on YouTube: the committee's hearing page embeds only a Ustream recording (defunct), not YouTube; nothing found on T&I channels or YouTube search.",
+     "Public but not on YouTube: the committee's hearing page embeds only a Ustream recording (defunct), not YouTube; nothing found on T&I channels or YouTube search."
+    ],
+    "titles": [
+     "Airport Financing and Development"
+    ]
+   },
+   {
+    "event_id": "102643",
+    "packages": [
+     "CHRG-113hhrg20995",
+     "CHRG-113hhrg20995"
+    ],
+    "class_": "matcher_overrode_research_verdict",
+    "videos": [
+     "IU1qh_rsQg4"
+    ],
+    "raw_cached": 1,
+    "raw_records": 2,
+    "notes": [
+     "The 2011-18 majority committee channel's videos are gone (committee-site embeds from 2016-18 no longer resolve; 2013-15 pages have no video) and @waysandmeansde",
+     "The 2011-18 majority committee channel's videos are gone (committee-site embeds from 2016-18 no longer resolve; 2013-15 pages have no video) and @waysandmeansde"
+    ],
+    "titles": [
+     "W&M Hearing: Sep 10, 2014"
+    ]
+   },
+   {
+    "event_id": "103155",
+    "packages": [
+     "CHRG-114hhrg21282",
+     "CHRG-114hhrg21282"
+    ],
+    "class_": "matcher_overrode_research_verdict",
+    "videos": [
+     "4jyELQGGRnY"
+    ],
+    "raw_cached": 1,
+    "raw_records": 1,
+    "notes": [
+     "The W&M event page (migrated 2014-15 page) has no video embed. The committee GOP channel's pre-2023 uploads are no longer public, and title and topic searches f",
+     "The W&M event page (migrated 2014-15 page) has no video embed. The committee GOP channel's pre-2023 uploads are no longer public, and title and topic searches f"
+    ],
+    "titles": [
+     "W&M Hearing: Mar 17, 2015"
+    ]
+   },
+   {
+    "event_id": "103483",
+    "packages": [
+     "CHRG-114hhrg21366",
+     "CHRG-114hhrg21366"
+    ],
+    "class_": "matcher_overrode_research_verdict",
+    "videos": [
+     "tHLKZGpHxYw"
+    ],
+    "raw_cached": 1,
+    "raw_records": 1,
+    "notes": [
+     "The 2011-18 majority committee channel's videos are gone (committee-site embeds from 2016-18 no longer resolve; 2013-15 pages have no video) and @waysandmeansde",
+     "The 2011-18 majority committee channel's videos are gone (committee-site embeds from 2016-18 no longer resolve; 2013-15 pages have no video) and @waysandmeansde"
+    ],
+    "titles": [
+     "W&M Hearing: May 19, 2015"
+    ]
+   },
+   {
+    "event_id": "103549",
+    "packages": [
+     "CHRG-114hhrg21284",
+     "CHRG-114hhrg21284"
+    ],
+    "class_": "matcher_overrode_research_verdict",
+    "videos": [
+     "XN7T-mUvolA"
+    ],
+    "raw_cached": 1,
+    "raw_records": 1,
+    "notes": [
+     "The W&M event page (migrated 2014-15 page) has no video embed. The committee GOP channel's pre-2023 uploads are no longer public, and title and topic searches f",
+     "The W&M event page (migrated 2014-15 page) has no video embed. The committee GOP channel's pre-2023 uploads are no longer public, and title and topic searches f"
+    ],
+    "titles": [
+     "W&M Hearing: Jun 3, 2015"
+    ]
+   },
+   {
+    "event_id": "103613",
+    "packages": [
+     "CHRG-114hhrg21289",
+     "CHRG-114hhrg21289"
+    ],
+    "class_": "matcher_overrode_research_verdict",
+    "videos": [
+     "JdOpkScj-ZU"
+    ],
+    "raw_cached": 1,
+    "raw_records": 1,
+    "notes": [
+     "The 2011-18 majority committee channel's videos are gone (committee-site embeds from 2016-18 no longer resolve; 2013-15 pages have no video) and @waysandmeansde",
+     "The 2011-18 majority committee channel's videos are gone (committee-site embeds from 2016-18 no longer resolve; 2013-15 pages have no video) and @waysandmeansde"
+    ],
+    "titles": [
+     "W&M Hearing: Jun 16, 2015 PM"
+    ]
+   },
+   {
+    "event_id": "103636",
+    "packages": [
+     "CHRG-114hhrg22332",
+     "CHRG-114hhrg22332"
+    ],
+    "class_": "matcher_overrode_research_verdict",
+    "videos": [
+     "JcTra-qS1gM"
+    ],
+    "raw_cached": 1,
+    "raw_records": 1,
+    "notes": [
+     "The 2011-18 majority committee channel's videos are gone (committee-site embeds from 2016-18 no longer resolve; 2013-15 pages have no video) and @waysandmeansde",
+     "The 2011-18 majority committee channel's videos are gone (committee-site embeds from 2016-18 no longer resolve; 2013-15 pages have no video) and @waysandmeansde"
+    ],
+    "titles": [
+     "W&M Hearing: Jun 17, 2015"
+    ]
+   },
+   {
+    "event_id": "103749",
+    "packages": [
+     "CHRG-114hhrg21285",
+     "CHRG-114hhrg21285"
+    ],
+    "class_": "matcher_overrode_research_verdict",
+    "videos": [
+     "fgbr6TzTytI"
+    ],
+    "raw_cached": 1,
+    "raw_records": 1,
+    "notes": [
+     "The W&M event page (migrated 2014-15 page) has no video embed. The committee GOP channel's pre-2023 uploads are no longer public, and title and topic searches f",
+     "The W&M event page (migrated 2014-15 page) has no video embed. The committee GOP channel's pre-2023 uploads are no longer public, and title and topic searches f"
+    ],
+    "titles": [
+     "W&M Hearing: Jul 15, 2015"
+    ]
+   },
+   {
+    "event_id": "103785",
+    "packages": [
+     "CHRG-114hhrg22148",
+     "CHRG-114hhrg22148"
+    ],
+    "class_": "matcher_overrode_research_verdict",
+    "videos": [
+     "Blzc_njd6JQ"
+    ],
+    "raw_cached": 1,
+    "raw_records": 1,
+    "notes": [
+     "The W&M event page (migrated 2014-15 page) has no video embed. The committee GOP channel's pre-2023 uploads are no longer public, and title and topic searches f",
+     "The W&M event page (migrated 2014-15 page) has no video embed. The committee GOP channel's pre-2023 uploads are no longer public, and title and topic searches f"
+    ],
+    "titles": [
+     "W&M Hearing: Jul 23, 2015"
+    ]
+   },
+   {
+    "event_id": "104190",
+    "packages": [
+     "CHRG-114hhrg22103",
+     "CHRG-114hhrg22103"
+    ],
+    "class_": "matcher_overrode_research_verdict",
+    "videos": [
+     "vOhcc4rUtLE"
+    ],
+    "raw_cached": 1,
+    "raw_records": 1,
+    "notes": [
+     "The 2011-18 majority committee channel's videos are gone (committee-site embeds from 2016-18 no longer resolve; 2013-15 pages have no video) and @waysandmeansde",
+     "The 2011-18 majority committee channel's videos are gone (committee-site embeds from 2016-18 no longer resolve; 2013-15 pages have no video) and @waysandmeansde"
+    ],
+    "titles": [
+     "W&M Hearing: Nov 17, 2015 PM"
+    ]
+   },
+   {
+    "event_id": "104234",
+    "packages": [
+     "CHRG-114hhrg22334",
+     "CHRG-114hhrg22334"
+    ],
+    "class_": "matcher_overrode_research_verdict",
+    "videos": [
+     "bw2Fc9qtEYU"
+    ],
+    "raw_cached": 1,
+    "raw_records": 1,
+    "notes": [
+     "The 2011-18 majority committee channel's videos are gone (committee-site embeds from 2016-18 no longer resolve; 2013-15 pages have no video) and @waysandmeansde",
+     "The 2011-18 majority committee channel's videos are gone (committee-site embeds from 2016-18 no longer resolve; 2013-15 pages have no video) and @waysandmeansde"
+    ],
+    "titles": [
+     "W&M Hearing: Dec 1, 2015"
+    ]
+   },
+   {
+    "event_id": "104364",
+    "packages": [
+     "CHRG-114hhrg22375",
+     "CHRG-114hhrg22375"
+    ],
+    "class_": "matcher_overrode_research_verdict",
+    "videos": [
+     "1jXxdN9WR-E"
+    ],
+    "raw_cached": 1,
+    "raw_records": 1,
+    "notes": [
+     "waysandmeans.house.gov hearing page embeds YouTube fXFowt9Rl1E, which now returns unavailable (deleted/private). Searches (title, member channels, @TaxRevolutio",
+     "waysandmeans.house.gov hearing page embeds YouTube fXFowt9Rl1E, which now returns unavailable (deleted/private). Searches (title, member channels, @TaxRevolutio"
+    ],
+    "titles": [
+     "W&M Hearing: Feb 02, 2015"
+    ]
+   },
+   {
+    "event_id": "104452",
+    "packages": [
+     "CHRG-114hhrg22374",
+     "CHRG-114hhrg22374"
+    ],
+    "class_": "matcher_overrode_research_verdict",
+    "videos": [
+     "tHwUtZX1UP8"
+    ],
+    "raw_cached": 1,
+    "raw_records": 1,
+    "notes": [
+     "waysandmeans.house.gov hearing page embeds YouTube 4uWKYrAGCDA, which now returns unavailable (deleted/private). Searches (title, member channels, @TaxRevolutio",
+     "waysandmeans.house.gov hearing page embeds YouTube 4uWKYrAGCDA, which now returns unavailable (deleted/private). Searches (title, member channels, @TaxRevolutio"
+    ],
+    "titles": [
+     "W&M Hearing: Feb 11, 2016"
+    ]
+   },
+   {
+    "event_id": "104595",
+    "packages": [
+     "CHRG-114hhrg22161",
+     "CHRG-114hhrg22161"
+    ],
+    "class_": "matcher_overrode_research_verdict",
+    "videos": [
+     "LsOkwh-31Zk"
+    ],
+    "raw_cached": 1,
+    "raw_records": 2,
+    "notes": [
+     "The W&M event page embedded YouTube Js4-yftmqTk (the committee's own upload), which is now private or removed (oembed fails). Title and topic searches found no ",
+     "The W&M event page embedded YouTube Js4-yftmqTk (the committee's own upload), which is now private or removed (oembed fails). Title and topic searches found no "
+    ],
+    "titles": [
+     "W&M Hearing: Mar 2, 2016"
+    ]
+   },
+   {
+    "event_id": "104678",
+    "packages": [
+     "CHRG-114hhrg21305",
+     "CHRG-114hhrg21305"
+    ],
+    "class_": "matcher_overrode_research_verdict",
+    "videos": [
+     "4iSmt5p3oLI",
+     "nrFX521qtwU"
+    ],
+    "raw_cached": 2,
+    "raw_records": 1,
+    "notes": [
+     "The W&M event page embedded YouTube 7DVJpkwbn80 (the committee's own upload), which is now private or removed (oembed fails). Title and topic searches found no ",
+     "The W&M event page embedded YouTube 7DVJpkwbn80 (the committee's own upload), which is now private or removed (oembed fails). Title and topic searches found no "
+    ],
+    "titles": [
+     "W&M Hearing: Mar 16, 2016 PM",
+     "W&M Hearing: Mar 16, 2016"
+    ]
+   },
+   {
+    "event_id": "105052",
+    "packages": [
+     "CHRG-114hhrg22163",
+     "CHRG-114hhrg22163"
+    ],
+    "class_": "matcher_overrode_research_verdict",
+    "videos": [
+     "G80vYi6oCNs"
+    ],
+    "raw_cached": 1,
+    "raw_records": 1,
+    "notes": [
+     "The W&M event page embedded YouTube 5EF2R_LSe3c (the committee's own upload), which is now private or removed (oembed fails). Title and topic searches found no ",
+     "The W&M event page embedded YouTube 5EF2R_LSe3c (the committee's own upload), which is now private or removed (oembed fails). Title and topic searches found no "
+    ],
+    "titles": [
+     "W&M Hearing: Jun 14, 2016"
+    ]
+   },
+   {
+    "event_id": "105210",
+    "packages": [
+     "CHRG-114hhrg22296",
+     "CHRG-114hhrg22296"
+    ],
+    "class_": "matcher_overrode_research_verdict",
+    "videos": [
+     "uVx25-wL2Ek"
+    ],
+    "raw_cached": 1,
+    "raw_records": 1,
+    "notes": [
+     "The W&M event page embedded YouTube GUo9JC_Q5Gs (the committee's own upload), which is now private or removed (oembed fails). Title and topic searches found no ",
+     "The W&M event page embedded YouTube GUo9JC_Q5Gs (the committee's own upload), which is now private or removed (oembed fails). Title and topic searches found no "
+    ],
+    "titles": [
+     "W&M Hearing: Jul 14, 2016"
+    ]
+   },
+   {
+    "event_id": "105334",
+    "packages": [
+     "CHRG-114hhrg22232",
+     "CHRG-114hhrg22232"
+    ],
+    "class_": "matcher_overrode_research_verdict",
+    "videos": [
+     "i64t5SniaoU",
+     "qAWad-7sbtI"
+    ],
+    "raw_cached": 2,
+    "raw_records": 2,
+    "notes": [
+     "The W&M event page embedded YouTube chv9dhE9gIc (the committee's own upload), which is now private or removed (oembed fails). Title and topic searches found no ",
+     "The W&M event page embedded YouTube chv9dhE9gIc (the committee's own upload), which is now private or removed (oembed fails). Title and topic searches found no "
+    ],
+    "titles": [
+     "W&M Hearing: Sep 14, 2016",
+     "W&M Hearing: Sep 14, 2016 PM"
+    ]
+   },
+   {
+    "event_id": "106197",
+    "packages": [
+     "CHRG-115hhrg33479",
+     "CHRG-115hhrg33479"
+    ],
+    "class_": "matcher_overrode_research_verdict",
+    "videos": [
+     "Qmjplf0qxKA"
+    ],
+    "raw_cached": 1,
+    "raw_records": 1,
+    "notes": [
+     "The W&M event page (migrated 2014-15 page) has no video embed. The committee GOP channel's pre-2023 uploads are no longer public, and title and topic searches f",
+     "The W&M event page (migrated 2014-15 page) has no video embed. The committee GOP channel's pre-2023 uploads are no longer public, and title and topic searches f"
+    ],
+    "titles": [
+     "W&M Hearing: June 29, 2017"
+    ]
+   },
+   {
+    "event_id": "106239",
+    "packages": [
+     "CHRG-115hhrg33480",
+     "CHRG-115hhrg33480"
+    ],
+    "class_": "matcher_overrode_research_verdict",
+    "videos": [
+     "jeWjrrgIy04"
+    ],
+    "raw_cached": 1,
+    "raw_records": 1,
+    "notes": [
+     "The W&M event page embedded YouTube VoW9fhcAh88 (the committee's own upload), which is now private or removed (oembed fails). Title and topic searches found no ",
+     "The W&M event page embedded YouTube VoW9fhcAh88 (the committee's own upload), which is now private or removed (oembed fails). Title and topic searches found no "
+    ],
+    "titles": [
+     "W&M Hearing: Jul 14, 2017"
+    ]
+   },
+   {
+    "event_id": "106314",
+    "packages": [
+     "CHRG-115hhrg33614",
+     "CHRG-115hhrg33614"
+    ],
+    "class_": "matcher_overrode_research_verdict",
+    "videos": [
+     "Cesx7DJma-Q"
+    ],
+    "raw_cached": 1,
+    "raw_records": 1,
+    "notes": [
+     "The W&M event page embedded YouTube EfcciLBLP0c (the committee's own upload), which is now private or removed (oembed fails). Title and topic searches found no ",
+     "The W&M event page embedded YouTube EfcciLBLP0c (the committee's own upload), which is now private or removed (oembed fails). Title and topic searches found no "
+    ],
+    "titles": [
+     "W&M Hearing: Jul 25, 2017"
+    ]
+   },
+   {
+    "event_id": "106496",
+    "packages": [
+     "CHRG-115hhrg33656",
+     "CHRG-115hhrg33656"
+    ],
+    "class_": "matcher_overrode_research_verdict",
+    "videos": [
+     "FrqWqTCwV6I"
+    ],
+    "raw_cached": 1,
+    "raw_records": 1,
+    "notes": [
+     "The W&M event page embedded YouTube JX3upih5d5o (the committee's own upload), which is now private or removed (oembed fails). Title and topic searches found no ",
+     "The W&M event page embedded YouTube JX3upih5d5o (the committee's own upload), which is now private or removed (oembed fails). Title and topic searches found no "
+    ],
+    "titles": [
+     "W&M Hearing: Oct 11, 2017 PM"
+    ]
+   },
+   {
+    "event_id": "106727",
+    "packages": [
+     "CHRG-115hhrg33658",
+     "CHRG-115hhrg33658"
+    ],
+    "class_": "matcher_overrode_research_verdict",
+    "videos": [
+     "NQwtlkMxl0E"
+    ],
+    "raw_cached": 1,
+    "raw_records": 1,
+    "notes": [
+     "The W&M event page embedded YouTube 9mQl2CT7ASs (the committee's own upload), which is now private or removed (oembed fails). Title and topic searches found no ",
+     "The W&M event page embedded YouTube 9mQl2CT7ASs (the committee's own upload), which is now private or removed (oembed fails). Title and topic searches found no "
+    ],
+    "titles": [
+     "W&M Hearing: Dec 13, 2017 PM"
+    ]
+   },
+   {
+    "event_id": "106774",
+    "packages": [
+     "CHRG-115hhrg33659",
+     "CHRG-115hhrg33659"
+    ],
+    "class_": "matcher_overrode_research_verdict",
+    "videos": [
+     "Uq4SrB50w3w",
+     "nw44Zh4YzgM"
+    ],
+    "raw_cached": 2,
+    "raw_records": 1,
+    "notes": [
+     "The W&M event page embedded YouTube tfdqm-bTrdc (the committee's own upload), which is now private or removed (oembed fails). Title and topic searches found no ",
+     "The W&M event page embedded YouTube tfdqm-bTrdc (the committee's own upload), which is now private or removed (oembed fails). Title and topic searches found no "
+    ],
+    "titles": [
+     "W&M Hearing: January 17, 2018",
+     "W&M Hearing: Jan 17, 2018"
+    ]
+   },
+   {
+    "event_id": "106806",
+    "packages": [
+     "CHRG-115hhrg33793",
+     "CHRG-115hhrg33793"
+    ],
+    "class_": "matcher_overrode_research_verdict",
+    "videos": [
+     "_mQpd4pd76U"
+    ],
+    "raw_cached": 1,
+    "raw_records": 1,
+    "notes": [
+     "The W&M event page embedded YouTube fDRLoNgl8lM (the committee's own upload), which is now private or removed (oembed fails). Title and topic searches found no ",
+     "The W&M event page embedded YouTube fDRLoNgl8lM (the committee's own upload), which is now private or removed (oembed fails). Title and topic searches found no "
+    ],
+    "titles": [
+     "W&M Hearing: Jan 30, 2018 PM"
+    ]
+   },
+   {
+    "event_id": "106827",
+    "packages": [
+     "CHRG-115hhrg33794",
+     "CHRG-115hhrg33794"
+    ],
+    "class_": "matcher_overrode_research_verdict",
+    "videos": [
+     "WOPeU0k14z8",
+     "k0oQSY8i6W8"
+    ],
+    "raw_cached": 2,
+    "raw_records": 1,
+    "notes": [
+     "The W&M event page embedded YouTube oI1uB46P6iQ (the committee's own upload), which is now private or removed (oembed fails). Title and topic searches found no ",
+     "The W&M event page embedded YouTube oI1uB46P6iQ (the committee's own upload), which is now private or removed (oembed fails). Title and topic searches found no "
+    ],
+    "titles": [
+     "W&M Hearing: Feb 6, 2018 PM",
+     "W&M Hearing: February 6, 2018"
+    ]
+   },
+   {
+    "event_id": "106834",
+    "packages": [
+     "CHRG-115hhrg33795",
+     "CHRG-115hhrg33795"
+    ],
+    "class_": "matcher_overrode_research_verdict",
+    "videos": [
+     "NBLwWBve2z8",
+     "mM1yaIeoqWI"
+    ],
+    "raw_cached": 2,
+    "raw_records": 1,
+    "notes": [
+     "The W&M event page embedded YouTube KP8z0xUoLDA (the committee's own upload), which is now private or removed (oembed fails). Title and topic searches found no ",
+     "The W&M event page embedded YouTube KP8z0xUoLDA (the committee's own upload), which is now private or removed (oembed fails). Title and topic searches found no "
+    ],
+    "titles": [
+     "W&M Hearing: February 7, 2018",
+     "W&M Hearing: Feb 7, 2018"
+    ]
+   },
+   {
+    "event_id": "106947",
+    "packages": [
+     "CHRG-115hhrg33796",
+     "CHRG-115hhrg33796"
+    ],
+    "class_": "matcher_overrode_research_verdict",
+    "videos": [
+     "QI5PqHQh6o8"
+    ],
+    "raw_cached": 1,
+    "raw_records": 1,
+    "notes": [
+     "The W&M event page embedded YouTube xsCHLmQt1xY (the committee's own upload), which is now private or removed (oembed fails). Title and topic searches found no ",
+     "The W&M event page embedded YouTube xsCHLmQt1xY (the committee's own upload), which is now private or removed (oembed fails). Title and topic searches found no "
+    ],
+    "titles": [
+     "W&M Hearing: March 7, 2018"
+    ]
+   },
+   {
+    "event_id": "108227",
+    "packages": [
+     "CHRG-115hhrg33868",
+     "CHRG-115hhrg33868"
+    ],
+    "class_": "matcher_overrode_research_verdict",
+    "videos": [
+     "ndZjTEvk6JE"
+    ],
+    "raw_cached": 1,
+    "raw_records": 1,
+    "notes": [
+     "waysandmeans.house.gov hearing page embeds YouTube Cw6IJF76wyM, which now returns unavailable (deleted/private). No other copy found.",
+     "waysandmeans.house.gov hearing page embeds YouTube Cw6IJF76wyM, which now returns unavailable (deleted/private). No other copy found."
+    ],
+    "titles": [
+     "W&M Hearing: April 26, 2018"
+    ]
+   },
+   {
+    "event_id": "108267",
+    "packages": [
+     "CHRG-115hhrg33869",
+     "CHRG-115hhrg33869"
+    ],
+    "class_": "matcher_overrode_research_verdict",
+    "videos": [
+     "1s_i1pvOB_M"
+    ],
+    "raw_cached": 1,
+    "raw_records": 2,
+    "notes": [
+     "The W&M event page embedded YouTube 4HuOll4xVuE (the committee's own upload), which is now private or removed (oembed fails). Title and topic searches found no ",
+     "The W&M event page embedded YouTube 4HuOll4xVuE (the committee's own upload), which is now private or removed (oembed fails). Title and topic searches found no "
+    ],
+    "titles": [
+     "W&M Hearing: May 8, 2018"
+    ]
+   },
+   {
+    "event_id": "108276",
+    "packages": [
+     "CHRG-115hhrg33870",
+     "CHRG-115hhrg33870"
+    ],
+    "class_": "matcher_overrode_research_verdict",
+    "videos": [
+     "TeNFDYA1vss"
+    ],
+    "raw_cached": 1,
+    "raw_records": 1,
+    "notes": [
+     "The W&M event page (migrated 2014-15 page) has no video embed. The committee GOP channel's pre-2023 uploads are no longer public, and title and topic searches f",
+     "The W&M event page (migrated 2014-15 page) has no video embed. The committee GOP channel's pre-2023 uploads are no longer public, and title and topic searches f"
+    ],
+    "titles": [
+     "W&M Hearing: May 9, 2018"
+    ]
+   },
+   {
+    "event_id": "108333",
+    "packages": [
+     "CHRG-115hhrg33871",
+     "CHRG-115hhrg33871"
+    ],
+    "class_": "matcher_overrode_research_verdict",
+    "videos": [
+     "0vNSDU6kDVw"
+    ],
+    "raw_cached": 1,
+    "raw_records": 1,
+    "notes": [
+     "waysandmeans.house.gov hearing page embeds YouTube cXybijWdxNY, which now returns unavailable (deleted/private). No other copy found.",
+     "waysandmeans.house.gov hearing page embeds YouTube cXybijWdxNY, which now returns unavailable (deleted/private). No other copy found."
+    ],
+    "titles": [
+     "W&M Hearing: May 17, 2018"
+    ]
+   },
+   {
+    "event_id": "108395",
+    "packages": [
+     "CHRG-115hhrg33872",
+     "CHRG-115hhrg33872"
+    ],
+    "class_": "matcher_overrode_research_verdict",
+    "videos": [
+     "RRG4fxbATKQ"
+    ],
+    "raw_cached": 1,
+    "raw_records": 1,
+    "notes": [
+     "The W&M event page embedded YouTube JIm3HRCW0QQ (the committee's own upload), which is now private or removed (oembed fails). Title and topic searches found no ",
+     "The W&M event page embedded YouTube JIm3HRCW0QQ (the committee's own upload), which is now private or removed (oembed fails). Title and topic searches found no "
+    ],
+    "titles": [
+     "W&M Hearing: June 7, 2018"
+    ]
+   },
+   {
+    "event_id": "108602",
+    "packages": [
+     "CHRG-115hhrg33874",
+     "CHRG-115hhrg33874"
+    ],
+    "class_": "matcher_overrode_research_verdict",
+    "videos": [
+     "-Crb8Sq3sa4"
+    ],
+    "raw_cached": 1,
+    "raw_records": 1,
+    "notes": [
+     "The W&M event page embedded YouTube zEgMDMXtDH4 (the committee's own upload), which is now private or removed (oembed fails). Title and topic searches found no ",
+     "The W&M event page embedded YouTube zEgMDMXtDH4 (the committee's own upload), which is now private or removed (oembed fails). Title and topic searches found no "
+    ],
+    "titles": [
+     "W&M Hearing: July 25, 2018"
+    ]
+   },
+   {
+    "event_id": "108726",
+    "packages": [
+     "CHRG-115hhrg33875",
+     "CHRG-115hhrg33875"
+    ],
+    "class_": "matcher_overrode_research_verdict",
+    "videos": [
+     "z95FJ9KmDxg"
+    ],
+    "raw_cached": 1,
+    "raw_records": 1,
+    "notes": [
+     "waysandmeans.house.gov hearing page embeds YouTube jmIpt1h1Fzc, which now returns unavailable (deleted/private). No other copy found.",
+     "waysandmeans.house.gov hearing page embeds YouTube jmIpt1h1Fzc, which now returns unavailable (deleted/private). No other copy found."
+    ],
+    "titles": [
+     "W&M Hearing: September 27, 2018"
+    ]
+   }
+  ]
+ },
+ "recording_pairs": {
+  "unmatched_pairs": 8213,
+  "date_title_only": 6075,
+  "with_stronger_method": 2138,
+  "videos_read_in_raw_cache": 2137,
+  "raw_meeting_records_read": 572,
+  "raw_meeting_records_unread": [],
+  "events_named": 544,
+  "classes": {
+   "no_gpo_event_id_so_stated_link_cannot_reach_package": 1469,
+   "method_named_link_but_event_differs_in_raw": 601,
+   "raw_evidence_but_native_pair_missing": 6,
+   "raw_evidence_for_event_but_package_not_linked_to_meeting": 42,
+   "package_not_linked_and_raw_lacks_claim": 19,
+   "video_not_in_raw_cache": 1
+  },
+  "examples": {
+   "no_gpo_event_id_so_stated_link_cannot_reach_package": [
+    [
+     "CHRG-113hhrg81339",
+     "RtcIMFgi6xs",
+     "",
+     "date in video + title; event ID in video"
+    ],
+    [
+     "CHRG-113hhrg81342",
+     "6k16E5_9VKg",
+     "",
+     "date in video + title; event ID in video"
+    ],
+    [
+     "CHRG-113hhrg81569",
+     "dRXIqGphWVw",
+     "",
+     "date in video + title; event ID in video"
+    ],
+    [
+     "CHRG-113hhrg82145",
+     "0oPcyuwqfQA",
+     "",
+     "date in video + title; event ID in video"
+    ],
+    [
+     "CHRG-113hhrg82308",
+     "M7VVRCTFATg",
+     "",
+     "date in video + title; event ID in video"
+    ],
+    [
+     "CHRG-113hhrg82640",
+     "CvNDkrm0FeQ",
+     "",
+     "date window + title; event ID in video"
+    ],
+    [
+     "CHRG-113hhrg82761",
+     "hQMpWdfcyic",
+     "",
+     "date in video + title; event ID in video"
+    ],
+    [
+     "CHRG-113hhrg82763",
+     "jq_gylMRBEU",
+     "",
+     "date in video + title; event ID in video"
+    ]
+   ],
+   "method_named_link_but_event_differs_in_raw": [
+    [
+     "CHRG-114hhrg95451",
+     "0jdGLsZJwoQ",
+     "103081",
+     "congress.gov link; date in video + title"
+    ],
+    [
+     "CHRG-114hhrg21271",
+     "2v56TNppbLA",
+     "103226",
+     "congress.gov link; date in video + title"
+    ],
+    [
+     "CHRG-114hhrg95688",
+     "iJnatst47Wk",
+     "103082",
+     "congress.gov link; date in video + title"
+    ],
+    [
+     "CHRG-114hhrg95890",
+     "5a6XRMcDymw",
+     "103312",
+     "congress.gov link; date in video + title"
+    ],
+    [
+     "CHRG-114hhrg96988",
+     "SMm-ZQV2QTU",
+     "103465",
+     "congress.gov link; date in video + title"
+    ],
+    [
+     "CHRG-114hhrg96988",
+     "_zcm-Dj_vAc",
+     "103465",
+     "congress.gov link; date in video + title"
+    ],
+    [
+     "CHRG-114hhrg22439",
+     "Ef7t20xxr9c",
+     "103546",
+     "congress.gov link; date in video + title"
+    ],
+    [
+     "CHRG-114hhrg97612",
+     "19y7rIykI50",
+     "103595",
+     "congress.gov link; date in video + title"
+    ]
+   ],
+   "raw_evidence_but_native_pair_missing": [
+    [
+     "CHRG-114hhrg95632",
+     "K92vi5r8Qt0",
+     "103781",
+     "event ID in video"
+    ],
+    [
+     "CHRG-114hhrg97630",
+     "aI3csCsYebM",
+     "104114",
+     "event ID in video"
+    ],
+    [
+     "CHRG-114hhrg99454",
+     "oNWF1R3eO9I",
+     "104665",
+     "event ID in video"
+    ],
+    [
+     "CHRG-114hhrg99839",
+     "EgD6qkGYf7I",
+     "104807",
+     "event ID in video"
+    ],
+    [
+     "CHRG-114hhrg20533",
+     "fXXihdjo_jo",
+     "105116",
+     "event ID in video"
+    ],
+    [
+     "CHRG-118hhrg56926",
+     "pscQIY_LHOY",
+     "117688",
+     "congress.gov link; date window + title; event ID in video"
+    ]
+   ],
+   "raw_evidence_for_event_but_package_not_linked_to_meeting": [
+    [
+     "CHRG-114hhrg97264",
+     "DYDQwUNI7Zo",
+     "104074",
+     "event ID in video"
+    ],
+    [
+     "CHRG-114hhrg97632",
+     "EQPMJUQjybk",
+     "104197",
+     "event ID in video"
+    ],
+    [
+     "CHRG-114hhrg98282",
+     "RdVW9tUBg38",
+     "104322",
+     "event ID in video"
+    ],
+    [
+     "CHRG-114hhrg99469",
+     "lWpzoK_ym3w",
+     "104671",
+     "event ID in video"
+    ],
+    [
+     "CHRG-114hhrg99945",
+     "guMVh8iYwEk",
+     "104871",
+     "event ID in video"
+    ],
+    [
+     "CHRG-114hhrg20233",
+     "qAcpFDII9sg",
+     "104980",
+     "event ID in video"
+    ],
+    [
+     "CHRG-114hhrg20234",
+     "F-5D-5iiShM",
+     "104981",
+     "event ID in video"
+    ],
+    [
+     "CHRG-114hhrg22120",
+     "UD2NNrEE7PM",
+     "105349",
+     "event ID in video"
+    ]
+   ],
+   "package_not_linked_and_raw_lacks_claim": [
+    [
+     "CHRG-116jhrg40901",
+     "4Gu4DbJzmPc",
+     "110537",
+     "congress.gov link; date window + title"
+    ],
+    [
+     "CHRG-116hhrg41194",
+     "kIyirSWylRw",
+     "110573",
+     "congress.gov link; date window + title"
+    ],
+    [
+     "CHRG-117jhrg45174",
+     "8Ova1wfKFmI",
+     "113918",
+     "date window + title; event ID in video"
+    ],
+    [
+     "CHRG-117jhrg45176",
+     "pKIq33M3qGg",
+     "113932",
+     "date window + title; event ID in video"
+    ],
+    [
+     "CHRG-117jhrg45795",
+     "cfZphROnANk",
+     "114065",
+     "date window + title; event ID in video"
+    ],
+    [
+     "CHRG-117jhrg46027",
+     "bd1hLdwTfFw",
+     "114158",
+     "date window + title; event ID in video"
+    ],
+    [
+     "CHRG-117jhrg46179",
+     "_5vRybZcIHo",
+     "114229",
+     "date window + title; event ID in video"
+    ],
+    [
+     "CHRG-118jhrg52490",
+     "0y2XV1qox0c",
+     "115351",
+     "congress.gov link; date window + title"
+    ]
+   ],
+   "video_not_in_raw_cache": [
+    [
+     "CHRG-119hhrg64572",
+     "P3YYBcmNckM",
+     "119567",
+     "congress.gov link"
+    ]
+   ]
+  }
+ },
+ "witnesses": {
+  "affected": 6955,
+  "rows_with_raw_page_read": 4696,
+  "distinct_bodies_read": 1468,
+  "unreachable_by_source": {
+   "docs.house.gov": 1172,
+   "gpo": 926,
+   "witness list document": 3,
+   "meeting title (nominees)": 40,
+   "senate committee page": 118
+  },
+  "classes": {
+   "docs.house.gov: raw_page_not_held": 1172,
+   "gpo: raw_page_not_held": 926,
+   "witness list document: raw_page_not_held": 3,
+   "senate committee page: name_in_raw_page": 4696,
+   "meeting title (nominees): raw_page_not_held": 40,
+   "senate committee page: raw_page_not_held": 118
+  },
+  "examples": {
+   "docs.house.gov: raw_page_not_held": [
+    [
+     "100225",
+     "Matthew Levitt, Ph.D.",
+     "https://docs.house.gov/Committee/Calendar/ByEvent.aspx?EventID=100225"
+    ],
+    [
+     "100225",
+     "Michael Rubin, Ph.D.",
+     "https://docs.house.gov/Committee/Calendar/ByEvent.aspx?EventID=100225"
+    ],
+    [
+     "100225",
+     "Mr. David Makovsky",
+     "https://docs.house.gov/Committee/Calendar/ByEvent.aspx?EventID=100225"
+    ],
+    [
+     "100226",
+     "Dr. Heather Shotton",
+     "https://docs.house.gov/Committee/Calendar/ByEvent.aspx?EventID=100226"
+    ],
+    [
+     "100226",
+     "Mr. George A. Scott",
+     "https://docs.house.gov/Committee/Calendar/ByEvent.aspx?EventID=100226"
+    ]
+   ],
+   "gpo: raw_page_not_held": [
+    [
+     "102225",
+     "Jay Hawkins",
+     "CHRG-113hhrg88979"
+    ],
+    [
+     "102225",
+     "John Simon",
+     "CHRG-113hhrg88979"
+    ],
+    [
+     "102225",
+     "Mark Szabo",
+     "CHRG-113hhrg88979"
+    ],
+    [
+     "102225",
+     "Randall Wooten",
+     "CHRG-113hhrg88979"
+    ],
+    [
+     "102225",
+     "Tyrone Everett",
+     "CHRG-113hhrg88979"
+    ]
+   ],
+   "witness list document: raw_page_not_held": [
+    [
+     "105634",
+     "Hannibal \u201cMike\u201d Ware",
+     "https://www.congress.gov/115/meeting/house/105634/documents/HHRG-115-SM23-WList-20170202.pdf"
+    ],
+    [
+     "105634",
+     "Shirley Bailey",
+     "https://www.congress.gov/115/meeting/house/105634/documents/HHRG-115-SM23-WList-20170202.pdf"
+    ],
+    [
+     "105634",
+     "William B. Shear",
+     "https://www.congress.gov/115/meeting/house/105634/documents/HHRG-115-SM23-WList-20170202.pdf"
+    ]
+   ],
+   "senate committee page: name_in_raw_page": [
+    [
+     "325120",
+     "Stephen Whitehead",
+     "https://www.veterans.senate.gov/2020/2/legislative-presentation-of-the-disabled-american-veterans-2-25-20"
+    ],
+    [
+     "325431",
+     "Crystal Lynn Wenum",
+     "https://www.veterans.senate.gov/2020/3/legislative-presentation-of-multiple-veterans-service-organizations-axpow-pva-sva"
+    ],
+    [
+     "325431",
+     "David Zurfluh",
+     "https://www.veterans.senate.gov/2020/3/legislative-presentation-of-multiple-veterans-service-organizations-axpow-pva-sva"
+    ],
+    [
+     "325431",
+     "Donna Jansky",
+     "https://www.veterans.senate.gov/2020/3/legislative-presentation-of-multiple-veterans-service-organizations-axpow-pva-sva"
+    ],
+    [
+     "325431",
+     "Jared Lyon",
+     "https://www.veterans.senate.gov/2020/3/legislative-presentation-of-multiple-veterans-service-organizations-axpow-pva-sva"
+    ]
+   ],
+   "meeting title (nominees): raw_page_not_held": [
+    [
+     "326205",
+     "Carl Whitney Bentzel",
+     "https://api.congress.gov/v3/committee-meeting/116/senate/326205"
+    ],
+    [
+     "326205",
+     "Ian Paul Steff",
+     "https://api.congress.gov/v3/committee-meeting/116/senate/326205"
+    ],
+    [
+     "326205",
+     "Michael J.K. Kratsios",
+     "https://api.congress.gov/v3/committee-meeting/116/senate/326205"
+    ],
+    [
+     "326205",
+     "Theodore Rokita",
+     "https://api.congress.gov/v3/committee-meeting/116/senate/326205"
+    ],
+    [
+     "327533",
+     "Russell Vought",
+     "https://api.congress.gov/v3/committee-meeting/116/senate/327533"
+    ]
+   ],
+   "senate committee page: raw_page_not_held": [
+    [
+     "329880",
+     "Anthony \"Morgan\" Rodman",
+     "https://www.indian.senate.gov/hearings/roundtable-discussion-concrete-solutions-building-successful-foundation-native-co"
+    ],
+    [
+     "329880",
+     "Anthony Walters",
+     "https://www.indian.senate.gov/hearings/roundtable-discussion-concrete-solutions-building-successful-foundation-native-co"
+    ],
+    [
+     "329880",
+     "Carol Gore",
+     "https://www.indian.senate.gov/hearings/roundtable-discussion-concrete-solutions-building-successful-foundation-native-co"
+    ],
+    [
+     "329880",
+     "David Flute",
+     "https://www.indian.senate.gov/hearings/roundtable-discussion-concrete-solutions-building-successful-foundation-native-co"
+    ],
+    [
+     "329880",
+     "Godfrey Enjady",
+     "https://www.indian.senate.gov/hearings/roundtable-discussion-concrete-solutions-building-successful-foundation-native-co"
+    ]
+   ]
+  }
+ },
+ "bodies_from_public_origin": 83,
+ "bodies_unreachable": []
+}

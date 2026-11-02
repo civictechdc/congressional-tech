@@ -48,13 +48,13 @@ Outgoing: `document_detail`, `document_meetings`, `document_committees`, `docume
 
 Incoming: `links_document`, `urls_document`, `sources_document`, `recoveries_document`, `document_editions`, `meeting_transcript_documents`.
 
-## `detail` — Document files and metadata
+## `detail` — The keyed document table: one row per document with its stable link_key, files and every list field; list is its no-ID browser projection
 
 One document edition, in exactly the same order as list.
 
-Identity: `list_row` (row_position; release).
+Identity: `link_key` (primary_key; release; a recovery-only document's key can move in a later release only as the data model section 8.2 states).
 
-list_row is virtual: zero-based physical row position, continued across manifest shard row ranges. Never reuse it across releases.
+list_row stays virtual: zero-based physical row position, continued across manifest shard row ranges; never reuse it across releases. Older releases carry only the detail columns; their rows pair with list by list_row.
 
 | Field | Published type | Meaning |
 | --- | --- | --- |
@@ -75,11 +75,39 @@ list_row is virtual: zero-based physical row position, continued across manifest
 | `alternates` | `list<struct<format dict,body fixed[32],suffix dict,size int64>>` | One saved file per other format |
 | `package_id` | `string` | GovInfo package identifier |
 | `facts` | `list<struct<field dict,value string>>` | Selected filename facts, one value per entry |
+| `filename` | `string` | Displayed filename |
+| `title` | `string` | Document or publisher title when known |
+| `document_kind` | `list<dict>` | Document kinds |
+| `document_family` | `list<dict>` | Filename document families |
+| `committee_keys` | `list<dict>` | Congress.gov committee system codes |
+| `chambers` | `list<dict>` | Chambers associated with the document |
+| `congress` | `int16` | Congress number when unambiguous |
+| `format` | `dict` | Original file format |
+| `document_date` | `date32` | Date of the document |
+| `first_captured` | `date32` | First good fetch date |
+| `date_kind` | `dict` | Basis of the archive date |
+| `saved_kind` | `dict` | Original file or recovery |
+| `hidden` | `boolean` | Excluded from search by review; public links still resolve |
+| `meeting_keys` | `list<dict>` | Decimal event IDs |
+| `measure_keys` | `list<dict>` | Bill and nomination identifiers |
+| `bioguide_ids` | `list<dict>` | Member Bioguide identifiers |
+| `witness_keys` | `list<dict>` | Witness appearance identifiers |
+| `version_keys` | `list<dict>` | Hex endpoint keys shared by editions |
 
 - `alternates[]`: Other formats of the same document; each has its own body and suffix.
 - `facts[]`: Embedded selected filename field/value observations; not a generic entity join.
 - `src_start`: Zero-based physical sources row offset; src_len is the contiguous row count.
 - `rec_start`: Zero-based physical recoveries row offset; rec_len is the contiguous row count.
+- `list_row`: This table repeats every list column, so a bare column name in `"list" JOIN detail USING (list_row)` is ambiguous on new releases; qualify columns (l.filename, d.link_key).
+- `document_kind[]`: Same values as list.document_kind; see that field.
+- `document_family[]`: Same values as list.document_family; see that field.
+- `committee_keys[]`: Same values as list.committee_keys; see that field.
+- `chambers[]`: Same values as list.chambers; see that field.
+- `meeting_keys[]`: Same values as list.meeting_keys; see that field.
+- `measure_keys[]`: Same values as list.measure_keys; see that field.
+- `bioguide_ids[]`: Same values as list.bioguide_ids; see that field.
+- `witness_keys[]`: Same values as list.witness_keys; see that field.
+- `version_keys[]`: Same values as list.version_keys; see that field.
 
 Outgoing: `document_public_link`, `document_body`, `alternate_bodies`, `document_package`.
 
@@ -139,6 +167,7 @@ Identity: `list_row, ordinal` (primary_key; release).
 | `posted` | `date32` | Publisher link posting date |
 
 - `member_path`: Path inside a captured archive container. Interpret together with the source URL; not a document key.
+- `url`: Required. A member of a ZIP keeps the ZIP URL here and its place in member_path; the ZIP itself is never a document when its contents were captured.
 
 Outgoing: `sources_document`, `source_address`, `source_listing_page`.
 
@@ -182,20 +211,30 @@ Identity: `event_id` (primary_key; published identifier).
 | `meeting_type` | `dict` | Publisher meeting category |
 | `session` | `int16` | Congress session number |
 | `status` | `dict` | Current meeting status |
-| `sittings` | `list<struct<start timestamp,end timestamp,place string>>` | Scheduled times and locations |
+| `sittings` | `list<struct<start timestamp,end timestamp,place string,room string,building string,address string>>` | Scheduled times and locations, as Congress.gov states them when it has a sitting |
 | `committees` | `list<struct<system_code dict,role dict>>` | Host committee codes and roles |
 | `subject_keys` | `list<dict>` | Bill, nomination and treaty subjects |
 | `transcripts` | `list<struct<package_id string,list_row int32>>` | Official hearing transcripts |
 | `videos` | `list<struct<name string,url string,video_key string>>` | Recorded meeting links |
+| `congress` | `int16` | Congress the publisher record states; null when no record states it, never inferred from documents |
+| `congress_gov_updated` | `timestamp` | Congress.gov's updateDate for this record: a publisher record update, distinct from the hearing date and capture time |
+| `house_xml_updated` | `string` | House XML update-date, literally as stated with no zone: a publisher record update, distinct from the hearing date and capture time |
+| `congress_gov_meeting_type` | `dict` | Congress.gov's type label (Hearing, Markup, Meeting) |
+| `access` | `dict` | open, closed, partly_closed or unknown, as the publisher type or title states |
+| `access_basis` | `dict` | The source and field that state access, such as congress_gov/title |
+| `not_held` | `bool` | The publisher title opens with postponed, canceled, rescheduled or test; null with no record |
+| `rescheduled_to` | `int64` | Later meeting of the same committees and title within 60 days, when the publisher states Rescheduled or only the later twin has a recording; derived |
+| `rescheduled_basis` | `dict` | publisher_status or recording_on_later_twin |
 
-- `sittings[]`: Embedded scheduled intervals and places. Times retain published precision; do not invent a Congress from the session number.
+- `sittings[]`: Embedded scheduled intervals and places. Congress.gov states instants and places, so its sitting is used when present; a House-only sitting's unzoned Eastern local time is converted to an instant. An explicit empty House state stays empty. Times retain published precision; do not invent a Congress from the session number.
 - `committees[]`: Host/participant roles belong to this meeting-committee association.
 - `transcripts[]`: Package identifier and release-local document row identify the same retained hearing transcript.
 - `videos[]`: Publisher recording links; video_key joins retained recordings when available.
+- `meeting_type`: As stated, with House XML codes (HHRG, HMKP, HMTG) on House rows; congress_gov_meeting_type carries the shared label.
 
 Outgoing: `meeting_bills`, `meeting_nominations`, `meeting_committees`, `meeting_transcript_documents`, `meeting_recordings`, `meeting_transcript_packages`, `meeting_video_address`, `meeting_treaties`.
 
-Incoming: `document_meetings`, `recording_meetings`, `witness_meeting`.
+Incoming: `document_meetings`, `recording_meetings`, `witness_meeting`, `match_meeting`, `committee_record_meeting`, `coverage_meeting`.
 
 ## `witnesses` — Witness appearances
 
@@ -271,7 +310,7 @@ Identity: `system_code` (primary_key; published identifier).
 
 Outgoing: `committee_parent`, `committee_website`.
 
-Incoming: `document_committees`, `meeting_committees`, `committee_parent`, `roster_committee`, `bill_activity_committee`, `bills_committees`, `nominations_committees`.
+Incoming: `document_committees`, `meeting_committees`, `committee_parent`, `roster_committee`, `bill_activity_committee`, `bills_committees`, `nominations_committees`, `channel_committee`.
 
 ## `members` — Current and historical members
 
@@ -291,7 +330,7 @@ Identity: `bioguide_id` (primary_key; published identifier).
 
 Outgoing: `member_lis`, `member_opensecrets`, `member_govtrack`, `member_icpsr`, `member_wikidata`, `member_fec`.
 
-Incoming: `document_members`, `witness_member`, `roster_member`, `bill_sponsor`, `amendment_sponsor`.
+Incoming: `document_members`, `witness_member`, `roster_member`, `bill_sponsor`, `amendment_sponsor`, `committee_record_sponsor`.
 
 ## `rosters` — Current-Congress committee seats
 
@@ -412,6 +451,135 @@ Identity: `canonical_url, variant_url` (primary_key; published identifier).
 - `canonical_url`: Capture-profile aliases only. Do not use this table to reproduce the fixed public URL lookup hash.
 
 Outgoing: `capture_canonical_address`, `capture_variant_address`.
+
+Incoming: none.
+
+## `videos` — Collected committee channel uploads, matched or not
+
+One upload a retained YouTube cache lists.
+
+Identity: `video_key` (primary_key; published identifier).
+
+| Field | Published type | Meaning |
+| --- | --- | --- |
+| `video_key` | `string` | youtube:{id} video identity |
+| `handle` | `dict` | Channel handle whose cache table lists it |
+| `channel_id` | `string` | YouTube channel ID, null when the cache has none |
+| `system_code` | `dict` | Committee of the curated channel; channel membership does not make a video a hearing |
+| `title` | `string` | Title as the channel states it |
+| `source_description` | `string` | Description as the channel states it, distinct from any HTML description |
+| `published_at` | `timestamp` | YouTube's publication time for the upload |
+| `video_published_at` | `timestamp` | YouTube's video publication time |
+| `duration_seconds` | `int32` | Duration in seconds when retained |
+| `available` | `bool` | Whether the last check found it available |
+| `has_caption` | `bool` | Whether YouTube states a caption exists |
+| `details_checked_at` | `timestamp` | When details were last checked |
+| `stated_event_ids` | `list<int64>` | Event IDs the video's own text names: claims, since committees mistag |
+| `record_sha` | `fixed[32]` | SHA-256 of the cache body, which also holds upstream API JSON and is the evidence reference |
+
+- `stated_event_ids[]`: A claim the video makes, not a verified link; recording_matches keeps it as claimed.
+
+Outgoing: `video_channel`.
+
+Incoming: `match_recording`.
+
+## `channels` — Curated committee YouTube channel directory
+
+One curated channel handle.
+
+Identity: `handle` (primary_key; published identifier).
+
+| Field | Published type | Meaning |
+| --- | --- | --- |
+| `handle` | `string` | Channel handle |
+| `channel_id` | `string` | YouTube channel ID |
+| `system_code` | `dict` | Committee the directory maps it to |
+| `committee_label` | `string` | Committee label in the directory |
+| `role` | `dict` | primary, secondary or member |
+| `title` | `string` | Channel's own title when cached |
+| `custom_url` | `string` | Channel's custom URL when cached |
+| `uploads_scan_complete` | `bool` | Whether the cache scanned every upload |
+| `mapping_basis` | `dict` | curated_directory: a curated mapping with no further evidence column |
+| `record_sha` | `fixed[32]` | SHA-256 of the cache body, null with no cached channel row |
+
+
+Outgoing: `channel_committee`.
+
+Incoming: `video_channel`.
+
+## `recording_matches` — Recording links and decisions with their basis
+
+One observation that a subject has, or lacks, a recording.
+
+Identity: `match_id` (primary_key; published identifier).
+
+Coverage: Scored date and title matches arrive with the native matcher; gpo_hearing_videos.csv stays a parity oracle until then.
+
+| Field | Published type | Meaning |
+| --- | --- | --- |
+| `match_id` | `string` | Hex SHA-256 of the compact JSON [subject_kind, subject_id, video ref, basis] |
+| `subject_kind` | `dict` | event or package |
+| `event_id` | `int64` | Meeting subject; null for a package or a stated number no meeting has |
+| `package_id` | `string` | GPO package subject |
+| `video_key` | `string` | Video identity; can lack a video row |
+| `url` | `string` | Off-channel recording URL |
+| `basis` | `dict` | publisher_link, video_states_event_id or curated |
+| `decision` | `dict` | The verdict as stated, or linked |
+| `score` | `int16` | 100 publisher link, 95 stated event ID; null otherwise |
+| `recording_scope` | `dict` | full, excerpt or unknown |
+| `status` | `dict` | asserted, claimed, decided, conflicting or unresolved; unresolved is a negative verdict that old matcher evidence disputes |
+| `note` | `string` | Curator note, or the unmatched stated number |
+| `source_ref` | `string` | Evidence reference: the record or decision |
+
+
+Outgoing: `match_meeting`, `match_recording`.
+
+Incoming: none.
+
+## `committee_records` — Amendment and vote documents House meeting XML lists
+
+One document link in a meeting record; a vote row is a document link, not a ballot or tally.
+
+Identity: `record_key` (primary_key; published identifier).
+
+| Field | Published type | Meaning |
+| --- | --- | --- |
+| `record_key` | `string` | Hex SHA-256 of the compact JSON [record_sha hex, ordinal as text] |
+| `event_id` | `int64` | Meeting event ID |
+| `kind` | `dict` | amendment or vote |
+| `bill` | `string` | Bill as stated |
+| `number` | `string` | Amendment or vote number as stated |
+| `sponsor_bioguide` | `dict` | Sponsor as stated |
+| `amendment_type` | `dict` | Amendment type as stated |
+| `enbloc` | `string` | En bloc number as stated |
+| `source_description` | `string` | Description as stated |
+| `url` | `string` | Document URL, null when the record states none |
+| `record_sha` | `fixed[32]` | SHA-256 of the House XML body |
+| `ordinal` | `int32` | Position in that record, so duplicate links stay distinct |
+
+
+Outgoing: `committee_record_meeting`, `committee_record_sponsor`.
+
+Incoming: none.
+
+## `meeting_coverage` — Typed coverage facts per meeting
+
+One aspect of one meeting: recording, transcript, documents, witnesses or captions.
+
+Identity: `event_id, aspect` (primary_key; published identifier).
+
+| Field | Published type | Meaning |
+| --- | --- | --- |
+| `event_id` | `int64` | Meeting event ID |
+| `aspect` | `dict` | recording, transcript, documents, witnesses or captions |
+| `state` | `dict` | present, partial, claimed, empty, not_stated, unresolved, not_public, confirmed_absent or unknown; these never merge |
+| `basis` | `dict` | Which relation states it |
+| `count` | `int32` | Rows behind present |
+| `reason` | `dict` | Why a state holds, when known, such as old_evidence_disputes_negative_verdict |
+
+- `state`: confirmed_absent only from undisputed curated negative verdicts on every package of the meeting, each linked to that meeting alone; zero rows never prove absence. partial means excerpts only; claimed means only a video’s own text; for captions, no observation is unknown, never empty.
+
+Outgoing: `coverage_meeting`.
 
 Incoming: none.
 
@@ -771,6 +939,62 @@ many-to-one; match: `identifier`; nullable: true; resolution: `external`. Scope:
 
 many-to-many; match: `identifier`; nullable: true; resolution: `external`. Scope: typed treaty identifiers only.
 
+### `video_channel`
+
+`videos.handle` → `channels.handle`. The curated channel whose cache lists the video.
+
+many-to-one; match: `equal`; nullable: false; resolution: `unresolved_allowed`. Scope: selected release.
+
+### `match_meeting`
+
+`recording_matches.event_id` → `meetings.event_id`. The meeting an observation concerns.
+
+many-to-one; match: `equal`; nullable: true; resolution: `required`. Scope: selected release.
+
+### `match_recording`
+
+`recording_matches.video_key` → `videos.video_key`. The collected video; a publisher or curated key can lack one.
+
+many-to-one; match: `equal`; nullable: true; resolution: `unresolved_allowed`. Scope: selected release.
+
+### `committee_record_meeting`
+
+`committee_records.event_id` → `meetings.event_id`. The meeting whose record lists the document.
+
+many-to-one; match: `equal`; nullable: false; resolution: `required`. Scope: selected release.
+
+### `committee_record_sponsor`
+
+`committee_records.sponsor_bioguide` → `members.bioguide_id`. The sponsor as stated.
+
+many-to-one; match: `equal`; nullable: true; resolution: `unresolved_allowed`. Scope: selected release.
+
+### `coverage_meeting`
+
+`meeting_coverage.event_id` → `meetings.event_id`. The meeting a coverage fact describes.
+
+many-to-one; match: `equal`; nullable: false; resolution: `required`. Scope: selected release.
+
+### `channel_committee`
+
+`channels.system_code` → `committees.system_code`. The committee of a curated mapping.
+
+many-to-one; match: `equal`; nullable: false; resolution: `unresolved_allowed`. Scope: selected release.
+
+## Pinned upstream relations
+
+Held upstream and never mirrored here. A release names a relation’s generation and path only when it states that family’s digest.
+
+| Relation | Family and table | Keys | Local joins | Row | Limits |
+| --- | --- | --- | --- | --- | --- |
+| `bill_actions` | `bill-family/bill_actions` | `bill_id` | `bills.bill_id` | One recorded action on a bill | bills carries only the latest action: a summary is not a history. |
+| `bill_cosponsors` | `bill-family/bill_cosponsors` | `bill_id, bioguide_id` | `bills.bill_id`, `members.bioguide_id` | One cosponsorship | bills does not carry cosponsors. |
+| `member_votes` | `roll-call-votes/member_votes` | `vote_id, bioguide_id` | `bills.floor_votes[].vote_id`, `nominations.floor_votes[].vote_id`, `members.bioguide_id` | One member ballot | Local floor_votes hold totals, not ballots. |
+| `roll_call_votes` | `roll-call-votes/roll_call_votes` | `vote_id` | `bills.floor_votes[].vote_id`, `nominations.floor_votes[].vote_id` | One roll-call vote | Includes votes not tied to a local bill or nomination. |
+| `amendments` | `amendments/amendments` | `amendment_id` | `bills.amendments[].amendment_id` | One floor amendment | Coverage is limited by upstream; committee_records holds different, committee-stage documents. |
+| `nominations` | `nominations/nominations` | `congress, number, part_number` | none | One nomination part | Coverage is limited by upstream; local nominations cover what that generation holds. |
+| `committee_assignments` | `committee-rosters/committee_assignments` | `congress, system_code, bioguide_id` | `rosters.system_code`, `members.bioguide_id` | One committee assignment | Current Congress only: not a historical roster. |
+
 ## Query recipes (DuckDB)
 
 ### `bill_documents` — Documents directly annotated with a bill
@@ -959,3 +1183,48 @@ WHERE selected.list_row=? AND other.list_row<>selected.list_row ORDER BY other.l
 ```
 
 list_row belongs only to the selected release. Multiple shared endpoint keys must not duplicate a document.
+
+### `meeting_recordings` — A meeting's recordings with basis and status
+
+Requires: `recording_matches`.
+
+Result: One observation.
+
+Parameters, in order: `event_id` (example `115538`).
+
+```sql
+SELECT video_key,url,basis,decision,score,recording_scope,status,note
+FROM recording_matches WHERE event_id=? ORDER BY basis,video_key,url
+```
+
+claimed rows are what a video says about itself; conflicting rows are retained, not settled.
+
+### `channel_unmatched_videos` — Videos of a channel with no recording match
+
+Requires: `videos`, `recording_matches`.
+
+Result: One upload.
+
+Parameters, in order: `handle` (example `@AgRepublicans`).
+
+```sql
+SELECT v.video_key,v.title,v.published_at FROM videos v
+WHERE v.handle=? AND NOT EXISTS (SELECT 1 FROM recording_matches m WHERE m.video_key=v.video_key)
+ORDER BY v.published_at DESC NULLS LAST LIMIT 100
+```
+
+Channel membership is not evidence that a video is a hearing.
+
+### `coverage_counts` — Coverage counts for an aspect
+
+Requires: `meeting_coverage`.
+
+Result: One state.
+
+Parameters, in order: `aspect` (example `recording`).
+
+```sql
+SELECT state,count(*) AS meetings FROM meeting_coverage WHERE aspect=? GROUP BY state ORDER BY state
+```
+
+unknown and not_stated are not absence.
