@@ -287,3 +287,41 @@ The control rebuild was stopped before it finished, because free disk (14 GiB) w
 - **Hash checks** show consistency, not truth.
 - **The spicy-regs comparison** reports only what its queries project, with 72 rows removed. Its `lookup_key_self_check` is self-referential, and its table is a moving window.
 - **Viewer effects** were not measured.
+
+## Corrections (2026-11-02, ct-d3tk)
+
+These corrections change only the three counts below. The JSON evidence stays as first
+written. Inputs: both releases fetched with `viewer_publication.release_gate fetch`, which
+checks the manifest identity and each file's SHA-256.
+
+- **Moved meetings: 18, not 17.** Events whose witness `package_id` set differs between the
+  releases (DuckDB: per `event_id`, `list_sort(list_distinct(list(package_id)))` on each
+  side, joined, `<>`): 100039, 100157, 100202, 100306, 100310, 100430, 100526, 100540,
+  100593, 100626, 100671, 100728, 101167, 102104, 104472, 327084, 335104 and 335827. In
+  448651e7 every one links two or three packages in `meetings.transcripts`. The 36 MODS
+  titles were read from `govinfo.gov/metadata/pkg/<package>/mods.xml` on 2026-11-02, the
+  publisher's current copy, not the archive's raw mirror. Re-scored by word-set Jaccard
+  overlap with the meeting title (stop words removed), v21's package is better on 9, worse
+  on 4 (100202, 100671, 101167, 335827) and tied on 5. 100671 is marginal (0.17 against
+  0.11, two H.A.S.C. NDAA records). The earlier 8/3/6 used a different rough title test.
+  Neither test proves which package is right.
+- **`url_state` +21 is 14 + 7.** Exact `href` attribute values (HTML-unescaped) were read
+  from the two listing bodies, fetched from the public origin and checked by SHA-256. On
+  `6324e3ed…` there are 13 of the 21 new URLs, and on `b0fe3f4c…` there are 2.
+  `https://intelligence.house.gov/wp-json/` is on both, so the union is 14. The earlier
+  12/1/13 undercounted. The other 7 are on neither listing:
+  `admin-intelligence.house.gov/event/annual-worldwide-threats-assessment-hearing-open/`,
+  `intelligence.house.gov/event/cyber-intelligence-sharing-and-protection-act-of-2013/`,
+  `wp-json/wp/v2/event/{419,528,679}` and `wp-json/wp/v2/posts/{1025,1030}`. They are not
+  the "8 on newly real pages" claimed earlier, which double-counted one. The pages they
+  sit on were not read here.
+- **Moved `CHRG-*.zip` URLs: 10,195.** `next_attempt_at` changed on 10,205 shared URLs,
+  each with an unchanged `last_attempt`: 10,202 earlier and 3 later. Of the 10,202,
+  10,195 match `govinfo[.]gov/.*CHRG-[^/]*[.]zip$`. The other 7 are six govinfo `CHRG-*`
+  `.htm` files and one Senate PDF, and those six account for the earlier "10,201". The 3
+  later URLs are not ZIPs: two `docs.house.gov` bill XMLs and one congress.gov `CHRG` PDF.
+  "D1 added about 10,195" counts the same population.
+- **The comparison tool now fails a swapped subject key.** `release_comparison`, the
+  successor of `release_diff.py`, reports every per-column change on matched keys as a
+  `changed <column>` group. The publish gate refuses such a group unless a cause is
+  recorded.
