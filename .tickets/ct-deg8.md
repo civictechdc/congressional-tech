@@ -49,3 +49,7 @@ Round 1b 2026-11-02 (lead): Cause found (plan-engine): ordered array_agg keeps a
 **2026-11-02T15:12:34Z**
 
 2026-11-02 (lead): the production runtime is stripped (owner direction). The linux-amd64 artifact is uploaded and verified byte-identical: key runtime/docspec/5dae6119ccd4874156a291fd3c45865d937cfefb/linux-amd64/2a41926de83893e3eacb846d63e719502fc15d85cca59ce6bfb446672038209c/docspec, 196,653,664 bytes, Actions run 41464746969 (5dae611 = 5a3121c plus the strip step and a <1 GiB check). darwin-arm64 stripped: 372e7ce9285a6579c5217e83ae1b61708ef1939d62bbd547a0d8c996014a6edf (focused lane 4,641 passed). Descriptor: .cache/runtime-5a3121c/runtime-artifact.json. The rollback variable is saved. The pin file (source_revision 5dae611, both shas) and the DOCSPEC_RUNTIME_ARTIFACT variable change together at the merge to main. Uploaded via r4-r2-session (515e14a5: R2 session-token support).
+
+**2026-11-02T15:53:12Z**
+
+2026-11-02 spec-run: the full html compatible-version proof that eb40c54 refused at a 14 GiB pool (HashJoinInput) passed on 5a3121c, comparing all 124,651 kept rows with 0 differences, in 1,024 s at a peak of 5.79 GiB. The engine fix holds on real data.

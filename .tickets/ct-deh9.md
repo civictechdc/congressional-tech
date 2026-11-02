@@ -55,3 +55,7 @@ Round 1b 2026-11-02 (lead): Readings: sniff, xml and json are lock-only or prove
 **2026-11-02T15:35:26Z**
 
 2026-11-02 spec-run: registry entries proven with 0 differences (sniff lock_only 2,000; xml whole 2,000; json whole 123; bundle dd70d745 full 25). The full html proof hit a HashJoinInput refusal on the frozen eb40c54 engine (pool 14 GiB, peak 12.8 GiB, readings.plan → pending_bodies over 124,651 bodies / 322,923 captures; known_formats inlined 3x, expression-key joins; plan in .cache/archive-release/r1b-run/explain/html-pending/). Re-running on 5a3121c (ss-ud8y fixes that class). The bundle proof is flaky on one 38.8 MB XML body (ct-61ys).
+
+**2026-11-02T15:53:12Z**
+
+2026-11-02 spec-run: html entry proven in full on 5a3121c (124,651 kept rows, 0 differences, 5.79 GiB peak), committed f7b4b594 on candidate-r1b; all five registry entries validate. Selective job (captures rebuild, html re-read, D3, D4) started with the input manifest pinned (f8b509bc).
