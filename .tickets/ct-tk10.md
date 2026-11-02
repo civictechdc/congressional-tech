@@ -49,3 +49,7 @@ Round 1b 2026-11-02 (lead): impl-h done: 13 commits on r1b-h (1055fefb..36ac49a0
 **2026-11-02T14:25:28Z**
 
 2026-11-02 red-h2 (merge with fixes): red-h's probes now refuse, and 12 of 17 mutants were caught. The address-successor rule redirects across editions: all 69 address redirects come from version_keys addresses and land on different bodies (7 editions collapse onto 3 documents), against data model §7.5. New rule: redirect only to a successor holding the same body or text fingerprint; otherwise show a notice listing the address's current versions; all 69 bodies to be read. Gate 5's producer record is self-attested (it accepted README.md, the first commit, version 99): recompute the byte-hashed version at the recorded commit and require the table's registered producer. Tests for M1 (first_release with a live pointer) and M10 (link history). Sent to impl-h.
+
+**2026-11-02T14:50:56Z**
+
+2026-11-02 (lead): owner decision: delay the performance gate till later. Site speed targets don't gate this release; the deferral is recorded explicitly in archive-targets.json (status deferred, date, reason, restoring ticket) and in the release record, never as a silent bypass (r1b-targets-defer).

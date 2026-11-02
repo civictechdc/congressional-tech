@@ -33,3 +33,7 @@ publish_v21 was built with ad hoc /private/tmp/publish_v* scripts outside the gu
 **2026-11-02T04:01:45Z**
 
 Code on worktree-agent-a5550c04138214670 @ b3c4aa3c. Review verdict: merge, stay open. Open: reconcile and check_scratch mutants survive, so add tests; the checked-in spec is blocked, so run C7 (40 GiB free before start, up to 64 GiB scratch); remove re-stamp when ct-deh9 wires.
+
+**2026-11-02T14:50:56Z**
+
+2026-11-02 (lead): green-e2 approves r1b-e2 at 8240567c for code; acceptance is unmet until backfill-selective runs on real data. archive-jobs.json has no rss_gb (all archive jobs refuse on main), and legacy Senate state lacks error markers; both sent to impl-e2.

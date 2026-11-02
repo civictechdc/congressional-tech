@@ -36,3 +36,7 @@ Round 1b 2026-11-02 (lead): 1,446 Files.Serve PDFs have no name in the URL or he
 **2026-11-02T14:46:01Z**
 
 2026-11-02 green-g (request changes): 1,444 of 1,496 blank filenames are named in raw by the redirect's final URL or Content-Disposition; captures.py:281 (fdb9242c) prefers record.url over final_url. impl-e1 keeps the final URL; impl-g derives names from it and h_content_disposition; the 'query URL' reason only checked for '?'. Also an undocumented saved-file ranking change moved 196 GovInfo PDFs to congress.gov filenames: justify from §7.5 or revert.
+
+**2026-11-02T14:50:56Z**
+
+2026-11-02 (lead): red-g: rendition titles outrank the publisher's own link text (coalesce order), and no_address tests the capture url, not the published context_url (203 documents and 124 senate/pages bodies reachable only via null-url rows). Sent to impl-g, along with e1's url = final URL decision.
