@@ -455,9 +455,12 @@ GENERIC_TITLE_SQL="""(o.title IS NOT NULL AND regexp_like(o.title,'[A-Za-z]') AN
 
 # Listed documents whose title is a link word by the page-signals registry (the rule titles use)
 # or by GENERIC_TITLE_SQL (an independent small vocabulary): either one refuses the release.
+# The 64-character bound is the rule's (source-annotations-pages.sql): a longer page title that
+# starts like a link word is a real title ("Click Here: Accessible Federal Technolog… | Senate
+# Committee On Aging", a 2022 hearing).
 GENERIC_TITLES_SQL=f"""SELECT DISTINCT o.doc_key,o.title FROM ordered o
  LEFT JOIN (SELECT pattern FROM page_signals WHERE kind='link_word') g
-  ON length(o.title)<=96 AND regexp_like(regexp_replace(trim(o.title),'\\s+',' ','g'),g.pattern)
+  ON length(o.title)<=64 AND regexp_like(regexp_replace(trim(o.title),'\\s+',' ','g'),g.pattern)
  WHERE g.pattern IS NOT NULL OR {GENERIC_TITLE_SQL}"""
 
 

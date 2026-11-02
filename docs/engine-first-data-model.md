@@ -603,7 +603,10 @@ title          := the applying title_override (§7.9), else the saved file's rea
                   title or heading in saved-file order; null when none, and the site
                   shows the filename. A link back to its own page never groups it. A link word (page signals kind `link_word`: "ZIP", "PDF",
                   "here", "Download PDF") says what a link does and is never a title, as
-                  a reading title or as link text; a recovery-only document takes its
+                  a reading title or as link text; a reading title or heading of more than
+                  64 characters is never a link word, and the gate uses the same bound (the
+                  Aging hearing "Click Here: Accessible Federal Technolog… | Senate
+                  Committee On Aging", 71); a recovery-only document takes its
                   recovered body's reading title, else its original link's text. The
                   model invariant `generic_titles` is 0. `sources.link_text` stays as written.
 witness_keys   := [[PHASE-2]] §2; empty in phase 1

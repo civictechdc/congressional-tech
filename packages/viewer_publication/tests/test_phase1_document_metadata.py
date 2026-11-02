@@ -217,3 +217,28 @@ def test_a_title_generic_by_either_rule_refuses(tmp_path):
     result = run_job(tmp_path, NativeDatasets.from_config(os.environ['DOCSPEC_JOB_CONFIG']), inputs=inputs, steps=[], outputs=[],
         queries=[dict(name='g', sql=f'SELECT title FROM ({GENERIC_TITLES_SQL}) g ORDER BY title')])
     assert sorted(row['title'] for row in result['g']) == sorted(titles[:10])
+
+
+def test_the_generic_title_gate_checks_the_titles_the_link_word_rule_keeps(tmp_path):
+    """A page title longer than the rule's bound is a title, for the rule and the gate alike.
+
+    Raw (body e5abc9c8…, aging.senate.gov): the Aging Committee's 2022-07-28 hearing is named
+    'Click Here: Accessible Federal Technology for People with Disabilities, Older Americans,
+    and Veterans'; its <title> is the 71-character truncation below. The rule reads link words
+    in titles of at most 64 characters, the gate read 96 (bbf7dbd5), so the release refused a
+    title the rule had kept.
+    """
+    from viewer_publication.archive_model import GENERIC_TITLES_SQL, registry_inputs
+    aging = 'Click Here: Accessible Federal Technolog... | Senate Committee On Aging'
+    pages = [dict(body_hex=f'{i:064x}', status='completed', title=t, heading=None)
+             for i, t in enumerate([aging, 'Click here', 'Download testimony'])]
+    inputs = registry_inputs(tmp_path / 'registries') + [json_input(tmp_path, 'pages', pages,
+        body_hex='Utf8', status='Utf8', title='Utf8', heading='Utf8')]
+    steps = [dict(name='page_facts', sql="SELECT decode(body_hex,'hex') AS body_sha,status,title,heading,cast(NULL AS DATE) AS content_date FROM pages"),
+             dict(name='source_annotation_pages', sql=(ROOT / 'model/sql/source-annotations-pages.sql').read_text()),
+             dict(name='ordered', sql="SELECT encode(body_sha,'hex') AS doc_key,title FROM source_annotation_pages")]
+    result = run_job(tmp_path, NativeDatasets.from_config(os.environ['DOCSPEC_JOB_CONFIG']), inputs=inputs, steps=steps, outputs=[],
+        queries=[dict(name='kept', sql='SELECT title FROM ordered WHERE title IS NOT NULL'),
+                 dict(name='generic', sql=f'SELECT title FROM ({GENERIC_TITLES_SQL}) g')])
+    assert [row['title'] for row in result['kept']] == [aging]
+    assert result['generic'] == []
