@@ -12,6 +12,7 @@ from congress_api.adapters.common import AdapterContext
 from congress_api.adapters.senate import official_events
 from congress_api.adapters.senate import records as adapt
 from congress_api.matching.senate_corrections import DATE_CORRECTIONS
+from congress_api.models.senate import normalize_senate_state as records_normalize
 from congress_api.parsers.senate import parsed as records_parsed
 from congress_api.parsers.senate_page import event_details, witnesses
 from congress_api.retention.tables import read_state as records_read_state
@@ -367,10 +368,49 @@ def test_failed_pages_count_against_the_refresh_limit(tmp_path, monkeypatch):
     assert sum(page.get('status') == 'error' for page in saved['pages'].values()) == 4
 
 
-def test_pages_already_in_error_do_not_make_an_outage(tmp_path, monkeypatch):
-    urls = hearing_urls(4)
+def saved_error_pages(tmp_path, urls, *, host_answered):
+    check = {'mode': 'live', 'outcome': 'error', 'error': '403 Forbidden', **({'host_answered': True} if host_answered else {})}
     state = {'indian.senate.gov': {'listings': {url: ['2026-08-26', 'Hearing'] for url in urls}, 'checked': '2026-09-28', 'wordpress': True,
-                                   'pages': {url: {'title': '', 'lines': [], 'witnesses': [], 'documents': [], 'status': 'error'} for url in urls}}}
+                                   'pages': {url: {'title': '', 'lines': [], 'witnesses': [], 'documents': [], 'status': 'error'} for url in urls},
+                                   'workflow': {url: {'last_check': dict(check)} for url in urls}}}
     records_write_state(tmp_path/'senate.json.gz', state)
-    outage_run(tmp_path, monkeypatch, urls)
+
+
+def test_a_repeat_run_over_never_fetched_pages_fails(tmp_path, monkeypatch):
+    # Pages in error that never answered while their host did are not known page failures.
+    urls = hearing_urls(4)
+    saved_error_pages(tmp_path, urls, host_answered=False)
+    with pytest.raises(RuntimeError, match='site-wide page outage'):
+        outage_run(tmp_path, monkeypatch, urls)
+
+
+def test_one_answer_then_ten_failures_fails_the_host(tmp_path, monkeypatch):
+    urls = hearing_urls(12)
+    with pytest.raises(RuntimeError, match='site-wide page outage'):
+        outage_run(tmp_path, monkeypatch, urls, answering={urls[0]})
+    saved = records_read_state(tmp_path/'senate.json.gz')['indian.senate.gov']
+    assert sum(page.get('status') == 'error' for page in saved['pages'].values()) == 10
+    # The outage tail is not confirmed as page failures.
+    assert not any(record.get('last_check', {}).get('host_answered') for record in saved['workflow'].values())
+
+
+def test_known_page_failures_do_not_trip_an_outage(tmp_path, monkeypatch):
+    # Budget's case: pages that failed while the host answered stay page outcomes.
+    urls = hearing_urls(7)
+    saved_error_pages(tmp_path, urls, host_answered=True)
+    fetched = outage_run(tmp_path, monkeypatch, urls)
+    assert set(urls) <= set(fetched)
     assert list(tmp_path.glob('*.csv'))
+    saved = records_read_state(tmp_path/'senate.json.gz')['indian.senate.gov']
+    assert all(saved['workflow'][url]['last_check']['host_answered'] for url in urls)
+
+
+def test_the_host_answered_marker_survives_a_round_trip(tmp_path, monkeypatch):
+    urls = hearing_urls(6)
+    outage_run(tmp_path, monkeypatch, urls, answering={urls[-1]})
+    saved = records_read_state(tmp_path/'senate.json.gz')['indian.senate.gov']
+    assert [url for url in urls if saved['workflow'][url]['last_check'].get('host_answered')] == urls[:-1]
+    records_write_state(tmp_path/'again.json.gz', records_normalize(records_read_state(tmp_path/'senate.json.gz')))
+    again = records_read_state(tmp_path/'again.json.gz')['indian.senate.gov']
+    assert all(again['workflow'][url]['last_check']['host_answered'] for url in urls[:-1])
+
