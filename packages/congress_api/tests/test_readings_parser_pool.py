@@ -81,7 +81,7 @@ def test_parallel_ranges_keep_main_thread_decisions_and_close_before_export(tmp_
             return native.run_job(path)
     args['engine']=CheckedEngine()
     result=readings.stage_once(**args,work=work,body_store=store,worker_factory=Worker,
-        parser_workers=2,parser_memory_bytes=1<<30,max_cache_bytes=1<<20,
+        parser_workers=2,parser_memory_bytes=4<<30,max_cache_bytes=1<<20,
         unreadable_store=BodyStore(Durable(tmp_path/'durable')))
     rows=pq.read_table(result['readings']).to_pylist()
     assert state['peak']==2 and state['created']==state['closed']==2
@@ -112,7 +112,7 @@ def test_parallel_page_preflight_refuses_before_get_or_worker(tmp_path):
     def forbidden(*args,**kwargs):raise AssertionError('Worker before actual-size cache admission')
     with pytest.raises(ValueError,match='prefetch.*budget'):
         readings.stage_once(**args,work=work,body_store=store,worker_factory=forbidden,
-            parser_workers=2,parser_memory_bytes=1<<30,max_cache_bytes=1)
+            parser_workers=2,parser_memory_bytes=4<<30,max_cache_bytes=1)
     assert client.reads==[] and not (work/'body-bytes').exists()
 
 
@@ -198,6 +198,6 @@ def test_prefetch_window_reserves_slots_for_still_active_range_parsers(tmp_path)
             return dict(status='completed',value=dict(read_bytes=len(data),rows=[dict(parser='sniff',
                 parser_version=request['versions']['sniff'],status='completed',format='pdf')]))
     result=readings.stage_once(**args,work=work,body_store=store,worker_factory=Worker,
-        parser_workers=workers,parser_memory_bytes=8<<30,max_cache_bytes=8<<20)
+        parser_workers=workers,parser_memory_bytes=workers*readings.WORKER_MEMORY_BYTES,max_cache_bytes=8<<20)
     assert state['overlap'] and len(client.reads)==128 and result['pending_reads']==0
     assert pq.read_metadata(result['readings']).num_rows==128

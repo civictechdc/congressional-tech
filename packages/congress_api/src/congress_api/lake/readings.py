@@ -29,7 +29,15 @@ MAX_DECODED_BYTES=64<<20
 RAW_CACHE_BYTES=1<<30
 RAW_CACHE_CEILING=10<<30
 GZIP_RULE_FIELDS=tuple('gzip_rule'+str(n) for n in range(1,5))
-WORKER_MEMORY_BYTES=512<<20
+# A reading must be a function of (body, parser version), never of when RSS was sampled
+# (ct-61ys). Peak RSS parsing one decoded page body was measured at up to 30x its size
+# (json 13.7 MiB -> 407 MiB, 27.1 MiB -> 713 MiB; xml 37 MiB -> 587 MiB; fresh process, the
+# 25 v21 unreadable-decision bodies). Bodies above PAGE_PARSE_MAX_BYTES are refused as
+# memory_limit before parsing; at or below it, 30x is 720 MiB, 1.4x under the cap, so the
+# sampled limit is a safety net a real body does not reach. v21 has one page reading above
+# the bound (c90e782a, 37 MiB xml, which v21 also decided memory_limit).
+WORKER_MEMORY_BYTES=1<<30
+PAGE_PARSE_MAX_BYTES=24<<20
 PARSER_MEMORY_BYTES=10<<30
 WORKER_TIMEOUT_SECONDS=15
 LINK_FIELDS=('href','text','tag','basis','group_path','doc_type','add_date','publish_date','remove_date')
@@ -87,12 +95,23 @@ def parse_payload(payload):
                         if entity is not stream:entity.close()
                 if len(data)>MAX_DECODED_BYTES:
                     return dict(row=dict(status='error',error_type='decoded_size_limit'),read_bytes=count)
+                _bound_page_parse(data)
         if source['parser']!='sniff':
             from congress_api.parsers.archive_readings import read_page
             row=read_page(data,source['parser'])
         return dict(row=row,read_bytes=count)
     except (OSError, EOFError) as exc:
         return dict(read_error=type(exc).__name__,read_bytes=count)
+
+
+def _bound_page_parse(data):
+    """Refuse a page body too large to parse within the worker cap, before parsing.
+
+    Raised as MemoryError, so the worker reports memory_limit exactly as an exhausted parse
+    would, but from the decoded size alone: the same body always gets the same outcome.
+    """
+    if len(data)>PAGE_PARSE_MAX_BYTES:
+        raise MemoryError('decoded page body exceeds the parse bound')
 
 
 def _reading_fields():
@@ -883,6 +902,7 @@ def parse_once_payload(payload,*,body_store=None):
                 if source is None:source=open_source()
                 if not request.get('prefetched') and data is None:
                     data,source.stored_gzip=_page_entity(source.read(0,source.size),request['body_sha'])
+                if data is not None:_bound_page_parse(data)
                 row=(dict(status='error',error_type='decoded_size_limit') if data is None else read_page(data,parser))
             rows.append(dict(row,parser=parser,parser_version=versions[parser]))
         return result(rows=rows,gzip_rule=gzip_rule,read_bytes=0 if source is None else source.read_bytes)
