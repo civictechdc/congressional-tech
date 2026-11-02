@@ -59,3 +59,7 @@ Round 1b 2026-11-02 (lead): Readings: sniff, xml and json are lock-only or prove
 **2026-11-02T15:53:12Z**
 
 2026-11-02 spec-run: html entry proven in full on 5a3121c (124,651 kept rows, 0 differences, 5.79 GiB peak), committed f7b4b594 on candidate-r1b; all five registry entries validate. Selective job (captures rebuild, html re-read, D3, D4) started with the input manifest pinned (f8b509bc).
+
+**2026-11-02T17:34:10Z**
+
+2026-11-02 spec-run: under the size-bound predicate (PAGE_PARSE_MAX_BYTES 25,165,824), the full html proof passed: 124,651 kept rows, 0 differences, 1,056 s, peak 5.57 GiB. All 75,185 missing xml/json bodies were fetched into the mirror as exact stored objects, each verified for stored size, MD5 where captures records it, decoded sha256 and length; three passes, covering 1 truncated read and 6 transient 502/520 errors. Full xml and json proofs are running.
