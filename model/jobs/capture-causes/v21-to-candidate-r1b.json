@@ -1,0 +1,557 @@
+{
+ "version": 1,
+ "old": "publish_v21 captures.parquet",
+ "new": "candidate-r1b D1 /Users/mikewolfd/Work/congressional-tech/.cache/archive-release/r1b-run/lake/captures/metadata/00035-76de7ca6-25f4-43a5-bfc0-1269fe1e4053.metadata.json",
+ "only_old": 0,
+ "only_new": 0,
+ "removed_columns": [],
+ "added_columns": [
+  "mapping_version",
+  "original_path"
+ ],
+ "added_columns_reason": "mapping_version (field 41, publish gate 5) and relative original_path (field 42), round 1b e1.",
+ "pairs": [
+  [
+   "attempt",
+   "0",
+   null,
+   36854
+  ],
+  [
+   "complete",
+   null,
+   "true",
+   16
+  ],
+  [
+   "fetch_http_status",
+   "200",
+   null,
+   34584
+  ],
+  [
+   "fetch_http_status",
+   null,
+   "200",
+   7977
+  ],
+  [
+   "fetch_http_status",
+   null,
+   "202",
+   43
+  ],
+  [
+   "fetch_http_status",
+   null,
+   "206",
+   3
+  ],
+  [
+   "fetch_http_status",
+   null,
+   "403",
+   1
+  ],
+  [
+   "fetch_http_status",
+   null,
+   "404",
+   1753
+  ],
+  [
+   "fetch_http_status",
+   null,
+   "429",
+   5
+  ],
+  [
+   "fetch_http_status",
+   null,
+   "503",
+   8
+  ],
+  [
+   "fetch_outcome",
+   "failed",
+   null,
+   36854
+  ],
+  [
+   "fetch_outcome",
+   "stored",
+   "failed",
+   19735
+  ],
+  [
+   "fetch_outcome",
+   "stored",
+   "retry_later",
+   13
+  ],
+  [
+   "fetch_outcome",
+   "stored",
+   "unchanged",
+   2031
+  ],
+  [
+   "good_fetch",
+   "false",
+   "true",
+   52105
+  ],
+  [
+   "good_fetch",
+   "true",
+   "false",
+   12655
+  ],
+  [
+   "http_status",
+   null,
+   "200",
+   52113
+  ],
+  [
+   "http_status",
+   null,
+   "202",
+   86
+  ],
+  [
+   "http_status",
+   null,
+   "206",
+   3
+  ],
+  [
+   "http_status",
+   null,
+   "403",
+   1
+  ],
+  [
+   "http_status",
+   null,
+   "404",
+   3028
+  ],
+  [
+   "http_status",
+   null,
+   "429",
+   10
+  ],
+  [
+   "http_status",
+   null,
+   "503",
+   8
+  ],
+  [
+   "outcome",
+   "failed",
+   "reference",
+   34584
+  ],
+  [
+   "outcome",
+   "failed",
+   "saved-record",
+   2270
+  ],
+  [
+   "outcome",
+   "stored",
+   "failed",
+   20308
+  ],
+  [
+   "outcome",
+   "stored",
+   "retry_later",
+   18
+  ],
+  [
+   "outcome",
+   "stored",
+   "unchanged",
+   2031
+  ]
+ ],
+ "causes": [
+  {
+   "column": "attempt",
+   "old": "0",
+   "new": null,
+   "cause": "record_only_no_attempt",
+   "rows": 36854,
+   "reason": "Reference and saved-record rows establish no attempt."
+  },
+  {
+   "column": "complete",
+   "old": null,
+   "new": "true",
+   "cause": "recorded_complete",
+   "rows": 16,
+   "reason": "previous_receipt.body_complete is recorded true (ct-v8y0, 0043edfe)."
+  },
+  {
+   "column": "fetch_http_status",
+   "old": "200",
+   "new": null,
+   "cause": "record_only_no_fetch",
+   "rows": 34584,
+   "reason": "Reference and saved-record rows establish no fetch state."
+  },
+  {
+   "column": "fetch_http_status",
+   "old": null,
+   "new": "200",
+   "cause": "stated_status_read",
+   "rows": 7977,
+   "reason": "The status the owning object states (`status`, ct-bxqa) is read."
+  },
+  {
+   "column": "fetch_http_status",
+   "old": null,
+   "new": "202",
+   "cause": "stated_status_read",
+   "rows": 43,
+   "reason": "The status the owning object states (`status`, ct-bxqa) is read."
+  },
+  {
+   "column": "fetch_http_status",
+   "old": null,
+   "new": "206",
+   "cause": "stated_status_read",
+   "rows": 3,
+   "reason": "The status the owning object states (`status`, ct-bxqa) is read."
+  },
+  {
+   "column": "fetch_http_status",
+   "old": null,
+   "new": "403",
+   "cause": "stated_status_read",
+   "rows": 1,
+   "reason": "The status the owning object states (`status`, ct-bxqa) is read."
+  },
+  {
+   "column": "fetch_http_status",
+   "old": null,
+   "new": "404",
+   "cause": "stated_status_read",
+   "rows": 1753,
+   "reason": "The status the owning object states (`status`, ct-bxqa) is read."
+  },
+  {
+   "column": "fetch_http_status",
+   "old": null,
+   "new": "429",
+   "cause": "stated_status_read",
+   "rows": 5,
+   "reason": "The status the owning object states (`status`, ct-bxqa) is read."
+  },
+  {
+   "column": "fetch_http_status",
+   "old": null,
+   "new": "503",
+   "cause": "stated_status_read",
+   "rows": 8,
+   "reason": "The status the owning object states (`status`, ct-bxqa) is read."
+  },
+  {
+   "column": "fetch_outcome",
+   "old": "failed",
+   "new": null,
+   "cause": "record_only_no_fetch",
+   "rows": 36854,
+   "reason": "Reference and saved-record rows establish no fetch state."
+  },
+  {
+   "column": "fetch_outcome",
+   "old": "stored",
+   "new": "failed",
+   "cause": "no_final_document_body",
+   "rows": 2643,
+   "reason": "The item has no final document body, so its fetch is failed (\u00a77.7)."
+  },
+  {
+   "column": "fetch_outcome",
+   "old": "stored",
+   "new": "failed",
+   "cause": "raw_failure",
+   "rows": 12416,
+   "reason": "The raw line or its owner states an explicit failure outcome or error (rca-d, 12,386 class)."
+  },
+  {
+   "column": "fetch_outcome",
+   "old": "stored",
+   "new": "failed",
+   "cause": "unaddressed_row_not_a_document",
+   "rows": 4676,
+   "reason": "A row with no request address is its own fetch; its body is not a document."
+  },
+  {
+   "column": "fetch_outcome",
+   "old": "stored",
+   "new": "retry_later",
+   "cause": "retry_status",
+   "rows": 13,
+   "reason": "A stated 429 or 503 is retry_later."
+  },
+  {
+   "column": "fetch_outcome",
+   "old": "stored",
+   "new": "unchanged",
+   "cause": "writer_stated_unchanged",
+   "rows": 2031,
+   "reason": "The pipeline-data writer recorded outcome unchanged (git snapshot not modified)."
+  },
+  {
+   "column": "good_fetch",
+   "old": "false",
+   "new": "true",
+   "cause": "recorded_complete",
+   "rows": 16,
+   "reason": "previous_receipt.body_complete is recorded true (ct-v8y0, 0043edfe)."
+  },
+  {
+   "column": "good_fetch",
+   "old": "false",
+   "new": "true",
+   "cause": "stated_2xx_read",
+   "rows": 52089,
+   "reason": "A stated 2xx other than 202 on a complete stored body makes it a good fetch (ct-bxqa)."
+  },
+  {
+   "column": "good_fetch",
+   "old": "true",
+   "new": "false",
+   "cause": "follows_empty_body",
+   "rows": 281,
+   "reason": "Good fetch follows the explained outcome change: empty_body"
+  },
+  {
+   "column": "good_fetch",
+   "old": "true",
+   "new": "false",
+   "cause": "follows_envelope_over_empty_origin",
+   "rows": 5,
+   "reason": "Good fetch follows the explained outcome change: envelope_over_empty_origin"
+  },
+  {
+   "column": "good_fetch",
+   "old": "true",
+   "new": "false",
+   "cause": "follows_non_document_status",
+   "rows": 15,
+   "reason": "Good fetch follows the explained outcome change: non_document_status"
+  },
+  {
+   "column": "good_fetch",
+   "old": "true",
+   "new": "false",
+   "cause": "follows_raw_failure",
+   "rows": 12354,
+   "reason": "Good fetch follows the explained outcome change: raw_failure"
+  },
+  {
+   "column": "http_status",
+   "old": null,
+   "new": "200",
+   "cause": "stated_status_read",
+   "rows": 52113,
+   "reason": "The status the owning object states (`status`, ct-bxqa) is read."
+  },
+  {
+   "column": "http_status",
+   "old": null,
+   "new": "202",
+   "cause": "stated_status_read",
+   "rows": 86,
+   "reason": "The status the owning object states (`status`, ct-bxqa) is read."
+  },
+  {
+   "column": "http_status",
+   "old": null,
+   "new": "206",
+   "cause": "stated_status_read",
+   "rows": 3,
+   "reason": "The status the owning object states (`status`, ct-bxqa) is read."
+  },
+  {
+   "column": "http_status",
+   "old": null,
+   "new": "403",
+   "cause": "stated_status_read",
+   "rows": 1,
+   "reason": "The status the owning object states (`status`, ct-bxqa) is read."
+  },
+  {
+   "column": "http_status",
+   "old": null,
+   "new": "404",
+   "cause": "stated_status_read",
+   "rows": 3028,
+   "reason": "The status the owning object states (`status`, ct-bxqa) is read."
+  },
+  {
+   "column": "http_status",
+   "old": null,
+   "new": "429",
+   "cause": "stated_status_read",
+   "rows": 10,
+   "reason": "The status the owning object states (`status`, ct-bxqa) is read."
+  },
+  {
+   "column": "http_status",
+   "old": null,
+   "new": "503",
+   "cause": "stated_status_read",
+   "rows": 8,
+   "reason": "The status the owning object states (`status`, ct-bxqa) is read."
+  },
+  {
+   "column": "outcome",
+   "old": "failed",
+   "new": "reference",
+   "cause": "mods_descriptor_reference",
+   "rows": 34584,
+   "reason": "GovInfo MODS descriptor: no body, status captured; a reference, not a failed fetch (rca-d, 0043edfe registry)."
+  },
+  {
+   "column": "outcome",
+   "old": "failed",
+   "new": "saved-record",
+   "cause": "inline_saved_record",
+   "rows": 2270,
+   "reason": "Inline record with no body is a saved-record, not a failed fetch (rca-d)."
+  },
+  {
+   "column": "outcome",
+   "old": "stored",
+   "new": "failed",
+   "cause": "empty_body",
+   "rows": 7423,
+   "reason": "An empty body (0 bytes or SHA-256 of empty input) is not a document (ct-3l1c)."
+  },
+  {
+   "column": "outcome",
+   "old": "stored",
+   "new": "failed",
+   "cause": "envelope_over_empty_origin",
+   "rows": 5,
+   "reason": "A provider envelope over an empty origin body is not a document (ct-fh62)."
+  },
+  {
+   "column": "outcome",
+   "old": "stored",
+   "new": "failed",
+   "cause": "non_document_status",
+   "rows": 523,
+   "reason": "A stated non-2xx or 202 status is not a document (ct-bxqa, ct-c6b0)."
+  },
+  {
+   "column": "outcome",
+   "old": "stored",
+   "new": "failed",
+   "cause": "partial_206",
+   "rows": 3,
+   "reason": "A 206 whose content_range is partial is not a document (red-e1)."
+  },
+  {
+   "column": "outcome",
+   "old": "stored",
+   "new": "failed",
+   "cause": "raw_failure",
+   "rows": 12354,
+   "reason": "The raw line or its owner states an explicit failure outcome or error (rca-d, 12,386 class)."
+  },
+  {
+   "column": "outcome",
+   "old": "stored",
+   "new": "retry_later",
+   "cause": "retry_status",
+   "rows": 18,
+   "reason": "A stated 429 or 503 is retry_later."
+  },
+  {
+   "column": "outcome",
+   "old": "stored",
+   "new": "unchanged",
+   "cause": "writer_stated_unchanged",
+   "rows": 2031,
+   "reason": "The pipeline-data writer recorded outcome unchanged (git snapshot not modified)."
+  },
+  {
+   "column": "context_url",
+   "cause": "final_url_from_record",
+   "rows": 11,
+   "reason": "captures.url is the final URL (record.final_url/resolved_url), data model \u00a75 (d3e49b9d).",
+   "reported_only": true
+  },
+  {
+   "column": "recovered_url",
+   "cause": "final_url_from_record",
+   "rows": 281,
+   "reason": "captures.url is the final URL (record.final_url/resolved_url), data model \u00a75 (d3e49b9d).",
+   "reported_only": true
+  },
+  {
+   "column": "url",
+   "cause": "final_url_from_record",
+   "rows": 34659,
+   "reason": "captures.url is the final URL (record.final_url/resolved_url), data model \u00a75 (d3e49b9d).",
+   "reported_only": true
+  }
+ ],
+ "model_effects": [
+  {
+   "cause": "m3u8 tracks",
+   "rows": 2389,
+   "reason": "Stated 200 Senate HLS playlists become good fetches (ct-bxqa); annex \u00a72 track-m3u8. Recordings with any track 1,359 -> 3,743; 5 empty tracks drop.",
+   "evidence": {
+    "path": "/Users/mikewolfd/Work/congressional-tech/.cache/rounds/r1b/e1/staged/recordings-causes.json",
+    "sha256": "943d121d5d34c7b1ad57ac33a441073f6770c445a1601e5982b8739a0976c932",
+    "size": 1434
+   }
+  },
+  {
+   "cause": "segments are media",
+   "reason": "format other + video/audio or the registry segment pattern is role media, never a document or track (red-e1)."
+  },
+  {
+   "cause": "Senate WAF block page",
+   "reason": "A redirect is judged by both addresses and the waf.htm page is an error_response (red-e1b, documents 2026-09-29:9230)."
+  }
+ ],
+ "evidence": [
+  {
+   "path": "/Users/mikewolfd/Work/congressional-tech/.cache/rounds/r1b/e1/causes/changes.parquet",
+   "sha256": "5846d0c79ff8a9f131f6d8efed253a89568d4ec15cf21d780a574f3386bb70e2",
+   "size": 3695421
+  },
+  {
+   "path": "/Users/mikewolfd/Work/congressional-tech/.cache/rounds/r1b/e1/causes/address-changes.parquet",
+   "sha256": "0e682f244a399431aeec0cbb847c2a284fc2d24423d1662344d4520bf027afba",
+   "size": 3303807
+  },
+  {
+   "path": "/Users/mikewolfd/Work/congressional-tech/.cache/rounds/r1b/e1/causes/judged.parquet",
+   "sha256": "c9ebfa5aa10de6d4bc83ba7971b27ceb9ef3da7f10d147173cddf4a4e1b5f174",
+   "size": 435998
+  },
+  {
+   "path": "/Users/mikewolfd/Work/congressional-tech/.cache/rounds/r1b/e1/causes/summary.json",
+   "sha256": "4b814a6cb21e79f529a35aceca8c55757393e34748d0e0c983edd4cdd86b5b98",
+   "size": 3376
+  },
+  {
+   "path": "/Users/mikewolfd/Work/congressional-tech/.cache/rounds/r1b/e1/causes/url-summary.json",
+   "sha256": "3f162338c96d71a92f1cdb1815828b06528f4649d5e9599eec8a2d95c28fcf0e",
+   "size": 252
+  }
+ ]
+}
