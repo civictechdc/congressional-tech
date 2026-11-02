@@ -361,6 +361,49 @@ def test_completion_appends_a_candidate_the_base_never_had_and_stops_over_budget
     with pytest.raises(SelectiveStop,match=f'{len(base)} work items, over max_work_items 1'):execute(over)
 
 
+def test_a_failed_model_attempt_is_cleared_before_the_first_scratch_check(tmp_path,fixture,monkeypatch):
+    # Defect guarded: cleaning model-scratch only after a scratch check has already counted it.
+    import viewer_publication.archive_selective as selective
+    from congress_api.lake.capture_backfill import _allocated_bytes
+    spec=selective_spec(tmp_path,fixture,dict(captures=B),differential_rows=0,through='tables')
+    execute(spec)
+    junk=Path(spec['work'])/'model-scratch'/'junk';junk.parent.mkdir();junk.write_bytes(os.urandom(8<<20))
+    monkeypatch.setattr(selective,'SCRATCH_BYTES',_allocated_bytes(Path(spec['work']))-(4<<20))
+    assert execute(dict(spec,resume=True,through='model'))['status']=='built'
+
+
+def test_the_model_checks_scratch_after_the_tables_are_built(tmp_path,fixture,monkeypatch):
+    # Defect guarded: deleting _model's check, so tables that grew the work go unchecked.
+    import viewer_publication.archive_selective as selective
+    events=[]
+    for name in ('_guard','execute_model'):
+        original=getattr(selective,name)
+        def wrapped(*a,_original=original,_name=name,**k):
+            result=_original(*a,**k);events.append(_name);return result
+        monkeypatch.setattr(selective,name,wrapped)
+    check=selective.Run.check_scratch
+    monkeypatch.setattr(selective.Run,'check_scratch',lambda self:(events.append('check'),check(self))[1])
+    execute(selective_spec(tmp_path,fixture,dict(captures=B),differential_rows=0))
+    assert 'check' in events[events.index('_guard'):events.index('execute_model')]
+
+
+def test_the_reconcile_keys_rows_by_source(tmp_path,fixture,monkeypatch):
+    # Defect guarded: reconciling on record_sha alone counts a same-body row of another source.
+    from viewer_publication.archive_selective import _versions
+    base=pq.read_table(fixture['base']['meeting_records']);rows=base.to_pylist()
+    lost=next(row for row in rows if row['source']=='house_xml')
+    twin=dict(lost,source='congress_gov',parser_version=_versions()['meeting_records']['congress_gov'])
+    path=tmp_path/'twin-meetings.parquet';pq.write_table(pa.Table.from_pylist([*rows,twin],schema=base.schema),path)
+    original=meeting_records.append
+    def append(staged,**kwargs):
+        table=pq.read_table(staged['records']);kept=[r for r in table.to_pylist() if r['record_sha']!=lost['record_sha']]
+        out=Path(str(staged['records'])+'.dropped.parquet');pq.write_table(pa.Table.from_pylist(kept,schema=table.schema),out)
+        return original(dict(staged,records=out),**kwargs)
+    monkeypatch.setattr(meeting_records,'append',append)
+    spec=selective_spec(tmp_path,fixture,dict(meeting_records="source='house_xml'"),differential_rows=0,base=dict(meeting_records=str(path)),through='tables')
+    with pytest.raises(SelectiveStop,match='a row was lost'):execute(spec)
+
+
 RESUME_SCRIPT='''
 import json,os,signal,sys
 from pathlib import Path

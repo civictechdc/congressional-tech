@@ -388,16 +388,21 @@ def _model_value(run):
     return value
 
 
-def _model(run):
-    """Step 9: one owned output and scratch; an unaccepted attempt's data is deleted before a retry.
+def _clear_unaccepted_model(run):
+    """Delete an unaccepted model attempt's output and scratch, before any scratch check.
 
-    The runtime is not identity, so a retry with a larger pool resumes after D4. Without
-    this cleanup each failed attempt left up to SCRATCH_BYTES and the next check refused.
+    The runtime is not identity, so a retry with a larger pool resumes after D4. Each failed
+    attempt leaves up to SCRATCH_BYTES; the invocation's first check would refuse on it.
     """
     if 'model' in run.state:return
+    for name in ('model-output','model-scratch'):
+        if (run.work/name).exists():shutil.rmtree(run.work/name)
+
+
+def _model(run):
+    """Step 9: one owned output and scratch, checked again after the tables grew the work."""
+    if 'model' in run.state:return
     value=_model_value(run)
-    for name in ('output','scratch'):
-        if Path(value[name]).exists():shutil.rmtree(value[name])
     run.check_scratch()
     built=execute_model(validate_model(value,base=run.work))
     result=json.loads((Path(value['scratch'])/'result.json').read_text())
@@ -453,7 +458,7 @@ def execute_selective(spec,*,runtime_factory=None):
         engine.verify_runtime()
         state=_open_state(spec,engine)
         attempt=Path(spec['work'])/'attempts'/('attempt-'+uuid4().hex);attempt.mkdir(parents=True)
-        run=Run(spec,engine,state,attempt);run.check_scratch();bodies=Bodies(run)
+        run=Run(spec,engine,state,attempt);_clear_unaccepted_model(run);run.check_scratch();bodies=Bodies(run)
         _select(run)
         differential(run,bodies)
         run.check_scratch()

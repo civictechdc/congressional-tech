@@ -136,3 +136,11 @@ def test_d4_planning_selects_only_the_readings_its_routes_read(tmp_path, monkeyp
     assert not any(name.startswith('recompute_') for name in names) and 'selected_readings' in names
     pins = next(i for i in job['inputs'] if i['name'] == 'parser_versions')['files'][0]['path']
     assert staged['produced'] == 1 and [json.loads(row)['parser'] for row in gzip.decompress(Path(pins).read_bytes()).decode().splitlines()] == ['xml']
+
+
+def test_a_line_that_fails_to_parse_ranks_below_any_readable_line():
+    # Defect guarded: the parse-failure branch ranking a broken line as current.
+    from congress_api.lake._record_producer import _inline_rank
+    readable = _inline_rank(line(6, '0000-01-01', witnesses=0).encode())
+    for broken in (b'not json', b'{"record": [1, 2', b'\xff\xfe'):
+        assert _inline_rank(broken) < readable
