@@ -9264,6 +9264,50 @@
       },
       "expected": 31536000,
       "source": "Source family helper and acquisition/refresh.py retained7/28/365day policy"
+    },
+    {
+      "id": "archive-layouts:govinfo_package",
+      "registry": "archive-layouts",
+      "entry": "govinfo_package",
+      "value": {
+        "container": "https://www.govinfo.gov/content/pkg/CHRG-119hhrg64404.zip",
+        "member": "CHRG-119hhrg64404/html/CHRG-119hhrg64404.htm"
+      },
+      "expected": "https://www.govinfo.gov/content/pkg/CHRG-119hhrg64404/html/CHRG-119hhrg64404.htm",
+      "source": "Pinned v21 captures: CHRG-119hhrg64404.zip holds this member, and the same package is captured directly at the expected URL"
+    },
+    {
+      "id": "archive-layouts:govinfo_package_pdf",
+      "registry": "archive-layouts",
+      "entry": "govinfo_package",
+      "value": {
+        "container": "https://govinfo.gov/content/pkg/CHRG-119hhrg64404.zip",
+        "member": "CHRG-119hhrg64404/pdf/CHRG-119hhrg64404.pdf"
+      },
+      "expected": "https://www.govinfo.gov/content/pkg/CHRG-119hhrg64404/pdf/CHRG-119hhrg64404.pdf",
+      "source": "Pinned v21 captures: CHRG-119hhrg64404.zip holds this member, and the same package is captured directly at the expected URL"
+    },
+    {
+      "id": "archive-layouts:govinfo_metadata_elsewhere",
+      "registry": "archive-layouts",
+      "entry": "govinfo_package",
+      "value": {
+        "container": "https://www.govinfo.gov/content/pkg/CHRG-119hhrg64404.zip",
+        "member": "CHRG-119hhrg64404/mods.xml"
+      },
+      "expected": null,
+      "source": "Pinned v21 captures: the ZIP member mods.xml is published at /metadata/pkg/, not /content/pkg/"
+    },
+    {
+      "id": "archive-layouts:govinfo_other_package",
+      "registry": "archive-layouts",
+      "entry": "govinfo_package",
+      "value": {
+        "container": "https://www.govinfo.gov/content/pkg/CHRG-119hhrg64404.zip",
+        "member": "CHRG-1/html/CHRG-1.htm"
+      },
+      "expected": null,
+      "source": "Authored boundary: a member outside the container's own directory has no published address"
     }
   ]
 }

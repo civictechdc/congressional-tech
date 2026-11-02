@@ -1,0 +1,9 @@
+[
+  {
+    "id": "govinfo_package",
+    "container_pattern": "(?i)^https?://(?:www\\.)?govinfo\\.gov/content/pkg/([^/]+)\\.zip$",
+    "member_pattern": "^([^/]+)/(?:html|pdf)/[^/]+$",
+    "published_prefix": "https://www.govinfo.gov/content/pkg/",
+    "sample_id": "archive-layouts:govinfo_package"
+  }
+]
