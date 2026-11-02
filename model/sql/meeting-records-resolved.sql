@@ -31,11 +31,11 @@ WITH sitting_rows AS (
  FROM meeting_records_merged WHERE raw_committees IS NOT NULL AND coalesce(array_length(raw_committees),0)>0
 ), committee_codes AS (
  -- Computed before the aggregate: this CASE inside an ordered array_agg took 15-19 GiB RSS
- -- on 2,900 rows under a 1 GiB pool, and precomputed it costs almost nothing.
+ -- on 2,900 rows under a 1 GiB pool, and precomputed it costs almost nothing. House select and
+ -- task-force codes (hs* -> hl*) are normalized once, by meeting_records.py; an SQL copy of that rule
+ -- matched 0 of 18,183 Congress.gov and 6,287 House XML codes on v21 (ct-p3ff).
  SELECT event_id,idx,c['role'] AS role,CASE
    WHEN lower(c['system_code'])='hszt00' THEN 'htzt00'
-   WHEN regexp_like(lower(c['system_code']),'^hs(?:cn|ef|fd|gw|hk|ie|ig|ij|mh|qj|rk|vc|zi|zs)[0-9]{2}$')
-    THEN 'hl'||substr(lower(c['system_code']),3)
    ELSE lower(c['system_code'])
   END AS system_code
  FROM committee_rows WHERE c['system_code'] IS NOT NULL
