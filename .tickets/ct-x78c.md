@@ -32,3 +32,7 @@ Final review correction: all 976 docs.house.gov rows are in raw witness XML (226
 **2026-11-02T13:43:11Z**
 
 2026-11-02 green-f: 187/187 House lists attach via their own receipt path (827 rows); 40 lists (190 rows) wait on e1; no site or MCP check of the migrated rows yet (requested).
+
+**2026-11-02T15:10:29Z**
+
+2026-11-02 red-f2 (BLOCK, narrow): the per-person precedence rule also protects old witness rows: a lower-ranked row survives unless it matches someone on the higher-ranked list for that meeting.

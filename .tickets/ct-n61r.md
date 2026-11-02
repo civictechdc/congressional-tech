@@ -36,3 +36,7 @@ Round 1b 2026-11-02 (lead): impl-f: 10 commits on r1b-f. Frozen before/after and
 **2026-11-02T13:54:36Z**
 
 2026-11-02 (lead): red-f: 101498, 101400, 104460 and 101644 are Canceled on Congress.gov but held per their own print; derive held generically from the meeting's own print and keep the publisher status as a conflict. Sent to impl-f.
+
+**2026-11-02T15:10:29Z**
+
+2026-11-02 red-f2 (BLOCK, narrow): 116426 never sat (held Dec 5 as 116584) and 116998 was re-noticed as 117059, so both registry rows come out; the print override marks 9 superseded duplicates as held (e.g. 105066, replaced by 105084).

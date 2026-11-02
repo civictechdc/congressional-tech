@@ -36,3 +36,7 @@ Round 1b 2026-11-02 (lead): Two-way package-to-meeting rule moves 392 rows on 93
 **2026-11-02T14:35:28Z**
 
 2026-11-02 (lead): impl-f r1b-f (07b6923f, 24 commits): MODS prints carry held_dates and title; print_meeting_agreement accepts a print only when held that day and at least half the shorter title's words agree; per-print witness ranking. Raw check (independent): print attachments 448 supported, 83 ambiguous, 5 contradicted. Published witness rows 147,888 to 139,077 (about 10k print rows outranked by House XML or Congress.gov lists). red-f2 is checking whether those are duplicates or lost facts.
+
+**2026-11-02T15:10:29Z**
+
+2026-11-02 red-f2 (BLOCK, narrow): all 11 probes agree with raw. The witness drop (10,971 suppressed print rows) is mostly duplicates (10,700 by name, 56 by nickname, 79 on another same-day meeting), but about 53 testifying people are published nowhere and 75 statements are lost, with no disposition. Rule sent to impl-f: precedence per person with superseded_by, unmatched rows published, statements recorded as statements. Linking by witness overlap first, never an eventId veto: 81 wrong links and 160 wrong rejections out of 10,304 pairs.
