@@ -112,11 +112,21 @@ def test_transcript_with_a_control_or_graphic_marker_has_a_fingerprint(tail):
     plain = read_page(transcript(text), 'html')
     marked = read_page(transcript(text, tail), 'html')
     assert marked['fingerprint'] is not None
-    assert '\x1a' not in marked['text_head']
     basis = {f['value'] for f in marked['fields'] if f['field'] == 'fingerprint_basis'}
-    assert basis == ({'main'} if tail.startswith('\x1a') else {'visible'})
-    if basis == {'main'}:
+    assert basis == ({'main_without_controls'} if tail.startswith('\x1a') else {'visible'})
+    if tail.startswith('\x1a'):
         assert marked['fingerprint'] == plain['fingerprint']
+
+
+def test_controls_a_member_shares_with_its_obfuscated_copy_read_the_same():
+    """R1: 95 GovInfo members carry the same vertical tab as their direct copy; the member reads
+    plainly, so the decoded direct copy must keep the control too."""
+    from congress_api.parsers.archive_readings import read_page
+
+    text = TRANSCRIPT + 'The Watch Desk is staffed 24\x0b7.\n'
+    direct = read_page(transcript(text.format(CLOUDFLARE_ANCHOR)), 'html')
+    member = read_page(transcript(text.format('DocumentsTI@mail.house.gov')), 'html')
+    assert not member['fields'] and member['fingerprint'] == direct['fingerprint']
 
 
 def test_no_visible_text_gives_no_fingerprint():
