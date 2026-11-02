@@ -150,15 +150,17 @@ def test_one_mapping_version_per_receipt(tmp_path):
     assert {row['mapping_version'] for row in facts}=={'e'*64,current_version()}
 
 
-def test_a_registered_compatible_mapping_is_accepted(tmp_path):
+def test_only_the_current_mapping_is_accepted_unless_named(tmp_path):
+    # The v2 registry refuses captures entries, so a moved mapping is rebuilt, never assumed.
     from congress_api.lake.capture_backfill_guard import accepted_mapping_versions,validate_generation
-    registry=tmp_path/'compatible.json'
-    registry.write_text(json.dumps(dict(version=1,entries=[dict(parser='captures',version='0'*64,current=current_version()),
-        dict(parser='captures',version='1'*64,current='2'*64)])))
-    assert accepted_mapping_versions(registry)==sorted(['0'*64,current_version()])
+    from congress_api.lake import compatible_versions
+    assert accepted_mapping_versions()==[current_version()]
+    with pytest.raises(ValueError,match='D3/D4 have no compatible versions'):
+        compatible_versions.validate_entries([dict(parser='captures',version='0'*64,current=current_version(),basis='whole',
+            recompute_sql='none',reason='r',proof={})],current={})
     values=rows();values[0]['mapping_version']='0'*64
     report=validate_generation(engine=NativeDatasets.from_config(os.environ['DOCSPEC_JOB_CONFIG']),work=tmp_path/'guard',
-        pin=source(tmp_path,values),counts=COUNTS,mapping_versions=accepted_mapping_versions(registry))
+        pin=source(tmp_path,values),counts=COUNTS,mapping_versions=['0'*64,current_version()])
     assert report['status']=='validated'
 
 

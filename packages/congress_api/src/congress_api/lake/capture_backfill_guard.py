@@ -16,18 +16,15 @@ class GenerationViolation(ValueError):
         super().__init__('Capture generation rejected; complete violations: '+report['violations_path'])
 
 
-COMPATIBLE = Path(__file__).resolve().parents[5]/'model/registries/compatible-versions.json'
+def accepted_mapping_versions():
+    """The current capture mapping only.
 
-
-def accepted_mapping_versions(path=COMPATIBLE):
-    """The current capture mapping plus any version ct-deh9's registry names compatible with it."""
+    The compatible-versions registry (v2) admits readings parsers only and refuses captures
+    entries: a moved mapping is rebuilt, not declared compatible. A caller that has proved
+    another mapping passes `mapping_versions` explicitly.
+    """
     from congress_api.lake.captures import current_version
-    current=current_version()
-    registry=json.loads(Path(path).read_text())
-    if not isinstance(registry,dict) or registry.get('version')!=1 or not isinstance(registry.get('entries'),list):
-        raise ValueError('Invalid compatible version registry')
-    return sorted({current}|{e['version'] for e in registry['entries']
-                   if isinstance(e,dict) and e.get('parser')=='captures' and e.get('current')==current})
+    return [current_version()]
 
 
 def validate_generation(*,engine,work,pin,counts,mapping_versions=None):
