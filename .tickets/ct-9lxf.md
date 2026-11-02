@@ -1,0 +1,19 @@
+---
+id: ct-9lxf
+status: open
+deps: []
+links: []
+created: 2026-11-02T16:23:34Z
+type: chore
+priority: 3
+assignee: mikewolfd
+tags: [disk, etl]
+---
+# Stop disk regrowth: pipeline-data refs, proof body copies, killed-job spill, cache retention
+
+etl-storage 2026-11-02 (.cache/archive-release/investigations/storage/): ~233 GiB project footprint. Regrowth sources: the bot branch pipeline-data, force-pushed daily and kept by the reflog for refs/remotes/origin/pipeline-data (~20 GiB in .git); compatible_proof.py:97-101 copies every body per proof attempt; killed jobs leave spill dirs; scripts/dev.py clean keeps all of .cache and output. After-release prune candidates: output/corpus-retry-20261015 32 GiB, 48 dated .cache run dirs 67.5 GiB (2.7 GiB nara files need an owner look), older output publications 8.1 GiB, legacy docspec-catalog 6.9 GiB, docspec-rs target/debug 11.7 GiB. Never prune: r2-immutable mirror, archive-release inputs, stripped runtimes, source-history.
+
+## Acceptance Criteria
+
+Fetch refspec excludes pipeline-data (or it's fetched shallow), with a gc in a quiet window; proofs hardlink or clone bodies; the guard or watchdog deletes a killed job's spill dir; dev.py clean has a retention list; footprint re-measured.
+
