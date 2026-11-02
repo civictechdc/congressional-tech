@@ -28,13 +28,15 @@ putting them in the release would force a second model run.
 - **Links (ct-tk10).** From the first gated release onward, link keys that earlier releases
   published never vanish. A key redirects to the current document that holds its old
   document's primary key or one of its other keys. Failing that, it redirects to the single
-  current document listed at one of the old document's exact source addresses. Every other
-  key shows "This document is no longer in the archive", with the filename and release it
-  was last published in. The first gated release also covers the 7,266 keys that c94bfedc
-  published and 448651e7 dropped. Measured against 448651e7 itself, 7,203 of them redirect
-  and 63 show a notice: 61 ZIP-member keys lost to the D1 archive-member defect, to be
-  rechecked on the rebuilt candidate, plus a 500-error ZIP whose address three documents
-  share, and one article that no current document lists.
+  document at one of its old addresses that has the same text. Any other key shows "This
+  document is no longer in the archive", with the filename and release it was last published
+  in. Where other editions sit at the same address, the notice lists them; it never swaps one
+  in. The first gated release also covers the 7,266 keys that c94bfedc published and 448651e7
+  dropped. Measured against 448651e7, 7,134 of them redirect and 132 show a notice. 69 of
+  those notices list the address's current editions: their bodies were read in full, 68 have
+  different text (66 of the old bodies have none) and 1 has the same text but is a PDF the
+  model does not fingerprint. 61 are ZIP-member keys lost to the D1 archive-member defect,
+  to be rechecked on the rebuilt candidate.
 
 ## Nightly publication (ct-ud0b)
 

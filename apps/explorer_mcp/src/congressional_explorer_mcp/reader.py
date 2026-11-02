@@ -215,13 +215,16 @@ class Reader:
         if not match and 'retired_links' in self.schemas:
             # Data model §8.2, Retired keys: a key this release no longer publishes redirects
             # to its successor or explains its removal; it never vanishes silently.
-            retired = self.db.execute('SELECT hex(successor_key),last_release_id,last_filename FROM retired_links '
+            versions = ("list_transform(address_versions,lambda v:lower(hex(v)))" if 'address_versions' in self.schemas['retired_links']
+                        else 'NULL')
+            retired = self.db.execute(f'SELECT hex(successor_key),last_release_id,last_filename,{versions} FROM retired_links '
                                       'WHERE link_key=unhex(?)', [query.link_key]).fetchall()
             if len(retired) == 1:
-                successor, last_release, last_filename = retired[0]
+                successor, last_release, last_filename, others = retired[0]
                 if successor is None:
+                    listed = f'; other versions at the same address: {", ".join(others)}' if others else ''
                     raise ExplorerError(f'Document {query.link_key.lower()} is no longer in the archive; it was last published as '
-                                        f'"{last_filename}" in release {last_release[:12]}')
+                                        f'"{last_filename}" in release {last_release[:12]}{listed}')
                 match = self.db.execute('SELECT list_row FROM links WHERE link_key=unhex(?)', [successor]).fetchall()
                 redirected_from = query.link_key.lower()
         if len(match) != 1:

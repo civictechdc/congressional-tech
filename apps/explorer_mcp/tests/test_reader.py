@@ -159,8 +159,8 @@ def test_retired_keys_redirect_or_explain_their_removal(tmp_path):
     live = pq.read_table(root / 'links.parquet').to_pylist()[0]
     with duckdb.connect() as db:
         db.execute(f"""COPY (SELECT * FROM (VALUES
-            (unhex('aaaaaaaaaaaaaaaa'),unhex('{live['link_key'].hex()}'),'{'d'*64}','old.pdf'),
-            (unhex('bbbbbbbbbbbbbbbb'),NULL::BLOB,'{'e'*64}','gone.pdf')) v(link_key,successor_key,last_release_id,last_filename))
+            (unhex('aaaaaaaaaaaaaaaa'),unhex('{live['link_key'].hex()}'),'{'d'*64}','old.pdf',NULL::BLOB[]),
+            (unhex('bbbbbbbbbbbbbbbb'),NULL::BLOB,'{'e'*64}','gone.pdf',[unhex('{live['link_key'].hex()}')])) v(link_key,successor_key,last_release_id,last_filename,address_versions))
             TO '{root / 'retired_links.parquet'}' (FORMAT PARQUET)""")
     reader = Reader(prepare(tmp_path / 'selection', manifest(root)))
     try:
@@ -168,7 +168,7 @@ def test_retired_keys_redirect_or_explain_their_removal(tmp_path):
         redirected = reader.get_document(dict(link_key='aa' * 8, release_id=release))
         assert redirected['redirected_from'] == 'aa' * 8
         assert redirected['rows'][0]['list_row'] == live['list_row']
-        with pytest.raises(ExplorerError, match='no longer in the archive; it was last published as "gone.pdf" in release eeeeeeeeeeee'):
+        with pytest.raises(ExplorerError, match=f'no longer in the archive; it was last published as "gone.pdf" in release eeeeeeeeeeee; other versions at the same address: {live["link_key"].hex()}'):
             reader.get_document(dict(link_key='bb' * 8, release_id=release))
         with pytest.raises(ExplorerError, match='absent or ambiguous'):
             reader.get_document(dict(link_key='cc' * 8, release_id=release))

@@ -75,7 +75,8 @@ def test_reader_redirects_retired_keys_and_shows_removal_notices(tmp_path):
     links = pq.read_table(release / 'links.parquet').to_pylist()
     live = links[0]
     rows = [dict(link_key=b'\xaa' * 8, successor_key=live['link_key'], last_release_id='d' * 64, last_filename='old.pdf'),
-            dict(link_key=b'\xbb' * 8, successor_key=None, last_release_id='e' * 64, last_filename='gone.pdf')]
+            dict(link_key=b'\xbb' * 8, successor_key=None, last_release_id='e' * 64, last_filename='gone.pdf',
+                 address_versions=[live['link_key']])]
     pq.write_table(pa.Table.from_pylist(rows, schema=RETIRED), release / 'retired_links.parquet')
     pin = file_pin(release / 'retired_links.parquet')
     manifest['files'] = [f for f in manifest['files'] if f['name'] != 'retired_links.parquet'] + [
@@ -85,7 +86,7 @@ def test_reader_redirects_retired_keys_and_shows_removal_notices(tmp_path):
     (release / 'manifest.json').write_text(json.dumps(manifest))
     (release / 'retired-expected.json').write_text(json.dumps(dict(
         live=dict(key=live['link_key'].hex(), index=live['list_row']), redirect=dict(key='aa' * 8),
-        removed=dict(key='bb' * 8, last_release_id='e' * 64, last_filename='gone.pdf'))))
+        removed=dict(key='bb' * 8, last_release_id='e' * 64, last_filename='gone.pdf', versions=[live['link_key'].hex()]))))
     result = subprocess.run(['node', '--test', str(ROOT / 'apps/site/scripts/archive-retired.test.mjs')],
         cwd=ROOT / 'apps/site', env=dict(os.environ, ARCHIVE_FIXTURE=str(release)),
         capture_output=True, text=True, timeout=90)
