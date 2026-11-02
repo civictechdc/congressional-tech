@@ -159,6 +159,14 @@ def _bound_page_parse(data):
         raise MemoryError('decoded page body exceeds the parse bound')
 
 
+def _lake_reading_columns():
+    """The one conversion from parser rows (_reading_fields) to the lake readings columns."""
+    return ','.join(["arrow_cast(decode(body_hex,'hex'),'FixedSizeBinary(32)') AS body_sha",
+        *[f'cast({name} AS DATE) AS {name}' if name=='content_date' else name for name in STRINGS],
+        *INTEGERS,'intact','named_meetings','links',
+        "arrow_cast(decode(fingerprint_hex,'hex'),'FixedSizeBinary(32)') AS fingerprint",'fields'])
+
+
 def _reading_fields():
     result={name:'Utf8' for name in (*STRINGS,'body_hex','fingerprint_hex')}
     result.update({name:'Int32' for name in INTEGERS})
@@ -166,6 +174,9 @@ def _reading_fields():
         links=list_of(struct(**{name:'Utf8' for name in LINK_FIELDS})),
         fields=list_of(struct(field='Utf8',value='Utf8')))
     return result
+
+
+_LAKE_READING_COLUMNS=_lake_reading_columns()
 
 
 def worker_limits():
@@ -338,7 +349,10 @@ def plan(*,captures,body_inventory,local_root,engine,work,decided_at,parser,
                 coalesce(f.fallback_conflict,0) AS fallback_conflict,coalesce(f.fallback_pin,0) AS fallback_pin
                 FROM ranked_copies r LEFT JOIN copy_fallbacks f ON r.body_sha=f.body_sha WHERE r.choice=1''',materialize=True)])
     if not existing:
-        steps.append(dict(name='existing',sql='SELECT decode(body_hex,\'hex\') AS body_sha,* FROM existing_json'))
+        # No existing table: an empty relation in the lake readings shape, through the same
+        # conversion staged rows take, so selection SQL (e.g. a recompute set reading
+        # `fingerprint`) sees the columns a real table has.
+        steps.append(dict(name='existing',sql=f'SELECT {_LAKE_READING_COLUMNS} FROM existing_json'))
     steps.extend([
         dict(name='bodies',sql='SELECT DISTINCT sha256 AS body_sha FROM captures WHERE sha256 IS NOT NULL',materialize=True),
         dict(name='readings',sql='SELECT * FROM existing'),
@@ -631,12 +645,8 @@ def _execute_plan(planned,*,engine,worker_factory=ParserWorker,unreadable_store=
                 for timing in timings or ():
                     key=timing.pop('key');record_timing('prefetch',body_object_digest(key),timing)
     source=json_input(parsed,'parsed_readings',rows(),**_reading_fields())
-    columns=["arrow_cast(decode(body_hex,'hex'),'FixedSizeBinary(32)') AS body_sha",
-             *[f'cast({name} AS DATE) AS {name}' if name=='content_date' else name for name in STRINGS],
-             *INTEGERS,'intact','named_meetings','links',
-             "arrow_cast(decode(fingerprint_hex,'hex'),'FixedSizeBinary(32)') AS fingerprint",'fields']
     run_job(parsed,engine,inputs=[source],steps=[],outputs=[parquet_output(work,'readings',
-        'SELECT '+','.join(columns)+' FROM parsed_readings',PK)])
+        f'SELECT {_LAKE_READING_COLUMNS} FROM parsed_readings',PK)])
     key=path=unreadable_stage=unreadable_provenance=unreadable_custody=None
     pending=bool(counters['unreadable'] and unreadable_store is None)
     if counters['unreadable']:
