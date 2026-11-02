@@ -149,18 +149,23 @@ def test_frozen_receipt_reconciles_lost_ack_and_reuses_exact_bytes(tmp_path):
     assert (tmp_path/'raw'/key).read_bytes()==first
 
 
-@pytest.mark.parametrize(('status','data','outcome'), [
-    (202,b'<html>challenge</html>','failed'), (200,b'','failed'), (204,b'','failed'),
-    (200,b'%PDF-1.7\n%%EOF','stored')])
-def test_a_document_is_2xx_other_than_202_with_a_body(tmp_path, status, data, outcome):
-    """ct-c6b0/ct-3l1c: the writer applies the one shared document rule."""
+@pytest.mark.parametrize(('status','data','headers','outcome'), [
+    (202,b'<html>challenge</html>',{},'failed'), (200,b'',{},'failed'), (204,b'',{},'failed'),
+    (200,b'%PDF-1.7\n%%EOF',{},'stored'),
+    (206,b'%PDF-1.7\n%%EOF',{'content-range':'bytes 0-13/14'},'stored'),
+    (206,b'%PDF-1.7\n%%EOF',{'content-range':'bytes 0-13/4096'},'failed'),
+    (206,b'%PDF-1.7\n%%EOF',{},'failed')])
+def test_a_document_is_2xx_other_than_202_with_a_whole_body(tmp_path, status, data, headers, outcome):
+    """ct-c6b0/ct-3l1c: the writer applies the one shared document rule; a 206 must cover it all."""
     from congress_api.models.raw_fetch import FetchResult
     from congress_api.retention.receipt_writer import ReceiptWriter
     from congress_api.retention.body_store import BodyStore, LocalAdapter
     writer = ReceiptWriter(BodyStore(LocalAdapter(tmp_path/'raw')), identity=WRITER, run_id='run',
                            write_date='2026-10-27', archive_limits=None)
-    line = writer.write(FetchResult(attempt(tmp_path, data=data, status=status)), family='documents')[1]
+    line = writer.write(FetchResult(replace(attempt(tmp_path, data=data, status=status), headers=headers)),
+                        family='documents')[1]
     assert line['outcome'] == outcome and line['captures'][0]['bytes'] == len(data)
+    assert line['response_headers'] == headers
 
 
 def test_document_rule_has_one_definition_in_python_and_sql(tmp_path):
@@ -183,32 +188,56 @@ def test_document_rule_has_one_definition_in_python_and_sql(tmp_path):
         assert row['empty'] == empty_body(row['sha'], row['size']), row
 
 
-def test_a_local_path_is_refused_at_write(tmp_path, monkeypatch):
-    """Receipts are immutable: an absolute path can only be kept out when the line is written."""
+def test_archive_member_names_are_never_refused(tmp_path, monkeypatch):
+    """A member name is the archive's own string, not a local path: '~$x.docx' and '/a/b.pdf' are kept."""
     from congress_api.models.raw_fetch import BodyFile, FetchResult
     from congress_api.retention import receipt_writer
     from congress_api.retention.archive_expander import Expansion, ExpandedMember
     from congress_api.retention.body_store import BodyStore, LocalAdapter
-    member = tmp_path/'member.pdf'
-    member.write_bytes(b'%PDF-1.7\n%%EOF')
+    names = ['~$draft.docx', '/Users/someone/report.pdf']
     def expand(path, *, directory, limits):
-        body = BodyFile(member, hashlib.sha256(member.read_bytes()).hexdigest(), member.stat().st_size,
-                        'application/pdf', 'pdf', 'v1', True)
-        return Expansion('expanded', (ExpandedMember('/Users/someone/report.pdf', 0, body),))
+        members = []
+        for index, name in enumerate(names):
+            member = tmp_path/f'member{index}.pdf'
+            member.write_bytes(b'%PDF-1.7\n%%EOF' + bytes([index]))
+            body = BodyFile(member, hashlib.sha256(member.read_bytes()).hexdigest(), member.stat().st_size,
+                            'application/pdf', 'pdf', 'v1', True)
+            members.append(ExpandedMember(name, index, body))
+        return Expansion('expanded', tuple(members))
     monkeypatch.setattr(receipt_writer, 'expand_archive', expand)
     a = attempt(tmp_path, data=b'PK\x05\x06' + bytes(18))
     a = replace(a, body=replace(a.body, media_type='application/zip', sniffed_format='zip'))
-    root = tmp_path/'raw'
-    writer = receipt_writer.ReceiptWriter(BodyStore(LocalAdapter(root)), identity=WRITER, run_id='run',
+    writer = receipt_writer.ReceiptWriter(BodyStore(LocalAdapter(tmp_path/'raw')), identity=WRITER, run_id='run',
                                           write_date='2026-10-27', archive_limits=object())
-    with pytest.raises(ValueError, match='local path at captures.1.member_path'):
-        writer.write(FetchResult(a), family='documents')
-    assert not list(root.glob('receipts/**/*.gz'))
+    line = writer.write(FetchResult(a), family='documents')[1]
+    assert [c['member_path'] for c in line['captures'][1:]] == names
 
 
-@pytest.mark.parametrize('value', ['/Users/me/x.pdf', 'C:\\data\\x.pdf', '~/x.pdf'])
-def test_every_writer_shares_the_relative_path_rule(value):
-    from congress_api.retention.receipt_privacy import refuse_local_paths
-    with pytest.raises(ValueError, match='local path'):
+@pytest.mark.parametrize('value', ['/Users/me/x.pdf', 'C:\\data\\x.pdf', 'C:/data/x.pdf', '~/x.pdf', '\\\\host\\share\\x.pdf'])
+def test_every_writer_shares_the_absolute_path_rule(value):
+    from congress_api.retention.receipt_privacy import LocalPathRefused, refuse_local_paths
+    with pytest.raises(LocalPathRefused, match='local path'):
         refuse_local_paths(dict(file_references=[dict(original_path=value)]))
-    assert refuse_local_paths(dict(original_path='external-sources/a/b.xml', url='https://x.gov/Users/a'))
+
+
+@pytest.mark.parametrize('value', ['external-sources/a/b.xml', '~$draft.docx', 'C:report.pdf'])
+def test_relative_paths_and_member_names_pass(value):
+    from congress_api.retention.receipt_privacy import refuse_local_paths
+    line = dict(original_path=value, url='https://x.gov/Users/a', captures=[dict(member_path='/abs/member.pdf')])
+    assert refuse_local_paths(line) is line
+
+
+def test_a_local_path_is_refused_before_any_body_is_stored(tmp_path):
+    """A refused receipt leaves no body without its creating line (red-e1)."""
+    from congress_api.models.raw_fetch import FetchResult
+    from congress_api.retention.receipt_privacy import LocalPathRefused
+    from congress_api.retention.receipt_writer import ReceiptWriter
+    from congress_api.retention.body_store import BodyStore, LocalAdapter
+    root = tmp_path/'raw'
+    writer = ReceiptWriter(BodyStore(LocalAdapter(root)), identity=WRITER, run_id='run',
+                           write_date='2026-10-27', archive_limits=None)
+    evidence = dict(original_url=URL, acquisition=dict(body_path='/srv/cache/x.pdf'))
+    with pytest.raises(LocalPathRefused, match='recovery_evidence.acquisition.body_path'):
+        writer.write(FetchResult(attempt(tmp_path)), family='documents', mode='retained_import',
+                     recovery_evidence=evidence)
+    assert not root.exists() or not any(p.is_file() for p in root.rglob('*'))

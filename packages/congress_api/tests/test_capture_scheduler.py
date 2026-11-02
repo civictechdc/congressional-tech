@@ -230,6 +230,22 @@ def test_discovery_runs_only_on_a_document(tmp_path,status,data,jobs):
     assert adapter.calls==['https://fixture.test/a','https://fixture.test/b'][:1+jobs]
 
 
+def test_a_receipt_refused_for_a_local_path_fails_only_its_item(tmp_path,monkeypatch):
+    from congress_api.retention import receipt_writer
+    from congress_api.retention.receipt_privacy import LocalPathRefused
+    original=receipt_writer.ReceiptWriter.write
+    def write(self,result,**options):
+        if result.final.requested_url.endswith('/a'):
+            raise LocalPathRefused('Public receipt carries a local path at source_file')
+        return original(self,result,**options)
+    monkeypatch.setattr(receipt_writer.ReceiptWriter,'write',write)
+    result,adapter,raw=run_fixture(tmp_path,[dict(requested_url='https://fixture.test/a',attempts=0),
+        dict(requested_url='https://fixture.test/b',attempts=0)],{
+        'https://fixture.test/a':(200,b'%PDF-1.7\n%%EOF a',{}),'https://fixture.test/b':(200,b'%PDF-1.7\n%%EOF b',{})})
+    assert result['captures']==1 and result['stop_reason']=='queue_empty'
+    assert dict(url='https://fixture.test/a',reason='local_path_in_receipt') in result['refusals']
+
+
 def test_discovery_budget_and_cycles_terminate_without_index_state(tmp_path):
     result,adapter,_=run_fixture(tmp_path,[dict(requested_url='https://fixture.test/a',attempts=0)],{
         'https://fixture.test/a':(200,b'<html><a href="/b">b</a></html>',{}),

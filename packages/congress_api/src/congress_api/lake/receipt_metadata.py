@@ -70,6 +70,37 @@ def empty_body_sql(sha_hex, size):
     return f"(coalesce({size},-1)=0 OR coalesce(lower({sha_hex}),'')='{EMPTY_SHA256}')"
 
 
+# A 206 is a document only when its Content-Range covers the whole representation
+# (bytes 0-(N-1)/N). A bounded sample (senate/players undated:12, bytes 0-4095/11023192)
+# is a partial body, whatever its media type. The mapping can judge only a stated range.
+CONTENT_RANGE = r'^bytes ([0-9]+)-([0-9]+)/([0-9]+)$'
+
+
+def whole_range(content_range):
+    match = re.match(CONTENT_RANGE, content_range or '')
+    return match is not None and int(match[1]) == 0 and int(match[2]) + 1 == int(match[3])
+
+
+def partial_range_sql(expr):
+    m = f"regexp_match({expr},{lit(CONTENT_RANGE)})"
+    return (f"({expr} IS NOT NULL AND ({m} IS NULL OR cast({m}[1] AS BIGINT)<>0 "
+            f"OR cast({m}[2] AS BIGINT)+1<>cast({m}[3] AS BIGINT)))")
+
+
+# An absolute local filesystem path: a root, a home directory, a drive or a UNC share.
+# Invariant 3: no receipt or public row carries one. '~$x.docx' or 'C:x' are names, not paths.
+# Written once for Python (writers) and SQL (the mapping and the generation guard).
+ABSOLUTE_PATH = r'^(?:/|~[/\\]|[A-Za-z]:[/\\]|\\\\)'
+
+
+def absolute_path(value):
+    return isinstance(value, str) and re.match(ABSOLUTE_PATH, value) is not None
+
+
+def absolute_path_sql(expr):
+    return f"regexp_like({expr},{lit(ABSOLUTE_PATH)})"
+
+
 # Legacy assembly receipts state an attempt's status under `status` on the object
 # that owns the pointed body (ct-bxqa). Measured on all 2,292 receipts: these owner
 # paths, plus master_attempts[i], are every place it occurs; always an integer.
@@ -200,7 +231,7 @@ def source_paths():
     paths += [('captures',),('file_references',),('writer','job'),('writer','commit'),('error',),('record','error')]
     paths += [('record',*path) for path in INLINE_PAYLOAD_PATHS]
     paths += [('record',name) for name in MODS_DESCRIPTOR_FIELDS]
-    paths += [('record',*path) for path in owner_status_paths()]
+    paths += [('record',*path) for path in owner_status_paths()]+[('record','content_range')]
     return paths
 
 
@@ -246,6 +277,7 @@ def source_plan(*,counter=None,files=None,receipt_keys=None):
     records['previous_receipt_complete']=scalar(slots[('record','previous_receipt','body_complete')],'bool')
     records['record_captures']=attempt_facts(slots,('record',),'captures')
     records.update({name:scalar(slots[('record',*path)],'int') for path,name in owner_status_paths().items()})
+    records['content_range']=scalar(slots[('record','content_range')],'str')
     roots.update(writer_job=scalar(slots[('writer','job')],'str'),
                  writer_commit=scalar(slots[('writer','commit')],'str'))
     roots['h_content_disposition']='CASE WHEN '+roots['writer_job']+' IS NOT NULL AND '+roots['writer_commit']+\

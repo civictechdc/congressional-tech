@@ -197,7 +197,7 @@ One row per body a line references (each `captures[]` entry or, on an older line
 | `receipt_key` | string | Immutable raw receipt key. |
 | `receipt_line` | int | Source line, starting at 1. |
 | `capture_index` | int | Primary capture/file-reference positions stay unchanged. Items of a list-valued `record` without a primary reference append after them in record order, with null `sha256`; without references, their positions start at 0. An ordinary bodiless line uses 0. A file reference retained without a body also has null `sha256`. |
-| `run_id`, `mode`, `outcome` | string, string, string nullable | The producing run and mode; for a body, the acquisition outcome of its own attempt, null when it cannot be established. A bodiless acquisition uses final line/item facts. `reference` and `saved-record` retain their enumerated non-acquisition meanings. The mapping translates the older vocabulary without substituting another attempt's success or failure. `stored` means a document: its status is 2xx other than 202 (or stated nowhere) and its body is not empty (SHA-256 of empty input or 0 bytes); otherwise the attempt is `failed`, or `retry_later` for 429/503. A provider's JSON envelope (`provider_response/raw_path`) over an empty origin body, with no non-empty origin body on its item, is `failed` too. The rule has one definition, `receipt_metadata.document_status`/`empty_body`, shared by the mapping, the receipt writer, URL state and the scheduler. |
+| `run_id`, `mode`, `outcome` | string, string, string nullable | The producing run and mode; for a body, the acquisition outcome of its own attempt, null when it cannot be established. A bodiless acquisition uses final line/item facts. `reference` and `saved-record` retain their enumerated non-acquisition meanings. The mapping translates the older vocabulary without substituting another attempt's success or failure. `stored` means a document: its status is 2xx other than 202 (or stated nowhere), its body is not empty (SHA-256 of empty input or 0 bytes), and a 206's stated `content_range` covers the whole representation (`bytes 0-(N-1)/N`; a bounded sample is partial); otherwise the attempt is `failed`, or `retry_later` for 429/503. A provider's JSON envelope (`provider_response/raw_path`) over an empty origin body, with no non-empty origin body on its item, is `failed` too. The rule has one definition, `receipt_metadata.document_status`/`empty_body`, shared by the mapping, the receipt writer, URL state and the scheduler. |
 | `family` | string | The entry's family, else the line's, else the receipt key's `<family>` segment. |
 | `requested_url`, `url` | string, nullable | Older lines take `_url`, `final_url`, `resolved_url` or `source_url`, the first present, when their ordinary address fields are absent. |
 | `context_url` | string, nullable | The source endpoint for this body. |
@@ -445,7 +445,8 @@ record_role := per capture row, the first that applies:
                null              when format is null (no completed sniff)
                'caption'         when format = 'vtt'
                'playlist'        when format = 'm3u8'
-               'media'           when format = 'other' and the media type is video/* or audio/*
+               'media'           when format = 'other' and the media type is video/* or audio/*,
+                                 or its address matches the recording registry's segment pattern
                                  (a stream segment is not a document or a track)
                'envelope'        when format = 'warc'
                'damaged'         when format = 'pdf' and intact is not true

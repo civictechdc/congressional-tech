@@ -13,8 +13,8 @@ WITH roles AS (
             WHEN c.format = 'm3u8' THEN 'playlist'
             -- A stream segment or other unrecognized audio/video body is media, never a document
             -- (senate/players MP2T samples once their stated 200 is read; none listed in v21).
-            WHEN c.format = 'other'
-                 AND split_part(lower(c.media_type), '/', 1) IN ('video', 'audio') THEN 'media'
+            WHEN c.format = 'other' AND (coalesce(sg.segment, false)
+                 OR split_part(lower(c.media_type), '/', 1) IN ('video', 'audio')) THEN 'media'
             WHEN c.format = 'warc' THEN 'envelope'
             WHEN c.format = 'pdf' AND c.intact IS NOT TRUE
                  AND c.intact_basis <> 'unchecked' THEN 'damaged'
@@ -34,8 +34,10 @@ WITH roles AS (
     FROM archive_bodies a RIGHT JOIN (placeholders p RIGHT JOIN (
         locator_signals l RIGHT JOIN (
             body_signals b RIGHT JOIN (
-                good_fetch_keys g RIGHT JOIN capture_evidence c
-                USING(receipt_key,receipt_line,capture_index)
+                segment_captures sg RIGHT JOIN (good_fetch_keys g RIGHT JOIN capture_evidence c
+                USING(receipt_key,receipt_line,capture_index))
+                ON c.receipt_key = sg.receipt_key AND c.receipt_line = sg.receipt_line
+                AND c.capture_index = sg.capture_index
             ) ON c.sha256 = b.body_sha
         ) ON (c.url IS NOT DISTINCT FROM l.url)
             AND (c.member_path IS NOT DISTINCT FROM l.member_path)

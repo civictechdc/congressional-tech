@@ -1,9 +1,10 @@
 """Final public-only generation checks after mandatory receipt-local guards."""
 import json
+import re
 from pathlib import Path
 
-from congress_api.lake.captures import LOCAL_PATH,PK
-from congress_api.lake.receipt_metadata import document_status_sql,empty_body_sql
+from congress_api.lake.captures import PK
+from congress_api.lake.receipt_metadata import absolute_path_sql,document_status_sql,empty_body_sql,lit
 from congress_api.lake.tables import table_input
 from congress_api.retention.body_store import validate_key
 from congress_api.retention.provenance import json_input,parquet_output,run_job
@@ -15,7 +16,21 @@ class GenerationViolation(ValueError):
         super().__init__('Capture generation rejected; complete violations: '+report['violations_path'])
 
 
-def validate_generation(*,engine,work,pin,counts):
+COMPATIBLE = Path(__file__).resolve().parents[5]/'model/registries/compatible-versions.json'
+
+
+def accepted_mapping_versions(path=COMPATIBLE):
+    """The current capture mapping plus any version ct-deh9's registry names compatible with it."""
+    from congress_api.lake.captures import current_version
+    current=current_version()
+    registry=json.loads(Path(path).read_text())
+    if not isinstance(registry,dict) or registry.get('version')!=1 or not isinstance(registry.get('entries'),list):
+        raise ValueError('Invalid compatible version registry')
+    return sorted({current}|{e['version'] for e in registry['entries']
+                   if isinstance(e,dict) and e.get('parser')=='captures' and e.get('current')==current})
+
+
+def validate_generation(*,engine,work,pin,counts,mapping_versions=None):
     """Check one finished public table and export every offending key and row.
 
     Counts are independent per-receipt metadata, not reconstructed raw facts.
@@ -28,6 +43,9 @@ def validate_generation(*,engine,work,pin,counts):
     table carries neither attempt nor recorded-value flags. Those checks stay
     with the receipt-local mapping; legitimate observations are never collapsed.
     """
+    mapping_versions=accepted_mapping_versions() if mapping_versions is None else list(mapping_versions)
+    if not mapping_versions or any(re.fullmatch('[0-9a-f]{64}',v) is None for v in mapping_versions):
+        raise ValueError('Accepted capture mapping versions must be 64-hex digests')
     expected=[];seen=set()
     if not isinstance(counts,list):raise ValueError('Expected receipt counts must be explicit metadata')
     for row in counts:
@@ -65,8 +83,8 @@ def validate_generation(*,engine,work,pin,counts):
         OR (c.outcome='stored' AND c.sha256 IS NOT NULL AND {empty_body_sql("encode(c.sha256,'hex')",'c.bytes')})
         OR (c.outcome='stored' AND c.http_status IS NOT NULL AND NOT {document_status_sql('c.http_status')})
         OR (c.fetch_outcome='stored' AND c.fetch_http_status IS NOT NULL AND NOT {document_status_sql('c.fetch_http_status')})
-        OR c.mapping_version IS NULL OR NOT regexp_like(c.mapping_version,'^[0-9a-f]{{64}}$')
-        OR regexp_like(c.original_path,{LOCAL_PATH})"""
+        OR c.mapping_version IS NULL OR c.mapping_version NOT IN ({','.join(lit(v) for v in mapping_versions)})
+        OR {absolute_path_sql('c.original_path')}"""
     keycols=','.join('c.'+k for k in PK)
     same_pk=' AND '.join('(c.'+k+' IS NOT DISTINCT FROM p.'+k+')' for k in PK)
     steps=[

@@ -12,8 +12,9 @@ from docspec_client.client import NativeDatasets
 KEY = 'receipts/documents/2026-10-28/a.jsonl.gz'
 
 
-def table(tmp_path, name, change=None, extra=None):
+def table(tmp_path, name, change=None, extra=None, drop=()):
     declared = json.loads((Path(__file__).resolve().parents[3] / 'model/lake/captures.schema.json').read_text())
+    declared['fields'] = [f for f in declared['fields'] if f['name'] not in drop]
     types = {'int': pa.int32(), 'long': pa.int64(), 'boolean': pa.bool_(), 'timestamptz': pa.timestamp('us', 'UTC'),
              'fixed[32]': pa.binary(), 'fixed[16]': pa.binary(), 'string': pa.string()}
     rows = []
@@ -21,7 +22,9 @@ def table(tmp_path, name, change=None, extra=None):
         row = dict.fromkeys(f['name'] for f in declared['fields'])
         row.update(receipt_key=KEY, receipt_line=1, capture_index=index, run_id='run', mode='fetch', outcome='stored',
                    family='documents', requested_url='https://example.org/a', http_status=200, complete=True,
-                   sha256=bytes([index]) * 32, bytes=10, mapping_version='a' * 64)
+                   sha256=bytes([index]) * 32, bytes=10)
+        if 'mapping_version' in row:
+            row['mapping_version'] = 'a' * 64
         rows.append(row)
     if change:
         rows[1].update(change)
@@ -64,3 +67,15 @@ def test_mapping_versions_are_reported_and_new_rows_refused(tmp_path):
         extra = dict(receipt_key=KEY, receipt_line=2, capture_index=0, run_id='run', mode='fetch', family='documents')
         compare(tmp_path / 'new-row', None, extra=[extra])
     assert error.value.report['unexpected'] == [['only_new', 0, 1]]
+
+
+def test_a_generation_without_the_new_columns_compares_on_the_shared_ones(tmp_path):
+    """v21 has 37 columns; the rebuild adds mapping_version and original_path (green-e1)."""
+    from congress_api.lake.capture_comparison import compare_generations
+    old = table(tmp_path, 'v21', drop=('mapping_version', 'original_path'))
+    report = compare_generations(old, table(tmp_path, 'rebuilt'),
+                                 engine=NativeDatasets.from_config(os.environ['DOCSPEC_JOB_CONFIG']),
+                                 work=tmp_path / 'work', receipt_keys=[KEY])
+    assert report['added_columns'] == ['original_path', 'mapping_version'] and report['removed_columns'] == []
+    assert report['status'] == 'accepted' and report['rows'] == 3
+    assert 'mapping_version' not in report['changes'] and report['changes']['outcome'] == 0

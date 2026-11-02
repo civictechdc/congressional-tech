@@ -204,6 +204,17 @@ def test_phase2_entities_meetings_witnesses_recordings_and_spicy_projections(tmp
             family='senate/players',
             retrieved_at='2023-05-22T12:00:00Z',
         ),
+        # Legacy segment rows carry no media type (green-e1: three 206 MP2T samples); the segment
+        # registry's extension classifies them as media.
+        dict(
+            url='https://www-senate-gov-msl3archive.akamaized.net/ag/ag051023_1/master0.ts',
+            data=segment_bytes + b'legacy',
+            format='other',
+            media_type=None,
+            compress=False,
+            family='senate/players',
+            retrieved_at='2023-05-22T12:00:00Z',
+        ),
         # A newer empty caption body is a failed attempt, not a track (ct-fh62).
         dict(
             url='https://www.youtube.com/api/timedtext?v=dQw4w9WgXcQ&lang=en&fmt=vtt',

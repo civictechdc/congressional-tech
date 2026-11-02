@@ -25,6 +25,7 @@ from congress_api.acquisition.fetcher import CaptureScope, Fetcher, HostPacer
 from congress_api.retention.archive_members import ZipLimits
 from congress_api.retention.body_store import validate_record
 from congress_api.retention.pipeline_raw import new_run_id
+from congress_api.retention.receipt_privacy import LocalPathRefused
 from congress_api.retention.provenance import field, json_input, parquet_output, run_job
 from congress_api.retention.receipt_writer import ReceiptWriter
 from congress_api.retention.receipt_privacy import credential_parameters
@@ -789,8 +790,12 @@ def _run_capture(release,*,engine,work,as_of,request_budget,byte_budget,spool_bu
         # Completed acquisition bypasses request/byte admission, while receipt
         # preparation and expansion still require their scratch reservation.
         spool_guard()
-        key,line=writer.write(result,family=family,observations=observations,
-                              operation_id=operation_id,freeze_dir=work/'frozen-receipts')
+        try:
+            key,line=writer.write(result,family=family,observations=observations,
+                                  operation_id=operation_id,freeze_dir=work/'frozen-receipts')
+        except LocalPathRefused:
+            # This item fails with a recorded reason; the run continues (invariant 3).
+            return None,url,result,None,None,local_stats,[],[],0
         body=result.final.body
         parser=line['captures'][0]['sniffed_format'] if body is not None else None
         # The writer's outcome owns "this is a document": no discovery on a 202 or empty page.
@@ -832,6 +837,11 @@ def _run_capture(release,*,engine,work,as_of,request_budget,byte_budget,spool_bu
         row,url,result,key,line,local_stats,links,disc_errors,disc_refused=outcome_tuple
         stats['requests']+=local_stats['requests']
         stats['fetched_bytes']+=local_stats['fetched_bytes']
+        if line is None:
+            stats['refusals'].append(dict(url=url,reason='local_path_in_receipt'))
+            _record_attempt(attempted,url,attempted=True,complete=result.final.complete,
+                http_status=result.final.http_status,error_type='local_path_in_receipt')
+            return []
         stats['receipts'].append(key);stats['captures']+=1
         if row['priority']==1:
             stats['cutoff_attempts'].append(dict(url=url,outcome=line['outcome'],complete=result.final.complete,

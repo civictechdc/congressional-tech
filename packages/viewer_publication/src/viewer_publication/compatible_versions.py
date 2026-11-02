@@ -95,12 +95,9 @@ def prove_unchanged(*, engine, work, name, old, new, version_column, predicate_s
     schema = [f['name'] for f in tables.load_schema(name)['fields']]
     keys = [k for k in TABLE_SPECS[name]['primary_key'] if k != version_column]
     compared = [c for c in schema if c not in keys and c != version_column]
-    same = ' AND '.join(f'(o.{k} IS NOT DISTINCT FROM n.{k})' for k in keys)
-    present = f'o.{keys[0]} IS NOT NULL AND n.{keys[0]} IS NOT NULL'
-    columns = ['count(*) AS total', f'count(*) FILTER (WHERE n.{keys[0]} IS NULL) AS only_old', f'count(*) FILTER (WHERE o.{keys[0]} IS NULL) AS only_new']
-    columns += [f'count(*) FILTER (WHERE {present} AND o."{c}" IS DISTINCT FROM n."{c}") AS "{c}"' for c in compared]
-    row = run_job(work, engine, inputs=[table_input('old', old), table_input('new', new)],
-        steps=[dict(name='o_rows', sql=f'SELECT * FROM old WHERE coalesce(({predicate_sql}),false)')], outputs=[],
-        queries=[dict(name='proof', sql='SELECT ' + ','.join(columns) + f' FROM o_rows o FULL JOIN new n ON {same}')])['proof'][0]
-    differing = {c: row[c] for c in compared if row[c]}
-    return dict(rows=row['total'], columns=len(compared), differences=sum(differing.values()), only_old=row['only_old'], only_new=row['only_new']), differing
+    # The one FULL JOIN differential; new rows are not filtered by the old-side predicate.
+    result = tables.column_differential(engine, work, old, new, keys=keys, compared=compared,
+                                        predicate_sql=predicate_sql, new_predicate_sql='true')
+    differing = {c: n for c, n in result['changes'].items() if n}
+    return dict(rows=result['rows'], columns=len(compared), differences=sum(differing.values()),
+                only_old=result['only_old'], only_new=result['only_new']), differing

@@ -64,6 +64,11 @@ EXPECTED = {
     # Every response/raw_path is 200 and empty; items 1 and 3 also hold 1,026 and 1,003-byte
     # provider envelopes, which are not caption tracks.
     ('receipts/youtube/captions/undated/assemble-20260930.jsonl.gz', 3024): [(0, 200, F, True, 200, F)] * 6,
+    # Bounded 4,096-byte samples of three Senate HLS segments: status 206, content_range
+    # 'bytes 0-4095/11023192' (and /793172, /466992), each beside a 404 empty mirror item.
+    # A partial range is not a document, whatever its media type (red-e1).
+    ('receipts/senate/players/undated/assemble-20260930.jsonl.gz', 12):
+        [(0, 206, F, True, 206, F), (0, 404, F, True, 404, F)] * 3,
     # Retained witness list: no status, no completeness, a relative importer path.
     (COMPLETION, 1): [(None, None, S, None, None, S)],
     (ROUTING, 1): [(0, None, S, True, None, S)] * 2,
