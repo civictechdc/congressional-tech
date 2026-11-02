@@ -96,6 +96,7 @@ def main(argv=None):
         *meeting_steps(),
         dict(name='ordered', sql='SELECT meeting_keys FROM "list"', materialize=True),
         dict(name='package_mods_facts', sql=sql('package-mods-facts'), materialize=True),
+        dict(name='print_meeting_agreement', sql=sql('print-meeting-agreement'), materialize=True),
         dict(name='meeting_mods_links', sql=sql('meeting-mods-links'), materialize=True),
         dict(name='meeting_transcript_links', sql="""SELECT event_id,t['package_id'] AS package_id FROM (SELECT event_id,unnest(transcripts) AS t FROM released_meetings)
             UNION SELECT event_id,package_id FROM meeting_mods_links""", materialize=True),

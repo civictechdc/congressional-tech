@@ -363,11 +363,14 @@ def test_phase2_entities_meetings_witnesses_recordings_and_spicy_projections(tmp
                 ),
             ],
         ),
-        # mods appearance for CHRG-118hhrg55555 (maps to meeting:115538, so loses to house_xml)
+        # mods appearance for CHRG-118hhrg55555: its print was held on 115538's date under its title, so it
+        # stands for meeting:115538 and loses to house_xml there.
         dict(
             record_sha='cc' * 32,
             source='mods',
             package_id='CHRG-118hhrg55555',
+            held_dates=['2023-05-10'],
+            title='HOUSE XML OFFICIAL TITLE',
             appearances=[
                 dict(
                     name_key='mods_loser',

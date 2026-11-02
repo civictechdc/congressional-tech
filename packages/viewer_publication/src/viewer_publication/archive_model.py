@@ -592,7 +592,7 @@ def appearance_steps(*,root=ROOT):
 
 def package_link_steps(*,root=ROOT):
     """Packages to meetings: the jacket and MODS links, then the ones a raw record justifies (ct-dx22)."""
-    return _sql_steps(['package-mods-facts','meeting-mods-links','meeting-transcript-links','package-meeting-links'],root=root)
+    return _sql_steps(['package-mods-facts','print-meeting-agreement','meeting-mods-links','meeting-transcript-links','package-meeting-links'],root=root)
 
 
 def admission_steps(*,prelude=(),root=ROOT):
