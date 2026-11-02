@@ -114,7 +114,7 @@ def test_version_digest_covers_package_nested_vocabularies_and_lock(tmp_path):
 def input_tables(tmp_path, rows):
     schema = pa.schema([('receipt_key',pa.string()),('receipt_line',pa.int64()),('capture_index',pa.int32()),
         ('mode',pa.string()),('url',pa.string()),('requested_url',pa.string()),('member_path',pa.string()),
-        ('h_content_disposition',pa.string()),('sha256',pa.binary(32)),('original_url',pa.string())])
+        ('h_content_disposition',pa.string()),('sha256',pa.binary(32)),('original_url',pa.string()),('context_url',pa.string())])
     path=tmp_path/'captures.parquet'; pq.write_table(pa.Table.from_pylist(rows,schema=schema),path)
     return path
 
@@ -188,7 +188,9 @@ def test_actual_model_factory_and_producer_keep_complete_filename_pair_parity(tm
         dict(url='https://fixture.test/hearings/nominations-6/'),
         dict(url='https://fixture.test/public/?a=Files.Serve&File_id=1'),
         dict(url='https://fixture.test/'),
-        dict(url=None,requested_url='https://fixture.test/press-release/statement/')]
+        dict(url=None,requested_url='https://fixture.test/press-release/statement/'),
+        # red-g F2: an assembly row with no URL is published at its context address.
+        dict(url=None,context_url='https://www.govinfo.gov/content/pkg/CHRG-117jhrg54192/pdf/CHRG-117hhrg54192.pdf')]
     rows=[dict(receipt_key='r',receipt_line=index,capture_index=0,mode='fetch',**row)
         for index,row in enumerate(cases,1)]
     rows.append(dict(receipt_key='r',receipt_line=len(rows)+1,capture_index=0,mode='retained_import',
@@ -225,7 +227,7 @@ def test_actual_model_factory_and_producer_keep_complete_filename_pair_parity(tm
         ('X.pdf','https://fixture.test/floor/X.pdf/'),
         ('nominations-6','https://fixture.test/hearings/nominations-6/'),
         ('','https://fixture.test/public/?a=Files.Serve&File_id=1'),('','https://fixture.test/'),
-        ('statement','')}
+        ('statement',''),('CHRG-117hhrg54192.pdf','')}
     for path in [model/'model-names.parquet',producer['work_list']]:
         pairs=[(row['filename'],row['source_url']) for row in pq.read_table(path).to_pylist()]
         assert set(pairs)==expected and len(pairs)==len(expected)

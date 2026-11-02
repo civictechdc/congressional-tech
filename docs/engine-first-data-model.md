@@ -520,8 +520,9 @@ One row per source file: 1,683,430 today.
   3. the admitted flat `h_content_disposition` filename, `filename*` [[RFC6266]] first; no header arrays or prior-attempt copies are read;
   4. the value of the first filename-parameter registry entry present in the source URL's query, else the requested URL's, at its first occurrence;
   5. the source URL's last path segment;
-  6. the requested URL's last path segment.
-  7. for a source, then a requested, URL with no query that ends in `/`: its last non-empty path segment (`…/X.pdf/` gives `X.pdf`, `/hearings/nominations-6/` gives `nominations-6`; a bare host gives none). Trailing-slash hearing pages and press releases were 1,240 of the 2,901 blank names in 448651e7 (ct-yf1c).
+  6. the requested URL's last path segment;
+  6a. for a capture with no URL of its own, its context address's last path segment (assembly rows that name only the address they were captured at).
+  7. for a source, then a requested, then a context URL with no query that ends in `/`: its last non-empty path segment (`…/X.pdf/` gives `X.pdf`, `/hearings/nominations-6/` gives `nominations-6`; a bare host gives none). Trailing-slash hearing pages and press releases were 1,240 of the 2,901 blank names in 448651e7 (ct-yf1c).
 - **Decoding:** URL segments and query values are percent-decoded once as strict UTF-8, `+` kept literal; an invalid sequence stays encoded.
 - **One name per capture row.** Each admitted effective name is its own source file, joined by the same-body edge. Other header copies stay in raw behind the capture pointer. The document shows the saved file's effective name.
 - **Grain:** two archive members with the same body and name at different paths are one source file; `sources` keeps each path.
@@ -591,9 +592,11 @@ filename       := the saved file's effective filename; saved-file order picks th
                   then among that body's source files a named one first, otherwise
                   saved-file order (a ZIP member is a first-class copy)
                   (invariant saved_unnamed_with_named_sibling = 0)
-                  a blank filename carries a recorded reason (no address, a query URL
-                  that names no file, a bare host; metadata blank_filename_reasons);
-                  invariant unexplained_blank_filenames = 0
+                  a blank filename carries a recorded reason read from every capture of
+                  the saved body and its published address: none, a query URL whose
+                  captures name no file (no final URL, no disposition), or a bare host;
+                  any capture that names the body leaves no reason (metadata
+                  blank_filename_reasons; invariant unexplained_blank_filenames = 0)
 title          := the applying title_override (§7.9), else the saved file's reading title,
                   else its heading, else the text of its earliest listing link (§7.10)
                   that is not a link word, else the first other-format file's reading

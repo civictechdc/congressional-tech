@@ -35,10 +35,14 @@ SELECT i.input_id, i.source_url,
         nullif(p.filename, ''),
         nullif(url_filename(i.source_url), ''),
         nullif(url_filename(i.requested_url), ''),
+        -- A capture with no URL of its own is published at its context address.
+        nullif(url_filename(i.context_url), ''),
         -- A query-free URL ending in '/' names its last non-empty path segment.
         nullif(CASE WHEN strpos(i.source_url, '?') = 0
             THEN url_filename(regexp_replace(i.source_url, '/+(#.*)?$', '')) END, ''),
         nullif(CASE WHEN strpos(i.requested_url, '?') = 0
-            THEN url_filename(regexp_replace(i.requested_url, '/+(#.*)?$', '')) END, ''), '') AS filename
+            THEN url_filename(regexp_replace(i.requested_url, '/+(#.*)?$', '')) END, ''),
+        nullif(CASE WHEN strpos(i.context_url, '?') = 0
+            THEN url_filename(regexp_replace(i.context_url, '/+(#.*)?$', '')) END, ''), '') AS filename
 FROM parameter_values p RIGHT JOIN filename_inputs i
     ON i.input_id = p.input_id AND p.preference = 1

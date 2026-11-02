@@ -163,12 +163,27 @@ def test_recovery_only_document_takes_the_recovered_reading_title_else_the_origi
 
 
 def test_a_blank_filename_needs_a_recorded_reason(tmp_path):
-    from viewer_publication.archive_model import BLANK_FILENAME_REASON_SQL
-    urls = [None, 'https://www.epw.senate.gov/public/?a=Files.Serve&File_id=1', 'https://docs.house.gov/', 'https://x.test/a.pdf', 'https://x.test/a/b']
-    inputs = [json_input(tmp_path, 'ordered', [dict(i=i, source_url=u) for i, u in enumerate(urls)], i='Int64', source_url='Utf8')]
+    """green-g/red-g: the reason reads every capture of the saved body and the published address."""
+    from viewer_publication.archive_model import BLANK_FILENAMES_SQL
+    fs = 'https://www.epw.senate.gov/public/?a=Files.Serve&File_id=1'
+    docs = [dict(doc_key='files-serve', body_hex='a', source_url=fs, filename=''),
+            dict(doc_key='final-url-named', body_hex='b', source_url=fs, filename=''),
+            dict(doc_key='context-only', body_hex='c', source_url=None, filename=''),
+            dict(doc_key='no-address', body_hex='d', source_url=None, filename=''),
+            dict(doc_key='host', body_hex='e', source_url='https://docs.house.gov/', filename=''),
+            dict(doc_key='plain-path', body_hex='f', source_url='https://x.test/a/b', filename=''),
+            dict(doc_key='named', body_hex='g', source_url='https://x.test/a.pdf', filename='a.pdf')]
+    captures = [dict(body_sha='a', url=fs, context_url=fs, filename=''),
+                dict(body_sha='b', url=fs, context_url=fs, filename=''),
+                dict(body_sha='b', url='https://www.epw.senate.gov/public/_cache/files/x/euler-testimony.pdf', context_url=fs, filename='euler-testimony.pdf'),
+                dict(body_sha='c', url=None, context_url='https://www.govinfo.gov/content/pkg/P/pdf/P.pdf', filename='')]
+    inputs = [json_input(tmp_path, 'ordered', docs, doc_key='Utf8', body_hex='Utf8', source_url='Utf8', filename='Utf8'),
+              json_input(tmp_path, 'capture_sources', captures, body_sha='Utf8', url='Utf8', context_url='Utf8', filename='Utf8')]
     result = run_job(tmp_path, NativeDatasets.from_config(os.environ['DOCSPEC_JOB_CONFIG']), inputs=inputs, steps=[], outputs=[],
-        queries=[dict(name='r', sql=f'SELECT i,{BLANK_FILENAME_REASON_SQL} AS reason FROM ordered o ORDER BY i')])
-    assert [row['reason'] for row in result['r']] == ['no_address', 'query_names_no_file', 'host_only', None, None]
+        queries=[dict(name='r', sql=f'SELECT doc_key,reason FROM ({BLANK_FILENAMES_SQL}) r ORDER BY doc_key')])
+    assert {row['doc_key']: row['reason'] for row in result['r']} == {
+        'files-serve': 'query_names_no_file', 'final-url-named': None, 'context-only': None,
+        'no-address': 'no_address', 'host': 'host_only', 'plain-path': None}
 
 
 def test_the_generic_title_check_is_its_own_rule(tmp_path):
