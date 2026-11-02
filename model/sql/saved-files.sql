@@ -1,7 +1,8 @@
 -- DM 7.5 saved-file order chooses the saved body; among that body's source
 -- files a named one comes first, otherwise saved-file order holds (a ZIP
--- member, whose source has no address of its own, is a first-class copy).
--- The body cannot change, only an unnamed row's place. Running windows only, so the
+-- member, whose source has no address of its own, is a first-class copy), and a
+-- source with neither an address nor a member path comes last, so the published
+-- address never goes blank. The body cannot change, only these rows' places. Running windows only, so the
 -- plan streams (no whole-partition WindowAggExec).
 WITH ranked AS (
  SELECT m.*,row_number() OVER w AS base_rank,first_value(m.body_sha) OVER w AS saved_body
@@ -12,5 +13,6 @@ WITH ranked AS (
  m.first_fetched DESC NULLS LAST,m.body_sha,m.source_id)
 )
 SELECT * EXCLUDE(base_rank,saved_body,is_saved_body),row_number() OVER(PARTITION BY component
- ORDER BY is_saved_body DESC,is_saved_body AND coalesce(filename,'')='',base_rank) AS saved_rank
+ ORDER BY is_saved_body DESC,is_saved_body AND coalesce(filename,'')='',
+  is_saved_body AND source_url IS NULL AND NOT coalesce(archive_member,false),base_rank) AS saved_rank
 FROM (SELECT *,body_sha IS NOT DISTINCT FROM saved_body AS is_saved_body FROM ranked)
