@@ -44,9 +44,17 @@ WITH keys AS (
  SELECT *,row_number() OVER(PARTITION BY event_id ORDER BY meeting_date,twin_id) AS rn FROM twins
 ), rescheduled AS (
  SELECT event_id,twin_id AS rescheduled_to,CASE WHEN stated THEN 'publisher_status' ELSE 'recording_on_later_twin' END AS rescheduled_basis FROM first_twin WHERE rn=1
+), transcript_links AS (
+ -- A linked print is this meeting's transcript only if its own MODS records the meeting (the same rule as
+ -- witnesses): Congress.gov lists 52109 on 330128, another hearing's print. A package with no MODS held
+ -- cannot be judged, so its jacket link stands.
+ SELECT package_id,event_id FROM package_meeting_links
+ UNION
+ SELECT l.package_id,l.event_id FROM meeting_transcript_links l
+ LEFT JOIN package_mods_facts f ON f.package_id=l.package_id WHERE f.package_id IS NULL
 ), transcript_rows AS (
  SELECT DISTINCT l.event_id,d.package_id,cast(d.list_row AS INT) AS list_row,d.format
- FROM meeting_transcript_links l
+ FROM transcript_links l
  JOIN details d ON l.package_id=d.package_id
  WHERE d.package_id IS NOT NULL
 ), transcript_preferred AS (
