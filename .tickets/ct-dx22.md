@@ -40,3 +40,7 @@ Round 1b 2026-11-02 (lead): Two-way package-to-meeting rule moves 392 rows on 93
 **2026-11-02T15:10:29Z**
 
 2026-11-02 red-f2 (BLOCK, narrow): all 11 probes agree with raw. The witness drop (10,971 suppressed print rows) is mostly duplicates (10,700 by name, 56 by nickname, 79 on another same-day meeting), but about 53 testifying people are published nowhere and 75 statements are lost, with no disposition. Rule sent to impl-f: precedence per person with superseded_by, unmatched rows published, statements recorded as statements. Linking by witness overlap first, never an eventId veto: 81 wrong links and 160 wrong rejections out of 10,304 pairs.
+
+**2026-11-02T16:11:20Z**
+
+2026-11-02 impl-f r1b-f (rebased on 3e68b62b, engine 5dae611): all red-f2 items fixed. Witness precedence is per person (witness_precedence step; superseded_by column; nickname, spelling, rank and particle matching); letters and Member statements are labelled statements. A print links by shared witnesses (half of the shorter list, at least 2); titles decide only when a side lists none; an eventId never vetoes. Raw check on v21: not_held 430/430; rescheduled 84/86 (2 ambiguous); print attachments 6,909/6,972 (31 matching the old state, 31 a best pick, 1 contradicted: 50139, a seven-day print); red-f2's lost cases 185/192 published (7 are memo/QFR lines). Witness rows: 173,067 published, 141,255 shown, 31,812 superseded, 7,230 statements. red-f3 is checking false-match risk. Frozen inputs: .cache/archive-release/r1b-frozen/.

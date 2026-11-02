@@ -40,3 +40,7 @@ Round 1b 2026-11-02 (lead): impl-f: 10 commits on r1b-f. Frozen before/after and
 **2026-11-02T15:10:29Z**
 
 2026-11-02 red-f2 (BLOCK, narrow): 116426 never sat (held Dec 5 as 116584) and 116998 was re-noticed as 117059, so both registry rows come out; the print override marks 9 superseded duplicates as held (e.g. 105066, replaced by 105084).
+
+**2026-11-02T16:11:20Z**
+
+2026-11-02 impl-f: registry rows for 116426 and 116998 removed; 105066 is not-held again (a canceled same-day duplicate gives way to the meeting that sat).
