@@ -14,14 +14,15 @@ from congress_api.retention.body_store import validate_key
 from congress_api.retention.derived_files import file_identity,check_identity
 from viewer_publication.archive_model_job import (
     load_spec as load_model_spec,validate_spec as validate_model_spec,_local,_pin,
-    TABLES,OPTIONAL_TABLES,PROVENANCE,provenance_record_kind,provenance_etag_md5,
+    TABLES,OPTIONAL_TABLES,ENTITY_TABLES,EXPLORER_TABLES,PROVENANCE,provenance_record_kind,provenance_etag_md5,
 )
 from viewer_publication.receipt_pins import receipt_list
 from viewer_publication.archive_comparison_acceptance import ComparisonAcceptance,require_comparison
 
 ROOT=Path(__file__).resolve().parents[4]
 SITE=ROOT/'apps/site'
-ALL_TABLES=(*TABLES,*OPTIONAL_TABLES)
+# The five daily tables; the Explorer tables come from the template, not daily production.
+ALL_TABLES=(*TABLES,*ENTITY_TABLES)
 FIELDS={'version','model_spec','bucket','work','public_origin','receipt_keys','provenance','run',
         'contract_next_release','targets'}
 METADATA_BYTES=1<<20
@@ -60,7 +61,7 @@ def completed_daily_inputs(template,production,records):
                 merged_parsers[entity_name]=dict(ver)
     receipt_list(keys)
     value=dict(template,parser_versions=merged_parsers,catalog_version=versions['filename_readings'])
-    for name in (*TABLES,*(n for n in OPTIONAL_TABLES if n in pins)):
+    for name in (*TABLES,*(n for n in ENTITY_TABLES if n in pins)):
         if (not isinstance(pins[name],dict)
                 or set(pins[name])!={'metadata_location','table_uuid','snapshot','schema_id'}):
             raise ValueError('Invalid daily native table pin')
@@ -84,6 +85,9 @@ def completed_daily_inputs(template,production,records):
                 or any(row!=actual[row['key']] for row in rows)):
             raise ValueError('Daily provenance differs from checked records and acknowledged imports')
     for name,kind in PROVENANCE.items():value[name]=sorted(families[kind],key=lambda row:row['key'])
+    # Recording decisions only feed the Explorer tables, which daily does not produce; the
+    # template carries those pins when a release has them, so the decisions go with them.
+    if not all(value.get(name) is not None for name in EXPLORER_TABLES):value['recording_decision_files']=[]
     return validate_model_spec(value,base=Path.cwd()),list(keys)
 
 
