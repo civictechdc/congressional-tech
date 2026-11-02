@@ -590,6 +590,9 @@ document_id    := SHA-256 of the compact JSON ["bodies", [k1, k2, …]], the dis
 filename       := the saved file's effective filename; saved-file order picks the saved body,
                   then among that body's source files a named one with an address first
                   (invariant saved_unnamed_with_named_sibling = 0)
+                  a blank filename carries a recorded reason (no address, a query URL
+                  that names no file, a bare host; metadata blank_filename_reasons);
+                  invariant unexplained_blank_filenames = 0
 title          := the applying title_override (§7.9), else the saved file's reading title,
                   else its heading, else the first other-format file's reading title or
                   heading in saved-file order, else the text of its earliest listing link
