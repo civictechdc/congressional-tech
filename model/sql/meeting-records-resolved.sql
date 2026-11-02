@@ -5,22 +5,26 @@ WITH sitting_rows AS (
 ), sitting_fields AS (
  -- A first sitting fills each fact Congress.gov lacks from the House record, field by field.
  SELECT event_id,idx,
-  CASE WHEN idx=0 THEN coalesce(nullif(trim(s['start']),''),nullif(trim(h['start']),'')) ELSE nullif(trim(s['start']),'') END AS start_text,
-  CASE WHEN idx=0 THEN coalesce(nullif(trim(s['end']),''),nullif(trim(h['end']),'')) ELSE nullif(trim(s['end']),'') END AS end_text,
-  CASE WHEN idx=0 THEN coalesce(nullif(trim(s['room']),''),nullif(trim(h['room']),'')) ELSE nullif(trim(s['room']),'') END AS room,
-  CASE WHEN idx=0 THEN coalesce(nullif(trim(s['building']),''),nullif(trim(h['building']),'')) ELSE nullif(trim(s['building']),'') END AS building,
-  CASE WHEN idx=0 THEN coalesce(nullif(trim(s['address']),''),nullif(trim(h['address']),'')) ELSE nullif(trim(s['address']),'') END AS address
- FROM sitting_rows
+  nullif(trim(s['start']),'') AS start_text,
+  CASE WHEN same_start THEN coalesce(nullif(trim(s['end']),''),nullif(trim(h['end']),'')) ELSE nullif(trim(s['end']),'') END AS end_text,
+  CASE WHEN same_start THEN coalesce(nullif(trim(s['room']),''),nullif(trim(h['room']),'')) ELSE nullif(trim(s['room']),'') END AS room,
+  CASE WHEN same_start THEN coalesce(nullif(trim(s['building']),''),nullif(trim(h['building']),'')) ELSE nullif(trim(s['building']),'') END AS building,
+  CASE WHEN same_start THEN coalesce(nullif(trim(s['address']),''),nullif(trim(h['address']),'')) ELSE nullif(trim(s['address']),'') END AS address
+ FROM (SELECT *,idx=0 AND try_cast(s['start'] AS TIMESTAMP WITH TIME ZONE)=try_cast(h['start'] AS TIMESTAMP WITH TIME ZONE) AS same_start FROM sitting_rows)
 ), sittings_agg AS (
  SELECT event_id,array_agg(named_struct(
-  'start',arrow_cast(try_cast(start_text AS TIMESTAMP WITH TIME ZONE),'Timestamp(Microsecond, Some("UTC"))'),
-  'end',arrow_cast(try_cast(end_text AS TIMESTAMP WITH TIME ZONE),'Timestamp(Microsecond, Some("UTC"))'),
+  'start',start_ts,
+  'end',end_ts,
   'place',nullif(concat_ws(', ',room,building,address),''),
   'room',room,
   'building',building,
   'address',address
  ) ORDER BY idx) AS sittings
- FROM sitting_fields GROUP BY event_id
+ FROM (
+  -- Computed here, not in the aggregate: a computed CASE branch in an ordered array_agg exceeds the pool.
+  -- A date alone states no instant, so it must not become UTC midnight.
+  SELECT *,CASE WHEN start_text LIKE '%T%' THEN arrow_cast(try_cast(start_text AS TIMESTAMP WITH TIME ZONE),'Timestamp(Microsecond, Some("UTC"))') END AS start_ts,CASE WHEN end_text LIKE '%T%' THEN arrow_cast(try_cast(end_text AS TIMESTAMP WITH TIME ZONE),'Timestamp(Microsecond, Some("UTC"))') END AS end_ts FROM sitting_fields
+ ) GROUP BY event_id
 ), committee_rows AS (
  SELECT event_id,unnest(raw_committees) AS c,
   unnest(range(0,cast(array_length(raw_committees) AS BIGINT))) AS idx

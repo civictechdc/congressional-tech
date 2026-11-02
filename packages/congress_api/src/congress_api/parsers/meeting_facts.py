@@ -44,9 +44,13 @@ def meeting_access(row):
     """Keep explicit native access, otherwise use explicit title phrases only."""
     native = str(row.get('type') or '').lower()
     reported = {value for value in ('open', 'closed') if re.search(r'\b' + value + r'\b', native)}
-    if reported:
-        return ('partly_closed' if len(reported) == 2 else reported.pop()), '/type'
     title = ' '.join(str(row.get('title') or '').lower().split())
+    # A separate closed session declared around the event makes the meeting partly closed.
+    separate_closed = re.search(r'\b(?:followed|preceded)\s+by\s+(?:an?\s+)?closed\b', title)
+    if reported:
+        if reported == {'open'} and separate_closed:
+            return 'partly_closed', '/type,/title'
+        return ('partly_closed' if len(reported) == 2 else reported.pop()), '/type'
     # Possibility is not a declaration that a closed portion will occur.
     title = re.sub(r'\b(?:possibility of|possibly|may (?:be|go into|hold))\s+(?:an?\s+)?(?:closed|open)\s+(?:session|hearing|meeting)\b', '', title)
     event = r'(?:hearings?|briefings?|(?:business\s+)?meetings?|mark[ -]?up(?:\s+sessions?)?|sessions?|panels?|roundtables?)'
@@ -56,7 +60,7 @@ def meeting_access(row):
     subsequent = re.search(r'\b(?:followed|preceded)\s+by\b', title)
     for access in ('open', 'closed'):
         marker = r'[\[(]\s*' + access + r'\s*(?:[\])]|(?:session|hearing|briefing)\b|in a closed space\b|-\s*possibility of closing\b)'
-        phrase = r'\b' + access + r'\s+(?:joint\s+)?' + event + r'\b'
+        phrase = r'\b' + access + r'\s+(?:[\w/-]+\s+){0,4}?(?:roundtables?|panel\s+meetings?)\b|\b' + access + r'\s+(?:joint\s+)?' + event + r'\b'
         declaration = r'\b' + event + r'\s+(?:is\s+|will be\s+)?' + access + r'\b|^\W*' + access + r'\s+to (?:the )?public\b'
         matches = [match for pattern in (marker, phrase, declaration) for match in re.finditer(pattern, title)]
         if matches:
@@ -65,9 +69,10 @@ def meeting_access(row):
                 primary.add(access)
     if len(found) == 2:
         return 'partly_closed', '/title'
-    # A later closed session alone does not establish access to the main event.
     if primary:
         return primary.pop(), '/title'
+    if separate_closed:
+        return 'partly_closed', '/title'
     return 'unknown', None
 
 

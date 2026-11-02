@@ -2,22 +2,23 @@ WITH keys AS (
  SELECT DISTINCT try_cast(unnest(meeting_keys) AS BIGINT) AS event_id FROM ordered WHERE meeting_keys IS NOT NULL
  UNION
  SELECT DISTINCT event_id FROM meetings_resolved WHERE event_id IS NOT NULL
-), reschedule_evidence AS (
- -- A postponed meeting re-entered under a new event ID keeps its old record as scheduled.
- SELECT event_id,meeting_date,title_key,reschedule_candidate,
-  committee_key,
-  coalesce(array_length(videos),0)>0 OR coalesce(array_length(transcript_jackets),0)>0 AS has_evidence
- FROM meetings_resolved
- WHERE title_key IS NOT NULL AND committee_key IS NOT NULL
+), reschedule_rows AS (
+ -- A postponed meeting re-entered under a new event ID keeps its old record. Publisher status decides
+ -- when stated; otherwise only a recording on the later twin, since transcripts misassign proceedings
+ -- and a multi-day hearing repeats one title.
+ SELECT event_id,meeting_date,title_key,reschedule_candidate,committee_key,
+  coalesce(array_length(videos),0)>0 AS has_video,
+  lower(coalesce(status,'')) IN ('rescheduled','r') AS stated
+ FROM meetings_resolved WHERE title_key IS NOT NULL AND committee_key IS NOT NULL
+), twins AS (
+ SELECT old.event_id,old.stated,twin.event_id AS twin_id,twin.meeting_date
+ FROM reschedule_rows old JOIN reschedule_rows twin ON old.title_key=twin.title_key AND old.committee_key=twin.committee_key
+ WHERE twin.meeting_date>old.meeting_date AND twin.meeting_date<=old.meeting_date+INTERVAL '60' DAY
+  AND ((old.stated AND NOT twin.stated) OR (NOT old.stated AND NOT old.has_video AND old.reschedule_candidate AND twin.has_video))
+), first_twin AS (
+ SELECT *,row_number() OVER(PARTITION BY event_id ORDER BY meeting_date,twin_id) AS rn FROM twins
 ), rescheduled AS (
- SELECT o.event_id,min(n.event_id) AS rescheduled_to FROM (
-  SELECT old.event_id,min(twin.meeting_date) AS first_date,old.title_key,old.committee_key
-  FROM reschedule_evidence old JOIN reschedule_evidence twin ON old.title_key=twin.title_key AND old.committee_key=twin.committee_key
-  WHERE NOT old.has_evidence AND old.reschedule_candidate AND twin.has_evidence
-   AND twin.meeting_date>old.meeting_date AND twin.meeting_date<=old.meeting_date+INTERVAL '60' DAY
-  GROUP BY old.event_id,old.title_key,old.committee_key
- ) o JOIN reschedule_evidence n ON n.title_key=o.title_key AND n.committee_key=o.committee_key AND n.meeting_date=o.first_date AND n.has_evidence
- GROUP BY o.event_id
+ SELECT event_id,twin_id AS rescheduled_to,CASE WHEN stated THEN 'publisher_status' ELSE 'recording_on_later_twin' END AS rescheduled_basis FROM first_twin WHERE rn=1
 ), transcript_rows AS (
  SELECT DISTINCT l.event_id,d.package_id,cast(d.list_row AS INT) AS list_row
  FROM meeting_transcript_links l
@@ -60,7 +61,8 @@ SELECT k.event_id,
  m.access,
  m.access_basis,
  m.not_held,
- r.rescheduled_to
+ r.rescheduled_to,
+ r.rescheduled_basis
 FROM keys k
 LEFT JOIN meetings_resolved m ON k.event_id=m.event_id
 LEFT JOIN transcripts_agg t ON k.event_id=t.event_id

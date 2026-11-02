@@ -631,7 +631,12 @@
         {
           "name": "rescheduled_to",
           "type": "int64",
-          "meaning": "Later meeting of the same committees and title within 60 days, when this one has no recording or transcript; derived, not publisher-stated"
+          "meaning": "Later meeting of the same committees and title within 60 days, when the publisher states Rescheduled or only the later twin has a recording; derived"
+        },
+        {
+          "name": "rescheduled_basis",
+          "type": "dict",
+          "meaning": "publisher_status or recording_on_later_twin"
         }
       ],
       "gaps": [],
