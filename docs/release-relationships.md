@@ -222,8 +222,8 @@ Identity: `event_id` (primary_key; published identifier).
 | `congress_gov_meeting_type` | `dict` | Congress.gov's type label (Hearing, Markup, Meeting) |
 | `access` | `dict` | open, closed, partly_closed or unknown, as the publisher type or title states |
 | `access_basis` | `dict` | The source and field that state access, such as congress_gov/title |
-| `not_held` | `bool` | The publisher title opens with postponed, canceled, rescheduled or test; null with no record |
-| `rescheduled_to` | `int64` | Later meeting of the same committees and title within 60 days, when the publisher states Rescheduled or only the later twin has a recording; derived |
+| `not_held` | `bool` | Publisher status Canceled or Postponed, or the title opens with postponed, canceled or test; null with no record |
+| `rescheduled_to` | `int64` | Later meeting of the same committees and title, parts included, within 60 days that is not itself not held: when this meeting is not held, or has no recording of its own and either the publisher states Rescheduled or only the later twin has a recording; derived |
 | `rescheduled_basis` | `dict` | publisher_status or recording_on_later_twin |
 
 - `sittings[]`: Embedded scheduled intervals and places. Congress.gov states instants and places, so its sitting is used when present; a House-only sitting's unzoned Eastern local time is converted to an instant. An explicit empty House state stays empty. Times retain published precision; do not invent a Congress from the session number.

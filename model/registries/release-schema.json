@@ -626,12 +626,12 @@
         {
           "name": "not_held",
           "type": "bool",
-          "meaning": "The publisher title opens with postponed, canceled, rescheduled or test; null with no record"
+          "meaning": "Publisher status Canceled or Postponed, or the title opens with postponed, canceled or test; null with no record"
         },
         {
           "name": "rescheduled_to",
           "type": "int64",
-          "meaning": "Later meeting of the same committees and title within 60 days, when the publisher states Rescheduled or only the later twin has a recording; derived"
+          "meaning": "Later meeting of the same committees and title, parts included, within 60 days that is not itself not held: when this meeting is not held, or has no recording of its own and either the publisher states Rescheduled or only the later twin has a recording; derived"
         },
         {
           "name": "rescheduled_basis",
