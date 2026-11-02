@@ -317,3 +317,27 @@ def test_registry_selection_runs_with_no_existing_readings(tmp_path, monkeypatch
     registry = fixture_registry(tmp_path / 'registry.json', [entry])
     args, _, _ = _review_inputs(tmp_path)
     assert readings.plan(**args, parser=None, existing=None, registry=registry, work=tmp_path / 'plan')['work_items'] == 1
+
+
+def test_a_capture_with_no_stored_size_is_read_locally_and_verified_by_hash(tmp_path):
+    # Assembly receipts record a copy (stored_suffix '.gz') but no stored_bytes. Defect guarded:
+    # the captured-copies inventory dropped them, so they stayed pending forever (spec-run D2).
+    raw = tmp_path / 'raw'
+    good = json.dumps(dict(title='Hearing record')).encode()
+    wrong = json.dumps(dict(title='Expected body')).encode()
+    rows = []
+    for body, stored in ((good, gzip.compress(good, mtime=0)), (wrong, b'{"title":"different bytes"}')):
+        digest = hashlib.sha256(body).digest(); key = 'bodies/sha256/' + digest.hex()[:2] + '/' + digest.hex() + '.gz'
+        (raw / key).parent.mkdir(parents=True, exist_ok=True); (raw / key).write_bytes(stored)
+        rows.append(dict(sha256=digest, bytes=len(body), media_type='application/json', fidelity='exact-bytes',
+                         stored_suffix='.gz', stored_bytes=None, stored_md5=None))
+    captures = tmp_path / 'captures.parquet'
+    pq.write_table(pa.Table.from_pylist(rows, schema=pa.schema([('sha256', pa.binary(32)), ('bytes', pa.int64()),
+        ('media_type', pa.string()), ('fidelity', pa.string()), ('stored_suffix', pa.string()), ('stored_bytes', pa.int64()),
+        ('stored_md5', pa.binary(16)), ('sniffed_format', pa.string()), ('sniff_version', pa.string()), ('intact', pa.bool_())])), captures)
+    staged = readings.stage_once(captures=captures, body_inventory=None, captured_copies=True, local_root=raw,
+        work=tmp_path / 'stage', decided_at='2026-11-02T00:00:00Z', engine=NativeDatasets.from_config(os.environ['DOCSPEC_JOB_CONFIG']))
+    read = {(row['body_sha'].hex(), row['parser'], row['status']) for row in pq.read_table(staged['readings']).to_pylist()}
+    assert read == {(hashlib.sha256(good).hexdigest(), 'sniff', 'completed'), (hashlib.sha256(good).hexdigest(), 'json', 'completed')}
+    # The file that does not hash to its body is not read, and stays pending.
+    assert staged['pending_reads'] == 1

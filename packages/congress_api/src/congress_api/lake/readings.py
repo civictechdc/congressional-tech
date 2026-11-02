@@ -60,7 +60,7 @@ def current_version(parser):
         values=dict(parser=parser,stored_bytes=MAX_STORED_BYTES,decoded_bytes=MAX_DECODED_BYTES))
 
 
-def _storage_gzip(stream,body_sha,*,raw_io=None):
+def _storage_gzip(stream,body_sha,*,raw_io=None,verify_plain=False):
     """Whether a stored object is the gzip storage encoding of body_sha, decided by the hash.
 
     The one rule for every local reader (owner decision 2026-11-02): gzip is applied exactly
@@ -68,21 +68,23 @@ def _storage_gzip(stream,body_sha,*,raw_io=None):
     head whose decoding does not hash to it is plain storage if its own bytes do (a literal
     .gz body), else a mismatch. Never inferred from a key suffix or an inventory flag.
     `stream` is the caller's own seekable stream (no second open); `raw_io` marks raw reads,
-    the supervised read phase by default. Cost: a non-gzip head reads 2 bytes; a gzip head
+    the supervised read phase by default. `verify_plain` also hashes a non-gzip head (a copy
+    with no pinned size has nothing else proving it). Cost: a non-gzip head reads 2 bytes; a gzip head
     streams the object once more in 1 MiB chunks, O(stored bytes) time, O(1) memory.
     """
     raw_io=raw_io or reading_input
     with raw_io():
         stream.seek(0);head=stream.read(2)
-    if head!=b'\x1f\x8b':return False
-    digest=sha256()
-    try:
-        with raw_io():
-            stream.seek(0)
-            decoded=gzip.GzipFile(fileobj=stream)
-            for chunk in iter(lambda:decoded.read(1<<20),b''):digest.update(chunk)
-        if digest.hexdigest()==body_sha:return True
-    except (OSError,EOFError,zlib.error):pass
+    if head!=b'\x1f\x8b' and not verify_plain:return False
+    if head==b'\x1f\x8b':
+        digest=sha256()
+        try:
+            with raw_io():
+                stream.seek(0)
+                decoded=gzip.GzipFile(fileobj=stream)
+                for chunk in iter(lambda:decoded.read(1<<20),b''):digest.update(chunk)
+            if digest.hexdigest()==body_sha:return True
+        except (OSError,EOFError,zlib.error):pass
     digest=sha256()
     with raw_io():
         stream.seek(0)
@@ -116,7 +118,7 @@ def parse_payload(payload):
                 observed=os.fstat(stream.fileno())
             if not stat.S_ISREG(observed.st_mode) or observed.st_size!=source['stored_bytes']:
                 return dict(read_error='changed_input',read_bytes=0)
-            stored_gzip=_storage_gzip(stream,source['body_sha'])
+            stored_gzip=_storage_gzip(stream,source['body_sha'],verify_plain=bool(source.get('unpinned')))
             if source['parser']=='sniff':
                 from congress_api.retention.sniff import read_sniff
                 def read(start,length):
@@ -314,12 +316,13 @@ def plan(*,captures,body_inventory,local_root,engine,work,decided_at,parser,
                 ends_with(lower(split_part(media_type,';',1)),'+json')) AS page_hint
             FROM captures WHERE sha256 IS NOT NULL GROUP BY sha256,coalesce(stored_suffix,'.gz')""",materialize=True))
     if captured_copies:
-        # The recorded copy, by suffix priority; a body whose captures pin no stored size has
-        # no usable copy and stays pending (named in raw custody), never guessed.
+        # The recorded copy, by suffix priority. A capture that pinned no stored size (some
+        # assembly receipts) keeps its copy: a local read takes the size from the file and then
+        # verifies the body's hash; a ranged read still needs a size pin (raw custody names it).
         steps.append(dict(name='body_inventory',sql='''SELECT body_sha,physical_key,physical_key AS relative_path,
             captured_stored_bytes AS stored_bytes FROM (SELECT *,row_number() OVER (PARTITION BY body_sha
-                ORDER BY CASE stored_suffix WHEN '' THEN 0 WHEN '.gz' THEN 1 ELSE 2 END) AS choice
-                FROM body_storage WHERE captured_stored_bytes IS NOT NULL) WHERE choice=1''',materialize=True))
+                ORDER BY captured_stored_bytes IS NULL,CASE stored_suffix WHEN '' THEN 0 WHEN '.gz' THEN 1 ELSE 2 END) AS choice
+                FROM body_storage) WHERE choice=1''',materialize=True))
     if direct_listing:
         # Choose only capture-recorded copies. Rank before consulting availability;
         # a rejected higher-ranked copy contributes its own fallback reason.
@@ -417,7 +420,7 @@ def plan(*,captures,body_inventory,local_root,engine,work,decided_at,parser,
             UNION ALL SELECT body_sha FROM sniff_conflicts)'''),
         dict(name='invalid_inventory',sql=f'''SELECT count(*) AS n FROM body_inventory
             WHERE body_sha IS NULL OR physical_key IS NULL OR relative_path IS NULL
-               {'OR stored_bytes IS NULL' if not direct_listing else ''} OR stored_bytes<0''')]+([
+               {'OR stored_bytes IS NULL' if not direct_listing and not captured_copies else ''} OR stored_bytes<0''')]+([
         dict(name='writer_admission_conflicts',sql=writer_admission_conflict_sql())]
         if combined else [])+([dict(name='listing_conflicts',sql='''SELECT count(*) AS n FROM (
             SELECT key FROM body_listing GROUP BY key HAVING count(*)>1
@@ -491,7 +494,7 @@ def _execute_plan(planned,*,engine,worker_factory=ParserWorker,unreadable_store=
         if body_store.cache_dir is None or not body_store.cache_dir.resolve().is_relative_to(cache_root):
             raise ValueError('Ranged reads require an owned cache below the producer work directory')
         items=list(items)
-        candidates=[item for item in items if item['physical_key'] is not None and item['stored_bytes']<=MAX_STORED_BYTES
+        candidates=[item for item in items if item['physical_key'] is not None and item['stored_bytes'] is not None and item['stored_bytes']<=MAX_STORED_BYTES
             and (item.get('page_hint') or item.get('known_format') in {'html','xml','json'} or parser in {'html','xml','json'})
             and body_store._immutable_cache_path(item['physical_key']) is not None]
         # Identity plus at most three disjoint sniff/page ranges, in filesystem blocks.
@@ -524,6 +527,15 @@ def _execute_plan(planned,*,engine,worker_factory=ParserWorker,unreadable_store=
             raise ValueError('Pinned physical key names a different body')
         cache=work/'body-bytes'/body_hex if combined or body_store is not None else None
         request=dict(path=str(path),body_sha=body_hex,parser=parser,stored_bytes=item['stored_bytes'])
+        if item['stored_bytes'] is None:
+            # No pinned size: only a local copy, sized from the file now, and verified in full by
+            # the body's hash when read (unpinned), so a changed or wrong file stays unread.
+            if body_store is not None:
+                counters['pending_reads']+=1;return None
+            try:request['stored_bytes']=path.stat().st_size
+            except OSError:
+                counters['pending_reads']+=1;return None
+            request['unpinned']=True
         if combined or body_store is not None:
             request.update(cache=str(cache),versions=versions,
                 known_format=item['known_format'] if combined else None if parser=='sniff' else parser,
@@ -935,7 +947,8 @@ def parse_once_payload(payload,*,body_store=None):
                 max_read_bytes=request.get('max_read_bytes'),request_timings=request.get('request_timings',False))
             # Remote storage encoding comes from the object's Content-Encoding; a local object's
             # from the one hash rule over the same open source, never its name.
-            if request.get('remote') is None:opened.stored_gzip=_storage_gzip(_SourceStream(opened),request['body_sha'])
+            if request.get('remote') is None:
+                opened.stored_gzip=_storage_gzip(_SourceStream(opened),request['body_sha'],verify_plain=bool(request.get('unpinned')))
             return opened
         if request.get('remote') and body_object_digest(request['remote']['key'])!=request['body_sha']:
             raise OSError('body_key_mismatch')
