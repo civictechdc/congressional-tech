@@ -1,13 +1,21 @@
-WITH candidate_packages AS (
- SELECT DISTINCT package_id FROM source_annotations WHERE package_id IS NOT NULL
- UNION
- SELECT DISTINCT package_id FROM document_packages WHERE package_id IS NOT NULL
- UNION
- SELECT DISTINCT nullif(trim(r.package_id),'') AS package_id
+-- A meeting's jacket names a package; a package named anywhere we hold (annotations, document
+-- packages, appearance records or a capture address) links when its congress, chamber and jacket match.
+-- Capture addresses are parsed per row and joined to the meetings' small jacket set before any
+-- DISTINCT (AGENTS.md candidate rule): DISTINCT over all captures exhausts the aggregate memory cap.
+WITH meeting_jackets AS (
+ SELECT event_id,congress,chamber,meeting_date,unnest(transcript_jackets) AS jacket
+ FROM meetings_resolved
+ WHERE transcript_jackets IS NOT NULL
+), named_packages AS (
+ SELECT package_id FROM source_annotations WHERE package_id IS NOT NULL
+ UNION ALL
+ SELECT package_id FROM document_packages WHERE package_id IS NOT NULL
+ UNION ALL
+ SELECT nullif(trim(r.package_id),'') AS package_id
  FROM selected_appearance_records r
  WHERE r.status='completed' AND r.package_id IS NOT NULL AND trim(r.package_id)<>''
- UNION
- SELECT DISTINCT (regexp_match(coalesce(c.url,c.requested_url,c.context_url,c.member_path,''),'(?i)(CHRG-[0-9]+[hsj]hrg[0-9]+)'))[1] AS package_id
+ UNION ALL
+ SELECT (regexp_match(coalesce(c.url,c.requested_url,c.context_url,c.member_path,''),'(?i)(CHRG-[0-9]+[hsj]hrg[0-9]+)'))[1] AS package_id
  FROM captures c
  WHERE regexp_like(coalesce(c.url,c.requested_url,c.context_url,c.member_path,''),'(?i)CHRG-[0-9]+[hsj]hrg[0-9]+')
 ), parsed_packages AS (
@@ -15,12 +23,8 @@ WITH candidate_packages AS (
   try_cast((regexp_match(package_id,'(?i)^CHRG-([0-9]+)([hsj])hrg0*([0-9]+)$'))[1] AS INT) AS congress,
   lower((regexp_match(package_id,'(?i)^CHRG-([0-9]+)([hsj])hrg0*([0-9]+)$'))[2]) AS chamber_letter,
   try_cast((regexp_match(package_id,'(?i)^CHRG-([0-9]+)([hsj])hrg0*([0-9]+)$'))[3] AS BIGINT) AS jacket
- FROM candidate_packages
+ FROM named_packages
  WHERE regexp_like(package_id,'(?i)^CHRG-[0-9]+[hsj]hrg[0-9]+$')
-), meeting_jackets AS (
- SELECT event_id,congress,chamber,meeting_date,unnest(transcript_jackets) AS jacket
- FROM meetings_resolved
- WHERE transcript_jackets IS NOT NULL
 )
 SELECT DISTINCT p.package_id,m.event_id,m.meeting_date,m.chamber
 FROM parsed_packages p
