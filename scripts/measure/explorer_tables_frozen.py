@@ -48,6 +48,15 @@ def mods_page_facts(spec, work):
     return path
 
 
+def positioned_list(release, work):
+    """The list file with its physical row number, which committee transcripts cite as list_row."""
+    work.mkdir(parents=True, exist_ok=True)
+    path = work / 'list-positions.parquet'
+    with duckdb.connect() as db:
+        db.execute(f"""COPY (SELECT meeting_keys,filename,format,file_row_number AS list_row FROM read_parquet('{release / 'list.parquet'}',file_row_number=true)) TO '{path}' (FORMAT PARQUET)""")
+    return path
+
+
 def positioned_detail(release, work):
     """list_row is a physical position, which an engine window over a scan does not preserve."""
     work.mkdir(parents=True, exist_ok=True)
@@ -75,11 +84,11 @@ def main(argv=None):
         parquet('appearance_records_lake', spec['appearance_records']['path']),
         parquet('video_records', args.lake / 'video_records.parquet'),
         parquet('committee_records', args.lake / 'committee_records.parquet'),
-        parquet('list', args.release / 'list.parquet'),
+        parquet('released_list', positioned_list(args.release, work)),
         parquet('released_meetings', args.release / 'meetings.parquet'),
         parquet('released_detail', positioned_detail(args.release, work)),
         parquet('page_facts', mods_page_facts(spec, work)),
-        parquet('recordings_export', args.release / 'recordings.parquet'),
+        parquet('recordings_entity', args.release / 'recordings.parquet'),
         dict(name='recording_decision_records', kind='json_lines', files=[dict(key='decisions', path=str(args.decisions))],
              schema=dict(fields=[field(k, v) for k, v in RECORDING_DECISION_FIELDS.items()], metadata={})),
         json_input(work, 'channel_directory', channel_directory_rows(), handle='Utf8', channel_id='Utf8', system_code='Utf8', committee_label='Utf8', role='Utf8'),
@@ -97,7 +106,8 @@ def main(argv=None):
         dict(name='youtube_cache_bodies', sql=sql('youtube-cache-bodies'), materialize=True),
         dict(name='youtube_api_bodies', sql=sql('youtube-api-bodies'), materialize=True),
         *meeting_steps(),
-        dict(name='ordered', sql='SELECT meeting_keys FROM "list"', materialize=True),
+        dict(name='ordered', sql='SELECT meeting_keys,filename,format,cast(list_row AS INT) AS list_row FROM released_list', materialize=True),
+        dict(name='recordings_export', sql='SELECT * FROM recordings_entity', materialize=True),
         dict(name='appearance_people', sql=sql('appearance-people'), materialize=True),
         dict(name='package_mods_facts', sql=sql('package-mods-facts'), materialize=True),
         dict(name='print_meeting_agreement', sql=sql('print-meeting-agreement'), materialize=True),

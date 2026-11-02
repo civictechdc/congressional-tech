@@ -52,6 +52,12 @@ WITH keys AS (
  UNION
  SELECT l.package_id,l.event_id FROM meeting_transcript_links l
  LEFT JOIN package_mods_facts f ON f.package_id=l.package_id WHERE f.package_id IS NULL
+), recording_tracks AS (
+ SELECT video_key,event_ids,t['format'] AS format,t['language'] AS language,t['production'] AS production,t['body'] AS body
+ FROM (SELECT video_key,event_ids,unnest(tracks) AS t FROM recordings_entity WHERE tracks IS NOT NULL)
+), caption_tracks AS (
+ SELECT DISTINCT video_key,unnest(event_ids) AS event_id,format,language,production FROM recording_tracks
+ WHERE format IN ('vtt','srt','ttml') AND body IS NOT NULL AND event_ids IS NOT NULL
 ), transcript_rows AS (
  SELECT DISTINCT l.event_id,d.package_id,cast(d.list_row AS INT) AS list_row,d.format
  FROM transcript_links l
@@ -74,16 +80,43 @@ WITH keys AS (
   JOIN transcript_row_formats x ON x.list_row=r.list_row WHERE x.format IS NOT NULL
  ) f ON p.kind='preference' AND p.value=f.format
  GROUP BY f.event_id,f.package_id
-), transcript_ranked AS (
- SELECT t.event_id,t.package_id,t.list_row,f.formats,row_number() OVER (
-  PARTITION BY t.event_id
-  ORDER BY t.list_row ASC,t.package_id ASC
- ) AS tr_seq
+), transcript_sources AS (
+ SELECT t.event_id,'printed_hearing' AS source,t.package_id,t.list_row,f.formats,
+  cast(NULL AS VARCHAR) AS video_key,cast(NULL AS VARCHAR) AS language,cast(NULL AS VARCHAR) AS production
  FROM transcript_preferred t JOIN transcript_formats f ON f.event_id=t.event_id AND f.package_id=t.package_id
  WHERE t.rn=1
+ UNION ALL
+ -- A committee's own transcript (ct-1i4q): a held file linked to the meeting whose name is the House
+ -- transcript form, H{HRG,MKP,MTG}-<congress>-<committee>-Transcript-<yyyymmdd>[-<part>].pdf, dated the
+ -- meeting's day (HHRG-118-VR09-Transcript-20231108.pdf). Every listed transcript file on v21 has this form.
+ SELECT DISTINCT m.event_id,'committee_transcript' AS source,cast(NULL AS VARCHAR) AS package_id,cast(o.list_row AS INT) AS list_row,
+  arrow_cast(array_slice(make_array(o.format),1,CASE WHEN o.format IS NULL THEN 0 ELSE 1 END),'List(Utf8)') AS formats,
+  cast(NULL AS VARCHAR) AS video_key,cast(NULL AS VARCHAR) AS language,cast(NULL AS VARCHAR) AS production
+ FROM (SELECT list_row,filename,format,try_cast(unnest(meeting_keys) AS BIGINT) AS event_id FROM ordered
+  WHERE regexp_like(filename,'(?i)^H(?:HRG|MKP|MTG)-[0-9]{3}-[A-Z]{2}[0-9]{2}-Transcript-[0-9]{8}(?:-[A-Z0-9]+)?[.]pdf$')) o
+ JOIN meetings_resolved m ON m.event_id=o.event_id
+  AND (regexp_match(o.filename,'(?i)-Transcript-([0-9]{8})'))[1]=replace(cast(m.meeting_date AS VARCHAR),'-','')
+ UNION ALL
+ -- Captions and subtitles (ct-1i4q): complete caption files of the meeting's recordings. A vtt beside a
+ -- playlist of the same production is one segment of that stream, not a track (ct-9s7b), and a track
+ -- with no body is not held.
+ SELECT DISTINCT c.event_id,'captions' AS source,cast(NULL AS VARCHAR) AS package_id,cast(NULL AS INT) AS list_row,
+  arrow_cast(make_array(c.format),'List(Utf8)') AS formats,c.video_key,c.language,c.production
+ FROM caption_tracks c
+ LEFT JOIN (SELECT DISTINCT video_key,production FROM recording_tracks WHERE format='m3u8') p
+  ON p.video_key=c.video_key AND p.production IS NOT DISTINCT FROM c.production
+ WHERE p.video_key IS NULL
+), transcript_ranked AS (
+ SELECT *,row_number() OVER (
+  PARTITION BY event_id
+  ORDER BY CASE source WHEN 'printed_hearing' THEN 0 WHEN 'committee_transcript' THEN 1 ELSE 2 END,
+   list_row ASC NULLS LAST,package_id ASC NULLS LAST,video_key ASC NULLS LAST,language ASC NULLS LAST,production ASC NULLS LAST
+ ) AS tr_seq
+ FROM transcript_sources
 ), transcripts_agg AS (
  SELECT event_id,array_agg(named_struct(
-  'package_id',package_id,'list_row',list_row,'formats',formats
+  'source',source,'package_id',package_id,'list_row',list_row,'formats',formats,
+  'video_key',video_key,'language',language,'production',production
  ) ORDER BY tr_seq ASC) AS transcripts
  FROM transcript_ranked GROUP BY event_id
 )
@@ -102,8 +135,9 @@ SELECT k.event_id,
   'system_code',cast(NULL AS VARCHAR),'role',cast(NULL AS VARCHAR))),1,0)) AS committees,
  coalesce(m.subject_keys,arrow_cast(array_slice(make_array(cast(NULL AS VARCHAR)),1,0),'List(Utf8)')) AS subject_keys,
  coalesce(t.transcripts,array_slice(make_array(named_struct(
-  'package_id',cast(NULL AS VARCHAR),'list_row',cast(NULL AS INT),
-  'formats',arrow_cast(array_slice(make_array(cast(NULL AS VARCHAR)),1,0),'List(Utf8)'))),1,0)) AS transcripts,
+  'source',cast(NULL AS VARCHAR),'package_id',cast(NULL AS VARCHAR),'list_row',cast(NULL AS INT),
+  'formats',arrow_cast(array_slice(make_array(cast(NULL AS VARCHAR)),1,0),'List(Utf8)'),
+  'video_key',cast(NULL AS VARCHAR),'language',cast(NULL AS VARCHAR),'production',cast(NULL AS VARCHAR))),1,0)) AS transcripts,
  coalesce(m.videos,array_slice(make_array(named_struct(
   'name',cast(NULL AS VARCHAR),'url',cast(NULL AS VARCHAR),'video_key',cast(NULL AS VARCHAR))),1,0)) AS videos,
  cast(m.congress AS SMALLINT) AS congress,

@@ -199,3 +199,16 @@ test('historical committee names, nominations, durations, and external URLs reso
   assert.equal(congressGovMemberUrl('S000510','Adam Smith'),'https://www.congress.gov/member/adam-smith/S000510');
   assert.equal(spicyRegsUrl('H.R. 1234'),'https://spicyregs.org/?q=H.R.%201234');
 });
+
+
+test('a meeting names each transcript source it holds (ct-1i4q)', async () => {
+  const {transcriptSourceLabels} = await import('./archive-entities.ts');
+  assert.deepEqual(transcriptSourceLabels([
+    {source: 'printed_hearing', package_id: 'CHRG-118hhrg1', list_row: 3},
+    {source: 'committee_transcript', list_row: 9},
+    {source: 'captions', video_key: 'youtube:abc'}, {source: 'captions', video_key: 'youtube:def'},
+  ]), ['Printed hearing', 'Committee transcript', 'Captions or subtitles']);
+  // Older releases list prints without a source.
+  assert.deepEqual(transcriptSourceLabels([{package_id: 'CHRG-118hhrg1', list_row: 3}]), ['Printed hearing']);
+  assert.deepEqual(transcriptSourceLabels(null), []);
+});

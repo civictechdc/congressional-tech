@@ -58,7 +58,7 @@ LIST_DICTIONARY = [*(f'{name}.list.item' for name in ['document_kind', 'document
 DETAIL_DICTIONARY = ['saved_suffix', 'saved_media_type', 'document_date_source', 'alternates.list.item.format', 'alternates.list.item.suffix', 'facts.list.item.field']
 
 
-MEETING_DICTIONARY = ['chamber', 'meeting_type', 'status', 'congress_gov_meeting_type', 'access', 'access_basis', 'rescheduled_basis', 'committees.list.item.system_code', 'committees.list.item.role', 'subject_keys.list.item']
+MEETING_DICTIONARY = ['chamber', 'meeting_type', 'status', 'congress_gov_meeting_type', 'access', 'access_basis', 'rescheduled_basis', 'committees.list.item.system_code', 'committees.list.item.role', 'subject_keys.list.item', 'transcripts.list.item.source', 'transcripts.list.item.language', 'transcripts.list.item.production']
 
 
 def _step(name, sql, *, materialize=False, release_after=()):
