@@ -28,3 +28,7 @@ The same body and parser version always give the same reading: decide the limit 
 **2026-11-02T16:58:23Z**
 
 2026-11-02 impl-e2 r1b-det 4e2fb4ba (on integrate 0f4711bb): the memory-limit outcome is deterministic. On the 25 readings-bundle decision bodies: v21 17 memory_limit + 8 output_limit; deterministic 9 + 16; all 25 stay unreadable, and 8 change failure class. Lead decision: include in the release; the 25 bodies go into the shared mirror (they were only in spec-run's private bundle-raw); the bundle proof is run twice and must be identical; the 8 flips are recorded with raw evidence as a gate-1 cause.
+
+**2026-11-02T17:03:05Z**
+
+2026-11-02 spec-run: candidate-r1b 9faf86df = integrate 0f4711bb + r4-staging 70364b5f + r1b-det 4e2fb4ba; the bundle moves to bd87fc17; the bundle proof is deterministic (two runs identical, 8 differences, so no registry entry; the 25 bodies are re-decided in D2). The 8 flips are pipeline-data youtube_*.json files, 22.4-23.1 MB decoded, parsing at a 535-546 MiB peak (just over the old 512 MiB cap) and producing 10.9-14.2 MB of output (over the 8 MiB output cap); evidence in r1b-run/logs/r4/bundle-flips-evidence.json. Gap: v21 holds a completed xml reading for c90e782a (38.8 MB) that the 24 MiB bound now refuses. Decision: every html/xml/json compatible entry excludes bodies above the bound (a predicate), so they're recomputed; mirror bodies are stored in canonical form.
