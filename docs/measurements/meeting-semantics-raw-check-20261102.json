@@ -66,8 +66,7 @@
  "not_held": {
   "rows": 430,
   "verdicts": {
-   "raw_supports_after": 428,
-   "raw_contradicts_after": 2
+   "raw_supports_after": 430
   },
   "unread": [],
   "samples": {
@@ -82,13 +81,11 @@
       "transcripts": [],
       "witnesses": 0,
       "same_day_videos": [],
-      "prints": [
-       "CHRG-113hhrg78631"
-      ]
+      "prints": []
      },
      "before": false,
-     "after": false,
-     "status_conflict": true
+     "after": true,
+     "status_conflict": false
     },
     {
      "key": 100243,
@@ -100,13 +97,11 @@
       "transcripts": [],
       "witnesses": 0,
       "same_day_videos": [],
-      "prints": [
-       "CHRG-113hhrg78694"
-      ]
+      "prints": []
      },
      "before": false,
-     "after": false,
-     "status_conflict": true
+     "after": true,
+     "status_conflict": false
     },
     {
      "key": 100244,
@@ -118,13 +113,11 @@
       "transcripts": [],
       "witnesses": 0,
       "same_day_videos": [],
-      "prints": [
-       "CHRG-113hhrg78696"
-      ]
+      "prints": []
      },
      "before": false,
-     "after": false,
-     "status_conflict": true
+     "after": true,
+     "status_conflict": false
     },
     {
      "key": 100351,
@@ -460,13 +453,11 @@
       "transcripts": [],
       "witnesses": 0,
       "same_day_videos": [],
-      "prints": [
-       "CHRG-113hhrg86895"
-      ]
+      "prints": []
      },
      "before": false,
-     "after": false,
-     "status_conflict": true
+     "after": true,
+     "status_conflict": false
     },
     {
      "key": 101582,
@@ -726,48 +717,14 @@
      "after": true,
      "status_conflict": false
     }
-   ],
-   "raw_contradicts_after": [
-    {
-     "key": 116426,
-     "title": "Water Resources Development Acts: Status of Past Provisions and Future Needs",
-     "own": {
-      "status": "Canceled",
-      "type": "Hearing",
-      "day": "2023-10-24",
-      "transcripts": [],
-      "witnesses": 0,
-      "same_day_videos": [],
-      "prints": []
-     },
-     "before": false,
-     "after": false,
-     "status_conflict": false
-    },
-    {
-     "key": 116998,
-     "title": "\u201cA Burden to Business: The U.S. Army Corps of Engineers\u2019 Assessment of Administrative Fees\u201d",
-     "own": {
-      "status": "Canceled",
-      "type": "Hearing",
-      "day": "2024-03-28",
-      "transcripts": [],
-      "witnesses": 0,
-      "same_day_videos": [],
-      "prints": []
-     },
-     "before": false,
-     "after": false,
-     "status_conflict": false
-    }
    ]
   }
  },
  "rescheduled_to": {
-  "rows": 85,
+  "rows": 86,
   "verdicts": {
    "ambiguous": 2,
-   "raw_supports_after": 83
+   "raw_supports_after": 84
   },
   "unread": [],
   "samples": {
@@ -1796,2840 +1753,1040 @@
   }
  },
  "package_choice": {
-  "rows": 536,
+  "rows": 6972,
   "verdicts": {
-   "raw_supports_after": 448,
-   "ambiguous": 83,
-   "raw_contradicts_after": 5
+   "raw_supports_after": 6909,
+   "raw_supports_before": 31,
+   "ambiguous_subset": 31,
+   "raw_contradicts_after": 1
   },
   "unread": [],
   "samples": {
    "raw_supports_after": [
     {
-     "key": [
-      "CHRG-114hhrg23642",
-      104802
-     ],
-     "package": "CHRG-114hhrg23642",
-     "event": 104802,
+     "key": "CHRG-112hhrg72230",
      "before": [
-      "meeting:104802"
-     ],
-     "after": [
-      "package:CHRG-114hhrg23642"
-     ],
-     "print": {
-      "held": [
-       "2016-04-14"
-      ],
-      "titles": [
-       "CONNECTING VETERANS WITH PTSD WITH SERVICE DOGS",
-       "United States House Bill 2493 (114th Congress)",
-       "United States House Bill 4764 (114th Congress)",
-       "CONNECTING VETERANS WITH PTSD WITH SERVICE DOGS"
-      ],
-      "events": [],
-      "witnesses": 4
-     },
-     "meeting": "H.R. ____, the Scholarships for Opportunity and Results Reauthorization Act;\r\n\r\nH.R. ____, to amend title 5, United States Code, to expand law enforcement availability pay to employees of U.S. Customs and Border Protection\u2019s Air and Marine Operations;\r\n\r\nH.R. ____, to amend title 5, United States Code, to clarify the eligibility of employees of a land management agency in a time-limited appointment to compete for a permanent appointment at any federal agency;\r\n\r\nH.R. ____, the Ditto Act of 2016;\r\n\r\nH.R. ____, the Making Electronic Government Accountable By Yielding Tangible Efficiencies Act of 2016;\r\n\r\nH.R. 4465, the Federal Assets Sale and Transfer Act of 2016;\r\n\r\nH.R. 433, to designate the facility of the United States Postal Service located at 523 East Railroad Street in Knox, Pennsylvania, as the \u201cSpecialist Ross A. McGinnis Memorial Post Office\u201d;\r\n\r\nH.R. 2607, to designate the facility of the United States Postal Service located at 7802 37th Avenue in Jackson Heights, New York, as the \u201cJeanne and Jules Manford Post Office Building\u201d;\r\n\r\nH.R. 4425, to designate the facility of the United States Postal Service located at 110 East Powerhouse Road in Collegeville, Minnesota, as the \u201cEugene J. McCarthy Post Office\u201d;\r\n\r\nH.R. 4761, to designate the facility of the United States Postal Service located at 61 South Baldwin Avenue in Sierra Madre, California, as the \u201cLouis Van Iersel Post Office\u201d; \r\n\r\nH.R. 4777, to designate the facility of the United States Postal Service located at 1301 Alabama Avenue in Selma, Alabama as the \u201cAmelia Boynton Robinson Post Office Building\u201d; and\r\n\r\nH.R. 4877, to designate the facility of the United States Postal Service located at 3130 Grants Lake Boulevard in Sugar Land, Texas, as the \u201cLCpl Garrett W. Gamble, USMC Post Office Building\u201d.",
-     "date": "2016-04-14"
-    },
-    {
-     "key": [
-      "CHRG-116hhrg36237",
-      109041
-     ],
-     "package": "CHRG-116hhrg36237",
-     "event": 109041,
-     "before": [
-      "package:CHRG-116hhrg36237"
-     ],
-     "after": [
-      "meeting:109041"
-     ],
-     "print": {
-      "held": [
-       "2019-03-07"
-      ],
-      "titles": [
-       "NATIONAL TAXPAYER ADVOCATE ON THE IRS FILING SEASON",
-       "United States House Bill 1300 (116th Congress)",
-       "United States House Bill 5362 (116th Congress)",
-       "NATIONAL TAXPAYER ADVOCATE ON THE IRS FILING SEASON"
-      ],
-      "events": [],
-      "witnesses": 1
-     },
-     "meeting": "Hearing with the National Taxpayer Advocate on the IRS Filing Season",
-     "date": "2019-03-07"
-    },
-    {
-     "key": [
-      "CHRG-117shrg54738",
-      330132
-     ],
-     "package": "CHRG-117shrg54738",
-     "event": 330132,
-     "before": [
-      "package:CHRG-117shrg54738"
-     ],
-     "after": [
-      "meeting:330132"
-     ],
-     "print": {
-      "held": [
-       "2021-07-28"
-      ],
-      "titles": [
-       "BEEFING UP COMPETITION: EXAMINING AMERICA'S FOOD SUPPLY CHAIN",
-       "United States Senate Bill 225 (117th Congress)",
-       "United States Senate Bill 2036 (117th Congress)",
-       "BEEFING UP COMPETITION: EXAMINING AMERICA'S FOOD SUPPLY CHAIN"
-      ],
-      "events": [],
-      "witnesses": 6
-     },
-     "meeting": "Hearings to examine\u00a0America's food supply chain.",
-     "date": "2021-07-28"
-    },
-    {
-     "key": [
-      "CHRG-113hhrg79492",
-      100261
-     ],
-     "package": "CHRG-113hhrg79492",
-     "event": 100261,
-     "before": [
-      "meeting:100261"
-     ],
-     "after": [],
-     "print": {
-      "held": [
-       "2013-02-13"
-      ],
-      "titles": [
-       "[H.A.S.C. No. 113-4]PERSPECTIVES ON THE FUTURE",
-       "[H.A.S.C. No. 113-4]PERSPECTIVES ON THE FUTURE"
-      ],
-      "events": [],
-      "witnesses": 3
-     },
-     "meeting": "Perspectives on the Future National Security Environment: Technological, Geopolitical and Economic Trends Affecting the Defense Strategic Guidance",
-     "date": "2013-02-13"
-    },
-    {
-     "key": [
-      "CHRG-118shrg55559",
-      334380
-     ],
-     "package": "CHRG-118shrg55559",
-     "event": 334380,
-     "before": [
-      "meeting:334380"
-     ],
-     "after": [
-      "package:CHRG-118shrg55559"
-     ],
-     "print": {
-      "held": [
-       "2023-07-12"
-      ],
-      "titles": [
-       "PENDING LEGISLATION",
-       "United States Senate Bill 636 (118th Congress)",
-       "United States Senate Bill 636 (118th Congress)",
-       "United States Senate Bill 912 (118th Congress)",
-       "United States Senate Bill 1015 (118th Congress)",
-       "United States Senate Bill 1015 (118th Congress)",
-       "United States Senate Bill 1088 (118th Congress)",
-       "United States Senate Bill 1088 (118th Congress)",
-       "United States Senate Bill 1254 (118th Congress)",
-       "United States Senate Bill 1254 (118th Congress)",
-       "United States Senate Bill 1405 (118th Congress)",
-       "United States Senate Bill 1405 (118th Congress)",
-       "United States Senate Bill 1622 (118th Congress)",
-       "United States Senate Bill 1622 (118th Congress)",
-       "United States Senate Bill 1634 (118th Congress)",
-       "United States Senate Bill 1634 (118th Congress)",
-       "United States Senate Bill 1657 (118th Congress)",
-       "United States Senate Bill 1657 (118th Congress)",
-       "United States Senate Bill 1760 (118th Congress)",
-       "United States Senate Bill 1760 (118th Congress)",
-       "United States Senate Bill 1776 (118th Congress)",
-       "United States Senate Bill 1776 (118th Congress)",
-       "United States Senate Bill 1890 (118th Congress)",
-       "United States Senate Bill 1890 (118th Congress)",
-       "United States Senate Bill 2020 (118th Congress)",
-       "United States Senate Bill 2020 (118th Congress)",
-       "United States Senate Bill 2042 (118th Congress)",
-       "United States Senate Bill 2042 (118th Congress)",
-       "United States Senate Bill 2136 (118th Congress)",
-       "United States Senate Bill 2136 (118th Congress)",
-       "United States Senate Bill 2149 (118th Congress)",
-       "United States Senate Bill 2149 (118th Congress)",
-       "United States Senate Bill 2216 (118th Congress)",
-       "United States Senate Bill 2216 (118th Congress)",
-       "PENDING LEGISLATION"
-      ],
-      "events": [],
-      "witnesses": 5
-     },
-     "meeting": "Hearings to examine S.636, to establish the Dolores River National Conservation Area and the Dolores River Special Management Area in the State of Colorado, to protect private water rights in the State, S.912, to require the Secretary of Energy to provide technology grants to strengthen domestic mining education, S.1015, to require the Secretary of Agriculture to convey the Pleasant Valley Ranger District Administrative Site to Gila County, Arizona, S.1088, to authorize the relinquishment and in lieu selection of land and minerals in the State of North Dakota, to restore land and minerals to Indian Tribes within the State of North Dakota, S.1254, to designate and expand wilderness areas in Olympic National Forest in the State of Washington, and to designate certain rivers in Olympic National Forest and Olympic National Park as wild and scenic rivers, S.1405, to provide for the exchange of certain Federal land and State land in the State of Utah, S.1622, to discourage speculative oil and gas leasing and to promote enhanced multiple use management of public land and National Forest System land, S.1634, to provide for the designation of certain wilderness areas, recreation management areas, and conservation areas in the State of Colorado, S.1657, to authorize the Secretary of the Interior to convey certain land to La Paz County, Arizona, S.1760, to amend the Apex Project, Nevada Land Transfer and Authorization Act of 1989 to include the city of North Las Vegas, Nevada, and the Apex Industrial Park Owners Association, S.1776, to provide for the protection of and investment in certain Federal land in the State of California, S.1890, to provide for the establishment of a grazing management program on Federal land in Malheur County, Oregon, S.2020, to amend the Oregon Resource Conservation Act of 1996 to reauthorize the Deschutes River Conservancy Working Group, S.2042, to amend the Sloan Canyon National Conservation Area Act to adjust the boundary of the Sloan Canyon National Conservation Area, S.2136, to require the Secretary of the Interior and the Secretary of Agriculture to convey certain Federal land to the State of Utah for inclusion in certain State parks, S.2149, to sustain economic development and recreational use of National Forest System land in the State of Montana, to add certain land to the National Wilderness Preservation System, to designate new areas for recreation, and S.2216, to release from wilderness study area designation certain land in the State of Montana, to improve the management of that land.",
-     "date": "2023-07-12"
-    },
-    {
-     "key": [
-      "CHRG-113hhrg81420",
-      100709
-     ],
-     "package": "CHRG-113hhrg81420",
-     "event": 100709,
-     "before": [
-      "meeting:100709"
-     ],
-     "after": [],
-     "print": {
-      "held": [
-       "2013-06-05"
-      ],
-      "titles": [
-       "REDUCING DUPLICATION AND PROMOTING EFFICIENCY AT THE SBA: THE INSPECTOR GENERAL'S VIEW",
-       "United States Public Law 352 (111th Congress)",
-       "REDUCING DUPLICATION AND PROMOTING EFFICIENCY AT THE SBA: THE INSPECTOR GENERAL'S VIEW"
-      ],
-      "events": [],
-      "witnesses": 1
-     },
-     "meeting": "6-5-2013 Reducing Duplication and Promoting Efficiency at The SBA: The Inspector General's View",
-     "date": "2013-06-05"
-    },
-    {
-     "key": [
-      "CHRG-113hhrg80761",
-      100671
-     ],
-     "package": "CHRG-113hhrg80761",
-     "event": 100671,
-     "before": [
-      "meeting:100671"
-     ],
-     "after": [
-      "package:CHRG-113hhrg80761"
-     ],
-     "print": {
-      "held": [
-       "2013-04-17"
-      ],
-      "titles": [
-       "[H.A.S.C. No. 113-32] HEARING ON NATIONAL DEFENSE AUTHORIZATION ACT FOR FISCAL YEAR 2014 AND OVERSIGHT OF PREVIOUSLY AUTHORIZED PROGRAMS BEFORE THE COMMITTEE ON ARMED SERVICES HOUSE OF REPRESENTATIVES ONE HUNDRED THIRTEENTH CONGRESS FIRST SESSION",
-       "United States House Bill 4310 (113th Congress)",
-       "[H.A.S.C. No. 113-32] HEARING ON NATIONAL DEFENSE AUTHORIZATION ACT FOR FISCAL YEAR 2014 AND OVERSIGHT OF PREVIOUSLY AUTHORIZED PROGRAMS BEFORE THE COMMITTEE ON ARMED SERVICES HOUSE OF REPRESENTATIVES ONE HUNDRED THIRTEENTH CONGRESS FIRST SESSION"
-      ],
-      "events": [],
-      "witnesses": 3
-     },
-     "meeting": "Fiscal Year 2014 Navy, Marine Corps and Air Force Combat Aviation Programs",
-     "date": "2013-04-17"
-    },
-    {
-     "key": [
-      "CHRG-113hhrg80869",
-      100374
-     ],
-     "package": "CHRG-113hhrg80869",
-     "event": 100374,
-     "before": [
-      "meeting:100374"
-     ],
-     "after": [],
-     "print": {
-      "held": [
-       "2013-02-27"
-      ],
-      "titles": [
-       "MONETARY POLICY AND THE STATE OF THE ECONOMY",
-       "MONETARY POLICY AND THE STATE OF THE ECONOMY"
-      ],
-      "events": [],
-      "witnesses": 1
-     },
-     "meeting": "Monetary Policy and the State of the Economy",
-     "date": "2013-02-27"
-    },
-    {
-     "key": [
-      "CHRG-113hhrg81937",
-      101064
-     ],
-     "package": "CHRG-113hhrg81937",
-     "event": 101064,
-     "before": [
-      "meeting:101064"
-     ],
-     "after": [],
-     "print": {
-      "held": [
-       "2013-07-17"
-      ],
-      "titles": [
-       "THE INTERNAL REVENUE SERVICE AND SMALL BUSINESSES: ENSURING FAIR TREATMENT",
-       "THE INTERNAL REVENUE SERVICE AND SMALL BUSINESSES: ENSURING FAIR TREATMENT"
-      ],
-      "events": [],
-      "witnesses": 1
-     },
-     "meeting": "7-17-2013 The Internal Revenue Service and Small Businesses: Ensuring Fair Treament",
-     "date": "2013-07-17"
-    },
-    {
-     "key": [
-      "CHRG-116shrg37456",
-      326142
-     ],
-     "package": "CHRG-116shrg37456",
-     "event": 326142,
-     "before": [
-      "package:CHRG-116shrg37456"
-     ],
-     "after": [
-      "meeting:326142"
-     ],
-     "print": {
-      "held": [
-       "2019-07-16"
-      ],
-      "titles": [
-       "2020 CENSUS: CONDUCTING A SECURE AND ACCURATE COUNT",
-       "2020 CENSUS: CONDUCTING A SECURE AND ACCURATE COUNT"
-      ],
-      "events": [],
-      "witnesses": 3
-     },
-     "meeting": "Hearings to examine the 2020 Census, focusing on conducting a secure and accurate count.",
-     "date": "2019-07-16"
-    },
-    {
-     "key": [
-      "CHRG-113hhrg86900",
-      101668
-     ],
-     "package": "CHRG-113hhrg86900",
-     "event": 101668,
-     "before": [
-      "meeting:101668"
-     ],
-     "after": [
-      "package:CHRG-113hhrg86900"
-     ],
-     "print": {
-      "held": [
-       "2014-01-16"
-      ],
-      "titles": [
-       "HEALTHCARE.GOV: CONSEQUENCES OF STOLEN IDENTITY",
-       "HEALTHCARE.GOV: CONSEQUENCES OF STOLEN IDENTITY"
-      ],
-      "events": [],
-      "witnesses": 4
-     },
-     "meeting": "Full Committee Business Meeting",
-     "date": "2014-01-16"
-    },
-    {
-     "key": [
-      "CHRG-118shrg57242",
-      335894
-     ],
-     "package": "CHRG-118shrg57242",
-     "event": 335894,
-     "before": [
-      "package:CHRG-118shrg57242"
-     ],
-     "after": [
-      "meeting:335894"
-     ],
-     "print": {
-      "held": [
-       "2024-06-12"
-      ],
-      "titles": [
-       "THE WORKFORCE INNOVATION AND OPPORTUNITY ACT: SUPPORTING EFFORTS TO MEET THE NEEDS OF YOUTH, WORKERS, AND EMPLOYERS",
-       "United States Senate Bill 3825 (118th Congress)",
-       "United States Public Law 477 (102nd Congress)",
-       "United States Public Law 220 (105th Congress)",
-       "United States Public Law 28 (113th Congress)",
-       "United States Public Law 128 (113th Congress)",
-       "THE WORKFORCE INNOVATION AND OPPORTUNITY ACT: SUPPORTING EFFORTS TO MEET THE NEEDS OF YOUTH, WORKERS, AND EMPLOYERS"
-      ],
-      "events": [],
-      "witnesses": 5
-     },
-     "meeting": "Hearings to examine the Workforce Innovation and Opportunity Act, focusing on supporting efforts to meet the needs of youth, workers, and employers.",
-     "date": "2024-06-12"
-    },
-    {
-     "key": [
-      "CHRG-113hhrg80547",
-      100738
-     ],
-     "package": "CHRG-113hhrg80547",
-     "event": 100738,
-     "before": [
-      "meeting:100738"
-     ],
-     "after": [],
-     "print": {
-      "held": [
-       "2013-04-24"
-      ],
-      "titles": [
-       "KOSOVO AND SERBIA: A PATHWAY TO PEACE",
-       "KOSOVO AND SERBIA: A PATHWAY TO PEACE"
-      ],
-      "events": [],
-      "witnesses": 6
-     },
-     "meeting": "Kosovo and Serbia: A Pathway to Peace",
-     "date": "2013-04-24"
-    },
-    {
-     "key": [
-      "CHRG-117shrg52679",
-      330440
-     ],
-     "package": "CHRG-117shrg52679",
-     "event": 330440,
-     "before": [
-      "meeting:330440"
-     ],
-     "after": [
-      "package:CHRG-117shrg52679"
-     ],
-     "print": {
-      "held": [
-       "2021-09-21"
-      ],
-      "titles": [
-       "POLICY OPTIONS FOR IMPROVING SUPPLEMENTAL SECURITY INCOME",
-       "United States Senate Bill 2065 (117th Congress)",
-       "United States Senate Bill 2753 (117th Congress)",
-       "United States House Bill 3824 (117th Congress)",
-       "United States House Bill 4280 (117th Congress)",
-       "United States Code",
-       "United States Code",
-       "United States Code",
-       "United States Statutes at Large",
-       "United States Statutes at Large",
-       "United States Public Law 603 (92nd Congress)",
-       "United States Public Law 35 (97th Congress)",
-       "United States Public Law 369 (98th Congress)",
-       "United States Public Law 170 (106th Congress)",
-       "Code of Federal Regulations",
-       "United States Senate Report 1230 (92nd Congress)",
-       "POLICY OPTIONS FOR IMPROVING SUPPLEMENTAL SECURITY INCOME"
-      ],
-      "events": [
-       115683
-      ],
-      "witnesses": 4
-     },
-     "meeting": "Hearings to examine\u00a0policy options for improving Supplemental Security Income.",
-     "date": "2021-09-21"
-    },
-    {
-     "key": [
-      "CHRG-117shrg50749",
-      330041
-     ],
-     "package": "CHRG-117shrg50749",
-     "event": 330041,
-     "before": [
-      "package:CHRG-117shrg50749"
-     ],
-     "after": [
-      "meeting:330041"
-     ],
-     "print": {
-      "held": [
-       "2021-07-20"
-      ],
-      "titles": [
-       "SAFE AT HOME: PRESERVING AND IMPROVING FEDERALLY ASSISTED HOUSING",
-       "United States Senate Bill 265 (117th Congress)",
-       "SAFE AT HOME: PRESERVING AND IMPROVING FEDERALLY ASSISTED HOUSING"
-      ],
-      "events": [
-       330041
-      ],
-      "witnesses": 3
-     },
-     "meeting": "Hearings to examine\u00a0preserving and improving Federally assisted housing.",
-     "date": "2021-07-20"
-    },
-    {
-     "key": [
-      "CHRG-119shrg64617",
-      338578
-     ],
-     "package": "CHRG-119shrg64617",
-     "event": 338578,
-     "before": [
-      "package:CHRG-119shrg64617"
-     ],
-     "after": [
-      "meeting:338578"
-     ],
-     "print": {
-      "held": [
-       "2026-06-23"
-      ],
-      "titles": [
-       "CLOSE CALLS: IMPROVING SAFETY ACROSS THE NATIONAL AIRSPACE SYSTEM",
-       "United States Senate Bill 3929 (119th Congress)",
-       "United States Public Law 260 (116th Congress)",
-       "Code of Federal Regulations",
-       "Code of Federal Regulations",
-       "Code of Federal Regulations",
-       "Code of Federal Regulations",
-       "CLOSE CALLS: IMPROVING SAFETY ACROSS THE NATIONAL AIRSPACE SYSTEM"
-      ],
-      "events": [
-       338578
-      ],
-      "witnesses": 4
-     },
-     "meeting": "Hearings to examine improving safety across the National Airspace System.",
-     "date": "2026-06-23"
-    },
-    {
-     "key": [
-      "CHRG-113hhrg79945",
-      100430
-     ],
-     "package": "CHRG-113hhrg79945",
-     "event": 100430,
-     "before": [
-      "meeting:100430"
-     ],
-     "after": [],
-     "print": {
-      "held": [
-       "2013-03-14"
-      ],
-      "titles": [
-       "LOWERING THE RATE OF UNEMPLOYMENT FOR THE NATIONAL GUARD AND RESERVE: ARE WE MAKING PROGRESS?",
-       "United States House Bill 1014 (113th Congress)",
-       "LOWERING THE RATE OF UNEMPLOYMENT FOR THE NATIONAL GUARD AND RESERVE: ARE WE MAKING PROGRESS?"
-      ],
-      "events": [],
-      "witnesses": 7
-     },
-     "meeting": "Lowering the Rate of Unemployment for the National Guard and Reserve-Are We Making Progress?",
-     "date": "2013-03-14"
-    },
-    {
-     "key": [
-      "CHRG-116shrg37457",
-      326152
-     ],
-     "package": "CHRG-116shrg37457",
-     "event": 326152,
-     "before": [
-      "package:CHRG-116shrg37457"
-     ],
-     "after": [
-      "meeting:326152"
-     ],
-     "print": {
-      "held": [
-       "2019-07-17"
-      ],
-      "titles": [
-       "FEDERALLY INCURRED COST OF REGULATORY CHANGES AND HOW SUCH CHANGES ARE MADE",
-       "FEDERALLY INCURRED COST OF REGULATORY CHANGES AND HOW SUCH CHANGES ARE MADE"
-      ],
-      "events": [],
-      "witnesses": 3
-     },
-     "meeting": "Hearings to examine the Federally incurred cost of regulatory changes and how such changes are made.",
-     "date": "2019-07-17"
-    },
-    {
-     "key": [
-      "CHRG-113hhrg85448",
-      101018
-     ],
-     "package": "CHRG-113hhrg85448",
-     "event": 101018,
-     "before": [
-      "package:CHRG-113hhrg85448"
-     ],
-     "after": [
-      "meeting:101018"
-     ],
-     "print": {
-      "held": [
-       "2013-06-20"
-      ],
-      "titles": [
-       "U.S. ENERGY ABUNDANCE: MANUFACTURING COMPETITIVENESS AND AMERICA'S ENERGY ADVANTAGE",
-       "U.S. ENERGY ABUNDANCE: MANUFACTURING COMPETITIVENESS AND AMERICA'S ENERGY ADVANTAGE"
-      ],
-      "events": [],
-      "witnesses": 5
-     },
-     "meeting": "U.S. Energy Abundance: Manufacturing Competitiveness and America\u2019s Energy Advantage",
-     "date": "2013-06-20"
-    },
-    {
-     "key": [
-      "CHRG-117shrg46120",
-      329024
-     ],
-     "package": "CHRG-117shrg46120",
-     "event": 329024,
-     "before": [
-      "meeting:329024"
-     ],
-     "after": [
-      "package:CHRG-117shrg46120"
-     ],
-     "print": {
-      "held": [
-       "2021-04-14"
-      ],
-      "titles": [
-       "HEARING TO CONSIDER PENDING NOMINATION",
-       "HEARING TO CONSIDER PENDING NOMINATION"
-      ],
-      "events": [
-       329024
-      ],
-      "witnesses": 1
-     },
-     "meeting": "Hearings to examine the nomination of Richard A. Sauber, of the District of Columbia, to be General Counsel, Department of Veterans Affairs.",
-     "date": "2021-04-14"
-    },
-    {
-     "key": [
-      "CHRG-117hhrg45425",
-      113995
-     ],
-     "package": "CHRG-117hhrg45425",
-     "event": 113995,
-     "before": [
-      "package:CHRG-117hhrg45425"
-     ],
-     "after": [
-      "meeting:113995"
-     ],
-     "print": {
-      "held": [
-       "2021-07-29"
-      ],
-      "titles": [
-       "DEMOCRACY IN DANGER: THE ASSAULT ON VOTING RIGHTS IN TEXAS",
-       "United States House Bill 1 (117th Congress)",
-       "United States Senate Bill 1 (117th Congress)",
-       "United States House Bill 3 (117th Congress)",
-       "United States House Bill 4 (117th Congress)",
-       "United States Senate Bill 7 (117th Congress)",
-       "United States Senate Bill 90 (117th Congress)",
-       "DEMOCRACY IN DANGER: THE ASSAULT ON VOTING RIGHTS IN TEXAS"
-      ],
-      "events": [
-       113995
-      ],
-      "witnesses": 5
-     },
-     "meeting": "\u201cDemocracy in Danger:  The Assault on Voting Rights in Texas\u201d",
-     "date": "2021-07-29"
-    },
-    {
-     "key": [
-      "CHRG-117shrg45388",
-      328604
-     ],
-     "package": "CHRG-117shrg45388",
-     "event": 328604,
-     "before": [
-      "package:CHRG-117shrg45388"
-     ],
-     "after": [
-      "meeting:328604"
-     ],
-     "print": {
-      "held": [
-       "2021-02-02"
-      ],
-      "titles": [
-       "NOMINATION OF THE HONORABLE THOMAS J. VILSACK, OF IOWA, TO BE SECRETARY, U.S. DEPARTMENT OF AGRICULTURE",
-       "NOMINATION OF THE HONORABLE THOMAS J. VILSACK, OF IOWA, TO BE SECRETARY, U.S. DEPARTMENT OF AGRICULTURE"
-      ],
-      "events": [
-       328604
-      ],
-      "witnesses": 1
-     },
-     "meeting": "Hearings to examine the nomination of Thomas J. Vilsack, of Iowa, to be Secretary of Agriculture.",
-     "date": "2021-02-02"
-    },
-    {
-     "key": [
-      "CHRG-116shrg52609",
-      326044
-     ],
-     "package": "CHRG-116shrg52609",
-     "event": 326044,
-     "before": [
-      "package:CHRG-116shrg52609"
-     ],
-     "after": [
-      "meeting:326044"
-     ],
-     "print": {
-      "held": [
-       "2019-06-25"
-      ],
-      "titles": [
-       "OPTIMIZING FOR ENGAGEMENT: UNDERSTANDING THE USE OF PERSUASIVE TECHNOLOGY ON INTERNET PLATFORMS",
-       "United States House Bill 2231 (116th Congress)",
-       "OPTIMIZING FOR ENGAGEMENT: UNDERSTANDING THE USE OF PERSUASIVE TECHNOLOGY ON INTERNET PLATFORMS"
-      ],
-      "events": [],
-      "witnesses": 4
-     },
-     "meeting": "Hearings to examine the use of persuasive technology on internet platforms, focusing on optimizing for engagement.",
-     "date": "2019-06-25"
-    },
-    {
-     "key": [
-      "CHRG-117shrg53088",
-      329202
-     ],
-     "package": "CHRG-117shrg53088",
-     "event": 329202,
-     "before": [
-      "package:CHRG-117shrg53088"
-     ],
-     "after": [
-      "meeting:329202"
-     ],
-     "print": {
-      "held": [
-       "2021-04-27"
-      ],
-      "titles": [
-       "DRIVING INNOVATION: THE FUTURE OF AUTOMOTIVE MOBILITY, SAFETY, AND TECHNOLOGY",
-       "United States House Bill 2 (117th Congress)",
-       "United States Senate Bill 1331 (117th Congress)",
-       "United States House Bill 2138 (117th Congress)",
-       "United States Senate Bill 2278 (117th Congress)",
-       "United States House Bill 2593 (117th Congress)",
-       "United States Senate Bill 2700 (117th Congress)",
-       "United States House Bill 3773 (117th Congress)",
-       "United States House Bill 3959 (117th Congress)",
-       "United States Senate Bill 4123 (117th Congress)",
-       "United States House Bill 4871 (117th Congress)",
-       "United States House Bill 6256 (117th Congress)",
-       "United States House Bill 6284 (117th Congress)",
-       "United States Public Law 563 (89th Congress)",
-       "United States Public Law 605 (91st Congress)",
-       "United States Public Law 112 (93rd Congress)",
-       "United States Public Law 240 (102nd Congress)",
-       "United States Public Law 346 (106th Congress)",
-       "United States Public Law 414 (106th Congress)",
-       "United States Public Law 318 (107th Congress)",
-       "United States Public Law 59 (109th Congress)",
-       "United States Public Law 189 (110th Congress)",
-       "United States Public Law 141 (112th Congress)",
-       "United States Public Law 94 (114th Congress)",
-       "DRIVING INNOVATION: THE FUTURE OF AUTOMOTIVE MOBILITY, SAFETY, AND TECHNOLOGY"
-      ],
-      "events": [
-       329202
-      ],
-      "witnesses": 4
-     },
-     "meeting": "Hearings to examine the future of automotive mobility, safety, and technology.",
-     "date": "2021-04-27"
-    },
-    {
-     "key": [
-      "CHRG-118shrg58785",
-      335669
-     ],
-     "package": "CHRG-118shrg58785",
-     "event": 335669,
-     "before": [
-      "package:CHRG-118shrg58785"
-     ],
-     "after": [
-      "meeting:335669"
-     ],
-     "print": {
-      "held": [
-       "2024-04-16"
-      ],
-      "titles": [
-       "LEGACY OF HARM: ELIMINATING THE ABUSE OF SOLITARY CONFINEMENT",
-       "United States House Bill 2 (118th Congress)",
-       "LEGACY OF HARM: ELIMINATING THE ABUSE OF SOLITARY CONFINEMENT"
-      ],
-      "events": [],
-      "witnesses": 4
-     },
-     "meeting": "Hearings to examine eliminating the abuse of solitary confinement, focusing on a legacy of harm.",
-     "date": "2024-04-16"
-    },
-    {
-     "key": [
-      "CHRG-113hhrg86004",
-      101583
-     ],
-     "package": "CHRG-113hhrg86004",
-     "event": 101583,
-     "before": [
-      "meeting:101583"
-     ],
-     "after": [
-      "package:CHRG-113hhrg86004"
-     ],
-     "print": {
-      "held": [
-       "2013-12-11"
-      ],
-      "titles": [
-       "AFGHANISTAN 2014: YEAR OF TRANSITION",
-       "AFGHANISTAN 2014: YEAR OF TRANSITION"
-      ],
-      "events": [],
-      "witnesses": 3
-     },
-     "meeting": "H. Res. 418 and H. Res. 281",
-     "date": "2013-12-11"
-    },
-    {
-     "key": [
-      "CHRG-119shrg59493",
-      336654
-     ],
-     "package": "CHRG-119shrg59493",
-     "event": 336654,
-     "before": [
-      "package:CHRG-119shrg59493"
-     ],
-     "after": [
-      "meeting:336654"
-     ],
-     "print": {
-      "held": [
-       "2025-02-27"
-      ],
-      "titles": [
-       "NOMINATION OF KEITH SONDERLING TO SERVE AS DEPUTY SECRETARY OF LABOR",
-       "United States Senate Bill 256 (119th Congress)",
-       "NOMINATION OF KEITH SONDERLING TO SERVE AS DEPUTY SECRETARY OF LABOR"
-      ],
-      "events": [],
-      "witnesses": 1
-     },
-     "meeting": "Hearings to examine the nomination of Keith Sonderling, of Florida, to be Deputy Secretary of Labor.",
-     "date": "2025-02-27"
-    },
-    {
-     "key": [
-      "CHRG-113hhrg81801",
-      101106
-     ],
-     "package": "CHRG-113hhrg81801",
-     "event": 101106,
-     "before": [
-      "meeting:101106"
-     ],
-     "after": [],
-     "print": {
-      "held": [
-       "2013-07-10"
-      ],
-      "titles": [
-       "EXAMINING THE LABOR DEPARTMENT'S PROPOSED REFORMS TO THE FECA PROGRAM",
-       "United States House Bill 2465 (113th Congress)",
-       "United States House Bill 3141 (113th Congress)",
-       "United States House Bill 3191 (113th Congress)",
-       "United States House Bill 13781 (113th Congress)",
-       "United States House Bill 15316 (113th Congress)",
-       "United States Code",
-       "United States Public Law 357 (81st Congress)",
-       "United States Public Law 416 (93rd Congress)",
-       "United States Public Law 92 (108th Congress)",
-       "United States Public Law 435 (109th Congress)",
-       "United States House Report 678 (64th Congress)",
-       "United States House Report 729 (81st Congress)",
-       "United States Senate Report 836 (81st Congress)",
-       "United States Senate Report 1081 (93rd Congress)",
-       "EXAMINING THE LABOR DEPARTMENT'S PROPOSED REFORMS TO THE FECA PROGRAM"
-      ],
-      "events": [],
-      "witnesses": 5
-     },
-     "meeting": "\"Examining the Labor Department's Proposed Reforms to the FECA Program\"",
-     "date": "2013-07-10"
-    },
-    {
-     "key": [
-      "CHRG-113hhrg78990",
-      100303
-     ],
-     "package": "CHRG-113hhrg78990",
-     "event": 100303,
-     "before": [
-      "meeting:100303"
-     ],
-     "after": [],
-     "print": {
-      "held": [
-       "2013-02-27"
-      ],
-      "titles": [
-       "PROTECTING STUDENTS AND TEACHERS: A DISCUSSION ON SCHOOL SAFETY",
-       "United States House Bill 320 (113th Congress)",
-       "United States House Bill 415 (113th Congress)",
-       "United States House Bill 482 (113th Congress)",
-       "United States House Bill 628 (113th Congress)",
-       "United States House Bill 2721 (113th Congress)",
-       "United States House Bill 3165 (113th Congress)",
-       "United States House Bill 3989 (113th Congress)",
-       "PROTECTING STUDENTS AND TEACHERS: A DISCUSSION ON SCHOOL SAFETY"
-      ],
-      "events": [],
-      "witnesses": 6
-     },
-     "meeting": "\"Protecting Students and Teachers: A Discussion on School Safety\"",
-     "date": "2013-02-27"
-    },
-    {
-     "key": [
-      "CHRG-118shrg55558",
-      334296
-     ],
-     "package": "CHRG-118shrg55558",
-     "event": 334296,
-     "before": [
-      "meeting:334296"
-     ],
-     "after": [
-      "package:CHRG-118shrg55558"
-     ],
-     "print": {
-      "held": [
-       "2023-06-21"
-      ],
-      "titles": [
-       "PENDING LEGISLATION",
-       "United States Senate Bill 284 (118th Congress)",
-       "United States Senate Bill 284 (118th Congress)",
-       "United States Senate Bill 351 (118th Congress)",
-       "United States Senate Bill 351 (118th Congress)",
-       "United States Senate Bill 384 (118th Congress)",
-       "United States Senate Bill 384 (118th Congress)",
-       "United States Senate Bill 432 (118th Congress)",
-       "United States Senate Bill 432 (118th Congress)",
-       "United States Senate Bill 507 (118th Congress)",
-       "United States Senate Bill 507 (118th Congress)",
-       "United States Senate Bill 527 (118th Congress)",
-       "United States Senate Bill 527 (118th Congress)",
-       "United States Senate Bill 562 (118th Congress)",
-       "United States Senate Bill 562 (118th Congress)",
-       "United States Senate Bill 594 (118th Congress)",
-       "United States Senate Bill 594 (118th Congress)",
-       "United States Senate Bill 608 (118th Congress)",
-       "United States Senate Bill 608 (118th Congress)",
-       "United States Senate Bill 886 (118th Congress)",
-       "United States Senate Bill 886 (118th Congress)",
-       "United States Senate Bill 924 (118th Congress)",
-       "United States Senate Bill 924 (118th Congress)",
-       "United States Senate Bill 961 (118th Congress)",
-       "United States Senate Bill 961 (118th Congress)",
-       "United States Senate Bill 1059 (118th Congress)",
-       "United States Senate Bill 1059 (118th Congress)",
-       "United States Senate Bill 1097 (118th Congress)",
-       "United States Senate Bill 1097 (118th Congress)",
-       "United States Senate Bill 1277 (118th Congress)",
-       "United States Senate Bill 1277 (118th Congress)",
-       "United States Senate Bill 2018 (118th Congress)",
-       "United States Senate Bill 2018 (118th Congress)",
-       "PENDING LEGISLATION"
-      ],
-      "events": [],
-      "witnesses": 1
-     },
-     "meeting": "Hearings to examine S.284, to direct the Secretary of the Interior to include on the engravings on the Taras Shevchenko Memorial in the District of Columbia the name of Vincent Illuzzi, Sr., who carved the statue, S.351, to designate 6 creeks in the State of North Carolina in honor of the lives lost in a plane crash in Carteret County, North Carolina, on February 13, 2022, S.384, to establish the Springfield 1908 Race Riot National Monument in the State of Illinois, S.432, to amend the Wild and Scenic Rivers Act to designate the Nulhegan River and Paul Stream in the State of Vermont for potential addition to the national wild and scenic rivers system, S.507, to establish the Ralph David Abernathy, Sr., National Historic Site, S.527, to establish the African Burial Ground International Memorial Museum and Educational Center in New York, New York, S.562, to establish the Emmett Till and Mamie Till-Mobley and Roberts Temple National Historic Site in the State of Illinois, S.594, to require the Secretary of Agriculture and the Secretary of the Interior to prioritize the completion of the Continental Divide National Scenic Trail, S.608, to amend the Wild and Scenic Rivers Act to direct the Secretary of the Interior to conduct a study of the Deerfield River for potential addition to the national wild and scenic rivers system, S.886, to authorize the location of a monument on the National Mall to commemorate and honor the women's suffrage movement and the passage of the 19th Amendment to the Constitution, S.924, to amend the Chesapeake and Ohio Canal Development Act to extend the Chesapeake and Ohio Canal National Historical Park Commission, S.961, to redesignate the Salem Maritime National Historic Site in Salem, Massachusetts, as the \"Salem Maritime National Historic Park\", S.1059, to adjust the boundary of Big Bend National Park in the State of Texas, S.1097, to establish the Cesar E. Chavez and the Farmworker Movement National Historical Park in the States of California and Arizona, S.1277, to modify the boundary of the Mammoth Cave National Park in the State of Kentucky, and S.2018, to require the Secretary of the Interior to conduct an assessment to identify locations in National Parks in which there is the greatest need for broadband internet access service and areas in National Parks in which there is the greatest need for cellular service.",
-     "date": "2023-06-21"
-    },
-    {
-     "key": [
-      "CHRG-113hhrg80765",
-      100728
-     ],
-     "package": "CHRG-113hhrg80765",
-     "event": 100728,
-     "before": [
-      "meeting:100728"
-     ],
-     "after": [
-      "package:CHRG-113hhrg80765"
-     ],
-     "print": {
-      "held": [
-       "2013-04-24"
-      ],
-      "titles": [
-       "[H.A.S.C. No. 113-36]THE READINESS POSTURE OF THE U.S. AIR FORCE",
-       "[H.A.S.C. No. 113-36]THE READINESS POSTURE OF THE U.S. AIR FORCE"
-      ],
-      "events": [],
-      "witnesses": 5
-     },
-     "meeting": "Post Iraq and Afghanistan:  Current and Future Roles for UAS and the Fiscal Year 2014 budget request",
-     "date": "2013-04-24"
-    },
-    {
-     "key": [
-      "CHRG-113hhrg81702",
-      100710
-     ],
-     "package": "CHRG-113hhrg81702",
-     "event": 100710,
-     "before": [
-      "meeting:100710"
-     ],
-     "after": [],
-     "print": {
-      "held": [
-       "2013-06-27"
-      ],
-      "titles": [
-       "MOBILE MEDICAL APP ENTREPRENEURS: CHANGING THE FACE OF HEALTH CARE",
-       "MOBILE MEDICAL APP ENTREPRENEURS: CHANGING THE FACE OF HEALTH CARE"
-      ],
-      "events": [],
-      "witnesses": 4
-     },
-     "meeting": "6-27-2013 Mobile Medical App Entrepreneurs: Changing the Face of Health Care",
-     "date": "2013-06-27"
-    },
-    {
-     "key": [
-      "CHRG-112hhrg72541",
-      100036
-     ],
-     "package": "CHRG-112hhrg72541",
-     "event": 100036,
-     "before": [
-      "meeting:100036"
-     ],
-     "after": [
-      "package:CHRG-112hhrg72541"
-     ],
-     "print": {
-      "held": [
-       "2011-03-10",
-       "2011-06-15",
-       "2011-07-27"
-      ],
-      "titles": [
-       "COMPILATION OF HEARINGS ON ISLAMIST RADICALIZATION",
-       "COMPILATION OF HEARINGS ON ISLAMIST RADICALIZATION"
-      ],
-      "events": [],
-      "witnesses": 14
-     },
-     "meeting": "\u201cThe Extent of Radicalization in the American Muslim Community \r\nand that Community's Response.\u201d",
-     "date": "2011-03-10"
-    },
-    {
-     "key": [
-      "CHRG-118shrg52787",
-      334294
-     ],
-     "package": "CHRG-118shrg52787",
-     "event": 334294,
-     "before": [
-      "package:CHRG-118shrg52787"
-     ],
-     "after": [
-      "meeting:334294"
-     ],
-     "print": {
-      "held": [
-       "2023-06-14"
-      ],
-      "titles": [
-       "EXAMINING THE FINDINGS AND RECOMMENDATIONS OF GAO'S 2023 REPORT ON OPPORTUNITIES TO REDUCE FRAGMENTATION, OVERLAP, AND DUPLICATION AND ACHIEVE FINANCIAL BENEFITS",
-       "EXAMINING THE FINDINGS AND RECOMMENDATIONS OF GAO'S 2023 REPORT ON OPPORTUNITIES TO REDUCE FRAGMENTATION, OVERLAP, AND DUPLICATION AND ACHIEVE FINANCIAL BENEFITS"
-      ],
-      "events": [
-       334294
-      ],
-      "witnesses": 1
-     },
-     "meeting": "Hearings to examine\u00a0the findings and recommendations of the GAO's 2023 report on opportunities to reduce fragmentation, overlap, and duplication and achieve financial benefits.",
-     "date": "2023-06-14"
-    },
-    {
-     "key": [
-      "CHRG-118shrg60121",
-      336183
-     ],
-     "package": "CHRG-118shrg60121",
-     "event": 336183,
-     "before": [
-      "package:CHRG-118shrg60121"
-     ],
-     "after": [
-      "meeting:336183"
-     ],
-     "print": {
-      "held": [
-       "2024-09-17"
-      ],
-      "titles": [
-       "A THREAT TO JUSTICE EVERYWHERE: STEMMING THE TIDE OF HATE CRIMES IN AMERICA",
-       "A THREAT TO JUSTICE EVERYWHERE: STEMMING THE TIDE OF HATE CRIMES IN AMERICA"
-      ],
-      "events": [
-       336183
-      ],
-      "witnesses": 3
-     },
-     "meeting": "Hearings to examine stemming the tide of hate crimes in America.",
-     "date": "2024-09-17"
-    },
-    {
-     "key": [
-      "CHRG-117hhrg48653",
-      114828
-     ],
-     "package": "CHRG-117hhrg48653",
-     "event": 114828,
-     "before": [
-      "package:CHRG-117hhrg48653"
-     ],
-     "after": [
-      "meeting:114828"
-     ],
-     "print": {
-      "held": [
-       "2022-05-18"
-      ],
-      "titles": [
-       "[H.A.S.C. No. 117-93]  Department of Defense Information Technology, Digital Developments, and Artificial Intelligence for Fiscal Year 2023",
-       "[H.A.S.C. No. 117-93]  Department of Defense Information Technology, Digital Developments, and Artificial Intelligence for Fiscal Year 2023"
-      ],
-      "events": [
-       114828
-      ],
-      "witnesses": 1
-     },
-     "meeting": "Department of Defense Information Technology, Digital Developments, and Artificial Intelligence for Fiscal Year 2023",
-     "date": "2022-05-18"
-    },
-    {
-     "key": [
-      "CHRG-118shrg56754",
-      336001
-     ],
-     "package": "CHRG-118shrg56754",
-     "event": 336001,
-     "before": [
-      "package:CHRG-118shrg56754"
-     ],
-     "after": [
-      "meeting:336001"
-     ],
-     "print": {
-      "held": [
-       "2024-07-10"
-      ],
-      "titles": [
-       "OVERSIGHT OF DIGITAL COMMODITIES",
-       "OVERSIGHT OF DIGITAL COMMODITIES"
-      ],
-      "events": [],
-      "witnesses": 1
-     },
-     "meeting": "An oversight hearing to examine digital commodities.",
-     "date": "2024-07-10"
-    },
-    {
-     "key": [
-      "CHRG-115hhrg38052",
-      106454
-     ],
-     "package": "CHRG-115hhrg38052",
-     "event": 106454,
-     "before": [
-      "package:CHRG-115hhrg38052"
-     ],
-     "after": [
-      "meeting:106454"
-     ],
-     "print": {
-      "held": [
-       "2017-10-03"
-      ],
-      "titles": [
-       "BUILDING A 21ST-CENTURY INFRASTRUCTURE FOR AMERICA: COAST GUARD STAKEHOLDERS' PERSPECTIVES AND JONES ACT FLEET CAPABILITIES",
-       "BUILDING A 21ST-CENTURY INFRASTRUCTURE FOR AMERICA: COAST GUARD STAKEHOLDERS' PERSPECTIVES AND JONES ACT FLEET CAPABILITIES"
-      ],
-      "events": [],
-      "witnesses": 2
-     },
-     "meeting": "Building a 21st Century Infrastructure for America: Coast Guard Stakeholders\u2019 Perspectives",
-     "date": "2017-10-03"
-    },
-    {
-     "key": [
-      "CHRG-118shrg61896",
-      335007
-     ],
-     "package": "CHRG-118shrg61896",
-     "event": 335007,
-     "before": [
-      "meeting:335007"
-     ],
-     "after": [
-      "package:CHRG-118shrg61896"
-     ],
-     "print": {
-      "held": [
-       "2023-10-25"
-      ],
-      "titles": [
-       "EXPLORING PAID LEAVE: POLICY, PRACTICE, AND IMPACT ON THE WORKFORCE",
-       "United States Senate Bill 5 (118th Congress)",
-       "United States House Bill 7 (118th Congress)",
-       "United States House Bill 481 (118th Congress)",
-       "United States House Bill 1185 (118th Congress)",
-       "United States Senate Bill 1714 (118th Congress)",
-       "United States House Bill 2474 (118th Congress)",
-       "United States House Bill 3481 (118th Congress)",
-       "United States House Bill 4248 (118th Congress)",
-       "United States House Bill 5376 (118th Congress)",
-       "United States Code",
-       "United States Public Law 127 (116th Congress)",
-       "EXPLORING PAID LEAVE: POLICY, PRACTICE, AND IMPACT ON THE WORKFORCE"
-      ],
-      "events": [
-       326446,
-       401520
-      ],
-      "witnesses": 4
-     },
-     "meeting": "Hearings to examine\u00a0paid leave, focusing on policy, practice, and impact on the workforce.",
-     "date": "2023-10-25"
-    },
-    {
-     "key": [
-      "CHRG-118shrg52437",
-      334141
-     ],
-     "package": "CHRG-118shrg52437",
-     "event": 334141,
-     "before": [
-      "package:CHRG-118shrg52437"
-     ],
-     "after": [
-      "meeting:334141"
-     ],
-     "print": {
-      "held": [
-       "2023-05-17"
-      ],
-      "titles": [
-       "EXAMINING HEALTH CARE DENIALS AND DELAYS IN MEDICARE ADVANTAGE",
-       "United States House Bill 3713 (118th Congress)",
-       "EXAMINING HEALTH CARE DENIALS AND DELAYS IN MEDICARE ADVANTAGE"
-      ],
-      "events": [],
-      "witnesses": 5
-     },
-     "meeting": "Hearings to examine\u00a0health care denials and delays in medicare advantage.",
-     "date": "2023-05-17"
-    }
-   ],
-   "ambiguous": [
-    {
-     "key": [
-      "CHRG-113hhrg80771",
-      100729
-     ],
-     "package": "CHRG-113hhrg80771",
-     "event": 100729,
-     "before": [
-      "meeting:100729"
-     ],
-     "after": [],
-     "print": {
-      "held": [
-       "2013-04-26"
-      ],
-      "titles": [
-       "[H.A.S.C. No. 113-42]NATIONAL DEFENSE AUTHORIZATION ACT FOR FISCAL YEAR 2014 AND OVERSIGHT OF PREVIOUSLY  AUTHORIZED PROGRAMS",
-       "[H.A.S.C. No. 113-42]NATIONAL DEFENSE AUTHORIZATION ACT FOR FISCAL YEAR 2014 AND OVERSIGHT OF PREVIOUSLY  AUTHORIZED PROGRAMS"
-      ],
-      "events": [],
-      "witnesses": 2
-     },
-     "meeting": "Fiscal Year 2014 Army Modernization Programs",
-     "date": "2013-04-26"
-    },
-    {
-     "key": [
-      "CHRG-117shrg46061",
-      330751
-     ],
-     "package": "CHRG-117shrg46061",
-     "event": 330751,
-     "before": [
-      "meeting:330751"
-     ],
-     "after": [
-      "package:CHRG-117shrg46061"
-     ],
-     "print": {
-      "held": [
-       "2021-10-21"
-      ],
-      "titles": [
-       "PENDING LEGISLATION",
-       "United States Senate Bill 1734 (117th Congress)",
-       "United States Senate Bill 1734 (117th Congress)",
-       "United States Senate Bill 1964 (117th Congress)",
-       "United States Senate Bill 1964 (117th Congress)",
-       "United States Senate Bill 2404 (117th Congress)",
-       "United States Senate Bill 2404 (117th Congress)",
-       "United States Senate Bill 2436 (117th Congress)",
-       "United States Senate Bill 2436 (117th Congress)",
-       "United States Senate Bill 2561 (117th Congress)",
-       "United States Senate Bill 2561 (117th Congress)",
-       "United States Senate Bill 2564 (117th Congress)",
-       "United States Senate Bill 2564 (117th Congress)",
-       "United States Senate Bill 2650 (117th Congress)",
-       "United States Senate Bill 2650 (117th Congress)",
-       "United States Senate Bill 2806 (117th Congress)",
-       "United States Senate Bill 2806 (117th Congress)",
-       "United States Senate Bill 2836 (117th Congress)",
-       "United States Senate Bill 2836 (117th Congress)",
-       "PENDING LEGISLATION"
-      ],
-      "events": [
-       330751
-      ],
-      "witnesses": 6
-     },
-     "meeting": "Hearings to examine S.1734, to direct the Secretary of the Interior and the Secretary of Agriculture to encourage and expand the use of prescribed fire on land managed by the Department of the Interior or the Forest Service, with an emphasis on units of the National Forest System in the western United States, S.1964, to amend the Omnibus Parks and Public Lands Management Act of 1996 to provide for the establishment of a Ski Area Fee Retention Account, S.2404, to improve Federal activities relating to wildfires, S.2436, to amend the Healthy Forests Restoration Act of 2003 to establish emergency fireshed management areas, S.2561, to amend the Forest and Rangeland Renewable Resources Planning Act of 1974 and the Federal Land Policy and Management Act of 1976 to provide that a land resource management plan or land use plan approved, amended, or revised under those Acts shall not be considered to be a continuing Federal agency action or constitute a discretionary Federal involvement or control for a distinct Federal purpose, S.2564, to establish a pilot program under which the Chief of the Forest Service may use alternative dispute resolution in lieu of judicial review for certain projects, S.2650, to provide mandatory funding for hazardous fuels reduction projects on certain Federal land, S.2806, to direct the Secretary of Agriculture to select and implement landscape-scale forest restoration projects, to assist communities in increasing their resilience to wildfire, and S.2836, to improve revegetation and carbon sequestration activities in the United States.",
-     "date": "2021-10-21"
-    },
-    {
-     "key": [
-      "CHRG-118shrg58144",
-      334134
-     ],
-     "package": "CHRG-118shrg58144",
-     "event": 334134,
-     "before": [
-      "meeting:334134"
-     ],
-     "after": [
-      "package:CHRG-118shrg58144"
-     ],
-     "print": {
-      "held": [
-       "2023-05-16"
-      ],
-      "titles": [
-       "EXAMINING NASA'S FY24 BUDGET AND PRIORITIES",
-       "United States House Bill 3746 (118th Congress)",
-       "United States Public Law 155 (109th Congress)",
-       "United States Public Law 167 (117th Congress)",
-       "EXAMINING NASA'S FY24 BUDGET AND PRIORITIES"
-      ],
-      "events": [],
-      "witnesses": 1
-     },
-     "meeting": "Hearings to examine the President's proposed budget request for fiscal year 2024 for the\u00a0National Aeronautics and Space Administration.",
-     "date": "2023-05-16"
-    },
-    {
-     "key": [
-      "CHRG-113hhrg80799",
-      100794
-     ],
-     "package": "CHRG-113hhrg80799",
-     "event": 100794,
-     "before": [
-      "meeting:100794"
-     ],
-     "after": [
-      "package:CHRG-113hhrg80799"
-     ],
-     "print": {
-      "held": [
-       "2013-05-07"
-      ],
-      "titles": [
-       "INCREASING AMERICAN JOBS THROUGH GREATER EXPORTS TO AFRICA",
-       "United States House Bill 656 (113th Congress)",
-       "United States Senate Bill 718 (113th Congress)",
-       "United States House Bill 1777 (113th Congress)",
-       "INCREASING AMERICAN JOBS THROUGH GREATER EXPORTS TO AFRICA"
-      ],
-      "events": [],
-      "witnesses": 4
-     },
-     "meeting": "Local and Private Sector Initiatives to Combat International Human Trafficking",
-     "date": "2013-05-07"
-    },
-    {
-     "key": [
-      "CHRG-113hhrg80121",
-      100540
-     ],
-     "package": "CHRG-113hhrg80121",
-     "event": 100540,
-     "before": [
-      "meeting:100540"
-     ],
-     "after": [
-      "package:CHRG-113hhrg80121"
-     ],
-     "print": {
-      "held": [
-       "2013-03-20"
-      ],
-      "titles": [
-       "CRISIS IN SYRIA: THE U.S. RESPONSE",
-       "CRISIS IN SYRIA: THE U.S. RESPONSE"
-      ],
-      "events": [],
-      "witnesses": 3
-     },
-     "meeting": "Fulfilling the Good Friday Agreement",
-     "date": "2013-03-20"
-    },
-    {
-     "key": [
-      "CHRG-114hhrg21306",
-      103309
-     ],
-     "package": "CHRG-114hhrg21306",
-     "event": 103309,
-     "before": [
-      "package:CHRG-114hhrg21306"
-     ],
-     "after": [
-      "meeting:103309"
-     ],
-     "print": {
-      "held": [
-       "2015-04-14"
-      ],
-      "titles": [
-       "THE INDIVIDUAL AND EMPLOYER MANDATES IN THE PRESIDENT'S HEALTH CARE LAW",
-       "United States House Bill 863 (114th Congress)",
-       "THE INDIVIDUAL AND EMPLOYER MANDATES IN THE PRESIDENT'S HEALTH CARE LAW"
-      ],
-      "events": [],
-      "witnesses": 3
-     },
-     "meeting": "Organizational Meeting of the Subcommittee on Health",
-     "date": "2015-04-14"
-    },
-    {
-     "key": [
-      "CHRG-119shrg61677",
-      336979
-     ],
-     "package": "CHRG-119shrg61677",
-     "event": 336979,
-     "before": [
-      "package:CHRG-119shrg61677"
-     ],
-     "after": [
-      "meeting:336979"
-     ],
-     "print": {
-      "held": [
-       "2025-05-21"
-      ],
-      "titles": [
-       "THE GOOD, THE BAD, AND THE UGLY: AI-GENERATED DEEPFAKES IN 2025",
-       "United States Senate Bill 1367 (119th Congress)",
-       "THE GOOD, THE BAD, AND THE UGLY: AI-GENERATED DEEPFAKES IN 2025",
-       "THE GOOD, THE BAD, AND THE UGLY: AI-GENERATED DEEPFAKES IN 2025"
-      ],
-      "events": [],
-      "witnesses": 0
-     },
-     "meeting": "Hearings to examine AI-generated deepfakes.",
-     "date": "2025-05-21"
-    },
-    {
-     "key": [
-      "CHRG-118shrg55873",
-      335535
-     ],
-     "package": "CHRG-118shrg55873",
-     "event": 335535,
-     "before": [
-      "meeting:335535"
-     ],
-     "after": [
-      "package:CHRG-118shrg55873"
-     ],
-     "print": {
-      "held": [
-       "2024-03-14"
-      ],
-      "titles": [
-       "WORKERS SHOULD BENEFIT FROM NEW TECHNOLOGY AND INCREASED PRODUCTIVITY: THE NEED FOR A 32-HOUR WORK WEEK WITH NO LOSS IN PAY",
-       "United States Senate Bill 3947 (118th Congress)",
-       "WORKERS SHOULD BENEFIT FROM NEW TECHNOLOGY AND INCREASED PRODUCTIVITY: THE NEED FOR A 32-HOUR WORK WEEK WITH NO LOSS IN PAY"
-      ],
-      "events": [],
-      "witnesses": 5
-     },
-     "meeting": "Hearings to examine workers benefitting from new technology and increased productivity, including S. 3947, to amend the Fair Labor Standards Act of 1938 to reduce the standard workweek from 40 hours per week to 32 hours per week.",
-     "date": "2024-03-14"
-    },
-    {
-     "key": [
-      "CHRG-117shrg51112",
-      330206
-     ],
-     "package": "CHRG-117shrg51112",
-     "event": 330206,
-     "before": [
-      "package:CHRG-117shrg51112"
-     ],
-     "after": [
-      "meeting:330206"
-     ],
-     "print": {
-      "held": [
-       "2021-08-03"
-      ],
-      "titles": [
-       "OVERSIGHT OF REGULATORS: DOES OUR FINANCIAL SYSTEM WORK FOR EVERYONE?",
-       "United States Senate Bill 2508 (117th Congress)",
-       "United States House Bill 6395 (117th Congress)",
-       "United States Code",
-       "United States Statutes at Large",
-       "United States Public Law 203 (111th Congress)",
-       "OVERSIGHT OF REGULATORS: DOES OUR FINANCIAL SYSTEM WORK FOR EVERYONE?"
-      ],
-      "events": [
-       330206
-      ],
-      "witnesses": 3
-     },
-     "meeting": "Business meeting to consider the nomination of Damon Y. Smith, of Maryland, to be General Counsel of the Department of Housing and Urban Development; to be immediately followed by an oversight hearing to examine regulators and our financial system.",
-     "date": "2021-08-03"
-    },
-    {
-     "key": [
-      "CHRG-118shrg53730",
-      333701
-     ],
-     "package": "CHRG-118shrg53730",
-     "event": 333701,
-     "before": [
-      "package:CHRG-118shrg53730"
-     ],
-     "after": [
-      "meeting:333701"
-     ],
-     "print": {
-      "held": [
-       "2023-03-08"
-      ],
-      "titles": [
-       "LEGISLATIVE PRESENTATION OF VETERANS OF FOREIGN WARS OF THE UNITED STATES AND MULTI VSOs: JWV, WWP, TAPS, MOAA, AMVETS, GSW, MOPH, BVA, NACVSO",
-       "United States House Bill 705 (118th Congress)",
-       "LEGISLATIVE PRESENTATION OF VETERANS OF FOREIGN WARS OF THE UNITED STATES AND MULTI VSOs: JWV, WWP, TAPS, MOAA, AMVETS, GSW, MOPH, BVA, NACVSO"
-      ],
-      "events": [],
-      "witnesses": 4
-     },
-     "meeting": "A joint hearing with the House Committee on Veterans' Affairs to examine the legislative presentation of the Veterans of Foreign Wars of the United States and multiple veterans service organizations.",
-     "date": "2023-03-08"
-    },
-    {
-     "key": [
-      "CHRG-113hhrg80755",
-      100626
-     ],
-     "package": "CHRG-113hhrg80755",
-     "event": 100626,
-     "before": [],
-     "after": [
-      "meeting:100626"
-     ],
-     "print": {
-      "held": [
-       "2013-04-11"
-      ],
-      "titles": [
-       "[H.A.S.C. No. 113-26]NATIONAL DEFENSE AUTHORIZATION ACT FOR FISCAL YEAR 2014 AND OVERSIGHT OF PREVIOUSLY AUTHORIZED PROGRAMS",
-       "[H.A.S.C. No. 113-26]NATIONAL DEFENSE AUTHORIZATION ACT FOR FISCAL YEAR 2014 AND OVERSIGHT OF PREVIOUSLY AUTHORIZED PROGRAMS"
-      ],
-      "events": [],
-      "witnesses": 2
-     },
-     "meeting": "The Fiscal Year 2014 National Defense Authorization Budget Request from the Department of Defense",
-     "date": "2013-04-11"
-    },
-    {
-     "key": [
-      "CHRG-112hhrg72257",
-      100099
-     ],
-     "package": "CHRG-112hhrg72257",
-     "event": 100099,
-     "before": [
-      "meeting:100099"
-     ],
-     "after": [
-      "package:CHRG-112hhrg72257"
-     ],
-     "print": {
-      "held": [
-       "2011-07-12"
-      ],
-      "titles": [
-       "PROTECTING THE MARITIME BORDERS: LEVERAGING LAW ENFORCEMENT COOPERATION TO ENHANCE SECURITY ALONG AMERICA'S COASTS",
-       "PROTECTING THE MARITIME BORDERS: LEVERAGING LAW ENFORCEMENT COOPERATION TO ENHANCE SECURITY ALONG AMERICA'S COASTS"
-      ],
-      "events": [],
-      "witnesses": 4
-     },
-     "meeting": "\u201cIndustry Perspectives: Authorizing the Transportation Security Administration for FY 2012 and 2013\u201d",
-     "date": "2011-07-12"
-    },
-    {
-     "key": [
-      "CHRG-117shrg48573",
-      333120
-     ],
-     "package": "CHRG-117shrg48573",
-     "event": 333120,
-     "before": [
-      "meeting:333120"
-     ],
-     "after": [
-      "package:CHRG-117shrg48573"
-     ],
-     "print": {
-      "held": [
-       "2022-09-21"
-      ],
-      "titles": [
-       "PENDING LEGISLATION",
-       "United States Senate Joint Resolution 57 (117th Congress)",
-       "United States Senate Joint Resolution 57 (117th Congress)",
-       "United States Senate Bill 305 (117th Congress)",
-       "United States Senate Bill 305 (117th Congress)",
-       "United States Senate Bill 1211 (117th Congress)",
-       "United States Senate Bill 1211 (117th Congress)",
-       "United States House Bill 1908 (117th Congress)",
-       "United States House Bill 1908 (117th Congress)",
-       "United States Senate Bill 3447 (117th Congress)",
-       "United States Senate Bill 3447 (117th Congress)",
-       "United States Senate Bill 3579 (117th Congress)",
-       "United States Senate Bill 3579 (117th Congress)",
-       "United States Senate Bill 3873 (117th Congress)",
-       "United States Senate Bill 3873 (117th Congress)",
-       "United States Senate Bill 4122 (117th Congress)",
-       "United States Senate Bill 4122 (117th Congress)",
-       "United States Senate Bill 4168 (117th Congress)",
-       "United States Senate Bill 4168 (117th Congress)",
-       "United States Senate Bill 4222 (117th Congress)",
-       "United States Senate Bill 4222 (117th Congress)",
-       "United States Senate Bill 4371 (117th Congress)",
-       "United States Senate Bill 4377 (117th Congress)",
-       "United States Senate Bill 4377 (117th Congress)",
-       "United States House Bill 4380 (117th Congress)",
-       "United States House Bill 4380 (117th Congress)",
-       "United States Senate Bill 4464 (117th Congress)",
-       "United States Senate Bill 4464 (117th Congress)",
-       "United States Senate Bill 4693 (117th Congress)",
-       "United States Senate Bill 4693 (117th Congress)",
-       "United States Senate Bill 4784 (117th Congress)",
-       "United States Senate Bill 4784 (117th Congress)",
-       "United States House Bill 4878 (117th Congress)",
-       "United States House Bill 7693 (117th Congress)",
-       "PENDING LEGISLATION"
-      ],
-      "events": [],
-      "witnesses": 4
-     },
-     "meeting": "Hearings to examine S.305, to establish the Springfield Race Riot National Monument in the State of Illinois, S.1211, to establish the Cahokia Mounds Mississippian Culture National Historic Park in Collinsville, Illinois, Monroe, Madison, and St. Clair Counties, Illinois, and St. Louis City County, Missouri, S.3447, to authorize the National Service Animals Monument Corporation to establish a commemorative work in the District of Columbia and its environs, S.3579, to authorize the Embassy of France in Washington, DC, to establish a commemorative work in the District of Columbia and its environs to honor the extraordinary contributions of Jean Monnet to restoring peace between European nations and establishing the European Union, S.3873, to designate the outdoor amphitheater at the Blue Ridge Music Center in Galax, Virginia, as the \"Rock Boucher Amphitheater\", S.4122, to amend the Wild and Scenic Rivers Act to designate certain segments of the Housatonic River in the State of Connecticut as components of the National Wild and Scenic Rivers System, S.4168, to amend title 54, United States Code, to reauthorize the National Park Foundation, S.4222, to esablish the St. Croix National Heritage Area, S.4371, to establish the Cesar E. Chavez and the Farmworker Movement National Historical Park in the States of California and Arizona, S.4377 and H.R.4380, bills to designate the El Paso Community Healing Garden National Memorial, S.4464 and H.R.1908, bills to authorize the Secretary of the Interior to conduct a study to assess the suitability and feasibility of designating certain land as the Ka'ena Point National Heritage Area, S.4693, to amend the National Trails System Act to include national discovery trails and designate the American Discovery Trail, S.4784, to modify the boundary of the Katahdin Woods and Waters National Monument in the State of Maine, to improve public access to the National Monument, and S.J.Res.57, redesignating the Robert E. Lee Memorial in Arlington National Cemetery as the \"Arlington House National Historic Site\".",
-     "date": "2022-09-21"
-    },
-    {
-     "key": [
-      "CHRG-119shrg62328",
-      337424
-     ],
-     "package": "CHRG-119shrg62328",
-     "event": 337424,
-     "before": [
-      "package:CHRG-119shrg62328"
-     ],
-     "after": [
-      "meeting:337424"
-     ],
-     "print": {
-      "held": [
-       "2025-09-16"
-      ],
-      "titles": [
-       "EXAMINING THE HARM OF AI CHATBOTS",
-       "EXAMINING THE HARM OF AI CHATBOTS",
-       "EXAMINING THE HARM OF AI CHATBOTS"
-      ],
-      "events": [
-       337424
-      ],
-      "witnesses": 0
-     },
-     "meeting": "Hearings to examine AI chatbots.",
-     "date": "2025-09-16"
-    },
-    {
-     "key": [
-      "CHRG-116shrg40549",
-      327084
-     ],
-     "package": "CHRG-116shrg40549",
-     "event": 327084,
-     "before": [
-      "meeting:327084"
-     ],
-     "after": [
-      "package:CHRG-116shrg40549"
-     ],
-     "print": {
-      "held": [
-       "2020-02-12",
-       "2020-03-05",
-       "2020-05-06",
-       "2020-06-09",
-       "2020-06-24",
-       "2020-06-25",
-       "2020-07-28",
-       "2020-11-19",
-       "2020-12-08"
-      ],
-      "titles": [
-       "COVID-19 (Volume 1)",
-       "United States Public Law 176 (115th Congress)",
-       "COVID-19 (Volume 1)"
-      ],
-      "events": [],
-      "witnesses": 36
-     },
-     "meeting": "Hearings to examine protecting the United States from global pandemics.",
-     "date": "2020-02-12"
-    },
-    {
-     "key": [
-      "CHRG-113hhrg80821",
-      100561
-     ],
-     "package": "CHRG-113hhrg80821",
-     "event": 100561,
-     "before": [
-      "meeting:100561"
-     ],
-     "after": [
-      "package:CHRG-113hhrg80821"
-     ],
-     "print": {
-      "held": [
-       "2013-04-18"
-      ],
-      "titles": [
-       "INNOVATION AS A CATALYST FOR NEW JOBS",
-       "INNOVATION AS A CATALYST FOR NEW JOBS"
-      ],
-      "events": [],
-      "witnesses": 4
-     },
-     "meeting": "Innovation and Job Creation",
-     "date": "2013-04-18"
-    },
-    {
-     "key": [
-      "CHRG-114hhrg93885",
-      103104
-     ],
-     "package": "CHRG-114hhrg93885",
-     "event": 103104,
-     "before": [
-      "meeting:103104"
-     ],
-     "after": [
-      "package:CHRG-114hhrg93885"
-     ],
-     "print": {
-      "held": [
-       "2015-02-25"
-      ],
-      "titles": [
-       "AN OVERVIEW OF THE BUDGET PROPOSAL FOR THE DEPARTMENT OF ENERGY FOR FISCAL YEAR 2016",
-       "AN OVERVIEW OF THE BUDGET PROPOSAL FOR THE DEPARTMENT OF ENERGY FOR FISCAL YEAR 2016"
-      ],
-      "events": [],
-      "witnesses": 1
-     },
-     "meeting": "H.R. 1030, Secret Science Reform Act of 2015; and H.R. 1029, EPA Science Advisory Board Reform Act of 2015",
-     "date": "2015-02-25"
-    },
-    {
-     "key": [
-      "CHRG-117shrg46558",
-      329223
-     ],
-     "package": "CHRG-117shrg46558",
-     "event": 329223,
-     "before": [
-      "meeting:329223"
-     ],
-     "after": [
-      "package:CHRG-117shrg46558"
-     ],
-     "print": {
-      "held": [
-       "2021-04-28"
-      ],
-      "titles": [
-       "HEARING ON PENDING LEGISLATION",
-       "United States Senate Bill 89 (117th Congress)",
-       "United States Senate Bill 437 (117th Congress)",
-       "United States Senate Bill 657 (117th Congress)",
-       "United States Senate Bill 927 (117th Congress)",
-       "United States Senate Bill 952 (117th Congress)",
-       "United States Senate Bill 976 (117th Congress)",
-       "United States Senate Bill 1071 (117th Congress)",
-       "United States Senate Bill 1093 (117th Congress)",
-       "HEARING ON PENDING LEGISLATION"
-      ],
-      "events": [
-       329223
-      ],
-      "witnesses": 6
-     },
-     "meeting": "Hearings to examine S.89, to require the Secretary of Veterans Affairs to secure medical opinions for veterans with service-connected disabilities who die from COVID-19 to determine whether their service-connected disabilities were the principal or contributory causes of death, S.189, to amend title 38, United States Code, to provide for annual cost-of-living adjustments to be made automatically by law each year in the rates of disability compensation for veterans with service-connected disabilities and the rates of dependency and indemnity compensation for survivors of certain service-connected disabled veterans, S.219, to require the Secretary of Veterans Affairs to increase the amount of certain payments during the emergency period resulting from the COVID-19 pandemic, S.437, to amend title 38, United States Code, to concede exposure to airborne hazards and toxins from burn pits under certain circumstances, S.444, to amend title 38, United States Code, to authorize the Secretary of Veterans Affairs to provide or assist in providing an additional vehicle adapted for operation by disabled individuals to certain eligible persons, S.454, to provide health care and benefits to veterans who were exposed to toxic substances while serving as members of the Armed Forces at Karshi Khanabad Air Base, Uzbekistan, S.458, to amend title 38, United States Code, to require the Secretary of Veterans Affairs to provide the representative of record of a claimant for compensation or benefits administered by the Secretary an opportunity to review a proposed determination regarding that claim, S.565, to amend title 38, United States Code, to provide for the treatment of veterans who participated in the cleanup of Enewetak Atoll as radiation-exposed veterans for purposes of the presumption of service-connection of certain disabilities by the Secretary of Veterans Affairs, S.657, to modify the presumption of service connection for veterans who were exposed to herbicide agents while serving in the Armed Forces in Thailand during the Vietnam era, S.731, to amend title 38, United States Code, to improve the management of information technology projects and investments of the Department of Veterans Affairs, S.810, to amend title 38, United States Code, to expand the list of diseases associated with exposure to certain herbicide agents for which there is a presumption of service connection for veterans who served in the Republic of Vietnam to include hypertension, S.894, to identify and refer members of the Armed Forces with a health care occupation who are separating from the Armed Forces for potential employment with the Department of Veterans Affairs, S.927, to improve the provision of health care and other benefits from the Department of Veterans Affairs for veterans who were exposed to toxic substances, S.952, to amend title 38, United States Code, to provide for a presumption of service connection for certain diseases associated with exposure to toxins, S.976, to amend title 38, United States Code, to improve and to expand eligibility for dependency and indemnity compensation paid to certain survivors of certain veterans, S.1031, to require the Comptroller General of the United States to conduct a study on disparities associated with race and ethnicity with respect to certain benefits administered by the Secretary of Veterans Affairs, S.1039, to amend title 38, United States Code, to improve compensation for disabilities occurring in Persian Gulf War veterans, S.1071, to authorize the Secretary of Veterans Affairs to carry out a pilot program to provide pension claim enhancement assistance to individuals submitting claims for pension from the Department of Veterans Affairs, S.1093, to amend title 38, United States Code, to establish in the Department the Veterans Economic Opportunity and Transition Administration, S.1095, to amend title 38, United States Code, to provide for the disapproval by the Secretary of Veterans Affairs of courses of education offered by public institutions of higher learning that do not charge veterans the in-State tuition rate for purposes of Survivors' and Dependents' Educational Assistance Program, S.1096, to amend title 38, United States Code, to expand eligibility for the Marine Gunnery Sergeant John David Fry Scholarship to include spouses and children of individuals who die from a service-connected disability within 120 days of serving in the Armed Forces, and S.1188, to direct the Secretary of Veterans Affairs to notify Congress regularly of reported cases of burn pit exposure by veterans.",
-     "date": "2021-04-28"
-    },
-    {
-     "key": [
-      "CHRG-113hhrg82128",
-      101189
-     ],
-     "package": "CHRG-113hhrg82128",
-     "event": 101189,
-     "before": [
-      "meeting:101189"
-     ],
-     "after": [
-      "package:CHRG-113hhrg82128"
-     ],
-     "print": {
-      "held": [
-       "2013-07-23"
-      ],
-      "titles": [
-       "WAR ON JOBS: EXAMINING THE OPERATIONS OF THE OFFICE OF SURFACE MINING AND THE STATUS OF THE STREAM BUFFER ZONE RULE",
-       "Code of Federal Regulations",
-       "WAR ON JOBS: EXAMINING THE OPERATIONS OF THE OFFICE OF SURFACE MINING AND THE STATUS OF THE STREAM BUFFER ZONE RULE"
-      ],
-      "events": [],
-      "witnesses": 1
-     },
-     "meeting": "Legislative Hearing. H.R. 163 (Benishek), To designate as wilderness certain land and inland water within the Sleeping Bear Dunes National Lakeshore in the State of Michigan, and for other purposes.  \u201cSleeping Bear Dunes National Lakeshore Conservation and Recreation Act\u201d; H.R. 361 (Reichert), To expand the Alpine Lakes Wilderness in the State of Washington, to designate the Middle Fork Snoqualmie River and Pratt River as wild and scenic rivers, and for other purposes.  \u201cAlpine Lakes Wilderness Additions and Pratt and Middle Fork Snoqualmie Rivers Protection Act\u201d; H.R. 433 (Amodei), To designate the Pine Forest Range Wilderness area in Humboldt County, Nevada.  \u201cPine Forest Range Recreation Enhancement Act of 2013\u201d; H.R. 706 (Cicilline), To establish the Blackstone River Valley National Historical Park, to dedicate the Park to John H. Chafee, and for other purposes.  \u201cBlackstone River Valley National Historical Park Establishment Act\u201d; H.R. 908 (DelBene), To preserve the Green Mountain Lookout in the Glacier Peak Wilderness of the Mount Baker-Snoqualmie National Forest.  \u201cGreen Mountain Lookout Heritage Protection Act\u201d; H.R. 930 (Schock), To authorize the Secretary of the Interior to conduct a special resource study of the archeological site and surrounding land of the New Philadelphia town site in the State of Illinois, and for other purposes.  \u201cNew Philadelphia, Illinois, Study Act\u201d; H.R. 1025 (Thompson, CA), To designate the Berryessa Snow Mountain National Conservation Area in the State of California, and for other purposes.  \u201cBerryessa Snow Mountain National Conservation Area Act\u201d; H.R. 1808 (Michaud), To designate certain Federal lands within the Cross Island National Wildlife Refuge and the Petit Manan National Wildlife Refuge, part of the Maine Coastal Islands National Wildlife Refuge Complex, in Lincoln County, Hancock County, and Washington County, Maine, as wilderness.  \u201cMaine Coastal Islands Wilderness Act of 2013\u201d",
-     "date": "2013-07-23"
-    },
-    {
-     "key": [
-      "CHRG-116shrg37815",
-      326343
-     ],
-     "package": "CHRG-116shrg37815",
-     "event": 326343,
-     "before": [
-      "meeting:326343"
-     ],
-     "after": [
-      "package:CHRG-116shrg37815"
-     ],
-     "print": {
-      "held": [
-       "2019-09-11"
-      ],
-      "titles": [
-       "PENDING LEGISLATION",
-       "United States Senate Bill 143 (116th Congress)",
-       "United States Senate Bill 607 (116th Congress)",
-       "United States Senate Bill 607 (116th Congress)",
-       "United States Senate Bill 1739 (116th Congress)",
-       "United States Senate Bill 1821 (116th Congress)",
-       "United States Senate Bill 2094 (116th Congress)",
-       "United States Senate Bill 2094 (116th Congress)",
-       "United States Senate Bill 2095 (116th Congress)",
-       "United States Senate Bill 2095 (116th Congress)",
-       "United States Senate Bill 2137 (116th Congress)",
-       "United States Senate Bill 2137 (116th Congress)",
-       "United States Senate Bill 2300 (116th Congress)",
-       "United States Senate Bill 2368 (116th Congress)",
-       "United States Senate Bill 2393 (116th Congress)",
-       "PENDING LEGISLATION"
-      ],
-      "events": [],
-      "witnesses": 5
-     },
-     "meeting": "Hearings to examine S.607, to amend the Department of Energy Organization Act to address insufficient compensation of employees and other personnel of the Federal Energy Regulatory Commission, S.1739, to enable projects that will aid in the development and delivery of related instruction associated with apprenticeship and preapprenticeship programs that are focused on serving the skilled technical workforce at the National Laboratories and certain facilities of the National Nuclear Security Administration, S.1821, to amend the Energy Independence and Security Act of 2007 to provide for research on, and the development and deployment of, marine energy, S.2094, to amend the Energy Policy and Conservation Act to provide Federal financial assistance to States to implement State energy security plans, S.2095, to provide for certain programs and developments in the Department of Energy concerning the cybersecurity and vulnerabilities of, and physical threat to, the electric grid, S.2137, to promote energy savings in residential buildings and industry, S.2300, to amend the Energy Independence and Security Act of 2007 to establish a program to incentivize innovation and to enhance the industrial competitiveness of the United States by developing technologies to reduce emissions of nonpower industrial sectors, S.2368, to amend the Atomic Energy Act of 1954 and the Energy Policy Act of 2005 to support licensing and relicensing of certain nuclear facilities and nuclear energy research, demonstration, and development, and S.2393, to promote a 21st century energy workforce.",
-     "date": "2019-09-11"
-    },
-    {
-     "key": [
-      "CHRG-113hhrg86394",
-      101164
-     ],
-     "package": "CHRG-113hhrg86394",
-     "event": 101164,
-     "before": [
-      "meeting:101164"
-     ],
-     "after": [
-      "package:CHRG-113hhrg86394"
-     ],
-     "print": {
-      "held": [
-       "2013-07-16"
-      ],
-      "titles": [
-       "REFORMING THE DRUG COMPOUNDING REGULATORY FRAMEWORK",
-       "United States Senate Bill 959 (113th Congress)",
-       "REFORMING THE DRUG COMPOUNDING REGULATORY FRAMEWORK"
-      ],
-      "events": [],
-      "witnesses": 8
-     },
-     "meeting": "Full Committee Markup of H.R. 1582, Energy Consumers Relief Act of 2013l; H.R. 1900, Natural Gas Pipeline Permitting Reform Act; H.R. 83, a bill to require the Secretary of the Interior to develop an action plan to address the energy needs of the insular areas of the United States and the Freely Associated States; H.R. 2094, School Access to Emergency Epinephrine Act; H.R. 698, HIV Organ Policy Equity Act; and H.R. 2052, Global Investment in American Jobs Act of 2013",
-     "date": "2013-07-16"
-    },
-    {
-     "key": [
-      "CHRG-117shrg49732",
-      330743
-     ],
-     "package": "CHRG-117shrg49732",
-     "event": 330743,
-     "before": [
-      "meeting:330743"
-     ],
-     "after": [
-      "package:CHRG-117shrg49732"
-     ],
-     "print": {
-      "held": [
-       "2021-10-20"
-      ],
-      "titles": [
-       "HEARING TO CONSIDER PENDING LEGISLATION",
-       "United States Senate Bill 1944 (117th Congress)",
-       "United States Senate Bill 2283 (117th Congress)",
-       "United States Senate Bill 2386 (117th Congress)",
-       "United States Senate Bill 2526 (117th Congress)",
-       "United States Senate Bill 2720 (117th Congress)",
-       "United States Senate Bill 2924 (117th Congress)",
-       "HEARING TO CONSIDER PENDING LEGISLATION"
-      ],
-      "events": [
-       330743
-      ],
-      "witnesses": 3
-     },
-     "meeting": "Business meeting to consider the nominations of Guy T. Kiyokawa, of Hawaii, to be an Assistant Secretary of Veterans Affairs (Enterprise Integration), and James D. Rodriguez, of Texas, to be Assistant Secretary of Labor for Veterans' Employment and Training; to be immediately followed by a hearing to examine S.1342, to establish an interagency committee on the development of green alert systems that would be activated when a veteran goes missing, S.1779, to amend title 38, United States Code, to eliminate copayments by the Department of Veterans Affairs for medicines relating to preventive health services, S.1937, to require the Secretary of Veterans Affairs to establish a pilot program to furnish doula services to veterans, S.1944, to improve Vet Centers of the Department of Veterans Affairs, S.2283, to improve the Veterans Crisis Line of the Department of Veterans Affairs, S.2386, to amend the VA MISSION Act of 2018, to expand the peer specialist support program of the Department of Veterans Affairs to all medical centers of the Department, S.2526, to authorize the Secretary of Defense and the Secretary of Veterans Affairs to enter into agreements for the planning, design, and construction of facilities to be operated as shared medical facilities, S.2533, to improve mammography services furnished by the Department of Veterans Affairs, S.2624, to authorize major medical facility projects for the Department of Veterans Affairs for fiscal year 2022, S.2720, to direct the Secretary of Veterans Affairs to establish a national clinical pathway for prostate cancer, S.2787, to amend title 38, United States Code, to clarify the role of doctors of podiatric medicine in the Department of Veterans Affairs, S.2852, to amend title 38, United States Code, to authorize the Secretary of Veterans Affairs to enter into contracts and agreements for the payment of care in non-Department of Veterans Affairs medical foster homes for certain veterans who are unable to live independently, S.2924, to amend title 38, United States Code, to require the Secretary of Veterans Affairs to transmit certain information to personnel of Vet Centers of the Department of Veterans Affairs regarding members of the Armed Forces transitioning from service in the Armed Forces to civilian life, an original bill entitled, \"Servicemembers and Veterans Empowerment and Support Act\", an original bill to amend title 38, United States Code, to establish new requirements for State homes for veterans that receive per diem from the Secretary of Veterans Affairs, an original bill entitled, \"Veterans Dental Care Eligibility Expansion and Enhancement Act\", an original bill entitled, \"Veterans State Eligibility Standardization Act\", and an original bill to amend title 38, United States Code, to reorganize the Chaplain Service of the Department of Veterans Affairs.",
-     "date": "2021-10-20"
-    },
-    {
-     "key": [
-      "CHRG-113hhrg81982",
-      101168
-     ],
-     "package": "CHRG-113hhrg81982",
-     "event": 101168,
-     "before": [
-      "meeting:101168"
-     ],
-     "after": [
-      "package:CHRG-113hhrg81982"
-     ],
-     "print": {
-      "held": [
-       "2013-07-17"
-      ],
-      "titles": [
-       "THE ADMINISTRATION'S USE OF FISA AUTHORITIES",
-       "THE ADMINISTRATION'S USE OF FISA AUTHORITIES"
-      ],
-      "events": [],
-      "witnesses": 8
-     },
-     "meeting": "H.R. 2655, the \"Lawsuit Abuse Reduction Act of 2013\"",
-     "date": "2013-07-17"
-    },
-    {
-     "key": [
-      "CHRG-113hhrg86390",
-      101109
-     ],
-     "package": "CHRG-113hhrg86390",
-     "event": 101109,
-     "before": [
-      "package:CHRG-113hhrg86390"
-     ],
-     "after": [
-      "meeting:101109"
-     ],
-     "print": {
-      "held": [
-       "2013-07-09"
-      ],
-      "titles": [
-       "H.R. 1900, THE NATURAL GAS PIPELINE PERMITTING REFORM ACT",
-       "United States House Bill 1900 (113th Congress)",
-       "United States House Bill 1900 (113th Congress)",
-       "H.R. 1900, THE NATURAL GAS PIPELINE PERMITTING REFORM ACT"
-      ],
-      "events": [],
-      "witnesses": 6
-     },
-     "meeting": "Subcommittee Markup on H.R. 1582, H.R. 1900, and H.R. 83",
-     "date": "2013-07-09"
-    },
-    {
-     "key": [
-      "CHRG-117shrg53977",
-      329105
-     ],
-     "package": "CHRG-117shrg53977",
-     "event": 329105,
-     "before": [
-      "meeting:329105"
-     ],
-     "after": [
-      "package:CHRG-117shrg53977"
-     ],
-     "print": {
-      "held": [
-       "2021-04-20"
-      ],
-      "titles": [
-       "JIM CROW 2021: THE LATEST ASSAULT ON THE RIGHT TO VOTE",
-       "United States House Bill 1 (117th Congress)",
-       "United States Senate Bill 1 (117th Congress)",
-       "United States Senate Bill 202 (117th Congress)",
-       "JIM CROW 2021: THE LATEST ASSAULT ON THE RIGHT TO VOTE"
-      ],
-      "events": [],
-      "witnesses": 8
-     },
-     "meeting": "Hearings to examine voting rights.",
-     "date": "2021-04-20"
-    },
-    {
-     "key": [
-      "CHRG-116shrg40412",
-      326660
-     ],
-     "package": "CHRG-116shrg40412",
-     "event": 326660,
-     "before": [
-      "meeting:326660"
-     ],
-     "after": [
-      "package:CHRG-116shrg40412"
-     ],
-     "print": {
-      "held": [
-       "2019-11-06"
-      ],
-      "titles": [
-       "HEARING TO EXAMINE S. 2662, THE GROWING AMERICAN INNOVATION NOW (GAIN) ACT",
-       "United States House Bill 172 (116th Congress)",
-       "United States Senate Bill 2662 (116th Congress)",
-       "United States Senate Bill 2662 (116th Congress)",
-       "HEARING TO EXAMINE S. 2662, THE GROWING AMERICAN INNOVATION NOW (GAIN) ACT"
-      ],
-      "events": [],
-      "witnesses": 3
-     },
-     "meeting": "Hearings to examine S.2662, to amend sections 111, 169, and 171 of the Clean Air Act to clarify when a physical change in, or change in the method of operation of, a stationary source constitutes a modification or construction.",
-     "date": "2019-11-06"
-    },
-    {
-     "key": [
-      "CHRG-117shrg53630",
-      331961
-     ],
-     "package": "CHRG-117shrg53630",
-     "event": 331961,
-     "before": [
-      "meeting:331961"
-     ],
-     "after": [
-      "package:CHRG-117shrg53630"
-     ],
-     "print": {
-      "held": [
-       "2022-03-02"
-      ],
-      "titles": [
-       "LEGISLATIVE PRESENTATION OF THE VETERANS OF FOREIGN WARS OF THE UNITED STATES AND MULTI VSOs: IAVA, WWP, VVA, AMVETS, NCHV, SWAN, BVA, BVEC, NASDVA",
-       "United States Senate Bill 437 (117th Congress)",
-       "United States Senate Bill 444 (117th Congress)",
-       "United States House Bill 1361 (117th Congress)",
-       "United States House Bill 1836 (117th Congress)",
-       "United States Senate Bill 2172 (117th Congress)",
-       "United States Senate Bill 3003 (117th Congress)",
-       "United States Senate Bill 3541 (117th Congress)",
-       "United States Senate Bill 3587 (117th Congress)",
-       "United States House Bill 3730 (117th Congress)",
-       "United States House Bill 3967 (117th Congress)",
-       "United States House Bill 6659 (117th Congress)",
-       "LEGISLATIVE PRESENTATION OF THE VETERANS OF FOREIGN WARS OF THE UNITED STATES AND MULTI VSOs: IAVA, WWP, VVA, AMVETS, NCHV, SWAN, BVA, BVEC, NASDVA"
-      ],
-      "events": [],
-      "witnesses": 10
-     },
-     "meeting": "A joint hearing with the House Committee on Veterans' Affairs to examine the legislative presentation of multiple veterans service organizations.",
-     "date": "2022-03-02"
-    },
-    {
-     "key": [
-      "CHRG-118shrg56728",
-      336141
-     ],
-     "package": "CHRG-118shrg56728",
-     "event": 336141,
-     "before": [
-      "meeting:336141"
-     ],
-     "after": [
-      "package:CHRG-118shrg56728"
-     ],
-     "print": {
-      "held": [
-       "2024-09-11"
-      ],
-      "titles": [
-       "PENDING LEGISLATION",
-       "United States Senate Bill 2927 (118th Congress)",
-       "United States Senate Bill 4016 (118th Congress)",
-       "United States Senate Bill 4016 (118th Congress)",
-       "United States Senate Bill 4242 (118th Congress)",
-       "United States Senate Bill 4245 (118th Congress)",
-       "United States Senate Bill 4245 (118th Congress)",
-       "United States Senate Bill 4347 (118th Congress)",
-       "United States Senate Bill 4347 (118th Congress)",
-       "United States House Bill 4385 (118th Congress)",
-       "United States Senate Bill 4458 (118th Congress)",
-       "United States Senate Bill 4576 (118th Congress)",
-       "United States Senate Bill 4576 (118th Congress)",
-       "United States Senate Bill 4996 (118th Congress)",
-       "United States Senate Bill 4996 (118th Congress)",
-       "United States Senate Bill 4999 (118th Congress)",
-       "United States Senate Bill 4999 (118th Congress)",
-       "United States Senate Bill 5000 (118th Congress)",
-       "United States Senate Bill 5005 (118th Congress)",
-       "United States Senate Bill 5011 (118th Congress)",
-       "United States Senate Bill 5012 (118th Congress)",
-       "United States Senate Bill 5012 (118th Congress)",
-       "United States Senate Bill 5013 (118th Congress)",
-       "United States Senate Bill 5014 (118th Congress)",
-       "United States Senate Bill 5014 (118th Congress)",
-       "United States House Bill 5770 (118th Congress)",
-       "United States House Bill 6062 (118th Congress)",
-       "United States House Bill 6062 (118th Congress)",
-       "PENDING LEGISLATION"
-      ],
-      "events": [
-       336141
-      ],
-      "witnesses": 3
-     },
-     "meeting": "Hearings to examine S.2927, to amend the Omnibus Public Land Management Act of 2009 to increase Tribal access to water conservation and efficiency grants, S.4016, to amend the Boulder Canyon Project Act to authorize the Secretary of the Interior to expend amounts in the Colorado River Dam fund, S.4242 and H.R.4385, bills to extend authorization of the Reclamation States Emergency Drought Relief Act of 1991, S.4245 and H.R.5770, bills to reauthorize certain United States Geological Survey water data enhancement programs, S.4347, to provide for the conveyance of certain Federal land at Swanson Reservoir and Hugh Butler Reservoir in the State of Nebraska, S.4458, to reauthorize the Reclamation Rural Water Supply Act of 2006, S.4576, to amend the Energy and Water Development and Related Agencies Appropriations Act, 2015, to reauthorize the Colorado River System conservation pilot program, S.4996, to amend Public Law 89-108 to modify the authorization of appropriations for State and Tribal, municipal, rural, and industrial water supplies, S.4999, to amend the Aquifer Recharge Flexibility Act to clarify a provision relating to conveyances for aquifer recharge purposes, S.5000, to prohibit the use of amounts from the Upper Colorado River Basin Fund to implement a certain record of decision, S.5005, to authorize additional funding for the San Joaquin River Restoration Settlement Act, S.5011, to establish the Integrated Water Management Federal Leadership Committee, to provide for improved drought resilience and dam safety, S.5012, to establish an interest-bearing account for the non-Federal contributions to the Lower Colorado River Multi-Species Conservation Program, S.5013, to make certain modifications to the repayment for the Arkansas Valley Conduit in the State of Colorado, S.5014, to provide for the establishment of a Water Project Navigators Program, and H.R.6062, to restore the ability of the people of American Samoa to approve amendments to the territorial constitution based on majority rule in a democratic act of self-determination, as authorized pursuant to an Act of Congress delegating administration of Federal territorial law in the territory to the President, and to the Secretary of the Interior under Executive Order 10264, dated June 29, 1951, under which the Constitution of American Samoa was approved and may be amended without requirement for further congressional action, subject to the authority of Congress under the Territorial Clause in article IV, section 3, clause 2 of the United States Constitution.",
-     "date": "2024-09-11"
-    },
-    {
-     "key": [
-      "CHRG-117shrg50802",
-      330128
-     ],
-     "package": "CHRG-117shrg50802",
-     "event": 330128,
-     "before": [
-      "package:CHRG-117shrg50802"
-     ],
-     "after": [
-      "meeting:330128"
-     ],
-     "print": {
-      "held": [
-       "2021-07-27"
-      ],
-      "titles": [
-       "CRYPTOCURRENCIES: WHAT ARE THEY GOOD FOR?",
-       "United States House Bill 8373 (117th Congress)",
-       "CRYPTOCURRENCIES: WHAT ARE THEY GOOD FOR?"
-      ],
-      "events": [
-       330128
-      ],
-      "witnesses": 3
-     },
-     "meeting": "Hearings to examine cryptocurrencies.",
-     "date": "2021-07-27"
-    },
-    {
-     "key": [
-      "CHRG-112hhrg72230",
       100182
      ],
-     "package": "CHRG-112hhrg72230",
-     "event": 100182,
-     "before": [
-      "meeting:100182"
-     ],
-     "after": [
-      "package:CHRG-112hhrg72230"
-     ],
-     "print": {
-      "held": [
-       "2011-05-03"
-      ],
-      "titles": [
-       "BORDER SECURITY AND ENFORCEMENT: DEPARTMENT OF HOMELAND SECURITY'S COOPERATION WITH STATE AND LOCAL LAW ENFORCEMENT STAKEHOLDERS",
-       "United States House Bill 915 (112th Congress)",
-       "United States Code",
-       "BORDER SECURITY AND ENFORCEMENT: DEPARTMENT OF HOMELAND SECURITY'S COOPERATION WITH STATE AND LOCAL LAW ENFORCEMENT STAKEHOLDERS"
-      ],
-      "events": [],
-      "witnesses": 5
-     },
-     "meeting": "\"The Threat to the U.S. Homeland Emanating from Pakistan.\"",
-     "date": "2011-05-03"
+     "after": [],
+     "raw_home": []
     },
     {
-     "key": [
-      "CHRG-118shrg55814",
-      334996
-     ],
-     "package": "CHRG-118shrg55814",
-     "event": 334996,
-     "before": [
-      "meeting:334996"
-     ],
+     "key": "CHRG-112hhrg72231",
+     "before": [],
      "after": [
-      "package:CHRG-118shrg55814"
+      100182
      ],
-     "print": {
-      "held": [
-       "2023-10-25"
-      ],
-      "titles": [
-       "PENDING LEGISLATION",
-       "United States Senate Bill 175 (118th Congress)",
-       "United States Senate Bill 175 (118th Congress)",
-       "United States Senate Bill 297 (118th Congress)",
-       "United States Senate Bill 297 (118th Congress)",
-       "United States Senate Bill 1348 (118th Congress)",
-       "United States Senate Bill 1348 (118th Congress)",
-       "United States Senate Bill 1719 (118th Congress)",
-       "United States Senate Bill 1719 (118th Congress)",
-       "United States Senate Bill 1764 (118th Congress)",
-       "United States Senate Bill 1764 (118th Congress)",
-       "United States Senate Bill 1889 (118th Congress)",
-       "United States Senate Bill 1889 (118th Congress)",
-       "United States Senate Bill 2132 (118th Congress)",
-       "United States Senate Bill 2132 (118th Congress)",
-       "United States Senate Bill 2151 (118th Congress)",
-       "United States Senate Bill 2151 (118th Congress)",
-       "United States House Bill 2386 (118th Congress)",
-       "United States Senate Bill 2581 (118th Congress)",
-       "United States Senate Bill 2581 (118th Congress)",
-       "United States Senate Bill 2615 (118th Congress)",
-       "United States Senate Bill 2615 (118th Congress)",
-       "United States Senate Bill 2855 (118th Congress)",
-       "United States Senate Bill 2855 (118th Congress)",
-       "United States Senate Bill 2867 (118th Congress)",
-       "United States Senate Bill 2867 (118th Congress)",
-       "United States Senate Bill 2991 (118th Congress)",
-       "United States Senate Bill 2991 (118th Congress)",
-       "United States Senate Bill 3033 (118th Congress)",
-       "United States Senate Bill 3033 (118th Congress)",
-       "United States Senate Bill 3036 (118th Congress)",
-       "United States Senate Bill 3036 (118th Congress)",
-       "United States Senate Bill 3044 (118th Congress)",
-       "United States Senate Bill 3044 (118th Congress)",
-       "United States Senate Bill 3045 (118th Congress)",
-       "United States Senate Bill 3045 (118th Congress)",
-       "United States Senate Bill 3046 (118th Congress)",
-       "United States Senate Bill 3062 (118th Congress)",
-       "United States Senate Bill 3062 (118th Congress)",
-       "United States Senate Bill 3079 (118th Congress)",
-       "United States Senate Bill 3079 (118th Congress)",
-       "PENDING LEGISLATION"
-      ],
-      "events": [],
-      "witnesses": 3
-     },
-     "meeting": "Hearings to examine S.175, to codify certain public land orders relating to the revocation of certain withdrawals of public land in the State of Alaska, S.297, to amend the Federal Land Policy and Management Act of 1976 to authorize certain construction activities on public lands, S.1348, to redesignate land within certain wilderness study areas in the State of Wyoming, S.1719, to amend the Healthy Forests Restoration Act of 2003 to establish emergency fireshed management areas, S.1764, to improve Federal activities relating to wildfires, S.1889, to provide for the recognition of certain Alaska Native communities and the settlement of certain claims under the Alaska Native Claims Settlement Act, S.2132, to require the Secretary of Agriculture to establish a pilot program for the establishment and use of a pre-fire-suppression stand density index, S.2151, to amend the Southwest Forest Health and Wildlife Prevention Act of 2004 to require the establishment of an additional Institute under that Act, S.2581, to extend the Secure Rural Schools and Community Self-Determination Act of 2000, S.2615, to amend the Alaska Native Claims Settlement Act to provide that Village Corporations shall not be required to convey land in trust to the State of Alaska for the establishment of Municipal Corporations, S.2855, to modernize and streamline the permitting process for broadband infrastructure on Federal land, S.2867, to address the forest health crisis on the National Forest System and public lands, S.2991, to improve revegetation and carbon sequestration activities in the United States, S.3033, to withdraw certain Federal land in the Pecos Watershed area of the State of New Mexico from mineral entry, S.3036, to require the Secretary of the Interior to convey to the State of Utah certain Federal land under the administrative jurisdiction of the Bureau of Land Management within the boundaries of Camp Williams, Utah, S.3044, to redesignate the Mount Evans Wilderness as the \"Mount Blue Sky Wilderness\", S.3045, to provide for the transfer of administrative jurisdiction over certain Federal land in the State of California, S.3046, to make permanent the authority to collect Shasta-Trinity National Forest marina fees, H.R.3324, to extend the authority to collect Shasta-Trinity Marina fees through fiscal year 2029, S.3062, to provide for the removal of small-diameter trees in fire hazard areas, and S.3079, to establish a policy regarding appraisal and valuation services for real property for a transaction over which the Secretary of the Interior has jurisdiction.",
-     "date": "2023-10-25"
+     "raw_home": [
+      100182
+     ]
     },
     {
-     "key": [
-      "CHRG-116shrg45154",
-      327607
-     ],
-     "package": "CHRG-116shrg45154",
-     "event": 327607,
-     "before": [
-      "meeting:327607"
-     ],
+     "key": "CHRG-112hhrg72254",
+     "before": [],
      "after": [
-      "package:CHRG-116shrg45154"
+      100083
      ],
-     "print": {
-      "held": [
-       "2020-06-24"
-      ],
-      "titles": [
-       "LEGISLATIVE HEARING TO REVIEW S. 3894, THE GROWING CLIMATE SOLUTIONS ACT OF 2020",
-       "United States Senate Bill 3894 (116th Congress)",
-       "United States Senate Bill 3894 (116th Congress)",
-       "LEGISLATIVE HEARING TO REVIEW S. 3894, THE GROWING CLIMATE SOLUTIONS ACT OF 2020"
-      ],
-      "events": [],
-      "witnesses": 4
-     },
-     "meeting": "Business meeting to consider original legislation entitled, \"United States Grain Standards Reauthorization Act of 2020\"; to be immediately followed by a hearing to examine S.3894, to authorize the Secretary of Agriculture to develop a program to reduce barriers to entry for farmers, ranchers, and private forest landowners in certain private markets.",
-     "date": "2020-06-24"
+     "raw_home": [
+      100083
+     ]
     },
     {
-     "key": [
-      "CHRG-118shrg55915",
-      335895
-     ],
-     "package": "CHRG-118shrg55915",
-     "event": 335895,
-     "before": [
-      "meeting:335895"
-     ],
+     "key": "CHRG-112hhrg72255",
+     "before": [],
      "after": [
-      "package:CHRG-118shrg55915"
+      100180
      ],
-     "print": {
-      "held": [
-       "2024-06-12"
-      ],
-      "titles": [
-       "PENDING LEGISLATION",
-       "United States Senate Bill 2156 (118th Congress)",
-       "United States Senate Bill 2156 (118th Congress)",
-       "United States Senate Bill 3123 (118th Congress)",
-       "United States Senate Bill 3123 (118th Congress)",
-       "United States Senate Bill 3148 (118th Congress)",
-       "United States Senate Bill 3148 (118th Congress)",
-       "United States Senate Bill 3322 (118th Congress)",
-       "United States Senate Bill 3322 (118th Congress)",
-       "United States Senate Bill 3346 (118th Congress)",
-       "United States Senate Bill 3346 (118th Congress)",
-       "United States Senate Bill 3593 (118th Congress)",
-       "United States Senate Bill 3593 (118th Congress)",
-       "United States Senate Bill 3596 (118th Congress)",
-       "United States Senate Bill 3596 (118th Congress)",
-       "United States Senate Bill 3617 (118th Congress)",
-       "United States Senate Bill 3617 (118th Congress)",
-       "United States Senate Bill 3790 (118th Congress)",
-       "United States Senate Bill 3790 (118th Congress)",
-       "United States Senate Bill 3870 (118th Congress)",
-       "United States Senate Bill 3870 (118th Congress)",
-       "United States Senate Bill 3985 (118th Congress)",
-       "United States Senate Bill 3985 (118th Congress)",
-       "United States Senate Bill 4310 (118th Congress)",
-       "United States Senate Bill 4310 (118th Congress)",
-       "United States Senate Bill 4424 (118th Congress)",
-       "United States Senate Bill 4424 (118th Congress)",
-       "United States Senate Bill 4431 (118th Congress)",
-       "United States Senate Bill 4431 (118th Congress)",
-       "United States Senate Bill 4432 (118th Congress)",
-       "United States Senate Bill 4432 (118th Congress)",
-       "United States Senate Bill 4444 (118th Congress)",
-       "United States Senate Bill 4449 (118th Congress)",
-       "United States Senate Bill 4449 (118th Congress)",
-       "United States Senate Bill 4451 (118th Congress)",
-       "United States Senate Bill 4451 (118th Congress)",
-       "United States Senate Bill 4454 (118th Congress)",
-       "United States Senate Bill 4454 (118th Congress)",
-       "United States Senate Bill 4456 (118th Congress)",
-       "United States Senate Bill 4456 (118th Congress)",
-       "United States Senate Bill 4457 (118th Congress)",
-       "United States Senate Bill 4457 (118th Congress)",
-       "PENDING LEGISLATION"
-      ],
-      "events": [
-       335895
-      ],
-      "witnesses": 3
-     },
-     "meeting": "Hearings to examine S.2156, to amend the John D. Dingell, Jr. Conservation, Management, and Recreation Act to authorize additional entities to be eligible to complete the maintenance work on Bolts Ditch and the Bolts Ditch Headgate within the Holy Cross Wilderness, Colorado, S.3123, to provide for the standardization, consolidation, and publication of data relating to public outdoor recreational use of Federal waterways among Federal land and water management agencies, S.3148, to prohibit the use of funds by the Secretary of the Interior to finalize and implement certain travel management plans in the State of Utah, S.3322, to allow holders of certain grazing permits to make minor range improvements and to require that the Secretary of Agriculture and the Secretary of the Interior respond to requests for range improvements within 30 days, S.3346, to amend the Wild and Scenic Rivers Act to designate certain streams in the greater Yellowstone ecosystem and Smith River system in the State of Montana as components of the Wild and Scenic Rivers System, S.3593, to provide for economic development and conservation in Washoe County, Nevada, S.3596, to amend the Mineral Leasing Act to amend references of gilsonite to asphaltite, S.3617, to provide equitable treatment for the people of the Village Corporation established for the Native Village of Saxman, Alaska, S.3790, to make additional Federal public land available for selection under the Alaska Native Vietnam era veterans land allotment program, S.3870, to amend the Infrastructure Investment and Jobs Act to expand eligibility for certain financial assistance for the acquisition of slip-on tanker units for wildland firefighting, S.3985, to amend the Colorado Wilderness Act of 1993 to add certain land to the Sarvis Creek Wilderness, S.4310, to exchange non-Federal land held by the Chugach Alaska Corporation for certain Federal Land in the Chugach Region, S.4424, to direct the Secretary of the Interior and the Secretary of Agriculture to encourage and expand the use of prescribed fire on land managed by the Department of the interior or the Forest Service, with an emphasis on units of the National Forest System in the western United States, to acknowledge and support the longstanding use of cultural burning by Tribes and Indigenous practitioners, S.4431, to reinstate the Bull Mountains Mining Plan Modification, S.4432, to allow certain Federal minerals to be mined consistent with the Bull Mountains Mining Plan Modification, S.4449, to amend the Wild and Scenic Rivers Act to designate certain river segments in the State of Oregon as components of the National Wild and Scenic Rivers System, S.4451, to require the Secretary of the Interior to enter into an agreement with the National Academy of Sciences to carry out a study on reservation systems for Federal land, S.4454, to provide for the establishment of an Operational Flexibility Grazing Management Program on land managed by the Bureau of Land Management, S.4456, to amend the Granger-Thye Act to modify the maximum term for certain special use permits for housing, and S.4457, to provide for conservation and economic development in the State of Nevada.",
-     "date": "2024-06-12"
+     "raw_home": [
+      100180
+     ]
     },
     {
-     "key": [
-      "CHRG-113hhrg92898",
-      102498
-     ],
-     "package": "CHRG-113hhrg92898",
-     "event": 102498,
+     "key": "CHRG-112hhrg72257",
      "before": [
-      "meeting:102498"
+      100099
      ],
-     "after": [
-      "package:CHRG-113hhrg92898"
-     ],
-     "print": {
-      "held": [
-       "2014-07-29"
-      ],
-      "titles": [
-       "EXAMINING TSA'S MANAGEMENT OF THE SCREENING PARTNERSHIP PROGRAM",
-       "United States House Bill 933 (113th Congress)",
-       "United States House Bill 3547 (113th Congress)",
-       "United States House Bill 4115 (113th Congress)",
-       "United States Code",
-       "United States Code",
-       "United States Statutes at Large",
-       "United States Statutes at Large",
-       "United States Public Law 71 (107th Congress)",
-       "United States Public Law 95 (112th Congress)",
-       "United States Public Law 76 (113th Congress)",
-       "United States House Report 481 (113th Congress)",
-       "EXAMINING TSA'S MANAGEMENT OF THE SCREENING PARTNERSHIP PROGRAM"
-      ],
-      "events": [],
-      "witnesses": 6
-     },
-     "meeting": "\"Protecting the Homeland from Nuclear and Radiological Threats.\"",
-     "date": "2014-07-29"
+     "after": [],
+     "raw_home": []
     },
     {
-     "key": [
-      "CHRG-116shrg40972",
+     "key": "CHRG-112hhrg72541",
+     "before": [
+      100036
+     ],
+     "after": [],
+     "raw_home": []
+    },
+    {
+     "key": "CHRG-112hhrg73355",
+     "before": [],
+     "after": [
+      100179
+     ],
+     "raw_home": [
+      100179
+     ]
+    },
+    {
+     "key": "CHRG-112hhrg76511",
+     "before": [],
+     "after": [
+      100123
+     ],
+     "raw_home": [
+      100123
+     ]
+    },
+    {
+     "key": "CHRG-112hhrg76512",
+     "before": [
+      100123
+     ],
+     "after": [],
+     "raw_home": []
+    },
+    {
+     "key": "CHRG-112hhrg76517",
+     "before": [
+      100051
+     ],
+     "after": [],
+     "raw_home": []
+    },
+    {
+     "key": "CHRG-112hhrg76606",
+     "before": [
+      100059
+     ],
+     "after": [],
+     "raw_home": []
+    },
+    {
+     "key": "CHRG-112hhrg77802",
+     "before": [],
+     "after": [
+      100202
+     ],
+     "raw_home": [
+      100202
+     ]
+    },
+    {
+     "key": "CHRG-112hhrg77803",
+     "before": [
+      100202
+     ],
+     "after": [],
+     "raw_home": []
+    },
+    {
+     "key": "CHRG-112hhrg79505",
+     "before": [],
+     "after": [
+      100204
+     ],
+     "raw_home": [
+      100204
+     ]
+    },
+    {
+     "key": "CHRG-112hhrg79506",
+     "before": [],
+     "after": [
+      100121
+     ],
+     "raw_home": [
+      100121
+     ]
+    },
+    {
+     "key": "CHRG-112hhrg79844",
+     "before": [],
+     "after": [
+      100205
+     ],
+     "raw_home": [
+      100205
+     ]
+    },
+    {
+     "key": "CHRG-112hhrg79845",
+     "before": [],
+     "after": [
+      100122
+     ],
+     "raw_home": [
+      100122
+     ]
+    },
+    {
+     "key": "CHRG-113hhrg20995",
+     "before": [],
+     "after": [
+      102643
+     ],
+     "raw_home": [
+      102643
+     ]
+    },
+    {
+     "key": "CHRG-113hhrg20996",
+     "before": [],
+     "after": [
+      102537
+     ],
+     "raw_home": [
+      102537
+     ]
+    },
+    {
+     "key": "CHRG-113hhrg20999",
+     "before": [],
+     "after": [
+      102169
+     ],
+     "raw_home": [
+      102169
+     ]
+    },
+    {
+     "key": "CHRG-113hhrg21102",
+     "before": [],
+     "after": [
+      101560
+     ],
+     "raw_home": [
+      101560
+     ]
+    },
+    {
+     "key": "CHRG-113hhrg21103",
+     "before": [],
+     "after": [
+      101141
+     ],
+     "raw_home": [
+      101141
+     ]
+    },
+    {
+     "key": "CHRG-113hhrg21104",
+     "before": [],
+     "after": [
+      101127
+     ],
+     "raw_home": [
+      101127
+     ]
+    },
+    {
+     "key": "CHRG-113hhrg21105",
+     "before": [],
+     "after": [
+      101019
+     ],
+     "raw_home": [
+      101019
+     ]
+    },
+    {
+     "key": "CHRG-113hhrg21107",
+     "before": [],
+     "after": [
+      100874
+     ],
+     "raw_home": [
+      100874
+     ]
+    },
+    {
+     "key": "CHRG-113hhrg21108",
+     "before": [],
+     "after": [
+      100818
+     ],
+     "raw_home": [
+      100818
+     ]
+    },
+    {
+     "key": "CHRG-113hhrg21109",
+     "before": [],
+     "after": [
+      102628
+     ],
+     "raw_home": [
+      102628
+     ]
+    },
+    {
+     "key": "CHRG-113hhrg21112",
+     "before": [],
+     "after": [
+      102317
+     ],
+     "raw_home": [
+      102317
+     ]
+    },
+    {
+     "key": "CHRG-113hhrg21119",
+     "before": [],
+     "after": [
+      101439
+     ],
+     "raw_home": [
+      101439
+     ]
+    },
+    {
+     "key": "CHRG-113hhrg21121",
+     "before": [],
+     "after": [
+      101058
+     ],
+     "raw_home": [
+      101058
+     ]
+    },
+    {
+     "key": "CHRG-113hhrg21124",
+     "before": [
+      100757
+     ],
+     "after": [],
+     "raw_home": []
+    },
+    {
+     "key": "CHRG-113hhrg21128",
+     "before": [],
+     "after": [
+      100240
+     ],
+     "raw_home": [
+      100240
+     ]
+    },
+    {
+     "key": "CHRG-113hhrg22316",
+     "before": [],
+     "after": [
+      102796
+     ],
+     "raw_home": [
+      102796
+     ]
+    },
+    {
+     "key": "CHRG-113hhrg78631",
+     "before": [],
+     "after": [
+      100225
+     ],
+     "raw_home": [
+      100225
+     ]
+    },
+    {
+     "key": "CHRG-113hhrg78633",
+     "before": [],
+     "after": [
+      100218
+     ],
+     "raw_home": [
+      100218
+     ]
+    },
+    {
+     "key": "CHRG-113hhrg78694",
+     "before": [],
+     "after": [
+      100246
+     ],
+     "raw_home": [
+      100246
+     ]
+    },
+    {
+     "key": "CHRG-113hhrg78695",
+     "before": [],
+     "after": [
+      100245
+     ],
+     "raw_home": [
+      100245
+     ]
+    },
+    {
+     "key": "CHRG-113hhrg78696",
+     "before": [],
+     "after": [
+      100247
+     ],
+     "raw_home": [
+      100247
+     ]
+    },
+    {
+     "key": "CHRG-113hhrg79435",
+     "before": [],
+     "after": [
+      100220
+     ],
+     "raw_home": [
+      100220
+     ]
+    },
+    {
+     "key": "CHRG-113hhrg79464",
+     "before": [],
+     "after": [
+      100264
+     ],
+     "raw_home": [
+      100264
+     ]
+    }
+   ],
+   "raw_supports_before": [
+    {
+     "key": "CHRG-113hhrg80755",
+     "before": [],
+     "after": [
+      100626
+     ],
+     "raw_home": []
+    },
+    {
+     "key": "CHRG-113hhrg81937",
+     "before": [
+      101064
+     ],
+     "after": [],
+     "raw_home": [
+      101064
+     ]
+    },
+    {
+     "key": "CHRG-114hhrg23645",
+     "before": [
+      105231
+     ],
+     "after": [],
+     "raw_home": [
+      105231
+     ]
+    },
+    {
+     "key": "CHRG-115hhrg29681",
+     "before": [],
+     "after": [
+      105912
+     ],
+     "raw_home": []
+    },
+    {
+     "key": "CHRG-115hhrg35836",
+     "before": [],
+     "after": [
+      108751
+     ],
+     "raw_home": []
+    },
+    {
+     "key": "CHRG-116hhrg37561",
+     "before": [],
+     "after": [
+      109804
+     ],
+     "raw_home": []
+    },
+    {
+     "key": "CHRG-116hhrg39570",
+     "before": [],
+     "after": [
+      110430
+     ],
+     "raw_home": []
+    },
+    {
+     "key": "CHRG-116hhrg40826",
+     "before": [],
+     "after": [
+      109879
+     ],
+     "raw_home": []
+    },
+    {
+     "key": "CHRG-116hhrg41198",
+     "before": [],
+     "after": [
+      109978
+     ],
+     "raw_home": []
+    },
+    {
+     "key": "CHRG-116shrg37807",
+     "before": [],
+     "after": [
+      326062
+     ],
+     "raw_home": []
+    },
+    {
+     "key": "CHRG-116shrg40972",
+     "before": [],
+     "after": [
       327083
      ],
-     "package": "CHRG-116shrg40972",
-     "event": 327083,
-     "before": [
-      "package:CHRG-116shrg40972"
-     ],
-     "after": [
-      "meeting:327083"
-     ],
-     "print": {
-      "held": [
-       "2020-02-11",
-       "2020-05-13"
-      ],
-      "titles": [
-       "CYBERSECURITY-2020",
-       "United States House Bill 3834 (116th Congress)",
-       "CYBERSECURITY-2020"
-      ],
-      "events": [],
-      "witnesses": 7
-     },
-     "meeting": "Hearings to examine a roadmap for effective cybersecurity, focusing on what states, locals, and the business community should know and do.",
-     "date": "2020-02-11"
+     "raw_home": []
     },
     {
-     "key": [
-      "CHRG-119shrg60595",
-      336978
-     ],
-     "package": "CHRG-119shrg60595",
-     "event": 336978,
-     "before": [
-      "meeting:336978"
-     ],
+     "key": "CHRG-117hhrg49356",
+     "before": [],
      "after": [
-      "package:CHRG-119shrg60595"
+      114978
      ],
-     "print": {
-      "held": [
-       "2025-05-21"
-      ],
-      "titles": [
-       "HEARING TO CONSIDER PENDING LEGISLATION",
-       "United States Senate Bill 214 (119th Congress)",
-       "United States Senate Bill 219 (119th Congress)",
-       "United States Senate Bill 506 (119th Congress)",
-       "United States Senate Bill 585 (119th Congress)",
-       "United States Senate Bill 599 (119th Congress)",
-       "United States Senate Bill 605 (119th Congress)",
-       "United States Senate Bill 635 (119th Congress)",
-       "United States Senate Bill 649 (119th Congress)",
-       "United States Senate Bill 778 (119th Congress)",
-       "United States Senate Bill 784 (119th Congress)",
-       "United States Senate Bill 800 (119th Congress)",
-       "United States Senate Bill 827 (119th Congress)",
-       "United States Senate Bill 1441 (119th Congress)",
-       "United States Senate Bill 1533 (119th Congress)",
-       "United States Senate Bill 1591 (119th Congress)",
-       "HEARING TO CONSIDER PENDING LEGISLATION"
-      ],
-      "events": [],
-      "witnesses": 4
-     },
-     "meeting": "Hearings to examine S.214, to amend title 38, United States Code, to increase the rate of the special pension payable to Medal of Honor recipients, S.219, to direct the Secretary of Veterans Affairs to carry out a pilot program to improve the ability of veterans to access medical care in medical facilities of the Department of Veterans Affairs and in the community by providing veterans the ability to choose health care providers, S.506, to require the Secretary of Veterans Affairs to carry out a pilot program to coordinate, navigate, and manage care and benefits for veterans enrolled in both the Medicare program and the system of annual patient enrollment of the Department of Veterans Affairs, S.585, to amend title 38, United States Code, to establish a pre-transition health care registration process to facilitate enrollment in the patient enrollment system of the Department of Veterans Affairs by members of the Armed Forces who are separating from the Armed Forces, S.599, to amend title 38, United States Code, to increase the mileage rate offered by the Department of Veterans Affairs through their Beneficiary Travel program for health related travel, S.605, to amend title 38, United States Code, to increase the maximum age for children eligible for medical care under the CHAMPVA program, S.635, to amend title 38, United States Code, to direct the Secretary of Veterans Affairs to recognize nurse registries for purposes of the Veterans Community Care Program, S.649, to amend title 38, United States Code, to expand eligibility for Post-9/11 Educational Assistance to members of the National Guard who perform certain full-time duty, S.778, to amend title 38, United States Code, to require a lactation space in each medical center of the Department of Veterans Affairs, S.784, to expand and modify the grant program of the Department of Veterans Affairs to provide innovative transportation options to veterans in highly rural areas, S.800, to modify the Precision Medicine for Veterans Initiative of the Department of Veterans Affairs, S.827, to extend and modify the transportation grant program of the Department of Veterans Affairs, S.879, to expand medical, employment, and other benefits for individuals serving as family caregivers for certain veterans, S.1318, to direct the American Battle Monuments Commission to establish a program to identify American-Jewish servicemembers buried in United States military cemeteries overseas under markers that incorrectly represent their religion and heritage, S.1320, to direct the Secretary of Defense and the Secretary of Veterans Affairs to take certain steps regarding research related to menopause, perimenopause, or mid-life women's health, S.1383, to establish the Veterans Advisory Committee on Equal Access, S.1441, to require the Secretary of Veterans Affairs to award grants to nonprofit entities to assist such entities in carrying out programs to provide service dogs to eligible veterans, S.1533, to amend title 38, United States Code, to make permanent and codify the pilot program for use of contract physicians for disability examinations, S.1543, to amend title 38, United States Code, to establish in the Department of Veterans Affairs the Veterans Economic Opportunity and Transition Administration, and S.1591, to amend title 38, United States Code, to reorganize the acquisition structure of the Department of Veterans Affairs and to establish the Director of Cost Assessment and Program Evaluation in the Department.",
-     "date": "2025-05-21"
+     "raw_home": []
     },
     {
-     "key": [
-      "CHRG-117shrg55622",
-      332858
-     ],
-     "package": "CHRG-117shrg55622",
-     "event": 332858,
-     "before": [
-      "meeting:332858"
-     ],
+     "key": "CHRG-117shrg45487",
+     "before": [],
      "after": [
-      "package:CHRG-117shrg55622"
+      329001
      ],
-     "print": {
-      "held": [
-       "2022-07-14"
-      ],
-      "titles": [
-       "NOMINATION TO THE UNITED STATES DEPARTMENT OF COMMERCE",
-       "United States House Bill 5785 (117th Congress)",
-       "United States House Bill 115 (117th Congress)",
-       "United States Code",
-       "Code of Federal Regulations",
-       "NOMINATION TO THE UNITED STATES DEPARTMENT OF COMMERCE"
-      ],
-      "events": [],
-      "witnesses": 2
-     },
-     "meeting": "Hearings to examine the nominations of Donald R. Cravins, of Maryland, to be Under Secretary for Minority Business Development, and Susie Feliz, of Virginia, to be an Assistant Secretary, both of the Department of Commerce.",
-     "date": "2022-07-14"
+     "raw_home": []
     },
     {
-     "key": [
-      "CHRG-116shrg39870",
-      326650
-     ],
-     "package": "CHRG-116shrg39870",
-     "event": 326650,
-     "before": [
-      "meeting:326650"
-     ],
+     "key": "CHRG-117shrg45981",
+     "before": [],
      "after": [
-      "package:CHRG-116shrg39870"
+      329022,
+      329427
      ],
-     "print": {
-      "held": [
-       "2019-11-06"
-      ],
-      "titles": [
-       "PENDING LEGISLATION",
-       "United States Senate Bill 876 (116th Congress)",
-       "United States Senate Bill 1890 (116th Congress)",
-       "United States Senate Bill 1890 (116th Congress)",
-       "United States Senate Bill 2393 (116th Congress)",
-       "United States Senate Bill 2425 (116th Congress)",
-       "United States Senate Bill 2508 (116th Congress)",
-       "United States Senate Bill 2556 (116th Congress)",
-       "United States Senate Bill 2657 (116th Congress)",
-       "United States Senate Bill 2660 (116th Congress)",
-       "United States Senate Bill 2668 (116th Congress)",
-       "United States Senate Bill 2688 (116th Congress)",
-       "United States Senate Bill 2702 (116th Congress)",
-       "United States Senate Bill 2714 (116th Congress)",
-       "PENDING LEGISLATION"
-      ],
-      "events": [],
-      "witnesses": 2
-     },
-     "meeting": "Hearings to examine S.876, to amend the Energy Policy Act of 2005 to require the Secretary of Energy to establish a program to prepare veterans for careers in the energy industry, including the solar, wind, cybersecurity, and other low-carbon emissions sectors or zero-emissions sectors of the energy industry, S.1890, to provide for grants for energy efficiency improvements and renewable energy improvements at public school facilities, S.2425, to amend the Energy Policy and Conservation Act to establish the CHP Technical Assistance Partnership Program, S.2508, to require the Secretary of Energy to establish a council to conduct a survey and analysis of the employment figures and demographics in the energy, energy efficiency, and motor vehicle sectors of the United States, S.2556, to amend the Federal Power Act to provide energy cybersecurity investment incentives, to establish a grant and technical assistance program for cybersecurity investments, S.2657, to support innovation in advanced geothermal research and development, S.2660, to establish a grant program for wind energy research, development, and demonstration, S.2668, to establish a program for research, development, and demonstration of solar energy technologies, S.2688, to amend the Energy Policy Act of 2005 to establish an Office of Technology Transitions, S.2702, to require the Secretary of Energy to establish an integrated energy systems research, development, and demonstration, and S.2714, to amend the America COMPETES Act to reauthorize the ARPA-E program.",
-     "date": "2019-11-06"
+     "raw_home": []
     },
     {
-     "key": [
-      "CHRG-119shrg61206",
+     "key": "CHRG-117shrg47001",
+     "before": [
+      330465
+     ],
+     "after": [],
+     "raw_home": [
+      330465
+     ]
+    },
+    {
+     "key": "CHRG-117shrg47361",
+     "before": [
+      332084
+     ],
+     "after": [],
+     "raw_home": [
+      332084
+     ]
+    },
+    {
+     "key": "CHRG-117shrg47939",
+     "before": [
+      332466
+     ],
+     "after": [],
+     "raw_home": [
+      332466
+     ]
+    },
+    {
+     "key": "CHRG-117shrg47985",
+     "before": [],
+     "after": [
+      332043
+     ],
+     "raw_home": []
+    },
+    {
+     "key": "CHRG-117shrg50802",
+     "before": [],
+     "after": [
+      330128
+     ],
+     "raw_home": []
+    },
+    {
+     "key": "CHRG-117shrg51112",
+     "before": [],
+     "after": [
+      330206
+     ],
+     "raw_home": []
+    },
+    {
+     "key": "CHRG-118shrg53786",
+     "before": [],
+     "after": [
+      334844
+     ],
+     "raw_home": []
+    },
+    {
+     "key": "CHRG-118shrg53981",
+     "before": [
+      334023
+     ],
+     "after": [],
+     "raw_home": [
+      334023
+     ]
+    },
+    {
+     "key": "CHRG-118shrg55118",
+     "before": [
+      335484
+     ],
+     "after": [],
+     "raw_home": [
+      335484
+     ]
+    },
+    {
+     "key": "CHRG-119hhrg59595",
+     "before": [],
+     "after": [
+      117992
+     ],
+     "raw_home": []
+    },
+    {
+     "key": "CHRG-119shrg59775",
+     "before": [
+      336640
+     ],
+     "after": [],
+     "raw_home": [
+      336640
+     ]
+    },
+    {
+     "key": "CHRG-119shrg59776",
+     "before": [
+      336701
+     ],
+     "after": [],
+     "raw_home": [
+      336701
+     ]
+    },
+    {
+     "key": "CHRG-119shrg61206",
+     "before": [],
+     "after": [
       336625
      ],
-     "package": "CHRG-119shrg61206",
-     "event": 336625,
-     "before": [
-      "package:CHRG-119shrg61206"
-     ],
-     "after": [
-      "meeting:336625"
-     ],
-     "print": {
-      "held": [
-       "2025-02-19"
-      ],
-      "titles": [
-       "AMERICA OFFLINE? HOW SPECTRUM AUCTION DELAYS GIVE CHINA THE EDGE AND COST US JOBS",
-       "AMERICA OFFLINE? HOW SPECTRUM AUCTION DELAYS GIVE CHINA THE EDGE AND COST US JOBS"
-      ],
-      "events": [],
-      "witnesses": 4
-     },
-     "meeting": "Hearings to examine spectrum auction delays.",
-     "date": "2025-02-19"
+     "raw_home": []
     },
     {
-     "key": [
-      "CHRG-113hhrg82127",
-      101167
-     ],
-     "package": "CHRG-113hhrg82127",
-     "event": 101167,
-     "before": [
-      "meeting:101167"
-     ],
+     "key": "CHRG-119shrg61677",
+     "before": [],
      "after": [
-      "package:CHRG-113hhrg82127"
+      336979
      ],
-     "print": {
-      "held": [
-       "2013-07-17"
-      ],
-      "titles": [
-       "OVERSIGHT HEARING ON THE DEPARTMENT OF THE INTERIOR OPERATIONS, MANAGEMENT, AND RULEMAKINGS",
-       "United States House Bill 2208 (113th Congress)",
-       "United States Public Law 141 (112th Congress)",
-       "OVERSIGHT HEARING ON THE DEPARTMENT OF THE INTERIOR OPERATIONS, MANAGEMENT, AND RULEMAKINGS"
-      ],
-      "events": [],
-      "witnesses": 1
-     },
-     "meeting": "A Washington, DC-Based Bureaucratic Invention with Potential Water Conservation and Property Rights Impacts: The National Blueways Order",
-     "date": "2013-07-17"
+     "raw_home": []
+    },
+    {
+     "key": "CHRG-119shrg62328",
+     "before": [],
+     "after": [
+      337424
+     ],
+     "raw_home": []
+    },
+    {
+     "key": "CHRG-119shrg62766",
+     "before": [
+      337200
+     ],
+     "after": [],
+     "raw_home": [
+      337200
+     ]
+    },
+    {
+     "key": "CHRG-119shrg63393",
+     "before": [
+      337265
+     ],
+     "after": [],
+     "raw_home": [
+      337265
+     ]
+    }
+   ],
+   "ambiguous_subset": [
+    {
+     "key": "CHRG-114hhrg25102",
+     "before": [],
+     "after": [
+      104435
+     ],
+     "raw_home": [
+      104435,
+      104515
+     ]
+    },
+    {
+     "key": "CHRG-114hhrg93531",
+     "before": [],
+     "after": [
+      102915
+     ],
+     "raw_home": [
+      102915,
+      102918
+     ]
+    },
+    {
+     "key": "CHRG-114hhrg93973",
+     "before": [],
+     "after": [
+      102975
+     ],
+     "raw_home": [
+      102975,
+      102976
+     ]
+    },
+    {
+     "key": "CHRG-114hhrg96242",
+     "before": [],
+     "after": [
+      103980
+     ],
+     "raw_home": [
+      103961,
+      103980
+     ]
+    },
+    {
+     "key": "CHRG-114hhrg97912",
+     "before": [],
+     "after": [
+      103663
+     ],
+     "raw_home": [
+      103663,
+      103681
+     ]
+    },
+    {
+     "key": "CHRG-114hhrg98693",
+     "before": [],
+     "after": [
+      104044
+     ],
+     "raw_home": [
+      104044,
+      104076
+     ]
+    },
+    {
+     "key": "CHRG-115hhrg27722",
+     "before": [],
+     "after": [
+      106653
+     ],
+     "raw_home": [
+      106653,
+      106666
+     ]
+    },
+    {
+     "key": "CHRG-115hhrg30350",
+     "before": [],
+     "after": [
+      108441
+     ],
+     "raw_home": [
+      108385,
+      108441
+     ]
+    },
+    {
+     "key": "CHRG-115hhrg31400",
+     "before": [],
+     "after": [
+      108644
+     ],
+     "raw_home": [
+      108644,
+      108664
+     ]
+    },
+    {
+     "key": "CHRG-115hhrg31428",
+     "before": [],
+     "after": [
+      106501
+     ],
+     "raw_home": [
+      106501,
+      106524
+     ]
+    },
+    {
+     "key": "CHRG-115hhrg31631",
+     "before": [],
+     "after": [
+      108747
+     ],
+     "raw_home": [
+      108709,
+      108747
+     ]
+    },
+    {
+     "key": "CHRG-115hhrg32928",
+     "before": [],
+     "after": [
+      108322
+     ],
+     "raw_home": [
+      108322,
+      108335
+     ]
+    },
+    {
+     "key": "CHRG-116hhrg35662",
+     "before": [],
+     "after": [
+      109089
+     ],
+     "raw_home": [
+      109063,
+      109089
+     ]
+    },
+    {
+     "key": "CHRG-116hhrg37260",
+     "before": [],
+     "after": [
+      109699
+     ],
+     "raw_home": [
+      109669,
+      109699
+     ]
+    },
+    {
+     "key": "CHRG-116hhrg37848",
+     "before": [],
+     "after": [
+      110029
+     ],
+     "raw_home": [
+      110029,
+      110046
+     ]
+    },
+    {
+     "key": "CHRG-116hhrg39913",
+     "before": [],
+     "after": [
+      109384
+     ],
+     "raw_home": [
+      109384,
+      109396
+     ]
+    },
+    {
+     "key": "CHRG-117hhrg48304",
+     "before": [],
+     "after": [
+      114580
+     ],
+     "raw_home": [
+      114580,
+      114621
+     ]
+    },
+    {
+     "key": "CHRG-117shrg45388",
+     "before": [],
+     "after": [
+      328604
+     ],
+     "raw_home": [
+      328604,
+      328643
+     ]
+    },
+    {
+     "key": "CHRG-117shrg45812",
+     "before": [],
+     "after": [
+      330600
+     ],
+     "raw_home": [
+      330580,
+      330600
+     ]
+    },
+    {
+     "key": "CHRG-117shrg47218",
+     "before": [],
+     "after": [
+      329847
+     ],
+     "raw_home": [
+      329828,
+      329847
+     ]
+    },
+    {
+     "key": "CHRG-117shrg54861",
+     "before": [],
+     "after": [
+      330380
+     ],
+     "raw_home": [
+      330380,
+      330427,
+      330501
+     ]
+    },
+    {
+     "key": "CHRG-118hhrg52207",
+     "before": [],
+     "after": [
+      115664
+     ],
+     "raw_home": [
+      115664,
+      115735
+     ]
+    },
+    {
+     "key": "CHRG-118hhrg53883",
+     "before": [],
+     "after": [
+      116222
+     ],
+     "raw_home": [
+      116176,
+      116222
+     ]
+    },
+    {
+     "key": "CHRG-118hhrg56208",
+     "before": [],
+     "after": [
+      117521
+     ],
+     "raw_home": [
+      117521,
+      117553
+     ]
+    },
+    {
+     "key": "CHRG-118hhrg56847",
+     "before": [],
+     "after": [
+      117452
+     ],
+     "raw_home": [
+      117450,
+      117452
+     ]
+    },
+    {
+     "key": "CHRG-118shrg53115",
+     "before": [],
+     "after": [
+      334244
+     ],
+     "raw_home": [
+      334243,
+      334244
+     ]
+    },
+    {
+     "key": "CHRG-118shrg53504",
+     "before": [],
+     "after": [
+      334622
+     ],
+     "raw_home": [
+      334621,
+      334622
+     ]
+    },
+    {
+     "key": "CHRG-118shrg53727",
+     "before": [],
+     "after": [
+      333593
+     ],
+     "raw_home": [
+      333593,
+      333640
+     ]
+    },
+    {
+     "key": "CHRG-118shrg58675",
+     "before": [],
+     "after": [
+      335553
+     ],
+     "raw_home": [
+      335550,
+      335553
+     ]
+    },
+    {
+     "key": "CHRG-119hhrg60684",
+     "before": [],
+     "after": [
+      118028
+     ],
+     "raw_home": [
+      118028,
+      118031
+     ]
+    },
+    {
+     "key": "CHRG-119hhrg61689",
+     "before": [],
+     "after": [
+      118519
+     ],
+     "raw_home": [
+      118519,
+      118536
+     ]
     }
    ],
    "raw_contradicts_after": [
     {
-     "key": [
-      "CHRG-117shrg47939",
-      332466
-     ],
-     "package": "CHRG-117shrg47939",
-     "event": 332466,
-     "before": [
-      "meeting:332466"
-     ],
+     "key": "CHRG-117hhrg50139",
+     "before": [],
      "after": [
-      "package:CHRG-117shrg47939"
+      114877,
+      114899,
+      114906,
+      114923,
+      114973,
+      114977,
+      114978
      ],
-     "print": {
-      "held": [
-       "2022-05-11"
-      ],
-      "titles": [
-       "PENDING LEGISLATION",
-       "United States House Bill 268 (117th Congress)",
-       "United States House Bill 268 (117th Congress)",
-       "United States Senate Bill 557 (117th Congress)",
-       "United States Senate Bill 557 (117th Congress)",
-       "United States Senate Bill 1344 (117th Congress)",
-       "United States Senate Bill 1344 (117th Congress)",
-       "United States Senate Bill 1718 (117th Congress)",
-       "United States Senate Bill 1718 (117th Congress)",
-       "United States Senate Bill 1814 (117th Congress)",
-       "United States Senate Bill 1814 (117th Congress)",
-       "United States House Bill 1931 (117th Congress)",
-       "United States House Bill 1931 (117th Congress)",
-       "United States Senate Bill 2367 (117th Congress)",
-       "United States Senate Bill 2367 (117th Congress)",
-       "United States Senate Bill 2964 (117th Congress)",
-       "United States Senate Bill 2964 (117th Congress)",
-       "United States Senate Bill 3141 (117th Congress)",
-       "United States Senate Bill 3141 (117th Congress)",
-       "United States Senate Bill 3185 (117th Congress)",
-       "United States Senate Bill 3185 (117th Congress)",
-       "United States Senate Bill 3240 (117th Congress)",
-       "United States Senate Bill 3240 (117th Congress)",
-       "United States Senate Bill 3307 (117th Congress)",
-       "United States Senate Bill 3307 (117th Congress)",
-       "United States Senate Bill 3334 (117th Congress)",
-       "United States Senate Bill 3334 (117th Congress)",
-       "United States Senate Bill 3338 (117th Congress)",
-       "United States Senate Bill 3338 (117th Congress)",
-       "United States Senate Bill 3519 (117th Congress)",
-       "United States Senate Bill 3519 (117th Congress)",
-       "United States House Bill 3531 (117th Congress)",
-       "United States House Bill 3531 (117th Congress)",
-       "United States Senate Bill 3551 (117th Congress)",
-       "United States Senate Bill 3551 (117th Congress)",
-       "United States Senate Bill 3667 (117th Congress)",
-       "United States Senate Bill 3667 (117th Congress)",
-       "United States Senate Bill 3685 (117th Congress)",
-       "United States Senate Bill 3685 (117th Congress)",
-       "United States Senate Bill 4114 (117th Congress)",
-       "United States Senate Bill 4114 (117th Congress)",
-       "United States Senate Bill 4121 (117th Congress)",
-       "United States Senate Bill 4121 (117th Congress)",
-       "United States Public Law 420 (99th Congress)",
-       "PENDING LEGISLATION"
-      ],
-      "events": [],
-      "witnesses": 1
-     },
-     "meeting": "Hearings to examine S.557, to establish a pilot program for native plant species, S.1344, to redesignate the Pullman National Monument in the State of Illinois as the Pullman National Historical Park, S.1718, to amend the Rosie the Riveter/World War II Home Front National Historical Park Establishment Act of 200 to provide for additional areas to be added to the park, S.1814 and H.R. 3531, bills to authorize the Women Who Worked on the Home Front Foundation to establish a commemorative work in the District of Columbia and its environs, S.2367, to authorize the Secretary of the Interior to acquire land in Frederick County, Maryland, for the Historic Preservation Training Center of the National Park Service, S.2964, to clarify the status of the North Country, Ice Age, and New England National Scenic Trails as units of the National Park System, S.3141, to establish the New Philadelphia National Historical Park in the State of Illinois as a unit of the National Park System, S.3185, to amend the Delaware Water Gap National Recreation Area Improvement Act to extend the exception to the closure of certain roads within the Recreation Area for local businesses, S.3240, to waive the application fee for applications for special use permits for veterans' special events at war memorials on land administered by the National Park Service in the District of Columbia and its environs, S.3307, to modify the boundary of the Wilson's Creek National Battlefield in the State of Missouri, S.3334, to extend the authority for the establishment of a commemorative work to honor enslaved and free black persons who served in the American Revolution, S.3338, to revise the boundary of the Ste. Genevieve National Historical Park in the State of Missouri, S.3519, to amend the National Trails System Act to designate the Butterfield Overland National Historic Trail, S.3551, to require the Secretary of Agriculture and the Secretary of the Interior to carry out certain activities to enhance recreational opportunities for gateway communities, S.3667, to amend title 54, United States Code, to establish within the National Park Service the United States African-American Burial Grounds Preservation Program, S.3685, to direct the Secretary of the Interior to conduct a special resource study to determine the suitability and feasibility of establishing the John P. Parker House in Ripley, Ohio, as a unit of the National Park System, S.4114, to amend Public Law 99-420 to provide for the conveyance of certain Federal land in the State of Maine for use for affordable workforce housing, S.4121, to designate the Kol Israel Foundation Holocaust Memorial in Bedford Heights, Ohio, as a national memorial, H.R.268, to provide for the boundary of the Palo Alto Battlefield National Historic Park to be adjusted, to authorize the donation of land to the United States for addition to that historic park, and H.R.1931, to provide competitive grants for the promotion of Japanese American confinement education as a means to understand the importance of democratic principles, use and abuse of power, and to raise awareness about the importance of cultural tolerance toward Japanese Americans.",
-     "date": "2022-05-11"
-    },
-    {
-     "key": [
-      "CHRG-114hhrg23645",
-      105231
-     ],
-     "package": "CHRG-114hhrg23645",
-     "event": 105231,
-     "before": [
-      "meeting:105231"
-     ],
-     "after": [
-      "package:CHRG-114hhrg23645"
-     ],
-     "print": {
-      "held": [
-       "2016-07-12"
-      ],
-      "titles": [
-       "RELIGIOUS LIBERTY AND H.R. 2802, THE FIRST AMENDMENT DEFENSE ACT (FADA)",
-       "United States House Bill 2802 (114th Congress)",
-       "United States House Bill 2802 (114th Congress)",
-       "United States Code",
-       "RELIGIOUS LIBERTY AND H.R. 2802, THE FIRST AMENDMENT DEFENSE ACT (FADA)"
-      ],
-      "events": [],
-      "witnesses": 8
-     },
-     "meeting": "H.R. 5714, the Postal Service Reform Act of 2016;\r\n\r\nH.R. 5707, the Postal Service Financial Improvement Act of 2016;\r\n\r\nH.R. 2319, the Electronic Message Preservation Act of 2015;\r\n\r\nH.R. 4419, the District of Columbia Judicial Financial Transparency Act;\r\n\r\nH.R. 5033, the Getting Results through Enhanced Accountability and Transparency Act of 2016; \r\n\r\nH.R. 5037, the District of Columbia Courts and Public Defender Service Voluntary Separation Incentive Payments Act;\r\n\r\nH.R. 5341, to amend title 5, United States Code, to recalculate annuity benefits for certain air traffic controllers, and for other purposes;\r\n\r\nH.R. 5647, to amend the Internal Revenue Code of 1986 to treat certain ride-sharing services provided by transportation network companies as excludable transportation fringe benefits, and for other purposes;\r\n\r\nH.R. 5687, the GAO Mandates Revision Act of 2016;\r\n\r\nH.R. 5690, the GAO Access and Oversight Act of 2016;\r\n\r\nH.R. 5709, the Federal Records Modernization Act; \r\n\r\nH.R. 4887, to designate the facility of the United States Postal Service located at 23323 Shelby Road in Shelby, Indiana, as the \u201cRichard Allen Cable Post Office\u201d;\r\n\r\nH.R. 5356, to designate the facility of the United States Postal Service located at 14231 TX-150 in Coldspring, Texas, as the \u201cE. Marie Youngblood Post Office\u201d; and\r\n\r\nH.R. 5612, to designate the facility of the United States Postal Service located at 2886 Sandy Plains Road in Marietta, Georgia, as the \u201cMarine Lance Corporal Squire \u2018Skip\u2019 Wells Post Office Building\u201d.",
-     "date": "2016-07-12"
-    },
-    {
-     "key": [
-      "CHRG-117shrg47001",
-      330465
-     ],
-     "package": "CHRG-117shrg47001",
-     "event": 330465,
-     "before": [
-      "meeting:330465"
-     ],
-     "after": [
-      "package:CHRG-117shrg47001"
-     ],
-     "print": {
-      "held": [
-       "2021-09-22"
-      ],
-      "titles": [
-       "A REVIEW OF THE SBIR-STTR PROGRAM",
-       "A REVIEW OF THE SBIR-STTR PROGRAM"
-      ],
-      "events": [],
-      "witnesses": 2
-     },
-     "meeting": "Hearings to examine a review of the Small Business Innovation Research-Small Business Technology Transfer Program,\u00a0including S.2631, to amend the Small Business Act to create a program to provide funding for organizations that support startup businesses in formation and early growth stages by providing entrepreneurs with resources and services to produce viable businesses.",
-     "date": "2021-09-22"
-    },
-    {
-     "key": [
-      "CHRG-119shrg59776",
-      336701
-     ],
-     "package": "CHRG-119shrg59776",
-     "event": 336701,
-     "before": [
-      "meeting:336701"
-     ],
-     "after": [
-      "package:CHRG-119shrg59776"
-     ],
-     "print": {
-      "held": [
-       "2025-03-11"
-      ],
-      "titles": [
-       "HEARING TO CONSIDER PENDING LEGISLATION",
-       "United States Senate Bill 124 (119th Congress)",
-       "HEARING TO CONSIDER PENDING LEGISLATION"
-      ],
-      "events": [],
-      "witnesses": 4
-     },
-     "meeting": "Hearings to examine S.124, to amend title 38, United States Code, to provide for disciplinary procedures for supervisors and managers at the Department of Veterans Affairs and to modify the procedures of personnel actions against employees of the Department, S.201, to provide for a study by the National Academies of Sciences, Engineering, and Medicine on the prevalence and mortality of cancer among individuals who served as active duty aircrew in the Armed Forces, S.275, to improve the provision of care and services under the Veterans Community Care Program of the Department of Veterans Affairs, S.410, to amend titles 10 and 38, United States Code, to improve benefits and services for surviving spouses, S.478, to amend title 38, United States Code, to prohibit the Secretary of Veterans Affairs from transmitting certain information to the Department of Justice for use by the national instant criminal background check system, S.607, to require the Secretary of Veterans Affairs to establish an integrated project team to improve the process for scheduling appointments for health care from the Department of Veterans Affairs, S.610, to expand the VetSuccess on Campus program of the Department of Veterans Affairs, S.611, to amend title 38, United States Code, to improve and to expand eligibility for dependency and indemnity compensation paid to certain survivors of certain veterans, S.654, to amend title 38, United States Code, to establish an external provider scheduling program to assist the Department of Veterans Affairs in scheduling appointments for care and services under the Veterans Community Care Program, S.702, to require a study on the quality of care difference between mental health and addiction therapy care provided by health care providers of the Department of Veterans Affairs compared to non-Department providers, S.787, to amend title 38, United States Code, to establish a commission to review operations at the Veterans Health Administration and submit to Congress reports with respect to that review, and for other programs, S.831, to amend title 38, United States Code, to require the Secretary of Veterans Affairs to improve telephone communication by the Department of Veterans Affairs, S.892, to amend title 38, United States Code, to improve the repayment by the Secretary of Veterans Affairs of benefits misused by a fiduciary, an original bill entitled, \"Veterans' Claims Act of 2025\", and an original bill entitled, \"Servicemembers and Veterans Empowerment and Support Act\".",
-     "date": "2025-03-11"
-    },
-    {
-     "key": [
-      "CHRG-118shrg53981",
-      334023
-     ],
-     "package": "CHRG-118shrg53981",
-     "event": 334023,
-     "before": [
-      "meeting:334023"
-     ],
-     "after": [
-      "package:CHRG-118shrg53981"
-     ],
-     "print": {
-      "held": [
-       "2023-04-26"
-      ],
-      "titles": [
-       "HEARING TO CONSIDER PENDING LEGISLATION",
-       "United States Senate Bill 280 (118th Congress)",
-       "United States Senate Bill 350 (118th Congress)",
-       "United States Senate Bill 414 (118th Congress)",
-       "United States Senate Bill 498 (118th Congress)",
-       "United States Senate Bill 656 (118th Congress)",
-       "United States Senate Bill 740 (118th Congress)",
-       "United States Senate Bill 897 (118th Congress)",
-       "United States Senate Bill 1090 (118th Congress)",
-       "United States Senate Bill 1266 (118th Congress)",
-       "HEARING TO CONSIDER PENDING LEGISLATION"
-      ],
-      "events": [],
-      "witnesses": 5
-     },
-     "meeting": "Hearings to examine S.280, to ensure that only licensed health care professionals furnish disability examinations under a certain Department of Veterans Affairs pilot program for use of contract physicians for disability examinations, S.291, to amend title 38, United States Code, to establish in the Department of Veterans Affairs the Veterans Economic Opportunity and Transition Administration, S.350, to amend title 38, United States Code, to expand eligibility for the Marine Gunnery Sergeant John David Fry Scholarship to include spouses and children of individuals who die from a service-connected disability within 120 days of serving in the Armed Forces, S.414, to amend title 38, United States Code, to improve and to expand eligibility for dependency and indemnity compensation paid to certain survivors of certain veterans, S.498, to reauthorize and improve a grant program to assist institutions of higher education in establishing maintaining, improving, and operating Student Veteran Centers, S.572, to require the Secretary of Veterans Affairs to provide answers to questions submitted for the record to the Secretary by members of the Committee on Veterans' Affairs of the Senate and the Committee on Veterans' Affairs of the House of Representatives within 45 business days, S.656, to amend title 38, United States Code, to revise the rules for approval by the Secretary of Veterans Affairs of commercial driver education programs for purposes of veterans education assistance, S.740, to amend title 38, United States Code, to reinstate criminal penalties for persons charging veterans unauthorized fees relating to claims for benefits under the laws administered by the Secretary of Veterans Affairs, S.774, to direct the Secretary of Homeland Security to establish a pilot program to hire transitioning servicemembers to be Border Patrol agents, S.897, to amend title 38, United States Code, to make a permanent increase in the number of judges presiding over the United States Court of Appeals for Veterans Claims, S.1090, to direct the Secretary of Veterans Affairs to update the payment system of the Department of Veterans Affairs to allow for electronic fund transfer of educational assistance, administered by the Secretary, to a foreign institution of higher education, an original bill entitled, \"Student Veterans Transparency and Protection Act\", an original bill entitled, \"Love Lives On Act\", and an original bill entitled, \"Veterans Second Amendment Protection Act\".",
-     "date": "2023-04-26"
+     "raw_home": [
+      113969,
+      114877,
+      114899,
+      114906,
+      114923,
+      114973,
+      114977
+     ]
     }
    ]
   }
@@ -5530,18 +3687,66 @@
  },
  "witness_rows": {
   "before": 147888,
-  "after": 139077
+  "after": 173067,
+  "after_shown": 141255,
+  "after_superseded": 31812,
+  "after_statements": 7230
+ },
+ "red_f2_lost": {
+  "cases": 192,
+  "published": 185,
+  "missing": [
+   [
+    "statement_for_record_or_nonwitness",
+    "CHRG-119hhrg59389",
+    "To: House Committee on Natural Resources Republican Members From: Natural Resources Commit"
+   ],
+   [
+    "statement_for_record_or_nonwitness",
+    "CHRG-115hhrg25242",
+    "Responses to questions for the record from the following Representatives: Hon. Frank A. Lo"
+   ],
+   [
+    "statement_for_record_or_nonwitness",
+    "CHRG-119hhrg58952",
+    "Subject: Oversight Hearing on \"Restoring Multiple Use to Revitalize America's Public Lands"
+   ],
+   [
+    "statement_for_record_or_nonwitness",
+    "CHRG-119hhrg58952",
+    "and more than 700 million acres of subsurface mineral estate in accordance with multiple u"
+   ],
+   [
+    "statement_for_record_or_nonwitness",
+    "CHRG-119hhrg58952",
+    "Longworth House Office Building. Member offices are requested to notify Will Rodriguez (Wi"
+   ],
+   [
+    "statement_for_record_or_nonwitness",
+    "CHRG-118hhrg53922",
+    "Submissions for the Record by Representative Donalds Atlantic States Marine Fisheries Comm"
+   ],
+   [
+    "statement_for_record_or_nonwitness",
+    "CHRG-119hhrg58952",
+    "T9999.001 To: House Committee on Natural Resources Republican Members From: Subcommittee o"
+   ]
+  ]
  },
  "coverage_relabels": {
-  "rows": 14555,
+  "rows": 16450,
   "verdicts": {
-   "not_checked": 8245,
-   "premise_holds": 6192,
-   "ambiguous": 71,
-   "premise_fails": 9,
-   "unread": 38
+   "not_checked": 10109,
+   "premise_holds": 6181,
+   "ambiguous": 56,
+   "premise_fails": 65,
+   "unread": 39
   },
   "unread": [
+   [
+    103138,
+    "recording"
+   ],
    [
     105475,
     "documents"
@@ -5797,6 +4002,23 @@
     },
     {
      "key": [
+      100036,
+      "transcript"
+     ],
+     "before": [
+      "present",
+      null
+     ],
+     "after": [
+      "unresolved",
+      null
+     ],
+     "prints": {
+      "CHRG-112hhrg72541": "disagree"
+     }
+    },
+    {
+     "key": [
       100037,
       "captions"
      ],
@@ -6011,6 +4233,23 @@
     },
     {
      "key": [
+      100051,
+      "transcript"
+     ],
+     "before": [
+      "present",
+      null
+     ],
+     "after": [
+      "unresolved",
+      null
+     ],
+     "prints": {
+      "CHRG-112hhrg76517": "ambiguous"
+     }
+    },
+    {
+     "key": [
       100053,
       "captions"
      ],
@@ -6100,6 +4339,23 @@
      "after": [
       "unknown",
       "recording_link_pending"
+     ],
+     "prints": {
+      "CHRG-112hhrg76606": "disagree"
+     }
+    },
+    {
+     "key": [
+      100059,
+      "transcript"
+     ],
+     "before": [
+      "present",
+      null
+     ],
+     "after": [
+      "unresolved",
+      null
      ],
      "prints": {
       "CHRG-112hhrg76606": "disagree"
@@ -6205,6 +4461,23 @@
     },
     {
      "key": [
+      100075,
+      "transcript"
+     ],
+     "before": [
+      "present",
+      null
+     ],
+     "after": [
+      "unresolved",
+      null
+     ],
+     "prints": {
+      "CHRG-112hhrg73355": "disagree"
+     }
+    },
+    {
+     "key": [
       100076,
       "captions"
      ],
@@ -6279,75 +4552,6 @@
      "prints": {
       "CHRG-112hhrg72224": "agree"
      }
-    },
-    {
-     "key": [
-      100081,
-      "captions"
-     ],
-     "before": [
-      "not_stated",
-      null
-     ],
-     "after": [
-      "unknown",
-      "recording_link_pending"
-     ],
-     "prints": {
-      "CHRG-112hhrg72234": "agree"
-     }
-    },
-    {
-     "key": [
-      100082,
-      "captions"
-     ],
-     "before": [
-      "not_stated",
-      null
-     ],
-     "after": [
-      "unknown",
-      "recording_link_pending"
-     ],
-     "prints": {
-      "CHRG-112hhrg72239": "agree"
-     }
-    },
-    {
-     "key": [
-      100083,
-      "captions"
-     ],
-     "before": [
-      "not_stated",
-      null
-     ],
-     "after": [
-      "unknown",
-      "recording_link_pending"
-     ],
-     "prints": {
-      "CHRG-112hhrg72254": "agree",
-      "CHRG-112hhrg72255": "disagree"
-     }
-    },
-    {
-     "key": [
-      100094,
-      "captions"
-     ],
-     "before": [
-      "not_stated",
-      null
-     ],
-     "after": [
-      "unknown",
-      "recording_link_pending"
-     ],
-     "prints": {
-      "CHRG-112hhrg73739": "agree"
-     }
     }
    ],
    "premise_holds": [
@@ -6416,8 +4620,8 @@
       null
      ],
      "prints": {
-      "CHRG-112hhrg72254": "agree",
-      "CHRG-112hhrg72255": "disagree"
+      "CHRG-112hhrg72255": "disagree",
+      "CHRG-112hhrg72254": "agree"
      }
     },
     {
@@ -6451,8 +4655,8 @@
       null
      ],
      "prints": {
-      "CHRG-112hhrg79505": "ambiguous",
-      "CHRG-112hhrg79506": "agree"
+      "CHRG-112hhrg79506": "agree",
+      "CHRG-112hhrg79505": "ambiguous"
      }
     },
     {
@@ -6469,8 +4673,8 @@
       null
      ],
      "prints": {
-      "CHRG-112hhrg79844": "disagree",
-      "CHRG-112hhrg79845": "agree"
+      "CHRG-112hhrg79845": "agree",
+      "CHRG-112hhrg79844": "disagree"
      }
     },
     {
@@ -6521,8 +4725,8 @@
       null
      ],
      "prints": {
-      "CHRG-112hhrg72254": "disagree",
-      "CHRG-112hhrg72255": "agree"
+      "CHRG-112hhrg72255": "agree",
+      "CHRG-112hhrg72254": "disagree"
      }
     },
     {
@@ -6539,8 +4743,8 @@
       null
      ],
      "prints": {
-      "CHRG-112hhrg79505": "agree",
-      "CHRG-112hhrg79506": "disagree"
+      "CHRG-112hhrg79506": "disagree",
+      "CHRG-112hhrg79505": "agree"
      }
     },
     {
@@ -6557,25 +4761,8 @@
       null
      ],
      "prints": {
-      "CHRG-112hhrg79844": "agree",
-      "CHRG-112hhrg79845": "disagree"
-     }
-    },
-    {
-     "key": [
-      100223,
-      "witnesses"
-     ],
-     "before": [
-      "not_stated",
-      null
-     ],
-     "after": [
-      "present",
-      null
-     ],
-     "prints": {
-      "CHRG-113hhrg78631": "agree"
+      "CHRG-112hhrg79845": "disagree",
+      "CHRG-112hhrg79844": "agree"
      }
     },
     {
@@ -6650,41 +4837,6 @@
     },
     {
      "key": [
-      100243,
-      "witnesses"
-     ],
-     "before": [
-      "not_stated",
-      null
-     ],
-     "after": [
-      "present",
-      null
-     ],
-     "prints": {
-      "CHRG-113hhrg78694": "agree"
-     }
-    },
-    {
-     "key": [
-      100244,
-      "witnesses"
-     ],
-     "before": [
-      "not_stated",
-      null
-     ],
-     "after": [
-      "present",
-      null
-     ],
-     "prints": {
-      "CHRG-113hhrg78696": "agree",
-      "CHRG-113hhrg78695": "ambiguous"
-     }
-    },
-    {
-     "key": [
       100245,
       "witnesses"
      ],
@@ -6697,8 +4849,8 @@
       null
      ],
      "prints": {
-      "CHRG-113hhrg78696": "ambiguous",
-      "CHRG-113hhrg78695": "agree"
+      "CHRG-113hhrg78695": "agree",
+      "CHRG-113hhrg78696": "ambiguous"
      }
     },
     {
@@ -6732,8 +4884,8 @@
       null
      ],
      "prints": {
-      "CHRG-113hhrg78696": "agree",
-      "CHRG-113hhrg78695": "ambiguous"
+      "CHRG-113hhrg78695": "ambiguous",
+      "CHRG-113hhrg78696": "agree"
      }
     },
     {
@@ -6750,8 +4902,8 @@
       null
      ],
      "prints": {
-      "CHRG-113hhrg81322": "ambiguous",
-      "CHRG-113hhrg86556": "ambiguous"
+      "CHRG-113hhrg86556": "ambiguous",
+      "CHRG-113hhrg81322": "ambiguous"
      }
     },
     {
@@ -6768,8 +4920,8 @@
       null
      ],
      "prints": {
-      "CHRG-113hhrg81322": "ambiguous",
-      "CHRG-113hhrg86556": "ambiguous"
+      "CHRG-113hhrg86556": "ambiguous",
+      "CHRG-113hhrg81322": "ambiguous"
      }
     },
     {
@@ -6786,8 +4938,8 @@
       null
      ],
      "prints": {
-      "CHRG-113hhrg81322": "disagree",
-      "CHRG-113hhrg86556": "ambiguous"
+      "CHRG-113hhrg86556": "ambiguous",
+      "CHRG-113hhrg81322": "disagree"
      }
     },
     {
@@ -6804,8 +4956,8 @@
       null
      ],
      "prints": {
-      "CHRG-113hhrg81322": "ambiguous",
-      "CHRG-113hhrg86556": "ambiguous"
+      "CHRG-113hhrg86556": "ambiguous",
+      "CHRG-113hhrg81322": "ambiguous"
      }
     },
     {
@@ -6894,8 +5046,8 @@
       null
      ],
      "prints": {
-      "CHRG-113hhrg79954": "ambiguous",
       "CHRG-113hhrg79953": "ambiguous",
+      "CHRG-113hhrg79954": "ambiguous",
       "CHRG-113hhrg79996": "agree"
      }
     },
@@ -6913,8 +5065,8 @@
       null
      ],
      "prints": {
-      "CHRG-113hhrg79954": "ambiguous",
       "CHRG-113hhrg79953": "ambiguous",
+      "CHRG-113hhrg79954": "ambiguous",
       "CHRG-113hhrg79996": "agree"
      }
     },
@@ -6932,8 +5084,8 @@
       null
      ],
      "prints": {
-      "CHRG-113hhrg79954": "agree",
       "CHRG-113hhrg79953": "ambiguous",
+      "CHRG-113hhrg79954": "agree",
       "CHRG-113hhrg79996": "disagree"
      }
     },
@@ -6969,8 +5121,8 @@
       null
      ],
      "prints": {
-      "CHRG-113hhrg79584": "agree",
-      "CHRG-113hhrg79583": "disagree"
+      "CHRG-113hhrg79583": "disagree",
+      "CHRG-113hhrg79584": "agree"
      }
     },
     {
@@ -6987,8 +5139,8 @@
       null
      ],
      "prints": {
-      "CHRG-113hhrg79584": "disagree",
-      "CHRG-113hhrg79583": "agree"
+      "CHRG-113hhrg79583": "agree",
+      "CHRG-113hhrg79584": "disagree"
      }
     },
     {
@@ -7023,9 +5175,9 @@
       null
      ],
      "prints": {
-      "CHRG-113hhrg86214": "disagree",
       "CHRG-113hhrg82627": "ambiguous",
-      "CHRG-113hhrg82282": "disagree"
+      "CHRG-113hhrg82282": "disagree",
+      "CHRG-113hhrg86214": "disagree"
      }
     },
     {
@@ -7042,9 +5194,9 @@
       null
      ],
      "prints": {
-      "CHRG-113hhrg86214": "ambiguous",
       "CHRG-113hhrg82627": "ambiguous",
-      "CHRG-113hhrg82282": "disagree"
+      "CHRG-113hhrg82282": "disagree",
+      "CHRG-113hhrg86214": "ambiguous"
      }
     },
     {
@@ -7061,9 +5213,66 @@
       null
      ],
      "prints": {
-      "CHRG-113hhrg86214": "disagree",
       "CHRG-113hhrg82627": "ambiguous",
-      "CHRG-113hhrg82282": "disagree"
+      "CHRG-113hhrg82282": "disagree",
+      "CHRG-113hhrg86214": "disagree"
+     }
+    },
+    {
+     "key": [
+      100348,
+      "witnesses"
+     ],
+     "before": [
+      "not_stated",
+      null
+     ],
+     "after": [
+      "present",
+      null
+     ],
+     "prints": {
+      "CHRG-113hhrg82627": "ambiguous",
+      "CHRG-113hhrg82282": "ambiguous",
+      "CHRG-113hhrg86214": "disagree"
+     }
+    },
+    {
+     "key": [
+      100349,
+      "witnesses"
+     ],
+     "before": [
+      "not_stated",
+      null
+     ],
+     "after": [
+      "present",
+      null
+     ],
+     "prints": {
+      "CHRG-113hhrg82627": "ambiguous",
+      "CHRG-113hhrg82282": "disagree",
+      "CHRG-113hhrg86214": "disagree"
+     }
+    },
+    {
+     "key": [
+      100350,
+      "witnesses"
+     ],
+     "before": [
+      "not_stated",
+      null
+     ],
+     "after": [
+      "present",
+      null
+     ],
+     "prints": {
+      "CHRG-113hhrg82638": "disagree",
+      "CHRG-113hhrg82770": "ambiguous",
+      "CHRG-113hhrg81691": "disagree"
      }
     }
    ],
@@ -7082,8 +5291,8 @@
       null
      ],
      "prints": {
-      "CHRG-113hhrg81322": "ambiguous",
-      "CHRG-113hhrg86556": "ambiguous"
+      "CHRG-113hhrg86556": "ambiguous",
+      "CHRG-113hhrg81322": "ambiguous"
      }
     },
     {
@@ -7100,9 +5309,9 @@
       null
      ],
      "prints": {
-      "CHRG-113hhrg86199": "ambiguous",
       "CHRG-113hhrg82742": "disagree",
-      "CHRG-113hhrg87778": "disagree"
+      "CHRG-113hhrg87778": "disagree",
+      "CHRG-113hhrg86199": "ambiguous"
      }
     },
     {
@@ -7119,27 +5328,9 @@
       null
      ],
      "prints": {
-      "CHRG-113hhrg86651": "ambiguous",
       "CHRG-113hhrg82661": "ambiguous",
-      "CHRG-113hhrg82809": "ambiguous"
-     }
-    },
-    {
-     "key": [
-      101109,
-      "witnesses"
-     ],
-     "before": [
-      "not_stated",
-      null
-     ],
-     "after": [
-      "present",
-      null
-     ],
-     "prints": {
-      "CHRG-113hhrg86390": "ambiguous",
-      "CHRG-113hhrg86391": "disagree"
+      "CHRG-113hhrg82809": "ambiguous",
+      "CHRG-113hhrg86651": "ambiguous"
      }
     },
     {
@@ -7178,6 +5369,26 @@
     },
     {
      "key": [
+      101959,
+      "recording"
+     ],
+     "before": [
+      "unknown",
+      null
+     ],
+     "after": [
+      "present",
+      null
+     ],
+     "prints": {
+      "CHRG-113hhrg87858": "disagree",
+      "CHRG-113hhrg87859": "disagree",
+      "CHRG-113hhrg87857": "ambiguous",
+      "CHRG-113hhrg87860": "ambiguous"
+     }
+    },
+    {
+     "key": [
       101985,
       "recording"
      ],
@@ -7190,28 +5401,9 @@
       null
      ],
      "prints": {
-      "CHRG-113hhrg87862": "disagree",
+      "CHRG-113hhrg87863": "disagree",
       "CHRG-113hhrg87864": "ambiguous",
-      "CHRG-113hhrg87863": "disagree"
-     }
-    },
-    {
-     "key": [
-      102042,
-      "recording"
-     ],
-     "before": [
-      "claimed",
-      "video_text_only"
-     ],
-     "after": [
-      "present",
-      null
-     ],
-     "prints": {
-      "CHRG-113hhrg87862": "disagree",
-      "CHRG-113hhrg87864": "ambiguous",
-      "CHRG-113hhrg87863": "disagree"
+      "CHRG-113hhrg87862": "disagree"
      }
     },
     {
@@ -7246,9 +5438,9 @@
       null
      ],
      "prints": {
-      "CHRG-114hhrg94749": "disagree",
+      "CHRG-114hhrg94747": "disagree",
       "CHRG-114hhrg94748": "ambiguous",
-      "CHRG-114hhrg94747": "disagree"
+      "CHRG-114hhrg94749": "disagree"
      }
     },
     {
@@ -7265,17 +5457,17 @@
       null
      ],
      "prints": {
-      "CHRG-114hhrg96878": "ambiguous",
-      "CHRG-114hhrg97454": "ambiguous"
+      "CHRG-114hhrg97454": "ambiguous",
+      "CHRG-114hhrg96878": "ambiguous"
      }
     },
     {
      "key": [
-      103309,
-      "witnesses"
+      103223,
+      "recording"
      ],
      "before": [
-      "not_stated",
+      "unknown",
       null
      ],
      "after": [
@@ -7283,7 +5475,8 @@
       null
      ],
      "prints": {
-      "CHRG-114hhrg21306": "ambiguous"
+      "CHRG-114hhrg93965": "disagree",
+      "CHRG-114hhrg93966": "ambiguous"
      }
     },
     {
@@ -7301,8 +5494,65 @@
      ],
      "prints": {
       "CHRG-114hhrg94774": "disagree",
-      "CHRG-114hhrg94775": "ambiguous",
-      "CHRG-114hhrg94773": "disagree"
+      "CHRG-114hhrg94773": "disagree",
+      "CHRG-114hhrg94775": "ambiguous"
+     }
+    },
+    {
+     "key": [
+      104353,
+      "recording"
+     ],
+     "before": [
+      "claimed",
+      "video_text_only"
+     ],
+     "after": [
+      "present",
+      null
+     ],
+     "prints": {
+      "CHRG-114hhrg99646": "ambiguous",
+      "CHRG-114hhrg99648": "disagree",
+      "CHRG-114hhrg99647": "disagree"
+     }
+    },
+    {
+     "key": [
+      104439,
+      "recording"
+     ],
+     "before": [
+      "claimed",
+      "video_text_only"
+     ],
+     "after": [
+      "present",
+      null
+     ],
+     "prints": {
+      "CHRG-114hhrg98915": "ambiguous",
+      "CHRG-114hhrg98916": "disagree",
+      "CHRG-114hhrg98956": "disagree"
+     }
+    },
+    {
+     "key": [
+      104552,
+      "recording"
+     ],
+     "before": [
+      "unknown",
+      null
+     ],
+     "after": [
+      "present",
+      null
+     ],
+     "prints": {
+      "CHRG-114hhrg99646": "ambiguous",
+      "CHRG-114hhrg99648": "disagree",
+      "CHRG-114hhrg99647": "disagree"
      }
     },
     {
@@ -7336,8 +5586,8 @@
       null
      ],
      "prints": {
-      "CHRG-115hhrg32413": "disagree",
-      "CHRG-115hhrg31244": "ambiguous"
+      "CHRG-115hhrg31244": "ambiguous",
+      "CHRG-115hhrg32413": "disagree"
      }
     },
     {
@@ -7354,27 +5604,10 @@
       null
      ],
      "prints": {
-      "CHRG-115hhrg30357": "disagree",
+      "CHRG-115hhrg33569": "disagree",
       "CHRG-115hhrg30666": "disagree",
       "CHRG-115hhrg30212": "ambiguous",
-      "CHRG-115hhrg33569": "disagree"
-     }
-    },
-    {
-     "key": [
-      108596,
-      "witnesses"
-     ],
-     "before": [
-      "not_stated",
-      null
-     ],
-     "after": [
-      "present",
-      null
-     ],
-     "prints": {
-      "CHRG-115hhrg34349": "ambiguous"
+      "CHRG-115hhrg30357": "disagree"
      }
     },
     {
@@ -7391,13 +5624,13 @@
       null
      ],
      "prints": {
-      "CHRG-116hhrg35261": "ambiguous",
-      "CHRG-116hhrg35169": "ambiguous"
+      "CHRG-116hhrg35169": "ambiguous",
+      "CHRG-116hhrg35261": "ambiguous"
      }
     },
     {
      "key": [
-      109104,
+      112796,
       "recording"
      ],
      "before": [
@@ -7409,8 +5642,8 @@
       null
      ],
      "prints": {
-      "CHRG-116hhrg36879": "ambiguous",
-      "CHRG-116hhrg36878": "ambiguous"
+      "CHRG-117hhrg45605": "ambiguous",
+      "CHRG-117hhrg47741": "ambiguous"
      }
     },
     {
@@ -7495,8 +5728,8 @@
       null
      ],
      "prints": {
-      "CHRG-116shrg40972": "ambiguous",
-      "CHRG-116shrg40386": "ambiguous"
+      "CHRG-116shrg40386": "ambiguous",
+      "CHRG-116shrg40972": "ambiguous"
      }
     },
     {
@@ -7513,28 +5746,8 @@
       null
      ],
      "prints": {
-      "CHRG-116shrg40972": "ambiguous",
-      "CHRG-116shrg40386": "ambiguous"
-     }
-    },
-    {
-     "key": [
-      327256,
-      "recording"
-     ],
-     "before": [
-      "unknown",
-      null
-     ],
-     "after": [
-      "present",
-      null
-     ],
-     "prints": {
-      "CHRG-116shrg29104934": "ambiguous",
-      "CHRG-116shrg29104937": "ambiguous",
-      "CHRG-116shrg40186": "ambiguous",
-      "CHRG-116shrg19104895": "ambiguous"
+      "CHRG-116shrg40386": "ambiguous",
+      "CHRG-116shrg40972": "ambiguous"
      }
     },
     {
@@ -7573,25 +5786,6 @@
       "CHRG-116shrg29104935": "ambiguous",
       "CHRG-116shrg19104896": "ambiguous",
       "CHRG-116shrg29104938": "ambiguous"
-     }
-    },
-    {
-     "key": [
-      328981,
-      "recording"
-     ],
-     "before": [
-      "unknown",
-      null
-     ],
-     "after": [
-      "present",
-      null
-     ],
-     "prints": {
-      "CHRG-117shrg44162": "ambiguous",
-      "CHRG-117shrg44165": "disagree",
-      "CHRG-117shrg29104945": "ambiguous"
      }
     },
     {
@@ -7679,11 +5873,32 @@
      ],
      "prints": {
       "CHRG-117shrg50338": "disagree",
+      "CHRG-117shrg39104980": "ambiguous",
+      "CHRG-117shrg44184": "ambiguous",
       "CHRG-117shrg29104958": "disagree",
       "CHRG-117shrg39104981": "disagree",
-      "CHRG-117shrg39104998": "disagree",
-      "CHRG-117shrg39104980": "ambiguous",
-      "CHRG-117shrg44184": "ambiguous"
+      "CHRG-117shrg39104998": "disagree"
+     }
+    },
+    {
+     "key": [
+      329211,
+      "recording"
+     ],
+     "before": [
+      "unknown",
+      null
+     ],
+     "after": [
+      "present",
+      null
+     ],
+     "prints": {
+      "CHRG-117shrg50338": "disagree",
+      "CHRG-117shrg39104980": "disagree",
+      "CHRG-117shrg29104958": "disagree",
+      "CHRG-117shrg39104981": "disagree",
+      "CHRG-117shrg39104998": "ambiguous"
      }
     },
     {
@@ -7720,24 +5935,6 @@
      "prints": {
       "CHRG-117shrg45981": "ambiguous",
       "CHRG-117shrg50295": "ambiguous"
-     }
-    },
-    {
-     "key": [
-      329642,
-      "recording"
-     ],
-     "before": [
-      "unknown",
-      null
-     ],
-     "after": [
-      "present",
-      null
-     ],
-     "prints": {
-      "CHRG-117shrg49552": "disagree",
-      "CHRG-117shrg29104948": "ambiguous"
      }
     },
     {
@@ -7761,7 +5958,7 @@
     },
     {
      "key": [
-      329731,
+      330128,
       "recording"
      ],
      "before": [
@@ -7773,12 +5970,31 @@
       null
      ],
      "prints": {
-      "CHRG-117shrg56723": "ambiguous"
+      "CHRG-117shrg50802": "ambiguous",
+      "CHRG-117shrg52109": "ambiguous"
      }
     },
     {
      "key": [
-      329746,
+      330128,
+      "witnesses"
+     ],
+     "before": [
+      "not_stated",
+      null
+     ],
+     "after": [
+      "present",
+      null
+     ],
+     "prints": {
+      "CHRG-117shrg50802": "ambiguous",
+      "CHRG-117shrg52109": "ambiguous"
+     }
+    },
+    {
+     "key": [
+      330206,
       "recording"
      ],
      "before": [
@@ -7790,18 +6006,15 @@
       null
      ],
      "prints": {
-      "CHRG-117shrg39104976": "disagree",
-      "CHRG-117shrg29104943": "disagree",
-      "CHRG-117shrg44187": "ambiguous",
-      "CHRG-117shrg39104973": "disagree",
-      "CHRG-117shrg39104983": "ambiguous"
+      "CHRG-117shrg51112": "ambiguous",
+      "CHRG-117shrg51115": "disagree"
      }
     }
    ],
    "premise_fails": [
     {
      "key": [
-      101945,
+      102952,
       "recording"
      ],
      "before": [
@@ -7813,14 +6026,33 @@
       null
      ],
      "prints": {
-      "CHRG-113hhrg87855": "disagree",
-      "CHRG-113hhrg87854": "disagree",
-      "CHRG-113hhrg87856": "disagree"
+      "CHRG-114hhrg94097": "disagree",
+      "CHRG-114hhrg94098": "disagree",
+      "CHRG-114hhrg94099": "disagree"
      }
     },
     {
      "key": [
-      103106,
+      103390,
+      "witnesses"
+     ],
+     "before": [
+      "not_stated",
+      null
+     ],
+     "after": [
+      "present",
+      null
+     ],
+     "prints": {
+      "CHRG-114hhrg95250": "disagree",
+      "CHRG-114hhrg94837": "disagree",
+      "CHRG-114hhrg25879": "disagree"
+     }
+    },
+    {
+     "key": [
+      104017,
       "recording"
      ],
      "before": [
@@ -7832,9 +6064,27 @@
       null
      ],
      "prints": {
-      "CHRG-114hhrg94230": "disagree",
-      "CHRG-114hhrg94232": "disagree",
-      "CHRG-114hhrg94231": "disagree"
+      "CHRG-114hhrg97194": "disagree",
+      "CHRG-114hhrg97192": "disagree"
+     }
+    },
+    {
+     "key": [
+      104619,
+      "recording"
+     ],
+     "before": [
+      "claimed",
+      "video_text_only"
+     ],
+     "after": [
+      "present",
+      null
+     ],
+     "prints": {
+      "CHRG-114hhrg99649": "disagree",
+      "CHRG-114hhrg99651": "disagree",
+      "CHRG-114hhrg99650": "disagree"
      }
     },
     {
@@ -7856,6 +6106,112 @@
     },
     {
      "key": [
+      105583,
+      "recording"
+     ],
+     "before": [
+      "unknown",
+      null
+     ],
+     "after": [
+      "present",
+      null
+     ],
+     "prints": {
+      "CHRG-115hhrg29369": "disagree"
+     }
+    },
+    {
+     "key": [
+      105767,
+      "recording"
+     ],
+     "before": [
+      "claimed",
+      "video_text_only"
+     ],
+     "after": [
+      "present",
+      null
+     ],
+     "prints": {
+      "CHRG-115hhrg25146": "disagree"
+     }
+    },
+    {
+     "key": [
+      105881,
+      "recording"
+     ],
+     "before": [
+      "claimed",
+      "video_text_only"
+     ],
+     "after": [
+      "present",
+      null
+     ],
+     "prints": {
+      "CHRG-115hhrg25824": "disagree",
+      "CHRG-115hhrg25825": "disagree"
+     }
+    },
+    {
+     "key": [
+      106851,
+      "recording"
+     ],
+     "before": [
+      "claimed",
+      "video_text_only"
+     ],
+     "after": [
+      "present",
+      null
+     ],
+     "prints": {
+      "CHRG-115hhrg28995": "disagree",
+      "CHRG-115hhrg28996": "disagree"
+     }
+    },
+    {
+     "key": [
+      108076,
+      "recording"
+     ],
+     "before": [
+      "claimed",
+      "video_text_only"
+     ],
+     "after": [
+      "present",
+      null
+     ],
+     "prints": {
+      "CHRG-115hhrg30570": "disagree",
+      "CHRG-115hhrg30571": "disagree",
+      "CHRG-115hhrg30569": "disagree"
+     }
+    },
+    {
+     "key": [
+      108105,
+      "recording"
+     ],
+     "before": [
+      "claimed",
+      "video_text_only"
+     ],
+     "after": [
+      "present",
+      null
+     ],
+     "prints": {
+      "CHRG-115hhrg31511": "disagree"
+     }
+    },
+    {
+     "key": [
       108441,
       "recording"
      ],
@@ -7869,6 +6225,462 @@
      ],
      "prints": {
       "CHRG-115hhrg30350": "disagree"
+     }
+    },
+    {
+     "key": [
+      110686,
+      "recording"
+     ],
+     "before": [
+      "unknown",
+      null
+     ],
+     "after": [
+      "present",
+      null
+     ],
+     "prints": {
+      "CHRG-116hhrg43478": "disagree",
+      "CHRG-116hhrg41501": "disagree"
+     }
+    },
+    {
+     "key": [
+      111156,
+      "witnesses"
+     ],
+     "before": [
+      "not_stated",
+      null
+     ],
+     "after": [
+      "present",
+      null
+     ],
+     "prints": {
+      "CHRG-117hhrg46838": "disagree",
+      "CHRG-117hhrg47471": "disagree"
+     }
+    },
+    {
+     "key": [
+      113955,
+      "recording"
+     ],
+     "before": [
+      "unknown",
+      null
+     ],
+     "after": [
+      "present",
+      null
+     ],
+     "prints": {
+      "CHRG-117hhrg45372": "disagree",
+      "CHRG-117hhrg45371": "disagree"
+     }
+    },
+    {
+     "key": [
+      113959,
+      "witnesses"
+     ],
+     "before": [
+      "not_stated",
+      null
+     ],
+     "after": [
+      "present",
+      null
+     ],
+     "prints": {
+      "CHRG-117hhrg46434": "disagree",
+      "CHRG-117hhrg48118": "disagree"
+     }
+    },
+    {
+     "key": [
+      114445,
+      "witnesses"
+     ],
+     "before": [
+      "not_stated",
+      null
+     ],
+     "after": [
+      "present",
+      null
+     ],
+     "prints": {
+      "CHRG-117hhrg47065": "disagree"
+     }
+    },
+    {
+     "key": [
+      114696,
+      "recording"
+     ],
+     "before": [
+      "unknown",
+      null
+     ],
+     "after": [
+      "present",
+      null
+     ],
+     "prints": {
+      "CHRG-117hhrg48447": "disagree",
+      "CHRG-117hhrg48632": "disagree",
+      "CHRG-117hhrg48578": "disagree"
+     }
+    },
+    {
+     "key": [
+      114960,
+      "witnesses"
+     ],
+     "before": [
+      "not_stated",
+      null
+     ],
+     "after": [
+      "present",
+      null
+     ],
+     "prints": {
+      "CHRG-117hhrg47809": "disagree"
+     }
+    },
+    {
+     "key": [
+      115528,
+      "witnesses"
+     ],
+     "before": [
+      "not_stated",
+      null
+     ],
+     "after": [
+      "present",
+      null
+     ],
+     "prints": {
+      "CHRG-118hhrg51624": "disagree"
+     }
+    },
+    {
+     "key": [
+      116159,
+      "witnesses"
+     ],
+     "before": [
+      "not_stated",
+      null
+     ],
+     "after": [
+      "present",
+      null
+     ],
+     "prints": {
+      "CHRG-118hhrg57716": "disagree",
+      "CHRG-118hhrg58105": "disagree"
+     }
+    },
+    {
+     "key": [
+      116599,
+      "recording"
+     ],
+     "before": [
+      "unknown",
+      null
+     ],
+     "after": [
+      "present",
+      null
+     ],
+     "prints": {
+      "CHRG-118hhrg53969": "disagree",
+      "CHRG-118hhrg54226": "disagree"
+     }
+    },
+    {
+     "key": [
+      325997,
+      "recording"
+     ],
+     "before": [
+      "unknown",
+      null
+     ],
+     "after": [
+      "present",
+      null
+     ],
+     "prints": {
+      "CHRG-116shrg37808": "disagree"
+     }
+    },
+    {
+     "key": [
+      325997,
+      "witnesses"
+     ],
+     "before": [
+      "not_stated",
+      null
+     ],
+     "after": [
+      "present",
+      null
+     ],
+     "prints": {
+      "CHRG-116shrg37808": "disagree"
+     }
+    },
+    {
+     "key": [
+      326045,
+      "recording"
+     ],
+     "before": [
+      "unknown",
+      null
+     ],
+     "after": [
+      "present",
+      null
+     ],
+     "prints": {
+      "CHRG-116shrg39540": "disagree"
+     }
+    },
+    {
+     "key": [
+      326045,
+      "witnesses"
+     ],
+     "before": [
+      "not_stated",
+      null
+     ],
+     "after": [
+      "present",
+      null
+     ],
+     "prints": {
+      "CHRG-116shrg39540": "disagree"
+     }
+    },
+    {
+     "key": [
+      329125,
+      "recording"
+     ],
+     "before": [
+      "unknown",
+      null
+     ],
+     "after": [
+      "present",
+      null
+     ],
+     "prints": {
+      "CHRG-117shrg54107": "disagree",
+      "CHRG-117shrg53087": "disagree"
+     }
+    },
+    {
+     "key": [
+      329125,
+      "witnesses"
+     ],
+     "before": [
+      "not_stated",
+      null
+     ],
+     "after": [
+      "present",
+      null
+     ],
+     "prints": {
+      "CHRG-117shrg54107": "disagree",
+      "CHRG-117shrg53087": "disagree"
+     }
+    },
+    {
+     "key": [
+      329349,
+      "recording"
+     ],
+     "before": [
+      "unknown",
+      null
+     ],
+     "after": [
+      "present",
+      null
+     ],
+     "prints": {
+      "CHRG-117shrg49526": "disagree",
+      "CHRG-117shrg49785": "disagree"
+     }
+    },
+    {
+     "key": [
+      329349,
+      "witnesses"
+     ],
+     "before": [
+      "not_stated",
+      null
+     ],
+     "after": [
+      "present",
+      null
+     ],
+     "prints": {
+      "CHRG-117shrg49526": "disagree",
+      "CHRG-117shrg49785": "disagree"
+     }
+    },
+    {
+     "key": [
+      329705,
+      "recording"
+     ],
+     "before": [
+      "unknown",
+      null
+     ],
+     "after": [
+      "present",
+      null
+     ],
+     "prints": {
+      "CHRG-117shrg50916": "disagree"
+     }
+    },
+    {
+     "key": [
+      329847,
+      "recording"
+     ],
+     "before": [
+      "unknown",
+      null
+     ],
+     "after": [
+      "present",
+      null
+     ],
+     "prints": {
+      "CHRG-117shrg47218": "disagree"
+     }
+    },
+    {
+     "key": [
+      329847,
+      "witnesses"
+     ],
+     "before": [
+      "not_stated",
+      null
+     ],
+     "after": [
+      "present",
+      null
+     ],
+     "prints": {
+      "CHRG-117shrg47218": "disagree"
+     }
+    },
+    {
+     "key": [
+      330023,
+      "recording"
+     ],
+     "before": [
+      "unknown",
+      null
+     ],
+     "after": [
+      "present",
+      null
+     ],
+     "prints": {
+      "CHRG-117shrg46167": "disagree"
+     }
+    },
+    {
+     "key": [
+      330126,
+      "recording"
+     ],
+     "before": [
+      "unknown",
+      null
+     ],
+     "after": [
+      "present",
+      null
+     ],
+     "prints": {
+      "CHRG-117shrg50802": "disagree",
+      "CHRG-117shrg52109": "disagree"
+     }
+    },
+    {
+     "key": [
+      330126,
+      "witnesses"
+     ],
+     "before": [
+      "not_stated",
+      null
+     ],
+     "after": [
+      "present",
+      null
+     ],
+     "prints": {
+      "CHRG-117shrg50802": "disagree",
+      "CHRG-117shrg52109": "disagree"
+     }
+    },
+    {
+     "key": [
+      330180,
+      "recording"
+     ],
+     "before": [
+      "unknown",
+      null
+     ],
+     "after": [
+      "present",
+      null
+     ],
+     "prints": {
+      "CHRG-117shrg52334": "disagree"
+     }
+    },
+    {
+     "key": [
+      330180,
+      "witnesses"
+     ],
+     "before": [
+      "not_stated",
+      null
+     ],
+     "after": [
+      "present",
+      null
+     ],
+     "prints": {
+      "CHRG-117shrg52334": "disagree"
      }
     },
     {
@@ -7890,75 +6702,42 @@
     },
     {
      "key": [
-      332466,
-      "witnesses"
+      331020,
+      "recording"
      ],
      "before": [
+      "unknown",
+      null
+     ],
+     "after": [
       "present",
       null
      ],
-     "after": [
-      "unknown",
-      "package_witnesses_unattached"
-     ],
      "prints": {
-      "CHRG-117shrg47939": "agree"
-     }
-    },
-    {
-     "key": [
-      334023,
-      "witnesses"
-     ],
-     "before": [
-      "present",
-      null
-     ],
-     "after": [
-      "unknown",
-      "package_witnesses_unattached"
-     ],
-     "prints": {
-      "CHRG-118shrg53981": "agree"
-     }
-    },
-    {
-     "key": [
-      334295,
-      "witnesses"
-     ],
-     "before": [
-      "not_stated",
-      null
-     ],
-     "after": [
-      "unknown",
-      "package_witnesses_unattached"
-     ],
-     "prints": {
-      "CHRG-118shrg52711": "agree",
-      "CHRG-118shrg52710": "disagree"
-     }
-    },
-    {
-     "key": [
-      336701,
-      "witnesses"
-     ],
-     "before": [
-      "present",
-      null
-     ],
-     "after": [
-      "unknown",
-      "package_witnesses_unattached"
-     ],
-     "prints": {
-      "CHRG-119shrg59776": "agree"
+      "CHRG-117shrg46202": "disagree"
      }
     }
    ],
    "unread": [
+    {
+     "key": [
+      103138,
+      "recording"
+     ],
+     "before": [
+      "claimed",
+      "video_text_only"
+     ],
+     "after": [
+      "present",
+      null
+     ],
+     "prints": {
+      "CHRG-114hhrg94225": "unread",
+      "CHRG-114hhrg94226": "disagree",
+      "CHRG-114hhrg94224": "disagree"
+     }
+    },
     {
      "key": [
       105475,
@@ -8532,19 +7311,21 @@
    ]
   },
   "by_aspect": {
-   "captions:not_checked": 7917,
+   "captions:not_checked": 7916,
    "documents:premise_holds": 2058,
    "documents:unread": 38,
-   "recording:ambiguous": 53,
+   "recording:ambiguous": 42,
    "recording:not_checked": 267,
-   "recording:premise_fails": 3,
-   "recording:premise_holds": 537,
+   "recording:premise_fails": 31,
+   "recording:premise_holds": 520,
+   "recording:unread": 1,
    "transcript:ambiguous": 2,
-   "transcript:not_checked": 61,
-   "transcript:premise_holds": 79,
-   "witnesses:ambiguous": 16,
-   "witnesses:premise_fails": 6,
-   "witnesses:premise_holds": 3518
+   "transcript:not_checked": 1925,
+   "transcript:premise_holds": 78,
+   "witnesses:ambiguous": 12,
+   "witnesses:not_checked": 1,
+   "witnesses:premise_fails": 34,
+   "witnesses:premise_holds": 3525
   },
   "transitions": [
    [
@@ -8552,35 +7333,35 @@
     "not_stated",
     "unknown",
     "recording_link_pending",
-    6104
+    6117
    ],
    [
     "captions",
     "not_stated",
     "unknown",
     "recording_without_video_record",
-    1600
+    1587
    ],
    [
     "captions",
     "not_stated",
     "unknown",
     null,
-    148
+    152
    ],
    [
     "captions",
     "unknown",
     "unknown",
     "recording_link_pending",
-    62
+    58
    ],
    [
     "captions",
     "unknown",
     "unknown",
     "recording_without_video_record",
-    3
+    2
    ],
    [
     "documents",
@@ -8608,14 +7389,14 @@
     "claimed",
     "present",
     null,
-    118
+    125
    ],
    [
     "recording",
     "confirmed_absent",
     "unknown",
     null,
-    7
+    10
    ],
    [
     "recording",
@@ -8629,7 +7410,7 @@
     "present",
     "claimed",
     "video_text_only",
-    35
+    36
    ],
    [
     "recording",
@@ -8643,7 +7424,7 @@
     "present",
     "unknown",
     null,
-    149
+    147
    ],
    [
     "recording",
@@ -8657,7 +7438,7 @@
     "unknown",
     "confirmed_absent",
     null,
-    7
+    6
    ],
    [
     "recording",
@@ -8671,14 +7452,14 @@
     "unknown",
     "partial",
     "excerpts_only",
-    38
+    37
    ],
    [
     "recording",
     "unknown",
     "present",
     null,
-    475
+    469
    ],
    [
     "recording",
@@ -8699,14 +7480,21 @@
     "not_stated",
     "present",
     null,
-    61
+    60
    ],
    [
     "transcript",
     "not_stated",
     "unknown",
     "package_names_meeting_unlinked",
-    61
+    62
+   ],
+   [
+    "transcript",
+    "present",
+    "unresolved",
+    null,
+    1863
    ],
    [
     "transcript",
@@ -8727,27 +7515,41 @@
     "not_stated",
     "unknown",
     "package_witnesses_unattached",
-    55
+    35
    ],
    [
     "witnesses",
     "not_stated",
     "unknown",
     "senate_page_links_pending",
-    2919
+    2926
+   ],
+   [
+    "witnesses",
+    "present",
+    "not_stated",
+    null,
+    1
    ],
    [
     "witnesses",
     "present",
     "unknown",
     "package_witnesses_unattached",
-    121
+    123
+   ],
+   [
+    "witnesses",
+    "present",
+    "unknown",
+    "senate_page_links_pending",
+    42
    ]
   ],
   "note": "No raw record can prove unknown; only the premise of each relabel is checked."
  },
  "prints": {
-  "read": 10763,
+  "read": 10765,
   "unread": [
    "CHRG-114hhrg20543",
    "CHRG-114hhrg20792",

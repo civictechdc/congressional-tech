@@ -202,3 +202,22 @@ Red-f's cases: 330128, 329130, 335820 now carry their own prints (CHRG-117shrg50
 101498, 101400, 104460 and 101644 are held (status Canceled kept), 101422 still moves to 101545, 116450
 does not move, and Haaland 328803 carries its two-day print. not_held 409; rescheduled_to 78. Witness rows
 147,888 -> 139,077: about 10k MODS rows now sit on meetings whose House XML or Congress.gov list outranks them.
+
+### Second re-review (red-f2): witnesses decide, precedence per person
+
+Inputs are durable under `.cache/archive-release/r1b-frozen/` (README there: release 448651e7 verified 19/19 by
+sha256, lake and decisions rebuilt from v21 inputs, specs, digests). Engine docspec-rs 5dae611. The raw check
+judges each changed print by raw witness overlap with the meetings its jacket or eventId links (family names,
+two shared people), title containment when a side lists none, and a Postponed/Canceled duplicate yielding to
+the meeting that sat.
+
+| Family | Rows | Raw verdicts |
+|---|---|---|
+| not_held | 430 | 430 supported |
+| rescheduled_to | 86 | 84 supported, 2 ambiguous reworded titles |
+| print attachments changed | 6,972 | 6,909 supported, 31 match the old state (generic-title Senate prints the model leaves package-only, and prints the model accepts by title where raw finds no list match), 31 model picked one of several raw-admissible same-day meetings, 1 contradicted (CHRG-117hhrg50139, a seven-day print: raw adds 113969, model adds 114978) |
+| House witness lists | 227 | 187 body links, 40 receipt path only |
+| red-f2 lost cases | 192 | 185 published; the 7 others are memo or QFR text lines in a print, not people |
+
+Witness rows: 173,067 published, 141,255 shown (`superseded_by` null), 31,812 superseded by the same person
+from a higher-ranked source, 7,230 labelled statements.
