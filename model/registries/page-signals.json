@@ -30,6 +30,12 @@
     "sample_id": "page-signals:visible_challenge"
   },
   {
+    "id": "senate_waf_block",
+    "kind": "error_word",
+    "pattern": "(?i)request not accepted - security risk detected",
+    "sample_id": "page-signals:senate_waf_block"
+  },
+  {
     "id": "metadata_roots",
     "kind": "source_record_root",
     "pattern": "^(\\{[^}]+\\})?(mods|mets|premis|committee-meeting|witness-list)$",

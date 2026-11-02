@@ -75,6 +75,14 @@
       "source": "s2-site/sample.json p050 inspected retained text"
     },
     {
+      "id": "page-signals:senate_waf_block",
+      "registry": "page-signals",
+      "entry": "senate_waf_block",
+      "value": "U.S. Senate: Request not Accepted - Security Risk Detected",
+      "expected": true,
+      "source": "documents/2026-09-29:9230 and :6 final address senate.gov/.../waf.htm, body 3460294b37 retained html title; 3 v21 bodies carry it"
+    },
+    {
       "id": "page-signals:metadata_roots",
       "registry": "page-signals",
       "entry": "metadata_roots",

@@ -40,6 +40,7 @@ WITH roles AS (
                 AND c.capture_index = sg.capture_index
             ) ON c.sha256 = b.body_sha
         ) ON (c.url IS NOT DISTINCT FROM l.url)
+            AND (c.requested_url IS NOT DISTINCT FROM l.requested_url)
             AND (c.member_path IS NOT DISTINCT FROM l.member_path)
     ) ON c.sha256 = p.sha256) ON c.sha256 = a.sha256
 )

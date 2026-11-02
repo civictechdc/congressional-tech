@@ -6,15 +6,23 @@ WITH rules AS (
     UNION ALL
     SELECT 'file_shape' AS kind, pattern FROM file_shapes
 )
-SELECT c.url, c.member_path,
+-- A redirect is judged by both addresses (red-e1b): an error address at either end is an
+-- error, and a file-shaped request stays file-shaped unless it landed on an error address.
+SELECT c.url, c.requested_url, c.member_path,
     bool_or(CASE WHEN r.kind = 'api_endpoint'
         THEN coalesce(regexp_like(c.url, r.pattern), false) ELSE false END) AS api,
     bool_or(CASE WHEN r.kind = 'error_url'
-        THEN coalesce(regexp_like(c.url, r.pattern), false) ELSE false END) AS error_response,
+        THEN coalesce(regexp_like(c.url, r.pattern), false)
+          OR coalesce(regexp_like(c.requested_url, r.pattern), false) ELSE false END) AS error_response,
     bool_or(CASE WHEN r.kind = 'feed_url'
         THEN coalesce(regexp_like(c.url, r.pattern), false) ELSE false END) AS feed,
     bool_or(CASE WHEN r.kind = 'file_shape'
         THEN coalesce(regexp_like(coalesce(c.member_path, c.url), r.pattern), false)
-        ELSE false END) AS file_shaped
+        ELSE false END)
+    OR (c.member_path IS NULL
+        AND bool_or(CASE WHEN r.kind = 'file_shape'
+            THEN coalesce(regexp_like(c.requested_url, r.pattern), false) ELSE false END)
+        AND NOT bool_or(CASE WHEN r.kind = 'error_url'
+            THEN coalesce(regexp_like(c.url, r.pattern), false) ELSE false END)) AS file_shaped
 FROM rules r CROSS JOIN capture_locators c
-GROUP BY c.url, c.member_path
+GROUP BY c.url, c.requested_url, c.member_path

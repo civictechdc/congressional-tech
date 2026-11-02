@@ -1103,6 +1103,68 @@
         "record_role": "source_record",
         "real_file": false
       }
+    },
+    {
+      "id": "redirected-waf-block-page",
+      "input": {
+        "mode": "fetch",
+        "outcome": "stored",
+        "complete": true,
+        "bytes": 21865,
+        "context_url": "https://www.armed-services.senate.gov/download/23-70_---12-06-2023--------transcript",
+        "requested_url": "https://www.armed-services.senate.gov/download/23-70_---12-06-2023--------transcript",
+        "url": "https://www.senate.gov/pagelayout/general/one_item_and_teasers/waf.htm",
+        "member_path": null,
+        "format": "html",
+        "intact": null,
+        "intact_basis": "unchecked",
+        "reading_status": "completed",
+        "xml_root": null,
+        "text_head": "Find Your Senators Alabama Alaska Arizona Arkansas California Colorado",
+        "text_bytes": 2166,
+        "link_count": 40,
+        "link_text_bytes": 400,
+        "http_status": 200,
+        "sha256": "redirected-waf-block-page",
+        "title": "U.S. Senate: Request not Accepted - Security Risk Detected",
+        "heading": "Request not Accepted - Security Risk Detected"
+      },
+      "expected": {
+        "record_role": "error_response",
+        "real_file": false
+      },
+      "source": "documents/2026-09-29:9230 (body 3460294b37...): a transcript download redirected to the Senate WAF page"
+    },
+    {
+      "id": "redirected-file-request-to-page",
+      "input": {
+        "mode": "fetch",
+        "outcome": "stored",
+        "complete": true,
+        "bytes": 21865,
+        "context_url": "https://www.armed-services.senate.gov/download/23-70_---12-06-2023--------transcript",
+        "requested_url": "https://www.armed-services.senate.gov/download/23-70_---12-06-2023--------transcript",
+        "url": "https://www.senate.gov/pagelayout/general/one_item_and_teasers/waf.htm",
+        "member_path": null,
+        "format": "html",
+        "intact": null,
+        "intact_basis": "unchecked",
+        "reading_status": "completed",
+        "xml_root": null,
+        "text_head": "Find Your Senators Alabama Alaska Arizona Arkansas California Colorado",
+        "text_bytes": 2166,
+        "link_count": 40,
+        "link_text_bytes": 400,
+        "http_status": 200,
+        "sha256": "redirected-file-request-to-page",
+        "title": "Committee page",
+        "heading": "Committee page"
+      },
+      "expected": {
+        "record_role": "document",
+        "real_file": false
+      },
+      "source": "Same request/final addresses as 9230 with a neutral page: a file request that lands on an HTML page is not a real file"
     }
   ],
   "groups": [

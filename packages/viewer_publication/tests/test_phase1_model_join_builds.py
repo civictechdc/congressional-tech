@@ -58,8 +58,8 @@ def test_content_and_locator_signals_build_only_small_rule_inputs(tmp_path):
             title='Report',heading='Report',text_head='Substantive report',text_bytes=1000,
             link_count=0,link_text_bytes=0)],body='Utf8',status='Utf8',xml_root='Utf8',title='Utf8',
             heading='Utf8',text_head='Utf8',text_bytes='Int64',link_count='Int64',link_text_bytes='Int64'),
-        json_input(tmp_path,'capture_locators',[dict(url='https://fixture.test/report.pdf',member_path=None)],
-            url='Utf8',member_path='Utf8'),
+        json_input(tmp_path,'capture_locators',[dict(url='https://fixture.test/report.pdf',requested_url=None,member_path=None)],
+            url='Utf8',requested_url='Utf8',member_path='Utf8'),
         json_input(tmp_path,'page_signals',[
             dict(id='near_empty',kind='threshold',pattern=None,number=100),
             dict(id='listing_links',kind='threshold',pattern=None,number=5),
