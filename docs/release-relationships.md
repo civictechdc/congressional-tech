@@ -134,7 +134,28 @@ Nullability: Both columns are required by data model §8.1. A required column is
 
 Outgoing: `links_document`.
 
-Incoming: `document_public_link`.
+Incoming: `document_public_link`, `retired_link_successor`.
+
+## `retired_links` — Redirects and removal notices for link keys no longer published
+
+One retired link key with its successor or a removal notice.
+
+Identity: `link_key` (primary_key; published identifier).
+
+| Field | Published type | Nullable | Meaning |
+| --- | --- | --- | --- |
+| `link_key` | `fixed[8]` | no | A link key an earlier release published and this release no longer publishes in links |
+| `successor_key` | `fixed[8]` | yes | The current document's primary link key that the retired key redirects to; null means a removal notice |
+| `last_release_id` | `string` | no | The latest release that published the key |
+| `last_filename` | `string` | yes | The filename the key resolved to in that release |
+
+Nullability: Nullability transcribes data model §8.1 (retired_links.parquet row). A required column is refused at write time.
+
+- `link_key`: Disjoint from links.link_key. A key published again leaves the ledger. Data model §8.2, Retired keys.
+
+Outgoing: `retired_link_successor`.
+
+Incoming: none.
 
 ## `urls` — Normalized source address lookup
 
@@ -1022,6 +1043,12 @@ many-to-one; match: `equal`; nullable: false; resolution: `required`. Scope: sel
 `channels.system_code` → `committees.system_code`. The committee of a curated mapping.
 
 many-to-one; match: `equal`; nullable: false; resolution: `unresolved_allowed`. Scope: selected release.
+
+### `retired_link_successor`
+
+`retired_links.successor_key` → `links.link_key`. A retired key redirects to the document its successor key resolves to.
+
+many-to-one; match: `equal`; nullable: true; resolution: `required`. Scope: selected release.
 
 ## Pinned upstream relations
 
