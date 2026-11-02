@@ -226,10 +226,13 @@ def mutate_captures(root, spec, name, change):
 def test_mutant_http_202_treated_as_stored_is_caught(built):
     root, spec, facts, _ = built
     stored = lambda r: dict(r, outcome='stored', fetch_outcome='stored') if r['receipt_key'] == HTTP_202 else r
-    release = build(root, spec, captures=mutate_captures(root, spec, 'm202', stored), label='m202')
-    # The challenge page does not become a document here (its row is not a real file), but
-    # url_state reports a stored acquisition where raw says the fetch failed.
-    assert 'url_state does not record the HTTP 202 as failed' in violations(release, spec, facts)
+    # Cluster e1's model invariant refuses a good fetch that is not a document at build time,
+    # before any release file exists; that is where this mutant is caught now.
+    with pytest.raises(ValueError, match='Release key invariant failed'):
+        build(root, spec, captures=mutate_captures(root, spec, 'm202', stored), label='m202')
+    assert not (root / 'm202/manifest.json').exists()
+    reports = {q['name']: q['data'] for q in json.loads((root / 'm202-model/result.json').read_text())['queries']}
+    assert reports['model_invariants'][0]['non_document_good_fetches'] > 0
 
 
 def test_mutant_members_not_real_is_caught(built):

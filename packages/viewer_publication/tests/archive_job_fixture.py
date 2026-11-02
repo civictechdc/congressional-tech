@@ -74,7 +74,7 @@ def derive_model_spec(tmp_path,*,raw,captures,entities=False):
         staged=[('captures',captures),('readings',pages['readings']),('filename_readings',names['readings'])]
         if entities:
             from congress_api.lake import appearance_records,meeting_records
-            common=dict(captures=captures,engine=engine,local_root=raw,decided_at='2026-10-27T12:00:00Z')
+            common=dict(captures=captures,engine=engine,local_root=raw,decided_at='2026-10-27T12:00:00Z',readings=pages['readings'])
             staged+=[('meeting_records',meeting_records.stage(work=tmp_path/'meeting-stage',**common)['records']),
                      ('appearance_records',appearance_records.stage(work=tmp_path/'appearance-stage',**common)['records'])]
             value['parser_versions']=dict(value['parser_versions'],meeting_records=meeting_records.current_versions(),

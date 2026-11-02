@@ -16,12 +16,21 @@ CURRENT = _captures.current_version()  # the producer record's commit must compu
 
 
 def with_mapping(spec, tmp_path, values):
-    """Until cluster e1 stages mapping_version, the fixture adds the column by hand."""
+    """Staged captures carry e1's mapping_version; replace it with the values under test."""
     table = pq.read_table(spec['captures']['path'])
     rows = table.num_rows
     column = pa.array((values * rows)[:rows], pa.string())
+    index = table.schema.get_field_index('mapping_version')
     path = tmp_path / 'captures-mapped.parquet'
-    pq.write_table(table.append_column('mapping_version', column), path)
+    pq.write_table(table.set_column(index, pa.field('mapping_version', pa.string()), column), path)
+    return dict(spec, captures=dict(kind='parquet', path=str(path)))
+
+
+def without_mapping(spec, tmp_path):
+    """The v21 shape: captures written with no mapping_version column at all."""
+    table = pq.read_table(spec['captures']['path'])
+    path = tmp_path / 'captures-unmapped.parquet'
+    pq.write_table(table.drop_columns(['mapping_version']), path)
     return dict(spec, captures=dict(kind='parquet', path=str(path)))
 
 
@@ -64,9 +73,15 @@ def test_null_or_unknown_mapping_refuses_and_names_the_rule(spec, tmp_path, valu
 
 
 def test_captures_without_the_column_refuse(spec, tmp_path):
-    """Today's staged captures (pre-e1) and the v21 captures have no mapping_version."""
+    """The v21 captures, written by an unrecorded pyarrow writer, have no mapping_version."""
     with pytest.raises(ValueError, match='captures has no mapping_version column'):
-        run(spec, tmp_path, 'absent')
+        run(without_mapping(spec, tmp_path), tmp_path, 'absent')
+
+
+def test_staged_captures_carry_the_current_mapping(spec, tmp_path):
+    """Cluster e1's captures stage writes mapping_version; unmodified rows pass the row rule."""
+    report = run(spec, tmp_path, 'staged')
+    assert report['captures__mapping_version_null'] == 0 and report['captures__mapping_version_unknown'] == 0
 
 
 def test_registered_compatible_mapping_passes(spec, tmp_path, monkeypatch):

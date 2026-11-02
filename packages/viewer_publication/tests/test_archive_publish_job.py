@@ -698,8 +698,8 @@ def test_failing_end_to_end_gate_refuses_before_any_runtime_or_sdk(tmp_path,monk
 
 
 def test_execute_refuses_captures_without_a_producer_version(tmp_path):
-    """Gate 5 runs in execute, before run_publish: today's staged captures carry no
-    mapping_version (cluster e1 adds it), so the real path refuses and names the rule."""
+    """Gate 5 runs in execute, before run_publish: a spec with no producer records refuses
+    and names the rule broken, for every pinned table."""
     from docspec_client.client import NativeDatasets
     from viewer_publication.archive_publish_job import execute,load_spec
     from archive_job_fixture import real_model_spec
@@ -723,7 +723,7 @@ def test_execute_refuses_captures_without_a_producer_version(tmp_path):
     def runtime_factory(path):
         return Runtime(NativeDatasets.from_config(os.environ['DOCSPEC_JOB_CONFIG']),json.loads(Path(path).read_text()))
     def never(*a,**k):raise AssertionError('no probe before gate 5')
-    with pytest.raises(ValueError,match='captures has no mapping_version column'):
+    with pytest.raises(ValueError,match='captures: no producer record'):
         execute(load_spec(specpath),runtime_factory=runtime_factory,storage_factory=lambda **_:store,
                 process_runner=never,end_to_end_runner=END_TO_END_PASSED)
     assert not Path(model['output']).exists() and 'viewer-publications/manifest.json' not in store.objects

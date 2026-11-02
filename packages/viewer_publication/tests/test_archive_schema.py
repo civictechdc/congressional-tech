@@ -188,8 +188,8 @@ def test_null_in_declared_list_column_refuses_before_manifest(tmp_path):
         shutil.copyfile(ROOT / relative, target)
     sql = broken / 'model/sql/document-normalized.sql'
     text = sql.read_text()
-    assert 's.filename,a.title' in text
-    sql.write_text(text.replace('s.filename,a.title', 'cast(NULL AS VARCHAR) AS filename,a.title', 1))
+    assert 'body_expected,s.filename,' in text
+    sql.write_text(text.replace('body_expected,s.filename,', 'body_expected,cast(NULL AS VARCHAR) AS filename,', 1))
     output = tmp_path / 'release'
     with NativeDatasets.from_config(os.environ['DOCSPEC_JOB_CONFIG']) as engine:
         with pytest.raises(ValueError, match='Release key invariant failed'):
