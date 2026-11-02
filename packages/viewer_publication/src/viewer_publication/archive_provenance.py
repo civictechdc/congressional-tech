@@ -53,6 +53,15 @@ def attachment_steps(*,root=ROOT):
                    'recovery-attachment-diagnostics'],root)
 
 
+def recovered_copy_steps(*,root=ROOT):
+    """Name each original link a recovered copy makes another address of a published body.
+
+    Inputs: model_recovery_rows, effective_filenames, source_files, body_evidence.
+    grouping_steps(recovered_copies=True) moves each such link into the body's one document.
+    """
+    return _steps(['recovered-copy-links'],root)
+
+
 def body_review_steps(*,root=ROOT):
     """Provide body-node duplicate edges before the first component calculation."""
     return _steps(['body-review-key-conflicts','body-review-edges'],root)

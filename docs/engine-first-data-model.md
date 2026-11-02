@@ -560,6 +560,11 @@ same_rendition := real source files that are one document in different formats:
 review_edge    := a reviewer's duplicate_of between two body link keys (§7.9)
 
 components     := ConnectedComponents over source files and the nodes above
+recovered copy := (owner, 2026-11-02) an original link whose recovered copy (display kind
+                  recovered copy) is byte-identical, SHA-256 and size, to a real body moves,
+                  after components, into the one component holding that body: another address
+                  of that document, never its own. Moved, not joined by an edge, so a link
+                  copying bodies of two documents never bridges them; it stays its own.
 listed         := components with at least one real file or at least one recovery
 
 saved-file order := (format preference, unlisted formats after listed by name;
@@ -695,7 +700,8 @@ One row per recovery row: `document_id`, `original_url`, `kind` dict, `body_sha`
   - The model reports decisions that match no recovery row.
 - `recovered_url` comes from the recovery row, and from the decision only where the row has none.
 - **Kind:** one of three display classes: recovered copy (`recovered_document`, or `full_recording_recovered` for a recording), excerpt from the official hearing record (`requested_content_in_official_hearing`), or related retained material whose kind names its scope (official substitutes and download wrappers). The recovery-kind registry maps the row's category; a row with no category takes its decision's `kind`, else the registry's kind for its match basis, as on 6,519 older lines. When B7 authors a basis-only import, the registry must separately establish its `import_category`; a display fallback alone does not establish that fact. A value the registry does not list MUST fail the build.
-- **Attachment:** a recovery attaches to the one listed document whose source files' `copy_urls` hold its original link. When none does, or several do because the link came back as different editions, it belongs to the document of its original link's own source file (§7.4); that source file is otherwise in no listed document.
+- **Attachment:** a recovery attaches to the one listed document whose source files' `copy_urls` hold its original link. When none does, or several do because the link came back as different editions, it belongs to the document of its original link's own source file (§7.4); that source file is otherwise in no listed document, unless it is a recovered copy (§7.5), which puts it, and so every recovery of that link, in the document holding the copied body.
+- **Merged recovered copies keep their signal** (owner, 2026-11-02). The link is a `sources` row of the document (its listing page, link text, posting date and first try), its link URL key and lookup key resolve to the document, and its recoveries are the document's `recoveries` rows. The document shows its own saved file's filename, title, kind, family, congress, date, package and facts; where the copy has none, the link's own value fills it (`recovered-copy-fills.sql`), and where both differ the link's value stays on the link's source annotation (evidence `source_annotations`, tied to the document by `source_members`). Committee, chamber, meeting, measure, member and witness keys are unions over the document's members and recoveries. The refusing invariant `unaccounted_merged_signal` counts merged links missing any of these from the published relations; metadata `merged_recovery_fields` counts fills and conflicts per field. The r1b run (2026-11-02) had 4,060 such recovery-only rows, 44 of them with neither filename nor title.
 - 3,690 of 11,792 recovery bodies today are also real bodies ([[ARCHITECTURE]] §3).
 
 ### 7.9 `reviews`

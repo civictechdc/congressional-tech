@@ -368,11 +368,12 @@ def registry_inputs(directory,*,root=ROOT):
     return inputs
 
 
-def grouping_steps(*,node_limit=10_000_000,root=ROOT,review_edges=False):
+def grouping_steps(*,node_limit=10_000_000,root=ROOT,review_edges=False,recovered_copies=False):
     """Join narrow source/body memberships through the one native graph step.
 
     Inputs are source_files, source_endpoints (with the shared normalized
-    endpoint_key), source_directories, publisher_links, and body_fingerprints.
+    endpoint_key), source_directories, publisher_links, and body_fingerprints;
+    body_review_edges and recovered_copy_links when those are asked for.
     """
     steps=[dict(name='fingerprints',sql='SELECT body_sha,max(fingerprint) AS fingerprint FROM body_fingerprints GROUP BY body_sha',materialize=True)]
     for name in ['endpoint-bodies','fingerprint-candidates','ambiguous-endpoints','edition-bodies',
@@ -382,8 +383,19 @@ def grouping_steps(*,node_limit=10_000_000,root=ROOT,review_edges=False):
         steps[-1]['sql']+=' UNION SELECT left_node,right_node FROM body_review_edges'
     steps.append(dict(name='source_components',components=dict(sql='SELECT left_node,right_node FROM source_edges',
         left='left_node',right='right_node',node_limit=node_limit)))
-    steps.append(dict(name='source_labels',sql="SELECT f.source_id,c.component FROM source_files f JOIN source_components c ON c.node='s:'||f.source_id",materialize=True))
-    return steps
+    labels="SELECT f.source_id,c.component FROM source_files f JOIN source_components c ON c.node='s:'||f.source_id"
+    if not recovered_copies:
+        return steps+[dict(name='source_labels',sql=labels,materialize=True)]
+    # DM 7.5: a recovered copy's original link, a bodiless singleton, moves into the one document
+    # that holds its body as a real file. Never an edge: a link copying bodies of two documents
+    # would bridge them (an edition never joins another), so such a link keeps its own document.
+    return steps+[dict(name='graph_labels',sql=labels,materialize=True),
+        dict(name='recovered_copy_members',sql="""SELECT r.source_id,min(g.component) AS component
+            FROM (SELECT DISTINCT source_id,body_sha FROM recovered_copy_links) r
+            JOIN source_files s ON s.body_sha=r.body_sha AND s.is_real_file JOIN graph_labels g ON g.source_id=s.source_id
+            GROUP BY r.source_id HAVING count(DISTINCT g.component)=1""",materialize=True),
+        dict(name='source_labels',sql="""SELECT g.source_id,coalesce(m.component,g.component) AS component
+            FROM recovered_copy_members m RIGHT JOIN graph_labels g ON m.source_id=g.source_id""",materialize=True)]
 
 
 def source_steps(*,root=ROOT):
@@ -462,6 +474,74 @@ GENERIC_TITLES_SQL=f"""SELECT DISTINCT o.doc_key,o.title FROM ordered o
  LEFT JOIN (SELECT pattern FROM page_signals WHERE kind='link_word') g
   ON length(o.title)<=64 AND regexp_like(regexp_replace(trim(o.title),'\\s+',' ','g'),g.pattern)
  WHERE g.pattern IS NOT NULL OR {GENERIC_TITLE_SQL}"""
+
+# Owner, 2026-11-02 ("don't lose signal"): every recovered-copy link moved into a published document
+# (recovered_copy_members) keeps, on that document, its address (sources), its link key (links), its
+# lookup address and every recovery row of its URL, and each value its own annotation gives: shown
+# by the document, filled into it, or, where the copy differs, kept on the link's annotation, which
+# the address row proves is a member. One row per merged link; lost_* flags are signal not found.
+MERGED_RECOVERY_SQL="""WITH merged AS (
+ SELECT m.source_id,dm.source_url,nullif(dm.filename,'') AS filename,a.title,a.congress,a.filename_date,a.package_id,
+  a.document_kind,a.document_family,a.committee_keys,a.chambers,a.meeting_keys,a.measure_keys,a.bioguide_ids,a.facts,
+  o.list_row,o.filename AS o_filename,o.title AS o_title,o.congress AS o_congress,o.document_date AS o_date,o.package_id AS o_package,
+  o.document_kind AS o_kind,o.document_family AS o_family,o.committee_keys AS o_committees,o.chambers AS o_chambers,
+  o.meeting_keys AS o_meetings,o.measure_keys AS o_measures,o.bioguide_ids AS o_bioguides,o.facts AS o_facts,
+  nullif(s.filename,'') AS c_filename,coalesce(sa.reading_title,sa.listing_title) AS c_title,sa.congress AS c_congress,
+  coalesce(sa.filename_date,sa.content_date) AS c_date,sa.package_id AS c_package,sa.document_kind AS c_kind,
+  sa.document_family AS c_family,sa.facts AS c_facts
+ FROM recovered_copy_members m JOIN document_members dm ON dm.source_id=m.source_id
+ JOIN source_annotations a ON a.source_id=m.source_id
+ JOIN document_identities d ON d.component=dm.component JOIN ordered o ON o.doc_key=d.document_id
+ JOIN saved_files s ON s.component=dm.component AND s.saved_rank=1 JOIN source_annotations sa ON sa.source_id=s.source_id
+), addressed AS (
+ SELECT DISTINCT g.source_id FROM merged g JOIN source_rows r ON r.list_row=g.list_row AND r.url=g.source_url
+), keyed AS (
+ SELECT DISTINCT g.source_id FROM merged g JOIN links k ON k.list_row=g.list_row
+  AND encode(k.link_key,'hex')=substr(encode(sha256('url:'||g.source_url),'hex'),1,16)
+), looked_up AS (
+ SELECT DISTINCT g.source_id FROM merged g JOIN lookup_sources u ON u.list_row=g.list_row AND u.url=g.source_url
+), recovered AS (
+ SELECT source_id,count(*) FILTER (WHERE NOT moved) AS unmoved FROM (
+  SELECT g.source_id,c.original_url,c.body_sha,bool_or(r.list_row IS NOT NULL) AS moved
+  FROM merged g JOIN current_recoveries c ON c.original_url=g.source_url
+  LEFT JOIN recovery_rows r ON r.list_row=g.list_row AND r.original_url=c.original_url AND encode(r.body,'hex')=c.body_sha
+  GROUP BY g.source_id,c.original_url,c.body_sha) GROUP BY source_id
+)
+SELECT g.*,a.source_id IS NULL AS lost_address,k.source_id IS NULL AS lost_link,u.source_id IS NULL AS lost_lookup,
+ coalesce(r.unmoved,1)>0 AS lost_recovery,
+ g.filename IS NOT NULL AND coalesce(g.o_filename,'')='' AS lost_filename,
+ g.title IS NOT NULL AND g.o_title IS NULL AS lost_title,
+ g.congress IS NOT NULL AND g.o_congress IS NULL AS lost_congress,
+ g.filename_date IS NOT NULL AND g.o_date IS NULL AS lost_date,
+ g.package_id IS NOT NULL AND g.o_package IS NULL AS lost_package,
+ coalesce(array_length(g.document_kind),0)>0 AND coalesce(array_length(g.o_kind),0)=0 AS lost_kind,
+ coalesce(array_length(g.document_family),0)>0 AND coalesce(array_length(g.o_family),0)=0 AS lost_family,
+ coalesce(array_length(g.facts),0)>0 AND coalesce(array_length(g.o_facts),0)=0 AS lost_facts,
+ coalesce(array_length(g.committee_keys),0)>0 AND NOT coalesce(array_has_all(g.o_committees,g.committee_keys),false) AS lost_committees,
+ coalesce(array_length(g.chambers),0)>0 AND NOT coalesce(array_has_all(g.o_chambers,g.chambers),false) AS lost_chambers,
+ coalesce(array_length(g.meeting_keys),0)>0 AND NOT coalesce(array_has_all(g.o_meetings,g.meeting_keys),false) AS lost_meetings,
+ coalesce(array_length(g.measure_keys),0)>0 AND NOT coalesce(array_has_all(g.o_measures,g.measure_keys),false) AS lost_measures,
+ coalesce(array_length(g.bioguide_ids),0)>0 AND NOT coalesce(array_has_all(g.o_bioguides,g.bioguide_ids),false) AS lost_bioguides
+FROM recovered r RIGHT JOIN (looked_up u RIGHT JOIN (keyed k RIGHT JOIN (addressed a RIGHT JOIN merged g
+ ON a.source_id=g.source_id) ON k.source_id=g.source_id) ON u.source_id=g.source_id) ON r.source_id=g.source_id"""
+LOST_FLAGS=['address','link','lookup','recovery','filename','title','congress','date','package','kind','family','facts',
+    'committees','chambers','meetings','measures','bioguides']
+# Per field: merged links whose value fills a field the copy itself lacks, and links whose value
+# differs from the one shown, which stays on the link's annotation (evidence source_annotations,
+# tied to the document by source_members) as the alternate.
+_MERGED_FIELDS=[('filename','filename','c_filename','o_filename'),('title','title','c_title','o_title'),
+    ('congress','congress','c_congress','o_congress'),('document_date','filename_date','c_date','o_date'),
+    ('package_id','package_id','c_package','o_package')]
+_MERGED_LISTS=[('document_kind','document_kind','c_kind','o_kind'),('document_family','document_family','c_family','o_family'),
+    ('facts','facts','c_facts','o_facts')]
+MERGED_RECOVERY_FIELDS=dict(name='merged_recovery_fields',sql='SELECT count(*) AS merged_links,count(DISTINCT list_row) AS merged_documents,'+','.join(
+    f"count(*) FILTER (WHERE {own} IS NULL AND {link} IS NOT NULL AND {shown}={link}) AS {name}_filled,"
+    f"count(*) FILTER (WHERE {shown} IS NOT NULL AND {link} IS NOT NULL AND {shown}<>{link}) AS {name}_conflicting"
+    for name,link,own,shown in _MERGED_FIELDS)+','+','.join(
+    f"count(*) FILTER (WHERE coalesce(array_length({own}),0)=0 AND coalesce(array_length({link}),0)>0) AS {name}_filled,"
+    f"count(*) FILTER (WHERE coalesce(array_length({shown}),0)>0 AND coalesce(array_length({link}),0)>0 AND {shown}<>{link}) AS {name}_conflicting"
+    for name,link,own,shown in _MERGED_LISTS)
+    +f' FROM ({MERGED_RECOVERY_SQL}) g')
 
 # Meeting-record doc-url literals that are no http(s) address get no URL key (model-url-inputs.sql)
 # and so cannot reach invalid_url_keys; this counts them instead of refusing the release.
@@ -781,7 +861,7 @@ def build_prepared_release(prepared,*,engine,output,root=ROOT):
     """Continue one prepared plan through grouping and the shared native exporter."""
     from viewer_publication.archive_format import _execute,_settings,LIST_COLUMNS,DETAIL_COLUMNS,MEETING_DICTIONARY
     from viewer_publication.archive_annotations import annotation_steps
-    from viewer_publication.archive_provenance import attachment_steps,body_review_steps
+    from viewer_publication.archive_provenance import attachment_steps,body_review_steps,recovered_copy_steps
     scratch=prepared['scratch'];evidence=prepared['evidence'];output=Path(output).resolve()
     inputs=prepared['inputs'];capture_profile=prepared['capture_profile']
     parser_versions=prepared['parser_versions'];catalog_version=prepared['catalog_version']
@@ -795,7 +875,7 @@ def build_prepared_release(prepared,*,engine,output,root=ROOT):
     steps += _sql_steps(['source-endpoints','copy-url-keys','publisher-links'],root=root)
     steps += [dict(name='resolved_link_targets',sql="SELECT DISTINCT page_body,context_url,member_path,target_url,cast(NULL AS VARCHAR) AS target_member_path FROM resolved_links WHERE target_member_path IS NULL",materialize=True)]
     steps += [dict(name='body_fingerprints',sql="SELECT encode(body_sha,'hex') AS body_sha,encode(fingerprint,'hex') AS fingerprint FROM page_facts WHERE status='completed'",materialize=True)]
-    steps += body_review_steps(root=root)+grouping_steps(root=root,review_edges=True)
+    steps += body_review_steps(root=root)+recovered_copy_steps(root=root)+grouping_steps(root=root,review_edges=True,recovered_copies=True)
     steps += [dict(name='recovery_original_keys',sql="SELECT r.recovery_id,k.url_key FROM model_recovery_rows r JOIN model_url_keys k ON r.original_url=k.url WHERE k.error IS NULL",materialize=True),
         dict(name='component_members',sql='SELECT l.component,f.* FROM source_labels l JOIN source_files f USING(source_id)',materialize=True)]
     steps += attachment_steps(root=root)+_sql_steps(['initial-document-link-keys'],root=root)
@@ -806,7 +886,7 @@ def build_prepared_release(prepared,*,engine,output,root=ROOT):
     steps += annotation_steps(catalog_version=catalog_version,root=root)
     steps += _sql_steps(['document-members','archive-container-links','document-bodies','document-identities','saved-files','document-alternates',
         'document-version-keys','document-versions','document-metadata','document-addresses','saved-recoveries','document-removals','document-packages',
-        'document-rendition-titles'],root=root)
+        'document-rendition-titles','recovered-copy-fills'],root=root)
     steps += package_link_steps(root=root)
     steps += appearance_steps(root=root)+[
         dict(name='document_witness_keys',sql=(Path(root)/'model/sql/document-witness-keys.sql').read_text(),materialize=True),
@@ -958,7 +1038,7 @@ def build_prepared_release(prepared,*,engine,output,root=ROOT):
         dict(name='unexpanded_zip_documents',sql="SELECT count(*) AS documents FROM ordered WHERE format='zip'"),
         # The recorded reason for each blank filename (ct-yf1c); unexplained_blank_filenames refuses the rest.
         dict(name='blank_filename_reasons',sql=f"SELECT reason,count(*) AS documents FROM ({BLANK_FILENAMES_SQL}) r GROUP BY 1 ORDER BY 1"),
-        UNRESOLVED_MEETING_DOCUMENT_URLS]
+        UNRESOLVED_MEETING_DOCUMENT_URLS,MERGED_RECOVERY_FIELDS]
     if prepared.get('include_entities'):
         entity_invariant_sql=""",
             (SELECT count(*) FROM (
@@ -1032,6 +1112,7 @@ def build_prepared_release(prepared,*,engine,output,root=ROOT):
             (SELECT CASE WHEN count(*)=0 THEN 1 ELSE 0 END FROM ordered) AS empty_document_list,
             (SELECT count(*) FROM ({GENERIC_TITLES_SQL}) generic) AS generic_titles,
             (SELECT count(*) FROM ({BLANK_FILENAMES_SQL}) r WHERE r.reason IS NULL) AS unexplained_blank_filenames,
+            (SELECT count(*) FROM ({MERGED_RECOVERY_SQL}) g WHERE {' OR '.join('lost_'+flag for flag in LOST_FLAGS)}) AS unaccounted_merged_signal,
             (SELECT count(*) FROM saved_files s JOIN saved_files n ON n.component=s.component AND n.body_sha=s.body_sha
                 AND coalesce(n.filename,'')<>'' WHERE s.saved_rank=1 AND coalesce(s.filename,'')='') AS saved_unnamed_with_named_sibling,
             (SELECT count(*) FROM (SELECT unnest(alternates) AS alt FROM document_alternates) WHERE alt['size'] IS NULL) AS missing_alternate_sizes,
