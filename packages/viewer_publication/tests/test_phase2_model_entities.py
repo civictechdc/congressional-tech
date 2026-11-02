@@ -746,7 +746,7 @@ def test_phase2_entities_meetings_witnesses_recordings_and_spicy_projections(tmp
     pq.write_table(vr_lake.table([]), video_path)
     pq.write_table(cr_lake.table([]), committee_path)
     decisions.write_text(json.dumps(dict(id='a' * 64, subject_kind='event', subject_id='115538', verdict='found',
-        video_refs=['https://example.test/watch'], note=None, decided_at=None, supersedes=None)) + '\n')
+        video_refs=['https://example.test/watch'], note=None, disputed_by=None, decided_at=None, supersedes=None)) + '\n')
     explorer = build_release(**staged, meeting_records=meeting_records, appearance_records=appearance_records, spicy_regs=spicy_regs,
         video_records=video_path, committee_records=committee_path,
         recording_decision_files=[dict(key='provenance/recording_decisions/a.jsonl', path=str(decisions))],

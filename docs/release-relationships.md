@@ -521,7 +521,7 @@ Coverage: Scored date and title matches arrive with the native matcher; gpo_hear
 | `decision` | `dict` | The verdict as stated, or linked |
 | `score` | `int16` | 100 publisher link, 95 stated event ID; null otherwise |
 | `recording_scope` | `dict` | full, excerpt or unknown |
-| `status` | `dict` | asserted, claimed, decided or conflicting |
+| `status` | `dict` | asserted, claimed, decided, conflicting or unresolved; unresolved is a negative verdict that old matcher evidence disputes |
 | `note` | `string` | Curator note, or the unmatched stated number |
 | `source_ref` | `string` | Evidence reference: the record or decision |
 
@@ -571,9 +571,9 @@ Coverage: Access, closed, not-held and rescheduled facts arrive with the native 
 | `state` | `dict` | present, empty, not_stated, unresolved, confirmed_absent or unknown; these never merge |
 | `basis` | `dict` | Which relation states it |
 | `count` | `int32` | Rows behind present |
-| `reason` | `dict` | Reason when known; null this round |
+| `reason` | `dict` | Why a state holds, when known, such as old_evidence_disputes_negative_verdict |
 
-- `state`: confirmed_absent only from a curated negative verdict on a package linked to exactly one meeting; zero rows never prove absence.
+- `state`: confirmed_absent only from undisputed curated negative verdicts on every package of the meeting, each linked to that meeting alone; zero rows never prove absence.
 
 Outgoing: `coverage_meeting`.
 

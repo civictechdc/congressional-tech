@@ -9,15 +9,24 @@ WITH package_meetings AS (
 ), recording_present AS (
  SELECT event_id,count(DISTINCT ref) AS n FROM recording_evidence GROUP BY event_id
 ), recording_absent AS (
- -- Absence is only ever a curated verdict on a package tied to exactly one meeting; zero rows prove nothing.
+ -- Absence is only ever curated: an undisputed negative verdict on every package of the meeting,
+ -- each tied to this meeting alone. A sibling package with no verdict leaves it open; zero rows prove nothing.
+ SELECT p.event_id FROM package_meetings p
+ JOIN (SELECT DISTINCT package_id FROM recording_matches_export
+  WHERE basis='curated' AND status='decided' AND decision='no_video_found') n ON n.package_id=p.package_id
+ GROUP BY p.event_id
+ HAVING count(*)=(SELECT count(DISTINCT l.package_id) FROM meeting_transcript_links l WHERE l.event_id=p.event_id)
+), recording_disputed AS (
  SELECT DISTINCT p.event_id FROM recording_matches_export m JOIN package_meetings p ON m.package_id=p.package_id
- WHERE m.basis='curated' AND m.status='decided' AND m.decision='no_video_found'
+ WHERE m.basis='curated' AND m.status='unresolved'
 ), recording_rows AS (
  SELECT e.event_id,'recording' AS aspect,
-  CASE WHEN p.n IS NOT NULL THEN 'present' WHEN a.event_id IS NOT NULL THEN 'confirmed_absent' ELSE 'unknown' END AS state,
-  CASE WHEN p.n IS NOT NULL THEN 'recording_matches' WHEN a.event_id IS NOT NULL THEN 'curated' ELSE 'none' END AS basis,
+  CASE WHEN p.n IS NOT NULL THEN 'present' WHEN d.event_id IS NOT NULL THEN 'unresolved'
+       WHEN a.event_id IS NOT NULL THEN 'confirmed_absent' ELSE 'unknown' END AS state,
+  CASE WHEN p.n IS NOT NULL THEN 'recording_matches' WHEN d.event_id IS NOT NULL OR a.event_id IS NOT NULL THEN 'curated' ELSE 'none' END AS basis,
   cast(coalesce(p.n,0) AS INT) AS count
  FROM meetings_export e LEFT JOIN recording_present p ON e.event_id=p.event_id LEFT JOIN recording_absent a ON e.event_id=a.event_id
+  LEFT JOIN recording_disputed d ON e.event_id=d.event_id
 ), transcript_rows AS (
  SELECT e.event_id,'transcript' AS aspect,
   CASE WHEN coalesce(array_length(e.transcripts),0)>0 THEN 'present'
@@ -56,7 +65,7 @@ WITH package_meetings AS (
   'videos.has_caption' AS basis,cast(coalesce(c.yes,0) AS INT) AS count
  FROM meetings_export e LEFT JOIN caption_counts c ON e.event_id=c.event_id
 )
-SELECT event_id,aspect,state,basis,count,cast(NULL AS VARCHAR) AS reason FROM recording_rows
+SELECT event_id,aspect,state,basis,count,CASE WHEN state='unresolved' THEN 'old_evidence_disputes_negative_verdict' END AS reason FROM recording_rows
 UNION ALL SELECT event_id,aspect,state,basis,count,cast(NULL AS VARCHAR) FROM transcript_rows
 UNION ALL SELECT event_id,aspect,state,basis,count,cast(NULL AS VARCHAR) FROM document_rows
 UNION ALL SELECT event_id,aspect,state,basis,count,cast(NULL AS VARCHAR) FROM witness_rows

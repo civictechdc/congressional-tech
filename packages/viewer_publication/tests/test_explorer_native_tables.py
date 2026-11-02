@@ -19,8 +19,8 @@ def sql(name):
     return (ROOT / 'model/sql' / (name + '.sql')).read_text()
 
 
-def decision(id, kind, subject, verdict, refs=(), note=None):
-    return dict(id=id, subject_kind=kind, subject_id=subject, verdict=verdict, video_refs=list(refs), note=note, decided_at=None, supersedes=None)
+def decision(id, kind, subject, verdict, refs=(), note=None, disputed_by=None):
+    return dict(id=id, subject_kind=kind, subject_id=subject, verdict=verdict, video_refs=list(refs), note=note, disputed_by=disputed_by, decided_at=None, supersedes=None)
 
 
 @pytest.fixture(scope='module')
@@ -34,16 +34,18 @@ def tables(tmp_path_factory):
             decision('b' * 64, 'package', SHARED_PKG, 'no_video_found'),
             decision('c' * 64, 'package', SOLO_PKG, 'no_video_found'),
             decision('e' * 64, 'package', 'CHRG-alone', 'no_video_found'),
+            decision('9' * 64, 'package', 'CHRG-sibling', 'no_video_found'),
+            decision('f' * 64, 'package', 'CHRG-disputed', 'no_video_found', disputed_by='old matcher says full_recording'),
             decision('d' * 64, 'event', '1002', 'found', ['https://example.test/watch']),
         ], id='Utf8', subject_kind='Utf8', subject_id='Utf8', verdict='Utf8', video_refs=_list(),
-           note='Utf8', decided_at='Utf8', supersedes='Utf8'),
+           note='Utf8', disputed_by='Utf8', decided_at='Utf8', supersedes='Utf8'),
     ]
     steps = [
         dict(name='meetings_resolved', sql=f"""SELECT cast(1001 AS BIGINT) AS event_id,make_array(named_struct('name','Stream','url','https://youtu.be/pub','video_key','youtube:pub')) AS videos,arrow_cast(make_array(cast(9 AS BIGINT)),'List(Int64)') AS transcript_jackets
             UNION ALL SELECT 1002,array_slice(make_array(named_struct('name',cast(NULL AS VARCHAR),'url',cast(NULL AS VARCHAR),'video_key',cast(NULL AS VARCHAR))),1,0),arrow_cast(make_array(cast(9 AS BIGINT)),'List(Int64)')""", materialize=True),
         dict(name='meetings_export', sql="""SELECT cast(event_id AS BIGINT) AS event_id,array_slice(make_array(named_struct('package_id',cast(NULL AS VARCHAR),'list_row',cast(NULL AS INT))),1,0) AS transcripts
-            FROM (SELECT 1001 AS event_id UNION ALL SELECT 1002 UNION ALL SELECT 1003 UNION ALL SELECT 1004 UNION ALL SELECT 1005)""", materialize=True),
-        dict(name='meeting_transcript_links', sql=f"""SELECT '{CONFLICT_PKG}' AS package_id,cast(1001 AS BIGINT) AS event_id UNION ALL SELECT '{SHARED_PKG}',1003 UNION ALL SELECT '{SHARED_PKG}',1004 UNION ALL SELECT '{SOLO_PKG}',1002 UNION ALL SELECT 'CHRG-alone',1005""", materialize=True),
+            FROM (SELECT 1001 AS event_id UNION ALL SELECT 1002 UNION ALL SELECT 1003 UNION ALL SELECT 1004 UNION ALL SELECT 1005 UNION ALL SELECT 1006 UNION ALL SELECT 1007)""", materialize=True),
+        dict(name='meeting_transcript_links', sql=f"""SELECT '{CONFLICT_PKG}' AS package_id,cast(1001 AS BIGINT) AS event_id UNION ALL SELECT '{SHARED_PKG}',1003 UNION ALL SELECT '{SHARED_PKG}',1004 UNION ALL SELECT '{SOLO_PKG}',1002 UNION ALL SELECT 'CHRG-alone',1005 UNION ALL SELECT 'CHRG-disputed',1006 UNION ALL SELECT 'CHRG-sibling',1007 UNION ALL SELECT 'CHRG-no-verdict',1007""", materialize=True),
         dict(name='videos_export', sql="""SELECT 'youtube:pub' AS video_key,arrow_cast(decode(repeat('ab',32),'hex'),'FixedSizeBinary(32)') AS record_sha,arrow_cast(make_array(cast(1003 AS BIGINT),cast(777777 AS BIGINT)),'List(Int64)') AS stated_event_ids,true AS has_caption
             UNION ALL SELECT 'youtube:unmatched',arrow_cast(decode(repeat('ab',32),'hex'),'FixedSizeBinary(32)'),arrow_cast(array_slice(make_array(cast(1 AS BIGINT)),1,0),'List(Int64)'),false""", materialize=True),
         dict(name='recording_matches_export', sql=sql('entity-recording-matches'), materialize=True),
@@ -113,9 +115,19 @@ def test_only_a_negative_on_one_meeting_package_is_absence(tables):
     assert state(tables, 1005, 'recording') == 'confirmed_absent'
 
 
+def test_a_sibling_package_without_a_verdict_blocks_absence(tables):
+    assert state(tables, 1007, 'recording') == 'unknown'
+
+
+def test_disputed_negative_verdict_is_unresolved_with_its_evidence(tables):
+    assert state(tables, 1006, 'recording') == 'unresolved'
+    row = next(r for r in rows(tables, 'recording_matches') if r['package_id'] == 'CHRG-disputed')
+    assert row['status'] == 'unresolved' and 'old matcher says full_recording' in row['note']
+
+
 def test_coverage_is_meetings_times_aspects_and_states_stay_distinct(tables):
     found = rows(tables, 'meeting_coverage')
-    assert len(found) == 5 * 5
+    assert len(found) == 7 * 5
     assert state(tables, 1001, 'witnesses') == 'present'
     assert state(tables, 1002, 'witnesses') == 'empty'
     assert state(tables, 1003, 'witnesses') == 'unresolved'

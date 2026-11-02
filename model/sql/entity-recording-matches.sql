@@ -22,10 +22,10 @@ WITH publisher AS (
 ), linked_packages AS (
  SELECT DISTINCT l.package_id FROM meeting_transcript_links l JOIN publisher_rows p ON p.event_id=l.event_id
 ), refs AS (
- SELECT id,subject_kind,subject_id,verdict,note,unnest(video_refs) AS ref
+ SELECT id,subject_kind,subject_id,verdict,note,disputed_by,unnest(video_refs) AS ref
  FROM active_recording_decisions WHERE array_length(video_refs)>0
  UNION ALL
- SELECT id,subject_kind,subject_id,verdict,note,cast(NULL AS VARCHAR) AS ref
+ SELECT id,subject_kind,subject_id,verdict,note,disputed_by,cast(NULL AS VARCHAR) AS ref
  FROM active_recording_decisions WHERE coalesce(array_length(video_refs),0)=0
 ), curated_rows AS (
  SELECT r.subject_kind,r.subject_id,
@@ -36,8 +36,10 @@ WITH publisher AS (
   cast('curated' AS VARCHAR) AS basis,r.verdict AS decision,cast(NULL AS SMALLINT) AS score,
   CASE WHEN r.verdict='partial_only' THEN 'excerpt' WHEN r.verdict LIKE 'found%' THEN 'full' ELSE 'unknown' END AS recording_scope,
   -- A negative verdict against a publisher's link is a conflict to show, not to settle.
-  CASE WHEN r.verdict IN ('no_video_found','not_public') AND p.package_id IS NOT NULL THEN 'conflicting' ELSE 'decided' END AS status,
-  r.note,concat('recording_decisions:',r.id) AS source_ref
+  -- Old evidence against a negative verdict leaves it open until the native matcher decides.
+  CASE WHEN r.verdict IN ('no_video_found','not_public') AND p.package_id IS NOT NULL THEN 'conflicting'
+       WHEN r.disputed_by IS NOT NULL THEN 'unresolved' ELSE 'decided' END AS status,
+  CASE WHEN r.disputed_by IS NOT NULL THEN concat_ws(' | ',r.note,concat('disputed by ',r.disputed_by)) ELSE r.note END AS note,concat('recording_decisions:',r.id) AS source_ref
  FROM refs r LEFT JOIN linked_packages p ON r.subject_kind='package' AND r.subject_id=p.package_id
 ), all_rows AS (
  SELECT * FROM publisher_rows UNION ALL SELECT * FROM stated_rows UNION ALL SELECT * FROM curated_rows

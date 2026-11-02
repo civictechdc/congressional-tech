@@ -38,6 +38,9 @@ REASONS = {
     'superseded_by_newer_record': 'The key is in an older retained record of this event; the current record replaced it.',
     'other_source_meeting': 'An old meeting from a Senate page or House XML with no Congress.gov event ID.',
     'old_text_mojibake': 'The old CSV stored this text double-encoded; once repaired it equals the native value, which is the correct one.',
+    'pending_r2_package_event_link': 'Raw MODS states the name, and native witnesses hold it on a package occasion with no event; the package-to-event link arrives with native hearing records.',
+    'house_xml_witness_not_parsed': 'The event has House XML but native witnesses have no row for it; a family name in the raw XML is a lead, so this needs a parser check.',
+    'derived_from_title_or_document': 'The old row came from a meeting title or a witness list PDF, which no native parser reads.',
     'unexplained': 'No reason established. Reported, not hidden.',
 }
 # A title's first matching pattern gives its disposition; section 6 of the cluster plan.
@@ -125,9 +128,11 @@ def compare(db, *, old, table, data, lake, decisions):
     new_witness = f"""SELECT cast(event_id AS VARCHAR)||'|'||{normal_name('name')} AS key,witness_key AS context FROM {table('witnesses')}
         WHERE event_id IS NOT NULL AND name IS NOT NULL"""
     db.execute(f"CREATE TEMP TABLE witness_events AS SELECT DISTINCT cast(event_id AS VARCHAR) AS event_id FROM {table('witnesses')} WHERE event_id IS NOT NULL")
-    for name, absent in (('meeting_witnesses', 'old_state_only'), ('house_witnesses_found', 'old_state_only'), ('senate_witnesses_found', 'pending_r2_senate_page_link')):
-        out[name] = account(db, name, f"SELECT event_id||'|'||{normal_name('name')} AS key,event_id AS context FROM {c(name)}", new_witness,
-            old_reason=f"CASE WHEN EXISTS (SELECT 1 FROM witness_events e WHERE e.event_id=x.context) THEN 'witness_name_normalization' ELSE '{absent}' END",
+    absent = """CASE split_part(x.context,'|',2) WHEN 'senate committee page' THEN 'pending_r2_senate_page_link' WHEN 'gpo' THEN 'pending_r2_package_event_link'
+        WHEN 'docs.house.gov' THEN 'house_xml_witness_not_parsed' ELSE 'derived_from_title_or_document' END"""
+    for name, source in (('meeting_witnesses', 'source'), ('house_witnesses_found', "'docs.house.gov'"), ('senate_witnesses_found', "'senate committee page'")):
+        out[name] = account(db, name, f"SELECT event_id||'|'||{normal_name('name')} AS key,event_id||'|'||{source} AS context FROM {c(name)}", new_witness,
+            old_reason=f"CASE WHEN EXISTS (SELECT 1 FROM witness_events e WHERE e.event_id=split_part(x.context,'|',1)) THEN 'witness_name_normalization' ELSE {absent} END",
             new_reason="'native_found_more'")
     amendment_key = lambda event, description: f"""concat_ws('|',{event},kind,coalesce(url,''),coalesce("number",''),coalesce(bill,''),coalesce({description},''))"""
     new_amendments = table('committee_records')

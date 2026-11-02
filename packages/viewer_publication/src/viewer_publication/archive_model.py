@@ -92,7 +92,7 @@ APPEARANCE_RECORD_FIELDS=dict(
 )
 
 RECORDING_DECISION_FIELDS=dict(id='Utf8',subject_kind='Utf8',subject_id='Utf8',verdict='Utf8',video_refs=list_of('Utf8'),
-    note='Utf8',decided_at='Utf8',supersedes='Utf8')
+    note='Utf8',disputed_by='Utf8',decided_at='Utf8',supersedes='Utf8')
 
 # Dependency order: matches read videos, coverage reads matches.
 EXPLORER_TABLES=[

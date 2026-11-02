@@ -39,3 +39,10 @@ def test_output_is_deterministic_jsonl(tmp_path):
     main(['--commit', 'abc', '--output', str(two)])
     assert one.read_bytes() == two.read_bytes()
     assert json.loads(one.read_text().splitlines()[0])['origin']['path'] == OVERRIDES
+
+
+def test_a_dispute_never_moves_a_decision_id_and_marks_only_negative_verdicts():
+    records = import_records(commit='abc')
+    disputed = [r for r in records if r['disputed_by']]
+    assert disputed and {r['verdict'] for r in disputed} == {'no_video_found'}
+    assert all('disputed_by' not in json.dumps({k: v for k, v in r.items() if k != 'disputed_by'}) for r in disputed[:3])

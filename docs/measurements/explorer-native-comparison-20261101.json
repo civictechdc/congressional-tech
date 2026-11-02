@@ -1,5 +1,5 @@
 {
- "commit": "6101d5e9-plus-worktree",
+ "commit": "worktree",
  "families": {
   "amendments": {
    "matched": 19984,
@@ -140,12 +140,12 @@
   "completeness": {
    "column_agreement": {
     "recording": {
-     " -> confirmed_absent": 89,
+     " -> confirmed_absent": 88,
      " -> present": 81,
-     " -> unknown": 1188,
-     "yes -> confirmed_absent": 45,
+     " -> unknown": 1189,
      "yes -> present": 11727,
-     "yes -> unknown": 4476
+     "yes -> unknown": 4478,
+     "yes -> unresolved": 43
     },
     "text_source": {
      "committee_transcript -> not_stated": 482,
@@ -648,7 +648,7 @@
    },
    "new_rows": 48933,
    "old_only_by_reason": {
-    "old_state_only": 586,
+    "house_xml_witness_not_parsed": 586,
     "witness_name_normalization": 397
    },
    "old_rows": 7939,
@@ -738,168 +738,168 @@
      ]
     },
     "old_only": {
-     "old_state_only": [
+     "house_xml_witness_not_parsed": [
       [
-       "100308|mr jonathan t williams",
-       "100308"
+       "100772|the honorable rush holt",
+       "100772|docs.house.gov"
       ],
       [
-       "100918|the honorable john kline",
-       "100918"
+       "100608|the honorable jeffrey zients",
+       "100608|docs.house.gov"
       ],
       [
-       "100519|sheila smith",
-       "100519"
+       "100368|dr keith b payne",
+       "100368|docs.house.gov"
       ],
       [
-       "100498|elizabeth rogan",
-       "100498"
+       "100350|gary gensler",
+       "100350|docs.house.gov"
       ],
       [
-       "100749|dr arnold kling",
-       "100749"
+       "100520|bud lane",
+       "100520|docs.house.gov"
       ],
       [
-       "100649|dr cynthia clark",
-       "100649"
+       "100518|pete demarco",
+       "100518|docs.house.gov"
       ],
       [
-       "100518|dr dorr dearborn",
-       "100518"
+       "100965|ms lauren pagel",
+       "100965|docs.house.gov"
       ],
       [
-       "100522|irene cuch",
-       "100522"
+       "100755|mr erik milito",
+       "100755|docs.house.gov"
       ],
       [
-       "100498|mary munson",
-       "100498"
+       "100736|rosemary morillo",
+       "100736|docs.house.gov"
       ],
       [
-       "100282|ms anne harrington",
-       "100282"
+       "100238|dr don cook",
+       "100238|docs.house.gov"
       ],
       [
-       "100503|the honorable mario cordero",
-       "100503"
+       "100717|general david m rodriguez",
+       "100717|docs.house.gov"
       ],
       [
-       "100652|allison hickey",
-       "100652"
+       "101102|mr donald f santa jr ",
+       "101102|docs.house.gov"
       ],
       [
-       "101185|lieutenant general howard b bromberg",
-       "101185"
+       "100588|the honorable arne duncan",
+       "100588|docs.house.gov"
       ],
       [
-       "100592|the honorable john conger",
-       "100592"
+       "101209|the honorable alcee l hastings",
+       "101209|docs.house.gov"
       ],
       [
-       "101105|the honorable frank kendall",
-       "101105"
+       "101209|the honorable alcee l hastings",
+       "101209|docs.house.gov"
       ],
       [
-       "100308|mr john shoraka",
-       "100308"
+       "100792|the honorable alan olson",
+       "100792|docs.house.gov"
       ],
       [
-       "100755|mr athan manuel",
-       "100755"
+       "101221|rear admiral timothy s matthews usn",
+       "101221|docs.house.gov"
       ],
       [
-       "100712|lieutenant particia d horoho",
-       "100712"
+       "101187|the honorable jared polis",
+       "101187|docs.house.gov"
       ],
       [
-       "100368|dr bruce g blair",
-       "100368"
+       "100324|lieutenant general michael r moeller usaf",
+       "100324|docs.house.gov"
       ],
       [
-       "100923|mr kome ajise",
-       "100923"
+       "100245|mr jim shelton",
+       "100245|docs.house.gov"
       ]
      ],
      "witness_name_normalization": [
       [
-       "100456|dr herbert c frost",
-       "100456"
-      ],
-      [
        "100733|dr donald e heller",
-       "100733"
+       "100733|docs.house.gov"
       ],
       [
-       "100671|vice admiral w mark skinner usn",
-       "100671"
+       "100572|mr mike bergmeier",
+       "100572|docs.house.gov"
       ],
       [
-       "100310|mr mike leister",
-       "100310"
+       "101088|dr joann a boughman",
+       "101088|docs.house.gov"
       ],
       [
-       "101189|mr scott morris",
-       "101189"
+       "100733|mr travis reindl",
+       "100733|docs.house.gov"
       ],
       [
-       "100857|the honorable dennis a ross",
-       "100857"
+       "100429|mr roger natsuhara",
+       "100429|docs.house.gov"
       ],
       [
-       "101160|professor adam j levitin",
-       "101160"
+       "100956|ms kathryn brigham",
+       "100956|docs.house.gov"
       ],
       [
-       "101122|mr kenneth i moch",
-       "101122"
+       "100572|mr jim allen",
+       "100572|docs.house.gov"
       ],
       [
-       "100594|mr ray kelley",
-       "100594"
+       "100267|dr douglas hotlz eakin",
+       "100267|docs.house.gov"
       ],
       [
-       "100813|the honorable stevan pearce",
-       "100813"
+       "100455|mr jim colby",
+       "100455|docs.house.gov"
       ],
       [
-       "100304|dr rodney watson",
-       "100304"
+       "100610|dr ioannis miaoulis",
+       "100610|docs.house.gov"
       ],
       [
-       "101189|the honorable bill huizenga",
-       "101189"
+       "100611|lieutenant general thomas w travis",
+       "100611|docs.house.gov"
       ],
       [
-       "100611|dr jonathan woodson",
-       "100611"
+       "100458|mr ken bjurstrom",
+       "100458|docs.house.gov"
       ],
       [
-       "100266|walter nelson",
-       "100266"
+       "101167|the honorable robert griffin",
+       "101167|docs.house.gov"
       ],
       [
-       "100430|major ty shepard",
-       "100430"
+       "101160|ms janice k sheppard",
+       "101160|docs.house.gov"
       ],
       [
-       "100459|the honorable richard berner",
-       "100459"
+       "100958|mr jeffrey d morgan",
+       "100958|docs.house.gov"
       ],
       [
-       "101189|mr marc bourgoin",
-       "101189"
+       "100429|ms kathleen ferguson",
+       "100429|docs.house.gov"
       ],
       [
-       "100310|the honorable wayne allard",
-       "100310"
+       "100261|dr mark t lewellyn",
+       "100261|docs.house.gov"
       ],
       [
-       "100569|mr james mcconeghy",
-       "100569"
+       "100738|ms shirley cloyes dioguardi",
+       "100738|docs.house.gov"
       ],
       [
-       "100547|mr christopher painter",
-       "100547"
+       "100798|mr brian merrill",
+       "100798|docs.house.gov"
+      ],
+      [
+       "100547|mr michael mazza",
+       "100547|docs.house.gov"
       ]
      ]
     }
@@ -1093,7 +1093,10 @@
    },
    "new_rows": 48933,
    "old_only_by_reason": {
-    "old_state_only": 6369,
+    "derived_from_title_or_document": 43,
+    "house_xml_witness_not_parsed": 586,
+    "pending_r2_package_event_link": 926,
+    "pending_r2_senate_page_link": 4814,
     "witness_name_normalization": 530
    },
    "old_rows": 18691,
@@ -1183,168 +1186,414 @@
      ]
     },
     "old_only": {
-     "old_state_only": [
+     "derived_from_title_or_document": [
       [
-       "336091|karine laboy",
-       "336091"
+       "333660|dilawar syed",
+       "333660|meeting title (nominees)"
       ],
       [
-       "332762|carlos felipe uriarte",
-       "332762"
+       "336565|kelly loeffler",
+       "336565|meeting title (nominees)"
       ],
       [
-       "326152|richard w parker",
-       "326152"
+       "326205|carl whitney bentzel",
+       "326205|meeting title (nominees)"
       ],
       [
-       "337428|ali hopper",
-       "337428"
+       "338006|casey means",
+       "338006|meeting title (nominees)"
       ],
       [
-       "333161|misael cabrera",
-       "333161"
+       "338581|kaveh farzad",
+       "338581|meeting title (nominees)"
       ],
       [
-       "333449|david vasko",
-       "333449"
+       "328164|amy coney barrett",
+       "328164|meeting title (nominees)"
       ],
       [
-       "327623|jimmy j kolker",
-       "327623"
+       "327533|russell vought",
+       "327533|meeting title (nominees)"
       ],
       [
-       "100308|mr jonathan t williams",
-       "100308"
+       "328163|amy coney barrett",
+       "328163|meeting title (nominees)"
       ],
       [
-       "336093|eric s edelman",
-       "336093"
+       "337127|john dever",
+       "337127|meeting title (nominees)"
       ],
       [
-       "334742|eumi k lee",
-       "334742"
+       "336703|william briggs",
+       "336703|meeting title (nominees)"
       ],
       [
-       "338382|robert cekada",
-       "338382"
+       "338525|michael vance",
+       "338525|meeting title (nominees)"
       ],
       [
-       "326411|rudolph tanzi",
-       "326411"
+       "333597|daniel i werfel",
+       "333597|meeting title (nominees)"
       ],
       [
-       "330541|cindy hensley mccain",
-       "330541"
+       "328182|thompson michael dietz",
+       "328182|meeting title (nominees)"
       ],
       [
-       "337941|ted sarandos",
-       "337941"
+       "338032|arvind raman",
+       "338032|meeting title (nominees)"
       ],
       [
-       "327620|charles p rettig",
-       "327620"
+       "105634|shirley bailey",
+       "105634|witness list document"
       ],
       [
-       "100918|the honorable john kline",
-       "100918"
+       "338581|kevin lilly",
+       "338581|meeting title (nominees)"
       ],
       [
-       "335014|maureen bell",
-       "335014"
+       "338525|roger mason",
+       "338525|meeting title (nominees)"
       ],
       [
-       "335113|sara e hill",
-       "335113"
+       "338032|matthew anderson",
+       "338032|meeting title (nominees)"
       ],
       [
-       "329234|joshua horwitz",
-       "329234"
+       "337127|george wesley street",
+       "337127|meeting title (nominees)"
       ],
       [
-       "333730|douglas holtz eakin",
-       "333730"
+       "105634|hannibal mike ware",
+       "105634|witness list document"
+      ]
+     ],
+     "house_xml_witness_not_parsed": [
+      [
+       "100772|the honorable rush holt",
+       "100772|docs.house.gov"
+      ],
+      [
+       "100608|the honorable jeffrey zients",
+       "100608|docs.house.gov"
+      ],
+      [
+       "100368|dr keith b payne",
+       "100368|docs.house.gov"
+      ],
+      [
+       "100350|gary gensler",
+       "100350|docs.house.gov"
+      ],
+      [
+       "100520|bud lane",
+       "100520|docs.house.gov"
+      ],
+      [
+       "100518|pete demarco",
+       "100518|docs.house.gov"
+      ],
+      [
+       "100965|ms lauren pagel",
+       "100965|docs.house.gov"
+      ],
+      [
+       "100755|mr erik milito",
+       "100755|docs.house.gov"
+      ],
+      [
+       "100736|rosemary morillo",
+       "100736|docs.house.gov"
+      ],
+      [
+       "100238|dr don cook",
+       "100238|docs.house.gov"
+      ],
+      [
+       "100717|general david m rodriguez",
+       "100717|docs.house.gov"
+      ],
+      [
+       "101102|mr donald f santa jr ",
+       "101102|docs.house.gov"
+      ],
+      [
+       "100588|the honorable arne duncan",
+       "100588|docs.house.gov"
+      ],
+      [
+       "101209|the honorable alcee l hastings",
+       "101209|docs.house.gov"
+      ],
+      [
+       "101209|the honorable alcee l hastings",
+       "101209|docs.house.gov"
+      ],
+      [
+       "100792|the honorable alan olson",
+       "100792|docs.house.gov"
+      ],
+      [
+       "101221|rear admiral timothy s matthews usn",
+       "101221|docs.house.gov"
+      ],
+      [
+       "101187|the honorable jared polis",
+       "101187|docs.house.gov"
+      ],
+      [
+       "100324|lieutenant general michael r moeller usaf",
+       "100324|docs.house.gov"
+      ],
+      [
+       "100245|mr jim shelton",
+       "100245|docs.house.gov"
+      ]
+     ],
+     "pending_r2_package_event_link": [
+      [
+       "326350|patricia f s cogswell",
+       "326350|gpo"
+      ],
+      [
+       "337649|roy boyd",
+       "337649|gpo"
+      ],
+      [
+       "327722|jeff kosseff",
+       "327722|gpo"
+      ],
+      [
+       "336628|mary graw leary",
+       "336628|gpo"
+      ],
+      [
+       "332187|ben r wagner",
+       "332187|gpo"
+      ],
+      [
+       "329721|eddie lazarus",
+       "329721|gpo"
+      ],
+      [
+       "326410|robert spottswood",
+       "326410|gpo"
+      ],
+      [
+       "337946|joel borkert",
+       "337946|gpo"
+      ],
+      [
+       "334244|laura sheridan",
+       "334244|gpo"
+      ],
+      [
+       "327662|andrew smith",
+       "327662|gpo"
+      ],
+      [
+       "337468|sue peschin",
+       "337468|gpo"
+      ],
+      [
+       "337119|david a wright",
+       "337119|gpo"
+      ],
+      [
+       "326008|harry wingo",
+       "326008|gpo"
+      ],
+      [
+       "337763|anna m gomez",
+       "337763|gpo"
+      ],
+      [
+       "327622|jane terry",
+       "327622|gpo"
+      ],
+      [
+       "330625|kristen clarke",
+       "330625|gpo"
+      ],
+      [
+       "326694|james c owens",
+       "326694|gpo"
+      ],
+      [
+       "336184|william saunders",
+       "336184|gpo"
+      ],
+      [
+       "326585|j c watts",
+       "326585|gpo"
+      ],
+      [
+       "327003|john mccarthy",
+       "327003|gpo"
+      ]
+     ],
+     "pending_r2_senate_page_link": [
+      [
+       "335706|kemp chester",
+       "335706|senate committee page"
+      ],
+      [
+       "338409|todd blanche",
+       "338409|senate committee page"
+      ],
+      [
+       "338399|scott turner",
+       "338399|senate committee page"
+      ],
+      [
+       "333137|rosa maria paya acevedo",
+       "333137|senate committee page"
+      ],
+      [
+       "333391|james edward simmons jr ",
+       "333391|senate committee page"
+      ],
+      [
+       "335832|j thomas manger",
+       "335832|senate committee page"
+      ],
+      [
+       "330128|angela walch",
+       "330128|senate committee page"
+      ],
+      [
+       "332871|robert califf",
+       "332871|senate committee page"
+      ],
+      [
+       "333598|marian f gaston",
+       "333598|senate committee page"
+      ],
+      [
+       "327413|helen hill",
+       "327413|senate committee page"
+      ],
+      [
+       "338084|kathleen s lane",
+       "338084|senate committee page"
+      ],
+      [
+       "338027|diana c maurer",
+       "338027|senate committee page"
+      ],
+      [
+       "326053|douglas russell cole",
+       "326053|senate committee page"
+      ],
+      [
+       "334923|john a kazen",
+       "334923|senate committee page"
+      ],
+      [
+       "330930|thomas barrett",
+       "330930|senate committee page"
+      ],
+      [
+       "338578|todd hauptli",
+       "338578|senate committee page"
+      ],
+      [
+       "333140|heidi todacheene",
+       "333140|senate committee page"
+      ],
+      [
+       "337925|dan schwager",
+       "337925|senate committee page"
+      ],
+      [
+       "335749|gloria o neill",
+       "335749|senate committee page"
+      ],
+      [
+       "333661|craig garthwaite",
+       "333661|senate committee page"
       ]
      ],
      "witness_name_normalization": [
       [
-       "100456|dr herbert c frost",
-       "100456"
-      ],
-      [
        "100733|dr donald e heller",
-       "100733"
+       "100733|docs.house.gov"
       ],
       [
-       "100671|vice admiral w mark skinner usn",
-       "100671"
+       "100572|mr mike bergmeier",
+       "100572|docs.house.gov"
       ],
       [
-       "100310|mr mike leister",
-       "100310"
+       "101088|dr joann a boughman",
+       "101088|docs.house.gov"
       ],
       [
-       "101189|mr scott morris",
-       "101189"
+       "100733|mr travis reindl",
+       "100733|docs.house.gov"
       ],
       [
-       "329841|christopher h schroeder",
-       "329841"
+       "326046|thomas sexton",
+       "326046|senate committee page"
       ],
       [
-       "100857|the honorable dennis a ross",
-       "100857"
+       "100429|mr roger natsuhara",
+       "100429|docs.house.gov"
       ],
       [
-       "101160|professor adam j levitin",
-       "101160"
+       "336230|frank white clay",
+       "336230|senate committee page"
       ],
       [
-       "335486|frank mcginn",
-       "335486"
+       "100956|ms kathryn brigham",
+       "100956|docs.house.gov"
       ],
       [
-       "101122|mr kenneth i moch",
-       "101122"
+       "333171|robert h shriver iii",
+       "333171|senate committee page"
       ],
       [
-       "100594|mr ray kelley",
-       "100594"
+       "100572|mr jim allen",
+       "100572|docs.house.gov"
       ],
       [
-       "100813|the honorable stevan pearce",
-       "100813"
+       "326046|walter lukken",
+       "326046|senate committee page"
       ],
       [
-       "337283|christopher fox",
-       "337283"
+       "100267|dr douglas hotlz eakin",
+       "100267|docs.house.gov"
       ],
       [
-       "100304|dr rodney watson",
-       "100304"
+       "331960|andrew marshall",
+       "331960|senate committee page"
+      ],
+      [
+       "100455|mr jim colby",
+       "100455|docs.house.gov"
+      ],
+      [
+       "100610|dr ioannis miaoulis",
+       "100610|docs.house.gov"
+      ],
+      [
+       "100611|lieutenant general thomas w travis",
+       "100611|docs.house.gov"
+      ],
+      [
+       "100458|mr ken bjurstrom",
+       "100458|docs.house.gov"
       ],
       [
        "337548|william kirk",
-       "337548"
+       "337548|senate committee page"
       ],
       [
-       "101189|the honorable bill huizenga",
-       "101189"
+       "333171|richard l revesz",
+       "333171|senate committee page"
       ],
       [
-       "329667|shalanda d young",
-       "329667"
-      ],
-      [
-       "329841|helaine ann greenfeld",
-       "329841"
-      ],
-      [
-       "100611|dr jonathan woodson",
-       "100611"
-      ],
-      [
-       "100266|walter nelson",
-       "100266"
+       "101167|the honorable robert griffin",
+       "101167|docs.house.gov"
       ]
      ]
     }
@@ -2016,166 +2265,166 @@
     "old_only": {
      "pending_r2_senate_page_link": [
       [
-       "336091|karine laboy",
-       "336091"
+       "335706|kemp chester",
+       "335706|senate committee page"
       ],
       [
-       "332762|carlos felipe uriarte",
-       "332762"
+       "338409|todd blanche",
+       "338409|senate committee page"
       ],
       [
-       "326152|richard w parker",
-       "326152"
+       "334994|sirisha bandla",
+       "334994|senate committee page"
       ],
       [
-       "337428|ali hopper",
-       "337428"
+       "334150|mark l wolf",
+       "334150|senate committee page"
       ],
       [
-       "333161|misael cabrera",
-       "333161"
+       "338399|scott turner",
+       "338399|senate committee page"
       ],
       [
-       "333449|david vasko",
-       "333449"
+       "333137|rosa maria paya acevedo",
+       "333137|senate committee page"
       ],
       [
-       "327623|jimmy j kolker",
-       "327623"
+       "326785|maureen ohlhausen",
+       "326785|senate committee page"
       ],
       [
-       "336093|eric s edelman",
-       "336093"
+       "333391|james edward simmons jr ",
+       "333391|senate committee page"
       ],
       [
-       "334742|eumi k lee",
-       "334742"
+       "335832|j thomas manger",
+       "335832|senate committee page"
       ],
       [
-       "338382|robert cekada",
-       "338382"
+       "330128|angela walch",
+       "330128|senate committee page"
       ],
       [
-       "326411|rudolph tanzi",
-       "326411"
+       "332871|robert califf",
+       "332871|senate committee page"
       ],
       [
-       "330541|cindy hensley mccain",
-       "330541"
+       "333598|marian f gaston",
+       "333598|senate committee page"
       ],
       [
-       "337941|ted sarandos",
-       "337941"
+       "327413|helen hill",
+       "327413|senate committee page"
       ],
       [
-       "327620|charles p rettig",
-       "327620"
+       "338084|kathleen s lane",
+       "338084|senate committee page"
       ],
       [
-       "335014|maureen bell",
-       "335014"
+       "338027|diana c maurer",
+       "338027|senate committee page"
       ],
       [
-       "335113|sara e hill",
-       "335113"
+       "326053|douglas russell cole",
+       "326053|senate committee page"
       ],
       [
-       "329234|joshua horwitz",
-       "329234"
+       "334923|john a kazen",
+       "334923|senate committee page"
       ],
       [
-       "333730|douglas holtz eakin",
-       "333730"
+       "330930|thomas barrett",
+       "330930|senate committee page"
       ],
       [
-       "330126|persis yu",
-       "330126"
+       "326122|mary dittmar",
+       "326122|senate committee page"
       ],
       [
-       "326346|barbara m barrett",
-       "326346"
+       "338578|todd hauptli",
+       "338578|senate committee page"
       ]
      ],
      "witness_name_normalization": [
       [
-       "337072|husein cumber",
-       "337072"
+       "337614|michelle schultz",
+       "337614|senate committee page"
       ],
       [
-       "336559|daniel maffei",
-       "336559"
+       "329741|patrick murray",
+       "329741|senate committee page"
       ],
       [
-       "333602|brenda smith",
-       "333602"
+       "328771|michael hancock",
+       "328771|senate committee page"
       ],
       [
-       "334626|linda apsey",
-       "334626"
+       "332447|jc scott",
+       "332447|senate committee page"
       ],
       [
-       "334996|mark s boshell",
-       "334996"
+       "331024|michael kubayanda",
+       "331024|senate committee page"
       ],
       [
-       "330759|gsl t",
-       "330759"
+       "335068|charlton chuck bonham",
+       "335068|senate committee page"
       ],
       [
-       "329841|christopher h schroeder",
-       "329841"
+       "335084|jennifer homendy",
+       "335084|senate committee page"
       ],
       [
-       "328939|amy roma",
-       "328939"
+       "329104|dorothy brown",
+       "329104|senate committee page"
       ],
       [
-       "329823|donald allan jr ",
-       "329823"
+       "326046|thomas sexton",
+       "326046|senate committee page"
       ],
       [
-       "326566|michael simon",
-       "326566"
+       "332179|reginald d williams ii",
+       "332179|senate committee page"
       ],
       [
-       "328181|ian jefferies",
-       "328181"
+       "329144|randall atkins",
+       "329144|senate committee page"
       ],
       [
-       "337924|melvin maier",
-       "337924"
+       "336230|frank white clay",
+       "336230|senate committee page"
       ],
       [
-       "331726|c e tee rowe",
-       "331726"
+       "329583|adrian v stevens",
+       "329583|senate committee page"
       ],
       [
-       "325988|jeff rupert",
-       "325988"
+       "336085|dillon davidson",
+       "336085|senate committee page"
       ],
       [
-       "335486|frank mcginn",
-       "335486"
+       "326153|james greenberger",
+       "326153|senate committee page"
       ],
       [
-       "326145|keith miller",
-       "326145"
+       "332846|grant harris",
+       "332846|senate committee page"
       ],
       [
-       "335862|john c ",
-       "335862"
+       "334063|jack resneck jr ",
+       "334063|senate committee page"
       ],
       [
-       "329042|joseph stiglitz",
-       "329042"
+       "336953|john mickelson",
+       "336953|senate committee page"
       ],
       [
-       "326387|don stockdale",
-       "326387"
+       "334446|linda fagan",
+       "334446|senate committee page"
       ],
       [
-       "334339|joel szabat",
-       "334339"
+       "331201|michael j roark",
+       "331201|senate committee page"
       ]
      ]
     }
@@ -2546,7 +2795,7 @@
  },
  "input_sha256": {
   "committee_records.parquet": "bd40781b7be47da55ea21a9f9df63f070f94dbe2e56e3e8dfb1b196c633981a6",
-  "decisions.jsonl": "7ef2cf3a2d26debcd73fc17256027433b595b0890b4c4eca24e2717e543b2600",
+  "decisions.jsonl": "2f546d4eeea83b99c122e55210f1e8dea5fac866c48ed82a0af58e7bb96c7498",
   "gpo_hearing_video_coverage.csv": "5358a4f80cb8bfc6d8473307a4769a29aadaec3700f7d8adcac6397e2bc36476",
   "gpo_hearing_videos.csv": "db41119803b97ebbf583eaa5a28cfd255d2dbad37d2db26fdea620da2903cb7d",
   "gpo_hearings.csv": "da7967e27754a5380cc8d2265d1c1706a67b64f86cc21f78b4ce0a6505804706",
@@ -2789,6 +3038,8 @@
  },
  "old_release": "56c87f8a7e29314d9e1477c0",
  "reasons": {
+  "derived_from_title_or_document": "The old row came from a meeting title or a witness list PDF, which no native parser reads.",
+  "house_xml_witness_not_parsed": "The event has House XML but native witnesses have no row for it; a family name in the raw XML is a lead, so this needs a parser check.",
   "member_ineligible_split_see_ct-qg8e": "Archive-member eligibility split, awaiting the ct-qg8e owner decision.",
   "native_found_more": "The native record states rows the old derived file lacks.",
   "new_snapshot_only": "The frozen captures end at the 2026-10-28 snapshot, after the retained old inputs.",
@@ -2800,6 +3051,7 @@
   "other_source_meeting": "An old meeting from a Senate page or House XML with no Congress.gov event ID.",
   "pending_r2_access_state": "Access, closed, not-held and rescheduled facts arrive with native hearing records.",
   "pending_r2_matcher": "Scored date and title matches arrive with the native decide() producer.",
+  "pending_r2_package_event_link": "Raw MODS states the name, and native witnesses hold it on a package occasion with no event; the package-to-event link arrives with native hearing records.",
   "pending_r2_print_link": "Print-to-meeting links are derived; they arrive with native hearing records.",
   "pending_r2_senate_page_link": "Senate page-to-event links are held only in derived data until the derived-link layer.",
   "release_delta_unexplained_see_ct-qg8e": "Release delta on row counts owned by the ct-qg8e accounting.",
@@ -2813,9 +3065,9 @@
   "committees.parquet": "6a6c7cda9edf92e58954db397213bfc732e226f3322094143c661a5f58b82809",
   "detail.parquet": "ba48255cd678f9a7fedf44f282ea941d0af1fcde67dac12b7ff7274f07502a3f",
   "list.parquet": "442a6c00eaf51ba8cf04d3fe9548145eb282c78339dec0d27ffd105a04393338",
-  "meeting_coverage.parquet": "6fa76e0ad173edc6468b720f1079d8be4a0d36e03f8a1491d5bfa7117a1d92f2",
+  "meeting_coverage.parquet": "3a0f6d9d1da1a0b02f00727315a57037ddab3010c09fe229fa86173d18899985",
   "meetings.parquet": "cc88279cbaa5a203ade24192478aaf99bf326ffa27f9fb2e8ea10de0d4e18ca0",
-  "recording_matches.parquet": "1d2a11db474c5949adfc463c479e32083731403bf9cc6feb119a570fcd1df97a",
+  "recording_matches.parquet": "767fe6b9df0eaf1784d9ab17f492c4e9c0cf0d319c110e70409dae979fddbfd2",
   "resolved_meetings.parquet": "9be973af0b716a04d6ded768b0b408e0f9b71cac07d54471cdac2a3e67d096cc",
   "sources.parquet": "c4d47a665907f95d6021a593f5b22c0a02d57a5d5a41303ddde0fc7bf7e439af",
   "videos.parquet": "f90811e4108ed482f5bd0e46c027372e41684468c7f9c64464b75a6718948eba",
