@@ -906,7 +906,12 @@ def build_prepared_release(prepared,*,engine,output,root=ROOT):
                 SELECT DISTINCT cm['system_code'] AS system_code FROM (
                     SELECT unnest(committees) AS cm FROM meetings_export WHERE committees IS NOT NULL
                 ) WHERE cm['system_code'] IS NOT NULL
-            ) k WHERE NOT EXISTS (SELECT 1 FROM committees_export c WHERE c.system_code=k.system_code)) AS missing_committee_keys"""+''.join(f',\n            {sql} AS {name}' for name,sql in entity_track_checks().items())
+            ) k WHERE NOT EXISTS (SELECT 1 FROM committees_export c WHERE c.system_code=k.system_code)) AS missing_committee_keys,
+            (SELECT count(*) FROM (
+                SELECT event_id,tr['package_id'] AS package_id FROM (
+                    SELECT event_id,unnest(transcripts) AS tr FROM meetings_export WHERE transcripts IS NOT NULL)
+                GROUP BY event_id,tr['package_id'] HAVING count(*)>1
+            )) AS duplicate_transcript_packages"""+''.join(f',\n            {sql} AS {name}' for name,sql in entity_track_checks().items())
         meta_queries += [
             dict(name='appearance_name_key_variants',sql="""WITH stripped AS (
                 SELECT occasion,name_key,
@@ -927,6 +932,21 @@ def build_prepared_release(prepared,*,engine,output,root=ROOT):
             GROUP BY occasion,base_key
             HAVING count(DISTINCT name_key)>1
             ORDER BY occasion,base_key"""),
+            # Not refusing: transcript-linked packages listed as more than one document. Editions share a
+            # version key; any other split is listed for reading and for the publish gates (ct-tk10).
+            dict(name='split_transcript_packages',sql="""WITH linked AS (
+                SELECT DISTINCT tr['package_id'] AS package_id FROM (
+                    SELECT unnest(transcripts) AS tr FROM meetings_export WHERE transcripts IS NOT NULL)
+            ), listed AS (
+                SELECT d.package_id,o.list_row,o.version_keys FROM linked l JOIN details d ON d.package_id=l.package_id
+                JOIN ordered o ON o.list_row=d.list_row
+            ), split AS (
+                SELECT package_id,count(*) AS documents,
+                    count(*) FILTER (WHERE coalesce(array_length(version_keys),0)>0) AS versioned
+                FROM listed GROUP BY package_id HAVING count(*)>1
+            )
+            SELECT package_id,documents,CASE WHEN versioned=documents THEN 'editions' ELSE 'unexplained' END AS basis
+            FROM split ORDER BY basis,package_id"""),
             dict(name='senate_cards_without_links',sql="""SELECT record_sha_hex,page_url,name_key,name
             FROM appearance_records_resolved
             WHERE source='senate_page' AND coalesce(array_length(document_urls),0)=0

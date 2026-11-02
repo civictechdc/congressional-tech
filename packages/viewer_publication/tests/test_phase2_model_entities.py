@@ -162,6 +162,14 @@ def test_phase2_entities_meetings_witnesses_recordings_and_spicy_projections(tmp
             family='documents',
             retrieved_at='2023-05-20T12:00:00Z',
         ),
+        # The same package's HTML, listed apart from its PDF: still one transcript entry.
+        dict(
+            url='https://www.govinfo.gov/content/pkg/CHRG-118hhrg55555/html/CHRG-118hhrg55555.htm',
+            data=b'<html><head><title>Printed hearing</title></head><body><pre>' + b'Printed hearing transcript text. ' * 60 + b'</pre></body></html>',
+            format='html',
+            family='documents',
+            retrieved_at='2023-05-20T12:00:00Z',
+        ),
         dict(
             url='https://www.youtube.com/api/timedtext?v=dQw4w9WgXcQ&lang=en&fmt=vtt',
             data=vtt_old,
@@ -676,11 +684,14 @@ def test_phase2_entities_meetings_witnesses_recordings_and_spicy_projections(tmp
     assert m['subject_keys'] == ['118-hr-1234', '118-pn-123']
     assert len(m['transcripts']) == 1
     assert m['transcripts'][0]['package_id'] == 'CHRG-118hhrg55555'
+    assert m['transcripts'][0]['formats'] == ['pdf', 'html']
     assert [v['video_key'] for v in m['videos']] == ['youtube:dQw4w9WgXcQ', 'senate:ag051023']
 
     # Verify CHRG document linked to meeting 115538 and inherited meeting_date, without individual witness_keys
     listed = pq.read_table(release_dir / 'list.parquet').to_pylist()
     chrg_doc = next(r for r in listed if r['filename'] == 'CHRG-118hhrg55555.pdf')
+    assert [r['format'] for r in listed if r['filename'].startswith('CHRG-118hhrg55555.')] == ['html', 'pdf']
+    assert m['transcripts'][0]['list_row'] == listed.index(chrg_doc)  # The PDF, though the HTML lists first.
     stmt_doc = next(r for r in listed if 'Wstate-SmithJ' in r['filename'])
     assert not any(r['filename'].endswith('.ts') for r in listed)
     assert chrg_doc['meeting_keys'] == ['115538']
