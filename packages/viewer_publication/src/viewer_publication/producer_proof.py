@@ -94,12 +94,83 @@ RULES = {
 }
 
 
+CAPTURES_STAGE = 'packages/congress_api/src/congress_api/cli/captures_ingest.py'
+DAILY = 'packages/congress_api/src/congress_api/lake/daily.py'
+BACKFILL = 'packages/viewer_publication/src/viewer_publication/archive_backfill_job.py'
+# The checked-in jobs that may produce each table; a record naming any other file refuses.
+PRODUCERS = {
+    'captures': {CAPTURES_STAGE, DAILY, BACKFILL},
+    'readings': {'packages/congress_api/src/congress_api/cli/readings.py', DAILY, BACKFILL},
+    'filename_readings': {DAILY, BACKFILL},
+    'meeting_records': {DAILY, BACKFILL},
+    'appearance_records': {DAILY, BACKFILL},
+    'video_records': {DAILY, BACKFILL},
+    'committee_records': {DAILY, BACKFILL},
+}
+VERSIONS_AT_COMMIT = """import importlib, json
+def version(module, call):
+    try:
+        return call(importlib.import_module('congress_api.lake.' + module))
+    except ImportError:
+        return None  # the table's producer did not exist at this commit
+out = dict(captures=version('captures', lambda m: m.current_version()),
+    readings=version('readings', lambda m: {p: m.current_version(p) for p in ['sniff', 'html', 'xml', 'json']}),
+    filename_readings=version('filenames', lambda m: m.current_version()),
+    module=importlib.import_module('congress_api.lake.captures').__file__)
+for name in ['meeting_records', 'appearance_records', 'video_records', 'committee_records']:
+    out[name] = version(name, lambda m: m.current_versions())
+print(json.dumps(out))
+"""
+
+
+def versions_at(commit, *, root=ROOT, cache={}):
+    """Each table's byte-hashed producer version computed from the code at `commit`.
+
+    The version functions hash their own source and registries, so the tree at that commit
+    is extracted (packages, model, uv.lock) and the functions run there. Never trusts
+    a version the record states.
+    """
+    import subprocess
+    import sys
+    import tarfile
+    import tempfile
+    from io import BytesIO
+    if (str(root), commit) in cache:
+        return cache[str(root), commit]
+    archive = subprocess.run(['git', '-C', str(root), 'archive', commit, 'packages', 'model', 'uv.lock'],
+                             capture_output=True, check=True).stdout
+    with tempfile.TemporaryDirectory(prefix='producer-versions-') as directory:
+        with tarfile.open(fileobj=BytesIO(archive)) as tar:
+            tar.extractall(directory, filter='data')
+        src = str(Path(directory) / 'packages/congress_api/src')
+        result = subprocess.run([sys.executable, '-c', VERSIONS_AT_COMMIT], cwd=directory, capture_output=True, text=True,
+                                env=dict(__import__('os').environ, PYTHONPATH=src))
+        if result.returncode:
+            raise ValueError(f'producer proof: versions could not be computed at {commit[:12]}: {result.stderr.strip()[-300:]}')
+        value = json.loads(result.stdout)
+        if not Path(value.pop('module')).resolve().is_relative_to(Path(directory).resolve()):
+            raise ValueError('producer proof: the version functions did not run from the extracted commit')
+    cache[str(root), commit] = value
+    return value
+
+
+def expected_versions(name, model, mapping_current):
+    """The version(s) the pinned rows carry for one table."""
+    if name == 'captures':
+        return mapping_current
+    if name == 'readings':
+        return {p: model['parser_versions'][p] for p in ['sniff', 'html', 'xml', 'json']}
+    if name == 'filename_readings':
+        return model['catalog_version']
+    return model['parser_versions'].get(name)
+
+
 def _git(root, *args):
     import subprocess
     return subprocess.run(['git', '-C', str(root), *args], capture_output=True, text=True)
 
 
-def snapshot_reasons(model, records, *, root=ROOT):
+def snapshot_reasons(model, records, *, root=ROOT, mapping_current=None):
     """Refusals for the per-snapshot rule: one record per pinned table, bound to its selector."""
     import re
     reasons = []
@@ -112,13 +183,27 @@ def snapshot_reasons(model, records, *, root=ROOT):
         if record.get('input') != name or record.get('selector') != selector:
             reasons.append(f'producer proof: {name}: the producer record names another selector')
         commit, job = record.get('commit'), record.get('job')
+        if record.get('version') != 1:
+            reasons.append(f'producer proof: {name}: unknown producer record version {record.get("version")!r}')
+            continue
+        if job not in PRODUCERS.get(name, ()):
+            reasons.append(f'producer proof: {name}: job {job!r} is not a producer registered for this table')
+            continue
         if not isinstance(commit, str) or re.fullmatch('[0-9a-f]{40}', commit) is None:
             reasons.append(f'producer proof: {name}: the producer record has no full commit')
             continue
         if _git(root, 'merge-base', '--is-ancestor', commit, 'HEAD').returncode != 0:
             reasons.append(f'producer proof: {name}: producing commit {commit[:12]} is not reachable from HEAD')
-        elif not isinstance(job, str) or _git(root, 'cat-file', '-e', f'{commit}:{job}').returncode != 0:
+        elif _git(root, 'cat-file', '-e', f'{commit}:{job}').returncode != 0:
             reasons.append(f'producer proof: {name}: job {job!r} is not a file checked in at {commit[:12]}')
+        else:
+            try:
+                computed = versions_at(commit, root=root).get(name)
+            except ValueError as error:
+                reasons.append(f'producer proof: {name}: {error}')
+                continue
+            if computed != expected_versions(name, model, mapping_current):
+                reasons.append(f'producer proof: {name}: the code at {commit[:12]} computes another version than the pinned rows carry')
     return reasons
 
 
@@ -147,7 +232,7 @@ def require_producers(model, *, engine, work, mapping_current=None, records=None
         selector = model[name]
         source = selector['path'] if selector.get('kind') == 'parquet' else {k: v for k, v in selector.items() if k != 'kind'}
         inputs.append(table_input(name, source))
-    report, reasons = {}, snapshot_reasons(model, records, root=root)
+    report, reasons = {}, snapshot_reasons(model, records, root=root, mapping_current=mapping_current)
     for query in proof_queries(model, present, mapping_current=mapping_current):
         try:
             rows = run_job(Path(work) / query['name'], engine, inputs=[i for i in inputs if i['name'] == query['name']],

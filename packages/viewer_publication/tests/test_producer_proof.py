@@ -10,7 +10,9 @@ from archive_job_fixture import real_model_spec
 from docspec_client.client import NativeDatasets
 from viewer_publication.producer_proof import require_producers
 
-CURRENT = 'm' * 64
+from congress_api.lake import captures as _captures
+
+CURRENT = _captures.current_version()  # the producer record's commit must compute it
 
 
 def with_mapping(spec, tmp_path, values):
@@ -23,7 +25,7 @@ def with_mapping(spec, tmp_path, values):
     return dict(spec, captures=dict(kind='parquet', path=str(path)))
 
 
-JOB = 'packages/congress_api/src/congress_api/cli/captures_ingest.py'
+JOB = 'packages/congress_api/src/congress_api/lake/daily.py'  # registered for every table
 
 
 def head():
@@ -96,7 +98,13 @@ def test_null_reading_version_refuses_and_old_versions_are_only_reported(spec, t
     (lambda r: r.pop('captures'), 'captures: no producer record'),
     (lambda r: r['captures'].update(selector={'kind': 'parquet', 'path': '/elsewhere.parquet'}), 'captures: the producer record names another selector'),
     (lambda r: r['readings'].update(commit='0' * 40), 'readings: producing commit 000000000000 is not reachable from HEAD'),
-    (lambda r: r['filename_readings'].update(job='not/a/checked-in/job.py'), "filename_readings: job 'not/a/checked-in/job.py' is not a file checked in"),
+    (lambda r: r['filename_readings'].update(job='not/a/checked-in/job.py'), "filename_readings: job 'not/a/checked-in/job.py' is not a producer registered"),
+    # red-h2's probe: README.md as the job, an old commit, and version 99 were all accepted.
+    (lambda r: r['captures'].update(job='README.md'), "captures: job 'README.md' is not a producer registered"),
+    (lambda r: r['readings'].update(job='packages/congress_api/src/congress_api/cli/captures_ingest.py'), 'readings: job .* is not a producer registered'),
+    (lambda r: r['captures'].update(version=99), 'captures: unknown producer record version 99'),
+    (lambda r: r['captures'].update(commit=__import__('subprocess').run(['git', 'rev-parse', 'c9d70d6f'], capture_output=True, text=True).stdout.strip()),
+     'captures: the code at c9d70d6f86de computes another version than the pinned rows carry'),
 ])
 def test_snapshot_without_a_valid_producer_record_refuses(spec, tmp_path, change, rule):
     mapped = with_mapping(spec, tmp_path, [CURRENT])
