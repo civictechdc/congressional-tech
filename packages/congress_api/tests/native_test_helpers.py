@@ -93,4 +93,18 @@ def lake_readings_table(rows):
     from congress_api.lake.tables import load_schema
     schema = schema_to_pyarrow(Schema.model_validate(load_schema('readings')), include_field_ids=False)
     lists = {field.name: [] for field in schema if pa.types.is_large_list(field.type) and not field.nullable}
-    return pa.Table.from_pylist([{**lists, **row} for row in rows], schema=schema)
+    table = pa.Table.from_pylist([{**lists, **row} for row in rows], schema=schema)
+
+    def refuse_nulls(path, field, values):
+        # pyarrow does not enforce declared nullability, so check every level.
+        if not field.nullable and values.null_count:
+            raise ValueError(f'Readings fixture leaves required {path} null')
+        if pa.types.is_large_list(field.type) or pa.types.is_list(field.type):
+            refuse_nulls(path + '[]', field.type.value_field, values.flatten())
+        elif pa.types.is_struct(field.type):
+            for child in field.type:
+                refuse_nulls(path + '.' + child.name, child, values.field(child.name))
+
+    for field in schema:
+        refuse_nulls(field.name, field, table.column(field.name).combine_chunks())
+    return table
