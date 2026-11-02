@@ -515,3 +515,21 @@ def test_nightly_additions_from_new_receipts_publish_through_the_real_path(tmp_p
     assert result['status']=='published'
     report=json.loads((tmp_path/'publish/release-gate.json').read_text())
     assert report['automatic_causes'] and all(e['tickets']==['ct-ud0b'] for e in report['automatic_causes'])
+
+
+def test_a_declared_first_release_is_checked_against_the_live_pointer_and_the_release_listing(tmp_path,real_gates):
+    """M1: never replace a live release; and a missing pointer with releases already listed is
+    not a first release (the declaration is verified, not trusted)."""
+    store,live=live_store(tmp_path)
+    artifacts,_=real_release(tmp_path/'next',['A','B','N'],retired=[])
+    value,keys=record()
+    pointer,etag=read_pointer(store,bucket='derived-fixture')
+    def passed(**context):return dict(status='passed',releaseId=context['release_id'],targets='owner-approved')
+    common=dict(client=store,engine=Native(store),bucket='derived-fixture',**artifacts,input_record=value,receipt_keys=keys,
+        public_origin='https://archive.example.test',contract=passed,canary=passed,first_release=True)
+    with pytest.raises(ValueError,match='cannot replace a live release'):
+        publish_candidate(work=tmp_path/'live',pointer=pointer,expected_etag=etag,base_release=tmp_path/'base',**common)
+    del store.objects['viewer-publications/manifest.json']  # the pointer is lost; releases remain
+    with pytest.raises(ValueError,match='releases already exist'):
+        publish_candidate(work=tmp_path/'lost',pointer=None,expected_etag=None,**common)
+    assert 'viewer-publications/manifest.json' not in store.objects

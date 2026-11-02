@@ -727,3 +727,12 @@ def test_execute_refuses_captures_without_a_producer_version(tmp_path):
         execute(load_spec(specpath),runtime_factory=runtime_factory,storage_factory=lambda **_:store,
                 process_runner=never,end_to_end_runner=END_TO_END_PASSED)
     assert not Path(model['output']).exists() and 'viewer-publications/manifest.json' not in store.objects
+
+
+def test_a_first_release_cannot_name_link_history(tmp_path):
+    """M10: a bootstrap has no earlier release, so a link_history beside it is refused at load."""
+    from viewer_publication.archive_publish_job import load_spec
+    value=publish_spec(tmp_path);value.update(first_release=True,link_history=['a'*64])
+    path=tmp_path/'publish.json';path.write_text(json.dumps(value))
+    with pytest.raises(ValueError,match='A first release has no link history'):
+        load_spec(path)
