@@ -97,6 +97,8 @@ APPEARANCE_RECORD_FIELDS=dict(
         bioguide_id='Utf8',
         document_links=list_of('Utf8'),
     )),
+    held_dates=list_of('Utf8'),
+    title='Utf8',
 )
 
 RECORDING_DECISION_FIELDS=dict(id='Utf8',subject_kind='Utf8',subject_id='Utf8',verdict='Utf8',video_refs=list_of('Utf8'),
@@ -294,6 +296,8 @@ def _normalize_appearance_rows(rows,selected_versions=None):
             collection_state=str(row['collection_state']) if row.get('collection_state') is not None else None,
             context_url=str(top_context_url) if top_context_url is not None else None,
             appearances=appearances,
+            held_dates=[str(d) for d in row.get('held_dates') or ()],
+            title=str(row['title']) if row.get('title') is not None else None,
         ))
     return normalized
 
@@ -692,7 +696,7 @@ def prepare_model_inputs(*,captures,readings,filename_readings,parser_versions,c
         error_expr='error_type'
         extra_select=''
         if table_name=='appearance_records':
-            extra_select='event_id,package_id,declared_base,collection_state,cast(NULL AS VARCHAR) AS context_url,'
+            extra_select='event_id,package_id,declared_base,collection_state,cast(NULL AS VARCHAR) AS context_url,held_dates,title,'
         if parquet_path is not None and Path(parquet_path).is_file():
             import pyarrow as pa
             import pyarrow.parquet as pq
@@ -709,7 +713,10 @@ def prepare_model_inputs(*,captures,readings,filename_readings,parser_versions,c
                 base_expr='declared_base' if 'declared_base' in schema.names else 'cast(NULL AS VARCHAR) AS declared_base'
                 cs_expr='collection_state' if 'collection_state' in schema.names else 'cast(NULL AS VARCHAR) AS collection_state'
                 ctx_expr='context_url' if 'context_url' in schema.names else 'cast(NULL AS VARCHAR) AS context_url'
-                extra_select=f'{ev_expr},{pkg_expr},{base_expr},{cs_expr},{ctx_expr},'
+                # MODS print facts; an older lake file without them states none.
+                held_expr='held_dates' if 'held_dates' in schema.names else "arrow_cast(array_slice(make_array(cast(NULL AS VARCHAR)),1,0),'List(Utf8)') AS held_dates"
+                title_expr='title' if 'title' in schema.names else 'cast(NULL AS VARCHAR) AS title'
+                extra_select=f'{ev_expr},{pkg_expr},{base_expr},{cs_expr},{ctx_expr},{held_expr},{title_expr},'
         return f"SELECT {sha_expr} AS record_sha_hex,parser_version,{status_expr} AS status,{error_expr} AS error_type,source,{extra_select}{payload_col} FROM {table_name}"
     if meeting_records is None or isinstance(meeting_records,(list,tuple)):
         inputs.append(json_input(scratch,'meeting_records_input',_normalize_meeting_rows(meeting_records or (),parser_versions.get('meeting_records')),**MEETING_RECORD_FIELDS))

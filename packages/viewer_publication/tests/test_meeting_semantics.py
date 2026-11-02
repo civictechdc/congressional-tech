@@ -40,7 +40,7 @@ def meeting(event_id, date, title, status=None, video=False, kind='Hearing'):
             f"{UTC} AS congress_gov_updated,cast(NULL AS VARCHAR) AS house_xml_updated,'Hearing' AS congress_gov_meeting_type,"
             f"{text(facts['access'])} AS access,cast(NULL AS VARCHAR) AS access_basis,{str(facts['not_held']).lower()} AS not_held,"
             f"cast({text(facts['title_key'])} AS VARCHAR) AS title_key,{str(facts['reschedule_candidate']).lower()} AS reschedule_candidate,"
-            "'hsif00' AS committee_key")
+            "'hsif00' AS committee_key,arrow_cast(array_slice(make_array(cast(NULL AS BIGINT)),1,0),'List(Int64)') AS transcript_jackets")
 
 
 UTC = "arrow_cast(NULL,'Timestamp(Microsecond, Some(\"UTC\"))')"
@@ -72,9 +72,15 @@ MEETINGS = [
     # A hearing never moves to a markup of the same bills, whatever its status.
     meeting(13, '2023-11-08', BILLS + ' oversight', 'Postponed'),
     meeting(14, '2023-11-29', BILLS + ' oversight', 'Scheduled', kind='HMKP'),
-    # Witnesses tied to the meeting alone also show it sat.
+    # Its own witness list (House XML or Congress.gov) shows it sat.
     meeting(15, '2013-10-24', FTC + ' second', 'Rescheduled'),
     meeting(16, '2013-12-03', FTC + ' second', 'Scheduled'),
+    # 101422 shape: witnesses attached from another hearing's print are not its own; it still moves.
+    meeting(17, '2013-10-24', FTC + ' third', 'Rescheduled'),
+    meeting(18, '2013-12-03', FTC + ' third', 'Scheduled'),
+    # 101498 shape: Canceled on Congress.gov, but its own print was held that day under its title.
+    meeting(19, '2013-11-14', POSTPONED + ' printed', 'Canceled'),
+    meeting(20, '2013-12-12', POSTPONED + ' printed', 'Scheduled'),
 ]
 
 
@@ -88,7 +94,8 @@ def meetings(tmp_path_factory):
         dict(name='meeting_transcript_links', sql="SELECT cast(NULL AS VARCHAR) AS package_id,cast(NULL AS BIGINT) AS event_id WHERE false", materialize=True),
         dict(name='details', sql="SELECT cast(NULL AS VARCHAR) AS package_id,cast(NULL AS INT) AS list_row WHERE false", materialize=True),
         dict(name='meeting_document_urls', sql="SELECT cast(11 AS BIGINT) AS event_id,'https://www.congress.gov/118/meeting/house/116450/documents/HHRG-118-VR09-Transcript-20231108.pdf' AS url", materialize=True),
-        dict(name='appearance_records_resolved', sql="SELECT cast(15 AS BIGINT) AS event_id,'Jane Witness' AS name", materialize=True),
+        dict(name='appearance_records_resolved', sql="SELECT cast(15 AS BIGINT) AS event_id,'Jane Witness' AS name,'congress_gov' AS source UNION ALL SELECT 17,'PPACA Witness','mods'", materialize=True),
+        dict(name='package_meeting_links', sql="SELECT 'CHRG-own' AS package_id,cast(19 AS BIGINT) AS event_id", materialize=True),
         dict(name='meetings_export', sql=sql('entity-meetings'), materialize=True),
     ]
     run_job(work, engine, inputs=[], steps=steps,
@@ -116,6 +123,14 @@ def test_postponed_moves_even_with_a_recording_of_its_own(meetings):
 
 def test_a_meeting_with_its_own_transcript_or_witnesses_sat(meetings):
     assert meetings[11][0] is None and meetings[15][0] is None
+
+
+def test_witnesses_attached_from_a_print_are_not_its_own(meetings):
+    assert meetings[17][:2] == (18, 'publisher_status')
+
+
+def test_a_canceled_meeting_whose_own_print_was_held_sat(meetings):
+    assert meetings[19][0] is None and meetings[19][2] is False
 
 
 def test_a_hearing_never_moves_to_a_markup(meetings):
@@ -151,7 +166,14 @@ def record(tag, source, appearances, event_id=None, package_id=None):
 LIST = 'https://docs.house.gov/meetings/HM/HM00/20130718/{}/HHRG-113-HM00-Wstate-X-20130718.pdf'
 
 
-def resolve(tmp_path, records, links, named, paths=()):
+DAY, TITLE = '2021-04-28', 'Student loan debt relief and the borrower defense rule'
+
+
+def facts(named=(), held=(DAY,), title=TITLE):
+    return dict(named_meetings=list(named), held_dates=list(held), title=title)
+
+
+def resolve(tmp_path, records, links, prints, paths=(), meetings=((9001, DAY, TITLE),)):
     """Witness rows per name, from the maintained package-link and appearance SQL."""
     engine = NativeDatasets.from_config(os.environ['DOCSPEC_JOB_CONFIG'])
     inputs = [
@@ -159,14 +181,17 @@ def resolve(tmp_path, records, links, named, paths=()):
                    error_type='Utf8', source='Utf8', event_id='Int64', package_id='Utf8', declared_base='Utf8',
                    collection_state='Utf8', context_url='Utf8', appearances=list_of(struct(**APPEARANCE))),
         json_input(tmp_path, 'meeting_transcript_links', [dict(package_id=p, event_id=e) for p, e in links], package_id='Utf8', event_id='Int64'),
-        json_input(tmp_path, 'package_mods_facts', [dict(package_id=p, named_meetings=n) for p, n in named.items()],
-                   package_id='Utf8', named_meetings=list_of('Int64')),
+        json_input(tmp_path, 'package_mods_facts', [dict(package_id=p, **f) for p, f in prints.items()],
+                   package_id='Utf8', named_meetings=list_of('Int64'), held_dates=list_of('Utf8'), title='Utf8'),
+        json_input(tmp_path, 'meetings_input', [dict(event_id=e, meeting_date=d, title=t) for e, d, t in meetings],
+                   event_id='Int64', meeting_date='Utf8', title='Utf8'),
         json_input(tmp_path, 'meeting_sources', [dict(kind='appearance', source=s, priority=i) for i, s in enumerate(('house_xml', 'congress_gov', 'mods'), 1)],
                    kind='Utf8', source='Utf8', priority='Int32'),
         json_input(tmp_path, 'appearance_url_keys', [], url='Utf8', url_key='Utf8', error='Utf8'),
         json_input(tmp_path, 'selected_meeting_records', [], record_sha_hex='Utf8', status='Utf8', meetings=list_of(struct(updated='Utf8'))),
     ]
     steps = [dict(name='selected_appearance_records', sql='SELECT * FROM appearance_records_input', materialize=True),
+             dict(name='meetings_resolved', sql='SELECT event_id,cast(meeting_date AS DATE) AS meeting_date,title FROM meetings_input', materialize=True),
              dict(name='captures', sql=CAPTURES + ''.join(
                  f" UNION ALL SELECT 'fetch' AS mode,cast(NULL AS BOOLEAN) AS complete,'failed' AS outcome,cast(NULL AS INT) AS http_status,"
                  f"arrow_cast(decode('{sha}','hex'),'FixedSizeBinary(32)') AS sha256,'house/witness-xml' AS family,cast(NULL AS VARCHAR) AS url,"
@@ -180,28 +205,48 @@ def resolve(tmp_path, records, links, named, paths=()):
     return {r['name']: (r['occasion'], r['event_id']) for r in found}
 
 
-def test_an_event_with_two_packages_attaches_neither(tmp_path):
-    got = resolve(tmp_path, [record('a', 'mods', [witness('A')], package_id='CHRG-a'), record('b', 'mods', [witness('B')], package_id='CHRG-b')],
-                  [('CHRG-a', 9001), ('CHRG-b', 9001)], {})
-    assert got == {'A': ('package:CHRG-a', None), 'B': ('package:CHRG-b', None)}
+def two(tmp_path, prints, links=(('CHRG-a', 9001), ('CHRG-b', 9001)), **kw):
+    return resolve(tmp_path, [record('a', 'mods', [witness('A')], package_id='CHRG-a'), record('b', 'mods', [witness('B')], package_id='CHRG-b')],
+                   list(links), prints, **kw)
 
 
-def test_the_package_whose_mods_names_the_event_attaches(tmp_path):
-    got = resolve(tmp_path, [record('a', 'mods', [witness('A')], package_id='CHRG-a'), record('b', 'mods', [witness('B')], package_id='CHRG-b')],
-                  [('CHRG-a', 9001), ('CHRG-b', 9001)], {'CHRG-a': [9001]})
+def test_of_two_same_day_prints_only_the_one_whose_title_agrees_attaches(tmp_path):
+    got = two(tmp_path, {'CHRG-a': facts(), 'CHRG-b': facts(title='Nuclear waste storage and the Yucca Mountain license')})
     assert got == {'A': ('meeting:9001', 9001), 'B': ('package:CHRG-b', None)}
 
 
-def test_a_print_and_its_errata_whose_mods_both_name_the_event_both_attach(tmp_path):
-    # CHRG-117shrg45636 and its errata CHRG-117shrg49900 both state <eventId>321961</eventId>.
-    got = resolve(tmp_path, [record('a', 'mods', [witness('A')], package_id='CHRG-a'), record('b', 'mods', [witness('B')], package_id='CHRG-b')],
-                  [('CHRG-a', 9001), ('CHRG-b', 9001)], {'CHRG-a': [9001], 'CHRG-b': [9001]})
-    assert {occasion for occasion, _ in got.values()} == {'meeting:9001'}
-
-
-def test_an_exclusive_link_whose_mods_names_another_event_stays_a_package(tmp_path):
-    got = resolve(tmp_path, [record('a', 'mods', [witness('A')], package_id='CHRG-a')], [('CHRG-a', 9001)], {'CHRG-a': [9002]})
+def test_a_one_to_one_link_to_another_hearings_print_stays_a_package(tmp_path):
+    # ct-dx22: a jacket link alone is not evidence; the print's title is another hearing's.
+    got = resolve(tmp_path, [record('a', 'mods', [witness('A')], package_id='CHRG-a')], [('CHRG-a', 9001)],
+                  {'CHRG-a': facts(title='Nuclear waste storage and the Yucca Mountain license')})
     assert got == {'A': ('package:CHRG-a', None)}
+
+
+def test_an_eventid_on_a_print_held_another_day_is_not_accepted(tmp_path):
+    # 330128: GPO put the meeting's eventId on another day's print.
+    got = resolve(tmp_path, [record('a', 'mods', [witness('A')], package_id='CHRG-a')], [('CHRG-a', 9001)],
+                  {'CHRG-a': facts(named=[9001], held=['2021-05-05'])})
+    assert got == {'A': ('package:CHRG-a', None)}
+
+
+def test_a_print_and_its_errata_both_keep_their_witnesses(tmp_path):
+    # CHRG-117shrg45636 and its errata CHRG-117shrg49900 both state <eventId>321961</eventId>.
+    got = two(tmp_path, {'CHRG-a': facts(named=[9001]), 'CHRG-b': facts(named=[9001], title='[ERRATA] ' + TITLE)})
+    assert len(got) == 2 and set(got.values()) == {('meeting:9001', 9001)}
+
+
+def test_a_print_naming_two_meetings_attaches_only_where_it_was_held(tmp_path):
+    # A multi-meeting eventId list is accepted per meeting, by that meeting's own date and title.
+    got = resolve(tmp_path, [record('a', 'mods', [witness('A')], package_id='CHRG-a')], [('CHRG-a', 9001), ('CHRG-a', 9002)],
+                  {'CHRG-a': facts(named=[9001, 9002])}, meetings=((9001, DAY, TITLE), (9002, '2021-06-10', TITLE)))
+    assert got == {'A': ('meeting:9001', 9001)}
+
+
+def test_a_multi_day_print_attaches_to_each_day_it_names(tmp_path):
+    # Haaland 328803: one print held on two days stands for each day's meeting.
+    got = resolve(tmp_path, [record('a', 'mods', [witness('A')], package_id='CHRG-a')], [('CHRG-a', 9001), ('CHRG-a', 9002)],
+                  {'CHRG-a': facts(named=[9001, 9002], held=[DAY, '2021-02-24'])}, meetings=((9001, DAY, TITLE), (9002, '2021-02-24', TITLE)))
+    assert got['A'][0] in ('meeting:9001', 'meeting:9002')
 
 
 def test_a_house_list_without_meeting_id_takes_the_event_its_links_state(tmp_path):
@@ -210,15 +255,21 @@ def test_a_house_list_without_meeting_id_takes_the_event_its_links_state(tmp_pat
     assert got == {'H': ('meeting:101160', 101160)}  # Links naming two events give no occasion.
 
 
-def test_a_package_mods_names_its_meeting_as_a_link(tmp_path):
+def test_a_package_mods_names_its_meeting_as_a_transcript_link(tmp_path):
     engine = NativeDatasets.from_config(os.environ['DOCSPEC_JOB_CONFIG'])
-    inputs = [json_input(tmp_path, 'package_mods_facts', [dict(package_id='CHRG-m', named_meetings=[5, 404])],
-                         package_id='Utf8', named_meetings=list_of('Int64'))]
+    inputs = [json_input(tmp_path, 'package_mods_facts', [dict(package_id='CHRG-m', **facts(named=[5, 404]))],
+                         package_id='Utf8', named_meetings=list_of('Int64'), held_dates=list_of('Utf8'), title='Utf8')]
+    empty = "SELECT cast(NULL AS VARCHAR) AS package_id WHERE false"
     steps = [dict(name='meetings_resolved', sql=' UNION ALL '.join(MEETINGS), materialize=True),
-             dict(name='meeting_mods_links', sql=sql('meeting-mods-links'), materialize=True)]
+             dict(name='source_annotations', sql=empty, materialize=True),
+             dict(name='document_packages', sql=empty, materialize=True),
+             dict(name='selected_appearance_records', sql="SELECT cast(NULL AS VARCHAR) AS package_id,cast(NULL AS VARCHAR) AS status WHERE false", materialize=True),
+             dict(name='captures', sql=CAPTURES, materialize=True),
+             dict(name='meeting_mods_links', sql=sql('meeting-mods-links'), materialize=True),
+             dict(name='meeting_transcript_links', sql=sql('meeting-transcript-links'), materialize=True)]
     found = run_job(tmp_path, engine, inputs=inputs, steps=steps, outputs=[], queries=[
-        dict(name='links', sql='SELECT package_id,event_id FROM meeting_mods_links')])['links']
-    assert found == [dict(package_id='CHRG-m', event_id=5)]  # 404 is no meeting held here.
+        dict(name='links', sql='SELECT package_id,event_id FROM meeting_transcript_links')])['links']
+    assert found == [dict(package_id='CHRG-m', event_id=5)]  # No jacket names it; 404 is no meeting held here.
 
 
 def test_a_retained_house_list_takes_the_event_its_file_name_states(tmp_path):

@@ -53,7 +53,10 @@ def tables(tmp_path_factory):
         dict(name='meeting_transcript_links', sql=f"""SELECT '{CONFLICT_PKG}' AS package_id,cast(1001 AS BIGINT) AS event_id UNION ALL SELECT '{SHARED_PKG}',1003 UNION ALL SELECT '{SHARED_PKG}',1004 UNION ALL SELECT '{SOLO_PKG}',1002 UNION ALL SELECT 'CHRG-alone',1005 UNION ALL SELECT 'CHRG-disputed',1006 UNION ALL SELECT 'CHRG-sibling',1007 UNION ALL SELECT 'CHRG-no-verdict',1007 UNION ALL SELECT 'CHRG-unattached',1010""", materialize=True),
         dict(name='package_mods_facts', sql="""SELECT 'CHRG-unattached' AS package_id,arrow_cast(make_array(cast(9999 AS BIGINT)),'List(Int64)') AS named_meetings
             UNION ALL SELECT 'CHRG-unlinked',arrow_cast(make_array(cast(1011 AS BIGINT)),'List(Int64)')""", materialize=True),
-        dict(name='package_meeting_links', sql=sql('package-meeting-links'), materialize=True),
+        # The packages whose own print stands for their meeting (rule tested in test_meeting_semantics);
+        # CHRG-unattached's print names another meeting, and 1003, 1004 and 1007 have no such print.
+        dict(name='package_meeting_links', sql=f"""SELECT '{CONFLICT_PKG}' AS package_id,cast(1001 AS BIGINT) AS event_id
+            UNION ALL SELECT '{SOLO_PKG}',1002 UNION ALL SELECT 'CHRG-alone',1005 UNION ALL SELECT 'CHRG-disputed',1006""", materialize=True),
         dict(name='meeting_document_urls', sql="SELECT cast(1009 AS BIGINT) AS event_id,'https://docs.house.gov/x.pdf' AS url", materialize=True),
         dict(name='videos_export', sql="""SELECT 'youtube:pub' AS video_key,arrow_cast(decode(repeat('ab',32),'hex'),'FixedSizeBinary(32)') AS record_sha,arrow_cast(make_array(cast(1003 AS BIGINT),cast(777777 AS BIGINT)),'List(Int64)') AS stated_event_ids,true AS has_caption
             UNION ALL SELECT 'youtube:unmatched',arrow_cast(decode(repeat('ab',32),'hex'),'FixedSizeBinary(32)'),arrow_cast(array_slice(make_array(cast(1 AS BIGINT)),1,0),'List(Int64)'),false""", materialize=True),

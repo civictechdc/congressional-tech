@@ -195,7 +195,7 @@ WITH candidate_appearance_shas AS (
 ), ranked_context_observations AS (
  SELECT *,
   row_number() OVER(
-   PARTITION BY occasion,source,context_key
+   PARTITION BY occasion,source,context_key,coalesce(package_id,'')
    ORDER BY (effective_state IN ('present','empty')) DESC,(effective_state='absent') ASC,updated DESC NULLS LAST,retrieved_at DESC NULLS LAST,(effective_state='present') DESC,record_sha_hex ASC
   ) AS ctx_rn
  FROM valid_observations
@@ -208,11 +208,13 @@ WITH candidate_appearance_shas AS (
  FROM ranked_context_observations old
  JOIN current_context_observations cur
   ON old.occasion=cur.occasion AND old.source=cur.source AND old.context_key=cur.context_key
+  AND coalesce(old.package_id,'')=coalesce(cur.package_id,'')
  WHERE old.ctx_rn>1 AND old.record_sha_hex<>cur.record_sha_hex
 ), ranked_source_observations AS (
  SELECT c.*,
+  -- One current body per print: several prints that stand for one meeting each keep their witnesses.
   row_number() OVER(
-   PARTITION BY c.occasion,c.source
+   PARTITION BY c.occasion,c.source,coalesce(c.package_id,'')
    ORDER BY (c.effective_state IN ('present','empty')) DESC,(c.effective_state='absent') ASC,(sb.record_sha_hex IS NOT NULL) ASC,c.updated DESC NULLS LAST,c.retrieved_at DESC NULLS LAST,(c.effective_state='present') DESC,c.record_sha_hex ASC,c.context_key ASC
   ) AS obs_rn
  FROM current_context_observations c
@@ -224,7 +226,7 @@ WITH candidate_appearance_shas AS (
  WHERE obs_rn=1
 ), winning_source_per_occasion AS (
  SELECT *,
-  row_number() OVER(
+  rank() OVER(
    PARTITION BY occasion
    ORDER BY priority ASC
   ) AS src_rn
