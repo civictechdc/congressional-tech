@@ -23,7 +23,7 @@ JOIN body_evidence b ON r.body_sha=b.body_sha
 LEFT JOIN (SELECT encode(c.sha256,'hex') AS body_sha,max(c.media_type) AS media_type
  FROM captures c JOIN (SELECT DISTINCT decode(body_sha,'hex') AS sha256 FROM saved_recoveries WHERE saved_rank=1) s ON c.sha256=s.sha256 GROUP BY c.sha256) c ON r.body_sha=c.body_sha
 LEFT JOIN (SELECT encode(p.body_sha,'hex') AS body_sha,coalesce(nullif(trim(max(p.title)),''),nullif(trim(max(p.heading)),'')) AS title
- FROM page_facts p JOIN (SELECT DISTINCT decode(body_sha,'hex') AS sha256 FROM saved_recoveries WHERE saved_rank=1) s ON p.body_sha=s.sha256 WHERE p.status='completed' GROUP BY p.body_sha) t ON r.body_sha=t.body_sha
+ FROM source_annotation_pages p JOIN (SELECT DISTINCT decode(body_sha,'hex') AS sha256 FROM saved_recoveries WHERE saved_rank=1) s ON p.body_sha=s.sha256 WHERE p.status='completed' GROUP BY p.body_sha) t ON r.body_sha=t.body_sha
 LEFT JOIN component_meeting_links ml ON d.component=ml.component
 LEFT JOIN document_witness_keys wk ON d.component=wk.component
 WHERE NOT d.has_real

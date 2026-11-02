@@ -9388,6 +9388,30 @@
       "value": "Testimony of Jane Doe (PDF, 2 MB)",
       "expected": false,
       "source": "Authored boundary: a name beside the format and size is a title"
+    },
+    {
+      "id": "page-signals:link_word_phrases",
+      "registry": "page-signals",
+      "entry": "link_word_phrases",
+      "value": "Printable PDF of this Document",
+      "expected": true,
+      "source": "red-g2 review of r1b-g: link texts that say what a link does"
+    },
+    {
+      "id": "page-signals:link_word_phrases_report",
+      "registry": "page-signals",
+      "entry": "link_word_phrases",
+      "value": "Download Report",
+      "expected": true,
+      "source": "red-g2 review of r1b-g: link texts that say what a link does"
+    },
+    {
+      "id": "page-signals:link_word_format_size_version",
+      "registry": "page-signals",
+      "entry": "link_word_format_size",
+      "value": "Version 2",
+      "expected": false,
+      "source": "Authored boundary (red-g2): a version or file number is a title, not a format word"
     }
   ]
 }

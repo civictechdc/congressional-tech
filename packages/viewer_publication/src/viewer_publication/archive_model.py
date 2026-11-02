@@ -466,7 +466,14 @@ FROM blank b LEFT JOIN seen s ON s.doc_key=b.doc_key"""
 # link_word registry that the title rule uses: delete a small vocabulary and every non-letter, and
 # nothing may remain. "PDF (48.1 MB)" and "Download XML (6KB)" are generic; "Overview" is not.
 GENERIC_TITLE_SQL="""(o.title IS NOT NULL AND regexp_like(o.title,'[A-Za-z]') AND regexp_replace(lower(o.title),
- '(download|view|click|here|link|file|pdf|zip|xml|html?|docx?|txt|json|csv|xlsx?|pptx?|kb|mb|gb|bytes?)|[^a-z]','','g')='')"""
+ '(download|view|click|here|link|pdf|zip|xml|html?|docx?|txt|json|csv|xlsx?|pptx?|kb|mb|gb|bytes?)|[^a-z]','','g')='')"""
+
+# Listed documents whose title is a link word by the page-signals registry (the rule titles use)
+# or by GENERIC_TITLE_SQL (an independent small vocabulary): either one refuses the release.
+GENERIC_TITLES_SQL=f"""SELECT DISTINCT o.doc_key,o.title FROM ordered o
+ LEFT JOIN (SELECT pattern FROM page_signals WHERE kind='link_word') g
+  ON length(o.title)<=96 AND regexp_like(regexp_replace(trim(o.title),'\\s+',' ','g'),g.pattern)
+ WHERE g.pattern IS NOT NULL OR {GENERIC_TITLE_SQL}"""
 
 
 def evidence_checks():
@@ -994,7 +1001,7 @@ def build_prepared_release(prepared,*,engine,output,root=ROOT):
             (SELECT count(*) FROM document_link_key_conflicts) AS review_key_collisions,
             (SELECT count(*) FROM review_value_diagnostics) AS invalid_review_values,
             (SELECT CASE WHEN count(*)=0 THEN 1 ELSE 0 END FROM ordered) AS empty_document_list,
-            (SELECT count(*) FROM ordered o WHERE {GENERIC_TITLE_SQL}) AS generic_titles,
+            (SELECT count(*) FROM ({GENERIC_TITLES_SQL}) generic) AS generic_titles,
             (SELECT count(*) FROM ({BLANK_FILENAMES_SQL}) r WHERE r.reason IS NULL) AS unexplained_blank_filenames,
             (SELECT count(*) FROM saved_files s JOIN saved_files n ON n.component=s.component AND n.body_sha=s.body_sha
                 AND coalesce(n.filename,'')<>'' WHERE s.saved_rank=1 AND coalesce(s.filename,'')='') AS saved_unnamed_with_named_sibling,

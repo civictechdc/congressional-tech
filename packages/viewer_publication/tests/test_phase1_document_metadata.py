@@ -105,16 +105,23 @@ def test_saved_file_order_picks_the_body_then_a_named_source_of_it(tmp_path):
              dict(component='zip',source_id='member',body_sha='e'*64,filename='CHRG-1.pdf',source_url=None,
                   format='pdf',exact_bytes=True,first_fetched='2026-10-25T12:00:00Z',is_real_file=True),
              dict(component='zip',source_id='copy',body_sha='e'*64,filename='CHRG-1-copy.pdf',source_url='https://www.congress.gov/x/CHRG-1-copy.pdf',
+                  format='pdf',exact_bytes=True,first_fetched='2026-10-20T12:00:00Z',is_real_file=True),
+             # A source with neither an address nor a member path never names the saved body over an addressed one.
+             dict(component='ctx',source_id='addressless',body_sha='9'*64,filename='P.pdf',source_url=None,
+                  format='pdf',exact_bytes=True,first_fetched='2026-10-25T12:00:00Z',is_real_file=True),
+             dict(component='ctx',source_id='addressed',body_sha='9'*64,filename='P.pdf',source_url='https://www.govinfo.gov/content/pkg/P/pdf/P.pdf',
                   format='pdf',exact_bytes=True,first_fetched='2026-10-20T12:00:00Z',is_real_file=True)]
+    for row in members: row['archive_member']=row['source_id']=='member'
     inputs=[json_input(tmp_path,'members',members,component='Utf8',source_id='Utf8',body_sha='Utf8',filename='Utf8',
-                       source_url='Utf8',format='Utf8',exact_bytes='Boolean',first_fetched='Utf8',is_real_file='Boolean'),
+                       source_url='Utf8',format='Utf8',exact_bytes='Boolean',first_fetched='Utf8',is_real_file='Boolean',archive_member='Boolean'),
             json_input(tmp_path,'formats',[dict(id='pdf',kind='preference',value='pdf',rank=1),dict(id='xml',kind='preference',value='xml',rank=3)],
                        id='Utf8',kind='Utf8',value='Utf8',rank='Int32')]
     result=run_job(tmp_path,NativeDatasets.from_config(os.environ['DOCSPEC_JOB_CONFIG']),inputs=inputs,
         steps=[dict(name='document_members',sql="SELECT * EXCLUDE(first_fetched),cast(first_fetched AS TIMESTAMP WITH TIME ZONE) AS first_fetched FROM members"),
                dict(name='saved_files',sql=(ROOT/'model/sql/saved-files.sql').read_text(),materialize=True)],outputs=[],
         queries=[dict(name='saved',sql='SELECT component,source_id,body_sha FROM saved_files WHERE saved_rank=1 ORDER BY component')])
-    assert result['saved']==[dict(component='pdf',source_id='later',body_sha='c'*64),
+    assert result['saved']==[dict(component='ctx',source_id='addressed',body_sha='9'*64),
+                             dict(component='pdf',source_id='later',body_sha='c'*64),
                              dict(component='xml',source_id='named',body_sha='b'*64),
                              dict(component='zip',source_id='member',body_sha='e'*64)]
     order=run_job(tmp_path/'order',NativeDatasets.from_config(os.environ['DOCSPEC_JOB_CONFIG']),inputs=inputs,
@@ -132,8 +139,9 @@ def test_recovery_only_document_takes_the_recovered_reading_title_else_the_origi
                        imported_at='2026-10-01T00:00:00Z') for c, b in [('read', 'a' * 64), ('label', 'b' * 64)]]
     annotation = dict(document_kind=[], document_family=[], committee_keys=[], chambers=[], congress=None, filename_date=None,
                       meeting_keys=[], measure_keys=[], bioguide_ids=[], package_id=None, facts=[])
-    inputs = [json_input(tmp_path, 'saved_recoveries', recoveries, component='Utf8', saved_rank='Int64', id='Utf8', body_sha='Utf8',
-                         original_url='Utf8', bytes='Int64', imported_at='Utf8'),
+    from viewer_publication.archive_model import registry_inputs
+    inputs = registry_inputs(tmp_path / 'registries') + [json_input(tmp_path, 'saved_recoveries', recoveries, component='Utf8', saved_rank='Int64', id='Utf8', body_sha='Utf8',
+                         original_url='Utf8', bytes='Int64', imported_at='Utf8')] + [
         json_input(tmp_path, 'document_identities', [dict(component=c, document_id='doc:' + c, has_real=False) for c in ('read', 'label')],
                    component='Utf8', document_id='Utf8', has_real='Boolean'),
         json_input(tmp_path, 'effective_filenames', [dict(input_id='recovery:' + c, filename=c + '.pdf') for c in ('read', 'label')],
@@ -147,13 +155,15 @@ def test_recovery_only_document_takes_the_recovered_reading_title_else_the_origi
                    facts=list_of(struct(field='Utf8', value='Utf8'))),
         json_input(tmp_path, 'evidence', [dict(body_sha=b, format='html', suffix='') for b in ('a' * 64, 'b' * 64)],
                    body_sha='Utf8', format='Utf8', suffix='Utf8'),
-        json_input(tmp_path, 'pages', [dict(body_hex='a' * 64, status='completed', title='Recovered hearing record', heading=None)],
+        json_input(tmp_path, 'pages', [dict(body_hex='a' * 64, status='completed', title='Recovered hearing record', heading=None),
+                                       dict(body_hex='b' * 64, status='completed', title='Untitled', heading=None)],
                    body_hex='Utf8', status='Utf8', title='Utf8', heading='Utf8'),
         json_input(tmp_path, 'capture_rows', [dict(body_hex='a' * 64, media_type='text/html')], body_hex='Utf8', media_type='Utf8'),
         json_input(tmp_path, 'component_meeting_links', [], component='Utf8', meeting_date='Utf8', meeting_keys=strings),
         json_input(tmp_path, 'document_witness_keys', [], component='Utf8', witness_keys=strings)]
     steps = [dict(name='body_evidence', sql='SELECT * FROM evidence'),
-             dict(name='page_facts', sql="SELECT decode(body_hex,'hex') AS body_sha,status,title,heading FROM pages"),
+             dict(name='page_facts', sql="SELECT decode(body_hex,'hex') AS body_sha,status,title,heading,cast(NULL AS DATE) AS content_date FROM pages"),
+             dict(name='source_annotation_pages', sql=(ROOT / 'model/sql/source-annotations-pages.sql').read_text()),
              dict(name='captures', sql="SELECT decode(body_hex,'hex') AS sha256,media_type FROM capture_rows"),
              dict(name='recovery_rows', sql=(ROOT / 'model/sql/document-recovery-normalized.sql').read_text())]
     result = run_job(tmp_path, NativeDatasets.from_config(os.environ['DOCSPEC_JOB_CONFIG']), inputs=inputs, steps=steps, outputs=[],
@@ -195,3 +205,15 @@ def test_the_generic_title_check_is_its_own_rule(tmp_path):
     result = run_job(tmp_path, NativeDatasets.from_config(os.environ['DOCSPEC_JOB_CONFIG']), inputs=inputs, steps=[], outputs=[],
         queries=[dict(name='g', sql=f'SELECT i,coalesce({GENERIC_TITLE_SQL},false) AS generic FROM ordered o ORDER BY i')])
     assert [row['generic'] for row in result['g']] == [True, True, True, True, False, False, False, False]
+
+
+def test_a_title_generic_by_either_rule_refuses(tmp_path):
+    """red-g2: the gate counts a registry link word OR the independent vocabulary rule."""
+    from viewer_publication.archive_model import GENERIC_TITLES_SQL, registry_inputs
+    titles = ['Untitled', 'Read more', 'Document', 'Attachment', 'Email', 'Text', 'PDF (48.1 MB)', 'Download XML (6KB)',
+              'Printable PDF of this Document', 'Download Report', 'Exhibit A', 'Appendix D', 'Version 2', 'File 7', None]
+    inputs = registry_inputs(tmp_path / 'registries') + [json_input(tmp_path, 'ordered', [dict(doc_key=str(i), title=t)
+        for i, t in enumerate(titles)], doc_key='Utf8', title='Utf8')]
+    result = run_job(tmp_path, NativeDatasets.from_config(os.environ['DOCSPEC_JOB_CONFIG']), inputs=inputs, steps=[], outputs=[],
+        queries=[dict(name='g', sql=f'SELECT title FROM ({GENERIC_TITLES_SQL}) g ORDER BY title')])
+    assert sorted(row['title'] for row in result['g']) == sorted(titles[:10])

@@ -104,7 +104,13 @@
   {
     "id": "link_word_format_size",
     "kind": "link_word",
-    "pattern": "(?i)^[\\s\\W\\d_]*(?:(?:zip|pdf|html?|xml|docx?|txt|text|json|csv|xlsx?|pptx?|rtf|mp3|mp4|download|view|open|click|here|file|format|version|size|[kmg]i?b|bytes?)\\b[\\s\\W\\d_]*)+$",
+    "pattern": "(?i)^[\\s\\W\\d_]*(?:(?:zip|pdf|html?|xml|docx?|txt|text|json|csv|xlsx?|pptx?|rtf|mp3|mp4|download|view|open|click|here|[kmg]i?b|bytes?)\\b[\\s\\W\\d_]*)+$",
     "sample_id": "page-signals:link_word_format_size"
+  },
+  {
+    "id": "link_word_phrases",
+    "kind": "link_word",
+    "pattern": "(?i)^(printable\\s+(pdf|version)(\\s+of\\s+this\\s+(document|page))?|download\\s+(the\\s+)?(report|document|file|attachment))[.!:]*$",
+    "sample_id": "page-signals:link_word_phrases"
   }
 ]
