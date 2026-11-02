@@ -592,6 +592,7 @@ def appearance_steps(*,root=ROOT):
     return [dict(name='appearance_url_inputs',sql=app_url_inputs_sql,materialize=True),
         dict(name='appearance_url_normalized',sql=app_normalize,materialize=True),
         dict(name='appearance_url_keys',sql=app_keys,materialize=True),
+        dict(name='appearance_observations',sql=(Path(root)/'model/sql/appearance-observations.sql').read_text(),materialize=True),
         dict(name='appearance_records_resolved',sql=(Path(root)/'model/sql/appearance-records-resolved.sql').read_text(),materialize=True)]+_sql_steps(['witness-precedence'],root=root)
 
 
