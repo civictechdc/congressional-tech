@@ -1,0 +1,150 @@
+{
+ "meetings_sittings_vs_raw": {
+  "records": 18140,
+  "columns_read": [
+   "address",
+   "building",
+   "congress",
+   "congress_gov_meeting_type",
+   "congress_gov_updated",
+   "end",
+   "house_xml_updated",
+   "meeting_date",
+   "place",
+   "room",
+   "sitting_count",
+   "start"
+  ],
+  "values_read": 217794,
+  "values_differing": {},
+  "samples": {},
+  "not_read": 0,
+  "not_read_examples": [],
+  "raw_records_read": 24430
+ },
+ "meetings_vs_v21": {
+  "records": 18687,
+  "columns_read": [
+   "chamber",
+   "committees",
+   "meeting_date",
+   "meeting_type",
+   "session",
+   "status",
+   "subject_keys",
+   "title",
+   "transcripts",
+   "videos"
+  ],
+  "values_read": 186870,
+  "values_differing": {},
+  "samples": {},
+  "not_read": 0,
+  "not_read_examples": []
+ },
+ "videos_vs_raw_cache": {
+  "records": 67373,
+  "columns_read": [
+   "available",
+   "channel_id",
+   "details_checked_at",
+   "duration_seconds",
+   "handle",
+   "has_caption",
+   "published_at",
+   "source_description",
+   "stated_event_ids",
+   "title",
+   "video_published_at"
+  ],
+  "values_read": 741103,
+  "values_differing": {},
+  "samples": {},
+  "not_read": 0,
+  "not_read_examples": []
+ },
+ "channels_vs_raw_and_csv": {
+  "records": 119,
+  "columns_read": [
+   "channel_id",
+   "committee_label",
+   "custom_url",
+   "raw_channel_id",
+   "role",
+   "system_code",
+   "title",
+   "uploads_scan_complete"
+  ],
+  "values_read": 952,
+  "values_differing": {},
+  "samples": {},
+  "not_read": 0,
+  "not_read_examples": []
+ },
+ "committee_records_vs_raw_xml": {
+  "records": 19985,
+  "columns_read": [
+   "all_eight_columns"
+  ],
+  "values_read": 19985,
+  "values_differing": {},
+  "samples": {},
+  "not_read": 0,
+  "not_read_examples": []
+ },
+ "committee_records_vs_old_csv": {
+  "records": 19985,
+  "columns_read": [
+   "all_nine_columns"
+  ],
+  "values_read": 19985,
+  "values_differing": {
+   "old_row_values_absent_natively": 1,
+   "native_row_values_absent_from_old": 1
+  },
+  "samples": {
+   "old_row_values_absent_natively": [
+    [
+     "115405",
+     "amendment",
+     "https://docs.house.gov/meetings/RU/RU00/20230307/115405/BILLS-118-20-L000273-Amdt-20.pdf",
+     "20",
+     "20",
+     "L000273",
+     "None",
+     "None",
+     "The Honorable Ms. Leger Fern\u00c3\u00a1ndez"
+    ]
+   ],
+   "native_row_values_absent_from_old": [
+    [
+     "115405",
+     "amendment",
+     "https://docs.house.gov/meetings/RU/RU00/20230307/115405/BILLS-118-20-L000273-Amdt-20.pdf",
+     "20",
+     "20",
+     "L000273",
+     "None",
+     "None",
+     "The Honorable Ms. Leger Fern\u00e1ndez"
+    ]
+   ]
+  },
+  "not_read": 0,
+  "not_read_examples": []
+ },
+ "recording_matches_curated_vs_csv": {
+  "records": 7200,
+  "columns_read": [
+   "decision",
+   "notes_kept",
+   "refs",
+   "row_count"
+  ],
+  "values_read": 28796,
+  "values_differing": {},
+  "samples": {},
+  "not_read": 0,
+  "not_read_examples": []
+ }
+}

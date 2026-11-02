@@ -37,6 +37,15 @@ def scoped_captures(spec, work):
     return path
 
 
+def positioned_detail(release, work):
+    """list_row is a physical position, which an engine window over a scan does not preserve."""
+    work.mkdir(parents=True, exist_ok=True)
+    path = work / 'detail-positions.parquet'
+    with duckdb.connect() as db:
+        db.execute(f"""COPY (SELECT package_id,file_row_number AS list_row FROM read_parquet('{release / 'detail.parquet'}',file_row_number=true)) TO '{path}' (FORMAT PARQUET)""")
+    return path
+
+
 def main(argv=None):
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     for name in ('spec', 'release', 'lake', 'decisions', 'output', 'runtime'):
@@ -54,7 +63,7 @@ def main(argv=None):
         parquet('committee_records', args.lake / 'committee_records.parquet'),
         parquet('list', args.release / 'list.parquet'),
         parquet('released_meetings', args.release / 'meetings.parquet'),
-        parquet('released_detail', args.release / 'detail.parquet'),
+        parquet('released_detail', positioned_detail(args.release, work)),
         parquet('witnesses_export', args.release / 'witnesses.parquet'),
         parquet('recordings_export', args.release / 'recordings.parquet'),
         dict(name='recording_decision_records', kind='json_lines', files=[dict(key='decisions', path=str(args.decisions))],
@@ -73,7 +82,7 @@ def main(argv=None):
         *meeting_steps(),
         dict(name='ordered', sql='SELECT meeting_keys FROM "list"', materialize=True),
         dict(name='meeting_transcript_links', sql="SELECT event_id,t['package_id'] AS package_id FROM (SELECT event_id,unnest(transcripts) AS t FROM released_meetings)", materialize=True),
-        dict(name='details', sql='SELECT package_id,cast(row_number() OVER()-1 AS INT) AS list_row FROM released_detail', materialize=True),
+        dict(name='details', sql='SELECT package_id,cast(list_row AS INT) AS list_row FROM released_detail', materialize=True),
         dict(name='meetings_export', sql=sql('entity-meetings'), materialize=True),
     ]
     outputs = [dict(name='resolved_meetings.parquet', path=str(args.output / 'resolved_meetings.parquet'),

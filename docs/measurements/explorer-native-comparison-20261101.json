@@ -3222,13 +3222,13 @@
     "disposition": "old_uuid_diagnostic",
     "rows": 61,
     "status": "open",
-    "title": "The reported held date differs from the transcript's retained day headers."
+    "title": "Sources disagree about proceeding_dates"
    },
    {
     "disposition": "old_uuid_diagnostic",
     "rows": 61,
     "status": "open",
-    "title": "Sources disagree about proceeding_dates"
+    "title": "The reported held date differs from the transcript's retained day headers."
    },
    {
     "disposition": "old_uuid_diagnostic",
@@ -3270,13 +3270,13 @@
     "disposition": "old_uuid_diagnostic",
     "rows": 1,
     "status": "open",
-    "title": "This retained page may contain binary document data decoded as text."
+    "title": "Sources disagree about chamber"
    },
    {
     "disposition": "old_uuid_diagnostic",
     "rows": 1,
     "status": "open",
-    "title": "Sources disagree about chamber"
+    "title": "This retained page may contain binary document data decoded as text."
    }
   ],
   "old_rows": 264732,

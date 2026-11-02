@@ -39,6 +39,30 @@ All 264,732 old issue rows, in 35 title and status classes, have a disposition. 
 
 Value checks found 0 mismatches: 200 curated verdicts, 200 meeting dates, 200 video titles and 119 channel IDs.
 
+## Full value comparison
+
+`scripts/measure/explorer_full_compare.py` reads every row on both sides and walks raw XML and JSON without the repository's parsers. Results are in `explorer-full-compare-20261101.json`. A script restating a rule, such as the merge order, cannot catch a shared misunderstanding of that rule.
+
+| Check | Records read | Values read | Differ |
+|---|---|---|---|
+| Resolved meetings against raw Congress.gov and House records | 18,140, from 24,430 of 24,430 raw records | 217,794 | 0 |
+| Meetings against v21, ten columns the old SQL wrote | 18,687 | 186,870 | 0 |
+| Videos against raw cache JSON, 11 columns | 67,373, from 52 of 52 bodies | 741,103 | 0 |
+| Channels against the CSV and raw JSON | 119 | 952 | 0 |
+| Committee records against raw XML, eight columns as whole rows | 19,985 | 19,985 rows | 0 |
+| Committee records against the old CSV, nine columns as whole rows | 19,985 | 19,985 rows | 1, the garbled CSV row |
+| Curated decisions against the CSVs | 7,200 | 28,796 | 0 |
+
+**Not read in full:** publisher-link and video-claim rows of `recording_matches`, and `meeting_coverage` against raw. Coverage is compared with the old file by column in the ledger. Early runs of this check found errors in the check and the builder, not the model: an unordered row position, and whitespace.
+
+`committee_records` reads only `meeting-documents/meeting-document`, and this check walked grouped documents too and found no missing row.
+
+Reparsing all 24,430 raw meeting records under the new pins found end times 532 of 532, rooms filled 146, buildings filled 107, and field addresses 109, none lost.
+
+Old witness rows (`ct-x78c`), distinct by event and normalized name: 19,475. On the event 11,779; held on a package occasion without an event link 924; on a page occasion without one 5,472; event has other witnesses 451; no native row 849. The 6,396 occasion rows need the event link; the 849 have no migration yet.
+
+Top-level rows with no recorded completeness: all 242,293 raw entries read. Every one is a digest-verified retained file with no HTTP response. 73,308 have no other good row, and none of those has a URL, so the rule excludes no fetched address. Whether retained files with no address should list is an owner question.
+
 ## Raw record readings
 
 Raw means the stored body or receipt line. Derived tables only named which records to read. `scripts/measure/raw_meeting_audit.py` and `raw_findings_audit.py` hold the method; results are in `explorer-raw-sittings-20261101.json` and `explorer-raw-findings-20261101.json`.
