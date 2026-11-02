@@ -32,3 +32,7 @@ Code on worktree-agent-a704015cc138b456b @ da425206. Review verdict: merge, stay
 **2026-11-02T10:24:10Z**
 
 Owner decision 2026-11-02: restore body 5e9b5643 (older CHRG-119hhrg64404 edition) under the general rule, no exception. Data model §7.5: editions at one address are separate documents sharing version_keys, and the site lists all versions (ArchiveRows.tsx:41), not only the latest.
+
+**2026-11-02T10:36:11Z**
+
+Correction 2026-11-02 (lead), replacing the earlier note today: 5e9b5643 is not a distinct edition. Read in full and diffed: 5e9b5643, f332621e and c7768761 are byte-identical except a Cloudflare data-cfemail token that changes per fetch; their html fingerprints are equal (321e73cc), so §7.5 same_text merges them into one document showing the latest. Restoring it only moves first_captured to 2026-09-21. The owner's rule stands: identical versions merge and only the latest shows unless objectively different. The ZIP member b14d49d9 differs only by the decoded address DocumentsTI@mail.house.gov in place of '[email protected]', so its fingerprint differs and it would show as a second copy. Fix in the html reader: decode Cloudflare email spans before text and fingerprint (plan-g).
