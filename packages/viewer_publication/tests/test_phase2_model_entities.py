@@ -6,6 +6,7 @@ import json
 import os
 from pathlib import Path
 
+import pyarrow as pa
 import pyarrow.parquet as pq
 import pytest
 
@@ -91,15 +92,21 @@ def _stage_raw_fixture(tmp_path, engine, capture_specs):
             ['body_sha'],
         )],
     )
-    pages = readings.stage(
+    # Page readings for every page format a fixture stores; the model requires each at its pinned version.
+    page_formats = ['html'] + sorted({spec['format'] for spec in capture_specs} & {'xml', 'json'})
+    staged_pages = [readings.stage(
         captures=captures,
         body_inventory=inventory / 'bodies.parquet',
         local_root=raw,
         engine=engine,
-        work=tmp_path / 'reading-stage',
+        work=tmp_path / ('reading-stage' if parser == 'html' else f'reading-stage-{parser}'),
         decided_at='2026-10-27T12:00:00Z',
-        parser='html',
-    )
+        parser=parser,
+    )['readings'] for parser in page_formats]
+    page_readings = staged_pages[0]
+    if len(staged_pages) > 1:
+        page_readings = tmp_path / 'page-readings.parquet'
+        pq.write_table(pa.concat_tables([pq.read_table(path) for path in staged_pages]), page_readings)
     names = filenames.stage(
         captures=captures,
         recovery_files=(),
@@ -109,7 +116,7 @@ def _stage_raw_fixture(tmp_path, engine, capture_specs):
     )
     return dict(
         captures=captures,
-        readings=pages['readings'],
+        readings=page_readings,
         filename_readings=names['readings'],
         parser_versions={
             **{p: readings.current_version(p) for p in ['sniff', 'html', 'xml', 'json']},
@@ -139,6 +146,18 @@ def test_phase2_entities_meetings_witnesses_recordings_and_spicy_projections(tmp
     vtt_asr = b'WEBVTT\n\n00:00:00.000 --> 00:00:02.000\nAuto caption track\n'
     m3u8_bytes = b'#EXTM3U\n#EXT-X-VERSION:3\n#EXT-X-TARGETDURATION:10\n'
     segment_bytes = b'G@\x00\x10' + bytes(184)
+    # One retained YouTube cache file on a directory channel: a video whose own text names event 115538,
+    # and an upload naming no meeting. The Explorer build parses it through the real video_records parser.
+    youtube_cache = json.dumps({
+        'youtube_channels': {'0': dict(handle='@AgRepublicans', channelId='UCWtWf-QUTnJ-UMP5ZNWVB5Q',
+                                      title='House Agriculture Committee Republicans', uploads_scan_complete=True)},
+        'youtube_videos_@AgRepublicans': {
+            '0': dict(videoId='agHearing01', channelId='UCWtWf-QUTnJ-UMP5ZNWVB5Q', title='Hearing on the farm economy',
+                      description='House Agriculture hearing. Event ID: 115538', publishedAt='2023-05-10T18:00:00Z',
+                      duration='5400', available=True, caption=True),
+            '1': dict(videoId='agUpload02', channelId='UCWtWf-QUTnJ-UMP5ZNWVB5Q', title='Chairman remarks on the farm bill',
+                      description='Weekly update.', publishedAt='2023-05-12T15:00:00Z', duration='120', available=True,
+                      caption=False)}}).encode()
 
     staged = _stage_raw_fixture(tmp_path, engine, [
         dict(
@@ -242,6 +261,14 @@ def test_phase2_entities_meetings_witnesses_recordings_and_spicy_projections(tmp
             media_type='text/vtt',
             family='youtube/captions',
             retrieved_at='2023-05-22T12:00:00Z',
+        ),
+        dict(
+            url='https://raw.githubusercontent.com/example/pipeline-data/main/youtube/youtube_1.json',
+            data=youtube_cache,
+            format='json',
+            media_type='application/json',
+            family='pipeline-data',
+            retrieved_at='2023-05-21T12:00:00Z',
         ),
     ])
 
@@ -819,8 +846,12 @@ def test_phase2_entities_meetings_witnesses_recordings_and_spicy_projections(tmp
     # The same inputs with the Explorer tables: all five appear, and old-shaped outputs do not move.
     from congress_api.lake import committee_records as cr_lake, video_records as vr_lake
     video_path, committee_path, decisions = tmp_path / 'video.parquet', tmp_path / 'committee.parquet', tmp_path / 'decisions.jsonl'
-    pq.write_table(vr_lake.table([]), video_path)
-    pq.write_table(cr_lake.table([]), committee_path)
+    cache_sha = hashlib.sha256(youtube_cache).hexdigest()
+    pq.write_table(vr_lake.table([vr_lake.build_row(cache_sha, 'youtube_cache', youtube_cache, parser_version='pv')]), video_path)
+    pq.write_table(cr_lake.table([dict(record_sha='77' * 32, parser_version='pc', source='house_xml', event_id='115538',
+        updated='2023-05-10T20:00:00Z', records=[dict(ordinal=0, kind='amendment', bill='H.R. 1234', number='1',
+            sponsor_bioguide='S000001', amendment_type='ANS', enbloc=None, description='Amendment in the nature of a substitute; agreed to by voice vote',
+            url='https://docs.house.gov/meetings/AG/AG00/20230510/115538/BILLS-118HR1234ih-A001.pdf')])]), committee_path)
     decisions.write_text(json.dumps(dict(id='a' * 64, subject_kind='event', subject_id='115538', verdict='found',
         video_refs=['https://example.test/watch'], note=None, disputed_by=None, decided_at=None, supersedes=None)) + '\n')
     explorer = build_release(**staged, meeting_records=meeting_records, appearance_records=appearance_records, spicy_regs=spicy_regs,
@@ -832,10 +863,29 @@ def test_phase2_entities_meetings_witnesses_recordings_and_spicy_projections(tmp
     assert not {'videos.parquet', 'meeting_coverage.parquet'} & files_by_name.keys()
     for name in ('list.parquet', 'detail.parquet', 'meetings.parquet', 'witnesses.parquet'):
         assert with_tables[name]['sha256'] == files_by_name[name]['sha256'], name
-    assert with_tables['channels.parquet']['rows'] == 119 and with_tables['videos.parquet']['rows'] == 0
+    assert with_tables['channels.parquet']['rows'] == 119
+    # One non-empty row per Explorer family, so consumers (site, MCP) read values, not empty tables.
+    videos = {v['video_key']: v for v in pq.read_table(tmp_path / 'release-explorer/videos.parquet').to_pylist()}
+    assert {k: (v['handle'], v['system_code'], v['stated_event_ids']) for k, v in videos.items()} == {
+        'youtube:agHearing01': ('@AgRepublicans', 'hsag00', [115538]), 'youtube:agUpload02': ('@AgRepublicans', 'hsag00', [])}
+    channel = [c for c in pq.read_table(tmp_path / 'release-explorer/channels.parquet').to_pylist() if c['handle'] == '@AgRepublicans']
+    assert [(c['title'], c['uploads_scan_complete']) for c in channel] == [('House Agriculture Committee Republicans', True)]
+    records = pq.read_table(tmp_path / 'release-explorer/committee_records.parquet').to_pylist()
+    assert [(r['event_id'], r['kind'], r['bill'], r['source_description']) for r in records] == [
+        (115538, 'amendment', 'H.R. 1234', 'Amendment in the nature of a substitute; agreed to by voice vote')]
     assert with_tables['meeting_coverage.parquet']['rows'] == 5 * with_tables['meetings.parquet']['rows']
-    curated = pq.read_table(tmp_path / 'release-explorer/recording_matches.parquet').to_pylist()
-    assert [(r['event_id'], r['url'], r['status']) for r in curated if r['basis'] == 'curated'] == [(115538, 'https://example.test/watch', 'decided')]
+    coverage = pq.read_table(tmp_path / 'release-explorer/meeting_coverage.parquet').to_pylist()
+    assert {(r['event_id'], r['aspect']): (r['state'], r['basis'], r['reason']) for r in coverage} == {
+        (115538, 'captions'): ('present', 'videos.has_caption,recordings.tracks', None),
+        (115538, 'documents'): ('present', 'list.meeting_keys', None),
+        (115538, 'recording'): ('present', 'recording_matches', None),
+        (115538, 'transcript'): ('present', 'meetings.transcripts', None),
+        (115538, 'witnesses'): ('present', 'appearance_records', None)}
+    matches = pq.read_table(tmp_path / 'release-explorer/recording_matches.parquet').to_pylist()
+    assert [(r['event_id'], r['url'], r['status']) for r in matches if r['basis'] == 'curated'] == [(115538, 'https://example.test/watch', 'decided')]
+    assert [(r['event_id'], r['video_key'], r['status']) for r in matches if r['basis'] == 'video_states_event_id'] == [
+        (115538, 'youtube:agHearing01', 'claimed')]
+    assert not any(r['video_key'] == 'youtube:agUpload02' for r in matches)
 
 
 def test_spicy_generations_pinned_by_publish_and_maintenance():

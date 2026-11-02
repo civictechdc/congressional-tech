@@ -15,8 +15,8 @@ def test_native_producer_release_through_stdio(tmp_path, request):
     source = request.config.getoption('--native-fixture-root')
     if source is None:
         pytest.skip('Native integration requires --native-fixture-root from the producer test runner')
-    # pytest also creates a "current" symlink; resolve and deduplicate it.
-    candidates = {p.resolve() for p in Path(source).glob('test_phase2_entities_*/release/manifest.json')}
+    # The build with the five Explorer tables. pytest also creates a "current" symlink; resolve and deduplicate it.
+    candidates = {p.resolve() for p in Path(source).glob('test_phase2_entities_*/release-explorer/manifest.json')}
     assert len(candidates)==1, f'Expected one retained native phase 2 fixture, found {len(candidates)}'
     selected = prepare(tmp_path, candidates.pop(), archive_origin='https://archive.example')
     assert selected['manifest']['origin']['kind']=='model'
