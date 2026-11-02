@@ -32,7 +32,6 @@ from congress_api.lake.daily import ALL_TABLE_NAMES,PROVENANCE_KINDS,produce_dai
 from congress_api.retention.body_store import BodyStore,LocalAdapter
 from congress_api.retention.provenance import file_pin,parquet_output,run_job
 from docspec_client.models import DocSpecFailure
-from viewer_publication.archive_backfill_job import write_empty_body_inventory
 from viewer_publication.archive_controller import _save_continuation
 from viewer_publication.archive_model_job import PROVENANCE,_local,_pin,_selector,execute as execute_model,validate_spec as validate_model
 from viewer_publication.archive_selective_records import RECORD_TABLES,SelectiveStop,Bodies,complete_d4,differential,stage_d4
@@ -354,11 +353,12 @@ def _rebuilt_diff(run,keys,pin):
 def _daily(run):
     """Step 6: the three-table producer form, which leaves D4 to the records module."""
     if 'daily' in run.state:return
-    raw_store,provenance=run.raw_store();inventory=run.attempt/'body-inventory.parquet';write_empty_body_inventory(inventory)
+    # No body inventory: readings reads each capture's recorded copy from the private raw store,
+    # whose bodies link to the mirror (an empty inventory made all D2 work pending).
+    raw_store,provenance=run.raw_store()
     production=produce_daily(dict(work=str(run.attempt/'daily'),decided_at=run.decided_at,catalog_root=run.catalog,
         tables={name:run.spec['tables'][name] for name in ('captures','readings','filename_readings')},receipt_inventory=[],
-        body_inventory=str(inventory),local_root=str(run.attempt/'bodies'),max_work_items=run.spec['batch_size']*run.spec['max_batches'],
-        provenance=provenance),engine=run.engine,raw_store=raw_store)
+        max_work_items=run.spec['batch_size']*run.spec['max_batches'],provenance=provenance),engine=run.engine,raw_store=raw_store)
     if production['status']!='completed':raise SelectiveStop('Daily producers stopped at '+production['status'])
     run.state['daily']=dict(captures=production['pins']['captures'],unreadable=[dict(key=r['key'],path=r['path']) for r in production['provenance']['unreadable']],
         filenames_recomputed=production['producerreports']['filename_readings'].get('produced'))
