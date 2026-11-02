@@ -32,3 +32,7 @@ Staging splits a receipt above a byte or line threshold into line ranges, with r
 **2026-11-02T16:28:15Z**
 
 2026-11-02 etl-staging: root cause found. DataFusion 53.1 array_concat on string views (the capture 'entries' step) grows with batch_rows². At batch_rows=1024 and a 14 GiB pool, the whole 581 MB receipt stages through the production CLI at 6.49 GiB peak with 808,680 rows; the other 9 oversized receipts peak at 1.0-6.2 GiB; A/B on 7 receipts at 8192 vs 1024 rows is byte-identical. Fix (lead-approved): a derived stage-limits file with batch_rows=1024 in capture_backfill on r4-staging (the mapping doesn't move), plus an engine ticket under ss-oxg1 to bound array_concat on views as ss-x71z did for array_agg. Line-range splitting isn't needed.
+
+**2026-11-02T16:37:30Z**
+
+2026-11-02 etl-staging r4-staging 8e0452a9: staging runs at most 1,024 rows per engine batch; the 581 MB receipt stages in 30 s at 6.49 GiB RSS (5.79 physical) at the 14 GiB pool, all 808,680 captures (before: never finished, over 22 GiB). Cause: DataFusion 53.1 array_concat over string-view lists (the mapping's entries step), quadratic in rows per batch and uncounted by the pool (32k-line slice: 0.15/2.2/>7 GiB at 1024/4096/8192). Byte-identical on 10 receipts (8192 vs 1024) plus a repo test (2 vs 8192); time 0.93-1.24x; APPROVED_MAPPING unchanged. Engine ticket ss-1rrn under ss-oxg1. Being made one shared cap for daily, backfill and CI staging. Line-range splitting not needed.
