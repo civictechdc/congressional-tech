@@ -95,8 +95,7 @@ def measure(db, release, live, work):
         list_rows=q('SELECT count(*) FROM nl')[0][0],
         rows_per_package=per_pkg,
         transcript_duplicates=dict(zip(['events', 'packages', 'pairs'], dup[0])),
-        format_by_package_rows=q("""SELECT format, count(*) FROM nl JOIN nd USING (list_row)
-            WHERE package_id IS NOT NULL GROUP BY 1 ORDER BY 2 DESC"""),
+        format_by_package_rows=q("""SELECT format, count(*) FROM nd WHERE package_id IS NOT NULL GROUP BY 1 ORDER BY 2 DESC"""),
         link_word_titles=q(f"""SELECT lower(trim(title)) t, format, count(*) FROM nl WHERE lower(trim(title)) IN ({words})
             GROUP BY ALL ORDER BY 3 DESC"""),
         blank_filename=q("""SELECT format, title IS NULL AS no_title, count(*) FROM nl WHERE filename = '' GROUP BY ALL ORDER BY 3 DESC"""),
