@@ -114,6 +114,9 @@ def test_meeting_and_appearance_lake_schemas_and_table_profiles():
         "declared_base",
         "collection_state",
         "appearances",
+        "held_dates",
+        "title",
+        "created",
     ]
 
     appearances_field = next(f for f in a_schema["fields"] if f["name"] == "appearances")
@@ -211,6 +214,11 @@ def test_meeting_records_from_congress_gov_body_and_inline_receipt():
                 {"jacketNumber": "55432"},
                 {"jacketNumber": "00987"},
             ],
+            # A URL-less entry is an agenda item, not a file.
+            "meetingDocuments": [
+                {"name": "A bill to amend title 5", "documentType": "Bills and Resolutions"},
+                {"name": "Hearing notice", "url": "https://www.congress.gov/118/meeting/house/115538/documents/HHRG-118-JS00-20240709-SD001.pdf"},
+            ],
             "videos": [
                 {"name": "YouTube Stream", "url": "https://www.youtube.com/watch?v=dQw4w9WgXcQ"},
                 {
@@ -258,6 +266,8 @@ def test_meeting_records_from_congress_gov_body_and_inline_receipt():
         "114-treaty-1",
     ]
     assert m["transcript_jackets"] == [55432, 987]
+    assert m["document_urls"] == ["https://www.congress.gov/118/meeting/house/115538/documents/HHRG-118-JS00-20240709-SD001.pdf"]
+    assert m["collection_states"]["document_urls"] == "present"
     assert m["videos"] == [
         {
             "video_key": "youtube:dQw4w9WgXcQ",
@@ -290,11 +300,11 @@ def test_meeting_records_from_congress_gov_body_and_inline_receipt():
 def test_meeting_records_from_house_xml_strips_all_prefixes(prefix: str):
     xml_bytes = f"""<?xml version="1.0" encoding="UTF-8"?>
 <committee-meeting meeting-id="{prefix}118555" meeting-type="HHRG" update-date="2024-05-01T15:30:00">
+  <current-status>R</current-status>
   <heading>Oversight of Federal Agencies</heading>
   <meeting-details>
     <congress>118</congress>
     <session>2</session>
-    <current-status>Scheduled</current-status>
     <meeting-date>
       <calendar-date>2024-05-10</calendar-date>
       <start-time>10:00:00</start-time>
@@ -332,6 +342,8 @@ def test_meeting_records_from_house_xml_strips_all_prefixes(prefix: str):
     assert m["congress"] == 118
     assert m["session"] == 2
     assert m["meeting_date"] == "2024-05-10"
+    # Raw House XML states <current-status> under the root, as a code.
+    assert m["status"] == "Rescheduled" and m["not_held"] is False
     assert m["sittings"] == [
         {
             "start": "2024-05-10T10:00:00-04:00",
@@ -619,6 +631,9 @@ def test_s2_fixture_2_empty_witness_and_meeting_rows_retained_for_anti_join():
         "declared_base": None,
         "collection_state": "empty",
         "appearances": [],
+        "held_dates": None,
+        "title": None,
+        "created": None,
     }
 
     # Second run at the same parser_version skips via anti-join before touching payload
@@ -723,6 +738,10 @@ def test_appearance_records_from_congress_gov_senate_page_and_mods():
     assert len(mods_row["appearances"]) >= 1
     assert all(a["source_locator"].startswith("mods:witness[") for a in mods_row["appearances"])
     assert all(a["document_links"] == [] for a in mods_row["appearances"])
+    # The print's own held dates and title, which a package-to-meeting link is checked against (ct-dx22).
+    assert mods_row["held_dates"] == ["2013-06-13"]
+    assert mods_row["title"] == "TAX REFORM: TAX HAVENS, BASE EROSION AND PROFIT-SHIFTING"
+    assert cg_row["held_dates"] is None and cg_row["title"] is None
 
     # Round-trip through PyArrow table builder
     tbl = appearance_records.table([cg_row, senate_row, mods_row])
@@ -1651,9 +1670,12 @@ def test_ct_30fp_congress_gov_invalid_witness_items_and_sql_per_context_freshnes
                     ("requested_url", pa.string()),
                     ("context_url", pa.string()),
                     ("member_path", pa.string()),
+                    # captures.original_path and mapping_version (r1b-e1): the model reads every column it joins.
+                    ("original_path", pa.string()),
                     ("sniffed_format", pa.string()),
                     ("media_type", pa.string()),
                     ("retrieved_at", pa.string()),
+                    ("mapping_version", pa.string()),
                 ]
             ),
         ),
@@ -1692,7 +1714,7 @@ def test_ct_30fp_congress_gov_invalid_witness_items_and_sql_per_context_freshnes
             source="Utf8",
             meetings=list_of(struct(updated="Utf8")),
         ),
-        json_input(work, "meeting_transcript_links", [], package_id="Utf8", event_id="Int64"),
+        json_input(work, "package_meeting_links", [], package_id="Utf8", event_id="Int64"),
         json_input(work, "appearance_url_keys", [], url="Utf8", url_key="Utf8", error="Utf8"),
         json_input(
             work,
@@ -1875,6 +1897,7 @@ def test_ct_30fp_congress_gov_invalid_witness_items_and_sql_per_context_freshnes
             declared_base="Utf8",
             collection_state="Utf8",
             context_url="Utf8",
+            created="Utf8",
             appearances=list_of(
                 struct(
                     source_locator="Utf8",
@@ -1908,6 +1931,8 @@ def test_ct_30fp_congress_gov_invalid_witness_items_and_sql_per_context_freshnes
         inputs=inputs,
         steps=[{"name": "selected_appearance_records", "sql": "SELECT * FROM appearance_records_input", "materialize": True},
                {"name": "selected_meeting_records", "sql": "SELECT * FROM meeting_records_input", "materialize": True},
+               {"name": "meetings_resolved", "sql": "SELECT cast(NULL AS BIGINT) AS event_id,cast(NULL AS DATE) AS meeting_date WHERE false", "materialize": True},
+               {"name": "appearance_people", "sql": (ROOT / "model/sql/appearance-people.sql").read_text(encoding="utf-8"), "materialize": True},
                {"name": "resolved", "sql": resolved_sql, "materialize": True}],
         outputs=[],
         queries=[
@@ -1954,3 +1979,47 @@ def test_unset_form_values_state_no_place(placeholder):
     assert sitting["room"] is None and sitting["building"] is None
     congress = meeting_records._convert_congress_meeting_dict({"eventId": "1", "date": "2019-11-13T19:00:00Z", "location": {"room": placeholder, "building": placeholder}})
     assert congress["sittings"][0]["room"] is None and congress["sittings"][0]["building"] is None
+
+
+def test_mods_print_states_every_held_day_and_labels_statements():
+    """A multi-day print states later days in constituent items (Haaland 328803), and its <witness> list
+    carries letters for the record and Members' statements, which are not witnesses (red-f2)."""
+    xml = b"""<mods xmlns="http://www.loc.gov/mods/v3"><titleInfo><title>Haaland Nomination</title></titleInfo>
+      <extension><heldDate>2021-02-23</heldDate><witness>Doe, Hon. Jane, Director, Office of Things</witness>
+      <witness>Florida Fish and Wildlife Conservation Commission, Letter of Support for H.R. 5103</witness>
+      <witness>Prepared statement of Hon. Richard E. Neal, a Representative in Congress from the State of Massachusetts</witness>
+      <witness>Green, Hon. Al, a Representative in Congress from the State of Texas</witness>
+      <witness>Hon. Russell T. Vought to be Director, Office of Management and Budget, Testimony</witness></extension>
+      <relatedItem type="constituent"><extension><heldDate>2021-02-24</heldDate></extension></relatedItem></mods>"""
+    row = appearance_records.build_appearance_record_row(_sha("mods-two-day"), "mods", xml, parser_version="v1", package_id="CHRG-117shrg43821")
+    assert row["held_dates"] == ["2021-02-23", "2021-02-24"] and row["title"] == "Haaland Nomination"
+    assert [(a["name"], a["witness_type"]) for a in row["appearances"]] == [
+        ("Jane Doe", None),
+        ("Florida Fish and Wildlife Conservation Commission", "statement_for_record"),
+        ("Richard E. Neal", "member_statement"),
+        # red-f3: a Member who appears and a nominee are witnesses; only explicit markers make a statement.
+        ("Al Green", None),
+        ("Russell T. Vought to be Director", None),
+    ]
+
+
+@pytest.mark.parametrize("line,kind", [
+    # A line that opens with a record entry's marker is that entry, whatever words follow (red-f3, v21 prints).
+    ("Letter from the nominee to the Office of General Counsel, U.S. Department of Veterans Affairs", "statement_for_record"),
+    ("Letter, followup to hearing testimony", "statement_for_record"),
+    ("Submittals for the record: John Windhausen, Jr., President, letter dated June 23, 1999, and the testimony of US West CEO "
+     "Sol Trujillo to Hon. John McCain and Hon. Ernest F. Hollings", "statement_for_record"),
+    ("Additional information for the record \\1\\ Vednita Carter, Founder and Executive Director, Breaking Free", "statement_for_record"),
+    ("Additional material for the record \\1\\ John S. Hughes, M.D., Professor of Medicine, Yale School of Medicine", "statement_for_record"),
+    ("Additional oral comments presented for the record: Carper, Chip, Hebron, Maryland", "statement_for_record"),
+    ('Investing in Racial Diversity in Tech" has been retained in committee files and also is available as part of Ms. Kim\'s '
+     "written testimony at https://docs.house.gov/meetings/IF/IF17/20190306/108901/HHRG-116-IF17-Wstate-KimJ-20190306.pdf", "statement_for_record"),
+    # A witness's own line that mentions material for the record, or ends in a contents tail, is still the witness.
+    ("Goodlatte, Bob, U.S. Representative from Virginia, along with added material for the record; China: Export of Technology "
+     "Would be Liberating Force", None),
+    ("Steve Chalk, Chief Financial Officer, Energy Efficiency and Renewable Energy, Department of Energy \\1\\..................... "
+     "Insert for the record", None),
+    ("Hon. Russell T. Vought to be Director, Office of Management and Budget, Testimony", None),
+])
+def test_mods_record_entries_are_read_from_their_opening_marker(line, kind):
+    assert appearance_records.mods_entry_kind(line, None) == kind

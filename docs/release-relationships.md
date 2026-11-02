@@ -251,7 +251,7 @@ Identity: `event_id` (primary_key; published identifier).
 | `sittings` | `list<struct<start timestamp,end timestamp,place string,room string,building string,address string>>` | no | Scheduled times and locations, as Congress.gov states them when it has a sitting |
 | `committees` | `list<struct<system_code dict,role dict>>` | no | Host committee codes and roles |
 | `subject_keys` | `list<dict>` | no | Bill, nomination and treaty subjects |
-| `transcripts` | `list<struct<package_id string,list_row int32,formats list<string>>>` | no | Official hearing transcripts, one per package |
+| `transcripts` | `list<struct<source dict,package_id string,list_row int32,formats list<string>,video_key string,language dict,production dict>>` | no | Every transcript the archive holds for the meeting, labelled by source: printed_hearing (a GPO print whose own MODS records the meeting, one per package: package_id, list_row of its preferred-format document, formats), committee_transcript (the committee's own transcript file, H{HRG,MKP,MTG}-<congress>-<committee>-Transcript-<meeting date>.pdf, linked to the meeting; list_row, formats), captions (a complete caption or subtitle track of the meeting's recording, never a stream segment; formats, video_key, language, production) |
 | `videos` | `list<struct<name string,url string,video_key string>>` | no | Recorded meeting links |
 | `congress` | `int16` | yes | Congress the publisher record states; null when no record states it, never inferred from documents |
 | `congress_gov_updated` | `timestamp` | yes | Congress.gov's updateDate for this record: a publisher record update, distinct from the hearing date and capture time |
@@ -259,8 +259,8 @@ Identity: `event_id` (primary_key; published identifier).
 | `congress_gov_meeting_type` | `dict` | yes | Congress.gov's type label (Hearing, Markup, Meeting) |
 | `access` | `dict` | yes | open, closed, partly_closed or unknown, as the publisher type or title states |
 | `access_basis` | `dict` | yes | The source and field that state access, such as congress_gov/title |
-| `not_held` | `bool` | yes | The publisher title opens with postponed, canceled, rescheduled or test; null with no record |
-| `rescheduled_to` | `int64` | yes | Later meeting of the same committees and title within 60 days, when the publisher states Rescheduled or only the later twin has a recording; derived |
+| `not_held` | `bool` | yes | Publisher status Canceled or Postponed, or the title opens with postponed, canceled or test; false where the meeting's own print was held that day under its title, or a curated read found the meeting's own recording of it on its date (status conflict, model/registries/meeting-status-conflicts.json); null with no record |
+| `rescheduled_to` | `int64` | yes | Later meeting of the same committees and title, parts included, within 60 days that is not itself not held: when this meeting is not held, or has no recording, transcript file or witnesses of its own and either the publisher states Rescheduled or only the later twin has a recording; a hearing never moves to a markup; derived |
 | `rescheduled_basis` | `dict` | yes | publisher_status or recording_on_later_twin |
 
 Nullability: Nullability transcribes data model §8.1 (meetings.parquet row); access fields, not_held and rescheduling are null with no record, as their meanings state. List columns are empty, never null. A required column is refused at write time.
@@ -301,9 +301,10 @@ Identity: `witness_key` (primary_key; published identifier).
 | `panel` | `string` | yes | Panel heading or label |
 | `panel_order` | `int16` | yes | 1-based panel order within the occasion |
 | `display_order` | `int16` | yes | 1-based witness display order within the occasion or panel |
-| `witness_type` | `dict` | yes | Source witness classification |
+| `witness_type` | `dict` | yes | Source witness classification; for GovInfo prints, statement_for_record or member_statement marks an entry that is a statement, not a witness |
 | `testified` | `boolean` | yes | Whether the witness testified |
 | `bioguide_id` | `dict` | yes | Bioguide identifier when the witness is a Member of Congress |
+| `superseded_by` | `string` | yes | witness_key of the same person stated on the same meeting by a higher-ranked source (source priority, then record); null for the row to show |
 
 Nullability: Nullability transcribes the phase-2 annex §3 file table (docs/plans/phase-2-annex-20261028.md): a type without "nullable" there is required. A required column is refused at write time.
 
@@ -641,11 +642,11 @@ Identity: `event_id, aspect` (primary_key; published identifier).
 | `state` | `dict` | no | present, partial, claimed, empty, not_stated, unresolved, not_public, confirmed_absent or unknown; these never merge |
 | `basis` | `dict` | no | Which relation states it |
 | `count` | `int32` | no | Rows behind present |
-| `reason` | `dict` | yes | Why a state holds, when known, such as old_evidence_disputes_negative_verdict |
+| `reason` | `dict` | yes | Why a state holds, when known: old_evidence_disputes_negative_verdict, video_text_only, excerpts_only, stated_documents_not_held, senate_page_links_pending, package_witnesses_unattached, package_names_meeting_unlinked, recording_link_pending or recording_without_video_record; for a present transcript, the sources held (printed_hearing, committee_transcript, captions) |
 
 Nullability: The documents are silent; entity-meeting-coverage.sql always sets basis (a CASE with an else) and count (coalesced), so both are required; reason is stated only when known. A required column is refused at write time.
 
-- `state`: confirmed_absent only from undisputed curated negative verdicts on every package of the meeting, each linked to that meeting alone; zero rows never prove absence. partial means excerpts only; claimed means only a video’s own text; for captions, no observation is unknown, never empty.
+- `state`: confirmed_absent only from undisputed curated negative verdicts on every package of the meeting, each linked to that meeting alone; zero rows never prove absence. partial means excerpts only; claimed means only a video’s own text; for captions, no observation is unknown, never empty. States rank present > unresolved > empty > unknown > not_stated: unknown, never not_stated, where held evidence is not yet linked. A Senate meeting is unknown for documents and witnesses until Senate committee-page links land (ct-gi01 R2). Captions are not_stated only when the recording is confirmed_absent or not_public.
 
 Outgoing: `coverage_meeting`.
 

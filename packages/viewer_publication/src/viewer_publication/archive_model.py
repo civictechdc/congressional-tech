@@ -23,6 +23,7 @@ REGISTRIES={
     'recovery_kinds':dict(category='Utf8',match_basis='Utf8',kind='Utf8',import_category='Utf8'),
     'capture_scope':dict(family='Utf8',patterns=list_of('Utf8'),exclusions=list_of('Utf8')),
     'meeting_sources':dict(id='Utf8',kind='Utf8',source='Utf8',priority='Int64'),
+    'meeting_status_conflicts':dict(event_id='Int64',publisher_status='Utf8',evidence='Utf8'),
     'recording_sources':dict(id='Utf8',kind='Utf8',provider='Utf8',pattern='Utf8',key_template='Utf8',format='Utf8',default_language='Utf8',default_production='Utf8'),
 }
 
@@ -96,6 +97,9 @@ APPEARANCE_RECORD_FIELDS=dict(
         bioguide_id='Utf8',
         document_links=list_of('Utf8'),
     )),
+    held_dates=list_of('Utf8'),
+    title='Utf8',
+    created='Utf8',
 )
 
 RECORDING_DECISION_FIELDS=dict(id='Utf8',subject_kind='Utf8',subject_id='Utf8',verdict='Utf8',video_refs=list_of('Utf8'),
@@ -293,6 +297,9 @@ def _normalize_appearance_rows(rows,selected_versions=None):
             collection_state=str(row['collection_state']) if row.get('collection_state') is not None else None,
             context_url=str(top_context_url) if top_context_url is not None else None,
             appearances=appearances,
+            held_dates=[str(d) for d in row.get('held_dates') or ()],
+            title=str(row['title']) if row.get('title') is not None else None,
+            created=str(row['created']) if row.get('created') is not None else None,
         ))
     return normalized
 
@@ -527,6 +534,72 @@ def meeting_steps(*,root=ROOT):
         dict(name='meetings_resolved',sql=(Path(root)/'model/sql/meeting-records-resolved.sql').read_text(),materialize=True)]
 
 
+EMPTY_RECORDINGS_SQL="""SELECT cast(NULL AS VARCHAR) AS video_key,arrow_cast(array_slice(make_array(cast(NULL AS BIGINT)),1,0),'List(Int64)') AS event_ids,
+ array_slice(make_array(named_struct('body',arrow_cast(NULL,'FixedSizeBinary(32)'),'suffix',cast(NULL AS VARCHAR),'format',cast(NULL AS VARCHAR),
+  'language',cast(NULL AS VARCHAR),'production',cast(NULL AS VARCHAR))),1,0) AS tracks WHERE false"""
+WITNESSES_SQL='SELECT r.witness_key,r.occasion,r.source,r.record_sha,r.source_locator,r.context_key,r.event_id,r.package_id,r.page_url,r.name,r.position,r.organization,r.on_behalf_of,r.location,r.panel,r.panel_order,r.display_order,r.witness_type,r.testified,r.bioguide_id,p.superseded_by FROM appearance_records_resolved r LEFT JOIN witness_precedence p ON p.witness_key=r.witness_key'
+
+
+def appearance_steps(*,root=ROOT):
+    """Witness URLs, their keys, then the resolved appearances (one owner for the full and frozen builds)."""
+    app_url_inputs_sql="""WITH selected_app_records AS (
+        SELECT r.record_sha_hex,r.source,nullif(trim(r.declared_base),'') AS declared_base,
+            r.context_url,r.appearances
+        FROM selected_appearance_records r
+        WHERE r.status='completed'
+    ), candidate_app_shas AS (
+        SELECT DISTINCT record_sha_hex FROM selected_app_records WHERE record_sha_hex IS NOT NULL
+    ), distinct_capture_urls AS (
+        SELECT DISTINCT encode(c.sha256,'hex') AS record_sha_hex,
+            coalesce(c.url,c.requested_url,c.context_url) AS source_url
+        FROM captures c
+        JOIN candidate_app_shas cas ON encode(c.sha256,'hex')=cas.record_sha_hex
+        WHERE c.mode='fetch' AND c.complete AND c.outcome IN ('stored','unchanged')
+          AND c.http_status BETWEEN 200 AND 299 AND c.sha256 IS NOT NULL
+    ), app_contexts AS (
+        SELECT r.record_sha_hex,r.source,r.declared_base,
+            coalesce(c.source_url,r.context_url) AS source_url,
+            r.appearances
+        FROM selected_app_records r
+        LEFT JOIN distinct_capture_urls c ON c.record_sha_hex=r.record_sha_hex
+    ), with_base AS (
+        SELECT source_url,appearances,
+            CASE
+                WHEN source_url IS NOT NULL AND declared_base IS NOT NULL
+                    THEN coalesce(url_resolve(declared_base,source_url),source_url)
+                ELSE source_url
+            END AS resolved_base
+        FROM app_contexts
+    ), apps AS (
+        SELECT source_url,resolved_base,unnest(appearances) AS app
+        FROM with_base WHERE appearances IS NOT NULL
+    ), raw_links AS (
+        SELECT resolved_base,
+            nullif(trim(unnest(coalesce(app['document_links'],arrow_cast(make_array(),'List(Utf8)')))),'') AS raw_link
+        FROM apps
+    ), raw_urls AS (
+        SELECT source_url AS raw_url FROM with_base WHERE source_url IS NOT NULL
+        UNION
+        SELECT CASE WHEN resolved_base IS NOT NULL THEN coalesce(url_resolve(raw_link,resolved_base),raw_link) ELSE raw_link END AS raw_url
+        FROM raw_links WHERE raw_link IS NOT NULL
+        UNION
+        SELECT raw_link AS raw_url FROM raw_links WHERE raw_link IS NOT NULL
+    ), distinct_urls AS (
+        SELECT DISTINCT raw_url AS url FROM raw_urls WHERE raw_url IS NOT NULL AND trim(raw_url)<>''
+    ) SELECT encode(sha256(json_array(url)),'hex') AS input_id,url FROM distinct_urls"""
+    app_normalize=(Path(root)/'model/sql/url-normalized.sql').read_text().replace('url_inputs','appearance_url_inputs')
+    app_keys=(Path(root)/'model/sql/url-keys.sql').read_text().replace('url_inputs','appearance_url_inputs').replace('url_normalized','appearance_url_normalized')
+    return [dict(name='appearance_url_inputs',sql=app_url_inputs_sql,materialize=True),
+        dict(name='appearance_url_normalized',sql=app_normalize,materialize=True),
+        dict(name='appearance_url_keys',sql=app_keys,materialize=True),
+        dict(name='appearance_records_resolved',sql=(Path(root)/'model/sql/appearance-records-resolved.sql').read_text(),materialize=True)]+_sql_steps(['witness-precedence'],root=root)
+
+
+def package_link_steps(*,root=ROOT):
+    """Packages to meetings: the jacket and MODS links, then the ones a raw record justifies (ct-dx22)."""
+    return _sql_steps(['appearance-people','package-mods-facts','print-meeting-agreement','meeting-mods-links','meeting-transcript-links','package-meeting-links'],root=root)
+
+
 def admission_steps(*,prelude=(),root=ROOT):
     """Use the full model's maintained input prefix before accepting a skip."""
     from viewer_publication.archive_provenance import current_steps
@@ -628,7 +701,7 @@ def prepare_model_inputs(*,captures,readings,filename_readings,parser_versions,c
         error_expr='error_type'
         extra_select=''
         if table_name=='appearance_records':
-            extra_select='event_id,package_id,declared_base,collection_state,cast(NULL AS VARCHAR) AS context_url,'
+            extra_select='event_id,package_id,declared_base,collection_state,cast(NULL AS VARCHAR) AS context_url,held_dates,title,created,'
         if parquet_path is not None and Path(parquet_path).is_file():
             import pyarrow as pa
             import pyarrow.parquet as pq
@@ -645,7 +718,11 @@ def prepare_model_inputs(*,captures,readings,filename_readings,parser_versions,c
                 base_expr='declared_base' if 'declared_base' in schema.names else 'cast(NULL AS VARCHAR) AS declared_base'
                 cs_expr='collection_state' if 'collection_state' in schema.names else 'cast(NULL AS VARCHAR) AS collection_state'
                 ctx_expr='context_url' if 'context_url' in schema.names else 'cast(NULL AS VARCHAR) AS context_url'
-                extra_select=f'{ev_expr},{pkg_expr},{base_expr},{cs_expr},{ctx_expr},'
+                # MODS print facts; an older lake file without them states none.
+                held_expr='held_dates' if 'held_dates' in schema.names else "arrow_cast(array_slice(make_array(cast(NULL AS VARCHAR)),1,0),'List(Utf8)') AS held_dates"
+                title_expr='title' if 'title' in schema.names else 'cast(NULL AS VARCHAR) AS title'
+                created_expr='created' if 'created' in schema.names else 'cast(NULL AS VARCHAR) AS created'
+                extra_select=f'{ev_expr},{pkg_expr},{base_expr},{cs_expr},{ctx_expr},{held_expr},{title_expr},{created_expr},'
         return f"SELECT {sha_expr} AS record_sha_hex,parser_version,{status_expr} AS status,{error_expr} AS error_type,source,{extra_select}{payload_col} FROM {table_name}"
     if meeting_records is None or isinstance(meeting_records,(list,tuple)):
         inputs.append(json_input(scratch,'meeting_records_input',_normalize_meeting_rows(meeting_records or (),parser_versions.get('meeting_records')),**MEETING_RECORD_FIELDS))
@@ -726,6 +803,8 @@ def build_prepared_release(prepared,*,engine,output,root=ROOT):
     parser_versions=prepared['parser_versions'];catalog_version=prepared['catalog_version']
     steps=list(prepared['steps'])+link_steps(root=root)
     steps += _sql_steps(['archive-member-addresses'],root=root)
+    # Meetings read only prelude inputs; the documents they list feed URL keys and annotations.
+    steps += meeting_steps(root=root)+_sql_steps(['meeting-document-urls'],root=root)
     steps += [dict(name='url_inputs',sql=(Path(root)/'model/sql/model-url-inputs.sql').read_text(),materialize=True)]
     steps += _sql_steps(['url-normalized'],root=root)
     steps += [dict(name='model_url_keys',sql=(Path(root)/'model/sql/url-keys.sql').read_text(),materialize=True)]
@@ -744,58 +823,8 @@ def build_prepared_release(prepared,*,engine,output,root=ROOT):
     steps += _sql_steps(['document-members','archive-container-links','document-bodies','document-identities','saved-files','document-alternates',
         'document-version-keys','document-versions','document-metadata','document-addresses','saved-recoveries','document-removals','document-packages',
         'document-rendition-titles'],root=root)
-    steps += meeting_steps(root=root)+[dict(name='meeting_transcript_links',sql=(Path(root)/'model/sql/meeting-transcript-links.sql').read_text(),materialize=True)]
-    app_url_inputs_sql="""WITH selected_app_records AS (
-        SELECT r.record_sha_hex,r.source,nullif(trim(r.declared_base),'') AS declared_base,
-            r.context_url,r.appearances
-        FROM selected_appearance_records r
-        WHERE r.status='completed'
-    ), candidate_app_shas AS (
-        SELECT DISTINCT record_sha_hex FROM selected_app_records WHERE record_sha_hex IS NOT NULL
-    ), distinct_capture_urls AS (
-        SELECT DISTINCT encode(c.sha256,'hex') AS record_sha_hex,
-            coalesce(c.url,c.requested_url,c.context_url) AS source_url
-        FROM captures c
-        JOIN candidate_app_shas cas ON encode(c.sha256,'hex')=cas.record_sha_hex
-        WHERE c.mode='fetch' AND c.complete AND c.outcome IN ('stored','unchanged')
-          AND c.http_status BETWEEN 200 AND 299 AND c.sha256 IS NOT NULL
-    ), app_contexts AS (
-        SELECT r.record_sha_hex,r.source,r.declared_base,
-            coalesce(c.source_url,r.context_url) AS source_url,
-            r.appearances
-        FROM selected_app_records r
-        LEFT JOIN distinct_capture_urls c ON c.record_sha_hex=r.record_sha_hex
-    ), with_base AS (
-        SELECT source_url,appearances,
-            CASE
-                WHEN source_url IS NOT NULL AND declared_base IS NOT NULL
-                    THEN coalesce(url_resolve(declared_base,source_url),source_url)
-                ELSE source_url
-            END AS resolved_base
-        FROM app_contexts
-    ), apps AS (
-        SELECT source_url,resolved_base,unnest(appearances) AS app
-        FROM with_base WHERE appearances IS NOT NULL
-    ), raw_links AS (
-        SELECT resolved_base,
-            nullif(trim(unnest(coalesce(app['document_links'],arrow_cast(make_array(),'List(Utf8)')))),'') AS raw_link
-        FROM apps
-    ), raw_urls AS (
-        SELECT source_url AS raw_url FROM with_base WHERE source_url IS NOT NULL
-        UNION
-        SELECT CASE WHEN resolved_base IS NOT NULL THEN coalesce(url_resolve(raw_link,resolved_base),raw_link) ELSE raw_link END AS raw_url
-        FROM raw_links WHERE raw_link IS NOT NULL
-        UNION
-        SELECT raw_link AS raw_url FROM raw_links WHERE raw_link IS NOT NULL
-    ), distinct_urls AS (
-        SELECT DISTINCT raw_url AS url FROM raw_urls WHERE raw_url IS NOT NULL AND trim(raw_url)<>''
-    ) SELECT encode(sha256(json_array(url)),'hex') AS input_id,url FROM distinct_urls"""
-    app_normalize=(Path(root)/'model/sql/url-normalized.sql').read_text().replace('url_inputs','appearance_url_inputs')
-    app_keys=(Path(root)/'model/sql/url-keys.sql').read_text().replace('url_inputs','appearance_url_inputs').replace('url_normalized','appearance_url_normalized')
-    steps += [dict(name='appearance_url_inputs',sql=app_url_inputs_sql,materialize=True),
-        dict(name='appearance_url_normalized',sql=app_normalize,materialize=True),
-        dict(name='appearance_url_keys',sql=app_keys,materialize=True),
-        dict(name='appearance_records_resolved',sql=(Path(root)/'model/sql/appearance-records-resolved.sql').read_text(),materialize=True),
+    steps += package_link_steps(root=root)
+    steps += appearance_steps(root=root)+[
         dict(name='document_witness_keys',sql=(Path(root)/'model/sql/document-witness-keys.sql').read_text(),materialize=True),
         dict(name='component_meeting_links',sql=(Path(root)/'model/sql/component-meeting-links.sql').read_text(),materialize=True)]
     steps += [dict(name='base_normalized',sql=(Path(root)/'model/sql/document-normalized.sql').read_text()+' UNION ALL '+(Path(root)/'model/sql/document-recovery-normalized.sql').read_text(),materialize=True)]
@@ -826,6 +855,9 @@ def build_prepared_release(prepared,*,engine,output,root=ROOT):
     steps += url_state_steps(root=root,recovery_policy=prepared.get('recovery_policy'))
     meetings_sql=(Path(root)/'model/sql/entity-meetings.sql').read_text()
     auxiliary=[('meetings',meetings_sql,['event_id'],MEETING_DICTIONARY)]
+    if not prepared.get('include_entities'):
+        # Meetings list caption tracks among their transcripts (ct-1i4q); without entities there are none.
+        steps += [dict(name='recordings_entity',sql=EMPTY_RECORDINGS_SQL,materialize=True)]
     if prepared.get('include_entities'):
         steps += [
             dict(name='recording_url_sources',sql="SELECT pattern,key_template,format,default_language,default_production FROM recording_sources WHERE kind='video_url'",materialize=True),
@@ -887,9 +919,11 @@ def build_prepared_release(prepared,*,engine,output,root=ROOT):
                 SELECT 1 FROM recording_segment_exclusions ex WHERE regexp_like(mf.fetch_url,ex.pattern)
             )""",materialize=True),
         ]
+        # A step, not only an export: meetings read it to list caption tracks among their transcripts.
+        steps += [dict(name='recordings_entity',sql=(Path(root)/'model/sql/entity-recordings.sql').read_text(),materialize=True)]
         auxiliary += [
-            ('witnesses','SELECT witness_key,occasion,source,record_sha,source_locator,context_key,event_id,package_id,page_url,name,position,organization,on_behalf_of,location,panel,panel_order,display_order,witness_type,testified,bioguide_id FROM appearance_records_resolved',['occasion','panel_order','display_order','witness_key'],['occasion','source','witness_type','bioguide_id']),
-            ('recordings',(Path(root)/'model/sql/entity-recordings.sql').read_text(),['video_key'],['tracks.list.item.suffix','tracks.list.item.format','tracks.list.item.language','tracks.list.item.production']),
+            ('witnesses',WITNESSES_SQL,['occasion','panel_order','display_order','witness_key'],['occasion','source','witness_type','bioguide_id']),
+            ('recordings','SELECT * FROM recordings_entity',['video_key'],['tracks.list.item.suffix','tracks.list.item.format','tracks.list.item.language','tracks.list.item.production']),
             ('committees',(Path(root)/'model/sql/entity-committees.sql').read_text(),['system_code'],['chamber','committee_type','parent_system_code']),
             ('members',(Path(root)/'model/sql/entity-members.sql').read_text(),['bioguide_id'],['terms.list.item.chamber','terms.list.item.state','terms.list.item.party']),
             ('rosters',(Path(root)/'model/sql/entity-rosters.sql').read_text(),['congress','system_code','rank','bioguide_id'],['system_code','bioguide_id','title','party']),
@@ -902,6 +936,7 @@ def build_prepared_release(prepared,*,engine,output,root=ROOT):
         auxiliary += [(name,(Path(root)/'model/sql'/(file+'.sql')).read_text(),keys,dictionary) for name,file,keys,dictionary in EXPLORER_TABLES]
         from congress_api.lake.committee_records import CANDIDATE_SQL
         explorer_diagnostics=[dict(name='explorer_invariants',sql=f"""SELECT (SELECT count(*) FROM meeting_coverage_export)-5*(SELECT count(*) FROM meetings_export) AS coverage_row_mismatch,
+            (SELECT count(*) FROM meeting_coverage_export WHERE state='present' AND count=0) AS coverage_present_without_rows,
             (SELECT count(*) FROM (SELECT record_sha FROM youtube_cache_bodies UNION SELECT record_sha FROM youtube_api_bodies) b WHERE b.record_sha NOT IN ({explorer_settled_sql('video_records')})) AS unsettled_video_records,
             (SELECT count(*) FROM ({CANDIDATE_SQL}) c WHERE c.record_sha NOT IN ({explorer_settled_sql('committee_records')})) AS unsettled_committee_records""")]
         meta_explorer=[dict(name='videos_in_several_channels',sql="SELECT count(*) AS videos FROM (SELECT v['video_id'] AS video_id FROM (SELECT unnest(r.videos) AS v FROM selected_video_records r JOIN youtube_cache_bodies b ON encode(r.record_sha,'hex')=b.record_sha WHERE r.source='youtube_cache') GROUP BY v['video_id'] HAVING count(DISTINCT v['handle'])>1)")]
@@ -953,6 +988,7 @@ def build_prepared_release(prepared,*,engine,output,root=ROOT):
             (SELECT count(*) FROM (
                 SELECT event_id,tr['package_id'] AS package_id FROM (
                     SELECT event_id,unnest(transcripts) AS tr FROM meetings_export WHERE transcripts IS NOT NULL)
+                WHERE tr['package_id'] IS NOT NULL  -- printed hearings; committee files and captions carry no package
                 GROUP BY event_id,tr['package_id'] HAVING count(*)>1
             )) AS duplicate_transcript_packages"""+''.join(f',\n            {sql} AS {name}' for name,sql in entity_track_checks().items())
         meta_queries += [
@@ -1034,7 +1070,10 @@ def build_prepared_release(prepared,*,engine,output,root=ROOT):
             ) k WHERE k.event_id IS NULL OR NOT EXISTS (SELECT 1 FROM meetings_export m WHERE m.event_id=k.event_id)) AS missing_meeting_keys,
             (SELECT count(*) FROM (
                 SELECT unnest(transcripts) AS tr FROM meetings_export WHERE transcripts IS NOT NULL
-            ) WHERE tr['list_row'] IS NULL OR tr['list_row']<0 OR tr['list_row']>=(SELECT count(*) FROM ordered)) AS invalid_transcript_rows,
+            ) WHERE CASE WHEN tr['source']='captions'
+                -- A caption track is a recording's file, named by video_key, never a listed document.
+                THEN tr['video_key'] IS NULL OR tr['list_row'] IS NOT NULL
+                ELSE tr['list_row'] IS NULL OR tr['list_row']<0 OR tr['list_row']>=(SELECT count(*) FROM ordered) END) AS invalid_transcript_rows,
             (SELECT count(*) FROM url_keys WHERE list_row IS NULL OR list_row<0 OR list_row>=(SELECT count(*) FROM ordered)) AS invalid_url_rows,
             (SELECT count(*) FROM (
                 SELECT vk,min(doc_key) AS doc_key

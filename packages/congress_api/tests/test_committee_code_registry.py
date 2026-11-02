@@ -36,19 +36,23 @@ def test_removing_a_select_stem_is_detected(monkeypatch):
     assert disagreements()
 
 
-def sql_select_stems(texts):
-    """Every hs-to-hl alternation, wherever the model SQL keeps it."""
-    return [set(match.split('|')) for text in texts for match in SELECT_RULE.findall(text)]
+def test_the_parser_alone_maps_select_codes():
+    """ct-p3ff: the model SQL keeps no hs-to-hl copy that could drift from _HOUSE_SELECT_CODES."""
+    texts = {path.name: path.read_text() for path in (ROOT / 'model/sql').rglob('*.sql')}
+    assert [name for name, text in texts.items()
+            if re.search(r"'hl'\s*\|\|", text) or SELECT_RULE.search(text) or re.search(r"'h[slt]zt00'", text)] == []
 
 
-def test_model_sql_select_stems_match_the_parser():
-    rules = sql_select_stems(path.read_text() for path in (ROOT / 'model/sql').rglob('*.sql'))
-    assert rules, 'no hs-to-hl rule found, so this gate would pass vacuously'
-    assert all(rule == meeting_records._HOUSE_SELECT_CODES for rule in rules)
+def test_the_task_force_code_reaches_its_registry_code_from_the_parser():
+    assert normalize_house_committee_code('hszt00') == 'htzt00' and 'htzt00' in {r['system_code'] for r in REGISTRY}
 
 
-def test_dropping_a_stem_from_the_sql_rule_is_detected():
-    text = (ROOT / 'model/sql/meeting-records-resolved.sql').read_text()
-    mutated = text.replace('(?:cn|', '(?:', 1)
-    assert mutated != text
-    assert any(rule != meeting_records._HOUSE_SELECT_CODES for rule in sql_select_stems([mutated]))
+def test_a_house_select_committee_meeting_reaches_a_registry_code_without_sql_help():
+    """With the SQL copy gone, the parser's output must already be a released committee key."""
+    xml = b"""<committee-meeting meeting-id="HHRG118900" meeting-type="HHRG"><current-status>S</current-status>
+      <meeting-details><meeting-title>Select committee hearing on the economy and jobs</meeting-title>
+      <meeting-date><calendar-date>2024-05-10</calendar-date></meeting-date>
+      <committees><committee-name id="CN00">Select Committee on the CCP</committee-name></committees></meeting-details></committee-meeting>"""
+    row = meeting_records.build_meeting_record_row('ab' * 32, 'house_xml', xml, parser_version='v')
+    codes = [c['system_code'] for c in row['meetings'][0]['committees']]
+    assert codes == ['hlcn00'] and set(codes) <= {r['system_code'] for r in REGISTRY}

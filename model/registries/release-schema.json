@@ -726,8 +726,8 @@
         },
         {
           "name": "transcripts",
-          "type": "list<struct<package_id string,list_row int32,formats list<string>>>",
-          "meaning": "Official hearing transcripts, one per package",
+          "type": "list<struct<source dict,package_id string,list_row int32,formats list<string>,video_key string,language dict,production dict>>",
+          "meaning": "Every transcript the archive holds for the meeting, labelled by source: printed_hearing (a GPO print whose own MODS records the meeting, one per package: package_id, list_row of its preferred-format document, formats), committee_transcript (the committee's own transcript file, H{HRG,MKP,MTG}-<congress>-<committee>-Transcript-<meeting date>.pdf, linked to the meeting; list_row, formats), captions (a complete caption or subtitle track of the meeting's recording, never a stream segment; formats, video_key, language, production)",
           "nullable": false
         },
         {
@@ -775,13 +775,13 @@
         {
           "name": "not_held",
           "type": "bool",
-          "meaning": "The publisher title opens with postponed, canceled, rescheduled or test; null with no record",
+          "meaning": "Publisher status Canceled or Postponed, or the title opens with postponed, canceled or test; false where the meeting's own print was held that day under its title, or a curated read found the meeting's own recording of it on its date (status conflict, model/registries/meeting-status-conflicts.json); null with no record",
           "nullable": true
         },
         {
           "name": "rescheduled_to",
           "type": "int64",
-          "meaning": "Later meeting of the same committees and title within 60 days, when the publisher states Rescheduled or only the later twin has a recording; derived",
+          "meaning": "Later meeting of the same committees and title, parts included, within 60 days that is not itself not held: when this meeting is not held, or has no recording, transcript file or witnesses of its own and either the publisher states Rescheduled or only the later twin has a recording; a hearing never moves to a markup; derived",
           "nullable": true
         },
         {
@@ -921,7 +921,7 @@
           "name": "witness_type",
           "type": "dict",
           "nullable": true,
-          "meaning": "Source witness classification"
+          "meaning": "Source witness classification; for GovInfo prints, statement_for_record or member_statement marks an entry that is a statement, not a witness"
         },
         {
           "name": "testified",
@@ -934,6 +934,12 @@
           "type": "dict",
           "nullable": true,
           "meaning": "Bioguide identifier when the witness is a Member of Congress"
+        },
+        {
+          "name": "superseded_by",
+          "type": "string",
+          "nullable": true,
+          "meaning": "witness_key of the same person stated on the same meeting by a higher-ranked source (source priority, then record); null for the row to show"
         }
       ],
       "gaps": [],
@@ -1847,7 +1853,7 @@
         {
           "name": "reason",
           "type": "dict",
-          "meaning": "Why a state holds, when known, such as old_evidence_disputes_negative_verdict",
+          "meaning": "Why a state holds, when known: old_evidence_disputes_negative_verdict, video_text_only, excerpts_only, stated_documents_not_held, senate_page_links_pending, package_witnesses_unattached, package_names_meeting_unlinked, recording_link_pending or recording_without_video_record; for a present transcript, the sources held (printed_hearing, committee_transcript, captions)",
           "nullable": true
         }
       ],
@@ -1864,7 +1870,7 @@
         "kind": "primary_key"
       },
       "notes": {
-        "state": "confirmed_absent only from undisputed curated negative verdicts on every package of the meeting, each linked to that meeting alone; zero rows never prove absence. partial means excerpts only; claimed means only a video\u2019s own text; for captions, no observation is unknown, never empty."
+        "state": "confirmed_absent only from undisputed curated negative verdicts on every package of the meeting, each linked to that meeting alone; zero rows never prove absence. partial means excerpts only; claimed means only a video\u2019s own text; for captions, no observation is unknown, never empty. States rank present > unresolved > empty > unknown > not_stated: unknown, never not_stated, where held evidence is not yet linked. A Senate meeting is unknown for documents and witnesses until Senate committee-page links land (ct-gi01 R2). Captions are not_stated only when the recording is confirmed_absent or not_public."
       },
       "nullability": "The documents are silent; entity-meeting-coverage.sql always sets basis (a CASE with an else) and count (coalesced), so both are required; reason is stated only when known."
     }

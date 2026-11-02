@@ -117,15 +117,26 @@ Each `appearances` element:
 Hearings, witnesses, members, committees, bills and nominations are the entities a reader explores beside documents: a hearing's transcript, recording and witnesses and what each submitted, a member's committees and hearings, a bill's committees, cost and votes, a nomination's hearings and votes. Every relationship is one a publisher states; none is matched by name.
 
 ```
-transcripts    := per meeting, one entry per package whose package_id parses as
-                  CHRG-{c}{h|s|j}hrg{digits} with {c} the meeting's congress, int({digits})
-                  one of its transcript_jackets, and the letter its chamber's when it has
-                  one; as (package_id, list_row, formats): list_row is the package's listed
-                  document whose saved format ranks first, then lowest row; formats are the
-                  distinct saved and alternate formats of all its listed documents, in
-                  format-preference order. Invariant duplicate_transcript_packages = 0.
-                  Jackets are matched as integers, never formatted: 49104057 is
-                  CHRG-118shrg049104057
+transcripts    := per meeting, every transcript the archive holds, each labelled by source
+                  (ct-1i4q), as (source, package_id, list_row, formats, video_key, language, production):
+                  printed_hearing: one entry per package whose package_id parses as
+                    CHRG-{c}{h|s|j}hrg{digits}, linked by a transcript jacket (int({digits}),
+                    {c} the meeting's congress, the chamber's letter when it has one; jackets
+                    match as integers: 49104057 is CHRG-118shrg049104057) or by the print's own
+                    MODS eventId, and only when the print records the meeting (DATA-MODEL 7.11:
+                    held that day, the same witnesses or an agreeing title); a package with no
+                    MODS keeps its jacket link; list_row is the package's listed document whose
+                    saved format ranks first, then lowest row, and formats are the distinct saved
+                    and alternate formats of its listed documents in preference order (invariant
+                    duplicate_transcript_packages = 0)
+                  committee_transcript: a listed document linked to the meeting whose filename is
+                    H{HRG|MKP|MTG}-{congress}-{committee}-Transcript-{yyyymmdd}[-{part}].pdf
+                    with {yyyymmdd} the meeting's date (the committee's own transcript)
+                  captions: a complete caption or subtitle track (vtt, srt, ttml) with a body, of a
+                    recording linked to the meeting; a vtt beside a playlist of the same
+                    production is a stream segment, never a track (ct-9s7b)
+                  Transcript coverage is present when any source is held, and its reason names
+                  the sources; unresolved and unknown keep their meanings
 occasion       := 'meeting:{event_id}' for a House witness list or Congress.gov record;
                   for a MODS appearance, the meeting whose transcripts hold its package
                   when exactly one does, else 'package:{package_id}'; for a Senate page,

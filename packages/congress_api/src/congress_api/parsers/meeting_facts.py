@@ -45,11 +45,15 @@ def meeting_access(row):
     native = str(row.get('type') or '').lower()
     reported = {value for value in ('open', 'closed') if re.search(r'\b' + value + r'\b', native)}
     title = ' '.join(str(row.get('title') or '').lower().split())
-    # A separate closed session declared around the event makes the meeting partly closed.
+    # A separate session of the other access declared around the event makes the
+    # meeting partly closed, in either direction ("Closed Hearing ... followed by an
+    # open session"). "opening" is not "open".
     separate_closed = re.search(r'\b(?:followed|preceded)\s+by\s+(?:an?\s+)?closed\b', title)
-    if reported:
-        if reported == {'open'} and separate_closed:
+    if len(reported) == 1:
+        other = ({'open', 'closed'} - reported).pop()
+        if re.search(r'\b(?:followed|preceded)\s+by\s+(?:an?\s+)?' + other + r'\b', title):
             return 'partly_closed', '/type,/title'
+    if reported:
         return ('partly_closed' if len(reported) == 2 else reported.pop()), '/type'
     # Possibility is not a declaration that a closed portion will occur.
     title = re.sub(r'\b(?:possibility of|possibly|may (?:be|go into|hold))\s+(?:an?\s+)?(?:closed|open)\s+(?:session|hearing|meeting)\b', '', title)
@@ -81,7 +85,26 @@ def is_hearing(row):
     return meeting_type(row)[0] in HEARING_TYPES
 
 
-NOT_HELD = re.compile(r"^\s*(postponed|cancel+ed|rescheduled|test)\b", re.I)
+# A title that opens with postponed, canceled or test says the meeting did not sit
+# on its date. "Rescheduled" does not: those meetings were often held on the listed
+# date (104356 has transcripts, 106589 a video), and "POSTPONED UNTIL 12:00 PM" only
+# moves the hour (106137 has a video).
+NOT_HELD = re.compile(r"^\W*(postponed|cancell?ed|test)\b(?!\s*(?:until|to)\s+\d)", re.I)
+
+# Codes seen in raw House XML root <current-status>; Congress.gov states words.
+PUBLISHER_STATUS = {"s": "Scheduled", "r": "Rescheduled", "p": "Postponed"}
+
+
+def publisher_status(value):
+    """The publisher's own meeting status as a word, or None when not stated."""
+    text = str(value or "").strip()
+    return PUBLISHER_STATUS.get(text.lower(), text) or None
+
+
+def not_held(status, title):
+    """Publisher status Canceled or Postponed, or a title that says so."""
+    stated = (publisher_status(status) or "").lower()
+    return stated in ("canceled", "cancelled", "postponed") or bool(NOT_HELD.match(title or ""))
 
 
 TRANSCRIPT = re.compile(r"transcript", re.I)
@@ -97,10 +120,31 @@ def in_inventory_scope(row):
     return scheduled_or_rescheduled(row) and int(row.get("congress", 0)) >= 113
 
 
+PART = re.compile(r"\b(part|day|session|panel|volume|vol)\.?\s*[:#-]?\s*"
+                  r"(\d+|[ivx]+|one|two|three|four|five|first|second|third|fourth|fifth)\b")
+ORDINAL = {"one": 1, "two": 2, "three": 3, "four": 4, "five": 5,
+           "first": 1, "second": 2, "third": 3, "fourth": 4, "fifth": 5}
+ROMAN = {"i": 1, "v": 5, "x": 10}
+
+
+def _ordinal(token):
+    if token.isdigit(): return int(token)
+    if token in ORDINAL: return ORDINAL[token]
+    values = [ROMAN[c] for c in token]
+    return sum(-v if i + 1 < len(values) and v < values[i + 1] else v for i, v in enumerate(values))
+
+
 def title_key(title):
-    """Order-free substantive title words; short titles are too generic to compare."""
+    """Order-free substantive title words plus part markers; short titles are too generic.
+
+    Part I and Part II (or Day 1 and Day 2) are separate meetings, so their markers
+    stay in the key; "Medicare Part D" carries no marker.
+    """
     distinct = words(title)
-    return " ".join(sorted(distinct)) if len(distinct) >= 4 else ""
+    if len(distinct) < 4: return ""
+    kinds = {"vol": "volume"}
+    markers = {f"{kinds.get(kind, kind)}:{_ordinal(n)}" for kind, n in PART.findall((title or "").lower())}
+    return " ".join(sorted(distinct) + sorted(markers))
 
 
 def reschedule_candidate(row):
@@ -114,9 +158,9 @@ def reschedule_candidate(row):
             and not re.search(r"\bdeposition\b", row.get("title") or "", re.I))
 
 
-def stated_facts(meeting_type_text, title):
-    """Facts a publisher's own type and title state, for lake records."""
+def stated_facts(meeting_type_text, title, status=None):
+    """Facts a publisher's own type, title and status state, for lake records."""
     row = dict(type=meeting_type_text, title=title)
     access, basis = meeting_access(row)
-    return dict(access=access, access_basis=basis, not_held=bool(NOT_HELD.match(title or "")),
+    return dict(access=access, access_basis=basis, not_held=not_held(status, title),
                 title_key=title_key(title or "") or None, reschedule_candidate=reschedule_candidate(row))

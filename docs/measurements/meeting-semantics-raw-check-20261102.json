@@ -1,0 +1,7601 @@
+{
+ "raw_meeting_records": {
+  "read": 24430,
+  "unread": 0
+ },
+ "access": {
+  "rows": 7,
+  "verdicts": {
+   "raw_supports_after": 7
+  },
+  "unread": [],
+  "samples": {
+   "raw_supports_after": [
+    {
+     "key": 338162,
+     "type": "Closed Hearing",
+     "title": "Closed hearings to examine the posture of United States Indo-Pacific Command and United States Forces Korea in review of the Defense Authorization Request for Fiscal Year 2027 and the Future Years Defense Program; to be immediately followed by an open session at 9:30 a.m. in SD-G50.",
+     "before": "closed",
+     "after": "partly_closed"
+    },
+    {
+     "key": 338327,
+     "type": "Closed Hearing",
+     "title": "Closed hearings to examine the posture of the United States Central Command and United States Africa Command in review of the Defense Authorization Request for Fiscal Year 2027 and the Future Years Defense Program; to be immediately followed by an open hearing at approximately 10:00 a.m. in SD-G50.",
+     "before": "closed",
+     "after": "partly_closed"
+    },
+    {
+     "key": 338361,
+     "type": "Closed Hearing",
+     "title": "Closed hearings to examine the Department of Defense budget request for Fiscal Year 2027 and the Future Years Defense Program; to be immediately followed by an open session at approximately\u00a011:00 a.m. in SD-G50.",
+     "before": "closed",
+     "after": "partly_closed"
+    },
+    {
+     "key": 338362,
+     "type": "Closed Hearing",
+     "title": "Closed hearings to examine the posture of United States Special Operations Command and United States Cyber Command in review of the Defense Authorization Request for Fiscal Year 2027 and the Future Years Defense Program; to be immediately followed by an open session at approximately 11:00 a.m. in SD-G50.",
+     "before": "closed",
+     "after": "partly_closed"
+    },
+    {
+     "key": 338365,
+     "type": "Closed Hearing",
+     "title": "Closed hearings to examine the posture of the Department of the Army in review of the Defense Authorization Request for Fiscal Year 2027 and the Future Years Defense Program; to be immediately followed by an open hearing at approximately 11:00 a.m. in SD-G50.",
+     "before": "closed",
+     "after": "partly_closed"
+    },
+    {
+     "key": 338408,
+     "type": "Closed Hearing",
+     "title": "Closed hearings to examine the posture of the Department of the Navy in review of the Defense Authorization Request for Fiscal Year 2027 and the Future Years Defense Program; to be immediately followed by an open hearing at approximately 11:00 a.m. in SD-G50.",
+     "before": "closed",
+     "after": "partly_closed"
+    },
+    {
+     "key": 338426,
+     "type": "Closed Hearing",
+     "title": "Closed hearings to examine the posture of the Department of the Air Force in review of the Defense Authorization Request for Fiscal Year 2027 and the Future Years Defense Program;\u00a0to be immediately followed by an open session at approximately 11:00 a.m. in SD-G50.",
+     "before": "closed",
+     "after": "partly_closed"
+    }
+   ]
+  }
+ },
+ "not_held": {
+  "rows": 430,
+  "verdicts": {
+   "raw_supports_after": 430
+  },
+  "unread": [],
+  "samples": {
+   "raw_supports_after": [
+    {
+     "key": 100223,
+     "title": "The Fatah-Hamas Reconciliation: Threatening Peace Prospects",
+     "own": {
+      "status": "Canceled",
+      "type": "Hearing",
+      "day": "2013-02-05",
+      "transcripts": [],
+      "witnesses": 0,
+      "same_day_videos": [],
+      "prints": []
+     },
+     "before": false,
+     "after": true,
+     "status_conflict": false
+    },
+    {
+     "key": 100243,
+     "title": "\"The Future of the NLRB:  What Noel Canning vs. NLRB Means for Workers and Unions\"",
+     "own": {
+      "status": "Canceled",
+      "type": "Hearing",
+      "day": "2013-02-13",
+      "transcripts": [],
+      "witnesses": 0,
+      "same_day_videos": [],
+      "prints": []
+     },
+     "before": false,
+     "after": true,
+     "status_conflict": false
+    },
+    {
+     "key": 100244,
+     "title": "\"Sequestration: Examining Employers\" WARN Act Responsibilities\"",
+     "own": {
+      "status": "Canceled",
+      "type": "Hearing",
+      "day": "2013-02-14",
+      "transcripts": [],
+      "witnesses": 0,
+      "same_day_videos": [],
+      "prints": []
+     },
+     "before": false,
+     "after": true,
+     "status_conflict": false
+    },
+    {
+     "key": 100351,
+     "title": "Oversight of the National Science Foundation",
+     "own": {
+      "status": "Postponed",
+      "type": "Hearing",
+      "day": "2013-03-06",
+      "transcripts": [],
+      "witnesses": 0,
+      "same_day_videos": [],
+      "prints": []
+     },
+     "before": false,
+     "after": true,
+     "status_conflict": false
+    },
+    {
+     "key": 100352,
+     "title": "United States Customs and Border Protection Budget and Management",
+     "own": {
+      "status": "Postponed",
+      "type": "Hearing",
+      "day": "2013-03-14",
+      "transcripts": [],
+      "witnesses": 0,
+      "same_day_videos": [],
+      "prints": []
+     },
+     "before": false,
+     "after": true,
+     "status_conflict": false
+    },
+    {
+     "key": 100369,
+     "title": "USDA Inspector General Oversight",
+     "own": {
+      "status": "Postponed",
+      "type": "Hearing",
+      "day": "2013-03-07",
+      "transcripts": [],
+      "witnesses": 0,
+      "same_day_videos": [],
+      "prints": []
+     },
+     "before": false,
+     "after": true,
+     "status_conflict": false
+    },
+    {
+     "key": 100415,
+     "title": "Impact of Litigation on Resource Management Budgets Oversight",
+     "own": {
+      "status": "Postponed",
+      "type": "Hearing",
+      "day": "2013-03-14",
+      "transcripts": [],
+      "witnesses": 0,
+      "same_day_videos": [],
+      "prints": []
+     },
+     "before": false,
+     "after": true,
+     "status_conflict": false
+    },
+    {
+     "key": 100450,
+     "title": "\u201cIs U.S. Homeland Security Threatened by the European Union Not Designating Hezbollah as a Terrorist Organization?\u201d",
+     "own": {
+      "status": "Postponed",
+      "type": "Hearing",
+      "day": "2013-03-13",
+      "transcripts": [],
+      "witnesses": 0,
+      "same_day_videos": [],
+      "prints": []
+     },
+     "before": false,
+     "after": true,
+     "status_conflict": false
+    },
+    {
+     "key": 100540,
+     "title": "Fulfilling the Good Friday Agreement",
+     "own": {
+      "status": "Postponed",
+      "type": "Hearing",
+      "day": "2013-03-20",
+      "transcripts": [],
+      "witnesses": 0,
+      "same_day_videos": [],
+      "prints": []
+     },
+     "before": false,
+     "after": true,
+     "status_conflict": false
+    },
+    {
+     "key": 100587,
+     "title": "Bureau of Indian Affairs and Bureau of Indian Education Oversight",
+     "own": {
+      "status": "Postponed",
+      "type": "Hearing",
+      "day": "2013-04-10",
+      "transcripts": [],
+      "witnesses": 0,
+      "same_day_videos": [],
+      "prints": []
+     },
+     "before": false,
+     "after": true,
+     "status_conflict": false
+    },
+    {
+     "key": 100821,
+     "title": "Protecting U.S. Citizens' Constitutional Rights During the War on Terror",
+     "own": {
+      "status": "Postponed",
+      "type": "Hearing",
+      "day": "2013-05-08",
+      "transcripts": [],
+      "witnesses": 0,
+      "same_day_videos": [],
+      "prints": []
+     },
+     "before": false,
+     "after": true,
+     "status_conflict": false
+    },
+    {
+     "key": 101200,
+     "title": "Challenges to Democracy in the Western Hemisphere",
+     "own": {
+      "status": "Postponed",
+      "type": "Hearing",
+      "day": "2013-07-24",
+      "transcripts": [],
+      "witnesses": 0,
+      "same_day_videos": [],
+      "prints": []
+     },
+     "before": false,
+     "after": true,
+     "status_conflict": false
+    },
+    {
+     "key": 101283,
+     "title": "Maritime Transportation Regulations: Impacts on Safety, Security, Jobs and the Environment, Part 2",
+     "own": {
+      "status": "Postponed",
+      "type": "Hearing",
+      "day": "2013-10-10",
+      "transcripts": [],
+      "witnesses": 0,
+      "same_day_videos": [],
+      "prints": []
+     },
+     "before": false,
+     "after": true,
+     "status_conflict": false
+    },
+    {
+     "key": 101304,
+     "title": "Moving NextGen Forward: Leveraging the Assets of the FAA's William J. Hughes Technical Center",
+     "own": {
+      "status": "Postponed",
+      "type": "Meeting",
+      "day": "2013-09-30",
+      "transcripts": [],
+      "witnesses": 0,
+      "same_day_videos": [],
+      "prints": []
+     },
+     "before": false,
+     "after": true,
+     "status_conflict": false
+    },
+    {
+     "key": 101307,
+     "title": "Oversight hearing on \"Energy Independence:  Domestic Opportunities to Reverse California\u2019s Growing Dependence on Foreign Oil.\u201d",
+     "own": {
+      "status": "Postponed",
+      "type": "Hearing",
+      "day": "2013-09-20",
+      "transcripts": [],
+      "witnesses": 0,
+      "same_day_videos": [],
+      "prints": []
+     },
+     "before": false,
+     "after": true,
+     "status_conflict": false
+    },
+    {
+     "key": 101354,
+     "title": "\u201cCombating Human Trafficking in Our Major Cities\"",
+     "own": {
+      "status": "Postponed",
+      "type": "Hearing",
+      "day": "2013-10-07",
+      "transcripts": [],
+      "witnesses": 0,
+      "same_day_videos": [],
+      "prints": []
+     },
+     "before": false,
+     "after": true,
+     "status_conflict": false
+    },
+    {
+     "key": 101356,
+     "title": "\"Keeping College Within Reach: Simplifying Federal Student Aid\"",
+     "own": {
+      "status": "Postponed",
+      "type": "Hearing",
+      "day": "2013-10-09",
+      "transcripts": [],
+      "witnesses": 0,
+      "same_day_videos": [],
+      "prints": []
+     },
+     "before": false,
+     "after": true,
+     "status_conflict": false
+    },
+    {
+     "key": 101371,
+     "title": "Dodd - Frank's Impact on Competition in the Financial Industry",
+     "own": {
+      "status": "Postponed",
+      "type": "Hearing",
+      "day": "2013-10-02",
+      "transcripts": [],
+      "witnesses": 0,
+      "same_day_videos": [],
+      "prints": []
+     },
+     "before": false,
+     "after": true,
+     "status_conflict": false
+    },
+    {
+     "key": 101372,
+     "title": "The President's Constitutional Duty to Faithfully Execute the Laws",
+     "own": {
+      "status": "Postponed",
+      "type": "Hearing",
+      "day": "2013-10-02",
+      "transcripts": [],
+      "witnesses": 0,
+      "same_day_videos": [],
+      "prints": []
+     },
+     "before": false,
+     "after": true,
+     "status_conflict": false
+    },
+    {
+     "key": 101373,
+     "title": "Implementation of an Entry-Exit System: Still Waiting After All These Years",
+     "own": {
+      "status": "Postponed",
+      "type": "Hearing",
+      "day": "2013-10-01",
+      "transcripts": [],
+      "witnesses": 0,
+      "same_day_videos": [],
+      "prints": []
+     },
+     "before": false,
+     "after": true,
+     "status_conflict": false
+    },
+    {
+     "key": 101379,
+     "title": "H.R. 3190, the \"United States Parole Commission Extension Act of 2013\"; and, H.R. 1447, the \"Death in Custody Reporting Act of 2013\"",
+     "own": {
+      "status": "Postponed",
+      "type": "Markup",
+      "day": "2013-10-02",
+      "transcripts": [],
+      "witnesses": 0,
+      "same_day_videos": [],
+      "prints": []
+     },
+     "before": false,
+     "after": true,
+     "status_conflict": false
+    },
+    {
+     "key": 101400,
+     "title": "H.R. 3212, Sean and David Goldman International Child Abduction Prevention and Return Act of 2013",
+     "own": {
+      "status": "Canceled",
+      "type": "Hearing",
+      "day": "2013-10-10",
+      "transcripts": [],
+      "witnesses": 0,
+      "same_day_videos": [],
+      "prints": [
+       "CHRG-113hhrg85106"
+      ]
+     },
+     "before": false,
+     "after": false,
+     "status_conflict": true
+    },
+    {
+     "key": 101498,
+     "title": "Is My Data on Healthcare.gov Secure?",
+     "own": {
+      "status": "Canceled",
+      "type": "Meeting",
+      "day": "2013-11-19",
+      "transcripts": [],
+      "witnesses": 0,
+      "same_day_videos": [],
+      "prints": [
+       "CHRG-113hhrg86893"
+      ]
+     },
+     "before": false,
+     "after": false,
+     "status_conflict": true
+    },
+    {
+     "key": 101543,
+     "title": "Astrobiology: Search for Biosignatures in our Solar System and Beyond?",
+     "own": {
+      "status": "Canceled",
+      "type": "Hearing",
+      "day": "2013-12-04",
+      "transcripts": [],
+      "witnesses": 0,
+      "same_day_videos": [],
+      "prints": []
+     },
+     "before": false,
+     "after": true,
+     "status_conflict": false
+    },
+    {
+     "key": 101582,
+     "title": "Chairmen Boustany and Johnson Announce Hearing on Improper Payments and Identity Theft",
+     "own": {
+      "status": "Postponed",
+      "type": "Hearing",
+      "day": "2013-12-11",
+      "transcripts": [],
+      "witnesses": 0,
+      "same_day_videos": [],
+      "prints": []
+     },
+     "before": false,
+     "after": true,
+     "status_conflict": false
+    },
+    {
+     "key": 101644,
+     "title": "Maritime Sovereignty in the East and South China Seas",
+     "own": {
+      "status": "Canceled",
+      "type": "Hearing",
+      "day": "2014-01-14",
+      "transcripts": [],
+      "witnesses": 0,
+      "same_day_videos": [],
+      "prints": [
+       "CHRG-113hhrg86962"
+      ]
+     },
+     "before": false,
+     "after": false,
+     "status_conflict": true
+    },
+    {
+     "key": 101668,
+     "title": "Full Committee Business Meeting",
+     "own": {
+      "status": "Canceled",
+      "type": "Meeting",
+      "day": "2014-01-16",
+      "transcripts": [],
+      "witnesses": 0,
+      "same_day_videos": [],
+      "prints": []
+     },
+     "before": false,
+     "after": true,
+     "status_conflict": false
+    },
+    {
+     "key": 101691,
+     "title": "H.R. 3826, the Electricity Security and Affordability Act; and H.R. 2126, the Better Buildings Act of 2013",
+     "own": {
+      "status": "Canceled",
+      "type": "Markup",
+      "day": "2014-01-28",
+      "transcripts": [],
+      "witnesses": 0,
+      "same_day_videos": [],
+      "prints": []
+     },
+     "before": false,
+     "after": true,
+     "status_conflict": false
+    },
+    {
+     "key": 101791,
+     "title": "\u201cElectromagnetic Pulse (EMP): Threat to Critical Infrastructure\u201d",
+     "own": {
+      "status": "Postponed",
+      "type": "Hearing",
+      "day": "2014-02-26",
+      "transcripts": [],
+      "witnesses": 0,
+      "same_day_videos": [],
+      "prints": []
+     },
+     "before": false,
+     "after": true,
+     "status_conflict": false
+    },
+    {
+     "key": 101965,
+     "title": "POSTPONED, DATE TO BE ANNOUNCED.  Action Delayed, Small Business Opportunities Denied: Implementation of Contracting Reforms in the FY 2013 NDAA.",
+     "own": {
+      "status": "Postponed",
+      "type": "Hearing",
+      "day": "2014-06-18",
+      "transcripts": [],
+      "witnesses": 0,
+      "same_day_videos": [],
+      "prints": []
+     },
+     "before": true,
+     "after": true,
+     "status_conflict": false
+    },
+    {
+     "key": 102062,
+     "title": "Markup of Pending Legislation",
+     "own": {
+      "status": "Postponed",
+      "type": "Markup",
+      "day": "2014-04-09",
+      "transcripts": [],
+      "witnesses": 0,
+      "same_day_videos": [],
+      "prints": []
+     },
+     "before": false,
+     "after": true,
+     "status_conflict": false
+    },
+    {
+     "key": 102088,
+     "title": "H.R. 4150, H.R. 2942, H.R. 3056, H.R. 3614, H.R. 4037, H.R. 4038, H.R. 4147, H.R. 4151",
+     "own": {
+      "status": "Postponed",
+      "type": "Markup",
+      "day": "2014-04-08",
+      "transcripts": [],
+      "witnesses": 0,
+      "same_day_videos": [],
+      "prints": []
+     },
+     "before": false,
+     "after": true,
+     "status_conflict": false
+    },
+    {
+     "key": 102193,
+     "title": "\u201cEvaluating Federal and Community Efforts to Eliminate Veteran Homelessness\u201d",
+     "own": {
+      "status": "Postponed",
+      "type": "Hearing",
+      "day": "2014-05-20",
+      "transcripts": [],
+      "witnesses": 0,
+      "same_day_videos": [],
+      "prints": []
+     },
+     "before": false,
+     "after": true,
+     "status_conflict": false
+    },
+    {
+     "key": 102212,
+     "title": "H.R. 4229",
+     "own": {
+      "status": "Canceled",
+      "type": "Markup",
+      "day": "2014-05-09",
+      "transcripts": [],
+      "witnesses": 0,
+      "same_day_videos": [],
+      "prints": []
+     },
+     "before": false,
+     "after": true,
+     "status_conflict": false
+    },
+    {
+     "key": 102296,
+     "title": "\u201cA Review of the Transition Assistance Program (TAP)\u201d",
+     "own": {
+      "status": "Postponed",
+      "type": "Hearing",
+      "day": "2014-09-17",
+      "transcripts": [],
+      "witnesses": 0,
+      "same_day_videos": [],
+      "prints": []
+     },
+     "before": false,
+     "after": true,
+     "status_conflict": false
+    },
+    {
+     "key": 102333,
+     "title": "Business Meeting",
+     "own": {
+      "status": "Canceled",
+      "type": "Meeting",
+      "day": "2014-06-09",
+      "transcripts": [],
+      "witnesses": 0,
+      "same_day_videos": [],
+      "prints": []
+     },
+     "before": false,
+     "after": true,
+     "status_conflict": false
+    },
+    {
+     "key": 102352,
+     "title": "Protecting Christian Heritage in Turkey",
+     "own": {
+      "status": "Postponed",
+      "type": "Hearing",
+      "day": "2014-06-18",
+      "transcripts": [],
+      "witnesses": 0,
+      "same_day_videos": [],
+      "prints": []
+     },
+     "before": false,
+     "after": true,
+     "status_conflict": false
+    },
+    {
+     "key": 102353,
+     "title": "H.R. 4347",
+     "own": {
+      "status": "Postponed",
+      "type": "Markup",
+      "day": "2014-06-18",
+      "transcripts": [],
+      "witnesses": 0,
+      "same_day_videos": [],
+      "prints": []
+     },
+     "before": false,
+     "after": true,
+     "status_conflict": false
+    },
+    {
+     "key": 102398,
+     "title": "Business Meeting: Subpoena of SES Performance Information",
+     "own": {
+      "status": "Canceled",
+      "type": "Meeting",
+      "day": "2014-06-20",
+      "transcripts": [],
+      "witnesses": 0,
+      "same_day_videos": [],
+      "prints": []
+     },
+     "before": false,
+     "after": true,
+     "status_conflict": false
+    },
+    {
+     "key": 102479,
+     "title": "Test",
+     "own": {
+      "status": "Scheduled",
+      "type": "Meeting",
+      "day": "2019-12-25",
+      "transcripts": [],
+      "witnesses": 0,
+      "same_day_videos": [],
+      "prints": []
+     },
+     "before": true,
+     "after": true,
+     "status_conflict": false
+    }
+   ]
+  }
+ },
+ "rescheduled_to": {
+  "rows": 86,
+  "verdicts": {
+   "ambiguous": 2,
+   "raw_supports_after": 84
+  },
+  "unread": [],
+  "samples": {
+   "ambiguous": [
+    {
+     "key": 100397,
+     "title": "Our Nation of Builders: Powering U.S. Automobile Manufacturing Forward.",
+     "twin": 100607,
+     "twin_title": "Our Nation of Builders: Powering the U.S. Automobile Manufacturing Forward",
+     "twin_type": "Hearing",
+     "own": {
+      "status": "Rescheduled",
+      "type": "Hearing",
+      "day": "2013-03-06",
+      "transcripts": [],
+      "witnesses": 0,
+      "same_day_videos": [],
+      "prints": []
+     },
+     "before": [
+      100607,
+      "publisher_status"
+     ],
+     "after": [
+      null,
+      null
+     ]
+    },
+    {
+     "key": 106136,
+     "title": "H.R. 1422, H.R. 1558, H.R. 2246, H.R. 2565, H.R. 2868, H.R. 2875, and H.R. 2874 -- Day 1",
+     "twin": 106163,
+     "twin_title": "H.R. 1422, H.R. 1558, H.R. 2246, H.R. 2565, H.R. 2868, H.R. 2875, and H.R. 2874 -- Day 2",
+     "twin_type": "Markup",
+     "own": {
+      "status": "Rescheduled",
+      "type": "Markup",
+      "day": "2017-06-15",
+      "transcripts": [],
+      "witnesses": 0,
+      "same_day_videos": [],
+      "prints": []
+     },
+     "before": [
+      106163,
+      "publisher_status"
+     ],
+     "after": [
+      null,
+      null
+     ]
+    }
+   ],
+   "raw_supports_after": [
+    {
+     "key": 101200,
+     "title": "Challenges to Democracy in the Western Hemisphere",
+     "twin": 101287,
+     "twin_title": "Challenges to Democracy in the Western Hemisphere",
+     "twin_type": "Hearing",
+     "own": {
+      "status": "Postponed",
+      "type": "Hearing",
+      "day": "2013-07-24",
+      "transcripts": [],
+      "witnesses": 0,
+      "same_day_videos": [],
+      "prints": []
+     },
+     "before": [
+      null,
+      null
+     ],
+     "after": [
+      101287,
+      "publisher_status"
+     ]
+    },
+    {
+     "key": 101393,
+     "title": "Implementation of an Entry-Exit System: Still Waiting After All These Years",
+     "twin": 101464,
+     "twin_title": "Implementation of an Entry-Exit System: Still Waiting After All These Years",
+     "twin_type": "Hearing",
+     "own": {
+      "status": "Rescheduled",
+      "type": "Hearing",
+      "day": "2013-10-09",
+      "transcripts": [],
+      "witnesses": 0,
+      "same_day_videos": [],
+      "prints": []
+     },
+     "before": [
+      101464,
+      "publisher_status"
+     ],
+     "after": [
+      101464,
+      "publisher_status"
+     ]
+    },
+    {
+     "key": 101422,
+     "title": "The FTC at 100: Where Do We Go From Here?",
+     "twin": 101545,
+     "twin_title": "The FTC at 100: Where Do We Go From Here?",
+     "twin_type": "Hearing",
+     "own": {
+      "status": "Rescheduled",
+      "type": "Hearing",
+      "day": "2013-10-24",
+      "transcripts": [],
+      "witnesses": 0,
+      "same_day_videos": [],
+      "prints": []
+     },
+     "before": [
+      101545,
+      "publisher_status"
+     ],
+     "after": [
+      101545,
+      "publisher_status"
+     ]
+    },
+    {
+     "key": 102814,
+     "title": "Organizational Meeting of the Committee on Ways and Means, Consideration of the Committee\u2019s Rules for the 114th Congress and Consideration of the Committee\u2019s Oversight Plan for the 114th Congress",
+     "twin": 102834,
+     "twin_title": "Organizational Meeting of the Committee on Ways and Means, Consideration of the Committee\u2019s Rules for the 114th Congress and Consideration of the Committee\u2019s Oversight Plan for the 114th Congress",
+     "twin_type": "Meeting",
+     "own": {
+      "status": "Postponed",
+      "type": "Meeting",
+      "day": "2015-01-13",
+      "transcripts": [],
+      "witnesses": 0,
+      "same_day_videos": [],
+      "prints": []
+     },
+     "before": [
+      null,
+      null
+     ],
+     "after": [
+      102834,
+      "publisher_status"
+     ]
+    },
+    {
+     "key": 102839,
+     "title": "Adoption of Committee Rules and Approval of Oversight Plan",
+     "twin": 102869,
+     "twin_title": "Adoption of Committee Rules and Approval of Oversight Plan",
+     "twin_type": "Meeting",
+     "own": {
+      "status": "Rescheduled",
+      "type": "Meeting",
+      "day": "2015-01-21",
+      "transcripts": [],
+      "witnesses": 0,
+      "same_day_videos": [],
+      "prints": []
+     },
+     "before": [
+      102869,
+      "publisher_status"
+     ],
+     "after": [
+      102869,
+      "publisher_status"
+     ]
+    },
+    {
+     "key": 103060,
+     "title": "Department of Agriculture Research Agencies Budget",
+     "twin": 103198,
+     "twin_title": "Department of Agriculture Research Agencies Budget",
+     "twin_type": "Hearing",
+     "own": {
+      "status": "Postponed",
+      "type": "Hearing",
+      "day": "2015-03-05",
+      "transcripts": [],
+      "witnesses": 0,
+      "same_day_videos": [],
+      "prints": []
+     },
+     "before": [
+      null,
+      null
+     ],
+     "after": [
+      103198,
+      "publisher_status"
+     ]
+    },
+    {
+     "key": 103086,
+     "title": "Cybersecurity: The Evolving Nature of Cyber Threats Facing the Private Sector",
+     "twin": 103183,
+     "twin_title": "\u201cCybersecurity:  The Evolving Nature of Cyber Threats Facing the Private Sector.\u201d",
+     "twin_type": "Hearing",
+     "own": {
+      "status": "Canceled",
+      "type": "Hearing",
+      "day": "2015-03-05",
+      "transcripts": [],
+      "witnesses": 0,
+      "same_day_videos": [],
+      "prints": []
+     },
+     "before": [
+      null,
+      null
+     ],
+     "after": [
+      103183,
+      "publisher_status"
+     ]
+    },
+    {
+     "key": 103120,
+     "title": "An Overview of the U.S. Coast Guard\u2019s Missions",
+     "twin": 103270,
+     "twin_title": "An Overview of the U.S. Coast Guard\u2019s Missions",
+     "twin_type": "Hearing",
+     "own": {
+      "status": "Postponed",
+      "type": "Hearing",
+      "day": "2015-03-17",
+      "transcripts": [],
+      "witnesses": 0,
+      "same_day_videos": [],
+      "prints": []
+     },
+     "before": [
+      null,
+      null
+     ],
+     "after": [
+      103270,
+      "publisher_status"
+     ]
+    },
+    {
+     "key": 103490,
+     "title": "\u201cAdmitting Syrian Refugees: The Intelligence Void and the Emerging Homeland Security Threat.\u201d",
+     "twin": 103655,
+     "twin_title": "\u201cAdmitting Syrian Refugees: The Intelligence Void and the Emerging Homeland Security Threat.\u201d",
+     "twin_type": "Hearing",
+     "own": {
+      "status": "Postponed",
+      "type": "Hearing",
+      "day": "2015-05-21",
+      "transcripts": [],
+      "witnesses": 0,
+      "same_day_videos": [],
+      "prints": []
+     },
+     "before": [
+      null,
+      null
+     ],
+     "after": [
+      103655,
+      "publisher_status"
+     ]
+    },
+    {
+     "key": 103834,
+     "title": "Examining Vulnerabilities of America\u2019s Power Supply",
+     "twin": 103914,
+     "twin_title": "Examining Vulnerabilities of America\u2019s Power Supply",
+     "twin_type": "Hearing",
+     "own": {
+      "status": "Postponed",
+      "type": "Hearing",
+      "day": "2015-07-30",
+      "transcripts": [],
+      "witnesses": 0,
+      "same_day_videos": [],
+      "prints": []
+     },
+     "before": [
+      null,
+      null
+     ],
+     "after": [
+      103914,
+      "publisher_status"
+     ]
+    },
+    {
+     "key": 103841,
+     "title": "Full Committee Hearing, \"Violence on the Border: Keeping U.S. Personnel Safe\"",
+     "twin": 103946,
+     "twin_title": "Violence on the Border:  Keeping U.S. Personnel Safe",
+     "twin_type": "Hearing",
+     "own": {
+      "status": "Postponed",
+      "type": "Hearing",
+      "day": "2015-07-30",
+      "transcripts": [],
+      "witnesses": 0,
+      "same_day_videos": [],
+      "prints": []
+     },
+     "before": [
+      null,
+      null
+     ],
+     "after": [
+      103946,
+      "publisher_status"
+     ]
+    },
+    {
+     "key": 104049,
+     "title": "Examining the Syrian Humanitarian Crisis from the Ground (Part I)",
+     "twin": 104123,
+     "twin_title": "Examining the Syrian Humanitarian Crisis from the Ground (Part II)",
+     "twin_type": "Hearing",
+     "own": {
+      "status": "Rescheduled",
+      "type": "Hearing",
+      "day": "2015-10-08",
+      "transcripts": [
+       "https://www.congress.gov/114/meeting/house/104049/documents/HHRG-114-FA13-Transcript-20151008.pdf"
+      ],
+      "witnesses": 0,
+      "same_day_videos": [],
+      "prints": [
+       "CHRG-114hhrg96909"
+      ]
+     },
+     "before": [
+      104123,
+      "publisher_status"
+     ],
+     "after": [
+      null,
+      null
+     ]
+    },
+    {
+     "key": 104370,
+     "title": "Triple Threat to Workers and Households: Impacts of Federal Regulations on Jobs, Wages and Startups",
+     "twin": 104519,
+     "twin_title": "Triple Threat to Workers and Households: Impacts of Federal Regulations on Jobs, Wages and Startups",
+     "twin_type": "Hearing",
+     "own": {
+      "status": "Postponed",
+      "type": "Hearing",
+      "day": "2016-01-27",
+      "transcripts": [],
+      "witnesses": 0,
+      "same_day_videos": [],
+      "prints": []
+     },
+     "before": [
+      null,
+      null
+     ],
+     "after": [
+      104519,
+      "publisher_status"
+     ]
+    },
+    {
+     "key": 105088,
+     "title": "Subcommittee on Department of Defense Intelligence and Overhead Architecture Hearing  (Closed)",
+     "twin": 105114,
+     "twin_title": "Department of Defense Intelligence and Overhead Architecture Subcommittee (Closed)",
+     "twin_type": "Hearing",
+     "own": {
+      "status": "Postponed",
+      "type": "Hearing",
+      "day": "2016-06-22",
+      "transcripts": [],
+      "witnesses": 0,
+      "same_day_videos": [],
+      "prints": []
+     },
+     "before": [
+      null,
+      null
+     ],
+     "after": [
+      105114,
+      "publisher_status"
+     ]
+    },
+    {
+     "key": 105634,
+     "title": "Learning from History: Ideas to Strengthen and Modernize the HUBZone Program",
+     "twin": 105655,
+     "twin_title": "Learning from History: Ideas to Strengthen and Modernize the HUBZone Program",
+     "twin_type": "Hearing",
+     "own": {
+      "status": "Scheduled",
+      "type": "Hearing",
+      "day": "2017-02-02",
+      "transcripts": [],
+      "witnesses": 0,
+      "same_day_videos": [],
+      "prints": []
+     },
+     "before": [
+      105655,
+      "recording_on_later_twin"
+     ],
+     "after": [
+      105655,
+      "recording_on_later_twin"
+     ]
+    },
+    {
+     "key": 105704,
+     "title": "\"Improving Federal Student Aid to Better Meet the Needs of Students\"",
+     "twin": 105729,
+     "twin_title": "\"Improving Federal Student Aid to Better Meet the Needs of Students\"",
+     "twin_type": "Hearing",
+     "own": {
+      "status": "Postponed",
+      "type": "Hearing",
+      "day": "2017-03-15",
+      "transcripts": [],
+      "witnesses": 0,
+      "same_day_videos": [],
+      "prints": []
+     },
+     "before": [
+      null,
+      null
+     ],
+     "after": [
+      105729,
+      "publisher_status"
+     ]
+    },
+    {
+     "key": 105872,
+     "title": "Amphibious Warfare in a Contested Environment",
+     "twin": 105981,
+     "twin_title": "Amphibious Warfare in a Contested Environment",
+     "twin_type": "Hearing",
+     "own": {
+      "status": "Canceled",
+      "type": "Meeting",
+      "day": "2017-04-28",
+      "transcripts": [],
+      "witnesses": 0,
+      "same_day_videos": [],
+      "prints": []
+     },
+     "before": [
+      null,
+      null
+     ],
+     "after": [
+      105981,
+      "publisher_status"
+     ]
+    },
+    {
+     "key": 106097,
+     "title": "Ongoing Intelligence Activities (Closed)",
+     "twin": 106174,
+     "twin_title": "Ongoing Intelligence Activities (Closed)",
+     "twin_type": "Hearing",
+     "own": {
+      "status": "Postponed",
+      "type": "Hearing",
+      "day": "2017-06-14",
+      "transcripts": [],
+      "witnesses": 0,
+      "same_day_videos": [],
+      "prints": []
+     },
+     "before": [
+      null,
+      null
+     ],
+     "after": [
+      106174,
+      "publisher_status"
+     ]
+    },
+    {
+     "key": 106140,
+     "title": "Hearing: Ongoing Intelligence Activity (Closed)",
+     "twin": 106203,
+     "twin_title": "Full Committee Hearing: Ongoing Intelligence Activity (Closed)",
+     "twin_type": "Hearing",
+     "own": {
+      "status": "Canceled",
+      "type": "Hearing",
+      "day": "2017-06-22",
+      "transcripts": [],
+      "witnesses": 0,
+      "same_day_videos": [],
+      "prints": []
+     },
+     "before": [
+      null,
+      null
+     ],
+     "after": [
+      106203,
+      "publisher_status"
+     ]
+    },
+    {
+     "key": 106383,
+     "title": "Part I: Powering America: Defining Reliability in a Transforming Electricity Industry",
+     "twin": 106457,
+     "twin_title": "Part II: Powering America: Defining Reliability in a Transforming Electricity Industry",
+     "twin_type": "Hearing",
+     "own": {
+      "status": "Rescheduled",
+      "type": "Hearing",
+      "day": "2017-09-14",
+      "transcripts": [
+       "https://www.congress.gov/115/meeting/house/106383/documents/HHRG-115-IF03-Transcript-20170914.pdf"
+      ],
+      "witnesses": 3,
+      "same_day_videos": [
+       "mszjKl3yS3s"
+      ],
+      "prints": [
+       "CHRG-115hhrg27275"
+      ]
+     },
+     "before": [
+      106457,
+      "publisher_status"
+     ],
+     "after": [
+      null,
+      null
+     ]
+    },
+    {
+     "key": 106385,
+     "title": "Resiliency: The Electric Grid\u2019s Only Hope",
+     "twin": 106450,
+     "twin_title": "Resiliency: The Electric Grid\u2019s Only Hope",
+     "twin_type": "Hearing",
+     "own": {
+      "status": "Postponed",
+      "type": "Hearing",
+      "day": "2017-09-12",
+      "transcripts": [],
+      "witnesses": 4,
+      "same_day_videos": [],
+      "prints": []
+     },
+     "before": [
+      null,
+      null
+     ],
+     "after": [
+      106450,
+      "publisher_status"
+     ]
+    },
+    {
+     "key": 106429,
+     "title": "Oversight Hearing titled \u201cEmpowering State Based Management Solutions for Greater Sage Grouse Recovery\u201d",
+     "twin": 106520,
+     "twin_title": "Oversight hearing titled \u201cEmpowering State Based Management Solutions for Greater Sage Grouse Recovery.\u201d",
+     "twin_type": "Hearing",
+     "own": {
+      "status": "Rescheduled",
+      "type": "Hearing",
+      "day": "2017-09-27",
+      "transcripts": [],
+      "witnesses": 0,
+      "same_day_videos": [],
+      "prints": []
+     },
+     "before": [
+      106520,
+      "publisher_status"
+     ],
+     "after": [
+      106520,
+      "publisher_status"
+     ]
+    },
+    {
+     "key": 106732,
+     "title": "Addressing Physiological Episodes in Fighter, Attack, and Training Aircraft",
+     "twin": 106824,
+     "twin_title": "Addressing Physiological Episodes in Fighter, Attack, and Training Aircraft",
+     "twin_type": "Hearing",
+     "own": {
+      "status": "Postponed",
+      "type": "Hearing",
+      "day": "2017-12-13",
+      "transcripts": [],
+      "witnesses": 0,
+      "same_day_videos": [],
+      "prints": []
+     },
+     "before": [
+      null,
+      null
+     ],
+     "after": [
+      106824,
+      "publisher_status"
+     ]
+    },
+    {
+     "key": 106906,
+     "title": "\u201cStrengthening Access and Accountability to Work in Welfare Programs\u201d",
+     "twin": 108001,
+     "twin_title": "\u201cStrengthening Access and Accountability to Work in Welfare Programs\u201d",
+     "twin_type": "Hearing",
+     "own": {
+      "status": "Postponed",
+      "type": "Hearing",
+      "day": "2018-02-28",
+      "transcripts": [],
+      "witnesses": 0,
+      "same_day_videos": [],
+      "prints": []
+     },
+     "before": [
+      null,
+      null
+     ],
+     "after": [
+      108001,
+      "publisher_status"
+     ]
+    },
+    {
+     "key": 106916,
+     "title": "\u201cBureaucratic Challenges to Hurricane Recovery in Puerto Rico\u201d",
+     "twin": 108054,
+     "twin_title": "\u201cBureaucratic Challenges to Hurricane Recovery in Puerto Rico\u201d",
+     "twin_type": "Hearing",
+     "own": {
+      "status": "Postponed",
+      "type": "Hearing",
+      "day": "2018-02-28",
+      "transcripts": [],
+      "witnesses": 0,
+      "same_day_videos": [],
+      "prints": []
+     },
+     "before": [
+      null,
+      null
+     ],
+     "after": [
+      108054,
+      "publisher_status"
+     ]
+    },
+    {
+     "key": 106964,
+     "title": "Military Personnel Posture: FY 2019",
+     "twin": 108074,
+     "twin_title": "Military Personnel Posture: FY 2019",
+     "twin_type": "Hearing",
+     "own": {
+      "status": "Postponed",
+      "type": "Hearing",
+      "day": "2018-03-21",
+      "transcripts": [],
+      "witnesses": 4,
+      "same_day_videos": [],
+      "prints": []
+     },
+     "before": [
+      null,
+      null
+     ],
+     "after": [
+      108074,
+      "publisher_status"
+     ]
+    },
+    {
+     "key": 108019,
+     "title": "Ground Force Modernization Budget Request for Fiscal Year 2019",
+     "twin": 108159,
+     "twin_title": "Ground Force Modernization Budget Request for Fiscal Year 2019",
+     "twin_type": "Hearing",
+     "own": {
+      "status": "Postponed",
+      "type": "Hearing",
+      "day": "2018-03-21",
+      "transcripts": [],
+      "witnesses": 4,
+      "same_day_videos": [],
+      "prints": []
+     },
+     "before": [
+      null,
+      null
+     ],
+     "after": [
+      108159,
+      "publisher_status"
+     ]
+    },
+    {
+     "key": 108210,
+     "title": "Committee Business Meeting to assign new committee member",
+     "twin": 108255,
+     "twin_title": "Committee Business Meeting to Assign New Committee Member",
+     "twin_type": "Meeting",
+     "own": {
+      "status": "Postponed",
+      "type": "Meeting",
+      "day": "2018-04-26",
+      "transcripts": [],
+      "witnesses": 0,
+      "same_day_videos": [],
+      "prints": []
+     },
+     "before": [
+      108255,
+      "recording_on_later_twin"
+     ],
+     "after": [
+      108255,
+      "publisher_status"
+     ]
+    },
+    {
+     "key": 108566,
+     "title": "Conference of House and Senate Amendments to H.R. 5895",
+     "twin": 108667,
+     "twin_title": "Conference of House and Senate Amendments to H.R. 5895",
+     "twin_type": "Meeting",
+     "own": {
+      "status": "Postponed",
+      "type": "Meeting",
+      "day": "2018-07-12",
+      "transcripts": [],
+      "witnesses": 0,
+      "same_day_videos": [],
+      "prints": []
+     },
+     "before": [
+      null,
+      null
+     ],
+     "after": [
+      108667,
+      "publisher_status"
+     ]
+    },
+    {
+     "key": 108688,
+     "title": "Solutions to Strengthen U.S. Public Safety Communications",
+     "twin": 108716,
+     "twin_title": "Solutions to Strengthen U.S. \r\n Public Safety Communications",
+     "twin_type": "Hearing",
+     "own": {
+      "status": "Postponed",
+      "type": "Hearing",
+      "day": "2018-09-14",
+      "transcripts": [],
+      "witnesses": 2,
+      "same_day_videos": [],
+      "prints": []
+     },
+     "before": [
+      null,
+      null
+     ],
+     "after": [
+      108716,
+      "publisher_status"
+     ]
+    },
+    {
+     "key": 108689,
+     "title": "Better Data and Better Outcomes: Reducing Maternal Mortality in the U.S.",
+     "twin": 108724,
+     "twin_title": "Better Data and Better Outcomes: \r\n Reducing Maternal Mortality in the U.S.",
+     "twin_type": "Hearing",
+     "own": {
+      "status": "Postponed",
+      "type": "Hearing",
+      "day": "2018-09-14",
+      "transcripts": [],
+      "witnesses": 4,
+      "same_day_videos": [],
+      "prints": []
+     },
+     "before": [
+      108724,
+      "recording_on_later_twin"
+     ],
+     "after": [
+      108724,
+      "publisher_status"
+     ]
+    },
+    {
+     "key": 108788,
+     "title": "\u201cA Legislative Proposal to Provide for a Sustainable Housing Finance System: The Bipartisan Housing Finance Reform Act of 2018\u201d",
+     "twin": 108802,
+     "twin_title": "\u201cA Legislative Proposal to Provide for a Sustainable Housing Finance System: The Bipartisan Housing Finance Reform Act of 2018\u201d",
+     "twin_type": "Hearing",
+     "own": {
+      "status": "Postponed",
+      "type": "Hearing",
+      "day": "2018-12-06",
+      "transcripts": [],
+      "witnesses": 0,
+      "same_day_videos": [],
+      "prints": []
+     },
+     "before": [
+      null,
+      null
+     ],
+     "after": [
+      108802,
+      "publisher_status"
+     ]
+    },
+    {
+     "key": 108892,
+     "title": "The State of Competition in the Wireless Market: Examining the Impact of the Proposed Merger of T-Mobile and Sprint on Consumers, Workers, and the Internet",
+     "twin": 109053,
+     "twin_title": "The State of Competition in the Wireless Market: Examining the Impact of the Proposed Merger of T-Mobile and Sprint on Consumers, Workers, and the Internet",
+     "twin_type": "Hearing",
+     "own": {
+      "status": "Scheduled",
+      "type": "Hearing",
+      "day": "2019-02-14",
+      "transcripts": [],
+      "witnesses": 0,
+      "same_day_videos": [],
+      "prints": []
+     },
+     "before": [
+      109053,
+      "recording_on_later_twin"
+     ],
+     "after": [
+      109053,
+      "recording_on_later_twin"
+     ]
+    },
+    {
+     "key": 109910,
+     "title": "Online Platforms and Market Power, Part 3: The Role of Data and Privacy in Competition",
+     "twin": 110098,
+     "twin_title": "Online Platforms and Market Power, Part 3: The Role of Data and Privacy in Competition",
+     "twin_type": "Hearing",
+     "own": {
+      "status": "Scheduled",
+      "type": "Hearing",
+      "day": "2019-09-12",
+      "transcripts": [],
+      "witnesses": 0,
+      "same_day_videos": [],
+      "prints": []
+     },
+     "before": [
+      110098,
+      "recording_on_later_twin"
+     ],
+     "after": [
+      110098,
+      "recording_on_later_twin"
+     ]
+    },
+    {
+     "key": 109988,
+     "title": "\"Protecting Benefits for All Servicemembers\u201d",
+     "twin": 110102,
+     "twin_title": "Protecting Benefits for All Servicemembers",
+     "twin_type": "Hearing",
+     "own": {
+      "status": "Postponed",
+      "type": "Hearing",
+      "day": "2019-09-24",
+      "transcripts": [],
+      "witnesses": 0,
+      "same_day_videos": [],
+      "prints": []
+     },
+     "before": [
+      110102,
+      "recording_on_later_twin"
+     ],
+     "after": [
+      110102,
+      "publisher_status"
+     ]
+    },
+    {
+     "key": 110043,
+     "title": "The Administration\u2019s Decision to Deport Critically Ill Children and Their Families",
+     "twin": 110099,
+     "twin_title": "The Administration's Decision to Deport Critically Ill Children and Their Families",
+     "twin_type": "Hearing",
+     "own": {
+      "status": "Postponed",
+      "type": "Hearing",
+      "day": "2019-09-26",
+      "transcripts": [],
+      "witnesses": 0,
+      "same_day_videos": [],
+      "prints": []
+     },
+     "before": [
+      110099,
+      "recording_on_later_twin"
+     ],
+     "after": [
+      110099,
+      "publisher_status"
+     ]
+    },
+    {
+     "key": 110133,
+     "title": "\u201cExamining the Policies and Priorities of the Labor Department\u2019s Apprenticeship Program.\"",
+     "twin": 110263,
+     "twin_title": "\u201cExamining the Policies and Priorities of the Labor Department\u2019s Apprenticeship Program.\"",
+     "twin_type": "Hearing",
+     "own": {
+      "status": "Postponed",
+      "type": "Hearing",
+      "day": "2019-10-24",
+      "transcripts": [],
+      "witnesses": 0,
+      "same_day_videos": [],
+      "prints": []
+     },
+     "before": [
+      110263,
+      "recording_on_later_twin"
+     ],
+     "after": [
+      110263,
+      "publisher_status"
+     ]
+    },
+    {
+     "key": 110230,
+     "title": "Climate Change in the Era of Strategic Competition",
+     "twin": 110298,
+     "twin_title": "Climate Change in the Era of Strategic Competition",
+     "twin_type": "Hearing",
+     "own": {
+      "status": "Scheduled",
+      "type": "Hearing",
+      "day": "2019-11-20",
+      "transcripts": [],
+      "witnesses": 4,
+      "same_day_videos": [],
+      "prints": []
+     },
+     "before": [
+      110298,
+      "recording_on_later_twin"
+     ],
+     "after": [
+      null,
+      null
+     ]
+    },
+    {
+     "key": 110610,
+     "title": "Smithsonian Institution Budget Request for FY2021",
+     "twin": 110709,
+     "twin_title": "Smithsonian Institution Budget Request for FY2021",
+     "twin_type": "Hearing",
+     "own": {
+      "status": "Postponed",
+      "type": "Hearing",
+      "day": "2020-03-03",
+      "transcripts": [],
+      "witnesses": 1,
+      "same_day_videos": [],
+      "prints": []
+     },
+     "before": [
+      null,
+      null
+     ],
+     "after": [
+      110709,
+      "publisher_status"
+     ]
+    },
+    {
+     "key": 110947,
+     "title": "Kick Starting Entrepreneurship and Main Street Economic Recovery",
+     "twin": 110983,
+     "twin_title": "Kick Starting Entrepreneurship and Main Street Economic Recovery",
+     "twin_type": "Hearing",
+     "own": {
+      "status": "Scheduled",
+      "type": "Hearing",
+      "day": "2020-07-29",
+      "transcripts": [],
+      "witnesses": 4,
+      "same_day_videos": [],
+      "prints": []
+     },
+     "before": [
+      110983,
+      "recording_on_later_twin"
+     ],
+     "after": [
+      null,
+      null
+     ]
+    }
+   ]
+  }
+ },
+ "package_choice": {
+  "rows": 6972,
+  "verdicts": {
+   "raw_supports_after": 6909,
+   "raw_supports_before": 31,
+   "ambiguous_subset": 31,
+   "raw_contradicts_after": 1
+  },
+  "unread": [],
+  "samples": {
+   "raw_supports_after": [
+    {
+     "key": "CHRG-112hhrg72230",
+     "before": [
+      100182
+     ],
+     "after": [],
+     "raw_home": []
+    },
+    {
+     "key": "CHRG-112hhrg72231",
+     "before": [],
+     "after": [
+      100182
+     ],
+     "raw_home": [
+      100182
+     ]
+    },
+    {
+     "key": "CHRG-112hhrg72254",
+     "before": [],
+     "after": [
+      100083
+     ],
+     "raw_home": [
+      100083
+     ]
+    },
+    {
+     "key": "CHRG-112hhrg72255",
+     "before": [],
+     "after": [
+      100180
+     ],
+     "raw_home": [
+      100180
+     ]
+    },
+    {
+     "key": "CHRG-112hhrg72257",
+     "before": [
+      100099
+     ],
+     "after": [],
+     "raw_home": []
+    },
+    {
+     "key": "CHRG-112hhrg72541",
+     "before": [
+      100036
+     ],
+     "after": [],
+     "raw_home": []
+    },
+    {
+     "key": "CHRG-112hhrg73355",
+     "before": [],
+     "after": [
+      100179
+     ],
+     "raw_home": [
+      100179
+     ]
+    },
+    {
+     "key": "CHRG-112hhrg76511",
+     "before": [],
+     "after": [
+      100123
+     ],
+     "raw_home": [
+      100123
+     ]
+    },
+    {
+     "key": "CHRG-112hhrg76512",
+     "before": [
+      100123
+     ],
+     "after": [],
+     "raw_home": []
+    },
+    {
+     "key": "CHRG-112hhrg76517",
+     "before": [
+      100051
+     ],
+     "after": [],
+     "raw_home": []
+    },
+    {
+     "key": "CHRG-112hhrg76606",
+     "before": [
+      100059
+     ],
+     "after": [],
+     "raw_home": []
+    },
+    {
+     "key": "CHRG-112hhrg77802",
+     "before": [],
+     "after": [
+      100202
+     ],
+     "raw_home": [
+      100202
+     ]
+    },
+    {
+     "key": "CHRG-112hhrg77803",
+     "before": [
+      100202
+     ],
+     "after": [],
+     "raw_home": []
+    },
+    {
+     "key": "CHRG-112hhrg79505",
+     "before": [],
+     "after": [
+      100204
+     ],
+     "raw_home": [
+      100204
+     ]
+    },
+    {
+     "key": "CHRG-112hhrg79506",
+     "before": [],
+     "after": [
+      100121
+     ],
+     "raw_home": [
+      100121
+     ]
+    },
+    {
+     "key": "CHRG-112hhrg79844",
+     "before": [],
+     "after": [
+      100205
+     ],
+     "raw_home": [
+      100205
+     ]
+    },
+    {
+     "key": "CHRG-112hhrg79845",
+     "before": [],
+     "after": [
+      100122
+     ],
+     "raw_home": [
+      100122
+     ]
+    },
+    {
+     "key": "CHRG-113hhrg20995",
+     "before": [],
+     "after": [
+      102643
+     ],
+     "raw_home": [
+      102643
+     ]
+    },
+    {
+     "key": "CHRG-113hhrg20996",
+     "before": [],
+     "after": [
+      102537
+     ],
+     "raw_home": [
+      102537
+     ]
+    },
+    {
+     "key": "CHRG-113hhrg20999",
+     "before": [],
+     "after": [
+      102169
+     ],
+     "raw_home": [
+      102169
+     ]
+    },
+    {
+     "key": "CHRG-113hhrg21102",
+     "before": [],
+     "after": [
+      101560
+     ],
+     "raw_home": [
+      101560
+     ]
+    },
+    {
+     "key": "CHRG-113hhrg21103",
+     "before": [],
+     "after": [
+      101141
+     ],
+     "raw_home": [
+      101141
+     ]
+    },
+    {
+     "key": "CHRG-113hhrg21104",
+     "before": [],
+     "after": [
+      101127
+     ],
+     "raw_home": [
+      101127
+     ]
+    },
+    {
+     "key": "CHRG-113hhrg21105",
+     "before": [],
+     "after": [
+      101019
+     ],
+     "raw_home": [
+      101019
+     ]
+    },
+    {
+     "key": "CHRG-113hhrg21107",
+     "before": [],
+     "after": [
+      100874
+     ],
+     "raw_home": [
+      100874
+     ]
+    },
+    {
+     "key": "CHRG-113hhrg21108",
+     "before": [],
+     "after": [
+      100818
+     ],
+     "raw_home": [
+      100818
+     ]
+    },
+    {
+     "key": "CHRG-113hhrg21109",
+     "before": [],
+     "after": [
+      102628
+     ],
+     "raw_home": [
+      102628
+     ]
+    },
+    {
+     "key": "CHRG-113hhrg21112",
+     "before": [],
+     "after": [
+      102317
+     ],
+     "raw_home": [
+      102317
+     ]
+    },
+    {
+     "key": "CHRG-113hhrg21119",
+     "before": [],
+     "after": [
+      101439
+     ],
+     "raw_home": [
+      101439
+     ]
+    },
+    {
+     "key": "CHRG-113hhrg21121",
+     "before": [],
+     "after": [
+      101058
+     ],
+     "raw_home": [
+      101058
+     ]
+    },
+    {
+     "key": "CHRG-113hhrg21124",
+     "before": [
+      100757
+     ],
+     "after": [],
+     "raw_home": []
+    },
+    {
+     "key": "CHRG-113hhrg21128",
+     "before": [],
+     "after": [
+      100240
+     ],
+     "raw_home": [
+      100240
+     ]
+    },
+    {
+     "key": "CHRG-113hhrg22316",
+     "before": [],
+     "after": [
+      102796
+     ],
+     "raw_home": [
+      102796
+     ]
+    },
+    {
+     "key": "CHRG-113hhrg78631",
+     "before": [],
+     "after": [
+      100225
+     ],
+     "raw_home": [
+      100225
+     ]
+    },
+    {
+     "key": "CHRG-113hhrg78633",
+     "before": [],
+     "after": [
+      100218
+     ],
+     "raw_home": [
+      100218
+     ]
+    },
+    {
+     "key": "CHRG-113hhrg78694",
+     "before": [],
+     "after": [
+      100246
+     ],
+     "raw_home": [
+      100246
+     ]
+    },
+    {
+     "key": "CHRG-113hhrg78695",
+     "before": [],
+     "after": [
+      100245
+     ],
+     "raw_home": [
+      100245
+     ]
+    },
+    {
+     "key": "CHRG-113hhrg78696",
+     "before": [],
+     "after": [
+      100247
+     ],
+     "raw_home": [
+      100247
+     ]
+    },
+    {
+     "key": "CHRG-113hhrg79435",
+     "before": [],
+     "after": [
+      100220
+     ],
+     "raw_home": [
+      100220
+     ]
+    },
+    {
+     "key": "CHRG-113hhrg79464",
+     "before": [],
+     "after": [
+      100264
+     ],
+     "raw_home": [
+      100264
+     ]
+    }
+   ],
+   "raw_supports_before": [
+    {
+     "key": "CHRG-113hhrg80755",
+     "before": [],
+     "after": [
+      100626
+     ],
+     "raw_home": []
+    },
+    {
+     "key": "CHRG-113hhrg81937",
+     "before": [
+      101064
+     ],
+     "after": [],
+     "raw_home": [
+      101064
+     ]
+    },
+    {
+     "key": "CHRG-114hhrg23645",
+     "before": [
+      105231
+     ],
+     "after": [],
+     "raw_home": [
+      105231
+     ]
+    },
+    {
+     "key": "CHRG-115hhrg29681",
+     "before": [],
+     "after": [
+      105912
+     ],
+     "raw_home": []
+    },
+    {
+     "key": "CHRG-115hhrg35836",
+     "before": [],
+     "after": [
+      108751
+     ],
+     "raw_home": []
+    },
+    {
+     "key": "CHRG-116hhrg37561",
+     "before": [],
+     "after": [
+      109804
+     ],
+     "raw_home": []
+    },
+    {
+     "key": "CHRG-116hhrg39570",
+     "before": [],
+     "after": [
+      110430
+     ],
+     "raw_home": []
+    },
+    {
+     "key": "CHRG-116hhrg40826",
+     "before": [],
+     "after": [
+      109879
+     ],
+     "raw_home": []
+    },
+    {
+     "key": "CHRG-116hhrg41198",
+     "before": [],
+     "after": [
+      109978
+     ],
+     "raw_home": []
+    },
+    {
+     "key": "CHRG-116shrg37807",
+     "before": [],
+     "after": [
+      326062
+     ],
+     "raw_home": []
+    },
+    {
+     "key": "CHRG-116shrg40972",
+     "before": [],
+     "after": [
+      327083
+     ],
+     "raw_home": []
+    },
+    {
+     "key": "CHRG-117hhrg49356",
+     "before": [],
+     "after": [
+      114978
+     ],
+     "raw_home": []
+    },
+    {
+     "key": "CHRG-117shrg45487",
+     "before": [],
+     "after": [
+      329001
+     ],
+     "raw_home": []
+    },
+    {
+     "key": "CHRG-117shrg45981",
+     "before": [],
+     "after": [
+      329022,
+      329427
+     ],
+     "raw_home": []
+    },
+    {
+     "key": "CHRG-117shrg47001",
+     "before": [
+      330465
+     ],
+     "after": [],
+     "raw_home": [
+      330465
+     ]
+    },
+    {
+     "key": "CHRG-117shrg47361",
+     "before": [
+      332084
+     ],
+     "after": [],
+     "raw_home": [
+      332084
+     ]
+    },
+    {
+     "key": "CHRG-117shrg47939",
+     "before": [
+      332466
+     ],
+     "after": [],
+     "raw_home": [
+      332466
+     ]
+    },
+    {
+     "key": "CHRG-117shrg47985",
+     "before": [],
+     "after": [
+      332043
+     ],
+     "raw_home": []
+    },
+    {
+     "key": "CHRG-117shrg50802",
+     "before": [],
+     "after": [
+      330128
+     ],
+     "raw_home": []
+    },
+    {
+     "key": "CHRG-117shrg51112",
+     "before": [],
+     "after": [
+      330206
+     ],
+     "raw_home": []
+    },
+    {
+     "key": "CHRG-118shrg53786",
+     "before": [],
+     "after": [
+      334844
+     ],
+     "raw_home": []
+    },
+    {
+     "key": "CHRG-118shrg53981",
+     "before": [
+      334023
+     ],
+     "after": [],
+     "raw_home": [
+      334023
+     ]
+    },
+    {
+     "key": "CHRG-118shrg55118",
+     "before": [
+      335484
+     ],
+     "after": [],
+     "raw_home": [
+      335484
+     ]
+    },
+    {
+     "key": "CHRG-119hhrg59595",
+     "before": [],
+     "after": [
+      117992
+     ],
+     "raw_home": []
+    },
+    {
+     "key": "CHRG-119shrg59775",
+     "before": [
+      336640
+     ],
+     "after": [],
+     "raw_home": [
+      336640
+     ]
+    },
+    {
+     "key": "CHRG-119shrg59776",
+     "before": [
+      336701
+     ],
+     "after": [],
+     "raw_home": [
+      336701
+     ]
+    },
+    {
+     "key": "CHRG-119shrg61206",
+     "before": [],
+     "after": [
+      336625
+     ],
+     "raw_home": []
+    },
+    {
+     "key": "CHRG-119shrg61677",
+     "before": [],
+     "after": [
+      336979
+     ],
+     "raw_home": []
+    },
+    {
+     "key": "CHRG-119shrg62328",
+     "before": [],
+     "after": [
+      337424
+     ],
+     "raw_home": []
+    },
+    {
+     "key": "CHRG-119shrg62766",
+     "before": [
+      337200
+     ],
+     "after": [],
+     "raw_home": [
+      337200
+     ]
+    },
+    {
+     "key": "CHRG-119shrg63393",
+     "before": [
+      337265
+     ],
+     "after": [],
+     "raw_home": [
+      337265
+     ]
+    }
+   ],
+   "ambiguous_subset": [
+    {
+     "key": "CHRG-114hhrg25102",
+     "before": [],
+     "after": [
+      104435
+     ],
+     "raw_home": [
+      104435,
+      104515
+     ]
+    },
+    {
+     "key": "CHRG-114hhrg93531",
+     "before": [],
+     "after": [
+      102915
+     ],
+     "raw_home": [
+      102915,
+      102918
+     ]
+    },
+    {
+     "key": "CHRG-114hhrg93973",
+     "before": [],
+     "after": [
+      102975
+     ],
+     "raw_home": [
+      102975,
+      102976
+     ]
+    },
+    {
+     "key": "CHRG-114hhrg96242",
+     "before": [],
+     "after": [
+      103980
+     ],
+     "raw_home": [
+      103961,
+      103980
+     ]
+    },
+    {
+     "key": "CHRG-114hhrg97912",
+     "before": [],
+     "after": [
+      103663
+     ],
+     "raw_home": [
+      103663,
+      103681
+     ]
+    },
+    {
+     "key": "CHRG-114hhrg98693",
+     "before": [],
+     "after": [
+      104044
+     ],
+     "raw_home": [
+      104044,
+      104076
+     ]
+    },
+    {
+     "key": "CHRG-115hhrg27722",
+     "before": [],
+     "after": [
+      106653
+     ],
+     "raw_home": [
+      106653,
+      106666
+     ]
+    },
+    {
+     "key": "CHRG-115hhrg30350",
+     "before": [],
+     "after": [
+      108441
+     ],
+     "raw_home": [
+      108385,
+      108441
+     ]
+    },
+    {
+     "key": "CHRG-115hhrg31400",
+     "before": [],
+     "after": [
+      108644
+     ],
+     "raw_home": [
+      108644,
+      108664
+     ]
+    },
+    {
+     "key": "CHRG-115hhrg31428",
+     "before": [],
+     "after": [
+      106501
+     ],
+     "raw_home": [
+      106501,
+      106524
+     ]
+    },
+    {
+     "key": "CHRG-115hhrg31631",
+     "before": [],
+     "after": [
+      108747
+     ],
+     "raw_home": [
+      108709,
+      108747
+     ]
+    },
+    {
+     "key": "CHRG-115hhrg32928",
+     "before": [],
+     "after": [
+      108322
+     ],
+     "raw_home": [
+      108322,
+      108335
+     ]
+    },
+    {
+     "key": "CHRG-116hhrg35662",
+     "before": [],
+     "after": [
+      109089
+     ],
+     "raw_home": [
+      109063,
+      109089
+     ]
+    },
+    {
+     "key": "CHRG-116hhrg37260",
+     "before": [],
+     "after": [
+      109699
+     ],
+     "raw_home": [
+      109669,
+      109699
+     ]
+    },
+    {
+     "key": "CHRG-116hhrg37848",
+     "before": [],
+     "after": [
+      110029
+     ],
+     "raw_home": [
+      110029,
+      110046
+     ]
+    },
+    {
+     "key": "CHRG-116hhrg39913",
+     "before": [],
+     "after": [
+      109384
+     ],
+     "raw_home": [
+      109384,
+      109396
+     ]
+    },
+    {
+     "key": "CHRG-117hhrg48304",
+     "before": [],
+     "after": [
+      114580
+     ],
+     "raw_home": [
+      114580,
+      114621
+     ]
+    },
+    {
+     "key": "CHRG-117shrg45388",
+     "before": [],
+     "after": [
+      328604
+     ],
+     "raw_home": [
+      328604,
+      328643
+     ]
+    },
+    {
+     "key": "CHRG-117shrg45812",
+     "before": [],
+     "after": [
+      330600
+     ],
+     "raw_home": [
+      330580,
+      330600
+     ]
+    },
+    {
+     "key": "CHRG-117shrg47218",
+     "before": [],
+     "after": [
+      329847
+     ],
+     "raw_home": [
+      329828,
+      329847
+     ]
+    },
+    {
+     "key": "CHRG-117shrg54861",
+     "before": [],
+     "after": [
+      330380
+     ],
+     "raw_home": [
+      330380,
+      330427,
+      330501
+     ]
+    },
+    {
+     "key": "CHRG-118hhrg52207",
+     "before": [],
+     "after": [
+      115664
+     ],
+     "raw_home": [
+      115664,
+      115735
+     ]
+    },
+    {
+     "key": "CHRG-118hhrg53883",
+     "before": [],
+     "after": [
+      116222
+     ],
+     "raw_home": [
+      116176,
+      116222
+     ]
+    },
+    {
+     "key": "CHRG-118hhrg56208",
+     "before": [],
+     "after": [
+      117521
+     ],
+     "raw_home": [
+      117521,
+      117553
+     ]
+    },
+    {
+     "key": "CHRG-118hhrg56847",
+     "before": [],
+     "after": [
+      117452
+     ],
+     "raw_home": [
+      117450,
+      117452
+     ]
+    },
+    {
+     "key": "CHRG-118shrg53115",
+     "before": [],
+     "after": [
+      334244
+     ],
+     "raw_home": [
+      334243,
+      334244
+     ]
+    },
+    {
+     "key": "CHRG-118shrg53504",
+     "before": [],
+     "after": [
+      334622
+     ],
+     "raw_home": [
+      334621,
+      334622
+     ]
+    },
+    {
+     "key": "CHRG-118shrg53727",
+     "before": [],
+     "after": [
+      333593
+     ],
+     "raw_home": [
+      333593,
+      333640
+     ]
+    },
+    {
+     "key": "CHRG-118shrg58675",
+     "before": [],
+     "after": [
+      335553
+     ],
+     "raw_home": [
+      335550,
+      335553
+     ]
+    },
+    {
+     "key": "CHRG-119hhrg60684",
+     "before": [],
+     "after": [
+      118028
+     ],
+     "raw_home": [
+      118028,
+      118031
+     ]
+    },
+    {
+     "key": "CHRG-119hhrg61689",
+     "before": [],
+     "after": [
+      118519
+     ],
+     "raw_home": [
+      118519,
+      118536
+     ]
+    }
+   ],
+   "raw_contradicts_after": [
+    {
+     "key": "CHRG-117hhrg50139",
+     "before": [],
+     "after": [
+      114877,
+      114899,
+      114906,
+      114923,
+      114973,
+      114977,
+      114978
+     ],
+     "raw_home": [
+      113969,
+      114877,
+      114899,
+      114906,
+      114923,
+      114973,
+      114977
+     ]
+    }
+   ]
+  }
+ },
+ "house_witness_event": {
+  "rows": 227,
+  "verdicts": {
+   "receipt_path_only": 40,
+   "raw_supports_after": 187
+  },
+  "unread": [],
+  "samples": {
+   "receipt_path_only": [
+    {
+     "key": [
+      "01b6d96cd921fda8a34c8d85e490693591aef09cfc950b0d2676500303c89310",
+      "meeting:100346"
+     ],
+     "body_events": [],
+     "receipt_path_events": [
+      100346
+     ]
+    },
+    {
+     "key": [
+      "035c1c9ecb3999689c68252afd471ede2ae26f69105c6f5a62f779bea0130521",
+      "meeting:100568"
+     ],
+     "body_events": [],
+     "receipt_path_events": [
+      100568
+     ]
+    },
+    {
+     "key": [
+      "0b6219b52fed623dbc529e3ef0a967ab11d922e3f7aad151f6877b2b2686cf31",
+      "meeting:101057"
+     ],
+     "body_events": [],
+     "receipt_path_events": [
+      101057
+     ]
+    },
+    {
+     "key": [
+      "0b6229d462c465a9ecacb8ea8781a2e447ec8eae9c4e082a74a889c0220cad26",
+      "meeting:100288"
+     ],
+     "body_events": [],
+     "receipt_path_events": [
+      100288
+     ]
+    },
+    {
+     "key": [
+      "0eb78ef16cffa5ac4444f5857350ae4b44ce59a37ce7061318e3b9792b65ee93",
+      "meeting:101147"
+     ],
+     "body_events": [],
+     "receipt_path_events": [
+      101147
+     ]
+    },
+    {
+     "key": [
+      "10b4261229e6841f4c2b2073b2d1402e36ca1843a12717007ef75b64b26a254d",
+      "meeting:100563"
+     ],
+     "body_events": [],
+     "receipt_path_events": [
+      100563
+     ]
+    },
+    {
+     "key": [
+      "21a3071c14ed2666ccf63cd4e7b5f961213719bb2c383a2f47fb56f250d4ec85",
+      "meeting:101064"
+     ],
+     "body_events": [],
+     "receipt_path_events": [
+      101064
+     ]
+    },
+    {
+     "key": [
+      "2222fc309125ca483cfc86ac3a0e9b351800bf1f415ba4b81925a2396a00a72f",
+      "meeting:100917"
+     ],
+     "body_events": [],
+     "receipt_path_events": [
+      100917
+     ]
+    },
+    {
+     "key": [
+      "283b1ebc5211dacd4fb6577a45bcdbc54f1a8c84dfb696594f557dc839fd6eda",
+      "meeting:100709"
+     ],
+     "body_events": [],
+     "receipt_path_events": [
+      100709
+     ]
+    },
+    {
+     "key": [
+      "2a5d5321ee1ac505a3dc4b96ee90085fcb0ea09d155774958341fef45b7a58de",
+      "meeting:101077"
+     ],
+     "body_events": [],
+     "receipt_path_events": [
+      101077
+     ]
+    },
+    {
+     "key": [
+      "2c8d63021ed605e4a9f7a80f806c5d0c5dcb83131b5075fc93c14923d651a128",
+      "meeting:101087"
+     ],
+     "body_events": [],
+     "receipt_path_events": [
+      101087
+     ]
+    },
+    {
+     "key": [
+      "2d5486105518f1c294cd1ad26c00761ee9df50bf4d3e8a4b3799f9919bbdde4b",
+      "meeting:100710"
+     ],
+     "body_events": [],
+     "receipt_path_events": [
+      100710
+     ]
+    },
+    {
+     "key": [
+      "374c29bc86f812d9443b3eee2d44143a459a9c1a9e6ad0208fe25c7b18c125d4",
+      "meeting:100940"
+     ],
+     "body_events": [],
+     "receipt_path_events": [
+      100940
+     ]
+    },
+    {
+     "key": [
+      "3ede3b2fd4b845405647bacf4e112025bc785f6570eacb394bf0d7fc93f7d82d",
+      "meeting:100570"
+     ],
+     "body_events": [],
+     "receipt_path_events": [
+      100570
+     ]
+    },
+    {
+     "key": [
+      "427ae7a37a34df9b291ae45d5607fb151edd3714cc9eead85b5b4ffd63748a12",
+      "meeting:100542"
+     ],
+     "body_events": [],
+     "receipt_path_events": [
+      100542
+     ]
+    },
+    {
+     "key": [
+      "4a38c5163bf025cc9e640235bce660a004979ce9dae2d8e2f58eb2461f7662fd",
+      "meeting:100561"
+     ],
+     "body_events": [],
+     "receipt_path_events": [
+      100561
+     ]
+    },
+    {
+     "key": [
+      "4a7b7a3f8568ec700fb63ebe66521e448c22f0fd79580651b5548cc3f7191432",
+      "meeting:101084"
+     ],
+     "body_events": [],
+     "receipt_path_events": [
+      101084
+     ]
+    },
+    {
+     "key": [
+      "5dea9d61c5037ddf88eef02869b2b4d7e00b7da387aec9d99a61f902ca2a43f6",
+      "meeting:101209"
+     ],
+     "body_events": [],
+     "receipt_path_events": [
+      101209
+     ]
+    },
+    {
+     "key": [
+      "65b46832c57e8d0d48eeb7c5f154b621e3688aad07c400ac4285402c9a0be278",
+      "meeting:100819"
+     ],
+     "body_events": [],
+     "receipt_path_events": [
+      100819
+     ]
+    },
+    {
+     "key": [
+      "663414378ec48b7f8cbfa0bbbc7fe087142fc5680bb7c3470c18b168239d4d62",
+      "meeting:100267"
+     ],
+     "body_events": [],
+     "receipt_path_events": [
+      100267
+     ]
+    },
+    {
+     "key": [
+      "6c4a89312eac990eca4144a45fb796befdbe86b86c18f71d6d4a57feb1ebab50",
+      "meeting:100572"
+     ],
+     "body_events": [],
+     "receipt_path_events": [
+      100572
+     ]
+    },
+    {
+     "key": [
+      "6c949f4218f2916184e8a8450e10f2f20b4810304350f0c3268e4986d4044d3b",
+      "meeting:100437"
+     ],
+     "body_events": [],
+     "receipt_path_events": [
+      100437
+     ]
+    },
+    {
+     "key": [
+      "79bbc006883309df4ce07970e4853bdc39fd91f48b67320a8caa44a2fdc0f51c",
+      "meeting:100287"
+     ],
+     "body_events": [],
+     "receipt_path_events": [
+      100287
+     ]
+    },
+    {
+     "key": [
+      "895e14272dc0a2d5316b3a5f16d73bc04b7cffa533e13c664ad4fcd83189419f",
+      "meeting:100733"
+     ],
+     "body_events": [],
+     "receipt_path_events": [
+      100733
+     ]
+    },
+    {
+     "key": [
+      "8c8609d1fdfe360973f0f8b256e29c4f8a8bf5477d1fd31209c56416d85a42c5",
+      "meeting:101066"
+     ],
+     "body_events": [],
+     "receipt_path_events": [
+      101066
+     ]
+    },
+    {
+     "key": [
+      "8ebcbaa5585deda7435098d1fb1c0eb615f2abcf8de4d3b1427519107b7e0899",
+      "meeting:101241"
+     ],
+     "body_events": [],
+     "receipt_path_events": [
+      101241
+     ]
+    },
+    {
+     "key": [
+      "8fdd054dd28b0c042bdd5c66089c4f41caf5309f41f40750cf098fc5093132a5",
+      "meeting:100387"
+     ],
+     "body_events": [],
+     "receipt_path_events": [
+      100387
+     ]
+    },
+    {
+     "key": [
+      "974a9111bcff2b323d21d7b54ad7c31512bbd42acc417bc6c258508310fcf3e4",
+      "meeting:100280"
+     ],
+     "body_events": [],
+     "receipt_path_events": [
+      100280
+     ]
+    },
+    {
+     "key": [
+      "9fcada216f62efa3b3a9674ab93352c8633fcedab349994b2ff42fbcc8860ead",
+      "meeting:100751"
+     ],
+     "body_events": [],
+     "receipt_path_events": [
+      100751
+     ]
+    },
+    {
+     "key": [
+      "ac48cc7aad8258c3805366d8ca808a468ccf46723d6dd34ea4f5654dda648168",
+      "meeting:101203"
+     ],
+     "body_events": [],
+     "receipt_path_events": [
+      101203
+     ]
+    },
+    {
+     "key": [
+      "b2e0edcb932f124402902bdeec1b18c07f783c974d912ecbc40f59d439e73526",
+      "meeting:100569"
+     ],
+     "body_events": [],
+     "receipt_path_events": [
+      100569
+     ]
+    },
+    {
+     "key": [
+      "b86131c5b3f56e9a10f2cabfe251403ee8f9e80bd2a2119ee7fd66bca8a3c4d1",
+      "meeting:100308"
+     ],
+     "body_events": [],
+     "receipt_path_events": [
+      100308
+     ]
+    },
+    {
+     "key": [
+      "bed3649b6597bda8e0ccb85a20bd4cb75f7646598c187f273c23e75531998e3b",
+      "meeting:100347"
+     ],
+     "body_events": [],
+     "receipt_path_events": [
+      100347
+     ]
+    },
+    {
+     "key": [
+      "c20806be37f22c7b61b71f75726939ee93bae2c4aea859d08f6e6876f13edb9d",
+      "meeting:100610"
+     ],
+     "body_events": [],
+     "receipt_path_events": [
+      100610
+     ]
+    },
+    {
+     "key": [
+      "c33cdd6025aacac38dddedaa12ed263e6622a5e955135231ae21e258b2297a1f",
+      "meeting:101163"
+     ],
+     "body_events": [],
+     "receipt_path_events": [
+      101163
+     ]
+    },
+    {
+     "key": [
+      "ce783bcf7789db094b82bdef7ed94d27ca93ab0b7a3a36693622d23551d111e7",
+      "meeting:101101"
+     ],
+     "body_events": [],
+     "receipt_path_events": [
+      101101
+     ]
+    },
+    {
+     "key": [
+      "d2e375c4ec870f8023e8a56b15ff2c1f665592240dd1a4f083051e91ad5d7a82",
+      "meeting:100918"
+     ],
+     "body_events": [],
+     "receipt_path_events": [
+      100918
+     ]
+    },
+    {
+     "key": [
+      "da883a28792576966c53f0ba1f23f5ccddd169321384a54ed26346b237d55ac7",
+      "meeting:101187"
+     ],
+     "body_events": [],
+     "receipt_path_events": [
+      101187
+     ]
+    },
+    {
+     "key": [
+      "f5554581e1c5b2e5901151a5082e6ece7c91ad1cece371787e0187205204b3a7",
+      "meeting:100772"
+     ],
+     "body_events": [],
+     "receipt_path_events": [
+      100772
+     ]
+    },
+    {
+     "key": [
+      "f78c0b608afffd0558bb165b3a95bac373d6cef1bbe45eb4e4809c6e749ad8bd",
+      "meeting:100562"
+     ],
+     "body_events": [],
+     "receipt_path_events": [
+      100562
+     ]
+    }
+   ],
+   "raw_supports_after": [
+    {
+     "key": [
+      "0231acf4e3369bd8b04e9b46085836f3ce81d1cab8fbf414f08b901e5ac8aaba",
+      "meeting:100982"
+     ],
+     "body_events": [
+      100982
+     ],
+     "receipt_path_events": [
+      100982
+     ]
+    },
+    {
+     "key": [
+      "0329257f6914e032debad9906e3dd0e843383c821e880ca015557f93c236001a",
+      "meeting:100304"
+     ],
+     "body_events": [
+      100304
+     ],
+     "receipt_path_events": [
+      100304
+     ]
+    },
+    {
+     "key": [
+      "056d77d46b4a919fb0586480508a6831ed5d0c4cfe2e81bbdfb719b53d1e2154",
+      "meeting:100651"
+     ],
+     "body_events": [
+      100651
+     ],
+     "receipt_path_events": [
+      100651
+     ]
+    },
+    {
+     "key": [
+      "08ec9dd1b7ba4e6ed503db711cdea5fe14a80c1d0eb02af85ed588cfb62c1d49",
+      "meeting:100306"
+     ],
+     "body_events": [
+      100306
+     ],
+     "receipt_path_events": [
+      100306
+     ]
+    },
+    {
+     "key": [
+      "0997bd35cfac30975288a87edc729166ae035356565075c3d54b184481af762b",
+      "meeting:100501"
+     ],
+     "body_events": [
+      100501
+     ],
+     "receipt_path_events": [
+      100501
+     ]
+    },
+    {
+     "key": [
+      "0ace456ca5225a65bb64988cb528ab86016808b738d4673c06e88aced73aa74e",
+      "meeting:101082"
+     ],
+     "body_events": [
+      101082
+     ],
+     "receipt_path_events": [
+      101082
+     ]
+    },
+    {
+     "key": [
+      "0beff0f4027146f31da19d476f482d8479b2c0e5662d1bd3553d49f7a4ac5f47",
+      "meeting:100518"
+     ],
+     "body_events": [
+      100518
+     ],
+     "receipt_path_events": [
+      100518
+     ]
+    },
+    {
+     "key": [
+      "0d4f591c8d09955eecc7907f2fee5d4a22e21a54077604d4938cae88a42c8794",
+      "meeting:100776"
+     ],
+     "body_events": [
+      100776
+     ],
+     "receipt_path_events": [
+      100776
+     ]
+    },
+    {
+     "key": [
+      "112b189ed8c4051551a0de09480b9d35513138aa6301aaf85571180502a5decf",
+      "meeting:100414"
+     ],
+     "body_events": [
+      100414
+     ],
+     "receipt_path_events": [
+      100414
+     ]
+    },
+    {
+     "key": [
+      "1257c5485bcd2023f3032bbff0e6ce4f88b332adcc0ec3a9f5705bb52bdc1746",
+      "meeting:100225"
+     ],
+     "body_events": [
+      100225
+     ],
+     "receipt_path_events": [
+      100225
+     ]
+    },
+    {
+     "key": [
+      "134cd023869051f2732f7ae49b0656e253a0e62bf28ba915ec9f3868a9cc67b6",
+      "meeting:100245"
+     ],
+     "body_events": [
+      100245
+     ],
+     "receipt_path_events": [
+      100245
+     ]
+    },
+    {
+     "key": [
+      "13c9503dab6312fcdd151763d8c4b332806f7f7a8884b7489f8cdf1c3613848d",
+      "meeting:100650"
+     ],
+     "body_events": [
+      100650
+     ],
+     "receipt_path_events": [
+      100650
+     ]
+    },
+    {
+     "key": [
+      "1498543d9251059c43fa7f170ca313cbf45c8737763fe4d42929614860ea7aa0",
+      "meeting:100260"
+     ],
+     "body_events": [
+      100260
+     ],
+     "receipt_path_events": [
+      100260
+     ]
+    },
+    {
+     "key": [
+      "15d6285e516030f8dfeff885cb0c787ebae9902d0bf751506ddf03eb20fbb9e7",
+      "meeting:100923"
+     ],
+     "body_events": [
+      100923
+     ],
+     "receipt_path_events": [
+      100923
+     ]
+    },
+    {
+     "key": [
+      "16883d46eb27b4892ff87d247ea4d54e7f5a9ffe60354d821bb1d443b820c5d7",
+      "meeting:101080"
+     ],
+     "body_events": [
+      101080
+     ],
+     "receipt_path_events": [
+      101080
+     ]
+    },
+    {
+     "key": [
+      "16bf72c208d62d4a1782df82cc352135a2e5e9e702b79127d7bb94b0ebd9b1cc",
+      "meeting:100649"
+     ],
+     "body_events": [
+      100649
+     ],
+     "receipt_path_events": [
+      100649
+     ]
+    },
+    {
+     "key": [
+      "17c128f000063852acda054e633071fcb9ad8ddc191b42ae96e8f17a640385e5",
+      "meeting:100368"
+     ],
+     "body_events": [
+      100368
+     ],
+     "receipt_path_events": [
+      100368
+     ]
+    },
+    {
+     "key": [
+      "199a626f1659e2dd45b47ab4c4dd6432dbbedf5b3e27e2e09986eb9ea3ee8706",
+      "meeting:100433"
+     ],
+     "body_events": [
+      100433
+     ],
+     "receipt_path_events": [
+      100433
+     ]
+    },
+    {
+     "key": [
+      "19fc1b1d8f67a212907b321afdfaf0303b6734e659d077de18ca190dc61cd49d",
+      "meeting:100595"
+     ],
+     "body_events": [
+      100595
+     ],
+     "receipt_path_events": [
+      100595
+     ]
+    },
+    {
+     "key": [
+      "1ad792a886134b3b6b9bd449b05f72e42379ab4a1f1a14155ad6070cfee9aa9f",
+      "meeting:101105"
+     ],
+     "body_events": [
+      101105
+     ],
+     "receipt_path_events": [
+      101105
+     ]
+    },
+    {
+     "key": [
+      "1c462d5fa31b27c8247bfa0da0762115d24ec0646bf431189be94a443d87e258",
+      "meeting:100671"
+     ],
+     "body_events": [
+      100671
+     ],
+     "receipt_path_events": [
+      100671
+     ]
+    },
+    {
+     "key": [
+      "1c4d96ed108ada7de3dcb4e5be4c1f2af2ec0314bb0d52c3c3ca46f6822a12e4",
+      "meeting:100458"
+     ],
+     "body_events": [
+      100458
+     ],
+     "receipt_path_events": [
+      100458
+     ]
+    },
+    {
+     "key": [
+      "1cd86ca44655741a3e59e0b184130f664f8f804816dc7044631c7d7cd4837e42",
+      "meeting:100266"
+     ],
+     "body_events": [
+      100266
+     ],
+     "receipt_path_events": [
+      100266
+     ]
+    },
+    {
+     "key": [
+      "1d7e79156d4ecc179cdf81bbc2af6fbed0aaa33824cb4d5979160de0e81c2f8a",
+      "meeting:101167"
+     ],
+     "body_events": [
+      101167
+     ],
+     "receipt_path_events": [
+      101167
+     ]
+    },
+    {
+     "key": [
+      "21623a145332c2201946b5101eddc29bdf0a1cb7a378861fcb158a45289ebe63",
+      "meeting:100648"
+     ],
+     "body_events": [
+      100648
+     ],
+     "receipt_path_events": [
+      100648
+     ]
+    },
+    {
+     "key": [
+      "244cec7a6e9a8c88f25412a0b1bd2ea07b431375c1fa28ee52d524d9760a92a0",
+      "meeting:100494"
+     ],
+     "body_events": [
+      100494
+     ],
+     "receipt_path_events": [
+      100494
+     ]
+    },
+    {
+     "key": [
+      "24eb3ee63e797f7f99f2911a7ca41ff0a50aab534950e202722fde3e0d04e802",
+      "meeting:101160"
+     ],
+     "body_events": [
+      101160
+     ],
+     "receipt_path_events": [
+      101160
+     ]
+    },
+    {
+     "key": [
+      "298961e2e7a8ea99f947929b73a25caec6fb4cd2afe894865d696de5c8ab75fe",
+      "meeting:100217"
+     ],
+     "body_events": [
+      100217
+     ],
+     "receipt_path_events": [
+      100217
+     ]
+    },
+    {
+     "key": [
+      "2a6dad8fec7fd9d78d4508fd484e4ced12fd3082a96f5f2c6114727de2fee613",
+      "meeting:100608"
+     ],
+     "body_events": [
+      100608
+     ],
+     "receipt_path_events": [
+      100608
+     ]
+    },
+    {
+     "key": [
+      "2b95b34adaa26a197ed42e91c9370a58291f5712d27c375d72dab05a0ffd44ae",
+      "meeting:100353"
+     ],
+     "body_events": [
+      100353
+     ],
+     "receipt_path_events": [
+      100353
+     ]
+    },
+    {
+     "key": [
+      "2c2cd7d0bf47f28da05f27bb70b304e42d8f3d4adeb7dafd37e65a89e7f8b50b",
+      "meeting:100417"
+     ],
+     "body_events": [
+      100417
+     ],
+     "receipt_path_events": [
+      100417
+     ]
+    },
+    {
+     "key": [
+      "2d108af6aa846b99b174b30e04f6e0d361c681c133db5b8029c7514ca9f140d9",
+      "meeting:101062"
+     ],
+     "body_events": [
+      101062
+     ],
+     "receipt_path_events": [
+      101062
+     ]
+    },
+    {
+     "key": [
+      "2d12262f4cf404d8496664d845845765945793870c9def36db397516e1d4d90b",
+      "meeting:100350"
+     ],
+     "body_events": [
+      100350
+     ],
+     "receipt_path_events": [
+      100350
+     ]
+    },
+    {
+     "key": [
+      "2d43e32963f65585feb2de790f053a6624099d8cc18a5533f1121af2960e0d58",
+      "meeting:101186"
+     ],
+     "body_events": [
+      101186
+     ],
+     "receipt_path_events": [
+      101186
+     ]
+    },
+    {
+     "key": [
+      "2e1ca5357795edc55175f9f39150ca5a3870ea952f933f1f2251e52654fd57b0",
+      "meeting:100239"
+     ],
+     "body_events": [
+      100239
+     ],
+     "receipt_path_events": [
+      100239
+     ]
+    },
+    {
+     "key": [
+      "3054d25e2900c22b5e460ddd7d7d601134f0e0532470cbda4ad7a6e1f1f71df4",
+      "meeting:100646"
+     ],
+     "body_events": [
+      100646
+     ],
+     "receipt_path_events": [
+      100646
+     ]
+    },
+    {
+     "key": [
+      "3288387875c30d17517290216cf6d7e657a2ffb2662c89eedf8a98e88825ed9c",
+      "meeting:100708"
+     ],
+     "body_events": [
+      100708
+     ],
+     "receipt_path_events": [
+      100708
+     ]
+    },
+    {
+     "key": [
+      "328f403a2044a1388d5139506d6cc536e8b537a1201e77746c0d9d1b617589dd",
+      "meeting:100455"
+     ],
+     "body_events": [
+      100455
+     ],
+     "receipt_path_events": [
+      100455
+     ]
+    },
+    {
+     "key": [
+      "335a49dd631b55336d677575db4e4c0b59f31ab81a5a864f7d0abab766dd96ab",
+      "meeting:100282"
+     ],
+     "body_events": [
+      100282
+     ],
+     "receipt_path_events": [
+      100282
+     ]
+    },
+    {
+     "key": [
+      "346e525039416c647a38e92396a6130323b3cb63f3a5b6dfee49e8d9c92fb1b9",
+      "meeting:100524"
+     ],
+     "body_events": [
+      100524
+     ],
+     "receipt_path_events": [
+      100524
+     ]
+    }
+   ]
+  }
+ },
+ "witness_rows": {
+  "before": 147888,
+  "after": 173067,
+  "after_shown": 141255,
+  "after_superseded": 31812,
+  "after_statements": 7230
+ },
+ "red_f2_lost": {
+  "cases": 192,
+  "published": 185,
+  "missing": [
+   [
+    "statement_for_record_or_nonwitness",
+    "CHRG-119hhrg59389",
+    "To: House Committee on Natural Resources Republican Members From: Natural Resources Commit"
+   ],
+   [
+    "statement_for_record_or_nonwitness",
+    "CHRG-115hhrg25242",
+    "Responses to questions for the record from the following Representatives: Hon. Frank A. Lo"
+   ],
+   [
+    "statement_for_record_or_nonwitness",
+    "CHRG-119hhrg58952",
+    "Subject: Oversight Hearing on \"Restoring Multiple Use to Revitalize America's Public Lands"
+   ],
+   [
+    "statement_for_record_or_nonwitness",
+    "CHRG-119hhrg58952",
+    "and more than 700 million acres of subsurface mineral estate in accordance with multiple u"
+   ],
+   [
+    "statement_for_record_or_nonwitness",
+    "CHRG-119hhrg58952",
+    "Longworth House Office Building. Member offices are requested to notify Will Rodriguez (Wi"
+   ],
+   [
+    "statement_for_record_or_nonwitness",
+    "CHRG-118hhrg53922",
+    "Submissions for the Record by Representative Donalds Atlantic States Marine Fisheries Comm"
+   ],
+   [
+    "statement_for_record_or_nonwitness",
+    "CHRG-119hhrg58952",
+    "T9999.001 To: House Committee on Natural Resources Republican Members From: Subcommittee o"
+   ]
+  ]
+ },
+ "coverage_relabels": {
+  "rows": 16450,
+  "verdicts": {
+   "not_checked": 10109,
+   "premise_holds": 6181,
+   "ambiguous": 56,
+   "premise_fails": 65,
+   "unread": 39
+  },
+  "unread": [
+   [
+    103138,
+    "recording"
+   ],
+   [
+    105475,
+    "documents"
+   ],
+   [
+    105628,
+    "documents"
+   ],
+   [
+    105714,
+    "documents"
+   ],
+   [
+    105815,
+    "documents"
+   ],
+   [
+    105838,
+    "documents"
+   ],
+   [
+    105857,
+    "documents"
+   ],
+   [
+    105959,
+    "documents"
+   ],
+   [
+    106040,
+    "documents"
+   ],
+   [
+    106080,
+    "documents"
+   ],
+   [
+    106119,
+    "documents"
+   ],
+   [
+    106165,
+    "documents"
+   ],
+   [
+    106346,
+    "documents"
+   ],
+   [
+    106348,
+    "documents"
+   ],
+   [
+    106539,
+    "documents"
+   ],
+   [
+    106578,
+    "documents"
+   ],
+   [
+    106579,
+    "documents"
+   ],
+   [
+    106616,
+    "documents"
+   ],
+   [
+    106639,
+    "documents"
+   ],
+   [
+    106641,
+    "documents"
+   ],
+   [
+    106839,
+    "documents"
+   ],
+   [
+    106882,
+    "documents"
+   ],
+   [
+    106965,
+    "documents"
+   ],
+   [
+    108003,
+    "documents"
+   ],
+   [
+    108004,
+    "documents"
+   ],
+   [
+    108061,
+    "documents"
+   ],
+   [
+    108087,
+    "documents"
+   ],
+   [
+    108187,
+    "documents"
+   ],
+   [
+    108209,
+    "documents"
+   ],
+   [
+    108263,
+    "documents"
+   ],
+   [
+    108488,
+    "documents"
+   ],
+   [
+    108571,
+    "documents"
+   ],
+   [
+    108574,
+    "documents"
+   ],
+   [
+    108615,
+    "documents"
+   ],
+   [
+    108638,
+    "documents"
+   ],
+   [
+    108657,
+    "documents"
+   ],
+   [
+    108758,
+    "documents"
+   ],
+   [
+    108799,
+    "documents"
+   ],
+   [
+    108805,
+    "documents"
+   ]
+  ],
+  "samples": {
+   "not_checked": [
+    {
+     "key": [
+      100031,
+      "captions"
+     ],
+     "before": [
+      "not_stated",
+      null
+     ],
+     "after": [
+      "unknown",
+      "recording_link_pending"
+     ],
+     "prints": {
+      "CHRG-112hhrg72212": "agree"
+     }
+    },
+    {
+     "key": [
+      100032,
+      "captions"
+     ],
+     "before": [
+      "not_stated",
+      null
+     ],
+     "after": [
+      "unknown",
+      "recording_link_pending"
+     ],
+     "prints": {
+      "CHRG-112hhrg76510": "agree"
+     }
+    },
+    {
+     "key": [
+      100033,
+      "captions"
+     ],
+     "before": [
+      "not_stated",
+      null
+     ],
+     "after": [
+      "unknown",
+      "recording_link_pending"
+     ],
+     "prints": {}
+    },
+    {
+     "key": [
+      100034,
+      "captions"
+     ],
+     "before": [
+      "not_stated",
+      null
+     ],
+     "after": [
+      "unknown",
+      "recording_link_pending"
+     ],
+     "prints": {}
+    },
+    {
+     "key": [
+      100035,
+      "captions"
+     ],
+     "before": [
+      "not_stated",
+      null
+     ],
+     "after": [
+      "unknown",
+      "recording_link_pending"
+     ],
+     "prints": {
+      "CHRG-112hhrg72217": "agree"
+     }
+    },
+    {
+     "key": [
+      100036,
+      "captions"
+     ],
+     "before": [
+      "not_stated",
+      null
+     ],
+     "after": [
+      "unknown",
+      "recording_link_pending"
+     ],
+     "prints": {
+      "CHRG-112hhrg72541": "disagree"
+     }
+    },
+    {
+     "key": [
+      100036,
+      "transcript"
+     ],
+     "before": [
+      "present",
+      null
+     ],
+     "after": [
+      "unresolved",
+      null
+     ],
+     "prints": {
+      "CHRG-112hhrg72541": "disagree"
+     }
+    },
+    {
+     "key": [
+      100037,
+      "captions"
+     ],
+     "before": [
+      "not_stated",
+      null
+     ],
+     "after": [
+      "unknown",
+      "recording_link_pending"
+     ],
+     "prints": {
+      "CHRG-112hhrg72223": "agree"
+     }
+    },
+    {
+     "key": [
+      100038,
+      "captions"
+     ],
+     "before": [
+      "not_stated",
+      null
+     ],
+     "after": [
+      "unknown",
+      "recording_link_pending"
+     ],
+     "prints": {
+      "CHRG-112hhrg76599": "agree"
+     }
+    },
+    {
+     "key": [
+      100039,
+      "captions"
+     ],
+     "before": [
+      "not_stated",
+      null
+     ],
+     "after": [
+      "unknown",
+      "recording_link_pending"
+     ],
+     "prints": {
+      "CHRG-112hhrg72232": "agree",
+      "CHRG-112hhrg72233": "disagree"
+     }
+    },
+    {
+     "key": [
+      100040,
+      "captions"
+     ],
+     "before": [
+      "not_stated",
+      null
+     ],
+     "after": [
+      "unknown",
+      "recording_link_pending"
+     ],
+     "prints": {}
+    },
+    {
+     "key": [
+      100042,
+      "captions"
+     ],
+     "before": [
+      "not_stated",
+      null
+     ],
+     "after": [
+      "unknown",
+      "recording_link_pending"
+     ],
+     "prints": {
+      "CHRG-112hhrg76602": "agree"
+     }
+    },
+    {
+     "key": [
+      100043,
+      "captions"
+     ],
+     "before": [
+      "not_stated",
+      null
+     ],
+     "after": [
+      "unknown",
+      "recording_link_pending"
+     ],
+     "prints": {
+      "CHRG-112hhrg76605": "agree"
+     }
+    },
+    {
+     "key": [
+      100044,
+      "captions"
+     ],
+     "before": [
+      "not_stated",
+      null
+     ],
+     "after": [
+      "unknown",
+      "recording_link_pending"
+     ],
+     "prints": {
+      "CHRG-112hhrg72235": "agree"
+     }
+    },
+    {
+     "key": [
+      100045,
+      "captions"
+     ],
+     "before": [
+      "not_stated",
+      null
+     ],
+     "after": [
+      "unknown",
+      "recording_link_pending"
+     ],
+     "prints": {}
+    },
+    {
+     "key": [
+      100046,
+      "captions"
+     ],
+     "before": [
+      "not_stated",
+      null
+     ],
+     "after": [
+      "unknown",
+      "recording_link_pending"
+     ],
+     "prints": {}
+    },
+    {
+     "key": [
+      100047,
+      "captions"
+     ],
+     "before": [
+      "not_stated",
+      null
+     ],
+     "after": [
+      "unknown",
+      "recording_link_pending"
+     ],
+     "prints": {
+      "CHRG-112hhrg72929": "agree"
+     }
+    },
+    {
+     "key": [
+      100049,
+      "captions"
+     ],
+     "before": [
+      "not_stated",
+      null
+     ],
+     "after": [
+      "unknown",
+      "recording_link_pending"
+     ],
+     "prints": {}
+    },
+    {
+     "key": [
+      100050,
+      "captions"
+     ],
+     "before": [
+      "not_stated",
+      null
+     ],
+     "after": [
+      "unknown",
+      "recording_link_pending"
+     ],
+     "prints": {
+      "CHRG-112hhrg76513": "agree"
+     }
+    },
+    {
+     "key": [
+      100051,
+      "captions"
+     ],
+     "before": [
+      "not_stated",
+      null
+     ],
+     "after": [
+      "unknown",
+      "recording_link_pending"
+     ],
+     "prints": {
+      "CHRG-112hhrg76517": "ambiguous"
+     }
+    },
+    {
+     "key": [
+      100051,
+      "transcript"
+     ],
+     "before": [
+      "present",
+      null
+     ],
+     "after": [
+      "unresolved",
+      null
+     ],
+     "prints": {
+      "CHRG-112hhrg76517": "ambiguous"
+     }
+    },
+    {
+     "key": [
+      100053,
+      "captions"
+     ],
+     "before": [
+      "not_stated",
+      null
+     ],
+     "after": [
+      "unknown",
+      "recording_link_pending"
+     ],
+     "prints": {}
+    },
+    {
+     "key": [
+      100054,
+      "captions"
+     ],
+     "before": [
+      "not_stated",
+      null
+     ],
+     "after": [
+      "unknown",
+      "recording_link_pending"
+     ],
+     "prints": {}
+    },
+    {
+     "key": [
+      100055,
+      "captions"
+     ],
+     "before": [
+      "not_stated",
+      null
+     ],
+     "after": [
+      "unknown",
+      "recording_link_pending"
+     ],
+     "prints": {
+      "CHRG-112hhrg81128": "agree"
+     }
+    },
+    {
+     "key": [
+      100056,
+      "captions"
+     ],
+     "before": [
+      "not_stated",
+      null
+     ],
+     "after": [
+      "unknown",
+      "recording_link_pending"
+     ],
+     "prints": {}
+    },
+    {
+     "key": [
+      100057,
+      "captions"
+     ],
+     "before": [
+      "not_stated",
+      null
+     ],
+     "after": [
+      "unknown",
+      "recording_link_pending"
+     ],
+     "prints": {
+      "CHRG-112hhrg77380": "agree"
+     }
+    },
+    {
+     "key": [
+      100059,
+      "captions"
+     ],
+     "before": [
+      "not_stated",
+      null
+     ],
+     "after": [
+      "unknown",
+      "recording_link_pending"
+     ],
+     "prints": {
+      "CHRG-112hhrg76606": "disagree"
+     }
+    },
+    {
+     "key": [
+      100059,
+      "transcript"
+     ],
+     "before": [
+      "present",
+      null
+     ],
+     "after": [
+      "unresolved",
+      null
+     ],
+     "prints": {
+      "CHRG-112hhrg76606": "disagree"
+     }
+    },
+    {
+     "key": [
+      100060,
+      "captions"
+     ],
+     "before": [
+      "not_stated",
+      null
+     ],
+     "after": [
+      "unknown",
+      "recording_link_pending"
+     ],
+     "prints": {}
+    },
+    {
+     "key": [
+      100061,
+      "captions"
+     ],
+     "before": [
+      "not_stated",
+      null
+     ],
+     "after": [
+      "unknown",
+      "recording_link_pending"
+     ],
+     "prints": {
+      "CHRG-112hhrg78152": "agree"
+     }
+    },
+    {
+     "key": [
+      100062,
+      "captions"
+     ],
+     "before": [
+      "not_stated",
+      null
+     ],
+     "after": [
+      "unknown",
+      "recording_link_pending"
+     ],
+     "prints": {
+      "CHRG-112hhrg79507": "agree"
+     }
+    },
+    {
+     "key": [
+      100063,
+      "captions"
+     ],
+     "before": [
+      "not_stated",
+      null
+     ],
+     "after": [
+      "unknown",
+      "recording_link_pending"
+     ],
+     "prints": {
+      "CHRG-112hhrg80848": "agree"
+     }
+    },
+    {
+     "key": [
+      100074,
+      "captions"
+     ],
+     "before": [
+      "not_stated",
+      null
+     ],
+     "after": [
+      "unknown",
+      "recording_link_pending"
+     ],
+     "prints": {}
+    },
+    {
+     "key": [
+      100075,
+      "captions"
+     ],
+     "before": [
+      "not_stated",
+      null
+     ],
+     "after": [
+      "unknown",
+      "recording_link_pending"
+     ],
+     "prints": {
+      "CHRG-112hhrg73355": "disagree"
+     }
+    },
+    {
+     "key": [
+      100075,
+      "transcript"
+     ],
+     "before": [
+      "present",
+      null
+     ],
+     "after": [
+      "unresolved",
+      null
+     ],
+     "prints": {
+      "CHRG-112hhrg73355": "disagree"
+     }
+    },
+    {
+     "key": [
+      100076,
+      "captions"
+     ],
+     "before": [
+      "not_stated",
+      null
+     ],
+     "after": [
+      "unknown",
+      "recording_link_pending"
+     ],
+     "prints": {}
+    },
+    {
+     "key": [
+      100077,
+      "captions"
+     ],
+     "before": [
+      "not_stated",
+      null
+     ],
+     "after": [
+      "unknown",
+      "recording_link_pending"
+     ],
+     "prints": {}
+    },
+    {
+     "key": [
+      100078,
+      "captions"
+     ],
+     "before": [
+      "not_stated",
+      null
+     ],
+     "after": [
+      "unknown",
+      "recording_link_pending"
+     ],
+     "prints": {}
+    },
+    {
+     "key": [
+      100079,
+      "captions"
+     ],
+     "before": [
+      "not_stated",
+      null
+     ],
+     "after": [
+      "unknown",
+      "recording_link_pending"
+     ],
+     "prints": {}
+    },
+    {
+     "key": [
+      100080,
+      "captions"
+     ],
+     "before": [
+      "not_stated",
+      null
+     ],
+     "after": [
+      "unknown",
+      "recording_link_pending"
+     ],
+     "prints": {
+      "CHRG-112hhrg72224": "agree"
+     }
+    }
+   ],
+   "premise_holds": [
+    {
+     "key": [
+      100036,
+      "witnesses"
+     ],
+     "before": [
+      "present",
+      null
+     ],
+     "after": [
+      "unknown",
+      "package_witnesses_unattached"
+     ],
+     "prints": {
+      "CHRG-112hhrg72541": "disagree"
+     }
+    },
+    {
+     "key": [
+      100051,
+      "witnesses"
+     ],
+     "before": [
+      "present",
+      null
+     ],
+     "after": [
+      "unknown",
+      "package_witnesses_unattached"
+     ],
+     "prints": {
+      "CHRG-112hhrg76517": "ambiguous"
+     }
+    },
+    {
+     "key": [
+      100059,
+      "witnesses"
+     ],
+     "before": [
+      "present",
+      null
+     ],
+     "after": [
+      "unknown",
+      "package_witnesses_unattached"
+     ],
+     "prints": {
+      "CHRG-112hhrg76606": "disagree"
+     }
+    },
+    {
+     "key": [
+      100083,
+      "witnesses"
+     ],
+     "before": [
+      "not_stated",
+      null
+     ],
+     "after": [
+      "present",
+      null
+     ],
+     "prints": {
+      "CHRG-112hhrg72255": "disagree",
+      "CHRG-112hhrg72254": "agree"
+     }
+    },
+    {
+     "key": [
+      100099,
+      "witnesses"
+     ],
+     "before": [
+      "present",
+      null
+     ],
+     "after": [
+      "unknown",
+      "package_witnesses_unattached"
+     ],
+     "prints": {
+      "CHRG-112hhrg72257": "ambiguous"
+     }
+    },
+    {
+     "key": [
+      100121,
+      "witnesses"
+     ],
+     "before": [
+      "not_stated",
+      null
+     ],
+     "after": [
+      "present",
+      null
+     ],
+     "prints": {
+      "CHRG-112hhrg79506": "agree",
+      "CHRG-112hhrg79505": "ambiguous"
+     }
+    },
+    {
+     "key": [
+      100122,
+      "witnesses"
+     ],
+     "before": [
+      "not_stated",
+      null
+     ],
+     "after": [
+      "present",
+      null
+     ],
+     "prints": {
+      "CHRG-112hhrg79845": "agree",
+      "CHRG-112hhrg79844": "disagree"
+     }
+    },
+    {
+     "key": [
+      100140,
+      "witnesses"
+     ],
+     "before": [
+      "present",
+      null
+     ],
+     "after": [
+      "unknown",
+      "package_witnesses_unattached"
+     ],
+     "prints": {
+      "CHRG-113hhrg79790": "disagree"
+     }
+    },
+    {
+     "key": [
+      100179,
+      "witnesses"
+     ],
+     "before": [
+      "not_stated",
+      null
+     ],
+     "after": [
+      "present",
+      null
+     ],
+     "prints": {
+      "CHRG-112hhrg73355": "agree"
+     }
+    },
+    {
+     "key": [
+      100180,
+      "witnesses"
+     ],
+     "before": [
+      "not_stated",
+      null
+     ],
+     "after": [
+      "present",
+      null
+     ],
+     "prints": {
+      "CHRG-112hhrg72255": "agree",
+      "CHRG-112hhrg72254": "disagree"
+     }
+    },
+    {
+     "key": [
+      100204,
+      "witnesses"
+     ],
+     "before": [
+      "not_stated",
+      null
+     ],
+     "after": [
+      "present",
+      null
+     ],
+     "prints": {
+      "CHRG-112hhrg79506": "disagree",
+      "CHRG-112hhrg79505": "agree"
+     }
+    },
+    {
+     "key": [
+      100205,
+      "witnesses"
+     ],
+     "before": [
+      "not_stated",
+      null
+     ],
+     "after": [
+      "present",
+      null
+     ],
+     "prints": {
+      "CHRG-112hhrg79845": "disagree",
+      "CHRG-112hhrg79844": "agree"
+     }
+    },
+    {
+     "key": [
+      100225,
+      "witnesses"
+     ],
+     "before": [
+      "not_stated",
+      null
+     ],
+     "after": [
+      "present",
+      null
+     ],
+     "prints": {
+      "CHRG-113hhrg78631": "agree"
+     }
+    },
+    {
+     "key": [
+      100226,
+      "witnesses"
+     ],
+     "before": [
+      "not_stated",
+      null
+     ],
+     "after": [
+      "present",
+      null
+     ],
+     "prints": {
+      "CHRG-113hhrg87206": "disagree",
+      "CHRG-113hhrg81687": "ambiguous",
+      "CHRG-113hhrg82379": "disagree"
+     }
+    },
+    {
+     "key": [
+      100238,
+      "witnesses"
+     ],
+     "before": [
+      "not_stated",
+      null
+     ],
+     "after": [
+      "present",
+      null
+     ],
+     "prints": {
+      "CHRG-113hhrg87123": "disagree"
+     }
+    },
+    {
+     "key": [
+      100239,
+      "witnesses"
+     ],
+     "before": [
+      "not_stated",
+      null
+     ],
+     "after": [
+      "present",
+      null
+     ],
+     "prints": {
+      "CHRG-113hhrg87123": "disagree"
+     }
+    },
+    {
+     "key": [
+      100245,
+      "witnesses"
+     ],
+     "before": [
+      "not_stated",
+      null
+     ],
+     "after": [
+      "present",
+      null
+     ],
+     "prints": {
+      "CHRG-113hhrg78695": "agree",
+      "CHRG-113hhrg78696": "ambiguous"
+     }
+    },
+    {
+     "key": [
+      100246,
+      "witnesses"
+     ],
+     "before": [
+      "not_stated",
+      null
+     ],
+     "after": [
+      "present",
+      null
+     ],
+     "prints": {
+      "CHRG-113hhrg78694": "agree"
+     }
+    },
+    {
+     "key": [
+      100247,
+      "witnesses"
+     ],
+     "before": [
+      "not_stated",
+      null
+     ],
+     "after": [
+      "present",
+      null
+     ],
+     "prints": {
+      "CHRG-113hhrg78695": "ambiguous",
+      "CHRG-113hhrg78696": "agree"
+     }
+    },
+    {
+     "key": [
+      100281,
+      "witnesses"
+     ],
+     "before": [
+      "not_stated",
+      null
+     ],
+     "after": [
+      "present",
+      null
+     ],
+     "prints": {
+      "CHRG-113hhrg86556": "ambiguous",
+      "CHRG-113hhrg81322": "ambiguous"
+     }
+    },
+    {
+     "key": [
+      100282,
+      "witnesses"
+     ],
+     "before": [
+      "not_stated",
+      null
+     ],
+     "after": [
+      "present",
+      null
+     ],
+     "prints": {
+      "CHRG-113hhrg86556": "ambiguous",
+      "CHRG-113hhrg81322": "ambiguous"
+     }
+    },
+    {
+     "key": [
+      100283,
+      "witnesses"
+     ],
+     "before": [
+      "not_stated",
+      null
+     ],
+     "after": [
+      "present",
+      null
+     ],
+     "prints": {
+      "CHRG-113hhrg86556": "ambiguous",
+      "CHRG-113hhrg81322": "disagree"
+     }
+    },
+    {
+     "key": [
+      100284,
+      "witnesses"
+     ],
+     "before": [
+      "not_stated",
+      null
+     ],
+     "after": [
+      "present",
+      null
+     ],
+     "prints": {
+      "CHRG-113hhrg86556": "ambiguous",
+      "CHRG-113hhrg81322": "ambiguous"
+     }
+    },
+    {
+     "key": [
+      100286,
+      "witnesses"
+     ],
+     "before": [
+      "not_stated",
+      null
+     ],
+     "after": [
+      "present",
+      null
+     ],
+     "prints": {
+      "CHRG-113hhrg87206": "disagree",
+      "CHRG-113hhrg81687": "ambiguous",
+      "CHRG-113hhrg82379": "ambiguous"
+     }
+    },
+    {
+     "key": [
+      100287,
+      "witnesses"
+     ],
+     "before": [
+      "not_stated",
+      null
+     ],
+     "after": [
+      "present",
+      null
+     ],
+     "prints": {
+      "CHRG-113hhrg87206": "disagree",
+      "CHRG-113hhrg81687": "disagree",
+      "CHRG-113hhrg82379": "disagree"
+     }
+    },
+    {
+     "key": [
+      100288,
+      "witnesses"
+     ],
+     "before": [
+      "not_stated",
+      null
+     ],
+     "after": [
+      "present",
+      null
+     ],
+     "prints": {
+      "CHRG-113hhrg87206": "disagree",
+      "CHRG-113hhrg81687": "disagree",
+      "CHRG-113hhrg82379": "disagree"
+     }
+    },
+    {
+     "key": [
+      100308,
+      "witnesses"
+     ],
+     "before": [
+      "not_stated",
+      null
+     ],
+     "after": [
+      "present",
+      null
+     ],
+     "prints": {}
+    },
+    {
+     "key": [
+      100323,
+      "recording"
+     ],
+     "before": [
+      "unknown",
+      null
+     ],
+     "after": [
+      "present",
+      null
+     ],
+     "prints": {
+      "CHRG-113hhrg79953": "ambiguous",
+      "CHRG-113hhrg79954": "ambiguous",
+      "CHRG-113hhrg79996": "agree"
+     }
+    },
+    {
+     "key": [
+      100323,
+      "witnesses"
+     ],
+     "before": [
+      "not_stated",
+      null
+     ],
+     "after": [
+      "present",
+      null
+     ],
+     "prints": {
+      "CHRG-113hhrg79953": "ambiguous",
+      "CHRG-113hhrg79954": "ambiguous",
+      "CHRG-113hhrg79996": "agree"
+     }
+    },
+    {
+     "key": [
+      100324,
+      "witnesses"
+     ],
+     "before": [
+      "not_stated",
+      null
+     ],
+     "after": [
+      "present",
+      null
+     ],
+     "prints": {
+      "CHRG-113hhrg79953": "ambiguous",
+      "CHRG-113hhrg79954": "agree",
+      "CHRG-113hhrg79996": "disagree"
+     }
+    },
+    {
+     "key": [
+      100325,
+      "recording"
+     ],
+     "before": [
+      "claimed",
+      "video_text_only"
+     ],
+     "after": [
+      "present",
+      null
+     ],
+     "prints": {
+      "CHRG-113hhrg79586": "ambiguous",
+      "CHRG-113hhrg79585": "agree"
+     }
+    },
+    {
+     "key": [
+      100326,
+      "recording"
+     ],
+     "before": [
+      "claimed",
+      "video_text_only"
+     ],
+     "after": [
+      "present",
+      null
+     ],
+     "prints": {
+      "CHRG-113hhrg79583": "disagree",
+      "CHRG-113hhrg79584": "agree"
+     }
+    },
+    {
+     "key": [
+      100327,
+      "recording"
+     ],
+     "before": [
+      "claimed",
+      "video_text_only"
+     ],
+     "after": [
+      "present",
+      null
+     ],
+     "prints": {
+      "CHRG-113hhrg79583": "agree",
+      "CHRG-113hhrg79584": "disagree"
+     }
+    },
+    {
+     "key": [
+      100328,
+      "recording"
+     ],
+     "before": [
+      "claimed",
+      "video_text_only"
+     ],
+     "after": [
+      "present",
+      null
+     ],
+     "prints": {
+      "CHRG-113hhrg79586": "agree",
+      "CHRG-113hhrg79585": "ambiguous"
+     }
+    },
+    {
+     "key": [
+      100345,
+      "witnesses"
+     ],
+     "before": [
+      "not_stated",
+      null
+     ],
+     "after": [
+      "present",
+      null
+     ],
+     "prints": {
+      "CHRG-113hhrg82627": "ambiguous",
+      "CHRG-113hhrg82282": "disagree",
+      "CHRG-113hhrg86214": "disagree"
+     }
+    },
+    {
+     "key": [
+      100346,
+      "witnesses"
+     ],
+     "before": [
+      "not_stated",
+      null
+     ],
+     "after": [
+      "present",
+      null
+     ],
+     "prints": {
+      "CHRG-113hhrg82627": "ambiguous",
+      "CHRG-113hhrg82282": "disagree",
+      "CHRG-113hhrg86214": "ambiguous"
+     }
+    },
+    {
+     "key": [
+      100347,
+      "witnesses"
+     ],
+     "before": [
+      "not_stated",
+      null
+     ],
+     "after": [
+      "present",
+      null
+     ],
+     "prints": {
+      "CHRG-113hhrg82627": "ambiguous",
+      "CHRG-113hhrg82282": "disagree",
+      "CHRG-113hhrg86214": "disagree"
+     }
+    },
+    {
+     "key": [
+      100348,
+      "witnesses"
+     ],
+     "before": [
+      "not_stated",
+      null
+     ],
+     "after": [
+      "present",
+      null
+     ],
+     "prints": {
+      "CHRG-113hhrg82627": "ambiguous",
+      "CHRG-113hhrg82282": "ambiguous",
+      "CHRG-113hhrg86214": "disagree"
+     }
+    },
+    {
+     "key": [
+      100349,
+      "witnesses"
+     ],
+     "before": [
+      "not_stated",
+      null
+     ],
+     "after": [
+      "present",
+      null
+     ],
+     "prints": {
+      "CHRG-113hhrg82627": "ambiguous",
+      "CHRG-113hhrg82282": "disagree",
+      "CHRG-113hhrg86214": "disagree"
+     }
+    },
+    {
+     "key": [
+      100350,
+      "witnesses"
+     ],
+     "before": [
+      "not_stated",
+      null
+     ],
+     "after": [
+      "present",
+      null
+     ],
+     "prints": {
+      "CHRG-113hhrg82638": "disagree",
+      "CHRG-113hhrg82770": "ambiguous",
+      "CHRG-113hhrg81691": "disagree"
+     }
+    }
+   ],
+   "ambiguous": [
+    {
+     "key": [
+      100281,
+      "recording"
+     ],
+     "before": [
+      "claimed",
+      "video_text_only"
+     ],
+     "after": [
+      "present",
+      null
+     ],
+     "prints": {
+      "CHRG-113hhrg86556": "ambiguous",
+      "CHRG-113hhrg81322": "ambiguous"
+     }
+    },
+    {
+     "key": [
+      100494,
+      "recording"
+     ],
+     "before": [
+      "claimed",
+      "video_text_only"
+     ],
+     "after": [
+      "present",
+      null
+     ],
+     "prints": {
+      "CHRG-113hhrg82742": "disagree",
+      "CHRG-113hhrg87778": "disagree",
+      "CHRG-113hhrg86199": "ambiguous"
+     }
+    },
+    {
+     "key": [
+      100652,
+      "recording"
+     ],
+     "before": [
+      "claimed",
+      "video_text_only"
+     ],
+     "after": [
+      "present",
+      null
+     ],
+     "prints": {
+      "CHRG-113hhrg82661": "ambiguous",
+      "CHRG-113hhrg82809": "ambiguous",
+      "CHRG-113hhrg86651": "ambiguous"
+     }
+    },
+    {
+     "key": [
+      101773,
+      "recording"
+     ],
+     "before": [
+      "claimed",
+      "video_text_only"
+     ],
+     "after": [
+      "present",
+      null
+     ],
+     "prints": {
+      "CHRG-113hhrg92629": "ambiguous"
+     }
+    },
+    {
+     "key": [
+      101942,
+      "recording"
+     ],
+     "before": [
+      "claimed",
+      "video_text_only"
+     ],
+     "after": [
+      "present",
+      null
+     ],
+     "prints": {
+      "CHRG-113hhrg89903": "ambiguous"
+     }
+    },
+    {
+     "key": [
+      101959,
+      "recording"
+     ],
+     "before": [
+      "unknown",
+      null
+     ],
+     "after": [
+      "present",
+      null
+     ],
+     "prints": {
+      "CHRG-113hhrg87858": "disagree",
+      "CHRG-113hhrg87859": "disagree",
+      "CHRG-113hhrg87857": "ambiguous",
+      "CHRG-113hhrg87860": "ambiguous"
+     }
+    },
+    {
+     "key": [
+      101985,
+      "recording"
+     ],
+     "before": [
+      "unknown",
+      null
+     ],
+     "after": [
+      "present",
+      null
+     ],
+     "prints": {
+      "CHRG-113hhrg87863": "disagree",
+      "CHRG-113hhrg87864": "ambiguous",
+      "CHRG-113hhrg87862": "disagree"
+     }
+    },
+    {
+     "key": [
+      102231,
+      "recording"
+     ],
+     "before": [
+      "unknown",
+      null
+     ],
+     "after": [
+      "present",
+      null
+     ],
+     "prints": {
+      "CHRG-113hhrg88011": "ambiguous",
+      "CHRG-113hhrg88012": "disagree"
+     }
+    },
+    {
+     "key": [
+      103008,
+      "recording"
+     ],
+     "before": [
+      "claimed",
+      "video_text_only"
+     ],
+     "after": [
+      "present",
+      null
+     ],
+     "prints": {
+      "CHRG-114hhrg94747": "disagree",
+      "CHRG-114hhrg94748": "ambiguous",
+      "CHRG-114hhrg94749": "disagree"
+     }
+    },
+    {
+     "key": [
+      103048,
+      "recording"
+     ],
+     "before": [
+      "claimed",
+      "video_text_only"
+     ],
+     "after": [
+      "present",
+      null
+     ],
+     "prints": {
+      "CHRG-114hhrg97454": "ambiguous",
+      "CHRG-114hhrg96878": "ambiguous"
+     }
+    },
+    {
+     "key": [
+      103223,
+      "recording"
+     ],
+     "before": [
+      "unknown",
+      null
+     ],
+     "after": [
+      "present",
+      null
+     ],
+     "prints": {
+      "CHRG-114hhrg93965": "disagree",
+      "CHRG-114hhrg93966": "ambiguous"
+     }
+    },
+    {
+     "key": [
+      103489,
+      "recording"
+     ],
+     "before": [
+      "unknown",
+      null
+     ],
+     "after": [
+      "present",
+      null
+     ],
+     "prints": {
+      "CHRG-114hhrg94774": "disagree",
+      "CHRG-114hhrg94773": "disagree",
+      "CHRG-114hhrg94775": "ambiguous"
+     }
+    },
+    {
+     "key": [
+      104353,
+      "recording"
+     ],
+     "before": [
+      "claimed",
+      "video_text_only"
+     ],
+     "after": [
+      "present",
+      null
+     ],
+     "prints": {
+      "CHRG-114hhrg99646": "ambiguous",
+      "CHRG-114hhrg99648": "disagree",
+      "CHRG-114hhrg99647": "disagree"
+     }
+    },
+    {
+     "key": [
+      104439,
+      "recording"
+     ],
+     "before": [
+      "claimed",
+      "video_text_only"
+     ],
+     "after": [
+      "present",
+      null
+     ],
+     "prints": {
+      "CHRG-114hhrg98915": "ambiguous",
+      "CHRG-114hhrg98916": "disagree",
+      "CHRG-114hhrg98956": "disagree"
+     }
+    },
+    {
+     "key": [
+      104552,
+      "recording"
+     ],
+     "before": [
+      "unknown",
+      null
+     ],
+     "after": [
+      "present",
+      null
+     ],
+     "prints": {
+      "CHRG-114hhrg99646": "ambiguous",
+      "CHRG-114hhrg99648": "disagree",
+      "CHRG-114hhrg99647": "disagree"
+     }
+    },
+    {
+     "key": [
+      107986,
+      "recording"
+     ],
+     "before": [
+      "claimed",
+      "video_text_only"
+     ],
+     "after": [
+      "present",
+      null
+     ],
+     "prints": {
+      "CHRG-115hhrg31445": "ambiguous"
+     }
+    },
+    {
+     "key": [
+      108027,
+      "recording"
+     ],
+     "before": [
+      "claimed",
+      "video_text_only"
+     ],
+     "after": [
+      "present",
+      null
+     ],
+     "prints": {
+      "CHRG-115hhrg31244": "ambiguous",
+      "CHRG-115hhrg32413": "disagree"
+     }
+    },
+    {
+     "key": [
+      108097,
+      "recording"
+     ],
+     "before": [
+      "claimed",
+      "video_text_only"
+     ],
+     "after": [
+      "present",
+      null
+     ],
+     "prints": {
+      "CHRG-115hhrg33569": "disagree",
+      "CHRG-115hhrg30666": "disagree",
+      "CHRG-115hhrg30212": "ambiguous",
+      "CHRG-115hhrg30357": "disagree"
+     }
+    },
+    {
+     "key": [
+      109036,
+      "recording"
+     ],
+     "before": [
+      "unknown",
+      null
+     ],
+     "after": [
+      "present",
+      null
+     ],
+     "prints": {
+      "CHRG-116hhrg35169": "ambiguous",
+      "CHRG-116hhrg35261": "ambiguous"
+     }
+    },
+    {
+     "key": [
+      112796,
+      "recording"
+     ],
+     "before": [
+      "unknown",
+      null
+     ],
+     "after": [
+      "present",
+      null
+     ],
+     "prints": {
+      "CHRG-117hhrg45605": "ambiguous",
+      "CHRG-117hhrg47741": "ambiguous"
+     }
+    },
+    {
+     "key": [
+      114643,
+      "transcript"
+     ],
+     "before": [
+      "not_stated",
+      null
+     ],
+     "after": [
+      "present",
+      null
+     ],
+     "prints": {
+      "CHRG-117hhrg49905": "ambiguous"
+     }
+    },
+    {
+     "key": [
+      117082,
+      "recording"
+     ],
+     "before": [
+      "claimed",
+      "video_text_only"
+     ],
+     "after": [
+      "present",
+      null
+     ],
+     "prints": {
+      "CHRG-118hhrg57665": "ambiguous"
+     }
+    },
+    {
+     "key": [
+      326062,
+      "recording"
+     ],
+     "before": [
+      "unknown",
+      null
+     ],
+     "after": [
+      "present",
+      null
+     ],
+     "prints": {
+      "CHRG-116shrg37807": "ambiguous"
+     }
+    },
+    {
+     "key": [
+      326062,
+      "witnesses"
+     ],
+     "before": [
+      "not_stated",
+      null
+     ],
+     "after": [
+      "present",
+      null
+     ],
+     "prints": {
+      "CHRG-116shrg37807": "ambiguous"
+     }
+    },
+    {
+     "key": [
+      327083,
+      "recording"
+     ],
+     "before": [
+      "unknown",
+      null
+     ],
+     "after": [
+      "present",
+      null
+     ],
+     "prints": {
+      "CHRG-116shrg40386": "ambiguous",
+      "CHRG-116shrg40972": "ambiguous"
+     }
+    },
+    {
+     "key": [
+      327083,
+      "witnesses"
+     ],
+     "before": [
+      "not_stated",
+      null
+     ],
+     "after": [
+      "present",
+      null
+     ],
+     "prints": {
+      "CHRG-116shrg40386": "ambiguous",
+      "CHRG-116shrg40972": "ambiguous"
+     }
+    },
+    {
+     "key": [
+      327285,
+      "recording"
+     ],
+     "before": [
+      "unknown",
+      null
+     ],
+     "after": [
+      "present",
+      null
+     ],
+     "prints": {
+      "CHRG-116shrg29104935": "ambiguous",
+      "CHRG-116shrg19104896": "ambiguous",
+      "CHRG-116shrg29104938": "ambiguous"
+     }
+    },
+    {
+     "key": [
+      327292,
+      "recording"
+     ],
+     "before": [
+      "unknown",
+      null
+     ],
+     "after": [
+      "present",
+      null
+     ],
+     "prints": {
+      "CHRG-116shrg29104935": "ambiguous",
+      "CHRG-116shrg19104896": "ambiguous",
+      "CHRG-116shrg29104938": "ambiguous"
+     }
+    },
+    {
+     "key": [
+      329001,
+      "recording"
+     ],
+     "before": [
+      "unknown",
+      null
+     ],
+     "after": [
+      "present",
+      null
+     ],
+     "prints": {
+      "CHRG-117shrg45487": "ambiguous"
+     }
+    },
+    {
+     "key": [
+      329001,
+      "witnesses"
+     ],
+     "before": [
+      "not_stated",
+      null
+     ],
+     "after": [
+      "present",
+      null
+     ],
+     "prints": {
+      "CHRG-117shrg45487": "ambiguous"
+     }
+    },
+    {
+     "key": [
+      329022,
+      "recording"
+     ],
+     "before": [
+      "unknown",
+      null
+     ],
+     "after": [
+      "present",
+      null
+     ],
+     "prints": {
+      "CHRG-117shrg45981": "ambiguous",
+      "CHRG-117shrg50295": "disagree"
+     }
+    },
+    {
+     "key": [
+      329022,
+      "witnesses"
+     ],
+     "before": [
+      "not_stated",
+      null
+     ],
+     "after": [
+      "present",
+      null
+     ],
+     "prints": {
+      "CHRG-117shrg45981": "ambiguous",
+      "CHRG-117shrg50295": "disagree"
+     }
+    },
+    {
+     "key": [
+      329207,
+      "recording"
+     ],
+     "before": [
+      "unknown",
+      null
+     ],
+     "after": [
+      "present",
+      null
+     ],
+     "prints": {
+      "CHRG-117shrg50338": "disagree",
+      "CHRG-117shrg39104980": "ambiguous",
+      "CHRG-117shrg44184": "ambiguous",
+      "CHRG-117shrg29104958": "disagree",
+      "CHRG-117shrg39104981": "disagree",
+      "CHRG-117shrg39104998": "disagree"
+     }
+    },
+    {
+     "key": [
+      329211,
+      "recording"
+     ],
+     "before": [
+      "unknown",
+      null
+     ],
+     "after": [
+      "present",
+      null
+     ],
+     "prints": {
+      "CHRG-117shrg50338": "disagree",
+      "CHRG-117shrg39104980": "disagree",
+      "CHRG-117shrg29104958": "disagree",
+      "CHRG-117shrg39104981": "disagree",
+      "CHRG-117shrg39104998": "ambiguous"
+     }
+    },
+    {
+     "key": [
+      329427,
+      "recording"
+     ],
+     "before": [
+      "unknown",
+      null
+     ],
+     "after": [
+      "present",
+      null
+     ],
+     "prints": {
+      "CHRG-117shrg45981": "ambiguous",
+      "CHRG-117shrg50295": "ambiguous"
+     }
+    },
+    {
+     "key": [
+      329427,
+      "witnesses"
+     ],
+     "before": [
+      "not_stated",
+      null
+     ],
+     "after": [
+      "present",
+      null
+     ],
+     "prints": {
+      "CHRG-117shrg45981": "ambiguous",
+      "CHRG-117shrg50295": "ambiguous"
+     }
+    },
+    {
+     "key": [
+      329687,
+      "recording"
+     ],
+     "before": [
+      "unknown",
+      null
+     ],
+     "after": [
+      "present",
+      null
+     ],
+     "prints": {
+      "CHRG-117shrg39104972": "disagree",
+      "CHRG-117shrg39104966": "ambiguous",
+      "CHRG-117shrg44193": "disagree"
+     }
+    },
+    {
+     "key": [
+      330128,
+      "recording"
+     ],
+     "before": [
+      "unknown",
+      null
+     ],
+     "after": [
+      "present",
+      null
+     ],
+     "prints": {
+      "CHRG-117shrg50802": "ambiguous",
+      "CHRG-117shrg52109": "ambiguous"
+     }
+    },
+    {
+     "key": [
+      330128,
+      "witnesses"
+     ],
+     "before": [
+      "not_stated",
+      null
+     ],
+     "after": [
+      "present",
+      null
+     ],
+     "prints": {
+      "CHRG-117shrg50802": "ambiguous",
+      "CHRG-117shrg52109": "ambiguous"
+     }
+    },
+    {
+     "key": [
+      330206,
+      "recording"
+     ],
+     "before": [
+      "unknown",
+      null
+     ],
+     "after": [
+      "present",
+      null
+     ],
+     "prints": {
+      "CHRG-117shrg51112": "ambiguous",
+      "CHRG-117shrg51115": "disagree"
+     }
+    }
+   ],
+   "premise_fails": [
+    {
+     "key": [
+      102952,
+      "recording"
+     ],
+     "before": [
+      "claimed",
+      "video_text_only"
+     ],
+     "after": [
+      "present",
+      null
+     ],
+     "prints": {
+      "CHRG-114hhrg94097": "disagree",
+      "CHRG-114hhrg94098": "disagree",
+      "CHRG-114hhrg94099": "disagree"
+     }
+    },
+    {
+     "key": [
+      103390,
+      "witnesses"
+     ],
+     "before": [
+      "not_stated",
+      null
+     ],
+     "after": [
+      "present",
+      null
+     ],
+     "prints": {
+      "CHRG-114hhrg95250": "disagree",
+      "CHRG-114hhrg94837": "disagree",
+      "CHRG-114hhrg25879": "disagree"
+     }
+    },
+    {
+     "key": [
+      104017,
+      "recording"
+     ],
+     "before": [
+      "claimed",
+      "video_text_only"
+     ],
+     "after": [
+      "present",
+      null
+     ],
+     "prints": {
+      "CHRG-114hhrg97194": "disagree",
+      "CHRG-114hhrg97192": "disagree"
+     }
+    },
+    {
+     "key": [
+      104619,
+      "recording"
+     ],
+     "before": [
+      "claimed",
+      "video_text_only"
+     ],
+     "after": [
+      "present",
+      null
+     ],
+     "prints": {
+      "CHRG-114hhrg99649": "disagree",
+      "CHRG-114hhrg99651": "disagree",
+      "CHRG-114hhrg99650": "disagree"
+     }
+    },
+    {
+     "key": [
+      105231,
+      "witnesses"
+     ],
+     "before": [
+      "present",
+      null
+     ],
+     "after": [
+      "unknown",
+      "package_witnesses_unattached"
+     ],
+     "prints": {
+      "CHRG-114hhrg23645": "agree"
+     }
+    },
+    {
+     "key": [
+      105583,
+      "recording"
+     ],
+     "before": [
+      "unknown",
+      null
+     ],
+     "after": [
+      "present",
+      null
+     ],
+     "prints": {
+      "CHRG-115hhrg29369": "disagree"
+     }
+    },
+    {
+     "key": [
+      105767,
+      "recording"
+     ],
+     "before": [
+      "claimed",
+      "video_text_only"
+     ],
+     "after": [
+      "present",
+      null
+     ],
+     "prints": {
+      "CHRG-115hhrg25146": "disagree"
+     }
+    },
+    {
+     "key": [
+      105881,
+      "recording"
+     ],
+     "before": [
+      "claimed",
+      "video_text_only"
+     ],
+     "after": [
+      "present",
+      null
+     ],
+     "prints": {
+      "CHRG-115hhrg25824": "disagree",
+      "CHRG-115hhrg25825": "disagree"
+     }
+    },
+    {
+     "key": [
+      106851,
+      "recording"
+     ],
+     "before": [
+      "claimed",
+      "video_text_only"
+     ],
+     "after": [
+      "present",
+      null
+     ],
+     "prints": {
+      "CHRG-115hhrg28995": "disagree",
+      "CHRG-115hhrg28996": "disagree"
+     }
+    },
+    {
+     "key": [
+      108076,
+      "recording"
+     ],
+     "before": [
+      "claimed",
+      "video_text_only"
+     ],
+     "after": [
+      "present",
+      null
+     ],
+     "prints": {
+      "CHRG-115hhrg30570": "disagree",
+      "CHRG-115hhrg30571": "disagree",
+      "CHRG-115hhrg30569": "disagree"
+     }
+    },
+    {
+     "key": [
+      108105,
+      "recording"
+     ],
+     "before": [
+      "claimed",
+      "video_text_only"
+     ],
+     "after": [
+      "present",
+      null
+     ],
+     "prints": {
+      "CHRG-115hhrg31511": "disagree"
+     }
+    },
+    {
+     "key": [
+      108441,
+      "recording"
+     ],
+     "before": [
+      "unknown",
+      null
+     ],
+     "after": [
+      "present",
+      null
+     ],
+     "prints": {
+      "CHRG-115hhrg30350": "disagree"
+     }
+    },
+    {
+     "key": [
+      110686,
+      "recording"
+     ],
+     "before": [
+      "unknown",
+      null
+     ],
+     "after": [
+      "present",
+      null
+     ],
+     "prints": {
+      "CHRG-116hhrg43478": "disagree",
+      "CHRG-116hhrg41501": "disagree"
+     }
+    },
+    {
+     "key": [
+      111156,
+      "witnesses"
+     ],
+     "before": [
+      "not_stated",
+      null
+     ],
+     "after": [
+      "present",
+      null
+     ],
+     "prints": {
+      "CHRG-117hhrg46838": "disagree",
+      "CHRG-117hhrg47471": "disagree"
+     }
+    },
+    {
+     "key": [
+      113955,
+      "recording"
+     ],
+     "before": [
+      "unknown",
+      null
+     ],
+     "after": [
+      "present",
+      null
+     ],
+     "prints": {
+      "CHRG-117hhrg45372": "disagree",
+      "CHRG-117hhrg45371": "disagree"
+     }
+    },
+    {
+     "key": [
+      113959,
+      "witnesses"
+     ],
+     "before": [
+      "not_stated",
+      null
+     ],
+     "after": [
+      "present",
+      null
+     ],
+     "prints": {
+      "CHRG-117hhrg46434": "disagree",
+      "CHRG-117hhrg48118": "disagree"
+     }
+    },
+    {
+     "key": [
+      114445,
+      "witnesses"
+     ],
+     "before": [
+      "not_stated",
+      null
+     ],
+     "after": [
+      "present",
+      null
+     ],
+     "prints": {
+      "CHRG-117hhrg47065": "disagree"
+     }
+    },
+    {
+     "key": [
+      114696,
+      "recording"
+     ],
+     "before": [
+      "unknown",
+      null
+     ],
+     "after": [
+      "present",
+      null
+     ],
+     "prints": {
+      "CHRG-117hhrg48447": "disagree",
+      "CHRG-117hhrg48632": "disagree",
+      "CHRG-117hhrg48578": "disagree"
+     }
+    },
+    {
+     "key": [
+      114960,
+      "witnesses"
+     ],
+     "before": [
+      "not_stated",
+      null
+     ],
+     "after": [
+      "present",
+      null
+     ],
+     "prints": {
+      "CHRG-117hhrg47809": "disagree"
+     }
+    },
+    {
+     "key": [
+      115528,
+      "witnesses"
+     ],
+     "before": [
+      "not_stated",
+      null
+     ],
+     "after": [
+      "present",
+      null
+     ],
+     "prints": {
+      "CHRG-118hhrg51624": "disagree"
+     }
+    },
+    {
+     "key": [
+      116159,
+      "witnesses"
+     ],
+     "before": [
+      "not_stated",
+      null
+     ],
+     "after": [
+      "present",
+      null
+     ],
+     "prints": {
+      "CHRG-118hhrg57716": "disagree",
+      "CHRG-118hhrg58105": "disagree"
+     }
+    },
+    {
+     "key": [
+      116599,
+      "recording"
+     ],
+     "before": [
+      "unknown",
+      null
+     ],
+     "after": [
+      "present",
+      null
+     ],
+     "prints": {
+      "CHRG-118hhrg53969": "disagree",
+      "CHRG-118hhrg54226": "disagree"
+     }
+    },
+    {
+     "key": [
+      325997,
+      "recording"
+     ],
+     "before": [
+      "unknown",
+      null
+     ],
+     "after": [
+      "present",
+      null
+     ],
+     "prints": {
+      "CHRG-116shrg37808": "disagree"
+     }
+    },
+    {
+     "key": [
+      325997,
+      "witnesses"
+     ],
+     "before": [
+      "not_stated",
+      null
+     ],
+     "after": [
+      "present",
+      null
+     ],
+     "prints": {
+      "CHRG-116shrg37808": "disagree"
+     }
+    },
+    {
+     "key": [
+      326045,
+      "recording"
+     ],
+     "before": [
+      "unknown",
+      null
+     ],
+     "after": [
+      "present",
+      null
+     ],
+     "prints": {
+      "CHRG-116shrg39540": "disagree"
+     }
+    },
+    {
+     "key": [
+      326045,
+      "witnesses"
+     ],
+     "before": [
+      "not_stated",
+      null
+     ],
+     "after": [
+      "present",
+      null
+     ],
+     "prints": {
+      "CHRG-116shrg39540": "disagree"
+     }
+    },
+    {
+     "key": [
+      329125,
+      "recording"
+     ],
+     "before": [
+      "unknown",
+      null
+     ],
+     "after": [
+      "present",
+      null
+     ],
+     "prints": {
+      "CHRG-117shrg54107": "disagree",
+      "CHRG-117shrg53087": "disagree"
+     }
+    },
+    {
+     "key": [
+      329125,
+      "witnesses"
+     ],
+     "before": [
+      "not_stated",
+      null
+     ],
+     "after": [
+      "present",
+      null
+     ],
+     "prints": {
+      "CHRG-117shrg54107": "disagree",
+      "CHRG-117shrg53087": "disagree"
+     }
+    },
+    {
+     "key": [
+      329349,
+      "recording"
+     ],
+     "before": [
+      "unknown",
+      null
+     ],
+     "after": [
+      "present",
+      null
+     ],
+     "prints": {
+      "CHRG-117shrg49526": "disagree",
+      "CHRG-117shrg49785": "disagree"
+     }
+    },
+    {
+     "key": [
+      329349,
+      "witnesses"
+     ],
+     "before": [
+      "not_stated",
+      null
+     ],
+     "after": [
+      "present",
+      null
+     ],
+     "prints": {
+      "CHRG-117shrg49526": "disagree",
+      "CHRG-117shrg49785": "disagree"
+     }
+    },
+    {
+     "key": [
+      329705,
+      "recording"
+     ],
+     "before": [
+      "unknown",
+      null
+     ],
+     "after": [
+      "present",
+      null
+     ],
+     "prints": {
+      "CHRG-117shrg50916": "disagree"
+     }
+    },
+    {
+     "key": [
+      329847,
+      "recording"
+     ],
+     "before": [
+      "unknown",
+      null
+     ],
+     "after": [
+      "present",
+      null
+     ],
+     "prints": {
+      "CHRG-117shrg47218": "disagree"
+     }
+    },
+    {
+     "key": [
+      329847,
+      "witnesses"
+     ],
+     "before": [
+      "not_stated",
+      null
+     ],
+     "after": [
+      "present",
+      null
+     ],
+     "prints": {
+      "CHRG-117shrg47218": "disagree"
+     }
+    },
+    {
+     "key": [
+      330023,
+      "recording"
+     ],
+     "before": [
+      "unknown",
+      null
+     ],
+     "after": [
+      "present",
+      null
+     ],
+     "prints": {
+      "CHRG-117shrg46167": "disagree"
+     }
+    },
+    {
+     "key": [
+      330126,
+      "recording"
+     ],
+     "before": [
+      "unknown",
+      null
+     ],
+     "after": [
+      "present",
+      null
+     ],
+     "prints": {
+      "CHRG-117shrg50802": "disagree",
+      "CHRG-117shrg52109": "disagree"
+     }
+    },
+    {
+     "key": [
+      330126,
+      "witnesses"
+     ],
+     "before": [
+      "not_stated",
+      null
+     ],
+     "after": [
+      "present",
+      null
+     ],
+     "prints": {
+      "CHRG-117shrg50802": "disagree",
+      "CHRG-117shrg52109": "disagree"
+     }
+    },
+    {
+     "key": [
+      330180,
+      "recording"
+     ],
+     "before": [
+      "unknown",
+      null
+     ],
+     "after": [
+      "present",
+      null
+     ],
+     "prints": {
+      "CHRG-117shrg52334": "disagree"
+     }
+    },
+    {
+     "key": [
+      330180,
+      "witnesses"
+     ],
+     "before": [
+      "not_stated",
+      null
+     ],
+     "after": [
+      "present",
+      null
+     ],
+     "prints": {
+      "CHRG-117shrg52334": "disagree"
+     }
+    },
+    {
+     "key": [
+      330465,
+      "witnesses"
+     ],
+     "before": [
+      "present",
+      null
+     ],
+     "after": [
+      "unknown",
+      "package_witnesses_unattached"
+     ],
+     "prints": {
+      "CHRG-117shrg47001": "agree"
+     }
+    },
+    {
+     "key": [
+      331020,
+      "recording"
+     ],
+     "before": [
+      "unknown",
+      null
+     ],
+     "after": [
+      "present",
+      null
+     ],
+     "prints": {
+      "CHRG-117shrg46202": "disagree"
+     }
+    }
+   ],
+   "unread": [
+    {
+     "key": [
+      103138,
+      "recording"
+     ],
+     "before": [
+      "claimed",
+      "video_text_only"
+     ],
+     "after": [
+      "present",
+      null
+     ],
+     "prints": {
+      "CHRG-114hhrg94225": "unread",
+      "CHRG-114hhrg94226": "disagree",
+      "CHRG-114hhrg94224": "disagree"
+     }
+    },
+    {
+     "key": [
+      105475,
+      "documents"
+     ],
+     "before": [
+      "not_stated",
+      null
+     ],
+     "after": [
+      "unresolved",
+      "stated_documents_not_held"
+     ],
+     "prints": {}
+    },
+    {
+     "key": [
+      105628,
+      "documents"
+     ],
+     "before": [
+      "not_stated",
+      null
+     ],
+     "after": [
+      "unresolved",
+      "stated_documents_not_held"
+     ],
+     "prints": {}
+    },
+    {
+     "key": [
+      105714,
+      "documents"
+     ],
+     "before": [
+      "not_stated",
+      null
+     ],
+     "after": [
+      "unresolved",
+      "stated_documents_not_held"
+     ],
+     "prints": {}
+    },
+    {
+     "key": [
+      105815,
+      "documents"
+     ],
+     "before": [
+      "not_stated",
+      null
+     ],
+     "after": [
+      "unresolved",
+      "stated_documents_not_held"
+     ],
+     "prints": {}
+    },
+    {
+     "key": [
+      105838,
+      "documents"
+     ],
+     "before": [
+      "not_stated",
+      null
+     ],
+     "after": [
+      "unresolved",
+      "stated_documents_not_held"
+     ],
+     "prints": {}
+    },
+    {
+     "key": [
+      105857,
+      "documents"
+     ],
+     "before": [
+      "not_stated",
+      null
+     ],
+     "after": [
+      "unresolved",
+      "stated_documents_not_held"
+     ],
+     "prints": {}
+    },
+    {
+     "key": [
+      105959,
+      "documents"
+     ],
+     "before": [
+      "not_stated",
+      null
+     ],
+     "after": [
+      "unresolved",
+      "stated_documents_not_held"
+     ],
+     "prints": {}
+    },
+    {
+     "key": [
+      106040,
+      "documents"
+     ],
+     "before": [
+      "not_stated",
+      null
+     ],
+     "after": [
+      "unresolved",
+      "stated_documents_not_held"
+     ],
+     "prints": {}
+    },
+    {
+     "key": [
+      106080,
+      "documents"
+     ],
+     "before": [
+      "not_stated",
+      null
+     ],
+     "after": [
+      "unresolved",
+      "stated_documents_not_held"
+     ],
+     "prints": {}
+    },
+    {
+     "key": [
+      106119,
+      "documents"
+     ],
+     "before": [
+      "not_stated",
+      null
+     ],
+     "after": [
+      "unresolved",
+      "stated_documents_not_held"
+     ],
+     "prints": {}
+    },
+    {
+     "key": [
+      106165,
+      "documents"
+     ],
+     "before": [
+      "not_stated",
+      null
+     ],
+     "after": [
+      "unresolved",
+      "stated_documents_not_held"
+     ],
+     "prints": {}
+    },
+    {
+     "key": [
+      106346,
+      "documents"
+     ],
+     "before": [
+      "not_stated",
+      null
+     ],
+     "after": [
+      "unresolved",
+      "stated_documents_not_held"
+     ],
+     "prints": {}
+    },
+    {
+     "key": [
+      106348,
+      "documents"
+     ],
+     "before": [
+      "not_stated",
+      null
+     ],
+     "after": [
+      "unresolved",
+      "stated_documents_not_held"
+     ],
+     "prints": {}
+    },
+    {
+     "key": [
+      106539,
+      "documents"
+     ],
+     "before": [
+      "not_stated",
+      null
+     ],
+     "after": [
+      "unresolved",
+      "stated_documents_not_held"
+     ],
+     "prints": {}
+    },
+    {
+     "key": [
+      106578,
+      "documents"
+     ],
+     "before": [
+      "not_stated",
+      null
+     ],
+     "after": [
+      "unresolved",
+      "stated_documents_not_held"
+     ],
+     "prints": {}
+    },
+    {
+     "key": [
+      106579,
+      "documents"
+     ],
+     "before": [
+      "not_stated",
+      null
+     ],
+     "after": [
+      "unresolved",
+      "stated_documents_not_held"
+     ],
+     "prints": {}
+    },
+    {
+     "key": [
+      106616,
+      "documents"
+     ],
+     "before": [
+      "not_stated",
+      null
+     ],
+     "after": [
+      "unresolved",
+      "stated_documents_not_held"
+     ],
+     "prints": {}
+    },
+    {
+     "key": [
+      106639,
+      "documents"
+     ],
+     "before": [
+      "not_stated",
+      null
+     ],
+     "after": [
+      "unresolved",
+      "stated_documents_not_held"
+     ],
+     "prints": {}
+    },
+    {
+     "key": [
+      106641,
+      "documents"
+     ],
+     "before": [
+      "not_stated",
+      null
+     ],
+     "after": [
+      "unresolved",
+      "stated_documents_not_held"
+     ],
+     "prints": {}
+    },
+    {
+     "key": [
+      106839,
+      "documents"
+     ],
+     "before": [
+      "not_stated",
+      null
+     ],
+     "after": [
+      "unresolved",
+      "stated_documents_not_held"
+     ],
+     "prints": {}
+    },
+    {
+     "key": [
+      106882,
+      "documents"
+     ],
+     "before": [
+      "not_stated",
+      null
+     ],
+     "after": [
+      "unresolved",
+      "stated_documents_not_held"
+     ],
+     "prints": {}
+    },
+    {
+     "key": [
+      106965,
+      "documents"
+     ],
+     "before": [
+      "not_stated",
+      null
+     ],
+     "after": [
+      "unresolved",
+      "stated_documents_not_held"
+     ],
+     "prints": {}
+    },
+    {
+     "key": [
+      108003,
+      "documents"
+     ],
+     "before": [
+      "not_stated",
+      null
+     ],
+     "after": [
+      "unresolved",
+      "stated_documents_not_held"
+     ],
+     "prints": {}
+    },
+    {
+     "key": [
+      108004,
+      "documents"
+     ],
+     "before": [
+      "not_stated",
+      null
+     ],
+     "after": [
+      "unresolved",
+      "stated_documents_not_held"
+     ],
+     "prints": {}
+    },
+    {
+     "key": [
+      108061,
+      "documents"
+     ],
+     "before": [
+      "not_stated",
+      null
+     ],
+     "after": [
+      "unresolved",
+      "stated_documents_not_held"
+     ],
+     "prints": {}
+    },
+    {
+     "key": [
+      108087,
+      "documents"
+     ],
+     "before": [
+      "not_stated",
+      null
+     ],
+     "after": [
+      "unresolved",
+      "stated_documents_not_held"
+     ],
+     "prints": {}
+    },
+    {
+     "key": [
+      108187,
+      "documents"
+     ],
+     "before": [
+      "not_stated",
+      null
+     ],
+     "after": [
+      "unresolved",
+      "stated_documents_not_held"
+     ],
+     "prints": {}
+    },
+    {
+     "key": [
+      108209,
+      "documents"
+     ],
+     "before": [
+      "not_stated",
+      null
+     ],
+     "after": [
+      "unresolved",
+      "stated_documents_not_held"
+     ],
+     "prints": {}
+    },
+    {
+     "key": [
+      108263,
+      "documents"
+     ],
+     "before": [
+      "not_stated",
+      null
+     ],
+     "after": [
+      "unresolved",
+      "stated_documents_not_held"
+     ],
+     "prints": {}
+    },
+    {
+     "key": [
+      108488,
+      "documents"
+     ],
+     "before": [
+      "not_stated",
+      null
+     ],
+     "after": [
+      "unresolved",
+      "stated_documents_not_held"
+     ],
+     "prints": {}
+    },
+    {
+     "key": [
+      108571,
+      "documents"
+     ],
+     "before": [
+      "not_stated",
+      null
+     ],
+     "after": [
+      "unresolved",
+      "stated_documents_not_held"
+     ],
+     "prints": {}
+    },
+    {
+     "key": [
+      108574,
+      "documents"
+     ],
+     "before": [
+      "not_stated",
+      null
+     ],
+     "after": [
+      "unresolved",
+      "stated_documents_not_held"
+     ],
+     "prints": {}
+    },
+    {
+     "key": [
+      108615,
+      "documents"
+     ],
+     "before": [
+      "not_stated",
+      null
+     ],
+     "after": [
+      "unresolved",
+      "stated_documents_not_held"
+     ],
+     "prints": {}
+    },
+    {
+     "key": [
+      108638,
+      "documents"
+     ],
+     "before": [
+      "not_stated",
+      null
+     ],
+     "after": [
+      "unresolved",
+      "stated_documents_not_held"
+     ],
+     "prints": {}
+    },
+    {
+     "key": [
+      108657,
+      "documents"
+     ],
+     "before": [
+      "not_stated",
+      null
+     ],
+     "after": [
+      "unresolved",
+      "stated_documents_not_held"
+     ],
+     "prints": {}
+    },
+    {
+     "key": [
+      108758,
+      "documents"
+     ],
+     "before": [
+      "not_stated",
+      null
+     ],
+     "after": [
+      "unresolved",
+      "stated_documents_not_held"
+     ],
+     "prints": {}
+    },
+    {
+     "key": [
+      108799,
+      "documents"
+     ],
+     "before": [
+      "not_stated",
+      null
+     ],
+     "after": [
+      "unresolved",
+      "stated_documents_not_held"
+     ],
+     "prints": {}
+    },
+    {
+     "key": [
+      108805,
+      "documents"
+     ],
+     "before": [
+      "not_stated",
+      null
+     ],
+     "after": [
+      "unresolved",
+      "stated_documents_not_held"
+     ],
+     "prints": {}
+    }
+   ]
+  },
+  "by_aspect": {
+   "captions:not_checked": 7916,
+   "documents:premise_holds": 2058,
+   "documents:unread": 38,
+   "recording:ambiguous": 42,
+   "recording:not_checked": 267,
+   "recording:premise_fails": 31,
+   "recording:premise_holds": 520,
+   "recording:unread": 1,
+   "transcript:ambiguous": 2,
+   "transcript:not_checked": 1925,
+   "transcript:premise_holds": 78,
+   "witnesses:ambiguous": 12,
+   "witnesses:not_checked": 1,
+   "witnesses:premise_fails": 34,
+   "witnesses:premise_holds": 3525
+  },
+  "transitions": [
+   [
+    "captions",
+    "not_stated",
+    "unknown",
+    "recording_link_pending",
+    6117
+   ],
+   [
+    "captions",
+    "not_stated",
+    "unknown",
+    "recording_without_video_record",
+    1587
+   ],
+   [
+    "captions",
+    "not_stated",
+    "unknown",
+    null,
+    152
+   ],
+   [
+    "captions",
+    "unknown",
+    "unknown",
+    "recording_link_pending",
+    58
+   ],
+   [
+    "captions",
+    "unknown",
+    "unknown",
+    "recording_without_video_record",
+    2
+   ],
+   [
+    "documents",
+    "not_stated",
+    "unknown",
+    "senate_page_links_pending",
+    2051
+   ],
+   [
+    "documents",
+    "not_stated",
+    "unresolved",
+    "stated_documents_not_held",
+    45
+   ],
+   [
+    "recording",
+    "claimed",
+    "partial",
+    "excerpts_only",
+    1
+   ],
+   [
+    "recording",
+    "claimed",
+    "present",
+    null,
+    125
+   ],
+   [
+    "recording",
+    "confirmed_absent",
+    "unknown",
+    null,
+    10
+   ],
+   [
+    "recording",
+    "partial",
+    "unknown",
+    null,
+    15
+   ],
+   [
+    "recording",
+    "present",
+    "claimed",
+    "video_text_only",
+    36
+   ],
+   [
+    "recording",
+    "present",
+    "partial",
+    "excerpts_only",
+    1
+   ],
+   [
+    "recording",
+    "present",
+    "unknown",
+    null,
+    147
+   ],
+   [
+    "recording",
+    "present",
+    "unresolved",
+    "old_evidence_disputes_negative_verdict",
+    1
+   ],
+   [
+    "recording",
+    "unknown",
+    "confirmed_absent",
+    null,
+    6
+   ],
+   [
+    "recording",
+    "unknown",
+    "not_public",
+    null,
+    1
+   ],
+   [
+    "recording",
+    "unknown",
+    "partial",
+    "excerpts_only",
+    37
+   ],
+   [
+    "recording",
+    "unknown",
+    "present",
+    null,
+    469
+   ],
+   [
+    "recording",
+    "unknown",
+    "unresolved",
+    "old_evidence_disputes_negative_verdict",
+    8
+   ],
+   [
+    "recording",
+    "unresolved",
+    "unknown",
+    null,
+    4
+   ],
+   [
+    "transcript",
+    "not_stated",
+    "present",
+    null,
+    60
+   ],
+   [
+    "transcript",
+    "not_stated",
+    "unknown",
+    "package_names_meeting_unlinked",
+    62
+   ],
+   [
+    "transcript",
+    "present",
+    "unresolved",
+    null,
+    1863
+   ],
+   [
+    "transcript",
+    "unresolved",
+    "present",
+    null,
+    20
+   ],
+   [
+    "witnesses",
+    "not_stated",
+    "present",
+    null,
+    445
+   ],
+   [
+    "witnesses",
+    "not_stated",
+    "unknown",
+    "package_witnesses_unattached",
+    35
+   ],
+   [
+    "witnesses",
+    "not_stated",
+    "unknown",
+    "senate_page_links_pending",
+    2926
+   ],
+   [
+    "witnesses",
+    "present",
+    "not_stated",
+    null,
+    1
+   ],
+   [
+    "witnesses",
+    "present",
+    "unknown",
+    "package_witnesses_unattached",
+    123
+   ],
+   [
+    "witnesses",
+    "present",
+    "unknown",
+    "senate_page_links_pending",
+    42
+   ]
+  ],
+  "note": "No raw record can prove unknown; only the premise of each relabel is checked."
+ },
+ "prints": {
+  "read": 10765,
+  "unread": [
+   "CHRG-114hhrg20543",
+   "CHRG-114hhrg20792",
+   "CHRG-114hhrg25123",
+   "CHRG-114hhrg25126",
+   "CHRG-114hhrg25637",
+   "CHRG-114hhrg94225",
+   "CHRG-115hhrg23885",
+   "CHRG-115hhrg23886",
+   "CHRG-115hhrg25241",
+   "CHRG-115hhrg31209",
+   "CHRG-115hhrg35373",
+   "CHRG-115hhrg35389",
+   "CHRG-115hhrg35833",
+   "CHRG-115hhrg35950",
+   "CHRG-116hhrg35338",
+   "CHRG-116hhrg35378",
+   "CHRG-116hhrg36089",
+   "CHRG-116hhrg36398",
+   "CHRG-116hhrg36951",
+   "CHRG-116hhrg37475",
+   "CHRG-116hhrg37829",
+   "CHRG-116hhrg39417",
+   "CHRG-116hhrg39916",
+   "CHRG-116hhrg41922",
+   "CHRG-116hhrg43189",
+   "CHRG-116shrg36469",
+   "CHRG-116shrg37080",
+   "CHRG-116shrg37820",
+   "CHRG-116shrg38197",
+   "CHRG-116shrg38198",
+   "CHRG-116shrg39553",
+   "CHRG-116shrg40775",
+   "CHRG-117hhrg50114",
+   "CHRG-117hhrg50116",
+   "CHRG-117hhrg50117",
+   "CHRG-117hhrg50118",
+   "CHRG-117hhrg50119",
+   "CHRG-117hhrg50672",
+   "CHRG-117hhrg50674",
+   "CHRG-117hhrg53989",
+   "CHRG-117shrg44201",
+   "CHRG-117shrg47217",
+   "CHRG-117shrg49905",
+   "CHRG-118hhrg54204",
+   "CHRG-119shrg61392"
+  ]
+ }
+}

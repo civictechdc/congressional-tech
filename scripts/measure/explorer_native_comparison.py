@@ -155,6 +155,21 @@ def compare(db, *, old, table, data, lake, decisions):
           sum(CASE WHEN on_event=0 AND on_package=0 AND on_page=0 AND event_id NOT IN (SELECT event_id FROM witness_events) THEN 1 ELSE 0 END)
         FROM keyed""").fetchone()))
     out['old_witness_rows']['owner'] = 'ct-x78c'
+    # One disposition per distinct (event, name), by old source. A House row with no native row on an event
+    # with no witnesses is unlinked; the 40 lists that state their event only in a receipt path land here.
+    out['old_witness_rows']['dispositions'] = {f'{d}|{s}': n for d, s, n in db.execute("""
+        WITH keyed AS (SELECT o.event_id,o.name_key,min(o.source) AS source,
+          max(CASE WHEN n.event_id=o.event_id THEN 1 ELSE 0 END) AS on_event,
+          max(CASE WHEN n.package_id=o.origin THEN 1 ELSE 0 END) AS on_package,
+          max(CASE WHEN n.page_url=o.origin THEN 1 ELSE 0 END) AS on_page
+          FROM old_witness_rows o LEFT JOIN native_names n ON n.name_key=o.name_key AND (n.event_id=o.event_id OR n.package_id=o.origin OR n.page_url=o.origin)
+          GROUP BY o.event_id,o.name_key)
+        SELECT CASE WHEN on_event=1 THEN 'on_event' WHEN on_package=1 THEN 'package_occasion_pending_link'
+          WHEN on_page=1 THEN 'page_occasion_pending_link'
+          WHEN event_id IN (SELECT event_id FROM witness_events) THEN 'name_normalization'
+          WHEN source='docs.house.gov' THEN 'house_list_event_unlinked'
+          WHEN source='senate committee page' THEN 'source_not_held' ELSE 'no_native_parser' END AS d,source,count(*)
+        FROM keyed GROUP BY 1,2 ORDER BY 1,2""").fetchall()}
     out['old_witness_rows']['note'] = 'Distinct by event and normalized name. on_package and on_page rows are held natively without an event link, which is the remaining migration.'
     amendment_key = lambda event, description: f"""concat_ws('|',{event},kind,coalesce(url,''),coalesce("number",''),coalesce(bill,''),coalesce({description},''))"""
     new_amendments = table('committee_records')
