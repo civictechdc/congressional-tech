@@ -223,10 +223,11 @@ def test_legacy_roots_cover_the_installed_mf2py_rules():
     assert rules and rules <= set(reader.MICROFORMAT_LEGACY_ROOTS)
 
 
-def test_version_tracks_closure_options_and_source(monkeypatch, tmp_path):
+def test_version_tracks_options_and_source_but_not_extruct(monkeypatch, tmp_path):
     version = html_metadata_version.current_version()
-    assert version == html_metadata_version.current_version()
     real = installed.version
+    monkeypatch.setattr(html_metadata_version.metadata, 'version', lambda name: '99' if name == 'extruct' else real(name))
+    assert html_metadata_version.current_version() == version
     monkeypatch.setattr(html_metadata_version.metadata, 'version', lambda name: '99' if name == 'lxml' else real(name))
     assert html_metadata_version.current_version() != version
     monkeypatch.setattr(html_metadata_version.metadata, 'version', real)
@@ -237,15 +238,11 @@ def test_version_tracks_closure_options_and_source(monkeypatch, tmp_path):
         target = tmp_path / html_metadata_version.SOURCE / name
         target.parent.mkdir(parents=True, exist_ok=True)
         target.write_bytes((ROOT / html_metadata_version.SOURCE / name).read_bytes())
-    sidecar = tmp_path / html_metadata_version.SIDECAR
-    sidecar.write_bytes((ROOT / html_metadata_version.SIDECAR).read_bytes())
     assert html_metadata_version.current_version(tmp_path) == version
     target.write_bytes(target.read_bytes() + b'\n')
     assert html_metadata_version.current_version(tmp_path) != version
 
 
-def test_version_refuses_a_closure_that_differs_from_the_sidecar(monkeypatch):
-    real = installed.version
-    monkeypatch.setattr(html_metadata_version.metadata, 'version', lambda name: '0' if name == 'mf2py' else real(name))
-    with pytest.raises(ValueError, match='mf2py'):
-        html_metadata_version.current_version()
+def test_each_reading_records_the_extruct_version():
+    assert read_html_metadata(FIXTURE).extruct_version == installed.version('extruct')
+    assert read_html_metadata(b'%PDF-1.7').extruct_version is None

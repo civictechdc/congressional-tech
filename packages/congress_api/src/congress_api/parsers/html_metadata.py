@@ -6,8 +6,8 @@ one result can be reused for every capture of a body. The exception is a result 
 so never reuse it as a complete reading. Page payloads and parser versions stay
 untouched; a result is its own source record.
 
-extruct is imported on call because it lives in the hash-pinned sidecar
-(``html-metadata.lock.txt``), not in every environment that imports this package.
+extruct is imported on call because it is a separate install (``html-metadata.in``),
+not in every environment that imports this package.
 
 Without a main thread there is no signal deadline, so ``format_timeout_seconds``
 applies only on the main thread. Run this in a supervised worker's main thread.
@@ -19,6 +19,7 @@ import threading
 from collections import Counter, defaultdict
 from contextlib import contextmanager
 from hashlib import sha256
+from importlib.metadata import version as installed_version
 from typing import Any
 
 from lxml import html as dom
@@ -223,7 +224,7 @@ def read_html_metadata(body: bytes, *, formats: tuple[str, ...] = FORMATS,
     common = dict(schema_version=METADATA_SCHEMA, body_sha256=sha256(body).hexdigest(), body_bytes=len(body))
     if not is_html(body):
         return HtmlMetadata(**common, encoding=None, document_kind='non_html', error_title_hint=False, title=None,
-                            declared_base=None, head_meta=[], head_links=[], document_truncated=False,
+                            declared_base=None, head_meta=[], head_links=[], document_truncated=False, extruct_version=None,
                             formats={name: FormatResult(status='skipped', skip_reason='non_html') for name in FORMATS})
     encoding, decoded, utf8_body = _transcode(body)
     tree, truncated = _tree(utf8_body)
@@ -247,7 +248,7 @@ def read_html_metadata(body: bytes, *, formats: tuple[str, ...] = FORMATS,
     return HtmlMetadata(**common, encoding=encoding, document_kind='html',
                         error_title_hint=any(marker in folded for marker in ERROR_TITLE_MARKERS),
                         title=title, declared_base=base, formats=results, head_meta=meta, head_links=links,
-                        document_truncated=truncated)
+                        document_truncated=truncated, extruct_version=installed_version('extruct'))
 
 
 def page_is_substantive(metadata: HtmlMetadata, http_status: int) -> bool:

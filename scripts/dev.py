@@ -75,23 +75,18 @@ def inventory(config):
 
 
 def html_metadata_errors(timeout):
-    """Compare the sidecar's pins with this environment; uv sync removes these packages."""
-    sidecar = 'packages/congress_api/html-metadata.lock.txt'
-    remedy = f'run uv pip install --python .venv/bin/python --no-deps --require-hashes -r {sidecar}'
-    pins = re.findall(r'^([a-z0-9-]+)==(\S+)', (ROOT / sidecar).read_text(), re.M)
-    probe = ('import importlib.metadata as m,json,sys\n'
-             'def v(n):\n'
-             '    try: return m.version(n)\n'
-             '    except m.PackageNotFoundError: return None\n'
-             'print(json.dumps({n: v(n) for n in sys.argv[1:]}))')
+    """Require the reader's extractor, which uv sync removes; its exact version does not gate."""
+    declared = 'packages/congress_api/html-metadata.in'
+    remedy = f'run uv pip install --python .venv/bin/python -r {declared}'
+    low, high = re.search(r'^extruct>=([\d.]+),<([\d.]+)', (ROOT / declared).read_text(), re.M).groups()
     try:
-        installed = json.loads(run([sys.executable, '-c', probe, *(name for name, _ in pins)], timeout=timeout).stdout)
-    except (OSError, ValueError, subprocess.SubprocessError) as error:
-        return [f'HTML metadata sidecar: {error}; {remedy}']
-    wrong = [f'{name} expected {version}, got {installed[name]}' for name, version in pins if installed[name] != version]
-    if not wrong:
-        print(f'HTML metadata sidecar: {len(pins)} packages')
-    return [f'HTML metadata sidecar: {"; ".join(wrong)}; {remedy}'] if wrong else []
+        version = run([sys.executable, '-c', 'import importlib.metadata as m; print(m.version("extruct"))'], timeout=timeout).stdout.strip()
+    except (OSError, subprocess.SubprocessError) as error:
+        return [f'HTML metadata extractor: extruct is not installed ({type(error).__name__}); {remedy}']
+    parts = lambda value: tuple(map(int, value.split('.')))
+    in_range = parts(low) <= parts(version) < parts(high)
+    print(f'extruct: {version}' if in_range else f'WARNING: extruct {version} is outside {low} to {high}; readings record the version')
+    return []
 
 
 def doctor(config, lane_name=None):
