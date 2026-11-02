@@ -69,3 +69,7 @@ Owner decision 2026-11-02: any gate-1 difference group the cause catalog can't m
 **2026-11-02T17:20:05Z**
 
 2026-11-02 (lead): r1b-h2 44785aee merged (ff): gate 1 compares shared struct subfields individually (sittings[].start changes surface), new subfields are their own addition groups, removed ones refuse, and columns new in the candidate are listed under cannot_see.
+
+**2026-11-02T18:19:25Z**
+
+2026-11-02 impl-h (r1b-h3 5ac60b63, on release-train): the video_records staging refusal was the producer's fault, not the validator's. The shared record producer wrote two identity keys and a free-text reason in its unreadable-body decision; data model §5.3 and validate_provenance require one identity and a snake_case reason. It began in 20206037 and moved into _record_producer.py in 3f6548e6. Fix: one unreadable_decision() (record_sha only; the reason is the exception class in snake_case). Every record producer now has an unreadable-body fixture; none had one before. The meeting, appearance, video and committee pins move. Open: the house_xml parsers stamp unreadable bytes as 'completed'; being measured before D4.
