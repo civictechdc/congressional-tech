@@ -9,6 +9,7 @@ import pyarrow.parquet as pq
 import pytest
 
 from congress_api.retention.body_store import BodyStore,LocalAdapter
+from native_test_helpers import empty_readings
 
 
 STAMP='2026-10-28T12:00:00Z'
@@ -425,22 +426,22 @@ def test_inline_saved_record_and_govinfo_mods_staging_with_anti_join(tmp_path):
     try:
         cap_stage=captures.stage_captures([dict(key=receipt_rel,path=str(receipt_path),qualification=str(qual))],
             engine=eng,work=tmp_path/'cap-stage')/'captures.parquet'
-        m_stage=meeting_records.stage(captures=cap_stage,engine=eng,work=tmp_path/'m1',
+        m_stage=meeting_records.stage(captures=cap_stage,readings=empty_readings(tmp_path/"readings"),engine=eng,work=tmp_path/'m1',
             local_root=raw,raw_store=store,decided_at=STAMP,unreadable_store=store)
         assert m_stage['work_items']==1 and m_stage['produced']==1
         m_rows=pq.read_table(m_stage['records']).to_pylist()
         assert len(m_rows)==1 and m_rows[0]['meetings'][0]['event_id']=='115599'
         # Second pass with existing records anti-joins the inline record
-        m_stage2=meeting_records.stage(captures=cap_stage,existing=m_stage['records'],engine=eng,
+        m_stage2=meeting_records.stage(captures=cap_stage,readings=empty_readings(tmp_path/"readings"),existing=m_stage['records'],engine=eng,
             work=tmp_path/'m2',local_root=raw,raw_store=store,decided_at=STAMP,unreadable_store=store)
         assert m_stage2['work_items']==0 and m_stage2['produced']==0
 
-        a_stage=appearance_records.stage(captures=cap_stage,engine=eng,work=tmp_path/'a1',
+        a_stage=appearance_records.stage(captures=cap_stage,readings=empty_readings(tmp_path/"readings"),engine=eng,work=tmp_path/'a1',
             local_root=raw,raw_store=store,decided_at=STAMP,unreadable_store=store)
         assert a_stage['work_items']==1 and a_stage['produced']==1
         a_rows=pq.read_table(a_stage['records']).to_pylist()
         assert len(a_rows)==1 and a_rows[0]['appearances'][0]['name']=='Dr. Inline Witness'
-        a_stage2=appearance_records.stage(captures=cap_stage,existing=a_stage['records'],engine=eng,
+        a_stage2=appearance_records.stage(captures=cap_stage,readings=empty_readings(tmp_path/"readings"),existing=a_stage['records'],engine=eng,
             work=tmp_path/'a2',local_root=raw,raw_store=store,decided_at=STAMP,unreadable_store=store)
         assert a_stage2['work_items']==0 and a_stage2['produced']==0
 
@@ -466,10 +467,10 @@ def test_inline_saved_record_and_govinfo_mods_staging_with_anti_join(tmp_path):
                 supersedes=None,
             )) + '\n'
         )
-        m_stage_unr=meeting_records.stage(captures=cap_stage,unreadable_files=[dict(key='provenance/unreadable/u.jsonl',path=str(unr_path))],
+        m_stage_unr=meeting_records.stage(captures=cap_stage,readings=empty_readings(tmp_path/"readings"),unreadable_files=[dict(key='provenance/unreadable/u.jsonl',path=str(unr_path))],
             engine=eng,work=tmp_path/'m-unr',local_root=raw,raw_store=store,decided_at=STAMP,unreadable_store=store)
         assert m_stage_unr['work_items']==0 and m_stage_unr['produced']==0
-        a_stage_unr=appearance_records.stage(captures=cap_stage,unreadable_files=[dict(key='provenance/unreadable/u.jsonl',path=str(unr_path))],
+        a_stage_unr=appearance_records.stage(captures=cap_stage,readings=empty_readings(tmp_path/"readings"),unreadable_files=[dict(key='provenance/unreadable/u.jsonl',path=str(unr_path))],
             engine=eng,work=tmp_path/'a-unr',local_root=raw,raw_store=store,decided_at=STAMP,unreadable_store=store)
         assert a_stage_unr['work_items']==0 and a_stage_unr['produced']==0
     finally:

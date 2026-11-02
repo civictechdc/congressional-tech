@@ -108,3 +108,12 @@ def lake_readings_table(rows):
     for field in schema:
         refuse_nulls(field.name, field, table.column(field.name).combine_chunks())
     return table
+
+
+def empty_readings(directory):
+    """An empty lake readings table: D4 producers route House XML by reading, and none exists."""
+    import pyarrow.parquet as pq
+    path = Path(directory) / 'readings.parquet'
+    path.parent.mkdir(parents=True, exist_ok=True)
+    pq.write_table(lake_readings_table([]), path)
+    return path

@@ -154,7 +154,7 @@ def selective_base(root):
             stored_bytes,stored_suffix='.gz' AS stored_gzip FROM captures WHERE sha256 IS NOT NULL""",['body_sha'])])
         pages=readings.stage_once(captures=captures,body_inventory=bodies/'bodies.parquet',local_root=raw,engine=engine,work=root/'reading-stage',decided_at=SELECTIVE_STAMP)
         names=filenames.stage(captures=captures,recovery_files=(),engine=engine,work=root/'filename-stage',decided_at=SELECTIVE_STAMP)
-        common=dict(captures=captures,engine=engine,local_root=raw,decided_at=SELECTIVE_STAMP)
+        common=dict(captures=captures,engine=engine,local_root=raw,decided_at=SELECTIVE_STAMP,readings=pages['readings'])
         meetings=meeting_records.stage(work=root/'meeting-stage',**common)
         appearances=appearance_records.stage(work=root/'appearance-stage',**common)
     base=dict(captures=captures,readings=pages['readings'],filename_readings=names['readings'],meeting_records=meetings['records'],appearance_records=appearances['records'])

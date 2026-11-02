@@ -151,6 +151,8 @@ def test_entity_completeness_and_record_producer_candidates_agree_1_for_1(tmp_pa
     from congress_api.lake._record_producer import (
         CANDIDATE_APPEARANCE_RECORDS_SQL,
         CANDIDATE_MEETING_RECORDS_SQL,
+        CURRENT_PAGE_READINGS_SQL,
+        expected_records_sql,
     )
     from viewer_publication.archive_model_profile import (
         APPEARANCE_SOURCES,
@@ -174,6 +176,8 @@ def test_entity_completeness_and_record_producer_candidates_agree_1_for_1(tmp_pa
     sha_mods_xml = '77' * 32
     sha_cg_sizelimit = '88' * 32
     sha_inline_cg = '99' * 32
+    sha_house_amendment = 'aa' * 32
+    sha_house_wlist_unread = 'bb' * 32
 
     capture_rows = [
         # 1. Non-House XML with xml_root='committee-meeting' -> NOT a candidate
@@ -248,6 +252,22 @@ def test_entity_completeness_and_record_producer_candidates_agree_1_for_1(tmp_pa
             requested_url='https://api.congress.gov/v3/committee-meeting/118/house/115999', context_url=None, member_path=None,
             sniffed_format=None, media_type=None,
         ),
+        # 10. House XML whose root is neither meeting nor witness list -> NOT a candidate (ct-kn6d)
+        dict(
+            receipt_key='r1', receipt_line=10, capture_index=0, body_hex=sha_house_amendment,
+            mode='fetch', complete=True, outcome='stored', http_status=200, stored_suffix='.gz',
+            family='house/Committees', url='https://docs.house.gov/billsthisweek/20230510/BILLS-118hr1-amendment.xml',
+            requested_url='https://docs.house.gov/billsthisweek/20230510/BILLS-118hr1-amendment.xml',
+            context_url=None, member_path=None, sniffed_format='xml', media_type='application/xml',
+        ),
+        # 11. A wlist URL with no completed XML reading -> appearance only, by the URL fallback
+        dict(
+            receipt_key='r1', receipt_line=11, capture_index=0, body_hex=sha_house_wlist_unread,
+            mode='fetch', complete=True, outcome='stored', http_status=200, stored_suffix='.gz',
+            family='house/Committees', url='https://docs.house.gov/meetings/IF/IF00/20230511/115539/HHRG-118-IF00-WList-20230511.xml',
+            requested_url='https://docs.house.gov/meetings/IF/IF00/20230511/115539/HHRG-118-IF00-WList-20230511.xml',
+            context_url=None, member_path=None, sniffed_format='xml', media_type='application/xml',
+        ),
     ]
 
     reading_rows = []
@@ -266,7 +286,9 @@ def test_entity_completeness_and_record_producer_candidates_agree_1_for_1(tmp_pa
             xml_root = 'witness-list'
         elif bhex in (sha_non_mods_xml, sha_mods_xml):
             xml_root = 'mods'
-        r_status = 'size_limit' if bhex == sha_cg_sizelimit else 'completed'
+        elif bhex == sha_house_amendment:
+            xml_root = 'amendment-doc'
+        r_status = 'size_limit' if bhex == sha_cg_sizelimit else 'error' if bhex == sha_house_wlist_unread else 'completed'
         reading_rows.append(dict(body_hex=bhex, parser=fmt, parser_version=f'{fmt}-1', status=r_status, xml_root=xml_root))
 
     # Settled entity rows for ONLY the genuine candidates (4, 5, 6, 7, 8, 9)
@@ -279,6 +301,7 @@ def test_entity_completeness_and_record_producer_candidates_agree_1_for_1(tmp_pa
     ar_input = [
         dict(record_sha_hex=sha_cg_web_url, source='congress_gov', parser_version=ar_vers['congress_gov'], status='completed'),
         dict(record_sha_hex=sha_house_wl, source='house_xml', parser_version=ar_vers['house_xml'], status='completed'),
+        dict(record_sha_hex=sha_house_wlist_unread, source='house_xml', parser_version=ar_vers['house_xml'], status='completed'),
         dict(record_sha_hex=sha_mods_xml, source='mods', parser_version=ar_vers['mods'], status='completed'),
         dict(record_sha_hex=sha_cg_sizelimit, source='congress_gov', parser_version=ar_vers['congress_gov'], status='completed'),
         dict(record_sha_hex=sha_inline_cg, source='congress_gov', parser_version=ar_vers['congress_gov'], status='completed'),
@@ -311,6 +334,7 @@ def test_entity_completeness_and_record_producer_candidates_agree_1_for_1(tmp_pa
             dict(name='captures', sql="SELECT *,decode(body_hex,'hex') AS sha256 FROM capture_rows"),
             dict(name='readings', sql="SELECT *,decode(body_hex,'hex') AS body_sha FROM reading_rows"),
             *selected_readings_steps([]),
+            dict(name='current_page_readings', sql=CURRENT_PAGE_READINGS_SQL),
             dict(name='sniff_facts', sql="SELECT decode(body_hex,'hex') AS body_sha,format FROM sniff_rows"),
             dict(name='body_admissions', sql="SELECT decode(body_hex,'hex') AS body_sha,format,basis FROM admission_rows"),
             dict(name='source_files', sql="SELECT cast(NULL AS VARCHAR) AS filename,cast(NULL AS VARCHAR) AS source_url WHERE false"),
@@ -324,6 +348,8 @@ def test_entity_completeness_and_record_producer_candidates_agree_1_for_1(tmp_pa
         ) + [
             dict(name='producer_mr', sql=CANDIDATE_MEETING_RECORDS_SQL),
             dict(name='producer_ar', sql=CANDIDATE_APPEARANCE_RECORDS_SQL),
+            dict(name='expected_mr', sql=expected_records_sql('meeting_records')),
+            dict(name='expected_ar', sql=expected_records_sql('appearance_records')),
         ]
         return run_job(
             sub_dir,
@@ -343,6 +369,13 @@ def test_entity_completeness_and_record_producer_candidates_agree_1_for_1(tmp_pa
     assert (sha_non_mods_xml, 'mods') not in prod_ar
     assert {(sha_cg_web_url, 'congress_gov'), (sha_house_cm, 'house_xml')} <= prod_mr
     assert {(sha_cg_web_url, 'congress_gov'), (sha_house_wl, 'house_xml'), (sha_mods_xml, 'mods')} <= prod_ar
+    # ct-kn6d: routing by XML root, URL fallback when unread, and no House XML in both tables.
+    house_mr = {sha for sha, source in prod_mr if source == 'house_xml'}
+    house_ar = {sha for sha, source in prod_ar if source == 'house_xml'}
+    assert house_mr == {sha_house_cm} and house_ar == {sha_house_wl, sha_house_wlist_unread}
+    # Producer candidates are exactly the model's expected keys (both built from ROUTES).
+    assert prod_mr == {(r['record_sha_hex'], r['source']) for r in res_settled['expected_mr']}
+    assert prod_ar == {(r['record_sha_hex'], r['source']) for r in res_settled['expected_ar']}
 
     # Completeness checks must agree 1-for-1: 0 unsettled when genuine candidates are settled
     ent_settled = res_settled['entity_profile_completeness'][0]

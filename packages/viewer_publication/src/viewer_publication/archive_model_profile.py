@@ -4,12 +4,9 @@ from pathlib import Path
 import re
 
 from congress_api.lake._record_producer import (
-    CONGRESS_GOV_CAPTURE_SQL,
-    GOOD_FETCH_CAPTURE_SQL,
-    HOUSE_XML_CAPTURE_SQL,
+    CURRENT_PAGE_READINGS_SQL,
     INLINE_CONGRESS_MEETINGS_SQL,
-    MODS_CAPTURE_SQL,
-    SENATE_PAGE_CAPTURE_SQL,
+    expected_records_sql,
 )
 from congress_api.lake.readings import bundle_version,worker_limits
 from congress_api.lake.versions import version_digest
@@ -225,58 +222,11 @@ def completeness_checks(*,catalog_version,include_entities=False,
                 SELECT count(*) FROM selected_ar_versions WHERE version IS NULL OR trim(version)=''
             ) AS cnt
         ), current_page_readings AS (
-            SELECT r.body_sha,r.parser,r.status,r.xml_root
-            FROM selected_readings r
-            WHERE r.status IN ('completed','error','size_limit')
+            {CURRENT_PAGE_READINGS_SQL}
         ), expected_mr AS (
-            SELECT DISTINCT lower(encode(c.sha256,'hex')) AS record_sha_hex,'congress_gov' AS source
-            FROM captures c
-            LEFT JOIN current_page_readings r ON c.sha256=r.body_sha AND r.parser IN ('json','xml')
-            WHERE {GOOD_FETCH_CAPTURE_SQL}
-              AND {CONGRESS_GOV_CAPTURE_SQL}
-            UNION
-            SELECT DISTINCT lower(encode(c.sha256,'hex')) AS record_sha_hex,'house_xml' AS source
-            FROM captures c
-            LEFT JOIN current_page_readings r ON c.sha256=r.body_sha AND r.parser='xml'
-            WHERE {GOOD_FETCH_CAPTURE_SQL}
-              AND {HOUSE_XML_CAPTURE_SQL}
-              AND (
-                  (r.status='completed' AND r.xml_root='committee-meeting')
-                  OR (coalesce(r.status,'')<>'completed' AND coalesce(c.family,'')<>'house/witness-xml'
-                      AND lower(coalesce(c.url,c.requested_url,c.context_url,'')) NOT LIKE '%wlist%')
-              )
+            {expected_records_sql('meeting_records')}
         ), expected_ar AS (
-            SELECT DISTINCT lower(encode(c.sha256,'hex')) AS record_sha_hex,'house_xml' AS source
-            FROM captures c
-            LEFT JOIN current_page_readings r ON c.sha256=r.body_sha AND r.parser='xml'
-            WHERE {GOOD_FETCH_CAPTURE_SQL}
-              AND {HOUSE_XML_CAPTURE_SQL}
-              AND (
-                  (r.status='completed' AND r.xml_root='witness-list')
-                  OR (coalesce(r.status,'')<>'completed' AND (
-                      c.family='house/witness-xml'
-                      OR lower(coalesce(c.url,c.requested_url,c.context_url,'')) LIKE '%wlist%'
-                  ))
-              )
-            UNION
-            SELECT DISTINCT lower(encode(c.sha256,'hex')) AS record_sha_hex,'congress_gov' AS source
-            FROM captures c
-            LEFT JOIN current_page_readings r ON c.sha256=r.body_sha AND r.parser IN ('json','xml')
-            WHERE {GOOD_FETCH_CAPTURE_SQL}
-              AND {CONGRESS_GOV_CAPTURE_SQL}
-            UNION
-            SELECT DISTINCT lower(encode(c.sha256,'hex')) AS record_sha_hex,'mods' AS source
-            FROM captures c
-            LEFT JOIN current_page_readings r ON c.sha256=r.body_sha AND r.parser='xml'
-            WHERE {GOOD_FETCH_CAPTURE_SQL}
-              AND {MODS_CAPTURE_SQL}
-              AND (coalesce(r.status,'')<>'completed' OR r.xml_root IS NULL OR r.xml_root='mods')
-            UNION
-            SELECT DISTINCT lower(encode(c.sha256,'hex')) AS record_sha_hex,'senate_page' AS source
-            FROM captures c
-            LEFT JOIN current_page_readings r ON c.sha256=r.body_sha AND r.parser='html'
-            WHERE {GOOD_FETCH_CAPTURE_SQL}
-              AND {SENATE_PAGE_CAPTURE_SQL}
+            {expected_records_sql('appearance_records')}
         ), inline_cg_expected AS (
             SELECT DISTINCT CASE
                 WHEN source_url<>'' THEN source_url

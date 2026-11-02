@@ -254,6 +254,9 @@ def produce_daily(spec,*,engine,raw_store):
     if names['unreadable_provenance'] is not None:
         acknowledgements[names['unreadable_provenance']['key']]=names['_unreadable_custody']
     report['producerreports']['filename_readings']=names;versions['filename_readings']=names['catalog_version']
+    # D4 routes House XML by its current reading, so it reads readings after this run's append.
+    readings_head=tables.resolve_tables(**authority,work=work/'readings-head',
+        tables={'readings':spec['tables']['readings']})['readings']
     if 'meeting_records' in spec['tables']:
         meeting_head=tables.resolve_tables(**authority,work=work/'meeting-head',
             tables={'meeting_records':spec['tables']['meeting_records']})['meeting_records']
@@ -261,7 +264,7 @@ def produce_daily(spec,*,engine,raw_store):
             meetings_staged=meeting_records.stage(captures=heads['captures'],existing=meeting_head,engine=engine,
                 work=work/'meeting-records',local_root=spec['local_root'],raw_store=raw_store,
                 unreadable_files=unreadable_snapshot.files(),max_work_items=spec['max_work_items'],
-                decided_at=spec['decided_at'],unreadable_store=raw_store)
+                decided_at=spec['decided_at'],unreadable_store=raw_store,readings=readings_head)
         except readings.BackfillRequired as error:
             report.update(status='backfill_required');report['producerreports']['meeting_records']=error.as_dict()
             return report
@@ -279,7 +282,7 @@ def produce_daily(spec,*,engine,raw_store):
             appearances_staged=appearance_records.stage(captures=heads['captures'],existing=appearance_head,engine=engine,
                 work=work/'appearance-records',local_root=spec['local_root'],raw_store=raw_store,
                 unreadable_files=unreadable_snapshot.files(),max_work_items=spec['max_work_items'],
-                decided_at=spec['decided_at'],unreadable_store=raw_store)
+                decided_at=spec['decided_at'],unreadable_store=raw_store,readings=readings_head)
         except readings.BackfillRequired as error:
             report.update(status='backfill_required');report['producerreports']['appearance_records']=error.as_dict()
             return report
