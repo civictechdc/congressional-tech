@@ -36,6 +36,7 @@ import pyarrow as pa
 
 from ..models.congress import CommitteeMeeting
 from ..parsers.gpo import ModsDocument, parse_mods_document
+from ..parsers.gpo_hearings import mods_title
 from ..parsers.house_documents import NAME, active, number, value
 from ..parsers.house_xml import (
     HOUSE_MEETING_PREFIXES,
@@ -109,6 +110,9 @@ ARROW_SCHEMA = pa.schema(
         pa.field("declared_base", pa.string(), nullable=True),
         pa.field("collection_state", pa.string(), nullable=True),
         pa.field("appearances", pa.list_(pa.field("element", APPEARANCE_STRUCT, nullable=False)), nullable=False),
+        # GovInfo MODS only: the print's held dates (ISO) and published title; empty and null elsewhere.
+        pa.field("held_dates", pa.list_(pa.field("element", pa.string(), nullable=False)), nullable=True),
+        pa.field("title", pa.string(), nullable=True),
     ]
 )
 SCHEMA = ARROW_SCHEMA
@@ -169,6 +173,7 @@ _SOURCE_SYMBOLS: dict[str, tuple[str, ...]] = {
         "_clean_links",
         "preserve_appearances",
         "_PACKAGE_ID_IN_URL_RE",
+        "mods_held_dates",
         "extract_mods_observation",
         "extract_mods_appearances",
     ),
@@ -192,6 +197,7 @@ def current_version(source: str | None = None, *, root: Path = ROOT) -> str:
                 "record_producer": pkg_dir / "lake/_record_producer.py",
                 "models_gpo": pkg_dir / "models/gpo.py",
                 "parsers_gpo": pkg_dir / "parsers/gpo.py",
+                "parsers_gpo_hearings": pkg_dir / "parsers/gpo_hearings.py",
                 "parsers_xml": pkg_dir / "parsers/xml.py",
                 "parsers_witness_names": pkg_dir / "parsers/witness_names.py",
                 "lock": root / "uv.lock",
@@ -901,6 +907,17 @@ def extract_senate_page_appearances(
 _PACKAGE_ID_IN_URL_RE = re.compile(r"\b(CHRG-\d+[hsj]hrg\d+)\b", re.IGNORECASE)
 
 
+def mods_held_dates(doc: ModsDocument) -> list[str]:
+    """Every heldDate the print states, root and constituent items, as distinct sorted ISO dates."""
+    found = set()
+    for scope in (doc.root, *(doc.related_items or ())):
+        for value in getattr(scope, "held_dates", None) or ():
+            text = (value or "").strip()[:10]
+            if re.fullmatch(r"\d{4}-\d{2}-\d{2}", text):
+                found.add(text)
+    return sorted(found)
+
+
 def extract_mods_observation(
     payload: bytes | str | Mapping[str, Any] | ModsDocument,
     *,
@@ -999,6 +1016,10 @@ def extract_mods_observation(
             if resolved_pkg:
                 break
 
+    # What the print states about its sitting: every held date and its published title, so a
+    # package-to-meeting link can be checked against the meeting's own date and title (ct-dx22).
+    facts = {"held_dates": mods_held_dates(doc), "title": _opt_str(mods_title(doc.root))}
+
     member_bioguides: dict[str, str] = {}
     for mem in doc.members or []:
         role = (getattr(mem, "role", None) or "").strip().upper()
@@ -1017,7 +1038,8 @@ def extract_mods_observation(
             "package_id": resolved_pkg,
             "declared_base": None,
             "collection_state": "absent",
-            "appearances": [],
+            "appearances": [],            "appearances": [],
+            **facts,
         }
 
     raw_rows = []
@@ -1062,6 +1084,7 @@ def extract_mods_observation(
         "declared_base": None,
         "collection_state": "present" if appearances else "empty",
         "appearances": appearances,
+        **facts,
     }
 
 
@@ -1111,6 +1134,8 @@ def build_appearance_record_row(
         "declared_base": obs["declared_base"],
         "collection_state": obs["collection_state"],
         "appearances": obs["appearances"],
+        "held_dates": obs.get("held_dates"),
+        "title": obs.get("title"),
     }
 
 

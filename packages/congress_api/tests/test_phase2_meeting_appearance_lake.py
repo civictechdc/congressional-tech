@@ -114,6 +114,8 @@ def test_meeting_and_appearance_lake_schemas_and_table_profiles():
         "declared_base",
         "collection_state",
         "appearances",
+        "held_dates",
+        "title",
     ]
 
     appearances_field = next(f for f in a_schema["fields"] if f["name"] == "appearances")
@@ -628,6 +630,8 @@ def test_s2_fixture_2_empty_witness_and_meeting_rows_retained_for_anti_join():
         "declared_base": None,
         "collection_state": "empty",
         "appearances": [],
+        "held_dates": None,
+        "title": None,
     }
 
     # Second run at the same parser_version skips via anti-join before touching payload
@@ -732,6 +736,10 @@ def test_appearance_records_from_congress_gov_senate_page_and_mods():
     assert len(mods_row["appearances"]) >= 1
     assert all(a["source_locator"].startswith("mods:witness[") for a in mods_row["appearances"])
     assert all(a["document_links"] == [] for a in mods_row["appearances"])
+    # The print's own held dates and title, which a package-to-meeting link is checked against (ct-dx22).
+    assert mods_row["held_dates"] == ["2013-06-13"]
+    assert mods_row["title"] == "TAX REFORM: TAX HAVENS, BASE EROSION AND PROFIT-SHIFTING"
+    assert cg_row["held_dates"] is None and cg_row["title"] is None
 
     # Round-trip through PyArrow table builder
     tbl = appearance_records.table([cg_row, senate_row, mods_row])

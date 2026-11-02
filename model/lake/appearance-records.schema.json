@@ -55,6 +55,13 @@
           ]
         }
       }
-    }
+    },
+    {
+      "id": 32,
+      "name": "held_dates",
+      "required": false,
+      "type": {"type": "list", "element-id": 33, "element-required": true, "element": "string"}
+    },
+    {"id": 34, "name": "title", "required": false, "type": "string"}
   ]
 }
