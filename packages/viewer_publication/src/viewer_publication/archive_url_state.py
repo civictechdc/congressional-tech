@@ -59,12 +59,11 @@ def url_state_steps(*,root=ROOT,recovery_policy=None):
             FROM recheck_intervals i JOIN url_state_ages a ON a.family=i.family
             WHERE a.age_days IS NULL OR ((i.min_age_days IS NULL OR a.age_days>=i.min_age_days)
               AND (i.max_age_days IS NULL OR a.age_days<i.max_age_days))"""),
-        ('intervals',"""WITH counts AS (
-            SELECT requested_url,count(*) AS matches FROM url_state_interval_candidates GROUP BY requested_url
-            ), ranked AS (SELECT *,row_number() OVER(PARTITION BY requested_url
-            ORDER BY interval_seconds,id) AS preference FROM url_state_interval_candidates)
-            SELECT r.requested_url,r.interval_seconds,c.matches,r.preference
-            FROM counts c JOIN ranked r ON c.requested_url=r.requested_url WHERE r.preference=1"""),
+        # One grouping, no join: the first band by (interval_seconds,id) carries the smallest interval.
+        # A count joined back as a hash-join build is charged once per emitted slice of the grouped
+        # values (5.3 GB for 118 MB at 1.17M URLs) and exhausted the 14 GiB model pool here.
+        ('intervals',"""SELECT requested_url,min(interval_seconds) AS interval_seconds,count(*) AS matches
+            FROM url_state_interval_candidates GROUP BY requested_url"""),
         ('page_contexts',"""SELECT DISTINCT encode(g.sha256,'hex') AS page_body,g.context_url,g.member_path
             FROM good_fetch_contexts g JOIN record_roles r USING(receipt_key,receipt_line,capture_index)
             WHERE g.sha256 IS NOT NULL AND r.record_role IS DISTINCT FROM 'error_response'"""),
