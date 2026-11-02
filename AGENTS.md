@@ -47,6 +47,14 @@ still ramping, stops it at the kill limit, stops only the youngest job below
 4 GiB machine memory, and takes the job down if the watchdog itself is killed.
 Its stderr and `--report` give the peak to pass as `--expect-gb` next time.
 
+Data another agent or a later run reads (frozen inputs, run outputs,
+measurements) lives under `<main checkout>/.cache/archive-release/`, never only
+in a worktree or `/private/tmp`, which a prune or a reboot deletes. Remove a
+worktree with `.venv/bin/python scripts/dev.py prune-worktree <path>
+[--execute]`, not `git worktree remove`: it refuses while the tree holds
+uncommitted work, ignored data other than rebuildable environments, or a
+process working in it.
+
 For `apps/site` browser checks (`npm --prefix apps/site run contract:archive`),
 `npm --prefix apps/site ci` installs the exact `playwright` that
 `apps/site/package.json` pins; install its browser with

@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import argparse
+from fnmatch import fnmatch
 from hashlib import sha256
 import importlib.util
 import json
@@ -299,6 +300,68 @@ def write_local_runtime(*, binary=None, limits, out, workspace=None, platform=No
     return out
 
 
+DISPOSABLE = {'.venv', 'node_modules', '__pycache__', '.pytest_cache', '.ruff_cache', '.mypy_cache', '.astro', 'dist', 'build', 'target'}  # Rebuildable.
+
+
+def _disposable(relative):
+    parts = Path(relative).parts
+    return (any(part in DISPOSABLE or part.endswith('.egg-info') for part in parts)
+            or parts[:2] == ('.cache', 'local-runtime'))
+
+
+def worktree_blockers(path, *, repo=ROOT, discard=()):
+    """Name what removing a linked worktree would lose or break; an empty list means none.
+
+    `git worktree remove` deletes ignored files without a word. On 2026-11-02 a prune
+    took cluster C's ignored output/c-probe/, the frozen v21 inputs impl-f's builds read.
+    Rebuildable environments and caches go; any other ignored file, local change, or
+    process working in or reading from the tree blocks, unless named by --discard.
+    """
+    path = Path(path).resolve()
+    listing = subprocess.run(['git', '-C', str(repo), 'worktree', 'list', '--porcelain'],
+                             check=True, capture_output=True, text=True).stdout
+    trees = [Path(line.split(' ', 1)[1]).resolve() for line in listing.splitlines() if line.startswith('worktree ')]
+    if path not in trees[1:]:
+        raise ValueError(f'{path} is not a linked worktree of {repo}')
+    status = subprocess.run(['git', '-C', str(path), 'status', '--porcelain', '--ignored', '-z'],
+                            check=True, capture_output=True, text=True).stdout
+    blockers = []
+    for entry in filter(None, status.split('\0')):
+        code, relative = entry[:2], entry[3:]
+        if code != '!!':
+            blockers.append(f'uncommitted: {relative}')
+            continue
+        candidates = [relative.rstrip('/')]
+        if relative.endswith('/'):  # A collapsed ignored directory: judge what it holds.
+            candidates = []
+            for directory, names, files in os.walk(path / relative):
+                names[:] = [name for name in names
+                            if not _disposable((Path(directory) / name).relative_to(path))]
+                candidates += [(Path(directory) / name).relative_to(path).as_posix() for name in files]
+        for name in candidates:
+            if not _disposable(name) and not any(fnmatch(name, pattern) for pattern in discard):
+                blockers.append(f'ignored data: {name}')
+    opened = subprocess.run(['lsof', '-n', '-w', '-Fpn'], capture_output=True, text=True).stdout
+    pid = None
+    for line in opened.splitlines():
+        if line.startswith('p'):
+            pid = line[1:]
+        elif line.startswith('n') and (line[1:] == str(path) or line[1:].startswith(f'{path}/')) and pid != str(os.getpid()):
+            blockers.append(f'in use by process {pid}: {line[1:]}')
+    return list(dict.fromkeys(blockers))
+
+
+def prune_worktree(path, *, repo=ROOT, discard=(), execute=False):
+    """Remove a linked worktree only when nothing it holds is still needed."""
+    if blockers := worktree_blockers(path, repo=repo, discard=discard):
+        raise ValueError('Refusing to remove ' + str(path) + ':\n' + '\n'.join(blockers[:50])
+                         + (f'\n... {len(blockers) - 50} more' if len(blockers) > 50 else '')
+                         + '\nMove durable data to <main checkout>/.cache/archive-release/, or name it with --discard.')
+    if execute:
+        subprocess.run(['git', '-C', str(repo), 'worktree', 'remove', str(path)], check=True)
+    return Path(path)
+
+
 def parse_shard(value):
     """Parse a one-based INDEX/COUNT without starting prerequisites or tests."""
     try:
@@ -451,6 +514,11 @@ def main(argv=None):
     local.add_argument('--out', type=Path, required=True)
     local.add_argument('--workspace', type=Path, help='Engine workspace (default: <out dir>/workspace)')
     local.add_argument('--platform', help='Pinned platform key (default: this host)')
+    prune = sub.add_parser('prune-worktree', help='Remove a linked worktree only if no ignored data or running process needs it')
+    prune.add_argument('path', type=Path)
+    prune.add_argument('--discard', action='append', default=[], metavar='GLOB',
+                       help='Ignored files (relative glob) that may be deleted with the worktree (repeatable)')
+    prune.add_argument('--execute', action='store_true', help='Remove it (default: report blockers only)')
     sub.add_parser('prepare-baseline', help='Fetch only the exact historical parser commit when absent, then verify its hash')
     clean_p = sub.add_parser('clean', help='Scan and reclaim stale build, egg-info, and cache artifacts')
     clean_p.add_argument('--execute', action='store_true', help='Execute deletion of stale artifacts (default is dry-run)')
@@ -471,6 +539,9 @@ def main(argv=None):
             doctor(config, args.lane)
         elif args.command == 'inventory':
             inventory(config)
+        elif args.command == 'prune-worktree':
+            prune_worktree(args.path, discard=args.discard, execute=args.execute)
+            print(('Removed ' if args.execute else 'Nothing blocks removing ') + str(args.path))
         elif args.command == 'write-local-runtime':
             out = write_local_runtime(binary=args.binary, limits=args.limits, out=args.out,
                                       workspace=args.workspace, platform=args.platform)

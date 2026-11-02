@@ -307,3 +307,58 @@ def test_write_local_runtime_passes_preflight_and_refuses_an_unpinned_binary(tmp
         dev.write_local_runtime(binary=other, limits=limits, out=refused, platform='darwin-arm64', pin_file=pin,
                                 store=tmp_path / 'other-store')
     assert list(tmp_path.glob('*refused.json*')) == []
+
+
+def linked_worktree(tmp_path):
+    """A repository whose .gitignore covers data and environments, with one linked worktree."""
+    repo, tree = tmp_path / 'repo', tmp_path / 'tree'
+    git = lambda *args, cwd=repo: subprocess.run(['git', *args], cwd=cwd, check=True, capture_output=True)
+    repo.mkdir()
+    git('init', '-q')
+    (repo / '.gitignore').write_text('output/\n.venv/\n.cache\n')
+    git('add', '.gitignore')
+    git('-c', 'user.name=t', '-c', 'user.email=t@example.invalid', 'commit', '-q', '-m', 'init')
+    git('worktree', 'add', '-q', str(tree))
+    (tree / '.venv' / 'lib').mkdir(parents=True)
+    (tree / '.venv' / 'lib' / 'site.py').write_text('environment')
+    (tree / '.cache' / 'local-runtime').mkdir(parents=True)
+    (tree / '.cache' / 'local-runtime' / 'runtime.json').write_text('{}')
+    return repo, tree
+
+
+def test_a_worktree_holding_ignored_data_is_not_removed(tmp_path):
+    """2026-11-02: removing cluster C's worktree deleted its ignored output/c-probe/, impl-f's frozen inputs."""
+    repo, tree = linked_worktree(tmp_path)
+    (tree / 'output' / 'c-probe').mkdir(parents=True)
+    (tree / 'output' / 'c-probe' / 'frozen.parquet').write_bytes(b'v21')
+    with pytest.raises(ValueError, match='ignored data: output/c-probe/frozen.parquet'):
+        dev.prune_worktree(tree, repo=repo, execute=True)
+    assert (tree / 'output' / 'c-probe' / 'frozen.parquet').exists()
+    dev.prune_worktree(tree, repo=repo, discard=['output/*'], execute=True)
+    assert not tree.exists()
+
+
+def test_a_worktree_with_only_rebuildable_files_is_removed(tmp_path):
+    repo, tree = linked_worktree(tmp_path)
+    assert dev.worktree_blockers(tree, repo=repo) == []
+    dev.prune_worktree(tree, repo=repo, execute=True)
+    assert not tree.exists()
+
+
+def test_a_worktree_a_process_works_in_is_not_removed(tmp_path):
+    import sys
+    repo, tree = linked_worktree(tmp_path)
+    reader = subprocess.Popen([sys.executable, '-c', 'import time;time.sleep(60)'], cwd=tree)
+    try:
+        with pytest.raises(ValueError, match=f'in use by process {reader.pid}'):
+            dev.prune_worktree(tree, repo=repo, execute=True)
+    finally:
+        reader.kill()
+        reader.wait()
+    assert tree.exists()
+
+
+def test_only_linked_worktrees_can_be_pruned(tmp_path):
+    repo, _ = linked_worktree(tmp_path)
+    with pytest.raises(ValueError, match='not a linked worktree'):
+        dev.prune_worktree(repo, repo=repo)
