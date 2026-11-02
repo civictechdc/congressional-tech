@@ -11,7 +11,7 @@ from congress_api.lake.daily import ALL_TABLE_NAMES,DAILY_CAPTURE_RECORDS
 from viewer_publication.archive_model_job import _local,provenance_record_kind
 
 FIELDS={'version','bucket','catalog_root','work','tables','batch_size','max_batches'}
-OPTIONAL={'engine_config','decided_at','max_work_items','body_inventory','receipt_inventory','local_root','selective','resume','through','producers'}
+OPTIONAL={'engine_config','decided_at','max_work_items','body_inventory','receipt_inventory','local_root','selective','resume','through','producers','derived_parsers'}
 FILENAME_PRIOR_VERSION = '6528235b033633460b3a2f008adb4dba66f2fcfb82c0640caf90203e5e86f4f1'
 FILENAME_ACT_CITATION_VERSION = 'c65e505ef8eb085e38072297aad395ca532fdc76a348a72b86f88c7734a83b09'
 
@@ -109,6 +109,9 @@ def load_spec(path):
         if type(value['max_work_items']) is not int or value['max_work_items']<=0:
             raise ValueError('Backfill max_work_items must be a positive integer')
         result['max_work_items']=value['max_work_items']
+    if 'derived_parsers' in value:
+        from congress_api.lake.daily import derived_parsers
+        result['derived_parsers']=derived_parsers(value)
     if 'body_inventory' in value and value['body_inventory'] is not None:
         result['body_inventory']=_local(value['body_inventory'],base)
     if 'local_root' in value and value['local_root'] is not None:
@@ -348,6 +351,7 @@ def execute(spec,*,runtime_factory=None,storage_factory=None,producer=None):
             provenance=provenance,
             # A pinned inventory only if the spec names one; otherwise bodies come from raw_store.
             **{k:spec[k] for k in ('body_inventory','local_root') if spec.get(k) is not None},
+            **({'derived_parsers':spec['derived_parsers']} if spec.get('derived_parsers') else {}),
         )
         records=None
         if 'producers' in spec:

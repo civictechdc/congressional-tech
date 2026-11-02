@@ -375,7 +375,9 @@ def _daily(run):
     raw_store,provenance=run.raw_store()
     production=produce_daily(dict(work=str(run.attempt/'daily'),decided_at=run.decided_at,catalog_root=run.catalog,
         tables={name:run.spec['tables'][name] for name in ('captures','readings','filename_readings')},receipt_inventory=[],
-        max_work_items=run.spec['batch_size']*run.spec['max_batches'],provenance=provenance),engine=run.engine,raw_store=raw_store)
+        max_work_items=run.spec['batch_size']*run.spec['max_batches'],provenance=provenance,
+        **({'derived_parsers':run.spec['derived_parsers']} if run.spec.get('derived_parsers') else {})),
+        engine=run.engine,raw_store=raw_store)
     if production['status']!='completed':raise SelectiveStop('Daily producers stopped at '+production['status'])
     run.state['daily']=dict(captures=production['pins']['captures'],unreadable=[dict(key=r['key'],path=r['path']) for r in production['provenance']['unreadable']],
         filenames_recomputed=production['producerreports']['filename_readings'].get('produced'))

@@ -62,10 +62,11 @@ def _qualify_path(path):
 def _validate(spec,engine,raw_store):
     required={'work','decided_at','catalog_root','tables','receipt_inventory','max_work_items','provenance'}
     # Without a pinned body inventory, bodies are read from the raw store itself (_body_source).
-    optional={'validated_counter','source_qualifications','vocabularies','body_inventory','local_root','receipt_families'}
+    optional={'validated_counter','source_qualifications','vocabularies','body_inventory','local_root','receipt_families','derived_parsers'}
     if not isinstance(spec,dict) or not required<=spec.keys() or spec.keys()-(required|optional):
         raise ValueError('Daily producer requires explicit receipt, body, table and provenance inputs')
     readings._positive(spec['max_work_items'],'max_work_items')
+    derived_parsers(spec)
     instant(spec['decided_at'])
     if any(not isinstance(spec[k],(str,Path)) or not str(spec[k])
            for k in ('work','body_inventory','local_root') if k=='work' or spec.get(k) is not None):
@@ -198,6 +199,15 @@ def _final_provenance(initial,raw_store,imported,identities,*,acknowledgements=N
     for key,row in required.items():require_ack(row,acknowledgements[key])
     if unreadable_snapshot is not None:unreadable_snapshot.rows()
     return result
+
+
+def derived_parsers(spec):
+    """Derived readings passes a run asks for; default none, so a first run never demands a backfill."""
+    value=spec.get('derived_parsers',[])
+    if (not isinstance(value,list) or any(not isinstance(p,str) or p not in readings.READ_AS for p in value)
+            or len(set(value))!=len(value)):
+        raise ValueError('derived_parsers must list distinct derived readings parsers: '+', '.join(readings.READ_AS))
+    return value
 
 
 def _check_entity_versions(table_name,actual,mod):
@@ -518,25 +528,34 @@ def _produce(spec,engine,raw_store,work,provenance,identities,unreadable_snapsho
         report['producerreports']['captures']=dict(stage=str(stage),append=appended)
         heads.update(tables.resolve_tables(**authority,work=work/'captures-head',
             tables={'captures':spec['tables']['captures']}))
-    try:
-        parsed=readings.run(engine=engine,work=work/'readings',mode='daily',execute=True,
-            max_work_items=spec['max_work_items'],table=spec['tables']['readings'],
-            catalog_root=spec['catalog_root'],unreadable_store=raw_store,
-            captures=heads['captures'],**_body_source(spec,raw_store,work/'readings',listing),
-            decided_at=spec['decided_at'],unreadable_snapshot=unreadable_snapshot)
-    except readings.BackfillRequired as error:
-        report.update(status='backfill_required');report['producerreports']['readings']=error.as_dict()
-        return report
-    except readings.RawCustodyRequired as error:
-        report.update(status='raw_custody_required');report['producerreports']['readings']=error.as_dict()
-        return report
-    report['producerreports']['readings']=parsed
+    passes={}
+    # The combined pass, then each derived pass over the same inputs: a derived parser reads
+    # bodies the combined pass classified, so it plans after that append.
+    for name in [None,*derived_parsers(spec)]:
+        step=name or 'readings'
+        try:
+            passes[step]=readings.run(engine=engine,work=work/step,mode='daily',execute=True,
+                max_work_items=spec['max_work_items'],table=spec['tables']['readings'],parser=name,
+                catalog_root=spec['catalog_root'],unreadable_store=raw_store,
+                captures=heads['captures'],**_body_source(spec,raw_store,work/step,listing),
+                decided_at=spec['decided_at'],unreadable_snapshot=unreadable_snapshot)
+        except readings.BackfillRequired as error:
+            report.update(status='backfill_required');report['producerreports'][step]=error.as_dict()
+            return report
+        except readings.RawCustodyRequired as error:
+            report.update(status='raw_custody_required');report['producerreports'][step]=error.as_dict()
+            return report
+        report['producerreports'][step]=passes[step]
+        if passes[step]['status']=='pending':break
+    parsed=passes['readings']
     versions.update(readings=parsed['parser_version'],parsers={p:readings.current_version(p)
         for p in ['sniff','html','xml','json']})
-    imports=[batch['unreadable_provenance'] for batch in parsed['batches']]
+    versions.update({name:run['parser_version'] for name,run in passes.items() if name!='readings'})
+    batches=[batch for run in passes.values() for batch in run['batches']]
+    imports=[batch['unreadable_provenance'] for batch in batches]
     acknowledgements={batch['unreadable_provenance']['key']:batch['_unreadable_custody']
-        for batch in parsed['batches'] if batch['unreadable_provenance'] is not None}
-    if parsed['status']=='pending':
+        for batch in batches if batch['unreadable_provenance'] is not None}
+    if any(run['status']=='pending' for run in passes.values()):
         report.update(status='pending',provenance=_final_provenance(provenance,raw_store,imports,identities,
             acknowledgements=acknowledgements,unreadable_snapshot=unreadable_snapshot))
         return report
@@ -620,6 +639,8 @@ def _produce(spec,engine,raw_store,work,provenance,identities,unreadable_snapsho
             or {p:readings.current_version(p) for p in versions['parsers']}!=versions['parsers']
             or readings.bundle_version(versions['parsers'],policy=readings.worker_limits())!=versions['readings']):
         raise ValueError('Daily producer definitions changed during execution')
+    if any(readings.current_version(name)!=versions[name] for name in derived_parsers(spec)):
+        raise ValueError('Daily derived readings definitions changed during execution')
     if 'meeting_records' in versions:
         _check_entity_versions('meeting_records',versions['meeting_records'],meeting_records)
     if 'appearance_records' in versions:
