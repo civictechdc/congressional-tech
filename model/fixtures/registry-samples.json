@@ -9308,6 +9308,54 @@
       },
       "expected": null,
       "source": "Authored boundary: a member outside the container's own directory has no published address"
+    },
+    {
+      "id": "page-signals:link_word_formats",
+      "registry": "page-signals",
+      "entry": "link_word_formats",
+      "value": "ZIP",
+      "expected": true,
+      "source": "apps/site/src/components/explorer/archive/archive-metadata.ts:618-626 genericAnchorTitles and isGenericTitle; live 448651e7 titles: ZIP 34,019, PDF 3,731, XML 198, here 44, Download PDF 44, Email 38"
+    },
+    {
+      "id": "page-signals:link_word_actions",
+      "registry": "page-signals",
+      "entry": "link_word_actions",
+      "value": "Download PDF",
+      "expected": true,
+      "source": "apps/site/src/components/explorer/archive/archive-metadata.ts:618-626 genericAnchorTitles and isGenericTitle; live 448651e7 titles: ZIP 34,019, PDF 3,731, XML 198, here 44, Download PDF 44, Email 38"
+    },
+    {
+      "id": "page-signals:link_word_click_here",
+      "registry": "page-signals",
+      "entry": "link_word_click_here",
+      "value": "Click here for the transcript",
+      "expected": true,
+      "source": "apps/site/src/components/explorer/archive/archive-metadata.ts:618-626 genericAnchorTitles and isGenericTitle; live 448651e7 titles: ZIP 34,019, PDF 3,731, XML 198, here 44, Download PDF 44, Email 38"
+    },
+    {
+      "id": "page-signals:link_word_download",
+      "registry": "page-signals",
+      "entry": "link_word_download",
+      "value": "Download Witness Testimony (PDF)",
+      "expected": true,
+      "source": "apps/site/src/components/explorer/archive/archive-metadata.ts:618-626 genericAnchorTitles and isGenericTitle; live 448651e7 titles: ZIP 34,019, PDF 3,731, XML 198, here 44, Download PDF 44, Email 38"
+    },
+    {
+      "id": "page-signals:link_word_formats_title",
+      "registry": "page-signals",
+      "entry": "link_word_formats",
+      "value": "PDF of the Hearing on Rural Transportation",
+      "expected": false,
+      "source": "Authored boundary: a format word inside a title is not a link word"
+    },
+    {
+      "id": "page-signals:link_word_download_named",
+      "registry": "page-signals",
+      "entry": "link_word_actions",
+      "value": "Downloads and Hearing Records",
+      "expected": false,
+      "source": "Authored boundary: only the whole text is a link word"
     }
   ]
 }

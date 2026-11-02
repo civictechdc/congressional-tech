@@ -677,7 +677,8 @@ def build_prepared_release(prepared,*,engine,output,root=ROOT):
     steps += _sql_steps(['final-source-labels','final-recovery-attachments','document-link-keys'],root=root)
     steps += annotation_steps(catalog_version=catalog_version,root=root)
     steps += _sql_steps(['document-members','archive-container-links','document-bodies','document-identities','saved-files','document-alternates',
-        'document-version-keys','document-versions','document-metadata','document-addresses','saved-recoveries','document-removals','document-packages'],root=root)
+        'document-version-keys','document-versions','document-metadata','document-addresses','saved-recoveries','document-removals','document-packages',
+        'document-rendition-titles'],root=root)
     steps += meeting_steps(root=root)+[dict(name='meeting_transcript_links',sql=(Path(root)/'model/sql/meeting-transcript-links.sql').read_text(),materialize=True)]
     app_url_inputs_sql="""WITH selected_app_records AS (
         SELECT r.record_sha_hex,r.source,nullif(trim(r.declared_base),'') AS declared_base,
@@ -919,6 +920,8 @@ def build_prepared_release(prepared,*,engine,output,root=ROOT):
             (SELECT count(*) FROM document_link_key_conflicts) AS review_key_collisions,
             (SELECT count(*) FROM review_value_diagnostics) AS invalid_review_values,
             (SELECT CASE WHEN count(*)=0 THEN 1 ELSE 0 END FROM ordered) AS empty_document_list,
+            (SELECT count(*) FROM ordered o JOIN page_signals g ON g.kind='link_word' AND length(o.title)<=64
+                AND regexp_like(regexp_replace(trim(o.title),'\\s+',' ','g'),g.pattern)) AS generic_titles,
             (SELECT count(*) FROM (SELECT unnest(alternates) AS alt FROM document_alternates) WHERE alt['size'] IS NULL) AS missing_alternate_sizes,
             (SELECT count(*) FROM (
                 SELECT cast(m['event_id'] AS BIGINT) AS event_id

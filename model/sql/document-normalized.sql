@@ -1,4 +1,4 @@
-SELECT d.document_id AS doc_key,true AS body_expected,s.filename,a.title,
+SELECT d.document_id AS doc_key,true AS body_expected,s.filename,coalesce(a.reading_title,rt.title,a.listing_title) AS title,
  a.document_kind,a.document_family,m.committee_keys,m.chambers,cast(a.congress AS SMALLINT) AS congress,s.format,
  coalesce(a.filename_date,a.content_date,ml.meeting_date) AS document_date,cast(m.first_fetched AS DATE) AS first_captured,
  CASE WHEN m.first_fetched IS NOT NULL THEN 'captured' WHEN m.in_archive_since IS NOT NULL THEN 'import_day' ELSE 'unknown' END AS date_kind,
@@ -36,3 +36,4 @@ FROM document_witness_keys wk RIGHT JOIN (
   ) ON d.component=v.component
  ) ON d.component=ml.component
 ) ON d.component=wk.component
+LEFT JOIN document_rendition_titles rt ON d.component=rt.component

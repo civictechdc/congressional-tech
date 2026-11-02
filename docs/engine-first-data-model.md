@@ -365,7 +365,7 @@ A **registry** is a versioned list a rule depends on.
 | Registry | Holds | Used by | Versioned by |
 |---|---|---|---|
 | file shapes | Regular expressions over the locator that mark a link as pointing at a file | `real_files` (§7.3) | profile |
-| page signals | Kinds: *error word*, generic error words for a title or heading, such as "not found", and body markers of challenge and soft-error pages; *error URL*, URL patterns that only ever serve error or placeholder pages; *wrapper marker*, text markers of download-wrapper pages, such as "download will begin shortly"; *threshold*, the near-empty text size and a listing page's minimum link count and link-text percent; *source-record root*, XML roots of metadata records, such as METS, MODS and PREMIS; *API endpoint*, URL patterns of API JSON, such as api.congress.gov; *feed root*, XML roots and URL patterns of feeds and sitemaps | record roles (§7.3); feed roots also `listed_on` (§7.10) | profile |
+| page signals | Kinds: *link word*, whole link texts and prefixes that say what a link does, never a title (§7.5); *error word*, generic error words for a title or heading, such as "not found", and body markers of challenge and soft-error pages; *error URL*, URL patterns that only ever serve error or placeholder pages; *wrapper marker*, text markers of download-wrapper pages, such as "download will begin shortly"; *threshold*, the near-empty text size and a listing page's minimum link count and link-text percent; *source-record root*, XML roots of metadata records, such as METS, MODS and PREMIS; *API endpoint*, URL patterns of API JSON, such as api.congress.gov; *feed root*, XML roots and URL patterns of feeds and sitemaps | record roles (§7.3); feed roots also `listed_on` (§7.10) | profile |
 | URL rules | Kinds: *wrapper*, redirect and archive wrapper patterns; *strip*, tracker parameters on any host, such as `utm_*`, and page-state parameters on named hosts, such as congress.gov `q`; *repair*, repairs of malformed links, such as `ttps://` and concatenated URLs | `url_key` and link targets (§7.2) | profile |
 | archive layouts | Containers whose layout mirrors their server directory: a container URL pattern, a member path pattern whose first segment is the container's name, and the prefix members are published under; GovInfo `content/pkg/P.zip` holds `P/html/P.htm` and `P/pdf/P.pdf`, published at `content/pkg/P/html/P.htm` (its `mods.xml` is published elsewhere, so it is not listed) | an archive member's second endpoint (§7.5 `same_text`) | profile |
 | formats | Kinds: *preference*, the document formats in order, PDF first; *generic stem*, filename stems never grouped, such as `index` and `download` | saved file, alternates and renditions (§7.5) | profile |
@@ -583,8 +583,14 @@ document_id    := SHA-256 of the compact JSON ["bodies", [k1, k2, …]], the dis
                   its source_id hex strings sorted, when it has none
 filename       := the saved file's effective filename
 title          := the applying title_override (§7.9), else the saved file's reading title,
-                  else its heading, else the text of its earliest listing link (§7.10);
-                  null when none, and the site shows the filename
+                  else its heading, else the first other-format file's reading title or
+                  heading in saved-file order, else the text of its earliest listing link
+                  (§7.10) that is not a link word; null when none, and the site shows the
+                  filename. A link word (page signals kind `link_word`: "ZIP", "PDF",
+                  "here", "Download PDF") says what a link does and is never a title, as
+                  a reading title or as link text; a recovery-only document takes its
+                  recovered body's reading title, else its original link's text. The
+                  model invariant `generic_titles` is 0. `sources.link_text` stays as written.
 witness_keys   := [[PHASE-2]] §2; empty in phase 1
 version_keys   := for each edition-ambiguous endpoint holding one of its real bodies, the hex
                   of the first 8 bytes of SHA-256 of the compact JSON [url_key(context_url),

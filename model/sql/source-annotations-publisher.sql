@@ -9,10 +9,15 @@ WITH kinds AS (
 ), kind_arrays AS (
  SELECT source_id,array_agg(document_kind ORDER BY document_kind) AS document_kind
  FROM (SELECT DISTINCT source_id,document_kind FROM chosen_kinds) GROUP BY source_id
+), titled AS (
+ -- Link text says what a link does; a link word ("ZIP", "here", "Download PDF") is never a title.
+ SELECT l.* FROM (SELECT * FROM publisher_links WHERE nullif(trim(text),'') IS NOT NULL) l
+ LEFT ANTI JOIN (SELECT pattern FROM page_signals WHERE kind='link_word') g
+ ON regexp_like(regexp_replace(trim(l.text),'\s+',' ','g'),g.pattern)
 ), labels AS (
  SELECT source_id,text,row_number() OVER(PARTITION BY source_id ORDER BY
  cast(first_good_at AS TIMESTAMP WITH TIME ZONE) NULLS LAST,context,page_body,link_index,split_position) AS preference
- FROM publisher_links WHERE nullif(trim(text),'') IS NOT NULL
+ FROM titled
 )
 SELECT s.source_id,k.document_kind,l.text AS listing_title FROM labels l RIGHT JOIN (
  kind_arrays k RIGHT JOIN source_files s ON s.source_id=k.source_id
