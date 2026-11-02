@@ -52,7 +52,8 @@
       "mods": "b72edb72ecd719230f4c6003738a039c93c81d7dd0f514050a8c917e18ae25f7"
     },
     "video_records": {
-      "youtube_cache": "4ceee06d02828da0cc9834d1ccd17946bed8b0eea08e72d962a880ca0151bbab"
+      "youtube_cache": "4ceee06d02828da0cc9834d1ccd17946bed8b0eea08e72d962a880ca0151bbab",
+      "youtube_api": "97450bb36ffddad4864938af39ff255a533d5a52f1c0865d303eeb5859602ac0"
     },
     "committee_records": {
       "house_xml": "7317eaa4e309879d14fd8a19d0f3c05dcaeb2af02ae5abeab8e19fccdf04f794"

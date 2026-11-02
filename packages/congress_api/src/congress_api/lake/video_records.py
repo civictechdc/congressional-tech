@@ -1,6 +1,7 @@
-"""Lake producer for `video_records`: typed channels and uploads of retained YouTube caches.
+"""Lake producer for `video_records`: typed channels and uploads of retained YouTube caches,
+and the videos of retained YouTube Data API videoListResponse bodies (source `youtube_api`).
 
-One row per cache body and parser version. Upstream API JSON stays in the body, which
+One row per body, source and parser version. Upstream API JSON stays in the body, which
 `record_sha` references; it is about 231 MB of 267 MB and is evidence, not a queryable fact.
 """
 
@@ -11,14 +12,17 @@ from typing import Any, Mapping, Sequence
 
 import pyarrow as pa
 
-from ..parsers.youtube_video import cache_rows
+from ..parsers.youtube_video import api_rows, cache_rows
 from ._record_producer import PK, build_record_table, normalize_record_sha, stage_record_table
 from .versions import version_digest
 
 ROOT = Path(__file__).resolve().parents[5]
 TABLE_SCHEMA = ROOT / "model/lake/video-records.schema.json"
 SOURCE = "youtube_cache"
+API_SOURCE = "youtube_api"
+SOURCES = (SOURCE, API_SOURCE)
 CANDIDATE_BODIES_SQL = ROOT / "model/sql/youtube-cache-bodies.sql"
+API_BODIES_SQL = ROOT / "model/sql/youtube-api-bodies.sql"
 NO_INLINE_SQL = "SELECT cast(NULL AS VARCHAR) AS receipt_key,cast(NULL AS INT) AS receipt_line,cast(NULL AS VARCHAR) AS source_url WHERE false"
 
 CHANNEL_STRUCT = pa.struct([
@@ -57,25 +61,31 @@ SCHEMA = ARROW_SCHEMA
 
 def current_versions(*, root: Path = ROOT) -> dict[str, str]:
     package = Path(__file__).resolve().parents[1]
-    return {SOURCE: version_digest(packages={}, files={
-        "producer": Path(__file__),
-        "parser": package / "parsers/youtube_video.py",
+    files = {"producer": Path(__file__), "parser": package / "parsers/youtube_video.py",
+             "schema": Path(root) / "model/lake/video-records.schema.json"}
+    return {SOURCE: version_digest(packages={}, files={**files,
         "cache": package.parents[1].parent / "congress_shared/src/congress_shared/youtube_cache.py",
-        "schema": Path(root) / "model/lake/video-records.schema.json",
         "selection": Path(root) / "model/sql/youtube-cache-bodies.sql",
-    }, values={"source": SOURCE})}
+    }, values={"source": SOURCE}), API_SOURCE: version_digest(packages={}, files={**files,
+        "selection": Path(root) / "model/sql/youtube-api-bodies.sql",
+    }, values={"source": API_SOURCE})}
 
 
 def candidate_sql(*, root: Path = ROOT) -> str:
-    """The latest good body per cache path, under the rule the model selects with."""
-    selected = (Path(root) / "model/sql/youtube-cache-bodies.sql").read_text()
-    return f"SELECT record_sha,stored_suffix,'{SOURCE}' AS source FROM ({selected}) s"
+    """The latest good body per cache path, and each retained API body, under the rules the model selects with."""
+    cache = (Path(root) / "model/sql/youtube-cache-bodies.sql").read_text()
+    api = (Path(root) / "model/sql/youtube-api-bodies.sql").read_text()
+    return (f"SELECT record_sha,stored_suffix,'{SOURCE}' AS source FROM ({cache}) s "
+            f"UNION ALL SELECT record_sha,stored_suffix,'{API_SOURCE}' AS source FROM ({api}) a")
 
 
 def build_row(record_sha: str | bytes, source: str, payload: bytes | str, *, parser_version: str) -> dict[str, Any]:
-    if source != SOURCE:
+    if source == API_SOURCE:
+        channels, videos = [], api_rows(payload)
+    elif source == SOURCE:
+        channels, videos = cache_rows(payload)
+    else:
         raise ValueError(f"Unsupported video_records source {source!r}")
-    channels, videos = cache_rows(payload)
     return dict(record_sha=normalize_record_sha(record_sha), parser_version=str(parser_version), status="completed",
         error_type=None, source=source, channels=channels, videos=videos)
 
@@ -95,4 +105,4 @@ def stage(*, captures: Any, engine: Any, work: Path, existing: Any = None, local
         max_work_items=max_work_items, decided_at=decided_at, unreadable_store=unreadable_store)
 
 
-__all__ = ["ARROW_SCHEMA", "PK", "SCHEMA", "SOURCE", "build_row", "candidate_sql", "current_versions", "stage", "table"]
+__all__ = ["API_SOURCE", "ARROW_SCHEMA", "PK", "SCHEMA", "SOURCE", "SOURCES", "build_row", "candidate_sql", "current_versions", "stage", "table"]

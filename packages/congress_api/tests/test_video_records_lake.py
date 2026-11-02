@@ -71,5 +71,21 @@ def test_same_bytes_give_same_rows_and_table_matches_declared_schema(tmp_path):
 
 
 def test_versions_and_candidate_sql_are_stated():
-    assert set(video_records.current_versions()) == {'youtube_cache'}
-    assert "family='pipeline-data'" in video_records.candidate_sql()
+    assert set(video_records.current_versions()) == {'youtube_cache', 'youtube_api'}
+    assert "family='pipeline-data'" in video_records.candidate_sql() and "family='youtube/api'" in video_records.candidate_sql()
+
+
+def test_api_videos_come_from_video_list_responses_only():
+    from congress_api.parsers.youtube_video import api_rows
+    item = dict(kind='youtube#video', id='xYlb_m1rNnY', snippet=dict(channelId='UCA', channelTitle='A', title='Hearing', description='ID: 118000',
+        publishedAt='2025-09-17T14:00:00Z'), contentDetails=dict(duration='P1DT10H30M28S', caption='false'),
+        status=dict(privacyStatus='public', uploadStatus='uploaded'))
+    rows = api_rows(json.dumps(dict(kind='youtube#videoListResponse', items=[item, dict(kind='youtube#channel', id='UCA')])))
+    assert rows == [dict(handle='', video_id='xYlb_m1rNnY', channel_id='UCA', channel_title='A', title='Hearing', description='ID: 118000',
+        published_at='2025-09-17T14:00:00Z', video_published_at=None, duration_seconds=124228, available=None, has_caption=False,
+        details_checked_at=None, stated_event_ids=[118000])]
+    assert api_rows(json.dumps(dict(kind='youtube#searchListResponse', items=[item]))) == []
+    row = video_records.build_row(SHA, 'youtube_api', json.dumps(dict(kind='youtube#videoListResponse', items=[item])), parser_version='v')
+    assert row['source'] == 'youtube_api' and row['channels'] == [] and len(row['videos']) == 1
+    with pytest.raises(ValueError):
+        api_rows(b'not json')

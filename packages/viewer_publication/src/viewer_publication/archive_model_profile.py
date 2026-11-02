@@ -18,7 +18,7 @@ PARSERS=('sniff','html','xml','json')
 MEETING_SOURCES=('congress_gov','house_xml')
 APPEARANCE_SOURCES=('house_xml','congress_gov','senate_page','mods')
 ENTITY_SOURCES={'meeting_records':MEETING_SOURCES,'appearance_records':APPEARANCE_SOURCES}
-EXPLORER_SOURCES={'video_records':('youtube_cache',),'committee_records':('house_xml',)}
+EXPLORER_SOURCES={'video_records':('youtube_cache','youtube_api'),'committee_records':('house_xml',)}
 SELECTED_SOURCES={**ENTITY_SOURCES,**EXPLORER_SOURCES}
 
 

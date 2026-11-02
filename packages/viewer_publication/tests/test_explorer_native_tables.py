@@ -177,27 +177,39 @@ def test_videos_channels_and_committee_records_from_lake_rows(tmp_path):
         'youtube_videos_@AgRepublicans': {'1': dict(videoId='v1', title='EventID=117681', publishedAt='2020-01-02T03:04:05Z', channelId='UCX', duration='9', available=True),
                                          '2': dict(videoId='v2')},
         'youtube_videos_@HouseAgDems': {'1': dict(videoId='v1', title='second copy')}}).encode()
-    sha_new, sha_old = 'ab' * 32, 'cd' * 32
+    sha_new, sha_old, sha_api = 'ab' * 32, 'cd' * 32, 'ef' * 32
+    directory = channel_directory_rows()
+    ag = next(row['channel_id'] for row in directory if row['handle'] == '@AgRepublicans')
+    # API videos fill only IDs no cache lists, and only for directory channels.
+    item = lambda vid, channel, title: dict(kind='youtube#video', id=vid, snippet=dict(channelId=channel, title=title, publishedAt='2025-09-17T14:00:00Z'),
+        contentDetails=dict(duration='P1DT10H30M28S'), status=dict(privacyStatus='unlisted'))
+    api = json.dumps(dict(kind='youtube#videoListResponse', items=[item('v1', ag, 'API copy'), item('v3', ag, 'Unlisted EventID=118000'),
+        item('v4', 'UCnot-in-directory', 'Elsewhere')])).encode()
     # An old-version copy of the same body must lose before ranking, whatever its order.
     pq.write_table(video_records.table([video_records.build_row(sha_new, 'youtube_cache', b'{"youtube_videos_@AgRepublicans":{"1":{"videoId":"old-version"}}}', parser_version='older'),
         video_records.build_row(sha_new, 'youtube_cache', cache, parser_version='p'),
-        video_records.build_row(sha_old, 'youtube_cache', b'{"youtube_videos_@AgRepublicans":{"1":{"videoId":"stale"}}}', parser_version='p')]), tmp_path / 'videos.parquet')
+        video_records.build_row(sha_old, 'youtube_cache', b'{"youtube_videos_@AgRepublicans":{"1":{"videoId":"stale"}}}', parser_version='p'),
+        video_records.build_row(sha_api, 'youtube_api', api, parser_version='a')]), tmp_path / 'videos.parquet')
     amendment = dict(kind='amendment', bill='H.R. 1', number='1', sponsor_bioguide='A000001', amendment_type=None, enbloc=None, description='d', url='https://a')
     records = lambda sha, updated, count: dict(record_sha=sha, parser_version='p', status='completed', source='house_xml', event_id='100', updated=updated,
         records=[dict(amendment, ordinal=i) for i in range(count)])
     pq.write_table(committee_records.table([records(sha_old, '2020-01-01T00:00:00', 1), records(sha_new, '2021-01-01T00:00:00', 2)]), tmp_path / 'committee.parquet')
-    directory = channel_directory_rows()
     inputs = [dict(name='video_records', kind='parquet', path=str(tmp_path / 'videos.parquet')),
         dict(name='committee_records', kind='parquet', path=str(tmp_path / 'committee.parquet')),
-        json_input(tmp_path, 'parser_versions', [dict(parser='video_records.youtube_cache', version='p'), dict(parser='committee_records.house_xml', version='p')], parser='Utf8', version='Utf8'),
+        json_input(tmp_path, 'parser_versions', [dict(parser='video_records.youtube_cache', version='p'), dict(parser='video_records.youtube_api', version='a'),
+            dict(parser='committee_records.house_xml', version='p')], parser='Utf8', version='Utf8'),
         json_input(tmp_path, 'channel_directory', directory, handle='Utf8', channel_id='Utf8', system_code='Utf8', committee_label='Utf8', role='Utf8')]
     steps = [dict(name='youtube_cache_bodies', sql=f"SELECT 'youtube/youtube_00.json' AS cache_path,'{sha_new}' AS record_sha,'' AS stored_suffix"),
+        dict(name='youtube_api_bodies', sql=f"SELECT '{sha_api}' AS record_sha,'' AS stored_suffix"),
         selected_record_step('video_records', 'video_records'), selected_record_step('committee_records', 'committee_records')]
     outputs = [parquet_output(tmp_path, 'v', sql('entity-videos'), ['video_key']), parquet_output(tmp_path, 'c', sql('entity-channels'), ['handle']),
         parquet_output(tmp_path, 'r', sql('entity-committee-records'), ['record_key'])]
     run_job(tmp_path / 'job', engine, inputs=inputs, steps=steps, outputs=outputs, queries=[])
     videos = {row['video_key']: row for row in pq.read_table(tmp_path / 'v.parquet').to_pylist()}
-    assert set(videos) == {'youtube:v1', 'youtube:v2'}  # The unmatched stays; a stale body and a repeat do not add rows.
+    assert set(videos) == {'youtube:v1', 'youtube:v2', 'youtube:v3'}  # The unmatched stays; a stale body and a repeat do not add rows.
+    assert videos['youtube:v1']['title'] == 'EventID=117681'  # The cache row, not the API copy.
+    assert videos['youtube:v3']['handle'] == '@AgRepublicans' and videos['youtube:v3']['system_code'] == 'hsag00'
+    assert videos['youtube:v3']['duration_seconds'] == 124228 and videos['youtube:v3']['stated_event_ids'] == [118000]
     assert videos['youtube:v1']['handle'] == '@AgRepublicans' and videos['youtube:v1']['duration_seconds'] == 9
     assert videos['youtube:v1']['stated_event_ids'] == [117681] and videos['youtube:v1']['system_code'] == 'hsag00'
     assert videos['youtube:v2']['available'] is None and videos['youtube:v1']['published_at'] is not None
