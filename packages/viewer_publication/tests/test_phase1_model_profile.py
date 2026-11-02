@@ -3,6 +3,8 @@ import os
 
 import pytest
 
+from congress_api.lake.compatible_versions import accepted_versions_input,selected_readings_steps
+
 from congress_api.retention.provenance import json_input,run_job
 from docspec_client.client import NativeDatasets
 
@@ -52,6 +54,7 @@ def test_profile_record_refuses_unpinned_definitions():
     ('bad-admission',{'invalid_body_admissions':1,'missing_sniff':1}),
     ('sniff-error-settles',{}),('bundle-sniff-current',{}),('old-bundle',{'missing_pages':1}),
     ('old-filename-unreadable',{'missing_filenames':1}),('duplicate-parser',{'duplicate_parser_versions':1}),
+    ('covered-old-page',{}),('covered-old-bundle',{}),
 ])
 def test_native_profile_completeness_counts_pending_and_settled_inputs(tmp_path,case,expected):
     from viewer_publication.archive_model_profile import completeness_checks,completeness_steps,readings_bundle_version
@@ -70,12 +73,17 @@ def test_native_profile_completeness_counts_pending_and_settled_inputs(tmp_path,
     if case in {'missing-sniff','bundle-sniff-current'}:readings=[];sniff=[]
     if case=='sniff-error-settles':readings[0]['status']='error';sniff=[]
     if case in {'missing-page','old-unreadable','unreadable-current','bundle-current','old-bundle'}:readings=readings[:1]
-    if case=='old-page':readings[1]['parser_version']='old'
-    if case in {'unreadable-current','old-unreadable','bundle-current','bundle-sniff-current','old-bundle'}:
+    if case in {'old-page','covered-old-page'}:readings[1]['parser_version']='old'
+    if case=='covered-old-bundle':readings=readings[:1]
+    if case in {'unreadable-current','old-unreadable','bundle-current','bundle-sniff-current','old-bundle','covered-old-bundle'}:
         unreadable=[dict(body_sha256=body,record_sha=None,
-            parser='readings' if case in {'bundle-current','bundle-sniff-current','old-bundle'} else 'html',
+            parser='readings' if case in {'bundle-current','bundle-sniff-current','old-bundle','covered-old-bundle'} else 'html',
             parser_version=readings_bundle_version(VERSIONS) if case in {'bundle-current','bundle-sniff-current'} else
-                'old' if case in {'old-unreadable','old-bundle'} else 'html-1')]
+                'old' if case in {'old-unreadable','old-bundle','covered-old-bundle'} else 'html-1')]
+    # Registry coverage, as the model renders it: whole-version entries for the old pins.
+    entries=([dict(parser='html',version='old',current=VERSIONS['html'],recompute_sql='none')] if case=='covered-old-page' else
+             [dict(parser='readings',version='old',current=readings_bundle_version(VERSIONS),recompute_sql='none')] if case=='covered-old-bundle' else [])
+    pins={**VERSIONS,'readings':readings_bundle_version(VERSIONS)}
     if case in {'missing-filename','filename-unreadable','old-filename-unreadable'}:filenames=[]
     if case in {'filename-unreadable','old-filename-unreadable'}:
         # The native query computes the same compact-JSON identity as D3.
@@ -90,14 +98,15 @@ def test_native_profile_completeness_counts_pending_and_settled_inputs(tmp_path,
         json_input(tmp_path,'admission_rows',admissions,body_hex='Utf8',format='Utf8',basis='Utf8'),
         json_input(tmp_path,'filename_readings',filenames,filename='Utf8',source_url='Utf8',catalog_version='Utf8',status='Utf8'),
         json_input(tmp_path,'unreadable_rows',unreadable,body_sha256='Utf8',record_sha='Utf8',parser='Utf8',parser_version='Utf8'),
-        json_input(tmp_path,'parser_versions',[dict(parser=p,version=v) for p,v in VERSIONS.items()]+([dict(parser='html',version='html-1')] if case=='duplicate-parser' else []),parser='Utf8',version='Utf8')]
+        json_input(tmp_path,'parser_versions',[dict(parser=p,version=v) for p,v in VERSIONS.items()]+([dict(parser='html',version='html-1')] if case=='duplicate-parser' else []),parser='Utf8',version='Utf8'),
+        accepted_versions_input(tmp_path,entries,pins=pins)]
     steps=[dict(name='captures',sql="SELECT *,decode(body_hex,'hex') AS sha256 FROM capture_rows"),
-        dict(name='readings',sql="SELECT *,decode(body_hex,'hex') AS body_sha FROM reading_rows"),
+        dict(name='readings',sql="SELECT *,decode(body_hex,'hex') AS body_sha FROM reading_rows"),*selected_readings_steps(entries),
         dict(name='sniff_facts',sql="SELECT decode(body_hex,'hex') AS body_sha,format FROM sniff_rows"),
         dict(name='body_admissions',sql="SELECT decode(body_hex,'hex') AS body_sha,format,basis FROM admission_rows"),
         dict(name='source_files',sql="SELECT 'a.pdf' AS filename,cast(NULL AS VARCHAR) AS source_url"),
         dict(name='active_unreadable',sql="SELECT body_sha256,CASE WHEN record_sha='native' THEN encode(sha256(json_array('a.pdf','')),'hex') ELSE record_sha END AS record_sha,parser,parser_version FROM unreadable_rows")]
-    queries=completeness_checks(catalog_version='catalog-1',readings_version=readings_bundle_version(VERSIONS))
+    queries=completeness_checks(catalog_version='catalog-1')
     report=run_job(tmp_path,NativeDatasets.from_config(os.environ['DOCSPEC_JOB_CONFIG']),inputs=inputs,
         steps=steps+completeness_steps(),outputs=[],queries=queries)['profile_completeness'][0]
     assert {name:value for name,value in report.items() if value}==expected
@@ -294,12 +303,14 @@ def test_entity_completeness_and_record_producer_candidates_agree_1_for_1(tmp_pa
             json_input(sub_dir, 'filename_readings', [], filename='Utf8', source_url='Utf8', catalog_version='Utf8', status='Utf8'),
             json_input(sub_dir, 'unreadable_rows', [], body_sha256='Utf8', record_sha='Utf8', parser='Utf8', parser_version='Utf8'),
             json_input(sub_dir, 'parser_versions', expand_parser_version_rows(all_versions), parser='Utf8', version='Utf8'),
+            accepted_versions_input(sub_dir, [], pins=dict(VERSIONS, readings=readings_bundle_version(VERSIONS))),
             json_input(sub_dir, 'meeting_records_input', mr_rows, record_sha_hex='Utf8', source='Utf8', parser_version='Utf8', status='Utf8'),
             json_input(sub_dir, 'appearance_records_input', ar_rows, record_sha_hex='Utf8', source='Utf8', parser_version='Utf8', status='Utf8'),
         ]
         steps = [
             dict(name='captures', sql="SELECT *,decode(body_hex,'hex') AS sha256 FROM capture_rows"),
             dict(name='readings', sql="SELECT *,decode(body_hex,'hex') AS body_sha FROM reading_rows"),
+            *selected_readings_steps([]),
             dict(name='sniff_facts', sql="SELECT decode(body_hex,'hex') AS body_sha,format FROM sniff_rows"),
             dict(name='body_admissions', sql="SELECT decode(body_hex,'hex') AS body_sha,format,basis FROM admission_rows"),
             dict(name='source_files', sql="SELECT cast(NULL AS VARCHAR) AS filename,cast(NULL AS VARCHAR) AS source_url WHERE false"),
@@ -307,7 +318,6 @@ def test_entity_completeness_and_record_producer_candidates_agree_1_for_1(tmp_pa
         ] + completeness_steps()
         queries = completeness_checks(
             catalog_version='catalog-1',
-            readings_version=readings_bundle_version(VERSIONS),
             include_entities=True,
             meeting_records_version=mr_vers,
             appearance_records_version=ar_vers,

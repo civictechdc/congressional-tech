@@ -486,11 +486,11 @@ def admission_steps(*,prelude=(),root=ROOT):
 
 def admission_checks(*,parser_versions,catalog_version,include_entities=False,root=ROOT):
     """Check current pinned inputs without exporting public release files."""
-    from viewer_publication.archive_model_profile import completeness_checks,readings_bundle_version,validate_parser_versions
+    from viewer_publication.archive_model_profile import completeness_checks,validate_parser_versions
     validate_parser_versions(parser_versions,require_entities=include_entities)
     checks=','.join(sql+' AS '+name for name,sql in evidence_checks().items())
     return [dict(name='model_invariants',sql='SELECT '+checks)]+completeness_checks(
-        catalog_version=catalog_version,readings_version=readings_bundle_version(parser_versions),
+        catalog_version=catalog_version,
         include_entities=include_entities,
         meeting_records_version=parser_versions.get('meeting_records') if isinstance(parser_versions,dict) else None,
         appearance_records_version=parser_versions.get('appearance_records') if isinstance(parser_versions,dict) else None,
@@ -516,10 +516,15 @@ def prepare_model_inputs(*,captures,readings,filename_readings,parser_versions,c
                          engine,scratch,recovery_files=(),review_files=(),verification_files=(),
                          unreadable_files=(),variant_files=(),meeting_records=None,appearance_records=None,
                          spicy_regs=None,include_entities=False,recovery_requirements=None,
-                         video_records=None,committee_records=None,recording_decision_files=(),root=ROOT):
-    """Freeze current input selectors and the shared prefix in fresh private scratch."""
+                         video_records=None,committee_records=None,recording_decision_files=(),root=ROOT,registry=None):
+    """Freeze current input selectors and the shared prefix in fresh private scratch.
+
+    `registry` names a compatible-versions file other than the checked-in one (tests only).
+    """
+    from congress_api.lake import compatible_versions
     from viewer_publication.archive_format import _settings
-    from viewer_publication.archive_model_profile import expand_parser_version_rows,profile_record,validate_parser_versions
+    from viewer_publication.archive_model_profile import (expand_parser_version_rows,profile_record,
+        readings_bundle_version,validate_parser_versions)
     include_entities=bool(include_entities or meeting_records is not None or appearance_records is not None or spicy_regs is not None)
     # All or none: an omitted table means unavailable, never empty (DM8).
     explorer_inputs=video_records is not None or committee_records is not None or bool(recording_decision_files)
@@ -540,10 +545,15 @@ def prepare_model_inputs(*,captures,readings,filename_readings,parser_versions,c
         dict(name=name,kind='parquet',path=str(Path(value).resolve())) for name,value in raw_data_inputs]
     inputs += data_inputs
     inputs.append(json_input(scratch,'parser_versions',expand_parser_version_rows(parser_versions),parser='Utf8',version='Utf8'))
+    # Load the registry once; every readings reader goes through the one selection it renders.
+    pins={**{p:parser_versions[p] for p in compatible_versions.LEAF_PARSERS},'readings':readings_bundle_version(parser_versions)}
+    entries=compatible_versions.load_registry(current=pins,path=registry or Path(root)/'model/registries/compatible-versions.json')
+    inputs.append(compatible_versions.accepted_versions_input(scratch,entries,pins=pins))
     # Provenance is immutable input data; JSON columns with heterogeneous values
     # are projected once by the native reader before policy joins.
     from viewer_publication.archive_provenance import provenance_inputs
     provenance,prelude=provenance_inputs(scratch/'provenance',recovery_files=recovery_files,review_files=review_files)
+    prelude[0:0]=compatible_versions.selected_readings_steps(entries)
     inputs += provenance
     recovery_policy=None
     if recovery_requirements is not None:
@@ -638,7 +648,7 @@ def build_release(*,captures,readings,filename_readings,parser_versions,catalog_
                   engine,output,scratch,recovery_files=(),review_files=(),verification_files=(),
                   unreadable_files=(),variant_files=(),meeting_records=None,appearance_records=None,
                   spicy_regs=None,include_entities=False,recovery_requirements=None,
-                  video_records=None,committee_records=None,recording_decision_files=(),root=ROOT):
+                  video_records=None,committee_records=None,recording_decision_files=(),root=ROOT,registry=None):
     """Prepare inputs once and run the document model's maintained full job."""
     prepared=prepare_model_inputs(captures=captures,readings=readings,filename_readings=filename_readings,
         parser_versions=parser_versions,catalog_version=catalog_version,engine=engine,scratch=scratch,
@@ -646,7 +656,7 @@ def build_release(*,captures,readings,filename_readings,parser_versions,catalog_
         unreadable_files=unreadable_files,variant_files=variant_files,meeting_records=meeting_records,
         appearance_records=appearance_records,spicy_regs=spicy_regs,include_entities=include_entities,
         recovery_requirements=recovery_requirements,video_records=video_records,committee_records=committee_records,
-        recording_decision_files=recording_decision_files,root=root)
+        recording_decision_files=recording_decision_files,root=root,registry=registry)
     return build_prepared_release(prepared,engine=engine,output=output,root=root)
 
 
@@ -731,7 +741,7 @@ def build_prepared_release(prepared,*,engine,output,root=ROOT):
         dict(name='document_witness_keys',sql=(Path(root)/'model/sql/document-witness-keys.sql').read_text(),materialize=True),
         dict(name='component_meeting_links',sql=(Path(root)/'model/sql/component-meeting-links.sql').read_text(),materialize=True)]
     steps += [dict(name='base_normalized',sql=(Path(root)/'model/sql/document-normalized.sql').read_text()+' UNION ALL '+(Path(root)/'model/sql/document-recovery-normalized.sql').read_text(),materialize=True)]
-    from viewer_publication.archive_model_profile import completeness_checks,readings_bundle_version
+    from viewer_publication.archive_model_profile import completeness_checks
     steps += application_steps(root=root)
     steps += [dict(name='normalized',sql="""SELECT n.* EXCLUDE(title,document_kind,hidden,review_note,review_decided_at,removed_on),
         coalesce(r.title_override,n.title) AS title,coalesce(r.kind_override,n.document_kind) AS document_kind,
@@ -957,7 +967,6 @@ def build_prepared_release(prepared,*,engine,output,root=ROOT):
                 ) rev ON substr(o.bh,1,16)=rev.prefix
             ) merged_docs ON single_vk.doc_key=merged_docs.doc_key) AS single_doc_version_keys{entity_invariant_sql}""")]+explorer_diagnostics+url_state_diagnostics()+completeness_checks(
             catalog_version=catalog_version,
-            readings_version=readings_bundle_version(parser_versions),
             include_entities=bool(prepared.get('include_entities')),
             meeting_records_version=parser_versions.get('meeting_records') if isinstance(parser_versions,dict) else None,
             appearance_records_version=parser_versions.get('appearance_records') if isinstance(parser_versions,dict) else None,

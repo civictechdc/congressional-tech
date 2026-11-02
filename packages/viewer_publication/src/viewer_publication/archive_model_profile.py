@@ -25,6 +25,20 @@ EXPLORER_SOURCES={'video_records':('youtube_cache',),'committee_records':('house
 SELECTED_SOURCES={**ENTITY_SOURCES,**EXPLORER_SOURCES}
 
 
+def current_parser_versions(keys=()):
+    """Current page-parser pins plus each named source-scoped table's, from one place.
+
+    Job specs, the selective job and its model template all build their expected
+    pins here, so a new source-scoped table cannot be added to one and not the others.
+    """
+    from congress_api.lake import readings,meeting_records,appearance_records,video_records,committee_records
+    modules=dict(meeting_records=meeting_records,appearance_records=appearance_records,
+                 video_records=video_records,committee_records=committee_records)
+    result={p:readings.current_version(p) for p in PARSERS}
+    result.update({name:modules[name].current_versions() for name in SELECTED_SOURCES if name in keys})
+    return result
+
+
 def readings_bundle_version(versions):
     """Use the same current worker policy as the combined producer."""
     page_versions={p:versions[p] for p in PARSERS if p in versions} if isinstance(versions,dict) else versions
@@ -79,7 +93,7 @@ def _definition_hashes(root):
         'archive_annotations.py','archive_provenance.py','archive_reviews.py','archive_url_state.py')]
     files += [root/'packages/congress_api/src/congress_api/models/archive_profile.py',root/'uv.lock']
     files += [root/'packages/congress_shared/src/congress_shared/youtube/youtube-accounts.csv']
-    files += [root/'packages/congress_api/src/congress_api'/name for name in ['lake/readings.py','lake/_record_producer.py','lake/meeting_records.py','lake/appearance_records.py','retention/parser_worker.py','retention/process_resources.py']]
+    files += [root/'packages/congress_api/src/congress_api'/name for name in ['lake/readings.py','lake/compatible_versions.py','lake/_record_producer.py','lake/meeting_records.py','lake/appearance_records.py','retention/parser_worker.py','retention/process_resources.py']]
     return {path.relative_to(root).as_posix():file_pin(path)['sha256'] for path in sorted(set(files))}
 
 
@@ -158,21 +172,20 @@ def _entity_version_cte(table_prefix,expected_sources,override_version):
         LEFT JOIN parser_versions pv_table ON pv_table.parser='{table_prefix}'"""
 
 
-def completeness_checks(*,catalog_version,readings_version,include_entities=False,
+def completeness_checks(*,catalog_version,include_entities=False,
                         meeting_records_version=None,appearance_records_version=None,root=ROOT):
     """Return native counts; every positive value refuses accepted model output.
 
     Run completeness_steps first. Inputs are captures, readings, filename_readings, parser_versions,
-    source_files, sniff_facts, body_admissions and active_unreadable.
+    accepted_versions, the selected_readings step, source_files, sniff_facts, body_admissions and
+    active_unreadable.
     The latter is already reduced by supersession, with nullable body_sha256
     and record_sha string identities. Existing error/size_limit rows settle
     work; missing storage creates neither a row nor an unreadable decision.
     """
-    if any(not isinstance(value,str) or not value for value in (catalog_version,readings_version)):
-        raise ValueError('Completeness requires pinned filename and readings versions')
-    sql=(Path(root)/'model/sql/profile-completeness.sql').read_text()
-    for token,value in [('{{CATALOG_VERSION}}',catalog_version),('{{READINGS_VERSION}}',readings_version)]:
-        sql=sql.replace(token,"'"+value.replace("'","''")+"'")
+    if not isinstance(catalog_version,str) or not catalog_version:
+        raise ValueError('Completeness requires a pinned filename version')
+    sql=(Path(root)/'model/sql/profile-completeness.sql').read_text().replace('{{CATALOG_VERSION}}',"'"+catalog_version.replace("'","''")+"'")
     checks=[dict(name='profile_completeness',sql=sql)]
     if include_entities:
         mr_versions_sql=_entity_version_cte('meeting_records',MEETING_SOURCES,meeting_records_version)
@@ -213,8 +226,7 @@ def completeness_checks(*,catalog_version,readings_version,include_entities=Fals
             ) AS cnt
         ), current_page_readings AS (
             SELECT r.body_sha,r.parser,r.status,r.xml_root
-            FROM readings r
-            JOIN parser_versions pv ON r.parser=pv.parser AND r.parser_version=pv.version
+            FROM selected_readings r
             WHERE r.status IN ('completed','error','size_limit')
         ), expected_mr AS (
             SELECT DISTINCT lower(encode(c.sha256,'hex')) AS record_sha_hex,'congress_gov' AS source

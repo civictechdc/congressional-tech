@@ -1,6 +1,7 @@
 """Pinned body facts and page contexts must work on the narrow capture schema."""
 import os
 
+from congress_api.lake.compatible_versions import accepted_versions_input,selected_readings_steps
 from congress_api.retention.provenance import json_input,list_of,struct,run_job
 from docspec_client.client import NativeDatasets
 
@@ -39,6 +40,7 @@ def test_pinned_evidence_and_page_contexts_do_not_borrow_capture_parser_fields(t
     inputs=registry_inputs(tmp_path/'registries')+[
         json_input(tmp_path,'capture_rows',rows,**capture_fields),json_input(tmp_path,'reading_rows',readings,**reading_fields),
         json_input(tmp_path,'parser_versions',[dict(parser=p,version=p+'-1') for p in ['sniff','html','xml','json']],parser='Utf8',version='Utf8'),
+        accepted_versions_input(tmp_path,[],pins={p:p+'-1' for p in ['sniff','html','xml','json']}),
         json_input(tmp_path,'verification_records',[dict(key='bodies/sha256/aa/'+'a'*64+'.pdf',size=1000,
             intact=True,sha256_verified=True,checked_at='2026-10-21T12:00:00Z'),
             dict(key='bodies/sha256/aa/'+'a'*64+'.pdf',size=1000,intact=None,sha256_verified=True,checked_at='2026-10-22T12:00:00Z'),
@@ -48,7 +50,8 @@ def test_pinned_evidence_and_page_contexts_do_not_borrow_capture_parser_fields(t
             dict(key='bodies/sha256/00/'+'0'*64+'.pdf',size=1000,intact=None,sha256_verified=True,checked_at='2026-10-22T12:00:00Z')],key='Utf8',size='Int64',intact='Boolean',
             sha256_verified='Boolean',checked_at='Utf8')]
     steps=[dict(name='captures',sql="SELECT *,decode(body_hex,'hex') AS sha256,cast(NULL AS VARCHAR) AS expansion FROM capture_rows"),
-        dict(name='readings',sql="SELECT *,decode(body_hex,'hex') AS body_sha,decode(fingerprint_hex,'hex') AS fingerprint FROM reading_rows")]
+        dict(name='readings',sql="SELECT *,decode(body_hex,'hex') AS body_sha,decode(fingerprint_hex,'hex') AS fingerprint FROM reading_rows"),
+        *selected_readings_steps([])]
     reports=run_job(tmp_path,NativeDatasets.from_config(os.environ['DOCSPEC_JOB_CONFIG']),inputs=inputs,
         steps=steps+evidence_steps(),outputs=[],queries=[
             dict(name='bodies',sql='SELECT body_sha,format,intact_basis,suffix,stored_size FROM body_evidence ORDER BY body_sha'),

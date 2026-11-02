@@ -217,3 +217,27 @@ def test_validate_spec_rejects_scalar_composite_entity_versions(tmp_path,table,k
     with pytest.raises(ValueError,match='Parser versions must match the current definitions'):
         load_spec(write_spec(tmp_path,value))
 
+
+
+def test_checked_in_job_specs_load():
+    """The committed specs must pass their own loaders (2351caf4 added Explorer pins the loader refused)."""
+    from viewer_publication import archive_backfill_job, archive_model_job, archive_publish_job
+    jobs = Path(__file__).resolve().parents[3] / 'model/jobs'
+    model = archive_model_job.load_spec(jobs / 'publish-model.json')
+    assert set(model['parser_versions']) >= {'video_records', 'committee_records'}
+    assert archive_publish_job.load_spec(jobs / 'publish.json')
+    assert archive_backfill_job.load_spec(jobs / 'backfill-selective.json')['status'] == 'blocked'
+
+
+def test_a_spec_pin_for_a_table_the_helper_omits_is_refused(tmp_path):
+    from viewer_publication import archive_model_job
+    jobs = Path(__file__).resolve().parents[3] / 'model/jobs'
+    value = json.loads((jobs / 'publish-model.json').read_text())
+    value['parser_versions']['video_records'] = dict(youtube_cache='0' * 64)
+    path = jobs / '.stale-pin-test.json'
+    try:
+        path.write_text(json.dumps(value))
+        with pytest.raises(ValueError, match='Parser versions must match'):
+            archive_model_job.load_spec(path)
+    finally:
+        path.unlink(missing_ok=True)
