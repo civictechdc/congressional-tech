@@ -3,7 +3,7 @@ import hashlib
 import json
 from pathlib import Path
 
-from congress_api.lake.receipt_metadata import EMPTY_SHA256,document_status_sql
+from congress_api.lake.receipt_metadata import document_status_sql,empty_body_sql
 from congress_api.retention.provenance import json_input,list_of,struct
 
 ROOT=Path(__file__).parents[4]
@@ -428,7 +428,7 @@ def evidence_steps(*,root=ROOT):
     """Join pinned parser facts and physical evidence before source/link expansion."""
     from congress_api.lake.readings import writer_admission_step
     names=['pinned-readings','sniff-observations','sniff-conflicts','sniff-facts','page-facts','verification-conflicts','storage-verifications','copy-verifications','body-evidence','capture-evidence',
-        'good-archive-containers','good-fetches','good-fetch-keys','capture-locators','body-signals','locator-signals','placeholders','archive-bodies','record-roles',
+        'good-archive-containers','good-fetches','good-fetch-keys','capture-locators','body-signals','locator-signals','placeholders','archive-bodies','segment-captures','record-roles',
         'page-contexts','link-inputs']
     # good_fetches is a filter over retained capture_evidence; a second copy costs 1.3 GB of scratch.
     steps=[writer_admission_step(root=root)]+[dict(name=name.replace('-','_'),sql=(Path(root)/'model/sql'/(name+'.sql')).read_text(),materialize=name!='good-fetches')
@@ -437,7 +437,7 @@ def evidence_steps(*,root=ROOT):
     # once beside good_fetches so the late invariant report does not keep it alive.
     steps.insert(names.index('good-fetches')+2,dict(name='non_document_good_fetches',materialize=True,
         sql=f'''SELECT count(*) AS n FROM good_fetches WHERE (sha256 IS NOT NULL
-            AND (bytes=0 OR encode(sha256,'hex')='{EMPTY_SHA256}')) OR NOT {document_status_sql('http_status')}'''))
+            AND {empty_body_sql("encode(sha256,'hex')",'bytes')}) OR NOT {document_status_sql('http_status')}'''))
     return steps
 
 
@@ -465,7 +465,8 @@ def evidence_checks():
 
 def entity_track_checks():
     """Build-blocking: an empty body is never a recording track (ct-fh62)."""
-    return dict(empty_body_tracks=f"(SELECT count(*) FROM recording_track_candidates WHERE encode(sha256,'hex')='{EMPTY_SHA256}')")
+    return dict(empty_body_tracks=f'''(SELECT count(*) FROM recording_track_candidates
+        WHERE {empty_body_sql("encode(sha256,'hex')",'cast(NULL AS BIGINT)')})''')
 
 
 def _sql_steps(names,*,root=ROOT):

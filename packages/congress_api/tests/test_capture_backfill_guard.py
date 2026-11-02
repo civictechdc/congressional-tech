@@ -7,6 +7,7 @@ import pyarrow as pa
 import pyarrow.parquet as pq
 import pytest
 
+from congress_api.lake.captures import current_version
 from docspec_client.client import NativeDatasets
 
 
@@ -22,7 +23,7 @@ def rows():
         row.update(receipt_key=key,receipt_line=1,capture_index=0,run_id='run',mode='fetch',outcome='stored',
             family='documents',requested_url='https://example.org/shared',url='https://example.org/shared',
             http_status=200,complete=True,sha256=b'a'*32,bytes=10,stored_suffix='.gz',stored_bytes=5,
-            stored_md5=b'm'*16,fidelity='exact-bytes',mapping_version='f'*64)
+            stored_md5=b'm'*16,fidelity='exact-bytes',mapping_version=current_version())
         result.append(row)
     return result
 
@@ -91,6 +92,7 @@ def test_different_urls_and_physical_suffixes_can_share_decoded_bytes(tmp_path,s
     dict(http_status=202),dict(fetch_outcome='stored',fetch_http_status=202),dict(fetch_outcome='stored',fetch_http_status=404),
     dict(bytes=0),dict(sha256=bytes.fromhex('e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855')),
     dict(mapping_version=None),dict(mapping_version='F'*64),dict(mapping_version='f'*63),
+    dict(mapping_version='0'*64),  # a well-formed but stale mapping (green-e1)
     dict(original_path='/Users/me/wlist/1.xml'),dict(original_path='C:\\data\\1.xml'),
 ])
 def test_public_domain_violations_export_exact_rows(tmp_path,change):
@@ -145,7 +147,19 @@ def test_one_mapping_version_per_receipt(tmp_path):
     values=rows();values.append(dict(values[0],capture_index=1,mapping_version='e'*64))
     counts=[dict(key=KEYS[0],expected_captures=2),dict(key=KEYS[1],expected_captures=1)]
     _,facts=rejected(tmp_path,values,'receipt_mapping_versions',counts)
-    assert {row['mapping_version'] for row in facts}=={'e'*64,'f'*64}
+    assert {row['mapping_version'] for row in facts}=={'e'*64,current_version()}
+
+
+def test_a_registered_compatible_mapping_is_accepted(tmp_path):
+    from congress_api.lake.capture_backfill_guard import accepted_mapping_versions,validate_generation
+    registry=tmp_path/'compatible.json'
+    registry.write_text(json.dumps(dict(version=1,entries=[dict(parser='captures',version='0'*64,current=current_version()),
+        dict(parser='captures',version='1'*64,current='2'*64)])))
+    assert accepted_mapping_versions(registry)==sorted(['0'*64,current_version()])
+    values=rows();values[0]['mapping_version']='0'*64
+    report=validate_generation(engine=NativeDatasets.from_config(os.environ['DOCSPEC_JOB_CONFIG']),work=tmp_path/'guard',
+        pin=source(tmp_path,values),counts=COUNTS,mapping_versions=accepted_mapping_versions(registry))
+    assert report['status']=='validated'
 
 
 def test_a_failed_empty_or_202_row_and_a_relative_path_pass(tmp_path):

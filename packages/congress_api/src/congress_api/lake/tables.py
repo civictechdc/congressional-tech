@@ -218,10 +218,24 @@ def append_rows(source, *, engine,work,catalog_root,table,keys,definition,
     return result['table_operations'][0]
 
 
-def column_differential(engine, work, old, new, *, keys, compared, value_columns=(), predicate_sql='true', derived=None):
+def table_columns(engine, work, source):
+    """Column names of a Parquet file or an exact native table pin (one row read for a pin)."""
+    if not isinstance(source, dict):
+        return pq.read_schema(source).names
+    from congress_api.retention.provenance import run_job
+    rows = run_job(work, engine, inputs=[table_input('t', source)], steps=[], outputs=[],
+                   queries=[dict(name='row', sql='SELECT * FROM t LIMIT 1')])['row']
+    if not rows:
+        raise ValueError('Cannot read the columns of an empty table')
+    return list(rows[0])
+
+
+def column_differential(engine, work, old, new, *, keys, compared, value_columns=(), predicate_sql='true',
+                        new_predicate_sql=None, derived=None):
     """Join two tables on `keys` once, both ways, and report each column's changes.
 
-    `predicate_sql` selects rows on both sides (alias c); `derived` adds named boolean
+    `predicate_sql` selects rows (alias c) on both sides, unless `new_predicate_sql` gives the
+    new side its own; `derived` adds named boolean
     or scalar expressions over the same alias before comparison. Returns the joined
     row count, rows only on either side, a change count for every compared column, and
     (column, old, new, rows) value pairs for `value_columns`. One hash join and one
@@ -231,12 +245,13 @@ def column_differential(engine, work, old, new, *, keys, compared, value_columns
     extra = ''.join(f',({sql}) AS "{name}"' for name, sql in derived.items())
     same = ' AND '.join(f'(o."{k}" IS NOT DISTINCT FROM n."{k}")' for k in keys)
     present = f'o_present AND n_present'
-    side = lambda alias, table: (f'SELECT c.*{extra},true AS {alias}_present FROM {table} c '
-                                 f'WHERE coalesce(({predicate_sql}),false)')
+    side = lambda alias, table, predicate: (f'SELECT c.*{extra},true AS {alias}_present FROM {table} c '
+                                            f'WHERE coalesce(({predicate}),false)')
     selected = ','.join([f'o."{keys[0]}" IS NOT NULL AS o_present', f'n."{keys[0]}" IS NOT NULL AS n_present']
         + [f'o."{c}" IS DISTINCT FROM n."{c}" AS "d_{c}"' for c in compared]
         + [f'cast(o."{c}" AS VARCHAR) AS "o_{c}",cast(n."{c}" AS VARCHAR) AS "n_{c}"' for c in value_columns])
-    steps = [dict(name='o_rows', sql=side('o', 'old')), dict(name='n_rows', sql=side('n', 'new')),
+    steps = [dict(name='o_rows', sql=side('o', 'old', predicate_sql)),
+             dict(name='n_rows', sql=side('n', 'new', predicate_sql if new_predicate_sql is None else new_predicate_sql)),
              dict(name='joined', sql=f'SELECT {selected} FROM o_rows o FULL JOIN n_rows n ON {same}', materialize=True)]
     counts = ['count(*) AS total', 'count(*) FILTER (WHERE NOT n_present) AS only_old',
               'count(*) FILTER (WHERE NOT o_present) AS only_new']

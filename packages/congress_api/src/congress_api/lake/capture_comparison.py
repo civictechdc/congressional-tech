@@ -403,7 +403,7 @@ def compare_generations(old_pin, new_pin, *, engine, work, expected=None, receip
     Receipt batches bound each join; the per-batch sums are exact. O(N) expected.
     """
     from congress_api.lake.captures import COLUMNS, PK
-    from congress_api.lake.tables import column_differential
+    from congress_api.lake.tables import column_differential, table_columns
     from congress_api.lake._record_producer import GOOD_FETCH_CAPTURE_SQL
     work = Path(work).resolve()
     work.mkdir(parents=True, exist_ok=False)
@@ -416,11 +416,19 @@ def compare_generations(old_pin, new_pin, *, engine, work, expected=None, receip
                       for keys in batches]
     else:
         predicates = ['true']
-    compared = [c for c in COLUMNS if c not in PK] + ['good_fetch']
+    # A generation without a later-added column (v21 has 37) compares on the shared ones;
+    # added and removed columns are reported, never silently dropped.
+    old_names, new_names = (table_columns(engine, work / name, pin) for name, pin in
+                            (('old-columns', old_pin), ('new-columns', new_pin)))
+    shared = [c for c in COLUMNS if c in old_names and c in new_names]
+    if any(k not in shared for k in PK):
+        raise ValueError('Generation comparison needs the capture primary key on both sides')
+    compared = [c for c in shared if c not in PK] + ['good_fetch']
+    values = [c for c in GENERATION_VALUES if c in compared]
     total = dict(rows=0, only_old=0, only_new=0, changes={c: 0 for c in compared}, pairs={})
     for index, predicate in enumerate(predicates):
         part = column_differential(engine, work / f'batch-{index:05d}', old_pin, new_pin, keys=PK,
-            compared=compared, value_columns=GENERATION_VALUES, predicate_sql=predicate,
+            compared=compared, value_columns=values, predicate_sql=predicate,
             derived=dict(good_fetch=f'coalesce({GOOD_FETCH_CAPTURE_SQL},false)'))
         for name in ('rows', 'only_old', 'only_new'):
             total[name] += part[name]
@@ -430,10 +438,15 @@ def compare_generations(old_pin, new_pin, *, engine, work, expected=None, receip
             key = (column, old, new)
             total['pairs'][key] = total['pairs'].get(key, 0) + rows
     pairs = [[c, o, n, rows] for (c, o, n), rows in sorted(total['pairs'].items(), key=lambda item: tuple(map(str, item[0])))]
-    report = dict(rows=total['rows'], only_old=total['only_old'], only_new=total['only_new'],
+    report = dict(added_columns=[c for c in new_names if c not in old_names],
+                  removed_columns=[c for c in old_names if c not in new_names],
+                  rows=total['rows'], only_old=total['only_old'], only_new=total['only_new'],
                   changes=total['changes'], pairs=pairs, refused_columns=list(GENERATION_REFUSED))
     expected = expected or dict(pairs=[], only_old=0, only_new=0)
     unexpected = []
+    for name in ('removed_columns',):
+        if report[name] != expected.get(name, []):
+            unexpected.append([name, expected.get(name, []), report[name]])
     for name in ('only_old', 'only_new'):
         if report[name] != expected.get(name, 0):
             unexpected.append([name, expected.get(name, 0), report[name]])

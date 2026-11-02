@@ -117,26 +117,29 @@ def clean_older_line(line):
 PATH_KEYS = re.compile(r'(?:^|_)(?:path|file)$')
 
 
+class LocalPathRefused(ValueError):
+    """A receipt line names an absolute local path; the item fails, the run continues."""
+
+
 def refuse_local_paths(line):
-    """Refuse a public receipt carrying any local filesystem path, at write time.
+    """Refuse a public receipt naming an absolute local path, at write time.
 
     Receipts are immutable once written, so a local path can only be kept out here.
-    Every string and key is scanned for named local roots and drive paths outside URL
-    spans; a value under a path-named key (member_path, original_path, source_file, ...)
-    must also be relative: no leading '/', '~' or drive. O(size of the line).
+    A value under a path-named key (original_path, source_file, body_path, ...) must not
+    be absolute (receipt_metadata.ABSOLUTE_PATH). An archive member name is the archive's
+    own string, never a local path, so member_path is not judged. O(size of the line).
     """
+    from congress_api.lake.receipt_metadata import absolute_path
     def walk(value, path):
         if isinstance(value, str):
-            if cut_paths(value)[1] or (path and isinstance(path[-1], str) and PATH_KEYS.search(path[-1])
-                                       and re.match(r'^(?:/|~|[A-Za-z]:)', value)):
-                raise ValueError('Public receipt carries a local path at ' + '.'.join(map(str, path)))
+            if (path and isinstance(path[-1], str) and path[-1] != 'member_path'
+                    and PATH_KEYS.search(path[-1]) and absolute_path(value)):
+                raise LocalPathRefused('Public receipt carries a local path at ' + '.'.join(map(str, path)))
         elif isinstance(value, list):
             for index, child in enumerate(value):
                 walk(child, (*path, index))
         elif isinstance(value, dict):
             for key, child in value.items():
-                if cut_paths(str(key))[1]:
-                    raise ValueError('Public receipt carries a local path key at ' + '.'.join(map(str, path)))
                 walk(child, (*path, key))
     walk(line, ())
     return line
@@ -155,7 +158,7 @@ def public_receipt(line):
     if any(kind == 'protected_path' for kind, _, _ in cuts):
         raise ValueError('A local path is used as a receipt pointer key')
     names = {row['parameter'].casefold() for row in credential_parameters()}
-    allowed = frozenset('content-type content-length content-disposition last-modified etag content-encoding retry-after date cache-control accept-ranges'.split())
+    allowed = frozenset('content-type content-length content-disposition content-range last-modified etag content-encoding retry-after date cache-control accept-ranges'.split())
 
     def url(match):
         value = match[0]

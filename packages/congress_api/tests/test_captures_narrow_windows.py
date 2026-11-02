@@ -33,7 +33,7 @@ def test_native_narrow_flags_and_ranks_equal_legacy_multiset_with_nullable_dupli
             capture_index=index,primary_count=3,is_placeholder=placeholder,is_secondary=secondary,
             reference_kind='line' if placeholder else 'file' if secondary else 'capture',
             cutoff_candidate=False,completed_final=False,body_sha=None,top_level=True,
-            bytes=None,http_status=None,is_provider_raw_file=False,has_captures_pointer=False,
+            bytes=None,http_status=None,is_provider_raw_file=False,has_captures_pointer=False,range_partial=False,
             attempt=0,context_url='https://fixture.test/context',url='https://fixture.test/'+str(item),
             run_id='unused-wide-'+('r'*2048),pointer_json='unused-pointer-'+('p'*2048))
         value.update(changes);return value
@@ -51,7 +51,7 @@ def test_native_narrow_flags_and_ranks_equal_legacy_multiset_with_nullable_dupli
         row(4,1,key=None,line=None,item=None,placeholder=True,attempt=None,context_url=None),
         row(5,1,key=None,line=None,item=1,placeholder=True,primary_count=1,attempt=None,context_url=None)]
     integer={'source_row_id','receipt_line','selected_record_index','capture_index','primary_count','attempt','bytes','http_status'}
-    boolean={'is_placeholder','is_secondary','cutoff_candidate','completed_final','top_level','is_provider_raw_file','has_captures_pointer'}
+    boolean={'is_placeholder','is_secondary','cutoff_candidate','completed_final','top_level','is_provider_raw_file','has_captures_pointer','range_partial'}
     schema=pa.schema([(key,pa.int64() if key in integer else pa.bool_() if key in boolean else pa.string()) for key in rows[0]])
     source=tmp_path/'rows.parquet';pq.write_table(pa.Table.from_pylist(rows,schema=schema),source)
     definitions=mapping_steps();start=next(i for i,step in enumerate(definitions) if step['name']=='window_inputs')
