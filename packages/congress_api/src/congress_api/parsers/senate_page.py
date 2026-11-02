@@ -32,9 +32,10 @@ LISTINGS = ["/hearings?PageNum_rs={}", "/committee-activity/hearings?PageNum_rs=
             "/hearings-briefings/hearings?page={}"]
 
 
-## a hearing's page: /hearings/<name>, /meetings/<name>, hearings?ID=<id>, /2024/5/<name>
+## a hearing's page: /hearings/<name>, /meetings/<name>, hearings?ID=<id>, /2024/5/<name>,
+## or /<name> at the site root when the link carries the hCalendar event's url class.
 HEARING_LINK = re.compile(r"<a[^>]+href=\"((?:https?://[\w.\-]+)?/(?:[\w\-/.]*/)?(?:(?:hearings?|meetings|hearings-and-markups)/[^\"#?]+|hearings(?:-calendar)?\?(?:ID|id)=[\w\-]+"
-                          r"|\d{4}/\d{1,2}/[^\"#?/]+))\"[^>]*>(.*?)</a>", re.S)
+                          r"|\d{4}/\d{1,2}/[^\"#?/]+)|/[^\"#?/]+(?=\"[^>]*\bclass=\"[^\"]*\burl\b))\"[^>]*>(.*?)</a>", re.S)
 
 
 FIRST_RECORD = dt.date(2019, 6, 1)  # Congress.gov's Senate meeting records begin in June 2019
@@ -932,9 +933,12 @@ def event_details(page_html, url):
     subsequently selected by the adapter.
     """
     host = urlsplit(url).hostname or ""
-    if host.removeprefix("www.") not in SITE.values() or not re.search(r"/hearings/[^/]+", urlsplit(url).path):
+    # A hearing can live at the site root. Its URL proves nothing there, so only the
+    # hearing template admits it; /hearings/ pages with that template are unchanged.
+    root_meta = re.search(r'<p class="hearing-meta\b', page_html) if re.fullmatch(r"/[^/]+/?", urlsplit(url).path) else None
+    if host.removeprefix("www.") not in SITE.values() or not (root_meta or re.search(r"/hearings/[^/]+", urlsplit(url).path)):
         return None
-    heading = re.search(r"<h1\b[^>]*>(.*?)</h1>", page_html, re.S)
+    heading = re.search(r'<h1\b[^>]*\bmain_page_title\b[^>]*>(.*?)</h1>' if root_meta else r"<h1\b[^>]*>(.*?)</h1>", page_html, re.S)
     if not heading:
         return None
     title = text(heading.group(1))
@@ -943,6 +947,11 @@ def event_details(page_html, url):
     candidates = [text(value) for value in re.findall(r'<(?:div|p)[^>]*class="jet-listing-dynamic-field__content"[^>]*>(.*?)</(?:div|p)>', page_html, re.S)]
     date_text = next((value for value in candidates if re.match(r"^Date:\s*", value, re.I)), None)
     displayed_type = None
+    if root_meta:
+        labelled = re.search(r'<span class="date\b[^"]*">(.*?)</span>', page_html[root_meta.end():root_meta.end() + 2000], re.S)
+        date_text = text(labelled.group(1)) if labelled else None
+        displayed_type = event_type(text(heading.group(1))) if heading else None
+        displayed_type = displayed_type or "Hearing"
     if date_text is None and host.removeprefix("www.") == "csce.gov":
         root = dom.fromstring(page_html)
         dates = root.xpath('//*[contains(concat(" ", normalize-space(@class), " "), " csce-hearing__field-hearing-date ")]')

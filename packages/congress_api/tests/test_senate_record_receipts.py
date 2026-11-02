@@ -73,8 +73,7 @@ def test_failed_page_refresh_keeps_good_result_and_exports_error(tmp_path, monke
     def refused(*args, **kwargs):
         raise RuntimeError("403 Forbidden")
     monkeypatch.setattr(records_http, "get_with_retry", refused)
-    with pytest.raises(RuntimeError, match="403 Forbidden"):
-        records.main(**args)
+    records.main(**args)
     state = read_state(tmp_path / "senate.json.gz")
     page = state[HOST]["pages"][PAGE]
     workflow = state[HOST]["workflow"][PAGE]
@@ -147,14 +146,12 @@ def test_initial_page_failure_remains_incomplete_offline(tmp_path, monkeypatch):
     state[HOST]["pages"] = {}
     write_state(tmp_path / "senate.json.gz", state)
     monkeypatch.setattr(records_http, "get_with_retry", lambda *args, **kwargs: SimpleNamespace(status_code=200, content=b"unrecognized page"))
-    with pytest.raises(RuntimeError, match="Unrecognized"):
-        records.main(**args)
+    records.main(**args)
     saved = read_state(tmp_path / "senate.json.gz")[HOST]
     page = saved["pages"][PAGE]
     assert page["status"] == "error" and "checked" not in page and "last_check" not in page
     assert saved["workflow"][PAGE]["last_check"]["receipts"][0]["outcome"] == "unrecognized_page"
-    with pytest.raises(RuntimeError, match="incomplete"):
-        records.main(**args, offline=True)
+    records.main(**args, offline=True)
 
 
 @pytest.mark.parametrize("content,headers", [(b"%PDF-1.7\n<title>Misleading title in binary</title>", {}), (b"opaque bytes", {"Content-Type": "application/pdf; version=1.7"})])
@@ -163,8 +160,7 @@ def test_pdf_response_never_enters_html_parser(content, headers, tmp_path, monke
     prior = read_state(tmp_path / "senate.json.gz")[HOST]["pages"][PAGE]
     monkeypatch.setattr(records_http, "get_with_retry", lambda *args, **kwargs: SimpleNamespace(status_code=200, content=content, headers=headers))
     monkeypatch.setattr(records, "parsed", lambda *args: pytest.fail("PDF response entered HTML parser"))
-    with pytest.raises(RuntimeError, match="PDF content"):
-        records.main(**args)
+    records.main(**args)
     host = read_state(tmp_path / "senate.json.gz")[HOST]
     saved = host["pages"][PAGE]
     kept = {key: value for key, value in prior.items() if key not in ("events", "candidate_events", "match_details", "last_check", "observation_check", "cache_replay")}

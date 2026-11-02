@@ -15,17 +15,18 @@
 "skip:pdf": 2988,
 "skip:zip_format": 6
 },
-"head_parser_seconds": 32.9,
-"wall_seconds": 17,
+"head_parser_seconds": 36.4,
+"wall_seconds": 65,
 "changed": {
 "01d7cbfd2adc71286e7de804014766ab08e5e2b81867499519d6b500ddd8c7e6": {
 "outcome": "changed_marked",
 "rows_changed": true,
 "rows": [
 24,
-24
+25
 ],
-"details_changed": true
+"details_changed": true,
+"parse_page_same": true
 },
 "031a8349eba10e1d239fa939a82c5a693118558860aa9205a3d2b92438b0e6d0": {
 "outcome": "changed_marked",
@@ -34,7 +35,8 @@
 25,
 25
 ],
-"details_changed": true
+"details_changed": true,
+"parse_page_same": true
 },
 "04c23bef462f1771bd0fe95e1343dda1a4e5411afb2b6b7bdbc1a1a557cb7eb8": {
 "outcome": "changed_marked",
@@ -43,7 +45,8 @@
 25,
 25
 ],
-"details_changed": true
+"details_changed": true,
+"parse_page_same": true
 },
 "06c0f58e477d8107f46a8a5112b9df38ed3e290e8367c40cb87a117b0dcdf62d": {
 "outcome": "changed_marked",
@@ -52,16 +55,18 @@
 25,
 25
 ],
-"details_changed": true
+"details_changed": true,
+"parse_page_same": true
 },
 "094cc221e34610ed9d8b4f13728a8ea5fae2d2b748529557a9acd23f06d4004b": {
 "outcome": "changed_marked",
 "rows_changed": true,
 "rows": [
 22,
-22
+25
 ],
-"details_changed": true
+"details_changed": true,
+"parse_page_same": true
 },
 "0a83f76a413ac5eef79cbc30c088249698c0465bfd9e3a269ef841809ea81621": {
 "outcome": "changed_marked",
@@ -70,7 +75,8 @@
 25,
 25
 ],
-"details_changed": true
+"details_changed": true,
+"parse_page_same": true
 },
 "0a9a6a6956a9482c71ed9074a2a09d50b32d274857245ce60fec778d038c1665": {
 "outcome": "changed_marked",
@@ -79,7 +85,8 @@
 25,
 25
 ],
-"details_changed": true
+"details_changed": true,
+"parse_page_same": true
 },
 "164462a6bf076684f5c190b458667f05e6961eb45f03444bcbf5a77ca9f70ee4": {
 "outcome": "changed_marked",
@@ -88,7 +95,8 @@
 25,
 25
 ],
-"details_changed": true
+"details_changed": true,
+"parse_page_same": true
 },
 "25f63dad49a6416da446634765e544dc527cde331ea3546a2cb619324a918fe0": {
 "outcome": "changed_marked",
@@ -97,7 +105,8 @@
 25,
 25
 ],
-"details_changed": true
+"details_changed": true,
+"parse_page_same": true
 },
 "2b73128548134284671fd87cbe6622012fdf88f7aabef0db8ff7cca47eeb57fd": {
 "outcome": "changed_marked",
@@ -106,7 +115,8 @@
 25,
 25
 ],
-"details_changed": true
+"details_changed": true,
+"parse_page_same": true
 },
 "42de17124d9536a2bbec3c3ca72279fcca97ce3a04dc61ff4ef3c645b497413c": {
 "outcome": "changed_marked",
@@ -115,7 +125,8 @@
 25,
 25
 ],
-"details_changed": true
+"details_changed": true,
+"parse_page_same": true
 },
 "57096ed668a826e1cba679785837b2aec36d92d3ef928264b3a2b589d46c212d": {
 "outcome": "changed_marked",
@@ -124,7 +135,8 @@
 25,
 25
 ],
-"details_changed": true
+"details_changed": true,
+"parse_page_same": true
 },
 "5c8ca384e499a845ed8ccbcd0d9ab789a216edd9e269f5a0d54290b5bfc195cb": {
 "outcome": "changed_marked",
@@ -133,7 +145,8 @@
 25,
 25
 ],
-"details_changed": true
+"details_changed": true,
+"parse_page_same": true
 },
 "5e7c241c4425928f562b10d168f034435db56cec05fc3f4824538a1a4af48782": {
 "outcome": "changed_marked",
@@ -142,7 +155,8 @@
 25,
 25
 ],
-"details_changed": true
+"details_changed": true,
+"parse_page_same": true
 },
 "603f1b588c261453eb3d0109e64dd3b08702d83b11982de7c50dc2ee37622180": {
 "outcome": "changed_marked",
@@ -151,7 +165,8 @@
 25,
 25
 ],
-"details_changed": true
+"details_changed": true,
+"parse_page_same": true
 },
 "640384452fe76711c64a59768f474b32cf7a427de8371a9773d881963a347ec2": {
 "outcome": "changed_marked",
@@ -160,7 +175,8 @@
 25,
 25
 ],
-"details_changed": true
+"details_changed": true,
+"parse_page_same": true
 },
 "6663f19cfdf57ead0c0c3efbe098df1b35816c44cbe9135ef7383776fa3c5468": {
 "outcome": "changed_marked",
@@ -169,7 +185,8 @@
 25,
 25
 ],
-"details_changed": true
+"details_changed": true,
+"parse_page_same": true
 },
 "68c301735f1958717b0d6ae6dcdb90d577f7c3e2390aec3309c8cf8f2e27b267": {
 "outcome": "changed_marked",
@@ -178,7 +195,8 @@
 25,
 25
 ],
-"details_changed": true
+"details_changed": true,
+"parse_page_same": true
 },
 "81e5e1e0c8ab0d95d83bda5eaa2d38bf3f0f8182c8c3cbaf60b5e6e263e566f9": {
 "outcome": "changed_marked",
@@ -187,7 +205,8 @@
 25,
 25
 ],
-"details_changed": true
+"details_changed": true,
+"parse_page_same": true
 },
 "8730775c9f13c474cc07e3b034e5e4c58fcdd825870db8ff9a07ff4d0c6df9e5": {
 "outcome": "changed_marked",
@@ -196,7 +215,8 @@
 25,
 25
 ],
-"details_changed": true
+"details_changed": true,
+"parse_page_same": true
 },
 "8770a51406879d6925627a89a4227805c39295e797c373d72e664ea150d520b8": {
 "outcome": "changed_marked",
@@ -205,7 +225,8 @@
 25,
 25
 ],
-"details_changed": true
+"details_changed": true,
+"parse_page_same": true
 },
 "8c9d1f94cb4185fc89fc841a16b43474e88391a16495a609191582e7169c0fbe": {
 "outcome": "changed_marked",
@@ -214,7 +235,8 @@
 26,
 26
 ],
-"details_changed": true
+"details_changed": true,
+"parse_page_same": true
 },
 "8ca7175658f41235a7e26a9f93ca057197a187b6bf63bad81e23cee9007e46b1": {
 "outcome": "changed_marked",
@@ -223,7 +245,8 @@
 25,
 25
 ],
-"details_changed": true
+"details_changed": true,
+"parse_page_same": true
 },
 "906f7f62c30c0d8703ff84b409f4d8d71a2ed940ff06ba624e26c3003aef7859": {
 "outcome": "changed_marked",
@@ -232,7 +255,8 @@
 25,
 25
 ],
-"details_changed": true
+"details_changed": true,
+"parse_page_same": true
 },
 "9c97d1c63e886ab50b3bb81111bd88f96fd51f146b50e580966694f8ca05e36d": {
 "outcome": "changed_marked",
@@ -241,16 +265,18 @@
 25,
 25
 ],
-"details_changed": true
+"details_changed": true,
+"parse_page_same": true
 },
 "9ebb17157d78ff60a6d8019e8d21348d64070b63b3ad8f0d769113eda792d4b9": {
 "outcome": "changed_marked",
 "rows_changed": true,
 "rows": [
 20,
-20
+25
 ],
-"details_changed": true
+"details_changed": true,
+"parse_page_same": true
 },
 "9ec2803f6d4a8d418592ef1124f6dab66db66132dcfc9a8789657904fd262bba": {
 "outcome": "changed_marked",
@@ -259,7 +285,8 @@
 26,
 26
 ],
-"details_changed": true
+"details_changed": true,
+"parse_page_same": true
 },
 "a0abd169aebf7edee92bcb95f18b6077e2e7cdb600dba0891e4630cf09cc5bf5": {
 "outcome": "changed_marked",
@@ -268,7 +295,8 @@
 25,
 25
 ],
-"details_changed": true
+"details_changed": true,
+"parse_page_same": true
 },
 "a8a4b03f24b9e3ca812966bb39aa83154fca62916b1adac5f4b840b975fdfcb1": {
 "outcome": "changed_marked",
@@ -277,7 +305,8 @@
 25,
 25
 ],
-"details_changed": true
+"details_changed": true,
+"parse_page_same": true
 },
 "aaf57b477a656aeb157dae24a4f2321123fe70a6eacd5cf233052997403f0b57": {
 "outcome": "changed_marked",
@@ -286,7 +315,8 @@
 25,
 25
 ],
-"details_changed": true
+"details_changed": true,
+"parse_page_same": true
 },
 "ab872f2677d6ce823e416ef1e79ccafe5c3faa4af5dac52b543651135537e423": {
 "outcome": "changed_marked",
@@ -295,7 +325,8 @@
 25,
 25
 ],
-"details_changed": true
+"details_changed": true,
+"parse_page_same": true
 },
 "ac1ecfd2950c92d6557cb372d41c12dae5bad9617ca163736ead04252fc3835b": {
 "outcome": "changed_marked",
@@ -304,7 +335,8 @@
 25,
 25
 ],
-"details_changed": true
+"details_changed": true,
+"parse_page_same": true
 },
 "ac9590747a895a616a126ac14e0f175e0b5ee8ce4528f2436a069e12abf04abd": {
 "outcome": "changed_marked",
@@ -313,7 +345,8 @@
 25,
 25
 ],
-"details_changed": true
+"details_changed": true,
+"parse_page_same": true
 },
 "b05b30db0a203a817e800b782092c45006f22f623447b3a6802b35986ae27cb9": {
 "outcome": "changed_marked",
@@ -322,7 +355,8 @@
 25,
 25
 ],
-"details_changed": true
+"details_changed": true,
+"parse_page_same": true
 },
 "b1dd0bd209db4d21e09151c6ce9ea3a05942a7b4273560ac7c6326a876d5351e": {
 "outcome": "changed_marked",
@@ -331,7 +365,8 @@
 25,
 25
 ],
-"details_changed": true
+"details_changed": true,
+"parse_page_same": true
 },
 "c181d43035c00cc3bcd3c2aa05ac2c903a337e3171b47c327bb32e008b0100dc": {
 "outcome": "changed_marked",
@@ -340,7 +375,8 @@
 25,
 25
 ],
-"details_changed": true
+"details_changed": true,
+"parse_page_same": true
 },
 "c4385eb2ee5b40f61b07e082b9adc51e449eb6fe1466c6e80924f3f1cb11eb80": {
 "outcome": "changed_marked",
@@ -349,7 +385,8 @@
 25,
 25
 ],
-"details_changed": true
+"details_changed": true,
+"parse_page_same": true
 },
 "c8ebbe041641ab68e2983b171368d3833b4e8d6384922f3253b4bb4bb63869f1": {
 "outcome": "changed_marked",
@@ -358,7 +395,8 @@
 25,
 25
 ],
-"details_changed": true
+"details_changed": true,
+"parse_page_same": true
 },
 "cdde6f42e43339d59067ae52e844ac87a02f916af258b9ceb0da1b9c62724e6e": {
 "outcome": "changed_marked",
@@ -367,7 +405,8 @@
 25,
 25
 ],
-"details_changed": true
+"details_changed": true,
+"parse_page_same": true
 },
 "d20d330661b5769de0f9abcc1df0a74b5bdd82293302035df2f6eabbf5816d0a": {
 "outcome": "changed_marked",
@@ -376,7 +415,8 @@
 25,
 25
 ],
-"details_changed": true
+"details_changed": true,
+"parse_page_same": true
 },
 "d85bc5fa6264a6066c640eef7d74c192ccea219094a6e191f15f5fa418d4fb14": {
 "outcome": "changed_marked",
@@ -385,7 +425,8 @@
 25,
 25
 ],
-"details_changed": true
+"details_changed": true,
+"parse_page_same": true
 },
 "e3cc182e68809b188b0fb019d9eafdb0390f4c04dcc9491ecdb92c9e0f3f6809": {
 "outcome": "changed_marked",
@@ -394,7 +435,8 @@
 25,
 25
 ],
-"details_changed": true
+"details_changed": true,
+"parse_page_same": true
 },
 "e62e850aa31fdff611f374fb30ced8c0650817510087dafb9cd38fb379158f3f": {
 "outcome": "changed_marked",
@@ -403,7 +445,8 @@
 25,
 25
 ],
-"details_changed": true
+"details_changed": true,
+"parse_page_same": true
 },
 "eee13a03913a5086b4266656625e82a52e1f98f622580f45be15dcd15cf43b36": {
 "outcome": "changed_marked",
@@ -412,7 +455,8 @@
 25,
 25
 ],
-"details_changed": true
+"details_changed": true,
+"parse_page_same": true
 },
 "f205fa5e15b53e3f8e5ad6de0ea994ad27b24df84c0ab3a216b3a492e648d9af": {
 "outcome": "changed_marked",
@@ -421,7 +465,8 @@
 26,
 26
 ],
-"details_changed": true
+"details_changed": true,
+"parse_page_same": true
 },
 "f9035384e0b87b48d6934eee6c44152eb05f5309c502fbb55b83b24a102ee283": {
 "outcome": "changed_marked",
@@ -430,7 +475,8 @@
 25,
 25
 ],
-"details_changed": true
+"details_changed": true,
+"parse_page_same": true
 },
 "fb7d13f1602de37f3af0c3232d0a128fb41e0b5dd707e8a107d160027e8dd6eb": {
 "outcome": "changed_marked",
@@ -439,16 +485,18 @@
 25,
 25
 ],
-"details_changed": true
+"details_changed": true,
+"parse_page_same": true
 },
 "fd63890cf8e2b3a85ea8345fab5e59c241cbf405e200de9b66881cd7d61914e3": {
 "outcome": "changed_marked",
-"rows_changed": false,
+"rows_changed": true,
 "rows": [
 0,
-0
+25
 ],
-"details_changed": true
+"details_changed": true,
+"parse_page_same": true
 },
 "ff5a0901a60892a4ac75f43f798a9c23c75aec23679c3afe6df8dc109dd0e01a": {
 "outcome": "changed_marked",
@@ -457,7 +505,8 @@
 25,
 25
 ],
-"details_changed": true
+"details_changed": true,
+"parse_page_same": true
 }
 },
 "skipped": {

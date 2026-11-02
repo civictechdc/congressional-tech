@@ -206,7 +206,7 @@ def test_first_proceeding_wins_over_later_agenda_or_topic(title, expected):
     assert event_details(page, URLS['indian-2026-08-04'])['type'] == expected
 
 
-def test_failed_backfill_keeps_candidate_guard_for_already_collected_native_event(tmp_path, monkeypatch):
+def test_failed_page_does_not_admit_a_duplicate_of_an_already_collected_native_event(tmp_path, monkeypatch):
     import gzip
     host, url = 'indian.senate.gov', URLS['indian-housing-2026']
     native = {'eventId': '12', 'chamber': 'Senate', 'congress': 119, 'date': '2026-08-26', 'meetingStatus': 'Canceled', 'type': 'Meeting',
@@ -218,14 +218,16 @@ def test_failed_backfill_keeps_candidate_guard_for_already_collected_native_even
         if target == broken: raise RuntimeError('503 Unavailable')
         return SimpleNamespace(status_code=200, content=fixture('indian-housing-2026').encode())
     monkeypatch.setattr(records_http, 'get_with_retry', fetch)
-    with pytest.raises(RuntimeError, match='503'):
-        records.main(path, tmp_path, tmp_path, as_of=date(2026,9,28), site=[host])
+    records.main(path, tmp_path, tmp_path, as_of=date(2026,9,28), site=[host])
     saved = records_read_state(tmp_path/'senate.json.gz')
-    assert saved[host]['workflow'][url]['candidate_events'] == ['12']
+    assert saved[host]['pages'][broken]['status'] == 'error'
+    assert saved[host]['workflow'][broken]['last_check']['outcome'] == 'error'
+    assert saved[host]['last_attempt']['outcome'] == 'error' and '503' in saved[host]['last_attempt']['error']
+    # The other page's failure no longer stops association, so no duplicate is admitted.
+    assert saved[host]['workflow'][url]['events'] == ['12'] and saved[host]['workflow'][url]['candidate_events'] == []
     assert 'candidate_events' not in saved[host]['pages'][url]
     rows = list(adapt(saved, context(), meetings={(119,'senate','12'): Ref(kind='meeting',id='known')}, committee_terms={(119,'slia00'): Ref(kind='committee_term',id='term')}))
     assert not any(row.kind == 'meeting' for row in rows)
-    assert any(row.kind == 'data_issue' and row.id.endswith('possible-native-event') for row in rows)
 
 
 def test_offline_rematch_preserves_supported_association_despite_changed_rarity_weights(tmp_path, monkeypatch):
@@ -265,3 +267,47 @@ def test_existing_march_second_match_also_cites_the_transcript_correction():
     links=[row for row in rows if row.kind=='material_link']
     assert links and all(any(citation.source.id==correction.id for citation in row.provenance.citations) for row in links)
     assert not any(row.kind in ('meeting','occurrence') for row in rows)
+
+
+def test_root_slug_hearing_becomes_a_source_only_meeting_with_its_displayed_date():
+    host = 'appropriations.senate.gov'
+    url = 'https://www.appropriations.senate.gov/a-review-of-preparations-for-the-fifa-world-cup-2026'
+    body = (Path(__file__).parent / 'fixtures/source_models/senate-root-slug-hearing.html').read_text()
+    state = {host: {'listings': {url: ['2026-04-15', 'FIFA']}, 'pages': {url: records_parsed(body, url)}}}
+    official, = official_events(state)
+    rows = list(adapt(state, context(), meetings={}, committee_terms={(official['congress'], 'ssap00'): Ref(kind='committee_term', id='term')}))
+    meeting, = [row for row in rows if row.kind == 'meeting']
+    assert meeting.scheduled_start.date.isoformat() == '2026-04-15'
+    assert meeting.title == 'A Review of Preparations for the FIFA World Cup 2026' and official['congress'] == 119
+
+
+@pytest.mark.parametrize('status,recorded', [(404, 'not_found'), (403, 'error')])
+def test_a_dead_page_records_its_reason_and_the_run_still_writes_its_output(status, recorded, tmp_path, monkeypatch):
+    import gzip
+    host, url = 'indian.senate.gov', URLS['indian-housing-2026']
+    path = tmp_path/'native.jsonl.gz'; path.write_bytes(gzip.compress(b''))
+    dead = 'https://www.indian.senate.gov/hearings/dead'
+    monkeypatch.setattr(records, 'listed', lambda *a, **k: ([(date(2026,8,26), url, 'Housing'), (date(2026,8,27), dead, 'Other')], {'wordpress': True}))
+    def fetch(_session, target, allowed=(200, 404), **kwargs):
+        if target != dead:
+            return SimpleNamespace(status_code=200, content=fixture('indian-housing-2026').encode())
+        if status not in allowed:
+            raise RuntimeError(f'{status} Forbidden')
+        return SimpleNamespace(status_code=status, content=b'')
+    monkeypatch.setattr(records_http, 'get_with_retry', fetch)
+    records.main(path, tmp_path, tmp_path, as_of=date(2026,9,28), site=[host])
+    saved = records_read_state(tmp_path/'senate.json.gz')[host]
+    assert saved['workflow'][dead]['last_check']['outcome'] == recorded
+    assert saved['pages'][url].get('event')
+    assert list(tmp_path.glob('*.csv'))
+
+
+def test_a_failed_listing_still_fails_the_run(tmp_path, monkeypatch):
+    import gzip
+    host = 'indian.senate.gov'
+    path = tmp_path/'native.jsonl.gz'; path.write_bytes(gzip.compress(b''))
+    def refused(*args, **kwargs):
+        raise RuntimeError('503 Unavailable')
+    monkeypatch.setattr(records, 'listed', refused)
+    with pytest.raises(RuntimeError, match='503'):
+        records.main(path, tmp_path, tmp_path, as_of=date(2026,9,28), site=[host])

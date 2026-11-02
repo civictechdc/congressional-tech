@@ -10,8 +10,8 @@
  },
  "expected": {
   "rows": 1225,
-  "listing_absent": 34,
-  "matched": 1189,
+  "listing_absent": 0,
+  "matched": 1223,
   "matched_no_encoded_day": 2,
   "matched_wrong_day": 0,
   "details_rows_with_time": 750,
@@ -335,5 +335,5 @@
   }
  ],
  "expected_status": "Reproduced on all 49 raw bodies at this revision; actual counts and the 33 fallback rows are in listing-replay.json.",
- "open_item": "34 rows (33 distinct URLs) stay undiscovered: slugs outside HEARING_LINK in byte-hashed senate_page.py. A fallback in parsers/senate.py was tried and removed: a 403 on one of its pages failed the whole Senate run, and event_details could not make meetings from them. Live probe of the 33, fallback-live-probe.json: appropriations 5 of 5 return 200 (178 KB), budget 21 return 404 and 7 return 403."
+ "open_item": "The 33 root-slug pages are now discovered through HEARING_LINK. root-slug-pages.json: 5 Appropriations pages return 200 and become events whose date equals both the listing row and the page text; 21 Budget pages return 404 (recorded not_found) and 7 return 403 (recorded error, retried each run), and neither fails a run."
 }

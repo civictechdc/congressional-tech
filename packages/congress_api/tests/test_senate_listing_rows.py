@@ -7,6 +7,7 @@ import pytest
 from congress_api.acquisition import senate as records
 from congress_api.models.senate import ListingColumns
 from congress_api.parsers.senate import displayed_clock, parse_listing_details, parse_listing_page
+from congress_api.parsers.senate_page import event_details
 
 SOURCES = Path(__file__).parent / 'fixtures/source_models'
 SITE = 'appropriations.senate.gov'
@@ -51,12 +52,32 @@ def test_unencoded_row_keeps_its_visible_day_and_infers_nothing():
     assert 'time' not in row and 'encoded_start' not in row
 
 
-def test_root_slug_row_has_columns_but_stays_out_of_discovery():
-    # HEARING_LINK decides discovery. Its 34 misses wait for senate_page.py's next re-version:
-    # a separate path here failed whole runs on a 403 and its pages could not create meetings.
+def test_root_slug_event_row_is_discovered_through_hearing_link():
     page = (SOURCES / 'senate-listing-event-root-slug.html').read_text()
-    assert parse_listing_page(page, 'budget.senate.gov') == []
-    assert only('senate-listing-event-root-slug.html', 'budget.senate.gov')['date_text'] == '09.23.20'
+    (day, url, _), = parse_listing_page(page, 'budget.senate.gov')
+    assert day == dt.date(2020, 9, 23) and url == 'https://www.budget.senate.gov/-hearing-on-cbos-updated-budget-outlook'
+
+
+def test_a_root_link_without_the_event_url_class_is_not_a_hearing():
+    assert parse_listing_page('<a href="/about" class="nav">About</a> 04/22/26', SITE) == []
+    assert parse_listing_page('<a href="/about">About</a> 04/22/26', SITE) == []
+
+
+def test_root_slug_hearing_page_becomes_an_event_with_its_displayed_date():
+    # Trimmed real page; see the fixture's provenance comment.
+    url = 'https://www.appropriations.senate.gov/a-review-of-preparations-for-the-fifa-world-cup-2026'
+    event = event_details((SOURCES / 'senate-root-slug-hearing.html').read_text(), url)
+    assert (event['title'], event['date'], event['type']) == ('A Review of Preparations for the FIFA World Cup 2026', '2026-04-15', 'Hearing')
+
+
+def test_root_page_without_the_hearing_template_is_not_an_event():
+    url = 'https://www.appropriations.senate.gov/about'
+    assert event_details('<h1 class="main_page_title">About</h1><span class="date">Date: April 15, 2026</span>', url) is None
+
+
+def test_hearings_page_with_the_template_is_unchanged():
+    page = '<h1 class="main_page_title">T</h1><p class="hearing-meta row"><span class="date col-md-12">Date: April 15, 2026</span></p>'
+    assert event_details(page, 'https://www.appropriations.senate.gov/hearings/x') is None
 
 
 def test_row_dated_by_a_table_cell_keeps_the_table_branch():

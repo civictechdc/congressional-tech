@@ -359,6 +359,7 @@ def main(meetings, state_dir, output_dir, seed_cache=None, offline=False, as_of=
                 elif url in maintenance:
                     aged.append(url)
             aged.sort(key=lambda u: (pages.get(u, {})["checked"], u))
+            page_failures = []
             for url in urgent + aged:
                 if limit is not None and live_pages >= limit and not importing:
                     break
@@ -367,11 +368,17 @@ def main(meetings, state_dir, output_dir, seed_cache=None, offline=False, as_of=
                     pages[url], activity = fetch_page(url, pages.get(url, {}), as_of, cache=seed_cache if importing else None, check=page_check, activity=(saved.get("workflow") or {}).get(url))
                     if activity:
                         saved.setdefault("workflow", {})[url] = activity
-                except (ValueError, RuntimeError, OSError):
-                    if not importing:
-                        pages.setdefault(url, {"title": "", "lines": [], "witnesses": [], "documents": [], "status": "error"})
-                        saved.setdefault("workflow", {}).setdefault(url, {})["last_check"] = page_check
-                    raise
+                except (ValueError, RuntimeError, OSError) as error:
+                    if importing:
+                        raise
+                    # One page's failure is that page's outcome: it keeps any prior
+                    # content, its receipt says why, and it is retried first next run.
+                    pages.setdefault(url, {"title": "", "lines": [], "witnesses": [], "documents": [], "status": "error"})
+                    saved.setdefault("workflow", {}).setdefault(url, {})["last_check"] = page_check
+                    totals["pages failed"] += 1
+                    page_failures.append(f"{url}: {error}")
+                    print(f"{host}: page failed, retained with its reason: {page_failures[-1]}", flush=True)
+                    continue
                 totals["pages seeded" if importing else "pages fetched"] += 1
                 if not importing and totals["pages fetched"] % 25 == 0:
                     print(f"{host}: {totals['pages fetched']} pages refreshed; checkpoint saved", flush=True)
@@ -379,11 +386,14 @@ def main(meetings, state_dir, output_dir, seed_cache=None, offline=False, as_of=
                 mark_possible_matches(native_meetings, state)
                 write_state(path, normalize_senate_state(state))
                 saved = state[host]
+                pages = saved["pages"]  # normalizing replaces the site, so keep writing to the live one
                 if not importing:
                     live_pages += 1
-            if limit is None or live_pages < limit:
+            if (limit is None or live_pages < limit) and not page_failures:
                 saved["versions"] = versions[host]
-            attempt.update(completed_at=timestamp(), outcome="imported" if importing else "complete")
+            attempt.update(completed_at=timestamp(), outcome="imported" if importing else "error" if page_failures else "complete")
+            if page_failures:
+                attempt["error"] = f"{len(page_failures)} pages failed; first: {page_failures[0]}"
             saved["last_attempt"] = attempt
             state[host] = saved
         except (ValueError, RuntimeError, OSError) as error:
@@ -396,8 +406,9 @@ def main(meetings, state_dir, output_dir, seed_cache=None, offline=False, as_of=
             saved["source_bodies"] = source_bodies
     mark_possible_matches(native_meetings, state)
     write_state(path, normalize_senate_state(state))
+    # A page with a recorded failure is not missing; a page never attempted is.
     missing = [host for host in versions if (not site or host in site) and (host not in state or state[host].get("status") == "error" or any(
-        u not in state[host]["pages"] or state[host]["pages"][u].get("status") == "error" for u in state[host]["listings"]))]
+        u not in state[host]["pages"] for u in state[host]["listings"]))]
     if errors or missing:
         raise RuntimeError(f"Senate source incomplete: {errors[:5] or missing}")
     associations = associate_pages(ms, native_meetings, state)
