@@ -33,7 +33,9 @@ CLOUDFLARE_LINK = '/cdn-cgi/l/email-protection'
 CLOUDFLARE_ELEMENT = re.compile(rb'<(a|span)\b[^>]*\bdata-cfemail="([0-9a-fA-F]+)"[^>]*>.*?</\1\s*>', re.S | re.I)
 CLOUDFLARE_HREF = re.compile(rb'href="' + CLOUDFLARE_LINK.encode() + rb'#([0-9a-fA-F]+)"')
 # C0 controls other than tab, LF and CR are invisible and illegal in XML; a
-# single one (such as a legacy \x1a EOF byte) makes trafilatura return nothing.
+# single one (such as a legacy \x1a EOF byte) can make trafilatura return
+# nothing. They are removed only to retry that extraction: a ZIP member keeps
+# the same controls as its direct copy, and must read the same.
 CONTROLS = re.compile(rb'[\x00-\x08\x0b\x0c\x0e-\x1f]')
 # The one place that says which html readings this reader can change: an
 # html reading with no fingerprint, or with a link whose href contains
@@ -267,7 +269,7 @@ def _cloudflare_address(token):
 
 
 def browser_body(body):
-    """Return the body a browser shows after Cloudflare's decoder, without C0 controls, and the decoded count."""
+    """Return the body a browser shows after Cloudflare's decoder, and the decoded count."""
     count = 0
     def element(match):
         nonlocal count
@@ -281,7 +283,7 @@ def browser_body(body):
         body = CLOUDFLARE_ELEMENT.sub(element, body)
     if CLOUDFLARE_LINK.encode() in body:
         body = CLOUDFLARE_HREF.sub(href, body)
-    return CONTROLS.sub(b'', body), count
+    return body, count
 
 
 def needs_browser_reading(row):
@@ -306,6 +308,15 @@ def read_page(body, parser):
     if row['status'] != 'completed':
         return row
     basis = 'main'
+    if row['fingerprint'] is None and CONTROLS.search(cleaned):
+        # Controls stay in what is read; they are removed only for the extraction they break.
+        from trafilatura import extract
+        stripped = CONTROLS.sub(b'', cleaned)
+        main = extract(stripped, include_comments=False, output_format='txt')
+        if main:
+            row['fingerprint'], basis = fingerprint(main), 'main_without_controls'
+        else:
+            text = _markup_facts(stripped, parser)[1]
     if row['fingerprint'] is None:
         row['fingerprint'], basis = fingerprint(text), 'visible'
     row['fields'] = [*row['fields'], dict(field='fingerprint_basis', value=basis)]
