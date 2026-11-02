@@ -57,7 +57,9 @@ WITH keys AS (
  FROM (SELECT video_key,event_ids,unnest(tracks) AS t FROM recordings_entity WHERE tracks IS NOT NULL)
 ), caption_tracks AS (
  SELECT DISTINCT video_key,unnest(event_ids) AS event_id,format,language,production FROM recording_tracks
+ -- The empty body's digest is no caption file (338611's YouTube track is 0 bytes).
  WHERE format IN ('vtt','srt','ttml') AND body IS NOT NULL AND event_ids IS NOT NULL
+  AND body<>arrow_cast(decode('e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855','hex'),'FixedSizeBinary(32)')
 ), transcript_rows AS (
  SELECT DISTINCT l.event_id,d.package_id,cast(d.list_row AS INT) AS list_row,d.format
  FROM transcript_links l
@@ -86,9 +88,10 @@ WITH keys AS (
  FROM transcript_preferred t JOIN transcript_formats f ON f.event_id=t.event_id AND f.package_id=t.package_id
  WHERE t.rn=1
  UNION ALL
- -- A committee's own transcript (ct-1i4q): a held file linked to the meeting whose name is the House
- -- transcript form, H{HRG,MKP,MTG}-<congress>-<committee>-Transcript-<yyyymmdd>[-<part>].pdf, dated the
- -- meeting's day (HHRG-118-VR09-Transcript-20231108.pdf). Every listed transcript file on v21 has this form.
+ -- A committee's own transcript (ct-1i4q): a held file the meeting's current record lists (by name) whose
+ -- name is the House transcript form, H{HRG,MKP,MTG}-<congress>-<committee>-Transcript-<yyyymmdd>[-<part>].pdf,
+ -- dated the meeting's day (HHRG-118-VR09-Transcript-20231108.pdf). Every listed transcript file on v21 has
+ -- this form; a file linked only by its folder path is not one the record lists.
  SELECT DISTINCT m.event_id,'committee_transcript' AS source,cast(NULL AS VARCHAR) AS package_id,cast(o.list_row AS INT) AS list_row,
   arrow_cast(array_slice(make_array(o.format),1,CASE WHEN o.format IS NULL THEN 0 ELSE 1 END),'List(Utf8)') AS formats,
   cast(NULL AS VARCHAR) AS video_key,cast(NULL AS VARCHAR) AS language,cast(NULL AS VARCHAR) AS production
@@ -96,6 +99,8 @@ WITH keys AS (
   WHERE regexp_like(filename,'(?i)^H(?:HRG|MKP|MTG)-[0-9]{3}-[A-Z]{2}[0-9]{2}-Transcript-[0-9]{8}(?:-[A-Z0-9]+)?[.]pdf$')) o
  JOIN meetings_resolved m ON m.event_id=o.event_id
   AND (regexp_match(o.filename,'(?i)-Transcript-([0-9]{8})'))[1]=replace(cast(m.meeting_date AS VARCHAR),'-','')
+ JOIN (SELECT DISTINCT event_id,lower(regexp_replace(url,'^.*/','')) AS name FROM meeting_document_urls) d
+  ON d.event_id=o.event_id AND d.name=lower(o.filename)
  UNION ALL
  -- Captions and subtitles (ct-1i4q): complete caption files of the meeting's recordings. A vtt beside a
  -- playlist of the same production is one segment of that stream, not a track (ct-9s7b), and a track
