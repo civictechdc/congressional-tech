@@ -20,4 +20,4 @@ def test_private_comparison_proof_is_derived_once_and_never_appended(tmp_path):
     assert (a['attempt'],a['http_status'],a['fetch_http_status'])==(1,403,404)
     public=pq.read_schema(stage/'captures.parquet').names
     assert not any(name.startswith('source_') for name in public)
-    assert len(public)==37
+    assert len(public)==39

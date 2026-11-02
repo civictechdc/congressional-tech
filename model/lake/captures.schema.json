@@ -74,6 +74,12 @@
       "type": "string"
     },
     {
+      "id": 42,
+      "name": "original_path",
+      "required": false,
+      "type": "string"
+    },
+    {
       "id": 17,
       "name": "h_content_disposition",
       "required": false,
@@ -226,6 +232,12 @@
     {
       "id": 37,
       "name": "writer_commit",
+      "required": false,
+      "type": "string"
+    },
+    {
+      "id": 41,
+      "name": "mapping_version",
       "required": false,
       "type": "string"
     }

@@ -44,6 +44,51 @@ RECOVERY = {
 }
 
 
+# Owner 2026-11-02 (ct-c6b0, ct-3l1c, ct-fh62): a response is a document only when its
+# status is 2xx other than 202 and its body is not empty. 202 Accepted produces nothing;
+# every corpus 202 is an empty body or a firewall challenge. NULL status is each
+# caller's own decision and is not part of this rule. The writer, the capture
+# mapping, URL state and the scheduler all import this one definition.
+EMPTY_SHA256 = 'e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855'
+NON_DOCUMENT_2XX = (202,)
+
+
+def document_status(status):
+    return status is not None and 200 <= status < 300 and status not in NON_DOCUMENT_2XX
+
+
+def document_status_sql(status):
+    return (f"({status} BETWEEN 200 AND 299 AND {status} NOT IN ("
+            + ','.join(str(code) for code in NON_DOCUMENT_2XX) + '))')
+
+
+def empty_body(sha, size):
+    return size == 0 or (sha or '').lower() == EMPTY_SHA256
+
+
+def empty_body_sql(sha_hex, size):
+    return f"(coalesce({size},-1)=0 OR coalesce(lower({sha_hex}),'')='{EMPTY_SHA256}')"
+
+
+# Legacy assembly receipts state an attempt's status under `status` on the object
+# that owns the pointed body (ct-bxqa). Measured on all 2,292 receipts: these owner
+# paths, plus master_attempts[i], are every place it occurs; always an integer.
+OWNER_STATUS = {(): 'status_root', ('receipt',): 'status_receipt',
+    ('media_playlist_receipt',): 'status_media', ('metadata_receipt',): 'status_metadata',
+    ('manifest_receipt',): 'status_manifest'}
+
+
+def owner_status_paths():
+    """Owner-relative paths of every read `status`, with their field names."""
+    paths = {owner+('status',): name for owner,name in OWNER_STATUS.items()}
+    paths.update({('master_attempts',index,'status'): f'status_master_{index}'
+                  for index in range(PRIOR_ATTEMPT_LIMIT)})
+    return paths
+
+
+OWNER_STATUS_FIELDS = tuple(owner_status_paths().values())
+
+
 def lit(value):
     return "'"+str(value).replace("'","''")+"'"
 
@@ -62,8 +107,9 @@ def record_pointer_index(pointer):
 
 
 def obj(fields):
+    typed=('error_present','previous_receipt_complete',*OWNER_STATUS_FIELDS)
     return 'named_struct('+','.join(lit(k)+','+(f'cast({v} AS VARCHAR)'
-        if SCALARS.get(k,'str')=='str' and k not in ('error_present','previous_receipt_complete') else v) for k,v in fields.items())+')'
+        if SCALARS.get(k,'str')=='str' and k not in typed else v) for k,v in fields.items())+')'
 
 
 def counter_file(counter):
@@ -142,6 +188,22 @@ def mods_descriptor_kind(slots,keys):
     return 'CASE WHEN '+' AND '.join(conditions)+" THEN 'govinfo-mods' END"
 
 
+def source_paths():
+    """Every raw JSON path the source projection reads, in projection order (ct-mrgt)."""
+    paths=[prefix+(name,) for prefix in [(),('record',)] for name in SCALARS]
+    paths += [('record','body_complete'),('record','previous_receipt','body_complete')]
+    paths += [prefix+path for prefix in [(),('record',)] for path in RECOVERY.values()]
+    paths += [prefix+path for prefix in [(),('record',)] for path in DOWNLOAD_HEADERS]
+    paths += [prefix+('prior_attempts',index,name) for prefix in [(),('record',)]
+              for index in range(PRIOR_ATTEMPT_LIMIT) for name in ATTEMPT_FIELDS]
+    paths += [('record','captures',index,name) for index in range(PRIOR_ATTEMPT_LIMIT) for name in ATTEMPT_FIELDS]
+    paths += [('captures',),('file_references',),('writer','job'),('writer','commit'),('error',),('record','error')]
+    paths += [('record',*path) for path in INLINE_PAYLOAD_PATHS]
+    paths += [('record',name) for name in MODS_DESCRIPTOR_FIELDS]
+    paths += [('record',*path) for path in owner_status_paths()]
+    return paths
+
+
 def source_plan(*,counter=None,files=None,receipt_keys=None):
     """Materialize one source projection, retaining list items once before shredding."""
     if counter is not None:
@@ -164,17 +226,7 @@ def source_plan(*,counter=None,files=None,receipt_keys=None):
         record_names=set(SCALARS)
         locator='__source_key AS receipt_key,__source_line AS receipt_line'
         selected='true'
-    paths=[prefix+(name,) for prefix in [(),('record',)] for name in SCALARS]
-    paths += [('record','body_complete'),('record','previous_receipt','body_complete')]
-    paths += [prefix+path for prefix in [(),('record',)] for path in RECOVERY.values()]
-    paths += [prefix+path for prefix in [(),('record',)] for path in DOWNLOAD_HEADERS]
-    paths += [prefix+('prior_attempts',index,name) for prefix in [(),('record',)]
-              for index in range(PRIOR_ATTEMPT_LIMIT) for name in ATTEMPT_FIELDS]
-    paths += [('record','captures',index,name) for index in range(PRIOR_ATTEMPT_LIMIT) for name in ATTEMPT_FIELDS]
-    paths += [('captures',),('file_references',),('writer','job'),('writer','commit'),('error',),('record','error')]
-    paths += [('record',*path) for path in INLINE_PAYLOAD_PATHS]
-    paths += [('record',name) for name in MODS_DESCRIPTOR_FIELDS]
-    bundle,slots=projection('__raw_line',paths)
+    bundle,slots=projection('__raw_line',source_paths())
     def typed(name,kind,record=False):
         path=('record',name) if record else (name,)
         fallback=scalar(slots[path],kind)
@@ -193,6 +245,7 @@ def source_plan(*,counter=None,files=None,receipt_keys=None):
     records['prior_attempts']=attempt_facts(slots,('record',),'prior_attempts')
     records['previous_receipt_complete']=scalar(slots[('record','previous_receipt','body_complete')],'bool')
     records['record_captures']=attempt_facts(slots,('record',),'captures')
+    records.update({name:scalar(slots[('record',*path)],'int') for path,name in owner_status_paths().items()})
     roots.update(writer_job=scalar(slots[('writer','job')],'str'),
                  writer_commit=scalar(slots[('writer','commit')],'str'))
     roots['h_content_disposition']='CASE WHEN '+roots['writer_job']+' IS NOT NULL AND '+roots['writer_commit']+\

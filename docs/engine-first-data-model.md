@@ -197,14 +197,15 @@ One row per body a line references (each `captures[]` entry or, on an older line
 | `receipt_key` | string | Immutable raw receipt key. |
 | `receipt_line` | int | Source line, starting at 1. |
 | `capture_index` | int | Primary capture/file-reference positions stay unchanged. Items of a list-valued `record` without a primary reference append after them in record order, with null `sha256`; without references, their positions start at 0. An ordinary bodiless line uses 0. A file reference retained without a body also has null `sha256`. |
-| `run_id`, `mode`, `outcome` | string, string, string nullable | The producing run and mode; for a body, the acquisition outcome of its own attempt, null when it cannot be established. A bodiless acquisition uses final line/item facts. `reference` and `saved-record` retain their enumerated non-acquisition meanings. The mapping translates the older vocabulary without substituting another attempt's success or failure. |
+| `run_id`, `mode`, `outcome` | string, string, string nullable | The producing run and mode; for a body, the acquisition outcome of its own attempt, null when it cannot be established. A bodiless acquisition uses final line/item facts. `reference` and `saved-record` retain their enumerated non-acquisition meanings. The mapping translates the older vocabulary without substituting another attempt's success or failure. `stored` means a document: its status is 2xx other than 202 (or stated nowhere) and its body is not empty (SHA-256 of empty input or 0 bytes); otherwise the attempt is `failed`, or `retry_later` for 429/503. A provider's JSON envelope (`provider_response/raw_path`) over an empty origin body, with no non-empty origin body on its item, is `failed` too. The rule has one definition, `receipt_metadata.document_status`/`empty_body`, shared by the mapping, the receipt writer, URL state and the scheduler. |
 | `family` | string | The entry's family, else the line's, else the receipt key's `<family>` segment. |
 | `requested_url`, `url` | string, nullable | Older lines take `_url`, `final_url`, `resolved_url` or `source_url`, the first present, when their ordinary address fields are absent. |
 | `context_url` | string, nullable | The source endpoint for this body. |
 | `member_path` | string, nullable | The endpoint is `(context_url, member_path)`. |
+| `original_path` | string, nullable | A top-level retained file's importer-relative source path as recorded; absolute local paths (`/`, `~`, a drive) are dropped; not a publisher path or member name. House witness lists name their event only here (`…/wlist/{event}.xml`). |
 | `h_content_disposition` | string, nullable | The flat download-name header: when root `writer.job` and `writer.commit` are both non-null, root `response_headers["content-disposition"]`, else root `response_headers["Content-Disposition"]`; then legacy `record.response_headers["content-disposition"]`, else `record.response_headers["Content-Disposition"]`. Unqualified root headers are ignored. The existing filename function reads it (§7.4). |
 | `attempt` | int, nullable | 0 for the final response, 1-based position for a referenced `prior_attempts` entry; null when a legacy reference cannot establish its attempt. Archive members retain their enclosing attempt plus their own completeness evidence. |
-| `http_status` | int, nullable | The referenced attempt's response status, from its explicit capture/attempt `http_status` or `status_code`. Final line/item status applies only to the final response or a bodiless acquisition. `capture_status` and `meetingStatus` are not HTTP statuses. |
+| `http_status` | int, nullable | The referenced attempt's response status, from its explicit capture/attempt `http_status` or `status_code`, then the integer `status` on the object that owns the pointed body (the record or list item itself, `receipt`, `media_playlist_receipt`, `metadata_receipt`, `manifest_receipt` or `master_attempts[i]`; legacy assembly lines), then the final line/item status. Final line/item status applies only to the final response or a bodiless acquisition; a nested owner's status is another request's and never becomes the line's `fetch_http_status`. `capture_status` and `meetingStatus` are not HTTP statuses. Not read: `retained_master_observations/*/raw_receipt` and `verified_alternatives/*/verification` (named residuals). |
 | `complete` | boolean, nullable | The entry's recorded completeness or its own pointed attempt's recorded value, with final-line fallback only for a confirmed final response. Unknown prior completeness remains null; `good_fetch` (§7.3) requires true. |
 | `fetch_http_status`, `fetch_outcome` | int nullable, string nullable | Final line/item acquisition state used by URL scheduling, kept separately from body eligibility. Repeated values on one fetch must agree. `reference` and `saved-record` rows do not establish a fetch state. |
 | `retrieved_at` | timestamptz, nullable | Fetch time, with the older-entry fallbacks below. |
@@ -218,6 +219,7 @@ One row per body a line references (each `captures[]` entry or, on an older line
 | `stored_md5` | fixed[16], nullable | Creating line only. |
 | `recovery_category`, `original_url`, `recovered_url`, `match_basis`, `evidence_sha256`, `imported_at` | string, string, string, string, fixed[32], timestamptz; nullable | Recovery rows only. `recovery_category` is `prior_access_category`; the older-line fallbacks set `original_url`, `match_basis` and `imported_at`. |
 | `writer_job`, `writer_commit` | string, nullable | Required on new rows by invariant 3; null on older rows without writer identity. |
+| `mapping_version` | string | The capture mapping identity that produced the row: `captures.current_version()`, the SHA-256 of `captures.py`, `receipt_metadata.py` and both receipt registries. One value per receipt; required on every row by the generation guard (nullable in the schema only because Iceberg cannot add a required column to a populated table). |
 
 Everything else stays in raw and is read **on demand**; this table is the single list of it:
 
@@ -430,7 +432,8 @@ Each capture row takes one record role; a real file is a good fetch whose role i
 good_fetch  := rows of c where mode = 'fetch' and complete
                and outcome in ('stored', 'unchanged') and http_status between 200 and 299
                (all three eligibility facts belong to this body's attempt, §6.1;
-                unknown facts do not pass)
+                unknown facts do not pass; `stored` already implies a document
+                response, so consumers do not re-test status beyond requiring one)
                (import-run rows included; capture dates exclude them, §7.4)
 format      := r[sniff].format from a completed reading at the pinned sniff version
 intact      := for a PDF, its .pdf copy's verification record (§5.3), else
@@ -442,6 +445,8 @@ record_role := per capture row, the first that applies:
                null              when format is null (no completed sniff)
                'caption'         when format = 'vtt'
                'playlist'        when format = 'm3u8'
+               'media'           when format = 'other' and the media type is video/* or audio/*
+                                 (a stream segment is not a document or a track)
                'envelope'        when format = 'warc'
                'damaged'         when format = 'pdf' and intact is not true
                                  and intact_basis <> 'unchecked'
@@ -644,6 +649,7 @@ Every list and fold column MUST be written in a fixed order: structs by their fi
 One row per requested URL, plus the queue: `requested_url` string, `attempts` int32, `last_attempt` ts nullable, `last_status` int16 nullable, `last_outcome` dict nullable, `last_good_at` ts nullable, `next_attempt_at` ts nullable.
 
 - Excludes `reference` and `saved-record` rows before counting attempts or selecting the latest state; those records cannot shadow a real acquisition.
+- `fetch_outcome` is `stored` only when the item has a final document body (attempt 0, non-empty, status 2xx other than 202 or unstated); a provider envelope over an empty origin does not count.
 - Aggregated per requested URL over distinct `(receipt_key, receipt_line)`, so a fetch line counts once for each requested address however many bodies it references. Its `retrieved_at` is the latest non-null retained entry time on that line. Final `fetch_http_status`/`fetch_outcome` values must agree within that fetch; attempt-level body status and completeness may differ.
 - The latest `mode = fetch` line wins, in the order `(retrieved_at nulls first, receipt_key, receipt_line)`, and gives `last_status`/`last_outcome` from `fetch_http_status`/`fetch_outcome`. `last_good_at` is the `retrieved_at` of its latest eligible body acquisition (§7.3). Recovery rows MUST NOT appear. A valid prior body followed by a final failure does not hide that final scheduling failure.
 - **`next_attempt_at`:**
@@ -876,7 +882,7 @@ A conforming implementation MUST satisfy, and SHOULD test, each of the following
 
 1. Every lake PK is unique. `captures` rebuilt from all receipts equals the appended table. A parser version re-run on a sample of its inputs reproduces its rows, links included. Every completed HTML reading has `text_bytes`, `text_head`, `link_count` and `link_text_bytes`; every completed XML reading has `xml_root`.
 2. Every `sha256` in `captures` has a body object under its recorded suffix; every body's size and ETag equal its creating line's `stored_bytes` and `stored_md5`, or its verification record's; no body a new line created has an ETag containing `-` (no multipart upload); a body with no creating line has a verification record.
-3. New receipt keys are date-shaped; every `stored` line carries `stored_md5`; every new capture entry with a body carries `attempt`, `complete`, `sniffed_format`, `sniff_version`, `stored_suffix` and, for a PDF, `intact`; every new row carries `writer_job` and `writer_commit`. No receipt line carries a credential parameter in a recorded URL, a cookie or a local file path, and every cleaned older receipt has a verification record.
+3. New receipt keys are date-shaped; every `stored` line carries `stored_md5`; every new capture entry with a body carries `attempt`, `complete`, `sniffed_format`, `sniff_version`, `stored_suffix` and, for a PDF, `intact`; every new row carries `writer_job` and `writer_commit`; every `captures` row carries the `mapping_version` that produced it, one per receipt. Every receipt writer refuses a line with a local path at write (`receipt_privacy.refuse_local_paths`). No receipt line carries a credential parameter in a recorded URL, a cookie or a local file path, and every cleaned older receipt has a verification record.
 4. Every pinned version, including meeting/appearance source versions, has an empty expected-candidate work list at the pinned snapshot. The model interprets only selected versions. A maintained lake and a clean rebuild from the same raw at the same profile give byte-identical releases, including when identical bodies gain additional capture contexts.
 **Model**
 

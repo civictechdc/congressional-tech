@@ -31,7 +31,7 @@ def test_provider_line489_uses_receipt_facts_and_preserves_each_item(tmp_path):
     stage=ingest(tmp_path,[dict(http_status=404,complete=False,retrieved_at='2020-01-01T00:00:00Z',
         record=items,captures=[body(pointer=[0,'receipt','body']),body(pointer=[1,'receipt','body'])])],key=PROVIDER)
     table=pq.read_table(stage/'captures.parquet');rows=table.to_pylist()
-    assert table.schema.names==NARROW_COLUMNS and len(table.schema)==37
+    assert table.schema.names==NARROW_COLUMNS and len(table.schema)==39
     assert len(receipt_metadata.source_schema()['fields'])==24
     assert [(r['receipt_line'],r['capture_index']) for r in rows]==[(1,0),(1,1),(1,2)]
     assert [r['http_status'] for r in rows]==[200,200,200]
