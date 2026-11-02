@@ -94,6 +94,26 @@ historical measurements and old-release readability.
 | S2 | 1 | Two recoveries equal in kind, time and body; decisions that match one recovery row twice; a recovery whose decision rejects it | Both shown, in receipt order; one recovery, from the latest decision; no recovery |
 | S2 | 1 | Two merged documents with different title overrides; two active merges on one document; a hide and its withdrawal | The latest override by `(decided_at, id)`; both merges applied; visible again |
 
+## Owner decisions, 2026-11-02
+
+Acceptance cases for the decisions recorded on the tickets that day. The owning
+branch carries the implementation; a row here does not claim its test exists.
+
+| Part | Phase | Fixture | Expected outcome | Ticket, branch |
+|---|---|---|---|---|
+| D1 | 1 | A 2xx response with an empty body; an HTTP 202 firewall page with a body | Each a failed attempt: the receipt keeps it, nothing lists it, the URL is rechecked on schedule | `ct-3l1c`, `ct-c6b0`; r1b-e1 |
+| D1 | 1 | A body whose owner object states 404, 429 or 503 under a status key | Not stored; 429 and 503 are `retry_later` | `ct-bxqa`; r1b-e1 |
+| D1 | 1 | A 206 whose range covers the whole file; a 206 of the first 4,096 bytes | A document; not a document | `ct-64el`; r1b-e1 |
+| D1 | 1 | A caption body that is empty; a provider JSON envelope over an empty origin body | No track; failed | `ct-fh62`; r1b-e1 |
+| D1 | 1 | A receipt line naming an absolute local path; one naming an importer-relative `wlist/{event}.xml` | The writer refuses the first; `captures.original_path` keeps the second | `ct-f9hw`, `ct-x78c`; r1b-e1 |
+| D1 | 1 | A captures row from an older capture mapping | The daily job refuses with `backfill_required`, naming the mapping, receipts and rows | `ct-kunv`; r1b-e2 |
+| S1 | 1 | A direct GovInfo transcript and its ZIP member that differ only by Cloudflare-obfuscated email addresses | One document: equal fingerprints after decoding | `ct-o2pr`, `ct-64el`; r1b-g |
+| S1 | 1 | Three fetches of one page that differ only by a per-fetch token | One document showing the latest | `ct-64el`; r1b-g |
+| S2 | 2 | A House witness list with no `meeting-id`, named only by its retained file name | It attaches to the event its file name states | `ct-x78c`; r1b-f |
+| S2 | 2 | A meeting whose listed document is held but not linked; a Senate meeting with no linked document or witness | Coverage `unknown`, never `not_stated` | `ct-gi01`; r1b-f |
+| S2 | 1 | A link key the live release published that the candidate lacks: its body survives in another document; only a different edition sits at its address | A redirect to that document; a removal notice listing the address's current versions. Never absent | `ct-tk10`; r1b-h |
+| S2 | 1 | A candidate whose only differences are rows from receipts newer than the live release; one with a changed value | Publishes unattended; refuses until a reviewed cause record exists | `ct-ud0b`; r1b-h |
+
 ## E4 comparison
 
 The authored cases and outcomes are in [`e4-parity.json`](e4-parity.json); the

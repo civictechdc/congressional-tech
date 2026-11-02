@@ -80,3 +80,37 @@ context, not evidence that these steps ran. This reconciliation changes planning
 and ticket state; it does not execute a publication or enable a scheduled job.
 
 No workflow was disabled, live job run, pointer flipped or imported source deleted while preparing this checklist.
+
+## Fixed release — 2026-11-02
+
+Owner decisions of 2026-11-01 and 2026-11-02 (`cef-96wc`, `ct-tk10`, `ct-ud0b`,
+`ct-5kto`, `ct-kunv`, `ct-77zb`):
+
+1. 448651e7 stays live until a fixed release replaces it. The owner granted the
+   lead the whole path to live, including the pointer flip.
+2. Code reaches `main` only with the release: a `main` push deploys Pages and the
+   old Explorer publisher against the live release, so the new site and the
+   fixed release ship together.
+3. Order: the owner's Basin commit of the publish_v21 inputs, then the r1b
+   branches merged with parser pins recomputed once, then the captures rebuild,
+   one backfill and one full model run on the Mac under the memory guard.
+4. The captures rebuild replaces v21's captures as a full snapshot before any
+   daily run. The daily job refuses (`backfill_required`) while any row carries a
+   stale or missing `mapping_version`.
+5. Every publish passes five gates in the one publish path: a key-by-key
+   comparison with the live release in which every difference has a recorded
+   cause; the link rule (a published link key never vanishes: it redirects
+   only to a document holding the same body or the same text fingerprint, and
+   otherwise shows a removal notice listing the address's current versions;
+   this covers the 7,266 keys 448651e7 dropped); one
+   end-to-end test from receipts to release; refusal at write of a missing
+   required field; and a producer version on every input row. The release notes
+   in `docs/releases/` render from the gates' cause records.
+6. After the fixed release, the daily job publishes without a person only when
+   every difference is an added row traced, through raw receipts, to receipts
+   newer than the live release. Any changed or removed value waits for a
+   reviewed cause record. It cannot see a bug that only adds wrong rows; the
+   other four gates still run.
+7. The old Explorer retires right after live acceptance, with no overlap
+   period. Old dashboard links that name a record by UUID show a removal notice;
+   no ID mapping is published, as with witness IDs (`ct-ktfe`).
