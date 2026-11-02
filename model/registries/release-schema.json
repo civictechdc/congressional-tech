@@ -775,7 +775,7 @@
         {
           "name": "not_held",
           "type": "bool",
-          "meaning": "Publisher status Canceled or Postponed, or the title opens with postponed, canceled or test; false where a curated read found the meeting's own recording of it on its date (status conflict, model/registries/meeting-status-conflicts.json); null with no record",
+          "meaning": "Publisher status Canceled or Postponed, or the title opens with postponed, canceled or test; false where the meeting's own print was held that day under its title, or a curated read found the meeting's own recording of it on its date (status conflict, model/registries/meeting-status-conflicts.json); null with no record",
           "nullable": true
         },
         {
@@ -1847,7 +1847,7 @@
         {
           "name": "reason",
           "type": "dict",
-          "meaning": "Why a state holds, when known: old_evidence_disputes_negative_verdict, video_text_only, excerpts_only, stated_documents_not_held, senate_page_links_pending, package_witnesses_unattached, package_names_meeting_unlinked or recording_link_pending",
+          "meaning": "Why a state holds, when known: old_evidence_disputes_negative_verdict, video_text_only, excerpts_only, stated_documents_not_held, senate_page_links_pending, package_witnesses_unattached, package_names_meeting_unlinked, recording_link_pending or recording_without_video_record",
           "nullable": true
         }
       ],

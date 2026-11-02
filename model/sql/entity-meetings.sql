@@ -2,12 +2,21 @@ WITH keys AS (
  SELECT DISTINCT try_cast(unnest(meeting_keys) AS BIGINT) AS event_id FROM ordered WHERE meeting_keys IS NOT NULL
  UNION
  SELECT DISTINCT event_id FROM meetings_resolved WHERE event_id IS NOT NULL
+), printed AS (
+ -- A print held on the meeting's date under its title (package_meeting_links) shows the meeting sat,
+ -- whatever its status: Congress.gov states Canceled for 101498, 101400, 104460 and 101644, whose own
+ -- prints record the hearing that day. The publisher status stays, so the conflict remains visible.
+ SELECT DISTINCT event_id FROM package_meeting_links
 ), own_evidence AS (
- -- What the meeting's own records hold of a sitting: a transcript file its record lists, or witnesses
- -- tied to it alone. 116450 (Rescheduled) lists HHRG-118-VR09-Transcript-20231108.pdf and 14 witnesses.
+ -- What the meeting's own records hold of a sitting: its print, a transcript file its record lists, or
+ -- its own witness list (House XML or Congress.gov). Witnesses attached from a package are not its own:
+ -- 101422 carried 87484's PPACA witnesses. 116450 (Rescheduled) lists HHRG-118-VR09-Transcript-20231108.pdf.
+ SELECT event_id FROM printed
+ UNION
  SELECT event_id FROM meeting_document_urls WHERE regexp_like(url,'(?i)transcript')
  UNION
- SELECT event_id FROM appearance_records_resolved WHERE event_id IS NOT NULL AND name IS NOT NULL
+ SELECT event_id FROM appearance_records_resolved
+ WHERE event_id IS NOT NULL AND name IS NOT NULL AND source IN ('house_xml','congress_gov')
 ), reschedule_rows AS (
  -- Postponed/Canceled (not_held) says no sitting on this date. Rescheduled is ambiguous: re-dated in place
  -- (106383, own video) or re-entered (101422, raw MODS shows the twin's print), so the record's own
@@ -17,11 +26,12 @@ WITH keys AS (
  SELECT r.event_id,r.meeting_date,r.title_key,r.reschedule_candidate,r.committee_key,
   coalesce(array_length(r.videos),0)>0 OR e.event_id IS NOT NULL AS sat,
   coalesce(array_length(r.videos),0)>0 AS has_video,
-  coalesce(r.not_held,false) AS not_held,
+  coalesce(r.not_held,false) AND pr.event_id IS NULL AS not_held,
   lower(coalesce(r.status,''))='rescheduled' AS rescheduled,
   CASE WHEN upper(coalesce(r.meeting_type,'')) IN ('HHRG') OR lower(coalesce(r.meeting_type,'')) LIKE '%hearing%' THEN 'hearing'
        WHEN upper(coalesce(r.meeting_type,'')) IN ('HMKP') OR lower(coalesce(r.meeting_type,'')) LIKE '%markup%' THEN 'markup' END AS kind
  FROM meetings_resolved r LEFT JOIN (SELECT DISTINCT event_id FROM own_evidence) e ON r.event_id=e.event_id
+ LEFT JOIN printed pr ON r.event_id=pr.event_id
  WHERE r.title_key IS NOT NULL AND r.committee_key IS NOT NULL
 ), twins AS (
  SELECT old.event_id,(old.not_held OR old.rescheduled) AS stated,twin.event_id AS twin_id,twin.meeting_date
@@ -94,11 +104,12 @@ SELECT k.event_id,
  m.congress_gov_meeting_type,
  m.access,
  m.access_basis,
- m.not_held,
+ m.not_held AND pr.event_id IS NULL AS not_held,
  r.rescheduled_to,
  r.rescheduled_basis
 FROM keys k
 LEFT JOIN meetings_resolved m ON k.event_id=m.event_id
 LEFT JOIN transcripts_agg t ON k.event_id=t.event_id
 LEFT JOIN rescheduled r ON k.event_id=r.event_id
+LEFT JOIN printed pr ON k.event_id=pr.event_id
 WHERE k.event_id IS NOT NULL

@@ -222,7 +222,7 @@ Identity: `event_id` (primary_key; published identifier).
 | `congress_gov_meeting_type` | `dict` | Congress.gov's type label (Hearing, Markup, Meeting) |
 | `access` | `dict` | open, closed, partly_closed or unknown, as the publisher type or title states |
 | `access_basis` | `dict` | The source and field that state access, such as congress_gov/title |
-| `not_held` | `bool` | Publisher status Canceled or Postponed, or the title opens with postponed, canceled or test; false where a curated read found the meeting's own recording of it on its date (status conflict, model/registries/meeting-status-conflicts.json); null with no record |
+| `not_held` | `bool` | Publisher status Canceled or Postponed, or the title opens with postponed, canceled or test; false where the meeting's own print was held that day under its title, or a curated read found the meeting's own recording of it on its date (status conflict, model/registries/meeting-status-conflicts.json); null with no record |
 | `rescheduled_to` | `int64` | Later meeting of the same committees and title, parts included, within 60 days that is not itself not held: when this meeting is not held, or has no recording, transcript file or witnesses of its own and either the publisher states Rescheduled or only the later twin has a recording; a hearing never moves to a markup; derived |
 | `rescheduled_basis` | `dict` | publisher_status or recording_on_later_twin |
 
@@ -575,7 +575,7 @@ Identity: `event_id, aspect` (primary_key; published identifier).
 | `state` | `dict` | present, partial, claimed, empty, not_stated, unresolved, not_public, confirmed_absent or unknown; these never merge |
 | `basis` | `dict` | Which relation states it |
 | `count` | `int32` | Rows behind present |
-| `reason` | `dict` | Why a state holds, when known: old_evidence_disputes_negative_verdict, video_text_only, excerpts_only, stated_documents_not_held, senate_page_links_pending, package_witnesses_unattached, package_names_meeting_unlinked or recording_link_pending |
+| `reason` | `dict` | Why a state holds, when known: old_evidence_disputes_negative_verdict, video_text_only, excerpts_only, stated_documents_not_held, senate_page_links_pending, package_witnesses_unattached, package_names_meeting_unlinked, recording_link_pending or recording_without_video_record |
 
 - `state`: confirmed_absent only from undisputed curated negative verdicts on every package of the meeting, each linked to that meeting alone; zero rows never prove absence. partial means excerpts only; claimed means only a video’s own text; for captions, no observation is unknown, never empty. States rank present > unresolved > empty > unknown > not_stated: unknown, never not_stated, where held evidence is not yet linked. A Senate meeting is unknown for documents and witnesses until Senate committee-page links land (ct-gi01 R2). Captions are not_stated only when the recording is confirmed_absent or not_public.
 

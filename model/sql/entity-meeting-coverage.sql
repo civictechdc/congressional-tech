@@ -97,7 +97,10 @@ WITH package_meetings AS (
   CASE WHEN c.observed>0 THEN 'present' WHEN c.event_id IS NOT NULL THEN 'unknown'
        WHEN r.state IN ('confirmed_absent','not_public') THEN 'not_stated' ELSE 'unknown' END AS state,
   'videos.has_caption,recordings.tracks' AS basis,cast(coalesce(c.observed,0) AS INT) AS count,
-  CASE WHEN c.event_id IS NULL AND r.state NOT IN ('confirmed_absent','not_public') THEN 'recording_link_pending' END AS reason
+  -- A recording held only by address (no video record) cannot show captions; a link still pending is another case.
+  CASE WHEN c.event_id IS NOT NULL OR r.state IN ('confirmed_absent','not_public') THEN NULL
+       WHEN r.state IN ('present','partial','claimed') THEN 'recording_without_video_record'
+       ELSE 'recording_link_pending' END AS reason
  FROM meetings_export e LEFT JOIN caption_counts c ON e.event_id=c.event_id LEFT JOIN recording_rows r ON e.event_id=r.event_id
 )
 SELECT event_id,aspect,state,basis,count,CASE WHEN state='unresolved' THEN 'old_evidence_disputes_negative_verdict' WHEN state='claimed' THEN 'video_text_only' WHEN state='partial' THEN 'excerpts_only' END AS reason FROM recording_rows
