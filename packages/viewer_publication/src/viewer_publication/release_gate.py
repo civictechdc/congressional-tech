@@ -25,9 +25,11 @@ import pyarrow.parquet as pq
 
 DIGEST = re.compile('[0-9a-f]{64}')
 TICKET = re.compile('(ct|cef|ss)-[a-z0-9]{4}')
-LEDGER_FILES = ('manifest.json', 'links.parquet', 'detail.parquet', 'list.parquet')
+LEDGER_FILES = ('manifest.json', 'links.parquet', 'detail.parquet', 'list.parquet', 'sources.parquet')
 PRIOR_LINKS = pa.schema([('link_key', pa.binary(8)), ('release_rank', pa.int16()), ('release_id', pa.string()),
                          ('list_row', pa.int32()), ('primary_key', pa.binary(8)), ('filename', pa.string())])
+PRIOR_SOURCES = pa.schema([('release_rank', pa.int16()), ('list_row', pa.int32()), ('url', pa.string()),
+                           ('member_path', pa.string())])
 RETIRED = pa.schema([('link_key', pa.binary(8)), ('successor_key', pa.binary(8)),
                      ('last_release_id', pa.string()), ('last_filename', pa.string())])
 
@@ -63,6 +65,11 @@ def fetch_release(read, release_id, dest, names=None):
                 raise ValueError(f'Release {release_id[:12]} has no {name}')
             continue
         item = entries[name]
+        if (dest / name).is_file():
+            from congress_api.retention.provenance import file_pin
+            if file_pin(dest / name) == dict(sha256=item['sha256'], size=item['size']):
+                continue  # already held with the manifest's identity: no second download
+            raise ValueError(f'Retained {release_id[:12]}/{name} differs from its manifest entry')
         with read(name) as stream:
             copy_checked(stream, dest / name, size=item['size'], expected=dict(sha256=item['sha256'], bytes=item['size']),
                          key=f'{release_id[:12]}/{name}', exclusive=True)
@@ -88,7 +95,8 @@ def client_reader(client, bucket, release_id):
 
 
 def prior_links(base_dir, history_dirs, out_dir):
-    """Write prior_links.parquet (one row per key per release) and base_retired.parquet.
+    """Write prior_links.parquet (one row per key per release), prior_sources.parquet (each
+    prior row's addresses, for the address successor rule) and base_retired.parquet.
 
     O(total link rows) in pyarrow, about 1.7M rows for 448651e7 plus three earlier releases.
     A release whose detail lacks `link_key` (pre-keyed detail) gives a null primary key, so
@@ -96,8 +104,11 @@ def prior_links(base_dir, history_dirs, out_dir):
     """
     out_dir = Path(out_dir)
     out_dir.mkdir(parents=True, exist_ok=True)
-    parts = []
+    parts, addresses = [], []
     for rank, directory in enumerate([Path(base_dir), *map(Path, history_dirs)]):
+        sources = pq.read_table(directory / 'sources.parquet', columns=['list_row', 'url', 'member_path'])
+        addresses.append(pa.table([pa.array([rank] * len(sources), pa.int16()), sources['list_row'].cast(pa.int32()),
+                                   sources['url'].cast(pa.string()), sources['member_path'].cast(pa.string())], schema=PRIOR_SOURCES))
         release_id = json.loads((directory / 'manifest.json').read_text())['release_id']
         links = pq.read_table(directory / 'links.parquet', columns=['link_key', 'list_row'])
         rows = links['list_row']
@@ -110,6 +121,7 @@ def prior_links(base_dir, history_dirs, out_dir):
                                primary.cast(pa.binary(8)), filenames.cast(pa.string())], schema=PRIOR_LINKS))
     prior = out_dir / 'prior_links.parquet'
     pq.write_table(pa.concat_tables(parts) if parts else PRIOR_LINKS.empty_table(), prior)
+    pq.write_table(pa.concat_tables(addresses) if addresses else PRIOR_SOURCES.empty_table(), out_dir / 'prior_sources.parquet')
     retired = out_dir / 'base_retired.parquet'
     source = Path(base_dir) / 'retired_links.parquet'
     pq.write_table(pq.read_table(source).select(RETIRED.names).cast(RETIRED) if source.exists() else RETIRED.empty_table(), retired)
@@ -121,7 +133,10 @@ def ledger_inputs(directory, *, prior_links=None, base_retired=None):
     directory = Path(directory)
     directory.mkdir(parents=True, exist_ok=False)
     inputs = []
-    for name, path, schema in (('prior_links', prior_links, PRIOR_LINKS), ('base_retired', base_retired, RETIRED)):
+    # prior_sources sits beside prior_links, written by the same prior_links() call.
+    prior_sources = None if prior_links is None else Path(prior_links).with_name('prior_sources.parquet')
+    for name, path, schema in (('prior_links', prior_links, PRIOR_LINKS), ('prior_sources', prior_sources, PRIOR_SOURCES),
+                               ('base_retired', base_retired, RETIRED)):
         if path is None:
             path = directory / f'{name}.parquet'
             pq.write_table(schema.empty_table(), path)
@@ -140,29 +155,38 @@ def require_ledger_history(base_dir, link_history):
         raise ValueError('The base release has no retired_links; the publish must name link_history')
 
 
-def fetch_base(read_release, release_id, work, link_history=()):
+def fetch_base(read_release, release_id, work, link_history=(), *, previous_release_id=None):
     """Fetch the live release and, without its own ledger, the named history; build the ledger inputs.
 
-    `read_release(release_id)` returns a reader for that release's files. Returns
-    (base_dir, prior_links, base_retired), or Nones when nothing is live.
+    `read_release(release_id)` returns a reader for that release's files. A base without a
+    ledger needs link_history to continue the pointer's chain: its first entry must be the
+    pointer's previous_release_id, and every named release must be readable. Releases older
+    than the previous one carry no recorded predecessor, so the rest of the list is the
+    publish spec's statement, checked only by manifest identity.
+    Returns (base_dir, prior_links, base_retired, history_dirs), or Nones when nothing is live.
     """
     if release_id is None:
         if link_history:
             raise ValueError('link_history names earlier releases, but nothing is live')
-        return None, None, None
+        return None, None, None, []
     work = Path(work)
     base = work / 'base-release'
     # Only what the ledger reads; publish_candidate completes the copy for gate 1 only when
     # a new release is actually published, so an input-unchanged skip reads no more.
     fetch_release(read_release(release_id), release_id, base, (*LEDGER_FILES, 'retired_links.parquet'))
     require_ledger_history(base, link_history)
+    if link_history and previous_release_id is not None and link_history[0] != previous_release_id:
+        raise ValueError(f'link_history must start with the live pointer\'s previous release {previous_release_id[:12]}')
     history = []
     for earlier in link_history:
         target = work / 'link-history' / _sha(earlier, 'link_history release')
-        fetch_release(read_release(earlier), earlier, target, LEDGER_FILES)
+        try:
+            fetch_release(read_release(earlier), earlier, target, LEDGER_FILES)
+        except Exception as error:
+            raise ValueError(f'link_history release {earlier[:12]} is absent or unreadable') from error
         history.append(target)
     prior, retired = prior_links(base, history, work / 'ledger')
-    return base, prior, retired
+    return base, prior, retired, history
 
 
 def load_causes(pin):
@@ -230,7 +254,7 @@ def verdict(report, causes):
     return reasons
 
 
-def require_release_gates(base_dir, candidate_dir, causes, *, report_path, evidence_base=None, evidence_candidate=None):
+def require_release_gates(base_dir, candidate_dir, causes, *, report_path, evidence_base=None, evidence_candidate=None, history=()):
     """Write the comparison report, then refuse on any gate 1 or gate 2 finding."""
     from viewer_publication.release_comparison import compare
     report_path = Path(report_path)
@@ -238,7 +262,7 @@ def require_release_gates(base_dir, candidate_dir, causes, *, report_path, evide
         report = dict(base_release=None, gates='vacuous: no live release to compare with', reasons=[])
         report_path.write_text(json.dumps(report, indent=1) + '\n')
         return report
-    report = compare(base_dir, candidate_dir, evidence_base=evidence_base, evidence_candidate=evidence_candidate)
+    report = compare(base_dir, candidate_dir, evidence_base=evidence_base, evidence_candidate=evidence_candidate, history=history)
     report['reasons'] = verdict(report, causes)
     report_path.write_text(json.dumps(report, indent=1, default=str) + '\n')
     if report['reasons']:

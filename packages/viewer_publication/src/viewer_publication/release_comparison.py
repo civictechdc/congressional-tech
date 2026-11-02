@@ -34,7 +34,7 @@ TRIPLE = 'receipt_key,receipt_line,capture_index'
 
 
 class Diff:
-    def __init__(self, base: Path, candidate: Path):
+    def __init__(self, base: Path, candidate: Path, history=()):
         self.dirs = {'base': base, 'candidate': candidate}
         self.manifest = {s: json.loads((d / 'manifest.json').read_text()) for s, d in self.dirs.items()}
         self.entry = {s: {f['name']: f for f in m['files']} for s, m in self.manifest.items()}
@@ -47,6 +47,12 @@ class Diff:
                     extra = ',file_row_number=true' if name in ('list', 'detail') else ''
                     self.view(f'{side}_{name}', f"SELECT * FROM read_parquet('{path}'{extra})")
         self.identities = identities(self.dirs)
+        # Earlier releases named by the publish (link_history): their link keys must not vanish either.
+        self.history = []
+        for index, directory in enumerate(history):
+            name = f'history{index}_links'
+            self.view(name, f"SELECT * FROM read_parquet('{Path(directory) / 'links.parquet'}')")
+            self.history.append(name)
         self.link_causes = False
 
     def has(self, side, table):
@@ -447,7 +453,8 @@ def write_removed_keys(d: Diff, path: Path):
 def link_rule(d: Diff, sample=100):
     """Gate 2's publish check: no key published by the base or its ledger may vanish.
 
-    missing: (base links ∪ base retired_links) minus (candidate links ∪ candidate retired_links).
+    missing: (base links ∪ base retired_links ∪ every named history release's links) minus
+    (candidate links ∪ candidate retired_links).
     dangling: a candidate successor_key that is not a candidate link. No record overrides either.
     Cannot see whether a successor is the right document, or keys outside links (lookup keys,
     event IDs, witness keys, bill IDs), which value groups and release notes cover.
@@ -456,6 +463,8 @@ def link_rule(d: Diff, sample=100):
         parts = [f'SELECT link_key FROM {side}_links']
         if d.has(side, 'retired_links'):
             parts.append(f'SELECT link_key FROM {side}_retired_links')
+        if side == 'base':
+            parts += [f'SELECT link_key FROM {name}' for name in d.history]
         return ' UNION '.join(parts)
     d.table('rule_missing', f"SELECT lower(hex(link_key)) k FROM ({keys('base')}) EXCEPT SELECT lower(hex(link_key)) FROM ({keys('candidate')})")
     dangling_sql = ("SELECT lower(hex(successor_key)) k FROM candidate_retired_links WHERE successor_key IS NOT NULL "
@@ -470,11 +479,11 @@ def link_rule(d: Diff, sample=100):
     return out
 
 
-def compare(base, candidate, *, evidence_base=None, evidence_candidate=None, record_digest=(), removed_keys=None):
+def compare(base, candidate, *, evidence_base=None, evidence_candidate=None, record_digest=(), removed_keys=None, history=()):
     """Compare two local release directories; the report is the gate's only input."""
     if bool(evidence_base) != bool(evidence_candidate):
         raise ValueError('--evidence-base and --evidence-candidate go together')
-    d = Diff(Path(base), Path(candidate))
+    d = Diff(Path(base), Path(candidate), history)
     flips = add_evidence(d, evidence_base, evidence_candidate) if evidence_base else None
     files = account(d)
     result = {'base_release': d.manifest['base']['release_id'], 'candidate_release': d.manifest['candidate']['release_id'],
