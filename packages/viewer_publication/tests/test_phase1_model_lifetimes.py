@@ -90,4 +90,4 @@ def test_actual_raw_lake_model_releases_every_relation_after_its_last_reader(tmp
     for reader in job['outputs'] + job['queries']:
         assert providers(sql_dependencies(reader['sql'])) <= available, reader['name']
     assert available & names == {name for name in names if last[name] == len(steps)}
-    assert len(names) == 172  # Retained compact body URLs, contexts, the non-document good-fetch count, segment captures, bridged link targets, entity resolution steps, and url_state invariants add actual native last-reader edges.
+    assert len(names) == 173  # selected_readings, the one readings selection (ct-deh9). Retained compact body URLs, contexts, the non-document good-fetch count, segment captures, bridged link targets, entity resolution steps, and url_state invariants add actual native last-reader edges.

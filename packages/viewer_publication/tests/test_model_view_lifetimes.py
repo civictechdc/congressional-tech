@@ -46,7 +46,8 @@ def test_page_facts_excludes_links_and_recomputes_for_export():
     assert 'EXCLUDE(links)' in sql, "pinned-readings.sql must exclude links column"
 
     link_sql = (Path(__file__).parents[3] / 'model/sql/link-inputs.sql').read_text()
-    assert 'FROM readings r' in link_sql, "link-inputs.sql must read links directly from readings"
+    # links is read from the one readings selection, never through pinned_readings, which drops it.
+    assert 'FROM selected_readings r' in link_sql and 'pinned_readings' not in link_sql, "link-inputs.sql must read links from selected_readings"
 
 
 def test_capture_source_contexts_is_strictly_narrow():
