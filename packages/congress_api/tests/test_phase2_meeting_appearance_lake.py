@@ -211,6 +211,11 @@ def test_meeting_records_from_congress_gov_body_and_inline_receipt():
                 {"jacketNumber": "55432"},
                 {"jacketNumber": "00987"},
             ],
+            # A URL-less entry is an agenda item, not a file.
+            "meetingDocuments": [
+                {"name": "A bill to amend title 5", "documentType": "Bills and Resolutions"},
+                {"name": "Hearing notice", "url": "https://www.congress.gov/118/meeting/house/115538/documents/HHRG-118-JS00-20240709-SD001.pdf"},
+            ],
             "videos": [
                 {"name": "YouTube Stream", "url": "https://www.youtube.com/watch?v=dQw4w9WgXcQ"},
                 {
@@ -258,6 +263,8 @@ def test_meeting_records_from_congress_gov_body_and_inline_receipt():
         "114-treaty-1",
     ]
     assert m["transcript_jackets"] == [55432, 987]
+    assert m["document_urls"] == ["https://www.congress.gov/118/meeting/house/115538/documents/HHRG-118-JS00-20240709-SD001.pdf"]
+    assert m["collection_states"]["document_urls"] == "present"
     assert m["videos"] == [
         {
             "video_key": "youtube:dQw4w9WgXcQ",
@@ -290,11 +297,11 @@ def test_meeting_records_from_congress_gov_body_and_inline_receipt():
 def test_meeting_records_from_house_xml_strips_all_prefixes(prefix: str):
     xml_bytes = f"""<?xml version="1.0" encoding="UTF-8"?>
 <committee-meeting meeting-id="{prefix}118555" meeting-type="HHRG" update-date="2024-05-01T15:30:00">
+  <current-status>R</current-status>
   <heading>Oversight of Federal Agencies</heading>
   <meeting-details>
     <congress>118</congress>
     <session>2</session>
-    <current-status>Scheduled</current-status>
     <meeting-date>
       <calendar-date>2024-05-10</calendar-date>
       <start-time>10:00:00</start-time>
@@ -332,6 +339,8 @@ def test_meeting_records_from_house_xml_strips_all_prefixes(prefix: str):
     assert m["congress"] == 118
     assert m["session"] == 2
     assert m["meeting_date"] == "2024-05-10"
+    # Raw House XML states <current-status> under the root, as a code.
+    assert m["status"] == "Rescheduled" and m["not_held"] is False
     assert m["sittings"] == [
         {
             "start": "2024-05-10T10:00:00-04:00",
