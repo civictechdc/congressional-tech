@@ -8,12 +8,13 @@ from math import isfinite
 from pathlib import Path
 from uuid import UUID
 
+import pyarrow as pa
 import pyarrow.parquet as pq
 
 from congress_api.lake.tables import (
-    _identifier, _job, append_rows, create_table, validate_catalog_authority,
+    _identifier, _job, append_rows, create_table, table_input, validate_catalog_authority,
 )
-from congress_api.retention.provenance import parquet_output, run_job
+from congress_api.retention.provenance import file_pin, parquet_output, run_job
 
 
 METRICS=('file_count','manifest_count','scan_planning_seconds')
@@ -50,6 +51,33 @@ def _pin(pin,name):
     return dict(pin,name=name,table_uuid=table_uuid)
 
 
+def _generation(pin,name):
+    """A native pin, or a Parquet file held to its digest, as one named input."""
+    if isinstance(pin,dict) and pin.get('kind')=='parquet':
+        if set(pin)!={'kind','path','sha256','size'}:
+            raise ValueError('Maintenance requires an exact Parquet pin')
+        if file_pin(pin['path'])!={'sha256':pin['sha256'],'size':pin['size']}:
+            raise ValueError('Maintenance Parquet generation does not match its pin')
+        return table_input(name,pin['path'])
+    return _pin(pin,name)
+
+
+UTC_NAMES={'UTC','Etc/UTC','+00:00'}
+
+
+def _loose(kind):
+    """Drop nullability and spell UTC one way; Iceberg timestamptz stores no zone name."""
+    if pa.types.is_list(kind):return pa.list_(pa.field(kind.value_field.name,_loose(kind.value_type)))
+    if pa.types.is_struct(kind):return pa.struct([pa.field(f.name,_loose(f.type)) for f in kind])
+    if pa.types.is_timestamp(kind) and kind.tz in UTC_NAMES:return pa.timestamp(kind.unit,tz='+00:00')
+    return kind
+
+
+def _schema(path,exact):
+    schema=pq.read_schema(path)
+    return schema if exact else pa.schema([pa.field(f.name,_loose(f.type)) for f in schema])
+
+
 def _keys(keys):
     if not keys or isinstance(keys,str) or len(set(keys))!=len(keys):
         raise ValueError('Maintenance requires explicit unique primary key fields')
@@ -75,30 +103,33 @@ def _check_primary_keys(reports):
         raise ValueError('Maintenance refused an invalid primary key')
 
 
-def verify_generations(old_pin,new_pin,*,keys,engine,work):
+def verify_generations(old_pin,new_pin,*,keys,engine,work,exact=True):
     """Refuse unequal typed rows or invalid keys, using native EXCEPT ALL twice.
 
-    Hash grouping/comparison costs expected O(N+M); only two counts and empty
+    Hash grouping/comparison costs expected O(N+M), peak memory one side's hash
+    build (the larger of the two, decoded); only two counts and empty
     Parquet schemas reach Python. No values are converted to JSON for equality.
+    Either side may be a pinned Parquet file. exact=False compares names and types
+    only, without nullability or the UTC zone's spelling, for a file written outside
+    the engine; the row comparison is unchanged.
     """
     quoted=_keys(keys)
-    inputs=[_pin(old_pin,'old_rows'),_pin(new_pin,'new_rows')]
+    inputs=[_generation(old_pin,'old_rows'),_generation(new_pin,'new_rows')]
     work=Path(work).resolve()
     schemas=work/'schemas'
     _query(schemas,engine,inputs=inputs,outputs=[
         parquet_output(schemas,name,f'SELECT * FROM {name} WHERE FALSE',keys)
         for name in ('old_rows','new_rows')])
-    if not pq.read_schema(schemas/'old_rows.parquet').equals(
-            pq.read_schema(schemas/'new_rows.parquet'),check_metadata=False):
+    if not _schema(schemas/'old_rows.parquet',exact).equals(
+            _schema(schemas/'new_rows.parquet',exact),check_metadata=False):
         raise ValueError('Maintenance generations differ in typed schema')
     reports=_query(work/'compare',engine,inputs=inputs,queries=[
         _pk_query('old_rows',quoted),_pk_query('new_rows',quoted),
-        dict(name='difference',sql='''SELECT count(*) AS differences FROM (
-            (SELECT * FROM old_rows EXCEPT ALL SELECT * FROM new_rows)
-            UNION ALL
-            (SELECT * FROM new_rows EXCEPT ALL SELECT * FROM old_rows)) delta''')])
+        # One direction per query, so only one unspillable hash build is live at a time.
+        *(dict(name=name,sql=f'SELECT count(*) AS differences FROM (SELECT * FROM {left} EXCEPT ALL SELECT * FROM {right}) delta')
+          for name,left,right in (('old_only','old_rows','new_rows'),('new_only','new_rows','old_rows')))])
     _check_primary_keys(reports)
-    if reports['difference'][0]['differences']:
+    if reports['old_only'][0]['differences'] or reports['new_only'][0]['differences']:
         raise ValueError('Maintenance generations differ in typed rows')
 
 
