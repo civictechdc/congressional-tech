@@ -100,5 +100,11 @@
     "kind": "link_word",
     "pattern": "(?i)^(download|view|open)\\s+(witness\\s+)?(testimony|statement|document|pdf|file|results)\\b",
     "sample_id": "page-signals:link_word_download"
+  },
+  {
+    "id": "link_word_format_size",
+    "kind": "link_word",
+    "pattern": "(?i)^[\\s\\W\\d_]*(?:(?:zip|pdf|html?|xml|docx?|txt|text|json|csv|xlsx?|pptx?|rtf|mp3|mp4|download|view|open|click|here|file|format|version|size|[kmg]i?b|bytes?)\\b[\\s\\W\\d_]*)+$",
+    "sample_id": "page-signals:link_word_format_size"
   }
 ]

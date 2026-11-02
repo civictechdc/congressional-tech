@@ -159,3 +159,14 @@ def test_a_blank_filename_needs_a_recorded_reason(tmp_path):
     result = run_job(tmp_path, NativeDatasets.from_config(os.environ['DOCSPEC_JOB_CONFIG']), inputs=inputs, steps=[], outputs=[],
         queries=[dict(name='r', sql=f'SELECT i,{BLANK_FILENAME_REASON_SQL} AS reason FROM ordered o ORDER BY i')])
     assert [row['reason'] for row in result['r']] == ['no_address', 'query_names_no_file', 'host_only', None, None]
+
+
+def test_the_generic_title_check_is_its_own_rule(tmp_path):
+    """Independent of the page-signals link_word list: only format, size and download words."""
+    from viewer_publication.archive_model import GENERIC_TITLE_SQL
+    titles = ['PDF (48.1 MB)', 'Download XML (6KB)', 'ZIP', 'click here', 'Overview of the Hearing',
+              'Testimony of Jane Doe (PDF, 2 MB)', '2024', None]
+    inputs = [json_input(tmp_path, 'ordered', [dict(i=i, title=t) for i, t in enumerate(titles)], i='Int64', title='Utf8')]
+    result = run_job(tmp_path, NativeDatasets.from_config(os.environ['DOCSPEC_JOB_CONFIG']), inputs=inputs, steps=[], outputs=[],
+        queries=[dict(name='g', sql=f'SELECT i,coalesce({GENERIC_TITLE_SQL},false) AS generic FROM ordered o ORDER BY i')])
+    assert [row['generic'] for row in result['g']] == [True, True, True, True, False, False, False, False]

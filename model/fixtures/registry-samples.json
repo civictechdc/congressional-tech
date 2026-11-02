@@ -9364,6 +9364,30 @@
       "value": "Downloads and Hearing Records",
       "expected": false,
       "source": "Authored boundary: only the whole text is a link word"
+    },
+    {
+      "id": "page-signals:link_word_format_size",
+      "registry": "page-signals",
+      "entry": "link_word_format_size",
+      "value": "Download XML (6KB)",
+      "expected": true,
+      "source": "green-g review of r1b-g: 611 live 448651e7 titles such as \"Download XML (6KB)\"; Run B \"PDF (48.1 MB)\""
+    },
+    {
+      "id": "page-signals:link_word_format_size_mb",
+      "registry": "page-signals",
+      "entry": "link_word_format_size",
+      "value": "PDF (48.1 MB)",
+      "expected": true,
+      "source": "green-g review of r1b-g: 611 live 448651e7 titles such as \"Download XML (6KB)\"; Run B \"PDF (48.1 MB)\""
+    },
+    {
+      "id": "page-signals:link_word_format_size_title",
+      "registry": "page-signals",
+      "entry": "link_word_format_size",
+      "value": "Testimony of Jane Doe (PDF, 2 MB)",
+      "expected": false,
+      "source": "Authored boundary: a name beside the format and size is a title"
     }
   ]
 }

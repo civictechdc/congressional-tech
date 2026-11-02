@@ -48,6 +48,8 @@ def test_source_annotations_keep_pins_names_keys_and_publisher_priority(tmp_path
            # A link word says what a link does; a later descriptive label is the title.
            dict(source_id='s4',doc_type=None,text='ZIP',page_body='page',context='https://publisher.test/index',first_good_at='2026-10-20T12:00:00Z',link_index=3,split_position=0),
            dict(source_id='s4',doc_type=None,text=' Download\n  PDF ',page_body='page',context='https://publisher.test/index',first_good_at='2026-10-20T12:00:00Z',link_index=4,split_position=0),
+           dict(source_id='s4',doc_type=None,text='Download XML (6KB)',page_body='page',context='https://publisher.test/index',first_good_at='2026-10-20T12:00:00Z',link_index=6,split_position=0),
+           dict(source_id='s4',doc_type=None,text='PDF (48.1 MB)',page_body='page',context='https://publisher.test/index',first_good_at='2026-10-21T12:00:00Z',link_index=7,split_position=0),
            dict(source_id='s4',doc_type=None,text='Hearing on Rural Lands',page_body='page',context='https://publisher.test/index',first_good_at='2026-10-23T12:00:00Z',link_index=5,split_position=0),
            dict(source_id='s3',doc_type=None,text='Hearing transcript',page_body='page',context='https://www.congress.gov/119/meeting/house/888',first_good_at='2026-10-21T12:00:00Z',link_index=2,split_position=0),
            dict(source_id='s3',doc_type=None,text='Later label',page_body='other',context='https://publisher.test/later',first_good_at='2026-10-22T12:00:00Z',link_index=0,split_position=0)]

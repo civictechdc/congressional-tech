@@ -450,6 +450,13 @@ BLANK_FILENAME_REASON_SQL="""CASE WHEN o.source_url IS NULL OR trim(o.source_url
  WHEN regexp_like(o.source_url,'^[A-Za-z][A-Za-z0-9+.-]*://[^/?#]*/*(#.*)?$') THEN 'host_only' END"""
 
 
+# A title that is only format, size and download words, checked apart from the page-signals
+# link_word registry that the title rule uses: delete a small vocabulary and every non-letter, and
+# nothing may remain. "PDF (48.1 MB)" and "Download XML (6KB)" are generic; "Overview" is not.
+GENERIC_TITLE_SQL="""(o.title IS NOT NULL AND regexp_like(o.title,'[A-Za-z]') AND regexp_replace(lower(o.title),
+ '(download|view|click|here|link|file|pdf|zip|xml|html?|docx?|txt|json|csv|xlsx?|pptx?|kb|mb|gb|bytes?)|[^a-z]','','g')='')"""
+
+
 def evidence_checks():
     """Expose current prefix checks for admission and the full invariant report."""
     from congress_api.lake.readings import writer_admission_conflict_sql
@@ -976,8 +983,7 @@ def build_prepared_release(prepared,*,engine,output,root=ROOT):
             (SELECT count(*) FROM document_link_key_conflicts) AS review_key_collisions,
             (SELECT count(*) FROM review_value_diagnostics) AS invalid_review_values,
             (SELECT CASE WHEN count(*)=0 THEN 1 ELSE 0 END FROM ordered) AS empty_document_list,
-            (SELECT count(*) FROM ordered o JOIN page_signals g ON g.kind='link_word' AND length(o.title)<=64
-                AND regexp_like(regexp_replace(trim(o.title),'\\s+',' ','g'),g.pattern)) AS generic_titles,
+            (SELECT count(*) FROM ordered o WHERE {GENERIC_TITLE_SQL}) AS generic_titles,
             (SELECT count(*) FROM ordered o WHERE o.filename='' AND ({BLANK_FILENAME_REASON_SQL}) IS NULL) AS unexplained_blank_filenames,
             (SELECT count(*) FROM saved_files s JOIN saved_files n ON n.component=s.component AND n.body_sha=s.body_sha
                 AND coalesce(n.filename,'')<>'' WHERE s.saved_rank=1 AND coalesce(s.filename,'')='') AS saved_unnamed_with_named_sibling,
