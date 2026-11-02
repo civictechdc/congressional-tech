@@ -28,3 +28,7 @@ Round 1b 2026-11-02 (lead): source-annotations-meetings joins the URLs the House
 **2026-11-02T13:22:51Z**
 
 2026-11-02 impl-f (r1b-f, 12 commits): about 2,089 document link pairs on 458 events (a DuckDB estimate until the full run); 38 events gain their first document.
+
+**2026-11-02T21:36:15Z**
+
+2026-11-02 inv-rca e9f4e792 (on release-train 616c9526): the release run refused on invalid_url_keys=9, all doc-url literals in six House XML meeting records, read raw: 'mailto:https://…' (HMKP110944, four), 'ttps://…' (HHRG108501, HHRG108517, HHRG108574), '/https://…' (HMTG115698), 'chrome-extension://…/https://…' (HMKP116910). 284b3948 added meeting_document_urls to the model's URL inputs unfiltered; its test fed them empty. URL inputs now take a meeting literal only when it resolves to http(s); the rest stay unresolved mentions, counted by unresolved_meeting_document_urls. Model only.

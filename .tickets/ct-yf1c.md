@@ -48,3 +48,7 @@ Round 1b 2026-11-02 (lead): 1,446 Files.Serve PDFs have no name in the URL or he
 **2026-11-02T15:38:20Z**
 
 2026-11-02 red-g2: a NULL-address source can tie or beat the addressed copy after c846b0a8 (about 6 wins and 46 ties on Run B); rank rows with neither address nor member path last. Context names in Run B are always the body's own URL, never a listing page.
+
+**2026-11-02T21:36:15Z**
+
+2026-11-02 inv-rca ef3a79d1: generic_titles=1 was a real Senate Aging title ('Click Here: Accessible Federal Technolog... | Senate Committee On Aging', 71 chars; the 2022-07-28 hearing). The rule in source-annotations-pages.sql reads link words only in titles up to 64 characters, but the gate used 96 (since bbf7dbd5, no reason given). The gate now uses the rule's bound, and a test runs titles through both. Model only.
