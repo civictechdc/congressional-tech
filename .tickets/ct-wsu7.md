@@ -24,3 +24,7 @@ Fixes 1-5 land with byte-identical release files on v21 frozen inputs (every sha
 **2026-11-02T17:17:02Z**
 
 Owner decision 2026-11-02: run the full model only after the witness-step fix lands on meetings, at the release's own settings (16 GiB, 2 threads); no 4-thread stop-gap or larger pool.
+
+**2026-11-02T17:49:45Z**
+
+2026-11-02 impl-model: fixes 2-5 on r1b-model (rebased on 44785aee): d4657856 url_state_lines, ee0c973b document_identities (only multi-member components sorted; dedup-first measured worse), 628772c9 capture_sources (the evidence export narrows; raw columns rejoin via capture_evidence), 1499dae7 link pipeline. All 17 release files are byte-identical before and after (v21 frozen inputs plus the spicy-regs pin, 34 GiB, 2 threads). Materialized 41.8 to 38.1 GB; peak RSS 15.75 to 12.61 GiB. 16 GiB with 2 threads still fails at appearance_records_resolved (a 789.5 MB sort reservation), so it waits on fix 1, which comes after r1b-f. The 53.4 GB spill is profile_completeness capture_dup (GROUP BY a text receipt_key; binary key spills 208 MB); sent upstream to engine-spill, no SQL workaround. Full lane requested before merge.

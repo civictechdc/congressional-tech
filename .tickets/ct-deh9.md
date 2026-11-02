@@ -67,3 +67,7 @@ Round 1b 2026-11-02 (lead): Readings: sniff, xml and json are lock-only or prove
 **2026-11-02T17:45:21Z**
 
 2026-11-02 owner direction on RCA items 1-2: don't re-do work unless absolutely necessary; the version hash should be a warning plus a manual check. Filed as ct-zpbl (post-release). This release keeps the current registry and proofs, which are done or running.
+
+**2026-11-02T17:49:45Z**
+
+2026-11-02 spec-run: full html proof (predicate) 124,651 rows, 0 differences; full xml proof (predicate) 118,001 rows, 0 differences; both entered (candidate-r1b 32cac73c). json is blocked: 187 old readings have no new reading. Cause: 211 mirror bodies (187 json plus the 24 bundle bodies) are R2 objects stored gzip under a suffixless key, with Content-Encoding gzip. Production reads the header (readings.py:761, :814); the local path infers gzip from a '.gz' name (readings.py:87, compatible_proof.py:114, :138), so sniff says 'other'. Owner decision: the reader detects gzip itself, verified by the body sha, through one shared helper (_page_entity's rule) replacing suffix inference; no leaf-parser pin may move. impl-e2 is implementing on r1b-det; spec-run stays paused before D2.
