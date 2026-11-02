@@ -47,6 +47,7 @@ class Diff:
                     extra = ',file_row_number=true' if name in ('list', 'detail') else ''
                     self.view(f'{side}_{name}', f"SELECT * FROM read_parquet('{path}'{extra})")
         self.identities = identities(self.dirs)
+        self.cannot_see = []  # stated limits for this comparison, never silence
         # Earlier releases named by the publish (link_history): their link keys must not vanish either.
         self.history = []
         for index, directory in enumerate(history):
@@ -73,25 +74,72 @@ class Diff:
     def rows(self, sql):
         return self.con.execute(sql).fetchall()
 
+    def arrow_types(self, side, table):
+        return {field.name: field.type for field in self.con.execute(f'SELECT * FROM {side}_{table} LIMIT 0').arrow().schema}
+
     def changed(self, table, join, compare=None, exclude=OFFSETS, only=None):
         """One value group per column whose matched rows differ; `join` must alias sides p and l.
 
         One query per table: each column costs one IS DISTINCT FROM per matched row,
-        O(matched rows x columns), with no per-column rescan.
+        O(matched rows x columns), with no per-column rescan. A struct or list-of-struct
+        column whose subfields differ between the releases is compared subfield by subfield
+        on the shared ones, so a change inside an old subfield is not hidden by a new one;
+        new subfields are their own addition group. Columns new in the candidate have no
+        base values: they are listed in `cannot_see`, never read as agreement.
         """
-        columns = set(self.columns('base', table)) & set(self.columns('candidate', table))
+        import pyarrow as pa
+        base_types, candidate_types = self.arrow_types('base', table), self.arrow_types('candidate', table)
+        columns = set(base_types) & set(candidate_types)
         if only is not None:
             columns &= set(only)
         selected = sorted(columns - set(exclude))
-        if not selected:
-            return []
-        terms = []
+        groups = []
+        for column in sorted(set(candidate_types) - set(base_types) - set(exclude)):
+            if only is None or column in only:
+                self.cannot_see.append(f'{table}.{column}: new in the candidate; no base values to compare')
+        for column in sorted(set(base_types) - set(candidate_types) - set(exclude)):
+            if only is None or column in only:
+                groups.append(flag(f'column {column} removed', 'unexplained'))
+        terms, labels = [], []
+
+        def fields(kind):
+            if pa.types.is_struct(kind):
+                return '', {f.name for f in kind}
+            if (pa.types.is_list(kind) or pa.types.is_large_list(kind)) and pa.types.is_struct(kind.value_type):
+                return '[]', {f.name for f in kind.value_type}
+            return None, None
+
         for column in selected:
+            if (compare or {}).get(column) is None:
+                (shape, old), (shape_new, new) = fields(base_types[column]), fields(candidate_types[column])
+                if shape is not None and shape == shape_new and old != new:
+                    for name in sorted(old & new):
+                        if shape == '[]':
+                            left, right = (f'list_transform({s}."{column}",e->e."{name}")' for s in 'pl')
+                        else:
+                            left, right = (f'{s}."{column}"."{name}"' for s in 'pl')
+                        terms.append(f'count(*) FILTER (WHERE {left} IS DISTINCT FROM {right})')
+                        labels.append(('value', f'{column}{shape}.{name}'))
+                    for name in sorted(new - old):
+                        value = (f'len(list_filter(l."{column}",e->e."{name}" IS NOT NULL))>0' if shape == '[]'
+                                 else f'l."{column}"."{name}" IS NOT NULL')
+                        terms.append(f'count(*) FILTER (WHERE {value})')
+                        labels.append(('added', f'{column}{shape}.{name}'))
+                    for name in sorted(old - new):
+                        groups.append(flag(f'subfield {column}{shape}.{name} removed', 'unexplained'))
+                    continue
             template = (compare or {}).get(column, 'X.{c}')
             left, right = (template.replace('X', s).format(c=f'"{column}"') for s in 'pl')
             terms.append(f'count(*) FILTER (WHERE {left} IS DISTINCT FROM {right})')
-        counts = self.con.execute(f'SELECT {",".join(terms)} FROM {join}').fetchone()
-        return [value_group(column, n) for column, n in zip(selected, counts) if n]
+            labels.append(('value', column))
+        if terms:
+            counts = self.con.execute(f'SELECT {",".join(terms)} FROM {join}').fetchone()
+            for (kind, label), n in zip(labels, counts):
+                if not n:
+                    continue
+                groups.append(value_group(label, n) if kind == 'value' else
+                              dict(group(f'added subfield {label}', 'subfield new in the candidate, set on matched rows', n), value=True))
+        return groups
 
 
 def group(name, cause, count, status='unverified'):
@@ -487,7 +535,7 @@ def compare(base, candidate, *, evidence_base=None, evidence_candidate=None, rec
     flips = add_evidence(d, evidence_base, evidence_candidate) if evidence_base else None
     files = account(d)
     result = {'base_release': d.manifest['base']['release_id'], 'candidate_release': d.manifest['candidate']['release_id'],
-              'capture_flips': flips, 'files': files, 'link_rule': link_rule(d),
+              'capture_flips': flips, 'files': files, 'link_rule': link_rule(d), 'cannot_see': d.cannot_see,
               'inputs': [digest(p) for p in [evidence_base, evidence_candidate, *record_digest] if p]}
     if removed_keys:
         result['removed_keys_written'] = write_removed_keys(d, removed_keys)
@@ -515,6 +563,8 @@ def main(argv=None):
     args.output.write_text(json.dumps(result, indent=1, default=str) + '\n')
     for entry in result['failing']:
         print(f"{entry['status']} {entry['file']}: {entry['count']} {entry['group']} ({entry['cause']})", file=sys.stderr)
+    for limit in result['cannot_see']:
+        print(f'cannot see: {limit}', file=sys.stderr)
     rule = result['link_rule']
     if not rule['ok']:
         print(f"link rule: {rule['missing']} missing, {rule['dangling']} dangling", file=sys.stderr)

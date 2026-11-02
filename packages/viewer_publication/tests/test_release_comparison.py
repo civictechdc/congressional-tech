@@ -394,3 +394,25 @@ def test_member_row_needs_its_own_flip_not_an_equal_count(tmp_path):
     after = evidence(tmp_path / 'b.parquet', [('A', True, None), ('M', False, 'unrelated.htm')])
     code, result = run(tmp_path, prev, live, '--evidence-base', before, '--evidence-candidate', after)
     assert code == 1 and ('sources.parquet', 'unverified') in failing(result)
+
+
+SITTING_OLD = pa.struct([('start', pa.string()), ('place', S)])
+SITTING_NEW = pa.struct([('start', pa.string()), ('place', S), ('room', S)])
+
+
+def test_a_changed_shared_subfield_surfaces_beside_an_added_subfield(tmp_path):
+    """meetings.sittings gained room: the whole struct differs on every row, but a real change
+    to an existing subfield (start) must still be its own group, and room an addition."""
+    old = {**SCHEMAS, 'meetings': [('event_id', pa.int64()), ('subject_keys', pa.list_(S)), ('sittings', pa.list_(SITTING_OLD))]}
+    new = {**SCHEMAS, 'meetings': [('event_id', pa.int64()), ('subject_keys', pa.list_(S)), ('sittings', pa.list_(SITTING_NEW)),
+                                   ('not_held', pa.bool_())]}
+    rows = lambda start, room=None, **extra: [dict(event_id=1, subject_keys=[], sittings=[dict(start='09:00', place='Rayburn', **({'room': room} if room else {}))], **extra),
+                                               dict(event_id=2, subject_keys=[], sittings=[dict(start=start, place='Dirksen', **({'room': room} if room else {}))], **extra)]
+    prev = release(tmp_path / 'prev', documents=['A'], schemas=old, meetings=rows('10:00'))
+    live = release(tmp_path / 'live', documents=['A'], schemas=new, meetings=rows('14:00', room='2123', not_held=False))
+    code, result = run(tmp_path, prev, live)
+    assert code == 1
+    assert counts(result, 'meetings') == {
+        ('changed sittings[].start', 'value differs on matched key'): 1,
+        ('added subfield sittings[].room', 'subfield new in the candidate, set on matched rows'): 2}
+    assert result['cannot_see'] == ['meetings.not_held: new in the candidate; no base values to compare']
