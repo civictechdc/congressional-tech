@@ -435,6 +435,14 @@ def evidence_steps(*,root=ROOT):
         for name in names]
 
 
+# Why a listed document may publish with a blank filename (ct-yf1c), over an `ordered` row o:
+# no address, a query URL whose parameters name no file (EPW/SBC Files.Serve), or a bare host.
+# Anything else is unexplained and refuses the release.
+BLANK_FILENAME_REASON_SQL="""CASE WHEN o.source_url IS NULL OR trim(o.source_url)='' THEN 'no_address'
+ WHEN strpos(o.source_url,'?')>0 THEN 'query_names_no_file'
+ WHEN regexp_like(o.source_url,'^[A-Za-z][A-Za-z0-9+.-]*://[^/?#]*/*(#.*)?$') THEN 'host_only' END"""
+
+
 def evidence_checks():
     """Expose current prefix checks for admission and the full invariant report."""
     from congress_api.lake.readings import writer_admission_conflict_sql
@@ -869,7 +877,10 @@ def build_prepared_release(prepared,*,engine,output,root=ROOT):
     entity_invariant_sql=''
     meta_queries=[input_receipts_query(),probe_selectors_query(root=root),
         # The recorded disposition: a ZIP with no expanded contents stays a document, listed here.
-        dict(name='unexpanded_zip_documents',sql="SELECT count(*) AS documents FROM ordered WHERE format='zip'")]
+        dict(name='unexpanded_zip_documents',sql="SELECT count(*) AS documents FROM ordered WHERE format='zip'"),
+        # The recorded reason for each blank filename (ct-yf1c); unexplained_blank_filenames refuses the rest.
+        dict(name='blank_filename_reasons',sql=f"""SELECT {BLANK_FILENAME_REASON_SQL} AS reason,count(*) AS documents
+            FROM ordered o WHERE o.filename='' GROUP BY 1 ORDER BY 1""")]
     if prepared.get('include_entities'):
         entity_invariant_sql=""",
             (SELECT count(*) FROM (
@@ -942,6 +953,7 @@ def build_prepared_release(prepared,*,engine,output,root=ROOT):
             (SELECT CASE WHEN count(*)=0 THEN 1 ELSE 0 END FROM ordered) AS empty_document_list,
             (SELECT count(*) FROM ordered o JOIN page_signals g ON g.kind='link_word' AND length(o.title)<=64
                 AND regexp_like(regexp_replace(trim(o.title),'\\s+',' ','g'),g.pattern)) AS generic_titles,
+            (SELECT count(*) FROM ordered o WHERE o.filename='' AND ({BLANK_FILENAME_REASON_SQL}) IS NULL) AS unexplained_blank_filenames,
             (SELECT count(*) FROM saved_files s JOIN saved_files n ON n.component=s.component AND n.body_sha=s.body_sha
                 AND coalesce(n.filename,'')<>'' WHERE s.saved_rank=1 AND coalesce(s.filename,'')='') AS saved_unnamed_with_named_sibling,
             (SELECT count(*) FROM (SELECT unnest(alternates) AS alt FROM document_alternates) WHERE alt['size'] IS NULL) AS missing_alternate_sizes,

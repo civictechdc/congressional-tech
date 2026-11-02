@@ -144,3 +144,12 @@ def test_recovery_only_document_takes_the_recovered_reading_title_else_the_origi
         queries=[dict(name='titles', sql='SELECT doc_key,title,media_type FROM recovery_rows ORDER BY doc_key')])
     assert result['titles'] == [dict(doc_key='doc:label', title='Hearing on Rural Lands', media_type='application/octet-stream'),
                                 dict(doc_key='doc:read', title='Recovered hearing record', media_type='text/html')]
+
+
+def test_a_blank_filename_needs_a_recorded_reason(tmp_path):
+    from viewer_publication.archive_model import BLANK_FILENAME_REASON_SQL
+    urls = [None, 'https://www.epw.senate.gov/public/?a=Files.Serve&File_id=1', 'https://docs.house.gov/', 'https://x.test/a.pdf', 'https://x.test/a/b']
+    inputs = [json_input(tmp_path, 'ordered', [dict(i=i, source_url=u) for i, u in enumerate(urls)], i='Int64', source_url='Utf8')]
+    result = run_job(tmp_path, NativeDatasets.from_config(os.environ['DOCSPEC_JOB_CONFIG']), inputs=inputs, steps=[], outputs=[],
+        queries=[dict(name='r', sql=f'SELECT i,{BLANK_FILENAME_REASON_SQL} AS reason FROM ordered o ORDER BY i')])
+    assert [row['reason'] for row in result['r']] == ['no_address', 'query_names_no_file', 'host_only', None, None]
