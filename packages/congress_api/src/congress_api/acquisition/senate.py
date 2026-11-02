@@ -377,8 +377,12 @@ def main(meetings, state_dir, output_dir, seed_cache=None, offline=False, as_of=
                 attempted += 1
                 # Only a failure seen while its host was answering is a known page failure.
                 # A page that never answered because the site was down is not.
+                last_check = (saved.get("workflow") or {}).get(url, {}).get("last_check") or {}
+                # State saved before the marker existed has no key at all: its own receipts say
+                # whether the host sent a status for that failure, so a status is a known failure.
                 already_failed = pages.get(url, {}).get("status") == "error" and bool(
-                    ((saved.get("workflow") or {}).get(url, {}).get("last_check") or {}).get("host_answered"))
+                    last_check.get("host_answered") if "host_answered" in last_check else
+                    any("status_code" in receipt for receipt in last_check.get("receipts", [])))
                 try:
                     pages[url], activity = fetch_page(url, pages.get(url, {}), as_of, cache=seed_cache if importing else None, check=page_check, activity=(saved.get("workflow") or {}).get(url))
                     if activity:
@@ -389,8 +393,9 @@ def main(meetings, state_dir, output_dir, seed_cache=None, offline=False, as_of=
                     # One page's failure is that page's outcome: it keeps any prior
                     # content, its receipt says why, and it is retried first next run.
                     pages.setdefault(url, {"title": "", "lines": [], "witnesses": [], "documents": [], "status": "error"})
-                    if already_failed:
-                        page_check["host_answered"] = True  # still a known page failure until it answers
+                    # Always written, so current state never looks like pre-marker state; it becomes
+                    # True below only for a confirmed failure.
+                    page_check["host_answered"] = already_failed  # a known page failure stays known until it answers
                     saved.setdefault("workflow", {}).setdefault(url, {})["last_check"] = page_check
                     # Whether the host sent any HTTP status for this page at all.
                     got_status = any("status_code" in receipt for receipt in page_check.get("receipts", []))

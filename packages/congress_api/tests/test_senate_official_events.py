@@ -379,6 +379,20 @@ def saved_error_pages(tmp_path, urls, *, host_answered):
     records_write_state(tmp_path/'senate.json.gz', state)
 
 
+def test_legacy_error_pages_with_a_status_are_known_and_without_one_are_not(tmp_path, monkeypatch):
+    # State saved before the marker existed (green-e2): its receipts decide. Defect: treating
+    # every marker-less error page as unknown fails a Budget-like host on every run.
+    urls = hearing_urls(7)
+    saved_error_pages(tmp_path, urls, host_answered=False)
+    state = records_read_state(tmp_path/'senate.json.gz')
+    for url in urls:
+        state['indian.senate.gov']['workflow'][url]['last_check']['receipts'] = [dict(url=url, status_code=403)]
+    records_write_state(tmp_path/'senate.json.gz', state)
+    outage_run(tmp_path, monkeypatch, urls)
+    saved = records_read_state(tmp_path/'senate.json.gz')['indian.senate.gov']
+    assert all(saved['workflow'][url]['last_check'].get('host_answered') for url in urls)
+
+
 def test_a_repeat_run_over_never_fetched_pages_fails(tmp_path, monkeypatch):
     # Pages in error that never answered while their host did are not known page failures.
     urls = hearing_urls(4)
