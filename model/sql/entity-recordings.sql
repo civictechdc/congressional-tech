@@ -25,30 +25,8 @@ WITH unnested_meeting_videos AS (
  LEFT JOIN recording_page_meetings pm ON pvl.page_body=pm.page_body
  LEFT JOIN video_key_aliases a ON pvl.extracted_key=a.alias_key
  WHERE pvl.extracted_key IS NOT NULL
-), resolved_tracks AS (
- SELECT coalesce(a.canonical_key,tc.extracted_key) AS video_key,
-  arrow_cast(tc.sha256,'FixedSizeBinary(32)') AS body,
-  tc.suffix,tc.format,tc.language,tc.production,
-  tc.retrieved_at,tc.receipt_key,tc.receipt_line,tc.capture_index
- FROM recording_track_candidates tc
- LEFT JOIN video_key_aliases a ON tc.extracted_key=a.alias_key
- WHERE tc.extracted_key IS NOT NULL AND tc.format IS NOT NULL
-), ranked_tracks AS (
- SELECT *,row_number() OVER(
-  PARTITION BY video_key,format,language,production
-  ORDER BY retrieved_at DESC NULLS LAST,receipt_key DESC,receipt_line DESC,capture_index DESC
- ) AS rn FROM resolved_tracks
-), ordered_tracks AS (
- SELECT *,row_number() OVER(
-  PARTITION BY video_key
-  ORDER BY format ASC,language ASC,production ASC,suffix ASC
- ) AS track_seq
- FROM ranked_tracks WHERE rn=1
 ), tracks_agg AS (
- SELECT video_key,array_agg(named_struct(
-  'body',body,'suffix',suffix,'format',format,'language',language,'production',production
- ) ORDER BY track_seq ASC) AS tracks
- FROM ordered_tracks GROUP BY video_key
+ SELECT * FROM recording_tracks
 ), all_keys AS (
  SELECT DISTINCT video_key FROM meeting_video_events WHERE video_key IS NOT NULL
  UNION
