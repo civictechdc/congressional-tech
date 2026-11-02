@@ -16,13 +16,16 @@ Measured 2026-11-01 at 3df9bdf6 for ct-qg8e, ct-opy0 and ct-db3w. Nothing here w
 
 These paths are machine-local, in another session's temporary directory, and may vanish. The public pointer named 448651e7 with previous c94bfedc when checked. Downloaded files matched their manifests; `members`, `rosters`, `nominations` and `url_variants` were not downloaded, and their digests are identical across the releases.
 
+The command later moved into the publisher (2026-11-02); its numbers here are unchanged. The original was
+`scripts/measure/release_diff.py --prev PREV --live LIVE --evidence-prev … --evidence-live …`.
+
 ```
-.venv/bin/python -I scripts/measure/release_diff.py --prev PREV --live LIVE \
-  --evidence-prev V20_CAPTURE_SOURCES --evidence-live V21_CAPTURE_SOURCES --record-digest CAPTURES \
+.venv/bin/python -I -m viewer_publication.release_comparison --base PREV --candidate LIVE \
+  --evidence-base V20_CAPTURE_SOURCES --evidence-candidate V21_CAPTURE_SOURCES --record-digest CAPTURES \
   --removed-keys docs/measurements/release-diff-c94bfedc-448651e7-removed-link-keys.csv.gz \
   --output docs/measurements/release-diff-c94bfedc-448651e7-20261101.json
 .venv/bin/python -I docs/measurements/release-diff-c94bfedc-448651e7-verify.py DOWNLOADS BUILD docs/measurements/release-diff-c94bfedc-448651e7-20261101.json
-DOCSPEC_JOB_CONFIG=... .venv/bin/python scripts/dev.py test production-offline --path scripts/measure/tests/test_release_diff.py
+DOCSPEC_JOB_CONFIG=... .venv/bin/python scripts/dev.py test production-offline --path packages/viewer_publication/tests/test_release_comparison.py
 ```
 
 The verifier uses pyarrow with no SQL and asserts against the JSON by other routes: Parquet footers for deltas, capture real-file sets instead of flips or links for removed keys, and bodies instead of link keys for splits. It exits 0. **The bodies route gives 60,630 split rows against 60,616 by link key; the gap of 14 is unexplained** and pinned in the script. Compared row by row, 18 rows differ (+16, -2), all PDFs:

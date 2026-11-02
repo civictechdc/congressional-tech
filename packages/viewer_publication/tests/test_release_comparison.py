@@ -1,6 +1,5 @@
 """Row accounting across releases, on tiny releases whose answers are worked out by hand."""
 from hashlib import sha256
-import importlib.util
 import json
 from pathlib import Path
 
@@ -9,9 +8,7 @@ import pyarrow.parquet as pq
 import pytest
 
 ROOT = Path(__file__).parents[3]
-spec = importlib.util.spec_from_file_location('release_diff', ROOT / 'scripts/measure/release_diff.py')
-release_diff = importlib.util.module_from_spec(spec)
-spec.loader.exec_module(release_diff)
+from viewer_publication import release_comparison as release_diff
 
 S, I, B = pa.string(), pa.int32(), pa.binary()
 SCHEMAS = {
@@ -50,7 +47,7 @@ def release(directory, *, documents, sources=(), schemas=SCHEMAS, **tables):
 
 def run(tmp_path, prev, live, *extra):
     output = tmp_path / 'out.json'
-    code = release_diff.main(['--prev', str(prev), '--live', str(live), '--output', str(output), *extra])
+    code = release_diff.main(['--base', str(prev), '--candidate', str(live), '--output', str(output), *extra])
     return code, json.loads(output.read_text())
 
 
@@ -98,7 +95,7 @@ def test_null_source_urls_match_with_null_safe_comparison(tmp_path, pair):
     groups = {g[0]: n for g, n in counts(result, 'sources').items()}
     # Member u0/m.htm gone, NULL added, u3 gone, u0 listed twice instead of once: -1 +1 -1 +1 = 0.
     assert groups == {'member rows removed': -1, 'NULL url': 1, 'URLs gone': -1, 'same-URL rows added': 1}
-    assert result['files']['sources.parquet']['null_url_rows'] == {'prev': 0, 'live': 1}
+    assert result['files']['sources.parquet']['null_url_rows'] == {'base': 0, 'candidate': 1}
     # A NULL url present on both sides is no change at all.
     a = release(tmp_path / 'a', documents=['A'], sources=[(0, None, None)])
     b = release(tmp_path / 'b', documents=['A'], sources=[(0, None, None), (0, 'new', None)])
@@ -154,7 +151,7 @@ def test_evidence_ties_removed_and_added_keys_to_eligibility_flips(tmp_path):
     live = release(tmp_path / 'live', documents=['A', 'N'])
     before = evidence(tmp_path / 'before.parquet', [('A', True, None), ('M', True, 'm.htm'), ('N', False, None)])
     after = evidence(tmp_path / 'after.parquet', [('A', True, None), ('M', False, 'm.htm'), ('N', True, None)])
-    code, result = run(tmp_path, prev, live, '--evidence-prev', before, '--evidence-live', after,
+    code, result = run(tmp_path, prev, live, '--evidence-base', before, '--evidence-candidate', after,
                        '--removed-keys', str(tmp_path / 'removed.csv.gz'))
     assert code == 0
     assert counts(result, 'links') == {('removed keys', 'member-only body no longer real'): -1,
@@ -169,7 +166,7 @@ def test_removed_key_without_a_flip_is_unexplained(tmp_path):
     prev = release(tmp_path / 'prev', documents=['A', 'M'])
     live = release(tmp_path / 'live', documents=['A'])
     same = evidence(tmp_path / 'same.parquet', [('A', True, None), ('M', True, None)])
-    code, result = run(tmp_path, prev, live, '--evidence-prev', same, '--evidence-live', same)
+    code, result = run(tmp_path, prev, live, '--evidence-base', same, '--evidence-candidate', same)
     assert code == 1
     assert counts(result, 'links') == {('removed keys', 'unexplained'): -1}
 
@@ -214,7 +211,7 @@ def test_recording_is_verified_only_when_a_new_capture_names_it(tmp_path):
     live = release(tmp_path / 'live', documents=['A', 'N'], recordings=rows)
     before = evidence(tmp_path / 'a.parquet', [('A', True, None), ('M', True, 'm'), ('N', False, None, 'https://y/watch?v=vid')])
     after = evidence(tmp_path / 'b.parquet', [('A', True, None), ('M', False, 'm'), ('N', True, None, 'https://y/watch?v=vid')])
-    code, result = run(tmp_path, prev, live, '--evidence-prev', before, '--evidence-live', after)
+    code, result = run(tmp_path, prev, live, '--evidence-base', before, '--evidence-candidate', after)
     assert code == 1
     assert counts(result, 'recordings') == {('added keys', 'empty event_ids; capture newly real'): 1,
                                             ('added keys', 'with event_ids; source not traced'): 1}
@@ -274,7 +271,7 @@ def test_removed_key_whose_body_is_still_real_is_unexplained(tmp_path):
     live = release(tmp_path / 'live', documents=['A'])
     before = evidence(tmp_path / 'a.parquet', [('A', True, None), ('M', True, None), ('M', True, None)])
     after = evidence(tmp_path / 'b.parquet', [('A', True, None), ('M', False, None), ('M', True, None)])
-    code, result = run(tmp_path, prev, live, '--evidence-prev', before, '--evidence-live', after)
+    code, result = run(tmp_path, prev, live, '--evidence-base', before, '--evidence-candidate', after)
     assert code == 1
     assert counts(result, 'links') == {('removed keys', 'unexplained'): -1}
 
@@ -284,7 +281,7 @@ def test_recording_key_without_a_colon_does_not_match_every_flip(tmp_path):
     live = release(tmp_path / 'live', documents=['A', 'N'], recordings=[{'video_key': 'nocolon', 'event_ids': []}])
     before = evidence(tmp_path / 'a.parquet', [('A', True, None), ('M', True, None), ('N', False, None, 'https://y/z')])
     after = evidence(tmp_path / 'b.parquet', [('A', True, None), ('M', False, None), ('N', True, None, 'https://y/z')])
-    code, result = run(tmp_path, prev, live, '--evidence-prev', before, '--evidence-live', after)
+    code, result = run(tmp_path, prev, live, '--evidence-base', before, '--evidence-candidate', after)
     assert code == 1 and ('recordings.parquet', 'unverified') in failing(result)
 
 
@@ -293,5 +290,5 @@ def test_member_row_needs_its_own_flip_not_an_equal_count(tmp_path):
     live = release(tmp_path / 'live', documents=['A', 'M'])
     before = evidence(tmp_path / 'a.parquet', [('A', True, None), ('M', True, 'unrelated.htm')])
     after = evidence(tmp_path / 'b.parquet', [('A', True, None), ('M', False, 'unrelated.htm')])
-    code, result = run(tmp_path, prev, live, '--evidence-prev', before, '--evidence-live', after)
+    code, result = run(tmp_path, prev, live, '--evidence-base', before, '--evidence-candidate', after)
     assert code == 1 and ('sources.parquet', 'unverified') in failing(result)
