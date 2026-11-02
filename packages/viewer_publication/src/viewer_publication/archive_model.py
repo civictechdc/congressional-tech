@@ -922,6 +922,8 @@ def build_prepared_release(prepared,*,engine,output,root=ROOT):
             (SELECT CASE WHEN count(*)=0 THEN 1 ELSE 0 END FROM ordered) AS empty_document_list,
             (SELECT count(*) FROM ordered o JOIN page_signals g ON g.kind='link_word' AND length(o.title)<=64
                 AND regexp_like(regexp_replace(trim(o.title),'\\s+',' ','g'),g.pattern)) AS generic_titles,
+            (SELECT count(*) FROM saved_files s JOIN saved_files n ON n.component=s.component AND n.body_sha=s.body_sha
+                AND coalesce(n.filename,'')<>'' WHERE s.saved_rank=1 AND coalesce(s.filename,'')='') AS saved_unnamed_with_named_sibling,
             (SELECT count(*) FROM (SELECT unnest(alternates) AS alt FROM document_alternates) WHERE alt['size'] IS NULL) AS missing_alternate_sizes,
             (SELECT count(*) FROM (
                 SELECT cast(m['event_id'] AS BIGINT) AS event_id
