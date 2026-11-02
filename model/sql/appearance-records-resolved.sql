@@ -103,10 +103,12 @@ WITH candidate_appearance_shas AS (
  UNION ALL
  -- Retained lists name their event only in the receipt's file path; those rows are not good fetches,
  -- so every capture row of the body counts (captures.original_path, relative paths only).
- SELECT encode(c.sha256,'hex'),try_cast((regexp_match(c.original_path,'(?i)(?:^|/)wlist/([0-9]+)[.]xml$'))[1] AS BIGINT)
+ SELECT h.record_sha_hex,try_cast((regexp_match(c.original_path,'(?i)(?:^|/)wlist/([0-9]+)[.]xml$'))[1] AS BIGINT)
  FROM captures c
- JOIN (SELECT DISTINCT record_sha_hex FROM selected_appearance_records
-  WHERE source='house_xml' AND status='completed' AND event_id IS NULL) h ON encode(c.sha256,'hex')=h.record_sha_hex
+ -- Join on the raw binary digest so the small candidate set prunes the captures scan (AGENTS.md).
+ JOIN (SELECT DISTINCT record_sha_hex,arrow_cast(decode(record_sha_hex,'hex'),'FixedSizeBinary(32)') AS sha256
+  FROM selected_appearance_records
+  WHERE source='house_xml' AND status='completed' AND event_id IS NULL) h ON c.sha256=h.sha256
  WHERE c.original_path IS NOT NULL
 ), list_events AS (
  -- One event only: links or paths that disagree state no event.

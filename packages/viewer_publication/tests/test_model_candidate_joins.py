@@ -94,7 +94,9 @@ def capture_scans_filtered(plan):
             indent = depth
             if 'AggregateExec' in ancestor:
                 break
-            if 'HashJoinExec' in ancestor and 'encode(' in ancestor and 'sha256' in ancestor and 'record_sha_hex' in ancestor:
+            # The candidate join is on the hex expression key or, which prunes better, on the raw binary digest.
+            if 'HashJoinExec' in ancestor and 'sha256' in ancestor and (
+                    ('encode(' in ancestor and 'record_sha_hex' in ancestor) or ancestor.count('sha256') >= 2):
                 verdict = True
                 break
         verdicts.append(verdict)
