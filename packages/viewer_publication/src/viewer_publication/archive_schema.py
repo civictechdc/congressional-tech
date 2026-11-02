@@ -215,17 +215,23 @@ def relation_available(name, auxiliary, core):
     return name in auxiliary or name in core
 
 
-def publication_checks(schema, auxiliary):
+def publication_checks(schema, auxiliary, *, keyed_documents=True):
     """Check new entity keys and required nested references in the native job.
 
     Core row positions, source/recovery ordinals, distinct lookup pairs and link
     keys already have one construction/validation owner in archive_format._core.
     Existing materialized export relations are reused, not exported files.
+
+    A unique detail ``link_key`` follows from the model's same-body edge (data
+    model 7.5). A converted legacy catalog has no such edge: its documents can
+    share a saved body, the declared ``f0_shared_body_link`` loss, so it passes
+    ``keyed_documents=False``.
     """
     checks = ['''(SELECT count(*) FROM details d WHERE d.link_key IS NOT NULL
-        AND NOT EXISTS (SELECT 1 FROM links l WHERE l.link_key=d.link_key)) AS missing_primary_link''',
-        '''(SELECT count(*) FROM (SELECT link_key FROM details WHERE link_key IS NOT NULL
-        GROUP BY link_key HAVING count(*)>1)) AS duplicate_document_key''']
+        AND NOT EXISTS (SELECT 1 FROM links l WHERE l.link_key=d.link_key)) AS missing_primary_link''']
+    if keyed_documents:
+        checks.append('''(SELECT count(*) FROM (SELECT link_key FROM details WHERE link_key IS NOT NULL
+        GROUP BY link_key HAVING count(*)>1)) AS duplicate_document_key''')
     # Declared required columns are refused at write time, in the job that writes them.
     core = {'sources': 'source_rows'}
     for table in schema['files']:
