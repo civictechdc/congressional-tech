@@ -989,7 +989,8 @@ def comparison_steps(*, f0_release=None, witness_step=None, witness_steps=(), us
 
 
 def retire_job(spec):
-    from viewer_publication.archive_model_lifetimes import retire_relations, _dependencies
+    from congress_api.lake.model_sql import _dependencies
+    from viewer_publication.archive_model_lifetimes import retire_relations
     import duckdb
     spec = retire_relations(spec)
     input_names = {item['name'] for item in spec.get('inputs', ())}

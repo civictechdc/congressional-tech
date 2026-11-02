@@ -263,8 +263,6 @@ def _execute(inputs, steps, *, output, scratch, engine, origin, auxiliary=None, 
     if 'nominations' in aux_names:
         coverage_parts.append("SELECT 'nominations.parquet' AS file,min(try_cast(split_part(nomination_id,'-',1) AS SMALLINT)) AS congress_start,max(try_cast(split_part(nomination_id,'-',1) AS SMALLINT)) AS congress_end,min(received) AS date_start,max(received) AS date_end FROM nominations_export")
     queries.append(dict(name='coverage', sql=' UNION ALL '.join(coverage_parts)))
-    from congress_api.lake.model_sql import check_relations
-    check_relations(inputs, steps, queries, outputs)
     spec = retire_relations(dict(scratch=str(scratch / 'native'), inputs=inputs, steps=steps, outputs=outputs, queries=queries))
     spec_path = scratch / 'job.json'
     spec_path.write_text(json.dumps(spec, ensure_ascii=False, separators=(',', ':')))

@@ -336,7 +336,7 @@ def parquet_output(root,name,sql,order):
 
 def run_job(root,engine,*,inputs,steps,outputs,queries=()):
     from congress_api.lake.model_sql import check_relations
-    check_relations(inputs,steps,queries,outputs)
+    check_relations(inputs,steps)
     root=Path(root)
     root.mkdir(parents=True,exist_ok=True)
     path=root/'job.json'
