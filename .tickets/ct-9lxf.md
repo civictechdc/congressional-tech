@@ -23,3 +23,7 @@ Fetch refspec excludes pipeline-data (or it's fetched shallow), with a gc in a q
 **2026-11-02T17:17:02Z**
 
 Owner decision 2026-11-02: stop fetching pipeline-data locally (done: fetch refspec ^refs/heads/pipeline-data, remote-tracking ref removed); gc after the release when agents are idle; keep the NARA files.
+
+**2026-11-02T17:17:59Z**
+
+2026-11-02 owner: the NARA files were being used to recover documents. .cache/document-bulk-recovery-20261014T1552Z (nara/: 10 valid veterans.house.gov transcript recoveries, 175 bodies, a run intentionally stopped on proxy failures with 'preserve results') and .cache/nara-filename-estimate-20261015 (15 GB recovery workspace: Wayback continuation, residuals, docs.house.gov follow-ups, verified-local-recoveries.json) are recovery source material: never prune; added to the agent brief.
