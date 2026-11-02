@@ -35,3 +35,17 @@ putting them in the release would force a second model run.
   and 63 show a notice: 61 ZIP-member keys lost to the D1 archive-member defect, to be
   rechecked on the rebuilt candidate, plus a 500-error ZIP whose address three documents
   share, and one article that no current document lists.
+
+## Nightly publication (ct-ud0b)
+
+The daily publish (`model/jobs/publish.json`, `automatic_causes: true`) can explain a
+difference without a person only when every difference is a new row and every new row is
+traced to receipts newer than the live release. A new row is a new document, or a source
+or lookup row on one. Each new document's body is joined to `captures`, and each receipt
+line is read from raw. The receipt key must be outside the live release's receipt set and
+dated after the newest of them, and the line must name the body. Any changed or removed
+value, a split or merge, or a row that cannot be traced still needs a reviewed cause record.
+
+What it cannot see: a bug that adds only wrong rows from genuinely new receipts. A
+code change that alters how new rows are built is invisible too, when no existing row
+changes. Gates 2-5 still run on every nightly candidate.

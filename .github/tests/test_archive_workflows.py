@@ -290,3 +290,10 @@ def test_publish_checks_out_full_history_for_producer_commits():
     steps = workflow('archive-jobs.yml')['jobs']['publish']['steps']
     checkout = next(step for step in steps if step.get('uses', '').startswith('actions/checkout'))
     assert checkout['with']['fetch-depth'] == '0'
+
+
+def test_daily_publish_spec_explains_new_receipt_additions_unattended():
+    """ct-ud0b: the bound daily publish spec turns on automatic causes; nothing else does."""
+    binding = json.loads((ROOT / '.github/archive-jobs.json').read_text())['publish']
+    spec = json.loads((ROOT / binding['spec']).read_text())
+    assert 'daily' in spec and spec['automatic_causes'] is True

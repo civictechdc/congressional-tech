@@ -155,7 +155,7 @@ def _probe_evidence(reports):
 
 def run_publish(model_spec,*,client,engine,bucket,work,receipt_keys,provenance,run,
                 public_origin,contract,canary,verified_files=None,measured_release_id=None,comparison_acceptance=None,
-                resume=False,release_causes=None,link_history=(),first_release=False):
+                resume=False,release_causes=None,link_history=(),first_release=False,automatic_causes=False):
     """Prepare once, admit before a skip, otherwise export once and publish.
 
     SQL, graphs, grouping and file writing use the maintained native model.
@@ -328,6 +328,7 @@ def run_publish(model_spec,*,client,engine,bucket,work,receipt_keys,provenance,r
             measured_release_id=measured_release_id,comparison_acceptance=comparison_acceptance,
             pointer=pointer,expected_etag=etag,public_origin=public_origin,
             base_release=base_release,release_causes=release_causes,link_history_dirs=history,first_release=first_release,
+            automatic_captures=model_spec['captures'] if automatic_causes else None,
             contract=lambda **context:contract(**context,probe_selectors=probe_selectors),
             canary=lambda **context:canary(**context,probe_selectors=probe_selectors))
     except BaseException as error:

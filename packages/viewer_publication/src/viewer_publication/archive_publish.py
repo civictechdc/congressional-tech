@@ -393,7 +393,7 @@ def _candidate(release,manifest_pin,result_pin,*,input_record,receipt_keys):
 
 def publish_candidate(*,client,engine,bucket,work,release,manifest_pin,result_pin,
                       input_record,receipt_keys,pointer,expected_etag,public_origin,contract,canary,measured_release_id=None,comparison_acceptance=None,asset_journal=None,
-                      base_release=None,release_causes=None,link_history_dirs=(),first_release=False):
+                      base_release=None,release_causes=None,link_history_dirs=(),first_release=False,automatic_captures=None):
     """Upload a pinned model candidate and use the existing reader gates and CAS.
 
     The caller owns actual model planning, completeness and early skip. This stage
@@ -447,8 +447,22 @@ def publish_candidate(*,client,engine,bucket,work,release,manifest_pin,result_pi
             raise ValueError('No live release to compare with; a first release must be declared (first_release)')
         else:
             status['first_release']=True
+        automatic=None
+        if automatic_captures is not None and live is not None:
+            # ct-ud0b: unattended nightly publication. The live receipt set comes from the live
+            # release's own input records; raw lines are read from the raw bucket, never the model.
+            from viewer_publication.receipt_pins import kept_input_records
+            from viewer_publication.release_gate import automatic_causes
+            entries,_=kept_input_records(store,[live])
+            held={key for entry in entries for key in entry['receipt_keys']}
+            def read_receipt(key):
+                body=client.get_object(Bucket=bucket,Key=key)['Body']
+                try:return body.read()
+                finally:body.close()
+            automatic=lambda report:automatic_causes(report,base_release,Path(release),engine=engine,
+                captures=automatic_captures,live_receipt_keys=held,read_receipt=read_receipt,work=Path(work)/'automatic')
         require_release_gates(Path(base_release) if live is not None else None,Path(release),release_causes,
-            report_path=Path(work)/'release-gate.json',history=link_history_dirs)
+            report_path=Path(work)/'release-gate.json',history=link_history_dirs,automatic=automatic)
         status['release_gates']='passed'
         contract_receipt=contract(release_id=release_id,release=Path(release),manifest=manifest)
         validate_receipt(contract_receipt,release_id=release_id,name='contract',manifest_origin=manifest.get('origin'))

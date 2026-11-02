@@ -484,3 +484,34 @@ def test_no_live_release_refuses_unless_a_first_release_is_declared(tmp_path,poi
     result=publish_candidate(work=tmp_path/'bootstrap',first_release=True,**common)
     assert result['status']=='published' and result['first_release'] is True
     assert json.loads(store.objects['viewer-publications/status.json'])['first_release'] is True
+
+
+def test_nightly_additions_from_new_receipts_publish_through_the_real_path(tmp_path,real_gates):
+    """ct-ud0b end to end in publish_candidate: live input records give the receipt set, raw
+    receipts come from the bucket, captures from its pin; no cause record is supplied."""
+    import gzip,os
+    import pyarrow as pa
+    import pyarrow.parquet as pq
+    from docspec_client.client import NativeDatasets
+    from viewer_publication.receipt_pins import write_input_receipts
+    from test_archive_controller import Runtime
+    store,live=live_store(tmp_path)
+    old,old_keys=record()
+    with NativeDatasets.from_config(os.environ['DOCSPEC_JOB_CONFIG']) as native:
+        engine=Runtime(native,store)
+        write_input_receipts(NativeArchiveStore(client=store,engine=engine,bucket='derived-fixture',work=tmp_path/'seed'),
+            live,old['input_digest'],old,['receipts/documents/2026-11-01/live.jsonl.gz'])
+        body=b'N'*8+sha256(b'N').digest()[:24];receipt='receipts/documents/2026-11-03/nightly.jsonl.gz'
+        store.objects[receipt]=gzip.compress((json.dumps(dict(captures=[dict(sha256=body.hex())]))+'\n').encode(),mtime=0)
+        pq.write_table(pa.table({'receipt_key':[receipt],'receipt_line':pa.array([1],pa.int32()),'sha256':pa.array([body],pa.binary(32))}),tmp_path/'captures.parquet')
+        artifacts,_=real_release(tmp_path/'next',['A','B','N'],retired=[])
+        value,keys=record(run={'id':'nightly'})
+        pointer,etag=read_pointer(store,bucket='derived-fixture')
+        def passed(**context):return dict(status='passed',releaseId=context['release_id'],targets='owner-approved')
+        result=publish_candidate(client=store,engine=engine,bucket='derived-fixture',work=tmp_path/'publish',**artifacts,
+            input_record=value,receipt_keys=keys,pointer=pointer,expected_etag=etag,public_origin='https://archive.example.test',
+            contract=passed,canary=passed,base_release=tmp_path/'base-release',
+            automatic_captures=dict(kind='parquet',path=str(tmp_path/'captures.parquet')))
+    assert result['status']=='published'
+    report=json.loads((tmp_path/'publish/release-gate.json').read_text())
+    assert report['automatic_causes'] and all(e['tickets']==['ct-ud0b'] for e in report['automatic_causes'])
