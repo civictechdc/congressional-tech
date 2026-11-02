@@ -1139,7 +1139,7 @@ Requires: `list`, `witnesses`.
 
 Result: One submitted document for this appearance.
 
-Parameters, in order: `witness_key` (example `0123456789abcdef`).
+Parameters, in order: `witness_key` (example `0001497931f99cd1`).
 
 ```sql
 SELECT w.witness_key,w.name,l.list_row,l.filename
@@ -1155,7 +1155,7 @@ Requires: `witnesses`, `detail`, `list`.
 
 Result: One retained transcript document for the appearance.
 
-Parameters, in order: `witness_key` (example `0123456789abcdef`).
+Parameters, in order: `witness_key` (example `0000b43c099edbc2`).
 
 ```sql
 SELECT w.witness_key,w.name,d.package_id,l.list_row,l.filename

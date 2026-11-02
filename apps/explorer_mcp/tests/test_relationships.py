@@ -62,12 +62,12 @@ def test_old_release_does_not_reconstruct_relationships(tmp_path):
 
 
 def test_every_recipe_executes_and_has_the_declared_result_grain(reader):
-    expected = dict(bill_documents=1, bill_hearing_transcripts=1, hearing_documents=1, witness_documents=1, witness_transcripts=0,
+    expected = dict(bill_documents=1, bill_hearing_transcripts=1, hearing_documents=1, witness_documents=1, witness_transcripts=1,
                     committee_roster=1, nomination_transcripts=1, bill_votes=1, nomination_votes=1,
                     recording_tracks=1, document_editions=1, meeting_recordings=1, channel_unmatched_videos=1, coverage_counts=1)
     for item in reader.dataset_info({})['recipes']:
         recipe = reader.dataset_info({'recipe': item['id']})
-        params = ['appearance-1' if p['name']=='witness_key' else p['example'] for p in recipe['parameters']]
+        params = [p['example'] for p in recipe['parameters']]
         result = reader.query_sql({'sql': recipe['sql'], 'parameters': params})
         assert not result['truncated']
         assert len(result['rows']) == expected[recipe['id']], (recipe['id'], result['rows'])

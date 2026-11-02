@@ -15,7 +15,7 @@ def client_config(data_dir, client):
     """Print configuration only; never change another application's settings."""
     # Do not resolve the Python symlink: its virtualenv owns the dependencies.
     command = str(Path(sys.executable).absolute())
-    args = ['-m', 'congressional_explorer_mcp.cli', 'serve', '--data-dir', str(data_dir)]
+    args = ['-m', 'congressional_explorer_mcp.cli', 'serve', '--prepare-if-missing', '--data-dir', str(data_dir)]
     if client == 'codex':
         return f'[mcp_servers.congress]\ncommand = {json.dumps(command, ensure_ascii=False)}\nargs = {json.dumps(args, ensure_ascii=False)}'
     return json.dumps({'mcpServers': {'congress': {'command': command, 'args': args}}}, indent=2)
@@ -66,7 +66,7 @@ def main(argv=None):
         if args.command == 'config':
             print(client_config(args.data_dir, args.client))
             return 0
-        if args.command == 'serve' and args.prepare_if_missing:
+        if args.command == 'serve' and args.prepare_if_missing and not (args.data_dir / 'selection.json').exists():
             from .server import create_server
             create_server(data_dir=args.data_dir, publication=args.publication,
                 timeout=args.query_timeout).run(transport='stdio', show_banner=False)

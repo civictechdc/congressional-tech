@@ -879,7 +879,7 @@ def test_phase2_entities_meetings_witnesses_recordings_and_spicy_projections(tmp
         (115538, 'captions'): ('present', 'videos.has_caption,recordings.tracks', None),
         (115538, 'documents'): ('present', 'list.meeting_keys', None),
         (115538, 'recording'): ('present', 'recording_matches', None),
-        (115538, 'transcript'): ('present', 'meetings.transcripts', None),
+        (115538, 'transcript'): ('present', 'meetings.transcripts', 'captions,printed_hearing'),
         (115538, 'witnesses'): ('present', 'appearance_records', None)}
     matches = pq.read_table(tmp_path / 'release-explorer/recording_matches.parquet').to_pylist()
     assert [(r['event_id'], r['url'], r['status']) for r in matches if r['basis'] == 'curated'] == [(115538, 'https://example.test/watch', 'decided')]

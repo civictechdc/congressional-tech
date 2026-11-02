@@ -11,8 +11,14 @@ from .models import (MAX_BYTES, ExplorerError, exact_scalar,
 from .release import encoded, quote, literal
 
 # Published display columns that text search reads, wherever a table has them.
-TEXT_FIELDS = ('name', 'title', 'description', 'organization', 'position', 'video_key',
+TEXT_FIELDS = ('name', 'title', 'short_title', 'description', 'organization', 'position', 'video_key',
                'source_description', 'committee_label', 'handle', 'note')
+
+DOCUMENT_SUMMARY_COLUMNS = (
+    'l.list_row,l.filename,l.title,l.congress,l.format,l.document_date,d.document_date_source,'
+    'l.first_captured,l.date_kind,l.document_kind,l.saved_kind,'
+    'hex(d.link_key) AS link_key,hex(d.saved_body) AS saved_body,d.saved_suffix'
+)
 
 
 def published_entities(schema):
@@ -245,9 +251,7 @@ class Reader:
             if (value := getattr(query, parameter)) is not None:
                 conditions.append(f'list_contains(l.{column},?)'); args.append(value)
         return self.document_rows(self.page(query,
-            'SELECT l.list_row,l.filename,l.title,l.congress,l.format,l.document_date,d.document_date_source,'
-            'l.first_captured,l.date_kind,l.document_kind,l.saved_kind,'
-            'hex(d.link_key) AS link_key,hex(d.saved_body) AS saved_body,d.saved_suffix '
+            f'SELECT {DOCUMENT_SUMMARY_COLUMNS} '
             'FROM "list" l JOIN detail d USING(list_row) WHERE ' + (' AND '.join(conditions) or 'true'), args, order='l.list_row'))
 
     def get_document(self, value):
@@ -306,8 +310,11 @@ class Reader:
             conditions.append('(' + ' OR '.join(f'contains(lower(coalesce({quote(name)},\'\')),lower(?))' for name in fields) + ')' if fields else 'false')
             args += [query.text] * len(fields)
         for name, value in query.filters.items():
-            if name not in columns or '[]' in columns[name] or columns[name].startswith(('STRUCT', 'MAP')):
-                raise ExplorerError(f'Use a scalar published filter; query_sql supports nested {name!r}')
+            if name not in columns:
+                scalars = ', '.join(k for k, t in columns.items() if '[]' not in t and not t.startswith(('STRUCT', 'MAP', 'BLOB')))
+                raise ExplorerError(f'Unknown filter field {name!r} on {query.table}; scalar filter fields are: {scalars}')
+            if '[]' in columns[name] or columns[name].startswith(('STRUCT', 'MAP', 'BLOB')):
+                raise ExplorerError(f'Use a scalar published filter; query_sql supports {name!r}')
             query.filters[name] = value = exact_scalar(value, columns[name], f'{query.table}.{name}')
             conditions.append(f'{quote(name)}=?'); args.append(value)
         order = ','.join(map(quote, key))
@@ -352,8 +359,8 @@ class Reader:
                 sql = 'EXISTS (SELECT 1 FROM recordings r,unnest(r.event_ids) e(event_id) WHERE r.video_key=? AND list_contains(l.meeting_keys,cast(e.event_id AS VARCHAR)))'
             else:
                 raise ExplorerError('This entity has no published document relationship')
-            return self.document_rows(self.page(query, 'SELECT l.list_row,l.filename,l.title,l.format,l.hidden,'
-                'hex(d.link_key) AS link_key,hex(d.saved_body) AS saved_body,d.saved_suffix '
+            return self.document_rows(self.page(query,
+                f'SELECT {DOCUMENT_SUMMARY_COLUMNS},l.hidden '
                 'FROM "list" l JOIN detail d USING(list_row) WHERE NOT coalesce(l.hidden,false) AND ' + sql,
                 [str(query.id)], order='l.list_row'))
         if query.cursor:

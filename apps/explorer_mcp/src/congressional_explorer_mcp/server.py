@@ -58,6 +58,7 @@ def create_server(selection=None, *, timeout=10.0, data_dir=None, publication=PU
         relationship for keys and join meaning (also a pinned upstream relation's ID); recipe for parameterized DuckDB SQL.
         upstream_relations name SpicyRegs detail tables (actions, cosponsors, ballots, ...) by generation; they are not in this release.
         Also accepts table=schema, capture_scope, or capture_profile for published controls.
+        Recipe example parameters illustrate parameter format; substitute keys discovered via search_entities or search_documents.
         Examples are guidance, never executed by this tool. Older releases may lack relationship metadata.
         """
         return await call('dataset_info', dict(table=table, relationship=relationship, recipe=recipe))
@@ -70,7 +71,8 @@ def create_server(selection=None, *, timeout=10.0, data_dir=None, publication=PU
         document_date is the document's own date; document_date_source says whether it came from the filename, content or the
         meeting date (null: no date). first_captured is when the archive first fetched it, and date_kind its basis
         (captured, import_day, unknown). Neither is a page-update date, and only a meeting-sourced date is the hearing date.
-        measure_key matches direct document annotations; discover bill_hearing_transcripts for meeting-linked transcripts when published.
+        measure_key and witness_key match direct list.<col>[] document annotations (list.measure_keys holds bill_ids);
+        use the bill_hearing_transcripts, nomination_transcripts, and witness_transcripts recipes for package_id-linked hearing transcripts.
         """
         return await call('search_documents', query.model_dump())
 
@@ -86,7 +88,8 @@ def create_server(selection=None, *, timeout=10.0, data_dir=None, publication=PU
     async def search_entities(query: EntitySearch) -> dict:
         """Search any table the release's schema keys by a published identifier (get_dataset_info lists entity_keys).
 
-        Text searches published names/titles; filters are exact scalar field/value matches.
+        Text searches published names/titles/short_titles; filters are exact scalar field/value matches.
+        rosters holds seat assignments (bioguide_id, system_code, role title); use the committee_roster recipe or members table for member names.
         Integer filters accept integers or base-10 integer strings; decimals, exponents and booleans are rejected.
         Use query_sql for dates, nested fields and multi-table joins.
         """
@@ -97,6 +100,8 @@ def create_server(selection=None, *, timeout=10.0, data_dir=None, publication=PU
         """Read an entity by its published primary key, or page its directly associated documents.
 
         get_dataset_info lists entity_keys. Compound keys (rosters, meeting_coverage, ...) use search_entities.
+        section='documents' follows direct list.<col>[] document annotations (list.measure_keys holds bill_ids);
+        use nomination_transcripts, bill_hearing_transcripts, and witness_transcripts recipes for package_id-linked hearing transcripts.
         Integer IDs accept leading zeros and surrounding whitespace; decimals, exponents and booleans are rejected.
         """
         return await call('get_entity', query.model_dump())

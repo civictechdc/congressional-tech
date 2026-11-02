@@ -47,7 +47,7 @@ def phase2(tmp_path_factory):
     shutil.copytree(CURRENT, root)
     def link(rows):
         rows[0].update(congress=119, committee_keys=['hsif00'], measure_keys=['119-hr-1', '119-pn-730-2'],
-                       witness_keys=['appearance-1'], bioguide_ids=['A000001'], document_kind=['agenda'])
+                       witness_keys=['appearance-1', '0001497931f99cd1'], bioguide_ids=['A000001'], document_kind=['agenda'])
     replace_rows(root, 'list', link)
     def meeting(rows):
         rows[0].update(committees=[dict(system_code='hsif00', role='host')], subject_keys=['119-hr-1', '119-pn-730-2'],
@@ -63,7 +63,12 @@ def phase2(tmp_path_factory):
             'Alex Smith' AS name,'Director' AS position,'Transit Lab' AS organization,
             NULL::VARCHAR AS on_behalf_of,NULL::VARCHAR AS location,'Panel A' AS panel,
             1::SMALLINT AS panel_order,i::SMALLINT AS display_order,'public' AS witness_type,
-            true AS testified,NULL::VARCHAR AS bioguide_id FROM range(1,3) t(i)""")
+            true AS testified,NULL::VARCHAR AS bioguide_id FROM range(1,3) t(i)
+            UNION ALL
+            SELECT * FROM (VALUES
+                ('0001497931f99cd1','page:1',NULL::BIGINT,NULL::VARCHAR,NULL::VARCHAR,'Jordan Taylor','Counsel','Policy Group',NULL::VARCHAR,NULL::VARCHAR,NULL::VARCHAR,NULL::SMALLINT,1::SMALLINT,'public',NULL::BOOLEAN,NULL::VARCHAR),
+                ('0000b43c099edbc2','package:1',NULL::BIGINT,'CHRG-118hhrg1',NULL::VARCHAR,'Jordan Taylor','Counsel','Policy Group',NULL::VARCHAR,NULL::VARCHAR,NULL::VARCHAR,NULL::SMALLINT,2::SMALLINT,'public',NULL::BOOLEAN,NULL::VARCHAR)
+            )""")
         write('recordings', """SELECT 'youtube:abc' AS video_key,[118001::BIGINT] AS event_ids,
             [struct_pack(body:=unhex(repeat('55',32)),suffix:='.gz',format:='vtt',language:='en',production:='automatic')] AS tracks""")
         write('committees', """SELECT 'hsif00' AS system_code,'Energy and Commerce' AS name,'house' AS chamber,
@@ -75,7 +80,7 @@ def phase2(tmp_path_factory):
             struct_pack(lis:=NULL::VARCHAR,opensecrets:='N1',govtrack:='1',icpsr:='1',wikidata:='Q1',fec:=['H1','H2']) AS cross_ids""")
         write('rosters', """SELECT 119::SMALLINT AS congress,'hsif00' AS system_code,'A000001' AS bioguide_id,
             'Member' AS title,3::SMALLINT AS rank,'I' AS party""")
-        write('bills', """SELECT '119-hr-1' AS bill_id,'Transit Funding Act' AS title,NULL::VARCHAR AS short_title,
+        write('bills', """SELECT '119-hr-1' AS bill_id,'Transit Funding Act' AS title,'One Big Beautiful Bill Act' AS short_title,
             'A000001' AS sponsor_bioguide_id,DATE '2025-01-03' AS introduced,DATE '2025-02-01' AS latest_action_date,
             'Reported' AS latest_action_text,'reported' AS stage,'Transportation' AS policy_area,['hsif00'] AS committees,
             [struct_pack(publication_id:='CBO1',date:=DATE '2025-01-15',description:='Cost estimate')] AS cbo_estimates,

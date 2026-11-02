@@ -71,17 +71,25 @@ def test_entity_to_documents(reader, table, key):
     result = reader.get_entity({'table':table,'id':key,'section':'documents'})
     assert [r['filename'] for r in result['rows']] == ['Agenda.pdf']
     assert result['rows'][0]['saved_url'].endswith('.gz')
+    assert {'congress', 'document_date', 'document_date_source', 'first_captured', 'date_kind',
+            'document_kind', 'saved_kind', 'hidden'} <= result['rows'][0].keys()
+    assert all(not r['hidden'] for r in result['rows'])
 
 
 def test_witness_appearances_and_recorded_tracks(reader):
     found = reader.search_entities({'table':'witnesses','text':'alex smith'})['rows']
     assert [r['witness_key'] for r in found] == ['appearance-1','appearance-2']
     assert reader.get_entity({'table':'witnesses','id':'appearance-2','section':'documents'})['rows'] == []
+    assert [r['bill_id'] for r in reader.search_entities({'table':'bills','text':'One Big Beautiful Bill'})['rows']] == ['119-hr-1']
     assert reader.search_entities({'table':'rosters','filters':{'congress':119,'rank':3}})['rows'][0]['bioguide_id'] == 'A000001'
     recording = reader.search_entities({'table':'recordings','text':'youtube:abc'})['rows'][0]
     assert recording['tracks'][0]['saved_url'] == 'https://archive.example/bodies/sha256/55/'+'55'*32+'.gz'
     with pytest.raises(ExplorerError,match='scalar'):
         reader.search_entities({'table':'bills','filters':{'floor_votes':'bad'}})
+    with pytest.raises(ExplorerError,match='scalar'):
+        reader.search_entities({'table':'witnesses','filters':{'record_sha':'bad'}})
+    with pytest.raises(ExplorerError,match='Unknown filter field.*bill_id'):
+        reader.search_entities({'table':'bills','filters':{'congress':119}})
 
 
 def test_document_identity_hidden_reviews_sources_and_recoveries(reader):

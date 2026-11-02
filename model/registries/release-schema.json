@@ -3297,7 +3297,7 @@
       "parameters": [
         {
           "name": "witness_key",
-          "example": "0123456789abcdef"
+          "example": "0001497931f99cd1"
         }
       ],
       "sql": "SELECT w.witness_key,w.name,l.list_row,l.filename\nFROM witnesses w JOIN \"list\" l ON list_contains(l.witness_keys,w.witness_key)\nWHERE w.witness_key=? ORDER BY l.list_row LIMIT 100",
@@ -3322,7 +3322,7 @@
       "parameters": [
         {
           "name": "witness_key",
-          "example": "0123456789abcdef"
+          "example": "0000b43c099edbc2"
         }
       ],
       "sql": "SELECT w.witness_key,w.name,d.package_id,l.list_row,l.filename\nFROM witnesses w JOIN detail d ON d.package_id=w.package_id JOIN \"list\" l USING (list_row)\nWHERE w.witness_key=? ORDER BY l.list_row LIMIT 100",
@@ -3485,7 +3485,7 @@
       "parameters": [
         {
           "name": "event_id",
-          "example": "115538"
+          "example": 115538
         }
       ],
       "sql": "SELECT video_key,url,basis,decision,score,recording_scope,status,note\nFROM recording_matches WHERE event_id=? ORDER BY basis,video_key,url",
