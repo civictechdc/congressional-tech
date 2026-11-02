@@ -62,12 +62,15 @@ def load_spec(path):
         raise ValueError('Import tables must name archive lake tables')
     result={}
     for name,item in tables.items():
-        if not isinstance(item,dict) or set(item)!={'source','schema','partition_spec','table'}:
-            raise ValueError('Import table requires source, schema, partition_spec and table')
+        if not isinstance(item,dict) or not {'source','schema','partition_spec','table'}<=set(item) or set(item)-{'source','schema','partition_spec','table','producer'}:
+            raise ValueError('Import table requires source, schema, partition_spec and table (producer optional)')
         if item['partition_spec'] is not None and not isinstance(item['partition_spec'],dict):
             raise ValueError('Import partition_spec must be None or an object')
         result[name]=dict(source=_file(item['source'],base),schema=_file(item['schema'],base),
             partition_spec=item['partition_spec'],table=_table_ref(item['table']))
+        # Gate 5: the record of the job that produced these rows (for example the selective
+        # backfill's producers/<table>.json); the import's own record carries it as origin.
+        if 'producer' in item:result[name]['producer']=_file(item['producer'],base)
     if len({json.dumps(t['table'],sort_keys=True) for t in result.values()})!=len(result):
         raise ValueError('Import tables must name distinct targets')
     spec=dict(version=1,catalog_root=catalog_root,work=_local(value['work'],base),location=location,
@@ -84,6 +87,39 @@ def _verified(item):
         if file_pin(item[key]['path'])!={k:item[key][k] for k in ('sha256','size')}:
             raise ValueError('Import '+key+' does not match its pin: '+item[key]['path'])
     return json.loads(Path(item['schema']['path']).read_text(encoding='utf-8'))
+
+
+IMPORT_JOB='packages/viewer_publication/src/viewer_publication/archive_import_job.py'
+
+
+def _producer_records(spec,report,work):
+    """Gate 5: one record per imported snapshot, naming this job and the commit that ran it.
+
+    The import copies rows it did not produce, so a record is written only when the spec
+    pins the origin record of the job that produced them; it is embedded (custody-checked
+    against its pin) as `origin`. Rows were verified equal to the source both ways (EXCEPT
+    ALL) before this step. With an unclean tree, or without an origin, nothing is written
+    and gate 5 refuses that table.
+    """
+    from congress_api.retention.provenance import file_pin
+    from congress_api.retention.writer_identity import writer_identity
+    from viewer_publication.producer_proof import ROOT
+    try:writer=writer_identity(ROOT,IMPORT_JOB)
+    except (ValueError,OSError):return dict(unavailable='the checkout was not clean, so no commit can be named')
+    directory=work/'producers';directory.mkdir(exist_ok=True);out={}
+    for name,entry in report['tables'].items():
+        origin=spec['tables'][name].get('producer')
+        if not entry.get('verified') or origin is None:
+            out[name]=dict(unavailable='no verified copy' if not entry.get('verified') else 'no origin producer record was pinned')
+            continue
+        if file_pin(origin['path'])!={k:origin[k] for k in ('sha256','size')}:
+            raise ValueError('Import origin producer record does not match its pin: '+origin['path'])
+        record=dict(version=1,input=name,selector=entry['pin'],job=IMPORT_JOB,commit=writer['commit'],
+            lockfile_digest=writer['lockfile_digest'],verified='EXCEPT ALL both ways against the source file',
+            source=entry['source'],origin=dict(pin=origin,record=json.loads(Path(origin['path']).read_text())))
+        path=directory/(name+'.json');path.write_text(json.dumps(record,indent=1,sort_keys=True)+'\n')
+        out[name]=dict(path=str(path),**file_pin(path))
+    return out
 
 
 def plan(spec):
@@ -147,7 +183,7 @@ def execute(spec,*,runtime_factory=None):
             verify_generations(dict(kind='parquet',**item['source']),pin,keys=keys,engine=engine,
                 work=table_work/'verify',exact=False)
             entry['verified']=True;save()
-    report['status']='executed';save()
+    report['producers']=_producer_records(spec,report,work);report['status']='executed';save()
     return report
 
 

@@ -82,3 +82,22 @@ def test_import_adopts_an_empty_table_and_refuses_one_with_rows(tmp_path):
     assert report['adopted_empty']==['meeting_records'] and report['tables']['meeting_records']['verified']
     again=load_spec(_spec(tmp_path,source,work=str(tmp_path/'again')))
     with pytest.raises(ValueError,match='already holds rows'):execute(again)
+
+
+def test_import_writes_a_producer_record_that_carries_the_producing_jobs_record(tmp_path,monkeypatch):
+    """Gate 5: Basin snapshots are made by the import, which names itself and embeds the
+    record of the job that produced the rows; without an origin it writes none."""
+    import congress_api.retention.writer_identity as identity
+    from viewer_publication.archive_import_job import IMPORT_JOB,execute,load_spec
+    monkeypatch.setattr(identity,'writer_identity',lambda root,job:dict(job=job,commit='c'*40,lockfile_digest='d'*64))
+    source=tmp_path/'rows.parquet';pq.write_table(ROWS,source)
+    origin=tmp_path/'origin.json';origin.write_text(json.dumps(dict(version=1,input='meeting_records',job='daily',commit='e'*40)))
+    path=_spec(tmp_path,source);value=json.loads(path.read_text())
+    value['tables']['meeting_records']['producer']=dict(path=str(origin),**file_pin(origin));path.write_text(json.dumps(value))
+    report=execute(load_spec(path))
+    record=json.loads(open(report['producers']['meeting_records']['path']).read())
+    assert record['job']==IMPORT_JOB and record['commit']=='c'*40
+    assert record['selector']==report['tables']['meeting_records']['pin']
+    assert record['origin']['record']['commit']=='e'*40 and record['origin']['pin']['sha256']==file_pin(origin)['sha256']
+    (tmp_path/'bare').mkdir();bare=execute(load_spec(_spec(tmp_path/'bare',source)))
+    assert bare['producers']['meeting_records']=={'unavailable':'no origin producer record was pinned'}
