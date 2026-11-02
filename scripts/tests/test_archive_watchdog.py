@@ -224,3 +224,11 @@ def test_stopping_an_owned_job_gives_its_term_handler_the_grace_period(tmp_path)
     assert ready.exists()
     process_rss.stop_owned(child)
     assert done.read_text() == 'clean', "the job's TERM handler was cut off by the group KILL"
+
+
+def test_jobs_from_every_worktree_share_one_admission_state(monkeypatch):
+    """The default state sits in the main checkout's .cache, which every worktree of the clone sees."""
+    monkeypatch.delenv('ARCHIVE_WATCHDOG_STATE')
+    common = subprocess.run(['git', 'rev-parse', '--path-format=absolute', '--git-common-dir'], cwd=ROOT,
+                            check=True, capture_output=True, text=True).stdout.strip()
+    assert watchdog.default_state() == Path(common).parent / '.cache/watchdog'

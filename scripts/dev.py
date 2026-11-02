@@ -213,18 +213,24 @@ def host_platform():
     return f'{system}-{machine}'
 
 
+def shared_cache():
+    """The main checkout's .cache (beside git's common directory): every worktree of this
+    clone sees it, and pruning a worktree never deletes it (a prune took frozen inputs on
+    2026-11-02). Durable data, the runtime store and watchdog state live here."""
+    common = run(['git', 'rev-parse', '--path-format=absolute', '--git-common-dir']).stdout.strip()
+    return Path(common).parent / '.cache'
+
+
 def runtime_store():
     """Engine binaries shared by every worktree of this clone, one read-only file per digest.
 
-    Layout <store>/<platform>/<sha256>/docspec. It sits beside the main checkout (git's
-    common directory), not in a worktree that a prune can delete. An entry is written
-    once and never replaced: a new engine gets a new address, so a running job's binary
-    cannot change under it (an in-place swap broke running jobs on 2026-11-02).
+    Layout <store>/<platform>/<sha256>/docspec. An entry is written once and never
+    replaced: a new engine gets a new address, so a running job's binary cannot change
+    under it (an in-place swap broke running jobs on 2026-11-02).
     """
     if location := os.environ.get('DOCSPEC_RUNTIME_STORE'):
         return Path(location)
-    common = run(['git', 'rev-parse', '--path-format=absolute', '--git-common-dir']).stdout.strip()
-    return Path(common).parent / '.cache/docspec-runtime'
+    return shared_cache() / 'docspec-runtime'
 
 
 def install_runtime(binary, digest, platform, store):
