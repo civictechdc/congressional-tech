@@ -274,3 +274,12 @@ def test_publish_retains_only_named_run_evidence_on_success_or_failure():
     assert 'env' not in evidence
     assert steps.index(evidence)>next(i for i,step in enumerate(steps)
         if step.get('run','').endswith('run-archive-job.py publish'))
+
+
+def test_publish_installs_the_local_job_runtime_before_the_publisher():
+    """Gate 3 needs DOCSPEC_JOB_CONFIG (local-only) when the publisher starts."""
+    steps = workflow('archive-jobs.yml')['jobs']['publish']['steps']
+    local = next(i for i, step in enumerate(steps) if step.get('uses') == './.github/actions/setup-local-job-runtime')
+    publisher = next(i for i, step in enumerate(steps) if step.get('run', '').endswith('run-archive-job.py publish'))
+    assert local < publisher
+    assert steps[local]['with']['credentials'] == '${{ secrets.ARCHIVE_PUBLISH_ENGINE_CREDENTIALS }}'

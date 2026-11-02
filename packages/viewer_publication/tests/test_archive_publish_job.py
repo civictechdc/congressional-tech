@@ -311,6 +311,11 @@ def test_metadata_first_probe_selectors_are_required_and_not_daily_owner_options
 
 # Gate 5 (ct-tk10) refuses captures without mapping_version; cluster e1 stages that column.
 # Strict: these flip to failures, and the marks must go, once e1's captures carry it.
+def END_TO_END_PASSED(command,**kwargs):
+    """The gate's fixed command, recorded; test_release_end_to_end.py runs it in this lane."""
+    assert command[1:4]==['scripts/dev.py','test','production-offline'] and kwargs['check'] is True
+
+
 GATE5_PENDING_E1=pytest.mark.xfail(strict=True,raises=ValueError,
     reason='gate 5 refuses captures without mapping_version until cluster e1 lands')
 
@@ -357,7 +362,7 @@ def test_execute_binds_matching_destination_and_records_actual_native_probe_comm
         manifest=json.loads((Path(model['output'])/'manifest.json').read_text())
         output=Path(command[command.index('--output')+1])
         output.write_text(json.dumps(dict(status='passed',releaseId=manifest['release_id'],targets='owner-approved')))
-    result=execute(spec,runtime_factory=runtime_factory,storage_factory=storage_factory,process_runner=process_runner)
+    result=execute(spec,runtime_factory=runtime_factory,storage_factory=storage_factory,process_runner=process_runner,end_to_end_runner=END_TO_END_PASSED)
     assert result['status']=='published' and len(commands)==2 and events.index('sdk')>events.index('qualified')
     native=json.loads((Path(model['scratch'])/'result.json').read_text())
     selectors=next(query['data'][0] for query in native['queries'] if query['name']=='probe_selectors')
@@ -481,7 +486,7 @@ def test_actual_execute_daily_path_publishes_only_completed_work(tmp_path,outcom
         manifest=json.loads((Path(model['output'])/'manifest.json').read_text())
         Path(command[command.index('--output')+1]).write_text(json.dumps(
             dict(status='passed',releaseId=manifest['release_id'],targets='owner-approved')))
-    result=execute(spec,runtime_factory=runtime_factory,storage_factory=lambda **_:store,process_runner=process_runner)
+    result=execute(spec,runtime_factory=runtime_factory,storage_factory=lambda **_:store,process_runner=process_runner,end_to_end_runner=END_TO_END_PASSED)
     assert catalog_calls and result['status']==('published' if outcome=='completed' else outcome)
     if outcome=='completed':
         assert len(commands)==2 and 'viewer-publications/manifest.json' in store.objects
@@ -665,3 +670,22 @@ def test_daily_produce_to_publish_handoff_to_completeness_checks_end_to_end(tmp_
         assert query_name in reports
         assert {k:v for k,v in reports[query_name][0].items() if v}=={}
 
+
+
+def test_failing_end_to_end_gate_refuses_before_any_runtime_or_sdk(tmp_path,monkeypatch):
+    import subprocess
+    from viewer_publication.archive_publish_job import execute,load_spec
+    value=publish_spec(tmp_path);path=tmp_path/'publish.json';path.write_text(json.dumps(value))
+    remote=remote_config(tmp_path)
+    runtime=tmp_path/'public-runtime.json';runtime.write_text(json.dumps(dict(version=1,binary='/unopened/binary',
+        workspace=str(tmp_path/'workspace'),remote=str(remote),credentials='/unopened/credentials.json')))
+    modelpath=Path(value['model_spec']['path']);model=json.loads(modelpath.read_text());model['engine_config']=str(runtime)
+    modelpath.write_text(json.dumps(model));value['model_spec']=dict(path=str(modelpath),**file_pin(modelpath));path.write_text(json.dumps(value))
+    def never(*a,**k):raise AssertionError('runtime or SDK before the end-to-end gate')
+    def failed(command,**kwargs):raise subprocess.CalledProcessError(1,command)
+    with pytest.raises(ValueError,match='end-to-end gate'):
+        execute(load_spec(path),runtime_factory=never,storage_factory=never,end_to_end_runner=failed)
+    monkeypatch.delenv('DOCSPEC_JOB_CONFIG')
+    with pytest.raises(ValueError,match='end-to-end gate'):
+        execute(load_spec(path),runtime_factory=never,storage_factory=never,end_to_end_runner=END_TO_END_PASSED)
+    assert not Path(value['work']).exists()
