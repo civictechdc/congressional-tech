@@ -142,3 +142,34 @@ Rerun these after a rebuild: meeting transcripts, documents coverage, recording 
 ## What this cannot see
 
 The ledger proves completeness, not that each reason is right. Natural keys can hide a wrong value, and name normalization can merge two different people.
+
+## Round 1b meeting rules (2026-11-02, branch r1b-f)
+
+Inputs: v21 frozen inputs, cluster C's frozen lake, all 24,430 meeting records reparsed under the new
+`meeting_records` code (read 24,430, unread 0, failed 0; 2.45 GB RSS). Before = the base SQL with
+cluster C's reparse; after = this branch. Both built by `explorer_tables_frozen.py` with an empty
+`url_variants`, so Senate page keys may differ from v21, equally on both sides. Per-row raw reads are in
+`meeting-semantics-raw-check-20261102.json` (`scripts/measure/meeting_semantics_raw_check.py`, which reads raw
+without `meeting_facts` or the model SQL).
+
+| Change | Plan estimate | Frozen measured | Raw read per row |
+|---|---|---|---|
+| access closed → partly_closed | 7 | 7 | 7 supported |
+| not_held | +407 / −5 | +404 / −5 (3 status conflicts held) | 409 supported |
+| status where both sources state one | 0 | 0 | — |
+| rescheduled_to | 46 → 83 | 46 → 82 (42 same, 4 removed, 40 added) | 64 supported, 6 ambiguous by whole-title compare (all Postponed; reworded twin titles, read as the same hearing) |
+| House witness lists attached by their links | 187 records | 187 | 187 supported (body links = receipt path) |
+| package witness rows changed | 392 rows on 93 events | 1,580 record×occasion changes | 133 supported, 1,416 ambiguous (no MODS eventId; raw cannot choose), 31 unread (MODS absent from the refresh) |
+| documents unknown (Senate) / unresolved | 2,051 / 7 | 2,051 / 45 | premise only; 38 of the 45 link once `ordered` is rebuilt |
+| witnesses unknown | Senate 3,188; House ~470+ | Senate 2,871; unattached 590 | premise only |
+| transcript | 122 unknown | 129 present via MODS links, 14 unknown | 10 unread |
+| captions not_stated → unknown | 7,853 | 7,837 | premise only |
+
+No raw record can prove `unknown`; for coverage relabels only the premise is checked. Document links
+(estimate 2,089 new pairs on 458 events, 38 events gaining their first document, recounted in DuckDB from the
+reparse) need `ordered` rebuilt and are confirmed only by a full model run. Witness keys: 3,921 rows gone and
+3,253 new (occasion changes), for ct-qg8e.
+
+ct-x78c ledger (distinct old rows 19,475): `on_event` 11,779 → 12,856; House lists unlinked 579 → 110 (the
+remaining House rows include the 40 lists that state their event only in a receipt path, which attach once
+captures carries `original_path`); package occasions 924 → 660.
