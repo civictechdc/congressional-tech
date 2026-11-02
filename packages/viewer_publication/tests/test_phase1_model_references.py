@@ -62,6 +62,7 @@ def test_native_references_preserve_occurrences_without_inventing_acquisitions(t
         dict(name='record_roles',sql='SELECT receipt_key,receipt_line,capture_index,is_real_file,record_role FROM fixture_captures')]
     steps += source_steps()
     steps += [dict(name='captures',sql='SELECT * FROM capture_evidence'),
+        dict(name='archive_member_addresses',sql=(ROOT/'model/sql/archive-member-addresses.sql').read_text(),materialize=True),
         dict(name='url_inputs',sql=(ROOT/'model/sql/model-url-inputs.sql').read_text(),materialize=True),
         dict(name='url_normalized',sql=(ROOT/'model/sql/url-normalized.sql').read_text(),materialize=True),
         dict(name='model_url_keys',sql=(ROOT/'model/sql/url-keys.sql').read_text(),materialize=True),

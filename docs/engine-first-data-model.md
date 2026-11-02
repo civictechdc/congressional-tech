@@ -369,6 +369,7 @@ A **registry** is a versioned list a rule depends on.
 | file shapes | Regular expressions over the locator that mark a link as pointing at a file | `real_files` (§7.3) | profile |
 | page signals | Kinds: *error word*, generic error words for a title or heading, such as "not found", and body markers of challenge and soft-error pages; *error URL*, URL patterns that only ever serve error or placeholder pages; *wrapper marker*, text markers of download-wrapper pages, such as "download will begin shortly"; *threshold*, the near-empty text size and a listing page's minimum link count and link-text percent; *source-record root*, XML roots of metadata records, such as METS, MODS and PREMIS; *API endpoint*, URL patterns of API JSON, such as api.congress.gov; *feed root*, XML roots and URL patterns of feeds and sitemaps | record roles (§7.3); feed roots also `listed_on` (§7.10) | profile |
 | URL rules | Kinds: *wrapper*, redirect and archive wrapper patterns; *strip*, tracker parameters on any host, such as `utm_*`, and page-state parameters on named hosts, such as congress.gov `q`; *repair*, repairs of malformed links, such as `ttps://` and concatenated URLs | `url_key` and link targets (§7.2) | profile |
+| archive layouts | Containers whose layout mirrors their server directory: a container URL pattern, a member path pattern whose first segment is the container's name, and the prefix members are published under; GovInfo `content/pkg/P.zip` holds `P/html/P.htm` and `P/pdf/P.pdf`, published at `content/pkg/P/html/P.htm` (its `mods.xml` is published elsewhere, so it is not listed) | an archive member's second endpoint (§7.5 `same_text`) | profile |
 | formats | Kinds: *preference*, the document formats in order, PDF first; *generic stem*, filename stems never grouped, such as `index` and `download` | saved file, alternates and renditions (§7.5) | profile |
 | filename parameters | Query parameters that name a file, in priority order | the effective filename (§7.4), in the filename producer and the model | profile, through the catalog version (§6.3) |
 | publisher kinds | Publisher link labels and XML document-type codes → document kind | `document_kind` (§7.5) | profile |
@@ -539,6 +540,10 @@ same_body      := source files that each have a real_files row, sharing a real_b
                   (web pages included); one node per body
 same_text      := source files at one endpoint whose real files have equal fingerprints;
                   one node per (endpoint, fingerprint)
+                  an archive member of an archive-layouts container also sits at its
+                  published endpoint (url_key(prefix || member_path), NULL), so a direct
+                  copy whose text is equal joins it, and one whose text differs makes
+                  that endpoint edition-ambiguous; sources keep the container and path
 same_rendition := real source files that are one document in different formats:
                   (a) the publisher groups them: links resolved in one context of one page
                       body (§7.2) with the same non-null group_path; one node per

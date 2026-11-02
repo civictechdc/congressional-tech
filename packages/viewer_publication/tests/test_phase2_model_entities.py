@@ -1654,3 +1654,105 @@ def test_imported_zip_identical_to_a_good_download_keeps_its_members(tmp_path):
     assert {(s['url'], s['member_path']) for s in pq.read_table(release / 'sources.parquet').to_pylist() if s['list_row'] == member} == {(url, 'A/one.pdf')}
     lookup = hashlib.sha256(b'lookup:fixture.test/download/appendix&download=1').digest()[:8]
     assert [r['list_row'] for r in pq.read_table(release / 'urls.parquet').to_pylist() if r['lookup_key'] == lookup] == [member]
+
+
+def _govinfo_release(tmp_path, packages):
+    """Receipt lines for GovInfo packages through captures, html readings and the model.
+
+    Each package: a details page linking the PDF, the HTML and the ZIP each in its own
+    `li`; direct HTML bodies; a ZIP holding P/html/P.htm and P/pdf/P.pdf; the direct PDF
+    with the member PDF's bytes.
+    """
+    from viewer_publication.archive_model import build_release
+    import io, zipfile
+    engine = NativeDatasets.from_config(os.environ['DOCSPEC_JOB_CONFIG'])
+    raw = tmp_path / 'raw'
+    def body(data, fmt, **extra):
+        digest = hashlib.sha256(data).hexdigest()
+        path = raw / f'bodies/sha256/{digest[:2]}/{digest}'
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_bytes(data)
+        return dict(sha256=digest, bytes=len(data), media_type='application/octet-stream', fidelity='exact-bytes', stored_suffix='',
+            stored_bytes=len(data), stored_md5=hashlib.md5(data).hexdigest(), sniff_version=readings.current_version('sniff'),
+            sniffed_format=fmt, **({'intact': True} if fmt == 'pdf' else {}), **extra)
+    def line(url, entries, context=None):
+        return dict(writer=dict(job='fixture', commit='a' * 40), run_id='fixture', mode='fetch', family='documents', outcome='stored',
+            requested_url=url, url=url, response_headers={}, http_status=200, complete=True, retrieved_at='2026-10-27T12:00:00Z',
+            captures=entries)
+    lines, bodies = [], {}
+    for package, (direct_htmls, member_html) in packages.items():
+        base = f'https://www.govinfo.gov/content/pkg/{package}'
+        pdf = f'%PDF-1.7\n{package} transcript\n%%EOF\n'.encode()
+        buffer = io.BytesIO()
+        with zipfile.ZipFile(buffer, 'w') as archive:
+            archive.writestr(f'{package}/html/{package}.htm', member_html)
+            archive.writestr(f'{package}/pdf/{package}.pdf', pdf)
+        zip_bytes = buffer.getvalue()
+        details = (f'<html><head><title>{package} details</title></head><body><ul>'
+                   f'<li><a href="{base}/pdf/{package}.pdf">PDF</a></li><li><a href="{base}/html/{package}.htm">Text</a></li>'
+                   f'<li><a href="{base}.zip">ZIP</a></li></ul></body></html>').encode()
+        bodies[package] = dict(pdf=pdf, zip=zip_bytes, member=member_html, direct=direct_htmls)
+        lines.append(line(f'https://www.govinfo.gov/app/details/{package}', [body(details, 'html')]))
+        lines.extend(line(f'{base}/html/{package}.htm', [body(data, 'html')]) for data in direct_htmls)
+        lines.append(line(f'{base}/pdf/{package}.pdf', [body(pdf, 'pdf')]))
+        lines.append(line(f'{base}.zip', [body(zip_bytes, 'zip', expansion='expanded'),
+            body(member_html, 'html', member_path=f'{package}/html/{package}.htm'),
+            body(pdf, 'pdf', member_path=f'{package}/pdf/{package}.pdf')]))
+    receipt = raw / 'receipts/documents/2026-10-27/slice.jsonl.gz'
+    receipt.parent.mkdir(parents=True, exist_ok=True)
+    encoded = gzip.compress(''.join(json.dumps(r) + '\n' for r in lines).encode(), mtime=0)
+    receipt.write_bytes(encoded)
+    pin = tmp_path / 'pin.json'
+    pin.write_text(json.dumps(dict(path=str(receipt), size=len(encoded), sha256=hashlib.sha256(encoded).hexdigest(), producer='fixture creation')))
+    captures = stage_captures([dict(key=receipt.relative_to(raw).as_posix(), path=str(receipt), qualification=str(pin))], engine=engine, work=tmp_path / 'stage') / 'captures.parquet'
+    inventory = tmp_path / 'inventory'
+    inventory.mkdir()
+    run_job(inventory, engine, inputs=[dict(name='captures', kind='parquet', path=str(captures))], steps=[], outputs=[parquet_output(inventory, 'bodies',
+        """SELECT DISTINCT sha256 AS body_sha,'bodies/sha256/'||substr(encode(sha256,'hex'),1,2)||'/'||encode(sha256,'hex') AS physical_key,
+        'bodies/sha256/'||substr(encode(sha256,'hex'),1,2)||'/'||encode(sha256,'hex') AS relative_path,stored_bytes,false AS stored_gzip FROM captures WHERE sha256 IS NOT NULL""", ['body_sha'])])
+    pages = readings.stage(captures=captures, body_inventory=inventory / 'bodies.parquet', local_root=raw, engine=engine, work=tmp_path / 'read', decided_at='2026-10-27T12:00:00Z', parser='html')
+    names = filenames.stage(captures=captures, recovery_files=(), engine=engine, work=tmp_path / 'names', decided_at='2026-10-27T12:00:00Z')
+    build_release(captures=captures, readings=pages['readings'], filename_readings=names['readings'],
+        parser_versions={p: readings.current_version(p) for p in ['sniff', 'html', 'xml', 'json']}, catalog_version=names['catalog_version'],
+        engine=engine, output=tmp_path / 'release', scratch=tmp_path / 'model')
+    release = tmp_path / 'release'
+    return bodies, {name: pq.read_table(release / f'{name}.parquet').to_pylist() for name in ('list', 'detail', 'links', 'sources')}
+
+
+def _transcript_html(package, address, tail=''):
+    paragraph = f'    The committee received testimony on {package}, rural transportation and public lands. \n' * 40
+    return (f'<html><head><title>Hearing {package}</title></head><body><pre>{paragraph}'
+            f'    Please also email it to {address}.\n{tail}</pre></body></html>').encode()
+
+
+def _cloudflare(address, key):
+    token = bytes([key]) + bytes(b ^ key for b in address.encode())
+    return f'<a href="/cdn-cgi/l/email-protection" class="__cf_email__" data-cfemail="{token.hex()}">[email&#160;protected]</a>'
+
+
+def test_govinfo_member_and_its_direct_copy_are_one_document(tmp_path):
+    """The direct HTML (Cloudflare-obfuscated per fetch, once with a \\x1a) and the ZIP member HTML
+    sit at one published address, so equal text is one document; really different text is two
+    versions of it."""
+    address = 'DocumentsTI@mail.house.gov'
+    bodies, release = _govinfo_release(tmp_path, {
+        'CHRG-119hhrg1': ([_transcript_html(1, _cloudflare(address, 0x4d)), _transcript_html(1, _cloudflare(address, 0x21), '\x1a\n')],
+                          _transcript_html(1, address)),
+        'CHRG-119hhrg2': ([_transcript_html(2, _cloudflare(address, 0x4d))],
+                          _transcript_html(2, address).replace(b'public lands', b'tribal lands'))})
+    key = lambda data: hashlib.sha256(data).digest()[:8]
+    links = {row['link_key']: row['list_row'] for row in release['links']}
+    details, rows = release['detail'], release['list']
+    one = bodies['CHRG-119hhrg1']
+    row = links[key(one['pdf'])]
+    assert all(links[key(data)] == row for data in [one['zip'], one['member'], *one['direct']])
+    assert [r for r, d in enumerate(details) if d['package_id'] == 'CHRG-119hhrg1'] == [row]
+    assert rows[row]['format'] == 'pdf' and not rows[row]['version_keys']
+    assert [a['format'] for a in details[row]['alternates']] == ['html']
+    mine = {(s['url'], s['member_path']) for s in release['sources'] if s['list_row'] == row}
+    assert ('https://www.govinfo.gov/content/pkg/CHRG-119hhrg1.zip', 'CHRG-119hhrg1/html/CHRG-119hhrg1.htm') in mine
+    two = bodies['CHRG-119hhrg2']
+    versions = {links[key(two['member'])], links[key(two['direct'][0])]}
+    assert len(versions) == 2
+    shared = [set(rows[r]['version_keys']) for r in versions]
+    assert shared[0] and shared[0] == shared[1]

@@ -16,6 +16,7 @@ REGISTRIES={
     'committee_codes':dict(id='Utf8',code='Utf8',system_code='Utf8',chamber='Utf8'),
     'recheck_intervals':dict(id='Utf8',family='Utf8',min_age_days='Int64',max_age_days='Int64',interval_seconds='Int64'),
     'url_rules':dict(id='Utf8',kind='Utf8',host_pattern='Utf8',pattern='Utf8',replacement='Utf8',decoder='Utf8'),
+    'archive_layouts':dict(id='Utf8',container_pattern='Utf8',member_pattern='Utf8',published_prefix='Utf8'),
     'filename_parameters':dict(priority='Int64',parameter='Utf8'),
     'import_runs':dict(run_id='Utf8',date='Utf8'),
     'credential_parameters':dict(parameter='Utf8'),
@@ -684,6 +685,7 @@ def build_prepared_release(prepared,*,engine,output,root=ROOT):
     inputs=prepared['inputs'];capture_profile=prepared['capture_profile']
     parser_versions=prepared['parser_versions'];catalog_version=prepared['catalog_version']
     steps=list(prepared['steps'])+link_steps(root=root)
+    steps += _sql_steps(['archive-member-addresses'],root=root)
     steps += [dict(name='url_inputs',sql=(Path(root)/'model/sql/model-url-inputs.sql').read_text(),materialize=True)]
     steps += _sql_steps(['url-normalized'],root=root)
     steps += [dict(name='model_url_keys',sql=(Path(root)/'model/sql/url-keys.sql').read_text(),materialize=True)]
