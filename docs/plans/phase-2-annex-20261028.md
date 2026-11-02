@@ -171,7 +171,13 @@ bills          := the pinned congress_bills row of every bill_id a listed docume
 recordings     := per video_key a meeting's videos names, the caption, subtitle and
                   playlist bodies whose URLs the recording-source registry ties to it,
                   one per (format, language, production), from its latest good fetch;
-                  a streamed track's segment files are not tracks
+                  a streamed track's segment files are not tracks: a segment is a URI a
+                  held playlist lists (`playlist_records`, resolved against each address
+                  the playlist was fetched from), and a placeholder body is never a track
+                  (native check `segment_tracks`, ct-9s7b); a playlist body is a
+                  track; an empty body (the SHA-256 of empty input) is not a track, and a
+                  native check refuses one (ct-fh62); an MP2T stream segment has role
+                  media and is never a track
 nomination_id  := '{congress}-pn-{number}', plus '-{int(part)}' unless the part is 0:
                   spicy-regs' citation form (PN730-2 is 119-pn-730-2)
 nominations    := per nomination_id a meeting's subject_keys names, the pinned row whose
