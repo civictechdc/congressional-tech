@@ -36,6 +36,8 @@ def mirror(tmp_path):
 
 
 def test_a_whole_version_proof_over_a_local_sample_binds_its_entry(tmp_path, monkeypatch):
+    import congress_api.parsers.archive_readings as reader
+    monkeypatch.delattr(reader, 'HTML_REREAD_SQL', raising=False)  # a reader with no recompute set
     raw, captures = mirror(tmp_path)
     assert set(compatible_proof.local_bodies(raw)) == {hashlib.sha256(b).hexdigest() for b in PAGES}
     engine = NativeDatasets.from_config(os.environ['DOCSPEC_JOB_CONFIG'])

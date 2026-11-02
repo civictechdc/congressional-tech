@@ -19,8 +19,16 @@ SHA = 'a' * 64
 NOT_HTML = "SELECT body_sha FROM {readings} WHERE format<>'html'"
 
 
+@pytest.fixture(autouse=True)
+def reader_without_set(monkeypatch):
+    """Entries here are fixtures for a reader with no recompute set unless a test asks for reader_set;
+    the real html reader (r1b-g) names one, which refuses whole-version html entries first."""
+    import congress_api.parsers.archive_readings as reader
+    monkeypatch.delattr(reader, 'HTML_REREAD_SQL', raising=False)
+
+
 @pytest.fixture
-def reader_set(monkeypatch):
+def reader_set(monkeypatch, reader_without_set):
     """Stand in for the html reader's own recompute set (r1b-g defines the real one)."""
     import congress_api.parsers.archive_readings as reader
     monkeypatch.setattr(reader, 'HTML_REREAD_SQL', NOT_HTML, raising=False)
