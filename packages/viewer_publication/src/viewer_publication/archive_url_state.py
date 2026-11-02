@@ -31,13 +31,20 @@ def url_state_steps(*,root=ROOT,recovery_policy=None):
         LEFT JOIN companion_keys c ON b.receipt_key=c.receipt_key AND b.receipt_line=c.receipt_line AND b.requested_url=c.requested_url
         LEFT JOIN stored_contexts sc ON b.receipt_key=sc.receipt_key AND b.requested_url=sc.context_url
         WHERE b.family<>'external/provider-responses' OR c.receipt_key IS NULL
+    ), line_variants AS (
+        -- Group by the variant first, so variants is a row count rather than a per-line
+        -- count(DISTINCT) set (3.5 GB of hash sets for 1.3M lines); max and bool_or compose.
+        SELECT receipt_key,receipt_line,requested_url,family,http_status,outcome,
+            max(arrow_cast(cast(retrieved_at AS TIMESTAMP WITH TIME ZONE),'Timestamp(Microsecond, Some("UTC"))')) AS retrieved_at,
+            bool_or(context_good) AS context_good
+        FROM folded_captures GROUP BY receipt_key,receipt_line,requested_url,family,http_status,outcome
     ) SELECT receipt_key,receipt_line,requested_url,max(family) AS family,
-        max(arrow_cast(cast(retrieved_at AS TIMESTAMP WITH TIME ZONE),'Timestamp(Microsecond, Some("UTC"))')) AS retrieved_at,
+        max(retrieved_at) AS retrieved_at,
         max(http_status) AS http_status,
         CASE WHEN bool_or(context_good) THEN 'stored' ELSE max(outcome) END AS outcome,
         bool_or(context_good) AS context_good,
-        count(DISTINCT json_array(family,http_status,outcome)) AS variants
-        FROM folded_captures GROUP BY receipt_key,receipt_line,requested_url"""),
+        count(*) AS variants
+        FROM line_variants GROUP BY receipt_key,receipt_line,requested_url"""),
         ('good_lines',"""SELECT DISTINCT c.receipt_key,c.receipt_line,c.requested_url
             FROM good_fetch_contexts g JOIN captures c USING(receipt_key,receipt_line,capture_index)
             WHERE c.requested_url IS NOT NULL

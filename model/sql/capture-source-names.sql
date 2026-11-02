@@ -1,5 +1,10 @@
 -- Resolve each capture name and import policy once before the anti-join.
-SELECT c.*,f.filename,f.source_url,r.is_real_file,r.record_role,
+-- Carry only the capture columns that capture_sources and its readers use (source files,
+-- contexts, reference targets, blank-filename reasons); the rest stay in capture_evidence,
+-- joinable by (receipt_key,receipt_line,capture_index).
+SELECT c.receipt_key,c.receipt_line,c.capture_index,c.sha256,c.url,c.context_url,c.member_path,
+ c.outcome,c.retrieved_at,c.fidelity,c.media_type,c.format,
+ f.filename,f.source_url,r.is_real_file,r.record_role,
  encode(c.sha256,'hex') AS body_sha,i.date AS import_date
  FROM import_runs i RIGHT JOIN (
   (effective_filenames f JOIN record_roles r
