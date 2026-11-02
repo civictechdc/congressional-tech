@@ -56,6 +56,36 @@ FOOTNOTE_TEXT_LINES = [
 ]
 
 
+LEADER_LINES = [
+    # A dot leader inside a line separates two items: a name and its position, or a contents entry (and its
+    # pages) and the next witness's line. Neither side is dropped wholesale (D4 gate, witnesses).
+    ("Kay E. Brown..................................................... Director, Education, Workforce, and Income Security, "
+     "U.S. Government Accountability Office Testimony", "Kay E. Brown", "Director", "Education, Workforce, and Income Security, "
+     "U.S. Government Accountability Office Testimony"),
+    ("Slides....................................................... 62-75 Hines, William H., past chairman and board member, "
+     "Greater New Orleans, Inc.", "William H. Hines", "past chairman and board member", "Greater New Orleans, Inc."),
+    ("Letters to Hon. Arthur Levitt................................ 39,40 Metzenbaum, Hon. Howard M., (Retired Senator), "
+     "Chairman, Consumer Federation of America", "Howard M. Metzenbaum", "(Retired Senator)", "Chairman, Consumer Federation of America"),
+    ("Statements, Association of State and Interstate Water Pollution Control Administrators.................102-115, 115-123 "
+     "Nielsen, William, council president, Eau Claire, WI, on Behalf of the National League of Cities", "William Nielsen",
+     "council president", "Eau Claire, WI, on Behalf of the National League of Cities"),
+    ("Steve Chalk, Chief Financial Officer, Energy Efficiency and Renewable Energy, Department of Energy \\1\\..................... "
+     "Insert for the record", "Steve Chalk", "Chief Financial Officer", "Energy Efficiency and Renewable Energy, Department of Energy"),
+    # Contents entries with no one's line after them stay entries; a bare Member's name between them is not a witness line.
+    ("Response to request arising during the hearing by: Hon. Patty Murray.......................................... 13,14 Hon. "
+     "Jon Tester............................................ 22,27 Response to posthearing questions submitted by Hon. Jerry Moran",
+     "Response to request arising during the hearing by: Hon. Patty Murray", "", ""),
+    ("Charts.........................................49-51, 53, 54, 58-62 Letters: Several Governors........................................ "
+     "38-47 Environmental Council of the States", "Charts", "", ""),
+]
+
+
+@pytest.mark.parametrize("line,name,position,organization", LEADER_LINES)
+def test_dot_leaders_separate_items(line, name, position, organization):
+    parsed = witness(line)
+    assert (parsed["name"], parsed["position"], parsed["organization"]) == (name, position, organization)
+
+
 @pytest.mark.parametrize("line,name", FOOTNOTE_TEXT_LINES)
 def test_footnote_text_and_unmarked_labels_leave_the_name(line, name):
     assert witness(line)["name"] == name
