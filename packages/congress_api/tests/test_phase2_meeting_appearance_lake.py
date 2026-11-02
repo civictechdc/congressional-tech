@@ -1928,6 +1928,7 @@ def test_ct_30fp_congress_gov_invalid_witness_items_and_sql_per_context_freshnes
         inputs=inputs,
         steps=[{"name": "selected_appearance_records", "sql": "SELECT * FROM appearance_records_input", "materialize": True},
                {"name": "selected_meeting_records", "sql": "SELECT * FROM meeting_records_input", "materialize": True},
+               {"name": "appearance_people", "sql": (ROOT / "model/sql/appearance-people.sql").read_text(encoding="utf-8"), "materialize": True},
                {"name": "resolved", "sql": resolved_sql, "materialize": True}],
         outputs=[],
         queries=[
@@ -1974,3 +1975,20 @@ def test_unset_form_values_state_no_place(placeholder):
     assert sitting["room"] is None and sitting["building"] is None
     congress = meeting_records._convert_congress_meeting_dict({"eventId": "1", "date": "2019-11-13T19:00:00Z", "location": {"room": placeholder, "building": placeholder}})
     assert congress["sittings"][0]["room"] is None and congress["sittings"][0]["building"] is None
+
+
+def test_mods_print_states_every_held_day_and_labels_statements():
+    """A multi-day print states later days in constituent items (Haaland 328803), and its <witness> list
+    carries letters for the record and Members' statements, which are not witnesses (red-f2)."""
+    xml = b"""<mods xmlns="http://www.loc.gov/mods/v3"><titleInfo><title>Haaland Nomination</title></titleInfo>
+      <extension><heldDate>2021-02-23</heldDate><witness>Doe, Hon. Jane, Director, Office of Things</witness>
+      <witness>Florida Fish and Wildlife Conservation Commission, Letter of Support for H.R. 5103</witness>
+      <witness>Neal, Congressman Richard E., United States House of Representatives</witness></extension>
+      <relatedItem type="constituent"><extension><heldDate>2021-02-24</heldDate></extension></relatedItem></mods>"""
+    row = appearance_records.build_appearance_record_row(_sha("mods-two-day"), "mods", xml, parser_version="v1", package_id="CHRG-117shrg43821")
+    assert row["held_dates"] == ["2021-02-23", "2021-02-24"] and row["title"] == "Haaland Nomination"
+    assert [(a["name"], a["witness_type"]) for a in row["appearances"]] == [
+        ("Jane Doe", None),
+        ("Florida Fish and Wildlife Conservation Commission", "statement_for_record"),
+        ("Congressman Richard E. Neal", "member_statement"),
+    ]

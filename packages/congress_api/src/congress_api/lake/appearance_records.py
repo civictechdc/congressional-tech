@@ -174,6 +174,9 @@ _SOURCE_SYMBOLS: dict[str, tuple[str, ...]] = {
         "preserve_appearances",
         "_PACKAGE_ID_IN_URL_RE",
         "mods_held_dates",
+        "_MEMBER_STATEMENT",
+        "_RECORD_ENTRY",
+        "mods_entry_kind",
         "extract_mods_observation",
         "extract_mods_appearances",
     ),
@@ -907,6 +910,24 @@ def extract_senate_page_appearances(
 _PACKAGE_ID_IN_URL_RE = re.compile(r"\b(CHRG-\d+[hsj]hrg\d+)\b", re.IGNORECASE)
 
 
+_MEMBER_STATEMENT = re.compile(
+    r"\b(?:a representative in congress|a delegate (?:in congress )?from|resident commissioner|congress(?:man|woman)\b"
+    r"|united states house of representatives|member of congress|a (?:united states )?senator from)", re.I)
+_RECORD_ENTRY = re.compile(
+    r"\b(?:letters?|statements? (?:for|submitted|of)|submissions?|submitted|questions? for the record|responses? to questions"
+    r"|prepared statement|for the record)\b", re.I)
+
+
+def mods_entry_kind(line: str, name: str | None) -> str | None:
+    """A print's <witness> line is sometimes a Member's statement or a record entry (a letter, a
+    submission), not a witness; those are kept, labelled, and never counted or matched as witnesses."""
+    if _MEMBER_STATEMENT.search(line or ""):
+        return "member_statement"
+    if _RECORD_ENTRY.search(line or "") or (name and not is_name(name)):
+        return "statement_for_record"
+    return None
+
+
 def mods_held_dates(doc: ModsDocument) -> list[str]:
     """Every heldDate the print states, root and constituent items, as distinct sorted ISO dates."""
     found = set()
@@ -1072,6 +1093,7 @@ def extract_mods_observation(
                 "position": _opt_str(parsed.get("position")),
                 "organization": _opt_str(parsed.get("organization")),
                 "bioguide_id": bg,
+                "witness_type": mods_entry_kind(cleaned_line, w_name),
                 "display_order": len(raw_rows) + 1,
                 "document_links": [],
             }
