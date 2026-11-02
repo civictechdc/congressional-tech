@@ -18,3 +18,9 @@ In release c94bfedc, 713 of 18,687 meetings.parquet rows have chamber NULL; 547 
 
 Every meetings.parquet row either states its chamber or carries a documented reason (e.g. joint/nochamber) in a column schema.json names; event_ids with no meeting record are either filled from Congress.gov detail or listed as an explicit gap in the release.
 
+
+## Notes
+
+**2026-11-02T00:36:42Z**
+
+Unchanged on 448651e7: 713 NULL chamber = 166 dated + 547 undated. Correction: the House row matched with archive chamber NULL is event 119583, not 117688; 117688 is absent. 165 of the 166 dated rows have joint committee codes. 0 of the 547 are in meeting_records.

@@ -1,6 +1,6 @@
 ---
 id: ct-2c0w
-status: open
+status: closed
 deps: []
 links: []
 created: 2026-11-01T20:08:14Z
@@ -30,3 +30,7 @@ Cross-build eb40c54 from git archive with the retained Dockerfile.cross recipe, 
 **2026-11-01T21:08:34Z**
 
 2026-11-01: built eb40c54 linux-amd64 from git archive with --release (rust 1.94.0, stripped): 195,663,208 bytes, SHA-256 c7b411adc3ef3d625e09b2c1d7be063a8398b7264eae43cd4a862854a743ee92. Under emulated linux/amd64: 54 tests passed, including native capture tests; serve flags and glibc 2.36 resolve. Not a live Ubuntu runner, and no corpus-scale check. Local files are in .cache/runtime-eb40c54. Pending: upload credential, pin digest, repository variable.
+
+**2026-11-01T22:04:06Z**
+
+Validate Congress MCP run 41354326013 passed. Validate Committee Explorer run 41354328062 passed runtime setup on all shards and 3 of 6 test shards. Its 3 test failures have causes other than a refused runtime; tracked in ct-31e2. Pin 3df9bdf6, variable set, rollback value in .cache/runtime-eb40c54/previous-DOCSPEC_RUNTIME_ARTIFACT.json. Corpus-scale behavior on Linux remains unmeasured.

@@ -1,8 +1,8 @@
 ---
 id: cef-96wc
 status: open
-deps: [ct-itcg, ct-9gmr, ct-qg8e, ct-2c0w]
-links: [ct-klyz, ct-4jms, ct-5kto, ct-77zb, cef-jh7i, ct-t906, ct-1mbc, ct-kw9b, ct-9gmr, ct-pocg]
+deps: [ct-itcg, ct-9gmr, ct-qg8e, ct-2c0w, ct-31e2, ct-kn6d]
+links: [ct-klyz, ct-4jms, ct-5kto, ct-77zb, cef-jh7i, ct-t906, ct-1mbc, ct-kw9b, ct-9gmr, ct-pocg, ct-64el]
 created: 2026-10-28T05:00:43Z
 type: task
 priority: 1
@@ -50,3 +50,7 @@ The owner confirmed approving the targets used for publish_v21. No device eviden
 **2026-11-01T20:47:10Z**
 
 Owner decision 2026-11-01: B13 and B10 run unattended and out of band; they no longer gate the Phase 2 exit (annex §4.1). Offered and not approved, so they remain required: pinning Explorer CSVs as model inputs in place of native producers, deferring the HTML metadata chain from ct-m104, and removing ct-9gmr from this ticket.
+
+**2026-11-02T00:36:42Z**
+
+Owner decisions 2026-11-01: keep 448651e7 live until a fixed release ships; ZIP contents are the documents (ct-64el). Removal notices for the 7,266 lost links are decided after the rebuild.

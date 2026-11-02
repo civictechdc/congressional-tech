@@ -2,7 +2,7 @@
 id: ct-d0o0
 status: open
 deps: []
-links: [ct-77zb, cef-nkzp, ct-h1nd, ct-sh4j, cefr-7sar, ct-kac4]
+links: [ct-77zb, cef-nkzp, ct-h1nd, ct-sh4j, cefr-7sar, ct-kac4, ct-v8y0]
 created: 2026-11-01T17:43:18Z
 type: task
 priority: 2

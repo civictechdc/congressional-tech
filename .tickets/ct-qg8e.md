@@ -2,7 +2,7 @@
 id: ct-qg8e
 status: open
 deps: []
-links: []
+links: [ct-64el, ct-n2cy, ct-ktfe, ct-5f3e, ct-fh62, ct-dx22, ct-c6b0, ct-o2pr, ct-lgxk]
 created: 2026-11-01T20:08:13Z
 type: task
 priority: 1
@@ -23,3 +23,9 @@ Compare the two public releases by key, not by count. Classify added and removed
 - Every added or removed row group has a recorded cause and count; anything unexplained is listed as a defect.
 - ct-opy0 and ct-db3w carry numbers for the live release.
 
+
+## Notes
+
+**2026-11-02T00:36:42Z**
+
+Row changes are sized across all 19 manifest files. release_diff.py is a diagnostic and exits 1 on this pair; its failing list names unchecked causes and defects. Recovery round and upstream generation contributed zero rows. Real causes: ct-sh4j eligibility, meetings SQL, oEmbed scope rule, witness key redefinition, URL rules. Stay open until a rebuild proves restoration. Evidence: docs/measurements/release-diff-c94bfedc-448651e7-20261101.md.

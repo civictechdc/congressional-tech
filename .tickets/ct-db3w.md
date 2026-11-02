@@ -18,3 +18,9 @@ Seven event_ids in spicy-regs committee_meetings (generation fbf53579) are absen
 
 Each of the seven event_ids appears in a published release's meetings.parquet, or the release records why the event is excluded (e.g. Congress.gov withdrew it), and the spicy-regs comparison reports zero committee_meetings rows missing from the archive.
 
+
+## Notes
+
+**2026-11-02T00:36:42Z**
+
+Live on generation fbf53579: House missing 117688; Senate missing 335202, 335760, 335780, 337725, 338764, 338786. All 7 are absent from meetings.parquet on 448651e7. New on generation 37a6ebd4: 119588, scheduled for 2026-11-13. The zero-missing criterion also needs spicy-regs to move its bound and the NULL URL defect fixed.
