@@ -24,3 +24,7 @@ The same body and parser version always give the same reading: decide the limit 
 **2026-11-02T16:39:19Z**
 
 2026-11-02 (lead): now blocking. The readings-bundle proof failed again on candidate-r1b (c90e782a readable this time). Retries won't do for the release: impl-e2 is making the memory-limit outcome deterministic on r1b-det (parser_worker/process_resources, in bundle_version), joining this release's version move, with an N-times re-read test on the largest bodies.
+
+**2026-11-02T16:58:23Z**
+
+2026-11-02 impl-e2 r1b-det 4e2fb4ba (on integrate 0f4711bb): the memory-limit outcome is deterministic. On the 25 readings-bundle decision bodies: v21 17 memory_limit + 8 output_limit; deterministic 9 + 16; all 25 stay unreadable, and 8 change failure class. Lead decision: include in the release; the 25 bodies go into the shared mirror (they were only in spec-run's private bundle-raw); the bundle proof is run twice and must be identical; the 8 flips are recorded with raw evidence as a gate-1 cause.
