@@ -55,7 +55,10 @@ def test_source_annotations_keep_pins_names_keys_and_publisher_priority(tmp_path
            dict(source_id='s3',doc_type=None,text='Later label',page_body='other',context='https://publisher.test/later',first_good_at='2026-10-22T12:00:00Z',link_index=0,split_position=0)]
     for row in links:row['context_url']=row['context'];row['context']='endpoint:'+row['context']
     inputs.append(json_input(tmp_path,'publisher_links',links,source_id='Utf8',doc_type='Utf8',text='Utf8',page_body='Utf8',context='Utf8',context_url='Utf8',first_good_at='Utf8',link_index='Int64',split_position='Int64'))
-    steps=[dict(name='capture_source_contexts',sql='SELECT * FROM capture_sources'),dict(name='page_facts',sql="SELECT decode(body_hex,'hex') AS body_sha,* EXCLUDE(body_hex),cast(content_date AS DATE) AS day FROM page_inputs")]
+    steps=[dict(name='capture_source_contexts',sql='SELECT * FROM capture_sources'),dict(name='page_facts',sql="SELECT decode(body_hex,'hex') AS body_sha,* EXCLUDE(body_hex),cast(content_date AS DATE) AS day FROM page_inputs"),
+           dict(name='meeting_document_urls',sql='SELECT cast(NULL AS BIGINT) AS event_id,cast(NULL AS VARCHAR) AS url WHERE false'),
+           dict(name='model_url_keys',sql='SELECT cast(NULL AS VARCHAR) AS url,cast(NULL AS VARCHAR) AS url_key,cast(NULL AS VARCHAR) AS error WHERE false'),
+           dict(name='copy_url_keys',sql='SELECT cast(NULL AS VARCHAR) AS source_id,cast(NULL AS VARCHAR) AS url_key WHERE false')]
     result=run_job(tmp_path,NativeDatasets.from_config(os.environ['DOCSPEC_JOB_CONFIG']),inputs=inputs,
         steps=steps+annotation_steps('current'),outputs=[],queries=[
             dict(name='sources',sql='SELECT source_id,document_kind,document_family,congress,package_id,cast(filename_date AS VARCHAR) AS filename_date,cast(content_date AS VARCHAR) AS content_date,title,listing_title,reading_title,meeting_keys,measure_keys,bioguide_ids,committee_keys,chambers,facts FROM source_annotations ORDER BY source_id'),

@@ -8,6 +8,10 @@ WITH package_records AS (
  UNION SELECT a.source_id,cast(p.event_id AS VARCHAR) AS meeting_key,cast(NULL AS VARCHAR) AS chamber
  FROM source_annotation_addresses a JOIN package_records p ON a.package_id=p.package_id
  WHERE NOT a.publisher AND p.event_id IS NOT NULL
+ -- The publisher's own meeting record lists this file (ct-66ns).
+ UNION SELECT c.source_id,cast(d.event_id AS VARCHAR) AS meeting_key,cast(NULL AS VARCHAR) AS chamber
+ FROM meeting_document_urls d JOIN model_url_keys k ON k.url=d.url AND k.error IS NULL
+ JOIN copy_url_keys c ON c.url_key=k.url_key
 )
 SELECT source_id,array_sort(array_distinct(array_agg(cast(try_cast(meeting_key AS BIGINT) AS VARCHAR)))) AS meeting_keys,
  array_sort(array_distinct(array_agg(chamber) FILTER(WHERE chamber IS NOT NULL))) AS chambers

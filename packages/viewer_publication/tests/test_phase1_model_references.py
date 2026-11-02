@@ -54,7 +54,8 @@ def test_native_references_preserve_occurrences_without_inventing_acquisitions(t
         json_input(tmp_path,'url_variants',[],canonical_url='Utf8',variant_url='Utf8'),
         json_input(tmp_path,'publisher_links',[],source_id='Utf8',context_url='Utf8'),
         json_input(tmp_path,'page_facts',[],body_sha='Binary',status='Utf8',named_meetings=list_of('Int64')),
-        json_input(tmp_path,'resolved_links',[],target_url='Utf8')]
+        json_input(tmp_path,'resolved_links',[],target_url='Utf8'),
+        json_input(tmp_path,'meeting_document_urls',[],event_id='Int64',url='Utf8')]
     steps=[dict(name='capture_evidence',sql="""SELECT * EXCLUDE(body_hex,is_real_file,record_role),
             decode(body_hex,'hex') AS sha256,
             cast(NULL AS VARCHAR) AS fidelity, cast(NULL AS VARCHAR) AS media_type FROM fixture_captures"""),
@@ -66,6 +67,7 @@ def test_native_references_preserve_occurrences_without_inventing_acquisitions(t
         dict(name='url_inputs',sql=(ROOT/'model/sql/model-url-inputs.sql').read_text(),materialize=True),
         dict(name='url_normalized',sql=(ROOT/'model/sql/url-normalized.sql').read_text(),materialize=True),
         dict(name='model_url_keys',sql=(ROOT/'model/sql/url-keys.sql').read_text(),materialize=True),
+        dict(name='copy_url_keys',sql=(ROOT/'model/sql/copy-url-keys.sql').read_text(),materialize=True),
         dict(name='source_endpoints',sql=(ROOT/'model/sql/source-endpoints.sql').read_text(),materialize=True),
         dict(name='document_members',sql='SELECT *,source_id AS component FROM source_files',materialize=True),
         dict(name='document_addresses',sql=(ROOT/'model/sql/document-addresses.sql').read_text(),materialize=True)]
