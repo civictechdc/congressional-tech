@@ -84,8 +84,9 @@ def test_document_removals_use_each_pages_latest_timestamp_and_require_all_remov
         ('removed', '2026-01-02'), ('tied', '2026-02-01'), (None, '2026-02-03')}
 
 
-def test_saved_file_order_picks_the_body_then_a_named_addressed_source_of_it(tmp_path):
-    """A NULL-address unnamed source fetched later never names the saved body when a named one exists."""
+def test_saved_file_order_picks_the_body_then_a_named_source_of_it(tmp_path):
+    """A NULL-address unnamed source fetched later never names the saved body when a named one exists;
+    a named ZIP member (no address of its own) keeps its place as a first-class copy."""
     members=[dict(component='xml',source_id='unnamed',body_sha='b'*64,filename='',source_url=None,format='xml',
                   exact_bytes=True,first_fetched='2026-10-25T12:00:00Z',is_real_file=True),
              dict(component='xml',source_id='named',body_sha='b'*64,filename='BILLS-119hr1ih.xml',
@@ -95,6 +96,10 @@ def test_saved_file_order_picks_the_body_then_a_named_addressed_source_of_it(tmp
              dict(component='pdf',source_id='later',body_sha='c'*64,filename='',source_url='https://x.test/a/?a=Files.Serve',
                   format='pdf',exact_bytes=True,first_fetched='2026-10-25T12:00:00Z',is_real_file=True),
              dict(component='pdf',source_id='earlier',body_sha='d'*64,filename='a.pdf',source_url='https://x.test/a.pdf',
+                  format='pdf',exact_bytes=True,first_fetched='2026-10-20T12:00:00Z',is_real_file=True),
+             dict(component='zip',source_id='member',body_sha='e'*64,filename='CHRG-1.pdf',source_url=None,
+                  format='pdf',exact_bytes=True,first_fetched='2026-10-25T12:00:00Z',is_real_file=True),
+             dict(component='zip',source_id='copy',body_sha='e'*64,filename='CHRG-1-copy.pdf',source_url='https://www.congress.gov/x/CHRG-1-copy.pdf',
                   format='pdf',exact_bytes=True,first_fetched='2026-10-20T12:00:00Z',is_real_file=True)]
     inputs=[json_input(tmp_path,'members',members,component='Utf8',source_id='Utf8',body_sha='Utf8',filename='Utf8',
                        source_url='Utf8',format='Utf8',exact_bytes='Boolean',first_fetched='Utf8',is_real_file='Boolean'),
@@ -105,7 +110,8 @@ def test_saved_file_order_picks_the_body_then_a_named_addressed_source_of_it(tmp
                dict(name='saved_files',sql=(ROOT/'model/sql/saved-files.sql').read_text(),materialize=True)],outputs=[],
         queries=[dict(name='saved',sql='SELECT component,source_id,body_sha FROM saved_files WHERE saved_rank=1 ORDER BY component')])
     assert result['saved']==[dict(component='pdf',source_id='later',body_sha='c'*64),
-                             dict(component='xml',source_id='named',body_sha='b'*64)]
+                             dict(component='xml',source_id='named',body_sha='b'*64),
+                             dict(component='zip',source_id='member',body_sha='e'*64)]
 
 
 def test_recovery_only_document_takes_the_recovered_reading_title_else_the_original_label(tmp_path):

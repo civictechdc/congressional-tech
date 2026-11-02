@@ -588,7 +588,8 @@ document_id    := SHA-256 of the compact JSON ["bodies", [k1, k2, …]], the dis
                   body keys of its real files sorted bytewise, or ["sources", [h1, h2, …]],
                   its source_id hex strings sorted, when it has none
 filename       := the saved file's effective filename; saved-file order picks the saved body,
-                  then among that body's source files a named one with an address first
+                  then among that body's source files a named one first, otherwise
+                  saved-file order (a ZIP member is a first-class copy)
                   (invariant saved_unnamed_with_named_sibling = 0)
                   a blank filename carries a recorded reason (no address, a query URL
                   that names no file, a bare host; metadata blank_filename_reasons);
