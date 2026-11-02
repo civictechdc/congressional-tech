@@ -89,6 +89,19 @@ def says_not_held(raw):
     return bool(re.match(r'(postponed|cancel+ed|test)\b', title)) and not re.match(r'postponed\s+(until|to)\s+\d', title)
 
 
+def held_evidence(cg):
+    """A Congress.gov record's own evidence that the meeting sat on its date."""
+    docs = (cg or {}).get('meetingDocuments') or []
+    return dict(videos=[v.get('url') for v in (cg or {}).get('videos') or [] if 'youtube' in str(v.get('url') or '') or 'senate.gov/isvp' in str(v.get('url') or '')],
+                transcripts=[d.get('url') for d in docs if 'transcript' in (str(d.get('documentType') or '') + str(d.get('url') or '')).lower()],
+                witnesses=len((cg or {}).get('witnesses') or []))
+
+
+def meeting_kind(text):
+    text = str(text or '').lower()
+    return 'hearing' if 'hearing' in text else 'markup' if 'markup' in text else None
+
+
 def mods(directory, package):
     path = Path(directory) / f'{package}.xml'
     if not path.is_file():
@@ -131,24 +144,29 @@ def check_meetings(args, db, congress, house, report):
             stated = (raw['congress_gov'] or {'s': 'Scheduled', 'r': 'Rescheduled', 'p': 'Postponed'}.get(str(raw['house'] or '').lower()))
             fams['status'].add(event, 'unread' if cg is None and hx is None else
                                'raw_supports_after' if stated == a.get('status') else 'ambiguous', **raw, before=b.get('status'), after=a.get('status'))
-        if (b.get('rescheduled_to'), b.get('rescheduled_basis')) != (a.get('rescheduled_to'), a.get('rescheduled_basis')):
+        if a.get('rescheduled_to') or (b.get('rescheduled_to'), b.get('rescheduled_basis')) != (a.get('rescheduled_to'), a.get('rescheduled_basis')):
+            # Every link the after table states, and every removed one, judged from the raw record's own
+            # evidence of a sitting (video, transcript file, witnesses) and the two meetings' stated types.
             twin_id = a.get('rescheduled_to') or b.get('rescheduled_to')
             tcg = congress.get(str(twin_id)) or {}
             twin_title = tcg.get('title') or (house_root(house.get(str(twin_id), [])) or {}).get('title')
-            own = [v.get('url') for v in (cg or {}).get('videos') or []]
-            row = dict(**raw, date=(cg or {}).get('date'), own_videos=own, twin=twin_id, twin_status=tcg.get('meetingStatus'),
-                       twin_date=tcg.get('date'), twin_title=twin_title, twin_videos=[v.get('url') for v in tcg.get('videos') or []],
-                       jackets=[t.get('jacketNumber') for t in (cg or {}).get('hearingTranscript') or []],
+            evidence = held_evidence(cg)
+            row = dict(**raw, date=(cg or {}).get('date'), type=(cg or {}).get('type'), evidence=evidence, twin=twin_id,
+                       twin_status=tcg.get('meetingStatus'), twin_date=tcg.get('date'), twin_type=tcg.get('type'), twin_title=twin_title,
                        before=[b.get('rescheduled_to'), b.get('rescheduled_basis')], after=[a.get('rescheduled_to'), a.get('rescheduled_basis')])
-            if cg is None and hx is None:
+            if cg is None:
                 fams['rescheduled_to'].add(event, 'unread', **row)
                 continue
-            same = norm(raw['title']) == norm(twin_title)
-            moved = says_not_held(raw) or (not own and same)
+            same_title = norm(raw['title']) == norm(twin_title)
+            same_kind = meeting_kind((cg or {}).get("type")) in (None, meeting_kind(tcg.get("type"))) or meeting_kind(tcg.get("type")) is None
+            # A transcript file shows a sitting whatever the status. Witness lists are posted beforehand and
+            # a later upload can sit on a postponed record, so those count only when the status is not Postponed/Canceled.
+            sat = bool(evidence['transcripts'] or ((evidence['videos'] or evidence['witnesses']) and not says_not_held(raw)))
             if a.get('rescheduled_to'):
-                verdict = 'raw_supports_after' if moved and same else 'ambiguous'
+                verdict = ('raw_contradicts_link' if sat or not same_kind else
+                           'raw_supports_after' if same_title else 'ambiguous')
             else:
-                verdict = 'raw_supports_after' if (own and not says_not_held(raw)) or not same else 'ambiguous'
+                verdict = 'raw_supports_after' if sat or not same_kind or not same_title else 'ambiguous'
             fams['rescheduled_to'].add(event, verdict, **row)
     report.update({k: f.report() for k, f in fams.items()})
 
@@ -196,7 +214,8 @@ def check_witnesses(args, db, congress, report):
             events = {int(e) for e in EVENT_IN_URL.findall(data.decode('utf-8', 'replace'))}
             path_events = {int(m) for p in paths.get(sha, ()) for m in re.findall(r'wlist/(\d+)\.xml$', p)}
             event = int(occasion.split(':')[1])
-            verdict = 'raw_supports_after' if events == {event} and path_events in (set(), {event}) else 'ambiguous'
+            verdict = ('raw_supports_after' if events == {event} and path_events in (set(), {event}) else
+                       'receipt_path_only' if not events and path_events == {event} else 'ambiguous')
             house_list.add([sha, occasion], verdict, body_events=sorted(events), receipt_path_events=sorted(path_events))
         else:
             other.add([sha, occasion, source, state], 'ambiguous')
@@ -231,7 +250,7 @@ def check_coverage(args, db, congress, house, report):
               "event_id,aspect,state,cast(NULL AS VARCHAR) AS reason" if not has_reason(db, args.before) else key))}
     after = {(r['event_id'], r['aspect']): r for r in records(table(db, Path(args.after) / 'meeting_coverage.parquet', key))}
     fam = Family('coverage_relabels')
-    transitions = Counter()
+    transitions, by_aspect = Counter(), Counter()
     mods_named = defaultdict(set)
     for path in Path(args.mods).glob('CHRG-*.xml'):
         for value in re.findall(r'<eventId>\s*(\d+)\s*</eventId>', path.read_text(errors='replace')):
@@ -271,18 +290,20 @@ def check_coverage(args, db, congress, house, report):
             premise = (bool(names_it) or (one_to_one and not elsewhere)) if gained else (
                 bool(elsewhere) or not one_to_one) and not names_it if named else None
             if premise is not None:
+                by_aspect[(k[1], 'premise_holds' if premise else 'premise_fails')] += 1
                 fam.add([event, k[1]], 'premise_holds' if premise else 'premise_fails', before=[b.get('state'), b.get('reason')],
                         after=[a.get('state'), reason], mods={p: m and m['event_ids'] for p, m in named.items()})
                 continue
         else:
             premise = 'not_checked'
         verdict = 'unread' if premise is None else 'premise_holds' if premise is True else 'premise_fails' if premise is False else 'ambiguous'
+        by_aspect[(k[1], verdict)] += 1
         if len(fam.samples[verdict]) < SAMPLES or verdict != 'premise_holds':
             fam.add([event, k[1]], verdict, before=[b.get('state'), b.get('reason')], after=[a.get('state'), reason])
         else:
             fam.rows += 1
             fam.verdicts[verdict] += 1
-    report['coverage_relabels'] = dict(fam.report(), transitions=[[*t, n] for t, n in sorted(transitions.items(), key=str)],
+    report['coverage_relabels'] = dict(fam.report(), by_aspect={f'{a}:{v}': n for (a, v), n in sorted(by_aspect.items())}, transitions=[[*t, n] for t, n in sorted(transitions.items(), key=str)],
         note='No raw record can prove unknown; only the premise of each relabel is checked.')
 
 

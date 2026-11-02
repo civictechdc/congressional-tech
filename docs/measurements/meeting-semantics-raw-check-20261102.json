@@ -441,29 +441,57 @@
   "samples": {}
  },
  "rescheduled_to": {
-  "rows": 70,
+  "rows": 85,
   "verdicts": {
-   "raw_supports_after": 64,
-   "ambiguous": 6
+   "raw_supports_after": 78,
+   "ambiguous": 7
   },
   "unread": [],
   "samples": {
    "raw_supports_after": [
+    {
+     "key": 100397,
+     "congress_gov": "Rescheduled",
+     "house": "R",
+     "title": "Our Nation of Builders: Powering U.S. Automobile Manufacturing Forward.",
+     "date": "2013-03-06T15:00:00Z",
+     "type": "Hearing",
+     "evidence": {
+      "videos": [],
+      "transcripts": [],
+      "witnesses": 0
+     },
+     "twin": 100607,
+     "twin_status": "Scheduled",
+     "twin_date": "2013-04-10T14:15:00Z",
+     "twin_type": "Hearing",
+     "twin_title": "Our Nation of Builders: Powering the U.S. Automobile Manufacturing Forward",
+     "before": [
+      100607,
+      "publisher_status"
+     ],
+     "after": [
+      null,
+      null
+     ]
+    },
     {
      "key": 101200,
      "congress_gov": "Postponed",
      "house": null,
      "title": "Challenges to Democracy in the Western Hemisphere",
      "date": "2013-07-24T18:00:00Z",
-     "own_videos": [],
+     "type": "Hearing",
+     "evidence": {
+      "videos": [],
+      "transcripts": [],
+      "witnesses": 0
+     },
      "twin": 101287,
      "twin_status": "Scheduled",
      "twin_date": "2013-09-10T19:00:00Z",
+     "twin_type": "Hearing",
      "twin_title": "Challenges to Democracy in the Western Hemisphere",
-     "twin_videos": [],
-     "jackets": [
-      82146
-     ],
      "before": [
       null,
       null
@@ -474,20 +502,48 @@
      ]
     },
     {
+     "key": 101393,
+     "congress_gov": "Rescheduled",
+     "house": "R",
+     "title": "Implementation of an Entry-Exit System: Still Waiting After All These Years",
+     "date": "2013-10-09T18:30:00Z",
+     "type": "Hearing",
+     "evidence": {
+      "videos": [],
+      "transcripts": [],
+      "witnesses": 0
+     },
+     "twin": 101464,
+     "twin_status": "Scheduled",
+     "twin_date": "2013-11-13T15:00:00Z",
+     "twin_type": "Hearing",
+     "twin_title": "Implementation of an Entry-Exit System: Still Waiting After All These Years",
+     "before": [
+      101464,
+      "publisher_status"
+     ],
+     "after": [
+      101464,
+      "publisher_status"
+     ]
+    },
+    {
      "key": 102814,
      "congress_gov": "Postponed",
      "house": null,
      "title": "Organizational Meeting of the Committee on Ways and Means, Consideration of the Committee\u2019s Rules for the 114th Congress and Consideration of the Committee\u2019s Oversight Plan for the 114th Congress",
      "date": "2015-01-13T15:00:00Z",
-     "own_videos": [],
+     "type": "Meeting",
+     "evidence": {
+      "videos": [],
+      "transcripts": [],
+      "witnesses": 0
+     },
      "twin": 102834,
      "twin_status": "Scheduled",
      "twin_date": "2015-01-21T15:15:00Z",
+     "twin_type": "Meeting",
      "twin_title": "Organizational Meeting of the Committee on Ways and Means, Consideration of the Committee\u2019s Rules for the 114th Congress and Consideration of the Committee\u2019s Oversight Plan for the 114th Congress",
-     "twin_videos": [],
-     "jackets": [
-      22376
-     ],
      "before": [
       null,
       null
@@ -498,18 +554,48 @@
      ]
     },
     {
+     "key": 102839,
+     "congress_gov": "Rescheduled",
+     "house": "R",
+     "title": "Adoption of Committee Rules and Approval of Oversight Plan",
+     "date": "2015-01-21T16:00:00Z",
+     "type": "Meeting",
+     "evidence": {
+      "videos": [],
+      "transcripts": [],
+      "witnesses": 0
+     },
+     "twin": 102869,
+     "twin_status": "Scheduled",
+     "twin_date": "2015-01-27T16:00:00Z",
+     "twin_type": "Meeting",
+     "twin_title": "Adoption of Committee Rules and Approval of Oversight Plan",
+     "before": [
+      102869,
+      "publisher_status"
+     ],
+     "after": [
+      102869,
+      "publisher_status"
+     ]
+    },
+    {
      "key": 103060,
      "congress_gov": "Postponed",
      "house": null,
      "title": "Department of Agriculture Research Agencies Budget",
      "date": "2015-03-05T15:00:00Z",
-     "own_videos": [],
+     "type": "Hearing",
+     "evidence": {
+      "videos": [],
+      "transcripts": [],
+      "witnesses": 0
+     },
      "twin": 103198,
      "twin_status": "Scheduled",
      "twin_date": "2015-03-24T14:00:00Z",
+     "twin_type": "Hearing",
      "twin_title": "Department of Agriculture Research Agencies Budget",
-     "twin_videos": [],
-     "jackets": [],
      "before": [
       null,
       null
@@ -525,13 +611,17 @@
      "house": null,
      "title": "Cybersecurity: The Evolving Nature of Cyber Threats Facing the Private Sector",
      "date": "2015-03-05T14:00:00Z",
-     "own_videos": [],
+     "type": "Hearing",
+     "evidence": {
+      "videos": [],
+      "transcripts": [],
+      "witnesses": 0
+     },
      "twin": 103183,
      "twin_status": "Scheduled",
      "twin_date": "2015-03-18T17:00:00Z",
+     "twin_type": "Hearing",
      "twin_title": "\u201cCybersecurity:  The Evolving Nature of Cyber Threats Facing the Private Sector.\u201d",
-     "twin_videos": [],
-     "jackets": [],
      "before": [
       null,
       null
@@ -547,15 +637,17 @@
      "house": null,
      "title": "An Overview of the U.S. Coast Guard\u2019s Missions",
      "date": "2015-03-17T14:30:00Z",
-     "own_videos": [],
+     "type": "Hearing",
+     "evidence": {
+      "videos": [],
+      "transcripts": [],
+      "witnesses": 0
+     },
      "twin": 103270,
      "twin_status": "Scheduled",
      "twin_date": "2015-04-15T18:00:00Z",
+     "twin_type": "Hearing",
      "twin_title": "An Overview of the U.S. Coast Guard\u2019s Missions",
-     "twin_videos": [],
-     "jackets": [
-      93775
-     ],
      "before": [
       null,
       null
@@ -571,13 +663,17 @@
      "house": null,
      "title": "\u201cAdmitting Syrian Refugees: The Intelligence Void and the Emerging Homeland Security Threat.\u201d",
      "date": "2015-05-21T13:00:00Z",
-     "own_videos": [],
+     "type": "Hearing",
+     "evidence": {
+      "videos": [],
+      "transcripts": [],
+      "witnesses": 0
+     },
      "twin": 103655,
      "twin_status": "Scheduled",
      "twin_date": "2015-06-24T14:00:00Z",
+     "twin_type": "Hearing",
      "twin_title": "\u201cAdmitting Syrian Refugees: The Intelligence Void and the Emerging Homeland Security Threat.\u201d",
-     "twin_videos": [],
-     "jackets": [],
      "before": [
       null,
       null
@@ -593,13 +689,17 @@
      "house": null,
      "title": "Examining Vulnerabilities of America\u2019s Power Supply",
      "date": "2015-07-30T13:00:00Z",
-     "own_videos": [],
+     "type": "Hearing",
+     "evidence": {
+      "videos": [],
+      "transcripts": [],
+      "witnesses": 0
+     },
      "twin": 103914,
      "twin_status": "Scheduled",
      "twin_date": "2015-09-10T14:00:00Z",
+     "twin_type": "Hearing",
      "twin_title": "Examining Vulnerabilities of America\u2019s Power Supply",
-     "twin_videos": [],
-     "jackets": [],
      "before": [
       null,
       null
@@ -615,15 +715,19 @@
      "house": "R",
      "title": "Examining the Syrian Humanitarian Crisis from the Ground (Part I)",
      "date": "2015-10-08T14:30:00Z",
-     "own_videos": [],
+     "type": "Hearing",
+     "evidence": {
+      "videos": [],
+      "transcripts": [
+       "https://www.congress.gov/114/meeting/house/104049/documents/HHRG-114-FA13-Transcript-20151008.pdf"
+      ],
+      "witnesses": 0
+     },
      "twin": 104123,
      "twin_status": "Scheduled",
      "twin_date": "2015-10-27T18:00:00Z",
+     "twin_type": "Hearing",
      "twin_title": "Examining the Syrian Humanitarian Crisis from the Ground (Part II)",
-     "twin_videos": [],
-     "jackets": [
-      96909
-     ],
      "before": [
       104123,
       "publisher_status"
@@ -639,13 +743,17 @@
      "house": null,
      "title": "Triple Threat to Workers and Households: Impacts of Federal Regulations on Jobs, Wages and Startups",
      "date": "2016-01-27T14:00:00Z",
-     "own_videos": [],
+     "type": "Hearing",
+     "evidence": {
+      "videos": [],
+      "transcripts": [],
+      "witnesses": 0
+     },
      "twin": 104519,
      "twin_status": "Scheduled",
      "twin_date": "2016-02-24T20:00:00Z",
+     "twin_type": "Hearing",
      "twin_title": "Triple Threat to Workers and Households: Impacts of Federal Regulations on Jobs, Wages and Startups",
-     "twin_videos": [],
-     "jackets": [],
      "before": [
       null,
       null
@@ -656,18 +764,48 @@
      ]
     },
     {
+     "key": 105634,
+     "congress_gov": "Scheduled",
+     "house": "S",
+     "title": "Learning from History: Ideas to Strengthen and Modernize the HUBZone Program",
+     "date": "2017-02-02T15:00:00Z",
+     "type": "Hearing",
+     "evidence": {
+      "videos": [],
+      "transcripts": [],
+      "witnesses": 0
+     },
+     "twin": 105655,
+     "twin_status": "Scheduled",
+     "twin_date": "2017-03-02T15:00:00Z",
+     "twin_type": "Hearing",
+     "twin_title": "Learning from History: Ideas to Strengthen and Modernize the HUBZone Program",
+     "before": [
+      105655,
+      "recording_on_later_twin"
+     ],
+     "after": [
+      105655,
+      "recording_on_later_twin"
+     ]
+    },
+    {
      "key": 105704,
      "congress_gov": "Postponed",
      "house": null,
      "title": "\"Improving Federal Student Aid to Better Meet the Needs of Students\"",
      "date": "2017-03-15T14:00:00Z",
-     "own_videos": [],
+     "type": "Hearing",
+     "evidence": {
+      "videos": [],
+      "transcripts": [],
+      "witnesses": 0
+     },
      "twin": 105729,
      "twin_status": "Scheduled",
      "twin_date": "2017-03-21T14:00:00Z",
+     "twin_type": "Hearing",
      "twin_title": "\"Improving Federal Student Aid to Better Meet the Needs of Students\"",
-     "twin_videos": [],
-     "jackets": [],
      "before": [
       null,
       null
@@ -683,13 +821,17 @@
      "house": null,
      "title": "Amphibious Warfare in a Contested Environment",
      "date": "2017-04-28T12:00:00Z",
-     "own_videos": [],
+     "type": "Meeting",
+     "evidence": {
+      "videos": [],
+      "transcripts": [],
+      "witnesses": 0
+     },
      "twin": 105981,
      "twin_status": "Scheduled",
      "twin_date": "2017-05-18T18:00:00Z",
+     "twin_type": "Hearing",
      "twin_title": "Amphibious Warfare in a Contested Environment",
-     "twin_videos": [],
-     "jackets": [],
      "before": [
       null,
       null
@@ -705,13 +847,17 @@
      "house": null,
      "title": "Ongoing Intelligence Activities (Closed)",
      "date": "2017-06-14T14:00:00Z",
-     "own_videos": [],
+     "type": "Hearing",
+     "evidence": {
+      "videos": [],
+      "transcripts": [],
+      "witnesses": 0
+     },
      "twin": 106174,
      "twin_status": "Scheduled",
      "twin_date": "2017-06-27T14:00:00Z",
+     "twin_type": "Hearing",
      "twin_title": "Ongoing Intelligence Activities (Closed)",
-     "twin_videos": [],
-     "jackets": [],
      "before": [
       null,
       null
@@ -727,13 +873,17 @@
      "house": "R",
      "title": "H.R. 1422, H.R. 1558, H.R. 2246, H.R. 2565, H.R. 2868, H.R. 2875, and H.R. 2874 -- Day 1",
      "date": "2017-06-15T13:00:00Z",
-     "own_videos": [],
+     "type": "Markup",
+     "evidence": {
+      "videos": [],
+      "transcripts": [],
+      "witnesses": 0
+     },
      "twin": 106163,
      "twin_status": "Scheduled",
      "twin_date": "2017-06-21T14:00:00Z",
+     "twin_type": "Markup",
      "twin_title": "H.R. 1422, H.R. 1558, H.R. 2246, H.R. 2565, H.R. 2868, H.R. 2875, and H.R. 2874 -- Day 2",
-     "twin_videos": [],
-     "jackets": [],
      "before": [
       106163,
       "publisher_status"
@@ -749,22 +899,21 @@
      "house": null,
      "title": "Part I: Powering America: Defining Reliability in a Transforming Electricity Industry",
      "date": "2017-09-14T14:00:00Z",
-     "own_videos": [
-      "https://www.congress.gov/event/115th-Congress/house-event/106383",
-      "https://www.youtube.com/watch?v=mszjKl3yS3s"
-     ],
+     "type": "Hearing",
+     "evidence": {
+      "videos": [
+       "https://www.youtube.com/watch?v=mszjKl3yS3s"
+      ],
+      "transcripts": [
+       "https://www.congress.gov/115/meeting/house/106383/documents/HHRG-115-IF03-Transcript-20170914.pdf"
+      ],
+      "witnesses": 3
+     },
      "twin": 106457,
      "twin_status": "Scheduled",
      "twin_date": "2017-10-03T18:00:00Z",
+     "twin_type": "Hearing",
      "twin_title": "Part II: Powering America: Defining Reliability in a Transforming Electricity Industry",
-     "twin_videos": [
-      "https://www.congress.gov/event/115th-Congress/house-event/106457",
-      "https://www.youtube.com/watch?v=W-sU63PdgM8"
-     ],
-     "jackets": [
-      27275,
-      27336
-     ],
      "before": [
       106457,
       "publisher_status"
@@ -780,13 +929,17 @@
      "house": null,
      "title": "Resiliency: The Electric Grid\u2019s Only Hope",
      "date": "2017-09-12T14:00:00Z",
-     "own_videos": [],
+     "type": "Hearing",
+     "evidence": {
+      "videos": [],
+      "transcripts": [],
+      "witnesses": 4
+     },
      "twin": 106450,
      "twin_status": "Scheduled",
      "twin_date": "2017-10-03T14:00:00Z",
+     "twin_type": "Hearing",
      "twin_title": "Resiliency: The Electric Grid\u2019s Only Hope",
-     "twin_videos": [],
-     "jackets": [],
      "before": [
       null,
       null
@@ -797,18 +950,48 @@
      ]
     },
     {
+     "key": 106429,
+     "congress_gov": "Rescheduled",
+     "house": "R",
+     "title": "Oversight Hearing titled \u201cEmpowering State Based Management Solutions for Greater Sage Grouse Recovery\u201d",
+     "date": "2017-09-27T13:30:00Z",
+     "type": "Hearing",
+     "evidence": {
+      "videos": [],
+      "transcripts": [],
+      "witnesses": 0
+     },
+     "twin": 106520,
+     "twin_status": "Scheduled",
+     "twin_date": "2017-10-25T14:00:00Z",
+     "twin_type": "Hearing",
+     "twin_title": "Oversight hearing titled \u201cEmpowering State Based Management Solutions for Greater Sage Grouse Recovery.\u201d",
+     "before": [
+      106520,
+      "publisher_status"
+     ],
+     "after": [
+      106520,
+      "publisher_status"
+     ]
+    },
+    {
      "key": 106732,
      "congress_gov": "Postponed",
      "house": null,
      "title": "Addressing Physiological Episodes in Fighter, Attack, and Training Aircraft",
      "date": "2017-12-13T20:30:00Z",
-     "own_videos": [],
+     "type": "Hearing",
+     "evidence": {
+      "videos": [],
+      "transcripts": [],
+      "witnesses": 0
+     },
      "twin": 106824,
      "twin_status": "Scheduled",
      "twin_date": "2018-02-06T20:30:00Z",
+     "twin_type": "Hearing",
      "twin_title": "Addressing Physiological Episodes in Fighter, Attack, and Training Aircraft",
-     "twin_videos": [],
-     "jackets": [],
      "before": [
       null,
       null
@@ -824,13 +1007,17 @@
      "house": null,
      "title": "\u201cStrengthening Access and Accountability to Work in Welfare Programs\u201d",
      "date": "2018-02-28T15:00:00Z",
-     "own_videos": [],
+     "type": "Hearing",
+     "evidence": {
+      "videos": [],
+      "transcripts": [],
+      "witnesses": 0
+     },
      "twin": 108001,
      "twin_status": "Scheduled",
      "twin_date": "2018-03-15T14:00:00Z",
+     "twin_type": "Hearing",
      "twin_title": "\u201cStrengthening Access and Accountability to Work in Welfare Programs\u201d",
-     "twin_videos": [],
-     "jackets": [],
      "before": [
       null,
       null
@@ -846,13 +1033,17 @@
      "house": null,
      "title": "\u201cBureaucratic Challenges to Hurricane Recovery in Puerto Rico\u201d",
      "date": "2018-02-28T19:00:00Z",
-     "own_videos": [],
+     "type": "Hearing",
+     "evidence": {
+      "videos": [],
+      "transcripts": [],
+      "witnesses": 0
+     },
      "twin": 108054,
      "twin_status": "Scheduled",
      "twin_date": "2018-03-21T18:00:00Z",
+     "twin_type": "Hearing",
      "twin_title": "\u201cBureaucratic Challenges to Hurricane Recovery in Puerto Rico\u201d",
-     "twin_videos": [],
-     "jackets": [],
      "before": [
       null,
       null
@@ -868,15 +1059,17 @@
      "house": null,
      "title": "Military Personnel Posture: FY 2019",
      "date": "2018-03-21T19:30:00Z",
-     "own_videos": [],
+     "type": "Hearing",
+     "evidence": {
+      "videos": [],
+      "transcripts": [],
+      "witnesses": 4
+     },
      "twin": 108074,
      "twin_status": "Scheduled",
      "twin_date": "2018-04-13T13:00:00Z",
+     "twin_type": "Hearing",
      "twin_title": "Military Personnel Posture: FY 2019",
-     "twin_videos": [],
-     "jackets": [
-      30562
-     ],
      "before": [
       null,
       null
@@ -892,15 +1085,17 @@
      "house": null,
      "title": "Ground Force Modernization Budget Request for Fiscal Year 2019",
      "date": "2018-03-21T18:00:00Z",
-     "own_videos": [],
+     "type": "Hearing",
+     "evidence": {
+      "videos": [],
+      "transcripts": [],
+      "witnesses": 4
+     },
      "twin": 108159,
      "twin_status": "Scheduled",
      "twin_date": "2018-04-18T19:00:00Z",
+     "twin_type": "Hearing",
      "twin_title": "Ground Force Modernization Budget Request for Fiscal Year 2019",
-     "twin_videos": [],
-     "jackets": [
-      30562
-     ],
      "before": [
       null,
       null
@@ -916,16 +1111,17 @@
      "house": "P",
      "title": "Committee Business Meeting to assign new committee member",
      "date": "2018-04-26T12:00:00Z",
-     "own_videos": [],
+     "type": "Meeting",
+     "evidence": {
+      "videos": [],
+      "transcripts": [],
+      "witnesses": 0
+     },
      "twin": 108255,
      "twin_status": "Scheduled",
      "twin_date": "2018-05-08T14:00:00Z",
+     "twin_type": "Meeting",
      "twin_title": "Committee Business Meeting to Assign New Committee Member",
-     "twin_videos": [
-      "https://www.congress.gov/event/115th-Congress/house-event/108255",
-      "https://www.youtube.com/watch?v=rcmc8Blcf48"
-     ],
-     "jackets": [],
      "before": [
       108255,
       "recording_on_later_twin"
@@ -941,13 +1137,17 @@
      "house": null,
      "title": "Conference of House and Senate Amendments to H.R. 5895",
      "date": "2018-07-12T15:00:00Z",
-     "own_videos": [],
+     "type": "Meeting",
+     "evidence": {
+      "videos": [],
+      "transcripts": [],
+      "witnesses": 0
+     },
      "twin": 108667,
      "twin_status": "Scheduled",
      "twin_date": "2018-09-05T18:30:00Z",
+     "twin_type": "Meeting",
      "twin_title": "Conference of House and Senate Amendments to H.R. 5895",
-     "twin_videos": [],
-     "jackets": [],
      "before": [
       null,
       null
@@ -963,13 +1163,17 @@
      "house": null,
      "title": "Solutions to Strengthen U.S. Public Safety Communications",
      "date": "2018-09-14T13:00:00Z",
-     "own_videos": [],
+     "type": "Hearing",
+     "evidence": {
+      "videos": [],
+      "transcripts": [],
+      "witnesses": 2
+     },
      "twin": 108716,
      "twin_status": "Scheduled",
      "twin_date": "2018-09-26T14:30:00Z",
+     "twin_type": "Hearing",
      "twin_title": "Solutions to Strengthen U.S. \r\n Public Safety Communications",
-     "twin_videos": [],
-     "jackets": [],
      "before": [
       null,
       null
@@ -985,16 +1189,17 @@
      "house": null,
      "title": "Better Data and Better Outcomes: Reducing Maternal Mortality in the U.S.",
      "date": "2018-09-14T13:15:00Z",
-     "own_videos": [],
+     "type": "Hearing",
+     "evidence": {
+      "videos": [],
+      "transcripts": [],
+      "witnesses": 4
+     },
      "twin": 108724,
      "twin_status": "Scheduled",
      "twin_date": "2018-09-27T14:00:00Z",
+     "twin_type": "Hearing",
      "twin_title": "Better Data and Better Outcomes: \r\n Reducing Maternal Mortality in the U.S.",
-     "twin_videos": [
-      "https://www.congress.gov/event/115th-Congress/house-event/108724",
-      "https://www.youtube.com/watch?v=-_5mw0w5lyY"
-     ],
-     "jackets": [],
      "before": [
       108724,
       "recording_on_later_twin"
@@ -1010,13 +1215,17 @@
      "house": null,
      "title": "\u201cA Legislative Proposal to Provide for a Sustainable Housing Finance System: The Bipartisan Housing Finance Reform Act of 2018\u201d",
      "date": "2018-12-06T15:00:00Z",
-     "own_videos": [],
+     "type": "Hearing",
+     "evidence": {
+      "videos": [],
+      "transcripts": [],
+      "witnesses": 0
+     },
      "twin": 108802,
      "twin_status": "Scheduled",
      "twin_date": "2018-12-21T14:00:00Z",
+     "twin_type": "Hearing",
      "twin_title": "\u201cA Legislative Proposal to Provide for a Sustainable Housing Finance System: The Bipartisan Housing Finance Reform Act of 2018\u201d",
-     "twin_videos": [],
-     "jackets": [],
      "before": [
       null,
       null
@@ -1027,21 +1236,74 @@
      ]
     },
     {
+     "key": 108892,
+     "congress_gov": "Scheduled",
+     "house": "S",
+     "title": "The State of Competition in the Wireless Market: Examining the Impact of the Proposed Merger of T-Mobile and Sprint on Consumers, Workers, and the Internet",
+     "date": "2019-02-14T15:00:00Z",
+     "type": "Hearing",
+     "evidence": {
+      "videos": [],
+      "transcripts": [],
+      "witnesses": 0
+     },
+     "twin": 109053,
+     "twin_status": "Scheduled",
+     "twin_date": "2019-03-12T18:00:00Z",
+     "twin_type": "Hearing",
+     "twin_title": "The State of Competition in the Wireless Market: Examining the Impact of the Proposed Merger of T-Mobile and Sprint on Consumers, Workers, and the Internet",
+     "before": [
+      109053,
+      "recording_on_later_twin"
+     ],
+     "after": [
+      109053,
+      "recording_on_later_twin"
+     ]
+    },
+    {
+     "key": 109910,
+     "congress_gov": "Scheduled",
+     "house": "S",
+     "title": "Online Platforms and Market Power, Part 3: The Role of Data and Privacy in Competition",
+     "date": "2019-09-12T13:00:00Z",
+     "type": "Hearing",
+     "evidence": {
+      "videos": [],
+      "transcripts": [],
+      "witnesses": 0
+     },
+     "twin": 110098,
+     "twin_status": "Scheduled",
+     "twin_date": "2019-10-18T13:00:00Z",
+     "twin_type": "Hearing",
+     "twin_title": "Online Platforms and Market Power, Part 3: The Role of Data and Privacy in Competition",
+     "before": [
+      110098,
+      "recording_on_later_twin"
+     ],
+     "after": [
+      110098,
+      "recording_on_later_twin"
+     ]
+    },
+    {
      "key": 109988,
      "congress_gov": "Postponed",
      "house": null,
      "title": "\"Protecting Benefits for All Servicemembers\u201d",
      "date": "2019-09-24T14:00:00Z",
-     "own_videos": [],
+     "type": "Hearing",
+     "evidence": {
+      "videos": [],
+      "transcripts": [],
+      "witnesses": 0
+     },
      "twin": 110102,
      "twin_status": "Scheduled",
      "twin_date": "2019-10-23T14:00:00Z",
+     "twin_type": "Hearing",
      "twin_title": "Protecting Benefits for All Servicemembers",
-     "twin_videos": [
-      "https://www.congress.gov/event/116th-Congress/house-event/110102",
-      "https://www.youtube.com/watch?v=ASm1m02NuNs"
-     ],
-     "jackets": [],
      "before": [
       110102,
       "recording_on_later_twin"
@@ -1057,30 +1319,17 @@
      "house": null,
      "title": "The Administration\u2019s Decision to Deport Critically Ill Children and Their Families",
      "date": "2019-09-26T18:00:00Z",
-     "own_videos": [],
+     "type": "Hearing",
+     "evidence": {
+      "videos": [],
+      "transcripts": [],
+      "witnesses": 0
+     },
      "twin": 110099,
      "twin_status": "Rescheduled",
      "twin_date": "2019-10-30T14:00:00Z",
+     "twin_type": "Hearing",
      "twin_title": "The Administration's Decision to Deport Critically Ill Children and Their Families",
-     "twin_videos": [
-      "https://www.congress.gov/event/116th-Congress/house-event/110099",
-      "https://www.youtube.com/watch?v=ss2gKCCoM8Q",
-      "https://www.congress.gov/event/116th-Congress/house-event/110099",
-      "https://www.youtube.com/watch?v=mM7EJdZMqmM",
-      "https://www.congress.gov/event/116th-Congress/house-event/110099",
-      "https://www.youtube.com/watch?v=By4IWna-YJ0",
-      "https://www.congress.gov/event/116th-Congress/house-event/110099",
-      "https://www.youtube.com/watch?v=Ezs6sTmUbSM",
-      "https://www.congress.gov/event/116th-Congress/house-event/110099",
-      "https://www.youtube.com/watch?v=g2WDUrr7yjQ",
-      "https://www.congress.gov/event/116th-Congress/house-event/110099",
-      "https://www.youtube.com/watch?v=PcELp5UiwYo",
-      "https://www.congress.gov/event/116th-Congress/house-event/110099",
-      "https://www.youtube.com/watch?v=65vq1Ppwg7Q",
-      "https://www.congress.gov/event/116th-Congress/house-event/110099",
-      "https://www.youtube.com/watch?v=VG3VaJYOJLo"
-     ],
-     "jackets": [],
      "before": [
       110099,
       "recording_on_later_twin"
@@ -1096,16 +1345,17 @@
      "house": null,
      "title": "\u201cExamining the Policies and Priorities of the Labor Department\u2019s Apprenticeship Program.\"",
      "date": "2019-10-24T13:00:00Z",
-     "own_videos": [],
+     "type": "Hearing",
+     "evidence": {
+      "videos": [],
+      "transcripts": [],
+      "witnesses": 0
+     },
      "twin": 110263,
      "twin_status": "Rescheduled",
      "twin_date": "2019-11-20T18:00:00Z",
+     "twin_type": "Hearing",
      "twin_title": "\u201cExamining the Policies and Priorities of the Labor Department\u2019s Apprenticeship Program.\"",
-     "twin_videos": [
-      "https://www.congress.gov/event/116th-Congress/house-event/110263",
-      "https://www.youtube.com/watch?v=Mf1lAtvjPZo"
-     ],
-     "jackets": [],
      "before": [
       110263,
       "recording_on_later_twin"
@@ -1116,20 +1366,48 @@
      ]
     },
     {
+     "key": 110230,
+     "congress_gov": "Scheduled",
+     "house": "S",
+     "title": "Climate Change in the Era of Strategic Competition",
+     "date": "2019-11-20T19:00:00Z",
+     "type": "Hearing",
+     "evidence": {
+      "videos": [],
+      "transcripts": [],
+      "witnesses": 4
+     },
+     "twin": 110298,
+     "twin_status": "Scheduled",
+     "twin_date": "2019-12-11T19:00:00Z",
+     "twin_type": "Hearing",
+     "twin_title": "Climate Change in the Era of Strategic Competition",
+     "before": [
+      110298,
+      "recording_on_later_twin"
+     ],
+     "after": [
+      null,
+      null
+     ]
+    },
+    {
      "key": 110610,
      "congress_gov": "Postponed",
      "house": null,
      "title": "Smithsonian Institution Budget Request for FY2021",
      "date": "2020-03-03T15:30:00Z",
-     "own_videos": [],
+     "type": "Hearing",
+     "evidence": {
+      "videos": [],
+      "transcripts": [],
+      "witnesses": 1
+     },
      "twin": 110709,
      "twin_status": "Scheduled",
      "twin_date": "2020-03-12T13:45:00Z",
+     "twin_type": "Hearing",
      "twin_title": "Smithsonian Institution Budget Request for FY2021",
-     "twin_videos": [],
-     "jackets": [
-      43523
-     ],
      "before": [
       null,
       null
@@ -1140,21 +1418,48 @@
      ]
     },
     {
+     "key": 110947,
+     "congress_gov": "Scheduled",
+     "house": "S",
+     "title": "Kick Starting Entrepreneurship and Main Street Economic Recovery",
+     "date": "2020-07-29T14:00:00Z",
+     "type": "Hearing",
+     "evidence": {
+      "videos": [],
+      "transcripts": [],
+      "witnesses": 4
+     },
+     "twin": 110983,
+     "twin_status": "Scheduled",
+     "twin_date": "2020-09-10T17:00:00Z",
+     "twin_type": "Hearing",
+     "twin_title": "Kick Starting Entrepreneurship and Main Street Economic Recovery",
+     "before": [
+      110983,
+      "recording_on_later_twin"
+     ],
+     "after": [
+      null,
+      null
+     ]
+    },
+    {
      "key": 110958,
      "congress_gov": "Postponed",
      "house": null,
      "title": "Maintaining Judicial Independence and the Rule of Law: Examining the Causes and Consequences of Court Capture",
      "date": "2020-07-30T13:00:00Z",
-     "own_videos": [],
+     "type": "Hearing",
+     "evidence": {
+      "videos": [],
+      "transcripts": [],
+      "witnesses": 0
+     },
      "twin": 111025,
      "twin_status": "Scheduled",
      "twin_date": "2020-09-22T18:00:00Z",
+     "twin_type": "Hearing",
      "twin_title": "Maintaining Judicial Independence and the Rule of Law: Examining the Causes and Consequences of Court Capture",
-     "twin_videos": [
-      "https://www.congress.gov/event/116th-Congress/house-event/111025",
-      "https://www.youtube.com/watch?v=gY2tU1l4b8k"
-     ],
-     "jackets": [],
      "before": [
       111025,
       "recording_on_later_twin"
@@ -1170,15 +1475,19 @@
      "house": null,
      "title": "\u201cThe Capitol Insurrection: Unexplained Delays and Unanswered Questions\u201d",
      "date": "2021-05-12T14:00:00Z",
-     "own_videos": [],
+     "type": "Hearing",
+     "evidence": {
+      "videos": [],
+      "transcripts": [
+       "https://www.congress.gov/117/meeting/house/112524/documents/HHRG-117-GO00-Transcript-20210512.pdf"
+      ],
+      "witnesses": 3
+     },
      "twin": 112771,
      "twin_status": "Scheduled",
      "twin_date": "2021-06-15T18:00:00Z",
+     "twin_type": "Hearing",
      "twin_title": "\u201cThe Capitol Insurrection:  Unexplained Delays and Unanswered Questions (Part II)\u201d",
-     "twin_videos": [],
-     "jackets": [
-      44570
-     ],
      "before": [
       112771,
       "publisher_status"
@@ -1187,234 +1496,52 @@
       null,
       null
      ]
-    },
-    {
-     "key": 114353,
-     "congress_gov": "Postponed",
-     "house": null,
-     "title": "Housing America: Addressing Challenges in Serving People Experiencing Homelessness",
-     "date": "2022-01-20T15:00:00Z",
-     "own_videos": [
-      "https://www.congress.gov/event/117th-Congress/house-event/114353",
-      "https://www.youtube.com/watch?v=UJpKVonlAKE"
-     ],
-     "twin": 114376,
-     "twin_status": "Scheduled",
-     "twin_date": "2022-02-02T15:00:00Z",
-     "twin_title": "Housing America: Addressing Challenges in Serving People Experiencing Homelessness",
-     "twin_videos": [],
-     "jackets": [],
-     "before": [
-      null,
-      null
-     ],
-     "after": [
-      114376,
-      "publisher_status"
-     ]
-    },
-    {
-     "key": 114598,
-     "congress_gov": "Postponed",
-     "house": null,
-     "title": "Proposed Fiscal Year 2023 Budget with Health & Human Services Secretary Becerra",
-     "date": "2022-04-05T18:00:00Z",
-     "own_videos": [],
-     "twin": 114692,
-     "twin_status": "Scheduled",
-     "twin_date": "2022-04-28T14:30:00Z",
-     "twin_title": "Proposed Fiscal Year 2023 Budget with Health & Human Services Secretary Becerra",
-     "twin_videos": [],
-     "jackets": [],
-     "before": [
-      null,
-      null
-     ],
-     "after": [
-      114692,
-      "publisher_status"
-     ]
-    },
-    {
-     "key": 114768,
-     "congress_gov": "Postponed",
-     "house": null,
-     "title": "Climate Smart from Farm to Fork: Building an Affordable and Resilient Food Supply Chain",
-     "date": "2022-05-24T16:00:00Z",
-     "own_videos": [],
-     "twin": 114992,
-     "twin_status": "Scheduled",
-     "twin_date": "2022-07-15T13:00:00Z",
-     "twin_title": "Climate Smart from Farm to Fork: Building an Affordable and Resilient Food Supply Chain",
-     "twin_videos": [],
-     "jackets": [],
-     "before": [
-      null,
-      null
-     ],
-     "after": [
-      114992,
-      "publisher_status"
-     ]
-    },
-    {
-     "key": 116450,
-     "congress_gov": "Rescheduled",
-     "house": null,
-     "title": "H.R. 1753 Jax Act; H.R. 3790 Justice for ALS Veterans Act of 2023; H.R. 4016 Veteran Fraud Reimbursement Act; H.R. 4190 Restoring Benefits to Defrauded Veterans Act; H.R. 4306 Michael Lecik Military Firefighters Protection Act; H.R. 5559: Protecting Veterans Claim Options Act; H.R. 5891: Veteran Appeals Decision Clarity Act; H.R. 5870: Veteran Appeals Transparency Act of 2023; H.R. 5890: Review Every Veterans Claim Act of 2023; and H.R. 5938: Veterans Exam Expansion Act of 2023",
-     "date": "2023-11-08T17:00:00Z",
-     "own_videos": [],
-     "twin": 116562,
-     "twin_status": "Rescheduled",
-     "twin_date": "2023-11-29T15:30:00Z",
-     "twin_title": "H.R. 1753 Jax Act; H.R. 3790 Justice for ALS Veterans Act of 2023; H.R. 4016 Veteran Fraud Reimbursement Act; H.R. 4190 Restoring Benefits to Defrauded Veterans Act; H.R. 4306 Michael Lecik Military Firefighters Protection Act; H.R. 5559 Protecting Veterans Claim Options Act; H.R. 5891 Veteran Appeals Decision Clarity Act; H.R. 5870 Veteran Appeals Transparency Act of 2023; H.R. 5890 Review Every Veterans Claim Act of 2023; and H.R. 5938 Veterans Exam Expansion Act of 2023.",
-     "twin_videos": [],
-     "jackets": [
-      54349
-     ],
-     "before": [
-      null,
-      null
-     ],
-     "after": [
-      116562,
-      "publisher_status"
-     ]
-    },
-    {
-     "key": 116458,
-     "congress_gov": "Postponed",
-     "house": null,
-     "title": "Examining the SEC\u2019s Agenda: Unintended Consequences for U.S. Capital Markets and Investors",
-     "date": "2023-10-24T14:00:00Z",
-     "own_videos": [],
-     "twin": 116527,
-     "twin_status": "Scheduled",
-     "twin_date": "2023-11-02T14:00:00Z",
-     "twin_title": "Examining the SEC\u2019s Agenda: Unintended Consequences for U.S. Capital Markets and Investors",
-     "twin_videos": [
-      "https://www.congress.gov/event/118th-Congress/house-event/116527",
-      "https://www.youtube.com/watch?v=LZqtYGOCu3c"
-     ],
-     "jackets": [],
-     "before": [
-      116527,
-      "recording_on_later_twin"
-     ],
-     "after": [
-      116527,
-      "publisher_status"
-     ]
-    },
-    {
-     "key": 116461,
-     "congress_gov": "Postponed",
-     "house": null,
-     "title": "The Tangled Web of Global Governance: How the Biden Administration is Ceding Authority Over American Financial Regulation",
-     "date": "2023-10-24T14:00:00Z",
-     "own_videos": [],
-     "twin": 116543,
-     "twin_status": "Scheduled",
-     "twin_date": "2023-11-07T15:00:00Z",
-     "twin_title": "The Tangled Web of Global Governance: How the Biden Administration is Ceding Authority Over American Financial Regulation",
-     "twin_videos": [
-      "https://www.congress.gov/event/118th-Congress/house-event/116543",
-      "https://www.youtube.com/watch?v=3rMd2Iriw-o"
-     ],
-     "jackets": [],
-     "before": [
-      116543,
-      "recording_on_later_twin"
-     ],
-     "after": [
-      116543,
-      "publisher_status"
-     ]
-    },
-    {
-     "key": 116462,
-     "congress_gov": "Postponed",
-     "house": null,
-     "title": "The Factors Influencing the High Cost of Insurance for Consumers",
-     "date": "2023-10-24T18:00:00Z",
-     "own_videos": [],
-     "twin": 116528,
-     "twin_status": "Scheduled",
-     "twin_date": "2023-11-02T18:00:00Z",
-     "twin_title": "The Factors Influencing the High Cost of Insurance for Consumers",
-     "twin_videos": [
-      "https://www.congress.gov/event/118th-Congress/house-event/116528",
-      "https://www.youtube.com/watch?v=_0LvCVJhnTQ"
-     ],
-     "jackets": [],
-     "before": [
-      116528,
-      "recording_on_later_twin"
-     ],
-     "after": [
-      116528,
-      "publisher_status"
-     ]
-    },
-    {
-     "key": 116467,
-     "congress_gov": "Postponed",
-     "house": null,
-     "title": "\"Protecting Workers and Small Businesses from Biden's Attack on Worker Free Choice and Economic Growth\"",
-     "date": "2023-10-18T14:15:00Z",
-     "own_videos": [],
-     "twin": 116672,
-     "twin_status": "Scheduled",
-     "twin_date": "2023-12-13T15:15:00Z",
-     "twin_title": "\"Protecting Workers and Small Businesses from Biden's Attack on Worker Free Choice and Economic Growth\"",
-     "twin_videos": [],
-     "jackets": [],
-     "before": [
-      null,
-      null
-     ],
-     "after": [
-      116672,
-      "publisher_status"
-     ]
-    },
-    {
-     "key": 116468,
-     "congress_gov": "Postponed",
-     "house": null,
-     "title": "\"Bad for Business: DOL's Proposed Overtime Rule\"",
-     "date": "2023-10-24T14:15:00Z",
-     "own_videos": [],
-     "twin": 116553,
-     "twin_status": "Scheduled",
-     "twin_date": "2023-11-29T15:15:00Z",
-     "twin_title": "\"Bad for Business: DOL's Proposed Overtime Rule\"",
-     "twin_videos": [],
-     "jackets": [],
-     "before": [
-      null,
-      null
-     ],
-     "after": [
-      116553,
-      "publisher_status"
-     ]
     }
    ],
    "ambiguous": [
+    {
+     "key": 101422,
+     "congress_gov": "Rescheduled",
+     "house": "R",
+     "title": "The FTC at 100: Where Do We Go From Here?",
+     "date": "2013-10-24T17:00:00Z",
+     "type": "Hearing",
+     "evidence": {
+      "videos": [],
+      "transcripts": [],
+      "witnesses": 0
+     },
+     "twin": 101545,
+     "twin_status": "Scheduled",
+     "twin_date": "2013-12-03T15:00:00Z",
+     "twin_type": "Hearing",
+     "twin_title": "The FTC at 100: Where Do We Go From Here?",
+     "before": [
+      101545,
+      "publisher_status"
+     ],
+     "after": [
+      null,
+      null
+     ]
+    },
     {
      "key": 103841,
      "congress_gov": "Postponed",
      "house": null,
      "title": "Full Committee Hearing, \"Violence on the Border: Keeping U.S. Personnel Safe\"",
      "date": "2015-07-30T13:00:00Z",
-     "own_videos": [],
+     "type": "Hearing",
+     "evidence": {
+      "videos": [],
+      "transcripts": [],
+      "witnesses": 0
+     },
      "twin": 103946,
      "twin_status": "Scheduled",
      "twin_date": "2015-09-09T14:00:00Z",
+     "twin_type": "Hearing",
      "twin_title": "Violence on the Border:  Keeping U.S. Personnel Safe",
-     "twin_videos": [],
-     "jackets": [],
      "before": [
       null,
       null
@@ -1430,13 +1557,17 @@
      "house": null,
      "title": "Subcommittee on Department of Defense Intelligence and Overhead Architecture Hearing  (Closed)",
      "date": "2016-06-22T14:00:00Z",
-     "own_videos": [],
+     "type": "Hearing",
+     "evidence": {
+      "videos": [],
+      "transcripts": [],
+      "witnesses": 0
+     },
      "twin": 105114,
      "twin_status": "Scheduled",
      "twin_date": "2016-07-06T14:00:00Z",
+     "twin_type": "Hearing",
      "twin_title": "Department of Defense Intelligence and Overhead Architecture Subcommittee (Closed)",
-     "twin_videos": [],
-     "jackets": [],
      "before": [
       null,
       null
@@ -1452,13 +1583,17 @@
      "house": null,
      "title": "Hearing: Ongoing Intelligence Activity (Closed)",
      "date": "2017-06-22T13:00:00Z",
-     "own_videos": [],
+     "type": "Hearing",
+     "evidence": {
+      "videos": [],
+      "transcripts": [],
+      "witnesses": 0
+     },
      "twin": 106203,
      "twin_status": "Scheduled",
      "twin_date": "2017-06-29T13:00:00Z",
+     "twin_type": "Hearing",
      "twin_title": "Full Committee Hearing: Ongoing Intelligence Activity (Closed)",
-     "twin_videos": [],
-     "jackets": [],
      "before": [
       null,
       null
@@ -1474,13 +1609,17 @@
      "house": null,
      "title": "\"On H.R. 1522, 'Puerto Rico Statehood Admission Act', and H.R. 2070, 'Puerto Rico Self-Determination Act of 2021'.",
      "date": "2021-04-20T14:00:00Z",
-     "own_videos": [],
+     "type": "Hearing",
+     "evidence": {
+      "videos": [],
+      "transcripts": [],
+      "witnesses": 0
+     },
      "twin": 112778,
      "twin_status": "Scheduled",
      "twin_date": "2021-06-16T17:00:00Z",
+     "twin_type": "Hearing",
      "twin_title": "On H.R. 2070, 'Puerto Rico Self-Determination Act of 2021' and H.R. 1522, 'Puerto Rico Statehood Admission Act'.",
-     "twin_videos": [],
-     "jackets": [],
      "before": [
       null,
       null
@@ -1496,16 +1635,17 @@
      "house": null,
      "title": "Ensuring Equitable Delivery of Disaster Benefits to Vulnerable Communities and Peoples: An Examination of GAO's Findings of the CDBG Program",
      "date": "2022-01-11T15:00:00Z",
-     "own_videos": [],
+     "type": "Hearing",
+     "evidence": {
+      "videos": [],
+      "transcripts": [],
+      "witnesses": 0
+     },
      "twin": 114350,
      "twin_status": "Scheduled",
      "twin_date": "2022-01-19T15:00:00Z",
+     "twin_type": "Hearing",
      "twin_title": "Ensuring Equitable Delivery of Disaster Benefits to Vulnerable Communities and Peoples: An Examination of GAO's Findings of the CDBG-DR Program",
-     "twin_videos": [
-      "https://www.congress.gov/event/117th-Congress/house-event/114350",
-      "https://www.youtube.com/watch?v=zgYDNIHSXno"
-     ],
-     "jackets": [],
      "before": [
       114350,
       "recording_on_later_twin"
@@ -1521,18 +1661,17 @@
      "house": null,
      "title": "Artificial Intelligence Task Force: Keeping Up with the Codes \u2013 Using AI for Effective RegTech",
      "date": "2022-03-30T14:00:00Z",
-     "own_videos": [],
+     "type": "Hearing",
+     "evidence": {
+      "videos": [],
+      "transcripts": [],
+      "witnesses": 0
+     },
      "twin": 114764,
      "twin_status": "Scheduled",
      "twin_date": "2022-05-13T13:00:00Z",
+     "twin_type": "Hearing",
      "twin_title": "Task Force on Artificial Intelligence: Keeping Up with the Codes \u2013 Using AI for Effective RegTech",
-     "twin_videos": [
-      "https://www.congress.gov/event/117th-Congress/house-event/114764",
-      "https://www.youtube.com/watch?v=4WQbDRxeWlw"
-     ],
-     "jackets": [
-      47273
-     ],
      "before": [
       114764,
       "recording_on_later_twin"
@@ -1546,9 +1685,9 @@
   }
  },
  "package_choice": {
-  "rows": 1580,
+  "rows": 1599,
   "verdicts": {
-   "ambiguous": 1416,
+   "ambiguous": 1435,
    "raw_supports_after": 133,
    "unread": 31
   },
@@ -1918,6 +2057,40 @@
     },
     {
      "key": [
+      "CHRG-113hhrg80820",
+      "meeting:100267",
+      "before"
+     ],
+     "mods": {
+      "event_ids": [],
+      "held": [
+       "2013-04-17"
+      ],
+      "title": "THE HEALTH CARE LAW: IMPLEMENTATION AND SMALL BUSINESSES",
+      "witnesses": 4
+     },
+     "meeting_title": "The Health Care Law: Implementation and Small Businesses",
+     "meeting_date": "2013-04-17T17:00:00Z"
+    },
+    {
+     "key": [
+      "CHRG-113hhrg79821",
+      "meeting:100280",
+      "before"
+     ],
+     "mods": {
+      "event_ids": [],
+      "held": [
+       "2013-02-28"
+      ],
+      "title": "SMALL BUSINESS TRADE AGENDA: OPPORTUNITIES IN THE 113TH CONGRESS",
+      "witnesses": 4
+     },
+     "meeting_title": "Small Business Trade Agenda: Opportunities in the 113th Congress",
+     "meeting_date": "2013-02-28T15:00:00Z"
+    },
+    {
+     "key": [
       "CHRG-113hhrg78990",
       "meeting:100303",
       "before"
@@ -2139,6 +2312,23 @@
     },
     {
      "key": [
+      "CHRG-113hhrg80172",
+      "meeting:100437",
+      "before"
+     ],
+     "mods": {
+      "event_ids": [],
+      "held": [
+       "2013-03-21"
+      ],
+      "title": "PROTECTING SMALL BUSINESSES AGAINST EMERGING AND COMPLEX CYBER-ATTACKS",
+      "witnesses": 4
+     },
+     "meeting_title": "3-21-2013 Protecting Small Businesses Against Emerging and Complex Cyber-Attacks",
+     "meeting_date": "2013-03-21T14:00:00Z"
+    },
+    {
+     "key": [
       "CHRG-113hhrg82579",
       "meeting:100438",
       "before"
@@ -2341,57 +2531,6 @@
      },
      "meeting_title": "Fulfilling the Good Friday Agreement",
      "meeting_date": "2013-03-20T18:00:00Z"
-    },
-    {
-     "key": [
-      "CHRG-113hhrg80123",
-      "meeting:100547",
-      "before"
-     ],
-     "mods": {
-      "event_ids": [],
-      "held": [
-       "2013-03-21"
-      ],
-      "title": "CYBER ATTACKS: AN UNPRECEDENTED THREAT TO U.S. NATIONAL SECURITY",
-      "witnesses": 5
-     },
-     "meeting_title": "Cyber Attacks: An Unprecedented Threat to U.S. National Security",
-     "meeting_date": "2013-03-21T13:00:00Z"
-    },
-    {
-     "key": [
-      "CHRG-113hhrg80452",
-      "meeting:100593",
-      "before"
-     ],
-     "mods": {
-      "event_ids": [],
-      "held": [
-       "2013-04-10"
-      ],
-      "title": "LEGISLATIVE HEARING ON H.R. 357, H.R. 562, H.R. 631, H.R. 844, H.R. 1305, H.R. 1316, H.R. 1402, A DRAFT BILL ENTITLED ``IMPROVING JOB OPPORTUNITIES FOR VETERANS ACT OF 2013,&apos;&apos; AND A DRAFT BILL ENTITLED TO AMEND TITLE 39, UNITED STATES CODE, TO EXTEND THE AUTHORITY TO PROVIDE WORK-STUDY ALLOWANCE FOR CERTAIN ACTIVITIES BY INDIVIDUALS RECEIVING EDUCATIONAL ASSISTANCE BY THE SECRETARY OF VETERANS AFFAIRS&apos;&apos;",
-      "witnesses": 11
-     },
-     "meeting_title": "Legislative Hearing on H.R. 357, H.R. 562, H.R. 631, H.R. 844, H.R. 1305, H.R. 1316, H.R. 1402, H.R. 1412, and a draft bill entitled \u201cTo amend title 39, United States Code, to extend the authority to provide work-study allowance for certain activities by individuals receiving educational assistance by the Secretary of Veterans Affairs\"",
-     "meeting_date": "2013-04-10T14:00:00Z"
-    },
-    {
-     "key": [
-      "CHRG-113hhrg80454",
-      "meeting:100594",
-      "before"
-     ],
-     "mods": {
-      "event_ids": [],
-      "held": [
-       "2013-04-11"
-      ],
-      "title": "U.S. DEPARTMENT OF VETERANS AFFAIRS BUDGET REQUEST FOR FISCAL YEAR 2014",
-      "witnesses": 6
-     },
-     "meeting_title": "U.S. Department of Veterans Affairs Budget Request for Fiscal Year 2014",
-     "meeting_date": "2013-04-11T14:00:00Z"
     }
    ],
    "raw_supports_after": [
@@ -3378,9 +3517,10 @@
   }
  },
  "house_witness_event": {
-  "rows": 187,
+  "rows": 227,
   "verdicts": {
-   "raw_supports_after": 187
+   "raw_supports_after": 187,
+   "receipt_path_only": 40
   },
   "unread": [],
   "samples": {
@@ -3865,6 +4005,408 @@
       100396
      ]
     }
+   ],
+   "receipt_path_only": [
+    {
+     "key": [
+      "663414378ec48b7f8cbfa0bbbc7fe087142fc5680bb7c3470c18b168239d4d62",
+      "meeting:100267"
+     ],
+     "body_events": [],
+     "receipt_path_events": [
+      100267
+     ]
+    },
+    {
+     "key": [
+      "974a9111bcff2b323d21d7b54ad7c31512bbd42acc417bc6c258508310fcf3e4",
+      "meeting:100280"
+     ],
+     "body_events": [],
+     "receipt_path_events": [
+      100280
+     ]
+    },
+    {
+     "key": [
+      "79bbc006883309df4ce07970e4853bdc39fd91f48b67320a8caa44a2fdc0f51c",
+      "meeting:100287"
+     ],
+     "body_events": [],
+     "receipt_path_events": [
+      100287
+     ]
+    },
+    {
+     "key": [
+      "0b6229d462c465a9ecacb8ea8781a2e447ec8eae9c4e082a74a889c0220cad26",
+      "meeting:100288"
+     ],
+     "body_events": [],
+     "receipt_path_events": [
+      100288
+     ]
+    },
+    {
+     "key": [
+      "b86131c5b3f56e9a10f2cabfe251403ee8f9e80bd2a2119ee7fd66bca8a3c4d1",
+      "meeting:100308"
+     ],
+     "body_events": [],
+     "receipt_path_events": [
+      100308
+     ]
+    },
+    {
+     "key": [
+      "01b6d96cd921fda8a34c8d85e490693591aef09cfc950b0d2676500303c89310",
+      "meeting:100346"
+     ],
+     "body_events": [],
+     "receipt_path_events": [
+      100346
+     ]
+    },
+    {
+     "key": [
+      "bed3649b6597bda8e0ccb85a20bd4cb75f7646598c187f273c23e75531998e3b",
+      "meeting:100347"
+     ],
+     "body_events": [],
+     "receipt_path_events": [
+      100347
+     ]
+    },
+    {
+     "key": [
+      "8fdd054dd28b0c042bdd5c66089c4f41caf5309f41f40750cf098fc5093132a5",
+      "meeting:100387"
+     ],
+     "body_events": [],
+     "receipt_path_events": [
+      100387
+     ]
+    },
+    {
+     "key": [
+      "6c949f4218f2916184e8a8450e10f2f20b4810304350f0c3268e4986d4044d3b",
+      "meeting:100437"
+     ],
+     "body_events": [],
+     "receipt_path_events": [
+      100437
+     ]
+    },
+    {
+     "key": [
+      "427ae7a37a34df9b291ae45d5607fb151edd3714cc9eead85b5b4ffd63748a12",
+      "meeting:100542"
+     ],
+     "body_events": [],
+     "receipt_path_events": [
+      100542
+     ]
+    },
+    {
+     "key": [
+      "4a38c5163bf025cc9e640235bce660a004979ce9dae2d8e2f58eb2461f7662fd",
+      "meeting:100561"
+     ],
+     "body_events": [],
+     "receipt_path_events": [
+      100561
+     ]
+    },
+    {
+     "key": [
+      "f78c0b608afffd0558bb165b3a95bac373d6cef1bbe45eb4e4809c6e749ad8bd",
+      "meeting:100562"
+     ],
+     "body_events": [],
+     "receipt_path_events": [
+      100562
+     ]
+    },
+    {
+     "key": [
+      "10b4261229e6841f4c2b2073b2d1402e36ca1843a12717007ef75b64b26a254d",
+      "meeting:100563"
+     ],
+     "body_events": [],
+     "receipt_path_events": [
+      100563
+     ]
+    },
+    {
+     "key": [
+      "035c1c9ecb3999689c68252afd471ede2ae26f69105c6f5a62f779bea0130521",
+      "meeting:100568"
+     ],
+     "body_events": [],
+     "receipt_path_events": [
+      100568
+     ]
+    },
+    {
+     "key": [
+      "b2e0edcb932f124402902bdeec1b18c07f783c974d912ecbc40f59d439e73526",
+      "meeting:100569"
+     ],
+     "body_events": [],
+     "receipt_path_events": [
+      100569
+     ]
+    },
+    {
+     "key": [
+      "3ede3b2fd4b845405647bacf4e112025bc785f6570eacb394bf0d7fc93f7d82d",
+      "meeting:100570"
+     ],
+     "body_events": [],
+     "receipt_path_events": [
+      100570
+     ]
+    },
+    {
+     "key": [
+      "6c4a89312eac990eca4144a45fb796befdbe86b86c18f71d6d4a57feb1ebab50",
+      "meeting:100572"
+     ],
+     "body_events": [],
+     "receipt_path_events": [
+      100572
+     ]
+    },
+    {
+     "key": [
+      "c20806be37f22c7b61b71f75726939ee93bae2c4aea859d08f6e6876f13edb9d",
+      "meeting:100610"
+     ],
+     "body_events": [],
+     "receipt_path_events": [
+      100610
+     ]
+    },
+    {
+     "key": [
+      "283b1ebc5211dacd4fb6577a45bcdbc54f1a8c84dfb696594f557dc839fd6eda",
+      "meeting:100709"
+     ],
+     "body_events": [],
+     "receipt_path_events": [
+      100709
+     ]
+    },
+    {
+     "key": [
+      "2d5486105518f1c294cd1ad26c00761ee9df50bf4d3e8a4b3799f9919bbdde4b",
+      "meeting:100710"
+     ],
+     "body_events": [],
+     "receipt_path_events": [
+      100710
+     ]
+    },
+    {
+     "key": [
+      "895e14272dc0a2d5316b3a5f16d73bc04b7cffa533e13c664ad4fcd83189419f",
+      "meeting:100733"
+     ],
+     "body_events": [],
+     "receipt_path_events": [
+      100733
+     ]
+    },
+    {
+     "key": [
+      "9fcada216f62efa3b3a9674ab93352c8633fcedab349994b2ff42fbcc8860ead",
+      "meeting:100751"
+     ],
+     "body_events": [],
+     "receipt_path_events": [
+      100751
+     ]
+    },
+    {
+     "key": [
+      "f5554581e1c5b2e5901151a5082e6ece7c91ad1cece371787e0187205204b3a7",
+      "meeting:100772"
+     ],
+     "body_events": [],
+     "receipt_path_events": [
+      100772
+     ]
+    },
+    {
+     "key": [
+      "65b46832c57e8d0d48eeb7c5f154b621e3688aad07c400ac4285402c9a0be278",
+      "meeting:100819"
+     ],
+     "body_events": [],
+     "receipt_path_events": [
+      100819
+     ]
+    },
+    {
+     "key": [
+      "2222fc309125ca483cfc86ac3a0e9b351800bf1f415ba4b81925a2396a00a72f",
+      "meeting:100917"
+     ],
+     "body_events": [],
+     "receipt_path_events": [
+      100917
+     ]
+    },
+    {
+     "key": [
+      "d2e375c4ec870f8023e8a56b15ff2c1f665592240dd1a4f083051e91ad5d7a82",
+      "meeting:100918"
+     ],
+     "body_events": [],
+     "receipt_path_events": [
+      100918
+     ]
+    },
+    {
+     "key": [
+      "374c29bc86f812d9443b3eee2d44143a459a9c1a9e6ad0208fe25c7b18c125d4",
+      "meeting:100940"
+     ],
+     "body_events": [],
+     "receipt_path_events": [
+      100940
+     ]
+    },
+    {
+     "key": [
+      "0b6219b52fed623dbc529e3ef0a967ab11d922e3f7aad151f6877b2b2686cf31",
+      "meeting:101057"
+     ],
+     "body_events": [],
+     "receipt_path_events": [
+      101057
+     ]
+    },
+    {
+     "key": [
+      "21a3071c14ed2666ccf63cd4e7b5f961213719bb2c383a2f47fb56f250d4ec85",
+      "meeting:101064"
+     ],
+     "body_events": [],
+     "receipt_path_events": [
+      101064
+     ]
+    },
+    {
+     "key": [
+      "8c8609d1fdfe360973f0f8b256e29c4f8a8bf5477d1fd31209c56416d85a42c5",
+      "meeting:101066"
+     ],
+     "body_events": [],
+     "receipt_path_events": [
+      101066
+     ]
+    },
+    {
+     "key": [
+      "2a5d5321ee1ac505a3dc4b96ee90085fcb0ea09d155774958341fef45b7a58de",
+      "meeting:101077"
+     ],
+     "body_events": [],
+     "receipt_path_events": [
+      101077
+     ]
+    },
+    {
+     "key": [
+      "4a7b7a3f8568ec700fb63ebe66521e448c22f0fd79580651b5548cc3f7191432",
+      "meeting:101084"
+     ],
+     "body_events": [],
+     "receipt_path_events": [
+      101084
+     ]
+    },
+    {
+     "key": [
+      "2c8d63021ed605e4a9f7a80f806c5d0c5dcb83131b5075fc93c14923d651a128",
+      "meeting:101087"
+     ],
+     "body_events": [],
+     "receipt_path_events": [
+      101087
+     ]
+    },
+    {
+     "key": [
+      "ce783bcf7789db094b82bdef7ed94d27ca93ab0b7a3a36693622d23551d111e7",
+      "meeting:101101"
+     ],
+     "body_events": [],
+     "receipt_path_events": [
+      101101
+     ]
+    },
+    {
+     "key": [
+      "0eb78ef16cffa5ac4444f5857350ae4b44ce59a37ce7061318e3b9792b65ee93",
+      "meeting:101147"
+     ],
+     "body_events": [],
+     "receipt_path_events": [
+      101147
+     ]
+    },
+    {
+     "key": [
+      "c33cdd6025aacac38dddedaa12ed263e6622a5e955135231ae21e258b2297a1f",
+      "meeting:101163"
+     ],
+     "body_events": [],
+     "receipt_path_events": [
+      101163
+     ]
+    },
+    {
+     "key": [
+      "da883a28792576966c53f0ba1f23f5ccddd169321384a54ed26346b237d55ac7",
+      "meeting:101187"
+     ],
+     "body_events": [],
+     "receipt_path_events": [
+      101187
+     ]
+    },
+    {
+     "key": [
+      "ac48cc7aad8258c3805366d8ca808a468ccf46723d6dd34ea4f5654dda648168",
+      "meeting:101203"
+     ],
+     "body_events": [],
+     "receipt_path_events": [
+      101203
+     ]
+    },
+    {
+     "key": [
+      "5dea9d61c5037ddf88eef02869b2b4d7e00b7da387aec9d99a61f902ca2a43f6",
+      "meeting:101209"
+     ],
+     "body_events": [],
+     "receipt_path_events": [
+      101209
+     ]
+    },
+    {
+     "key": [
+      "8ebcbaa5585deda7435098d1fb1c0eb615f2abcf8de4d3b1427519107b7e0899",
+      "meeting:101241"
+     ],
+     "body_events": [],
+     "receipt_path_events": [
+      101241
+     ]
+    }
    ]
   }
  },
@@ -3875,14 +4417,14 @@
   "samples": {}
  },
  "witness_keys": {
-  "rows_gone": 3921,
-  "rows_new": 3253
+  "rows_gone": 3995,
+  "rows_new": 3439
  },
  "coverage_relabels": {
-  "rows": 14201,
+  "rows": 14221,
   "verdicts": {
-   "ambiguous": 8297,
-   "premise_holds": 5889,
+   "ambiguous": 8318,
+   "premise_holds": 5888,
    "premise_fails": 5,
    "unread": 10
   },
@@ -4559,8 +5101,8 @@
       "package_witnesses_unattached"
      ],
      "mods": {
-      "CHRG-112hhrg70582": [],
-      "CHRG-112hhrg73358": []
+      "CHRG-112hhrg73358": [],
+      "CHRG-112hhrg70582": []
      }
     },
     {
@@ -4613,9 +5155,9 @@
       "package_witnesses_unattached"
      ],
      "mods": {
+      "CHRG-112hhrg78314": [],
       "CHRG-112hhrg76512": [],
-      "CHRG-112hhrg76511": [],
-      "CHRG-112hhrg78314": []
+      "CHRG-112hhrg76511": []
      }
     },
     {
@@ -4914,8 +5456,8 @@
       "video_text_only"
      ],
      "mods": {
-      "CHRG-113hhrg79578": [],
-      "CHRG-113hhrg79579": []
+      "CHRG-113hhrg79579": [],
+      "CHRG-113hhrg79578": []
      }
     },
     {
@@ -4972,23 +5514,6 @@
     },
     {
      "key": [
-      100387,
-      "witnesses"
-     ],
-     "before": [
-      "not_stated",
-      null
-     ],
-     "after": [
-      "unknown",
-      "package_witnesses_unattached"
-     ],
-     "mods": {
-      "CHRG-113hhrg89554": []
-     }
-    },
-    {
-     "key": [
       100391,
       "recording"
      ],
@@ -5038,9 +5563,9 @@
       null
      ],
      "mods": {
-      "CHRG-113hhrg79877": [],
+      "CHRG-113hhrg79879": [],
       "CHRG-113hhrg79878": [],
-      "CHRG-113hhrg79879": []
+      "CHRG-113hhrg79877": []
      }
     },
     {
@@ -5074,8 +5599,8 @@
       null
      ],
      "mods": {
-      "CHRG-113hhrg82580": [],
-      "CHRG-113hhrg82581": []
+      "CHRG-113hhrg82581": [],
+      "CHRG-113hhrg82580": []
      }
     },
     {
@@ -5092,8 +5617,8 @@
       "video_text_only"
      ],
      "mods": {
-      "CHRG-113hhrg79930": [],
-      "CHRG-113hhrg79931": []
+      "CHRG-113hhrg79931": [],
+      "CHRG-113hhrg79930": []
      }
     },
     {
@@ -5203,6 +5728,24 @@
       "CHRG-113hhrg80077": [],
       "CHRG-113hhrg80078": []
      }
+    },
+    {
+     "key": [
+      100593,
+      "recording"
+     ],
+     "before": [
+      "present",
+      null
+     ],
+     "after": [
+      "unknown",
+      null
+     ],
+     "mods": {
+      "CHRG-113hhrg80453": [],
+      "CHRG-113hhrg80452": []
+     }
     }
    ],
    "premise_fails": [
@@ -5259,10 +5802,10 @@
       "package_witnesses_unattached"
      ],
      "mods": {
+      "CHRG-115hhrg31453": [],
       "CHRG-115hhrg31454": [
        108680
-      ],
-      "CHRG-115hhrg31453": []
+      ]
      }
     },
     {
@@ -5279,12 +5822,12 @@
       "package_witnesses_unattached"
      ],
      "mods": {
+      "CHRG-115hhrg32307": [],
       "CHRG-115hhrg32305": [
        108742
       ],
-      "CHRG-115hhrg32308": [],
       "CHRG-115hhrg32306": [],
-      "CHRG-115hhrg32307": []
+      "CHRG-115hhrg32308": []
      }
     },
     {
@@ -5301,10 +5844,10 @@
       "package_witnesses_unattached"
      ],
      "mods": {
+      "CHRG-119hhrg60838": [],
       "CHRG-119hhrg60805": [
        118439
-      ],
-      "CHRG-119hhrg60838": []
+      ]
      }
     }
    ],
@@ -5451,6 +5994,18 @@
     }
    ]
   },
+  "by_aspect": {
+   "captions:ambiguous": 7919,
+   "documents:premise_holds": 2096,
+   "recording:premise_fails": 2,
+   "recording:premise_holds": 331,
+   "transcript:ambiguous": 129,
+   "transcript:premise_holds": 4,
+   "transcript:unread": 10,
+   "witnesses:ambiguous": 270,
+   "witnesses:premise_fails": 3,
+   "witnesses:premise_holds": 3457
+  },
   "transitions": [
    [
     "captions",
@@ -5576,14 +6131,14 @@
     "not_stated",
     "present",
     null,
-    249
+    270
    ],
    [
     "witnesses",
     "not_stated",
     "unknown",
     "package_witnesses_unattached",
-    537
+    536
    ],
    [
     "witnesses",

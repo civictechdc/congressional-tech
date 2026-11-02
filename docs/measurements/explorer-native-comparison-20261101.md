@@ -157,8 +157,8 @@ without `meeting_facts` or the model SQL).
 | access closed → partly_closed | 7 | 7 | 7 supported |
 | not_held | +407 / −5 | +404 / −5 (3 status conflicts held) | 409 supported |
 | status where both sources state one | 0 | 0 | — |
-| rescheduled_to | 46 → 83 | 46 → 82 (42 same, 4 removed, 40 added) | 64 supported, 6 ambiguous by whole-title compare (all Postponed; reworded twin titles, read as the same hearing) |
-| House witness lists attached by their links | 187 records | 187 | 187 supported (body links = receipt path) |
+| rescheduled_to | 46 → 83 | 46 → 77 after own-evidence and type rules | all 77 links and 8 removals judged from the raw record's own transcript file, witnesses, video and type, not the rule: 78 supported, 0 contradicted, 7 ambiguous (reworded twin titles, read as the same hearing). Before the fix the same check contradicted 6 links: 116450 (own transcript, 14 witnesses, twin a markup), 110230 and 110947 (own witnesses); 114353, 116505 and 118044 are Postponed with later uploads, not contradictions |
+| House witness lists attached by links or receipt path | 227 records | 227 (captures augmented with receipt `original_path`) | 187 body links = path; 40 path only |
 | package witness rows changed | 392 rows on 93 events | 1,580 record×occasion changes | 133 supported, 1,416 ambiguous (no MODS eventId; raw cannot choose), 31 unread (MODS absent from the refresh) |
 | documents unknown (Senate) / unresolved | 2,051 / 7 | 2,051 / 45 | premise only; 38 of the 45 link once `ordered` is rebuilt |
 | witnesses unknown | Senate 3,188; House ~470+ | Senate 2,871; unattached 590 | premise only |
@@ -173,3 +173,10 @@ reparse) need `ordered` rebuilt and are confirmed only by a full model run. Witn
 ct-x78c ledger (distinct old rows 19,475): `on_event` 11,779 → 12,856; House lists unlinked 579 → 110 (the
 remaining House rows include the 40 lists that state their event only in a receipt path, which attach once
 captures carries `original_path`); package occasions 924 → 660.
+
+Coverage relabels by aspect are in `by_aspect`. The 333 recording changes: 331 hold their premise in raw MODS;
+103474 (present → claimed: the video verdict was on CHRG-114hhrg94654, a different hearing; only the MODS-named
+CHRG-114hhrg94653 counts) and 108050 (unknown → partial: the MODS-named CHRG-115hhrg33807 has excerpts) are read
+and correct. The 3 witness `premise_fails` (108680, 108742, 118439) are markups whose MODS-named print has no
+witnesses; a same-day sibling print with no eventId (another hearing, by title) holds witnesses, so the label
+`package_witnesses_unattached` is conservative there.
