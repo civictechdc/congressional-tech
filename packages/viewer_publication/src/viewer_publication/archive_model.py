@@ -21,6 +21,7 @@ REGISTRIES={
     'recovery_kinds':dict(category='Utf8',match_basis='Utf8',kind='Utf8',import_category='Utf8'),
     'capture_scope':dict(family='Utf8',patterns=list_of('Utf8'),exclusions=list_of('Utf8')),
     'meeting_sources':dict(id='Utf8',kind='Utf8',source='Utf8',priority='Int64'),
+    'meeting_status_conflicts':dict(event_id='Int64',publisher_status='Utf8',evidence='Utf8'),
     'recording_sources':dict(id='Utf8',kind='Utf8',provider='Utf8',pattern='Utf8',key_template='Utf8',format='Utf8',default_language='Utf8',default_production='Utf8'),
 }
 

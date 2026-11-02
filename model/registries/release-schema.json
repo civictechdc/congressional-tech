@@ -626,7 +626,7 @@
         {
           "name": "not_held",
           "type": "bool",
-          "meaning": "Publisher status Canceled or Postponed, or the title opens with postponed, canceled or test; null with no record"
+          "meaning": "Publisher status Canceled or Postponed, or the title opens with postponed, canceled or test; false where a curated read found the meeting's own recording of it on its date (status conflict, model/registries/meeting-status-conflicts.json); null with no record"
         },
         {
           "name": "rescheduled_to",
