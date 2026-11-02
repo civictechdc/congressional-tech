@@ -46,6 +46,9 @@ EXPECTED = {
     (PLAYERS, 13070): [(0, 404, F, True, None, F)] * 2,
     # record status 202, empty body (c-span via provider).
     ('receipts/external/provider-responses/2026-09-29/assemble-20260930.jsonl.gz', 7): [(0, 202, F, True, 202, F)],
+    # record status 200; a 1,306-byte provider envelope over an empty raw_path origin: neither is a
+    # document, so finance111721 gets no m3u8 track from the envelope (ct-fh62).
+    ('receipts/external/provider-responses/2026-09-29/assemble-20260930.jsonl.gz', 493): [(0, 200, F, True, 200, F)] * 2,
     # record status 429 with a 117-byte body.
     ('receipts/external/wayback/2026-09-29/assemble-20260930.jsonl.gz', 1): [(0, 429, R, True, 429, R)],
     # http_status 200, body_complete, empty body, no outcome; record status 503 with 14,000 bytes.
@@ -115,3 +118,35 @@ def test_only_relative_importer_paths_are_carried(staged):
     assert paths == {(COMPLETION, 0): 'external-sources/hearing-text/docs_house_xml/wlist/108265.xml',
                      (ROUTING, 0): None, (ROUTING, 1): None}
     assert all(not (row['original_path'] or '').startswith('/') for row in rows)
+
+
+def test_a_202_body_is_not_a_document_even_when_the_writer_said_stored(tmp_path):
+    """No corpus row isolates this (every non-empty 202 also says http_error), so a writer-shape line does."""
+    line = dict(run_id='run', mode='fetch', family='documents', requested_url='https://example.gov/a.pdf',
+                url='https://example.gov/a.pdf', retrieved_at='2026-10-27T10:00:00Z', http_status=202,
+                outcome='stored', writer=dict(job='capture', commit='a' * 40),
+                captures=[dict(pointer=['content', 'body'], attempt=0, complete=True, context_url='https://example.gov/a.pdf',
+                               sha256='ab' * 32, bytes=2279, media_type='text/html', fidelity='exact-bytes',
+                               stored_suffix='.gz', stored_bytes=900, stored_md5='c' * 32)])
+    path = tmp_path / 'receipt.gz'
+    data = gzip.compress((json.dumps(line) + '\n').encode(), mtime=0)
+    files = [dict(key='receipts/documents/2026-10-27/run-000001.jsonl.gz', path=str(path),
+                  qualification=write_qualified_bytes(path, data))]
+    with NativeDatasets.from_config(os.environ['DOCSPEC_JOB_CONFIG']) as engine:
+        stage = stage_captures(files, engine=engine, work=tmp_path / 'stage')
+    rows = pq.read_table(stage / 'captures.parquet').to_pylist()
+    assert [tuple(row[name] for name in COLUMNS) for row in rows] == [(0, 202, F, True, 202, F)]
+
+
+def test_an_owner_status_contradicting_the_line_status_refuses(tmp_path):
+    """Measured 0 in the corpus; a future contradiction refuses instead of picking one."""
+    line = dict(source_file='x', record=dict(url='https://example.gov/a.m3u8', http_status=200, status=404),
+                captures=[], file_references=[dict(reference_kind='file', pointer_json='["body_path"]',
+                    sha256='ab' * 32, bytes=10, family='senate/players', fidelity='retained-file')])
+    path = tmp_path / 'receipt.gz'
+    data = gzip.compress((json.dumps(line) + '\n').encode(), mtime=0)
+    files = [dict(key='receipts/senate/players/2026-09-29/assemble-20260930.jsonl.gz', path=str(path),
+                  qualification=write_qualified_bytes(path, data))]
+    with NativeDatasets.from_config(os.environ['DOCSPEC_JOB_CONFIG']) as engine:
+        with pytest.raises(ValueError, match='conflicting attempt facts'):
+            stage_captures(files, engine=engine, work=tmp_path / 'stage')
