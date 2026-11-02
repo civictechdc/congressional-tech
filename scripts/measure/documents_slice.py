@@ -43,7 +43,7 @@ def select_slice(db, inputs, live, probes, work, readings=None):
         UNION SELECT pkg FROM (SELECT pkg FROM read_parquet('{probes}/pkg_html_cls.parquet') WHERE same_body
             ORDER BY hash(pkg || 'slice') LIMIT 300)
         UNION SELECT unnest({EXTRA_PACKAGES!r})
-        UNION SELECT pkg FROM (SELECT pkg FROM direct EXCEPT SELECT pkg FROM member) ORDER BY hash(pkg || 'slice') LIMIT 100""")
+        UNION SELECT pkg FROM (SELECT pkg FROM (SELECT pkg FROM direct EXCEPT SELECT pkg FROM member) ORDER BY hash(pkg || 'slice') LIMIT 100)""")
     db.execute(f"CREATE VIEW l AS SELECT row_number() OVER () - 1 AS list_row, * FROM read_parquet('{live}/list.parquet')")
     db.execute(f"CREATE VIEW s AS SELECT * FROM read_parquet('{live}/sources.parquet')")
     words = ','.join(f"'{w}'" for w in LINK_WORDS)
