@@ -136,12 +136,14 @@ def build(root, spec, *, captures=None, model_root=None, label='release'):
         from archive_job_fixture import derive_model_spec
         work = root / (label + '-derived')
         work.mkdir()
-        spec = derive_model_spec(work, raw=root / 'raw', captures=captures)
+        spec = derive_model_spec(work, raw=root / 'raw', captures=captures, entities=True)
     with NativeDatasets.from_config(os.environ['DOCSPEC_JOB_CONFIG']) as engine:
+        # Entities on, so all six admission suites run (entity_profile_completeness included).
         build_release(captures=spec['captures']['path'], readings=spec['readings']['path'],
             filename_readings=spec['filename_readings']['path'], parser_versions=spec['parser_versions'],
+            meeting_records=spec['meeting_records']['path'], appearance_records=spec['appearance_records']['path'],
             catalog_version=spec['catalog_version'], engine=engine, output=root / label,
-            scratch=root / (label + '-model'), root=model_root or ROOT)
+            scratch=root / (label + '-model'), root=model_root or ROOT, include_entities=True)
     return root / label
 
 
@@ -150,7 +152,7 @@ def built(tmp_path_factory):
     from archive_job_fixture import rebuild_model_spec
     root = tmp_path_factory.mktemp('e2e')
     raw, receipts, facts = raw_mirror(root)
-    spec = rebuild_model_spec(root, raw=raw, receipts=receipts)
+    spec = rebuild_model_spec(root, raw=raw, receipts=receipts, entities=True)
     return root, spec, facts, build(root, spec)
 
 
@@ -168,8 +170,12 @@ def violations(release, spec, facts):
     key = lambda facts_: bytes.fromhex(facts_['sha256'])[:8]
     html_member = facts['members'][1]
     # ZIP (data model §7.3 "ZIPs are capture transport"; §8.2 body keys: a ZIP resolves to its first document).
-    if key(facts['zip']) in links and links[key(facts['zip'])] != links.get(key(html_member)):
+    if links.get(key(facts['zip'])) is None or links[key(facts['zip'])] != links.get(key(html_member)):
         found.append('zip body key does not resolve to its member document')
+    # The METS manifest (dip.xml) is a member the ZIP lists, but "its METS, MODS and PREMIS
+    # manifests join none" (data model §7.4, owner decision 2026-11-01): never a document.
+    if key(facts['members'][0]) in links or any(s['member_path'] == 'CHRG-118shrg62354/dip.xml' for s in sources):
+        found.append('the METS manifest is a listed document')
     if key(html_member) not in links:
         found.append('zip member is not a listed document')
     else:
@@ -203,8 +209,10 @@ def test_raw_lines_reach_release_files_as_the_contract_states(built):
     assert [c['url'] for c in wayback] == [None, None]  # the raw line has no record address
     assert {c['outcome'] for c in captures if c['receipt_key'] == HTTP_202} == {'failed'}
     reports = {q['name']: q['data'] for q in json.loads((root / 'release-model/result.json').read_text())['queries']}
-    for suite in ['invariants', 'model_invariants', 'url_state_invariants', 'profile_completeness', 'relationship_invariants']:
-        assert not any(reports[suite][0].values()), suite
+    suites = ['invariants', 'model_invariants', 'url_state_invariants', 'profile_completeness',
+              'entity_profile_completeness', 'relationship_invariants']
+    for suite in suites:
+        assert suite in reports and not any(reports[suite][0].values()), suite
 
 
 def mutate_captures(root, spec, name, change):
