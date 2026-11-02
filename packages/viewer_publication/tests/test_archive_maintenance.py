@@ -252,7 +252,7 @@ def test_maintenance_and_backfill_cli_plan_and_execute_specs(tmp_path,capsys):
     assert set(backfill_plan['tables'])==set(ALL_TABLE_NAMES)
 
 
-def test_maintenance_execute_verifies_runtime_before_storage_access_and_backfill_creates_inventory(tmp_path):
+def test_maintenance_execute_verifies_runtime_before_storage_access_and_backfill_reads_through_raw_store(tmp_path):
     from pathlib import Path
     from viewer_publication import archive_backfill_job,archive_maintenance
     from congress_api.lake.daily import ALL_TABLE_NAMES
@@ -281,7 +281,8 @@ def test_maintenance_execute_verifies_runtime_before_storage_access_and_backfill
         archive_maintenance.execute(maint_spec,runtime_factory=lambda _:FailingRuntime(),storage_factory=never_storage,now=NOW)
     assert events==['verify_runtime']
 
-    # Verify archive_backfill_job.execute creates an empty body-inventory.parquet when absent
+    # The backfill's daily spec names no body inventory: readings reads bodies through raw_store
+    # (an empty inventory made every new body a pending read).
     class OkRuntime:
         def __enter__(self):return self
         def __exit__(self,*_):pass
@@ -294,7 +295,7 @@ def test_maintenance_execute_verifies_runtime_before_storage_access_and_backfill
     observed_daily={}
     def fake_producer(daily_spec,*,engine,raw_store):
         observed_daily.update(daily_spec)
-        assert Path(daily_spec['body_inventory']).is_file()
+        assert 'body_inventory' not in daily_spec and 'local_root' not in daily_spec
         return dict(status='completed',pins={})
     backfill_spec=dict(
         version=1,

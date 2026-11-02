@@ -1324,6 +1324,7 @@ def test_candidate_eligibility_mods_senate_predicates_and_budget_fast_fail(tmp_p
             schema=pa.schema(
                 [
                     ("mode", pa.string()),
+                    ("bytes", pa.int64()),
                     ("complete", pa.bool_()),
                     ("outcome", pa.string()),
                     ("http_status", pa.int32()),

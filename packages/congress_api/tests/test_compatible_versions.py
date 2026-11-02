@@ -66,8 +66,11 @@ def engine():
         yield value
 
 
-def test_committed_registry_is_valid():
-    assert cv.load_registry() == []
+def test_committed_registry_is_valid(monkeypatch):
+    # Against the real readers, not this module's fixture reader: undo the autouse patch.
+    monkeypatch.undo()
+    entries = cv.load_registry()
+    assert all(e['parser'] in cv.PARSERS for e in entries)
 
 
 def test_valid_entries_are_accepted(reader_set):
