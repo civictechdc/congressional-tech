@@ -520,6 +520,8 @@ def plan_queue(release,*,engine,work,as_of,request_budget,seed_inventories=(),
             END AS repair
             FROM keyed_states s LEFT JOIN seed_urls o ON s.url_key=o.url_key LEFT JOIN state_urls own ON own.url=o.url"""),
         # A candidate with its own state row is governed by that row, never by a stale spelling.
+        # The NULL branch names the published timestamp type: DataFusion 55 unions widen a
+        # bare TIMESTAMP to nanoseconds (apache/datafusion#27023).
         dict(name='candidates',sql="""SELECT CASE WHEN repair IS NULL THEN requested_url ELSE candidate_url END AS requested_url,
                 requested_url AS observed_url,attempts,
                 CASE WHEN repair IS DISTINCT FROM 'reset' THEN last_outcome END AS last_outcome,
@@ -527,7 +529,7 @@ def plan_queue(release,*,engine,work,as_of,request_budget,seed_inventories=(),
                 url_key,capture_disposition
             FROM state_candidates WHERE repair IS NULL OR NOT candidate_has_state
             UNION ALL SELECT o.url AS requested_url,o.url AS observed_url,0 AS attempts,cast(NULL AS VARCHAR) AS last_outcome,
-                cast(NULL AS TIMESTAMP) AS next_attempt_at,o.url_key,cast(NULL AS VARCHAR) AS capture_disposition
+                arrow_cast(NULL,'Timestamp(Microsecond, Some("UTC"))') AS next_attempt_at,o.url_key,cast(NULL AS VARCHAR) AS capture_disposition
             FROM seed_urls o LEFT ANTI JOIN keyed_states s ON o.url_key=s.url_key
             LEFT ANTI JOIN state_urls own ON own.url=o.url"""),
         # Owner-reviewed cutoffs (-1) run before everything, so a reviewed target is
