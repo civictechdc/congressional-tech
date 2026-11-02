@@ -21,11 +21,13 @@ import argparse
 from collections import Counter, defaultdict
 from datetime import timezone
 import difflib
+import html
 import gzip
 import json
 from pathlib import Path
 import re
 import sys
+import unicodedata
 import xml.etree.ElementTree as ET
 from zoneinfo import ZoneInfo
 
@@ -120,8 +122,9 @@ class Prints:
         held = sorted({(e.text or '').strip()[:10] for e in root.iter(MODS + 'heldDate') if (e.text or '').strip()})
         titles = [(e.text or '').strip() for e in root.iter(MODS + 'title')] + [(e.text or '').strip() for e in root.iter(MODS + 'searchTitle')]
         events = sorted({int(e.text) for e in root.iter(MODS + 'eventId') if (e.text or '').strip().isdigit()})
+        lines = [(e.text or '').strip() for e in root.iter(MODS + 'witness')]
         return dict(held=held, titles=[t for t in titles if t and not t.lower().startswith('united states congress serial')],
-                    events=events, witnesses=sum(1 for _ in root.iter(MODS + 'witness')))
+                    events=events, witnesses=len(lines), witness_lines=lines)
 
 
 def belongs(print_facts, event, cg):
@@ -216,55 +219,125 @@ def check_meetings(args, db, congress, prints, packages, days, report):
     report.update({k: f.report() for k, f in fams.items()})
 
 
+HONORIFICS = set("mr mrs ms miss mx dr hon honorable the rev sen senator rep representative gen general lt col maj adm "
+                 "capt sgt jr sr ii iii iv phd md esq ret usa usn usaf usmc".split())
+NOT_A_WITNESS = re.compile(r"\b(?:letters?|statements? (?:for|submitted|of)|submissions?|for the record|representative in "
+                           r"congress|delegate from|congress(?:man|woman)\b|resident commissioner)", re.I)
+
+
+def family(name):
+    """A raw name's family name: "Last, First" or "First M. Last", honorifics and suffixes dropped."""
+    text = unicodedata.normalize('NFKD', html.unescape(name or '')).encode('ascii', 'ignore').decode().lower()
+    head = text.split(',')[0] if ',' in text and len([w for w in re.split(r'[^a-z]+', text.split(',')[0]) if w]) == 1 else text.split(',')[0]
+    words = [w for w in re.split(r'[^a-z]+', head) if len(w) > 1 and w not in HONORIFICS]
+    return words[-1] if words else None
+
+
+def same(a, b):
+    return a == b or (min(len(a), len(b)) >= 5 and difflib.SequenceMatcher(None, a, b).ratio() >= 0.8)
+
+
+def overlap(left, right):
+    if not left or not right:
+        return None
+    return sum(1 for a in left if any(same(a, b) for b in right)) / min(len(left), len(right))
+
+
+class Lists:
+    """Each meeting's own witness list as raw states it: the Congress.gov line and House witness-list XML."""
+    def __init__(self, args, db, congress):
+        self.lists = defaultdict(set)
+        for event, cg in congress.items():
+            self.lists[int(event)] |= {f for f in (family(w.get('name')) for w in cg.get('witnesses') or []) if f}
+        for event, sha in db.execute(f"""SELECT event_id,lower(hex(record_sha)) FROM read_parquet('{args.appearances}')
+            WHERE source='house_xml' AND event_id IS NOT NULL""").fetchall():
+            data = local_body(args.mirror, sha)
+            if data is not None:
+                try:
+                    root = ET.fromstring(data)
+                except ET.ParseError:
+                    continue
+                self.lists[event] |= {f for f in (family(w.findtext('lastname') or w.findtext('name') or '') for w in root.iter('witness')) if f}
+        self.by_day = defaultdict(set)
+        for event, cg in congress.items():
+            self.by_day[str(cg.get('date') or '')[:10]].add(int(event))
+
+
+def print_people(body_facts):
+    return {f for f in (family(w) for w in body_facts.get('witness_lines', []) if not NOT_A_WITNESS.search(w)) if f}
+
+
+def raw_home(package, prints, lists, congress):
+    """The meetings raw says a print records: same-day meetings whose own list shares half the people, or,
+    when either side lists none, whose title contains the print's."""
+    facts = prints(package)
+    if facts is None:
+        return None
+    people = print_people(facts)
+    home = set()
+    for day in facts['held']:
+        for event in lists.by_day.get(day, ()):
+            share = overlap(people, lists.lists.get(event))
+            if share is not None:
+                if share >= 0.5:
+                    home.add(event)
+            elif agreement(similarity((congress.get(str(event)) or {}).get('title'), facts['titles'])) == 'agree':
+                home.add(event)
+    return home
+
+
 def check_witnesses(args, db, congress, prints, report):
     cols = 'event_id,occasion,source,package_id,name,record_sha'
     before = records(db.execute(f"SELECT {cols} FROM read_parquet('{args.before_witnesses}')"))
-    after = records(db.execute(f"SELECT {cols} FROM read_parquet('{Path(args.after) / 'witnesses.parquet'}')"))
-    key = lambda r: (bytes(r['record_sha']).hex(), r['source'])
-    def occasions(rows):
-        out = defaultdict(lambda: [set(), None])
-        for r in rows:
-            out[key(r)][0].add(r['occasion'])
-            out[key(r)][1] = out[key(r)][1] or r['package_id']
-        return out
-    ob, oa = occasions(before), occasions(after)
+    after = records(db.execute(f"SELECT {cols},superseded_by,witness_type FROM read_parquet('{Path(args.after) / 'witnesses.parquet'}')"))
+    lists = Lists(args, db, congress)
+    meetings = lambda rows, package: {int(r['occasion'].split(':')[1]) for r in rows if r['package_id'] == package and r['occasion'].startswith('meeting:')}
+    changed = {r['package_id'] for r in before + after if r['source'] == 'mods' and r['package_id']}
+    by_before = defaultdict(list); by_after = defaultdict(list)
+    for r in before:
+        by_before[r['package_id']].append(r)
+    for r in after:
+        by_after[r['package_id']].append(r)
     package_fam, house_fam = Family('package_choice'), Family('house_witness_event')
-    covered = {r['occasion'] for r in after if r['source'] != 'mods'}
-    paths = original_paths(args, db, {k[0] for k in set(ob) | set(oa) if k[1] == 'house_xml'})
-    for k in sorted(set(ob) | set(oa)):
-        b, a = ob.get(k, (set(), None)), oa.get(k, (set(), None))
-        if b[0] == a[0]:
+    for package in sorted(p for p in changed if p):
+        was, now = meetings(by_before[package], package), meetings(by_after[package], package)
+        if was == now:
             continue
-        sha, source = k
-        if source == 'mods':
-            package = a[1] or b[1]
-            events = {int(o.split(':')[1]) for o in a[0] | b[0] if o and o.startswith('meeting:')}
-            for event in sorted(events):
-                verdict = belongs(prints(package), event, congress.get(str(event)))
-                # A print on meeting:E publishes nothing when a higher-priority source holds that meeting.
-                attached = f'meeting:{event}' in a[0] or (not a[0] and f'meeting:{event}' in covered)
-                raw = dict(package=package, event=event, before=sorted(b[0]), after=sorted(a[0]), print=prints(package),
-                           meeting=(congress.get(str(event)) or {}).get('title'), date=str((congress.get(str(event)) or {}).get('date'))[:10])
-                if verdict == 'unread':
-                    package_fam.add([package, event], 'unread', **raw)
-                elif verdict == 'ambiguous':
-                    package_fam.add([package, event], 'ambiguous', **raw)
-                else:
-                    package_fam.add([package, event], 'raw_supports_after' if attached == (verdict == 'agree') else 'raw_contradicts_after', **raw)
-        elif source == 'house_xml' and any(o.startswith('meeting:') for o in a[0]):
-            data = local_body(args.mirror, sha)
-            occasion = sorted(a[0])[0]
-            event = int(occasion.split(':')[1])
-            if data is None:
-                house_fam.add([sha, occasion], 'unread')
-                continue
-            events = {int(e) for e in EVENT_IN_URL.findall(data.decode('utf-8', 'replace'))}
-            path_events = {int(m) for p in paths.get(sha, ()) for m in re.findall(r'wlist/(\d+)\.xml$', p)}
-            verdict = ('raw_supports_after' if events == {event} and path_events in (set(), {event}) else
-                       'receipt_path_only' if not events and path_events == {event} else 'raw_contradicts_after')
-            house_fam.add([sha, occasion], verdict, body_events=sorted(events), receipt_path_events=sorted(path_events))
+        home = raw_home(package, prints, lists, congress)
+        raw = dict(before=sorted(was), after=sorted(now), raw_home=sorted(home) if home is not None else None)
+        if home is None:
+            package_fam.add(package, 'unread', **raw)
+        else:
+            package_fam.add(package, 'raw_supports_after' if now == home else 'raw_supports_before' if was == home else 'raw_contradicts_after', **raw)
+    paths = original_paths(args, db, {bytes(r['record_sha']).hex() for r in after if r['source'] == 'house_xml'})
+    before_house = {(bytes(r['record_sha']).hex(), r['occasion']) for r in before if r['source'] == 'house_xml'}
+    for sha, occasion in sorted({(bytes(r['record_sha']).hex(), r['occasion']) for r in after if r['source'] == 'house_xml'} - before_house):
+        if not occasion.startswith('meeting:'):
+            continue
+        event = int(occasion.split(':')[1])
+        data = local_body(args.mirror, sha)
+        if data is None:
+            house_fam.add([sha, occasion], 'unread')
+            continue
+        events = {int(e) for e in EVENT_IN_URL.findall(data.decode('utf-8', 'replace'))}
+        path_events = {int(m) for p in paths.get(sha, ()) for m in re.findall(r'wlist/(\d+)\.xml$', p)}
+        verdict = ('raw_supports_after' if events == {event} and path_events in (set(), {event}) else
+                   'receipt_path_only' if not events and path_events == {event} else 'raw_contradicts_after')
+        house_fam.add([sha, occasion], verdict, body_events=sorted(events), receipt_path_events=sorted(path_events))
+    shown = defaultdict(set)
+    for r in after:
+        shown[r['package_id']].add(norm(r['name']))
     report.update(package_choice=package_fam.report(), house_witness_event=house_fam.report())
-    report['witness_rows'] = dict(before=len(before), after=len(after))
+    report['witness_rows'] = dict(before=len(before), after=len(after),
+        after_shown=sum(1 for r in after if r['superseded_by'] is None),
+        after_superseded=sum(1 for r in after if r['superseded_by'] is not None),
+        after_statements=sum(1 for r in after if r['witness_type'] in ('statement_for_record', 'member_statement')))
+    if args.lost:
+        lost = json.loads(Path(args.lost).read_text())
+        cases = [(c, p, n) for c, rows in lost.items() for p, n in rows]
+        found = [(c, p, n) for c, p, n in cases if any(norm(n).startswith(x) or x.startswith(norm(n).split(' ')[0]) for x in shown.get(p, ()))]
+        report['red_f2_lost'] = dict(cases=len(cases), published=len(found),
+            missing=[[c, p, n] for c, p, n in cases if (c, p, n) not in found][:40])
 
 
 def original_paths(args, db, shas):
@@ -337,6 +410,7 @@ def main(argv=None):
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     for name in ('before', 'before-witnesses', 'after', 'records', 'appearances', 'captures', 'mirror', 'output'):
         parser.add_argument('--' + name, required=True)
+    parser.add_argument('--lost', help="red-f2's truly_lost.json: cases that must be published")
     args = parser.parse_args(argv)
     db = duckdb.connect(config=dict(memory_limit='3GB', threads=4))
     congress, house, read, unread = raw_meetings(args)
