@@ -585,8 +585,8 @@
         },
         {
           "name": "transcripts",
-          "type": "list<struct<package_id string,list_row int32>>",
-          "meaning": "Official hearing transcripts"
+          "type": "list<struct<package_id string,list_row int32,formats list<string>>>",
+          "meaning": "Official hearing transcripts, one per package"
         },
         {
           "name": "videos",
@@ -653,7 +653,7 @@
       "notes": {
         "sittings[]": "Embedded scheduled intervals and places. Congress.gov states instants and places, so its sitting is used when present; a House-only sitting's unzoned Eastern local time is converted to an instant. An explicit empty House state stays empty. Times retain published precision; do not invent a Congress from the session number.",
         "committees[]": "Host/participant roles belong to this meeting-committee association.",
-        "transcripts[]": "Package identifier and release-local document row identify the same retained hearing transcript.",
+        "transcripts[]": "One entry per GovInfo package. list_row is the package's listed document whose saved format ranks first (then lowest row); formats are the distinct saved and alternate formats over all the package's listed documents, in format-preference order. A package listed as several documents (editions) keeps one entry.",
         "videos[]": "Publisher recording links; video_key joins retained recordings when available.",
         "meeting_type": "As stated, with House XML codes (HHRG, HMKP, HMTG) on House rows; congress_gov_meeting_type carries the shared label."
       }
