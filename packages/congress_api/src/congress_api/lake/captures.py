@@ -11,6 +11,12 @@ from congress_api.lake.receipt_metadata import (
 )
 
 
+# 202 Accepted means the resource was not produced. In the corpus every 202 row is an
+# empty body or a firewall challenge, so a 202 never proves a stored document.
+def document_status(status):
+    return f"({status} BETWEEN 200 AND 299 AND {status}<>202)"
+
+
 LEGACY_OUTCOMES = {
     'archive_throttled': 'retry_later', 'available': 'derive',
     'build-complete': 'derive', 'candidate_live_and_archive_manifests_not_found': 'failed',
@@ -148,7 +154,7 @@ def mapping_steps():
         " AND starts_with(json_get_str(item,0),'/') THEN 'path-digest-pair' "
         "WHEN regexp_match(json_get_str(item),'^[A-Za-z0-9_-]{1,64}$') IS NOT NULL THEN 'identifier' "
         "ELSE 'unsupported' END AS item_shape FROM item_entries")
-    paths=[(name,) for name in SCALARS]+list(RECOVERY.values())+DOWNLOAD_HEADERS+[('error',),('kind',),('body_complete',)]
+    paths=[(name,) for name in SCALARS]+list(RECOVERY.values())+DOWNLOAD_HEADERS+[('error',),('kind',),('body_complete',),('previous_receipt','body_complete')]
     paths += [('receipt',name) for name in SCALARS]+[('receipt','body_complete'),('receipt','error')]
     paths += [prefix+('prior_attempts',index,name) for prefix in [(),('receipt',)]
               for index in range(PRIOR_ATTEMPT_LIMIT) for name in ATTEMPT_FIELDS]
@@ -191,6 +197,7 @@ def mapping_steps():
     item_fields['prior_attempts']=f'CASE WHEN {domain} THEN {nested_prior} ELSE {top_prior} END'
     item_fields['record_captures']=attempt_facts(slots,(),'captures')
     item_fields['kind']=scalar(slots[('kind',)],'str')
+    item_fields['previous_receipt_complete']=scalar(slots[('previous_receipt','body_complete')],'bool')
     item_fields['line_kind_shape']='item_shape'
     item_fields.update({name:scalar(slots[path],'str') for name,path in RECOVERY.items()})
     item_fields['h_content_disposition']=first(*(scalar(slots[path],'str') for path in DOWNLOAD_HEADERS))
@@ -383,7 +390,7 @@ def mapping_steps():
         return f"CASE captures_pointer_slot {' '.join(branches)} ELSE {default} END"
     step('pointed_attempts',f"""SELECT *,
         {prior_slot_value(0,'int')} AS prior_status,
-        {prior_slot_value(1,'bool')} AS prior_complete,
+        CASE WHEN {has_previous_receipt_pointer} THEN get_field(record,'previous_receipt_complete') ELSE {prior_slot_value(1,'bool')} END AS prior_complete,
         {prior_slot_value(2,'str')} AS prior_outcome,
         {prior_slot_value(3,'bool',True)} AS prior_error,
         {prior_slot_value(4,'bool',True)} AS prior_conflict,
@@ -472,7 +479,7 @@ def mapping_steps():
         "WHEN attempt_http_status=304 THEN 'unchanged' "
         "WHEN prior_mapped_outcome IS NOT NULL AND prior_mapped_outcome NOT IN ('derive','stored') THEN prior_mapped_outcome "
         "WHEN prior_error THEN 'request_failed' "
-        "WHEN body_sha IS NOT NULL AND (attempt_http_status BETWEEN 200 AND 299 OR (attempt_http_status IS NULL AND prior_mapped_outcome IN ('derive','stored'))) THEN 'stored' "
+        f"WHEN body_sha IS NOT NULL AND ({document_status('attempt_http_status')} OR (attempt_http_status IS NULL AND prior_mapped_outcome IN ('derive','stored'))) THEN 'stored' "
         "WHEN body_sha IS NULL OR attempt_http_status IS NOT NULL THEN 'failed' "
         "ELSE cast(NULL AS VARCHAR) END "
         "WHEN has_captures_pointer THEN CASE "
@@ -481,20 +488,20 @@ def mapping_steps():
         "WHEN cap_mapped_outcome IS NOT NULL AND cap_mapped_outcome NOT IN ('derive','stored') THEN cap_mapped_outcome "
         f"WHEN cap_error OR (attempt_http_status IS NULL AND {final_error}) THEN 'request_failed' "
         "WHEN mapped_outcome NOT IN ('derive','stored') THEN mapped_outcome "
-        "WHEN body_sha IS NOT NULL AND (attempt_http_status BETWEEN 200 AND 299 OR attempt_http_status IS NULL) THEN 'stored' "
+        f"WHEN body_sha IS NOT NULL AND ({document_status('attempt_http_status')} OR attempt_http_status IS NULL) THEN 'stored' "
         "ELSE 'failed' END "
         "ELSE CASE "
         "WHEN attempt_http_status IN (429,503) THEN 'retry_later' "
         "WHEN attempt_http_status=304 THEN 'unchanged' "
         "WHEN mapped_outcome NOT IN ('derive','stored') THEN mapped_outcome "
-        "WHEN body_sha IS NOT NULL AND (attempt_http_status BETWEEN 200 AND 299 OR attempt_http_status IS NULL) THEN 'stored' "
+        f"WHEN body_sha IS NOT NULL AND ({document_status('attempt_http_status')} OR attempt_http_status IS NULL) THEN 'stored' "
         "ELSE 'failed' END END")
     fetch_outcome_sql=(
         "CASE WHEN record_outcome IS NOT NULL THEN cast(NULL AS VARCHAR) "
         "WHEN fetch_status IN (429,503) THEN 'retry_later' "
         "WHEN fetch_status=304 THEN 'unchanged' "
         "WHEN mapped_outcome NOT IN ('derive','stored') THEN mapped_outcome "
-        "WHEN (coalesce(attempt,0)<>0 OR body_sha IS NOT NULL) AND (fetch_status BETWEEN 200 AND 299 OR fetch_status IS NULL) THEN 'stored' "
+        f"WHEN (coalesce(attempt,0)<>0 OR body_sha IS NOT NULL) AND ({document_status('fetch_status')} OR fetch_status IS NULL) THEN 'stored' "
         "ELSE 'failed' END")
     columns=dict(receipt_key='receipt_key',receipt_line='receipt_line',capture_index='capture_index',
         run_id='source_run',mode='capture_mode',
@@ -598,7 +605,7 @@ def mapping_steps():
         f"WHEN {eff_fetch_status}=304 THEN 'unchanged' "
         "WHEN cutoff_eligible AND has_cutoff AND NOT coalesce(has_completed_final,false) THEN 'size_limit' "
         "WHEN mapped_outcome NOT IN ('derive','stored') THEN mapped_outcome "
-        f"WHEN ({has_addressed_final} OR (has_captures_pointer AND body_sha IS NOT NULL)) AND ({eff_fetch_status} BETWEEN 200 AND 299 OR {eff_fetch_status} IS NULL) THEN 'stored' "
+        f"WHEN ({has_addressed_final} OR (has_captures_pointer AND body_sha IS NOT NULL)) AND ({document_status(eff_fetch_status)} OR {eff_fetch_status} IS NULL) THEN 'stored' "
         "ELSE 'failed' END")
     final={name:name for name in COLUMNS}
     final.update(

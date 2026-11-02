@@ -107,10 +107,6 @@ jobs:
         run: |
           rustup toolchain install 1.89.0 --profile minimal
           cargo +1.89.0 build --locked --release --manifest-path packages/source-fetch/Cargo.toml --bin source-fetch
-      - name: Test real sockets and spawned workers on loopback
-        env:
-          SOURCE_FETCH_BINARY: ${{ github.workspace }}/packages/source-fetch/target/release/source-fetch
-        run: python scripts/dev.py test native-loopback
       - uses: ./.github/actions/setup-node-project
       - name: Test browser data loading and model type generation
         working-directory: apps/site
@@ -124,6 +120,13 @@ jobs:
         working-directory: apps/site
         run: npm run build
       - uses: ./.github/actions/setup-publication-browser
+      # The publication journey in this lane runs the real reader contract, which needs
+      # the built site and the pinned browser above.
+      - name: Test real sockets and spawned workers on loopback
+        env:
+          SOURCE_FETCH_BINARY: ${{ github.workspace }}/packages/source-fetch/target/release/source-fetch
+          VIEWER_BENCHMARK_MODULES: ${{ env.PUBLICATION_BROWSER_MODULES }}
+        run: python scripts/dev.py test native-loopback
       - name: Require the archive contract against native hand releases
         env:
           VIEWER_BENCHMARK_MODULES: ${{ env.PUBLICATION_BROWSER_MODULES }}

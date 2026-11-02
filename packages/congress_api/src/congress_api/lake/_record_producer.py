@@ -381,24 +381,6 @@ def _prefetch_candidate_bodies(
         list(pool.map(_fetch_one, missing))
 
 
-_INLINE_LINE_SHA_CACHE: dict[tuple[Any, ...], str] = {}
-
-
-def _receipt_cache_identity(
-    receipt_key: str,
-    *,
-    local_root: Path | None,
-    raw_store: Any,
-) -> tuple[Any, ...]:
-    for base in (local_root, getattr(getattr(raw_store, "adapter", None), "root", None)):
-        if base is not None:
-            candidate = Path(base) / receipt_key
-            try:
-                st = candidate.stat()
-                return ("file", str(candidate.resolve()), st.st_size, st.st_mtime_ns)
-            except OSError:
-                continue
-    return ("store", id(raw_store), receipt_key)
 
 
 def _read_receipt_lines(
@@ -550,6 +532,44 @@ FROM classified
 GROUP BY sha256, source"""
 
 
+def _inline_rank(line: bytes) -> tuple[str, int]:
+    """How current one inline line is: (updateDate, witness count); unreadable lines rank last."""
+    try:
+        meetings = unwrap_congress_gov_payload(line)
+    except (ValueError, TypeError):
+        return ("", 0)
+    if not meetings:
+        return ("", 0)
+    return (str(meetings[0].get("updateDate") or ""), len(meetings[0].get("witnesses") or []))
+
+
+def _current_inline_lines(
+    candidates: Path, *, local_root: Path | None, raw_store: Any
+) -> list[tuple[str, bytes, str]]:
+    """The current line per source URL, as (sha256, line, url).
+
+    Receipts repeat each meeting on every fetch, and only the newest is current: a
+    superseded line would otherwise be missing work on every run. A line without a URL
+    stands alone. Equal ranks take the later line, so the choice is stable; on the
+    corpus they differ only in fetch envelope for all but one URL. Reads O(L) lines,
+    holding one receipt and the current lines.
+    """
+    receipt_cache: dict[str, list[bytes]] = {}
+    current: dict[str, tuple[tuple[str, int], bytes, str]] = {}
+    for batch in pq.ParquetFile(candidates).iter_batches(columns=["receipt_key", "receipt_line", "source_url"]):
+        for ref in batch.to_pylist():
+            r_key, r_line = ref["receipt_key"], int(ref["receipt_line"])
+            lines = _read_receipt_lines(r_key, local_root=local_root, raw_store=raw_store, cache=receipt_cache)
+            if not 1 <= r_line <= len(lines):
+                continue
+            url = ref.get("source_url") or ""
+            rank = _inline_rank(lines[r_line - 1])
+            slot = url or f"{r_key}:{r_line}"
+            if slot not in current or rank >= current[slot][0]:
+                current[slot] = (rank, lines[r_line - 1], url)
+    return [(sha256(line).hexdigest(), line, url) for _, line, url in current.values()]
+
+
 def stage_record_table(
     *,
     parser_name: str,
@@ -659,7 +679,6 @@ def stage_record_table(
 
     inline_ver_sql = "'" + inline_ver.replace("'", "''") + "'"
     queries: list[dict[str, Any]] = [
-        dict(name="inline_candidates", sql=inline_sql),
         dict(
             name="unreadable_shas",
             sql=(
@@ -689,7 +708,10 @@ def stage_record_table(
         engine,
         inputs=inputs,
         steps=[dict(name="candidates", sql=versioned_candidates_sql)],
-        outputs=[parquet_output(work, "work-list", "SELECT c.* FROM candidates c" + missing, ["record_sha", "source"])],
+        outputs=[
+            parquet_output(work, "work-list", "SELECT c.* FROM candidates c" + missing, ["record_sha", "source"]),
+            parquet_output(work, "inline-candidates", inline_sql, ["receipt_key", "receipt_line"]),
+        ],
         queries=queries,
     )
 
@@ -711,34 +733,21 @@ def stage_record_table(
         excluded_inline_shas.update(row["record_sha"] for row in reports.get("existing_shas", []) if row.get("record_sha"))
     seen_inline_shas = {item["record_sha"] for item in work_items if item.get("source") == "congress_gov"}
 
-    receipt_cache: dict[str, list[bytes]] = {}
     inline_items: list[dict[str, Any]] = []
-    for inline_ref in reports.get("inline_candidates", []):
-        r_key = inline_ref["receipt_key"]
-        r_line = int(inline_ref["receipt_line"])
-        cache_id = (*_receipt_cache_identity(r_key, local_root=local_root_path, raw_store=raw_store), r_line)
-        cached_sha = _INLINE_LINE_SHA_CACHE.get(cache_id)
-        if cached_sha is not None and (cached_sha in excluded_inline_shas or cached_sha in seen_inline_shas):
-            continue
-        lines = _read_receipt_lines(r_key, local_root=local_root_path, raw_store=raw_store, cache=receipt_cache)
-        if 1 <= r_line <= len(lines):
-            line_bytes = lines[r_line - 1]
-            rec_sha = cached_sha or sha256(line_bytes).hexdigest()
-            if len(_INLINE_LINE_SHA_CACHE) < 65536:
-                _INLINE_LINE_SHA_CACHE[cache_id] = rec_sha
-            if rec_sha not in excluded_inline_shas and rec_sha not in seen_inline_shas:
-                seen_inline_shas.add(rec_sha)
-                inline_items.append(
-                    {
-                        "record_sha": rec_sha,
-                        "source": "congress_gov",
-                        "payload": line_bytes,
-                        "source_url": inline_ref.get("source_url") or None,
-                        "parser_version": inline_ver,
-                    }
-                )
-                if max_work_items is not None and len(work_items) + len(inline_items) > max_work_items:
-                    break
+    for rec_sha, line_bytes, source_url in _current_inline_lines(
+        work / "inline-candidates.parquet", local_root=local_root_path, raw_store=raw_store
+    ):
+        if rec_sha not in excluded_inline_shas and rec_sha not in seen_inline_shas:
+            seen_inline_shas.add(rec_sha)
+            inline_items.append(
+                {
+                    "record_sha": rec_sha,
+                    "source": "congress_gov",
+                    "payload": line_bytes,
+                    "source_url": source_url or None,
+                    "parser_version": inline_ver,
+                }
+            )
 
     total_work_items = len(work_items) + len(inline_items)
     if max_work_items is not None and total_work_items > max_work_items:

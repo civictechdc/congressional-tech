@@ -1,0 +1,4 @@
+{
+  "status": "blocked",
+  "reason": "No real-data run is approved (ct-9gmr C7). A run writes its own spec with pinned base tables, predicates and local catalog; see viewer_publication.archive_selective."
+}

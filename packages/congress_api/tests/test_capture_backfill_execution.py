@@ -2,6 +2,7 @@
 import json
 import os
 
+import pyarrow.parquet as pq
 import pytest
 from docspec_client.client import NativeDatasets
 
@@ -41,6 +42,28 @@ def test_real_two_batch_append_then_fresh_retry_never_reopens_raw(tmp_path,over_
     second=capture_backfill.execute_batches(files,counts,work=tmp_path/'retry',**common)
     assert second['guard']['rows']==2 and second['guard']['receipts']==2
     assert all(batch['outcome']['no_work'] for batch in second['batches'])
+
+
+def test_guard_needs_exact_reused_counts_for_receipts_outside_the_batches(tmp_path):
+    files,counts=inputs(tmp_path/'input')
+    def rejected(work,reason,**more):
+        # The guard runs in its measured child, so its rejection reaches here as a failed batch.
+        with pytest.raises(RuntimeError,match='Batch exited'):
+            capture_backfill.execute_batches(files[1:],counts[1:],work=work,**more,**common)
+        log=(work/'acceptance/monitor/process.log').read_text()
+        assert 'GenerationViolation' in log
+        reports=list((work/'acceptance').rglob('violations*.parquet'))
+        assert reports and any(reason in str(pq.read_table(path).to_pylist()) for path in reports)
+    engine=NativeDatasets.from_config(os.environ['DOCSPEC_JOB_CONFIG'])
+    common=dict(engine=engine,engine_config=os.environ['DOCSPEC_JOB_CONFIG'],
+        table=dict(namespace=['batch_fixture'],name='captures_reused_gtest'),catalog_root=tmp_path/'catalog',
+        byte_target=1000,item_target=1)
+    capture_backfill.execute_batches(files[:1],counts[:1],work=tmp_path/'seed',create_table=True,
+        create_namespace=True,location=tmp_path/'table',reused_counts=[],**common)
+    rejected(tmp_path/'unexpected','unexpected_receipt')
+    rejected(tmp_path/'wrong','receipt_count',reused_counts=[dict(counts[0],expected_captures=2,list_items=2)])
+    passed=capture_backfill.execute_batches(files[1:],counts[1:],work=tmp_path/'reused',reused_counts=counts[:1],**common)
+    assert passed['status']=='public_guard_passed' and passed['guard']['receipts']==2
 
 
 def test_driver_refuses_counter_source_before_any_catalog_effect(tmp_path):

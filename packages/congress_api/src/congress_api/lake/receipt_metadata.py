@@ -63,7 +63,7 @@ def record_pointer_index(pointer):
 
 def obj(fields):
     return 'named_struct('+','.join(lit(k)+','+(f'cast({v} AS VARCHAR)'
-        if SCALARS.get(k,'str')=='str' and k!='error_present' else v) for k,v in fields.items())+')'
+        if SCALARS.get(k,'str')=='str' and k not in ('error_present','previous_receipt_complete') else v) for k,v in fields.items())+')'
 
 
 def counter_file(counter):
@@ -165,7 +165,7 @@ def source_plan(*,counter=None,files=None,receipt_keys=None):
         locator='__source_key AS receipt_key,__source_line AS receipt_line'
         selected='true'
     paths=[prefix+(name,) for prefix in [(),('record',)] for name in SCALARS]
-    paths += [('record','body_complete')]
+    paths += [('record','body_complete'),('record','previous_receipt','body_complete')]
     paths += [prefix+path for prefix in [(),('record',)] for path in RECOVERY.values()]
     paths += [prefix+path for prefix in [(),('record',)] for path in DOWNLOAD_HEADERS]
     paths += [prefix+('prior_attempts',index,name) for prefix in [(),('record',)]
@@ -191,6 +191,7 @@ def source_plan(*,counter=None,files=None,receipt_keys=None):
     records['complete']=f"coalesce({records['complete']},{scalar(slots[('record','body_complete')],'bool')})"
     roots['prior_attempts']=attempt_facts(slots,(),'prior_attempts')
     records['prior_attempts']=attempt_facts(slots,('record',),'prior_attempts')
+    records['previous_receipt_complete']=scalar(slots[('record','previous_receipt','body_complete')],'bool')
     records['record_captures']=attempt_facts(slots,('record',),'captures')
     roots.update(writer_job=scalar(slots[('writer','job')],'str'),
                  writer_commit=scalar(slots[('writer','commit')],'str'))
