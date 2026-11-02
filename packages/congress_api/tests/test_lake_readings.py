@@ -321,3 +321,33 @@ def test_fetcher_sniff_settles_only_the_pinned_version_without_a_second_read(tmp
     assert pq.ParquetFile(result['work_list']).metadata.num_rows==(0 if captured_version=='current' else 1)
     assert result['pending_reads']==0
     assert pq.ParquetFile(result['readings']).metadata.num_rows==(0 if captured_version=='current' else 1)
+
+
+def test_html_reread_set_is_the_readers_own_rule(tmp_path):
+    """The engine query a compatible-version entry uses selects exactly needs_browser_reading's rows."""
+    from congress_api.lake.tables import table_input
+    from congress_api.parsers.archive_readings import HTML_REREAD_SQL, _plain_reading, needs_browser_reading
+    from congress_api.retention.provenance import run_job
+
+    words='<p>'+'The committee received testimony on rural transportation. '*30+'</p>'
+    bodies=[f'<html><body>{words}<a href="a.pdf">PDF</a></body></html>',
+            f'<html><body>{words}<a href="/cdn-cgi/l/email-protection#4d09">write</a></body></html>',
+            f'<html><body>{words}<a href="https://x.gov/cdn-cgi/l/email-protection">e</a></body></html>',
+            f'<html><body>{words}<a href="b.pdf">/cdn-cgi/l/email-protection</a></body></html>',
+            '<html><body><pre>short</pre></body></html>','<html><body></body></html>']
+    rows,expected=[],set()
+    for index,body in enumerate(bodies):
+        digest=hashlib.sha256(body.encode()).digest()
+        for parser in ('html','xml'):
+            row,_=_plain_reading(body.encode(),parser)
+            if needs_browser_reading(row):expected.add(digest)
+            rows.append(dict(body_sha=digest,parser_version='old',
+                **{k:v for k,v in row.items() if k not in {'fingerprint','content_date'}},
+                fingerprint=bytes.fromhex(row['fingerprint']) if row['fingerprint'] else None))
+    assert 0<len(expected)<len(bodies)
+    pq.write_table(lake_readings_table(rows),tmp_path/'readings.parquet')
+    with NativeDatasets.from_config(os.environ['DOCSPEC_JOB_CONFIG']) as engine:
+        result=run_job(tmp_path/'job',engine,inputs=[table_input('readings',tmp_path/'readings.parquet')],
+            steps=[],outputs=[],queries=[dict(name='keys',sql=HTML_REREAD_SQL.format(readings='readings'))])
+    assert {bytes.fromhex(row['body_sha']) if isinstance(row['body_sha'],str) else row['body_sha']
+            for row in result['keys']}==expected
