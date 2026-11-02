@@ -38,6 +38,9 @@ def test_native_producer_release_through_stdio(tmp_path, request):
             assert len(encoded(info)) < MAX_BYTES
             assert 'bill_hearing_transcripts' in {r['id'] for r in info['recipes']}
             assert {'meetings','witnesses','recordings','committees','members','rosters','bills','nominations'} <= info['tables'].keys()
+            # ct-x78c: a House list with no meeting-id reaches its meeting through its own document links.
+            listed = await call('search_entities', {'table':'witnesses','filters':{'event_id':115538}})
+            assert {r['name'] for r in listed['rows'] if r.get('source') in (None, 'house_xml')} >= {'Dr. Jane Smith', 'Dr. Jane Smith Second Panel'}
             for table in native_schema['files']:
                 if table['available']:
                     result = await call('get_dataset_info', {'table':table['name'].removesuffix('.parquet')})

@@ -142,3 +142,92 @@ Rerun these after a rebuild: meeting transcripts, documents coverage, recording 
 ## What this cannot see
 
 The ledger proves completeness, not that each reason is right. Natural keys can hide a wrong value, and name normalization can merge two different people.
+
+## Round 1b meeting rules (2026-11-02, branch r1b-f)
+
+Inputs: v21 frozen inputs, cluster C's frozen lake, all 24,430 meeting records reparsed under the new
+`meeting_records` code (read 24,430, unread 0, failed 0; 2.45 GB RSS). Before = the base SQL with
+cluster C's reparse; after = this branch. Both built by `explorer_tables_frozen.py` with an empty
+`url_variants`, so Senate page keys may differ from v21, equally on both sides. Per-row raw reads are in
+`meeting-semantics-raw-check-20261102.json` (`scripts/measure/meeting_semantics_raw_check.py`, which reads raw
+without `meeting_facts` or the model SQL).
+
+| Change | Plan estimate | Frozen measured | Raw read per row |
+|---|---|---|---|
+| access closed → partly_closed | 7 | 7 | 7 supported |
+| not_held | +407 / −5 | +404 / −5 (3 status conflicts held) | 409 supported |
+| status where both sources state one | 0 | 0 | — |
+| rescheduled_to | 46 → 83 | 46 → 77 after own-evidence and type rules | all 77 links and 8 removals judged from the raw record's own transcript file, witnesses, video and type, not the rule: 78 supported, 0 contradicted, 7 ambiguous (reworded twin titles, read as the same hearing). Before the fix the same check contradicted 6 links: 116450 (own transcript, 14 witnesses, twin a markup), 110230 and 110947 (own witnesses); 114353, 116505 and 118044 are Postponed with later uploads, not contradictions |
+| House witness lists attached by links or receipt path | 227 records | 227 (captures augmented with receipt `original_path`) | 187 body links = path; 40 path only |
+| package witness rows changed | 392 rows on 93 events | 1,580 record×occasion changes | 133 supported, 1,416 ambiguous (no MODS eventId; raw cannot choose), 31 unread (MODS absent from the refresh) |
+| documents unknown (Senate) / unresolved | 2,051 / 7 | 2,051 / 45 | premise only; 38 of the 45 link once `ordered` is rebuilt |
+| witnesses unknown | Senate 3,188; House ~470+ | Senate 2,871; unattached 590 | premise only |
+| transcript | 122 unknown | 129 present via MODS links, 14 unknown | 10 unread |
+| captions not_stated → unknown | 7,853 | 7,837 | premise only |
+
+No raw record can prove `unknown`; for coverage relabels only the premise is checked. Document links
+(estimate 2,089 new pairs on 458 events, 38 events gaining their first document, recounted in DuckDB from the
+reparse) need `ordered` rebuilt and are confirmed only by a full model run. Witness keys: 3,921 rows gone and
+3,253 new (occasion changes), for ct-qg8e.
+
+ct-x78c ledger (distinct old rows 19,475): `on_event` 11,779 → 12,856; House lists unlinked 579 → 110 (the
+remaining House rows include the 40 lists that state their event only in a receipt path, which attach once
+captures carries `original_path`); package occasions 924 → 660.
+
+Coverage relabels by aspect are in `by_aspect`. The 333 recording changes: 331 hold their premise in raw MODS;
+103474 (present → claimed: the video verdict was on CHRG-114hhrg94654, a different hearing; only the MODS-named
+CHRG-114hhrg94653 counts) and 108050 (unknown → partial: the MODS-named CHRG-115hhrg33807 has excerpts) are read
+and correct. The 3 witness `premise_fails` (108680, 108742, 118439) are markups whose MODS-named print has no
+witnesses; a same-day sibling print with no eventId (another hearing, by title) holds witnesses, so the label
+`package_witnesses_unattached` is conservative there.
+
+### Re-review (red-f, 2026-11-02): prints checked by date and title
+
+The raw check was rebuilt to judge from independent facts: MODS held dates, titles and eventIds read with
+ElementTree from all 35,020 MODS bodies in the mirror (45 packages have no MODS record and stay unread);
+Congress.gov lines; video publish days. Titles compare by token containment of the print title in the
+meeting title (or difflib ratio), not the model's shared-word rule. The frozen after-build adds the
+appearance_records mods `held_dates`/`title` re-derived from those bodies (witnesses unchanged: 0 drift).
+
+| Family | Rows | Raw verdicts |
+|---|---|---|
+| not_held | 430 | 428 supported; 116426 and 116998 differ only because the check reads publish days, the registry live-stream times |
+| rescheduled_to (78 links + removals) | 85 | 83 supported, 2 ambiguous reworded titles |
+| print attachments changed | 536 | 448 supported, 83 ambiguous, 5 contradicted: generic Senate prints ("Pending Legislation", "A Review of the SBIR-STTR Program") the model leaves package-only, and 105231, a hearing print the check pairs with a same-day markup |
+| House witness lists | 227 | 187 body links, 40 receipt path only |
+| coverage relabels | 14,555 | premise holds 6,192, ambiguous 71, fails 9 (3 recording: HASC compilation volumes and a long print title the check under-scores; 6 witnesses: the generic prints above), unread 38 |
+
+Red-f's cases: 330128, 329130, 335820 now carry their own prints (CHRG-117shrg50802 "Cryptocurrencies",
+53087, 59430), CHRG-117shrg52109 and CHRG-116shrg37808 are package-only, 326063 says witnesses unknown,
+101498, 101400, 104460 and 101644 are held (status Canceled kept), 101422 still moves to 101545, 116450
+does not move, and Haaland 328803 carries its two-day print. not_held 409; rescheduled_to 78. Witness rows
+147,888 -> 139,077: about 10k MODS rows now sit on meetings whose House XML or Congress.gov list outranks them.
+
+### Second re-review (red-f2): witnesses decide, precedence per person
+
+Inputs are durable under `.cache/archive-release/r1b-frozen/` (README there: release 448651e7 verified 19/19 by
+sha256, lake and decisions rebuilt from v21 inputs, specs, digests). Engine docspec-rs 5dae611. The raw check
+judges each changed print by raw witness overlap with the meetings its jacket or eventId links (family names,
+two shared people), title containment when a side lists none, and a Postponed/Canceled duplicate yielding to
+the meeting that sat.
+
+| Family | Rows | Raw verdicts |
+|---|---|---|
+| not_held | 430 | 430 supported |
+| rescheduled_to | 86 | 84 supported, 2 ambiguous reworded titles |
+| print attachments changed | 6,972 | 6,909 supported, 31 match the old state (generic-title Senate prints the model leaves package-only, and prints the model accepts by title where raw finds no list match), 31 model picked one of several raw-admissible same-day meetings, 1 contradicted (CHRG-117hhrg50139, a seven-day print: raw adds 113969, model adds 114978) |
+| House witness lists | 227 | 187 body links, 40 receipt path only |
+| red-f2 lost cases | 192 | 185 published; the 7 others are memo or QFR text lines in a print, not people |
+
+Witness rows: 173,067 published, 141,255 shown (`superseded_by` null), 31,812 superseded by the same person
+from a higher-ranked source, 7,230 labelled statements.
+
+### ct-1i4q: transcripts labelled by source (branch r1b-transcripts)
+
+Frozen build over r1b-frozen against r1b-f's: 2,599 meetings gain a committee transcript (2,606 files); 378
+move from not_stated and 150 from unresolved to present. No caption track qualifies on v21: every Senate vtt
+sits beside its caption playlist (a segment, ct-9s7b) and the one YouTube vtt linked to a meeting (338611)
+is an empty body. `transcript_sources_raw_check.py` read every changed meeting's raw record: 2,602 files are
+listed by the meeting's own Congress.gov or House XML record on its date; 4 are files Congress.gov types
+"Support Document" (101567 HMKP-113-JU00-Transcript-20131204; 102191, 102718 and 115633, -U1/-U5/-U6
+uploads), kept by the filename rule.

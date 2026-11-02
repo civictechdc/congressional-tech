@@ -154,6 +154,15 @@ def test_phase2_entities_meetings_witnesses_recordings_and_spicy_projections(tmp
             family='documents',
             retrieved_at='2023-05-20T12:00:00Z',
         ),
+        # Only the House meeting record's own file list names this report's meeting (ct-66ns).
+        dict(
+            url='https://docs.house.gov/billsthisweek/20170515/BILLS-115hr1-RCP115-1.pdf',
+            data=b'%PDF-1.7\nrules committee print bytes\n%%EOF\n',
+            format='pdf',
+            compress=False,
+            family='documents',
+            retrieved_at='2023-05-20T12:00:00Z',
+        ),
         dict(
             url='https://www.govinfo.gov/content/pkg/CHRG-118hhrg55555/pdf/CHRG-118hhrg55555.pdf',
             data=chrg_pdf_bytes,
@@ -269,7 +278,7 @@ def test_phase2_entities_meetings_witnesses_recordings_and_spicy_projections(tmp
                 title='Congress.gov Title',
                 meeting_date='2023-05-11',
                 meeting_type='Markup',
-                status='Completed',
+                status='Scheduled',
                 sittings=[],
                 committees=[dict(system_code='HSAG00', role='host')],
                 subject_keys=['118-hr-1234'],
@@ -293,7 +302,8 @@ def test_phase2_entities_meetings_witnesses_recordings_and_spicy_projections(tmp
                 title='House XML Official Title',
                 meeting_date='2023-05-10',
                 meeting_type='Hearing',
-                status='Published',
+                status='Rescheduled',
+                document_urls=['http://docs.house.gov/billsthisweek/20170515/BILLS-115hr1-RCP115-1.pdf'],
                 sittings=[dict(start='2023-05-10T14:00:00Z', end='2023-05-10T16:00:00Z', room='1300', building='LHOB', address='Washington, DC')],
                 committees=[dict(system_code='HSAG00', role='primary')],
                 subject_keys=['118-HR-1234', '118-pn-123'],
@@ -304,13 +314,13 @@ def test_phase2_entities_meetings_witnesses_recordings_and_spicy_projections(tmp
     ]
 
     appearance_records = [
-        # house_xml appearance for meeting 115538 (priority 1: wins over congress_gov and mods on meeting:115538)
+        # house_xml appearance for meeting 115538 (priority 1: wins over congress_gov and mods on meeting:115538).
+        # Like the retained lists of ct-x78c it has no meeting-id: its own document link states the event.
         dict(
             record_sha='aa' * 32,
             source='house_xml',
             appearances=[
                 dict(
-                    event_id='115538',
                     name_key='smith_jane',
                     name='Dr. Jane Smith',
                     position='Director',
@@ -325,7 +335,6 @@ def test_phase2_entities_meetings_witnesses_recordings_and_spicy_projections(tmp
                 # Repeated name_key in same record & occasion with distinct display_order / locator:
                 # ct-30fp AC 4 & 6: both occurrences are preserved with distinct source_locators and witness_keys
                 dict(
-                    event_id='115538',
                     name_key='smith_jane',
                     name='Dr. Jane Smith Second Panel',
                     position='Senior Advisor',
@@ -354,15 +363,24 @@ def test_phase2_entities_meetings_witnesses_recordings_and_spicy_projections(tmp
                 ),
             ],
         ),
-        # mods appearance for CHRG-118hhrg55555 (maps to meeting:115538, so loses to house_xml)
+        # mods appearance for CHRG-118hhrg55555: its print was held on 115538's date under its title, so it
+        # stands for meeting:115538 and loses to house_xml there.
         dict(
             record_sha='cc' * 32,
             source='mods',
             package_id='CHRG-118hhrg55555',
+            held_dates=['2023-05-10'],
+            title='HOUSE XML OFFICIAL TITLE',
             appearances=[
                 dict(
-                    name_key='mods_loser',
-                    name='MODS Witness For Linked Package',
+                    # The print names the meeting's own Congress.gov witness, so it records 115538 (DATA-MODEL 7.11).
+                    name_key='other person',
+                    name='Other Person',
+                    document_urls=[],
+                ),
+                dict(
+                    name_key='jane smith',
+                    name='Dr. Jane Smith',
                     document_urls=['https://www.govinfo.gov/content/pkg/CHRG-118hhrg55555/pdf/CHRG-118hhrg55555.pdf'],
                 ),
             ],
@@ -678,12 +696,17 @@ def test_phase2_entities_meetings_witnesses_recordings_and_spicy_projections(tmp
     assert m['title'] == 'House XML Official Title'
     assert m['meeting_date'] == date(2023, 5, 10)
     assert m['meeting_type'] == 'Hearing'
-    assert m['status'] == 'Published'
+    # Congress.gov leads for status; House XML fills House-only events (ct-n61r).
+    assert m['status'] == 'Scheduled'
     assert m['sittings'][0]['place'] == '1300, LHOB, Washington, DC'
     assert m['committees'] == [{'system_code': 'hsag00', 'role': 'primary'}]
     assert m['subject_keys'] == ['118-hr-1234', '118-pn-123']
-    assert len(m['transcripts']) == 1
-    assert m['transcripts'][0]['package_id'] == 'CHRG-118hhrg55555'
+    # The print first, then the recording's two complete caption tracks (ct-1i4q).
+    assert [(t['source'], t['package_id'], t['video_key'], t['production']) for t in m['transcripts']] == [
+        ('printed_hearing', 'CHRG-118hhrg55555', None, None),
+        ('captions', None, 'youtube:dQw4w9WgXcQ', 'asr'),
+        ('captions', None, 'youtube:dQw4w9WgXcQ', 'caption'),
+    ]
     assert m['transcripts'][0]['formats'] == ['pdf', 'html']
     assert [v['video_key'] for v in m['videos']] == ['youtube:dQw4w9WgXcQ', 'senate:ag051023']
 
@@ -695,16 +718,23 @@ def test_phase2_entities_meetings_witnesses_recordings_and_spicy_projections(tmp
     stmt_doc = next(r for r in listed if 'Wstate-SmithJ' in r['filename'])
     assert not any(r['filename'].endswith('.ts') for r in listed)
     assert chrg_doc['meeting_keys'] == ['115538']
+    print_doc = next(r for r in listed if r['filename'] == 'BILLS-115hr1-RCP115-1.pdf')
+    assert print_doc['meeting_keys'] == ['115538']
     assert chrg_doc['document_date'] == date(2023, 5, 10)
     assert chrg_doc['witness_keys'] == []
     assert len(stmt_doc['witness_keys']) == 1
 
     # 2. Verify witnesses.parquet
     witnesses = pq.read_table(release_dir / 'witnesses.parquet').to_pylist()
-    assert len(witnesses) == 4
-    meeting_witnesses = [w for w in witnesses if w['occasion'] == 'meeting:115538']
-    assert len(meeting_witnesses) == 2
+    # Precedence is per person (red-f2): the print's Jane Smith is superseded by the House row, and the
+    # Congress.gov list's Other Person, whom no higher source names, is shown.
+    superseded = [w for w in witnesses if w['superseded_by']]
+    assert sorted((w['source'], w['name']) for w in superseded) == [('mods', 'Dr. Jane Smith'), ('mods', 'Other Person')]
+    witnesses = [w for w in witnesses if not w['superseded_by']]
+    assert len(witnesses) == 5
+    meeting_witnesses = [w for w in witnesses if w['occasion'] == 'meeting:115538' and w['source'] == 'house_xml']
     assert [w['name'] for w in meeting_witnesses] == ['Dr. Jane Smith', 'Dr. Jane Smith Second Panel']
+    assert [w['name'] for w in witnesses if w['occasion'] == 'meeting:115538' and w['source'] == 'congress_gov'] == ['Other Person']
     assert meeting_witnesses[0]['witness_key'] != meeting_witnesses[1]['witness_key']
     assert meeting_witnesses[0]['witness_key'] == stmt_doc['witness_keys'][0]
     by_occasion = {w['occasion']: w for w in witnesses if w['occasion'] != 'meeting:115538'}
@@ -1440,7 +1470,7 @@ def test_entity_record_version_selection_and_completeness_admission(tmp_path):
     )
 
 
-def _resolved_meetings(tmp_path, records, pins=()):
+def _resolved_meetings(tmp_path, records, pins=(), conflicts=()):
     """Run only the maintained meeting SQL over stated records, with no capture history."""
     from congress_api.retention.provenance import json_input, run_job
     from docspec_client.client import NativeDatasets
@@ -1449,14 +1479,16 @@ def _resolved_meetings(tmp_path, records, pins=()):
     inputs = [json_input(tmp_path, 'meeting_records_input', _normalize_meeting_rows(records, 'v'), **MEETING_RECORD_FIELDS),
         json_input(tmp_path, 'parser_versions', list(pins), parser='Utf8', version='Utf8'),
         json_input(tmp_path, 'meeting_sources', [dict(kind='meeting', source='house_xml', priority=1), dict(kind='meeting', source='congress_gov', priority=2)], kind='Utf8', source='Utf8', priority='Int64'),
-        json_input(tmp_path, 'recording_sources', [], kind='Utf8', pattern='Utf8', key_template='Utf8')]
+        json_input(tmp_path, 'recording_sources', [], kind='Utf8', pattern='Utf8', key_template='Utf8'),
+        json_input(tmp_path, 'meeting_status_conflicts', [dict(event_id=e, publisher_status='Canceled', evidence='read') for e in conflicts],
+            event_id='Int64', publisher_status='Utf8', evidence='Utf8')]
     captures = """SELECT arrow_cast(NULL,'FixedSizeBinary(32)') AS sha256,cast(NULL AS VARCHAR) AS retrieved_at,cast(NULL AS VARCHAR) AS mode,
         cast(NULL AS BOOLEAN) AS complete,cast(NULL AS VARCHAR) AS outcome,cast(NULL AS INT) AS http_status WHERE false"""
     result = run_job(tmp_path, engine, inputs=inputs, outputs=[],
         steps=[dict(name='captures', sql=captures), selected_record_step('meeting_records', 'meeting_records_input'), *meeting_steps()],
         queries=[dict(name='rows', sql=f"""SELECT event_id,congress,congress_gov_updated,house_xml_updated,congress_gov_meeting_type,
             sittings[1]['start'] AS s_start,sittings[1]['end'] AS s_end,sittings[1]['place'] AS place,sittings[1]['room'] AS room,
-            coalesce(array_length(sittings),0) AS sitting_count FROM meetings_resolved ORDER BY event_id""")])
+            coalesce(array_length(sittings),0) AS sitting_count,status,not_held FROM meetings_resolved ORDER BY event_id""")])
     return result['rows']
 
 
@@ -1478,6 +1510,12 @@ def test_congress_gov_leads_and_house_fills_only_what_it_lacks(tmp_path):
     assert rows[0]['place'] == '1300, Longworth House Office Building, DC 20515'  # Only House states the address.
     assert rows[0]['house_xml_updated'] == '2019-11-10T08:00:00' and rows[0]['congress_gov_meeting_type'] == 'Hearing'
     assert str(rows[0]['congress_gov_updated']).startswith('2019-11-11T00:00:00')
+
+
+@pytest.mark.parametrize('conflicts,expected', [((), True), ((100,), False)])
+def test_a_curated_status_conflict_keeps_the_publisher_status_but_the_meeting_sat(tmp_path, conflicts, expected):
+    rows = _resolved_meetings(tmp_path, [_record('22', 'congress_gov', status='Canceled', not_held=True, title='Water resources development acts review')], conflicts=conflicts)
+    assert (rows[0]['status'], rows[0]['not_held']) == ('Canceled', expected)
 
 
 def test_field_hearing_place_comes_from_the_house_record(tmp_path):

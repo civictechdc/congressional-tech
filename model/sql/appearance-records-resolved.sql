@@ -90,10 +90,30 @@ WITH candidate_appearance_shas AS (
   FROM selected_meeting_records r
   WHERE r.status='completed' AND r.meetings IS NOT NULL
  ) GROUP BY record_sha_hex
-), single_package_meetings AS (
- SELECT package_id,min(event_id) AS event_id
- FROM meeting_transcript_links
- GROUP BY package_id HAVING count(DISTINCT event_id)=1
+), linked_house_lists AS (
+ SELECT record_sha_hex,unnest(appearances) AS a FROM selected_appearance_records
+ WHERE source='house_xml' AND status='completed' AND event_id IS NULL AND appearances IS NOT NULL
+), house_list_links AS (
+ SELECT record_sha_hex,trim(unnest(a['document_links'])) AS link FROM linked_house_lists
+), stated_list_events AS (
+ -- ct-x78c: a House witness list with no meeting-id still states its event, in its own document
+ -- links (/meetings/<c>/<sc>/<yyyymmdd>/<event>/) and in its retained file name (wlist/<event>.xml).
+ SELECT record_sha_hex,try_cast((regexp_match(link,'(?i)/meetings/[A-Za-z0-9]+/[A-Za-z0-9]+/[0-9]{8}/([0-9]+)/'))[1] AS BIGINT) AS event_id
+ FROM house_list_links
+ UNION ALL
+ -- Retained lists name their event only in the receipt's file path; those rows are not good fetches,
+ -- so every capture row of the body counts (captures.original_path, relative paths only).
+ SELECT h.record_sha_hex,try_cast((regexp_match(c.original_path,'(?i)(?:^|/)wlist/([0-9]+)[.]xml$'))[1] AS BIGINT)
+ FROM captures c
+ -- Join on the raw binary digest so the small candidate set prunes the captures scan (AGENTS.md).
+ JOIN (SELECT DISTINCT record_sha_hex,arrow_cast(decode(record_sha_hex,'hex'),'FixedSizeBinary(32)') AS sha256
+  FROM selected_appearance_records
+  WHERE source='house_xml' AND status='completed' AND event_id IS NULL) h ON c.sha256=h.sha256
+ WHERE c.original_path IS NOT NULL
+), list_events AS (
+ -- One event only: links or paths that disagree state no event.
+ SELECT record_sha_hex,min(event_id) AS event_id FROM stated_list_events WHERE event_id IS NOT NULL
+ GROUP BY record_sha_hex HAVING count(DISTINCT event_id)=1
 ), bound_contexts AS (
  SELECT
   r.record_sha_hex,
@@ -111,7 +131,8 @@ WITH candidate_appearance_shas AS (
    try_cast(r.event_id AS BIGINT),
    try_cast((regexp_match(coalesce(cc.source_url,r.context_url,''),'(?i)/committee-meeting/[0-9]+/(?:house|senate|joint|nochamber)/([0-9]+)'))[1] AS BIGINT),
    try_cast((regexp_match(coalesce(cc.source_url,r.context_url,''),'(?i)/meetings/[A-Za-z0-9]+/[A-Za-z0-9]+/[0-9]{8}/([0-9]+)/'))[1] AS BIGINT),
-   try_cast((regexp_match(coalesce(cc.source_url,r.context_url,''),'(?i)[?&]eventid=([0-9]+)'))[1] AS BIGINT)
+   try_cast((regexp_match(coalesce(cc.source_url,r.context_url,''),'(?i)[?&]eventid=([0-9]+)'))[1] AS BIGINT),
+   le.event_id
   ) AS raw_event_id,
   coalesce(
    nullif(trim(r.package_id),''),
@@ -123,6 +144,10 @@ WITH candidate_appearance_shas AS (
   nullif(trim(r.declared_base),'') AS declared_base,
   CASE
    WHEN r.status<>'completed' THEN 'failed'
+   -- An empty House list made before its hearing is a placeholder, not a statement that no one testified
+   -- (111420's was created 2021-04-07 for a 2021-04-15 hearing), so it blocks no other source.
+   WHEN r.source='house_xml' AND r.collection_state='empty' AND md.meeting_date IS NOT NULL
+    AND try_cast(substr(r.created,1,10) AS DATE)<md.meeting_date THEN 'absent'
    ELSE coalesce(
     nullif(trim(r.collection_state),''),
     CASE
@@ -136,6 +161,8 @@ WITH candidate_appearance_shas AS (
  JOIN meeting_sources ms ON ms.kind='appearance' AND r.source=ms.source
  LEFT JOIN capture_contexts cc ON r.record_sha_hex=cc.record_sha_hex AND r.source=cc.source
  LEFT JOIN meeting_updates u ON r.record_sha_hex=u.record_sha_hex
+ LEFT JOIN list_events le ON r.source='house_xml' AND r.record_sha_hex=le.record_sha_hex
+ LEFT JOIN (SELECT event_id,meeting_date FROM meetings_resolved) md ON r.source='house_xml' AND md.event_id=r.event_id
 ), observations_with_occasion AS (
  SELECT
   b.*,
@@ -160,7 +187,7 @@ WITH candidate_appearance_shas AS (
    ELSE b.source_url
   END AS resolved_base
  FROM bound_contexts b
- LEFT JOIN single_package_meetings spm ON b.source='mods' AND b.package_id=spm.package_id
+ LEFT JOIN package_meeting_links spm ON b.source='mods' AND b.package_id=spm.package_id
  LEFT JOIN appearance_url_keys pk ON b.source='senate_page' AND b.page_url=pk.url AND pk.error IS NULL
 ), valid_observations AS (
  SELECT *,
@@ -173,7 +200,7 @@ WITH candidate_appearance_shas AS (
 ), ranked_context_observations AS (
  SELECT *,
   row_number() OVER(
-   PARTITION BY occasion,source,context_key
+   PARTITION BY occasion,source,context_key,coalesce(package_id,'')
    ORDER BY (effective_state IN ('present','empty')) DESC,(effective_state='absent') ASC,updated DESC NULLS LAST,retrieved_at DESC NULLS LAST,(effective_state='present') DESC,record_sha_hex ASC
   ) AS ctx_rn
  FROM valid_observations
@@ -186,11 +213,13 @@ WITH candidate_appearance_shas AS (
  FROM ranked_context_observations old
  JOIN current_context_observations cur
   ON old.occasion=cur.occasion AND old.source=cur.source AND old.context_key=cur.context_key
+  AND coalesce(old.package_id,'')=coalesce(cur.package_id,'')
  WHERE old.ctx_rn>1 AND old.record_sha_hex<>cur.record_sha_hex
 ), ranked_source_observations AS (
  SELECT c.*,
+  -- One current body per print: several prints that stand for one meeting each keep their witnesses.
   row_number() OVER(
-   PARTITION BY c.occasion,c.source
+   PARTITION BY c.occasion,c.source,coalesce(c.package_id,'')
    ORDER BY (c.effective_state IN ('present','empty')) DESC,(c.effective_state='absent') ASC,(sb.record_sha_hex IS NOT NULL) ASC,c.updated DESC NULLS LAST,c.retrieved_at DESC NULLS LAST,(c.effective_state='present') DESC,c.record_sha_hex ASC,c.context_key ASC
   ) AS obs_rn
  FROM current_context_observations c
@@ -200,18 +229,20 @@ WITH candidate_appearance_shas AS (
  SELECT *
  FROM ranked_source_observations
  WHERE obs_rn=1
-), winning_source_per_occasion AS (
- SELECT *,
-  row_number() OVER(
-   PARTITION BY occasion
-   ORDER BY priority ASC
-  ) AS src_rn
+), ranked_sources AS (
+ -- One window over the occasion, as before: the lowest code is 2*priority for a present top source and
+ -- 2*priority-1 when a top-priority body states none or failed. Joins or repeated references to these
+ -- rows, which carry their appearance lists, made the engine sort them again.
+ SELECT *,first_value(CASE WHEN effective_state='present' THEN 2*priority ELSE 2*priority-1 END) OVER(
+  PARTITION BY occasion ORDER BY CASE WHEN effective_state='present' THEN 2*priority ELSE 2*priority-1 END ASC) AS top_code
  FROM current_source_observations
  WHERE effective_state IN ('present','empty','unresolved')
 ), selected_observations AS (
- SELECT *
- FROM winning_source_per_occasion
- WHERE src_rn=1 AND effective_state='present'
+ -- When the top-ranked source lists witnesses, every source's current body publishes and precedence is
+ -- per person, not per source (red-f2): a lower row is superseded only by the same person from a
+ -- higher-ranked body. A top source that states none or failed still blocks lower fallback (ct-30fp).
+ SELECT * FROM ranked_sources
+ WHERE effective_state='present' AND (top_code%2=0 OR 2*priority-1=top_code)
 ), unnested_occurrences AS (
  SELECT
   s.record_sha_hex,
@@ -222,6 +253,7 @@ WITH candidate_appearance_shas AS (
   s.package_id,
   s.page_url,
   s.resolved_base,
+  s.priority,
   unnest(s.appearances) AS a,
   unnest(range(0,cast(array_length(s.appearances) AS BIGINT))) AS ordinal
  FROM selected_observations s
@@ -236,6 +268,7 @@ WITH candidate_appearance_shas AS (
   package_id,
   page_url,
   resolved_base,
+  priority,
   ordinal,
   coalesce(nullif(trim(a['source_locator']),''),source||':witness['||cast(ordinal+1 AS VARCHAR)||']') AS source_locator,
   nullif(trim(a['name_key']),'') AS name_key,
@@ -316,6 +349,7 @@ SELECT
  w.witness_type,
  w.testified,
  w.bioguide_id,
- coalesce(al.document_urls,arrow_cast(array_slice(make_array(cast(NULL AS VARCHAR)),1,0),'List(Utf8)')) AS document_urls
+ coalesce(al.document_urls,arrow_cast(array_slice(make_array(cast(NULL AS VARCHAR)),1,0),'List(Utf8)')) AS document_urls,
+ w.ordinal
 FROM with_witness_key w
 LEFT JOIN aggregated_links al ON w.witness_key=al.witness_key

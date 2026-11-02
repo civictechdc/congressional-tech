@@ -36,6 +36,7 @@ import pyarrow as pa
 
 from ..models.congress import CommitteeMeeting
 from ..parsers.gpo import ModsDocument, parse_mods_document
+from ..parsers.gpo_hearings import mods_title
 from ..parsers.house_documents import NAME, active, number, value
 from ..parsers.house_xml import (
     HOUSE_MEETING_PREFIXES,
@@ -109,6 +110,11 @@ ARROW_SCHEMA = pa.schema(
         pa.field("declared_base", pa.string(), nullable=True),
         pa.field("collection_state", pa.string(), nullable=True),
         pa.field("appearances", pa.list_(pa.field("element", APPEARANCE_STRUCT, nullable=False)), nullable=False),
+        # GovInfo MODS only: the print's held dates (ISO) and published title; empty and null elsewhere.
+        pa.field("held_dates", pa.list_(pa.field("element", pa.string(), nullable=False)), nullable=True),
+        pa.field("title", pa.string(), nullable=True),
+        # House XML only: the witness list's create-date as stated.
+        pa.field("created", pa.string(), nullable=True),
     ]
 )
 SCHEMA = ARROW_SCHEMA
@@ -169,6 +175,13 @@ _SOURCE_SYMBOLS: dict[str, tuple[str, ...]] = {
         "_clean_links",
         "preserve_appearances",
         "_PACKAGE_ID_IN_URL_RE",
+        "mods_held_dates",
+        "_MEMBER_STATEMENT",
+        "_RECORD_ENTRY",
+        "_RECORD_OPENING",
+        "_RETAINED_IN_FILES",
+        "_TESTIFIED_WORDS",
+        "mods_entry_kind",
         "extract_mods_observation",
         "extract_mods_appearances",
     ),
@@ -192,6 +205,7 @@ def current_version(source: str | None = None, *, root: Path = ROOT) -> str:
                 "record_producer": pkg_dir / "lake/_record_producer.py",
                 "models_gpo": pkg_dir / "models/gpo.py",
                 "parsers_gpo": pkg_dir / "parsers/gpo.py",
+                "parsers_gpo_hearings": pkg_dir / "parsers/gpo_hearings.py",
                 "parsers_xml": pkg_dir / "parsers/xml.py",
                 "parsers_witness_names": pkg_dir / "parsers/witness_names.py",
                 "lock": root / "uv.lock",
@@ -554,6 +568,9 @@ def extract_house_xml_observation(
         "declared_base": None,
         "collection_state": "present" if appearances else "empty",
         "appearances": appearances,
+        # When the list was made: an empty list made before its hearing is a placeholder (111420), not a
+        # statement that no one testified.
+        "created": _opt_str(root.get("create-date")),
     }
 
 
@@ -901,6 +918,51 @@ def extract_senate_page_appearances(
 _PACKAGE_ID_IN_URL_RE = re.compile(r"\b(CHRG-\d+[hsj]hrg\d+)\b", re.IGNORECASE)
 
 
+_MEMBER_STATEMENT = re.compile(
+    r"\b(?:a representative in congress|a delegate (?:in congress )?from|resident commissioner|congress(?:man|woman)\b"
+    r"|united states house of representatives|member of congress|a (?:united states )?senator from)", re.I)
+# Explicit record entries only (red-f3): a letter, a statement or submission for the record, questions or
+# answers for the record, a prepared statement. A name a parser cannot read is not evidence of a statement.
+_RECORD_ENTRY = re.compile(
+    r"\b(?:letters?\b|statements? (?:for|submitted for) the record|submitted (?:by|for the record)|submissions? (?:for|to) the record"
+    r"|questions? for the record|responses? to questions|answers? to questions|prepared statement)", re.I)
+# A line that says the person testified or was the nominee is a witness whatever else it says.
+_TESTIFIED_WORDS = re.compile(r"\b(?:testimony|testified|nominee|nominated)\b", re.I)
+# ...unless the line opens with a record entry's own marker ("Letter from the nominee to the Office of General
+# Counsel", "Submittals for the record: ... and the testimony of ..."), or is GPO's note that an item "has been
+# retained in committee files": then it names the entry, and later words describe its contents.
+_RECORD_OPENING = re.compile(
+    r"^\W*(?:letters?\b|(?:additional |supplemental )?(?:information|material|materials|submissions?|submittals?|(?:oral )?comments)"
+    r"(?: (?:presented|submitted))? for the record\b|questions? for the record|responses? to (?:additional |written )?questions"
+    r"|answers? to (?:submitted |additional )?questions)", re.I)
+_RETAINED_IN_FILES = re.compile(r"\bhas been retained in committee files\b", re.I)
+
+
+def mods_entry_kind(line: str, name: str | None) -> str | None:
+    """A print's <witness> line is sometimes a record entry (a letter, a submission, questions for the
+    record) or a Member's prepared statement, not a witness. Only explicit markers say so; a Member who
+    appears (Member Day panels, "Green, Hon. Al") and a nominee or anyone said to testify is a witness.
+    The model also treats anyone the meeting's own list names as a witness."""
+    text = line or ""
+    if _RECORD_OPENING.match(text) or _RETAINED_IN_FILES.search(text):
+        return "member_statement" if _MEMBER_STATEMENT.search(text) else "statement_for_record"
+    # "to be Director" names a nomination; "to be included in the record" does not (capital follows).
+    if _TESTIFIED_WORDS.search(text) or re.search(r"\b[Tt]o be (?:an? |the )?[A-Z]", text) or not _RECORD_ENTRY.search(text):
+        return None
+    return "member_statement" if _MEMBER_STATEMENT.search(text) else "statement_for_record"
+
+
+def mods_held_dates(doc: ModsDocument) -> list[str]:
+    """Every heldDate the print states, root and constituent items, as distinct sorted ISO dates."""
+    found = set()
+    for scope in (doc.root, *(doc.related_items or ())):
+        for value in getattr(scope, "held_dates", None) or ():
+            text = (value or "").strip()[:10]
+            if re.fullmatch(r"\d{4}-\d{2}-\d{2}", text):
+                found.add(text)
+    return sorted(found)
+
+
 def extract_mods_observation(
     payload: bytes | str | Mapping[str, Any] | ModsDocument,
     *,
@@ -999,6 +1061,10 @@ def extract_mods_observation(
             if resolved_pkg:
                 break
 
+    # What the print states about its sitting: every held date and its published title, so a
+    # package-to-meeting link can be checked against the meeting's own date and title (ct-dx22).
+    facts = {"held_dates": mods_held_dates(doc), "title": _opt_str(mods_title(doc.root))}
+
     member_bioguides: dict[str, str] = {}
     for mem in doc.members or []:
         role = (getattr(mem, "role", None) or "").strip().upper()
@@ -1018,6 +1084,7 @@ def extract_mods_observation(
             "declared_base": None,
             "collection_state": "absent",
             "appearances": [],
+            **facts,
         }
 
     raw_rows = []
@@ -1050,6 +1117,7 @@ def extract_mods_observation(
                 "position": _opt_str(parsed.get("position")),
                 "organization": _opt_str(parsed.get("organization")),
                 "bioguide_id": bg,
+                "witness_type": mods_entry_kind(cleaned_line, w_name),
                 "display_order": len(raw_rows) + 1,
                 "document_links": [],
             }
@@ -1062,6 +1130,7 @@ def extract_mods_observation(
         "declared_base": None,
         "collection_state": "present" if appearances else "empty",
         "appearances": appearances,
+        **facts,
     }
 
 
@@ -1111,6 +1180,9 @@ def build_appearance_record_row(
         "declared_base": obs["declared_base"],
         "collection_state": obs["collection_state"],
         "appearances": obs["appearances"],
+        "held_dates": obs.get("held_dates"),
+        "title": obs.get("title"),
+        "created": obs.get("created"),
     }
 
 

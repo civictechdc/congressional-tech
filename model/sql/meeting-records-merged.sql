@@ -12,12 +12,14 @@ WITH event_keys AS (
   coalesce(h.title,c.title) AS title,
   coalesce(h.meeting_date,c.meeting_date) AS meeting_date,
   coalesce(h.meeting_type,c.meeting_type) AS meeting_type,
-  coalesce(h.status,c.status) AS status,
+  -- Congress.gov leads, as for sittings; House XML (S/R/P, read from the root) fills House-only events.
+  coalesce(c.status,h.status) AS status,
   -- The first source stating access decides; unknown states nothing.
   coalesce(nullif(c.access,'unknown'),nullif(h.access,'unknown'),c.access,h.access) AS access,
   CASE WHEN nullif(c.access,'unknown') IS NOT NULL THEN concat('congress_gov',c.access_basis)
        WHEN nullif(h.access,'unknown') IS NOT NULL THEN concat('house_xml',h.access_basis) END AS access_basis,
-  coalesce(c.not_held,false) OR coalesce(h.not_held,false) AS not_held,
+  -- A curated read found the meeting's own recording of it on its date: held, whatever the status says.
+  (coalesce(c.not_held,false) OR coalesce(h.not_held,false)) AND sc.event_id IS NULL AS not_held,
   coalesce(c.title_key,h.title_key) AS title_key,
   coalesce(c.reschedule_candidate,h.reschedule_candidate) AS reschedule_candidate,
   -- Congress.gov leads for sittings and House XML fills what it lacks, because each states
@@ -40,5 +42,6 @@ WITH event_keys AS (
  FROM event_keys k
  LEFT JOIN meeting_records_current h ON k.event_id=h.event_id AND h.source='house_xml'
  LEFT JOIN meeting_records_current c ON k.event_id=c.event_id AND c.source='congress_gov'
+ LEFT JOIN meeting_status_conflicts sc ON k.event_id=sc.event_id
 )
 SELECT * FROM merged

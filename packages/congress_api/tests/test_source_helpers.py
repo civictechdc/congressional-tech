@@ -12,6 +12,32 @@ from congress_api.parsers.xml import parse_xml
     ("Lieutenant General Brian S. Eifler USA (Ret.)", "Brian S. Eifler", "", ""),
     ("Woodruff, Ph.D., MPH, Tracey", "Tracey Woodruff", "", ""),
     ("Campbell, Jr.", "Campbell Jr.", "", ""),
+    # GPO's contents labels carry footnote markers (\1\) that run into the next name (CHRG-113hhrg..., red-f3):
+    ("Prepared statement \\1\\ George Apostolakis, Commissioner, Nuclear Regulatory Commission",
+     "George Apostolakis", "Commissioner", "Nuclear Regulatory Commission"),
+    ("Supplement to prepared statement \\1\\ Mel Coleman, Chief Executive Officer, Northern Arkansas Electric Cooperative",
+     "Mel Coleman", "Chief Executive Officer", "Northern Arkansas Electric Cooperative"),
+    ("Prepared statement\\1\\ Answers to submitted questions\\2\\ John Bozzella, President and CEO, Alliance for Automotive Innovation",
+     "John Bozzella", "President and CEO", "Alliance for Automotive Innovation"),
+    ("Prepared statement \\2\\ William M. Lear, Jr., Vice Chairman, The Jockey Club", "William M. Lear Jr.", "Vice Chairman", "The Jockey Club"),
+    ("Answers to submitted questions \\1\\ Rochelle P. Walensky", "Rochelle P. Walensky", "", ""),
+    # A marker after a name or position is a footnote on it, not part of it.
+    ("Matthew F. Wood\\1\\, Vice President of Policy, Free Press", "Matthew F. Wood", "Vice President of Policy", "Free Press"),
+    # A contents line's dot leader and page number end the label.
+    ("Prepared Statement........................................... 22' Mr. Shane L. Liermann, Assistant National Legislative Director",
+     "Shane L. Liermann", "Assistant National Legislative Director", ""),
+    ("Prepared statement of.................................... 126- Scott-Chandler, Sharon, JD, Policy Director",
+     "Sharon Scott-Chandler", "Policy Director", ""),
+    ("Answers to submitted questions \\1\\........................... Greg Abbott", "Greg Abbott", "", ""),
+    ("Answer to submitted questions \\1\\ Jolina Cuaresma, Senior Counsel, Common Sense Media", "Jolina Cuaresma", "Senior Counsel", "Common Sense Media"),
+    ("Additional information for the record \\1\\ Vednita Carter, Founder and Executive Director, Breaking Free",
+     "Vednita Carter", "Founder and Executive Director", "Breaking Free"),
+    ("Prepared Statement......................................60<greek-l> Mr. Daniel R. Levine, Legal Correspondent, Thomson Reuters",
+     "Daniel R. Levine", "Legal Correspondent", "Thomson Reuters"),
+    ("Prepared Statement..........................................00 deg. Ms. Jodi M. Schebel, Co-Managing Partner, Bowman and Brooke",
+     "Jodi M. Schebel", "Co-Managing Partner", "Bowman and Brooke"),
+    ("Hon. Deb Fischer, a United States Senator from the State of Nebraska \\1\\.......................... Prepared statement",
+     "Deb Fischer", "a United States Senator from the State of Nebraska", ""),
 ])
 def test_witness(line, name, position, organization):
     parsed = witness(line)
