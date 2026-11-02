@@ -306,12 +306,17 @@ def write_local_runtime(*, binary=None, limits, out, workspace=None, platform=No
     return out
 
 
-DISPOSABLE = {'.venv', 'node_modules', '__pycache__', '.pytest_cache', '.ruff_cache', '.mypy_cache', '.astro', 'dist', 'build', 'target'}  # Rebuildable.
+ENVIRONMENTS = {'.venv', 'node_modules', '__pycache__', '.pytest_cache', '.ruff_cache', '.mypy_cache'}
+BUILD_OUTPUTS = {'build', 'dist', 'target', '.astro'}
 
 
 def _disposable(relative):
+    """Rebuildable: an environment or cache at any depth, build output only directly under a
+    package or app root (packages/<name>/dist, apps/site/dist), and this tree's local runtime.
+    A build-named directory elsewhere (output/c-probe/build/) may hold data, so it blocks."""
     parts = Path(relative).parts
-    return (any(part in DISPOSABLE or part.endswith('.egg-info') for part in parts)
+    return (any(part in ENVIRONMENTS or part.endswith('.egg-info') for part in parts)
+            or (len(parts) > 2 and parts[0] in ('packages', 'apps') and parts[2] in BUILD_OUTPUTS)
             or parts[:2] == ('.cache', 'local-runtime'))
 
 

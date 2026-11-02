@@ -315,7 +315,7 @@ def linked_worktree(tmp_path):
     git = lambda *args, cwd=repo: subprocess.run(['git', *args], cwd=cwd, check=True, capture_output=True)
     repo.mkdir()
     git('init', '-q')
-    (repo / '.gitignore').write_text('output/\n.venv/\n.cache\n')
+    (repo / '.gitignore').write_text('output/\n.venv/\n.cache\ndata/\n')
     git('add', '.gitignore')
     git('-c', 'user.name=t', '-c', 'user.email=t@example.invalid', 'commit', '-q', '-m', 'init')
     git('worktree', 'add', '-q', str(tree))
@@ -362,3 +362,23 @@ def test_only_linked_worktrees_can_be_pruned(tmp_path):
     repo, _ = linked_worktree(tmp_path)
     with pytest.raises(ValueError, match='not a linked worktree'):
         dev.prune_worktree(repo, repo=repo)
+
+
+@pytest.mark.parametrize('relative', ['output/c-probe/build/frozen.parquet', '.cache/archive-release/target/x.json',
+                                      'output/dist/run.json', 'data/.astro/notes.json'])
+def test_data_under_a_build_named_directory_blocks_a_prune(tmp_path, relative):
+    """green-rca: build/, dist/ and target/ at any depth counted as rebuildable, so --execute would delete data."""
+    repo, tree = linked_worktree(tmp_path)
+    data = tree / relative
+    data.parent.mkdir(parents=True, exist_ok=True)
+    data.write_text('frozen')
+    with pytest.raises(ValueError, match=f'ignored data: {relative}'):
+        dev.prune_worktree(tree, repo=repo, execute=True)
+    assert data.exists()
+
+
+@pytest.mark.parametrize('relative', ['apps/site/dist/index.html', 'packages/source-fetch/target/release/x',
+                                      'packages/congress_api/build/lib/a.py', 'apps/site/node_modules/a/b.js',
+                                      'packages/a/src/b/__pycache__/c.pyc', '.cache/local-runtime/runtime.json'])
+def test_rebuildable_output_at_a_package_root_does_not_block(relative):
+    assert dev._disposable(relative)
