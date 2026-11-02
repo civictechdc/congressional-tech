@@ -129,7 +129,9 @@ def test_every_registry_column_declares_nullability():
     assert 'title' not in required('list') and 'member_path' not in required('sources')
     # Phase-2 annex §3: types stated without "nullable" are required.
     assert {'chamber', 'name', 'names'} <= required('committees')
-    assert 'description' in required('nominations') and 'cross_ids' in required('members')
+    assert 'cross_ids' in required('members')
+    # Military promotion lists have no description upstream (17 in 448651e7, all military PNs).
+    assert 'description' not in required('nominations')
     assert {'source_locator', 'context_key', 'record_sha'} <= required('witnesses')
     assert {'basis', 'count'} <= required('meeting_coverage')
 

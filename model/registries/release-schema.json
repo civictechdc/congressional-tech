@@ -1275,7 +1275,7 @@
           "name": "description",
           "type": "string",
           "meaning": "Nomination description",
-          "nullable": false
+          "nullable": true
         },
         {
           "name": "organization",
@@ -1337,7 +1337,7 @@
         "floor_votes[]": "Embedded Senate roll-call summaries; no individual member positions.",
         "transcripts[]": "GovInfo CHRG package identifiers; a retained transcript can have multiple document formats or editions."
       },
-      "nullability": "Nullability transcribes the phase-2 annex \u00a73 file table (docs/plans/phase-2-annex-20261028.md): a type without \"nullable\" there is required."
+      "nullability": "Nullability transcribes the phase-2 annex \u00a73 file table, except description: upstream military promotion lists carry no description (in the pinned spicy-regs nominations generation, 1,349 of its 1,363 rows without one are military), so it is nullable, a legitimate upstream gap rather than a mapping loss."
     },
     {
       "name": "url_state.parquet",
