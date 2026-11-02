@@ -42,20 +42,20 @@
     "xml": "d5dceca22f8c6b4dfce01011e246d0e131e8ab46914120f59ed314ef76cdf5b3",
     "json": "0110a9ea2979fb32fff62ef855c28d7a95b461caf641430adf1b4351da9ecb9b",
     "meeting_records": {
-      "congress_gov": "327d30b27c8c403a38bfb5bd652b84962e93c95e6e1a835cf59cf4901b892cb9",
-      "house_xml": "e4fb6bc180a2a6000bf15cd3c515ae0c1743130c560a0b5bc7b442491b76c376"
+      "congress_gov": "d06eb7d6b3e02d77d561e3c38973323eaef1d621fcae3bd12800fa6686bd3535",
+      "house_xml": "18121285be4054ed99a3da543faafda49d6d66b1c772c3a36d2f519ec9d2b376"
     },
     "appearance_records": {
-      "house_xml": "f2dfc97f61992e17dabaff1d2c4b647b57f399df7b66f6307b6bda7ed4015423",
-      "congress_gov": "c9d82548921a800f3fd741277fe6ae54e3663c7f25ba21ca1be2e6896adab739",
-      "senate_page": "a4a4aaaf51fdd505c118b62244da247daf227f380db03dee2a0c833d480b2f0b",
-      "mods": "b72edb72ecd719230f4c6003738a039c93c81d7dd0f514050a8c917e18ae25f7"
+      "house_xml": "0c4732376d0c0f32e87898d712b96f06ae59350967b0f05a456ba2fc539837e6",
+      "congress_gov": "ee1c9ac660075529dddedcd97ed2b78e274aba19cac8dd89df994a0eeede85d4",
+      "senate_page": "e75865fa3bab906e223b9588fe8bd11b687a13fd69829458bfc1cf50005d2154",
+      "mods": "bf1bb4fe805709a9b3d0a71b1e2c3d21b340236bce8f1b847cd1de8aa4ceef4f"
     },
     "video_records": {
       "youtube_cache": "4ceee06d02828da0cc9834d1ccd17946bed8b0eea08e72d962a880ca0151bbab"
     },
     "committee_records": {
-      "house_xml": "7317eaa4e309879d14fd8a19d0f3c05dcaeb2af02ae5abeab8e19fccdf04f794"
+      "house_xml": "e93dc94f170b32bd2ac08375b7c2e23ddc6f5b685568f7b91923fb07940389af"
     }
   },
   "catalog_version": "d35fc3db0edd03c4ab3b66c8f47df291332f38ff031d72f0e1012e5b37f786aa",
