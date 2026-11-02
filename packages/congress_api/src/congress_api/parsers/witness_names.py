@@ -45,6 +45,33 @@ def is_name(text: str) -> bool:
     return 2 <= len(words) <= 6 and text[:1].isupper() and not any(c.isdigit() for c in text) and not (CONNECTIVE | NOT_A_NAME) & set(words)
 
 
+## GPO's footnote marker, "\1\", set after the item it annotates (a contents label, a name, a position)
+FOOTNOTE = re.compile(r"\s*\\\d+\\")
+
+
+## a contents label GPO sets before a witness's name, ended by its footnote marker or by a dot leader and page
+##  ("Prepared statement \1\ ", "Answers to submitted questions\2\ ", "Prepared Statement........ 22' "); a page
+##  can carry GPO's character-entity residue ("60<greek-l>", "00 deg.")
+CONTENTS_LABEL = re.compile(
+    r"^\s*(?:(?:supplement to |joint )?(?:opening |prepared |written )?statements?(?: of)?|answers? to (?:submitted |additional )?questions"
+    r"|additional (?:information|materials?) (?:submitted )?for the record"
+    r"|responses? to (?:submitted |additional |written )?questions)"
+    r"(?:(?:\s*\\\d+\\)+(?:\s*\.{3,}\s*(?:\d+\S*(?: deg\.)?)?)?|\s*\.{3,}\s*(?:\d+\S*(?: deg\.)?)?)\s*", re.I)
+
+
+## a contents entry's dot leader and what follows it ("..., Nebraska \1\......... Prepared statement")
+LEADER_TAIL = re.compile(r"\s*\.{4,}.*$")
+
+
+def strip_contents_markers(text: str) -> str:
+    """A GPO line without its contents labels and footnote markers: "Prepared statement \\1\\ Answers to
+    submitted questions\\2\\ John Bozzella, ..." is John Bozzella's line. Only a label a marker or a dot leader
+    ends is dropped, so a name that merely follows a label's words stays as GPO wrote it."""
+    while (label := CONTENTS_LABEL.match(text)):
+        text = text[label.end():]
+    return LEADER_TAIL.sub("", FOOTNOTE.sub("", text)).strip()
+
+
 def witness(text: str) -> dict:
     """A witness from GPO's line for them. GPO writes the line three ways: "Mr. Nels Leader, Vice President,
     Bread Alone Bakery", "Richard J. Powell, Executive Director, ClearPath", and surname first, "Campbell, Jr.,
@@ -52,6 +79,7 @@ def witness(text: str) -> dict:
     first comma, so a single word there is a surname, alone or with its suffix ("Chodak III, Dr. Paul"). Some
     records carry the contents line instead ("Statement of Dr. Robert D. Putnam, ...", "Panel One Thomas J.
     Murphy, ...")."""
+    text = strip_contents_markers(text)
     text = re.sub(r"^\s*(?:(?:opening |prepared |written )?(?:statements?|testimony|remarks) (?:of|by|from)|accompanied by:?|witness(?:es)?:?|panel \w+:?)\s+", "", text.strip(), flags=re.I)
     text = re.sub(r"\s*\([^)]*\d[^)]*\)|\s*[(\[](?:\w+ )?(?:ret|retired|fmr|former)\.?[)\]]", "", text, flags=re.I)  # "Gary Kennedy (H.R. 1963)", "J. Roy Robinson (Ret.)"
     title = TITLE.match(text)

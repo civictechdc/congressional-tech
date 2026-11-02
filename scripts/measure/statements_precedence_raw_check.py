@@ -3,8 +3,8 @@
     statements_precedence_raw_check.py --after DIR --records PARQUET --appearances PARQUET --captures PARQUET
         --mirror R2 --output OUT.json
 
-Statements: each mods row labelled statement_for_record or member_statement is found in its print's raw
-<witness> lines (ElementTree, by family name), and judged from two raw facts the producer does not read
+Statements: each mods row labelled statement_for_record or member_statement is found in its own record's raw
+<witness> lines (ElementTree, at the position its source_locator names), and judged from two raw facts the producer does not read
 together: whether the meeting's own Congress.gov or House list names the same person (then they
 testified: contradicted), and whether the raw line names a document (letter, statement, record,
 questions, submission, report, article, memorandum: supported). Neither: ambiguous. Unlabelled mods rows
@@ -29,7 +29,7 @@ import unicodedata
 import duckdb
 
 sys.path.insert(0, str(Path(__file__).parent))
-from meeting_semantics_raw_check import Family, Lists, Prints, family, raw_meetings, records  # noqa: E402
+from meeting_semantics_raw_check import Family, Lists, Prints, family, local_body, raw_meetings, records  # noqa: E402
 
 DOCUMENT = re.compile(r"\b(?:letters?|statements?|for the record|questions?|responses?|submissions?|submitted|reports?|"
                       r"articles?|memorand(?:um|a)|comments|testimony of .* submitted|editorial|op-ed|press release)\b", re.I)
@@ -123,8 +123,20 @@ def main(argv=None):
     args = parser.parse_args(argv)
     db = duckdb.connect(config=dict(memory_limit='3GB', threads=4))
     congress, _house, _read, _unread = raw_meetings(args)
-    prints, lists = Prints(args, db), Lists(args, db, congress)
-    rows = records(db.execute(f"SELECT * EXCLUDE(record_sha) FROM read_parquet('{Path(args.after) / 'witnesses.parquet'}')"))
+    lists = Lists(args, db, congress)
+    rows = records(db.execute(f"SELECT * EXCLUDE(record_sha),lower(hex(record_sha)) AS record_hex FROM read_parquet('{Path(args.after) / 'witnesses.parquet'}')"))
+    bodies = {}
+
+    def own_line(r):
+        """The row's own raw line: its record's body, at the <witness> position its source_locator names."""
+        if r['record_hex'] not in bodies:
+            data = local_body(args.mirror, r['record_hex'])
+            bodies[r['record_hex']] = None if data is None else Prints.parse(data)['witness_lines']
+        lines = bodies[r['record_hex']]
+        at = re.search(r'witness\[(\d+)\]', r['source_locator'] or '')
+        if lines is None:
+            return False, None
+        return True, (lines[int(at.group(1)) - 1] if at and int(at.group(1)) <= len(lines) else None)
     by_key = {r['witness_key']: r for r in rows}
     by_occasion = defaultdict(list)
     for r in rows:
@@ -134,14 +146,12 @@ def main(argv=None):
     for r in rows:
         if r['source'] != 'mods':
             continue
-        facts = prints(r['package_id'])
-        if facts is None:
+        read, line = own_line(r)
+        if not read:
             if r['witness_type'] in ('statement_for_record', 'member_statement'):
                 statements.add(r['witness_key'], 'unread')
             continue
         fam = family(r['name'])
-        lines = [l for l in facts['witness_lines'] if fam and fam in re.findall(r'[a-z]+', unicodedata.normalize('NFKD', l).encode('ascii', 'ignore').decode().lower())]
-        line = lines[0] if lines else None
         if r['witness_type'] not in ('statement_for_record', 'member_statement'):
             if line and re.search(r'for the record|^\W*letters?\b', line, re.I):
                 missed['unlabelled_line_names_a_document'] += 1

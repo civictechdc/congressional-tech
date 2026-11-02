@@ -2001,3 +2001,25 @@ def test_mods_print_states_every_held_day_and_labels_statements():
         ("Al Green", None),
         ("Russell T. Vought to be Director", None),
     ]
+
+
+@pytest.mark.parametrize("line,kind", [
+    # A line that opens with a record entry's marker is that entry, whatever words follow (red-f3, v21 prints).
+    ("Letter from the nominee to the Office of General Counsel, U.S. Department of Veterans Affairs", "statement_for_record"),
+    ("Letter, followup to hearing testimony", "statement_for_record"),
+    ("Submittals for the record: John Windhausen, Jr., President, letter dated June 23, 1999, and the testimony of US West CEO "
+     "Sol Trujillo to Hon. John McCain and Hon. Ernest F. Hollings", "statement_for_record"),
+    ("Additional information for the record \\1\\ Vednita Carter, Founder and Executive Director, Breaking Free", "statement_for_record"),
+    ("Additional material for the record \\1\\ John S. Hughes, M.D., Professor of Medicine, Yale School of Medicine", "statement_for_record"),
+    ("Additional oral comments presented for the record: Carper, Chip, Hebron, Maryland", "statement_for_record"),
+    ('Investing in Racial Diversity in Tech" has been retained in committee files and also is available as part of Ms. Kim\'s '
+     "written testimony at https://docs.house.gov/meetings/IF/IF17/20190306/108901/HHRG-116-IF17-Wstate-KimJ-20190306.pdf", "statement_for_record"),
+    # A witness's own line that mentions material for the record, or ends in a contents tail, is still the witness.
+    ("Goodlatte, Bob, U.S. Representative from Virginia, along with added material for the record; China: Export of Technology "
+     "Would be Liberating Force", None),
+    ("Steve Chalk, Chief Financial Officer, Energy Efficiency and Renewable Energy, Department of Energy \\1\\..................... "
+     "Insert for the record", None),
+    ("Hon. Russell T. Vought to be Director, Office of Management and Budget, Testimony", None),
+])
+def test_mods_record_entries_are_read_from_their_opening_marker(line, kind):
+    assert appearance_records.mods_entry_kind(line, None) == kind

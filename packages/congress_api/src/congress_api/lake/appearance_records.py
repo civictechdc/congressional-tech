@@ -178,6 +178,8 @@ _SOURCE_SYMBOLS: dict[str, tuple[str, ...]] = {
         "mods_held_dates",
         "_MEMBER_STATEMENT",
         "_RECORD_ENTRY",
+        "_RECORD_OPENING",
+        "_RETAINED_IN_FILES",
         "_TESTIFIED_WORDS",
         "mods_entry_kind",
         "extract_mods_observation",
@@ -926,6 +928,14 @@ _RECORD_ENTRY = re.compile(
     r"|questions? for the record|responses? to questions|answers? to questions|prepared statement)", re.I)
 # A line that says the person testified or was the nominee is a witness whatever else it says.
 _TESTIFIED_WORDS = re.compile(r"\b(?:testimony|testified|nominee|nominated)\b", re.I)
+# ...unless the line opens with a record entry's own marker ("Letter from the nominee to the Office of General
+# Counsel", "Submittals for the record: ... and the testimony of ..."), or is GPO's note that an item "has been
+# retained in committee files": then it names the entry, and later words describe its contents.
+_RECORD_OPENING = re.compile(
+    r"^\W*(?:letters?\b|(?:additional |supplemental )?(?:information|material|materials|submissions?|submittals?|(?:oral )?comments)"
+    r"(?: (?:presented|submitted))? for the record\b|questions? for the record|responses? to (?:additional |written )?questions"
+    r"|answers? to (?:submitted |additional )?questions)", re.I)
+_RETAINED_IN_FILES = re.compile(r"\bhas been retained in committee files\b", re.I)
 
 
 def mods_entry_kind(line: str, name: str | None) -> str | None:
@@ -934,6 +944,8 @@ def mods_entry_kind(line: str, name: str | None) -> str | None:
     appears (Member Day panels, "Green, Hon. Al") and a nominee or anyone said to testify is a witness.
     The model also treats anyone the meeting's own list names as a witness."""
     text = line or ""
+    if _RECORD_OPENING.match(text) or _RETAINED_IN_FILES.search(text):
+        return "member_statement" if _MEMBER_STATEMENT.search(text) else "statement_for_record"
     # "to be Director" names a nomination; "to be included in the record" does not (capital follows).
     if _TESTIFIED_WORDS.search(text) or re.search(r"\b[Tt]o be (?:an? |the )?[A-Z]", text) or not _RECORD_ENTRY.search(text):
         return None
