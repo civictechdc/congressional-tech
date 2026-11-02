@@ -79,6 +79,7 @@ def main(argv=None):
         selected_record_step('committee_records', 'committee_records'),
         dict(name='active_recording_decisions', sql='SELECT r.* FROM recording_decision_records r WHERE NOT EXISTS(SELECT 1 FROM recording_decision_records s WHERE s.supersedes=r.id)', materialize=True),
         dict(name='youtube_cache_bodies', sql=sql('youtube-cache-bodies'), materialize=True),
+        dict(name='youtube_api_bodies', sql=sql('youtube-api-bodies'), materialize=True),
         *meeting_steps(),
         dict(name='ordered', sql='SELECT meeting_keys FROM "list"', materialize=True),
         dict(name='meeting_transcript_links', sql="SELECT event_id,t['package_id'] AS package_id FROM (SELECT event_id,unnest(transcripts) AS t FROM released_meetings)", materialize=True),

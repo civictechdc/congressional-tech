@@ -1,4 +1,5 @@
-"""Typed fields of one retained YouTube cache row. Upstream API JSON stays in the body."""
+"""Typed fields of one retained YouTube cache row or API video. Upstream API JSON stays in the body."""
+import json
 import re
 from typing import Any
 
@@ -56,3 +57,40 @@ def cache_rows(payload: bytes | str) -> tuple[list[dict[str, Any]], list[dict[st
         return [channel_row(row) for row in cache.channels()], [video_row(handle, row) for handle, row in cache.videos()]
     except (AttributeError, TypeError) as error:
         raise ValueError(f"Unexpected YouTube cache shape: {error}") from error
+
+
+DURATION = re.compile(r"^P(?:(\d+)D)?(?:T(?:(\d+)H)?(?:(\d+)M)?(?:(\d+)S)?)?$")
+
+
+def _iso_seconds(value: Any) -> int | None:
+    """ISO 8601 duration such as P1DT10H30M28S, in seconds; anything else is null."""
+    match = DURATION.match(value) if isinstance(value, str) and value not in ("P", "PT") else None
+    if not match:
+        return None
+    days, hours, minutes, seconds = (int(part or 0) for part in match.groups())
+    total = ((days * 24 + hours) * 60 + minutes) * 60 + seconds
+    return total if total < 2**31 else None
+
+
+def api_rows(payload: bytes | str) -> list[dict[str, Any]]:
+    """Videos of one retained videoListResponse; other API responses state no videos.
+
+    `handle` is empty: an API item names its channel by ID, which the model maps to the
+    channel directory."""
+    value = json.loads(payload)
+    if not isinstance(value, dict) or value.get("kind") != "youtube#videoListResponse":
+        return []
+    rows = []
+    for item in value.get("items") or []:
+        if not isinstance(item, dict) or item.get("kind") != "youtube#video" or not isinstance(item.get("id"), str):
+            continue
+        snippet, details = (item.get(key) if isinstance(item.get(key), dict) else {}
+                            for key in ("snippet", "contentDetails"))
+        title, description = _text(snippet.get("title")), _text(snippet.get("description"))
+        rows.append(dict(handle="", video_id=item["id"], channel_id=_text(snippet.get("channelId")),
+            channel_title=_text(snippet.get("channelTitle")), title=title, description=description,
+            published_at=_text(snippet.get("publishedAt")), video_published_at=None,
+            duration_seconds=_iso_seconds(details.get("duration")),
+            available=None, has_caption=_flag(details.get("caption")), details_checked_at=None,
+            stated_event_ids=stated_event_ids(title, description)))
+    return rows

@@ -833,13 +833,13 @@ def build_prepared_release(prepared,*,engine,output,root=ROOT):
         ]
     explorer_diagnostics=[]
     if prepared.get('explorer_inputs'):
-        steps += [dict(name='youtube_cache_bodies',sql=(Path(root)/'model/sql/youtube-cache-bodies.sql').read_text(),materialize=True)]
+        steps += _sql_steps(['youtube-cache-bodies','youtube-api-bodies'],root=root)
         auxiliary += [(name,(Path(root)/'model/sql'/(file+'.sql')).read_text(),keys,dictionary) for name,file,keys,dictionary in EXPLORER_TABLES]
         from congress_api.lake.committee_records import CANDIDATE_SQL
         explorer_diagnostics=[dict(name='explorer_invariants',sql=f"""SELECT (SELECT count(*) FROM meeting_coverage_export)-5*(SELECT count(*) FROM meetings_export) AS coverage_row_mismatch,
-            (SELECT count(*) FROM youtube_cache_bodies b WHERE b.record_sha NOT IN ({explorer_settled_sql('video_records')})) AS unsettled_video_records,
+            (SELECT count(*) FROM (SELECT record_sha FROM youtube_cache_bodies UNION SELECT record_sha FROM youtube_api_bodies) b WHERE b.record_sha NOT IN ({explorer_settled_sql('video_records')})) AS unsettled_video_records,
             (SELECT count(*) FROM ({CANDIDATE_SQL}) c WHERE c.record_sha NOT IN ({explorer_settled_sql('committee_records')})) AS unsettled_committee_records""")]
-        meta_explorer=[dict(name='videos_in_several_channels',sql="SELECT count(*) AS videos FROM (SELECT v['video_id'] AS video_id FROM (SELECT unnest(r.videos) AS v FROM selected_video_records r JOIN youtube_cache_bodies b ON encode(r.record_sha,'hex')=b.record_sha) GROUP BY v['video_id'] HAVING count(DISTINCT v['handle'])>1)")]
+        meta_explorer=[dict(name='videos_in_several_channels',sql="SELECT count(*) AS videos FROM (SELECT v['video_id'] AS video_id FROM (SELECT unnest(r.videos) AS v FROM selected_video_records r JOIN youtube_cache_bodies b ON encode(r.record_sha,'hex')=b.record_sha WHERE r.source='youtube_cache') GROUP BY v['video_id'] HAVING count(DISTINCT v['handle'])>1)")]
     auxiliary += [('url_state','SELECT * FROM url_state',['requested_url'],['last_outcome']),
         ('url_variants','SELECT * FROM url_variants',['variant_url','canonical_url'],[])]
     extra=[dict(name='document_rows.parquet',path=str(evidence/'document_rows.parquet'),sql='SELECT list_row,doc_key AS document_id,'+','.join(LIST_COLUMNS+DETAIL_COLUMNS)+' FROM details',settings=_settings('whole',['list_row'],footer_limit=4 << 20)),
