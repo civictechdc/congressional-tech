@@ -106,7 +106,8 @@ def _check_primary_keys(reports):
 def verify_generations(old_pin,new_pin,*,keys,engine,work,exact=True):
     """Refuse unequal typed rows or invalid keys, using native EXCEPT ALL twice.
 
-    Hash grouping/comparison costs expected O(N+M); only two counts and empty
+    Hash grouping/comparison costs expected O(N+M), peak memory one side's hash
+    build (the larger of the two, decoded); only two counts and empty
     Parquet schemas reach Python. No values are converted to JSON for equality.
     Either side may be a pinned Parquet file. exact=False compares names and types
     only, without nullability or the UTC zone's spelling, for a file written outside
@@ -124,12 +125,11 @@ def verify_generations(old_pin,new_pin,*,keys,engine,work,exact=True):
         raise ValueError('Maintenance generations differ in typed schema')
     reports=_query(work/'compare',engine,inputs=inputs,queries=[
         _pk_query('old_rows',quoted),_pk_query('new_rows',quoted),
-        dict(name='difference',sql='''SELECT count(*) AS differences FROM (
-            (SELECT * FROM old_rows EXCEPT ALL SELECT * FROM new_rows)
-            UNION ALL
-            (SELECT * FROM new_rows EXCEPT ALL SELECT * FROM old_rows)) delta''')])
+        # One direction per query, so only one unspillable hash build is live at a time.
+        *(dict(name=name,sql=f'SELECT count(*) AS differences FROM (SELECT * FROM {left} EXCEPT ALL SELECT * FROM {right}) delta')
+          for name,left,right in (('old_only','old_rows','new_rows'),('new_only','new_rows','old_rows')))])
     _check_primary_keys(reports)
-    if reports['difference'][0]['differences']:
+    if reports['old_only'][0]['differences'] or reports['new_only'][0]['differences']:
         raise ValueError('Maintenance generations differ in typed rows')
 
 
