@@ -100,3 +100,7 @@ Owner decision 2026-11-02: runner fixes (r4-rca: refuse another checkout's code 
 **2026-11-02T17:45:21Z**
 
 2026-11-02 green-rca (light check of r4-rca~1): MERGE WITH FIXES; nothing blocks the release path or production. Fixes sent to etl-rca: prune-worktree treats build/dist/target as disposable at any depth (scripts/dev.py:309-315, a data-loss path), and the watchdog's floor victim can be a dead job with a reused PID (archive_watchdog.py:95,101,208).
+
+**2026-11-02T18:21:40Z**
+
+2026-11-02 r4-rca-rel 77ebb23f (both green-rca fixes in: prune-worktree treats build/dist/target/.astro as disposable only at packages/<name>/ or apps/<name>/; watchdog entries match on PID plus start time; lint searches subdirectories): full lane 11,064 passed, only the two expected pin tests failing; 'production-offline (full lane): exit 1', peak 3.62 GiB, 28:35. On release-train.
