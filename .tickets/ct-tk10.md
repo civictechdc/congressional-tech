@@ -57,3 +57,7 @@ Round 1b 2026-11-02 (lead): impl-h done: 13 commits on r1b-h (1055fefb..36ac49a0
 **2026-11-02T15:55:47Z**
 
 2026-11-02 impl-h r1b-h 1573be5c: all review items done; production-offline, explorer-mcp and archive-unit green on 5a3121c. Address redirects: all 69 old and successor bodies read; none is the same text (66 old bodies have none), so all show notices listing the editions at the address. Against 448651e7: 7,134 redirects, 132 notices. Gate 5 recomputes the version at the recorded commit and requires the registered producer and record version 1 (red-h2's probes refuse). M1, M10, M3, M4 and M16 killed. Gate 4: nominations.description nullable; the 17 NULLs (119-PN27 … 1175) are military promotion lists with no upstream description (1,349 of 1,363 empty upstream descriptions are military). Ready to merge after e1, e2, g and f.
+
+**2026-11-02T16:40:28Z**
+
+2026-11-02 (lead): r1b-h merged into integrate-round1 by fast-forward at 0f4711bb (27 commits, rebased onto f5f647da): retired_links, nullable flags merged with g's meanings, lifetimes 177, and fixtures adapted to e1's mapping_version and its build-time refusal of the 202 mutant.
