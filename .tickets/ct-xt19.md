@@ -18,3 +18,9 @@ Owner decision 2026-11-02: the same PDF tools everywhere, and do whatever is fas
 
 One committed poppler pin; CI and hosted jobs install exactly it (docspec-rs CI too); doctor refuses a mismatch, with a fail-first test; an Actions run computes sniff 01bf0900…
 
+
+## Notes
+
+**2026-11-02T20:39:51Z**
+
+2026-11-02 ci-poppler c006c4fa (on release-train; train merges it after its lane): poppler 26.06.0 pinned once in test-suites.toml with the source tarball sha256, matching Homebrew's. conda-forge skips 26.06, so CI builds it from source via .github/scripts/install-poppler.sh with a cache (about 95 s cold, 11 s warm). doctor refuses any other pdfinfo -v or pdftotext -v first line (fail-first test). Verified on Actions: all 6 docspec-rs shards computed sniff 01bf09000fce…, the Mac's value. docspec-rs needed no change, since it reuses this repo's setup action. validate-explorer can't finish on Actions until DOCSPEC_RUNTIME_ARTIFACT points at b0342a7, which happens at the main merge (switching it now would break main, which pins the older engine).
