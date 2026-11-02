@@ -448,7 +448,7 @@ Coverage: Nominations cover the 119th Congress only until spicy-regs backfills.
 | Field | Published type | Nullable | Meaning |
 | --- | --- | --- | --- |
 | `nomination_id` | `string` | no | Canonical nomination identifier ({congress}-pn-{number}[-{part}]) |
-| `description` | `string` | no | Nomination description |
+| `description` | `string` | yes | Nomination description |
 | `organization` | `string` | yes | Executive or independent agency name |
 | `received` | `date32` | yes | Date received in the Senate |
 | `latest_action_date` | `date32` | yes | Date of latest action |
@@ -457,7 +457,7 @@ Coverage: Nominations cover the 119th Congress only until spicy-regs backfills.
 | `transcripts` | `list<string>` | no | Printed hearing package IDs from nomination hearing references |
 | `floor_votes` | `list<struct<vote_id string,date date32,question string,result string,yea int16,nay int16>>` | no | Senate roll-call votes on the nomination |
 
-Nullability: Nullability transcribes the phase-2 annex §3 file table (docs/plans/phase-2-annex-20261028.md): a type without "nullable" there is required. A required column is refused at write time.
+Nullability: Nullability transcribes the phase-2 annex §3 file table, except description: upstream military promotion lists carry no description (in the pinned spicy-regs nominations generation, 1,349 of its 1,363 rows without one are military), so it is nullable, a legitimate upstream gap rather than a mapping loss. A required column is refused at write time.
 
 - `floor_votes[]`: Embedded Senate roll-call summaries; no individual member positions.
 - `transcripts[]`: GovInfo CHRG package identifiers; a retained transcript can have multiple document formats or editions.
