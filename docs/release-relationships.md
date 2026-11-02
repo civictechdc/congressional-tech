@@ -150,10 +150,12 @@ Identity: `link_key` (primary_key; published identifier).
 | `successor_key` | `fixed[8]` | yes | The current document's primary link key that the retired key redirects to; null means a removal notice |
 | `last_release_id` | `string` | no | The latest release that published the key |
 | `last_filename` | `string` | yes | The filename the key resolved to in that release |
+| `address_versions` | `list<fixed[8]>` | yes | With a removal notice: the current documents (primary link keys) listed at the retired document's addresses, other editions shown as versions, never as a redirect |
 
 Nullability: Nullability transcribes data model §8.1 (retired_links.parquet row). A required column is refused at write time.
 
 - `link_key`: Disjoint from links.link_key. A key published again leaves the ledger. Data model §8.2, Retired keys.
+- `address_versions`: Set only when successor_key is null; an address can hold several editions (data model §7.5), so the notice lists them instead of choosing one.
 
 Outgoing: `retired_link_successor`.
 
