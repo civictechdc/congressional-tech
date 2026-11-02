@@ -587,6 +587,29 @@ def _current_inline_lines(
     return [(sha256(line).hexdigest(), line, url) for _, line, url in current.values()]
 
 
+def unreadable_decision(parser_name: str, parser_version: str, record_sha: str, exc: BaseException,
+                        decided_at: str) -> dict[str, Any]:
+    """The one unreadable-decision row every record producer writes.
+
+    Data model §5.3 and provenance.validate_provenance own the shape: exactly one input
+    identity (record tables are keyed by `record_sha`, never also `body_sha256`) and a
+    `reason` category matching [a-z][a-z0-9_]* (the exception class in snake case, never
+    free text). Since 20206037 the producer wrote both keys and "Type: message", which the
+    import refuses, so any parse failure stopped staging.
+    """
+    reason = re.sub(r"(?<!^)(?=[A-Z])", "_", type(exc).__name__).lower()
+    return {
+        "id": f"unreadable:{parser_name}:{parser_version}:{record_sha}",
+        "record_sha": record_sha,
+        "parser": parser_name,
+        "parser_version": parser_version,
+        "reason": reason,
+        "decided_by": parser_name,
+        "decided_at": decided_at,
+        "supersedes": None,
+    }
+
+
 def stage_record_table(
     *,
     parser_name: str,
@@ -825,19 +848,7 @@ def stage_record_table(
                 kwargs["source_url"] = item.get("source_url")
             rows.append(build_row_fn(**kwargs))
         except (ValueError, KeyError, ET.ParseError, UnicodeDecodeError) as exc:
-            unreadable_records.append(
-                {
-                    "id": f"unreadable:{parser_name}:{item_ver}:{rec_sha}",
-                    "body_sha256": rec_sha,
-                    "record_sha": rec_sha,
-                    "parser": parser_name,
-                    "parser_version": item_ver,
-                    "reason": f"{type(exc).__name__}: {exc}",
-                    "decided_by": parser_name,
-                    "decided_at": decision_time,
-                    "supersedes": None,
-                }
-            )
+            unreadable_records.append(unreadable_decision(parser_name, item_ver, rec_sha, exc, decision_time))
     for inline_item in inline_items:
         rec_sha = inline_item["record_sha"]
         item_ver = str(inline_item["parser_version"])
@@ -852,19 +863,7 @@ def stage_record_table(
                 kwargs["source_url"] = inline_item.get("source_url")
             rows.append(build_row_fn(**kwargs))
         except (ValueError, KeyError, ET.ParseError, UnicodeDecodeError) as exc:
-            unreadable_records.append(
-                {
-                    "id": f"unreadable:{parser_name}:{item_ver}:{rec_sha}",
-                    "body_sha256": None,
-                    "record_sha": rec_sha,
-                    "parser": parser_name,
-                    "parser_version": item_ver,
-                    "reason": f"{type(exc).__name__}: {exc}",
-                    "decided_by": parser_name,
-                    "decided_at": decision_time,
-                    "supersedes": None,
-                }
-            )
+            unreadable_records.append(unreadable_decision(parser_name, item_ver, rec_sha, exc, decision_time))
 
     unreadable_key = unreadable_path = unreadable_stage = unreadable_provenance = unreadable_custody = None
     pending = bool(unreadable_records and unreadable_store is None)
