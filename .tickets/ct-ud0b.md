@@ -27,3 +27,7 @@ Owner decision 2026-11-02: after the fixed release, publish nightly without a pe
 **2026-11-02T15:55:47Z**
 
 2026-11-02 impl-h r1b-h 1573be5c: implemented (3f122fc8): automatic_causes accepts a difference only when every new row is a new document whose body comes from a receipt outside the live release's set, dated after its newest, named by its raw receipt line; any changed or removed value, split, old or undated receipt, or untraceable row refuses. Four acceptance tests plus one through publish_candidate. Can't see: a bug that only adds wrong rows from new receipts. Still blocked on the daily path by gate 5 until daily production writes per-snapshot producer records (follow-up).
+
+**2026-11-02T18:17:49Z**
+
+2026-11-02 spec-run: the selective job's D2 stopped after 8 s with all 67,565 reads pending and no location (peak 1.65 GiB). archive_selective._daily writes an empty body inventory, points local_root at a directory that doesn't exist, and passes the raw store only for unreadable decisions. Any non-empty D2 work therefore never reads bodies, which would hit nightly production runs as well as local ones. impl-e2 is fixing it first, as one body-source binding (local mirror or R2) through readings' existing remote/body_store path, with fail-first tests that read non-empty work; then the r4-u2 rebase.
