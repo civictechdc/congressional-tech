@@ -2088,6 +2088,8 @@ def test_the_lake_table_keeps_each_records_held_dates_title_and_created():
     ("Timm Kopp, Letter Carrier, U.S. Postal Service", None),
     # Statements: a statement only, a letter, a submission, a Member's prepared statement, questions a Member asked.
     ("Bonnie Carroll, Founder and President, Tragedy Assistance Program For Survivors, prepared statement only", "statement_for_record"),
+    ("Additional materials supplied: Pautzke, Dr. Clarence, Executive Director, North Pacific Research Board, Statement "
+     "submitted for the record", "statement_for_record"),
     ("Steiner, Larry R., Adirondack-Catskill Chapter, Safari Club International, Letter submitted for the record on H.R. 1054", "statement_for_record"),
     ("Rep. Napolitano Submission Napolitano, Hon. Grace F., Letter to Secretary of the Interior, dated August 28, 2009", "statement_for_record"),
     ("Letter dated January 31, 2017 to Michael Flores, President, California Fish and Game Commission", "statement_for_record"),

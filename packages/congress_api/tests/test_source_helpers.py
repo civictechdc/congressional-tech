@@ -44,6 +44,9 @@ FOOTNOTE_TEXT_LINES = [
      "Plant Science Center", "Roger N. Beachy"),
     ("Additional information \\1\\ Kevin Sunday, Director, Government Affairs, Pennsylvania Chamber of Business and Industry", "Kevin Sunday"),
     ("Additional information from Michael R. Lemov, Winston & Strawn", "Michael R. Lemov"),
+    ("Additional materials supplied: Pautzke, Dr. Clarence, Executive Director, North Pacific Research Board, Statement "
+     "submitted for the record", "Clarence Pautzke"),
+    ("Additional materials supplied: Lingle, Hon. Linda, Governor, State of Hawaii, Letter submitted for the record", "Linda Lingle"),
     ("Prepared statements: Weber, Peter", "Peter Weber"),
     ("Prepared statements:..................................... LaMura, Marianne", "Marianne LaMura"),
     ("Prepared statement and attachments..........................124-136 Paperiello, Carl, Deputy Executive Director for "

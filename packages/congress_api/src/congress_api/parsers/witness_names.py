@@ -54,7 +54,7 @@ FOOTNOTE = re.compile(r"\s*\\\d+\\")
 ##  GPO's character-entity residue ("60<greek-l>", "00 deg.")
 LABEL_WORDS = (r"(?:(?:supplement to |joint )?(?:opening |prepared |written )?statements?(?: and attachments)?(?: \d+)?(?: of)?"
                r"|answers? to (?:submitted |additional )?questions|submitted questions"
-               r"|additional (?:information|materials?)(?: (?:submitted )?for the record)?"
+               r"|additional (?:information|materials?)(?: supplied)?(?: (?:submitted )?for the record)?"
                r"|responses? to (?:submitted |additional |written )?questions)")
 LABEL_END = r"(?:\s*\\\d+\\)*(?:\s*\.{3,}\s*(?:[\d\-]+\S*(?: deg\.)?)?)?"
 CONTENTS_LABEL = re.compile(r"^\s*" + LABEL_WORDS + r":?(?:(?:\s*\\\d+\\)+" + LABEL_END + r"|\s*\.{3,}\s*(?:[\d\-]+\S*(?: deg\.)?)?)\s*", re.I)
