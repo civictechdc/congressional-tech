@@ -60,6 +60,18 @@ For `apps/site` browser checks (`npm --prefix apps/site run contract:archive`),
 `apps/site/package.json` pins; install its browser with
 `node apps/site/node_modules/playwright/cli.js install --only-shell chromium`.
 
+# Raw checks
+
+A raw check (`scripts/measure/raw_*.py` or `*_raw_check.py`) judges a rule's
+output from the raw record with its own reading. It must not import the
+producer, parser or model package, nor read model SQL or a registry
+(`scripts/measure/tests/test_raw_check_independence.py` enforces that much). It
+must also not restate the rule in its own words, which no test can see: judge
+from raw facts the rule does not use, or by a different measure; compare both
+directions; name every record not read; and before trusting a pass, plant one
+wrong value the rule would produce and show the check flags it. A reviewer
+other than the rule's author confirms the planted case.
+
 # Byte-hashed parser pins
 
 Several producers compute `parser_version` by hashing their own source bytes:
