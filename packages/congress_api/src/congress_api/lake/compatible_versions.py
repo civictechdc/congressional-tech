@@ -209,12 +209,13 @@ def preflight(*, engine, work, inputs):
 
 
 def prove_unchanged(*, engine, work, old, new, parser, version, current, recompute_sql=WHOLE, sample_keys=None):
-    """Read old rows at `version` against recomputed rows at `current`, column by column, both ways.
+    """Every old row at `version` outside the recompute set must equal its row at `current`.
 
-    The compared domain K is every key outside the recompute set on the old side or on the
-    new side, so a row that left or joined the recompute set is counted, not hidden. With
-    `sample_keys` (a parquet of body_sha chosen before the recompute) K is limited to those.
-    Rows outside K on either side are not read as differences. Queries only: no sorted export.
+    The compared domain K is the old rows outside the old side's recompute set: those are the
+    rows an entry keeps. A K row that changes or vanishes is a difference; a row inside the
+    set may change on purpose (its re-read can even move it out of the set, e.g. filling a
+    fingerprint) and is not compared. With `sample_keys` (a parquet of body_sha chosen before
+    the recompute) K is further limited to those. Queries only: no sorted export.
     """
     name = 'readings'
     schema = [f['name'] for f in tables.load_schema(name)['fields']]
@@ -225,11 +226,9 @@ def prove_unchanged(*, engine, work, old, new, parser, version, current, recompu
     inputs = [table_input('old_input', old), table_input('new_input', new)]
     steps = [dict(name='old_rows', sql=f'SELECT * FROM old_input r WHERE r.parser={p} AND r.parser_version={old_v}'),
              dict(name='new_rows', sql=f'SELECT * FROM new_input r WHERE r.parser={p} AND r.parser_version={new_v}'),
-             dict(name='old_recompute', sql=recompute_set_sql(recompute_sql, 'old_rows'), materialize=True),
-             dict(name='new_recompute', sql=recompute_set_sql(recompute_sql, 'new_rows'), materialize=True)]
-    cols = ','.join(keys)
-    held = (f'SELECT {cols} FROM old_rows r WHERE NOT EXISTS (SELECT 1 FROM old_recompute x WHERE x.body_sha=r.body_sha) '
-            f'UNION SELECT {cols} FROM new_rows r WHERE NOT EXISTS (SELECT 1 FROM new_recompute x WHERE x.body_sha=r.body_sha)')
+             dict(name='old_recompute', sql=recompute_set_sql(recompute_sql, 'old_rows'), materialize=True)]
+    held = (f'SELECT {",".join(keys)} FROM old_rows r '
+            'WHERE NOT EXISTS (SELECT 1 FROM old_recompute x WHERE x.body_sha=r.body_sha)')
     if sample_keys is not None:
         inputs.append(table_input('sample_keys', sample_keys))
         held = f'SELECT h.* FROM ({held}) h WHERE h.body_sha IN (SELECT body_sha FROM sample_keys)'

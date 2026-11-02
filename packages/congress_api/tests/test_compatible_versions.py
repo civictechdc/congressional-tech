@@ -208,7 +208,8 @@ def test_the_differential_reads_every_column_both_ways_in_the_real_schema(tmp_pa
     changed = [dict(SAME[0], title='other'), *SAME[1:]]
     assert prove(tmp_path, engine, BASE, changed, 'changed')[1] == {'title': 1}
     assert prove(tmp_path, engine, BASE, SAME[:4], 'lost')[0]['only_old'] == 1
-    assert prove(tmp_path, engine, BASE, [*SAME, reading('f', 'h2', format='html')], 'extra')[0]['only_new'] == 1
+    # A new key with no old row is an addition, not a row the entry keeps.
+    assert prove(tmp_path, engine, BASE, [*SAME, reading('f', 'h2', format='html')], 'extra')[0]['only_new'] == 0
 
 
 def test_rows_in_the_recompute_set_are_not_counted_as_new(tmp_path, engine):
@@ -217,11 +218,22 @@ def test_rows_in_the_recompute_set_are_not_counted_as_new(tmp_path, engine):
     assert result == dict(result, rows=3, only_new=0, only_old=0, differences=0)
 
 
-def test_a_row_that_joins_or_leaves_the_recompute_set_is_counted(tmp_path, engine):
-    # Defect guarded: K from the old side only hides a row that left or joined the predicate.
-    flipped = [dict(SAME[2], format='html'), *[r for i, r in enumerate(SAME) if i != 2]]
-    result, differing = prove(tmp_path, engine, BASE, flipped, 'flip', recompute_sql=NOT_HTML)
-    assert result['rows'] == 4 and differing == {'format': 1}
+def test_a_re_read_that_fills_a_field_passes_and_a_change_outside_the_set_fails(tmp_path, engine):
+    # Recompute set: rows with no fingerprint (the html re-read rule's shape).
+    unset = "SELECT body_sha FROM {readings} WHERE fingerprint IS NULL"
+    old = [reading('a', 'h1', format='html', fingerprint=b'f' * 32), reading('b', 'h1', format='html')]
+    # b's re-read fills its fingerprint, leaving the set: an intended change, not compared.
+    filled = [reading('a', 'h2', format='html', fingerprint=b'f' * 32), reading('b', 'h2', format='html', fingerprint=b'g' * 32)]
+    result, differing = prove(tmp_path, engine, old, filled, 'filled', recompute_sql=unset)
+    assert result == dict(result, rows=1, differences=0, only_old=0, only_new=0) and differing == {}
+    # a is outside the set and its value changes: a difference (defect: K from the new side).
+    changed = [dict(filled[0], title='other'), filled[1]]
+    assert prove(tmp_path, engine, old, changed, 'changed-out', recompute_sql=unset)[1] == {'title': 1}
+    # a outside the set vanishes: only_old.
+    assert prove(tmp_path, engine, old, filled[1:], 'vanished', recompute_sql=unset)[0]['only_old'] == 1
+    # a joins the set on the new side (fingerprint lost): still compared, so counted.
+    lost = [dict(filled[0], fingerprint=None), filled[1]]
+    assert prove(tmp_path, engine, old, lost, 'lost', recompute_sql=unset)[1] == {'fingerprint': 1}
 
 
 def test_a_predicate_sample_compares_only_sampled_keys_outside_the_recompute_set(tmp_path, engine):
