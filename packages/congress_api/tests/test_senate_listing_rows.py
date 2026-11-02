@@ -59,6 +59,10 @@ def test_root_slug_event_row_is_discovered_through_hearing_link():
 
 
 def test_a_root_link_without_the_event_url_class_is_not_a_hearing():
+    for classes in ('url-nav', 'nav-url', 'urls', 'my_url'):
+        assert parse_listing_page(f'<a href="/about" class="{classes}">About</a> 04/22/26', SITE) == []
+    for classes in ('url', 'url summary', 'pull-left url'):
+        assert len(parse_listing_page(f'<a href="/a-hearing" class="{classes}">Hearing</a> 04/22/26', SITE)) == 1
     assert parse_listing_page('<a href="/about" class="nav">About</a> 04/22/26', SITE) == []
     assert parse_listing_page('<a href="/about">About</a> 04/22/26', SITE) == []
 
@@ -151,3 +155,12 @@ def test_route_saved_without_listing_details_does_not_raise():
     assert records.listed(SITE, get, saved={**SAVED, 'listing_details': None}, since=dt.date(2026, 1, 1))[0] == []
     get, _ = pages('')
     assert records.listed(SITE, get, saved=SAVED, since=dt.date(2026, 1, 1))[0] == []
+
+
+def test_pins_match_the_current_parser_sources():
+    import json
+    from congress_api.lake import appearance_records, meeting_records, readings
+    pins = json.loads((Path(__file__).parents[3] / 'model/jobs/publish-model.json').read_text())['parser_versions']
+    assert {name: readings.current_version(name) for name in ('html', 'xml', 'json', 'sniff')} == {name: pins[name] for name in ('html', 'xml', 'json', 'sniff')}
+    assert meeting_records.current_versions() == pins['meeting_records']
+    assert appearance_records.current_versions() == pins['appearance_records']

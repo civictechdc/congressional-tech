@@ -311,3 +311,66 @@ def test_a_failed_listing_still_fails_the_run(tmp_path, monkeypatch):
     monkeypatch.setattr(records, 'listed', refused)
     with pytest.raises(RuntimeError, match='503'):
         records.main(path, tmp_path, tmp_path, as_of=date(2026,9,28), site=[host])
+
+
+def outage_run(tmp_path, monkeypatch, urls, *, answering=(), **kwargs):
+    import gzip
+    host = 'indian.senate.gov'
+    path = tmp_path/'native.jsonl.gz'; path.write_bytes(gzip.compress(b''))
+    monkeypatch.setattr(records, 'listed', lambda *a, **k: ([(date(2026,8,26), url, 'Hearing') for url in urls], {'wordpress': True}))
+    fetched = []
+    def fetch(_session, target, **_):
+        fetched.append(target)
+        if target in answering:
+            return SimpleNamespace(status_code=404, content=b'')
+        raise RuntimeError('403 Forbidden')
+    monkeypatch.setattr(records_http, 'get_with_retry', fetch)
+    records.main(path, tmp_path, tmp_path, as_of=date(2026,9,28), site=[host], **kwargs)
+    return fetched
+
+
+def hearing_urls(count):
+    return [f'https://www.indian.senate.gov/hearings/h{index:02}' for index in range(count)]
+
+
+def test_three_fresh_failures_with_no_answer_fail_the_run(tmp_path, monkeypatch):
+    with pytest.raises(RuntimeError, match='site-wide page outage'):
+        outage_run(tmp_path, monkeypatch, hearing_urls(3))
+    saved = records_read_state(tmp_path/'senate.json.gz')['indian.senate.gov']
+    assert saved['last_attempt']['outcome'] == 'error' and len(saved['pages']) == 3
+
+
+def test_two_failures_stay_page_outcomes(tmp_path, monkeypatch):
+    outage_run(tmp_path, monkeypatch, hearing_urls(2))
+    assert list(tmp_path.glob('*.csv'))
+
+
+def test_one_answer_keeps_failures_as_page_outcomes(tmp_path, monkeypatch):
+    urls = hearing_urls(6)
+    outage_run(tmp_path, monkeypatch, urls, answering={urls[-1]})
+    assert list(tmp_path.glob('*.csv'))
+
+
+def test_a_host_stops_after_ten_failures_in_a_row(tmp_path, monkeypatch):
+    fetched = []
+    with pytest.raises(RuntimeError, match='site-wide page outage'):
+        fetched = outage_run(tmp_path, monkeypatch, hearing_urls(12))
+    saved = records_read_state(tmp_path/'senate.json.gz')['indian.senate.gov']
+    assert sum(page.get('status') == 'error' for page in saved['pages'].values()) == 10
+
+
+def test_failed_pages_count_against_the_refresh_limit(tmp_path, monkeypatch):
+    urls = hearing_urls(8)
+    with pytest.raises(RuntimeError):
+        outage_run(tmp_path, monkeypatch, urls, limit=4)
+    saved = records_read_state(tmp_path/'senate.json.gz')['indian.senate.gov']
+    assert sum(page.get('status') == 'error' for page in saved['pages'].values()) == 4
+
+
+def test_pages_already_in_error_do_not_make_an_outage(tmp_path, monkeypatch):
+    urls = hearing_urls(4)
+    state = {'indian.senate.gov': {'listings': {url: ['2026-08-26', 'Hearing'] for url in urls}, 'checked': '2026-09-28', 'wordpress': True,
+                                   'pages': {url: {'title': '', 'lines': [], 'witnesses': [], 'documents': [], 'status': 'error'} for url in urls}}}
+    records_write_state(tmp_path/'senate.json.gz', state)
+    outage_run(tmp_path, monkeypatch, urls)
+    assert list(tmp_path.glob('*.csv'))

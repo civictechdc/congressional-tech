@@ -35,7 +35,7 @@ LISTINGS = ["/hearings?PageNum_rs={}", "/committee-activity/hearings?PageNum_rs=
 ## a hearing's page: /hearings/<name>, /meetings/<name>, hearings?ID=<id>, /2024/5/<name>,
 ## or /<name> at the site root when the link carries the hCalendar event's url class.
 HEARING_LINK = re.compile(r"<a[^>]+href=\"((?:https?://[\w.\-]+)?/(?:[\w\-/.]*/)?(?:(?:hearings?|meetings|hearings-and-markups)/[^\"#?]+|hearings(?:-calendar)?\?(?:ID|id)=[\w\-]+"
-                          r"|\d{4}/\d{1,2}/[^\"#?/]+)|/[^\"#?/]+(?=\"[^>]*\bclass=\"[^\"]*\burl\b))\"[^>]*>(.*?)</a>", re.S)
+                          r"|\d{4}/\d{1,2}/[^\"#?/]+)|/[^\"#?/]+(?=\"[^>]*\bclass=\"(?:[^\"]*\s)?url[\s\"]))\"[^>]*>(.*?)</a>", re.S)
 
 
 FIRST_RECORD = dt.date(2019, 6, 1)  # Congress.gov's Senate meeting records begin in June 2019

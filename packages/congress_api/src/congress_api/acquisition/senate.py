@@ -67,6 +67,11 @@ WITNESS_FIELDS = "event_id name position organization page location".split()
 DOCUMENT_FIELDS = "event_id kind name url page source_labels witness_indexes witness_names".split()
 
 
+# Pages newly failing with none answering 200 or 404 make a host outage, not page outcomes.
+OUTAGE_MIN_FAILURES = 3
+OUTAGE_STOP_AFTER = 10
+
+
 def listing_page(site, form, n, get):
     return parse_listing_page(get(f"https://www.{site}{form.format(n)}"), site)
 
@@ -360,10 +365,12 @@ def main(meetings, state_dir, output_dir, seed_cache=None, offline=False, as_of=
                     aged.append(url)
             aged.sort(key=lambda u: (pages.get(u, {})["checked"], u))
             page_failures = []
+            fresh_failures = in_a_row = answered = 0
             for url in urgent + aged:
                 if limit is not None and live_pages >= limit and not importing:
                     break
                 page_check = {}
+                already_failed = pages.get(url, {}).get("status") == "error"
                 try:
                     pages[url], activity = fetch_page(url, pages.get(url, {}), as_of, cache=seed_cache if importing else None, check=page_check, activity=(saved.get("workflow") or {}).get(url))
                     if activity:
@@ -378,7 +385,14 @@ def main(meetings, state_dir, output_dir, seed_cache=None, offline=False, as_of=
                     totals["pages failed"] += 1
                     page_failures.append(f"{url}: {error}")
                     print(f"{host}: page failed, retained with its reason: {page_failures[-1]}", flush=True)
+                    live_pages += 1
+                    if not already_failed:
+                        fresh_failures += 1
+                        in_a_row += 1
+                    if in_a_row >= OUTAGE_STOP_AFTER:
+                        break
                     continue
+                answered, in_a_row = answered + 1, 0
                 totals["pages seeded" if importing else "pages fetched"] += 1
                 if not importing and totals["pages fetched"] % 25 == 0:
                     print(f"{host}: {totals['pages fetched']} pages refreshed; checkpoint saved", flush=True)
@@ -389,6 +403,9 @@ def main(meetings, state_dir, output_dir, seed_cache=None, offline=False, as_of=
                 pages = saved["pages"]  # normalizing replaces the site, so keep writing to the live one
                 if not importing:
                     live_pages += 1
+            if fresh_failures >= OUTAGE_MIN_FAILURES and not answered:
+                # Every fresh attempt failed and no page answered at all: the site, not its pages.
+                raise RuntimeError(f"{host}: site-wide page outage; {fresh_failures} pages failed, none answered; first: {page_failures[0]}")
             if (limit is None or live_pages < limit) and not page_failures:
                 saved["versions"] = versions[host]
             attempt.update(completed_at=timestamp(), outcome="imported" if importing else "error" if page_failures else "complete")
