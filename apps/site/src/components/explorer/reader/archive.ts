@@ -246,6 +246,31 @@ export async function openArchive(pointerUrl: string, options: any = {}) {
     if(rows.length>1)throw new Error('Archive link key is not unique.');
     if(rows.length)checkedRow(rows[0].list_row);return rows[0]?.list_row??null;
   };
+  // Data model §8.2, Retired keys: a key this release no longer publishes redirects to
+  // its successor or carries a removal notice. A never-published key stays "not found".
+  const hex=(value: any)=>value==null?null:Array.from(value as Uint8Array,(b:number)=>b.toString(16).padStart(2,'0')).join('');
+  const retired=async(key: string)=>{
+    if(!/^[a-f0-9]{16}$/.test(key))throw new Error('Invalid archive link key.');
+    if(!files.has('retired_links.parquet'))return null;
+    const binary=Uint8Array.from(key.match(/../g)!,v=>parseInt(v,16));
+    const rows=await read('retired_links.parquet',undefined,undefined,{link_key:{$eq:binary}});
+    if(rows.length>1)throw new Error('Retired archive link key is not unique.');
+    if(!rows.length)return null;
+    const [item]=rows;
+    return {key,successor:hex(item.successor_key),lastRelease:String(item.last_release_id),lastFilename:item.last_filename??null};
+  };
+  // One answer per public key: a live row, a redirect to the successor's row, a removal
+  // notice, or null for a key this archive never published.
+  const locate=async(key: string)=>{
+    const index=await resolve(key);
+    if(index!==null)return {index,redirectedFrom:null};
+    const gone=await retired(key);
+    if(!gone)return null;
+    if(!gone.successor)return {removed:gone};
+    const successor=await resolve(gone.successor);
+    if(successor===null)throw new Error('Archive redirect target is not published.');
+    return {index:successor,redirectedFrom:key};
+  };
   const versions=async(index: number,signal?: AbortSignal)=>{
     checkedRow(index);const keys=value('version_keys',index)??[];if(!keys.length)return [];
     const indexes:number[]=[];
@@ -361,6 +386,8 @@ export async function openArchive(pointerUrl: string, options: any = {}) {
     getSubject:entityStore.getSubject,
     listEntities:entityStore.listEntities,
     openDocument:entityStore.openDocument,
+    retired,
+    locate,
     schema:async()=>JSON.parse(new TextDecoder().decode(await verified('schema.json'))),
     async openSaved(detail: any){
       const saved=savedCopy(detail,options.rawBase??new URL('/',pointerUrl).href);

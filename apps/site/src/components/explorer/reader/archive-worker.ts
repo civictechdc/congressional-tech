@@ -44,8 +44,13 @@ self.onmessage=async({data})=>{
       case '/lookup':result=await reader.lookupRows(args.url,args.query,controller.signal);await displayedDates(reader,result.rows,controller.signal);break;
       case '/entry':
       case '/openDocument':{
-        const index=args.key?await reader.resolve(args.key):args.index;
-        if(index===null)throw new Error('This document was not found in the archive.');
+        let index=args.index,redirectedFrom:string|null=null;
+        if(args.key){
+          const found=await reader.locate(args.key);
+          if(!found)throw new Error('This document was not found in the archive.');
+          if('removed' in found){result={removed:found.removed};break;}
+          ({index,redirectedFrom}=found);
+        }
         const [opened,allMeetings]=await Promise.all([
           reader.openDocument(index,controller.signal),
           reader.meetings(),
@@ -58,6 +63,7 @@ self.onmessage=async({data})=>{
           meetings:allMeetings.length?allMeetings:opened.meetings,
           meetingDetails:opened.meetings,
           versions,
+          redirectedFrom,
         };
         break;
       }
