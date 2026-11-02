@@ -1,7 +1,10 @@
 """Rebuild a local archive generation, recomputing only rows a predicate selects.
 
-Everything else is copied forward by a native append. Seeded tables make the
-producers' own anti-joins select the work, so there is no second selection logic.
+Everything else is copied forward verbatim by a native append: no row is re-stamped.
+Unselected D3/D4 rows must already carry the current version (D3/D4 have no compatible
+versions; select them to recompute), and unselected readings must sit at a current pin or
+a compatible-versions registry version. Seeded tables make the producers' own anti-joins
+select the work, so there is no second selection logic.
 Refuses a non-local catalog or a runtime naming a remote, so this job has no path to
 Basin. It builds and writes candidate specs; publishing stays with archive_publish_job.
 
@@ -21,7 +24,9 @@ from uuid import uuid4
 
 import pyarrow.parquet as pq
 
-from congress_api.lake import appearance_records,capture_backfill,captures,filenames,meeting_records,readings,tables
+import shutil
+
+from congress_api.lake import capture_backfill,captures,compatible_versions,filenames,readings,tables
 from congress_api.lake.capture_backfill_guard import validate_generation
 from congress_api.lake.daily import ALL_TABLE_NAMES,PROVENANCE_KINDS,produce_daily
 from congress_api.retention.body_store import BodyStore,LocalAdapter
@@ -30,14 +35,15 @@ from docspec_client.models import DocSpecFailure
 from viewer_publication.archive_backfill_job import write_empty_body_inventory
 from viewer_publication.archive_controller import _save_continuation
 from viewer_publication.archive_model_job import PROVENANCE,_local,_pin,_selector,execute as execute_model,validate_spec as validate_model
-from viewer_publication.archive_selective_records import RECORD_TABLES,SelectiveStop,Bodies,differential,stage_d4
+from viewer_publication.archive_selective_records import RECORD_TABLES,SelectiveStop,Bodies,complete_d4,differential,stage_d4
 
 PREDICATE_TABLES=('captures','filename_readings','meeting_records','appearance_records')
 SUITES=('invariants','model_invariants','url_state_invariants','profile_completeness',
         'entity_profile_completeness','relationship_invariants')
 PIN={'path','sha256','size'}
 SCRATCH_BYTES=64<<30  # v21's model scratch; the job owns the seed, stages and model.
-# Identifies a row across a re-stamp, so a re-run cannot duplicate it.
+THROUGH=('tables','model')
+# Identifies a seeded row, so a re-run cannot duplicate it.
 SEED_KEYS={'captures':['receipt_key'],'readings':['body_sha','parser','parser_version'],
            'filename_readings':['filename','source_url'],'meeting_records':['record_sha','source'],
            'appearance_records':['record_sha','source']}
@@ -84,9 +90,9 @@ def validate_selective(value,*,base,catalog_root,tables):
     if 'gpo_mods' in fallback:
         result['body_fallback']=dict(gpo_mods={name:_local(fallback['gpo_mods'][name],base) for name in ('receipts','root')})
     model=value['model']
-    if not isinstance(model,dict) or {'template','engine_config','output','scratch'}-model.keys():
-        raise ValueError('Selective model requires its template, runtime, output and scratch')
-    result['model']=dict(model,**{name:_local(model[name],base) for name in ('template','engine_config','output','scratch')})
+    if not isinstance(model,dict) or {'template','engine_config'}-model.keys() or model.keys()-{'template','engine_config','spicy_regs'}:
+        raise ValueError('Selective model requires its template and runtime; the job owns work/model-{output,scratch}')
+    result['model']=dict(model,**{name:_local(model[name],base) for name in ('template','engine_config')})
     if isinstance(model.get('spicy_regs'),str):result['model']['spicy_regs']=_local(model['spicy_regs'],base)
     result['publish_template']=_local(value['publish_template'],base)
     return result
@@ -105,20 +111,21 @@ def _verify_pins(selective):
 
 
 def _versions():
-    return dict(filename_readings=filenames.current_version(),
-        meeting_records=meeting_records.current_versions(),appearance_records=appearance_records.current_versions())
+    from viewer_publication.archive_model_profile import current_parser_versions
+    pins=current_parser_versions(RECORD_TABLES)
+    return dict(filename_readings=filenames.current_version(),**{name:pins[name] for name in RECORD_TABLES})
+
+
+def _source(pin):
+    return pin['path'] if pin['kind']=='parquet' else {k:pin[k] for k in ('metadata_location','table_uuid','snapshot','schema_id')}
 
 
 def _input(name,pin):
-    return tables.table_input(name,pin['path'] if pin['kind']=='parquet' else
-        {k:pin[k] for k in ('metadata_location','table_uuid','snapshot','schema_id')})
+    return tables.table_input(name,_source(pin))
 
 
-def restamp(name,versions,alias=None):
-    """Copied rows claim the current version, an unverified claim the differential checks.
-
-    Admission requires one version per parser. ct-deh9 removes this in Round 2.
-    """
+def current_version_sql(name,versions,alias=None):
+    """(column, expression) naming the one current version a D3/D4 row may carry; None otherwise."""
     source=(alias+'.' if alias else '')+'source'
     if name=='filename_readings':return 'catalog_version',"'"+versions[name]+"'"
     if name in RECORD_TABLES:
@@ -172,7 +179,9 @@ class Run:
 def _open_state(spec,engine):
     """Step 1: refuse changed inputs on resume. decided_at is fixed by the first run."""
     work=Path(spec['work'])
-    definition={k:v for k,v in spec.items() if k not in ('work','resume','decided_at')}
+    # A model retry with another runtime keeps D1-D4; only the tables' definition is identity.
+    definition={k:v for k,v in spec.items() if k not in ('work','resume','decided_at','through')}
+    definition['selective']=dict(definition['selective'],model={k:v for k,v in spec['selective']['model'].items() if k!='engine_config'})
     identity=sha256(json.dumps(dict(definition=definition,captures=captures.current_version(),
         versions=_versions(),parsers={p:readings.current_version(p) for p in ('sniff','html','xml','json')},
         engine=[engine.source_revision,engine.binary_sha256]),sort_keys=True,default=str).encode()).hexdigest()
@@ -191,15 +200,20 @@ def _open_state(spec,engine):
 
 
 def _select(run):
-    """Step 2: freeze narrow keys and the counts that prove the partition.
+    """Step 2: preflight raw keys, refuse uncovered versions, freeze narrow keys and the counts.
 
     A captures hit selects its whole receipt, because D1 skips committed receipt keys and
     a row-level seed would lose the rest. `hits` and `selected` report that expansion.
+    Version checks group by version columns only (a handful of groups per table).
     """
     if 'selection' in run.state:return
+    compatible_versions.preflight(engine=run.engine,work=run.attempt/'preflight',
+        inputs={name:_source(pin) for name,pin in run.base.items()})
     where=run.selective['where'];versions=_versions();selection={}
+    registry=compatible_versions.load_registry();pins=compatible_versions.current_pins()
+    covered={(p,v) for p,v in pins.items()}|{(e['parser'],e['version']) for e in registry}
     for name in ALL_TABLE_NAMES:
-        directory=run.attempt/('select-'+name);column,value=restamp(name,versions);hit=row_predicate(name,where)
+        directory=run.attempt/('select-'+name);column,value=current_version_sql(name,versions);hit=row_predicate(name,where)
         steps=[];source='base';selected=hit;outputs=[]
         if name=='captures' and name in where:
             steps=[dict(name='selected_receipts',sql=f'SELECT DISTINCT receipt_key AS selected_key FROM base WHERE {hit}',materialize=True)]
@@ -208,20 +222,22 @@ def _select(run):
         elif name in where:
             keys=SELECTION_KEYS[name]
             outputs=[parquet_output(directory,'keys','SELECT DISTINCT '+','.join(f'{e} AS {a}' for e,a in keys)+f' FROM base WHERE {hit}',[a for _,a in keys])]
-        counts=[f'count(*) FILTER (WHERE {hit}) AS hits',f'count(*) FILTER (WHERE {selected}) AS selected','count(*) AS base']
-        if column:counts+=[f'count(*) FILTER (WHERE NOT {selected} AND {column} IS DISTINCT FROM {value}) AS restamped',
-                           f'count(*) FILTER (WHERE {value} IS NULL) AS unknown_version']
-        queries=[dict(name='counts',sql='SELECT '+','.join(counts)+f' FROM {source}')]
+        queries=[dict(name='counts',sql=f'SELECT count(*) FILTER (WHERE {hit}) AS hits,count(*) FILTER (WHERE {selected}) AS selected,count(*) AS base FROM {source}')]
         if column:
-            keys=','.join(SEED_KEYS[name])
-            queries.append(dict(name='duplicates',sql=f'SELECT count(*) AS n FROM (SELECT {keys} FROM base WHERE NOT {selected} GROUP BY {keys} HAVING count(*)>1)'))
+            group='source' if name in RECORD_TABLES else "cast(NULL AS VARCHAR)"
+            queries.append(dict(name='stale',sql=f'SELECT {group} AS source,{column} AS version,count(*) AS n FROM base '
+                f'WHERE NOT {selected} AND {column} IS DISTINCT FROM {value} GROUP BY 1,2'))
+        if name=='readings':
+            queries.append(dict(name='versions',sql='SELECT parser,parser_version,count(*) AS n FROM base GROUP BY parser,parser_version'))
         result=run_job(directory,run.engine,inputs=[_input('base',run.base[name])],steps=steps,outputs=outputs,queries=queries)
         [count]=result['counts']
         if name in where and not count['hits']:raise SelectiveStop(f'{name}: the predicate selects no rows')
-        if count.get('unknown_version'):raise SelectiveStop(f'{name}: {count["unknown_version"]} rows have a source with no current version')
-        if column and result['duplicates'][0]['n']:raise SelectiveStop(f'{name}: more than one version per key; ct-deh9 owns multi-version selection')
-        if count.get('restamped') and not run.selective['differential_rows']:
-            raise SelectiveStop(f'{name}: {count["restamped"]} rows would be re-stamped with no differential check')
+        if result.get('stale'):
+            raise SelectiveStop(f'{name}: unselected rows are not at the current version {json.dumps(result["stale"])}; '
+                'select them: D3/D4 have no compatible versions')
+        uncovered=[row for row in result.get('versions',[]) if (row['parser'],row['parser_version']) not in covered]
+        if uncovered:
+            raise SelectiveStop(f'readings: rows at versions neither current nor in the compatible-versions registry {json.dumps(uncovered)}')
         selection[name]=dict(count,keys=str(directory/'keys.parquet') if name in where else None)
     if selection['captures']['keys']:
         inventory={row['key']:row for row in run.inventory()}
@@ -249,18 +265,17 @@ def _ensure_table(run,name,directory):
 
 
 def _seed(run):
-    """Step 4: create the tables, then append base minus selected inside the engine.
+    """Step 4: create the tables, then append base minus selected inside the engine, verbatim.
 
     No intermediate reused file: parquet_output always sorts and 4.1M wide rows do not
     fit. The anti-join makes a re-run a no-op. The spec identity already pins this work's
     inputs and predicate, so the append identity needs no sort over N keys.
     """
-    versions=_versions();seeded=run.state.setdefault('seeded',{});where=run.selective['where']
+    seeded=run.state.setdefault('seeded',{});where=run.selective['where']
     for name in ALL_TABLE_NAMES:
         if name in seeded:continue
         directory=run.attempt/('seed-'+name);directory.mkdir();_ensure_table(run,name,directory)
-        column,value=restamp(name,versions,'i')
-        columns=','.join(f'{value} AS "{f["name"]}"' if f['name']==column else f'i."{f["name"]}"' for f in tables.load_schema(name)['fields'])
+        columns=','.join(f'i."{f["name"]}"' for f in tables.load_schema(name)['fields'])
         same=' AND '.join(f'(i.{k} IS NOT DISTINCT FROM e.{k})' for k in SEED_KEYS[name])
         inputs=[_input('incoming',run.base[name])];joins=f'LEFT ANTI JOIN existing e ON {same}';keep=f'NOT {row_predicate(name,where)}'
         if name=='captures' and name in where:
@@ -330,10 +345,11 @@ def _guard(run):
 
 
 def _model_value(run):
-    model=run.selective['model'];value=json.loads(Path(model['template']).read_text());versions=_versions()
-    value.update(engine_config=model['engine_config'],catalog_version=versions['filename_readings'],output=model['output'],scratch=model['scratch'],
-        parser_versions={**{p:readings.current_version(p) for p in ('sniff','html','xml','json')},
-            'meeting_records':versions['meeting_records'],'appearance_records':versions['appearance_records']})
+    from viewer_publication.archive_model_profile import current_parser_versions
+    model=run.selective['model'];value=json.loads(Path(model['template']).read_text())
+    value.update(engine_config=model['engine_config'],catalog_version=_versions()['filename_readings'],
+        output=str(run.work/'model-output'),scratch=str(run.work/'model-scratch'),
+        parser_versions=current_parser_versions(set(value.get('parser_versions',{}))|set(RECORD_TABLES)))
     for name,pin in run.state['pins'].items():value[name]=dict(kind='native_table',**pin)
     if 'spicy_regs' in model:value['spicy_regs']=model['spicy_regs']
     for field,kind in PROVENANCE.items():
@@ -342,24 +358,44 @@ def _model_value(run):
 
 
 def _model(run):
-    """Step 9: the output is attempt-scoped because the model refuses existing output."""
+    """Step 9: one owned output and scratch; an unaccepted attempt's data is deleted before a retry.
+
+    The runtime is not identity, so a retry with a larger pool resumes after D4. Without
+    this cleanup each failed attempt left up to SCRATCH_BYTES and the next check refused.
+    """
     if 'model' in run.state:return
+    value=_model_value(run)
+    for name in ('output','scratch'):
+        if Path(value[name]).exists():shutil.rmtree(value[name])
     run.check_scratch()
-    value=dict(_model_value(run),output=str(run.attempt/'model-output'),scratch=str(run.attempt/'model-scratch'))
-    built=execute_model(validate_model(value,base=run.attempt))
-    result=json.loads((run.attempt/'model-scratch/result.json').read_text())
+    built=execute_model(validate_model(value,base=run.work))
+    result=json.loads((Path(value['scratch'])/'result.json').read_text())
     observed={query['name']:query['data'] for query in result.get('queries',[])}
     for name in SUITES:
         rows=observed.get(name)
         if not rows or any(type(v) is int and v for row in rows for v in row.values()):
             raise SelectiveStop('Model suite absent or positive: '+name)
-    run.state['model']=dict(release_id=built['release_id'],output=built['output'],rows=built['rows']);run.save()
+    run.state['model']=dict(release_id=built['release_id'],output=built['output'],rows=built['rows'],
+        runtime=dict(path=run.selective['model']['engine_config'],**file_pin(run.selective['model']['engine_config'])));run.save()
+
+
+def _tables_report(run,started):
+    """The `through: tables` stop: every table built and guarded, no model run."""
+    state=run.state
+    report=dict(status='tables_built',executed=True,work=str(run.work),seconds=round(time.monotonic()-started,1),pins=state['pins'],
+        differential=state['differential'],rebuilt_diff=state.get('rebuilt_diff'),completion=state.get('completion'),
+        tables={name:dict(base=state['selection'][name]['base'],hits=state['selection'][name]['hits'],selected=state['selection'][name]['selected'],
+            reused=state['seeded'][name],appended=state.get('d4',{}).get(name,{}).get('appended')) for name in ALL_TABLE_NAMES})
+    (run.work/'tables-report.json').write_text(json.dumps(report,indent=1,sort_keys=True))
+    return report
 
 
 def _outputs(run,started):
     """Step 10: only a run reaching this step writes candidates."""
     state=run.state;work=run.work
-    model_path=work/'candidate-model.json';model_path.write_text(json.dumps(_model_value(run),indent=1,sort_keys=True))
+    # The publish controller runs the model again into its own fresh directories.
+    candidate=dict(_model_value(run),output=str(work/'candidate-output'),scratch=str(work/'candidate-scratch'))
+    model_path=work/'candidate-model.json';model_path.write_text(json.dumps(candidate,indent=1,sort_keys=True))
     template=Path(run.selective['publish_template']);publish=json.loads(template.read_text());publish.pop('daily',None)
     rows=[row for items in run.selective['provenance'].values() for row in items]
     publish.update(model_spec=dict(path=str(model_path),**file_pin(model_path)),receipt_keys=sorted(row['key'] for row in run.counts()),work=str(work/'publish'),
@@ -370,7 +406,8 @@ def _outputs(run,started):
     report=dict(status='built',executed=True,work=str(work),release_id=state['model']['release_id'],release=state['model']['output'],seconds=round(time.monotonic()-started,1),
         differential=state['differential'],rebuilt_diff=state.get('rebuilt_diff'),filenames_recomputed=state['daily']['filenames_recomputed'],
         tables={name:dict(base=state['selection'][name]['base'],hits=state['selection'][name]['hits'],selected=state['selection'][name]['selected'],
-            reused=state['seeded'][name],restamped=state['selection'][name].get('restamped',0),appended=state.get('d4',{}).get(name,{}).get('appended')) for name in ALL_TABLE_NAMES})
+            reused=state['seeded'][name],appended=state.get('d4',{}).get(name,{}).get('appended')) for name in ALL_TABLE_NAMES},
+        completion=state.get('completion'))
     (work/'selective-report.json').write_text(json.dumps(report,indent=1,sort_keys=True))
     return report
 
@@ -393,6 +430,8 @@ def execute_selective(spec,*,runtime_factory=None):
         _d1(run)
         _daily(run)
         stage_d4(run,bodies)
+        complete_d4(run,bodies)
         _guard(run)
+    if spec.get('through')=='tables':return _tables_report(run,started)
     _model(run)
     return _outputs(run,started)

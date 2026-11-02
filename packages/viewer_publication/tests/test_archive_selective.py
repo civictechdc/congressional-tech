@@ -87,12 +87,50 @@ def test_zero_hits_stops_before_any_table_exists(tmp_path,fixture):
     assert not Path(spec['catalog_root']).exists()
 
 
-def test_restamping_without_a_differential_is_refused(tmp_path,fixture):
+def test_stale_unselected_record_rows_stop_before_any_table(tmp_path,fixture):
+    # Defect guarded: re-stamping them with the current version, an unverified claim.
     def stale(rows):rows[0]['parser_version']='old'
     spec=selective_spec(tmp_path,fixture,dict(captures=B),differential_rows=0,
         base=dict(meeting_records=changed(tmp_path,fixture,'meeting_records',stale)))
-    with pytest.raises(SelectiveStop,match='re-stamped with no differential'):execute(spec)
+    with pytest.raises(SelectiveStop,match='D3/D4 have no compatible versions'):execute(spec)
     assert not Path(spec['catalog_root']).exists()
+
+
+def test_readings_at_an_uncovered_version_stop_before_any_table(tmp_path,fixture):
+    def stale(rows):rows[0]['parser_version']='old'
+    spec=selective_spec(tmp_path,fixture,dict(captures=B),differential_rows=0,
+        base=dict(readings=changed(tmp_path,fixture,'readings',stale)))
+    with pytest.raises(SelectiveStop,match='neither current nor in the compatible-versions registry'):execute(spec)
+    assert not Path(spec['catalog_root']).exists()
+
+
+def test_a_duplicate_base_primary_key_stops_before_any_table(tmp_path,fixture):
+    def duplicate(rows):rows.append(dict(rows[0]))
+    spec=selective_spec(tmp_path,fixture,dict(captures=B),differential_rows=0,
+        base=dict(readings=changed(tmp_path,fixture,'readings',duplicate)))
+    with pytest.raises(ValueError,match='duplicated before selection'):execute(spec)
+    assert not Path(spec['catalog_root']).exists()
+
+
+def test_covered_readings_are_copied_verbatim_at_their_old_versions(tmp_path,fixture,monkeypatch):
+    from congress_api.lake import compatible_versions as cv
+    pins=cv.current_pins()
+    def relabel(rows):
+        for row in rows:row['parser_version']='old-'+row['parser']
+    def entry(parser):
+        proof=dict(scope='sample',version='old-'+parser,current=pins[parser],recompute_sha256=cv.recompute_sha256('none'),
+            old_input_sha256='a'*64,new_input_sha256='a'*64,rows=1,columns=1,differences=0,only_old=0,only_new=0,
+            lock_only=dict(recomputed='old-'+parser))
+        return dict(parser=parser,version='old-'+parser,current=pins[parser],basis='lock_only' if parser=='sniff' else 'whole',
+            recompute_sql='none',reason='fixture',proof=proof)
+    registry=tmp_path/'registry.json'
+    registry.write_text(json.dumps(dict(version=2,entries=[entry(p) for p in cv.LEAF_PARSERS])))
+    monkeypatch.setattr(cv,'REGISTRY',registry)
+    base=changed(tmp_path,fixture,'readings',relabel)
+    spec=selective_spec(tmp_path,fixture,dict(captures=B),differential_rows=0,base=dict(readings=base),through='tables')
+    report=execute(spec)
+    assert report['status']=='tables_built' and not (Path(spec['work'])/'candidate-model.json').exists()
+    assert sorted_rows(head(spec,'readings'))==sorted_rows(pq.read_table(base).to_pylist())
 
 
 def test_narrow_fix_rebuilds_the_whole_receipt_and_reuses_the_rest_untouched(tmp_path,fixture):
@@ -122,27 +160,15 @@ def test_null_predicate_rows_are_seeded_not_dropped(tmp_path,fixture):
     assert len(head(spec,'filename_readings'))==base
 
 
-def test_selected_records_recompute_and_unselected_are_restamped_identically(tmp_path,fixture):
+def test_selected_records_recompute_and_unselected_are_copied_verbatim(tmp_path,fixture):
     meeting=meeting_records.current_versions()
-    def stale_meeting(rows):
-        for row in rows:row['parser_version']='old-meeting'
-    def stale_appearance(rows):
-        for row in rows:row['parser_version']='old-appearance'
-    def stale_names(rows):
-        for row in rows:row['catalog_version']='old-catalog'
-    base=dict(meeting_records=changed(tmp_path,fixture,'meeting_records',stale_meeting),
-        appearance_records=changed(tmp_path,fixture,'appearance_records',stale_appearance),
-        filename_readings=changed(tmp_path,fixture,'filename_readings',stale_names))
-    spec=selective_spec(tmp_path,fixture,dict(meeting_records="source='house_xml'",appearance_records="source='congress_gov'",filename_readings="filename LIKE 'b-one%'"),base=base)
+    spec=selective_spec(tmp_path,fixture,dict(meeting_records="source='house_xml'",appearance_records="source='congress_gov'",filename_readings="filename LIKE 'b-one%'"))
     report=execute(spec)
     assert report['tables']['meeting_records']['appended']==report['tables']['meeting_records']['selected']>0
-    assert report['tables']['appearance_records']['restamped']>0
-    rows=head(spec,'meeting_records')
-    assert {row['parser_version'] for row in rows}<=set(meeting.values())
+    assert {row['parser_version'] for row in head(spec,'meeting_records')}<=set(meeting.values())
     assert {row['catalog_version'] for row in head(spec,'filename_readings')}=={catalog_version()}
-    def without(rows,column):return sorted_rows([{k:v for k,v in row.items() if k!=column} for row in rows])
-    for name,column in (('meeting_records','parser_version'),('appearance_records','parser_version'),('filename_readings','catalog_version')):
-        assert without(head(spec,name),column)==without(pq.read_table(fixture['base'][name]).to_pylist(),column)
+    for name in ('meeting_records','appearance_records','filename_readings'):
+        assert sorted_rows(head(spec,name))==sorted_rows(pq.read_table(fixture['base'][name]).to_pylist())
     assert report['differential']['meeting_records'] and report['differential']['filename_readings']
 
 
@@ -234,6 +260,79 @@ def test_resume_refuses_changed_identity_and_needs_resume_flag(tmp_path,fixture)
     changed_where=dict(spec,resume=True,selective=dict(spec['selective'],where=dict(captures=BOTH)))
     with pytest.raises(ValueError,match='identity changed'):execute(changed_where)
     with pytest.raises(ValueError,match='resume found no state'):execute(dict(spec,work=str(tmp_path/'none'),resume=True))
+
+
+def test_a_model_runtime_change_resumes_and_a_predicate_change_still_refuses(tmp_path,fixture):
+    spec=selective_spec(tmp_path,fixture,dict(captures=B),differential_rows=0,through='tables')
+    assert execute(spec)['status']=='tables_built'
+    # Defect guarded: identity covering the model runtime, so a retry with a new pool redoes D1-D4.
+    other=tmp_path/'model-runtime.json';other.write_text(Path(os.environ['DOCSPEC_JOB_CONFIG']).read_text())
+    retry=dict(spec,resume=True,through='model',selective=dict(spec['selective'],model=dict(spec['selective']['model'],engine_config=str(other))))
+    assert execute(retry)['status']=='built'
+    with pytest.raises(ValueError,match='identity changed'):
+        execute(dict(spec,resume=True,selective=dict(spec['selective'],where=dict(captures=BOTH))))
+
+
+def test_an_unaccepted_model_attempt_is_cleared_before_the_retry(tmp_path,fixture):
+    # Defect guarded: a failed attempt's scratch left behind, so the next check_scratch refuses.
+    spec=selective_spec(tmp_path,fixture,dict(captures=B),differential_rows=0,through='tables')
+    execute(spec)
+    junk=Path(spec['work'])/'model-scratch'/'junk';junk.parent.mkdir();junk.write_bytes(b'x')
+    assert execute(dict(spec,resume=True,through='model'))['status']=='built'
+    assert not junk.exists()
+
+
+def test_tables_then_model_matches_an_uninterrupted_run(tmp_path,fixture,uninterrupted):
+    spec=selective_spec(tmp_path,fixture,dict(captures=BOTH,meeting_records="source='house_xml'"),differential_rows=0,through='tables')
+    execute(spec);assert (Path(spec['work'])/'tables-report.json').is_file()
+    execute(dict(spec,resume=True,through='model'))
+    assert {name:sorted_rows(head(spec,name)) for name in PK}==uninterrupted
+
+
+def test_scratch_checks_refuse_before_any_table(tmp_path,fixture,monkeypatch):
+    import viewer_publication.archive_selective as selective
+    from congress_api.lake import capture_backfill
+    spec=selective_spec(tmp_path/'owned',fixture,dict(captures=B),differential_rows=0)
+    monkeypatch.setattr(selective,'SCRATCH_BYTES',1)
+    with pytest.raises(RuntimeError):execute(spec)
+    assert not Path(spec['catalog_root']).exists()
+    monkeypatch.undo()
+    spec=selective_spec(tmp_path/'disk',fixture,dict(captures=B),differential_rows=0)
+    usage=capture_backfill.shutil.disk_usage
+    monkeypatch.setattr(capture_backfill.shutil,'disk_usage',lambda path:usage(path)._replace(free=1<<30))
+    with pytest.raises(RuntimeError,match='Free disk'):execute(spec)
+    assert not Path(spec['catalog_root']).exists()
+
+
+@pytest.mark.parametrize('defect',['drop','wrong_version'])
+def test_the_d4_reconcile_sees_a_lost_or_mislabelled_row(tmp_path,fixture,monkeypatch,defect):
+    # Defect guarded: deleting the reconcile query lets a lost or mis-versioned row pass.
+    original=meeting_records.append
+    def append(staged,**kwargs):
+        table=pq.read_table(staged['records']);rows=table.to_pylist()
+        rows=rows[1:] if defect=='drop' else [dict(rows[0],parser_version='wrong'),*rows[1:]]
+        path=Path(str(staged['records'])+'.altered.parquet');pq.write_table(pa.Table.from_pylist(rows,schema=table.schema),path)
+        return original(dict(staged,records=path),**kwargs)
+    monkeypatch.setattr(meeting_records,'append',append)
+    spec=selective_spec(tmp_path,fixture,dict(meeting_records="source='house_xml'"),differential_rows=0,through='tables')
+    with pytest.raises(SelectiveStop,match='a row was lost'):execute(spec)
+
+
+def test_completion_appends_a_candidate_the_base_never_had_and_stops_over_budget(tmp_path,fixture):
+    base=pq.read_table(fixture['base']['meeting_records']).to_pylist()
+    house=[row for row in base if row['source']=='house_xml']
+    assert house
+    def missing(rows):rows[:]=[row for row in rows if row['record_sha']!=house[0]['record_sha'] or row['source']!='house_xml']
+    stale=dict(meeting_records=changed(tmp_path,fixture,'meeting_records',missing))
+    spec=selective_spec(tmp_path/'ok',fixture,dict(captures=B),differential_rows=0,base=stale,through='tables')
+    report=execute(spec)
+    assert report['completion']['meeting_records']=={'appended':1,'sources':{'house_xml':1}}
+    assert sorted_rows(head(spec,'meeting_records'))==sorted_rows(base)
+    # Every meeting missing: more completion work than a budget of one.
+    (tmp_path/'over').mkdir()
+    none=dict(meeting_records=changed(tmp_path/'over',fixture,'meeting_records',lambda rows:rows.clear()))
+    over=selective_spec(tmp_path/'over',fixture,dict(captures=B),differential_rows=0,base=none,through='tables',batch_size=1,max_batches=1)
+    with pytest.raises(SelectiveStop,match=f'{len(base)} work items, over max_work_items 1'):execute(over)
 
 
 RESUME_SCRIPT='''

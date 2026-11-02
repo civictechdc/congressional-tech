@@ -11,7 +11,7 @@ from congress_api.lake.daily import ALL_TABLE_NAMES
 from viewer_publication.archive_model_job import _local,provenance_record_kind
 
 FIELDS={'version','bucket','catalog_root','work','tables','batch_size','max_batches'}
-OPTIONAL={'engine_config','decided_at','max_work_items','body_inventory','receipt_inventory','local_root','selective','resume'}
+OPTIONAL={'engine_config','decided_at','max_work_items','body_inventory','receipt_inventory','local_root','selective','resume','through'}
 
 
 def _bucket(value):
@@ -97,8 +97,12 @@ def load_spec(path):
     if 'selective' in value:
         from viewer_publication.archive_selective import validate_selective
         result['selective']=validate_selective(value['selective'],base=base,catalog_root=catalog_root,tables=result['tables'])
-    elif result['resume']:
-        raise ValueError('Only a selective backfill can resume')
+    elif result['resume'] or 'through' in value:
+        raise ValueError('Only a selective backfill can resume or stop early')
+    if 'through' in value:
+        from viewer_publication.archive_selective import THROUGH
+        if value['through'] not in THROUGH:raise ValueError('Selective through must be tables or model')
+        result['through']=value['through']
     return result
 
 
