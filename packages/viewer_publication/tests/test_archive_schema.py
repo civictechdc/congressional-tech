@@ -127,6 +127,11 @@ def test_every_registry_column_declares_nullability():
     assert {'url', 'is_saved', 'list_row', 'ordinal'} <= required('sources')
     assert {'filename', 'format', 'date_kind', 'saved_kind', 'hidden'} <= required('list')
     assert 'title' not in required('list') and 'member_path' not in required('sources')
+    # Phase-2 annex §3: types stated without "nullable" are required.
+    assert {'chamber', 'name', 'names'} <= required('committees')
+    assert 'description' in required('nominations') and 'cross_ids' in required('members')
+    assert {'source_locator', 'context_key', 'record_sha'} <= required('witnesses')
+    assert {'basis', 'count'} <= required('meeting_coverage')
 
 
 @pytest.mark.parametrize('mutation,expected', [
