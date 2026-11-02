@@ -100,8 +100,12 @@ class MemorySamples:
 
 # The owned group leader watches its starter: if the starter dies, even by SIGKILL,
 # the leader TERMs and then KILLs its whole group, so no job outlives its owner.
+# A group TERM reaches the job directly; the leader survives it (a handler, which exec
+# resets, so the job keeps the default) and waits for the job, so stop_owned's grace
+# period is real and the KILL follows only a job that would not stop.
 _OWNER = """import os,signal,subprocess,sys,time
 parent=int(sys.argv[1])
+signal.signal(signal.SIGTERM,lambda *_:None)
 process=subprocess.Popen(sys.argv[2:])
 while process.poll() is None:
  if os.getppid()!=parent:

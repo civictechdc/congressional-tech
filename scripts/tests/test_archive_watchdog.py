@@ -142,3 +142,22 @@ def test_too_little_memory_at_start_refuses_before_the_job_runs(tmp_path):
     result = run(tmp_path, '--rss-gb', '4', '--start-available-gb', '1000000',
                  command=[sys.executable, '-c', sleeper(marker)])
     assert result.returncode == 98 and 'refused to start' in result.stderr and not marker.exists()
+
+
+def test_stopping_an_owned_job_gives_its_term_handler_the_grace_period(tmp_path):
+    # Red-e2: the owner leader died on the group TERM, so stop_owned's 5 s wait ended at once
+    # and the KILL landed before the job's own TERM handler could finish.
+    import importlib.util
+    spec = importlib.util.spec_from_file_location('process_rss', ROOT / 'scripts/measure/process_rss.py')
+    process_rss = importlib.util.module_from_spec(spec); spec.loader.exec_module(process_rss)
+    ready, done = tmp_path / 'ready', tmp_path / 'done'
+    job = (f"import pathlib,signal,sys,time\n"
+           f"def stop(*_):\n time.sleep(1.5);pathlib.Path({str(done)!r}).write_text('clean');sys.exit(0)\n"
+           f"signal.signal(signal.SIGTERM,stop)\npathlib.Path({str(ready)!r}).write_text('1')\ntime.sleep(60)\n")
+    child = process_rss.start_owned([sys.executable, '-c', job])
+    deadline = time.monotonic() + 20
+    while not ready.exists() and time.monotonic() < deadline:
+        time.sleep(0.05)
+    assert ready.exists()
+    process_rss.stop_owned(child)
+    assert done.read_text() == 'clean', "the job's TERM handler was cut off by the group KILL"
