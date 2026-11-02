@@ -2,7 +2,7 @@
 id: ct-9lxf
 status: open
 deps: []
-links: []
+links: [ct-tk10, ct-umtm]
 created: 2026-11-02T16:23:34Z
 type: chore
 priority: 3

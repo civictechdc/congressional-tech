@@ -2,7 +2,7 @@
 id: ct-tk10
 status: open
 deps: []
-links: [cef-96wc, ct-n2cy, ct-qg8e, ct-d0o0, ct-4jms, ct-ud0b]
+links: [cef-96wc, ct-n2cy, ct-qg8e, ct-d0o0, ct-4jms, ct-ud0b, ct-9lxf, ct-umtm]
 created: 2026-11-02T10:24:38Z
 type: feature
 priority: 1
@@ -65,3 +65,7 @@ Round 1b 2026-11-02 (lead): impl-h done: 13 commits on r1b-h (1055fefb..36ac49a0
 **2026-11-02T17:17:02Z**
 
 Owner decision 2026-11-02: any gate-1 difference group the cause catalog can't match is brought to the owner with evidence and a recommendation before publish. Catalog: .cache/archive-release/causes/ (19 causes, matcher match.py; probe matched 10/11, the 11th being live's 72 NULL source URLs). Gate fix requested (r1b-h2): compare struct subfields individually (meetings.sittings gained fields, 17,441/18,687 rows differ wholesale) and state the 'cannot see' for columns new in the candidate.
+
+**2026-11-02T17:20:05Z**
+
+2026-11-02 (lead): r1b-h2 44785aee merged (ff): gate 1 compares shared struct subfields individually (sittings[].start changes surface), new subfields are their own addition groups, removed ones refuse, and columns new in the candidate are listed under cannot_see.
