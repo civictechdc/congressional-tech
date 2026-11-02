@@ -2020,6 +2020,41 @@ def test_mods_print_states_every_held_day_and_labels_statements():
     ("Steve Chalk, Chief Financial Officer, Energy Efficiency and Renewable Energy, Department of Energy \\1\\..................... "
      "Insert for the record", None),
     ("Hon. Russell T. Vought to be Director, Office of Management and Budget, Testimony", None),
+    # Footnote text before a witness's own line does not make it a record entry (green-f4).
+    ("Science, Changing the Culture'' and the accompanying slide presentation have been retained in committee records and also are "
+     "available at http://docs.house.gov/Committee/Calendar/ByEvent.aspx?EventID=101897. Gerard A. Gioia, Chief, Division of "
+     "Pediatric Neuropsychology, Children's National Health System", None),
+    ("is available at https://docs.house.gov/meetings/IF/IF14/ 20200129/110423/HHRG-116-IF14-Wstate-ChuaK-20200129.pdf. \\2\\ "
+     "Nancy Perry, did not answer the question by the time of publication. Melanie Benesh, Legislative Attorney, Environmental "
+     "Working Group", None),
+    # ...but a contents label before it does, marked or not.
+    ("Prepared statement \\2\\ \\1\\ The information has been retained in committee files and also is available at "
+     "http://docs.house.gov/meetings/IF/IF03/20150603/103551/ BILLS-114pih-SubtitleA-EnergyEfficiency.pdf. John E. Shelk, "
+     "President and Chief Executive Officer, Electric Power Supply Association", "statement_for_record"),
+    ("Prepared statement Erik D. Olson, Senior Strategic Director for Health And Food, Natural Resources Defense Counsel", "statement_for_record"),
+    ("Submitted questions: Taylor, Alexis", "statement_for_record"),
+    # Some prints list each witness as "Statement of ..."; that heading is the witness, not an entry.
+    ("Statement of Dr. Robert D. Putnam, Professor of Public Policy, Harvard University", None),
+    ("Additional information \\1\\ Kevin Sunday, Director, Government Affairs, Pennsylvania Chamber of Business and Industry", "statement_for_record"),
 ])
 def test_mods_record_entries_are_read_from_their_opening_marker(line, kind):
     assert appearance_records.mods_entry_kind(line, None) == kind
+
+
+def test_mods_lines_that_name_only_a_contents_entry_are_not_people():
+    """A line left holding only a contents label after its name is read ("Prepared statement, dated October 22,
+    2015", "Prepared statement on H.R. 841, ...") names an entry of the witness above it, not a person (green-f4)."""
+    xml = b"""<mods xmlns="http://www.loc.gov/mods/v3"><titleInfo><title>Hearing</title></titleInfo>
+      <extension><heldDate>2015-10-22</heldDate>
+      <witness>Doe, Hon. Jane, Director, Office of Things</witness>
+      <witness>Prepared statement, dated October 22, 2015</witness>
+      <witness>Prepared statement on H.R. 841, H.R. 931, and H.R. 1410</witness>
+      <witness>Submitted questions \\2\\...................................... Mark Johnson, Senior Environmental Health Scientist</witness>
+      <witness>Joint prepared statement with Lieutenant General Thomas P. Bostick, Chief of Engineers, U.S. Army Corps of Engineers</witness>
+      </extension></mods>"""
+    row = appearance_records.build_appearance_record_row(_sha("mods-entries"), "mods", xml, parser_version="v1", package_id="CHRG-114shrg52553")
+    assert [(a["name"], a["witness_type"]) for a in row["appearances"]] == [
+        ("Jane Doe", None),
+        ("Mark Johnson", "statement_for_record"),
+        ("Thomas P. Bostick", "statement_for_record"),
+    ]
