@@ -194,6 +194,9 @@ def load_causes(pin):
             raise ValueError(f'Cause entry tickets must be ticket ids: {entry["id"]}')
         if entry['disposition'] == 'accepted_defect' and not tickets:
             raise ValueError(f'An accepted defect needs a ticket: {entry["id"]}')
+        if entry['disposition'] == 'explained' and not entry.get('evidence'):
+            # An explanation names what was read (raw lines, a query result) by pinned file.
+            raise ValueError(f'An explained cause needs pinned evidence: {entry["id"]}')
         for evidence in entry.get('evidence', []):
             verify_local_file(evidence['path'], evidence['sha256'], evidence['size'])
     return record

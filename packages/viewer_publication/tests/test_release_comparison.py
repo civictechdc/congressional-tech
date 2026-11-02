@@ -17,7 +17,7 @@ SCHEMAS = {
     'sources': [('list_row', I), ('url', S), ('member_path', S)],
     'recoveries': [('body', B), ('recovered_url', S), ('kind', S)],
     'meetings': [('event_id', pa.int64()), ('subject_keys', pa.list_(S))],
-    'witnesses': [('occasion', S), ('name', S)], 'recordings': [('video_key', S), ('event_ids', pa.list_(pa.int64()))],
+    'witnesses': [('witness_key', S), ('occasion', S), ('name', S), ('organization', S)], 'recordings': [('video_key', S), ('event_ids', pa.list_(pa.int64()))],
     'bills': [('bill_id', S)], 'url_state': [('requested_url', S), ('attempts', I)],
 }
 SCOPE = {'version': 1, 'entries': [{'family': 'x', 'patterns': [], 'exclusions': ['/oembed/']}]}
@@ -104,14 +104,16 @@ def test_null_source_urls_match_with_null_safe_comparison(tmp_path, pair):
                                        ('1 NULL urls also present in the previous release', 'a published source address must not be null'): 0}
 
 
-def test_shifted_list_rows_with_identical_keys_report_no_change(tmp_path):
+def test_shifted_list_rows_with_identical_keys_need_a_recorded_cause(tmp_path):
+    """No key or value differs, but bytes did: the comparison says so instead of passing."""
     prev = release(tmp_path / 'prev', documents=['A', 'B', 'C'], sources=[(0, 'a', None), (1, 'b', None), (2, 'c', None)])
     live = release(tmp_path / 'live', documents=['C', 'A', 'B'], sources=[(0, 'c', None), (1, 'a', None), (2, 'b', None)])
     code, result = run(tmp_path, prev, live)
-    assert code == 0, result['failing']
+    assert code == 1
     assert result['files']['links.parquet']['digest_identical'] is False
+    nothing = {('changed bytes, no key or value difference found', 'unexplained'): 0}
     for name in ('list', 'links', 'sources'):
-        assert counts(result, name) == {}
+        assert counts(result, name) == nothing
     assert result['files']['list.parquet']['one_to_one_rows'] == 3
 
 
@@ -184,11 +186,38 @@ def test_all_link_keys_replaced_cannot_pass(tmp_path):
 
 
 def test_all_witnesses_replaced_cannot_pass(tmp_path):
-    prev = release(tmp_path / 'prev', documents=['A'], witnesses=[{'occasion': 'o', 'name': 'a'}])
-    live = release(tmp_path / 'live', documents=['A'], witnesses=[{'occasion': 'o', 'name': 'b'}])
+    prev = release(tmp_path / 'prev', documents=['A'], witnesses=[{'witness_key': 'w1', 'occasion': 'o', 'name': 'a'}])
+    live = release(tmp_path / 'live', documents=['A'], witnesses=[{'witness_key': 'w2', 'occasion': 'o', 'name': 'b'}])
     code, result = run(tmp_path, prev, live)
     assert code == 1
     assert {g['file'] for g in result['failing']} == {'witnesses.parquet'}
+
+
+def test_witness_value_rewritten_on_a_matched_key_is_a_group(tmp_path):
+    """red-h probe 1: an organization rewritten under the same witness_key passed before."""
+    row = lambda org: [{'witness_key': 'w1', 'occasion': 'o', 'name': 'Ann', 'organization': org}]
+    code, result = run(tmp_path, release(tmp_path / 'prev', documents=['A'], witnesses=row('GAO')),
+                       release(tmp_path / 'live', documents=['A'], witnesses=row('Totally Wrong Org')))
+    assert code == 1
+    assert counts(result, 'witnesses') == {('changed organization', 'value differs on matched key'): 1}
+
+
+def test_source_address_moved_to_another_document_is_a_group(tmp_path):
+    """red-h probe 2: the same address now on document B, at equal multiplicity."""
+    prev = release(tmp_path / 'prev', documents=['A', 'B'], sources=[(0, 'https://x/a', None), (1, 'https://x/b', None)])
+    live = release(tmp_path / 'live', documents=['A', 'B'], sources=[(1, 'https://x/a', None), (1, 'https://x/b', None)])
+    code, result = run(tmp_path, prev, live)
+    assert code == 1
+    assert ('documents changed for a shared key', 'the key now answers other documents') in counts(result, 'sources')
+
+
+def test_lookup_key_repointed_to_another_document_is_a_group(tmp_path):
+    """red-h probe 3: a URL lookup key now answers the other document."""
+    url = lambda row: [{'lookup_key': key('u'), 'list_row': row}]
+    code, result = run(tmp_path, release(tmp_path / 'prev', documents=['A', 'B'], urls=url(0)),
+                       release(tmp_path / 'live', documents=['A', 'B'], urls=url(1)))
+    assert code == 1
+    assert counts(result, 'urls') == {('documents changed for a shared key', 'the key now answers other documents'): 1}
 
 
 def test_all_source_urls_null_cannot_pass(tmp_path):

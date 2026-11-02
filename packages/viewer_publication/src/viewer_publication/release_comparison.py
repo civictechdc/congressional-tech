@@ -12,8 +12,8 @@ recorded cause of the exact count.
 
 Cannot see: a defect present in both releases (no difference); content of split, merged
 or added rows (no matched partner); a second cause hiding inside one column group of the
-same count; whether a recorded cause is true. Witness rows are compared by
-(occasion, name) only, because witness keys were redefined in 448651e7.
+same count; whether a recorded cause is true. Witnesses compare by witness_key, which
+448651e7 redefined, so against c94bfedc every key appears removed and added.
 """
 from __future__ import annotations
 
@@ -218,7 +218,8 @@ def urls(d: Diff):
     return [group('keys gone', 'every row for the key was removed', gone or 0),
             group('keys new', 'key absent from the previous release', new or 0),
             group('keys with fewer rows', 'fewer documents answer the key', fewer or 0),
-            group('keys with more rows', 'more documents answer the key', more or 0)], {'histogram': histogram}
+            group('keys with more rows', 'more documents answer the key', more or 0),
+            *moved(d, 'urls', ['lookup_key'])], {'histogram': histogram}
 
 
 def sources(d: Diff):
@@ -245,11 +246,30 @@ def sources(d: Diff):
                 WHERE x.member_path IS NOT NULL AND x.ln<x.pn AND NOT EXISTS (SELECT 1 FROM flips f WHERE f.a_real AND NOT f.b_real
                 AND f.member_path=x.member_path AND f.context_url IS NOT DISTINCT FROM x.url)"""):
             g.update(status='verified', cause='every removed address has its own real-to-not flip')
-    out = [g for g in out if g['count']]
+    out = [g for g in out if g['count']] + moved(d, 'sources', ['url', 'member_path'])
     if {'list_row', 'url', 'member_path'} <= set(d.columns('base', 'sources')) & set(d.columns('candidate', 'sources')):
         out += d.changed('sources', paired('sources', ['url', 'member_path']),
                          only=['is_saved', 'first_seen', 'listed_on', 'link_text', 'doc_type', 'posted'])
     return out, notes
+
+
+def moved(d: Diff, table, fields):
+    """Keys on both sides whose documents differ, mapping base rows through the document pairs.
+
+    Catches a source address, lookup key or recovery that now answers another document at
+    the same multiplicity. A key on a removed or added document counts too: its answer
+    changed. Set operations compare NULL fields as equal.
+    """
+    if not {'list_row', *fields} <= set(d.columns('base', table)) & set(d.columns('candidate', table)):
+        return []
+    cols = ','.join(fields)
+    on = ' AND '.join(f's.{f} IS NOT DISTINCT FROM x.{f}' for f in fields)
+    count = d.one(f"""WITH b AS (SELECT DISTINCT {','.join('p.' + f for f in fields)},x.lr AS r FROM base_{table} p JOIN pairs x ON p.list_row=x.pr),
+      c AS (SELECT DISTINCT {cols},list_row AS r FROM candidate_{table}),
+      shared AS (SELECT DISTINCT {cols} FROM base_{table} INTERSECT SELECT DISTINCT {cols} FROM candidate_{table}),
+      diff AS (SELECT DISTINCT {cols} FROM ((SELECT * FROM b EXCEPT SELECT * FROM c) UNION ALL (SELECT * FROM c EXCEPT SELECT * FROM b)))
+      SELECT count(*) FROM shared s WHERE EXISTS (SELECT 1 FROM diff x WHERE {on})""")
+    return [dict(group('documents changed for a shared key', 'the key now answers other documents', count), value=True)] if count else []
 
 
 def paired(table, fields):
@@ -263,6 +283,7 @@ def paired(table, fields):
 
 def recoveries(d: Diff):
     groups, notes = key_file('recoveries', 'body,recovered_url,kind')(d)
+    groups += moved(d, 'recoveries', ['body', 'recovered_url', 'kind'])
     if 'list_row' in set(d.columns('base', 'recoveries')) & set(d.columns('candidate', 'recoveries')):
         groups += d.changed('recoveries', paired('recoveries', ['body', 'recovered_url', 'kind']),
                             only=['suffix', 'bytes', 'imported_at', 'identity_note'])
@@ -332,25 +353,6 @@ def recordings(d: Diff):
     return groups + d.changed('recordings', 'base_recordings p JOIN candidate_recordings l USING(video_key)', tracks, set()), {}
 
 
-def witnesses(d: Diff):
-    d.table('wp', "SELECT occasion,lower(trim(name)) n,count(*) c FROM base_witnesses GROUP BY 1,2")
-    d.table('wl', "SELECT occasion,lower(trim(name)) n,count(*) c FROM candidate_witnesses GROUP BY 1,2")
-    d.table('wd', """SELECT coalesce(p.occasion,l.occasion) o,coalesce(p.n,l.n) n,coalesce(p.c,0) pc,coalesce(l.c,0) lc FROM wp p
-      FULL JOIN wl l ON p.occasion=l.occasion AND p.n IS NOT DISTINCT FROM l.n WHERE coalesce(p.c,0)<>coalesce(l.c,0)""")
-    out = []
-    for name, cause, where in (
-        ('pairs only previous, occasion gone', 'occasion absent from live', 'lc=0 AND o NOT IN (SELECT occasion FROM wl)'),
-        ('pairs only previous, occasion kept', 'name absent from this occasion in live', 'lc=0 AND o IN (SELECT occasion FROM wl)'),
-        ('pairs only live, new occasion', 'occasion absent from previous', 'pc=0 AND o NOT IN (SELECT occasion FROM wp)'),
-        ('pairs only live, occasion kept', 'name absent from this occasion in previous', 'pc=0 AND o IN (SELECT occasion FROM wp)'),
-        ('repeated occurrences', 'same name counted more often on a shared occasion', 'pc>0 AND lc>pc'),
-        ('fewer occurrences', 'same name counted less often on a shared occasion', 'lc>0 AND pc>lc'),
-    ):
-        out.append(group(name, cause, d.one(f'SELECT sum(lc-pc) FROM wd WHERE {where}')))
-    return out, {'occasions': {s: d.one(f'SELECT count(DISTINCT occasion) FROM {s}_witnesses') for s in d.dirs},
-                 'note': 'witness_key was compared by (occasion, lower(trim(name))) because keys were redefined'}
-
-
 def url_state(d: Diff):
     scope = json.loads((d.dirs['candidate'] / 'capture_scope.json').read_text())
     patterns = {re.compile(p) for e in scope['entries'] for p in e.get('exclusions', [])}
@@ -369,7 +371,7 @@ def url_state(d: Diff):
 
 
 HANDLERS = {'list': document_file('list'), 'detail': document_file('detail'), 'links': links, 'urls': urls, 'sources': sources, 'meetings': meetings,
-            'recoveries': recoveries, 'witnesses': witnesses,
+            'recoveries': recoveries,
             'recordings': recordings, 'bills': bills, 'url_state': url_state}
 
 
@@ -408,6 +410,10 @@ def account(d: Diff):
             # A digest change that no comparison explains, such as an equal-count value change
             # in a file without a handler, used to pass silently.
             groups.append(flag('changed file without a comparison', 'unexplained'))
+        elif base and candidate and not same and not groups:
+            # A handler compared the file and found nothing, yet its bytes changed (for example
+            # release-local row positions only). That claim needs a recorded cause, never silence.
+            groups.append(flag('changed bytes, no key or value difference found', 'unexplained'))
         rowsum = sum(g['count'] for g in groups if not g.get('value'))
         residual = delta - rowsum
         if residual:
