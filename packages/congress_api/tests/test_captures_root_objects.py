@@ -79,7 +79,7 @@ def minimal_counter(tmp_path,rows,field_paths):
 
 @pytest.mark.parametrize('field_paths',[False,True,None])
 def test_actual_writer_root_facts_equal_direct_and_missing_typed_counter(tmp_path,field_paths):
-    from congress_api.lake.captures import stage_captures
+    from congress_api.lake.capture_staging import stage_captures
     files,rows=modern_receipts(tmp_path)
     counter=minimal_counter(tmp_path,rows,field_paths)
     expected=stage_captures(files,engine=native(),work=tmp_path/'direct')
@@ -108,7 +108,7 @@ def test_actual_writer_root_facts_equal_direct_and_missing_typed_counter(tmp_pat
 @pytest.mark.parametrize('operation',['plan','pins','stage'])
 def test_raw_counter_directories_refuse_before_registration(tmp_path,operation):
     from congress_api.lake import receipt_metadata
-    from congress_api.lake.captures import stage_captures
+    from congress_api.lake.capture_staging import stage_captures
     root=tmp_path/'counter-directory';root.mkdir()
     (root/'root.parquet').write_bytes(b'not-a-counter')
     partition=root/'part=1';partition.mkdir()

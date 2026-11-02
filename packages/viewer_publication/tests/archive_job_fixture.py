@@ -44,7 +44,7 @@ def rebuild_model_spec(tmp_path,*,raw,qualification=None,receipts=None,entities=
     real_model_spec slice with `qualification`.
     """
     from pathlib import Path
-    from congress_api.lake.captures import stage_captures
+    from congress_api.lake.capture_staging import stage_captures
     from docspec_client.client import NativeDatasets
     raw=Path(raw)
     if receipts is None:receipts=[('receipts/documents/2026-10-27/slice.jsonl.gz',qualification)]
@@ -131,7 +131,7 @@ def selective_base(root):
     import gzip
     from pathlib import Path
     from congress_api.lake import appearance_records,filenames,meeting_records,readings
-    from congress_api.lake.captures import stage_captures
+    from congress_api.lake.capture_staging import stage_captures
     from congress_api.retention.provenance import file_pin,parquet_output,run_job
     from docspec_client.client import NativeDatasets
     root=Path(root);raw=root/'raw';raw.mkdir(parents=True)

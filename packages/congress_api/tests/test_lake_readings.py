@@ -257,7 +257,7 @@ def test_reading_import_failure_never_claims_durability(tmp_path):
 def test_d2_rebuild_uses_only_raw_receipts_bodies_and_durable_decisions(tmp_path):
     import gzip
     import shutil
-    from congress_api.lake.captures import stage_captures
+    from congress_api.lake.capture_staging import stage_captures
     from congress_api.retention.body_store import BodyStore,LocalAdapter
     from congress_api.retention.provenance import parquet_output,run_job
     raw=tmp_path/'raw';store=BodyStore(LocalAdapter(raw));stages=tmp_path/'stages'

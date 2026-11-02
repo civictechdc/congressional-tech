@@ -62,7 +62,7 @@ def retained_model(tmp_path):
     from corpus_recovery.reconcile import import_retained
     from congress_api.models.raw_fetch import FetchAttempt,FetchResult
     from congress_api.lake import readings,filenames
-    from congress_api.lake.captures import stage_captures
+    from congress_api.lake.capture_staging import stage_captures
     seed=tmp_path/'seed';seed.mkdir();_,digest,html=real_model_spec(seed)
     raw=seed/'raw';store=BodyStore(LocalAdapter(raw))
     writer=ReceiptWriter(store,identity=dict(job='journey',commit='a'*40,lockfile_digest='b'*64),

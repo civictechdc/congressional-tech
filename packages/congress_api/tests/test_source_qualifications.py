@@ -135,7 +135,7 @@ def test_custody_drift_refuses_even_when_mtime_restored(tmp_path, target, mutati
 @pytest.mark.parametrize('target', ['source', 'authority'])
 @pytest.mark.parametrize('mutation_call', [1, 2])
 def test_native_drift_refuses_before_public_acceptance(tmp_path, target, mutation_call):
-    from congress_api.lake.captures import stage_captures
+    from congress_api.lake.capture_staging import stage_captures
     source, authority, _ = qualified_source(tmp_path)
     class MutatingEngine:
         source_revision = 'fixture'
@@ -176,7 +176,7 @@ def test_authority_change_during_its_read_refuses(tmp_path):
 
 
 def test_missing_qualification_refuses_before_native_read(tmp_path):
-    from congress_api.lake.captures import stage_captures
+    from congress_api.lake.capture_staging import stage_captures
     source, _, _ = qualified_source(tmp_path)
     class UnopenedEngine:
         source_revision = 'fixture'

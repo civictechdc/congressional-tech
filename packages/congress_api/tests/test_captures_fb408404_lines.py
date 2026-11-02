@@ -18,7 +18,7 @@ import pyarrow.parquet as pq
 import pytest
 
 from capture_qualification_helpers import write_qualified_bytes
-from congress_api.lake.captures import stage_captures
+from congress_api.lake.capture_staging import stage_captures
 from docspec_client.client import NativeDatasets
 
 FIXTURE = Path(__file__).parent / 'fixtures/fb408404_receipt_lines.jsonl'

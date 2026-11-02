@@ -87,7 +87,7 @@ def test_expansion_inference_is_local_to_retained_member_attempt_and_context(tmp
 def test_batch_record_captures_extended_prior_attempts_and_intra_item_fetch_consistency(tmp_path):
     import os
     from docspec_client.client import NativeDatasets
-    from congress_api.lake.captures import stage_captures
+    from congress_api.lake.capture_staging import stage_captures
     from test_captures_ingest import files
     config=json.loads(Path(os.environ['DOCSPEC_JOB_CONFIG']).read_text())
     # This config moves to tmp_path, so a binary named relative to the original must be resolved first.

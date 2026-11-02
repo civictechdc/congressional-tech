@@ -17,7 +17,7 @@ def test_actual_receipt_writer_download_header_survives_d1(tmp_path,counter):
     from congress_api.models.raw_fetch import FetchResult
     from congress_api.retention.body_store import BodyStore,LocalAdapter
     from congress_api.retention.receipt_writer import ReceiptWriter
-    from congress_api.lake.captures import stage_captures
+    from congress_api.lake.capture_staging import stage_captures
     root=tmp_path/'raw';qualifications={}
     class QualifiedAdapter(LocalAdapter):
         def create(self,key,source,**kwargs):

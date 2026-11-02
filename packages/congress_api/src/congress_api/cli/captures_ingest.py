@@ -7,7 +7,8 @@ import re
 
 from congress_shared.custody import custody_identity,verify_local_file
 from docspec_client.client import NativeDatasets
-from congress_api.lake.captures import current_version,stage_captures
+from congress_api.lake.captures import current_version
+from congress_api.lake.capture_staging import stage_captures
 from congress_api.lake.capture_comparison import compare_old
 from congress_api.lake.daily import _source_qualifications
 from congress_api.lake.tables import append_rows, create_table, resolve_tables, validate_catalog_authority

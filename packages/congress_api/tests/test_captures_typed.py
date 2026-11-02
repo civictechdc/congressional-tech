@@ -56,7 +56,7 @@ def assert_bounded_capture_rows(actual,key):
 
 
 def test_bounded_metadata_fanout_preserves_public_rows(tmp_path):
-    from congress_api.lake.captures import stage_captures
+    from congress_api.lake.capture_staging import stage_captures
     counter,key=bounded_counter(tmp_path)
     with NativeDatasets.from_config(os.environ['DOCSPEC_JOB_CONFIG']) as native:
         # This 131,072-row correctness fixture needs finite headroom on the slow
@@ -69,7 +69,7 @@ def test_bounded_metadata_fanout_preserves_public_rows(tmp_path):
 
 @pytest.mark.parametrize("view_strings",[False,True])
 def test_direct_and_counter_scalar_types_match(tmp_path,view_strings):
-    from congress_api.lake.captures import stage_captures
+    from congress_api.lake.capture_staging import stage_captures
     from test_receipt_metadata import counter_fixture
     counter,files=counter_fixture(tmp_path)
     if view_strings:
@@ -87,7 +87,7 @@ def test_direct_and_counter_scalar_types_match(tmp_path,view_strings):
 
 
 def test_empty_list_duplicate_list_and_object_pointer_preserve_grain(tmp_path):
-    from congress_api.lake.captures import stage_captures
+    from congress_api.lake.capture_staging import stage_captures
     from test_captures_ingest import body,files
     native=NativeDatasets.from_config(os.environ['DOCSPEC_JOB_CONFIG'])
     source=files(tmp_path/'input',[

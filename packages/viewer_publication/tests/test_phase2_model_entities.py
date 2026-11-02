@@ -10,7 +10,7 @@ import pyarrow.parquet as pq
 import pytest
 
 from congress_api.lake import appearance_records as ar_lake, filenames, meeting_records as mr_lake, readings
-from congress_api.lake.captures import stage_captures
+from congress_api.lake.capture_staging import stage_captures
 from congress_api.retention.provenance import parquet_output, run_job
 from docspec_client.client import NativeDatasets
 

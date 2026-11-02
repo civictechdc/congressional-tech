@@ -558,7 +558,7 @@ def test_repaired_bill_filename_dates_publish(tmp_path):
     """Producer half; test_native_release.py reads this release back through MCP stdio."""
     import hashlib
     from congress_api.lake import appearance_records as ar_lake, meeting_records as mr_lake, readings
-    from congress_api.lake.captures import stage_captures
+    from congress_api.lake.capture_staging import stage_captures
     from congress_api.retention.provenance import parquet_output, run_job
     from viewer_publication.archive_model import build_release
 

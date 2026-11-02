@@ -13,7 +13,7 @@ from test_captures_ingest import files,STAMP,body
 
 @pytest.fixture(scope='module')
 def accepted(tmp_path_factory):
-    from congress_api.lake.captures import stage_captures
+    from congress_api.lake.capture_staging import stage_captures
     from docspec_client.client import NativeDatasets
     root=tmp_path_factory.mktemp('accepted-direct-stage')
     records=[]

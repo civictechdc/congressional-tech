@@ -319,13 +319,13 @@ def test_native_daily_pending_body_stops_before_filename_or_publisher_pins(tmp_p
 
 
 def test_native_daily_refuses_captures_committed_after_its_parser_work(tmp_path):
-    from congress_api.lake import captures,tables
+    from congress_api.lake import capture_staging,captures,tables
     from congress_api.lake.daily import produce_daily
     value,engine,store=native_fixture(tmp_path,2)
     late=value['receipt_inventory'][1]
     first=produce_daily(dict(value,receipt_inventory=value['receipt_inventory'][:1]),engine=engine,raw_store=store)
     assert first['status']=='completed'
-    staged=captures.stage_captures([late],engine=engine,work=tmp_path/'late-captures')
+    staged=capture_staging.stage_captures([late],engine=engine,work=tmp_path/'late-captures')
     manifest=json.loads((staged/'ingested-receipts.json').read_text())
     class ConcurrentNative:
         def __getattr__(self,name):return getattr(engine,name)
@@ -411,7 +411,7 @@ def test_native_daily_producer_refreshes_and_pins_all_five_tables(tmp_path):
 def test_inline_saved_record_and_govinfo_mods_staging_with_anti_join(tmp_path):
     import gzip
     from docspec_client.client import NativeDatasets
-    from congress_api.lake import appearance_records,captures,meeting_records
+    from congress_api.lake import appearance_records,capture_staging,captures,meeting_records
     raw=tmp_path/'raw';raw.mkdir()
     store=BodyStore(LocalAdapter(raw))
     inline_row=dict(
@@ -441,7 +441,7 @@ def test_inline_saved_record_and_govinfo_mods_staging_with_anti_join(tmp_path):
     qual.write_text(json.dumps(dict(path=str(receipt_path),**file_pin(receipt_path),producer='inline test')))
     eng=NativeDatasets.from_config(os.environ['DOCSPEC_JOB_CONFIG'])
     try:
-        cap_stage=captures.stage_captures([dict(key=receipt_rel,path=str(receipt_path),qualification=str(qual))],
+        cap_stage=capture_staging.stage_captures([dict(key=receipt_rel,path=str(receipt_path),qualification=str(qual))],
             engine=eng,work=tmp_path/'cap-stage')/'captures.parquet'
         m_stage=meeting_records.stage(captures=cap_stage,readings=empty_readings(tmp_path/"readings"),engine=eng,work=tmp_path/'m1',
             local_root=raw,raw_store=store,decided_at=STAMP,unreadable_store=store)

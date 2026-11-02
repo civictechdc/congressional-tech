@@ -5,7 +5,7 @@ import re
 
 import pyarrow.parquet as pq
 
-from congress_api.lake import appearance_records,captures,filenames,meeting_records,readings,tables
+from congress_api.lake import appearance_records,capture_staging,captures,filenames,meeting_records,readings,tables
 from congress_api.lake.receipt_inventory import select_receipts
 from congress_api.retention.body_store import BodyStore,LocalAdapter,R2Adapter,validate_key
 from congress_shared.storage import single_put_md5
@@ -227,7 +227,7 @@ def produce_daily(spec,*,engine,raw_store):
         return report
     selected=select_receipts(spec['receipt_inventory'],heads['captures'],engine=engine,work=work/'receipt-selection')
     if selected:
-        stage=captures.stage_captures(selected,engine=engine,work=work/'captures',
+        stage=capture_staging.stage_captures(selected,engine=engine,work=work/'captures',
             validated_counter=spec.get('validated_counter'),
             source_qualifications=_source_qualifications(spec,selected))
         manifest=json.loads((stage/'ingested-receipts.json').read_text())
