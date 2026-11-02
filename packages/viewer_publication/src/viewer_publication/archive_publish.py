@@ -446,6 +446,17 @@ def publish_candidate(*,client,engine,bucket,work,release,manifest_pin,result_pi
             # the gates would check nothing. Only an explicit, recorded bootstrap may proceed.
             raise ValueError('No live release to compare with; a first release must be declared (first_release)')
         else:
+            # The declaration is checked, not trusted: no other release may exist under the
+            # prefix (this candidate's own objects from an interrupted attempt are allowed).
+            token=None
+            while True:
+                request=dict(Bucket=bucket,Prefix=PREFIX)
+                if token is not None:request['ContinuationToken']=token
+                page=client.list_objects_v2(**request)
+                if any(not item['Key'].startswith(PREFIX+release_id+'/') for item in page.get('Contents',[])):
+                    raise ValueError('first_release declared, but releases already exist under '+PREFIX)
+                token=page.get('NextContinuationToken')
+                if not page.get('IsTruncated') or not token:break
             status['first_release']=True
         automatic=None
         if automatic_captures is not None and live is not None:
