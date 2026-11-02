@@ -449,6 +449,12 @@
           "type": "string",
           "meaning": "The filename the key resolved to in that release",
           "nullable": true
+        },
+        {
+          "name": "address_versions",
+          "type": "list<fixed[8]>",
+          "meaning": "With a removal notice: the current documents (primary link keys) listed at the retired document's addresses, other editions shown as versions, never as a redirect",
+          "nullable": true
         }
       ],
       "gaps": [],
@@ -463,7 +469,8 @@
         "kind": "primary_key"
       },
       "notes": {
-        "link_key": "Disjoint from links.link_key. A key published again leaves the ledger. Data model \u00a78.2, Retired keys."
+        "link_key": "Disjoint from links.link_key. A key published again leaves the ledger. Data model \u00a78.2, Retired keys.",
+        "address_versions": "Set only when successor_key is null; an address can hold several editions (data model \u00a77.5), so the notice lists them instead of choosing one."
       },
       "nullability": "Nullability transcribes data model \u00a78.1 (retired_links.parquet row)."
     },
