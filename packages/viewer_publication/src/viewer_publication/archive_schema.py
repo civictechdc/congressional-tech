@@ -86,6 +86,11 @@ def validate_schema(schema):
             raise ValueError(f'Identity must use scalar row fields: {name}')
         if identity['kind'] not in ('row_position', 'primary_key'):
             raise ValueError(f'Unknown identity kind: {name}')
+        undeclared = [column['name'] for column in table['columns'] if not isinstance(column.get('nullable'), bool)]
+        if undeclared:
+            raise ValueError(f'Column without a boolean nullable: {name}.{undeclared[0]}')
+        if not table.get('nullability'):
+            raise ValueError(f'Missing nullability basis: {name}')
         if identity['kind'] == 'primary_key' and any(
             column.get('nullable') for column in table['columns'] if column['name'] in identity['fields']
         ):
@@ -211,12 +216,8 @@ def validate_parquet_fields(schema, paths):
                 raise ValueError(f'Published key/reference type differs: {name}.{field}: {actual.get(field)} != {expected[field]}')
 
 
-def relation_available(name, auxiliary, core):
-    return name in auxiliary or name in core
-
-
-def publication_checks(schema, auxiliary, *, keyed_documents=True):
-    """Check new entity keys and required nested references in the native job.
+def publication_checks(schema, auxiliary, published=None, *, keyed_documents=True):
+    """Check required columns, new entity keys and nested references in the native job.
 
     Core row positions, source/recovery ordinals, distinct lookup pairs and link
     keys already have one construction/validation owner in archive_format._core.
@@ -226,20 +227,31 @@ def publication_checks(schema, auxiliary, *, keyed_documents=True):
     model 7.5). A converted legacy catalog has no such edge: its documents can
     share a saved body, the declared ``f0_shared_body_link`` loss, so it passes
     ``keyed_documents=False``.
+
+    Every declared non-null column of every published file is counted in the
+    relation that writes it, in the job that writes it, so a NULL refuses before
+    the manifest exists. A published file whose required columns have no export
+    relation is refused here rather than skipped. This cannot see empty strings
+    or placeholder values, wrong in-domain values, NULLs nested inside list or
+    struct elements, or NULLs in lake inputs that the model drops before export.
     """
+    from viewer_publication.archive_format import CORE_RELATIONS
     checks = ['''(SELECT count(*) FROM details d WHERE d.link_key IS NOT NULL
         AND NOT EXISTS (SELECT 1 FROM links l WHERE l.link_key=d.link_key)) AS missing_primary_link''']
     if keyed_documents:
         checks.append('''(SELECT count(*) FROM (SELECT link_key FROM details WHERE link_key IS NOT NULL
         GROUP BY link_key HAVING count(*)>1)) AS duplicate_document_key''')
-    # Declared required columns are refused at write time, in the job that writes them.
-    core = {'sources': 'source_rows'}
+    published = None if published is None else {name.removesuffix('.parquet') for name in published}
     for table in schema['files']:
         name = table['name'].removesuffix('.parquet')
-        relation = core.get(name) or (f'{name}_export' if name in auxiliary else None)
-        for column in table['columns']:
-            if column.get('nullable') is False and relation and relation_available(name, auxiliary, core):
-                checks.append(f'(SELECT count(*) FROM {relation} WHERE "{column["name"]}" IS NULL) AS null_{name}_{column["name"]}')
+        relation = CORE_RELATIONS.get(name) or (f'{name}_export' if name in auxiliary else None)
+        required = [column['name'] for column in table['columns'] if column['nullable'] is False]
+        if relation is None:
+            if required and published is not None and name in published:
+                raise ValueError(f'Declared non-null column has no export relation: {name}.{required[0]}')
+            continue
+        for column in required:
+            checks.append(f'(SELECT count(*) FROM {relation} WHERE "{column}" IS NULL) AS null_{name}_{column}')
     for table in schema['files']:
         name = table['name'].removesuffix('.parquet')
         if name not in auxiliary or name == 'url_state':
@@ -274,10 +286,10 @@ def render_reference(schema):
             lines += [identity['note'], '']
         for gap in table['gaps']:
             lines += ['Coverage: ' + gap + '.', '']
-        lines += ['| Field | Published type | Meaning |', '| --- | --- | --- |']
+        lines += ['| Field | Published type | Nullable | Meaning |', '| --- | --- | --- | --- |']
         for col in table['columns']:
-            lines.append(f'| `{col["name"]}` | `{col["type"]}` | {col["meaning"]} |')
-        lines.append('')
+            lines.append(f'| `{col["name"]}` | `{col["type"]}` | {"yes" if col["nullable"] else "no"} | {col["meaning"]} |')
+        lines += ['', 'Nullability: ' + table['nullability'] + ' A required column is refused at write time.', '']
         for path, note in table.get('notes', {}).items():
             lines += [f'- `{path}`: {note}']
         lines.append('')

@@ -7,92 +7,110 @@
         {
           "name": "filename",
           "type": "string",
-          "meaning": "Displayed filename"
+          "meaning": "Displayed filename",
+          "nullable": false
         },
         {
           "name": "title",
           "type": "string",
-          "meaning": "Document or publisher title when known"
+          "meaning": "Document or publisher title when known",
+          "nullable": true
         },
         {
           "name": "document_kind",
           "type": "list<dict>",
-          "meaning": "Document kinds"
+          "meaning": "Document kinds",
+          "nullable": false
         },
         {
           "name": "document_family",
           "type": "list<dict>",
-          "meaning": "Filename document families"
+          "meaning": "Filename document families",
+          "nullable": false
         },
         {
           "name": "committee_keys",
           "type": "list<dict>",
-          "meaning": "Congress.gov committee system codes"
+          "meaning": "Congress.gov committee system codes",
+          "nullable": false
         },
         {
           "name": "chambers",
           "type": "list<dict>",
-          "meaning": "Chambers associated with the document"
+          "meaning": "Chambers associated with the document",
+          "nullable": false
         },
         {
           "name": "congress",
           "type": "int16",
-          "meaning": "Congress number when unambiguous"
+          "meaning": "Congress number when unambiguous",
+          "nullable": true
         },
         {
           "name": "format",
           "type": "dict",
-          "meaning": "Original file format"
+          "meaning": "Original file format",
+          "nullable": false
         },
         {
           "name": "document_date",
           "type": "date32",
-          "meaning": "Date of the document"
+          "meaning": "Date of the document",
+          "nullable": true
         },
         {
           "name": "first_captured",
           "type": "date32",
-          "meaning": "First good fetch date"
+          "meaning": "First good fetch date",
+          "nullable": true
         },
         {
           "name": "date_kind",
           "type": "dict",
-          "meaning": "Basis of the archive date"
+          "meaning": "Basis of the archive date",
+          "nullable": false
         },
         {
           "name": "saved_kind",
           "type": "dict",
-          "meaning": "Original file or recovery"
+          "meaning": "Original file or recovery",
+          "nullable": false
         },
         {
           "name": "hidden",
           "type": "boolean",
-          "meaning": "Excluded from search by review; public links still resolve"
+          "meaning": "Excluded from search by review; public links still resolve",
+          "nullable": false
         },
         {
           "name": "meeting_keys",
           "type": "list<dict>",
-          "meaning": "Decimal event IDs"
+          "meaning": "Decimal event IDs",
+          "nullable": false
         },
         {
           "name": "measure_keys",
           "type": "list<dict>",
-          "meaning": "Bill and nomination identifiers"
+          "meaning": "Bill and nomination identifiers",
+          "nullable": false
         },
         {
           "name": "bioguide_ids",
           "type": "list<dict>",
-          "meaning": "Member Bioguide identifiers"
+          "meaning": "Member Bioguide identifiers",
+          "nullable": false
         },
         {
           "name": "witness_keys",
           "type": "list<dict>",
-          "meaning": "Witness appearance identifiers"
+          "meaning": "Witness appearance identifiers",
+          "nullable": false
         },
         {
           "name": "version_keys",
           "type": "list<dict>",
-          "meaning": "Hex endpoint keys shared by editions"
+          "meaning": "Hex endpoint keys shared by editions",
+          "nullable": false
         }
       ],
       "gaps": [],
@@ -119,7 +137,8 @@
         "document_kind[]": "Embedded classification values, not foreign keys.",
         "document_family[]": "Embedded filename classification values.",
         "chambers[]": "Embedded chamber labels."
-      }
+      },
+      "nullability": "Nullability transcribes data model \u00a78.1 (list.parquet bullet): a type without \"nullable\" there is required."
     },
     {
       "name": "detail.parquet",
@@ -127,177 +146,212 @@
         {
           "name": "link_key",
           "type": "fixed[8]",
-          "meaning": "Stable public body or original-link key"
+          "meaning": "Stable public body or original-link key",
+          "nullable": false
         },
         {
           "name": "saved_body",
           "type": "fixed[32]",
-          "meaning": "SHA-256 of original bytes"
+          "meaning": "SHA-256 of original bytes",
+          "nullable": false
         },
         {
           "name": "saved_suffix",
           "type": "dict",
-          "meaning": "Recorded physical object suffix"
+          "meaning": "Recorded physical object suffix",
+          "nullable": false
         },
         {
           "name": "saved_media_type",
           "type": "dict",
-          "meaning": "Media type of the saved file"
+          "meaning": "Media type of the saved file",
+          "nullable": false
         },
         {
           "name": "saved_bytes",
           "type": "int64",
-          "meaning": "Size of original bytes before storage compression"
+          "meaning": "Size of original bytes before storage compression",
+          "nullable": false
         },
         {
           "name": "document_date_source",
           "type": "dict",
-          "meaning": "Filename, content or meeting date basis"
+          "meaning": "Filename, content or meeting date basis",
+          "nullable": true
         },
         {
           "name": "in_archive_since",
           "type": "date32",
-          "meaning": "Earliest known archive import date"
+          "meaning": "Earliest known archive import date",
+          "nullable": true
         },
         {
           "name": "removed_on",
           "type": "date32",
-          "meaning": "Date the publisher removed the document"
+          "meaning": "Date the publisher removed the document",
+          "nullable": true
         },
         {
           "name": "review_note",
           "type": "string",
-          "meaning": "Review explanation"
+          "meaning": "Review explanation",
+          "nullable": true
         },
         {
           "name": "review_decided_at",
           "type": "date32",
-          "meaning": "Date of the applying review"
+          "meaning": "Date of the applying review",
+          "nullable": true
         },
         {
           "name": "src_start",
           "type": "int32",
-          "meaning": "First source row for this document"
+          "meaning": "First source row for this document",
+          "nullable": false
         },
         {
           "name": "src_len",
           "type": "int32",
-          "meaning": "Number of source rows for this document"
+          "meaning": "Number of source rows for this document",
+          "nullable": false
         },
         {
           "name": "rec_start",
           "type": "int32",
-          "meaning": "First recovery row for this document"
+          "meaning": "First recovery row for this document",
+          "nullable": false
         },
         {
           "name": "rec_len",
           "type": "int32",
-          "meaning": "Number of recovery rows for this document"
+          "meaning": "Number of recovery rows for this document",
+          "nullable": false
         },
         {
           "name": "alternates",
           "type": "list<struct<format dict,body fixed[32],suffix dict,size int64>>",
-          "meaning": "One saved file per other format"
+          "meaning": "One saved file per other format",
+          "nullable": false
         },
         {
           "name": "package_id",
           "type": "string",
-          "meaning": "GovInfo package identifier"
+          "meaning": "GovInfo package identifier",
+          "nullable": true
         },
         {
           "name": "facts",
           "type": "list<struct<field dict,value string>>",
-          "meaning": "Selected filename facts, one value per entry"
+          "meaning": "Selected filename facts, one value per entry",
+          "nullable": false
         },
         {
           "name": "filename",
           "type": "string",
-          "meaning": "Displayed filename"
+          "meaning": "Displayed filename",
+          "nullable": false
         },
         {
           "name": "title",
           "type": "string",
-          "meaning": "Document or publisher title when known"
+          "meaning": "Document or publisher title when known",
+          "nullable": true
         },
         {
           "name": "document_kind",
           "type": "list<dict>",
-          "meaning": "Document kinds"
+          "meaning": "Document kinds",
+          "nullable": false
         },
         {
           "name": "document_family",
           "type": "list<dict>",
-          "meaning": "Filename document families"
+          "meaning": "Filename document families",
+          "nullable": false
         },
         {
           "name": "committee_keys",
           "type": "list<dict>",
-          "meaning": "Congress.gov committee system codes"
+          "meaning": "Congress.gov committee system codes",
+          "nullable": false
         },
         {
           "name": "chambers",
           "type": "list<dict>",
-          "meaning": "Chambers associated with the document"
+          "meaning": "Chambers associated with the document",
+          "nullable": false
         },
         {
           "name": "congress",
           "type": "int16",
-          "meaning": "Congress number when unambiguous"
+          "meaning": "Congress number when unambiguous",
+          "nullable": true
         },
         {
           "name": "format",
           "type": "dict",
-          "meaning": "Original file format"
+          "meaning": "Original file format",
+          "nullable": false
         },
         {
           "name": "document_date",
           "type": "date32",
-          "meaning": "Date of the document"
+          "meaning": "Date of the document",
+          "nullable": true
         },
         {
           "name": "first_captured",
           "type": "date32",
-          "meaning": "First good fetch date"
+          "meaning": "First good fetch date",
+          "nullable": true
         },
         {
           "name": "date_kind",
           "type": "dict",
-          "meaning": "Basis of the archive date"
+          "meaning": "Basis of the archive date",
+          "nullable": false
         },
         {
           "name": "saved_kind",
           "type": "dict",
-          "meaning": "Original file or recovery"
+          "meaning": "Original file or recovery",
+          "nullable": false
         },
         {
           "name": "hidden",
           "type": "boolean",
-          "meaning": "Excluded from search by review; public links still resolve"
+          "meaning": "Excluded from search by review; public links still resolve",
+          "nullable": false
         },
         {
           "name": "meeting_keys",
           "type": "list<dict>",
-          "meaning": "Decimal event IDs"
+          "meaning": "Decimal event IDs",
+          "nullable": false
         },
         {
           "name": "measure_keys",
           "type": "list<dict>",
-          "meaning": "Bill and nomination identifiers"
+          "meaning": "Bill and nomination identifiers",
+          "nullable": false
         },
         {
           "name": "bioguide_ids",
           "type": "list<dict>",
-          "meaning": "Member Bioguide identifiers"
+          "meaning": "Member Bioguide identifiers",
+          "nullable": false
         },
         {
           "name": "witness_keys",
           "type": "list<dict>",
-          "meaning": "Witness appearance identifiers"
+          "meaning": "Witness appearance identifiers",
+          "nullable": false
         },
         {
           "name": "version_keys",
           "type": "list<dict>",
-          "meaning": "Hex endpoint keys shared by editions"
+          "meaning": "Hex endpoint keys shared by editions",
+          "nullable": false
         }
       ],
       "gaps": [],
@@ -334,7 +388,8 @@
         "bioguide_ids[]": "Same values as list.bioguide_ids; see that field.",
         "witness_keys[]": "Same values as list.witness_keys; see that field.",
         "version_keys[]": "Same values as list.version_keys; see that field."
-      }
+      },
+      "nullability": "Nullability transcribes data model \u00a78.1 (list and detail bullets)."
     },
     {
       "name": "links.parquet",
@@ -342,12 +397,14 @@
         {
           "name": "link_key",
           "type": "fixed[8]",
-          "meaning": "Stable public body or original-link key"
+          "meaning": "Stable public body or original-link key",
+          "nullable": false
         },
         {
           "name": "list_row",
           "type": "int32",
-          "meaning": "Zero-based row in list.parquet"
+          "meaning": "Zero-based row in list.parquet",
+          "nullable": false
         }
       ],
       "gaps": [],
@@ -363,7 +420,8 @@
       },
       "notes": {
         "link_key": "First 8 body SHA-256 bytes, or first 8 SHA-256 bytes of url: plus exact original URL for recovery links. Binary key; hex is a display encoding."
-      }
+      },
+      "nullability": "Both columns are required by data model \u00a78.1."
     },
     {
       "name": "urls.parquet",
@@ -371,12 +429,14 @@
         {
           "name": "lookup_key",
           "type": "fixed[8]",
-          "meaning": "Fixed normalized address lookup key"
+          "meaning": "Fixed normalized address lookup key",
+          "nullable": false
         },
         {
           "name": "list_row",
           "type": "int32",
-          "meaning": "Zero-based row in list.parquet"
+          "meaning": "Zero-based row in list.parquet",
+          "nullable": false
         }
       ],
       "gaps": [],
@@ -393,7 +453,8 @@
       },
       "notes": {
         "lookup_key": "First 8 SHA-256 bytes of lookup: plus fixed lookup_url(u): remove scheme, leading www, default port, fragment and one trailing path slash; lowercase host; preserve query bytes. This is not capture-profile url_key."
-      }
+      },
+      "nullability": "Both columns are required by data model \u00a78.1."
     },
     {
       "name": "sources.parquet",
@@ -401,12 +462,14 @@
         {
           "name": "list_row",
           "type": "int32",
-          "meaning": "Zero-based row in list.parquet"
+          "meaning": "Zero-based row in list.parquet",
+          "nullable": false
         },
         {
           "name": "ordinal",
           "type": "int32",
-          "meaning": "Order within a document"
+          "meaning": "Order within a document",
+          "nullable": false
         },
         {
           "name": "url",
@@ -417,37 +480,44 @@
         {
           "name": "member_path",
           "type": "string",
-          "meaning": "Path inside an archive container"
+          "meaning": "Path inside an archive container",
+          "nullable": true
         },
         {
           "name": "is_saved",
           "type": "boolean",
-          "meaning": "Whether this source names the saved file"
+          "meaning": "Whether this source names the saved file",
+          "nullable": false
         },
         {
           "name": "first_seen",
           "type": "date32",
-          "meaning": "First observed date of this source"
+          "meaning": "First observed date of this source",
+          "nullable": true
         },
         {
           "name": "listed_on",
           "type": "string",
-          "meaning": "Publisher page listing the source"
+          "meaning": "Publisher page listing the source",
+          "nullable": true
         },
         {
           "name": "link_text",
           "type": "string",
-          "meaning": "Publisher link label"
+          "meaning": "Publisher link label",
+          "nullable": true
         },
         {
           "name": "doc_type",
           "type": "string",
-          "meaning": "Publisher document type"
+          "meaning": "Publisher document type",
+          "nullable": true
         },
         {
           "name": "posted",
           "type": "date32",
-          "meaning": "Publisher link posting date"
+          "meaning": "Publisher link posting date",
+          "nullable": true
         }
       ],
       "gaps": [],
@@ -465,7 +535,8 @@
       "notes": {
         "member_path": "Path inside a captured archive container. Interpret together with the source URL; not a document key.",
         "url": "Required. A member of a ZIP keeps the ZIP URL here and its place in member_path; the ZIP itself is never a document when its contents were captured."
-      }
+      },
+      "nullability": "Nullability transcribes data model \u00a78.1 (sources.parquet row)."
     },
     {
       "name": "recoveries.parquet",
@@ -473,32 +544,38 @@
         {
           "name": "list_row",
           "type": "int32",
-          "meaning": "Zero-based row in list.parquet"
+          "meaning": "Zero-based row in list.parquet",
+          "nullable": false
         },
         {
           "name": "ordinal",
           "type": "int32",
-          "meaning": "Order within a document"
+          "meaning": "Order within a document",
+          "nullable": false
         },
         {
           "name": "kind",
           "type": "dict",
-          "meaning": "Recovery display kind"
+          "meaning": "Recovery display kind",
+          "nullable": false
         },
         {
           "name": "body",
           "type": "fixed[32]",
-          "meaning": "SHA-256 of original recovered bytes"
+          "meaning": "SHA-256 of original recovered bytes",
+          "nullable": false
         },
         {
           "name": "suffix",
           "type": "dict",
-          "meaning": "Physical recovered body suffix"
+          "meaning": "Physical recovered body suffix",
+          "nullable": false
         },
         {
           "name": "bytes",
           "type": "int64",
-          "meaning": "Original recovered byte count"
+          "meaning": "Original recovered byte count",
+          "nullable": false
         },
         {
           "name": "imported_at",
@@ -509,12 +586,14 @@
         {
           "name": "recovered_url",
           "type": "string",
-          "meaning": "Address where the recovered copy was found"
+          "meaning": "Address where the recovered copy was found",
+          "nullable": false
         },
         {
           "name": "identity_note",
           "type": "string",
-          "meaning": "Explanation identifying the recovery"
+          "meaning": "Explanation identifying the recovery",
+          "nullable": true
         }
       ],
       "gaps": [],
@@ -528,7 +607,8 @@
         "scope": "release",
         "validation": "native publication key checks",
         "kind": "primary_key"
-      }
+      },
+      "nullability": "Nullability transcribes data model \u00a78.1 (recoveries.parquet row)."
     },
     {
       "name": "meetings.parquet",
@@ -536,107 +616,128 @@
         {
           "name": "event_id",
           "type": "int64",
-          "meaning": "Congressional meeting event ID"
+          "meaning": "Congressional meeting event ID",
+          "nullable": false
         },
         {
           "name": "chamber",
           "type": "dict",
-          "meaning": "House, Senate or joint"
+          "meaning": "House, Senate or joint",
+          "nullable": true
         },
         {
           "name": "title",
           "type": "string",
-          "meaning": "Document or publisher title when known"
+          "meaning": "Document or publisher title when known",
+          "nullable": true
         },
         {
           "name": "meeting_date",
           "type": "date32",
-          "meaning": "Meeting date"
+          "meaning": "Meeting date",
+          "nullable": true
         },
         {
           "name": "meeting_type",
           "type": "dict",
-          "meaning": "Publisher meeting category"
+          "meaning": "Publisher meeting category",
+          "nullable": true
         },
         {
           "name": "session",
           "type": "int16",
-          "meaning": "Congress session number"
+          "meaning": "Congress session number",
+          "nullable": true
         },
         {
           "name": "status",
           "type": "dict",
-          "meaning": "Current meeting status"
+          "meaning": "Current meeting status",
+          "nullable": true
         },
         {
           "name": "sittings",
           "type": "list<struct<start timestamp,end timestamp,place string,room string,building string,address string>>",
-          "meaning": "Scheduled times and locations, as Congress.gov states them when it has a sitting"
+          "meaning": "Scheduled times and locations, as Congress.gov states them when it has a sitting",
+          "nullable": false
         },
         {
           "name": "committees",
           "type": "list<struct<system_code dict,role dict>>",
-          "meaning": "Host committee codes and roles"
+          "meaning": "Host committee codes and roles",
+          "nullable": false
         },
         {
           "name": "subject_keys",
           "type": "list<dict>",
-          "meaning": "Bill, nomination and treaty subjects"
+          "meaning": "Bill, nomination and treaty subjects",
+          "nullable": false
         },
         {
           "name": "transcripts",
           "type": "list<struct<package_id string,list_row int32,formats list<string>>>",
-          "meaning": "Official hearing transcripts, one per package"
+          "meaning": "Official hearing transcripts, one per package",
+          "nullable": false
         },
         {
           "name": "videos",
           "type": "list<struct<name string,url string,video_key string>>",
-          "meaning": "Recorded meeting links"
+          "meaning": "Recorded meeting links",
+          "nullable": false
         },
         {
           "name": "congress",
           "type": "int16",
-          "meaning": "Congress the publisher record states; null when no record states it, never inferred from documents"
+          "meaning": "Congress the publisher record states; null when no record states it, never inferred from documents",
+          "nullable": true
         },
         {
           "name": "congress_gov_updated",
           "type": "timestamp",
-          "meaning": "Congress.gov's updateDate for this record: a publisher record update, distinct from the hearing date and capture time"
+          "meaning": "Congress.gov's updateDate for this record: a publisher record update, distinct from the hearing date and capture time",
+          "nullable": true
         },
         {
           "name": "house_xml_updated",
           "type": "string",
-          "meaning": "House XML update-date, literally as stated with no zone: a publisher record update, distinct from the hearing date and capture time"
+          "meaning": "House XML update-date, literally as stated with no zone: a publisher record update, distinct from the hearing date and capture time",
+          "nullable": true
         },
         {
           "name": "congress_gov_meeting_type",
           "type": "dict",
-          "meaning": "Congress.gov's type label (Hearing, Markup, Meeting)"
+          "meaning": "Congress.gov's type label (Hearing, Markup, Meeting)",
+          "nullable": true
         },
         {
           "name": "access",
           "type": "dict",
-          "meaning": "open, closed, partly_closed or unknown, as the publisher type or title states"
+          "meaning": "open, closed, partly_closed or unknown, as the publisher type or title states",
+          "nullable": true
         },
         {
           "name": "access_basis",
           "type": "dict",
-          "meaning": "The source and field that state access, such as congress_gov/title"
+          "meaning": "The source and field that state access, such as congress_gov/title",
+          "nullable": true
         },
         {
           "name": "not_held",
           "type": "bool",
-          "meaning": "The publisher title opens with postponed, canceled, rescheduled or test; null with no record"
+          "meaning": "The publisher title opens with postponed, canceled, rescheduled or test; null with no record",
+          "nullable": true
         },
         {
           "name": "rescheduled_to",
           "type": "int64",
-          "meaning": "Later meeting of the same committees and title within 60 days, when the publisher states Rescheduled or only the later twin has a recording; derived"
+          "meaning": "Later meeting of the same committees and title within 60 days, when the publisher states Rescheduled or only the later twin has a recording; derived",
+          "nullable": true
         },
         {
           "name": "rescheduled_basis",
           "type": "dict",
-          "meaning": "publisher_status or recording_on_later_twin"
+          "meaning": "publisher_status or recording_on_later_twin",
+          "nullable": true
         }
       ],
       "gaps": [],
@@ -657,7 +758,8 @@
         "transcripts[].formats": "Format names (pdf, html, ...) the package is retained in, in format-preference order; values, not keys.",
         "videos[]": "Publisher recording links; video_key joins retained recordings when available.",
         "meeting_type": "As stated, with House XML codes (HHRG, HMKP, HMTG) on House rows; congress_gov_meeting_type carries the shared label."
-      }
+      },
+      "nullability": "Nullability transcribes data model \u00a78.1 (meetings.parquet row); access fields, not_held and rescheduling are null with no record, as their meanings state. List columns are empty, never null."
     },
     {
       "name": "witnesses.parquet",
@@ -665,32 +767,38 @@
         {
           "name": "witness_key",
           "type": "string",
-          "meaning": "Lowercase hex of first 8 bytes of SHA-256 of [\"witness-occurrence-v2\", occasion, source, record_sha_hex, source_locator, context_key]"
+          "meaning": "Lowercase hex of first 8 bytes of SHA-256 of [\"witness-occurrence-v2\", occasion, source, record_sha_hex, source_locator, context_key]",
+          "nullable": false
         },
         {
           "name": "occasion",
           "type": "dict",
-          "meaning": "Appearance occasion key (meeting:{event_id}, package:{package_id}, or page:{sha256_prefix})"
+          "meaning": "Appearance occasion key (meeting:{event_id}, package:{package_id}, or page:{sha256_prefix})",
+          "nullable": false
         },
         {
           "name": "source",
           "type": "dict",
-          "meaning": "Observation source family (house_xml, congress_gov, senate_page, or mods)"
+          "meaning": "Observation source family (house_xml, congress_gov, senate_page, or mods)",
+          "nullable": false
         },
         {
           "name": "record_sha",
           "type": "fixed[32]",
-          "meaning": "SHA-256 of the source body or inline record supplying this witness observation"
+          "meaning": "SHA-256 of the source body or inline record supplying this witness observation",
+          "nullable": false
         },
         {
           "name": "source_locator",
           "type": "string",
-          "meaning": "Deterministic occurrence locator within the retained source record"
+          "meaning": "Deterministic occurrence locator within the retained source record",
+          "nullable": false
         },
         {
           "name": "context_key",
           "type": "string",
-          "meaning": "Lowercase hex SHA-256 of compact JSON [source_url, member_path] for the bound capture context"
+          "meaning": "Lowercase hex SHA-256 of compact JSON [source_url, member_path] for the bound capture context",
+          "nullable": false
         },
         {
           "name": "event_id",
@@ -790,7 +898,8 @@
       },
       "notes": {
         "occasion": "meeting:{event_id}, package:{package_id}, or page:{sha256_prefix}. Witness keys hash the occasion, source, record_sha, source_locator, and context_key; names alone never join or deduplicate appearances."
-      }
+      },
+      "nullability": "occasion, source, record_sha, source_locator and context_key are required: every witness row is read from one located source record."
     },
     {
       "name": "recordings.parquet",
@@ -798,17 +907,20 @@
         {
           "name": "video_key",
           "type": "string",
-          "meaning": "Provider-prefixed recording identifier"
+          "meaning": "Provider-prefixed recording identifier",
+          "nullable": false
         },
         {
           "name": "event_ids",
           "type": "list<int64>",
-          "meaning": "Sorted meeting event IDs associated with this recording"
+          "meaning": "Sorted meeting event IDs associated with this recording",
+          "nullable": false
         },
         {
           "name": "tracks",
           "type": "list<struct<body fixed[32],suffix dict,format dict,language dict,production dict>>",
-          "meaning": "Captured caption, subtitle, and playlist tracks from their latest good fetch"
+          "meaning": "Captured caption, subtitle, and playlist tracks from their latest good fetch",
+          "nullable": false
         }
       ],
       "gaps": [],
@@ -824,7 +936,8 @@
       },
       "notes": {
         "tracks[]": "Embedded captured caption/subtitle/playlist files. Language and production describe each track; these are not document-list rows."
-      }
+      },
+      "nullability": "The documents are silent; decided from the row meaning: a recording row always has its key, and event_ids and tracks are empty lists when nothing is associated."
     },
     {
       "name": "committees.parquet",
@@ -832,42 +945,50 @@
         {
           "name": "system_code",
           "type": "string",
-          "meaning": "Congress.gov committee system code"
+          "meaning": "Congress.gov committee system code",
+          "nullable": false
         },
         {
           "name": "name",
           "type": "string",
-          "meaning": "Official committee name"
+          "meaning": "Official committee name",
+          "nullable": false
         },
         {
           "name": "chamber",
           "type": "dict",
-          "meaning": "House, Senate or joint"
+          "meaning": "House, Senate or joint",
+          "nullable": true
         },
         {
           "name": "committee_type",
           "type": "dict",
-          "meaning": "Committee category"
+          "meaning": "Committee category",
+          "nullable": true
         },
         {
           "name": "parent_system_code",
           "type": "dict",
-          "meaning": "Parent committee code"
+          "meaning": "Parent committee code",
+          "nullable": true
         },
         {
           "name": "names",
           "type": "list<struct<name string,start date32,end date32>>",
-          "meaning": "Dated committee names"
+          "meaning": "Dated committee names",
+          "nullable": false
         },
         {
           "name": "website",
           "type": "string",
-          "meaning": "Official committee website"
+          "meaning": "Official committee website",
+          "nullable": true
         },
         {
           "name": "is_current",
           "type": "boolean",
-          "meaning": "Current committee record"
+          "meaning": "Current committee record",
+          "nullable": true
         }
       ],
       "gaps": [],
@@ -883,7 +1004,8 @@
       },
       "notes": {
         "names[]": "Embedded names with half-open [start,end) dates, ordered latest start first. Null endpoints mean unknown or open-ended."
-      }
+      },
+      "nullability": "The documents are silent; decided from the row meaning: the key and the fields that define the row are required, descriptive fields from upstream records can be absent, and list columns are empty, never null."
     },
     {
       "name": "members.parquet",
@@ -891,22 +1013,26 @@
         {
           "name": "bioguide_id",
           "type": "string",
-          "meaning": "Bioguide member identifier"
+          "meaning": "Bioguide member identifier",
+          "nullable": false
         },
         {
           "name": "name",
           "type": "string",
-          "meaning": "Member display name ({name_first} {name_last})"
+          "meaning": "Member display name ({name_first} {name_last})",
+          "nullable": false
         },
         {
           "name": "terms",
           "type": "list<struct<chamber dict,state dict,district int16,party dict,start date32,end date32>>",
-          "meaning": "Congressional service terms ordered latest first"
+          "meaning": "Congressional service terms ordered latest first",
+          "nullable": false
         },
         {
           "name": "cross_ids",
           "type": "struct<lis string,opensecrets string,govtrack string,icpsr string,wikidata string,fec list<string>>",
-          "meaning": "Cross-walk identifiers across legislative datasets"
+          "meaning": "Cross-walk identifiers across legislative datasets",
+          "nullable": true
         }
       ],
       "gaps": [],
@@ -923,7 +1049,8 @@
       "notes": {
         "terms[]": "Embedded service terms with half-open [start,end) dates, latest first. Terms do not establish historical committee seats.",
         "cross_ids": "External dataset identifiers; an identifier does not imply that dataset is included in this release."
-      }
+      },
+      "nullability": "The documents are silent; decided from the row meaning: the key and the fields that define the row are required, descriptive fields from upstream records can be absent, and list columns are empty, never null."
     },
     {
       "name": "rosters.parquet",
@@ -931,32 +1058,38 @@
         {
           "name": "congress",
           "type": "int16",
-          "meaning": "Congress number for the committee assignment"
+          "meaning": "Congress number for the committee assignment",
+          "nullable": false
         },
         {
           "name": "system_code",
           "type": "dict",
-          "meaning": "Lowercase committee or subcommittee system code"
+          "meaning": "Lowercase committee or subcommittee system code",
+          "nullable": false
         },
         {
           "name": "bioguide_id",
           "type": "dict",
-          "meaning": "Assigned member Bioguide identifier"
+          "meaning": "Assigned member Bioguide identifier",
+          "nullable": false
         },
         {
           "name": "title",
           "type": "dict",
-          "meaning": "Committee leadership or seat position title"
+          "meaning": "Committee leadership or seat position title",
+          "nullable": true
         },
         {
           "name": "rank",
           "type": "int16",
-          "meaning": "Numeric party rank on the committee"
+          "meaning": "Numeric party rank on the committee",
+          "nullable": true
         },
         {
           "name": "party",
           "type": "dict",
-          "meaning": "Party caucus for the committee assignment"
+          "meaning": "Party caucus for the committee assignment",
+          "nullable": true
         }
       ],
       "gaps": [
@@ -973,7 +1106,8 @@
         "scope": "published identifier",
         "validation": "native publication key checks",
         "kind": "primary_key"
-      }
+      },
+      "nullability": "The documents are silent; decided from the row meaning: the key and the fields that define the row are required, descriptive fields from upstream records can be absent, and list columns are empty, never null."
     },
     {
       "name": "bills.parquet",
@@ -981,72 +1115,86 @@
         {
           "name": "bill_id",
           "type": "string",
-          "meaning": "Canonical bill identifier ({congress}-{type}-{number})"
+          "meaning": "Canonical bill identifier ({congress}-{type}-{number})",
+          "nullable": false
         },
         {
           "name": "title",
           "type": "string",
-          "meaning": "Official or primary bill title"
+          "meaning": "Official or primary bill title",
+          "nullable": true
         },
         {
           "name": "short_title",
           "type": "string",
-          "meaning": "Short title when present"
+          "meaning": "Short title when present",
+          "nullable": true
         },
         {
           "name": "sponsor_bioguide_id",
           "type": "dict",
-          "meaning": "Primary sponsor Bioguide identifier"
+          "meaning": "Primary sponsor Bioguide identifier",
+          "nullable": true
         },
         {
           "name": "introduced",
           "type": "date32",
-          "meaning": "Date the measure was introduced"
+          "meaning": "Date the measure was introduced",
+          "nullable": true
         },
         {
           "name": "latest_action_date",
           "type": "date32",
-          "meaning": "Date of the latest recorded action"
+          "meaning": "Date of the latest recorded action",
+          "nullable": true
         },
         {
           "name": "latest_action_text",
           "type": "string",
-          "meaning": "Text of the latest recorded action"
+          "meaning": "Text of the latest recorded action",
+          "nullable": true
         },
         {
           "name": "stage",
           "type": "dict",
-          "meaning": "Lifecycle stage derived by spicy-regs"
+          "meaning": "Lifecycle stage derived by spicy-regs",
+          "nullable": true
         },
         {
           "name": "policy_area",
           "type": "dict",
-          "meaning": "CRS policy area"
+          "meaning": "CRS policy area",
+          "nullable": true
         },
         {
           "name": "committees",
           "type": "list<dict>",
-          "meaning": "Referred committee system codes"
+          "meaning": "Referred committee system codes",
+          "nullable": false
         },
         {
           "name": "cbo_estimates",
           "type": "list<struct<publication_id string,date date32,description string>>",
-          "meaning": "CBO cost estimates associated with the bill"
+          "meaning": "CBO cost estimates associated with the bill",
+          "nullable": false
         },
         {
           "name": "floor_votes",
           "type": "list<struct<vote_id string,basis dict,chamber dict,date date32,question string,result string,yea int16,nay int16>>",
-          "meaning": "Roll-call votes tied by vote record or bill action"
+          "meaning": "Roll-call votes tied by vote record or bill action",
+          "nullable": false
         },
         {
           "name": "amendments",
           "type": "list<struct<amendment_id string,purpose string,sponsor_bioguide_id dict,latest_action_date date32,latest_action_text string>>",
-          "meaning": "Direct and chained amendments to the bill"
+          "meaning": "Direct and chained amendments to the bill",
+          "nullable": false
         },
         {
           "name": "committee_activities",
           "type": "list<struct<system_code dict,activity dict,date date32>>",
-          "meaning": "Committee referral, markup, and report activities"
+          "meaning": "Committee referral, markup, and report activities",
+          "nullable": false
         }
       ],
       "gaps": [
@@ -1067,7 +1215,8 @@
         "floor_votes[]": "One embedded vote per vote_id per bill; basis distinguishes vote_record from bill_action. Counts are vote totals, not member positions.",
         "amendments[]": "Embedded direct/chained amendment summaries; 119th Congress coverage until upstream backfill.",
         "committee_activities[]": "Embedded committee events; several activities can refer to the same committee."
-      }
+      },
+      "nullability": "The documents are silent; decided from the row meaning: the key and the fields that define the row are required, descriptive fields from upstream records can be absent, and list columns are empty, never null."
     },
     {
       "name": "nominations.parquet",
@@ -1075,47 +1224,56 @@
         {
           "name": "nomination_id",
           "type": "string",
-          "meaning": "Canonical nomination identifier ({congress}-pn-{number}[-{part}])"
+          "meaning": "Canonical nomination identifier ({congress}-pn-{number}[-{part}])",
+          "nullable": false
         },
         {
           "name": "description",
           "type": "string",
-          "meaning": "Nomination description"
+          "meaning": "Nomination description",
+          "nullable": true
         },
         {
           "name": "organization",
           "type": "string",
-          "meaning": "Executive or independent agency name"
+          "meaning": "Executive or independent agency name",
+          "nullable": true
         },
         {
           "name": "received",
           "type": "date32",
-          "meaning": "Date received in the Senate"
+          "meaning": "Date received in the Senate",
+          "nullable": true
         },
         {
           "name": "latest_action_date",
           "type": "date32",
-          "meaning": "Date of latest action"
+          "meaning": "Date of latest action",
+          "nullable": true
         },
         {
           "name": "latest_action_text",
           "type": "string",
-          "meaning": "Text of latest action"
+          "meaning": "Text of latest action",
+          "nullable": true
         },
         {
           "name": "committees",
           "type": "list<dict>",
-          "meaning": "Referred Senate committee system codes"
+          "meaning": "Referred Senate committee system codes",
+          "nullable": false
         },
         {
           "name": "transcripts",
           "type": "list<string>",
-          "meaning": "Printed hearing package IDs from nomination hearing references"
+          "meaning": "Printed hearing package IDs from nomination hearing references",
+          "nullable": false
         },
         {
           "name": "floor_votes",
           "type": "list<struct<vote_id string,date date32,question string,result string,yea int16,nay int16>>",
-          "meaning": "Senate roll-call votes on the nomination"
+          "meaning": "Senate roll-call votes on the nomination",
+          "nullable": false
         }
       ],
       "gaps": [
@@ -1134,7 +1292,8 @@
       "notes": {
         "floor_votes[]": "Embedded Senate roll-call summaries; no individual member positions.",
         "transcripts[]": "GovInfo CHRG package identifiers; a retained transcript can have multiple document formats or editions."
-      }
+      },
+      "nullability": "The documents are silent; decided from the row meaning: the key and the fields that define the row are required, descriptive fields from upstream records can be absent, and list columns are empty, never null."
     },
     {
       "name": "url_state.parquet",
@@ -1142,37 +1301,44 @@
         {
           "name": "requested_url",
           "type": "string",
-          "meaning": "Exact address scheduled for capture"
+          "meaning": "Exact address scheduled for capture",
+          "nullable": false
         },
         {
           "name": "attempts",
           "type": "int32",
-          "meaning": "Number of fetch lines for the address"
+          "meaning": "Number of fetch lines for the address",
+          "nullable": false
         },
         {
           "name": "last_attempt",
           "type": "timestamp<microsecond,UTC>",
-          "meaning": "Latest attempt time"
+          "meaning": "Latest attempt time",
+          "nullable": true
         },
         {
           "name": "last_status",
           "type": "int16",
-          "meaning": "Latest attempt HTTP status"
+          "meaning": "Latest attempt HTTP status",
+          "nullable": true
         },
         {
           "name": "last_outcome",
           "type": "dict",
-          "meaning": "Latest attempt outcome"
+          "meaning": "Latest attempt outcome",
+          "nullable": true
         },
         {
           "name": "last_good_at",
           "type": "timestamp<microsecond,UTC>",
-          "meaning": "Latest good fetch time"
+          "meaning": "Latest good fetch time",
+          "nullable": true
         },
         {
           "name": "next_attempt_at",
           "type": "timestamp<microsecond,UTC>",
-          "meaning": "Next scheduled fetch time"
+          "meaning": "Next scheduled fetch time",
+          "nullable": true
         }
       ],
       "gaps": [],
@@ -1188,7 +1354,8 @@
       },
       "notes": {
         "requested_url": "Exact scheduled address. Missing success is not missing publication; this is operational capture state, not an entity or document catalogue."
-      }
+      },
+      "nullability": "Nullability transcribes data model \u00a77.7."
     },
     {
       "name": "url_variants.parquet",
@@ -1196,12 +1363,14 @@
         {
           "name": "canonical_url",
           "type": "string",
-          "meaning": "Active canonical URL for capture joins"
+          "meaning": "Active canonical URL for capture joins",
+          "nullable": false
         },
         {
           "name": "variant_url",
           "type": "string",
-          "meaning": "Active alternate URL for capture joins"
+          "meaning": "Active alternate URL for capture joins",
+          "nullable": false
         }
       ],
       "gaps": [],
@@ -1218,7 +1387,8 @@
       },
       "notes": {
         "canonical_url": "Capture-profile aliases only. Do not use this table to reproduce the fixed public URL lookup hash."
-      }
+      },
+      "nullability": "The documents are silent; decided from the row meaning: the key and the fields that define the row are required, descriptive fields from upstream records can be absent, and list columns are empty, never null."
     },
     {
       "name": "videos.parquet",
@@ -1226,72 +1396,86 @@
         {
           "name": "video_key",
           "type": "string",
-          "meaning": "youtube:{id} video identity"
+          "meaning": "youtube:{id} video identity",
+          "nullable": false
         },
         {
           "name": "handle",
           "type": "dict",
-          "meaning": "Channel handle whose cache table lists it"
+          "meaning": "Channel handle whose cache table lists it",
+          "nullable": false
         },
         {
           "name": "channel_id",
           "type": "string",
-          "meaning": "YouTube channel ID, null when the cache has none"
+          "meaning": "YouTube channel ID, null when the cache has none",
+          "nullable": true
         },
         {
           "name": "system_code",
           "type": "dict",
-          "meaning": "Committee of the curated channel; channel membership does not make a video a hearing"
+          "meaning": "Committee of the curated channel; channel membership does not make a video a hearing",
+          "nullable": true
         },
         {
           "name": "title",
           "type": "string",
-          "meaning": "Title as the channel states it"
+          "meaning": "Title as the channel states it",
+          "nullable": true
         },
         {
           "name": "source_description",
           "type": "string",
-          "meaning": "Description as the channel states it, distinct from any HTML description"
+          "meaning": "Description as the channel states it, distinct from any HTML description",
+          "nullable": true
         },
         {
           "name": "published_at",
           "type": "timestamp",
-          "meaning": "YouTube's publication time for the upload"
+          "meaning": "YouTube's publication time for the upload",
+          "nullable": true
         },
         {
           "name": "video_published_at",
           "type": "timestamp",
-          "meaning": "YouTube's video publication time"
+          "meaning": "YouTube's video publication time",
+          "nullable": true
         },
         {
           "name": "duration_seconds",
           "type": "int32",
-          "meaning": "Duration in seconds when retained"
+          "meaning": "Duration in seconds when retained",
+          "nullable": true
         },
         {
           "name": "available",
           "type": "bool",
-          "meaning": "Whether the last check found it available"
+          "meaning": "Whether the last check found it available",
+          "nullable": true
         },
         {
           "name": "has_caption",
           "type": "bool",
-          "meaning": "Whether YouTube states a caption exists"
+          "meaning": "Whether YouTube states a caption exists",
+          "nullable": true
         },
         {
           "name": "details_checked_at",
           "type": "timestamp",
-          "meaning": "When details were last checked"
+          "meaning": "When details were last checked",
+          "nullable": true
         },
         {
           "name": "stated_event_ids",
           "type": "list<int64>",
-          "meaning": "Event IDs the video's own text names: claims, since committees mistag"
+          "meaning": "Event IDs the video's own text names: claims, since committees mistag",
+          "nullable": false
         },
         {
           "name": "record_sha",
           "type": "fixed[32]",
-          "meaning": "SHA-256 of the cache body, which also holds upstream API JSON and is the evidence reference"
+          "meaning": "SHA-256 of the cache body, which also holds upstream API JSON and is the evidence reference",
+          "nullable": false
         }
       ],
       "gaps": [],
@@ -1307,7 +1491,8 @@
       },
       "notes": {
         "stated_event_ids[]": "A claim the video makes, not a verified link; recording_matches keeps it as claimed."
-      }
+      },
+      "nullability": "The documents are silent; decided from the row meaning: the key and the fields that define the row are required, descriptive fields from upstream records can be absent, and list columns are empty, never null."
     },
     {
       "name": "channels.parquet",
@@ -1315,52 +1500,62 @@
         {
           "name": "handle",
           "type": "string",
-          "meaning": "Channel handle"
+          "meaning": "Channel handle",
+          "nullable": false
         },
         {
           "name": "channel_id",
           "type": "string",
-          "meaning": "YouTube channel ID"
+          "meaning": "YouTube channel ID",
+          "nullable": true
         },
         {
           "name": "system_code",
           "type": "dict",
-          "meaning": "Committee the directory maps it to"
+          "meaning": "Committee the directory maps it to",
+          "nullable": false
         },
         {
           "name": "committee_label",
           "type": "string",
-          "meaning": "Committee label in the directory"
+          "meaning": "Committee label in the directory",
+          "nullable": true
         },
         {
           "name": "role",
           "type": "dict",
-          "meaning": "primary, secondary or member"
+          "meaning": "primary, secondary or member",
+          "nullable": false
         },
         {
           "name": "title",
           "type": "string",
-          "meaning": "Channel's own title when cached"
+          "meaning": "Channel's own title when cached",
+          "nullable": true
         },
         {
           "name": "custom_url",
           "type": "string",
-          "meaning": "Channel's custom URL when cached"
+          "meaning": "Channel's custom URL when cached",
+          "nullable": true
         },
         {
           "name": "uploads_scan_complete",
           "type": "bool",
-          "meaning": "Whether the cache scanned every upload"
+          "meaning": "Whether the cache scanned every upload",
+          "nullable": true
         },
         {
           "name": "mapping_basis",
           "type": "dict",
-          "meaning": "curated_directory: a curated mapping with no further evidence column"
+          "meaning": "curated_directory: a curated mapping with no further evidence column",
+          "nullable": false
         },
         {
           "name": "record_sha",
           "type": "fixed[32]",
-          "meaning": "SHA-256 of the cache body, null with no cached channel row"
+          "meaning": "SHA-256 of the cache body, null with no cached channel row",
+          "nullable": true
         }
       ],
       "gaps": [],
@@ -1374,7 +1569,8 @@
         "validation": "native publication key checks",
         "kind": "primary_key"
       },
-      "notes": {}
+      "notes": {},
+      "nullability": "The documents are silent; decided from the row meaning: the key and the fields that define the row are required, descriptive fields from upstream records can be absent, and list columns are empty, never null."
     },
     {
       "name": "recording_matches.parquet",
@@ -1382,67 +1578,80 @@
         {
           "name": "match_id",
           "type": "string",
-          "meaning": "Hex SHA-256 of the compact JSON [subject_kind, subject_id, video ref, basis]"
+          "meaning": "Hex SHA-256 of the compact JSON [subject_kind, subject_id, video ref, basis]",
+          "nullable": false
         },
         {
           "name": "subject_kind",
           "type": "dict",
-          "meaning": "event or package"
+          "meaning": "event or package",
+          "nullable": false
         },
         {
           "name": "event_id",
           "type": "int64",
-          "meaning": "Meeting subject; null for a package or a stated number no meeting has"
+          "meaning": "Meeting subject; null for a package or a stated number no meeting has",
+          "nullable": true
         },
         {
           "name": "package_id",
           "type": "string",
-          "meaning": "GPO package subject"
+          "meaning": "GPO package subject",
+          "nullable": true
         },
         {
           "name": "video_key",
           "type": "string",
-          "meaning": "Video identity; can lack a video row"
+          "meaning": "Video identity; can lack a video row",
+          "nullable": true
         },
         {
           "name": "url",
           "type": "string",
-          "meaning": "Off-channel recording URL"
+          "meaning": "Off-channel recording URL",
+          "nullable": true
         },
         {
           "name": "basis",
           "type": "dict",
-          "meaning": "publisher_link, video_states_event_id or curated"
+          "meaning": "publisher_link, video_states_event_id or curated",
+          "nullable": false
         },
         {
           "name": "decision",
           "type": "dict",
-          "meaning": "The verdict as stated, or linked"
+          "meaning": "The verdict as stated, or linked",
+          "nullable": true
         },
         {
           "name": "score",
           "type": "int16",
-          "meaning": "100 publisher link, 95 stated event ID; null otherwise"
+          "meaning": "100 publisher link, 95 stated event ID; null otherwise",
+          "nullable": true
         },
         {
           "name": "recording_scope",
           "type": "dict",
-          "meaning": "full, excerpt or unknown"
+          "meaning": "full, excerpt or unknown",
+          "nullable": true
         },
         {
           "name": "status",
           "type": "dict",
-          "meaning": "asserted, claimed, decided, conflicting or unresolved; unresolved is a negative verdict that old matcher evidence disputes"
+          "meaning": "asserted, claimed, decided, conflicting or unresolved; unresolved is a negative verdict that old matcher evidence disputes",
+          "nullable": false
         },
         {
           "name": "note",
           "type": "string",
-          "meaning": "Curator note, or the unmatched stated number"
+          "meaning": "Curator note, or the unmatched stated number",
+          "nullable": true
         },
         {
           "name": "source_ref",
           "type": "string",
-          "meaning": "Evidence reference: the record or decision"
+          "meaning": "Evidence reference: the record or decision",
+          "nullable": true
         }
       ],
       "gaps": [
@@ -1458,7 +1667,8 @@
         "validation": "native publication key checks",
         "kind": "primary_key"
       },
-      "notes": {}
+      "notes": {},
+      "nullability": "The documents are silent; decided from the row meaning: the key and the fields that define the row are required, descriptive fields from upstream records can be absent, and list columns are empty, never null."
     },
     {
       "name": "committee_records.parquet",
@@ -1466,62 +1676,74 @@
         {
           "name": "record_key",
           "type": "string",
-          "meaning": "Hex SHA-256 of the compact JSON [record_sha hex, ordinal as text]"
+          "meaning": "Hex SHA-256 of the compact JSON [record_sha hex, ordinal as text]",
+          "nullable": false
         },
         {
           "name": "event_id",
           "type": "int64",
-          "meaning": "Meeting event ID"
+          "meaning": "Meeting event ID",
+          "nullable": false
         },
         {
           "name": "kind",
           "type": "dict",
-          "meaning": "amendment or vote"
+          "meaning": "amendment or vote",
+          "nullable": false
         },
         {
           "name": "bill",
           "type": "string",
-          "meaning": "Bill as stated"
+          "meaning": "Bill as stated",
+          "nullable": true
         },
         {
           "name": "number",
           "type": "string",
-          "meaning": "Amendment or vote number as stated"
+          "meaning": "Amendment or vote number as stated",
+          "nullable": true
         },
         {
           "name": "sponsor_bioguide",
           "type": "dict",
-          "meaning": "Sponsor as stated"
+          "meaning": "Sponsor as stated",
+          "nullable": true
         },
         {
           "name": "amendment_type",
           "type": "dict",
-          "meaning": "Amendment type as stated"
+          "meaning": "Amendment type as stated",
+          "nullable": true
         },
         {
           "name": "enbloc",
           "type": "string",
-          "meaning": "En bloc number as stated"
+          "meaning": "En bloc number as stated",
+          "nullable": true
         },
         {
           "name": "source_description",
           "type": "string",
-          "meaning": "Description as stated"
+          "meaning": "Description as stated",
+          "nullable": true
         },
         {
           "name": "url",
           "type": "string",
-          "meaning": "Document URL, null when the record states none"
+          "meaning": "Document URL, null when the record states none",
+          "nullable": true
         },
         {
           "name": "record_sha",
           "type": "fixed[32]",
-          "meaning": "SHA-256 of the House XML body"
+          "meaning": "SHA-256 of the House XML body",
+          "nullable": false
         },
         {
           "name": "ordinal",
           "type": "int32",
-          "meaning": "Position in that record, so duplicate links stay distinct"
+          "meaning": "Position in that record, so duplicate links stay distinct",
+          "nullable": false
         }
       ],
       "gaps": [],
@@ -1535,7 +1757,8 @@
         "validation": "native publication key checks",
         "kind": "primary_key"
       },
-      "notes": {}
+      "notes": {},
+      "nullability": "The documents are silent; decided from the row meaning: the key and the fields that define the row are required, descriptive fields from upstream records can be absent, and list columns are empty, never null."
     },
     {
       "name": "meeting_coverage.parquet",
@@ -1543,32 +1766,38 @@
         {
           "name": "event_id",
           "type": "int64",
-          "meaning": "Meeting event ID"
+          "meaning": "Meeting event ID",
+          "nullable": false
         },
         {
           "name": "aspect",
           "type": "dict",
-          "meaning": "recording, transcript, documents, witnesses or captions"
+          "meaning": "recording, transcript, documents, witnesses or captions",
+          "nullable": false
         },
         {
           "name": "state",
           "type": "dict",
-          "meaning": "present, partial, claimed, empty, not_stated, unresolved, not_public, confirmed_absent or unknown; these never merge"
+          "meaning": "present, partial, claimed, empty, not_stated, unresolved, not_public, confirmed_absent or unknown; these never merge",
+          "nullable": false
         },
         {
           "name": "basis",
           "type": "dict",
-          "meaning": "Which relation states it"
+          "meaning": "Which relation states it",
+          "nullable": true
         },
         {
           "name": "count",
           "type": "int32",
-          "meaning": "Rows behind present"
+          "meaning": "Rows behind present",
+          "nullable": true
         },
         {
           "name": "reason",
           "type": "dict",
-          "meaning": "Why a state holds, when known, such as old_evidence_disputes_negative_verdict"
+          "meaning": "Why a state holds, when known, such as old_evidence_disputes_negative_verdict",
+          "nullable": true
         }
       ],
       "gaps": [],
@@ -1585,7 +1814,8 @@
       },
       "notes": {
         "state": "confirmed_absent only from undisputed curated negative verdicts on every package of the meeting, each linked to that meeting alone; zero rows never prove absence. partial means excerpts only; claimed means only a video\u2019s own text; for captions, no observation is unknown, never empty."
-      }
+      },
+      "nullability": "The documents are silent; decided from the row meaning: the key and the fields that define the row are required, descriptive fields from upstream records can be absent, and list columns are empty, never null."
     }
   ],
   "relationships_version": 1,
