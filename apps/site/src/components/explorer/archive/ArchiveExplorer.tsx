@@ -234,7 +234,11 @@ function Workspace({client,nav,navigate,rawBase}:{client:ReturnType<typeof creat
     return {meeting,subject,witness,member,committee};
   },[client,nav.hearing,nav.subject,nav.witness,nav.member,nav.committee,nav.congress]);
 
-  useEffect(()=>{if(detail.status==='ready'&&detail.value&&detail.value.entry.detail.link_key&&!nav.key){navigate({key:keyHex(detail.value.entry.detail.link_key)},true);setSelection(null);}},[detail]);
+  const [redirectNote,setRedirectNote]=useState('');
+  useEffect(()=>{if(detail.status==='ready'&&detail.value&&detail.value.entry&&detail.value.entry.detail.link_key&&!nav.key){navigate({key:keyHex(detail.value.entry.detail.link_key)},true);setSelection(null);}},[detail]);
+  // A retired key with a successor opens the successor; the address bar then names it.
+  useEffect(()=>{if(detail.status==='ready'&&detail.value?.redirectedFrom&&detail.value.entry?.detail.link_key){setRedirectNote(`The link you followed (${detail.value.redirectedFrom}) now points to this document.`);navigate({key:keyHex(detail.value.entry.detail.link_key)},true);}},[detail]);
+  useEffect(()=>{if(!nav.key)setRedirectNote('');},[nav.key]);
   useEffect(()=>{
     if(typeof window!=='undefined'&&window.scrollY>200){
       workspaceRef.current?.scrollIntoView({block:'start'});
@@ -436,7 +440,7 @@ function Workspace({client,nav,navigate,rawBase}:{client:ReturnType<typeof creat
         onClose={()=>filter({committee:''})}
       />}
     </>}
-    {isDetail?<div className="archive-detail-view"><button type="button" className="explorer-button archive-back-button" onClick={close}>← Back to {isDocTab?'documents':activeTabMeta.noun}</button>{detail.status==='ready'?detail.value&&<ArchiveDetail entry={detail.value.entry} versions={detail.value.versions} meetings={detail.value.meetings} meetingDetails={detail.value.meetingDetails} committees={detail.value.committees} subjects={detail.value.subjects} witnesses={detail.value.witnesses} members={detail.value.members} committeesCatalog={committeesCatalog} rawBase={rawBase} onSelect={select} onHearing={hearing=>filter({hearing})} onMeasure={measure=>filter({subject:measure})} onSubject={subject=>filter({subject})} onCommittee={committee=>filter({committee})} onWitness={witness=>filter({witness})} onMember={member=>filter({member})} onOpenSaved={openSaved}/>:<RequestMessage state={detail} retry={retryDetail} noun="this document"/>}</div>:
+    {isDetail?<div className="archive-detail-view"><button type="button" className="explorer-button archive-back-button" onClick={close}>← Back to {isDocTab?'documents':activeTabMeta.noun}</button>{detail.status==='ready'&&detail.value?.removed?<p role="status" className="archive-removed-notice">This document is no longer in the archive. It was last published{detail.value.removed.lastFilename?<> as <strong>{detail.value.removed.lastFilename}</strong></>:null} in release {String(detail.value.removed.lastRelease).slice(0,12)}.</p>:detail.status==='ready'?detail.value&&<>{redirectNote&&<p role="status" className="archive-redirect-note">{redirectNote}</p>}<ArchiveDetail entry={detail.value.entry} versions={detail.value.versions} meetings={detail.value.meetings} meetingDetails={detail.value.meetingDetails} committees={detail.value.committees} subjects={detail.value.subjects} witnesses={detail.value.witnesses} members={detail.value.members} committeesCatalog={committeesCatalog} rawBase={rawBase} onSelect={select} onHearing={hearing=>filter({hearing})} onMeasure={measure=>filter({subject:measure})} onSubject={subject=>filter({subject})} onCommittee={committee=>filter({committee})} onWitness={witness=>filter({witness})} onMember={member=>filter({member})} onOpenSaved={openSaved}/></>:<RequestMessage state={detail} retry={retryDetail} noun="this document"/>}</div>:
       isDocTab?(
         rows.status==='ready'&&rows.value?<section aria-label="Document results" data-archive-query={rows.value.completedQuery}><div className="archive-results-bar"><p className="archive-total" data-archive-total>{rows.value.total===1?'1 document':`${integer(rows.value.total)} documents`}</p></div>{rows.value.total===0?<p className="explorer-muted">No matching documents found.</p>:<>
           <ArchiveRows rows={rows.value.rows} committeesCatalog={committeesCatalog} sort={effectiveSort} onSelect={select}/>

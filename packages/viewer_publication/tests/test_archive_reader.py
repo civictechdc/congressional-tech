@@ -59,3 +59,34 @@ def test_native_shards_cross_absolute_row_ranges(tmp_path):
     result=subprocess.run(['npm','run','test:archive-shards','--workspaces=false'],cwd=ROOT/'apps/site',
         env=dict(os.environ,ARCHIVE_FIXTURE=str(release)),capture_output=True,text=True,timeout=90)
     assert result.returncode==0,result.stdout+result.stderr
+
+
+def test_reader_redirects_retired_keys_and_shows_removal_notices(tmp_path):
+    """Gate 2 in the site reader: live, redirected, removed and never-published keys."""
+    import json
+    import pyarrow as pa
+    import pyarrow.parquet as pq
+    from congress_api.retention.provenance import file_pin
+    from viewer_publication.archive_format import release_identity
+    from viewer_publication.release_gate import RETIRED
+    release = tmp_path / 'release'
+    manifest = build_fixture_release(ROOT / 'model/fixtures/hand-release.json', output=release,
+        scratch=tmp_path / 'job', engine=NativeDatasets.from_config(os.environ['DOCSPEC_JOB_CONFIG']))
+    links = pq.read_table(release / 'links.parquet').to_pylist()
+    live = links[0]
+    rows = [dict(link_key=b'\xaa' * 8, successor_key=live['link_key'], last_release_id='d' * 64, last_filename='old.pdf'),
+            dict(link_key=b'\xbb' * 8, successor_key=None, last_release_id='e' * 64, last_filename='gone.pdf')]
+    pq.write_table(pa.Table.from_pylist(rows, schema=RETIRED), release / 'retired_links.parquet')
+    pin = file_pin(release / 'retired_links.parquet')
+    manifest['files'] = [f for f in manifest['files'] if f['name'] != 'retired_links.parquet'] + [
+        dict(name='retired_links.parquet', sha256=pin['sha256'], size=pin['size'], rows=2, md5='0' * 32,
+             row_range=None, shard=None, producer='archive', coverage={})]
+    manifest['release_id'] = release_identity(1, manifest['files'])
+    (release / 'manifest.json').write_text(json.dumps(manifest))
+    (release / 'retired-expected.json').write_text(json.dumps(dict(
+        live=dict(key=live['link_key'].hex(), index=live['list_row']), redirect=dict(key='aa' * 8),
+        removed=dict(key='bb' * 8, last_release_id='e' * 64, last_filename='gone.pdf'))))
+    result = subprocess.run(['node', '--test', str(ROOT / 'apps/site/scripts/archive-retired.test.mjs')],
+        cwd=ROOT / 'apps/site', env=dict(os.environ, ARCHIVE_FIXTURE=str(release)),
+        capture_output=True, text=True, timeout=90)
+    assert result.returncode == 0, result.stdout + result.stderr
