@@ -18,7 +18,7 @@ import json
 from pathlib import Path
 import re
 import sys
-from urllib.request import urlopen
+from urllib.request import Request, urlopen
 
 import pyarrow as pa
 import pyarrow.parquet as pq
@@ -77,7 +77,9 @@ def fetch_release(read, release_id, dest, names=None):
 def origin_reader(origin, release_id):
     """Public HTTPS reads for the offline CLI; the publish job passes its R2 client instead."""
     from viewer_publication.receipt_pins import PREFIX
-    return lambda name: urlopen(f'{origin.rstrip("/")}/{PREFIX}{release_id}/{name}', timeout=120)
+    # The public origin refuses urllib's default agent; name this tool instead.
+    return lambda name: urlopen(Request(f'{origin.rstrip("/")}/{PREFIX}{release_id}/{name}',
+                                        headers={'User-Agent': 'congressional-tech-release-gate/1'}), timeout=120)
 
 
 def client_reader(client, bucket, release_id):
