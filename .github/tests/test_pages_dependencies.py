@@ -42,6 +42,13 @@ def test_pages_uses_declared_locked_environments_and_checks_built_reader():
     assert package['scripts']['build'] == 'astro build'
     lock = json.loads((ROOT / 'apps/site/package-lock.json').read_text())
     assert lock['packages']['']['dependencies'] == package['dependencies']
+    # ct-3vub: one exact playwright pin, installed by the lock and read by the browser action.
+    pin = package['devDependencies']['playwright']
+    assert pin.count('.') == 2 and pin.replace('.', '').isdigit()
+    assert lock['packages']['node_modules/playwright']['version'] == pin
+    browser = yaml.load((ROOT / '.github/actions/setup-publication-browser/action.yml').read_text(), Loader=yaml.BaseLoader)
+    script = '\n'.join(step.get('run', '') for step in browser['runs']['steps'])
+    assert 'apps/site/node_modules/playwright/cli.js' in script and 'playwright@' not in script
     assert lock['packages']['']['devDependencies'] == package['devDependencies']
 
 

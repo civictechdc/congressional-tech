@@ -22,16 +22,17 @@ location, multi-repository roots and verification.
 Run Python suites through `.venv/bin/python scripts/dev.py test <lane>` (or pass
 `--path <file_or_node>` for targeted runs). The `production-offline` lane and
 any direct `.venv/bin/pytest` run over native lake/model tests require
-`DOCSPEC_JOB_CONFIG` pointing to a pinned **local-only** runtime JSON (`binary`,
-`binary_sha256`, `source_revision`, `platform`, `build_features`, `limits`,
-`workspace`) with **no** `remote` or `credentials` keys. Passing a pipeline
-`runtime.json` that includes `remote` or `credentials` fails `doctor` and raises
-`validate_catalog_authority` errors in local Iceberg tests.
+`DOCSPEC_JOB_CONFIG` pointing to a pinned **local-only** runtime JSON. Write one
+with `.venv/bin/python scripts/dev.py write-local-runtime --binary <docspec>
+--limits .github/docspec-local-limits.json --out <dir>/runtime.json`: it takes
+the pins from `model/docspec-runtime-pin.json`, refuses a binary whose SHA-256
+differs, and never writes `remote` or `credentials` (a pipeline `runtime.json`
+with those keys fails `doctor` and `validate_catalog_authority`).
 
-For `apps/site` browser contract checks (`npm --prefix apps/site run contract:archive`),
-set `VIEWER_BENCHMARK_MODULES` to a `node_modules` directory whose `playwright`
-matches an installed `~/Library/Caches/ms-playwright/chromium_headless_shell-*` revision
-(CI's `playwright@1.64.1` uses revision 1248; several revisions may be installed).
+For `apps/site` browser checks (`npm --prefix apps/site run contract:archive`),
+`npm --prefix apps/site ci` installs the exact `playwright` that
+`apps/site/package.json` pins; install its browser with
+`node apps/site/node_modules/playwright/cli.js install --only-shell chromium`.
 
 # Byte-hashed parser pins
 

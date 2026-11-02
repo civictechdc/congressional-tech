@@ -141,7 +141,8 @@ def job_runtime(config, lane_name):
     variable = config['lanes'].get(lane_name, {}).get('required_job_config_env')
     if not variable:
         return
-    remedy = f'{variable} must name an explicit pinned local runtime; see docs/development.md'
+    remedy = (f'{variable} must name an explicit pinned local runtime; write one with '
+              'scripts/dev.py write-local-runtime (see docs/development.md)')
     location = os.environ.get(variable)
     if not location:
         raise ValueError(remedy)
@@ -158,6 +159,49 @@ def job_runtime(config, lane_name):
             native.verify_runtime()
     except (OSError, ValueError, TypeError) as error:
         raise ValueError(f'{remedy}: {error}') from None
+
+
+def host_platform():
+    """Name this host in the committed runtime pin's platform vocabulary."""
+    import platform
+    machine = {'arm64': 'arm64', 'aarch64': 'arm64', 'x86_64': 'amd64', 'amd64': 'amd64'}.get(platform.machine().lower())
+    system = {'darwin': 'darwin', 'linux': 'linux'}.get(sys.platform)
+    if machine is None or system is None:
+        raise ValueError(f'No runtime pin vocabulary for {sys.platform}/{platform.machine()}; pass --platform')
+    return f'{system}-{machine}'
+
+
+def write_local_runtime(*, binary, limits, out, workspace=None, platform=None, pin_file=None):
+    """Write a local-only DOCSPEC_JOB_CONFIG for a binary that matches the committed pin.
+
+    The pins come from model/docspec-runtime-pin.json, never from the binary, so a
+    stale or rebuilt engine is refused instead of being described. Paths are
+    absolute; remote and credentials are never written.
+    """
+    from docspec_client import RUNTIME_PIN_FILE, NativeDatasets, load_runtime_pin, runtime_pin_digest
+    pin_file = pin_file or RUNTIME_PIN_FILE
+    pin = load_runtime_pin(pin_file)
+    platform = platform or host_platform()
+    binary, limits, out = Path(binary).resolve(), Path(limits).resolve(), Path(out).resolve()
+    values = json.loads(limits.read_text())
+    if (not isinstance(values, dict) or not values
+            or any(type(value) is not int or value <= 0 for value in values.values())):
+        raise ValueError(f'{limits} must hold positive integer engine limits')
+    settings = dict(version=1, binary=str(binary), limits=str(limits),
+                    workspace=str(Path(workspace).resolve() if workspace else out.parent / 'workspace'),
+                    source_revision=pin['source_revision'], platform=platform,
+                    build_features=pin['build_features'], required_capabilities=pin['required_capabilities'],
+                    binary_sha256=runtime_pin_digest(platform, pin_path=pin_file))
+    out.parent.mkdir(parents=True, exist_ok=True)
+    staged = out.with_name(f'.{out.name}.{os.getpid()}')
+    try:
+        staged.write_text(json.dumps(settings, indent=1) + '\n')
+        with NativeDatasets.from_config(staged) as native:
+            native.verify_runtime(pin_file=pin_file)
+        os.replace(staged, out)
+    finally:
+        staged.unlink(missing_ok=True)
+    return out
 
 
 def parse_shard(value):
@@ -281,6 +325,13 @@ def main(argv=None):
     chk = sub.add_parser('check', help='Run doctor environment checks followed by test inventory')
     chk.add_argument('--lane', choices=config['lanes'])
     sub.add_parser('inventory')
+    local = sub.add_parser('write-local-runtime',
+                           help='Write a local-only DOCSPEC_JOB_CONFIG for a binary matching the committed runtime pin')
+    local.add_argument('--binary', type=Path, required=True)
+    local.add_argument('--limits', type=Path, required=True)
+    local.add_argument('--out', type=Path, required=True)
+    local.add_argument('--workspace', type=Path, help='Engine workspace (default: <out dir>/workspace)')
+    local.add_argument('--platform', help='Pinned platform key (default: this host)')
     sub.add_parser('prepare-baseline', help='Fetch only the exact historical parser commit when absent, then verify its hash')
     clean_p = sub.add_parser('clean', help='Scan and reclaim stale build, egg-info, and cache artifacts')
     clean_p.add_argument('--execute', action='store_true', help='Execute deletion of stale artifacts (default is dry-run)')
@@ -301,6 +352,10 @@ def main(argv=None):
             doctor(config, args.lane)
         elif args.command == 'inventory':
             inventory(config)
+        elif args.command == 'write-local-runtime':
+            out = write_local_runtime(binary=args.binary, limits=args.limits, out=args.out,
+                                      workspace=args.workspace, platform=args.platform)
+            print(f'export DOCSPEC_JOB_CONFIG={out}')
         elif args.command == 'check':
             doctor(config, getattr(args, 'lane', None))
             inventory(config)

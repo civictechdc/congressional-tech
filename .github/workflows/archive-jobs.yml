@@ -65,7 +65,6 @@ jobs:
       - name: Run the single publisher with its local contract and HTTPS canary gates
         env:
           CLOUDFLARE_ACCOUNT_ID: ${{ vars.CLOUDFLARE_ACCOUNT_ID }}
-          VIEWER_BENCHMARK_MODULES: ${{ env.PUBLICATION_BROWSER_MODULES }}
           DOCSPEC_RUNTIME_ARTIFACT: ${{ vars.DOCSPEC_RUNTIME_ARTIFACT }}
           DOCSPEC_ENGINE_CREDENTIALS: ${{ secrets.ARCHIVE_PUBLISH_ENGINE_CREDENTIALS }}
           R2_ACCESS_KEY_ID: ${{ secrets.ARCHIVE_PUBLISH_R2_ACCESS_KEY_ID }}

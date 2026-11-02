@@ -14,6 +14,14 @@ def workflow(name):
     return yaml.load((ROOT / '.github/workflows' / name).read_text(), Loader=yaml.BaseLoader)
 
 
+def assert_site_browser_pin(steps, consumer):
+    """ct-3vub: Chromium follows the site lock's playwright; nothing overrides it."""
+    uses = [step.get('uses') for step in steps[:consumer]]
+    browser = uses.index('./.github/actions/setup-publication-browser')
+    assert './.github/actions/setup-node-project' in uses[:browser]
+    assert all('VIEWER_BENCHMARK_MODULES' not in step.get('env', {}) for step in steps)
+
+
 def test_publish_backfill_maintenance_share_one_non_canceling_group():
     value = workflow('archive-jobs.yml')
     for name in ['archive-jobs.yml','update-data.yml','publish-explorer.yml']:
@@ -28,7 +36,7 @@ def test_publish_backfill_maintenance_share_one_non_canceling_group():
     steps = value['jobs']['publish']['steps']
     invocation = next(step for step in steps if step.get('run', '').endswith('run-archive-job.py publish'))
     assert 'canary:' not in invocation['run'] and 'contract:' not in invocation['run'], 'Publisher owns stages once'
-    assert invocation['env']['VIEWER_BENCHMARK_MODULES'] == '${{ env.PUBLICATION_BROWSER_MODULES }}'
+    assert_site_browser_pin(steps, steps.index(invocation))
 
 
 def test_new_capture_uses_scheduler_and_common_lock_with_explicit_switch():
@@ -149,8 +157,7 @@ def test_deploy_and_validation_add_local_archive_contract_before_upload():
         contract = next(i for i, step in enumerate(steps) if 'verify-archive-contract.py' in step.get('run', ''))
         build = next(i for i, step in enumerate(steps) if step.get('name') in {'Build Astro site', 'Build the static site'})
         assert contract > build
-        assert any(step.get('uses') == './.github/actions/setup-publication-browser' for step in steps[:contract])
-        assert steps[contract]['env']['VIEWER_BENCHMARK_MODULES'] == '${{ env.PUBLICATION_BROWSER_MODULES }}'
+        assert_site_browser_pin(steps, contract)
         if name == 'deploy-pages.yml':
             upload = next(i for i, step in enumerate(steps) if step.get('uses') == 'actions/upload-pages-artifact@v3')
             assert contract < upload

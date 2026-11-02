@@ -1,11 +1,12 @@
 import {createRequire} from 'node:module';
-import {delimiter,join,resolve} from 'node:path';
 const require=createRequire(import.meta.url);
+/** Load a browser library lazily from the site's own lock (one pin for CI and
+ * local runs; `npm ci` in apps/site installs it). */
 export function browserDependency(name){
-  for(const load of [require,...(process.env.VIEWER_BENCHMARK_MODULES||'').split(delimiter).filter(Boolean).map(path=>createRequire(join(resolve(path),'__archive__.mjs')))]){
-    try{return load(name);}catch(error){if(error.code!=='MODULE_NOT_FOUND')throw error;}
+  try{return require(name);}catch(error){
+    if(error.code!=='MODULE_NOT_FOUND')throw error;
+    throw new Error(`Missing ${name}. Run npm ci in apps/site; package.json pins it.`);
   }
-  throw new Error(`Missing ${name}. Set VIEWER_BENCHMARK_MODULES to its maintained node_modules folder.`);
 }
 /** The built site reads the public archive origin (pointer, then its release
  * files). Local harnesses keep that real artifact and redirect only those reads

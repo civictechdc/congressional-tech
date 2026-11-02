@@ -157,3 +157,32 @@ def test_native_runtime_verifies_pins_without_starting_engine(tmp_path, monkeypa
     binary.write_bytes(b'changed')
     with pytest.raises(ValueError, match='DOCSPEC_JOB_CONFIG.*approved SHA-256'):
         dev.job_runtime(dev.declaration(), 'production-offline')
+
+
+def test_write_local_runtime_passes_preflight_and_refuses_an_unpinned_binary(tmp_path, monkeypatch):
+    """ct-3vub: pins come from the committed pin file; a different binary is refused."""
+    import json
+    from hashlib import sha256
+    binary = tmp_path / 'engine'
+    binary.write_bytes(b'\xcf\xfa\xed\xfeauthored fixture')
+    binary.chmod(0o755)
+    pin = tmp_path / 'pin.json'
+    pin.write_text(json.dumps(dict(version=1, source_revision='1' * 40, build_features=['remote'],
+                                   required_capabilities=['request-deadline', 'owned-stdin-eof'],
+                                   platforms={'darwin-arm64': {'sha256': sha256(binary.read_bytes()).hexdigest()}})))
+    limits = tmp_path / 'limits.json'
+    limits.write_text(json.dumps(dict(compute_threads=4, memory_bytes=1 << 30)))
+    out = tmp_path / 'local' / 'runtime.json'
+    monkeypatch.setenv('DOCSPEC_JOB_CONFIG', str(out))
+    assert dev.write_local_runtime(binary=binary, limits=limits, out=out, platform='darwin-arm64', pin_file=pin) == out
+    settings = json.loads(out.read_text())
+    assert 'remote' not in settings and 'credentials' not in settings
+    assert all(Path(settings[key]).is_absolute() for key in ('binary', 'limits', 'workspace'))
+    dev.job_runtime(dev.declaration(), 'production-offline')
+    other = tmp_path / 'other-engine'
+    other.write_bytes(b'\xcf\xfa\xed\xferebuilt engine')
+    other.chmod(0o755)
+    refused = tmp_path / 'refused.json'
+    with pytest.raises(ValueError, match='approved SHA-256'):
+        dev.write_local_runtime(binary=other, limits=limits, out=refused, platform='darwin-arm64', pin_file=pin)
+    assert list(tmp_path.glob('*refused.json*')) == []

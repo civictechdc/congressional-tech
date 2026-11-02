@@ -17,7 +17,10 @@ source .venv/bin/activate
 python scripts/dev.py doctor
 python scripts/dev.py prepare-baseline
 python scripts/dev.py inventory
-export DOCSPEC_JOB_CONFIG=/absolute/path/to/approved-local-runtime.json
+# Checks the binary against model/docspec-runtime-pin.json; prints the export line.
+python scripts/dev.py write-local-runtime --binary /path/to/docspec \
+  --limits .github/docspec-local-limits.json --out .cache/local-runtime/runtime.json
+export DOCSPEC_JOB_CONFIG=$PWD/.cache/local-runtime/runtime.json
 python scripts/dev.py test production-offline
 python scripts/dev.py test active-experiment-regression
 ```
