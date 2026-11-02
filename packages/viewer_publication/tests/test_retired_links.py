@@ -71,8 +71,10 @@ def test_retired_keys_redirect_or_show_a_notice_and_none_vanish(tmp_path, ledger
         K('q'): (live, HISTORY, 'q.pdf'),
         K('r'): (live, 'd' * 64, 'r.pdf'),
         K('s'): (None, 'd' * 64, 's.pdf'),
-        K('a'): (live, BASE, 'same-address.pdf'),
+        # A new body at the old address is another edition: a notice that lists it, not a redirect.
+        K('a'): (None, BASE, 'same-address.pdf'),
     }
+    assert rows[K('a')]['address_versions'] == [live] and rows[K('g')]['address_versions'] is None
     published = set(pq.read_table(tmp_path / 'release/links.parquet')['link_key'].to_pylist())
     assert live in published and not published & set(rows)
 
@@ -126,3 +128,49 @@ def test_ledger_history_is_required_exactly_when_the_base_has_no_ledger(tmp_path
     require_ledger_history(kept, [])
     with pytest.raises(ValueError, match='link_history must be empty'):
         require_ledger_history(kept, [HISTORY])
+
+
+def run_ledger(tmp_path, *, links, details, sources, prints, prior, prior_sources, base_retired=()):
+    """retired-links.sql alone on the native engine, over hand-written relations."""
+    from congress_api.retention.provenance import parquet_output, run_job
+    from viewer_publication.archive_model import ROOT
+    from viewer_publication.release_gate import PRIOR_LINKS, PRIOR_SOURCES, RETIRED
+    tables = {
+        'links': pa.table({'link_key': pa.array([k for k, _ in links], pa.binary(8)), 'list_row': pa.array([r for _, r in links], pa.int32())}),
+        'details': pa.table({'link_key': pa.array([k for k, _ in details], pa.binary(8)), 'list_row': pa.array([r for _, r in details], pa.int32())}),
+        'source_rows': pa.table({'list_row': pa.array([r for r, _, _ in sources], pa.int32()), 'url': [u for _, u, _ in sources],
+                                 'member_path': pa.array([m for _, _, m in sources], pa.string())}),
+        'body_fingerprints': pa.table({'body_sha': [k.hex() + '0' * 48 for k, _ in prints], 'fingerprint': [f for _, f in prints]}),
+        'prior_links': pa.Table.from_pylist([dict(link_key=k, release_rank=0, release_id=BASE, list_row=r, primary_key=p, filename=f'{r}.pdf')
+                                             for k, r, p in prior], schema=PRIOR_LINKS),
+        'prior_sources': pa.Table.from_pylist([dict(release_rank=0, list_row=r, url=u, member_path=m) for r, u, m in prior_sources], schema=PRIOR_SOURCES),
+        'base_retired': pa.Table.from_pylist(list(base_retired), schema=RETIRED),
+    }
+    inputs = []
+    for name, table in tables.items():
+        pq.write_table(table, tmp_path / f'{name}.parquet')
+        inputs.append(dict(name=name, kind='parquet', path=str(tmp_path / f'{name}.parquet')))
+    sql = (ROOT / 'model/sql/retired-links.sql').read_text()
+    with NativeDatasets.from_config(os.environ['DOCSPEC_JOB_CONFIG']) as engine:
+        run_job(tmp_path / 'job', engine, inputs=inputs, steps=[dict(name='retired', sql=sql, materialize=True)],
+                outputs=[parquet_output(tmp_path / 'job', 'retired', 'SELECT * FROM retired', ['link_key'])])
+    rows = pq.read_table(tmp_path / 'job/retired.parquet').to_pylist()
+    return {r['link_key']: (r['successor_key'], r['address_versions'] or []) for r in rows}
+
+
+def test_address_successors_need_the_same_text_and_one_document(tmp_path):
+    """red-h2: editions at one address never redirect into each other (data model §7.5)."""
+    A, B, C, D, E, P, Q = (K(x) for x in 'ABCDEPQ')
+    out = run_ledger(tmp_path,
+        links=[(A, 0), (B, 1), (C, 2), (D, 3), (E, 4), (P, 5), (Q, 6)],
+        details=[(A, 0), (B, 1), (C, 2), (D, 3), (E, 4), (P, 5), (Q, 6)],
+        sources=[(0, 'u1', None), (1, 'u2', None), (2, 'u3', None), (3, 'u3', None), (4, 'u4', None), (6, 'u5', None)],
+        prints=[(K('a'), 'f1'), (A, 'f1'), (K('b'), 'f3'), (B, 'f2'), (K('c'), 'f4'), (C, 'f4'), (D, 'f4'),
+                (K('e'), 'f5'), (E, 'f5'), (K('g'), 'f6'), (Q, 'f6')],
+        prior=[(K('a'), 0, K('a')), (K('b'), 1, K('b')), (K('c'), 2, K('c')), (K('e'), 3, K('e')), (P, 4, P), (K('g'), 4, P)],
+        prior_sources=[(0, 'u1', None), (1, 'u2', None), (2, 'u3', None), (3, 'u4', 'm.pdf'), (4, 'u5', None)])
+    assert out[K('a')] == (A, [])            # same text at the one document at the address: redirect
+    assert out[K('b')] == (None, [B])        # another edition: a notice listing the address's versions
+    assert out[K('c')] == (None, [C, D])     # two documents with the same text: never choose (M3)
+    assert out[K('e')] == (None, [])         # (u4, m.pdf) is not (u4, NULL): member_path matters (M4)
+    assert out[K('g')] == (P, [])            # the surviving primary key wins over the address rule (M16)

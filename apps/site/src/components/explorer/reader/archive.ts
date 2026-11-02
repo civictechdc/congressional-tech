@@ -257,7 +257,9 @@ export async function openArchive(pointerUrl: string, options: any = {}) {
     if(rows.length>1)throw new Error('Retired archive link key is not unique.');
     if(!rows.length)return null;
     const [item]=rows;
-    return {key,successor:hex(item.successor_key),lastRelease:String(item.last_release_id),lastFilename:item.last_filename??null};
+    // Other editions at the old addresses are listed with a notice, never swapped in silently.
+    const versions=Array.isArray(item.address_versions)?item.address_versions.map(hex):[];
+    return {key,successor:hex(item.successor_key),lastRelease:String(item.last_release_id),lastFilename:item.last_filename??null,versions};
   };
   // One answer per public key: a live row, a redirect to the successor's row, a removal
   // notice, or null for a key this archive never published.

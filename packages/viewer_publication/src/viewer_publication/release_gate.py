@@ -33,7 +33,8 @@ PRIOR_LINKS = pa.schema([('link_key', pa.binary(8)), ('release_rank', pa.int16()
 PRIOR_SOURCES = pa.schema([('release_rank', pa.int16()), ('list_row', pa.int32()), ('url', pa.string()),
                            ('member_path', pa.string())])
 RETIRED = pa.schema([('link_key', pa.binary(8)), ('successor_key', pa.binary(8)),
-                     ('last_release_id', pa.string()), ('last_filename', pa.string())])
+                     ('last_release_id', pa.string()), ('last_filename', pa.string()),
+                     ('address_versions', pa.list_(pa.binary(8)))])
 
 
 def _sha(value, what):
@@ -126,7 +127,13 @@ def prior_links(base_dir, history_dirs, out_dir):
     pq.write_table(pa.concat_tables(addresses) if addresses else PRIOR_SOURCES.empty_table(), out_dir / 'prior_sources.parquet')
     retired = out_dir / 'base_retired.parquet'
     source = Path(base_dir) / 'retired_links.parquet'
-    pq.write_table(pq.read_table(source).select(RETIRED.names).cast(RETIRED) if source.exists() else RETIRED.empty_table(), retired)
+    if source.exists():
+        held = pq.read_table(source)
+        if 'address_versions' not in held.column_names:  # ledgers written before the column
+            held = held.append_column('address_versions', pa.nulls(len(held), pa.list_(pa.binary(8))))
+        pq.write_table(held.select(RETIRED.names).cast(RETIRED), retired)
+    else:
+        pq.write_table(RETIRED.empty_table(), retired)
     return prior, retired
 
 
