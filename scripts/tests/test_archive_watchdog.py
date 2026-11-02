@@ -58,14 +58,23 @@ def test_a_runaway_descendant_stops_the_tree_with_a_named_failure(tmp_path):
     raise AssertionError('the runaway child outlived the watchdog')
 
 
-def test_admission_is_refused_on_measured_free_memory_with_a_named_reason(tmp_path, private_state):
-    """A job that cannot fit waits, then refuses with exit 98; it never starts and leaves no state."""
+@pytest.mark.parametrize('total, free', [(16, 14.2), (48, 30.0)], ids=['16-GiB-runner', '48-GiB-mac'])
+def test_admission_is_refused_on_measured_free_memory_with_a_named_reason(monkeypatch, capsys, tmp_path,
+                                                                           private_state, total, free):
+    """A job that cannot fit waits, then refuses with exit 98; it never starts and leaves no state.
+
+    The readings are injected: derived from the real host, the expected peak exceeded a
+    16 GiB Linux runner outright and took the other refusal (docspec-rs run 41506139189).
+    """
+    monkeypatch.setattr(watchdog, 'total_gb', lambda: total)
+    monkeypatch.setattr(watchdog, 'available_gb', lambda: free)
     marker = tmp_path / 'ran'
-    available = watchdog.available_gb()
-    result = run(tmp_path, '--rss-gb', '4', '--expect-gb', str(round(available + 2, 1)), '--wait-seconds', '0',
-                 command=[sys.executable, '-c', f'import pathlib;pathlib.Path({str(marker)!r}).touch()'])
-    assert result.returncode == 98 and 'measured free memory' in result.stderr and not marker.exists()
+    code = watchdog.main(['--rss-gb', '4', '--expect-gb', str(free + 1), '--wait-seconds', '0', '--',
+                          sys.executable, '-c', f'import pathlib;pathlib.Path({str(marker)!r}).touch()'])
+    assert code == 98 and 'measured free memory' in capsys.readouterr().err and not marker.exists()
     assert list(private_state.glob('*.json')) == []
+    assert watchdog.main(['--rss-gb', '4', '--expect-gb', str(total + 1), '--wait-seconds', '0', '--', 'true']) == 98
+    assert 'exceeds this machine' in capsys.readouterr().err
 
 
 def test_a_high_kill_limit_does_not_delay_a_small_job(tmp_path):
