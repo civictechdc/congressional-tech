@@ -38,3 +38,7 @@ Publish compact typed descriptions, distinct publication/modification dates with
 **2026-10-30T20:37:07Z**
 
 Coordinate with reopened ct-gi01 under PHASE-2 §4.6. The end state is one native publication for site and MCP. Any separate Explorer output is transitional; map selected HTML fields into the maintained model and preserve evidence. Local work may proceed without waiting for the production switch.
+
+**2026-11-02T13:05:13Z**
+
+2026-11-02 (lead): publish HTML metadata as native release columns through the shared release, not through adapters/page_metadata.py, which is reachable only from the old Explorer and is retired in ct-5kto. Round 3 (ct-4thc, ct-jnm9) depends on those columns.

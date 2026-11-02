@@ -72,3 +72,7 @@ Verified with pytest across congress_api, viewer_publication, docspec_client, co
 **2026-10-30T20:37:05Z**
 
 Reopened and reconciled at the user’s request on 2026-10-30. Current scope and acceptance above supersede the earlier closure where it claimed the remaining Explorer migration was complete. Canonical coverage and order: docs/plans/phase-2-annex-20261028.md §4.6. No implementation, live publication or deletion was performed by this reconciliation.
+
+**2026-11-02T13:05:13Z**
+
+2026-11-02 (lead): Round 3 plan at .cache/rounds/r3/plan.md. Retirement removes about 11,100 site lines, 11,056 Python source lines and 1,678 test lines, plus 9,297 lines in 43 mixed test files reviewed case by case. Keep apps/committee_youtube/data, offline-python.py and components/dashboard/ (the YouTube coverage page). The 20 GB swap step was already removed in f545385b. Decision: old dashboard links naming a record by UUID show a removal notice, with no ID mapping, following the ct-ktfe precedent and the ct-tk10 link rule.

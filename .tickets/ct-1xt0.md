@@ -44,3 +44,7 @@ Implemented locally: producer-owned bill_hearing_transcripts recipe follows meet
 Verification: 85 MCP tests and 12 focused publication-schema tests passed. Fixtures cover duplicate paths, multiple meetings, hidden documents, empty matches, unavailable meetings, and row/byte limits. Actual stdio executed all 11 recipes over retained native producer output with refreshed metadata; all 16 Parquet hashes were preserved. No fresh producer data-generation job was run. The new SQL also returned CHRG-119hhrg61207/reference a80bbbc83acf1c12 exactly once for 119-hr-1 on the retained full release, supported by meeting 118300, while the direct document filter remained empty.
 
 Local implementation and verification are complete. Updated discovery metadata still needs publication and selection before existing releases advertise the recipe; no public release or pointer changed. Ticket remains open for delivery. See apps/explorer_mcp/VERIFICATION.md and local .cache/mcp-ticket-fixes-20261030/native-metadata-receipt.json and retained-replay-result.json.
+
+**2026-11-02T13:05:13Z**
+
+2026-11-02 (lead): the recipe is already live in 448651e7 and returns two rows; the fixed release should return exactly one (a80bbbc83acf1c12). Round 3 unit D1 checks it.
