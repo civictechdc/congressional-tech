@@ -127,3 +127,17 @@ def test_snapshot_without_a_valid_producer_record_refuses(spec, tmp_path, change
     change(records)
     with pytest.raises(ValueError, match=rule):
         run(mapped, tmp_path, 'records', records=records)
+
+
+def test_an_import_record_passes_only_through_a_valid_origin():
+    """Basin copies: the import's commit is checked, and the rows' versions through the origin."""
+    from viewer_publication.producer_proof import IMPORT, snapshot_reasons
+    from congress_api.lake import meeting_records
+    selector = {'kind': 'native_table', 'metadata_location': 's3://x/m.json', 'table_uuid': 'u', 'snapshot': 1, 'schema_id': 0}
+    model = {'meeting_records': selector, 'parser_versions': {'meeting_records': meeting_records.current_versions()}}
+    origin = dict(version=1, input='meeting_records', selector={'kind': 'native_table', 'snapshot': 9}, job=JOB, commit=head())
+    imported = lambda **o: {'meeting_records': dict(version=1, input='meeting_records', selector=selector, job=IMPORT, commit=head(), **o)}
+    assert snapshot_reasons(model, imported(origin=dict(record=origin))) == []
+    assert 'needs the origin record' in snapshot_reasons(model, imported())[0]
+    assert 'origin: producing commit 000000000000 is not reachable' in snapshot_reasons(model, imported(origin=dict(record=dict(origin, commit='0' * 40))))[0]
+    assert 'cannot name another import' in snapshot_reasons(model, imported(origin=dict(record=dict(origin, job=IMPORT))))[0]

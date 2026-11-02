@@ -97,15 +97,16 @@ RULES = {
 CAPTURES_STAGE = 'packages/congress_api/src/congress_api/cli/captures_ingest.py'
 DAILY = 'packages/congress_api/src/congress_api/lake/daily.py'
 BACKFILL = 'packages/viewer_publication/src/viewer_publication/archive_backfill_job.py'
+IMPORT = 'packages/viewer_publication/src/viewer_publication/archive_import_job.py'
 # The checked-in jobs that may produce each table; a record naming any other file refuses.
 PRODUCERS = {
-    'captures': {CAPTURES_STAGE, DAILY, BACKFILL},
-    'readings': {'packages/congress_api/src/congress_api/cli/readings.py', DAILY, BACKFILL},
-    'filename_readings': {DAILY, BACKFILL},
-    'meeting_records': {DAILY, BACKFILL},
-    'appearance_records': {DAILY, BACKFILL},
-    'video_records': {DAILY, BACKFILL},
-    'committee_records': {DAILY, BACKFILL},
+    'captures': {CAPTURES_STAGE, DAILY, BACKFILL, IMPORT},
+    'readings': {'packages/congress_api/src/congress_api/cli/readings.py', DAILY, BACKFILL, IMPORT},
+    'filename_readings': {DAILY, BACKFILL, IMPORT},
+    'meeting_records': {DAILY, BACKFILL, IMPORT},
+    'appearance_records': {DAILY, BACKFILL, IMPORT},
+    'video_records': {DAILY, BACKFILL, IMPORT},
+    'committee_records': {DAILY, BACKFILL, IMPORT},
 }
 VERSIONS_AT_COMMIT = """import importlib, json
 def version(module, call):
@@ -170,9 +171,42 @@ def _git(root, *args):
     return subprocess.run(['git', '-C', str(root), *args], capture_output=True, text=True)
 
 
-def snapshot_reasons(model, records, *, root=ROOT, mapping_current=None):
-    """Refusals for the per-snapshot rule: one record per pinned table, bound to its selector."""
+def _record_reasons(name, record, model, mapping_current, root, *, label, selector=None, versions=True):
+    """One record's refusals: version, registered job, full reachable commit, job checked in
+    there and, when the record's code produced the rows, the versions recomputed there."""
     import re
+    reasons = []
+    if selector is not None and (record.get('input') != name or record.get('selector') != selector):
+        reasons.append(f'producer proof: {label}: the producer record names another selector')
+    commit, job = record.get('commit'), record.get('job')
+    if record.get('version') != 1:
+        return reasons + [f'producer proof: {label}: unknown producer record version {record.get("version")!r}']
+    if job not in PRODUCERS.get(name, ()):
+        return reasons + [f'producer proof: {label}: job {job!r} is not a producer registered for this table']
+    if not isinstance(commit, str) or re.fullmatch('[0-9a-f]{40}', commit) is None:
+        return reasons + [f'producer proof: {label}: the producer record has no full commit']
+    if _git(root, 'merge-base', '--is-ancestor', commit, 'HEAD').returncode != 0:
+        return reasons + [f'producer proof: {label}: producing commit {commit[:12]} is not reachable from HEAD']
+    if _git(root, 'cat-file', '-e', f'{commit}:{job}').returncode != 0:
+        return reasons + [f'producer proof: {label}: job {job!r} is not a file checked in at {commit[:12]}']
+    if versions:
+        try:
+            computed = versions_at(commit, root=root).get(name)
+        except ValueError as error:
+            return reasons + [f'producer proof: {label}: {error}']
+        if computed != expected_versions(name, model, mapping_current):
+            reasons.append(f'producer proof: {label}: the code at {commit[:12]} computes another version than the pinned rows carry')
+    return reasons
+
+
+def snapshot_reasons(model, records, *, root=ROOT, mapping_current=None):
+    """Refusals for the per-snapshot rule: one record per pinned table, bound to its selector.
+
+    An import (archive_import_job) copies rows it did not produce, so its record must carry
+    `origin`, the record of the job that did; the origin is checked like any producer (its
+    commit reachable, its versions equal to the rows') except for its selector, which names
+    the source snapshot the import copied and verified. An import cannot be its own origin.
+    """
     reasons = []
     for name in [n for n in ('captures', *ROW_VERSIONED) if model.get(n) is not None]:
         record = (records or {}).get(name)
@@ -180,30 +214,17 @@ def snapshot_reasons(model, records, *, root=ROOT, mapping_current=None):
             reasons.append(f'producer proof: {name}: no producer record (job and commit) for the pinned snapshot')
             continue
         selector = {k: v for k, v in model[name].items() if k != 'producer'}
-        if record.get('input') != name or record.get('selector') != selector:
-            reasons.append(f'producer proof: {name}: the producer record names another selector')
-        commit, job = record.get('commit'), record.get('job')
-        if record.get('version') != 1:
-            reasons.append(f'producer proof: {name}: unknown producer record version {record.get("version")!r}')
-            continue
-        if job not in PRODUCERS.get(name, ()):
-            reasons.append(f'producer proof: {name}: job {job!r} is not a producer registered for this table')
-            continue
-        if not isinstance(commit, str) or re.fullmatch('[0-9a-f]{40}', commit) is None:
-            reasons.append(f'producer proof: {name}: the producer record has no full commit')
-            continue
-        if _git(root, 'merge-base', '--is-ancestor', commit, 'HEAD').returncode != 0:
-            reasons.append(f'producer proof: {name}: producing commit {commit[:12]} is not reachable from HEAD')
-        elif _git(root, 'cat-file', '-e', f'{commit}:{job}').returncode != 0:
-            reasons.append(f'producer proof: {name}: job {job!r} is not a file checked in at {commit[:12]}')
-        else:
-            try:
-                computed = versions_at(commit, root=root).get(name)
-            except ValueError as error:
-                reasons.append(f'producer proof: {name}: {error}')
-                continue
-            if computed != expected_versions(name, model, mapping_current):
-                reasons.append(f'producer proof: {name}: the code at {commit[:12]} computes another version than the pinned rows carry')
+        imported = record.get('job') == IMPORT
+        found = _record_reasons(name, record, model, mapping_current, root, label=name, selector=selector, versions=not imported)
+        reasons += found
+        if imported and not found:
+            origin = record.get('origin')
+            if not isinstance(origin, dict) or not isinstance(origin.get('record'), dict):
+                reasons.append(f'producer proof: {name}: an import record needs the origin record of the job that produced the rows')
+            elif origin['record'].get('job') == IMPORT:
+                reasons.append(f'producer proof: {name}: an import cannot name another import as its origin')
+            else:
+                reasons += _record_reasons(name, origin['record'], model, mapping_current, root, label=f'{name} origin')
     return reasons
 
 
