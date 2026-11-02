@@ -7,7 +7,7 @@ zero third-party import cost or side effects.
 from __future__ import annotations
 
 from collections.abc import Mapping
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 import os
 import re
 from typing import Any
@@ -36,6 +36,8 @@ class R2Config:
     retries: Mapping[str, Any] | None = None
     max_pool_connections: int | None = None
     checksum_when_required: bool = True
+    # Temporary (STS-style) R2 credentials carry a session token; kept out of repr.
+    session_token: str | None = field(default=None, repr=False)
 
     @classmethod
     def from_env(
@@ -45,6 +47,7 @@ class R2Config:
         endpoint_url: str | None = None,
         access_key_id: str | None = None,
         secret_access_key: str | None = None,
+        session_token: str | None = None,
         bucket: str = "congressional-tech-raw",
         connect_timeout: int | float | None = 15,
         read_timeout: int | float | None = 180,
@@ -80,6 +83,7 @@ class R2Config:
             retries=retries,
             max_pool_connections=max_pool_connections,
             checksum_when_required=checksum_when_required,
+            session_token=session_token or environ.get("R2_SESSION_TOKEN") or None,
         )
 
     @classmethod
@@ -107,12 +111,15 @@ class R2Config:
         )
 
     def client_kwargs(self) -> dict[str, Any]:
-        return {
+        kwargs = {
             "endpoint_url": self.endpoint_url,
             "aws_access_key_id": self.access_key_id,
             "aws_secret_access_key": self.secret_access_key,
             "region_name": self.region_name,
         }
+        if self.session_token:
+            kwargs["aws_session_token"] = self.session_token
+        return kwargs
 
     def botocore_config(self) -> Any:
         from botocore.config import Config
@@ -141,6 +148,7 @@ def connect_r2(
     endpoint_url: str | None = None,
     access_key_id: str | None = None,
     secret_access_key: str | None = None,
+    session_token: str | None = None,
     bucket: str = "congressional-tech-raw",
     connect_timeout: int | float | None = 15,
     read_timeout: int | float | None = 180,
@@ -158,6 +166,7 @@ def connect_r2(
         endpoint_url=endpoint_url,
         access_key_id=access_key_id,
         secret_access_key=secret_access_key,
+        session_token=session_token,
         bucket=bucket,
         connect_timeout=connect_timeout,
         read_timeout=read_timeout,

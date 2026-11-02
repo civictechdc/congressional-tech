@@ -197,6 +197,30 @@ def test_r2_config_and_connect_r2() -> None:
     assert captured["aws_secret_access_key"] == "secret-key"
     assert captured["region_name"] == "auto"
     assert "config" in captured
+    assert "aws_session_token" not in captured
+
+
+def test_r2_session_token_reaches_client_and_stays_out_of_repr() -> None:
+    env = {
+        "R2_ENDPOINT_URL": "https://acct.r2.cloudflarestorage.com",
+        "R2_ACCESS_KEY_ID": "temp-id",
+        "R2_SECRET_ACCESS_KEY": "temp-secret",
+        "R2_SESSION_TOKEN": "env-session",
+    }
+    assert R2Config.from_env(env=env).session_token == "env-session"
+    explicit = R2Config.from_env(env=env, session_token="arg-session")
+    assert explicit.session_token == "arg-session"
+    assert "arg-session" not in repr(explicit)
+
+    captured: dict[str, object] = {}
+
+    def fake_client(service: str, **kwargs: object) -> object:
+        captured.update(kwargs)
+        return object()
+
+    with patch("boto3.client", side_effect=fake_client):
+        connect_r2(env=env)
+    assert captured["aws_session_token"] == "env-session"
 
 
 @pytest.mark.parametrize("change", ["add", "remove"])
