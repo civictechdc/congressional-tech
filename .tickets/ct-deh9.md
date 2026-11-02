@@ -43,3 +43,7 @@ Round 1b 2026-11-02 (lead): Readings: sniff, xml and json are lock-only or prove
 **2026-11-02T13:08:43Z**
 
 2026-11-02 (lead): the html re-read set (67,540 bodies, one html parser_version, 1 already local) and the D4 candidate bodies (16,102 non-MODS, 446 MODS; 725 were missing) are now in the local mirror. All 68,264 downloads were checked: size and MD5 against captures, then sha256 and size of the decompressed bytes. The filename catalog (D3) reads no body bytes.
+
+**2026-11-02T14:19:08Z**
+
+2026-11-02 spec-run: on candidate-r1b (integrate + e1 2deb969a + e2 6cdc1825 without e73505b2 + g 89285289; pins ae2fa2a3; registry 17bc2892), the registry proofs show 0 differences: sniff 2,000 rows, xml 2,000, json 123, readings bundle dd70d745 25 (decision bodies fetched and sha-matched). The html proof failed on a defect in prove_unchanged (dedda4f0): it compared new-side rows that leave the re-read set (1,147 intended fingerprint fills), while the 817 rows outside the set on both sides matched. Fix: compare old-side rows outside the predicate (impl-e2). D4 selection refuses without a D4 run, so D4 runs speculatively now and again after impl-f.
