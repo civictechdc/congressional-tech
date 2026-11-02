@@ -2104,3 +2104,12 @@ def test_the_lake_table_keeps_each_records_held_dates_title_and_created():
 ])
 def test_a_witnesss_own_entries_are_the_witness_and_submissions_are_statements(line, kind):
     assert appearance_records.mods_entry_kind(line, None) == kind
+
+
+def test_every_source_version_covers_the_table_write():
+    """The staged row is shaped by appearance_records.table as much as by each source's parser: 3fb41ddd changed
+    the table write (held_dates, title, created), and rows written null carried the same versions as fixed rows."""
+    for source, symbols in appearance_records._SOURCE_SYMBOLS.items():
+        missing = {"_EXTRA_COLS", "_normalize_row_for_table", "table", "build_appearance_record_row"} - set(symbols)
+        assert not missing, (source, missing)
+        assert all(hasattr(appearance_records, name) for name in symbols), source

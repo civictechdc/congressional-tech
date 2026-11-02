@@ -122,6 +122,10 @@ SCHEMA = ARROW_SCHEMA
 # Every column ARROW_SCHEMA carries besides the shared record columns; a field missing here is written null.
 _EXTRA_COLS = ("event_id", "package_id", "declared_base", "collection_state", "held_dates", "title", "created")
 
+# The table write shapes every staged row, so every source's version covers it (a column it dropped was written
+# null under unchanged versions, 3fb41ddd).
+_TABLE_SYMBOLS = ("_EXTRA_COLS", "_normalize_row_for_table", "table", "build_appearance_record_row")
+
 _SOURCE_SYMBOLS: dict[str, tuple[str, ...]] = {
     "house_xml": (
         "APPEARANCE_STRUCT",
@@ -135,6 +139,7 @@ _SOURCE_SYMBOLS: dict[str, tuple[str, ...]] = {
         "preserve_appearances",
         "extract_house_xml_observation",
         "extract_house_xml_appearances",
+        *_TABLE_SYMBOLS,
     ),
     "congress_gov": (
         "APPEARANCE_STRUCT",
@@ -148,6 +153,7 @@ _SOURCE_SYMBOLS: dict[str, tuple[str, ...]] = {
         "preserve_appearances",
         "extract_congress_gov_observation",
         "extract_congress_gov_appearances",
+        *_TABLE_SYMBOLS,
     ),
     "senate_page": (
         "APPEARANCE_STRUCT",
@@ -164,6 +170,7 @@ _SOURCE_SYMBOLS: dict[str, tuple[str, ...]] = {
         "_classify_senate_empty_state",
         "extract_senate_page_observation",
         "extract_senate_page_appearances",
+        *_TABLE_SYMBOLS,
     ),
     "mods": (
         "APPEARANCE_STRUCT",
@@ -187,6 +194,7 @@ _SOURCE_SYMBOLS: dict[str, tuple[str, ...]] = {
         "mods_entry_kind",
         "extract_mods_observation",
         "extract_mods_appearances",
+        *_TABLE_SYMBOLS,
     ),
 }
 
