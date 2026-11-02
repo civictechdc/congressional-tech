@@ -168,10 +168,10 @@ def witness(name, links=(), kind=None):
             'witness_type': kind, 'document_links': list(links)}
 
 
-def record(tag, source, appearances, event_id=None, package_id=None):
+def record(tag, source, appearances, event_id=None, package_id=None, created=None):
     return dict(record_sha_hex=hashlib.sha256(tag.encode()).hexdigest(), parser_version='v', status='completed', error_type=None,
-                source=source, event_id=event_id, package_id=package_id, declared_base=None, collection_state='present',
-                context_url=None, appearances=appearances)
+                source=source, event_id=event_id, package_id=package_id, declared_base=None,
+                collection_state='present' if appearances else 'empty', context_url=None, appearances=appearances, created=created)
 
 
 LIST = 'https://docs.house.gov/meetings/HM/HM00/20130718/{}/HHRG-113-HM00-Wstate-X-20130718.pdf'
@@ -190,7 +190,7 @@ def resolve(tmp_path, records, links, prints, paths=(), meetings=((9001, DAY, TI
     inputs = [
         json_input(tmp_path, 'appearance_records_input', records, record_sha_hex='Utf8', parser_version='Utf8', status='Utf8',
                    error_type='Utf8', source='Utf8', event_id='Int64', package_id='Utf8', declared_base='Utf8',
-                   collection_state='Utf8', context_url='Utf8', appearances=list_of(struct(**APPEARANCE))),
+                   collection_state='Utf8', context_url='Utf8', appearances=list_of(struct(**APPEARANCE)), created='Utf8'),
         json_input(tmp_path, 'meeting_transcript_links', [dict(package_id=p, event_id=e) for p, e in links], package_id='Utf8', event_id='Int64'),
         json_input(tmp_path, 'package_mods_facts', [dict(package_id=p, **f) for p, f in prints.items()],
                    package_id='Utf8', named_meetings=list_of('Int64'), held_dates=list_of('Utf8'), title='Utf8'),
@@ -215,7 +215,7 @@ def resolve(tmp_path, records, links, prints, paths=(), meetings=((9001, DAY, TI
              dict(name='appearance_records_resolved', sql=sql('appearance-records-resolved'), materialize=True),
              dict(name='witness_precedence', sql=sql('witness-precedence'), materialize=True)]
     found = run_job(tmp_path, engine, inputs=inputs, steps=steps, outputs=[], queries=[
-        dict(name='rows', sql='''SELECT r.name,r.occasion,r.event_id,r.witness_type,s.name AS superseded_by FROM appearance_records_resolved r
+        dict(name='rows', sql='''SELECT r.name,r.occasion,r.event_id,r.witness_type,r.source,s.name AS superseded_by FROM appearance_records_resolved r
             LEFT JOIN witness_precedence p ON p.witness_key=r.witness_key
             LEFT JOIN appearance_records_resolved s ON s.witness_key=p.superseded_by ORDER BY r.name''')])['rows']
     if rows:
@@ -297,6 +297,42 @@ def test_ranks_and_surname_particles_do_not_hide_the_same_people(tmp_path):
     assert got['Del Toro'] == ('meeting:9001', 'The Honorable Carlos Del Toro')
 
 
+PRECEDENCE = [
+    # red-f3 constructed cases: never hide a different person.
+    ('nickname_one_way', ['Robert Smith', 'Mary Major', 'Carl Other'], {'Barbara Smith': None, 'Bob Smith': 'Robert Smith'}),
+    ('same_initial', ['John Smith', 'Mary Major', 'Carl Other'], {'Joan Smith': None, 'John Smith': 'John Smith'}),
+    ('credentials', ['Dr. Henry Walke, M.D., M.P.H.', 'Dr. Hilary Marston, M.D., M.P.H.', 'Carl Other'],
+     {'Henry Walke, M.D., M.P.H.': 'Dr. Henry Walke, M.D., M.P.H.', 'Hilary Marston': 'Dr. Hilary Marston, M.D., M.P.H.'}),
+    ('district', ['The Honorable Michael Cloud (TX-27)', 'Mary Major', 'Carl Other'],
+     {'Michael McCaul (TX-10)': None, 'Michael Cloud': 'The Honorable Michael Cloud (TX-27)'}),
+    ('van_given', ['Karl D. Jackson, Ph.D.', 'Mary Major', 'Carl Other'], {'Van Jackson': None, 'Karl D. Jackson': 'Karl D. Jackson, Ph.D.'}),
+    # Real near-collisions: 106046 (Chris and Connie Stewart), 114121 (bill numbers in parentheses).
+    ('stewarts', ['The Honorable Chris Stewart', 'Ms. Connie Stewart', 'Mr. Victor Iverson'],
+     {'The Honorable Chris Stewart': 'The Honorable Chris Stewart', 'Ms. Connie Stewart': 'Ms. Connie Stewart'}),
+    ('bills_in_parens', ['The Honorable Al Green (HR 4454)', 'The Honorable Eleanor Holmes Norton (HR 3531 and HR 4009)', 'Mr. Albert Hernandez (HR 4380)'],
+     {'Al Green': 'The Honorable Al Green (HR 4454)', 'Eleanor Norton': 'The Honorable Eleanor Holmes Norton (HR 3531 and HR 4009)',
+      'Albert Hernandez': 'Mr. Albert Hernandez (HR 4380)'}),
+]
+
+
+@pytest.mark.parametrize('case,top,expected', PRECEDENCE, ids=[c[0] for c in PRECEDENCE])
+def test_precedence_matches_only_the_same_person(tmp_path, case, top, expected):
+    # The print also carries the rest of the meeting's list, so it stands for the meeting.
+    own = record('cg', 'congress_gov', [witness(n) for n in top + ['Pat Panel', 'Quinn Panel']], event_id=9001)
+    printed = record('a', 'mods', [witness(n) for n in [*expected, 'Pat Panel', 'Quinn Panel']], package_id='CHRG-a')
+    got = resolve(tmp_path, [own, printed], [('CHRG-a', 9001)], {'CHRG-a': facts()}, rows=True)
+    assert {r['name']: r['superseded_by'] for r in got if r['source'] == 'mods' and r['name'] in expected} == expected
+
+
+@pytest.mark.parametrize('created,shown', [('2021-04-07T11:07:59.340', True), ('2021-05-01T09:00:00', False)])
+def test_an_empty_house_list_made_before_its_hearing_does_not_hide_other_lists(tmp_path, created, shown):
+    # 111420: the House list was created 2021-04-07, empty, for a 2021-04-28 hearing.
+    house = record('hx', 'house_xml', [], event_id=9001, created=created)
+    own = record('cg', 'congress_gov', [witness('Jane Doe')], event_id=9001)
+    got = resolve(tmp_path, [house, own], [], {}, rows=True)
+    assert bool([r for r in got if r['name'] == 'Jane Doe']) is shown
+
+
 def test_one_shared_family_name_is_chance_not_agreement(tmp_path):
     own = record('cg', 'congress_gov', [witness('Jane Doe'), witness('John Roe')], event_id=9001)
     got = resolve(tmp_path, [own, record('a', 'mods', [witness('Joan Roe'), witness('Carl Other'), witness('Dana Else')], package_id='CHRG-a')],
@@ -362,7 +398,7 @@ def test_a_package_mods_names_its_meeting_as_a_transcript_link(tmp_path):
              dict(name='selected_appearance_records', sql="SELECT cast(NULL AS VARCHAR) AS package_id,cast(NULL AS VARCHAR) AS status WHERE false", materialize=True),
              dict(name='captures', sql=CAPTURES, materialize=True),
              dict(name='appearance_people', sql="SELECT cast(NULL AS VARCHAR) AS package_id,cast(NULL AS BIGINT) AS event_id,cast(NULL AS VARCHAR) AS source,"
-                  "false AS statement,cast(NULL AS VARCHAR) AS family,cast(NULL AS VARCHAR) AS initial WHERE false", materialize=True),
+                  "false AS statement,cast(NULL AS VARCHAR) AS family,cast(NULL AS VARCHAR) AS given,cast(NULL AS VARCHAR) AS given_canon WHERE false", materialize=True),
              dict(name='print_meeting_agreement', sql=sql('print-meeting-agreement'), materialize=True),
              dict(name='meeting_mods_links', sql=sql('meeting-mods-links'), materialize=True),
              dict(name='meeting_transcript_links', sql=sql('meeting-transcript-links'), materialize=True)]

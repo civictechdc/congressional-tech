@@ -99,6 +99,7 @@ APPEARANCE_RECORD_FIELDS=dict(
     )),
     held_dates=list_of('Utf8'),
     title='Utf8',
+    created='Utf8',
 )
 
 RECORDING_DECISION_FIELDS=dict(id='Utf8',subject_kind='Utf8',subject_id='Utf8',verdict='Utf8',video_refs=list_of('Utf8'),
@@ -298,6 +299,7 @@ def _normalize_appearance_rows(rows,selected_versions=None):
             appearances=appearances,
             held_dates=[str(d) for d in row.get('held_dates') or ()],
             title=str(row['title']) if row.get('title') is not None else None,
+            created=str(row['created']) if row.get('created') is not None else None,
         ))
     return normalized
 
@@ -696,7 +698,7 @@ def prepare_model_inputs(*,captures,readings,filename_readings,parser_versions,c
         error_expr='error_type'
         extra_select=''
         if table_name=='appearance_records':
-            extra_select='event_id,package_id,declared_base,collection_state,cast(NULL AS VARCHAR) AS context_url,held_dates,title,'
+            extra_select='event_id,package_id,declared_base,collection_state,cast(NULL AS VARCHAR) AS context_url,held_dates,title,created,'
         if parquet_path is not None and Path(parquet_path).is_file():
             import pyarrow as pa
             import pyarrow.parquet as pq
@@ -716,7 +718,8 @@ def prepare_model_inputs(*,captures,readings,filename_readings,parser_versions,c
                 # MODS print facts; an older lake file without them states none.
                 held_expr='held_dates' if 'held_dates' in schema.names else "arrow_cast(array_slice(make_array(cast(NULL AS VARCHAR)),1,0),'List(Utf8)') AS held_dates"
                 title_expr='title' if 'title' in schema.names else 'cast(NULL AS VARCHAR) AS title'
-                extra_select=f'{ev_expr},{pkg_expr},{base_expr},{cs_expr},{ctx_expr},{held_expr},{title_expr},'
+                created_expr='created' if 'created' in schema.names else 'cast(NULL AS VARCHAR) AS created'
+                extra_select=f'{ev_expr},{pkg_expr},{base_expr},{cs_expr},{ctx_expr},{held_expr},{title_expr},{created_expr},'
         return f"SELECT {sha_expr} AS record_sha_hex,parser_version,{status_expr} AS status,{error_expr} AS error_type,source,{extra_select}{payload_col} FROM {table_name}"
     if meeting_records is None or isinstance(meeting_records,(list,tuple)):
         inputs.append(json_input(scratch,'meeting_records_input',_normalize_meeting_rows(meeting_records or (),parser_versions.get('meeting_records')),**MEETING_RECORD_FIELDS))

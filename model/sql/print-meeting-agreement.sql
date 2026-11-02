@@ -1,6 +1,7 @@
 -- Which meetings each print records (ct-dx22), among the meetings held on one of its days:
 -- 1. When both sides list witnesses, the people decide: at least half of the shorter list (and two people
---    when both list two or more) is the same person (family name, first initial or a nickname, one-letter spelling slips in names of 5+ letters).
+--    when both list two or more) is the same person (as in witness-precedence.sql: family name, then agreeing
+--    given names).
 --    A GovInfo <eventId> never vetoes (it is wrong on 29369's print) and titles are not consulted
 --    ("PENDING LEGISLATION"; boilerplate Armed Services titles fit many hearings).
 -- 2. Otherwise the title decides: half the shorter title's substantive words (3+ characters, not stop
@@ -16,23 +17,24 @@ WITH prints AS (
 ), candidates AS (
  SELECT DISTINCT p.package_id,m.event_id,m.day,m.not_held FROM prints p JOIN meetings m ON p.day=m.day
 ), print_people AS (
- SELECT DISTINCT package_id,family,initial FROM appearance_people
+ SELECT DISTINCT package_id,family,given,given_canon FROM appearance_people
  WHERE source='mods' AND NOT statement AND family IS NOT NULL AND package_id IS NOT NULL
 ), meeting_people AS (
- SELECT DISTINCT event_id,family,initial FROM appearance_people
+ SELECT DISTINCT event_id,family,given,given_canon FROM appearance_people
  WHERE source IN ('house_xml','congress_gov') AND NOT statement AND family IS NOT NULL AND event_id IS NOT NULL
 ), print_counts AS (SELECT package_id,count(*) AS n FROM print_people GROUP BY package_id
 ), meeting_counts AS (SELECT event_id,count(*) AS n FROM meeting_people GROUP BY event_id
 ), shared AS (
  -- Slim pairs only: people rows carry no titles, so the join stays small.
- SELECT c.package_id,c.event_id,count(DISTINCT concat(a.family,'|',coalesce(a.initial,''))) AS n
+ SELECT c.package_id,c.event_id,count(DISTINCT concat(a.family,'|',coalesce(a.given,''))) AS n
  FROM candidates c
  JOIN print_people a ON a.package_id=c.package_id
  JOIN meeting_people b ON b.event_id=c.event_id
+ -- The same person as in witness-precedence.sql: family name, then agreeing given names.
  WHERE (a.family=b.family OR (length(a.family)>=5 AND levenshtein(a.family,b.family)<=1))
-  AND (a.initial IS NULL OR b.initial IS NULL OR a.initial=b.initial
-   -- Nicknames: Bob/Bill/Dick for Robert/William/Richard, Ted/Ned/Liz/Betsy for Edward/Elizabeth, Peggy.
-   OR concat(least(a.initial,b.initial),greatest(a.initial,b.initial)) IN ('br','bw','dr','et','en','el','be','mp'))
+  AND (a.given IS NULL OR b.given IS NULL OR a.given_canon=b.given_canon
+   OR (length(a.given)>=3 AND length(b.given)>=3 AND substr(a.given,1,3)=substr(b.given,1,3))
+   OR (length(a.given)=1 AND a.given=substr(b.given,1,1)) OR (length(b.given)=1 AND b.given=substr(a.given,1,1)))
  GROUP BY c.package_id,c.event_id
 ), titled AS (
  -- Titles are compared only for pairs where a side lists no witnesses.

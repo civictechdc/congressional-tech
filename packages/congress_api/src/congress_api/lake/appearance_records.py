@@ -113,6 +113,8 @@ ARROW_SCHEMA = pa.schema(
         # GovInfo MODS only: the print's held dates (ISO) and published title; empty and null elsewhere.
         pa.field("held_dates", pa.list_(pa.field("element", pa.string(), nullable=False)), nullable=True),
         pa.field("title", pa.string(), nullable=True),
+        # House XML only: the witness list's create-date as stated.
+        pa.field("created", pa.string(), nullable=True),
     ]
 )
 SCHEMA = ARROW_SCHEMA
@@ -176,6 +178,7 @@ _SOURCE_SYMBOLS: dict[str, tuple[str, ...]] = {
         "mods_held_dates",
         "_MEMBER_STATEMENT",
         "_RECORD_ENTRY",
+        "_TESTIFIED_WORDS",
         "mods_entry_kind",
         "extract_mods_observation",
         "extract_mods_appearances",
@@ -563,6 +566,9 @@ def extract_house_xml_observation(
         "declared_base": None,
         "collection_state": "present" if appearances else "empty",
         "appearances": appearances,
+        # When the list was made: an empty list made before its hearing is a placeholder (111420), not a
+        # statement that no one testified.
+        "created": _opt_str(root.get("create-date")),
     }
 
 
@@ -913,19 +919,25 @@ _PACKAGE_ID_IN_URL_RE = re.compile(r"\b(CHRG-\d+[hsj]hrg\d+)\b", re.IGNORECASE)
 _MEMBER_STATEMENT = re.compile(
     r"\b(?:a representative in congress|a delegate (?:in congress )?from|resident commissioner|congress(?:man|woman)\b"
     r"|united states house of representatives|member of congress|a (?:united states )?senator from)", re.I)
+# Explicit record entries only (red-f3): a letter, a statement or submission for the record, questions or
+# answers for the record, a prepared statement. A name a parser cannot read is not evidence of a statement.
 _RECORD_ENTRY = re.compile(
-    r"\b(?:letters?|statements? (?:for|submitted|of)|submissions?|submitted|questions? for the record|responses? to questions"
-    r"|prepared statement|for the record)\b", re.I)
+    r"\b(?:letters?\b|statements? (?:for|submitted for) the record|submitted (?:by|for the record)|submissions? (?:for|to) the record"
+    r"|questions? for the record|responses? to questions|answers? to questions|prepared statement)", re.I)
+# A line that says the person testified or was the nominee is a witness whatever else it says.
+_TESTIFIED_WORDS = re.compile(r"\b(?:testimony|testified|nominee|nominated)\b", re.I)
 
 
 def mods_entry_kind(line: str, name: str | None) -> str | None:
-    """A print's <witness> line is sometimes a Member's statement or a record entry (a letter, a
-    submission), not a witness; those are kept, labelled, and never counted or matched as witnesses."""
-    if _MEMBER_STATEMENT.search(line or ""):
-        return "member_statement"
-    if _RECORD_ENTRY.search(line or "") or (name and not is_name(name)):
-        return "statement_for_record"
-    return None
+    """A print's <witness> line is sometimes a record entry (a letter, a submission, questions for the
+    record) or a Member's prepared statement, not a witness. Only explicit markers say so; a Member who
+    appears (Member Day panels, "Green, Hon. Al") and a nominee or anyone said to testify is a witness.
+    The model also treats anyone the meeting's own list names as a witness."""
+    text = line or ""
+    # "to be Director" names a nomination; "to be included in the record" does not (capital follows).
+    if _TESTIFIED_WORDS.search(text) or re.search(r"\b[Tt]o be (?:an? |the )?[A-Z]", text) or not _RECORD_ENTRY.search(text):
+        return None
+    return "member_statement" if _MEMBER_STATEMENT.search(text) else "statement_for_record"
 
 
 def mods_held_dates(doc: ModsDocument) -> list[str]:
@@ -1059,7 +1071,7 @@ def extract_mods_observation(
             "package_id": resolved_pkg,
             "declared_base": None,
             "collection_state": "absent",
-            "appearances": [],            "appearances": [],
+            "appearances": [],
             **facts,
         }
 
@@ -1158,6 +1170,7 @@ def build_appearance_record_row(
         "appearances": obs["appearances"],
         "held_dates": obs.get("held_dates"),
         "title": obs.get("title"),
+        "created": obs.get("created"),
     }
 
 

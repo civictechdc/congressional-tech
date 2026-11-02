@@ -144,6 +144,10 @@ WITH candidate_appearance_shas AS (
   nullif(trim(r.declared_base),'') AS declared_base,
   CASE
    WHEN r.status<>'completed' THEN 'failed'
+   -- An empty House list made before its hearing is a placeholder, not a statement that no one testified
+   -- (111420's was created 2021-04-07 for a 2021-04-15 hearing), so it blocks no other source.
+   WHEN r.source='house_xml' AND r.collection_state='empty' AND md.meeting_date IS NOT NULL
+    AND try_cast(substr(r.created,1,10) AS DATE)<md.meeting_date THEN 'absent'
    ELSE coalesce(
     nullif(trim(r.collection_state),''),
     CASE
@@ -158,6 +162,7 @@ WITH candidate_appearance_shas AS (
  LEFT JOIN capture_contexts cc ON r.record_sha_hex=cc.record_sha_hex AND r.source=cc.source
  LEFT JOIN meeting_updates u ON r.record_sha_hex=u.record_sha_hex
  LEFT JOIN list_events le ON r.source='house_xml' AND r.record_sha_hex=le.record_sha_hex
+ LEFT JOIN (SELECT event_id,meeting_date FROM meetings_resolved) md ON r.source='house_xml' AND md.event_id=r.event_id
 ), observations_with_occasion AS (
  SELECT
   b.*,

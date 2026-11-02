@@ -1,17 +1,66 @@
 {
   "type": "struct",
   "schema-id": 0,
-  "identifier-field-ids": [1, 5, 2],
+  "identifier-field-ids": [
+    1,
+    5,
+    2
+  ],
   "fields": [
-    {"id": 1, "name": "record_sha", "required": true, "type": "fixed[32]"},
-    {"id": 2, "name": "parser_version", "required": true, "type": "string"},
-    {"id": 3, "name": "status", "required": true, "type": "string"},
-    {"id": 4, "name": "error_type", "required": false, "type": "string"},
-    {"id": 5, "name": "source", "required": true, "type": "string"},
-    {"id": 6, "name": "event_id", "required": false, "type": "long"},
-    {"id": 7, "name": "package_id", "required": false, "type": "string"},
-    {"id": 8, "name": "declared_base", "required": false, "type": "string"},
-    {"id": 9, "name": "collection_state", "required": false, "type": "string"},
+    {
+      "id": 1,
+      "name": "record_sha",
+      "required": true,
+      "type": "fixed[32]"
+    },
+    {
+      "id": 2,
+      "name": "parser_version",
+      "required": true,
+      "type": "string"
+    },
+    {
+      "id": 3,
+      "name": "status",
+      "required": true,
+      "type": "string"
+    },
+    {
+      "id": 4,
+      "name": "error_type",
+      "required": false,
+      "type": "string"
+    },
+    {
+      "id": 5,
+      "name": "source",
+      "required": true,
+      "type": "string"
+    },
+    {
+      "id": 6,
+      "name": "event_id",
+      "required": false,
+      "type": "long"
+    },
+    {
+      "id": 7,
+      "name": "package_id",
+      "required": false,
+      "type": "string"
+    },
+    {
+      "id": 8,
+      "name": "declared_base",
+      "required": false,
+      "type": "string"
+    },
+    {
+      "id": 9,
+      "name": "collection_state",
+      "required": false,
+      "type": "string"
+    },
     {
       "id": 10,
       "name": "appearances",
@@ -23,24 +72,114 @@
         "element": {
           "type": "struct",
           "fields": [
-            {"id": 12, "name": "source_locator", "required": true, "type": "string"},
-            {"id": 13, "name": "name_key", "required": false, "type": "string"},
-            {"id": 14, "name": "name", "required": false, "type": "string"},
-            {"id": 15, "name": "honorific", "required": false, "type": "string"},
-            {"id": 16, "name": "given", "required": false, "type": "string"},
-            {"id": 17, "name": "middle", "required": false, "type": "string"},
-            {"id": 18, "name": "family", "required": false, "type": "string"},
-            {"id": 19, "name": "suffix", "required": false, "type": "string"},
-            {"id": 20, "name": "position", "required": false, "type": "string"},
-            {"id": 21, "name": "organization", "required": false, "type": "string"},
-            {"id": 22, "name": "on_behalf_of", "required": false, "type": "string"},
-            {"id": 23, "name": "location", "required": false, "type": "string"},
-            {"id": 24, "name": "panel", "required": false, "type": "string"},
-            {"id": 25, "name": "panel_order", "required": false, "type": "int"},
-            {"id": 26, "name": "display_order", "required": false, "type": "int"},
-            {"id": 27, "name": "witness_type", "required": false, "type": "string"},
-            {"id": 28, "name": "testified", "required": false, "type": "boolean"},
-            {"id": 29, "name": "bioguide_id", "required": false, "type": "string"},
+            {
+              "id": 12,
+              "name": "source_locator",
+              "required": true,
+              "type": "string"
+            },
+            {
+              "id": 13,
+              "name": "name_key",
+              "required": false,
+              "type": "string"
+            },
+            {
+              "id": 14,
+              "name": "name",
+              "required": false,
+              "type": "string"
+            },
+            {
+              "id": 15,
+              "name": "honorific",
+              "required": false,
+              "type": "string"
+            },
+            {
+              "id": 16,
+              "name": "given",
+              "required": false,
+              "type": "string"
+            },
+            {
+              "id": 17,
+              "name": "middle",
+              "required": false,
+              "type": "string"
+            },
+            {
+              "id": 18,
+              "name": "family",
+              "required": false,
+              "type": "string"
+            },
+            {
+              "id": 19,
+              "name": "suffix",
+              "required": false,
+              "type": "string"
+            },
+            {
+              "id": 20,
+              "name": "position",
+              "required": false,
+              "type": "string"
+            },
+            {
+              "id": 21,
+              "name": "organization",
+              "required": false,
+              "type": "string"
+            },
+            {
+              "id": 22,
+              "name": "on_behalf_of",
+              "required": false,
+              "type": "string"
+            },
+            {
+              "id": 23,
+              "name": "location",
+              "required": false,
+              "type": "string"
+            },
+            {
+              "id": 24,
+              "name": "panel",
+              "required": false,
+              "type": "string"
+            },
+            {
+              "id": 25,
+              "name": "panel_order",
+              "required": false,
+              "type": "int"
+            },
+            {
+              "id": 26,
+              "name": "display_order",
+              "required": false,
+              "type": "int"
+            },
+            {
+              "id": 27,
+              "name": "witness_type",
+              "required": false,
+              "type": "string"
+            },
+            {
+              "id": 28,
+              "name": "testified",
+              "required": false,
+              "type": "boolean"
+            },
+            {
+              "id": 29,
+              "name": "bioguide_id",
+              "required": false,
+              "type": "string"
+            },
             {
               "id": 30,
               "name": "document_links",
@@ -60,8 +199,24 @@
       "id": 32,
       "name": "held_dates",
       "required": false,
-      "type": {"type": "list", "element-id": 33, "element-required": true, "element": "string"}
+      "type": {
+        "type": "list",
+        "element-id": 33,
+        "element-required": true,
+        "element": "string"
+      }
     },
-    {"id": 34, "name": "title", "required": false, "type": "string"}
+    {
+      "id": 34,
+      "name": "title",
+      "required": false,
+      "type": "string"
+    },
+    {
+      "id": 35,
+      "name": "created",
+      "required": false,
+      "type": "string"
+    }
   ]
 }
