@@ -167,6 +167,7 @@ Identity: `list_row, ordinal` (primary_key; release).
 | `posted` | `date32` | Publisher link posting date |
 
 - `member_path`: Path inside a captured archive container. Interpret together with the source URL; not a document key.
+- `url`: Required. A member of a ZIP keeps the ZIP URL here and its place in member_path; the ZIP itself is never a document when its contents were captured.
 
 Outgoing: `sources_document`, `source_address`, `source_listing_page`.
 

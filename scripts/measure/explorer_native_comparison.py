@@ -137,6 +137,25 @@ def compare(db, *, old, table, data, lake, decisions):
         out[name] = account(db, name, f"SELECT event_id||'|'||{normal_name('name')} AS key,event_id||'|'||{source} AS context FROM {c(name)}", new_witness,
             old_reason=f"CASE WHEN EXISTS (SELECT 1 FROM witness_events e WHERE e.event_id=split_part(x.context,'|',1)) THEN 'witness_name_normalization' ELSE {absent} END",
             new_reason="'native_found_more'")
+    # ct-x78c: each distinct old row with no event-level match, migrated or explained once.
+    db.execute(f"""CREATE TEMP TABLE old_witness_rows AS
+        SELECT DISTINCT event_id,{normal_name('name')} AS name_key,source,"from" AS origin FROM {c('meeting_witnesses')}
+        UNION SELECT DISTINCT event_id,{normal_name('name')},'docs.house.gov',NULL FROM {c('house_witnesses_found')}
+        UNION SELECT DISTINCT event_id,{normal_name('name')},'senate committee page',page FROM {c('senate_witnesses_found')}""")
+    db.execute(f"""CREATE TEMP TABLE native_names AS SELECT DISTINCT cast(event_id AS VARCHAR) AS event_id,package_id,page_url,{normal_name('name')} AS name_key FROM {table('witnesses')} WHERE name IS NOT NULL""")
+    out['old_witness_rows'] = dict(zip(['distinct_rows', 'on_event', 'on_package_occasion', 'on_page_occasion', 'event_has_other_witnesses', 'no_native_row'], db.execute("""
+        WITH keyed AS (SELECT DISTINCT o.event_id,o.name_key,
+          max(CASE WHEN n.event_id=o.event_id THEN 1 ELSE 0 END) AS on_event,
+          max(CASE WHEN n.package_id=o.origin THEN 1 ELSE 0 END) AS on_package,
+          max(CASE WHEN n.page_url=o.origin THEN 1 ELSE 0 END) AS on_page
+          FROM old_witness_rows o LEFT JOIN native_names n ON n.name_key=o.name_key AND (n.event_id=o.event_id OR n.package_id=o.origin OR n.page_url=o.origin)
+          GROUP BY o.event_id,o.name_key)
+        SELECT count(*),sum(on_event),sum(CASE WHEN on_event=0 THEN on_package ELSE 0 END),sum(CASE WHEN on_event=0 AND on_package=0 THEN on_page ELSE 0 END),
+          sum(CASE WHEN on_event=0 AND on_package=0 AND on_page=0 AND event_id IN (SELECT event_id FROM witness_events) THEN 1 ELSE 0 END),
+          sum(CASE WHEN on_event=0 AND on_package=0 AND on_page=0 AND event_id NOT IN (SELECT event_id FROM witness_events) THEN 1 ELSE 0 END)
+        FROM keyed""").fetchone()))
+    out['old_witness_rows']['owner'] = 'ct-x78c'
+    out['old_witness_rows']['note'] = 'Distinct by event and normalized name. on_package and on_page rows are held natively without an event link, which is the remaining migration.'
     amendment_key = lambda event, description: f"""concat_ws('|',{event},kind,coalesce(url,''),coalesce("number",''),coalesce(bill,''),coalesce({description},''))"""
     new_amendments = table('committee_records')
     db.execute(f"""CREATE TEMP TABLE lake_amendments AS SELECT DISTINCT concat_ws('|',event_id,r.kind,coalesce(r.url,''),coalesce(r."number",''),coalesce(r.bill,''),coalesce(r.description,'')) AS key

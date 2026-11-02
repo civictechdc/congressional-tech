@@ -1,0 +1,140 @@
+{
+ "affected": 242293,
+ "rows_read": 242293,
+ "rows_unread": 0,
+ "receipts_unread": [],
+ "receipts_unread_count": 0,
+ "classes": {
+  "digest_verified_no_response": 241910,
+  "digest_verified_with_2xx": 383
+ },
+ "classes_with_no_good_row_for_the_body": {
+  "digest_verified_no_response|no_url|govinfo/mods": 37550,
+  "digest_verified_no_response|no_url|youtube/captions": 12967,
+  "digest_verified_no_response|no_url|house/pages": 5865,
+  "digest_verified_no_response|no_url|senate/pages": 4367,
+  "digest_verified_no_response|no_url|senate/players": 3605,
+  "digest_verified_no_response|no_url|house/witness-xml": 3514,
+  "digest_verified_no_response|no_url|senate/captions": 2977,
+  "digest_verified_no_response|no_url|documents": 1127,
+  "digest_verified_no_response|no_url|house/meeting-xml": 619,
+  "digest_verified_no_response|no_url|govinfo/transcript-html": 385,
+  "digest_verified_no_response|no_url|youtube/api": 283,
+  "digest_verified_no_response|no_url|external/provider-responses": 37,
+  "digest_verified_no_response|no_url|youtube/watch-pages": 8,
+  "digest_verified_no_response|no_url|external/wayback": 3,
+  "digest_verified_with_2xx|no_url|govinfo/transcript-html": 1
+ },
+ "by_family": {
+  "documents|digest_verified_no_response": 116606,
+  "govinfo/mods|digest_verified_no_response": 39558,
+  "govinfo/transcript-html|digest_verified_no_response": 35293,
+  "youtube/captions|digest_verified_no_response": 12968,
+  "senate/pages|digest_verified_no_response": 9305,
+  "house/witness-xml|digest_verified_no_response": 7795,
+  "house/meeting-xml|digest_verified_no_response": 6230,
+  "house/pages|digest_verified_no_response": 5869,
+  "senate/players|digest_verified_no_response": 3783,
+  "senate/captions|digest_verified_no_response": 2990,
+  "congress/committees|digest_verified_no_response": 638,
+  "external/provider-responses|digest_verified_no_response": 370,
+  "youtube/api|digest_verified_no_response": 295,
+  "documents|digest_verified_with_2xx": 244,
+  "govinfo/mods|digest_verified_with_2xx": 118,
+  "congress/meetings|digest_verified_no_response": 105,
+  "govinfo/premis|digest_verified_no_response": 51,
+  "external/wayback|digest_verified_no_response": 42,
+  "govinfo/transcript-html|digest_verified_with_2xx": 13,
+  "youtube/watch-pages|digest_verified_no_response": 10,
+  "senate/pages|digest_verified_with_2xx": 8,
+  "govinfo/mets|digest_verified_no_response": 2
+ },
+ "line_keys": [
+  [
+   "source_file",
+   241920
+  ],
+  [
+   "source_line",
+   241920
+  ],
+  [
+   "record",
+   241920
+  ],
+  [
+   "captures",
+   241920
+  ],
+  [
+   "file_references",
+   241920
+  ]
+ ],
+ "examples": {
+  "digest_verified_no_response": [
+   [
+    "receipts/congress/committees/undated/assemble-20260930-completion.jsonl.gz",
+    3,
+    "congress/committees",
+    null
+   ],
+   [
+    "receipts/congress/committees/undated/assemble-20260930-completion.jsonl.gz",
+    4,
+    "congress/committees",
+    null
+   ],
+   [
+    "receipts/congress/committees/undated/assemble-20260930-completion.jsonl.gz",
+    5,
+    "congress/committees",
+    null
+   ],
+   [
+    "receipts/congress/committees/undated/assemble-20260930-completion.jsonl.gz",
+    6,
+    "congress/committees",
+    null
+   ],
+   [
+    "receipts/congress/committees/undated/assemble-20260930-completion.jsonl.gz",
+    7,
+    "congress/committees",
+    null
+   ]
+  ],
+  "digest_verified_with_2xx": [
+   [
+    "receipts/documents/2026-09-21/assemble-20260930.jsonl.gz",
+    1,
+    "documents",
+    200
+   ],
+   [
+    "receipts/documents/2026-09-21/assemble-20260930.jsonl.gz",
+    1,
+    "govinfo/mods",
+    200
+   ],
+   [
+    "receipts/documents/2026-09-21/assemble-20260930.jsonl.gz",
+    1,
+    "govinfo/transcript-html",
+    200
+   ],
+   [
+    "receipts/documents/2026-09-21/assemble-20260930.jsonl.gz",
+    1,
+    "documents",
+    200
+   ],
+   [
+    "receipts/documents/2026-09-21/assemble-20260930.jsonl.gz",
+    1,
+    "govinfo/mods",
+    200
+   ]
+  ]
+ }
+}

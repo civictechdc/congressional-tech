@@ -427,7 +427,7 @@ def evidence_steps(*,root=ROOT):
     """Join pinned parser facts and physical evidence before source/link expansion."""
     from congress_api.lake.readings import writer_admission_step
     names=['pinned-readings','sniff-observations','sniff-conflicts','sniff-facts','page-facts','verification-conflicts','storage-verifications','copy-verifications','body-evidence','capture-evidence',
-        'good-fetches','capture-locators','body-signals','locator-signals','placeholders','record-roles',
+        'good-fetches','good-fetch-keys','capture-locators','body-signals','locator-signals','placeholders','archive-bodies','record-roles',
         'page-contexts','link-inputs']
     # good_fetches is a filter over retained capture_evidence; a second copy costs 1.3 GB of scratch.
     return [writer_admission_step(root=root)]+[dict(name=name.replace('-','_'),sql=(Path(root)/'model/sql'/(name+'.sql')).read_text(),materialize=name!='good-fetches')
@@ -667,7 +667,7 @@ def build_prepared_release(prepared,*,engine,output,root=ROOT):
     steps += [dict(name='review_components',components=dict(sql='SELECT left_node,right_node FROM duplicate_component_edges',left='left_node',right='right_node',node_limit=10_000_000))]
     steps += _sql_steps(['final-source-labels','final-recovery-attachments','document-link-keys'],root=root)
     steps += annotation_steps(catalog_version=catalog_version,root=root)
-    steps += _sql_steps(['document-members','document-bodies','document-identities','saved-files','document-alternates',
+    steps += _sql_steps(['document-members','archive-container-links','document-bodies','document-identities','saved-files','document-alternates',
         'document-version-keys','document-versions','document-metadata','document-addresses','saved-recoveries','document-removals','document-packages'],root=root)
     steps += meeting_steps(root=root)+[dict(name='meeting_transcript_links',sql=(Path(root)/'model/sql/meeting-transcript-links.sql').read_text(),materialize=True)]
     app_url_inputs_sql="""WITH selected_app_records AS (
@@ -859,7 +859,9 @@ def build_prepared_release(prepared,*,engine,output,root=ROOT):
         sql=("SELECT r.*,r.body_sha AS body_sha256,d.decided_at,d.recovered_url,d.identity_note FROM current_recoveries r LEFT JOIN remaining_recovery_decisions d ON r.decision_id=d.id" if name=='current_recoveries' else 'SELECT * FROM '+name),settings=_settings('whole',keys,footer_limit=4 << 20)) for name,keys in causes.items()]
     prefix_checks=','.join(sql+' AS '+name for name,sql in evidence_checks().items())
     entity_invariant_sql=''
-    meta_queries=[input_receipts_query(),probe_selectors_query(root=root)]
+    meta_queries=[input_receipts_query(),probe_selectors_query(root=root),
+        # The recorded disposition: a ZIP with no expanded contents stays a document, listed here.
+        dict(name='unexpanded_zip_documents',sql="SELECT count(*) AS documents FROM ordered WHERE format='zip'")]
     if prepared.get('include_entities'):
         entity_invariant_sql=""",
             (SELECT count(*) FROM (

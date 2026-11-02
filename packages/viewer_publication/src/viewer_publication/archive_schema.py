@@ -211,6 +211,10 @@ def validate_parquet_fields(schema, paths):
                 raise ValueError(f'Published key/reference type differs: {name}.{field}: {actual.get(field)} != {expected[field]}')
 
 
+def relation_available(name, auxiliary, core):
+    return name in auxiliary or name in core
+
+
 def publication_checks(schema, auxiliary):
     """Check new entity keys and required nested references in the native job.
 
@@ -222,6 +226,14 @@ def publication_checks(schema, auxiliary):
         AND NOT EXISTS (SELECT 1 FROM links l WHERE l.link_key=d.link_key)) AS missing_primary_link''',
         '''(SELECT count(*) FROM (SELECT link_key FROM details WHERE link_key IS NOT NULL
         GROUP BY link_key HAVING count(*)>1)) AS duplicate_document_key''']
+    # Declared required columns are refused at write time, in the job that writes them.
+    core = {'sources': 'source_rows'}
+    for table in schema['files']:
+        name = table['name'].removesuffix('.parquet')
+        relation = core.get(name) or (f'{name}_export' if name in auxiliary else None)
+        for column in table['columns']:
+            if column.get('nullable') is False and relation and relation_available(name, auxiliary, core):
+                checks.append(f'(SELECT count(*) FROM {relation} WHERE "{column["name"]}" IS NULL) AS null_{name}_{column["name"]}')
     for table in schema['files']:
         name = table['name'].removesuffix('.parquet')
         if name not in auxiliary or name == 'url_state':

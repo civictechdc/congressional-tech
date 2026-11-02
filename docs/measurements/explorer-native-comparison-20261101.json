@@ -2042,6 +2042,16 @@
    "note": "Source rows are evidence for the families above and stay by old-release reference; each scheme is compared through its family, not row by row.",
    "old_rows": 213545
   },
+  "old_witness_rows": {
+   "distinct_rows": 19475,
+   "event_has_other_witnesses": 451,
+   "no_native_row": 849,
+   "note": "Distinct by event and normalized name. on_package and on_page rows are held natively without an event link, which is the remaining migration.",
+   "on_event": 11779,
+   "on_package_occasion": 924,
+   "on_page_occasion": 5472,
+   "owner": "ct-x78c"
+  },
   "recording_pairs": {
    "matched": 8100,
    "matched_new": 8100,

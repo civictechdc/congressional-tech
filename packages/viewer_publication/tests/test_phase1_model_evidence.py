@@ -47,7 +47,7 @@ def test_pinned_evidence_and_page_contexts_do_not_borrow_capture_parser_fields(t
             dict(key='bodies/sha256/00/'+'0'*64+'.pdf',size=1000,intact=False,sha256_verified=True,checked_at='2026-10-21T12:00:00Z'),
             dict(key='bodies/sha256/00/'+'0'*64+'.pdf',size=1000,intact=None,sha256_verified=True,checked_at='2026-10-22T12:00:00Z')],key='Utf8',size='Int64',intact='Boolean',
             sha256_verified='Boolean',checked_at='Utf8')]
-    steps=[dict(name='captures',sql="SELECT *,decode(body_hex,'hex') AS sha256 FROM capture_rows"),
+    steps=[dict(name='captures',sql="SELECT *,decode(body_hex,'hex') AS sha256,cast(NULL AS VARCHAR) AS expansion FROM capture_rows"),
         dict(name='readings',sql="SELECT *,decode(body_hex,'hex') AS body_sha,decode(fingerprint_hex,'hex') AS fingerprint FROM reading_rows")]
     reports=run_job(tmp_path,NativeDatasets.from_config(os.environ['DOCSPEC_JOB_CONFIG']),inputs=inputs,
         steps=steps+evidence_steps(),outputs=[],queries=[

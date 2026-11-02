@@ -1481,3 +1481,74 @@ def test_pinned_versions_select_by_equality_and_an_unpinned_job_takes_all(tmp_pa
 def test_another_chambers_pin_does_not_select_this_source(tmp_path):
     rows = _resolved_meetings(tmp_path, [_versioned('11', '100', 'pinned')], [dict(parser='meeting_records.congress_gov', version='pinned')])
     assert rows == []
+
+
+def test_zip_contents_are_the_documents_from_receipts_to_release(tmp_path):
+    """Real receipt lines through captures, readings and the model, not model-only rows."""
+    from viewer_publication.archive_model import build_release
+    import io, zipfile
+    engine = NativeDatasets.from_config(os.environ['DOCSPEC_JOB_CONFIG'])
+    pdf = b'%PDF-1.7\nzip member transcript bytes\n%%EOF\n'
+    buffer = io.BytesIO()
+    with zipfile.ZipFile(buffer, 'w') as archive:
+        archive.writestr('CHRG-1/pdf/CHRG-1.pdf', pdf)
+    zip_bytes = buffer.getvalue()
+    lone_zip = b'PK\x05\x06' + bytes(18)
+    direct = b'%PDF-1.7\ndirect document bytes\n%%EOF\n'
+    bad = b'%PDF-1.7\nmember of a failed container\n%%EOF\n'
+    raw = tmp_path / 'raw'
+    def body(data, gz=False):
+        digest = hashlib.sha256(data).hexdigest()
+        path = raw / f'bodies/sha256/{digest[:2]}/{digest}'
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_bytes(data)
+        return dict(sha256=digest, bytes=len(data), media_type='application/octet-stream', fidelity='exact-bytes', stored_suffix='', stored_bytes=len(data),
+            stored_md5=hashlib.md5(data).hexdigest(), sniff_version=readings.current_version('sniff'))
+    def line(url, entries, **extra):
+        return dict(writer=dict(job='fixture', commit='a' * 40), run_id='fixture', mode='fetch', family='documents', outcome='stored', requested_url=url, url=url,
+            response_headers={}, http_status=200, complete=True, retrieved_at='2026-10-27T12:00:00Z', captures=entries, **extra)
+    good_url, failed_url = 'https://fixture.test/CHRG-1.zip', 'https://fixture.test/failed.zip'
+    lines = [
+        line(good_url, [dict(body(zip_bytes), sniffed_format='zip', expansion='expanded'),
+            dict(body(pdf), sniffed_format='pdf', intact=True, member_path='CHRG-1/pdf/CHRG-1.pdf')]),
+        # A repeated container row on another attempt must not fan the member out.
+        line(good_url, [dict(body(zip_bytes), sniffed_format='zip', expansion='expanded'),
+            dict(body(pdf), sniffed_format='pdf', intact=True, member_path='CHRG-1/pdf/CHRG-1.pdf')]),
+        line(failed_url, [dict(body(bad), sniffed_format='pdf', intact=True, member_path='x/bad.pdf')], complete=False) if False else
+        dict(line(failed_url, [dict(body(bad), sniffed_format='pdf', intact=True, member_path='x/bad.pdf')]), complete=False),
+        line('https://fixture.test/lone.zip', [dict(body(lone_zip), sniffed_format='zip')]),
+        line('https://fixture.test/direct.pdf', [dict(body(direct), sniffed_format='pdf', intact=True)]),
+    ]
+    receipt = raw / 'receipts/documents/2026-10-27/slice.jsonl.gz'
+    receipt.parent.mkdir(parents=True, exist_ok=True)
+    encoded = gzip.compress(''.join(json.dumps(r) + '\n' for r in lines).encode(), mtime=0)
+    receipt.write_bytes(encoded)
+    pin = tmp_path / 'pin.json'
+    pin.write_text(json.dumps(dict(path=str(receipt), size=len(encoded), sha256=hashlib.sha256(encoded).hexdigest(), producer='fixture creation')))
+    captures = stage_captures([dict(key=receipt.relative_to(raw).as_posix(), path=str(receipt), qualification=str(pin))], engine=engine, work=tmp_path / 'stage') / 'captures.parquet'
+    inventory = tmp_path / 'inventory'
+    inventory.mkdir()
+    run_job(inventory, engine, inputs=[dict(name='captures', kind='parquet', path=str(captures))], steps=[], outputs=[parquet_output(inventory, 'bodies',
+        """SELECT DISTINCT sha256 AS body_sha,'bodies/sha256/'||substr(encode(sha256,'hex'),1,2)||'/'||encode(sha256,'hex') AS physical_key,
+        'bodies/sha256/'||substr(encode(sha256,'hex'),1,2)||'/'||encode(sha256,'hex') AS relative_path,stored_bytes,false AS stored_gzip FROM captures WHERE sha256 IS NOT NULL""", ['body_sha'])])
+    pages = readings.stage(captures=captures, body_inventory=inventory / 'bodies.parquet', local_root=raw, engine=engine, work=tmp_path / 'read', decided_at='2026-10-27T12:00:00Z', parser='html')
+    names = filenames.stage(captures=captures, recovery_files=(), engine=engine, work=tmp_path / 'names', decided_at='2026-10-27T12:00:00Z')
+    build_release(captures=captures, readings=pages['readings'], filename_readings=names['readings'],
+        parser_versions={p: readings.current_version(p) for p in ['sniff', 'html', 'xml', 'json']}, catalog_version=names['catalog_version'],
+        engine=engine, output=tmp_path / 'release', scratch=tmp_path / 'model')
+    release = tmp_path / 'release'
+    rows = pq.read_table(release / 'list.parquet').to_pylist()
+    formats = sorted(row['format'] for row in rows)
+    assert formats == ['pdf', 'pdf', 'zip'], rows  # Member and direct PDFs, and the ZIP with no contents.
+    key = lambda data: hashlib.sha256(data).digest()[:8]
+    details = pq.read_table(release / 'detail.parquet').to_pylist()
+    member = next(d for d in details if d['saved_body'] == hashlib.sha256(pdf).digest())
+    assert not member['alternates']
+    links = {row['link_key']: row['list_row'] for row in pq.read_table(release / 'links.parquet').to_pylist()}
+    row_of_member = details.index(member)
+    assert links[key(zip_bytes)] == links[key(pdf)] == row_of_member  # The ZIP's public key finds its document.
+    assert key(bad) not in links  # A failed container's member stays out.
+    sources = pq.read_table(release / 'sources.parquet').to_pylist()
+    mine = [s for s in sources if s['list_row'] == row_of_member]
+    assert {(s['url'], s['member_path']) for s in mine} == {(good_url, 'CHRG-1/pdf/CHRG-1.pdf')}
+    assert all(s['url'] for s in sources)

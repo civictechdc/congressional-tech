@@ -99,6 +99,7 @@ def test_native_checks_detect_duplicates_nulls_and_missing_nested_targets(tmp_pa
     steps = [dict(name=name, sql=sql) for name, sql in [
         ('ordered', "SELECT 0 AS list_row,make_array('999','not-a-number') AS meeting_keys,make_array('missing-witness') AS witness_keys"),
         ('details', "SELECT 0 AS list_row,'missing-link' AS link_key UNION ALL SELECT 1,'missing-link'"),
+            ('source_rows', "SELECT cast(NULL AS VARCHAR) AS url"),
         ('links', "SELECT 0 AS list_row,'present-link' AS link_key"),
         ('members_export', "SELECT 'A000001' AS bioguide_id UNION ALL SELECT 'A000001' UNION ALL SELECT cast(NULL AS VARCHAR)"),
         ('meetings_export', "SELECT cast(118001 AS BIGINT) AS event_id,make_array(named_struct('list_row',99)) AS transcripts"),
@@ -106,7 +107,7 @@ def test_native_checks_detect_duplicates_nulls_and_missing_nested_targets(tmp_pa
     ]]
     result = run_job(tmp_path, engine, inputs=[], steps=steps, outputs=[],
                      queries=publication_checks(build_schema(), {'members', 'meetings', 'witnesses'}))
-    assert result['relationship_invariants'] == [dict(missing_primary_link=2, duplicate_document_key=1, invalid_members_key=2,
+    assert result['relationship_invariants'] == [dict(missing_primary_link=2, duplicate_document_key=1, null_sources_url=1, invalid_members_key=2,
         invalid_meetings_key=0, invalid_witnesses_key=0, missing_document_meeting=2,
         missing_transcript_document=1, missing_document_witness=1)]
 

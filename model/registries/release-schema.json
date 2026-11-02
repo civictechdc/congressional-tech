@@ -411,7 +411,8 @@
         {
           "name": "url",
           "type": "string",
-          "meaning": "Source address"
+          "meaning": "Source address",
+          "nullable": false
         },
         {
           "name": "member_path",
@@ -462,7 +463,8 @@
         "kind": "primary_key"
       },
       "notes": {
-        "member_path": "Path inside a captured archive container. Interpret together with the source URL; not a document key."
+        "member_path": "Path inside a captured archive container. Interpret together with the source URL; not a document key.",
+        "url": "Required. A member of a ZIP keeps the ZIP URL here and its place in member_path; the ZIP itself is never a document when its contents were captured."
       }
     },
     {

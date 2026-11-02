@@ -9,6 +9,7 @@ WITH roles AS (
         CASE
             WHEN c.format IS NULL THEN NULL
             WHEN c.format = 'vtt' THEN 'caption'
+            WHEN a.sha256 IS NOT NULL THEN 'archive'
             WHEN c.format = 'm3u8' THEN 'playlist'
             WHEN c.format = 'warc' THEN 'envelope'
             WHEN c.format = 'pdf' AND c.intact IS NOT TRUE
@@ -24,15 +25,15 @@ WITH roles AS (
                  OR (c.format = 'xml' AND (b.feed OR l.feed)) THEN 'listing'
             ELSE 'document'
         END AS record_role
-    FROM placeholders p RIGHT JOIN (
+    FROM archive_bodies a RIGHT JOIN (placeholders p RIGHT JOIN (
         locator_signals l RIGHT JOIN (
             body_signals b RIGHT JOIN (
-                good_fetches g RIGHT JOIN capture_evidence c
+                good_fetch_keys g RIGHT JOIN capture_evidence c
                 USING(receipt_key,receipt_line,capture_index)
             ) ON c.sha256 = b.body_sha
         ) ON (c.url IS NOT DISTINCT FROM l.url)
             AND (c.member_path IS NOT DISTINCT FROM l.member_path)
-    ) ON c.sha256 = p.sha256
+    ) ON c.sha256 = p.sha256) ON c.sha256 = a.sha256
 )
 SELECT receipt_key, receipt_line, capture_index, sha256, format, intact_basis,
     error_type, record_role,
