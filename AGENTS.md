@@ -112,7 +112,8 @@ extraction semantics. When a parser change is intentional, update
   and supplied per-receipt counts. It does not parse receipts, so envelope and
   nested `error` handling live only in `captures.py`, and the guard cannot see a
   wrong value that is still in-domain.
-- **Reference-key parity:** Keep House select/task-force committee code
-  normalization (`hs*` → `hl*`/`ht*`) in `meeting_records.py` and
-  `model/sql/meeting-records-resolved.sql` aligned with `committees.parquet`
-  (`missing_committee_keys = 0`).
+- **Reference-key parity:** `normalize_house_committee_code` in
+  `meeting_records.py` is the single owner of House select/task-force committee
+  code normalization (`hs*` → `hl*`/`ht*`); r1b-f removed the SQL copy of the
+  select-committee rule (ct-p3ff). Don't re-add one.
+  The gate is `missing_committee_keys = 0` against `committees.parquet`.
