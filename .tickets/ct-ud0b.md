@@ -21,3 +21,9 @@ Owner decision 2026-11-02: after the fixed release, publish nightly without a pe
 - Tests: additions from new receipts pass; an added row from an old receipt refuses; a changed value refuses; a removed row refuses.
 - The daily workflow (archive-jobs publish after capture) runs this unattended; the pointer flips only when all gates pass.
 
+
+## Notes
+
+**2026-11-02T15:55:47Z**
+
+2026-11-02 impl-h r1b-h 1573be5c: implemented (3f122fc8): automatic_causes accepts a difference only when every new row is a new document whose body comes from a receipt outside the live release's set, dated after its newest, named by its raw receipt line; any changed or removed value, split, old or undated receipt, or untraceable row refuses. Four acceptance tests plus one through publish_candidate. Can't see: a bug that only adds wrong rows from new receipts. Still blocked on the daily path by gate 5 until daily production writes per-snapshot producer records (follow-up).
