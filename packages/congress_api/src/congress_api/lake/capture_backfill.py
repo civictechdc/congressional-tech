@@ -173,56 +173,12 @@ def check_scratch(root,*outputs,min_free_bytes=15<<30,max_owned_scratch_bytes=5<
     return root
 
 
-class _MemorySamples:
-    """Tolerate two transient tree-sampling gaps, retaining the last valid peak."""
-    def __init__(self,sampler):
-        self.sampler=sampler
-        self.consecutive_failures=0
-
-    def sample(self,pid):
-        try:
-            rss=self.sampler.resident_tree(pid);physical=self.sampler.physical_tree(pid)
-            if physical is None:raise RuntimeError('Missing process memory sample')
-        except InterruptedError:
-            raise
-        except (OSError,RuntimeError,subprocess.SubprocessError) as error:
-            self.consecutive_failures+=1
-            if self.consecutive_failures>=3:
-                raise RuntimeError('Three consecutive whole-tree memory samples failed') from error
-            return None
-        self.consecutive_failures=0
-        return rss,physical
-
-
-def _group_is_live(group):
-    result=subprocess.run(['ps','-axo','pgid=,stat='],capture_output=True,text=True,check=True,timeout=5)
-    return any(int(parts[0])==group and not parts[1].startswith('Z')
-        for line in result.stdout.splitlines() if len(parts:=line.split())==2)
-
-
-def _signal_group(group,number,send,is_live):
-    try:send(group,number)
-    except OSError as error:
-        if error.errno in (errno.EPERM,errno.ESRCH) and not is_live(group):
-            return dict(signal=number,errno=error.errno,group_exited=True)
-        raise
-
-
-def _cleanup_child(child,send):
-    errors=[]
-    def attempt(operation):
-        try:
-            note=operation()
-            if isinstance(note,dict):errors.append(note)
-        except Exception as error:
-            errors.append(dict(type=type(error).__name__,message=str(error)))
-    if child.poll() is None:
-        attempt(lambda:send(signal.SIGTERM))
-        attempt(lambda:child.wait(timeout=5))
-    # A TERM-ignoring descendant may outlive the already-exited leader.
-    attempt(lambda:send(signal.SIGKILL))
-    attempt(lambda:child.wait(timeout=5))
-    return errors
+def _sampler():
+    """The shared stdlib sampler and process owner, loaded by path from scripts/measure."""
+    path=Path(__file__).resolve().parents[5]/'scripts/measure/process_rss.py'
+    spec=importlib.util.spec_from_file_location('backfill_memory_sampler',path)
+    sampler=importlib.util.module_from_spec(spec);spec.loader.exec_module(sampler)
+    return sampler
 
 
 def monitor_command(command,*,work,physical_limit=16<<30,timeout=2700,min_free_bytes=15<<30,
@@ -244,22 +200,8 @@ def monitor_command(command,*,work,physical_limit=16<<30,timeout=2700,min_free_b
     work.mkdir(parents=True,exist_ok=True)
     report=work/'measurement.json';partial=work/'measurement.json.partial';log=work/'process.log'
     if any(p.exists() for p in (report,partial,log)):raise FileExistsError('Batch measurement paths must be fresh')
-    path=Path(__file__).resolve().parents[5]/'scripts/measure/process_rss.py'
-    spec=importlib.util.spec_from_file_location('backfill_memory_sampler',path)
-    sampler=importlib.util.module_from_spec(spec);spec.loader.exec_module(sampler)
-    memory=_MemorySamples(sampler)
-    watchdog='''import os,signal,subprocess,sys,time
-parent=int(sys.argv[1])
-process=subprocess.Popen(sys.argv[2:])
-while process.poll() is None:
- if os.getppid()!=parent:
-  signal.signal(signal.SIGTERM,signal.SIG_IGN)
-  os.killpg(os.getpgrp(),signal.SIGTERM)
-  time.sleep(2)
-  os.killpg(os.getpgrp(),signal.SIGKILL)
- time.sleep(.1)
-raise SystemExit(process.returncode)
-'''
+    sampler=_sampler()
+    memory=sampler.MemorySamples(sampler)
     def interrupted(number,_frame):raise InterruptedError('Batch monitor received signal '+str(number))
     old={number:signal.getsignal(number) for number in (signal.SIGTERM,signal.SIGINT,signal.SIGHUP)}
     for number in old:signal.signal(number,interrupted)
@@ -267,8 +209,7 @@ raise SystemExit(process.returncode)
     primary_error=None;cleanup_errors=[]
     try:
         with log.open('x') as output:
-            child=subprocess.Popen([sys.executable,'-I','-c',watchdog,str(os.getpid()),*command],
-                stdout=output,stderr=subprocess.STDOUT,start_new_session=True)
+            child=sampler.start_owned(command,stdout=output,stderr=subprocess.STDOUT)
             try:
                 while child.poll() is None:
                     observed=memory.sample(child.pid)
@@ -295,8 +236,7 @@ raise SystemExit(process.returncode)
             except Exception as error:
                 primary_error=error
                 failure=dict(type=type(error).__name__,message=str(error))
-                cleanup_errors=_cleanup_child(child,
-                    lambda number:_signal_group(child.pid,number,os.killpg,_group_is_live))
+                cleanup_errors=sampler.stop_owned(child)
             result=dict(returncode=child.poll(),seconds=time.monotonic()-started,
                 monitor_pid=os.getpid(),owned_pgid=child.pid,samples=samples,
                 sampled_peak_tree_rss=peak,sampled_peak_tree_physical_footprint=physical_peak,

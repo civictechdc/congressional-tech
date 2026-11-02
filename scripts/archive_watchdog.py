@@ -11,8 +11,14 @@ Standard library only, so it can run before any environment is set up. --lock se
 jobs that share a machine; hosted runners, which run one job, leave it off. Sampling is
 once a second, so an allocation faster than that can pass the limit before the stop; the
 machine-floor check covers what other processes use too.
+
+The job runs under the shared owned-process trampoline (scripts/measure/process_rss.py):
+TERM/INT/HUP to the watchdog stop the job, and if the watchdog itself is killed the
+job's group leader notices and kills the group. --timeline writes one JSON line per
+sample (seconds, RSS, physical, free disk) to <report>.timeline.jsonl.
 """
 import argparse
+import importlib.util
 import json
 import os
 from pathlib import Path
@@ -26,22 +32,24 @@ STOPPED = 99
 REFUSED = 98
 
 
-def tree_rss_gb(root):
-    """Sum real RSS over a process and all its descendants, O(processes) per sample."""
-    rows = subprocess.run(['ps', '-axo', 'pid=,ppid=,rss='], capture_output=True, text=True).stdout.splitlines()
-    children, rss = {}, {}
-    for row in rows:
-        parts = row.split()
-        if len(parts) == 3:
-            pid, parent, kilobytes = map(int, parts)
-            children.setdefault(parent, []).append(pid)
-            rss[pid] = kilobytes
-    total, stack = 0, [root]
-    while stack:
-        pid = stack.pop()
-        total += rss.get(pid, 0)
-        stack.extend(children.get(pid, []))
-    return total / 1048576
+def _load_sampler():
+    """The shared stdlib sampler and process owner, loaded by path like the capture monitor does."""
+    path = Path(__file__).resolve().parent / 'measure/process_rss.py'
+    spec = importlib.util.spec_from_file_location('archive_watchdog_sampler', path)
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module
+
+
+sampler = _load_sampler()
+
+
+class Interrupted(Exception):
+    """A signal to the watchdog; the finally clause then stops the owned job."""
+
+
+def _interrupted(number, _frame):
+    raise Interrupted(f'watchdog received signal {number}')
 
 
 def available_gb():
@@ -83,36 +91,49 @@ def acquire(lock, wait_seconds):
             time.sleep(5)
 
 
-def stop(process):
-    os.killpg(process.pid, signal.SIGTERM)
+def watch(command, *, rss_gb, min_available_gb, min_disk_gb, disk_root, interval, timeline=None):
+    """Return (exit code, peak resident GiB, peak physical GiB, reason, seconds).
+
+    The limit applies to max(resident, physical): macOS charged footprint also counts
+    compressed memory that RSS misses. The owned group is always stopped on the way out:
+    a breach, a signal to the watchdog, or any error inside this loop.
+    """
+    old = {number: signal.signal(number, _interrupted) for number in (signal.SIGTERM, signal.SIGINT, signal.SIGHUP)}
+    memory = sampler.MemorySamples(sampler)
+    peak = physical_peak = 0.0
+    started = time.monotonic()
+    process = None
     try:
-        process.wait(timeout=15)
-    except subprocess.TimeoutExpired:
-        os.killpg(process.pid, signal.SIGKILL)
-        process.wait()
-
-
-def watch(command, *, rss_gb, min_available_gb, min_disk_gb, disk_root, interval):
-    """Return (exit code, peak GiB, reason). The child leads its own process group."""
-    process = subprocess.Popen(command, start_new_session=True)
-    peak, started = 0.0, time.monotonic()
-    while process.poll() is None:
-        rss = tree_rss_gb(process.pid)
-        peak = max(peak, rss)
-        reason = None
-        if rss > rss_gb:
-            reason = f'process tree RSS {rss:.1f} GiB over the {rss_gb} GiB limit'
-        elif shutil.disk_usage(disk_root).free / 2**30 < min_disk_gb:
-            reason = f'free disk under {min_disk_gb} GiB'
-        else:
-            available = available_gb()
-            if available is not None and available < min_available_gb:
-                reason = f'machine memory available {available:.1f} GiB under {min_available_gb} GiB'
-        if reason:
-            stop(process)
-            return STOPPED, peak, reason, time.monotonic() - started
-        time.sleep(interval)
-    return process.returncode, peak, None, time.monotonic() - started
+        process = sampler.start_owned(command)
+        while process.poll() is None:
+            observed = memory.sample(process.pid)
+            rss, physical = (value / 2**30 for value in observed) if observed else (0.0, 0.0)
+            peak, physical_peak = max(peak, rss), max(physical_peak, physical)
+            free_disk = shutil.disk_usage(disk_root).free / 2**30
+            if timeline is not None:
+                timeline.write(json.dumps(dict(seconds=round(time.monotonic() - started, 3), rss_gb=round(rss, 3),
+                    physical_gb=round(physical, 3), free_disk_gb=round(free_disk, 1))) + '\n')
+                timeline.flush()
+            reason = None
+            if max(rss, physical) > rss_gb:
+                reason = f'process tree RSS {rss:.1f} GiB / physical {physical:.1f} GiB over the {rss_gb} GiB limit'
+            elif free_disk < min_disk_gb:
+                reason = f'free disk under {min_disk_gb} GiB'
+            else:
+                available = available_gb()
+                if available is not None and available < min_available_gb:
+                    reason = f'machine memory available {available:.1f} GiB under {min_available_gb} GiB'
+            if reason:
+                return STOPPED, peak, physical_peak, reason, time.monotonic() - started
+            time.sleep(interval)
+        return process.returncode, peak, physical_peak, None, time.monotonic() - started
+    except Exception as error:  # Interrupted included: the finally stops the job
+        return STOPPED, peak, physical_peak, f'{type(error).__name__}: {error}', time.monotonic() - started
+    finally:
+        if process is not None:
+            sampler.stop_owned(process)
+        for number, handler in old.items():
+            signal.signal(number, handler)
 
 
 def main(argv=None):
@@ -122,6 +143,8 @@ def main(argv=None):
     parser.add_argument('--lock', type=Path, help='Directory lock serializing jobs on a shared machine')
     parser.add_argument('--wait-seconds', type=int, default=3600)
     parser.add_argument('--min-available-gb', type=float, default=4.0, help='Stop if the machine falls below this')
+    parser.add_argument('--start-available-gb', type=float, default=0.0, help='Refuse to start below this much available memory')
+    parser.add_argument('--timeline', action='store_true', help='Write one JSON line per sample next to --report')
     parser.add_argument('--min-disk-gb', type=float, default=15.0, help='Stop if free disk falls below this')
     parser.add_argument('--interval', type=float, default=1.0)
     parser.add_argument('command', nargs=argparse.REMAINDER)
@@ -129,24 +152,44 @@ def main(argv=None):
     command = args.command[1:] if args.command[:1] == ['--'] else args.command
     if not command:
         parser.error('a command is required')
+    if args.timeline and not args.report:
+        parser.error('--timeline needs --report')
+    if args.report:
+        try:
+            args.report.parent.mkdir(parents=True, exist_ok=True)
+        except OSError as error:
+            print(f'archive_watchdog: cannot create the report directory: {error}', file=sys.stderr)
+            return REFUSED
     if args.lock and not acquire(args.lock, args.wait_seconds):
         print('archive_watchdog: timed out waiting for the one job slot', file=sys.stderr)
         return REFUSED
+    timeline = None
     try:
-        code, peak, reason, seconds = watch(command, rss_gb=args.rss_gb, min_available_gb=args.min_available_gb,
-            min_disk_gb=args.min_disk_gb, disk_root=args.report.parent if args.report else Path.cwd(), interval=args.interval)
+        available = available_gb()
+        if available is not None and available < args.start_available_gb:
+            print(f'archive_watchdog: refused to start; machine memory available {available:.1f} GiB '
+                  f'under {args.start_available_gb} GiB', file=sys.stderr)
+            return REFUSED
+        if args.timeline:
+            timeline = args.report.with_suffix('.timeline.jsonl').open('w')
+        code, peak, physical_peak, reason, seconds = watch(command, rss_gb=args.rss_gb,
+            min_available_gb=args.min_available_gb, min_disk_gb=args.min_disk_gb,
+            disk_root=args.report.parent if args.report else Path.cwd(), interval=args.interval, timeline=timeline)
     finally:
+        if timeline is not None:
+            timeline.close()
         if args.lock:
             (args.lock / 'owner').unlink(missing_ok=True)
             args.lock.rmdir()
     if args.report:
-        args.report.parent.mkdir(parents=True, exist_ok=True)
         args.report.write_text(json.dumps(dict(command=command, rss_limit_gb=args.rss_gb, peak_rss_gb=round(peak, 3),
-            seconds=round(seconds, 1), exit_code=code, stopped=reason), indent=1) + '\n')
+            peak_physical_gb=round(physical_peak, 3), seconds=round(seconds, 1), exit_code=code, stopped=reason),
+            indent=1) + '\n')
     if reason:
-        print(f'archive_watchdog: stopped; {reason}; peak {peak:.2f} GiB', file=sys.stderr)
+        print(f'archive_watchdog: stopped; {reason}; peak {peak:.2f} GiB RSS, {physical_peak:.2f} GiB physical', file=sys.stderr)
     else:
-        print(f'archive_watchdog: finished rc={code}; peak {peak:.2f} GiB in {seconds:.0f} s', file=sys.stderr)
+        print(f'archive_watchdog: finished rc={code}; peak {peak:.2f} GiB RSS, {physical_peak:.2f} GiB physical '
+              f'in {seconds:.0f} s', file=sys.stderr)
     return code
 
 
