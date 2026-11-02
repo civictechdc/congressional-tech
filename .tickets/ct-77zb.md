@@ -76,3 +76,7 @@ Round 1 stopped at owner direction 2026-11-01 after reviewing and fixing. Unmerg
 **2026-11-02T12:28:28Z**
 
 Round 1b 2026-11-02 (lead): Integration of clusters B/C/D: 63 lane failures, none a production defect (fixtures and checks out of step). Process cause confirmed: cluster C's worktree had no .venv, so its tests ran main's package code. Briefs now require uv sync --frozen per worktree. New model_sql relation check being rebuilt on the existing sql_dependencies after red/green review.
+
+**2026-11-02T13:13:02Z**
+
+2026-11-02 (lead): integrate-round1 green at 98fb1424 (production-offline 10,795 passed, peak 3.5 GiB) after red/green review fixes: shared SQL dependencies use the existing DuckDB parser (moved into congress_api/lake/model_sql.py), step-order test, and publish refuses converted catalogs. Pushed as a branch only. Code does not go to main before publish, because a main push deploys Pages (apps/site, uv.lock) and the old Explorer publisher (congress_api) against the old live release. The new site and release ship together.

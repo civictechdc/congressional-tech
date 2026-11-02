@@ -39,3 +39,7 @@ Code on worktree-agent-a5550c04138214670 @ b3c4aa3c (b3c4aa3c). Review: merge, s
 **2026-11-02T12:28:28Z**
 
 Round 1b 2026-11-02 (lead): Readings: sniff, xml and json are lock-only or proven unchanged (xml 260/260, json 260/260 byte-equal across 45/32 strata; proof .cache/rounds/r1b/g/differential/xj_proof.json). html is compatible outside HTML_REREAD_SQL (67,540 of 192,191 re-read). Re-stamp deleted. impl-e2, r1b-e2.
+
+**2026-11-02T13:08:43Z**
+
+2026-11-02 (lead): the html re-read set (67,540 bodies, one html parser_version, 1 already local) and the D4 candidate bodies (16,102 non-MODS, 446 MODS; 725 were missing) are now in the local mirror. All 68,264 downloads were checked: size and MD5 against captures, then sha256 and size of the decompressed bytes. The filename catalog (D3) reads no body bytes.
