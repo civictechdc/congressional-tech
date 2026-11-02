@@ -38,10 +38,10 @@ def daily_report(tmp_path):
         provenance=dict(recoveries=[],reviews=[],unreadable=[row])),[row]
 
 
-def with_daily(tmp_path,value):
+def with_daily(tmp_path,value,*,pinned_inventory=True):
     daily=tmp_path/'daily.json'
-    daily.write_text(json.dumps(dict(work=str(tmp_path/'daily-work'),catalog_root=None,
-        body_inventory=str(tmp_path/'body-inventory.parquet'),local_root=str(tmp_path/'raw'),
+    pinned=dict(body_inventory=str(tmp_path/'body-inventory.parquet'),local_root=str(tmp_path/'raw')) if pinned_inventory else {}
+    daily.write_text(json.dumps(dict(work=str(tmp_path/'daily-work'),catalog_root=None,**pinned,
         provenance={kind:[] for kind in ['recoveries','reviews','unreadable']})))
     return dict(value,daily=dict(path=str(daily),**file_pin(daily)),receipt_keys=[],provenance=[])
 
@@ -52,6 +52,14 @@ def test_daily_plan_checks_its_pinned_description_without_opening_raw_or_runtime
     plan=json.loads(capsys.readouterr().out)
     assert plan['daily']==value['daily'] and plan['executed'] is False
     assert not (tmp_path/'daily-work').exists() and not (tmp_path/'raw').exists()
+
+
+def test_a_daily_description_without_a_body_inventory_plans(tmp_path,capsys):
+    # The checked-in publish-daily.json reads bodies through raw_store, so it names no inventory.
+    # Defect guarded: the loader resolving body_inventory and local_root unconditionally.
+    value=with_daily(tmp_path,publish_spec(tmp_path),pinned_inventory=False)
+    assert invoke(tmp_path,value,'--plan')==0
+    assert json.loads(capsys.readouterr().out)['daily']==value['daily']
 
 
 @pytest.mark.parametrize('change',['checksum','overlap','stale_receipts','stale_provenance','qualified_override'])
