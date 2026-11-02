@@ -25,8 +25,8 @@ def main(argv=None,*,read_current=None,body_store=None):
     parser.add_argument('--body-listing',type=Path,help='Complete native key/size/etag listing for exact-key custody fallback')
     parser.add_argument('--raw-cache-bytes',type=int,help='Per-run body cache bound, at most10GiB (default1GiB)')
     parser.add_argument('--raw-get-workers',type=int,help='Concurrent page-prefetch GETs,1–64 (default64)')
-    parser.add_argument('--parser-workers',type=int,default=16,
-                        help='Persistent supervised parsers per batch,1–32 (default16); bounded by native memory limits')
+    parser.add_argument('--parser-workers',type=int,default=12,
+                        help='Persistent supervised parsers per batch,1–32 (default12, which fits a 14 GiB native limit at 1 GiB each)')
     parser.add_argument('--request-timings',action='store_true',help='Write owned per-batch pinned-read and supervisor timings')
     args=parser.parse_args(argv)
     try:readings.ParserWorkerPool.validate_budget(args.parser_workers,32*readings.WORKER_MEMORY_BYTES,readings.WORKER_MEMORY_BYTES)

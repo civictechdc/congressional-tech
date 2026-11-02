@@ -236,3 +236,42 @@ def test_combined_plan_settles_bodies_on_registry_covered_older_rows(tmp_path):
     empty = fixture_registry(tmp_path / 'empty.json', [])
     assert readings.plan(**args, parser=None, existing=relabelled, registry=covered, work=tmp_path / 'with')['work_items'] == 0
     assert readings.plan(**args, parser=None, existing=relabelled, registry=empty, work=tmp_path / 'without')['work_items'] == 1
+
+
+def _bodies_inputs(tmp_path, bodies):
+    """Local inventory and captures for these bodies, stored plain."""
+    raw = tmp_path / 'raw'
+    rows, items = [], []
+    for body in bodies:
+        digest = hashlib.sha256(body).digest(); key = 'bodies/sha256/' + digest.hex()[:2] + '/' + digest.hex()
+        (raw / key).parent.mkdir(parents=True, exist_ok=True); (raw / key).write_bytes(body)
+        rows.append(dict(sha256=digest, bytes=len(body), media_type='application/json', fidelity='exact-bytes'))
+        items.append(dict(body_sha=digest, physical_key=key, relative_path=key, stored_bytes=len(body), stored_gzip=False))
+    captures = tmp_path / 'captures.parquet'
+    pq.write_table(pa.Table.from_pylist(rows, schema=pa.schema([('sha256', pa.binary(32)), ('bytes', pa.int64()), ('media_type', pa.string()),
+        ('fidelity', pa.string()), ('sniffed_format', pa.string()), ('sniff_version', pa.string()), ('intact', pa.bool_())])), captures)
+    inventory = tmp_path / 'inventory.parquet'
+    pq.write_table(pa.Table.from_pylist(items, schema=pa.schema([('body_sha', pa.binary(32)), ('physical_key', pa.string()),
+        ('relative_path', pa.string()), ('stored_bytes', pa.int64()), ('stored_gzip', pa.bool_())])), inventory)
+    return dict(captures=captures, body_inventory=inventory, local_root=raw, decided_at='2026-11-02T00:00:00Z',
+        engine=NativeDatasets.from_config(os.environ['DOCSPEC_JOB_CONFIG']))
+
+
+def _outcome(staged):
+    rows = sorted(json.dumps(row, default=str, sort_keys=True) for row in pq.read_table(staged['readings']).to_pylist())
+    decisions = Path(staged['work_list']).parent / 'parsed/unreadable.jsonl'
+    reasons = sorted((d['body_sha256'], d['reason']) for d in map(json.loads, decisions.read_text().splitlines())) if decisions.exists() else []
+    return rows, reasons
+
+
+def test_large_page_bodies_get_the_same_reading_on_every_re_read(tmp_path):
+    # ct-61ys: an outcome decided by sampled RSS flipped between memory_limit and completed.
+    # The largest body that may parse and one just over the bound, each re-read three times.
+    near = json.dumps([dict(id=i, title='Hearing record ' + str(i), url=f'https://example.test/{i}.pdf') for i in range(15000)]).encode()
+    over = b'[' + b' ' * readings.PAGE_PARSE_MAX_BYTES + b'0]'
+    args = _bodies_inputs(tmp_path, [near, over])
+    outcomes = [_outcome(readings.stage_once(**args, work=tmp_path / f'run{i}')) for i in range(3)]
+    assert outcomes[0] == outcomes[1] == outcomes[2]
+    rows, reasons = outcomes[0]
+    assert reasons == [(hashlib.sha256(over).hexdigest(), 'memory_limit')]
+    assert any('"parser": "json"' in row and '"status": "completed"' in row for row in rows)

@@ -39,7 +39,7 @@ def test_ranges_progress_while_a_page_prefetch_is_waiting(tmp_path):
             assert hashlib.sha256(data).hexdigest()==body
             return dict(status='completed',value=dict(rows=[dict(parser='sniff',parser_version=request['versions']['sniff'],status='completed',format='pdf')]))
     result=readings.stage_once(**args,work=work,body_store=store,worker_factory=Worker,
-        parser_workers=2,parser_memory_bytes=1<<30,max_cache_bytes=1<<20)
+        parser_workers=2,parser_memory_bytes=4<<30,max_cache_bytes=1<<20)
     assert prefetch_done.is_set() and len(client.reads)==4
     values=pq.read_table(result['readings']).to_pylist()
     assert len(values)==4 and [r['body_sha'] for r in values]==sorted(r['body_sha'] for r in values)
@@ -70,7 +70,7 @@ def test_fast_pages_parse_before_an_unrelated_slow_page_finishes(tmp_path):
             if body!=slow.rsplit('/',1)[1]:progressed.set()
             return dict(status='completed',value=dict(rows=[dict(parser='sniff',parser_version=request['versions']['sniff'],status='completed',format='pdf')]))
     result=readings.stage_once(**args,work=work,body_store=store,worker_factory=Worker,
-        parser_workers=2,parser_memory_bytes=1<<30,max_cache_bytes=1<<20)
+        parser_workers=2,parser_memory_bytes=4<<30,max_cache_bytes=1<<20)
     assert progressed.is_set() and len(client.reads)==4
     values=pq.read_table(result['readings']).to_pylist()
     assert len(values)==4 and [r['body_sha'] for r in values]==sorted(r['body_sha'] for r in values)
