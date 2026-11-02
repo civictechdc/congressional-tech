@@ -149,3 +149,14 @@ def test_reader_changes_only_readings_in_the_reread_set():
         assert (row == plain) is (not reader.needs_browser_reading(plain))
     for parser, body in [('xml', b'<a>\x1a</a>'), ('json', b'{"a":"\x1a"}'), ('xml', b'<meeting/>')]:
         assert reader.read_page(body, parser) == reader._plain_reading(body, parser)[0]
+
+
+def test_a_decoded_address_is_text_not_markup():
+    """Cloudflare's decoder inserts a text node; markup characters in the address stay characters."""
+    from congress_api.parsers.archive_readings import read_page
+
+    address = 'x<y&z@house.gov'
+    token = bytes([0x21]) + bytes(b ^ 0x21 for b in address.encode())
+    anchor = f'<a href="/cdn-cgi/l/email-protection" class="__cf_email__" data-cfemail="{token.hex()}">[email&#160;protected]</a>'
+    row = read_page(transcript(TRANSCRIPT.format(anchor)), 'html')
+    assert address in row['text_head']

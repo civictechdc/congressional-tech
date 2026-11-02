@@ -1792,3 +1792,25 @@ def test_a_page_never_groups_itself_through_its_own_navigation_links(tmp_path):
     saved = next(r for r in rows if r['filename'] == 'alert_act_title_ii_ans_section_by_section.pdf')
     assert not saved['alternates'] and saved['title'] is None  # 'here' is a link word; the page is not a rendition.
     assert len(rows) == 2
+
+
+def test_a_listing_label_outranks_another_formats_page_title(tmp_path):
+    """red-g F1: a rendition's <title> fills a title only when no listing label names the document."""
+    from viewer_publication.archive_model import build_release
+    engine = NativeDatasets.from_config(os.environ['DOCSPEC_JOB_CONFIG'])
+    base = 'https://appropriations.house.gov/files'
+    words = 'The subcommittee received the appendix tables for fiscal year spending. ' * 30
+    listing = (f'<html><head><title>Hearing documents</title></head><body><p>{words}</p><ul>'
+               f'<li><a href="{base}/appendix-d.pdf">Appendix D</a> <a href="https://appropriations.house.gov/news/appendix-d-text">HTML</a></li>'
+               f'</ul></body></html>').encode()
+    html = ('<html><head><title>Press release headline</title></head><body><main><article><h1>Appendix D</h1><p>'
+            + 'Table D-1 lists obligations by account and fiscal year for the subcommittee. ' * 40 + '</p></article></main></body></html>').encode()
+    pdf = b'%PDF-1.7\nAppendix D tables\n%%EOF\n'
+    staged = _stage_raw_fixture(tmp_path, engine, [dict(url='https://appropriations.house.gov/hearing', data=listing, format='html'),
+        dict(url=f'https://appropriations.house.gov/news/appendix-d-text', data=html, format='html'), dict(url=f'{base}/appendix-d.pdf', data=pdf, format='pdf', compress=False)])
+    build_release(captures=staged['captures'], readings=staged['readings'], filename_readings=staged['filename_readings'],
+        parser_versions={p: staged['parser_versions'][p] for p in ['sniff', 'html', 'xml', 'json']},
+        catalog_version=staged['catalog_version'], engine=engine, output=tmp_path / 'release', scratch=tmp_path / 'model')
+    rows = pq.read_table(tmp_path / 'release/detail.parquet').to_pylist()
+    saved = next(r for r in rows if r['filename'] == 'appendix-d.pdf')
+    assert [a['format'] for a in saved['alternates']] == ['html'] and saved['title'] == 'Appendix D', [(r['filename'], r['format'], r['title'], r['alternates']) for r in rows]

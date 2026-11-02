@@ -97,6 +97,11 @@ def test_saved_file_order_picks_the_body_then_a_named_source_of_it(tmp_path):
                   format='pdf',exact_bytes=True,first_fetched='2026-10-25T12:00:00Z',is_real_file=True),
              dict(component='pdf',source_id='earlier',body_sha='d'*64,filename='a.pdf',source_url='https://x.test/a.pdf',
                   format='pdf',exact_bytes=True,first_fetched='2026-10-20T12:00:00Z',is_real_file=True),
+             # Rows of other bodies keep saved-file order, named or not.
+             dict(component='pdf',source_id='third',body_sha='f'*64,filename='',source_url='https://x.test/b/?a=Files.Serve',
+                  format='pdf',exact_bytes=True,first_fetched='2026-10-22T12:00:00Z',is_real_file=True),
+             dict(component='pdf',source_id='fourth',body_sha='0'*64,filename='c.pdf',source_url='https://x.test/c.pdf',
+                  format='pdf',exact_bytes=True,first_fetched='2026-10-21T12:00:00Z',is_real_file=True),
              dict(component='zip',source_id='member',body_sha='e'*64,filename='CHRG-1.pdf',source_url=None,
                   format='pdf',exact_bytes=True,first_fetched='2026-10-25T12:00:00Z',is_real_file=True),
              dict(component='zip',source_id='copy',body_sha='e'*64,filename='CHRG-1-copy.pdf',source_url='https://www.congress.gov/x/CHRG-1-copy.pdf',
@@ -112,6 +117,11 @@ def test_saved_file_order_picks_the_body_then_a_named_source_of_it(tmp_path):
     assert result['saved']==[dict(component='pdf',source_id='later',body_sha='c'*64),
                              dict(component='xml',source_id='named',body_sha='b'*64),
                              dict(component='zip',source_id='member',body_sha='e'*64)]
+    order=run_job(tmp_path/'order',NativeDatasets.from_config(os.environ['DOCSPEC_JOB_CONFIG']),inputs=inputs,
+        steps=[dict(name='document_members',sql="SELECT * EXCLUDE(first_fetched),cast(first_fetched AS TIMESTAMP WITH TIME ZONE) AS first_fetched FROM members"),
+               dict(name='saved_files',sql=(ROOT/'model/sql/saved-files.sql').read_text(),materialize=True)],outputs=[],
+        queries=[dict(name='o',sql="SELECT source_id FROM saved_files WHERE component='pdf' ORDER BY saved_rank")])['o']
+    assert [row['source_id'] for row in order]==['later','third','fourth','earlier']
 
 
 def test_recovery_only_document_takes_the_recovered_reading_title_else_the_original_label(tmp_path):

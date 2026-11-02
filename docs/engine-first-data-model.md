@@ -595,10 +595,10 @@ filename       := the saved file's effective filename; saved-file order picks th
                   that names no file, a bare host; metadata blank_filename_reasons);
                   invariant unexplained_blank_filenames = 0
 title          := the applying title_override (§7.9), else the saved file's reading title,
-                  else its heading, else the first other-format file's reading title or
-                  heading in saved-file order, else the text of its earliest listing link
-                  (§7.10) that is not a link word; null when none, and the site shows the
-                  filename. A link word (page signals kind `link_word`: "ZIP", "PDF",
+                  else its heading, else the text of its earliest listing link (§7.10)
+                  that is not a link word, else the first other-format file's reading
+                  title or heading in saved-file order; null when none, and the site
+                  shows the filename. A link back to its own page never groups it. A link word (page signals kind `link_word`: "ZIP", "PDF",
                   "here", "Download PDF") says what a link does and is never a title, as
                   a reading title or as link text; a recovery-only document takes its
                   recovered body's reading title, else its original link's text. The
