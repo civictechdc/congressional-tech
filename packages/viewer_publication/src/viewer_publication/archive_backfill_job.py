@@ -106,15 +106,6 @@ def load_spec(path):
     return result
 
 
-def write_empty_body_inventory(path):
-    import pyarrow as pa
-    import pyarrow.parquet as pq
-    path=Path(path);path.parent.mkdir(parents=True,exist_ok=True)
-    schema=pa.schema([('body_sha',pa.binary(32)),('physical_key',pa.string()),('relative_path',pa.string()),
-        ('stored_bytes',pa.int64())])
-    pq.write_table(pa.Table.from_pylist([],schema=schema),path)
-
-
 def plan(spec):
     if spec.get('status')=='blocked':return dict(spec)
     planned=dict(
@@ -170,13 +161,11 @@ def execute(spec,*,runtime_factory=None,storage_factory=None,producer=None):
             catalog_root=spec['catalog_root'],
             tables=spec['tables'],
             receipt_inventory=spec.get('receipt_inventory',[]),
-            body_inventory=spec.get('body_inventory',str(work/'body-inventory.parquet')),
-            local_root=spec.get('local_root',str(work/'raw')),
             max_work_items=spec.get('max_work_items',spec['batch_size']*spec['max_batches']),
             provenance=provenance,
+            # A pinned inventory only if the spec names one; otherwise bodies come from raw_store.
+            **{k:spec[k] for k in ('body_inventory','local_root') if spec.get(k) is not None},
         )
-        body_inv_path=Path(daily_spec['body_inventory'])
-        if not body_inv_path.exists():write_empty_body_inventory(body_inv_path)
         production=producer(daily_spec,engine=engine,raw_store=raw_store)
     work.mkdir(parents=True,exist_ok=True)
     report=dict(

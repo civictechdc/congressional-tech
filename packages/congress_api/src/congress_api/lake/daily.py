@@ -47,16 +47,18 @@ def _qualify_path(path):
 
 
 def _validate(spec,engine,raw_store):
-    required={'work','decided_at','catalog_root','tables','receipt_inventory','body_inventory',
-              'local_root','max_work_items','provenance'}
-    optional={'validated_counter','source_qualifications','vocabularies'}
+    required={'work','decided_at','catalog_root','tables','receipt_inventory','max_work_items','provenance'}
+    # Without a pinned body inventory, bodies are read from the raw store itself (_body_source).
+    optional={'validated_counter','source_qualifications','vocabularies','body_inventory','local_root'}
     if not isinstance(spec,dict) or not required<=spec.keys() or spec.keys()-(required|optional):
         raise ValueError('Daily producer requires explicit receipt, body, table and provenance inputs')
     readings._positive(spec['max_work_items'],'max_work_items')
     instant(spec['decided_at'])
     if any(not isinstance(spec[k],(str,Path)) or not str(spec[k])
-           for k in ('work','body_inventory','local_root')):
+           for k in ('work','body_inventory','local_root') if k=='work' or spec.get(k) is not None):
         raise ValueError('Daily producer requires explicit work and body-cache paths')
+    if (spec.get('body_inventory') is None)!=(spec.get('local_root') is None):
+        raise ValueError('A pinned body inventory and its local root go together')
     if (spec.get('validated_counter') is not None and
             (not isinstance(spec['validated_counter'],(str,Path)) or not str(spec['validated_counter']))):
         raise ValueError('Daily validated counter must name an explicit path')
@@ -196,6 +198,25 @@ def _stale_mapping_receipts(captures_pin,current,*,engine,work):
     return sorted(rows,key=lambda row:str(row['mapping_version']))
 
 
+def _body_source(spec,raw_store,work):
+    """How readings reaches bodies: a pinned inventory under local_root, else the raw store.
+
+    The raw store binding is the one producers already write to: a local root is read in place
+    from each capture's recorded copy; R2 is read by ranges through the maintained R2Store,
+    conditional on each capture's recorded MD5 and size. Never an empty inventory, which
+    turns every body into a pending read.
+    """
+    if spec.get('body_inventory') is not None:
+        return dict(body_inventory=spec['body_inventory'],local_root=spec['local_root'])
+    if isinstance(raw_store.adapter,LocalAdapter):
+        return dict(body_inventory=None,captured_copies=True,local_root=raw_store.adapter.root)
+    from congress_api.retention.r2 import R2Store
+    # The ranged cache must sit below the readings run's own work directory.
+    cache=Path(work)/'raw-pages'
+    return dict(body_inventory=None,captured_copies=True,local_root=cache,
+                body_store=R2Store(raw_store.adapter.client,raw_store.adapter.bucket,cache_dir=cache))
+
+
 def produce_daily(spec,*,engine,raw_store):
     """D1 then budgeted D2 then D3, returning fresh pins only after completion.
 
@@ -246,7 +267,7 @@ def produce_daily(spec,*,engine,raw_store):
         parsed=readings.run(engine=engine,work=work/'readings',mode='daily',execute=True,
             max_work_items=spec['max_work_items'],table=spec['tables']['readings'],
             catalog_root=spec['catalog_root'],unreadable_store=raw_store,
-            captures=heads['captures'],body_inventory=spec['body_inventory'],local_root=spec['local_root'],
+            captures=heads['captures'],**_body_source(spec,raw_store,work/'readings'),
             decided_at=spec['decided_at'],unreadable_snapshot=unreadable_snapshot)
     except readings.BackfillRequired as error:
         report.update(status='backfill_required');report['producerreports']['readings']=error.as_dict()
@@ -281,7 +302,7 @@ def produce_daily(spec,*,engine,raw_store):
             tables={'meeting_records':spec['tables']['meeting_records']})['meeting_records']
         try:
             meetings_staged=meeting_records.stage(captures=heads['captures'],existing=meeting_head,engine=engine,
-                work=work/'meeting-records',local_root=spec['local_root'],raw_store=raw_store,
+                work=work/'meeting-records',local_root=spec.get('local_root'),raw_store=raw_store,
                 unreadable_files=unreadable_snapshot.files(),max_work_items=spec['max_work_items'],
                 decided_at=spec['decided_at'],unreadable_store=raw_store,readings=readings_head)
         except readings.BackfillRequired as error:
@@ -299,7 +320,7 @@ def produce_daily(spec,*,engine,raw_store):
             tables={'appearance_records':spec['tables']['appearance_records']})['appearance_records']
         try:
             appearances_staged=appearance_records.stage(captures=heads['captures'],existing=appearance_head,engine=engine,
-                work=work/'appearance-records',local_root=spec['local_root'],raw_store=raw_store,
+                work=work/'appearance-records',local_root=spec.get('local_root'),raw_store=raw_store,
                 unreadable_files=unreadable_snapshot.files(),max_work_items=spec['max_work_items'],
                 decided_at=spec['decided_at'],unreadable_store=raw_store,readings=readings_head)
         except readings.BackfillRequired as error:

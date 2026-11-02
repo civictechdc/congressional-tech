@@ -159,6 +159,19 @@ def test_an_all_selected_table_seeds_nothing_without_reading_its_shape(tmp_path,
     assert report['tables']['captures']['reused']==0 and report['tables']['captures']['selected']==table.num_rows
 
 
+def test_d2_reads_missing_readings_from_the_local_mirror(tmp_path,fixture):
+    # Defect guarded: _daily wrote an empty body inventory, so any D2 work stayed pending and
+    # the run stopped "Daily producers stopped at pending". Existing cases had no D2 work.
+    base=pq.read_table(fixture['base']['readings']).to_pylist()
+    body=next(row['body_sha'] for row in base if row['parser']!='sniff')
+    def missing(rows):rows[:]=[row for row in rows if row['body_sha']!=body]
+    spec=selective_spec(tmp_path,fixture,dict(captures=B),differential_rows=0,base=dict(readings=changed(tmp_path,fixture,'readings',missing)),
+        through='tables')
+    assert execute(spec)['status']=='tables_built'
+    reread={(row['parser'],row['status']) for row in head(spec,'readings') if row['body_sha']==body}
+    assert reread=={(row['parser'],row['status']) for row in base if row['body_sha']==body}
+
+
 def test_narrow_fix_rebuilds_the_whole_receipt_and_reuses_the_rest_untouched(tmp_path,fixture):
     def stale(rows):
         on_receipt(rows,'/b.jsonl.gz')[0]['http_status']=299
