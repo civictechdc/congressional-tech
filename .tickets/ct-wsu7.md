@@ -40,3 +40,7 @@ Owner decision 2026-11-02: run the full model only after the witness-step fix la
 **2026-11-02T20:21:07Z**
 
 2026-11-02 the full model run on release-train f7413130 (engine b0342a7, 16 GiB pool, 2 threads) passed every compute step, with peak RSS 9.40 GiB, and stopped at the release key invariant: 44 unexplained blank filenames (v21 inputs at an older head gave 1,487), 9 invalid URL keys, 1 generic title. inv-rca is reading all 54 rows against raw sources, fixing each cause at its layer (branch r1b-inv), and naming the re-run each fix needs. Earlier: 08c1afb0 (recording tracks ranked once) is byte-identical on all 17 files and fixed the recordings_entity sort failure. D2 34.75 min, peak 2.10 GiB, 67,540 html readings (1,416,679 total); D3 about 14.5 min, 1,341,215 filename rows (+30,140); D4 602 s, peak 8.54 GiB, meeting_records 24,431, appearance_records 66,490.
+
+**2026-11-02T22:05:26Z**
+
+2026-11-02 lead: linux-amd64 b0342a7 (sha256 9e5cc34f…, 196,665,824 bytes) uploaded create-only to congressional-tech-runtime at runtime/docspec/b0342a7…/linux-amd64/9e5cc34f…/docspec by the checked-in publish-docspec-runtime.py, with exact readback, using 15-minute temporary credentials scoped to that key prefix. Descriptor: .cache/runtime-b0342a7/runtime-artifact.json (the uploaded descriptor matches it). The DOCSPEC_RUNTIME_ARTIFACT variable switches to it at the main merge.
