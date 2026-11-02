@@ -43,6 +43,9 @@ def test_a_whole_version_proof_over_a_local_sample_binds_its_entry(tmp_path, mon
     (tmp_path / 'base-work').mkdir()
     _, staged = compatible_proof.recompute(bodies=sorted(local), local=local, captures=captures, raw_root=raw, engine=engine,
         work=tmp_path / 'base-work', decided_at='2026-11-02T00:00:00Z')
+    # Independent of the base: the stored-gzip mirror body must sniff as html, not 'other'
+    # (the base below is this same code's output, so it cannot see that convention).
+    assert {r['format'] for r in pq.read_table(staged['readings']).to_pylist() if r['parser'] == 'sniff'} == {'html'}
     # The base is the producer's own output relabelled to an older html pin.
     base = tmp_path / 'base'
     run_job(base, engine, inputs=[dict(name='r', kind='parquet', path=str(staged['readings']))], steps=[], queries=[],

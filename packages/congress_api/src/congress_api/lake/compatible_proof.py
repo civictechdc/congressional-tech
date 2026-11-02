@@ -18,6 +18,7 @@ import argparse
 from hashlib import sha256
 import json
 from pathlib import Path
+import shutil
 import subprocess
 import sys
 import tempfile
@@ -73,12 +74,19 @@ def recompute(*, bodies, local, captures, raw_root, engine, work, decided_at):
             'SELECT c.* EXCLUDE(sniffed_format,sniff_version,intact),cast(NULL AS VARCHAR) AS sniffed_format,'
             'cast(NULL AS VARCHAR) AS sniff_version,cast(NULL AS BOOLEAN) AS intact FROM c JOIN k ON c.sha256=k.body_sha',
             ['receipt_key', 'receipt_line', 'capture_index'])])
+    # The mirror's bodies are symlinks into a shared object store, and the producer refuses a
+    # path that resolves outside its root, so the sample is copied into a private root: O(sample).
+    root = work / 'bodies'
+    for b in bodies:
+        target = root / local[b]
+        target.parent.mkdir(parents=True, exist_ok=True)
+        shutil.copyfile(Path(raw_root) / local[b], target)
     inventory = work / 'inventory.parquet'
     rows = [dict(body_sha=bytes.fromhex(b), physical_key=local[b], relative_path=local[b],
-                 stored_bytes=(Path(raw_root) / local[b]).stat().st_size, stored_gzip=False) for b in bodies]
+                 stored_bytes=(root / local[b]).stat().st_size, stored_gzip=local[b].endswith('.gz')) for b in bodies]
     pq.write_table(pa.Table.from_pylist(rows, schema=pa.schema([('body_sha', pa.binary(32)), ('physical_key', pa.string()),
         ('relative_path', pa.string()), ('stored_bytes', pa.int64()), ('stored_gzip', pa.bool_())])), inventory)
-    staged = readings.stage_once(captures=work / 'subset/captures.parquet', body_inventory=inventory, local_root=raw_root,
+    staged = readings.stage_once(captures=work / 'subset/captures.parquet', body_inventory=inventory, local_root=root,
         engine=engine, work=work / 'stage', decided_at=decided_at)
     return keys, staged
 
@@ -89,8 +97,16 @@ sys.path[:0] = json.loads(sys.argv[1])
 from congress_api.lake import readings
 request = json.loads(sys.argv[2])
 version = readings.current_version(request['parser'])
+# The parsers themselves, outside the supervisor's read-phase guard (no worker here).
+import gzip
 for payload in request['payloads']:
-    readings.parse_payload(json.dumps(payload))
+    data = open(payload['path'], 'rb').read()
+    if request['parser'] == 'sniff':
+        from congress_api.retention.sniff import read_sniff
+        read_sniff(lambda start, length: data[start:start + length], stored_size=len(data), stored_gzip=payload['path'].endswith('.gz'))
+    else:
+        from congress_api.parsers.archive_readings import read_page
+        read_page(gzip.decompress(data) if data[:2] == b'\x1f\x8b' else data, request['parser'])
 owners = importlib.metadata.packages_distributions()
 loaded = sorted({d.lower() for m in list(sys.modules) for d in owners.get(m.split('.')[0], [])})
 print(json.dumps(dict(version=version, loaded=loaded)))
@@ -112,9 +128,11 @@ def attest_lock_only(*, parser, old, old_lock, raw_root, local, bodies, work):
     paths = [str(p) for p in sorted((tree / 'packages').glob('*/src'))]
     payloads = [dict(path=str(Path(raw_root) / local[b]), parser=parser, stored_bytes=(Path(raw_root) / local[b]).stat().st_size,
                      stored_gzip=False) for b in bodies[:ATTEST_BODIES]]
-    out = subprocess.run([sys.executable, '-I', '-c', ATTEST, json.dumps(paths), json.dumps(dict(parser=parser, payloads=payloads))],
-        check=True, capture_output=True, text=True, cwd=tree).stdout
-    result = json.loads(out.strip().splitlines()[-1])
+    done = subprocess.run([sys.executable, '-I', '-c', ATTEST, json.dumps(paths), json.dumps(dict(parser=parser, payloads=payloads))],
+        capture_output=True, text=True, cwd=tree)
+    if done.returncode:
+        raise ValueError('Lock-only attestation failed in the committed tree: ' + done.stderr[-2000:])
+    result = json.loads(done.stdout.strip().splitlines()[-1])
     old_pins, new_pins = _locked(old_lock), _locked(root / 'uv.lock')
     changed = sorted(n for n in set(old_pins) | set(new_pins) if old_pins.get(n) != new_pins.get(n))
     touched = sorted(set(changed) & set(result['loaded']))
