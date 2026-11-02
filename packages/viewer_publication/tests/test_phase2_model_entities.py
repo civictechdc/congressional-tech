@@ -1453,7 +1453,7 @@ def test_entity_record_version_selection_and_completeness_admission(tmp_path):
     )
 
 
-def _resolved_meetings(tmp_path, records, pins=()):
+def _resolved_meetings(tmp_path, records, pins=(), conflicts=()):
     """Run only the maintained meeting SQL over stated records, with no capture history."""
     from congress_api.retention.provenance import json_input, run_job
     from docspec_client.client import NativeDatasets
@@ -1462,14 +1462,16 @@ def _resolved_meetings(tmp_path, records, pins=()):
     inputs = [json_input(tmp_path, 'meeting_records_input', _normalize_meeting_rows(records, 'v'), **MEETING_RECORD_FIELDS),
         json_input(tmp_path, 'parser_versions', list(pins), parser='Utf8', version='Utf8'),
         json_input(tmp_path, 'meeting_sources', [dict(kind='meeting', source='house_xml', priority=1), dict(kind='meeting', source='congress_gov', priority=2)], kind='Utf8', source='Utf8', priority='Int64'),
-        json_input(tmp_path, 'recording_sources', [], kind='Utf8', pattern='Utf8', key_template='Utf8')]
+        json_input(tmp_path, 'recording_sources', [], kind='Utf8', pattern='Utf8', key_template='Utf8'),
+        json_input(tmp_path, 'meeting_status_conflicts', [dict(event_id=e, publisher_status='Canceled', evidence='read') for e in conflicts],
+            event_id='Int64', publisher_status='Utf8', evidence='Utf8')]
     captures = """SELECT arrow_cast(NULL,'FixedSizeBinary(32)') AS sha256,cast(NULL AS VARCHAR) AS retrieved_at,cast(NULL AS VARCHAR) AS mode,
         cast(NULL AS BOOLEAN) AS complete,cast(NULL AS VARCHAR) AS outcome,cast(NULL AS INT) AS http_status WHERE false"""
     result = run_job(tmp_path, engine, inputs=inputs, outputs=[],
         steps=[dict(name='captures', sql=captures), selected_record_step('meeting_records', 'meeting_records_input'), *meeting_steps()],
         queries=[dict(name='rows', sql=f"""SELECT event_id,congress,congress_gov_updated,house_xml_updated,congress_gov_meeting_type,
             sittings[1]['start'] AS s_start,sittings[1]['end'] AS s_end,sittings[1]['place'] AS place,sittings[1]['room'] AS room,
-            coalesce(array_length(sittings),0) AS sitting_count FROM meetings_resolved ORDER BY event_id""")])
+            coalesce(array_length(sittings),0) AS sitting_count,status,not_held FROM meetings_resolved ORDER BY event_id""")])
     return result['rows']
 
 
@@ -1491,6 +1493,12 @@ def test_congress_gov_leads_and_house_fills_only_what_it_lacks(tmp_path):
     assert rows[0]['place'] == '1300, Longworth House Office Building, DC 20515'  # Only House states the address.
     assert rows[0]['house_xml_updated'] == '2019-11-10T08:00:00' and rows[0]['congress_gov_meeting_type'] == 'Hearing'
     assert str(rows[0]['congress_gov_updated']).startswith('2019-11-11T00:00:00')
+
+
+@pytest.mark.parametrize('conflicts,expected', [((), True), ((100,), False)])
+def test_a_curated_status_conflict_keeps_the_publisher_status_but_the_meeting_sat(tmp_path, conflicts, expected):
+    rows = _resolved_meetings(tmp_path, [_record('22', 'congress_gov', status='Canceled', not_held=True, title='Water resources development acts review')], conflicts=conflicts)
+    assert (rows[0]['status'], rows[0]['not_held']) == ('Canceled', expected)
 
 
 def test_field_hearing_place_comes_from_the_house_record(tmp_path):
