@@ -2,7 +2,7 @@
 id: ct-zpbl
 status: open
 deps: []
-links: [ct-deh9]
+links: [ct-deh9, ct-xt19]
 created: 2026-11-02T17:45:21Z
 type: feature
 priority: 1

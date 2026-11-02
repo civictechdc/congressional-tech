@@ -26,10 +26,18 @@ Use one small shared validator against existing published column types. Validate
 
 Use the canonical validated value consistently for record selection, filters and cursor binding. After exact validation, use the stored primary key for related-document lookup. A rounded database match cannot establish valid identity. Reuse maintained validation and existing query paths; avoid a separate SQL parser, type system or identity registry. This fix requires an application release, not republished Parquet.
 
+In addition (from chaos test run `chaos-mcp-20261101T200453Z`, `CT-CHAOS-103` & `CT-CHAOS-104a`), extend the same input validation and canonicalization boundary across `Page`, `SqlQuery`, `DocumentSearch`, and `DocumentQuery`:
+1. Validate `Page.limit`, `SqlQuery.limit`, and `DocumentSearch.congress` through `exact_scalar(..., 'INTEGER', ...)` so booleans (`congress=True`, `limit=True`) and floats are rejected instead of silently coerced to `1` by Pydantic.
+2. Accept `DocumentSearch.meeting_key: StrictStr | StrictInt | None = None` and normalize it via `str(exact_scalar(v, 'BIGINT', 'meeting_key'))` so both `meeting_key=118300` and `meeting_key="0118300"` match `"118300"` in `list.meeting_keys`.
+3. Normalize `DocumentQuery.link_key` to lowercase hex in its model validator so uppercase hex (`"6EA8C1FAD7D36439"`) matches the lowercase `link_key` stored in pagination cursors for `section="sources"` / `"recoveries"`.
+4. Canonicalize case on published string identifier keys across `DocumentSearch`, `get_entity`, and `search_entities`: lowercase for `committee_key`/`system_code`, `measure_key`/`bill_id`/`nomination_id`, and `witness_key`; uppercase leading letter + digits for `bioguide_id` (e.g. `"j000289"` -> `"J000289"`).
+
 ## Acceptance Criteria
 
-- Fractional and decimal integer inputs such as "118299.9", "118.9" and "118300.0", scientific notation, booleans and out-of-range integers return actionable validation errors before lookup. Exercise the actual MCP/Pydantic input boundary as well as the reader.
-- Integer 118300 and strings "118300", "0118300" and "118300 " return the same record and related-document set. Accepted spellings use the same canonical value for query and cursor binding.
+- Fractional and decimal integer inputs such as "118299.9", "118.9" and "118300.0", scientific notation, booleans and out-of-range integers return actionable validation errors before lookup across `get_entity`, `search_entities`, `search_documents` (`congress`, `meeting_key`), and `Page.limit` / `SqlQuery.limit`. Exercise the actual MCP/Pydantic input boundary as well as the reader.
+- Integer 118300 and strings "118300", "0118300" and "118300 " return the same record and related-document set in both `get_entity` and `search_documents(meeting_key=...)`. Accepted spellings use the same canonical value for query and cursor binding.
+- Uppercase `DocumentQuery.link_key` (e.g. `"6EA8C1FAD7D36439"`) pages cleanly through `section="sources"` and `"recoveries"` without raising `"Cursor does not match this query"`.
+- Case-variant string identifiers (`"HSJU00"`, `"j000289"`, `"119-HR-1"`, `"119-PN-11-9"`) resolve identically to their canonical case across `search_documents`, `get_entity`, and `search_entities`.
 - Cover get_entity and search_entities, including meeting event_id and roster congress. Preserve textual identifiers, absent-entity errors and pagination behavior.
 - Add a compact regression fixture with a known numeric entity and related documents. Replay retained event 118300 when available: accepted forms return the same 38 visible rows; rejection never looks like an empty successful search.
 - Run the existing explorer-mcp test lane in its independent environment and actual stdio regressions. Prove these behaviors before release preparation; record source/package identities and distinguish local completion from release delivery.
@@ -43,3 +51,7 @@ Implemented locally in models.py and reader.py: strict input unions prevent Pyda
 Verification: 85 MCP tests passed in the independent DuckDB 2 environment, including actual stdio and native-release integration. A 30-call retained-release replay returned the same 38 documents for accepted spellings of meeting 118300, continued pagination across spellings, and rejected malformed IDs and roster filters. Release: 0db23484fe86c7f5a5e50e44f078ec34e74e793873b26c4a15f0b9e9efa17b69. See apps/explorer_mcp/VERIFICATION.md and local .cache/mcp-ticket-fixes-20261030/retained-replay-result.json for source hashes and evidence.
 
 Local implementation and verification are complete. Application packaging/distribution remains pending; the editable version still reports 0.4.0. Ticket remains open for delivery; no public pointer or retained release selection changed.
+
+**2026-11-02T19:50:59Z**
+
+Expanded scope from chaos test run chaos-mcp-20261101T200453Z (CT-CHAOS-103 & CT-CHAOS-104a): also cover DocumentSearch.congress and Page.limit / SqlQuery.limit boolean/float rejection, DocumentSearch.meeting_key integer/zero-padded normalization, DocumentQuery.link_key lowercase canonicalization before cursor binding, and case-insensitive normalization for published string identifier keys (committee_key/system_code, bioguide_id, measure_key/bill_id/nomination_id, witness_key).
