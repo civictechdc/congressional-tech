@@ -31,3 +31,7 @@ Owner decision 2026-11-02: after the fixed release, publish nightly without a pe
 **2026-11-02T18:17:49Z**
 
 2026-11-02 spec-run: the selective job's D2 stopped after 8 s with all 67,565 reads pending and no location (peak 1.65 GiB). archive_selective._daily writes an empty body inventory, points local_root at a directory that doesn't exist, and passes the raw store only for unreadable decisions. Any non-empty D2 work therefore never reads bodies, which would hit nightly production runs as well as local ones. impl-e2 is fixing it first, as one body-source binding (local mirror or R2) through readings' existing remote/body_store path, with fail-first tests that read non-empty work; then the r4-u2 rebase.
+
+**2026-11-02T18:44:42Z**
+
+2026-11-02 causes dry run: the model's measured 14-17.5 GiB peak (before fix 1 and the engine spill fix) doesn't fit the ubuntu-24.04 hosted runner (16 GB RAM), and the model materializes about 38 GB with spills up to 53.4 GB (profile_completeness capture_dup, being fixed upstream by engine-spill) against runner disk. A daily publish spec can't pass gate 5 until ct-ud0b's daily producer records exist. This release runs on the Mac (owner decision), so it isn't blocked; nightly hosted publishing is. Owner decision on runner capacity (larger hosted runner vs self-hosted vs further cuts) once fix 1 and the spill fix are measured.
