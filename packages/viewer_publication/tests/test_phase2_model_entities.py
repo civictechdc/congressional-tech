@@ -701,8 +701,12 @@ def test_phase2_entities_meetings_witnesses_recordings_and_spicy_projections(tmp
     assert m['sittings'][0]['place'] == '1300, LHOB, Washington, DC'
     assert m['committees'] == [{'system_code': 'hsag00', 'role': 'primary'}]
     assert m['subject_keys'] == ['118-hr-1234', '118-pn-123']
-    assert len(m['transcripts']) == 1
-    assert m['transcripts'][0]['package_id'] == 'CHRG-118hhrg55555'
+    # The print first, then the recording's two complete caption tracks (ct-1i4q).
+    assert [(t['source'], t['package_id'], t['video_key'], t['production']) for t in m['transcripts']] == [
+        ('printed_hearing', 'CHRG-118hhrg55555', None, None),
+        ('captions', None, 'youtube:dQw4w9WgXcQ', 'asr'),
+        ('captions', None, 'youtube:dQw4w9WgXcQ', 'caption'),
+    ]
     assert m['transcripts'][0]['formats'] == ['pdf', 'html']
     assert [v['video_key'] for v in m['videos']] == ['youtube:dQw4w9WgXcQ', 'senate:ag051023']
 
