@@ -111,7 +111,7 @@ def write_empty_body_inventory(path):
     import pyarrow.parquet as pq
     path=Path(path);path.parent.mkdir(parents=True,exist_ok=True)
     schema=pa.schema([('body_sha',pa.binary(32)),('physical_key',pa.string()),('relative_path',pa.string()),
-        ('stored_bytes',pa.int64()),('stored_gzip',pa.bool_())])
+        ('stored_bytes',pa.int64())])
     pq.write_table(pa.Table.from_pylist([],schema=schema),path)
 
 

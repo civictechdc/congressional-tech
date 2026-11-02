@@ -117,7 +117,7 @@ def retained_model(tmp_path):
             parquet_output(inventory,'bodies',"""SELECT DISTINCT sha256 AS body_sha,
             'bodies/sha256/'||substr(encode(sha256,'hex'),1,2)||'/'||encode(sha256,'hex')||stored_suffix AS physical_key,
             'bodies/sha256/'||substr(encode(sha256,'hex'),1,2)||'/'||encode(sha256,'hex')||stored_suffix AS relative_path,
-            max(stored_bytes) AS stored_bytes,stored_suffix='.gz' AS stored_gzip FROM captures WHERE sha256 IS NOT NULL GROUP BY sha256,stored_suffix""",['body_sha','physical_key'])])
+            max(stored_bytes) AS stored_bytes FROM captures WHERE sha256 IS NOT NULL GROUP BY sha256,stored_suffix""",['body_sha','physical_key'])])
         pages=readings.stage_once(captures=captures,body_inventory=inventory/'bodies.parquet',local_root=raw,
             engine=engine,work=work/'reading-stage',decided_at=STAMP)
         names=filenames.stage(captures=captures,recovery_files=recovery_files,

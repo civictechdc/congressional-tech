@@ -15,15 +15,17 @@ PAGES = [b'<html><body><p>' + f'Evidence {i} '.encode() * 400 + b'</p><a href="r
 
 
 def mirror(tmp_path):
-    """Three html bodies, one stored gzip, and captures with the lake's primary key."""
+    """Three html bodies, two stored gzip (one suffixless), and captures with the lake's primary key."""
     raw = tmp_path / 'raw'
     rows = []
     for i, body in enumerate(PAGES):
         digest = hashlib.sha256(body).hexdigest()
+        # Body 0 is gzip storage under a '.gz' key, body 1 gzip storage under a suffixless key
+        # (an R2 Content-Encoding: gzip object), body 2 plain: the reader tells them apart by hash.
         suffix = '.gz' if i == 0 else ''
         path = raw / 'bodies/sha256' / digest[:2] / (digest + suffix)
         path.parent.mkdir(parents=True, exist_ok=True)
-        path.write_bytes(gzip.compress(body, mtime=0) if suffix else body)
+        path.write_bytes(gzip.compress(body, mtime=0) if i < 2 else body)
         rows.append(dict(receipt_key='r', receipt_line=i + 1, capture_index=0, sha256=bytes.fromhex(digest), bytes=len(body),
             media_type='text/html', fidelity='exact-bytes', sniffed_format='html', sniff_version='x', intact=None,
             stored_suffix=suffix, stored_bytes=path.stat().st_size))

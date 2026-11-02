@@ -226,13 +226,11 @@ def native_fixture(tmp_path,count=1,*,payloads=None,url_prefix='https://docs.hou
         files.append(dict(key=key,path=str(root/key),qualification=qualifications[key]))
         capture=line['captures'][0];physical='bodies/sha256/'+digest[:2]+'/'+digest+capture['stored_suffix']
         # Canonical gzip bodies have no suffix. Inventory records byte facts.
-        with (root/physical).open('rb') as stored:stored_gzip=stored.read(2)==b'\x1f\x8b'
         inventory.append(dict(body_sha=bytes.fromhex(digest),physical_key=physical,relative_path=physical,
-            stored_bytes=capture['stored_bytes'],stored_gzip=stored_gzip))
+            stored_bytes=capture['stored_bytes']))
     value=spec(tmp_path);value['receipt_inventory']=files
     pq.write_table(pa.Table.from_pylist(inventory,schema=pa.schema([('body_sha',pa.binary(32)),
-        ('physical_key',pa.string()),('relative_path',pa.string()),('stored_bytes',pa.int64()),
-        ('stored_gzip',pa.bool_())])),value['body_inventory'])
+        ('physical_key',pa.string()),('relative_path',pa.string()),('stored_bytes',pa.int64())])),value['body_inventory'])
     schema=json.loads((Path(__file__).resolve().parents[3]/'model/lake/captures.schema.json').read_text())
     tables.create_table(engine=engine,work=tmp_path/'create-captures',catalog_root=value['catalog_root'],
         table=TABLES['captures'],schema=schema,location=tmp_path/'lake-captures',create_namespace=True)

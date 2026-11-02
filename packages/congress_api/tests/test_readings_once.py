@@ -44,7 +44,7 @@ def run(payload):
 ''')
     if retry:wrapper.with_suffix('.retry').touch()
     versions={p:readings.current_version(p) for p in ['sniff','html','xml','json']}
-    payload=json.dumps(dict(path=str(source),body_sha=hashlib.sha256(body).hexdigest(),cache=str(tmp_path/'bytes'),stored_bytes=len(stored),stored_gzip=stored_gzip,
+    payload=json.dumps(dict(path=str(source),body_sha=hashlib.sha256(body).hexdigest(),cache=str(tmp_path/'bytes'),stored_bytes=len(stored),
         versions=versions,known_format=None,skip_parsers=[])).encode()
     with ParserWorker('readings','fixture',str(wrapper)+':run',timeout_seconds=15,memory_bytes=512<<20,max_input_bytes=65536) as worker:
         outcome=worker.parse('body',payload)
@@ -68,8 +68,8 @@ def test_native_once_worklist_reuses_writer_facts_and_parses_duplicate_body_once
     pq.write_table(pa.Table.from_pylist([dict(sha256=digest,bytes=len(body),media_type='application/pdf',fidelity='exact-bytes')]*2+
         [dict(sha256=caption,bytes=100,media_type='text/vtt',fidelity='saved-text')],schema=schema),captures)
     inventory=tmp_path/'inventory.parquet'
-    pq.write_table(pa.Table.from_pylist([dict(body_sha=digest,physical_key=key,relative_path=key,stored_bytes=len(body),stored_gzip=False)],
-        schema=pa.schema([('body_sha',pa.binary(32)),('physical_key',pa.string()),('relative_path',pa.string()),('stored_bytes',pa.int64()),('stored_gzip',pa.bool_())])),inventory)
+    pq.write_table(pa.Table.from_pylist([dict(body_sha=digest,physical_key=key,relative_path=key,stored_bytes=len(body))],
+        schema=pa.schema([('body_sha',pa.binary(32)),('physical_key',pa.string()),('relative_path',pa.string()),('stored_bytes',pa.int64())])),inventory)
     result=stage_once(captures=captures,body_inventory=inventory,local_root=raw,work=tmp_path/'stage',
         decided_at='2026-10-27T12:00:00Z',engine=NativeDatasets.from_config(os.environ['DOCSPEC_JOB_CONFIG']))
     assert pq.ParquetFile(result['work_list']).metadata.num_rows==1
@@ -94,9 +94,9 @@ def _review_inputs(tmp_path,*,available=True,metadata=None):
     values=metadata or [dict(bytes=len(body),media_type='text/html',fidelity='exact-bytes')]
     pq.write_table(pa.Table.from_pylist([dict(sha256=digest,**row) for row in values],schema=schema),captures)
     inventory=tmp_path/'inventory.parquet'
-    items=[dict(body_sha=digest,physical_key=key,relative_path=key,stored_bytes=len(body),stored_gzip=False)] if available else []
+    items=[dict(body_sha=digest,physical_key=key,relative_path=key,stored_bytes=len(body))] if available else []
     pq.write_table(pa.Table.from_pylist(items,schema=pa.schema([('body_sha',pa.binary(32)),('physical_key',pa.string()),
-        ('relative_path',pa.string()),('stored_bytes',pa.int64()),('stored_gzip',pa.bool_())])),inventory)
+        ('relative_path',pa.string()),('stored_bytes',pa.int64())])),inventory)
     return dict(captures=captures,body_inventory=inventory,local_root=raw,
         decided_at='2026-10-27T12:00:00Z',engine=NativeDatasets.from_config(os.environ['DOCSPEC_JOB_CONFIG'])),source,len(body)
 
@@ -238,21 +238,23 @@ def test_combined_plan_settles_bodies_on_registry_covered_older_rows(tmp_path):
     assert readings.plan(**args, parser=None, existing=relabelled, registry=empty, work=tmp_path / 'without')['work_items'] == 1
 
 
-def _bodies_inputs(tmp_path, bodies):
-    """Local inventory and captures for these bodies, stored plain."""
+def _bodies_inputs(tmp_path, bodies, *, gzip_stored=False):
+    """Local inventory and captures for these bodies under suffixless keys, stored plain or gzip
+    (as R2 stores Content-Encoding: gzip objects). The inventory names no encoding."""
     raw = tmp_path / 'raw'
     rows, items = [], []
     for body in bodies:
         digest = hashlib.sha256(body).digest(); key = 'bodies/sha256/' + digest.hex()[:2] + '/' + digest.hex()
-        (raw / key).parent.mkdir(parents=True, exist_ok=True); (raw / key).write_bytes(body)
+        stored = gzip.compress(body, mtime=0) if gzip_stored else body
+        (raw / key).parent.mkdir(parents=True, exist_ok=True); (raw / key).write_bytes(stored)
         rows.append(dict(sha256=digest, bytes=len(body), media_type='application/json', fidelity='exact-bytes'))
-        items.append(dict(body_sha=digest, physical_key=key, relative_path=key, stored_bytes=len(body), stored_gzip=False))
+        items.append(dict(body_sha=digest, physical_key=key, relative_path=key, stored_bytes=len(stored)))
     captures = tmp_path / 'captures.parquet'
     pq.write_table(pa.Table.from_pylist(rows, schema=pa.schema([('sha256', pa.binary(32)), ('bytes', pa.int64()), ('media_type', pa.string()),
         ('fidelity', pa.string()), ('sniffed_format', pa.string()), ('sniff_version', pa.string()), ('intact', pa.bool_())])), captures)
     inventory = tmp_path / 'inventory.parquet'
     pq.write_table(pa.Table.from_pylist(items, schema=pa.schema([('body_sha', pa.binary(32)), ('physical_key', pa.string()),
-        ('relative_path', pa.string()), ('stored_bytes', pa.int64()), ('stored_gzip', pa.bool_())])), inventory)
+        ('relative_path', pa.string()), ('stored_bytes', pa.int64())])), inventory)
     return dict(captures=captures, body_inventory=inventory, local_root=raw, decided_at='2026-11-02T00:00:00Z',
         engine=NativeDatasets.from_config(os.environ['DOCSPEC_JOB_CONFIG']))
 
@@ -275,3 +277,31 @@ def test_large_page_bodies_get_the_same_reading_on_every_re_read(tmp_path):
     rows, reasons = outcomes[0]
     assert reasons == [(hashlib.sha256(over).hexdigest(), 'memory_limit')]
     assert any('"parser": "json"' in row and '"status": "completed"' in row for row in rows)
+
+
+def test_a_suffixless_gzip_stored_json_body_is_sniffed_and_read_by_its_hash(tmp_path):
+    # Owner decision: 187 json and 24 bundle bodies are gzip objects under suffixless keys. A
+    # suffix (or inventory flag) rule sniffed them as 'other' and left json unread.
+    body = json.dumps(dict(title='Hearing', url='https://example.test/a.pdf')).encode()
+    staged = readings.stage_once(**_bodies_inputs(tmp_path, [body], gzip_stored=True), work=tmp_path / 'stage')
+    rows = {row['parser']: row for row in pq.read_table(staged['readings']).to_pylist()}
+    assert rows['sniff']['format'] == 'json' and rows['json']['status'] == 'completed'
+
+
+def test_the_single_parser_reader_uses_the_same_hash_rule(tmp_path):
+    body = json.dumps(dict(title='Hearing')).encode()
+    args = _bodies_inputs(tmp_path, [body], gzip_stored=True)
+    staged = readings.stage(**args, work=tmp_path / 'sniff', parser='sniff')
+    assert [row['format'] for row in pq.read_table(staged['readings']).to_pylist()] == ['json']
+
+
+def test_bytes_that_hash_to_neither_form_are_a_mismatch():
+    import io
+    body = b'{"a": 1}'
+    with pytest.raises(OSError, match='decoded_sha_mismatch'):
+        readings._storage_gzip(io.BytesIO(gzip.compress(b'other', mtime=0)), hashlib.sha256(body).hexdigest(),
+                               raw_io=__import__('contextlib').nullcontext)
+    # A literal gzip body (a .gz download) stored plain is plain storage: its own bytes hash to it.
+    literal = gzip.compress(body, mtime=0)
+    assert readings._storage_gzip(io.BytesIO(literal), hashlib.sha256(literal).hexdigest(),
+                                  raw_io=__import__('contextlib').nullcontext) is False

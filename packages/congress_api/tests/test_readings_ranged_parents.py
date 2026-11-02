@@ -21,9 +21,10 @@ def test_fetched_parent_format_custody_and_disjoint_full_page_read(tmp_path,expe
     assert len(stored)==expected['stored_bytes'] and hashlib.md5(stored).hexdigest()==expected['stored_md5']
     entity=gzip.decompress(stored)
     assert hashlib.sha256(entity).hexdigest()==expected['sha256']
-    client=Client(stored);store=R2Store(client,'bucket')
+    # The parent objects carry Content-Encoding: gzip; that header, not the '.gz' key, decides.
+    client=Client(stored,'gzip');store=R2Store(client,'bucket')
     with phase(tmp_path):
-        result=parse_once_payload(payload(tmp_path,entity,stored,suffix='.gz',stored_gzip=True),body_store=store)
+        result=parse_once_payload(payload(tmp_path,entity,stored,suffix='.gz'),body_store=store)
     assert [(r['parser'],r['status']) for r in result['rows']]==[('sniff','completed'),('html','completed')]
     assert result['rows'][0]['format']==expected['format'] and result['read_bytes']==len(stored)
     intervals=sorted(tuple(map(int,r['Range'][6:].split('-'))) for r in client.reads)

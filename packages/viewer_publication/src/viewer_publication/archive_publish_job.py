@@ -103,17 +103,8 @@ def produce_daily_inputs(template,daily,*,engine,raw_store):
         for kind in ['recoveries','reviews','unreadable']})
     body_inv_path=Path(selected['body_inventory'])
     if not body_inv_path.exists():
-        import pyarrow as pa
-        import pyarrow.parquet as pq
-        body_inv_path.parent.mkdir(parents=True,exist_ok=True)
-        empty_schema=pa.schema([
-            ('body_sha',pa.binary(32)),
-            ('physical_key',pa.string()),
-            ('relative_path',pa.string()),
-            ('stored_bytes',pa.int64()),
-            ('stored_gzip',pa.bool_()),
-        ])
-        pq.write_table(pa.Table.from_pylist([],schema=empty_schema),body_inv_path)
+        from viewer_publication.archive_backfill_job import write_empty_body_inventory
+        write_empty_body_inventory(body_inv_path)
     production=produce_daily(selected,engine=engine,raw_store=raw_store)
     summary={key:production.get(key) for key in ['status','pins','receipt_keys','new_receipt_keys','currentversions']}
     with (work/'daily-summary.json').open('x') as target:json.dump(summary,target,sort_keys=True)

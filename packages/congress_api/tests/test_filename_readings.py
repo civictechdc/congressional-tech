@@ -675,7 +675,7 @@ def test_repaired_bill_filename_dates_publish(tmp_path):
             """SELECT DISTINCT sha256 AS body_sha,
             'bodies/sha256/'||substr(encode(sha256,'hex'),1,2)||'/'||encode(sha256,'hex')||stored_suffix AS physical_key,
             'bodies/sha256/'||substr(encode(sha256,'hex'),1,2)||'/'||encode(sha256,'hex')||stored_suffix AS relative_path,
-            stored_bytes,stored_suffix='.gz' AS stored_gzip FROM captures WHERE sha256 IS NOT NULL""",
+            stored_bytes FROM captures WHERE sha256 IS NOT NULL""",
             ['body_sha'],
         )],
     )
