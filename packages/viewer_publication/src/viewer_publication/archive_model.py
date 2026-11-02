@@ -431,17 +431,21 @@ def evidence_steps(*,root=ROOT):
         'good-archive-containers','good-fetches','good-fetch-keys','capture-locators','body-signals','locator-signals','placeholders','archive-bodies','record-roles',
         'page-contexts','link-inputs']
     # good_fetches is a filter over retained capture_evidence; a second copy costs 1.3 GB of scratch.
-    return [writer_admission_step(root=root)]+[dict(name=name.replace('-','_'),sql=(Path(root)/'model/sql'/(name+'.sql')).read_text(),materialize=name!='good-fetches')
+    steps=[writer_admission_step(root=root)]+[dict(name=name.replace('-','_'),sql=(Path(root)/'model/sql'/(name+'.sql')).read_text(),materialize=name!='good-fetches')
         for name in names]
+    # A good fetch is a document response: 2xx other than 202 with a non-empty body. Counted
+    # once beside good_fetches so the late invariant report does not keep it alive.
+    steps.insert(names.index('good-fetches')+2,dict(name='non_document_good_fetches',materialize=True,
+        sql=f'''SELECT count(*) AS n FROM good_fetches WHERE (sha256 IS NOT NULL
+            AND (bytes=0 OR encode(sha256,'hex')='{EMPTY_SHA256}')) OR NOT {document_status_sql('http_status')}'''))
+    return steps
 
 
 def evidence_checks():
     """Expose current prefix checks for admission and the full invariant report."""
     from congress_api.lake.readings import writer_admission_conflict_sql
     return dict(
-        # A good fetch is a document response: 2xx other than 202 with a non-empty body.
-        non_document_good_fetches=f'''(SELECT count(*) FROM good_fetches WHERE (sha256 IS NOT NULL
-            AND (bytes=0 OR encode(sha256,'hex')='{EMPTY_SHA256}')) OR NOT {document_status_sql('http_status')})''',
+        non_document_good_fetches='(SELECT n FROM non_document_good_fetches)',
         conflicting_writer_formats='(SELECT n FROM ('+writer_admission_conflict_sql()+') writer_conflicts)',
         conflicting_sniffs='(SELECT count(*) FROM sniff_conflicts)',
         conflicting_original_sizes='(SELECT count(*) FROM (SELECT sha256 FROM captures WHERE sha256 IS NOT NULL GROUP BY sha256 HAVING count(DISTINCT bytes)>1))',
