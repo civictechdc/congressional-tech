@@ -104,3 +104,7 @@ Owner decision 2026-11-02: runner fixes (r4-rca: refuse another checkout's code 
 **2026-11-02T18:21:40Z**
 
 2026-11-02 r4-rca-rel 77ebb23f (both green-rca fixes in: prune-worktree treats build/dist/target/.astro as disposable only at packages/<name>/ or apps/<name>/; watchdog entries match on PID plus start time; lint searches subdirectories): full lane 11,064 passed, only the two expected pin tests failing; 'production-offline (full lane): exit 1', peak 3.62 GiB, 28:35. On release-train.
+
+**2026-11-02T18:29:11Z**
+
+2026-11-02 lead RCA: train's first full lane on release-train exited 143 at 49% (13:27:10), killed by impl-f's `pkill -f "scripts/dev.py test production-offline$"`, which matches every agent's full lane. spec-run and impl-model also stop jobs with pattern kills (pkill -f on run_release.py, chain.sh, 'guard.py --rss-gb 16 .*archive_backfill_job'). Cause: on a shared machine where agents run identical commands, a pattern is not an identity. Rule added to the agent brief: stop only the PID you started (signalling the guard takes down its child group). Follow-up: have the guard print its PID at start, so agents can record it.
