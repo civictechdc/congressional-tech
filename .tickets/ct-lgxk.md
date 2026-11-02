@@ -32,3 +32,7 @@ Round 1b 2026-11-02 (lead): The ZIP rule would put 'ZIP' back on about 34k membe
 **2026-11-02T14:16:11Z**
 
 2026-11-02 impl-g (r1b-g): link-word titles 11,047 to 0 on the Run B slice; a recovery-only title test was added (it fails on base SQL).
+
+**2026-11-02T14:46:01Z**
+
+2026-11-02 green-g (request changes): link-word titles still miss a format word plus a size ('Download XML (6KB)': 611 live; 'PDF (48.1 MB)' in Run B), and the generic_titles check reuses the same list. Needs a format-only rule and an independent check. Also a wrong title from a 'Skip to Content' grouping link.

@@ -48,3 +48,7 @@ Round 1b 2026-11-02 (lead): HTTP 206 set: 6 ZIPs plus CRPT-118hrpt372-pt2.pdf, a
 **2026-11-02T14:24:04Z**
 
 2026-11-02 red-e1 correction: besides the 7 complete GovInfo 206 ranges, 3 senate/players partial 206 samples (content_range bytes 0-4095 of 11,023,192, 793,172 and 466,992; bounded_bytes_only) became good fetches on r1b-e1. Rule: a 206 counts as a complete document only when content_range covers the whole size (impl-e1).
+
+**2026-11-02T14:46:01Z**
+
+2026-11-02 green-g (request changes): CHRG-119hhrg64404 is one document (the PDF with the latest HTML copy b14d49d9; all 5 link keys resolve). All 7 HTTP 206 bodies confirmed complete from raw. 5e9b5643 waits on e1's capture fix.

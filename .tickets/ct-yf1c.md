@@ -32,3 +32,7 @@ Round 1b 2026-11-02 (lead): 1,446 Files.Serve PDFs have no name in the URL or he
 **2026-11-02T14:16:11Z**
 
 2026-11-02 impl-g (r1b-g): the 502 missing_filenames predate this round. They are retained-import originals the filename producer never read: the model's recovery candidates include undecided imports (71cf2b2d), while the producer read decision files only (7c0eb08a). All 513 receipt lines were read. Fix a8019f6d: the producer also names undecided imports (+502 readings; catalog version unchanged). 89285289: every blank filename carries a recorded reason or the release refuses. Run B reasons: 1,492 query URLs, 3 bare hosts, 1 no address.
+
+**2026-11-02T14:46:01Z**
+
+2026-11-02 green-g (request changes): 1,444 of 1,496 blank filenames are named in raw by the redirect's final URL or Content-Disposition; captures.py:281 (fdb9242c) prefers record.url over final_url. impl-e1 keeps the final URL; impl-g derives names from it and h_content_disposition; the 'query URL' reason only checked for '?'. Also an undocumented saved-file ranking change moved 196 GovInfo PDFs to congress.gov filenames: justify from §7.5 or revert.
