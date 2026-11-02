@@ -159,6 +159,14 @@ def _bound_page_parse(data):
         raise MemoryError('decoded page body exceeds the parse bound')
 
 
+def _lake_reading_columns():
+    """The one conversion from parser rows (_reading_fields) to the lake readings columns."""
+    return ','.join(["arrow_cast(decode(body_hex,'hex'),'FixedSizeBinary(32)') AS body_sha",
+        *[f'cast({name} AS DATE) AS {name}' if name=='content_date' else name for name in STRINGS],
+        *INTEGERS,'intact','named_meetings','links',
+        "arrow_cast(decode(fingerprint_hex,'hex'),'FixedSizeBinary(32)') AS fingerprint",'fields'])
+
+
 def _reading_fields():
     result={name:'Utf8' for name in (*STRINGS,'body_hex','fingerprint_hex')}
     result.update({name:'Int32' for name in INTEGERS})
@@ -166,6 +174,9 @@ def _reading_fields():
         links=list_of(struct(**{name:'Utf8' for name in LINK_FIELDS})),
         fields=list_of(struct(field='Utf8',value='Utf8')))
     return result
+
+
+_LAKE_READING_COLUMNS=_lake_reading_columns()
 
 
 def worker_limits():
@@ -233,18 +244,25 @@ def _positive(value,name):
 
 def plan(*,captures,body_inventory,local_root,engine,work,decided_at,parser,
          sniff_version=None,parser_version=None,existing=None,unreadable_files=(),max_work_items=None,raw_ranges=False,
-         body_listing=None,registry=None):
+         body_listing=None,registry=None,captured_copies=False):
     """Materialize one native missing-body work list, without opening raw bodies.
 
     Existing rows count through the one readings selection, so rows at a registry-covered
     older version settle their bodies. `registry` names another registry file (tests only).
+    Body copies come from a pinned inventory, a complete listing, or (`captured_copies`) the
+    copy each capture recorded: its physical key, stored size and MD5, one per body by suffix
+    priority. The last is the binding for a run that reads the raw store it was given, local
+    or R2 (ranged, conditional on the recorded pins), with no separate inventory.
     """
     from congress_api.lake import compatible_versions
     if max_work_items is not None:_positive(max_work_items,'max_work_items')
     if type(raw_ranges) is not bool:raise ValueError('raw_ranges must be an explicit boolean')
     if body_listing is not None and not raw_ranges:raise ValueError('Body listing requires ranged reads')
-    direct_listing=body_inventory is None
-    if direct_listing and body_listing is None:raise ValueError('A selected inventory or complete body listing is required')
+    if type(captured_copies) is not bool:raise ValueError('captured_copies must be an explicit boolean')
+    if captured_copies and (body_inventory is not None or body_listing is not None):
+        raise ValueError('Captured copies replace an inventory or listing, not both')
+    direct_listing=body_inventory is None and not captured_copies
+    if direct_listing and body_listing is None:raise ValueError('A selected inventory, complete body listing or captured copies is required')
     instant(decided_at)
     combined=parser is None
     versions={p:current_version(p) for p in ['sniff','html','xml','json']}
@@ -268,7 +286,7 @@ def plan(*,captures,body_inventory,local_root,engine,work,decided_at,parser,
             compatible_versions.accepted_versions_input(work,[e for e in entries if e['parser'] in covered+['readings']],
                 pins={**selected,'readings':pins['readings']}),
             table_input('captures',captures)]
-    if not direct_listing:
+    if body_inventory is not None:
         inputs.append(dict(name='body_inventory',kind='parquet',path=str(Path(body_inventory).resolve())))
     if body_listing is not None:
         inputs.append(dict(name='body_listing',kind='parquet',path=str(Path(body_listing).resolve())))
@@ -284,7 +302,7 @@ def plan(*,captures,body_inventory,local_root,engine,work,decided_at,parser,
         empty['name']='existing_json';inputs.append(empty)
     quote=lambda value:"'"+value.replace("'","''")+"'"
     steps=[]
-    if raw_ranges:
+    if raw_ranges or captured_copies:
         steps.append(dict(name='body_storage',sql="""SELECT sha256 AS body_sha,coalesce(stored_suffix,'.gz') AS stored_suffix,
             concat('bodies/sha256/',substr(encode(sha256,'hex'),1,2),'/',encode(sha256,'hex'),
                 coalesce(stored_suffix,'.gz')) AS physical_key,
@@ -295,6 +313,13 @@ def plan(*,captures,body_inventory,local_root,engine,work,decided_at,parser,
                 ends_with(lower(split_part(media_type,';',1)),'+xml') OR
                 ends_with(lower(split_part(media_type,';',1)),'+json')) AS page_hint
             FROM captures WHERE sha256 IS NOT NULL GROUP BY sha256,coalesce(stored_suffix,'.gz')""",materialize=True))
+    if captured_copies:
+        # The recorded copy, by suffix priority; a body whose captures pin no stored size has
+        # no usable copy and stays pending (named in raw custody), never guessed.
+        steps.append(dict(name='body_inventory',sql='''SELECT body_sha,physical_key,physical_key AS relative_path,
+            captured_stored_bytes AS stored_bytes FROM (SELECT *,row_number() OVER (PARTITION BY body_sha
+                ORDER BY CASE stored_suffix WHEN '' THEN 0 WHEN '.gz' THEN 1 ELSE 2 END) AS choice
+                FROM body_storage WHERE captured_stored_bytes IS NOT NULL) WHERE choice=1''',materialize=True))
     if direct_listing:
         # Choose only capture-recorded copies. Rank before consulting availability;
         # a rejected higher-ranked copy contributes its own fallback reason.
@@ -324,7 +349,10 @@ def plan(*,captures,body_inventory,local_root,engine,work,decided_at,parser,
                 coalesce(f.fallback_conflict,0) AS fallback_conflict,coalesce(f.fallback_pin,0) AS fallback_pin
                 FROM ranked_copies r LEFT JOIN copy_fallbacks f ON r.body_sha=f.body_sha WHERE r.choice=1''',materialize=True)])
     if not existing:
-        steps.append(dict(name='existing',sql='SELECT decode(body_hex,\'hex\') AS body_sha,* FROM existing_json'))
+        # No existing table: an empty relation in the lake readings shape, through the same
+        # conversion staged rows take, so selection SQL (e.g. a recompute set reading
+        # `fingerprint`) sees the columns a real table has.
+        steps.append(dict(name='existing',sql=f'SELECT {_LAKE_READING_COLUMNS} FROM existing_json'))
     steps.extend([
         dict(name='bodies',sql='SELECT DISTINCT sha256 AS body_sha FROM captures WHERE sha256 IS NOT NULL',materialize=True),
         dict(name='readings',sql='SELECT * FROM existing'),
@@ -488,8 +516,9 @@ def _execute_plan(planned,*,engine,worker_factory=ParserWorker,unreadable_store=
         relative=Path(item['relative_path'])
         if relative.is_absolute() or '..' in relative.parts or not relative.parts:
             raise ValueError('Body cache paths must be relative to the read-only root')
-        path=(raw/relative).resolve()
-        if not path.is_relative_to(raw):raise ValueError('Body path escapes read-only root')
+        # Lexical containment: the relative path is validated above and the key below. A raw
+        # mirror's bodies may be symlinks into a content-addressed store outside the root.
+        path=raw/relative
         body_hex=item['body_sha'].hex()
         if body_object_digest(item['physical_key'])!=body_hex:
             raise ValueError('Pinned physical key names a different body')
@@ -616,12 +645,8 @@ def _execute_plan(planned,*,engine,worker_factory=ParserWorker,unreadable_store=
                 for timing in timings or ():
                     key=timing.pop('key');record_timing('prefetch',body_object_digest(key),timing)
     source=json_input(parsed,'parsed_readings',rows(),**_reading_fields())
-    columns=["arrow_cast(decode(body_hex,'hex'),'FixedSizeBinary(32)') AS body_sha",
-             *[f'cast({name} AS DATE) AS {name}' if name=='content_date' else name for name in STRINGS],
-             *INTEGERS,'intact','named_meetings','links',
-             "arrow_cast(decode(fingerprint_hex,'hex'),'FixedSizeBinary(32)') AS fingerprint",'fields']
     run_job(parsed,engine,inputs=[source],steps=[],outputs=[parquet_output(work,'readings',
-        'SELECT '+','.join(columns)+' FROM parsed_readings',PK)])
+        f'SELECT {_LAKE_READING_COLUMNS} FROM parsed_readings',PK)])
     key=path=unreadable_stage=unreadable_provenance=unreadable_custody=None
     pending=bool(counters['unreadable'] and unreadable_store is None)
     if counters['unreadable']:

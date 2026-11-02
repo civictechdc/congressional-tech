@@ -35,8 +35,6 @@
     }
   },
   "receipt_inventory": [],
-  "body_inventory": "../../output/archive-daily-inputs/body-inventory.parquet",
-  "local_root": "../../output/archive-daily-inputs/raw",
   "max_work_items": 5000,
   "provenance": {
     "recoveries": [],

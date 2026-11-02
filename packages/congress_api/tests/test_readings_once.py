@@ -305,3 +305,15 @@ def test_bytes_that_hash_to_neither_form_are_a_mismatch():
     literal = gzip.compress(body, mtime=0)
     assert readings._storage_gzip(io.BytesIO(literal), hashlib.sha256(literal).hexdigest(),
                                   raw_io=__import__('contextlib').nullcontext) is False
+
+
+def test_registry_selection_runs_with_no_existing_readings(tmp_path, monkeypatch):
+    # A first run has no readings table. The empty stand-in must have the lake columns, since
+    # a recompute set reads them (html's re-read set reads `fingerprint`). Defect guarded: a
+    # hand-built empty relation with `fingerprint_hex` failed "No field named fingerprint".
+    import congress_api.parsers.archive_readings as reader
+    monkeypatch.setattr(reader, 'HTML_REREAD_SQL', 'SELECT body_sha FROM {readings} WHERE fingerprint IS NULL', raising=False)
+    entry = compatible_entry('html', 'html-old', readings.current_version('html'))
+    registry = fixture_registry(tmp_path / 'registry.json', [entry])
+    args, _, _ = _review_inputs(tmp_path)
+    assert readings.plan(**args, parser=None, existing=None, registry=registry, work=tmp_path / 'plan')['work_items'] == 1

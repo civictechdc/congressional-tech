@@ -101,10 +101,10 @@ def produce_daily_inputs(template,daily,*,engine,raw_store):
     records=snapshot.qualify([key for key in full if provenance_record_kind(key) is not None])
     selected=dict(daily,provenance={kind:[row for row in records if provenance_record_kind(row['key'])==kind]
         for kind in ['recoveries','reviews','unreadable']})
-    body_inv_path=Path(selected['body_inventory'])
-    if not body_inv_path.exists():
-        from viewer_publication.archive_backfill_job import write_empty_body_inventory
-        write_empty_body_inventory(body_inv_path)
+    # Bodies are read from raw_store itself unless the spec pins an inventory; an empty
+    # inventory made every new body a pending read, so daily publication never got past readings.
+    if selected.get('body_inventory') is not None and not Path(selected['body_inventory']).exists():
+        raise ValueError('The pinned daily body inventory is absent: '+str(selected['body_inventory']))
     production=produce_daily(selected,engine=engine,raw_store=raw_store)
     summary={key:production.get(key) for key in ['status','pins','receipt_keys','new_receipt_keys','currentversions']}
     with (work/'daily-summary.json').open('x') as target:json.dump(summary,target,sort_keys=True)

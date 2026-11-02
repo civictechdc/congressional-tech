@@ -124,3 +124,35 @@ def test_headerless_original_gzip_remains_original_after_identity_proof(tmp_path
     with phase(tmp_path):result=readings.parse_once_payload(payload(tmp_path,entity,entity,
         suffix='.gz'),body_store=R2Store(client,'bucket'))
     assert result['rows'][0]['format']=='warc' and result['read_bytes']==len(entity)
+
+
+def test_captured_copies_are_read_through_the_remote_store_without_an_inventory(tmp_path):
+    # The daily raw-store binding in production: no body inventory, each capture's recorded
+    # copy read by range from R2. Defect guarded: an empty inventory left every body pending.
+    import pyarrow as pa
+    import pyarrow.parquet as pq
+    from docspec_client.client import NativeDatasets
+    entity=b'<html><body>'+b'Evidence '*2000+b'</body></html>';stored=gzip.compress(entity,mtime=0)
+    digest=hashlib.sha256(entity).digest()
+    captures=tmp_path/'captures.parquet'
+    pq.write_table(pa.Table.from_pylist([dict(sha256=digest,bytes=len(entity),media_type='text/html',fidelity='exact-bytes',
+        stored_suffix='',stored_bytes=len(stored),stored_md5=hashlib.md5(stored).digest())],schema=pa.schema([
+        ('sha256',pa.binary(32)),('bytes',pa.int64()),('media_type',pa.string()),('fidelity',pa.string()),
+        ('stored_suffix',pa.string()),('stored_bytes',pa.int64()),('stored_md5',pa.binary(16)),
+        ('sniffed_format',pa.string()),('sniff_version',pa.string()),('intact',pa.bool_())])),captures)
+    class PrefetchClient(Client):
+        # A page-hinted body is prefetched whole, as in production.
+        def get_object(self,**kwargs):
+            if 'Range' in kwargs:return super().get_object(**kwargs)
+            self.reads.append(kwargs)
+            return dict(Body=io.BytesIO(self.data),ContentLength=len(self.data),ETag='"'+hashlib.md5(self.data).hexdigest()+'"',
+                ContentEncoding=self.encoding,ResponseMetadata={'HTTPStatusCode':200})
+    client=PrefetchClient(stored,'gzip')
+    store=R2Store(client,'bucket',cache_dir=tmp_path/'stage'/'raw-pages')
+    import os
+    staged=readings.stage_once(captures=captures,body_inventory=None,captured_copies=True,local_root=tmp_path/'stage'/'raw-pages',
+        body_store=store,work=tmp_path/'stage',decided_at='2026-11-02T00:00:00Z',
+        engine=NativeDatasets.from_config(os.environ['DOCSPEC_JOB_CONFIG']))
+    rows={r['parser']:r for r in pq.read_table(staged['readings']).to_pylist()}
+    assert rows['sniff']['format']=='html' and rows['html']['status']=='completed' and staged['pending_reads']==0
+    assert client.reads and client.reads[0]['Key'].endswith(digest.hex())
