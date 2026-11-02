@@ -64,3 +64,20 @@ def test_every_caught_parse_error_gives_a_decision_the_import_accepts(error):
     """Both branches (file bodies and inline lines) write through unreadable_decision."""
     row = _record_producer.unreadable_decision('meeting_records', 'v1', 'a' * 64, error, '2026-11-02T12:00:00Z')
     assert validate_provenance('unreadable', row)['reason'] in {'value_error', 'key_error', 'unicode_decode_error', 'parse_error'}
+
+
+# The house_xml (and mods, senate_page) parsers return a 'completed' row with no records for
+# bytes they cannot parse, so an unreadable candidate body would look like a meeting with no
+# witnesses. Measured 2026-11-02 on the v21 inputs: 0 such bodies (all 6,179 house_xml meeting
+# rows hold a meeting; the 2 empty house_xml witness rows are real empty <witness-list> bodies,
+# read in full), and candidates route by a successful XML reading. Deferred (proposed ticket);
+# strict, so these flip to failures once the parsers raise into unreadable_decision().
+TRUNCATED = b'<?xml version="1.0"?><committee-meeting meeting-id="HHRG118888"><meeting-details><meeting-title>Cut off'
+
+
+@pytest.mark.xfail(strict=True, reason='house_xml parsers stamp unparseable XML completed (proposed ticket, deferred)')
+@pytest.mark.parametrize('build', [meeting_records.build_meeting_record_row, appearance_records.build_appearance_record_row,
+                                   committee_records.build_row], ids=['meeting', 'appearance', 'committee'])
+def test_unparseable_house_xml_is_never_a_completed_row(build):
+    with pytest.raises((ValueError, __import__('xml.etree.ElementTree').etree.ElementTree.ParseError)):
+        build(record_sha='a' * 64, source='house_xml', payload=TRUNCATED, parser_version='v')
