@@ -18,3 +18,9 @@ Owner decision 2026-11-02: resume the October recovery effort after the fixed re
 
 Fix the proxy request-length transport issue; import the remaining valid recoveries through the checked-in recovery import with evidence pins; target first the release's removal-notice links (132 against 448651e7) and remaining dead links; each recovery verified against its source; gate 1 records them as additions with causes.
 
+
+## Notes
+
+**2026-11-02T22:27:53Z**
+
+2026-11-02: the merge-by-fingerprint conflicts expose likely wrong accepted recoveries (statement link to biography body; congress 103 vs 114). The recovery round should re-verify accepted recoveries whose link and copy disagree on congress, document class, person or hearing date.
