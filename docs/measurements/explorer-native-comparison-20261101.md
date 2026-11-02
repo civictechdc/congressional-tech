@@ -180,3 +180,25 @@ CHRG-114hhrg94653 counts) and 108050 (unknown → partial: the MODS-named CHRG-1
 and correct. The 3 witness `premise_fails` (108680, 108742, 118439) are markups whose MODS-named print has no
 witnesses; a same-day sibling print with no eventId (another hearing, by title) holds witnesses, so the label
 `package_witnesses_unattached` is conservative there.
+
+### Re-review (red-f, 2026-11-02): prints checked by date and title
+
+The raw check was rebuilt to judge from independent facts: MODS held dates, titles and eventIds read with
+ElementTree from all 35,020 MODS bodies in the mirror (45 packages have no MODS record and stay unread);
+Congress.gov lines; video publish days. Titles compare by token containment of the print title in the
+meeting title (or difflib ratio), not the model's shared-word rule. The frozen after-build adds the
+appearance_records mods `held_dates`/`title` re-derived from those bodies (witnesses unchanged: 0 drift).
+
+| Family | Rows | Raw verdicts |
+|---|---|---|
+| not_held | 430 | 428 supported; 116426 and 116998 differ only because the check reads publish days, the registry live-stream times |
+| rescheduled_to (78 links + removals) | 85 | 83 supported, 2 ambiguous reworded titles |
+| print attachments changed | 536 | 448 supported, 83 ambiguous, 5 contradicted: generic Senate prints ("Pending Legislation", "A Review of the SBIR-STTR Program") the model leaves package-only, and 105231, a hearing print the check pairs with a same-day markup |
+| House witness lists | 227 | 187 body links, 40 receipt path only |
+| coverage relabels | 14,555 | premise holds 6,192, ambiguous 71, fails 9 (3 recording: HASC compilation volumes and a long print title the check under-scores; 6 witnesses: the generic prints above), unread 38 |
+
+Red-f's cases: 330128, 329130, 335820 now carry their own prints (CHRG-117shrg50802 "Cryptocurrencies",
+53087, 59430), CHRG-117shrg52109 and CHRG-116shrg37808 are package-only, 326063 says witnesses unknown,
+101498, 101400, 104460 and 101644 are held (status Canceled kept), 101422 still moves to 101545, 116450
+does not move, and Haaland 328803 carries its two-day print. not_held 409; rescheduled_to 78. Witness rows
+147,888 -> 139,077: about 10k MODS rows now sit on meetings whose House XML or Congress.gov list outranks them.
