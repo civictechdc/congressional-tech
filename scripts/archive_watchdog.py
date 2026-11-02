@@ -159,9 +159,14 @@ def default_state():
         return HERE.parent / '.cache/watchdog'
 
 
+def total_gb():
+    """Physical memory of this machine."""
+    return os.sysconf('SC_PAGE_SIZE') * os.sysconf('SC_PHYS_PAGES') / 2**30
+
+
 def admit(registry, me, *, headroom, wait_seconds):
     """Wait for room; return None once admitted, else why the job was not started."""
-    total = os.sysconf('SC_PAGE_SIZE') * os.sysconf('SC_PHYS_PAGES') / 2**30
+    total = total_gb()
     if me['expect_gb'] + headroom > total:
         return (f'{me["expect_gb"]} GiB expected plus {headroom} GiB left free exceeds this machine '
                 f'({total:.0f} GiB); refused to start')
