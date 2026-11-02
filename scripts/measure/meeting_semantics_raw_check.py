@@ -1,45 +1,71 @@
-"""Read the raw record behind every meeting row the round-1b meeting rules changed.
+"""Read the raw records behind every meeting row the round-1b meeting rules changed, and judge each
+from independent raw facts.
 
     meeting_semantics_raw_check.py --before DIR --before-witnesses PARQUET --after DIR --records PARQUET
-        --appearances PARQUET --captures PARQUET --mirror R2 --mods DIR --output OUT.json
+        --appearances PARQUET --captures PARQUET --mirror R2 --output OUT.json
 
-The changed set is a diff by event of access, not_held, status, rescheduled_to/basis, coverage
-(state, reason) and the witness (occasion, source) sets. Each changed row gets the raw values read
-and a verdict: raw_supports_after, raw_supports_before, ambiguous or unread. Raw is read here with
-plain regex, JSON and XML walks, never through congress_api.parsers.meeting_facts or the model SQL,
-so the rule under test cannot agree with itself. Titles are compared whole (normalized), not by
-title_key. No raw record can prove ``unknown``: for coverage relabels only the premise is checked.
+Facts come from raw bodies read here with ElementTree, JSON and regex, never through
+congress_api.parsers, the appearance producer or the model SQL:
+
+- a print's held dates, titles, eventIds and witness count, from the GovInfo MODS body in the mirror;
+- a meeting's date, status, title, type, witnesses and transcript files, from its Congress.gov line;
+- an own video's publish day (Eastern), from the videos table built from the YouTube cache.
+
+Titles are compared by difflib's sequence ratio over normalized text, a different measure from the
+model's shared-word rule: agree at >= 0.6, disagree below 0.4, ambiguous between. Each changed row gets
+raw_supports_after, raw_contradicts_after, ambiguous or unread, with the facts read. Unread rows are
+listed. No raw record can prove `unknown`; coverage relabels check only their premise.
 """
 import argparse
 from collections import Counter, defaultdict
+from datetime import timezone
+import difflib
 import gzip
 import json
 from pathlib import Path
 import re
 import sys
 import xml.etree.ElementTree as ET
+from zoneinfo import ZoneInfo
 
 import duckdb
 
 sys.path.insert(0, str(Path(__file__).parent))
 from explorer_class_validation import raw_meetings  # noqa: E402
-from explorer_full_compare import body  # noqa: E402
 
 SAMPLES = 40
 EVENT_IN_URL = re.compile(r'/meetings/[A-Za-z0-9]+/[A-Za-z0-9]+/\d{8}/(\d+)/')
+MODS = '{http://www.loc.gov/mods/v3}'
+EASTERN = ZoneInfo('America/New_York')
 
 
 def norm(text):
     return re.sub(r'[^a-z0-9]+', ' ', (text or '').lower()).strip()
 
 
-def table(db, path, sql='*'):
-    return db.execute(f"SELECT {sql} FROM read_parquet('{path}')")
+def similarity(left, rights):
+    """Best difflib ratio between a meeting title and any of a print's titles."""
+    a = norm(left)
+    return max((difflib.SequenceMatcher(None, a, norm(r)).ratio() for r in rights if r), default=0.0)
+
+
+def agreement(score):
+    return 'agree' if score >= 0.6 else 'disagree' if score < 0.4 else 'ambiguous'
 
 
 def records(cursor):
     names = [c[0] for c in cursor.description]
     return [dict(zip(names, row)) for row in cursor.fetchall()]
+
+
+def local_body(mirror, sha):
+    """The mirror's stored body, or None; no network fallback, so unread stays visible."""
+    for suffix in ('.gz', ''):
+        path = Path(mirror) / 'bodies/sha256' / sha[:2] / (sha + suffix)
+        if path.is_file():
+            data = path.read_bytes()
+            return gzip.decompress(data) if suffix else data
+    return None
 
 
 class Family:
@@ -58,43 +84,68 @@ class Family:
         return dict(rows=self.rows, verdicts=dict(self.verdicts), unread=self.unread, samples=dict(self.samples))
 
 
-def house_root(xml_texts):
-    """The latest House XML version's root <current-status> and title."""
-    best = None
-    for text in xml_texts:
-        try:
-            root = ET.fromstring(text)
-        except ET.ParseError:
-            continue
-        if best is None or (root.get('update-date') or '') >= (best.get('update-date') or ''):
-            best = root
-    if best is None:
-        return None
-    title = best.findtext('meeting-details/meeting-title') or best.findtext('heading') or ''
-    return dict(status=(best.findtext('current-status') or '').strip(), title=' '.join(title.split()),
-                files=[f.get('doc-url') for f in best.iter('file') if f.get('doc-url') and not (f.get('remove-date') or '').strip()])
+class Prints:
+    """Each package's MODS body, read once from the mirror by the record digest the lake names."""
+    def __init__(self, args, db):
+        self.mirror, self.cache = args.mirror, {}
+        self.sha = dict(db.execute(f"""SELECT package_id,lower(hex(min(record_sha))) FROM read_parquet('{args.appearances}')
+            WHERE source='mods' AND package_id IS NOT NULL GROUP BY 1""").fetchall())
+
+    def __call__(self, package):
+        if package not in self.cache:
+            sha = self.sha.get(package)
+            data = local_body(self.mirror, sha) if sha else None
+            self.cache[package] = None if data is None else self.parse(data)
+        return self.cache[package]
+
+    @staticmethod
+    def parse(data):
+        root = ET.fromstring(data)
+        held = sorted({(e.text or '').strip()[:10] for e in root.iter(MODS + 'heldDate') if (e.text or '').strip()})
+        titles = [(e.text or '').strip() for e in root.iter(MODS + 'title')] + [(e.text or '').strip() for e in root.iter(MODS + 'searchTitle')]
+        events = sorted({int(e.text) for e in root.iter(MODS + 'eventId') if (e.text or '').strip().isdigit()})
+        return dict(held=held, titles=[t for t in titles if t and not t.lower().startswith('united states congress serial')],
+                    events=events, witnesses=sum(1 for _ in root.iter(MODS + 'witness')))
 
 
-def raw_status(cg, hx):
-    """Publisher statuses and title as stated: Congress.gov word, House code."""
-    return dict(congress_gov=(cg or {}).get('meetingStatus'), house=(hx or {}).get('status'),
-                title=(cg or {}).get('title') or (hx or {}).get('title'))
+def belongs(print_facts, event, cg):
+    """Raw verdict on whether a print records this meeting: its day, its title, and any eventId it states."""
+    if print_facts is None or cg is None:
+        return 'unread'
+    day = str(cg.get('date') or '')[:10]
+    if day not in print_facts['held'] or (print_facts['events'] and event not in print_facts['events']):
+        return 'disagree'
+    return agreement(similarity(cg.get('title'), print_facts['titles']))
 
 
-def says_not_held(raw):
-    words = {str(raw['congress_gov'] or '').lower(), {'p': 'postponed'}.get(str(raw['house'] or '').lower(), '')}
-    if words & {'postponed', 'canceled', 'cancelled'}:
-        return True
-    title = (raw['title'] or '').lower().lstrip(' \t\r\n*:-"“')
-    return bool(re.match(r'(postponed|cancel+ed|test)\b', title)) and not re.match(r'postponed\s+(until|to)\s+\d', title)
+def video_days(db, after):
+    """Each video's publish day in Eastern time, from the videos table (YouTube cache)."""
+    out = {}
+    for key, published in db.execute(f"SELECT video_key,coalesce(video_published_at,published_at) FROM read_parquet('{Path(after) / 'videos.parquet'}')").fetchall():
+        if published is not None:
+            out[key] = published.astimezone(EASTERN).date().isoformat()
+    return out
 
 
-def held_evidence(cg):
-    """A Congress.gov record's own evidence that the meeting sat on its date."""
-    docs = (cg or {}).get('meetingDocuments') or []
-    return dict(videos=[v.get('url') for v in (cg or {}).get('videos') or [] if 'youtube' in str(v.get('url') or '') or 'senate.gov/isvp' in str(v.get('url') or '')],
+def own_facts(cg, packages, prints, event, days):
+    """A meeting's own evidence of sitting on its date, as raw states it."""
+    cg = cg or {}
+    day = str(cg.get('date') or '')[:10]
+    videos = [re.search(r'(?:v=|youtu\.be/)([\w-]{11})', str(v.get('url') or '')) for v in cg.get('videos') or []]
+    same_day_videos = [m.group(1) for m in videos if m and days.get('youtube:' + m.group(1)) == day]
+    docs = cg.get('meetingDocuments') or []
+    printed = [p for p in packages if belongs(prints(p), event, cg) == 'agree']
+    return dict(status=cg.get('meetingStatus'), type=cg.get('type'), day=day,
                 transcripts=[d.get('url') for d in docs if 'transcript' in (str(d.get('documentType') or '') + str(d.get('url') or '')).lower()],
-                witnesses=len((cg or {}).get('witnesses') or []))
+                witnesses=len(cg.get('witnesses') or []), same_day_videos=same_day_videos, prints=printed)
+
+
+def stated_not_held(cg):
+    status = str((cg or {}).get('meetingStatus') or '').lower()
+    title = (cg or {}).get('title') or ''
+    lead = title.lower().lstrip(' \t\r\n*:-"“')
+    return status in ('postponed', 'canceled', 'cancelled') or (
+        bool(re.match(r'(postponed|cancel+ed|test)\b', lead)) and not re.match(r'postponed\s+(until|to)\s+\d', lead))
 
 
 def meeting_kind(text):
@@ -102,125 +153,100 @@ def meeting_kind(text):
     return 'hearing' if 'hearing' in text else 'markup' if 'markup' in text else None
 
 
-def mods(directory, package):
-    path = Path(directory) / f'{package}.xml'
-    if not path.is_file():
-        return None
-    text = path.read_text(errors='replace')
-    return dict(event_ids=sorted({int(v) for v in re.findall(r'<eventId>\s*(\d+)\s*</eventId>', text)}),
-                held=sorted(set(re.findall(r'<heldDate>([^<]+)</heldDate>', text))),
-                title=' '.join((re.search(r'<title>([^<]*)</title>', text) or [None, ''])[1].split()),
-                witnesses=len(re.findall(r'<witness>', text)))
-
-
-def check_meetings(args, db, congress, house, report):
-    before = {r['event_id']: r for r in records(table(db, Path(args.before) / 'meetings.parquet',
-              'event_id,access,not_held,status,rescheduled_to,rescheduled_basis,videos,meeting_date,title'))}
-    after = {r['event_id']: r for r in records(table(db, Path(args.after) / 'meetings.parquet',
-             'event_id,access,not_held,status,rescheduled_to,rescheduled_basis,videos,meeting_date,title'))}
-    fams = {k: Family(k) for k in ('access', 'not_held', 'status', 'rescheduled_to')}
+def check_meetings(args, db, congress, prints, packages, days, report):
+    cols = 'event_id,access,not_held,status,rescheduled_to,rescheduled_basis,meeting_date,title'
+    before = {r['event_id']: r for r in records(db.execute(f"SELECT {cols} FROM read_parquet('{Path(args.before) / 'meetings.parquet'}')"))}
+    after = {r['event_id']: r for r in records(db.execute(f"SELECT {cols} FROM read_parquet('{Path(args.after) / 'meetings.parquet'}')"))}
+    fams = {k: Family(k) for k in ('access', 'not_held', 'rescheduled_to')}
     for event in sorted(set(before) | set(after)):
         b, a = before.get(event) or {}, after.get(event) or {}
-        cg, hx = congress.get(str(event)), house_root(house.get(str(event), []))
-        raw = raw_status(cg, hx)
+        cg = congress.get(str(event))
         if b.get('access') != a.get('access'):
             if cg is None:
-                fams['access'].add(event, 'unread', before=b.get('access'), after=a.get('access'))
+                fams['access'].add(event, 'unread')
             else:
                 kind, title = str(cg.get('type') or '').lower(), (cg.get('title') or '').lower()
                 stated = {v for v in ('open', 'closed') if re.search(rf'\b{v}\b', kind)}
                 other = re.search(r'(followed|preceded) by (an? )?(open|closed) (session|hearing|meeting|briefing)', title)
                 mixed = len(stated) == 1 and other and other.group(3) not in stated
-                fams['access'].add(event, 'raw_supports_after' if (mixed and a.get('access') == 'partly_closed') else 'ambiguous',
+                fams['access'].add(event, 'raw_supports_after' if mixed and a.get('access') == 'partly_closed' else 'ambiguous',
                                    type=cg.get('type'), title=cg.get('title'), before=b.get('access'), after=a.get('access'))
-        if bool(b.get('not_held')) != bool(a.get('not_held')):
-            if cg is None and hx is None:
+        own = own_facts(cg, packages.get(event, ()), prints, event, days) if cg else None
+        if bool(b.get('not_held')) != bool(a.get('not_held')) or (cg and stated_not_held(cg)):
+            if cg is None:
                 fams['not_held'].add(event, 'unread', before=b.get('not_held'), after=a.get('not_held'))
             else:
-                verdict = 'raw_supports_after' if says_not_held(raw) == bool(a.get('not_held')) else 'raw_supports_before'
-                fams['not_held'].add(event, verdict, **raw, before=b.get('not_held'), after=a.get('not_held'),
-                                     own_videos=[v['url'] for v in a.get('videos') or []])
-        if (b.get('status') or None) != (a.get('status') or None):
-            stated = (raw['congress_gov'] or {'s': 'Scheduled', 'r': 'Rescheduled', 'p': 'Postponed'}.get(str(raw['house'] or '').lower()))
-            fams['status'].add(event, 'unread' if cg is None and hx is None else
-                               'raw_supports_after' if stated == a.get('status') else 'ambiguous', **raw, before=b.get('status'), after=a.get('status'))
+                sat = bool(own['prints'] or own['same_day_videos'] or own['transcripts'])
+                raw_not_held = stated_not_held(cg) and not sat
+                verdict = 'raw_supports_after' if raw_not_held == bool(a.get('not_held')) else 'raw_contradicts_after'
+                fams['not_held'].add(event, verdict, title=cg.get('title'), own=own, before=b.get('not_held'), after=a.get('not_held'),
+                                     status_conflict=stated_not_held(cg) and sat)
         if a.get('rescheduled_to') or (b.get('rescheduled_to'), b.get('rescheduled_basis')) != (a.get('rescheduled_to'), a.get('rescheduled_basis')):
-            # Every link the after table states, and every removed one, judged from the raw record's own
-            # evidence of a sitting (video, transcript file, witnesses) and the two meetings' stated types.
-            twin_id = a.get('rescheduled_to') or b.get('rescheduled_to')
-            tcg = congress.get(str(twin_id)) or {}
-            twin_title = tcg.get('title') or (house_root(house.get(str(twin_id), [])) or {}).get('title')
-            evidence = held_evidence(cg)
-            row = dict(**raw, date=(cg or {}).get('date'), type=(cg or {}).get('type'), evidence=evidence, twin=twin_id,
-                       twin_status=tcg.get('meetingStatus'), twin_date=tcg.get('date'), twin_type=tcg.get('type'), twin_title=twin_title,
-                       before=[b.get('rescheduled_to'), b.get('rescheduled_basis')], after=[a.get('rescheduled_to'), a.get('rescheduled_basis')])
-            if cg is None:
-                fams['rescheduled_to'].add(event, 'unread', **row)
+            twin = a.get('rescheduled_to') or b.get('rescheduled_to')
+            tcg = congress.get(str(twin))
+            if cg is None or tcg is None:
+                fams['rescheduled_to'].add(event, 'unread', twin=twin)
                 continue
-            same_title = norm(raw['title']) == norm(twin_title)
-            same_kind = meeting_kind((cg or {}).get("type")) in (None, meeting_kind(tcg.get("type"))) or meeting_kind(tcg.get("type")) is None
-            # A transcript file shows a sitting whatever the status. Witness lists are posted beforehand and
-            # a later upload can sit on a postponed record, so those count only when the status is not Postponed/Canceled.
-            sat = bool(evidence['transcripts'] or ((evidence['videos'] or evidence['witnesses']) and not says_not_held(raw)))
+            sat = bool(own['prints'] or own['same_day_videos'] or own['transcripts'] or (own['witnesses'] and not stated_not_held(cg)))
+            same_kind = None in (meeting_kind(cg.get('type')), meeting_kind(tcg.get('type'))) or meeting_kind(cg.get('type')) == meeting_kind(tcg.get('type'))
+            title = agreement(similarity(cg.get('title'), [tcg.get('title')]))
             if a.get('rescheduled_to'):
-                verdict = ('raw_contradicts_link' if sat or not same_kind else
-                           'raw_supports_after' if same_title else 'ambiguous')
+                verdict = 'raw_contradicts_after' if sat or not same_kind or title == 'disagree' else 'raw_supports_after' if title == 'agree' else 'ambiguous'
             else:
-                verdict = 'raw_supports_after' if sat or not same_kind or not same_title else 'ambiguous'
-            fams['rescheduled_to'].add(event, verdict, **row)
+                verdict = 'raw_supports_after' if sat or not same_kind or title == 'disagree' else 'ambiguous'
+            fams['rescheduled_to'].add(event, verdict, title=cg.get('title'), twin=twin, twin_title=tcg.get('title'),
+                                       twin_type=tcg.get('type'), own=own, before=[b.get('rescheduled_to'), b.get('rescheduled_basis')],
+                                       after=[a.get('rescheduled_to'), a.get('rescheduled_basis')])
     report.update({k: f.report() for k, f in fams.items()})
 
 
-def check_witnesses(args, db, congress, report):
+def check_witnesses(args, db, congress, prints, report):
     cols = 'event_id,occasion,source,package_id,name,record_sha'
-    before = records(table(db, args.before_witnesses, cols))
-    after = records(table(db, Path(args.after) / 'witnesses.parquet', cols))
-    side = lambda rows: {(r['occasion'], r['source'], r['name'], bytes(r['record_sha']).hex()) for r in rows}
-    gone, came = side(before) - side(after), side(after) - side(before)
-    package, house_list, other = Family('package_choice'), Family('house_witness_event'), Family('other_witness_changes')
-    sha_events = defaultdict(set)
-    for occasion, source, _, sha in gone | came:
-        sha_events[sha].add((occasion, source))
-    house_shas = {sha for sha, items in sha_events.items() if any(s == 'house_xml' for _, s in items)}
-    paths = original_paths(args, db, house_shas)
-    seen_record = set()
-    for occasion, source, name, sha in sorted(gone | came):
-        if (sha, occasion) in seen_record:
+    before = records(db.execute(f"SELECT {cols} FROM read_parquet('{args.before_witnesses}')"))
+    after = records(db.execute(f"SELECT {cols} FROM read_parquet('{Path(args.after) / 'witnesses.parquet'}')"))
+    key = lambda r: (bytes(r['record_sha']).hex(), r['source'])
+    def occasions(rows):
+        out = defaultdict(lambda: [set(), None])
+        for r in rows:
+            out[key(r)][0].add(r['occasion'])
+            out[key(r)][1] = out[key(r)][1] or r['package_id']
+        return out
+    ob, oa = occasions(before), occasions(after)
+    package_fam, house_fam = Family('package_choice'), Family('house_witness_event')
+    paths = original_paths(args, db, {k[0] for k in set(ob) | set(oa) if k[1] == 'house_xml'})
+    for k in sorted(set(ob) | set(oa)):
+        b, a = ob.get(k, (set(), None)), oa.get(k, (set(), None))
+        if b[0] == a[0]:
             continue
-        seen_record.add((sha, occasion))
-        state = 'after' if (occasion, source, name, sha) in came else 'before'
+        sha, source = k
         if source == 'mods':
-            pkg = next((r['package_id'] for r in before + after if bytes(r['record_sha']).hex() == sha and r['package_id']), None)
-            raw = mods(args.mods, pkg) if pkg else None
-            event = int(occasion.split(':')[1]) if occasion.startswith('meeting:') else None
-            if raw is None:
-                package.add([pkg, occasion, state], 'unread')
-                continue
-            cg = congress.get(str(event)) if event else None
-            if state == 'after' and event is not None:
-                verdict = 'raw_supports_after' if raw['event_ids'] == [event] else 'ambiguous'
-            elif state == 'before' and event is not None:
-                # The row left meeting:E. Raw backs that when its own MODS names another or several events.
-                verdict = ('raw_supports_after' if raw['event_ids'] and raw['event_ids'] != [event]
-                           else 'raw_supports_before' if raw['event_ids'] == [event] else 'ambiguous')
-            else:
-                verdict = 'ambiguous'
-            package.add([pkg, occasion, state], verdict, mods=raw, meeting_title=(cg or {}).get('title'), meeting_date=(cg or {}).get('date'))
-        elif source == 'house_xml' and state == 'after' and occasion.startswith('meeting:'):
-            data = body(args.mirror, sha)
+            package = a[1] or b[1]
+            events = {int(o.split(':')[1]) for o in a[0] | b[0] if o and o.startswith('meeting:')}
+            for event in sorted(events):
+                verdict = belongs(prints(package), event, congress.get(str(event)))
+                attached = f'meeting:{event}' in a[0]
+                raw = dict(package=package, event=event, before=sorted(b[0]), after=sorted(a[0]), print=prints(package),
+                           meeting=(congress.get(str(event)) or {}).get('title'), date=str((congress.get(str(event)) or {}).get('date'))[:10])
+                if verdict == 'unread':
+                    package_fam.add([package, event], 'unread', **raw)
+                elif verdict == 'ambiguous':
+                    package_fam.add([package, event], 'ambiguous', **raw)
+                else:
+                    package_fam.add([package, event], 'raw_supports_after' if attached == (verdict == 'agree') else 'raw_contradicts_after', **raw)
+        elif source == 'house_xml' and any(o.startswith('meeting:') for o in a[0]):
+            data = local_body(args.mirror, sha)
+            occasion = sorted(a[0])[0]
+            event = int(occasion.split(':')[1])
             if data is None:
-                house_list.add([sha, occasion], 'unread')
+                house_fam.add([sha, occasion], 'unread')
                 continue
             events = {int(e) for e in EVENT_IN_URL.findall(data.decode('utf-8', 'replace'))}
             path_events = {int(m) for p in paths.get(sha, ()) for m in re.findall(r'wlist/(\d+)\.xml$', p)}
-            event = int(occasion.split(':')[1])
             verdict = ('raw_supports_after' if events == {event} and path_events in (set(), {event}) else
-                       'receipt_path_only' if not events and path_events == {event} else 'ambiguous')
-            house_list.add([sha, occasion], verdict, body_events=sorted(events), receipt_path_events=sorted(path_events))
-        else:
-            other.add([sha, occasion, source, state], 'ambiguous')
-    report.update(package_choice=package.report(), house_witness_event=house_list.report(), other_witness_changes=other.report())
-    report['witness_keys'] = dict(rows_gone=len(gone), rows_new=len(came))
+                       'receipt_path_only' if not events and path_events == {event} else 'raw_contradicts_after')
+            house_fam.add([sha, occasion], verdict, body_events=sorted(events), receipt_path_events=sorted(path_events))
+    report.update(package_choice=package_fam.report(), house_witness_event=house_fam.report())
+    report['witness_rows'] = dict(before=len(before), after=len(after))
 
 
 def original_paths(args, db, shas):
@@ -230,100 +256,82 @@ def original_paths(args, db, shas):
     lines = db.execute(f"""SELECT DISTINCT lower(hex(sha256)),receipt_key,receipt_line FROM read_parquet('{args.captures}')
         WHERE lower(hex(sha256)) IN (SELECT unnest(?))""", [sorted(shas)]).fetchall()
     by_key = defaultdict(lambda: defaultdict(set))
-    for sha, key, line in lines:
-        by_key[key][line].add(sha)
+    for sha, receipt, line in lines:
+        by_key[receipt][line].add(sha)
     found = defaultdict(set)
-    for key, wanted in by_key.items():
-        with gzip.open(Path(args.mirror) / key, 'rt') as source:
+    for receipt, wanted in by_key.items():
+        with gzip.open(Path(args.mirror) / receipt, 'rt') as source:
             for number, text in enumerate(source, 1):
                 if number in wanted:
-                    item = json.loads(text)
-                    for ref in item.get('file_references') or []:
+                    for ref in json.loads(text).get('file_references') or []:
                         if ref.get('sha256') in wanted[number] and ref.get('original_path'):
                             found[ref['sha256']].add(ref['original_path'])
     return found
 
 
-def check_coverage(args, db, congress, house, report):
+def check_coverage(args, db, congress, prints, packages, report):
     key = 'event_id,aspect,state,reason'
-    before = {(r['event_id'], r['aspect']): r for r in records(table(db, Path(args.before) / 'meeting_coverage.parquet',
-              "event_id,aspect,state,cast(NULL AS VARCHAR) AS reason" if not has_reason(db, args.before) else key))}
-    after = {(r['event_id'], r['aspect']): r for r in records(table(db, Path(args.after) / 'meeting_coverage.parquet', key))}
-    fam = Family('coverage_relabels')
-    transitions, by_aspect = Counter(), Counter()
-    mods_named = defaultdict(set)
-    for path in Path(args.mods).glob('CHRG-*.xml'):
-        for value in re.findall(r'<eventId>\s*(\d+)\s*</eventId>', path.read_text(errors='replace')):
-            mods_named[int(value)].add(path.stem)
+    has_reason = 'reason' in [c[0] for c in db.execute(f"DESCRIBE SELECT * FROM read_parquet('{Path(args.before) / 'meeting_coverage.parquet'}')").fetchall()]
+    before = {(r['event_id'], r['aspect']): r for r in records(db.execute(
+        f"SELECT {key if has_reason else 'event_id,aspect,state,cast(NULL AS VARCHAR) AS reason'} FROM read_parquet('{Path(args.before) / 'meeting_coverage.parquet'}')"))}
+    after = {(r['event_id'], r['aspect']): r for r in records(db.execute(f"SELECT {key} FROM read_parquet('{Path(args.after) / 'meeting_coverage.parquet'}')"))}
+    fam, transitions, by_aspect = Family('coverage_relabels'), Counter(), Counter()
+    for k in sorted(set(before) | set(after)):
+        b, a = before.get(k) or {}, after.get(k) or {}
+        if (b.get('state'), b.get('reason')) == (a.get('state'), a.get('reason')):
+            continue
+        event, aspect, reason = k[0], k[1], a.get('reason')
+        transitions[(aspect, b.get('state'), a.get('state'), reason)] += 1
+        cg = congress.get(str(event))
+        verdicts = {p: belongs(prints(p), event, cg) for p in packages.get(event, ())}
+        if reason == 'senate_page_links_pending':
+            premise = None if cg is None else str(cg.get('chamber') or '').lower() == 'senate'
+        elif reason == 'stated_documents_not_held':
+            premise = None if cg is None else bool([d for d in (cg.get('meetingDocuments') or []) + (cg.get('witnessDocuments') or []) if d.get('url')]) or None
+        elif reason == 'package_witnesses_unattached':
+            # Unknown is right only if no print that records this meeting holds witnesses.
+            own = [p for p, v in verdicts.items() if v == 'agree' and (prints(p) or {}).get('witnesses')]
+            premise = None if any(v == 'unread' for v in verdicts.values()) else not own
+        elif aspect in ('recording', 'witnesses', 'transcript') and verdicts:
+            agreeing = [p for p, v in verdicts.items() if v == 'agree']
+            premise = None if any(v == 'unread' for v in verdicts.values()) else (bool(agreeing) if a.get('state') == 'present' and b.get('state') != 'present' else True)
+        else:
+            premise = 'not_checked'
+        verdict = 'unread' if premise is None else 'premise_holds' if premise is True else 'premise_fails' if premise is False else 'not_checked'
+        by_aspect[(aspect, verdict)] += 1
+        if verdict != 'premise_holds' or len(fam.samples[verdict]) < SAMPLES:
+            fam.add([event, aspect], verdict, before=[b.get('state'), b.get('reason')], after=[a.get('state'), reason], prints=verdicts)
+        else:
+            fam.rows += 1
+            fam.verdicts[verdict] += 1
+    report['coverage_relabels'] = dict(fam.report(), by_aspect={f'{a}:{v}': n for (a, v), n in sorted(by_aspect.items())},
+        transitions=[[*t, n] for t, n in sorted(transitions.items(), key=str)],
+        note='No raw record can prove unknown; only the premise of each relabel is checked.')
+
+
+def main(argv=None):
+    parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
+    for name in ('before', 'before-witnesses', 'after', 'records', 'appearances', 'captures', 'mirror', 'output'):
+        parser.add_argument('--' + name, required=True)
+    args = parser.parse_args(argv)
+    db = duckdb.connect(config=dict(memory_limit='3GB', threads=4))
+    congress, house, read, unread = raw_meetings(args)
+    prints = Prints(args, db)
     packages = defaultdict(set)
     for directory in (args.before, args.after):
         for event, package in db.execute(f"""SELECT event_id,t['package_id'] FROM (SELECT event_id,unnest(transcripts) AS t
             FROM read_parquet('{Path(directory) / 'meetings.parquet'}'))""").fetchall():
             packages[event].add(package)
-    events_of = defaultdict(set)
-    for event, items in packages.items():
-        for package in items:
-            events_of[package].add(event)
-    for k in sorted(set(before) | set(after)):
-        b, a = before.get(k) or {}, after.get(k) or {}
-        if (b.get('state'), b.get('reason')) == (a.get('state'), a.get('reason')):
-            continue
-        transitions[(k[1], b.get('state'), a.get('state'), a.get('reason'))] += 1
-        event, reason = k[0], a.get('reason')
-        cg, hx = congress.get(str(event)), house_root(house.get(str(event), []))
-        if reason == 'senate_page_links_pending':
-            premise = None if cg is None else str(cg.get('chamber') or '').lower() == 'senate'
-        elif reason == 'stated_documents_not_held':
-            urls = [d.get('url') for d in ((cg or {}).get('meetingDocuments') or []) + ((cg or {}).get('witnessDocuments') or []) if d.get('url')]
-            premise = None if cg is None and hx is None else bool(urls or (hx or {}).get('files'))
-        elif reason == 'package_names_meeting_unlinked':
-            # The refresh directory predates the newest packages; no file there is unread, not a failure.
-            premise = True if mods_named.get(event) else None
-        elif k[1] == 'recording' or reason == 'package_witnesses_unattached':
-            # A package now counts for this meeting only if its own MODS names it alone, or names none on a
-            # one-to-one link. Print what the raw MODS of the meeting's packages state.
-            named = {p: mods(args.mods, p) for p in packages.get(event, ())}
-            names_it = [p for p, m in named.items() if m and m['event_ids'] == [event]]
-            elsewhere = [p for p, m in named.items() if m and m['event_ids'] and m['event_ids'] != [event]]
-            one_to_one = len(packages.get(event, ())) == 1 and all(len(events_of[p]) == 1 for p in packages.get(event, ()))
-            gained = a.get('state') == 'present' and b.get('state') != 'present'
-            premise = (bool(names_it) or (one_to_one and not elsewhere)) if gained else (
-                bool(elsewhere) or not one_to_one) and not names_it if named else None
-            if premise is not None:
-                by_aspect[(k[1], 'premise_holds' if premise else 'premise_fails')] += 1
-                fam.add([event, k[1]], 'premise_holds' if premise else 'premise_fails', before=[b.get('state'), b.get('reason')],
-                        after=[a.get('state'), reason], mods={p: m and m['event_ids'] for p, m in named.items()})
-                continue
-        else:
-            premise = 'not_checked'
-        verdict = 'unread' if premise is None else 'premise_holds' if premise is True else 'premise_fails' if premise is False else 'ambiguous'
-        by_aspect[(k[1], verdict)] += 1
-        if len(fam.samples[verdict]) < SAMPLES or verdict != 'premise_holds':
-            fam.add([event, k[1]], verdict, before=[b.get('state'), b.get('reason')], after=[a.get('state'), reason])
-        else:
-            fam.rows += 1
-            fam.verdicts[verdict] += 1
-    report['coverage_relabels'] = dict(fam.report(), by_aspect={f'{a}:{v}': n for (a, v), n in sorted(by_aspect.items())}, transitions=[[*t, n] for t, n in sorted(transitions.items(), key=str)],
-        note='No raw record can prove unknown; only the premise of each relabel is checked.')
-
-
-def has_reason(db, directory):
-    return 'reason' in [c[0] for c in db.execute(f"DESCRIBE SELECT * FROM read_parquet('{Path(directory) / 'meeting_coverage.parquet'}')").fetchall()]
-
-
-def main(argv=None):
-    parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-    for name in ('before', 'before-witnesses', 'after', 'records', 'appearances', 'captures', 'mirror', 'mods', 'output'):
-        parser.add_argument('--' + name, required=True)
-    args = parser.parse_args(argv)
-    db = duckdb.connect(config=dict(memory_limit='3GB', threads=4))
-    congress, house, read, unread = raw_meetings(args)
+    for row in records(db.execute(f"SELECT DISTINCT event_id,package_id FROM read_parquet('{Path(args.after) / 'witnesses.parquet'}') WHERE package_id IS NOT NULL AND event_id IS NOT NULL")):
+        packages[row['event_id']].add(row['package_id'])
     report = dict(raw_meeting_records=dict(read=read, unread=unread))
-    check_meetings(args, db, congress, house, report)
-    check_witnesses(args, db, congress, report)
-    check_coverage(args, db, congress, house, report)
+    check_meetings(args, db, congress, prints, packages, video_days(db, args.after), report)
+    check_witnesses(args, db, congress, prints, report)
+    check_coverage(args, db, congress, prints, packages, report)
+    report['prints'] = dict(read=sum(v is not None for v in prints.cache.values()), unread=sorted(p for p, v in prints.cache.items() if v is None))
     Path(args.output).write_text(json.dumps(report, indent=1, default=str))
-    print(json.dumps({k: (v.get('verdicts'), v.get('rows')) if isinstance(v, dict) and 'verdicts' in v else v for k, v in report.items()}, default=str))
+    print(json.dumps({k: (v.get('verdicts'), v.get('rows')) if isinstance(v, dict) and 'verdicts' in v else
+                      (len(v['unread']) if k == 'prints' else v) for k, v in report.items()}, default=str))
 
 
 if __name__ == '__main__':
