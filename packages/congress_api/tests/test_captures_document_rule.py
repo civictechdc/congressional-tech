@@ -56,6 +56,8 @@ EXPECTED = {
     ('receipts/documents/2026-09-29/assemble-20260930.jsonl.gz', 122898): [(0, 503, R, True, 503, R)],
     # record status 403 with a 402-byte body.
     ('receipts/govinfo/transcript-html/2026-09-29/assemble-20260930.jsonl.gz', 34171): [(0, 403, F, True, 403, F)],
+    # A redirected request: record.url is the request, record.final_url the final address.
+    ('receipts/senate/pages/2026-09-29/assemble-20260930.jsonl.gz', 1): [(0, 200, S, True, 200, S)],
     # status_code 200, outcome empty_response, empty body.
     ('receipts/senate/pages/2026-09-29/assemble-20260930.jsonl.gz', 3290): [(0, 200, F, True, 200, F)],
     # Writer era: provider body, content body and prior attempt, all 200 and empty.
@@ -155,3 +157,14 @@ def test_an_owner_status_contradicting_the_line_status_refuses(tmp_path):
     with NativeDatasets.from_config(os.environ['DOCSPEC_JOB_CONFIG']) as engine:
         with pytest.raises(ValueError, match='conflicting attempt facts'):
             stage_captures(files, engine=engine, work=tmp_path / 'stage')
+
+
+def test_url_is_the_final_address_and_requested_url_the_request(staged):
+    """Data model §5: `requested_url`, `url` are the requested and final URL (green-g)."""
+    _, rows = staged
+    row = next(r for r in rows if r['receipt_key'] == 'receipts/senate/pages/2026-09-29/assemble-20260930.jsonl.gz'
+               and r['source_line'] == 1)
+    request = 'https://www.commerce.senate.gov/index.cfm?a=Files.Serve&File_id=6E9DE39E-0297-4364-B454-91A1A6DF86D1'
+    assert row['requested_url'] == request and row['context_url'] == request
+    assert row['url'] == ('https://www.commerce.senate.gov/wp-content/uploads/media/doc/'
+                          'NEW%20S.%203580%20Cantwell_Substitute%20modified.pdf')
