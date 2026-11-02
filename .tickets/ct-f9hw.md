@@ -20,3 +20,9 @@ plan-e1-captures census 2026-11-02: file_references[].original_path holds 279,54
 - The data model states whether original_path is public and in which form; captures.original_path keeps relative values only.
 - The owner decides whether existing public receipts need a superseding redaction record or stay as written; the decision is recorded.
 
+
+## Notes
+
+**2026-11-02T13:54:36Z**
+
+Owner decision 2026-11-02: leave existing receipts as written. Exposure is the username (already public as the GitHub login) and folder layout (/Users/mikewolfd/Work/..., /Users/mikewolfd/hearing-text/...); no secrets found. Writers now refuse absolute paths (impl-e1, r1b-e1). Origins: assemble_raw_archive.py (0ea63070, 2026-09-30, about 636k lines), the old receipt builder (deleted in b46cbf58) for October download runs, and corpus-recovery runs up to 2026-10-16; none after 10-16. Close when r1b-e1 merges.

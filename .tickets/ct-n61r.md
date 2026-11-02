@@ -32,3 +32,7 @@ Round 1b 2026-11-02 (lead): impl-f: 10 commits on r1b-f. Frozen before/after and
 **2026-11-02T13:22:51Z**
 
 2026-11-02 impl-f (r1b-f, 12 commits): current-status misread since 9e656389; not_held +404/-5, 409 supported by raw. The 3 same-day conflicts (110924, 116426, 116998) each have their own YouTube video named for the meeting, streamed live on its date; they keep publisher status with not_held=false via model/registries/meeting-status-conflicts.json, evidence quoted.
+
+**2026-11-02T13:54:36Z**
+
+2026-11-02 (lead): red-f: 101498, 101400, 104460 and 101644 are Canceled on Congress.gov but held per their own print; derive held generically from the meeting's own print and keep the publisher status as a conflict. Sent to impl-f.

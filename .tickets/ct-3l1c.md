@@ -28,3 +28,7 @@ Owner decision 2026-11-02: an empty 2xx body is not a document or caption track.
 **2026-11-02T12:28:27Z**
 
 Round 1b 2026-11-02 (lead): All 281 zero-byte eligible rows read raw: the writer recorded empty_response on 137 and empty on 40, 51 have no outcome, 50 already fail at HEAD; 231 drop out under the new rule. impl-e1, r1b-e1.
+
+**2026-11-02T13:54:36Z**
+
+2026-11-02 (lead): 227 eligible empty rows staged out.

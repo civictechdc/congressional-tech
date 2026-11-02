@@ -24,3 +24,7 @@ The comparison reports changes to those fields by count and by raw value, tested
 **2026-11-02T12:28:27Z**
 
 Round 1b 2026-11-02 (lead): The old index lacks complete and outcome, so it can't compare them. Decided: a generation comparison reports every eligibility-field change by count and old/new value and refuses unexpected changes. impl-e1.
+
+**2026-11-02T13:54:36Z**
+
+2026-11-02 (lead): compare_generations implemented on r1b-e1.

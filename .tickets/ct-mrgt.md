@@ -18,3 +18,9 @@ capture_fixture_coverage.py monkeypatches projection. Expose the paths in the ba
 
 Coverage reads exposed paths with no monkeypatch.
 
+
+## Notes
+
+**2026-11-02T13:54:36Z**
+
+2026-11-02 (lead): source_paths()/item_paths() exposed; no monkeypatch.
