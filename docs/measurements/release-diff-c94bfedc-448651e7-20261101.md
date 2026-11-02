@@ -181,6 +181,62 @@ An earlier version of this file called the two empty tracks a defect that hid re
 - **Load if enabled:** the 84 GB is not the whole weekly set. 24,398 `CHRG-*.zip` URLs were already on 7 days in the previous release, so all 34,593 are now on 7 days and already due, 183.5 GB across the 34,019 with a saved row. D1 added about 10,195 of those URLs. Actual volume is capped by `ARCHIVE_CAPTURE_REQUEST_BUDGET` and `ARCHIVE_CAPTURE_BYTE_BUDGET`, and state moves only when a new release publishes. Whether the fetch is conditional was not checked.
 - **Meeting link, proven by code and public files:** the meeting-date union joins through `component_meeting_links` (`archive_model.py:684-692`), and the changed URLs on meeting-linked documents went 10,202 to 2.
 
+## Bug analysis: cause, recurrence, right layer, why it was missed
+
+Analysis only; nothing here is fixed. Read from raw data and `git log`, with no engine job. "Should have been addressed" names a layer, not a chosen fix.
+
+### D1: member eligibility
+
+- **Cause:** `bc0a146c` (2026-11-01, ct-sh4j) added `CASE WHEN NOT top_level THEN e_complete` at `captures.py:433`. Before it, `recorded=first('e_complete', CASE WHEN attempt=0 THEN both('complete') END)` gave members the container's `complete`. No receipt ever stated member completeness, so removing the borrow left NULL on all 171,894 rows, and `good-fetches.sql` requires `complete`. The rule "an unknown prior response or archive member does not borrow" entered §6.1 in `87dc8905`, committed in the same second as the code. The doc followed the code in one change, so nothing reviewed the rule separately.
+- **Why the criterion was not enforced:** "Reconcile changed document eligibility by cause on retained inputs before live publication" appears once in ct-sh4j, as text. No note reports a reconciliation. The validator's FAIL list (10:39) and the swarm's PASS (12:05) cover joins, slots, outcome conflicts and test counts, and none mentions it. Acceptance was checked by running tests and reading code, and a release diff was never a required artifact. The criterion also lists archive-member test coverage, and the `bc0a146c` test diff adds no member case.
+- **Recurs:** 242,293 top-level stored rows also have NULL `complete` and so fail the same predicate; whether v20 passed them was not measured. Members still carry the container's `http_status` and `outcome`, and `mode` says `fetch` where the raw says `retained_import` or `replay`, so the row borrows some facts and not others.
+- **Should have been addressed:** in the data model before code: §6.1 (line 243) against §7.3 (line 476), which needs real members. Then a before-and-after comparison at the capture layer.
+- **Why missed:** `capture_comparison.py:42` has listed `complete` as `not_compared` since `f539c2a0` (2026-10-27). `capture_backfill_guard` checks domain, and NULL is in-domain (AGENTS.md says so). Model invariants test one build's internal consistency, never a change against the previous release.
+
+### D2: NULL `sources.url`
+
+- **Cause:** `document-addresses.sql` (`068f2a40`, 2026-10-27) tests that a member is real, then takes every context row of that `source_id`, including non-real rows with NULL `context_url`. `bac12c1f` and `a7f55959` touched the query without changing this. It was latent until `bc0a146c` made 72 such sources real.
+- **Recurs:** `source_input` filters NULL only inside its `compatible` branch, and its `RIGHT JOIN addresses` lets the row out. Empty `list.filename` is a related symptom, 2,856 to 2,901 rows.
+- **Should have been addressed:** the query's filter at the source grain, and a non-null declaration on the file.
+- **Why no check stopped it:** §7.10's table marks `url` as not nullable, but `release-schema.json` has no `nullable` on any `sources.parquet` column. `archive_schema.py:90` reads that key only to refuse a nullable primary key, and `url` is not part of the identity. So nothing checks it at write time, spec and registry disagree, and no invariant found in `archive_model.py` tests it.
+
+### HTTP 202 `http_error` rows
+
+- **Cause:** all 23 are AWS WAF responses. Of the 29 stored, complete 202 rows in the corpus, the 23 with raw `http_error` at 202 all carry `x-amzn-waf-*` headers, 9 of them with empty bodies, on `reliefweb.int`, `fas.org`, `www.un.org` and `www.europarl.europa.eu`. Raw `outcome` is `http_error`, mapped to `failed` at `captures.py:21`. The `BETWEEN 200 AND 299` rule dates from `91254080` (2026-10-27), then `e31aeb42` and `bc0a146c`. Only 429 and 503 are singled out, not 202 as a challenge. impl-d-jobs, on one line, finds HEAD gives attempt 0 `failed` and attempt 1 `stored`, while v21 has attempt 0 `stored`, and **none of the four mapping states it tested reproduces v21**. So the exact v21 path is unproven, and which code built the v21 captures is an open question. Its full re-stage is still running.
+- **Recurs:** the same 2xx test is in `good-fetches.sql`, `archive_model.py:728`, `appearance-records-resolved.sql:58` and `archive_url_state.py:28`.
+- **Should have been addressed:** `captures.py`, the one owner of attempt outcomes, by keeping a recorded failure and treating a challenge as not a body.
+- **Why missed:** HTTP status class stands in for "a document arrived". `page-signals.json` has a `visible_challenge` rule, but it reads body text, so a header-only challenge or an empty body passes it. A WAF case does not appear in `test_captures_final34.py`.
+
+### 17 moved meetings
+
+- **Cause:** `single_package_meetings` (`959c23ee`, 2026-10-30, `appearance-records-resolved.sql:107-111`) asks whether a package has one event, never whether an event has one package. `ranked_source_observations` (`:206`) keeps one record per occasion and source, so one package's witnesses stand for the event. The ranking and link SQL both changed between v20 and v21 (`ab543cef`), which is the inferred reason these 17 moved. The parser output for all 17 Congress.gov records lists 2-3 jackets; **those raw bodies are absent from the mirror and 404 publicly, so the source's own list was not read.**
+- **Recurs:** 3,718 live events link two or more packages. 86 of them have MODS witnesses, so 86 are exposed, not just the 17.
+- **Should have been addressed:** the occasion identity in the data model: whether a MODS witness belongs to a package or an event.
+- **Why missed:** invariants test that keys resolve, and a wrong hearing's witness resolves fine. The review compared counts, and the 17 moved without a count change at event level.
+
+### Transcript duplicates
+
+- **Cause:** `transcripts` has one entry per list row, not per package (`959c23ee`, ordered since `844fba03`). Every entry has a distinct `list_row`; the repeats are the PDF and HTML rows of one package. So these are row-level entries that read as duplicates, and D1 multiplied them by splitting documents. 3,199 events had them before v21, on rows the grouping had not joined.
+- **Recurs:** `HearingDetail.tsx:172` maps entries without grouping. Any consumer that reads `transcripts` as "this event's transcripts" gets repeats.
+- **Should have been addressed:** the model decision of what an entry is, then the export or the viewer.
+- **Why missed:** the schema allows it (`package_id`, `list_row`), and nothing states how many entries one package may have.
+
+### "ZIP" titles
+
+- **Cause:** the title rule (data model line 574, spec `8c33a85a`, 2026-10-26; code `068f2a40`, 2026-10-27) falls back to the earliest listing link's text. On `www.govinfo.gov`, that text is "ZIP" for the package link. Every titled row has a source whose `link_text` is "ZIP": 34,184 and 34,019. The earlier title sat on 33,842 PDFs because member grouping carried the ZIP's address onto the PDF document.
+- **When it started:** in all 4 reachable releases: `0db23484` and `a06e2a63` show the same 34,184, as does `c94bfedc`. **No older release could be reached, so the first appearance is not known**; it can be no earlier than the 2026-10-05 ZIP fetches and `068f2a40`.
+- **Recurs:** other short titles in the live release: "ZIP" 34,019, "PDF" 3,743, "XML" 198, "here" 50, "Email" 38, "Rules" 4.
+- **Should have been addressed:** the title rule, since link text says what a link does, not what a document is. Page-signal vocabularies filter error words but not generic link words.
+- **Why missed:** no check found looks at a title's value, only whether rows and keys are consistent.
+
+### Shared pattern
+
+**Every layer checks one build against itself, and none asks whether a value is right against raw or against the last release.** Six defects passed because each check was satisfied by an in-domain value: NULL `complete`, a 2xx status, a resolving key, a present title. Three other threads run through them:
+
+- A criterion written in prose has no owner or artifact that would fail, as with ct-sh4j's reconciliation.
+- One property is defined in several places without a single owner: 2xx good, nullability in spec and registry, and the meaning of a member or transcript entry.
+- Spec text was changed to match code in the same commit, so the spec could not catch the code.
+
 ## Still open
 
 - **Unexplained:** why v20 lacked the +604 witnesses' records; 469 prior ZIP intervals; 18 rows between the split routes.
