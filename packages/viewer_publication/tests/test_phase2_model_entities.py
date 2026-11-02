@@ -269,7 +269,7 @@ def test_phase2_entities_meetings_witnesses_recordings_and_spicy_projections(tmp
                 title='Congress.gov Title',
                 meeting_date='2023-05-11',
                 meeting_type='Markup',
-                status='Completed',
+                status='Scheduled',
                 sittings=[],
                 committees=[dict(system_code='HSAG00', role='host')],
                 subject_keys=['118-hr-1234'],
@@ -293,7 +293,7 @@ def test_phase2_entities_meetings_witnesses_recordings_and_spicy_projections(tmp
                 title='House XML Official Title',
                 meeting_date='2023-05-10',
                 meeting_type='Hearing',
-                status='Published',
+                status='Rescheduled',
                 sittings=[dict(start='2023-05-10T14:00:00Z', end='2023-05-10T16:00:00Z', room='1300', building='LHOB', address='Washington, DC')],
                 committees=[dict(system_code='HSAG00', role='primary')],
                 subject_keys=['118-HR-1234', '118-pn-123'],
@@ -678,7 +678,8 @@ def test_phase2_entities_meetings_witnesses_recordings_and_spicy_projections(tmp
     assert m['title'] == 'House XML Official Title'
     assert m['meeting_date'] == date(2023, 5, 10)
     assert m['meeting_type'] == 'Hearing'
-    assert m['status'] == 'Published'
+    # Congress.gov leads for status; House XML fills House-only events (ct-n61r).
+    assert m['status'] == 'Scheduled'
     assert m['sittings'][0]['place'] == '1300, LHOB, Washington, DC'
     assert m['committees'] == [{'system_code': 'hsag00', 'role': 'primary'}]
     assert m['subject_keys'] == ['118-hr-1234', '118-pn-123']

@@ -12,7 +12,8 @@ WITH event_keys AS (
   coalesce(h.title,c.title) AS title,
   coalesce(h.meeting_date,c.meeting_date) AS meeting_date,
   coalesce(h.meeting_type,c.meeting_type) AS meeting_type,
-  coalesce(h.status,c.status) AS status,
+  -- Congress.gov leads, as for sittings; House XML (S/R/P, read from the root) fills House-only events.
+  coalesce(c.status,h.status) AS status,
   -- The first source stating access decides; unknown states nothing.
   coalesce(nullif(c.access,'unknown'),nullif(h.access,'unknown'),c.access,h.access) AS access,
   CASE WHEN nullif(c.access,'unknown') IS NOT NULL THEN concat('congress_gov',c.access_basis)
