@@ -8,7 +8,6 @@ import pyarrow.parquet as pq
 import pytest
 
 from congress_api.lake import compatible_proof, compatible_versions as cv
-from congress_api.lake.readings import worker_limits
 from congress_api.retention.provenance import run_job
 from docspec_client.client import NativeDatasets
 from native_test_helpers import lake_readings_table
@@ -37,12 +36,17 @@ def reader_set(monkeypatch, reader_without_set):
 def proof(version, current, recompute='none', **more):
     return dict(dict(scope='sample', version=version, current=current, recompute_sha256=cv.recompute_sha256(recompute),
         old_input_sha256=SHA, new_input_sha256=SHA, rows=5, columns=3, differences=0, only_old=0, only_new=0,
-        strata=dict(completed=dict(population=9, local=5, sampled=5)), lock_only=dict(recomputed=version)), **more)
+        strata=dict(completed=dict(population=9, local=5, sampled=5)), lock_only=dict(recomputed=version),
+        page_parse_max_bytes=cv.page_parse_max_bytes()), **more)
 
 
-def entry(parser='html', version='h1', basis='lock_only', recompute_sql='none', **more):
+def entry(parser='html', version='h1', basis=None, recompute_sql='none', **more):
+    """A page parser entry is a full predicate entry (the parse-size rule); sniff is lock-only."""
+    page = parser in cv.PAGE_PARSERS
+    basis = basis or ('predicate' if page else 'lock_only')
+    full = dict(scope='full', strata=dict(completed=dict(population=5, local=5, sampled=5))) if basis == 'predicate' else {}
     value = dict(parser=parser, version=version, current=PINS.get(parser, 'x'), basis=basis, recompute_sql=recompute_sql,
-                 reason='lock pin only', proof=proof(version, PINS.get(parser, 'x'), recompute_sql))
+                 reason='lock pin only', proof=proof(version, PINS.get(parser, 'x'), recompute_sql, **full))
     return dict(value, **more)
 
 
@@ -52,17 +56,8 @@ def predicate(version='h1', recompute=NOT_HTML, **more):
                  proof=proof(version, 'h2', recompute, **{**full, **more}))
 
 
-def static_bundle(**more):
-    leaves = {p: p[0] + '1' for p in cv.LEAF_PARSERS}
-    value = entry(parser='readings', version='b1', basis='bundle')
-    value['proof'] = dict(scope='static', version='b1', current='b2', recompute_sha256=cv.recompute_sha256('none'), old_input_sha256=SHA,
-        new_input_sha256=SHA, lock_only=dict(recomputed='b1'), leaf_versions=leaves, policy=worker_limits())
-    value['proof'].update(more)
-    return value
-
-
 def leaf_entries():
-    return [entry(parser=p, version=p[0] + '1', basis='lock_only' if p == 'sniff' else 'whole') for p in cv.LEAF_PARSERS]
+    return [entry(parser=p, version=p[0] + '1') for p in cv.LEAF_PARSERS]
 
 
 @pytest.fixture
@@ -80,15 +75,14 @@ def test_valid_entries_are_accepted(reader_set):
     assert cv.validate_entries(entries, current=PINS) == entries
 
 
-def test_a_static_bundle_over_whole_leaves_is_accepted():
-    entries = [*leaf_entries(), static_bundle()]
-    assert cv.validate_entries(entries, current=PINS) == entries
-
-
-def bad_proof(**more):
-    value = entry()
+def bad_proof(parser='html', **more):
+    value = entry(parser=parser, version=parser[0] + '1')
     value['proof'] = dict(value['proof'], **more)
     return value
+
+
+def sniff(**more):
+    return bad_proof('sniff', **more)
 
 
 # Each case is a check that, deleted, lets that entry through.
@@ -102,20 +96,27 @@ def bad_proof(**more):
     (entry(version='h2'), 'compatible with itself'),
     (entry(parser='filename_readings'), 'D3/D4 have no compatible versions'),
     (entry(parser='meeting_records.house_xml'), 'D3/D4 have no compatible versions'),
+    (entry(parser='captures'), 'D3/D4 have no compatible versions'),
     (entry(basis='nope'), 'Unknown compatible version basis'),
     (entry(basis='bundle'), 'bundle basis'),
     (entry(parser='readings', basis='lock_only'), 'bundle basis'),
-    (entry(recompute_sql=NOT_HTML), 'Only a predicate entry'),
-    (dict(predicate(), parser='xml', current='x2'), 'names no recompute set'),
-    (bad_proof(scope='full', lock_only=None), 'old tree to recompute'),
-    (bad_proof(lock_only=dict(recomputed='h9')), 'old tree to recompute'),
-    (bad_proof(scope='static'), 'basis scope'),
-    (dict(entry(parser='xml', version='x1'), proof=dict(proof('x1', 'x2'), strata=None)), 'state its strata'),
-    (dict(entry(parser='xml', version='x1'), proof=dict(proof('x1', 'x2'), rows=4)), 'add up to its rows'),
-    (dict(entry(parser='xml', version='x1'), proof=dict(proof('x1', 'x2'), rows=5,
-        strata=dict(completed=dict(population=9000, local=3000, sampled=5)))), 'too small in its completed'),
-    (dict(entry(parser='xml', version='x1'), proof=dict(proof('x1', 'x2'), rows=6,
-        strata=dict(completed=dict(population=9, local=5, sampled=5), error=dict(population=3, local=2, sampled=1)))), 'too small in its error'),
+    (entry(parser='sniff', version='s1', recompute_sql=NOT_HTML), 'Only a predicate entry'),
+    (entry(basis='whole'), 'A page parser entry, and only one, is a predicate entry'),
+    (entry(parser='xml', version='x1', basis='lock_only'), 'A page parser entry, and only one, is a predicate entry'),
+    (entry(parser='sniff', version='s1', basis='predicate'), 'A page parser entry, and only one, is a predicate entry'),
+    (entry(parser='xml', version='x1', recompute_sql=NOT_HTML), "must equal its reader's"),
+    (bad_proof(page_parse_max_bytes=None), 'another page-parse bound'),
+    (bad_proof('json', page_parse_max_bytes=cv.page_parse_max_bytes() * 2), 'another page-parse bound'),
+    (bad_proof(scope='sample'), 'basis scope'),
+    (bad_proof(strata=dict(completed=dict(population=6, local=5, sampled=5))), 'every row the entry keeps'),
+    (sniff(lock_only=None), 'old tree to recompute'),
+    (sniff(lock_only=dict(recomputed='h9')), 'old tree to recompute'),
+    (sniff(scope='static'), 'basis scope'),
+    (sniff(strata=None), 'state its strata'),
+    (sniff(rows=4), 'add up to its rows'),
+    (sniff(strata=dict(completed=dict(population=9000, local=3000, sampled=5))), 'too small in its completed'),
+    (sniff(rows=6, strata=dict(completed=dict(population=9, local=5, sampled=5), error=dict(population=3, local=2, sampled=1))),
+     'too small in its error'),
     (bad_proof(current='h3'), 'bound to other pins'),
     (bad_proof(version='h0'), 'bound to other pins'),
     (bad_proof(old_input_sha256=None), 'both inputs'),
@@ -127,14 +128,10 @@ def test_unproved_unbound_or_stale_entries_are_refused(bad, message):
 
 @pytest.mark.parametrize('bad,message', [
     (predicate(recompute="SELECT body_sha FROM {readings} WHERE false"), "must equal its reader's"),
-    (predicate(scope='static'), 'basis scope'),
-    (predicate(scope='sample'), 'basis scope'),
-    (predicate(strata=dict(completed=dict(population=6, local=5, sampled=5))), 'every row the entry keeps'),
-    (entry(), 'names a recompute set; a whole-version entry'),
-    (entry(basis='whole'), 'names a recompute set; a whole-version entry'),
+    (entry(), "must equal its reader's"),
     (predicate(recompute_sha256=cv.recompute_sha256('other')), 'recompute set changed after'),
 ])
-def test_a_parser_with_a_recompute_set_takes_only_full_predicate_entries(reader_set, bad, message):
+def test_an_html_entry_takes_its_readers_set(reader_set, bad, message):
     with pytest.raises(ValueError, match=message):
         cv.validate_entries([bad], current=PINS)
 
@@ -143,28 +140,12 @@ def test_duplicates_and_chains_are_refused():
     # A chain v1->v2->v3 needs an entry whose current is no longer live; that is refused.
     with pytest.raises(ValueError, match='Duplicate'):
         cv.validate_entries([entry(), entry()], current=PINS)
-    # After a later move h2 becomes old too; an entry may not name another entry's current.
     with pytest.raises(ValueError, match='superseded pin'):
-        cv.validate_entries([entry(version='h1'), entry(version='h2', current='h3', proof=proof('h2', 'h3'))], current=dict(PINS, html='h3'))
+        cv.validate_entries([entry(version='h1'), dict(entry(version='h2'), current='h3', proof=dict(entry(version='h2')['proof'], current='h3'))],
+                            current=dict(PINS, html='h3'))
     # Several old versions to one current are separate, valid entries.
-    both = [entry(version='h0', proof=proof('h0', 'h2')), entry(version='h1')]
+    both = [entry(version='h0'), entry(version='h1')]
     assert cv.validate_entries(both, current=PINS) == both
-
-
-@pytest.mark.parametrize('more,message', [
-    (dict(policy=dict(worker_limits(), memory_bytes=1)), 'worker policy'),
-    (dict(leaf_versions=dict(sniff='s1')), 'old leaf pins'),
-    (dict(leaf_versions={p: p[0] + '9' for p in cv.LEAF_PARSERS}), 'lock-only or whole entry for every old leaf'),
-])
-def test_a_static_bundle_needs_lock_only_leaves_and_the_same_policy(more, message):
-    with pytest.raises(ValueError, match=message):
-        cv.validate_entries([*leaf_entries(), static_bundle(**more)], current=PINS)
-
-
-def test_a_static_bundle_is_refused_once_a_leaf_changed_semantics(reader_set):
-    leaves = [e for e in leaf_entries() if e['parser'] != 'html'] + [predicate()]
-    with pytest.raises(ValueError, match='lock-only or whole entry'):
-        cv.validate_entries([*leaves, static_bundle()], current=PINS)
 
 
 def test_a_registry_file_of_another_version_is_refused(tmp_path):
@@ -174,16 +155,19 @@ def test_a_registry_file_of_another_version_is_refused(tmp_path):
         cv.load_registry(current=PINS, path=path)
 
 
-def test_accepted_versions_exclude_predicate_entries(reader_set):
-    rows = cv.accepted_version_rows([entry(), predicate(version='h0')], pins=PINS)
-    assert dict(parser='html', version='h1') in rows and dict(parser='html', version='h0') not in rows
+def test_accepted_versions_exclude_predicate_entries():
+    # Page entries never stand for a whole version: oversized bodies are always recomputed.
+    rows = cv.accepted_version_rows(leaf_entries(), pins=PINS)
+    assert dict(parser='sniff', version='s1') in rows
+    assert not {(r['parser'], r['version']) for r in rows} & {('html', 'h1'), ('xml', 'x1'), ('json', 'j1')}
     assert {(r['parser'], r['version']) for r in rows} >= set(PINS.items())
 
 
 def test_the_selection_is_never_materialized(reader_set):
     *sets, step = cv.selected_readings_steps([*leaf_entries(), predicate(version='h0')])
     assert step['name'] == 'selected_readings' and 'materialize' not in step
-    assert [s['name'] for s in sets] == ['recompute_0'] and sets[0]['materialize']
+    assert [s['name'] for s in sets] == ['recompute_0', 'oversize_page_bodies'] and all(s['materialize'] for s in sets)
+    assert str(cv.page_parse_max_bytes()) in sets[1]['sql']
     assert cv.selected_readings_steps([]) == [dict(name='selected_readings',
         sql='SELECT r.* FROM parser_versions v JOIN readings r ON r.parser=v.parser AND r.parser_version=v.version')]
     assert "'html'" not in cv.selected_readings_steps([entry()], parsers=('sniff',))[-1]['sql']
@@ -195,10 +179,19 @@ def write(tmp_path, name, rows):
     return path
 
 
-def selected(tmp_path, engine, rows, entries):
+def captures(tmp_path, oversize=()):
+    """Decoded sizes: each listed body one byte over the page-parse bound, the rest small."""
+    path = tmp_path / 'captures.parquet'
+    rows = [dict(sha256=c.encode() * 32, bytes=cv.page_parse_max_bytes() + (1 if c in oversize else -1)) for c in 'abcdef']
+    pq.write_table(pa.Table.from_pylist(rows, schema=pa.schema([('sha256', pa.binary(32)), ('bytes', pa.int64())])), path)
+    return path
+
+
+def selected(tmp_path, engine, rows, entries, oversize=()):
     readings = write(tmp_path, 'readings', rows)
     pins = dict(cv.accepted_versions_input(tmp_path, [], pins=dict(html='h2')), name='parser_versions')
-    result = run_job(tmp_path / 'select', engine, inputs=[dict(name='readings', kind='parquet', path=str(readings)), pins],
+    result = run_job(tmp_path / 'select', engine, inputs=[dict(name='readings', kind='parquet', path=str(readings)), pins,
+            dict(name='captures', kind='parquet', path=str(captures(tmp_path, oversize)))],
         steps=cv.selected_readings_steps(entries), outputs=[],
         queries=[dict(name='rows', sql='SELECT body_sha,parser_version FROM selected_readings ORDER BY body_sha')])
     return [(row['body_sha'], row['parser_version']) for row in result['rows']]
@@ -224,9 +217,11 @@ def test_preflight_rejects_an_injected_duplicate_primary_key(tmp_path, engine):
         compatible_proof.preflight(engine=engine, work=tmp_path / 'dup', inputs=dict(readings=bad))
 
 
-def prove(tmp_path, engine, old, new, work, **more):
-    return compatible_proof.prove_unchanged(engine=engine, work=tmp_path / work, old=write(tmp_path, work + '-old', old),
-        new=write(tmp_path, work + '-new', new), parser='html', version='h1', current='h2', **more)
+def prove(tmp_path, engine, old, new, work, oversize=(), **more):
+    (tmp_path / work).mkdir()
+    return compatible_proof.prove_unchanged(engine=engine, work=tmp_path / work / 'job', old=write(tmp_path, work + '-old', old),
+        new=write(tmp_path, work + '-new', new), parser='html', version='h1', current='h2',
+        captures=captures(tmp_path / work, oversize), **more)
 
 
 BASE = [reading(c, 'h1', format=f, title='t' + c) for c, f in zip('abcde', ['html', 'html', 'xml', 'html', 'xml'])]
@@ -287,3 +282,11 @@ def test_two_old_versions_select_one_body_once(tmp_path, engine):
     rows = [reading('a', 'h0', format='html'), reading('a', 'h1', format='html'), reading('b', 'h1', format='html')]
     both = [entry(version='h0', basis='whole', proof=proof('h0', 'h2')), entry(version='h1', basis='whole')]
     assert selected(tmp_path, engine, rows, both) == [((b'a' * 32).hex(), 'h0'), ((b'b' * 32).hex(), 'h1')]
+
+
+def test_a_body_over_the_page_parse_bound_is_never_kept(tmp_path, engine):
+    # ct-61ys: the current rule refuses it by size, so no old reading may stand in for it.
+    rows = [reading('a', 'h1', format='html'), reading('b', 'h1', format='html')]
+    assert selected(tmp_path, engine, rows, [entry()], oversize='b') == [((b'a' * 32).hex(), 'h1')]
+    result, _ = prove(tmp_path, engine, BASE, [dict(SAME[1], title='changed'), SAME[0], *SAME[2:]], 'oversize', oversize='b')
+    assert result['rows'] == 4 and result['differences'] == 0

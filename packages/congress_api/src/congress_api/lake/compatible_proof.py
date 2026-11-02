@@ -47,16 +47,26 @@ def local_bodies(raw_root):
     return found
 
 
-def kept_rows(*, base, parser, old, recompute_sql, engine, work):
-    """(body hex, status) of every old row the entry keeps: outside its recompute set."""
+def _oversize(parser, captures):
+    """Inputs and steps for the page-parse size rule; nothing for sniff or without captures."""
+    if parser not in cv.PAGE_PARSERS:
+        return [], [], ''
+    return ([table_input('captures', captures)], [dict(name='oversize', sql=cv.oversize_bodies_sql(), materialize=True)],
+            ' AND NOT EXISTS (SELECT 1 FROM oversize z WHERE z.body_sha=r.body_sha)')
+
+
+def kept_rows(*, base, parser, old, recompute_sql, engine, work, captures):
+    """(body hex, status) of every old row the entry keeps: outside its recompute set and, for a
+    page parser, at or under the page-parse bound."""
     # Narrow keys only, through a file: a query result is bounded by the metadata allowance.
     directory = work / 'candidates'
     p, v = cv._quote(parser), cv._quote(old)
-    run_job(directory, engine, inputs=[dict(name='r', kind='parquet', path=str(base))], queries=[],
+    size_inputs, size_steps, size_rule = _oversize(parser, captures)
+    run_job(directory, engine, inputs=[dict(name='r', kind='parquet', path=str(base)), *size_inputs], queries=[],
         steps=[dict(name='old_rows', sql=f'SELECT * FROM r WHERE parser={p} AND parser_version={v}'),
-               dict(name='recompute', sql=cv.recompute_set_sql(recompute_sql, 'old_rows'), materialize=True)],
-        outputs=[parquet_output(directory, 'keys', "SELECT encode(o.body_sha,'hex') AS body,o.status FROM old_rows o "
-            'WHERE NOT EXISTS (SELECT 1 FROM recompute x WHERE x.body_sha=o.body_sha)', ['body'])])
+               dict(name='recompute', sql=cv.recompute_set_sql(recompute_sql, 'old_rows'), materialize=True), *size_steps],
+        outputs=[parquet_output(directory, 'keys', "SELECT encode(r.body_sha,'hex') AS body,r.status FROM old_rows r "
+            'WHERE NOT EXISTS (SELECT 1 FROM recompute x WHERE x.body_sha=r.body_sha)' + size_rule, ['body'])])
     return pq.read_table(directory / 'keys.parquet').to_pylist()
 
 
@@ -215,7 +225,7 @@ def preflight(*, engine, work, inputs):
     return found
 
 
-def prove_unchanged(*, engine, work, old, new, parser, version, current, recompute_sql=cv.WHOLE, sample_keys=None):
+def prove_unchanged(*, engine, work, old, new, parser, version, current, recompute_sql=cv.WHOLE, sample_keys=None, captures=None):
     """Every old row at `version` outside the recompute set must equal its row at `current`.
 
     The compared domain K is the old rows outside the old side's recompute set: those are the
@@ -230,12 +240,15 @@ def prove_unchanged(*, engine, work, old, new, parser, version, current, recompu
     compared = [c for c in schema if c not in keys and c != 'parser_version']
     on = lambda a, b: ' AND '.join(f'{a}.{k}={b}.{k}' for k in keys)
     p, old_v, new_v = map(cv._quote, (parser, version, current))
-    inputs = [table_input('old_input', old), table_input('new_input', new)]
-    steps = [dict(name='old_rows', sql=f'SELECT * FROM old_input r WHERE r.parser={p} AND r.parser_version={old_v}'),
+    if parser in cv.PAGE_PARSERS and captures is None:
+        raise ValueError('A page parser proof needs captures for the page-parse size rule')
+    size_inputs, size_steps, size_rule = _oversize(parser, captures)
+    inputs = [table_input('old_input', old), table_input('new_input', new), *size_inputs]
+    steps = [*size_steps, dict(name='old_rows', sql=f'SELECT * FROM old_input r WHERE r.parser={p} AND r.parser_version={old_v}'),
              dict(name='new_rows', sql=f'SELECT * FROM new_input r WHERE r.parser={p} AND r.parser_version={new_v}'),
              dict(name='old_recompute', sql=cv.recompute_set_sql(recompute_sql, 'old_rows'), materialize=True)]
     held = (f'SELECT {",".join(keys)} FROM old_rows r '
-            'WHERE NOT EXISTS (SELECT 1 FROM old_recompute x WHERE x.body_sha=r.body_sha)')
+            'WHERE NOT EXISTS (SELECT 1 FROM old_recompute x WHERE x.body_sha=r.body_sha)' + size_rule)
     if sample_keys is not None:
         inputs.append(table_input('sample_keys', sample_keys))
         held = f'SELECT h.* FROM ({held}) h WHERE h.body_sha IN (SELECT body_sha FROM sample_keys)'
@@ -280,9 +293,10 @@ def main(argv=None):
             report = dict(proof=proof)
         else:
             recompute_sql = cv.reader_recompute_sql(args.parser) or cv.WHOLE
-            basis = 'predicate' if recompute_sql != cv.WHOLE else 'lock_only' if args.parser == 'sniff' else 'whole'
+            basis = 'predicate' if args.parser in cv.PAGE_PARSERS else 'lock_only'
             local = local_bodies(args.raw_root)
-            rows = kept_rows(base=args.base, parser=args.parser, old=args.old, recompute_sql=recompute_sql, engine=engine, work=work)
+            rows = kept_rows(base=args.base, parser=args.parser, old=args.old, recompute_sql=recompute_sql, engine=engine, work=work,
+                captures=args.captures)
             full = basis == 'predicate' or args.full
             if args.sample_keys:
                 import csv
@@ -292,9 +306,11 @@ def main(argv=None):
             bodies, strata = choose_sample(rows, local=local, size=args.sample, full=full)
             keys, staged = recompute(bodies=bodies, local=local, captures=args.captures, raw_root=args.raw_root,
                 engine=engine, work=work, decided_at=args.decided_at)
-            counts, differing = prove_unchanged(engine=engine, work=work / 'proof', old=args.base, new=staged['readings'],
+            counts, differing = prove_unchanged(engine=engine, work=work / 'proof', old=args.base, new=staged['readings'], captures=args.captures,
                 parser=args.parser, version=args.old, current=pins[args.parser], recompute_sql=recompute_sql, sample_keys=keys)
-            proof = dict(scope='full' if full else 'sample', strata=strata, version=args.old, current=pins[args.parser], recompute_sha256=cv.recompute_sha256(recompute_sql),
+            if args.parser in cv.PAGE_PARSERS:proof_bound = dict(page_parse_max_bytes=cv.page_parse_max_bytes())
+            else:proof_bound = {}
+            proof = dict(scope='full' if full else 'sample', strata=strata, **proof_bound, version=args.old, current=pins[args.parser], recompute_sha256=cv.recompute_sha256(recompute_sql),
                 old_input_sha256=file_pin(args.base)['sha256'], new_input_sha256=file_pin(staged['readings'])['sha256'],
                 sample_keys_sha256=file_pin(keys)['sha256'], **counts)
             if basis == 'lock_only':

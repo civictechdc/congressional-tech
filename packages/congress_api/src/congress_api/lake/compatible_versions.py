@@ -8,11 +8,13 @@ bundle (unreadable-decision authority). Catalog and record tables (D3/D4) are re
 Bases:
 - lock_only: only lock pins moved; the old tree must recompute the old pin (attestation).
 - whole: hashed code moved but this parser's output did not; a differential proves it.
-- predicate: semantics changed for a key set the reader names. `recompute_sql` is that
-  reader's own query over `{readings}` returning the body_sha that must be recomputed; every
-  other old row stays. The engine evaluates it only as a set, so the selection anti-joins it.
-- bundle: the unreadable-decision authority, re-read in full or, when every leaf entry is
-  lock_only or whole under the same worker policy, attested statically.
+- predicate: semantics changed for a key set. `recompute_sql` is the reader's own query over
+  `{readings}` returning the body_sha that must be recomputed ('none' when the reader names
+  none); every other old row stays. The engine evaluates it only as a set, so the selection
+  anti-joins it. Every html/xml/json entry is a predicate entry: bodies above the current
+  page-parse bound are also recomputed, by rule, and the proof is bound to that bound.
+- bundle: the unreadable-decision authority, re-read in full. (A static bundle proof needed
+  lock-only page leaves; page entries are predicate entries now, so it was removed.)
 
 Every proof is bound to its entry: both pins, the recompute-set digest and the two inputs it
 read. `selected_readings_steps` is the single selection every reader uses; `accepted_versions`
@@ -31,6 +33,10 @@ from congress_api.retention.provenance import json_input
 ROOT = Path(__file__).resolve().parents[5]
 REGISTRY = ROOT / 'model/registries/compatible-versions.json'
 LEAF_PARSERS = ('sniff', 'html', 'xml', 'json')
+# Page parsers parse the whole body, so their outcome depends on readings.PAGE_PARSE_MAX_BYTES
+# (ct-61ys): a body above it is refused under the current rule. Every page entry therefore
+# recomputes those bodies, by rule, sized from captures (`bytes` is the decoded size).
+PAGE_PARSERS = ('html', 'xml', 'json')
 PARSERS = (*LEAF_PARSERS, 'readings')
 ENTRY = {'parser', 'version', 'current', 'basis', 'recompute_sql', 'reason', 'proof'}
 BINDING = {'scope', 'version', 'current', 'recompute_sha256', 'old_input_sha256', 'new_input_sha256'}
@@ -39,7 +45,7 @@ WHOLE = 'none'
 # A lock-only or whole proof may be a sample whose keys were fixed before recompute; a
 # predicate entry changes semantics, so it compares every row it keeps.
 SCOPES = {'lock_only': {'sample', 'full'}, 'whole': {'sample', 'full'}, 'predicate': {'full'},
-          'bundle': {'full', 'static'}}
+          'bundle': {'full'}}
 # A sample compares at least this many completed rows (or all local ones), and every local
 # error/size_limit row: those exercise the paths a few successes do not.
 MIN_SAMPLE_ROWS = 2000
@@ -54,6 +60,16 @@ def current_pins():
     from congress_api.lake import readings
     leaf = {p: readings.current_version(p) for p in LEAF_PARSERS}
     return {**leaf, 'readings': readings.bundle_version(leaf, policy=readings.worker_limits())}
+
+
+def page_parse_max_bytes():
+    from congress_api.lake.readings import PAGE_PARSE_MAX_BYTES
+    return PAGE_PARSE_MAX_BYTES
+
+
+def oversize_bodies_sql(captures='captures'):
+    """Bodies the current page parser refuses by size: narrow, one filtered capture scan."""
+    return f'SELECT DISTINCT sha256 AS body_sha FROM {captures} WHERE bytes > {page_parse_max_bytes()}'
 
 
 def recompute_sha256(recompute_sql):
@@ -72,7 +88,7 @@ def _refuse(message, name):
     raise ValueError(f'{message}: {name}')
 
 
-def _validate_proof(entry, name, by_version):
+def _validate_proof(entry, name):
     proof = entry['proof']
     scope = proof.get('scope') if isinstance(proof, dict) else None
     if not isinstance(proof, dict) or not BINDING <= set(proof) or scope not in SCOPES[entry['basis']]:
@@ -83,20 +99,12 @@ def _validate_proof(entry, name, by_version):
         _refuse('Compatible version recompute set changed after its proof', name)
     if any(not isinstance(proof[k], str) or len(proof[k]) != 64 for k in ('old_input_sha256', 'new_input_sha256')):
         _refuse('Compatible version proof must name both inputs it read', name)
-    if entry['basis'] == 'lock_only' or scope == 'static':
+    if entry['basis'] == 'lock_only':
         attestation = proof.get('lock_only')
         if not isinstance(attestation, dict) or attestation.get('recomputed') != entry['version']:
             _refuse('Lock-only proof requires the old tree to recompute the old version', name)
-    if scope == 'static':
-        from congress_api.lake.readings import worker_limits
-        leaves = proof.get('leaf_versions')
-        if not isinstance(leaves, dict) or set(leaves) != set(LEAF_PARSERS):
-            _refuse('Static bundle proof must name the old leaf pins', name)
-        if any(by_version.get((p, v), {}).get('basis') not in {'lock_only', 'whole'} for p, v in leaves.items()):
-            _refuse('Static bundle proof needs a lock-only or whole entry for every old leaf pin', name)
-        if proof.get('policy') != worker_limits():
-            _refuse('Static bundle proof names another worker policy', name)
-        return
+    if entry['parser'] in PAGE_PARSERS and proof.get('page_parse_max_bytes') != page_parse_max_bytes():
+        _refuse('Page entry proof is bound to another page-parse bound', name)
     if not COUNTS <= set(proof) or any(type(proof[k]) is not int for k in COUNTS):
         _refuse('Compatible version requires a differential proof', name)
     if proof['rows'] <= 0 or proof['columns'] <= 0:
@@ -146,14 +154,12 @@ def validate_entries(entries, *, current):
             _refuse('The readings bundle, and only it, uses the bundle basis', name)
         if entry['basis'] != 'predicate' and entry['recompute_sql'] != WHOLE:
             _refuse('Only a predicate entry names a recompute set', name)
+        if (entry['parser'] in PAGE_PARSERS) != (entry['basis'] == 'predicate'):
+            _refuse('A page parser entry, and only one, is a predicate entry (the parse-size bound applies)', name)
         if entry['basis'] in ('lock_only', 'whole') and reader_recompute_sql(entry['parser']) is not None:
             _refuse('Its reader names a recompute set; a whole-version entry would keep rows it changes', name)
-        if entry['basis'] == 'predicate':
-            source = reader_recompute_sql(entry['parser'])
-            if source is None:
-                _refuse('The reader names no recompute set for a predicate entry', name)
-            if entry['recompute_sql'] != source:
-                _refuse("A predicate entry's recompute set must equal its reader's", name)
+        if entry['basis'] == 'predicate' and entry['recompute_sql'] != (reader_recompute_sql(entry['parser']) or WHOLE):
+            _refuse("A predicate entry's recompute set must equal its reader's", name)
         if name in seen:
             _refuse('Duplicate compatible version', name)
         seen[name] = entry
@@ -163,7 +169,7 @@ def validate_entries(entries, *, current):
             _refuse('A version cannot be compatible with itself', name)
     # Every current is the live pin and no version equals it, so entries cannot chain.
     for entry in entries:
-        _validate_proof(entry, (entry['parser'], entry['version']), seen)
+        _validate_proof(entry, (entry["parser"], entry["version"]))
     return entries
 
 
@@ -213,13 +219,17 @@ def selected_readings_steps(entries, *, parsers=LEAF_PARSERS):
             steps.append(dict(name=name, materialize=True, sql=recompute_set_sql(
                 e['recompute_sql'], f'(SELECT * FROM readings WHERE parser={p} AND parser_version={old})')))
             sql += f' AND NOT EXISTS (SELECT 1 FROM {name} x WHERE x.body_sha=r.body_sha)'
+        if e['parser'] in PAGE_PARSERS:
+            if not any(step['name'] == 'oversize_page_bodies' for step in steps):
+                steps.append(dict(name='oversize_page_bodies', materialize=True, sql=oversize_bodies_sql()))
+            sql += ' AND NOT EXISTS (SELECT 1 FROM oversize_page_bodies z WHERE z.body_sha=r.body_sha)'
     return [*steps, dict(name='selected_readings', sql=sql)]
 
 
 def accepted_version_rows(entries, *, pins):
-    """(parser, version) pairs an existence check may accept: the pins plus every whole-version entry."""
+    """(parser, version) pairs an existence check may accept: the pins plus every non-predicate entry."""
     rows = {(p, v) for p, v in pins.items()}
-    rows |= {(e['parser'], e['version']) for e in entries if e['recompute_sql'] == WHOLE}
+    rows |= {(e['parser'], e['version']) for e in entries if e['basis'] != 'predicate'}
     return [dict(parser=p, version=v) for p, v in sorted(rows)]
 
 
