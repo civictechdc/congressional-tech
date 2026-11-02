@@ -320,7 +320,8 @@ def _auxiliary():
     sittings = _empty_struct(start=TS, end=TS, place='cast(NULL AS VARCHAR)', room='cast(NULL AS VARCHAR)',
         building='cast(NULL AS VARCHAR)', address='cast(NULL AS VARCHAR)')
     committees = _empty_struct(system_code='cast(NULL AS VARCHAR)', role='cast(NULL AS VARCHAR)')
-    transcripts = _empty_struct(package_id='cast(NULL AS VARCHAR)', list_row='cast(NULL AS INT)', formats=EMPTY_STRINGS)
+    transcripts = _empty_struct(source='cast(NULL AS VARCHAR)', package_id='cast(NULL AS VARCHAR)', list_row='cast(NULL AS INT)', formats=EMPTY_STRINGS,
+                                video_key='cast(NULL AS VARCHAR)', language='cast(NULL AS VARCHAR)', production='cast(NULL AS VARCHAR)')
     videos = _empty_struct(name='cast(NULL AS VARCHAR)', url='cast(NULL AS VARCHAR)', video_key='cast(NULL AS VARCHAR)')
     names = _empty_struct(name='cast(NULL AS VARCHAR)', start='cast(NULL AS DATE)', end='cast(NULL AS DATE)')
     return [
