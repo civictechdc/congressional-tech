@@ -101,7 +101,7 @@ def execute(spec,*,runtime_factory=None):
     if not isinstance(engine_config,str) or not engine_config.strip():
         raise ValueError('Import execution requires engine_config or DOCSPEC_RUNTIME_CONFIG')
     from congress_api.lake.maintenance import verify_generations
-    from congress_api.lake.tables import TABLE_SPECS,append_rows,create_table,validate_catalog_authority
+    from congress_api.lake.tables import TABLE_SPECS,WRITER_PROFILES,append_rows,create_table,validate_catalog_authority
     from docspec_client.client import NativeDatasets
     runtime_factory=runtime_factory or NativeDatasets.from_config
     work.mkdir(parents=True)
@@ -120,8 +120,12 @@ def execute(spec,*,runtime_factory=None):
                 table=item['table'],schema=schemas[name],location=spec['location']+'/'+item['table']['name'],
                 create_namespace=first,partition_spec=item['partition_spec'])
             first=False
+            # A whole table in one append: the table's declared part layout, not the
+            # small-batch default, keeps row-group metadata inside the writer allowance.
+            layout=WRITER_PROFILES[TABLE_SPECS[name]['writer_profile']]['layout']
             appended=append_rows(item['source']['path'],engine=engine,work=table_work/'append',
-                catalog_root=spec['catalog_root'],table=item['table'],keys=keys,definition=spec['definition'])
+                catalog_root=spec['catalog_root'],table=item['table'],keys=keys,definition=spec['definition'],
+                **layout)
             pin=dict(kind='native_table',**{k:appended[k] for k in ('metadata_location','table_uuid','snapshot','schema_id')})
             entry=dict(table=item['table'],source=item['source'],schema=item['schema'],keys=keys,pin=pin,
                 files=appended.get('files'),created=created.get('table_operations'),verified=False)
