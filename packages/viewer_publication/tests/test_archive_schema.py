@@ -13,7 +13,7 @@ def test_reference_matches_registry_and_nested_paths_are_explicit():
     schema = build_schema()
     assert REFERENCE.read_text() == render_reference(schema)
     tables = {f['name'].removesuffix('.parquet'): f for f in schema['files']}
-    assert len(tables) == 21
+    assert len(tables) == 22
     assert tables['rosters']['identity']['fields'] == ['congress', 'system_code', 'bioguide_id']
     assert tables['urls']['identity']['scope'] == 'release'
     assert field_types(tables['members'])['cross_ids.fec[]'] == 'string'
