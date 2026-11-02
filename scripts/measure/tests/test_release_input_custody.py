@@ -75,7 +75,33 @@ def test_collect_fetches_missing_receipts_and_pins_record_provenance_only(tmp_pa
     assert provenance['recoveries'] == [] and provenance['reviews'] == []
     # The accepted.json backup is identity metadata: never fetched.
     assert ('GET', 'provenance/recoveries/accepted-1.json') not in served
-    assert json.loads((tmp_path / 'out/source-qualifications.json').read_text()) == {}
+    bindings = json.loads((tmp_path / 'out/source-qualifications.json').read_text())
+    assert set(bindings) == {r['path'] for r in inventory}
+
+
+def test_each_batch_filter_binds_every_receipt_it_selects(tmp_path):
+    # capture_backfill narrows the bindings to a batch's paths; source_pins needs every one bound.
+    from congress_api.lake.receipt_metadata import source_pins
+    objects, etags, mirror = world(tmp_path, opaque=True)
+    custody.collect(release=RELEASE, input_digest=DIGEST, mirror=mirror, out=tmp_path / 'out',
+                    threads=1, opener=origin(objects, etags))
+    inventory = json.loads((tmp_path / 'out/receipt-inventory.json').read_text())
+    bindings = json.loads((tmp_path / 'out/source-qualifications.json').read_text())
+    for row in inventory:
+        batch = {p: a for p, a in bindings.items() if p == row['path']}
+        pins = source_pins(files=[dict(path=row['path'])], qualifications=batch)
+        assert (pins[0]['size'], pins[0]['path']) == (row['size'], row['path'])
+
+
+def test_a_single_put_mirror_copy_that_differs_from_its_etag_refuses(tmp_path):
+    objects, etags, mirror = world(tmp_path)
+    local = mirror / 'receipts/documents/2026-10-01/a.jsonl.gz'
+    data = bytearray(local.read_bytes())
+    data[-1] ^= 1
+    local.write_bytes(bytes(data))
+    with pytest.raises(ValueError, match='MD5 differs'):
+        custody.collect(release=RELEASE, input_digest=DIGEST, mirror=mirror, out=tmp_path / 'out',
+                        threads=1, opener=origin(objects, etags))
 
 
 def test_a_corrupt_origin_body_never_lands_in_the_mirror(tmp_path):

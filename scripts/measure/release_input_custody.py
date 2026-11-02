@@ -6,14 +6,16 @@
 `collect` reads only the public origin: the release's input record and receipt list (canonical digest
 checked), one HEAD per receipt (ETag, size), GETs of the provenance record files the record names, and
 GETs of receipts absent from the mirror. Every GET of a single-PUT object must match its ETag MD5 and
-size before it lands. A multipart (opaque) receipt ETag is qualified by a second copy: the origin's bytes,
-hashed while streaming, must equal the mirror file's SHA-256 and size. Writes receipt-inventory.json
+size before it lands. Every receipt gets a byte qualification, since batch writers bind each selected file:
+a single-PUT receipt's mirror MD5 must equal its ETag; a multipart (opaque) one needs a second copy, the
+origin's bytes hashed while streaming, equal to the mirror file's SHA-256 and size. Writes receipt-inventory.json
 (rows for cxb_capture_source_counts.py --files and --receipt-inventory), source-qualifications.json,
 provenance.json (selective-spec pins) and manifest.json. No credentials; never writes remotely.
 
 `verify` runs the production capture guard (capture_backfill_guard.validate_generation) over a captures
 parquet with the independent counts, so per-receipt counts are compared both ways by the same code the
-backfill uses. Cost: O(R) HEADs, O(bytes) only for missing or opaque receipts and provenance files.
+backfill uses. Cost: O(R) HEADs plus one local read of every receipt;
+origin bytes only for missing or opaque receipts and provenance files.
 """
 import argparse
 from concurrent.futures import ThreadPoolExecutor
@@ -96,6 +98,16 @@ def _file_sha256(path):
         return file_digest(source, 'sha256').hexdigest()
 
 
+def _file_digests(path):
+    """SHA-256 and MD5 in one read of the file."""
+    digests = sha256(), md5()
+    with Path(path).open('rb') as source:
+        while chunk := source.read(1 << 20):
+            for digest in digests:
+                digest.update(chunk)
+    return tuple(digest.hexdigest() for digest in digests)
+
+
 def input_record(release, digest, *, opener=urlopen):
     """The release's input record and its receipt keys, verified by canonical digest."""
     from viewer_publication.receipt_pins import read_receipt_list
@@ -134,19 +146,25 @@ def collect(*, release, input_digest, mirror, out, threads=16, opener=urlopen):
             fetched.append(fetch(row['key'], path, opener=opener, expected=row['etag'])['key'])
         if path.stat().st_size != row['size']:
             raise ValueError('Mirror receipt size differs from origin: ' + row['key'])
-        if single_put(row['etag']) is None:
+        checksum = single_put(row['etag'])
+        local, local_md5 = _file_digests(path)
+        if checksum is None:
             # Opaque ETag: an independent copy's bytes must equal the mirror's.
             remote, size = origin_sha256(row['key'], opener=opener)
-            local = _file_sha256(path)
             if (remote, size) != (local, row['size']):
                 raise ValueError('Mirror receipt bytes differ from origin: ' + row['key'])
-            authority = out / 'qualifications' / (sha256(row['key'].encode()).hexdigest() + '.json')
-            authority.parent.mkdir(parents=True, exist_ok=True)
-            authority.write_text(json.dumps(dict(path=str(path.resolve()), sha256=local, size=size,
-                producer='release_input_custody.py', note='origin GET sha256 equals mirror sha256; ETag '
-                + row['etag']), sort_keys=True) + '\n')
-            qualifications[str(path.resolve())] = str(authority)
+            note = 'origin GET sha256 equals mirror sha256; ETag ' + row['etag']
             opaque.append(row['key'])
+        elif local_md5 != checksum:
+            raise ValueError('Mirror receipt MD5 differs from its ETag: ' + row['key'])
+        else:
+            note = 'mirror MD5 equals single-PUT ETag ' + row['etag']
+        # Every receipt gets an authority: batch writers bind each selected file exactly.
+        authority = out / 'qualifications' / (sha256(row['key'].encode()).hexdigest() + '.json')
+        authority.parent.mkdir(parents=True, exist_ok=True)
+        authority.write_text(json.dumps(dict(path=str(path.resolve()), sha256=local, size=row['size'],
+            producer='release_input_custody.py', note=note), sort_keys=True) + '\n')
+        qualifications[str(path.resolve())] = str(authority)
         inventory.append(dict(key=row['key'], path=str(path.resolve()), size=row['size'], etag=row['etag']))
     provenance = {kind: [] for kind in KINDS}
     for item in record.get('provenance', []):
