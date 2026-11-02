@@ -40,3 +40,7 @@ Round 1b 2026-11-02 (lead): plan-e1 raw read: 3,159 body entries state 404/202/4
 **2026-11-02T15:46:32Z**
 
 2026-11-02 red-e1b: merge with one fix. The final-URL move makes locator-signals.sql test only url, so a Senate WAF block page (3460294b, 'Request not Accepted – Security Risk Detected', at senate.gov/…/waf.htm) becomes a real file and would be listed on 5 Armed Services transcripts and 1 release. Fix: evaluate requested_url and url, and recognize the WAF page. Held: 249 queue leavers (248 whole PDFs; S.3492 cut short by the server), no real document's link changed target, the 206 and segment rules, and -237.
+
+**2026-11-02T16:18:58Z**
+
+2026-11-02 (lead): r1b-e1 merged into integrate-round1 by fast-forward at d5574752 (8 commits): the document rule, the partial-206 rule, segments as media, final URL, the WAF page signal, mapping_version and original_path, writer path refusal. The WAF fix judges a redirect's role by both addresses and adds a senate_waf_block signal (3 v21 bodies). Merge order continues: e2 (+ e2-map), g, f, h, then u2, the targets deferral, r2-session and the basin import job.
