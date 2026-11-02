@@ -37,7 +37,7 @@ EXPECTED = {
         [(None, None, 'stored', None, None, 'stored')],
     # record outcome=http_error, 202; prior attempt 202 with no outcome.
     'receipts/external/provider-responses/2026-10-11/download-20261011T134611Z-e84fedd3f9c2-000012.jsonl.gz':
-        [(0, 202, 'failed', True, 202, 'failed')] * 2 + [(1, 202, 'stored', True, 202, 'failed')],
+        [(0, 202, 'failed', True, 202, 'failed')] * 2 + [(1, 202, 'failed', True, 202, 'failed')],
     # [previous_receipt,raw_path] 200, [provider_response,raw_path] 520. Attempt 1's `complete`
     # is asserted on its own below; attempt 0's is the not-truncated final-attempt derivation.
     DOCUMENTS: [(1, 200, 'stored', ATTEMPT_1_COMPLETE, 520, 'failed'), (0, 520, 'failed', True, 520, 'failed')],

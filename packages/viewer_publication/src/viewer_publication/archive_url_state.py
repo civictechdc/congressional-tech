@@ -25,7 +25,7 @@ def url_state_steps(*,root=ROOT,recovery_policy=None):
         SELECT b.receipt_key,b.receipt_line,b.requested_url,b.family,b.retrieved_at,
             {fetch_status} AS http_status,
             {fetch_outcome} AS outcome,
-            ({fetch_outcome}='failed' AND coalesce(b.attempt,0)=0 AND b.complete AND {fetch_status} BETWEEN 200 AND 299 AND sc.context_url IS NOT NULL) AS context_good
+            ({fetch_outcome}='failed' AND coalesce(b.attempt,0)=0 AND b.complete AND {fetch_status} BETWEEN 200 AND 299 AND {fetch_status}<>202 AND sc.context_url IS NOT NULL) AS context_good
         FROM base_captures b
         LEFT JOIN companion_keys c ON b.receipt_key=c.receipt_key AND b.receipt_line=c.receipt_line AND b.requested_url=c.requested_url
         LEFT JOIN stored_contexts sc ON b.receipt_key=sc.receipt_key AND b.requested_url=sc.context_url

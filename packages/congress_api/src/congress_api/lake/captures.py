@@ -11,6 +11,12 @@ from congress_api.lake.receipt_metadata import (
 )
 
 
+# 202 Accepted means the resource was not produced. In the corpus every 202 row is an
+# empty body or a firewall challenge, so a 202 never proves a stored document.
+def document_status(status):
+    return f"({status} BETWEEN 200 AND 299 AND {status}<>202)"
+
+
 LEGACY_OUTCOMES = {
     'archive_throttled': 'retry_later', 'available': 'derive',
     'build-complete': 'derive', 'candidate_live_and_archive_manifests_not_found': 'failed',
@@ -472,7 +478,7 @@ def mapping_steps():
         "WHEN attempt_http_status=304 THEN 'unchanged' "
         "WHEN prior_mapped_outcome IS NOT NULL AND prior_mapped_outcome NOT IN ('derive','stored') THEN prior_mapped_outcome "
         "WHEN prior_error THEN 'request_failed' "
-        "WHEN body_sha IS NOT NULL AND (attempt_http_status BETWEEN 200 AND 299 OR (attempt_http_status IS NULL AND prior_mapped_outcome IN ('derive','stored'))) THEN 'stored' "
+        f"WHEN body_sha IS NOT NULL AND ({document_status('attempt_http_status')} OR (attempt_http_status IS NULL AND prior_mapped_outcome IN ('derive','stored'))) THEN 'stored' "
         "WHEN body_sha IS NULL OR attempt_http_status IS NOT NULL THEN 'failed' "
         "ELSE cast(NULL AS VARCHAR) END "
         "WHEN has_captures_pointer THEN CASE "
@@ -481,20 +487,20 @@ def mapping_steps():
         "WHEN cap_mapped_outcome IS NOT NULL AND cap_mapped_outcome NOT IN ('derive','stored') THEN cap_mapped_outcome "
         f"WHEN cap_error OR (attempt_http_status IS NULL AND {final_error}) THEN 'request_failed' "
         "WHEN mapped_outcome NOT IN ('derive','stored') THEN mapped_outcome "
-        "WHEN body_sha IS NOT NULL AND (attempt_http_status BETWEEN 200 AND 299 OR attempt_http_status IS NULL) THEN 'stored' "
+        f"WHEN body_sha IS NOT NULL AND ({document_status('attempt_http_status')} OR attempt_http_status IS NULL) THEN 'stored' "
         "ELSE 'failed' END "
         "ELSE CASE "
         "WHEN attempt_http_status IN (429,503) THEN 'retry_later' "
         "WHEN attempt_http_status=304 THEN 'unchanged' "
         "WHEN mapped_outcome NOT IN ('derive','stored') THEN mapped_outcome "
-        "WHEN body_sha IS NOT NULL AND (attempt_http_status BETWEEN 200 AND 299 OR attempt_http_status IS NULL) THEN 'stored' "
+        f"WHEN body_sha IS NOT NULL AND ({document_status('attempt_http_status')} OR attempt_http_status IS NULL) THEN 'stored' "
         "ELSE 'failed' END END")
     fetch_outcome_sql=(
         "CASE WHEN record_outcome IS NOT NULL THEN cast(NULL AS VARCHAR) "
         "WHEN fetch_status IN (429,503) THEN 'retry_later' "
         "WHEN fetch_status=304 THEN 'unchanged' "
         "WHEN mapped_outcome NOT IN ('derive','stored') THEN mapped_outcome "
-        "WHEN (coalesce(attempt,0)<>0 OR body_sha IS NOT NULL) AND (fetch_status BETWEEN 200 AND 299 OR fetch_status IS NULL) THEN 'stored' "
+        f"WHEN (coalesce(attempt,0)<>0 OR body_sha IS NOT NULL) AND ({document_status('fetch_status')} OR fetch_status IS NULL) THEN 'stored' "
         "ELSE 'failed' END")
     columns=dict(receipt_key='receipt_key',receipt_line='receipt_line',capture_index='capture_index',
         run_id='source_run',mode='capture_mode',
@@ -598,7 +604,7 @@ def mapping_steps():
         f"WHEN {eff_fetch_status}=304 THEN 'unchanged' "
         "WHEN cutoff_eligible AND has_cutoff AND NOT coalesce(has_completed_final,false) THEN 'size_limit' "
         "WHEN mapped_outcome NOT IN ('derive','stored') THEN mapped_outcome "
-        f"WHEN ({has_addressed_final} OR (has_captures_pointer AND body_sha IS NOT NULL)) AND ({eff_fetch_status} BETWEEN 200 AND 299 OR {eff_fetch_status} IS NULL) THEN 'stored' "
+        f"WHEN ({has_addressed_final} OR (has_captures_pointer AND body_sha IS NOT NULL)) AND ({document_status(eff_fetch_status)} OR {eff_fetch_status} IS NULL) THEN 'stored' "
         "ELSE 'failed' END")
     final={name:name for name in COLUMNS}
     final.update(
