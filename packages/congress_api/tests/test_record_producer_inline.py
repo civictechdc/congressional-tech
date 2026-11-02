@@ -10,6 +10,7 @@ import pyarrow.parquet as pq
 from capture_qualification_helpers import write_qualified_bytes
 from congress_api.lake import captures, meeting_records
 from docspec_client.client import NativeDatasets
+from native_test_helpers import empty_readings
 
 STAMP = '2026-10-28T12:00:00Z'
 KEY = 'receipts/congress/meetings/2026-10-28/assemble-inline.jsonl.gz'
@@ -52,7 +53,7 @@ def stage_receipts(tmp_path, receipts, engine, name, existing=None, record_engin
         files.append(dict(key=key, path=str(path), qualification=qualification))
     stage = captures.stage_captures(files, engine=engine, work=tmp_path / f'captures-{name}') / 'captures.parquet'
     return meeting_records.stage(captures=stage, engine=record_engine or engine, work=tmp_path / f'meetings-{name}', local_root=raw,
-        existing=existing, decided_at=STAMP)
+        existing=existing, decided_at=STAMP, readings=empty_readings(tmp_path / f'readings-{name}'))
 
 
 def shas(staged):
@@ -95,3 +96,27 @@ def test_superseded_lines_stay_settled_and_a_new_revision_is_the_only_work(tmp_p
     revised = line(1, '2024-04-01')
     later = stage_receipts(tmp_path, {KEY: [old, newest], LATER: [revised]}, engine, 'later', existing=first['records'])
     assert shas(later) == {digest(revised)}
+
+
+def test_more_witnesses_win_a_tied_update_date_in_either_order(tmp_path):
+    # Defect guarded: ranking on updateDate alone lets the later, thinner line win.
+    engine = NativeDatasets.from_config(os.environ['DOCSPEC_JOB_CONFIG'])
+    three, one = line(3, '2024-01-01', witnesses=3), line(3, '2024-01-01', witnesses=1)
+    assert shas(stage_receipts(tmp_path, {KEY: [three, one]}, engine, 'three-first')) == {digest(three)}
+
+
+def test_equal_ranks_take_the_later_line(tmp_path):
+    # Defect guarded: `>=` changed to `>` keeps the earlier of two equally current lines.
+    engine = NativeDatasets.from_config(os.environ['DOCSPEC_JOB_CONFIG'])
+    first, second = line(4, '2024-01-01', run='a'), line(4, '2024-01-01', run='b')
+    assert shas(stage_receipts(tmp_path, {KEY: [first, second]}, engine, 'tie')) == {digest(second)}
+
+
+def test_an_unreadable_line_ranks_last(tmp_path):
+    # Defect guarded: an unreadable later line displacing the readable current one.
+    engine = NativeDatasets.from_config(os.environ['DOCSPEC_JOB_CONFIG'])
+    good = line(5, '2024-01-01')
+    broken = json.loads(line(5, '2024-01-01', run='broken'))
+    broken['record'] = {}
+    broken = json.dumps(broken, separators=(',', ':'))
+    assert shas(stage_receipts(tmp_path, {KEY: [good, broken]}, engine, 'broken')) == {digest(good)}

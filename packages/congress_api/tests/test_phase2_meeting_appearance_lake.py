@@ -45,6 +45,7 @@ from congress_api.parsers.house_xml import (
 from congress_api.retention.body_store import BodyStore, LocalAdapter
 from congress_api.retention.receipt_writer import ReceiptWriter
 from congress_api.transport import congress as congress_transport
+from native_test_helpers import empty_readings
 
 ROOT = Path(__file__).resolve().parents[3]
 
@@ -1340,6 +1341,7 @@ def test_candidate_eligibility_mods_senate_predicates_and_budget_fast_fail(tmp_p
             engine=engine,
             work=tmp_path / "ar_budget",
             max_work_items=1,
+            readings=empty_readings(tmp_path / "readings"),
         )
     assert exc_info.value.report["work_items"] == 2
     work_rows = pq.read_table(tmp_path / "ar_budget/work-list.parquet").to_pylist()

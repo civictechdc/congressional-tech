@@ -94,3 +94,12 @@ def lake_readings_table(rows):
     schema = schema_to_pyarrow(Schema.model_validate(load_schema('readings')), include_field_ids=False)
     lists = {field.name: [] for field in schema if pa.types.is_large_list(field.type) and not field.nullable}
     return pa.Table.from_pylist([{**lists, **row} for row in rows], schema=schema)
+
+
+def empty_readings(directory):
+    """An empty lake readings table: D4 producers route House XML by reading, and none exists."""
+    import pyarrow.parquet as pq
+    path = Path(directory) / 'readings.parquet'
+    path.parent.mkdir(parents=True, exist_ok=True)
+    pq.write_table(lake_readings_table([]), path)
+    return path

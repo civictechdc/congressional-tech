@@ -1298,6 +1298,7 @@ def stage(
     max_work_items: int | None = None,
     decided_at: str | None = None,
     unreadable_store: Any = None,
+    readings: Any = None,
 ) -> dict[str, Any]:
     """Stage missing `appearance_records` rows from `captures` via native anti-join."""
     version = current_versions() if parser_version is None else parser_version
@@ -1320,6 +1321,7 @@ def stage(
         decided_at=decided_at,
         unreadable_store=unreadable_store,
         pass_source_url=False,
+        readings=readings,
     )
 
 

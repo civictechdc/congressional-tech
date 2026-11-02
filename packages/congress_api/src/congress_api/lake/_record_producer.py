@@ -486,50 +486,67 @@ SENATE_PAGE_CAPTURE_SQL = (
 )
 
 
-CANDIDATE_MEETING_RECORDS_SQL = f"""WITH classified AS (
-    SELECT c.sha256, coalesce(c.stored_suffix, '') AS stored_suffix, 'congress_gov' AS source
-    FROM captures c
-    WHERE {GOOD_FETCH_CAPTURE_SQL}
-      AND {CONGRESS_GOV_CAPTURE_SQL}
-    UNION ALL
-    SELECT c.sha256, coalesce(c.stored_suffix, '') AS stored_suffix, 'house_xml' AS source
-    FROM captures c
-    WHERE {GOOD_FETCH_CAPTURE_SQL}
-      AND {HOUSE_XML_CAPTURE_SQL}
+# House XML bodies route by their current XML reading's root, falling back to the URL and
+# family when no completed reading exists. The producers' candidates and the model's
+# expected sets are both built from ROUTES, so they cannot disagree (ct-kn6d: the
+# producers once sent every docs.house.gov XML to both tables).
+CURRENT_PAGE_READINGS_SQL = (
+    "SELECT r.body_sha, r.parser, r.status, r.xml_root FROM selected_readings r "
+    "WHERE r.status IN ('completed', 'error', 'size_limit')"
 )
-SELECT encode(sha256, 'hex') AS record_sha,
-    min(stored_suffix) AS stored_suffix,
-    source
-FROM classified
-GROUP BY sha256, source"""
+_HOUSE_XML_URL = "lower(coalesce(c.url, c.requested_url, c.context_url, ''))"
+HOUSE_XML_MEETING_ROUTE_SQL = (
+    "((r.status = 'completed' AND r.xml_root = 'committee-meeting') "
+    "OR (coalesce(r.status, '') <> 'completed' AND coalesce(c.family, '') <> 'house/witness-xml' "
+    f"AND {_HOUSE_XML_URL} NOT LIKE '%wlist%'))"
+)
+HOUSE_XML_WITNESS_ROUTE_SQL = (
+    "((r.status = 'completed' AND r.xml_root = 'witness-list') "
+    "OR (coalesce(r.status, '') <> 'completed' AND (c.family = 'house/witness-xml' "
+    f"OR {_HOUSE_XML_URL} LIKE '%wlist%')))"
+)
+MODS_ROUTE_SQL = "(coalesce(r.status, '') <> 'completed' OR r.xml_root IS NULL OR r.xml_root = 'mods')"
+# (source, capture predicate, reading parser joined as r, route over c and r)
+ROUTES = {
+    "meeting_records": (
+        ("congress_gov", CONGRESS_GOV_CAPTURE_SQL, None, None),
+        ("house_xml", HOUSE_XML_CAPTURE_SQL, "xml", HOUSE_XML_MEETING_ROUTE_SQL),
+    ),
+    "appearance_records": (
+        ("congress_gov", CONGRESS_GOV_CAPTURE_SQL, None, None),
+        ("house_xml", HOUSE_XML_CAPTURE_SQL, "xml", HOUSE_XML_WITNESS_ROUTE_SQL),
+        ("mods", MODS_CAPTURE_SQL, "xml", MODS_ROUTE_SQL),
+        ("senate_page", SENATE_PAGE_CAPTURE_SQL, None, None),
+    ),
+}
 
 
-CANDIDATE_APPEARANCE_RECORDS_SQL = f"""WITH classified AS (
-    SELECT c.sha256, coalesce(c.stored_suffix, '') AS stored_suffix, 'congress_gov' AS source
-    FROM captures c
-    WHERE {GOOD_FETCH_CAPTURE_SQL}
-      AND {CONGRESS_GOV_CAPTURE_SQL}
-    UNION ALL
-    SELECT c.sha256, coalesce(c.stored_suffix, '') AS stored_suffix, 'house_xml' AS source
-    FROM captures c
-    WHERE {GOOD_FETCH_CAPTURE_SQL}
-      AND {HOUSE_XML_CAPTURE_SQL}
-    UNION ALL
-    SELECT c.sha256, coalesce(c.stored_suffix, '') AS stored_suffix, 'mods' AS source
-    FROM captures c
-    WHERE {GOOD_FETCH_CAPTURE_SQL}
-      AND {MODS_CAPTURE_SQL}
-    UNION ALL
-    SELECT c.sha256, coalesce(c.stored_suffix, '') AS stored_suffix, 'senate_page' AS source
-    FROM captures c
-    WHERE {GOOD_FETCH_CAPTURE_SQL}
-      AND {SENATE_PAGE_CAPTURE_SQL}
-)
-SELECT encode(sha256, 'hex') AS record_sha,
-    min(stored_suffix) AS stored_suffix,
-    source
-FROM classified
-GROUP BY sha256, source"""
+def _routed(table: str, select: str) -> list[str]:
+    branches = []
+    for source, capture_sql, parser, route in ROUTES[table]:
+        join = (f" LEFT JOIN current_page_readings r ON c.sha256 = r.body_sha AND r.parser = '{parser}'"
+                if parser else "")
+        where = f"{GOOD_FETCH_CAPTURE_SQL} AND {capture_sql}" + (f" AND {route}" if route else "")
+        branches.append(f"SELECT {select.format(source=source)} FROM captures c{join} WHERE {where}")
+    return branches
+
+
+def candidate_records_sql(table: str) -> str:
+    """Producer work candidates: one row per (body, source). Reads `current_page_readings`."""
+    branches = "\n    UNION ALL\n    ".join(
+        _routed(table, "c.sha256, coalesce(c.stored_suffix, '') AS stored_suffix, '{source}' AS source"))
+    return (f"WITH classified AS (\n    {branches}\n)\nSELECT encode(sha256, 'hex') AS record_sha, "
+            "min(stored_suffix) AS stored_suffix, source FROM classified GROUP BY sha256, source")
+
+
+def expected_records_sql(table: str) -> str:
+    """The model's expected (record_sha_hex, source) set, from the same routes."""
+    return "\n    UNION\n    ".join(
+        _routed(table, "DISTINCT lower(encode(c.sha256, 'hex')) AS record_sha_hex, '{source}' AS source"))
+
+
+CANDIDATE_MEETING_RECORDS_SQL = candidate_records_sql("meeting_records")
+CANDIDATE_APPEARANCE_RECORDS_SQL = candidate_records_sql("appearance_records")
 
 
 def _inline_rank(line: bytes) -> tuple[str, int]:
@@ -590,8 +607,13 @@ def stage_record_table(
     decided_at: str | None = None,
     unreadable_store: Any = None,
     pass_source_url: bool = False,
+    readings: Any = None,
 ) -> dict[str, Any]:
-    """Stage missing record rows from `captures` via native anti-join."""
+    """Stage missing record rows from `captures` via native anti-join.
+
+    Candidates that route by XML root read `current_page_readings`, so they need `readings`
+    (the readings table head); its rows go through the one compatible-versions selection.
+    """
     from ..retention.body_store import BodyStore, LocalAdapter
     from ..retention.provenance import (
         field,
@@ -609,6 +631,18 @@ def stage_record_table(
     work.mkdir(parents=True, exist_ok=False)
 
     inputs: list[dict[str, Any]] = [table_input("captures", captures)]
+    prelude: list[dict[str, Any]] = []
+    if readings is not None:
+        from . import compatible_versions
+        from .readings import current_version
+
+        pins = {p: current_version(p) for p in compatible_versions.LEAF_PARSERS}
+        inputs += [table_input("readings", readings),
+                   json_input(work, "parser_versions", [dict(parser=p, version=v) for p, v in pins.items()], parser="Utf8", version="Utf8")]
+        prelude = [*compatible_versions.selected_readings_steps(compatible_versions.load_registry()),
+                   dict(name="current_page_readings", sql=CURRENT_PAGE_READINGS_SQL, materialize=True)]
+    elif "current_page_readings" in candidate_sql:
+        raise ValueError(f"{parser_name} candidates route by XML root and need the readings table")
     unreadable_schema = dict(
         fields=[field(name, "Utf8") for name in ("id", "body_sha256", "record_sha", "parser", "parser_version", "supersedes")],
         metadata={},
@@ -707,7 +741,7 @@ def stage_record_table(
         work,
         engine,
         inputs=inputs,
-        steps=[dict(name="candidates", sql=versioned_candidates_sql)],
+        steps=[*prelude, dict(name="candidates", sql=versioned_candidates_sql)],
         outputs=[
             parquet_output(work, "work-list", "SELECT c.* FROM candidates c" + missing, ["record_sha", "source"]),
             parquet_output(work, "inline-candidates", inline_sql, ["receipt_key", "receipt_line"]),
