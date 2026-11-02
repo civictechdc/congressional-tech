@@ -11,7 +11,7 @@ ROOT=Path(__file__).parents[3]
 BASE='https://docs.house.gov/meetings/AG/AG03/20261101/123/'
 
 
-def run_state(tmp_path,change=None):
+def run_state(tmp_path,change=None,queries=()):
     from viewer_publication.archive_url_state import url_state_steps,url_state_diagnostics
     def row(line,requested,**extra):
         base=dict(receipt_key='r',receipt_line=line,capture_index=0,attempt=0,mode='fetch',requested_url=requested,
@@ -117,7 +117,32 @@ def run_state(tmp_path,change=None):
         dict(name='model_url_keys',sql=(ROOT/'model/sql/url-keys.sql').read_text(),materialize=True)]
     return run_job(tmp_path,NativeDatasets.from_config(os.environ['DOCSPEC_JOB_CONFIG']),inputs=inputs,
         steps=steps+url_state_steps(),outputs=[],queries=[*url_state_diagnostics(),
-            dict(name='state',sql='SELECT requested_url,attempts,last_status,last_outcome,cast(last_attempt AS VARCHAR) AS last_attempt,cast(last_good_at AS VARCHAR) AS last_good_at,cast(next_attempt_at AS VARCHAR) AS next_attempt_at FROM url_state ORDER BY requested_url')])
+            dict(name='state',sql='SELECT requested_url,attempts,last_status,last_outcome,cast(last_attempt AS VARCHAR) AS last_attempt,cast(last_good_at AS VARCHAR) AS last_good_at,cast(next_attempt_at AS VARCHAR) AS next_attempt_at FROM url_state ORDER BY requested_url'),
+            *queries])
+
+
+def test_interval_choice_is_one_grouping_without_a_join_or_window(tmp_path):
+    """A grouped count joined back is a hash-join build charged once per emitted slice.
+
+    At 1.17M URLs that charged 5.3 GB for 118 MB and exhausted the 14 GiB model pool.
+    An undated address matches every band of its family and keeps the shortest one.
+    """
+    from viewer_publication.archive_url_state import url_state_steps
+    intervals=next(step['sql'] for step in url_state_steps() if step['name']=='url_state_intervals')
+    result=run_state(tmp_path,queries=[
+        dict(name='plan',sql='EXPLAIN '+intervals),
+        dict(name='bands',sql="""SELECT a.requested_url,count(*) AS n,min(i.interval_seconds) AS shortest
+            FROM recheck_intervals i JOIN url_state_ages a ON a.family=i.family
+            WHERE a.age_days IS NULL GROUP BY a.requested_url"""),
+        dict(name='chosen',sql='SELECT requested_url,interval_seconds,matches FROM url_state_intervals')])
+    plan=next(row['plan'] for row in result['plan'] if row['plan_type']=='physical_plan')
+    assert 'HashJoinExec' not in plan and 'WindowAggExec' not in plan, plan
+    chosen={row['requested_url']:row for row in result['chosen']}
+    undated=[row for row in result['bands'] if row['n']>1]
+    assert undated
+    for row in undated:
+        assert chosen[row['requested_url']]['interval_seconds']==row['shortest']
+        assert chosen[row['requested_url']]['matches']==row['n']
 
 
 def test_url_state_line_grain_bands_and_clean_scoped_queue(tmp_path):
