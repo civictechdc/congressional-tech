@@ -4,7 +4,9 @@
 
 Runs the maintained SQL over a finished release plus frozen lake inputs, so a comparison
 needs no full model run. It does not prove byte identity of other files, or the full job's
-memory: only a full run can. `ordered` and the meeting transcripts come from that release.
+memory: only a full run can. `ordered` and the jacket transcript links come from that release;
+MODS links, package choice and witnesses are rebuilt from the lake and the pinned MODS readings.
+Document links need `ordered` rebuilt, so only a full run measures them.
 """
 import argparse
 import json
@@ -15,8 +17,8 @@ from docspec_client.client import NativeDatasets
 from viewer_publication.archive_format import MEETING_DICTIONARY, _settings
 from viewer_publication.archive_model_lifetimes import retire_relations
 from viewer_publication.archive_model_profile import expand_parser_version_rows
-from viewer_publication.archive_model import (EXPLORER_TABLES, RECORDING_DECISION_FIELDS, ROOT, channel_directory_rows, meeting_steps, selected_record_step,
-    registry_inputs)
+from viewer_publication.archive_model import (EXPLORER_TABLES, RECORDING_DECISION_FIELDS, ROOT, WITNESSES_SQL, appearance_steps, channel_directory_rows,
+    meeting_steps, registry_inputs, selected_record_step)
 from congress_api.retention.provenance import field, json_input, run_job
 
 
@@ -30,10 +32,19 @@ def scoped_captures(spec, work):
     work.mkdir(parents=True, exist_ok=True)
     path = work / 'captures.parquet'
     with duckdb.connect(config=dict(memory_limit='800MB', threads=2, temp_directory=str(work / 'duckdb'))) as db:
-        db.execute(f"""COPY (SELECT sha256,retrieved_at,mode,complete,outcome,http_status,family,url,requested_url,stored_suffix
-            FROM read_parquet('{spec['captures']['path']}') c
-            WHERE mode='fetch' AND sha256 IS NOT NULL AND (family='pipeline-data' OR sha256 IN
-             (SELECT record_sha FROM read_parquet('{spec['meeting_records']['path']}')))) TO '{path}' (FORMAT PARQUET)""")
+        db.execute(f"""COPY (SELECT * FROM read_parquet('{spec['captures']['path']}') c
+            WHERE sha256 IS NOT NULL AND (family='pipeline-data' OR sha256 IN
+             (SELECT record_sha FROM read_parquet('{spec['meeting_records']['path']}') UNION
+              SELECT record_sha FROM read_parquet('{spec['appearance_records']['path']}')))) TO '{path}' (FORMAT PARQUET)""")
+    return path
+
+
+def mods_page_facts(spec, work):
+    """Only MODS readings feed package_mods_facts; scoping them first keeps 370 MB of readings out of the job."""
+    path = work / 'page-facts.parquet'
+    with duckdb.connect(config=dict(memory_limit='800MB', threads=2, temp_directory=str(work / 'duckdb'))) as db:
+        db.execute(f"""COPY (SELECT body_sha,status,named_meetings FROM read_parquet('{spec['readings']['path']}')
+            WHERE parser='xml' AND xml_root='mods') TO '{path}' (FORMAT PARQUET)""")
     return path
 
 
@@ -64,7 +75,7 @@ def main(argv=None):
         parquet('list', args.release / 'list.parquet'),
         parquet('released_meetings', args.release / 'meetings.parquet'),
         parquet('released_detail', positioned_detail(args.release, work)),
-        parquet('witnesses_export', args.release / 'witnesses.parquet'),
+        parquet('page_facts', mods_page_facts(spec, work)),
         parquet('recordings_export', args.release / 'recordings.parquet'),
         dict(name='recording_decision_records', kind='json_lines', files=[dict(key='decisions', path=str(args.decisions))],
              schema=dict(fields=[field(k, v) for k, v in RECORDING_DECISION_FIELDS.items()], metadata={})),
@@ -82,7 +93,14 @@ def main(argv=None):
         dict(name='youtube_api_bodies', sql=sql('youtube-api-bodies'), materialize=True),
         *meeting_steps(),
         dict(name='ordered', sql='SELECT meeting_keys FROM "list"', materialize=True),
-        dict(name='meeting_transcript_links', sql="SELECT event_id,t['package_id'] AS package_id FROM (SELECT event_id,unnest(transcripts) AS t FROM released_meetings)", materialize=True),
+        dict(name='package_mods_facts', sql=sql('package-mods-facts'), materialize=True),
+        dict(name='meeting_mods_links', sql=sql('meeting-mods-links'), materialize=True),
+        dict(name='meeting_transcript_links', sql="""SELECT event_id,t['package_id'] AS package_id FROM (SELECT event_id,unnest(transcripts) AS t FROM released_meetings)
+            UNION SELECT event_id,package_id FROM meeting_mods_links""", materialize=True),
+        dict(name='package_meeting_links', sql=sql('package-meeting-links'), materialize=True),
+        *appearance_steps(),
+        dict(name='witnesses_export', sql=WITNESSES_SQL, materialize=True),
+        dict(name='meeting_document_urls', sql=sql('meeting-document-urls'), materialize=True),
         dict(name='details', sql='SELECT package_id,cast(list_row AS INT) AS list_row FROM released_detail', materialize=True),
         dict(name='meetings_export', sql=sql('entity-meetings'), materialize=True),
     ]

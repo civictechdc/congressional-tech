@@ -2,6 +2,7 @@
 
 The parser's own stated_facts and title_key build the meeting rows, so the parser feeds the SQL.
 """
+import hashlib
 import os
 from pathlib import Path
 
@@ -9,7 +10,7 @@ import duckdb
 import pytest
 
 from congress_api.parsers.meeting_facts import stated_facts
-from congress_api.retention.provenance import parquet_output, run_job
+from congress_api.retention.provenance import json_input, list_of, parquet_output, run_job, struct
 from docspec_client.client import NativeDatasets
 
 ROOT = Path(__file__).parents[3]
@@ -103,3 +104,86 @@ def test_postponed_moves_even_with_a_recording_of_its_own(meetings):
 
 def test_a_twin_that_is_itself_not_held_is_never_chosen(meetings):
     assert meetings[9][0] is None and meetings[10][2] is True
+
+
+# Witness attachment (ct-dx22, ct-x78c): appearance-records-resolved over hand appearance records.
+APPEARANCE = dict(source_locator='Utf8', name_key='Utf8', name='Utf8', honorific='Utf8', given='Utf8', middle='Utf8',
+                  family='Utf8', suffix='Utf8', position='Utf8', organization='Utf8', on_behalf_of='Utf8', location='Utf8',
+                  panel='Utf8', panel_order='Int32', display_order='Int32', witness_type='Utf8', testified='Boolean',
+                  bioguide_id='Utf8', document_links=list_of('Utf8'))
+CAPTURES = ("SELECT cast(NULL AS VARCHAR) AS mode,cast(NULL AS BOOLEAN) AS complete,cast(NULL AS VARCHAR) AS outcome,"
+            "cast(NULL AS INT) AS http_status,arrow_cast(NULL,'FixedSizeBinary(32)') AS sha256,cast(NULL AS VARCHAR) AS family,"
+            "cast(NULL AS VARCHAR) AS url,cast(NULL AS VARCHAR) AS requested_url,cast(NULL AS VARCHAR) AS context_url,"
+            "cast(NULL AS VARCHAR) AS member_path,cast(NULL AS VARCHAR) AS sniffed_format,cast(NULL AS VARCHAR) AS media_type,"
+            "cast(NULL AS VARCHAR) AS retrieved_at,cast(NULL AS VARCHAR) AS original_path WHERE false")
+
+
+def witness(name, links=()):
+    return {**{k: None for k in APPEARANCE}, 'source_locator': f'w:{name}', 'name': name, 'document_links': list(links)}
+
+
+def record(tag, source, appearances, event_id=None, package_id=None):
+    return dict(record_sha_hex=hashlib.sha256(tag.encode()).hexdigest(), parser_version='v', status='completed', error_type=None,
+                source=source, event_id=event_id, package_id=package_id, declared_base=None, collection_state='present',
+                context_url=None, appearances=appearances)
+
+
+LIST = 'https://docs.house.gov/meetings/HM/HM00/20130718/{}/HHRG-113-HM00-Wstate-X-20130718.pdf'
+
+
+def resolve(tmp_path, records, links, named):
+    """Witness rows per name, from the maintained package-link and appearance SQL."""
+    engine = NativeDatasets.from_config(os.environ['DOCSPEC_JOB_CONFIG'])
+    inputs = [
+        json_input(tmp_path, 'appearance_records_input', records, record_sha_hex='Utf8', parser_version='Utf8', status='Utf8',
+                   error_type='Utf8', source='Utf8', event_id='Int64', package_id='Utf8', declared_base='Utf8',
+                   collection_state='Utf8', context_url='Utf8', appearances=list_of(struct(**APPEARANCE))),
+        json_input(tmp_path, 'meeting_transcript_links', [dict(package_id=p, event_id=e) for p, e in links], package_id='Utf8', event_id='Int64'),
+        json_input(tmp_path, 'package_mods_facts', [dict(package_id=p, named_meetings=n) for p, n in named.items()],
+                   package_id='Utf8', named_meetings=list_of('Int64')),
+        json_input(tmp_path, 'meeting_sources', [dict(kind='appearance', source=s, priority=i) for i, s in enumerate(('house_xml', 'congress_gov', 'mods'), 1)],
+                   kind='Utf8', source='Utf8', priority='Int32'),
+        json_input(tmp_path, 'appearance_url_keys', [], url='Utf8', url_key='Utf8', error='Utf8'),
+        json_input(tmp_path, 'selected_meeting_records', [], record_sha_hex='Utf8', status='Utf8', meetings=list_of(struct(updated='Utf8'))),
+    ]
+    steps = [dict(name='selected_appearance_records', sql='SELECT * FROM appearance_records_input', materialize=True),
+             dict(name='captures', sql=CAPTURES, materialize=True),
+             dict(name='package_meeting_links', sql=sql('package-meeting-links'), materialize=True),
+             dict(name='appearance_records_resolved', sql=sql('appearance-records-resolved'), materialize=True)]
+    found = run_job(tmp_path, engine, inputs=inputs, steps=steps, outputs=[], queries=[
+        dict(name='rows', sql='SELECT name,occasion,event_id FROM appearance_records_resolved ORDER BY name')])['rows']
+    return {r['name']: (r['occasion'], r['event_id']) for r in found}
+
+
+def test_an_event_with_two_packages_attaches_neither(tmp_path):
+    got = resolve(tmp_path, [record('a', 'mods', [witness('A')], package_id='CHRG-a'), record('b', 'mods', [witness('B')], package_id='CHRG-b')],
+                  [('CHRG-a', 9001), ('CHRG-b', 9001)], {})
+    assert got == {'A': ('package:CHRG-a', None), 'B': ('package:CHRG-b', None)}
+
+
+def test_the_package_whose_mods_names_the_event_attaches(tmp_path):
+    got = resolve(tmp_path, [record('a', 'mods', [witness('A')], package_id='CHRG-a'), record('b', 'mods', [witness('B')], package_id='CHRG-b')],
+                  [('CHRG-a', 9001), ('CHRG-b', 9001)], {'CHRG-a': [9001]})
+    assert got == {'A': ('meeting:9001', 9001), 'B': ('package:CHRG-b', None)}
+
+
+def test_an_exclusive_link_whose_mods_names_another_event_stays_a_package(tmp_path):
+    got = resolve(tmp_path, [record('a', 'mods', [witness('A')], package_id='CHRG-a')], [('CHRG-a', 9001)], {'CHRG-a': [9002]})
+    assert got == {'A': ('package:CHRG-a', None)}
+
+
+def test_a_house_list_without_meeting_id_takes_the_event_its_links_state(tmp_path):
+    got = resolve(tmp_path, [record('h', 'house_xml', [witness('H', [LIST.format(101160)])]),
+                             record('two', 'house_xml', [witness('T1', [LIST.format(101160)]), witness('T2', [LIST.format(101161)])])], [], {})
+    assert got == {'H': ('meeting:101160', 101160)}  # Links naming two events give no occasion.
+
+
+def test_a_package_mods_names_its_meeting_as_a_link(tmp_path):
+    engine = NativeDatasets.from_config(os.environ['DOCSPEC_JOB_CONFIG'])
+    inputs = [json_input(tmp_path, 'package_mods_facts', [dict(package_id='CHRG-m', named_meetings=[5, 404])],
+                         package_id='Utf8', named_meetings=list_of('Int64'))]
+    steps = [dict(name='meetings_resolved', sql=' UNION ALL '.join(MEETINGS), materialize=True),
+             dict(name='meeting_mods_links', sql=sql('meeting-mods-links'), materialize=True)]
+    found = run_job(tmp_path, engine, inputs=inputs, steps=steps, outputs=[], queries=[
+        dict(name='links', sql='SELECT package_id,event_id FROM meeting_mods_links')])['links']
+    assert found == [dict(package_id='CHRG-m', event_id=5)]  # 404 is no meeting held here.

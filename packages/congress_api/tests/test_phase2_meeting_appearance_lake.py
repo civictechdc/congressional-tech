@@ -1701,7 +1701,7 @@ def test_ct_30fp_congress_gov_invalid_witness_items_and_sql_per_context_freshnes
             source="Utf8",
             meetings=list_of(struct(updated="Utf8")),
         ),
-        json_input(work, "meeting_transcript_links", [], package_id="Utf8", event_id="Int64"),
+        json_input(work, "package_meeting_links", [], package_id="Utf8", event_id="Int64"),
         json_input(work, "appearance_url_keys", [], url="Utf8", url_key="Utf8", error="Utf8"),
         json_input(
             work,
