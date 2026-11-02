@@ -107,6 +107,8 @@ def main(argv=None):
         sql="SELECT event_id,chamber,title,meeting_date,session,status,committees,subject_keys,videos,congress,congress_gov_updated,house_xml_updated,congress_gov_meeting_type,meeting_type,sittings,access,access_basis,not_held,title_key,reschedule_candidate,committee_key,transcript_jackets FROM meetings_resolved",
         settings=_settings('whole', ['event_id']))]
     outputs.append(dict(name='meetings.parquet', path=str(args.output / 'meetings.parquet'), sql='SELECT * FROM meetings_export', settings=_settings('whole', ['event_id'], dictionary=MEETING_DICTIONARY)))
+    outputs.append(dict(name='witnesses.parquet', path=str(args.output / 'witnesses.parquet'), sql='SELECT * FROM witnesses_export',
+        settings=_settings('whole', ['occasion', 'panel_order', 'display_order', 'witness_key'])))
     for name, file, keys, dictionary in EXPLORER_TABLES:
         steps.append(dict(name=name + '_export', sql=sql(file), materialize=True))
         outputs.append(dict(name=name + '.parquet', path=str(args.output / (name + '.parquet')), sql=f'SELECT * FROM {name}_export',
