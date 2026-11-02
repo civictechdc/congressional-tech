@@ -364,13 +364,17 @@ def main(meetings, state_dir, output_dir, seed_cache=None, offline=False, as_of=
                 elif url in maintenance:
                     aged.append(url)
             aged.sort(key=lambda u: (pages.get(u, {})["checked"], u))
-            page_failures = []
+            page_failures, failed_here = [], []
             fresh_failures = in_a_row = answered = 0
+            outage = None
             for url in urgent + aged:
                 if limit is not None and live_pages >= limit and not importing:
                     break
                 page_check = {}
-                already_failed = pages.get(url, {}).get("status") == "error"
+                # Only a failure seen while its host was answering is a known page failure.
+                # A page that never answered because the site was down is not.
+                already_failed = pages.get(url, {}).get("status") == "error" and bool(
+                    ((saved.get("workflow") or {}).get(url, {}).get("last_check") or {}).get("host_answered"))
                 try:
                     pages[url], activity = fetch_page(url, pages.get(url, {}), as_of, cache=seed_cache if importing else None, check=page_check, activity=(saved.get("workflow") or {}).get(url))
                     if activity:
@@ -381,7 +385,10 @@ def main(meetings, state_dir, output_dir, seed_cache=None, offline=False, as_of=
                     # One page's failure is that page's outcome: it keeps any prior
                     # content, its receipt says why, and it is retried first next run.
                     pages.setdefault(url, {"title": "", "lines": [], "witnesses": [], "documents": [], "status": "error"})
+                    if already_failed:
+                        page_check["host_answered"] = True  # still a known page failure until it answers
                     saved.setdefault("workflow", {}).setdefault(url, {})["last_check"] = page_check
+                    failed_here.append(url)
                     totals["pages failed"] += 1
                     page_failures.append(f"{url}: {error}")
                     print(f"{host}: page failed, retained with its reason: {page_failures[-1]}", flush=True)
@@ -390,6 +397,7 @@ def main(meetings, state_dir, output_dir, seed_cache=None, offline=False, as_of=
                         fresh_failures += 1
                         in_a_row += 1
                     if in_a_row >= OUTAGE_STOP_AFTER:
+                        outage = f"{host}: site-wide page outage; {in_a_row} pages failed in a row; last: {page_failures[-1]}"
                         break
                     continue
                 answered, in_a_row = answered + 1, 0
@@ -405,7 +413,14 @@ def main(meetings, state_dir, output_dir, seed_cache=None, offline=False, as_of=
                     live_pages += 1
             if fresh_failures >= OUTAGE_MIN_FAILURES and not answered:
                 # Every fresh attempt failed and no page answered at all: the site, not its pages.
-                raise RuntimeError(f"{host}: site-wide page outage; {fresh_failures} pages failed, none answered; first: {page_failures[0]}")
+                outage = f"{host}: site-wide page outage; {fresh_failures} pages failed, none answered; first: {page_failures[0]}"
+            if outage:
+                # Recorded above as page outcomes; the host error makes the run fail.
+                raise RuntimeError(outage)
+            if answered:
+                # The host answered in this run, so its failed pages are known page failures.
+                for url in failed_here:
+                    saved["workflow"][url]["last_check"]["host_answered"] = True
             if (limit is None or live_pages < limit) and not page_failures:
                 saved["versions"] = versions[host]
             attempt.update(completed_at=timestamp(), outcome="imported" if importing else "error" if page_failures else "complete")
