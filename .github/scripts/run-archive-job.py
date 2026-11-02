@@ -1,9 +1,15 @@
-"""Run the declared owner CLI once. Pending job specs refuse before any import."""
+"""Run the declared owner CLI once, under the archive watchdog. Pending job specs refuse before any import.
+
+An active binding carries its measured process-tree limit, rss_gb; without one it refuses,
+because engine pool settings do not bound process RSS (scripts/archive_watchdog.py).
+"""
 import argparse
 import json
+import os
 from pathlib import Path
 import subprocess
 import sys
+import tempfile
 
 ROOT = Path(__file__).resolve().parents[2]
 
@@ -11,7 +17,17 @@ ROOT = Path(__file__).resolve().parents[2]
 def binding_command(binding, spec):
     if binding.get('argv') != ['--execute']:
         raise ValueError('active job needs explicit --execute arguments')
+    rss_gb = binding.get('rss_gb')
+    if isinstance(rss_gb, bool) or not isinstance(rss_gb, (int, float)) or not rss_gb > 0:
+        raise ValueError('active job has no measured rss_gb')
     return [sys.executable, '-I', '-m', binding['module'], '--spec', str(spec), *binding['argv']]
+
+
+def watched_command(command, binding, operation, temp):
+    """The owner command under the watchdog, with its report and timeline in the runner's temp."""
+    return [sys.executable, '-I', str(ROOT / 'scripts/archive_watchdog.py'), '--rss-gb', str(binding['rss_gb']),
+            '--report', str(Path(temp) / f'{operation}-watchdog.json'), '--timeline', '--min-disk-gb', '15',
+            '--', *command]
 
 
 def export_publisher_work(command, output):
@@ -58,7 +74,8 @@ def main():
         return 2
     if args.check_binding:
         return export_publisher_work(command, args.github_output) if args.github_output is not None else 0
-    return subprocess.run(command, cwd=ROOT).returncode
+    temp = os.environ.get('RUNNER_TEMP') or tempfile.gettempdir()
+    return subprocess.run(watched_command(command, binding, args.operation, temp), cwd=ROOT).returncode
 
 
 if __name__ == '__main__':

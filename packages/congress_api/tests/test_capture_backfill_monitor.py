@@ -114,7 +114,7 @@ def test_status_log_appends_owner_fields_without_replacing_prior_events(tmp_path
 
 def test_whole_tree_sample_requires_three_consecutive_failures_and_resets():
     import errno
-    from congress_api.lake.capture_backfill import _MemorySamples
+    _MemorySamples=capture_backfill._sampler().MemorySamples
     class Sampler:
         remaining=2
         def resident_tree(self,_pid):return 7
@@ -131,7 +131,7 @@ def test_whole_tree_sample_requires_three_consecutive_failures_and_resets():
 
 
 def test_operator_cancellation_is_never_a_transient_memory_sample_gap():
-    from congress_api.lake.capture_backfill import _MemorySamples
+    _MemorySamples=capture_backfill._sampler().MemorySamples
     class Sampler:
         def resident_tree(self,_pid):raise InterruptedError('operator cancellation')
     samples=_MemorySamples(Sampler())
@@ -143,7 +143,7 @@ def test_operator_cancellation_is_never_a_transient_memory_sample_gap():
 def test_cleanup_signal_records_exited_group_errors_without_hiding_live_errors(code):
     import os
     import signal
-    from congress_api.lake.capture_backfill import _signal_group
+    _signal_group=capture_backfill._sampler()._signal_group
     def denied(_group,_signal):raise OSError(code,'group already exited')
     note=_signal_group(123,signal.SIGKILL,denied,lambda _group:False)
     assert note['errno']==code and note['group_exited'] is True
@@ -153,7 +153,7 @@ def test_cleanup_signal_records_exited_group_errors_without_hiding_live_errors(c
 def test_cleanup_records_ps_and_wait_errors_and_still_attempts_kill():
     import signal
     import subprocess
-    from congress_api.lake.capture_backfill import _cleanup_child
+    _cleanup_child=capture_backfill._sampler()._cleanup_child
     class Child:
         waits=0
         def poll(self):return None

@@ -79,6 +79,7 @@ def test_pending_model_spec_refuses_before_importing_publisher_or_accessing_stor
     assert 'Track E' in result.stderr and 'refused' in result.stderr
     assert not list(work.iterdir())
     config = json.loads((ROOT / '.github/archive-jobs.json').read_text())
+    measured = {name: config[name].pop('rss_gb', None) for name in config}
     assert config['publish'] == {
         'module': 'viewer_publication.archive_publish_job',
         'spec': 'model/jobs/publish.json',
@@ -99,7 +100,10 @@ def test_pending_model_spec_refuses_before_importing_publisher_or_accessing_stor
         assert not (ROOT / f'model/jobs/{name}.pending.json').exists()
         check = subprocess.run([sys.executable, '-I', str(ROOT / '.github/scripts/run-archive-job.py'), name, '--check-binding'],
             cwd=tmp_path, capture_output=True, text=True, timeout=15)
-        assert check.returncode == 0, check.stderr
+        if measured[name] is None:  # Set from a measured peak; until then the job refuses.
+            assert check.returncode == 2 and 'no measured rss_gb' in check.stderr
+        else:
+            assert check.returncode == 0, check.stderr
 
 
 def test_every_new_r2_writer_has_an_explicit_endpoint_source():
@@ -158,7 +162,7 @@ def test_active_workflow_binding_requires_explicit_execute_before_preflight(tmp_
         root=tmp_path/str(index);scripts=root/'.github/scripts';scripts.mkdir(parents=True)
         script=scripts/'run-archive-job.py';script.write_bytes((ROOT/'.github/scripts/run-archive-job.py').read_bytes())
         spec=root/'owner-job.json';spec.write_text(json.dumps({'version':1}))
-        binding=dict(module='viewer_publication.archive_publish',spec='owner-job.json')
+        binding=dict(module='viewer_publication.archive_publish',spec='owner-job.json',rss_gb=8)
         if argv is not None:binding['argv']=argv
         (root/'.github/archive-jobs.json').write_text(json.dumps({'publish':binding}))
         result=subprocess.run([sys.executable,'-I',str(script),'publish','--check-binding'],
@@ -171,9 +175,23 @@ def test_workflow_command_invokes_the_owner_module_once_in_execute_mode():
     import importlib.util
     spec=importlib.util.spec_from_file_location('archive_job',ROOT/'.github/scripts/run-archive-job.py')
     runner=importlib.util.module_from_spec(spec);spec.loader.exec_module(runner)
-    binding=dict(module='viewer_publication.archive_publish_job',argv=['--execute'])
+    binding=dict(module='viewer_publication.archive_publish_job',argv=['--execute'],rss_gb=12)
     path=Path('/local/owner-job.json')
-    assert runner.binding_command(binding,path)==[sys.executable,'-I','-m','viewer_publication.archive_publish_job','--spec',str(path),'--execute']
+    owner=[sys.executable,'-I','-m','viewer_publication.archive_publish_job','--spec',str(path),'--execute']
+    assert runner.binding_command(binding,path)==owner
+    assert runner.watched_command(owner,binding,'publish','/runner-temp')==[sys.executable,'-I',str(ROOT/'scripts/archive_watchdog.py'),
+        '--rss-gb','12','--report','/runner-temp/publish-watchdog.json','--timeline','--min-disk-gb','15','--',*owner]
+
+
+def test_an_active_binding_without_a_measured_rss_limit_refuses():
+    import importlib.util
+    import pytest
+    spec=importlib.util.spec_from_file_location('archive_job',ROOT/'.github/scripts/run-archive-job.py')
+    runner=importlib.util.module_from_spec(spec);spec.loader.exec_module(runner)
+    for rss_gb in (None,'12',0,True):
+        binding=dict(module='viewer_publication.archive_publish_job',argv=['--execute'])
+        if rss_gb is not None:binding['rss_gb']=rss_gb
+        with pytest.raises(ValueError,match='no measured rss_gb'):runner.binding_command(binding,Path('/local/job.json'))
 
 
 def active_publisher_fixture(tmp_path,work='private-evidence'):
@@ -191,7 +209,7 @@ def active_publisher_fixture(tmp_path,work='private-evidence'):
         targets=dict(path=str(tmp_path/'unopened-targets.json'),sha256='a'*64,size=17))
     (tmp_path/'publish.json').write_text(json.dumps(value))
     (tmp_path/'.github/archive-jobs.json').write_text(json.dumps(dict(publish=dict(
-        module='viewer_publication.archive_publish_job',spec='publish.json',argv=['--execute']))))
+        module='viewer_publication.archive_publish_job',spec='publish.json',argv=['--execute'],rss_gb=8))))
     return runner
 
 
