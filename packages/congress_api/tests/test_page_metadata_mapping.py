@@ -7,9 +7,11 @@ metadata has no supplier until ct-pocg: these prove the mapping, not its coverag
 """
 from pathlib import Path
 
+import pytest
+
 from committee_meeting.common import Ref, ReportedTime
 from committee_meeting.materials import DocumentDetails, Material
-from congress_api.adapters.common import AdapterContext, material_records
+from congress_api.adapters.common import AdapterContext, material_and_version, material_records
 from congress_api.adapters.page_metadata import enrich_material, main_content_representation, metadata_source, page_source
 from congress_api.adapters.senate import records
 from congress_api.models.html_metadata import MainContentRef
@@ -128,6 +130,17 @@ def test_declared_local_date_is_kept_and_compact_dates_invent_nothing():
     assert published('20250401') is None
 
 
+def test_reported_time_keeps_the_stated_day_for_every_adapter():
+    from congress_api.adapters.common import reported_time
+    assert reported_time('2025-04-01T22:15:00-04:00').date.isoformat() == '2025-04-01'
+    assert reported_time('2025-04-01T22:15:00Z').timezone == 'UTC'
+    assert reported_time('2025-04-01T22:15:00').timezone is None
+    assert reported_time('2025-04-01').time is None
+    for bad in ('20250401', 'soon', '2025-13-01'):
+        with pytest.raises(ValueError):
+            reported_time(bad)
+
+
 def test_unparseable_declared_date_stays_in_the_source_only():
     _, material = material_row(supplied(**{PAGE_URL: read_html_metadata(b'<html><head><meta property="article:published_time" content="soon"></head></html>')}))
     assert material.published_at is None
@@ -203,6 +216,13 @@ def test_senate_documents_stay_material_first_through_the_real_adapter():
     assert enriched.id in {row.id for row in of_kind(plain, 'material')}
     assert link_pairs(rows) == link_pairs(plain)
     assert any(row.identifier.value.startswith('html-metadata|') for row in of_kind(rows, 'source_record'))
+
+
+def test_material_and_version_do_not_depend_on_position():
+    ctx = supplied()
+    rows, material = material_row(ctx)
+    source = ctx.source('other', {'x': 2})
+    assert material_and_version([source, *reversed(rows)])[0].id == material.id
 
 
 def test_senate_recordings_stay_material_first_through_the_real_adapter():

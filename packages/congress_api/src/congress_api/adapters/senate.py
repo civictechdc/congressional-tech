@@ -18,7 +18,7 @@ from committee_meeting.meetings import (
 )
 from committee_meeting.provenance import AlternativeValue, FieldEvidence, Method
 
-from congress_api.adapters.common import digest, material_records, observed_time, ref, reported_time, web_url, witness_roles
+from congress_api.adapters.common import digest, material_and_version, material_records, observed_time, ref, reported_time, web_url, witness_roles
 from committee_meeting.common import Location, ReportedTime
 from congress_api.adapters.documents import category
 from congress_api.adapters.page_metadata import page_source
@@ -344,7 +344,7 @@ def records(state, context, *, meetings, committee_terms=None, meeting_records=N
                 built = material_records(context, ev, recording_key, title=attributes.get("title"), urls=[recording_url],
                     details=RecordingDetails(medium="audio" if media.get("tag") == "audio" else "unknown" if media.get("tag") == "source" else "video", provider=provider), identifiers=identifiers)
                 yield from built
-                material, version = built[:2]
+                material, version = material_and_version(built)
                 for meeting, match_evidence in (matched.values() if shared_media[recording_key] <= OWN else ()):
                     yield MaterialLink(id=context.ids("material_link", recording_key + "|" + meeting.id),
                         material=ref(material), version=ref(version), subject=meeting, role="recording",
@@ -411,7 +411,7 @@ def records(state, context, *, meetings, committee_terms=None, meeting_records=N
                 built = [item.model_copy(update={"locations": tuple(location.model_copy(update={"role": "landing"}) if attachment_page(location.url) else location for location in item.locations)})
                          if item.kind == "representation" else item for item in built]
                 yield from built
-                material, version = built[:2]
+                material, version = material_and_version(built)
                 if not web_url(document_url):
                     yield issue("invalid-url|" + document_hash, "unverified", "A reported document URL is not an absolute HTTP(S) URL.",
                                 subject=ref(material), selector=selector)

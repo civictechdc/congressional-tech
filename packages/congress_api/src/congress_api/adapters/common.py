@@ -8,7 +8,6 @@ from datetime import date, datetime
 from typing import Callable, Mapping
 from urllib.parse import urlsplit
 
-from congress_shared.dates import parse_utc_timestamp
 
 from congress_api.models.html_metadata import HtmlMetadata
 
@@ -73,16 +72,27 @@ def web_url(value):
     return value if parsed.scheme in ("http", "https") and parsed.netloc else None
 
 
+# A date, or a date and clock with an optional offset. A bare 20250401 is refused, not guessed.
+_REPORTED_TIME = re.compile(r'\d{4}-\d{2}-\d{2}(?P<clock>[T ]\d{2}:\d{2}(?P<seconds>:\d{2}(?:\.\d+)?)?(?:Z|[+-]\d{2}(?::?\d{2})?)?)?')
+
+
 def reported_time(value):
+    """A source's time on its own stated local date, at its stated precision.
+
+    ReportedTime keeps date-only and unzoned values, so nothing is converted: a 22:15-04:00
+    hearing stays on its day, and an unzoned clock gets no zone. Raises ValueError otherwise.
+    """
     if value is None or value == "":
         return None
     value = str(value)
-    if len(value) == 10:
-        return ReportedTime(date=date.fromisoformat(value), original=value)
-    parsed = parse_utc_timestamp(value)
-    zone = "UTC" if value.endswith("Z") else str(parsed.tzinfo) if parsed.tzinfo else None
-    return ReportedTime(date=parsed.date(), time=parsed.time().replace(tzinfo=None), timezone=zone,
-                        precision="second" if len(value.split("T")[-1].split("+")[0]) >= 8 else "minute", original=value)
+    match = _REPORTED_TIME.fullmatch(value.strip())
+    if not match:
+        raise ValueError(f"Unreadable reported time: {value!r}")
+    parsed = datetime.fromisoformat(match[0])
+    if not match['clock']:
+        return ReportedTime(date=parsed.date(), original=value)
+    return ReportedTime(date=parsed.date(), time=parsed.time().replace(microsecond=0, tzinfo=None), timezone=str(parsed.tzinfo) if parsed.tzinfo else None,
+                        precision="second" if match['seconds'] else "minute", original=value)
 
 
 @dataclass
@@ -111,6 +121,12 @@ class AdapterContext:
             method = Method(name=method, version="1")
         return Provenance(citations=(Citation(source=ref(source), selector_type="json_pointer" if selector is not None else None,
                                                selector=selector),), basis=basis, method=method)
+
+
+def material_and_version(records):
+    """The material and version among mapped records, whatever else accompanies them."""
+    material = next(record for record in records if isinstance(record, Material))
+    return material, next(record for record in records if isinstance(record, MaterialVersion))
 
 
 def material_records(context, evidence, key, **fields):

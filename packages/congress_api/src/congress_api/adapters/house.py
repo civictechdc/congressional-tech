@@ -9,7 +9,7 @@ from committee_meeting.legislation import Amendment, AmendmentGroup, AmendmentSp
 from committee_meeting.materials import DocumentDetails, MaterialLink
 from committee_meeting.meetings import Affiliation, Appearance, Panel, Person, RecordedName
 
-from congress_api.adapters.common import digest, material_records, observed_time, ref, web_url, witness_roles
+from congress_api.adapters.common import digest, material_and_version, material_records, observed_time, ref, web_url, witness_roles
 from congress_api.adapters.page_metadata import page_source
 from congress_api.adapters.documents import HOUSE_DOCUMENT_CATEGORIES as DOCUMENT_CATEGORIES, category
 from congress_api.models.house import HouseParsedRecord
@@ -187,7 +187,7 @@ def records(state, context, *, meetings):
                                       source_document_groups=(origin,) if origin else ())
             yield from mapped
             for url in urls:
-                document_materials[url] = mapped[:2]
+                document_materials[url] = material_and_version(mapped)
             if not meeting or code not in ("CA", "HA", "FA", "CV"):
                 continue
             target = None
@@ -213,7 +213,7 @@ def records(state, context, *, meetings):
                 if label:
                     enbloc.setdefault(label, []).append(ref(action))
             yield action
-            yield MaterialLink(id=context.ids("material_link", dkey + "|action"), material=ref(mapped[0]), version=ref(mapped[1]), subject=ref(action), role=role, provenance=ev)
+            yield MaterialLink(id=context.ids("material_link", dkey + "|action"), material=ref(material_and_version(mapped)[0]), version=ref(material_and_version(mapped)[1]), subject=ref(action), role=role, provenance=ev)
         if meeting and rich.get("document_groups") is None:
             # Legacy read_xml emitted one row per file format. Retain every row
             # as evidence, but identical action metadata describes one action.
@@ -273,7 +273,7 @@ def records(state, context, *, meetings):
                         mapped = material_records(context, file_evidence, key + "|document|" + url, title=row["description"], urls=[url],
                                                   details=DocumentDetails(category="vote" if row["kind"] == "vote" else "amendment"), subject=meeting, role=role)
                         yield from mapped
-                        document_materials[url] = mapped[:2]
+                        document_materials[url] = material_and_version(mapped)
                     yield MaterialLink(id=context.ids("material_link", action_key + "|attachment|" + url), material=ref(mapped[0]), version=ref(mapped[1]),
                                        subject=ref(action), role=role, provenance=file_evidence)
         for label, members in enbloc.items():

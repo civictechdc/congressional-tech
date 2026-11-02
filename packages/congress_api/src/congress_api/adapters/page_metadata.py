@@ -10,16 +10,14 @@ Declared dates describe the web page, never the proceeding, so they reach only
 page authors are CMS accounts ("admin"), and witness parsers stay the only source of
 appearances. ``declared_url`` is never an identifier or a merge key.
 """
-from datetime import datetime
 import re
 from urllib.parse import urlsplit
 
-from committee_meeting.common import ReportedTime
 from committee_meeting.issues import DataIssue
 from committee_meeting.materials import Material, Representation
 from committee_meeting.provenance import AlternativeValue, Citation, FieldEvidence, Method, Provenance
 
-from congress_api.adapters.common import digest, ref
+from congress_api.adapters.common import digest, ref, reported_time
 from congress_api.models.html_metadata import HtmlMetadata, MainContentRef
 from congress_api.parsers.html_metadata import page_facts
 
@@ -39,7 +37,6 @@ TEMPLATE_DESCRIPTIONS = (
 # A JSON-LD description on these nodes describes the site, not the page.
 _SITE_NODES = {'WebSite', 'Organization', 'Person'}
 _NODE_PATH = re.compile(r'/(?:@type|description)(?:/\d+)?$')
-_DECLARED_TIME = re.compile(r'\d{4}-\d{2}-\d{2}(?P<clock>[T ]\d{2}:\d{2}(?P<seconds>:\d{2}(?:\.\d+)?)?(?:Z|[+-]\d{2}(?::?\d{2})?)?)?')
 _DESCRIPTION_ORDER = {'opengraph': 0, 'json-ld': 1, 'head_meta': 2}
 
 
@@ -59,22 +56,10 @@ def metadata_source(context, url, metadata):
 
 
 def _time(value):
-    """A declared time on its own local date at its own precision.
-
-    reported_time converts to UTC, which moves 22:15-04:00 to the next day, so it is not
-    reused here. A form this cannot read stays only in the metadata source.
-    """
-    match = _DECLARED_TIME.fullmatch(value.strip()) if isinstance(value, str) else None
-    if not match:
-        return None
     try:
-        parsed = datetime.fromisoformat(match[0])
-    except ValueError:
+        return reported_time(value) if isinstance(value, str) else None
+    except ValueError:  # the literal stays in the metadata source
         return None
-    if not match['clock']:
-        return ReportedTime(date=parsed.date(), original=value)
-    return ReportedTime(date=parsed.date(), time=parsed.time().replace(microsecond=0, tzinfo=None), timezone=str(parsed.tzinfo) if parsed.tzinfo else None,
-                        precision='second' if match['seconds'] else 'minute', original=value)
 
 
 def _times(facts, field):
@@ -182,7 +167,6 @@ def material_page_records(context, records, url, metadata):
     """Apply one page's metadata to freshly mapped material records."""
     source = metadata_source(context, url, metadata)
     mapped = [enrich_material(context, record, metadata, source) if isinstance(record, Material) else record for record in records]
-    # Callers unpack the material and version from the front of this list.
     return [*mapped, source, *declared_url_issues(context, f'material|{url}', metadata, source, url)]
 
 
