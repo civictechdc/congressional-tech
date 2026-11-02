@@ -69,7 +69,7 @@ def test_raw_lake_model_exports_one_group_and_keeps_download_names(tmp_path):
     members=pq.read_table(tmp_path/'model/evidence/source_members.parquet').to_pylist()
     assert len({m['source_id'] for m in members})==3
     assert {m['effective_filename'] for m in members}=={'report.html','report.pdf','download report.pdf'}
-    assert {f['name'] for f in manifest['files']}=={'list.parquet','detail.parquet','links.parquet','urls.parquet','sources.parquet','recoveries.parquet','meetings.parquet','url_state.parquet','url_variants.parquet','schema.json','capture_scope.json','capture_profile.json'}
+    assert {f['name'] for f in manifest['files']}=={'list.parquet','detail.parquet','links.parquet','urls.parquet','sources.parquet','recoveries.parquet','meetings.parquet','url_state.parquet','url_variants.parquet','retired_links.parquet','schema.json','capture_scope.json','capture_profile.json'}
     assert (tmp_path/'model/evidence/document_rows.parquet').is_file()
     assert {'body_sha256','decided_at','decision_id'} <= set(pq.read_schema(tmp_path/'model/evidence/current_recoveries.parquet').names)
     lookups=pq.read_table(tmp_path/'release/urls.parquet').to_pylist()
