@@ -40,3 +40,7 @@ Round 1b 2026-11-02 (lead): 1,446 Files.Serve PDFs have no name in the URL or he
 **2026-11-02T14:50:56Z**
 
 2026-11-02 (lead): red-g: rendition titles outrank the publisher's own link text (coalesce order), and no_address tests the capture url, not the published context_url (203 documents and 124 senate/pages bodies reachable only via null-url rows). Sent to impl-g, along with e1's url = final URL decision.
+
+**2026-11-02T15:30:02Z**
+
+2026-11-02 impl-g: no-URL captures are named by their context address (row 941 is CHRG-117hhrg54192.pdf); the blank reason reads every capture of the saved body (03d05805); Files.Serve names come with e1's d3e49b9d (captures.url = final URL), which also names the 6 banking testimony PDFs; the ZIP member demotion is reverted (c846b0a8).

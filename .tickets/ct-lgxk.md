@@ -36,3 +36,7 @@ Round 1b 2026-11-02 (lead): The ZIP rule would put 'ZIP' back on about 34k membe
 **2026-11-02T14:46:01Z**
 
 2026-11-02 green-g (request changes): link-word titles still miss a format word plus a size ('Download XML (6KB)': 611 live; 'PDF (48.1 MB)' in Run B), and the generic_titles check reuses the same list. Needs a format-only rule and an independent check. Also a wrong title from a 'Skip to Content' grouping link.
+
+**2026-11-02T15:30:02Z**
+
+2026-11-02 impl-g: format-plus-size titles are link words, and generic_titles uses its own rule (95800ba5); title order is reading, then listing, then rendition (127a7c0b); navigation self-links don't group (a19fa66e). red-g2 is doing a focused re-check; data effect measured on the integrated run.
