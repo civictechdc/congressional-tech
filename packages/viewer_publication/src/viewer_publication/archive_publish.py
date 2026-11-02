@@ -21,6 +21,7 @@ from viewer_publication.archive_gate import gate_and_flip,validate_receipt
 from viewer_publication.archive_format import release_identity
 from viewer_publication.client import require_publication_client
 from viewer_publication.archive_comparison_acceptance import require_comparison
+from viewer_publication.release_gate import client_reader,fetch_release,require_release_gates
 from viewer_publication.receipt_pins import (PREFIX,receipt_list,read_receipt_list,
     write_input_receipts,kept_receipt_keys)
 
@@ -391,12 +392,15 @@ def _candidate(release,manifest_pin,result_pin,*,input_record,receipt_keys):
 
 
 def publish_candidate(*,client,engine,bucket,work,release,manifest_pin,result_pin,
-                      input_record,receipt_keys,pointer,expected_etag,public_origin,contract,canary,measured_release_id=None,comparison_acceptance=None,asset_journal=None):
+                      input_record,receipt_keys,pointer,expected_etag,public_origin,contract,canary,measured_release_id=None,comparison_acceptance=None,asset_journal=None,
+                      base_release=None,release_causes=None):
     """Upload a pinned model candidate and use the existing reader gates and CAS.
 
     The caller owns actual model planning, completeness and early skip. This stage
     accepts actual pinned native artifacts. Only external storage/engine and reader
     probe adapters are injected; no model or admission policy callback is accepted.
+    Gates 1 and 2 (release_gate) compare the candidate with `base_release`, the
+    fetched copy of the pinned live release, before any contract, upload or flip.
     """
     require_publication_client(client)
     started=perf_counter();failure=None
@@ -433,6 +437,12 @@ def publish_candidate(*,client,engine,bucket,work,release,manifest_pin,result_pi
                 write_spicy_generations(client,bucket=bucket,generations=pairs)
             status['status']='release_unchanged'
             return dict(status)
+        if live is not None:
+            if base_release is None:raise ValueError('Gates 1 and 2 require the fetched live release')
+            fetch_release(client_reader(client,bucket,live),live,base_release)
+        require_release_gates(Path(base_release) if live is not None else None,Path(release),release_causes,
+            report_path=Path(work)/'release-gate.json')
+        status['release_gates']='passed'
         contract_receipt=contract(release_id=release_id,release=Path(release),manifest=manifest)
         validate_receipt(contract_receipt,release_id=release_id,name='contract',manifest_origin=manifest.get('origin'))
         write_input_receipts(store,release_id,digest,input_record,receipt_keys)

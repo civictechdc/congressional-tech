@@ -352,3 +352,35 @@ def test_completed_checkpoint_refuses_corruption_and_changed_inputs(tmp_path,dam
             run_publish(load_spec(path),work=tmp_path/'publish',canary=passed,resume=True,**kwargs)
         assert {k:v for k,v in store.objects.items() if k!='viewer-publications/status.json'}=={
             k:v for k,v in before.items() if k!='viewer-publications/status.json'}
+
+
+def test_publish_seeds_the_ledger_from_the_live_release_and_its_named_history(tmp_path):
+    """Gates 1 and 2 through run_publish: keys from the live release and from an earlier
+    release named in link_history land in retired_links; the comparison still needs causes."""
+    from viewer_publication.archive_controller import run_publish
+    from viewer_publication.archive_model_job import load_spec
+    from test_release_gate import release_dir
+    spec,_,_=real_model_spec(tmp_path)
+    specpath=tmp_path/'model-spec.json';specpath.write_text(json.dumps(spec))
+    store=Store();ids={}
+    for name,documents in [('live',['Q']),('history',['H'])]:
+        manifest=release_dir(tmp_path/name,documents);ids[name]=manifest['release_id']
+        for item in manifest['files']+[dict(name='manifest.json')]:
+            store.objects['viewer-publications/releases/'+manifest['release_id']+'/'+item['name']]=(tmp_path/name/item['name']).read_bytes()
+    store.objects['viewer-publications/manifest.json']=json.dumps(dict(release_id=ids['live'],previous_release_id=None)).encode()
+    def probe(**context):raise AssertionError('no probe may run before the gates pass')
+    with NativeDatasets.from_config(os.environ['DOCSPEC_JOB_CONFIG']) as native:
+        kwargs=dict(client=store,engine=Runtime(native,store),bucket='derived-fixture',
+            receipt_keys=['receipts/documents/2026-10-27/slice.jsonl.gz'],provenance=[],run={'id':'gated'},
+            public_origin='https://archive.fixture.test',contract=probe,canary=probe)
+        with pytest.raises(ValueError,match='must name link_history'):
+            run_publish(load_spec(specpath),work=tmp_path/'publish-bare',**kwargs)
+        with pytest.raises(ValueError,match='no recorded cause'):
+            run_publish(load_spec(specpath),work=tmp_path/'publish',link_history=[ids['history']],**kwargs)
+    retired=pq.read_table(Path(spec['output'])/'retired_links.parquet').to_pylist()
+    assert {(row['link_key'],row['successor_key'],row['last_release_id']) for row in retired}=={
+        (b'Q'*8,None,ids['live']),(b'H'*8,None,ids['history'])}
+    [report]=list((tmp_path/'publish').glob('candidate-*/release-gate.json'))
+    report=json.loads(report.read_text())
+    assert report['link_rule']['missing']==0 and report['base_release']==ids['live']
+    assert json.loads(store.objects['viewer-publications/manifest.json'])['release_id']==ids['live']

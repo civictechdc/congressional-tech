@@ -90,7 +90,22 @@ def candidate(root,*,payload=b'qualified export bytes',rows=1):
     return dict(release=output,manifest_pin=pin(path),result_pin=pin(result)),manifest
 
 
-def launch(root,*,store=None,native=None,input_record=None,artifacts=None,canary=None,contract=None):
+@pytest.fixture(autouse=True)
+def transport_gates(request,monkeypatch):
+    """These transport fixtures publish opaque bytes, so gates 1 and 2 are recorded, not run;
+    test_release_gate_* below run the real gates through this same publish path."""
+    calls=[]
+    if 'real_gates' not in request.fixturenames:
+        import viewer_publication.archive_publish as module
+        monkeypatch.setattr(module,'require_release_gates',lambda *a,**k:calls.append((a,k)))
+    return calls
+
+
+@pytest.fixture
+def real_gates():return True
+
+
+def launch(root,*,store=None,native=None,input_record=None,artifacts=None,canary=None,contract=None,release_causes=None):
     store=store or Store();native=native or Native(store)
     default,keys=record();input_record=input_record or default
     if artifacts is None:artifacts,_=candidate(root)
@@ -98,7 +113,8 @@ def launch(root,*,store=None,native=None,input_record=None,artifacts=None,canary
     def passed(**context):return dict(status='passed',releaseId=context['release_id'],targets='owner-approved')
     result=publish_candidate(client=store,engine=native,bucket='derived-fixture',work=root/'publish',
         **artifacts,input_record=input_record,receipt_keys=keys,pointer=pointer,expected_etag=etag,
-        public_origin='https://archive.example.test',canary=canary or passed,contract=contract or passed)
+        public_origin='https://archive.example.test',canary=canary or passed,contract=contract or passed,
+        base_release=root/'base-release' if pointer else None,release_causes=release_causes)
     return result,store,native
 
 
@@ -401,3 +417,50 @@ def test_release_manifest_is_visible_only_after_complete_atomic_write(tmp_path,m
     with pytest.raises(RuntimeError,match='interrupted final rename'):
         _content(target,{'release_id':'a'*64})
     assert observed and not target.exists()
+
+
+def real_release(root,documents,retired=None):
+    """A real release through the publisher's own candidate checks."""
+    from test_release_gate import release_dir
+    manifest=release_dir(root/'release',documents,retired)
+    result=root/'result.json'
+    result.write_bytes(encoded(dict(outputs=[f for f in manifest['files'] if f['name'].endswith('.parquet')],
+        queries=[dict(name=name,data=[dict(violation=0)]) for name in ['invariants','model_invariants','url_state_invariants','profile_completeness']])))
+    return dict(release=root/'release',manifest_pin=pin(root/'release/manifest.json'),result_pin=pin(result)),manifest
+
+
+def live_store(root):
+    """A store whose pointer names an uploaded release with documents A and B."""
+    store=Store();_,manifest=real_release(root/'live',['A','B'])
+    prefix='viewer-publications/releases/'+manifest['release_id']+'/'
+    for item in manifest['files']+[dict(name='manifest.json')]:
+        store.objects[prefix+item['name']]=(root/'live/release'/item['name']).read_bytes()
+    store.objects['viewer-publications/manifest.json']=encoded(dict(release_id=manifest['release_id'],previous_release_id=None))
+    return store,manifest['release_id']
+
+
+def test_release_gate_refuses_before_contract_upload_or_flip(tmp_path,real_gates):
+    store,live=live_store(tmp_path);native=Native(store);contracts=[]
+    artifacts,_=real_release(tmp_path/'next',['A'])  # B vanishes: no redirect and no removal notice
+    def contract(**context):contracts.append(context);return dict(status='passed',releaseId=context['release_id'],targets='owner-approved')
+    with pytest.raises(ValueError,match='link rule: 1 base link keys vanish'):
+        launch(tmp_path/'run',store=store,native=native,artifacts=artifacts,contract=contract)
+    assert contracts==[] and native.calls==[]
+    assert json.loads(store.objects['viewer-publications/manifest.json'])['release_id']==live
+    assert [key for action,key in store.events if action=='put']==['viewer-publications/status.json']
+    assert json.loads(store.objects['viewer-publications/status.json'])['status']=='failed'
+    report=json.loads((tmp_path/'run/publish/release-gate.json').read_text())
+    assert report['base_release']==live and report['link_rule']['missing_keys']==[(b'B'*8).hex()]
+
+
+def test_release_gate_pass_reaches_contract(tmp_path,real_gates):
+    from test_release_gate import record_for
+    store,live=live_store(tmp_path)
+    retired=[dict(link_key=b'B'*8,successor_key=None,last_release_id=live,last_filename='B.pdf')]
+    artifacts,_=real_release(tmp_path/'next',['A'],retired)
+    with pytest.raises(ValueError,match='no recorded cause'):
+        launch(tmp_path/'first',store=store,artifacts=artifacts)
+    causes=record_for(json.loads((tmp_path/'first/publish/release-gate.json').read_text()),tmp_path)
+    result,store,_=launch(tmp_path/'second',store=store,artifacts=artifacts,release_causes=causes)
+    assert result['status']=='published' and result['release_gates']=='passed'
+    assert json.loads(store.objects['viewer-publications/manifest.json'])['previous_release_id']==live

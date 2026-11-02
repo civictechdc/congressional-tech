@@ -154,7 +154,7 @@ def load_spec(path):
         if set(value)!={'status','reason'} or not isinstance(value['reason'],str) or not value['reason'].strip():
             raise ValueError('Blocked publication job requires exactly its reason')
         return value
-    if set(value)-FIELDS-{'site_dist','daily','model_kind','comparison_acceptance','resume'}:raise ValueError('Publication job has unknown fields')
+    if set(value)-FIELDS-{'site_dist','daily','model_kind','comparison_acceptance','resume','release_causes','link_history'}:raise ValueError('Publication job has unknown fields')
     if not FIELDS<=value.keys() or type(value['version']) is not int or value['version']!=1:
         raise ValueError('Publication job requires version 1 and all explicit inputs')
     base=path.parent
@@ -172,6 +172,14 @@ def load_spec(path):
             raise ValueError('Comparison acceptance requires its receipt pin and mapping digest')
         result['comparison_acceptance']=dict(receipt=_metadata_pin(selected['receipt'],base),mapping_digest=selected['mapping_digest'])
     for name in ['model_spec','targets']:result[name]=_metadata_pin(value[name],base)
+    # Gates 1 and 2: the committed cause record for this candidate, and the earlier
+    # releases whose keys seed the ledger when the live release has none.
+    if 'release_causes' in value:result['release_causes']=_metadata_pin(value['release_causes'],base)
+    history=value.get('link_history',[])
+    if (not isinstance(history,list) or len(set(history))!=len(history)
+            or any(not isinstance(item,str) or re.fullmatch('[a-f0-9]{64}',item) is None for item in history)):
+        raise ValueError('link_history must list distinct 64-hex release IDs')
+    result['link_history']=list(history)
     for name in ['work','contract_next_release']:result[name]=_local(value[name],base)
     result['site_dist']=_local(value['site_dist'],base) if 'site_dist' in value else str(SITE/'dist')
     origin=urlsplit(value['public_origin']) if isinstance(value['public_origin'],str) else None
@@ -400,8 +408,13 @@ def execute(spec,*,runtime_factory=None,storage_factory=None,process_runner=None
             options=dict(client=client,engine=engine,bucket=spec['bucket'],work=spec['work'],run=spec['run'],
                 public_origin=spec['public_origin'],contract=lambda **context:probe('contract',context),
                 canary=lambda **context:probe('canary',context))
+            causes=None
+            if 'release_causes' in spec:
+                from viewer_publication.release_gate import load_causes
+                causes=load_causes(spec['release_causes'])
             result=run_publish(selected_model,receipt_keys=keys,provenance=provenance,verified_files=verified,
-                measured_release_id=measured_release_id,comparison_acceptance=acceptance,resume=spec.get('resume',False),**options)
+                measured_release_id=measured_release_id,comparison_acceptance=acceptance,resume=spec.get('resume',False),
+                release_causes=causes,link_history=spec.get('link_history',[]),**options)
             spec['_model_identity'].require(spec['model_spec']['path']);require_configuration()
             return dict(result,daily=daily['daily']) if daily is not None else result
 
