@@ -575,9 +575,9 @@ Identity: `event_id, aspect` (primary_key; published identifier).
 | `state` | `dict` | present, partial, claimed, empty, not_stated, unresolved, not_public, confirmed_absent or unknown; these never merge |
 | `basis` | `dict` | Which relation states it |
 | `count` | `int32` | Rows behind present |
-| `reason` | `dict` | Why a state holds, when known, such as old_evidence_disputes_negative_verdict |
+| `reason` | `dict` | Why a state holds, when known: old_evidence_disputes_negative_verdict, video_text_only, excerpts_only, stated_documents_not_held, senate_page_links_pending, package_witnesses_unattached, package_names_meeting_unlinked or recording_link_pending |
 
-- `state`: confirmed_absent only from undisputed curated negative verdicts on every package of the meeting, each linked to that meeting alone; zero rows never prove absence. partial means excerpts only; claimed means only a video’s own text; for captions, no observation is unknown, never empty.
+- `state`: confirmed_absent only from undisputed curated negative verdicts on every package of the meeting, each linked to that meeting alone; zero rows never prove absence. partial means excerpts only; claimed means only a video’s own text; for captions, no observation is unknown, never empty. States rank present > unresolved > empty > unknown > not_stated: unknown, never not_stated, where held evidence is not yet linked. A Senate meeting is unknown for documents and witnesses until Senate committee-page links land (ct-gi01 R2). Captions are not_stated only when the recording is confirmed_absent or not_public.
 
 Outgoing: `coverage_meeting`.
 
