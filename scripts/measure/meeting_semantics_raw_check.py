@@ -11,8 +11,9 @@ congress_api.parsers, the appearance producer or the model SQL:
 - a meeting's date, status, title, type, witnesses and transcript files, from its Congress.gov line;
 - an own video's publish day (Eastern), from the videos table built from the YouTube cache.
 
-Titles are compared by difflib's sequence ratio over normalized text, a different measure from the
-model's shared-word rule: agree at >= 0.6, disagree below 0.4, ambiguous between. Each changed row gets
+Titles are compared by a different measure from the
+model's shared-word rule: token containment of the print title in the meeting title (or difflib
+ratio, whichever is higher): agree at >= 0.6, disagree below 0.3, ambiguous between. Each changed row gets
 raw_supports_after, raw_contradicts_after, ambiguous or unread, with the facts read. Unread rows are
 listed. No raw record can prove `unknown`; coverage relabels check only their premise.
 """
@@ -43,14 +44,29 @@ def norm(text):
     return re.sub(r'[^a-z0-9]+', ' ', (text or '').lower()).strip()
 
 
+def tokens(text):
+    return {t for t in norm(text).split() if len(t) >= 3}
+
+
 def similarity(left, rights):
-    """Best difflib ratio between a meeting title and any of a print's titles."""
-    a = norm(left)
-    return max((difflib.SequenceMatcher(None, a, norm(r)).ratio() for r in rights if r), default=0.0)
+    """How much of a print's title the meeting's title contains, at best over the print's titles.
+
+    Containment, not the model's shared-word ratio: Senate Congress.gov titles join a business meeting
+    and the hearing that follows, so the print's title is a part of the meeting's. difflib's whole-string
+    ratio is kept as a second opinion for short titles."""
+    meeting = tokens(left)
+    best = 0.0
+    for right in rights:
+        if not right:
+            continue
+        own = tokens(right)
+        contained = len(own & meeting) / len(own) if own else 0.0
+        best = max(best, contained, difflib.SequenceMatcher(None, norm(left), norm(right)).ratio())
+    return best
 
 
 def agreement(score):
-    return 'agree' if score >= 0.6 else 'disagree' if score < 0.4 else 'ambiguous'
+    return 'agree' if score >= 0.6 else 'disagree' if score < 0.3 else 'ambiguous'
 
 
 def records(cursor):
@@ -213,6 +229,7 @@ def check_witnesses(args, db, congress, prints, report):
         return out
     ob, oa = occasions(before), occasions(after)
     package_fam, house_fam = Family('package_choice'), Family('house_witness_event')
+    covered = {r['occasion'] for r in after if r['source'] != 'mods'}
     paths = original_paths(args, db, {k[0] for k in set(ob) | set(oa) if k[1] == 'house_xml'})
     for k in sorted(set(ob) | set(oa)):
         b, a = ob.get(k, (set(), None)), oa.get(k, (set(), None))
@@ -224,7 +241,8 @@ def check_witnesses(args, db, congress, prints, report):
             events = {int(o.split(':')[1]) for o in a[0] | b[0] if o and o.startswith('meeting:')}
             for event in sorted(events):
                 verdict = belongs(prints(package), event, congress.get(str(event)))
-                attached = f'meeting:{event}' in a[0]
+                # A print on meeting:E publishes nothing when a higher-priority source holds that meeting.
+                attached = f'meeting:{event}' in a[0] or (not a[0] and f'meeting:{event}' in covered)
                 raw = dict(package=package, event=event, before=sorted(b[0]), after=sorted(a[0]), print=prints(package),
                            meeting=(congress.get(str(event)) or {}).get('title'), date=str((congress.get(str(event)) or {}).get('date'))[:10])
                 if verdict == 'unread':
@@ -276,6 +294,8 @@ def check_coverage(args, db, congress, prints, packages, report):
         f"SELECT {key if has_reason else 'event_id,aspect,state,cast(NULL AS VARCHAR) AS reason'} FROM read_parquet('{Path(args.before) / 'meeting_coverage.parquet'}')"))}
     after = {(r['event_id'], r['aspect']): r for r in records(db.execute(f"SELECT {key} FROM read_parquet('{Path(args.after) / 'meeting_coverage.parquet'}')"))}
     fam, transitions, by_aspect = Family('coverage_relabels'), Counter(), Counter()
+    own_lists = {e for (e,) in db.execute(f"""SELECT DISTINCT event_id FROM read_parquet('{Path(args.after) / 'witnesses.parquet'}')
+        WHERE source IN ('house_xml','congress_gov') AND event_id IS NOT NULL""").fetchall()}
     for k in sorted(set(before) | set(after)):
         b, a = before.get(k) or {}, after.get(k) or {}
         if (b.get('state'), b.get('reason')) == (a.get('state'), a.get('reason')):
@@ -292,12 +312,16 @@ def check_coverage(args, db, congress, prints, packages, report):
             # Unknown is right only if no print that records this meeting holds witnesses.
             own = [p for p, v in verdicts.items() if v == 'agree' and (prints(p) or {}).get('witnesses')]
             premise = None if any(v == 'unread' for v in verdicts.values()) else not own
-        elif aspect in ('recording', 'witnesses', 'transcript') and verdicts:
-            agreeing = [p for p, v in verdicts.items() if v == 'agree']
-            premise = None if any(v == 'unread' for v in verdicts.values()) else (bool(agreeing) if a.get('state') == 'present' and b.get('state') != 'present' else True)
+        elif aspect == 'witnesses' and a.get('state') == 'present' and event in own_lists:
+            premise = True  # Its own House XML or Congress.gov list now reaches it (ct-x78c).
+        elif aspect in ('recording', 'witnesses', 'transcript') and verdicts and a.get('state') == 'present' and b.get('state') != 'present':
+            # A gain through a print needs a print that raw says records this meeting.
+            states = set(verdicts.values())
+            premise = True if 'agree' in states else None if 'unread' in states else 'ambiguous' if 'ambiguous' in states else False
         else:
             premise = 'not_checked'
-        verdict = 'unread' if premise is None else 'premise_holds' if premise is True else 'premise_fails' if premise is False else 'not_checked'
+        verdict = ('unread' if premise is None else 'premise_holds' if premise is True else 'premise_fails' if premise is False
+                   else 'ambiguous' if premise == 'ambiguous' else 'not_checked')
         by_aspect[(aspect, verdict)] += 1
         if verdict != 'premise_holds' or len(fam.samples[verdict]) < SAMPLES:
             fam.add([event, aspect], verdict, before=[b.get('state'), b.get('reason')], after=[a.get('state'), reason], prints=verdicts)
