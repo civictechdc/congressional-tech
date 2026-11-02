@@ -261,9 +261,10 @@ Identity: `witness_key` (primary_key; published identifier).
 | `panel` | `string` | Panel heading or label |
 | `panel_order` | `int16` | 1-based panel order within the occasion |
 | `display_order` | `int16` | 1-based witness display order within the occasion or panel |
-| `witness_type` | `dict` | Source witness classification |
+| `witness_type` | `dict` | Source witness classification; for GovInfo prints, statement_for_record or member_statement marks an entry that is a statement, not a witness |
 | `testified` | `boolean` | Whether the witness testified |
 | `bioguide_id` | `dict` | Bioguide identifier when the witness is a Member of Congress |
+| `superseded_by` | `string` | witness_key of the same person stated on the same meeting by a higher-ranked source (source priority, then record); null for the row to show |
 
 - `occasion`: meeting:{event_id}, package:{package_id}, or page:{sha256_prefix}. Witness keys hash the occasion, source, record_sha, source_locator, and context_key; names alone never join or deduplicate appearances.
 

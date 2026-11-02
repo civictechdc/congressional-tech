@@ -61,7 +61,9 @@ WITH package_meetings AS (
        WHEN e.chamber='senate' THEN 'senate_page_links_pending' END AS reason
  FROM meetings_export e LEFT JOIN document_counts d ON e.event_id=d.event_id LEFT JOIN stated_documents s ON e.event_id=s.event_id
 ), witness_counts AS (
- SELECT event_id,count(*) AS n FROM witnesses_export WHERE event_id IS NOT NULL AND name IS NOT NULL GROUP BY event_id
+ -- Each person once (superseded rows point at the row shown); statements are not witnesses.
+ SELECT event_id,count(*) AS n FROM witnesses_export WHERE event_id IS NOT NULL AND name IS NOT NULL AND superseded_by IS NULL
+  AND coalesce(witness_type,'') NOT IN ('statement_for_record','member_statement') GROUP BY event_id
 ), witness_states AS (
  SELECT event_id,max(CASE WHEN collection_state='unresolved' THEN 2 WHEN collection_state='empty' THEN 1 ELSE 0 END) AS rank
  FROM (
@@ -73,6 +75,7 @@ WITH package_meetings AS (
  -- A linked package holds witnesses that no raw record ties to this meeting alone (ct-dx22).
  SELECT DISTINCT l.event_id FROM meeting_transcript_links l
  JOIN witnesses_export w ON w.package_id=l.package_id AND w.event_id IS NULL AND w.name IS NOT NULL
+  AND coalesce(w.witness_type,'') NOT IN ('statement_for_record','member_statement')
 ), witness_rows AS (
  SELECT e.event_id,'witnesses' AS aspect,
   CASE WHEN c.n IS NOT NULL THEN 'present' WHEN s.rank=2 THEN 'unresolved' WHEN s.rank=1 THEN 'empty'

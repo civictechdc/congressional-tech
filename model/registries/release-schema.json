@@ -921,7 +921,7 @@
           "name": "witness_type",
           "type": "dict",
           "nullable": true,
-          "meaning": "Source witness classification"
+          "meaning": "Source witness classification; for GovInfo prints, statement_for_record or member_statement marks an entry that is a statement, not a witness"
         },
         {
           "name": "testified",
@@ -934,6 +934,12 @@
           "type": "dict",
           "nullable": true,
           "meaning": "Bioguide identifier when the witness is a Member of Congress"
+        },
+        {
+          "name": "superseded_by",
+          "type": "string",
+          "nullable": true,
+          "meaning": "witness_key of the same person stated on the same meeting by a higher-ranked source (source priority, then record); null for the row to show"
         }
       ],
       "gaps": [],

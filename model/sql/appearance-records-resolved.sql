@@ -224,18 +224,19 @@ WITH candidate_appearance_shas AS (
  SELECT *
  FROM ranked_source_observations
  WHERE obs_rn=1
-), winning_source_per_occasion AS (
- SELECT *,
-  rank() OVER(
-   PARTITION BY occasion
-   ORDER BY priority ASC
-  ) AS src_rn
+), ranked_sources AS (
+ SELECT *,min(priority) OVER(PARTITION BY occasion) AS top_priority
  FROM current_source_observations
  WHERE effective_state IN ('present','empty','unresolved')
+), top_states AS (
+ SELECT occasion,bool_and(effective_state='present') AS top_present FROM ranked_sources WHERE priority=top_priority GROUP BY occasion
 ), selected_observations AS (
- SELECT *
- FROM winning_source_per_occasion
- WHERE src_rn=1 AND effective_state='present'
+ -- When the top-ranked source lists witnesses, every source's current body publishes and precedence is
+ -- per person, not per source (red-f2): a lower row is superseded only by the same person from a
+ -- higher-ranked body. A top source that states none or failed still blocks lower fallback (ct-30fp).
+ SELECT r.*
+ FROM ranked_sources r JOIN top_states t ON t.occasion=r.occasion
+ WHERE r.effective_state='present' AND (t.top_present OR r.priority=r.top_priority)
 ), unnested_occurrences AS (
  SELECT
   s.record_sha_hex,
@@ -246,6 +247,7 @@ WITH candidate_appearance_shas AS (
   s.package_id,
   s.page_url,
   s.resolved_base,
+  s.priority,
   unnest(s.appearances) AS a,
   unnest(range(0,cast(array_length(s.appearances) AS BIGINT))) AS ordinal
  FROM selected_observations s
@@ -260,6 +262,7 @@ WITH candidate_appearance_shas AS (
   package_id,
   page_url,
   resolved_base,
+  priority,
   ordinal,
   coalesce(nullif(trim(a['source_locator']),''),source||':witness['||cast(ordinal+1 AS VARCHAR)||']') AS source_locator,
   nullif(trim(a['name_key']),'') AS name_key,
@@ -286,6 +289,21 @@ WITH candidate_appearance_shas AS (
   substr(encode(sha256(json_array('witness-occurrence-v2',occasion,source,record_sha_hex,source_locator,context_key)),'hex'),1,16) AS witness_key,
   *
  FROM extracted_occurrences
+), people AS (
+ SELECT w.witness_key,w.occasion,w.priority,w.record_sha_hex,p.family,p.initial
+ FROM with_witness_key w
+ JOIN appearance_people p ON p.record_sha_hex=w.record_sha_hex AND p.source=w.source AND p.ordinal=w.ordinal
+ WHERE w.occasion LIKE 'meeting:%' AND NOT p.statement AND p.family IS NOT NULL
+), superseded AS (
+ -- The same person (family name, first initial or a nickname, one-letter slips in names of 5+ letters)
+ -- stated by a higher-ranked body on the same meeting: source priority, then record digest.
+ SELECT a.witness_key,min(b.witness_key) AS superseded_by
+ FROM people a JOIN people b ON a.occasion=b.occasion
+  AND (b.priority<a.priority OR (b.priority=a.priority AND b.record_sha_hex<a.record_sha_hex))
+ WHERE (a.family=b.family OR (length(a.family)>=5 AND levenshtein(a.family,b.family)<=1))
+  AND (a.initial IS NULL OR b.initial IS NULL OR a.initial=b.initial
+   OR concat(least(a.initial,b.initial),greatest(a.initial,b.initial)) IN ('br','bw','dr','et','en','el','be','mp'))
+ GROUP BY a.witness_key
 ), raw_link_rows AS (
  SELECT
   witness_key,
@@ -340,6 +358,8 @@ SELECT
  w.witness_type,
  w.testified,
  w.bioguide_id,
- coalesce(al.document_urls,arrow_cast(array_slice(make_array(cast(NULL AS VARCHAR)),1,0),'List(Utf8)')) AS document_urls
+ coalesce(al.document_urls,arrow_cast(array_slice(make_array(cast(NULL AS VARCHAR)),1,0),'List(Utf8)')) AS document_urls,
+ sp.superseded_by
 FROM with_witness_key w
 LEFT JOIN aggregated_links al ON w.witness_key=al.witness_key
+LEFT JOIN superseded sp ON w.witness_key=sp.witness_key

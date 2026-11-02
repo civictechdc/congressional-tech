@@ -532,7 +532,7 @@ def meeting_steps(*,root=ROOT):
         dict(name='meetings_resolved',sql=(Path(root)/'model/sql/meeting-records-resolved.sql').read_text(),materialize=True)]
 
 
-WITNESSES_SQL='SELECT witness_key,occasion,source,record_sha,source_locator,context_key,event_id,package_id,page_url,name,position,organization,on_behalf_of,location,panel,panel_order,display_order,witness_type,testified,bioguide_id FROM appearance_records_resolved'
+WITNESSES_SQL='SELECT witness_key,occasion,source,record_sha,source_locator,context_key,event_id,package_id,page_url,name,position,organization,on_behalf_of,location,panel,panel_order,display_order,witness_type,testified,bioguide_id,superseded_by FROM appearance_records_resolved'
 
 
 def appearance_steps(*,root=ROOT):
@@ -592,7 +592,7 @@ def appearance_steps(*,root=ROOT):
 
 def package_link_steps(*,root=ROOT):
     """Packages to meetings: the jacket and MODS links, then the ones a raw record justifies (ct-dx22)."""
-    return _sql_steps(['package-mods-facts','print-meeting-agreement','meeting-mods-links','meeting-transcript-links','package-meeting-links'],root=root)
+    return _sql_steps(['appearance-people','package-mods-facts','print-meeting-agreement','meeting-mods-links','meeting-transcript-links','package-meeting-links'],root=root)
 
 
 def admission_steps(*,prelude=(),root=ROOT):

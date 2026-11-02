@@ -95,6 +95,7 @@ def main(argv=None):
         dict(name='youtube_api_bodies', sql=sql('youtube-api-bodies'), materialize=True),
         *meeting_steps(),
         dict(name='ordered', sql='SELECT meeting_keys FROM "list"', materialize=True),
+        dict(name='appearance_people', sql=sql('appearance-people'), materialize=True),
         dict(name='package_mods_facts', sql=sql('package-mods-facts'), materialize=True),
         dict(name='print_meeting_agreement', sql=sql('print-meeting-agreement'), materialize=True),
         dict(name='meeting_mods_links', sql=sql('meeting-mods-links'), materialize=True),

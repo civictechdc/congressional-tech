@@ -63,7 +63,13 @@ def tables(tmp_path_factory):
         dict(name='selected_appearance_records', sql='SELECT * FROM appearance_records_input', materialize=True),
         dict(name='recording_matches_export', sql=sql('entity-recording-matches'), materialize=True),
         dict(name='ordered', sql="SELECT arrow_cast(make_array('1001'),'List(Utf8)') AS meeting_keys", materialize=True),
-        dict(name='witnesses_export', sql="SELECT cast(1001 AS BIGINT) AS event_id,'Jane' AS name,cast(NULL AS VARCHAR) AS package_id UNION ALL SELECT NULL,'Joe','CHRG-unattached'", materialize=True),
+        # 1001 shows Jane once: the print's Jane is superseded by the meeting's own row, and a letter for the
+        # record is a statement, not a witness.
+        dict(name='witnesses_export', sql="""SELECT cast(1001 AS BIGINT) AS event_id,'Jane' AS name,cast(NULL AS VARCHAR) AS package_id,
+            cast(NULL AS VARCHAR) AS witness_type,cast(NULL AS VARCHAR) AS superseded_by
+            UNION ALL SELECT 1001 AS event_id,'Jane' AS name,'CHRG-x' AS package_id,cast(NULL AS VARCHAR) AS witness_type,'abc' AS superseded_by
+            UNION ALL SELECT 1001 AS event_id,'Letter of support' AS name,'CHRG-x' AS package_id,'statement_for_record' AS witness_type,cast(NULL AS VARCHAR) AS superseded_by
+            UNION ALL SELECT cast(NULL AS BIGINT) AS event_id,'Joe' AS name,'CHRG-unattached' AS package_id,cast(NULL AS VARCHAR) AS witness_type,cast(NULL AS VARCHAR) AS superseded_by""", materialize=True),
         dict(name='recordings_export', sql="SELECT 'youtube:unmatched' AS video_key,make_array(1) AS tracks", materialize=True),
         dict(name='meeting_coverage_export', sql=sql('entity-meeting-coverage'), materialize=True),
     ]
@@ -148,6 +154,7 @@ def test_coverage_is_meetings_times_aspects_and_states_stay_distinct(tables):
     found = rows(tables, 'meeting_coverage')
     assert len(found) == 11 * 5
     assert state(tables, 1001, 'witnesses') == 'present'
+    assert next(r['count'] for r in found if r['event_id'] == 1001 and r['aspect'] == 'witnesses') == 1
     assert state(tables, 1002, 'witnesses') == 'empty'
     assert state(tables, 1003, 'witnesses') == 'unresolved'
     assert state(tables, 1004, 'witnesses') == 'not_stated'
