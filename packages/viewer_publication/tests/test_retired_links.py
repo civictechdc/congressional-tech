@@ -14,9 +14,13 @@ K = lambda letter: (letter * 8).encode()
 BASE, HISTORY = 'b' * 64, 'c' * 64
 
 
-def fake_release(directory, release_id, rows, retired=None):
-    """rows: [(filename, primary_key, [keys])]; only the files the ledger reads."""
+def fake_release(directory, release_id, rows, retired=None, addresses=None):
+    """rows: [(filename, primary_key, [keys])]; only the files the ledger reads.
+    addresses: [(list_row, url)] source addresses."""
     directory.mkdir(parents=True)
+    addresses = addresses or []
+    pq.write_table(pa.table({'list_row': pa.array([r for r, _ in addresses], pa.int32()), 'url': [u for _, u in addresses],
+                             'member_path': pa.array([None] * len(addresses), pa.string())}), directory / 'sources.parquet')
     pq.write_table(pa.table({'filename': [r[0] for r in rows]}), directory / 'list.parquet')
     pq.write_table(pa.table({'link_key': pa.array([r[1] for r in rows], pa.binary(8))}), directory / 'detail.parquet')
     links = [(key, i) for i, r in enumerate(rows) for key in r[2]]
@@ -45,7 +49,8 @@ def ledger(tmp_path):
     base = fake_release(tmp_path / 'base', BASE, [
         ('gone.pdf', K('g'), [K('g')]),          # (a) body no longer real: removal notice
         ('two.pdf', live, [live, K('x')]),       # (b) the row loses key x; its primary key survives
-    ], retired=[
+        ('same-address.pdf', K('a'), [K('a')]),  # (e) a new body now answers its exact address
+    ], addresses=[(0, 'https://elsewhere.test/gone.pdf'), (2, 'https://fixture.test/report.html')], retired=[
         dict(link_key=K('r'), successor_key=K('x'), last_release_id='d' * 64, last_filename='r.pdf'),  # (c) re-resolve one hop
         dict(link_key=K('s'), successor_key=K('z'), last_release_id='d' * 64, last_filename='s.pdf'),  # (c) successor gone
         dict(link_key=live, successor_key=None, last_release_id='d' * 64, last_filename='back.pdf'),   # (d) published again
@@ -66,6 +71,7 @@ def test_retired_keys_redirect_or_show_a_notice_and_none_vanish(tmp_path, ledger
         K('q'): (live, HISTORY, 'q.pdf'),
         K('r'): (live, 'd' * 64, 'r.pdf'),
         K('s'): (None, 'd' * 64, 's.pdf'),
+        K('a'): (live, BASE, 'same-address.pdf'),
     }
     published = set(pq.read_table(tmp_path / 'release/links.parquet')['link_key'].to_pylist())
     assert live in published and not published & set(rows)
@@ -89,6 +95,18 @@ def test_a_dropped_re_resolution_refuses_before_the_manifest(tmp_path, ledger):
     assert not (tmp_path / 'release/manifest.json').exists()
     reports = {q['name']: q['data'] for q in json.loads((tmp_path / 'model/result.json').read_text())['queries']}
     assert reports['relationship_invariants'][0]['missing_retired_successor'] == 2
+
+
+def test_an_address_no_candidate_lists_gives_a_notice(tmp_path):
+    """The address rule redirects only to a candidate document listing the exact address."""
+    from viewer_publication.release_gate import prior_links
+    spec, digest, _ = real_model_spec(tmp_path)
+    base = fake_release(tmp_path / 'base', BASE, [('old.pdf', K('o'), [K('o')])],
+                        addresses=[(0, 'https://nowhere.test/old.pdf')], retired=[])
+    prior, retired = prior_links(base, [], tmp_path / 'inputs')
+    build(tmp_path, spec, prior, retired)
+    rows = pq.read_table(tmp_path / 'release/retired_links.parquet').to_pylist()
+    assert [(r['link_key'], r['successor_key']) for r in rows] == [(K('o'), None)]
 
 
 def test_no_ledger_inputs_give_an_empty_ledger(tmp_path):

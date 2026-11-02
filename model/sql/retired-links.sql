@@ -1,5 +1,5 @@
--- Data model §8.2, Retired keys. Release-sized inputs only (links, details, prior_links,
--- base_retired); captures and readings are never read here.
+-- Data model §8.2, Retired keys. Release-sized inputs only (links, details, source_rows,
+-- prior_links, prior_sources, base_retired); captures and readings are never read here.
 WITH latest AS (
   SELECT link_key,release_rank,release_id,list_row,primary_key,filename FROM (
     SELECT p.*,row_number() OVER (PARTITION BY p.link_key ORDER BY p.release_rank) AS rn FROM prior_links p) ranked
@@ -17,10 +17,20 @@ WITH latest AS (
 ), by_sibling AS (
   SELECT link_key,min(successor_key) AS successor_key FROM sibling_rows
   GROUP BY link_key HAVING count(DISTINCT successor_key)=1
+), address_rows AS (
+  -- Third rule: a candidate document at one of the prior row's exact addresses (url, member_path).
+  SELECT g.link_key,d.link_key AS successor_key FROM gone g
+  JOIN prior_sources ps ON ps.release_rank=g.release_rank AND ps.list_row=g.list_row
+  JOIN source_rows sr ON sr.url=ps.url AND sr.member_path IS NOT DISTINCT FROM ps.member_path
+  JOIN details d ON d.list_row=sr.list_row
+), by_address AS (
+  SELECT link_key,min(successor_key) AS successor_key FROM address_rows
+  GROUP BY link_key HAVING count(DISTINCT successor_key)=1
 ), fresh AS (
-  SELECT g.link_key,coalesce(p.successor_key,s.successor_key) AS successor_key,
+  SELECT g.link_key,coalesce(p.successor_key,s.successor_key,a.successor_key) AS successor_key,
     g.release_id AS last_release_id,g.filename AS last_filename
   FROM gone g LEFT JOIN by_primary p ON p.link_key=g.link_key LEFT JOIN by_sibling s ON s.link_key=g.link_key
+  LEFT JOIN by_address a ON a.link_key=g.link_key
 ), carried AS (
   -- One hop: a successor still published resolves to its row's primary key; a successor
   -- retired in this release takes that row's successor; otherwise a removal notice.

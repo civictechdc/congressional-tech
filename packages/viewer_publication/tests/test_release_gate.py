@@ -9,7 +9,7 @@ import pyarrow.parquet as pq
 import pytest
 
 from viewer_publication.archive_format import release_identity
-from viewer_publication.release_gate import (RETIRED, fetch_release, load_causes, render_notes,
+from viewer_publication.release_gate import (RETIRED, fetch_base, fetch_release, load_causes, render_notes,
                                              require_release_gates)
 
 K = lambda letter: (letter * 8).encode()
@@ -209,3 +209,50 @@ def test_notes_render_witness_statement_and_link_counts(pair, tmp_path):
     assert '- Witness IDs changed. (ct-ktfe 2026-11-02)' in text
     assert '0 link keys from earlier releases now redirect to their current document. 1 show a removal notice. 0 vanish.' in text
     assert '| `list.parquet` |' in text
+
+
+def test_a_named_history_key_that_vanishes_refuses(tmp_path):
+    """red-h probe 4: a key only an earlier release published must not vanish either."""
+    history = tmp_path / 'history'
+    release_dir(history, ['A', 'H'])
+    base = tmp_path / 'base'
+    release_dir(base, ['A'])
+    candidate = tmp_path / 'candidate'
+    release_dir(candidate, ['A'], retired=[])
+    with pytest.raises(ValueError, match='1 base link keys vanish'):
+        require_release_gates(base, candidate, None, report_path=tmp_path / 'r.json', history=[history])
+    assert json.loads((tmp_path / 'r.json').read_text())['link_rule']['missing_keys'] == [K('H').hex()]
+
+
+def reader(directory, calls):
+    def read(name):
+        calls.append(name)
+        return BytesIO((directory / name).read_bytes())
+    return read
+
+
+def test_link_history_must_continue_the_pointer_chain_and_be_readable(tmp_path):
+    releases = {}
+    for name, docs in [('base', ['A']), ('previous', ['A', 'P']), ('older', ['A', 'O'])]:
+        releases[name] = release_dir(tmp_path / name, docs)['release_id']
+    by_id = {rid: tmp_path / name for name, rid in releases.items()}
+    read = lambda rid: reader(by_id[rid], []) if rid in by_id else (lambda name: (_ for _ in ()).throw(FileNotFoundError(name)))
+    with pytest.raises(ValueError, match='must start with the live pointer'):
+        fetch_base(read, releases['base'], tmp_path / 'w1', [releases['older']], previous_release_id=releases['previous'])
+    with pytest.raises(ValueError, match='is absent or unreadable'):
+        fetch_base(read, releases['base'], tmp_path / 'w2', [releases['previous'], 'e' * 64], previous_release_id=releases['previous'])
+    _, _, _, history = fetch_base(read, releases['base'], tmp_path / 'w3', [releases['previous'], releases['older']],
+                                  previous_release_id=releases['previous'])
+    assert [h.name for h in history] == [releases['previous'], releases['older']]
+
+
+def test_fetch_release_keeps_files_it_already_holds(pair, tmp_path):
+    base, _ = pair
+    release_id = json.loads((base / 'manifest.json').read_text())['release_id']
+    first, second = [], []
+    fetch_release(reader(base, first), release_id, tmp_path / 'copy')
+    fetch_release(reader(base, second), release_id, tmp_path / 'copy')
+    assert len(first) > 1 and second == ['manifest.json']
+    (tmp_path / 'copy/links.parquet').write_bytes(b'tampered')
+    with pytest.raises(ValueError, match='differs from its manifest entry'):
+        fetch_release(reader(base, []), release_id, tmp_path / 'copy')
