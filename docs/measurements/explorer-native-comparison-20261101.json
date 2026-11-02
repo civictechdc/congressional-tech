@@ -161,10 +161,10 @@
     "closed": {
      " -> open": 256,
      " -> unknown": 16531,
-     "yes -> closed": 658,
-     "yes -> open": 11,
-     "yes -> partly_closed": 21,
-     "yes -> unknown": 129
+     "yes -> closed": 660,
+     "yes -> open": 8,
+     "yes -> partly_closed": 85,
+     "yes -> unknown": 66
     },
     "documents": {
      "0 -> not_stated": 2406,
@@ -315,10 +315,10 @@
      "yes -> unresolved": 43
     },
     "rescheduled_to": {
-     "both_none": 17556,
-     "new_only": 6,
-     "old_only": 13,
-     "same_event": 31
+     "both_none": 17554,
+     "new_only": 8,
+     "old_only": 32,
+     "same_event": 12
     },
     "transcript": {
      "committee_transcript -> not_stated": 482,
@@ -3270,13 +3270,13 @@
     "disposition": "old_uuid_diagnostic",
     "rows": 1,
     "status": "open",
-    "title": "Sources disagree about chamber"
+    "title": "This retained page may contain binary document data decoded as text."
    },
    {
     "disposition": "old_uuid_diagnostic",
     "rows": 1,
     "status": "open",
-    "title": "This retained page may contain binary document data decoded as text."
+    "title": "Sources disagree about chamber"
    }
   ],
   "old_rows": 264732,
@@ -3319,7 +3319,7 @@
   "meetings.parquet": "cc88279cbaa5a203ade24192478aaf99bf326ffa27f9fb2e8ea10de0d4e18ca0",
   "recording_matches.parquet": "767fe6b9df0eaf1784d9ab17f492c4e9c0cf0d319c110e70409dae979fddbfd2",
   "recordings.parquet": "a900a9be70ae1f875844dabf5e2e453093e44d3ffbad491a70c8eab3424348a0",
-  "resolved_meetings.parquet": "4f2efcf6112012a0da9ceefb6cbf1e0df6d8daba103edaccdf4166df9a04fba0",
+  "resolved_meetings.parquet": "a580322cf2add00ee38d85be256541d03ca5255856278ea3963a2d0c7934b614",
   "sources.parquet": "c4d47a665907f95d6021a593f5b22c0a02d57a5d5a41303ddde0fc7bf7e439af",
   "videos.parquet": "f90811e4108ed482f5bd0e46c027372e41684468c7f9c64464b75a6718948eba",
   "witnesses.parquet": "9b3bd6c2d60d102d431cf59414cc8886c4d25082c4d0b81c3a4d47a409d7a28c"

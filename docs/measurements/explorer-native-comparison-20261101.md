@@ -61,7 +61,43 @@ Reparsing all 24,430 raw meeting records under the new pins found end times 532 
 
 Old witness rows (`ct-x78c`), distinct by event and normalized name: 19,475. On the event 11,779; held on a package occasion without an event link 924; on a page occasion without one 5,472; event has other witnesses 451; no native row 849. The 6,396 occasion rows need the event link; the 849 have no migration yet.
 
-Top-level rows with no recorded completeness: all 242,293 raw entries read. Every one is a digest-verified retained file with no HTTP response. 73,308 have no other good row, and none of those has a URL, so the rule excludes no fetched address. Whether retained files with no address should list is an owner question.
+Top-level rows with no recorded completeness: all 242,293 raw entries read. An earlier version of this note was wrong: it checked `url` only. 241,910 are digest-verified retained files with no response. 383 state HTTP 200 and a `context_url`. 73,308 have no other good row; of those, 73,307 have no address and no status, and one states HTTP 200 with a `context_url`: `CHRG-119hhrg64404`'s transcript HTML, body `5e9b5643...`. That one is wrongly excluded by the completeness rule, which is left unchanged and needs an owner decision. Whether retained files with no address should list is also an owner question.
+
+## Imported ZIPs (`ct-64el`, owner decision)
+
+15 Senate Finance ZIPs were fetched directly but expanded only by a retained import. Read from raw: 15 of 15 lines state HTTP 200, complete and completed processing; 15 of 15 ZIP bodies rehash to their digest, and each has a good download with that digest. 149 of 149 members state completed and rehash correctly. The model now counts them through `good-archive-containers.sql`; a fixture of this raw shape covers the member, ZIP link key and URL lookup, and an import with no matching download stays out. This changes `filename-inputs.sql`, so `catalog_version` moves and needs recomputing at integration.
+
+## API responses are not documents (`ct-n2cy`)
+
+All 345 JSON rows in `list` read in full: 324 are provider envelopes whose wrapped bodies all have their own rows, 12 are YouTube `videoListResponse` pages, and 9 are Wayback lookups. `record-roles.sql` now gives all JSON the `api` role. The 12 pages name 574 videos; 571 are in `videos`. `OxCoikJbuMw`, `hCg0yJjUJEA` and `xYlb_m1rNnY` are not in the latest caches, and this reading did not establish why.
+
+Trace: the role admitted JSON as a document unless its URL matched an API pattern, so a response with no URL passed; a document with no filename or address was never checked, and `sources.url` was not declared required. The role layer owns the fix.
+
+## Access and rescheduling, decided from raw
+
+`closed`, 140 differences, all raw titles read: old rule wrong on 74 (including 48 briefings and 8 depositions with no closed session stated); 64 state a separate closed session, now `partly_closed`; 2 name a closed event, now `closed`. After the fix: 660 agree as `closed`, 85 are `partly_closed`, and the 74 stay `open` or `unknown`.
+
+Rescheduled, after using publisher status and no longer counting transcripts: 12 same event, 32 old only, 8 new only, 17,554 neither. 11 rest on publisher status and 35 on a recording on the later twin. The old-only rows need the native matcher's evidence, and the new-only rows are unread per row. `not_held`: 2 old-only rows come from page titles.
+
+## Coverage against independent evidence
+
+`explorer_class_validation.py` reads raw records and old inputs per class: 24,430 of 24,430 meeting records, and 774 caption track bodies. Cross-tabs are in `explorer-class-validation-20261101.json`. They show where the rule is weak, and these are not fixed:
+
+- **Documents:** 1,450 `not_stated` meetings have documents in raw or old files, because `list.meeting_keys` doesn't link them.
+- **Transcripts:** 785 `not_stated` have an old GPO package, and 640 `present` rest on publisher jackets alone, which the old matcher distrusts.
+- **Witnesses:** 1,906 `not_stated` have old rows, mostly the page and package occasions below.
+- **Captions:** 1,377 `unknown` and 553 `not_stated` have old YouTube captions, pending links from the matcher. One track body is empty.
+- **Recordings:** 4,477 `unknown` and 1,995 `claimed` have old `yes`, pending the matcher.
+
+## Old witness rows with no home (`ct-x78c`)
+
+1,300 distinct rows, 849 on events with no native witness. Not migrated; family-name matches are leads. docs.house.gov 976, of which 98 have the surname in raw House meeting XML: proposed ticket below. Senate pages 269: `ct-x78c`. Meeting titles 50 and witness list PDFs 3: no native parser, proposed ticket. GPO 2: `ct-x78c`.
+
+## Proposed ticket text
+
+- **`ct-deg8`:** a computed `THEN` branch in `CASE` inside `named_struct` in an ordered `array_agg` exceeds the memory pool (14.6-20.4 GiB at 1 GiB on 3,000 rows). A regexp is not required; literal branches, no `ORDER BY`, and pre-projecting all stay small. Pool settings do not bound RSS. Reproduction: `scripts/measure/engine_gap_ordered_array_agg.py`.
+- **`ct-n2cy`:** classify API responses and envelopes as non-documents in `record-roles.sql`; 0 NULL `sources.url`, refused at write time. Started when the JSON role depended on a URL pattern, and nothing checked a document with no name.
+- **New:** House witnesses missing from native appearances, and whether meeting-title nominees and witness list PDFs need a parser.
 
 ## Raw record readings
 
