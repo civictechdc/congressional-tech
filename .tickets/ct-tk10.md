@@ -23,3 +23,9 @@ Owner decision 2026-11-02: all five gates before the next publish. publish_v21 r
 - Producer proof: every pinned input records the producing code revision and job; publish refuses an input without it.
 - Each gate has a test proving it fails on an injected defect, and the publish workflow runs all five before the pointer flips.
 
+
+## Notes
+
+**2026-11-02T12:28:27Z**
+
+Round 1b 2026-11-02 (lead): Plan (plan-h): gate 1 release_comparison in publish_candidate (release_diff never failed on value changes); gate 2 retired_links.parquet seeded from c94bfedc/a06e2a63/0db23484 with site and MCP redirect or notice; gate 3 end-to-end in archive_publish_job.execute; gate 4 required fields for all tables (registry declared one of 21); gate 5 per-row producer version (parser_version/catalog_version current or registered-compatible; captures.mapping_version), since writer_job/writer_commit are receipt provenance (NULL on 4,144,875 of 4,147,132 v21 rows). Implementing: impl-h, branch r1b-h.

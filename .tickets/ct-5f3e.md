@@ -18,3 +18,9 @@ capture_comparison.py:42 lists complete and outcome under not_compared, along wi
 
 The comparison reports changes to those fields by count and by raw value, tested with a fixture where only complete changes. Whether a change refuses or is reported is decided in this ticket.
 
+
+## Notes
+
+**2026-11-02T12:28:27Z**
+
+Round 1b 2026-11-02 (lead): The old index lacks complete and outcome, so it can't compare them. Decided: a generation comparison reports every eligibility-field change by count and old/new value and refuses unexpected changes. impl-e1.

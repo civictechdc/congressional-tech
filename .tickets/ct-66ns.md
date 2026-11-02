@@ -18,3 +18,9 @@ review-c-explorer: of 960 raw=yes, 45 have file URLs; the rest are URL-less entr
 
 Coverage counts real document evidence, and those events are linked or explained.
 
+
+## Notes
+
+**2026-11-02T12:28:28Z**
+
+Round 1b 2026-11-02 (lead): source-annotations-meetings joins the URLs the House record lists: +2,089 links on 458 meetings, and 38 meetings go from not_stated to present. impl-f.

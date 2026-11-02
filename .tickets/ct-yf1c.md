@@ -18,3 +18,9 @@ The live release has 2,901 blank filenames. review-c-explorer: 1,426 are PDFs fr
 
 Every listed document has a usable name or title rule, and saved-files does not select a NULL-address row.
 
+
+## Notes
+
+**2026-11-02T12:28:27Z**
+
+Round 1b 2026-11-02 (lead): 1,446 Files.Serve PDFs have no name in the URL or headers; fix uses trailing-slash names and puts the named copy of the saved body first. impl-g.

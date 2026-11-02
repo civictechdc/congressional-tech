@@ -29,3 +29,7 @@ Corrected trigger: a computed CASE branch in an ordered array_agg, not a regexp.
 **2026-11-02T10:24:10Z**
 
 Owner decision 2026-11-02: file under docspec-rs ss-oxg1 and fix it in the engine too; commit, merge and push the engine fix and re-pin the runtime.
+
+**2026-11-02T12:28:27Z**
+
+Round 1b 2026-11-02 (lead): Cause found (plan-engine): ordered array_agg keeps a per-row copy of a shared string-view buffer (DataFusion 53.1 scalar/mod.rs:4439); merging states makes N^2 references and the spill IPC encoder writes N^3 bytes outside the pool (row_hash.rs:1176). A DataFusion 55.2 bump and the upstream #21934 patch both failed when measured. Fix: a generic docspec planner rule casting view arguments to plain strings for ordered or distinct array_agg/string_agg (3k-30k rows: 0.12-0.14 s, at most 173 MiB). impl-engine is implementing, filing the ss ticket under ss-oxg1, and building both binaries; the lead uploads and re-pins.

@@ -18,3 +18,9 @@ review-c-explorer: 791 of 956 Rescheduled meetings have their own video or trans
 
 entity-meetings.sql is fixed before publishing, checked against raw per row.
 
+
+## Notes
+
+**2026-11-02T12:28:27Z**
+
+Round 1b 2026-11-02 (lead): The meeting's own recording decides; transcript jackets are not evidence (Congress.gov lists same-day jackets from other hearings). Expected 46 links to 83, with 4 removed (106383, 112524, 104049, 106136). Title keys keep Part/Day. impl-f.

@@ -36,3 +36,7 @@ Owner decision 2026-11-02: restore body 5e9b5643 (older CHRG-119hhrg64404 editio
 **2026-11-02T10:36:11Z**
 
 Correction 2026-11-02 (lead), replacing the earlier note today: 5e9b5643 is not a distinct edition. Read in full and diffed: 5e9b5643, f332621e and c7768761 are byte-identical except a Cloudflare data-cfemail token that changes per fetch; their html fingerprints are equal (321e73cc), so §7.5 same_text merges them into one document showing the latest. Restoring it only moves first_captured to 2026-09-21. The owner's rule stands: identical versions merge and only the latest shows unless objectively different. The ZIP member b14d49d9 differs only by the decoded address DocumentsTI@mail.house.gov in place of '[email protected]', so its fingerprint differs and it would show as a second copy. Fix in the html reader: decode Cloudflare email spans before text and fingerprint (plan-g).
+
+**2026-11-02T12:28:27Z**
+
+Round 1b 2026-11-02 (lead): HTTP 206 set: 6 ZIPs plus CRPT-118hrpt372-pt2.pdf, all contiguous 16 MiB ranges covering the whole file; all rehash equal, testzip clean, 30 members match; the 2xx rule stays. Cloudflare decode lands in the html reader (b7e6766b on r1b-g); html readings are recomputed only where fingerprint IS NULL or a link is /cdn-cgi/l/email-protection (67,540 of 192,191), proven unchanged elsewhere (html 400/400, xml 260/260, json 260/260 byte-equal).

@@ -18,3 +18,9 @@ review-c-explorer: 7 Closed Hearing titles with "followed by an open" publish cl
 
 Those are partly_closed, with a test.
 
+
+## Notes
+
+**2026-11-02T12:28:27Z**
+
+Round 1b 2026-11-02 (lead): Access fix changes exactly the 7 meetings. impl-f.

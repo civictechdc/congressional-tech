@@ -24,3 +24,7 @@ A format word is never a title; affected rows use the document title or stay nul
 **2026-11-02T04:01:45Z**
 
 No confirmed code; recheck after a rebuild.
+
+**2026-11-02T12:28:27Z**
+
+Round 1b 2026-11-02 (lead): The ZIP rule would put 'ZIP' back on about 34k member PDFs; fix skips format words via a registry list and uses the HTML rendition's title. impl-g.

@@ -18,3 +18,9 @@ OxCoikJbuMw and hCg0yJjUJEA are unlisted, so uploads scans miss them; xYlb_m1rNn
 
 Add publisher-linked videos and explain the third.
 
+
+## Notes
+
+**2026-11-02T12:28:27Z**
+
+Round 1b 2026-11-02 (lead): 18 directory-channel videos missing; xYlb_m1rNnY is an unprocessed 34.5-hour live stream absent from a complete uploads scan (YouTube omission inferred, not proven). impl-g.

@@ -42,3 +42,7 @@ Owner decision 2026-11-01: commit the v21 inputs as they are, and rebuild captur
 **2026-11-02T10:24:10Z**
 
 Owner decision 2026-11-02: merge B/C/D first; Claude runs this commit afterwards from a checkout pinned at 6a36e54c (pre-merge code), through the checked-in native jobs, with per-key read-back.
+
+**2026-11-02T12:28:28Z**
+
+Round 1b 2026-11-02 (lead): Run inputs lost with /private/tmp are regenerated from the release's own published input record (release_input_custody.py collect; .cache/archive-release/r1b/inputs). Checked-in specs failed their own loaders after 2351caf4; fixed in impl-e2. basin-commit is running the commit.

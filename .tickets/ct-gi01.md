@@ -99,3 +99,7 @@ Code on worktree-agent-a704015cc138b456b @ da425206. Review verdict: merge, stay
 **2026-11-02T10:24:10Z**
 
 Owner decision 2026-11-02: coverage. Fix document linking at its source (list.meeting_keys misses 1,450 meetings). Where evidence is held but not yet linked (matcher pending), coverage says unknown, never not_stated. Every present value has a link the user can open.
+
+**2026-11-02T12:28:28Z**
+
+Round 1b 2026-11-02 (lead): Coverage rule (lead decision): a Senate meeting with no linked document or witness is unknown until the Senate page links land; old page decisions are not imported. Same two-way check applies to recording coverage (172 events). impl-f.

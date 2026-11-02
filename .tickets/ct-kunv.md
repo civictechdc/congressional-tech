@@ -28,3 +28,7 @@ Full comparison by impl-d-jobs 2026-11-01 (not independently rechecked): 2,598,3
 **2026-11-02T04:01:45Z**
 
 Raw pass complete on the fixed mapping (0043edfe): 2,598,311 lines, 4,147,132 rows, 153,443,884 v21 column values, 174,072 differ. Direct raw vs HEAD disagreements: 171,894 ZIP members, 30 retry_later (inferred explanation). Review: not-judged classes do hide risk; 2,615,617 rows have no raw complete key, 1,383,874 eligible. Risks filed as ct-bxqa and ct-3l1c. Rebuild itself not run.
+
+**2026-11-02T12:28:27Z**
+
+Round 1b 2026-11-02 (lead): Captures gain per-row mapping_version (Utf8, field 41, = APPROVED_MAPPING; guard refuses NULL, non-hex or >1 per receipt) for publish gate 5, and relative original_path (field 42; 415,134 relative values, absolute ones dropped, see ct-f9hw). Reading status adds m3u8 tracks to 2,389 Senate recordings (1,359 to 3,746 with any track); accepted because annex §2 defines playlist bodies as tracks; MP2T segments become role media, never tracks. Custody verify of v21 captures against independent counts (2,292 receipts, 4,147,132 rows): validated, 0 violations (counts and domain only).

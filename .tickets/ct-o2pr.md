@@ -28,3 +28,7 @@ No code yet; recheck after a rebuild, since the ZIP rule may remove the new dupl
 **2026-11-02T10:36:11Z**
 
 2026-11-02: one confirmed duplicate source. Cloudflare email obfuscation makes the ZIP member HTML (b14d49d9) and the direct HTML (c7768761) of CHRG-119hhrg64404 fingerprint differently though they are the same transcript. See ct-64el.
+
+**2026-11-02T12:28:27Z**
+
+Round 1b 2026-11-02 (lead): plan-g predicts about 2,906 events still duplicate after the ZIP rule. Fix: one entry per event and package with its formats, enforced by a failing check. Main duplicate source: Cloudflare email obfuscation (41,995 bodies; 6,850 of 6,864 differing ZIP-vs-direct pairs), NULL fingerprints (30,139 html readings), and ZIP members lacking their published address as an endpoint. impl-g, r1b-g.

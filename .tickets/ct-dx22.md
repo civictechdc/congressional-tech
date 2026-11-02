@@ -18,3 +18,9 @@ single_package_meetings (appearance-records-resolved.sql:107-111) checks that a 
 
 Every event's selected package is justified by a raw record, or no package-sourced witnesses attach; a test covers an event with two packages.
 
+
+## Notes
+
+**2026-11-02T12:28:27Z**
+
+Round 1b 2026-11-02 (lead): Two-way package-to-meeting rule moves 392 rows on 93 events to package-only; House witness lists get their event from their own document links (187); MODS event-ID links (285 pairs) included. impl-f.

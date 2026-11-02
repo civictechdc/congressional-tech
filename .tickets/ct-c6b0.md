@@ -28,3 +28,7 @@ Code on worktree-agent-a5550c04138214670 @ b3c4aa3c (3bf52b65); 15 HTTP 202 rows
 **2026-11-02T10:24:10Z**
 
 Owner decision 2026-11-02: an HTTP 202 is never a good fetch. Treat it as a failed attempt, keep the receipt, retry on schedule. Fix receipt_writer.py:44 and add the test that fails if the archive_url_state.py:28 exclusion is removed.
+
+**2026-11-02T12:28:27Z**
+
+Round 1b 2026-11-02 (lead): Writer fix plus a url_state test that fails if the 202 exclusion is removed; part of the single document rule (ct-bxqa). impl-e1.

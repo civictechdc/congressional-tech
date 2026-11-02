@@ -18,3 +18,9 @@ review-d-jobs measured 1,807 rows with raw record.status 404, 202, 503, 429 or 4
 
 Per-status fixtures, and those URLs are not good.
 
+
+## Notes
+
+**2026-11-02T12:28:27Z**
+
+Round 1b 2026-11-02 (lead): plan-e1 raw read: 3,159 body entries state 404/202/429/503/403 under a status key the mapping never reads; 2,997 pass good_lines today (ticket's 1,807 is the record-level subset). Cause 72d03498 plus the mapping's 'no status with a body => stored' rule. Fix: one document rule in receipt_metadata.py (2xx except 202, non-empty body, per-item final state) used by captures, receipt_writer, archive_url_state and the scheduler. Reading status also admits 51,979 stated-200 rows (3,721 new bodies, mostly m3u8); decision: adopt, with HLS and other non-document media classified non-document. Implementing: impl-e1, branch r1b-e1.

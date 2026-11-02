@@ -72,3 +72,7 @@ Owner decisions 2026-11-01: batch all parser fixes into one version move (uv pin
 **2026-11-02T04:01:45Z**
 
 Round 1 stopped at owner direction 2026-11-01 after reviewing and fixing. Unmerged: worktree-agent-ae42a8cf7a429ba24 @ 180a49b1; worktree-agent-a704015cc138b456b @ da425206; worktree-agent-a5550c04138214670 @ b3c4aa3c. Worktrees retained. Next steps, not started: owner Basin commit, integration with one pin recompute, wiring ct-deh9, captures rebuild, backfill, one full model run, key comparison, publish.
+
+**2026-11-02T12:28:28Z**
+
+Round 1b 2026-11-02 (lead): Integration of clusters B/C/D: 63 lane failures, none a production defect (fixtures and checks out of step). Process cause confirmed: cluster C's worktree had no .venv, so its tests ran main's package code. Briefs now require uv sync --frozen per worktree. New model_sql relation check being rebuilt on the existing sql_dependencies after red/green review.

@@ -35,3 +35,7 @@ Narrow parser fixes currently re-stamp unchanged rows. Allow declared compatible
 **2026-11-02T04:01:45Z**
 
 Code on worktree-agent-a5550c04138214670 @ b3c4aa3c (b3c4aa3c). Review: merge, stay open, unwired because impl-c SQL was frozen. Non-true predicates cannot prove: a table against itself gives only_new 18,251; limit new rows to predicate keys. Proof numbers are self-reported; bind them to old and new pins and the predicate. Replace the load_schema monkeypatch with the real schema. Sorting 192K wide rows failed at a 4 GiB pool; the materialized form is unmeasured.
+
+**2026-11-02T12:28:28Z**
+
+Round 1b 2026-11-02 (lead): Readings: sniff, xml and json are lock-only or proven unchanged (xml 260/260, json 260/260 byte-equal across 45/32 strata; proof .cache/rounds/r1b/g/differential/xj_proof.json). html is compatible outside HTML_REREAD_SQL (67,540 of 192,191 re-read). Re-stamp deleted. impl-e2, r1b-e2.
