@@ -37,7 +37,7 @@ def real_model_spec(tmp_path):
     return rebuild_model_spec(tmp_path,raw=raw,qualification=qualification),digest,html
 
 
-def rebuild_model_spec(tmp_path,*,raw,qualification=None,receipts=None):
+def rebuild_model_spec(tmp_path,*,raw,qualification=None,receipts=None,entities=False):
     """Run the same producers from retained raw, with no earlier derived inputs.
 
     `receipts` lists (raw-relative key, qualification path); the default is the one
@@ -50,11 +50,12 @@ def rebuild_model_spec(tmp_path,*,raw,qualification=None,receipts=None):
     if receipts is None:receipts=[('receipts/documents/2026-10-27/slice.jsonl.gz',qualification)]
     with NativeDatasets.from_config(os.environ['DOCSPEC_JOB_CONFIG']) as engine:
         captures=stage_captures([dict(key=key,path=str(raw/key),qualification=str(pin)) for key,pin in receipts],engine=engine,work=tmp_path/'capture-stage')/'captures.parquet'
-    return derive_model_spec(tmp_path,raw=raw,captures=captures)
+    return derive_model_spec(tmp_path,raw=raw,captures=captures,entities=entities)
 
 
-def derive_model_spec(tmp_path,*,raw,captures):
-    """Readings and filename readings from one captures file, as the producers stage them."""
+def derive_model_spec(tmp_path,*,raw,captures,entities=False):
+    """Readings and filename readings from one captures file, as the producers stage them;
+    with `entities`, meeting and appearance records too."""
     from congress_api.lake import readings,filenames
     from congress_api.retention.provenance import file_pin,parquet_output,run_job
     from docspec_client.client import NativeDatasets
@@ -70,7 +71,15 @@ def derive_model_spec(tmp_path,*,raw,captures):
             engine=engine,work=tmp_path/'reading-stage',decided_at='2026-10-27T12:00:00Z')
         names=filenames.stage(captures=captures,recovery_files=(),engine=engine,work=tmp_path/'filename-stage',decided_at='2026-10-27T12:00:00Z')
         value=model_spec(tmp_path);value['engine_config']=runtime
-        for name,path in [('captures',captures),('readings',pages['readings']),('filename_readings',names['readings'])]:
+        staged=[('captures',captures),('readings',pages['readings']),('filename_readings',names['readings'])]
+        if entities:
+            from congress_api.lake import appearance_records,meeting_records
+            common=dict(captures=captures,engine=engine,local_root=raw,decided_at='2026-10-27T12:00:00Z')
+            staged+=[('meeting_records',meeting_records.stage(work=tmp_path/'meeting-stage',**common)['records']),
+                     ('appearance_records',appearance_records.stage(work=tmp_path/'appearance-stage',**common)['records'])]
+            value['parser_versions']=dict(value['parser_versions'],meeting_records=meeting_records.current_versions(),
+                                          appearance_records=appearance_records.current_versions())
+        for name,path in staged:
             value[name]=dict(kind='parquet',path=str(path),**file_pin(path))
     return value
 
