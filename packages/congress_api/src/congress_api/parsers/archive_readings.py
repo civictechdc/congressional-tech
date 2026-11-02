@@ -5,6 +5,7 @@ and record roles belong to the model SQL.
 """
 
 import hashlib
+import html as html_text
 import json
 import re
 import unicodedata
@@ -25,6 +26,25 @@ META_DATES = {'date', 'dc.date', 'dc.date.issued', 'article:published_time', 'da
 REFRESH = re.compile(r'\s*\d+(?:\.\d+)?\s*;\s*url\s*=\s*(.*?)\s*$', re.I)
 MONTHS = {name.lower(): index for index, name in enumerate(
     'January February March April May June July August September October November December'.split(), 1)}
+# Cloudflare email obfuscation, decoded as its email-decode.min.js does in a
+# browser: a data-cfemail element becomes its address as text, and an
+# email-protection href becomes mailto:. The first byte is the XOR key.
+CLOUDFLARE_LINK = '/cdn-cgi/l/email-protection'
+CLOUDFLARE_ELEMENT = re.compile(rb'<(a|span)\b[^>]*\bdata-cfemail="([0-9a-fA-F]+)"[^>]*>.*?</\1\s*>', re.S | re.I)
+CLOUDFLARE_HREF = re.compile(rb'href="' + CLOUDFLARE_LINK.encode() + rb'#([0-9a-fA-F]+)"')
+# C0 controls other than tab, LF and CR are invisible and illegal in XML; a
+# single one (such as a legacy \x1a EOF byte) makes trafilatura return nothing.
+CONTROLS = re.compile(rb'[\x00-\x08\x0b\x0c\x0e-\x1f]')
+# The one place that says which html readings this reader can change: an
+# html reading with no fingerprint, or with a link whose href contains
+# CLOUDFLARE_LINK. Every other reading is byte for byte what the reader
+# without browser normalization produced, so a producer may keep it and re-read
+# only these. The engine has no row-scalar test over a list of structs, so the
+# set is a query over a readings relation; it may repeat a body_sha.
+HTML_REREAD_SQL = (
+    "SELECT body_sha FROM {readings} WHERE parser = 'html' AND fingerprint IS NULL "
+    "UNION ALL SELECT body_sha FROM (SELECT body_sha, unnest(links) AS link FROM {readings} "
+    "WHERE parser = 'html') WHERE strpos(link['href'], '" + CLOUDFLARE_LINK + "') > 0")
 HEADING_DATE = re.compile(r'\b(' + '|'.join(MONTHS) + r')\s+(\d{1,2})(?:st|nd|rd|th)?[,]?\s+(\d{4})\b', re.I)
 
 
@@ -237,8 +257,66 @@ def _reject_constant(_value):
     raise ValueError('Non-finite JSON number')
 
 
+def _cloudflare_address(token):
+    """Return the escaped address of one obfuscated token, or None when it is malformed."""
+    try:
+        data = bytes.fromhex(token.decode('ascii'))
+        return html_text.escape(bytes(byte ^ data[0] for byte in data[1:]).decode('utf-8')).encode() if data else None
+    except (ValueError, UnicodeError):
+        return None
+
+
+def browser_body(body):
+    """Return the body a browser shows after Cloudflare's decoder, without C0 controls, and the decoded count."""
+    count = 0
+    def element(match):
+        nonlocal count
+        address = _cloudflare_address(match[2])
+        count += address is not None
+        return match[0] if address is None else address
+    def href(match):
+        address = _cloudflare_address(match[1])
+        return match[0] if address is None else b'href="mailto:' + address + b'"'
+    if b'data-cfemail' in body:
+        body = CLOUDFLARE_ELEMENT.sub(element, body)
+    if CLOUDFLARE_LINK.encode() in body:
+        body = CLOUDFLARE_HREF.sub(href, body)
+    return CONTROLS.sub(b'', body), count
+
+
+def needs_browser_reading(row):
+    """Whether a plain reading is in the set HTML_REREAD_SQL selects."""
+    return row['parser'] == 'html' and (row['fingerprint'] is None
+                                        or any(CLOUDFLARE_LINK in (link['href'] or '') for link in row['links']))
+
+
 def read_page(body, parser):
-    """Return deterministic evidence, with explicit input failures and no text fallback."""
+    """Return deterministic evidence with explicit input failures.
+
+    An html reading in the HTML_REREAD_SQL set is read again from the body a
+    browser shows; when main-content extraction still yields nothing, its
+    fingerprint is the visible text's. No visible text gives none.
+    """
+    row, text = _plain_reading(body, parser)
+    if not needs_browser_reading(row):
+        return row
+    cleaned, emails = browser_body(body)
+    if cleaned != body:
+        row, text = _plain_reading(cleaned, parser)
+    if row['status'] != 'completed':
+        return row
+    basis = 'main'
+    if row['fingerprint'] is None:
+        row['fingerprint'], basis = fingerprint(text), 'visible'
+    row['fields'] = [*row['fields'], dict(field='fingerprint_basis', value=basis)]
+    if emails:
+        row['fields'].append(dict(field='cloudflare_emails', value=str(emails)))
+    return row
+
+
+def _plain_reading(body, parser):
+    """Read the body as given; return the row and its visible text."""
+    text = ''
     if parser not in {'html', 'xml', 'json'}:
         raise ValueError('Unsupported page parser')
     row = dict(parser=parser, status='completed', error_type=None, format=None, intact=None,
@@ -262,4 +340,4 @@ def read_page(body, parser):
                 row['fingerprint'] = fingerprint(text)
     except (etree.Error, UnicodeError, ValueError, RuntimeError) as error:
         row.update(status='error', error_type=type(error).__name__, fingerprint=None)
-    return row
+    return row, text

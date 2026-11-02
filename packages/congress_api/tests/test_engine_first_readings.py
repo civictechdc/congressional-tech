@@ -60,3 +60,82 @@ def test_empty_display_facts_use_the_native_fold_shape():
     body = b'%PDF-1.7\n%%EOF'
     assert read_sniff(lambda start, length: body[start:start + length],
                       stored_size=len(body))['fields'] == []
+
+
+# The anchor of body 5e9b5643 (direct CHRG-119hhrg64404 HTML, line 624) and the
+# same line in its ZIP member b14d49d9, which carries the plain address.
+CLOUDFLARE_ANCHOR = ('<a href="/cdn-cgi/l/email-protection" class="__cf_email__" '
+                     'data-cfemail="4d09222e38202823393e19040d202c2421632522383e28632a223b">[email&#160;protected]</a>')
+TRANSCRIPT = ('    As a reminder, if Members wish to insert a document into \nthe record, please also email it to {}.\n'
+              + '    The committee received testimony on rural transportation and public lands. \n' * 40)
+
+
+def transcript(text, tail=''):
+    return f'<html><head><title>Hearing</title></head><body><pre>{text}{tail}</pre></body></html>'.encode()
+
+
+def test_cloudflare_obfuscated_address_reads_as_the_plain_address():
+    from congress_api.parsers.archive_readings import read_page
+
+    direct = read_page(transcript(TRANSCRIPT.format(CLOUDFLARE_ANCHOR)), 'html')
+    member = read_page(transcript(TRANSCRIPT.format('DocumentsTI@mail.house.gov')), 'html')
+    assert member['fingerprint'] is not None and direct['fingerprint'] == member['fingerprint']
+    assert 'DocumentsTI@mail.house.gov' in direct['text_head']
+    assert {key for key in direct if direct[key] != member[key]} == {'fields'}
+    assert {'field': 'cloudflare_emails', 'value': '1'} in direct['fields']
+    other = read_page(transcript(TRANSCRIPT.format(CLOUDFLARE_ANCHOR.replace('4d0922', '4e0922'))), 'html')
+    assert other['fingerprint'] != direct['fingerprint']
+
+
+def test_cloudflare_protected_mailto_reads_as_mailto():
+    from congress_api.parsers.archive_readings import read_page
+
+    body = transcript(TRANSCRIPT.format(
+        '<a href="/cdn-cgi/l/email-protection#4d09222e38202823393e19040d202c2421632522383e28632a223b">write to us</a>'))
+    links = read_page(body, 'html')['links']
+    assert [link['href'] for link in links] == ['mailto:DocumentsTI@mail.house.gov']
+
+
+def test_malformed_cloudflare_token_is_left_as_written():
+    from congress_api.parsers.archive_readings import browser_body
+
+    for token in ('4d0', 'zz', ''):
+        body = f'<p><a href="/cdn-cgi/l/email-protection" data-cfemail="{token}">[email protected]</a></p>'.encode()
+        assert browser_body(body) == (body, 0)
+
+
+@pytest.mark.parametrize('tail', ['\x1a\n', '\n<GRAPHIC(S) NOT AVAILABLE IN TIFF FORMAT>\n'])
+def test_transcript_with_a_control_or_graphic_marker_has_a_fingerprint(tail):
+    from congress_api.parsers.archive_readings import read_page
+
+    text = TRANSCRIPT.format('DocumentsTI@mail.house.gov')
+    plain = read_page(transcript(text), 'html')
+    marked = read_page(transcript(text, tail), 'html')
+    assert marked['fingerprint'] is not None
+    assert '\x1a' not in marked['text_head']
+    basis = {f['value'] for f in marked['fields'] if f['field'] == 'fingerprint_basis'}
+    assert basis == ({'main'} if tail.startswith('\x1a') else {'visible'})
+    if basis == {'main'}:
+        assert marked['fingerprint'] == plain['fingerprint']
+
+
+def test_no_visible_text_gives_no_fingerprint():
+    from congress_api.parsers.archive_readings import read_page
+
+    row = read_page(b'<html><body><script>var a=1;</script></body></html>', 'html')
+    assert row['status'] == 'completed' and row['fingerprint'] is None
+
+
+def test_reader_changes_only_readings_in_the_reread_set():
+    """A reading outside HTML_REREAD_SQL is the plain reader's output, unchanged."""
+    from congress_api.parsers import archive_readings as reader
+
+    bodies = [transcript(TRANSCRIPT.format('a@b.gov')), transcript(TRANSCRIPT.format(CLOUDFLARE_ANCHOR)),
+              transcript(TRANSCRIPT.format('x'), '\x1a'), b'<html><p>short</p></html>',
+              b'<html><body><p>see data-cfemail="00" here</p></body></html>' + b'<p>words</p>' * 50]
+    for body in bodies:
+        plain, _ = reader._plain_reading(body, 'html')
+        row = reader.read_page(body, 'html')
+        assert (row == plain) is (not reader.needs_browser_reading(plain))
+    for parser, body in [('xml', b'<a>\x1a</a>'), ('json', b'{"a":"\x1a"}'), ('xml', b'<meeting/>')]:
+        assert reader.read_page(body, parser) == reader._plain_reading(body, parser)[0]
