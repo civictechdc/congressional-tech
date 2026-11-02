@@ -153,6 +153,15 @@ def test_phase2_entities_meetings_witnesses_recordings_and_spicy_projections(tmp
             family='documents',
             retrieved_at='2023-05-20T12:00:00Z',
         ),
+        # Only the House meeting record's own file list names this report's meeting (ct-66ns).
+        dict(
+            url='https://docs.house.gov/billsthisweek/20170515/BILLS-115hr1-RCP115-1.pdf',
+            data=b'%PDF-1.7\nrules committee print bytes\n%%EOF\n',
+            format='pdf',
+            compress=False,
+            family='documents',
+            retrieved_at='2023-05-20T12:00:00Z',
+        ),
         dict(
             url='https://www.govinfo.gov/content/pkg/CHRG-118hhrg55555/pdf/CHRG-118hhrg55555.pdf',
             data=chrg_pdf_bytes,
@@ -255,6 +264,7 @@ def test_phase2_entities_meetings_witnesses_recordings_and_spicy_projections(tmp
                 meeting_date='2023-05-10',
                 meeting_type='Hearing',
                 status='Rescheduled',
+                document_urls=['http://docs.house.gov/billsthisweek/20170515/BILLS-115hr1-RCP115-1.pdf'],
                 sittings=[dict(start='2023-05-10T14:00:00Z', end='2023-05-10T16:00:00Z', room='1300', building='LHOB', address='Washington, DC')],
                 committees=[dict(system_code='HSAG00', role='primary')],
                 subject_keys=['118-HR-1234', '118-pn-123'],
@@ -653,6 +663,8 @@ def test_phase2_entities_meetings_witnesses_recordings_and_spicy_projections(tmp
     chrg_doc = next(r for r in listed if r['filename'] == 'CHRG-118hhrg55555.pdf')
     stmt_doc = next(r for r in listed if 'Wstate-SmithJ' in r['filename'])
     assert chrg_doc['meeting_keys'] == ['115538']
+    print_doc = next(r for r in listed if r['filename'] == 'BILLS-115hr1-RCP115-1.pdf')
+    assert print_doc['meeting_keys'] == ['115538']
     assert chrg_doc['document_date'] == date(2023, 5, 10)
     assert chrg_doc['witness_keys'] == []
     assert len(stmt_doc['witness_keys']) == 1
