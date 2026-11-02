@@ -1,11 +1,10 @@
 """Marker differential, per-format cost and peak RSS for read_html_metadata.
 
-Usage: measure_reader.py MANIFEST BODIES_DIR --mode gated|differential
-Bodies are <sha>.gz. Run each mode in its own process: gated's peak RSS is the
+Usage: measure_reader.py MANIFEST --mode gated|differential  (bodies via raw_bodies)
+Run each mode in its own process: gated's peak RSS is the
 shipped path's own, and differential deliberately runs what the marker bypasses.
 """
 import argparse
-import gzip
 import hashlib
 import json
 import math
@@ -17,12 +16,13 @@ from pathlib import Path
 
 from w3lib.encoding import html_to_unicode
 
+from raw_bodies import read_body
 from congress_api.parsers.html_metadata import _MARKERS, _read_format, is_html, read_html_metadata
 
 
 def load(manifest, root):
     for row in json.loads(Path(manifest).read_text())['bodies']:
-        yield row, gzip.decompress((Path(root) / f"{row['sha']}.gz").read_bytes())
+        yield row, read_body(row['sha'])[0]
 
 
 def gated(manifest, root):
@@ -44,7 +44,7 @@ def gated(manifest, root):
     random = [value for name, values in by_stratum.items() if name.startswith('random') for value in values]
     ordered = sorted(sizes)
     large = [(math.log(n), math.log(t)) for t, n, _ in sizes if n > 20_000 and t > 0]
-    return dict(bodies=count, wall_seconds=round(wall, 1), mean_ms=round(wall / count * 1000, 1),
+    return dict(bodies=count, wall_seconds=round(wall, 1), mean_ms=round(sum(t for t, _, _ in sizes) / count * 1000, 1), read_and_reader_wall_mean_ms=round(wall / count * 1000, 1),
                 peak_rss_mb=round(resource.getrusage(resource.RUSAGE_SELF).ru_maxrss / 1e6, 1),
                 random_strata=dict(bodies=len(random), mean_ms=round(statistics.mean(random) * 1000, 1)),
                 percentile_ms={str(q): round(ordered[int(count * q / 100)][0] * 1000, 1) for q in (50, 90, 99)},
@@ -78,7 +78,6 @@ def differential(manifest, root):
 
 parser = argparse.ArgumentParser()
 parser.add_argument('manifest')
-parser.add_argument('bodies')
 parser.add_argument('--mode', choices=('gated', 'differential'), required=True)
 args = parser.parse_args()
-print(json.dumps((gated if args.mode == 'gated' else differential)(args.manifest, args.bodies), indent=1))
+print(json.dumps((gated if args.mode == 'gated' else differential)(args.manifest, None), indent=1))
