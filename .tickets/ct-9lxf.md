@@ -27,3 +27,7 @@ Owner decision 2026-11-02: stop fetching pipeline-data locally (done: fetch refs
 **2026-11-02T17:17:59Z**
 
 2026-11-02 owner: the NARA files were being used to recover documents. .cache/document-bulk-recovery-20261014T1552Z (nara/: 10 valid veterans.house.gov transcript recoveries, 175 bodies, a run intentionally stopped on proxy failures with 'preserve results') and .cache/nara-filename-estimate-20261015 (15 GB recovery workspace: Wayback continuation, residuals, docs.house.gov follow-ups, verified-local-recoveries.json) are recovery source material: never prune; added to the agent brief.
+
+**2026-11-02T18:59:51Z**
+
+2026-11-02: output/corpus-retry-20261015 (32 GiB) is recovery work (recovered hearings, reports and XML packages, govinfo-bulk-qualified downloads, publication checkpoints 16 and 19 at 9 GB, recovery ledgers). Protected like the other recovery workspaces; review with the owner in the post-release cleanup. .cache/document-recovery-finish-20261013T1136Z (10.6 GiB) and .cache/document-eot-expanded-20261013 are protected too. For this release the model run uses a 15 GiB guard disk floor instead of deleting anything (80 GiB free against a 53.4 GB capture_dup spill, until the engine spill fix lands).
