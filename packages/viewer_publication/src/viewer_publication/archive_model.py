@@ -455,10 +455,18 @@ GENERIC_TITLE_SQL="""(o.title IS NOT NULL AND regexp_like(o.title,'[A-Za-z]') AN
 
 # Listed documents whose title is a link word by the page-signals registry (the rule titles use)
 # or by GENERIC_TITLE_SQL (an independent small vocabulary): either one refuses the release.
+# The 64-character bound is the rule's (source-annotations-pages.sql): a longer page title that
+# starts like a link word is a real title ("Click Here: Accessible Federal Technolog… | Senate
+# Committee On Aging", a 2022 hearing).
 GENERIC_TITLES_SQL=f"""SELECT DISTINCT o.doc_key,o.title FROM ordered o
  LEFT JOIN (SELECT pattern FROM page_signals WHERE kind='link_word') g
-  ON length(o.title)<=96 AND regexp_like(regexp_replace(trim(o.title),'\\s+',' ','g'),g.pattern)
+  ON length(o.title)<=64 AND regexp_like(regexp_replace(trim(o.title),'\\s+',' ','g'),g.pattern)
  WHERE g.pattern IS NOT NULL OR {GENERIC_TITLE_SQL}"""
+
+# Meeting-record doc-url literals that are no http(s) address get no URL key (model-url-inputs.sql)
+# and so cannot reach invalid_url_keys; this counts them instead of refusing the release.
+UNRESOLVED_MEETING_DOCUMENT_URLS=dict(name='unresolved_meeting_document_urls',sql="""SELECT count(*) AS urls
+ FROM (SELECT DISTINCT url FROM meeting_document_urls) d LEFT ANTI JOIN model_url_keys k ON k.url=d.url""")
 
 
 def evidence_checks():
@@ -949,7 +957,8 @@ def build_prepared_release(prepared,*,engine,output,root=ROOT):
         # The recorded disposition: a ZIP with no expanded contents stays a document, listed here.
         dict(name='unexpanded_zip_documents',sql="SELECT count(*) AS documents FROM ordered WHERE format='zip'"),
         # The recorded reason for each blank filename (ct-yf1c); unexplained_blank_filenames refuses the rest.
-        dict(name='blank_filename_reasons',sql=f"SELECT reason,count(*) AS documents FROM ({BLANK_FILENAMES_SQL}) r GROUP BY 1 ORDER BY 1")]
+        dict(name='blank_filename_reasons',sql=f"SELECT reason,count(*) AS documents FROM ({BLANK_FILENAMES_SQL}) r GROUP BY 1 ORDER BY 1"),
+        UNRESOLVED_MEETING_DOCUMENT_URLS]
     if prepared.get('include_entities'):
         entity_invariant_sql=""",
             (SELECT count(*) FROM (

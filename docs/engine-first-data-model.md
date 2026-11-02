@@ -603,7 +603,10 @@ title          := the applying title_override (§7.9), else the saved file's rea
                   title or heading in saved-file order; null when none, and the site
                   shows the filename. A link back to its own page never groups it. A link word (page signals kind `link_word`: "ZIP", "PDF",
                   "here", "Download PDF") says what a link does and is never a title, as
-                  a reading title or as link text; a recovery-only document takes its
+                  a reading title or as link text; a reading title or heading of more than
+                  64 characters is never a link word, and the gate uses the same bound (the
+                  Aging hearing "Click Here: Accessible Federal Technolog… | Senate
+                  Committee On Aging", 71); a recovery-only document takes its
                   recovered body's reading title, else its original link's text. The
                   model invariant `generic_titles` is 0. `sources.link_text` stays as written.
 witness_keys   := [[PHASE-2]] §2; empty in phase 1
@@ -725,7 +728,7 @@ Phase 2: [[PHASE-2]] §2. Rules owned here:
 - **Packages.** A package links to a meeting by a jacket the meeting lists or by its own MODS `<eventId>`. Its print, witnesses and video stand for a meeting only when the print records it: held on the meeting's date and, when both list witnesses, at least half of the shorter list the same person (family name, first initial or a nickname); when either lists none, half the shorter title's substantive words shared. A GovInfo eventId never vetoes, and a print agreeing with a superseded same-day duplicate yields to the meeting that sat. Only such prints are the meeting's printed transcripts (a package with no MODS keeps its jacket link); a meeting's transcripts also list its committee's own transcript file and complete caption tracks, each labelled by source (annex §2 `transcripts`, ct-1i4q). A meeting whose own print passes sat, whatever its status.
 - **Witness precedence.** On a meeting every source's witnesses publish; a row is `superseded_by` the same person stated by a higher-ranked source (priority, then record), so no testifying person is dropped. A print's letters and Members' statements are labelled `statement_for_record` or `member_statement`, not counted as witnesses.
 - **Witness lists.** A House witness list with no `meeting-id` takes the single event its own document links or its retained file name `wlist/<event>.xml` state.
-- **Documents.** A source file also links to every meeting whose current meeting record lists its URL (`file_meetings`).
+- **Documents.** A source file also links to every meeting whose current meeting record lists its URL (`file_meetings`). A listed literal that is no http(s) address (House XML `doc-url="mailto:https://…"`, `"ttps://…"`, `"/https://…"`: 9 in the 2026-11-02 run) gets no URL key and links nothing; metadata `unresolved_meeting_document_urls` counts them.
 - **Coverage.** States rank present > unresolved > empty > unknown > not_stated. Where evidence is held but not linked the state is unknown, never not_stated: documents a meeting record lists that are not held are unresolved; a linked package with unattached witnesses makes witnesses unknown; a package MODS that names the meeting makes the transcript unknown; a present transcript names its sources (printed_hearing, committee_transcript, captions); captions are not_stated only when the recording is confirmed absent or not public. **Senate:** a Senate meeting with no linked document or witness is unknown until Senate committee-page links land (ct-gi01 R2). Old page decisions came from the distrusted old matcher and are not imported.
 
 ## 8. Release Files

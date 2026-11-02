@@ -14,7 +14,7 @@ from docspec_client.client import NativeDatasets
 
 
 def test_native_references_preserve_occurrences_without_inventing_acquisitions(tmp_path):
-    from viewer_publication.archive_model import ROOT,registry_inputs,source_steps
+    from viewer_publication.archive_model import ROOT,UNRESOLVED_MEETING_DOCUMENT_URLS,registry_inputs,source_steps
     fixture=json.loads((ROOT/'model/fixtures/reference-sources.json').read_text())
     held=fixture['url_digest_examples'][0]['item'][0]
     meeting=lambda number:f'https://docs.house.gov/meetings/AG/AG03/20261020/HMKP{number}/index.html'
@@ -55,7 +55,10 @@ def test_native_references_preserve_occurrences_without_inventing_acquisitions(t
         json_input(tmp_path,'publisher_links',[],source_id='Utf8',context_url='Utf8'),
         json_input(tmp_path,'page_facts',[],body_sha='Binary',status='Utf8',named_meetings=list_of('Int64')),
         json_input(tmp_path,'resolved_links',[],target_url='Utf8'),
-        json_input(tmp_path,'meeting_document_urls',[],event_id='Int64',url='Utf8')]
+        # House XML meeting records list these same literals as doc-url (raw: HHRG108501,
+        # HHRG108517, HMKP110944, HMTG115698, HMKP116910); they stay unresolved mentions too.
+        json_input(tmp_path,'meeting_document_urls',[dict(event_id=110944,url=example['literal_url'])
+            for example in fixture['malformed_references']],event_id='Int64',url='Utf8')]
     steps=[dict(name='capture_evidence',sql="""SELECT * EXCLUDE(body_hex,is_real_file,record_role),
             decode(body_hex,'hex') AS sha256,
             cast(NULL AS VARCHAR) AS fidelity, cast(NULL AS VARCHAR) AS media_type FROM fixture_captures"""),
@@ -84,6 +87,7 @@ def test_native_references_preserve_occurrences_without_inventing_acquisitions(t
                 cast(last_fetched AS VARCHAR) AS last_fetched FROM source_files ORDER BY source_id"""),
             dict(name='meetings',sql='SELECT source_id,meeting_keys FROM source_annotation_meetings ORDER BY source_id'),
             dict(name='invalid_keys',sql='SELECT count(*) AS n FROM model_url_keys WHERE error IS NOT NULL'),
+            UNRESOLVED_MEETING_DOCUMENT_URLS,
             dict(name='invented_endpoints',sql="SELECT count(*) AS n FROM source_endpoints WHERE regexp_like(endpoint_key,'/HMKP(?:123|456|888|999)/')"),
             dict(name='invented_public_addresses',sql="SELECT count(*) AS n FROM document_addresses WHERE regexp_like(url,'/HMKP(?:123|456|888|999)/')")])
     occurrences={item['receipt_line']:item for item in result['occurrences']}
@@ -112,5 +116,6 @@ def test_native_references_preserve_occurrences_without_inventing_acquisitions(t
     assert '999' not in meetings[owned] and '888' not in meetings[owned]
 
     assert result['invalid_keys']==[dict(n=0)]
+    assert result['unresolved_meeting_document_urls']==[dict(urls=len(malformed_lines))]
     assert result['invented_endpoints']==[dict(n=0)]
     assert result['invented_public_addresses']==[dict(n=0)]
