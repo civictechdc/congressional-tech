@@ -47,12 +47,70 @@ def test_short_marked_text_keeps_its_links():
     assert [(link.href, link.text) for link in content.candidates[0].links] == [('/f.pdf', 'Click for the PDF')]
 
 
-def test_itemprop_and_json_ld_are_candidates():
-    assert select(page(f'<div itemprop="articleBody">{LONG}</div>')).property == 'itemprop:articleBody'
-    json_ld = page(f'<script type="application/ld+json">{{"@type":"Article","articleBody":"{LONG}"}}</script>')
-    content = select(json_ld)
-    assert content.outcome == 'marked' and content.property == 'json-ld:articleBody'
-    assert content.selector == '/formats/json-ld/items/0/articleBody'
+def test_json_ld_article_body_is_not_a_candidate():
+    """Minimal reproduction of gov.uk f3a990b3513c8c42: JSON-LD articleBody carries raw markup."""
+    markup = '<p>x</p><img src=x onerror=alert(1)>'
+    content = select(page(f'<script type="application/ld+json">{{"@type":"Article","articleBody":"{markup}"}}</script><p>Words</p>'))
+    assert (content.outcome, content.fallback_reason, content.text, content.candidates) == ('fallback_required', 'no_candidate', None, [])
+
+
+def test_truncated_json_ld_does_not_replace_the_marked_body():
+    json_ld = '<script type="application/ld+json">{"@type":"Article","articleBody":"Testimony sentence"}</script>'
+    content = select(page(f'{json_ld}<div property="content:encoded">{LONG}</div>'))
+    assert content.outcome == 'marked' and content.property == 'content:encoded'
+    assert content.text == LONG.strip() and [c.property for c in content.candidates] == ['content:encoded']
+
+
+def test_microdata_and_rdfa_article_body_are_not_candidates():
+    content = select(page(f'<div itemprop="articleBody">{LONG}</div><div property="schema:articleBody">{LONG}</div>'))
+    assert content.outcome == 'fallback_required' and content.candidates == []
+
+
+def test_every_paragraph_is_kept_in_order():
+    body = page(f'<div property="content:encoded"><p>Alpha one.</p><p>Bravo two.</p><p>Charlie three.</p><p>{LONG}</p></div>')
+    assert select(body).text == 'Alpha one.\nBravo two.\nCharlie three.\n' + LONG.strip()
+
+
+def test_real_marked_testimony_full_text_is_pinned():
+    """The pinned words and their order were checked against an html5lib parse of the same
+    content:encoded element when the pin was created: html5lib shares nothing with lxml but the bytes."""
+    content = select((FIXTURES / 'marked-testimony.html').read_bytes())
+    assert content.text == (FIXTURES / 'marked-testimony.txt').read_text()
+
+
+def test_a_long_sidebar_does_not_win_over_a_short_body():
+    sidebar = f'<aside property="content:encoded">{LONG}</aside>'
+    content = select(page(f'{sidebar}<div property="content:encoded">Short statement body.</div>'))
+    assert (content.outcome, content.fallback_reason, content.text) == ('fallback_required', 'multiple_candidates', None)
+    assert len(content.candidates) == 2
+
+
+def test_table_and_definition_cells_are_separate_tokens():
+    table = '<table><caption>Claims</caption><tr><th>Year</th><th>Count</th></tr><tr><td>2006</td><td>6,658</td></tr></table>'
+    words = block_text(dom.fromstring(f'<div>{table}<dl><dt>Term</dt><dd>Meaning</dd></dl>a<hr>b<pre>code</pre>'
+                                      '<figure>img<figcaption>Cap</figcaption></figure></div>')).split()
+    assert words == ['Claims', 'Year', 'Count', '2006', '6,658', 'Term', 'Meaning', 'a', 'b', 'code', 'img', 'Cap']
+
+
+def test_soft_hyphens_do_not_split_words():
+    assert block_text(dom.fromstring('<p>capaci\u00adties and nec\u00adessarily</p>')) == 'capacities and necessarily'
+
+
+def test_hidden_text_is_excluded_and_its_tail_kept():
+    node = dom.fromstring('<div><p>A <span hidden>X</span> B</p><p style="display: none">Y</p>'
+                          '<p style="color:red;VISIBILITY:hidden">Z</p><p style="display:block">C</p></div>')
+    assert block_text(node) == 'A B\nC'
+
+
+def test_hidden_rule_matches_the_archive_reading():
+    """Both readers drop the same hidden elements: the one rule is held here, as ERROR_TITLE_MARKERS is."""
+    import inspect
+    import re
+    from congress_api.parsers import archive_readings, main_content
+    source = inspect.getsource(archive_readings._markup_facts)
+    assert "'hidden' in node.attrib" in source and main_content.HIDDEN_STYLE.pattern in source
+    for style in ('display:none', 'DISPLAY : none', 'visibility:hidden', 'display:block', 'visibility: visible', ''):
+        assert bool(main_content.HIDDEN_STYLE.search(style)) == bool(re.search(r'(?:display\s*:\s*none|visibility\s*:\s*hidden)', style, re.I))
 
 
 def test_class_names_are_not_explicit_markup():
@@ -61,18 +119,18 @@ def test_class_names_are_not_explicit_markup():
 
 
 def test_nested_candidates_resolve_to_the_outermost():
-    content = select(page(f'<div property="content:encoded"><p itemprop="articleBody">{LONG}</p><p>More.</p></div>'))
+    content = select(page(f'<div property="content:encoded"><p property="content:encoded">{LONG}</p><p>More.</p></div>'))
     assert content.outcome == 'marked' and len(content.candidates) == 1 and content.text.endswith('More.')
 
 
 def test_identical_candidates_dedupe():
-    content = select(page(f'<div property="content:encoded">{LONG}</div><div property="articleBody">{LONG}</div>'))
+    content = select(page(f'<div property="content:encoded">{LONG}</div><div property="content:encoded">{LONG}</div>'))
     assert content.outcome == 'marked' and len(content.candidates) == 2
 
 
 def test_distinct_candidates_are_retained_and_require_the_stored_reading():
-    content = select(page(f'<div property="content:encoded">{LONG}</div><div property="articleBody">Other. {LONG}</div>'))
-    assert content.outcome == 'fallback_required' and content.fallback_reason == 'conflicting_candidates'
+    content = select(page(f'<div property="content:encoded">{LONG}</div><div property="content:encoded">Other. {LONG}</div>'))
+    assert content.outcome == 'fallback_required' and content.fallback_reason == 'multiple_candidates'
     assert content.text is None and len(content.candidates) == 2
 
 

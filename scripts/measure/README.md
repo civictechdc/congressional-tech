@@ -22,6 +22,8 @@ Run from the repository root with the locked environment, for example:
 
 **`benchmark_viewer_browser.mjs`** drives Chromium against that local server. It does not publish.
 
+**`main_content_cohort.py`** compares every `marked` main-content selection with the same element read by html5lib and with trafilatura, as ordered word runs in both directions, stratified by host and selector shape. Every body it reports as losing words is for a person to read in full. It reads retained bodies only.
+
 `release_diff.py` moved into the publisher as `viewer_publication.release_comparison` (sides `--base`, `--candidate`); `viewer_publication.release_gate` runs it in the publish path.
 
 ## Cost and memory samples
