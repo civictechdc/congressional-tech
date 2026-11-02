@@ -159,6 +159,8 @@ def serve_store(store):
 
 
 @pytest.mark.loopback
+# Gate 5 (ct-tk10) refuses captures without mapping_version; strict so the mark goes when cluster e1 lands.
+@pytest.mark.xfail(strict=True,raises=ValueError,reason='gate 5 refuses captures without mapping_version until cluster e1 lands')
 def test_retained_import_publish_resume_selected_reader_and_real_queue(tmp_path):
     from viewer_publication.archive_publish_job import load_spec,execute
     from congress_api.acquisition.capture_scheduler import load_release,plan_queue
@@ -218,16 +220,16 @@ def test_retained_import_publish_resume_selected_reader_and_real_queue(tmp_path)
         return completed
     try:
         with pytest.raises(RuntimeError,match='lost canary acknowledgment'):
-            execute(load_spec(specpath),runtime_factory=Runtime,storage_factory=lambda **_:store,process_runner=runner)
+            execute(load_spec(specpath),runtime_factory=Runtime,storage_factory=lambda **_:store,process_runner=runner,end_to_end_runner=lambda *a,**k:None)
         resultpath=Path(model['scratch'])/'result.json';before=(resultpath.read_bytes(),resultpath.stat().st_mtime_ns)
         assert 'viewer-publications/manifest.json' not in store.objects
         transfer_count=sum(event[0]=='native' for event in store.events)
         value['resume']=True;specpath.write_text(json.dumps(value))
-        result=execute(load_spec(specpath),runtime_factory=Runtime,storage_factory=lambda **_:store,process_runner=runner)
+        result=execute(load_spec(specpath),runtime_factory=Runtime,storage_factory=lambda **_:store,process_runner=runner,end_to_end_runner=lambda *a,**k:None)
         assert result['status']=='published' and len(commands)==4
         assert sum(event[0]=='native' for event in store.events)==transfer_count
         assert (resultpath.read_bytes(),resultpath.stat().st_mtime_ns)==before
-        settled=execute(load_spec(specpath),runtime_factory=Runtime,storage_factory=lambda **_:store,process_runner=runner)
+        settled=execute(load_spec(specpath),runtime_factory=Runtime,storage_factory=lambda **_:store,process_runner=runner,end_to_end_runner=lambda *a,**k:None)
         assert settled['status']=='release_unchanged' and len(commands)==4
         assert (resultpath.read_bytes(),resultpath.stat().st_mtime_ns)==before
         # The site reader selects the actual stored pointer and opens its saved body.

@@ -54,6 +54,13 @@ jobs:
       - name: Build the archive site for the local contract
         working-directory: apps/site
         run: npm run build
+      # Gate 3 (ct-tk10): the publisher runs the raw-to-release end-to-end test on this
+      # credential-free local runtime (DOCSPEC_JOB_CONFIG) before any remote runtime or SDK.
+      - uses: ./.github/actions/setup-local-job-runtime
+        with:
+          artifact: ${{ vars.DOCSPEC_RUNTIME_ARTIFACT }}
+          credentials: ${{ secrets.ARCHIVE_PUBLISH_ENGINE_CREDENTIALS }}
+          account-id: ${{ vars.CLOUDFLARE_ACCOUNT_ID }}
       - name: Run the single publisher with its local contract and HTTPS canary gates
         env:
           CLOUDFLARE_ACCOUNT_ID: ${{ vars.CLOUDFLARE_ACCOUNT_ID }}

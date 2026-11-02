@@ -5,6 +5,7 @@ import os
 from pathlib import Path
 import re
 import subprocess
+import sys
 from urllib.parse import urlsplit
 from tempfile import TemporaryDirectory
 from uuid import UUID
@@ -24,6 +25,9 @@ ALL_TABLES=(*TABLES,*OPTIONAL_TABLES)
 FIELDS={'version','model_spec','bucket','work','public_origin','receipt_keys','provenance','run',
         'contract_next_release','targets'}
 METADATA_BYTES=1<<20
+# Gate 3 (ct-tk10): raw receipt lines through every producer to release files.
+END_TO_END=['scripts/dev.py','test','production-offline','--path',
+    'packages/viewer_publication/tests/test_release_end_to_end.py','--','-q']
 
 
 def _expected_entity_versions():
@@ -309,7 +313,19 @@ def probe_commands(spec,*,release,release_id,probe_selectors):
         '--release',release_id,'--raw',origin+'/','--targets',targets,'--output',str(work/'canary.json'),'--saved-row',str(probe_selectors['saved_row'])])
 
 
-def execute(spec,*,runtime_factory=None,storage_factory=None,process_runner=None):
+def require_end_to_end(runner=None):
+    """Run the fixed end-to-end gate through the project runner on the local-only engine.
+
+    dev.py doctor refuses a DOCSPEC_JOB_CONFIG with remote or credentials keys.
+    """
+    if not os.environ.get('DOCSPEC_JOB_CONFIG'):
+        raise ValueError('Publication requires the end-to-end gate (DOCSPEC_JOB_CONFIG local-only)')
+    try:(runner or subprocess.run)([sys.executable,*END_TO_END],cwd=ROOT,check=True,timeout=900,env={**os.environ})
+    except (subprocess.SubprocessError,OSError) as error:
+        raise ValueError('Publication requires the end-to-end gate (DOCSPEC_JOB_CONFIG local-only)') from error
+
+
+def execute(spec,*,runtime_factory=None,storage_factory=None,process_runner=None,end_to_end_runner=None):
     """Refuse local problems, qualify a remote runtime, then connect the SDK."""
     spec['_model_identity'].require(spec['model_spec']['path'])
     acceptance=None
@@ -362,6 +378,7 @@ def execute(spec,*,runtime_factory=None,storage_factory=None,process_runner=None
     if not Path(engine_config).exists() and os.environ.get('DOCSPEC_RUNTIME_CONFIG'):
         engine_config=os.environ['DOCSPEC_RUNTIME_CONFIG']
     settings,remote,endpoint,configuration_pins=publication_configuration(engine_config,bucket=spec['bucket'])
+    require_end_to_end(end_to_end_runner)
     def require_configuration():
         for path,identity in configuration_pins:identity.require(path)
         require_comparison(acceptance)

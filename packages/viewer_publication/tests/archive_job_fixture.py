@@ -37,17 +37,29 @@ def real_model_spec(tmp_path):
     return rebuild_model_spec(tmp_path,raw=raw,qualification=qualification),digest,html
 
 
-def rebuild_model_spec(tmp_path,*,raw,qualification):
-    """Run the same producers from retained raw, with no earlier derived inputs."""
+def rebuild_model_spec(tmp_path,*,raw,qualification=None,receipts=None):
+    """Run the same producers from retained raw, with no earlier derived inputs.
+
+    `receipts` lists (raw-relative key, qualification path); the default is the one
+    real_model_spec slice with `qualification`.
+    """
     from pathlib import Path
-    from congress_api.lake import readings,filenames
     from congress_api.lake.captures import stage_captures
+    from docspec_client.client import NativeDatasets
+    raw=Path(raw)
+    if receipts is None:receipts=[('receipts/documents/2026-10-27/slice.jsonl.gz',qualification)]
+    with NativeDatasets.from_config(os.environ['DOCSPEC_JOB_CONFIG']) as engine:
+        captures=stage_captures([dict(key=key,path=str(raw/key),qualification=str(pin)) for key,pin in receipts],engine=engine,work=tmp_path/'capture-stage')/'captures.parquet'
+    return derive_model_spec(tmp_path,raw=raw,captures=captures)
+
+
+def derive_model_spec(tmp_path,*,raw,captures):
+    """Readings and filename readings from one captures file, as the producers stage them."""
+    from congress_api.lake import readings,filenames
     from congress_api.retention.provenance import file_pin,parquet_output,run_job
     from docspec_client.client import NativeDatasets
-    runtime=os.environ['DOCSPEC_JOB_CONFIG'];raw=Path(raw)
-    receipt=raw/'receipts/documents/2026-10-27/slice.jsonl.gz'
+    runtime=os.environ['DOCSPEC_JOB_CONFIG']
     with NativeDatasets.from_config(runtime) as engine:
-        captures=stage_captures([dict(key=receipt.relative_to(raw).as_posix(),path=str(receipt),qualification=str(qualification))],engine=engine,work=tmp_path/'capture-stage')/'captures.parquet'
         inventory=tmp_path/'inventory';inventory.mkdir()
         run_job(inventory,engine,inputs=[dict(name='captures',kind='parquet',path=str(captures))],steps=[],outputs=[
             parquet_output(inventory,'bodies',"""SELECT DISTINCT sha256 AS body_sha,
