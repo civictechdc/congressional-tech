@@ -39,6 +39,7 @@ jobs:
         with:
           ref: main
           persist-credentials: false
+          fetch-depth: 0  # gate 5 checks each producing commit is reachable from HEAD
       - uses: ./.github/actions/setup-python-project
       - name: Admit the model binding before runtime or storage access
         id: publisher_binding

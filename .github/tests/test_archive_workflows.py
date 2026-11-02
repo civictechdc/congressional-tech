@@ -283,3 +283,10 @@ def test_publish_installs_the_local_job_runtime_before_the_publisher():
     publisher = next(i for i, step in enumerate(steps) if step.get('run', '').endswith('run-archive-job.py publish'))
     assert local < publisher
     assert steps[local]['with']['credentials'] == '${{ secrets.ARCHIVE_PUBLISH_ENGINE_CREDENTIALS }}'
+
+
+def test_publish_checks_out_full_history_for_producer_commits():
+    """Gate 5: a shallow checkout cannot answer whether a producing commit is reachable."""
+    steps = workflow('archive-jobs.yml')['jobs']['publish']['steps']
+    checkout = next(step for step in steps if step.get('uses', '').startswith('actions/checkout'))
+    assert checkout['with']['fetch-depth'] == '0'

@@ -393,7 +393,7 @@ def _candidate(release,manifest_pin,result_pin,*,input_record,receipt_keys):
 
 def publish_candidate(*,client,engine,bucket,work,release,manifest_pin,result_pin,
                       input_record,receipt_keys,pointer,expected_etag,public_origin,contract,canary,measured_release_id=None,comparison_acceptance=None,asset_journal=None,
-                      base_release=None,release_causes=None):
+                      base_release=None,release_causes=None,link_history_dirs=(),first_release=False):
     """Upload a pinned model candidate and use the existing reader gates and CAS.
 
     The caller owns actual model planning, completeness and early skip. This stage
@@ -438,10 +438,17 @@ def publish_candidate(*,client,engine,bucket,work,release,manifest_pin,result_pi
             status['status']='release_unchanged'
             return dict(status)
         if live is not None:
+            if first_release:raise ValueError('A first release cannot replace a live release')
             if base_release is None:raise ValueError('Gates 1 and 2 require the fetched live release')
             fetch_release(client_reader(client,bucket,live),live,base_release)
+        elif not first_release:
+            # A missing or legacy-format pointer is not proof that nothing was published:
+            # the gates would check nothing. Only an explicit, recorded bootstrap may proceed.
+            raise ValueError('No live release to compare with; a first release must be declared (first_release)')
+        else:
+            status['first_release']=True
         require_release_gates(Path(base_release) if live is not None else None,Path(release),release_causes,
-            report_path=Path(work)/'release-gate.json')
+            report_path=Path(work)/'release-gate.json',history=link_history_dirs)
         status['release_gates']='passed'
         contract_receipt=contract(release_id=release_id,release=Path(release),manifest=manifest)
         validate_receipt(contract_receipt,release_id=release_id,name='contract',manifest_origin=manifest.get('origin'))

@@ -482,7 +482,7 @@ def test_candidate_goes_through_the_controller_and_resumes_after_canary_failure(
     def counted(*a,**k):
         built.append(1);return original(*a,**k)
     with NativeDatasets.from_config(os.environ['DOCSPEC_JOB_CONFIG']) as native:
-        kwargs=dict(client=store,engine=Runtime(native,store),bucket='derived-fixture',work=tmp_path/'publish',receipt_keys=publish['receipt_keys'],
+        kwargs=dict(first_release=True,client=store,engine=Runtime(native,store),bucket='derived-fixture',work=tmp_path/'publish',receipt_keys=publish['receipt_keys'],
             provenance=[],run={'id':'selective'},public_origin='https://archive.fixture.test',contract=passed)
         patch=pytest.MonkeyPatch();patch.setattr(controller,'build_prepared_release',counted)
         try:

@@ -33,7 +33,7 @@ def test_actual_model_publishes_then_checks_admission_before_input_skip(tmp_path
         return dict(status='passed',releaseId=context['release_id'],targets='owner-approved')
     with NativeDatasets.from_config(os.environ['DOCSPEC_JOB_CONFIG']) as native:
         engine=Runtime(native,store)
-        kwargs=dict(client=store,engine=engine,bucket='derived-fixture',receipt_keys=keys,provenance=[],
+        kwargs=dict(first_release=True,client=store,engine=engine,bucket='derived-fixture',receipt_keys=keys,provenance=[],
             run={'id':'first'},public_origin='https://archive.fixture.test',contract=probe,canary=probe)
         first=run_publish(load_spec(specpath),work=tmp_path/'publish-first',**kwargs)
         assert first['status']=='published' and len(calls)==2
@@ -74,7 +74,7 @@ def test_receipt_identity_must_equal_actual_native_model_keys(tmp_path):
     def never(**_):raise AssertionError('Invalid replay evidence must refuse before probes')
     with NativeDatasets.from_config(os.environ['DOCSPEC_JOB_CONFIG']) as native:
         with pytest.raises(ValueError,match='receipt'):
-            run_publish(load_spec(path),work=tmp_path/'publish',client=store,engine=Runtime(native,store),
+            run_publish(load_spec(path),work=tmp_path/'publish',first_release=True,client=store,engine=Runtime(native,store),
                 bucket='derived-fixture',receipt_keys=['receipts/wrong.jsonl.gz'],provenance=[],run={'id':'bad'},
                 public_origin='https://archive.fixture.test',contract=never,canary=never)
     assert set(store.objects)=={'viewer-publications/status.json'}
@@ -99,7 +99,7 @@ def test_transport_validation_failure_still_records_one_failed_status(tmp_path):
     def never(**_):raise AssertionError('Invalid origin must refuse before probes')
     with NativeDatasets.from_config(os.environ['DOCSPEC_JOB_CONFIG']) as native:
         with pytest.raises(ValueError,match='HTTPS'):
-            run_publish(load_spec(path),work=tmp_path/'publish',client=store,engine=Runtime(native,store),
+            run_publish(load_spec(path),work=tmp_path/'publish',first_release=True,client=store,engine=Runtime(native,store),
                 bucket='derived-fixture',receipt_keys=['receipts/documents/2026-10-27/slice.jsonl.gz'],provenance=[],
                 run={'id':'invalid-origin'},public_origin='http://archive.fixture.test',contract=never,canary=never)
     assert set(store.objects)=={'viewer-publications/status.json'}
@@ -126,7 +126,7 @@ def test_provenance_inventory_must_match_the_pinned_current_etags(tmp_path):
     def never(**_):raise AssertionError('Changed provenance must refuse before probes')
     with NativeDatasets.from_config(os.environ['DOCSPEC_JOB_CONFIG']) as native:
         with pytest.raises(ValueError,match='provenance'):
-            run_publish(load_spec(model),work=tmp_path/'publish',client=store,engine=Runtime(native,store),
+            run_publish(load_spec(model),work=tmp_path/'publish',first_release=True,client=store,engine=Runtime(native,store),
                 bucket='derived-fixture',receipt_keys=['receipts/documents/2026-10-27/slice.jsonl.gz'],
                 provenance=[dict(key=key,etag=pin_etag)],run={'id':'stale'},
                 public_origin='https://archive.fixture.test',contract=never,canary=never)
@@ -153,7 +153,7 @@ def test_nonrecord_provenance_is_pinned_without_becoming_a_model_input(tmp_path)
     provenance=[dict(key=key,etag=etag)]
     with NativeDatasets.from_config(os.environ['DOCSPEC_JOB_CONFIG']) as native:
         engine=Runtime(native,store)
-        kwargs=dict(client=store,engine=engine,bucket='derived-fixture',
+        kwargs=dict(first_release=True,client=store,engine=engine,bucket='derived-fixture',
             receipt_keys=['receipts/documents/2026-10-27/slice.jsonl.gz'],provenance=provenance,
             run={'id':'nonrecord'},public_origin='https://archive.fixture.test',contract=passed,canary=passed)
         result=run_publish(load_spec(path),work=tmp_path/'publish',**kwargs)
@@ -201,7 +201,7 @@ def test_completed_model_continues_after_canary_failure_without_rebuild(tmp_path
     keys=['receipts/documents/2026-10-27/slice.jsonl.gz']
     with NativeDatasets.from_config(os.environ['DOCSPEC_JOB_CONFIG']) as native:
         engine=Runtime(native,store)
-        kwargs=dict(client=store,engine=engine,bucket='derived-fixture',receipt_keys=keys,provenance=[],
+        kwargs=dict(first_release=True,client=store,engine=engine,bucket='derived-fixture',receipt_keys=keys,provenance=[],
             run={'id':'resume'},public_origin='https://archive.fixture.test',contract=passed)
         with pytest.raises(RuntimeError,match='injected'):
             run_publish(load_spec(path),work=tmp_path/'publish',canary=failed,**kwargs)
@@ -283,7 +283,7 @@ try:
                 os.killpg(process.pid,signal.SIGKILL);process.wait()
                 os.kill(os.getpid(),signal.SIGKILL)
             native.run_job=killed_native
-        result=controller.run_publish(load_spec(root/'model-spec.json'),client=store,engine=Runtime(native,store),
+        result=controller.run_publish(load_spec(root/'model-spec.json'),first_release=True,client=store,engine=Runtime(native,store),
             bucket='derived-fixture',work=root/'publish-process',receipt_keys=['receipts/documents/2026-10-27/slice.jsonl.gz'],
             provenance=[],run={'id':'fresh-process'},public_origin='https://archive.fixture.test',contract=passed,
             canary=passed if resume else failed,resume=resume)
@@ -335,7 +335,7 @@ def test_completed_checkpoint_refuses_corruption_and_changed_inputs(tmp_path,dam
     def passed(**ctx):return dict(status='passed',releaseId=ctx['release_id'],targets='owner-approved')
     def failed(**ctx):raise RuntimeError('stop before selection')
     with NativeDatasets.from_config(os.environ['DOCSPEC_JOB_CONFIG']) as native:
-        kwargs=dict(client=store,engine=Runtime(native,store),bucket='derived-fixture',
+        kwargs=dict(first_release=True,client=store,engine=Runtime(native,store),bucket='derived-fixture',
             receipt_keys=['receipts/documents/2026-10-27/slice.jsonl.gz'],provenance=[],
             run={'id':'corruption'},public_origin='https://archive.fixture.test',contract=passed)
         with pytest.raises(RuntimeError,match='stop before selection'):
@@ -384,3 +384,47 @@ def test_publish_seeds_the_ledger_from_the_live_release_and_its_named_history(tm
     report=json.loads(report.read_text())
     assert report['link_rule']['missing']==0 and report['base_release']==ids['live']
     assert json.loads(store.objects['viewer-publications/manifest.json'])['release_id']==ids['live']
+
+
+# Written by hand from the fixture: the live release lists document Q, the candidate lists
+# the one real-model document, and the candidate adds the retired_links and url_state files.
+GATED_GROUPS=[('capture_scope.json','changed file without a comparison','unexplained',0),
+    ('detail.parquet','removed rows','no surviving link key',-1),('detail.parquet','added rows','no surviving link key',1),
+    ('links.parquet','removed keys','no evidence given',-1),('links.parquet','added keys','no evidence given',1),
+    ('list.parquet','removed rows','no surviving link key',-1),('list.parquet','added rows','no surviving link key',1),
+    ('retired_links.parquet','file added','file absent from the base release',2),
+    ('sources.parquet','new URLs','no previous row has this address',1),
+    ('url_state.parquet','file added','file absent from the base release',1),
+    ('urls.parquet','keys new','key absent from the previous release',1)]
+
+
+def test_refused_gate_then_recorded_causes_resume_to_publish_and_resume_again_after_the_flip(tmp_path):
+    """Gates 1 and 2: refuse, write the record, resume without a rebuild, publish; a further
+    resume after the flip finds its own release live and stops there (green-h trace)."""
+    from viewer_publication.archive_controller import run_publish
+    from viewer_publication.archive_model_job import load_spec
+    from test_release_gate import release_dir,record_for
+    spec,_,_=real_model_spec(tmp_path)
+    specpath=tmp_path/'model-spec.json';specpath.write_text(json.dumps(spec))
+    store=Store();ids={}
+    for name,documents in [('live',['Q']),('history',['H'])]:
+        manifest=release_dir(tmp_path/name,documents);ids[name]=manifest['release_id']
+        for item in manifest['files']+[dict(name='manifest.json')]:
+            store.objects['viewer-publications/releases/'+manifest['release_id']+'/'+item['name']]=(tmp_path/name/item['name']).read_bytes()
+    store.objects['viewer-publications/manifest.json']=json.dumps(dict(release_id=ids['live'],previous_release_id=ids['history'])).encode()
+    def passed(**context):return dict(status='passed',releaseId=context['release_id'],targets='owner-approved')
+    with NativeDatasets.from_config(os.environ['DOCSPEC_JOB_CONFIG']) as native:
+        kwargs=dict(client=store,engine=Runtime(native,store),bucket='derived-fixture',work=tmp_path/'publish',
+            receipt_keys=['receipts/documents/2026-10-27/slice.jsonl.gz'],provenance=[],run={'id':'gated'},
+            public_origin='https://archive.fixture.test',contract=passed,canary=passed,link_history=[ids['history']])
+        with pytest.raises(ValueError,match='no recorded cause'):
+            run_publish(load_spec(specpath),**kwargs)
+        checkpoint=(tmp_path/'publish/completed-model.json').read_bytes()
+        candidate=json.loads((Path(spec['output'])/'manifest.json').read_text())['release_id']
+        causes=record_for(ids['live'],candidate,tmp_path,groups=GATED_GROUPS)
+        result=run_publish(load_spec(specpath),resume=True,release_causes=causes,**kwargs)
+        assert result['status']=='published' and result['release_id']==candidate
+        assert (tmp_path/'publish/completed-model.json').read_bytes()==checkpoint  # no rebuild
+        again=run_publish(load_spec(specpath),resume=True,release_causes=causes,**kwargs)
+        assert again['status']=='release_unchanged'
+    assert json.loads(store.objects['viewer-publications/manifest.json'])['release_id']==candidate
