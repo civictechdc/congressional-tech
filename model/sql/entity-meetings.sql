@@ -20,19 +20,37 @@ WITH keys AS (
 ), rescheduled AS (
  SELECT event_id,twin_id AS rescheduled_to,CASE WHEN stated THEN 'publisher_status' ELSE 'recording_on_later_twin' END AS rescheduled_basis FROM first_twin WHERE rn=1
 ), transcript_rows AS (
- SELECT DISTINCT l.event_id,d.package_id,cast(d.list_row AS INT) AS list_row
+ SELECT DISTINCT l.event_id,d.package_id,cast(d.list_row AS INT) AS list_row,d.format
  FROM meeting_transcript_links l
  JOIN details d ON l.package_id=d.package_id
  WHERE d.package_id IS NOT NULL
+), transcript_preferred AS (
+ -- One entry per (meeting, package): the package's document whose saved format ranks first.
+ SELECT r.event_id,r.package_id,r.list_row,row_number() OVER (
+  PARTITION BY r.event_id,r.package_id ORDER BY coalesce(p.rank,2147483647),r.list_row) AS rn
+ FROM formats p RIGHT JOIN transcript_rows r ON p.kind='preference' AND p.value=r.format
+), transcript_row_formats AS (
+ SELECT list_row,format FROM transcript_rows
+ UNION SELECT cast(a.row_id AS INT) AS list_row,a.alt['format'] AS format FROM (
+  SELECT d.list_row AS row_id,unnest(d.alternates) AS alt FROM details d
+  WHERE d.package_id IS NOT NULL AND coalesce(array_length(d.alternates),0)>0) a
+), transcript_formats AS (
+ SELECT f.event_id,f.package_id,array_agg(f.format ORDER BY coalesce(p.rank,2147483647),f.format) AS formats
+ FROM formats p RIGHT JOIN (
+  SELECT DISTINCT r.event_id,r.package_id,x.format FROM transcript_rows r
+  JOIN transcript_row_formats x ON x.list_row=r.list_row WHERE x.format IS NOT NULL
+ ) f ON p.kind='preference' AND p.value=f.format
+ GROUP BY f.event_id,f.package_id
 ), transcript_ranked AS (
- SELECT *,row_number() OVER (
-  PARTITION BY event_id
-  ORDER BY list_row ASC,package_id ASC
+ SELECT t.event_id,t.package_id,t.list_row,f.formats,row_number() OVER (
+  PARTITION BY t.event_id
+  ORDER BY t.list_row ASC,t.package_id ASC
  ) AS tr_seq
- FROM transcript_rows
+ FROM transcript_preferred t JOIN transcript_formats f ON f.event_id=t.event_id AND f.package_id=t.package_id
+ WHERE t.rn=1
 ), transcripts_agg AS (
  SELECT event_id,array_agg(named_struct(
-  'package_id',package_id,'list_row',list_row
+  'package_id',package_id,'list_row',list_row,'formats',formats
  ) ORDER BY tr_seq ASC) AS transcripts
  FROM transcript_ranked GROUP BY event_id
 )
@@ -51,7 +69,8 @@ SELECT k.event_id,
   'system_code',cast(NULL AS VARCHAR),'role',cast(NULL AS VARCHAR))),1,0)) AS committees,
  coalesce(m.subject_keys,arrow_cast(array_slice(make_array(cast(NULL AS VARCHAR)),1,0),'List(Utf8)')) AS subject_keys,
  coalesce(t.transcripts,array_slice(make_array(named_struct(
-  'package_id',cast(NULL AS VARCHAR),'list_row',cast(NULL AS INT))),1,0)) AS transcripts,
+  'package_id',cast(NULL AS VARCHAR),'list_row',cast(NULL AS INT),
+  'formats',arrow_cast(array_slice(make_array(cast(NULL AS VARCHAR)),1,0),'List(Utf8)'))),1,0)) AS transcripts,
  coalesce(m.videos,array_slice(make_array(named_struct(
   'name',cast(NULL AS VARCHAR),'url',cast(NULL AS VARCHAR),'video_key',cast(NULL AS VARCHAR))),1,0)) AS videos,
  cast(m.congress AS SMALLINT) AS congress,
