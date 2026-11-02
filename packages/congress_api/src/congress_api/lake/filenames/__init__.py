@@ -189,11 +189,20 @@ def stage(*, captures, recovery_files, engine, work, decided_at, existing=None, 
         worker_factory = ParserWorker
     work = Path(work).resolve(); work.mkdir(parents=True, exist_ok=False)
     inputs = _work_inputs(captures, recovery_files, unreadable_files, existing, work)
-    steps = [dict(name='current_recoveries', sql='''SELECT * FROM (
+    # The model names every retained import with an original, decided or not
+    # (provenance-recovery-candidates.sql); a capture with no decision is named
+    # with no recovered filename. Naming a superset only adds readings.
+    steps = [dict(name='decided_recoveries', sql='''SELECT * FROM (
         SELECT r.*,row_number() OVER (PARTITION BY original_url,body_sha256
             ORDER BY cast(decided_at AS TIMESTAMP WITH TIME ZONE) DESC,id DESC) AS selected
         FROM recoveries r WHERE NOT EXISTS (SELECT 1 FROM recoveries s WHERE s.supersedes=r.id))
         WHERE selected=1'''),
+        dict(name='current_recoveries', sql='''SELECT id,original_url,recovered_filename,kind FROM decided_recoveries
+        UNION ALL SELECT 'row:'||encode(sha256(json_array(c.receipt_key,c.receipt_line,c.capture_index)),'hex') AS id,
+            c.original_url,cast(NULL AS VARCHAR) AS recovered_filename,cast(NULL AS VARCHAR) AS kind
+        FROM captures c WHERE c.mode='retained_import' AND c.original_url IS NOT NULL
+        AND NOT EXISTS (SELECT 1 FROM decided_recoveries d
+            WHERE lower(d.body_sha256)=encode(c.sha256,'hex') AND d.original_url=c.original_url)'''),
         dict(name='filename_captures', sql='SELECT * FROM captures'),
         dict(name='filename_inputs', sql=INPUT_SQL.read_text()),
         dict(name='effective_names', sql=SQL.read_text()),

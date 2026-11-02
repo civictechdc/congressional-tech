@@ -114,7 +114,7 @@ def test_version_digest_covers_package_nested_vocabularies_and_lock(tmp_path):
 def input_tables(tmp_path, rows):
     schema = pa.schema([('receipt_key',pa.string()),('receipt_line',pa.int64()),('capture_index',pa.int32()),
         ('mode',pa.string()),('url',pa.string()),('requested_url',pa.string()),('member_path',pa.string()),
-        ('h_content_disposition',pa.string()),('sha256',pa.binary(32))])
+        ('h_content_disposition',pa.string()),('sha256',pa.binary(32)),('original_url',pa.string())])
     path=tmp_path/'captures.parquet'; pq.write_table(pa.Table.from_pylist(rows,schema=schema),path)
     return path
 
@@ -239,6 +239,25 @@ def test_actual_model_factory_and_producer_keep_complete_filename_pair_parity(tm
                 ('model_only','model_names','producer_names'),
                 ('producer_only','producer_names','model_names')]])
     assert compared==dict(model_only=[dict(n=0)],producer_only=[dict(n=0)])
+
+
+def test_an_undecided_retained_import_names_its_original(tmp_path):
+    """The model's recovery candidates include retained imports with no decision
+    (provenance-recovery-candidates.sql); the producer must name their originals too, or
+    profile completeness counts them missing (Run A: 502)."""
+    rows=[dict(receipt_key='r',receipt_line=1,capture_index=0,mode='retained_import',url='https://archive.test/copy.pdf',
+               original_url='https://fixture.test/Undecided.pdf',sha256=bytes(32)),
+          dict(receipt_key='r',receipt_line=2,capture_index=0,mode='retained_import',url='https://archive.test/other.pdf',
+               original_url='https://fixture.test/Decided.pdf',sha256=bytes([1])*32)]
+    path=tmp_path/'decisions.jsonl.gz'
+    with gzip.open(path,'wt') as out:
+        out.write(json.dumps(dict(id='d',body_sha256=(bytes([1])*32).hex(),original_url='https://fixture.test/Decided.pdf',
+            recovered_filename='Named.pdf',kind='recovered_document',decided_at=STAMP))+'\n')
+    result=reader().stage(worker_factory=Worker,decided_at=STAMP,captures=input_tables(tmp_path,rows),
+        recovery_files=[dict(key='provenance/recoveries/a.jsonl',path=str(path))],engine=engine(),work=tmp_path/'job')
+    pairs={(row['filename'],row['source_url']) for row in pq.read_table(result['readings']).to_pylist()}
+    assert ('Undecided.pdf','https://fixture.test/Undecided.pdf') in pairs
+    assert ('Named.pdf','https://fixture.test/Decided.pdf') in pairs and ('Decided.pdf','https://fixture.test/Decided.pdf') not in pairs
 
 
 def test_stage_refuses_a_version_that_does_not_name_its_code_and_inputs(tmp_path):
