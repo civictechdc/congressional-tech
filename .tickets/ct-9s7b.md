@@ -18,3 +18,9 @@ impl-e1 2026-11-02: in 448651e7, 1,452 Senate recordings use a single VTT segmen
 
 No segment file is published as a track; Senate caption tracks point to the playlist or a complete caption body; a native check refuses a segment track.
 
+
+## Notes
+
+**2026-11-02T14:24:04Z**
+
+2026-11-02 red-e1 recount: plan-h's copy of 448651e7 has 773 Senate recordings with segment caption tracks (1,538 track rows), not 1,452; 667 of them point at one 57-byte segment. r1b-e1 doesn't change this.

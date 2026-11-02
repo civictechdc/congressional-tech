@@ -44,3 +44,7 @@ Round 1b 2026-11-02 (lead): HTTP 206 set: 6 ZIPs plus CRPT-118hrpt372-pt2.pdf, a
 **2026-11-02T13:15:40Z**
 
 2026-11-02 (lead): HTTP 206 cleared (all 7 complete contiguous ranges). html/xml/json backfills run on r1b-g 01eb5c82.
+
+**2026-11-02T14:24:04Z**
+
+2026-11-02 red-e1 correction: besides the 7 complete GovInfo 206 ranges, 3 senate/players partial 206 samples (content_range bytes 0-4095 of 11,023,192, 793,172 and 466,992; bounded_bytes_only) became good fetches on r1b-e1. Rule: a 206 counts as a complete document only when content_range covers the whole size (impl-e1).
