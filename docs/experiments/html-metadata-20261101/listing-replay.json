@@ -1,0 +1,17 @@
+{
+ "counts": {
+  "details_rows_with_time": 750,
+  "evidence:displayed_conflicts_encoded": 177,
+  "evidence:displayed_matches_encoded": 573,
+  "evidence:displayed_only": 2,
+  "evidence:encoded_only_ambiguous": 473,
+  "matched": 1223,
+  "matched_no_encoded_day": 2,
+  "matched_wrong_day": 0,
+  "raw_bodies_read:public": 49,
+  "raw_rows": 1225,
+  "raw_wrong_day": 0,
+  "rows": 1225
+ },
+ "listing_absent_rows": []
+}

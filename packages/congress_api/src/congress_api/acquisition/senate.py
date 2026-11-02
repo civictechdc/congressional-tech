@@ -67,6 +67,11 @@ WITNESS_FIELDS = "event_id name position organization page location".split()
 DOCUMENT_FIELDS = "event_id kind name url page source_labels witness_indexes witness_names".split()
 
 
+# Pages newly failing with none answering 200 or 404 make a host outage, not page outcomes.
+OUTAGE_MIN_FAILURES = 3
+OUTAGE_STOP_AFTER = 10
+
+
 def listing_page(site, form, n, get):
     return parse_listing_page(get(f"https://www.{site}{form.format(n)}"), site)
 
@@ -139,7 +144,7 @@ def listed(site, get, saved=None, since=FIRST_RECORD):
             break
     kept = [row for row in out if row[0] >= since]
     kept_urls = {row[1] for row in kept}
-    listing_details = {**(saved.get("listing_details") if saved else {}), **{u: d for u, d in details.items() if u in kept_urls}}
+    listing_details = {**((saved or {}).get("listing_details") or {}), **{u: d for u, d in details.items() if u in kept_urls}}
     route = {"form": form, "from_0": bool(from_0)}
     if listing_details:
         route["listing_details"] = listing_details
@@ -359,19 +364,35 @@ def main(meetings, state_dir, output_dir, seed_cache=None, offline=False, as_of=
                 elif url in maintenance:
                     aged.append(url)
             aged.sort(key=lambda u: (pages.get(u, {})["checked"], u))
+            page_failures = []
+            fresh_failures = in_a_row = answered = 0
             for url in urgent + aged:
                 if limit is not None and live_pages >= limit and not importing:
                     break
                 page_check = {}
+                already_failed = pages.get(url, {}).get("status") == "error"
                 try:
                     pages[url], activity = fetch_page(url, pages.get(url, {}), as_of, cache=seed_cache if importing else None, check=page_check, activity=(saved.get("workflow") or {}).get(url))
                     if activity:
                         saved.setdefault("workflow", {})[url] = activity
-                except (ValueError, RuntimeError, OSError):
-                    if not importing:
-                        pages.setdefault(url, {"title": "", "lines": [], "witnesses": [], "documents": [], "status": "error"})
-                        saved.setdefault("workflow", {}).setdefault(url, {})["last_check"] = page_check
-                    raise
+                except (ValueError, RuntimeError, OSError) as error:
+                    if importing:
+                        raise
+                    # One page's failure is that page's outcome: it keeps any prior
+                    # content, its receipt says why, and it is retried first next run.
+                    pages.setdefault(url, {"title": "", "lines": [], "witnesses": [], "documents": [], "status": "error"})
+                    saved.setdefault("workflow", {}).setdefault(url, {})["last_check"] = page_check
+                    totals["pages failed"] += 1
+                    page_failures.append(f"{url}: {error}")
+                    print(f"{host}: page failed, retained with its reason: {page_failures[-1]}", flush=True)
+                    live_pages += 1
+                    if not already_failed:
+                        fresh_failures += 1
+                        in_a_row += 1
+                    if in_a_row >= OUTAGE_STOP_AFTER:
+                        break
+                    continue
+                answered, in_a_row = answered + 1, 0
                 totals["pages seeded" if importing else "pages fetched"] += 1
                 if not importing and totals["pages fetched"] % 25 == 0:
                     print(f"{host}: {totals['pages fetched']} pages refreshed; checkpoint saved", flush=True)
@@ -379,11 +400,17 @@ def main(meetings, state_dir, output_dir, seed_cache=None, offline=False, as_of=
                 mark_possible_matches(native_meetings, state)
                 write_state(path, normalize_senate_state(state))
                 saved = state[host]
+                pages = saved["pages"]  # normalizing replaces the site, so keep writing to the live one
                 if not importing:
                     live_pages += 1
-            if limit is None or live_pages < limit:
+            if fresh_failures >= OUTAGE_MIN_FAILURES and not answered:
+                # Every fresh attempt failed and no page answered at all: the site, not its pages.
+                raise RuntimeError(f"{host}: site-wide page outage; {fresh_failures} pages failed, none answered; first: {page_failures[0]}")
+            if (limit is None or live_pages < limit) and not page_failures:
                 saved["versions"] = versions[host]
-            attempt.update(completed_at=timestamp(), outcome="imported" if importing else "complete")
+            attempt.update(completed_at=timestamp(), outcome="imported" if importing else "error" if page_failures else "complete")
+            if page_failures:
+                attempt["error"] = f"{len(page_failures)} pages failed; first: {page_failures[0]}"
             saved["last_attempt"] = attempt
             state[host] = saved
         except (ValueError, RuntimeError, OSError) as error:
@@ -396,8 +423,9 @@ def main(meetings, state_dir, output_dir, seed_cache=None, offline=False, as_of=
             saved["source_bodies"] = source_bodies
     mark_possible_matches(native_meetings, state)
     write_state(path, normalize_senate_state(state))
+    # A page with a recorded failure is not missing; a page never attempted is.
     missing = [host for host in versions if (not site or host in site) and (host not in state or state[host].get("status") == "error" or any(
-        u not in state[host]["pages"] or state[host]["pages"][u].get("status") == "error" for u in state[host]["listings"]))]
+        u not in state[host]["pages"] for u in state[host]["listings"]))]
     if errors or missing:
         raise RuntimeError(f"Senate source incomplete: {errors[:5] or missing}")
     associations = associate_pages(ms, native_meetings, state)

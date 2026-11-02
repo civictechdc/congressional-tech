@@ -29,6 +29,7 @@ archive = [
     "ijson>=3.4,<4",
     "trafilatura==2.0.0",
     "pytz==2026.5",
+    "extruct==0.18.0",
 ]
 test = ["pytest>=9,<10"]
 

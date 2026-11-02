@@ -184,6 +184,14 @@ class ModelTests(unittest.TestCase):
         source["retained"] = {"uri": "artifact:source.xml", "sha256": "a" * 64}
         Catalog.model_validate(self.data)
 
+    def test_material_description_is_optional_for_old_records(self):
+        material = next(record for record in self.data["records"] if record["kind"] == "material")
+        material.pop("description", None)
+        catalog = Catalog.model_validate(self.data)
+        loaded = next(record for record in catalog.records if record.kind == "material")
+        self.assertIsNone(loaded.description)
+        self.assertIn("description", Catalog.model_json_schema()["$defs"]["Material"]["properties"])
+
     def test_json_schema_has_discriminated_records_and_closed_domain_fields(self):
         schema = Catalog.model_json_schema()
         records = schema["properties"]["records"]["items"]

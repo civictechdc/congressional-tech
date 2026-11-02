@@ -3,12 +3,13 @@
 import hashlib
 import json
 import re
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from datetime import date, datetime
 from typing import Callable, Mapping
 from urllib.parse import urlsplit
 
-from congress_shared.dates import parse_utc_timestamp
+
+from congress_api.models.html_metadata import HtmlMetadata
 
 # Adapter meeting maps: (congress, chamber, event id). Not the congress.gov string id.
 MeetingLookupKey = tuple[int, str, str]
@@ -71,16 +72,27 @@ def web_url(value):
     return value if parsed.scheme in ("http", "https") and parsed.netloc else None
 
 
+# A date, or a date and clock with an optional offset. A bare 20250401 is refused, not guessed.
+_REPORTED_TIME = re.compile(r'\d{4}-\d{2}-\d{2}(?P<clock>[T ]\d{2}:\d{2}(?P<seconds>:\d{2}(?:\.\d+)?)?(?:Z|[+-]\d{2}(?::?\d{2})?)?)?')
+
+
 def reported_time(value):
+    """A source's time on its own stated local date, at its stated precision.
+
+    ReportedTime keeps date-only and unzoned values, so nothing is converted: a 22:15-04:00
+    hearing stays on its day, and an unzoned clock gets no zone. Raises ValueError otherwise.
+    """
     if value is None or value == "":
         return None
     value = str(value)
-    if len(value) == 10:
-        return ReportedTime(date=date.fromisoformat(value), original=value)
-    parsed = parse_utc_timestamp(value)
-    zone = "UTC" if value.endswith("Z") else str(parsed.tzinfo) if parsed.tzinfo else None
-    return ReportedTime(date=parsed.date(), time=parsed.time().replace(tzinfo=None), timezone=zone,
-                        precision="second" if len(value.split("T")[-1].split("+")[0]) >= 8 else "minute", original=value)
+    match = _REPORTED_TIME.fullmatch(value.strip())
+    if not match:
+        raise ValueError(f"Unreadable reported time: {value!r}")
+    parsed = datetime.fromisoformat(match[0])
+    if not match['clock']:
+        return ReportedTime(date=parsed.date(), original=value)
+    return ReportedTime(date=parsed.date(), time=parsed.time().replace(microsecond=0, tzinfo=None), timezone=str(parsed.tzinfo) if parsed.tzinfo else None,
+                        precision="second" if match['seconds'] else "minute", original=value)
 
 
 @dataclass
@@ -91,6 +103,17 @@ class AdapterContext:
     ids: Callable[[str, str], str]
     # Exact, unambiguous publisher files already imported by the application.
     known_materials: Mapping[str, tuple[Material, MaterialVersion]] | None = None
+    # Declared page metadata by exact URL, like known_materials. None changes nothing.
+    page_metadata: Mapping[str, HtmlMetadata] | None = None
+    _emitted: set = field(default_factory=set, repr=False, compare=False)
+
+    def first_emission(self, record) -> bool:
+        """True once per (kind, id) for this run; a Catalog refuses a repeated identity."""
+        identity = record.kind, record.id
+        if identity in self._emitted:
+            return False
+        self._emitted.add(identity)
+        return True
 
     def source(self, native_key, payload, url=None):
         scheme = f"{self.provider}:record"
@@ -109,7 +132,25 @@ class AdapterContext:
                                                selector=selector),), basis=basis, method=method)
 
 
-def material_records(
+def material_and_version(records):
+    """The material and version among mapped records, whatever else accompanies them."""
+    material = next(record for record in records if isinstance(record, Material))
+    return material, next(record for record in records if isinstance(record, MaterialVersion))
+
+
+def material_records(context, evidence, key, **fields):
+    """Map one material, then apply declared metadata when a result is supplied for its page."""
+    records = _material_records(context, evidence, key, **fields)
+    supplied = getattr(context, 'page_metadata', None)
+    urls = tuple(fields.get('urls', ()))
+    url = next((url for url in urls if supplied and url in supplied), None)
+    if url is None:
+        return records
+    from congress_api.adapters.page_metadata import material_page_records
+    return material_page_records(context, records, url, supplied[url])
+
+
+def _material_records(
     context,
     evidence,
     key,

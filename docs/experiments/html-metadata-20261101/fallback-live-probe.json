@@ -1,0 +1,303 @@
+{
+ "probed": "2026-11-01",
+ "results": [
+  {
+   "url": "https://www.appropriations.senate.gov/a-review-of-preparations-for-the-fifa-world-cup-2026",
+   "status": 200,
+   "bytes": 38066,
+   "final": null,
+   "seconds": 0.1,
+   "under_hearings_status": null,
+   "under_hearings_bytes": null
+  },
+  {
+   "url": "https://www.appropriations.senate.gov/a-review-of-the-presidents-fiscal-year-2022-funding-request-for-the-national-science-foundation-and-securing-us-competitiveness",
+   "status": 200,
+   "bytes": 35788,
+   "final": null,
+   "seconds": 0.37,
+   "under_hearings_status": null,
+   "under_hearings_bytes": null
+  },
+  {
+   "url": "https://www.appropriations.senate.gov/department-of-defense-innovation-and-research",
+   "status": 200,
+   "bytes": 36558,
+   "final": null,
+   "seconds": 2.45,
+   "under_hearings_status": null,
+   "under_hearings_bytes": null
+  },
+  {
+   "url": "https://www.appropriations.senate.gov/domestic-and-foreign-threats-and-other-challenges-facing-the-federal-bureau-of-investigation-",
+   "status": 200,
+   "bytes": 33018,
+   "final": null,
+   "seconds": 0.26,
+   "under_hearings_status": null,
+   "under_hearings_bytes": null
+  },
+  {
+   "url": "https://www.appropriations.senate.gov/the-federal-emergency-management-agencys-response-to-covid-19-and-other-challenges",
+   "status": 200,
+   "bytes": 34801,
+   "final": null,
+   "seconds": 0.73,
+   "under_hearings_status": null,
+   "under_hearings_bytes": null
+  },
+  {
+   "url": "https://www.budget.senate.gov/-hearing-on-cbos-updated-budget-outlook",
+   "status": 404,
+   "bytes": 0,
+   "final": null,
+   "seconds": 2.12,
+   "under_hearings_status": 403,
+   "under_hearings_bytes": 0
+  },
+  {
+   "url": "https://www.budget.senate.gov/an-update-on-transparency-at-the-congressional-budget-office",
+   "status": 404,
+   "bytes": 0,
+   "final": null,
+   "seconds": 1.45,
+   "under_hearings_status": 403,
+   "under_hearings_bytes": 0
+  },
+  {
+   "url": "https://www.budget.senate.gov/budget-committee-to-consider-budget-process-reform-legislation",
+   "status": 403,
+   "bytes": 0,
+   "final": null,
+   "seconds": 0.64,
+   "under_hearings_status": 403,
+   "under_hearings_bytes": 0
+  },
+  {
+   "url": "https://www.budget.senate.gov/business-meeting-to-consider-derek-kan-to-be-deputy-director-of-omb",
+   "status": 404,
+   "bytes": 0,
+   "final": null,
+   "seconds": 1.13,
+   "under_hearings_status": 403,
+   "under_hearings_bytes": 0
+  },
+  {
+   "url": "https://www.budget.senate.gov/business-meeting-to-consider-russell-vought-to-be-director-of-omb",
+   "status": 404,
+   "bytes": 0,
+   "final": null,
+   "seconds": 1.41,
+   "under_hearings_status": 403,
+   "under_hearings_bytes": 0
+  },
+  {
+   "url": "https://www.budget.senate.gov/cbos-budget-and-economic-outlook-fiscal-years-2018-2028",
+   "status": 404,
+   "bytes": 0,
+   "final": null,
+   "seconds": 1.51,
+   "under_hearings_status": 403,
+   "under_hearings_bytes": 0
+  },
+  {
+   "url": "https://www.budget.senate.gov/cbos-budget-and-economic-outlook-fy-2019-2029",
+   "status": 404,
+   "bytes": 0,
+   "final": null,
+   "seconds": 1.49,
+   "under_hearings_status": 403,
+   "under_hearings_bytes": 0
+  },
+  {
+   "url": "https://www.budget.senate.gov/chief-financial-officers-act-of-1990-achieving-the-vision",
+   "status": 404,
+   "bytes": 0,
+   "final": null,
+   "seconds": 4.73,
+   "under_hearings_status": 403,
+   "under_hearings_bytes": 0
+  },
+  {
+   "url": "https://www.budget.senate.gov/department-of-defense-audit-and-business-operations-reform-at-the-pentagon",
+   "status": 403,
+   "bytes": 0,
+   "final": null,
+   "seconds": 0.65,
+   "under_hearings_status": 403,
+   "under_hearings_bytes": 0
+  },
+  {
+   "url": "https://www.budget.senate.gov/department-of-defense-fiscal-year-2020-budget-request",
+   "status": 404,
+   "bytes": 0,
+   "final": null,
+   "seconds": 1.4,
+   "under_hearings_status": 403,
+   "under_hearings_bytes": 0
+  },
+  {
+   "url": "https://www.budget.senate.gov/economic-report-of-the-president",
+   "status": 404,
+   "bytes": 0,
+   "final": null,
+   "seconds": 1.41,
+   "under_hearings_status": 403,
+   "under_hearings_bytes": 0
+  },
+  {
+   "url": "https://www.budget.senate.gov/fiscal-year-2020-budget-resolution_-day-1",
+   "status": 404,
+   "bytes": 0,
+   "final": null,
+   "seconds": 1.09,
+   "under_hearings_status": 403,
+   "under_hearings_bytes": 0
+  },
+  {
+   "url": "https://www.budget.senate.gov/fiscal-year-2020-budget-resolution_-day-2",
+   "status": 404,
+   "bytes": 0,
+   "final": null,
+   "seconds": 1.19,
+   "under_hearings_status": 403,
+   "under_hearings_bytes": 0
+  },
+  {
+   "url": "https://www.budget.senate.gov/fixing-a-broken-budget-and-spending-process-perspectives-of-two-former-chairmen",
+   "status": 404,
+   "bytes": 0,
+   "final": null,
+   "seconds": 1.36,
+   "under_hearings_status": 403,
+   "under_hearings_bytes": 0
+  },
+  {
+   "url": "https://www.budget.senate.gov/fixing-a-broken-budget-and-spending-process-securing-the-nations-fiscal-future",
+   "status": 403,
+   "bytes": 0,
+   "final": null,
+   "seconds": 0.74,
+   "under_hearings_status": 403,
+   "under_hearings_bytes": 0
+  },
+  {
+   "url": "https://www.budget.senate.gov/fixing-a-broken-budget-process-lessons-from-states",
+   "status": 404,
+   "bytes": 0,
+   "final": null,
+   "seconds": 1.41,
+   "under_hearings_status": 403,
+   "under_hearings_bytes": 0
+  },
+  {
+   "url": "https://www.budget.senate.gov/gaos-annual-report-on-nations-fiscal-health",
+   "status": 404,
+   "bytes": 0,
+   "final": null,
+   "seconds": 1.2,
+   "under_hearings_status": 403,
+   "under_hearings_bytes": 0
+  },
+  {
+   "url": "https://www.budget.senate.gov/government-accountability-offices-annual-report-focused-on-additional-opportunities-to-reduce-fragmentation",
+   "status": 403,
+   "bytes": 0,
+   "final": null,
+   "seconds": 0.8,
+   "under_hearings_status": 403,
+   "under_hearings_bytes": 0
+  },
+  {
+   "url": "https://www.budget.senate.gov/hearing-should-taxpayers-subsidize-poverty-wages-at-large-profitable-corporations",
+   "status": 404,
+   "bytes": 0,
+   "final": null,
+   "seconds": 2.08,
+   "under_hearings_status": 403,
+   "under_hearings_bytes": 0
+  },
+  {
+   "url": "https://www.budget.senate.gov/markup-to-consider-hr-5430-the-united-states-mexico-canada-agreement-implementation-act",
+   "status": 404,
+   "bytes": 0,
+   "final": null,
+   "seconds": 1.19,
+   "under_hearings_status": 403,
+   "under_hearings_bytes": 0
+  },
+  {
+   "url": "https://www.budget.senate.gov/nomination-hearing-on-derek-kan-to-be-deputy-director-of-white-house-budget-office",
+   "status": 404,
+   "bytes": 0,
+   "final": null,
+   "seconds": 1.37,
+   "under_hearings_status": 403,
+   "under_hearings_bytes": 0
+  },
+  {
+   "url": "https://www.budget.senate.gov/nomination-hearing_-russell-vought-to-be-director-of-office-of-management-and-budget",
+   "status": 404,
+   "bytes": 0,
+   "final": null,
+   "seconds": 1.18,
+   "under_hearings_status": 403,
+   "under_hearings_bytes": 0
+  },
+  {
+   "url": "https://www.budget.senate.gov/nomination-of-ms-shalanda-d-young-to-be-deputy-director-of-omb",
+   "status": 404,
+   "bytes": 0,
+   "final": null,
+   "seconds": 1.43,
+   "under_hearings_status": 403,
+   "under_hearings_bytes": 0
+  },
+  {
+   "url": "https://www.budget.senate.gov/omb-nomination-hearing-of-ms-neera-tanden",
+   "status": 404,
+   "bytes": 0,
+   "final": null,
+   "seconds": 2.68,
+   "under_hearings_status": 403,
+   "under_hearings_bytes": 0
+  },
+  {
+   "url": "https://www.budget.senate.gov/presidents-fy-2019-budget-proposal",
+   "status": 403,
+   "bytes": 0,
+   "final": null,
+   "seconds": 0.94,
+   "under_hearings_status": 403,
+   "under_hearings_bytes": 0
+  },
+  {
+   "url": "https://www.budget.senate.gov/senate-budget-committee-roundtable-to-examine-federal-housing-assistance-programs-",
+   "status": 404,
+   "bytes": 0,
+   "final": null,
+   "seconds": 4.62,
+   "under_hearings_status": 403,
+   "under_hearings_bytes": 0
+  },
+  {
+   "url": "https://www.budget.senate.gov/senate-budget-committee-will-hold-hearing-march-13-on-the-presidents-fiscal-year-2020-budget-proposal",
+   "status": 403,
+   "bytes": 0,
+   "final": null,
+   "seconds": 0.96,
+   "under_hearings_status": 403,
+   "under_hearings_bytes": 0
+  },
+  {
+   "url": "https://www.budget.senate.gov/the-budget-control-act-a-review-of-cap-adjusted-spending",
+   "status": 403,
+   "bytes": 0,
+   "final": null,
+   "seconds": 0.61,
+   "under_hearings_status": 403,
+   "under_hearings_bytes": 0
+  }
+ ],
+ "captured_under_other_path": 0
+}

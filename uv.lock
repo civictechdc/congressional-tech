@@ -219,6 +219,19 @@ wheels = [
 ]
 
 [[package]]
+name = "beautifulsoup4"
+version = "4.15.0"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "soupsieve" },
+    { name = "typing-extensions" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/43/65/318323f98dbee45d42dff61d8f047181bc6f2268a9068cfad035a46be5af/beautifulsoup4-4.15.0.tar.gz", hash = "sha256:288e3ca7d54b06f2ac191970bc275c1939cb46d450b255bf6718b04aa37ab4f7", size = 632571, upload-time = "2026-06-07T16:44:20.453Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/88/c6/92fcd42f1ba33e1184263f25bfabf3d27c383410470f169e4b8163bf9c17/beautifulsoup4-4.15.0-py3-none-any.whl", hash = "sha256:d6f88de62e1d4e38ecb1077eb9724cd0eff29d2a08ca16a401e9b9e93f117cf9", size = 109924, upload-time = "2026-06-07T16:44:21.566Z" },
+]
+
+[[package]]
 name = "blake3"
 version = "1.0.11"
 source = { registry = "https://pypi.org/simple" }
@@ -558,6 +571,7 @@ archive = [
     { name = "aiobotocore" },
     { name = "boto3" },
     { name = "duckdb" },
+    { name = "extruct" },
     { name = "house-naming-guide" },
     { name = "ijson" },
     { name = "pyarrow" },
@@ -577,6 +591,7 @@ requires-dist = [
     { name = "congress-shared", editable = "packages/congress_shared" },
     { name = "docspec-client", editable = "packages/docspec_client" },
     { name = "duckdb", marker = "extra == 'archive'", specifier = ">=1.5.5,<2" },
+    { name = "extruct", marker = "extra == 'archive'", specifier = "==0.18.0" },
     { name = "google-genai" },
     { name = "house-naming-guide", marker = "extra == 'archive'", editable = "packages/house-naming" },
     { name = "ijson", marker = "extra == 'archive'", specifier = ">=3.4,<4" },
@@ -869,6 +884,25 @@ wheels = [
     { url = "https://files.pythonhosted.org/packages/a1/43/3a5e81d1728f4d234c79bfe385808ee7c04834f7c37a4b5c257459c25614/duckdb-1.5.5-cp314-cp314-manylinux_2_26_x86_64.manylinux_2_28_x86_64.whl", hash = "sha256:fbf0f2d48b43c6c304d00463b463c27ead6c4b01c3c1816b750f728decf71afe", size = 21513851, upload-time = "2026-07-22T10:55:07.864Z" },
     { url = "https://files.pythonhosted.org/packages/91/41/fc7c829172c60ca22485251eab285f4f1a0d87b486a024c726f21471d86e/duckdb-1.5.5-cp314-cp314-win_amd64.whl", hash = "sha256:9dc826c4b50e64f6c4e4d07a3a9cb075ef70ba3899dc43ec5493dc3d7b04b353", size = 13691858, upload-time = "2026-07-22T10:55:11.181Z" },
     { url = "https://files.pythonhosted.org/packages/e1/2c/95d9216b79e9273689d7ebce125a54503ed0c9bd7da931f0265888e99779/duckdb-1.5.5-cp314-cp314-win_arm64.whl", hash = "sha256:63e48d4b74b15aeacd688976432a7225163df8c226eddeb8536bba2d4d4ff433", size = 14470180, upload-time = "2026-07-22T10:55:14.445Z" },
+]
+
+[[package]]
+name = "extruct"
+version = "0.18.0"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "html-text" },
+    { name = "jstyleson" },
+    { name = "lxml" },
+    { name = "lxml-html-clean" },
+    { name = "mf2py" },
+    { name = "pyrdfa3" },
+    { name = "rdflib" },
+    { name = "w3lib" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/ce/dd/5ba7345dafaa2b5ccbfd441c7bcfc74bae1176aac9acb0d746b6bb327979/extruct-0.18.0.tar.gz", hash = "sha256:b5b48d459003b27c05ee91527b14a5a31735231aaf85d2b1f331d4db879318dd", size = 44170, upload-time = "2024-11-08T14:59:24.26Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/33/00/60d3efc09d52a9e8d57b59323d7edb962daba2f1c46b89449a252f3652e7/extruct-0.18.0-py2.py3-none-any.whl", hash = "sha256:1e739985da705c3348c7614dc169e7780caf20908338fa5f4c6e48576df6f000", size = 26359, upload-time = "2024-11-08T14:59:22.806Z" },
 ]
 
 [[package]]
@@ -1201,6 +1235,32 @@ requires-dist = [
 provides-extras = ["pyarrow", "test", "typed", "corpus"]
 
 [[package]]
+name = "html-text"
+version = "0.7.1"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "lxml" },
+    { name = "lxml-html-clean" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/67/5f/c8d32dfdb3b03802b4c45555aef07d868eb7561252d6a70459657a1f41c3/html_text-0.7.1.tar.gz", hash = "sha256:87fd194310a9f54be32c7b18a70180dfa72a6b4d01cca35ac813c4d2b2b2ed8b", size = 54423, upload-time = "2025-10-06T10:37:11.259Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/01/da/694ee4570fb1d9d06a00f1493a248531d347be48a2503e9dd79c595de992/html_text-0.7.1-py3-none-any.whl", hash = "sha256:acf13aa1412e559f84f4617fba419720cb8732861736fe07a8dfdafcbdbb8cad", size = 6854, upload-time = "2025-10-06T10:37:10.126Z" },
+]
+
+[[package]]
+name = "html5lib"
+version = "1.1"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "six" },
+    { name = "webencodings" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/ac/b6/b55c3f49042f1df3dcd422b7f224f939892ee94f22abcf503a9b7339eaf2/html5lib-1.1.tar.gz", hash = "sha256:b2e5b40261e20f354d198eae92afc10d750afb487ed5e50f9c4eaf07c184146f", size = 272215, upload-time = "2020-06-22T23:32:38.834Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/6c/dd/a834df6482147d48e225a49515aabc28974ad5a4ca3215c18a882565b028/html5lib-1.1-py2.py3-none-any.whl", hash = "sha256:0d78f8fde1c230e99fe37986a60526d7049ed4bf8a9fadbad5f00e22e58e041d", size = 112173, upload-time = "2020-06-22T23:32:36.781Z" },
+]
+
+[[package]]
 name = "htmldate"
 version = "1.10.0"
 source = { registry = "https://pypi.org/simple" }
@@ -1406,6 +1466,12 @@ wheels = [
 ]
 
 [[package]]
+name = "jstyleson"
+version = "0.0.2"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/5f/c1/3791e39d65c39b4e081010f2cf6f9443b7b6b9f6de63a5e458172c5c9376/jstyleson-0.0.2.tar.gz", hash = "sha256:680003f3b15a2959e4e6a351f3b858e3c07dd3e073a0d54954e34d8ea5e1308e", size = 2004, upload-time = "2016-06-21T14:38:54.305Z" }
+
+[[package]]
 name = "justext"
 version = "3.0.2"
 source = { registry = "https://pypi.org/simple" }
@@ -1533,6 +1599,20 @@ source = { registry = "https://pypi.org/simple" }
 sdist = { url = "https://files.pythonhosted.org/packages/d6/54/cfe61301667036ec958cb99bd3efefba235e65cdeb9c84d24a8293ba1d90/mdurl-0.1.2.tar.gz", hash = "sha256:bb413d29f5eea38f31dd4754dd7377d4465116fb207585f97bf925588687c1ba", size = 8729, upload-time = "2022-08-14T12:40:10.846Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/b3/38/89ba8ad64ae25be8de66a6d463314cf1eb366222074cfda9ee839c56a4b4/mdurl-0.1.2-py3-none-any.whl", hash = "sha256:84008a41e51615a49fc9966191ff91509e3c40b939176e643fd50a5c2196b8f8", size = 9979, upload-time = "2022-08-14T12:40:09.779Z" },
+]
+
+[[package]]
+name = "mf2py"
+version = "2.0.2"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "beautifulsoup4" },
+    { name = "html5lib" },
+    { name = "requests" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/39/39/d6c8c3fb8243c85d24f14307c4345b6608135027816db598ff099f0c5ada/mf2py-2.0.2.tar.gz", hash = "sha256:2851972e514673add74cd2f2898453a50945029ea4a7d32cfdbf231985282ee9", size = 21783, upload-time = "2026-09-18T05:37:46.519Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/5a/b9/487b9ac9541721f02886b225ac15bac3e291b7a59f30dd36502f630cc4d3/mf2py-2.0.2-py3-none-any.whl", hash = "sha256:edc5b433e970e5e9a480e112b2ca5b203299b7c918127501fcb823b5c8fbb905", size = 25785, upload-time = "2026-09-18T05:37:45.379Z" },
 ]
 
 [[package]]
@@ -2435,6 +2515,20 @@ fonts = [
 ]
 
 [[package]]
+name = "pyrdfa3"
+version = "3.6.5"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "html5lib" },
+    { name = "rdflib" },
+    { name = "requests" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/e4/8c/9a93f633252830c37e9e70f4fd2cc0a3b72b91f7efda74cbe047b4168474/pyrdfa3-3.6.5.tar.gz", hash = "sha256:0fc28ff1426af805b100aff7162db6a43fa215e37f92bce9b113b465feb563ea", size = 84561, upload-time = "2026-01-17T23:10:17.064Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/79/9c/ce827ad1262c02cfd377dd75b73010f83010f05fa6db662af950948c0e61/pyrdfa3-3.6.5-py3-none-any.whl", hash = "sha256:3c0d22e2949e7b3abd004fff7c7f110faa83a18bec06f590bdab2ef0f1ee3c02", size = 97535, upload-time = "2026-01-17T23:10:15.731Z" },
+]
+
+[[package]]
 name = "pyroaring"
 version = "1.2.0"
 source = { registry = "https://pypi.org/simple" }
@@ -2595,6 +2689,18 @@ wheels = [
     { url = "https://files.pythonhosted.org/packages/da/92/1446574745d74df0c92e6aa4a7b0b3130706a4142b2d1a5869f2eaa423c6/pyyaml-6.0.3-cp314-cp314t-musllinux_1_2_x86_64.whl", hash = "sha256:16249ee61e95f858e83976573de0f5b2893b3677ba71c9dd36b9cf8be9ac6d65", size = 829923, upload-time = "2025-09-25T21:32:54.537Z" },
     { url = "https://files.pythonhosted.org/packages/f0/7a/1c7270340330e575b92f397352af856a8c06f230aa3e76f86b39d01b416a/pyyaml-6.0.3-cp314-cp314t-win_amd64.whl", hash = "sha256:4ad1906908f2f5ae4e5a8ddfce73c320c2a1429ec52eafd27138b7f1cbe341c9", size = 174062, upload-time = "2025-09-25T21:32:55.767Z" },
     { url = "https://files.pythonhosted.org/packages/f1/12/de94a39c2ef588c7e6455cfbe7343d3b2dc9d6b6b2f40c4c6565744c873d/pyyaml-6.0.3-cp314-cp314t-win_arm64.whl", hash = "sha256:ebc55a14a21cb14062aa4162f906cd962b28e2e9ea38f9b4391244cd8de4ae0b", size = 149341, upload-time = "2025-09-25T21:32:56.828Z" },
+]
+
+[[package]]
+name = "rdflib"
+version = "7.6.0"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "pyparsing" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/98/f5/18bb77b7af9526add0c727a3b2048959847dc5fb030913e2918bf384fec3/rdflib-7.6.0.tar.gz", hash = "sha256:6c831288d5e4a5a7ece85d0ccde9877d512a3d0f02d7c06455d00d6d0ea379df", size = 4943826, upload-time = "2026-02-13T07:15:55.938Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/10/c2/6604a71269e0c1bd75656d5a001432d16f2cc5b8c057140ec797155c295e/rdflib-7.6.0-py3-none-any.whl", hash = "sha256:30c0a3ebf4c0e09215f066be7246794b6492e054e782d7ac2a34c9f70a15e0dd", size = 615416, upload-time = "2026-02-13T07:15:46.487Z" },
 ]
 
 [[package]]
@@ -2938,6 +3044,15 @@ wheels = [
 ]
 
 [[package]]
+name = "soupsieve"
+version = "3.0.4"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/19/63/0b6bae54546aed98d72f12d09df57b19a287f01c84d22047fa2e23772ab9/soupsieve-3.0.4.tar.gz", hash = "sha256:924fab84ae21604c19e175e1f39815eb6fa83ba23836e09e9de180925e5bc4c0", size = 119017, upload-time = "2026-10-22T00:45:26.362Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/07/66/473f7ca0be0b06e38ee8c85ee2db184e3981bd769fac2e7c19c8a8865211/soupsieve-3.0.4-py3-none-any.whl", hash = "sha256:8412826614f9c632227067d0985aeb9f584bd15efc852955430e097a9fe7afbf", size = 42458, upload-time = "2026-10-22T00:45:24.843Z" },
+]
+
+[[package]]
 name = "sqlalchemy"
 version = "2.1.5"
 source = { registry = "https://pypi.org/simple" }
@@ -3164,6 +3279,24 @@ dependencies = [
 requires-dist = [
     { name = "congress-api", extras = ["archive"], editable = "packages/congress_api" },
     { name = "congress-shared", editable = "packages/congress_shared" },
+]
+
+[[package]]
+name = "w3lib"
+version = "2.5.0"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/be/77/5138921cc21adf763e941671b4cc6bbf00813663c983aa3fb8dac273f081/w3lib-2.5.0.tar.gz", hash = "sha256:a7ddf714508ddc1b8563bd19ace2feb28080bbaca39326cbc964359f6754f615", size = 385035, upload-time = "2026-09-30T10:10:54.571Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/99/bb/e977329315ba4e14f6f6ca0fee7de816a80d161c115a181405bbab92aecf/w3lib-2.5.0-py3-none-any.whl", hash = "sha256:136fd5edfe64b53b8579838e2a7e803495bbbe6b69ddfaeed3c29a794b44f6ba", size = 37047, upload-time = "2026-09-30T10:10:53.179Z" },
+]
+
+[[package]]
+name = "webencodings"
+version = "0.6.1"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/d5/a0/8fd707bcb776a7be556bad06a2ea5fb9bd519df78ef8e26f70ccf0f38bff/webencodings-0.6.1.tar.gz", hash = "sha256:565f9ad031c702dae404e27a099e3e09186a3ab1b9520f06d215502b651fd910", size = 15001, upload-time = "2026-08-15T14:22:57.549Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/77/c6/040cbc72480d789a5f40d63fb484d3106554c4dfa2d2b70ad5022057750f/webencodings-0.6.1-py3-none-any.whl", hash = "sha256:7fab6269c8bf237c657876b52058ccb182e861518d1c695c1a9aaa8c1c105d5b", size = 8745, upload-time = "2026-08-15T14:22:56.31Z" },
 ]
 
 [[package]]

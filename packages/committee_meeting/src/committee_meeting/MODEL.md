@@ -97,7 +97,7 @@ every linked meeting.
 
 | Record/value | Purpose and important fields |
 |---|---|
-| `Material` | A described document, recording or text product. Title, Congress, chamber and proceeding dates support discovery before meeting matching. |
+| `Material` | A described document, recording or text product. Title, publisher description, Congress, chamber and proceeding dates support discovery before meeting matching. |
 | `DocumentDetails` | Transcript, statement, biography, disclosure, witness list, questions/responses for the record, amendment, vote, report, bill text, errata and other categories. |
 | `RecordingDetails` | Audio/video, full/clip/compilation, provider and optional channel. |
 | `TextDetails` | Transcript, captions, translation, summary or other text; publisher/human/automatic/mixed production. |

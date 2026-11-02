@@ -1,0 +1,207 @@
+{
+ "cohort": {
+  "bodies": 850,
+  "raw_bodies_read": 850,
+  "manifest": "sample-manifest.json"
+ },
+ "counts": {
+  "candidates:0": 695,
+  "candidates:1": 155,
+  "outcome:fallback_required": 697,
+  "outcome:marked": 125,
+  "outcome:marked_no_content": 27,
+  "outcome:none": 1,
+  "property:content:encoded": 154,
+  "property:json-ld:articleBody": 1,
+  "reason:None": 125,
+  "reason:empty_candidate": 3,
+  "reason:no_candidate": 694,
+  "reason:not_substantive": 1,
+  "reason:short_marked_text": 27,
+  "with_candidate": 155
+ },
+ "hosts": {
+  "veterans.house.gov": 154,
+  "www.gov.uk": 1
+ },
+ "marked": {
+  "n": 125,
+  "median_chars_removed_against_whole_page": 2577,
+  "selected_chars": {
+   "min": 426,
+   "median": 7936,
+   "max": 80495
+  },
+  "bodies_with_marked_words_not_in_trafilatura": 6,
+  "bodies_with_marked_words_not_in_whole_page": 1
+ },
+ "marked_no_content": [
+  {
+   "sha": "10785c68a2a0e0dbf05a902ab3abf01aab21a7940b5da3181e2729ebc6ac3c8d",
+   "chars": 22,
+   "text": "No prepared statement.",
+   "links": []
+  },
+  {
+   "sha": "1ad588a5148d9b126c7ce3cccffd988bc69839d7d8a0df00a9da802fa4f94e3e",
+   "chars": 22,
+   "text": "No prepared statement.",
+   "links": []
+  },
+  {
+   "sha": "32e737680146eea993d876e250894380acfc69f66177eb73c5ff772c9ec84a98",
+   "chars": 22,
+   "text": "No prepared statement.",
+   "links": []
+  },
+  {
+   "sha": "3f1abc8d2979bd0760024e8549982a542a73320467cef10bfe0e94681eb5c47b",
+   "chars": 22,
+   "text": "No prepared statement.",
+   "links": []
+  },
+  {
+   "sha": "58f1d585f050f7e18daad896c5c0988141748546c7f4f09050500cd59fe849e5",
+   "chars": 22,
+   "text": "No prepared statement.",
+   "links": []
+  },
+  {
+   "sha": "5ca228d53692c7682110ca98a02ac65b39cecd8055ea072f7bda4fe5e8293e8d",
+   "chars": 70,
+   "text": "Click on the link for participant submission. (PDF Download is 4.2 MB)",
+   "links": [
+    "http://veterans.house.gov/Media/file/111/7-21-10/Elliottsubmissions.pdf"
+   ]
+  },
+  {
+   "sha": "5fe399bf8e91e767bf4b677db900e7c88d9164fe48d55f14291682e9ba4ef229",
+   "chars": 22,
+   "text": "No prepared statement.",
+   "links": []
+  },
+  {
+   "sha": "6085c95aae7e521ea73aca0c21c5f6de0014ba46e69e79e511ada5df1068d8ce",
+   "chars": 22,
+   "text": "No prepared statement.",
+   "links": []
+  },
+  {
+   "sha": "638af96da0ed0c03624f0fcaaa0d1cf86737594eeb2898ab49190608fbe15b49",
+   "chars": 22,
+   "text": "No prepared statement.",
+   "links": []
+  },
+  {
+   "sha": "75781bb91b8cfa48c44ad1b6a4cacf8dfec44cb3c8764f5b76fcbdf466f5fad3",
+   "chars": 22,
+   "text": "No prepared statement.",
+   "links": []
+  },
+  {
+   "sha": "7feb7322133df50fb4b0f77f328d0259001fc0d41ffed1dd44ad41848a9d926f",
+   "chars": 22,
+   "text": "No prepared statement.",
+   "links": []
+  },
+  {
+   "sha": "80d10f984cc1b219b8dccc93ae3997f9dca2d7bf73f1b82504b5fd6bf7fc042a",
+   "chars": 22,
+   "text": "No prepared statement.",
+   "links": []
+  },
+  {
+   "sha": "88caf0e15e6f4c3844d18315f5a4827d06232e5d961bdcb9765e6c90ae4f73a3",
+   "chars": 22,
+   "text": "No prepared statement.",
+   "links": []
+  },
+  {
+   "sha": "9381154d9eb6a020c3d188329a97f9652af873df5cd1401cd1cf314d61ec6816",
+   "chars": 22,
+   "text": "No prepared statement.",
+   "links": []
+  },
+  {
+   "sha": "980a0fb7839a2219b11b67729595dee9801b665d69aae5b371ad6dc50d9849e6",
+   "chars": 22,
+   "text": "No prepared statement.",
+   "links": []
+  },
+  {
+   "sha": "98334f502e2696e0e3da50e92e519c3ae7772149f38d76299c23ce69d40604c6",
+   "chars": 18,
+   "text": "Not available yet.",
+   "links": []
+  },
+  {
+   "sha": "9ad09deacf776117f341cd6683bdfba2bff534764aceb34ad2f9afd88bb36078",
+   "chars": 22,
+   "text": "No prepared statement.",
+   "links": []
+  },
+  {
+   "sha": "a7e81c966e56a87f24f3da466fdc71108bbb280615208515110ceeb3ad03ec8f",
+   "chars": 22,
+   "text": "No prepared statement.",
+   "links": []
+  },
+  {
+   "sha": "b20f0bcaf9999879505b6b9132bf8790c1965c0c7a358b503404520bd5a10240",
+   "chars": 22,
+   "text": "No prepared statement.",
+   "links": []
+  },
+  {
+   "sha": "bb8bbb70433e87a25ebc22c7211573321af55ed5e6e2e28044b67cca970a762f",
+   "chars": 22,
+   "text": "No prepared statement.",
+   "links": []
+  },
+  {
+   "sha": "be0b6257627c78c507d142e5d9cbb234ff670b67bfbf3e7e950ba4c5c330b1fc",
+   "chars": 22,
+   "text": "No prepared statement.",
+   "links": []
+  },
+  {
+   "sha": "d14b52df22be8e9fd049765129b34a4a91fa056ae8a646606e79c156e2250d51",
+   "chars": 22,
+   "text": "No prepared statement.",
+   "links": []
+  },
+  {
+   "sha": "e0b5e93aa12cc6b40de8c6ada451e4c51e774852c07d3e6cfe4522149bd2a7db",
+   "chars": 22,
+   "text": "No prepared statement.",
+   "links": []
+  },
+  {
+   "sha": "e4ad11098c59067f87874bf359db6a8a0efd168f1281048641d8d0385a4e7ab1",
+   "chars": 22,
+   "text": "No prepared statement.",
+   "links": []
+  },
+  {
+   "sha": "e731da0ae5deadfe6e702dd463ce61f17b3930375da0b898de97cc75a5632c2d",
+   "chars": 22,
+   "text": "No prepared statement.",
+   "links": []
+  },
+  {
+   "sha": "f3dc4cfc1861b9bd2a721eef7d425ca3ad4910cfc78f31c3317e33acc8293ecc",
+   "chars": 22,
+   "text": "No prepared statement.",
+   "links": []
+  },
+  {
+   "sha": "f5a99eb1aa09e23265a9a6a1525feb230f399ed245f3691d7377ee286922fdc6",
+   "chars": 22,
+   "text": "No prepared statement.",
+   "links": []
+  }
+ ],
+ "no_real_instances": [
+  "multiple distinct candidates"
+ ]
+}

@@ -1,6 +1,7 @@
 """Adapt retained Senate committee pages without fetching or rematching them."""
 
 from collections import Counter, defaultdict
+from datetime import time as dt_time
 from urllib.parse import urlsplit
 
 from committee_meeting.assessments import Assessment
@@ -17,8 +18,12 @@ from committee_meeting.meetings import (
 )
 from committee_meeting.provenance import AlternativeValue, FieldEvidence, Method
 
-from congress_api.adapters.common import digest, material_records, observed_time, ref, reported_time, web_url, witness_roles
+from congress_api.adapters.common import digest, material_and_version, material_records, observed_time, ref, reported_time, web_url, witness_roles
+from committee_meeting.common import Location, ReportedTime
 from congress_api.adapters.documents import category
+from congress_api.adapters.page_metadata import page_source
+from congress_api.parsers.senate import displayed_clock
+from congress_api.parsers.senate_page import DATE, written_day
 from congress_api.adapters.recordings import recording_reference
 from congress_api.matching.meetings import meeting_access, meeting_type
 from congress_api.matching.senate_corrections import DATE_CORRECTIONS, selected_date
@@ -54,6 +59,31 @@ def _attachment_aliases(page):
             aliases[candidates[0][0]].append((index, document))
             skipped.add(index)
     return aliases, skipped
+
+
+def listed_schedule(context, host, site, url, start, correction):
+    """Clock and room from a listing row whose displayed day is the page's own event date.
+
+    A listing date never sets the event date, and an encoded-only clock is ambiguous
+    (its template drops the meridiem), so neither path can change the day. Returns
+    (start, location, field evidence, source). Rows saved before date_text cannot be
+    checked against the event date and change nothing.
+    """
+    details = (site.get("listing_details") or {}).get(url) or {}
+    shown = DATE.search(details.get("date_text") or "")
+    if correction or start is None or not shown or written_day(shown) != start.date or details.get("time_evidence") == "encoded_only_ambiguous":
+        return start, None, (), None
+    source = context.source(f"senate-listing-row|{host}|{url}", details, url)
+    location = Location(label=details["room"]) if details.get("room") else None
+    clock = displayed_clock(details.get("time") or "")
+    if clock is None:
+        return start, location, (), source if location else None
+    displayed = ReportedTime(date=start.date, time=dt_time(*clock), precision="minute", original=details["time"])
+    encoded = details.get("encoded_start")
+    field = FieldEvidence(path="/scheduled_start", selected=context.evidence(source, selector="/time"),
+                          alternatives=(AlternativeValue(value=encoded, provenance=context.evidence(source, selector="/encoded_start")),) if encoded else (),
+                          selection_reason="The displayed clock is selected; no zone is inferred.")
+    return displayed, location, (field,), source
 
 
 def records(state, context, *, meetings, committee_terms=None, meeting_records=None, occurrence_records=None):
@@ -120,7 +150,9 @@ def records(state, context, *, meetings, committee_terms=None, meeting_records=N
             previous_retrieval = observed_time(page.get("retrieved_at"), context.now) if isinstance(check, dict) and check.get("mode") == "live" else None
             if live or previous_retrieval:
                 source = source.model_copy(update={"retrieved_at": live[0] if live else previous_retrieval})
+            source, declared = page_source(context, url, source)
             yield source
+            yield from declared
             workflow_source = None
             if record:
                 workflow_source = context.source(f"senate-page-workflow|{host}|{url}", record, url)
@@ -195,15 +227,19 @@ def records(state, context, *, meetings, committee_terms=None, meeting_records=N
                     kind = meeting_type(event)[0]
                     access, _ = meeting_access(event)
                     native_key = f"senate.committee|{url}"
+                    start = reported_time(selected_date(url, event))
+                    start, location, schedule_fields, listed_source = listed_schedule(context, host, site, url, start, correction)
+                    if listed_source:
+                        yield listed_source
                     meeting = Meeting(id=context.ids("meeting", native_key), title=event["title"], congress=official["congress"],
                                       chamber="joint" if official["committee_code"].startswith("j") else "senate", meeting_type=kind,
                                       source_type=event.get("type") or None, access=access,
-                                      scheduled_start=reported_time(selected_date(url, event)),
+                                      scheduled_start=start, location=location, field_evidence=schedule_fields,
                                       committees=(ConveningCommittee(committee=term, role="host", provenance=event_evidence),),
                                       identifiers=(Identifier(scheme="senate.committee:page", value=url),), provenance=event_evidence)
                     yield meeting
                     occurrence_evidence = event_evidence
-                    date_fields = ()
+                    date_fields = schedule_fields
                     if correction:
                         occurrence_evidence = correction_evidence
                         date_fields = (FieldEvidence(path="/scheduled_start", selected=occurrence_evidence,
@@ -211,7 +247,7 @@ def records(state, context, *, meetings, committee_terms=None, meeting_records=N
                                       selection_reason=correction["reason"]),)
                     access, _ = meeting_access(event)
                     yield MeetingOccurrence(id=context.ids("occurrence", native_key + "|sitting"), meeting=ref(meeting),
-                                            scheduled_start=reported_time(selected_date(url, event)), access=access,
+                                            scheduled_start=start, location=location, access=access,
                                             provenance=occurrence_evidence, field_evidence=date_fields)
                     emitted_meetings[meeting.id] = meeting
                     matched[meeting.id] = (ref(meeting), event_evidence)
@@ -308,7 +344,7 @@ def records(state, context, *, meetings, committee_terms=None, meeting_records=N
                 built = material_records(context, ev, recording_key, title=attributes.get("title"), urls=[recording_url],
                     details=RecordingDetails(medium="audio" if media.get("tag") == "audio" else "unknown" if media.get("tag") == "source" else "video", provider=provider), identifiers=identifiers)
                 yield from built
-                material, version = built[:2]
+                material, version = material_and_version(built)
                 for meeting, match_evidence in (matched.values() if shared_media[recording_key] <= OWN else ()):
                     yield MaterialLink(id=context.ids("material_link", recording_key + "|" + meeting.id),
                         material=ref(material), version=ref(version), subject=meeting, role="recording",
@@ -375,7 +411,7 @@ def records(state, context, *, meetings, committee_terms=None, meeting_records=N
                 built = [item.model_copy(update={"locations": tuple(location.model_copy(update={"role": "landing"}) if attachment_page(location.url) else location for location in item.locations)})
                          if item.kind == "representation" else item for item in built]
                 yield from built
-                material, version = built[:2]
+                material, version = material_and_version(built)
                 if not web_url(document_url):
                     yield issue("invalid-url|" + document_hash, "unverified", "A reported document URL is not an absolute HTTP(S) URL.",
                                 subject=ref(material), selector=selector)
