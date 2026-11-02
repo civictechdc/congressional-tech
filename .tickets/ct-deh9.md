@@ -51,3 +51,7 @@ Round 1b 2026-11-02 (lead): Readings: sniff, xml and json are lock-only or prove
 **2026-11-02T14:46:34Z**
 
 2026-11-02 (lead): red-e2 (request changes): prove_unchanged fix 8240567c confirmed. Open items: 1-row sample proofs accepted for whole and predicate bases; an html whole entry accepted despite its re-read set; two old versions can select one body; the proof tooling lives in the bundle-hashed file and moves the readings pin. Sent to impl-e2.
+
+**2026-11-02T15:35:26Z**
+
+2026-11-02 spec-run: registry entries proven with 0 differences (sniff lock_only 2,000; xml whole 2,000; json whole 123; bundle dd70d745 full 25). The full html proof hit a HashJoinInput refusal on the frozen eb40c54 engine (pool 14 GiB, peak 12.8 GiB, readings.plan → pending_bodies over 124,651 bodies / 322,923 captures; known_formats inlined 3x, expression-key joins; plan in .cache/archive-release/r1b-run/explain/html-pending/). Re-running on 5a3121c (ss-ud8y fixes that class). The bundle proof is flaky on one 38.8 MB XML body (ct-61ys).
