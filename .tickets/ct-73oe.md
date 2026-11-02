@@ -32,3 +32,9 @@ Retain raw values, ordering/multiplicity, declared base, generic meta/link field
 - Unknown properties and original values remain available; no remote vocabulary/context fetch is required.
 - Consumers share the reader, existing source fields remain readable, and dependency/fingerprint checks prove changed extraction versions cannot masquerade as earlier results.
 
+
+## Notes
+
+**2026-11-02T00:40:43Z**
+
+Owner note 2026-11-01: in the owner's experience the extruct version doesn't matter. Don't let it gate parser versions or trigger re-reads; record the version on readings as provenance.

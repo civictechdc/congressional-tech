@@ -1,7 +1,7 @@
 ---
 id: ct-5kto
 status: open
-deps: [ct-t915, ct-yymr, ct-vnkf, ct-adtz, ct-klyz, ct-4jms, ct-gi01, ct-m104, cef-96wc]
+deps: [ct-t915, ct-yymr, ct-vnkf, ct-adtz, ct-klyz, ct-4jms, ct-gi01, ct-m104, cef-96wc, ct-x78c]
 links: [cefr-vnw8, cef-jh7i, cef-96wc, ct-w8dc, ct-93zs, ct-m104, ct-t915, ct-gi01]
 created: 2026-10-30T14:32:31Z
 type: task

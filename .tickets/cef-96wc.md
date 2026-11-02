@@ -1,7 +1,7 @@
 ---
 id: cef-96wc
 status: open
-deps: [ct-itcg, ct-9gmr, ct-qg8e, ct-2c0w, ct-31e2, ct-kn6d]
+deps: [ct-itcg, ct-9gmr, ct-qg8e, ct-2c0w, ct-31e2, ct-kn6d, ct-r8jd]
 links: [ct-klyz, ct-4jms, ct-5kto, ct-77zb, cef-jh7i, ct-t906, ct-1mbc, ct-kw9b, ct-9gmr, ct-pocg, ct-64el]
 created: 2026-10-28T05:00:43Z
 type: task
@@ -54,3 +54,7 @@ Owner decision 2026-11-01: B13 and B10 run unattended and out of band; they no l
 **2026-11-02T00:36:42Z**
 
 Owner decisions 2026-11-01: keep 448651e7 live until a fixed release ships; ZIP contents are the documents (ct-64el). Removal notices for the 7,266 lost links are decided after the rebuild.
+
+**2026-11-02T00:40:43Z**
+
+New blockers: ct-r8jd (runaway limit).

@@ -87,3 +87,7 @@ Independent Validation Reconciliation (2026-11-01):
 **2026-11-01T20:08:14Z**
 
 Owner scope decision 2026-11-01 (annex §4.6, data model §8): raised to P1. Typed release tables for channels, videos, recording matches, completeness and committee amendments/votes. Pinned upstream relations for SpicyRegs detail. Evidence references only for bulky raw material: YouTube caches, captions and per-match evidence files. Nothing is deferred.
+
+**2026-11-02T00:40:43Z**
+
+Owner decision 2026-11-01: revise the memory criterion. Measure and report memory, with a high runaway limit (ct-r8jd) instead of a <2 GB target. Sittings: Congress.gov first and the House fix both (ct-cjwx). Old witness rows are kept (ct-x78c).

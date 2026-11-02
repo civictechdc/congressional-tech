@@ -1,0 +1,20 @@
+---
+id: ct-r8jd
+status: open
+deps: []
+links: []
+created: 2026-11-02T00:40:43Z
+type: task
+priority: 1
+assignee: mikewolfd
+parent: ct-77zb
+tags: [memory, jobs, phase2]
+---
+# Add a runaway memory limit to native archive jobs
+
+Owner decision 2026-11-01: measure model memory, with a high limit for runaways rather than a tight target. Engine pool settings do not bound process RSS (ct-deg8): one expression reached 20.4 GiB at a 1 GiB pool, and an out-of-memory crash on 2026-11-01 took down a 48 GB machine. The local guard is .cache/rounds/guard.py, which is not checked in.
+
+## Acceptance Criteria
+
+Every native archive job runs under one checked-in RSS watchdog with a configured high limit; a runaway stops the job with a named failure instead of harming the machine; peak RSS is recorded per run. The hosted runner limit is set from a measured full run.
+
