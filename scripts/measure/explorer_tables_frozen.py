@@ -53,7 +53,10 @@ def positioned_detail(release, work):
     work.mkdir(parents=True, exist_ok=True)
     path = work / 'detail-positions.parquet'
     with duckdb.connect() as db:
-        db.execute(f"""COPY (SELECT package_id,file_row_number AS list_row FROM read_parquet('{release / 'detail.parquet'}',file_row_number=true)) TO '{path}' (FORMAT PARQUET)""")
+        # detail and list share row positions; transcripts read the saved format and alternates (g).
+        db.execute(f"""COPY (SELECT d.package_id,d.file_row_number AS list_row,l.format,d.alternates
+            FROM read_parquet('{release / 'detail.parquet'}',file_row_number=true) d
+            JOIN read_parquet('{release / 'list.parquet'}',file_row_number=true) l USING (file_row_number)) TO '{path}' (FORMAT PARQUET)""")
     return path
 
 
@@ -108,7 +111,7 @@ def main(argv=None):
         *appearance_steps(),
         dict(name='witnesses_export', sql=WITNESSES_SQL, materialize=True),
         dict(name='meeting_document_urls', sql=sql('meeting-document-urls'), materialize=True),
-        dict(name='details', sql='SELECT package_id,cast(list_row AS INT) AS list_row FROM released_detail', materialize=True),
+        dict(name='details', sql='SELECT package_id,cast(list_row AS INT) AS list_row,format,alternates FROM released_detail', materialize=True),
         dict(name='meetings_export', sql=sql('entity-meetings'), materialize=True),
     ]
     outputs = [dict(name='resolved_meetings.parquet', path=str(args.output / 'resolved_meetings.parquet'),
