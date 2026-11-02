@@ -163,7 +163,11 @@ def select_pdf_candidates(
         if 'sha256' in cap_schema.names and pa.types.is_string(cap_schema.field('sha256').type):
             capture_sha = "decode(c.sha256, 'hex')"
 
+    from congress_api.lake import compatible_versions
+    # Older sniff rows count only on behalf of the current pin the registry names.
+    entries = compatible_versions.load_registry() if version == current_version('sniff') else []
     steps = [
+        *compatible_versions.selected_readings_steps(entries, parsers=('sniff',)),
         sql_step('pinned_readings', 'pinned-readings.sql'),
         dict(
             name='sniff_observations',

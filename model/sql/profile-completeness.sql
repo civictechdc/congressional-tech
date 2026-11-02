@@ -5,12 +5,11 @@ WITH expected_parsers AS (
  SELECT body_sha FROM body_admissions
  WHERE format IN ('empty','vtt','m3u8') AND basis IS NOT NULL AND basis<>''
 ), sniff_readings AS (
- SELECT r.body_sha FROM readings r JOIN parser_versions v ON r.parser=v.parser AND r.parser_version=v.version
+ SELECT r.body_sha FROM selected_readings r
  WHERE r.parser='sniff' AND r.status IN ('completed','error','size_limit')
 ), unreadable_sniff AS (
- SELECT body_sha256 FROM active_unreadable u
- WHERE (u.parser='sniff' AND EXISTS (SELECT 1 FROM parser_versions v WHERE v.parser='sniff' AND v.version=u.parser_version))
-    OR (u.parser='readings' AND u.parser_version={{READINGS_VERSION}})
+ SELECT body_sha256 FROM active_unreadable u JOIN accepted_versions v ON u.parser=v.parser AND u.parser_version=v.version
+ WHERE u.parser IN ('sniff','readings')
 ), missing_sniff AS (
  SELECT b.body_sha FROM profile_bodies b
  WHERE NOT EXISTS (SELECT 1 FROM sniff_facts f WHERE f.body_sha=b.body_sha)
@@ -18,22 +17,20 @@ WITH expected_parsers AS (
  AND NOT EXISTS (SELECT 1 FROM sniff_readings r WHERE r.body_sha=b.body_sha)
  AND NOT EXISTS (SELECT 1 FROM unreadable_sniff u WHERE u.body_sha256=encode(b.body_sha,'hex'))
 ), page_readings AS (
- SELECT r.body_sha,r.parser,r.parser_version FROM readings r
+ SELECT r.body_sha,r.parser FROM selected_readings r
  WHERE r.parser IN ('html','xml','json') AND r.status IN ('completed','error','size_limit')
 ), unreadable_pages AS (
- SELECT body_sha256,parser,parser_version FROM active_unreadable
- WHERE parser IN ('html','xml','json')
- UNION
- SELECT body_sha256,v.parser,v.version AS parser_version
- FROM active_unreadable u CROSS JOIN parser_versions v
- WHERE u.parser='readings' AND u.parser_version={{READINGS_VERSION}} AND v.parser IN ('html','xml','json')
+ -- A bundle decision settles every page parser for its body.
+ SELECT u.body_sha256,CASE WHEN u.parser='readings' THEN p.parser ELSE u.parser END AS parser
+ FROM active_unreadable u JOIN accepted_versions v ON u.parser=v.parser AND u.parser_version=v.version
+ CROSS JOIN (SELECT unnest(make_array('html','xml','json')) AS parser) p
+ WHERE u.parser IN ('html','xml','json','readings') AND (u.parser='readings' OR u.parser=p.parser)
 ), missing_pages AS (
  SELECT DISTINCT b.body_sha,s.format FROM profile_bodies b JOIN sniff_facts s ON b.body_sha=s.body_sha
- JOIN parser_versions v ON s.format=v.parser WHERE s.format IN ('html','xml','json')
- AND NOT EXISTS (SELECT 1 FROM page_readings r WHERE r.body_sha=b.body_sha AND r.parser=v.parser
-   AND r.parser_version=v.version)
+ WHERE s.format IN ('html','xml','json')
+ AND NOT EXISTS (SELECT 1 FROM page_readings r WHERE r.body_sha=b.body_sha AND r.parser=s.format)
  AND NOT EXISTS (SELECT 1 FROM unreadable_pages u WHERE u.body_sha256=encode(b.body_sha,'hex')
-   AND u.parser=v.parser AND u.parser_version=v.version)
+   AND u.parser=s.format)
 ), valid_filename_readings AS (
  SELECT filename,source_url FROM filename_readings
  WHERE catalog_version={{CATALOG_VERSION}} AND status IN ('completed','error','size_limit')

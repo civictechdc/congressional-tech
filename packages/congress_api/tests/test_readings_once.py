@@ -212,3 +212,36 @@ def test_writer_admission_cannot_override_a_current_byte_format(tmp_path):
     with pytest.raises(ValueError,match='Conflicting.*metadata'):
         readings.stage_once(**args,work=work)
     assert not (work/'parsed').exists()
+
+
+def fixture_registry(path, entries):
+    path.write_text(json.dumps(dict(version=2, entries=entries)))
+    return path
+
+
+def whole_entry(parser, old, current):
+    """A fixture proof shaped like the CLI's; validation reads its binding, not real bodies."""
+    from congress_api.lake import compatible_versions as cv
+    proof = dict(scope='sample', version=old, current=current, recompute_sha256=cv.recompute_sha256('none'),
+        old_input_sha256='a' * 64, new_input_sha256='a' * 64, rows=1, columns=1, differences=0, only_old=0, only_new=0,
+        lock_only=dict(recomputed=old))
+    return dict(parser=parser, version=old, current=current, basis='lock_only' if parser == 'sniff' else 'whole',
+        recompute_sql='none', reason='fixture', proof=proof)
+
+
+def test_combined_plan_settles_bodies_on_registry_covered_older_rows(tmp_path):
+    # Defect guarded: a plan that still joins existing rows on e.parser_version=<current pin>
+    # re-reads every body whose rows sit at a covered older pin.
+    from congress_api.retention.provenance import run_job, parquet_output
+    args, _, _ = _review_inputs(tmp_path)
+    staged = readings.stage_once(**args, work=tmp_path / 'first')
+    versions = {p: readings.current_version(p) for p in ['sniff', 'html', 'xml', 'json']}
+    old = tmp_path / 'old'
+    run_job(old, args['engine'], inputs=[dict(name='r', kind='parquet', path=str(staged['readings']))], steps=[],
+        queries=[], outputs=[parquet_output(old, 'readings', "SELECT * EXCLUDE(parser_version),concat(parser,'-old') AS parser_version FROM r", readings.PK)])
+    relabelled = old / 'readings.parquet'
+    assert {r['parser_version'] for r in pq.read_table(relabelled).to_pylist()} == {'sniff-old', 'html-old'}
+    covered = fixture_registry(tmp_path / 'covered.json', [whole_entry(p, p + '-old', versions[p]) for p in versions])
+    empty = fixture_registry(tmp_path / 'empty.json', [])
+    assert readings.plan(**args, parser=None, existing=relabelled, registry=covered, work=tmp_path / 'with')['work_items'] == 0
+    assert readings.plan(**args, parser=None, existing=relabelled, registry=empty, work=tmp_path / 'without')['work_items'] == 1

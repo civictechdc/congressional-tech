@@ -115,7 +115,8 @@ def bundle_version(versions,*,policy):
     from congress_api.lake.versions import version_digest
     files={'producer':Path(__file__),
         'supervisor':Path(__file__).parents[1]/'retention/parser_worker.py',
-        'resources':Path(__file__).parents[1]/'retention/process_resources.py'}
+        'resources':Path(__file__).parents[1]/'retention/process_resources.py',
+        'selection':Path(__file__).parent/'compatible_versions.py'}
     files.update({name:ROOT/'model/sql'/(name+'.sql') for name in
         ['pinned-readings','sniff-observations','sniff-conflicts','sniff-facts','body-admissions']})
     return version_digest(packages={},files=files,values=dict(leaf_versions=versions,policy=policy))
@@ -168,8 +169,13 @@ def _positive(value,name):
 
 def plan(*,captures,body_inventory,local_root,engine,work,decided_at,parser,
          sniff_version=None,parser_version=None,existing=None,unreadable_files=(),max_work_items=None,raw_ranges=False,
-         body_listing=None):
-    """Materialize one native missing-body work list, without opening raw bodies."""
+         body_listing=None,registry=None):
+    """Materialize one native missing-body work list, without opening raw bodies.
+
+    Existing rows count through the one readings selection, so rows at a registry-covered
+    older version settle their bodies. `registry` names another registry file (tests only).
+    """
+    from congress_api.lake import compatible_versions
     if max_work_items is not None:_positive(max_work_items,'max_work_items')
     if type(raw_ranges) is not bool:raise ValueError('raw_ranges must be an explicit boolean')
     if body_listing is not None and not raw_ranges:raise ValueError('Body listing requires ranged reads')
@@ -189,7 +195,14 @@ def plan(*,captures,body_inventory,local_root,engine,work,decided_at,parser,
         sniff_version=versions['sniff']
     work=Path(work).resolve();work.mkdir(parents=True,exist_ok=False)
     raw=Path(local_root).resolve()
-    inputs=[json_input(work,'parser_versions',[dict(parser=p,version=v) for p,v in ({**versions,'sniff':sniff_version} if combined else {'sniff':sniff_version}).items()],parser='Utf8',version='Utf8'),
+    pins={**versions,'readings':bundle_version(versions,policy=limits)}
+    entries=compatible_versions.load_registry(current=pins,**({} if registry is None else dict(path=registry)))
+    selected={**versions,'sniff':sniff_version}
+    # A legacy plan at another sniff pin selects no older sniff rows on that pin's behalf.
+    covered=[p for p in compatible_versions.LEAF_PARSERS if selected[p]==versions[p]]
+    inputs=[json_input(work,'parser_versions',[dict(parser=p,version=v) for p,v in selected.items()],parser='Utf8',version='Utf8'),
+            compatible_versions.accepted_versions_input(work,[e for e in entries if e['parser'] in covered+['readings']],
+                pins={**selected,'readings':pins['readings']}),
             table_input('captures',captures)]
     if not direct_listing:
         inputs.append(dict(name='body_inventory',kind='parquet',path=str(Path(body_inventory).resolve())))
@@ -251,6 +264,7 @@ def plan(*,captures,body_inventory,local_root,engine,work,decided_at,parser,
     steps.extend([
         dict(name='bodies',sql='SELECT DISTINCT sha256 AS body_sha FROM captures WHERE sha256 IS NOT NULL',materialize=True),
         dict(name='readings',sql='SELECT * FROM existing'),
+        *compatible_versions.selected_readings_steps(entries,parsers=covered),
         *[dict(name=name.replace('-','_'),sql=(ROOT/'model/sql'/(name+'.sql')).read_text())
           for name in ['pinned-readings','sniff-observations','sniff-conflicts','sniff-facts']],
         dict(name='known_formats',sql='SELECT body_sha,format FROM sniff_facts'),
@@ -264,15 +278,14 @@ def plan(*,captures,body_inventory,local_root,engine,work,decided_at,parser,
         steps.append(dict(name='settled_parsers',sql="""SELECT body_sha,array_agg(DISTINCT parser) AS parsers FROM (
             SELECT body_sha,parser FROM pinned_readings UNION
             SELECT decode(u.body_sha256,'hex') AS body_sha,u.parser FROM active_unreadable u
-            JOIN parser_versions v ON u.parser=v.parser AND u.parser_version=v.version
+            JOIN accepted_versions v ON u.parser=v.parser AND u.parser_version=v.version
             WHERE u.body_sha256 IS NOT NULL) GROUP BY body_sha""",materialize=True))
         candidate="""NOT EXISTS(SELECT 1 FROM body_admissions a WHERE a.body_sha=b.body_sha) AND
          ((NOT EXISTS(SELECT 1 FROM known_formats f WHERE f.body_sha=b.body_sha) AND NOT EXISTS(
            SELECT 1 FROM settled_parsers sp WHERE sp.body_sha=b.body_sha AND array_has(sp.parsers,'sniff'))) OR EXISTS(
           SELECT 1 FROM known_formats f WHERE f.body_sha=b.body_sha AND f.format IN ('html','xml','json')
-          AND NOT EXISTS(SELECT 1 FROM existing e JOIN parser_versions v ON e.parser=v.parser AND e.parser_version=v.version
-              WHERE e.body_sha=f.body_sha AND e.parser=f.format)
-          AND NOT EXISTS(SELECT 1 FROM active_unreadable u JOIN parser_versions v ON u.parser=v.parser AND u.parser_version=v.version
+          AND NOT EXISTS(SELECT 1 FROM selected_readings e WHERE e.body_sha=f.body_sha AND e.parser=f.format)
+          AND NOT EXISTS(SELECT 1 FROM active_unreadable u JOIN accepted_versions v ON u.parser=v.parser AND u.parser_version=v.version
               WHERE u.body_sha256=encode(f.body_sha,'hex') AND u.parser=f.format)))"""
     extra=""",(SELECT max(format) FROM known_formats f WHERE f.body_sha=b.body_sha) AS known_format,
        sp.parsers AS skip_parsers""" if combined else ''
@@ -295,12 +308,15 @@ def plan(*,captures,body_inventory,local_root,engine,work,decided_at,parser,
             ',true AS copy_usable,false AS listing_missing,0 AS fallback_missing,0 AS fallback_conflict,0 AS fallback_pin')
     settled_join=' LEFT JOIN settled_parsers sp ON b.body_sha=sp.body_sha' if combined else ''
     stored_size=size_pin if raw_ranges and body_listing is not None else 'i.stored_bytes'
+    # A legacy sniff plan pinned to another sniff version settles on exact current rows only.
+    settled=('selected_readings' if combined or parser in covered else
+             f'(SELECT * FROM existing WHERE parser_version={quote(version)})')
     sql=f'''SELECT b.body_sha,i.physical_key,i.relative_path,{stored_size} AS stored_bytes,i.stored_gzip{extra}
         FROM bodies b LEFT JOIN body_inventory i ON b.body_sha=i.body_sha{settled_join}{storage_join}
-        WHERE {candidate} AND NOT EXISTS(SELECT 1 FROM existing e WHERE e.body_sha=b.body_sha
-          AND e.parser={quote(parser)} AND e.parser_version={quote(version)})
-        AND NOT EXISTS(SELECT 1 FROM active_unreadable u WHERE u.body_sha256=encode(b.body_sha,'hex')
-          AND u.parser={quote(parser)} AND u.parser_version={quote(version)})'''
+        WHERE {candidate} AND NOT EXISTS(SELECT 1 FROM {settled} e WHERE e.body_sha=b.body_sha
+          AND e.parser={quote(parser)})
+        AND NOT EXISTS(SELECT 1 FROM active_unreadable u JOIN accepted_versions v ON u.parser=v.parser
+          AND u.parser_version=v.version WHERE u.body_sha256=encode(b.body_sha,'hex') AND u.parser={quote(parser)})'''
     steps.append(dict(name='pending_bodies',sql=sql,materialize=True))
     checks=run_job(work,engine,inputs=inputs,steps=steps,
         outputs=[parquet_output(work,'work-list','SELECT * FROM pending_bodies',['body_sha'])]+([parquet_output(work,'body-admissions','SELECT * FROM body_admissions',['body_sha'])] if combined else []),queries=[

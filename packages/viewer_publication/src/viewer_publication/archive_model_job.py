@@ -113,22 +113,18 @@ def validate_spec(value,*,base):
                 raise ValueError('Expected a provenance record of the declared object family')
             validate_key(key)
             result[name].append(dict(item,path=_local(item['path'],base)))
-    from congress_api.lake import readings,filenames,meeting_records,appearance_records
-    current={name:readings.current_version(name) for name in ['sniff','html','xml','json']}
+    from congress_api.lake import compatible_versions,filenames
+    from viewer_publication.archive_model_profile import SELECTED_SOURCES,current_parser_versions
     pv=value.get('parser_versions')
     if not isinstance(pv,dict):
         raise ValueError('Parser versions must match the current definitions')
-    expected_pv=dict(current)
-    if 'meeting_records' in pv:
-        expected_pv['meeting_records']=meeting_records.current_versions()
-    elif value.get('meeting_records') is not None:
-        raise ValueError('Model job with meeting_records requires pinned meeting_records parser_versions')
-    if 'appearance_records' in pv:
-        expected_pv['appearance_records']=appearance_records.current_versions()
-    elif value.get('appearance_records') is not None:
-        raise ValueError('Model job with appearance_records requires pinned appearance_records parser_versions')
-    if pv!=expected_pv:
+    for name in SELECTED_SOURCES:
+        if value.get(name) is not None and name not in pv:
+            raise ValueError(f'Model job with {name} requires pinned {name} parser_versions')
+    if pv!=current_parser_versions(pv.keys()):
         raise ValueError('Parser versions must match the current definitions')
+    # A stale or unproved compatible entry refuses here, before any input is opened.
+    compatible_versions.load_registry()
     if value['catalog_version']!=filenames.current_version():
         raise ValueError('Catalog version must match the current definition')
     return result
