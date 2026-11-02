@@ -48,3 +48,7 @@ Local implementation and verification are complete. Updated discovery metadata s
 **2026-11-02T13:05:13Z**
 
 2026-11-02 (lead): the recipe is already live in 448651e7 and returns two rows; the fixed release should return exactly one (a80bbbc83acf1c12). Round 3 unit D1 checks it.
+
+**2026-11-02T14:35:28Z**
+
+2026-11-02 (lead): on 448651e7, 119-hr-1 returns 6EA8C1FAD7D36439 and A80BBBC83ACF1C12 (meeting 118300). Close when the fixed release returns only A80BBBC83ACF1C12.

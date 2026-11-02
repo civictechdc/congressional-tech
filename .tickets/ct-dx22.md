@@ -32,3 +32,7 @@ Round 1b 2026-11-02 (lead): Two-way package-to-meeting rule moves 392 rows on 93
 **2026-11-02T13:54:36Z**
 
 2026-11-02 (lead): red-f BLOCK: the MODS eventId link attaches the wrong hearing's witnesses (330128, 329130, 335820, 326063); one MODS body per meeting drops the correct print (31 rows); one-to-one links still mis-attach on 31 House meetings (126 rows). Fix: accept eventId only when held date and title agree, rank witnesses per package, and rebuild the raw check on independent raw facts. Sent to impl-f.
+
+**2026-11-02T14:35:28Z**
+
+2026-11-02 (lead): impl-f r1b-f (07b6923f, 24 commits): MODS prints carry held_dates and title; print_meeting_agreement accepts a print only when held that day and at least half the shorter title's words agree; per-print witness ranking. Raw check (independent): print attachments 448 supported, 83 ambiguous, 5 contradicted. Published witness rows 147,888 to 139,077 (about 10k print rows outranked by House XML or Congress.gov lists). red-f2 is checking whether those are duplicates or lost facts.

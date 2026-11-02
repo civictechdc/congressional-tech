@@ -23,3 +23,9 @@ Re-run the zero-match query on the current selected meeting_records and retain i
 - The query returns 0 on the current input.
 - missing_committee_keys stays 0 on the next model run.
 
+
+## Notes
+
+**2026-11-02T14:35:28Z**
+
+2026-11-02 (lead): folded into r1b-f: rule deleted (0 of 18,183 Congress.gov and 6,287 House XML codes matched); 0 committee keys missing.
