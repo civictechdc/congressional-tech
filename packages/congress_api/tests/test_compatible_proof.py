@@ -67,3 +67,22 @@ def test_a_whole_version_proof_over_a_local_sample_binds_its_entry(tmp_path, mon
     with pytest.raises(ValueError, match='too small'):
         compatible_proof.main(['--parser', 'html', '--old', 'old-html', '--base', str(base / 'readings.parquet'), '--captures', str(captures),
             '--raw-root', str(raw), '--work', str(tmp_path / 'small'), '--sample', '2', '--write', '--engine-config', os.environ['DOCSPEC_JOB_CONFIG']])
+
+
+def test_a_bundle_proof_states_strata_the_registry_accepts(tmp_path, monkeypatch):
+    # Defect guarded: a full bundle proof without strata, refused by the registry's coverage rule.
+    bodies = ['a' * 64, 'b' * 64]
+    decisions = tmp_path / 'decisions.jsonl'
+    decisions.write_text(''.join(json.dumps(dict(body_sha256=b, parser='readings', parser_version='b-old', reason=r)) + '\n'
+                                 for b, r in zip(bodies, ['memory_limit', 'output_limit'])))
+    stage = tmp_path / 'stage'
+    (stage / 'parsed').mkdir(parents=True)
+    (stage / 'parsed/unreadable.jsonl').write_text(decisions.read_text())
+    monkeypatch.setattr(compatible_proof, 'local_bodies', lambda raw: {b: 'x' for b in bodies})
+    monkeypatch.setattr(compatible_proof, 'recompute', lambda **kw: (None, dict(work_list=stage / 'work-list.parquet')))
+    pins = cv.current_pins()
+    proof = compatible_proof.prove_bundle(old='b-old', decisions=[decisions], captures=None, raw_root=tmp_path, engine=None,
+        work=tmp_path, decided_at='2026-11-02T00:00:00Z', current=pins['readings'])
+    entry = dict(parser='readings', version='b-old', current=pins['readings'], basis='bundle', recompute_sql=cv.WHOLE, reason='r', proof=proof)
+    assert proof['strata'] == dict(memory_limit=dict(population=1, local=1, sampled=1), output_limit=dict(population=1, local=1, sampled=1))
+    assert cv.validate_entries([entry], current=pins) == [entry]

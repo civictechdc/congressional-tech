@@ -82,6 +82,16 @@ def test_refuses_a_digest_mismatch_and_absent_raw_root_before_any_effect(tmp_pat
     with pytest.raises(ValueError,match='raw_root is absent'):selective_spec(tmp_path/'raw',moved,dict(captures=B))
 
 
+def test_a_pinned_input_manifest_must_match_before_any_effect(tmp_path,fixture):
+    manifest=tmp_path/'manifest.json';manifest.write_text('{}')
+    from congress_api.retention.provenance import file_pin
+    spec=selective_spec(tmp_path,fixture,dict(captures=B))
+    spec['selective']['input_manifest']=dict(path=str(manifest),**file_pin(manifest))
+    manifest.write_text('{"changed":true}')
+    with pytest.raises(ValueError,match='does not match its pin'):execute(spec)
+    assert not Path(spec['work']).exists()
+
+
 def test_zero_hits_stops_before_any_table_exists(tmp_path,fixture):
     spec=selective_spec(tmp_path,fixture,dict(captures="receipt_key='absent'"))
     with pytest.raises(SelectiveStop,match='selects no rows'):execute(spec)

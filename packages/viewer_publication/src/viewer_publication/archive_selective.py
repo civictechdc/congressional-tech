@@ -59,7 +59,7 @@ def validate_selective(value,*,base,catalog_root,tables):
     if any(ref['namespace']==['archive'] for ref in tables.values()):
         raise ValueError('Selective backfill refuses the archive namespace')
     required={'base','raw_root','receipt_inventory','source_counts','provenance','where','differential_rows','model','publish_template'}
-    if not isinstance(value,dict) or not required<=value.keys() or value.keys()-required-{'body_fallback','source_qualifications'}:
+    if not isinstance(value,dict) or not required<=value.keys() or value.keys()-required-{'body_fallback','source_qualifications','input_manifest'}:
         raise ValueError('Selective backfill requires exactly its declared fields')
     if not isinstance(value['base'],dict) or set(value['base'])!=set(ALL_TABLE_NAMES):
         raise ValueError('Selective backfill requires a pin for all five base tables')
@@ -77,7 +77,9 @@ def validate_selective(value,*,base,catalog_root,tables):
     def pinned(item):
         _pin(item,PIN);return dict(item,path=_local(item['path'],base))
     for name in ('receipt_inventory','source_counts'):result[name]=pinned(value[name])
-    if value.get('source_qualifications') is not None:result['source_qualifications']=pinned(value['source_qualifications'])
+    for name in ('source_qualifications','input_manifest'):
+        # input_manifest ties the run to how its regenerated inputs were made (release_input_custody).
+        if value.get(name) is not None:result[name]=pinned(value[name])
     provenance=value['provenance']
     if not isinstance(provenance,dict) or set(provenance)!=set(PROVENANCE_KINDS):
         raise ValueError('Selective provenance must name recoveries, reviews and unreadable')
@@ -101,7 +103,7 @@ def validate_selective(value,*,base,catalog_root,tables):
 def _verify_pins(selective):
     """A digest mismatch or a remote model runtime stops the run before the first effect."""
     selectors=[pin for pin in selective['base'].values() if pin['kind']=='parquet']
-    selectors+=[selective[name] for name in ('receipt_inventory','source_counts','source_qualifications') if name in selective]
+    selectors+=[selective[name] for name in ('receipt_inventory','source_counts','source_qualifications','input_manifest') if name in selective]
     selectors+=[row for rows in selective['provenance'].values() for row in rows]
     for item in selectors:
         if not Path(item['path']).is_file() or file_pin(item['path'])!={k:item[k] for k in ('sha256','size')}:

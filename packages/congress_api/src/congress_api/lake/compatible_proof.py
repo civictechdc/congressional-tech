@@ -165,6 +165,13 @@ def attest_lock_only(*, parser, old, old_lock, raw_root, local, bodies, work):
     return dict(recomputed=result['version'], changed_distributions=changed, parsed_bodies=len(payloads))
 
 
+def _counts(values):
+    counts = {}
+    for value in values:
+        counts[value] = counts.get(value, 0) + 1
+    return counts
+
+
 def prove_bundle(*, old, decisions, captures, raw_root, engine, work, decided_at, current):
     """Re-read every decision body under the current producer; each must reach the same reason."""
     old_rows = [json.loads(line) for f in decisions for line in Path(f).read_text().splitlines() if line.strip()]
@@ -183,7 +190,9 @@ def prove_bundle(*, old, decisions, captures, raw_root, engine, work, decided_at
         old_input_sha256=sha256(b''.join(Path(f).read_bytes() for f in decisions)).hexdigest(),
         new_input_sha256=file_pin(path)['sha256'] if path.exists() else sha256(b'').hexdigest(),
         rows=len(before), columns=1, differences=differences, only_old=sum(b not in new for b in before),
-        only_new=sum(b not in before for b in new))
+        only_new=sum(b not in before for b in new),
+        # Every decision body is read, so each reason's stratum is complete.
+        strata={reason: dict(population=n, local=n, sampled=n) for reason, n in _counts(before.values()).items()})
     return proof
 
 
