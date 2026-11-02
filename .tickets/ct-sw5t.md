@@ -21,17 +21,20 @@ Chaos test run chaos-mcp-20261101T200453Z against publish_v21 (448651e7) uncover
 
 ## Design
 
-Owner: apps/explorer_mcp/src/congressional_explorer_mcp/reader.py and server.py.
-1. Add 'short_title' to TEXT_FIELDS / text-search column list in reader.py.
-2. In Reader.get_entity(..., section='documents'), add an explicit nominations branch checking (list_contains(l.measure_keys, ?) OR EXISTS (SELECT 1 FROM nominations n, unnest(n.transcripts) t(package_id) WHERE n.nomination_id=? AND d.package_id=t.package_id)) with args [str(query.id), str(query.id)].
-3. Project the same document metadata columns in get_entity(..., section='documents') as in search_documents.
-4. In Reader.search_entities filter validation, check 'if name not in columns:' first and raise ExplorerError listing the table's scalar filter columns; reserve 'Use a scalar published filter; query_sql supports nested ...' for actual array/struct/map columns.
-5. Update search_entities docstring in server.py to note that rosters holds seat assignments (bioguide_id, system_code, role title) and point to the committee_roster recipe or members table for member names.
+Owner: apps/explorer_mcp/src/congressional_explorer_mcp/reader.py, server.py, and model/registries/release-schema.json.
+1. Add `'short_title'` to `TEXT_FIELDS` / text-search column list in `reader.py` (and set a non-null `short_title` on the `bills` fixture row in `apps/explorer_mcp/tests/conftest.py:78`).
+2. **Preserve `r3-mcp`'s single-owner schema boundary (`published_entities(schema)`) and the direct-annotation vs. transcript-recipe boundary (`ct-1xt0`):**
+   - Do **not** add a hardcoded `if query.table == 'nominations':` branch in `Reader.get_entity` (which would override `published_entities(schema)`, violate the direct `list.<col>[]` vs. `package_id` transcript boundary enforced by `test_relationships.py:106-113`, and break `test_entity_to_documents` in `test_reader.py:39-46`).
+   - Instead, update the `get_entity` and `search_documents` tool docstrings in `server.py` (and the `document_nominations` note in `release-schema.json`) to state explicitly that `get_entity(section='documents')` and `search_documents` match direct `list.<col>[]` document annotations (`list.measure_keys` holds `bill_id`s), and direct callers to the `nomination_transcripts`, `bill_hearing_transcripts`, and `witness_transcripts` recipes for `package_id`-linked hearing transcripts.
+3. Extract a shared document-summary column projection in `reader.py` so `get_entity(..., section='documents')` returns `l.congress, l.document_date, l.document_kind, l.saved_kind` (plus `d.document_date_source, l.first_captured, l.date_kind` on `r3-mcp`) while **preserving `l.hidden`** on `get_entity(..., section='documents')` so `test_reader.py:45` (`assert all(not r['hidden'] for r in result['rows'])`) remains green.
+4. In `Reader.search_entities` filter validation, check `if name not in columns:` **before** the nested-column check (`'[]' in columns[name] or columns[name].startswith(('STRUCT', 'MAP'))`). Raise `ExplorerError(f'Unknown filter field {name!r} on {query.table}; scalar filter fields are: ...')` for unknown columns, and keep the exact `'Use a scalar published filter; query_sql supports nested ...'` message for nested columns so `test_reader.py:55-56` passes.
+5. Update `search_entities` docstring in `server.py` to note that `rosters` holds seat assignments (`bioguide_id`, `system_code`, role `title`) and point to the `committee_roster` recipe or `members` table for member names.
 
 ## Acceptance Criteria
 
-- search_entities(table='bills', text='One Big Beautiful Bill') returns 119-hr-1.
-- get_entity(table='nominations', id='119-pn-11-9', section='documents') returns its linked confirmation hearing transcript(s) via nominations.transcripts -> detail.package_id, with full document metadata columns.
-- Filtering search_entities by an unknown column raises an 'Unknown filter field' error listing valid scalar columns, while filtering by an actual array/struct column still raises the nested-field error.
-- All explorer-mcp unit and stdio integration tests pass.
+- `search_entities(table='bills', text='One Big Beautiful Bill')` matches `bills.short_title` and passes `test_every_entity_table_is_text_searchable_or_explicitly_not` on `r3-mcp`.
+- `get_entity(..., section='documents')` returns the full document metadata columns alongside `l.hidden`, and `test_entity_to_documents` (`test_reader.py:39-46`) passes without hardcoded table branches overriding `published_entities(schema)`.
+- `get_entity` and `search_documents` docstrings in `server.py` clearly direct callers to `nomination_transcripts`, `bill_hearing_transcripts`, and `witness_transcripts` for hearing transcripts.
+- Filtering `search_entities` by an unknown column raises an `'Unknown filter field'` error listing valid scalar columns, while filtering by an actual array/struct column still raises `'Use a scalar published filter; query_sql supports nested ...'` (`test_reader.py:55-56`).
+- All `explorer-mcp` unit and stdio integration tests pass.
 

@@ -10,26 +10,24 @@ assignee: mikewolfd
 parent: ct-m104
 tags: [mcp, schema, recipes, chaos-test]
 ---
-# Replace placeholder recipe example parameters in release-schema.json with retained published keys
+# Replace placeholder recipe example parameters in release-schema.json and remove test parameter overrides
 
-In model/registries/release-schema.json (CT-CHAOS-105a from chaos-mcp-20261101T200453Z), 6 of the 11 published SQL recipes advertise placeholder or unretained example parameter values that return 0 rows when executed against publish_v21 (448651e7): hearing_documents (event_id=118001), witness_documents (witness_key='0123456789abcdef'), witness_transcripts (witness_key='0123456789abcdef'), committee_roster (system_code='hsif00'), recording_tracks (event_id=118001), and document_editions (list_row=3). In addition, test_relationships.py hardcodes 'appearance-1' for witness_key instead of testing the published example value.
+In model/registries/release-schema.json (CT-CHAOS-105a from chaos-mcp-20261101T200453Z), `witness_documents` and `witness_transcripts` advertise the synthetic placeholder `witness_key='0123456789abcdef'`, requiring `test_relationships.py` (`test_every_recipe_executes_and_has_the_declared_result_grain`) to override `witness_key` with `'appearance-1'` instead of testing `[p['example'] for p in recipe['parameters']]`. In addition, several other recipe `example` parameters (`event_id=118001` in `hearing_documents`/`recording_tracks`, `nomination_id='119-pn-730-2'` in `nomination_transcripts`, `list_row=3` in `document_editions`) are coupled to the synthetic unit-test / native-producer fixtures (`conftest.py` and `test_phase2_model_entities.py`) and may not match every live release snapshot (`publish_v21` `448651e7` vs `r1b` `c94bfedc` vs `CURRENT`).
 
 ## Design
 
-Owner: model/registries/release-schema.json, docs/release-relationships.md, apps/explorer_mcp/tests/conftest.py, and apps/explorer_mcp/tests/test_relationships.py.
-1. Update the 6 recipe example values in model/registries/release-schema.json to real retained keys present in publish_v21:
-   - hearing_documents: event_id 118300
-   - witness_documents: witness_key 'f7dc5fd61b82f27f9d4a6523'
-   - witness_transcripts: witness_key 'c7fa9a05d1c0c5a18ca8bd04'
-   - committee_roster: system_code 'hsju00' (House Committee on the Judiciary)
-   - recording_tracks: event_id 115538
-   - document_editions: list_row 1
-2. Update apps/explorer_mcp/tests/conftest.py fixture data to include those exact keys and remove the 'appearance-1' override in test_relationships.py so every recipe is tested directly with [p['example'] for p in recipe['parameters']].
-3. Regenerate docs/release-relationships.md and run viewer_publication.archive_schema --check.
+Owner: model/registries/release-schema.json, docs/release-relationships.md, apps/explorer_mcp/tests/conftest.py, apps/explorer_mcp/tests/test_relationships.py, and apps/explorer_mcp/src/congressional_explorer_mcp/server.py.
+1. Replace the placeholder `'0123456789abcdef'` in `model/registries/release-schema.json` with valid 16-hex-char `witness_key` values from the target release:
+   - In `publish_v21` (`448651e7`, v1 witness keys): `witness_documents` `'0001497931f99cd1'` (or `'0ba3184ba5a188b2'`), `witness_transcripts` `'0000b43c099edbc2'`.
+   - In `r1b-h` (`c94bfedc`, `witness-occurrence-v2` keys on `release-train` / `main`): `witness_documents` `'000222ef6e3cee4e'` (`Ms. Maura Calsyn`, `event_id=101778`, 2 rows), `witness_transcripts` `'000156c36d8a8a5e'` (`James Weinstein`, `CHRG-112shrg80540`, 1 row).
+   (Note: `witness_key` in `release-schema.json:519` is a 16-character lowercase hex hash, not a 24-character key; `448651e7` and `c94bfedc` share 0 `witness_key` strings because `witness-occurrence-v2` hashes `record_sha_hex` and `context_key`. Also note that `committee_roster` with `system_code='hsif00'` and `congress=119` already returns 54 rows in both `448651e7` and `c94bfedc`; for the remaining recipes across both `448651e7` and `c94bfedc`, `hearing_documents(118300)` returns 39/38 rows, `nomination_transcripts('119-pn-11-10')` returns 2/1 rows, `recording_tracks(335286)` returns 5 rows, and `document_editions(8)` returns 1 row.)
+2. Keep `118001`, `'hsif00'`, `'119-pn-730-2'`, `'appearance-1'`, `'appearance-2'`, and `list_row=3` intact in `conftest.py` and `test_phase2_model_entities.py` so the 25+ existing unit and native-release assertions in `test_reader.py`, `test_exact_entities.py`, `test_server.py`, and `test_native_release.py` remain untouched; append/align the 16-hex witness keys (and any updated recipe example keys) in `conftest.py` (and `test_phase2_model_entities.py` if needed on `r3-mcp`) so `test_every_recipe_executes_and_has_the_declared_result_grain` runs `params = [p['example'] for p in recipe['parameters']]` with zero overrides and asserts `expected['witness_transcripts'] == 1`.
+3. In `server.py:get_dataset_info` docstring, clarify that recipe `example` parameters illustrate parameter types/formats and that callers should substitute keys discovered via `search_entities` or `search_documents` when querying a specific release.
+4. Regenerate `docs/release-relationships.md` and run `.venv/bin/python -m viewer_publication.archive_schema --check`.
 
 ## Acceptance Criteria
 
-- Executing every recipe in model/registries/release-schema.json with its declared example parameters returns >= 1 row against both the unit test fixture and the retained release.
-- test_every_recipe_executes_and_has_the_declared_result_grain passes using [p['example'] for p in recipe['parameters']] with no parameter overrides.
-- .venv/bin/python -m viewer_publication.archive_schema --check passes and docs/release-relationships.md is up to date.
+- `witness_documents` and `witness_transcripts` in `model/registries/release-schema.json` use valid 16-hex-char `witness_key` examples (`'0001497931f99cd1'` and `'0000b43c099edbc2'`) rather than `'0123456789abcdef'`.
+- `test_every_recipe_executes_and_has_the_declared_result_grain` in `test_relationships.py` executes `[p['example'] for p in recipe['parameters']]` with no parameter overrides and passes (`witness_transcripts` expected count `>= 1`).
+- `test_native_release.py` (on `r3-mcp`) and `.venv/bin/python -m viewer_publication.archive_schema --check` pass with `docs/release-relationships.md` up to date.
 
