@@ -154,7 +154,7 @@ def mapping_steps():
         " AND starts_with(json_get_str(item,0),'/') THEN 'path-digest-pair' "
         "WHEN regexp_match(json_get_str(item),'^[A-Za-z0-9_-]{1,64}$') IS NOT NULL THEN 'identifier' "
         "ELSE 'unsupported' END AS item_shape FROM item_entries")
-    paths=[(name,) for name in SCALARS]+list(RECOVERY.values())+DOWNLOAD_HEADERS+[('error',),('kind',),('body_complete',)]
+    paths=[(name,) for name in SCALARS]+list(RECOVERY.values())+DOWNLOAD_HEADERS+[('error',),('kind',),('body_complete',),('previous_receipt','body_complete')]
     paths += [('receipt',name) for name in SCALARS]+[('receipt','body_complete'),('receipt','error')]
     paths += [prefix+('prior_attempts',index,name) for prefix in [(),('receipt',)]
               for index in range(PRIOR_ATTEMPT_LIMIT) for name in ATTEMPT_FIELDS]
@@ -197,6 +197,7 @@ def mapping_steps():
     item_fields['prior_attempts']=f'CASE WHEN {domain} THEN {nested_prior} ELSE {top_prior} END'
     item_fields['record_captures']=attempt_facts(slots,(),'captures')
     item_fields['kind']=scalar(slots[('kind',)],'str')
+    item_fields['previous_receipt_complete']=scalar(slots[('previous_receipt','body_complete')],'bool')
     item_fields['line_kind_shape']='item_shape'
     item_fields.update({name:scalar(slots[path],'str') for name,path in RECOVERY.items()})
     item_fields['h_content_disposition']=first(*(scalar(slots[path],'str') for path in DOWNLOAD_HEADERS))
@@ -389,7 +390,7 @@ def mapping_steps():
         return f"CASE captures_pointer_slot {' '.join(branches)} ELSE {default} END"
     step('pointed_attempts',f"""SELECT *,
         {prior_slot_value(0,'int')} AS prior_status,
-        {prior_slot_value(1,'bool')} AS prior_complete,
+        CASE WHEN {has_previous_receipt_pointer} THEN get_field(record,'previous_receipt_complete') ELSE {prior_slot_value(1,'bool')} END AS prior_complete,
         {prior_slot_value(2,'str')} AS prior_outcome,
         {prior_slot_value(3,'bool',True)} AS prior_error,
         {prior_slot_value(4,'bool',True)} AS prior_conflict,
