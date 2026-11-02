@@ -4,15 +4,6 @@ import re
 from pydantic import BaseModel, ConfigDict, Field, StrictBool, StrictInt, StrictStr
 
 MAX_BYTES = 128 << 10
-ENTITY_KEYS = {
-    'meetings': 'event_id', 'witnesses': 'witness_key', 'recordings': 'video_key',
-    'committees': 'system_code', 'members': 'bioguide_id', 'bills': 'bill_id',
-    'nominations': 'nomination_id',
-}
-DOCUMENT_LINKS = {
-    'meetings': 'meeting_keys', 'witnesses': 'witness_keys', 'committees': 'committee_keys',
-    'members': 'bioguide_ids', 'bills': 'measure_keys', 'nominations': 'measure_keys',
-}
 
 
 class ExplorerError(ValueError):

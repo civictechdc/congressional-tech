@@ -215,18 +215,31 @@ Pass those fields to `get_document`, adding `section: "sources"` or
 filters and page size. A running server stays on its selected release; run
 `prepare` and restart it to adopt a newer one.
 
-Entity keys:
+Entity keys come from the selected release's `schema.json`: every file whose
+`identity` is a published-identifier primary key (`get_dataset_info` returns
+them as `entity_keys`, and absent ones as `missing_entities`). Document links are
+the schema's `list.<column>[]` relationships to that key. In the current release:
 
 | Table | Key |
 |---|---|
 | `meetings` | `event_id` |
 | `witnesses` | `witness_key` (an appearance, not a deduplicated person) |
-| `recordings` | `video_key` |
+| `recordings`, `videos` | `video_key` |
 | `committees` | `system_code` |
 | `members` | `bioguide_id` |
 | `bills` | `bill_id`, e.g. `119-hr-1` |
 | `nominations` | `nomination_id`, e.g. `119-pn-730-2` |
-| `rosters` | Compound fields; use `search_entities` or SQL |
+| `channels` | `handle` |
+| `recording_matches` | `match_id` |
+| `committee_records` | `record_key` |
+| `rosters`, `meeting_coverage`, `url_variants` | Compound fields; use `search_entities` or SQL |
+
+A release whose schema states no identity has no entity keys; use `query_sql`.
+`upstream_relations` in `get_dataset_info` name SpicyRegs detail tables (bill
+actions, cosponsors, member ballots, ...) with their pinned generation; the MCP
+does not read them. `search_documents` rows carry `document_date_source`
+(filename, content or meeting) beside `document_date`, and `date_kind` beside
+`first_captured`; none of these is a page-update date.
 
 Entity IDs and integer entity filters accept integers or base-10 integer strings.
 Leading zeros and surrounding whitespace normalize to the same value, including

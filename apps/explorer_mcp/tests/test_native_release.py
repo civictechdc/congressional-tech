@@ -41,6 +41,25 @@ def test_native_producer_release_through_stdio(tmp_path, request):
             # ct-x78c: a House list with no meeting-id reaches its meeting through its own document links.
             listed = await call('search_entities', {'table':'witnesses','filters':{'event_id':115538}})
             assert {r['name'] for r in listed['rows'] if r.get('source') in (None, 'house_xml')} >= {'Dr. Jane Smith', 'Dr. Jane Smith Second Panel'}
+            # Entity keys, missing tables and upstream relations come from the release's own schema (ct-m104).
+            assert info['missing_entities'] == []
+            assert {'videos','channels','recording_matches','committee_records','meeting_coverage'} <= info['entity_keys'].keys()
+            assert info['upstream_relations'] == native_schema['upstream_relations'] and len(info['upstream_relations']) == 7
+            upstream = native_schema['upstream_relations'][0]
+            assert {k: v for k, v in (await call('get_dataset_info', {'relationship':upstream['id']})).items()
+                    if k in upstream} == upstream
+            coverage = await call('get_dataset_info', {'table':'meeting_coverage'})
+            assert coverage['identity']['fields'] == ['event_id','aspect'] and coverage['available']
+            assert {m['name'] for m in coverage['meanings']} >= {'state','reason'}
+            video = await call('get_entity', {'table':'videos','id':'youtube:agHearing01'})
+            assert (video['rows'][0]['handle'], video['rows'][0]['stated_event_ids']) == ('@AgRepublicans', [115538])
+            curated = await call('search_entities', {'table':'recording_matches','filters':{'basis':'curated'}})
+            assert [(r['event_id'], r['url'], r['status']) for r in curated['rows']] == [(115538, 'https://example.test/watch', 'decided')]
+            record = (await call('search_entities', {'table':'committee_records','filters':{'event_id':115538}}))['rows']
+            assert [(r['kind'], r['bill']) for r in record] == [('amendment', 'H.R. 1234')]
+            assert (await call('get_entity', {'table':'committee_records','id':record[0]['record_key']}))['rows'] == record
+            unmatched = await call('get_dataset_info', {'recipe':'channel_unmatched_videos'})
+            assert [r['video_key'] for r in await sql(unmatched['sql'], ['@AgRepublicans'])] == ['youtube:agUpload02']
             for table in native_schema['files']:
                 if table['available']:
                     result = await call('get_dataset_info', {'table':table['name'].removesuffix('.parquet')})
@@ -64,8 +83,13 @@ def test_native_producer_release_through_stdio(tmp_path, request):
                 if recipe['id'] == 'bill_hearing_transcripts':
                     assert len({r['list_row'] for r in rows}) == len(rows)
                     assert all(r['meeting_ids'] == sorted(set(r['meeting_ids'])) and r['meeting_ids'] for r in rows)
+                    # ct-1xt0: one row per transcript package.
+                    packages = await sql('SELECT package_id FROM detail WHERE list_contains(?::INTEGER[], list_row)',
+                                         [[r['list_row'] for r in rows]])
+                    assert len({p['package_id'] for p in packages}) == len(rows) == len(packages)
             found = await call('search_documents', {'witness_key':witness['witness_key']})
             assert found['rows']
+            assert all({'document_date_source','first_captured','date_kind'} <= r.keys() for r in found['rows'])
             document = await call('get_document', found['rows'][0]['reference'])
             assert document['rows'][0]['saved_url']
             entities = await call('search_entities', {'table':'witnesses','filters':{'event_id':witness['event_id']}})

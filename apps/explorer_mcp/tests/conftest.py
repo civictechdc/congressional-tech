@@ -90,6 +90,11 @@ def phase2(tmp_path_factory):
         write('recording_matches', """SELECT 'a' AS match_id,115538::BIGINT AS event_id,'youtube:abc' AS video_key,NULL::VARCHAR AS url,'publisher_link' AS basis,
             'linked' AS decision,100::SMALLINT AS score,'unknown' AS recording_scope,'asserted' AS status,NULL::VARCHAR AS note""")
         write('meeting_coverage', """SELECT 118001::BIGINT AS event_id,'recording' AS aspect,'present' AS state""")
+        write('channels', """SELECT '@AgRepublicans' AS handle,'UC1' AS channel_id,'hsag00' AS system_code,'Agriculture' AS committee_label,
+            'primary' AS role,'House Agriculture Republicans' AS title,true AS uploads_scan_complete,'curated_directory' AS mapping_basis""")
+        write('committee_records', """SELECT 'rec-1' AS record_key,118001::BIGINT AS event_id,'amendment' AS kind,'H.R. 1' AS bill,
+            'Substitute amendment agreed by voice vote' AS source_description,0::INTEGER AS ordinal""")
+        write('url_variants', """SELECT 'https://fixture.test/a' AS canonical_url,'http://fixture.test/a' AS variant_url""")
         write('future_data', "SELECT 'new published column' AS future_field,42.123456789012345678::DECIMAL(38,18) AS amount")
     # Read only the producer-owned JSON. The MCP runtime has no producer dependency.
     (root / 'schema.json').write_bytes((REPO / 'model/registries/release-schema.json').read_bytes())

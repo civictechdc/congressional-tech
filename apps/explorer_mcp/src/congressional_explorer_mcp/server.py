@@ -52,10 +52,11 @@ def create_server(selection=None, *, timeout=10.0, data_dir=None, publication=PU
 
     @mcp.tool(annotations=annotations)
     async def get_dataset_info(table: str | None = None, relationship: str | None = None, recipe: str | None = None) -> dict:
-        """Discover tables, coverage, and published relationship/recipe IDs.
+        """Discover tables, entity keys, coverage, and published relationship/recipe IDs.
 
         Pass one selector: table for columns, identity and incoming/outgoing IDs;
-        relationship for keys and join meaning; recipe for parameterized DuckDB SQL.
+        relationship for keys and join meaning (also a pinned upstream relation's ID); recipe for parameterized DuckDB SQL.
+        upstream_relations name SpicyRegs detail tables (actions, cosponsors, ballots, ...) by generation; they are not in this release.
         Also accepts table=schema, capture_scope, or capture_profile for published controls.
         Examples are guidance, never executed by this tool. Older releases may lack relationship metadata.
         """
@@ -66,6 +67,9 @@ def create_server(selection=None, *, timeout=10.0, data_dir=None, publication=PU
         """Find documents by title/filename or exact published entity keys; returns references and saved file URLs.
 
         Text matches metadata, not full document text. Hidden documents are excluded by default.
+        document_date is the document's own date; document_date_source says whether it came from the filename, content or the
+        meeting date (null: no date). first_captured is when the archive first fetched it, and date_kind its basis
+        (captured, import_day, unknown). Neither is a page-update date, and only a meeting-sourced date is the hearing date.
         measure_key matches direct document annotations; discover bill_hearing_transcripts for meeting-linked transcripts when published.
         """
         return await call('search_documents', query.model_dump())
@@ -80,7 +84,7 @@ def create_server(selection=None, *, timeout=10.0, data_dir=None, publication=PU
 
     @mcp.tool(annotations=annotations)
     async def search_entities(query: EntitySearch) -> dict:
-        """Search meetings, witnesses, recordings, committees, members, rosters, bills or nominations.
+        """Search any table the release's schema keys by a published identifier (get_dataset_info lists entity_keys).
 
         Text searches published names/titles; filters are exact scalar field/value matches.
         Integer filters accept integers or base-10 integer strings; decimals, exponents and booleans are rejected.
@@ -92,7 +96,7 @@ def create_server(selection=None, *, timeout=10.0, data_dir=None, publication=PU
     async def get_entity(query: EntityQuery) -> dict:
         """Read an entity by its published primary key, or page its directly associated documents.
 
-        get_dataset_info describes available keys. Rosters have compound keys; use search_entities.
+        get_dataset_info lists entity_keys. Compound keys (rosters, meeting_coverage, ...) use search_entities.
         Integer IDs accept leading zeros and surrounding whitespace; decimals, exponents and booleans are rejected.
         """
         return await call('get_entity', query.model_dump())

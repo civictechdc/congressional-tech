@@ -5,16 +5,21 @@ import duckdb
 import pyarrow.parquet as pq
 import pytest
 
-from congressional_explorer_mcp.models import ExplorerError, ENTITY_KEYS, MAX_BYTES
+from congressional_explorer_mcp.models import ExplorerError, MAX_BYTES
 from congressional_explorer_mcp.release import encoded, prepare
 from congressional_explorer_mcp.reader import Reader
-from conftest import CURRENT, manifest
+from conftest import CURRENT, REPO, manifest
 
 
 def test_all_tables_and_nested_fields_are_available(reader):
     info = reader.dataset_info({})
     assert not info['missing_entities']
-    assert set(ENTITY_KEYS) <= info['tables'].keys()
+    # Identity comes from the release's schema; the reader keeps no second map.
+    declared = {f['name'].removesuffix('.parquet'): f['identity']['fields'] for f in
+                json.loads((REPO / 'model/registries/release-schema.json').read_text())['files']
+                if f['identity']['scope'] == 'published identifier' and f['name'] not in ('links.parquet', 'retired_links.parquet')}
+    assert info['entity_keys'] == declared
+    assert declared.keys() <= info['tables'].keys()
     assert info['tables']['rosters']['rows'] == 1
     assert reader.dataset_info({'table': 'bills'})['columns']['floor_votes'].startswith('STRUCT')
     assert reader.dataset_info({'table': 'capture_scope'}) == {'version': 1, 'entries': []}
@@ -117,9 +122,14 @@ def test_paging_is_complete_and_bound_to_query(reader):
 def test_absent_empty_and_unknown_are_distinct(tmp_path):
     reader = Reader(prepare(tmp_path, CURRENT/'manifest.json'))
     try:
+        # This release's schema states no identity: the reader does not invent one.
         info = reader.dataset_info({})
-        assert 'bills' in info['missing_entities']
-        assert reader.search_entities({'table':'committees'})['rows'] == []
+        assert info['entity_keys'] == {} and info['missing_entities'] == []
+        assert info['entity_identity'] == 'not published in this release'
+        with pytest.raises(ExplorerError,match='no published identity'):
+            reader.search_entities({'table':'committees'})
+        with pytest.raises(ExplorerError,match='no single identifier'):
+            reader.get_entity({'table':'committees','id':'hsif00'})
         assert reader.search_documents({})['rows'][0]['congress'] is None
         assert reader.search_documents({})['rows'][0]['saved_url'] is None
         with pytest.raises(ExplorerError,match='not published'):
@@ -174,5 +184,129 @@ def test_retired_keys_redirect_or_explain_their_removal(tmp_path):
             reader.get_document(dict(link_key='cc' * 8, release_id=release))
         with pytest.raises(ExplorerError, match='another release'):  # references stay bound to one release
             reader.get_document(dict(link_key='aa' * 8, release_id='0' * 64))
+    finally:
+        reader.close()
+
+
+def edited_release(phase2, tmp_path, *, drop=(), schema=None, files=()):
+    """A copy of the phase 2 fixture with files dropped or added and its schema edited."""
+    root = tmp_path / 'release'
+    shutil.copytree(phase2.parent, root)
+    (root / 'manifest.json').unlink()
+    for name in drop:
+        (root / name).unlink()
+    for name, table in files:
+        pq.write_table(table, root / name)
+    if schema:
+        value = json.loads((root / 'schema.json').read_text())
+        schema(value)
+        (root / 'schema.json').write_text(json.dumps(value))
+    return Reader(prepare(tmp_path / 'selection', manifest(root)))
+
+
+def test_a_new_keyed_table_reaches_its_documents_from_the_schema_alone(phase2, tmp_path):
+    import pyarrow as pa
+    listed = pq.read_table(phase2.parent / 'list.parquet')
+    keys = pa.array([['x-1'] if i == 0 else [] for i in range(listed.num_rows)], pa.list_(pa.string()))
+    def declare(schema):
+        schema['files'].append(dict(name='x.parquet', columns=[dict(name='x_id', type='string', meaning='A new entity')],
+            identity=dict(fields=['x_id'], scope='published identifier', validation='fixture', kind='primary_key')))
+        schema['relationships'].append(dict(id='document_x', source=dict(table='list', fields=['x_keys[]']),
+            target=dict(table='x', fields=['x_id']), meaning='Fixture'))
+    reader = edited_release(phase2, tmp_path, schema=declare, files=[('list.parquet', listed.append_column('x_keys', keys)),
+        ('x.parquet', pa.table({'x_id': ['x-1', 'x-2'], 'name': ['First x', 'Second x']}))])
+    try:
+        assert reader.dataset_info({})['entity_keys']['x'] == ['x_id']
+        assert reader.get_entity({'table': 'x', 'id': 'x-1'})['rows'] == [{'x_id': 'x-1', 'name': 'First x'}]
+        assert [r['filename'] for r in reader.get_entity({'table': 'x', 'id': 'x-1', 'section': 'documents'})['rows']] == ['Agenda.pdf']
+        assert reader.get_entity({'table': 'x', 'id': 'x-2', 'section': 'documents'})['rows'] == []
+        assert [r['x_id'] for r in reader.search_entities({'table': 'x', 'text': 'second'})['rows']] == ['x-2']
+    finally:
+        reader.close()
+
+
+def test_a_declared_table_missing_from_the_release_is_unavailable_not_empty(phase2, tmp_path):
+    reader = edited_release(phase2, tmp_path, drop=['meeting_coverage.parquet'])
+    try:
+        assert reader.dataset_info({})['missing_entities'] == ['meeting_coverage']
+        for call in (lambda: reader.search_entities({'table': 'meeting_coverage'}),
+                     lambda: reader.search_entities({'table': 'meeting_coverage', 'filters': {'event_id': 118001}})):
+            with pytest.raises(ExplorerError, match='not published'):
+                call()
+    finally:
+        reader.close()
+
+
+def test_explorer_families_by_their_published_keys(reader):
+    assert reader.get_entity({'table': 'videos', 'id': 'youtube:free'})['rows'][0]['handle'] == '@AgRepublicans'
+    assert reader.get_entity({'table': 'channels', 'id': '@AgRepublicans'})['rows'][0]['committee_label'] == 'Agriculture'
+    assert reader.get_entity({'table': 'committee_records', 'id': 'rec-1'})['rows'][0]['kind'] == 'amendment'
+    assert [r['match_id'] for r in reader.search_entities({'table': 'recording_matches', 'filters': {'decision': 'linked'}})['rows']] == ['a']
+    assert reader.search_entities({'table': 'meeting_coverage', 'filters': {'event_id': 118001}})['rows'] == [
+        {'event_id': 118001, 'aspect': 'recording', 'state': 'present'}]
+    with pytest.raises(ExplorerError, match='no single identifier'):
+        reader.get_entity({'table': 'meeting_coverage', 'id': 118001})
+    assert [r['record_key'] for r in reader.search_entities({'table': 'committee_records', 'text': 'voice vote'})['rows']] == ['rec-1']
+    assert [r['handle'] for r in reader.search_entities({'table': 'channels', 'text': 'agriculture'})['rows']] == ['@AgRepublicans']
+    with pytest.raises(ExplorerError, match='no published identity'):
+        reader.search_entities({'table': 'links'})
+
+
+# Tables whose rows carry no display text; a new table must be added here or gain a searchable column.
+NO_TEXT = {'url_state', 'url_variants', 'meeting_coverage'}
+
+
+def test_every_entity_table_is_text_searchable_or_explicitly_not(reader):
+    from congressional_explorer_mcp.reader import TEXT_FIELDS
+    schema = json.loads((REPO / 'model/registries/release-schema.json').read_text())
+    columns = {f['name'].removesuffix('.parquet'): {c['name'] for c in f['columns']} for f in schema['files']}
+    for table in reader.dataset_info({})['entity_keys']:
+        assert bool(columns[table] & set(TEXT_FIELDS)) != (table in NO_TEXT), table
+
+
+def test_upstream_relations_are_published_as_stated(reader, tmp_path, phase2):
+    published = json.loads((REPO / 'model/registries/release-schema.json').read_text())['upstream_relations']
+    info = reader.dataset_info({})
+    assert [u['id'] for u in info['upstream_relations']] == [u['id'] for u in published]
+    assert len(published) == 7
+    one = reader.dataset_info({'relationship': 'member_votes'})
+    assert {k: one[k] for k in ('family', 'table', 'key_columns', 'joins', 'row_meaning', 'limits')} == \
+        {k: published[2][k] for k in ('family', 'table', 'key_columns', 'joins', 'row_meaning', 'limits')}
+    assert one['upstream'] is True and one['missing_tables'] == []
+    old = Reader(prepare(tmp_path / 'old', CURRENT / 'manifest.json'))
+    try:
+        assert old.dataset_info({})['upstream_relations'] == 'not published in this release'
+    finally:
+        old.close()
+
+
+def test_document_dates_carry_their_basis(reader):
+    row = reader.search_documents({'limit': 1})['rows'][0]
+    assert {'document_date', 'document_date_source', 'first_captured', 'date_kind'} <= row.keys()
+
+
+@pytest.mark.parametrize('shape', ['row_position_detail', 'retired_links'])
+def test_document_address_tables_are_never_entities(phase2, tmp_path, shape):
+    # Releases 448651e7 and c94bfedc key detail by list_row; links is still a document address, read by get_document.
+    files = []
+    def edit(schema):
+        if shape == 'row_position_detail':
+            detail = next(f for f in schema['files'] if f['name'] == 'detail.parquet')
+            detail['identity'] = dict(fields=['list_row'], scope='release', validation='fixture', kind='row_position')
+        else:
+            schema['files'].append(dict(name='retired_links.parquet', columns=[],
+                identity=dict(fields=['link_key'], scope='published identifier', validation='fixture', kind='primary_key')))
+            schema['relationships'].append(dict(id='retired_link_successor', source=dict(table='retired_links', fields=['successor_key']),
+                target=dict(table='links', fields=['link_key']), meaning='Fixture'))
+    if shape == 'retired_links':
+        import pyarrow as pa
+        files = [('retired_links.parquet', pa.table({'link_key': [b'\xaa' * 8], 'successor_key': [None]}, schema=pa.schema(
+            [('link_key', pa.binary()), ('successor_key', pa.binary())])))]
+    reader = edited_release(phase2, tmp_path, schema=edit, files=files)
+    try:
+        keys = reader.dataset_info({})['entity_keys']
+        assert not {'links', 'retired_links'} & keys.keys() and 'meetings' in keys
+        with pytest.raises(ExplorerError, match='no published identity'):
+            reader.search_entities({'table': 'links'})
     finally:
         reader.close()
