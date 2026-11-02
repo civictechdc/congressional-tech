@@ -59,6 +59,6 @@ def test_adjacent_link_join_keeps_null_context_keys_in_hash_plan(tmp_path):
             dict(name='plan',sql='EXPLAIN '+(ROOT/'model/sql/link-targets.sql').read_text())])
     assert result['actual']==[{'id':'empty'},{'id':'null'}]
     physical=next(row['plan'] for row in result['plan'] if row['plan_type']=='physical_plan')
-    context=next(line for line in physical.splitlines() if 'HashJoinExec' in line and 'page_body' in line)
-    assert all(name in context for name in ['page_body','context_url','member_path','base_href']),physical
-    assert 'NullsEqual: true' in context and 'filter=' not in context,physical
+    # The four nullable context keys travel as one non-null digest (null and '' differ in it).
+    context=next(line for line in physical.splitlines() if 'HashJoinExec' in line and 'context_id' in line)
+    assert 'filter=' not in context and 'member_path' not in context,physical
