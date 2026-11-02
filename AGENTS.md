@@ -62,7 +62,7 @@ For `apps/site` browser checks (`npm --prefix apps/site run contract:archive`),
 
 # Raw checks
 
-A raw check (`scripts/measure/raw_*.py` or `*_raw_check.py`) judges a rule's
+A raw check (`raw_*.py` or `*_raw_check.py` anywhere under `scripts/measure/`) judges a rule's
 output from the raw record with its own reading. It must not import the
 producer, parser or model package, nor read model SQL or a registry
 (`scripts/measure/tests/test_raw_check_independence.py` enforces that much). It

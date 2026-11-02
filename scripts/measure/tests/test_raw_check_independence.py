@@ -3,7 +3,7 @@
 A check that shares the rule under test agrees with itself: impl-f's first meeting
 raw check passed a wrong reschedule because it restated the rule (ct-asdg,
 2026-11-02). This test sees only direct sharing: a raw check (scripts/measure/raw_*.py
-or *_raw_check.py, and the sibling scripts it imports) may not import a producer,
+or *_raw_check.py at any depth, and the sibling scripts it imports) may not import a producer,
 parser or model package, nor read model SQL or a registry. It cannot see a rule
 restated in the check's own words; AGENTS.md "Raw checks" asks for a planted wrong
 value the check must flag, which a reviewer confirms.
@@ -21,8 +21,8 @@ RULE_FILES = re.compile(r'model/(sql|registries)/|\.sql\b')
 
 
 def raw_checks(directory=MEASURE):
-    return sorted(path for path in directory.glob('*.py')
-                  if path.name.startswith('raw_') or path.stem.endswith('_raw_check'))
+    return sorted(path for path in directory.rglob('*.py') if 'tests' not in path.relative_to(directory).parts
+                  and (path.name.startswith('raw_') or path.stem.endswith('_raw_check')))
 
 
 def shared_rules(path, seen=None):
@@ -56,7 +56,9 @@ def test_sharing_through_an_import_a_sibling_or_a_registry_is_seen(tmp_path):
     (tmp_path / 'raw_through_sibling.py').write_text('from helpers import rescheduled_to\n')
     (tmp_path / 'titles_raw_check.py').write_text("WORDS = open('model/registries/page-signals.json').read()\n")
     (tmp_path / 'raw_independent.py').write_text('import json, gzip, re\nimport xml.etree.ElementTree as ET\n')
+    (tmp_path / 'capture_causes').mkdir()  # Checks may live in a subdirectory (r1b-captures-causes).
+    (tmp_path / 'capture_causes' / 'raw_judge.py').write_text('from congress_api.lake.captures import PK\n')
     found = {path.name: shared_rules(path) for path in raw_checks(tmp_path)}
-    assert found == {'raw_independent.py': [],
+    assert found == {'raw_independent.py': [], 'raw_judge.py': ['raw_judge.py imports congress_api.lake.captures'],
                      'raw_through_sibling.py': ['helpers.py imports congress_api.parsers.meeting_facts'],
                      'titles_raw_check.py': ["titles_raw_check.py reads 'model/registries/page-signals.json'"]}
