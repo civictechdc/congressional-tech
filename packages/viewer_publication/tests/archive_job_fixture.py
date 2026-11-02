@@ -58,7 +58,7 @@ def model_spec(tmp_path):
         parser_versions=parsers,catalog_version=catalog,output=str(tmp_path/'release'),scratch=str(tmp_path/'model'))
 
 
-def real_model_spec(tmp_path):
+def real_model_spec(tmp_path,*,entities=False):
     import gzip
     from congress_api.lake import readings
     from congress_api.retention.provenance import file_pin
@@ -75,7 +75,7 @@ def real_model_spec(tmp_path):
     receipt=raw/'receipts/documents/2026-10-27/slice.jsonl.gz';receipt.parent.mkdir(parents=True)
     receipt.write_bytes(gzip.compress((json.dumps(row)+'\n').encode(),mtime=0))
     qualification=tmp_path/'receipt-pin.json';qualification.write_text(json.dumps(dict(path=str(receipt),**file_pin(receipt),producer='fixture creation')))
-    return rebuild_model_spec(tmp_path,raw=raw,qualification=qualification),digest,html
+    return rebuild_model_spec(tmp_path,raw=raw,qualification=qualification,entities=entities),digest,html
 
 
 def rebuild_model_spec(tmp_path,*,raw,qualification=None,receipts=None,entities=False):

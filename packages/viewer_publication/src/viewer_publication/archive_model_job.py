@@ -17,10 +17,15 @@ from congress_shared.custody import custody_identity,VerifiedFile
 from congress_shared.storage import single_put_md5 as provenance_etag_md5
 
 TABLES=('captures','readings','filename_readings')
-OPTIONAL_TABLES=('meeting_records','appearance_records')
+ENTITY_TABLES=('meeting_records','appearance_records')
+# The Explorer tables (ct-gi01): with recording decisions they add meeting_coverage, videos,
+# channels, recording_matches and committee_records. All three inputs or none.
+EXPLORER_TABLES=('video_records','committee_records')
+OPTIONAL_TABLES=(*ENTITY_TABLES,*EXPLORER_TABLES)
 OPTIONAL={*OPTIONAL_TABLES,'spicy_regs','recovery_requirements'}
 PROVENANCE={'recovery_files':'recoveries','review_files':'reviews','verification_files':'verification',
-            'unreadable_files':'unreadable','variant_files':'url_variants'}
+            'unreadable_files':'unreadable','variant_files':'url_variants',
+            'recording_decision_files':'recording_decisions'}
 REQUIRED={'version','engine_config',*TABLES,'parser_versions','catalog_version','output','scratch'}
 
 
@@ -101,6 +106,9 @@ def validate_spec(value,*,base):
         result['spicy_regs']=dict(value['spicy_regs'],path=_local(value['spicy_regs']['path'],base))
     elif any(value.get(name) is not None for name in OPTIONAL_TABLES):
         raise ValueError('Entity inputs require pinned spicy-regs generations')
+    explorer=[value.get(name) is not None for name in EXPLORER_TABLES]+[bool(value.get('recording_decision_files'))]
+    if any(explorer) and not (all(explorer) and all(value.get(name) is not None for name in ENTITY_TABLES)):
+        raise ValueError('Explorer tables require video_records, committee_records and recording decisions together, with the entity tables')
     for name in ['engine_config','output','scratch']:result[name]=_local(value[name],base)
     output,scratch=Path(result['output']),Path(result['scratch'])
     if output.is_relative_to(scratch) or scratch.is_relative_to(output):

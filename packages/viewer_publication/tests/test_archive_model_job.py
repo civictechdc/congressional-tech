@@ -320,3 +320,36 @@ def test_production_spec_pins_the_spicy_regs_input():
     """The production job states its spicy-regs pin; the producer cannot run without it."""
     value=json.loads((Path(__file__).parents[3]/'model/jobs/publish-model.json').read_text())
     assert set(value['spicy_regs'])=={'path','sha256','size'}
+
+
+def test_the_production_model_job_writes_the_explorer_files(tmp_path):
+    # ct-gi01 gap: the release schema declares five Explorer files, but the model job spec (the
+    # path the publish controller and the selective job use) had no field for their inputs,
+    # so only the frozen builder could write them.
+    import pyarrow.parquet as pq
+    from congress_api.lake import committee_records, video_records
+    from congress_api.retention.provenance import file_pin
+    from archive_job_fixture import real_model_spec, spicy_pin
+    from viewer_publication.archive_model_job import execute, validate_spec
+    value, _, _ = real_model_spec(tmp_path, entities=True)
+    value['spicy_regs'] = spicy_pin(tmp_path)
+    for name, module in (('video_records', video_records), ('committee_records', committee_records)):
+        path = tmp_path / (name + '.parquet'); pq.write_table(module.table([]), path)
+        value[name] = dict(kind='parquet', path=str(path), **file_pin(path))
+        value['parser_versions'][name] = module.current_versions()
+    decisions = tmp_path / 'decisions.jsonl'
+    decisions.write_text(json.dumps(dict(id='a' * 64, subject_kind='event', subject_id='115538', verdict='found',
+        video_refs=['https://example.test/watch'], note=None, disputed_by=None, decided_at=None, supersedes=None)) + '\n')
+    value['recording_decision_files'] = [dict(key='provenance/recording_decisions/a.jsonl', path=str(decisions), **file_pin(decisions))]
+    built = execute(validate_spec(value, base=tmp_path))
+    written = {path.name for path in Path(built['output']).glob('*.parquet')}
+    assert {'meeting_coverage.parquet', 'videos.parquet', 'channels.parquet', 'recording_matches.parquet',
+            'committee_records.parquet'} <= written
+
+
+def test_explorer_inputs_come_together(tmp_path):
+    from viewer_publication.archive_model_job import validate_spec
+    value = entity_spec(tmp_path)
+    value['video_records'] = dict(kind='parquet', path=str(tmp_path / 'video.parquet'), sha256='a' * 64, size=17)
+    with pytest.raises(ValueError, match='Explorer tables require'):
+        validate_spec(value, base=tmp_path)
