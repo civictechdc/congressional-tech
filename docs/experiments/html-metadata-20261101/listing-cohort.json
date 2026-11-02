@@ -21,17 +21,22 @@
   "evidence:displayed_only": 2
  },
  "differential": {
-  "pages": 11139,
-  "non_utf8_skipped": 2804,
-  "not_markup_skipped": 88,
-  "unmarked_changed": 0,
-  "marked_changed": 49,
-  "marked_changed_rows": 48,
-  "marked_changed_details_only": {
-   "sha": "fd63890cf8e2b3a85ea8345fab5e59c241cbf405e200de9b66881cd7d61914e3",
-   "reason": "budget.senate.gov: HEARING_LINK lists 0 rows, so parse_listing_page is unchanged; parse_listing_details gains date_text, encoded_start and time_evidence on its 25 rows."
+  "see": "differential-listing.json",
+  "bodies": 14223,
+  "compared": 11144,
+  "counts": {
+   "changed_marked": 49,
+   "same": 11095,
+   "skip:at_or_over_2mb": 187,
+   "skip:non_utf8": 2804,
+   "skip:not_markup": 88
   },
-  "scope": "Run before the one-time rule and discovery landed, and not rerun. Of 14,217 senate/pages bodies, 734 came from scratch and 13,483 from the local cache; 186 at or above 2 MB were excluded by the script, 2,804 non-UTF-8 and 88 non-markup bodies were skipped, 11,139 compared, with a synthetic site name. A page with no event class cannot reach either change."
+  "skipped": {
+   "at_or_over_2mb": 187,
+   "non_utf8": 2804,
+   "not_markup": 88
+  },
+  "note": "The earlier figure of 11,139 came from an older scan. A page with a changed result always holds an event class."
  },
  "bodies": [
   {
@@ -329,6 +334,7 @@
    "bytes": 80893
   }
  ],
- "expected_status": "Derived, not rerun. The 49 bodies were removed from scratch before the mf2py comparison and event-row discovery landed. The earlier parser-read replay gave 0 wrong days of 1,191; a scratch prototype of the discovery gave 1,194 to 1,227 rows, 33 added, 0 wrong days, on the parser's own date reading. The mf2py comparison has run on the committed fixtures only.",
- "open_item": "The 33 pages now discovered reach Materials only: event_details in byte-hashed senate_page.py admits only /hearings/ paths."
+ "expected_status": "Reproduced on all 49 raw bodies at this revision; actual counts and the 33 fallback rows are in listing-replay.json.",
+ "open_item": "The 33 pages now discovered reach Materials only: event_details in byte-hashed senate_page.py admits only /hearings/ paths.",
+ "fallback_cost": "33 fetches for these 49 listings, none previously captured under any path. Probed live once: appropriations 5 of 5 returned 200 (178 KB, about 3.9 s), budget 21 returned 404 and 7 returned 403; 46.7 s for all 33 plus 2 s of pauses each. See fallback-live-probe.json. Listing pages themselves return 403 to this machine, so whether live listings still offer these links is unknown. Corpus-wide count unknown."
 }

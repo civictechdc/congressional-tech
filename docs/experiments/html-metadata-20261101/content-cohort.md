@@ -2,224 +2,18 @@
 
 Twenty marked pages for a person to read. Excerpts are the first 500 characters of each public page.
 
-## http://veterans.house.gov/witness-testimony/the-honorable-eric-k-shinseki
+## http://veterans.house.gov/witness-testimony/janice-l-krupnick-phd
 
-`8c0ce77c25b0d9ead61c3ccb8996e245c98ba7c2ed34d6a2a5e6f76b2bb47906`: selected 14726 characters, whole page 17223, trafilatura 14826.
-
-**Selected**
-
-> Mr. Chairman, Congressman Buyer, distinguished Members of the Committee:
-> Thank you for this opportunity to present an overview of the 2010 budget for the Department of Veterans Affairs (VA). President Obama has charged me with transforming VA into a 21st century organization—a transformation demanded by new times, new technologies, new demographic realities, and new commitments to today’s Veterans.
-> The VA’s proposed 2010 budget demonstrates the President’s commitment to our Nation’s Veterans and
-
-**trafilatura**
-
-> Witness Testimony of The Honorable Eric K. Shinseki, U.S. Department of Veterans Affairs, Secretary
-> Mr. Chairman, Congressman Buyer, distinguished Members of the Committee:
-> Thank you for this opportunity to present an overview of the 2010 budget for the Department of Veterans Affairs (VA). President Obama has charged me with transforming VA into a 21st century organization—a transformation demanded by new times, new technologies, new demographic realities, and new commitments to today’s Veterans
-
-## http://veterans.house.gov/prepared-statement/prepared-statement-major-general-david-bockel-usa-ret-executive-director-%C2%A0reserve
-
-`169df19968ee8ce175942110dd4dbde966bd568f4ba378ac69679980e1662b46`: selected 16091 characters, whole page 18981, trafilatura 16323.
+`03196663157caac2c48bd1220eb378a29a9cfbf506073db5ee28507477854b5e`: selected 10032 characters, whole page 12730, trafilatura 10360.
 
 **Selected**
 
-> INTRODUCTION
-> Mr. Chairman and members of the subcommittee, the Reserve Officers Association (ROA) and the Reserve Enlisted Association (REA) would like to thank the subcommittee for the opportunity to testify. ROA and REA applaud the ongoing efforts by Congress to address issues facing veterans and servicemembers such as educational programmatic hurdles, problems within the home loan programs, SCRA and more.
-> Though contingency operations in Afghanistan and Iraq are expected to drawdown currently
+> Good morning, Mr. Chairman, Mr. Ranking Member, and members of the Committee. My name is Janice Krupnick and I am a Professor in the Department of Psychiatry at the Georgetown University Medical Center and Director of the Center’s Trauma and Loss Program. Thank you for the opportunity to testify on the content of the National Academies report PTSD Compensation and Military Service. The committee’s work—which was conducted between March 2006 and July 2007—was requested by the Department of Vetera
 
 **trafilatura**
 
-> Witness Testimony of Major General David Bockel, USA (Ret.), Executive Director, Reserve Officers Association of the United States, and also on behalf of Reserve Enlisted Association of the United States
-> INTRODUCTION
-> Mr. Chairman and members of the subcommittee, the Reserve Officers Association (ROA) and the Reserve Enlisted Association (REA) would like to thank the subcommittee for the opportunity to testify. ROA and REA applaud the ongoing efforts by Congress to address issues facing veterans 
-
-## https://veterans.house.gov/submission-for-the-record/mr-david-g-greineder
-
-`7a28661cbb7383924964edafcc391dea749699f22603a6baae0f47f8ead88b51`: selected 6960 characters, whole page 9769, trafilatura 7078.
-
-**Selected**
-
-> Chairman Michaud, Ranking Member Miller, and members of the Subcommittee:
-> AMVETS is honored to join our fellow veterans service organizations and partners at this important hearing on the Department of Veterans Affairs Veterans Health Administration budget request for fiscal year 2008. My name is David G. Greineder, Deputy National Legislative Director of AMVETS, and I am pleased to provide you with our best estimates on the resources necessary to carry out a responsible budget for VHA.
-> As you k
-
-**trafilatura**
-
-> Submission For The Record of Mr. David G. Greineder, American Veterans (AMVETS), Deputy National Legislative Director
-> Chairman Michaud, Ranking Member Miller, and members of the Subcommittee:
-> AMVETS is honored to join our fellow veterans service organizations and partners at this important hearing on the Department of Veterans Affairs Veterans Health Administration budget request for fiscal year 2008. My name is David G. Greineder, Deputy National Legislative Director of AMVETS, and I am pleased
-
-## https://www.academicpedsjnl.net/article/S1876-2859(17)30324-8/fulltext
-
-`6cb911183d2e344b767caae447c67756e3c0058fbb3e953f7a4a3c12fbb06af3`: selected 67155 characters, whole page 98589, trafilatura 85429.
-
-**Selected**
-
-> Led by a new paradigm, scientists adopt new instruments…and see new and different things when looking with familiar instruments.
-> —Thomas Kuhn, The Structure of Scientific Revolutions, 1962
-> Our ever deepening understanding of the science of human development opens the door to possibilities for much needed improvements in child health and well-being in the United States and globally. These advances especially highlight the central role of social determinants of health and the importance of fosteri
-
-**trafilatura**
-
-> Methods to Assess Adverse Childhood Experiences of Children and Families: Toward Approaches to Promote Child Well-being in Policy and Practice
-> Affiliations & Notes
-> aJohns Hopkins Bloomberg School of Public Health, Child and Adolescent Health Measurement Initiative, Department of Population, Family and Reproductive Health, Baltimore, Md
-> bUniversity of Cincinnati Department of Pediatrics, Cincinnati Children's Hospital Medical Center, Ohio
-> cDepartment of Psychiatry, University of Vermont College o
-
-## https://veterans.house.gov/witness-testimony/shannon-l-middleton
-
-`c2ea7103adc565603773fac8b44eb27ac6dde0942951b9f34b71ca1f51b323ac`: selected 8523 characters, whole page 11329, trafilatura 8647.
-
-**Selected**
-
-> Mr. Chairman and members of the Subcommittee:
-> Thank you for allowing The American Legion to present its views on the Department of Veterans Affairs (VA) construction process. With the rapid advancements in technology and medicine that the national health care system is experiencing, VA will be compelled to perpetuate the evolution of its health care delivery system far into the future. An important part of this evolution is ensuring that VA has adequate facilities that are safe and located in ne
-
-**trafilatura**
-
-> Witness Testimony of Shannon L. Middleton, Veterans Affairs and Rehabilitation Commission, Deputy Director, American Legion
-> Mr. Chairman and members of the Subcommittee:
-> Thank you for allowing The American Legion to present its views on the Department of Veterans Affairs (VA) construction process. With the rapid advancements in technology and medicine that the national health care system is experiencing, VA will be compelled to perpetuate the evolution of its health care delivery system far into
-
-## http://veterans.house.gov/witness-testimony/joe-wynn-2
-
-`5bb18346ea62032a3fac43a2b50ee5706c47c63501d07377000cdde0a77d4ead`: selected 29467 characters, whole page 32091, trafilatura 29703.
-
-**Selected**
-
-> Due to the growing demand of VR&E services beyond VA’s current capacity, the VA implemented a national program called the National Acquisition Strategy (NAS) for Vocational Rehabilitation and Employment (VR&E) Services. Perhaps this strategy is an attempt by the VA to respond to findings and recommendations made in recent years to improve the VR& E program by GAO, the VA Task Force, the President’s Commission on the Care of America’s Wounded Warriors, and the Veterans Disability Benefits Commiss
-
-**trafilatura**
-
-> Witness Testimony of Joe Wynn, President, Veterans Enterprise Training and Services Group (VETS Group), Treasurer, Veterans Entrepreneurship Task Force (VET-Force), and Legislative Liaison, National Association for Black Veterans
-> Due to the growing demand of VR&E services beyond VA’s current capacity, the VA implemented a national program called the National Acquisition Strategy (NAS) for Vocational Rehabilitation and Employment (VR&E) Services. Perhaps this strategy is an attempt by the VA to r
-
-## http://veterans.house.gov/witness-testimony/mr-eric-greitens
-
-`b69fbf91664c63b7827792cf3f70a00d356a62f18f9943fbd8af71c661d163d0`: selected 5755 characters, whole page 8471, trafilatura 5842.
-
-**Selected**
-
-> Mr. Chairman and Members of the Subcommittee, thank you for the opportunity to testify this morning as the Founder and CEO of The Mission Continues. The Mission Continues challenges veterans to serve and lead in communities across America.
-> We believe that any system that is designed to create successful transitions for veterans, will only work if veterans are first recognized for the immense abilities that they bring back to their communities. We have learned that by focusing on these strengths,
-
-**trafilatura**
-
-> Witness Testimony of Mr. Eric Greitens, Chief Executive Officer, The Mission Continues
-> Mr. Chairman and Members of the Subcommittee, thank you for the opportunity to testify this morning as the Founder and CEO of The Mission Continues. The Mission Continues challenges veterans to serve and lead in communities across America.
-> We believe that any system that is designed to create successful transitions for veterans, will only work if veterans are first recognized for the immense abilities that the
-
-## http://veterans.house.gov/witness-testimony/ms-kathryn-condon
-
-`c0662d5f4b586b9a2759fd5485825bbb6cf9b69e5d4bf683c6744b81dda29ca0`: selected 26691 characters, whole page 29495, trafilatura 26827.
-
-**Selected**
-
-> MR. CHAIRMAN AND MEMBERS OF THE SUBCOMMITTEE:
-> On behalf of the more than 2 million men and women of the Veterans of Foreign Wars of the U.S. (VFW) and our Auxiliaries, I would like to thank you for the opportunity to testify on today’s pending legislation. With the conflict in Iraq drawing to a close, withdrawal from Afghanistan on the horizon, and proposals to scale back our nation’s active duty military, the VFW believes economic opportunity for today’s war-fighters is a national imperative th
-
-**trafilatura**
-
-> Witness Testimony of Mr. Ryan M. Gallucci, Deputy Director, National Legislative Service, Veterans of Foreign Wars of the United States
-> MR. CHAIRMAN AND MEMBERS OF THE SUBCOMMITTEE:
-> On behalf of the more than 2 million men and women of the Veterans of Foreign Wars of the U.S. (VFW) and our Auxiliaries, I would like to thank you for the opportunity to testify on today’s pending legislation. With the conflict in Iraq drawing to a close, withdrawal from Afghanistan on the horizon, and proposals to 
-
-## http://veterans.house.gov/witness-testimony/joe-wynn-1
-
-`c3a319401b71b73b001536df3be35b7b9837b377fb9e48d2f54894e0de766f19`: selected 35151 characters, whole page 37798, trafilatura 35423.
-
-**Selected**
-
-> EXECUTIVE SUMMARY
-> Congress passed Public Law (PL) 109-461, the Veterans Benefits, Health Care, and Information Technology Act of 2006. While this legislation provided a number of benefits for veterans; what’s of particular importance for the purposes of this hearing today, is that Title V, Sections 502 and 503 of this legislation, authorized a unique "Veterans First" approach to VA contracting. This approach would change the priorities for contracting preferences within the Department of Veteran
-
-**trafilatura**
-
-> Witness Testimony of Joe Wynn, Veterans Enterprise Training and Services Group, Inc. (VETS Group), Chairman, President/Chief Executive Officer, Member, Veterans Entrepreneurship Task Force (VET-Force), and National Association for Black Veterans
-> EXECUTIVE SUMMARY
-> Congress passed Public Law (PL) 109-461, the Veterans Benefits, Health Care, and Information Technology Act of 2006. While this legislation provided a number of benefits for veterans; what’s of particular importance for the purposes of 
-
-## https://veterans.house.gov/witness-testimony/ronald-f-chamrin-2
-
-`edd471c4dd986e0d279855a773c91bdc3daee3ec86a21a297019cee4342d49b0`: selected 19624 characters, whole page 22532, trafilatura 19729.
-
-**Selected**
-
-> Madam Chairwoman and Members of the Subcommittee:
-> Thank you for this opportunity to present The American Legion’s view on the Department of Labor’s Veterans’ Employment and Training Service (DOL-VETS).
-> The American Legion has been advocating for additional support for the DOL-VETS programs. Our contentions are supported by the numerous Government Accountability Office (GAO) reports regarding VETS that have been released in recent months. The GAO reported in May 2007 that approximately 700,000 ve
-
-**trafilatura**
-
-> Witness Testimony of Ronald F. Chamrin, American Legion, Assistant Director, Economic Commission
-> Madam Chairwoman and Members of the Subcommittee:
-> Thank you for this opportunity to present The American Legion’s view on the Department of Labor’s Veterans’ Employment and Training Service (DOL-VETS).
-> The American Legion has been advocating for additional support for the DOL-VETS programs. Our contentions are supported by the numerous Government Accountability Office (GAO) reports regarding VETS tha
-
-## http://veterans.house.gov/witness-testimony/kaye-whitley-edd
-
-`d8042640be71a3097f946489d82de91a8da5ba3560d11b1ecf1915ea81865267`: selected 14846 characters, whole page 17278, trafilatura 15062.
-
-**Selected**
-
-> Chairmen Michaud and Hall, Ranking Members Brown and Lamborn, and members of the subcommittees, thank you for inviting me today to discuss the progress the Department of Defense has made in recent years on caring for victims of sexual assault. I would like to focus on the efforts of my office, the Sexual Assault Prevention and Response Office (SAPRO), working in partnership with the Military Services. As a team, we are making great headway to standardize, professionalize, and institutionalize ou
-
-**trafilatura**
-
-> Witness Testimony of Kaye Whitley, Ed.D., Office of the Under Secretary of Defense for Personnel and Readiness, Director, Sexual Assault Prevention and Response Office, U.S. Department of Defense
-> Chairmen Michaud and Hall, Ranking Members Brown and Lamborn, and members of the subcommittees, thank you for inviting me today to discuss the progress the Department of Defense has made in recent years on caring for victims of sexual assault. I would like to focus on the efforts of my office, the Sexua
-
-## https://veterans.house.gov/witness-testimony/sidney-weissman-md
-
-`d868ba0b2947770834b7884c9469dbbd7ba2acbdd743534208f948a944926865`: selected 10224 characters, whole page 13061, trafilatura 10396.
-
-**Selected**
-
-> Good afternoon. I am Sid Weissman M.D., and am pleased to have this opportunity meet with you representing the American Psychiatric Association, the medical specialty organization which represents over 37,000 psychiatrists, their patients and families. My professional experience includes serving as a psychiatric physician for the United States Air Force and six years with the Department of Veterans Affairs.
-> The American Psychiatric Association (APA) is responsible for the preparation, publicatio
-
-**trafilatura**
-
-> Witness Testimony of Sidney Weissman, M.D., Committee on Mental Healthcare for Veterans and Military Personnel and Their Families, Member, American Psychiatric Association
-> Good afternoon. I am Sid Weissman M.D., and am pleased to have this opportunity meet with you representing the American Psychiatric Association, the medical specialty organization which represents over 37,000 psychiatrists, their patients and families. My professional experience includes serving as a psychiatric physician for 
-
-## https://veterans.house.gov/witness-testimony/dr-barbara-sigford-phd
-
-`6f7461606194ca50c339841681108ef292a970aca6d0919b3982332df3069fcc`: selected 11959 characters, whole page 14960, trafilatura 12134.
-
-**Selected**
-
-> Good afternoon Mr. Chairman and Members of the Committee.
-> I am Dr. Barbara Sigford and I serve as VA’s National Program Director for Physical Medicine and Rehabilitation. Joining me this morning is Dr. Lucille Beck, VA’s Chief Consultant for Rehabilitation Services.
-> Thank you for this opportunity to talk about the Veterans Health Administration’s (VHA) seamless transition process from the perspective of the Polytrauma System of Care. Mr. Chairman, recent reports of difficulties faced by service 
-
-**trafilatura**
-
-> Witness Testimony of Barbara Sigford Ph.D., Veterans Health Administration, National Program Director, Physical Medicine and Rehabilitation, U.S. Department of Veterans Affairs
-> Good afternoon Mr. Chairman and Members of the Committee.
-> I am Dr. Barbara Sigford and I serve as VA’s National Program Director for Physical Medicine and Rehabilitation. Joining me this morning is Dr. Lucille Beck, VA’s Chief Consultant for Rehabilitation Services.
-> Thank you for this opportunity to talk about the Veteran
-
-## https://veterans.house.gov/witness-testimony/dan-collard
-
-`51dc1ff5152fc609028b4f82d8fd866c57df62f15d92d177bc8efdfe01afd3ae`: selected 5758 characters, whole page 8520, trafilatura 5838.
-
-**Selected**
-
-> Mr. Chairman, Ranking Member Michaud and Committee Members:
-> My name is Dan Collard. I am a former hospital operator and a senior leader at Studer Group, a healthcare consulting firm.
-> Thank you for the opportunity to address this committee on the issue of Veterans’ Health and the underlying elements of culture and leadership.
-> I listened with interest Monday night, when I heard Mr. Griffin from the Inspector General’s office make the statement, “If you’ve seen one VISN, you’ve seen one VISN. It se
-
-**trafilatura**
-
-> Witness Testimony of Mr. Dan Collard, Chief Operating Officer, The Studer Group
-> Mr. Chairman, Ranking Member Michaud and Committee Members:
-> My name is Dan Collard. I am a former hospital operator and a senior leader at Studer Group, a healthcare consulting firm.
-> Thank you for the opportunity to address this committee on the issue of Veterans’ Health and the underlying elements of culture and leadership.
-> I listened with interest Monday night, when I heard Mr. Griffin from the Inspector General’s 
+> Witness Testimony of Janice L. Krupnick, Ph.D., Director, Trauma and Loss Program, Georgetown University Medical Center, Professor, Department of Psychiatry, on behalf of Committee on Veterans’ Compensation for Posttraumatic Stress Disorder, Institute of Medicine and National Research Council, The National Academies
+> Good morning, Mr. Chairman, Mr. Ranking Member, and members of the Committee. My name is Janice Krupnick and I am a Professor in the Department of Psychiatry at the Georgetown Univer
 
 ## http://veterans.house.gov/witness-testimony/ms-emily-derocco
 
@@ -236,79 +30,276 @@ Twenty marked pages for a person to read. Excerpts are the first 500 characters 
 > Chairman Stutzman, Ranking Member Braley and members of the SubCommittee, thank you for the opportunity to testify on behalf of The Manufacturing Institute at this hearing on Lowering the Rate of Unemployment for the National Guard.
 > My name is Emily DeRocco, and I am the President of The Manufacturing Institute. We are the non-profit affiliate of the National Association of Manufacturers (NAM), and our mission is to su
 
-## https://veterans.house.gov/witness-testimony/paul-a-tibbits-md-0
+## http://veterans.house.gov/witness-testimony/mark-bologna
 
-`ab5977ff35d543d5d89a4ec58bf5316cd5b9901f7ec4483dfdba9083967497e7`: selected 11889 characters, whole page 14806, trafilatura 12087.
-
-**Selected**
-
-> Thank you, Mr. Chairman. I would like to thank you for the opportunity to testify on the realignment progress in the Office of Information & Technology (OIT) and to share with you the progress made in VA as a result of the centralization of IT development activities.
-> Joining me on this panel is Dr. Ben J. Davoren, Director Clinical Informatics, from our San Francisco Medical Center.
-> This Committee has demonstrated great support for and interest in IT in the VA, and we genuinely appreciate it.
-> Yo
-
-**trafilatura**
-
-> Witness Testimony of Paul A. Tibbits, M.D., Office of Information and Technology, Deputy Chief Information Officer, Office of Enterprise Development, U.S. Department of Veterans Affairs
-> Thank you, Mr. Chairman. I would like to thank you for the opportunity to testify on the realignment progress in the Office of Information & Technology (OIT) and to share with you the progress made in VA as a result of the centralization of IT development activities.
-> Joining me on this panel is Dr. Ben J. Davoren
-
-## http://veterans.house.gov/witness-testimony/joseph-f-sobota
-
-`c47b06d7c400e5051a80798982595e934c84af65ca6b79bf3709fd48da5f5f9e`: selected 36726 characters, whole page 39049, trafilatura 37210.
+`08752fd5248e5d93de11382fdd0116b9676f7f5d2665c4a95de3c71003c921ca`: selected 9050 characters, whole page 11539, trafilatura 8997.
 
 **Selected**
 
-> Executive Summary
-> Advocacy and veteran entrepreneurship research. Pursuant to Public Law 106-50, SBA’s Office of Advocacy began a long-term effort to develop new information on veterans in business and related topics. Advocacy has collected and interpreted data from existing sources, commissioned special tabulations of unpublished data, and supported contract research on issue-specific topics related to veteran entrepreneurship.
-> Sources of data on veterans in business. The most important source 
+> Madam Chairwoman, Ranking Member Boozman, and Members of the Subcommittee, I appreciate the opportunity to appear before you today to discuss VA’s Specially Adapted Housing (SAH) program.
+> Specially Adapted Housing Grant Program
+> The SAH grants for severely disabled Veterans are among the most important of the benefits that the Loan Guaranty Service provides. Eligible Veterans may use the grant from VA to purchase or construct an adapted home or adapt an existing one to meet their needs. Through t
 
 **trafilatura**
 
-> Witness Testimony of Joseph F. Sobota, U.S. Small Business Administration, Assistant Chief Counsel for Advocacy
-> Executive Summary
-> Advocacy and veteran entrepreneurship research. Pursuant to Public Law 106-50, SBA’s Office of Advocacy began a long-term effort to develop new information on veterans in business and related topics. Advocacy has collected and interpreted data from existing sources, commissioned special tabulations of unpublished data, and supported contract research on issue-specific
+> Witness Testimony of Mark Bologna, Veterans Benefits Administration, U.S. Department of Veterans Affairs, Director of Loan Guaranty Service
+> Madam Chairwoman, Ranking Member Boozman, and Members of the Subcommittee, I appreciate the opportunity to appear before you today to discuss VA’s Specially Adapted Housing (SAH) program.
+> Specially Adapted Housing Grant Program
+> The SAH grants for severely disabled Veterans are among the most important of the benefits that the Loan Guaranty Service provides. 
 
-## http://veterans.house.gov/witness-testimony/chuck-amunrud
+## http://veterans.house.gov/opening-statement/hon-jeff-miller-chairman-house-committee-on-veterans-affairs-0
 
-`9a2cd2b797bfbd9db1289bc78b561a7c97ea5c5e3443ba232b176f6d5fc252f4`: selected 3072 characters, whole page 6167, trafilatura 3072.
+`08df9176ec0cc263c3f0d1e73bdda60fb83f32adacf6cfc484223a3de4c54627`: selected 7457 characters, whole page 10207, trafilatura 7543.
 
 **Selected**
 
-> I FIRST WANT TO SAY THANK YOU TO THE COMMITTEE FOR TAKING TIME TO COME TO OUR BEAUTIFUL FILLMORE COUNTY. IT IS INDEED AN HONOR TO BE INVITED TO TESTIFY ON BEHALF OF FILLMORE COUNTY.
-> MY NAME IS CHARLES (CHUCK) AMUNRUD AND I AM A FILLMORE COUNTY COMMISSIONER REPRESENTING THE THIRD DISTRICT.
-> I AM ALSO A 60% DISABILED VETERAN. ENLISTING IN THE UNITED STATES AIR FORCE FROM 1968 TO 1972.
-> MY STATEMENT WILL MENTION THE LOCAL COLLABORATIVE EFFORTS OF OUR STATE LEGISLATURE, THE STATE DEPARTMENT OF VETERAN
+> Good morning everyone. First, I want to thank all of you for coming here today.
+> In the interest of time, after hearing from Chairman Murray, ranking member Filner, and ranking member Burr, I would like to ask committee members to waive their opening statements. There will be an opportunity for remarks during the question and answer period following today’s testimony.
+> Hearing no objections, so ordered.
+> It is my honor to be here this morning and a source of inspiration every time I look out into a
 
 **trafilatura**
 
-> I FIRST WANT TO SAY THANK YOU TO THE COMMITTEE FOR TAKING TIME TO COME TO OUR BEAUTIFUL FILLMORE COUNTY. IT IS INDEED AN HONOR TO BE INVITED TO TESTIFY ON BEHALF OF FILLMORE COUNTY.
-> MY NAME IS CHARLES (CHUCK) AMUNRUD AND I AM A FILLMORE COUNTY COMMISSIONER REPRESENTING THE THIRD DISTRICT.
-> I AM ALSO A 60% DISABILED VETERAN. ENLISTING IN THE UNITED STATES AIR FORCE FROM 1968 TO 1972.
-> MY STATEMENT WILL MENTION THE LOCAL COLLABORATIVE EFFORTS OF OUR STATE LEGISLATURE, THE STATE DEPARTMENT OF VETERAN
+> Opening Statement of Hon. Jeff Miller, Chairman, House Committee on Veterans' Affairs
+> Good morning everyone. First, I want to thank all of you for coming here today.
+> In the interest of time, after hearing from Chairman Murray, ranking member Filner, and ranking member Burr, I would like to ask committee members to waive their opening statements. There will be an opportunity for remarks during the question and answer period following today’s testimony.
+> Hearing no objections, so ordered.
+> It is my 
 
-## http://veterans.house.gov/witness-testimony/thomas-s-whitaker
+## http://veterans.house.gov/witness-testimony/mr-jeffrey-hall
 
-`f4f28aec5fe19d33e0d95a99bcbf9fbd5cd5262dc270ac222c9bf36cdd5bccaa`: selected 12418 characters, whole page 14965, trafilatura 12610.
+`098f9415997ee4a8bb4c6652ccae09b95fd68d598ba2d36beacadc63c20f0aeb`: selected 35085 characters, whole page 37791, trafilatura 35210.
 
 **Selected**
 
-> Chairwoman Herseth Sandlin, Representative Boozman, and Members of the Subcommittee, on behalf of the National Association of State Workforce Agencies (NASWA), I thank you for the opportunity to submit written testimony addressing Federal contractors’ hiring practices and the performance of the U.S. Department of Labor (USDOL), Office of Federal Contractor Compliance Program (OFCCP) in monitoring the compliance of Federal Contractor Job Listings (FCJL). NASWA and its members are strong proponent
+> Chairman Runyan, Ranking Member McNerney and Members of the Subcommittee:
+> On behalf of the Disabled American Veterans (DAV) and our 1.2 million members, all of whom are wartime disabled veterans, I am pleased to be here today to offer our views regarding the fiscal year (FY) 2013 budget in the area of veterans’ benefits.
+> Mr. Chairman, we are now in the third year of the Veterans Benefits Administration’s (VBA's) latest effort to transform its outdated, inefficient, and inadequate claims processi
 
 **trafilatura**
 
-> Witness Testimony of Thomas S. Whitaker, Deputy Chairman/Chief Counsel, President, National Association of State Workforce Agencies, North Carolina Employment Security Commission, Raleigh, NC
-> Chairwoman Herseth Sandlin, Representative Boozman, and Members of the Subcommittee, on behalf of the National Association of State Workforce Agencies (NASWA), I thank you for the opportunity to submit written testimony addressing Federal contractors’ hiring practices and the performance of the U.S. Departm
+> Witness Testimony of Mr. Jeffrey Hall, Assistant National Legislative Director, Disabled American Veterans
+> Chairman Runyan, Ranking Member McNerney and Members of the Subcommittee:
+> On behalf of the Disabled American Veterans (DAV) and our 1.2 million members, all of whom are wartime disabled veterans, I am pleased to be here today to offer our views regarding the fiscal year (FY) 2013 budget in the area of veterans’ benefits.
+> Mr. Chairman, we are now in the third year of the Veterans Benefits Ad
 
-## https://veterans.house.gov/witness-testimony/mr-john-k-moran-0
+## http://veterans.house.gov/submission-for-the-record/patricia-nunez
 
-`c3238f6e4b3b7190e838762389fcdbc97f0a1221b6d4470ec9d5aafa2a7b2f3e`: selected 15780 characters, whole page 18643, trafilatura 15943.
+`10756aaa388c9871e3698e8c4547709661bd587fcfaee7c114bd20af1814e1ad`: selected 5178 characters, whole page 7663, trafilatura 5304.
 
 **Selected**
 
-> Good Morning Chairman Stutzman, Ranking Member Braley, and distinguished Members of the Subcommittee. Thank you for the opportunity to participate in today’s hearing on “Review of Veterans Employment Challenges and Initiatives of the 112th Congress.” My name is John Moran, and as Deputy Assistant Secretary for the Veterans Employment and Training Service (VETS) at the Department of Labor (DOL or Department), I am proud of the work we are doing to support our Service Members, Veterans, and their 
+> Madam Chairwoman and Members of the Subcommittee, thank you for inviting me to present testimony related to the Vocational Rehabilitation and Employment (VR&E) Programs. Although the Commission on Rehabilitation Counselor Certification (CRCC) is unable to provide verbal testimony, we appreciate the opportunity to provide this written testimony. My testimony will highlight the continued need for qualified services through the Vocational Rehabilitation and Employment programs and how Certified Reh
 
 **trafilatura**
 
-> Witness Testimony of Mr. John K. Moran,Deputy Assistant Secretary for Operations & Management, Veterans’ Employment and Training Service, U.S. Department of Labor
-> Good Morning Chairman Stutzman, Ranking Member Braley, and distinguished Members of the Subcommittee. Thank you for the opportunity to participate in today’s hearing on “Review of Veterans Employment Challenges and Initiatives of the 112th Congress.” My name is John Moran, and as Deputy Assistant Secretary for the Veterans Employment a
+> Submission For The Record of Patricia Nunez, Commission on Rehabilitation Counselor Certification, Chairwoman
+> Madam Chairwoman and Members of the Subcommittee, thank you for inviting me to present testimony related to the Vocational Rehabilitation and Employment (VR&E) Programs. Although the Commission on Rehabilitation Counselor Certification (CRCC) is unable to provide verbal testimony, we appreciate the opportunity to provide this written testimony. My testimony will highlight the continued n
+
+## http://veterans.house.gov/witness-testimony/michael-oros
+
+`118ab509c71202dddd53b9d9616ab9b2a0857c9d62bd64b161522b7e86969fb6`: selected 21399 characters, whole page 24283, trafilatura 21491.
+
+**Selected**
+
+> Good morning Chairwoman Buerkle, Ranking Member Michaud, and Members of the Subcommittee. Thank you for the opportunity to provide testimony today. The American Orthotic and Prosthetic Association (AOPA) is grateful for your work to ensure that Veterans with limb loss receive state of the art prosthetic care. We applaud you for convening this hearing, Madam Chairwoman, and deeply appreciate the invitation to shed some light on current issues facing the fields of prosthetics and orthotics when it
+
+**trafilatura**
+
+> Witness Testimony of Michael Oros, Board Member, American Orthotic & Prosthetic Association
+> Good morning Chairwoman Buerkle, Ranking Member Michaud, and Members of the Subcommittee. Thank you for the opportunity to provide testimony today. The American Orthotic and Prosthetic Association (AOPA) is grateful for your work to ensure that Veterans with limb loss receive state of the art prosthetic care. We applaud you for convening this hearing, Madam Chairwoman, and deeply appreciate the invitation
+
+## http://veterans.house.gov/witness-testimony/john-m-mcwilliam-4
+
+`153de0d1ed8ae29d62825af3e1aeea1709e15175a7cb85f0355aa23d8498c542`: selected 10459 characters, whole page 12970, trafilatura 10684.
+
+**Selected**
+
+> Madam Chairwoman Herseth Sandlin, Ranking Member Boozman, and Members of the Subcommittee:
+> I am pleased to appear before you today to discuss the collaborative efforts and the partnership between the Department of Labor’s (DOL) Veterans’ Employment and Training Service (VETS) and the Department of Veterans Affairs’ (VA) Office of Vocational Rehabilitation and Employment (VR&E) Service, and our joint efforts to serve our Nation’s disabled veterans in need of VR&E services that lead to employment.
+
+**trafilatura**
+
+> Witness Testimony of John M. McWilliam, Veterans' Employment and Training Service, Deputy Assistant Secretary, U.S. Department of Labor
+> Madam Chairwoman Herseth Sandlin, Ranking Member Boozman, and Members of the Subcommittee:
+> I am pleased to appear before you today to discuss the collaborative efforts and the partnership between the Department of Labor’s (DOL) Veterans’ Employment and Training Service (VETS) and the Department of Veterans Affairs’ (VA) Office of Vocational Rehabilitation and Em
+
+## https://veterans.house.gov/witness-testimony/ms-meredith-beck
+
+`15ef09e751f4f25fc36b93138c9b02696d18887913b556fda92087aa19905ac8`: selected 6312 characters, whole page 9079, trafilatura 6402.
+
+**Selected**
+
+> Mr. Chairman, thank you for the opportunity to testify before you today. My name is Meredith Beck, and I am the National Policy Director for the Wounded Warrior Project (WWP), a non-profit, non-partisan organization dedicated to assisting the men and women of the United States Armed Forces who have been severely injured during the war on terrorism in Iraq, Afghanistan and other hot spots around the world. Beginning at the bedside of the severely wounded, WWP provides programs and services design
+
+**trafilatura**
+
+> Witness Testimony of Ms. Meredith Beck, Wounded Warrior Project, National Policy Director
+> Mr. Chairman, thank you for the opportunity to testify before you today. My name is Meredith Beck, and I am the National Policy Director for the Wounded Warrior Project (WWP), a non-profit, non-partisan organization dedicated to assisting the men and women of the United States Armed Forces who have been severely injured during the war on terrorism in Iraq, Afghanistan and other hot spots around the world. B
+
+## http://veterans.house.gov/prepared-statement/opening-statement-hon-marlin-stutzman-chairman-subcommittee-economic-opportunit-1
+
+`16f380dfee6bb80ab5c0c779a7bc57b77f4b787595642b8259e4723af3ff413d`: selected 2320 characters, whole page 5039, trafilatura 2413.
+
+**Selected**
+
+> Good morning.
+> The topic of this morning’s hearing is the transition assistance program (TAP) and VetSuccess on Campus program. TAP is a program that is supposed to help discharging veterans transition from the military into civilian careers. VA also has a portion of TAP where they educate the servicemembers on the multitude of services that are available to them once they become veterans.
+> My staff recently completed visits to four TAP sites in Florida, Georgia, North Carolina, and South Carolina
+
+**trafilatura**
+
+> Opening Statement of Hon. Marlin A. Stutzman, Chairman, Subcommittee on Economic Opportunity
+> Good morning.
+> The topic of this morning’s hearing is the transition assistance program (TAP) and VetSuccess on Campus program. TAP is a program that is supposed to help discharging veterans transition from the military into civilian careers. VA also has a portion of TAP where they educate the servicemembers on the multitude of services that are available to them once they become veterans.
+> My staff recent
+
+## http://veterans.house.gov/witness-testimony/joy-ilem-1
+
+`1a032c9cb32d0d29cc5f6513d9867a7d79b428cb8b7ff325da458ffd19fe5b59`: selected 31389 characters, whole page 34277, trafilatura 31509.
+
+**Selected**
+
+> Chairwoman Buerkle, Ranking Member Michaud and Members of the Subcommittee:
+> On behalf of the 1.2 million members of the Disabled American Veterans (DAV), all of whom are wartime disabled veterans, I am pleased to present our views at this hearing to examine the capabilities of the Department of Veterans Affairs (VA) to deliver state-of-the-art care to veterans suffering from amputations. I will focus my remarks on the VA’s Amputation System of Care (ASoC)—the demand, utilization and quality of t
+
+**trafilatura**
+
+> Witness Testimony of Joy Ilem, Deputy National Legislative Director, Disabled American Veterans
+> Chairwoman Buerkle, Ranking Member Michaud and Members of the Subcommittee:
+> On behalf of the 1.2 million members of the Disabled American Veterans (DAV), all of whom are wartime disabled veterans, I am pleased to present our views at this hearing to examine the capabilities of the Department of Veterans Affairs (VA) to deliver state-of-the-art care to veterans suffering from amputations. I will focus 
+
+## http://veterans.house.gov/opening-statement/hon-stephanie-herseth-sandlin-chairwoman-and-a-representative-in-congress-from-t-1
+
+`1a909e3c30ad30674513fe9e939c119674af524b1748982e662a787fab7e3c37`: selected 3365 characters, whole page 5920, trafilatura 3504.
+
+**Selected**
+
+> I would like to thank Ranking Member John Boozman for inviting us here today as we conduct this official hearing in his home state. Under the leadership of then Chairman Boozman, we conducted a field hearing in Rogers, Arkansas which provided the Subcommittee the opportunity to receive testimony from constituents affected by the Transition Assistance Program. As we continue to work together to help our nation’s veterans, I would also like to thank Ranking Member Boozman for his continued strong 
+
+**trafilatura**
+
+> Opening Statement of Hon. Stephanie Herseth Sandlin, Chairwoman, and a Representative in Congress from the State of South Dakota
+> I would like to thank Ranking Member John Boozman for inviting us here today as we conduct this official hearing in his home state. Under the leadership of then Chairman Boozman, we conducted a field hearing in Rogers, Arkansas which provided the Subcommittee the opportunity to receive testimony from constituents affected by the Transition Assistance Program. As we con
+
+## https://veterans.house.gov/witness-testimony/ted-h-wolf
+
+`1c2549da6a1a8da41ac7e9352eefa06e340ced57c43a6cac3e74bbe2e5764249`: selected 6244 characters, whole page 9075, trafilatura 6367.
+
+**Selected**
+
+> My name is Ted H. Wolf. I’m a Vietnam veteran. I served in Vietnam from September 1966 through August 1967. I was in a transportation unit stationed at the Newport facility on the Saigon River. One of the operations of the facility was the handling of Agent Orange drums. As is well known and well documented, Agent Orange is the code name for a herbicide developed for the military. The purpose of the product was to defoliate trees and shrubbery where the enemy could hide. My exposure to broken dr
+
+**trafilatura**
+
+> Witness Testimony of Ted H. Wolf, as presented by John Rowan, President, Pomona, NY (Veteran), Vietnam Veterans of America
+> My name is Ted H. Wolf. I’m a Vietnam veteran. I served in Vietnam from September 1966 through August 1967. I was in a transportation unit stationed at the Newport facility on the Saigon River. One of the operations of the facility was the handling of Agent Orange drums. As is well known and well documented, Agent Orange is the code name for a herbicide developed for the mil
+
+## https://veterans.house.gov/witness-testimony/kris-doody-rn
+
+`1cf2c894232ecaa2f26e8e082e83ec9ccf291b3866c1bd00872b83ed196d4f16`: selected 5787 characters, whole page 8548, trafilatura 5872.
+
+**Selected**
+
+> Good morning, Committee Chairman Miller, members of the committee and Maine’s own Congressman and Ranking Minority Member, Mike Michaud. When I testified to the Veterans Affairs House Subcommittee September 2012, I was pleased to report the good news about Project ARCH at Cary Medical Center, our community hospital in Caribou, Maine. Now, in June of 2014, I am delighted to inform you that the good news just keeps getting better. The original goals of Project ARCH were to expand access to eligibl
+
+**trafilatura**
+
+> Witness Testimony of Ms. Kris Doody RN, Chief Executive Officer, Cary Medical Center
+> Good morning, Committee Chairman Miller, members of the committee and Maine’s own Congressman and Ranking Minority Member, Mike Michaud. When I testified to the Veterans Affairs House Subcommittee September 2012, I was pleased to report the good news about Project ARCH at Cary Medical Center, our community hospital in Caribou, Maine. Now, in June of 2014, I am delighted to inform you that the good news just keep
+
+## http://veterans.house.gov/witness-testimony/richard-paul-cohen-7
+
+`1ea01b852c40fedbb4e292877718ac03cbd216d5b96c470f7f94106e80ec0e52`: selected 11978 characters, whole page 14380, trafilatura 12090.
+
+**Selected**
+
+> MR. CHAIRMAN AND MEMBERS OF THE SUBCOMMITTEE:
+> Thank you for the opportunity to present the views of the National Organization of Veterans' Advocates, Inc ("NOVA") concerning the Veterans Benefits Administration Employee Work Credit and Management Systems.
+> NOVA is a not-for-profit § 501(c)(6) educational organization incorporated in 1993. Its primary purpose and mission is dedicated to train and assist attorneys and non-attorney practitioners who represent veterans, surviving spouses, and depende
+
+**trafilatura**
+
+> Witness Testimony of Richard Paul Cohen, National Organization of Veterans’ Advocates, Inc., Executive Director
+> MR. CHAIRMAN AND MEMBERS OF THE SUBCOMMITTEE:
+> Thank you for the opportunity to present the views of the National Organization of Veterans' Advocates, Inc ("NOVA") concerning the Veterans Benefits Administration Employee Work Credit and Management Systems.
+> NOVA is a not-for-profit § 501(c)(6) educational organization incorporated in 1993. Its primary purpose and mission is dedicated to 
+
+## http://veterans.house.gov/submission-for-the-record/lincoln-t-smith
+
+`1fc657a727132f903cf483a99346e5e82e917c2a23792ae1b666509532ee491d`: selected 13880 characters, whole page 16268, trafilatura 13999.
+
+**Selected**
+
+> Good morning, Chairman Michaud, Ranking Member Brown, and Members of the Subcommittee.
+> Thank you for inviting Altarum Institute to testify on how the Department of Veterans Affairs can utilize new and innovative wireless technologies to expand access to care for veterans. In our testimony,we will address a unique research study that we have successfully implemented at the Pathway Home, a residential veterans treatment center for returning warriors afflicted with mild traumatic brain injury and p
+
+**trafilatura**
+
+> Submission For The Record of Lincoln T. Smith, Altarum Institute, Ann Arbor, MI, President and Chief Executive Officer
+> Good morning, Chairman Michaud, Ranking Member Brown, and Members of the Subcommittee.
+> Thank you for inviting Altarum Institute to testify on how the Department of Veterans Affairs can utilize new and innovative wireless technologies to expand access to care for veterans. In our testimony,we will address a unique research study that we have successfully implemented at the Pathwa
+
+## http://veterans.house.gov/witness-testimony/hon-w-scott-gould
+
+`1fe7d20b1452264595003ef851628995c8add4cc161e99413f3f015e803b67e0`: selected 17840 characters, whole page 20369, trafilatura 17970.
+
+**Selected**
+
+> Mr. Chairman, Members of the Subcommittee, I am accompanied today by John Gingrich, the Chief of Staff, John Sepúlveda, the Assistant Secretary for Human Resources and Administration, and Willie Hensley the Principal Deputy Assistant Secretary for Human Resources and Administration.
+> I am very pleased at the opportunity to come before you today to provide an overview of the Senior Executive Service (SES) performance management system for the Department of Veterans Affairs (VA).
+> Let me say that in
+
+**trafilatura**
+
+> Witness Testimony of Hon. W. Scott Gould, U.S. Department of Veterans Affairs, Deputy Secretary
+> Mr. Chairman, Members of the Subcommittee, I am accompanied today by John Gingrich, the Chief of Staff, John Sepúlveda, the Assistant Secretary for Human Resources and Administration, and Willie Hensley the Principal Deputy Assistant Secretary for Human Resources and Administration.
+> I am very pleased at the opportunity to come before you today to provide an overview of the Senior Executive Service (SE
+
+## https://veterans.house.gov/submission-for-the-record/national-coalition-for-homeless-veterans
+
+`20e5b3f00211ba32d572801cdc6270256f800ad689b9600172049a2e15f0de8b`: selected 14497 characters, whole page 17250, trafilatura 14593.
+
+**Selected**
+
+> Mister Chairman and Members of the Committee:
+> We are assembled here to talk about the mental health care available to, and the reported increase in suicide among, this nation’s veterans – and specifically, how the Department of Veterans Affairs (VA) is addressing these critical concerns.
+> The National Coalition for Homeless Veterans (NCHV) is honored to participate in this hearing for several reasons. NCHV, perhaps more than any other organization, recognizes the tremendous contributions this com
+
+**trafilatura**
+
+> Submission For The Record of National Coalition for Homeless Veterans
+> Mister Chairman and Members of the Committee:
+> We are assembled here to talk about the mental health care available to, and the reported increase in suicide among, this nation’s veterans – and specifically, how the Department of Veterans Affairs (VA) is addressing these critical concerns.
+> The National Coalition for Homeless Veterans (NCHV) is honored to participate in this hearing for several reasons. NCHV, perhaps more than an
+
+## http://veterans.house.gov/opening-statement/hon-jeff-miller-a-representative-in-congress-from-the-state-of-florida-6
+
+`245c9eaec538f2382b533747a5270f5ac04f550743abd39a052a38d13b74cd11`: selected 1773 characters, whole page 4281, trafilatura 1867.
+
+**Selected**
+
+> Thank you, Mr. Chairman.
+> Public Law 110-389, the Veterans’ Benefits Improvement Act, was a wide-sweeping move toward improving what is often a frustrating process for our nation’s veterans in receiving well-deserved benefits from VA. Many members are still here on the committee and share a common interest in seeing that Congress’s intent, as voted upon and signed into law by the President, is carried out.
+> While VA may not intentionally try to make the claims process difficult, every member of th
+
+**trafilatura**
+
+> Opening Statement of Hon. Jeff Miller, a Representative in Congress from the State of Florida
+> Thank you, Mr. Chairman.
+> Public Law 110-389, the Veterans’ Benefits Improvement Act, was a wide-sweeping move toward improving what is often a frustrating process for our nation’s veterans in receiving well-deserved benefits from VA. Many members are still here on the committee and share a common interest in seeing that Congress’s intent, as voted upon and signed into law by the President, is carried ou
+
+## http://veterans.house.gov/witness-testimony/ms-linda-a-halliday
+
+`2685ee3d7b11731f80e8c263ca68df30b38c063dc95a067e249c5146e85e251f`: selected 26735 characters, whole page 29534, trafilatura 26898.
+
+**Selected**
+
+> Mr. Chairman and Members of the Subcommittee, thank you for the opportunity to discuss the Office of Inspector General’s (OIG) work regarding the securing of veterans’ private information by VA. I am accompanied by Ms. Sondra McCauley, Deputy Assistant Inspector General for Audits and Evaluations, and Mr. Michael Bowman, Director, OIG’s Information Technology and Security Audits Division.
+> BACKGROUND
+> Secure systems and networks are integral to supporting the range of VA mission-critical programs 
+
+**trafilatura**
+
+> Witness Testimony of Ms. Linda A. Halliday, Assistant Inspector General for Audits and Evaluations Office of Inspector General U.S. Department of Veterans Affairs
+> Mr. Chairman and Members of the Subcommittee, thank you for the opportunity to discuss the Office of Inspector General’s (OIG) work regarding the securing of veterans’ private information by VA. I am accompanied by Ms. Sondra McCauley, Deputy Assistant Inspector General for Audits and Evaluations, and Mr. Michael Bowman, Director, OIG’

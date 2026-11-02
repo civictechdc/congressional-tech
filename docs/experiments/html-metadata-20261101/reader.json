@@ -1,62 +1,228 @@
 {
  "cannot_see": [
-  "The differential covers 458 bodies, not the corpus: replay must sample marker-bypassed bodies.",
+  "A marker miss outside these 850: replay must sample bypassed bodies.",
   "One extruct version only.",
-  "Timed-out formats are not deterministic and must be treated as partial."
+  "Timed-out formats are not deterministic and are marked wall_clock_dependent."
  ],
- "cohort": "458 retained bodies, the sample behind F12-F13; recursion bodies include 22c57e71 and ba0e1102",
+ "cohort": "sample-manifest.json: 850 retained HTML bodies read in full, 350 random across five families, 300 statement URLs, 200 from other hosts. Not the earlier 458-body sample, whose manifest was removed.",
+ "corpus_estimate": "Estimate: 192,191 HTML readings x 22 ms = about 70 CPU-minutes. Strata are not weighted to the corpus.",
  "determinism": {
-  "all_results_sha256": "da1ee3a61ea7a0f6c342b7b38f33cf825b15f1d77b50974ced9463f840e94f2c",
-  "finding": "pyRdfa blank-node IDs are random per run as well as ordered by hash seed; 170 of 458 bodies differed until labels were canonicalized",
-  "note": "all_results_sha256 equal for PYTHONHASHSEED=1,2,3, in separate processes"
+  "all_results_sha256": "d821e8bd3756d783c3a540a8b96007ede82573aea0d4a05e454ed6dd2a955026",
+  "bodies": 850,
+  "identical": true,
+  "seeds": [
+   1,
+   2,
+   3
+  ]
  },
- "gated": {
-  "all_results_sha256": "da1ee3a61ea7a0f6c342b7b38f33cf825b15f1d77b50974ced9463f840e94f2c",
-  "bodies": 458,
-  "mean_ms": 29.0,
-  "peak_rss_mb": 148.0,
-  "statuses": {
-   "dublincore:absent:extractor:": 280,
-   "dublincore:ok:extractor:": 178,
-   "json-ld:absent:extractor:": 423,
-   "json-ld:ok:extractor:": 35,
-   "microdata:absent:extractor:": 454,
-   "microdata:ok:extractor:": 4,
-   "microformat:absent:extractor:": 35,
-   "microformat:absent:marker:": 384,
-   "microformat:ok:extractor:": 39,
-   "opengraph:absent:extractor:": 219,
-   "opengraph:ok:extractor:": 239,
-   "rdfa:absent:extractor:": 34,
-   "rdfa:absent:marker:": 117,
-   "rdfa:ok:extractor:": 307
+ "gated_by_seed": {
+  "1": {
+   "all_results_sha256": "d821e8bd3756d783c3a540a8b96007ede82573aea0d4a05e454ed6dd2a955026",
+   "bodies": 850,
+   "log_log_time_slope_over_20kb": 0.49,
+   "mean_ms": 16.3,
+   "peak_rss_mb": 130.2,
+   "percentile_ms": {
+    "50": 11.3,
+    "90": 17.8,
+    "99": 115.8
+   },
+   "random_strata": {
+    "bodies": 350,
+    "mean_ms": 22.0
+   },
+   "statuses": {
+    "dublincore:absent:extractor:": 388,
+    "dublincore:ok:extractor:": 462,
+    "json-ld:absent:extractor:": 828,
+    "json-ld:ok:extractor:": 22,
+    "microdata:absent:extractor:": 847,
+    "microdata:ok:extractor:": 3,
+    "microformat:absent:extractor:": 39,
+    "microformat:absent:marker:": 775,
+    "microformat:ok:extractor:": 36,
+    "opengraph:absent:extractor:": 205,
+    "opengraph:ok:extractor:": 645,
+    "rdfa:absent:extractor:": 6,
+    "rdfa:absent:marker:": 36,
+    "rdfa:ok:extractor:": 808,
+    "wall_clock_dependent": 0
+   },
+   "wall_seconds": 13.8,
+   "worst": [
+    {
+     "bytes": 154393,
+     "ms": 132.7,
+     "sha": "ae356858d3c9d6e01719ec72fdfd7138fa672dddc97f58002b9a52eb501e0191"
+    },
+    {
+     "bytes": 814162,
+     "ms": 177.5,
+     "sha": "d419723b4bc90f7dfa13f1bcfc41105b05ded8a2c07b4c2e7f56a212581182ca"
+    },
+    {
+     "bytes": 181328,
+     "ms": 262.1,
+     "sha": "9727b19d5b9c11403b5b8dd76943aaae78f1a18a3d542be370b92b6382eaf7a3"
+    },
+    {
+     "bytes": 179624,
+     "ms": 264.3,
+     "sha": "9c62b4cfdd80397c068e910b50bd27d58fc4f08259fc939a3643c623168b0ca4"
+    },
+    {
+     "bytes": 508273,
+     "ms": 832.2,
+     "sha": "d69c24f31942b538d4e66f26c0a61f87954c2ac2c05272071a7202fc5a1b31a8"
+    }
+   ]
   },
-  "wall_seconds": 13.3
+  "2": {
+   "all_results_sha256": "d821e8bd3756d783c3a540a8b96007ede82573aea0d4a05e454ed6dd2a955026",
+   "bodies": 850,
+   "log_log_time_slope_over_20kb": 0.48,
+   "mean_ms": 16.4,
+   "peak_rss_mb": 127.0,
+   "percentile_ms": {
+    "50": 11.3,
+    "90": 18.2,
+    "99": 116.4
+   },
+   "random_strata": {
+    "bodies": 350,
+    "mean_ms": 22.1
+   },
+   "statuses": {
+    "dublincore:absent:extractor:": 388,
+    "dublincore:ok:extractor:": 462,
+    "json-ld:absent:extractor:": 828,
+    "json-ld:ok:extractor:": 22,
+    "microdata:absent:extractor:": 847,
+    "microdata:ok:extractor:": 3,
+    "microformat:absent:extractor:": 39,
+    "microformat:absent:marker:": 775,
+    "microformat:ok:extractor:": 36,
+    "opengraph:absent:extractor:": 205,
+    "opengraph:ok:extractor:": 645,
+    "rdfa:absent:extractor:": 6,
+    "rdfa:absent:marker:": 36,
+    "rdfa:ok:extractor:": 808,
+    "wall_clock_dependent": 0
+   },
+   "wall_seconds": 13.9,
+   "worst": [
+    {
+     "bytes": 154393,
+     "ms": 128.2,
+     "sha": "ae356858d3c9d6e01719ec72fdfd7138fa672dddc97f58002b9a52eb501e0191"
+    },
+    {
+     "bytes": 814162,
+     "ms": 176.0,
+     "sha": "d419723b4bc90f7dfa13f1bcfc41105b05ded8a2c07b4c2e7f56a212581182ca"
+    },
+    {
+     "bytes": 179624,
+     "ms": 265.0,
+     "sha": "9c62b4cfdd80397c068e910b50bd27d58fc4f08259fc939a3643c623168b0ca4"
+    },
+    {
+     "bytes": 181328,
+     "ms": 268.3,
+     "sha": "9727b19d5b9c11403b5b8dd76943aaae78f1a18a3d542be370b92b6382eaf7a3"
+    },
+    {
+     "bytes": 508273,
+     "ms": 827.9,
+     "sha": "d69c24f31942b538d4e66f26c0a61f87954c2ac2c05272071a7202fc5a1b31a8"
+    }
+   ]
+  },
+  "3": {
+   "all_results_sha256": "d821e8bd3756d783c3a540a8b96007ede82573aea0d4a05e454ed6dd2a955026",
+   "bodies": 850,
+   "log_log_time_slope_over_20kb": 0.48,
+   "mean_ms": 16.3,
+   "peak_rss_mb": 126.2,
+   "percentile_ms": {
+    "50": 11.3,
+    "90": 18.2,
+    "99": 116.4
+   },
+   "random_strata": {
+    "bodies": 350,
+    "mean_ms": 22.0
+   },
+   "statuses": {
+    "dublincore:absent:extractor:": 388,
+    "dublincore:ok:extractor:": 462,
+    "json-ld:absent:extractor:": 828,
+    "json-ld:ok:extractor:": 22,
+    "microdata:absent:extractor:": 847,
+    "microdata:ok:extractor:": 3,
+    "microformat:absent:extractor:": 39,
+    "microformat:absent:marker:": 775,
+    "microformat:ok:extractor:": 36,
+    "opengraph:absent:extractor:": 205,
+    "opengraph:ok:extractor:": 645,
+    "rdfa:absent:extractor:": 6,
+    "rdfa:absent:marker:": 36,
+    "rdfa:ok:extractor:": 808,
+    "wall_clock_dependent": 0
+   },
+   "wall_seconds": 13.9,
+   "worst": [
+    {
+     "bytes": 154393,
+     "ms": 130.5,
+     "sha": "ae356858d3c9d6e01719ec72fdfd7138fa672dddc97f58002b9a52eb501e0191"
+    },
+    {
+     "bytes": 814162,
+     "ms": 178.3,
+     "sha": "d419723b4bc90f7dfa13f1bcfc41105b05ded8a2c07b4c2e7f56a212581182ca"
+    },
+    {
+     "bytes": 181328,
+     "ms": 264.8,
+     "sha": "9727b19d5b9c11403b5b8dd76943aaae78f1a18a3d542be370b92b6382eaf7a3"
+    },
+    {
+     "bytes": 179624,
+     "ms": 269.4,
+     "sha": "9c62b4cfdd80397c068e910b50bd27d58fc4f08259fc939a3643c623168b0ca4"
+    },
+    {
+     "bytes": 508273,
+     "ms": 819.6,
+     "sha": "d69c24f31942b538d4e66f26c0a61f87954c2ac2c05272071a7202fc5a1b31a8"
+    }
+   ]
+  }
  },
  "marker_differential": {
   "counts": {
    "microformat": {
-    "marker_absent:absent:": 376,
-    "marker_absent:failed:RecursionError": 8,
-    "marker_present:absent:": 35,
-    "marker_present:ok:": 39
+    "marker_absent:absent:": 775,
+    "marker_present:absent:": 39,
+    "marker_present:ok:": 36
    },
    "rdfa": {
-    "marker_absent:absent:": 116,
-    "marker_absent:failed:format_timeout": 1,
-    "marker_present:absent:": 34,
-    "marker_present:ok:": 307
+    "marker_absent:absent:": 36,
+    "marker_present:absent:": 6,
+    "marker_present:ok:": 808
    }
   },
   "misses": [],
   "seconds": {
-   "microformat": 28.5,
-   "microformat:bypassed": 25.4,
-   "rdfa": 50.6,
-   "rdfa:bypassed": 45.7
+   "microformat": 9.0,
+   "microformat:bypassed": 6.0,
+   "rdfa": 8.2,
+   "rdfa:bypassed": 0.0
   }
  },
- "reconciliation": "gated is one run over all 458 bodies: mean 29 ms, peak 148 MB. A later per-step profile reported mean 25 ms over the 350 randomly chosen bodies only, and peak 152 MB from its own run; peak varies by a few MB between runs. These predate the later reader fixes and were not rerun, because the bodies were removed.",
+ "record": "This replaces 29 ms/148 MB and 25 ms/152 MB, both from the removed sample at earlier revisions. Measured now: mean 16.3-16.4 ms over all 850, 22.0-22.1 ms over the 350 random bodies, peak 126-130 MB. This sample holds no recursion or timeout body, so the gate saves 6.0 s of 17.2 s here, against 70 of 78 s on the earlier sample that had them.",
  "runtime": {
   "extruct": "0.18.0",
   "lxml": "6.0.2",

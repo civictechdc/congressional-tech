@@ -8,9 +8,11 @@ import argparse
 import gzip
 import hashlib
 import json
+import math
 import resource
+import statistics
 import time
-from collections import Counter
+from collections import Counter, defaultdict
 from pathlib import Path
 
 from w3lib.encoding import html_to_unicode
@@ -19,22 +21,35 @@ from congress_api.parsers.html_metadata import _MARKERS, _read_format, is_html, 
 
 
 def load(manifest, root):
-    for row in json.loads(Path(manifest).read_text()):
+    for row in json.loads(Path(manifest).read_text())['bodies']:
         yield row, gzip.decompress((Path(root) / f"{row['sha']}.gz").read_bytes())
 
 
 def gated(manifest, root):
     statuses, digest, count = Counter(), hashlib.sha256(), 0
+    by_stratum, sizes = defaultdict(list), []
     start = time.perf_counter()
-    for _, body in load(manifest, root):
+    for row, body in load(manifest, root):
+        began = time.perf_counter()
         metadata = read_html_metadata(body)
+        elapsed = time.perf_counter() - began
+        by_stratum[row['why']].append(elapsed)
+        sizes.append((elapsed, len(body), row['sha']))
+        statuses['wall_clock_dependent'] += metadata.wall_clock_dependent
         count += 1
         digest.update(json.dumps(metadata.source_dict(), sort_keys=True).encode())
         for name, result in metadata.formats.items():
             statuses[f'{name}:{result.status}:{result.basis}:{result.error_type or ""}'] += 1
     wall = time.perf_counter() - start
+    random = [value for name, values in by_stratum.items() if name.startswith('random') for value in values]
+    ordered = sorted(sizes)
+    large = [(math.log(n), math.log(t)) for t, n, _ in sizes if n > 20_000 and t > 0]
     return dict(bodies=count, wall_seconds=round(wall, 1), mean_ms=round(wall / count * 1000, 1),
                 peak_rss_mb=round(resource.getrusage(resource.RUSAGE_SELF).ru_maxrss / 1e6, 1),
+                random_strata=dict(bodies=len(random), mean_ms=round(statistics.mean(random) * 1000, 1)),
+                percentile_ms={str(q): round(ordered[int(count * q / 100)][0] * 1000, 1) for q in (50, 90, 99)},
+                worst=[dict(sha=sha, bytes=n, ms=round(t * 1000, 1)) for t, n, sha in ordered[-5:]],
+                log_log_time_slope_over_20kb=round(statistics.linear_regression(*zip(*large)).slope, 2),
                 statuses=dict(sorted(statuses.items())), all_results_sha256=digest.hexdigest())
 
 

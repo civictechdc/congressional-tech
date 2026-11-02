@@ -1,0 +1,218 @@
+{
+ "counts": {
+  "details_rows_with_time": 750,
+  "evidence:displayed_conflicts_encoded": 177,
+  "evidence:displayed_matches_encoded": 573,
+  "evidence:displayed_only": 2,
+  "evidence:encoded_only_ambiguous": 473,
+  "fallback_rows": 33,
+  "fallback_wrong_day": 0,
+  "matched": 1223,
+  "matched_no_encoded_day": 2,
+  "matched_wrong_day": 0,
+  "raw_bodies_read:public": 49,
+  "raw_rows": 1225,
+  "raw_wrong_day": 0,
+  "rows": 1225
+ },
+ "fallback_rows": [
+  {
+   "listing": "fd63890cf8e2b3a85ea8345fab5e59c241cbf405e200de9b66881cd7d61914e3",
+   "url": "https://www.budget.senate.gov/-hearing-on-cbos-updated-budget-outlook",
+   "parser_day": "2020-09-23",
+   "raw_row_day": "2020-09-23"
+  },
+  {
+   "listing": "fd63890cf8e2b3a85ea8345fab5e59c241cbf405e200de9b66881cd7d61914e3",
+   "url": "https://www.budget.senate.gov/senate-budget-committee-roundtable-to-examine-federal-housing-assistance-programs-",
+   "parser_day": "2020-09-16",
+   "raw_row_day": "2020-09-16"
+  },
+  {
+   "listing": "fd63890cf8e2b3a85ea8345fab5e59c241cbf405e200de9b66881cd7d61914e3",
+   "url": "https://www.budget.senate.gov/business-meeting-to-consider-derek-kan-to-be-deputy-director-of-omb",
+   "parser_day": "2020-07-21",
+   "raw_row_day": "2020-07-21"
+  },
+  {
+   "listing": "fd63890cf8e2b3a85ea8345fab5e59c241cbf405e200de9b66881cd7d61914e3",
+   "url": "https://www.budget.senate.gov/nomination-hearing-on-derek-kan-to-be-deputy-director-of-white-house-budget-office",
+   "parser_day": "2020-06-24",
+   "raw_row_day": "2020-06-24"
+  },
+  {
+   "listing": "fd63890cf8e2b3a85ea8345fab5e59c241cbf405e200de9b66881cd7d61914e3",
+   "url": "https://www.budget.senate.gov/business-meeting-to-consider-russell-vought-to-be-director-of-omb",
+   "parser_day": "2020-06-11",
+   "raw_row_day": "2020-06-11"
+  },
+  {
+   "listing": "fd63890cf8e2b3a85ea8345fab5e59c241cbf405e200de9b66881cd7d61914e3",
+   "url": "https://www.budget.senate.gov/nomination-hearing_-russell-vought-to-be-director-of-office-of-management-and-budget",
+   "parser_day": "2020-06-03",
+   "raw_row_day": "2020-06-03"
+  },
+  {
+   "listing": "fd63890cf8e2b3a85ea8345fab5e59c241cbf405e200de9b66881cd7d61914e3",
+   "url": "https://www.budget.senate.gov/gaos-annual-report-on-nations-fiscal-health",
+   "parser_day": "2020-03-12",
+   "raw_row_day": "2020-03-12"
+  },
+  {
+   "listing": "fd63890cf8e2b3a85ea8345fab5e59c241cbf405e200de9b66881cd7d61914e3",
+   "url": "https://www.budget.senate.gov/markup-to-consider-hr-5430-the-united-states-mexico-canada-agreement-implementation-act",
+   "parser_day": "2020-01-14",
+   "raw_row_day": "2020-01-14"
+  },
+  {
+   "listing": "fd63890cf8e2b3a85ea8345fab5e59c241cbf405e200de9b66881cd7d61914e3",
+   "url": "https://www.budget.senate.gov/budget-committee-to-consider-budget-process-reform-legislation",
+   "parser_day": "2019-11-06",
+   "raw_row_day": "2019-11-06"
+  },
+  {
+   "listing": "fd63890cf8e2b3a85ea8345fab5e59c241cbf405e200de9b66881cd7d61914e3",
+   "url": "https://www.budget.senate.gov/chief-financial-officers-act-of-1990-achieving-the-vision",
+   "parser_day": "2019-10-30",
+   "raw_row_day": "2019-10-30"
+  },
+  {
+   "listing": "fd63890cf8e2b3a85ea8345fab5e59c241cbf405e200de9b66881cd7d61914e3",
+   "url": "https://www.budget.senate.gov/fixing-a-broken-budget-and-spending-process-securing-the-nations-fiscal-future",
+   "parser_day": "2019-06-26",
+   "raw_row_day": "2019-06-26"
+  },
+  {
+   "listing": "fd63890cf8e2b3a85ea8345fab5e59c241cbf405e200de9b66881cd7d61914e3",
+   "url": "https://www.budget.senate.gov/fixing-a-broken-budget-process-lessons-from-states",
+   "parser_day": "2019-06-19",
+   "raw_row_day": "2019-06-19"
+  },
+  {
+   "listing": "fd63890cf8e2b3a85ea8345fab5e59c241cbf405e200de9b66881cd7d61914e3",
+   "url": "https://www.budget.senate.gov/fixing-a-broken-budget-and-spending-process-perspectives-of-two-former-chairmen",
+   "parser_day": "2019-05-14",
+   "raw_row_day": "2019-05-14"
+  },
+  {
+   "listing": "fd63890cf8e2b3a85ea8345fab5e59c241cbf405e200de9b66881cd7d61914e3",
+   "url": "https://www.budget.senate.gov/department-of-defense-fiscal-year-2020-budget-request",
+   "parser_day": "2019-04-09",
+   "raw_row_day": "2019-04-09"
+  },
+  {
+   "listing": "fd63890cf8e2b3a85ea8345fab5e59c241cbf405e200de9b66881cd7d61914e3",
+   "url": "https://www.budget.senate.gov/fiscal-year-2020-budget-resolution_-day-2",
+   "parser_day": "2019-03-28",
+   "raw_row_day": "2019-03-28"
+  },
+  {
+   "listing": "fd63890cf8e2b3a85ea8345fab5e59c241cbf405e200de9b66881cd7d61914e3",
+   "url": "https://www.budget.senate.gov/fiscal-year-2020-budget-resolution_-day-1",
+   "parser_day": "2019-03-27",
+   "raw_row_day": "2019-03-27"
+  },
+  {
+   "listing": "fd63890cf8e2b3a85ea8345fab5e59c241cbf405e200de9b66881cd7d61914e3",
+   "url": "https://www.budget.senate.gov/senate-budget-committee-will-hold-hearing-march-13-on-the-presidents-fiscal-year-2020-budget-proposal",
+   "parser_day": "2019-03-13",
+   "raw_row_day": "2019-03-13"
+  },
+  {
+   "listing": "fd63890cf8e2b3a85ea8345fab5e59c241cbf405e200de9b66881cd7d61914e3",
+   "url": "https://www.budget.senate.gov/the-budget-control-act-a-review-of-cap-adjusted-spending",
+   "parser_day": "2019-02-27",
+   "raw_row_day": "2019-02-27"
+  },
+  {
+   "listing": "fd63890cf8e2b3a85ea8345fab5e59c241cbf405e200de9b66881cd7d61914e3",
+   "url": "https://www.budget.senate.gov/cbos-budget-and-economic-outlook-fy-2019-2029",
+   "parser_day": "2019-01-29",
+   "raw_row_day": "2019-01-29"
+  },
+  {
+   "listing": "fd63890cf8e2b3a85ea8345fab5e59c241cbf405e200de9b66881cd7d61914e3",
+   "url": "https://www.budget.senate.gov/an-update-on-transparency-at-the-congressional-budget-office",
+   "parser_day": "2018-09-13",
+   "raw_row_day": "2018-09-13"
+  },
+  {
+   "listing": "fd63890cf8e2b3a85ea8345fab5e59c241cbf405e200de9b66881cd7d61914e3",
+   "url": "https://www.budget.senate.gov/government-accountability-offices-annual-report-focused-on-additional-opportunities-to-reduce-fragmentation",
+   "parser_day": "2018-05-23",
+   "raw_row_day": "2018-05-23"
+  },
+  {
+   "listing": "fd63890cf8e2b3a85ea8345fab5e59c241cbf405e200de9b66881cd7d61914e3",
+   "url": "https://www.budget.senate.gov/cbos-budget-and-economic-outlook-fiscal-years-2018-2028",
+   "parser_day": "2018-04-11",
+   "raw_row_day": "2018-04-11"
+  },
+  {
+   "listing": "fd63890cf8e2b3a85ea8345fab5e59c241cbf405e200de9b66881cd7d61914e3",
+   "url": "https://www.budget.senate.gov/economic-report-of-the-president",
+   "parser_day": "2018-03-21",
+   "raw_row_day": "2018-03-21"
+  },
+  {
+   "listing": "fd63890cf8e2b3a85ea8345fab5e59c241cbf405e200de9b66881cd7d61914e3",
+   "url": "https://www.budget.senate.gov/department-of-defense-audit-and-business-operations-reform-at-the-pentagon",
+   "parser_day": "2018-03-07",
+   "raw_row_day": "2018-03-07"
+  },
+  {
+   "listing": "fd63890cf8e2b3a85ea8345fab5e59c241cbf405e200de9b66881cd7d61914e3",
+   "url": "https://www.budget.senate.gov/presidents-fy-2019-budget-proposal",
+   "parser_day": "2018-02-13",
+   "raw_row_day": "2018-02-13"
+  },
+  {
+   "listing": "01d7cbfd2adc71286e7de804014766ab08e5e2b81867499519d6b500ddd8c7e6",
+   "url": "https://www.appropriations.senate.gov/a-review-of-preparations-for-the-fifa-world-cup-2026",
+   "parser_day": "2026-04-15",
+   "raw_row_day": "2026-04-15"
+  },
+  {
+   "listing": "9ebb17157d78ff60a6d8019e8d21348d64070b63b3ad8f0d769113eda792d4b9",
+   "url": "https://www.appropriations.senate.gov/the-federal-emergency-management-agencys-response-to-covid-19-and-other-challenges",
+   "parser_day": "2021-04-14",
+   "raw_row_day": "2021-04-14"
+  },
+  {
+   "listing": "9ebb17157d78ff60a6d8019e8d21348d64070b63b3ad8f0d769113eda792d4b9",
+   "url": "https://www.appropriations.senate.gov/a-review-of-the-presidents-fiscal-year-2022-funding-request-for-the-national-science-foundation-and-securing-us-competitiveness",
+   "parser_day": "2021-04-13",
+   "raw_row_day": "2021-04-13"
+  },
+  {
+   "listing": "9ebb17157d78ff60a6d8019e8d21348d64070b63b3ad8f0d769113eda792d4b9",
+   "url": "https://www.appropriations.senate.gov/department-of-defense-innovation-and-research",
+   "parser_day": "2021-04-13",
+   "raw_row_day": "2021-04-13"
+  },
+  {
+   "listing": "9ebb17157d78ff60a6d8019e8d21348d64070b63b3ad8f0d769113eda792d4b9",
+   "url": "https://www.appropriations.senate.gov/domestic-and-foreign-threats-and-other-challenges-facing-the-federal-bureau-of-investigation-",
+   "parser_day": "2021-03-10",
+   "raw_row_day": "2021-03-10"
+  },
+  {
+   "listing": "094cc221e34610ed9d8b4f13728a8ea5fae2d2b748529557a9acd23f06d4004b",
+   "url": "https://www.budget.senate.gov/nomination-of-ms-shalanda-d-young-to-be-deputy-director-of-omb",
+   "parser_day": "2021-03-02",
+   "raw_row_day": "2021-03-02"
+  },
+  {
+   "listing": "094cc221e34610ed9d8b4f13728a8ea5fae2d2b748529557a9acd23f06d4004b",
+   "url": "https://www.budget.senate.gov/hearing-should-taxpayers-subsidize-poverty-wages-at-large-profitable-corporations",
+   "parser_day": "2021-02-25",
+   "raw_row_day": "2021-02-25"
+  },
+  {
+   "listing": "094cc221e34610ed9d8b4f13728a8ea5fae2d2b748529557a9acd23f06d4004b",
+   "url": "https://www.budget.senate.gov/omb-nomination-hearing-of-ms-neera-tanden",
+   "parser_day": "2021-02-10",
+   "raw_row_day": "2021-02-10"
+  }
+ ]
+}
