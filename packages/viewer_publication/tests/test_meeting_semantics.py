@@ -29,10 +29,10 @@ def text(value):
     return 'NULL' if value is None else "'" + str(value).replace("'", "''") + "'"
 
 
-def meeting(event_id, date, title, status=None, video=False):
-    facts = stated_facts('Hearing', title, status)
+def meeting(event_id, date, title, status=None, video=False, kind='Hearing'):
+    facts = stated_facts(kind, title, status)
     return (f"SELECT cast({event_id} AS BIGINT) AS event_id,'house' AS chamber,{text(title)} AS title,"
-            f"cast('{date}' AS DATE) AS meeting_date,'Hearing' AS meeting_type,cast(NULL AS SMALLINT) AS session,"
+            f"cast('{date}' AS DATE) AS meeting_date,'{kind}' AS meeting_type,cast(NULL AS SMALLINT) AS session,"
             f"cast({text(status)} AS VARCHAR) AS status,{EMPTY_SITTINGS} AS sittings,"
             "array_slice(make_array(named_struct('system_code',cast(NULL AS VARCHAR),'role',cast(NULL AS VARCHAR))),1,0) AS committees,"
             "arrow_cast(array_slice(make_array(cast(NULL AS VARCHAR)),1,0),'List(Utf8)') AS subject_keys,"
@@ -49,6 +49,7 @@ INSURRECTION = 'The Capitol Insurrection: Unexplained Delays and Unanswered Ques
 FTC = 'The FTC at 100: Where Do We Go From Here regulatory'
 POSTPONED = 'Challenges to Democracy in the Western Hemisphere'
 NEVER = 'Wildfire funding and forest management practices review'
+BILLS = 'H.R. 1753 Jax Act; H.R. 3790 Justice for ALS Veterans Act of 2023; H.R. 4016 Veteran Fraud Reimbursement Act'
 MEETINGS = [
     # 106383 shape: Rescheduled, its own video, a later twin: it sat.
     meeting(1, '2017-09-14', POWER, 'Rescheduled', video=True),
@@ -65,6 +66,15 @@ MEETINGS = [
     # The only later twin is itself not held.
     meeting(9, '2014-03-01', NEVER, 'Postponed'),
     meeting(10, '2014-03-20', NEVER, 'Canceled'),
+    # 116450 shape: Rescheduled, no video, but its record lists its own transcript; the twin is a markup.
+    meeting(11, '2023-11-08', BILLS, 'Rescheduled'),
+    meeting(12, '2023-11-29', BILLS, 'Rescheduled', kind='HMKP'),
+    # A hearing never moves to a markup of the same bills, whatever its status.
+    meeting(13, '2023-11-08', BILLS + ' oversight', 'Postponed'),
+    meeting(14, '2023-11-29', BILLS + ' oversight', 'Scheduled', kind='HMKP'),
+    # Witnesses tied to the meeting alone also show it sat.
+    meeting(15, '2013-10-24', FTC + ' second', 'Rescheduled'),
+    meeting(16, '2013-12-03', FTC + ' second', 'Scheduled'),
 ]
 
 
@@ -77,6 +87,8 @@ def meetings(tmp_path_factory):
         dict(name='ordered', sql="SELECT arrow_cast(array_slice(make_array('1'),1,0),'List(Utf8)') AS meeting_keys", materialize=True),
         dict(name='meeting_transcript_links', sql="SELECT cast(NULL AS VARCHAR) AS package_id,cast(NULL AS BIGINT) AS event_id WHERE false", materialize=True),
         dict(name='details', sql="SELECT cast(NULL AS VARCHAR) AS package_id,cast(NULL AS INT) AS list_row WHERE false", materialize=True),
+        dict(name='meeting_document_urls', sql="SELECT cast(11 AS BIGINT) AS event_id,'https://www.congress.gov/118/meeting/house/116450/documents/HHRG-118-VR09-Transcript-20231108.pdf' AS url", materialize=True),
+        dict(name='appearance_records_resolved', sql="SELECT cast(15 AS BIGINT) AS event_id,'Jane Witness' AS name", materialize=True),
         dict(name='meetings_export', sql=sql('entity-meetings'), materialize=True),
     ]
     run_job(work, engine, inputs=[], steps=steps,
@@ -100,6 +112,14 @@ def test_rescheduled_without_a_recording_moves_by_publisher_status(meetings):
 
 def test_postponed_moves_even_with_a_recording_of_its_own(meetings):
     assert meetings[7][:3] == (8, 'publisher_status', True)
+
+
+def test_a_meeting_with_its_own_transcript_or_witnesses_sat(meetings):
+    assert meetings[11][0] is None and meetings[15][0] is None
+
+
+def test_a_hearing_never_moves_to_a_markup(meetings):
+    assert meetings[13][0] is None
 
 
 def test_a_twin_that_is_itself_not_held_is_never_chosen(meetings):

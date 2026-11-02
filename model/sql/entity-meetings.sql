@@ -2,22 +2,34 @@ WITH keys AS (
  SELECT DISTINCT try_cast(unnest(meeting_keys) AS BIGINT) AS event_id FROM ordered WHERE meeting_keys IS NOT NULL
  UNION
  SELECT DISTINCT event_id FROM meetings_resolved WHERE event_id IS NOT NULL
+), own_evidence AS (
+ -- What the meeting's own records hold of a sitting: a transcript file its record lists, or witnesses
+ -- tied to it alone. 116450 (Rescheduled) lists HHRG-118-VR09-Transcript-20231108.pdf and 14 witnesses.
+ SELECT event_id FROM meeting_document_urls WHERE regexp_like(url,'(?i)transcript')
+ UNION
+ SELECT event_id FROM appearance_records_resolved WHERE event_id IS NOT NULL AND name IS NOT NULL
 ), reschedule_rows AS (
  -- Postponed/Canceled (not_held) says no sitting on this date. Rescheduled is ambiguous: re-dated in place
  -- (106383, own video) or re-entered (101422, raw MODS shows the twin's print), so the record's own
- -- recording means it sat. Jackets are not own evidence: Congress.gov lists same-day jackets of other
- -- hearings (101422 lists 87484 "PPACA...", held 2013-10-24). Parts live in title_key (ct-asdg).
- SELECT event_id,meeting_date,title_key,reschedule_candidate,committee_key,
-  coalesce(array_length(videos),0)>0 AS has_video,
-  coalesce(not_held,false) AS not_held,
-  lower(coalesce(status,''))='rescheduled' AS rescheduled
- FROM meetings_resolved WHERE title_key IS NOT NULL AND committee_key IS NOT NULL
+ -- recording, transcript or witnesses mean it sat. Jackets are not own evidence: Congress.gov lists
+ -- same-day jackets of other hearings (101422 lists 87484 "PPACA...", held 2013-10-24). Parts live in
+ -- title_key (ct-asdg); a hearing never moves to a markup of the same bills (116450 -> 116562).
+ SELECT r.event_id,r.meeting_date,r.title_key,r.reschedule_candidate,r.committee_key,
+  coalesce(array_length(r.videos),0)>0 OR e.event_id IS NOT NULL AS sat,
+  coalesce(array_length(r.videos),0)>0 AS has_video,
+  coalesce(r.not_held,false) AS not_held,
+  lower(coalesce(r.status,''))='rescheduled' AS rescheduled,
+  CASE WHEN upper(coalesce(r.meeting_type,'')) IN ('HHRG') OR lower(coalesce(r.meeting_type,'')) LIKE '%hearing%' THEN 'hearing'
+       WHEN upper(coalesce(r.meeting_type,'')) IN ('HMKP') OR lower(coalesce(r.meeting_type,'')) LIKE '%markup%' THEN 'markup' END AS kind
+ FROM meetings_resolved r LEFT JOIN (SELECT DISTINCT event_id FROM own_evidence) e ON r.event_id=e.event_id
+ WHERE r.title_key IS NOT NULL AND r.committee_key IS NOT NULL
 ), twins AS (
  SELECT old.event_id,(old.not_held OR old.rescheduled) AS stated,twin.event_id AS twin_id,twin.meeting_date
  FROM reschedule_rows old JOIN reschedule_rows twin ON old.title_key=twin.title_key AND old.committee_key=twin.committee_key
  WHERE twin.meeting_date>old.meeting_date AND twin.meeting_date<=old.meeting_date+INTERVAL '60' DAY
   AND NOT twin.not_held
-  AND (old.not_held OR (NOT old.has_video AND (old.rescheduled OR (old.reschedule_candidate AND twin.has_video))))
+  AND (old.kind IS NULL OR twin.kind IS NULL OR old.kind=twin.kind)
+  AND (old.not_held OR (NOT old.sat AND (old.rescheduled OR (old.reschedule_candidate AND twin.has_video))))
 ), first_twin AS (
  SELECT *,row_number() OVER(PARTITION BY event_id ORDER BY meeting_date,twin_id) AS rn FROM twins
 ), rescheduled AS (

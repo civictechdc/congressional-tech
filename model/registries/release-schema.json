@@ -781,7 +781,7 @@
         {
           "name": "rescheduled_to",
           "type": "int64",
-          "meaning": "Later meeting of the same committees and title, parts included, within 60 days that is not itself not held: when this meeting is not held, or has no recording of its own and either the publisher states Rescheduled or only the later twin has a recording; derived",
+          "meaning": "Later meeting of the same committees and title, parts included, within 60 days that is not itself not held: when this meeting is not held, or has no recording, transcript file or witnesses of its own and either the publisher states Rescheduled or only the later twin has a recording; a hearing never moves to a markup; derived",
           "nullable": true
         },
         {
