@@ -21,8 +21,8 @@
   "contract_next_release": "../fixtures/archive-contract/next",
   "targets": {
     "path": "../../apps/site/archive-targets.json",
-    "sha256": "4d1f8921ef739cce8936bc913061d7fc4c0d92adb061a81de17a0434b4060284",
-    "size": 83
+    "sha256": "b1d9fe06445d131974bcb2833be3e27de901ac30b43db282ee3a2f927f1353d4",
+    "size": 332
   },
   "automatic_causes": true
 }

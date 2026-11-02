@@ -18,7 +18,19 @@ function profileStatistics(samples){
   const medians=Object.fromEntries(targetNames.map(name=>[name,median(samples.map(sample=>sample[name]))]));
   return {medians,ceilings:Object.fromEntries(targetNames.map(name=>[name,Math.ceil(1.5*medians[name])]))};
 }
+const DEFERRAL_FIELDS=['version','status','ceilings','decided_on','decided_by','reason','restores_gate'];
+/** An owner may defer the speed gate, but only on the record: the date, who decided, why, and the
+ * ticket that restores it. Anything else is not a deferral and refuses like missing targets. */
+function validateDeferral(value){
+  if(Object.keys(value).sort().join()!==[...DEFERRAL_FIELDS].sort().join()||value.version!==1||value.ceilings!==null
+      ||!/^\d{4}-\d{2}-\d{2}$/.test(value.decided_on??'')||Number.isNaN(Date.parse(value.decided_on))||value.decided_by!=='owner'
+      ||typeof value.reason!=='string'||!value.reason.trim()||!/^ct-[a-z0-9]{4}$/.test(value.restores_gate??''))
+    throw new Error('A deferred target file needs exactly: decided_on (YYYY-MM-DD), decided_by owner, reason, restores_gate (ticket).');
+  return value;
+}
+export const deferralNotice=value=>`Site speed targets are deferred (owner decision ${value.decided_on}; restored by ${value.restores_gate}): timing is unverified for this release.`;
 function validateTargets(value){
+  if(value.status==='deferred')return validateDeferral(value);
   if(value.version!==1||!['owner-approved','provisional-emulated'].includes(value.status)||targetNames.some(name=>!positive(value.ceilings?.[name])))throw new Error('Invalid qualified archive targets.');
   if(value.status==='owner-approved'){if(value.basis!=='real-device')throw new Error('Owner-approved targets require real-device measurements.');return value;}
   if(value.basis!=='emulated'||!/^[a-f0-9]{40}$/.test(value.harness_commit))throw new Error('Provisional targets need their emulated basis and harness commit.');
@@ -32,7 +44,7 @@ function validateTargets(value){
   if(targetNames.some(name=>value.ceilings[name]!==Math.max(value.profile.phone.ceilings[name],value.profile.desktop.ceilings[name])))throw new Error('Provisional combined ceilings differ from their profiles.');
   return value;
 }
-export async function readTargets(path=defaultTargets){const value=JSON.parse(await readFile(path));if(value.version!==1)throw new Error('Unsupported target schema.');if(value.status==='owner-gated')return undefined;return validateTargets(value);}
+export async function readTargets(path=defaultTargets){const value=JSON.parse(await readFile(path));if(value.version!==1)throw new Error('Unsupported target schema.');if(value.status==='owner-gated')return undefined;if(value.status==='deferred'){validateDeferral(value);return undefined;}return validateTargets(value);}
 export function checkTargetRelease(releaseId,targets,origin){
   validateTargets(targets??{});
   if(targets.status==='provisional-emulated'&&!measurableOrigin(origin))throw new Error('Provisional emulated targets require a non-display-only model release.');
@@ -45,6 +57,9 @@ export function checkTargets(sample,targets,origin,profile){
   for(const name of targetNames)if(!Number.isFinite(sample[name])||sample[name]<0||sample[name]>ceilings[name])throw new Error(`Archive ${name} exceeds its measured target.`);
 }
 export async function validateTargetFile(path,origin){
+  const raw=JSON.parse(await readFile(path));
+  if(raw?.status==='deferred'){const value=validateDeferral(raw);
+    return {status:'deferred',basis:null,measured_release_id:null,deferral:{decided_on:value.decided_on,decided_by:value.decided_by,reason:value.reason,restores_gate:value.restores_gate,timing:'unverified'}};}
   const targets=await readTargets(path);if(!targets)throw new Error('Qualified archive targets are missing.');
   if(targets.status==='provisional-emulated'&&!measurableOrigin(origin))throw new Error('Provisional targets require a non-display-only model release.');
   return {status:targets.status,basis:targets.basis,measured_release_id:targets.status==='provisional-emulated'?targets.raw_runs.phone[0].releaseId:null};
@@ -81,7 +96,7 @@ export async function writeTargets({measurements,ceilings,output,basis='real-dev
 export function argumentsMap(args){const out={};for(let i=0;i<args.length;i+=2){if(!args[i].startsWith('--')||args[i+1]===undefined)throw new Error('Use --name value arguments.');out[args[i].slice(2)]=args[i+1];}return out;}
 if(process.argv[1]&&import.meta.url===pathToFileURL(process.argv[1]).href){
   const args=argumentsMap(process.argv.slice(2));
-  if(args.check){if(args['display-only']!=='false'||args['origin-kind']!=='model')throw new Error('Target validation requires --origin-kind model and --display-only false.');console.log(JSON.stringify(await validateTargetFile(args.check,{kind:args['origin-kind'],display_only:false})));}
+  if(args.check){if(args['display-only']!=='false'||args['origin-kind']!=='model')throw new Error('Target validation requires --origin-kind model and --display-only false.');const checked=await validateTargetFile(args.check,{kind:args['origin-kind'],display_only:false});if(checked.deferral)console.error(deferralNotice(checked.deferral));console.log(JSON.stringify(checked));}
   else{if(!args.measurements||!args.output)throw new Error('Use --measurements phone.json,desktop.json --output targets.json and either real-device ceilings or --basis emulated --harness-commit SHA.');
   const measurements=await Promise.all(args.measurements.split(',').map(async name=>JSON.parse(await readFile(name))));
   await writeTargets({measurements,ceilings:Object.fromEntries(targetNames.map(name=>[name,Number(args[name])])),output:args.output,basis:args.basis,harnessCommit:args['harness-commit']});}

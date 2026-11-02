@@ -9,10 +9,13 @@ from archive_job_fixture import model_spec
 from congress_api.retention.provenance import file_pin
 
 
-def publish_spec(tmp_path):
+DEFERRAL_FIELDS=dict(decided_on='2026-11-02',decided_by='owner',reason='Delay the performance gate till later.',restores_gate='ct-t915')
+
+
+def publish_spec(tmp_path,deferred=False):
     model=tmp_path/'model.json';model.write_text(json.dumps(model_spec(tmp_path)))
-    targets=tmp_path/'targets.json';targets.write_text(json.dumps(dict(version=1,status='owner-approved',basis='real-device',
-        ceilings=dict(startupMs=100,searchMs=100,detailMs=100,heapBytes=1000000))))
+    targets=tmp_path/'targets.json';targets.write_text(json.dumps(dict(version=1,status='deferred',ceilings=None,**DEFERRAL_FIELDS) if deferred else
+        dict(version=1,status='owner-approved',basis='real-device',ceilings=dict(startupMs=100,searchMs=100,detailMs=100,heapBytes=1000000))))
     dist=tmp_path/'site';dist.mkdir()
     return dict(version=1,model_spec=dict(path=str(model),**file_pin(model)),bucket='derived-fixture',
         work=str(tmp_path/'publish'),public_origin='https://archive.fixture.test',
@@ -325,13 +328,14 @@ def producers_recorded(monkeypatch):
     return calls
 
 
-def test_execute_binds_matching_destination_and_records_actual_native_probe_commands(tmp_path,producers_recorded):
+@pytest.mark.parametrize('targets',['measured','deferred'])
+def test_execute_binds_matching_destination_and_records_actual_native_probe_commands(tmp_path,capfd,targets,producers_recorded):
     from docspec_client.client import NativeDatasets
     from viewer_publication.archive_publish_job import execute,load_spec
     from archive_job_fixture import real_model_spec
     from test_archive_controller import Runtime as NativeTransport
     from test_archive_publish import Store
-    value=publish_spec(tmp_path);model,_,_=real_model_spec(tmp_path)
+    value=publish_spec(tmp_path,deferred=targets=='deferred');model,_,_=real_model_spec(tmp_path)
     path=Path(value['model_spec']['path']);path.write_text(json.dumps(model));value['model_spec']=dict(path=str(path),**file_pin(path))
     specpath=tmp_path/'publish.json';specpath.write_text(json.dumps(value));spec=load_spec(specpath)
     remote=remote_config(tmp_path);store=Store();events=[];commands=[];configs=[]
@@ -378,6 +382,15 @@ def test_execute_binds_matching_destination_and_records_actual_native_probe_comm
     assert len(configs)==2 and configs[0]['remote']!=configs[1]['remote']
     assert all(configs[0][name]==configs[1][name] for name in ['binary','limits','binary_sha256','source_revision'])
     assert not Path(configs[1]['remote']).exists()  # Owned startup metadata was cleaned up.
+    # The release's input record names how site timing stood when it was published.
+    records=[json.loads(body) for key,body in store.objects.items() if '/inputs/' in key and key.endswith('.json')]
+    assert len(records)==1
+    recorded=records[0]['run']['site_targets']
+    if targets=='deferred':
+        assert recorded==dict(status='deferred',timing='unverified',**DEFERRAL_FIELDS)
+        assert 'timing is unverified for this release' in capfd.readouterr().err
+    else:
+        assert recorded==dict(status='owner-approved',basis='real-device',measured_release_id=None,timing='verified')
 
 
 @pytest.mark.parametrize('change',['catalog_account','catalog_bucket','warehouse','namespace','inline_secret','endpoint_override'])
@@ -407,6 +420,29 @@ def test_shared_native_probe_skips_empty_hidden_and_unreadable_saved_bodies(tmp_
         reports=run_job(tmp_path,engine,inputs=[],steps=[dict(name='details',sql=details)],
             outputs=[],queries=[probe_selectors_query()])
     assert reports['probe_selectors']==[dict(saved_row=3,link_key='0123456789abcdef')]
+
+
+@pytest.mark.parametrize('change',['missing','not_json','no_ticket','bad_ticket','no_date','bad_date','not_owner',
+    'empty_reason','ceilings','extra_field'])
+def test_only_a_recorded_owner_deferral_stands_in_for_targets(tmp_path,change):
+    from viewer_publication.archive_publish_job import load_spec,execute
+    value=publish_spec(tmp_path,deferred=True);target=Path(value['targets']['path']);targets=json.loads(target.read_text())
+    if change=='no_ticket':del targets['restores_gate']
+    elif change=='bad_ticket':targets['restores_gate']='later'
+    elif change=='no_date':del targets['decided_on']
+    elif change=='bad_date':targets['decided_on']='2026-13-45'
+    elif change=='not_owner':targets['decided_by']='agent'
+    elif change=='empty_reason':targets['reason']=' '
+    elif change=='ceilings':targets['ceilings']=dict(startupMs=1,searchMs=1,detailMs=1,heapBytes=1)
+    elif change=='extra_field':targets['note']='skip'
+    target.write_text('{deferred' if change=='not_json' else json.dumps(targets))
+    value['targets']=dict(path=str(target),**file_pin(target))
+    if change=='missing':target.unlink()
+    path=tmp_path/'publish.json';path.write_text(json.dumps(value))
+    def never(*args,**kwargs):pytest.fail('An unrecorded deferral reached runtime or SDK')
+    with pytest.raises((ValueError,OSError),match='targets|No such file|Expecting'):
+        execute(load_spec(path),runtime_factory=never,storage_factory=never)
+    assert not Path(value['work']).exists()
 
 
 @pytest.mark.parametrize('status',['measured','provisional-emulated','owner-gated'])

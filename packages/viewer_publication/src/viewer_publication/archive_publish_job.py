@@ -342,11 +342,25 @@ def execute(spec,*,runtime_factory=None,storage_factory=None,process_runner=None
         if len(checked.stdout.encode())>METADATA_BYTES:raise ValueError('Target validator output exceeds the metadata allowance')
         target_metadata=json.loads(checked.stdout)
     except (subprocess.SubprocessError,ValueError) as error:
-        raise ValueError('Publication requires valid measured site targets (owner-approved or candidate-bound provisional-emulated)') from error
+        raise ValueError('Publication requires valid measured site targets (owner-approved or candidate-bound provisional-emulated) or a recorded owner deferral') from error
     target_identity.require(spec['targets']['path'])
-    if (not isinstance(target_metadata,dict) or set(target_metadata)!={'status','basis','measured_release_id'}
+    deferred=targets.get('status')=='deferred'
+    if (not isinstance(target_metadata,dict)
+            or set(target_metadata)!={'status','basis','measured_release_id'}|({'deferral'} if deferred else set())
             or target_metadata['status']!=targets.get('status') or target_metadata['basis']!=targets.get('basis')):
         raise ValueError('Shared targets validation differs from the pinned metadata')
+    if deferred:
+        deferral=target_metadata['deferral']
+        if (not isinstance(deferral,dict) or deferral.get('timing')!='unverified'
+                or any(deferral.get(name)!=targets.get(name) for name in ('decided_on','decided_by','reason','restores_gate'))):
+            raise ValueError('Shared targets validation differs from the pinned metadata')
+        # A deferred speed gate is recorded with the release, never skipped silently.
+        site_targets=dict(status='deferred',**deferral)
+        print(f"Site speed targets are deferred (owner decision {deferral['decided_on']}; restored by {deferral['restores_gate']}): "
+              'timing is unverified for this release.',file=sys.stderr)
+    else:
+        site_targets=dict(status=target_metadata['status'],basis=target_metadata['basis'],
+            measured_release_id=target_metadata['measured_release_id'],timing='verified')
     measured_release_id=target_metadata['measured_release_id']
     expected_release_id=spec['run'].get('expected_release_id')
     if (expected_release_id is not None and measured_release_id is not None
@@ -423,7 +437,7 @@ def execute(spec,*,runtime_factory=None,storage_factory=None,process_runner=None
                 receipt=json.loads(receipt_path.read_text())
                 target_identity.require(spec['targets']['path']);require_configuration()
                 return receipt
-            options=dict(client=client,engine=engine,bucket=spec['bucket'],work=spec['work'],run=spec['run'],
+            options=dict(client=client,engine=engine,bucket=spec['bucket'],work=spec['work'],run=dict(spec['run'],site_targets=site_targets),
                 public_origin=spec['public_origin'],contract=lambda **context:probe('contract',context),
                 canary=lambda **context:probe('canary',context))
             causes=None

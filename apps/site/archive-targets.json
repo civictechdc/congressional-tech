@@ -1,6 +1,9 @@
 {
   "version": 1,
-  "status": "owner-gated",
+  "status": "deferred",
   "ceilings": null,
-  "devices": []
+  "decided_on": "2026-11-02",
+  "decided_by": "owner",
+  "reason": "Delay the performance gate till later. Site speed targets will be emulated only (Chrome CDP), and Chrome cannot throttle the archive worker, so no ceilings are set yet.",
+  "restores_gate": "ct-t915"
 }
