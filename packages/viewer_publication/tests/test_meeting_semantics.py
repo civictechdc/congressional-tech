@@ -257,7 +257,7 @@ def resolve(tmp_path, records, links, prints, paths=(), meetings=((9001, DAY, TI
              dict(name='appearance_records_resolved', sql=sql('appearance-records-resolved'), materialize=True),
              dict(name='witness_precedence', sql=sql('witness-precedence'), materialize=True)]
     found = run_job(tmp_path, engine, inputs=inputs, steps=steps, outputs=[], queries=[
-        dict(name='rows', sql='''SELECT r.name,r.occasion,r.event_id,r.witness_type,r.source,s.name AS superseded_by FROM appearance_records_resolved r
+        dict(name='rows', sql='''SELECT r.name,r.occasion,r.event_id,r.witness_type,r.source,r.source_locator,s.name AS superseded_by FROM appearance_records_resolved r
             LEFT JOIN witness_precedence p ON p.witness_key=r.witness_key
             LEFT JOIN appearance_records_resolved s ON s.witness_key=p.superseded_by ORDER BY r.name''')])['rows']
     if rows:
@@ -364,6 +364,20 @@ def test_precedence_matches_only_the_same_person(tmp_path, case, top, expected):
     printed = record('a', 'mods', [witness(n) for n in [*expected, 'Pat Panel', 'Quinn Panel']], package_id='CHRG-a')
     got = resolve(tmp_path, [own, printed], [('CHRG-a', 9001)], {'CHRG-a': facts()}, rows=True)
     assert {r['name']: r['superseded_by'] for r in got if r['source'] == 'mods' and r['name'] in expected} == expected
+
+
+def test_a_witness_listed_twice_in_one_print_is_shown_once(tmp_path):
+    # D4 gate: a print lists a witness and then their answers to submitted questions ("Answers to submitted
+    # questions \\1\\ Lynn Goldman, ..."). The later line of the same person in the same record is superseded by the
+    # first, on a package occasion as on a meeting; two distinct letters with one heading stay two.
+    printed = record('a', 'mods', [dict(witness('Lynn Goldman'), source_locator='mods:witness[1]'),
+                                   dict(witness('Lynn Goldman'), source_locator='mods:witness[2]'),
+                                   dict(witness('Letter dated October 7', kind='statement_for_record'), source_locator='mods:witness[3]'),
+                                   dict(witness('Letter dated October 7', kind='statement_for_record'), source_locator='mods:witness[4]')],
+                     package_id='CHRG-a')
+    got = resolve(tmp_path, [printed], [], {}, rows=True)
+    assert sorted((r['source_locator'], r['superseded_by'] is not None) for r in got) == [
+        ('mods:witness[1]', False), ('mods:witness[2]', True), ('mods:witness[3]', False), ('mods:witness[4]', False)]
 
 
 @pytest.mark.parametrize('created,shown', [('2021-04-07T11:07:59.340', True), ('2021-05-01T09:00:00', False)])

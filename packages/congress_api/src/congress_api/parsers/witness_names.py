@@ -54,7 +54,7 @@ FOOTNOTE = re.compile(r"\s*\\\d+\\")
 ##  GPO's character-entity residue ("60<greek-l>", "00 deg.")
 LABEL_WORDS = (r"(?:(?:supplement to |joint )?(?:opening |prepared |written )?statements?(?: and attachments)?(?: \d+)?(?: of)?"
                r"|answers? to (?:submitted |additional )?questions|submitted questions"
-               r"|additional (?:information|materials?)(?: (?:submitted )?for the record)?"
+               r"|additional (?:information|materials?)(?: supplied)?(?: (?:submitted )?for the record)?"
                r"|responses? to (?:submitted |additional |written )?questions)")
 LABEL_END = r"(?:\s*\\\d+\\)*(?:\s*\.{3,}\s*(?:[\d\-]+\S*(?: deg\.)?)?)?"
 CONTENTS_LABEL = re.compile(r"^\s*" + LABEL_WORDS + r":?(?:(?:\s*\\\d+\\)+" + LABEL_END + r"|\s*\.{3,}\s*(?:[\d\-]+\S*(?: deg\.)?)?)\s*", re.I)
@@ -72,8 +72,25 @@ FOOTNOTE_TEXT = re.compile(r"(?:has|have|are|is) been retained in|retained in th
 FOOTNOTE_END = re.compile(r"(?:\.pdf|EventID=\d+|time of (?:publication|printing))\.\s+|retained in the files of the Committee\s+", re.I)
 
 
-## a contents entry's dot leader and what follows it ("..., Nebraska \1\......... Prepared statement")
-LEADER_TAIL = re.compile(r"\s*\.{4,}.*$")
+## a dot leader and the page list after it ("........ 62-75 ", "..... 102-115, 115-123 ", "....... 39,40 ")
+LEADER = re.compile(r"\s*\.{4,}\s*(?:\d+(?:-\d+)?(?:,\s*\d+(?:-\d+)?)*,?)?\s*")
+## the items a leader can end: a contents label or entry, never a witness's position
+ENTRY_WORDS = re.compile(r"^\W*(?:" + LABEL_WORDS + r"|insert for the record|letters?\b|response|charts?\b|slides?\b|articles?\b)", re.I)
+
+
+def split_leaders(text: str) -> str:
+    """GPO's dot leader separates two items on one line: a name from its position ("Kay E. Brown...... Director,
+    ..."), a witness's line from its contents entry ("..., Department of Energy...... Insert for the record"), or a
+    contents entry and its pages from the next witness's line ("Slides...... 62-75 Hines, William H., ..."). Keep
+    the witness: the first item when it is a name, else the last item written as a witness line (a name and a
+    position, so a bare Member's name between two entries is not one); a line of entries keeps its first."""
+    items = [item.strip(" ,") for item in LEADER.split(text) if item.strip(" ,")]
+    if len(items) <= 1:
+        return items[0] if items else ""
+    if not ENTRY_WORDS.match(items[0]) and is_name(_name_of(items[0])):
+        return ", ".join([items[0], *(item for item in items[1:] if not ENTRY_WORDS.match(item))])
+    people = [item for item in items[1:] if "," in item and not ENTRY_WORDS.match(item) and is_name(_name_of(item))]
+    return people[-1] if people else items[0]
 
 
 def drop_footnote_text(text: str) -> str:
@@ -94,7 +111,7 @@ def strip_contents_markers(text: str) -> str:
         text = text[label.end():]
     if (label := UNMARKED_LABEL.match(text)) and is_name(_name_of(text[label.end():])):
         text = text[label.end():]
-    return LEADER_TAIL.sub("", FOOTNOTE.sub("", text)).strip()
+    return split_leaders(FOOTNOTE.sub("", text)).strip()
 
 
 def _name_of(text: str) -> str:

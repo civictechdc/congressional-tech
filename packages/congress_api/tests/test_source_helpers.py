@@ -44,6 +44,9 @@ FOOTNOTE_TEXT_LINES = [
      "Plant Science Center", "Roger N. Beachy"),
     ("Additional information \\1\\ Kevin Sunday, Director, Government Affairs, Pennsylvania Chamber of Business and Industry", "Kevin Sunday"),
     ("Additional information from Michael R. Lemov, Winston & Strawn", "Michael R. Lemov"),
+    ("Additional materials supplied: Pautzke, Dr. Clarence, Executive Director, North Pacific Research Board, Statement "
+     "submitted for the record", "Clarence Pautzke"),
+    ("Additional materials supplied: Lingle, Hon. Linda, Governor, State of Hawaii, Letter submitted for the record", "Linda Lingle"),
     ("Prepared statements: Weber, Peter", "Peter Weber"),
     ("Prepared statements:..................................... LaMura, Marianne", "Marianne LaMura"),
     ("Prepared statement and attachments..........................124-136 Paperiello, Carl, Deputy Executive Director for "
@@ -54,6 +57,36 @@ FOOTNOTE_TEXT_LINES = [
     ("Prepared statements: April 5, 2001", "Prepared statements: April 5"),
     ("Prepared statement dated July 30, 2020 before the Senate Committee on Commerce, Science and Transportation", "Prepared statement dated July 30"),
 ]
+
+
+LEADER_LINES = [
+    # A dot leader inside a line separates two items: a name and its position, or a contents entry (and its
+    # pages) and the next witness's line. Neither side is dropped wholesale (D4 gate, witnesses).
+    ("Kay E. Brown..................................................... Director, Education, Workforce, and Income Security, "
+     "U.S. Government Accountability Office Testimony", "Kay E. Brown", "Director", "Education, Workforce, and Income Security, "
+     "U.S. Government Accountability Office Testimony"),
+    ("Slides....................................................... 62-75 Hines, William H., past chairman and board member, "
+     "Greater New Orleans, Inc.", "William H. Hines", "past chairman and board member", "Greater New Orleans, Inc."),
+    ("Letters to Hon. Arthur Levitt................................ 39,40 Metzenbaum, Hon. Howard M., (Retired Senator), "
+     "Chairman, Consumer Federation of America", "Howard M. Metzenbaum", "(Retired Senator)", "Chairman, Consumer Federation of America"),
+    ("Statements, Association of State and Interstate Water Pollution Control Administrators.................102-115, 115-123 "
+     "Nielsen, William, council president, Eau Claire, WI, on Behalf of the National League of Cities", "William Nielsen",
+     "council president", "Eau Claire, WI, on Behalf of the National League of Cities"),
+    ("Steve Chalk, Chief Financial Officer, Energy Efficiency and Renewable Energy, Department of Energy \\1\\..................... "
+     "Insert for the record", "Steve Chalk", "Chief Financial Officer", "Energy Efficiency and Renewable Energy, Department of Energy"),
+    # Contents entries with no one's line after them stay entries; a bare Member's name between them is not a witness line.
+    ("Response to request arising during the hearing by: Hon. Patty Murray.......................................... 13,14 Hon. "
+     "Jon Tester............................................ 22,27 Response to posthearing questions submitted by Hon. Jerry Moran",
+     "Response to request arising during the hearing by: Hon. Patty Murray", "", ""),
+    ("Charts.........................................49-51, 53, 54, 58-62 Letters: Several Governors........................................ "
+     "38-47 Environmental Council of the States", "Charts", "", ""),
+]
+
+
+@pytest.mark.parametrize("line,name,position,organization", LEADER_LINES)
+def test_dot_leaders_separate_items(line, name, position, organization):
+    parsed = witness(line)
+    assert (parsed["name"], parsed["position"], parsed["organization"]) == (name, position, organization)
 
 
 @pytest.mark.parametrize("line,name", FOOTNOTE_TEXT_LINES)

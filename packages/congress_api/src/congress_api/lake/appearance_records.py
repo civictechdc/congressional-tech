@@ -46,7 +46,7 @@ from ..parsers.house_xml import (
 )
 from ..parsers.senate_page import witness_occurrences as senate_witness_occurrences
 from ..parsers.text import text as clean_text
-from ..parsers.witness_names import CONTENTS_LABEL, LABEL_NAME, UNMARKED_LABEL, drop_footnote_text, is_name, witness as parse_gpo_witness
+from ..parsers.witness_names import LABEL_NAME, drop_footnote_text, is_name, witness as parse_gpo_witness
 from ._record_producer import (
     CANDIDATE_APPEARANCE_RECORDS_SQL,
     INLINE_CONGRESS_MEETINGS_SQL,
@@ -119,7 +119,8 @@ ARROW_SCHEMA = pa.schema(
 )
 SCHEMA = ARROW_SCHEMA
 
-_EXTRA_COLS = ("event_id", "package_id", "declared_base", "collection_state")
+# Every column ARROW_SCHEMA carries besides the shared record columns; a field missing here is written null.
+_EXTRA_COLS = ("event_id", "package_id", "declared_base", "collection_state", "held_dates", "title", "created")
 
 _SOURCE_SYMBOLS: dict[str, tuple[str, ...]] = {
     "house_xml": (
@@ -180,6 +181,7 @@ _SOURCE_SYMBOLS: dict[str, tuple[str, ...]] = {
         "_RECORD_ENTRY",
         "_RECORD_OPENING",
         "_RETAINED_IN_FILES",
+        "_STATEMENT_WORD",
         "_WITNESS_HEADING",
         "_TESTIFIED_WORDS",
         "mods_entry_kind",
@@ -922,20 +924,26 @@ _PACKAGE_ID_IN_URL_RE = re.compile(r"\b(CHRG-\d+[hsj]hrg\d+)\b", re.IGNORECASE)
 _MEMBER_STATEMENT = re.compile(
     r"\b(?:a representative in congress|a delegate (?:in congress )?from|resident commissioner|congress(?:man|woman)\b"
     r"|united states house of representatives|member of congress|a (?:united states )?senator from)", re.I)
-# Explicit record entries only (red-f3): a letter, a statement or submission for the record, questions or
-# answers for the record, a prepared statement. A name a parser cannot read is not evidence of a statement.
+# Explicit record entries only (red-f3): something submitted for the record by someone who did not testify. A
+# witness's own entries, their prepared statement or their answers to submitted questions, mark that they
+# testified (D4 gate); a name a parser cannot read is not evidence of a statement.
 _RECORD_ENTRY = re.compile(
-    r"\b(?:letters?\b|statements? (?:for|submitted for) the record|submitted (?:by|for the record)|submissions? (?:for|to) the record"
-    r"|questions? for the record|responses? to questions|answers? to questions|prepared statement)", re.I)
+    r"\b(?:statements? (?:for|submitted for) the record|submitted for the record|submissions? (?:for|to) the record"
+    r"|(?:statements?|letters?|information|materials?|testimony) submitted by|prepared statement only"
+    r"|letters? (?:dated|from|to|of|submitted|regarding|re\b|in support|on behalf))", re.I)
+# A Member's statement: a Member's line that names a prepared statement or a submission. A Member who appears,
+# or gives an oral statement, is a witness (red-f3).
+_STATEMENT_WORD = re.compile(r"\bprepared statements?\b", re.I)
 # A line that says the person testified or was the nominee is a witness whatever else it says.
 _TESTIFIED_WORDS = re.compile(r"\b(?:testimony|testified|nominee|nominated)\b", re.I)
 # ...unless the line opens with a record entry's own marker ("Letter from the nominee to the Office of General
 # Counsel", "Submittals for the record: ... and the testimony of ..."), or is GPO's note that an item "has been
-# retained in committee files": then it names the entry, and later words describe its contents.
+# retained in committee files": then it names the entry, and later words describe its contents. Responses to
+# questions are an entry when the line names who asked ("submitted by: Hon. Jon Tester").
 _RECORD_OPENING = re.compile(
     r"^\W*(?:letters?\b|(?:additional |supplemental )?(?:information|material|materials|submissions?|submittals?|(?:oral )?comments)"
-    r"(?: (?:presented|submitted))? for the record\b|questions? for the record|responses? to (?:additional |written )?questions"
-    r"|answers? to (?:submitted |additional )?questions|submitted questions\b|additional information\b)", re.I)
+    r"(?: (?:presented|submitted))? for the record\b|additional (?:information|materials?|submissions?)\b|articles? by\b"
+    r"|responses? to [^.]*?questions[^.]*?\b(?:by|from)\b)", re.I)
 _WITNESS_HEADING = re.compile(r"^\W*(?:opening )?statements?\b", re.I)
 # GPO's note that an item has been retained, when it is the line's opening and no name follows it.
 _RETAINED_IN_FILES = re.compile(r"^\W*[^\\]*?\b(?:has|have|are) been retained in (?:committee|the files)", re.I)
@@ -947,18 +955,16 @@ def mods_entry_kind(line: str, name: str | None) -> str | None:
     appears (Member Day panels, "Green, Hon. Al") and a nominee or anyone said to testify is a witness.
     The model also treats anyone the meeting's own list names as a witness."""
     line = line or ""
-    # A contents label that opens the line ("Prepared statement \\1\\ ...", "Submitted questions: ...") names an entry.
-    # A bare "Statement of ..." is how some prints list each witness, so it is not one.
-    opening = _RECORD_OPENING.match(line) or (
-        (CONTENTS_LABEL.match(line) or UNMARKED_LABEL.match(line)) and not _WITNESS_HEADING.match(line))
-    if opening or (_RETAINED_IN_FILES.match(line) and not drop_footnote_text(line)):
+    if _RECORD_OPENING.match(line) or (_RETAINED_IN_FILES.match(line) and not drop_footnote_text(line)):
         return "member_statement" if _MEMBER_STATEMENT.search(line) else "statement_for_record"
     # Footnote text that runs into a witness's line says nothing about that witness (green-f4).
     text = drop_footnote_text(line)
     # "to be Director" names a nomination; "to be included in the record" does not (capital follows).
-    if _TESTIFIED_WORDS.search(text) or re.search(r"\b[Tt]o be (?:an? |the )?[A-Z]", text) or not _RECORD_ENTRY.search(text):
+    if _TESTIFIED_WORDS.search(text) or re.search(r"\b[Tt]o be (?:an? |the )?[A-Z]", text):
         return None
-    return "member_statement" if _MEMBER_STATEMENT.search(text) else "statement_for_record"
+    if _MEMBER_STATEMENT.search(text) and (_STATEMENT_WORD.search(text) or _RECORD_ENTRY.search(text)):
+        return "member_statement"
+    return "statement_for_record" if _RECORD_ENTRY.search(text) else None
 
 
 def mods_held_dates(doc: ModsDocument) -> list[str]:
@@ -1265,6 +1271,9 @@ def _normalize_row_for_table(row: Mapping[str, Any]) -> dict[str, Any]:
         "declared_base": _opt_str(row.get("declared_base")),
         "collection_state": coll_state,
         "appearances": norm_apps,
+        "held_dates": list(row["held_dates"]) if row.get("held_dates") is not None else None,
+        "title": _opt_str(row.get("title")),
+        "created": _opt_str(row.get("created")),
     }
 
 

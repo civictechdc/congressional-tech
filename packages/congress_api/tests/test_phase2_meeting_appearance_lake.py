@@ -2030,12 +2030,12 @@ def test_mods_print_states_every_held_day_and_labels_statements():
     ("is available at https://docs.house.gov/meetings/IF/IF14/ 20200129/110423/HHRG-116-IF14-Wstate-ChuaK-20200129.pdf. \\2\\ "
      "Nancy Perry, did not answer the question by the time of publication. Melanie Benesh, Legislative Attorney, Environmental "
      "Working Group", None),
-    # ...but a contents label before it does, marked or not.
+    # A witness's own entries (their prepared statement, their answers) are the witness's (D4 gate).
     ("Prepared statement \\2\\ \\1\\ The information has been retained in committee files and also is available at "
      "http://docs.house.gov/meetings/IF/IF03/20150603/103551/ BILLS-114pih-SubtitleA-EnergyEfficiency.pdf. John E. Shelk, "
-     "President and Chief Executive Officer, Electric Power Supply Association", "statement_for_record"),
-    ("Prepared statement Erik D. Olson, Senior Strategic Director for Health And Food, Natural Resources Defense Counsel", "statement_for_record"),
-    ("Submitted questions: Taylor, Alexis", "statement_for_record"),
+     "President and Chief Executive Officer, Electric Power Supply Association", None),
+    ("Prepared statement Erik D. Olson, Senior Strategic Director for Health And Food, Natural Resources Defense Counsel", None),
+    ("Submitted questions: Taylor, Alexis", None),
     # Some prints list each witness as "Statement of ..."; that heading is the witness, not an entry.
     ("Statement of Dr. Robert D. Putnam, Professor of Public Policy, Harvard University", None),
     ("Additional information \\1\\ Kevin Sunday, Director, Government Affairs, Pennsylvania Chamber of Business and Industry", "statement_for_record"),
@@ -2058,6 +2058,49 @@ def test_mods_lines_that_name_only_a_contents_entry_are_not_people():
     row = appearance_records.build_appearance_record_row(_sha("mods-entries"), "mods", xml, parser_version="v1", package_id="CHRG-114shrg52553")
     assert [(a["name"], a["witness_type"]) for a in row["appearances"]] == [
         ("Jane Doe", None),
-        ("Mark Johnson", "statement_for_record"),
-        ("Thomas P. Bostick", "statement_for_record"),
+        # A witness's own entries (questions put to them, their joint statement) are the witness (D4 gate).
+        ("Mark Johnson", None),
+        ("Thomas P. Bostick", None),
     ]
+
+
+def test_the_lake_table_keeps_each_records_held_dates_title_and_created():
+    """The staged table is what the model reads: a print's held dates and title, and a House list's create-date,
+    must survive appearance_records.table, not only build_appearance_record_row (D4 published every print as
+    package-only because the table dropped them)."""
+    mods = b"""<mods xmlns="http://www.loc.gov/mods/v3"><titleInfo><title>Haaland Nomination</title></titleInfo>
+      <extension><heldDate>2021-02-23</heldDate><witness>Doe, Hon. Jane, Director, Office of Things</witness></extension></mods>"""
+    house = b"""<witness-list meeting-id="111420" create-date="2021-04-07T11:07:59.340"></witness-list>"""
+    rows = [
+        appearance_records.build_appearance_record_row(_sha("mods-table"), "mods", mods, parser_version="v1", package_id="CHRG-117shrg43821"),
+        appearance_records.build_appearance_record_row(_sha("house-table"), "house_xml", house, parser_version="v1", event_id=111420),
+    ]
+    got = {r["source"]: r for r in appearance_records.table(rows).to_pylist()}
+    assert (got["mods"]["held_dates"], got["mods"]["title"]) == (["2021-02-23"], "Haaland Nomination")
+    assert got["house_xml"]["created"] == rows[1]["created"] and rows[1]["created"] is not None
+
+
+@pytest.mark.parametrize("line,kind", [
+    # D4 gate, witnesses: a witness's own prepared statement or answers mark that they testified.
+    ("Coston, James E., Attorney, Chicago, IL, prepared statement", None),
+    ("Levin, Gerald M., Chairman, Chief Executive Officer, Time Warner, Inc., prepared statement", None),
+    ("Answers to submitted questions \\1\\ Lynn Goldman, M.D., M.P.H., Professor, Johns Hopkins School of Public Health", None),
+    ("Written Statement of Ted Willke, Associate Administrator for Hazardous Materials Safety", None),
+    # "Letter" inside an organization or title is not a letter.
+    ("Mr. Fredric V. Rolando, President, National Association of Letter Carriers", None),
+    ("Timm Kopp, Letter Carrier, U.S. Postal Service", None),
+    # Statements: a statement only, a letter, a submission, a Member's prepared statement, questions a Member asked.
+    ("Bonnie Carroll, Founder and President, Tragedy Assistance Program For Survivors, prepared statement only", "statement_for_record"),
+    ("Additional materials supplied: Pautzke, Dr. Clarence, Executive Director, North Pacific Research Board, Statement "
+     "submitted for the record", "statement_for_record"),
+    ("Steiner, Larry R., Adirondack-Catskill Chapter, Safari Club International, Letter submitted for the record on H.R. 1054", "statement_for_record"),
+    ("Rep. Napolitano Submission Napolitano, Hon. Grace F., Letter to Secretary of the Interior, dated August 28, 2009", "statement_for_record"),
+    ("Letter dated January 31, 2017 to Michael Flores, President, California Fish and Game Commission", "statement_for_record"),
+    ("The Honorable Tom Lantos, a Representative in Congress From the State of California, and Ranking Member Prepared Statement", "member_statement"),
+    ("Kingston, Hon. Jack, a Representative in Congress from the State of Georgia, Oral statement of", None),
+    ("Statement of Honorable Amy Klobuchar, A United States Senator from the State of Minnesota", None),
+    ("Response to posthearing questions submitted by: Hon. Jon Tester", "statement_for_record"),
+    ("Responses to questions for the record from the following Representatives: Hon. Andre Carson, of Indiana", "statement_for_record"),
+])
+def test_a_witnesss_own_entries_are_the_witness_and_submissions_are_statements(line, kind):
+    assert appearance_records.mods_entry_kind(line, None) == kind
