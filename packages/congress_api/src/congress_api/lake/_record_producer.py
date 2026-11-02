@@ -636,10 +636,12 @@ def stage_record_table(
         from . import compatible_versions
         from .readings import current_version
 
-        pins = {p: current_version(p) for p in compatible_versions.LEAF_PARSERS}
+        # Routes read xml readings only, so only xml is selected: no other parser's rows or
+        # recompute set (html's link unnest over every reading) is scanned per planning pass.
+        routed = sorted({parser for table in ROUTES.values() for _, _, parser, _ in table if parser})
         inputs += [table_input("readings", readings),
-                   json_input(work, "parser_versions", [dict(parser=p, version=v) for p, v in pins.items()], parser="Utf8", version="Utf8")]
-        prelude = [*compatible_versions.selected_readings_steps(compatible_versions.load_registry()),
+                   json_input(work, "parser_versions", [dict(parser=p, version=current_version(p)) for p in routed], parser="Utf8", version="Utf8")]
+        prelude = [*compatible_versions.selected_readings_steps(compatible_versions.load_registry(), parsers=routed),
                    dict(name="current_page_readings", sql=CURRENT_PAGE_READINGS_SQL, materialize=True)]
     elif "current_page_readings" in candidate_sql:
         raise ValueError(f"{parser_name} candidates route by XML root and need the readings table")

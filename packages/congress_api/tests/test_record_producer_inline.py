@@ -120,3 +120,19 @@ def test_an_unreadable_line_ranks_last(tmp_path):
     broken['record'] = {}
     broken = json.dumps(broken, separators=(',', ':'))
     assert shas(stage_receipts(tmp_path, {KEY: [good, broken]}, engine, 'broken')) == {digest(good)}
+
+
+def test_d4_planning_selects_only_the_readings_its_routes_read(tmp_path, monkeypatch):
+    # Defect guarded (Big O): every planning pass rebuilding another parser's recompute set
+    # (html's link unnest over all readings) though routes read xml only.
+    from congress_api.lake import compatible_versions as cv
+    html = dict(parser='html', version='h-old', current='h', basis='predicate', recompute_sql='SELECT body_sha FROM {readings} WHERE false',
+                reason='fixture', proof={})
+    monkeypatch.setattr(cv, 'load_registry', lambda **kwargs: [html])
+    engine = NativeDatasets.from_config(os.environ['DOCSPEC_JOB_CONFIG'])
+    staged = stage_receipts(tmp_path, {KEY: [line(6, '2024-01-01')]}, engine, 'routed')
+    job = json.loads((tmp_path / 'meetings-routed' / 'job.json').read_text())
+    names = [step['name'] for step in job['steps']]
+    assert not any(name.startswith('recompute_') for name in names) and 'selected_readings' in names
+    pins = next(i for i in job['inputs'] if i['name'] == 'parser_versions')['files'][0]['path']
+    assert staged['produced'] == 1 and [json.loads(row)['parser'] for row in gzip.decompress(Path(pins).read_bytes()).decode().splitlines()] == ['xml']
