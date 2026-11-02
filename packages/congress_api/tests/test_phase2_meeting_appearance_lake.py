@@ -1660,9 +1660,12 @@ def test_ct_30fp_congress_gov_invalid_witness_items_and_sql_per_context_freshnes
                     ("requested_url", pa.string()),
                     ("context_url", pa.string()),
                     ("member_path", pa.string()),
+                    # captures.original_path and mapping_version (r1b-e1): the model reads every column it joins.
+                    ("original_path", pa.string()),
                     ("sniffed_format", pa.string()),
                     ("media_type", pa.string()),
                     ("retrieved_at", pa.string()),
+                    ("mapping_version", pa.string()),
                 ]
             ),
         ),

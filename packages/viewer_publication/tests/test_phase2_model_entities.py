@@ -314,13 +314,13 @@ def test_phase2_entities_meetings_witnesses_recordings_and_spicy_projections(tmp
     ]
 
     appearance_records = [
-        # house_xml appearance for meeting 115538 (priority 1: wins over congress_gov and mods on meeting:115538)
+        # house_xml appearance for meeting 115538 (priority 1: wins over congress_gov and mods on meeting:115538).
+        # Like the retained lists of ct-x78c it has no meeting-id: its own document link states the event.
         dict(
             record_sha='aa' * 32,
             source='house_xml',
             appearances=[
                 dict(
-                    event_id='115538',
                     name_key='smith_jane',
                     name='Dr. Jane Smith',
                     position='Director',
@@ -335,7 +335,6 @@ def test_phase2_entities_meetings_witnesses_recordings_and_spicy_projections(tmp
                 # Repeated name_key in same record & occasion with distinct display_order / locator:
                 # ct-30fp AC 4 & 6: both occurrences are preserved with distinct source_locators and witness_keys
                 dict(
-                    event_id='115538',
                     name_key='smith_jane',
                     name='Dr. Jane Smith Second Panel',
                     position='Senior Advisor',
