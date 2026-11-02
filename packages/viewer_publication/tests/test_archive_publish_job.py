@@ -130,7 +130,7 @@ def test_native_daily_inputs_feed_the_same_guarded_publisher(tmp_path):
         result=produce_daily_inputs(model,daily,engine=native,raw_store=BodyStore(R2Adapter(store,'derived-fixture')))
         assert result['status']=='ready' and result['receipt_keys']==['receipts/documents/2026-10-27/slice.jsonl.gz']
         assert all(result['model'][name]['kind']=='native_table' for name in ['captures','readings','filename_readings'])
-        published=run_publish(result['model'],client=store,engine=Runtime(native,store),bucket='derived-fixture',
+        published=run_publish(result['model'],first_release=True,client=store,engine=Runtime(native,store),bucket='derived-fixture',
             work=tmp_path/'publish',receipt_keys=result['receipt_keys'],provenance=result['provenance'],
             verified_files=result['verified_files'],run={'id':'daily'},public_origin='https://archive.fixture.test',
             contract=probe,canary=probe)
@@ -309,19 +309,23 @@ def test_metadata_first_probe_selectors_are_required_and_not_daily_owner_options
             probe_commands(spec,release=tmp_path/'release',release_id='a'*64,probe_selectors=invalid)
 
 
-# Gate 5 (ct-tk10) refuses captures without mapping_version; cluster e1 stages that column.
-# Strict: these flip to failures, and the marks must go, once e1's captures carry it.
 def END_TO_END_PASSED(command,**kwargs):
     """The gate's fixed command, recorded; test_release_end_to_end.py runs it in this lane."""
     assert command[1:4]==['scripts/dev.py','test','production-offline'] and kwargs['check'] is True
 
 
-GATE5_PENDING_E1=pytest.mark.xfail(strict=True,raises=ValueError,
-    reason='gate 5 refuses captures without mapping_version until cluster e1 lands')
+@pytest.fixture
+def producers_recorded(monkeypatch):
+    """These fixtures stage captures before cluster e1's mapping_version column exists, so gate 5
+    is recorded here instead of run; test_producer_proof.py runs it on real rows, and
+    test_execute_refuses_captures_without_a_producer_version proves execute calls it."""
+    import viewer_publication.producer_proof as module
+    calls=[]
+    monkeypatch.setattr(module,'require_producers',lambda model,**kw:calls.append(sorted(k for k in model if model.get(k) is not None)))
+    return calls
 
 
-@GATE5_PENDING_E1
-def test_execute_binds_matching_destination_and_records_actual_native_probe_commands(tmp_path):
+def test_execute_binds_matching_destination_and_records_actual_native_probe_commands(tmp_path,producers_recorded):
     from docspec_client.client import NativeDatasets
     from viewer_publication.archive_publish_job import execute,load_spec
     from archive_job_fixture import real_model_spec
@@ -341,6 +345,7 @@ def test_execute_binds_matching_destination_and_records_actual_native_probe_comm
     Path(value['model_spec']['path']).write_text(json.dumps(model))
     value['model_spec']=dict(path=value['model_spec']['path'],**file_pin(value['model_spec']['path']))
     value['receipt_keys']=['receipts/documents/2026-10-27/slice.jsonl.gz']
+    value['first_release']=True  # an empty store: the explicit, recorded bootstrap
     specpath.write_text(json.dumps(value));spec=load_spec(specpath)
     class Runtime(NativeTransport):
         def __init__(self,native,configuration):super().__init__(native,store);self.remote=Path(configuration['remote'])
@@ -364,6 +369,7 @@ def test_execute_binds_matching_destination_and_records_actual_native_probe_comm
         output.write_text(json.dumps(dict(status='passed',releaseId=manifest['release_id'],targets='owner-approved')))
     result=execute(spec,runtime_factory=runtime_factory,storage_factory=storage_factory,process_runner=process_runner,end_to_end_runner=END_TO_END_PASSED)
     assert result['status']=='published' and len(commands)==2 and events.index('sdk')>events.index('qualified')
+    assert producers_recorded and 'captures' in producers_recorded[0]
     native=json.loads((Path(model['scratch'])/'result.json').read_text())
     selectors=next(query['data'][0] for query in native['queries'] if query['name']=='probe_selectors')
     assert commands[0][-2:]==['--link-key',selectors['link_key']]
@@ -416,8 +422,8 @@ def test_raw_startup_refuses_unqualified_or_unmeasured_targets_before_sdk(tmp_pa
     assert not Path(value['work']).exists()
 
 
-@pytest.mark.parametrize('outcome',[pytest.param('completed',marks=GATE5_PENDING_E1),'pending','backfill_required'])
-def test_actual_execute_daily_path_publishes_only_completed_work(tmp_path,outcome):
+@pytest.mark.parametrize('outcome',['completed','pending','backfill_required'])
+def test_actual_execute_daily_path_publishes_only_completed_work(tmp_path,outcome,producers_recorded):
     """Only external catalog storage, SDK and browser execution are adapted."""
     from copy import deepcopy
     import pyarrow.parquet as pq
@@ -451,7 +457,7 @@ def test_actual_execute_daily_path_publishes_only_completed_work(tmp_path,outcom
         **{name:dict(kind='native_table',**head) for name,head in heads.items()})
     path=Path(value['model_spec']['path']);path.write_text(json.dumps(model));value['model_spec']=dict(path=str(path),**file_pin(path))
     path=tmp_path/'daily.json';path.write_text(json.dumps(daily))
-    value.update(daily=dict(path=str(path),**file_pin(path)),receipt_keys=[],provenance=[])
+    value.update(daily=dict(path=str(path),**file_pin(path)),receipt_keys=[],provenance=[],first_release=True)
     path=tmp_path/'publish.json';path.write_text(json.dumps(value));spec=load_spec(path)
     assert spec['_daily']['catalog_root'] is None
     class SDK(Store):
@@ -689,3 +695,35 @@ def test_failing_end_to_end_gate_refuses_before_any_runtime_or_sdk(tmp_path,monk
     with pytest.raises(ValueError,match='end-to-end gate'):
         execute(load_spec(path),runtime_factory=never,storage_factory=never,end_to_end_runner=END_TO_END_PASSED)
     assert not Path(value['work']).exists()
+
+
+def test_execute_refuses_captures_without_a_producer_version(tmp_path):
+    """Gate 5 runs in execute, before run_publish: today's staged captures carry no
+    mapping_version (cluster e1 adds it), so the real path refuses and names the rule."""
+    from docspec_client.client import NativeDatasets
+    from viewer_publication.archive_publish_job import execute,load_spec
+    from archive_job_fixture import real_model_spec
+    from test_archive_controller import Runtime as NativeTransport
+    from test_archive_publish import Store
+    value=publish_spec(tmp_path);model,_,_=real_model_spec(tmp_path)
+    remote=remote_config(tmp_path);store=Store()
+    runtime=tmp_path/'public-runtime.json';settings=json.loads(Path(os.environ['DOCSPEC_JOB_CONFIG']).read_text())
+    original=Path(os.environ['DOCSPEC_JOB_CONFIG']).parent
+    for field in ['binary','limits','workspace']:
+        if field in settings:settings[field]=str((original/settings[field]).resolve())
+    settings.update(remote=str(remote),credentials='/unopened/fake-credentials.json')
+    runtime.write_text(json.dumps(settings));model['engine_config']=str(runtime)
+    path=Path(value['model_spec']['path']);path.write_text(json.dumps(model));value['model_spec']=dict(path=str(path),**file_pin(path))
+    value.update(receipt_keys=['receipts/documents/2026-10-27/slice.jsonl.gz'],first_release=True)
+    specpath=tmp_path/'publish.json';specpath.write_text(json.dumps(value))
+    class Runtime(NativeTransport):
+        def __init__(self,native,configuration):super().__init__(native,store);self.remote=Path(configuration['remote'])
+        def __enter__(self):return self
+        def __exit__(self,*_):self.native.close()
+    def runtime_factory(path):
+        return Runtime(NativeDatasets.from_config(os.environ['DOCSPEC_JOB_CONFIG']),json.loads(Path(path).read_text()))
+    def never(*a,**k):raise AssertionError('no probe before gate 5')
+    with pytest.raises(ValueError,match='captures has no mapping_version column'):
+        execute(load_spec(specpath),runtime_factory=runtime_factory,storage_factory=lambda **_:store,
+                process_runner=never,end_to_end_runner=END_TO_END_PASSED)
+    assert not Path(model['output']).exists() and 'viewer-publications/manifest.json' not in store.objects

@@ -23,9 +23,24 @@ def with_mapping(spec, tmp_path, values):
     return dict(spec, captures=dict(kind='parquet', path=str(path)))
 
 
-def run(spec, tmp_path, name):
+JOB = 'packages/congress_api/src/congress_api/cli/captures_ingest.py'
+
+
+def head():
+    import subprocess
+    return subprocess.run(['git', 'rev-parse', 'HEAD'], capture_output=True, text=True, check=True,
+                          cwd=os.path.dirname(__file__)).stdout.strip()
+
+
+def records_for(spec, **override):
+    return {name: dict(dict(version=1, input=name, selector=spec[name], job=JOB, commit=head()), **override)
+            for name in ('captures', 'readings', 'filename_readings') if spec.get(name) is not None}
+
+
+def run(spec, tmp_path, name, records=None):
     with NativeDatasets.from_config(os.environ['DOCSPEC_JOB_CONFIG']) as engine:
-        return require_producers(spec, engine=engine, work=tmp_path / name, mapping_current=CURRENT)
+        return require_producers(spec, engine=engine, work=tmp_path / name, mapping_current=CURRENT,
+                                 records=records_for(spec) if records is None else records)
 
 
 @pytest.fixture(scope='module')
@@ -75,3 +90,17 @@ def test_null_reading_version_refuses_and_old_versions_are_only_reported(spec, t
     pq.write_table(pa.Table.from_pylist(rows + [dict(rows[0], parser_version=None)], schema=nulls), path)
     with pytest.raises(ValueError, match='readings: 1 rows: row carries no producer version'):
         run(dict(mapped, readings=dict(kind='parquet', path=str(path))), tmp_path, 'null')
+
+
+@pytest.mark.parametrize('change,rule', [
+    (lambda r: r.pop('captures'), 'captures: no producer record'),
+    (lambda r: r['captures'].update(selector={'kind': 'parquet', 'path': '/elsewhere.parquet'}), 'captures: the producer record names another selector'),
+    (lambda r: r['readings'].update(commit='0' * 40), 'readings: producing commit 000000000000 is not reachable from HEAD'),
+    (lambda r: r['filename_readings'].update(job='not/a/checked-in/job.py'), "filename_readings: job 'not/a/checked-in/job.py' is not a file checked in"),
+])
+def test_snapshot_without_a_valid_producer_record_refuses(spec, tmp_path, change, rule):
+    mapped = with_mapping(spec, tmp_path, [CURRENT])
+    records = records_for(mapped)
+    change(records)
+    with pytest.raises(ValueError, match=rule):
+        run(mapped, tmp_path, 'records', records=records)

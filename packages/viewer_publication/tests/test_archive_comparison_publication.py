@@ -93,7 +93,7 @@ def test_receipt_mutated_by_actual_model_refuses_all_successful_writes(tmp_path)
                 return result
         def never(**kwargs):raise AssertionError('Stale comparison reached a reader probe')
         with pytest.raises(ValueError):
-            run_publish(model,client=store,engine=MutatingRuntime(native,store),bucket='derived-fixture',work=tmp_path/'publish',
+            run_publish(model,first_release=True,client=store,engine=MutatingRuntime(native,store),bucket='derived-fixture',work=tmp_path/'publish',
                 receipt_keys=['receipts/documents/2026-10-27/slice.jsonl.gz'],provenance=[],run={'id':'fixture'},
                 public_origin='https://archive.fixture.test',contract=never,canary=never,comparison_acceptance=held)
         assert set(store.objects)<= {'viewer-publications/status.json'}
@@ -194,7 +194,7 @@ def test_input_unchanged_final_status_get_cannot_write_stale_success(tmp_path):
         model,held,report=native_capture_model(tmp_path,model,native)
         store=status_mutating_store(report);store.armed=False
         def passed(**context):return dict(status='passed',releaseId=context['release_id'],targets='owner-approved')
-        options=dict(client=store,engine=Runtime(native,store),bucket='derived-fixture',
+        options=dict(first_release=True,client=store,engine=Runtime(native,store),bucket='derived-fixture',
             receipt_keys=['receipts/documents/2026-10-27/slice.jsonl.gz'],provenance=[],run={'id':'fixture'},
             public_origin='https://archive.fixture.test',contract=passed,canary=passed,comparison_acceptance=held)
         first=run_publish(model,work=tmp_path/'publish-first',**options)

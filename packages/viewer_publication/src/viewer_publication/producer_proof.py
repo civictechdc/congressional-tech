@@ -15,6 +15,14 @@ model/registries/compatible-versions.json (ct-deh9).
     refused. Readings rows are not re-read.
 `receipt writer_job/writer_commit` columns are raw-receipt provenance, not this proof.
 
+Per snapshot (ct-tk10 "records the producing code revision and job"): every pinned table
+has a producer record, pinned in the publish spec as `producers: {table: {path, sha256,
+size}}`, holding {version: 1, input, selector, job, commit}. The selector must equal the
+pinned one, `job` must be a file checked in at `commit`, and `commit` must be reachable from
+the publishing HEAD (the publish checkout fetches full history). `record` writes one through
+writer_identity, which refuses a dirty tree. A daily publication has no records yet, so it
+refuses until its producer writes them.
+
 Runs in archive_publish_job.execute on the qualified runtime, before run_publish builds
 or publishes anything. One native job: one filtered count per table, O(rows), no GROUP BY.
 
@@ -86,7 +94,45 @@ RULES = {
 }
 
 
-def require_producers(model, *, engine, work, mapping_current=None):
+def _git(root, *args):
+    import subprocess
+    return subprocess.run(['git', '-C', str(root), *args], capture_output=True, text=True)
+
+
+def snapshot_reasons(model, records, *, root=ROOT):
+    """Refusals for the per-snapshot rule: one record per pinned table, bound to its selector."""
+    import re
+    reasons = []
+    for name in [n for n in ('captures', *ROW_VERSIONED) if model.get(n) is not None]:
+        record = (records or {}).get(name)
+        if record is None:
+            reasons.append(f'producer proof: {name}: no producer record (job and commit) for the pinned snapshot')
+            continue
+        selector = {k: v for k, v in model[name].items() if k != 'producer'}
+        if record.get('input') != name or record.get('selector') != selector:
+            reasons.append(f'producer proof: {name}: the producer record names another selector')
+        commit, job = record.get('commit'), record.get('job')
+        if not isinstance(commit, str) or re.fullmatch('[0-9a-f]{40}', commit) is None:
+            reasons.append(f'producer proof: {name}: the producer record has no full commit')
+            continue
+        if _git(root, 'merge-base', '--is-ancestor', commit, 'HEAD').returncode != 0:
+            reasons.append(f'producer proof: {name}: producing commit {commit[:12]} is not reachable from HEAD')
+        elif not isinstance(job, str) or _git(root, 'cat-file', '-e', f'{commit}:{job}').returncode != 0:
+            reasons.append(f'producer proof: {name}: job {job!r} is not a file checked in at {commit[:12]}')
+    return reasons
+
+
+def record(path, *, input, selector, job, root=ROOT):
+    """Write a producer record from the clean checked-in tree that is producing the snapshot."""
+    from congress_api.retention.writer_identity import writer_identity
+    identity = writer_identity(root, job)
+    value = dict(version=1, input=input, selector=selector, job=job, commit=identity['commit'],
+                 lockfile_digest=identity['lockfile_digest'])
+    Path(path).write_text(json.dumps(value, sort_keys=True, indent=1) + '\n')
+    return value
+
+
+def require_producers(model, *, engine, work, mapping_current=None, records=None, root=ROOT):
     """Refuse unless every consumed row of every pinned table names a current or compatible producer.
 
     Returns the per-table report, including retained-history counts that do not refuse.
@@ -101,7 +147,7 @@ def require_producers(model, *, engine, work, mapping_current=None):
         selector = model[name]
         source = selector['path'] if selector.get('kind') == 'parquet' else {k: v for k, v in selector.items() if k != 'kind'}
         inputs.append(table_input(name, source))
-    report, reasons = {}, []
+    report, reasons = {}, snapshot_reasons(model, records, root=root)
     for query in proof_queries(model, present, mapping_current=mapping_current):
         try:
             rows = run_job(Path(work) / query['name'], engine, inputs=[i for i in inputs if i['name'] == query['name']],

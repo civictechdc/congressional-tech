@@ -159,9 +159,11 @@ def serve_store(store):
 
 
 @pytest.mark.loopback
-# Gate 5 (ct-tk10) refuses captures without mapping_version; strict so the mark goes when cluster e1 lands.
-@pytest.mark.xfail(strict=True,raises=ValueError,reason='gate 5 refuses captures without mapping_version until cluster e1 lands')
-def test_retained_import_publish_resume_selected_reader_and_real_queue(tmp_path):
+def test_retained_import_publish_resume_selected_reader_and_real_queue(tmp_path,monkeypatch):
+    # Gate 5 is recorded, not run: these captures predate cluster e1's mapping_version
+    # (test_archive_publish_job proves execute refuses without it).
+    import viewer_publication.producer_proof as producer_proof
+    monkeypatch.setattr(producer_proof,'require_producers',lambda model,**kw:None)
     from viewer_publication.archive_publish_job import load_spec,execute
     from congress_api.acquisition.capture_scheduler import load_release,plan_queue
     model,raw,keys,provenance_keys,urls=retained_model(tmp_path)
@@ -177,7 +179,7 @@ def test_retained_import_publish_resume_selected_reader_and_real_queue(tmp_path)
         provenance=[dict(key=key,etag=md5((raw/key).read_bytes()).hexdigest()) for key in sorted(provenance_keys)],site_dist=str(ROOT/'apps/site/dist'))
     targets=Path(value['targets']['path']);target=json.loads(targets.read_text())
     target['ceilings']={name:10**9 for name in target['ceilings']};targets.write_text(json.dumps(target));value['targets']=dict(path=str(targets),**file_pin(targets))
-    specpath=tmp_path/'publish.json';specpath.write_text(json.dumps(value))
+    value['first_release']=True;specpath=tmp_path/'publish.json';specpath.write_text(json.dumps(value))
     store=JourneyStore()
     for path in raw.rglob('*'):
         if path.is_file():store.objects[path.relative_to(raw).as_posix()]=path.read_bytes()

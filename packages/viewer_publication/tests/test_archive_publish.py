@@ -114,7 +114,8 @@ def launch(root,*,store=None,native=None,input_record=None,artifacts=None,canary
     result=publish_candidate(client=store,engine=native,bucket='derived-fixture',work=root/'publish',
         **artifacts,input_record=input_record,receipt_keys=keys,pointer=pointer,expected_etag=etag,
         public_origin='https://archive.example.test',canary=canary or passed,contract=contract or passed,
-        base_release=root/'base-release' if pointer else None,release_causes=release_causes)
+        base_release=root/'base-release' if pointer else None,release_causes=release_causes,
+        first_release=pointer is None)  # an empty store: the explicit, recorded bootstrap
     return result,store,native
 
 
@@ -287,7 +288,7 @@ def test_generator_receipt_keys_keep_replay_evidence(tmp_path):
     def passed(**context):return dict(status='passed',releaseId=context['release_id'],targets='owner-approved')
     result=publish_candidate(client=store,engine=native,bucket='derived-fixture',work=tmp_path/'publish',
         **artifacts,input_record=entry,receipt_keys=(key for key in keys),pointer=None,expected_etag=None,
-        public_origin='https://archive.example.test',contract=passed,canary=passed)
+        public_origin='https://archive.example.test',contract=passed,canary=passed,first_release=True)
     reader=NativeArchiveStore(client=store,engine=native,bucket='derived-fixture',work=tmp_path/'reader')
     assert matching_live_input(reader,release_id=manifest['release_id'],digest=result['input_digest']) is not None
 
@@ -318,7 +319,7 @@ def test_raw_measured_candidate_identity_precedes_upload_or_pointer_effects(tmp_
             **artifacts,input_record=value,receipt_keys=keys,
             pointer={'release_id':manifest['release_id']} if unchanged else None,
             expected_etag='outgoing' if unchanged else None,public_origin='https://archive.example.test',
-            contract=passed,canary=passed,
+            contract=passed,canary=passed,first_release=not unchanged,
             measured_release_id=manifest['release_id'] if matching else 'ab'*32)
     if matching:
         result=publish()
@@ -464,3 +465,22 @@ def test_release_gate_pass_reaches_contract(tmp_path,real_gates):
     result,store,_=launch(tmp_path/'second',store=store,artifacts=artifacts,release_causes=causes)
     assert result['status']=='published' and result['release_gates']=='passed'
     assert json.loads(store.objects['viewer-publications/manifest.json'])['previous_release_id']==live
+
+
+@pytest.mark.parametrize('pointer',['missing','legacy'])
+def test_no_live_release_refuses_unless_a_first_release_is_declared(tmp_path,pointer,real_gates):
+    """Fail closed: a missing or legacy pointer is not proof that nothing was published."""
+    store=Store();native=Native(store)
+    if pointer=='legacy':
+        store.objects['viewer-publications/manifest.json']=encoded(dict(version=1,publisher_version=10,catalog_id='old',manifest='m.json'))
+    artifacts,_=candidate(tmp_path/'run');value,keys=record()
+    live,etag=read_pointer(store,bucket='derived-fixture')
+    def passed(**context):return dict(status='passed',releaseId=context['release_id'],targets='owner-approved')
+    common=dict(client=store,engine=native,bucket='derived-fixture',**artifacts,input_record=value,receipt_keys=keys,
+        pointer=live,expected_etag=etag,public_origin='https://archive.example.test',contract=passed,canary=passed)
+    with pytest.raises(ValueError,match='first release must be declared'):
+        publish_candidate(work=tmp_path/'refused',**common)
+    assert native.calls==[]
+    result=publish_candidate(work=tmp_path/'bootstrap',first_release=True,**common)
+    assert result['status']=='published' and result['first_release'] is True
+    assert json.loads(store.objects['viewer-publications/status.json'])['first_release'] is True
