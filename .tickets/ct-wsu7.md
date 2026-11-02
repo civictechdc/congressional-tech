@@ -28,3 +28,7 @@ Owner decision 2026-11-02: run the full model only after the witness-step fix la
 **2026-11-02T17:49:45Z**
 
 2026-11-02 impl-model: fixes 2-5 on r1b-model (rebased on 44785aee): d4657856 url_state_lines, ee0c973b document_identities (only multi-member components sorted; dedup-first measured worse), 628772c9 capture_sources (the evidence export narrows; raw columns rejoin via capture_evidence), 1499dae7 link pipeline. All 17 release files are byte-identical before and after (v21 frozen inputs plus the spicy-regs pin, 34 GiB, 2 threads). Materialized 41.8 to 38.1 GB; peak RSS 15.75 to 12.61 GiB. 16 GiB with 2 threads still fails at appearance_records_resolved (a 789.5 MB sort reservation), so it waits on fix 1, which comes after r1b-f. The 53.4 GB spill is profile_completeness capture_dup (GROUP BY a text receipt_key; binary key spills 208 MB); sent upstream to engine-spill, no SQL workaround. Full lane requested before merge.
+
+**2026-11-02T19:00:59Z**
+
+2026-11-02 owner decision: the release's model run uses a backported engine (5dae611 plus the ss-vuwa fix, a backport of DataFusion #21633: the spill writer passed Arrow IPC slices that rewrote every referenced view buffer on each 8192-row slice, quadratic). Measured on the repro: 383.4 MB and 0.9 s, values matching a direct scan; 5dae611 fails at 16-19 s. The DataFusion 55.2 / Arrow 59 / Iceberg main upgrade (owner redirect) lands after the release. D2-D4 stay on 5dae611 (producer versions hash code, not the engine); the full model waits for the re-pin. Disk floor for the model run is 15 GiB.
