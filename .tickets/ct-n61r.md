@@ -24,3 +24,7 @@ Use publisher status, checked against raw.
 **2026-11-02T12:28:27Z**
 
 Round 1b 2026-11-02 (lead): Cause: the House parser never read the House meeting status; raw XML puts it elsewhere (since 9e656389). Publisher status changes 412 meetings (the 407 plus 5 reversed). impl-f, r1b-f.
+
+**2026-11-02T12:36:53Z**
+
+Round 1b 2026-11-02 (lead): impl-f: 10 commits on r1b-f. Frozen before/after and raw check: access 7/7, not_held 409/409, House witness lists 187/187; the 3 same-day status conflicts resolved as held, from a registry. The path arm waits on e1's captures.original_path.

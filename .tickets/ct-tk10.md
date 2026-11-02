@@ -29,3 +29,7 @@ Owner decision 2026-11-02: all five gates before the next publish. publish_v21 r
 **2026-11-02T12:28:27Z**
 
 Round 1b 2026-11-02 (lead): Plan (plan-h): gate 1 release_comparison in publish_candidate (release_diff never failed on value changes); gate 2 retired_links.parquet seeded from c94bfedc/a06e2a63/0db23484 with site and MCP redirect or notice; gate 3 end-to-end in archive_publish_job.execute; gate 4 required fields for all tables (registry declared one of 21); gate 5 per-row producer version (parser_version/catalog_version current or registered-compatible; captures.mapping_version), since writer_job/writer_commit are receipt provenance (NULL on 4,144,875 of 4,147,132 v21 rows). Implementing: impl-h, branch r1b-h.
+
+**2026-11-02T12:36:53Z**
+
+Round 1b 2026-11-02 (lead): impl-h done: 13 commits on r1b-h (1055fefb..36ac49a0), rebased on integrate-round1 76c521a0. All five gates in the real publish path, each with a test that fails it on an injected defect. Offline against 448651e7 (base c94bfedc): gate 1 refuses (69 reasons, 39 value changes); gate 2: 7,266 base keys vanish, all covered by the seeded ledger (7,134 redirect, 132 removal notice; the 132 not yet read raw); gate 4 refuses 72 NULL sources.url; gate 5 refuses v21 captures (no mapping_version); gate 3 is a code test. Waiting on e1's mapping_version (2 strict xfails) and a cause record for the real candidate. Report: .cache/rounds/r1b/h/offline-gates/report.json. Open: the end-to-end test shows a ZIP dip.xml member not listed as a document; check against the data model.

@@ -18,3 +18,9 @@ Final review of docs/measurements/release-diff-c94bfedc-448651e7-20261101.md fou
 
 The doc's counts are reconciled from public releases and raw records, or each difference is explained.
 
+
+## Notes
+
+**2026-11-02T12:36:53Z**
+
+Round 1b 2026-11-02 (lead): Counts corrected in the measurement doc on r1b-h: 18 moved meetings re-scored 9 better, 4 worse, 5 tied (MODS titles read from govinfo); url_state +21 is 14 + 7; 10,195 CHRG zips. Close at merge.

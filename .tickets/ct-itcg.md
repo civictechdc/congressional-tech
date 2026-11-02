@@ -46,3 +46,7 @@ Owner decision 2026-11-02: merge B/C/D first; Claude runs this commit afterwards
 **2026-11-02T12:28:28Z**
 
 Round 1b 2026-11-02 (lead): Run inputs lost with /private/tmp are regenerated from the release's own published input record (release_input_custody.py collect; .cache/archive-release/r1b/inputs). Checked-in specs failed their own loaders after 2351caf4; fixed in impl-e2. basin-commit is running the commit.
+
+**2026-11-02T12:36:53Z**
+
+Round 1b 2026-11-02 (lead): basin-commit: no checked-in job could commit the parquet files as they are (captures_ingest accepts only current-mapping stages). Added archive_import_job and generalized verify_generations on branch basin-commit (3 commits plus a test). Local dry run passed for all 5 tables (engine EXCEPT ALL and a separate Arrow comparison). No archive.* tables exist in Basin yet. Lead direction: commit into the canonical archive.<name> tables the specs reference, not release-named tables; v21 is the first snapshot and ct-kunv's rebuild the next.
