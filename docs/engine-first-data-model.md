@@ -718,7 +718,14 @@ One row per distinct address of a listed document's real files, `(url, member_pa
 
 ### 7.11 Hearings, Witnesses and Reference Entities
 
-Phase 2: [[PHASE-2]] §2.
+Phase 2: [[PHASE-2]] §2. Rules owned here:
+
+- **Status.** `not_held` is the publisher status (Congress.gov `meetingStatus`, House XML root `<current-status>` S/R/P) Canceled or Postponed, or a title opening with postponed, canceled or test, but not "postponed until <time>". Rescheduled alone is not not-held. Status merges Congress.gov first.
+- **Rescheduling.** A not-held meeting moves to its first later same-committee twin within 60 days whose `title_key` (substantive words plus Part/Day/Session/Panel/Volume markers) matches and which is not itself not held. Rescheduled, or a candidate whose later twin has a recording, moves only when the meeting has no recording of its own. Transcript jackets are not a meeting's own evidence.
+- **Packages.** A package links to a meeting by a jacket the meeting lists or by its own MODS `<eventId>`. Its witnesses and video stand for the meeting only when its MODS names exactly that meeting, or names none and the link is one-to-one both ways, and the meeting then has that package alone. Otherwise its witnesses keep a `package:` occasion.
+- **Witness lists.** A House witness list with no `meeting-id` takes the single event its own document links or its retained file name `wlist/<event>.xml` state.
+- **Documents.** A source file also links to every meeting whose current meeting record lists its URL (`file_meetings`).
+- **Coverage.** States rank present > unresolved > empty > unknown > not_stated. Where evidence is held but not linked the state is unknown, never not_stated: documents a meeting record lists that are not held are unresolved; a linked package with unattached witnesses makes witnesses unknown; a package MODS that names the meeting makes the transcript unknown; captions are not_stated only when the recording is confirmed absent or not public. **Senate:** a Senate meeting with no linked document or witness is unknown until Senate committee-page links land (ct-gi01 R2). Old page decisions came from the distrusted old matcher and are not imported.
 
 ## 8. Release Files
 
