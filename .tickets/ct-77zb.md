@@ -84,3 +84,7 @@ Round 1b 2026-11-02 (lead): Integration of clusters B/C/D: 63 lane failures, non
 **2026-11-02T13:54:36Z**
 
 2026-11-02 (lead): trial merge of all 7 branches onto integrate-round1: 9 conflicts, all resolved by keeping both sides; lane 10,978 passed, 11 failed, 5 errors, all cross-branch (f x g fixture inputs, e2 x g proof basis, h x g SQL anchor, h x e1 duplicate mapping_version fixture and the 202 mutant, 2 xfails now passing, step count 180). Recipe: .cache/rounds/r1b/trial-merge.md. Drop e2's own pin commit e73505b2; recompute pins once.
+
+**2026-11-02T16:28:57Z**
+
+2026-11-02 (lead): etl-rca correction: cluster C's integration failures were NOT from running main's code. C's tests ran the branch's code but only --path subsets, which hid the failures. Fix 9631f1be on r4-rca: pytest and doctor refuse another checkout's interpreter or imports, and every run prints whether it was a partial or full lane. e13a3382 binds the engine to the branch pin through a content-addressed store (.cache/docspec-runtime); before it, verify_runtime didn't enforce the pin, so several branches pinning eb40c54 tested on 5dae611.

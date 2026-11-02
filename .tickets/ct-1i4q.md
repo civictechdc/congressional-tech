@@ -22,3 +22,9 @@ Owner decision 2026-11-02: count both, and also count subtitle files we hold. To
 - Every changed meeting is checked against raw: the committee file in the House XML and the caption track bodies.
 - Tests fail first on a meeting with only a committee transcript, only captions, only a print, and a segment-only recording.
 
+
+## Notes
+
+**2026-11-02T16:28:57Z**
+
+2026-11-02 (lead): impl-f r1b-transcripts 82158e12 (stacked on r1b-f): committee transcripts and caption sources counted and labelled, with tests, docs and an independent raw judge; 2,602 of 2,606 committee transcript files confirmed against raw; no caption track qualifies on v21 (none is a complete caption or subtitle track). Rebase after red-f3's r1b-f fixes.
