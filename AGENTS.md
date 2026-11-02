@@ -39,6 +39,14 @@ build over a configured path. The helper never writes `remote` or `credentials`
 (a pipeline `runtime.json` with those keys fails `doctor` and
 `validate_catalog_authority`).
 
+Run heavy local work (engine runs, full lanes, cargo builds, multi-GB scans)
+under `python3 scripts/archive_watchdog.py --rss-gb <kill limit> --expect-gb
+<measured peak> --start-available-gb 6 --interval 0.2 -- <command>`. It starts
+the job once measured free memory covers the expected peak beside other jobs
+still ramping, stops it at the kill limit, stops only the youngest job below
+4 GiB machine memory, and takes the job down if the watchdog itself is killed.
+Its stderr and `--report` give the peak to pass as `--expect-gb` next time.
+
 For `apps/site` browser checks (`npm --prefix apps/site run contract:archive`),
 `npm --prefix apps/site ci` installs the exact `playwright` that
 `apps/site/package.json` pins; install its browser with

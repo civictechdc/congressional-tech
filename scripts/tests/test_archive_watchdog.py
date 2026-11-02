@@ -1,4 +1,6 @@
-"""The watchdog stops a real runaway by its real RSS, kills descendants, and records the peak."""
+"""The watchdog admits on measured free memory, stops a real runaway by its real RSS, kills descendants,
+and records the peak."""
+import importlib.util
 import json
 import os
 from pathlib import Path
@@ -6,8 +8,20 @@ import subprocess
 import sys
 import time
 
+import pytest
+
 ROOT = Path(__file__).parents[2]
 WATCHDOG = ROOT / 'scripts/archive_watchdog.py'
+SPEC = importlib.util.spec_from_file_location('archive_watchdog_contract', WATCHDOG)
+watchdog = importlib.util.module_from_spec(SPEC)
+SPEC.loader.exec_module(watchdog)
+
+
+@pytest.fixture(autouse=True)
+def private_state(tmp_path, monkeypatch):
+    """Every watchdog these tests start shares a private admission state, never the machine's."""
+    monkeypatch.setenv('ARCHIVE_WATCHDOG_STATE', str(tmp_path / 'state'))
+    return tmp_path / 'state'
 HOLD = "import time\nb=bytearray({size}*1024*1024)\nfor i in range(0,len(b),4096):b[i]=1\ntime.sleep(60)\n"
 
 
@@ -44,16 +58,65 @@ def test_a_runaway_descendant_stops_the_tree_with_a_named_failure(tmp_path):
     raise AssertionError('the runaway child outlived the watchdog')
 
 
-def test_a_held_lock_refuses_after_its_wait_and_a_dead_owner_is_reclaimed(tmp_path):
-    lock = tmp_path / 'lock'
-    lock.mkdir()
-    (lock / 'owner').write_text(f'{os.getpid()}\n')
-    held = run(tmp_path, '--rss-gb', '4', '--lock', str(lock), '--wait-seconds', '0', command=[sys.executable, '-c', 'pass'])
-    assert held.returncode == 98 and 'job slot' in held.stderr
-    finished = subprocess.run([sys.executable, '-c', 'import os;print(os.getpid())'], capture_output=True, text=True)
-    (lock / 'owner').write_text(finished.stdout)
-    assert run(tmp_path, '--rss-gb', '4', '--lock', str(lock), command=[sys.executable, '-c', 'pass']).returncode == 0
-    assert not lock.exists()
+def test_admission_is_refused_on_measured_free_memory_with_a_named_reason(tmp_path, private_state):
+    """A job that cannot fit waits, then refuses with exit 98; it never starts and leaves no state."""
+    marker = tmp_path / 'ran'
+    available = watchdog.available_gb()
+    result = run(tmp_path, '--rss-gb', '4', '--expect-gb', str(round(available + 2, 1)), '--wait-seconds', '0',
+                 command=[sys.executable, '-c', f'import pathlib;pathlib.Path({str(marker)!r}).touch()'])
+    assert result.returncode == 98 and 'measured free memory' in result.stderr and not marker.exists()
+    assert list(private_state.glob('*.json')) == []
+
+
+def test_a_high_kill_limit_does_not_delay_a_small_job(tmp_path):
+    """The kill limit bounds a runaway; it is not the job's need (declared limits ran 5-10x real use)."""
+    result = run(tmp_path, '--rss-gb', '100000', '--expect-gb', '0.1', '--wait-seconds', '0',
+                 command=[sys.executable, '-c', 'pass'])
+    assert result.returncode == 0, result.stderr
+
+
+def entry(pid, queued, expect, admitted=None):
+    return dict(pid=pid, queued=queued, admitted=admitted, expect_gb=expect, command=[])
+
+
+def test_admission_counts_measured_memory_plus_only_promises_not_yet_visible():
+    now = 10_000.0
+    me = entry(9, now - 1, 4)
+    # A job past its ramp is already inside measured free memory: it reserves nothing more.
+    settled = entry(1, now - 900, 20, admitted=now - 800)
+    assert watchdog.admissible(me, [me, settled], available=10, headroom=6, now=now)
+    # A job still ramping reserves its expected peak, which measured memory cannot show yet.
+    ramping = entry(2, now - 30, 3, admitted=now - 20)
+    assert not watchdog.admissible(me, [me, ramping], available=10, headroom=6, now=now)
+    assert watchdog.admissible(me, [me, ramping], available=13, headroom=6, now=now)
+
+
+def test_the_oldest_waiter_is_reserved_and_smaller_jobs_backfill_beside_it():
+    now = 10_000.0
+    head, small = entry(1, now - 600, 20), entry(2, now - 10, 2)
+    assert not watchdog.admissible(head, [head, small], available=25, headroom=6, now=now)
+    assert not watchdog.admissible(small, [head, small], available=25, headroom=6, now=now)  # Would take the head's room.
+    assert watchdog.admissible(small, [head, small], available=29, headroom=6, now=now)
+    assert watchdog.admissible(head, [head, small], available=26, headroom=6, now=now)
+
+
+def test_below_the_machine_floor_the_youngest_running_job_stops_first(tmp_path, private_state):
+    """One squeeze stops one job, the one with the least work to lose, not every job at once."""
+    assert watchdog.floor_victim([entry(1, 0, 4, admitted=100), entry(2, 0, 4, admitted=300), entry(3, 400, 4)]) == 2
+    assert watchdog.floor_victim([entry(3, 400, 4)]) is None
+    younger = subprocess.Popen([sys.executable, '-c', 'import time;time.sleep(60)'])
+    try:
+        private_state.mkdir()
+        (private_state / f'{younger.pid}.json').write_text(json.dumps(entry(younger.pid, time.time(), 1,
+                                                                            admitted=time.time() + 3600)))
+        always_short = ['--rss-gb', '4', '--min-available-gb', '1000000']
+        older = run(tmp_path, *always_short, command=[sys.executable, '-c', 'import time;time.sleep(1)'])
+        assert older.returncode == 0, older.stderr  # A younger job is running, so this one is kept.
+    finally:
+        younger.kill()
+        younger.wait()
+    alone = run(tmp_path, *always_short, command=[sys.executable, '-c', 'import time;time.sleep(60)'])
+    assert alone.returncode == 99 and 'youngest running job stops first' in alone.stderr
 
 
 def test_a_floor_breach_stops_the_job(tmp_path):
