@@ -36,3 +36,7 @@ Round 1b 2026-11-02 (lead): plan-g predicts about 2,906 events still duplicate a
 **2026-11-02T13:15:40Z**
 
 2026-11-02 (lead): impl-g r1b-g: 6,854 of 6,864 split packages now join. 7 differ only by a double-encoded U+FFFD in GovInfo's direct bytes; they stay as versions this release, and normalizing replacement characters in the fingerprint moves to Round 2's full html re-read (ct-pocg). CHRG-119hhrg60951 has different heading lines, so it's a real version. Run A on key packages: 2,853 events / 2,267 packages still duplicate on base code (predicted about 2,906).
+
+**2026-11-02T14:16:11Z**
+
+2026-11-02 impl-g (r1b-g): Run B slice (36,692 html bodies re-read): duplicate-transcript events 2,853 to 14 on key packages; 7,186 of 7,266 key packages are one document (Run A: 418); 71 of the remaining 80 are HTML+PDF not grouped, pre-existing. The slice doesn't build meetings, so the per-package entry rule is measured on the full run.

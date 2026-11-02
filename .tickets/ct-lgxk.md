@@ -28,3 +28,7 @@ No confirmed code; recheck after a rebuild.
 **2026-11-02T12:28:27Z**
 
 Round 1b 2026-11-02 (lead): The ZIP rule would put 'ZIP' back on about 34k member PDFs; fix skips format words via a registry list and uses the HTML rendition's title. impl-g.
+
+**2026-11-02T14:16:11Z**
+
+2026-11-02 impl-g (r1b-g): link-word titles 11,047 to 0 on the Run B slice; a recovery-only title test was added (it fails on base SQL).

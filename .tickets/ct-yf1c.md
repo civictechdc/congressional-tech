@@ -28,3 +28,7 @@ Round 1b 2026-11-02 (lead): 1,446 Files.Serve PDFs have no name in the URL or he
 **2026-11-02T13:15:40Z**
 
 2026-11-02 (lead): impl-g Run A: about 2,764 blank filenames on base code, 1,420 of them PDFs; with the fixes, the model's missing_filenames check reports 502. impl-g is explaining all 502 from raw.
+
+**2026-11-02T14:16:11Z**
+
+2026-11-02 impl-g (r1b-g): the 502 missing_filenames predate this round. They are retained-import originals the filename producer never read: the model's recovery candidates include undecided imports (71cf2b2d), while the producer read decision files only (7c0eb08a). All 513 receipt lines were read. Fix a8019f6d: the producer also names undecided imports (+502 readings; catalog version unchanged). 89285289: every blank filename carries a recorded reason or the release refuses. Run B reasons: 1,492 query URLs, 3 bare hosts, 1 no address.
