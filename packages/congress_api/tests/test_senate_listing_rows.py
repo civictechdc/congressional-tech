@@ -7,7 +7,6 @@ import pytest
 from congress_api.acquisition import senate as records
 from congress_api.models.senate import ListingColumns
 from congress_api.parsers.senate import displayed_clock, parse_listing_details, parse_listing_page
-from congress_api.parsers.senate_page import HEARING_LINK
 
 SOURCES = Path(__file__).parent / 'fixtures/source_models'
 SITE = 'appropriations.senate.gov'
@@ -52,20 +51,12 @@ def test_unencoded_row_keeps_its_visible_day_and_infers_nothing():
     assert 'time' not in row and 'encoded_start' not in row
 
 
-def test_root_slug_row_is_discovered_from_its_event_row():
-    # HEARING_LINK misses it; the row boundary dates it. senate_page.py is not edited.
+def test_root_slug_row_has_columns_but_stays_out_of_discovery():
+    # HEARING_LINK decides discovery. Its 34 misses wait for senate_page.py's next re-version:
+    # a separate path here failed whole runs on a 403 and its pages could not create meetings.
     page = (SOURCES / 'senate-listing-event-root-slug.html').read_text()
-    assert HEARING_LINK.search(page) is None
-    (day, url, _), = parse_listing_page(page, 'budget.senate.gov')
-    assert day == dt.date(2020, 9, 23) and url == 'https://www.budget.senate.gov/-hearing-on-cbos-updated-budget-outlook'
+    assert parse_listing_page(page, 'budget.senate.gov') == []
     assert only('senate-listing-event-root-slug.html', 'budget.senate.gov')['date_text'] == '09.23.20'
-
-
-def test_other_links_in_an_event_row_are_not_discovered():
-    page = ('<table><tr class="vevent"><td><a class="url summary" href="/a-hearing">A hearing</a>'
-            '<a href="/share">Share</a><time>04/22/26</time></td></tr></table>')
-    assert [url for _, url, _ in parse_listing_page(page, SITE)] == ['https://www.appropriations.senate.gov/a-hearing']
-    assert parse_listing_page(page.replace('href="/a-hearing"', 'href="/a-hearing#x"'), SITE) == []
 
 
 def test_row_dated_by_a_table_cell_keeps_the_table_branch():
@@ -92,7 +83,6 @@ def test_impossible_clock_is_not_a_clock():
 
 @pytest.mark.parametrize('fixture,site', [
     ('senate-listing-event-capitol-police.html', SITE), ('senate-listing-event-date-only.html', 'finance.senate.gov'),
-    ('senate-listing-event-root-slug.html', 'budget.senate.gov'),
 ])
 def test_days_agree_with_mf2py_a_different_parser_family(fixture, site):
     import mf2py

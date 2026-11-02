@@ -10,8 +10,8 @@
  },
  "expected": {
   "rows": 1225,
-  "listing_absent": 0,
-  "matched": 1223,
+  "listing_absent": 34,
+  "matched": 1189,
   "matched_no_encoded_day": 2,
   "matched_wrong_day": 0,
   "details_rows_with_time": 750,
@@ -335,6 +335,5 @@
   }
  ],
  "expected_status": "Reproduced on all 49 raw bodies at this revision; actual counts and the 33 fallback rows are in listing-replay.json.",
- "open_item": "The 33 pages now discovered reach Materials only: event_details in byte-hashed senate_page.py admits only /hearings/ paths.",
- "fallback_cost": "33 fetches for these 49 listings, none previously captured under any path. Probed live once: appropriations 5 of 5 returned 200 (178 KB, about 3.9 s), budget 21 returned 404 and 7 returned 403; 46.7 s for all 33 plus 2 s of pauses each. See fallback-live-probe.json. Listing pages themselves return 403 to this machine, so whether live listings still offer these links is unknown. Corpus-wide count unknown."
+ "open_item": "34 rows (33 distinct URLs) stay undiscovered: slugs outside HEARING_LINK in byte-hashed senate_page.py. A fallback in parsers/senate.py was tried and removed: a 403 on one of its pages failed the whole Senate run, and event_details could not make meetings from them. Live probe of the 33, fallback-live-probe.json: appropriations 5 of 5 return 200 (178 KB), budget 21 return 404 and 7 return 403."
 }

@@ -29,20 +29,35 @@ def setup(path):
     spec.loader.exec_module(base)
 
 
+def sniff(raw):
+    """What a body is, read from its bytes. Non-empty markup skips are the ones that would matter."""
+    if raw.startswith(b'%PDF-') or b'%PDF-' in raw[:1024]:
+        return 'pdf'
+    if raw.startswith(b'PK\x03\x04'):
+        return 'zip_format'
+    head = raw[:2048].lstrip(b'\xef\xbb\xbf\x00\t\n\r ')
+    if not head:
+        return 'empty'
+    if head[:1] in (b'{', b'['):
+        return 'json'
+    return 'markup' if head[:1] == b'<' or raw[:2] in (b'\xff\xfe', b'\xfe\xff') else 'other_not_markup'
+
+
 def compare(sha):
     from congress_api.parsers import senate as head
     try:
         raw, source = read_body(sha)
     except Exception as error:
         return sha, 'skip:unreadable:' + type(error).__name__, 'none', {}
+    kind = sniff(raw)
+    if kind != 'markup':
+        return sha, 'skip:' + kind, source, {}
     if len(raw) >= SIZE_LIMIT:
-        return sha, 'skip:at_or_over_2mb', source, {}
+        return sha, 'skip:markup_at_or_over_2mb', source, {}
     try:
         page = raw.decode('utf-8')
     except UnicodeDecodeError:
-        return sha, 'skip:non_utf8', source, {}
-    if page.lstrip()[:1] != '<':
-        return sha, 'skip:not_markup', source, {}
+        return sha, 'skip:markup_not_utf8', source, {}
     try:
         site = 'x.senate.gov'
         old_rows, old_details = base.parse_listing_page(page, site), base.parse_listing_details(page, site)

@@ -210,26 +210,4 @@ def parse_listing_page(page, site):
             href = unescape(link.group(1))
             row = ListingRow(day=day, url=href if href.startswith("http") else f"https://www.{site}{href}", title=text(link.group(2)))
             rows.append((row.day, row.url, row.title))
-    return rows + _rows_outside_hearing_link(event_rows, row_days, {row[1] for row in rows}, site)
-
-
-def _rows_outside_hearing_link(event_rows, row_days, listed, site):
-    """Event-row links whose slug HEARING_LINK misses (/some-hearing at the site root).
-
-    The row boundary already dates them. HEARING_LINK stays as it is: it lives in the
-    byte-hashed senate_page.py. These pages reach Materials only: event_details admits
-    only /hearings/ paths, so they create no meeting until that file's next re-version.
-    """
-    found = []
-    for anchor, row in event_rows.items():
-        href = anchor.get("href") or ""
-        marked = "url" in (anchor.get("class") or "").split()
-        if "#" in href or not href.startswith(("/", "http")) or not (marked or len(row.xpath(".//a[@href]")) == 1):
-            continue
-        title = text(dom.tostring(anchor, encoding="unicode", with_tail=False))
-        url = href if href.startswith("http") else f"https://www.{site}{href}"
-        day = row_days.get((href, title))
-        if day and title and url not in listed:
-            listed.add(url)
-            found.append((day, url, title))
-    return found
+    return rows

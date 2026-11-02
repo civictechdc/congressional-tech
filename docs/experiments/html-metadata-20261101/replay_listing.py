@@ -16,7 +16,6 @@ from urllib.parse import urljoin, urlsplit
 import mf2py
 
 from congress_api.parsers.senate import parse_listing_details, parse_listing_page
-from congress_api.parsers.senate_page import HEARING_LINK
 from raw_bodies import read_body
 
 RAW_ROW = re.compile(r'<tr\b[^>]*class="[^"]*\bvevent\b[^"]*"[^>]*>(.*?)</tr>', re.S)
@@ -30,7 +29,7 @@ def key(url):
 
 
 def replay(cohort):
-    counts, fallback = Counter(), []
+    counts, absent = Counter(), []
     for entry in cohort['bodies']:
         raw, source = read_body(entry['sha'])
         counts['raw_bodies_read:' + source] += 1
@@ -65,20 +64,17 @@ def replay(cohort):
                 continue
             written[key(urljoin(entry['declared'], unescape(href[1])))] = f'20{time[3]}-{time[1]}-{time[2]}'
         counts['raw_wrong_day'] += sum(found in written and listed[found][-1] != written[found] for found in listed)
-        for day, url, title in rows:
-            if HEARING_LINK.search(f'<a href="{url.split(site, 1)[-1]}">x</a>') is None:
-                counts['fallback_rows'] += 1
-                row_day = written.get(key(url))
-                counts['fallback_wrong_day'] += row_day != str(day)
-                fallback.append(dict(listing=entry['sha'], url=url, parser_day=str(day), raw_row_day=row_day))
-    return counts, fallback
+        for found, row_day in written.items():
+            if found not in listed:
+                absent.append(dict(listing=entry['sha'], url='https://' + found[0] + found[1], raw_row_day=row_day))
+    return counts, absent
 
 
 cohort = json.loads(Path(sys.argv[1]).read_text())
-actual, fallback = replay(cohort)
+actual, absent = replay(cohort)
 print(json.dumps(dict(sorted(actual.items())), indent=1))
 if len(sys.argv) > 2:
-    Path(sys.argv[2]).write_text(json.dumps(dict(counts=dict(sorted(actual.items())), fallback_rows=fallback), indent=1) + '\n')
+    Path(sys.argv[2]).write_text(json.dumps(dict(counts=dict(sorted(actual.items())), listing_absent_rows=absent), indent=1) + '\n')
 wrong = {name: (value, actual[name]) for name, value in cohort.get('expected', {}).items() if actual[name] != value}
 if wrong:
     print('DIFFERS from expected (expected, actual):', wrong)
