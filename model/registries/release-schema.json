@@ -942,7 +942,7 @@
       "notes": {
         "occasion": "meeting:{event_id}, package:{package_id}, or page:{sha256_prefix}. Witness keys hash the occasion, source, record_sha, source_locator, and context_key; names alone never join or deduplicate appearances."
       },
-      "nullability": "occasion, source, record_sha, source_locator and context_key are required: every witness row is read from one located source record."
+      "nullability": "Nullability transcribes the phase-2 annex \u00a73 file table (docs/plans/phase-2-annex-20261028.md): a type without \"nullable\" there is required."
     },
     {
       "name": "recordings.parquet",
@@ -980,7 +980,7 @@
       "notes": {
         "tracks[]": "Embedded captured caption/subtitle/playlist files. Language and production describe each track; these are not document-list rows."
       },
-      "nullability": "The documents are silent; decided from the row meaning: a recording row always has its key, and event_ids and tracks are empty lists when nothing is associated."
+      "nullability": "Nullability transcribes the phase-2 annex \u00a73 file table (docs/plans/phase-2-annex-20261028.md): a type without \"nullable\" there is required."
     },
     {
       "name": "committees.parquet",
@@ -1001,7 +1001,7 @@
           "name": "chamber",
           "type": "dict",
           "meaning": "House, Senate or joint",
-          "nullable": true
+          "nullable": false
         },
         {
           "name": "committee_type",
@@ -1048,7 +1048,7 @@
       "notes": {
         "names[]": "Embedded names with half-open [start,end) dates, ordered latest start first. Null endpoints mean unknown or open-ended."
       },
-      "nullability": "The documents are silent; decided from the row meaning: the key and the fields that define the row are required, descriptive fields from upstream records can be absent, and list columns are empty, never null."
+      "nullability": "Nullability transcribes the phase-2 annex \u00a73 file table (docs/plans/phase-2-annex-20261028.md): a type without \"nullable\" there is required."
     },
     {
       "name": "members.parquet",
@@ -1075,7 +1075,7 @@
           "name": "cross_ids",
           "type": "struct<lis string,opensecrets string,govtrack string,icpsr string,wikidata string,fec list<string>>",
           "meaning": "Cross-walk identifiers across legislative datasets",
-          "nullable": true
+          "nullable": false
         }
       ],
       "gaps": [],
@@ -1093,7 +1093,7 @@
         "terms[]": "Embedded service terms with half-open [start,end) dates, latest first. Terms do not establish historical committee seats.",
         "cross_ids": "External dataset identifiers; an identifier does not imply that dataset is included in this release."
       },
-      "nullability": "The documents are silent; decided from the row meaning: the key and the fields that define the row are required, descriptive fields from upstream records can be absent, and list columns are empty, never null."
+      "nullability": "Nullability transcribes the phase-2 annex \u00a73 file table (docs/plans/phase-2-annex-20261028.md): a type without \"nullable\" there is required."
     },
     {
       "name": "rosters.parquet",
@@ -1150,7 +1150,7 @@
         "validation": "native publication key checks",
         "kind": "primary_key"
       },
-      "nullability": "The documents are silent; decided from the row meaning: the key and the fields that define the row are required, descriptive fields from upstream records can be absent, and list columns are empty, never null."
+      "nullability": "Nullability transcribes the phase-2 annex \u00a73 file table (docs/plans/phase-2-annex-20261028.md): a type without \"nullable\" there is required."
     },
     {
       "name": "bills.parquet",
@@ -1259,7 +1259,7 @@
         "amendments[]": "Embedded direct/chained amendment summaries; 119th Congress coverage until upstream backfill.",
         "committee_activities[]": "Embedded committee events; several activities can refer to the same committee."
       },
-      "nullability": "The documents are silent; decided from the row meaning: the key and the fields that define the row are required, descriptive fields from upstream records can be absent, and list columns are empty, never null."
+      "nullability": "Nullability transcribes the phase-2 annex \u00a73 file table (docs/plans/phase-2-annex-20261028.md): a type without \"nullable\" there is required."
     },
     {
       "name": "nominations.parquet",
@@ -1274,7 +1274,7 @@
           "name": "description",
           "type": "string",
           "meaning": "Nomination description",
-          "nullable": true
+          "nullable": false
         },
         {
           "name": "organization",
@@ -1336,7 +1336,7 @@
         "floor_votes[]": "Embedded Senate roll-call summaries; no individual member positions.",
         "transcripts[]": "GovInfo CHRG package identifiers; a retained transcript can have multiple document formats or editions."
       },
-      "nullability": "The documents are silent; decided from the row meaning: the key and the fields that define the row are required, descriptive fields from upstream records can be absent, and list columns are empty, never null."
+      "nullability": "Nullability transcribes the phase-2 annex \u00a73 file table (docs/plans/phase-2-annex-20261028.md): a type without \"nullable\" there is required."
     },
     {
       "name": "url_state.parquet",
@@ -1828,13 +1828,13 @@
           "name": "basis",
           "type": "dict",
           "meaning": "Which relation states it",
-          "nullable": true
+          "nullable": false
         },
         {
           "name": "count",
           "type": "int32",
           "meaning": "Rows behind present",
-          "nullable": true
+          "nullable": false
         },
         {
           "name": "reason",
@@ -1858,7 +1858,7 @@
       "notes": {
         "state": "confirmed_absent only from undisputed curated negative verdicts on every package of the meeting, each linked to that meeting alone; zero rows never prove absence. partial means excerpts only; claimed means only a video\u2019s own text; for captions, no observation is unknown, never empty."
       },
-      "nullability": "The documents are silent; decided from the row meaning: the key and the fields that define the row are required, descriptive fields from upstream records can be absent, and list columns are empty, never null."
+      "nullability": "The documents are silent; entity-meeting-coverage.sql always sets basis (a CASE with an else) and count (coalesced), so both are required; reason is stated only when known."
     }
   ],
   "relationships_version": 1,

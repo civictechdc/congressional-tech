@@ -302,7 +302,7 @@ Identity: `witness_key` (primary_key; published identifier).
 | `testified` | `boolean` | yes | Whether the witness testified |
 | `bioguide_id` | `dict` | yes | Bioguide identifier when the witness is a Member of Congress |
 
-Nullability: occasion, source, record_sha, source_locator and context_key are required: every witness row is read from one located source record. A required column is refused at write time.
+Nullability: Nullability transcribes the phase-2 annex §3 file table (docs/plans/phase-2-annex-20261028.md): a type without "nullable" there is required. A required column is refused at write time.
 
 - `occasion`: meeting:{event_id}, package:{package_id}, or page:{sha256_prefix}. Witness keys hash the occasion, source, record_sha, source_locator, and context_key; names alone never join or deduplicate appearances.
 
@@ -322,7 +322,7 @@ Identity: `video_key` (primary_key; published identifier).
 | `event_ids` | `list<int64>` | no | Sorted meeting event IDs associated with this recording |
 | `tracks` | `list<struct<body fixed[32],suffix dict,format dict,language dict,production dict>>` | no | Captured caption, subtitle, and playlist tracks from their latest good fetch |
 
-Nullability: The documents are silent; decided from the row meaning: a recording row always has its key, and event_ids and tracks are empty lists when nothing is associated. A required column is refused at write time.
+Nullability: Nullability transcribes the phase-2 annex §3 file table (docs/plans/phase-2-annex-20261028.md): a type without "nullable" there is required. A required column is refused at write time.
 
 - `tracks[]`: Embedded captured caption/subtitle/playlist files. Language and production describe each track; these are not document-list rows.
 
@@ -340,14 +340,14 @@ Identity: `system_code` (primary_key; published identifier).
 | --- | --- | --- | --- |
 | `system_code` | `string` | no | Congress.gov committee system code |
 | `name` | `string` | no | Official committee name |
-| `chamber` | `dict` | yes | House, Senate or joint |
+| `chamber` | `dict` | no | House, Senate or joint |
 | `committee_type` | `dict` | yes | Committee category |
 | `parent_system_code` | `dict` | yes | Parent committee code |
 | `names` | `list<struct<name string,start date32,end date32>>` | no | Dated committee names |
 | `website` | `string` | yes | Official committee website |
 | `is_current` | `boolean` | yes | Current committee record |
 
-Nullability: The documents are silent; decided from the row meaning: the key and the fields that define the row are required, descriptive fields from upstream records can be absent, and list columns are empty, never null. A required column is refused at write time.
+Nullability: Nullability transcribes the phase-2 annex §3 file table (docs/plans/phase-2-annex-20261028.md): a type without "nullable" there is required. A required column is refused at write time.
 
 - `names[]`: Embedded names with half-open [start,end) dates, ordered latest start first. Null endpoints mean unknown or open-ended.
 
@@ -366,9 +366,9 @@ Identity: `bioguide_id` (primary_key; published identifier).
 | `bioguide_id` | `string` | no | Bioguide member identifier |
 | `name` | `string` | no | Member display name ({name_first} {name_last}) |
 | `terms` | `list<struct<chamber dict,state dict,district int16,party dict,start date32,end date32>>` | no | Congressional service terms ordered latest first |
-| `cross_ids` | `struct<lis string,opensecrets string,govtrack string,icpsr string,wikidata string,fec list<string>>` | yes | Cross-walk identifiers across legislative datasets |
+| `cross_ids` | `struct<lis string,opensecrets string,govtrack string,icpsr string,wikidata string,fec list<string>>` | no | Cross-walk identifiers across legislative datasets |
 
-Nullability: The documents are silent; decided from the row meaning: the key and the fields that define the row are required, descriptive fields from upstream records can be absent, and list columns are empty, never null. A required column is refused at write time.
+Nullability: Nullability transcribes the phase-2 annex §3 file table (docs/plans/phase-2-annex-20261028.md): a type without "nullable" there is required. A required column is refused at write time.
 
 - `terms[]`: Embedded service terms with half-open [start,end) dates, latest first. Terms do not establish historical committee seats.
 - `cross_ids`: External dataset identifiers; an identifier does not imply that dataset is included in this release.
@@ -394,7 +394,7 @@ Coverage: Current-Congress seats only; spicy-regs keeps no roster history.
 | `rank` | `int16` | yes | Numeric party rank on the committee |
 | `party` | `dict` | yes | Party caucus for the committee assignment |
 
-Nullability: The documents are silent; decided from the row meaning: the key and the fields that define the row are required, descriptive fields from upstream records can be absent, and list columns are empty, never null. A required column is refused at write time.
+Nullability: Nullability transcribes the phase-2 annex §3 file table (docs/plans/phase-2-annex-20261028.md): a type without "nullable" there is required. A required column is refused at write time.
 
 
 Outgoing: `roster_committee`, `roster_member`.
@@ -426,7 +426,7 @@ Coverage: Amendments cover the 119th Congress only until spicy-regs backfills.
 | `amendments` | `list<struct<amendment_id string,purpose string,sponsor_bioguide_id dict,latest_action_date date32,latest_action_text string>>` | no | Direct and chained amendments to the bill |
 | `committee_activities` | `list<struct<system_code dict,activity dict,date date32>>` | no | Committee referral, markup, and report activities |
 
-Nullability: The documents are silent; decided from the row meaning: the key and the fields that define the row are required, descriptive fields from upstream records can be absent, and list columns are empty, never null. A required column is refused at write time.
+Nullability: Nullability transcribes the phase-2 annex §3 file table (docs/plans/phase-2-annex-20261028.md): a type without "nullable" there is required. A required column is refused at write time.
 
 - `cbo_estimates[]`: Embedded publication IDs, dates and descriptions, not full CBO estimate text.
 - `floor_votes[]`: One embedded vote per vote_id per bill; basis distinguishes vote_record from bill_action. Counts are vote totals, not member positions.
@@ -448,7 +448,7 @@ Coverage: Nominations cover the 119th Congress only until spicy-regs backfills.
 | Field | Published type | Nullable | Meaning |
 | --- | --- | --- | --- |
 | `nomination_id` | `string` | no | Canonical nomination identifier ({congress}-pn-{number}[-{part}]) |
-| `description` | `string` | yes | Nomination description |
+| `description` | `string` | no | Nomination description |
 | `organization` | `string` | yes | Executive or independent agency name |
 | `received` | `date32` | yes | Date received in the Senate |
 | `latest_action_date` | `date32` | yes | Date of latest action |
@@ -457,7 +457,7 @@ Coverage: Nominations cover the 119th Congress only until spicy-regs backfills.
 | `transcripts` | `list<string>` | no | Printed hearing package IDs from nomination hearing references |
 | `floor_votes` | `list<struct<vote_id string,date date32,question string,result string,yea int16,nay int16>>` | no | Senate roll-call votes on the nomination |
 
-Nullability: The documents are silent; decided from the row meaning: the key and the fields that define the row are required, descriptive fields from upstream records can be absent, and list columns are empty, never null. A required column is refused at write time.
+Nullability: Nullability transcribes the phase-2 annex §3 file table (docs/plans/phase-2-annex-20261028.md): a type without "nullable" there is required. A required column is refused at write time.
 
 - `floor_votes[]`: Embedded Senate roll-call summaries; no individual member positions.
 - `transcripts[]`: GovInfo CHRG package identifiers; a retained transcript can have multiple document formats or editions.
@@ -636,11 +636,11 @@ Identity: `event_id, aspect` (primary_key; published identifier).
 | `event_id` | `int64` | no | Meeting event ID |
 | `aspect` | `dict` | no | recording, transcript, documents, witnesses or captions |
 | `state` | `dict` | no | present, partial, claimed, empty, not_stated, unresolved, not_public, confirmed_absent or unknown; these never merge |
-| `basis` | `dict` | yes | Which relation states it |
-| `count` | `int32` | yes | Rows behind present |
+| `basis` | `dict` | no | Which relation states it |
+| `count` | `int32` | no | Rows behind present |
 | `reason` | `dict` | yes | Why a state holds, when known, such as old_evidence_disputes_negative_verdict |
 
-Nullability: The documents are silent; decided from the row meaning: the key and the fields that define the row are required, descriptive fields from upstream records can be absent, and list columns are empty, never null. A required column is refused at write time.
+Nullability: The documents are silent; entity-meeting-coverage.sql always sets basis (a CASE with an else) and count (coalesced), so both are required; reason is stated only when known. A required column is refused at write time.
 
 - `state`: confirmed_absent only from undisputed curated negative verdicts on every package of the meeting, each linked to that meeting alone; zero rows never prove absence. partial means excerpts only; claimed means only a video’s own text; for captions, no observation is unknown, never empty.
 
