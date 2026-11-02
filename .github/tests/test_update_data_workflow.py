@@ -49,7 +49,10 @@ def test_meeting_validation_uses_shared_locked_setup():
     assert 'uv sync --locked' in commands
     python_setup = next(step for step in setup['runs']['steps'] if step.get('uses', '').startswith('actions/setup-python@'))
     assert python_setup['with']['python-version-file'] == '.python-version'
-    assert 'poppler-utils' in commands
+    # apt's poppler-utils is another release than the sniff pin hashes (test-suites.toml).
+    assert 'poppler-utils' not in commands
+    assert '.github/scripts/install-poppler.sh' in commands
+    assert 'GITHUB_PATH' in commands
     assert 'scripts/dev.py prepare-baseline' in commands
 
 

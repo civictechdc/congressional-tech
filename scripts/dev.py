@@ -109,15 +109,20 @@ def doctor(config, lane_name=None):
         print(f'PyArrow: {version}')
     except (OSError, ValueError, subprocess.SubprocessError) as error:
         errors.append(f'PyArrow: {error}; run uv sync --locked')
+    pins = {'poppler': config['environment']['poppler']['version']}
     for command, native in config['environment']['native'].items():
-        remedy = native['macos_remedy' if sys.platform == 'darwin' else 'linux_remedy']
+        remedy = native['macos_remedy' if sys.platform == 'darwin' else 'linux_remedy'].format(**pins)
         executable = shutil.which(command)
         if not executable:
             errors.append(f'Missing {command}; remedy: {remedy}')
             continue
         try:
             result = run([executable, *(arg.replace('{pid}', str(os.getpid())) for arg in native['arguments'])])
-            print(f'{command}: {(result.stdout or result.stderr).splitlines()[0]}')
+            # Same first line, stdout then stderr, that pdf_tools.reader_versions hashes.
+            line = ((result.stdout or '') + (result.stderr or '')).splitlines()[0]
+            print(f'{command}: {line}')
+            if 'first_line' in native and line != (pinned := native['first_line'].format(**pins)):
+                errors.append(f'{command}: reports "{line}", pinned "{pinned}"; remedy: {remedy}')
         except (OSError, subprocess.SubprocessError) as error:
             errors.append(f'{command}: {error}; remedy: {remedy}')
     lane = config['lanes'].get(lane_name, {})

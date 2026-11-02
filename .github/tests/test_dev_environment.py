@@ -38,7 +38,7 @@ def test_all_fourteen_experiment_files_are_explicit_active_regressions():
     assert not config['lanes']['frozen-reproduction']['roots']
 
 
-@pytest.mark.parametrize('failure', ['missing_poppler', 'missing_ps', 'wrong_checkout', 'wrong_pyarrow', 'wrong_python',
+@pytest.mark.parametrize('failure', ['missing_poppler', 'wrong_poppler', 'missing_ps', 'wrong_checkout', 'wrong_pyarrow', 'wrong_python',
                                      'foreign_interpreter'])
 def test_doctor_fails_before_pytest_with_actionable_reason(monkeypatch, failure):
     config = dev.declaration()
@@ -47,7 +47,9 @@ def test_doctor_fails_before_pytest_with_actionable_reason(monkeypatch, failure)
     def run(command, **kwargs):
         calls.append(command)
         if command[0].startswith('/bin/'):
-            return SimpleNamespace(stdout='poppler test', stderr='')
+            # Ubuntu 24.04's apt poppler-utils prints 24.02.0 to stderr.
+            release = '24.02.0' if failure == 'wrong_poppler' else config['environment']['poppler']['version']
+            return SimpleNamespace(stdout='', stderr=f'{Path(command[0]).name} version {release}\nCopyright')
         if 'import pyarrow' in command[2]:
             return SimpleNamespace(stdout='0.0' if failure == 'wrong_pyarrow' else '25.0.1')
         name = command[-1]
@@ -63,7 +65,9 @@ def test_doctor_fails_before_pytest_with_actionable_reason(monkeypatch, failure)
                         if failure == 'missing_poppler' or (failure == 'missing_ps' and command == 'ps')
                         else '/bin/' + command)
     monkeypatch.setattr(dev, 'inventory', lambda config: None)
-    expected = {'missing_poppler': 'Missing pdfinfo; remedy:', 'missing_ps': 'Missing ps; remedy:',
+    expected = {'missing_poppler': 'Missing pdfinfo; remedy:',
+                'wrong_poppler': 'pdfinfo: reports "pdfinfo version 24.02.0", pinned "pdfinfo version 26.06.0"; remedy:',
+                'missing_ps': 'Missing ps; remedy:',
                 'wrong_checkout': 'outside this checkout', 'wrong_pyarrow': 'expected locked 25.0.1',
                 'wrong_python': 'Python 3.12.13 required by .python-version',
                 'foreign_interpreter': "not this checkout's .venv"}
