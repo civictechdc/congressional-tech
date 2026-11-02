@@ -32,3 +32,7 @@ No code yet; recheck after a rebuild, since the ZIP rule may remove the new dupl
 **2026-11-02T12:28:27Z**
 
 Round 1b 2026-11-02 (lead): plan-g predicts about 2,906 events still duplicate after the ZIP rule. Fix: one entry per event and package with its formats, enforced by a failing check. Main duplicate source: Cloudflare email obfuscation (41,995 bodies; 6,850 of 6,864 differing ZIP-vs-direct pairs), NULL fingerprints (30,139 html readings), and ZIP members lacking their published address as an endpoint. impl-g, r1b-g.
+
+**2026-11-02T13:15:40Z**
+
+2026-11-02 (lead): impl-g r1b-g: 6,854 of 6,864 split packages now join. 7 differ only by a double-encoded U+FFFD in GovInfo's direct bytes; they stay as versions this release, and normalizing replacement characters in the fingerprint moves to Round 2's full html re-read (ct-pocg). CHRG-119hhrg60951 has different heading lines, so it's a real version. Run A on key packages: 2,853 events / 2,267 packages still duplicate on base code (predicted about 2,906).

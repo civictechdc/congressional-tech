@@ -40,3 +40,7 @@ Correction 2026-11-02 (lead), replacing the earlier note today: 5e9b5643 is not 
 **2026-11-02T12:28:27Z**
 
 Round 1b 2026-11-02 (lead): HTTP 206 set: 6 ZIPs plus CRPT-118hrpt372-pt2.pdf, all contiguous 16 MiB ranges covering the whole file; all rehash equal, testzip clean, 30 members match; the 2xx rule stays. Cloudflare decode lands in the html reader (b7e6766b on r1b-g); html readings are recomputed only where fingerprint IS NULL or a link is /cdn-cgi/l/email-protection (67,540 of 192,191), proven unchanged elsewhere (html 400/400, xml 260/260, json 260/260 byte-equal).
+
+**2026-11-02T13:15:40Z**
+
+2026-11-02 (lead): HTTP 206 cleared (all 7 complete contiguous ranges). html/xml/json backfills run on r1b-g 01eb5c82.

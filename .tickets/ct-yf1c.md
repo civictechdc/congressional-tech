@@ -24,3 +24,7 @@ Every listed document has a usable name or title rule, and saved-files does not 
 **2026-11-02T12:28:27Z**
 
 Round 1b 2026-11-02 (lead): 1,446 Files.Serve PDFs have no name in the URL or headers; fix uses trailing-slash names and puts the named copy of the saved body first. impl-g.
+
+**2026-11-02T13:15:40Z**
+
+2026-11-02 (lead): impl-g Run A: about 2,764 blank filenames on base code, 1,420 of them PDFs; with the fixes, the model's missing_filenames check reports 502. impl-g is explaining all 502 from raw.
