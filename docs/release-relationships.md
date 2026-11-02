@@ -4,6 +4,8 @@
 
 Regenerate with `.venv/bin/python -m viewer_publication.archive_schema`; use `--check` to detect drift.
 
+What changed between releases, including retired link keys and identifier changes, is in [release notes](releases/README.md).
+
 The producer publishes this metadata in each immutable release’s `schema.json`. The core archive schema remains version 1; relationship metadata has its own version 1. Older releases can lack this metadata. Availability describes tables actually published, not whether a reference resolves or whether external files can be fetched.
 
 Paths use `[]` for list elements. Cardinality describes the relationship across source and target rows, including all list elements. Nullable references can be absent. `unresolved_allowed` means that bounded or incomplete source coverage can leave an identifier without a local row. A null is unknown; an absent table is unavailable; a published empty table has zero rows.

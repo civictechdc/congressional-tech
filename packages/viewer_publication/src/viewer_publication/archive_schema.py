@@ -281,6 +281,7 @@ def render_reference(schema):
     lines = ['# Published Congress data: keys and relationships', '',
         '<!-- Generated from model/registries/release-schema.json; do not edit. -->', '',
         'Regenerate with `.venv/bin/python -m viewer_publication.archive_schema`; use `--check` to detect drift.', '',
+        'What changed between releases, including retired link keys and identifier changes, is in [release notes](releases/README.md).', '',
         'The producer publishes this metadata in each immutable release’s `schema.json`. The core archive schema remains version 1; relationship metadata has its own version 1. Older releases can lack this metadata. Availability describes tables actually published, not whether a reference resolves or whether external files can be fetched.', '',
         'Paths use `[]` for list elements. Cardinality describes the relationship across source and target rows, including all list elements. Nullable references can be absent. `unresolved_allowed` means that bounded or incomplete source coverage can leave an identifier without a local row. A null is unknown; an absent table is unavailable; a published empty table has zero rows.', '',
         'SQL examples use DuckDB and positional `?` parameters. They are guidance, never executed during discovery. Add `list_row` from zero-based physical position to list/detail, including shard offsets. Predicates such as `list_contains` preserve document grain; unnest only needed lists, and deduplicate before counting across multiple relationships.', '']
