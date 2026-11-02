@@ -2,7 +2,7 @@
 id: ct-deh9
 status: open
 deps: [ct-itcg, ct-d0o0]
-links: []
+links: [ct-zpbl]
 created: 2026-11-01T20:08:13Z
 type: task
 priority: 1
@@ -63,3 +63,7 @@ Round 1b 2026-11-02 (lead): Readings: sniff, xml and json are lock-only or prove
 **2026-11-02T17:34:10Z**
 
 2026-11-02 spec-run: under the size-bound predicate (PAGE_PARSE_MAX_BYTES 25,165,824), the full html proof passed: 124,651 kept rows, 0 differences, 1,056 s, peak 5.57 GiB. All 75,185 missing xml/json bodies were fetched into the mirror as exact stored objects, each verified for stored size, MD5 where captures records it, decoded sha256 and length; three passes, covering 1 truncated read and 6 transient 502/520 errors. Full xml and json proofs are running.
+
+**2026-11-02T17:45:21Z**
+
+2026-11-02 owner direction on RCA items 1-2: don't re-do work unless absolutely necessary; the version hash should be a warning plus a manual check. Filed as ct-zpbl (post-release). This release keeps the current registry and proofs, which are done or running.
