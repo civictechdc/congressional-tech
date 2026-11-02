@@ -2058,3 +2058,19 @@ def test_mods_lines_that_name_only_a_contents_entry_are_not_people():
         ("Mark Johnson", "statement_for_record"),
         ("Thomas P. Bostick", "statement_for_record"),
     ]
+
+
+def test_the_lake_table_keeps_each_records_held_dates_title_and_created():
+    """The staged table is what the model reads: a print's held dates and title, and a House list's create-date,
+    must survive appearance_records.table, not only build_appearance_record_row (D4 published every print as
+    package-only because the table dropped them)."""
+    mods = b"""<mods xmlns="http://www.loc.gov/mods/v3"><titleInfo><title>Haaland Nomination</title></titleInfo>
+      <extension><heldDate>2021-02-23</heldDate><witness>Doe, Hon. Jane, Director, Office of Things</witness></extension></mods>"""
+    house = b"""<witness-list meeting-id="111420" create-date="2021-04-07T11:07:59.340"></witness-list>"""
+    rows = [
+        appearance_records.build_appearance_record_row(_sha("mods-table"), "mods", mods, parser_version="v1", package_id="CHRG-117shrg43821"),
+        appearance_records.build_appearance_record_row(_sha("house-table"), "house_xml", house, parser_version="v1", event_id=111420),
+    ]
+    got = {r["source"]: r for r in appearance_records.table(rows).to_pylist()}
+    assert (got["mods"]["held_dates"], got["mods"]["title"]) == (["2021-02-23"], "Haaland Nomination")
+    assert got["house_xml"]["created"] == rows[1]["created"] and rows[1]["created"] is not None

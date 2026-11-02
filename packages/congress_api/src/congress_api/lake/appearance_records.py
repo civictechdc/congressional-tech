@@ -119,7 +119,8 @@ ARROW_SCHEMA = pa.schema(
 )
 SCHEMA = ARROW_SCHEMA
 
-_EXTRA_COLS = ("event_id", "package_id", "declared_base", "collection_state")
+# Every column ARROW_SCHEMA carries besides the shared record columns; a field missing here is written null.
+_EXTRA_COLS = ("event_id", "package_id", "declared_base", "collection_state", "held_dates", "title", "created")
 
 _SOURCE_SYMBOLS: dict[str, tuple[str, ...]] = {
     "house_xml": (
@@ -1265,6 +1266,9 @@ def _normalize_row_for_table(row: Mapping[str, Any]) -> dict[str, Any]:
         "declared_base": _opt_str(row.get("declared_base")),
         "collection_state": coll_state,
         "appearances": norm_apps,
+        "held_dates": list(row["held_dates"]) if row.get("held_dates") is not None else None,
+        "title": _opt_str(row.get("title")),
+        "created": _opt_str(row.get("created")),
     }
 
 
