@@ -3,18 +3,21 @@ WITH keys AS (
  UNION
  SELECT DISTINCT event_id FROM meetings_resolved WHERE event_id IS NOT NULL
 ), reschedule_rows AS (
- -- A postponed meeting re-entered under a new event ID keeps its old record. Publisher status decides
- -- when stated; otherwise only a recording on the later twin, since transcripts misassign proceedings
- -- and a multi-day hearing repeats one title.
+ -- Postponed/Canceled (not_held) says no sitting on this date. Rescheduled is ambiguous: re-dated in place
+ -- (106383, own video) or re-entered (101422, raw MODS shows the twin's print), so the record's own
+ -- recording means it sat. Jackets are not own evidence: Congress.gov lists same-day jackets of other
+ -- hearings (101422 lists 87484 "PPACA...", held 2013-10-24). Parts live in title_key (ct-asdg).
  SELECT event_id,meeting_date,title_key,reschedule_candidate,committee_key,
   coalesce(array_length(videos),0)>0 AS has_video,
-  lower(coalesce(status,'')) IN ('rescheduled','r') AS stated
+  coalesce(not_held,false) AS not_held,
+  lower(coalesce(status,''))='rescheduled' AS rescheduled
  FROM meetings_resolved WHERE title_key IS NOT NULL AND committee_key IS NOT NULL
 ), twins AS (
- SELECT old.event_id,old.stated,twin.event_id AS twin_id,twin.meeting_date
+ SELECT old.event_id,(old.not_held OR old.rescheduled) AS stated,twin.event_id AS twin_id,twin.meeting_date
  FROM reschedule_rows old JOIN reschedule_rows twin ON old.title_key=twin.title_key AND old.committee_key=twin.committee_key
  WHERE twin.meeting_date>old.meeting_date AND twin.meeting_date<=old.meeting_date+INTERVAL '60' DAY
-  AND ((old.stated AND NOT twin.stated) OR (NOT old.stated AND NOT old.has_video AND old.reschedule_candidate AND twin.has_video))
+  AND NOT twin.not_held
+  AND (old.not_held OR (NOT old.has_video AND (old.rescheduled OR (old.reschedule_candidate AND twin.has_video))))
 ), first_twin AS (
  SELECT *,row_number() OVER(PARTITION BY event_id ORDER BY meeting_date,twin_id) AS rn FROM twins
 ), rescheduled AS (
