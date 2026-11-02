@@ -24,3 +24,7 @@ Staging splits a receipt above a byte or line threshold into line ranges, with r
 **2026-11-02T15:56:08Z**
 
 2026-11-02 spec-run: two attempts on the 581 MB receipt. At guard 16 GiB the guard stopped it at 16.1 (physical 15.1); at guard 20 the batch monitor's 16 GiB physical cap (14 GiB pool, capture_backfill.receipt_profile) stopped it at 18.0 RSS / 18.8 physical. In both, RSS rose about 8 GiB in about 1 s, roughly 6 s into staging, before any engine step metrics, which points at Python-side receipt loading rather than the engine. Workaround for this run: pool 18 GiB (24 GiB physical cap), guard 24, per e2's plan; a profile of the jump is requested.
+
+**2026-11-02T16:17:42Z**
+
+2026-11-02 spec-run profile (correction to the earlier hypothesis): the jump is in the docspec engine, not Python. The Python CLI stays at 0.05-0.11 GiB; the docspec child goes from 0.42 to 17.1 GiB in about 6 s, peaking at 22.45 GiB RSS / 26.63 GiB physical at an 18 GiB pool, so above its own pool. Samples: jiter json_get_*/json_contains over receipt lines, string-view copies, memory accounting; the whole 581 MB receipt is decoded at once. Decision (lead): stage oversized receipts in bounded line ranges in the batching layer, not the mapping, so APPROVED_MAPPING doesn't move; output byte-identical; implemented by etl-staging on r4-staging. An engine-gap ticket follows for JSON extraction exceeding the pool in RSS. Profiles: .cache/archive-release/r1b-run/logs/batch3-profile/.
