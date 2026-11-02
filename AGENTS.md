@@ -19,9 +19,15 @@ location, multi-repository roots and verification.
 
 # Test execution & local runtime
 
-Run Python suites through `.venv/bin/python scripts/dev.py test <lane>` (or pass
-`--path <file_or_node>` for targeted runs). The `production-offline` lane and
-any direct `.venv/bin/pytest` run over native lake/model tests require
+Run `uv sync --frozen` in every checkout or worktree, then run Python suites
+through its own `.venv/bin/python scripts/dev.py test <lane>`. Every pytest
+session (and `doctor`) refuses another checkout's interpreter or packages, even
+through `PYTHONPATH`. A `--path`, `-k` or shard run ends with a `partial` or
+`shard` line; call a branch tested only from a `(full lane): exit 0` line or
+all shards.
+
+The `production-offline` lane and any direct pytest run over native lake/model
+tests require
 `DOCSPEC_JOB_CONFIG` pointing to a pinned **local-only** runtime JSON. Write one
 with `.venv/bin/python scripts/dev.py write-local-runtime --binary <docspec>
 --limits .github/docspec-local-limits.json --out <dir>/runtime.json`: it takes

@@ -38,7 +38,8 @@ def test_all_fourteen_experiment_files_are_explicit_active_regressions():
     assert not config['lanes']['frozen-reproduction']['roots']
 
 
-@pytest.mark.parametrize('failure', ['missing_poppler', 'missing_ps', 'wrong_checkout', 'wrong_pyarrow', 'wrong_python'])
+@pytest.mark.parametrize('failure', ['missing_poppler', 'missing_ps', 'wrong_checkout', 'wrong_pyarrow', 'wrong_python',
+                                     'foreign_interpreter'])
 def test_doctor_fails_before_pytest_with_actionable_reason(monkeypatch, failure):
     config = dev.declaration()
     calls = []
@@ -56,13 +57,16 @@ def test_doctor_fails_before_pytest_with_actionable_reason(monkeypatch, failure)
     monkeypatch.setattr(dev, 'run', run)
     if failure == 'wrong_python':
         monkeypatch.setattr(dev.sys, 'version_info', (3, 12, 99))
+    if failure == 'foreign_interpreter':  # Another checkout's .venv, with PYTHONPATH aimed here (cluster C).
+        monkeypatch.setattr(dev.sys, 'prefix', '/other-checkout/.venv')
     monkeypatch.setattr(dev.shutil, 'which', lambda command: None
                         if failure == 'missing_poppler' or (failure == 'missing_ps' and command == 'ps')
                         else '/bin/' + command)
     monkeypatch.setattr(dev, 'inventory', lambda config: None)
     expected = {'missing_poppler': 'Missing pdfinfo; remedy:', 'missing_ps': 'Missing ps; remedy:',
                 'wrong_checkout': 'outside this checkout', 'wrong_pyarrow': 'expected locked 25.0.1',
-                'wrong_python': 'Python 3.12.13 required by .python-version'}
+                'wrong_python': 'Python 3.12.13 required by .python-version',
+                'foreign_interpreter': "not this checkout's .venv"}
     with pytest.raises(ValueError, match=expected[failure]):
         dev.test(config, 'production-offline', [], [])
     assert not any('pytest' in command for command in calls)
@@ -157,6 +161,45 @@ def test_native_runtime_verifies_pins_without_starting_engine(tmp_path, monkeypa
     binary.write_bytes(b'changed')
     with pytest.raises(ValueError, match='DOCSPEC_JOB_CONFIG.*approved SHA-256'):
         dev.job_runtime(dev.declaration(), 'production-offline')
+
+
+def test_a_direct_pytest_session_refuses_another_checkouts_workspace_code(tmp_path):
+    """pytest itself, not only dev.py doctor, refuses code that resolves outside this checkout.
+
+    The 2026-11-02 re-check of cluster C ran another checkout's .venv/bin/pytest here;
+    doctor never ran, and that checkout's packages were imported silently.
+    """
+    import os
+    import sys
+    shadow = tmp_path / 'shadow' / 'house_naming'
+    shadow.mkdir(parents=True)
+    (shadow / '__init__.py').write_text('')
+    node = '.github/tests/test_dev_environment.py::test_frozen_reproduction_requires_separate_runtime'
+    clean = {key: value for key, value in os.environ.items() if key not in ('PYTHONPATH', 'DOCSPEC_JOB_CONFIG')}
+    command = [sys.executable, '-m', 'pytest', '-q', '-p', 'no:cacheprovider', node]
+    shadowed = subprocess.run(command, cwd=ROOT, env={**clean, 'PYTHONPATH': str(tmp_path / 'shadow')},
+                              capture_output=True, text=True, timeout=120)
+    assert shadowed.returncode != 0
+    assert 'house_naming: import resolves outside this checkout' in shadowed.stdout + shadowed.stderr
+    assert subprocess.run(command, cwd=ROOT, env=clean, capture_output=True, timeout=120).returncode == 0
+
+
+def test_a_path_run_says_it_is_not_a_lane_result(monkeypatch, capsys):
+    """Cluster C reported 724 passing tests from --path runs; the 63 failures were in files it never ran."""
+    config = dev.declaration()
+    files = dev.inventory(config)
+    total = sum(1 for path in files if any(
+        path.startswith(root.rstrip('/') + '/') or path == root for root in config['lanes']['production-offline']['roots']))
+    monkeypatch.setattr(dev, 'inventory', lambda config: files)
+    monkeypatch.setattr(dev, 'doctor', lambda config, lane: None)
+    monkeypatch.setattr(dev.subprocess, 'run', lambda *a, **kw: SimpleNamespace(returncode=0))
+    capsys.readouterr()
+    dev.test(config, 'production-offline', ['scripts/tests/test_process_rss.py'], [])
+    assert f'production-offline (partial: 1 of {total} lane files; not a lane result): exit 0' in capsys.readouterr().out
+    dev.test(config, 'production-offline', [], ['-k', 'anything'])
+    assert 'not a lane result' in capsys.readouterr().out
+    dev.test(config, 'production-offline', [], [])
+    assert 'production-offline (full lane): exit 0' in capsys.readouterr().out
 
 
 def test_write_local_runtime_passes_preflight_and_refuses_an_unpinned_binary(tmp_path, monkeypatch):

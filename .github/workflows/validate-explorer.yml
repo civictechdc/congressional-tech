@@ -33,6 +33,7 @@ on:
       - ".python-version"
       - "uv.lock"
       - "pytest.ini"
+      - "conftest.py"
       - "test-suites.toml"
       - "scripts/dev.py"
       - "docs/experiments/**"

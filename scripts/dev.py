@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import argparse
 from hashlib import sha256
+import importlib.util
 import json
 import os
 from pathlib import Path
@@ -88,18 +89,15 @@ def doctor(config, lane_name=None):
         errors.append(f'Python {expected_python} required by {version_file}; '
                       f'got {sys.version.split()[0]}; run uv sync --locked')
     print(f'Python {sys.version.split()[0]}: {sys.executable}')
-    # Import in a bounded subprocess: a broken native module cannot hang doctor.
-    for name, source in config['environment']['imports'].items():
-        try:
-            result = run([sys.executable, '-c',
-                          'import importlib,sys; from pathlib import Path; '
-                          'm=importlib.import_module(sys.argv[1]); print(Path(m.__file__).resolve())', name], timeout=import_timeout)
-            path = Path(result.stdout.strip())
-            if not path.is_relative_to((ROOT / source).resolve()):
-                raise ValueError(f'import resolves outside this checkout: {path}')
-            print(f'{name}: {path}')
-        except (OSError, ValueError, subprocess.SubprocessError) as error:
-            errors.append(f'{name}: {error}; run uv sync --locked in this checkout')
+
+    def imported(name):
+        # Import in a bounded subprocess: a broken native module cannot hang doctor.
+        result = run([sys.executable, '-c',
+                      'import importlib,sys; from pathlib import Path; '
+                      'm=importlib.import_module(sys.argv[1]); print(Path(m.__file__).resolve())', name], timeout=import_timeout)
+        print(f'{name}: {result.stdout.strip()}')
+        return Path(result.stdout.strip())
+    errors += checkout_errors(config, origin=imported)
     try:
         version = run([sys.executable, '-c', 'import pyarrow; print(pyarrow.__version__)'], timeout=import_timeout).stdout.strip()
         lock = tomllib.loads((ROOT / 'uv.lock').read_text())
@@ -134,6 +132,37 @@ def doctor(config, lane_name=None):
         raise ValueError('\n'.join(errors))
     job_runtime(config, lane_name)
     print('Doctor passed.')
+
+
+def checkout_errors(config, *, origin=None):
+    """Name each way this interpreter would test code from outside this checkout.
+
+    The interpreter must be this checkout's .venv, so third-party packages follow this
+    checkout's uv.lock, and each workspace import must resolve here. Cluster C
+    (2026-11-01) ran main's interpreter with PYTHONPATH aimed at its worktree: the
+    imports passed, and everything else came from main's environment. doctor probes
+    by importing; the root conftest.py probes with find_spec, which runs no module.
+    """
+    errors = []
+    venv = (ROOT / '.venv').resolve()
+    if Path(sys.prefix).resolve() != venv:
+        errors.append(f"interpreter environment {sys.prefix} is not this checkout's .venv ({venv}); "
+                      'run uv sync --frozen here and use .venv/bin/python')
+    for name, source in config['environment']['imports'].items():
+        try:
+            path = (origin or _spec_origin)(name)
+            if not path.is_relative_to((ROOT / source).resolve()):
+                raise ValueError(f'import resolves outside this checkout: {path}')
+        except (OSError, ValueError, subprocess.SubprocessError) as error:
+            errors.append(f'{name}: {error}; run uv sync --frozen in this checkout')
+    return errors
+
+
+def _spec_origin(name):
+    spec = importlib.util.find_spec(name)
+    if spec is None or spec.origin is None:
+        raise ValueError('not importable')
+    return Path(spec.origin).resolve()
 
 
 def job_runtime(config, lane_name):
@@ -243,8 +272,11 @@ def test(config, name, paths, pytest_args, *, shard=None):
                    for root in lane['roots']):
             raise ValueError(f'{path} is outside the {name} suite roots')
     if runner := lane.get('runner'):
+        scope = run_scope(files, lane['roots'], paths, pytest_args, shard)
         paths = [str(ROOT / path) for path in selected]
-        return subprocess.run([str(ROOT / runner[0]), str(ROOT / runner[1]), *runner[2:], *paths, *pytest_args], cwd=ROOT).returncode
+        code = subprocess.run([str(ROOT / runner[0]), str(ROOT / runner[1]), *runner[2:], *paths, *pytest_args], cwd=ROOT).returncode
+        print(f'{name} ({scope}): exit {code}', flush=True)
+        return code
     doctor(config, name)
     command = [sys.executable]
     if lane['offline']:
@@ -253,11 +285,31 @@ def test(config, name, paths, pytest_args, *, shard=None):
     if marker := lane.get('marker'):
         command += ['-m', marker]
     command += selected + pytest_args
+    scope = run_scope(files, lane['roots'], paths, pytest_args, shard)
     print(f'Running {name}: {lane["purpose"]}', flush=True)
     result = subprocess.run(command, cwd=ROOT)
     if name == 'native-loopback':
         print('Native qualification requires reviewing the -ra summary: skipped checks are unqualified.', flush=True)
+    print(f'{name} ({scope}): exit {result.returncode}', flush=True)
     return result.returncode
+
+
+def run_scope(files, roots, paths, pytest_args, shard):
+    """Say whether a run is the whole lane, so a partial pass is never reported as one.
+
+    Cluster C (2026-11-01) reported 724 passing tests from --path runs; the 63
+    failures found at merge were all in lane files it never ran.
+    """
+    def under(path, prefixes):
+        return any(path == prefix or path.startswith(prefix.rstrip('/') + '/') for prefix in prefixes)
+    lane_files = {path for path in files if under(path, roots)}
+    narrowed = {'-k', '--deselect', '--lf', '--last-failed', '--sw', '--stepwise'} & set(pytest_args)
+    if shard is not None:
+        return f'shard {shard[0]}/{shard[1]}' + ('; narrowed, not a lane result' if narrowed else '')
+    if paths:
+        chosen = {path for path in lane_files if under(path, [p.split('::', 1)[0] for p in paths])}
+        return f'partial: {len(chosen)} of {len(lane_files)} lane files; not a lane result'
+    return f'partial: {" ".join(sorted(narrowed))} narrowed; not a lane result' if narrowed else 'full lane'
 
 
 def clean(*, dry_run=True):

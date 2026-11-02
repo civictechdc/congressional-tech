@@ -25,14 +25,16 @@ python scripts/dev.py test production-offline
 python scripts/dev.py test active-experiment-regression
 ```
 
-`doctor` checks Python, every maintained import location, the locked PyArrow version and
+`doctor` checks Python, that the interpreter is this checkout's `.venv`, every
+maintained import location, the locked PyArrow version and
 both Poppler commands (`pdfinfo`, `pdftotext`) and the `ps` command used by
 the PDF memory guard. Import and command probes have
 bounded timeouts. Missing native commands fail before pytest starts.
 The `production-offline` lane also requires `DOCSPEC_JOB_CONFIG`: an explicit
 local DocSpec runtime configuration with executable SHA-256, source revision,
 platform, build features and a limits file. Doctor reuses the client's runtime
-verifier before starting pytest. Missing or invalid setup gives one actionable
+verifier before starting pytest, and the root `conftest.py` repeats the checkout
+and runtime checks for direct pytest runs. Missing or invalid setup gives one actionable
 error; native checks never silently become skipped. This lane refuses remote or
 credential-file configuration before loading it. It neither searches for an
 executable nor starts the engine during preflight. CI must supply its approved
