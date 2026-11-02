@@ -78,3 +78,19 @@ class NewsCITestClient(_NewsClient):
         if limits is None:
             limits = native_ci_limits(workspace)
         super().__init__(workspace, binary=binary, limits=limits, **kwargs)
+
+
+def lake_readings_table(rows):
+    """Readings rows in the lake table's full schema, defaulting required lists to empty.
+
+    Model SQL reads the lake shape (pinned-readings.sql excludes ``links`` by
+    name), so a fixture that declares only the columns its test inspects is a
+    relation production never supplies.
+    """
+    import pyarrow as pa
+    from pyiceberg.io.pyarrow import schema_to_pyarrow
+    from pyiceberg.schema import Schema
+    from congress_api.lake.tables import load_schema
+    schema = schema_to_pyarrow(Schema.model_validate(load_schema('readings')), include_field_ids=False)
+    lists = {field.name: [] for field in schema if pa.types.is_large_list(field.type) and not field.nullable}
+    return pa.Table.from_pylist([{**lists, **row} for row in rows], schema=schema)

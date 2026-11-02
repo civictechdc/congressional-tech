@@ -10,6 +10,7 @@ import pytest
 
 from congress_api.lake import readings
 from docspec_client.client import NativeDatasets
+from native_test_helpers import lake_readings_table
 
 
 def setup(tmp_path, body=b'<html><body><p>Evidence</p><a href="a.pdf">PDF</a></body></html>',
@@ -25,10 +26,8 @@ def setup(tmp_path, body=b'<html><body><p>Evidence</p><a href="a.pdf">PDF</a></b
     pq.write_table(pa.Table.from_pylist([dict(sha256=digest,stored_bytes=len(body) if size is None else size,
         stored_suffix='')]*copies,schema=schema),captures)
     existing=tmp_path/'sniff.parquet'
-    pq.write_table(pa.Table.from_pylist([dict(body_sha=digest,parser='sniff',parser_version='sniff-fixture',
-        status='completed',format=body_format)],schema=pa.schema([('body_sha',pa.binary(32)),
-        ('parser',pa.string()),('parser_version',pa.string()),('status',pa.string()),('format',pa.string()),
-        ('intact',pa.bool_()),('error_type',pa.string())])),existing)
+    pq.write_table(lake_readings_table([dict(body_sha=digest,parser='sniff',parser_version='sniff-fixture',
+        status='completed',format=body_format)]),existing)
     inventory=tmp_path/'bodies.parquet'
     pq.write_table(pa.Table.from_pylist([dict(body_sha=digest,physical_key=key,relative_path=key,
         stored_bytes=len(body) if size is None else size,stored_gzip=False)],schema=pa.schema([
@@ -56,7 +55,7 @@ def test_duplicate_captures_parse_once_and_nested_links_survive_native_export(tm
     reports=run_job(retained,args['engine'],inputs=[dict(name='sniff',kind='parquet',path=str(args['existing'])),
         dict(name='pages',kind='parquet',path=str(result['readings']))],steps=[],outputs=[
         parquet_output(retained,'existing',
-            'SELECT body_sha,parser,parser_version,status,format,intact,error_type FROM sniff UNION ALL SELECT body_sha,parser,parser_version,status,format,intact,error_type FROM pages',
+            'SELECT body_sha,parser,parser_version,status,format,intact,error_type,links FROM sniff UNION ALL SELECT body_sha,parser,parser_version,status,format,intact,error_type,links FROM pages',
             readings.PK)],queries=[dict(name='coverage',sql="SELECT (SELECT count(*) FROM sniff WHERE parser='sniff' AND parser_version='sniff-fixture' AND status='completed' AND format='html') AS admitted,(SELECT count(*) FROM pages WHERE parser='html') AS completed")])
     assert reports['coverage']==[dict(admitted=1,completed=1)]
     repeated=stage(args,tmp_path/'again',existing=retained/'existing.parquet')

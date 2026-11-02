@@ -6,6 +6,7 @@ import pyarrow as pa
 import pyarrow.parquet as pq
 import pytest
 from docspec_client.client import NativeDatasets
+from native_test_helpers import lake_readings_table
 
 from congress_api.lake import readings
 from congress_api.retention.body_store import BodyStore,LocalAdapter
@@ -34,9 +35,7 @@ def missing_inputs(tmp_path,*,format,size,proof='capture',settled=False):
     if settled:
         rows.append(dict(body_sha=digest,parser=format,parser_version=readings.current_version(format),
             status='size_limit',error_type='stored_size_limit'))
-    pq.write_table(pa.Table.from_pylist(rows,schema=pa.schema([('body_sha',pa.binary(32)),
-        ('parser',pa.string()),('parser_version',pa.string()),('status',pa.string()),
-        ('format',pa.string()),('intact',pa.bool_()),('error_type',pa.string())])),existing)
+    pq.write_table(lake_readings_table(rows),existing)
     assert not (raw/key).exists()
     return dict(captures=captures,body_inventory=inventory,existing=existing,local_root=raw,
         engine=NativeDatasets.from_config(os.environ['DOCSPEC_JOB_CONFIG']),

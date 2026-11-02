@@ -24,6 +24,7 @@ from congress_api.retention.pdf_backfill import (
 from congress_api.retention.pdf_tools import PdfToolError
 from congress_api.retention.provenance import field, run_job
 from docspec_client.client import NativeDatasets
+from native_test_helpers import lake_readings_table
 
 ROOT = Path(__file__).resolve().parents[3]
 
@@ -315,17 +316,8 @@ def test_select_pdf_candidates_and_model_verification_sql_integration(tmp_path: 
     )
 
     readings_path = tmp_path / 'readings.parquet'
-    readings_schema = pa.schema([
-        ('body_sha', pa.binary(32)),
-        ('parser', pa.string()),
-        ('parser_version', pa.string()),
-        ('status', pa.string()),
-        ('format', pa.string()),
-        ('intact', pa.bool_()),
-        ('error_type', pa.string()),
-    ])
     pq.write_table(
-        pa.Table.from_pylist(
+        lake_readings_table(
             [
                 dict(
                     body_sha=bytes.fromhex(pdf_sha),
@@ -346,7 +338,6 @@ def test_select_pdf_candidates_and_model_verification_sql_integration(tmp_path: 
                     error_type=None,
                 ),
             ],
-            schema=readings_schema,
         ),
         readings_path,
     )
