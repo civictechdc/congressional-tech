@@ -214,7 +214,7 @@ Identity: `event_id` (primary_key; published identifier).
 | `sittings` | `list<struct<start timestamp,end timestamp,place string,room string,building string,address string>>` | Scheduled times and locations, as Congress.gov states them when it has a sitting |
 | `committees` | `list<struct<system_code dict,role dict>>` | Host committee codes and roles |
 | `subject_keys` | `list<dict>` | Bill, nomination and treaty subjects |
-| `transcripts` | `list<struct<package_id string,list_row int32>>` | Official hearing transcripts |
+| `transcripts` | `list<struct<package_id string,list_row int32,formats list<string>>>` | Official hearing transcripts, one per package |
 | `videos` | `list<struct<name string,url string,video_key string>>` | Recorded meeting links |
 | `congress` | `int16` | Congress the publisher record states; null when no record states it, never inferred from documents |
 | `congress_gov_updated` | `timestamp` | Congress.gov's updateDate for this record: a publisher record update, distinct from the hearing date and capture time |
@@ -228,7 +228,8 @@ Identity: `event_id` (primary_key; published identifier).
 
 - `sittings[]`: Embedded scheduled intervals and places. Congress.gov states instants and places, so its sitting is used when present; a House-only sitting's unzoned Eastern local time is converted to an instant. An explicit empty House state stays empty. Times retain published precision; do not invent a Congress from the session number.
 - `committees[]`: Host/participant roles belong to this meeting-committee association.
-- `transcripts[]`: Package identifier and release-local document row identify the same retained hearing transcript.
+- `transcripts[]`: One entry per GovInfo package. list_row is the package's listed document whose saved format ranks first (then lowest row); formats are the distinct saved and alternate formats over all the package's listed documents, in format-preference order. A package listed as several documents (editions) keeps one entry.
+- `transcripts[].formats`: Format names (pdf, html, ...) the package is retained in, in format-preference order; values, not keys.
 - `videos[]`: Publisher recording links; video_key joins retained recordings when available.
 - `meeting_type`: As stated, with House XML codes (HHRG, HMKP, HMTG) on House rows; congress_gov_meeting_type carries the shared label.
 

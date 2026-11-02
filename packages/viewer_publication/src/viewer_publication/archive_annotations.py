@@ -12,7 +12,7 @@ def annotation_steps(catalog_version,*,root=ROOT):
         raise ValueError('A pinned filename catalog version is required')
     replacements={'{{CATALOG_VERSION}}':"'"+catalog_version.replace("'","''")+"'",
                   '{{EMPTY_STRINGS}}':EMPTY_STRINGS,'{{EMPTY_FACTS}}':EMPTY_FACTS}
-    names=['filename','addresses','publisher','codes','committees','unmapped_committees','facts','meetings','final']
+    names=['filename','addresses','publisher','codes','committees','unmapped_committees','facts','meetings','pages','final']
     steps=[]
     for name in names:
         sql=(Path(root)/'model/sql'/('source-annotations-'+name+'.sql')).read_text()
