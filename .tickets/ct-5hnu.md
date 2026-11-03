@@ -1,6 +1,6 @@
 ---
 id: ct-5hnu
-status: open
+status: closed
 deps: []
 links: [ct-m104, ct-adoh, ct-sw5t]
 created: 2026-11-02T19:50:29Z
@@ -29,3 +29,9 @@ Owner: apps/explorer_mcp/src/congressional_explorer_mcp/release.py and cli.py.
 - `test_changed_cache_and_concurrent_prepare_are_rejected` (`test_release.py:83-95`) and `test_same_release_reuses_verified_files_without_payload_or_footer_reads` (`test_release.py:17-31`) pass unchanged (`chmod 0o644` or modified bytes still raise `'Prepared file changed; choose a fresh data directory'`).
 - `congress-explorer-mcp config --client <client>` includes `'--prepare-if-missing'` in `args`, and `serve --prepare-if-missing` loads `selection.json` eagerly when present so `openWorldHint` is `False`.
 
+
+## Notes
+
+**2026-11-03T14:38:09Z**
+
+Completed, verified (123 passed in explorer-mcp lane), and published in congress-mcp-v0.5.0 (d675e540).
