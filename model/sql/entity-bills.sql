@@ -1,15 +1,9 @@
-WITH seed_bills AS (
+WITH direct_referenced_bills AS (
  SELECT DISTINCT lower(trim(unnest(measure_keys))) AS bill_id FROM ordered WHERE measure_keys IS NOT NULL
  UNION
  SELECT DISTINCT lower(trim(unnest(subject_keys))) AS bill_id FROM meetings_resolved WHERE subject_keys IS NOT NULL
  UNION
  SELECT DISTINCT lower(trim(unnest(subject_keys))) AS bill_id FROM meetings_export WHERE subject_keys IS NOT NULL
- UNION
- SELECT DISTINCT lower(trim(bill_id)) AS bill_id
- FROM spicy_congress_bills
- WHERE bill_id IS NOT NULL
-   AND try_cast(split_part(lower(trim(bill_id)),'-',1) AS INT)>=113
-   AND ((public_law_number IS NOT NULL AND trim(public_law_number)<>'') OR coalesce(try_cast(cosponsor_count AS INT),0)>=10)
  UNION
  SELECT DISTINCT lower(trim(bill_id)) AS bill_id
  FROM spicy_bill_committee_activities
@@ -32,6 +26,12 @@ WITH seed_bills AS (
  FROM spicy_bill_vote_references
  WHERE bill_id IS NOT NULL AND trim(bill_id)<>''
    AND try_cast(split_part(lower(trim(bill_id)),'-',1) AS INT)>=113
+), substantive_bills AS (
+ SELECT DISTINCT lower(trim(bill_id)) AS bill_id
+ FROM spicy_congress_bills
+ WHERE bill_id IS NOT NULL
+   AND try_cast(split_part(lower(trim(bill_id)),'-',1) AS INT)>=113
+   AND ((public_law_number IS NOT NULL AND trim(public_law_number)<>'') OR coalesce(try_cast(cosponsor_count AS INT),0)>=10)
 ), related_bill_unnested AS (
  SELECT
   lower(trim(cb.bill_id)) AS source_bill_id,
@@ -47,15 +47,17 @@ WITH seed_bills AS (
    AND r['bill_type'] IS NOT NULL AND trim(r['bill_type'])<>''
    AND r['number'] IS NOT NULL AND trim(r['number'])<>''
 ), referenced_bills AS (
- SELECT DISTINCT bill_id FROM seed_bills WHERE bill_id IS NOT NULL AND bill_id<>''
+ SELECT DISTINCT bill_id FROM direct_referenced_bills WHERE bill_id IS NOT NULL AND bill_id<>''
+ UNION
+ SELECT DISTINCT bill_id FROM substantive_bills WHERE bill_id IS NOT NULL AND bill_id<>''
  UNION
  SELECT DISTINCT e.target_bill_id AS bill_id
  FROM related_bill_unnested e
- JOIN seed_bills s ON s.bill_id=e.source_bill_id
+ JOIN direct_referenced_bills s ON s.bill_id=e.source_bill_id
  UNION
  SELECT DISTINCT e.source_bill_id AS bill_id
  FROM related_bill_unnested e
- JOIN seed_bills s ON s.bill_id=e.target_bill_id
+ JOIN direct_referenced_bills s ON s.bill_id=e.target_bill_id
 ), related_bills_filtered AS (
  SELECT e.source_bill_id,e.target_bill_id,e.target_title,e.relationship_details
  FROM related_bill_unnested e

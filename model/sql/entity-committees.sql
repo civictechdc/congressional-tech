@@ -53,9 +53,10 @@ WITH history_rows AS (
    ccm.map_chamber
   ) AS chamber,
   a.is_subcommittee,
-  lower(nullif(trim(a.parent_system_code),'')) AS parent_system_code
+  coalesce(pccm.norm_code,lower(nullif(trim(a.parent_system_code),''))) AS parent_system_code
  FROM spicy_committee_assignments a
  LEFT JOIN committee_code_map ccm ON ccm.raw_key=upper(trim(a.system_code))
+ LEFT JOIN committee_code_map pccm ON pccm.raw_key=upper(trim(a.parent_system_code))
  WHERE a.system_code IS NOT NULL AND trim(a.system_code)<>''
 ), synthesized_committees AS (
  SELECT

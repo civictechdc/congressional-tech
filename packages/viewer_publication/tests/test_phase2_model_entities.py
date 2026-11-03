@@ -2279,6 +2279,17 @@ def test_subject_key_reconciliation_and_historical_rosters(tmp_path):
                 wikidata_id=None,
                 fec_ids=[],
             ),
+            dict(
+                bioguide_id='C000003',
+                name_first='Carol',
+                name_last='Clark',
+                lis_id=None,
+                opensecrets_id=None,
+                govtrack_id=None,
+                icpsr_id=None,
+                wikidata_id=None,
+                fec_ids=[],
+            ),
         ],
         spicy_member_terms=[
             dict(
@@ -2298,6 +2309,25 @@ def test_subject_key_reconciliation_and_historical_rosters(tmp_path):
                 term_party='Republican',
                 term_start='2013-01-03',
                 term_end='2025-01-03',
+            ),
+            # Party-switcher C000003: Democrat in 113th-115th (2013-2019), Republican in 116th-119th (2019-2027)
+            dict(
+                bioguide_id='C000003',
+                term_type='sen',
+                term_state='WV',
+                term_district=None,
+                term_party='Democrat',
+                term_start='2013-01-03',
+                term_end='2019-01-03',
+            ),
+            dict(
+                bioguide_id='C000003',
+                term_type='sen',
+                term_state='WV',
+                term_district=None,
+                term_party='Republican',
+                term_start='2019-01-03',
+                term_end='2027-01-03',
             ),
         ],
         spicy_committee_assignments=[
@@ -2320,7 +2350,50 @@ def test_subject_key_reconciliation_and_historical_rosters(tmp_path):
                 rank=1,
                 party='Democrat',
             ),
-            # 117th Congress: historical subcommittee HSVR09 not in spicy_committees, with missing party and rank
+            # 113th Congress: historical select subcommittee HSIG01 with parent HSIG00 -> hlig01 with parent hlig00
+            dict(
+                congress=113,
+                session='2',
+                chamber='House',
+                is_subcommittee=True,
+                parent_system_code='HSIG00',
+                committee_name='Technical and Tactical Intelligence',
+                system_code='HSIG01',
+                bioguide_id='A000001',
+                name_first='Alma',
+                name_last='Adams',
+                position='Member',
+                rank=1,
+                party='Democrat',
+            ),
+            # 115th Congress: party-switcher C000003 with missing party -> must match 2013-2019 Democrat term
+            dict(
+                congress=115,
+                session='1',
+                system_code='SSBK00',
+                bioguide_id='C000003',
+                name_first='Carol',
+                name_last='Clark',
+                position='Member',
+                rank=1,
+                party=None,
+            ),
+            # 117th Congress: historical subcommittee HSVR09 with mixed explicit rank=1 (C000003) and rank=None (B000002)
+            dict(
+                congress=117,
+                session='1',
+                chamber='House',
+                is_subcommittee=True,
+                parent_system_code='HSVR00',
+                committee_name='Health',
+                system_code='HSVR09',
+                bioguide_id='C000003',
+                name_first='Carol',
+                name_last='Clark',
+                position='Chair',
+                rank=1,
+                party='Republican',
+            ),
             dict(
                 congress=117,
                 session='1',
@@ -2373,6 +2446,61 @@ def test_subject_key_reconciliation_and_historical_rosters(tmp_path):
                 policy_area='Science, Technology, Communications',
                 public_law_number=None,
                 cosponsor_count=53,
+                related_bills=[
+                    dict(
+                        bill_id='118-hr-815',
+                        title='Making emergency supplemental appropriations',
+                        relationship_types=['Related bill'],
+                    ),
+                ],
+            ),
+            dict(
+                bill_id='118-hr-815',
+                title='Making emergency supplemental appropriations',
+                short_title='National Security Supplemental',
+                sponsor_bioguide_id='A000001',
+                introduced_date='2023-02-02',
+                latest_action_date='2024-04-24',
+                latest_action_text='Became Public Law No: 118-50.',
+                stage='enacted',
+                policy_area='International Affairs',
+                public_law_number='118-50',
+                cosponsor_count=6,
+                related_bills=[],
+            ),
+            # Unreferenced substantive bill (cosponsor_count >= 10) with an unreferenced low-cosponsor companion
+            dict(
+                bill_id='118-hr-9001',
+                title='Substantive Unreferenced Bill',
+                short_title='Substantive Bill',
+                sponsor_bioguide_id='A000001',
+                introduced_date='2024-01-10',
+                latest_action_date='2024-01-10',
+                latest_action_text='Referred to committee.',
+                stage='introduced',
+                policy_area='Health',
+                public_law_number=None,
+                cosponsor_count=15,
+                related_bills=[
+                    dict(
+                        bill_id='118-s-9002',
+                        title='Unreferenced Low-Cosponsor Companion',
+                        relationship_types=['Identical bill'],
+                    ),
+                ],
+            ),
+            dict(
+                bill_id='118-s-9002',
+                title='Unreferenced Low-Cosponsor Companion',
+                short_title='Low-Cosponsor Companion',
+                sponsor_bioguide_id='C000003',
+                introduced_date='2024-01-10',
+                latest_action_date='2024-01-10',
+                latest_action_text='Read twice and referred.',
+                stage='introduced',
+                policy_area='Health',
+                public_law_number=None,
+                cosponsor_count=2,
                 related_bills=[],
             ),
             # 118-s-1 exists in upstream bills, but 'U.S. 1 Highway Safety' must NOT match it!
@@ -2450,7 +2578,19 @@ def test_subject_key_reconciliation_and_historical_rosters(tmp_path):
                 latest_action_date='2025-02-12',
                 latest_action_text='Committee on Banking. Hearings held.',
                 committees_json='[{"system_code":"ssbk00","name":"Banking"}]',
-                hearings_json='[{"package_id":"CHRG-119shrg58025"}]',
+                hearings_json='[{"chamber":"Senate","citation":"S.Hrg.119-475","date":"2026-06-23","jacketNumber":58025,"number":475}]',
+            ),
+            dict(
+                congress=119,
+                number=850,
+                part_number='0',
+                description='Jane Roe, to be Member of the Federal Reserve Board',
+                organization='Federal Reserve System',
+                received_date='2025-01-22',
+                latest_action_date='2025-02-12',
+                latest_action_text='Committee on Banking. Hearings held.',
+                committees_json='[{"system_code":"ssbk00","name":"Banking"}]',
+                hearings_json='[{"chamber":"Senate","citation":"S.Hrg.119-475","date":"2026-06-23","jacketNumber":58025,"number":475}]',
             ),
         ],
     )
@@ -2473,13 +2613,29 @@ def test_subject_key_reconciliation_and_historical_rosters(tmp_path):
     assert meetings[112789]['subject_keys'] == ['117-hr-3967']
     # 334517 gets 118-s-2127 and 118-s-2137 (Source 3 original bill entitled markup with (MEPA) stripped)
     assert meetings[334517]['subject_keys'] == ['118-s-2127', '118-s-2137']
-    # 336580 gets 119-pn-12-10 (Source 5a confirmation hearing transcript package_id)
-    assert meetings[336580]['subject_keys'] == ['119-pn-12-10']
+    # 336580 gets 119-pn-12-10 and 119-pn-850 (Source D/5a confirmation hearing jacketNumber=58025 and part_number='0')
+    assert meetings[336580]['subject_keys'] == ['119-pn-12-10', '119-pn-850']
+
+    nominations = {n['nomination_id']: n for n in pq.read_table(release_dir / 'nominations.parquet').to_pylist()}
+    assert sorted(nominations) == ['119-pn-12-10', '119-pn-850']
+    assert nominations['119-pn-12-10']['transcripts'] == ['CHRG-119shrg58025']
+    assert nominations['119-pn-850']['transcripts'] == ['CHRG-119shrg58025']
+
+    bills = {b['bill_id']: b for b in pq.read_table(release_dir / 'bills.parquet').to_pylist()}
+    assert '118-hr-7521' in bills
+    assert '118-hr-815' in bills
+    assert '118-hr-9001' in bills
+    # F8: 1-hop related_bills of unreferenced cosponsored bills (118-hr-9001 -> 118-s-9002) must NOT be pulled in
+    assert '118-s-9002' not in bills
+    assert '118-s-1' not in bills
 
     rosters = pq.read_table(release_dir / 'rosters.parquet').to_pylist()
     assert rosters == [
         dict(congress=113, system_code='hlig00', bioguide_id='A000001', title='Chair', rank=1, party='Democrat'),
-        dict(congress=117, system_code='hsvr09', bioguide_id='B000002', title='Ranking Member', rank=1, party='Republican'),
+        dict(congress=113, system_code='hlig01', bioguide_id='A000001', title='Member', rank=1, party='Democrat'),
+        dict(congress=115, system_code='ssbk00', bioguide_id='C000003', title='Member', rank=1, party='Democrat'),
+        dict(congress=117, system_code='hsvr09', bioguide_id='C000003', title='Chair', rank=1, party='Republican'),
+        dict(congress=117, system_code='hsvr09', bioguide_id='B000002', title='Ranking Member', rank=2, party='Republican'),
         dict(congress=119, system_code='ssbk00', bioguide_id='A000001', title='Member', rank=1, party='Democrat'),
     ]
     files_by_name = {f['name']: f for f in manifest['files']}
@@ -2491,4 +2647,8 @@ def test_subject_key_reconciliation_and_historical_rosters(tmp_path):
     assert committees['hsvr09']['committee_type'] == 'subcommittee'
     assert committees['hsvr09']['parent_system_code'] == 'hsvr00'
     assert committees['hsvr09']['is_current'] is False
+    assert 'hlig01' in committees
+    assert committees['hlig01']['committee_type'] == 'subcommittee'
+    assert committees['hlig01']['parent_system_code'] == 'hlig00'
+    assert committees['hlig01']['is_current'] is False
 

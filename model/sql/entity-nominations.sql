@@ -1,12 +1,12 @@
 WITH referenced_nominations AS (
- SELECT DISTINCT lower(trim(unnest(subject_keys))) AS nomination_id FROM meetings_resolved WHERE subject_keys IS NOT NULL
+ SELECT DISTINCT lower(trim(unnest(subject_keys))) AS nomination_id FROM meetings_export WHERE subject_keys IS NOT NULL
  UNION
  SELECT DISTINCT lower(trim(unnest(measure_keys))) AS nomination_id FROM ordered WHERE measure_keys IS NOT NULL
 ), keyed_nominations AS (
  SELECT
   cast(congress AS VARCHAR)||'-pn-'||cast(number AS VARCHAR)||
   CASE WHEN part_number IS NOT NULL AND try_cast(part_number AS INT) IS NOT NULL AND try_cast(part_number AS INT)<>0
-       THEN '-'||cast(try_cast(part_number AS INT) AS VARCHAR) ELSE '' END AS nomination_id,
+       THEN '-'||regexp_replace(trim(part_number),'^0+','') ELSE '' END AS nomination_id,
   congress,number,part_number,description,organization,received_date,
   latest_action_date,latest_action_text,committees_json,hearings_json
  FROM spicy_nominations WHERE congress IS NOT NULL AND number IS NOT NULL
@@ -33,6 +33,7 @@ WITH referenced_nominations AS (
 ), hearing_extracted AS (
  SELECT nomination_id,
   coalesce(
+   (regexp_match(chunk,'(?i)"package_?id"\s*:\s*"([^"]+)"'))[1],
    (regexp_match(chunk,'(CHRG-[0-9]+[hsj]hrg[0-9]+)'))[1],
    CASE WHEN regexp_like(chunk,'(?i)"jacket(?:_?number)?"\s*:\s*"?([0-9]+)"?')
     THEN 'CHRG-'||cast(congress AS VARCHAR)||

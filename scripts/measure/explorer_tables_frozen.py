@@ -49,13 +49,29 @@ def mods_page_facts(spec, work):
     return path
 
 
+DEFAULT_SPICY_REGS_DIR = Path('/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/r1b/inputs/spicy_regs')
+
+
 def positioned_list(release, work):
     """The list file with its physical row number, which committee transcripts cite as list_row."""
     work.mkdir(parents=True, exist_ok=True)
     path = work / 'list-positions.parquet'
     with duckdb.connect() as db:
-        db.execute(f"""COPY (SELECT meeting_keys,filename,format,file_row_number AS list_row FROM read_parquet('{release / 'list.parquet'}',file_row_number=true)) TO '{path}' (FORMAT PARQUET)""")
+        db.execute(f"""COPY (SELECT meeting_keys,measure_keys,filename,format,file_row_number AS list_row FROM read_parquet('{release / 'list.parquet'}',file_row_number=true)) TO '{path}' (FORMAT PARQUET)""")
     return path
+
+
+def spicy_inputs(work, spicy_regs_dir):
+    names = ('spicy_committees', 'spicy_bill_committee_activities', 'spicy_congress_bills', 'spicy_nominations')
+    if spicy_regs_dir is not None and (spicy_regs_dir / 'spicy-regs.json').is_file():
+        tables = json.loads((spicy_regs_dir / 'spicy-regs.json').read_text())['tables']
+        return [dict(name=name, kind='parquet', path=str(spicy_regs_dir / tables[name]['path'])) for name in names]
+    return [
+        json_input(work, 'spicy_committees', [], system_code='Utf8', parent_system_code='Utf8', website_url='Utf8'),
+        json_input(work, 'spicy_bill_committee_activities', [], **SPICY_SCHEMAS['spicy_bill_committee_activities']),
+        json_input(work, 'spicy_congress_bills', [], **SPICY_SCHEMAS['spicy_congress_bills']),
+        json_input(work, 'spicy_nominations', [], **SPICY_SCHEMAS['spicy_nominations']),
+    ]
 
 
 def positioned_detail(release, work):
@@ -74,6 +90,7 @@ def main(argv=None):
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     for name in ('spec', 'release', 'lake', 'decisions', 'output', 'runtime'):
         parser.add_argument('--' + name, type=Path, required=True)
+    parser.add_argument('--spicy-regs-dir', type=Path, default=DEFAULT_SPICY_REGS_DIR if DEFAULT_SPICY_REGS_DIR.is_dir() else None)
     args = parser.parse_args(argv)
     spec = json.loads(args.spec.read_text())
     args.output.mkdir(parents=True)
@@ -93,10 +110,7 @@ def main(argv=None):
         dict(name='recording_decision_records', kind='json_lines', files=[dict(key='decisions', path=str(args.decisions))],
              schema=dict(fields=[field(k, v) for k, v in RECORDING_DECISION_FIELDS.items()], metadata={})),
         json_input(work, 'channel_directory', channel_directory_rows(), handle='Utf8', channel_id='Utf8', system_code='Utf8', committee_label='Utf8', role='Utf8'),
-        json_input(work, 'spicy_committees', [], system_code='Utf8', parent_system_code='Utf8', website_url='Utf8'),
-        json_input(work, 'spicy_bill_committee_activities', [], **SPICY_SCHEMAS['spicy_bill_committee_activities']),
-        json_input(work, 'spicy_congress_bills', [], **SPICY_SCHEMAS['spicy_congress_bills']),
-        json_input(work, 'spicy_nominations', [], **SPICY_SCHEMAS['spicy_nominations']),
+        *spicy_inputs(work, args.spicy_regs_dir),
         json_input(work, 'parser_versions', expand_parser_version_rows(spec['parser_versions']), parser='Utf8', version='Utf8'),
     ]
     steps = [
@@ -105,14 +119,7 @@ def main(argv=None):
         # The lake table as the model's prepared appearance input (archive_model._normalize_appearance_rows).
         dict(name='appearance_records_input', sql="SELECT lower(encode(record_sha,'hex')) AS record_sha_hex,* EXCLUDE(record_sha),cast(NULL AS VARCHAR) AS context_url FROM appearance_records_lake", materialize=True),
         selected_record_step('appearance_records', 'appearance_records_input'),
-        selected_record_step('video_records', 'video_records'),
-        selected_record_step('committee_records', 'committee_records'),
-        dict(name='active_recording_decisions', sql='SELECT r.* FROM recording_decision_records r WHERE NOT EXISTS(SELECT 1 FROM recording_decision_records s WHERE s.supersedes=r.id)', materialize=True),
-        dict(name='youtube_cache_bodies', sql=sql('youtube-cache-bodies'), materialize=True),
-        dict(name='youtube_api_bodies', sql=sql('youtube-api-bodies'), materialize=True),
         *meeting_steps(),
-        dict(name='ordered', sql='SELECT meeting_keys,measure_keys,filename,format,cast(list_row AS INT) AS list_row FROM released_list', materialize=True),
-        dict(name='recordings_export', sql='SELECT * FROM recordings_entity', materialize=True),
         dict(name='appearance_people', sql=sql('appearance-people'), materialize=True),
         dict(name='package_mods_facts', sql=sql('package-mods-facts'), materialize=True),
         dict(name='print_meeting_agreement', sql=sql('print-meeting-agreement'), materialize=True),
@@ -125,6 +132,13 @@ def main(argv=None):
         dict(name='url_variants', sql='SELECT cast(NULL AS VARCHAR) AS canonical_url,cast(NULL AS VARCHAR) AS variant_url WHERE false', materialize=True),
         *appearance_steps(),
         dict(name='witnesses_export', sql=WITNESSES_SQL, materialize=True),
+        selected_record_step('video_records', 'video_records'),
+        selected_record_step('committee_records', 'committee_records'),
+        dict(name='active_recording_decisions', sql='SELECT r.* FROM recording_decision_records r WHERE NOT EXISTS(SELECT 1 FROM recording_decision_records s WHERE s.supersedes=r.id)', materialize=True),
+        dict(name='youtube_cache_bodies', sql=sql('youtube-cache-bodies'), materialize=True),
+        dict(name='youtube_api_bodies', sql=sql('youtube-api-bodies'), materialize=True),
+        dict(name='ordered', sql='SELECT meeting_keys,measure_keys,filename,format,cast(list_row AS INT) AS list_row FROM released_list WHERE coalesce(array_length(meeting_keys),0)>0', materialize=True),
+        dict(name='recordings_export', sql='SELECT * FROM recordings_entity', materialize=True),
         dict(name='meeting_document_urls', sql=sql('meeting-document-urls'), materialize=True),
         dict(name='details', sql='SELECT package_id,cast(list_row AS INT) AS list_row,format,alternates FROM released_detail', materialize=True),
         dict(name='meetings_export', sql=sql('entity-meetings'), materialize=True),

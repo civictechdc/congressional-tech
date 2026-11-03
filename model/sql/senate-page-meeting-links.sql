@@ -1,17 +1,23 @@
 -- Link present Senate committee hearing pages (senate_page) to canonical meetings (ct-j2yo).
 -- Pages resolve by parent committee (.senate.gov host) and hearing date (page_facts.content_date,
--- bracketed [YYYY-MM-DD] in title, URL date tokens, written Month DD, YYYY in text_head, or
--- witness document link dates), disambiguated across same-day committee meetings by witness
--- surname overlap (with MODS / Congress.gov) and substantive title/slug word overlap.
--- Undated committee pages resolve only when substantive title words agree uniquely with one meeting.
+-- bracketed [YYYY-MM-DD] in title, URL date tokens, or written Month DD, YYYY in text_head),
+-- disambiguated across same-day committee meetings by witness surname overlap (with MODS / Congress.gov)
+-- and substantive title/slug word overlap.
 -- Empty or absent senate_page containers are excluded so they never suppress MODS witnesses.
-WITH senate_candidates AS (
- SELECT DISTINCT r.record_sha_hex,
+WITH stopwords AS (
+ SELECT make_array(
+  '','the','a','an','of','and','to','in','on','for','with','from','at','by','is','are','be','as','or','its','it','this','that',
+  'hearing','hearings','subcommittee','committee','senate','united','states','congress','washington','full','open','closed',
+  'session','examine','examining','review','oversight','part','http','https','www','gov','html','htm','imo','media','doc','pdf','download','watch','live'
+ ) AS sw
+), senate_candidates AS (
+ SELECT DISTINCT r.record_sha_hex,r.context_url,
   arrow_cast(decode(r.record_sha_hex,'hex'),'FixedSizeBinary(32)') AS sha256
  FROM selected_appearance_records r
+ JOIN (SELECT DISTINCT record_sha_hex FROM appearance_people WHERE source='senate_page') ap
+  ON ap.record_sha_hex=r.record_sha_hex
  WHERE r.source='senate_page' AND r.status='completed'
   AND coalesce(nullif(trim(r.collection_state),''),'present')='present'
-  AND coalesce(array_length(r.appearances),0)>0
 ), capture_urls AS (
  SELECT sc.record_sha_hex,
   coalesce(c.url,c.requested_url,c.context_url) AS source_url
@@ -28,7 +34,7 @@ WITH senate_candidates AS (
  WHERE parent_system_code IS NULL AND lower(system_code)<>'jjec00'
   AND regexp_like(coalesce(website_url,''),'(?i)^https?://(?:www[.])?[a-z0-9-]+[.]senate[.]gov')
  UNION
- SELECT 'aging' AS host,'sssp00' AS parent_committee
+ SELECT 'aging' AS host,'spag00' AS parent_committee
  UNION SELECT 'ag','ssaf00'
  UNION SELECT 'agriculture','ssaf00'
  UNION SELECT 'appropriations','ssap00'
@@ -36,9 +42,10 @@ WITH senate_candidates AS (
  UNION SELECT 'banking','ssbk00'
  UNION SELECT 'budget','ssbu00'
  UNION SELECT 'commerce','sscm00'
+ UNION SELECT 'drugcaucus','scnc00'
  UNION SELECT 'energy','sseg00'
  UNION SELECT 'epw','ssev00'
- UNION SELECT 'ethics','sset00'
+ UNION SELECT 'ethics','slet00'
  UNION SELECT 'finance','ssfi00'
  UNION SELECT 'foreign','ssfr00'
  UNION SELECT 'help','sshr00'
@@ -49,79 +56,68 @@ WITH senate_candidates AS (
  UNION SELECT 'rules','ssra00'
  UNION SELECT 'sbc','sssb00'
  UNION SELECT 'veterans','ssva00'
- UNION SELECT 'jec','jcse00'
-), senate_app_rows AS (
- SELECT r.record_sha_hex,unnest(r.appearances) AS a
- FROM selected_appearance_records r
- JOIN senate_candidates sc ON sc.record_sha_hex=r.record_sha_hex
- WHERE r.source='senate_page' AND r.appearances IS NOT NULL
-), senate_doc_links AS (
- SELECT record_sha_hex,trim(unnest(a['document_links'])) AS link
- FROM senate_app_rows
- WHERE a['document_links'] IS NOT NULL
-), doc_link_dates AS (
- SELECT record_sha_hex,
-  min(try_cast((regexp_match(link,'([0-9]{4}-[0-9]{2}-[0-9]{2})'))[1] AS DATE)) AS link_date
- FROM senate_doc_links
- WHERE regexp_like(link,'[0-9]{4}-[0-9]{2}-[0-9]{2}')
- GROUP BY record_sha_hex
+ UNION SELECT 'jec','jsec00'
 ), senate_pages_raw AS (
  SELECT
-  r.record_sha_hex,
-  coalesce(cu.source_url,r.context_url) AS source_url,
+  sc.record_sha_hex,
+  coalesce(cu.source_url,sc.context_url) AS source_url,
   sh.parent_committee,
   coalesce(pf.heading,'')||' '||coalesce(pf.title,'')||' '||
-   regexp_replace(coalesce(cu.source_url,r.context_url,''),'^https?://[^/]+/','') AS page_text,
+   regexp_replace(coalesce(cu.source_url,sc.context_url,''),'^https?://[^/]+/','') AS page_text,
   try_cast(pf.content_date AS DATE) AS pf_date,
   try_cast((regexp_match(coalesce(pf.title,''),'\[([0-9]{4}-[0-9]{2}-[0-9]{2})\]'))[1] AS DATE) AS title_bracket_date,
-  try_cast((regexp_match(coalesce(cu.source_url,r.context_url,''),'/([0-9]{4}-[0-9]{2}-[0-9]{2})(?:[^0-9]|$)'))[1] AS DATE) AS url_iso_date,
-  regexp_match(coalesce(cu.source_url,r.context_url,''),'/([0-9]{2})[/-]([0-9]{2})[/-]([0-9]{4})(?:[^0-9]|$)') AS url_mdy,
-  regexp_match(coalesce(cu.source_url,r.context_url,''),'/([0-9]{2})-([0-9]{2})-([0-9]{2})-[a-zA-Z]') AS url_mdy2,
-  regexp_match(coalesce(pf.text_head,''),'(?i)\b(January|February|March|April|May|June|July|August|September|October|November|December)\s+([0-9]{1,2}),\s*([0-9]{4})\b') AS th_mdy,
-  dld.link_date
- FROM selected_appearance_records r
- JOIN senate_candidates sc ON sc.record_sha_hex=r.record_sha_hex
- LEFT JOIN capture_urls cu ON cu.record_sha_hex=r.record_sha_hex
+  try_cast((regexp_match(coalesce(cu.source_url,sc.context_url,''),'/([0-9]{4}-[0-9]{2}-[0-9]{2})(?:[^0-9]|$)'))[1] AS DATE) AS url_iso_date,
+  regexp_match(coalesce(cu.source_url,sc.context_url,''),'/([0-9]{2})[/-]([0-9]{2})[/-]([0-9]{4})(?:[^0-9]|$)') AS url_mdy,
+  regexp_match(coalesce(cu.source_url,sc.context_url,''),'/([0-9]{2})-([0-9]{2})-([0-9]{2})-[a-zA-Z]') AS url_mdy2,
+  regexp_match(coalesce(pf.text_head,''),'(?i)\b(January|February|March|April|May|June|July|August|September|October|November|December)\s+([0-9]{1,2}),\s*([0-9]{4})\b') AS th_mdy
+ FROM senate_candidates sc
+ LEFT JOIN capture_urls cu ON cu.record_sha_hex=sc.record_sha_hex
  LEFT JOIN page_facts pf ON pf.body_sha=sc.sha256 AND pf.status='completed'
- LEFT JOIN doc_link_dates dld ON dld.record_sha_hex=r.record_sha_hex
- JOIN senate_hosts sh ON sh.host=lower((regexp_match(coalesce(cu.source_url,r.context_url,''),'(?i)^https?://(?:www[.])?([a-z0-9-]+)[.]senate[.]gov'))[1])
- WHERE r.source='senate_page'
-), senate_pages AS (
+ JOIN senate_hosts sh ON sh.host=lower((regexp_match(coalesce(cu.source_url,sc.context_url,''),'(?i)^https?://(?:www[.])?([a-z0-9-]+)[.]senate[.]gov'))[1])
+), senate_pages_grouped AS (
  SELECT
-  record_sha_hex,
-  min(source_url) AS source_url,
-  parent_committee,
+  r.record_sha_hex,
+  min(r.source_url) AS source_url,
+  r.parent_committee,
   min(coalesce(
-   pf_date,
-   title_bracket_date,
-   url_iso_date,
-   CASE WHEN url_mdy IS NOT NULL THEN try_cast(url_mdy[3]||'-'||url_mdy[1]||'-'||url_mdy[2] AS DATE) END,
-   CASE WHEN url_mdy2 IS NOT NULL THEN try_cast('20'||url_mdy2[3]||'-'||url_mdy2[1]||'-'||url_mdy2[2] AS DATE) END,
-   CASE WHEN th_mdy IS NOT NULL THEN try_cast(
-    th_mdy[3]||'-'||
-    CASE lower(th_mdy[1])
+   r.pf_date,
+   r.title_bracket_date,
+   r.url_iso_date,
+   CASE WHEN r.url_mdy IS NOT NULL THEN try_cast(r.url_mdy[3]||'-'||r.url_mdy[1]||'-'||r.url_mdy[2] AS DATE) END,
+   CASE WHEN r.url_mdy2 IS NOT NULL THEN try_cast('20'||r.url_mdy2[3]||'-'||r.url_mdy2[1]||'-'||r.url_mdy2[2] AS DATE) END,
+   CASE WHEN r.th_mdy IS NOT NULL THEN try_cast(
+    r.th_mdy[3]||'-'||
+    CASE lower(r.th_mdy[1])
      WHEN 'january' THEN '01' WHEN 'february' THEN '02' WHEN 'march' THEN '03'
      WHEN 'april' THEN '04' WHEN 'may' THEN '05' WHEN 'june' THEN '06'
      WHEN 'july' THEN '07' WHEN 'august' THEN '08' WHEN 'september' THEN '09'
      WHEN 'october' THEN '10' WHEN 'november' THEN '11' WHEN 'december' THEN '12'
-    END||'-'||lpad(th_mdy[2],2,'0') AS DATE) END,
-   link_date
+    END||'-'||lpad(r.th_mdy[2],2,'0') AS DATE) END
   )) AS page_date,
+  min(r.page_text) AS page_text
+ FROM senate_pages_raw r
+ GROUP BY r.record_sha_hex,r.parent_committee
+), senate_pages AS (
+ SELECT
+  g.record_sha_hex,
+  g.source_url,
+  g.parent_committee,
+  g.page_date,
   array_distinct(array_except(
-   string_to_array(trim(regexp_replace(regexp_replace(lower(min(page_text)),'[^a-z0-9]+',' ','g'),'\b(?:[a-z0-9]{1,2}|[0-9]+)\b',' ','g')),' '),
-   make_array('','the','a','an','of','and','to','in','on','for','with','from','at','by','is','are','be','as','or','its','it','this','that','hearing','hearings','subcommittee','committee','senate','united','states','congress','washington','full','open','closed','session','examine','examining','review','oversight','part','http','https','www','gov','html','htm','imo','media','doc','pdf','download','watch','live')
-  )) AS words
- FROM senate_pages_raw
- GROUP BY record_sha_hex,parent_committee
-), meeting_parent_committees AS (
+   string_to_array(trim(regexp_replace(regexp_replace(lower(g.page_text),'[^a-z0-9]+',' ','g'),'\b(?:[a-z0-9]{1,2}|[0-9]+)\b',' ','g')),' '),
+   sw.sw
+  )) AS words,
+  first_value(g.source_url) OVER (PARTITION BY g.page_date,g.parent_committee ORDER BY g.source_url ASC,g.record_sha_hex ASC)=
+   first_value(g.source_url) OVER (PARTITION BY g.page_date,g.parent_committee ORDER BY g.source_url DESC,g.record_sha_hex ASC) AS single_url_on_date
+ FROM senate_pages_grouped g
+ CROSS JOIN stopwords sw
+ WHERE g.page_date IS NOT NULL
+), raw_meeting_committees AS (
  SELECT DISTINCT
   m.event_id,
   m.meeting_date,
-  substr(lower(c['system_code']),1,4)||'00' AS parent_committee,
-  array_distinct(array_except(
-   string_to_array(trim(regexp_replace(regexp_replace(lower(coalesce(m.title,'')),'[^a-z0-9]+',' ','g'),'\b(?:[a-z0-9]{1,2}|[0-9]+)\b',' ','g')),' '),
-   make_array('','the','a','an','of','and','to','in','on','for','with','from','at','by','is','are','be','as','or','its','it','this','that','hearing','hearings','subcommittee','committee','senate','united','states','congress','washington','full','open','closed','session','examine','examining','review','oversight','part','http','https','www','gov','html','htm','imo','media','doc','pdf','download','watch','live')
-  )) AS words
+  m.title,
+  substr(lower(c['system_code']),1,4)||'00' AS parent_committee
  FROM (
   SELECT event_id,meeting_date,title,unnest(committees) AS c
   FROM meetings_resolved
@@ -133,108 +129,101 @@ WITH senate_candidates AS (
  SELECT DISTINCT
   m.event_id,
   m.meeting_date,
-  substr(lower(m.committee_key),1,4)||'00' AS parent_committee,
-  array_distinct(array_except(
-   string_to_array(trim(regexp_replace(regexp_replace(lower(coalesce(m.title,'')),'[^a-z0-9]+',' ','g'),'\b(?:[a-z0-9]{1,2}|[0-9]+)\b',' ','g')),' '),
-   make_array('','the','a','an','of','and','to','in','on','for','with','from','at','by','is','are','be','as','or','its','it','this','that','hearing','hearings','subcommittee','committee','senate','united','states','congress','washington','full','open','closed','session','examine','examining','review','oversight','part','http','https','www','gov','html','htm','imo','media','doc','pdf','download','watch','live')
-  )) AS words
+  m.title,
+  substr(lower(m.committee_key),1,4)||'00' AS parent_committee
  FROM meetings_resolved m
  WHERE m.chamber IN ('senate','joint') AND m.meeting_date IS NOT NULL
   AND NOT coalesce(m.not_held,false)
   AND m.committee_key IS NOT NULL AND trim(m.committee_key)<>''
-), date_committee_event_counts AS (
- SELECT parent_committee,meeting_date,count(DISTINCT event_id) AS n_events
- FROM meeting_parent_committees
- GROUP BY parent_committee,meeting_date
-), date_committee_url_counts AS (
- SELECT parent_committee,page_date,count(DISTINCT source_url) AS n_urls
- FROM senate_pages
- WHERE page_date IS NOT NULL
- GROUP BY parent_committee,page_date
+), meeting_parent_committees AS (
+ SELECT
+  m.event_id,
+  m.meeting_date,
+  m.parent_committee,
+  array_distinct(array_except(
+   string_to_array(trim(regexp_replace(regexp_replace(lower(coalesce(m.title,'')),'[^a-z0-9]+',' ','g'),'\b(?:[a-z0-9]{1,2}|[0-9]+)\b',' ','g')),' '),
+   sw.sw
+  )) AS words,
+  first_value(m.event_id) OVER (PARTITION BY m.meeting_date,m.parent_committee ORDER BY m.event_id ASC,m.title ASC)=
+   first_value(m.event_id) OVER (PARTITION BY m.meeting_date,m.parent_committee ORDER BY m.event_id DESC,m.title ASC) AS single_event_on_date
+ FROM raw_meeting_committees m
+ CROSS JOIN stopwords sw
 ), senate_people AS (
- SELECT DISTINCT record_sha_hex,family
+ SELECT record_sha_hex,array_distinct(array_agg(family)) AS families
  FROM appearance_people
  WHERE source='senate_page' AND family IS NOT NULL AND NOT statement
+ GROUP BY record_sha_hex
 ), meeting_known_people AS (
- SELECT DISTINCT pml.event_id,ap.family
- FROM package_meeting_links pml
- JOIN appearance_people ap ON ap.source='mods' AND ap.package_id=pml.package_id
- WHERE ap.family IS NOT NULL AND NOT ap.statement
- UNION
- SELECT DISTINCT ap.event_id,ap.family
- FROM appearance_people ap
- WHERE ap.source='congress_gov' AND ap.event_id IS NOT NULL AND ap.family IS NOT NULL AND NOT ap.statement
+ SELECT event_id,array_distinct(array_agg(family)) AS families
+ FROM (
+  SELECT pml.event_id,ap.family
+  FROM package_meeting_links pml
+  JOIN appearance_people ap ON ap.source='mods' AND ap.package_id=pml.package_id
+  WHERE ap.family IS NOT NULL AND NOT ap.statement
+  UNION ALL
+  SELECT ap.event_id,ap.family
+  FROM appearance_people ap
+  WHERE ap.source='congress_gov' AND ap.event_id IS NOT NULL AND ap.family IS NOT NULL AND NOT ap.statement
+ ) p
+ GROUP BY event_id
 ), dated_candidates AS (
  SELECT
   s.record_sha_hex,
   s.source_url,
-  s.parent_committee,
-  s.page_date,
   m.event_id,
-  ec.n_events,
-  uc.n_urls,
-  cardinality(array_intersect(s.words,m.words)) AS shared_words
+  s.single_url_on_date,
+  m.single_event_on_date,
+  coalesce(cast(cardinality(array_intersect(sp.families,mp.families)) AS BIGINT),cast(0 AS BIGINT)) AS shared_surnames,
+  cast(cardinality(array_intersect(s.words,m.words)) AS BIGINT) AS shared_words
  FROM senate_pages s
  JOIN meeting_parent_committees m
   ON m.parent_committee=s.parent_committee AND m.meeting_date=s.page_date
- JOIN date_committee_event_counts ec
-  ON ec.parent_committee=s.parent_committee AND ec.meeting_date=s.page_date
- JOIN date_committee_url_counts uc
-  ON uc.parent_committee=s.parent_committee AND uc.page_date=s.page_date
- WHERE s.page_date IS NOT NULL
-), shared_surnames AS (
- SELECT dc.record_sha_hex,dc.event_id,count(DISTINCT sp.family) AS shared_surnames
- FROM (SELECT DISTINCT record_sha_hex,event_id FROM dated_candidates) dc
- JOIN senate_people sp ON sp.record_sha_hex=dc.record_sha_hex
- JOIN meeting_known_people mp ON mp.event_id=dc.event_id AND mp.family=sp.family
- GROUP BY dc.record_sha_hex,dc.event_id
+ LEFT JOIN senate_people sp ON sp.record_sha_hex=s.record_sha_hex
+ LEFT JOIN meeting_known_people mp ON mp.event_id=m.event_id
 ), dated_scored AS (
  SELECT
-  dc.record_sha_hex,
-  dc.source_url,
-  dc.event_id,
-  dc.n_events,
-  dc.n_urls,
-  coalesce(ss.shared_surnames,0) AS shared_surnames,
-  dc.shared_words,
-  coalesce(ss.shared_surnames,0)*100+dc.shared_words AS score
- FROM dated_candidates dc
- LEFT JOIN shared_surnames ss ON ss.record_sha_hex=dc.record_sha_hex AND ss.event_id=dc.event_id
- WHERE (dc.n_events=1 AND dc.n_urls=1)
-  OR coalesce(ss.shared_surnames,0)>0
-  OR dc.shared_words>=2
-), best_per_sha AS (
- SELECT record_sha_hex,max(score) AS max_score
- FROM dated_scored
- GROUP BY record_sha_hex
-), sha_top_matches AS (
- SELECT ds.record_sha_hex,ds.source_url,ds.event_id,ds.shared_surnames,ds.score
- FROM dated_scored ds
- JOIN best_per_sha b ON b.record_sha_hex=ds.record_sha_hex AND ds.score=b.max_score
-), unique_sha_winners AS (
+  record_sha_hex,
+  source_url,
+  event_id,
+  shared_surnames,
+  shared_surnames*cast(100 AS BIGINT)+shared_words AS score
+ FROM dated_candidates
+ WHERE (single_event_on_date AND single_url_on_date)
+  OR shared_surnames>0
+  OR shared_words>=2
+), sha_ranked AS (
  SELECT
   record_sha_hex,
-  min(source_url) AS source_url,
-  min(event_id) AS event_id,
-  min(shared_surnames) AS shared_surnames,
-  min(score) AS score
- FROM sha_top_matches
- GROUP BY record_sha_hex
- HAVING count(DISTINCT event_id)=1
-), best_per_event AS (
- SELECT event_id,max(score) AS max_score
+  source_url,
+  event_id,
+  shared_surnames,
+  score,
+  row_number() OVER (PARTITION BY record_sha_hex ORDER BY score DESC,event_id ASC) AS sha_rn,
+  lead(score) OVER (PARTITION BY record_sha_hex ORDER BY score DESC,event_id ASC) AS next_sha_score
+ FROM dated_scored
+), unique_sha_winners AS (
+ SELECT record_sha_hex,source_url,event_id,shared_surnames,score
+ FROM sha_ranked
+ WHERE sha_rn=1 AND (next_sha_score IS NULL OR next_sha_score<score)
+), event_ranked AS (
+ SELECT
+  record_sha_hex,
+  source_url,
+  event_id,
+  shared_surnames,
+  score,
+  first_value(score) OVER (PARTITION BY event_id ORDER BY score DESC) AS max_event_score
  FROM unique_sha_winners
- GROUP BY event_id
 ), event_top_winners AS (
- SELECT u.record_sha_hex,u.source_url,u.event_id,u.shared_surnames,u.score
- FROM unique_sha_winners u
- JOIN best_per_event be ON be.event_id=u.event_id AND u.score=be.max_score
-), unambiguous_events AS (
- SELECT event_id
- FROM event_top_winners
- GROUP BY event_id
- HAVING count(DISTINCT source_url)=1 OR max(shared_surnames)>0
+ SELECT
+  record_sha_hex,
+  event_id,
+  first_value(source_url) OVER (PARTITION BY event_id ORDER BY source_url ASC,record_sha_hex ASC)=
+   first_value(source_url) OVER (PARTITION BY event_id ORDER BY source_url DESC,record_sha_hex ASC)
+   OR first_value(shared_surnames) OVER (PARTITION BY event_id ORDER BY shared_surnames DESC,record_sha_hex ASC)>0 AS keep_event
+ FROM event_ranked
+ WHERE score=max_event_score
 )
-SELECT w.record_sha_hex,w.event_id
-FROM event_top_winners w
-JOIN unambiguous_events ue ON ue.event_id=w.event_id
+SELECT record_sha_hex,event_id
+FROM event_top_winners
+WHERE keep_event

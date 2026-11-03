@@ -2,9 +2,13 @@
 SELECT d.document_id AS doc_key,true AS body_expected,
  CASE WHEN coalesce(s.filename,'')='' THEN coalesce(x.filename,s.filename) ELSE s.filename END AS filename,
  CASE
-  WHEN wk.witness_name IS NOT NULL AND x.title IS NULL
-   AND regexp_like(trim(coalesce(a.reading_title,a.listing_title,rt.title,'')),'(?i)^(?:witness\s+(?:statement|testimony|biography)|(?:prepared|written)\s+statement|testimony|truth\s+in\s+testimony(?:\s+form|\s+disclosure(?:\s+form)?)?)$')
-   THEN coalesce(a.reading_title,a.listing_title,rt.title)||' - '||wk.witness_name
+  WHEN wk.witness_name IS NOT NULL THEN coalesce(
+   CASE WHEN NOT regexp_like(trim(a.reading_title),'(?i)^(?:witness\s+(?:statement|testimony|biography)|(?:prepared|written)\s+statement|testimony|truth\s+in\s+testimony(?:\s+form|\s+disclosure(?:\s+form)?)?)$') THEN a.reading_title END,
+   CASE WHEN NOT regexp_like(trim(a.listing_title),'(?i)^(?:witness\s+(?:statement|testimony|biography)|(?:prepared|written)\s+statement|testimony|truth\s+in\s+testimony(?:\s+form|\s+disclosure(?:\s+form)?)?)$') THEN a.listing_title END,
+   CASE WHEN NOT regexp_like(trim(rt.title),'(?i)^(?:witness\s+(?:statement|testimony|biography)|(?:prepared|written)\s+statement|testimony|truth\s+in\s+testimony(?:\s+form|\s+disclosure(?:\s+form)?)?)$') THEN rt.title END,
+   CASE WHEN NOT regexp_like(trim(x.title),'(?i)^(?:witness\s+(?:statement|testimony|biography)|(?:prepared|written)\s+statement|testimony|truth\s+in\s+testimony(?:\s+form|\s+disclosure(?:\s+form)?)?)$') THEN x.title END,
+   CASE WHEN coalesce(a.reading_title,a.listing_title,rt.title,x.title) IS NOT NULL THEN coalesce(a.reading_title,a.listing_title,rt.title,x.title)||' - '||wk.witness_name END
+  )
   ELSE coalesce(a.reading_title,a.listing_title,rt.title,x.title)
  END AS title,
  CASE WHEN coalesce(array_length(a.document_kind),0)=0 THEN coalesce(x.document_kind,a.document_kind) ELSE a.document_kind END AS document_kind,

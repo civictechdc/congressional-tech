@@ -24,13 +24,6 @@ WITH witness_doc_urls AS (
  JOIN recovery_original_keys rk ON r.id=rk.recovery_id
  JOIN witness_url_keys w ON rk.url_key=w.url_key
  WHERE NOT EXISTS (SELECT 1 FROM chrg_components c WHERE c.component=r.component)
-), precedence_expanded AS (
- SELECT component,witness_key FROM url_matched_members
- UNION
- SELECT u.component,wp.superseded_by AS witness_key
- FROM url_matched_members u
- JOIN witness_precedence wp ON wp.witness_key=u.witness_key
- WHERE wp.superseded_by IS NOT NULL
 ), single_meeting_components AS (
  SELECT component,try_cast(meeting_keys[1] AS BIGINT) AS event_id
  FROM document_metadata
@@ -47,7 +40,7 @@ WITH witness_doc_urls AS (
   dm.component,
   smc.event_id,
   regexp_replace(
-   lower((regexp_match(sf.filename,'(?i)^HHRG-[0-9]+-[A-Z0-9]+-(?:Wstate|TTF|Bio)-([A-Za-z0-9''-]+)-[0-9]{8}'))[1]),
+   lower((regexp_match(sf.filename,'(?i)^(?:[0-9a-f]{64}[.])?(?:HHRG|HMTG)-[0-9]+-[A-Z0-9]+-(?:Wstate|TTF|Bio)-([A-Za-z0-9''-]+)-[0-9]{8}'))[1]),
    '[^a-z0-9]','','g'
   ) AS norm_slug
  FROM document_members dm
@@ -55,13 +48,13 @@ WITH witness_doc_urls AS (
  JOIN single_meeting_components smc ON smc.component=dm.component
  WHERE NOT EXISTS (SELECT 1 FROM chrg_components c WHERE c.component=dm.component)
   AND NOT EXISTS (SELECT 1 FROM url_matched_members u WHERE u.component=dm.component)
-  AND regexp_like(sf.filename,'(?i)^HHRG-[0-9]+-[A-Z0-9]+-(?:Wstate|TTF|Bio)-[A-Za-z0-9''-]+-[0-9]{8}')
+  AND regexp_like(sf.filename,'(?i)^(?:[0-9a-f]{64}[.])?(?:HHRG|HMTG)-[0-9]+-[A-Z0-9]+-(?:Wstate|TTF|Bio)-[A-Za-z0-9''-]+-[0-9]{8}')
  UNION
  SELECT DISTINCT
   r.component,
   smc.event_id,
   regexp_replace(
-   lower((regexp_match(n.filename,'(?i)^HHRG-[0-9]+-[A-Z0-9]+-(?:Wstate|TTF|Bio)-([A-Za-z0-9''-]+)-[0-9]{8}'))[1]),
+   lower((regexp_match(n.filename,'(?i)^(?:[0-9a-f]{64}[.])?(?:HHRG|HMTG)-[0-9]+-[A-Z0-9]+-(?:Wstate|TTF|Bio)-([A-Za-z0-9''-]+)-[0-9]{8}'))[1]),
    '[^a-z0-9]','','g'
   ) AS norm_slug
  FROM saved_recoveries r
@@ -69,7 +62,7 @@ WITH witness_doc_urls AS (
  JOIN single_meeting_components smc ON smc.component=r.component
  WHERE NOT EXISTS (SELECT 1 FROM chrg_components c WHERE c.component=r.component)
   AND NOT EXISTS (SELECT 1 FROM url_matched_members u WHERE u.component=r.component)
-  AND regexp_like(n.filename,'(?i)^HHRG-[0-9]+-[A-Z0-9]+-(?:Wstate|TTF|Bio)-[A-Za-z0-9''-]+-[0-9]{8}')
+  AND regexp_like(n.filename,'(?i)^(?:[0-9a-f]{64}[.])?(?:HHRG|HMTG)-[0-9]+-[A-Z0-9]+-(?:Wstate|TTF|Bio)-[A-Za-z0-9''-]+-[0-9]{8}')
 ), canonical_meeting_witnesses AS (
  SELECT DISTINCT
   w.event_id,
@@ -110,10 +103,23 @@ WITH witness_doc_urls AS (
  FROM hhrg_slugs h
  JOIN unambiguous_slug_witness u ON u.event_id=h.event_id AND u.norm_slug=h.norm_slug
  WHERE h.norm_slug<>''
-), all_matched AS (
- SELECT component,witness_key FROM precedence_expanded
+), raw_matched AS (
+ SELECT component,witness_key FROM url_matched_members
  UNION
  SELECT component,witness_key FROM slug_matched_members
+), canonical_expanded AS (
+ SELECT component,witness_key FROM raw_matched
+ UNION
+ SELECT m.component,wp.superseded_by AS witness_key
+ FROM raw_matched m
+ JOIN witness_precedence wp ON wp.witness_key=m.witness_key
+ WHERE wp.superseded_by IS NOT NULL
+), all_matched AS (
+ SELECT component,witness_key FROM canonical_expanded
+ UNION
+ SELECT c.component,wp.witness_key
+ FROM canonical_expanded c
+ JOIN witness_precedence wp ON wp.superseded_by=c.witness_key
 )
 SELECT
  m.component,

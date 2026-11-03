@@ -36,19 +36,45 @@ WITH committee_code_map AS (
    ORDER BY session DESC NULLS LAST,title_missing ASC,parsed_rank ASC NULLS LAST
   ) AS rn
  FROM normalized_assignments
+), distinct_roster_congresses AS (
+ SELECT DISTINCT congress FROM dedup_assignments WHERE rn=1
 ), member_term_parsed AS (
  SELECT
   trim(bioguide_id) AS m_bioguide_id,
   nullif(trim(term_party),'') AS term_party,
-  try_cast(substr(trim(term_start),1,10) AS DATE) AS start_date
+  try_cast(substr(trim(term_start),1,4) AS INT) AS start_year,
+  try_cast(substr(trim(term_end),1,4) AS INT) AS end_year,
+  try_cast(substr(trim(term_start),1,10) AS DATE) AS start_date,
+  try_cast(substr(trim(term_end),1,10) AS DATE) AS end_date
  FROM spicy_member_terms
  WHERE bioguide_id IS NOT NULL AND nullif(trim(term_party),'') IS NOT NULL
+), member_congress_candidates AS (
+ SELECT
+  c.congress AS m_congress,
+  t.m_bioguide_id,
+  t.term_party,
+  t.start_date,
+  CASE
+   WHEN t.start_year < 1789 + (cast(c.congress AS INT) - 1) * 2 + 2
+    AND coalesce(t.end_year,9999) >= 1789 + (cast(c.congress AS INT) - 1) * 2
+    AND (t.end_date IS NULL OR t.end_date > make_date(1789 + (cast(c.congress AS INT) - 1) * 2,1,3))
+   THEN 0
+   WHEN t.start_year < 1789 + (cast(c.congress AS INT) - 1) * 2 + 2
+    AND coalesce(t.end_year,9999) >= 1789 + (cast(c.congress AS INT) - 1) * 2
+   THEN 1
+   ELSE 2
+  END AS overlap_rank
+ FROM distinct_roster_congresses c
+ CROSS JOIN member_term_parsed t
 ), member_parties AS (
- SELECT m_bioguide_id,term_party
+ SELECT m_congress,m_bioguide_id,term_party
  FROM (
-  SELECT m_bioguide_id,term_party,
-   row_number() OVER (PARTITION BY m_bioguide_id ORDER BY start_date DESC NULLS LAST) AS rn
-  FROM member_term_parsed
+  SELECT m_congress,m_bioguide_id,term_party,
+   row_number() OVER (
+    PARTITION BY m_congress,m_bioguide_id
+    ORDER BY overlap_rank ASC,start_date DESC NULLS LAST
+   ) AS rn
+  FROM member_congress_candidates
  )
  WHERE rn=1
 ), with_party AS (
@@ -59,24 +85,33 @@ WITH committee_code_map AS (
   d.title,
   d.title_missing,
   d.parsed_rank,
+  CASE WHEN d.parsed_rank IS NULL THEN 1 ELSE 0 END AS rank_missing,
   d.name_last,
   d.name_first,
   coalesce(d.raw_party,mp.term_party) AS party
  FROM dedup_assignments d
- LEFT JOIN member_parties mp ON mp.m_bioguide_id=d.bioguide_id
+ LEFT JOIN member_parties mp ON mp.m_congress=d.congress AND mp.m_bioguide_id=d.bioguide_id
  WHERE d.rn=1
+), ranked_rosters AS (
+ SELECT
+  congress,
+  system_code,
+  bioguide_id,
+  title,
+  party,
+  parsed_rank,
+  coalesce(max(parsed_rank) OVER (PARTITION BY congress,system_code,party),0) AS max_explicit_rank,
+  row_number() OVER (
+   PARTITION BY congress,system_code,party,rank_missing
+   ORDER BY title_missing ASC,name_last ASC NULLS LAST,name_first ASC NULLS LAST,bioguide_id ASC
+  ) AS missing_rank_seq
+ FROM with_party
 )
 SELECT
  congress,
  system_code,
  bioguide_id,
  title,
- cast(coalesce(
-  parsed_rank,
-  row_number() OVER (
-   PARTITION BY congress,system_code,party
-   ORDER BY title_missing ASC,name_last ASC NULLS LAST,name_first ASC NULLS LAST,bioguide_id ASC
-  )
- ) AS SMALLINT) AS rank,
+ cast(coalesce(parsed_rank,max_explicit_rank + missing_rank_seq) AS SMALLINT) AS rank,
  party
-FROM with_party
+FROM ranked_rosters

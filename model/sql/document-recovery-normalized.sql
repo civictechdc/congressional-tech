@@ -1,8 +1,10 @@
 SELECT d.document_id AS doc_key,false AS body_expected,n.filename,
  CASE
-  WHEN wk.witness_name IS NOT NULL
-   AND regexp_like(trim(coalesce(t.title,a.title,'')),'(?i)^(?:witness\s+(?:statement|testimony|biography)|(?:prepared|written)\s+statement|testimony|truth\s+in\s+testimony(?:\s+form|\s+disclosure(?:\s+form)?)?)$')
-   THEN coalesce(t.title,a.title)||' - '||wk.witness_name
+  WHEN wk.witness_name IS NOT NULL THEN coalesce(
+   CASE WHEN NOT regexp_like(trim(t.title),'(?i)^(?:witness\s+(?:statement|testimony|biography)|(?:prepared|written)\s+statement|testimony|truth\s+in\s+testimony(?:\s+form|\s+disclosure(?:\s+form)?)?)$') THEN t.title END,
+   CASE WHEN NOT regexp_like(trim(a.title),'(?i)^(?:witness\s+(?:statement|testimony|biography)|(?:prepared|written)\s+statement|testimony|truth\s+in\s+testimony(?:\s+form|\s+disclosure(?:\s+form)?)?)$') THEN a.title END,
+   CASE WHEN coalesce(t.title,a.title) IS NOT NULL THEN coalesce(t.title,a.title)||' - '||wk.witness_name END
+  )
   ELSE coalesce(t.title,a.title)
  END AS title,
  a.document_kind,a.document_family,
