@@ -131,6 +131,16 @@ def stage_d4(run,bodies):
         done[name]=dict(selected=len(keys),appended=staged['produced']);run.save()
 
 
+def _explorer_counts(run,name,directory):
+    """Recover counts from the final current-pin head, including after an append/save crash."""
+    from viewer_publication.archive_selective import _versions,current_version_sql
+    pin=run.head(name,directory/'resolve');_,version=current_version_sql(name,_versions({name}),'t')
+    rows=run_job(directory/'counts',run.engine,inputs=[tables.table_input('t',pin)],steps=[],outputs=[],
+        queries=[dict(name='sources',sql=f'SELECT source,count(*) AS n FROM t WHERE parser_version={version} GROUP BY source ORDER BY source')])['sources']
+    sources={row['source']:row['n'] for row in rows}
+    return dict(appended=sum(sources.values()),sources=sources)
+
+
 def complete_d4(run,bodies):
     """Step 7b: the producers' own candidates over the new captures and readings heads.
 
@@ -155,7 +165,8 @@ def complete_d4(run,bodies):
         bodies.root.mkdir(parents=True,exist_ok=True)
         try:
             module.stage(work=directory/'plan',max_work_items=0,**common)
-            done[name]=dict(appended=0,sources={});run.save();continue
+            done[name]=dict(appended=0,sources={}) if routed else _explorer_counts(run,name,directory/'final')
+            run.save();continue
         except BackfillRequired as planned:
             items=pq.read_table(planned.report['work_list']).to_pylist()
         gaps=[dict(record_sha=i['record_sha'],source=i['source']) for i in items
@@ -170,7 +181,8 @@ def complete_d4(run,bodies):
         if pq.ParquetFile(staged['records']).metadata.num_rows:
             for source in pq.read_table(staged['records'],columns=['source']).column('source').to_pylist():sources[source]=sources.get(source,0)+1
             module.append(staged,engine=run.engine,work=directory/'append',catalog_root=run.catalog,table=run.spec['tables'][name])
-        done[name]=dict(appended=staged['produced'],sources=sources);run.save()
+        done[name]=dict(appended=staged['produced'],sources=sources) if routed else _explorer_counts(run,name,directory/'final')
+        run.save()
 
 
 def _compare(name,keys,base,fresh,ignore=None):

@@ -75,6 +75,22 @@ def test_versions_and_candidate_sql_are_stated():
     assert "family='pipeline-data'" in video_records.candidate_sql() and "family='youtube/api'" in video_records.candidate_sql()
 
 
+def test_shared_record_producer_moves_both_versions(tmp_path, monkeypatch):
+    before = video_records.current_versions()
+    changed = tmp_path / 'record-producer.py'
+    changed.write_text('# shared-producer-only change\n')
+    original = video_records.version_digest
+
+    def shared_change(*, packages, files, values):
+        assert 'shared_producer' in files
+        return original(packages=packages, files={**files, 'shared_producer': changed}, values=values)
+
+    monkeypatch.setattr(video_records, 'version_digest', shared_change)
+    moved = video_records.current_versions()
+    assert set(moved) == set(before)
+    assert all(moved[source] != before[source] for source in before)
+
+
 def test_api_videos_come_from_video_list_responses_only():
     from congress_api.parsers.youtube_video import api_rows
     item = dict(kind='youtube#video', id='xYlb_m1rNnY', snippet=dict(channelId='UCA', channelTitle='A', title='Hearing', description='ID: 118000',

@@ -58,6 +58,17 @@ def test_import_refuses_a_changed_source_before_any_effect(tmp_path):
     assert not (tmp_path/'work').exists() and not (tmp_path/'catalog').exists()
 
 
+def test_import_refuses_a_changed_origin_before_any_effect(tmp_path):
+    from viewer_publication.archive_import_job import execute,load_spec
+    source=tmp_path/'rows.parquet';pq.write_table(ROWS,source)
+    origin=tmp_path/'origin.json';origin.write_text(json.dumps(dict(version=1,input='meeting_records')))
+    path=_spec(tmp_path,source);value=json.loads(path.read_text())
+    value['tables']['meeting_records']['producer']=dict(path=str(origin),**file_pin(origin));path.write_text(json.dumps(value))
+    spec=load_spec(path);origin.write_text('{"changed":true}')
+    with pytest.raises(ValueError,match='producer does not match its pin'):execute(spec)
+    assert not (tmp_path/'work').exists() and not (tmp_path/'catalog').exists()
+
+
 def test_import_spec_requires_a_location_matching_its_catalog(tmp_path):
     from viewer_publication.archive_import_job import load_spec
     source=tmp_path/'rows.parquet';pq.write_table(ROWS,source)
@@ -101,3 +112,26 @@ def test_import_writes_a_producer_record_that_carries_the_producing_jobs_record(
     assert record['origin']['record']['commit']=='e'*40 and record['origin']['pin']['sha256']==file_pin(origin)['sha256']
     (tmp_path/'bare').mkdir();bare=execute(load_spec(_spec(tmp_path/'bare',source)))
     assert bare['producers']['meeting_records']=={'unavailable':'no origin producer record was pinned'}
+
+
+def test_import_accepts_explorer_tables_and_chains_their_producers(tmp_path,monkeypatch):
+    """The seven-table release can copy both Explorer inputs and preserve gate 5's origin chain."""
+    import congress_api.retention.writer_identity as identity
+    from viewer_publication.archive_import_job import IMPORT_JOB,execute,load_spec
+    monkeypatch.setattr(identity,'writer_identity',lambda root,job:dict(job=job,commit='c'*40,lockfile_digest='d'*64))
+    source=tmp_path/'rows.parquet';pq.write_table(ROWS,source)
+    path=_spec(tmp_path,source);value=json.loads(path.read_text())
+    meeting=value['tables'].pop('meeting_records')
+    for name in ('video_records','committee_records'):
+        origin=tmp_path/(name+'-origin.json')
+        origin.write_text(json.dumps(dict(version=1,input=name,job='archive_backfill_job.py',commit='e'*40)))
+        value['tables'][name]=dict(meeting,table=dict(namespace=['archive'],name=name+'_fixture'),
+            producer=dict(path=str(origin),**file_pin(origin)))
+    path.write_text(json.dumps(value))
+    report=execute(load_spec(path))
+    assert set(report['tables'])=={'video_records','committee_records'}
+    for name,entry in report['tables'].items():
+        assert entry['verified'] and entry['keys']==['record_sha','source','parser_version']
+        record=json.loads(open(report['producers'][name]['path']).read())
+        assert record['job']==IMPORT_JOB and record['selector']==entry['pin']
+        assert record['origin']['record']['input']==name
