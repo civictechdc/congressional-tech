@@ -1,6 +1,6 @@
 ---
 id: ct-6ots
-status: open
+status: closed
 deps: []
 links: [ct-m104]
 created: 2026-10-31T00:05:22Z
@@ -55,3 +55,7 @@ Local implementation and verification are complete. Application packaging/distri
 **2026-11-02T19:50:59Z**
 
 Expanded scope from chaos test run chaos-mcp-20261101T200453Z (CT-CHAOS-103 & CT-CHAOS-104a): also cover DocumentSearch.congress and Page.limit / SqlQuery.limit boolean/float rejection, DocumentSearch.meeting_key integer/zero-padded normalization, DocumentQuery.link_key lowercase canonicalization before cursor binding, and case-insensitive normalization for published string identifier keys (committee_key/system_code, bioguide_id, measure_key/bill_id/nomination_id, witness_key).
+
+**2026-11-03T14:38:09Z**
+
+Completed, verified (123 passed in explorer-mcp lane), and published in congress-mcp-v0.5.0 (d675e540).
