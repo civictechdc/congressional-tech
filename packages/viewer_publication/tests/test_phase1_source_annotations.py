@@ -38,7 +38,8 @@ def test_source_annotations_keep_pins_names_keys_and_publisher_priority(tmp_path
     captures=[dict(source_id=s['source_id'],body_sha=s['body_sha'],context_url=s['source_url'],member_path=None) for s in sources if s['source_url']]
     captures += [dict(source_id='s3',body_sha='d'*64,context_url='https://docs.house.gov/meetings/AG/AG03/20261020/HMKP456/package.zip',member_path='folder/c.pdf'),
                  dict(source_id='mods',body_sha='c'*64,context_url='https://www.govinfo.gov/content/pkg/CHRG-119hhrg55555/mods.xml',member_path=None)]
-    inputs.append(json_input(tmp_path,'capture_sources',captures,source_id='Utf8',body_sha='Utf8',context_url='Utf8',member_path='Utf8'))
+    inputs.append(json_input(tmp_path,'capture_sources',captures,source_id='Utf8',body_sha='Utf8',context_url='Utf8',member_path='Utf8',
+        requested_filename='Utf8',requested_url='Utf8'))
     pages=[dict(body_hex='a'*64,status='completed',title='Reading title',heading='Heading A',content_date='2026-10-18',named_meetings=[]),
            dict(body_hex='b'*64,status='completed',title='',heading='Heading B',content_date='2026-10-19',named_meetings=[]),
            dict(body_hex='c'*64,status='completed',title='Metadata',heading=None,content_date=None,named_meetings=[999]),

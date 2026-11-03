@@ -64,7 +64,7 @@
       "house_xml": "33896cd8b8125e6f68be0665b144d8896b0ad7fbd8a3b2e03a7da2b08076b9fb"
     }
   },
-  "catalog_version": "5653e6dbc150b9d1b455f5816bfe72cbc3f16b96ee34840a6489a88e4c22f4eb",
+  "catalog_version": "6528235b033633460b3a2f008adb4dba66f2fcfb82c0640caf90203e5e86f4f1",
   "output": "../../output/archive-release",
   "scratch": "../../output/archive-model"
 }

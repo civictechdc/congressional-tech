@@ -576,6 +576,25 @@ MERGED_RECOVERY_FIELDS=dict(name='merged_recovery_fields',sql='SELECT count(*) A
     for name,link,own,shown in _MERGED_LISTS)
     +f' FROM ({MERGED_RECOVERY_SQL}) g')
 
+# Both names (owner, 2026-11-02): a source whose shown (final-URL) name and requested-URL name give
+# different values for one field keeps the shown one; each such pair is a triage row with both
+# values and both names (evidence filename_conflicts.parquet). Fills and conflicts are counted.
+_NAME_FIELDS=[('filename_date','cast(o.shown_filename_date AS VARCHAR)','cast(l.filename_date AS VARCHAR)','filled_date'),
+    ('congress','cast(o.shown_congress AS VARCHAR)','cast(l.congress AS VARCHAR)','filled_congress'),
+    ('document_kind',"array_to_string(array_sort(o.shown_document_kind),',')","array_to_string(array_sort(l.document_kind),',')",'filled_kind'),
+    ('document_family',"array_to_string(array_sort(o.shown_document_family),',')","array_to_string(array_sort(l.document_family),',')",'filled_family'),
+    ('committee_code',"array_to_string(array_sort(o.shown_committee_code),',')","array_to_string(array_sort(l.committee_code),',')",'filled_committee')]
+FILENAME_CONFLICTS_SQL=' UNION ALL '.join(
+    f"""SELECT o.source_id,'{name}' AS field,{shown} AS shown_value,o.filename AS shown_name,o.source_url AS shown_url,
+    {other} AS other_value,l.requested_filename AS other_name,l.requested_url AS other_url
+    FROM source_filename_readings o JOIN source_linked_filename_readings l USING(source_id)
+    WHERE nullif({shown},'') IS NOT NULL AND nullif({other},'') IS NOT NULL AND {shown}<>{other}"""
+    for name,shown,other,filled in _NAME_FIELDS)
+FILENAME_BOTH_NAMES=dict(name='filename_both_names',sql='SELECT count(*) FILTER (WHERE linked_filename IS NOT NULL) AS sources_with_two_names,'+','.join(
+    f'count(*) FILTER (WHERE {filled}) AS {name}_filled' for name,_,_,filled in _NAME_FIELDS)+','+','.join(
+    f"(SELECT count(*) FROM filename_conflicts c WHERE c.field='{name}') AS {name}_conflicting" for name,_,_,_ in _NAME_FIELDS)
+    +' FROM source_filename_readings')
+
 # Meeting-record doc-url literals that are no http(s) address get no URL key (model-url-inputs.sql)
 # and so cannot reach invalid_url_keys; this counts them instead of refusing the release.
 UNRESOLVED_MEETING_DOCUMENT_URLS=dict(name='unresolved_meeting_document_urls',sql="""SELECT count(*) AS urls
@@ -918,6 +937,7 @@ def build_prepared_release(prepared,*,engine,output,root=ROOT):
     steps += [dict(name='review_components',components=dict(sql='SELECT left_node,right_node FROM duplicate_component_edges',left='left_node',right='right_node',node_limit=10_000_000))]
     steps += _sql_steps(['final-source-labels','final-recovery-attachments','document-link-keys'],root=root)
     steps += annotation_steps(catalog_version=catalog_version,root=root)
+    steps += [dict(name='filename_conflicts',sql=FILENAME_CONFLICTS_SQL,materialize=True)]
     steps += _sql_steps(['document-members','archive-container-links','document-bodies','document-identities','saved-files','document-alternates',
         'document-version-keys','document-versions','document-metadata','document-addresses','saved-recoveries','document-removals','document-packages',
         'document-rendition-titles','recovered-copy-fills'],root=root)
@@ -1062,6 +1082,9 @@ def build_prepared_release(prepared,*,engine,output,root=ROOT):
         'edition_bodies':['body_sha'],
         'fingerprint_candidates':['body_sha'],
         'fingerprints':['body_sha']}
+    extra.append(dict(name='filename_conflicts.parquet',path=str(evidence/'filename_conflicts.parquet'),
+        sql='SELECT * FROM filename_conflicts ORDER BY field,source_id,other_url,other_name',
+        settings=_settings('whole',['field','source_id','other_url','other_name'],footer_limit=4 << 20)))
     extra += [dict(name=name+'.parquet',path=str(evidence/(name+'.parquet')),
         sql=("SELECT r.*,r.body_sha AS body_sha256,d.decided_at,d.recovered_url,d.identity_note FROM current_recoveries r LEFT JOIN remaining_recovery_decisions d ON r.decision_id=d.id" if name=='current_recoveries' else 'SELECT * FROM '+name),settings=_settings('whole',keys,footer_limit=4 << 20)) for name,keys in causes.items()]
     prefix_checks=','.join(sql+' AS '+name for name,sql in evidence_checks().items())
@@ -1071,7 +1094,7 @@ def build_prepared_release(prepared,*,engine,output,root=ROOT):
         dict(name='unexpanded_zip_documents',sql="SELECT count(*) AS documents FROM ordered WHERE format='zip'"),
         # The recorded reason for each blank filename (ct-yf1c); unexplained_blank_filenames refuses the rest.
         dict(name='blank_filename_reasons',sql=f"SELECT reason,count(*) AS documents FROM ({BLANK_FILENAMES_SQL}) r GROUP BY 1 ORDER BY 1"),
-        UNRESOLVED_MEETING_DOCUMENT_URLS,MERGED_RECOVERY_FIELDS]
+        UNRESOLVED_MEETING_DOCUMENT_URLS,MERGED_RECOVERY_FIELDS,FILENAME_BOTH_NAMES]
     if prepared.get('include_entities'):
         entity_invariant_sql=""",
             (SELECT count(*) FROM (

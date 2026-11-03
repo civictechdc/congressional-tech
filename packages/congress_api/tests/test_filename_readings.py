@@ -147,14 +147,16 @@ def test_native_effective_names_and_work_anti_join(tmp_path):
     version = reader().current_version()
     result=reader().stage(worker_factory=Worker, decided_at=STAMP, captures=captures, recovery_files=[], engine=engine(), work=tmp_path/'job', catalog_version=version)
     rows=pq.read_table(result['readings']).to_pylist()
-    assert len(rows) == 9  # Same path name at different exact URLs remains separate work.
+    assert len(rows) == 10  # Same path name at different exact URLs remains separate work.
     names={r['filename'] for r in rows}
-    assert names == {'café.pdf','a%20+b.pdf','%FF.pdf','Member%20.pdf','Requested Name.pdf','source.pdf','path.pdf','question?mark.pdf'}
+    assert names == {'café.pdf','a%20+b.pdf','%FF.pdf','Member%20.pdf','Requested Name.pdf','source.pdf','requested.pdf','path.pdf','question?mark.pdf'}
+    requested=next(r for r in rows if r['filename']=='requested.pdf')
+    assert requested['source_url']=='https://a.test/path?file=requested.pdf'
     member=next(r for r in rows if r['filename']=='Member%20.pdf'); assert member['source_url']==''
     second=reader().stage(worker_factory=Worker, decided_at=STAMP, captures=captures,recovery_files=[],existing=result['readings'],engine=engine(),work=tmp_path/'again',catalog_version=version)
     assert pq.read_metadata(second['readings']).num_rows == 0
     newer=reader().stage(worker_factory=Worker, decided_at=STAMP, captures=captures,recovery_files=[],existing=result['readings'],engine=engine(),work=tmp_path/'new',vocabularies={'member_surnames': {'119': ['New']}})
-    assert pq.read_metadata(newer['readings']).num_rows == 9
+    assert pq.read_metadata(newer['readings']).num_rows == 10
 
 
 def test_recovery_original_work_deduplicates_and_rejection_removes_name_override(tmp_path):
@@ -184,6 +186,7 @@ def test_actual_model_factory_and_producer_keep_complete_filename_pair_parity(tm
         dict(url=None,requested_url='https://fixture.test/Requested%20Name.pdf'),
         dict(url='https://fixture.test/one/Same.pdf'),
         dict(url='https://fixture.test/two/Same.pdf'),
+        dict(url='https://fixture.test/final/Opaque.pdf',requested_url='https://fixture.test/download/linked-testimony'),
         dict(url='https://fixture.test/floor/X.pdf/'),
         dict(url='https://fixture.test/hearings/nominations-6/'),
         dict(url='https://fixture.test/public/?a=Files.Serve&File_id=1'),
@@ -217,11 +220,13 @@ def test_actual_model_factory_and_producer_keep_complete_filename_pair_parity(tm
     run_job(model,engine(),inputs=[
         dict(name='capture_evidence',kind='parquet',path=str(captures)),recovery_input,parameters],
         steps=steps,outputs=[parquet_output(model,'model-names',
-            "SELECT DISTINCT filename,coalesce(source_url,'') AS source_url FROM effective_filenames",
+            """SELECT DISTINCT filename,coalesce(source_url,'') AS source_url FROM effective_filenames
+            UNION SELECT DISTINCT requested_filename,requested_url FROM effective_filenames WHERE requested_filename IS NOT NULL""",
             ['filename','source_url'])])
     expected={('retained header.pdf','https://fixture.test/address.pdf'),('Member%20.pdf',''),
         ('Requested Name.pdf',''),('Same.pdf','https://fixture.test/one/Same.pdf'),
         ('Same.pdf','https://fixture.test/two/Same.pdf'),
+        ('Opaque.pdf','https://fixture.test/final/Opaque.pdf'),('linked-testimony','https://fixture.test/download/linked-testimony'),
         ('Named.pdf','https://fixture.test/Accepted.pdf'),
         ('Original.pdf','https://fixture.test/Original.pdf'),
         ('X.pdf','https://fixture.test/floor/X.pdf/'),
