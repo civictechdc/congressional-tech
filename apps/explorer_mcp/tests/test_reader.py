@@ -84,9 +84,9 @@ def test_witness_appearances_and_recorded_tracks(reader):
     assert reader.search_entities({'table':'rosters','filters':{'congress':119,'rank':3}})['rows'][0]['bioguide_id'] == 'A000001'
     recording = reader.search_entities({'table':'recordings','text':'youtube:abc'})['rows'][0]
     assert recording['tracks'][0]['saved_url'] == 'https://archive.example/bodies/sha256/55/'+'55'*32+'.gz'
-    with pytest.raises(ExplorerError,match='scalar'):
+    with pytest.raises(ExplorerError,match='scalar.*bill_id'):
         reader.search_entities({'table':'bills','filters':{'floor_votes':'bad'}})
-    with pytest.raises(ExplorerError,match='scalar'):
+    with pytest.raises(ExplorerError,match='scalar.*witness_key'):
         reader.search_entities({'table':'witnesses','filters':{'record_sha':'bad'}})
     with pytest.raises(ExplorerError,match='Unknown filter field.*bill_id'):
         reader.search_entities({'table':'bills','filters':{'congress':119}})
@@ -95,12 +95,15 @@ def test_witness_appearances_and_recorded_tracks(reader):
 def test_document_identity_hidden_reviews_sources_and_recoveries(reader):
     found = reader.search_documents({'measure_key':'119-hr-1','text':'agenda'})['rows']
     assert len(found) == 1
+    assert found[0]['hidden'] is False
     doc = reader.get_document(found[0]['reference'])['rows'][0]
+    assert doc['primary_source_url'] == 'https://fixture.test/agenda.pdf'
     assert doc['alternates'][0]['saved_url'].endswith('12'*32+'.gz')
     source = reader.get_document(dict(**doc['reference'],section='sources'))['rows'][0]
     assert source['url'] == 'https://fixture.test/agenda.pdf'
     assert not reader.search_documents({'text':'Hidden.pdf'})['rows']
     hidden = reader.search_documents({'text':'Hidden.pdf','include_hidden':True})['rows'][0]
+    assert hidden['hidden'] is True
     assert reader.get_document(hidden['reference'])['rows'][0]['review_note'] == 'Superseded by the complete record'
     for title,kind in [('excerpt','requested_content_in_official_hearing'),('substitute','official_substitute')]:
         ref = reader.search_documents({'text':title})['rows'][0]['reference']

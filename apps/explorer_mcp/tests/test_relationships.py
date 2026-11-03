@@ -62,15 +62,29 @@ def test_old_release_does_not_reconstruct_relationships(tmp_path):
 
 
 def test_every_recipe_executes_and_has_the_declared_result_grain(reader):
-    expected = dict(bill_documents=1, bill_hearing_transcripts=1, hearing_documents=1, witness_documents=1, witness_transcripts=1,
+    expected = dict(bill_documents=1, bill_hearing_transcripts=1, hearing_documents=1, hearing_dossier=1,
+                    witness_documents=1, witness_transcripts=1,
                     committee_roster=1, nomination_transcripts=1, bill_votes=1, nomination_votes=1,
                     recording_tracks=1, document_editions=1, meeting_recordings=1, channel_unmatched_videos=1, coverage_counts=1)
+    doc_recipes = {'bill_documents', 'bill_hearing_transcripts', 'hearing_documents',
+                   'witness_documents', 'witness_transcripts', 'nomination_transcripts'}
     for item in reader.dataset_info({})['recipes']:
         recipe = reader.dataset_info({'recipe': item['id']})
         params = [p['example'] for p in recipe['parameters']]
         result = reader.query_sql({'sql': recipe['sql'], 'parameters': params})
         assert not result['truncated']
         assert len(result['rows']) == expected[recipe['id']], (recipe['id'], result['rows'])
+        if item['id'] in doc_recipes:
+            assert 'NOT coalesce(l.hidden,false)' in recipe['sql']
+            row = result['rows'][0]
+            assert 'link_key' in row and 'title' in row
+            assert len(row['link_key']) == 16 and row['link_key'] == row['link_key'].lower()
+        if item['id'] == 'hearing_dossier':
+            dossier = result['rows'][0]
+            assert [w['witness_key'] for w in dossier['witnesses']] == ['appearance-1']
+            assert [d['filename'] for d in dossier['documents']] == ['Agenda.pdf']
+            assert len(dossier['documents'][0]['link_key']) == 16
+            assert dossier['recordings'] == []
 
 
 def test_nested_lists_do_not_multiply_votes_or_document_editions(reader):

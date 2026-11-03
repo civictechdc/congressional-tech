@@ -16,7 +16,7 @@ TEXT_FIELDS = ('name', 'title', 'short_title', 'description', 'organization', 'p
 
 DOCUMENT_SUMMARY_COLUMNS = (
     'l.list_row,l.filename,l.title,l.congress,l.format,l.document_date,d.document_date_source,'
-    'l.first_captured,l.date_kind,l.document_kind,l.saved_kind,'
+    'l.first_captured,l.date_kind,l.document_kind,l.saved_kind,l.hidden,'
     'hex(d.link_key) AS link_key,hex(d.saved_body) AS saved_body,d.saved_suffix'
 )
 
@@ -282,7 +282,8 @@ class Reader:
             if query.cursor:
                 raise ExplorerError('Summary does not take a cursor')
             result = self.rows('SELECT * REPLACE(hex(link_key) AS link_key,hex(saved_body) AS saved_body,'
-                               'list_transform(alternates,lambda a:struct_pack(format:=a.format,body:=hex(a.body),suffix:=a.suffix,size:=a.size)) AS alternates) '
+                               'list_transform(alternates,lambda a:struct_pack(format:=a.format,body:=hex(a.body),suffix:=a.suffix,size:=a.size)) AS alternates),'
+                               '(SELECT url FROM sources WHERE list_row=documents.list_row ORDER BY ordinal LIMIT 1) AS primary_source_url '
                                'FROM documents WHERE list_row=?', [position], limit=1)
             result.pop('columns'); result['release_id'] = self.release_id
             if redirected_from:
@@ -309,12 +310,12 @@ class Reader:
             fields = [name for name in TEXT_FIELDS if name in columns]
             conditions.append('(' + ' OR '.join(f'contains(lower(coalesce({quote(name)},\'\')),lower(?))' for name in fields) + ')' if fields else 'false')
             args += [query.text] * len(fields)
+        scalars = ', '.join(k for k, t in columns.items() if '[]' not in t and not t.startswith(('STRUCT', 'MAP', 'BLOB')))
         for name, value in query.filters.items():
             if name not in columns:
-                scalars = ', '.join(k for k, t in columns.items() if '[]' not in t and not t.startswith(('STRUCT', 'MAP', 'BLOB')))
                 raise ExplorerError(f'Unknown filter field {name!r} on {query.table}; scalar filter fields are: {scalars}')
             if '[]' in columns[name] or columns[name].startswith(('STRUCT', 'MAP', 'BLOB')):
-                raise ExplorerError(f'Use a scalar published filter; query_sql supports {name!r}')
+                raise ExplorerError(f'Use a scalar published filter; query_sql supports {name!r}; scalar filter fields are: {scalars}')
             query.filters[name] = value = exact_scalar(value, columns[name], f'{query.table}.{name}')
             conditions.append(f'{quote(name)}=?'); args.append(value)
         order = ','.join(map(quote, key))
@@ -360,7 +361,7 @@ class Reader:
             else:
                 raise ExplorerError('This entity has no published document relationship')
             return self.document_rows(self.page(query,
-                f'SELECT {DOCUMENT_SUMMARY_COLUMNS},l.hidden '
+                f'SELECT {DOCUMENT_SUMMARY_COLUMNS} '
                 'FROM "list" l JOIN detail d USING(list_row) WHERE NOT coalesce(l.hidden,false) AND ' + sql,
                 [str(query.id)], order='l.list_row'))
         if query.cursor:

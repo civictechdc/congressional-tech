@@ -111,6 +111,7 @@ def create_server(selection=None, *, timeout=10.0, data_dir=None, publication=PU
         """Run one read-only DuckDB SELECT (WITH and FROM-first supported) with optional ? parameters.
 
         All published Parquet tables and the joined documents view are available. Nested types stay native.
+        Use SELECT * EXCLUDE (facts) FROM documents when scanning document rows without provenance facts.
         Use hex(blob) for identifiers and unhex(?) for lookups. Fractional numbers return as strings to preserve precision.
         Results have typed columns, a row/byte cap and a truncation flag; use SQL for further paging.
         Reads are limited to selected metadata files; network access, writes, extension loading and configuration changes are disabled.

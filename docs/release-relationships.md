@@ -1081,14 +1081,14 @@ Result: One document edition.
 Parameters, in order: `bill_id` (example `119-hr-1`).
 
 ```sql
-SELECT l.list_row,l.filename,l.title,hex(d.link_key) AS link_key
+SELECT l.list_row,l.filename,l.title,lower(hex(d.link_key)) AS link_key
 FROM "list" l JOIN detail d USING (list_row)
-WHERE list_contains(l.measure_keys,?) ORDER BY l.list_row LIMIT 100
+WHERE NOT coalesce(l.hidden,false) AND list_contains(l.measure_keys,?) ORDER BY l.list_row LIMIT 100
 ```
 
 Matches direct list.measure_keys annotations only. Use bill_hearing_transcripts for transcripts linked through meeting subjects.
 
-Does not require the bounded bills table to contain this identifier. This SQL includes hidden rows; add NOT coalesce(l.hidden,false) to exclude them.
+Does not require the bounded bills table to contain this identifier. Hidden rows are excluded; remove NOT coalesce(l.hidden,false) to include them.
 
 ### `bill_hearing_transcripts` — Hearing transcripts linked to a bill through meetings
 
@@ -1104,7 +1104,7 @@ WITH matched AS (
   FROM meetings m,UNNEST(m.transcripts) AS u(t)
   WHERE list_contains(m.subject_keys,?) GROUP BY t.list_row
 )
-SELECT l.list_row,l.filename,l.title,hex(d.link_key) AS link_key,matched.meeting_ids
+SELECT l.list_row,l.filename,l.title,lower(hex(d.link_key)) AS link_key,matched.meeting_ids
 FROM matched JOIN "list" l USING (list_row) JOIN detail d USING (list_row)
 WHERE NOT coalesce(l.hidden,false) ORDER BY l.list_row LIMIT 100
 ```
@@ -1119,32 +1119,52 @@ Returns at most 100 documents in list_row order. Use list_row filtering for furt
 
 ### `hearing_documents` — Documents and hearing titles
 
-Requires: `list`, `meetings`.
+Requires: `list`, `detail`, `meetings`.
 
 Result: One document associated with the selected hearing.
 
 Parameters, in order: `event_id` (example `118001`).
 
 ```sql
-SELECT l.list_row,l.filename,m.event_id,m.title
-FROM "list" l JOIN meetings m ON list_contains(l.meeting_keys,CAST(m.event_id AS VARCHAR))
-WHERE m.event_id=? ORDER BY l.list_row LIMIT 100
+SELECT l.list_row,l.filename,l.title,lower(hex(d.link_key)) AS link_key,m.event_id,m.title AS hearing
+FROM "list" l JOIN detail d USING (list_row) JOIN meetings m ON list_contains(l.meeting_keys,CAST(m.event_id AS VARCHAR))
+WHERE NOT coalesce(l.hidden,false) AND m.event_id=? ORDER BY l.list_row LIMIT 100
 ```
 
 meeting_keys stores decimal text; event_id is an integer.
 
+### `hearing_dossier` — One-row hearing dossier with witnesses, documents, and recordings
+
+Requires: `meetings`, `witnesses`, `list`, `detail`, `recording_matches`.
+
+Result: One hearing with embedded witnesses, visible documents, and recording matches.
+
+Parameters, in order: `event_id` (example `118001`).
+
+```sql
+SELECT m.event_id,m.chamber,m.meeting_date,m.title,m.committees,m.subject_keys,m.transcripts,
+  coalesce((SELECT list(struct_pack(witness_key:=w.witness_key,name:=w.name,position:=w.position,organization:=w.organization,panel:=w.panel,display_order:=w.display_order) ORDER BY w.panel_order NULLS LAST,w.display_order NULLS LAST,w.witness_key) FROM witnesses w WHERE w.event_id=m.event_id),[]) AS witnesses,
+  coalesce((SELECT list(struct_pack(list_row:=l.list_row,filename:=l.filename,title:=l.title,document_kind:=l.document_kind,link_key:=lower(hex(d.link_key))) ORDER BY l.list_row) FROM "list" l JOIN detail d USING (list_row) WHERE NOT coalesce(l.hidden,false) AND list_contains(l.meeting_keys,CAST(m.event_id AS VARCHAR))),[]) AS documents,
+  coalesce((SELECT list(struct_pack(video_key:=r.video_key,url:=r.url,basis:=r.basis,decision:=r.decision,status:=r.status) ORDER BY r.basis,r.video_key,r.url) FROM recording_matches r WHERE r.event_id=m.event_id),[]) AS recordings
+FROM meetings m WHERE m.event_id=?
+```
+
+Uses correlated subqueries with coalesce(..., []) so nested lists do not Cartesian-multiply rows or drop zero-child hearings.
+
+Uses m.event_id inside each subquery so only one ? parameter is required.
+
 ### `witness_documents` — Documents submitted by a witness appearance
 
-Requires: `list`, `witnesses`.
+Requires: `list`, `detail`, `witnesses`.
 
 Result: One submitted document for this appearance.
 
 Parameters, in order: `witness_key` (example `0001497931f99cd1`).
 
 ```sql
-SELECT w.witness_key,w.name,l.list_row,l.filename
-FROM witnesses w JOIN "list" l ON list_contains(l.witness_keys,w.witness_key)
-WHERE w.witness_key=? ORDER BY l.list_row LIMIT 100
+SELECT w.witness_key,w.name,l.list_row,l.filename,l.title,lower(hex(d.link_key)) AS link_key
+FROM witnesses w JOIN "list" l ON list_contains(l.witness_keys,w.witness_key) JOIN detail d USING (list_row)
+WHERE NOT coalesce(l.hidden,false) AND w.witness_key=? ORDER BY l.list_row LIMIT 100
 ```
 
 Use a witness_key, never a person-name join.
@@ -1158,9 +1178,9 @@ Result: One retained transcript document for the appearance.
 Parameters, in order: `witness_key` (example `0000b43c099edbc2`).
 
 ```sql
-SELECT w.witness_key,w.name,d.package_id,l.list_row,l.filename
+SELECT w.witness_key,w.name,d.package_id,l.list_row,l.filename,l.title,lower(hex(d.link_key)) AS link_key
 FROM witnesses w JOIN detail d ON d.package_id=w.package_id JOIN "list" l USING (list_row)
-WHERE w.witness_key=? ORDER BY l.list_row LIMIT 100
+WHERE NOT coalesce(l.hidden,false) AND w.witness_key=? ORDER BY l.list_row LIMIT 100
 ```
 
 No package_id means no published package association; submitted documents use a different relationship.
@@ -1190,9 +1210,9 @@ Result: One retained transcript document.
 Parameters, in order: `nomination_id` (example `119-pn-730-2`).
 
 ```sql
-SELECT n.nomination_id,d.package_id,l.list_row,l.filename
+SELECT n.nomination_id,d.package_id,l.list_row,l.filename,l.title,lower(hex(d.link_key)) AS link_key
 FROM nominations n JOIN detail d ON list_contains(n.transcripts,d.package_id) JOIN "list" l USING (list_row)
-WHERE n.nomination_id=? ORDER BY l.list_row LIMIT 100
+WHERE NOT coalesce(l.hidden,false) AND n.nomination_id=? ORDER BY l.list_row LIMIT 100
 ```
 
 Preserve the nomination part, for example 119-pn-730-2.

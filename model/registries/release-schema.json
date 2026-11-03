@@ -3224,11 +3224,11 @@
           "example": "119-hr-1"
         }
       ],
-      "sql": "SELECT l.list_row,l.filename,l.title,hex(d.link_key) AS link_key\nFROM \"list\" l JOIN detail d USING (list_row)\nWHERE list_contains(l.measure_keys,?) ORDER BY l.list_row LIMIT 100",
+      "sql": "SELECT l.list_row,l.filename,l.title,lower(hex(d.link_key)) AS link_key\nFROM \"list\" l JOIN detail d USING (list_row)\nWHERE NOT coalesce(l.hidden,false) AND list_contains(l.measure_keys,?) ORDER BY l.list_row LIMIT 100",
       "result_row": "One document edition",
       "notes": [
         "Matches direct list.measure_keys annotations only. Use bill_hearing_transcripts for transcripts linked through meeting subjects.",
-        "Does not require the bounded bills table to contain this identifier. This SQL includes hidden rows; add NOT coalesce(l.hidden,false) to exclude them."
+        "Does not require the bounded bills table to contain this identifier. Hidden rows are excluded; remove NOT coalesce(l.hidden,false) to include them."
       ]
     },
     {
@@ -3251,7 +3251,7 @@
           "example": "119-hr-1"
         }
       ],
-      "sql": "WITH matched AS (\n  SELECT t.list_row,list(DISTINCT m.event_id ORDER BY m.event_id) AS meeting_ids\n  FROM meetings m,UNNEST(m.transcripts) AS u(t)\n  WHERE list_contains(m.subject_keys,?) GROUP BY t.list_row\n)\nSELECT l.list_row,l.filename,l.title,hex(d.link_key) AS link_key,matched.meeting_ids\nFROM matched JOIN \"list\" l USING (list_row) JOIN detail d USING (list_row)\nWHERE NOT coalesce(l.hidden,false) ORDER BY l.list_row LIMIT 100",
+      "sql": "WITH matched AS (\n  SELECT t.list_row,list(DISTINCT m.event_id ORDER BY m.event_id) AS meeting_ids\n  FROM meetings m,UNNEST(m.transcripts) AS u(t)\n  WHERE list_contains(m.subject_keys,?) GROUP BY t.list_row\n)\nSELECT l.list_row,l.filename,l.title,lower(hex(d.link_key)) AS link_key,matched.meeting_ids\nFROM matched JOIN \"list\" l USING (list_row) JOIN detail d USING (list_row)\nWHERE NOT coalesce(l.hidden,false) ORDER BY l.list_row LIMIT 100",
       "result_row": "One visible transcript document edition with its distinct supporting meeting IDs in numeric order",
       "notes": [
         "Follows meetings.subject_keys and meetings.transcripts[].list_row even when the document has no direct measure_keys annotation.",
@@ -3266,10 +3266,12 @@
       "dialect": "duckdb",
       "requires": [
         "list",
+        "detail",
         "meetings"
       ],
       "relationships": [
-        "document_meetings"
+        "document_meetings",
+        "document_detail"
       ],
       "parameters": [
         {
@@ -3277,10 +3279,40 @@
           "example": 118001
         }
       ],
-      "sql": "SELECT l.list_row,l.filename,m.event_id,m.title\nFROM \"list\" l JOIN meetings m ON list_contains(l.meeting_keys,CAST(m.event_id AS VARCHAR))\nWHERE m.event_id=? ORDER BY l.list_row LIMIT 100",
+      "sql": "SELECT l.list_row,l.filename,l.title,lower(hex(d.link_key)) AS link_key,m.event_id,m.title AS hearing\nFROM \"list\" l JOIN detail d USING (list_row) JOIN meetings m ON list_contains(l.meeting_keys,CAST(m.event_id AS VARCHAR))\nWHERE NOT coalesce(l.hidden,false) AND m.event_id=? ORDER BY l.list_row LIMIT 100",
       "result_row": "One document associated with the selected hearing",
       "notes": [
         "meeting_keys stores decimal text; event_id is an integer."
+      ]
+    },
+    {
+      "id": "hearing_dossier",
+      "title": "One-row hearing dossier with witnesses, documents, and recordings",
+      "dialect": "duckdb",
+      "requires": [
+        "meetings",
+        "witnesses",
+        "list",
+        "detail",
+        "recording_matches"
+      ],
+      "relationships": [
+        "witness_meeting",
+        "document_meetings",
+        "document_detail",
+        "match_meeting"
+      ],
+      "parameters": [
+        {
+          "name": "event_id",
+          "example": 118001
+        }
+      ],
+      "sql": "SELECT m.event_id,m.chamber,m.meeting_date,m.title,m.committees,m.subject_keys,m.transcripts,\n  coalesce((SELECT list(struct_pack(witness_key:=w.witness_key,name:=w.name,position:=w.position,organization:=w.organization,panel:=w.panel,display_order:=w.display_order) ORDER BY w.panel_order NULLS LAST,w.display_order NULLS LAST,w.witness_key) FROM witnesses w WHERE w.event_id=m.event_id),[]) AS witnesses,\n  coalesce((SELECT list(struct_pack(list_row:=l.list_row,filename:=l.filename,title:=l.title,document_kind:=l.document_kind,link_key:=lower(hex(d.link_key))) ORDER BY l.list_row) FROM \"list\" l JOIN detail d USING (list_row) WHERE NOT coalesce(l.hidden,false) AND list_contains(l.meeting_keys,CAST(m.event_id AS VARCHAR))),[]) AS documents,\n  coalesce((SELECT list(struct_pack(video_key:=r.video_key,url:=r.url,basis:=r.basis,decision:=r.decision,status:=r.status) ORDER BY r.basis,r.video_key,r.url) FROM recording_matches r WHERE r.event_id=m.event_id),[]) AS recordings\nFROM meetings m WHERE m.event_id=?",
+      "result_row": "One hearing with embedded witnesses, visible documents, and recording matches",
+      "notes": [
+        "Uses correlated subqueries with coalesce(..., []) so nested lists do not Cartesian-multiply rows or drop zero-child hearings.",
+        "Uses m.event_id inside each subquery so only one ? parameter is required."
       ]
     },
     {
@@ -3289,10 +3321,12 @@
       "dialect": "duckdb",
       "requires": [
         "list",
+        "detail",
         "witnesses"
       ],
       "relationships": [
-        "witness_submitted_documents"
+        "witness_submitted_documents",
+        "document_detail"
       ],
       "parameters": [
         {
@@ -3300,7 +3334,7 @@
           "example": "0001497931f99cd1"
         }
       ],
-      "sql": "SELECT w.witness_key,w.name,l.list_row,l.filename\nFROM witnesses w JOIN \"list\" l ON list_contains(l.witness_keys,w.witness_key)\nWHERE w.witness_key=? ORDER BY l.list_row LIMIT 100",
+      "sql": "SELECT w.witness_key,w.name,l.list_row,l.filename,l.title,lower(hex(d.link_key)) AS link_key\nFROM witnesses w JOIN \"list\" l ON list_contains(l.witness_keys,w.witness_key) JOIN detail d USING (list_row)\nWHERE NOT coalesce(l.hidden,false) AND w.witness_key=? ORDER BY l.list_row LIMIT 100",
       "result_row": "One submitted document for this appearance",
       "notes": [
         "Use a witness_key, never a person-name join."
@@ -3325,7 +3359,7 @@
           "example": "0000b43c099edbc2"
         }
       ],
-      "sql": "SELECT w.witness_key,w.name,d.package_id,l.list_row,l.filename\nFROM witnesses w JOIN detail d ON d.package_id=w.package_id JOIN \"list\" l USING (list_row)\nWHERE w.witness_key=? ORDER BY l.list_row LIMIT 100",
+      "sql": "SELECT w.witness_key,w.name,d.package_id,l.list_row,l.filename,l.title,lower(hex(d.link_key)) AS link_key\nFROM witnesses w JOIN detail d ON d.package_id=w.package_id JOIN \"list\" l USING (list_row)\nWHERE NOT coalesce(l.hidden,false) AND w.witness_key=? ORDER BY l.list_row LIMIT 100",
       "result_row": "One retained transcript document for the appearance",
       "notes": [
         "No package_id means no published package association; submitted documents use a different relationship."
@@ -3379,7 +3413,7 @@
           "example": "119-pn-730-2"
         }
       ],
-      "sql": "SELECT n.nomination_id,d.package_id,l.list_row,l.filename\nFROM nominations n JOIN detail d ON list_contains(n.transcripts,d.package_id) JOIN \"list\" l USING (list_row)\nWHERE n.nomination_id=? ORDER BY l.list_row LIMIT 100",
+      "sql": "SELECT n.nomination_id,d.package_id,l.list_row,l.filename,l.title,lower(hex(d.link_key)) AS link_key\nFROM nominations n JOIN detail d ON list_contains(n.transcripts,d.package_id) JOIN \"list\" l USING (list_row)\nWHERE NOT coalesce(l.hidden,false) AND n.nomination_id=? ORDER BY l.list_row LIMIT 100",
       "result_row": "One retained transcript document",
       "notes": [
         "Preserve the nomination part, for example 119-pn-730-2."
