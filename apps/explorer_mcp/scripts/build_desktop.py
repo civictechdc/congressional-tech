@@ -9,16 +9,14 @@ APP = Path(__file__).resolve().parents[1]
 REPO = APP.parents[1]
 
 
-GUI_PATH = (
-    '${HOME}/.local/bin:${HOME}/.cargo/bin:${HOME}/.pyenv/shims:'
-    '/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin'
-)
+GUI_PATH = '$PATH:$HOME/.local/bin:$HOME/.cargo/bin:$HOME/.pyenv/shims:/opt/homebrew/bin:/usr/local/bin'
 
 
 def launch(version):
-    return dict(command='uvx', args=['--python', '3.12', '--from',
-        f'congressional-explorer-mcp=={version}', 'congress-explorer-mcp',
-        'serve', '--prepare-if-missing'], env={'PATH': GUI_PATH})
+    return dict(command='sh', args=['-c',
+        f'PATH="{GUI_PATH}" exec uvx --python 3.12 --from '
+        f'congressional-explorer-mcp=={version} congress-explorer-mcp '
+        'serve --prepare-if-missing "$@"', 'congress-explorer-mcp'])
 
 
 def generated_files():
