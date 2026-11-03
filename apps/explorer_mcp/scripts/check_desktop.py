@@ -16,14 +16,17 @@ REPO = APP.parents[1]
 
 
 async def check(config, root, data, first, env):
-    # Resolve only the client's documented plugin-directory placeholder.
+    # Resolve only the client's documented plugin-directory and HOME placeholders.
     def expand(value):
-        for variable in ('${PLUGIN_ROOT}', '${CLAUDE_PLUGIN_ROOT}', '${__dirname}'):
-            value = value.replace(variable, str(root))
+        for variable, target in (('${PLUGIN_ROOT}', str(root)), ('${CLAUDE_PLUGIN_ROOT}', str(root)),
+                                 ('${__dirname}', str(root)), ('${HOME}', env.get('HOME', str(Path.home())))):
+            value = value.replace(variable, target)
         return value
+    merged_env = dict(env, **{k: expand(v) for k, v in config.get('env', {}).items()},
+                      CONGRESS_MCP_DATA_DIR=str(data))
     publication = REPO / 'model/fixtures/archive-contract/current/manifest.json' if first else root / 'does-not-exist.json'
     transport = StdioTransport(config['command'], [expand(a) for a in config['args']] +
-        ['--publication', str(publication)], env=dict(env, CONGRESS_MCP_DATA_DIR=str(data)),
+        ['--publication', str(publication)], env=merged_env,
         cwd=str(root.parent), keep_alive=False)
     async with Client(transport, timeout=120) as client:
         assert len(await client.list_tools()) == 6
@@ -53,6 +56,9 @@ def main():
             for name in manifests:
                 manifest = json.loads((root / name).read_text())
                 config = manifest['server']['mcp_config'] if suffix == 'mcpb' else manifest['mcpServers']['congress']
+                if suffix == 'plugin.zip':
+                    path_env = config.get('env', {}).get('PATH', '')
+                    assert '${HOME}/.local/bin' in path_env and '/opt/homebrew/bin' in path_env
                 data = base / ('data-' + name)
                 release = asyncio.run(check(config, root, data, True, env))
                 assert asyncio.run(check(config, root, data, False, env)) == release

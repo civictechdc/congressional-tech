@@ -86,3 +86,14 @@ def test_cancelled_first_call_finishes_preparation_without_a_second_writer(tmp_p
             assert result.data['release_id']
     asyncio.run(run())
     assert len(attempts) == 1
+
+
+def test_plugin_manifests_supply_gui_path_for_uvx_discovery():
+    import json
+    root = Path(__file__).parents[1]
+    for name in ('mcp.json', '.mcp.json'):
+        config = json.loads((root / name).read_text())['mcpServers']['congress']
+        assert config['command'] == 'uvx'
+        path_env = config.get('env', {}).get('PATH', '')
+        for entry in ('${HOME}/.local/bin', '${HOME}/.cargo/bin', '/opt/homebrew/bin', '/usr/local/bin'):
+            assert entry in path_env
