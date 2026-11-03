@@ -16,10 +16,13 @@ Double-blind chaos evaluation (.cache/chaos-double-blind-20261102T2304Z/report.m
 
 ## Design
 
-Owner: model/sql/entity-rosters.sql, model/jobs/publish-model.json (or upstream spicy-regs pin binding), and model/registries/release-schema.json.
-1. Bind the multi-Congress spicy_committee_assignments snapshot from spicy-regs (covering 113th-119th Congresses, including Chair, Ranking Member, and Vice Chair role titles across full committees and subcommittees) into the model input pin.
-2. Verify in entity-rosters.sql that system_code normalization (including House select/task-force codes hs* -> hl*/ht* per AGENTS.md) aligns historical roster rows with committees.parquet (missing_committee_keys = 0).
-3. Update the rosters.parquet coverage/gap notes and upstream_relations.committee_assignments limits in model/registries/release-schema.json and regenerate docs/release-relationships.md.
+Owner: upstream spicy-regs build_committee_rosters.py (or historical roster ingestion), model/sql/entity-rosters.sql, model/sql/entity-committees.sql, packages/viewer_publication/src/viewer_publication/archive_model.py, model/jobs/publish-model.json, and model/registries/release-schema.json.
+1. Upstream data generation & pin: Verified that .cache/archive-release/r1b/inputs/spicy_regs/generations/committee-rosters/5f031073.../committee_assignments.parquet contains only congress='119' (2,973 rows) because spicy-regs build_committee_rosters.py (_historical_assignment_rows) only reads historical XML snapshots if present in SPICY_RAW_ARCHIVE_URI. Backfill/ingest 113th-118th Congress committee and subcommittee assignments (including Chair, Ranking Member, Vice Chair titles) into a new committee-rosters generation and update spicy-regs.json, model/jobs/publish-model.json:39-43, and model/jobs/publish.json.
+2. Primary-key deduplication & non-null guards in model/sql/entity-rosters.sql:
+   - Deduplicate on (congress, system_code, bioguide_id) (e.g. ROW_NUMBER() OVER (PARTITION BY congress, norm_system_code, bioguide_id ORDER BY ...)) so mid-Congress role changes never violate relationship_invariants.invalid_rosters_key == 0 (archive_schema.py:259-261).
+   - Ensure rank and party are non-null (coalescing party from spicy_members when absent and synthesizing/preserving rank if required columns are non-null in release-schema.json).
+3. Reference-key parity: Normalize system_code in entity-rosters.sql through committee_codes (hs* -> hl*/ht* per AGENTS.md), ensure all referenced committee codes (including hlig*, slin*, scnc00, and historical 113th-118th committees) exist in committees.parquet, and add rosters_export to missing_committee_keys / missing_member_keys checks in archive_model.py:1047-1065.
+4. Update rosters.parquet coverage/gap notes and upstream_relations.committee_assignments limits in model/registries/release-schema.json, update apps/explorer_mcp/tests/test_relationships.py:20 in lockstep, and regenerate docs/release-relationships.md.
 
 ## Acceptance Criteria
 

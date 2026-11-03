@@ -16,9 +16,15 @@ In the double-blind MCP evaluation (.cache/chaos-double-blind-20261102T2304Z/rep
 
 ## Design
 
-Owner: apps/explorer_mcp/src/congressional_explorer_mcp/server.py, reader.py, models.py, and (optionally) companion text/snippet export from readings / ct-c5xf.
-1. Add a bounded read_document_text (or get_document section='text' / snippet query) capability to Congress Explorer MCP that resolves a published document reference (release_id, link_key) to its verified saved_url (or pinned local/companion extracted text from readings/ct-c5xf), verifies the SHA-256 digest against saved_body, extracts/decompresses text safely in the worker subprocess, caches extracted text in a size-bounded local cache directory, and returns page-bounded text or regex/keyword match snippets within MAX_BYTES.
-2. Enforce strict security and resource invariants: only fetch/read SHA-256-verified bodies belonging to the selected release's archive_origin; enforce timeouts, decompression bomb caps, and MAX_BYTES truncation flags; never execute publisher markup.
+Owner: packages/viewer_publication/src/viewer_publication/archive_model.py (and/or companion text export) and apps/explorer_mcp/src/congressional_explorer_mcp/{release.py,reader.py,server.py,models.py}.
+1. Architectural & security constraints to preserve (identified by Red/Green Team review):
+   - apps/explorer_mcp/src/congressional_explorer_mcp/worker.py:16-18, 43 hard-disables all network sockets inside the query worker subprocess (socket.create_connection = _offline) and reader.py:75 sets SET enable_external_access=false.
+   - server.py:50-51 and tests/test_cli.py:27 enforce openWorldHint=False once a release is prepared locally.
+   - readings in the lake only stores text_head (not full page text), and apps/explorer_mcp/pyproject.toml depends only on duckdb and fastmcp (with no PDF parser library).
+2. Preferred implementation path (Option B — Offline Optional Companion Parquet + Title Enrichment):
+   - Publish a compact optional companion Parquet table (e.g. document_text.parquet or texts.parquet in release.py:OPTIONAL, keyed by list_row / saved_body with page/offset text or extracted testimony passages from readings / ct-c5xf / body store) so the air-gapped DuckDB Reader worker can serve get_document(section='text') / substring or FTS snippet queries 100% offline with openWorldHint=False and zero PDF parsing dependencies in explorer_mcp.
+   - In addition, in archive_model.py title selection, enrich generic PDF metadata titles ('Witness Statement', 'Testimony', 'Prepared Statement', 'Witness Biography', 'Truth in Testimony') with the linked witness's name (when len(witness_keys)=1 after ct-2o4d) so document browse/search listings are self-descriptive.
+   - (If Option A on-demand archive_origin fetching is ever used as a fallback when no companion Parquet is installed, the HTTP fetch and SHA-256 verification against detail.saved_body must run in the parent server.py process outside the air-gapped Worker, with explicit opt-in configuration.)
 
 ## Acceptance Criteria
 
