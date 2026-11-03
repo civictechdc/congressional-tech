@@ -5,9 +5,11 @@
 **Review update, 2026-10-30.** The blind greybeard/data-engineering findings are
 accepted in this draft. Corrections to capture eligibility, contextual witness
 readings, collection replacement, occurrence identity and publication admission
-are specified below and tracked in [[PHASE-2]] §4.7. Their implementation and
-qualification remain open; existing published schemas and results do not yet
-establish conformance to these corrections.
+are specified below and tracked in [[PHASE-2]] §4.7. Status, 2026-11-02: implemented
+on `integrate-round1`; the tests that execute each case are named in the fixture
+manifest and pass there. Not yet live: no published release has been checked
+against them, and the live release (448651e7) stays until the fixed release
+replaces it.
 
 ## Abstract
 

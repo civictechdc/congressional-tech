@@ -3,10 +3,22 @@
 **Note, 2026-10-26.** The acceptance sheet of [[IMPLEMENTATION-PLAN]] §5.3: each fixture is written with its expected outcome before any SQL, and edited here. S1 rows come before track C, S2 rows beside it; *Phase* says which phase's release must pass the row.
 
 **Review update, 2026-10-30.** The GB rows below specify required transition
-fixtures for accepted blind-review findings (PHASE-2 §4.7). They are planned
-acceptance cases, not a claim that executable tests already implement or pass
-them. Update old assertions that conflict with the corrected semantics; preserve
-historical measurements and old-release readability.
+fixtures for accepted blind-review findings (PHASE-2 §4.7). Update old assertions
+that conflict with the corrected semantics; preserve historical measurements and
+old-release readability.
+
+**Status, 2026-11-02.** Each GB case has an executing test, and all pass through
+`scripts/dev.py test production-offline` on `integrate-round1` 98fb1424. No case
+was mutated to prove its test fails. Not live: no published release has been
+checked against them.
+
+| GB case | Executing tests |
+|---|---|
+| GB1, prior and final attempts (`ct-sh4j`) | `congress_api/tests/test_captures_ingest.py::test_good_fetches_filters_per_attempt_while_preserving_final_fetch_state`, `::test_prior_body_does_not_borrow_recorded_final_completeness`; `corpus_recovery/tests/test_normalized_pipeline.py` (403 prior body) |
+| GB1, list-item, provider-retry and member references | `congress_api/tests/test_captures_final34.py` (25 cases, including `test_contradictory_attempt_and_fetch_facts_refuse_staging`) |
+| GB2 and GB4, A-then-B context and collection states (`ct-30fp`) | `viewer_publication/tests/test_phase2_model_entities.py::test_context_free_a_then_b_capture_binding_and_collection_states`; `congress_api/tests/test_phase2_meeting_appearance_lake.py::test_ct_30fp_congress_gov_invalid_witness_items_and_sql_per_context_freshness_and_failed_state` |
+| GB3, versions and admission (`ct-yymr`, `ct-kw9b`) | `viewer_publication/tests/test_phase2_model_entities.py::test_entity_record_version_selection_and_completeness_admission`; `test_archive_publish_job.py::test_daily_produce_to_publish_handoff_to_completeness_checks_end_to_end`; `test_phase1_model_profile.py::test_entity_completeness_and_record_producer_candidates_agree_1_for_1` |
+| GB5, repeated names (`ct-30fp`) | `congress_api/tests/test_phase2_meeting_appearance_lake.py::test_s2_fixture_1_repeated_names_and_unnamed_witnesses_preserved_with_locators` |
 
 | Part | Phase | Fixture | Expected outcome |
 |---|---|---|---|

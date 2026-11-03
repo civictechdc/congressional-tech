@@ -191,6 +191,8 @@ nominations    := per nomination_id a meeting's subject_keys names, the pinned r
 - A name or role a later reading supplies, such as a structured transcript from captions, subtitles or `pdf_text`, is an attribute of the appearance and never part of `witness_key`, so links survive it.
 - The v2 key is stable for the same retained input, locator and context; a changed source record is a new observation. This replaces the old name-derived identity rule. Keep old releases readable with their original keys and version the new release schema/relationship definitions. Any old-to-new mapping must preserve one-to-many and unresolved cases; never redirect an ambiguous old key to an arbitrary occurrence.
 - The model reports appearances whose `name_key` differs only by a title or initial within one occasion, as input for that table, and Senate page cards with no links.
+- Release 448651e7 changed every `witness_key`. Owner decision, 2026-11-02: no old-to-new mapping is published; the release notes say witness IDs changed and that old `?witness=` links no longer resolve (ct-ktfe).
+- Live 448651e7 publishes a single VTT segment as the caption track of 773 Senate recordings (1,538 track rows; 667 recordings point at one 57-byte segment), against the segment rule above (ct-9s7b).
 
 ## 3. Entity Release Files
 
@@ -422,7 +424,7 @@ scope decision; it cannot silently satisfy migration acceptance.
 | Committee channel directory: `packages/congress_shared/src/congress_shared/youtube/youtube-accounts.csv` | Typed committee/channel relationships with source URLs and evidence for the committee mapping; account for historical or unresolved mappings. Channel membership is not evidence that every video is a hearing. | `ct-gi01`; MCP checks `ct-m104` |
 | Collected video inventory and metadata: retained YouTube caches and meeting video references | Recording/video identity, original/watch URL, channel, supplied title/description, dates, duration and availability where retained. Preserve collected videos without a resolved meeting; do not limit the inventory to successfully matched recordings. | `ct-gi01` |
 | Recording matches: `gpo_hearing_videos.csv`, `meeting_recordings_found.csv` and retained match evidence under `apps/committee_youtube/data/` | Typed links and decisions with their basis, score where present, full-recording/excerpt distinction, unresolved/conflicting status and source references. Preserve observations and adjudication history; old derived matches are a parity oracle, not silently promoted to publisher assertions. | `ct-gi01` |
-| Hearing completeness: `apps/committee_youtube/data/meeting_completeness.csv`, Explorer issues and coverage | Typed coverage/issue facts with scope, denominator, date and reason. Unknown, missing, unresolved and confirmed absent remain distinct. Coverage/Gaps and MCP read these same meanings. | `ct-gi01`, `ct-t915`, `ct-m104` |
+| Hearing completeness: `apps/committee_youtube/data/meeting_completeness.csv`, Explorer issues and coverage | Typed coverage/issue facts with scope, denominator, date and reason. Unknown, missing, unresolved and confirmed absent remain distinct. Coverage/Gaps and MCP read these same meanings. Owner decision, 2026-11-02: where evidence is held but not yet linked, coverage is unknown, never not_stated, and every present value has a link the user can open. A Senate meeting with no linked document or witness is unknown until Senate committee-page links land; old page decisions are not imported (DATA-MODEL §7.11). | `ct-gi01`, `ct-t915`, `ct-m104` |
 | Retained committee amendments/votes: `apps/committee_youtube/data/house_amendments_found.csv` and source records | Preserve the actual record kind, meeting/document references, outcome and evidence where supplied. Document links and vote records must not be described as complete member ballots or tallies. New acquisition/reconstruction remains deferred. | `ct-gi01` |
 | Meeting attributes already read internally, including `congress` and source `updated` | Carry useful attributes into typed release fields with origin and date meaning. Keep hearing dates, publisher updates and capture times distinct; reconcile overlapping HTML date work. | `ct-gi01`, `ct-w8dc`, `ct-93zs` |
 | Full bill action histories, cosponsors, member votes, historical nominations/amendments/rosters | Inventory the exact available SpicyRegs tables, columns and generation pins. Identify local summaries separately from accessible detailed upstream records; expose supported relationships and access limits in discovery. Do not mirror all upstream tables or infer that a vote summary contains ballots. | `ct-gi01`, `ct-m104`; upstream `ct-u01c` / `ss-vhi2` |
@@ -460,7 +462,7 @@ The frozen-input comparison and field inventory evidence is in
 4. **Live switch — `cef-96wc`.** Record exact production job bindings, release
    identity, live site/MCP readback, and previous-release rollback references.
    Local success and merged code remain separate from live acceptance.
-5. **Retirement — `ct-5kto`.** After the replacement is live and accepted, remove
+5. **Retirement — `ct-5kto`.** Right after the replacement is live and accepted, with no overlap period, remove
    the old writer, pointer consumption and workflow staging. Check active callers
    and preserve raw/provenance records and recovery references. Completed archive
    deletion groups remain completed; they do not substitute for this retirement.
@@ -474,8 +476,12 @@ native job/table/export operations and link a specific engine gap if one is foun
 
 The independent greybeard review used ETL workflow and data-intensive systems
 lenses against the whole current model, producer SQL and fixtures. The parent
-verified the cited paths. All five findings are accepted; this section records
-required work, not a successful implementation or a measured live impact.
+verified the cited paths. All five findings are accepted.
+
+Status, 2026-11-02: implemented. Their tickets are closed, and the tests that
+execute each case (named in `model/fixtures/manifest.md`) pass on
+`integrate-round1` 98fb1424. Not live: no published release has been checked
+against them.
 
 | Finding | Required correction and acceptance case | Owner |
 |---|---|---|
