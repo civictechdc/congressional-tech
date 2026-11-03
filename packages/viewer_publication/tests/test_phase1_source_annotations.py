@@ -15,9 +15,10 @@ def test_source_annotations_keep_pins_names_keys_and_publisher_priority(tmp_path
     from viewer_publication.archive_annotations import annotation_steps
     urls=['https://docs.house.gov/meetings/AG/AG03/20261020/HHRG00123/a.pdf',
           'https://www.govinfo.gov/content/pkg/CHRG-119hhrg55555/html/report.htm',None,
-          'https://www.congress.gov/119/meeting/senate/777/dead.pdf']
+          'https://www.congress.gov/119/meeting/senate/777/dead.pdf',
+          'https://www.banking.senate.gov/imo/media/doc/testimony.pdf']
     sources=[dict(source_id='s'+str(i+1),filename=name,source_url=url,body_sha=body)
-        for i,(name,url,body) in enumerate(zip(['a.pdf','b.html','c.pdf','dead.pdf'],urls,['a'*64,'b'*64,'d'*64,None]))]
+        for i,(name,url,body) in enumerate(zip(['a.pdf','b.html','c.pdf','dead.pdf','testimony.pdf'],urls,['a'*64,'b'*64,'d'*64,None,'e'*64]))]
     rows=[]
     for source in sources:
         row=filenames._reading(source['filename'],source['source_url'],'current')
@@ -56,6 +57,7 @@ def test_source_annotations_keep_pins_names_keys_and_publisher_priority(tmp_path
     for row in links:row['context_url']=row['context'];row['context']='endpoint:'+row['context']
     inputs.append(json_input(tmp_path,'publisher_links',links,source_id='Utf8',doc_type='Utf8',text='Utf8',page_body='Utf8',context='Utf8',context_url='Utf8',first_good_at='Utf8',link_index='Int64',split_position='Int64'))
     steps=[dict(name='capture_source_contexts',sql='SELECT * FROM capture_sources'),dict(name='page_facts',sql="SELECT decode(body_hex,'hex') AS body_sha,* EXCLUDE(body_hex),cast(content_date AS DATE) AS day FROM page_inputs"),
+           dict(name='spicy_committees',sql="SELECT 'SSBK00' AS system_code,cast(NULL AS VARCHAR) AS parent_system_code,'https://www.banking.senate.gov/' AS website_url"),
            dict(name='meeting_document_urls',sql='SELECT cast(NULL AS BIGINT) AS event_id,cast(NULL AS VARCHAR) AS url WHERE false'),
            dict(name='model_url_keys',sql='SELECT cast(NULL AS VARCHAR) AS url,cast(NULL AS VARCHAR) AS url_key,cast(NULL AS VARCHAR) AS error WHERE false'),
            dict(name='copy_url_keys',sql='SELECT cast(NULL AS VARCHAR) AS source_id,cast(NULL AS VARCHAR) AS url_key WHERE false')]
@@ -63,17 +65,18 @@ def test_source_annotations_keep_pins_names_keys_and_publisher_priority(tmp_path
         steps=steps+annotation_steps('current'),outputs=[],queries=[
             dict(name='sources',sql='SELECT source_id,document_kind,document_family,congress,package_id,cast(filename_date AS VARCHAR) AS filename_date,cast(content_date AS VARCHAR) AS content_date,title,listing_title,reading_title,meeting_keys,measure_keys,bioguide_ids,committee_keys,chambers,facts FROM source_annotations ORDER BY source_id'),
             dict(name='unmapped',sql='SELECT code,count(*) AS n FROM source_annotation_unmapped_committees GROUP BY code ORDER BY code')])
-    one,two,three,four=result['sources']
+    one,two,three,four,five=result['sources']
     assert one==dict(source_id='s1',document_kind=['committee-report'],document_family=['hearings'],congress=119,
         package_id='CHRG-119hhrg11111',filename_date='2026-10-20',content_date='2026-10-18',title='Reading title',
         listing_title='Hearing transcript',reading_title='Reading title',
         meeting_keys=['123'],measure_keys=['119-hr-7'],bioguide_ids=['A000001'],committee_keys=['hsag03'],chambers=['house'],
         facts=[dict(field='congress',value='119'),dict(field='date_token_candidates',value='2026-10-20'),dict(field='document_kind',value='committee-report')])
     assert two['document_kind']==['legislative-text'] and two['title']=='Heading B' and two['listing_title'] is None
-    assert two['package_id']=='CHRG-119hhrg55555' and two['meeting_keys']==['999']
+    assert two['package_id']=='CHRG-119hhrg55555' and two['meeting_keys']==[]
     assert three['document_kind']==['transcript'] and three['title']=='Hearing transcript' and three['reading_title'] is None
     assert three['meeting_keys']==['456','888'] and three['chambers']==['house']
     assert four['meeting_keys']==['777'] and four['chambers']==['senate']
     assert four['document_kind']==[] and four['facts']==[]
     assert four['title']==four['listing_title']=='Hearing on Rural Lands' and four['reading_title'] is None
+    assert five['committee_keys']==['ssbk00'] and five['chambers']==['senate']
     assert result['unmapped']==[dict(code='UNKNOWN',n=1)]

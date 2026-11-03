@@ -178,13 +178,15 @@ WITH candidate_appearance_shas AS (
     THEN 'meeting:'||cast(spm.event_id AS VARCHAR)
    WHEN b.source='mods' AND b.package_id IS NOT NULL
     THEN 'package:'||b.package_id
+   WHEN b.source='senate_page' AND b.collection_state='present' AND coalesce(b.raw_event_id,spml.event_id) IS NOT NULL
+    THEN 'meeting:'||cast(coalesce(b.raw_event_id,spml.event_id) AS VARCHAR)
    WHEN b.source='senate_page' AND pk.url_key IS NOT NULL
     THEN 'page:'||substr(encode(sha256(pk.url_key),'hex'),1,16)
   END AS occasion,
   CASE
    WHEN b.source IN ('house_xml','congress_gov') THEN b.raw_event_id
    WHEN b.source='mods' THEN spm.event_id
-   ELSE b.raw_event_id
+   WHEN b.source='senate_page' AND b.collection_state='present' THEN coalesce(b.raw_event_id,spml.event_id)
   END AS event_id,
   CASE
    WHEN b.source_url IS NOT NULL AND b.declared_base IS NOT NULL
@@ -193,6 +195,7 @@ WITH candidate_appearance_shas AS (
   END AS resolved_base
  FROM bound_contexts b
  LEFT JOIN package_meeting_links spm ON b.source='mods' AND b.package_id=spm.package_id
+ LEFT JOIN senate_page_meeting_links spml ON b.source='senate_page' AND b.record_sha_hex=spml.record_sha_hex
  LEFT JOIN appearance_url_keys pk ON b.source='senate_page' AND b.page_url=pk.url AND pk.error IS NULL
 )
  SELECT *,

@@ -1935,6 +1935,7 @@ def test_ct_30fp_congress_gov_invalid_witness_items_and_sql_per_context_freshnes
                {"name": "selected_meeting_records", "sql": "SELECT * FROM meeting_records_input", "materialize": True},
                {"name": "meetings_resolved", "sql": "SELECT cast(NULL AS BIGINT) AS event_id,cast(NULL AS DATE) AS meeting_date WHERE false", "materialize": True},
                {"name": "appearance_people", "sql": (ROOT / "model/sql/appearance-people.sql").read_text(encoding="utf-8"), "materialize": True},
+               {"name": "senate_page_meeting_links", "sql": "SELECT cast(NULL AS VARCHAR) AS record_sha_hex,cast(NULL AS BIGINT) AS event_id WHERE false", "materialize": True},
                {"name": "appearance_observations", "sql": observations_sql, "materialize": True},
                {"name": "resolved", "sql": resolved_sql, "materialize": True}],
         outputs=[],

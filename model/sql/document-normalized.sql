@@ -1,10 +1,17 @@
 -- A merged recovered copy's link (x, recovered-copy-fills.sql) fills only a field the copy lacks.
 SELECT d.document_id AS doc_key,true AS body_expected,
  CASE WHEN coalesce(s.filename,'')='' THEN coalesce(x.filename,s.filename) ELSE s.filename END AS filename,
- coalesce(a.reading_title,a.listing_title,rt.title,x.title) AS title,
+ CASE
+  WHEN wk.witness_name IS NOT NULL AND x.title IS NULL
+   AND regexp_like(trim(coalesce(a.reading_title,a.listing_title,rt.title,'')),'(?i)^(?:witness\s+(?:statement|testimony|biography)|(?:prepared|written)\s+statement|testimony|truth\s+in\s+testimony(?:\s+form|\s+disclosure(?:\s+form)?)?)$')
+   THEN coalesce(a.reading_title,a.listing_title,rt.title)||' - '||wk.witness_name
+  ELSE coalesce(a.reading_title,a.listing_title,rt.title,x.title)
+ END AS title,
  CASE WHEN coalesce(array_length(a.document_kind),0)=0 THEN coalesce(x.document_kind,a.document_kind) ELSE a.document_kind END AS document_kind,
  CASE WHEN coalesce(array_length(a.document_family),0)=0 THEN coalesce(x.document_family,a.document_family) ELSE a.document_family END AS document_family,
- m.committee_keys,m.chambers,cast(coalesce(a.congress,x.congress) AS SMALLINT) AS congress,s.format,
+ array_sort(array_distinct(array_concat(m.committee_keys,coalesce(ml.committee_keys,arrow_cast(array_slice(make_array(cast(NULL AS VARCHAR)),1,0),'List(Utf8)'))))) AS committee_keys,
+ array_sort(array_distinct(array_concat(m.chambers,coalesce(ml.chambers,arrow_cast(array_slice(make_array(cast(NULL AS VARCHAR)),1,0),'List(Utf8)'))))) AS chambers,
+ cast(coalesce(a.congress,x.congress,ml.congress) AS SMALLINT) AS congress,s.format,
  coalesce(a.filename_date,a.content_date,ml.meeting_date,x.filename_date) AS document_date,cast(m.first_fetched AS DATE) AS first_captured,
  CASE WHEN m.first_fetched IS NOT NULL THEN 'captured' WHEN m.in_archive_since IS NOT NULL THEN 'import_day' ELSE 'unknown' END AS date_kind,
  'original' AS saved_kind,false AS hidden,

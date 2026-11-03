@@ -159,8 +159,8 @@ def test_recovery_only_document_takes_the_recovered_reading_title_else_the_origi
                                        dict(body_hex='b' * 64, status='completed', title='Untitled', heading=None)],
                    body_hex='Utf8', status='Utf8', title='Utf8', heading='Utf8'),
         json_input(tmp_path, 'capture_rows', [dict(body_hex='a' * 64, media_type='text/html')], body_hex='Utf8', media_type='Utf8'),
-        json_input(tmp_path, 'component_meeting_links', [], component='Utf8', meeting_date='Utf8', meeting_keys=strings),
-        json_input(tmp_path, 'document_witness_keys', [], component='Utf8', witness_keys=strings)]
+        json_input(tmp_path, 'component_meeting_links', [], component='Utf8', meeting_date='Utf8', meeting_keys=strings, committee_keys=strings, chambers=strings, congress='Int16'),
+        json_input(tmp_path, 'document_witness_keys', [], component='Utf8', witness_keys=strings, witness_name='Utf8')]
     steps = [dict(name='body_evidence', sql='SELECT * FROM evidence'),
              dict(name='page_facts', sql="SELECT decode(body_hex,'hex') AS body_sha,status,title,heading,cast(NULL AS DATE) AS content_date FROM pages"),
              dict(name='source_annotation_pages', sql=(ROOT / 'model/sql/source-annotations-pages.sql').read_text()),
