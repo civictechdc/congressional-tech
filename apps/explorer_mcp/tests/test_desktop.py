@@ -93,7 +93,7 @@ def test_plugin_manifests_supply_gui_path_for_uvx_discovery():
     root = Path(__file__).parents[1]
     for name in ('mcp.json', '.mcp.json'):
         config = json.loads((root / name).read_text())['mcpServers']['congress']
-        assert config['command'] == 'uvx'
-        path_env = config.get('env', {}).get('PATH', '')
-        for entry in ('${HOME}/.local/bin', '${HOME}/.cargo/bin', '/opt/homebrew/bin', '/usr/local/bin'):
-            assert entry in path_env
+        assert config['command'] == 'sh'
+        script = config['args'][1]
+        for entry in ('$PATH', '$HOME/.local/bin', '$HOME/.cargo/bin', '/opt/homebrew/bin', '/usr/local/bin'):
+            assert entry in script

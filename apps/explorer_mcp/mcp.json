@@ -3,19 +3,12 @@
   "mcpServers": {
     "congress": {
       "type": "stdio",
-      "command": "uvx",
+      "command": "sh",
       "args": [
-        "--python",
-        "3.12",
-        "--from",
-        "congressional-explorer-mcp==0.5.1",
-        "congress-explorer-mcp",
-        "serve",
-        "--prepare-if-missing"
-      ],
-      "env": {
-        "PATH": "${HOME}/.local/bin:${HOME}/.cargo/bin:${HOME}/.pyenv/shims:/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin"
-      }
+        "-c",
+        "PATH=\"$PATH:$HOME/.local/bin:$HOME/.cargo/bin:$HOME/.pyenv/shims:/opt/homebrew/bin:/usr/local/bin\" exec uvx --python 3.12 --from congressional-explorer-mcp==0.5.1 congress-explorer-mcp serve --prepare-if-missing \"$@\"",
+        "congress-explorer-mcp"
+      ]
     }
   }
 }
