@@ -3,7 +3,13 @@
 -- field takes the first completed linked reading that supplies it, in canonical URL/name order, and
 -- keeps that supplier's name and URL. Shown status/error stay separate from the per-field suppliers.
 WITH own AS (
- SELECT s.source_id,f.* FROM source_files s JOIN filename_readings f
+ SELECT s.source_id,
+  f.* EXCLUDE(document_kind,document_family,committee_code),
+  -- Normalize Iceberg element field ids before these values meet the aggregated linked choices.
+  arrow_cast(f.document_kind,'List(Utf8)') AS document_kind,
+  arrow_cast(f.document_family,'List(Utf8)') AS document_family,
+  arrow_cast(f.committee_code,'List(Utf8)') AS committee_code
+ FROM source_files s JOIN filename_readings f
   ON s.filename=f.filename AND coalesce(s.source_url,'')=f.source_url
  WHERE f.catalog_version={{CATALOG_VERSION}}
 ), choices AS (
