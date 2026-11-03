@@ -770,7 +770,7 @@ def test_phase2_entities_meetings_witnesses_recordings_and_spicy_projections(tmp
     assert print_doc['measure_keys'] == ['115-hr-1']
     assert chrg_doc['document_date'] == date(2023, 5, 10)
     assert chrg_doc['witness_keys'] == []
-    assert len(stmt_doc['witness_keys']) == 1
+    assert len(stmt_doc['witness_keys']) == 2
 
     # 2. Verify witnesses.parquet
     witnesses = pq.read_table(release_dir / 'witnesses.parquet').to_pylist()
@@ -778,13 +778,14 @@ def test_phase2_entities_meetings_witnesses_recordings_and_spicy_projections(tmp
     # Congress.gov list's Other Person, whom no higher source names, is shown.
     superseded = [w for w in witnesses if w['superseded_by']]
     assert sorted((w['source'], w['name']) for w in superseded) == [('mods', 'Dr. Jane Smith'), ('mods', 'Other Person')]
+    superseded_jane = next(w for w in superseded if w['name'] == 'Dr. Jane Smith')
     witnesses = [w for w in witnesses if not w['superseded_by']]
     assert len(witnesses) == 5
     meeting_witnesses = [w for w in witnesses if w['occasion'] == 'meeting:115538' and w['source'] == 'house_xml']
     assert [w['name'] for w in meeting_witnesses] == ['Dr. Jane Smith', 'Dr. Jane Smith Second Panel']
     assert [w['name'] for w in witnesses if w['occasion'] == 'meeting:115538' and w['source'] == 'congress_gov'] == ['Other Person']
     assert meeting_witnesses[0]['witness_key'] != meeting_witnesses[1]['witness_key']
-    assert meeting_witnesses[0]['witness_key'] == stmt_doc['witness_keys'][0]
+    assert set(stmt_doc['witness_keys']) == {meeting_witnesses[0]['witness_key'], superseded_jane['witness_key']}
     by_occasion = {w['occasion']: w for w in witnesses if w['occasion'] != 'meeting:115538'}
     assert 'package:CHRG-118shrg77777' in by_occasion
     assert by_occasion['package:CHRG-118shrg77777']['bioguide_id'] == 'R000001'
