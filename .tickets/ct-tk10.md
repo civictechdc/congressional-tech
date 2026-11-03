@@ -1,6 +1,6 @@
 ---
 id: ct-tk10
-status: open
+status: closed
 deps: []
 links: [cef-96wc, ct-n2cy, ct-qg8e, ct-d0o0, ct-4jms, ct-ud0b, ct-9lxf, ct-umtm]
 created: 2026-11-02T10:24:38Z
@@ -113,3 +113,7 @@ Owner decision 2026-11-02: any gate-1 difference group the cause catalog can't m
 **2026-11-02T23:41:45Z**
 
 2026-11-02 document groups fully attributed (inv-rca, .cache/archive-release/causes/attribution/documents.json): merged rows -71,755 = 33,769 ZIP rows pointing to members + 26,965 GovInfo PDF/HTML rejoined (f53018a0, ct-64el) + 6,943 HTML equal to the ZIP member (a6a2f3e3, 0bd33911) + 4,076 recovered-copy merge + 2 unverified; filename 17,870 from final-URL names (b9ac6cc5, d0d146b7: 16,532; trailing slash 1,283); kind, family and congress follow from the filename; date 3,310 (1,961 meeting links, 284b3948; 1,350 new filenames); sources is_saved 3,919 and 39 moved addresses intended. Owner decision: read BOTH names (final and requested URL) in filename readings; the shown filename stays final; date, kind and committee come from either, with disagreements kept as alternates and on the triage list. Without it, final-URL naming would drop 320 filename dates, 525 kinds and 2 committee keys (of 12 lost dates read, 8 right and 4 wrong). The catalog version moves, so D3 and D4 re-run. Tracks fully traced to ct-bxqa (22,559 senate/players rows NULL to 200). Explorer inputs (video_records, committee_records) aren't in the lake yet; impl-e2 owns the producer run.
+
+**2026-11-03T22:53:35Z**
+
+Closed 2026-11-03 after full D1-D4 + model build, Gates 1-5 pass (model/jobs/release-causes/448651e72083-e4538f0064e1.json, docs/releases/2026-11-03-e4538f0064e1.md), Basin import with producer proofs, full production-offline lane exit 0 (10,967 passed on release-train), and live publication of release e4538f0064e18168089a77891c93a16e175af18ed75eb7a3ac8039aa1a8db9fd (replacing 448651e720833d42d565ead119f59b893936626f680fdae4d13b6297e296c419) verified via contract:archive, live canary:archive, and congressional-explorer-mcp.

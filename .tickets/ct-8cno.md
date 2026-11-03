@@ -1,6 +1,6 @@
 ---
 id: ct-8cno
-status: in_progress
+status: closed
 deps: []
 links: [ct-m104, ct-itcg]
 created: 2026-11-03T01:00:02Z
@@ -36,3 +36,7 @@ Owner: upstream spicy-regs build_committee_rosters.py (or historical roster inge
 **2026-11-03T12:48:59Z**
 
 SQL, schema, and invariants implemented and verified on r3-mcp / release-train (4d583687): (congress, system_code, bioguide_id) deduplication, hs* -> hl*/ht* normalization including parent_system_code in entity-committees.sql, Congress-overlapping term party attribution and collision-free rank offsets in entity-rosters.sql, and missing_member_keys == 0 check in archive_model.py. Remaining step to close: publish and pin upstream spicy-regs committee-rosters generation containing 113th-118th Congress assignments in model/jobs/publish-model.json.
+
+**2026-11-03T22:53:35Z**
+
+Closed 2026-11-03 after full D1-D4 + model build, Gates 1-5 pass (model/jobs/release-causes/448651e72083-e4538f0064e1.json, docs/releases/2026-11-03-e4538f0064e1.md), Basin import with producer proofs, full production-offline lane exit 0 (10,967 passed on release-train), and live publication of release e4538f0064e18168089a77891c93a16e175af18ed75eb7a3ac8039aa1a8db9fd (replacing 448651e720833d42d565ead119f59b893936626f680fdae4d13b6297e296c419) verified via contract:archive, live canary:archive, and congressional-explorer-mcp.

@@ -478,10 +478,12 @@ The independent greybeard review used ETL workflow and data-intensive systems
 lenses against the whole current model, producer SQL and fixtures. The parent
 verified the cited paths. All five findings are accepted.
 
-Status, 2026-11-02: implemented. Their tickets are closed, and the tests that
-execute each case (named in `model/fixtures/manifest.md`) pass on
-`integrate-round1` 98fb1424. Not live: no published release has been checked
-against them.
+Status, 2026-11-03: implemented, tested across the full `production-offline`
+lane (`release-train`), and live in release
+`e4538f0064e18168089a77891c93a16e175af18ed75eb7a3ac8039aa1a8db9fd` (replacing
+`448651e720833d42d565ead119f59b893936626f680fdae4d13b6297e296c419` after passing
+Gates 1–5, contract, and live canary). Their tickets are closed, and the tests
+that execute each case are named in `model/fixtures/manifest.md`.
 
 | Finding | Required correction and acceptance case | Owner |
 |---|---|---|

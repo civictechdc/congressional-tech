@@ -1,6 +1,6 @@
 ---
 id: ct-c6b0
-status: open
+status: closed
 deps: []
 links: [ct-sh4j, ct-qg8e, ct-bxqa]
 created: 2026-11-02T00:36:42Z
@@ -32,3 +32,7 @@ Owner decision 2026-11-02: an HTTP 202 is never a good fetch. Treat it as a fail
 **2026-11-02T12:28:27Z**
 
 Round 1b 2026-11-02 (lead): Writer fix plus a url_state test that fails if the 202 exclusion is removed; part of the single document rule (ct-bxqa). impl-e1.
+
+**2026-11-03T22:53:34Z**
+
+Closed 2026-11-03 after full D1-D4 + model build, Gates 1-5 pass (model/jobs/release-causes/448651e72083-e4538f0064e1.json, docs/releases/2026-11-03-e4538f0064e1.md), Basin import with producer proofs, full production-offline lane exit 0 (10,967 passed on release-train), and live publication of release e4538f0064e18168089a77891c93a16e175af18ed75eb7a3ac8039aa1a8db9fd (replacing 448651e720833d42d565ead119f59b893936626f680fdae4d13b6297e296c419) verified via contract:archive, live canary:archive, and congressional-explorer-mcp.

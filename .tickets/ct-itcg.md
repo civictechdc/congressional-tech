@@ -1,6 +1,6 @@
 ---
 id: ct-itcg
-status: open
+status: closed
 deps: []
 links: [ct-v8y0, ct-5f3e, ct-kunv, ct-m104, ct-8cno]
 created: 2026-11-01T20:08:13Z
@@ -62,3 +62,7 @@ Retargeted to canonical archive.<name> tables 2026-11-02; nothing had been writt
 **2026-11-02T15:32:20Z**
 
 2026-11-02 basin-commit: DONE on R2. The five publish_v21 inputs are the first snapshot of the canonical archive.* tables (namespace ct-archive-v2/archive), engine 5a3121c, branch basin-commit 3e30b977 (archive_import_job). Snapshots: captures 1828363953761029924 (4,147,132 rows), readings 417472717314838744 (1,349,139), filename_readings 2975324804189756762 (1,311,075), meeting_records 6095611825010586178 (24,430), appearance_records 2778391476088817064 (66,483); uuids and metadata in .cache/rounds/r1b/basin/pins.json. Read-back: engine EXCEPT ALL both directions, 0 differences; independent Arrow sort-by-key, every column equal. receipt_keys: 2,292 (digest 8b4d786f, equal to the live release's list). Provenance (cef-96wc, unrecorded pyarrow writer, about 51k known-bad captures rows) in work-live/import-report.json and the writer definition. Remaining: commit these pins as 448651e7's reproducibility record in the release branch (the fixed release pins the rebuilt tables), then close. ss-ezin closed upstream.
+
+**2026-11-03T22:53:35Z**
+
+Closed 2026-11-03 after full D1-D4 + model build, Gates 1-5 pass (model/jobs/release-causes/448651e72083-e4538f0064e1.json, docs/releases/2026-11-03-e4538f0064e1.md), Basin import with producer proofs, full production-offline lane exit 0 (10,967 passed on release-train), and live publication of release e4538f0064e18168089a77891c93a16e175af18ed75eb7a3ac8039aa1a8db9fd (replacing 448651e720833d42d565ead119f59b893936626f680fdae4d13b6297e296c419) verified via contract:archive, live canary:archive, and congressional-explorer-mcp.

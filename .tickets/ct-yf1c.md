@@ -1,6 +1,6 @@
 ---
 id: ct-yf1c
-status: open
+status: closed
 deps: []
 links: [ct-n2cy, ct-lgxk]
 created: 2026-11-02T04:01:45Z
@@ -52,3 +52,7 @@ Round 1b 2026-11-02 (lead): 1,446 Files.Serve PDFs have no name in the URL or he
 **2026-11-02T21:36:15Z**
 
 2026-11-02 inv-rca ef3a79d1: generic_titles=1 was a real Senate Aging title ('Click Here: Accessible Federal Technolog... | Senate Committee On Aging', 71 chars; the 2022-07-28 hearing). The rule in source-annotations-pages.sql reads link words only in titles up to 64 characters, but the gate used 96 (since bbf7dbd5, no reason given). The gate now uses the rule's bound, and a test runs titles through both. Model only.
+
+**2026-11-03T22:53:35Z**
+
+Closed 2026-11-03 after full D1-D4 + model build, Gates 1-5 pass (model/jobs/release-causes/448651e72083-e4538f0064e1.json, docs/releases/2026-11-03-e4538f0064e1.md), Basin import with producer proofs, full production-offline lane exit 0 (10,967 passed on release-train), and live publication of release e4538f0064e18168089a77891c93a16e175af18ed75eb7a3ac8039aa1a8db9fd (replacing 448651e720833d42d565ead119f59b893936626f680fdae4d13b6297e296c419) verified via contract:archive, live canary:archive, and congressional-explorer-mcp.

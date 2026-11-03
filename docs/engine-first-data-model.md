@@ -5,11 +5,10 @@
 **Review update, 2026-10-30.** The blind greybeard/data-engineering findings are
 accepted in this draft. Corrections to capture eligibility, contextual witness
 readings, collection replacement, occurrence identity and publication admission
-are specified below and tracked in [[PHASE-2]] §4.7. Status, 2026-11-02: implemented
-on `integrate-round1`; the tests that execute each case are named in the fixture
-manifest and pass there. Not yet live: no published release has been checked
-against them, and the live release (448651e7) stays until the fixed release
-replaces it.
+are specified below and tracked in [[PHASE-2]] §4.7. Status, 2026-11-03: implemented,
+tested across the full `production-offline` lane (10,967 passed on `release-train`),
+and live in release `e4538f0064e18168089a77891c93a16e175af18ed75eb7a3ac8039aa1a8db9fd`
+(replacing `448651e720833d42d565ead119f59b893936626f680fdae4d13b6297e296c419`).
 
 ## Abstract
 

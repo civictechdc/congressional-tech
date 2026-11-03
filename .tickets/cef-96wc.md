@@ -62,3 +62,7 @@ New blockers: ct-r8jd (runaway limit).
 **2026-11-02T10:24:10Z**
 
 Owner decision 2026-11-02: add all five publish gates before the next publish: key-by-key comparison with live where every difference has a recorded cause; a link rule (a published link redirects or shows a removal notice, never silently vanishes, covering the 7,266 lost links); one end-to-end receipts-to-release test; write-time refusal of missing required fields; producer proof for every input. Full model run on the Mac under the guard. Autonomy grant: Claude takes the release through merged, tested and live, including the pointer flip.
+
+**2026-11-03T22:53:52Z**
+
+Progress update 2026-11-03: Release e4538f0064e18168089a77891c93a16e175af18ed75eb7a3ac8039aa1a8db9fd is LIVE at https://congressional-data.spicygov.ai/viewer-publications/manifest.json (replacing 448651e720833d42d565ead119f59b893936626f680fdae4d13b6297e296c419). All 5 publish gates passed (model/jobs/release-causes/448651e72083-e4538f0064e1.json, docs/releases/2026-11-03-e4538f0064e1.md), 7 gated lake snapshots exported and imported to Basin with producer proofs, full production-offline lane passed (10,967 passed on release-train), contract:archive and live canary:archive passed, and congressional-explorer-mcp (v0.5.1, 22 tables) verified live against the published pointer.

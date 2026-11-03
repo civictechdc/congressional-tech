@@ -1,6 +1,6 @@
 ---
 id: ct-deh9
-status: open
+status: closed
 deps: [ct-itcg, ct-d0o0]
 links: [ct-zpbl]
 created: 2026-11-01T20:08:13Z
@@ -75,3 +75,7 @@ Round 1b 2026-11-02 (lead): Readings: sniff, xml and json are lock-only or prove
 **2026-11-02T18:17:08Z**
 
 2026-11-02 spec-run: json full proof after the gzip-detection fix (r1b-det 1313aead; only the readings bundle moved to 586d05c9): 2,489 rows, 0 differences, 58 s, peak 2.28 GiB; entered as candidate-r1b 60eb6963. The registry holds sniff (lock_only), html, xml and json (predicate, full, size-bounded). D2/D3 started 13:16; they need the registry, so they can't overlap the proof. D4 follows from this run's D1-D3 tables, on release-train code (r1b-h3 moves the meeting, appearance, video and committee pins).
+
+**2026-11-03T22:53:35Z**
+
+Closed 2026-11-03 after full D1-D4 + model build, Gates 1-5 pass (model/jobs/release-causes/448651e72083-e4538f0064e1.json, docs/releases/2026-11-03-e4538f0064e1.md), Basin import with producer proofs, full production-offline lane exit 0 (10,967 passed on release-train), and live publication of release e4538f0064e18168089a77891c93a16e175af18ed75eb7a3ac8039aa1a8db9fd (replacing 448651e720833d42d565ead119f59b893936626f680fdae4d13b6297e296c419) verified via contract:archive, live canary:archive, and congressional-explorer-mcp.

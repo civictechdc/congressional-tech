@@ -111,3 +111,7 @@ Round 1b 2026-11-02 (lead): Coverage rule (lead decision): a Senate meeting with
 **2026-11-02T15:31:02Z**
 
 2026-11-02 impl-u2 (r4-u2 925036be): the production model job now takes pinned spicy-regs generations as a declared input; the producer made up sha256('spicy-regs:<family>') digests since 959c23ee, which went into the input record, manifest and pin file. All 12 tables are pinned under the six generations the live release uses (amendments 75c96edc, bill-family f719442c, committee-rosters 5f031073, members 29718daf, nominations d17c43e1, roll-call-votes e7cdd80d), each root recomputed and every file matched. Using live's generations keeps gate 1's differences attributable to the fixes; newer generations are a follow-up. Inputs: .cache/archive-release/r1b/inputs/spicy_regs/. Lane 10,804 passed. F4 holds once this merges.
+
+**2026-11-03T22:53:52Z**
+
+Progress update 2026-11-03: Release e4538f0064e18168089a77891c93a16e175af18ed75eb7a3ac8039aa1a8db9fd is LIVE at https://congressional-data.spicygov.ai/viewer-publications/manifest.json (replacing 448651e720833d42d565ead119f59b893936626f680fdae4d13b6297e296c419). All 5 publish gates passed (model/jobs/release-causes/448651e72083-e4538f0064e1.json, docs/releases/2026-11-03-e4538f0064e1.md), 7 gated lake snapshots exported and imported to Basin with producer proofs, full production-offline lane passed (10,967 passed on release-train), contract:archive and live canary:archive passed, and congressional-explorer-mcp (v0.5.1, 22 tables) verified live against the published pointer.

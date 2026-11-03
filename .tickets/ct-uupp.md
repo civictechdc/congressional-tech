@@ -1,6 +1,6 @@
 ---
 id: ct-uupp
-status: open
+status: closed
 deps: []
 links: [ct-kunv, ct-9gmr]
 created: 2026-11-02T15:55:30Z
@@ -36,3 +36,7 @@ Staging splits a receipt above a byte or line threshold into line ranges, with r
 **2026-11-02T16:37:30Z**
 
 2026-11-02 etl-staging r4-staging 8e0452a9: staging runs at most 1,024 rows per engine batch; the 581 MB receipt stages in 30 s at 6.49 GiB RSS (5.79 physical) at the 14 GiB pool, all 808,680 captures (before: never finished, over 22 GiB). Cause: DataFusion 53.1 array_concat over string-view lists (the mapping's entries step), quadratic in rows per batch and uncounted by the pool (32k-line slice: 0.15/2.2/>7 GiB at 1024/4096/8192). Byte-identical on 10 receipts (8192 vs 1024) plus a repo test (2 vs 8192); time 0.93-1.24x; APPROVED_MAPPING unchanged. Engine ticket ss-1rrn under ss-oxg1. Being made one shared cap for daily, backfill and CI staging. Line-range splitting not needed.
+
+**2026-11-03T22:53:35Z**
+
+Closed 2026-11-03 after full D1-D4 + model build, Gates 1-5 pass (model/jobs/release-causes/448651e72083-e4538f0064e1.json, docs/releases/2026-11-03-e4538f0064e1.md), Basin import with producer proofs, full production-offline lane exit 0 (10,967 passed on release-train), and live publication of release e4538f0064e18168089a77891c93a16e175af18ed75eb7a3ac8039aa1a8db9fd (replacing 448651e720833d42d565ead119f59b893936626f680fdae4d13b6297e296c419) verified via contract:archive, live canary:archive, and congressional-explorer-mcp.

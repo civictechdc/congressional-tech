@@ -7,10 +7,11 @@ fixtures for accepted blind-review findings (PHASE-2 §4.7). Update old assertio
 that conflict with the corrected semantics; preserve historical measurements and
 old-release readability.
 
-**Status, 2026-11-02.** Each GB case has an executing test, and all pass through
-`scripts/dev.py test production-offline` on `integrate-round1` 98fb1424. No case
-was mutated to prove its test fails. Not live: no published release has been
-checked against them.
+**Status, 2026-11-03.** Each GB case has an executing test, and all pass through
+`scripts/dev.py test production-offline` on `release-train` (10,967 passed). Live in
+release `e4538f0064e18168089a77891c93a16e175af18ed75eb7a3ac8039aa1a8db9fd` (which
+replaced `448651e720833d42d565ead119f59b893936626f680fdae4d13b6297e296c419` after
+passing all five publish gates, browser contract, and live canary).
 
 | GB case | Executing tests |
 |---|---|

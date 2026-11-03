@@ -1,6 +1,6 @@
 ---
 id: ct-qg8e
-status: open
+status: closed
 deps: []
 links: [ct-64el, ct-n2cy, ct-ktfe, ct-5f3e, ct-fh62, ct-dx22, ct-c6b0, ct-o2pr, ct-lgxk, ct-d3tk, cef-96wc, ct-tk10, ct-d0o0]
 created: 2026-11-01T20:08:13Z
@@ -29,3 +29,7 @@ Compare the two public releases by key, not by count. Classify added and removed
 **2026-11-02T00:36:42Z**
 
 Row changes are sized across all 19 manifest files. release_diff.py is a diagnostic and exits 1 on this pair; its failing list names unchecked causes and defects. Recovery round and upstream generation contributed zero rows. Real causes: ct-sh4j eligibility, meetings SQL, oEmbed scope rule, witness key redefinition, URL rules. Stay open until a rebuild proves restoration. Evidence: docs/measurements/release-diff-c94bfedc-448651e7-20261101.md.
+
+**2026-11-03T22:53:35Z**
+
+Closed 2026-11-03 after full D1-D4 + model build, Gates 1-5 pass (model/jobs/release-causes/448651e72083-e4538f0064e1.json, docs/releases/2026-11-03-e4538f0064e1.md), Basin import with producer proofs, full production-offline lane exit 0 (10,967 passed on release-train), and live publication of release e4538f0064e18168089a77891c93a16e175af18ed75eb7a3ac8039aa1a8db9fd (replacing 448651e720833d42d565ead119f59b893936626f680fdae4d13b6297e296c419) verified via contract:archive, live canary:archive, and congressional-explorer-mcp.

@@ -114,3 +114,11 @@ Owner decisions of 2026-11-01 and 2026-11-02 (`cef-96wc`, `ct-tk10`, `ct-ud0b`,
 7. The old Explorer retires right after live acceptance, with no overlap
    period. Old dashboard links that name a record by UUID show a removal notice;
    no ID mapping is published, as with witness IDs (`ct-ktfe`).
+8. **Published — 2026-11-03:** Candidate `e4538f0064e18168089a77891c93a16e175af18ed75eb7a3ac8039aa1a8db9fd`
+   (355,608 listed documents, 18,687 meetings, 172,948 witnesses, 12,283 recordings,
+   450 retired links) passed Gates 1–5 (`model/jobs/release-causes/448651e72083-e4538f0064e1.json`,
+   `docs/releases/2026-11-03-e4538f0064e1.md`), Basin import with producer proofs,
+   browser contract, and live HTTPS canary, and replaced `448651e720833d42d565ead119f59b893936626f680fdae4d13b6297e296c419`
+   at `https://congressional-data.spicygov.ai/viewer-publications/manifest.json`.
+   Site speed targets are deferred on the record (`ct-t915`). Live pointer, canary,
+   and `congressional-explorer-mcp` (v0.5.1, 22 tables) verified against the live release.

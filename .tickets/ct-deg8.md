@@ -1,6 +1,6 @@
 ---
 id: ct-deg8
-status: open
+status: closed
 deps: []
 links: [ct-r8jd, ct-wsu7]
 created: 2026-11-01T23:41:45Z
@@ -53,3 +53,7 @@ Round 1b 2026-11-02 (lead): Cause found (plan-engine): ordered array_agg keeps a
 **2026-11-02T15:53:12Z**
 
 2026-11-02 spec-run: the full html compatible-version proof that eb40c54 refused at a 14 GiB pool (HashJoinInput) passed on 5a3121c, comparing all 124,651 kept rows with 0 differences, in 1,024 s at a peak of 5.79 GiB. The engine fix holds on real data.
+
+**2026-11-03T22:53:35Z**
+
+Closed 2026-11-03 after full D1-D4 + model build, Gates 1-5 pass (model/jobs/release-causes/448651e72083-e4538f0064e1.json, docs/releases/2026-11-03-e4538f0064e1.md), Basin import with producer proofs, full production-offline lane exit 0 (10,967 passed on release-train), and live publication of release e4538f0064e18168089a77891c93a16e175af18ed75eb7a3ac8039aa1a8db9fd (replacing 448651e720833d42d565ead119f59b893936626f680fdae4d13b6297e296c419) verified via contract:archive, live canary:archive, and congressional-explorer-mcp.

@@ -112,3 +112,7 @@ Owner decision 2026-11-02: runner fixes (r4-rca: refuse another checkout's code 
 **2026-11-02T20:55:01Z**
 
 2026-11-02 release-train 8244904f full lane: 'production-offline (full lane): exit 0', 11,244 passed, 37 skipped, 3 xfailed, peak 1.92 GiB, on engine b0342a7's config; archive_schema --check passes. 82e5b35d adds ci-poppler c006c4fa (CI and setup only; 43 own tests pass; doctor passes). Pins moved vs candidate-r1b: D4 record pins (meeting congress_gov and house_xml, four appearance pins, committee house_xml), readings bundle a7a8c404, model_spec 551c0820 (size 3115); captures, the four reading pins, catalog and video unchanged. Open: release key invariant (54 rows, inv-rca); the DOCSPEC_RUNTIME_ARTIFACT switch at the main merge.
+
+**2026-11-03T22:53:52Z**
+
+Progress update 2026-11-03: Release e4538f0064e18168089a77891c93a16e175af18ed75eb7a3ac8039aa1a8db9fd is LIVE at https://congressional-data.spicygov.ai/viewer-publications/manifest.json (replacing 448651e720833d42d565ead119f59b893936626f680fdae4d13b6297e296c419). All 5 publish gates passed (model/jobs/release-causes/448651e72083-e4538f0064e1.json, docs/releases/2026-11-03-e4538f0064e1.md), 7 gated lake snapshots exported and imported to Basin with producer proofs, full production-offline lane passed (10,967 passed on release-train), contract:archive and live canary:archive passed, and congressional-explorer-mcp (v0.5.1, 22 tables) verified live against the published pointer.
