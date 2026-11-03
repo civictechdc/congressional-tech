@@ -47,19 +47,25 @@ def phase2(tmp_path_factory):
     shutil.copytree(CURRENT, root)
     def link(rows):
         rows[0].update(congress=119, committee_keys=['hsif00'], measure_keys=['119-hr-1', '119-pn-730-2'],
+                       meeting_keys=['118001', '335321'],
                        witness_keys=['appearance-1', '0001497931f99cd1'], bioguide_ids=['A000001'], document_kind=['agenda'])
+        rows[4].update(version_keys=[])
     replace_rows(root, 'list', link)
     def meeting(rows):
         rows[0].update(committees=[dict(system_code='hsif00', role='host')], subject_keys=['119-hr-1', '119-pn-730-2'],
             transcripts=[dict(package_id='CHRG-118hhrg1', list_row=0)],
             videos=[dict(name='Hearing video', url='https://video.example/1', video_key='youtube:abc')])
+        m2 = deepcopy(rows[0])
+        m2.update(event_id=335321, transcripts=[], videos=[])
+        rows.append(m2)
     replace_rows(root, 'meetings', meeting)
     replace_rows(root, 'detail', lambda rows: rows[1].update(package_id='CHRG-118hhrg1'))
     with duckdb.connect() as db:
         def write(name, sql):
             db.execute(f'COPY ({sql}) TO {literal(root / (name+".parquet"))} (FORMAT PARQUET)')
         write('witnesses', """SELECT 'appearance-'||i AS witness_key,'meeting:'||i AS occasion,
-            (118000+i)::BIGINT AS event_id,CASE WHEN i=2 THEN 'CHRG-118hhrg1' END AS package_id,NULL::VARCHAR AS page_url,
+            CASE WHEN i=1 THEN 335321::BIGINT ELSE (118000+i)::BIGINT END AS event_id,
+            CASE WHEN i=2 THEN 'CHRG-118hhrg1' END AS package_id,NULL::VARCHAR AS page_url,
             'Alex Smith' AS name,'Director' AS position,'Transit Lab' AS organization,
             NULL::VARCHAR AS on_behalf_of,NULL::VARCHAR AS location,'Panel A' AS panel,
             1::SMALLINT AS panel_order,i::SMALLINT AS display_order,'public' AS witness_type,
@@ -69,7 +75,7 @@ def phase2(tmp_path_factory):
                 ('0001497931f99cd1','page:1',NULL::BIGINT,NULL::VARCHAR,NULL::VARCHAR,'Jordan Taylor','Counsel','Policy Group',NULL::VARCHAR,NULL::VARCHAR,NULL::VARCHAR,NULL::SMALLINT,1::SMALLINT,'public',NULL::BOOLEAN,NULL::VARCHAR),
                 ('0000b43c099edbc2','package:1',NULL::BIGINT,'CHRG-118hhrg1',NULL::VARCHAR,'Jordan Taylor','Counsel','Policy Group',NULL::VARCHAR,NULL::VARCHAR,NULL::VARCHAR,NULL::SMALLINT,2::SMALLINT,'public',NULL::BOOLEAN,NULL::VARCHAR)
             )""")
-        write('recordings', """SELECT 'youtube:abc' AS video_key,[118001::BIGINT] AS event_ids,
+        write('recordings', """SELECT 'youtube:abc' AS video_key,[118001::BIGINT, 335321::BIGINT] AS event_ids,
             [struct_pack(body:=unhex(repeat('55',32)),suffix:='.gz',format:='vtt',language:='en',production:='automatic')] AS tracks""")
         write('committees', """SELECT 'hsif00' AS system_code,'Energy and Commerce' AS name,'house' AS chamber,
             'standing' AS committee_type,NULL::VARCHAR AS parent_system_code,
@@ -95,7 +101,12 @@ def phase2(tmp_path_factory):
         write('nominations', """SELECT '119-pn-730-2' AS nomination_id,'Transit administrator' AS description,
             'Transportation' AS organization,DATE '2025-01-03' AS received,DATE '2025-02-01' AS latest_action_date,
             'Confirmed' AS latest_action_text,['hsif00'] AS committees,['CHRG-118hhrg1'] AS transcripts,
-            [struct_pack(vote_id:='119-s-1',date:=DATE '2025-02-01',question:='Confirmation',result:='Confirmed',yea:=70::SMALLINT,nay:=30::SMALLINT)] AS floor_votes""")
+            [struct_pack(vote_id:='119-s-1',date:=DATE '2025-02-01',question:='Confirmation',result:='Confirmed',yea:=70::SMALLINT,nay:=30::SMALLINT)] AS floor_votes
+            UNION ALL
+            SELECT '119-pn-11-12' AS nomination_id,'Deputy administrator' AS description,
+            'Transportation' AS organization,DATE '2025-01-03' AS received,DATE '2025-02-01' AS latest_action_date,
+            'Confirmed' AS latest_action_text,['hsif00'] AS committees,['CHRG-118hhrg1'] AS transcripts,
+            [] AS floor_votes""")
         write('videos', """SELECT 'youtube:free' AS video_key,'@AgRepublicans' AS handle,'Unmatched upload' AS title,TIMESTAMP '2025-01-03 00:00:00' AS published_at""")
         write('recording_matches', """SELECT 'a' AS match_id,115538::BIGINT AS event_id,'youtube:abc' AS video_key,NULL::VARCHAR AS url,'publisher_link' AS basis,
             'linked' AS decision,100::SMALLINT AS score,'unknown' AS recording_scope,'asserted' AS status,NULL::VARCHAR AS note""")
@@ -119,6 +130,11 @@ def selection(phase2, tmp_path_factory):
 @pytest.fixture
 def reader(selection):
     reader = Reader(selection)
+    reader.db.execute(
+        'CREATE TEMP TABLE _list_base AS SELECT * FROM "list"; '
+        'CREATE OR REPLACE VIEW "list" AS SELECT * FROM _list_base '
+        'UNION ALL SELECT * REPLACE (8 AS list_row, true AS hidden) FROM _list_base WHERE list_row=3'
+    )
     try:
         yield reader
     finally:
@@ -141,7 +157,7 @@ def linked_transcripts(phase2, tmp_path_factory):
         rows[0]['transcripts'] = [dict(package_id='CHRG-118hhrg1', list_row=i) for i in (1, 1, 2, hidden[0])]
         other = deepcopy(rows[0])
         other.update(event_id=118002, transcripts=[dict(package_id='CHRG-118hhrg1', list_row=1)])
-        rows.append(other)
+        rows[:] = [rows[0], other]
     replace_rows(root, 'meetings', meetings)
     return manifest(root)
 

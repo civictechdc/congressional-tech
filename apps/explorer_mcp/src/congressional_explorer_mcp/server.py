@@ -90,7 +90,8 @@ def create_server(selection=None, *, timeout=10.0, data_dir=None, publication=PU
             try:
                 with anyio.fail_after(timeout):
                     return await anyio.to_thread.run_sync(
-                        partial(read_document_body, target, query, data_dir=data_dir, timeout=timeout)
+                        partial(read_document_body, target, query, data_dir=data_dir, timeout=timeout),
+                        abandon_on_cancel=True,
                     )
             except TimeoutError as error:
                 raise ToolError('Document body fetch or extraction timed out') from error

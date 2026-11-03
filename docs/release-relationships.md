@@ -383,7 +383,7 @@ Incoming: `document_members`, `witness_member`, `roster_member`, `bill_sponsor`,
 
 ## `rosters` — Committee and subcommittee seats across published Congresses
 
-One member assignment to a committee or subcommittee in a Congress.
+One member assignment to a committee or subcommittee in a Congress (keyed by congress, system_code, bioguide_id for 113th–119th Congresses as upstream committee_assignments snapshots are populated; currently 119th Congress in the pinned snapshot).
 
 Identity: `congress, system_code, bioguide_id` (primary_key; published identifier).
 
@@ -400,6 +400,7 @@ Coverage: Committee seats cover the 113th–119th Congresses only.
 
 Nullability: Nullability transcribes the phase-2 annex §3 file table (docs/plans/phase-2-annex-20261028.md): a type without "nullable" there is required. A required column is refused at write time.
 
+- `congress`: Keyed by (congress, system_code, bioguide_id) for 113th–119th Congresses; populated from upstream committee_assignments (currently 119th Congress in the pinned snapshot until historical backfill).
 
 Outgoing: `roster_committee`, `roster_member`.
 
@@ -407,7 +408,7 @@ Incoming: none.
 
 ## `bills` — Referenced bills and embedded legislative facts
 
-One bill referenced by documents or meetings; bounded by upstream retained data.
+One bill referenced by documents, meetings, or committee activities, or a substantive/enacted bill (congress >= 113), plus 1-hop related bills of referenced bills; bounded by upstream retained data.
 
 Identity: `bill_id` (primary_key; published identifier).
 
@@ -1073,7 +1074,7 @@ Held upstream and never mirrored here. A release names a relation’s generation
 | `roll_call_votes` | `roll-call-votes/roll_call_votes` | `vote_id` | `bills.floor_votes[].vote_id`, `nominations.floor_votes[].vote_id` | One roll-call vote | Includes votes not tied to a local bill or nomination. |
 | `amendments` | `amendments/amendments` | `amendment_id` | `bills.amendments[].amendment_id` | One floor amendment | Coverage is limited by upstream; committee_records holds different, committee-stage documents. |
 | `nominations` | `nominations/nominations` | `congress, number, part_number` | none | One nomination part | Coverage is limited by upstream; local nominations cover what that generation holds. |
-| `committee_assignments` | `committee-rosters/committee_assignments` | `congress, system_code, bioguide_id` | `rosters.system_code`, `members.bioguide_id` | One committee assignment | Covers 113th–119th Congress committee and subcommittee assignments. |
+| `committee_assignments` | `committee-rosters/committee_assignments` | `congress, system_code, bioguide_id` | `rosters.system_code`, `members.bioguide_id` | One committee assignment | Schema supports 113th–119th Congress committee and subcommittee assignments; currently populated for the 119th Congress in the pinned upstream snapshot. |
 
 ## Query recipes (DuckDB)
 
@@ -1128,7 +1129,7 @@ Requires: `list`, `detail`, `meetings`.
 
 Result: One document associated with the selected hearing.
 
-Parameters, in order: `event_id` (example `118001`).
+Parameters, in order: `event_id` (example `335321`).
 
 ```sql
 SELECT l.list_row,l.filename,l.title,lower(hex(d.link_key)) AS link_key,m.event_id,m.title AS hearing
@@ -1144,7 +1145,7 @@ Requires: `meetings`, `witnesses`, `list`, `detail`, `recording_matches`.
 
 Result: One hearing with embedded witnesses, visible documents, and recording matches.
 
-Parameters, in order: `event_id` (example `118001`).
+Parameters, in order: `event_id` (example `335321`).
 
 ```sql
 SELECT m.event_id,m.chamber,m.meeting_date,m.title,m.committees,m.subject_keys,m.transcripts,
@@ -1212,7 +1213,7 @@ Requires: `nominations`, `detail`, `list`.
 
 Result: One retained transcript document.
 
-Parameters, in order: `nomination_id` (example `119-pn-730-2`).
+Parameters, in order: `nomination_id` (example `119-pn-11-12`).
 
 ```sql
 SELECT n.nomination_id,d.package_id,l.list_row,l.filename,l.title,lower(hex(d.link_key)) AS link_key
@@ -1220,7 +1221,7 @@ FROM nominations n JOIN detail d ON list_contains(n.transcripts,d.package_id) JO
 WHERE NOT coalesce(l.hidden,false) AND n.nomination_id=? ORDER BY l.list_row LIMIT 100
 ```
 
-Preserve the nomination part, for example 119-pn-730-2.
+Preserve the nomination part, for example 119-pn-11-12.
 
 ### `bill_votes` — Vote summaries associated with a bill
 
@@ -1258,7 +1259,7 @@ Requires: `recordings`.
 
 Result: One captured recording track.
 
-Parameters, in order: `event_id` (example `118001`).
+Parameters, in order: `event_id` (example `335321`).
 
 ```sql
 SELECT r.video_key,hex(t.body) AS body,t.suffix,t.format,t.language,t.production
@@ -1274,7 +1275,7 @@ Requires: `list`.
 
 Result: One other document edition.
 
-Parameters, in order: `list_row` (example `3`).
+Parameters, in order: `list_row` (example `8`).
 
 ```sql
 SELECT DISTINCT other.list_row,other.filename,other.document_date

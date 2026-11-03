@@ -1153,7 +1153,7 @@
         "Committee seats cover the 113th–119th Congresses only"
       ],
       "purpose": "Committee and subcommittee seats across published Congresses",
-      "row_meaning": "One member assignment to a committee or subcommittee in a Congress",
+      "row_meaning": "One member assignment to a committee or subcommittee in a Congress (keyed by congress, system_code, bioguide_id for 113th–119th Congresses as upstream committee_assignments snapshots are populated; currently 119th Congress in the pinned snapshot)",
       "identity": {
         "fields": [
           "congress",
@@ -1163,6 +1163,9 @@
         "scope": "published identifier",
         "validation": "native publication key checks",
         "kind": "primary_key"
+      },
+      "notes": {
+        "congress": "Keyed by (congress, system_code, bioguide_id) for 113th–119th Congresses; populated from upstream committee_assignments (currently 119th Congress in the pinned snapshot until historical backfill)."
       },
       "nullability": "Nullability transcribes the phase-2 annex \u00a73 file table (docs/plans/phase-2-annex-20261028.md): a type without \"nullable\" there is required."
     },
@@ -1276,7 +1279,7 @@
         "Amendments cover the 119th Congress only until spicy-regs backfills"
       ],
       "purpose": "Referenced bills and embedded legislative facts",
-      "row_meaning": "One bill referenced by documents or meetings; bounded by upstream retained data",
+      "row_meaning": "One bill referenced by documents, meetings, or committee activities, or a substantive/enacted bill (congress >= 113), plus 1-hop related bills of referenced bills; bounded by upstream retained data",
       "identity": {
         "fields": [
           "bill_id"
@@ -3296,7 +3299,7 @@
       "parameters": [
         {
           "name": "event_id",
-          "example": 118001
+          "example": 335321
         }
       ],
       "sql": "SELECT l.list_row,l.filename,l.title,lower(hex(d.link_key)) AS link_key,m.event_id,m.title AS hearing\nFROM \"list\" l JOIN detail d USING (list_row) JOIN meetings m ON list_contains(l.meeting_keys,CAST(m.event_id AS VARCHAR))\nWHERE NOT coalesce(l.hidden,false) AND m.event_id=? ORDER BY l.list_row LIMIT 100",
@@ -3325,7 +3328,7 @@
       "parameters": [
         {
           "name": "event_id",
-          "example": 118001
+          "example": 335321
         }
       ],
       "sql": "SELECT m.event_id,m.chamber,m.meeting_date,m.title,m.committees,m.subject_keys,m.transcripts,\n  coalesce((SELECT list(struct_pack(witness_key:=w.witness_key,name:=w.name,position:=w.position,organization:=w.organization,panel:=w.panel,display_order:=w.display_order) ORDER BY w.panel_order NULLS LAST,w.display_order NULLS LAST,w.witness_key) FROM witnesses w WHERE w.event_id=m.event_id),[]) AS witnesses,\n  coalesce((SELECT list(struct_pack(list_row:=l.list_row,filename:=l.filename,title:=l.title,document_kind:=l.document_kind,link_key:=lower(hex(d.link_key))) ORDER BY l.list_row) FROM \"list\" l JOIN detail d USING (list_row) WHERE NOT coalesce(l.hidden,false) AND list_contains(l.meeting_keys,CAST(m.event_id AS VARCHAR))),[]) AS documents,\n  coalesce((SELECT list(struct_pack(video_key:=r.video_key,url:=r.url,basis:=r.basis,decision:=r.decision,status:=r.status) ORDER BY r.basis,r.video_key,r.url) FROM recording_matches r WHERE r.event_id=m.event_id),[]) AS recordings\nFROM meetings m WHERE m.event_id=?",
@@ -3430,13 +3433,13 @@
       "parameters": [
         {
           "name": "nomination_id",
-          "example": "119-pn-730-2"
+          "example": "119-pn-11-12"
         }
       ],
       "sql": "SELECT n.nomination_id,d.package_id,l.list_row,l.filename,l.title,lower(hex(d.link_key)) AS link_key\nFROM nominations n JOIN detail d ON list_contains(n.transcripts,d.package_id) JOIN \"list\" l USING (list_row)\nWHERE NOT coalesce(l.hidden,false) AND n.nomination_id=? ORDER BY l.list_row LIMIT 100",
       "result_row": "One retained transcript document",
       "notes": [
-        "Preserve the nomination part, for example 119-pn-730-2."
+        "Preserve the nomination part, for example 119-pn-11-12."
       ]
     },
     {
@@ -3495,7 +3498,7 @@
       "parameters": [
         {
           "name": "event_id",
-          "example": 118001
+          "example": 335321
         }
       ],
       "sql": "SELECT r.video_key,hex(t.body) AS body,t.suffix,t.format,t.language,t.production\nFROM recordings r,UNNEST(r.tracks) AS tracks(t)\nWHERE list_contains(r.event_ids,CAST(? AS BIGINT)) ORDER BY r.video_key,t.language,t.format LIMIT 100",
@@ -3517,7 +3520,7 @@
       "parameters": [
         {
           "name": "list_row",
-          "example": 3
+          "example": 8
         }
       ],
       "sql": "SELECT DISTINCT other.list_row,other.filename,other.document_date\nFROM \"list\" selected JOIN \"list\" other ON list_has_any(selected.version_keys,other.version_keys)\nWHERE selected.list_row=? AND other.list_row<>selected.list_row ORDER BY other.list_row LIMIT 100",
@@ -3726,7 +3729,7 @@
         }
       ],
       "row_meaning": "One committee assignment",
-      "limits": "Covers 113th–119th Congress committee and subcommittee assignments."
+      "limits": "Schema supports 113th–119th Congress committee and subcommittee assignments; currently populated for the 119th Congress in the pinned upstream snapshot."
     }
   ]
 }

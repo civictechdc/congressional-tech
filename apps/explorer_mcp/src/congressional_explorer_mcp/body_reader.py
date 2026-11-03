@@ -9,6 +9,7 @@ from pathlib import Path
 import re
 import shutil
 import subprocess
+import time
 from urllib.error import HTTPError, URLError
 from urllib.parse import urlsplit
 from urllib.request import HTTPRedirectHandler, Request, build_opener
@@ -19,6 +20,10 @@ from .models import DocumentQuery, ExplorerError, MAX_BYTES
 from .release import atomic_json, encoded
 
 MAX_BODY_BYTES = 64 << 20
+MAX_RAW_BYTES = MAX_BODY_BYTES
+MAX_CACHE_ENTRIES = 256
+MAX_PAGE_MATCH_ITERATIONS = 10_000
+MAX_FALLBACK_PDF_BYTES = 4 << 20
 SNIPPET_CONTEXT_CHARS = 160
 
 TEXT_FORMATS = frozenset({'pdf', 'html', 'htm', 'xhtml', 'xml', 'text', 'txt', 'json', 'csv', 'md', 'vtt', 'm3u8'})
@@ -141,17 +146,33 @@ class _NoRedirectHandler(HTTPRedirectHandler):
         raise ExplorerError('Archive body fetch redirected outside archive_origin')
 
 
-def _fetch_raw_bytes(saved_url: str, origin_netloc: str, origin_scheme: str, *, timeout: float, max_bytes: int) -> bytes:
+def _check_deadline(deadline: float | None) -> None:
+    if deadline is not None and time.monotonic() > deadline:
+        raise TimeoutError('Document text read timed out')
+
+
+def _fetch_raw_bytes(
+    saved_url: str,
+    origin_netloc: str,
+    origin_scheme: str,
+    *,
+    timeout: float,
+    max_bytes: int,
+    deadline: float | None = None,
+) -> bytes:
+    _check_deadline(deadline)
     request = Request(saved_url, headers={'User-Agent': f'CongressExplorerMCP/{__version__}'})
     opener = build_opener(_NoRedirectHandler())
+    sock_timeout = max(0.05, min(timeout, deadline - time.monotonic())) if deadline is not None else timeout
     try:
-        with opener.open(request, timeout=timeout) as stream:
+        with opener.open(request, timeout=sock_timeout) as stream:
             final = urlsplit(stream.url)
             if final.scheme != origin_scheme or final.netloc != origin_netloc:
                 raise ExplorerError('Archive body fetch redirected outside archive_origin')
             chunks: list[bytes] = []
             total = 0
             while chunk := stream.read(65536):
+                _check_deadline(deadline)
                 total += len(chunk)
                 if total > max_bytes:
                     raise ExplorerError(f'Fetched document body exceeds size limit ({max_bytes} bytes)')
@@ -206,7 +227,8 @@ def verify_and_decode_body(raw_bytes: bytes, saved_body_hex: str, saved_suffix: 
     raise ExplorerError('Fetched document body SHA-256 does not match published saved_body')
 
 
-def _extract_pdf_pages(payload: bytes) -> list[str]:
+def _extract_pdf_pages(payload: bytes, *, deadline: float | None = None) -> list[str]:
+    _check_deadline(deadline)
     header_pos = payload.find(b'%PDF-', 0, 1024)
     if header_pos < 0:
         raise ExplorerError('Invalid or corrupt PDF body')
@@ -216,20 +238,27 @@ def _extract_pdf_pages(payload: bytes) -> list[str]:
         from pypdf import PdfReader
         reader = PdfReader(io.BytesIO(pdf_data), strict=False)
         if len(reader.pages) > 0:
-            pages = [(page.extract_text() or '').strip() for page in reader.pages]
+            pages = []
+            for page in reader.pages:
+                _check_deadline(deadline)
+                pages.append((page.extract_text() or '').strip())
             if any(pages):
                 return pages
+    except TimeoutError:
+        raise
     except Exception:
         pass
     # 2. Secondary: poppler pdftotext
     pdftotext = shutil.which('pdftotext')
     if pdftotext:
+        _check_deadline(deadline)
+        pdf_timeout = max(1.0, deadline - time.monotonic()) if deadline is not None else 15.0
         try:
             proc = subprocess.run(
                 [pdftotext, '-q', '-', '-'],
                 input=pdf_data,
                 capture_output=True,
-                timeout=15,
+                timeout=pdf_timeout,
                 check=False,
             )
             if proc.returncode == 0 and proc.stdout:
@@ -239,21 +268,28 @@ def _extract_pdf_pages(payload: bytes) -> list[str]:
                 pages = [p.strip() for p in raw_pages]
                 if any(pages):
                     return pages
+        except subprocess.TimeoutExpired as error:
+            raise TimeoutError('Document text read timed out') from error
+        except TimeoutError:
+            raise
         except Exception:
             pass
-    # 3. Fallback for minimal PDF streams with literal (text) Tj operators
-    blocks = re.findall(rb'BT\b(.*?)\bET', pdf_data, flags=re.DOTALL)
-    if blocks:
-        pages = []
-        for block in blocks:
-            tokens = re.findall(rb'\((?:\\.|[^\\()])*\)', block)
-            lines = []
-            for tok in tokens:
-                inner = tok[1:-1].replace(b'\\(', b'(').replace(b'\\)', b')').replace(b'\\\\', b'\\')
-                lines.append(inner.decode('latin-1', errors='replace'))
-            pages.append('\n'.join(lines).strip())
-        if any(pages):
-            return pages
+    # 3. Fallback for minimal PDF streams with literal (text) Tj operators (bounded to <= 4 MiB)
+    if len(pdf_data) <= MAX_FALLBACK_PDF_BYTES:
+        _check_deadline(deadline)
+        blocks = re.findall(rb'BT\b(.*?)\bET', pdf_data, flags=re.DOTALL)
+        if blocks:
+            pages = []
+            for block in blocks:
+                _check_deadline(deadline)
+                tokens = re.findall(rb'\((?:\\.|[^\\()])*\)', block)
+                lines = []
+                for tok in tokens:
+                    inner = tok[1:-1].replace(b'\\(', b'(').replace(b'\\)', b')').replace(b'\\\\', b'\\')
+                    lines.append(inner.decode('latin-1', errors='replace'))
+                pages.append('\n'.join(lines).strip())
+            if any(pages):
+                return pages
     raise ExplorerError('Unable to extract text from PDF body')
 
 
@@ -264,9 +300,10 @@ def _extract_xml_text(payload: bytes) -> str:
     return parser.get_text()
 
 
-def extract_pages(payload: bytes, fmt: str) -> list[str]:
+def extract_pages(payload: bytes, fmt: str, *, deadline: float | None = None) -> list[str]:
+    _check_deadline(deadline)
     if fmt == 'pdf' or payload.startswith(b'%PDF-'):
-        return _extract_pdf_pages(payload)
+        return _extract_pdf_pages(payload, deadline=deadline)
     if b'\x00' in payload[:8192]:
         raise ExplorerError('Unsupported binary document body')
     if fmt in ('html', 'xml'):
@@ -278,13 +315,81 @@ def extract_pages(payload: bytes, fmt: str) -> list[str]:
     return [text.strip()]
 
 
+def _read_cached_pages(cache_path: Path, body_hex: str, *, max_bytes: int = MAX_BODY_BYTES) -> list[str] | None:
+    if cache_path.is_symlink():
+        raise ExplorerError('Cached document body entry is a symlink')
+    if not cache_path.exists():
+        return None
+    try:
+        stat = cache_path.stat()
+    except OSError as error:
+        raise ExplorerError('Corrupt cached document body') from error
+    if stat.st_size > max_bytes:
+        raise ExplorerError('Corrupt cached document body')
+    try:
+        cached = json.loads(cache_path.read_bytes())
+    except Exception as error:
+        raise ExplorerError('Corrupt cached document body') from error
+    if (
+        not isinstance(cached, dict)
+        or cached.get('version') != 1
+        or cached.get('saved_body') != body_hex
+        or not isinstance(cached.get('pages'), list)
+        or len(cached['pages']) == 0
+        or not all(isinstance(p, str) for p in cached['pages'])
+    ):
+        raise ExplorerError('Corrupt cached document body')
+    return cached['pages']
+
+
+def _write_cached_pages(
+    cache_path: Path,
+    body_hex: str,
+    fmt: str,
+    pages: list[str],
+    *,
+    max_entries: int = MAX_CACHE_ENTRIES,
+) -> None:
+    cache_dir = cache_path.parent
+    cache_dir.mkdir(parents=True, exist_ok=True)
+    atomic_json(
+        cache_path,
+        dict(
+            version=1,
+            saved_body=body_hex,
+            format=fmt,
+            page_count=len(pages),
+            pages=pages,
+        ),
+    )
+    try:
+        entries = []
+        for p in cache_dir.glob('*.json'):
+            if not p.is_symlink():
+                try:
+                    entries.append((p.stat().st_mtime, p))
+                except OSError:
+                    pass
+        if len(entries) > max_entries:
+            entries.sort(key=lambda item: item[0])
+            for _, old_path in entries[: len(entries) - max_entries]:
+                try:
+                    old_path.unlink(missing_ok=True)
+                except OSError:
+                    pass
+    except OSError:
+        pass
+
+
 def _load_or_extract_pages(
     target: dict,
     *,
     data_dir: Path | None,
     timeout: float,
     max_bytes: int,
+    deadline: float | None = None,
 ) -> tuple[list[str], str, str, str]:
+    _check_deadline(deadline)
     fmt = _normalize_format(target.get('format'), target.get('saved_media_type'), target.get('filename'))
     saved_url, body_hex, suffix = _validate_archive_url(
         target.get('saved_url'),
@@ -294,22 +399,9 @@ def _load_or_extract_pages(
     )
     cache_path = (Path(data_dir) / 'bodies' / f'{body_hex}.json') if data_dir is not None else None
     if cache_path is not None:
-        if cache_path.is_symlink():
-            raise ExplorerError('Cached document body entry is a symlink')
-        if cache_path.exists():
-            try:
-                cached = json.loads(cache_path.read_bytes())
-            except Exception as error:
-                raise ExplorerError('Corrupt cached document body') from error
-            if (
-                not isinstance(cached, dict)
-                or cached.get('version') != 1
-                or cached.get('saved_body') != body_hex
-                or not isinstance(cached.get('pages'), list)
-                or not all(isinstance(p, str) for p in cached['pages'])
-            ):
-                raise ExplorerError('Corrupt cached document body')
-            return cached['pages'], fmt, body_hex, saved_url
+        cached_pages = _read_cached_pages(cache_path, body_hex, max_bytes=max_bytes)
+        if cached_pages is not None:
+            return cached_pages, fmt, body_hex, saved_url
 
     origin_parts = urlsplit(target['archive_origin'])
     raw_bytes = _fetch_raw_bytes(
@@ -318,29 +410,31 @@ def _load_or_extract_pages(
         origin_parts.scheme,
         timeout=timeout,
         max_bytes=max_bytes,
+        deadline=deadline,
     )
+    _check_deadline(deadline)
     decoded = verify_and_decode_body(raw_bytes, body_hex, suffix, max_bytes=max_bytes)
-    pages = extract_pages(decoded, fmt)
-    if cache_path is not None:
-        cache_path.parent.mkdir(parents=True, exist_ok=True)
-        atomic_json(
-            cache_path,
-            dict(
-                version=1,
-                saved_body=body_hex,
-                format=fmt,
-                page_count=len(pages),
-                pages=pages,
-            ),
-        )
+    pages = extract_pages(decoded, fmt, deadline=deadline)
+    if cache_path is not None and pages:
+        _write_cached_pages(cache_path, body_hex, fmt, pages)
     return pages, fmt, body_hex, saved_url
 
 
+_REDOS_QUANTIFIER_RE = re.compile(
+    r'\([^)]*(?:[+*]|\{[0-9,]+\})[^)]*\)\s*(?:[+*?]|\{[0-9,]+\})|(?:[+*?]|\{[0-9,]+\})\s*(?:[+*]|\{[0-9,]+\})'
+)
+
+
 def _compile_query(query: str) -> re.Pattern[str]:
+    if _REDOS_QUANTIFIER_RE.search(query):
+        return re.compile(re.escape(query), re.IGNORECASE)
     try:
-        return re.compile(query, re.IGNORECASE)
+        pattern = re.compile(query, re.IGNORECASE)
     except re.error:
         return re.compile(re.escape(query), re.IGNORECASE)
+    if pattern.search('') is not None:
+        return re.compile(re.escape(query), re.IGNORECASE)
+    return pattern
 
 
 def read_document_body(
@@ -350,6 +444,7 @@ def read_document_body(
     data_dir: Path | None = None,
     timeout: float = 10.0,
 ) -> dict:
+    deadline = time.monotonic() + timeout
     query = query if isinstance(query, DocumentQuery) else DocumentQuery.model_validate(query)
     if query.cursor:
         raise ExplorerError('Text section uses page or offset, not cursor')
@@ -359,6 +454,7 @@ def read_document_body(
         data_dir=resolved_dir,
         timeout=timeout,
         max_bytes=MAX_BODY_BYTES,
+        deadline=deadline,
     )
     page_count = len(pages)
     if query.page is not None and query.page > page_count:
@@ -381,10 +477,8 @@ def read_document_body(
     if target.get('redirected_from'):
         base['redirected_from'] = target['redirected_from']
 
-    # Reserve JSON framing budget so the serialized response (including rows) never exceeds MAX_BYTES.
-    char_budget = min(query.max_chars, max(256, (MAX_BYTES - len(encoded(base)) - 4096) // 6))
-
     if query.query and query.query.strip():
+        snippet_budget = min(query.max_chars, max(256, (MAX_BYTES - len(encoded(base)) - 4096) // 6))
         pattern = _compile_query(query.query.strip())
         scoped_pages = [(query.page, pages[query.page - 1])] if query.page is not None else list(enumerate(pages, start=1))
         matches: list[dict] = []
@@ -392,17 +486,29 @@ def read_document_body(
         used_chars = 0
         has_more = False
         for page_num, page_text in scoped_pages:
-            start_pos = query.offset if (query.page is not None or page_num == 1) else 0
-            for m in pattern.finditer(page_text, start_pos):
+            _check_deadline(deadline)
+            pos = query.offset if (query.page is not None or page_num == 1) else 0
+            iterations = 0
+            while pos <= len(page_text) and iterations < MAX_PAGE_MATCH_ITERATIONS:
+                if (iterations & 0xFF) == 0:
+                    _check_deadline(deadline)
+                m = pattern.search(page_text, pos)
+                if m is None:
+                    break
+                iterations += 1
                 total_matches += 1
+                pos = m.end() if m.end() > m.start() else m.end() + 1
+                if len(matches) >= query.limit:
+                    has_more = True
+                    continue
                 left = max(0, m.start() - SNIPPET_CONTEXT_CHARS)
                 right = min(len(page_text), m.end() + SNIPPET_CONTEXT_CHARS)
                 snippet = ('...' if left > 0 else '') + page_text[left:right].strip() + ('...' if right < len(page_text) else '')
-                if len(matches) >= query.limit or (used_chars + len(snippet) > char_budget and matches):
+                if used_chars + len(snippet) > snippet_budget and matches:
                     has_more = True
                     continue
-                if len(snippet) > char_budget:
-                    snippet = snippet[:char_budget]
+                if len(snippet) > snippet_budget:
+                    snippet = snippet[:snippet_budget]
                     has_more = True
                 matched_text = m.group(0)
                 if len(matched_text) > 240:
@@ -416,6 +522,8 @@ def read_document_body(
                 )
                 matches.append(entry)
                 used_chars += len(snippet)
+            if iterations >= MAX_PAGE_MATCH_ITERATIONS:
+                has_more = True
         joined = '\n\n...\n\n'.join(m['snippet'] for m in matches)
         result = dict(
             base,
@@ -442,6 +550,7 @@ def read_document_body(
             result['has_more'] = result['truncated'] = True
         return result
 
+    char_budget = min(query.max_chars, max(256, (MAX_BYTES - len(encoded(base)) - 2048) // 2))
     source_text = pages[query.page - 1] if query.page is not None else '\n\n'.join(p for p in pages if p)
     total_chars = len(source_text)
     window = source_text[query.offset : query.offset + char_budget]
@@ -452,7 +561,7 @@ def read_document_body(
         base,
         total_chars=total_chars,
         text=window,
-        rows=[dict(page=query.page or 1, offset=query.offset, text=window)],
+        rows=[dict(page=base['page'], offset=query.offset, text=window)],
         has_more=has_more,
         truncated=has_more,
         next_offset=next_offset,
@@ -465,3 +574,6 @@ def read_document_body(
         result['has_more'] = result['truncated'] = True
         result['next_offset'] = query.offset + len(window)
     return result
+
+
+read_document_text = read_document_body

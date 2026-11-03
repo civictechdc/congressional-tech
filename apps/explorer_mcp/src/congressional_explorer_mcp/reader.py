@@ -3,7 +3,6 @@ import base64
 from contextlib import closing
 from hashlib import sha256
 import json
-from pathlib import Path
 from tempfile import TemporaryDirectory
 
 import duckdb
@@ -290,9 +289,6 @@ class Reader:
             limit=1,
         )['rows'][0]
         body, suffix = row['saved_body'], row['saved_suffix']
-        files = self.selection.get('files') or {}
-        first_file = next(iter(files.values()), None)
-        data_dir = str(Path(first_file['path']).parents[1]) if first_file and first_file.get('path') else None
         return dict(
             release_id=self.release_id,
             reference=dict(release_id=self.release_id, link_key=row['link_key']),
@@ -308,14 +304,12 @@ class Reader:
             saved_suffix=suffix,
             saved_url=self.file_url(body, suffix),
             archive_origin=self.selection.get('archive_origin'),
-            data_dir=data_dir,
         )
 
     def get_document(self, value):
         query = DocumentQuery.model_validate(value)
         if query.section == 'text':
-            from .body_reader import read_document_body
-            return read_document_body(self.document_body_target(query), query)
+            raise ExplorerError('Document body text is read by the MCP server outside the DuckDB query worker')
         position, redirected_from = self._resolve_document(query)
         if query.section == 'summary':
             if query.cursor:
