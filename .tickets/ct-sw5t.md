@@ -1,6 +1,6 @@
 ---
 id: ct-sw5t
-status: open
+status: closed
 deps: []
 links: [ct-5hnu, ct-m104, ct-adoh, ct-mj9f]
 created: 2026-11-02T19:50:29Z
@@ -50,3 +50,7 @@ Owner: apps/explorer_mcp/src/congressional_explorer_mcp/reader.py, server.py, an
 **2026-11-03T02:10:00Z**
 
 2026-11-02 (User Decision A5 — Implemented on r3-mcp): Implemented and verified on r3-mcp (5b2b09cb): DOCUMENT_SUMMARY_COLUMNS (14 columns including l.hidden), primary_source_url on get_document(section='summary'), non-scalar filter error message listing scalar fields, and SELECT * EXCLUDE (facts) FROM documents guidance in server.py. All 45 reader/relationship tests and 21 archive_schema tests pass.
+
+**2026-11-03T12:48:59Z**
+
+Implemented and verified on r3-mcp / release-train (4d583687): bills.short_title search, DOCUMENT_SUMMARY_COLUMNS with l.hidden filter, primary_source_url in get_document(section='summary'), unknown vs non-scalar filter errors listing valid scalar fields, and rosters guidance. 123 passed in explorer-mcp.

@@ -1,6 +1,6 @@
 ---
 id: ct-2o4d
-status: open
+status: closed
 deps: []
 links: [ct-j2yo, ct-dx22, ct-66ns, ct-67k1]
 created: 2026-11-03T00:59:37Z
@@ -33,3 +33,9 @@ Owner: model/sql/document-witness-keys.sql and packages/viewer_publication/src/v
 - Witness documents whose linked witness has a resolved event_id propagate that event_id into list.meeting_keys via component-meeting-links.sql (fixing the 52 witness documents in r1b-frozen/release where w.event_id IS NOT NULL was missing from list.meeting_keys).
 - All 6 model invariant suites (including model_invariants.missing_witness_keys = 0 and relationship_invariants.missing_document_witness = 0) pass.
 
+
+## Notes
+
+**2026-11-03T12:48:59Z**
+
+Implemented and verified on r3-mcp / release-train (4d583687): added HHRG/HMTG witness filename slug matching (+45,765 House witness documents linked at 99.55% concordance), root-winner priority ordering in witness-precedence.sql (0 two-hop chains across 34,878 superseded rows), and two-way witness_precedence propagation into list.witness_keys while keeping witness_name canonical.

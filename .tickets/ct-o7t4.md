@@ -1,6 +1,6 @@
 ---
 id: ct-o7t4
-status: open
+status: closed
 deps: []
 links: [ct-jnm9, ct-93zs, ct-m104, ct-c5xf]
 created: 2026-11-03T01:00:04Z
@@ -32,3 +32,9 @@ Owner: apps/explorer_mcp/src/congressional_explorer_mcp/{server.py,reader.py,mod
 - Unverified URLs (outside archive_origin), missing saved_body digests, mismatched SHA-256 digests, oversized decompression streams, and unsupported binary formats fail closed with a clear ExplorerError.
 - Response payloads respect MAX_BYTES and timeout guarantees, covered by unit and fault-injection tests.
 
+
+## Notes
+
+**2026-11-03T12:48:59Z**
+
+Implemented and verified on r3-mcp / release-train (4d583687): added body_reader.py and get_document(section='text', page, offset, max_chars, query) in parent server.py keeping DuckDB Worker air-gapped, verifying sha256 against detail.saved_body, enforcing _NoRedirectHandler, monotonic deadline + abandon_on_cancel=True, ReDoS/zero-length regex protection, 256-entry cache bound under <data_dir>/bodies/, and generic witness statement title enrichment in document-normalized.sql / document-recovery-normalized.sql.

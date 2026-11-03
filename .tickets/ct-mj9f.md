@@ -1,6 +1,6 @@
 ---
 id: ct-mj9f
-status: open
+status: closed
 deps: []
 links: [ct-m104, ct-sw5t]
 created: 2026-11-03T00:59:39Z
@@ -40,3 +40,9 @@ Owner: model/sql/meeting-records-resolved.sql, model/sql/entity-meetings.sql, mo
 - Hearing-referenced bills, their related_bills legislative vehicles (including 118-hr-815 <-> 118-hr-7521 and 117-hr-6833 <-> 117-s-3700), and committee-action/substantive 113th-119th Congress bills (including 118-s-686) are published in bills.parquet with public_law_number, cosponsor_count, and related_bills while staying within DataFusion's 109.6 MB per-stream aggregate memory cap and null_bills_* = 0 in relationship_invariants.
 - release-schema.json and docs/release-relationships.md document the updated bills.parquet scope and columns, and archive_schema --check passes.
 
+
+## Notes
+
+**2026-11-03T12:48:59Z**
+
+Implemented and verified on r3-mcp / release-train (4d583687): reconciled meetings.subject_keys across all 5 sources A-E in meeting-records-resolved.sql and entity-meetings.sql (4,784 meetings with subject_keys, including 1,316 meetings linked to 2,653 nominations via camelCase jacketNumber), and expanded entity-bills.sql to publish 52,279 bills with public_law_number, cosponsor_count, related_bills, and legislative vehicles.

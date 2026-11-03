@@ -1,6 +1,6 @@
 ---
 id: ct-j2yo
-status: open
+status: closed
 deps: []
 links: [ct-kthe, ct-x78c, ct-5w9u, ct-dx22, ct-egg6, ct-66ns, ct-2o4d, ct-67k1]
 created: 2026-11-03T00:59:35Z
@@ -35,3 +35,9 @@ Owner: model/registries/meeting-sources.json, model/sql/senate-page-meeting-link
 - Hearing-linked documents in list.parquet inherit committee_keys (+53,675 docs), congress (+19,784 docs), and chambers (+20,589 docs) from component_meeting_links, while false CHRG-* package-to-meeting links rejected by print_meeting_agreement are excluded from list.meeting_keys.
 - Ambiguous same-day Senate pages with no distinguishing title/witness agreement remain occasion='page:{hash}' with zero false meeting attachments, verified by an independent raw-record check and all 6 model invariant suites.
 
+
+## Notes
+
+**2026-11-03T12:48:59Z**
+
+Implemented and verified on r3-mcp / release-train (4d583687): added linearized window-function senate-page-meeting-links.sql (95.7ms on r1b-frozen, 0 OOM, 9,464 senate_page witnesses linked across 2,790 Senate hearings), swapped senate_page (priority 3) above mods (priority 4) in meeting-sources.json, updated entity-meeting-coverage.sql (+1,615 Senate meetings with witnesses=present), canonicalized .senate.gov host codes (spag00, slet00, jsec00, scnc00, ssaf00), and propagated committee_keys/congress/chambers in component-meeting-links.sql.

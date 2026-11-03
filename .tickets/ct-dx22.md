@@ -1,6 +1,6 @@
 ---
 id: ct-dx22
-status: open
+status: closed
 deps: []
 links: [ct-qg8e, ct-kthe, ct-j2yo, ct-x78c, ct-5w9u, ct-egg6, ct-66ns, ct-2o4d, ct-67k1]
 created: 2026-11-02T00:36:42Z
@@ -68,3 +68,7 @@ Round 1b 2026-11-02 (lead): Two-way package-to-meeting rule moves 392 rows on 93
 **2026-11-03T02:06:00Z**
 
 2026-11-02 (/etl-workflow Cross-Table Audit — F1): While entity-meetings.sql (meetings.transcripts) and appearance-observations.sql (witnesses) filter CHRG-* package links through package_meeting_links (with fallback WHERE f.package_id IS NULL), model/sql/component-meeting-links.sql:6,13 still joins raw meeting_transcript_links and model/sql/source-annotations-meetings.sql:1-5 still injects raw unnest(p.named_meetings) into document_metadata.meeting_keys -> list.meeting_keys. Consequently, 6,700 rejected (package_id, event_id) edges (including CHRG-117shrg52109 on 330128, CHRG-116shrg37808 on 326063, CHRG-119shrg62654 on 337427, and swapped 100083/100180) still leak into list.meeting_keys. Fix in component-meeting-links.sql and source-annotations-meetings.sql (tracked with ct-j2yo) so list.meeting_keys uses the same vetted package_meeting_links rule as meetings.transcripts.
+
+**2026-11-03T12:48:59Z**
+
+Implemented and verified on r3-mcp / release-train (4d583687): removed unvetted CHRG-* named_meetings from list.meeting_keys in document-normalized.sql, document-recovery-normalized.sql, and source-annotations-meetings.sql so list.meeting_keys agrees 100% with vetted package_meeting_links in detail.meetings.

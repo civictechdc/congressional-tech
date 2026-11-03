@@ -1,6 +1,6 @@
 ---
 id: ct-adoh
-status: open
+status: closed
 deps: []
 links: [ct-5hnu, ct-m104, ct-sw5t]
 created: 2026-11-02T19:50:29Z
@@ -45,3 +45,7 @@ Owner: model/registries/release-schema.json, docs/release-relationships.md, apps
 **2026-11-03T02:10:00Z**
 
 2026-11-02 (User Decision A5 — Implemented on r3-mcp): Implemented and verified on r3-mcp (5b2b09cb): standardized link_key and NOT coalesce(l.hidden,false) across all 6 document-returning recipes, added hearing_dossier recipe with portable columns across publish_v21 and r1b, regenerated docs/release-relationships.md, and verified archive_schema --check (exit 0) + 45 reader/relationship tests pass.
+
+**2026-11-03T12:48:59Z**
+
+Implemented and verified on r3-mcp / release-train (4d583687): aligned all 15 recipe example IDs across release-schema.json and conftest.py so all 15 return >=1 rows on both live/frozen releases and test fixtures, added lower(hex(d.link_key)) AS link_key and NOT coalesce(l.hidden,false) across document recipes, and added hearing_dossier recipe.
