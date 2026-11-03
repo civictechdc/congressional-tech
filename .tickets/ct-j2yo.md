@@ -10,7 +10,7 @@ assignee: mikewolfd
 parent: ct-77zb
 tags: [release, model, witnesses, senate, phase2]
 ---
-# Resolve senate_page witness occasions to meetings.event_id and propagate meeting_keys to Senate witness documents
+# Resolve senate_page witness occasions to meetings.event_id and propagate vetted meeting/committee/congress/chamber links to documents
 
 Double-blind chaos evaluation (.cache/chaos-double-blind-20261102T2304Z/report.md, DB-4 & DB-5) found that 100% of Senate webpage witness rows (13,561 rows across publish_v21 and r1b-frozen/after-out where source='senate_page') have event_id=NULL and occasion='page:<hash>'. Because appearance-observations.sql:181-188 never links senate_page URLs or (committee, date) contexts to meetings_resolved.event_id: (1) get_entity(table='meetings', id=event_id, section='witnesses') and meeting-keyed witness joins return 0 senate_page witnesses; (2) per-person witness deduplication (witness-precedence.sql) cannot deduplicate senate_page witnesses against congress_gov or mods witnesses on the same hearing; and (3) Senate witness testimony PDFs linked via senate_page have witness_keys populated but meeting_keys=[] and document_date=NULL.
 

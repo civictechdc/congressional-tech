@@ -10,7 +10,7 @@ assignee: mikewolfd
 parent: ct-77zb
 tags: [release, model, bills, spicy-regs, phase2]
 ---
-# Link unreferenced Senate original-bill markups and related bill vehicles to hearings and publish public_law_number + related_bills
+# Reconcile meetings.subject_keys across all 5 in-corpus sources and publish related_bills + committee-action bills in bills.parquet
 
 Double-blind chaos evaluation (.cache/chaos-double-blind-20261102T2304Z/report.md, Briefs 1-5) and follow-up investigation of user decision A2 ("shouldn't *all* bills be referenced by hearings in some way or form?") uncovered the exact hearing-linkage gaps explaining why certain bills missed meetings.subject_keys / bills.parquet:
 1. Already in meetings.subject_keys and bills.parquet (13,234 rows in r1b-frozen/release): 118-s-127, 118-s-1339, 118-s-576, 117-s-3373, 117-hr-6833, and 118-hr-7521 ARE already linked to hearings and present in bills.parquet (they were only absent in the older 10,352-row publish_v21 snapshot prior to ct-h1nd / r1b).
@@ -36,7 +36,7 @@ Owner: model/sql/meeting-records-resolved.sql, model/sql/entity-meetings.sql, mo
 
 ## Acceptance Criteria
 
-- Senate original-bill markup meetings (including 334680 -> 118-s-2973 and 331760 -> 117-s-3541) populate meetings.subject_keys and resolve in get_entity(table='bills', id=..., section='meetings').
+- `meetings.subject_keys` reconciles all 5 authoritative in-corpus sources: (A) 1:1 `(committee/parent_committee, activity_date)` `'Hearings%'`/`'Markup%'` rows in `spicy_bill_committee_activities` (`+438` meetings, `+1,200` bills); (B) Senate/House `"original bill entitled '...'"` markup meetings (`+25` meetings, `+42` original bills including `334680 -> 118-s-2973` and `331760 -> 117-s-3541`); (C) single-meeting document `list.measure_keys` (`+96` meetings, `+300` bills); (D) confirmation hearing `nominations.transcripts[]` matching `meetings.transcripts` (`+20` meetings, `+23` nominations); and (E) explicit bill numbers in `meetings.title` validated against `spicy_congress_bills.bill_id` (`+266` meetings, `+858` bills).
 - Hearing-referenced bills, their related_bills legislative vehicles (including 118-hr-815 <-> 118-hr-7521 and 117-hr-6833 <-> 117-s-3700), and committee-action/substantive 113th-119th Congress bills (including 118-s-686) are published in bills.parquet with public_law_number, cosponsor_count, and related_bills while staying within DataFusion's 109.6 MB per-stream aggregate memory cap and null_bills_* = 0 in relationship_invariants.
 - release-schema.json and docs/release-relationships.md document the updated bills.parquet scope and columns, and archive_schema --check passes.
 

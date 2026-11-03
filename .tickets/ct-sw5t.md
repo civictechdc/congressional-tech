@@ -46,3 +46,7 @@ Owner: apps/explorer_mcp/src/congressional_explorer_mcp/reader.py, server.py, an
 **2026-11-03T01:00:52Z**
 
 2026-11-02 (3-Agent Retrospective): Expanded scope with Tasks 1.1, 1.2, and 1.4 from Guided Persona Tester (b3585182) and Unassisted Blind MCP User (14cd6e41): (a) include l.hidden in DOCUMENT_SUMMARY_COLUMNS so search_documents and get_entity(section='documents') return identical 14-column rows; (b) append valid scalar filter fields to non-scalar filter rejection errors in search_entities; (c) include primary_source_url in get_document(section='summary') and document SELECT * EXCLUDE (facts) FROM documents in server.py:query_sql.
+
+**2026-11-03T02:10:00Z**
+
+2026-11-02 (User Decision A5 — Implemented on r3-mcp): Implemented and verified on r3-mcp (5b2b09cb): DOCUMENT_SUMMARY_COLUMNS (14 columns including l.hidden), primary_source_url on get_document(section='summary'), non-scalar filter error message listing scalar fields, and SELECT * EXCLUDE (facts) FROM documents guidance in server.py. All 45 reader/relationship tests and 21 archive_schema tests pass.

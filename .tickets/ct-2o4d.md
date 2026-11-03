@@ -29,6 +29,7 @@ Owner: model/sql/document-witness-keys.sql and packages/viewer_publication/src/v
 ## Acceptance Criteria
 
 - House HHRG-*-{Wstate,TTF,Bio}-* PDFs on congress_gov-sourced meetings unambiguously matching a single canonical witness on that event_id populate list.witness_keys (resolving 19,000+ previously unlinked House testimony PDFs, including SBF on 114305/114729, John J. Ray III c1858421dc9d7e31 on 115246, and Shou Chew on 115519).
-- Document URLs on superseded witness rows propagate via witness_precedence.superseded_by to the canonical witness_key.
+- Document URLs on superseded witness rows propagate via witness_precedence.superseded_by to the canonical witness_key (storing both canonical and superseded witness_keys in list.witness_keys per User Decision A3).
+- Witness documents whose linked witness has a resolved event_id propagate that event_id into list.meeting_keys via component-meeting-links.sql (fixing the 52 witness documents in r1b-frozen/release where w.event_id IS NOT NULL was missing from list.meeting_keys).
 - All 6 model invariant suites (including model_invariants.missing_witness_keys = 0 and relationship_invariants.missing_document_witness = 0) pass.
 
