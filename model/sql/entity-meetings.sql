@@ -124,14 +124,53 @@ WITH keys AS (
   'video_key',video_key,'language',language,'production',production
  ) ORDER BY tr_seq ASC) AS transcripts
  FROM transcript_ranked GROUP BY event_id
+), nomination_hearing_chunks AS (
+ SELECT
+  cast(congress AS VARCHAR)||'-pn-'||cast(number AS VARCHAR)||
+  CASE
+   WHEN part_number IS NOT NULL AND try_cast(part_number AS INT) IS NOT NULL AND try_cast(part_number AS INT)<>0
+    THEN '-'||regexp_replace(trim(part_number),'^0+','')
+   ELSE ''
+  END AS nomination_id,
+  congress,
+  unnest(string_to_array(hearings_json,'}')) AS chunk
+ FROM spicy_nominations
+ WHERE congress IS NOT NULL AND number IS NOT NULL AND hearings_json IS NOT NULL
+), nomination_hearing_packages AS (
+ SELECT DISTINCT nomination_id,
+  coalesce(
+   (regexp_match(chunk,'(?i)"package_?id"\s*:\s*"([^"]+)"'))[1],
+   (regexp_match(chunk,'(CHRG-[0-9]+[hsj]hrg[0-9]+)'))[1],
+   CASE WHEN regexp_like(chunk,'(?i)"jacket(?:_?number)?"\s*:\s*"?([0-9]+)"?')
+    THEN 'CHRG-'||cast(congress AS VARCHAR)||
+     (CASE lower(coalesce((regexp_match(chunk,'(?i)"chamber"\s*:\s*"([^"]+)"'))[1],'senate'))
+      WHEN 'house' THEN 'h' WHEN 'joint' THEN 'j' ELSE 's' END)||'hrg'||
+     (regexp_match(chunk,'(?i)"jacket(?:_?number)?"\s*:\s*"?([0-9]+)"?'))[1]
+   END
+  ) AS package_id
+ FROM nomination_hearing_chunks
+), combined_subjects AS (
+ SELECT event_id,nullif(lower(trim(unnest(subject_keys))),'') AS subject_key
+ FROM meetings_resolved
+ WHERE subject_keys IS NOT NULL
+ UNION
+ SELECT try_cast(o.meeting_keys[1] AS BIGINT) AS event_id,
+  nullif(lower(trim(unnest(o.measure_keys))),'') AS subject_key
+ FROM ordered o
+ WHERE coalesce(array_length(o.meeting_keys),0)=1
+   AND o.measure_keys IS NOT NULL
+ UNION
+ SELECT tr.event_id,lower(trim(np.nomination_id)) AS subject_key
+ FROM transcript_ranked tr
+ JOIN nomination_hearing_packages np ON np.package_id=tr.package_id
+ WHERE tr.package_id IS NOT NULL AND np.package_id IS NOT NULL
 ), subject_keys_by_event AS (
  SELECT event_id,array_agg(subject_key ORDER BY subject_key) AS subject_keys
  FROM (
-  SELECT DISTINCT event_id,lower(trim(unnest(subject_keys))) AS subject_key
-  FROM meetings_resolved
-  WHERE subject_keys IS NOT NULL
+  SELECT DISTINCT event_id,subject_key
+  FROM combined_subjects
+  WHERE event_id IS NOT NULL AND subject_key IS NOT NULL AND subject_key<>''
  )
- WHERE subject_key IS NOT NULL AND subject_key<>''
  GROUP BY event_id
 )
 SELECT k.event_id,

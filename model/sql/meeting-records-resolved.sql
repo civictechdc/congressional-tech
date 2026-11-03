@@ -58,29 +58,14 @@ WITH sitting_rows AS (
  FROM held_meeting_committees
  GROUP BY sys_code,meeting_date
  HAVING count(DISTINCT event_id)=1
-), committee_code_map AS (
- SELECT raw_key,min(system_code) AS norm_code
- FROM (
-  SELECT upper(trim(code)) AS raw_key,lower(trim(system_code)) AS system_code FROM committee_codes WHERE code IS NOT NULL AND system_code IS NOT NULL
-  UNION ALL
-  SELECT 'HS'||upper(trim(code)) AS raw_key,lower(trim(system_code)) AS system_code FROM committee_codes WHERE chamber='house' AND length(trim(code))=4 AND system_code IS NOT NULL
-  UNION ALL
-  SELECT upper(trim(system_code)) AS raw_key,lower(trim(system_code)) AS system_code FROM committee_codes WHERE system_code IS NOT NULL
-  UNION ALL SELECT 'HSJL00' AS raw_key,'jslc00' AS system_code
-  UNION ALL SELECT 'HSIT00' AS raw_key,'jstx00' AS system_code
-  UNION ALL SELECT 'HSEC00' AS raw_key,'jsec00' AS system_code
-  UNION ALL SELECT 'HSJP00' AS raw_key,'jspr00' AS system_code
- )
- GROUP BY raw_key
 ), normalized_bill_activities AS (
  SELECT
   lower(trim(a.bill_id)) AS bill_id,
   try_cast(split_part(lower(trim(a.bill_id)),'-',1) AS INT) AS bill_congress,
-  coalesce(ccm.norm_code,lower(trim(a.system_code))) AS sys_code,
+  lower(trim(a.system_code)) AS sys_code,
   lower(trim(a.activity_name)) AS activity_lower,
   try_cast(substr(trim(a.activity_date),1,10) AS DATE) AS activity_day
  FROM spicy_bill_committee_activities a
- LEFT JOIN committee_code_map ccm ON ccm.raw_key=upper(trim(a.system_code))
  WHERE a.bill_id IS NOT NULL AND trim(a.bill_id)<>''
    AND a.system_code IS NOT NULL AND trim(a.system_code)<>''
 ), activity_subject_rows AS (
@@ -203,11 +188,11 @@ WITH sitting_rows AS (
  SELECT event_id,array_sort(array_distinct(array_agg(jacket))) AS transcript_jackets
  FROM jacket_rows WHERE jacket IS NOT NULL GROUP BY event_id
 ), nomination_jacket_subjects AS (
- -- Source 5a (jacket part): confirmation hearing nominations matched by jacket_number
+ -- Source 5a (jacket part): confirmation hearing nominations matched by jacketNumber / jacket_number / package_id
  SELECT DISTINCT jr.event_id,
   cast(n.congress AS VARCHAR)||'-pn-'||cast(n.number AS VARCHAR)||
   CASE
-   WHEN n.part_number IS NOT NULL AND trim(n.part_number)<>'' AND trim(n.part_number)<>'00'
+   WHEN n.part_number IS NOT NULL AND try_cast(n.part_number AS INT) IS NOT NULL AND try_cast(n.part_number AS INT)<>0
     THEN '-'||regexp_replace(trim(n.part_number),'^0+','')
    ELSE ''
   END AS subject_key
@@ -215,18 +200,18 @@ WITH sitting_rows AS (
  JOIN meeting_records_merged m ON m.event_id=jr.event_id
  JOIN (
   SELECT congress,number,part_number,
-   try_cast(trim(regexp_replace(raw_j,'^jacket:','')) AS BIGINT) AS jacket
+   try_cast(coalesce(
+    (regexp_match(chunk,'(?i)"jacket(?:_?number)?"\s*:\s*"?([0-9]+)"?'))[1],
+    (regexp_match(chunk,'CHRG-[0-9]+[hsj]hrg([0-9]+)'))[1]
+   ) AS BIGINT) AS jacket
   FROM (
    SELECT congress,number,part_number,
-    unnest(string_to_array(
-     regexp_replace(coalesce(hearings_json,''),'"jacket_number"\s*:\s*"([^"]+)"','|||jacket:$1|||','g'),
-     '|||'
-    )) AS raw_j
+    unnest(string_to_array(hearings_json,'}')) AS chunk
    FROM spicy_nominations
-   WHERE congress IS NOT NULL AND number IS NOT NULL
+   WHERE congress IS NOT NULL AND number IS NOT NULL AND hearings_json IS NOT NULL
   )
-  WHERE raw_j LIKE 'jacket:%'
  ) n ON n.jacket=jr.jacket AND (m.congress IS NULL OR m.congress=n.congress)
+ WHERE n.jacket IS NOT NULL
 ), subject_rows AS (
  SELECT event_id,lower(trim(unnest(house_subjects))) AS subject_key
  FROM meeting_records_merged WHERE house_subjects IS NOT NULL AND coalesce(array_length(house_subjects),0)>0
