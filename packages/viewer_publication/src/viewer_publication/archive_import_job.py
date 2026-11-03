@@ -17,7 +17,7 @@ from pathlib import Path
 from urllib.parse import urlsplit
 
 from congress_api.lake.daily import ALL_TABLE_NAMES
-from viewer_publication.archive_backfill_job import _table_ref
+from viewer_publication.archive_backfill_job import EXPLORER_TABLE_NAMES,_table_ref
 from viewer_publication.archive_model_job import _local,_pin
 
 FIELDS={'version','catalog_root','work','location','definition','provenance','tables'}
@@ -58,8 +58,8 @@ def load_spec(path):
     if 'create_namespace' in value and type(value['create_namespace']) is not bool:
         raise ValueError('Import create_namespace must be boolean')
     tables=value['tables']
-    if not isinstance(tables,dict) or not tables or set(tables)-set(ALL_TABLE_NAMES):
-        raise ValueError('Import tables must name archive lake tables')
+    if not isinstance(tables,dict) or not tables or set(tables)-set(ALL_TABLE_NAMES)-set(EXPLORER_TABLE_NAMES):
+        raise ValueError('Import tables must name archive or Explorer lake tables')
     result={}
     for name,item in tables.items():
         if not isinstance(item,dict) or not {'source','schema','partition_spec','table'}<=set(item) or set(item)-{'source','schema','partition_spec','table','producer'}:
@@ -81,10 +81,10 @@ def load_spec(path):
 
 
 def _verified(item):
-    """Refuse any changed source or schema file before the first effect."""
+    """Refuse changed source, schema or origin evidence before the first effect."""
     from congress_api.retention.provenance import file_pin
-    for key in ('source','schema'):
-        if file_pin(item[key]['path'])!={k:item[key][k] for k in ('sha256','size')}:
+    for key in ('source','schema','producer'):
+        if key in item and file_pin(item[key]['path'])!={k:item[key][k] for k in ('sha256','size')}:
             raise ValueError('Import '+key+' does not match its pin: '+item[key]['path'])
     return json.loads(Path(item['schema']['path']).read_text(encoding='utf-8'))
 

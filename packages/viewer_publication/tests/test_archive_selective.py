@@ -224,6 +224,47 @@ def test_a_run_naming_the_explorer_tables_builds_them_from_its_captures(tmp_path
     assert head(spec,'video_records')==[]
 
 
+def test_fresh_explorer_run_refuses_a_preseeded_same_pin_target_before_production(tmp_path,fixture):
+    names=('captures','readings','filename_readings','meeting_records','appearance_records','video_records','committee_records')
+    spec=selective_spec(tmp_path,fixture,dict(captures=B),differential_rows=0,through='tables',
+        tables={name:dict(namespace=['selective'],name=name) for name in names})
+    source=tmp_path/'stale-video.parquet'
+    row=video_records.build_row('ab'*32,video_records.SOURCE,b'{}',
+        parser_version=video_records.current_versions()[video_records.SOURCE])
+    pq.write_table(video_records.table([row]),source)
+    with NativeDatasets.from_config(os.environ['DOCSPEC_JOB_CONFIG']) as engine:
+        video_records.create_table(engine=engine,work=tmp_path/'create-stale',catalog_root=spec['catalog_root'],
+            table=spec['tables']['video_records'],location=str(tmp_path/'stale-lake'),create_namespace=True)
+        video_records.append(dict(records=str(source),parser_version=video_records.current_versions()),engine=engine,
+            work=tmp_path/'append-stale',catalog_root=spec['catalog_root'],table=spec['tables']['video_records'])
+    with pytest.raises(SelectiveStop,match='video_records.*already exists'):execute(spec)
+    state=json.loads((Path(spec['work'])/'state.json').read_text())
+    assert 'selection' not in state and 'daily' not in state and 'pins' not in state
+
+
+def test_explorer_completion_recovers_counts_after_an_append_save_crash(tmp_path,fixture,monkeypatch):
+    import viewer_publication.archive_selective as selective
+    monkeypatch.setattr(selective,'_writer',lambda run:dict(job=selective.PRODUCER_JOB,commit='a'*40,lockfile_digest='0'*64))
+    names=('captures','readings','filename_readings','meeting_records','appearance_records','video_records','committee_records')
+    spec=selective_spec(tmp_path,fixture,dict(captures=B),differential_rows=0,through='tables',
+        tables={name:dict(namespace=['selective'],name=name) for name in names})
+    original=committee_records.append
+    def crash_after_append(staged,**kwargs):
+        original(staged,**kwargs)
+        raise RuntimeError('injected crash after native append')
+    monkeypatch.setattr(committee_records,'append',crash_after_append)
+    with pytest.raises(RuntimeError,match='after native append'):execute(spec)
+    state=json.loads((Path(spec['work'])/'state.json').read_text())
+    assert 'committee_records' not in state['completion']
+    monkeypatch.setattr(committee_records,'append',original)
+    report=execute(dict(spec,resume=True))
+    assert report['status']=='tables_built'
+    assert report['completion']['committee_records']==dict(appended=2,sources={'house_xml':2})
+    assert report['tables']['committee_records']['appended']==2 and len(head(spec,'committee_records'))==2
+    producer=json.loads(Path(report['producers']['committee_records']['path']).read_text())
+    assert (producer['reused_rows'],producer['appended'])==(0,2)
+
+
 def test_narrow_fix_rebuilds_the_whole_receipt_and_reuses_the_rest_untouched(tmp_path,fixture):
     def stale(rows):
         on_receipt(rows,'/b.jsonl.gz')[0]['http_status']=299
@@ -258,6 +299,7 @@ def test_selected_records_recompute_and_unselected_are_copied_verbatim(tmp_path,
     assert report['tables']['meeting_records']['appended']==report['tables']['meeting_records']['selected']>0
     assert {row['parser_version'] for row in head(spec,'meeting_records')}<=set(meeting.values())
     assert {row['catalog_version'] for row in head(spec,'filename_readings')}=={catalog_version()}
+    assert report['tables']['filename_readings']['appended']==report['filenames_recomputed']
     for name in ('meeting_records','appearance_records','filename_readings'):
         assert sorted_rows(head(spec,name))==sorted_rows(pq.read_table(fixture['base'][name]).to_pylist())
     assert report['differential']['meeting_records'] and report['differential']['filename_readings']
@@ -418,6 +460,7 @@ def test_completion_appends_a_candidate_the_base_never_had_and_stops_over_budget
     spec=selective_spec(tmp_path/'ok',fixture,dict(captures=B),differential_rows=0,base=stale,through='tables')
     report=execute(spec)
     assert report['completion']['meeting_records']=={'appended':1,'sources':{'house_xml':1}}
+    assert report['tables']['meeting_records']['appended']==1
     assert sorted_rows(head(spec,'meeting_records'))==sorted_rows(base)
     # Every meeting missing: more completion work than a budget of one.
     (tmp_path/'over').mkdir()
@@ -595,7 +638,6 @@ def test_records_written_on_a_resume_of_an_older_build_say_so(tmp_path,fixture,m
     monkeypatch.setattr(selective,'_writer',lambda run:None)  # first run: no clean identity, no records
     spec=selective_spec(tmp_path,fixture,dict(captures=B),differential_rows=0)
     assert 'unavailable' in execute(spec)['producers']
-    state_path=Path(spec['work'])/'state.json';state=json.loads(state_path.read_text());state.pop('producers');state_path.write_text(json.dumps(state))
     monkeypatch.setattr(selective,'_writer',lambda run:dict(job=selective.PRODUCER_JOB,commit=head_commit,lockfile_digest='0'*64))
     report=execute(dict(spec,resume=True))
     records=[json.loads(Path(pin['path']).read_text()) for pin in report['producers'].values()]

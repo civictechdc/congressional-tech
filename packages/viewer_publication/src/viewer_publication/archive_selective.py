@@ -152,7 +152,7 @@ def current_version_sql(name,versions,alias=None):
     """(column, expression) naming the one current version a D3/D4 row may carry; None otherwise."""
     source=(alias+'.' if alias else '')+'source'
     if name=='filename_readings':return 'catalog_version',"'"+versions[name]+"'"
-    if name in RECORD_TABLES:
+    if name in RECORD_TABLES or name in EXPLORER_TABLES:
         cases=' '.join(f"WHEN '{key}' THEN '{version}'" for key,version in sorted(versions[name].items()))
         return 'parser_version',f'CASE {source} {cases} END'
     return None,None
@@ -272,6 +272,22 @@ def _select(run):
     run.state['selection']=selection;run.save()
 
 
+def _require_absent_explorer_targets(run):
+    """A fresh run owns its Explorer tables; only a same-identity resume may reuse one."""
+    for name in EXPLORER_TABLES:
+        if name not in run.spec['tables']:continue
+        try:
+            tables.resolve_tables(engine=run.engine,work=run.attempt/'explorer-targets'/name,
+                catalog_root=run.catalog,tables={name:run.spec['tables'][name]})
+        except ValueError as error:
+            if str(error)==name+' table does not exist':continue
+            raise
+        except DocSpecFailure as error:
+            if any(sign in str(error).lower() for sign in ('unable to open database','namespace')):continue
+            raise
+        raise SelectiveStop(f'{name}: Explorer target already exists; a fresh selective run requires an absent target')
+
+
 def _ensure_table(run,name,directory):
     ref=run.spec['tables'][name];missing_namespace=False
     try:
@@ -388,12 +404,16 @@ def _writer(run):
 
 
 def _table_counts(run,name):
-    """Report seeded D4 counts for archive tables and completion counts for Explorer tables."""
+    """Report the run's retained production counts without another full-table scan."""
     selection=run.state['selection'].get(name);explorer=name in EXPLORER_TABLES
-    stages=run.state.get('completion',{}) if explorer else run.state.get('d4',{})
+    completion=run.state.get('completion',{}).get(name,{}).get('appended')
+    if explorer:appended=completion
+    elif name in RECORD_TABLES:appended=(run.state.get('d4',{}).get(name,{}).get('appended') or 0)+(completion or 0)
+    elif name=='filename_readings':appended=run.state['daily'].get('filenames_recomputed')
+    else:appended=None  # D1/D2 do not retain a separate appended count.
     return dict(base=selection['base'] if selection else 0,hits=selection['hits'] if selection else 0,
         selected=selection['selected'] if selection else 0,
-        reused=run.state.get('seeded',{}).get(name,0 if explorer else None),appended=stages.get(name,{}).get('appended'))
+        reused=run.state.get('seeded',{}).get(name,0 if explorer else None),appended=appended)
 
 
 def _producers(run):
@@ -406,7 +426,8 @@ def _producers(run):
     recomputes the versions at that commit either way. With an unclean tree nothing is
     written, and gate 5 refuses.
     """
-    if 'producers' in run.state:return
+    producers=run.state.get('producers')
+    if isinstance(producers,dict) and 'unavailable' not in producers:return
     writer=_writer(run)
     if writer is None:
         run.state['producers']=dict(unavailable='the checkout was not clean, so no commit can be named');run.save();return
@@ -508,7 +529,9 @@ def execute_selective(spec,*,runtime_factory=None):
         engine.verify_runtime()
         state=_open_state(spec,engine)
         attempt=Path(spec['work'])/'attempts'/('attempt-'+uuid4().hex);attempt.mkdir(parents=True)
-        run=Run(spec,engine,state,attempt);_clear_unaccepted_model(run);run.check_scratch();bodies=Bodies(run)
+        run=Run(spec,engine,state,attempt)
+        if not spec.get('resume'):_require_absent_explorer_targets(run)
+        _clear_unaccepted_model(run);run.check_scratch();bodies=Bodies(run)
         # Held only from the start of production: a resume of an already-built state must not
         # claim, after the fact, that its commit was there from the start.
         if not run.state.get('seeded') and 'writer_commit' not in run.state and (writer:=_writer(run)) is not None:

@@ -61,8 +61,8 @@ SCHEMA = ARROW_SCHEMA
 
 def current_versions(*, root: Path = ROOT) -> dict[str, str]:
     package = Path(__file__).resolve().parents[1]
-    files = {"producer": Path(__file__), "parser": package / "parsers/youtube_video.py",
-             "schema": Path(root) / "model/lake/video-records.schema.json"}
+    files = {"producer": Path(__file__), "shared_producer": package / "lake/_record_producer.py",
+             "parser": package / "parsers/youtube_video.py", "schema": Path(root) / "model/lake/video-records.schema.json"}
     return {SOURCE: version_digest(packages={}, files={**files,
         "cache": package.parents[1].parent / "congress_shared/src/congress_shared/youtube_cache.py",
         "selection": Path(root) / "model/sql/youtube-cache-bodies.sql",
