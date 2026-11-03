@@ -540,3 +540,172 @@ def test_same_day_senate_pages_disambiguate_by_title_and_witness_overlap(tmp_pat
     assert got['Bob Reactor'] == ('meeting:9002', 9002)
     assert got['Carol Unmatched'][0].startswith('page:') and got['Carol Unmatched'][1] is None
 
+
+def test_senate_special_and_joint_hosts_link_to_canonical_committee_codes(tmp_path):
+    # F7: aging -> spag00, ethics -> slet00, jec -> jsec00, drugcaucus -> scnc00, ag -> ssaf00.
+    cases = [
+        ('sp_aging', 'https://www.aging.senate.gov/hearings/senior-care', 9101, 'spag00', 'Alice Senior'),
+        ('sp_ethics', 'https://www.ethics.senate.gov/hearings/ethics-review', 9102, 'slet00', 'Bob Ethics'),
+        ('sp_jec', 'https://www.jec.senate.gov/hearings/economic-outlook', 9103, 'jsec00', 'Carol Econ'),
+        ('sp_drug', 'https://www.drugcaucus.senate.gov/hearings/narcotics-control', 9104, 'scnc00', 'Dan Narcotics'),
+        ('sp_ag', 'https://www.ag.senate.gov/hearings/farm-bill', 9105, 'ssaf00', 'Eve Farmer'),
+    ]
+    records = [record(rid, 'senate_page', [witness(wname)], context_url=url) for rid, url, _, _, wname in cases]
+    meetings = tuple((ev, DAY, TITLE, False, 'senate', code) for _, _, ev, code, _ in cases)
+    pages = [dict(body_hex=r['record_sha_hex'], status='completed', title=TITLE, heading=TITLE, text_head='', content_date=DAY)
+             for r in records]
+    got = resolve(tmp_path, records, [], {}, meetings=meetings, pages=pages)
+    for _, _, ev, _, wname in cases:
+        assert got[wname] == (f'meeting:{ev}', ev)
+
+
+def test_witness_precedence_picks_highest_priority_root_and_handles_multi_source_open_given(tmp_path):
+    # F4: when house_xml (priority 1), congress_gov (priority 2), and mods (priority 4) all list the same
+    # person, mods.superseded_by must point directly to the house_xml root winner (not congress_gov even if
+    # congress_gov has a lexicographically smaller witness_key). Also, a surname-only mods row ('Smith') is
+    # superseded when 'John Smith' is listed in both house_xml and congress_gov.
+    house = record('hx_root', 'house_xml', [witness('Dr. Jane Doe'), witness('Mr. John Smith')], event_id=9001)
+    congress = record('cg_mid', 'congress_gov', [witness('Jane Doe'), witness('John Smith')], event_id=9001)
+    printed = record('mods_leaf', 'mods', [witness('Ms. Jane Doe'), witness('Mr. Smith')], package_id='CHRG-root')
+    got = resolve(tmp_path, [house, congress, printed], [('CHRG-root', 9001)], {'CHRG-root': facts()}, rows=True)
+    by_src_name = {(r['source'], r['name']): r for r in got}
+    # Both congress_gov and mods must point directly to house_xml's 'Dr. Jane Doe', never forming a 2-hop chain.
+    assert by_src_name[('house_xml', 'Dr. Jane Doe')]['superseded_by'] is None
+    assert by_src_name[('congress_gov', 'Jane Doe')]['superseded_by'] == 'Dr. Jane Doe'
+    assert by_src_name[('mods', 'Ms. Jane Doe')]['superseded_by'] == 'Dr. Jane Doe'
+    # Surname-only 'Mr. Smith' in mods is superseded by 'Mr. John Smith' even though both house_xml and congress_gov list John Smith.
+    assert by_src_name[('mods', 'Mr. Smith')]['superseded_by'] == 'Mr. John Smith'
+
+
+def test_two_way_witness_precedence_and_hmtg_sha_prefixed_slugs_in_document_witness_keys(tmp_path):
+    # F4 & F9: document-witness-keys expands witness_precedence in both directions (so matching a canonical
+    # house_xml witness also attaches superseded congress_gov/mods keys, while witness_name stays canonical)
+    # and matches HMTG- and <sha256>.hhrg- witness filenames.
+    engine = NativeDatasets.from_config(os.environ['DOCSPEC_JOB_CONFIG'])
+    sha_prefix = 'a' * 64
+    inputs = [
+        json_input(tmp_path, 'appearance_records_resolved', [
+            dict(witness_key='wk_house_smith', occasion='meeting:9001', source='house_xml',
+                 record_sha_hex='11' * 32, ordinal=0, event_id=9001, name='Dr. Jane Smith', document_urls=[]),
+            dict(witness_key='wk_cgov_smith', occasion='meeting:9001', source='congress_gov',
+                 record_sha_hex='22' * 32, ordinal=0, event_id=9001, name='Jane Smith', document_urls=[]),
+            dict(witness_key='wk_mods_smith', occasion='meeting:9001', source='mods',
+                 record_sha_hex='33' * 32, ordinal=0, event_id=9001, name='Smith, Jane', document_urls=[]),
+            dict(witness_key='wk_house_doe', occasion='meeting:9001', source='house_xml',
+                 record_sha_hex='11' * 32, ordinal=1, event_id=9001, name='Hon. Robert Doe', document_urls=[]),
+        ], witness_key='Utf8', occasion='Utf8', source='Utf8', record_sha_hex='Utf8',
+           ordinal='Int64', event_id='Int64', name='Utf8', document_urls=list_of('Utf8')),
+        json_input(tmp_path, 'witness_precedence', [
+            dict(witness_key='wk_cgov_smith', superseded_by='wk_house_smith'),
+            dict(witness_key='wk_mods_smith', superseded_by='wk_house_smith'),
+        ], witness_key='Utf8', superseded_by='Utf8'),
+        json_input(tmp_path, 'appearance_people', [
+            dict(record_sha_hex='11' * 32, source='house_xml', ordinal=0, statement=False, family='smith', given='jane'),
+            dict(record_sha_hex='22' * 32, source='congress_gov', ordinal=0, statement=False, family='smith', given='jane'),
+            dict(record_sha_hex='33' * 32, source='mods', ordinal=0, statement=False, family='smith', given='jane'),
+            dict(record_sha_hex='11' * 32, source='house_xml', ordinal=1, statement=False, family='doe', given='robert'),
+        ], record_sha_hex='Utf8', source='Utf8', ordinal='Int64', statement='Boolean', family='Utf8', given='Utf8'),
+        json_input(tmp_path, 'appearance_url_keys', [], url='Utf8', url_key='Utf8', error='Utf8'),
+        json_input(tmp_path, 'document_packages', [], component='Utf8', package_id='Utf8'),
+        json_input(tmp_path, 'source_annotations', [], source_id='Utf8', package_id='Utf8', meeting_keys=list_of('Utf8')),
+        json_input(tmp_path, 'copy_url_keys', [], source_id='Utf8', url_key='Utf8'),
+        json_input(tmp_path, 'saved_recoveries', [], id='Utf8', component='Utf8', original_url='Utf8'),
+        json_input(tmp_path, 'recovery_original_keys', [], recovery_id='Utf8', url_key='Utf8'),
+        json_input(tmp_path, 'effective_filenames', [], input_id='Utf8', filename='Utf8'),
+        json_input(tmp_path, 'document_metadata', [
+            dict(component='comp_hmtg', meeting_keys=['9001']),
+            dict(component='comp_sha_hhrg', meeting_keys=['9001']),
+        ], component='Utf8', meeting_keys=list_of('Utf8')),
+        json_input(tmp_path, 'document_members', [
+            dict(component='comp_hmtg', source_id='src_hmtg'),
+            dict(component='comp_sha_hhrg', source_id='src_sha_hhrg'),
+        ], component='Utf8', source_id='Utf8'),
+        json_input(tmp_path, 'source_files', [
+            dict(source_id='src_hmtg', body_sha='aa' * 32, source_url='https://docs.house.gov/1.pdf',
+                 filename='HMTG-118-AG00-Wstate-SmithJ-20230510.pdf'),
+            dict(source_id='src_sha_hhrg', body_sha='bb' * 32, source_url='https://docs.house.gov/2.pdf',
+                 filename=f'{sha_prefix}.hhrg-118-ag00-bio-doer-20230510.pdf'),
+        ], source_id='Utf8', body_sha='Utf8', source_url='Utf8', filename='Utf8'),
+    ]
+    steps = [dict(name='document_witness_keys', sql=sql('document-witness-keys'), materialize=True)]
+    res = run_job(tmp_path, engine, inputs=inputs, steps=steps, outputs=[], queries=[
+        dict(name='dwk', sql='SELECT component, witness_keys, witness_name FROM document_witness_keys ORDER BY component')
+    ])['dwk']
+    assert res == [
+        dict(component='comp_hmtg',
+             witness_keys=['wk_cgov_smith', 'wk_house_smith', 'wk_mods_smith'],
+             witness_name='Dr. Jane Smith'),
+        dict(component='comp_sha_hhrg',
+             witness_keys=['wk_house_doe'],
+             witness_name='Hon. Robert Doe'),
+    ]
+
+
+def test_senate_page_plan_is_linear_and_coverage_codes_and_generic_titles_hold(tmp_path):
+    # F1, F7, F9:
+    # 1. senate-page-meeting-links.sql physical plan has 1 scan of selected_appearance_records,
+    #    no Decimal128 coercion, and no unbounded WindowAggExec.
+    # 2. source-annotations-codes.sql maps ag/aging/ethics/jec/drugcaucus .senate.gov aliases even when
+    #    spicy_committees.website_url differs or is NULL.
+    # 3. document-recovery-normalized.sql prefers a non-generic annotation title over a generic reading
+    #    title on a witness document, and enriches when all titles are generic.
+    engine = NativeDatasets.from_config(os.environ['DOCSPEC_JOB_CONFIG'])
+    sp = record('sp_plan', 'senate_page', [witness('Alice Senior')],
+                context_url='https://www.aging.senate.gov/hearings/senior-care')
+    inputs = [
+        json_input(tmp_path, 'appearance_records_input', [sp], record_sha_hex='Utf8', parser_version='Utf8', status='Utf8',
+                   error_type='Utf8', source='Utf8', event_id='Int64', package_id='Utf8', declared_base='Utf8',
+                   collection_state='Utf8', context_url='Utf8', appearances=list_of(struct(**APPEARANCE)), created='Utf8'),
+        json_input(tmp_path, 'meetings_input', [dict(event_id=9101, meeting_date=DAY, title=TITLE, not_held=False, chamber='senate', committee_key='spag00')],
+                   event_id='Int64', meeting_date='Utf8', title='Utf8', not_held='Boolean', chamber='Utf8', committee_key='Utf8'),
+        json_input(tmp_path, 'page_inputs', [dict(body_hex=sp['record_sha_hex'], status='completed', title=TITLE, heading=TITLE, text_head='', content_date=DAY)],
+                   body_hex='Utf8', status='Utf8', title='Utf8', heading='Utf8', text_head='Utf8', content_date='Utf8'),
+    ]
+    steps = [
+        dict(name='selected_appearance_records', sql='SELECT * FROM appearance_records_input', materialize=True),
+        dict(name='captures', sql=CAPTURES, materialize=True),
+        dict(name='meetings_resolved', sql="SELECT event_id,cast(meeting_date AS DATE) AS meeting_date,title,not_held,chamber,committee_key,"
+             "make_array(named_struct('system_code',committee_key,'role','host')) AS committees FROM meetings_input", materialize=True),
+        dict(name='page_facts', sql="SELECT arrow_cast(decode(body_hex,'hex'),'FixedSizeBinary(32)') AS body_sha,status,title,heading,text_head,content_date FROM page_inputs", materialize=True),
+        dict(name='spicy_committees', sql="SELECT cast(NULL AS VARCHAR) AS system_code,cast(NULL AS VARCHAR) AS parent_system_code,cast(NULL AS VARCHAR) AS website_url WHERE false", materialize=True),
+        dict(name='appearance_people', sql=sql('appearance-people'), materialize=True),
+        dict(name='package_meeting_links', sql='SELECT cast(NULL AS VARCHAR) AS package_id,cast(NULL AS BIGINT) AS event_id WHERE false', materialize=True),
+    ]
+    explained = run_job(tmp_path / 'plan', engine, inputs=inputs, steps=steps, outputs=[],
+                        queries=[dict(name='plan', sql='EXPLAIN ' + sql('senate-page-meeting-links'))])['plan']
+    phys = next(r['plan'] for r in explained if r['plan_type'] == 'physical_plan')
+    assert 'Decimal128' not in phys
+    assert not any(line.lstrip().startswith('WindowAggExec:') for line in phys.splitlines())
+    # Only 1 scan of selected_appearance_records (the materialized memory table) in the physical plan:
+    assert phys.count('MemoryExec:') <= 6
+
+    # Check source-annotations-codes.sql with host aliases:
+    code_inputs = [
+        json_input(tmp_path, 'source_filename_readings', [], source_id='Utf8', status='Utf8', committee_code=list_of('Utf8')),
+        json_input(tmp_path, 'capture_source_contexts', [
+            dict(source_id='s_ag', context_url='https://www.ag.senate.gov/hearings/farm'),
+            dict(source_id='s_aging', context_url='https://www.aging.senate.gov/hearings/care'),
+            dict(source_id='s_ethics', context_url='https://www.ethics.senate.gov/hearings/ethics'),
+            dict(source_id='s_jec', context_url='https://www.jec.senate.gov/hearings/econ'),
+            dict(source_id='s_drug', context_url='https://www.drugcaucus.senate.gov/hearings/drug'),
+        ], source_id='Utf8', context_url='Utf8'),
+        json_input(tmp_path, 'spicy_committees', [
+            dict(system_code='SSAF00', parent_system_code=None, website_url='https://www.agriculture.senate.gov/'),
+            dict(system_code='SPAG00', parent_system_code=None, website_url=None),
+            dict(system_code='SLET00', parent_system_code=None, website_url=None),
+            dict(system_code='JSEC00', parent_system_code=None, website_url=None),
+            dict(system_code='SCNC00', parent_system_code=None, website_url=None),
+        ], system_code='Utf8', parent_system_code='Utf8', website_url='Utf8'),
+    ]
+    codes = run_job(tmp_path / 'codes', engine, inputs=code_inputs, steps=[], outputs=[],
+                    queries=[dict(name='codes', sql=sql('source-annotations-codes') + ' ORDER BY source_id')])['codes']
+    assert codes == [
+        dict(source_id='s_ag', code='SSAF00'),
+        dict(source_id='s_aging', code='SPAG00'),
+        dict(source_id='s_drug', code='SCNC00'),
+        dict(source_id='s_ethics', code='SLET00'),
+        dict(source_id='s_jec', code='JSEC00'),
+    ]
+
+
+

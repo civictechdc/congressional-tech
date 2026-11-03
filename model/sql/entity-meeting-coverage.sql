@@ -57,14 +57,6 @@ WITH package_meetings AS (
  SELECT event_id,count(*) AS n FROM (SELECT try_cast(unnest(meeting_keys) AS BIGINT) AS event_id FROM ordered WHERE meeting_keys IS NOT NULL) GROUP BY event_id
 ), stated_documents AS (
  SELECT DISTINCT event_id FROM meeting_document_urls
-), document_rows AS (
- SELECT e.event_id,'documents' AS aspect,
-  CASE WHEN d.n IS NOT NULL THEN 'present' WHEN s.event_id IS NOT NULL THEN 'unresolved'
-       WHEN e.chamber='senate' THEN 'unknown' ELSE 'not_stated' END AS state,
-  'list.meeting_keys' AS basis,cast(coalesce(d.n,0) AS INT) AS count,
-  CASE WHEN d.n IS NOT NULL THEN NULL WHEN s.event_id IS NOT NULL THEN 'stated_documents_not_held'
-       WHEN e.chamber='senate' THEN 'senate_page_links_pending' END AS reason
- FROM meetings_export e LEFT JOIN document_counts d ON e.event_id=d.event_id LEFT JOIN stated_documents s ON e.event_id=s.event_id
 ), witness_counts AS (
  -- Each person once (superseded rows point at the row shown); statements are not witnesses.
  SELECT event_id,count(*) AS n FROM witnesses_export WHERE event_id IS NOT NULL AND name IS NOT NULL AND superseded_by IS NULL
@@ -75,7 +67,18 @@ WITH package_meetings AS (
   SELECT event_id,CASE WHEN status<>'completed' OR collection_state IN ('failed','unrecognized') THEN 'unresolved'
     ELSE coalesce(nullif(trim(collection_state),''),CASE WHEN coalesce(array_length(appearances),0)>0 THEN 'present' ELSE 'empty' END) END AS collection_state
   FROM selected_appearance_records r
+  UNION ALL
+  SELECT DISTINCT event_id,'present' AS collection_state FROM witnesses_export WHERE event_id IS NOT NULL
  ) WHERE event_id IS NOT NULL GROUP BY event_id
+), document_rows AS (
+ SELECT e.event_id,'documents' AS aspect,
+  CASE WHEN d.n IS NOT NULL THEN 'present' WHEN s.event_id IS NOT NULL THEN 'unresolved'
+       WHEN e.chamber='senate' AND ws.event_id IS NULL THEN 'unknown' ELSE 'not_stated' END AS state,
+  'list.meeting_keys' AS basis,cast(coalesce(d.n,0) AS INT) AS count,
+  CASE WHEN d.n IS NOT NULL THEN NULL WHEN s.event_id IS NOT NULL THEN 'stated_documents_not_held'
+       WHEN e.chamber='senate' AND ws.event_id IS NULL THEN 'senate_page_links_pending' END AS reason
+ FROM meetings_export e LEFT JOIN document_counts d ON e.event_id=d.event_id LEFT JOIN stated_documents s ON e.event_id=s.event_id
+  LEFT JOIN witness_states ws ON e.event_id=ws.event_id
 ), unattached_package_witnesses AS (
  -- A linked package holds witnesses that no raw record ties to this meeting alone (ct-dx22).
  SELECT DISTINCT l.event_id FROM meeting_transcript_links l
@@ -84,10 +87,10 @@ WITH package_meetings AS (
 ), witness_rows AS (
  SELECT e.event_id,'witnesses' AS aspect,
   CASE WHEN c.n IS NOT NULL THEN 'present' WHEN s.rank=2 THEN 'unresolved' WHEN s.rank=1 THEN 'empty'
-       WHEN u.event_id IS NOT NULL OR e.chamber='senate' THEN 'unknown' ELSE 'not_stated' END AS state,
+       WHEN u.event_id IS NOT NULL OR (e.chamber='senate' AND s.event_id IS NULL) THEN 'unknown' ELSE 'not_stated' END AS state,
   'appearance_records' AS basis,cast(coalesce(c.n,0) AS INT) AS count,
   CASE WHEN c.n IS NOT NULL OR s.rank IN (1,2) THEN NULL WHEN u.event_id IS NOT NULL THEN 'package_witnesses_unattached'
-       WHEN e.chamber='senate' THEN 'senate_page_links_pending' END AS reason
+       WHEN e.chamber='senate' AND s.event_id IS NULL THEN 'senate_page_links_pending' END AS reason
  FROM meetings_export e LEFT JOIN witness_counts c ON e.event_id=c.event_id LEFT JOIN witness_states s ON e.event_id=s.event_id
   LEFT JOIN unattached_package_witnesses u ON e.event_id=u.event_id
 ), linked_videos AS (
