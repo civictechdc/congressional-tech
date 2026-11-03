@@ -120,6 +120,7 @@ def test_real_canary_failure_against_hand_candidate_does_not_flip(tmp_path):
     (dict(passed(),targets='owner-gated'),'requires measured-target qualification'),
     (dict(passed(),targets=None),'requires measured-target qualification'),
     (dict(passed(),targets='estimated'),'requires measured-target qualification'),
+    (dict(passed(),targets='deferred'),None),
     (passed(),None),
 ])
 def test_shared_receipt_validator_and_final_gate_have_the_same_policy(name,receipt,message):

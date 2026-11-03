@@ -6,8 +6,8 @@ from viewer_publication.archive_comparison_acceptance import require_comparison
 
 
 def qualified_target_status(status,manifest_origin=None):
-    """Admitted model releases may use candidate-bound emulation."""
-    return status=='owner-approved' or (status=='provisional-emulated'
+    """Admitted model releases may use candidate-bound emulation or a recorded owner deferral."""
+    return status in {'owner-approved','deferred'} or (status=='provisional-emulated'
         and isinstance(manifest_origin,dict)
         and manifest_origin.get('kind')=='model' and manifest_origin.get('display_only') is not True)
 

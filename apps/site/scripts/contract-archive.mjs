@@ -6,7 +6,7 @@ import {argumentsMap,checkTargets,readTargets,measurementProfiles} from './archi
 import {startArchiveServer} from './archive-server.mjs';
 import {ARCHIVE_ORIGIN,browserDependency,heapSampler,routeArchiveOrigin} from './archive-browser.mjs';
 import {openArchive} from '../src/components/explorer/reader/archive.ts';
-const args=argumentsMap(process.argv.slice(2));if(!args['next-release'])throw new Error('Supply --next-release for the required browser stale-tab check.');const targets=await readTargets(args.targets);
+const args=argumentsMap(process.argv.slice(2));if(!args['next-release'])throw new Error('Supply --next-release for the required browser stale-tab check.');const targets=await readTargets(args.targets);const targetsStatus=args.targets?JSON.parse(await readFile(args.targets)).status:undefined;
 const {chromium}=browserDependency('playwright');
 const server=await startArchiveServer({release:resolve(args.release),nextRelease:args['next-release']?resolve(args['next-release']):undefined,siteDist:resolve(args.dist||'dist'),bodies:args.bodies?JSON.parse(await readFile(args.bodies)):{}});
 const browser=await chromium.launch({headless:true,...(args['browser-executable']?{executablePath:args['browser-executable']}:{})});
@@ -118,5 +118,5 @@ try{
     }finally{await context.close();}
   }
   if(args.hand==='true')assert(fixtureBodyReads.some(read=>read.status===404),'Hand saved-copy checks must exercise the local missing-body store');
-  const receipt={version:1,status:'passed',releaseId:server.manifest.release_id,targets:targets?.status??'owner-gated',results,fixtureBodyReads};if(args.output)await writeFile(args.output,JSON.stringify(receipt,null,2)+'\n',{flag:'wx'});console.log(JSON.stringify(receipt));
+  const receipt={version:1,status:'passed',releaseId:server.manifest.release_id,targets:targets?.status??targetsStatus??'owner-gated',results,fixtureBodyReads};if(args.output)await writeFile(args.output,JSON.stringify(receipt,null,2)+'\n',{flag:'wx'});console.log(JSON.stringify(receipt));
 }finally{await browser.close();await server.close();}

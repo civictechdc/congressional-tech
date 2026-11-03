@@ -378,7 +378,8 @@ def test_execute_binds_matching_destination_and_records_actual_native_probe_comm
         # External browser execution is recorded; native model and publisher remain actual.
         manifest=json.loads((Path(model['output'])/'manifest.json').read_text())
         output=Path(command[command.index('--output')+1])
-        output.write_text(json.dumps(dict(status='passed',releaseId=manifest['release_id'],targets='owner-approved')))
+        output.write_text(json.dumps(dict(status='passed',releaseId=manifest['release_id'],
+            targets='deferred' if targets=='deferred' else 'owner-approved')))
     result=execute(spec,runtime_factory=runtime_factory,storage_factory=storage_factory,process_runner=process_runner,end_to_end_runner=END_TO_END_PASSED)
     assert result['status']=='published' and len(commands)==2 and events.index('sdk')>events.index('qualified')
     assert producers_recorded and 'captures' in producers_recorded[0]
