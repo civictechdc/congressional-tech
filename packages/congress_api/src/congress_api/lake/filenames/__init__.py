@@ -206,7 +206,10 @@ def stage(*, captures, recovery_files, engine, work, decided_at, existing=None, 
         dict(name='filename_captures', sql='SELECT * FROM captures'),
         dict(name='filename_inputs', sql=INPUT_SQL.read_text()),
         dict(name='effective_names', sql=SQL.read_text()),
-        dict(name='distinct_pairs', sql="SELECT DISTINCT filename,coalesce(source_url,'') AS source_url FROM effective_names"),
+        # Both names of a redirect are read: the shown one and the requested (linked) URL's own
+        # (owner, 2026-11-02); the model fills or keeps as an alternate what the second one says.
+        dict(name='distinct_pairs', sql="""SELECT DISTINCT filename,coalesce(source_url,'') AS source_url FROM effective_names
+            UNION SELECT DISTINCT requested_filename,requested_url FROM effective_names WHERE requested_filename IS NOT NULL"""),
         dict(name='source_pairs', sql="SELECT *,encode(sha256(json_array(filename,source_url)),'hex') AS input_id FROM distinct_pairs")]
     version_sql = "'" + version.replace("'", "''") + "'"
     missing = (' WHERE NOT EXISTS (SELECT 1 FROM unreadable u WHERE u.record_sha=p.input_id '

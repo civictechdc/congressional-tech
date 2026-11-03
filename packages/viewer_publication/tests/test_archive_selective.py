@@ -534,7 +534,14 @@ def test_the_selective_job_records_the_producer_of_every_snapshot_it_pins(tmp_pa
     model=json.loads((Path(spec['work'])/'candidate-model.json').read_text())
     records={name:json.loads(Path(pin['path']).read_text()) for name,pin in report['producers'].items()}
     assert all(r['job']==selective.PRODUCER_JOB and r['commit']==head_commit and r['recorded']=='with production' for r in records.values())
-    from congress_api.lake import captures as lake_captures
+    from congress_api.lake import captures as lake_captures,filenames
+    from viewer_publication import producer_proof
+    versions_at=producer_proof.versions_at
+    def dirty_filename_version(commit,**kwargs):
+        value=dict(versions_at(commit,**kwargs))
+        if commit==head_commit:value['filename_readings']=filenames.current_version()
+        return value
+    monkeypatch.setattr(producer_proof,'versions_at',dirty_filename_version)
     assert snapshot_reasons(model,records,mapping_current=lake_captures.current_version())==[]
 
 
