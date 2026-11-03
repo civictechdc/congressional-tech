@@ -682,7 +682,8 @@ def test_senate_page_plan_is_linear_and_coverage_codes_and_generic_titles_hold(t
 
     # Check source-annotations-codes.sql with host aliases:
     code_inputs = [
-        json_input(tmp_path, 'source_filename_readings', [], source_id='Utf8', status='Utf8', committee_code=list_of('Utf8')),
+        json_input(tmp_path, 'source_filename_readings', [], source_id='Utf8', status='Utf8',
+                   committee_code_status='Utf8', committee_code=list_of('Utf8')),
         json_input(tmp_path, 'capture_source_contexts', [
             dict(source_id='s_ag', context_url='https://www.ag.senate.gov/hearings/farm'),
             dict(source_id='s_aging', context_url='https://www.aging.senate.gov/hearings/care'),
