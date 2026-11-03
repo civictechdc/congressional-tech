@@ -16,19 +16,19 @@ In the double-blind MCP evaluation (.cache/chaos-double-blind-20261102T2304Z/rep
 
 ## Design
 
-Owner: packages/viewer_publication/src/viewer_publication/archive_model.py (and/or companion text export) and apps/explorer_mcp/src/congressional_explorer_mcp/{release.py,reader.py,server.py,models.py}.
+Owner: apps/explorer_mcp/src/congressional_explorer_mcp/{server.py,reader.py,models.py,release.py}, apps/explorer_mcp/pyproject.toml, and packages/viewer_publication/src/viewer_publication/archive_model.py.
 1. Architectural & security constraints to preserve (identified by Red/Green Team review):
    - apps/explorer_mcp/src/congressional_explorer_mcp/worker.py:16-18, 43 hard-disables all network sockets inside the query worker subprocess (socket.create_connection = _offline) and reader.py:75 sets SET enable_external_access=false.
-   - server.py:50-51 and tests/test_cli.py:27 enforce openWorldHint=False once a release is prepared locally.
-   - readings in the lake only stores text_head (not full page text), and apps/explorer_mcp/pyproject.toml depends only on duckdb and fastmcp (with no PDF parser library).
-2. Preferred implementation path (Option B — Offline Optional Companion Parquet + Title Enrichment):
-   - Publish a compact optional companion Parquet table (e.g. document_text.parquet or texts.parquet in release.py:OPTIONAL, keyed by list_row / saved_body with page/offset text or extracted testimony passages from readings / ct-c5xf / body store) so the air-gapped DuckDB Reader worker can serve get_document(section='text') / substring or FTS snippet queries 100% offline with openWorldHint=False and zero PDF parsing dependencies in explorer_mcp.
-   - In addition, in archive_model.py title selection, enrich generic PDF metadata titles ('Witness Statement', 'Testimony', 'Prepared Statement', 'Witness Biography', 'Truth in Testimony') with the linked witness's name (when len(witness_keys)=1 after ct-2o4d) so document browse/search listings are self-descriptive.
-   - (If Option A on-demand archive_origin fetching is ever used as a fallback when no companion Parquet is installed, the HTTP fetch and SHA-256 verification against detail.saved_body must run in the parent server.py process outside the air-gapped Worker, with explicit opt-in configuration.)
+   - Therefore, on-demand HTTP fetching of saved_url from archive_origin MUST execute in the parent MCP process (server.py) outside the air-gapped DuckDB query Worker subprocess.
+2. User Decision (A1 — Option A Selected):
+   - Perform on-demand HTTP fetch of saved_url from archive_origin in server.py (parent process), verify sha256(raw_bytes) == bytes.fromhex(detail.saved_body) before decompressing (.gz) or parsing, and cache extracted text locally under <data_dir>/bodies/<saved_body>.json (or bounded local body cache).
+   - Add a lightweight wheel-based PDF parser dependency (e.g. pypdf or pypdfium2) to apps/explorer_mcp/pyproject.toml to extract page-indexed text from verified PDFs, alongside HTML/XML/plain-text extraction for non-PDF bodies.
+   - Expose body reading/search through get_document (e.g. section='text' with page/offset/max_chars or query snippet matching) and update server.py instructions + tool annotations cleanly.
+   - In addition, in archive_model.py title selection, enrich generic PDF metadata titles ('Witness Statement', 'Testimony', 'Prepared Statement', 'Witness Biography', 'Truth in Testimony') with the linked witness's name (when len(witness_keys)=1 after ct-2o4d) so document browse/search listings are self-descriptive even before fetching body text.
 
 ## Acceptance Criteria
 
-- Given a valid document reference (release_id, link_key), the MCP can return bounded page/offset text or keyword/regex snippets from captured PDF/HTML/text bodies after verifying the body SHA-256 against detail.saved_body.
-- Unverified URLs, mismatched SHA-256 digests, oversized decompression streams, and unsupported binary formats fail closed with a clear ExplorerError.
-- Response payloads respect MAX_BYTES and worker timeout guarantees, covered by unit and fault-injection tests.
+- Given a valid document reference (release_id, link_key), the MCP fetches saved_url from archive_origin in the parent server.py process (while keeping Worker air-gapped with socket.create_connection disabled), verifies sha256(bytes) == bytes.fromhex(detail.saved_body), caches extracted text in <data_dir>/bodies/, and returns bounded page/offset text or keyword/regex snippets.
+- Unverified URLs (outside archive_origin), missing saved_body digests, mismatched SHA-256 digests, oversized decompression streams, and unsupported binary formats fail closed with a clear ExplorerError.
+- Response payloads respect MAX_BYTES and timeout guarantees, covered by unit and fault-injection tests.
 
