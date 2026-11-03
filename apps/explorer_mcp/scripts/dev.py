@@ -17,7 +17,7 @@ def main():
         raise SystemExit('Run uv sync --locked in apps/explorer_mcp, then use its .venv/bin/python')
     lock = tomllib.loads((ROOT / 'uv.lock').read_text())
     for package in lock['package']:
-        if package['name'] in ('duckdb', 'fastmcp', 'pyarrow', 'pytest'):
+        if package['name'] in ('duckdb', 'fastmcp', 'pyarrow', 'pypdf', 'pytest'):
             if version(package['name']) != package['version']:
                 raise SystemExit('Runtime differs from uv.lock; run uv sync --locked')
     subprocess.run([sys.executable, str(REPO / 'scripts/dev.py'), 'inventory'], cwd=REPO, check=True)

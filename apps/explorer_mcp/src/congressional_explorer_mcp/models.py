@@ -87,12 +87,31 @@ class DocumentSearch(Page):
 class DocumentQuery(Page):
     link_key: str = Field(pattern='^[a-fA-F0-9]{16}$')
     release_id: str = Field(pattern='^[a-f0-9]{64}$')
-    section: Literal['summary', 'sources', 'recoveries'] = 'summary'
+    section: Literal['summary', 'sources', 'recoveries', 'text'] = 'summary'
+    query: StrictStr | None = Field(default=None, max_length=2000)
+    page: int | None = Field(default=None, ge=1, le=100000)
+    offset: int = Field(default=0, ge=0, le=100_000_000)
+    max_chars: int = Field(default=8000, ge=1, le=65536)
 
     @field_validator('link_key', mode='after')
     @classmethod
     def _link_key(cls, value):
         return value.lower()
+
+    @field_validator('page', mode='before')
+    @classmethod
+    def _page(cls, value):
+        return None if value is None else exact_scalar(value, 'INTEGER', 'page')
+
+    @field_validator('offset', mode='before')
+    @classmethod
+    def _offset(cls, value):
+        return exact_scalar(value, 'INTEGER', 'offset')
+
+    @field_validator('max_chars', mode='before')
+    @classmethod
+    def _max_chars(cls, value):
+        return exact_scalar(value, 'INTEGER', 'max_chars')
 
 
 class EntitySearch(Page):

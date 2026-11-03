@@ -3,6 +3,7 @@ import base64
 from contextlib import closing
 from hashlib import sha256
 import json
+from pathlib import Path
 from tempfile import TemporaryDirectory
 
 import duckdb
@@ -254,8 +255,7 @@ class Reader:
             f'SELECT {DOCUMENT_SUMMARY_COLUMNS} '
             'FROM "list" l JOIN detail d USING(list_row) WHERE ' + (' AND '.join(conditions) or 'true'), args, order='l.list_row'))
 
-    def get_document(self, value):
-        query = DocumentQuery.model_validate(value)
+    def _resolve_document(self, query):
         if query.release_id != self.release_id:
             raise ExplorerError('Document reference belongs to another release')
         match = self.db.execute('SELECT list_row FROM links WHERE link_key=unhex(?)', [query.link_key]).fetchall()
@@ -277,7 +277,46 @@ class Reader:
                 redirected_from = query.link_key.lower()
         if len(match) != 1:
             raise ExplorerError('Document link is absent or ambiguous in this release')
-        position = match[0][0]
+        return match[0][0], redirected_from
+
+    def document_body_target(self, value):
+        query = value if isinstance(value, DocumentQuery) else DocumentQuery.model_validate(value)
+        position, redirected_from = self._resolve_document(query)
+        row = self.rows(
+            'SELECT list_row,filename,title,format,saved_kind,saved_media_type,saved_bytes,'
+            'lower(hex(link_key)) AS link_key,lower(hex(saved_body)) AS saved_body,saved_suffix '
+            'FROM documents WHERE list_row=?',
+            [position],
+            limit=1,
+        )['rows'][0]
+        body, suffix = row['saved_body'], row['saved_suffix']
+        files = self.selection.get('files') or {}
+        first_file = next(iter(files.values()), None)
+        data_dir = str(Path(first_file['path']).parents[1]) if first_file and first_file.get('path') else None
+        return dict(
+            release_id=self.release_id,
+            reference=dict(release_id=self.release_id, link_key=row['link_key']),
+            redirected_from=redirected_from,
+            list_row=row['list_row'],
+            filename=row['filename'],
+            title=row['title'],
+            format=row['format'],
+            saved_kind=row['saved_kind'],
+            saved_media_type=row['saved_media_type'],
+            saved_bytes=row['saved_bytes'],
+            saved_body=body.lower() if body else None,
+            saved_suffix=suffix,
+            saved_url=self.file_url(body, suffix),
+            archive_origin=self.selection.get('archive_origin'),
+            data_dir=data_dir,
+        )
+
+    def get_document(self, value):
+        query = DocumentQuery.model_validate(value)
+        if query.section == 'text':
+            from .body_reader import read_document_body
+            return read_document_body(self.document_body_target(query), query)
+        position, redirected_from = self._resolve_document(query)
         if query.section == 'summary':
             if query.cursor:
                 raise ExplorerError('Summary does not take a cursor')
@@ -290,7 +329,11 @@ class Reader:
                 result['redirected_from'] = redirected_from
             self.document_rows(result)
             row = result['rows'][0]
-            row['sections'] = dict(sources='Published source URLs and context', recoveries='Recovered files and their relationship to this document')
+            row['sections'] = dict(
+                sources='Published source URLs and context',
+                recoveries='Recovered files and their relationship to this document',
+                text='Verified archived document body text and snippet search',
+            )
             return result
         columns = '*' if query.section == 'sources' else '* REPLACE(hex(body) AS body)'
         result = self.page(query, f'SELECT {columns} FROM {query.section} WHERE list_row=?', [position], order='ordinal')

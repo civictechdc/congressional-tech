@@ -32,7 +32,7 @@ def create_server(selection=None, *, timeout=10.0, data_dir=None, publication=PU
         'Use query_sql for arbitrary joins, nested lists and aggregations across all release tables. '
         'Document references and page cursors belong to one release. Saved file URLs are for you to fetch and read. '
         'Missing tables mean unavailable, not zero records. Witnesses identify appearances, not deduplicated people. '
-        'This server searches metadata; it does not read document bodies.'))
+        "This server searches metadata and reads verified archived document bodies via get_document(section='text')."))
 
     async def call(method, query):
         try:
@@ -78,10 +78,21 @@ def create_server(selection=None, *, timeout=10.0, data_dir=None, publication=PU
 
     @mcp.tool(annotations=annotations)
     async def get_document(query: DocumentQuery) -> dict:
-        """Read a document reference: summary, paged sources, or paged recoveries.
+        """Read a document reference: summary, paged sources, paged recoveries, or verified body text.
 
+        Use section='text' with optional page, offset, max_chars, or query (keyword/regex snippet search)
+        to read verified PDF, HTML, XML, or plain-text document bodies from the archive.
         A recovery's kind and identity_note explain its relationship; a related file is not the original.
         """
+        if query.section == 'text':
+            from .body_reader import read_document_body
+            target = await call('document_body_target', query.model_dump())
+            try:
+                return await anyio.to_thread.run_sync(
+                    partial(read_document_body, target, query, data_dir=data_dir, timeout=timeout)
+                )
+            except (ExplorerError, OSError, ValueError, KeyError, TypeError) as error:
+                raise ToolError(str(error)) from error
         return await call('get_document', query.model_dump())
 
     @mcp.tool(annotations=annotations)
