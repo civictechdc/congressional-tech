@@ -88,9 +88,12 @@ def create_server(selection=None, *, timeout=10.0, data_dir=None, publication=PU
             from .body_reader import read_document_body
             target = await call('document_body_target', query.model_dump())
             try:
-                return await anyio.to_thread.run_sync(
-                    partial(read_document_body, target, query, data_dir=data_dir, timeout=timeout)
-                )
+                with anyio.fail_after(timeout):
+                    return await anyio.to_thread.run_sync(
+                        partial(read_document_body, target, query, data_dir=data_dir, timeout=timeout)
+                    )
+            except TimeoutError as error:
+                raise ToolError('Document body fetch or extraction timed out') from error
             except (ExplorerError, OSError, ValueError, KeyError, TypeError) as error:
                 raise ToolError(str(error)) from error
         return await call('get_document', query.model_dump())

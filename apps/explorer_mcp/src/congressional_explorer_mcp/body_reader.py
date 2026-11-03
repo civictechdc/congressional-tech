@@ -11,7 +11,7 @@ import shutil
 import subprocess
 from urllib.error import HTTPError, URLError
 from urllib.parse import urlsplit
-from urllib.request import Request, urlopen
+from urllib.request import HTTPRedirectHandler, Request, build_opener
 import zlib
 
 from . import __version__
@@ -136,10 +136,16 @@ def _validate_archive_url(saved_url: str | None, archive_origin: str | None, sav
     return saved_url, body_hex, suffix
 
 
+class _NoRedirectHandler(HTTPRedirectHandler):
+    def redirect_request(self, req, fp, code, msg, headers, newurl):
+        raise ExplorerError('Archive body fetch redirected outside archive_origin')
+
+
 def _fetch_raw_bytes(saved_url: str, origin_netloc: str, origin_scheme: str, *, timeout: float, max_bytes: int) -> bytes:
     request = Request(saved_url, headers={'User-Agent': f'CongressExplorerMCP/{__version__}'})
+    opener = build_opener(_NoRedirectHandler())
     try:
-        with urlopen(request, timeout=timeout) as stream:
+        with opener.open(request, timeout=timeout) as stream:
             final = urlsplit(stream.url)
             if final.scheme != origin_scheme or final.netloc != origin_netloc:
                 raise ExplorerError('Archive body fetch redirected outside archive_origin')
@@ -376,7 +382,7 @@ def read_document_body(
         base['redirected_from'] = target['redirected_from']
 
     # Reserve JSON framing budget so the serialized response (including rows) never exceeds MAX_BYTES.
-    char_budget = min(query.max_chars, (MAX_BYTES - len(encoded(base)) - 4096) // 3)
+    char_budget = min(query.max_chars, max(256, (MAX_BYTES - len(encoded(base)) - 4096) // 6))
 
     if query.query and query.query.strip():
         pattern = _compile_query(query.query.strip())
@@ -398,10 +404,13 @@ def read_document_body(
                 if len(snippet) > char_budget:
                     snippet = snippet[:char_budget]
                     has_more = True
+                matched_text = m.group(0)
+                if len(matched_text) > 240:
+                    matched_text = matched_text[:240]
                 entry = dict(
                     page=page_num,
                     offset=m.start(),
-                    match=m.group(0),
+                    match=matched_text,
                     snippet=snippet,
                     text=snippet,
                 )
@@ -420,10 +429,16 @@ def read_document_body(
             has_more=has_more,
             truncated=has_more,
         )
-        while len(encoded(result)) > MAX_BYTES and matches:
+        while len(encoded(result)) > MAX_BYTES and len(matches) > 1:
             matches.pop()
             result['snippets'] = [m['snippet'] for m in matches]
             result['text'] = '\n\n...\n\n'.join(result['snippets'])
+            result['has_more'] = result['truncated'] = True
+        while len(encoded(result)) > MAX_BYTES and len(matches) == 1 and len(matches[0]['snippet']) > 128:
+            shrunk = matches[0]['snippet'][: max(128, len(matches[0]['snippet']) - 512)]
+            matches[0]['snippet'] = matches[0]['text'] = shrunk
+            result['snippets'] = [shrunk]
+            result['text'] = shrunk
             result['has_more'] = result['truncated'] = True
         return result
 

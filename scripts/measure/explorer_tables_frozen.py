@@ -17,7 +17,7 @@ from docspec_client.client import NativeDatasets
 from viewer_publication.archive_format import MEETING_DICTIONARY, _settings
 from viewer_publication.archive_model_lifetimes import retire_relations
 from viewer_publication.archive_model_profile import expand_parser_version_rows
-from viewer_publication.archive_model import (EXPLORER_TABLES, RECORDING_DECISION_FIELDS, ROOT, WITNESSES_SQL, appearance_steps, channel_directory_rows,
+from viewer_publication.archive_model import (EXPLORER_TABLES, RECORDING_DECISION_FIELDS, ROOT, SPICY_SCHEMAS, WITNESSES_SQL, appearance_steps, channel_directory_rows,
     meeting_steps, registry_inputs, selected_record_step)
 from congress_api.retention.provenance import field, json_input, run_job
 
@@ -94,6 +94,9 @@ def main(argv=None):
              schema=dict(fields=[field(k, v) for k, v in RECORDING_DECISION_FIELDS.items()], metadata={})),
         json_input(work, 'channel_directory', channel_directory_rows(), handle='Utf8', channel_id='Utf8', system_code='Utf8', committee_label='Utf8', role='Utf8'),
         json_input(work, 'spicy_committees', [], system_code='Utf8', parent_system_code='Utf8', website_url='Utf8'),
+        json_input(work, 'spicy_bill_committee_activities', [], **SPICY_SCHEMAS['spicy_bill_committee_activities']),
+        json_input(work, 'spicy_congress_bills', [], **SPICY_SCHEMAS['spicy_congress_bills']),
+        json_input(work, 'spicy_nominations', [], **SPICY_SCHEMAS['spicy_nominations']),
         json_input(work, 'parser_versions', expand_parser_version_rows(spec['parser_versions']), parser='Utf8', version='Utf8'),
     ]
     steps = [
@@ -108,7 +111,7 @@ def main(argv=None):
         dict(name='youtube_cache_bodies', sql=sql('youtube-cache-bodies'), materialize=True),
         dict(name='youtube_api_bodies', sql=sql('youtube-api-bodies'), materialize=True),
         *meeting_steps(),
-        dict(name='ordered', sql='SELECT meeting_keys,filename,format,cast(list_row AS INT) AS list_row FROM released_list', materialize=True),
+        dict(name='ordered', sql='SELECT meeting_keys,measure_keys,filename,format,cast(list_row AS INT) AS list_row FROM released_list', materialize=True),
         dict(name='recordings_export', sql='SELECT * FROM recordings_entity', materialize=True),
         dict(name='appearance_people', sql=sql('appearance-people'), materialize=True),
         dict(name='package_mods_facts', sql=sql('package-mods-facts'), materialize=True),

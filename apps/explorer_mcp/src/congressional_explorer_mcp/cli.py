@@ -86,7 +86,7 @@ def main(argv=None):
             return 0
         if args.command == 'serve':
             from .server import create_server
-            create_server(selection, timeout=args.query_timeout).run(transport='stdio', show_banner=False)
+            create_server(selection, data_dir=args.data_dir, timeout=args.query_timeout).run(transport='stdio', show_banner=False)
         else:
             print(json.dumps(dict(release_id=selection['release_id'], data_dir=str(args.data_dir.absolute()),
                 tables={name: sum(part['rows'] for part in parts) for name, parts in selection['tables'].items()}), indent=2))

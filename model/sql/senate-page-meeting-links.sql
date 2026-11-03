@@ -191,6 +191,7 @@ WITH senate_candidates AS (
 ), dated_scored AS (
  SELECT
   dc.record_sha_hex,
+  dc.source_url,
   dc.event_id,
   dc.n_events,
   dc.n_urls,
@@ -201,17 +202,22 @@ WITH senate_candidates AS (
  LEFT JOIN shared_surnames ss ON ss.record_sha_hex=dc.record_sha_hex AND ss.event_id=dc.event_id
  WHERE (dc.n_events=1 AND dc.n_urls=1)
   OR coalesce(ss.shared_surnames,0)>0
-  OR dc.shared_words>0
+  OR dc.shared_words>=2
 ), best_per_sha AS (
  SELECT record_sha_hex,max(score) AS max_score
  FROM dated_scored
  GROUP BY record_sha_hex
 ), sha_top_matches AS (
- SELECT ds.record_sha_hex,ds.event_id,ds.score
+ SELECT ds.record_sha_hex,ds.source_url,ds.event_id,ds.shared_surnames,ds.score
  FROM dated_scored ds
  JOIN best_per_sha b ON b.record_sha_hex=ds.record_sha_hex AND ds.score=b.max_score
 ), unique_sha_winners AS (
- SELECT record_sha_hex,min(event_id) AS event_id,min(score) AS score
+ SELECT
+  record_sha_hex,
+  min(source_url) AS source_url,
+  min(event_id) AS event_id,
+  min(shared_surnames) AS shared_surnames,
+  min(score) AS score
  FROM sha_top_matches
  GROUP BY record_sha_hex
  HAVING count(DISTINCT event_id)=1
@@ -219,32 +225,16 @@ WITH senate_candidates AS (
  SELECT event_id,max(score) AS max_score
  FROM unique_sha_winners
  GROUP BY event_id
-), dated_links AS (
- SELECT u.record_sha_hex,u.event_id
+), event_top_winners AS (
+ SELECT u.record_sha_hex,u.source_url,u.event_id,u.shared_surnames,u.score
  FROM unique_sha_winners u
  JOIN best_per_event be ON be.event_id=u.event_id AND u.score=be.max_score
-), undated_candidates AS (
- SELECT
-  s.record_sha_hex,
-  m.event_id,
-  cardinality(array_intersect(s.words,m.words)) AS shared_words
- FROM senate_pages s
- JOIN meeting_parent_committees m ON m.parent_committee=s.parent_committee
- WHERE s.page_date IS NULL
-  AND cardinality(s.words)>=3 AND cardinality(m.words)>=3
-  AND cardinality(array_intersect(s.words,m.words))>=3
-  AND 2*cardinality(array_intersect(s.words,m.words))>=least(cardinality(s.words),cardinality(m.words))
-), undated_best AS (
- SELECT record_sha_hex,max(shared_words) AS max_words
- FROM undated_candidates
- GROUP BY record_sha_hex
-), undated_links AS (
- SELECT uc.record_sha_hex,min(uc.event_id) AS event_id
- FROM undated_candidates uc
- JOIN undated_best ub ON ub.record_sha_hex=uc.record_sha_hex AND uc.shared_words=ub.max_words
- GROUP BY uc.record_sha_hex
- HAVING count(DISTINCT uc.event_id)=1
+), unambiguous_events AS (
+ SELECT event_id
+ FROM event_top_winners
+ GROUP BY event_id
+ HAVING count(DISTINCT source_url)=1 OR max(shared_surnames)>0
 )
-SELECT record_sha_hex,event_id FROM dated_links
-UNION
-SELECT record_sha_hex,event_id FROM undated_links
+SELECT w.record_sha_hex,w.event_id
+FROM event_top_winners w
+JOIN unambiguous_events ue ON ue.event_id=w.event_id
