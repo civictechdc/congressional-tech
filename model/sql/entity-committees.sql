@@ -25,6 +25,72 @@ WITH history_rows AS (
   nullif(trim(website_url),'') AS website,
   coalesce(is_current,false) AS is_current
  FROM spicy_committees WHERE system_code IS NOT NULL
+), committee_code_map AS (
+ SELECT raw_key,min(system_code) AS norm_code,min(chamber) AS map_chamber
+ FROM (
+  SELECT upper(trim(code)) AS raw_key,lower(trim(system_code)) AS system_code,lower(trim(chamber)) AS chamber FROM committee_codes WHERE code IS NOT NULL AND system_code IS NOT NULL
+  UNION ALL
+  SELECT 'HS'||upper(trim(code)) AS raw_key,lower(trim(system_code)) AS system_code,lower(trim(chamber)) AS chamber FROM committee_codes WHERE chamber='house' AND length(trim(code))=4 AND system_code IS NOT NULL
+  UNION ALL
+  SELECT upper(trim(system_code)) AS raw_key,lower(trim(system_code)) AS system_code,lower(trim(chamber)) AS chamber FROM committee_codes WHERE system_code IS NOT NULL
+  UNION ALL SELECT 'HSJL00' AS raw_key,'jslc00' AS system_code,'joint' AS chamber
+  UNION ALL SELECT 'HSIT00' AS raw_key,'jstx00' AS system_code,'joint' AS chamber
+  UNION ALL SELECT 'HSEC00' AS raw_key,'jsec00' AS system_code,'joint' AS chamber
+  UNION ALL SELECT 'HSJP00' AS raw_key,'jspr00' AS system_code,'joint' AS chamber
+ )
+ GROUP BY raw_key
+), roster_normalized_committees AS (
+ SELECT
+  coalesce(ccm.norm_code,lower(trim(a.system_code))) AS norm_code,
+  nullif(trim(a.committee_name),'') AS committee_name,
+  coalesce(
+   CASE lower(trim(a.chamber))
+    WHEN 'h' THEN 'house'
+    WHEN 's' THEN 'senate'
+    WHEN 'j' THEN 'joint'
+    ELSE lower(nullif(trim(a.chamber),''))
+   END,
+   ccm.map_chamber
+  ) AS chamber,
+  a.is_subcommittee,
+  lower(nullif(trim(a.parent_system_code),'')) AS parent_system_code
+ FROM spicy_committee_assignments a
+ LEFT JOIN committee_code_map ccm ON ccm.raw_key=upper(trim(a.system_code))
+ WHERE a.system_code IS NOT NULL AND trim(a.system_code)<>''
+), synthesized_committees AS (
+ SELECT
+  r.norm_code,
+  coalesce(
+   max(r.committee_name),
+   upper(r.norm_code)
+  ) AS name,
+  coalesce(
+   max(r.chamber),
+   CASE substr(r.norm_code,1,1)
+    WHEN 'h' THEN 'house'
+    WHEN 's' THEN 'senate'
+    WHEN 'j' THEN 'joint'
+    ELSE 'house'
+   END
+  ) AS chamber,
+  CASE
+   WHEN bool_or(coalesce(r.is_subcommittee,substr(r.norm_code,5,2)<>'00')) THEN 'subcommittee'
+   WHEN r.norm_code LIKE 'j%' THEN 'joint'
+   ELSE 'standing'
+  END AS committee_type,
+  CASE
+   WHEN substr(r.norm_code,5,2)<>'00' THEN coalesce(max(r.parent_system_code),substr(r.norm_code,1,4)||'00')
+   ELSE cast(NULL AS VARCHAR)
+  END AS parent_system_code,
+  cast(NULL AS VARCHAR) AS website,
+  false AS is_current
+ FROM roster_normalized_committees r
+ LEFT ANTI JOIN base_committees b ON b.norm_code=r.norm_code
+ GROUP BY r.norm_code
+), all_committees AS (
+ SELECT * FROM base_committees
+ UNION ALL
+ SELECT * FROM synthesized_committees
 )
 SELECT c.norm_code AS system_code,
  c.name,
@@ -36,5 +102,5 @@ SELECT c.norm_code AS system_code,
  )),1,0)) AS names,
  c.website,
  c.is_current
-FROM base_committees c
+FROM all_committees c
 LEFT JOIN names_agg n ON c.norm_code=n.agg_system_code

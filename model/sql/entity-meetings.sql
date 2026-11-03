@@ -124,6 +124,15 @@ WITH keys AS (
   'video_key',video_key,'language',language,'production',production
  ) ORDER BY tr_seq ASC) AS transcripts
  FROM transcript_ranked GROUP BY event_id
+), subject_keys_by_event AS (
+ SELECT event_id,array_agg(subject_key ORDER BY subject_key) AS subject_keys
+ FROM (
+  SELECT DISTINCT event_id,lower(trim(unnest(subject_keys))) AS subject_key
+  FROM meetings_resolved
+  WHERE subject_keys IS NOT NULL
+ )
+ WHERE subject_key IS NOT NULL AND subject_key<>''
+ GROUP BY event_id
 )
 SELECT k.event_id,
  m.chamber,
@@ -138,7 +147,7 @@ SELECT k.event_id,
   'place',cast(NULL AS VARCHAR),'room',cast(NULL AS VARCHAR),'building',cast(NULL AS VARCHAR),'address',cast(NULL AS VARCHAR))),1,0)) AS sittings,
  coalesce(m.committees,array_slice(make_array(named_struct(
   'system_code',cast(NULL AS VARCHAR),'role',cast(NULL AS VARCHAR))),1,0)) AS committees,
- coalesce(m.subject_keys,arrow_cast(array_slice(make_array(cast(NULL AS VARCHAR)),1,0),'List(Utf8)')) AS subject_keys,
+ coalesce(sk.subject_keys,arrow_cast(array_slice(make_array(cast(NULL AS VARCHAR)),1,0),'List(Utf8)')) AS subject_keys,
  coalesce(t.transcripts,array_slice(make_array(named_struct(
   'source',cast(NULL AS VARCHAR),'package_id',cast(NULL AS VARCHAR),'list_row',cast(NULL AS INT),
   'formats',arrow_cast(array_slice(make_array(cast(NULL AS VARCHAR)),1,0),'List(Utf8)'),
@@ -156,6 +165,7 @@ SELECT k.event_id,
  r.rescheduled_basis
 FROM keys k
 LEFT JOIN meetings_resolved m ON k.event_id=m.event_id
+LEFT JOIN subject_keys_by_event sk ON k.event_id=sk.event_id
 LEFT JOIN transcripts_agg t ON k.event_id=t.event_id
 LEFT JOIN rescheduled r ON k.event_id=r.event_id
 LEFT JOIN printed pr ON k.event_id=pr.event_id

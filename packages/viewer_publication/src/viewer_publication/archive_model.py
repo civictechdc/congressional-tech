@@ -132,7 +132,9 @@ SPICY_SCHEMAS={
         term_district='Int32',term_party='Utf8',term_start='Utf8',term_end='Utf8',
     ),
     'spicy_committee_assignments':dict(
-        congress='Int32',system_code='Utf8',bioguide_id='Utf8',
+        congress='Int32',session='Utf8',chamber='Utf8',is_subcommittee='Boolean',
+        parent_system_code='Utf8',committee_name='Utf8',system_code='Utf8',
+        bioguide_id='Utf8',name_last='Utf8',name_first='Utf8',
         position='Utf8',rank='Int32',party='Utf8',
     ),
     'spicy_congress_bills':dict(
@@ -140,6 +142,13 @@ SPICY_SCHEMAS={
         sponsor_bioguide_id='Utf8',introduced_date='Utf8',
         latest_action_date='Utf8',latest_action_text='Utf8',
         stage='Utf8',policy_area='Utf8',
+        public_law_number='Utf8',cosponsor_count='Int32',
+        related_bills=list_of(struct(
+            bill_type='Utf8',congress='Utf8',latest_action_date='Utf8',
+            latest_action_text='Utf8',number='Utf8',
+            relationship_details=list_of(struct(identifiedBy='Utf8',type='Utf8')),
+            title='Utf8',
+        )),
     ),
     'spicy_bill_committees':dict(
         bill_id='Utf8',system_code='Utf8',
@@ -319,6 +328,25 @@ def spicy_generations(value):
     return dict(sorted(value.items()))
 
 
+def _normalize_related_bill_row(raw):
+    item=dict(raw)
+    if item.get('bill_id') and not (item.get('congress') and item.get('bill_type') and item.get('number')):
+        parts=str(item['bill_id']).strip().split('-',2)
+        if len(parts)==3:
+            item.setdefault('congress',parts[0])
+            item.setdefault('bill_type',parts[1])
+            item.setdefault('number',parts[2])
+    if 'relationship_details' not in item:
+        item['relationship_details']=[
+            dict(identifiedBy=None,type=str(t))
+            for t in (item.get('relationship_types') or ()) if t is not None
+        ]
+    return {
+        k:(list(item.get('relationship_details') or []) if k=='relationship_details' else item.get(k))
+        for k in ('bill_type','congress','latest_action_date','latest_action_text','number','relationship_details','title')
+    }
+
+
 def _prepare_spicy_inputs(scratch,spicy_regs,include_entities):
     """Stage the spicy-regs tables; the returned digests are exactly the generations the input states.
 
@@ -340,8 +368,13 @@ def _prepare_spicy_inputs(scratch,spicy_regs,include_entities):
     for name,schema in SPICY_SCHEMAS.items():
         value=tables[name]
         if isinstance(value,list):
-            rows=[{k:(r.get(k) if r.get(k) is not None or not (isinstance(kind,dict) and 'List' in kind) else [])
-                   for k,kind in schema.items()} for r in value]
+            rows=[]
+            for r in value:
+                row={k:(r.get(k) if r.get(k) is not None or not (isinstance(kind,dict) and 'List' in kind) else [])
+                     for k,kind in schema.items()}
+                if name=='spicy_congress_bills':
+                    row['related_bills']=[_normalize_related_bill_row(rb) for rb in (row.get('related_bills') or ()) if isinstance(rb,dict)]
+                rows.append(row)
             inputs.append(json_input(spicy_dir,name,rows,**schema))
         elif isinstance(value,dict) and value.get('kind')=='parquet' and isinstance(value.get('path'),str):
             inputs.append(dict(name=name,kind='parquet',path=value['path']))
@@ -919,7 +952,99 @@ def build_prepared_release(prepared,*,engine,output,root=ROOT):
     from viewer_publication.archive_url_state import url_state_steps,url_state_diagnostics
     steps += url_state_steps(root=root,recovery_policy=prepared.get('recovery_policy'))
     meetings_sql=(Path(root)/'model/sql/entity-meetings.sql').read_text()
-    auxiliary=[('meetings',meetings_sql,['event_id'],MEETING_DICTIONARY)]
+    meetings_export_sql=f"""WITH meetings_base AS (
+{meetings_sql}
+    ),
+    base_subjects AS (
+        SELECT event_id, nullif(lower(trim(unnest(subject_keys))), '') AS subject_key
+        FROM meetings_base
+        WHERE subject_keys IS NOT NULL
+    ),
+    single_meeting_doc_subjects AS (
+        SELECT try_cast(o.meeting_keys[1] AS BIGINT) AS event_id,
+            nullif(lower(trim(unnest(o.measure_keys))), '') AS subject_key
+        FROM ordered o
+        WHERE coalesce(array_length(o.meeting_keys), 0) = 1
+          AND o.measure_keys IS NOT NULL
+    ),
+    meeting_transcript_packages AS (
+        SELECT event_id, tr['package_id'] AS package_id
+        FROM (
+            SELECT event_id, unnest(transcripts) AS tr
+            FROM meetings_base
+            WHERE transcripts IS NOT NULL
+        )
+        WHERE tr['package_id'] IS NOT NULL
+    ),
+    nomination_hearing_packages AS (
+        SELECT DISTINCT
+            cast(congress AS VARCHAR) || '-pn-' || cast(number AS VARCHAR) ||
+            CASE
+                WHEN part_number IS NOT NULL AND trim(part_number) <> '' AND trim(part_number) <> '00'
+                    THEN '-' || regexp_replace(trim(part_number), '^0+', '')
+                ELSE ''
+            END AS nomination_id,
+            trim(regexp_replace(raw_pkg, '^package_id:', '')) AS package_id
+        FROM (
+            SELECT congress, number, part_number,
+                unnest(
+                    string_to_array(
+                        regexp_replace(
+                            coalesce(hearings_json, ''),
+                            '"package_id"\\s*:\\s*"([^"]+)"',
+                            '|||package_id:$1|||',
+                            'g'
+                        ),
+                        '|||'
+                    )
+                ) AS raw_pkg
+            FROM spicy_nominations
+            WHERE congress IS NOT NULL AND number IS NOT NULL
+        )
+        WHERE raw_pkg LIKE 'package_id:%'
+    ),
+    nomination_transcript_subjects AS (
+        SELECT mt.event_id, np.nomination_id AS subject_key
+        FROM meeting_transcript_packages mt
+        JOIN nomination_hearing_packages np ON np.package_id = mt.package_id
+    ),
+    combined_subjects AS (
+        SELECT event_id, subject_key FROM base_subjects WHERE subject_key IS NOT NULL
+        UNION
+        SELECT event_id, subject_key FROM single_meeting_doc_subjects WHERE event_id IS NOT NULL AND subject_key IS NOT NULL
+        UNION
+        SELECT event_id, subject_key FROM nomination_transcript_subjects WHERE event_id IS NOT NULL AND subject_key IS NOT NULL
+    ),
+    subject_keys_by_event AS (
+        SELECT event_id, array_agg(subject_key ORDER BY subject_key) AS subject_keys
+        FROM (SELECT DISTINCT event_id, subject_key FROM combined_subjects)
+        GROUP BY event_id
+    )
+    SELECT
+        m.event_id,
+        m.chamber,
+        m.title,
+        m.meeting_date,
+        m.meeting_type,
+        m.session,
+        m.status,
+        m.sittings,
+        m.committees,
+        coalesce(sk.subject_keys, arrow_cast(array_slice(make_array(cast(NULL AS VARCHAR)), 1, 0), 'List(Utf8)')) AS subject_keys,
+        m.transcripts,
+        m.videos,
+        m.congress,
+        m.congress_gov_updated,
+        m.house_xml_updated,
+        m.congress_gov_meeting_type,
+        m.access,
+        m.access_basis,
+        m.not_held,
+        m.rescheduled_to,
+        m.rescheduled_basis
+    FROM meetings_base m
+    LEFT JOIN subject_keys_by_event sk ON sk.event_id = m.event_id"""
+    auxiliary=[('meetings',meetings_export_sql,['event_id'],MEETING_DICTIONARY)]
     if not prepared.get('include_entities'):
         # Meetings list caption tracks among their transcripts (ct-1i4q); without entities there are none.
         steps += [dict(name='recordings_entity',sql=EMPTY_RECORDINGS_SQL,materialize=True)]
@@ -987,6 +1112,10 @@ def build_prepared_release(prepared,*,engine,output,root=ROOT):
         # A step, not only an export: meetings read it to list caption tracks among their transcripts.
         steps += [dict(name='recording_tracks',sql=(Path(root)/'model/sql/recording-tracks.sql').read_text(),materialize=True),
             dict(name='recordings_entity',sql=(Path(root)/'model/sql/entity-recordings.sql').read_text(),materialize=True)]
+        nominations_sql=(Path(root)/'model/sql/entity-nominations.sql').read_text().replace(
+            'FROM meetings_resolved WHERE subject_keys IS NOT NULL',
+            'FROM meetings_export WHERE subject_keys IS NOT NULL',
+        )
         auxiliary += [
             ('witnesses',WITNESSES_SQL,['occasion','panel_order','display_order','witness_key'],['occasion','source','witness_type','bioguide_id']),
             ('recordings','SELECT * FROM recordings_entity',['video_key'],['tracks.list.item.suffix','tracks.list.item.format','tracks.list.item.language','tracks.list.item.production']),
@@ -994,7 +1123,7 @@ def build_prepared_release(prepared,*,engine,output,root=ROOT):
             ('members',(Path(root)/'model/sql/entity-members.sql').read_text(),['bioguide_id'],['terms.list.item.chamber','terms.list.item.state','terms.list.item.party']),
             ('rosters',(Path(root)/'model/sql/entity-rosters.sql').read_text(),['congress','system_code','rank','bioguide_id'],['system_code','bioguide_id','title','party']),
             ('bills',(Path(root)/'model/sql/entity-bills.sql').read_text(),['bill_id'],['sponsor_bioguide_id','stage','policy_area','committees.list.item','floor_votes.list.item.basis','floor_votes.list.item.chamber','amendments.list.item.sponsor_bioguide_id','committee_activities.list.item.system_code','committee_activities.list.item.activity']),
-            ('nominations',(Path(root)/'model/sql/entity-nominations.sql').read_text(),['nomination_id'],['committees.list.item']),
+            ('nominations',nominations_sql,['nomination_id'],['committees.list.item']),
         ]
     explorer_diagnostics=[]
     if prepared.get('explorer_inputs'):
@@ -1051,7 +1180,12 @@ def build_prepared_release(prepared,*,engine,output,root=ROOT):
                 SELECT DISTINCT cm['system_code'] AS system_code FROM (
                     SELECT unnest(committees) AS cm FROM meetings_export WHERE committees IS NOT NULL
                 ) WHERE cm['system_code'] IS NOT NULL
+                UNION
+                SELECT DISTINCT system_code FROM rosters_export WHERE system_code IS NOT NULL
             ) k WHERE NOT EXISTS (SELECT 1 FROM committees_export c WHERE c.system_code=k.system_code)) AS missing_committee_keys,
+            (SELECT count(*) FROM (
+                SELECT DISTINCT bioguide_id FROM rosters_export WHERE bioguide_id IS NOT NULL
+            ) k WHERE NOT EXISTS (SELECT 1 FROM members_export m WHERE m.bioguide_id=k.bioguide_id)) AS missing_member_keys,
             (SELECT count(*) FROM (
                 SELECT event_id,tr['package_id'] AS package_id FROM (
                     SELECT event_id,unnest(transcripts) AS tr FROM meetings_export WHERE transcripts IS NOT NULL)

@@ -12,7 +12,7 @@ from .models import (MAX_BYTES, ExplorerError, exact_scalar,
 from .release import encoded, quote, literal
 
 # Published display columns that text search reads, wherever a table has them.
-TEXT_FIELDS = ('name', 'title', 'short_title', 'description', 'organization', 'position', 'video_key',
+TEXT_FIELDS = ('name', 'title', 'short_title', 'public_law_number', 'description', 'organization', 'position', 'video_key',
                'source_description', 'committee_label', 'handle', 'note')
 
 DOCUMENT_SUMMARY_COLUMNS = (

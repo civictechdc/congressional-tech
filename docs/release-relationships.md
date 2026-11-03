@@ -381,13 +381,13 @@ Outgoing: `member_lis`, `member_opensecrets`, `member_govtrack`, `member_icpsr`,
 
 Incoming: `document_members`, `witness_member`, `roster_member`, `bill_sponsor`, `amendment_sponsor`, `committee_record_sponsor`.
 
-## `rosters` — Current-Congress committee seats
+## `rosters` — Committee and subcommittee seats across published Congresses
 
-One member assignment to a committee in a Congress; no historical roster reconstruction.
+One member assignment to a committee or subcommittee in a Congress.
 
 Identity: `congress, system_code, bioguide_id` (primary_key; published identifier).
 
-Coverage: Current-Congress seats only; spicy-regs keeps no roster history.
+Coverage: Committee seats cover the 113th–119th Congresses only.
 
 | Field | Published type | Nullable | Meaning |
 | --- | --- | --- | --- |
@@ -424,6 +424,9 @@ Coverage: Amendments cover the 119th Congress only until spicy-regs backfills.
 | `latest_action_text` | `string` | yes | Text of the latest recorded action |
 | `stage` | `dict` | yes | Lifecycle stage derived by spicy-regs |
 | `policy_area` | `dict` | yes | CRS policy area |
+| `public_law_number` | `string` | yes | Enacted Public Law number (e.g. 118-50) when enacted |
+| `cosponsor_count` | `int32` | yes | Published cosponsor count |
+| `related_bills` | `list<struct<bill_id string,title string,relationship_types list<dict>>>` | no | Related, companion, and vehicle measures linked to this bill |
 | `committees` | `list<dict>` | no | Referred committee system codes |
 | `cbo_estimates` | `list<struct<publication_id string,date date32,description string>>` | no | CBO cost estimates associated with the bill |
 | `floor_votes` | `list<struct<vote_id string,basis dict,chamber dict,date date32,question string,result string,yea int16,nay int16>>` | no | Roll-call votes tied by vote record or bill action |
@@ -432,6 +435,8 @@ Coverage: Amendments cover the 119th Congress only until spicy-regs backfills.
 
 Nullability: Nullability transcribes the phase-2 annex §3 file table (docs/plans/phase-2-annex-20261028.md): a type without "nullable" there is required. A required column is refused at write time.
 
+- `related_bills[]`: Embedded related, companion, and omnibus vehicle measures with canonical bill_id, title, and relationship_types.
+- `related_bills[].relationship_types[]`: Embedded Congress.gov relationship labels, not foreign keys.
 - `cbo_estimates[]`: Embedded publication IDs, dates and descriptions, not full CBO estimate text.
 - `floor_votes[]`: One embedded vote per vote_id per bill; basis distinguishes vote_record from bill_action. Counts are vote totals, not member positions.
 - `amendments[]`: Embedded direct/chained amendment summaries; 119th Congress coverage until upstream backfill.
@@ -794,15 +799,15 @@ many-to-one; match: `equal`; nullable: true; resolution: `unresolved_allowed`. S
 
 ### `roster_committee`
 
-`rosters.system_code` → `committees.system_code`. Committee assignment, current-Congress snapshot only.
+`rosters.system_code` → `committees.system_code`. Committee or subcommittee assignment for the roster row's Congress.
 
-many-to-one; match: `equal`; nullable: false; resolution: `unresolved_allowed`. Scope: rosters.congress; current-Congress coverage only.
+many-to-one; match: `equal`; nullable: false; resolution: `unresolved_allowed`. Scope: rosters.congress (113th–119th Congresses).
 
 ### `roster_member`
 
-`rosters.bioguide_id` → `members.bioguide_id`. Assigned member, current-Congress snapshot only.
+`rosters.bioguide_id` → `members.bioguide_id`. Assigned member for the roster row's Congress.
 
-many-to-one; match: `equal`; nullable: false; resolution: `unresolved_allowed`. Scope: rosters.congress; current-Congress coverage only.
+many-to-one; match: `equal`; nullable: false; resolution: `unresolved_allowed`. Scope: rosters.congress (113th–119th Congresses).
 
 ### `bill_sponsor`
 
@@ -1068,7 +1073,7 @@ Held upstream and never mirrored here. A release names a relation’s generation
 | `roll_call_votes` | `roll-call-votes/roll_call_votes` | `vote_id` | `bills.floor_votes[].vote_id`, `nominations.floor_votes[].vote_id` | One roll-call vote | Includes votes not tied to a local bill or nomination. |
 | `amendments` | `amendments/amendments` | `amendment_id` | `bills.amendments[].amendment_id` | One floor amendment | Coverage is limited by upstream; committee_records holds different, committee-stage documents. |
 | `nominations` | `nominations/nominations` | `congress, number, part_number` | none | One nomination part | Coverage is limited by upstream; local nominations cover what that generation holds. |
-| `committee_assignments` | `committee-rosters/committee_assignments` | `congress, system_code, bioguide_id` | `rosters.system_code`, `members.bioguide_id` | One committee assignment | Current Congress only: not a historical roster. |
+| `committee_assignments` | `committee-rosters/committee_assignments` | `congress, system_code, bioguide_id` | `rosters.system_code`, `members.bioguide_id` | One committee assignment | Covers 113th–119th Congress committee and subcommittee assignments. |
 
 ## Query recipes (DuckDB)
 
@@ -1189,7 +1194,7 @@ No package_id means no published package association; submitted documents use a 
 
 Requires: `rosters`, `committees`, `members`.
 
-Result: One current-Congress committee assignment.
+Result: One committee or subcommittee assignment for the selected Congress.
 
 Parameters, in order: `system_code` (example `hsif00`), `congress` (example `119`).
 
