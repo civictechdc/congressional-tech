@@ -78,11 +78,16 @@ def phase2(tmp_path_factory):
         write('members', """SELECT 'A000001' AS bioguide_id,'Sam Example' AS name,
             [struct_pack(chamber:='house',state:='NY',district:=1::SMALLINT,party:='I',start:=DATE '2025-01-03',"end":=DATE '2027-01-03')] AS terms,
             struct_pack(lis:=NULL::VARCHAR,opensecrets:='N1',govtrack:='1',icpsr:='1',wikidata:='Q1',fec:=['H1','H2']) AS cross_ids""")
-        write('rosters', """SELECT 119::SMALLINT AS congress,'hsif00' AS system_code,'A000001' AS bioguide_id,
+        write('rosters', """SELECT 113::SMALLINT AS congress,'hsif00' AS system_code,'A000001' AS bioguide_id,
+            'Member' AS title,5::SMALLINT AS rank,'I' AS party
+            UNION ALL SELECT 119::SMALLINT AS congress,'hsif00' AS system_code,'A000001' AS bioguide_id,
             'Member' AS title,3::SMALLINT AS rank,'I' AS party""")
         write('bills', """SELECT '119-hr-1' AS bill_id,'Transit Funding Act' AS title,'One Big Beautiful Bill Act' AS short_title,
             'A000001' AS sponsor_bioguide_id,DATE '2025-01-03' AS introduced,DATE '2025-02-01' AS latest_action_date,
-            'Reported' AS latest_action_text,'reported' AS stage,'Transportation' AS policy_area,['hsif00'] AS committees,
+            'Reported' AS latest_action_text,'reported' AS stage,'Transportation' AS policy_area,
+            '119-1' AS public_law_number,42::INTEGER AS cosponsor_count,
+            [struct_pack(bill_id:='119-s-1',title:='Companion Transit Act',relationship_types:=['Companion bill'])] AS related_bills,
+            ['hsif00'] AS committees,
             [struct_pack(publication_id:='CBO1',date:=DATE '2025-01-15',description:='Cost estimate')] AS cbo_estimates,
             [struct_pack(vote_id:='119-h-1',basis:='vote_record',chamber:='house',date:=DATE '2025-02-01',question:='On passage',result:='Passed',yea:=220::SMALLINT,nay:=210::SMALLINT)] AS floor_votes,
             [struct_pack(amendment_id:='119-hamdt-1',purpose:='Add transit safety',sponsor_bioguide_id:='A000001',latest_action_date:=DATE '2025-02-01',latest_action_text:='Agreed')] AS amendments,

@@ -17,7 +17,8 @@ def test_discovery_uses_producer_definitions_and_stays_bounded(reader):
     assert table['identity']['fields'] == ['witness_key']
     assert 'witness_submitted_documents' in table['incoming']
     assert 'witness_transcript_documents' in table['outgoing']
-    assert reader.dataset_info({'table': 'rosters'})['scope'] == ['Current-Congress seats only; spicy-regs keeps no roster history']
+    assert reader.dataset_info({'table': 'rosters'})['scope'] == ['Committee seats cover the 113th–119th Congresses only']
+    assert reader.dataset_info({'relationship': 'roster_committee'})['scope'] == 'rosters.congress (113th–119th Congresses)'
     relation = reader.dataset_info({'relationship': 'witness_submitted_documents'})
     assert relation['source']['fields'] == ['witness_keys[]']
     assert 'own document URLs' in relation['meaning']

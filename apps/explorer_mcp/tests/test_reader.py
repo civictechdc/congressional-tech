@@ -20,7 +20,7 @@ def test_all_tables_and_nested_fields_are_available(reader):
                 if f['identity']['scope'] == 'published identifier' and f['name'] not in ('links.parquet', 'retired_links.parquet')}
     assert info['entity_keys'] == declared
     assert declared.keys() <= info['tables'].keys()
-    assert info['tables']['rosters']['rows'] == 1
+    assert info['tables']['rosters']['rows'] == 2
     assert reader.dataset_info({'table': 'bills'})['columns']['floor_votes'].startswith('STRUCT')
     assert reader.dataset_info({'table': 'capture_scope'}) == {'version': 1, 'entries': []}
     assert reader.query_sql({'sql': 'FROM future_data'})['rows'] == [
@@ -81,6 +81,12 @@ def test_witness_appearances_and_recorded_tracks(reader):
     assert [r['witness_key'] for r in found] == ['appearance-1','appearance-2']
     assert reader.get_entity({'table':'witnesses','id':'appearance-2','section':'documents'})['rows'] == []
     assert [r['bill_id'] for r in reader.search_entities({'table':'bills','text':'One Big Beautiful Bill'})['rows']] == ['119-hr-1']
+    bill_by_pl = reader.search_entities({'table':'bills','text':'119-1'})['rows']
+    assert [r['bill_id'] for r in bill_by_pl] == ['119-hr-1']
+    assert bill_by_pl[0]['public_law_number'] == '119-1'
+    assert bill_by_pl[0]['cosponsor_count'] == 42
+    assert bill_by_pl[0]['related_bills'] == [{'bill_id': '119-s-1', 'title': 'Companion Transit Act', 'relationship_types': ['Companion bill']}]
+    assert reader.search_entities({'table':'rosters','filters':{'congress':113,'rank':5}})['rows'][0]['bioguide_id'] == 'A000001'
     assert reader.search_entities({'table':'rosters','filters':{'congress':119,'rank':3}})['rows'][0]['bioguide_id'] == 'A000001'
     recording = reader.search_entities({'table':'recordings','text':'youtube:abc'})['rows'][0]
     assert recording['tracks'][0]['saved_url'] == 'https://archive.example/bodies/sha256/55/'+'55'*32+'.gz'

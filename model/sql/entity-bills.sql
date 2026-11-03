@@ -1,7 +1,111 @@
-WITH referenced_bills AS (
+WITH seed_bills AS (
  SELECT DISTINCT lower(trim(unnest(measure_keys))) AS bill_id FROM ordered WHERE measure_keys IS NOT NULL
  UNION
  SELECT DISTINCT lower(trim(unnest(subject_keys))) AS bill_id FROM meetings_resolved WHERE subject_keys IS NOT NULL
+ UNION
+ SELECT DISTINCT lower(trim(unnest(subject_keys))) AS bill_id FROM meetings_export WHERE subject_keys IS NOT NULL
+ UNION
+ SELECT DISTINCT lower(trim(bill_id)) AS bill_id
+ FROM spicy_congress_bills
+ WHERE bill_id IS NOT NULL
+   AND try_cast(split_part(lower(trim(bill_id)),'-',1) AS INT)>=113
+   AND ((public_law_number IS NOT NULL AND trim(public_law_number)<>'') OR coalesce(try_cast(cosponsor_count AS INT),0)>=10)
+ UNION
+ SELECT DISTINCT lower(trim(bill_id)) AS bill_id
+ FROM spicy_bill_committee_activities
+ WHERE bill_id IS NOT NULL
+   AND try_cast(split_part(lower(trim(bill_id)),'-',1) AS INT)>=113
+   AND activity_name IS NOT NULL
+   AND NOT regexp_like(lower(trim(activity_name)),'^referred')
+ UNION
+ SELECT DISTINCT lower(trim(bill_id)) AS bill_id
+ FROM spicy_cbo_cost_estimates
+ WHERE bill_id IS NOT NULL
+   AND try_cast(split_part(lower(trim(bill_id)),'-',1) AS INT)>=113
+ UNION
+ SELECT DISTINCT lower(trim(bill_id)) AS bill_id
+ FROM spicy_roll_call_votes
+ WHERE bill_id IS NOT NULL AND trim(bill_id)<>''
+   AND try_cast(split_part(lower(trim(bill_id)),'-',1) AS INT)>=113
+ UNION
+ SELECT DISTINCT lower(trim(bill_id)) AS bill_id
+ FROM spicy_bill_vote_references
+ WHERE bill_id IS NOT NULL AND trim(bill_id)<>''
+   AND try_cast(split_part(lower(trim(bill_id)),'-',1) AS INT)>=113
+), related_bill_unnested AS (
+ SELECT
+  lower(trim(cb.bill_id)) AS source_bill_id,
+  lower(trim(r['congress']))||'-'||lower(trim(r['bill_type']))||'-'||lower(trim(r['number'])) AS target_bill_id,
+  nullif(trim(r['title']),'') AS target_title,
+  r['relationship_details'] AS relationship_details
+ FROM (
+  SELECT bill_id,unnest(related_bills) AS r
+  FROM spicy_congress_bills
+  WHERE bill_id IS NOT NULL AND related_bills IS NOT NULL AND coalesce(array_length(related_bills),0)>0
+ ) cb
+ WHERE r['congress'] IS NOT NULL AND trim(r['congress'])<>''
+   AND r['bill_type'] IS NOT NULL AND trim(r['bill_type'])<>''
+   AND r['number'] IS NOT NULL AND trim(r['number'])<>''
+), referenced_bills AS (
+ SELECT DISTINCT bill_id FROM seed_bills WHERE bill_id IS NOT NULL AND bill_id<>''
+ UNION
+ SELECT DISTINCT e.target_bill_id AS bill_id
+ FROM related_bill_unnested e
+ JOIN seed_bills s ON s.bill_id=e.source_bill_id
+ UNION
+ SELECT DISTINCT e.source_bill_id AS bill_id
+ FROM related_bill_unnested e
+ JOIN seed_bills s ON s.bill_id=e.target_bill_id
+), related_bills_filtered AS (
+ SELECT e.source_bill_id,e.target_bill_id,e.target_title,e.relationship_details
+ FROM related_bill_unnested e
+ JOIN referenced_bills rb ON rb.bill_id=e.source_bill_id
+), related_bill_types AS (
+ SELECT
+  source_bill_id,
+  target_bill_id,
+  nullif(trim(rd['type']),'') AS rel_type
+ FROM (
+  SELECT source_bill_id,target_bill_id,unnest(relationship_details) AS rd
+  FROM related_bills_filtered
+  WHERE relationship_details IS NOT NULL AND coalesce(array_length(relationship_details),0)>0
+ )
+ WHERE nullif(trim(rd['type']),'') IS NOT NULL
+), related_bill_types_agg AS (
+ SELECT
+  source_bill_id,
+  target_bill_id,
+  array_sort(array_distinct(array_agg(rel_type))) AS relationship_types
+ FROM related_bill_types
+ GROUP BY source_bill_id,target_bill_id
+), related_bills_dedup AS (
+ SELECT
+  f.source_bill_id,
+  f.target_bill_id,
+  max(f.target_title) AS title,
+  coalesce(
+   t.relationship_types,
+   arrow_cast(array_slice(make_array(cast(NULL AS VARCHAR)),1,0),'List(Utf8)')
+  ) AS relationship_types
+ FROM related_bills_filtered f
+ LEFT JOIN related_bill_types_agg t
+  ON t.source_bill_id=f.source_bill_id AND t.target_bill_id=f.target_bill_id
+ GROUP BY f.source_bill_id,f.target_bill_id,t.relationship_types
+), related_bills_sorted AS (
+ SELECT *,row_number() OVER (
+  PARTITION BY source_bill_id
+  ORDER BY target_bill_id ASC
+ ) AS rel_seq
+ FROM related_bills_dedup
+), related_bills_agg AS (
+ SELECT source_bill_id AS bill_id,
+  array_agg(named_struct(
+   'bill_id',target_bill_id,
+   'title',title,
+   'relationship_types',relationship_types
+  ) ORDER BY rel_seq ASC) AS related_bills
+ FROM related_bills_sorted
+ GROUP BY source_bill_id
 ), bill_committees_agg AS (
  SELECT lower(trim(c.bill_id)) AS bill_id,
   array_sort(array_distinct(array_agg(lower(trim(c.system_code))))) AS committees
@@ -132,7 +236,9 @@ WITH referenced_bills AS (
   coalesce(try_cast(latest_action_date AS DATE),cast(arrow_cast(try_cast(latest_action_date AS TIMESTAMP WITH TIME ZONE),'Timestamp(Second, Some("America/New_York"))') AS DATE)) AS latest_action_date,
   latest_action_text,
   nullif(trim(stage),'') AS stage,
-  nullif(trim(policy_area),'') AS policy_area
+  nullif(trim(policy_area),'') AS policy_area,
+  nullif(trim(public_law_number),'') AS public_law_number,
+  try_cast(cosponsor_count AS INT) AS cosponsor_count
  FROM spicy_congress_bills WHERE bill_id IS NOT NULL
 )
 SELECT b.norm_bill_id AS bill_id,
@@ -143,6 +249,13 @@ SELECT b.norm_bill_id AS bill_id,
  b.latest_action_text,
  b.stage,
  b.policy_area,
+ b.public_law_number,
+ b.cosponsor_count,
+ coalesce(rel.related_bills,array_slice(make_array(named_struct(
+  'bill_id',cast(NULL AS VARCHAR),
+  'title',cast(NULL AS VARCHAR),
+  'relationship_types',arrow_cast(array_slice(make_array(cast(NULL AS VARCHAR)),1,0),'List(Utf8)')
+ )),1,0)) AS related_bills,
  coalesce(c.committees,arrow_cast(array_slice(make_array(cast(NULL AS VARCHAR)),1,0),'List(Utf8)')) AS committees,
  coalesce(cbo.cbo_estimates,array_slice(make_array(named_struct(
   'publication_id',cast(NULL AS VARCHAR),'date',cast(NULL AS DATE),'description',cast(NULL AS VARCHAR)
@@ -161,6 +274,7 @@ SELECT b.norm_bill_id AS bill_id,
  )),1,0)) AS committee_activities
 FROM base_bills b
 JOIN referenced_bills rb ON b.norm_bill_id=rb.bill_id
+LEFT JOIN related_bills_agg rel ON b.norm_bill_id=rel.bill_id
 LEFT JOIN bill_committees_agg c ON b.norm_bill_id=c.bill_id
 LEFT JOIN cbo_agg cbo ON b.norm_bill_id=cbo.bill_id
 LEFT JOIN votes_agg v ON b.norm_bill_id=v.bill_id

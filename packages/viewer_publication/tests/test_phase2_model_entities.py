@@ -519,6 +519,29 @@ def test_phase2_entities_meetings_witnesses_recordings_and_spicy_projections(tmp
                 latest_action_text='Ordered to be Reported.',
                 stage='committee',
                 policy_area='Agriculture and Food',
+                public_law_number='118-50',
+                cosponsor_count=42,
+                related_bills=[
+                    dict(
+                        bill_id='118-hr-815',
+                        title='Making emergency supplemental appropriations',
+                        relationship_types=['Related bill'],
+                    ),
+                ],
+            ),
+            dict(
+                bill_id='118-hr-815',
+                title='Making emergency supplemental appropriations',
+                short_title='Supplemental Appropriations Act',
+                sponsor_bioguide_id='A000001',
+                introduced_date='2023-02-02',
+                latest_action_date='2024-04-24',
+                latest_action_text='Became Public Law No: 118-50.',
+                stage='enacted',
+                policy_area='Economics and Public Finance',
+                public_law_number='118-50',
+                cosponsor_count=5,
+                related_bills=[],
             ),
             dict(
                 bill_id='118-hr-9999',
@@ -659,7 +682,7 @@ def test_phase2_entities_meetings_witnesses_recordings_and_spicy_projections(tmp
     assert files_by_name['members.parquet']['coverage']['date_end'] == '2025-01-03'
     assert files_by_name['rosters.parquet']['coverage']['congress_start'] == 118
     assert files_by_name['rosters.parquet']['coverage']['congress_end'] == 118
-    assert files_by_name['rosters.parquet']['coverage']['gaps'] == ['Current-Congress seats only; spicy-regs keeps no roster history']
+    assert files_by_name['rosters.parquet']['coverage']['gaps'] == ['Committee seats cover the 113th–119th Congresses only']
     assert files_by_name['bills.parquet']['generations'] == {'bill-family': '3' * 64, 'roll-call-votes': '5' * 64, 'amendments': '6' * 64}
     assert files_by_name['bills.parquet']['coverage']['gaps'] == ['Amendments cover the 119th Congress only until spicy-regs backfills']
     assert files_by_name['nominations.parquet']['generations'] == {'nominations': '4' * 64, 'roll-call-votes': '5' * 64}
@@ -702,6 +725,7 @@ def test_phase2_entities_meetings_witnesses_recordings_and_spicy_projections(tmp
         'single_doc_version_keys',
         'missing_witness_keys',
         'missing_committee_keys',
+        'missing_member_keys',
     ):
         assert inv[key] == 0
     ent_comp = queries_by_name['entity_profile_completeness'][0]
@@ -722,7 +746,7 @@ def test_phase2_entities_meetings_witnesses_recordings_and_spicy_projections(tmp
     assert m['status'] == 'Scheduled'
     assert m['sittings'][0]['place'] == '1300, LHOB, Washington, DC'
     assert m['committees'] == [{'system_code': 'hsag00', 'role': 'primary'}]
-    assert m['subject_keys'] == ['118-hr-1234', '118-pn-123']
+    assert m['subject_keys'] == ['115-hr-1', '118-hr-1234', '118-pn-123']
     # The print first, then the recording's two complete caption tracks (ct-1i4q).
     assert [(t['source'], t['package_id'], t['video_key'], t['production']) for t in m['transcripts']] == [
         ('printed_hearing', 'CHRG-118hhrg55555', None, None),
@@ -740,8 +764,10 @@ def test_phase2_entities_meetings_witnesses_recordings_and_spicy_projections(tmp
     stmt_doc = next(r for r in listed if 'Wstate-SmithJ' in r['filename'])
     assert not any(r['filename'].endswith('.ts') for r in listed)
     assert chrg_doc['meeting_keys'] == ['115538']
+    assert chrg_doc['measure_keys'] == []
     print_doc = next(r for r in listed if r['filename'] == 'BILLS-115hr1-RCP115-1.pdf')
     assert print_doc['meeting_keys'] == ['115538']
+    assert print_doc['measure_keys'] == ['115-hr-1']
     assert chrg_doc['document_date'] == date(2023, 5, 10)
     assert chrg_doc['witness_keys'] == []
     assert len(stmt_doc['witness_keys']) == 1
@@ -810,10 +836,22 @@ def test_phase2_entities_meetings_witnesses_recordings_and_spicy_projections(tmp
         party='Democrat',
     )]
 
-    # 6. Verify bills.parquet (referenced only, chained amendments, deduplicated votes, ordered activities)
+    # 6. Verify bills.parquet (referenced + related_bills vehicles, chained amendments, deduplicated votes, ordered activities)
     bills = pq.read_table(release_dir / 'bills.parquet').to_pylist()
-    assert [b['bill_id'] for b in bills] == ['118-hr-1234']
+    assert [b['bill_id'] for b in bills] == ['118-hr-1234', '118-hr-815']
     bill = bills[0]
+    assert bill['public_law_number'] == '118-50'
+    assert bill['cosponsor_count'] == 42
+    assert bill['related_bills'] == [
+        dict(
+            bill_id='118-hr-815',
+            title='Making emergency supplemental appropriations',
+            relationship_types=['Related bill'],
+        ),
+    ]
+    assert bills[1]['public_law_number'] == '118-50'
+    assert bills[1]['cosponsor_count'] == 5
+    assert bills[1]['related_bills'] == []
     assert [a['amendment_id'] for a in bill['amendments']] == ['118-hamdt-10', '118-hamdt-11']
     assert [(v['vote_id'], v['basis']) for v in bill['floor_votes']] == [
         ('118-h-1-201', 'vote_record'),
@@ -1524,14 +1562,18 @@ def _resolved_meetings(tmp_path, records, pins=(), conflicts=()):
     """Run only the maintained meeting SQL over stated records, with no capture history."""
     from congress_api.retention.provenance import json_input, run_job
     from docspec_client.client import NativeDatasets
-    from viewer_publication.archive_model import MEETING_RECORD_FIELDS, _normalize_meeting_rows, meeting_steps, selected_record_step
+    from viewer_publication.archive_model import MEETING_RECORD_FIELDS, SPICY_SCHEMAS, _normalize_meeting_rows, meeting_steps, selected_record_step
     engine = NativeDatasets.from_config(os.environ['DOCSPEC_JOB_CONFIG'])
     inputs = [json_input(tmp_path, 'meeting_records_input', _normalize_meeting_rows(records, 'v'), **MEETING_RECORD_FIELDS),
         json_input(tmp_path, 'parser_versions', list(pins), parser='Utf8', version='Utf8'),
         json_input(tmp_path, 'meeting_sources', [dict(kind='meeting', source='house_xml', priority=1), dict(kind='meeting', source='congress_gov', priority=2)], kind='Utf8', source='Utf8', priority='Int64'),
         json_input(tmp_path, 'recording_sources', [], kind='Utf8', pattern='Utf8', key_template='Utf8'),
         json_input(tmp_path, 'meeting_status_conflicts', [dict(event_id=e, publisher_status='Canceled', evidence='read') for e in conflicts],
-            event_id='Int64', publisher_status='Utf8', evidence='Utf8')]
+            event_id='Int64', publisher_status='Utf8', evidence='Utf8'),
+        json_input(tmp_path, 'committee_codes', [], id='Utf8', code='Utf8', system_code='Utf8', chamber='Utf8'),
+        json_input(tmp_path, 'spicy_bill_committee_activities', [], **SPICY_SCHEMAS['spicy_bill_committee_activities']),
+        json_input(tmp_path, 'spicy_congress_bills', [], **SPICY_SCHEMAS['spicy_congress_bills']),
+        json_input(tmp_path, 'spicy_nominations', [], **SPICY_SCHEMAS['spicy_nominations'])]
     captures = """SELECT arrow_cast(NULL,'FixedSizeBinary(32)') AS sha256,cast(NULL AS VARCHAR) AS retrieved_at,cast(NULL AS VARCHAR) AS mode,
         cast(NULL AS BOOLEAN) AS complete,cast(NULL AS VARCHAR) AS outcome,cast(NULL AS INT) AS http_status WHERE false"""
     result = run_job(tmp_path, engine, inputs=inputs, outputs=[],
@@ -1902,3 +1944,394 @@ def test_a_listing_label_outranks_another_formats_page_title(tmp_path):
     rows = pq.read_table(tmp_path / 'release/detail.parquet').to_pylist()
     saved = next(r for r in rows if r['filename'] == 'appendix-d.pdf')
     assert [a['format'] for a in saved['alternates']] == ['html'] and saved['title'] == 'Appendix D', [(r['filename'], r['format'], r['title'], r['alternates']) for r in rows]
+
+
+def test_subject_key_reconciliation_and_historical_rosters(tmp_path):
+    """ct-mj9f & ct-8cno: reconcile meetings.subject_keys across all 5 authoritative sources,
+    publish bills.parquet with public_law_number/cosponsor_count/related_bills, and wire
+    multi-Congress (113-119) rosters with normalized system codes, coalesced party, and synthesized rank."""
+    from viewer_publication.archive_model import build_release
+    engine = NativeDatasets.from_config(os.environ['DOCSPEC_JOB_CONFIG'])
+
+    chrg_pdf = b'%PDF-1.4\n% Senate nomination hearing CHRG-119shrg58025\n1 0 obj <<>> endobj\ntrailer <<>>\n%%EOF\n'
+    staged = _stage_raw_fixture(
+        tmp_path,
+        engine,
+        [
+            dict(
+                url='https://www.govinfo.gov/content/pkg/CHRG-119shrg58025/pdf/CHRG-119shrg58025.pdf',
+                data=chrg_pdf,
+                format='pdf',
+            ),
+        ],
+    )
+    meeting_records = [
+        dict(
+            record_sha='10' * 32,
+            source='congress_gov',
+            meetings=[
+                # Source 2 (1:1 committee/parent_committee activity_date) + Source 5b (title bill ref ignoring U.S. 1)
+                dict(
+                    event_id='334254',
+                    chamber='senate',
+                    congress=118,
+                    session=1,
+                    updated='2023-05-02T10:00:00Z',
+                    title='Hearing on H.R. 7521 and U.S. 1 Highway Safety',
+                    meeting_date='2023-05-02',
+                    meeting_type='Hearing',
+                    status='Scheduled',
+                    sittings=[],
+                    committees=[dict(system_code='SSJU00', role='primary')],
+                    subject_keys=[],
+                    transcript_jackets=[],
+                    videos=[],
+                ),
+                # Source 2 via subcommittee (hsvr09 -> parent hsvr00)
+                dict(
+                    event_id='112789',
+                    chamber='house',
+                    congress=117,
+                    session=1,
+                    updated='2021-06-24T10:00:00Z',
+                    title='Legislative Hearing on Toxic Exposure',
+                    meeting_date='2021-06-24',
+                    meeting_type='Hearing',
+                    status='Scheduled',
+                    sittings=[],
+                    committees=[dict(system_code='HSVR00', role='primary')],
+                    subject_keys=[],
+                    transcript_jackets=[],
+                    videos=[],
+                ),
+                # Source 3 ("original bill entitled '...'" markup with parenthetical acronym stripped)
+                dict(
+                    event_id='334517',
+                    chamber='senate',
+                    congress=118,
+                    session=1,
+                    updated='2023-06-22T10:00:00Z',
+                    title=(
+                        'Business meeting to consider an original bill entitled '
+                        '"Modernizing Electronic Prior Authorization (MEPA) Act of 2023" '
+                        'and an original bill entitled '
+                        '"Military Construction, Veterans Affairs, and Related Agencies Appropriations Act, 2024".'
+                    ),
+                    meeting_date='2023-06-22',
+                    meeting_type='Markup',
+                    status='Scheduled',
+                    sittings=[],
+                    committees=[dict(system_code='SSAP00', role='primary')],
+                    subject_keys=[],
+                    transcript_jackets=[],
+                    videos=[],
+                ),
+                # Source 5a (confirmation hearing linked to CHRG-119shrg58025 via transcript_jackets)
+                dict(
+                    event_id='336580',
+                    chamber='senate',
+                    congress=119,
+                    session=1,
+                    updated='2025-02-12T10:00:00Z',
+                    title='Hearings to examine the nomination of John Doe',
+                    meeting_date='2025-02-12',
+                    meeting_type='Hearing',
+                    status='Scheduled',
+                    sittings=[],
+                    committees=[dict(system_code='SSBK00', role='primary')],
+                    subject_keys=[],
+                    transcript_jackets=['58025'],
+                    videos=[],
+                ),
+            ],
+        ),
+    ]
+    spicy_regs = spicy_input(
+        spicy_committees=[
+            dict(
+                system_code='SSJU00',
+                name='Committee on the Judiciary',
+                chamber='Senate',
+                committee_type='Standing',
+                parent_system_code=None,
+                website_url=None,
+                is_current=True,
+                history=[dict(officialName='Committee on the Judiciary', startDate='2021-01-03T05:00:00Z', endDate=None)],
+            ),
+            dict(
+                system_code='HSVR00',
+                name='Committee on Veterans Affairs',
+                chamber='House',
+                committee_type='Standing',
+                parent_system_code=None,
+                website_url=None,
+                is_current=True,
+                history=[dict(officialName='Committee on Veterans Affairs', startDate='2021-01-03T05:00:00Z', endDate=None)],
+            ),
+            dict(
+                system_code='SSAP00',
+                name='Committee on Appropriations',
+                chamber='Senate',
+                committee_type='Standing',
+                parent_system_code=None,
+                website_url=None,
+                is_current=True,
+                history=[dict(officialName='Committee on Appropriations', startDate='2021-01-03T05:00:00Z', endDate=None)],
+            ),
+            dict(
+                system_code='SSBK00',
+                name='Committee on Banking, Housing, and Urban Affairs',
+                chamber='Senate',
+                committee_type='Standing',
+                parent_system_code=None,
+                website_url=None,
+                is_current=True,
+                history=[dict(officialName='Committee on Banking', startDate='2021-01-03T05:00:00Z', endDate=None)],
+            ),
+            dict(
+                system_code='HLIG00',
+                name='Permanent Select Committee on Intelligence',
+                chamber='House',
+                committee_type='Select',
+                parent_system_code=None,
+                website_url=None,
+                is_current=True,
+                history=[dict(officialName='Permanent Select Committee on Intelligence', startDate='2021-01-03T05:00:00Z', endDate=None)],
+            ),
+        ],
+        spicy_members=[
+            dict(
+                bioguide_id='A000001',
+                name_first='Alma',
+                name_last='Adams',
+                lis_id=None,
+                opensecrets_id=None,
+                govtrack_id=None,
+                icpsr_id=None,
+                wikidata_id=None,
+                fec_ids=[],
+            ),
+            dict(
+                bioguide_id='B000002',
+                name_first='Bob',
+                name_last='Baker',
+                lis_id=None,
+                opensecrets_id=None,
+                govtrack_id=None,
+                icpsr_id=None,
+                wikidata_id=None,
+                fec_ids=[],
+            ),
+        ],
+        spicy_member_terms=[
+            dict(
+                bioguide_id='A000001',
+                term_type='rep',
+                term_state='NC',
+                term_district=12,
+                term_party='Democrat',
+                term_start='2013-01-03',
+                term_end='2027-01-03',
+            ),
+            dict(
+                bioguide_id='B000002',
+                term_type='rep',
+                term_state='TX',
+                term_district=1,
+                term_party='Republican',
+                term_start='2013-01-03',
+                term_end='2025-01-03',
+            ),
+        ],
+        spicy_committee_assignments=[
+            # 113th Congress: two sessions for same (congress, system_code, bioguide_id) with HSIG00 -> hlig00
+            dict(
+                congress=113,
+                session='1',
+                system_code='HSIG00',
+                bioguide_id='A000001',
+                position='Member',
+                rank=2,
+                party='Democrat',
+            ),
+            dict(
+                congress=113,
+                session='2',
+                system_code='HSIG00',
+                bioguide_id='A000001',
+                position='Chair',
+                rank=1,
+                party='Democrat',
+            ),
+            # 117th Congress: historical subcommittee HSVR09 not in spicy_committees, with missing party and rank
+            dict(
+                congress=117,
+                session='1',
+                chamber='House',
+                is_subcommittee=True,
+                parent_system_code='HSVR00',
+                committee_name='Health',
+                system_code='HSVR09',
+                bioguide_id='B000002',
+                name_first='Bob',
+                name_last='Baker',
+                position='Ranking Member',
+                rank=None,
+                party=None,
+            ),
+            # 119th Congress: current assignment
+            dict(
+                congress=119,
+                system_code='SSBK00',
+                bioguide_id='A000001',
+                position='Member',
+                rank=1,
+                party='Democrat',
+            ),
+        ],
+        spicy_congress_bills=[
+            dict(
+                bill_id='118-s-686',
+                title='RESTRICT Act',
+                short_title='RESTRICT Act',
+                sponsor_bioguide_id='A000001',
+                introduced_date='2023-03-07',
+                latest_action_date='2023-05-02',
+                latest_action_text='Committee on the Judiciary. Hearings held.',
+                stage='committee',
+                policy_area='Science, Technology, Communications',
+                public_law_number=None,
+                cosponsor_count=26,
+                related_bills=[],
+            ),
+            dict(
+                bill_id='118-hr-7521',
+                title='Protecting Americans from Foreign Adversary Controlled Applications Act',
+                short_title='PAFACA Act',
+                sponsor_bioguide_id='A000001',
+                introduced_date='2024-03-05',
+                latest_action_date='2024-03-20',
+                latest_action_text='Received in the Senate.',
+                stage='passed_house',
+                policy_area='Science, Technology, Communications',
+                public_law_number=None,
+                cosponsor_count=53,
+                related_bills=[],
+            ),
+            # 118-s-1 exists in upstream bills, but 'U.S. 1 Highway Safety' must NOT match it!
+            dict(
+                bill_id='118-s-1',
+                title='Unrelated S. 1 Bill',
+                short_title='Unrelated S. 1',
+                sponsor_bioguide_id='A000001',
+                introduced_date='2023-01-03',
+                latest_action_date='2023-01-03',
+                latest_action_text='Introduced',
+                stage='introduced',
+                policy_area='Other',
+                public_law_number=None,
+                cosponsor_count=0,
+                related_bills=[],
+            ),
+            dict(
+                bill_id='117-hr-3967',
+                title='Sergeant First Class Heath Robinson Honoring our PACT Act of 2022',
+                short_title='Honoring our PACT Act of 2022',
+                sponsor_bioguide_id='A000001',
+                introduced_date='2021-06-17',
+                latest_action_date='2022-08-10',
+                latest_action_text='Became Public Law No: 117-168.',
+                stage='enacted',
+                policy_area='Armed Forces and National Security',
+                public_law_number='117-168',
+                cosponsor_count=112,
+                related_bills=[],
+            ),
+            dict(
+                bill_id='118-s-2137',
+                title='Modernizing Electronic Prior Authorization Act of 2023',
+                short_title='Modernizing Electronic Prior Authorization Act',
+                sponsor_bioguide_id='A000001',
+                introduced_date='2023-06-22',
+                latest_action_date='2023-06-22',
+                latest_action_text='Ordered to be reported.',
+                stage='reported',
+                policy_area='Health',
+                public_law_number=None,
+                cosponsor_count=12,
+                related_bills=[],
+            ),
+            dict(
+                bill_id='118-s-2127',
+                title='Military Construction, Veterans Affairs, and Related Agencies Appropriations Act, 2024',
+                short_title='MilCon-VA Appropriations Act, 2024',
+                sponsor_bioguide_id='A000001',
+                introduced_date='2023-06-22',
+                latest_action_date='2023-06-22',
+                latest_action_text='Original measure reported to Senate.',
+                stage='reported',
+                policy_area='Armed Forces and National Security',
+                public_law_number=None,
+                cosponsor_count=0,
+                related_bills=[],
+            ),
+        ],
+        spicy_bill_committee_activities=[
+            dict(bill_id='118-s-686', system_code='SSJU00', activity_name='Hearings By (full committee)', activity_date='2023-05-02T14:00:00Z', occurrence=1),
+            dict(bill_id='117-hr-3967', system_code='HSVR09', activity_name='Hearings By (subcommittee)', activity_date='2021-06-24T14:00:00Z', occurrence=1),
+            dict(bill_id='118-s-2137', system_code='SSAP00', activity_name='Reported original measure', activity_date='2023-06-22T14:00:00Z', occurrence=1),
+            dict(bill_id='118-s-2127', system_code='SSAP00', activity_name='Reported original measure', activity_date='2023-06-22T14:00:00Z', occurrence=1),
+        ],
+        spicy_nominations=[
+            dict(
+                congress=119,
+                number=12,
+                part_number='10',
+                description='John Doe, to be Member of the Federal Reserve Board',
+                organization='Federal Reserve System',
+                received_date='2025-01-20',
+                latest_action_date='2025-02-12',
+                latest_action_text='Committee on Banking. Hearings held.',
+                committees_json='[{"system_code":"ssbk00","name":"Banking"}]',
+                hearings_json='[{"package_id":"CHRG-119shrg58025"}]',
+            ),
+        ],
+    )
+
+    release_dir = tmp_path / 'release'
+    manifest = build_release(
+        **staged,
+        meeting_records=meeting_records,
+        appearance_records=[],
+        spicy_regs=spicy_regs,
+        engine=engine,
+        output=release_dir,
+        scratch=tmp_path / 'model',
+    )
+
+    meetings = {m['event_id']: m for m in pq.read_table(release_dir / 'meetings.parquet').to_pylist()}
+    # 334254 gets 118-s-686 (Source 2) and 118-hr-7521 (Source 5b), NOT 118-s-1 ('U.S. 1')
+    assert meetings[334254]['subject_keys'] == ['118-hr-7521', '118-s-686']
+    # 112789 gets 117-hr-3967 (Source 2 via subcommittee hsvr09 -> hsvr00)
+    assert meetings[112789]['subject_keys'] == ['117-hr-3967']
+    # 334517 gets 118-s-2127 and 118-s-2137 (Source 3 original bill entitled markup with (MEPA) stripped)
+    assert meetings[334517]['subject_keys'] == ['118-s-2127', '118-s-2137']
+    # 336580 gets 119-pn-12-10 (Source 5a confirmation hearing transcript package_id)
+    assert meetings[336580]['subject_keys'] == ['119-pn-12-10']
+
+    rosters = pq.read_table(release_dir / 'rosters.parquet').to_pylist()
+    assert rosters == [
+        dict(congress=113, system_code='hlig00', bioguide_id='A000001', title='Chair', rank=1, party='Democrat'),
+        dict(congress=117, system_code='hsvr09', bioguide_id='B000002', title='Ranking Member', rank=1, party='Republican'),
+        dict(congress=119, system_code='ssbk00', bioguide_id='A000001', title='Member', rank=1, party='Democrat'),
+    ]
+    files_by_name = {f['name']: f for f in manifest['files']}
+    assert files_by_name['rosters.parquet']['coverage']['congress_start'] == 113
+    assert files_by_name['rosters.parquet']['coverage']['congress_end'] == 119
+
+    committees = {c['system_code']: c for c in pq.read_table(release_dir / 'committees.parquet').to_pylist()}
+    assert 'hsvr09' in committees
+    assert committees['hsvr09']['committee_type'] == 'subcommittee'
+    assert committees['hsvr09']['parent_system_code'] == 'hsvr00'
+    assert committees['hsvr09']['is_current'] is False
+

@@ -1150,10 +1150,10 @@
         }
       ],
       "gaps": [
-        "Current-Congress seats only; spicy-regs keeps no roster history"
+        "Committee seats cover the 113th–119th Congresses only"
       ],
-      "purpose": "Current-Congress committee seats",
-      "row_meaning": "One member assignment to a committee in a Congress; no historical roster reconstruction",
+      "purpose": "Committee and subcommittee seats across published Congresses",
+      "row_meaning": "One member assignment to a committee or subcommittee in a Congress",
       "identity": {
         "fields": [
           "congress",
@@ -1224,6 +1224,24 @@
           "nullable": true
         },
         {
+          "name": "public_law_number",
+          "type": "string",
+          "meaning": "Enacted Public Law number (e.g. 118-50) when enacted",
+          "nullable": true
+        },
+        {
+          "name": "cosponsor_count",
+          "type": "int32",
+          "meaning": "Published cosponsor count",
+          "nullable": true
+        },
+        {
+          "name": "related_bills",
+          "type": "list<struct<bill_id string,title string,relationship_types list<dict>>>",
+          "meaning": "Related, companion, and vehicle measures linked to this bill",
+          "nullable": false
+        },
+        {
           "name": "committees",
           "type": "list<dict>",
           "meaning": "Referred committee system codes",
@@ -1268,6 +1286,8 @@
         "kind": "primary_key"
       },
       "notes": {
+        "related_bills[]": "Embedded related, companion, and omnibus vehicle measures with canonical bill_id, title, and relationship_types.",
+        "related_bills[].relationship_types[]": "Embedded Congress.gov relationship labels, not foreign keys.",
         "cbo_estimates[]": "Embedded publication IDs, dates and descriptions, not full CBO estimate text.",
         "floor_votes[]": "One embedded vote per vote_id per bill; basis distinguishes vote_record from bill_action. Counts are vote totals, not member positions.",
         "amendments[]": "Embedded direct/chained amendment summaries; 119th Congress coverage until upstream backfill.",
@@ -2374,12 +2394,12 @@
           "system_code"
         ]
       },
-      "meaning": "Committee assignment, current-Congress snapshot only.",
+      "meaning": "Committee or subcommittee assignment for the roster row's Congress.",
       "cardinality": "many-to-one",
       "nullable": false,
       "resolution": "unresolved_allowed",
       "match": "equal",
-      "scope": "rosters.congress; current-Congress coverage only"
+      "scope": "rosters.congress (113th–119th Congresses)"
     },
     {
       "id": "roster_member",
@@ -2395,12 +2415,12 @@
           "bioguide_id"
         ]
       },
-      "meaning": "Assigned member, current-Congress snapshot only.",
+      "meaning": "Assigned member for the roster row's Congress.",
       "cardinality": "many-to-one",
       "nullable": false,
       "resolution": "unresolved_allowed",
       "match": "equal",
-      "scope": "rosters.congress; current-Congress coverage only"
+      "scope": "rosters.congress (113th–119th Congresses)"
     },
     {
       "id": "bill_sponsor",
@@ -3389,7 +3409,7 @@
         }
       ],
       "sql": "SELECT r.congress,r.system_code,c.name AS committee,r.bioguide_id,m.name,r.title,r.rank,r.party\nFROM rosters r LEFT JOIN committees c USING (system_code) LEFT JOIN members m USING (bioguide_id)\nWHERE r.system_code=? AND r.congress=? ORDER BY r.rank,r.bioguide_id LIMIT 100",
-      "result_row": "One current-Congress committee assignment",
+      "result_row": "One committee or subcommittee assignment for the selected Congress",
       "notes": [
         "An empty historical result does not establish that the committee had no members."
       ]
@@ -3706,7 +3726,7 @@
         }
       ],
       "row_meaning": "One committee assignment",
-      "limits": "Current Congress only: not a historical roster."
+      "limits": "Covers 113th–119th Congress committee and subcommittee assignments."
     }
   ]
 }
