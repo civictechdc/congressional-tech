@@ -45,7 +45,9 @@ def test_native_sources_preserve_names_member_paths_imports_and_failed_urls(tmp_
     result=run_job(tmp_path,NativeDatasets.from_config(os.environ['DOCSPEC_JOB_CONFIG']),inputs=inputs,
         steps=steps+source_steps(),outputs=[
             parquet_output(tmp_path,'fixture-captures','SELECT * FROM capture_evidence',['receipt_line','capture_index']),
-            parquet_output(tmp_path,'model-names',"SELECT DISTINCT filename,coalesce(source_url,'') AS source_url FROM effective_filenames",['filename','source_url'])],queries=[
+            parquet_output(tmp_path,'model-names',"""SELECT DISTINCT filename,coalesce(source_url,'') AS source_url FROM effective_filenames
+                UNION SELECT DISTINCT requested_filename,requested_url FROM effective_filenames WHERE requested_filename IS NOT NULL""",
+                ['filename','source_url'])],queries=[
             dict(name='files',sql='SELECT filename,source_url,body_sha,is_real_file,cast(first_fetched AS VARCHAR) AS first_fetched,cast(in_archive_since AS VARCHAR) AS in_archive_since FROM source_files ORDER BY filename'),
             dict(name='members',sql="SELECT count(*) AS n FROM capture_sources WHERE source_url IS NULL AND member_path IS NOT NULL"),
             dict(name='ids',sql="SELECT count(*) AS n FROM source_files WHERE source_id<>encode(sha256(json_array(CASE WHEN body_sha IS NOT NULL THEN 'bodies/sha256/'||substr(body_sha,1,2)||'/'||body_sha||'.gz' END,filename,source_url)),'hex')")])

@@ -30,7 +30,7 @@ WITH senate_hosts AS (
  UNION SELECT 'veterans','ssva00'
  UNION SELECT 'jec','jsec00'
 )
-SELECT source_id,unnest(committee_code) AS code FROM source_filename_readings WHERE status='completed'
+SELECT source_id,unnest(committee_code) AS code FROM source_filename_readings WHERE committee_code_status='completed'
 UNION
 SELECT DISTINCT c.source_id,upper(sc.system_code) AS code
 FROM capture_source_contexts c

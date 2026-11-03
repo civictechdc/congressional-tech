@@ -576,16 +576,16 @@ MERGED_RECOVERY_FIELDS=dict(name='merged_recovery_fields',sql='SELECT count(*) A
     for name,link,own,shown in _MERGED_LISTS)
     +f' FROM ({MERGED_RECOVERY_SQL}) g')
 
-# Both names (owner, 2026-11-02): a source whose shown (final-URL) name and requested-URL name give
-# different values for one field keeps the shown one; each such pair is a triage row with both
-# values and both names (evidence filename_conflicts.parquet). Fills and conflicts are counted.
-_NAME_FIELDS=[('filename_date','cast(o.shown_filename_date AS VARCHAR)','cast(l.filename_date AS VARCHAR)','filled_date'),
-    ('congress','cast(o.shown_congress AS VARCHAR)','cast(l.congress AS VARCHAR)','filled_congress'),
-    ('document_kind',"array_to_string(array_sort(o.shown_document_kind),',')","array_to_string(array_sort(l.document_kind),',')",'filled_kind'),
-    ('document_family',"array_to_string(array_sort(o.shown_document_family),',')","array_to_string(array_sort(l.document_family),',')",'filled_family'),
-    ('committee_code',"array_to_string(array_sort(o.shown_committee_code),',')","array_to_string(array_sort(l.committee_code),',')",'filled_committee')]
+# Both names (owner, 2026-11-02): compare every completed, nonempty linked value with the effective
+# per-field choice. A different value is a triage row with the choice's own name/URL (which can be a
+# linked name) and the other name/URL (evidence filename_conflicts.parquet). Fills/conflicts count.
+_NAME_FIELDS=[('filename_date','cast(o.filename_date AS VARCHAR)','cast(l.filename_date AS VARCHAR)','filled_date'),
+    ('congress','cast(o.congress AS VARCHAR)','cast(l.congress AS VARCHAR)','filled_congress'),
+    ('document_kind',"array_to_string(array_sort(o.document_kind),',')","array_to_string(array_sort(l.document_kind),',')",'filled_kind'),
+    ('document_family',"array_to_string(array_sort(o.document_family),',')","array_to_string(array_sort(l.document_family),',')",'filled_family'),
+    ('committee_code',"array_to_string(array_sort(o.committee_code),',')","array_to_string(array_sort(l.committee_code),',')",'filled_committee')]
 FILENAME_CONFLICTS_SQL=' UNION ALL '.join(
-    f"""SELECT o.source_id,'{name}' AS field,{shown} AS shown_value,o.filename AS shown_name,o.source_url AS shown_url,
+    f"""SELECT o.source_id,'{name}' AS field,{shown} AS shown_value,o.{name}_name AS shown_name,o.{name}_url AS shown_url,
     {other} AS other_value,l.requested_filename AS other_name,l.requested_url AS other_url
     FROM source_filename_readings o JOIN source_linked_filename_readings l USING(source_id)
     WHERE nullif({shown},'') IS NOT NULL AND nullif({other},'') IS NOT NULL AND {shown}<>{other}"""

@@ -3,12 +3,12 @@ WITH packages AS (
  WHERE package_id IS NOT NULL AND NOT publisher GROUP BY source_id
 )
 SELECT s.source_id,
- CASE WHEN f.status='completed' AND coalesce(array_length(f.document_kind),0)>0
+ CASE WHEN f.document_kind_status='completed' AND coalesce(array_length(f.document_kind),0)>0
  THEN array_sort(array_distinct(f.document_kind)) ELSE coalesce(k.document_kind,{{EMPTY_STRINGS}}) END AS document_kind,
- coalesce(CASE WHEN f.status='completed' THEN array_sort(array_distinct(f.document_family)) END,{{EMPTY_STRINGS}}) AS document_family,
- CASE WHEN f.status='completed' THEN f.congress END AS congress,
+ coalesce(CASE WHEN f.document_family_status='completed' THEN array_sort(array_distinct(f.document_family)) END,{{EMPTY_STRINGS}}) AS document_family,
+ CASE WHEN f.congress_status='completed' THEN f.congress END AS congress,
  coalesce(u.package_id,CASE WHEN f.status='completed' THEN f.package_id END) AS package_id,
- CASE WHEN f.status='completed' THEN f.filename_date END AS filename_date,
+ CASE WHEN f.filename_date_status='completed' THEN f.filename_date END AS filename_date,
  CASE WHEN p.status='completed' THEN cast(p.content_date AS DATE) END AS content_date,
  coalesce(CASE WHEN p.status='completed' AND nullif(trim(p.title),'') IS NOT NULL THEN p.title END,
  CASE WHEN p.status='completed' AND nullif(trim(p.heading),'') IS NOT NULL THEN p.heading END,k.listing_title) AS title,

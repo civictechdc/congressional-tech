@@ -9,7 +9,9 @@ import gzip
 import hashlib
 import json
 import os
+from datetime import date
 
+import pyarrow as pa
 import pyarrow.parquet as pq
 
 from congress_api.lake import filenames, readings
@@ -30,14 +32,41 @@ CASES = [  # requested (linked) URL, final URL, body
 ]
 # A second linked name for the same final-URL source: every disagreement must reach triage.
 REPEAT = (FINANCE + 'download/07302020-grassley-report&download=1', *CASES[2][1:])
+REVIEW_FINAL = FINANCE + 'imo/media/doc/ReviewOpaque.pdf'
+REVIEW_A = FINANCE + 'download/a.pdf'
+REVIEW_B = FINANCE + 'download/b.pdf'
+REVIEW_BODY = b'%PDF-1.7\nReview\n%%EOF\n'
+REVIEW_CASES = [(REVIEW_A, REVIEW_FINAL, REVIEW_BODY), (REVIEW_B, REVIEW_FINAL, REVIEW_BODY)]
 
 
-def _release(tmp_path):
+def _review_readings(shown_status):
+    """Complementary completed linked readings; an error shown row also has untrustworthy values."""
+    def transform(rows):
+        assert len(rows) == 3
+        by_url = {row['source_url']: row for row in rows}
+        shown = by_url[REVIEW_FINAL]
+        failed = shown_status == 'error'
+        shown.update(status=shown_status, error_type='invalid-filename' if failed else None, valid=False,
+            filename_date=date(2000, 1, 1) if failed else None, congress=1 if failed else None,
+            document_kind=['invalid-shown'] if failed else [], document_family=['invalid-shown'] if failed else [],
+            committee_code=['BAD'] if failed else [])
+        for url in (REVIEW_A, REVIEW_B):
+            by_url[url].update(status='completed', error_type=None, valid=True, filename_date=None,
+                congress=None, document_kind=[], document_family=[], committee_code=[])
+        by_url[REVIEW_A].update(filename_date=date(2021, 1, 2), document_kind=['testimony'])
+        by_url[REVIEW_B].update(document_kind=['statement'], document_family=['statement'],
+            congress=118, committee_code=['IF00'])
+    return transform
+
+
+def _release(tmp_path, capture_cases=None, transform_names=None):
     from viewer_publication.archive_model import build_release
     engine = NativeDatasets.from_config(os.environ['DOCSPEC_JOB_CONFIG'])
+    result_cases = CASES if capture_cases is None else capture_cases[:1]
+    capture_cases = [*CASES, REPEAT] if capture_cases is None else capture_cases
     raw = tmp_path / 'raw'
     lines = []
-    for requested, final, content in [*CASES, REPEAT]:
+    for requested, final, content in capture_cases:
         digest = hashlib.sha256(content).hexdigest()
         path = raw / f'bodies/sha256/{digest[:2]}/{digest}'
         path.parent.mkdir(parents=True, exist_ok=True)
@@ -64,19 +93,25 @@ def _release(tmp_path):
     pages = readings.stage(captures=captures, body_inventory=inventory / 'bodies.parquet', local_root=raw, engine=engine,
         work=tmp_path / 'read', decided_at='2026-10-27T12:00:00Z', parser='html')
     names = filenames.stage(captures=captures, recovery_files=(), engine=engine, work=tmp_path / 'names', decided_at='2026-10-27T12:00:00Z')
+    if transform_names is not None:
+        table = pq.read_table(names['readings'])
+        reading_rows = table.to_pylist()
+        transform_names(reading_rows)
+        pq.write_table(pa.Table.from_pylist(reading_rows, schema=table.schema), names['readings'])
     build_release(captures=captures, readings=pages['readings'], filename_readings=names['readings'],
         parser_versions={p: readings.current_version(p) for p in ['sniff', 'html', 'xml', 'json']}, catalog_version=names['catalog_version'],
         engine=engine, output=tmp_path / 'release', scratch=tmp_path / 'model')
     details = pq.read_table(tmp_path / 'release/detail.parquet').to_pylist()
     by_body = {d['saved_body']: d for d in details}
-    rows = [by_body[hashlib.sha256(content).digest()] for _, _, content in CASES]
+    rows = [by_body[hashlib.sha256(content).digest()] for _, _, content in result_cases]
     conflicts = pq.read_table(tmp_path / 'model/evidence/filename_conflicts.parquet').to_pylist()
     queries = {q['name']: q['data'] for q in json.loads((tmp_path / 'model/result.json').read_text())['queries']}
-    return rows, conflicts, queries
+    annotations = pq.read_table(tmp_path / 'model/evidence/source_filename_readings.parquet').to_pylist()
+    return rows, conflicts, queries, annotations
 
 
 def test_both_names_fill_what_the_shown_name_lacks_and_keep_disagreements(tmp_path):
-    (ramos, lhamon, grassley, all_fields), conflicts, queries = _release(tmp_path)
+    (ramos, lhamon, grassley, all_fields), conflicts, queries, _ = _release(tmp_path)
     # The shown name stays the final URL's.
     assert [r['filename'] for r in (ramos, lhamon, grassley, all_fields)] == [
         'AdelinaRamos_WrittenTestimony March 17.pdf', 'Lhamon1.pdf', '07302020 Grassley Testimony.pdf', 'Opaque.pdf']
@@ -101,3 +136,40 @@ def test_both_names_fill_what_the_shown_name_lacks_and_keep_disagreements(tmp_pa
     assert (counts['filename_date_filled'], counts['document_kind_filled'], counts['document_kind_conflicting']) == (2, 2, 2)
     assert (counts['document_family_filled'], counts['congress_filled'], counts['committee_code_filled']) == (2, 1, 1)
     assert counts['document_family_conflicting'] == 1
+
+
+def _assert_review_values(row):
+    assert row['filename'] == 'ReviewOpaque.pdf'
+    assert str(row['document_date']) == '2021-01-02' and row['document_date_source'] == 'filename'
+    assert row['document_kind'] == ['testimony'] and row['document_family'] == ['statement']
+    assert row['congress'] == 118 and row['committee_keys'] == ['hsif00']
+
+
+def test_per_field_fills_use_each_supplying_name_and_triage_linked_disagreements(tmp_path):
+    """Review fixture: opaque final name, complementary linked fields, and a kind conflict."""
+    (row,), conflicts, _, (annotation,) = _release(
+        tmp_path, capture_cases=REVIEW_CASES, transform_names=_review_readings('completed'))
+    _assert_review_values(row)
+    # A supplies date/kind; B supplies family/congress/committee. Each choice keeps its own source.
+    assert (annotation['filename_date_name'], annotation['filename_date_url']) == ('a.pdf', REVIEW_A)
+    assert (annotation['document_kind_name'], annotation['document_kind_url']) == ('a.pdf', REVIEW_A)
+    for field in ('document_family', 'congress', 'committee_code'):
+        assert (annotation[field + '_name'], annotation[field + '_url']) == ('b.pdf', REVIEW_B)
+    # The effective choice is A's testimony, so B's statement is the sourced alternate in triage.
+    assert [(c['field'], c['shown_value'], c['shown_name'], c['shown_url'],
+             c['other_value'], c['other_name'], c['other_url']) for c in conflicts] == [
+        ('document_kind', 'testimony', 'a.pdf', REVIEW_A, 'statement', 'b.pdf', REVIEW_B)]
+
+
+def test_failed_shown_reading_does_not_block_completed_linked_typed_values(tmp_path):
+    (row,), _, queries, (annotation,) = _release(
+        tmp_path, capture_cases=REVIEW_CASES, transform_names=_review_readings('error'))
+    _assert_review_values(row)
+    assert annotation['status'] == annotation['shown_status'] == 'error'
+    assert annotation['error_type'] == annotation['shown_error_type'] == 'invalid-filename'
+    for field in ('filename_date', 'document_kind', 'document_family', 'congress', 'committee_code'):
+        assert annotation[field + '_status'] == 'completed'
+    counts = queries['filename_both_names'][0]
+    assert [counts[field + suffix] for field, suffix in [
+        ('filename_date', '_filled'), ('document_kind', '_filled'), ('document_family', '_filled'),
+        ('congress', '_filled'), ('committee_code', '_filled')]] == [1, 1, 1, 1, 1]
