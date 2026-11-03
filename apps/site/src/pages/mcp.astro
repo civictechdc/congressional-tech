@@ -10,7 +10,7 @@ const releaseUrl = `${repository}/releases/tag/congress-mcp-v${release.version}`
 const pypiUrl = `https://pypi.org/project/congressional-explorer-mcp/${release.version}/`;
 const desktopBundle = `${repository}/releases/download/congress-mcp-v${release.version}/congress-explorer-${release.version}.mcpb`;
 const pluginBundle = `${repository}/releases/download/congress-mcp-v${release.version}/congress-explorer-${release.version}.plugin.zip`;
-const codexSetup = `codex plugin marketplace add civictechdc/congressional-tech --ref congress-mcp-v${release.version}\ncodex plugin add congress-explorer@congressional-tech`;
+const codexSetup = `codex plugin marketplace add civictechdc/congressional-tech --ref congress-mcp-v${release.version} --sparse .agents/plugins --sparse apps/explorer_mcp\ncodex plugin add congress-explorer@congressional-tech`;
 const claudeSetup = 'claude plugin install congress-explorer --marketplace civictechdc/congressional-tech';
 const skillSetup = 'npx skills add civictechdc/congressional-tech --skill explore-congress';
 const exploreLink = `codex://new?prompt=${encodeURIComponent('[@Congress Explorer](plugin://congress-explorer@congressional-tech) Find hearings about artificial intelligence and list their witnesses and organizations.')}`;

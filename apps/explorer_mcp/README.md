@@ -53,7 +53,7 @@ the separate `.mcpb` extension above. Organization policies may restrict install
 Install uv and the Codex CLI, then:
 
 ```sh
-codex plugin marketplace add civictechdc/congressional-tech --ref congress-mcp-v0.5.1
+codex plugin marketplace add civictechdc/congressional-tech --ref congress-mcp-v0.5.1 --sparse .agents/plugins --sparse apps/explorer_mcp
 codex plugin add congress-explorer@congressional-tech
 ```
 
