@@ -12,7 +12,10 @@
         "congress-explorer-mcp",
         "serve",
         "--prepare-if-missing"
-      ]
+      ],
+      "env": {
+        "PATH": "${HOME}/.local/bin:${HOME}/.cargo/bin:${HOME}/.pyenv/shims:/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin"
+      }
     }
   }
 }
