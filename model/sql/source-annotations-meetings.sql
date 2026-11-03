@@ -1,13 +1,5 @@
-WITH package_records AS (
- SELECT DISTINCT a.package_id,unnest(p.named_meetings) AS event_id FROM source_annotation_addresses a
- JOIN capture_source_contexts c ON a.source_id=c.source_id AND a.url=c.context_url
- JOIN page_facts p ON c.body_sha=encode(p.body_sha,'hex')
- WHERE a.package_id IS NOT NULL AND NOT a.publisher AND p.status='completed'
-), combined AS (
+WITH combined AS (
  SELECT source_id,meeting_key,chamber FROM source_annotation_addresses WHERE meeting_key IS NOT NULL
- UNION SELECT a.source_id,cast(p.event_id AS VARCHAR) AS meeting_key,cast(NULL AS VARCHAR) AS chamber
- FROM source_annotation_addresses a JOIN package_records p ON a.package_id=p.package_id
- WHERE NOT a.publisher AND p.event_id IS NOT NULL
  -- The publisher's own meeting record lists this file (ct-66ns).
  UNION SELECT c.source_id,cast(d.event_id AS VARCHAR) AS meeting_key,cast(NULL AS VARCHAR) AS chamber
  FROM meeting_document_urls d JOIN model_url_keys k ON k.url=d.url AND k.error IS NULL

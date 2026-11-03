@@ -209,10 +209,11 @@ def witness(name, links=(), kind=None):
             'witness_type': kind, 'document_links': list(links)}
 
 
-def record(tag, source, appearances, event_id=None, package_id=None, created=None):
+def record(tag, source, appearances, event_id=None, package_id=None, created=None, context_url=None, collection_state=None):
     return dict(record_sha_hex=hashlib.sha256(tag.encode()).hexdigest(), parser_version='v', status='completed', error_type=None,
                 source=source, event_id=event_id, package_id=package_id, declared_base=None,
-                collection_state='present' if appearances else 'empty', context_url=None, appearances=appearances, created=created)
+                collection_state=collection_state or ('present' if appearances else 'empty'),
+                context_url=context_url, appearances=appearances, created=created)
 
 
 LIST = 'https://docs.house.gov/meetings/HM/HM00/20130718/{}/HHRG-113-HM00-Wstate-X-20130718.pdf'
@@ -225,9 +226,11 @@ def facts(named=(), held=(DAY,), title=TITLE):
     return dict(named_meetings=list(named), held_dates=list(held), title=title)
 
 
-def resolve(tmp_path, records, links, prints, paths=(), meetings=((9001, DAY, TITLE),), full=False, rows=False):
+def resolve(tmp_path, records, links, prints, paths=(), meetings=((9001, DAY, TITLE),), pages=(), full=False, rows=False):
     """Witness rows per name, from the maintained package-link and appearance SQL."""
+    import json
     engine = NativeDatasets.from_config(os.environ['DOCSPEC_JOB_CONFIG'])
+    ms_rows = [r for r in json.loads((ROOT / 'model/registries/meeting-sources.json').read_text()) if r['kind'] == 'appearance']
     inputs = [
         json_input(tmp_path, 'appearance_records_input', records, record_sha_hex='Utf8', parser_version='Utf8', status='Utf8',
                    error_type='Utf8', source='Utf8', event_id='Int64', package_id='Utf8', declared_base='Utf8',
@@ -235,15 +238,26 @@ def resolve(tmp_path, records, links, prints, paths=(), meetings=((9001, DAY, TI
         json_input(tmp_path, 'meeting_transcript_links', [dict(package_id=p, event_id=e) for p, e in links], package_id='Utf8', event_id='Int64'),
         json_input(tmp_path, 'package_mods_facts', [dict(package_id=p, **f) for p, f in prints.items()],
                    package_id='Utf8', named_meetings=list_of('Int64'), held_dates=list_of('Utf8'), title='Utf8'),
-        json_input(tmp_path, 'meetings_input', [dict(event_id=m[0], meeting_date=m[1], title=m[2], not_held=(m[3] if len(m) > 3 else False))
-                                                for m in meetings], event_id='Int64', meeting_date='Utf8', title='Utf8', not_held='Boolean'),
-        json_input(tmp_path, 'meeting_sources', [dict(kind='appearance', source=s, priority=i) for i, s in enumerate(('house_xml', 'congress_gov', 'mods'), 1)],
-                   kind='Utf8', source='Utf8', priority='Int32'),
-        json_input(tmp_path, 'appearance_url_keys', [], url='Utf8', url_key='Utf8', error='Utf8'),
+        json_input(tmp_path, 'meetings_input', [dict(event_id=m[0], meeting_date=m[1], title=m[2],
+                                                     not_held=(m[3] if len(m) > 3 else False),
+                                                     chamber=(m[4] if len(m) > 4 else 'house'),
+                                                     committee_key=(m[5] if len(m) > 5 else 'hsif00'))
+                                                for m in meetings],
+                   event_id='Int64', meeting_date='Utf8', title='Utf8', not_held='Boolean', chamber='Utf8', committee_key='Utf8'),
+        json_input(tmp_path, 'meeting_sources', ms_rows, id='Utf8', kind='Utf8', source='Utf8', priority='Int32'),
+        json_input(tmp_path, 'appearance_url_keys',
+                   [dict(url=r['context_url'], url_key=r['context_url'], error=None) for r in records if r.get('context_url')],
+                   url='Utf8', url_key='Utf8', error='Utf8'),
         json_input(tmp_path, 'selected_meeting_records', [], record_sha_hex='Utf8', status='Utf8', meetings=list_of(struct(updated='Utf8'))),
+        json_input(tmp_path, 'page_inputs', list(pages), body_hex='Utf8', status='Utf8', title='Utf8', heading='Utf8', text_head='Utf8', content_date='Utf8'),
     ]
+    senate_links_path = ROOT / 'model/sql/senate-page-meeting-links.sql'
+    senate_step = [dict(name='senate_page_meeting_links', sql=senate_links_path.read_text(), materialize=True)] if senate_links_path.exists() else []
     steps = [dict(name='selected_appearance_records', sql='SELECT * FROM appearance_records_input', materialize=True),
-             dict(name='meetings_resolved', sql='SELECT event_id,cast(meeting_date AS DATE) AS meeting_date,title,not_held FROM meetings_input', materialize=True),
+             dict(name='page_facts', sql="SELECT arrow_cast(decode(body_hex,'hex'),'FixedSizeBinary(32)') AS body_sha,status,title,heading,text_head,cast(content_date AS DATE) AS content_date FROM page_inputs", materialize=True),
+             dict(name='spicy_committees', sql="SELECT 'ssbk00' AS system_code,cast(NULL AS VARCHAR) AS parent_system_code,'https://www.banking.senate.gov/' AS website_url", materialize=True),
+             dict(name='meetings_resolved', sql="""SELECT event_id,chamber,cast(meeting_date AS DATE) AS meeting_date,title,not_held,committee_key,
+                 make_array(named_struct('system_code',committee_key,'role','primary')) AS committees FROM meetings_input""", materialize=True),
              dict(name='appearance_people', sql=sql('appearance-people'), materialize=True),
              dict(name='captures', sql=CAPTURES + ''.join(
                  f" UNION ALL SELECT 'fetch' AS mode,cast(NULL AS BOOLEAN) AS complete,'failed' AS outcome,cast(NULL AS INT) AS http_status,"
@@ -253,6 +267,7 @@ def resolve(tmp_path, records, links, prints, paths=(), meetings=((9001, DAY, TI
                  f"'{path}' AS original_path" for sha, path in paths), materialize=True),
              dict(name='print_meeting_agreement', sql=sql('print-meeting-agreement'), materialize=True),
              dict(name='package_meeting_links', sql=sql('package-meeting-links'), materialize=True),
+             *senate_step,
              dict(name='appearance_observations', sql=sql('appearance-observations'), materialize=True),
              dict(name='appearance_records_resolved', sql=sql('appearance-records-resolved'), materialize=True),
              dict(name='witness_precedence', sql=sql('witness-precedence'), materialize=True)]
@@ -469,3 +484,59 @@ def test_a_retained_house_list_takes_the_event_its_file_name_states(tmp_path):
     house = record('wl', 'house_xml', [witness('W')])
     got = resolve(tmp_path, [house], [], {}, paths=[(house['record_sha_hex'], 'external-sources/hearing-text/docs_house_xml/wlist/108265.xml')])
     assert got == {'W': ('meeting:108265', 108265)}
+
+
+def test_senate_page_links_to_meeting_and_outranks_mods_while_preserving_statements(tmp_path):
+    # ct-j2yo & User Decision A3: senate_page (priority 3) links to Senate meeting 9001 via committee + date
+    # and supersedes the matching mods witness (priority 4), while mods-only witnesses and statements stay.
+    sp = record('sp1', 'senate_page', [witness('The Honorable Jane Doe')],
+                context_url='https://www.banking.senate.gov/hearings/04/28/2021/student-loan-debt-relief')
+    printed = record('m1', 'mods', [witness('Jane Doe'), witness('Chris Harrison'),
+                                    witness('American Bankers Association', kind='statement_for_record')],
+                     package_id='CHRG-s1')
+    got = resolve(tmp_path, [sp, printed], [('CHRG-s1', 9001)], {'CHRG-s1': facts()},
+                  meetings=((9001, DAY, TITLE, False, 'senate', 'ssbk00'),),
+                  pages=[dict(body_hex=sp['record_sha_hex'], status='completed', title=TITLE, heading=TITLE, text_head='', content_date=DAY)],
+                  rows=True)
+    by_src_name = {(r['source'], r['name']): (r['occasion'], r['superseded_by']) for r in got}
+    assert by_src_name[('senate_page', 'The Honorable Jane Doe')] == ('meeting:9001', None)
+    assert by_src_name[('mods', 'Jane Doe')] == ('meeting:9001', 'The Honorable Jane Doe')
+    assert by_src_name[('mods', 'Chris Harrison')] == ('meeting:9001', None)
+    assert by_src_name[('mods', 'American Bankers Association')] == ('meeting:9001', None)
+
+
+def test_empty_senate_page_does_not_suppress_mods_witnesses(tmp_path):
+    # ct-j2yo guard: an empty/absent senate_page container never attaches as 'empty' to suppress mods witnesses.
+    empty_sp = record('sp_empty', 'senate_page', [], collection_state='empty',
+                      context_url='https://www.banking.senate.gov/hearings/04/28/2021/student-loan-debt-relief')
+    printed = record('m1', 'mods', [witness('Jane Doe')], package_id='CHRG-s1')
+    got = resolve(tmp_path, [empty_sp, printed], [('CHRG-s1', 9001)], {'CHRG-s1': facts()},
+                  meetings=((9001, DAY, TITLE, False, 'senate', 'ssbk00'),),
+                  pages=[dict(body_hex=empty_sp['record_sha_hex'], status='completed', title=TITLE, heading=TITLE, text_head='', content_date=DAY)],
+                  full=True)
+    assert got == {'Jane Doe': ('meeting:9001', None)}
+
+
+def test_same_day_senate_pages_disambiguate_by_title_and_witness_overlap(tmp_path):
+    # ct-j2yo disambiguation: two same-day Senate hearings on ssbk00 disambiguate via title/heading word overlap.
+    sp_a = record('spa', 'senate_page', [witness('Alice Borrower')],
+                  context_url='https://www.banking.senate.gov/hearings/04/28/2021/student-loan-debt-relief')
+    sp_b = record('spb', 'senate_page', [witness('Bob Reactor')],
+                  context_url='https://www.banking.senate.gov/hearings/04/28/2021/nuclear-waste-storage')
+    sp_ambig = record('spc', 'senate_page', [witness('Carol Unmatched')],
+                      context_url='https://www.banking.senate.gov/hearings/04/28/2021/hearing')
+    meetings = (
+        (9001, DAY, TITLE, False, 'senate', 'ssbk00'),
+        (9002, DAY, 'Nuclear waste storage and the Yucca Mountain license', False, 'senate', 'ssbk00'),
+    )
+    pages = [
+        dict(body_hex=sp_a['record_sha_hex'], status='completed', title=TITLE, heading=TITLE, text_head='', content_date=DAY),
+        dict(body_hex=sp_b['record_sha_hex'], status='completed', title='Nuclear waste storage and the Yucca Mountain license',
+             heading='Nuclear waste storage', text_head='', content_date=DAY),
+        dict(body_hex=sp_ambig['record_sha_hex'], status='completed', title='Hearing', heading='Hearing', text_head='', content_date=DAY),
+    ]
+    got = resolve(tmp_path, [sp_a, sp_b, sp_ambig], [], {}, meetings=meetings, pages=pages)
+    assert got['Alice Borrower'] == ('meeting:9001', 9001)
+    assert got['Bob Reactor'] == ('meeting:9002', 9002)
+    assert got['Carol Unmatched'][0].startswith('page:') and got['Carol Unmatched'][1] is None
+

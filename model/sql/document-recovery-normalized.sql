@@ -1,5 +1,14 @@
-SELECT d.document_id AS doc_key,false AS body_expected,n.filename,coalesce(t.title,a.title) AS title,
- a.document_kind,a.document_family,a.committee_keys,a.chambers,cast(a.congress AS SMALLINT) AS congress,
+SELECT d.document_id AS doc_key,false AS body_expected,n.filename,
+ CASE
+  WHEN wk.witness_name IS NOT NULL
+   AND regexp_like(trim(coalesce(t.title,a.title,'')),'(?i)^(?:witness\s+(?:statement|testimony|biography)|(?:prepared|written)\s+statement|testimony|truth\s+in\s+testimony(?:\s+form|\s+disclosure(?:\s+form)?)?)$')
+   THEN coalesce(t.title,a.title)||' - '||wk.witness_name
+  ELSE coalesce(t.title,a.title)
+ END AS title,
+ a.document_kind,a.document_family,
+ array_sort(array_distinct(array_concat(a.committee_keys,coalesce(ml.committee_keys,arrow_cast(array_slice(make_array(cast(NULL AS VARCHAR)),1,0),'List(Utf8)'))))) AS committee_keys,
+ array_sort(array_distinct(array_concat(a.chambers,coalesce(ml.chambers,arrow_cast(array_slice(make_array(cast(NULL AS VARCHAR)),1,0),'List(Utf8)'))))) AS chambers,
+ cast(coalesce(a.congress,ml.congress) AS SMALLINT) AS congress,
  coalesce(b.format,'other') AS format,coalesce(a.filename_date,ml.meeting_date) AS document_date,cast(NULL AS DATE) AS first_captured,
  'import_day' AS date_kind,'recovery' AS saved_kind,false AS hidden,
  array_sort(array_distinct(array_concat(a.meeting_keys,coalesce(ml.meeting_keys,arrow_cast(array_slice(make_array(cast(NULL AS VARCHAR)),1,0),'List(Utf8)'))))) AS meeting_keys,

@@ -1902,3 +1902,161 @@ def test_a_listing_label_outranks_another_formats_page_title(tmp_path):
     rows = pq.read_table(tmp_path / 'release/detail.parquet').to_pylist()
     saved = next(r for r in rows if r['filename'] == 'appendix-d.pdf')
     assert [a['format'] for a in saved['alternates']] == ['html'] and saved['title'] == 'Appendix D', [(r['filename'], r['format'], r['title'], r['alternates']) for r in rows]
+
+
+def test_hhrg_slug_witness_matching_precedence_title_enrichment_and_meeting_propagation(tmp_path):
+    """ct-2o4d, ct-o7t4 item 2d, ct-j2yo F1/F2/F6:
+    - House witness docs (HHRG-*-{Wstate,TTF,Bio}-*) without URL match resolve to canonical meeting witness via HHRG slug.
+    - URL-matched witnesses superseded by a higher-priority source propagate both witness_key and superseded_by.
+    - Generic witness titles ('Witness Statement', 'Witness Biography', 'Truth in Testimony Form') are enriched with witness_name.
+    - Witness-linked documents inherit meeting_keys, committee_keys, chambers, and congress from their linked meeting.
+    """
+    from viewer_publication.archive_model import build_release
+
+    engine = NativeDatasets.from_config(os.environ['DOCSPEC_JOB_CONFIG'])
+    url_smith = 'https://docs.house.gov/meetings/AG/AG00/20230510/115901/HHRG-118-AG00-Wstate-SmithJ-20230510.pdf'
+    url_brown = 'https://docs.house.gov/meetings/AG/AG00/20230510/115901/HHRG-118-AG00-Bio-BrownR-20230510.pdf'
+    url_senate_doc = 'https://www.banking.senate.gov/imo/media/doc/jones_testimony.pdf'
+    listing_html = (
+        '<html><head><title>Committee Hearing</title></head><body><p>'
+        + 'Committee hearing witness documents and statements for rural credit. ' * 25
+        + f'</p><ul><li><a href="{url_smith}">Witness Statement</a></li>'
+        + f'<li><a href="{url_brown}">Witness Biography</a></li></ul></body></html>'
+    ).encode()
+    staged = _stage_raw_fixture(tmp_path, engine, [
+        dict(url='https://docs.house.gov/meetings/AG/AG00/20230510/115901/index.html', data=listing_html, format='html'),
+        dict(url=url_smith, data=b'%PDF-1.7\nSmith statement\n%%EOF\n', format='pdf', compress=False),
+        dict(url=url_brown, data=b'%PDF-1.7\nBrown biography\n%%EOF\n', format='pdf', compress=False),
+        dict(url=url_senate_doc, data=b'%PDF-1.7\nJones testimony\n%%EOF\n', format='pdf', compress=False),
+    ])
+    meetings = [dict(
+        record_sha='55' * 32,
+        source='congress_gov',
+        meetings=[
+            dict(
+                event_id='115901',
+                chamber='house',
+                congress=118,
+                session=1,
+                updated='2023-05-10T14:00:00Z',
+                title='House Farm Credit Hearing',
+                meeting_date='2023-05-10',
+                meeting_type='Hearing',
+                status='Scheduled',
+                sittings=[],
+                committees=[dict(system_code='hsag00', name='House Agriculture')],
+                subject_keys=[],
+                transcript_jackets=[],
+                videos=[],
+            ),
+            dict(
+                event_id='335902',
+                chamber='senate',
+                congress=118,
+                session=1,
+                updated='2023-05-12T14:00:00Z',
+                title='Senate Banking Oversight Hearing',
+                meeting_date='2023-05-12',
+                meeting_type='Hearing',
+                status='Scheduled',
+                sittings=[],
+                committees=[dict(system_code='ssbk00', name='Senate Banking')],
+                subject_keys=[],
+                transcript_jackets=[],
+                videos=[],
+            ),
+        ],
+    )]
+    appearance_rows = [
+        dict(
+            record_sha='66' * 32,
+            source='congress_gov',
+            appearances=[
+                dict(
+                    event_id='115901',
+                    name_key='jane smith',
+                    name='Dr. Jane Smith',
+                    given_name='Jane',
+                    family_name='Smith',
+                    honorific_prefix='Dr.',
+                    panel_order=1,
+                    display_order=1,
+                    document_urls=[],
+                ),
+                dict(
+                    event_id='115901',
+                    name_key='robert brown',
+                    name='Hon. Robert Brown',
+                    given_name='Robert',
+                    family_name='Brown',
+                    honorific_prefix='Hon.',
+                    panel_order=1,
+                    display_order=2,
+                    document_urls=[],
+                ),
+            ],
+        ),
+        dict(
+            record_sha='77' * 32,
+            source='congress_gov',
+            appearances=[
+                dict(
+                    event_id='335902',
+                    name_key='sarah jones',
+                    name='Hon. Sarah Jones',
+                    given_name='Sarah',
+                    family_name='Jones',
+                    honorific_prefix='Hon.',
+                    panel_order=1,
+                    display_order=1,
+                    document_urls=[],
+                ),
+            ],
+        ),
+        dict(
+            record_sha='88' * 32,
+            source='senate_page',
+            appearances=[
+                dict(
+                    event_id='335902',
+                    page_url='https://www.banking.senate.gov/hearings/05/12/2023/senate-banking-oversight-hearing',
+                    name_key='sarah jones',
+                    name='Ms. Sarah Jones',
+                    given_name='Sarah',
+                    family_name='Jones',
+                    panel_order=1,
+                    display_order=1,
+                    document_urls=[url_senate_doc],
+                ),
+            ],
+        ),
+    ]
+    spicy = spicy_input(spicy_committees=[
+        dict(system_code='HSAG00', name='House Agriculture', chamber='House'),
+        dict(system_code='SSBK00', name='Senate Banking', chamber='Senate', website_url='https://www.banking.senate.gov/'),
+    ])
+    build_release(
+        **staged,
+        meeting_records=meetings,
+        appearance_records=appearance_rows,
+        spicy_regs=spicy,
+        engine=engine,
+        output=tmp_path / 'release-witness-slug',
+        scratch=tmp_path / 'model-witness-slug',
+    )
+    list_rows = {r['filename']: r for r in pq.read_table(tmp_path / 'release-witness-slug/list.parquet').to_pylist()}
+    smith_row = list_rows['HHRG-118-AG00-Wstate-SmithJ-20230510.pdf']
+    assert len(smith_row['witness_keys']) == 1
+    assert smith_row['title'] == 'Witness Statement - Dr. Jane Smith'
+
+    brown_row = list_rows['HHRG-118-AG00-Bio-BrownR-20230510.pdf']
+    assert len(brown_row['witness_keys']) == 1
+    assert brown_row['title'] == 'Witness Biography - Hon. Robert Brown'
+
+    jones_row = list_rows['jones_testimony.pdf']
+    assert len(jones_row['witness_keys']) == 2
+    assert jones_row['meeting_keys'] == ['335902']
+    assert jones_row['committee_keys'] == ['ssbk00']
+    assert jones_row['chambers'] == ['senate']
+    assert jones_row['congress'] == 118
+

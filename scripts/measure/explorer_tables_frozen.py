@@ -40,11 +40,12 @@ def scoped_captures(spec, work):
 
 
 def mods_page_facts(spec, work):
-    """Only MODS readings feed package_mods_facts; scoping them first keeps 370 MB of readings out of the job."""
+    """Only MODS and Senate hearing page readings feed package_mods_facts and senate_page_meeting_links."""
     path = work / 'page-facts.parquet'
     with duckdb.connect(config=dict(memory_limit='800MB', threads=2, temp_directory=str(work / 'duckdb'))) as db:
-        db.execute(f"""COPY (SELECT body_sha,status,named_meetings FROM read_parquet('{spec['readings']['path']}')
-            WHERE parser='xml' AND xml_root='mods') TO '{path}' (FORMAT PARQUET)""")
+        db.execute(f"""COPY (SELECT body_sha,status,title,heading,text_head,content_date,named_meetings FROM read_parquet('{spec['readings']['path']}')
+            WHERE (parser='xml' AND xml_root='mods')
+               OR (parser='html' AND body_sha IN (SELECT record_sha FROM read_parquet('{spec['appearance_records']['path']}') WHERE source='senate_page'))) TO '{path}' (FORMAT PARQUET)""")
     return path
 
 
@@ -92,6 +93,7 @@ def main(argv=None):
         dict(name='recording_decision_records', kind='json_lines', files=[dict(key='decisions', path=str(args.decisions))],
              schema=dict(fields=[field(k, v) for k, v in RECORDING_DECISION_FIELDS.items()], metadata={})),
         json_input(work, 'channel_directory', channel_directory_rows(), handle='Utf8', channel_id='Utf8', system_code='Utf8', committee_label='Utf8', role='Utf8'),
+        json_input(work, 'spicy_committees', [], system_code='Utf8', parent_system_code='Utf8', website_url='Utf8'),
         json_input(work, 'parser_versions', expand_parser_version_rows(spec['parser_versions']), parser='Utf8', version='Utf8'),
     ]
     steps = [
