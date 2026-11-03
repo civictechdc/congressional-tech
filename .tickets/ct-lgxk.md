@@ -24,3 +24,23 @@ A format word is never a title; affected rows use the document title or stay nul
 **2026-11-02T04:01:45Z**
 
 No confirmed code; recheck after a rebuild.
+
+**2026-11-02T12:28:27Z**
+
+Round 1b 2026-11-02 (lead): The ZIP rule would put 'ZIP' back on about 34k member PDFs; fix skips format words via a registry list and uses the HTML rendition's title. impl-g.
+
+**2026-11-02T14:16:11Z**
+
+2026-11-02 impl-g (r1b-g): link-word titles 11,047 to 0 on the Run B slice; a recovery-only title test was added (it fails on base SQL).
+
+**2026-11-02T14:46:01Z**
+
+2026-11-02 green-g (request changes): link-word titles still miss a format word plus a size ('Download XML (6KB)': 611 live; 'PDF (48.1 MB)' in Run B), and the generic_titles check reuses the same list. Needs a format-only rule and an independent check. Also a wrong title from a 'Skip to Content' grouping link.
+
+**2026-11-02T15:30:02Z**
+
+2026-11-02 impl-g: format-plus-size titles are link words, and generic_titles uses its own rule (95800ba5); title order is reading, then listing, then rendition (127a7c0b); navigation self-links don't group (a19fa66e). red-g2 is doing a focused re-check; data effect measured on the integrated run.
+
+**2026-11-02T15:38:20Z**
+
+2026-11-02 red-g2: merge with two fixes. generic_titles must count a registry match OR the new rule (it now misses 'Untitled', 'Read more', etc., and the recovery path passes raw titles); add 'Printable PDF of this Document' and 'Download Report' as link words. 'Exhibit A' and 'Appendix D' pass.

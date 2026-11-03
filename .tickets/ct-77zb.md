@@ -72,3 +72,43 @@ Owner decisions 2026-11-01: batch all parser fixes into one version move (uv pin
 **2026-11-02T04:01:45Z**
 
 Round 1 stopped at owner direction 2026-11-01 after reviewing and fixing. Unmerged: worktree-agent-ae42a8cf7a429ba24 @ 180a49b1; worktree-agent-a704015cc138b456b @ da425206; worktree-agent-a5550c04138214670 @ b3c4aa3c. Worktrees retained. Next steps, not started: owner Basin commit, integration with one pin recompute, wiring ct-deh9, captures rebuild, backfill, one full model run, key comparison, publish.
+
+**2026-11-02T12:28:28Z**
+
+Round 1b 2026-11-02 (lead): Integration of clusters B/C/D: 63 lane failures, none a production defect (fixtures and checks out of step). Process cause confirmed: cluster C's worktree had no .venv, so its tests ran main's package code. Briefs now require uv sync --frozen per worktree. New model_sql relation check being rebuilt on the existing sql_dependencies after red/green review.
+
+**2026-11-02T13:13:02Z**
+
+2026-11-02 (lead): integrate-round1 green at 98fb1424 (production-offline 10,795 passed, peak 3.5 GiB) after red/green review fixes: shared SQL dependencies use the existing DuckDB parser (moved into congress_api/lake/model_sql.py), step-order test, and publish refuses converted catalogs. Pushed as a branch only. Code does not go to main before publish, because a main push deploys Pages (apps/site, uv.lock) and the old Explorer publisher (congress_api) against the old live release. The new site and release ship together.
+
+**2026-11-02T13:54:36Z**
+
+2026-11-02 (lead): trial merge of all 7 branches onto integrate-round1: 9 conflicts, all resolved by keeping both sides; lane 10,978 passed, 11 failed, 5 errors, all cross-branch (f x g fixture inputs, e2 x g proof basis, h x g SQL anchor, h x e1 duplicate mapping_version fixture and the 202 mutant, 2 xfails now passing, step count 180). Recipe: .cache/rounds/r1b/trial-merge.md. Drop e2's own pin commit e73505b2; recompute pins once.
+
+**2026-11-02T16:28:57Z**
+
+2026-11-02 (lead): etl-rca correction: cluster C's integration failures were NOT from running main's code. C's tests ran the branch's code but only --path subsets, which hid the failures. Fix 9631f1be on r4-rca: pytest and doctor refuse another checkout's interpreter or imports, and every run prints whether it was a partial or full lane. e13a3382 binds the engine to the branch pin through a content-addressed store (.cache/docspec-runtime); before it, verify_runtime didn't enforce the pin, so several branches pinning eb40c54 tested on 5dae611.
+
+**2026-11-02T17:17:02Z**
+
+Owner decision 2026-11-02: runner fixes (r4-rca: refuse another checkout's code or a mismatched engine pin; partial/full lane line) ship with this release after a light check.
+
+**2026-11-02T17:41:18Z**
+
+2026-11-02 etl-rca done (RCA: .cache/archive-release/investigations/rca/RCA.md). Ships with the release after a light check (owner decision): r4-rca~1 = 0ece1bb8, rebased as r4-rca-rel onto 44785aee. Item 3: tests refuse another checkout's interpreter or imports and print the run scope (4b74befd, d8d5149b); C's failures hid behind --path subsets, not main's code. Item 4: doctor binds to the branch pin, and binaries are installed read-only and content-addressed (9beffd76). Item 6: the watchdog admits on measured free memory and stops the youngest at the floor (1a0bb6d9, 0ece1bb8). Item 7: dev.py prune-worktree refuses on ignored data or a running process (908059de). Item 5: docspec-rs CI runs this repo's whole lane in 6 shards (797083f, 0d65b47, 5a7fa9f on docspec-rs main; the probe on 425e346 failed first with the ss-x71z error), plus a raw-check rule and lint (f5fa384c). Held: item 1 (1f6effdf: parser versions hash only the locked packages they import) and item 2, unfixed (compatible_proof.py and 2-17 imported workspace modules are hashed by nothing); timing goes to the owner. Follow-up: production jobs still trust the config's own binary claim; flip after the release. Brief now requires a (full lane) line at hand-off.
+
+**2026-11-02T17:45:21Z**
+
+2026-11-02 green-rca (light check of r4-rca~1): MERGE WITH FIXES; nothing blocks the release path or production. Fixes sent to etl-rca: prune-worktree treats build/dist/target as disposable at any depth (scripts/dev.py:309-315, a data-loss path), and the watchdog's floor victim can be a dead job with a reused PID (archive_watchdog.py:95,101,208).
+
+**2026-11-02T18:21:40Z**
+
+2026-11-02 r4-rca-rel 77ebb23f (both green-rca fixes in: prune-worktree treats build/dist/target/.astro as disposable only at packages/<name>/ or apps/<name>/; watchdog entries match on PID plus start time; lint searches subdirectories): full lane 11,064 passed, only the two expected pin tests failing; 'production-offline (full lane): exit 1', peak 3.62 GiB, 28:35. On release-train.
+
+**2026-11-02T18:29:11Z**
+
+2026-11-02 lead RCA: train's first full lane on release-train exited 143 at 49% (13:27:10), killed by impl-f's `pkill -f "scripts/dev.py test production-offline$"`, which matches every agent's full lane. spec-run and impl-model also stop jobs with pattern kills (pkill -f on run_release.py, chain.sh, 'guard.py --rss-gb 16 .*archive_backfill_job'). Cause: on a shared machine where agents run identical commands, a pattern is not an identity. Rule added to the agent brief: stop only the PID you started (signalling the guard takes down its child group). Follow-up: have the guard print its PID at start, so agents can record it.
+
+**2026-11-02T20:55:01Z**
+
+2026-11-02 release-train 8244904f full lane: 'production-offline (full lane): exit 0', 11,244 passed, 37 skipped, 3 xfailed, peak 1.92 GiB, on engine b0342a7's config; archive_schema --check passes. 82e5b35d adds ci-poppler c006c4fa (CI and setup only; 43 own tests pass; doctor passes). Pins moved vs candidate-r1b: D4 record pins (meeting congress_gov and house_xml, four appearance pins, committee house_xml), readings bundle a7a8c404, model_spec 551c0820 (size 3115); captures, the four reading pins, catalog and video unchanged. Open: release key invariant (54 rows, inv-rca); the DOCSPEC_RUNTIME_ARTIFACT switch at the main merge.

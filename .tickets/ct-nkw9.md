@@ -23,3 +23,9 @@ Map each GB row in the fixture manifest to the test that executes it, and name a
 - Each GB case names an executing test or is listed as a gap.
 - The documents state implemented and live status separately.
 
+
+## Notes
+
+**2026-11-02T14:38:27Z**
+
+2026-11-02 (lead): docs pass drafted on r4-docs (8 commits, each merges cleanly with every branch): data model, annex, switch plan, manifest (GB cases mapped to tests), emulated-only speed targets, and AGENTS.md's committee-code owner. Conflicts resolved by the lead: link successors use the same-body/fingerprint rule; a 206 counts only when complete. Final commit after all merges; live wording after the switch.

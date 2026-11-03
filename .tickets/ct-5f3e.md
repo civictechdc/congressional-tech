@@ -18,3 +18,17 @@ capture_comparison.py:42 lists complete and outcome under not_compared, along wi
 
 The comparison reports changes to those fields by count and by raw value, tested with a fixture where only complete changes. Whether a change refuses or is reported is decided in this ticket.
 
+
+## Notes
+
+**2026-11-02T12:28:27Z**
+
+Round 1b 2026-11-02 (lead): The old index lacks complete and outcome, so it can't compare them. Decided: a generation comparison reports every eligibility-field change by count and old/new value and refuses unexpected changes. impl-e1.
+
+**2026-11-02T13:54:36Z**
+
+2026-11-02 (lead): compare_generations implemented on r1b-e1.
+
+**2026-11-02T17:21:55Z**
+
+2026-11-02 impl-e1/spec-run: the D1 captures rebuild vs v21 is ACCEPTED by compare_generations with the expected-change-class file (r1b-captures-causes cabfffb9, off candidate-r1b). 4,147,132 rows on both sides, 0 rows on one side only, 0 unexpected changes. An independent raw judge read the receipt lines (status, body size, content_range) of all 111,324 changed rows and left none unexplained. Result: .cache/archive-release/r1b-run/compare/generations-expected.json. Limit: like the backfill guard, this sees changed rows only; an unchanged value that is wrong but in-domain is not covered here (gate 1 and the raw value comparison cover that).

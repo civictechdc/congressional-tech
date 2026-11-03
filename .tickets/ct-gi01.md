@@ -2,7 +2,7 @@
 id: ct-gi01
 status: open
 deps: [ct-sh4j, ct-30fp, ct-kw9b, ct-wx65, ct-h1nd, ct-v51p]
-links: [ct-8kl2, ct-mi03, ct-czsd, ct-2ukk, ct-oc2g, ct-xu1o, ct-8ax6, ct-dzyf, ct-13cn, ct-dmca, ct-gziq, ct-n6lj, ct-sb0s, ct-te1p, ct-aia9, ct-2yl5, ct-bwac, ct-a3le, ct-0odd, ct-ec91, ct-3ttc, ct-84xa, ct-h23e, ct-f7p8, ct-98sm, ct-r6xw, ct-jnw5, ct-4g55, ct-xx7q, ct-s9p2, ct-w8dc, ct-93zs, ct-m104, ct-t915, ct-5kto, ct-m94a, ct-64el, ct-asdg, ct-n61r, ct-66ns, ct-n6fz]
+links: [ct-8kl2, ct-mi03, ct-czsd, ct-2ukk, ct-oc2g, ct-xu1o, ct-8ax6, ct-dzyf, ct-13cn, ct-dmca, ct-gziq, ct-n6lj, ct-sb0s, ct-te1p, ct-aia9, ct-2yl5, ct-bwac, ct-a3le, ct-0odd, ct-ec91, ct-3ttc, ct-84xa, ct-h23e, ct-f7p8, ct-98sm, ct-r6xw, ct-jnw5, ct-4g55, ct-xx7q, ct-s9p2, ct-w8dc, ct-93zs, ct-m104, ct-t915, ct-5kto, ct-m94a, ct-64el, ct-asdg, ct-n61r, ct-66ns, ct-n6fz, ct-o2pr, ct-1i4q, ct-9s7b]
 created: 2026-10-21T20:53:31Z
 type: feature
 priority: 1
@@ -99,3 +99,15 @@ Code on worktree-agent-a704015cc138b456b @ da425206. Review verdict: merge, stay
 **2026-11-02T10:24:10Z**
 
 Owner decision 2026-11-02: coverage. Fix document linking at its source (list.meeting_keys misses 1,450 meetings). Where evidence is held but not yet linked (matcher pending), coverage says unknown, never not_stated. Every present value has a link the user can open.
+
+**2026-11-02T12:28:28Z**
+
+Round 1b 2026-11-02 (lead): Coverage rule (lead decision): a Senate meeting with no linked document or witness is unknown until the Senate page links land; old page decisions are not imported. Same two-way check applies to recording coverage (172 events). impl-f.
+
+**2026-11-02T13:22:51Z**
+
+2026-11-02 impl-f (r1b-f, 12 commits): Senate meetings unknown until page links land; 7,837 caption coverage rows go from not_stated to unknown. Evidence: docs/measurements/meeting-semantics-raw-check-20261102.json on r1b-f.
+
+**2026-11-02T15:31:02Z**
+
+2026-11-02 impl-u2 (r4-u2 925036be): the production model job now takes pinned spicy-regs generations as a declared input; the producer made up sha256('spicy-regs:<family>') digests since 959c23ee, which went into the input record, manifest and pin file. All 12 tables are pinned under the six generations the live release uses (amendments 75c96edc, bill-family f719442c, committee-rosters 5f031073, members 29718daf, nominations d17c43e1, roll-call-votes e7cdd80d), each root recomputed and every file matched. Using live's generations keeps gate 1's differences attributable to the fixes; newer generations are a follow-up. Inputs: .cache/archive-release/r1b/inputs/spicy_regs/. Lane 10,804 passed. F4 holds once this merges.

@@ -24,3 +24,7 @@ The owner decides whether to publish a mapping, and the release notes state the 
 **2026-11-02T10:24:10Z**
 
 Owner decision 2026-11-02: release note only. No old-to-new witness_key mapping; the release notes state that witness IDs changed and old ?witness= links no longer resolve.
+
+**2026-11-02T12:36:53Z**
+
+Round 1b 2026-11-02 (lead): Witness-ID notice written to docs/releases/README.md on r1b-h; per-release notes render from cause records.

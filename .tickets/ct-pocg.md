@@ -32,3 +32,13 @@ Extend existing schema/version handling rather than adding a parallel metadata s
 - A selected retained replay records body hashes, reader versions, completeness, partial-format failures, bytes read/downloaded, elapsed time, and peak resource use under existing limits.
 - No publisher refetch is necessary for available retained bodies; unavailable body references are reported as gaps, never successful empty extraction.
 
+
+## Notes
+
+**2026-11-02T13:14:11Z**
+
+2026-11-02 (lead): Round 2 plan at .cache/rounds/r2/html/plan.md (against integrate-round1 98fb1424). html_metadata becomes a fifth readings parser run by produce_daily after the combined pass, so there is one replay path. The version is owned by readings.py, outside the readings bundle; extruct is provenance and a lock-only compatible entry. No readings schema change: facts, format statuses and the main-content reference go in fields. All 192,191 html bodies (4.54 GB), with the 82,599 in the release first. Keep the prefetched 67,540 in the mirror through Round 2. Cost: about 80-100 CPU-minutes, 12-20 minutes wall time at --rss-gb 4.
+
+**2026-11-02T13:15:40Z**
+
+2026-11-02 (lead): add to Round 2: normalize Unicode replacement characters (U+FFFD and its double-encoded form) out of the html text fingerprint, so copies differing only by them merge (7 GovInfo packages). Round 2 re-reads all html bodies anyway.

@@ -2,7 +2,7 @@
 id: ct-x78c
 status: open
 deps: []
-links: []
+links: [ct-kthe, ct-j2yo, ct-5w9u, ct-dx22, ct-egg6]
 created: 2026-11-02T00:40:43Z
 type: task
 priority: 1
@@ -24,3 +24,15 @@ Every distinct row is migrated with evidence, or has a named reason and owner; d
 **2026-11-02T04:01:45Z**
 
 Final review correction: all 976 docs.house.gov rows are in raw witness XML (226 bodies), parsed in appearance_records, but 225 have NULL event_id. Rows have no URL; receipts' original_path wlist/{event}.xml states it. The 98 searched meeting XML only. 19,475 distinct rows; 849 and 1,300 are named with owners, not migrated. Code on worktree-agent-a704015cc138b456b @ da425206. All branches: not merged; parser pins are recomputed once at integration; no backfill, lake write or full model run has happened.
+
+**2026-11-02T13:22:51Z**
+
+2026-11-02 impl-f (r1b-f, 12 commits): 187 House witness lists attached; the old Explorer witness ledger's rows attached to their meeting go from 11,779 to 12,856; 40 path-only lists need e1's captures.original_path (f's last commit fails at planning until e1 merges, deliberately).
+
+**2026-11-02T13:43:11Z**
+
+2026-11-02 green-f: 187/187 House lists attach via their own receipt path (827 rows); 40 lists (190 rows) wait on e1; no site or MCP check of the migrated rows yet (requested).
+
+**2026-11-02T15:10:29Z**
+
+2026-11-02 red-f2 (BLOCK, narrow): the per-person precedence rule also protects old witness rows: a lower-ranked row survives unless it matches someone on the higher-ranked list for that meeting.

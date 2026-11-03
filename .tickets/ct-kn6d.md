@@ -28,3 +28,7 @@ Root cause, proven by impl-d-jobs 2026-11-01: all 198,931 refs go through querie
 **2026-11-02T04:01:45Z**
 
 Code on worktree-agent-a5550c04138214670 @ b3c4aa3c (6a08fac4). Review: merge, stay open. The rule matches v21 both ways at 18,146. Acceptance unmet: appearance work 6,131 exceeds max_work_items 5,000; meetings 639. Witness-count and tie-break mutants survive, so add tests. produce_daily not run on the real corpus.
+
+**2026-11-02T12:28:28Z**
+
+Round 1b 2026-11-02 (lead): Cause measured on v21: the 639 meeting and 6,131 appearance extras are House XML of the wrong root type (amendments, floor schedules); the model routes by root type and the producer doesn't. Fix: one shared root-type definition. impl-e2.

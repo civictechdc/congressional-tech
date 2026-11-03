@@ -2,7 +2,7 @@
 id: ct-itcg
 status: open
 deps: []
-links: [ct-v8y0, ct-5f3e, ct-kunv]
+links: [ct-v8y0, ct-5f3e, ct-kunv, ct-m104, ct-8cno]
 created: 2026-11-01T20:08:13Z
 type: task
 priority: 1
@@ -42,3 +42,23 @@ Owner decision 2026-11-01: commit the v21 inputs as they are, and rebuild captur
 **2026-11-02T10:24:10Z**
 
 Owner decision 2026-11-02: merge B/C/D first; Claude runs this commit afterwards from a checkout pinned at 6a36e54c (pre-merge code), through the checked-in native jobs, with per-key read-back.
+
+**2026-11-02T12:28:28Z**
+
+Round 1b 2026-11-02 (lead): Run inputs lost with /private/tmp are regenerated from the release's own published input record (release_input_custody.py collect; .cache/archive-release/r1b/inputs). Checked-in specs failed their own loaders after 2351caf4; fixed in impl-e2. basin-commit is running the commit.
+
+**2026-11-02T12:36:53Z**
+
+Round 1b 2026-11-02 (lead): basin-commit: no checked-in job could commit the parquet files as they are (captures_ingest accepts only current-mapping stages). Added archive_import_job and generalized verify_generations on branch basin-commit (3 commits plus a test). Local dry run passed for all 5 tables (engine EXCEPT ALL and a separate Arrow comparison). No archive.* tables exist in Basin yet. Lead direction: commit into the canonical archive.<name> tables the specs reference, not release-named tables; v21 is the first snapshot and ct-kunv's rebuild the next.
+
+**2026-11-02T12:39:55Z**
+
+Retargeted to canonical archive.<name> tables 2026-11-02; nothing had been written under the release-named tables. Provenance: import-report.json (the commit record) and the append writer definition. publish-model.json table uuids are placeholders; the real ones get pinned from the commit.
+
+**2026-11-02T13:14:38Z**
+
+2026-11-02 (lead): the live write failed with no data written. R2 refused the 133 MB captures data file upload ('InvalidPart: All non-trailing parts must have the same length'). Engine cause: Iceberg FileIO data writes through OpenDalStorageFactory::S3 use no fixed multipart chunk; only upload_file pins 8 MiB (docspec-rs src/storage/remote/objects.rs around line 419). Left in Basin: namespace archive (generation 65356e21) and an empty archive.captures (uuid 01a19c60-7769-73c1-ab9a-b13a9a2857f1, no snapshot); the other 4 tables were not created. The job now resumes into an empty table (3e30b977). The fix is going into the engine release build with ct-deg8's two fixes; after the re-pin, the same command finishes. This affects every remote lake write, the daily job included.
+
+**2026-11-02T15:32:20Z**
+
+2026-11-02 basin-commit: DONE on R2. The five publish_v21 inputs are the first snapshot of the canonical archive.* tables (namespace ct-archive-v2/archive), engine 5a3121c, branch basin-commit 3e30b977 (archive_import_job). Snapshots: captures 1828363953761029924 (4,147,132 rows), readings 417472717314838744 (1,349,139), filename_readings 2975324804189756762 (1,311,075), meeting_records 6095611825010586178 (24,430), appearance_records 2778391476088817064 (66,483); uuids and metadata in .cache/rounds/r1b/basin/pins.json. Read-back: engine EXCEPT ALL both directions, 0 differences; independent Arrow sort-by-key, every column equal. receipt_keys: 2,292 (digest 8b4d786f, equal to the live release's list). Provenance (cef-96wc, unrecorded pyarrow writer, about 51k known-bad captures rows) in work-live/import-report.json and the writer definition. Remaining: commit these pins as 448651e7's reproducibility record in the release branch (the fixed release pins the rebuilt tables), then close. ss-ezin closed upstream.
