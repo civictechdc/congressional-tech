@@ -11,7 +11,7 @@ import pyarrow.parquet as pq
 import pytest
 
 from archive_job_fixture import selective_base,selective_spec
-from congress_api.lake import appearance_records,captures,meeting_records
+from congress_api.lake import appearance_records,captures,committee_records,meeting_records,video_records
 from congress_api.lake.capture_backfill_guard import GenerationViolation
 from congress_api.lake.filenames import current_version as catalog_version
 from congress_api.retention.provenance import parquet_output,run_job
@@ -47,7 +47,7 @@ def head(spec,name):
     state=json.loads((Path(spec['work'])/'state.json').read_text());work=Path(spec['work'])/('read-'+name+os.urandom(4).hex())
     with NativeDatasets.from_config(os.environ['DOCSPEC_JOB_CONFIG']) as engine:
         run_job(work,engine,inputs=[dict(name='t',kind='native_table',**state['pins'][name])],steps=[],
-            outputs=[parquet_output(work,'rows','SELECT * FROM t',PK[name])])
+            outputs=[parquet_output(work,'rows','SELECT * FROM t',PK.get(name,['record_sha','source','parser_version']))])
     return pq.read_table(work/'rows.parquet').to_pylist()
 
 
@@ -182,6 +182,46 @@ def test_d2_reads_missing_readings_from_the_local_mirror(tmp_path,fixture):
     assert execute(spec)['status']=='tables_built'
     reread={(row['parser'],row['status']) for row in head(spec,'readings') if row['body_sha']==body}
     assert reread=={(row['parser'],row['status']) for row in base if row['body_sha']==body}
+
+
+def test_a_run_naming_the_explorer_tables_builds_them_from_its_captures(tmp_path,fixture,monkeypatch):
+    # ct-gi01: video_records and committee_records had a producer but no job; the selective run
+    # builds them in its completion pass so its model can write the five Explorer files.
+    from congress_api.retention.provenance import file_pin
+    import viewer_publication.archive_selective as selective
+    monkeypatch.setattr(selective,'_writer',lambda run:dict(job=selective.PRODUCER_JOB,commit='a'*40,lockfile_digest='0'*64))
+    names=('captures','readings','filename_readings','meeting_records','appearance_records','video_records','committee_records')
+    spec=selective_spec(tmp_path,fixture,dict(captures=B),differential_rows=0,through='tables',
+        tables={name:dict(namespace=['selective'],name=name) for name in names})
+    decisions=tmp_path/'recording-decisions.jsonl'
+    decisions.write_text(json.dumps(dict(id='a'*64,subject_kind='event',subject_id='118888',verdict='found',
+        video_refs=['https://example.test/watch'],note=None,disputed_by=None,decided_at=None,supersedes=None))+'\n')
+    template=Path(spec['selective']['model']['template']);model=json.loads(template.read_text())
+    model['recording_decision_files']=[dict(key='provenance/recording_decisions/a.jsonl',path=str(decisions),**file_pin(decisions))]
+    template.write_text(json.dumps(model))
+    report=execute(spec)
+    assert report['status']=='tables_built' and set(report['tables'])==set(names)
+    for name,appended in {'video_records':0,'committee_records':2}.items():
+        counts=dict(base=0,hits=0,selected=0,reused=0,appended=appended)
+        assert report['completion'][name]['appended']==appended and report['tables'][name]==counts
+        producer=json.loads(Path(report['producers'][name]['path']).read_text())
+        assert (producer['reused_rows'],producer['appended'])==(0,appended)
+    tables=report['tables']
+    report=execute(dict(spec,resume=True,through='model'))
+    assert report['status']=='built' and report['tables']==tables
+    assert {'video_records','committee_records'}<=report['completion'].keys()
+    state=json.loads((Path(spec['work'])/'state.json').read_text())
+    candidate=json.loads((Path(spec['work'])/'candidate-model.json').read_text())
+    for name in ('captures','video_records','committee_records'):
+        assert candidate[name]==dict(kind='native_table',**state['pins'][name])
+    assert candidate['parser_versions']['video_records']==video_records.current_versions()
+    assert candidate['parser_versions']['committee_records']==committee_records.current_versions()
+    written={path.name for path in Path(report['release']).glob('*.parquet')}
+    assert {'meeting_coverage.parquet','videos.parquet','channels.parquet','recording_matches.parquet','committee_records.parquet'}<=written
+    committee=head(spec,'committee_records')
+    assert {row['event_id'] for row in committee}=={'118888',None}
+    assert all(row['parser_version'] in set(committee_records.current_versions().values()) for row in committee)
+    assert head(spec,'video_records')==[]
 
 
 def test_narrow_fix_rebuilds_the_whole_receipt_and_reuses_the_rest_untouched(tmp_path,fixture):

@@ -13,7 +13,7 @@ import pyarrow as pa
 
 from ..parsers.house_documents import active, read_xml
 from ..parsers.house_xml import parse_house_meeting, strip_house_meeting_prefix
-from ._record_producer import GOOD_FETCH_CAPTURE_SQL, HOUSE_XML_CAPTURE_SQL, PK, build_record_table, normalize_record_sha, stage_record_table
+from ._record_producer import append_record_table, create_record_table, GOOD_FETCH_CAPTURE_SQL, HOUSE_XML_CAPTURE_SQL, PK, build_record_table, normalize_record_sha, stage_record_table
 from .versions import version_digest
 from .video_records import NO_INLINE_SQL
 
@@ -102,3 +102,15 @@ def stage(*, captures: Any, engine: Any, work: Path, existing: Any = None, local
 
 
 __all__ = ["ARROW_SCHEMA", "CANDIDATE_SQL", "PK", "SCHEMA", "SOURCE", "build_row", "current_versions", "stage", "table"]
+
+
+def create_table(*, engine: Any, work: Path, catalog_root: Path | None, table: dict[str, Any], location: str,
+                 create_namespace: bool = False) -> Any:
+    return create_record_table(schema_path=ROOT / "model/lake/committee-records.schema.json", engine=engine, work=work,
+        catalog_root=catalog_root, table=table, location=location, create_namespace=create_namespace)
+
+
+def append(staged: Mapping[str, Any], *, engine: Any, work: Path, catalog_root: Path | None, table: dict[str, Any]) -> Any:
+    """Append a staged table; the rows carry their per-source parser version."""
+    return append_record_table(staged, parser_name="committee_records", default_version="", current_version_fn=current_versions,
+        engine=engine, work=work, catalog_root=catalog_root, table=table)

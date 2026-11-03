@@ -13,7 +13,7 @@ from typing import Any, Mapping, Sequence
 import pyarrow as pa
 
 from ..parsers.youtube_video import api_rows, cache_rows
-from ._record_producer import PK, build_record_table, normalize_record_sha, stage_record_table
+from ._record_producer import append_record_table, create_record_table, PK, build_record_table, normalize_record_sha, stage_record_table
 from .versions import version_digest
 
 ROOT = Path(__file__).resolve().parents[5]
@@ -106,3 +106,15 @@ def stage(*, captures: Any, engine: Any, work: Path, existing: Any = None, local
 
 
 __all__ = ["API_SOURCE", "ARROW_SCHEMA", "PK", "SCHEMA", "SOURCE", "SOURCES", "build_row", "candidate_sql", "current_versions", "stage", "table"]
+
+
+def create_table(*, engine: Any, work: Path, catalog_root: Path | None, table: dict[str, Any], location: str,
+                 create_namespace: bool = False) -> Any:
+    return create_record_table(schema_path=ROOT / "model/lake/video-records.schema.json", engine=engine, work=work,
+        catalog_root=catalog_root, table=table, location=location, create_namespace=create_namespace)
+
+
+def append(staged: Mapping[str, Any], *, engine: Any, work: Path, catalog_root: Path | None, table: dict[str, Any]) -> Any:
+    """Append a staged table; the rows carry their per-source parser version."""
+    return append_record_table(staged, parser_name="video_records", default_version="", current_version_fn=current_versions,
+        engine=engine, work=work, catalog_root=catalog_root, table=table)

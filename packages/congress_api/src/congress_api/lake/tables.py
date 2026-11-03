@@ -25,6 +25,8 @@ LAKE_SCHEMA_PATHS = {
     'filename_readings': ROOT / 'model/lake/filename-readings.schema.json',
     'meeting_records': ROOT / 'model/lake/meeting-records.schema.json',
     'appearance_records': ROOT / 'model/lake/appearance-records.schema.json',
+    'video_records': ROOT / 'model/lake/video-records.schema.json',
+    'committee_records': ROOT / 'model/lake/committee-records.schema.json',
 }
 TABLE_SPECS = {
     'captures': dict(
@@ -55,13 +57,13 @@ TABLE_SPECS = {
         writer_profile='part',
         row_group_rows=100_000,
     ),
-    'appearance_records': dict(
-        schema_path=LAKE_SCHEMA_PATHS['appearance_records'],
+    **{name: dict(
+        schema_path=LAKE_SCHEMA_PATHS[name],
         primary_key=('record_sha', 'source', 'parser_version'),
         sort_key=('record_sha', 'source', 'parser_version'),
         writer_profile='part',
         row_group_rows=100_000,
-    ),
+    ) for name in ('appearance_records', 'video_records', 'committee_records')},
 }
 
 
