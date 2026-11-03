@@ -2,7 +2,7 @@
 id: ct-x78c
 status: open
 deps: []
-links: []
+links: [ct-kthe, ct-j2yo, ct-5w9u, ct-dx22, ct-egg6]
 created: 2026-11-02T00:40:43Z
 type: task
 priority: 1

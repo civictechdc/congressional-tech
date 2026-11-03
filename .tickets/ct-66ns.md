@@ -2,7 +2,7 @@
 id: ct-66ns
 status: open
 deps: []
-links: [ct-gi01]
+links: [ct-gi01, ct-j2yo, ct-dx22, ct-2o4d, ct-67k1]
 created: 2026-11-02T04:01:45Z
 type: bug
 priority: 2

@@ -2,7 +2,7 @@
 id: ct-5w9u
 status: open
 deps: [ct-73oe]
-links: []
+links: [ct-kthe, ct-j2yo, ct-x78c, ct-dx22, ct-egg6]
 created: 2026-10-30T14:10:02Z
 type: bug
 priority: 1

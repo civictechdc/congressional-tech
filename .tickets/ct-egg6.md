@@ -2,7 +2,7 @@
 id: ct-egg6
 status: open
 deps: []
-links: [ct-xls0]
+links: [ct-xls0, ct-kthe, ct-j2yo, ct-x78c, ct-5w9u, ct-dx22]
 created: 2026-11-02T00:58:34Z
 type: bug
 priority: 3
