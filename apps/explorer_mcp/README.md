@@ -25,7 +25,7 @@ reuse the selected release. No document bodies are bundled or downloaded.
 
 ### Claude Desktop chat
 
-Download [congress-explorer-0.4.0.mcpb](https://github.com/civictechdc/congressional-tech/releases/download/congress-mcp-v0.4.0/congress-explorer-0.4.0.mcpb),
+Download [congress-explorer-0.5.0.mcpb](https://github.com/civictechdc/congressional-tech/releases/download/congress-mcp-v0.5.0/congress-explorer-0.5.0.mcpb),
 open it with Claude Desktop, and click **Install**. Use a current Claude Desktop
 with support for MCPB 0.4's uv runtime; the host manages Python and dependencies.
 Alternatively, select the file in Settings → Desktop app → Extensions → Advanced
@@ -43,7 +43,7 @@ claude plugin install congress-explorer --marketplace civictechdc/congressional-
 Inside Claude Code, the equivalent is
 `/plugin install congress-explorer --marketplace civictechdc/congressional-tech`.
 In Cowork desktop, open Customize → Plugins and upload
-[congress-explorer-0.4.0.plugin.zip](https://github.com/civictechdc/congressional-tech/releases/download/congress-mcp-v0.4.0/congress-explorer-0.4.0.plugin.zip).
+[congress-explorer-0.5.0.plugin.zip](https://github.com/civictechdc/congressional-tech/releases/download/congress-mcp-v0.5.0/congress-explorer-0.5.0.plugin.zip).
 Start a local task and run `/congress-explorer:explore-congress`.
 The plugin's local server runs in Claude Code and Cowork desktop; Claude chat uses
 the separate `.mcpb` extension above. Organization policies may restrict installation.
@@ -53,7 +53,7 @@ the separate `.mcpb` extension above. Organization policies may restrict install
 Install uv and the Codex CLI, then:
 
 ```sh
-codex plugin marketplace add civictechdc/congressional-tech --ref congress-mcp-v0.4.0
+codex plugin marketplace add civictechdc/congressional-tech --ref congress-mcp-v0.5.0
 codex plugin add congress-explorer@congressional-tech
 ```
 
@@ -65,7 +65,7 @@ requires separate partner approval.
 
 The source plugin root is this directory. `plugin.json` and `mcp.json` describe
 the portable OpenAI package; `.claude-plugin/plugin.json` and `.mcp.json` describe
-the Claude package. Both run `uvx` with `congressional-explorer-mcp==0.4.0` from
+the Claude package. Both run `uvx` with `congressional-explorer-mcp==0.5.0` from
 PyPI. The Claude extension uses a tiny Python launcher with the same pinned
 PyPI dependency. Neither archive contains a copy of the server source.
 `scripts/build_desktop.py` generates the client-specific metadata from `server.json`;
@@ -97,7 +97,7 @@ run `npx skills add . --skill explore-congress` at the repository root.
 Install [uv](https://docs.astral.sh/uv/getting-started/installation/), then:
 
 ```sh
-uv tool install --python 3.12 congressional-explorer-mcp==0.4.0
+uv tool install --python 3.12 congressional-explorer-mcp==0.5.0
 congress-explorer-mcp prepare
 congress-explorer-mcp check
 ```
@@ -198,7 +198,7 @@ producer's environment.
 |---|---|
 | `get_dataset_info` | Available tables, coverage and published relationship/recipe IDs. Pass `table` for columns, identity and incoming/outgoing IDs; `relationship` for join meaning; `recipe` for bounded SQL examples. Also accepts `table: "schema"`, `"capture_scope"`, and `"capture_profile"`. |
 | `search_documents` | Title/filename search and exact Congress, kind, format, committee, meeting, bill/nomination, member or witness filters. |
-| `get_document` | A document's summary, paged source links, or paged recoveries. |
+| `get_document` | A document's summary, paged source links, paged recoveries, or verified extracted body text and snippet search (`section: "text"`). |
 | `search_entities` | Search the eight phase 2 entity tables with text and exact scalar filters. |
 | `get_entity` | One entity by its published key, or its directly associated documents. |
 | `query_sql` | One read-only DuckDB `SELECT`, including `WITH` and FROM-first SQL, with optional `?` parameters. All published tables are available. |
@@ -215,18 +215,31 @@ Pass those fields to `get_document`, adding `section: "sources"` or
 filters and page size. A running server stays on its selected release; run
 `prepare` and restart it to adopt a newer one.
 
-Entity keys:
+Entity keys come from the selected release's `schema.json`: every file whose
+`identity` is a published-identifier primary key (`get_dataset_info` returns
+them as `entity_keys`, and absent ones as `missing_entities`). Document links are
+the schema's `list.<column>[]` relationships to that key. In the current release:
 
 | Table | Key |
 |---|---|
 | `meetings` | `event_id` |
 | `witnesses` | `witness_key` (an appearance, not a deduplicated person) |
-| `recordings` | `video_key` |
+| `recordings`, `videos` | `video_key` |
 | `committees` | `system_code` |
 | `members` | `bioguide_id` |
 | `bills` | `bill_id`, e.g. `119-hr-1` |
 | `nominations` | `nomination_id`, e.g. `119-pn-730-2` |
-| `rosters` | Compound fields; use `search_entities` or SQL |
+| `channels` | `handle` |
+| `recording_matches` | `match_id` |
+| `committee_records` | `record_key` |
+| `rosters`, `meeting_coverage`, `url_variants` | Compound fields; use `search_entities` or SQL |
+
+A release whose schema states no identity has no entity keys; use `query_sql`.
+`upstream_relations` in `get_dataset_info` name SpicyRegs detail tables (bill
+actions, cosponsors, member ballots, ...) with their pinned generation; the MCP
+does not read them. `search_documents` rows carry `document_date_source`
+(filename, content or meeting) beside `document_date`, and `date_kind` beside
+`first_captured`; none of these is a page-update date.
 
 Entity IDs and integer entity filters accept integers or base-10 integer strings.
 Leading zeros and surrounding whitespace normalize to the same value, including
@@ -238,9 +251,11 @@ DuckDB's normal SQL behavior.
 File URLs follow the recorded body hash and exact suffix. Summaries include
 alternate formats; recordings include saved caption/transcript track URLs.
 Recovery records retain `kind` and `identity_note`: a substitute or related file
-is not necessarily the requested original. Fetch and read the files with the
-agent's own tools. The MCP searches metadata and does not download, extract, OCR,
-or search document bodies.
+is not necessarily the requested original. Pass `section: "text"` to `get_document`
+(with optional `page`, `offset`, `max_chars`, or `query`) to fetch, verify against
+`saved_body` SHA-256, and read or search extracted text from saved PDF, HTML, XML,
+and text bodies while keeping the DuckDB query worker air-gapped. The server does
+not perform OCR on image-only PDFs or cross-corpus full-text indexing.
 
 Hidden documents are excluded from ordinary searches and entity document pages.
 An exact document reference still resolves and exposes its review explanation.

@@ -198,3 +198,22 @@ apps/explorer_mcp/.venv/bin/python apps/explorer_mcp/scripts/dev.py test tests \
   packages/viewer_publication/tests/test_archive_schema.py -k 'not native_checks' -q
 .venv/bin/python -m viewer_publication.archive_schema --check
 ```
+
+## 2026-11-02: identity from the published schema (ct-m104, R3 cluster B)
+
+Local only; no release, pointer or package changed. Entity keys and document
+links now come from each release's `schema.json` (`identity` and `list.<col>[]`
+relationships); `models.py` no longer holds `ENTITY_KEYS`/`DOCUMENT_LINKS`.
+`get_dataset_info()` returns `entity_keys`, `missing_entities` from declared
+files, and `upstream_relations` as published (a relationship selector finds
+them). `search_documents` rows add `document_date_source`, `first_captured` and
+`date_kind`; `date_kind` is the basis of `first_captured`, not of
+`document_date`. The native stdio test reads `release-explorer`, the build with
+the five Explorer tables and two videos.
+
+Local copies of 448651e7 and c94bfedc (`.cache/rounds/r1b/h/releases`) derive the
+same six document links as the removed map, list `links` as a document
+address rather than an entity, and report `upstream_relations` as not published.
+On 448651e7, `bill_hearing_transcripts('119-hr-1')` returns `6EA8C1FAD7D36439`
+and `A80BBBC83ACF1C12`, both from meeting 118300; the fixed release should return
+one. The local 0db23484 copy has no `schema.json`, so it was not checked.

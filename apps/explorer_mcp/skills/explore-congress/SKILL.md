@@ -17,8 +17,10 @@ download document bodies. Reopening the client reuses the selected snapshot.
 Report the selected release and available tables. Ask what the user wants to
 research, or continue their existing congressional question. Discover published
 keys and relationships through `get_dataset_info` before joining unfamiliar
-tables. Use `query_sql` for read-only joins and aggregates, and fetch returned
-document URLs with the client's own reading tools when the question needs text.
+tables. Use `query_sql` for read-only joins and aggregates, and call
+`get_document` with `section: "text"` (and optional `page`, `offset`, `max_chars`,
+or `query`) when the question needs verified text or snippet search inside an
+archived document.
 State the collection's published limits; missing records do not prove absence.
 
 If its tools are unavailable, use the [setup guide](https://civictechdc.github.io/congressional-tech/mcp/)
@@ -39,7 +41,7 @@ For data setup errors, show the actual error. Repeating `get_dataset_info` retri
 a failed initial preparation. Do not delete caches or change a selected release
 to work around an error. To refresh data at the user's request with a full plugin
 installation, run
-`uvx --python 3.12 --from congressional-explorer-mcp==0.4.0
+`uvx --python 3.12 --from congressional-explorer-mcp==0.5.0
 congress-explorer-mcp prepare`, then restart the connection. For a manual server
 installation, use `congress-explorer-mcp prepare`. Use the same
 `CONGRESS_MCP_DATA_DIR` if it was customized. Queries never refresh data silently.

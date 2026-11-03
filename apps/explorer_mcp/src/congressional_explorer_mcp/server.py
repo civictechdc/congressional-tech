@@ -32,7 +32,7 @@ def create_server(selection=None, *, timeout=10.0, data_dir=None, publication=PU
         'Use query_sql for arbitrary joins, nested lists and aggregations across all release tables. '
         'Document references and page cursors belong to one release. Saved file URLs are for you to fetch and read. '
         'Missing tables mean unavailable, not zero records. Witnesses identify appearances, not deduplicated people. '
-        'This server searches metadata; it does not read document bodies.'))
+        "This server searches metadata and reads verified archived document bodies via get_document(section='text')."))
 
     async def call(method, query):
         try:
@@ -52,11 +52,13 @@ def create_server(selection=None, *, timeout=10.0, data_dir=None, publication=PU
 
     @mcp.tool(annotations=annotations)
     async def get_dataset_info(table: str | None = None, relationship: str | None = None, recipe: str | None = None) -> dict:
-        """Discover tables, coverage, and published relationship/recipe IDs.
+        """Discover tables, entity keys, coverage, and published relationship/recipe IDs.
 
         Pass one selector: table for columns, identity and incoming/outgoing IDs;
-        relationship for keys and join meaning; recipe for parameterized DuckDB SQL.
+        relationship for keys and join meaning (also a pinned upstream relation's ID); recipe for parameterized DuckDB SQL.
+        upstream_relations name SpicyRegs detail tables (actions, cosponsors, ballots, ...) by generation; they are not in this release.
         Also accepts table=schema, capture_scope, or capture_profile for published controls.
+        Recipe example parameters illustrate parameter format; substitute keys discovered via search_entities or search_documents.
         Examples are guidance, never executed by this tool. Older releases may lack relationship metadata.
         """
         return await call('dataset_info', dict(table=table, relationship=relationship, recipe=recipe))
@@ -66,23 +68,43 @@ def create_server(selection=None, *, timeout=10.0, data_dir=None, publication=PU
         """Find documents by title/filename or exact published entity keys; returns references and saved file URLs.
 
         Text matches metadata, not full document text. Hidden documents are excluded by default.
-        measure_key matches direct document annotations; discover bill_hearing_transcripts for meeting-linked transcripts when published.
+        document_date is the document's own date; document_date_source says whether it came from the filename, content or the
+        meeting date (null: no date). first_captured is when the archive first fetched it, and date_kind its basis
+        (captured, import_day, unknown). Neither is a page-update date, and only a meeting-sourced date is the hearing date.
+        measure_key and witness_key match direct list.<col>[] document annotations (list.measure_keys holds bill_ids);
+        use the bill_hearing_transcripts, nomination_transcripts, and witness_transcripts recipes for package_id-linked hearing transcripts.
         """
         return await call('search_documents', query.model_dump())
 
     @mcp.tool(annotations=annotations)
     async def get_document(query: DocumentQuery) -> dict:
-        """Read a document reference: summary, paged sources, or paged recoveries.
+        """Read a document reference: summary, paged sources, paged recoveries, or verified body text.
 
+        Use section='text' with optional page, offset, max_chars, or query (keyword/regex snippet search)
+        to read verified PDF, HTML, XML, or plain-text document bodies from the archive.
         A recovery's kind and identity_note explain its relationship; a related file is not the original.
         """
+        if query.section == 'text':
+            from .body_reader import read_document_body
+            target = await call('document_body_target', query.model_dump())
+            try:
+                with anyio.fail_after(timeout):
+                    return await anyio.to_thread.run_sync(
+                        partial(read_document_body, target, query, data_dir=data_dir, timeout=timeout),
+                        abandon_on_cancel=True,
+                    )
+            except TimeoutError as error:
+                raise ToolError('Document body fetch or extraction timed out') from error
+            except (ExplorerError, OSError, ValueError, KeyError, TypeError) as error:
+                raise ToolError(str(error)) from error
         return await call('get_document', query.model_dump())
 
     @mcp.tool(annotations=annotations)
     async def search_entities(query: EntitySearch) -> dict:
-        """Search meetings, witnesses, recordings, committees, members, rosters, bills or nominations.
+        """Search any table the release's schema keys by a published identifier (get_dataset_info lists entity_keys).
 
-        Text searches published names/titles; filters are exact scalar field/value matches.
+        Text searches published names/titles/short_titles; filters are exact scalar field/value matches.
+        rosters holds seat assignments (bioguide_id, system_code, role title); use the committee_roster recipe or members table for member names.
         Integer filters accept integers or base-10 integer strings; decimals, exponents and booleans are rejected.
         Use query_sql for dates, nested fields and multi-table joins.
         """
@@ -92,7 +114,9 @@ def create_server(selection=None, *, timeout=10.0, data_dir=None, publication=PU
     async def get_entity(query: EntityQuery) -> dict:
         """Read an entity by its published primary key, or page its directly associated documents.
 
-        get_dataset_info describes available keys. Rosters have compound keys; use search_entities.
+        get_dataset_info lists entity_keys. Compound keys (rosters, meeting_coverage, ...) use search_entities.
+        section='documents' follows direct list.<col>[] document annotations (list.measure_keys holds bill_ids);
+        use nomination_transcripts, bill_hearing_transcripts, and witness_transcripts recipes for package_id-linked hearing transcripts.
         Integer IDs accept leading zeros and surrounding whitespace; decimals, exponents and booleans are rejected.
         """
         return await call('get_entity', query.model_dump())
@@ -102,6 +126,7 @@ def create_server(selection=None, *, timeout=10.0, data_dir=None, publication=PU
         """Run one read-only DuckDB SELECT (WITH and FROM-first supported) with optional ? parameters.
 
         All published Parquet tables and the joined documents view are available. Nested types stay native.
+        Use SELECT * EXCLUDE (facts) FROM documents when scanning document rows without provenance facts.
         Use hex(blob) for identifiers and unhex(?) for lookups. Fractional numbers return as strings to preserve precision.
         Results have typed columns, a row/byte cap and a truncation flag; use SQL for further paging.
         Reads are limited to selected metadata files; network access, writes, extension loading and configuration changes are disabled.

@@ -1,7 +1,7 @@
 """An exact lookup must not round an ID or lose its related documents."""
 import pytest
 
-from congressional_explorer_mcp.models import EntityQuery, EntitySearch, ExplorerError
+from congressional_explorer_mcp.models import DocumentQuery, DocumentSearch, EntityQuery, EntitySearch, ExplorerError, Page, SqlQuery
 from congressional_explorer_mcp.reader import Reader
 from congressional_explorer_mcp.release import prepare
 
@@ -70,3 +70,83 @@ def test_integer_filter_cursor_uses_canonical_value(reader):
     second = reader.search_entities(dict(table='witnesses', filters={'panel_order': 1}, limit=1, cursor=first['next_cursor']))
     assert second['rows'][0]['witness_key'] == 'appearance-2'
     assert not second['has_more']
+
+
+@pytest.mark.parametrize('value', [True, False, 10.0, '10.0', '1e1', 0, 101])
+def test_page_and_sql_limit_reject_booleans_decimals_and_out_of_range(reader, value):
+    with pytest.raises(ValueError):
+        Page(limit=value)
+    with pytest.raises(ValueError):
+        reader.search_documents(dict(limit=value))
+    if value != 101:
+        with pytest.raises(ValueError):
+            SqlQuery(sql='SELECT 1', limit=value)
+        with pytest.raises(ValueError):
+            reader.query_sql(dict(sql='SELECT 1', limit=value))
+
+
+@pytest.mark.parametrize('value', [True, False, 119.0, '118.9', '119.0', '1.19e2', 0, 1000])
+def test_document_search_congress_and_meeting_key_reject_lossy_inputs(reader, value):
+    with pytest.raises(ValueError):
+        DocumentSearch(congress=value)
+    with pytest.raises(ValueError):
+        reader.search_documents(dict(congress=value))
+    if value not in (0, 1000):
+        with pytest.raises(ValueError):
+            DocumentSearch(meeting_key=value)
+        with pytest.raises(ValueError):
+            reader.search_documents(dict(meeting_key=value))
+
+
+@pytest.mark.parametrize('value', [1, 0, 'true', 'false', '1'])
+def test_document_search_include_hidden_requires_strict_boolean(reader, value):
+    with pytest.raises(ValueError, match='boolean'):
+        DocumentSearch(include_hidden=value)
+    with pytest.raises(ValueError, match='boolean'):
+        reader.search_documents(dict(include_hidden=value))
+
+
+def test_document_search_meeting_key_and_case_variants_normalize_and_share_cursors(tmp_path, linked_transcripts):
+    reader = Reader(prepare(tmp_path, linked_transcripts))
+    try:
+        expected = reader.search_documents(dict(meeting_key='118001'))['rows']
+        assert len(expected) == 3
+        for spelling in (118001, '118001', '0118001', ' 118001 '):
+            assert reader.search_documents(dict(meeting_key=spelling))['rows'] == expected
+        first = reader.search_documents(dict(meeting_key=118001, limit=1))
+        second = reader.search_documents(dict(meeting_key='0118001', limit=1, cursor=first['next_cursor']))
+        assert second['rows'] == expected[1:2]
+    finally:
+        reader.close()
+
+
+def test_legislative_identifier_case_normalization_and_mixed_case_preservation(reader):
+    # Case-insensitive legislative identifiers normalize across search_documents, get_entity, and search_entities.
+    expected_doc = reader.search_documents(dict(committee_key='hsif00'))['rows']
+    assert len(expected_doc) == 1
+    assert reader.search_documents(dict(committee_key='HSIF00', measure_key='119-HR-1', bioguide_id='a000001'))['rows'] == expected_doc
+    first = reader.search_documents(dict(committee_key='HSIF00', limit=1))
+    assert DocumentSearch(committee_key='HSIF00', measure_key='119-HR-1', bioguide_id='a000001').model_dump() == \
+        DocumentSearch(committee_key='hsif00', measure_key='119-hr-1', bioguide_id='A000001').model_dump()
+    assert reader.get_entity(dict(table='committees', id='HSIF00'))['rows'][0]['system_code'] == 'hsif00'
+    assert reader.get_entity(dict(table='members', id='a000001'))['rows'][0]['bioguide_id'] == 'A000001'
+    assert reader.get_entity(dict(table='bills', id='119-HR-1'))['rows'][0]['bill_id'] == '119-hr-1'
+    assert reader.get_entity(dict(table='nominations', id='119-PN-730-2'))['rows'][0]['nomination_id'] == '119-pn-730-2'
+    assert reader.search_entities(dict(table='rosters', filters={'system_code': 'HSIF00', 'bioguide_id': 'a000001'}))['rows'][0]['bioguide_id'] == 'A000001'
+    assert reader.search_entities(dict(table='bills', filters={'sponsor_bioguide_id': 'a000001'}))['rows'][0]['sponsor_bioguide_id'] == 'A000001'
+    # Case-sensitive identifiers (video_key, handle, record_key) preserve exact case.
+    assert reader.get_entity(dict(table='videos', id='youtube:free'))['rows'][0]['video_key'] == 'youtube:free'
+    assert reader.get_entity(dict(table='channels', id='@AgRepublicans'))['rows'][0]['handle'] == '@AgRepublicans'
+    with pytest.raises(ExplorerError, match='absent'):
+        reader.get_entity(dict(table='channels', id='@agrepublicans'))
+
+
+def test_uppercase_document_query_link_key_normalizes_for_lookup_and_cursor_binding(reader):
+    ref = reader.search_documents(dict(text='agenda'))['rows'][0]['reference']
+    upper_key = ref['link_key'].upper()
+    assert DocumentQuery(release_id=ref['release_id'], link_key=upper_key).link_key == ref['link_key']
+    summary = reader.get_document(dict(release_id=ref['release_id'], link_key=upper_key))
+    assert summary['rows'][0]['reference']['link_key'] == ref['link_key']
+    sources_upper = reader.get_document(dict(release_id=ref['release_id'], link_key=upper_key, section='sources', limit=1))
+    sources_lower = reader.get_document(dict(release_id=ref['release_id'], link_key=ref['link_key'], section='sources', limit=1))
+    assert sources_upper == sources_lower

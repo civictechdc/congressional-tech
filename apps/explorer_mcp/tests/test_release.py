@@ -94,6 +94,31 @@ def test_changed_cache_and_concurrent_prepare_are_rejected(tmp_path):
         release.prepare(tmp_path, CURRENT/'manifest.json')
 
 
+def test_legacy_five_field_stamp_survives_st_dev_change_and_missing_object_heals(tmp_path, monkeypatch):
+    selected = release.prepare(tmp_path, CURRENT/'manifest.json')
+    assert all(len(item['stamp']) == 4 for item in selected['files'].values())
+    selection_path = tmp_path / 'selection.json'
+    legacy = json.loads(selection_path.read_bytes())
+    for item in legacy['files'].values():
+        item['stamp'] = [999999, *item['stamp']]
+    selection_path.write_bytes(release.encoded(legacy))
+    loaded = release.load_selection(tmp_path)
+    assert loaded['release_id'] == selected['release_id']
+    import duckdb
+    monkeypatch.setattr(duckdb, 'connect', lambda **kwargs: pytest.fail('Stamp upgrade reread Parquet footers'))
+    upgraded = release.prepare(tmp_path, CURRENT/'manifest.json')
+    assert all(len(item['stamp']) == 4 for item in upgraded['files'].values())
+    assert all(len(item['stamp']) == 4 for item in json.loads(selection_path.read_bytes())['files'].values())
+    monkeypatch.undo()
+    missing_sha, missing_item = next(iter(upgraded['files'].items()))
+    Path(missing_item['path']).unlink()
+    with pytest.raises(ExplorerError, match='changed'):
+        release.load_selection(tmp_path)
+    healed = release.prepare(tmp_path, CURRENT/'manifest.json')
+    assert Path(healed['files'][missing_sha]['path']).exists()
+    assert release.load_selection(tmp_path)['release_id'] == selected['release_id']
+
+
 def test_shards_preserve_positions_duplicates_and_source_order(tmp_path):
     source=tmp_path/'release'; shutil.copytree(CURRENT,source)
     def sources(rows):

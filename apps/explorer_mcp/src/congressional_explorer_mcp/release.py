@@ -32,7 +32,11 @@ def literal(value):
 
 def stamp(path):
     stat = Path(path).stat()
-    return [stat.st_dev, stat.st_ino, stat.st_size, stat.st_mtime_ns, stat.st_ctime_ns]
+    return [stat.st_ino, stat.st_size, stat.st_mtime_ns, stat.st_ctime_ns]
+
+
+def same_stamp(path, recorded):
+    return isinstance(recorded, list) and len(recorded) in (4, 5) and stamp(path) == recorded[-4:]
 
 
 @contextmanager
@@ -129,7 +133,7 @@ def retain(location, item, objects, previous):
         # The owned immutable object was already verified. A changed custody
         # stamp is an error, not permission to silently trust or replace it.
         if previous is not None:
-            if stamp(target) != previous:
+            if not same_stamp(target, previous):
                 raise ExplorerError('Prepared file changed; choose a fresh data directory')
         else:
             with target.open('rb') as stream:
@@ -185,8 +189,15 @@ def _prepare(root, publication, archive_origin):
                 or address.password or address.query or address.fragment or address.path not in ('', '/')):
             raise ExplorerError('Archive origin must be an HTTP(S) origin without a path, query or credentials')
         origin = origin.rstrip('/')
-    if previous.get('release_id') == manifest['release_id'] and previous.get('archive_origin') == origin:
-        return load_selection(root)
+    if previous.get('release_id') == manifest['release_id'] and previous.get('archive_origin') == origin \
+            and set(previous.get('files', {})) == {item['sha256'] for item in manifest['files']} \
+            and all(Path(f['path']).exists() for f in previous.get('files', {}).values()):
+        value = load_selection(root)
+        if any(len(item['stamp']) != 4 for item in value['files'].values()):
+            for item in value['files'].values():
+                item['stamp'] = item['stamp'][-4:]
+            atomic_json(selected, value)
+        return value
     files, controls = {}, {}
     for item in manifest['files']:
         path = retain(beside(location, item['name']), item, objects,
@@ -221,6 +232,7 @@ def load_selection(data_dir):
     if value.get('version') != 1 or 'release_id' not in value:
         raise ExplorerError('Legacy MCP selections are unsupported; prepare a new archive release')
     for item in value['files'].values():
-        if Path(item['path']).is_symlink() or stamp(item['path']) != item['stamp']:
+        target = Path(item['path'])
+        if target.is_symlink() or not target.exists() or not same_stamp(target, item['stamp']):
             raise ExplorerError('Prepared file changed; choose a fresh data directory')
     return value

@@ -15,7 +15,7 @@ def client_config(data_dir, client):
     """Print configuration only; never change another application's settings."""
     # Do not resolve the Python symlink: its virtualenv owns the dependencies.
     command = str(Path(sys.executable).absolute())
-    args = ['-m', 'congressional_explorer_mcp.cli', 'serve', '--data-dir', str(data_dir)]
+    args = ['-m', 'congressional_explorer_mcp.cli', 'serve', '--prepare-if-missing', '--data-dir', str(data_dir)]
     if client == 'codex':
         return f'[mcp_servers.congress]\ncommand = {json.dumps(command, ensure_ascii=False)}\nargs = {json.dumps(args, ensure_ascii=False)}'
     return json.dumps({'mcpServers': {'congress': {'command': command, 'args': args}}}, indent=2)
@@ -66,7 +66,7 @@ def main(argv=None):
         if args.command == 'config':
             print(client_config(args.data_dir, args.client))
             return 0
-        if args.command == 'serve' and args.prepare_if_missing:
+        if args.command == 'serve' and args.prepare_if_missing and not (args.data_dir / 'selection.json').exists():
             from .server import create_server
             create_server(data_dir=args.data_dir, publication=args.publication,
                 timeout=args.query_timeout).run(transport='stdio', show_banner=False)
@@ -86,7 +86,7 @@ def main(argv=None):
             return 0
         if args.command == 'serve':
             from .server import create_server
-            create_server(selection, timeout=args.query_timeout).run(transport='stdio', show_banner=False)
+            create_server(selection, data_dir=args.data_dir, timeout=args.query_timeout).run(transport='stdio', show_banner=False)
         else:
             print(json.dumps(dict(release_id=selection['release_id'], data_dir=str(args.data_dir.absolute()),
                 tables={name: sum(part['rows'] for part in parts) for name, parts in selection['tables'].items()}), indent=2))

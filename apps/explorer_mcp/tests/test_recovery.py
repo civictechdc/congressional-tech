@@ -158,11 +158,11 @@ def test_update_and_rollback_preserve_running_readers(tmp_path, phase2):
         assert old_reader.dataset_info({})['release_id'] == first['release_id']
         assert newer.dataset_info({})['release_id'] == second['release_id']
         assert old_reader.query_sql({'sql':'SELECT count(*) AS n FROM documents'})['rows'] == [{'n':7}]
-        assert newer.query_sql({'sql':'SELECT count(*) AS n FROM witnesses'})['rows'] == [{'n':2}]
+        assert newer.query_sql({'sql':'SELECT count(*) AS n FROM witnesses'})['rows'] == [{'n':4}]
         rolled_back = release.prepare(cache, CURRENT/'manifest.json')
         assert rolled_back['release_id'] == first['release_id']
         assert release.load_selection(cache)['release_id'] == first['release_id']
-        assert newer.query_sql({'sql':'SELECT count(*) AS n FROM witnesses'})['rows'] == [{'n':2}]
+        assert newer.query_sql({'sql':'SELECT count(*) AS n FROM witnesses'})['rows'] == [{'n':4}]
         assert old_reader.query_sql({'sql':'SELECT count(*) AS n FROM documents'})['rows'] == [{'n':7}]
     finally:
         old_reader.close()
