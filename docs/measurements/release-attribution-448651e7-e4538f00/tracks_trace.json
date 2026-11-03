@@ -1,0 +1,100 @@
+{
+ "candidate": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/r1b-run/d4-spec/superseded-model/output-3699fef9",
+ "captures": {
+  "v21": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/publish_v21/inputs/captures.parquet",
+  "candidate": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/r1b-run/d4-spec/lake/captures/data/*.parquet",
+  "snapshot": 8366217940335693765
+ },
+ "rule": "archive_model.py recording_fetch_candidates at c36f5213",
+ "bodies": [
+  5636,
+  2461,
+  2411
+ ],
+ "by_reason": [
+  {
+   "kind": "changed_track_set",
+   "v21": "status unread",
+   "candidate": "candidate for this key",
+   "tracks": 531,
+   "keys": 266
+  },
+  {
+   "kind": "gained_first_tracks",
+   "v21": "status unread",
+   "candidate": "candidate for this key",
+   "tracks": 4298,
+   "keys": 2145
+  },
+  {
+   "kind": "gained_first_tracks",
+   "v21": "candidate, other key",
+   "candidate": "candidate for this key",
+   "tracks": 807,
+   "keys": 807
+  }
+ ],
+ "v21_rows_of_bodies_not_status_unread": [
+  {
+   "kind": "gained_first_tracks",
+   "family": "senate/players",
+   "mode": "fetch",
+   "complete": true,
+   "outcome": "stored",
+   "http_status": null,
+   "same_key": false,
+   "rows": 2589543
+  },
+  {
+   "kind": "gained_first_tracks",
+   "family": "senate/captions",
+   "mode": "fetch",
+   "complete": true,
+   "outcome": "stored",
+   "http_status": 200,
+   "same_key": false,
+   "rows": 943625
+  },
+  {
+   "kind": "gained_first_tracks",
+   "family": "senate/captions",
+   "mode": "fetch",
+   "complete": true,
+   "outcome": "stored",
+   "http_status": null,
+   "same_key": false,
+   "rows": 23582
+  },
+  {
+   "kind": "gained_first_tracks",
+   "family": "senate/players",
+   "mode": "fetch",
+   "complete": true,
+   "outcome": "stored",
+   "http_status": null,
+   "same_key": true,
+   "rows": 4844
+  },
+  {
+   "kind": "gained_first_tracks",
+   "family": "senate/players",
+   "mode": "fetch",
+   "complete": null,
+   "outcome": "stored",
+   "http_status": null,
+   "same_key": null,
+   "rows": 838
+  }
+ ],
+ "qualifying_rows_v21_vs_candidate": [
+  {
+   "family": "senate/players",
+   "v21_status": null,
+   "candidate_status": 200,
+   "v21_outcome": "stored",
+   "candidate_outcome": "stored",
+   "same_fetch_url": true,
+   "rows": 22559
+  }
+ ]
+}

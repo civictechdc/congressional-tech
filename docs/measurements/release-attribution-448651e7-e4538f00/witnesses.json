@@ -1,0 +1,1966 @@
+{
+ "scope": "witnesses.parquet groups from d4-spec/gates-3699fef9 (candidate output-3699fef9 vs live 448651e7); 'after_fix' = the same comparison on r1b-frozen/after-out built from r1b-f 31712fdc (same v21 inputs, appearance_records staged through appearance_records.table)",
+ "method": "every base row joined to the candidate by (record_sha, source_locator, source); changed fields by witness_key; ~10 rows per group read against raw MODS bodies from the r2-immutable mirror (scratch rawread.py)",
+ "groups": {
+  "removed keys": {
+   "d4": 6331,
+   "after_fix": 13152,
+   "attribution_d4": {
+    "6,216 occasion meeting->package (all mods; the row is still published under a package key)": "DEFECT: appearance_records.table (_EXTRA_COLS/_normalize_row_for_table) wrote held_dates/title/created null, so no print matched its meeting; D4 transcripts fell 32,882->2,486. Fixed 3fb41ddd with fail-first test test_the_lake_table_keeps_each_records_held_dates_title_and_created; the frozen check now stages through table() so it can see this",
+    "114 lines no longer an appearance": "INTENDED with 9 DEFECTS: 'Prepared statement on H.R. 643', 'Responses to questions for the record from Hon. X' (contents entries, no person); 9 'Additional materials supplied: <name>, ..., Statement submitted for the record' were real submissions, fixed 31712fdc",
+    "1 occasion and name both changed": "label stripped and occasion moved"
+   },
+   "attribution_after_fix": {
+    "12,425 package->meeting (10,754 with superseded_by)": "INTENDED: print agreement (DATA-MODEL 7.11) attaches prints the live release left package-only; per-person precedence marks rows the meeting's own list names; raw-judged in meeting-semantics-raw-check (package attachments)",
+    "626 meeting->package": "INTENDED: jacket links whose print's own MODS does not record the meeting (raw-judged, e.g. 52109 on 330128)",
+    "101 dropped lines": "INTENDED: label-only contents entries",
+    "no real losses": "every other removed key's line is published under its new key"
+   },
+   "samples_d4": {
+    "print detached from meeting -> package occasion (DEFECT: appearance_records.table dropped held_dates/title, fixed 3fb41ddd)": [
+     {
+      "key": "d55f29070991d4ae",
+      "occasion": "meeting:109506",
+      "new_occasion": "package:CHRG-116hhrg44090",
+      "package": "CHRG-116hhrg44090",
+      "name": "Deepak Gupta",
+      "new_name": "Deepak Gupta",
+      "locator": "mods:witness[1]"
+     },
+     {
+      "key": "5e6c23772b1edf68",
+      "occasion": "meeting:109506",
+      "new_occasion": "package:CHRG-116hhrg44090",
+      "package": "CHRG-116hhrg44090",
+      "name": "Kevin Ziober",
+      "new_name": "Kevin Ziober",
+      "locator": "mods:witness[2]"
+     },
+     {
+      "key": "49024a0e80d5335d",
+      "occasion": "meeting:109506",
+      "new_occasion": "package:CHRG-116hhrg44090",
+      "package": "CHRG-116hhrg44090",
+      "name": "Gretchen Carlton",
+      "new_name": "Gretchen Carlton",
+      "locator": "mods:witness[3]"
+     },
+     {
+      "key": "2ddd2e0b967e26c0",
+      "occasion": "meeting:109506",
+      "new_occasion": "package:CHRG-116hhrg44090",
+      "package": "CHRG-116hhrg44090",
+      "name": "Phil Goldberg",
+      "new_name": "Phil Goldberg",
+      "locator": "mods:witness[4]"
+     },
+     {
+      "key": "a126c6e1e5c7a6a6",
+      "occasion": "meeting:109506",
+      "new_occasion": "package:CHRG-116hhrg44090",
+      "package": "CHRG-116hhrg44090",
+      "name": "Andrew Pincus",
+      "new_name": "Andrew Pincus",
+      "locator": "mods:witness[5]"
+     },
+     {
+      "key": "1136442e2a238766",
+      "occasion": "meeting:109506",
+      "new_occasion": "package:CHRG-116hhrg44090",
+      "package": "CHRG-116hhrg44090",
+      "name": "Myriam Gilles",
+      "new_name": "Myriam Gilles",
+      "locator": "mods:witness[6]"
+     },
+     {
+      "key": "695a87e5439f7860",
+      "occasion": "meeting:109930",
+      "new_occasion": "package:CHRG-116hhrg47890",
+      "package": "CHRG-116hhrg47890",
+      "name": "Corey Lewandowski",
+      "new_name": "Corey Lewandowski",
+      "locator": "mods:witness[1]"
+     },
+     {
+      "key": "66e3fb045b6e7b89",
+      "occasion": "meeting:325720",
+      "new_occasion": "package:CHRG-116jhrg36469",
+      "package": "CHRG-116jhrg36469",
+      "name": "Nathaniel Hendren",
+      "new_name": "Nathaniel Hendren",
+      "locator": "mods:witness[1]"
+     },
+     {
+      "key": "93e96822f7493711",
+      "occasion": "meeting:325720",
+      "new_occasion": "package:CHRG-116jhrg36469",
+      "package": "CHRG-116jhrg36469",
+      "name": "Ryan Streeter",
+      "new_name": "Ryan Streeter",
+      "locator": "mods:witness[2]"
+     },
+     {
+      "key": "778f8481907cfcbf",
+      "occasion": "meeting:325720",
+      "new_occasion": "package:CHRG-116jhrg36469",
+      "package": "CHRG-116jhrg36469",
+      "name": "Jose A. Quinonez",
+      "new_name": "Jose A. Quinonez",
+      "locator": "mods:witness[3]"
+     },
+     {
+      "key": "3045f8c4696e0333",
+      "occasion": "meeting:325720",
+      "new_occasion": "package:CHRG-116jhrg36469",
+      "package": "CHRG-116jhrg36469",
+      "name": "Patrick Sharkey",
+      "new_name": "Patrick Sharkey",
+      "locator": "mods:witness[4]"
+     },
+     {
+      "key": "c7aa79565ab5531e",
+      "occasion": "meeting:325842",
+      "new_occasion": "package:CHRG-116jhrg37080",
+      "package": "CHRG-116jhrg37080",
+      "name": "Andrew Reamer",
+      "new_name": "Andrew Reamer",
+      "locator": "mods:witness[1]"
+     }
+    ],
+    "occasion and name both changed": [
+     {
+      "key": "0a352dfd34e3f77f",
+      "occasion": "meeting:326409",
+      "new_occasion": "package:CHRG-116shrg42347",
+      "package": "CHRG-116shrg42347",
+      "name": "Response to request arising during the hearing by: Hon. Johnny Isakson........................................ 12",
+      "new_name": "Response to request arising during the hearing by: Hon. Johnny Isakson",
+      "locator": "mods:witness[2]"
+     }
+    ],
+    "line no longer an appearance (contents-label or footnote-only entry, green-f4)": [
+     {
+      "key": "0a9f70167526dd03",
+      "occasion": "package:CHRG-107hhrg71290",
+      "new_occasion": null,
+      "package": "CHRG-107hhrg71290",
+      "name": "Prepared statement on H.R. 643",
+      "new_name": null,
+      "locator": "mods:witness[14]"
+     },
+     {
+      "key": "b5d8a81bb504592c",
+      "occasion": "package:CHRG-107hhrg75015",
+      "new_occasion": null,
+      "package": "CHRG-107hhrg75015",
+      "name": "Additional materials supplied: Fraley",
+      "new_name": null,
+      "locator": "mods:witness[14]"
+     },
+     {
+      "key": "6e0df50ccecffd44",
+      "occasion": "package:CHRG-107hhrg80292",
+      "new_occasion": null,
+      "package": "CHRG-107hhrg80292",
+      "name": "Prepared statement on H.R. 3802",
+      "new_name": null,
+      "locator": "mods:witness[5]"
+     },
+     {
+      "key": "814a095ed1435b92",
+      "occasion": "package:CHRG-111shrg53066",
+      "new_occasion": null,
+      "package": "CHRG-111shrg53066",
+      "name": "Response to questions arising during hearing by: Hon. Jon Tester...................................12-14",
+      "new_name": null,
+      "locator": "mods:witness[2]"
+     },
+     {
+      "key": "2d72dc4f6d196b4b",
+      "occasion": "package:CHRG-114hhrg20215",
+      "new_occasion": null,
+      "package": "CHRG-114hhrg20215",
+      "name": "Responses to questions for the record from Hon. Todd Rokita",
+      "new_name": null,
+      "locator": "mods:witness[2]"
+     },
+     {
+      "key": "08f79b7bd55610c4",
+      "occasion": "package:CHRG-108hhrg88530",
+      "new_occasion": null,
+      "package": "CHRG-108hhrg88530",
+      "name": "Prepared statement on H.R. 1723",
+      "new_name": null,
+      "locator": "mods:witness[6]"
+     },
+     {
+      "key": "3f6c7b84a56ac472",
+      "occasion": "package:CHRG-109shrg20113",
+      "new_occasion": null,
+      "package": "CHRG-109shrg20113",
+      "name": "Response to written questions submitted by: Craig",
+      "new_name": null,
+      "locator": "mods:witness[2]"
+     },
+     {
+      "key": "1f490d18f1992821",
+      "occasion": "package:CHRG-110hhrg47668",
+      "new_occasion": null,
+      "package": "CHRG-110hhrg47668",
+      "name": "Prepared Statement",
+      "new_name": null,
+      "locator": "mods:witness[2]"
+     },
+     {
+      "key": "fa46c6fcdbb2a1db",
+      "occasion": "package:CHRG-111hhrg52366",
+      "new_occasion": null,
+      "package": "CHRG-111hhrg52366",
+      "name": "Additional materials supplied: Berlew",
+      "new_name": null,
+      "locator": "mods:witness[11]"
+     },
+     {
+      "key": "c912c6c5885b9c32",
+      "occasion": "package:CHRG-112hhrg75278",
+      "new_occasion": null,
+      "package": "CHRG-112hhrg75278",
+      "name": "Prepared statement on H.R. 5744",
+      "new_name": null,
+      "locator": "mods:witness[3]"
+     },
+     {
+      "key": "a2f655e1637b4696",
+      "occasion": "package:CHRG-112hhrg75278",
+      "new_occasion": null,
+      "package": "CHRG-112hhrg75278",
+      "name": "Prepared statement on H.R. 5744",
+      "new_name": null,
+      "locator": "mods:witness[9]"
+     },
+     {
+      "key": "82f8245d7b10b8e2",
+      "occasion": "package:CHRG-113hhrg80441",
+      "new_occasion": null,
+      "package": "CHRG-113hhrg80441",
+      "name": "Prepared statement on H.R. _",
+      "new_name": null,
+      "locator": "mods:witness[17]"
+     }
+    ]
+   }
+  },
+  "changed witness_type": {
+   "d4": 986,
+   "after_fix": 374,
+   "attribution_d4": {
+    "427 'Name, position, prepared statement'": "DEFECT: a witness's own statement line (Coston, Levin, Blake testified); fixed 88a300ef",
+    "119 answers to submitted questions": "DEFECT: the witness's own answers; fixed 88a300ef (later same-person line in one record now superseded by the first)",
+    "75 'Letter' inside a line (National Association of Letter Carriers)": "DEFECT: fixed 88a300ef",
+    "306 opening Letter / for the record / submission": "INTENDED (red-f2/red-f3 statements)",
+    "47 Member prepared statements": "INTENDED member_statement",
+    "12 other (Written/Joint statement of a witness)": "DEFECT -> witness, fixed 88a300ef",
+    "post-fix check": "209 'Oral statement'/'Statement of Hon.' Member lines briefly became member_statement; fixed 30e277ae"
+   },
+   "samples_d4": {
+    "statement relabelling (explicit markers, red-f3/green-f4)": [
+     {
+      "key": "670d1ef365509fc0",
+      "source": "mods",
+      "occasion": "package:CHRG-118hhrg53922",
+      "name": "National Marine Fisheries Service",
+      "base": null,
+      "candidate": "statement_for_record"
+     },
+     {
+      "key": "d305149aadf77550",
+      "source": "mods",
+      "occasion": "package:CHRG-118hhrg53922",
+      "name": "U.S. Geological Survey",
+      "base": null,
+      "candidate": "statement_for_record"
+     },
+     {
+      "key": "28e4a9f61c69c9b6",
+      "source": "mods",
+      "occasion": "package:CHRG-118hhrg53922",
+      "name": "Submissions for the Record by Representative Bentz Pet Advocacy Network",
+      "base": null,
+      "candidate": "statement_for_record"
+     },
+     {
+      "key": "6bd0b254fce5e0e6",
+      "source": "mods",
+      "occasion": "package:CHRG-118hhrg53922",
+      "name": "Submissions for the Record by Representative Huffman Defenders of Wildlife",
+      "base": null,
+      "candidate": "statement_for_record"
+     },
+     {
+      "key": "2d87e59ef0eb1d7d",
+      "source": "mods",
+      "occasion": "package:CHRG-118hhrg53922",
+      "name": "Environmentalist Stakeholders",
+      "base": null,
+      "candidate": "statement_for_record"
+     },
+     {
+      "key": "cb6684e560389215",
+      "source": "mods",
+      "occasion": "package:CHRG-118hhrg53922",
+      "name": "Environmentalist Stakeholders",
+      "base": null,
+      "candidate": "statement_for_record"
+     },
+     {
+      "key": "510e12e8b94eab6d",
+      "source": "mods",
+      "occasion": "package:CHRG-118hhrg53922",
+      "name": "Environmentalist Stakeholders",
+      "base": null,
+      "candidate": "statement_for_record"
+     },
+     {
+      "key": "7276b8fc939e9783",
+      "source": "mods",
+      "occasion": "package:CHRG-118hhrg53922",
+      "name": "Submissions for the Record by Representative Donalds Atlantic States Marine Fisheries Commission",
+      "base": null,
+      "candidate": "statement_for_record"
+     },
+     {
+      "key": "8384caacea68eeac",
+      "source": "mods",
+      "occasion": "package:CHRG-118hhrg53922",
+      "name": "Gulf States Marine Fisheries Commission",
+      "base": null,
+      "candidate": "statement_for_record"
+     },
+     {
+      "key": "a7dda462e0ae8ed1",
+      "source": "mods",
+      "occasion": "package:CHRG-118hhrg53922",
+      "name": "Angler Action Foundation",
+      "base": null,
+      "candidate": "statement_for_record"
+     },
+     {
+      "key": "e808ff9201b5d184",
+      "source": "mods",
+      "occasion": "package:CHRG-118hhrg53922",
+      "name": "Florida Fish and Wildlife Conservation Commission",
+      "base": null,
+      "candidate": "statement_for_record"
+     },
+     {
+      "key": "14c644e7164a7be8",
+      "source": "mods",
+      "occasion": "package:CHRG-118hhrg53922",
+      "name": "Sanibel-Captiva Conservation Foundation",
+      "base": null,
+      "candidate": "statement_for_record"
+     }
+    ]
+   }
+  },
+  "changed name": {
+   "d4": 300,
+   "after_fix": 233,
+   "attribution": "INTENDED: GPO footnote markers/text and contents labels stripped (85d3352c, 2f441493); after_fix adds dot-leader split ('Slides...62-75 Hines, William H.' -> William H. Hines, 81b123c2)",
+   "samples_d4": {
+    "footnote/label stripping (witness_names, 85d3352c/2f441493)": [
+     {
+      "key": "effc8c5304fd9818",
+      "source": "mods",
+      "occasion": "package:CHRG-118hhrg53499",
+      "name": "............................................................. Gibbons-Fly",
+      "base": "............................................................. Gibbons-Fly",
+      "candidate": "Panel II:"
+     },
+     {
+      "key": "79d2029d5557aaa9",
+      "source": "mods",
+      "occasion": "package:CHRG-118hhrg54163",
+      "name": "Answers to submitted questions \\1\\ Sophia Tripoli",
+      "base": "Answers to submitted questions \\1\\ Sophia Tripoli",
+      "candidate": "Sophia Tripoli"
+     },
+     {
+      "key": "acfb89b783e39d5e",
+      "source": "mods",
+      "occasion": "package:CHRG-118hhrg54689",
+      "name": "Prepared statement \\1\\ Answers to submitted questions \\2\\ Rebecca Kelly Slaughter",
+      "base": "Prepared statement \\1\\ Answers to submitted questions \\2\\ Rebecca Kelly Slaughter",
+      "candidate": "Rebecca Kelly Slaughter"
+     },
+     {
+      "key": "1f907b008cd22832",
+      "source": "mods",
+      "occasion": "package:CHRG-118hhrg54899",
+      "name": "Prepared statement \\1\\ Jeremy Harrell",
+      "base": "Prepared statement \\1\\ Jeremy Harrell",
+      "candidate": "Jeremy Harrell"
+     },
+     {
+      "key": "d9ab39a0337cbc6c",
+      "source": "mods",
+      "occasion": "package:CHRG-118hhrg55847",
+      "name": "Answers to submitted questions \\1\\ Rochelle P. Walensky",
+      "base": "Answers to submitted questions \\1\\ Rochelle P. Walensky",
+      "candidate": "Rochelle P. Walensky"
+     },
+     {
+      "key": "c02e1b8d5d26933f",
+      "source": "mods",
+      "occasion": "package:CHRG-118hhrg56592",
+      "name": "Answers to submitted questions\\1\\ Allison Clements",
+      "base": "Answers to submitted questions\\1\\ Allison Clements",
+      "candidate": "Allison Clements"
+     },
+     {
+      "key": "0a28e686e1afd883",
+      "source": "mods",
+      "occasion": "package:CHRG-118hhrg56866",
+      "name": "Answers to submitted questions \\1\\ Jeff Baran",
+      "base": "Answers to submitted questions \\1\\ Jeff Baran",
+      "candidate": "Jeff Baran"
+     },
+     {
+      "key": "9d2f0761498620ae",
+      "source": "mods",
+      "occasion": "package:CHRG-118hhrg56866",
+      "name": "Answers to submitted questions \\1\\ Bradley R. Crowell",
+      "base": "Answers to submitted questions \\1\\ Bradley R. Crowell",
+      "candidate": "Bradley R. Crowell"
+     },
+     {
+      "key": "e9778d643d12d3d6",
+      "source": "mods",
+      "occasion": "package:CHRG-118hhrg62820",
+      "name": "Answer to submitted questions \\1\\ David Ortiz",
+      "base": "Answer to submitted questions \\1\\ David Ortiz",
+      "candidate": "David Ortiz"
+     },
+     {
+      "key": "115236e7be719aa3",
+      "source": "mods",
+      "occasion": "package:CHRG-118hhrg63703",
+      "name": "Answer to submitted question \\1\\ Glenn Hamer",
+      "base": "Answer to submitted question \\1\\ Glenn Hamer",
+      "candidate": "Answer to submitted question Glenn Hamer"
+     },
+     {
+      "key": "43989ea120cfa93a",
+      "source": "mods",
+      "occasion": "package:CHRG-118jhrg52490",
+      "name": "Answers to submitted questions \\1\\ Rochelle P. Walensky",
+      "base": "Answers to submitted questions \\1\\ Rochelle P. Walensky",
+      "candidate": "Rochelle P. Walensky"
+     },
+     {
+      "key": "8d62cca76595cdb6",
+      "source": "mods",
+      "occasion": "package:CHRG-118jhrg52490",
+      "name": "Answers to submitted questions \\1\\ Robert M. Califf",
+      "base": "Answers to submitted questions \\1\\ Robert M. Califf",
+      "candidate": "Robert M. Califf"
+     }
+    ]
+   },
+   "samples_after_fix": {
+    "footnote/label stripping (witness_names, 85d3352c/2f441493)": [
+     {
+      "key": "115236e7be719aa3",
+      "source": "mods",
+      "occasion": "package:CHRG-118hhrg63703",
+      "name": "Answer to submitted question \\1\\ Glenn Hamer",
+      "base": "Answer to submitted question \\1\\ Glenn Hamer",
+      "candidate": "Answer to submitted question Glenn Hamer"
+     },
+     {
+      "key": "0a352dfd34e3f77f",
+      "source": "mods",
+      "occasion": "meeting:326409",
+      "name": "Response to request arising during the hearing by: Hon. Johnny Isakson........................................ 12",
+      "base": "Response to request arising during the hearing by: Hon. Johnny Isakson........................................ 12",
+      "candidate": "Response to request arising during the hearing by: Hon. Johnny Isakson"
+     },
+     {
+      "key": "b58f94beaf754c21",
+      "source": "mods",
+      "occasion": "package:CHRG-106hhrg61647",
+      "name": "Appendix Opening statements:...................................... Talent",
+      "base": "Appendix Opening statements:...................................... Talent",
+      "candidate": "Appendix Opening statements:"
+     },
+     {
+      "key": "9503cee5dd1a6c6b",
+      "source": "mods",
+      "occasion": "package:CHRG-106hhrg61647",
+      "name": "Prepared statements:..................................... LaMura",
+      "base": "Prepared statements:..................................... LaMura",
+      "candidate": "Marianne LaMura"
+     },
+     {
+      "key": "caffbd532d2e715e",
+      "source": "mods",
+      "occasion": "package:CHRG-106hhrg61647",
+      "name": "Additional information from Michael R. Lemov",
+      "base": "Additional information from Michael R. Lemov",
+      "candidate": "Michael R. Lemov"
+     },
+     {
+      "key": "721787e69fb679f1",
+      "source": "mods",
+      "occasion": "package:CHRG-106hhrg65971",
+      "name": "Carl Leonard:.................................................... Acting Assistant Administrator",
+      "base": "Carl Leonard:.................................................... Acting Assistant Administrator",
+      "candidate": "Carl Leonard:"
+     },
+     {
+      "key": "b1f6682e49997f10",
+      "source": "mods",
+      "occasion": "package:CHRG-106hhrg65971",
+      "name": "William E. Schuerch:............................................. Deputy Assistant Secretary",
+      "base": "William E. Schuerch:............................................. Deputy Assistant Secretary",
+      "candidate": "William E. Schuerch:"
+     },
+     {
+      "key": "52bacf9fe0c4d535",
+      "source": "mods",
+      "occasion": "package:CHRG-106hhrg65971",
+      "name": "Sylvia Saborio:.................................................. Senior Fellow",
+      "base": "Sylvia Saborio:.................................................. Senior Fellow",
+      "candidate": "Sylvia Saborio:"
+     },
+     {
+      "key": "8163c375a729c56d",
+      "source": "mods",
+      "occasion": "package:CHRG-106shrg55912",
+      "name": "Graham...........................................23",
+      "base": "Graham...........................................23",
+      "candidate": "Graham"
+     },
+     {
+      "key": "81ef1d4993770c34",
+      "source": "mods",
+      "occasion": "package:CHRG-106shrg55953",
+      "name": "Responses to additional questions from Senator Inhofe........29-118 Udall",
+      "base": "Responses to additional questions from Senator Inhofe........29-118 Udall",
+      "candidate": "Anne Udall"
+     },
+     {
+      "key": "85d5b299071fe157",
+      "source": "mods",
+      "occasion": "package:CHRG-106shrg59372",
+      "name": "Using Science in Habitat Conservation............... 29-67 Prepared statement Article",
+      "base": "Using Science in Habitat Conservation............... 29-67 Prepared statement Article",
+      "candidate": "Using Science in Habitat Conservation Article"
+     },
+     {
+      "key": "a9565d6c090f4b38",
+      "source": "mods",
+      "occasion": "package:CHRG-106shrg59372",
+      "name": "OPENING STATEMENTS Crapo",
+      "base": "OPENING STATEMENTS Crapo",
+      "candidate": "Michael D. Crapo"
+     }
+    ],
+    "mods: other": [
+     {
+      "key": "e2b159830d0e6493",
+      "source": "mods",
+      "occasion": "package:CHRG-106shrg59377",
+      "name": "Balancing Public Trust and Private Interest Report",
+      "base": "Balancing Public Trust and Private Interest Report",
+      "candidate": "William R. Murray"
+     },
+     {
+      "key": "9185130415b5ace5",
+      "source": "mods",
+      "occasion": "package:CHRG-106shrg63232",
+      "name": "Comprehensive Everglades Restoration Plan: Additional Water Quality Projects May Be Needed and Could Increase Costs Report",
+      "base": "Comprehensive Everglades Restoration Plan: Additional Water Quality Projects May Be Needed and Could Increase Costs Report",
+      "candidate": "David Struhs"
+     },
+     {
+      "key": "e2cbedc38718d230",
+      "source": "mods",
+      "occasion": "package:CHRG-107shrg81723",
+      "name": "Motor Fuel Excise Revenue Leak Analysis Report",
+      "base": "Motor Fuel Excise Revenue Leak Analysis Report",
+      "candidate": "Tom Hill"
+     },
+     {
+      "key": "c6bf9d8605daa728",
+      "source": "mods",
+      "occasion": "package:CHRG-107shrg83683",
+      "name": "Addendum #1 Summary",
+      "base": "Addendum #1 Summary",
+      "candidate": "Adam Markham"
+     },
+     {
+      "key": "e5c1651e8fea5418",
+      "source": "mods",
+      "occasion": "package:CHRG-107shrg83698",
+      "name": "Medical Testing of Individuals Potentially Exposed to Asbestoform Minerals Associated with Vermilculite in Libby Report",
+      "base": "Medical Testing of Individuals Potentially Exposed to Asbestoform Minerals Associated with Vermilculite in Libby Report",
+      "candidate": "Gregory Wagner"
+     },
+     {
+      "key": "184cb5baed80670e",
+      "source": "mods",
+      "occasion": "package:CHRG-107shrg83717",
+      "name": "New Source Review: Report to the President",
+      "base": "New Source Review: Report to the President",
+      "candidate": "Hilton Kelley"
+     },
+     {
+      "key": "4fd353a43fdd38f3",
+      "source": "mods",
+      "occasion": "package:CHRG-110shrg61965",
+      "name": "Mercury in Texas: Background Report",
+      "base": "Mercury in Texas: Background Report",
+      "candidate": "Douglas P. Scott"
+     },
+     {
+      "key": "83fe1156f2c46991",
+      "source": "mods",
+      "occasion": "package:CHRG-112hhrg77480",
+      "name": "dated July 2009 Report",
+      "base": "dated July 2009 Report",
+      "candidate": "Murray D. Smith"
+     },
+     {
+      "key": "0c630d2369039c45",
+      "source": "mods",
+      "occasion": "package:CHRG-112jhrg85228",
+      "name": "Various transportation members and supporters",
+      "base": "Various transportation members and supporters",
+      "candidate": "Eilene Okerblom"
+     },
+     {
+      "key": "a342c7994a35b849",
+      "source": "mods",
+      "occasion": "package:CHRG-117shrg48137",
+      "name": "June 1",
+      "base": "June 1",
+      "candidate": "William J. Aila Jr."
+     }
+    ]
+   }
+  },
+  "changed organization": {
+   "d4": 319,
+   "after_fix": 310,
+   "attribution_d4": {
+    "254+15": "INTENDED marker/label stripping",
+    "50": "DEFECT: everything after the first dot leader dropped (Kay E. Brown lost 'Director, ...'); fixed 81b123c2"
+   },
+   "samples_d4": {
+    "mods: other": [
+     {
+      "key": "effc8c5304fd9818",
+      "source": "mods",
+      "occasion": "package:CHRG-118hhrg53499",
+      "name": "............................................................. Gibbons-Fly",
+      "base": "Executive Director, American Tunaboat Association, Annapolis, Maryland",
+      "candidate": null
+     },
+     {
+      "key": "fb5ad32f1d328dc0",
+      "source": "mods",
+      "occasion": "package:CHRG-106hhrg59747",
+      "name": "Richard W. Skinner",
+      "base": "Command, Control, Communications, Intelligence, Surveillance, Reconnaissance and Space, Office of the Assistant Secretary of Defense",
+      "candidate": "Command, Control, Communications, Intelligence, Surveillance, Reconnaissance and Space, Office of the Assistant Secretary of Defense (CI)"
+     },
+     {
+      "key": "721787e69fb679f1",
+      "source": "mods",
+      "occasion": "package:CHRG-106hhrg65971",
+      "name": "Carl Leonard:.................................................... Acting Assistant Administrator",
+      "base": "United States Agency for International Development",
+      "candidate": null
+     },
+     {
+      "key": "b1f6682e49997f10",
+      "source": "mods",
+      "occasion": "package:CHRG-106hhrg65971",
+      "name": "William E. Schuerch:............................................. Deputy Assistant Secretary",
+      "base": "Debt, and Environmental Policy, United States Department of the Treasury",
+      "candidate": null
+     },
+     {
+      "key": "9f0cc01b3fe239bd",
+      "source": "mods",
+      "occasion": "package:CHRG-106shrg59372",
+      "name": "Habitat Conservation Plan Inventory..................125-148 Courtney Table",
+      "base": "Sustainable Ecosystems Institute, Portland, OR",
+      "candidate": null
+     },
+     {
+      "key": "e2b159830d0e6493",
+      "source": "mods",
+      "occasion": "package:CHRG-106shrg59377",
+      "name": "Balancing Public Trust and Private Interest Report",
+      "base": "William R., Natural Resources Counsel, American Forest and Paper Association",
+      "candidate": null
+     },
+     {
+      "key": "9185130415b5ace5",
+      "source": "mods",
+      "occasion": "package:CHRG-106shrg63232",
+      "name": "Comprehensive Everglades Restoration Plan: Additional Water Quality Projects May Be Needed and Could Increase Costs Report",
+      "base": "David, Commissioner, Florida Department of Environmental Protection, Tallahassee, FL",
+      "candidate": null
+     },
+     {
+      "key": "5e5fddd44264295c",
+      "source": "mods",
+      "occasion": "package:CHRG-106shrg63233",
+      "name": "Blue Ribbon Panel Recommendations on MTBE........... 41-47 Garn Summary",
+      "base": "vice chairman, Huntsman Corporation, Salt Lake City, UT",
+      "candidate": null
+     },
+     {
+      "key": "7ad9eec8147ffa66",
+      "source": "mods",
+      "occasion": "package:CHRG-106shrg66376",
+      "name": "Charles Robb",
+      "base": "Hon. Pat, U.S. Senator from the State of Kansas",
+      "candidate": null
+     },
+     {
+      "key": "19618f39f060e991",
+      "source": "mods",
+      "occasion": "package:CHRG-106shrg66380",
+      "name": "Plant Life Extension................................. 58-63 Survey Report",
+      "base": "W. Henson, President and Chief Executive Officer, American Forest and Paper Association",
+      "candidate": null
+     },
+     {
+      "key": "2d3376610d4b2f8d",
+      "source": "mods",
+      "occasion": "package:CHRG-106shrg66381",
+      "name": "Association of State and Interstate Water Pollution Control Administrators.................102-115 Statements",
+      "base": "William, council president, Eau Claire, WI, on Behalf of the National League of Cities",
+      "candidate": null
+     },
+     {
+      "key": "ef68e19baa6e21a4",
+      "source": "mods",
+      "occasion": "package:CHRG-106shrg80403",
+      "name": "Material for the record and prepared statement............... 44",
+      "base": "Jack, President and Chief Executive Officer, Motion Picture Association of America",
+      "candidate": null
+     }
+    ],
+    "footnote/label stripping (witness_names, 85d3352c/2f441493)": [
+     {
+      "key": "5df954782e20bc74",
+      "source": "mods",
+      "occasion": "package:CHRG-118hhrg54431",
+      "name": "Norman Roule",
+      "base": "Behnam, Senior Fellow, Foundation for Defense of Democracies.................................................... Alinejad, Masih, Author and Activist............................. Maloney, Suzanne, Vice President and Director of Foreign Policy, Brookings Institution",
+      "candidate": null
+     },
+     {
+      "key": "e16f9a7db99f88f2",
+      "source": "mods",
+      "occasion": "package:CHRG-118hhrg55685",
+      "name": "Hillel C. Neuer",
+      "base": "U.N. Watch................. Schanzer, Jonathan, Senior Vice President for Research, Foundation for the Defense of Democracies...................... Lincoln, Jonathan, Interim Director, Center for Jewish Civilization at Georgetown University",
+      "candidate": "U.N. Watch"
+     },
+     {
+      "key": "8aeed9458e34277b",
+      "source": "mods",
+      "occasion": "package:CHRG-118shrg56047",
+      "name": "Linda L. Fagan",
+      "base": "United States Coast Guard, accompanied by Master Chief Petty Officer Heath Jones.......... Testimony",
+      "candidate": "United States Coast Guard, accompanied by Master Chief Petty Officer Heath Jones"
+     },
+     {
+      "key": "a7e601d680761a57",
+      "source": "mods",
+      "occasion": "package:CHRG-119shrg63168",
+      "name": "Marco M. Sylvester",
+      "base": "Department of State, Washington, DC....",
+      "candidate": "Department of State, Washington, DC"
+     },
+     {
+      "key": "a95a06667976705c",
+      "source": "mods",
+      "occasion": "package:CHRG-106hhrg66850",
+      "name": "U.S. General Accounting Office",
+      "base": "Director, Civil Agencies Information Systems, Accounting and Information Management Division...........................................24, 84",
+      "candidate": "Director, Civil Agencies Information Systems, Accounting and Information Management Division"
+     },
+     {
+      "key": "9b438d7fe5662146",
+      "source": "mods",
+      "occasion": "package:CHRG-106hhrg68022",
+      "name": "Robert Hunt",
+      "base": "English Speaking United Methodist Church of Austria....................................31",
+      "candidate": "English Speaking United Methodist Church of Austria"
+     },
+     {
+      "key": "45187bcfb58450f3",
+      "source": "mods",
+      "occasion": "package:CHRG-106shrg59385",
+      "name": "53 Charts.........................................49-51",
+      "base": "58-62 Letters: Several Governors........................................ 38-47 Environmental Council of the States",
+      "candidate": null
+     },
+     {
+      "key": "9d6b37a39ffa4508",
+      "source": "mods",
+      "occasion": "package:CHRG-106shrg63230",
+      "name": "Environmental Regulation Article",
+      "base": "and the Discounting of Human Lives, Columbia Law Review.......100-145 Prepared statement",
+      "candidate": "and the Discounting of Human Lives, Columbia Law Review"
+     },
+     {
+      "key": "f149f11aa40c0181",
+      "source": "mods",
+      "occasion": "package:CHRG-106shrg63232",
+      "name": "Governor's Committee for a Sustainable South Florida Minutes",
+      "base": "1999......................333-344 Prepared statement",
+      "candidate": "1999"
+     },
+     {
+      "key": "f822c2d5fb6f121e",
+      "source": "mods",
+      "occasion": "package:CHRG-107hhrg78261",
+      "name": "P. Daniel Smith",
+      "base": "National Park Service, U.S. Department of the Interior, Washington, D.C........................................................ Oral statement on H.R. 2982",
+      "candidate": "National Park Service, U.S. Department of the Interior, Washington, D.C"
+     },
+     {
+      "key": "e73f1390922e1f60",
+      "source": "mods",
+      "occasion": "package:CHRG-107shrg78075",
+      "name": "David A. Sampson",
+      "base": "Department of Commerce.................119",
+      "candidate": "Department of Commerce"
+     },
+     {
+      "key": "c0d43c4792d78f36",
+      "source": "mods",
+      "occasion": "package:CHRG-107shrg80544",
+      "name": "Dan L. Crippen",
+      "base": "Congressional Budget Office..........13",
+      "candidate": "Congressional Budget Office"
+     }
+    ],
+    "line re-read after label/footnote stripping (fields shift)": [
+     {
+      "key": "a9565d6c090f4b38",
+      "source": "mods",
+      "occasion": "package:CHRG-106shrg59372",
+      "name": "OPENING STATEMENTS Crapo",
+      "base": "U.S. Senator from the State of Idaho",
+      "candidate": null
+     },
+     {
+      "key": "17ca83fecc8359b8",
+      "source": "mods",
+      "occasion": "package:CHRG-106shrg66376",
+      "name": "OPENING STATEMENTS Baucus",
+      "base": "U.S. Senator from the State of Montana",
+      "candidate": null
+     },
+     {
+      "key": "9fc56c14bf515cad",
+      "source": "mods",
+      "occasion": "package:CHRG-106shrg71521",
+      "name": "Prepared statement and attachments..........................124-136 Paperiello",
+      "base": "Deputy Executive Director for Materials, Research and State Programs, Nuclear Regulatory Commission",
+      "candidate": "Research and State Programs, Nuclear Regulatory Commission"
+     },
+     {
+      "key": "26137b9097718aa6",
+      "source": "mods",
+      "occasion": "package:CHRG-107shrg78075",
+      "name": "OPENING STATEMENTS Jeffords",
+      "base": "U.S. Senator from the State of Vermont",
+      "candidate": null
+     },
+     {
+      "key": "6cef32588a4d1618",
+      "source": "mods",
+      "occasion": "package:CHRG-107shrg81722",
+      "name": "OPENING STATEMENTS Bond",
+      "base": "U.S. Senator from the State of Missouri",
+      "candidate": null
+     },
+     {
+      "key": "40d1bd568bf47340",
+      "source": "mods",
+      "occasion": "package:CHRG-107shrg81722",
+      "name": "OPENING STATEMENTS Jeffords",
+      "base": "U.S. Senator from the State of Vermont",
+      "candidate": null
+     },
+     {
+      "key": "8c22f7a5a118641b",
+      "source": "mods",
+      "occasion": "package:CHRG-107shrg83685",
+      "name": "OPENING STATEMENTS Boxer",
+      "base": "U.S. Senator from the State of California",
+      "candidate": null
+     },
+     {
+      "key": "8d10d6203765e41b",
+      "source": "mods",
+      "occasion": "package:CHRG-108shrg76390",
+      "name": "Prepared statement........................................... Dodd",
+      "base": "U.S. Senator from Connecticut",
+      "candidate": null
+     },
+     {
+      "key": "059afaedc8e25090",
+      "source": "mods",
+      "occasion": "package:CHRG-108shrg91748",
+      "name": "OPENING STATEMENTS Carper",
+      "base": "U.S. Senator from the State of Delaware",
+      "candidate": null
+     },
+     {
+      "key": "99a7c21c726944fa",
+      "source": "mods",
+      "occasion": "package:CHRG-109shrg47643",
+      "name": "Prepared statement........................................... 40-79 Doniger",
+      "base": "policy director, Climate Center, Natural Resources Defense Council",
+      "candidate": "Climate Center, Natural Resources Defense Council"
+     },
+     {
+      "key": "98641334b5622fdf",
+      "source": "mods",
+      "occasion": "package:CHRG-109shrg47643",
+      "name": "Prepared statement...........................................93-147 Lomborg",
+      "base": "adjunct professor, Copenhagen Consensus Center",
+      "candidate": "Copenhagen Consensus Center"
+     },
+     {
+      "key": "3a07baf40392546d",
+      "source": "mods",
+      "occasion": "package:CHRG-112hhrg67284",
+      "name": "Submitted questions.......................................... Beachy",
+      "base": "President Emeritus, Donald Danforth Plant Science Center; Professor of Biology, Washington University in St. Louis, St. Louis, MO",
+      "candidate": "Donald Danforth Plant Science Center; Professor of Biology, Washington University in St. Louis, St. Louis, MO"
+     }
+    ]
+   },
+   "samples_after_fix": {
+    "mods: other": [
+     {
+      "key": "5071fc54c45ca38c",
+      "source": "mods",
+      "occasion": "meeting:325982",
+      "name": "Richard C. Shelby",
+      "base": null,
+      "candidate": "Testimony"
+     },
+     {
+      "key": "da712f32efa31b95",
+      "source": "mods",
+      "occasion": "meeting:333125",
+      "name": "Shelley Capito",
+      "base": "District of Columbia Court of Appeals Testimony",
+      "candidate": "Vijay Shanker to be an Associate Judge, District of Columbia Court of Appeals Testimony"
+     },
+     {
+      "key": "fb5ad32f1d328dc0",
+      "source": "mods",
+      "occasion": "package:CHRG-106hhrg59747",
+      "name": "Richard W. Skinner",
+      "base": "Command, Control, Communications, Intelligence, Surveillance, Reconnaissance and Space, Office of the Assistant Secretary of Defense",
+      "candidate": "Command, Control, Communications, Intelligence, Surveillance, Reconnaissance and Space, Office of the Assistant Secretary of Defense (CI)"
+     },
+     {
+      "key": "b58f94beaf754c21",
+      "source": "mods",
+      "occasion": "package:CHRG-106hhrg61647",
+      "name": "Appendix Opening statements:...................................... Talent",
+      "base": null,
+      "candidate": "Hon. James M"
+     },
+     {
+      "key": "721787e69fb679f1",
+      "source": "mods",
+      "occasion": "package:CHRG-106hhrg65971",
+      "name": "Carl Leonard:.................................................... Acting Assistant Administrator",
+      "base": "United States Agency for International Development",
+      "candidate": "Bureau for Latin America and the Caribbean, United States Agency for International Development"
+     },
+     {
+      "key": "b1f6682e49997f10",
+      "source": "mods",
+      "occasion": "package:CHRG-106hhrg65971",
+      "name": "William E. Schuerch:............................................. Deputy Assistant Secretary",
+      "base": "Debt, and Environmental Policy, United States Department of the Treasury",
+      "candidate": "International Development, Debt, and Environmental Policy, United States Department of the Treasury"
+     },
+     {
+      "key": "52bacf9fe0c4d535",
+      "source": "mods",
+      "occasion": "package:CHRG-106hhrg65971",
+      "name": "Sylvia Saborio:.................................................. Senior Fellow",
+      "base": null,
+      "candidate": "Overseas Development Council"
+     },
+     {
+      "key": "3461e9989f27f805",
+      "source": "mods",
+      "occasion": "package:CHRG-106hhrg65971",
+      "name": "Colin Bradford Jr.",
+      "base": null,
+      "candidate": "Professor of Economics and International Relations, The American University"
+     },
+     {
+      "key": "9f0cc01b3fe239bd",
+      "source": "mods",
+      "occasion": "package:CHRG-106shrg59372",
+      "name": "Habitat Conservation Plan Inventory..................125-148 Courtney Table",
+      "base": "Sustainable Ecosystems Institute, Portland, OR",
+      "candidate": "Steven, Sustainable Ecosystems Institute, Portland, OR"
+     },
+     {
+      "key": "e2b159830d0e6493",
+      "source": "mods",
+      "occasion": "package:CHRG-106shrg59377",
+      "name": "Balancing Public Trust and Private Interest Report",
+      "base": "William R., Natural Resources Counsel, American Forest and Paper Association",
+      "candidate": "American Forest and Paper Association"
+     },
+     {
+      "key": "9185130415b5ace5",
+      "source": "mods",
+      "occasion": "package:CHRG-106shrg63232",
+      "name": "Comprehensive Everglades Restoration Plan: Additional Water Quality Projects May Be Needed and Could Increase Costs Report",
+      "base": "David, Commissioner, Florida Department of Environmental Protection, Tallahassee, FL",
+      "candidate": "Florida Department of Environmental Protection, Tallahassee, FL"
+     },
+     {
+      "key": "5e5fddd44264295c",
+      "source": "mods",
+      "occasion": "package:CHRG-106shrg63233",
+      "name": "Blue Ribbon Panel Recommendations on MTBE........... 41-47 Garn Summary",
+      "base": "vice chairman, Huntsman Corporation, Salt Lake City, UT",
+      "candidate": "Huntsman Corporation, Salt Lake City, UT"
+     }
+    ],
+    "footnote/label stripping (witness_names, 85d3352c/2f441493)": [
+     {
+      "key": "8234d36ab7a0f0f4",
+      "source": "mods",
+      "occasion": "meeting:327252",
+      "name": "Jeff Baran",
+      "base": "U.S. Nuclear Regulatory Commission..................................................... Responses to additional questions from: Senator Barrasso",
+      "candidate": "U.S. Nuclear Regulatory Commission"
+     },
+     {
+      "key": "5d31934b9195068d",
+      "source": "mods",
+      "occasion": "meeting:327606",
+      "name": "Derek T. Kan",
+      "base": "Nominee to be Deputy Director of the Office of Management and Budget................ 4",
+      "candidate": "Nominee to be Deputy Director of the Office of Management and Budget"
+     },
+     {
+      "key": "95964a6ba0b1b7bc",
+      "source": "mods",
+      "occasion": "meeting:332704",
+      "name": "Eugene L Dodaro",
+      "base": "U.S. Government Accountability Office.......................... Testimony",
+      "candidate": "U.S. Government Accountability Office, Testimony"
+     },
+     {
+      "key": "d6582636ccb3c07a",
+      "source": "mods",
+      "occasion": "meeting:335987",
+      "name": "Eric Beightel",
+      "base": "Federal Permitting Improvement Steering Council............................................... Testimony",
+      "candidate": "Federal Permitting Improvement Steering Council, Testimony"
+     },
+     {
+      "key": "a95a06667976705c",
+      "source": "mods",
+      "occasion": "package:CHRG-106hhrg66850",
+      "name": "U.S. General Accounting Office",
+      "base": "Director, Civil Agencies Information Systems, Accounting and Information Management Division...........................................24, 84",
+      "candidate": "Director, Civil Agencies Information Systems, Accounting and Information Management Division"
+     },
+     {
+      "key": "9b438d7fe5662146",
+      "source": "mods",
+      "occasion": "package:CHRG-106hhrg68022",
+      "name": "Robert Hunt",
+      "base": "English Speaking United Methodist Church of Austria....................................31",
+      "candidate": "English Speaking United Methodist Church of Austria"
+     },
+     {
+      "key": "45187bcfb58450f3",
+      "source": "mods",
+      "occasion": "package:CHRG-106shrg59385",
+      "name": "53 Charts.........................................49-51",
+      "base": "58-62 Letters: Several Governors........................................ 38-47 Environmental Council of the States",
+      "candidate": null
+     },
+     {
+      "key": "9d6b37a39ffa4508",
+      "source": "mods",
+      "occasion": "package:CHRG-106shrg63230",
+      "name": "Environmental Regulation Article",
+      "base": "and the Discounting of Human Lives, Columbia Law Review.......100-145 Prepared statement",
+      "candidate": "and the Discounting of Human Lives, Columbia Law Review"
+     },
+     {
+      "key": "f149f11aa40c0181",
+      "source": "mods",
+      "occasion": "package:CHRG-106shrg63232",
+      "name": "Governor's Committee for a Sustainable South Florida Minutes",
+      "base": "1999......................333-344 Prepared statement",
+      "candidate": "1999"
+     },
+     {
+      "key": "f822c2d5fb6f121e",
+      "source": "mods",
+      "occasion": "package:CHRG-107hhrg78261",
+      "name": "P. Daniel Smith",
+      "base": "National Park Service, U.S. Department of the Interior, Washington, D.C........................................................ Oral statement on H.R. 2982",
+      "candidate": "National Park Service, U.S. Department of the Interior, Washington, D.C, Oral statement on H.R. 2982"
+     },
+     {
+      "key": "e73f1390922e1f60",
+      "source": "mods",
+      "occasion": "package:CHRG-107shrg78075",
+      "name": "David A. Sampson",
+      "base": "Department of Commerce.................119",
+      "candidate": "Department of Commerce"
+     },
+     {
+      "key": "c0d43c4792d78f36",
+      "source": "mods",
+      "occasion": "package:CHRG-107shrg80544",
+      "name": "Dan L. Crippen",
+      "base": "Congressional Budget Office..........13",
+      "candidate": "Congressional Budget Office"
+     }
+    ],
+    "line re-read after label/footnote stripping (fields shift)": [
+     {
+      "key": "81ef1d4993770c34",
+      "source": "mods",
+      "occasion": "package:CHRG-106shrg55953",
+      "name": "Responses to additional questions from Senator Inhofe........29-118 Udall",
+      "base": "nominated by the President to be reappointed as a member of the Board of Trustees of the Morris K. Udall Scholarship and Excellence in National Environmental Policy Foundation",
+      "candidate": null
+     },
+     {
+      "key": "a9565d6c090f4b38",
+      "source": "mods",
+      "occasion": "package:CHRG-106shrg59372",
+      "name": "OPENING STATEMENTS Crapo",
+      "base": "U.S. Senator from the State of Idaho",
+      "candidate": null
+     },
+     {
+      "key": "17ca83fecc8359b8",
+      "source": "mods",
+      "occasion": "package:CHRG-106shrg66376",
+      "name": "OPENING STATEMENTS Baucus",
+      "base": "U.S. Senator from the State of Montana",
+      "candidate": null
+     },
+     {
+      "key": "6f41e40597f8bc57",
+      "source": "mods",
+      "occasion": "package:CHRG-106shrg66382",
+      "name": "Responses to additional questions from: Senator Inhofe........................................... 44-73 Senator Smith............................................ 73-77 Sessions",
+      "base": "U.S. Senator from the State of Alabama",
+      "candidate": null
+     },
+     {
+      "key": "9fc56c14bf515cad",
+      "source": "mods",
+      "occasion": "package:CHRG-106shrg71521",
+      "name": "Prepared statement and attachments..........................124-136 Paperiello",
+      "base": "Deputy Executive Director for Materials, Research and State Programs, Nuclear Regulatory Commission",
+      "candidate": "Research and State Programs, Nuclear Regulatory Commission"
+     },
+     {
+      "key": "b5d8a81bb504592c",
+      "source": "mods",
+      "occasion": "package:CHRG-107hhrg75015",
+      "name": "Additional materials supplied: Fraley",
+      "base": "Vice President, San Juan Division, Burlington Resources, Farmington, New Mexico, Letter submitted for the record",
+      "candidate": "San Juan Division, Burlington Resources, Farmington, New Mexico, Letter submitted for the record"
+     },
+     {
+      "key": "26137b9097718aa6",
+      "source": "mods",
+      "occasion": "package:CHRG-107shrg78075",
+      "name": "OPENING STATEMENTS Jeffords",
+      "base": "U.S. Senator from the State of Vermont",
+      "candidate": null
+     },
+     {
+      "key": "6cef32588a4d1618",
+      "source": "mods",
+      "occasion": "package:CHRG-107shrg81722",
+      "name": "OPENING STATEMENTS Bond",
+      "base": "U.S. Senator from the State of Missouri",
+      "candidate": null
+     },
+     {
+      "key": "40d1bd568bf47340",
+      "source": "mods",
+      "occasion": "package:CHRG-107shrg81722",
+      "name": "OPENING STATEMENTS Jeffords",
+      "base": "U.S. Senator from the State of Vermont",
+      "candidate": null
+     },
+     {
+      "key": "8c22f7a5a118641b",
+      "source": "mods",
+      "occasion": "package:CHRG-107shrg83685",
+      "name": "OPENING STATEMENTS Boxer",
+      "base": "U.S. Senator from the State of California",
+      "candidate": null
+     },
+     {
+      "key": "b44850d03c1ead78",
+      "source": "mods",
+      "occasion": "package:CHRG-108hhrg85771",
+      "name": "Additional materials supplied: Richards",
+      "base": "Sr., Chairman, Southern Ute Indian Tribal Council, Statement submitted for the record",
+      "candidate": "Chairman, Southern Ute Indian Tribal Council, Statement submitted for the record"
+     },
+     {
+      "key": "f727213113907cc2",
+      "source": "mods",
+      "occasion": "package:CHRG-108hhrg88192",
+      "name": "Additional materials supplied: Lingle",
+      "base": "Governor, State of Hawaii, Letter submitted for the record",
+      "candidate": "State of Hawaii, Letter submitted for the record"
+     }
+    ]
+   }
+  },
+  "changed position": {
+   "d4": 133,
+   "after_fix": 139,
+   "attribution_d4": {
+    "61+19": "INTENDED stripping",
+    "53": "DEFECT dot-leader tail drop, fixed 81b123c2"
+   },
+   "samples_d4": {
+    "mods: other": [
+     {
+      "key": "effc8c5304fd9818",
+      "source": "mods",
+      "occasion": "package:CHRG-118hhrg53499",
+      "name": "............................................................. Gibbons-Fly",
+      "base": "Bill",
+      "candidate": null
+     },
+     {
+      "key": "b58f94beaf754c21",
+      "source": "mods",
+      "occasion": "package:CHRG-106hhrg61647",
+      "name": "Appendix Opening statements:...................................... Talent",
+      "base": "Hon. James M",
+      "candidate": null
+     },
+     {
+      "key": "721787e69fb679f1",
+      "source": "mods",
+      "occasion": "package:CHRG-106hhrg65971",
+      "name": "Carl Leonard:.................................................... Acting Assistant Administrator",
+      "base": "Bureau for Latin America and the Caribbean",
+      "candidate": null
+     },
+     {
+      "key": "b1f6682e49997f10",
+      "source": "mods",
+      "occasion": "package:CHRG-106hhrg65971",
+      "name": "William E. Schuerch:............................................. Deputy Assistant Secretary",
+      "base": "International Development",
+      "candidate": null
+     },
+     {
+      "key": "52bacf9fe0c4d535",
+      "source": "mods",
+      "occasion": "package:CHRG-106hhrg65971",
+      "name": "Sylvia Saborio:.................................................. Senior Fellow",
+      "base": "Overseas Development Council",
+      "candidate": null
+     },
+     {
+      "key": "9f0cc01b3fe239bd",
+      "source": "mods",
+      "occasion": "package:CHRG-106shrg59372",
+      "name": "Habitat Conservation Plan Inventory..................125-148 Courtney Table",
+      "base": "Steven",
+      "candidate": null
+     },
+     {
+      "key": "45187bcfb58450f3",
+      "source": "mods",
+      "occasion": "package:CHRG-106shrg59385",
+      "name": "53 Charts.........................................49-51",
+      "base": "54",
+      "candidate": null
+     },
+     {
+      "key": "5e5fddd44264295c",
+      "source": "mods",
+      "occasion": "package:CHRG-106shrg63233",
+      "name": "Blue Ribbon Panel Recommendations on MTBE........... 41-47 Garn Summary",
+      "base": "Hon. Jake",
+      "candidate": null
+     },
+     {
+      "key": "2d3376610d4b2f8d",
+      "source": "mods",
+      "occasion": "package:CHRG-106shrg66381",
+      "name": "Association of State and Interstate Water Pollution Control Administrators.................102-115 Statements",
+      "base": "115-123 Nielsen",
+      "candidate": null
+     },
+     {
+      "key": "ef68e19baa6e21a4",
+      "source": "mods",
+      "occasion": "package:CHRG-106shrg80403",
+      "name": "Material for the record and prepared statement............... 44",
+      "base": "46 Valenti",
+      "candidate": null
+     },
+     {
+      "key": "bc04e1f4402aeb21",
+      "source": "mods",
+      "occasion": "package:CHRG-107shrg78066",
+      "name": "State of New York Action Plan for a Balanced Electric Power Policy..............................................142-172 Stewart Report",
+      "base": "Thomas",
+      "candidate": null
+     },
+     {
+      "key": "d1d213d63f5244ab",
+      "source": "mods",
+      "occasion": "package:CHRG-107shrg78066",
+      "name": "Global Energy Technology Strategy...................396-452 Lal Report",
+      "base": "Rattan",
+      "candidate": null
+     }
+    ],
+    "footnote/label stripping (witness_names, 85d3352c/2f441493)": [
+     {
+      "key": "5df954782e20bc74",
+      "source": "mods",
+      "occasion": "package:CHRG-118hhrg54431",
+      "name": "Norman Roule",
+      "base": "Former National Intelligence Manager for Iran..... Ben Taleblu",
+      "candidate": "Former National Intelligence Manager for Iran"
+     },
+     {
+      "key": "50a072024929181b",
+      "source": "mods",
+      "occasion": "package:CHRG-118hhrg54500",
+      "name": "Trey Burton",
+      "base": "Former National Football League player.............. f34 Prepared statement",
+      "candidate": "Former National Football League player"
+     },
+     {
+      "key": "3461e9989f27f805",
+      "source": "mods",
+      "occasion": "package:CHRG-106hhrg65971",
+      "name": "Colin Bradford Jr.",
+      "base": "Ph.D.:...................................... Professor of Economics and International Relations....... The American University",
+      "candidate": "Ph.D.:"
+     },
+     {
+      "key": "bd9c13312ae23101",
+      "source": "mods",
+      "occasion": "package:CHRG-106hhrg67625",
+      "name": "Carolyn B. Maloney",
+      "base": "a Representative in Congress from the State of New York..................................... 6",
+      "candidate": "a Representative in Congress from the State of New York"
+     },
+     {
+      "key": "7e8294ee636c3b35",
+      "source": "mods",
+      "occasion": "package:CHRG-106shrg59374",
+      "name": "Gwinnett Report",
+      "base": "Air Quality Data....................... 72-79 Responses to additional question from Senator Inhofe",
+      "candidate": "Air Quality Data"
+     },
+     {
+      "key": "e2b159830d0e6493",
+      "source": "mods",
+      "occasion": "package:CHRG-106shrg59377",
+      "name": "Balancing Public Trust and Private Interest Report",
+      "base": "University of Michigan..................................... 58-84 Murray",
+      "candidate": "University of Michigan"
+     },
+     {
+      "key": "a041ed66cfd8603b",
+      "source": "mods",
+      "occasion": "package:CHRG-106shrg63230",
+      "name": "EPA rulemaking.......................................198-204 Letters Draft",
+      "base": "MACT Rules.........................................170-197 Prepared statement",
+      "candidate": null
+     },
+     {
+      "key": "9185130415b5ace5",
+      "source": "mods",
+      "occasion": "package:CHRG-106shrg63232",
+      "name": "Comprehensive Everglades Restoration Plan: Additional Water Quality Projects May Be Needed and Could Increase Costs Report",
+      "base": "General Accounting Office..........................400-426 Struhs",
+      "candidate": "General Accounting Office"
+     },
+     {
+      "key": "7ad9eec8147ffa66",
+      "source": "mods",
+      "occasion": "package:CHRG-106shrg66376",
+      "name": "Charles Robb",
+      "base": "U.S. Senator from the Commonwealth of Virginia....................................................... Roberts",
+      "candidate": "U.S. Senator from the Commonwealth of Virginia"
+     },
+     {
+      "key": "19618f39f060e991",
+      "source": "mods",
+      "occasion": "package:CHRG-106shrg66380",
+      "name": "Plant Life Extension................................. 58-63 Survey Report",
+      "base": "Plant Life Extension Conference...................... 52-58 Moore",
+      "candidate": null
+     },
+     {
+      "key": "3b786128ec547790",
+      "source": "mods",
+      "occasion": "package:CHRG-106shrg71518",
+      "name": "Arsenic and Old Laws Report",
+      "base": "NRDC..........................267-285 Responses to additional questions from: Senator Crapo",
+      "candidate": null
+     },
+     {
+      "key": "f57a1aea311ea516",
+      "source": "mods",
+      "occasion": "package:CHRG-106shrg71518",
+      "name": "Cost-Benefit of Proposed Arsenic MCL Report",
+      "base": "American Water Works Association.........................................300-317 Responses to additional questions from Senator Crapo",
+      "candidate": "American Water Works Association"
+     }
+    ],
+    "line re-read after label/footnote stripping (fields shift)": [
+     {
+      "key": "9503cee5dd1a6c6b",
+      "source": "mods",
+      "occasion": "package:CHRG-106hhrg61647",
+      "name": "Prepared statements:..................................... LaMura",
+      "base": "Marianne",
+      "candidate": null
+     },
+     {
+      "key": "a9565d6c090f4b38",
+      "source": "mods",
+      "occasion": "package:CHRG-106shrg59372",
+      "name": "OPENING STATEMENTS Crapo",
+      "base": "Hon. Michael D.",
+      "candidate": "U.S. Senator from the State of Idaho"
+     },
+     {
+      "key": "17ca83fecc8359b8",
+      "source": "mods",
+      "occasion": "package:CHRG-106shrg66376",
+      "name": "OPENING STATEMENTS Baucus",
+      "base": "Hon. Max",
+      "candidate": "U.S. Senator from the State of Montana"
+     },
+     {
+      "key": "9fc56c14bf515cad",
+      "source": "mods",
+      "occasion": "package:CHRG-106shrg71521",
+      "name": "Prepared statement and attachments..........................124-136 Paperiello",
+      "base": "Carl",
+      "candidate": "Deputy Executive Director for Materials"
+     },
+     {
+      "key": "26137b9097718aa6",
+      "source": "mods",
+      "occasion": "package:CHRG-107shrg78075",
+      "name": "OPENING STATEMENTS Jeffords",
+      "base": "Hon. James M.",
+      "candidate": "U.S. Senator from the State of Vermont"
+     },
+     {
+      "key": "6cef32588a4d1618",
+      "source": "mods",
+      "occasion": "package:CHRG-107shrg81722",
+      "name": "OPENING STATEMENTS Bond",
+      "base": "Hon. Christopher S.",
+      "candidate": "U.S. Senator from the State of Missouri"
+     },
+     {
+      "key": "40d1bd568bf47340",
+      "source": "mods",
+      "occasion": "package:CHRG-107shrg81722",
+      "name": "OPENING STATEMENTS Jeffords",
+      "base": "Hon. James M.",
+      "candidate": "U.S. Senator from the State of Vermont"
+     },
+     {
+      "key": "8c22f7a5a118641b",
+      "source": "mods",
+      "occasion": "package:CHRG-107shrg83685",
+      "name": "OPENING STATEMENTS Boxer",
+      "base": "Hon. Barbara",
+      "candidate": "U.S. Senator from the State of California"
+     },
+     {
+      "key": "8d10d6203765e41b",
+      "source": "mods",
+      "occasion": "package:CHRG-108shrg76390",
+      "name": "Prepared statement........................................... Dodd",
+      "base": "Hon. Christopher J.",
+      "candidate": "U.S. Senator from Connecticut"
+     },
+     {
+      "key": "059afaedc8e25090",
+      "source": "mods",
+      "occasion": "package:CHRG-108shrg91748",
+      "name": "OPENING STATEMENTS Carper",
+      "base": "Hon. Thomas R.",
+      "candidate": "U.S. Senator from the State of Delaware"
+     },
+     {
+      "key": "99a7c21c726944fa",
+      "source": "mods",
+      "occasion": "package:CHRG-109shrg47643",
+      "name": "Prepared statement........................................... 40-79 Doniger",
+      "base": "David D.",
+      "candidate": "policy director"
+     },
+     {
+      "key": "98641334b5622fdf",
+      "source": "mods",
+      "occasion": "package:CHRG-109shrg47643",
+      "name": "Prepared statement...........................................93-147 Lomborg",
+      "base": "Bjorn",
+      "candidate": "adjunct professor"
+     }
+    ]
+   },
+   "samples_after_fix": {
+    "line re-read after label/footnote stripping (fields shift)": [
+     {
+      "key": "059afaedc8e25090",
+      "source": "mods",
+      "occasion": "package:CHRG-108shrg91748",
+      "name": "OPENING STATEMENTS Carper",
+      "base": "Hon. Thomas R.",
+      "candidate": "U.S. Senator from the State of Delaware"
+     },
+     {
+      "key": "eef3a6bad6320dd5",
+      "source": "mods",
+      "occasion": "package:CHRG-109hhrg22445",
+      "name": "Additional materials supplied: Pautzke",
+      "base": "Dr. Clarence",
+      "candidate": "Executive Director"
+     },
+     {
+      "key": "99a7c21c726944fa",
+      "source": "mods",
+      "occasion": "package:CHRG-109shrg47643",
+      "name": "Prepared statement........................................... 40-79 Doniger",
+      "base": "David D.",
+      "candidate": "policy director"
+     },
+     {
+      "key": "98641334b5622fdf",
+      "source": "mods",
+      "occasion": "package:CHRG-109shrg47643",
+      "name": "Prepared statement...........................................93-147 Lomborg",
+      "base": "Bjorn",
+      "candidate": "adjunct professor"
+     },
+     {
+      "key": "0d234f287a0a6de7",
+      "source": "mods",
+      "occasion": "package:CHRG-110hhrg34376",
+      "name": "Additional materials supplied: Pica",
+      "base": "Erich G.",
+      "candidate": "Director of Domestic Programs"
+     },
+     {
+      "key": "e3d5ace31773738d",
+      "source": "mods",
+      "occasion": "package:CHRG-110hhrg34983",
+      "name": "Additional materials supplied: Devaney",
+      "base": "Earl E.",
+      "candidate": "Inspector General"
+     },
+     {
+      "key": "8f3dba497ec78054",
+      "source": "mods",
+      "occasion": "package:CHRG-110hhrg41959",
+      "name": "Additional materials supplied: Herron",
+      "base": "John S.C.",
+      "candidate": "Director of Conservation Programs"
+     },
+     {
+      "key": "eb310479db166aef",
+      "source": "mods",
+      "occasion": "package:CHRG-110hhrg43123",
+      "name": "Additional Materials Supplied: Black",
+      "base": "James",
+      "candidate": "President"
+     },
+     {
+      "key": "84915c17abeb4345",
+      "source": "mods",
+      "occasion": "package:CHRG-111hhrg50610",
+      "name": "Additional materials supplied: Hogan",
+      "base": "J. Aloysius",
+      "candidate": "Government Relations Director"
+     },
+     {
+      "key": "fa46c6fcdbb2a1db",
+      "source": "mods",
+      "occasion": "package:CHRG-111hhrg52366",
+      "name": "Additional materials supplied: Berlew",
+      "base": "Jeff",
+      "candidate": "Angola"
+     },
+     {
+      "key": "3a07baf40392546d",
+      "source": "mods",
+      "occasion": "package:CHRG-112hhrg67284",
+      "name": "Submitted questions.......................................... Beachy",
+      "base": "Roger N.",
+      "candidate": "President Emeritus"
+     },
+     {
+      "key": "658bbd72e811e2e5",
+      "source": "mods",
+      "occasion": "package:CHRG-112jhrg85228",
+      "name": "Statements: Brummett",
+      "base": "Ronald E.",
+      "candidate": "executive director"
+     }
+    ],
+    "mods: other": [
+     {
+      "key": "ed2c98fdd20bff16",
+      "source": "mods",
+      "occasion": "package:CHRG-108shrg92375",
+      "name": "Text of Idaho House Bill 284................................138-146 Dunlop",
+      "base": "Hon. George",
+      "candidate": "Deputy Assistant Secretary for Civil Works"
+     },
+     {
+      "key": "97d5862f8e791ab4",
+      "source": "mods",
+      "occasion": "package:CHRG-108shrg95698",
+      "name": "Articles by:..................................................... Kelly",
+      "base": "Jack",
+      "candidate": "National Security Writer"
+     },
+     {
+      "key": "4aafa41f2fe12c8c",
+      "source": "mods",
+      "occasion": "package:CHRG-109hhrg28124",
+      "name": "Secretary Nicholson......................... Opfer",
+      "base": "Hon. George J.",
+      "candidate": "Inspector General"
+     },
+     {
+      "key": "85f494c15e3c9c17",
+      "source": "mods",
+      "occasion": "package:CHRG-109hhrg28454",
+      "name": "Robert Brandewie ............... Bresson",
+      "base": "Jim",
+      "candidate": "Bresson"
+     },
+     {
+      "key": "8d73c5a0bdb60d88",
+      "source": "mods",
+      "occasion": "package:CHRG-109hhrg30381",
+      "name": "Walcoff .......................... Wise",
+      "base": "Lauress L.",
+      "candidate": "President and Chief Executive Officer"
+     },
+     {
+      "key": "38a2b853236419af",
+      "source": "mods",
+      "occasion": "package:CHRG-109shrg37441",
+      "name": "Slides....................................................... 62-75 Hines",
+      "base": "William H.",
+      "candidate": "past chairman and board member"
+     },
+     {
+      "key": "0ebe4713847a4c93",
+      "source": "mods",
+      "occasion": "package:CHRG-110hhrg43562",
+      "name": "Accompanied by:.................................................. Mr. David Powner",
+      "base": "Director",
+      "candidate": "Mr. David Powner"
+     },
+     {
+      "key": "123bf0ec29c7acad",
+      "source": "mods",
+      "occasion": "package:CHRG-110shrg34649",
+      "name": "Page QUESTIONS AND ANSWERS Questions and Answers.......................... 230",
+      "base": "292",
+      "candidate": null
+     },
+     {
+      "key": "4fd353a43fdd38f3",
+      "source": "mods",
+      "occasion": "package:CHRG-110shrg61965",
+      "name": "Mercury in Texas: Background Report",
+      "base": "Federal Rules",
+      "candidate": "director"
+     },
+     {
+      "key": "c4446e4719b76fa3",
+      "source": "mods",
+      "occasion": "package:CHRG-111hhrg55056",
+      "name": "Preprared Statement....................................43<plus-minus> Ms. Maria Luisa O'Connell",
+      "base": "President",
+      "candidate": null
+     },
+     {
+      "key": "5655e94adc47a8ed",
+      "source": "mods",
+      "occasion": "package:CHRG-111shrg47763",
+      "name": "Jon Tester............................................ 22",
+      "base": "32 Hon. Roland W. Burris",
+      "candidate": "Hon. Roland W. Burris"
+     },
+     {
+      "key": "6a0f0b9ae0bb867e",
+      "source": "mods",
+      "occasion": "package:CHRG-111shrg51121",
+      "name": "Mark Begich.....................................54",
+      "base": "58",
+      "candidate": null
+     }
+    ],
+    "footnote/label stripping (witness_names, 85d3352c/2f441493)": [
+     {
+      "key": "36a47f54c2712f4e",
+      "source": "mods",
+      "occasion": "package:CHRG-108shrg92386",
+      "name": "Application Packet for the State Disaster Relief Program",
+      "base": "September 2001............................................275-307 NEMA",
+      "candidate": "September 2001"
+     },
+     {
+      "key": "b4085be39e584398",
+      "source": "mods",
+      "occasion": "package:CHRG-108shrg94598",
+      "name": "The American Journal of International Law Article",
+      "base": "Vol. 88:477; Vol. 88:488; Vol. 88:687..........................166-187 Prepared statement",
+      "candidate": "Vol. 88:477; Vol. 88:488; Vol. 88:687"
+     },
+     {
+      "key": "68c0800cdf165ad5",
+      "source": "mods",
+      "occasion": "package:CHRG-109hhrg29726",
+      "name": "you can charge $40 months",
+      "base": "000 per dose. The difference is so staggering....\"4 Without some form of government support for the ``valley of death",
+      "candidate": "000 per dose. The difference is so staggering"
+     },
+     {
+      "key": "cdd5ebdc9a0eac7f",
+      "source": "mods",
+      "occasion": "package:CHRG-109shrg26726",
+      "name": "Joshua Bolten",
+      "base": "the Director of the Office of Management and Budget........................................................88",
+      "candidate": "the Director of the Office of Management and Budget"
+     },
+     {
+      "key": "3b016d8feebac5ed",
+      "source": "mods",
+      "occasion": "package:CHRG-109shrg26823",
+      "name": "Kenneth R. Buck",
+      "base": "Weld County District Attorney.................347",
+      "candidate": "Weld County District Attorney"
+     },
+     {
+      "key": "e9486d41969abba3",
+      "source": "mods",
+      "occasion": "package:CHRG-109shrg26823",
+      "name": "Birch P. Burdick",
+      "base": "Cass County State's Attorney...................28",
+      "candidate": "Cass County State's Attorney"
+     },
+     {
+      "key": "732def9ff6a842b0",
+      "source": "mods",
+      "occasion": "package:CHRG-109shrg26823",
+      "name": "Karen E. Larson",
+      "base": "Deputy Director of the Community Healthcare Association of the Dakotas.....................................60",
+      "candidate": "Deputy Director of the Community Healthcare Association of the Dakotas"
+     },
+     {
+      "key": "48fd6307cd2f8923",
+      "source": "mods",
+      "occasion": "package:CHRG-109shrg26823",
+      "name": "Dean A. Ross",
+      "base": "Valley City Chief of Police........................36",
+      "candidate": "Valley City Chief of Police"
+     },
+     {
+      "key": "20a9c9e7ac1f23fa",
+      "source": "mods",
+      "occasion": "package:CHRG-109shrg26823",
+      "name": "Dan Rubinstein",
+      "base": "Chief Deputy District Attorney and Mesa County Meth Task Force Executive Board Member.......................339",
+      "candidate": "Chief Deputy District Attorney and Mesa County Meth Task Force Executive Board Member"
+     },
+     {
+      "key": "184281857855b80a",
+      "source": "mods",
+      "occasion": "package:CHRG-109shrg26823",
+      "name": "Wayne Stenehjem",
+      "base": "North Dakota Attorney General...................12",
+      "candidate": "North Dakota Attorney General"
+     },
+     {
+      "key": "ab1428399f544f22",
+      "source": "mods",
+      "occasion": "package:CHRG-109shrg26823",
+      "name": "Karin L. Walton",
+      "base": "Director of the North Dakota Higer Education Consortium for Substance Abuse Prevention....................114",
+      "candidate": "Director of the North Dakota Higer Education Consortium for Substance Abuse Prevention"
+     },
+     {
+      "key": "0f61745b9210c308",
+      "source": "mods",
+      "occasion": "package:CHRG-110hhrg35600",
+      "name": "Dennis Cardoza",
+      "base": "a Representative in Congress from the State of California........................................",
+      "candidate": "a Representative in Congress from the State of California"
+     }
+    ]
+   }
+  },
+  "changed display_order": {
+   "d4": 285,
+   "after_fix": 227,
+   "attribution": "INTENDED: 277 in records where a label-only line is no longer an appearance (renumbered); 8 where a once-skipped line now reads as a person",
+   "samples_d4": {
+    "mods: order shift": [
+     {
+      "key": "693de683ac04c0d7",
+      "source": "mods",
+      "occasion": "package:CHRG-118hhrg55011",
+      "name": "James Weakley",
+      "base": 4,
+      "candidate": 3
+     },
+     {
+      "key": "6782d8559800f965",
+      "source": "mods",
+      "occasion": "package:CHRG-118hhrg55011",
+      "name": "Paul Anderson",
+      "base": 5,
+      "candidate": 4
+     },
+     {
+      "key": "43b16761cf1e29bd",
+      "source": "mods",
+      "occasion": "package:CHRG-118hhrg55011",
+      "name": "Dave Mitamura",
+      "base": 6,
+      "candidate": 5
+     },
+     {
+      "key": "61b566cbb6d3a9b1",
+      "source": "mods",
+      "occasion": "package:CHRG-106shrg55953",
+      "name": "Mark Udall",
+      "base": 3,
+      "candidate": 2
+     },
+     {
+      "key": "b659e7f786c35b59",
+      "source": "mods",
+      "occasion": "package:CHRG-106shrg71523",
+      "name": "Kenneth R. Wykle",
+      "base": 10,
+      "candidate": 9
+     },
+     {
+      "key": "bb5654a65da7d01b",
+      "source": "mods",
+      "occasion": "package:CHRG-106shrg78634",
+      "name": "Allen Li",
+      "base": 3,
+      "candidate": 2
+     },
+     {
+      "key": "beb844f00953953b",
+      "source": "mods",
+      "occasion": "package:CHRG-106shrg78634",
+      "name": "Harry Dr. McDonald",
+      "base": 4,
+      "candidate": 3
+     },
+     {
+      "key": "1be25a10b4342ebf",
+      "source": "mods",
+      "occasion": "package:CHRG-106shrg78634",
+      "name": "Tony Spear",
+      "base": 5,
+      "candidate": 4
+     },
+     {
+      "key": "af7c363d47e7c19f",
+      "source": "mods",
+      "occasion": "package:CHRG-106shrg78634",
+      "name": "Arthur G. Stephenson",
+      "base": 6,
+      "candidate": 5
+     },
+     {
+      "key": "63ca58319c9db707",
+      "source": "mods",
+      "occasion": "package:CHRG-107hhrg71290",
+      "name": "Ginette Hemley",
+      "base": 4,
+      "candidate": 3
+     },
+     {
+      "key": "d341983bfa93c561",
+      "source": "mods",
+      "occasion": "package:CHRG-107hhrg71290",
+      "name": "Marshall Jones",
+      "base": 6,
+      "candidate": 4
+     },
+     {
+      "key": "1411d568b5300594",
+      "source": "mods",
+      "occasion": "package:CHRG-107hhrg71290",
+      "name": "John Kirtland",
+      "base": 8,
+      "candidate": 5
+     }
+    ]
+   }
+  }
+ },
+ "owner_questions": [
+  "witness_key includes the occasion, so each print moved between package and meeting appears as removed+added keys (12,425+626 after fix); a stable key across occasion moves would be ct-ktfe's call",
+  "'Joint statement of Dr. Matthew Slaughter and Dr. Katherine Baicker' names two people and stays an entry, not two witnesses"
+ ],
+ "heads": {
+  "r1b-f": "31712fdc"
+ }
+}

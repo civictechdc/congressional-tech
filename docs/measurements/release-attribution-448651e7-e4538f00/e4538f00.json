@@ -1,0 +1,148 @@
+{
+ "version": 1,
+ "base_release_id": "448651e720833d42d565ead119f59b893936626f680fdae4d13b6297e296c419",
+ "candidate_release_id": "e4538f0064e18168089a77891c93a16e175af18ed75eb7a3ac8039aa1a8db9fd",
+ "commits": [
+  "3a91ee98",
+  "39d4d3f1",
+  "ce6091ed",
+  "f4bab769",
+  "cab53b34",
+  "719388c0",
+  "37595e4b",
+  "ff1985cd",
+  "8983f55f",
+  "207bafa7"
+ ],
+ "tickets": [
+  "ct-mj9f",
+  "ct-8cno",
+  "ct-2o4d",
+  "ct-j2yo",
+  "ct-dx22",
+  "ct-o7t4",
+  "ct-yf1c",
+  "ct-gi01"
+ ],
+ "added_committee": [
+  [
+   "jsik00",
+   "Joint Congressional Committee on Inaugural Ceremonies - 2024",
+   "senate",
+   "joint",
+   null,
+   [],
+   null,
+   false
+  ]
+ ],
+ "roster_diff": {
+  "base_rows": 2973,
+  "cand_rows": 2973,
+  "removed_sample": [
+   [
+    119,
+    "spag00",
+    "W000817",
+    null,
+    null,
+    "D"
+   ],
+   [
+    119,
+    "hsec00",
+    "S000929",
+    null,
+    6,
+    "R"
+   ],
+   [
+    119,
+    "scnc00",
+    "L000570",
+    null,
+    null,
+    "D"
+   ],
+   [
+    119,
+    "ssra00",
+    "B001267",
+    null,
+    null,
+    "D"
+   ],
+   [
+    119,
+    "hsec00",
+    "C001117",
+    null,
+    9,
+    "D"
+   ],
+   [
+    119,
+    "ssbu00",
+    "M001111",
+    null,
+    null,
+    "D"
+   ],
+   [
+    119,
+    "sscm00",
+    "D000622",
+    null,
+    null,
+    "D"
+   ],
+   [
+    119,
+    "ssbk00",
+    "H000601",
+    null,
+    null,
+    "R"
+   ],
+   [
+    119,
+    "ssbk00",
+    "S001203",
+    null,
+    null,
+    "D"
+   ],
+   [
+    119,
+    "ssap00",
+    "B001319",
+    null,
+    null,
+    "R"
+   ]
+  ]
+ },
+ "bills_diff": {
+  "base_rows": 13234,
+  "cand_rows": 52279,
+  "with_public_law": 2225,
+  "with_related_bills": 35893
+ },
+ "witnesses_diff": {
+  "base_rows": 147888,
+  "cand_rows": 172948,
+  "superseded_rows": 37801
+ },
+ "list_enrichment": {
+  "with_committee_keys_base": 154030,
+  "with_committee_keys_cand": 225029,
+  "with_congress_base": 312479,
+  "with_congress_cand": 273644,
+  "with_chambers_base": 187225,
+  "with_chambers_cand": 225258,
+  "with_witness_keys_base": 38739,
+  "with_witness_keys_cand": 93550,
+  "with_meeting_keys_base": 204074,
+  "with_meeting_keys_cand": 204000
+ }
+}

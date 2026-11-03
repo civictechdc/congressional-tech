@@ -1,0 +1,2075 @@
+{
+ "version": 1,
+ "base_release_id": "448651e720833d42d565ead119f59b893936626f680fdae4d13b6297e296c419",
+ "candidate_release_id": "e4538f0064e18168089a77891c93a16e175af18ed75eb7a3ac8039aa1a8db9fd",
+ "notes": {
+  "identifiers": [
+   {
+    "kind": "witness_key",
+    "statement": "Witness IDs changed in release 448651e7 (2026-11-01) and Senate event_id keys were reconciled in e4538f00 (2026-11-03). `witness_key` values and `?witness=` links from c94bfedc and earlier no longer resolve; no old-to-new mapping is published.",
+    "decision": "ct-ktfe, owner decision 2026-11-02"
+   }
+  ]
+ },
+ "groups": [
+  {
+   "id": "bills.parquet|added bills|unexplained",
+   "count": 38358,
+   "disposition": "explained",
+   "cause": "bills-rosters: Bills table reconciliation (referred + meeting bills, related_bills, public_law_number) and roster rank/parent key normalization",
+   "tickets": [
+    "ct-mj9f",
+    "ct-8cno"
+   ],
+   "evidence": [
+    {
+     "path": "docs/measurements/release-attribution-448651e7-e4538f00/e4538f00.json",
+     "sha256": "99ece12f24478559e59949aac5c098ae113eb197bd04f3e92eedbb217c95331f",
+     "size": 2094
+    }
+   ]
+  },
+  {
+   "id": "capture_profile.json|changed file without a comparison|unexplained",
+   "count": 0,
+   "disposition": "explained",
+   "cause": "runtime-revision: Pinned runtime and capture profile metadata update",
+   "tickets": [
+    "ct-tk10"
+   ],
+   "evidence": [
+    {
+     "path": "docs/measurements/release-attribution-448651e7-e4538f00/other.json",
+     "sha256": "5279d00985bdf5a81eb22f1526d8e04bdbd809e4a5b62d6cff00605a09ce365a",
+     "size": 8023
+    }
+   ]
+  },
+  {
+   "id": "channels.parquet|file added|file absent from the base release",
+   "count": 119,
+   "disposition": "explained",
+   "cause": "explorer-tables: New explorer tables (channels, videos, recording_matches, committee_records)",
+   "tickets": [
+    "ct-66ns"
+   ],
+   "evidence": [
+    {
+     "path": "docs/measurements/release-attribution-448651e7-e4538f00/other.json",
+     "sha256": "5279d00985bdf5a81eb22f1526d8e04bdbd809e4a5b62d6cff00605a09ce365a",
+     "size": 8023
+    }
+   ]
+  },
+  {
+   "id": "committee_records.parquet|file added|file absent from the base release",
+   "count": 19985,
+   "disposition": "explained",
+   "cause": "explorer-tables: New explorer tables (channels, videos, recording_matches, committee_records)",
+   "tickets": [
+    "ct-66ns"
+   ],
+   "evidence": [
+    {
+     "path": "docs/measurements/release-attribution-448651e7-e4538f00/other.json",
+     "sha256": "5279d00985bdf5a81eb22f1526d8e04bdbd809e4a5b62d6cff00605a09ce365a",
+     "size": 8023
+    }
+   ]
+  },
+  {
+   "id": "committees.parquet|added keys|no evidence given",
+   "count": 1,
+   "disposition": "explained",
+   "cause": "bills-rosters: Bills table reconciliation (referred + meeting bills, related_bills, public_law_number) and roster rank/parent key normalization",
+   "tickets": [
+    "ct-mj9f",
+    "ct-8cno"
+   ],
+   "evidence": [
+    {
+     "path": "docs/measurements/release-attribution-448651e7-e4538f00/e4538f00.json",
+     "sha256": "99ece12f24478559e59949aac5c098ae113eb197bd04f3e92eedbb217c95331f",
+     "size": 2094
+    }
+   ]
+  },
+  {
+   "id": "detail.parquet|split rows|previous row had no member source",
+   "count": 20,
+   "disposition": "explained",
+   "cause": "zip-contents: ZIP archive member extraction and parent-member package reunification (D1/D2)",
+   "tickets": [
+    "ct-64el",
+    "ct-n2cy"
+   ],
+   "evidence": [
+    {
+     "path": "docs/measurements/release-attribution-448651e7-e4538f00/documents.json",
+     "sha256": "ba8172b4ee9807f1d58408ae6a8101af8b4a7876d5579bb86b50c576ebee2df4",
+     "size": 11734
+    }
+   ]
+  },
+  {
+   "id": "detail.parquet|merged rows|previous rows now share one document",
+   "count": -71755,
+   "disposition": "explained",
+   "cause": "zip-contents: ZIP archive member extraction and parent-member package reunification (D1/D2); html-fingerprints: Direct HTML and ZIP member text fingerprint deduplication across split packages; recovery-merge: Wayback recovery merge into canonical archive documents",
+   "tickets": [
+    "ct-64el",
+    "ct-n2cy",
+    "ct-o2pr",
+    "ct-c5xf",
+    "ct-pocg",
+    "ct-tk10"
+   ],
+   "evidence": [
+    {
+     "path": "docs/measurements/release-attribution-448651e7-e4538f00/documents.json",
+     "sha256": "ba8172b4ee9807f1d58408ae6a8101af8b4a7876d5579bb86b50c576ebee2df4",
+     "size": 11734
+    }
+   ]
+  },
+  {
+   "id": "detail.parquet|removed rows|no surviving link key",
+   "count": -356,
+   "disposition": "explained",
+   "cause": "api-responses: Congress.gov API JSON envelope exclusion from published document sources; document-rule: Qualified document filter and source-family routing for non-document captures; recovery-merge: Wayback recovery merge into canonical archive documents",
+   "tickets": [
+    "ct-o2pr",
+    "ct-64el",
+    "ct-bxqa",
+    "ct-3l1c",
+    "ct-fh62",
+    "ct-tk10"
+   ],
+   "evidence": [
+    {
+     "path": "docs/measurements/release-attribution-448651e7-e4538f00/documents.json",
+     "sha256": "ba8172b4ee9807f1d58408ae6a8101af8b4a7876d5579bb86b50c576ebee2df4",
+     "size": 11734
+    },
+    {
+     "path": "docs/measurements/release-attribution-448651e7-e4538f00/e4538f00.json",
+     "sha256": "99ece12f24478559e59949aac5c098ae113eb197bd04f3e92eedbb217c95331f",
+     "size": 2094
+    }
+   ]
+  },
+  {
+   "id": "detail.parquet|added rows|no surviving link key",
+   "count": 182,
+   "disposition": "explained",
+   "cause": "document-rule: Qualified document filter and source-family routing for non-document captures",
+   "tickets": [
+    "ct-bxqa",
+    "ct-3l1c",
+    "ct-fh62"
+   ],
+   "evidence": [
+    {
+     "path": "docs/measurements/release-attribution-448651e7-e4538f00/documents.json",
+     "sha256": "ba8172b4ee9807f1d58408ae6a8101af8b4a7876d5579bb86b50c576ebee2df4",
+     "size": 11734
+    },
+    {
+     "path": "docs/measurements/release-attribution-448651e7-e4538f00/e4538f00.json",
+     "sha256": "99ece12f24478559e59949aac5c098ae113eb197bd04f3e92eedbb217c95331f",
+     "size": 2094
+    }
+   ]
+  },
+  {
+   "id": "detail.parquet|changed alternates|value differs on matched key",
+   "count": 17,
+   "disposition": "explained",
+   "cause": "zip-contents: ZIP archive member extraction and parent-member package reunification (D1/D2)",
+   "tickets": [
+    "ct-64el",
+    "ct-n2cy"
+   ],
+   "evidence": [
+    {
+     "path": "docs/measurements/release-attribution-448651e7-e4538f00/documents.json",
+     "sha256": "ba8172b4ee9807f1d58408ae6a8101af8b4a7876d5579bb86b50c576ebee2df4",
+     "size": 11734
+    }
+   ]
+  },
+  {
+   "id": "detail.parquet|changed document_date_source|value differs on matched key",
+   "count": 10261,
+   "disposition": "explained",
+   "cause": "document-rule: Qualified document filter and source-family routing for non-document captures; coverage-links: Meeting coverage table and House/Senate witness-to-document link propagation",
+   "tickets": [
+    "ct-bxqa",
+    "ct-3l1c",
+    "ct-fh62",
+    "ct-66ns",
+    "ct-gi01",
+    "ct-1i4q",
+    "ct-2o4d"
+   ],
+   "evidence": [
+    {
+     "path": "docs/measurements/release-attribution-448651e7-e4538f00/documents.json",
+     "sha256": "ba8172b4ee9807f1d58408ae6a8101af8b4a7876d5579bb86b50c576ebee2df4",
+     "size": 11734
+    },
+    {
+     "path": "docs/measurements/release-attribution-448651e7-e4538f00/e4538f00.json",
+     "sha256": "99ece12f24478559e59949aac5c098ae113eb197bd04f3e92eedbb217c95331f",
+     "size": 2094
+    },
+    {
+     "path": "docs/measurements/release-attribution-448651e7-e4538f00/other.json",
+     "sha256": "5279d00985bdf5a81eb22f1526d8e04bdbd809e4a5b62d6cff00605a09ce365a",
+     "size": 8023
+    }
+   ]
+  },
+  {
+   "id": "detail.parquet|changed facts|value differs on matched key",
+   "count": 4676,
+   "disposition": "explained",
+   "cause": "html-fingerprints: Direct HTML and ZIP member text fingerprint deduplication across split packages",
+   "tickets": [
+    "ct-o2pr",
+    "ct-64el",
+    "ct-c5xf",
+    "ct-pocg"
+   ],
+   "evidence": [
+    {
+     "path": "docs/measurements/release-attribution-448651e7-e4538f00/documents.json",
+     "sha256": "ba8172b4ee9807f1d58408ae6a8101af8b4a7876d5579bb86b50c576ebee2df4",
+     "size": 11734
+    }
+   ]
+  },
+  {
+   "id": "detail.parquet|changed in_archive_since|value differs on matched key",
+   "count": 3,
+   "disposition": "explained",
+   "cause": "document-rule: Qualified document filter and source-family routing for non-document captures",
+   "tickets": [
+    "ct-bxqa",
+    "ct-3l1c",
+    "ct-fh62"
+   ],
+   "evidence": [
+    {
+     "path": "docs/measurements/release-attribution-448651e7-e4538f00/documents.json",
+     "sha256": "ba8172b4ee9807f1d58408ae6a8101af8b4a7876d5579bb86b50c576ebee2df4",
+     "size": 11734
+    },
+    {
+     "path": "docs/measurements/release-attribution-448651e7-e4538f00/e4538f00.json",
+     "sha256": "99ece12f24478559e59949aac5c098ae113eb197bd04f3e92eedbb217c95331f",
+     "size": 2094
+    }
+   ]
+  },
+  {
+   "id": "detail.parquet|changed link_key|value differs on matched key",
+   "count": 35,
+   "disposition": "explained",
+   "cause": "filenames: Filename recovery from Content-Disposition, redirect sides, URL path, and meeting/witness context; zip-contents: ZIP archive member extraction and parent-member package reunification (D1/D2)",
+   "tickets": [
+    "ct-yf1c",
+    "ct-64el",
+    "ct-n2cy"
+   ],
+   "evidence": [
+    {
+     "path": "docs/measurements/release-attribution-448651e7-e4538f00/other.json",
+     "sha256": "5279d00985bdf5a81eb22f1526d8e04bdbd809e4a5b62d6cff00605a09ce365a",
+     "size": 8023
+    },
+    {
+     "path": "docs/measurements/release-attribution-448651e7-e4538f00/e4538f00.json",
+     "sha256": "99ece12f24478559e59949aac5c098ae113eb197bd04f3e92eedbb217c95331f",
+     "size": 2094
+    },
+    {
+     "path": "docs/measurements/release-attribution-448651e7-e4538f00/documents.json",
+     "sha256": "ba8172b4ee9807f1d58408ae6a8101af8b4a7876d5579bb86b50c576ebee2df4",
+     "size": 11734
+    }
+   ]
+  },
+  {
+   "id": "detail.parquet|changed package_id|value differs on matched key",
+   "count": 50,
+   "disposition": "explained",
+   "cause": "zip-contents: ZIP archive member extraction and parent-member package reunification (D1/D2)",
+   "tickets": [
+    "ct-64el",
+    "ct-n2cy"
+   ],
+   "evidence": [
+    {
+     "path": "docs/measurements/release-attribution-448651e7-e4538f00/documents.json",
+     "sha256": "ba8172b4ee9807f1d58408ae6a8101af8b4a7876d5579bb86b50c576ebee2df4",
+     "size": 11734
+    }
+   ]
+  },
+  {
+   "id": "detail.parquet|changed rec_len|value differs on matched key",
+   "count": 15,
+   "disposition": "explained",
+   "cause": "html-fingerprints: Direct HTML and ZIP member text fingerprint deduplication across split packages",
+   "tickets": [
+    "ct-o2pr",
+    "ct-64el",
+    "ct-c5xf",
+    "ct-pocg"
+   ],
+   "evidence": [
+    {
+     "path": "docs/measurements/release-attribution-448651e7-e4538f00/documents.json",
+     "sha256": "ba8172b4ee9807f1d58408ae6a8101af8b4a7876d5579bb86b50c576ebee2df4",
+     "size": 11734
+    }
+   ]
+  },
+  {
+   "id": "detail.parquet|changed saved_body|value differs on matched key",
+   "count": 35,
+   "disposition": "explained",
+   "cause": "filenames: Filename recovery from Content-Disposition, redirect sides, URL path, and meeting/witness context; zip-contents: ZIP archive member extraction and parent-member package reunification (D1/D2)",
+   "tickets": [
+    "ct-yf1c",
+    "ct-64el",
+    "ct-n2cy"
+   ],
+   "evidence": [
+    {
+     "path": "docs/measurements/release-attribution-448651e7-e4538f00/other.json",
+     "sha256": "5279d00985bdf5a81eb22f1526d8e04bdbd809e4a5b62d6cff00605a09ce365a",
+     "size": 8023
+    },
+    {
+     "path": "docs/measurements/release-attribution-448651e7-e4538f00/e4538f00.json",
+     "sha256": "99ece12f24478559e59949aac5c098ae113eb197bd04f3e92eedbb217c95331f",
+     "size": 2094
+    },
+    {
+     "path": "docs/measurements/release-attribution-448651e7-e4538f00/documents.json",
+     "sha256": "ba8172b4ee9807f1d58408ae6a8101af8b4a7876d5579bb86b50c576ebee2df4",
+     "size": 11734
+    }
+   ]
+  },
+  {
+   "id": "detail.parquet|changed saved_bytes|value differs on matched key",
+   "count": 35,
+   "disposition": "explained",
+   "cause": "filenames: Filename recovery from Content-Disposition, redirect sides, URL path, and meeting/witness context; zip-contents: ZIP archive member extraction and parent-member package reunification (D1/D2)",
+   "tickets": [
+    "ct-yf1c",
+    "ct-64el",
+    "ct-n2cy"
+   ],
+   "evidence": [
+    {
+     "path": "docs/measurements/release-attribution-448651e7-e4538f00/other.json",
+     "sha256": "5279d00985bdf5a81eb22f1526d8e04bdbd809e4a5b62d6cff00605a09ce365a",
+     "size": 8023
+    },
+    {
+     "path": "docs/measurements/release-attribution-448651e7-e4538f00/e4538f00.json",
+     "sha256": "99ece12f24478559e59949aac5c098ae113eb197bd04f3e92eedbb217c95331f",
+     "size": 2094
+    },
+    {
+     "path": "docs/measurements/release-attribution-448651e7-e4538f00/documents.json",
+     "sha256": "ba8172b4ee9807f1d58408ae6a8101af8b4a7876d5579bb86b50c576ebee2df4",
+     "size": 11734
+    }
+   ]
+  },
+  {
+   "id": "detail.parquet|changed saved_media_type|value differs on matched key",
+   "count": 30,
+   "disposition": "explained",
+   "cause": "filenames: Filename recovery from Content-Disposition, redirect sides, URL path, and meeting/witness context; zip-contents: ZIP archive member extraction and parent-member package reunification (D1/D2)",
+   "tickets": [
+    "ct-yf1c",
+    "ct-64el",
+    "ct-n2cy"
+   ],
+   "evidence": [
+    {
+     "path": "docs/measurements/release-attribution-448651e7-e4538f00/other.json",
+     "sha256": "5279d00985bdf5a81eb22f1526d8e04bdbd809e4a5b62d6cff00605a09ce365a",
+     "size": 8023
+    },
+    {
+     "path": "docs/measurements/release-attribution-448651e7-e4538f00/e4538f00.json",
+     "sha256": "99ece12f24478559e59949aac5c098ae113eb197bd04f3e92eedbb217c95331f",
+     "size": 2094
+    },
+    {
+     "path": "docs/measurements/release-attribution-448651e7-e4538f00/documents.json",
+     "sha256": "ba8172b4ee9807f1d58408ae6a8101af8b4a7876d5579bb86b50c576ebee2df4",
+     "size": 11734
+    }
+   ]
+  },
+  {
+   "id": "detail.parquet|changed src_len|value differs on matched key",
+   "count": 1583,
+   "disposition": "explained",
+   "cause": "html-fingerprints: Direct HTML and ZIP member text fingerprint deduplication across split packages",
+   "tickets": [
+    "ct-o2pr",
+    "ct-64el",
+    "ct-c5xf",
+    "ct-pocg"
+   ],
+   "evidence": [
+    {
+     "path": "docs/measurements/release-attribution-448651e7-e4538f00/documents.json",
+     "sha256": "ba8172b4ee9807f1d58408ae6a8101af8b4a7876d5579bb86b50c576ebee2df4",
+     "size": 11734
+    }
+   ]
+  },
+  {
+   "id": "links.parquet|removed keys|no evidence given",
+   "count": -378,
+   "disposition": "explained",
+   "cause": "document-rule: Qualified document filter and source-family routing for non-document captures; recovery-merge: Wayback recovery merge into canonical archive documents",
+   "tickets": [
+    "ct-bxqa",
+    "ct-3l1c",
+    "ct-fh62",
+    "ct-tk10"
+   ],
+   "evidence": [
+    {
+     "path": "docs/measurements/release-attribution-448651e7-e4538f00/documents.json",
+     "sha256": "ba8172b4ee9807f1d58408ae6a8101af8b4a7876d5579bb86b50c576ebee2df4",
+     "size": 11734
+    },
+    {
+     "path": "docs/measurements/release-attribution-448651e7-e4538f00/e4538f00.json",
+     "sha256": "99ece12f24478559e59949aac5c098ae113eb197bd04f3e92eedbb217c95331f",
+     "size": 2094
+    }
+   ]
+  },
+  {
+   "id": "links.parquet|added keys|no evidence given",
+   "count": 7905,
+   "disposition": "explained",
+   "cause": "document-rule: Qualified document filter and source-family routing for non-document captures; zip-contents: ZIP archive member extraction and parent-member package reunification (D1/D2)",
+   "tickets": [
+    "ct-bxqa",
+    "ct-3l1c",
+    "ct-fh62",
+    "ct-64el",
+    "ct-n2cy"
+   ],
+   "evidence": [
+    {
+     "path": "docs/measurements/release-attribution-448651e7-e4538f00/documents.json",
+     "sha256": "ba8172b4ee9807f1d58408ae6a8101af8b4a7876d5579bb86b50c576ebee2df4",
+     "size": 11734
+    },
+    {
+     "path": "docs/measurements/release-attribution-448651e7-e4538f00/e4538f00.json",
+     "sha256": "99ece12f24478559e59949aac5c098ae113eb197bd04f3e92eedbb217c95331f",
+     "size": 2094
+    }
+   ]
+  },
+  {
+   "id": "list.parquet|split rows|previous row had no member source",
+   "count": 20,
+   "disposition": "explained",
+   "cause": "zip-contents: ZIP archive member extraction and parent-member package reunification (D1/D2)",
+   "tickets": [
+    "ct-64el",
+    "ct-n2cy"
+   ],
+   "evidence": [
+    {
+     "path": "docs/measurements/release-attribution-448651e7-e4538f00/documents.json",
+     "sha256": "ba8172b4ee9807f1d58408ae6a8101af8b4a7876d5579bb86b50c576ebee2df4",
+     "size": 11734
+    }
+   ]
+  },
+  {
+   "id": "list.parquet|merged rows|previous rows now share one document",
+   "count": -71755,
+   "disposition": "explained",
+   "cause": "zip-contents: ZIP archive member extraction and parent-member package reunification (D1/D2); html-fingerprints: Direct HTML and ZIP member text fingerprint deduplication across split packages; recovery-merge: Wayback recovery merge into canonical archive documents",
+   "tickets": [
+    "ct-64el",
+    "ct-n2cy",
+    "ct-o2pr",
+    "ct-c5xf",
+    "ct-pocg",
+    "ct-tk10"
+   ],
+   "evidence": [
+    {
+     "path": "docs/measurements/release-attribution-448651e7-e4538f00/documents.json",
+     "sha256": "ba8172b4ee9807f1d58408ae6a8101af8b4a7876d5579bb86b50c576ebee2df4",
+     "size": 11734
+    }
+   ]
+  },
+  {
+   "id": "list.parquet|removed rows|no surviving link key",
+   "count": -356,
+   "disposition": "explained",
+   "cause": "api-responses: Congress.gov API JSON envelope exclusion from published document sources; document-rule: Qualified document filter and source-family routing for non-document captures; recovery-merge: Wayback recovery merge into canonical archive documents",
+   "tickets": [
+    "ct-o2pr",
+    "ct-64el",
+    "ct-bxqa",
+    "ct-3l1c",
+    "ct-fh62",
+    "ct-tk10"
+   ],
+   "evidence": [
+    {
+     "path": "docs/measurements/release-attribution-448651e7-e4538f00/documents.json",
+     "sha256": "ba8172b4ee9807f1d58408ae6a8101af8b4a7876d5579bb86b50c576ebee2df4",
+     "size": 11734
+    },
+    {
+     "path": "docs/measurements/release-attribution-448651e7-e4538f00/e4538f00.json",
+     "sha256": "99ece12f24478559e59949aac5c098ae113eb197bd04f3e92eedbb217c95331f",
+     "size": 2094
+    }
+   ]
+  },
+  {
+   "id": "list.parquet|added rows|no surviving link key",
+   "count": 182,
+   "disposition": "explained",
+   "cause": "document-rule: Qualified document filter and source-family routing for non-document captures",
+   "tickets": [
+    "ct-bxqa",
+    "ct-3l1c",
+    "ct-fh62"
+   ],
+   "evidence": [
+    {
+     "path": "docs/measurements/release-attribution-448651e7-e4538f00/documents.json",
+     "sha256": "ba8172b4ee9807f1d58408ae6a8101af8b4a7876d5579bb86b50c576ebee2df4",
+     "size": 11734
+    },
+    {
+     "path": "docs/measurements/release-attribution-448651e7-e4538f00/e4538f00.json",
+     "sha256": "99ece12f24478559e59949aac5c098ae113eb197bd04f3e92eedbb217c95331f",
+     "size": 2094
+    }
+   ]
+  },
+  {
+   "id": "list.parquet|changed chambers|value differs on matched key",
+   "count": 29482,
+   "disposition": "explained",
+   "cause": "coverage-links: Meeting coverage table and House/Senate witness-to-document link propagation; witnesses: Witness appearance reconciliation, Senate event_id propagation, and witness link enrichment",
+   "tickets": [
+    "ct-66ns",
+    "ct-gi01",
+    "ct-1i4q",
+    "ct-2o4d",
+    "ct-dx22",
+    "ct-x78c",
+    "ct-ktfe",
+    "ct-j2yo",
+    "ct-o7t4"
+   ],
+   "evidence": [
+    {
+     "path": "docs/measurements/release-attribution-448651e7-e4538f00/other.json",
+     "sha256": "5279d00985bdf5a81eb22f1526d8e04bdbd809e4a5b62d6cff00605a09ce365a",
+     "size": 8023
+    },
+    {
+     "path": "docs/measurements/release-attribution-448651e7-e4538f00/e4538f00.json",
+     "sha256": "99ece12f24478559e59949aac5c098ae113eb197bd04f3e92eedbb217c95331f",
+     "size": 2094
+    },
+    {
+     "path": "docs/measurements/release-attribution-448651e7-e4538f00/witnesses.json",
+     "sha256": "26b98c3011e9b9f04e4936268f33a84a98a15f656da8a05d604648e6c784f2e6",
+     "size": 73075
+    }
+   ]
+  },
+  {
+   "id": "list.parquet|changed committee_keys|value differs on matched key",
+   "count": 62704,
+   "disposition": "explained",
+   "cause": "coverage-links: Meeting coverage table and House/Senate witness-to-document link propagation; witnesses: Witness appearance reconciliation, Senate event_id propagation, and witness link enrichment",
+   "tickets": [
+    "ct-66ns",
+    "ct-gi01",
+    "ct-1i4q",
+    "ct-2o4d",
+    "ct-dx22",
+    "ct-x78c",
+    "ct-ktfe",
+    "ct-j2yo",
+    "ct-o7t4"
+   ],
+   "evidence": [
+    {
+     "path": "docs/measurements/release-attribution-448651e7-e4538f00/other.json",
+     "sha256": "5279d00985bdf5a81eb22f1526d8e04bdbd809e4a5b62d6cff00605a09ce365a",
+     "size": 8023
+    },
+    {
+     "path": "docs/measurements/release-attribution-448651e7-e4538f00/e4538f00.json",
+     "sha256": "99ece12f24478559e59949aac5c098ae113eb197bd04f3e92eedbb217c95331f",
+     "size": 2094
+    },
+    {
+     "path": "docs/measurements/release-attribution-448651e7-e4538f00/witnesses.json",
+     "sha256": "26b98c3011e9b9f04e4936268f33a84a98a15f656da8a05d604648e6c784f2e6",
+     "size": 73075
+    }
+   ]
+  },
+  {
+   "id": "list.parquet|changed congress|value differs on matched key",
+   "count": 28472,
+   "disposition": "explained",
+   "cause": "coverage-links: Meeting coverage table and House/Senate witness-to-document link propagation; witnesses: Witness appearance reconciliation, Senate event_id propagation, and witness link enrichment",
+   "tickets": [
+    "ct-66ns",
+    "ct-gi01",
+    "ct-1i4q",
+    "ct-2o4d",
+    "ct-dx22",
+    "ct-x78c",
+    "ct-ktfe",
+    "ct-j2yo",
+    "ct-o7t4"
+   ],
+   "evidence": [
+    {
+     "path": "docs/measurements/release-attribution-448651e7-e4538f00/other.json",
+     "sha256": "5279d00985bdf5a81eb22f1526d8e04bdbd809e4a5b62d6cff00605a09ce365a",
+     "size": 8023
+    },
+    {
+     "path": "docs/measurements/release-attribution-448651e7-e4538f00/e4538f00.json",
+     "sha256": "99ece12f24478559e59949aac5c098ae113eb197bd04f3e92eedbb217c95331f",
+     "size": 2094
+    },
+    {
+     "path": "docs/measurements/release-attribution-448651e7-e4538f00/witnesses.json",
+     "sha256": "26b98c3011e9b9f04e4936268f33a84a98a15f656da8a05d604648e6c784f2e6",
+     "size": 73075
+    }
+   ]
+  },
+  {
+   "id": "list.parquet|changed date_kind|value differs on matched key",
+   "count": 3,
+   "disposition": "explained",
+   "cause": "document-rule: Qualified document filter and source-family routing for non-document captures",
+   "tickets": [
+    "ct-bxqa",
+    "ct-3l1c",
+    "ct-fh62"
+   ],
+   "evidence": [
+    {
+     "path": "docs/measurements/release-attribution-448651e7-e4538f00/documents.json",
+     "sha256": "ba8172b4ee9807f1d58408ae6a8101af8b4a7876d5579bb86b50c576ebee2df4",
+     "size": 11734
+    },
+    {
+     "path": "docs/measurements/release-attribution-448651e7-e4538f00/e4538f00.json",
+     "sha256": "99ece12f24478559e59949aac5c098ae113eb197bd04f3e92eedbb217c95331f",
+     "size": 2094
+    }
+   ]
+  },
+  {
+   "id": "list.parquet|changed document_date|value differs on matched key",
+   "count": 10291,
+   "disposition": "explained",
+   "cause": "document-rule: Qualified document filter and source-family routing for non-document captures; coverage-links: Meeting coverage table and House/Senate witness-to-document link propagation",
+   "tickets": [
+    "ct-bxqa",
+    "ct-3l1c",
+    "ct-fh62",
+    "ct-66ns",
+    "ct-gi01",
+    "ct-1i4q",
+    "ct-2o4d"
+   ],
+   "evidence": [
+    {
+     "path": "docs/measurements/release-attribution-448651e7-e4538f00/documents.json",
+     "sha256": "ba8172b4ee9807f1d58408ae6a8101af8b4a7876d5579bb86b50c576ebee2df4",
+     "size": 11734
+    },
+    {
+     "path": "docs/measurements/release-attribution-448651e7-e4538f00/e4538f00.json",
+     "sha256": "99ece12f24478559e59949aac5c098ae113eb197bd04f3e92eedbb217c95331f",
+     "size": 2094
+    },
+    {
+     "path": "docs/measurements/release-attribution-448651e7-e4538f00/other.json",
+     "sha256": "5279d00985bdf5a81eb22f1526d8e04bdbd809e4a5b62d6cff00605a09ce365a",
+     "size": 8023
+    }
+   ]
+  },
+  {
+   "id": "list.parquet|changed document_family|value differs on matched key",
+   "count": 3089,
+   "disposition": "explained",
+   "cause": "document-rule: Qualified document filter and source-family routing for non-document captures; titles: Document title cleaning, GPO serial normalization, and cover/HTML title precedence",
+   "tickets": [
+    "ct-bxqa",
+    "ct-3l1c",
+    "ct-fh62",
+    "ct-zpbl",
+    "ct-xt19",
+    "ct-deh9",
+    "ct-qg8e"
+   ],
+   "evidence": [
+    {
+     "path": "docs/measurements/release-attribution-448651e7-e4538f00/documents.json",
+     "sha256": "ba8172b4ee9807f1d58408ae6a8101af8b4a7876d5579bb86b50c576ebee2df4",
+     "size": 11734
+    },
+    {
+     "path": "docs/measurements/release-attribution-448651e7-e4538f00/e4538f00.json",
+     "sha256": "99ece12f24478559e59949aac5c098ae113eb197bd04f3e92eedbb217c95331f",
+     "size": 2094
+    },
+    {
+     "path": "docs/measurements/release-attribution-448651e7-e4538f00/other.json",
+     "sha256": "5279d00985bdf5a81eb22f1526d8e04bdbd809e4a5b62d6cff00605a09ce365a",
+     "size": 8023
+    },
+    {
+     "path": "docs/measurements/transcript-sources-raw-check-20261102.json",
+     "sha256": "2697a52d565dc7cd26ffda72cf72b04ebe8b4cd23d1308defeb6e526e9c81ae9",
+     "size": 7960
+    }
+   ]
+  },
+  {
+   "id": "list.parquet|changed document_kind|value differs on matched key",
+   "count": 3472,
+   "disposition": "explained",
+   "cause": "document-rule: Qualified document filter and source-family routing for non-document captures; titles: Document title cleaning, GPO serial normalization, and cover/HTML title precedence",
+   "tickets": [
+    "ct-bxqa",
+    "ct-3l1c",
+    "ct-fh62",
+    "ct-zpbl",
+    "ct-xt19",
+    "ct-deh9",
+    "ct-qg8e"
+   ],
+   "evidence": [
+    {
+     "path": "docs/measurements/release-attribution-448651e7-e4538f00/documents.json",
+     "sha256": "ba8172b4ee9807f1d58408ae6a8101af8b4a7876d5579bb86b50c576ebee2df4",
+     "size": 11734
+    },
+    {
+     "path": "docs/measurements/release-attribution-448651e7-e4538f00/e4538f00.json",
+     "sha256": "99ece12f24478559e59949aac5c098ae113eb197bd04f3e92eedbb217c95331f",
+     "size": 2094
+    },
+    {
+     "path": "docs/measurements/release-attribution-448651e7-e4538f00/other.json",
+     "sha256": "5279d00985bdf5a81eb22f1526d8e04bdbd809e4a5b62d6cff00605a09ce365a",
+     "size": 8023
+    },
+    {
+     "path": "docs/measurements/transcript-sources-raw-check-20261102.json",
+     "sha256": "2697a52d565dc7cd26ffda72cf72b04ebe8b4cd23d1308defeb6e526e9c81ae9",
+     "size": 7960
+    }
+   ]
+  },
+  {
+   "id": "list.parquet|changed filename|value differs on matched key",
+   "count": 17870,
+   "disposition": "explained",
+   "cause": "filenames: Filename recovery from Content-Disposition, redirect sides, URL path, and meeting/witness context",
+   "tickets": [
+    "ct-yf1c"
+   ],
+   "evidence": [
+    {
+     "path": "docs/measurements/release-attribution-448651e7-e4538f00/other.json",
+     "sha256": "5279d00985bdf5a81eb22f1526d8e04bdbd809e4a5b62d6cff00605a09ce365a",
+     "size": 8023
+    },
+    {
+     "path": "docs/measurements/release-attribution-448651e7-e4538f00/e4538f00.json",
+     "sha256": "99ece12f24478559e59949aac5c098ae113eb197bd04f3e92eedbb217c95331f",
+     "size": 2094
+    }
+   ]
+  },
+  {
+   "id": "list.parquet|changed first_captured|value differs on matched key",
+   "count": 6,
+   "disposition": "explained",
+   "cause": "html-fingerprints: Direct HTML and ZIP member text fingerprint deduplication across split packages",
+   "tickets": [
+    "ct-o2pr",
+    "ct-64el",
+    "ct-c5xf",
+    "ct-pocg"
+   ],
+   "evidence": [
+    {
+     "path": "docs/measurements/release-attribution-448651e7-e4538f00/documents.json",
+     "sha256": "ba8172b4ee9807f1d58408ae6a8101af8b4a7876d5579bb86b50c576ebee2df4",
+     "size": 11734
+    }
+   ]
+  },
+  {
+   "id": "list.parquet|changed format|value differs on matched key",
+   "count": 30,
+   "disposition": "explained",
+   "cause": "zip-contents: ZIP archive member extraction and parent-member package reunification (D1/D2)",
+   "tickets": [
+    "ct-64el",
+    "ct-n2cy"
+   ],
+   "evidence": [
+    {
+     "path": "docs/measurements/release-attribution-448651e7-e4538f00/documents.json",
+     "sha256": "ba8172b4ee9807f1d58408ae6a8101af8b4a7876d5579bb86b50c576ebee2df4",
+     "size": 11734
+    }
+   ]
+  },
+  {
+   "id": "list.parquet|changed measure_keys|value differs on matched key",
+   "count": 18,
+   "disposition": "explained",
+   "cause": "bills-rosters: Bills table reconciliation (referred + meeting bills, related_bills, public_law_number) and roster rank/parent key normalization; coverage-links: Meeting coverage table and House/Senate witness-to-document link propagation",
+   "tickets": [
+    "ct-mj9f",
+    "ct-8cno",
+    "ct-66ns",
+    "ct-gi01",
+    "ct-1i4q",
+    "ct-2o4d"
+   ],
+   "evidence": [
+    {
+     "path": "docs/measurements/release-attribution-448651e7-e4538f00/e4538f00.json",
+     "sha256": "99ece12f24478559e59949aac5c098ae113eb197bd04f3e92eedbb217c95331f",
+     "size": 2094
+    },
+    {
+     "path": "docs/measurements/release-attribution-448651e7-e4538f00/other.json",
+     "sha256": "5279d00985bdf5a81eb22f1526d8e04bdbd809e4a5b62d6cff00605a09ce365a",
+     "size": 8023
+    }
+   ]
+  },
+  {
+   "id": "list.parquet|changed meeting_keys|value differs on matched key",
+   "count": 11904,
+   "disposition": "explained",
+   "cause": "coverage-links: Meeting coverage table and House/Senate witness-to-document link propagation; witnesses: Witness appearance reconciliation, Senate event_id propagation, and witness link enrichment",
+   "tickets": [
+    "ct-66ns",
+    "ct-gi01",
+    "ct-1i4q",
+    "ct-2o4d",
+    "ct-dx22",
+    "ct-x78c",
+    "ct-ktfe",
+    "ct-j2yo",
+    "ct-o7t4"
+   ],
+   "evidence": [
+    {
+     "path": "docs/measurements/release-attribution-448651e7-e4538f00/other.json",
+     "sha256": "5279d00985bdf5a81eb22f1526d8e04bdbd809e4a5b62d6cff00605a09ce365a",
+     "size": 8023
+    },
+    {
+     "path": "docs/measurements/release-attribution-448651e7-e4538f00/e4538f00.json",
+     "sha256": "99ece12f24478559e59949aac5c098ae113eb197bd04f3e92eedbb217c95331f",
+     "size": 2094
+    },
+    {
+     "path": "docs/measurements/release-attribution-448651e7-e4538f00/witnesses.json",
+     "sha256": "26b98c3011e9b9f04e4936268f33a84a98a15f656da8a05d604648e6c784f2e6",
+     "size": 73075
+    }
+   ]
+  },
+  {
+   "id": "list.parquet|changed saved_kind|value differs on matched key",
+   "count": 3,
+   "disposition": "explained",
+   "cause": "document-rule: Qualified document filter and source-family routing for non-document captures",
+   "tickets": [
+    "ct-bxqa",
+    "ct-3l1c",
+    "ct-fh62"
+   ],
+   "evidence": [
+    {
+     "path": "docs/measurements/release-attribution-448651e7-e4538f00/documents.json",
+     "sha256": "ba8172b4ee9807f1d58408ae6a8101af8b4a7876d5579bb86b50c576ebee2df4",
+     "size": 11734
+    },
+    {
+     "path": "docs/measurements/release-attribution-448651e7-e4538f00/e4538f00.json",
+     "sha256": "99ece12f24478559e59949aac5c098ae113eb197bd04f3e92eedbb217c95331f",
+     "size": 2094
+    }
+   ]
+  },
+  {
+   "id": "list.parquet|changed title|value differs on matched key",
+   "count": 22511,
+   "disposition": "explained",
+   "cause": "titles: Document title cleaning, GPO serial normalization, and cover/HTML title precedence",
+   "tickets": [
+    "ct-zpbl",
+    "ct-xt19",
+    "ct-deh9",
+    "ct-qg8e"
+   ],
+   "evidence": [
+    {
+     "path": "docs/measurements/release-attribution-448651e7-e4538f00/other.json",
+     "sha256": "5279d00985bdf5a81eb22f1526d8e04bdbd809e4a5b62d6cff00605a09ce365a",
+     "size": 8023
+    },
+    {
+     "path": "docs/measurements/transcript-sources-raw-check-20261102.json",
+     "sha256": "2697a52d565dc7cd26ffda72cf72b04ebe8b4cd23d1308defeb6e526e9c81ae9",
+     "size": 7960
+    }
+   ]
+  },
+  {
+   "id": "list.parquet|changed version_keys|value differs on matched key",
+   "count": 291,
+   "disposition": "explained",
+   "cause": "html-fingerprints: Direct HTML and ZIP member text fingerprint deduplication across split packages",
+   "tickets": [
+    "ct-o2pr",
+    "ct-64el",
+    "ct-c5xf",
+    "ct-pocg"
+   ],
+   "evidence": [
+    {
+     "path": "docs/measurements/release-attribution-448651e7-e4538f00/documents.json",
+     "sha256": "ba8172b4ee9807f1d58408ae6a8101af8b4a7876d5579bb86b50c576ebee2df4",
+     "size": 11734
+    }
+   ]
+  },
+  {
+   "id": "list.parquet|changed witness_keys|value differs on matched key",
+   "count": 85992,
+   "disposition": "explained",
+   "cause": "witnesses: Witness appearance reconciliation, Senate event_id propagation, and witness link enrichment",
+   "tickets": [
+    "ct-dx22",
+    "ct-x78c",
+    "ct-ktfe",
+    "ct-2o4d",
+    "ct-j2yo",
+    "ct-o7t4"
+   ],
+   "evidence": [
+    {
+     "path": "docs/measurements/release-attribution-448651e7-e4538f00/witnesses.json",
+     "sha256": "26b98c3011e9b9f04e4936268f33a84a98a15f656da8a05d604648e6c784f2e6",
+     "size": 73075
+    },
+    {
+     "path": "docs/measurements/release-attribution-448651e7-e4538f00/e4538f00.json",
+     "sha256": "99ece12f24478559e59949aac5c098ae113eb197bd04f3e92eedbb217c95331f",
+     "size": 2094
+    }
+   ]
+  },
+  {
+   "id": "meeting_coverage.parquet|file added|file absent from the base release",
+   "count": 93435,
+   "disposition": "explained",
+   "cause": "coverage-links: Meeting coverage table and House/Senate witness-to-document link propagation",
+   "tickets": [
+    "ct-66ns",
+    "ct-gi01",
+    "ct-1i4q",
+    "ct-2o4d"
+   ],
+   "evidence": [
+    {
+     "path": "docs/measurements/release-attribution-448651e7-e4538f00/other.json",
+     "sha256": "5279d00985bdf5a81eb22f1526d8e04bdbd809e4a5b62d6cff00605a09ce365a",
+     "size": 8023
+    },
+    {
+     "path": "docs/measurements/release-attribution-448651e7-e4538f00/e4538f00.json",
+     "sha256": "99ece12f24478559e59949aac5c098ae113eb197bd04f3e92eedbb217c95331f",
+     "size": 2094
+    }
+   ]
+  },
+  {
+   "id": "meetings.parquet|changed sittings[].end|value differs on matched key",
+   "count": 546,
+   "disposition": "explained",
+   "cause": "sittings: Structured sitting building, room, address, start/end time, and place extraction",
+   "tickets": [
+    "ct-c5xf",
+    "ct-pocg"
+   ],
+   "evidence": [
+    {
+     "path": "docs/measurements/meeting-semantics-raw-check-20261102.json",
+     "sha256": "7f00472b3c6b7f4be186c74bce5fa4e10190e83e7e441769ed72ece6b00b51df",
+     "size": 135830
+    },
+    {
+     "path": "docs/measurements/release-attribution-448651e7-e4538f00/other.json",
+     "sha256": "5279d00985bdf5a81eb22f1526d8e04bdbd809e4a5b62d6cff00605a09ce365a",
+     "size": 8023
+    }
+   ]
+  },
+  {
+   "id": "meetings.parquet|changed sittings[].place|value differs on matched key",
+   "count": 6184,
+   "disposition": "explained",
+   "cause": "sittings: Structured sitting building, room, address, start/end time, and place extraction",
+   "tickets": [
+    "ct-c5xf",
+    "ct-pocg"
+   ],
+   "evidence": [
+    {
+     "path": "docs/measurements/meeting-semantics-raw-check-20261102.json",
+     "sha256": "7f00472b3c6b7f4be186c74bce5fa4e10190e83e7e441769ed72ece6b00b51df",
+     "size": 135830
+    },
+    {
+     "path": "docs/measurements/release-attribution-448651e7-e4538f00/other.json",
+     "sha256": "5279d00985bdf5a81eb22f1526d8e04bdbd809e4a5b62d6cff00605a09ce365a",
+     "size": 8023
+    }
+   ]
+  },
+  {
+   "id": "meetings.parquet|changed sittings[].start|value differs on matched key",
+   "count": 6157,
+   "disposition": "explained",
+   "cause": "sittings: Structured sitting building, room, address, start/end time, and place extraction",
+   "tickets": [
+    "ct-c5xf",
+    "ct-pocg"
+   ],
+   "evidence": [
+    {
+     "path": "docs/measurements/meeting-semantics-raw-check-20261102.json",
+     "sha256": "7f00472b3c6b7f4be186c74bce5fa4e10190e83e7e441769ed72ece6b00b51df",
+     "size": 135830
+    },
+    {
+     "path": "docs/measurements/release-attribution-448651e7-e4538f00/other.json",
+     "sha256": "5279d00985bdf5a81eb22f1526d8e04bdbd809e4a5b62d6cff00605a09ce365a",
+     "size": 8023
+    }
+   ]
+  },
+  {
+   "id": "meetings.parquet|added subfield sittings[].address|subfield new in the candidate, set on matched rows",
+   "count": 111,
+   "disposition": "explained",
+   "cause": "sittings: Structured sitting building, room, address, start/end time, and place extraction",
+   "tickets": [
+    "ct-c5xf",
+    "ct-pocg"
+   ],
+   "evidence": [
+    {
+     "path": "docs/measurements/meeting-semantics-raw-check-20261102.json",
+     "sha256": "7f00472b3c6b7f4be186c74bce5fa4e10190e83e7e441769ed72ece6b00b51df",
+     "size": 135830
+    },
+    {
+     "path": "docs/measurements/release-attribution-448651e7-e4538f00/other.json",
+     "sha256": "5279d00985bdf5a81eb22f1526d8e04bdbd809e4a5b62d6cff00605a09ce365a",
+     "size": 8023
+    }
+   ]
+  },
+  {
+   "id": "meetings.parquet|added subfield sittings[].building|subfield new in the candidate, set on matched rows",
+   "count": 16449,
+   "disposition": "explained",
+   "cause": "sittings: Structured sitting building, room, address, start/end time, and place extraction",
+   "tickets": [
+    "ct-c5xf",
+    "ct-pocg"
+   ],
+   "evidence": [
+    {
+     "path": "docs/measurements/meeting-semantics-raw-check-20261102.json",
+     "sha256": "7f00472b3c6b7f4be186c74bce5fa4e10190e83e7e441769ed72ece6b00b51df",
+     "size": 135830
+    },
+    {
+     "path": "docs/measurements/release-attribution-448651e7-e4538f00/other.json",
+     "sha256": "5279d00985bdf5a81eb22f1526d8e04bdbd809e4a5b62d6cff00605a09ce365a",
+     "size": 8023
+    }
+   ]
+  },
+  {
+   "id": "meetings.parquet|added subfield sittings[].room|subfield new in the candidate, set on matched rows",
+   "count": 16638,
+   "disposition": "explained",
+   "cause": "sittings: Structured sitting building, room, address, start/end time, and place extraction",
+   "tickets": [
+    "ct-c5xf",
+    "ct-pocg"
+   ],
+   "evidence": [
+    {
+     "path": "docs/measurements/meeting-semantics-raw-check-20261102.json",
+     "sha256": "7f00472b3c6b7f4be186c74bce5fa4e10190e83e7e441769ed72ece6b00b51df",
+     "size": 135830
+    },
+    {
+     "path": "docs/measurements/release-attribution-448651e7-e4538f00/other.json",
+     "sha256": "5279d00985bdf5a81eb22f1526d8e04bdbd809e4a5b62d6cff00605a09ce365a",
+     "size": 8023
+    }
+   ]
+  },
+  {
+   "id": "meetings.parquet|changed subject_keys|value differs on matched key",
+   "count": 752,
+   "disposition": "explained",
+   "cause": "bills-rosters: Bills table reconciliation (referred + meeting bills, related_bills, public_law_number) and roster rank/parent key normalization",
+   "tickets": [
+    "ct-mj9f",
+    "ct-8cno"
+   ],
+   "evidence": [
+    {
+     "path": "docs/measurements/release-attribution-448651e7-e4538f00/e4538f00.json",
+     "sha256": "99ece12f24478559e59949aac5c098ae113eb197bd04f3e92eedbb217c95331f",
+     "size": 2094
+    }
+   ]
+  },
+  {
+   "id": "meetings.parquet|changed transcripts|value differs on matched key",
+   "count": 11809,
+   "disposition": "explained",
+   "cause": "transcript-entries: Transcript entry deduplication and jacket/hearing transcript source linking",
+   "tickets": [
+    "ct-qg8e",
+    "ct-deh9"
+   ],
+   "evidence": [
+    {
+     "path": "docs/measurements/transcript-sources-raw-check-20261102.json",
+     "sha256": "2697a52d565dc7cd26ffda72cf72b04ebe8b4cd23d1308defeb6e526e9c81ae9",
+     "size": 7960
+    },
+    {
+     "path": "docs/measurements/release-attribution-448651e7-e4538f00/other.json",
+     "sha256": "5279d00985bdf5a81eb22f1526d8e04bdbd809e4a5b62d6cff00605a09ce365a",
+     "size": 8023
+    }
+   ]
+  },
+  {
+   "id": "recording_matches.parquet|file added|file absent from the base release",
+   "count": 32086,
+   "disposition": "explained",
+   "cause": "explorer-tables: New explorer tables (channels, videos, recording_matches, committee_records)",
+   "tickets": [
+    "ct-66ns"
+   ],
+   "evidence": [
+    {
+     "path": "docs/measurements/release-attribution-448651e7-e4538f00/other.json",
+     "sha256": "5279d00985bdf5a81eb22f1526d8e04bdbd809e4a5b62d6cff00605a09ce365a",
+     "size": 8023
+    }
+   ]
+  },
+  {
+   "id": "recordings.parquet|added keys|empty event_ids; source not traced",
+   "count": 245,
+   "disposition": "explained",
+   "cause": "media-tracks: Video recording track deduplication and Senate ISVP / YouTube recording discovery",
+   "tickets": [
+    "ct-66ns",
+    "ct-1i4q"
+   ],
+   "evidence": [
+    {
+     "path": "docs/measurements/release-attribution-448651e7-e4538f00/tracks_trace.json",
+     "sha256": "5af09091012c8402c3111410e448742cd95b90625fc312bccc75d2d109a3fc39",
+     "size": 2288
+    },
+    {
+     "path": "docs/measurements/release-attribution-448651e7-e4538f00/other.json",
+     "sha256": "5279d00985bdf5a81eb22f1526d8e04bdbd809e4a5b62d6cff00605a09ce365a",
+     "size": 8023
+    }
+   ]
+  },
+  {
+   "id": "recordings.parquet|changed tracks|value differs on matched key",
+   "count": 2416,
+   "disposition": "explained",
+   "cause": "media-tracks: Video recording track deduplication and Senate ISVP / YouTube recording discovery",
+   "tickets": [
+    "ct-66ns",
+    "ct-1i4q"
+   ],
+   "evidence": [
+    {
+     "path": "docs/measurements/release-attribution-448651e7-e4538f00/tracks_trace.json",
+     "sha256": "5af09091012c8402c3111410e448742cd95b90625fc312bccc75d2d109a3fc39",
+     "size": 2288
+    },
+    {
+     "path": "docs/measurements/release-attribution-448651e7-e4538f00/other.json",
+     "sha256": "5279d00985bdf5a81eb22f1526d8e04bdbd809e4a5b62d6cff00605a09ce365a",
+     "size": 8023
+    }
+   ]
+  },
+  {
+   "id": "recoveries.parquet|removed keys|unexplained",
+   "count": -167,
+   "disposition": "explained",
+   "cause": "recovery-merge: Wayback recovery merge into canonical archive documents; zip-contents: ZIP archive member extraction and parent-member package reunification (D1/D2)",
+   "tickets": [
+    "ct-tk10",
+    "ct-64el",
+    "ct-n2cy"
+   ],
+   "evidence": [
+    {
+     "path": "docs/measurements/release-attribution-448651e7-e4538f00/documents.json",
+     "sha256": "ba8172b4ee9807f1d58408ae6a8101af8b4a7876d5579bb86b50c576ebee2df4",
+     "size": 11734
+    }
+   ]
+  },
+  {
+   "id": "recoveries.parquet|added keys|unexplained",
+   "count": 3,
+   "disposition": "explained",
+   "cause": "recovery-merge: Wayback recovery merge into canonical archive documents; zip-contents: ZIP archive member extraction and parent-member package reunification (D1/D2)",
+   "tickets": [
+    "ct-tk10",
+    "ct-64el",
+    "ct-n2cy"
+   ],
+   "evidence": [
+    {
+     "path": "docs/measurements/release-attribution-448651e7-e4538f00/documents.json",
+     "sha256": "ba8172b4ee9807f1d58408ae6a8101af8b4a7876d5579bb86b50c576ebee2df4",
+     "size": 11734
+    }
+   ]
+  },
+  {
+   "id": "retired_links.parquet|file added|file absent from the base release",
+   "count": 450,
+   "disposition": "explained",
+   "cause": "retired-links: Retired link-key redirect and removal ledger introduction (Gate 2); zip-contents: ZIP archive member extraction and parent-member package reunification (D1/D2)",
+   "tickets": [
+    "ct-tk10",
+    "ct-64el",
+    "ct-n2cy"
+   ],
+   "evidence": [
+    {
+     "path": "docs/measurements/release-attribution-448651e7-e4538f00/documents.json",
+     "sha256": "ba8172b4ee9807f1d58408ae6a8101af8b4a7876d5579bb86b50c576ebee2df4",
+     "size": 11734
+    }
+   ]
+  },
+  {
+   "id": "rosters.parquet|removed keys|no evidence given",
+   "count": -25,
+   "disposition": "explained",
+   "cause": "bills-rosters: Bills table reconciliation (referred + meeting bills, related_bills, public_law_number) and roster rank/parent key normalization",
+   "tickets": [
+    "ct-mj9f",
+    "ct-8cno"
+   ],
+   "evidence": [
+    {
+     "path": "docs/measurements/release-attribution-448651e7-e4538f00/e4538f00.json",
+     "sha256": "99ece12f24478559e59949aac5c098ae113eb197bd04f3e92eedbb217c95331f",
+     "size": 2094
+    }
+   ]
+  },
+  {
+   "id": "rosters.parquet|added keys|no evidence given",
+   "count": 25,
+   "disposition": "explained",
+   "cause": "bills-rosters: Bills table reconciliation (referred + meeting bills, related_bills, public_law_number) and roster rank/parent key normalization",
+   "tickets": [
+    "ct-mj9f",
+    "ct-8cno"
+   ],
+   "evidence": [
+    {
+     "path": "docs/measurements/release-attribution-448651e7-e4538f00/e4538f00.json",
+     "sha256": "99ece12f24478559e59949aac5c098ae113eb197bd04f3e92eedbb217c95331f",
+     "size": 2094
+    }
+   ]
+  },
+  {
+   "id": "rosters.parquet|changed rank|value differs on matched key",
+   "count": 450,
+   "disposition": "explained",
+   "cause": "bills-rosters: Bills table reconciliation (referred + meeting bills, related_bills, public_law_number) and roster rank/parent key normalization",
+   "tickets": [
+    "ct-mj9f",
+    "ct-8cno"
+   ],
+   "evidence": [
+    {
+     "path": "docs/measurements/release-attribution-448651e7-e4538f00/e4538f00.json",
+     "sha256": "99ece12f24478559e59949aac5c098ae113eb197bd04f3e92eedbb217c95331f",
+     "size": 2094
+    }
+   ]
+  },
+  {
+   "id": "schema.json|changed file without a comparison|unexplained",
+   "count": 0,
+   "disposition": "explained",
+   "cause": "schema: Published release schema.json updated for explorer tables, retired_links, and bill/sitting columns",
+   "tickets": [
+    "ct-tk10",
+    "ct-mj9f"
+   ],
+   "evidence": [
+    {
+     "path": "docs/measurements/release-attribution-448651e7-e4538f00/other.json",
+     "sha256": "5279d00985bdf5a81eb22f1526d8e04bdbd809e4a5b62d6cff00605a09ce365a",
+     "size": 8023
+    },
+    {
+     "path": "docs/measurements/release-attribution-448651e7-e4538f00/e4538f00.json",
+     "sha256": "99ece12f24478559e59949aac5c098ae113eb197bd04f3e92eedbb217c95331f",
+     "size": 2094
+    }
+   ]
+  },
+  {
+   "id": "sources.parquet|member rows added|archive member newly real",
+   "count": 68934,
+   "disposition": "explained",
+   "cause": "zip-contents: ZIP archive member extraction and parent-member package reunification (D1/D2)",
+   "tickets": [
+    "ct-64el",
+    "ct-n2cy"
+   ],
+   "evidence": [
+    {
+     "path": "docs/measurements/release-attribution-448651e7-e4538f00/documents.json",
+     "sha256": "ba8172b4ee9807f1d58408ae6a8101af8b4a7876d5579bb86b50c576ebee2df4",
+     "size": 11734
+    }
+   ]
+  },
+  {
+   "id": "sources.parquet|NULL url|defect: a published source address must not be null",
+   "count": -72,
+   "disposition": "explained",
+   "cause": "api-responses: Congress.gov API JSON envelope exclusion from published document sources",
+   "tickets": [
+    "ct-o2pr",
+    "ct-64el"
+   ],
+   "evidence": [
+    {
+     "path": "docs/measurements/release-attribution-448651e7-e4538f00/documents.json",
+     "sha256": "ba8172b4ee9807f1d58408ae6a8101af8b4a7876d5579bb86b50c576ebee2df4",
+     "size": 11734
+    }
+   ]
+  },
+  {
+   "id": "sources.parquet|URLs gone|no live row has this address",
+   "count": -33836,
+   "disposition": "explained",
+   "cause": "document-rule: Qualified document filter and source-family routing for non-document captures; final-url: Redirect final-URL resolution and canonical source attribution",
+   "tickets": [
+    "ct-bxqa",
+    "ct-3l1c",
+    "ct-fh62",
+    "ct-tk10"
+   ],
+   "evidence": [
+    {
+     "path": "docs/measurements/release-attribution-448651e7-e4538f00/documents.json",
+     "sha256": "ba8172b4ee9807f1d58408ae6a8101af8b4a7876d5579bb86b50c576ebee2df4",
+     "size": 11734
+    },
+    {
+     "path": "docs/measurements/release-attribution-448651e7-e4538f00/e4538f00.json",
+     "sha256": "99ece12f24478559e59949aac5c098ae113eb197bd04f3e92eedbb217c95331f",
+     "size": 2094
+    }
+   ]
+  },
+  {
+   "id": "sources.parquet|new URLs|no previous row has this address",
+   "count": 5562,
+   "disposition": "explained",
+   "cause": "document-rule: Qualified document filter and source-family routing for non-document captures; final-url: Redirect final-URL resolution and canonical source attribution",
+   "tickets": [
+    "ct-bxqa",
+    "ct-3l1c",
+    "ct-fh62",
+    "ct-tk10"
+   ],
+   "evidence": [
+    {
+     "path": "docs/measurements/release-attribution-448651e7-e4538f00/documents.json",
+     "sha256": "ba8172b4ee9807f1d58408ae6a8101af8b4a7876d5579bb86b50c576ebee2df4",
+     "size": 11734
+    },
+    {
+     "path": "docs/measurements/release-attribution-448651e7-e4538f00/e4538f00.json",
+     "sha256": "99ece12f24478559e59949aac5c098ae113eb197bd04f3e92eedbb217c95331f",
+     "size": 2094
+    }
+   ]
+  },
+  {
+   "id": "sources.parquet|same-URL rows removed|fewer documents list the address",
+   "count": -484,
+   "disposition": "explained",
+   "cause": "document-rule: Qualified document filter and source-family routing for non-document captures",
+   "tickets": [
+    "ct-bxqa",
+    "ct-3l1c",
+    "ct-fh62"
+   ],
+   "evidence": [
+    {
+     "path": "docs/measurements/release-attribution-448651e7-e4538f00/documents.json",
+     "sha256": "ba8172b4ee9807f1d58408ae6a8101af8b4a7876d5579bb86b50c576ebee2df4",
+     "size": 11734
+    },
+    {
+     "path": "docs/measurements/release-attribution-448651e7-e4538f00/e4538f00.json",
+     "sha256": "99ece12f24478559e59949aac5c098ae113eb197bd04f3e92eedbb217c95331f",
+     "size": 2094
+    }
+   ]
+  },
+  {
+   "id": "sources.parquet|documents changed for a shared key|the key now answers other documents",
+   "count": 39,
+   "disposition": "explained",
+   "cause": "document-rule: Qualified document filter and source-family routing for non-document captures; zip-contents: ZIP archive member extraction and parent-member package reunification (D1/D2)",
+   "tickets": [
+    "ct-bxqa",
+    "ct-3l1c",
+    "ct-fh62",
+    "ct-64el",
+    "ct-n2cy"
+   ],
+   "evidence": [
+    {
+     "path": "docs/measurements/release-attribution-448651e7-e4538f00/documents.json",
+     "sha256": "ba8172b4ee9807f1d58408ae6a8101af8b4a7876d5579bb86b50c576ebee2df4",
+     "size": 11734
+    },
+    {
+     "path": "docs/measurements/release-attribution-448651e7-e4538f00/e4538f00.json",
+     "sha256": "99ece12f24478559e59949aac5c098ae113eb197bd04f3e92eedbb217c95331f",
+     "size": 2094
+    }
+   ]
+  },
+  {
+   "id": "sources.parquet|changed first_seen|value differs on matched key",
+   "count": 761,
+   "disposition": "explained",
+   "cause": "final-url: Redirect final-URL resolution and canonical source attribution",
+   "tickets": [
+    "ct-tk10"
+   ],
+   "evidence": [
+    {
+     "path": "docs/measurements/release-attribution-448651e7-e4538f00/documents.json",
+     "sha256": "ba8172b4ee9807f1d58408ae6a8101af8b4a7876d5579bb86b50c576ebee2df4",
+     "size": 11734
+    }
+   ]
+  },
+  {
+   "id": "sources.parquet|changed is_saved|value differs on matched key",
+   "count": 3919,
+   "disposition": "explained",
+   "cause": "document-rule: Qualified document filter and source-family routing for non-document captures; final-url: Redirect final-URL resolution and canonical source attribution",
+   "tickets": [
+    "ct-bxqa",
+    "ct-3l1c",
+    "ct-fh62",
+    "ct-tk10"
+   ],
+   "evidence": [
+    {
+     "path": "docs/measurements/release-attribution-448651e7-e4538f00/documents.json",
+     "sha256": "ba8172b4ee9807f1d58408ae6a8101af8b4a7876d5579bb86b50c576ebee2df4",
+     "size": 11734
+    },
+    {
+     "path": "docs/measurements/release-attribution-448651e7-e4538f00/e4538f00.json",
+     "sha256": "99ece12f24478559e59949aac5c098ae113eb197bd04f3e92eedbb217c95331f",
+     "size": 2094
+    }
+   ]
+  },
+  {
+   "id": "sources.parquet|changed link_text|value differs on matched key",
+   "count": 54164,
+   "disposition": "explained",
+   "cause": "final-url: Redirect final-URL resolution and canonical source attribution",
+   "tickets": [
+    "ct-tk10"
+   ],
+   "evidence": [
+    {
+     "path": "docs/measurements/release-attribution-448651e7-e4538f00/documents.json",
+     "sha256": "ba8172b4ee9807f1d58408ae6a8101af8b4a7876d5579bb86b50c576ebee2df4",
+     "size": 11734
+    }
+   ]
+  },
+  {
+   "id": "sources.parquet|changed listed_on|value differs on matched key",
+   "count": 54495,
+   "disposition": "explained",
+   "cause": "final-url: Redirect final-URL resolution and canonical source attribution",
+   "tickets": [
+    "ct-tk10"
+   ],
+   "evidence": [
+    {
+     "path": "docs/measurements/release-attribution-448651e7-e4538f00/documents.json",
+     "sha256": "ba8172b4ee9807f1d58408ae6a8101af8b4a7876d5579bb86b50c576ebee2df4",
+     "size": 11734
+    }
+   ]
+  },
+  {
+   "id": "url_state.parquet|removed URLs|unexplained",
+   "count": -255,
+   "disposition": "explained",
+   "cause": "document-rule: Qualified document filter and source-family routing for non-document captures",
+   "tickets": [
+    "ct-bxqa",
+    "ct-3l1c",
+    "ct-fh62"
+   ],
+   "evidence": [
+    {
+     "path": "docs/measurements/release-attribution-448651e7-e4538f00/documents.json",
+     "sha256": "ba8172b4ee9807f1d58408ae6a8101af8b4a7876d5579bb86b50c576ebee2df4",
+     "size": 11734
+    },
+    {
+     "path": "docs/measurements/release-attribution-448651e7-e4538f00/e4538f00.json",
+     "sha256": "99ece12f24478559e59949aac5c098ae113eb197bd04f3e92eedbb217c95331f",
+     "size": 2094
+    }
+   ]
+  },
+  {
+   "id": "url_state.parquet|added URLs|queued link with no attempts yet",
+   "count": 6,
+   "disposition": "explained",
+   "cause": "document-rule: Qualified document filter and source-family routing for non-document captures",
+   "tickets": [
+    "ct-bxqa",
+    "ct-3l1c",
+    "ct-fh62"
+   ],
+   "evidence": [
+    {
+     "path": "docs/measurements/release-attribution-448651e7-e4538f00/documents.json",
+     "sha256": "ba8172b4ee9807f1d58408ae6a8101af8b4a7876d5579bb86b50c576ebee2df4",
+     "size": 11734
+    },
+    {
+     "path": "docs/measurements/release-attribution-448651e7-e4538f00/e4538f00.json",
+     "sha256": "99ece12f24478559e59949aac5c098ae113eb197bd04f3e92eedbb217c95331f",
+     "size": 2094
+    }
+   ]
+  },
+  {
+   "id": "url_state.parquet|changed attempts|value differs on matched key",
+   "count": 35206,
+   "disposition": "explained",
+   "cause": "document-rule: Qualified document filter and source-family routing for non-document captures",
+   "tickets": [
+    "ct-bxqa",
+    "ct-3l1c",
+    "ct-fh62"
+   ],
+   "evidence": [
+    {
+     "path": "docs/measurements/release-attribution-448651e7-e4538f00/documents.json",
+     "sha256": "ba8172b4ee9807f1d58408ae6a8101af8b4a7876d5579bb86b50c576ebee2df4",
+     "size": 11734
+    },
+    {
+     "path": "docs/measurements/release-attribution-448651e7-e4538f00/e4538f00.json",
+     "sha256": "99ece12f24478559e59949aac5c098ae113eb197bd04f3e92eedbb217c95331f",
+     "size": 2094
+    }
+   ]
+  },
+  {
+   "id": "url_state.parquet|changed last_attempt|value differs on matched key",
+   "count": 34553,
+   "disposition": "explained",
+   "cause": "document-rule: Qualified document filter and source-family routing for non-document captures",
+   "tickets": [
+    "ct-bxqa",
+    "ct-3l1c",
+    "ct-fh62"
+   ],
+   "evidence": [
+    {
+     "path": "docs/measurements/release-attribution-448651e7-e4538f00/documents.json",
+     "sha256": "ba8172b4ee9807f1d58408ae6a8101af8b4a7876d5579bb86b50c576ebee2df4",
+     "size": 11734
+    },
+    {
+     "path": "docs/measurements/release-attribution-448651e7-e4538f00/e4538f00.json",
+     "sha256": "99ece12f24478559e59949aac5c098ae113eb197bd04f3e92eedbb217c95331f",
+     "size": 2094
+    }
+   ]
+  },
+  {
+   "id": "url_state.parquet|changed last_good_at|value differs on matched key",
+   "count": 36514,
+   "disposition": "explained",
+   "cause": "document-rule: Qualified document filter and source-family routing for non-document captures",
+   "tickets": [
+    "ct-bxqa",
+    "ct-3l1c",
+    "ct-fh62"
+   ],
+   "evidence": [
+    {
+     "path": "docs/measurements/release-attribution-448651e7-e4538f00/documents.json",
+     "sha256": "ba8172b4ee9807f1d58408ae6a8101af8b4a7876d5579bb86b50c576ebee2df4",
+     "size": 11734
+    },
+    {
+     "path": "docs/measurements/release-attribution-448651e7-e4538f00/e4538f00.json",
+     "sha256": "99ece12f24478559e59949aac5c098ae113eb197bd04f3e92eedbb217c95331f",
+     "size": 2094
+    }
+   ]
+  },
+  {
+   "id": "url_state.parquet|changed last_outcome|value differs on matched key",
+   "count": 36304,
+   "disposition": "explained",
+   "cause": "document-rule: Qualified document filter and source-family routing for non-document captures",
+   "tickets": [
+    "ct-bxqa",
+    "ct-3l1c",
+    "ct-fh62"
+   ],
+   "evidence": [
+    {
+     "path": "docs/measurements/release-attribution-448651e7-e4538f00/documents.json",
+     "sha256": "ba8172b4ee9807f1d58408ae6a8101af8b4a7876d5579bb86b50c576ebee2df4",
+     "size": 11734
+    },
+    {
+     "path": "docs/measurements/release-attribution-448651e7-e4538f00/e4538f00.json",
+     "sha256": "99ece12f24478559e59949aac5c098ae113eb197bd04f3e92eedbb217c95331f",
+     "size": 2094
+    }
+   ]
+  },
+  {
+   "id": "url_state.parquet|changed last_status|value differs on matched key",
+   "count": 43526,
+   "disposition": "explained",
+   "cause": "document-rule: Qualified document filter and source-family routing for non-document captures",
+   "tickets": [
+    "ct-bxqa",
+    "ct-3l1c",
+    "ct-fh62"
+   ],
+   "evidence": [
+    {
+     "path": "docs/measurements/release-attribution-448651e7-e4538f00/documents.json",
+     "sha256": "ba8172b4ee9807f1d58408ae6a8101af8b4a7876d5579bb86b50c576ebee2df4",
+     "size": 11734
+    },
+    {
+     "path": "docs/measurements/release-attribution-448651e7-e4538f00/e4538f00.json",
+     "sha256": "99ece12f24478559e59949aac5c098ae113eb197bd04f3e92eedbb217c95331f",
+     "size": 2094
+    }
+   ]
+  },
+  {
+   "id": "url_state.parquet|changed next_attempt_at|value differs on matched key",
+   "count": 53124,
+   "disposition": "explained",
+   "cause": "document-rule: Qualified document filter and source-family routing for non-document captures; final-url: Redirect final-URL resolution and canonical source attribution",
+   "tickets": [
+    "ct-bxqa",
+    "ct-3l1c",
+    "ct-fh62",
+    "ct-tk10"
+   ],
+   "evidence": [
+    {
+     "path": "docs/measurements/release-attribution-448651e7-e4538f00/documents.json",
+     "sha256": "ba8172b4ee9807f1d58408ae6a8101af8b4a7876d5579bb86b50c576ebee2df4",
+     "size": 11734
+    },
+    {
+     "path": "docs/measurements/release-attribution-448651e7-e4538f00/e4538f00.json",
+     "sha256": "99ece12f24478559e59949aac5c098ae113eb197bd04f3e92eedbb217c95331f",
+     "size": 2094
+    }
+   ]
+  },
+  {
+   "id": "urls.parquet|keys gone|every row for the key was removed",
+   "count": -70,
+   "disposition": "explained",
+   "cause": "final-url: Redirect final-URL resolution and canonical source attribution; recovery-merge: Wayback recovery merge into canonical archive documents; zip-contents: ZIP archive member extraction and parent-member package reunification (D1/D2)",
+   "tickets": [
+    "ct-tk10",
+    "ct-64el",
+    "ct-n2cy"
+   ],
+   "evidence": [
+    {
+     "path": "docs/measurements/release-attribution-448651e7-e4538f00/documents.json",
+     "sha256": "ba8172b4ee9807f1d58408ae6a8101af8b4a7876d5579bb86b50c576ebee2df4",
+     "size": 11734
+    }
+   ]
+  },
+  {
+   "id": "urls.parquet|keys new|key absent from the previous release",
+   "count": 20200,
+   "disposition": "explained",
+   "cause": "final-url: Redirect final-URL resolution and canonical source attribution; zip-contents: ZIP archive member extraction and parent-member package reunification (D1/D2)",
+   "tickets": [
+    "ct-tk10",
+    "ct-64el",
+    "ct-n2cy"
+   ],
+   "evidence": [
+    {
+     "path": "docs/measurements/release-attribution-448651e7-e4538f00/documents.json",
+     "sha256": "ba8172b4ee9807f1d58408ae6a8101af8b4a7876d5579bb86b50c576ebee2df4",
+     "size": 11734
+    }
+   ]
+  },
+  {
+   "id": "urls.parquet|keys with fewer rows|fewer documents answer the key",
+   "count": -607,
+   "disposition": "explained",
+   "cause": "recovery-merge: Wayback recovery merge into canonical archive documents; zip-contents: ZIP archive member extraction and parent-member package reunification (D1/D2)",
+   "tickets": [
+    "ct-tk10",
+    "ct-64el",
+    "ct-n2cy"
+   ],
+   "evidence": [
+    {
+     "path": "docs/measurements/release-attribution-448651e7-e4538f00/documents.json",
+     "sha256": "ba8172b4ee9807f1d58408ae6a8101af8b4a7876d5579bb86b50c576ebee2df4",
+     "size": 11734
+    }
+   ]
+  },
+  {
+   "id": "urls.parquet|keys with more rows|more documents answer the key",
+   "count": 413,
+   "disposition": "explained",
+   "cause": "zip-contents: ZIP archive member extraction and parent-member package reunification (D1/D2)",
+   "tickets": [
+    "ct-64el",
+    "ct-n2cy"
+   ],
+   "evidence": [
+    {
+     "path": "docs/measurements/release-attribution-448651e7-e4538f00/documents.json",
+     "sha256": "ba8172b4ee9807f1d58408ae6a8101af8b4a7876d5579bb86b50c576ebee2df4",
+     "size": 11734
+    }
+   ]
+  },
+  {
+   "id": "urls.parquet|documents changed for a shared key|the key now answers other documents",
+   "count": 158,
+   "disposition": "explained",
+   "cause": "recovery-merge: Wayback recovery merge into canonical archive documents; zip-contents: ZIP archive member extraction and parent-member package reunification (D1/D2)",
+   "tickets": [
+    "ct-tk10",
+    "ct-64el",
+    "ct-n2cy"
+   ],
+   "evidence": [
+    {
+     "path": "docs/measurements/release-attribution-448651e7-e4538f00/documents.json",
+     "sha256": "ba8172b4ee9807f1d58408ae6a8101af8b4a7876d5579bb86b50c576ebee2df4",
+     "size": 11734
+    }
+   ]
+  },
+  {
+   "id": "videos.parquet|file added|file absent from the base release",
+   "count": 67391,
+   "disposition": "explained",
+   "cause": "explorer-tables: New explorer tables (channels, videos, recording_matches, committee_records)",
+   "tickets": [
+    "ct-66ns"
+   ],
+   "evidence": [
+    {
+     "path": "docs/measurements/release-attribution-448651e7-e4538f00/other.json",
+     "sha256": "5279d00985bdf5a81eb22f1526d8e04bdbd809e4a5b62d6cff00605a09ce365a",
+     "size": 8023
+    }
+   ]
+  },
+  {
+   "id": "witnesses.parquet|removed keys|no evidence given",
+   "count": -22237,
+   "disposition": "explained",
+   "cause": "witnesses: Witness appearance reconciliation, Senate event_id propagation, and witness link enrichment",
+   "tickets": [
+    "ct-dx22",
+    "ct-x78c",
+    "ct-ktfe",
+    "ct-2o4d",
+    "ct-j2yo",
+    "ct-o7t4"
+   ],
+   "evidence": [
+    {
+     "path": "docs/measurements/release-attribution-448651e7-e4538f00/witnesses.json",
+     "sha256": "26b98c3011e9b9f04e4936268f33a84a98a15f656da8a05d604648e6c784f2e6",
+     "size": 73075
+    },
+    {
+     "path": "docs/measurements/release-attribution-448651e7-e4538f00/e4538f00.json",
+     "sha256": "99ece12f24478559e59949aac5c098ae113eb197bd04f3e92eedbb217c95331f",
+     "size": 2094
+    }
+   ]
+  },
+  {
+   "id": "witnesses.parquet|added keys|no evidence given",
+   "count": 47297,
+   "disposition": "explained",
+   "cause": "witnesses: Witness appearance reconciliation, Senate event_id propagation, and witness link enrichment",
+   "tickets": [
+    "ct-dx22",
+    "ct-x78c",
+    "ct-ktfe",
+    "ct-2o4d",
+    "ct-j2yo",
+    "ct-o7t4"
+   ],
+   "evidence": [
+    {
+     "path": "docs/measurements/release-attribution-448651e7-e4538f00/witnesses.json",
+     "sha256": "26b98c3011e9b9f04e4936268f33a84a98a15f656da8a05d604648e6c784f2e6",
+     "size": 73075
+    },
+    {
+     "path": "docs/measurements/release-attribution-448651e7-e4538f00/e4538f00.json",
+     "sha256": "99ece12f24478559e59949aac5c098ae113eb197bd04f3e92eedbb217c95331f",
+     "size": 2094
+    }
+   ]
+  },
+  {
+   "id": "witnesses.parquet|changed display_order|value differs on matched key",
+   "count": 227,
+   "disposition": "explained",
+   "cause": "witnesses: Witness appearance reconciliation, Senate event_id propagation, and witness link enrichment",
+   "tickets": [
+    "ct-dx22",
+    "ct-x78c",
+    "ct-ktfe",
+    "ct-2o4d",
+    "ct-j2yo",
+    "ct-o7t4"
+   ],
+   "evidence": [
+    {
+     "path": "docs/measurements/release-attribution-448651e7-e4538f00/witnesses.json",
+     "sha256": "26b98c3011e9b9f04e4936268f33a84a98a15f656da8a05d604648e6c784f2e6",
+     "size": 73075
+    },
+    {
+     "path": "docs/measurements/release-attribution-448651e7-e4538f00/e4538f00.json",
+     "sha256": "99ece12f24478559e59949aac5c098ae113eb197bd04f3e92eedbb217c95331f",
+     "size": 2094
+    }
+   ]
+  },
+  {
+   "id": "witnesses.parquet|changed name|value differs on matched key",
+   "count": 233,
+   "disposition": "explained",
+   "cause": "witnesses: Witness appearance reconciliation, Senate event_id propagation, and witness link enrichment",
+   "tickets": [
+    "ct-dx22",
+    "ct-x78c",
+    "ct-ktfe",
+    "ct-2o4d",
+    "ct-j2yo",
+    "ct-o7t4"
+   ],
+   "evidence": [
+    {
+     "path": "docs/measurements/release-attribution-448651e7-e4538f00/witnesses.json",
+     "sha256": "26b98c3011e9b9f04e4936268f33a84a98a15f656da8a05d604648e6c784f2e6",
+     "size": 73075
+    },
+    {
+     "path": "docs/measurements/release-attribution-448651e7-e4538f00/e4538f00.json",
+     "sha256": "99ece12f24478559e59949aac5c098ae113eb197bd04f3e92eedbb217c95331f",
+     "size": 2094
+    }
+   ]
+  },
+  {
+   "id": "witnesses.parquet|changed organization|value differs on matched key",
+   "count": 310,
+   "disposition": "explained",
+   "cause": "witnesses: Witness appearance reconciliation, Senate event_id propagation, and witness link enrichment",
+   "tickets": [
+    "ct-dx22",
+    "ct-x78c",
+    "ct-ktfe",
+    "ct-2o4d",
+    "ct-j2yo",
+    "ct-o7t4"
+   ],
+   "evidence": [
+    {
+     "path": "docs/measurements/release-attribution-448651e7-e4538f00/witnesses.json",
+     "sha256": "26b98c3011e9b9f04e4936268f33a84a98a15f656da8a05d604648e6c784f2e6",
+     "size": 73075
+    },
+    {
+     "path": "docs/measurements/release-attribution-448651e7-e4538f00/e4538f00.json",
+     "sha256": "99ece12f24478559e59949aac5c098ae113eb197bd04f3e92eedbb217c95331f",
+     "size": 2094
+    }
+   ]
+  },
+  {
+   "id": "witnesses.parquet|changed position|value differs on matched key",
+   "count": 139,
+   "disposition": "explained",
+   "cause": "witnesses: Witness appearance reconciliation, Senate event_id propagation, and witness link enrichment",
+   "tickets": [
+    "ct-dx22",
+    "ct-x78c",
+    "ct-ktfe",
+    "ct-2o4d",
+    "ct-j2yo",
+    "ct-o7t4"
+   ],
+   "evidence": [
+    {
+     "path": "docs/measurements/release-attribution-448651e7-e4538f00/witnesses.json",
+     "sha256": "26b98c3011e9b9f04e4936268f33a84a98a15f656da8a05d604648e6c784f2e6",
+     "size": 73075
+    },
+    {
+     "path": "docs/measurements/release-attribution-448651e7-e4538f00/e4538f00.json",
+     "sha256": "99ece12f24478559e59949aac5c098ae113eb197bd04f3e92eedbb217c95331f",
+     "size": 2094
+    }
+   ]
+  },
+  {
+   "id": "witnesses.parquet|changed witness_type|value differs on matched key",
+   "count": 374,
+   "disposition": "explained",
+   "cause": "witnesses: Witness appearance reconciliation, Senate event_id propagation, and witness link enrichment",
+   "tickets": [
+    "ct-dx22",
+    "ct-x78c",
+    "ct-ktfe",
+    "ct-2o4d",
+    "ct-j2yo",
+    "ct-o7t4"
+   ],
+   "evidence": [
+    {
+     "path": "docs/measurements/release-attribution-448651e7-e4538f00/witnesses.json",
+     "sha256": "26b98c3011e9b9f04e4936268f33a84a98a15f656da8a05d604648e6c784f2e6",
+     "size": 73075
+    },
+    {
+     "path": "docs/measurements/release-attribution-448651e7-e4538f00/e4538f00.json",
+     "sha256": "99ece12f24478559e59949aac5c098ae113eb197bd04f3e92eedbb217c95331f",
+     "size": 2094
+    }
+   ]
+  }
+ ]
+}

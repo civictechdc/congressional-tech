@@ -1,0 +1,174 @@
+{
+ "candidate_release": "0b24ce8af877d6755b756150bd3c14107c4964435917850e742c3b91e54c8f01",
+ "candidate_dir": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/r1b-run/d4-spec/superseded-model/output-3699fef9",
+ "base_release": "448651e720833d42d565ead119f59b893936626f680fdae4d13b6297e296c419",
+ "code": "c36f5213",
+ "evidence": [
+  {
+   "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/r1b-run/d4-spec/gates-3699fef9/release-gate.json",
+   "sha256": "4f75f1b1acda751ef9b7105d5a6aae1dcc214dbd185501afa5853f928ee84c74",
+   "size": 46168
+  },
+  {
+   "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/r1b-run/d4-spec/superseded-model/output-3699fef9/manifest.json",
+   "sha256": "cd409172de2ee336402e229cc9c443f0c86ba79c36c1b59f2fbf7d28da7d4432",
+   "size": 874288
+  },
+  {
+   "path": "/Users/mikewolfd/Work/congressional-tech/.cache/rounds/r1b/h/releases/448651e7/manifest.json",
+   "sha256": "faf9f4115433210b8013f8a703ad26fbe8705daff33a0e20a28b979a4cd8a964",
+   "size": 872426
+  }
+ ],
+ "explorer_tables": {
+  "verdict": "defect: the production model job cannot select the Explorer inputs, so no release built through it carries the five files",
+  "files_in_candidate": [],
+  "registry_declares": [
+   "videos.parquet",
+   "channels.parquet",
+   "recording_matches.parquet",
+   "committee_records.parquet",
+   "meeting_coverage.parquet"
+  ],
+  "archive_model_job_optional": [
+   "OPTIONAL_TABLES=('meeting_records','appearance_records')",
+   "OPTIONAL={*OPTIONAL_TABLES,'spicy_regs','recovery_requirements'}"
+  ],
+  "candidate_model_spec_keys": [
+   "appearance_records",
+   "captures",
+   "catalog_version",
+   "engine_config",
+   "filename_readings",
+   "meeting_records",
+   "output",
+   "parser_versions",
+   "readings",
+   "recovery_files",
+   "review_files",
+   "scratch",
+   "spicy_regs",
+   "unreadable_files",
+   "version"
+  ],
+  "mechanism": "archive_model.prepare_model_inputs adds EXPLORER_TABLES to the export only when video_records, committee_records and recording_decision_files are passed (archive_model.py explorer_inputs). archive_model_job.validate_spec has no field for any of them (OPTIONAL_TABLES = meeting_records, appearance_records), and model_arguments never passes them, so the publish path (archive_publish_job -> run_publish) cannot produce the files. Only the frozen builder (scripts/measure/explorer_tables_frozen.py, 196d25f2) and test_phase2_model_entities pass them.",
+  "origin": "941c2d12 (ct-gi01) added the tables to prepare_model_inputs without a job-spec selector; 1c2b52b8 added the pins and checks",
+  "owner_layer": "archive_model_job (the job spec selector and model_arguments), with lake pins for video_records and committee_records and the recording-decision files",
+  "ticket_fit": "ct-gi01 acceptance: the actual production job configuration selects pinned lake records and runs native model/export jobs",
+  "catalog": "kept: the files are intended in this release (owner 2026-11-01: nothing deferred); expected_but_absent stays a finding"
+ },
+ "recordings_tracks": {
+  "group_count": 2416,
+  "split": {
+   "changed_track_set": 266,
+   "gained_first_tracks": 2145,
+   "lost_all_tracks": 5
+  },
+  "keys_with_tracks": {
+   "base": 1359,
+   "candidate": 3743
+  },
+  "added_track_body_capture_shapes_v21": [
+   {
+    "shapes": [
+     "senate/players status unread"
+    ],
+    "tracks": 4829
+   },
+   {
+    "shapes": [
+     "senate/players status unread",
+     "senate/captions status 200",
+     "senate/captions status unread"
+    ],
+    "tracks": 452
+   },
+   {
+    "shapes": [
+     "senate/players status unread",
+     "senate/captions status 200"
+    ],
+    "tracks": 315
+   },
+   {
+    "shapes": [
+     "senate/captions status unread",
+     "senate/players status unread",
+     "senate/captions status 200"
+    ],
+    "tracks": 39
+   },
+   {
+    "shapes": [
+     "senate/captions status 200",
+     "senate/players status unread"
+    ],
+    "tracks": 1
+   }
+  ],
+  "distinct_replaced_bodies": 37,
+  "trace": {
+   "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/causes/attribution/tracks_trace.json",
+   "sha256": "5af09091012c8402c3111410e448742cd95b90625fc312bccc75d2d109a3fc39",
+   "size": 2288
+  },
+  "verdict": "ct-bxqa (the document rule reads the legacy owner record.status) plus ct-3l1c/ct-fh62, confirmed per body by tracks_trace.py, which applies the model's recording_fetch_candidates filter and recording-sources registry to the v21 and candidate captures. Gate 1 counts 2,416 matched keys: 2,145 gain first tracks, 266 change their track set, 5 lose empty tracks. The e1 figure +2,389 was keys with a track overall (1,359 -> 3,743 = +2,384) plus 5 removals; 239 of those keys are new recording keys (added-keys group). Of the 5,636 newly selected track bodies: 4,829 (2,145 + 266 keys) were not fetch candidates in v21 only because http_status was NULL (status unread); 807 (807 keys gaining a first track) were fetch candidates in v21 but for another video key: senate/captions rows at status 200 whose URL extracts a different key, so the body was a track of that other recording only. In every case the rows that now qualify for the key are senate/players rows whose v21 http_status was NULL and is 200 in the candidate, outcome stored on both sides (22,559 rows, joined by receipt line). No qualifying row changed URL or outcome. Raw read: 3 senate/players lines (2026-09-29 assemble 9608-9610) state record.status 200; the other rows were compared in captures only.",
+  "added_recording_keys": [
+   {
+    "source": "senate",
+    "with_tracks": true,
+    "with_event_ids": false,
+    "sample": [
+     "senate:aging121423",
+     "senate:approps092320",
+     "senate:appropsA020923"
+    ],
+    "count": 244
+   },
+   {
+    "source": "youtube",
+    "with_tracks": false,
+    "with_event_ids": false,
+    "sample": [
+     "youtube:j9R9hzq75ug"
+    ],
+    "count": 1
+   }
+  ],
+  "added_keys_verdict": "244 Senate keys whose only content is newly good m3u8 tracks (ct-bxqa, same per-body trace). youtube:j9R9hzq75ug (1): it enters through recording_video_links (a page linking the video, no page meeting, hence empty event_ids). The page is its own watch page, body dbd29f4e, receipts/youtube/watch-pages/2026-09-29/assemble-20260930.jsonl.gz lines 1-2. The readings are identical in v21 and the candidate (html 2cd57b09), but the capture rows go from http_status NULL to 200. The raw line 1 states record.status 200 for that sha256. So: ct-bxqa."
+ },
+ "capture_profile": {
+  "differing_keys": [
+   "engine_revision"
+  ],
+  "values": {
+   "engine_revision": [
+    "eb40c5457a450c3820900583af5b4da13313ca96",
+    "b0342a7368fa1e2c7e957f228c12f74cd1117f65"
+   ]
+  },
+  "pinned_runtime": "b0342a7368fa1e2c7e957f228c12f74cd1117f65",
+  "scope_identical": true,
+  "verdict": "only engine_revision moves, eb40c545 (live) to the pinned runtime; the candidate ran on the pinned docspec-rs b0342a73, which descends from 5dae6119 (ct-deg8, ss-vuwa). capture_scope.json is byte-identical."
+ },
+ "null_source_urls": {
+  "candidate_null_urls": 0,
+  "candidate_rows": 577181,
+  "report_groups": [
+   {
+    "group": "NULL url",
+    "cause": "defect: a published source address must not be null",
+    "count": -72,
+    "status": "defect"
+   },
+   {
+    "group": "72 NULL urls also present in the previous release",
+    "cause": "a published source address must not be null",
+    "count": 0,
+    "status": "defect",
+    "flag": true
+   }
+  ],
+  "verdict": "the candidate has 0 NULL source URLs; the \"72 NULL urls also present in the previous release\" flag is a gate-1 bug. release_comparison.py:460 computes persisting = candidate NULLs - sum(NULL url group counts); the group is -72 (72 removed), so 0 - (-72) = 72. It should subtract only added NULL rows (max(count, 0)), or count NULL rows present in both releases directly. From release_diff, moved by 946fa589; tests cover only an added NULL. The NULL url -72 group itself is the intended ct-n2cy fix (status defect by construction)."
+ }
+}

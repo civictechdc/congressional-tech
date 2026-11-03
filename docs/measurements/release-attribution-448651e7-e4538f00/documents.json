@@ -1,0 +1,364 @@
+{
+ "version": 1,
+ "base_release_id": "448651e720833d42d565ead119f59b893936626f680fdae4d13b6297e296c419",
+ "candidate_release_id": "0b24ce8af877d6755b756150bd3c14107c4964435917850e742c3b91e54c8f01",
+ "candidate_dirs": [
+  "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/r1b-run/inv-rca/model-output (byte-identical to d4-spec/model-output per spec-run)"
+ ],
+ "method": "Pairs and groups reproduced with release_comparison's own definitions (base and candidate links joined on link_key; one-to-one pairs for value groups). Each row is then attributed by its mechanism in the candidate's own evidence (source_members, valid_rendition_members, fingerprints) or by the naming rule that produces the candidate filename from the raw capture (final_url, trailing slash, context, member path), not by count. Per-row tables are pinned below.",
+ "per_row": [
+  {
+   "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/causes/attribution/documents-merged-rows.parquet",
+   "sha256": "f1ff6c3edbe305da26ed7f9325a786a688e28c40c86fc21f05f76532cca90f82",
+   "size": 690049
+  },
+  {
+   "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/causes/attribution/documents-filename.parquet",
+   "sha256": "4a9f8b7b785ad3ead2bf3f34901bd64dde2cf82ce989db3a14a6ddb873ac9296",
+   "size": 158680
+  },
+  {
+   "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/causes/attribution/documents-field-changes.parquet",
+   "sha256": "b41f3c85316e00a9409d3cbc080e426912b136b8654bd3b5009522066b629942",
+   "size": 57865
+  },
+  {
+   "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/causes/attribution/documents-is-saved.parquet",
+   "sha256": "de0b500e44963eac0a8551cc56576d826d5f262ba32ec39d7e0bfd85599ccae8",
+   "size": 32306
+  },
+  {
+   "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/causes/attribution/documents-added-rows.parquet",
+   "sha256": "53a93b23a08408f62e7a6e62f6d519c680f21a0cdeee902a6002e94634c5d3dc",
+   "size": 7135
+  }
+ ],
+ "groups": [
+  {
+   "id": "detail.parquet|merged rows|previous rows now share one document",
+   "count": -71755,
+   "also": "list.parquet",
+   "causes": [
+    {
+     "cause": "ZIP row now answers its member document",
+     "rows": 33769,
+     "commits": [
+      "f53018a0"
+     ],
+     "tickets": [
+      "ct-64el"
+     ],
+     "classification": "intended",
+     "evidence": "base row format zip; its body is no member of the candidate document, which holds that ZIP's members; raw: govinfo CHRG-*.zip fetch lines (4 read)"
+    },
+    {
+     "cause": "GovInfo rendition rejoined: ZIP members real again (good-container rule), publisher rendition group valid",
+     "rows": 26965,
+     "commits": [
+      "f53018a0"
+     ],
+     "reverses": [
+      "bc0a146c (D1, ct-sh4j)"
+     ],
+     "tickets": [
+      "ct-64el",
+      "ct-sh4j"
+     ],
+     "classification": "intended",
+     "evidence": "26,949 base bodies are ZIP members of the candidate document in one publisher rendition group with its saved body; 16 same-stem/publisher outside ZIPs; 4 read (CHRG .htm member + direct copy -> PDF document)"
+    },
+    {
+     "cause": "direct GovInfo HTML joins its ZIP member by equal text at the member's published endpoint",
+     "rows": 6943,
+     "commits": [
+      "a6a2f3e3",
+      "0bd33911"
+     ],
+     "tickets": [
+      "ct-o2pr",
+      "ct-64el"
+     ],
+     "classification": "intended",
+     "evidence": "base body fingerprint equals a ZIP-member body of the candidate document (6,942 with a member); catalog html-fingerprints expected -6,854; 4 read"
+    },
+    {
+     "cause": "byte-identical recovered copy is another address of the published document",
+     "rows": 4076,
+     "commits": [
+      "35c6e077",
+      "82ec16f3"
+     ],
+     "tickets": [
+      "owner decision 2026-11-02"
+     ],
+     "classification": "intended",
+     "evidence": "base saved_kind recovery, candidate original with the same body; inv-rca merge-audit.json: 0 addresses, recovery rows or values lost; 44 receipts read"
+    },
+    {
+     "cause": "API-response JSON row whose key now answers the hearing PDF",
+     "rows": 2,
+     "commits": [
+      "9e2bb6d3?"
+     ],
+     "tickets": [
+      "ct-n2cy"
+     ],
+     "classification": "unverified",
+     "evidence": "2 Senate Finance json rows read; mechanism not re-derived"
+    }
+   ],
+   "note": "Catalog expected zip-contents -60,616 (range -70,000..-20,000) as one cause; it is two mechanisms from one commit (33,769 + 26,965 = 60,734), plus html-fingerprints -6,943 and the recovery merge -4,076, which the catalog lists separately. Sum 71,755."
+  },
+  {
+   "id": "list.parquet|changed filename|value differs on matched key",
+   "count": 17870,
+   "causes": [
+    {
+     "cause": "captures.url is the final URL; the name is its last segment",
+     "rows": 16532,
+     "commits": [
+      "b9ac6cc5",
+      "d0d146b7"
+     ],
+     "tickets": [
+      "ct-yf1c"
+     ],
+     "classification": "intended (with a signal-loss question below)",
+     "evidence": "10 raw lines read: record.final_url names the file (Senate /download/x -> /imo/media/doc/Name.pdf; Files.Serve -> _cache/files/...)"
+    },
+    {
+     "cause": "trailing-slash URL named by its last non-empty segment",
+     "rows": 1283,
+     "commits": [
+      "3ed85c8c"
+     ],
+     "tickets": [
+      "ct-yf1c"
+     ],
+     "classification": "intended",
+     "evidence": "1,234 pages + 49 recovery-only rows whose original link ends in /; 4 raw lines and all 49 original links read"
+    },
+    {
+     "cause": "URL-less capture named by its context address",
+     "rows": 25,
+     "commits": [
+      "d4e2d3e0"
+     ],
+     "tickets": [
+      "ct-yf1c"
+     ],
+     "classification": "intended",
+     "evidence": "3 raw assembly lines read (url null, context govinfo BILLS xml)"
+    },
+    {
+     "cause": "ZIP member basename (member now a real, named copy)",
+     "rows": 28,
+     "commits": [
+      "f53018a0",
+      "2dbe87df"
+     ],
+     "tickets": [
+      "ct-64el"
+     ],
+     "classification": "intended"
+    },
+    {
+     "cause": "saved-file choice: a named, addressed copy of the saved body first",
+     "rows": 2,
+     "commits": [
+      "c31d3c40"
+     ],
+     "tickets": [
+      "ct-yf1c"
+     ],
+     "classification": "intended",
+     "evidence": "2 read"
+    }
+   ]
+  },
+  {
+   "id": "list/detail value groups following the filename: document_kind 3,887, document_family 3,512, congress 45, facts 4,676, measure_keys 18, committee_keys 2, document_date_source/document_date (filename part)",
+   "causes": [
+    {
+     "cause": "filename readings of the new effective name (same pair's filename changed, row-joined)",
+     "rows": {
+      "document_kind": 3887,
+      "document_family": 3512,
+      "congress": 45,
+      "facts": 4674,
+      "measure_keys": 18,
+      "committee_keys": 2
+     },
+     "commits": [
+      "b9ac6cc5",
+      "3ed85c8c",
+      "d4e2d3e0",
+      "f53018a0"
+     ],
+     "classification": "intended, except the losses below"
+    },
+    {
+     "cause": "facts without a filename change: measure_references added (hr3, hr7)",
+     "rows": 2,
+     "commits": [
+      "b8a4da13"
+     ],
+     "tickets": [
+      "ct-wx65"
+     ],
+     "classification": "intended"
+    }
+   ]
+  },
+  {
+   "id": "list.parquet|changed document_date (3,310) / detail document_date_source (3,283)",
+   "causes": [
+    {
+     "cause": "document newly linked to a meeting; date from the meeting",
+     "rows": 1961,
+     "commits": [
+      "284b3948"
+     ],
+     "tickets": [
+      "ct-66ns"
+     ],
+     "classification": "intended",
+     "evidence": "date_source NULL->meeting with meeting_keys changed on the same pair"
+    },
+    {
+     "cause": "date from the new filename (gained 994, changed 13, other 3)",
+     "rows": 1350,
+     "commits": [
+      "b9ac6cc5",
+      "3ed85c8c"
+     ],
+     "classification": "intended"
+    },
+    {
+     "cause": "date LOST: the final-URL name carries no date token the requested-URL name had",
+     "rows": 320,
+     "commits": [
+      "b9ac6cc5"
+     ],
+     "classification": "owner question",
+     "evidence": "12 read: 8 lost dates were right (03172021-ramos-testimony -> AdelinaRamos_WrittenTestimony March 17.pdf), 4 were wrong (term-expiry 2022-11-12, 1901-09-26)"
+    }
+   ]
+  },
+  {
+   "id": "other small value groups",
+   "causes": [
+    {
+     "cause": "alternates: HTML member becomes the PDF document's alternate",
+     "rows": 17,
+     "commits": [
+      "f53018a0"
+     ],
+     "classification": "intended",
+     "evidence": "all 17 read: CHRG PDFs gain an html alternate"
+    },
+    {
+     "cause": "saved_kind/date_kind/in_archive_since original->recovery: the real file is a retained import in raw",
+     "rows": 3,
+     "commits": [],
+     "classification": "unverified",
+     "evidence": "3 read (corpus-recovery imports, mode retained_import); commit not pinned"
+    },
+    {
+     "cause": "committee_keys lost with the final-URL name",
+     "rows": 2,
+     "commits": [
+      "b9ac6cc5"
+     ],
+     "classification": "owner question (same as date loss)"
+    }
+   ]
+  },
+  {
+   "id": "detail.parquet|added rows|no surviving link key",
+   "count": 182,
+   "causes": [
+    {
+     "cause": "ZIP members are documents (Senate Finance UNOS appendix members, CHRG members)",
+     "rows": 165,
+     "commits": [
+      "f53018a0",
+      "9e2bb6d3"
+     ],
+     "tickets": [
+      "ct-64el"
+     ],
+     "classification": "intended"
+    },
+    {
+     "cause": "newly eligible bodies: 10 unexpanded CHRG ZIPs (cdm_retry_loop) and 7 assembly pages with line-level status null",
+     "rows": 17,
+     "commits": [
+      "bdcde68e"
+     ],
+     "tickets": [
+      "ct-bxqa"
+     ],
+     "classification": "intended, 6 raw lines read"
+    }
+   ]
+  },
+  {
+   "id": "sources.parquet|changed is_saved",
+   "count": 3919,
+   "causes": [
+    {
+     "cause": "one final-URL source file now holds several requested addresses (http/https, /services/files/GUID); DM 7.6 is_saved is true on each address of the saved file",
+     "rows": 3595,
+     "commits": [
+      "b9ac6cc5"
+     ],
+     "classification": "intended"
+    },
+    {
+     "cause": "a ZIP member copy of the same bytes is now the saved file",
+     "rows": 320,
+     "commits": [
+      "f53018a0",
+      "2dbe87df"
+     ],
+     "classification": "intended"
+    },
+    {
+     "cause": "saved copy moved to another real address of the body",
+     "rows": 2,
+     "commits": [
+      "c31d3c40"
+     ],
+     "classification": "intended"
+    }
+   ]
+  },
+  {
+   "id": "sources.parquet|documents changed for a shared key",
+   "count": 39,
+   "causes": [
+    {
+     "cause": "19 documents split into page + PDF (detail split rows 20): a page no longer groups with its own PDF through its navigation links",
+     "rows": 39,
+     "commits": [
+      "2ca2e752"
+     ],
+     "classification": "intended, mechanism joined by document, not re-derived row by row"
+    }
+   ]
+  }
+ ],
+ "owner_questions": [
+  {
+   "question": "The final-URL name replaces the requested-URL name, and filename readings read only the effective name, so tokens only the requested URL had are dropped: 320 documents lose a filename date, 525 lose a kind, 2 lose committee keys.",
+   "evidence": "documents-field-changes.parquet; 12 dates read (8 right, 4 wrong)",
+   "recommendation": "Filename readings fall back to the requested URL's name for date, kind and committee where the effective name gives none (D3 semantics; moves catalog_version, so D3 and D4 re-run)."
+  }
+ ],
+ "not_done": [
+  "gate 2 vanished keys (deprioritized by the lead pending spec-run re-run with base input)",
+  "detail removed rows -356 not attributed",
+  "title (22,177) and meeting_keys (1,982) groups belong to other clusters"
+ ]
+}
