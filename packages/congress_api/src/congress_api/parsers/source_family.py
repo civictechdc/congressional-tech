@@ -110,6 +110,14 @@ def family(source="", url="", pointer=(), media_type=""):
         )
     ):
         return "congress/meetings"
+    if "senate" in combined:
+        if "caption" in combined or path.endswith((".vtt", ".cues.txt", ".txt")):
+            return "senate/captions"
+        if "player" in combined or "recordings" in path or path.endswith(".m3u8"):
+            return "senate/players"
+        if "listing" in combined:
+            return "senate/listings"
+        return "senate/pages"
     if "youtube" in combined:
         if (
             "caption" in combined
@@ -120,14 +128,6 @@ def family(source="", url="", pointer=(), media_type=""):
         if "/metadata/" in path or "watch" in path:
             return "youtube/watch-pages"
         return "youtube/api"
-    if "senate" in combined:
-        if "caption" in combined or path.endswith((".vtt", ".cues.txt", ".txt")):
-            return "senate/captions"
-        if "player" in combined or "recordings" in path or path.endswith(".m3u8"):
-            return "senate/players"
-        if "listing" in combined:
-            return "senate/listings"
-        return "senate/pages"
     if path.endswith("house-sites.json.gz"):
         return "house/pages"
     if "house" in combined:
