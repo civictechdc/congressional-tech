@@ -198,7 +198,7 @@ producer's environment.
 |---|---|
 | `get_dataset_info` | Available tables, coverage and published relationship/recipe IDs. Pass `table` for columns, identity and incoming/outgoing IDs; `relationship` for join meaning; `recipe` for bounded SQL examples. Also accepts `table: "schema"`, `"capture_scope"`, and `"capture_profile"`. |
 | `search_documents` | Title/filename search and exact Congress, kind, format, committee, meeting, bill/nomination, member or witness filters. |
-| `get_document` | A document's summary, paged source links, or paged recoveries. |
+| `get_document` | A document's summary, paged source links, paged recoveries, or verified extracted body text and snippet search (`section: "text"`). |
 | `search_entities` | Search the eight phase 2 entity tables with text and exact scalar filters. |
 | `get_entity` | One entity by its published key, or its directly associated documents. |
 | `query_sql` | One read-only DuckDB `SELECT`, including `WITH` and FROM-first SQL, with optional `?` parameters. All published tables are available. |
@@ -251,9 +251,11 @@ DuckDB's normal SQL behavior.
 File URLs follow the recorded body hash and exact suffix. Summaries include
 alternate formats; recordings include saved caption/transcript track URLs.
 Recovery records retain `kind` and `identity_note`: a substitute or related file
-is not necessarily the requested original. Fetch and read the files with the
-agent's own tools. The MCP searches metadata and does not download, extract, OCR,
-or search document bodies.
+is not necessarily the requested original. Pass `section: "text"` to `get_document`
+(with optional `page`, `offset`, `max_chars`, or `query`) to fetch, verify against
+`saved_body` SHA-256, and read or search extracted text from saved PDF, HTML, XML,
+and text bodies while keeping the DuckDB query worker air-gapped. The server does
+not perform OCR on image-only PDFs or cross-corpus full-text indexing.
 
 Hidden documents are excluded from ordinary searches and entity document pages.
 An exact document reference still resolves and exposes its review explanation.
