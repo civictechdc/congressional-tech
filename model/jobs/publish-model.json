@@ -57,11 +57,11 @@
       "mods": "6288a5f5a654b56d9a6392fa33637ba480a48ef479952f7054009257a6feaf30"
     },
     "video_records": {
-      "youtube_cache": "572a67373535631dc2544fa4e0e77d8995c196ca951702575ea8b6c1d7300c4f",
-      "youtube_api": "97450bb36ffddad4864938af39ff255a533d5a52f1c0865d303eeb5859602ac0"
+      "youtube_cache": "fd04125d91b4fb14f075ca22f113c6d544b017ddb8abe889dc8a780e705a3bd1",
+      "youtube_api": "f792c7dd08fea8e4fdb8f2eda4f955ffb4046d3ed2d51da8f41958a86713e85f"
     },
     "committee_records": {
-      "house_xml": "33896cd8b8125e6f68be0665b144d8896b0ad7fbd8a3b2e03a7da2b08076b9fb"
+      "house_xml": "83d27c2ae65792ef9e00a878329068b6fe4a757386efce09e8beebc4cd54d2f3"
     }
   },
   "catalog_version": "6528235b033633460b3a2f008adb4dba66f2fcfb82c0640caf90203e5e86f4f1",

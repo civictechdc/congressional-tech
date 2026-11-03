@@ -34,7 +34,7 @@ from congress_api.retention.provenance import file_pin,parquet_output,run_job
 from docspec_client.models import DocSpecFailure
 from viewer_publication.archive_controller import _save_continuation
 from viewer_publication.archive_model_job import PROVENANCE,_local,_pin,_selector,execute as execute_model,validate_spec as validate_model
-from viewer_publication.archive_selective_records import RECORD_TABLES,SelectiveStop,Bodies,complete_d4,differential,stage_d4
+from viewer_publication.archive_selective_records import EXPLORER_TABLES,RECORD_TABLES,SelectiveStop,Bodies,complete_d4,differential,stage_d4
 
 PREDICATE_TABLES=('captures','filename_readings','meeting_records','appearance_records')
 SUITES=('invariants','model_invariants','url_state_invariants','profile_completeness',
@@ -111,10 +111,10 @@ def _verify_pins(selective):
         raise ValueError('Selective backfill is local-only; the model runtime names a remote')
 
 
-def _versions():
+def _versions(names=RECORD_TABLES):
     from viewer_publication.archive_model_profile import current_parser_versions
-    pins=current_parser_versions(RECORD_TABLES)
-    return dict(filename_readings=filenames.current_version(),**{name:pins[name] for name in RECORD_TABLES})
+    pins=current_parser_versions(names)
+    return dict(filename_readings=filenames.current_version(),**{name:pins[name] for name in names})
 
 
 def _source(pin):
@@ -206,8 +206,9 @@ def _open_state(spec,engine):
     # A model retry with another runtime keeps D1-D4; only the tables' definition is identity.
     definition={k:v for k,v in spec.items() if k not in ('work','resume','decided_at','through')}
     definition['selective']=dict(definition['selective'],model={k:v for k,v in spec['selective']['model'].items() if k!='engine_config'})
+    versioned_tables=set(RECORD_TABLES)|(set(EXPLORER_TABLES)&set(spec['tables']))
     identity=sha256(json.dumps(dict(definition=definition,captures=captures.current_version(),
-        versions=_versions(),parsers={p:readings.current_version(p) for p in ('sniff','html','xml','json')},
+        versions=_versions(versioned_tables),parsers={p:readings.current_version(p) for p in ('sniff','html','xml','json')},
         engine=[engine.source_revision,engine.binary_sha256]),sort_keys=True,default=str).encode()).hexdigest()
     path=work/'state.json'
     if path.exists():
@@ -386,6 +387,15 @@ def _writer(run):
     except (ValueError,OSError):return None
 
 
+def _table_counts(run,name):
+    """Report seeded D4 counts for archive tables and completion counts for Explorer tables."""
+    selection=run.state['selection'].get(name);explorer=name in EXPLORER_TABLES
+    stages=run.state.get('completion',{}) if explorer else run.state.get('d4',{})
+    return dict(base=selection['base'] if selection else 0,hits=selection['hits'] if selection else 0,
+        selected=selection['selected'] if selection else 0,
+        reused=run.state.get('seeded',{}).get(name,0 if explorer else None),appended=stages.get(name,{}).get('appended'))
+
+
 def _producers(run):
     """Step 8b (gate 5): one producer record per pinned snapshot, written by this job.
 
@@ -403,9 +413,10 @@ def _producers(run):
     recorded='with production' if run.state.get('writer_commit')==writer['commit'] else 'after production, on resume'
     directory=run.work/'producers';directory.mkdir(exist_ok=True);pins={}
     for name,pin in sorted(run.state['pins'].items()):
+        counts=_table_counts(run,name)
         record=dict(version=1,input=name,selector=dict(kind='native_table',**pin),job=PRODUCER_JOB,commit=writer['commit'],
             lockfile_digest=writer['lockfile_digest'],recorded=recorded,run_identity=run.state.get('identity'),
-            reused_rows=run.state.get('seeded',{}).get(name),appended=run.state.get('d4',{}).get(name,{}).get('appended'))
+            reused_rows=counts['reused'],appended=counts['appended'])
         path=directory/(name+'.json');path.write_text(json.dumps(record,indent=1,sort_keys=True)+'\n')
         pins[name]=dict(path=str(path),**file_pin(path))
     run.state['producers']=pins;run.save()
@@ -414,9 +425,10 @@ def _producers(run):
 def _model_value(run):
     from viewer_publication.archive_model_profile import current_parser_versions
     model=run.selective['model'];value=json.loads(Path(model['template']).read_text())
+    versioned_tables=set(value.get('parser_versions',{}))|set(RECORD_TABLES)|(set(EXPLORER_TABLES)&set(run.state['pins']))
     value.update(engine_config=model['engine_config'],catalog_version=_versions()['filename_readings'],
         output=str(run.work/'model-output'),scratch=str(run.work/'model-scratch'),
-        parser_versions=current_parser_versions(set(value.get('parser_versions',{}))|set(RECORD_TABLES)))
+        parser_versions=current_parser_versions(versioned_tables))
     for name,pin in run.state['pins'].items():value[name]=dict(kind='native_table',**pin)
     if 'spicy_regs' in model:value['spicy_regs']=model['spicy_regs']
     for field,kind in PROVENANCE.items():
@@ -457,8 +469,7 @@ def _tables_report(run,started):
     report=dict(status='tables_built',executed=True,work=str(run.work),seconds=round(time.monotonic()-started,1),pins=state['pins'],
         producers=state.get('producers'),
         differential=state['differential'],rebuilt_diff=state.get('rebuilt_diff'),completion=state.get('completion'),
-        tables={name:dict(base=state['selection'][name]['base'],hits=state['selection'][name]['hits'],selected=state['selection'][name]['selected'],
-            reused=state['seeded'][name],appended=state.get('d4',{}).get(name,{}).get('appended')) for name in ALL_TABLE_NAMES})
+        tables={name:_table_counts(run,name) for name in (*ALL_TABLE_NAMES,*EXPLORER_TABLES) if name in run.spec['tables']})
     (run.work/'tables-report.json').write_text(json.dumps(report,indent=1,sort_keys=True))
     return report
 
@@ -481,8 +492,7 @@ def _outputs(run,started):
     report=dict(status='built',executed=True,work=str(work),release_id=state['model']['release_id'],release=state['model']['output'],seconds=round(time.monotonic()-started,1),
         producers=state.get('producers'),
         differential=state['differential'],rebuilt_diff=state.get('rebuilt_diff'),filenames_recomputed=state['daily']['filenames_recomputed'],
-        tables={name:dict(base=state['selection'][name]['base'],hits=state['selection'][name]['hits'],selected=state['selection'][name]['selected'],
-            reused=state['seeded'][name],appended=state.get('d4',{}).get(name,{}).get('appended')) for name in ALL_TABLE_NAMES},
+        tables={name:_table_counts(run,name) for name in (*ALL_TABLE_NAMES,*EXPLORER_TABLES) if name in run.spec['tables']},
         completion=state.get('completion'))
     (work/'selective-report.json').write_text(json.dumps(report,indent=1,sort_keys=True))
     return report

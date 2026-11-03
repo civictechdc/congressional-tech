@@ -17,13 +17,16 @@ from pathlib import Path
 import pyarrow as pa
 import pyarrow.parquet as pq
 
-from congress_api.lake import appearance_records,capture_staging,captures,filenames,meeting_records,tables
+from congress_api.lake import appearance_records,capture_staging,captures,committee_records,filenames,meeting_records,tables,video_records
 from congress_api.lake._record_producer import INLINE_CONGRESS_MEETINGS_SQL,_candidate_rel_paths,stage_record_table
 from congress_api.lake.readings import BackfillRequired
 from congress_api.retention.provenance import parquet_output,run_job
 
 RECORD_TABLES={'meeting_records':(meeting_records,meeting_records.build_meeting_record_row),
                'appearance_records':(appearance_records,appearance_records.build_appearance_record_row)}
+# Explorer tables (ct-gi01) have no base: a run that names them builds them in full here,
+# through the same completion pass, so they come from this run's captures.
+EXPLORER_TABLES={'video_records':video_records,'committee_records':committee_records}
 SELECTION_SCHEMA=pa.schema([('record_sha',pa.string()),('source',pa.string()),('stored_suffix',pa.string()),
     ('receipt_key',pa.string()),('receipt_line',pa.int64()),('source_url',pa.string())])
 
@@ -135,14 +138,20 @@ def complete_d4(run,bodies):
     with no budget so the work list exists before any body is opened; every unavailable
     body is listed at once. The second pass repeats the O(captures) planning, named.
     """
+    from viewer_publication.archive_selective import _ensure_table
     done=run.state.setdefault('completion',{});raw_store,_=run.raw_store()
     limit=run.spec['batch_size']*run.spec['max_batches']
-    for name,(module,_build) in RECORD_TABLES.items():
+    producers=[(name,module,True) for name,(module,_build) in RECORD_TABLES.items()]
+    producers+=[(name,module,False) for name,module in EXPLORER_TABLES.items() if name in run.spec['tables']]
+    for name,module,routed in producers:
         if name in done:continue
         directory=run.attempt/('complete-'+name);directory.mkdir()
-        common=dict(captures=run.head('captures','complete-'+name+'/captures'),readings=run.head('readings','complete-'+name+'/readings'),
+        if not routed:(directory/'ensure').mkdir();_ensure_table(run,name,directory/'ensure')
+        common=dict(captures=run.head('captures','complete-'+name+'/captures'),
             existing=run.head(name,'complete-'+name+'/head'),engine=run.engine,local_root=bodies.root,raw_store=raw_store,
             unreadable_files=run.state['daily']['unreadable'],decided_at=run.decided_at,unreadable_store=None)
+        # D4 tables route House XML by reading; the Explorer producers read no readings.
+        if routed:common['readings']=run.head('readings','complete-'+name+'/readings')
         bodies.root.mkdir(parents=True,exist_ok=True)
         try:
             module.stage(work=directory/'plan',max_work_items=0,**common)

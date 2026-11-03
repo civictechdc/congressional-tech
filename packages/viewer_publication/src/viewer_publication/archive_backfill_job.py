@@ -29,10 +29,14 @@ def _table_ref(value):
     return dict(namespace=list(value['namespace']),name=value['name'])
 
 
+EXPLORER_TABLE_NAMES=('video_records','committee_records')
+
+
 def _tables(value):
-    if not isinstance(value,dict) or set(value)!=set(ALL_TABLE_NAMES):
-        raise ValueError('Backfill job requires all five archive lake table references')
-    refs={name:_table_ref(value[name]) for name in ALL_TABLE_NAMES}
+    # The five archive tables, and optionally both Explorer tables (built by the selective job).
+    if not isinstance(value,dict) or set(value) not in (set(ALL_TABLE_NAMES),set(ALL_TABLE_NAMES)|set(EXPLORER_TABLE_NAMES)):
+        raise ValueError('Backfill job requires all five archive lake table references, and both Explorer tables or neither')
+    refs={name:_table_ref(value[name]) for name in value}
     if len({json.dumps(t,sort_keys=True) for t in refs.values()})!=len(refs):
         raise ValueError('Backfill tables must name five distinct explicit targets')
     return refs
@@ -97,8 +101,8 @@ def load_spec(path):
     if 'selective' in value:
         from viewer_publication.archive_selective import validate_selective
         result['selective']=validate_selective(value['selective'],base=base,catalog_root=catalog_root,tables=result['tables'])
-    elif result['resume'] or 'through' in value:
-        raise ValueError('Only a selective backfill can resume or stop early')
+    elif result['resume'] or 'through' in value or set(result['tables'])&set(EXPLORER_TABLE_NAMES):
+        raise ValueError('Only a selective backfill can resume, stop early or build the Explorer tables')
     if 'through' in value:
         from viewer_publication.archive_selective import THROUGH
         if value['through'] not in THROUGH:raise ValueError('Selective through must be tables or model')
