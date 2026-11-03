@@ -17,8 +17,10 @@ download document bodies. Reopening the client reuses the selected snapshot.
 Report the selected release and available tables. Ask what the user wants to
 research, or continue their existing congressional question. Discover published
 keys and relationships through `get_dataset_info` before joining unfamiliar
-tables. Use `query_sql` for read-only joins and aggregates, and fetch returned
-document URLs with the client's own reading tools when the question needs text.
+tables. Use `query_sql` for read-only joins and aggregates, and call
+`get_document` with `section: "text"` (and optional `page`, `offset`, `max_chars`,
+or `query`) when the question needs verified text or snippet search inside an
+archived document.
 State the collection's published limits; missing records do not prove absence.
 
 If its tools are unavailable, use the [setup guide](https://civictechdc.github.io/congressional-tech/mcp/)
