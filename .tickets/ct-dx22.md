@@ -64,3 +64,7 @@ Round 1b 2026-11-02 (lead): Two-way package-to-meeting rule moves 392 rows on 93
 **2026-11-03T01:00:52Z**
 
 2026-11-02 (Double-Blind Verification): Verified in .cache/archive-release/r1b-frozen/after-out that re-parsing mods with held_dates and title under ct-dx22 resolves 10/10 false CHRG-* transcript collisions (DB-1: 109299, 109300, 109418, 110066, 115519, 115556, 117540, 117541, 335668, 335928) and increases mods witnesses with event_id from 6,225 (publish_v21) to 33,438 (5.4x).
+
+**2026-11-03T02:06:00Z**
+
+2026-11-02 (/etl-workflow Cross-Table Audit — F1): While entity-meetings.sql (meetings.transcripts) and appearance-observations.sql (witnesses) filter CHRG-* package links through package_meeting_links (with fallback WHERE f.package_id IS NULL), model/sql/component-meeting-links.sql:6,13 still joins raw meeting_transcript_links and model/sql/source-annotations-meetings.sql:1-5 still injects raw unnest(p.named_meetings) into document_metadata.meeting_keys -> list.meeting_keys. Consequently, 6,700 rejected (package_id, event_id) edges (including CHRG-117shrg52109 on 330128, CHRG-116shrg37808 on 326063, CHRG-119shrg62654 on 337427, and swapped 100083/100180) still leak into list.meeting_keys. Fix in component-meeting-links.sql and source-annotations-meetings.sql (tracked with ct-j2yo) so list.meeting_keys uses the same vetted package_meeting_links rule as meetings.transcripts.
