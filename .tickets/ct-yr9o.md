@@ -2,7 +2,7 @@
 id: ct-yr9o
 status: open
 deps: []
-links: []
+links: [ct-717p]
 created: 2026-11-02T18:20:46Z
 type: bug
 priority: 3

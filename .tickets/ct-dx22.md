@@ -1,8 +1,8 @@
 ---
 id: ct-dx22
-status: closed
+status: open
 deps: []
-links: [ct-qg8e, ct-kthe, ct-j2yo, ct-x78c, ct-5w9u, ct-egg6, ct-66ns, ct-2o4d, ct-67k1]
+links: [ct-qg8e, ct-kthe, ct-j2yo, ct-x78c, ct-5w9u, ct-egg6, ct-66ns, ct-2o4d, ct-67k1, ct-lx67]
 created: 2026-11-02T00:36:42Z
 type: bug
 priority: 2
@@ -72,3 +72,25 @@ Round 1b 2026-11-02 (lead): Two-way package-to-meeting rule moves 392 rows on 93
 **2026-11-03T12:48:59Z**
 
 Implemented and verified on r3-mcp / release-train (4d583687): removed unvetted CHRG-* named_meetings from list.meeting_keys in document-normalized.sql, document-recovery-normalized.sql, and source-annotations-meetings.sql so list.meeting_keys agrees 100% with vetted package_meeting_links in detail.meetings.
+
+**2026-11-04T15:07:16Z**
+
+2026-11-04 confirmed recurrence: a combined print's witnesses receive the wrong individual sitting date. Reopened on fresh live/PDF/Parquet evidence, preserving the earlier multi-package-collision fixes and history. Live release e4538f0064e18168089a77891c93a16e175af18ed75eb7a3ac8039aa1a8db9fd; checkout inspected separately at 730a2d8e0c55880fc058d13cc74d265fc315f41f. This is ticket-only follow-up to chaos-personas-20261104; no repair, tests, source regeneration or publication was performed. Fresh runtime schema is retained in .cache/archive-release/chaos-personas-20261104/ticket-accountability/runtime-check.json.
+
+Bounded reproduction: package CHRG-112hhrg72238, document reference release=e4538f0064e18168089a77891c93a16e175af18ed75eb7a3ac8039aa1a8db9fd, link_key=19397c330522ea96. SHA256-verified 524,902-byte PDF body is 19397c330522ea962c88017f1e8bf496effc66fbaf306924f5fbb950d7cf11c8. Its physical PDF page 3 / printed contents III places Thomas L. Farmer and Raymond J. Reese under TUESDAY, JULY 12, 2011. The release instead publishes both witness keys c91a7472a2a51731 (Farmer) and 9fb4f01557e8b8b6 (Reese) with event_id=100098, whose meeting_date is 2011-06-02. The correct July sitting is event_id=100099. Both dates are legitimately covered by this print; a document-to-meeting link for both is not a per-witness date assertion.
+
+Useful read-only reproduction: SELECT w.witness_key,w.name,w.package_id,w.event_id,m.meeting_date FROM witnesses w LEFT JOIN meetings m USING(event_id) WHERE w.witness_key IN ('c91a7472a2a51731','9fb4f01557e8b8b6'); then independently read the retained PDF contents page. Exact MCP requests/responses are accountability/calls.jsonl calls 20,21,37,40; independent Parquet values in independent-table-audit.json; source-case-audit.json contains the separate PDF reading and positive/planted-wrong-date controls. All are under .cache/archive-release/chaos-personas-20261104/. Only these two witnesses were individually adjudicated; no corpus-wide error count is asserted.
+
+Current owning source path at the inspected revision: package-meeting-links.sql permits each agreeing held day, print-meeting-agreement.sql compares whole-print held_dates/witness lists/title, and appearance-observations.sql:175-198 assigns a MODS appearance's event/occasion through the package-level join. The MODS extraction (appearance_records.py:1088-1148) records package held_dates/title but not each witness's sitting. This source inspection identifies the missing distinction; exact raw MODS-to-live producer replay was not performed. Merely broadening a package-to-meeting join could copy the whole witness list to both dates and make the error larger.
+
+Additional smallest acceptance for this recurrence: (1) a fixed two-date print fixture proves Farmer/Reese belong to July 12 and a June-only witness stays in June; keep the print linked to both legitimate dates; (2) never copy every package witness onto every held date; if the source cannot identify an individual sitting, preserve the appearance as package-only/explicitly unresolved instead of fabricating a date; (3) retain the existing multi-package and same-day collision controls; (4) document affected records and required parser/model pins, qualify and publish the corrected output, and read these named witnesses back through the installed selected release before closure. Local fixture success alone does not repair live e4538f00. Date assignment and organization parsing are separate defects.
+
+**2026-11-04T15:23:03Z**
+
+Coordinated producer plan frozen 2026-11-04: docs/plans/congress-explorer-root-cause-remediation-20261104.md. This addendum refines remaining work without rewriting prior evidence. Live evidence remains release e4538f0064e18168089a77891c93a16e175af18ed75eb7a3ac8039aa1a8db9fd; source inspected at 730a2d8e0c55880fc058d13cc74d265fc315f41f. Planning/ticket update only: no implementation, tests, prepare, acquisition, data changes or publication.
+
+Owner: appearance model binding in model/sql/appearance-observations.sql:171-198, using retained MODS held_dates/title and the existing vetted package agreement. A multi-date print's package-wide witness list stays package-scoped with event_id=NULL absent source evidence for the individual sitting, even if only one package-to-meeting edge currently matches. Keep the print's legitimate multiple meeting links. Do not add a per-day transcript parser or copy the whole witness list onto every held date. This narrows the prior addendum: the independently known July date is the counterexample; reconstruction of that date is not required where the maintained record has only package scope. Phase-2 annex section 4.2 permits unresolved package-only MODS appearances; sections 4.6-4.7 preserve source occurrences and explicit unknowns.
+
+Add decisive cases to maintained owning/native tests: the retained two-date print with Farmer/Reese, a source-explicit June witness, a package-only unresolved witness, and the existing multi-package/same-day collision controls. Retain every source occurrence/locator/context, panels, links and literal affiliations. Under occurrence-v2, changing occasion changes witness_key; account for each key and downstream document-witness-link change in gate-1 cause/disposition evidence. Do not force key stability or invent witness redirects; gate2 separately protects document public link continuity.
+
+Retained held_dates should permit a model-only binding repair, reusing appearance records without parser replay. Prove the exact affected interpretation closure before claiming selective output reuse; final validation/export may still read inherited populations. Fixture work can proceed alongside affiliation, nomination and recording work. No hard dependency on those fixes or new acquisition. Finish source/native values, existing candidate gates and installed selected-release replay; local passing output does not repair unchanged e4538f00.

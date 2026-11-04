@@ -30,3 +30,15 @@ Planted wrong ETag/size and unquoted ETag refused; missing candidate fails close
 **2026-11-04T16:39:03Z**
 
 Landed 61ec174b on main (pushed). production-offline full lane exit 0 on the committed code (11,368 passed; all files predate the lane start); touched files re-run 176 passed. Tests: listed-ETag read of unpinned capture, capture MD5 wins, planted wrong ETag refuses before append, absent candidate refuses before any append (fresh and pending), absent non-candidate no effect, planted wrong size refused at read, unquoted ETag fails closed, budget = max_work_items minus pending backlog, backlog past budget refuses before staging, HEAD retry/give-up. Manual nightly run 4 started 2026-11-04 ~11:45 to confirm a publish.
+
+**2026-11-04T17:25:24Z**
+
+Nightly run 5 (ebaa6c2a): daily passed listing custody and the TLS retry held (5 x 429, 1 x 500, 1 x 502, all retried once); daily returned backfill_required as designed. Backfill ran 660 s then failed writing backfill-report.json: readings result carries Path values (work_list, batch readings). Fixed in bcbc7c12 (paths serialized as text; other non-JSON still raises; test fails without the fix). Run 6 started on main bcbc7c12.
+
+**2026-11-04T17:33:20Z**
+
+Run 6 (origin/main ebaa6c2a; local fixes unpushed) published nothing: daily refused producer_unrecorded (appearance_records). Cause: run 5's backfill called produce_daily without the producer ledger and appended 14,972 appearance_records rows (snapshot 1297563386327530412 -> 741356244630763808, one append) with no record. The publish job exited 0 on that stop, so the launcher wrote status ok. Fixes 2b3f20ef: backfill spec pins the publisher's producer anchors and passes the ledger (a daily R2 backfill without them refuses at load); publish exits 2 whenever its daily ran and did not complete. Repair (owner-approved): wrote the missing record lake/producers/01a1a35c-5f95-7150-aeb0-30b20296cd34/741356244630763808.json (sha256 8f5acfdf..., 1145 B) exactly as daily._record_moved would have: job daily.py, commit ebaa6c2a, uv.lock digest adc74b4f..., base = anchored head + anchor pin. decided_at 2026-11-04T17:12:31Z is the backfill process start (watchdog report mtime minus elapsed), not the job's own clock, which was never written out; gate 5 does not check decided_at. Verified before writing: no record named the head, base record found, lineage is a single append. Script and appended parquet: .cache/archive-release/investigations/ct-94hw-producer-repair/. Pushed main.
+
+**2026-11-04T17:43:28Z**
+
+Run 7 (2b3f20ef): producer preflight passed (record repair held). Failed in the raw-custody scope job: scoped-captures export ordered by receipt_key alone, not unique (26,281 captures / 6,941 bodies; receipts with several candidate lines). Run 5 passed only because its candidates had one line per receipt. Fixed 89a8d2df: order by (receipt_key, receipt_line, capture_index); new test fails with the production error under the old ordering. Nothing appended (check runs before captures move). Run 8 started on 89a8d2df.

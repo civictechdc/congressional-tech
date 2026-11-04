@@ -2,7 +2,7 @@
 id: ct-8cno
 status: open
 deps: []
-links: [ct-m104, ct-itcg]
+links: [ct-m104, ct-itcg, ct-mx3g]
 created: 2026-11-03T01:00:02Z
 type: feature
 priority: 2
@@ -44,3 +44,23 @@ Closed 2026-11-03 after full D1-D4 + model build, Gates 1-5 pass (model/jobs/rel
 **2026-11-04T02:21:36Z**
 
 Reopened 2026-11-03 (post-release acceptance test): rosters.parquet in live e4538f00 has congress 119 only (2,973 rows). The archive-side SQL landed (3a91ee98); 113-118 history is blocked upstream on spicy-stack ss-ehci (dated roster captures per Congress on spicy-regs main; the earlier branch prototype was retired by owner decision 2026-10-30).
+
+**2026-11-04T15:07:16Z**
+
+2026-11-04 accountability investigation: missing upstream history still blocks historical normalization. Live release e4538f0064e18168089a77891c93a16e175af18ed75eb7a3ac8039aa1a8db9fd; checkout inspected separately at 730a2d8e0c55880fc058d13cc74d265fc315f41f. This is ticket-only follow-up to chaos-personas-20261104; no repair, tests, source regeneration or publication was performed. Fresh runtime schema is retained in .cache/archive-release/chaos-personas-20261104/ticket-accountability/runtime-check.json.
+
+For e4538f00 the independent roster count remains 2,973 rows, Congress 119 only; the fresh runtime metadata agrees. The normalized hearing-count query has matching rosters for 148 of 188 committee associations with hearings in Congress 119, and cannot normalize Congresses 112–118. Evidence: .cache/archive-release/chaos-personas-20261104/independent-table-audit.json; accountability/calls.jsonl call 55; investigation-accountability/cases.json P3Q1. The 148/188 figure is committee associations in that query population, not proof those unmatched committees should all have seats.
+
+Current model/sql/entity-rosters.sql:27-40 reads, deduplicates and retains supplied Congress values from spicy_committee_assignments; it cannot synthesize history absent from its pinned generation. Verified upstream dependency remains open /Users/mikewolfd/Work/spicy-stack/.tickets/ss-ehci.md: dated source-catalog-selected roster captures on main's roster implementation, explicit read failures, and built/published per-Congress history. Its owner decision retires the old branch prototype. Treat that current upstream plan as authoritative rather than reviving the superseded branch/YAML approach from this ticket's older Design prose.
+
+Smallest remaining acceptance: finish and publish ss-ehci's dated history, pin that generation, retain the existing key/reference invariants, qualify/publish archive output, then demonstrate historical committee_roster queries against the installed selected release. The persona's 112th-Congress request lies outside the stated 113th–119th schema-support span and needs a separate source/coverage decision; this ticket does not silently promise it. Correcting ct-mx3g's wording is independent from acquiring history. Preserve status open; no data or pin changes were made.
+
+**2026-11-04T15:23:03Z**
+
+Coordinated producer plan frozen 2026-11-04: docs/plans/congress-explorer-root-cause-remediation-20261104.md. This addendum refines remaining work without rewriting prior evidence. Live evidence remains release e4538f0064e18168089a77891c93a16e175af18ed75eb7a3ac8039aa1a8db9fd; source inspected at 730a2d8e0c55880fc058d13cc74d265fc315f41f. Planning/ticket update only: no implementation, tests, prepare, acquisition, data changes or publication.
+
+Owner split: open spicy-stack ss-ehci supplies dated source-catalog-selected roster history on main; archive entity-rosters.sql:27-40 retains supplied Congress values, deduplicates and exports them. The retired branch prototype is not an implementation base. Preserve literal source Congress, dated provenance, per-Congress committee/member multiplicity and explicit failed-read/missing-history outcomes; do not infer Congress from URLs or fabricate the persona's unsupported 112th data.
+
+Hard dependency: an accepted, published upstream history generation before changing the archive input pin and claiming 113th-118th roster availability. Keep current 119-only data/status explicit while that is unresolved. Archive fixture/key/reference checks and wording acceptance can proceed in parallel; ct-mx3g truthful metadata does not wait for acquisition. Add only representative historical/current and absent-history cases to maintained tests; reference-key parity and no duplicate committee/member seat assertions remain required.
+
+Once the upstream generation exists, record its exact pin/delta and affected archive dependency closure, reuse unchanged records/completions, and measure expected memory/scratch/work before a heavy run under the existing watchdog. No broad raw scan, backfill or performance claim is authorized by this plan. Closure requires source-history evidence, native roster invariant/parity, qualified publication and actual committee_roster queries against the installed selected release, not schema support or local SQL alone.
