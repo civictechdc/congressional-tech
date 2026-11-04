@@ -103,7 +103,7 @@ def job_limits(path, label):
 
 
 def install(artifact, credentials, remote, directory, *, client, local_limits=None, host_limits=None,
-            pin_file=RUNTIME_PIN_FILE):
+            timeout_seconds=120, pin_file=RUNTIME_PIN_FILE):
     """Read exactly one selected private object; create no native workspace/provider state.
 
     Remote jobs that run engine specs need host_limits; local jobs always carry local_limits.
@@ -142,7 +142,7 @@ def install(artifact, credentials, remote, directory, *, client, local_limits=No
         version=1,
         binary='docspec',
         workspace='workspace',
-        timeout_seconds=120,
+        timeout_seconds=timeout_seconds,
         source_revision=artifact['source_revision'],
         platform=artifact['platform'],
         build_features=build_features,
@@ -206,6 +206,8 @@ def main(argv=None):
     parser.add_argument('--local-limits', type=Path, default=Path(__file__).resolve().parents[1] / 'docspec-local-limits.json')
     parser.add_argument('--host-limits', type=Path, default=Path(__file__).resolve().parents[1] / 'docspec-hosted-limits.json',
                         help='Engine limits for the remote runtime on the hosted runner.')
+    parser.add_argument('--timeout-seconds', type=int, default=3600,
+                        help='Per-command engine timeout for the remote runtime; whole-table plans exceed 120 s.')
     parser.add_argument('--pin-file', type=Path, default=RUNTIME_PIN_FILE, help='Committed engine runtime pin file.')
     parser.add_argument('--directory', type=Path, required=True)
     parser.add_argument('--output', type=Path, required=True)
@@ -221,7 +223,8 @@ def main(argv=None):
             raise SetupFailure('Local DocSpec credentials require private file permissions (0600)')
         config, report = install(artifact, credentials, args.remote, args.directory,
             client=make_client(credentials), local_limits=args.local_limits if args.local else None,
-            host_limits=None if args.local else args.host_limits, pin_file=args.pin_file)
+            host_limits=None if args.local else args.host_limits,
+            timeout_seconds=120 if args.local else args.timeout_seconds, pin_file=args.pin_file)
         if args.local:
             subprocess.run([sys.executable, str(Path(__file__).resolve().parents[2]/'scripts/dev.py'),
                 'doctor', '--lane', 'production-offline'],

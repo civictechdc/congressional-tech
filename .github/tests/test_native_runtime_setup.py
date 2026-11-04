@@ -83,12 +83,12 @@ def test_remote_install_carries_the_committed_hosted_limits(tmp_path, inputs, mo
     monkeypatch.setattr(subprocess, 'run', lambda *a, **k: pytest.fail('Native process started'))
     hosted = ROOT / '.github/docspec-hosted-limits.json'
     config, _ = value.install(descriptor, credentials, ROOT / '.github/docspec-remote.json', tmp_path / 'runtime',
-        client=ArtifactClient(binary), host_limits=hosted)
+        client=ArtifactClient(binary), host_limits=hosted, timeout_seconds=3600)
     assert (tmp_path / 'runtime/limits.json').stat().st_mode & 0o777 == 0o600
     from docspec_client import NativeDatasets
     native = NativeDatasets.from_config(config)
     assert native._remote_secrets == credentials
-    assert native.limits is not None
+    assert native.limits is not None and native.timeout == 3600
     assert json.loads((tmp_path / 'runtime/limits.json').read_text()) == json.loads(hosted.read_text())
     # The watchdog stops publish at its rss_gb; the engine pool must leave room under it.
     assert json.loads(hosted.read_text())['memory_bytes'] < json.loads((ROOT / '.github/archive-jobs.json').read_text())['publish']['rss_gb'] * 1024**3
