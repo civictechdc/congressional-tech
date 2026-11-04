@@ -11,6 +11,7 @@ export interface ArchiveEntityContext {
   resolve: (key: string) => Promise<number | null>;
   entry: (index: number, signal?: AbortSignal) => Promise<any>;
   versions: (index: number, signal?: AbortSignal) => Promise<any[]>;
+  witnessKeyMap?: (key: string) => Promise<{ key: string; status: string; successor: string | null; basis: string | null; candidates: string[] } | null>;
 }
 
 export function resolveCommitteeHistoricalName(committee: any, dateOrCongress?: any): string {
@@ -647,6 +648,16 @@ export function createArchiveEntities(ctx: ArchiveEntityContext) {
     if (!clean) return null;
     const [wIdx, mIdx, memIdx] = await Promise.all([witnessesIndex(), meetingsIndex(), membersIndex()]);
     let found = wIdx.byKey.get(clean);
+    let redirectedFrom: string | null = null;
+    if (!found && ctx.witnessKeyMap) {
+      const mapped = await ctx.witnessKeyMap(clean);
+      if (mapped && !mapped.successor) return { witness_key: clean, retired: mapped };
+      if (mapped) {
+        found = wIdx.byKey.get(mapped.successor!.toLowerCase());
+        if (!found) throw new Error('Witness key map successor is not published.');
+        redirectedFrom = clean;
+      }
+    }
     if (!found) {
       const matchingMeetings = mIdx.rows.filter((m: any) => m.witnesses.some((w: any) => String(w.witness_key ?? w.name_key ?? w.name ?? '').toLowerCase() === clean));
       const colRows = rowsForColumn('witness_keys', clean);
@@ -669,7 +680,7 @@ export function createArchiveEntities(ctx: ArchiveEntityContext) {
       };
     });
     const member = found.bioguide_id ? memIdx.byBioguide.get(String(found.bioguide_id).toLowerCase()) ?? null : null;
-    return { ...found, appearances: enrichedAppearances, hearings: enrichedAppearances, member, documents: found.list_rows.map(row) };
+    return { ...found, appearances: enrichedAppearances, hearings: enrichedAppearances, member, documents: found.list_rows.map(row), redirected_from: redirectedFrom };
   }
 
   async function getMember(bioguideId: string, signal?: AbortSignal) {

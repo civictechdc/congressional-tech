@@ -239,6 +239,17 @@ function Workspace({client,nav,navigate,rawBase}:{client:ReturnType<typeof creat
   // A retired key with a successor opens the successor; the address bar then names it.
   useEffect(()=>{if(detail.status==='ready'&&detail.value?.redirectedFrom&&detail.value.entry?.detail.link_key){setRedirectNote(`The link you followed (${detail.value.redirectedFrom}) now points to this document.`);navigate({key:keyHex(detail.value.entry.detail.link_key)},true);}},[detail]);
   useEffect(()=>{if(!nav.key)setRedirectNote('');},[nav.key]);
+  // An earlier witness key opens its successor; the address bar then names the current key.
+  const [witnessRedirect,setWitnessRedirect]=useState<{from:string;to:string}|null>(null);
+  useEffect(()=>{const witness=entityView.status==='ready'?entityView.value?.witness:null;if(witness?.redirected_from&&nav.witness.toLowerCase()===witness.redirected_from){setWitnessRedirect({from:witness.redirected_from,to:witness.witness_key});navigate({witness:witness.witness_key},true);}},[entityView]);
+  function witnessNotice(){
+    const witness=entityView.status==='ready'?entityView.value?.witness:null;
+    if(witness?.retired)return witness.retired.status==='ambiguous'
+      ?<p role="status" className="archive-removed-notice">The witness link you followed ({witness.retired.key}) named a witness listing that has since been re-recorded, and more than one current witness matches it: {witness.retired.candidates.map((key:string,i:number)=><span key={key}>{i?', ':''}<a href={'?tab=witnesses&witness='+key} onClick={event=>{event.preventDefault();filter({tab:'witnesses',witness:key});}}>{key}</a></span>)}.</p>
+      :<p role="status" className="archive-removed-notice">The witness link you followed ({witness.retired.key}) named a witness listing that has since been re-recorded, and no current witness matches it.</p>;
+    if(witnessRedirect&&nav.witness===witnessRedirect.to)return <p role="status" className="archive-redirect-note">The witness link you followed ({witnessRedirect.from}) now points to this witness.</p>;
+    return null;
+  }
   useEffect(()=>{
     if(typeof window!=='undefined'&&window.scrollY>200){
       workspaceRef.current?.scrollIntoView({block:'start'});
@@ -405,7 +416,8 @@ function Workspace({client,nav,navigate,rawBase}:{client:ReturnType<typeof creat
         onInspect={()=>inspectSubject(nav.subject)}
         onClose={()=>filter({subject:''})}
       />}
-      {nav.witness&&activeEntities.witness&&<WitnessDetail
+      {nav.witness&&witnessNotice()}
+      {nav.witness&&activeEntities.witness&&!activeEntities.witness.retired&&<WitnessDetail
         witness={activeEntities.witness}
         committeesCatalog={committeesCatalog}
         compact
@@ -472,7 +484,8 @@ function Workspace({client,nav,navigate,rawBase}:{client:ReturnType<typeof creat
                 onMember={inspectMember}
                 onFilterDocuments={()=>filter({tab:'documents',committee:nav.committee})}
               />}
-              {nav.tab==='witnesses'&&activeEntities?.witness&&<WitnessDetail
+              {nav.tab==='witnesses'&&witnessNotice()}
+              {nav.tab==='witnesses'&&activeEntities?.witness&&!activeEntities.witness.retired&&<WitnessDetail
                 witness={activeEntities.witness}
                 committeesCatalog={committeesCatalog}
                 onSelect={select}

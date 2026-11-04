@@ -261,6 +261,17 @@ export async function openArchive(pointerUrl: string, options: any = {}) {
     const versions=Array.isArray(item.address_versions)?item.address_versions.map(hex):[];
     return {key,successor:hex(item.successor_key),lastRelease:String(item.last_release_id),lastFilename:item.last_filename??null,versions};
   };
+  // A witness key an earlier body or capture context produced (witness_key_map.parquet):
+  // one successor, several candidates with none chosen, or none. A name never maps.
+  const witnessKeyMap=async(key: string)=>{
+    if(!/^[a-f0-9]{16}$/.test(key)||!files.has('witness_key_map.parquet'))return null;
+    const rows=await read('witness_key_map.parquet',undefined,undefined,{old_key:{$eq:key}});
+    if(rows.length>1)throw new Error('Witness key map entry is not unique.');
+    if(!rows.length)return null;
+    const [item]=rows;
+    return {key,status:String(item.status),successor:item.witness_key??null,basis:item.basis??null,
+      candidates:Array.isArray(item.candidate_keys)?item.candidate_keys.map(String):[]};
+  };
   // One answer per public key: a live row, a redirect to the successor's row, a removal
   // notice, or null for a key this archive never published.
   const locate=async(key: string)=>{
@@ -280,7 +291,7 @@ export async function openArchive(pointerUrl: string, options: any = {}) {
     // One O(N) scan, then O(V log V) ordering of this address's versions.
     return indexes.map(row).sort(captures);
   };
-  const entityStore=createArchiveEntities({count,files,columns,value,row,entity,resolve,entry,versions});
+  const entityStore=createArchiveEntities({count,files,columns,value,row,entity,resolve,entry,versions,witnessKeyMap});
 
   const reader={releaseId,manifest,metrics,count,
     has:(name: string)=>files.has(name+'.parquet')||shards.has(name),
@@ -389,6 +400,7 @@ export async function openArchive(pointerUrl: string, options: any = {}) {
     listEntities:entityStore.listEntities,
     openDocument:entityStore.openDocument,
     retired,
+    witnessKeyMap,
     locate,
     schema:async()=>JSON.parse(new TextDecoder().decode(await verified('schema.json'))),
     async openSaved(detail: any){
