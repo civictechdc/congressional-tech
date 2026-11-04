@@ -1,6 +1,6 @@
 ---
 id: ct-8cno
-status: closed
+status: open
 deps: []
 links: [ct-m104, ct-itcg]
 created: 2026-11-03T01:00:02Z
@@ -40,3 +40,7 @@ SQL, schema, and invariants implemented and verified on r3-mcp / release-train (
 **2026-11-03T22:53:35Z**
 
 Closed 2026-11-03 after full D1-D4 + model build, Gates 1-5 pass (model/jobs/release-causes/448651e72083-e4538f0064e1.json, docs/releases/2026-11-03-e4538f0064e1.md), Basin import with producer proofs, full production-offline lane exit 0 (10,967 passed on release-train), and live publication of release e4538f0064e18168089a77891c93a16e175af18ed75eb7a3ac8039aa1a8db9fd (replacing 448651e720833d42d565ead119f59b893936626f680fdae4d13b6297e296c419) verified via contract:archive, live canary:archive, and congressional-explorer-mcp.
+
+**2026-11-04T02:21:36Z**
+
+Reopened 2026-11-03 (post-release acceptance test): rosters.parquet in live e4538f00 has congress 119 only (2,973 rows). The archive-side SQL landed (3a91ee98); 113-118 history is blocked upstream on spicy-stack ss-ehci (dated roster captures per Congress on spicy-regs main; the earlier branch prototype was retired by owner decision 2026-10-30).

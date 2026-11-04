@@ -1,6 +1,6 @@
 ---
 id: ct-r8jd
-status: closed
+status: open
 deps: []
 links: [ct-deg8, ct-wsu7]
 created: 2026-11-02T00:40:43Z
@@ -36,3 +36,11 @@ Code on worktree-agent-a5550c04138214670 @ b3c4aa3c (808b2bfc). Review: merge, s
 **2026-11-03T22:53:35Z**
 
 Closed 2026-11-03 after full D1-D4 + model build, Gates 1-5 pass (model/jobs/release-causes/448651e72083-e4538f0064e1.json, docs/releases/2026-11-03-e4538f0064e1.md), Basin import with producer proofs, full production-offline lane exit 0 (10,967 passed on release-train), and live publication of release e4538f0064e18168089a77891c93a16e175af18ed75eb7a3ac8039aa1a8db9fd (replacing 448651e720833d42d565ead119f59b893936626f680fdae4d13b6297e296c419) verified via contract:archive, live canary:archive, and congressional-explorer-mcp.
+
+**2026-11-04T02:21:36Z**
+
+Reopened 2026-11-03 (post-release acceptance test): .github/archive-jobs.json has no rss_gb, so hosted jobs refuse at --check-binding. Owner decision 2026-11-03: publish 14, backfill 12 from this release's measured peaks (model 9.385, backfill 8.358, publish 4.114 GiB RSS; watchdog reports under .cache/archive-release/r1b-run/candidate-8addb2dc/after-video/final-run-pinned/); maintenance stays unset (refusing) until a real maintenance run is measured.
+
+**2026-11-04T02:22:01Z**
+
+2026-11-03: rss_gb set in .github/archive-jobs.json: publish 14, backfill 12 (both admit at --check-binding); maintenance has none and refuses by design. .github/tests/test_archive_workflows.py 18 passed. Stays open until a maintenance run is measured and bound.

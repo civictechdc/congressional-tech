@@ -1,6 +1,6 @@
 ---
 id: ct-itcg
-status: closed
+status: open
 deps: []
 links: [ct-v8y0, ct-5f3e, ct-kunv, ct-m104, ct-8cno]
 created: 2026-11-01T20:08:13Z
@@ -66,3 +66,7 @@ Retargeted to canonical archive.<name> tables 2026-11-02; nothing had been writt
 **2026-11-03T22:53:35Z**
 
 Closed 2026-11-03 after full D1-D4 + model build, Gates 1-5 pass (model/jobs/release-causes/448651e72083-e4538f0064e1.json, docs/releases/2026-11-03-e4538f0064e1.md), Basin import with producer proofs, full production-offline lane exit 0 (10,967 passed on release-train), and live publication of release e4538f0064e18168089a77891c93a16e175af18ed75eb7a3ac8039aa1a8db9fd (replacing 448651e720833d42d565ead119f59b893936626f680fdae4d13b6297e296c419) verified via contract:archive, live canary:archive, and congressional-explorer-mcp.
+
+**2026-11-04T02:21:36Z**
+
+Reopened 2026-11-03 (post-release acceptance test). Remaining: model/jobs/publish-model.json still pins placeholder archive.* tables with snapshot null. publish.json's empty receipt_keys/provenance are correct by design: it is the daily spec, and load_spec refuses both when 'daily' is set, so that part of the criterion is superseded. Found: the daily job (publish-daily.json) appends to canonical archive.*, which still holds the v21 snapshot; live e4538f00 was built from ct-archive-v2/archive_r1b.* (7 tables; pins in .cache/archive-release/r1b-run/candidate-8addb2dc/after-video/final-run-pinned/basin-import/basin-pins.json). Owner decision 2026-11-03: import the 7 archive_r1b snapshots into canonical archive.* as its next snapshot, then pin publish-model.json to those snapshots (video_records and committee_records with their recording decisions).

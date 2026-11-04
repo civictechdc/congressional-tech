@@ -16,7 +16,7 @@ spec-run 2026-11-02: D1 batch 3 is the single assembly receipt receipts/document
 
 ## Acceptance Criteria
 
-Staging splits a receipt above a byte or line threshold into line ranges, with resume per range and identical output to whole-receipt staging (a test proves equality on a split receipt); peak RSS on the 581 MB receipt is bounded (measured) at the normal batch budget.
+Revised 2026-11-03 to the lead-approved fix recorded in the notes (2026-11-02, etl-staging): line-range splitting is not needed. Staging runs at most 1,024 rows per engine batch, one shared cap for daily, backfill and CI staging, with output byte-identical to 8,192-row staging (measured on 10 receipts, plus a repo test); peak RSS on the 581 MB receipt is bounded (measured) at the normal batch budget (6.49 GiB at the 14 GiB pool). Superseded wording: "Staging splits a receipt above a byte or line threshold into line ranges, with resume per range and identical output to whole-receipt staging."
 
 
 ## Notes
