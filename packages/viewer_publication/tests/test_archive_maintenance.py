@@ -299,7 +299,8 @@ def test_maintenance_execute_verifies_runtime_before_storage_access_and_backfill
     def fake_producer(daily_spec,*,engine,raw_store):
         observed_daily.update(daily_spec)
         assert 'body_inventory' not in daily_spec and 'local_root' not in daily_spec
-        return dict(status='completed',pins={})
+        readings=dict(work_list=tmp_path/'work-list.parquet',batches=[dict(readings=tmp_path/'readings.parquet')])
+        return dict(status='completed',pins={},producerreports=dict(readings=readings))
     backfill_spec=dict(
         version=1,
         bucket='archive-fixture',
@@ -319,4 +320,7 @@ def test_maintenance_execute_verifies_runtime_before_storage_access_and_backfill
     assert report['status']=='executed' and report['production']['status']=='completed'
     assert hooks==['r2-http-429']
     assert observed_daily['max_work_items']==200
-    assert (tmp_path/'backfill-work/backfill-report.json').is_file()
+    written=json.loads((tmp_path/'backfill-work/backfill-report.json').read_text())
+    assert written['production']['producerreports']['readings']==dict(
+        work_list=str(tmp_path/'work-list.parquet'),batches=[dict(readings=str(tmp_path/'readings.parquet'))])
+    with pytest.raises(TypeError,match='set'):archive_backfill_job._dumps(dict(production={1}))

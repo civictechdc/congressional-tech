@@ -110,6 +110,15 @@ def load_spec(path):
     return result
 
 
+def _json_path(value):
+    if isinstance(value,Path):return str(value)
+    raise TypeError('Object of type '+type(value).__name__+' is not JSON serializable')
+
+
+def _dumps(value):
+    return json.dumps(value,sort_keys=True,default=_json_path)
+
+
 def plan(spec):
     if spec.get('status')=='blocked':return dict(spec)
     planned=dict(
@@ -182,7 +191,7 @@ def execute(spec,*,runtime_factory=None,storage_factory=None,producer=None):
         work=spec['work'],
         production=production,
     )
-    (work/'backfill-report.json').write_text(json.dumps(report,sort_keys=True)+'\n',encoding='utf-8')
+    (work/'backfill-report.json').write_text(_dumps(report)+'\n',encoding='utf-8')
     return report
 
 
@@ -196,12 +205,12 @@ def main(argv=None):
     try:
         spec=load_spec(args.spec)
         if spec.get('status')=='blocked':
-            print(json.dumps(spec,sort_keys=True))
+            print(_dumps(spec))
             return 2
         result=execute(spec) if args.execute else plan(spec)
     except (ValueError,OSError) as error:
         parser.error(str(error))
-    print(json.dumps(result,sort_keys=True))
+    print(_dumps(result))
     return 0
 
 
