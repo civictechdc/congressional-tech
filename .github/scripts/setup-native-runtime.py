@@ -92,8 +92,22 @@ def private_write(path, raw):
         os.fsync(target.fileno())
 
 
-def install(artifact, credentials, remote, directory, *, client, local_limits=None, pin_file=RUNTIME_PIN_FILE):
-    """Read exactly one selected private object; create no native workspace/provider state."""
+def job_limits(path, label):
+    limits = document(Path(path).read_bytes(), label)
+    fields = {'compute_threads', 'memory_bytes', 'scratch_bytes', 'batch_rows',
+              'max_batch_bytes', 'max_metadata_bytes'}
+    if (not isinstance(limits, dict) or set(limits) != fields
+            or any(type(value) is not int or value <= 0 for value in limits.values())):
+        raise SetupFailure(label + ' require six positive integers')
+    return limits
+
+
+def install(artifact, credentials, remote, directory, *, client, local_limits=None, host_limits=None,
+            pin_file=RUNTIME_PIN_FILE):
+    """Read exactly one selected private object; create no native workspace/provider state.
+
+    Remote jobs that run engine specs need host_limits; local jobs always carry local_limits.
+    """
     directory = Path(directory)
     if directory.is_symlink() or directory.exists():
         raise SetupFailure('Runtime installation requires a fresh directory')
@@ -103,16 +117,14 @@ def install(artifact, credentials, remote, directory, *, client, local_limits=No
     # Existing directories, symlinks and interrupted installations require explicit
     # operator reconciliation. Never promote or overwrite a stale executable.
     remote_raw = None
+    limits = None
     if local_limits is not None:
         if 'test-util' in artifact.get('build_features', ['remote']):
             raise SetupFailure('Local jobs require the ordinary runtime without test-util')
-        limits = document(Path(local_limits).read_bytes(), 'Local job limits')
-        fields = {'compute_threads', 'memory_bytes', 'scratch_bytes', 'batch_rows',
-                  'max_batch_bytes', 'max_metadata_bytes'}
-        if (not isinstance(limits, dict) or set(limits) != fields
-                or any(type(value) is not int or value <= 0 for value in limits.values())):
-            raise SetupFailure('Local job limits require six positive integers')
+        limits = job_limits(local_limits, 'Local job limits')
     else:
+        if host_limits is not None:
+            limits = job_limits(host_limits, 'Hosted job limits')
         remote_raw = Path(remote).read_bytes()
         remote_value = document(remote_raw, 'DocSpec remote configuration')
         references = remote_value.get('secret_env') if isinstance(remote_value, dict) else None
@@ -122,7 +134,7 @@ def install(artifact, credentials, remote, directory, *, client, local_limits=No
     if local_limits is None:
         private_write(directory / 'credentials.json', json.dumps(credentials).encode())
         private_write(directory / 'remote.json', remote_raw)
-    else:
+    if limits is not None:
         private_write(directory / 'limits.json', json.dumps(limits).encode())
     build_features = list(artifact.get('build_features', ['remote']))
     required_capabilities = list(artifact.get('required_capabilities', REQUIRED_LOOPBACK_CAPABILITIES))
@@ -137,8 +149,10 @@ def install(artifact, credentials, remote, directory, *, client, local_limits=No
         binary_sha256=artifact['sha256'],
         required_capabilities=required_capabilities,
     )
-    configuration.update(dict(remote='remote.json', credentials='credentials.json')
-                         if local_limits is None else dict(limits='limits.json'))
+    if local_limits is None:
+        configuration.update(remote='remote.json', credentials='credentials.json')
+    if limits is not None:
+        configuration.update(limits='limits.json')
     config = directory / 'runtime.json'
     private_write(config, (json.dumps(configuration, indent=2) + '\n').encode())
     NativeDatasets.from_config(config)  # Existing runtime format and secret validation own this boundary.
@@ -190,6 +204,8 @@ def main(argv=None):
     parser.add_argument('--remote', type=Path, default=Path(__file__).resolve().parents[1] / 'docspec-remote.json')
     parser.add_argument('--local', action='store_true', help='Install a credential-free local job runtime from the same private binary.')
     parser.add_argument('--local-limits', type=Path, default=Path(__file__).resolve().parents[1] / 'docspec-local-limits.json')
+    parser.add_argument('--host-limits', type=Path, default=Path(__file__).resolve().parents[1] / 'docspec-hosted-limits.json',
+                        help='Engine limits for the remote runtime on the hosted runner.')
     parser.add_argument('--pin-file', type=Path, default=RUNTIME_PIN_FILE, help='Committed engine runtime pin file.')
     parser.add_argument('--directory', type=Path, required=True)
     parser.add_argument('--output', type=Path, required=True)
@@ -205,7 +221,7 @@ def main(argv=None):
             raise SetupFailure('Local DocSpec credentials require private file permissions (0600)')
         config, report = install(artifact, credentials, args.remote, args.directory,
             client=make_client(credentials), local_limits=args.local_limits if args.local else None,
-            pin_file=args.pin_file)
+            host_limits=None if args.local else args.host_limits, pin_file=args.pin_file)
         if args.local:
             subprocess.run([sys.executable, str(Path(__file__).resolve().parents[2]/'scripts/dev.py'),
                 'doctor', '--lane', 'production-offline'],

@@ -76,6 +76,35 @@ def test_install_uses_exact_selected_object_and_existing_runtime_validation(tmp_
     assert str(directory / 'credentials.json') not in result['execution_sha256']
 
 
+def test_remote_install_carries_the_committed_hosted_limits(tmp_path, inputs, monkeypatch):
+    """Engine specs refuse a runtime without host limits, remote or local."""
+    value = module()
+    binary, descriptor, credentials = inputs
+    monkeypatch.setattr(subprocess, 'run', lambda *a, **k: pytest.fail('Native process started'))
+    hosted = ROOT / '.github/docspec-hosted-limits.json'
+    config, _ = value.install(descriptor, credentials, ROOT / '.github/docspec-remote.json', tmp_path / 'runtime',
+        client=ArtifactClient(binary), host_limits=hosted)
+    assert (tmp_path / 'runtime/limits.json').stat().st_mode & 0o777 == 0o600
+    from docspec_client import NativeDatasets
+    native = NativeDatasets.from_config(config)
+    assert native._remote_secrets == credentials
+    assert native.limits is not None
+    assert json.loads((tmp_path / 'runtime/limits.json').read_text()) == json.loads(hosted.read_text())
+    # The watchdog stops publish at its rss_gb; the engine pool must leave room under it.
+    assert json.loads(hosted.read_text())['memory_bytes'] < json.loads((ROOT / '.github/archive-jobs.json').read_text())['publish']['rss_gb'] * 1024**3
+
+
+def test_remote_install_refuses_malformed_hosted_limits_before_any_download(tmp_path, inputs):
+    binary, descriptor, credentials = inputs
+    client = ArtifactClient(binary)
+    policy = tmp_path / 'limits.json'
+    policy.write_text(json.dumps(dict(compute_threads=4)))
+    with pytest.raises(ValueError, match='Hosted job limits'):
+        module().install(descriptor, credentials, ROOT / '.github/docspec-remote.json', tmp_path / 'runtime',
+            client=client, host_limits=policy)
+    assert client.calls == [] and not (tmp_path / 'runtime').exists()
+
+
 @pytest.mark.parametrize('change',[
     dict(version=True), dict(version=2), dict(platform='darwin-arm64'), dict(source_revision='short'),
     dict(sha256='not-a-digest'), dict(bytes=True), dict(bytes=0), dict(bytes=1024**3+1),
