@@ -968,7 +968,7 @@ def build_prepared_release(prepared,*,engine,output,root=ROOT):
     steps += [dict(name='filename_conflicts',sql=FILENAME_CONFLICTS_SQL,materialize=True)]
     steps += _sql_steps(['document-members','archive-container-links','document-bodies','document-identities','saved-files','document-alternates',
         'document-version-keys','document-versions','document-metadata','document-addresses','saved-recoveries','document-removals','document-packages',
-        'document-rendition-titles','recovered-copy-fills'],root=root)
+        'document-rendition-titles','recovered-copy-fills','document-filename-facts'],root=root)
     steps += package_link_steps(root=root)
     steps += appearance_steps(root=root)+witness_key_steps(root=root)+[
         dict(name='component_meeting_links',sql=(Path(root)/'model/sql/component-meeting-links.sql').read_text(),materialize=True)]

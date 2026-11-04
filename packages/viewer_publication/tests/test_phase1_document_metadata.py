@@ -38,16 +38,56 @@ def test_source_listing_selects_one_earliest_address_compatible_tuple(tmp_path):
         dict(url='https://other.test/package.zip',member_path='a/report.pdf',listed_on=None,link_text=None,doc_type=None,posted=None)]
 
 
-def test_document_package_uses_member_url_order_before_saved_filename_fallback(tmp_path):
-    inputs=[json_input(tmp_path,'saved_files',[dict(component='document',source_id=s,saved_rank=i) for i,s in enumerate(['saved','second','third'],1)]+[dict(component='fallback',source_id='only-filename',saved_rank=1)],component='Utf8',source_id='Utf8',saved_rank='Int64'),
+def test_document_package_uses_member_url_order_before_any_copys_filename(tmp_path):
+    """ct-vq2a: a newer identical copy saved under a plain name keeps the package an earlier copy's
+    GovInfo filename named; URL packages still precede every filename."""
+    saved=[dict(component='document',source_id=s,saved_rank=i,first_fetched=f'2026-10-0{i}T12:00:00Z') for i,s in enumerate(['saved','second','third'],1)]
+    saved+=[dict(component='fallback',source_id='only-filename',saved_rank=1,first_fetched='2026-10-01T12:00:00Z'),
+            dict(component='copies',source_id='newer-plain',saved_rank=1,first_fetched='2026-10-20T12:00:00Z'),
+            dict(component='copies',source_id='later-named',saved_rank=2,first_fetched='2026-10-15T12:00:00Z'),
+            dict(component='copies',source_id='earliest-named',saved_rank=3,first_fetched='2026-10-10T12:00:00Z'),
+            dict(component='none',source_id='plain',saved_rank=1,first_fetched=None)]
+    inputs=[json_input(tmp_path,'saved_inputs',saved,component='Utf8',source_id='Utf8',saved_rank='Int64',first_fetched='Utf8'),
         json_input(tmp_path,'source_annotation_addresses',[
             dict(source_id='saved',package_id='PUBLISHER-PACKAGE',publisher=True),
             dict(source_id='second',package_id='CHRG-119hhrg22222',publisher=False),
             dict(source_id='third',package_id='CHRG-119hhrg33333',publisher=False)],source_id='Utf8',package_id='Utf8',publisher='Boolean'),
-        json_input(tmp_path,'source_annotations',[dict(source_id='saved',package_id='FILENAME-PACKAGE'),dict(source_id='only-filename',package_id='FILENAME-ONLY')],source_id='Utf8',package_id='Utf8')]
+        json_input(tmp_path,'source_annotations',[dict(source_id='saved',package_id='FILENAME-PACKAGE'),dict(source_id='only-filename',package_id='FILENAME-ONLY'),
+            dict(source_id='newer-plain',package_id=None),dict(source_id='later-named',package_id='BILLS-117hr9ih'),
+            dict(source_id='earliest-named',package_id='BILLS-117hr1833ih'),dict(source_id='plain',package_id=None)],source_id='Utf8',package_id='Utf8')]
     result=run_job(tmp_path,NativeDatasets.from_config(os.environ['DOCSPEC_JOB_CONFIG']),inputs=inputs,
-        steps=[dict(name='document_packages',sql=(ROOT/'model/sql/document-packages.sql').read_text(),materialize=True)],outputs=[],queries=[dict(name='packages',sql='SELECT * FROM document_packages ORDER BY component')])
-    assert result['packages']==[dict(component='document',package_id='CHRG-119hhrg22222'),dict(component='fallback',package_id=None)]
+        steps=[dict(name='saved_files',sql='SELECT * EXCLUDE(first_fetched),cast(first_fetched AS TIMESTAMP WITH TIME ZONE) AS first_fetched FROM saved_inputs'),
+               dict(name='document_packages',sql=(ROOT/'model/sql/document-packages.sql').read_text(),materialize=True)],outputs=[],queries=[dict(name='packages',sql='SELECT * FROM document_packages ORDER BY component')])
+    assert result['packages']==[dict(component='copies',package_id='BILLS-117hr1833ih'),dict(component='document',package_id='CHRG-119hhrg22222'),
+                                dict(component='fallback',package_id='FILENAME-ONLY'),dict(component='none',package_id=None)]
+
+
+def test_document_filename_facts_come_from_every_copy_of_the_saved_bytes(tmp_path):
+    """ct-vq2a/ct-kwse: identical bytes saved first under a dated HHRG name, then under a plain name,
+    keep the HHRG name's date and Congress; a structured name outranks an earlier plain one; a copy of
+    other bytes in the same document never dates it; a plain name alone still dates it."""
+    same,other='a'*64,'b'*64
+    def copy(component,source,body,rank,fetched,date=None,valid=False,congress=None):
+        return dict(component=component,source_id=source,body_sha=body,saved_rank=rank,first_fetched=fetched,source_url='https://x.test/'+source,
+            filename=source+'.pdf',filename_date=date,filename_date_valid=valid,congress=congress,congress_valid=valid)
+    rows=[copy('moved','plain-newer',same,1,'2026-10-20T12:00:00Z','2019-06-23',congress=None),
+          copy('moved','hhrg',same,2,'2026-10-10T12:00:00Z','2020-06-25',True,116),
+          copy('moved','other-bytes',other,3,'2026-10-01T12:00:00Z','2001-01-01',True,107),
+          copy('ranked','plain-earlier',same,2,'2026-10-01T12:00:00Z','2020-01-01',congress=115),
+          copy('ranked','structured',same,1,'2026-10-02T12:00:00Z','2020-02-02',True,116),
+          copy('plain','only',same,1,'2026-10-02T12:00:00Z','2021-03-03'),
+          copy('undated','bare',same,1,None)]
+    inputs=[json_input(tmp_path,'copies',rows,component='Utf8',source_id='Utf8',body_sha='Utf8',saved_rank='Int64',first_fetched='Utf8',source_url='Utf8',
+        filename='Utf8',filename_date='Utf8',filename_date_valid='Boolean',congress='Int64',congress_valid='Boolean')]
+    result=run_job(tmp_path,NativeDatasets.from_config(os.environ['DOCSPEC_JOB_CONFIG']),inputs=inputs,steps=[
+        dict(name='saved_files',sql='SELECT component,source_id,body_sha,saved_rank,source_url,filename,cast(first_fetched AS TIMESTAMP WITH TIME ZONE) AS first_fetched FROM copies'),
+        dict(name='source_filename_readings',sql="""SELECT source_id,cast(filename_date AS DATE) AS filename_date,filename_date_valid,
+            CASE WHEN filename_date IS NULL THEN 'missing' ELSE 'completed' END AS filename_date_status,
+            congress,congress_valid,CASE WHEN congress IS NULL THEN 'missing' ELSE 'completed' END AS congress_status FROM copies"""),
+        dict(name='document_filename_facts',sql=(ROOT/'model/sql/document-filename-facts.sql').read_text(),materialize=True)],outputs=[],
+        queries=[dict(name='facts',sql='SELECT component,cast(filename_date AS VARCHAR) AS filename_date,congress FROM document_filename_facts ORDER BY component')])
+    assert result['facts']==[dict(component='moved',filename_date='2020-06-25',congress=116),dict(component='plain',filename_date='2021-03-03',congress=None),
+                             dict(component='ranked',filename_date='2020-02-02',congress=116),dict(component='undated',filename_date=None,congress=None)]
 
 
 def test_document_removals_use_each_pages_latest_timestamp_and_require_all_removed(tmp_path):

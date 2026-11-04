@@ -7,7 +7,14 @@ SELECT s.source_id,
  THEN array_sort(array_distinct(f.document_kind)) ELSE coalesce(k.document_kind,{{EMPTY_STRINGS}}) END AS document_kind,
  coalesce(CASE WHEN f.document_family_status='completed' THEN array_sort(array_distinct(f.document_family)) END,{{EMPTY_STRINGS}}) AS document_family,
  CASE WHEN f.congress_status='completed' THEN f.congress END AS congress,
- coalesce(u.package_id,CASE WHEN f.status='completed' THEN f.package_id END) AS package_id,
+ -- A filename names a package only in GovInfo's own form (govinfo.gov/help/{bills,chrg,crpt,cprt});
+ -- a granule's part, volume or errata suffix names its package. Look-alike committee-site names
+ -- (BILLS-117hr1833ih-Katko, BILLS-1171833ih, CHRG-116hhrg43625-add2) name none.
+ coalesce(u.package_id,CASE WHEN f.status='completed' THEN coalesce(
+  (regexp_match(f.package_id,'^(BILLS-[1-9][0-9]{0,2}(?:hr|s|hjres|sjres|hconres|sconres|hres|sres)[1-9][0-9]*[a-z]+)$'))[1],
+  (regexp_match(f.package_id,'^(CHRG-[1-9][0-9]{0,2}[hsj]hrg[0-9]+)(?:-vol[0-9]+)?(?:-pt[0-9]+)?(?:-err[0-9]*)?$'))[1],
+  (regexp_match(f.package_id,'^(CRPT-[1-9][0-9]{0,2}(?:hrpt|srpt|erpt)[1-9][0-9]*)(?:-vol[0-9]+)?(?:-pt[0-9]+)?(?:-ERRATA[0-9]*)?$'))[1],
+  (regexp_match(f.package_id,'^(CPRT-[1-9][0-9]{0,2}[HSJ]PRT[0-9]+)$'))[1]) END) AS package_id,
  CASE WHEN f.filename_date_status='completed' THEN f.filename_date END AS filename_date,
  CASE WHEN p.status='completed' THEN cast(p.content_date AS DATE) END AS content_date,
  coalesce(CASE WHEN p.status='completed' AND nullif(trim(p.title),'') IS NOT NULL THEN p.title END,

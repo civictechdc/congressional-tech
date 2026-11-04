@@ -81,3 +81,53 @@ def test_source_annotations_keep_pins_names_keys_and_publisher_priority(tmp_path
     assert four['title']==four['listing_title']=='Hearing on Rural Lands' and four['reading_title'] is None
     assert five['committee_keys']==['ssbk00'] and five['chambers']==['senate']
     assert result['unmapped']==[dict(code='UNKNOWN',n=1)]
+
+
+def test_a_filename_names_only_a_govinfo_package_and_an_act_title_year_dates_nothing(tmp_path):
+    """ct-vq2a: committee-site names that look like packages (BILLS-117hr1833ih-Katko) name none; a
+    granule names its package. ct-kwse: a date token starting at an act's title year (the reader takes
+    2019-06-23 from 'Bear Protection Act of 2019_6-23-20') dates nothing, shown or linked."""
+    from viewer_publication.archive_annotations import annotation_steps
+    act='AFWA testimony_H.R. 2264_Bear Protection Act of 2019_6-23-20_final.pdf'
+    packages={'katko':'BILLS-117hr1833ih-Katko','untyped':'BILLS-1171833ih','bill':'BILLS-117hr1833ih',
+        'part':'CHRG-115hhrg24725-pt2','addendum':'CHRG-116hhrg43625-add2','report':'CRPT-112hrpt480-pt1',
+        'errata':'CRPT-104srpt259-ERRATA','print':'CPRT-113HPRT86429','rules':'CPRT-113-hprt-RU00-HR1105'}
+    names={**{key:value+'.pdf' for key,value in packages.items()},'act':act,
+        'dated':'H.R. 2264 Act of 2019 hearing 2020-06-25.pdf','linked':'statement.pdf'}
+    sources=[dict(source_id=key,filename=name,source_url='https://committee.test/'+key,body_sha=None) for key,name in names.items()]
+    rows=[]
+    for source in sources:
+        if source['source_id'] in packages:
+            row=filenames._reading(source['filename'],source['source_url'],'current')
+            row['package_id']=packages[source['source_id']]
+        else:
+            row=filenames.read_filename(source['filename'],source['source_url'],catalog_version='current')
+        rows.append(row)
+    rows.append(filenames.read_filename(act,'https://committee.test/requested',catalog_version='current'))
+    assert [str(row['filename_date']) for row in rows if row['filename']==act]==['2019-06-23']*2  # the reading the guard refuses
+    filename_path=tmp_path/'filename-readings.parquet'
+    pq.write_table(pa.Table.from_pylist(rows,schema=filenames.SCHEMA),filename_path)
+    inputs=registry_inputs(tmp_path/'registries')+[dict(name='filename_readings',kind='parquet',path=str(filename_path)),
+        json_input(tmp_path,'source_files',sources,source_id='Utf8',filename='Utf8',source_url='Utf8',body_sha='Utf8'),
+        json_input(tmp_path,'capture_sources',[dict(source_id='linked',body_sha=None,context_url=None,member_path=None,
+            requested_filename=act,requested_url='https://committee.test/requested')],source_id='Utf8',body_sha='Utf8',
+            context_url='Utf8',member_path='Utf8',requested_filename='Utf8',requested_url='Utf8'),
+        json_input(tmp_path,'publisher_links',[],source_id='Utf8',doc_type='Utf8',text='Utf8',page_body='Utf8',context='Utf8',
+            context_url='Utf8',first_good_at='Utf8',link_index='Int64',split_position='Int64'),
+        json_input(tmp_path,'page_inputs',[],body_hex='Utf8',status='Utf8',title='Utf8',heading='Utf8',content_date='Utf8',named_meetings=list_of('Int64'))]
+    steps=[dict(name='capture_source_contexts',sql='SELECT * FROM capture_sources WHERE context_url IS NOT NULL'),
+           dict(name='page_facts',sql="SELECT decode(body_hex,'hex') AS body_sha,* EXCLUDE(body_hex),cast(content_date AS DATE) AS day FROM page_inputs"),
+           dict(name='spicy_committees',sql="SELECT cast(NULL AS VARCHAR) AS system_code,cast(NULL AS VARCHAR) AS parent_system_code,cast(NULL AS VARCHAR) AS website_url WHERE false"),
+           dict(name='meeting_document_urls',sql='SELECT cast(NULL AS BIGINT) AS event_id,cast(NULL AS VARCHAR) AS url WHERE false'),
+           dict(name='model_url_keys',sql='SELECT cast(NULL AS VARCHAR) AS url,cast(NULL AS VARCHAR) AS url_key,cast(NULL AS VARCHAR) AS error WHERE false'),
+           dict(name='copy_url_keys',sql='SELECT cast(NULL AS VARCHAR) AS source_id,cast(NULL AS VARCHAR) AS url_key WHERE false')]
+    result=run_job(tmp_path,NativeDatasets.from_config(os.environ['DOCSPEC_JOB_CONFIG']),inputs=inputs,
+        steps=steps+annotation_steps('current'),outputs=[],queries=[
+            dict(name='sources',sql='SELECT source_id,package_id,cast(filename_date AS VARCHAR) AS filename_date FROM source_annotations ORDER BY source_id'),
+            dict(name='named',sql='SELECT source_id,filename_date_valid,congress_valid FROM source_filename_readings ORDER BY source_id')])
+    assert {row['source_id']:row['package_id'] for row in result['sources'] if row['source_id'] in packages}=={
+        'katko':None,'untyped':None,'bill':'BILLS-117hr1833ih','part':'CHRG-115hhrg24725','addendum':None,
+        'report':'CRPT-112hrpt480','errata':'CRPT-104srpt259','print':'CPRT-113HPRT86429','rules':None}
+    assert {row['source_id']:row['filename_date'] for row in result['sources'] if row['source_id'] not in packages}=={
+        'act':None,'dated':'2020-06-25','linked':None}
+    assert next(row for row in result['named'] if row['source_id']=='dated')['filename_date_valid'] is False

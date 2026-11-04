@@ -1963,6 +1963,35 @@ def test_a_page_never_groups_itself_through_its_own_navigation_links(tmp_path):
     assert len(rows) == 2
 
 
+def test_a_newer_identical_copy_never_renames_or_redates_the_document(tmp_path):
+    """ct-vq2a, ct-kwse (nightly ef4c1632): the saved copy is the newest fetch, but package, filename date
+    and Congress come from every copy of the bytes, and only a GovInfo-form filename names a package;
+    an act's title year dates nothing."""
+    from viewer_publication.archive_model import build_release
+    engine = NativeDatasets.from_config(os.environ['DOCSPEC_JOB_CONFIG'])
+    pdf = lambda text: f'%PDF-1.7\n{text}\n%%EOF\n'.encode()
+    act = 'AFWA%20testimony_H.R.%202264_Bear%20Protection%20Act%20of%202019_6-23-20_final.pdf'
+    captures = [
+        ('https://docs.house.gov/meetings/II/II13/20200625/110838/HHRG-116-II13-Wstate-BatchellerG-20200625.pdf', 'Batcheller statement', '2026-10-01T12:00:00Z'),
+        (f'https://naturalresources.house.gov/uploadedfiles/{act}', 'Batcheller statement', '2026-10-20T12:00:00Z'),
+        ('https://homeland.house.gov/files/BILLS-117hr1833ih.pdf', 'H.R. 1833 introduced', '2026-10-01T12:00:00Z'),
+        ('https://homeland.house.gov/files/hr1833-text.pdf', 'H.R. 1833 introduced', '2026-10-20T12:00:00Z'),
+        ('https://homeland.house.gov/files/BILLS-117hr1833ih-Katko.pdf', 'Katko amendment', '2026-10-01T12:00:00Z'),
+        ('https://naturalresources.house.gov/uploadedfiles/Wildlife%20Act%20of%202019_6-23-20_testimony.pdf', 'Wildlife testimony', '2026-10-01T12:00:00Z')]
+    staged = _stage_raw_fixture(tmp_path, engine, [dict(url=url, data=pdf(text), format='pdf', compress=False, retrieved_at=at)
+                                                   for url, text, at in captures])
+    build_release(captures=staged['captures'], readings=staged['readings'], filename_readings=staged['filename_readings'],
+        parser_versions={p: staged['parser_versions'][p] for p in ['sniff', 'html', 'xml', 'json']},
+        catalog_version=staged['catalog_version'], engine=engine, output=tmp_path / 'release', scratch=tmp_path / 'model')
+    rows = pq.read_table(tmp_path / 'release/detail.parquet').to_pylist()
+    facts = {r['filename']: (r['package_id'], r['document_date'] and str(r['document_date']), r['document_date_source'], r['congress']) for r in rows}
+    assert facts == {
+        'AFWA testimony_H.R. 2264_Bear Protection Act of 2019_6-23-20_final.pdf': (None, '2020-06-25', 'filename', 116),
+        'hr1833-text.pdf': ('BILLS-117hr1833ih', None, None, 117),
+        'BILLS-117hr1833ih-Katko.pdf': (None, None, None, 117),
+        'Wildlife Act of 2019_6-23-20_testimony.pdf': (None, None, None, None)}, facts
+
+
 def test_a_listing_label_outranks_another_formats_page_title(tmp_path):
     """red-g F1: a rendition's <title> fills a title only when no listing label names the document."""
     from viewer_publication.archive_model import build_release

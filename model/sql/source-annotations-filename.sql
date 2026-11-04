@@ -4,7 +4,8 @@
 -- keeps that supplier's name and URL. Shown status/error stay separate from the per-field suppliers.
 WITH own AS (
  SELECT s.source_id,
-  f.* EXCLUDE(document_kind,document_family,committee_code),
+  f.* EXCLUDE(document_kind,document_family,committee_code,filename_date),
+  {{FILENAME_DATE}} AS filename_date,
   -- Normalize Iceberg element field ids before these values meet the aggregated linked choices.
   arrow_cast(f.document_kind,'List(Utf8)') AS document_kind,
   arrow_cast(f.document_family,'List(Utf8)') AS document_family,
@@ -26,9 +27,11 @@ WITH own AS (
   max(filename_date) FILTER (WHERE date_choice=1) AS filename_date,
   max(requested_filename) FILTER (WHERE date_choice=1) AS date_name,
   max(requested_url) FILTER (WHERE date_choice=1) AS date_url,
+  bool_or(valid) FILTER (WHERE date_choice=1) AS date_valid,
   max(congress) FILTER (WHERE congress_choice=1) AS congress,
   max(requested_filename) FILTER (WHERE congress_choice=1) AS congress_name,
   max(requested_url) FILTER (WHERE congress_choice=1) AS congress_url,
+  bool_or(valid) FILTER (WHERE congress_choice=1) AS congress_valid,
   max(document_kind) FILTER (WHERE kind_choice=1) AS document_kind,
   max(requested_filename) FILTER (WHERE kind_choice=1) AS kind_name,
   max(requested_url) FILTER (WHERE kind_choice=1) AS kind_url,
@@ -72,6 +75,9 @@ SELECT o.source_id,o.filename,o.source_url,o.catalog_version,o.status,o.error_ty
  CASE WHEN o.status='completed' AND coalesce(array_length(o.document_kind),0)>0 THEN o.status WHEN l.document_kind IS NOT NULL THEN 'completed' ELSE o.status END AS document_kind_status,
  CASE WHEN o.status='completed' AND coalesce(array_length(o.document_family),0)>0 THEN o.status WHEN l.document_family IS NOT NULL THEN 'completed' ELSE o.status END AS document_family_status,
  CASE WHEN o.status='completed' AND coalesce(array_length(o.committee_code),0)>0 THEN o.status WHEN l.committee_code IS NOT NULL THEN 'completed' ELSE o.status END AS committee_code_status,
+ -- Whether the name supplying the value follows a published naming convention (the reading's valid).
+ CASE WHEN o.status='completed' AND o.filename_date IS NOT NULL THEN o.valid ELSE l.date_valid END AS filename_date_valid,
+ CASE WHEN o.status='completed' AND o.congress IS NOT NULL THEN o.valid ELSE l.congress_valid END AS congress_valid,
  CASE WHEN o.status='completed' AND o.filename_date IS NOT NULL THEN o.filename ELSE l.date_name END AS filename_date_name,
  CASE WHEN o.status='completed' AND o.filename_date IS NOT NULL THEN o.source_url ELSE l.date_url END AS filename_date_url,
  CASE WHEN o.status='completed' AND o.congress IS NOT NULL THEN o.filename ELSE l.congress_name END AS congress_name,

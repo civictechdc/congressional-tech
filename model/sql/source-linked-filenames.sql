@@ -4,7 +4,7 @@ WITH requested AS (
  SELECT DISTINCT source_id,requested_filename,requested_url FROM capture_sources WHERE requested_filename IS NOT NULL
 )
 SELECT q.source_id,q.requested_filename,q.requested_url,
- f.filename_date,f.congress,
+ {{FILENAME_DATE}} AS filename_date,f.congress,f.valid,
  -- Iceberg carries element field ids (document_kind is 19); the aggregated choices relation
  -- does not. Normalize the three public list fields so both sides concatenate as one type.
  arrow_cast(f.document_kind,'List(Utf8)') AS document_kind,
