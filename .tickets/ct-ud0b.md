@@ -67,3 +67,7 @@ Reopened 2026-11-03 (post-release acceptance test): automatic causes work, but t
 **2026-11-04T03:22:00Z**
 
 2026-11-03: run 41766051564 (with hosted limits) reached the daily producer's readings plan job, which was killed at the hard-coded 120 s engine timeout (watchdog peak 2.15 GiB). Remote installs now default to 3600 s, the release's setting.
+
+**2026-11-04T03:32:47Z**
+
+2026-11-03: run 41766667237 completed the daily producer on the runner (~5 min, watchdog peak 2.20 GiB), then completed_daily_inputs refused: video_records parser_versions missing, because the merge rebuilt parser_versions from the daily run only. Fixed to carry the template's Explorer parser versions; regression test replays the checked-in template.
