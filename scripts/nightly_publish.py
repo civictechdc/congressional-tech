@@ -9,9 +9,9 @@ prepare and runs `.github/scripts/run-archive-job.py publish` under its watchdog
 Mac's remote runtime and its credentials from `<main>/.cache/archive-release/remote-runtime/`.
 
 Each run keeps its log, watchdog report and the small JSON files the job wrote under
-`<main>/.cache/archive-release/nightly/<UTC stamp>/`. `output/` in the worktree is
-rebuildable and is removed before each run, because the daily step refuses an existing
-work directory.
+`<main>/.cache/archive-release/nightly/<UTC stamp>/`. The ignored files under `output/` in the
+worktree are rebuildable and are removed before each run, because the daily step refuses an
+existing work directory; `output/` also holds tracked files, which stay.
 
     python3 scripts/nightly_publish.py --install   # write and load the launchd agent
     python3 scripts/nightly_publish.py              # one run now (what launchd calls)
@@ -115,7 +115,7 @@ def run(worktree, prepare_only):
     summary = dict(started=stamp, commit=head, worktree=str(worktree))
     with (evidence / 'log.txt').open('w') as log:
         try:
-            shutil.rmtree(worktree / 'output', ignore_errors=True)
+            step('clean output', ['git', 'clean', '-fdXq', '--', 'output'], cwd=worktree, env=env, log=log)
             step('uv sync', ['uv', 'sync', '--frozen'], cwd=worktree, env=env, log=log)
             step('npm ci', ['npm', '--prefix', 'apps/site', 'ci'], cwd=worktree, env=env, log=log)
             step('browser', ['node', 'apps/site/node_modules/playwright/cli.js', 'install', '--only-shell', 'chromium'],
@@ -127,6 +127,10 @@ def run(worktree, prepare_only):
             step('spicy-regs', [python, '-I', '-m', 'viewer_publication.spicy_regs_inputs',
                                 '--model-spec', 'model/jobs/publish-model.json'], cwd=worktree, env=env, log=log)
             step('site build', ['npm', '--prefix', 'apps/site', 'run', 'build'], cwd=worktree, env=env, log=log)
+            dirty = git('status', '--porcelain', cwd=worktree)
+            if dirty:
+                print(f'== setup left the worktree dirty, which gate 5 refuses:\n{dirty}', file=log, flush=True)
+                raise StepFailed('clean tree', 1)
             if not prepare_only:
                 step('publish', [python, '-I', '.github/scripts/run-archive-job.py', 'publish'],
                      cwd=worktree, env=env, log=log)
