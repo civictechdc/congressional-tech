@@ -25,7 +25,8 @@ class StorageError(RuntimeError):
 class Store:
     def __init__(self):
         self.objects={};self.events=[];self.etag='initial';self.pointer_gets=0;self.requests=[]
-        self.meta=SimpleNamespace(config=SimpleNamespace(retries={'total_max_attempts':1}))
+        from botocore.hooks import HierarchicalEmitter
+        self.meta=SimpleNamespace(config=SimpleNamespace(retries={'total_max_attempts':1}),events=HierarchicalEmitter())
     def get_object(self,*,Bucket,Key):
         self.events.append(('get',Key))
         if Key=='viewer-publications/manifest.json':self.pointer_gets+=1

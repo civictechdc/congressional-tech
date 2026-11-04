@@ -426,9 +426,13 @@ def execute(spec,*,runtime_factory=None,storage_factory=None,process_runner=None
             ledger=ProducerRecords(anchors,client=client,bucket=spec['bucket'])
             if '_daily' in spec:
                 from congress_api.retention.body_store import BodyStore,R2Adapter
+                from congress_api.retention.r2 import configure_read_retries
                 spec['_daily_identity'].require(spec['daily']['path'])
+                # Body reads get their own client: a transient R2 server error on one of thousands of
+                # GETs retries, while this job's writes keep their single attempt.
+                reads=configure_read_retries(storage_factory(bucket=spec['bucket'],endpoint_url=endpoint,retries={'total_max_attempts':1}))
                 daily=produce_daily_inputs(selected_model,spec['_daily'],engine=model,
-                    raw_store=BodyStore(R2Adapter(client,spec['bucket'])),producer_records=ledger)
+                    raw_store=BodyStore(R2Adapter(reads,spec['bucket'])),producer_records=ledger)
                 spec['_daily_identity'].require(spec['daily']['path'])
                 spec['_model_identity'].require(spec['model_spec']['path']);require_configuration()
                 if daily['status']!='ready':return daily

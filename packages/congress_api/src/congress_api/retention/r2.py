@@ -202,8 +202,11 @@ def _configure_retries(client, *, read_throttle_attempts=None, asynchronous=Fals
         http, parsed = response
         status = http.status_code
         delay = None
-        if (status == 429 or status == 503 and parsed.get('Error', {}).get('Code') in
-                {'ServiceUnavailable', 'SlowDown'}) and maximum is not None:
+        throttled = status == 429 or status == 503 and parsed.get('Error', {}).get('Code') in {'ServiceUnavailable', 'SlowDown'}
+        # A read is safe to repeat, and R2 asks for a retry on its own server errors.
+        server_read = (operation.name == 'GetObject' and read_throttle_attempts is not None
+                       and status in (500, 502, 504))
+        if (throttled or server_read) and maximum is not None:
             delay = (_throttle_delay(http.headers, attempts, time.time())
                      if attempts < maximum else False)
         if status not in (404, 412):
@@ -244,6 +247,14 @@ def _configure_retries(client, *, read_throttle_attempts=None, asynchronous=Fals
     # Public SDK extension point. The SDK owns request replay and sync/async
     # sleeping; returning False stops even a later SDK handler's retry decision.
     client.meta.events.register_first('needs-retry.s3', retry, unique_id='r2-http-429')
+
+
+def configure_read_retries(client, *, attempts=5):
+    """Give a client used only for reads its bounded GetObject budget; other operations keep the SDK's.
+
+    Call before the client's first request: the SDK keeps the first hook registered under one name."""
+    _configure_retries(client, read_throttle_attempts=attempts)
+    return client
 
 
 PDF_CACHE_CONTROL = 'public, max-age=31536000, immutable'

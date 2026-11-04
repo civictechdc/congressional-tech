@@ -225,7 +225,8 @@ def test_exhausted_get_aborts_the_ranged_reader_instead_of_becoming_pending(tmp_
         assert len(calls)==5 and sleeps==[1.25,2.25,4.25,8.25]
 
 
-@pytest.mark.parametrize('status,code',[(429,'ServiceUnavailable'),(503,'ServiceUnavailable'),(503,'SlowDown')])
+@pytest.mark.parametrize('status,code',[(429,'ServiceUnavailable'),(503,'ServiceUnavailable'),(503,'SlowDown'),
+    (500,'InternalError'),(502,'BadGateway'),(504,'GatewayTimeout')])
 @pytest.mark.parametrize('recover',[False,True])
 def test_throttled_get_uses_five_attempts_without_multiplying_body_retries(monkeypatch,status,code,recover):
     sequence=[(status,code,{})]*4+([(200,'',{})] if recover else [(status,code,{})])
@@ -243,7 +244,7 @@ def test_throttled_get_uses_five_attempts_without_multiplying_body_retries(monke
 
 
 @pytest.mark.parametrize('status,code,extra',[
-    (403,'AccessDenied',{}),(500,'InternalError',{}),(503,'AccessDenied',{}),
+    (403,'AccessDenied',{}),(503,'AccessDenied',{}),
     (503,'SlowDown',{'retry-after':'61'}),
 ])
 def test_other_get_errors_and_excessive_server_waits_do_not_gain_retries(monkeypatch,status,code,extra):
@@ -253,9 +254,10 @@ def test_other_get_errors_and_excessive_server_waits_do_not_gain_retries(monkeyp
         assert len(calls)==1 and sleeps==[]
 
 
-def test_d2_get_retry_budget_does_not_change_put_budget(monkeypatch):
+@pytest.mark.parametrize('status,code',[(503,'ServiceUnavailable'),(500,'InternalError')])
+def test_d2_get_retry_budget_does_not_change_put_budget(monkeypatch,status,code):
     with closing(sdk_client()) as client:
-        calls,sleeps=sdk_transport(monkeypatch,client,[(503,'ServiceUnavailable',{})])
+        calls,sleeps=sdk_transport(monkeypatch,client,[(status,code,{})])
         R2Store(client,'bucket',read_throttle_attempts=5)
         with pytest.raises(ClientError):client.put_object(Bucket='bucket',Key=KEY,Body=DATA)
         assert len(calls)==1 and sleeps==[]
