@@ -190,7 +190,7 @@ def test_workflow_installation_preserves_execution_gates_and_secret_boundaries()
     assert len(steps) == 3
     for job, step in steps:
         assert step['env']['DOCSPEC_RUNTIME_ARTIFACT'] == '${{ vars.DOCSPEC_RUNTIME_ARTIFACT }}'
-        assert step['env']['DOCSPEC_ENGINE_CREDENTIALS'].startswith('${{ secrets.ARCHIVE_')
+        assert step['env']['DOCSPEC_ENGINE_CREDENTIALS'] == '${{ secrets.DOCSPEC_ENGINE_CREDENTIALS }}'
         assert 'R2_ACCESS_KEY_ID' not in step['env'] and 'R2_SECRET_ACCESS_KEY' not in step['env']
         assert '--directory "$RUNNER_TEMP/docspec-runtime"' in step['run']
         assert '--github-env "$GITHUB_ENV"' in step['run']

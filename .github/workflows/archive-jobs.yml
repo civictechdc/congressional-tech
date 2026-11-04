@@ -44,10 +44,12 @@ jobs:
       - name: Admit the model binding before runtime or storage access
         id: publisher_binding
         run: .venv/bin/python -I .github/scripts/run-archive-job.py publish --check-binding --github-output "$GITHUB_OUTPUT"
+      - name: Fetch the spicy-regs tables the model spec pins
+        run: .venv/bin/python -I -m viewer_publication.spicy_regs_inputs --model-spec model/jobs/publish-model.json
       - name: Install and verify the pinned publish runtime
         env:
           DOCSPEC_RUNTIME_ARTIFACT: ${{ vars.DOCSPEC_RUNTIME_ARTIFACT }}
-          DOCSPEC_ENGINE_CREDENTIALS: ${{ secrets.ARCHIVE_PUBLISH_ENGINE_CREDENTIALS }}
+          DOCSPEC_ENGINE_CREDENTIALS: ${{ secrets.DOCSPEC_ENGINE_CREDENTIALS }}
           CLOUDFLARE_ACCOUNT_ID: ${{ vars.CLOUDFLARE_ACCOUNT_ID }}
         run: .venv/bin/python -I .github/scripts/setup-native-runtime.py --directory "$RUNNER_TEMP/docspec-runtime" --output "$RUNNER_TEMP/native-runtime-check.json" --github-env "$GITHUB_ENV"
       - uses: ./.github/actions/setup-node-project
@@ -60,15 +62,15 @@ jobs:
       - uses: ./.github/actions/setup-local-job-runtime
         with:
           artifact: ${{ vars.DOCSPEC_RUNTIME_ARTIFACT }}
-          credentials: ${{ secrets.ARCHIVE_PUBLISH_ENGINE_CREDENTIALS }}
+          credentials: ${{ secrets.DOCSPEC_ENGINE_CREDENTIALS }}
           account-id: ${{ vars.CLOUDFLARE_ACCOUNT_ID }}
       - name: Run the single publisher with its local contract and HTTPS canary gates
         env:
           CLOUDFLARE_ACCOUNT_ID: ${{ vars.CLOUDFLARE_ACCOUNT_ID }}
           DOCSPEC_RUNTIME_ARTIFACT: ${{ vars.DOCSPEC_RUNTIME_ARTIFACT }}
-          DOCSPEC_ENGINE_CREDENTIALS: ${{ secrets.ARCHIVE_PUBLISH_ENGINE_CREDENTIALS }}
-          R2_ACCESS_KEY_ID: ${{ secrets.ARCHIVE_PUBLISH_R2_ACCESS_KEY_ID }}
-          R2_SECRET_ACCESS_KEY: ${{ secrets.ARCHIVE_PUBLISH_R2_SECRET_ACCESS_KEY }}
+          DOCSPEC_ENGINE_CREDENTIALS: ${{ secrets.DOCSPEC_ENGINE_CREDENTIALS }}
+          R2_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
+          R2_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
         run: .venv/bin/python -I .github/scripts/run-archive-job.py publish
       - name: Retain run evidence (access follows repository)
         if: ${{ always() && steps.publisher_binding.outputs.publisher_work != '' }}
@@ -98,16 +100,16 @@ jobs:
       - name: Install and verify the pinned backfill runtime
         env:
           DOCSPEC_RUNTIME_ARTIFACT: ${{ vars.DOCSPEC_RUNTIME_ARTIFACT }}
-          DOCSPEC_ENGINE_CREDENTIALS: ${{ secrets.ARCHIVE_PUBLISH_ENGINE_CREDENTIALS }}
+          DOCSPEC_ENGINE_CREDENTIALS: ${{ secrets.DOCSPEC_ENGINE_CREDENTIALS }}
           CLOUDFLARE_ACCOUNT_ID: ${{ vars.CLOUDFLARE_ACCOUNT_ID }}
         run: .venv/bin/python -I .github/scripts/setup-native-runtime.py --directory "$RUNNER_TEMP/docspec-runtime" --output "$RUNNER_TEMP/native-runtime-check.json" --github-env "$GITHUB_ENV"
       - name: Run the committed producer backfill specification
         env:
           CLOUDFLARE_ACCOUNT_ID: ${{ vars.CLOUDFLARE_ACCOUNT_ID }}
           DOCSPEC_RUNTIME_ARTIFACT: ${{ vars.DOCSPEC_RUNTIME_ARTIFACT }}
-          DOCSPEC_ENGINE_CREDENTIALS: ${{ secrets.ARCHIVE_PUBLISH_ENGINE_CREDENTIALS }}
-          R2_ACCESS_KEY_ID: ${{ secrets.ARCHIVE_PUBLISH_R2_ACCESS_KEY_ID }}
-          R2_SECRET_ACCESS_KEY: ${{ secrets.ARCHIVE_PUBLISH_R2_SECRET_ACCESS_KEY }}
+          DOCSPEC_ENGINE_CREDENTIALS: ${{ secrets.DOCSPEC_ENGINE_CREDENTIALS }}
+          R2_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
+          R2_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
         run: .venv/bin/python -I .github/scripts/run-archive-job.py backfill
 
   maintenance:
@@ -128,14 +130,14 @@ jobs:
       - name: Install and verify the pinned maintenance runtime
         env:
           DOCSPEC_RUNTIME_ARTIFACT: ${{ vars.DOCSPEC_RUNTIME_ARTIFACT }}
-          DOCSPEC_ENGINE_CREDENTIALS: ${{ secrets.ARCHIVE_MAINTENANCE_ENGINE_CREDENTIALS }}
+          DOCSPEC_ENGINE_CREDENTIALS: ${{ secrets.DOCSPEC_ENGINE_CREDENTIALS }}
           CLOUDFLARE_ACCOUNT_ID: ${{ vars.CLOUDFLARE_ACCOUNT_ID }}
         run: .venv/bin/python -I .github/scripts/setup-native-runtime.py --directory "$RUNNER_TEMP/docspec-runtime" --output "$RUNNER_TEMP/native-runtime-check.json" --github-env "$GITHUB_ENV"
       - name: Run raw checks, retained receipt evidence and catalog maintenance
         env:
           CLOUDFLARE_ACCOUNT_ID: ${{ vars.CLOUDFLARE_ACCOUNT_ID }}
           DOCSPEC_RUNTIME_ARTIFACT: ${{ vars.DOCSPEC_RUNTIME_ARTIFACT }}
-          DOCSPEC_ENGINE_CREDENTIALS: ${{ secrets.ARCHIVE_MAINTENANCE_ENGINE_CREDENTIALS }}
-          R2_ACCESS_KEY_ID: ${{ secrets.ARCHIVE_MAINTENANCE_R2_ACCESS_KEY_ID }}
-          R2_SECRET_ACCESS_KEY: ${{ secrets.ARCHIVE_MAINTENANCE_R2_SECRET_ACCESS_KEY }}
+          DOCSPEC_ENGINE_CREDENTIALS: ${{ secrets.DOCSPEC_ENGINE_CREDENTIALS }}
+          R2_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
+          R2_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
         run: .venv/bin/python -I .github/scripts/run-archive-job.py maintenance

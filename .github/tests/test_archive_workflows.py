@@ -289,7 +289,7 @@ def test_publish_installs_the_local_job_runtime_before_the_publisher():
     local = next(i for i, step in enumerate(steps) if step.get('uses') == './.github/actions/setup-local-job-runtime')
     publisher = next(i for i, step in enumerate(steps) if step.get('run', '').endswith('run-archive-job.py publish'))
     assert local < publisher
-    assert steps[local]['with']['credentials'] == '${{ secrets.ARCHIVE_PUBLISH_ENGINE_CREDENTIALS }}'
+    assert steps[local]['with']['credentials'] == '${{ secrets.DOCSPEC_ENGINE_CREDENTIALS }}'
 
 
 def test_publish_checks_out_full_history_for_producer_commits():
