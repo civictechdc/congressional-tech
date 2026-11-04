@@ -1,7 +1,7 @@
 ---
 id: ct-r8jd
 status: open
-deps: []
+deps: [ct-3szv]
 links: [ct-deg8, ct-wsu7]
 created: 2026-11-02T00:40:43Z
 type: task
@@ -44,3 +44,7 @@ Reopened 2026-11-03 (post-release acceptance test): .github/archive-jobs.json ha
 **2026-11-04T02:22:01Z**
 
 2026-11-03: rss_gb set in .github/archive-jobs.json: publish 14, backfill 12 (both admit at --check-binding); maintenance has none and refuses by design. .github/tests/test_archive_workflows.py 18 passed. Stays open until a maintenance run is measured and bound.
+
+**2026-11-04T02:46:36Z**
+
+2026-11-03: owner chose plan-then-real-run, but maintenance cannot run as specified (ct-3szv): its raw-verification inputs are never produced, --plan lists no deletions, and the dry run applies staged results. No local R2 credentials in this environment either. Blocked on ct-3szv.
