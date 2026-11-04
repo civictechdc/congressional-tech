@@ -43,26 +43,13 @@ WITH expected_parsers AS (
    WHERE f.filename=p.filename AND f.source_url=p.source_url)
  AND NOT EXISTS (SELECT 1 FROM unreadable_filenames u
    WHERE u.record_sha=encode(sha256(json_array(p.filename,p.source_url)),'hex'))
-), capture_dup AS (
- SELECT count(*) AS cnt FROM (
-   SELECT receipt_key,receipt_line,capture_index FROM captures
-   GROUP BY receipt_key,receipt_line,capture_index HAVING count(*)>1
- )
-), reading_dup AS (
- SELECT count(*) AS cnt FROM (
-   SELECT body_sha,parser,parser_version FROM readings
-   GROUP BY body_sha,parser,parser_version HAVING count(*)>1
- )
-), filename_dup AS (
- SELECT count(*) AS cnt FROM (
-   SELECT filename,source_url,catalog_version FROM filename_readings
-   GROUP BY filename,source_url,catalog_version HAVING count(*)>1
- )
 )
+-- The three whole-table key counts are completeness steps, run one at a time: aggregated
+-- together in this query they compete for the pool and a spill can fail to reserve its sort.
 SELECT
- (SELECT cnt FROM capture_dup) AS duplicate_captures,
- (SELECT cnt FROM reading_dup) AS duplicate_readings,
- (SELECT cnt FROM filename_dup) AS duplicate_filename_readings,
+ (SELECT cnt FROM profile_capture_duplicates) AS duplicate_captures,
+ (SELECT cnt FROM profile_reading_duplicates) AS duplicate_readings,
+ (SELECT cnt FROM profile_filename_duplicates) AS duplicate_filename_readings,
  (SELECT count(*) FROM (SELECT parser FROM parser_versions GROUP BY parser HAVING count(*)>1)) AS duplicate_parser_versions,
  (SELECT count(*) FROM captures WHERE receipt_key IS NULL OR receipt_line IS NULL OR capture_index IS NULL) AS invalid_capture_keys,
  (SELECT count(*) FROM readings WHERE body_sha IS NULL OR parser IS NULL OR parser_version IS NULL

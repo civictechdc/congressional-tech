@@ -633,6 +633,13 @@ def _sql_steps(names,*,root=ROOT):
     return [dict(name=name.replace('-','_'),sql=(Path(root)/'model/sql'/(name+'.sql')).read_text(),materialize=True) for name in names]
 
 
+def witness_key_steps(*,root=ROOT):
+    """The engine re-runs a CTE at every reference, so the relations document_witness_keys reads more
+    than once are materialized first; as one query it set the whole build's peak memory."""
+    return _sql_steps(['document-witness-url-keys','document-witness-chrg-components','document-witness-url-matches',
+        'document-witness-meeting-witnesses','document-witness-keys'],root=root)
+
+
 def explorer_settled_sql(table):
     """Settled at the pinned version only: an old version's failure says nothing about the new one."""
     return f"""SELECT lower(encode(record_sha,'hex')) AS sha FROM selected_{table} WHERE status IN ('completed','error','size_limit')
@@ -942,8 +949,7 @@ def build_prepared_release(prepared,*,engine,output,root=ROOT):
         'document-version-keys','document-versions','document-metadata','document-addresses','saved-recoveries','document-removals','document-packages',
         'document-rendition-titles','recovered-copy-fills'],root=root)
     steps += package_link_steps(root=root)
-    steps += appearance_steps(root=root)+[
-        dict(name='document_witness_keys',sql=(Path(root)/'model/sql/document-witness-keys.sql').read_text(),materialize=True),
+    steps += appearance_steps(root=root)+witness_key_steps(root=root)+[
         dict(name='component_meeting_links',sql=(Path(root)/'model/sql/component-meeting-links.sql').read_text(),materialize=True)]
     steps += [dict(name='base_normalized',sql=(Path(root)/'model/sql/document-normalized.sql').read_text()+' UNION ALL '+(Path(root)/'model/sql/document-recovery-normalized.sql').read_text(),materialize=True)]
     from viewer_publication.archive_model_profile import completeness_checks

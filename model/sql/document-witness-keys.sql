@@ -1,30 +1,4 @@
-WITH witness_doc_urls AS (
- SELECT witness_key,unnest(document_urls) AS doc_url
- FROM appearance_records_resolved
- WHERE source<>'mods' AND document_urls IS NOT NULL
-), witness_url_keys AS (
- SELECT DISTINCT w.witness_key,k.url_key
- FROM witness_doc_urls w
- JOIN appearance_url_keys k ON w.doc_url=k.url
- WHERE k.error IS NULL AND k.url_key IS NOT NULL
-), chrg_components AS (
- SELECT DISTINCT component FROM document_packages WHERE regexp_like(package_id,'(?i)^CHRG-')
- UNION
- SELECT DISTINCT m.component FROM document_members m JOIN source_annotations a USING(source_id)
- WHERE regexp_like(a.package_id,'(?i)^CHRG-')
-), url_matched_members AS (
- SELECT m.component,w.witness_key
- FROM document_members m
- JOIN copy_url_keys ck ON m.source_id=ck.source_id
- JOIN witness_url_keys w ON ck.url_key=w.url_key
- WHERE NOT EXISTS (SELECT 1 FROM chrg_components c WHERE c.component=m.component)
- UNION
- SELECT r.component,w.witness_key
- FROM saved_recoveries r
- JOIN recovery_original_keys rk ON r.id=rk.recovery_id
- JOIN witness_url_keys w ON rk.url_key=w.url_key
- WHERE NOT EXISTS (SELECT 1 FROM chrg_components c WHERE c.component=r.component)
-), single_meeting_components AS (
+WITH single_meeting_components AS (
  SELECT component,try_cast(meeting_keys[1] AS BIGINT) AS event_id
  FROM document_metadata
  WHERE array_length(meeting_keys)=1 AND try_cast(meeting_keys[1] AS BIGINT) IS NOT NULL
@@ -46,8 +20,8 @@ WITH witness_doc_urls AS (
  FROM document_members dm
  JOIN source_files sf ON sf.source_id=dm.source_id
  JOIN single_meeting_components smc ON smc.component=dm.component
- WHERE NOT EXISTS (SELECT 1 FROM chrg_components c WHERE c.component=dm.component)
-  AND NOT EXISTS (SELECT 1 FROM url_matched_members u WHERE u.component=dm.component)
+ WHERE NOT EXISTS (SELECT 1 FROM document_witness_chrg_components c WHERE c.component=dm.component)
+  AND NOT EXISTS (SELECT 1 FROM document_witness_url_matches u WHERE u.component=dm.component)
   AND regexp_like(sf.filename,'(?i)^(?:[0-9a-f]{64}[.])?(?:HHRG|HMTG)-[0-9]+-[A-Z0-9]+-(?:Wstate|TTF|Bio)-[A-Za-z0-9''-]+-[0-9]{8}')
  UNION
  SELECT DISTINCT
@@ -60,37 +34,21 @@ WITH witness_doc_urls AS (
  FROM saved_recoveries r
  JOIN effective_filenames n ON n.input_id='recovery:'||r.id
  JOIN single_meeting_components smc ON smc.component=r.component
- WHERE NOT EXISTS (SELECT 1 FROM chrg_components c WHERE c.component=r.component)
-  AND NOT EXISTS (SELECT 1 FROM url_matched_members u WHERE u.component=r.component)
+ WHERE NOT EXISTS (SELECT 1 FROM document_witness_chrg_components c WHERE c.component=r.component)
+  AND NOT EXISTS (SELECT 1 FROM document_witness_url_matches u WHERE u.component=r.component)
   AND regexp_like(n.filename,'(?i)^(?:[0-9a-f]{64}[.])?(?:HHRG|HMTG)-[0-9]+-[A-Z0-9]+-(?:Wstate|TTF|Bio)-[A-Za-z0-9''-]+-[0-9]{8}')
-), canonical_meeting_witnesses AS (
- SELECT DISTINCT
-  w.event_id,
-  w.witness_key,
-  regexp_replace(lower(p.family),'[^a-z0-9]','','g') AS norm_family,
-  regexp_replace(lower(p.family),'[^a-z0-9]','','g')||
-   substr(regexp_replace(lower(coalesce(p.given,'')),'[^a-z0-9]','','g'),1,1) AS norm_family_init
- FROM appearance_records_resolved w
- LEFT JOIN witness_precedence wp ON wp.witness_key=w.witness_key
- JOIN appearance_people p ON p.record_sha_hex=w.record_sha_hex
-  AND p.source=w.source AND p.ordinal=w.ordinal
- WHERE w.event_id IS NOT NULL
-  AND w.occasion='meeting:'||cast(w.event_id AS VARCHAR)
-  AND wp.superseded_by IS NULL
-  AND NOT p.statement
-  AND p.family IS NOT NULL
 ), unique_family_per_event AS (
  SELECT event_id,norm_family
- FROM canonical_meeting_witnesses
+ FROM document_witness_meeting_witnesses
  GROUP BY event_id,norm_family
  HAVING count(DISTINCT witness_key)=1
 ), witness_slug_candidates AS (
  SELECT event_id,witness_key,norm_family_init AS norm_slug
- FROM canonical_meeting_witnesses
+ FROM document_witness_meeting_witnesses
  WHERE norm_family_init<>''
  UNION
  SELECT w.event_id,w.witness_key,w.norm_family AS norm_slug
- FROM canonical_meeting_witnesses w
+ FROM document_witness_meeting_witnesses w
  JOIN unique_family_per_event u ON u.event_id=w.event_id AND u.norm_family=w.norm_family
  WHERE w.norm_family<>''
 ), unambiguous_slug_witness AS (
@@ -104,7 +62,7 @@ WITH witness_doc_urls AS (
  JOIN unambiguous_slug_witness u ON u.event_id=h.event_id AND u.norm_slug=h.norm_slug
  WHERE h.norm_slug<>''
 ), raw_matched AS (
- SELECT component,witness_key FROM url_matched_members
+ SELECT component,witness_key FROM document_witness_url_matches
  UNION
  SELECT component,witness_key FROM slug_matched_members
 ), canonical_expanded AS (

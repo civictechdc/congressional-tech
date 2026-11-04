@@ -13,6 +13,7 @@ import pytest
 from congress_api.parsers.meeting_facts import stated_facts
 from congress_api.retention.provenance import json_input, list_of, parquet_output, run_job, struct
 from docspec_client.client import NativeDatasets
+from viewer_publication.archive_model import witness_key_steps
 
 ROOT = Path(__file__).parents[3]
 EMPTY_SITTINGS = ("array_slice(make_array(named_struct('start',arrow_cast(NULL,'Timestamp(Microsecond, Some(\"UTC\"))'),"
@@ -628,7 +629,7 @@ def test_two_way_witness_precedence_and_hmtg_sha_prefixed_slugs_in_document_witn
                  filename=f'{sha_prefix}.hhrg-118-ag00-bio-doer-20230510.pdf'),
         ], source_id='Utf8', body_sha='Utf8', source_url='Utf8', filename='Utf8'),
     ]
-    steps = [dict(name='document_witness_keys', sql=sql('document-witness-keys'), materialize=True)]
+    steps = witness_key_steps(root=ROOT)
     res = run_job(tmp_path, engine, inputs=inputs, steps=steps, outputs=[], queries=[
         dict(name='dwk', sql='SELECT component, witness_keys, witness_name FROM document_witness_keys ORDER BY component')
     ])['dwk']
