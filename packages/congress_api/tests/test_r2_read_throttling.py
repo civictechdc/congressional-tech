@@ -109,15 +109,16 @@ def sdk_client(mode='standard',maximum=1):
 
 
 def transport_failure(kind):
-    from botocore.exceptions import ConnectionClosedError,EndpointConnectionError,HTTPClientError,ReadTimeoutError
+    from botocore.exceptions import ConnectionClosedError,EndpointConnectionError,HTTPClientError,ReadTimeoutError,SSLError
     if kind=='reset':return ConnectionResetError('fixture reset')
     if kind=='wrapped-reset':return HTTPClientError(error=ConnectionResetError('fixture reset'))
+    if kind=='ssl':return SSLError(endpoint_url='https://r2.example.test',error='tlsv1 alert decode error')
     cls={'closed':ConnectionClosedError,'timeout':ReadTimeoutError,'endpoint':EndpointConnectionError}[kind]
     return cls(endpoint_url='https://r2.example.test')
 
 
 @pytest.mark.parametrize('mode',['legacy','standard'])
-@pytest.mark.parametrize('kind',['closed','timeout','endpoint','reset','wrapped-reset'])
+@pytest.mark.parametrize('kind',['closed','timeout','endpoint','ssl','reset','wrapped-reset'])
 @pytest.mark.parametrize('failures',[0,1,4,5])
 def test_transport_get_recovers_within_one_shared_attempt_bound(monkeypatch,mode,kind,failures):
     error=transport_failure(kind)

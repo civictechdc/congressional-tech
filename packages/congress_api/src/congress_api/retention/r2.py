@@ -171,7 +171,7 @@ def _throttle_delay(headers, attempt, now):
 
 def _configure_retries(client, *, read_throttle_attempts=None, asynchronous=False):
     """Use one SDK replay loop for bounded throttling and GET transport failures."""
-    from botocore.exceptions import ConnectionClosedError,EndpointConnectionError,HTTPClientError,ReadTimeoutError
+    from botocore.exceptions import ConnectionClosedError,EndpointConnectionError,HTTPClientError,ReadTimeoutError,SSLError
     if read_throttle_attempts is not None and (
             type(read_throttle_attempts) is not int or not 1 <= read_throttle_attempts <= 5):
         raise ValueError('Read throttle attempts must be between one and five')
@@ -179,7 +179,7 @@ def _configure_retries(client, *, read_throttle_attempts=None, asynchronous=Fals
     sdk_maximum = client.meta.config.retries.get('total_max_attempts')
 
     def transport(error):
-        return isinstance(error,(ConnectionClosedError,ReadTimeoutError,EndpointConnectionError,ConnectionResetError)) or (
+        return isinstance(error,(ConnectionClosedError,ReadTimeoutError,EndpointConnectionError,SSLError,ConnectionResetError)) or (
             isinstance(error,HTTPClientError) and isinstance(error.kwargs.get('error'),ConnectionResetError))
 
     def retry(*, response, attempts, operation, request_dict, caught_exception=None, **_):

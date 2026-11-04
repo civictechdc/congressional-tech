@@ -285,7 +285,7 @@ def _head(client,bucket,key):
     A HEAD is safe to repeat, so throttling, server errors and dropped connections back off
     and retry a bounded number of times; a server wait past a minute is not waited out.
     """
-    from botocore.exceptions import ClientError,ConnectionClosedError,EndpointConnectionError,ReadTimeoutError
+    from botocore.exceptions import ClientError,ConnectionClosedError,EndpointConnectionError,ReadTimeoutError,SSLError
     from congress_api.retention.r2 import _throttle_delay
     for attempt in range(1,HEAD_ATTEMPTS+1):
         try:
@@ -297,7 +297,7 @@ def _head(client,bucket,key):
             if metadata.get('HTTPStatusCode') not in HEAD_RETRY_STATUS or attempt==HEAD_ATTEMPTS:raise
             delay=_throttle_delay({k.lower():v for k,v in metadata.get('HTTPHeaders',{}).items()},attempt,time.time())
             if delay is False:raise
-        except (ConnectionClosedError,EndpointConnectionError,ReadTimeoutError,ConnectionResetError):
+        except (ConnectionClosedError,EndpointConnectionError,ReadTimeoutError,SSLError,ConnectionResetError):
             if attempt==HEAD_ATTEMPTS:raise
             delay=_throttle_delay({},attempt,time.time())
         time.sleep(delay)
