@@ -2,7 +2,7 @@
 id: ct-30fp
 status: closed
 deps: []
-links: [ct-kw9b, ct-vpo2, ct-h1nd, ct-pocg, ct-v51p, ct-aapl]
+links: [ct-kw9b, ct-vpo2, ct-h1nd, ct-pocg, ct-v51p, ct-aapl, ct-kb4w, ct-94hw]
 created: 2026-10-30T21:13:37Z
 type: bug
 priority: 1

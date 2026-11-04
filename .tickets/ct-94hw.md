@@ -1,8 +1,8 @@
 ---
 id: ct-94hw
 status: in_progress
-deps: []
-links: [ct-m56x]
+deps: [ct-kb4w]
+links: [ct-m56x, ct-30fp, ct-kb4w]
 created: 2026-11-04T15:19:41Z
 type: bug
 priority: 1
@@ -42,3 +42,7 @@ Run 6 (origin/main ebaa6c2a; local fixes unpushed) published nothing: daily refu
 **2026-11-04T17:43:28Z**
 
 Run 7 (2b3f20ef): producer preflight passed (record repair held). Failed in the raw-custody scope job: scoped-captures export ordered by receipt_key alone, not unique (26,281 captures / 6,941 bodies; receipts with several candidate lines). Run 5 passed only because its candidates had one line per receipt. Fixed 89a8d2df: order by (receipt_key, receipt_line, capture_index); new test fails with the production error under the old ordering. Nothing appended (check runs before captures move). Run 8 started on 89a8d2df.
+
+**2026-11-04T20:05:14Z**
+
+Nightly run 8 (20261104T174328Z, main 3afcd141): daily completed and lake heads advanced with producer records. Publish refused at gate 1: 71 groups vs e4538f00 with no recorded cause (candidate ef4c1632...). Candidate, base and release-gate.json saved under .cache/archive-release/nightly/20261104T174328Z/candidate/. Witnesses -35,899/+35,915 investigated in candidate/witness-rekey.md: the same Congress.gov witnesses re-keyed after 18,123 committee-meeting API URLs first fetched 2026-10-30 entered the lake (new record_sha plus a real context_key where e4538f00 had sha256([null,null])). Content equal apart from 79 names, 68 positions, 69 organizations. Open for the owner: witness_key churns on every re-fetch, and the Explorer /witness route looks up by key. launchd left unloaded until a cause record lands. event 118300 committee_records still 0: nightly does not rebuild Explorer tables (ct-717p stays open).
