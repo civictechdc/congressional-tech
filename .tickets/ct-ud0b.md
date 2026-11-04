@@ -63,3 +63,7 @@ Reopened 2026-11-03 (post-release acceptance test): automatic causes work, but t
 **2026-11-04T03:16:11Z**
 
 2026-11-03: re-enabled archive-jobs.yml (owner decision; it had been disabled by hand 2026-10-28) and dispatched publish run 41763463814. Binding, spicy-regs fetch, runtime install with repo-wide secrets, site build and Gate 3 passed; the publisher refused 'job requires explicit host limits' (remote installs never wrote limits; watchdog peak 0.91 GiB). Fixed: .github/docspec-hosted-limits.json (10 GiB pool, 10 GiB spill, 4 threads) written by setup-native-runtime for remote installs.
+
+**2026-11-04T03:22:00Z**
+
+2026-11-03: run 41766051564 (with hosted limits) reached the daily producer's readings plan job, which was killed at the hard-coded 120 s engine timeout (watchdog peak 2.15 GiB). Remote installs now default to 3600 s, the release's setting.
