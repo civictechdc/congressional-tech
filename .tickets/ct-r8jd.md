@@ -2,7 +2,7 @@
 id: ct-r8jd
 status: open
 deps: [ct-3szv]
-links: [ct-deg8, ct-wsu7]
+links: [ct-deg8, ct-wsu7, ct-6v77]
 created: 2026-11-02T00:40:43Z
 type: task
 priority: 1
