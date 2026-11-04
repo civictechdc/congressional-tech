@@ -59,6 +59,10 @@ def completed_daily_inputs(template,production,records):
                 raise ValueError(f'Daily publication {entity_name} producer version differs from current source-scoped definitions')
             if entity_name in pins:
                 merged_parsers[entity_name]=dict(ver)
+    # Daily does not produce the Explorer tables; their template pins keep the versions that made them.
+    for name in EXPLORER_TABLES:
+        if template.get(name) is not None and name in (template.get('parser_versions') or {}):
+            merged_parsers[name]=dict(template['parser_versions'][name])
     receipt_list(keys)
     value=dict(template,parser_versions=merged_parsers,catalog_version=versions['filename_readings'])
     for name in (*TABLES,*(n for n in ENTITY_TABLES if n in pins)):

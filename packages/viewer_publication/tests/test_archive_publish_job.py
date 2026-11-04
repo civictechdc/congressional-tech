@@ -600,6 +600,29 @@ def test_daily_handoff_binds_all_five_table_pins_when_present(tmp_path):
     assert selected['parser_versions']['appearance_records']==appearance_records.current_versions()
 
 
+def test_daily_handoff_keeps_the_checked_in_explorer_pins_and_their_parser_versions(tmp_path):
+    """Hosted run 41766667237: daily reports only page parsers, so the template's Explorer versions must survive."""
+    from viewer_publication.archive_model_job import EXPLORER_TABLES,load_spec
+    from viewer_publication.archive_publish_job import ALL_TABLES,_expected_entity_versions,completed_daily_inputs
+    root=Path(__file__).resolve().parents[3]
+    template=load_spec(root/'model/jobs/publish-model.json')
+    entity=_expected_entity_versions()
+    page={name:value for name,value in template['parser_versions'].items()
+          if name not in entity and name not in EXPLORER_TABLES}
+    decision=template['recording_decision_files'][0]
+    record_path=tmp_path/'decisions.jsonl';record_path.write_bytes(b'')
+    records=[dict(key=decision['key'],path=str(record_path),etag='"'+'0'*32+'"',sha256=decision['sha256'],size=decision['size'])]
+    production=dict(status='completed',receipt_keys=['receipts/2026/11/03/a.jsonl.gz'],
+        pins={name:{k:template[name][k] for k in ('metadata_location','table_uuid','snapshot','schema_id')} for name in ALL_TABLES},
+        currentversions=dict(parsers=page,filename_readings=template['catalog_version'],**entity),
+        provenance=dict(recoveries=[],reviews=[],unreadable=[]))
+    selected,_=completed_daily_inputs(template,production,records)
+    for name in EXPLORER_TABLES:
+        assert selected[name]['snapshot']==template[name]['snapshot']
+        assert selected['parser_versions'][name]==template['parser_versions'][name]
+    assert [row['key'] for row in selected['recording_decision_files']]==[decision['key']]
+
+
 @pytest.mark.parametrize('table',['meeting_records','appearance_records'])
 @pytest.mark.parametrize('kind',['composite_scalar','arbitrary_scalar'])
 def test_daily_handoff_rejects_scalar_composite_entity_versions(tmp_path,table,kind):
