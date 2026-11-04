@@ -493,6 +493,7 @@ real_body   := a body with at least one real_files row
 
 - **PDF integrity:** `intact` comes from the `.pdf` copy's verification record, else the pinned sniff read; phase 1 doesn't bulk-read older capture checks or the old readings' PDF opens; a PDF with neither is `unchecked` and still counts as a document until B13's copy verifies it.
 - **ZIPs are capture transport (owner decision, 2026-11-01):** a ZIP's contents are the documents and its METS, MODS and PREMIS manifests join none. The ZIP is a source record: it has no `list` row or alternate, its link key and URLs resolve to a document from its contents, and each member's `sources` row keeps the ZIP URL and member path. A ZIP with no expanded contents stays a document, and the model reports their count as a recorded disposition.
+- **Document rule (owner decisions, 2026-11-02):** a response is a document only when its status is 2xx other than 202 and its body is not empty. A 206 is a document only when its range covers the whole file; a partial range is not (ct-64el). An empty body or an HTTP 202 is a failed attempt: the receipt keeps it, nothing lists it, and the URL is rechecked on schedule (ct-3l1c, ct-c6b0). The same rule applies to caption tracks (ct-fh62).
 - Bodies that are not real files stay in the lake as evidence; listing, wrapper and error pages and metadata records still supply links. A damaged PDF is fetched again on its recheck schedule.
 - `file_shaped(locator)` is true when a file-shape registry entry matches; the labeled sample fixes the list.
 - The model reports, per release, the bodies with no role by format and error type, the damaged PDFs (those over the reader's limit apart), and the bodies that newly crossed the placeholder threshold.
@@ -628,6 +629,7 @@ version_keys   := for each edition-ambiguous endpoint holding one of its real bo
   4. recovery attachment (§7.8), with each recovery's original-link source file already in step 1;
   5. review edges with a link URL key end, which merge the documents they resolve to;
   6. saved files, dates and keys.
+- **Versions (owner decision, 2026-11-02):** copies whose text fingerprints are equal are one document, which shows the latest; bytes that differ only by per-fetch noise, such as Cloudflare's email obfuscation (§6.2), do not make a version. Only different text makes an edition. Editions at one address are separate documents that share a `version_keys` entry, and the site lists every version, not only the latest (ct-64el).
 - Only `same_rendition` joins renditions; several files of one format listed together, such as a witness's testimony, disclosure form and biography, stay separate documents.
 - The model reports the largest components by edge kind.
 - Rendition groups today: about 34,100 GovInfo ZIPs (rule a; 112 hold no PDF); about 560 same-stem groups (rule b; 732 on the old catalog's names).
