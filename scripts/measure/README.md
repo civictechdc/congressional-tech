@@ -40,4 +40,6 @@ Run from the repository root with the locked environment, for example:
 
 **`probe_corpus_recovery_memory.py`** compares resident memory on synthetic recovery inputs. It uses no network, no credentials, and no retained documents.
 
+**`model_relation_rows.py`** reads one retained model build (its submitted job, step log and model spec) and writes the rows of every relation it scanned. `packages/viewer_publication/tests/fixtures/model-relation-rows.json` is its output; the repeat-cost lint (`test_phase1_model_repeat_cost.py`) scores repeated plan scans with it. Regenerate it from a newer nightly-shaped build when relation sizes move, then update the lint's tracked scores.
+
 **`process_rss.py`** samples resident memory for a process and its children. The other measurements import it. You do not need to run it directly.

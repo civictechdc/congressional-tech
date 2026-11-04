@@ -4,6 +4,7 @@ The parser's own stated_facts and title_key build the meeting rows, so the parse
 """
 import hashlib
 import os
+import random
 import re
 from pathlib import Path
 
@@ -643,6 +644,18 @@ def test_two_way_witness_precedence_and_hmtg_sha_prefixed_slugs_in_document_witn
     ]
 
 
+def witness_key_inputs(directory, matches, names, precedence):
+    """document_witness_keys' three inputs from (component, key), (key, name) and (key, superseded_by) pairs."""
+    return [
+        json_input(directory, 'document_witness_raw_matches', [dict(component=c, witness_key=k) for c, k in matches],
+                   component='Utf8', witness_key='Utf8'),
+        json_input(directory, 'appearance_records_resolved', [dict(witness_key=k, name=n) for k, n in names],
+                   witness_key='Utf8', name='Utf8'),
+        json_input(directory, 'witness_precedence', [dict(witness_key=k, superseded_by=s) for k, s in precedence],
+                   witness_key='Utf8', superseded_by='Utf8'),
+    ]
+
+
 def test_document_witness_keys_counts_each_witness_once_per_document(tmp_path):
     # witness_name: the one current witness's name, else the one witness's name, else NULL. Name rows
     # and precedence rows fan the join out; neither may count a witness twice, and a NULL key is no witness.
@@ -654,14 +667,7 @@ def test_document_witness_keys_counts_each_witness_once_per_document(tmp_path):
              ('k_two', 'Zed'), ('k_two', 'Abe'), ('k_dup', 'Zz Dup'), ('k_dup2', 'Dup Two'),
              ('k_self', 'Self'), ('k_named', 'Named')]
     precedence = [('k_old', 'k_cur'), ('k_dup', None), ('k_dup', 'k_dup2'), ('k_dup2', 'k_dup'), ('k_self', 'k_self')]
-    inputs = [
-        json_input(tmp_path, 'document_witness_raw_matches', [dict(component=c, witness_key=k) for c, k in matches],
-                   component='Utf8', witness_key='Utf8'),
-        json_input(tmp_path, 'appearance_records_resolved', [dict(witness_key=k, name=n) for k, n in names],
-                   witness_key='Utf8', name='Utf8'),
-        json_input(tmp_path, 'witness_precedence', [dict(witness_key=k, superseded_by=s) for k, s in precedence],
-                   witness_key='Utf8', superseded_by='Utf8'),
-    ]
+    inputs = witness_key_inputs(tmp_path, matches, names, precedence)
     steps = [step for step in witness_key_steps(root=ROOT) if step['name'] == 'document_witness_keys']
     res = run_job(tmp_path, engine, inputs=inputs, steps=steps, outputs=[], queries=[
         dict(name='dwk', sql='SELECT component, witness_keys, witness_name FROM document_witness_keys ORDER BY component')
@@ -675,6 +681,104 @@ def test_document_witness_keys_counts_each_witness_once_per_document(tmp_path):
         dict(component='c_superseded', witness_keys=['k_cur', 'k_old'], witness_name='Current Name'),
         dict(component='c_two_current', witness_keys=['k_a', 'k_b'], witness_name=None),
     ]
+
+
+# The reference oracle: document-witness-keys.sql's aggregate as it stood before 2d76d689, two
+# count(DISTINCT) over the fanned-out name and precedence join. Verbatim but for reading raw matches
+# from their step (document_witness_raw_matches), which was then the inline raw_matched CTE.
+PRE_2D76D689_WITNESS_KEYS_SQL = """WITH canonical_expanded AS (
+ SELECT component,witness_key FROM document_witness_raw_matches
+ UNION
+ SELECT m.component,wp.superseded_by AS witness_key
+ FROM document_witness_raw_matches m
+ JOIN witness_precedence wp ON wp.witness_key=m.witness_key
+ WHERE wp.superseded_by IS NOT NULL
+), all_matched AS (
+ SELECT component,witness_key FROM canonical_expanded
+ UNION
+ SELECT c.component,wp.witness_key
+ FROM canonical_expanded c
+ JOIN witness_precedence wp ON wp.superseded_by=c.witness_key
+)
+SELECT
+ m.component,
+ array_sort(array_distinct(array_agg(m.witness_key))) AS witness_keys,
+ CASE
+  WHEN count(DISTINCT m.witness_key) FILTER (WHERE wp.superseded_by IS NULL)=1
+   THEN min(w.name) FILTER (WHERE wp.superseded_by IS NULL)
+  WHEN count(DISTINCT m.witness_key)=1
+   THEN min(w.name)
+ END AS witness_name
+FROM all_matched m
+LEFT JOIN appearance_records_resolved w ON w.witness_key=m.witness_key
+LEFT JOIN witness_precedence wp ON wp.witness_key=m.witness_key
+GROUP BY m.component"""
+
+# Wrong rewrites the seeded rows must tell apart from the oracle: (base SQL, text replaced, replacement).
+WITNESS_KEY_PLANTS = {
+    'oracle_without_distinct': ('oracle', 'count(DISTINCT m.witness_key)', 'count(m.witness_key)'),
+    'committed_count_star': ('committed', 'count(witness_key)', 'count(*)'),
+    'committed_bool_and': ('committed', 'bool_or(', 'bool_and('),
+}
+
+
+def seeded_witness_rows(seed=20261104, components=2500, keys=400, matches=4000):
+    """Raw matches, names and precedence with NULL keys and components, NULL names, duplicate rows,
+    precedence chains and self-supersession, and keys with both a current and a superseded row."""
+    rng = random.Random(seed)
+    key = lambda: f'k{rng.randrange(keys)}'
+    names, precedence = [], []
+    for k in range(keys):
+        for _ in range(rng.choice([0, 1, 1, 2, 3])):
+            names.append((f'k{k}', None if rng.random() < 0.12 else f'n{rng.randrange(300)}'))
+        for _ in range(rng.choice([0, 1, 1, 2])):
+            precedence.append((f'k{k}', None if rng.random() < 0.45 else key()))
+    rows = [(None if rng.random() < 0.01 else f'c{rng.randrange(components)}', None if rng.random() < 0.04 else key())
+            for _ in range(matches)]
+    rows += rng.sample(rows, matches // 20)
+    return rows, names, precedence
+
+
+@pytest.fixture(scope='module')
+def witness_key_variants(tmp_path_factory):
+    """Committed SQL, oracle and every plant over the seeded rows and over no matches, in one engine job each."""
+    committed = next(step['sql'] for step in witness_key_steps(root=ROOT) if step['name'] == 'document_witness_keys')
+    variants = dict(committed=committed, oracle=PRE_2D76D689_WITNESS_KEYS_SQL)
+    variants.update({plant: variants[base].replace(old, new) for plant, (base, old, new) in WITNESS_KEY_PLANTS.items()
+                     if old in variants[base]})
+    engine = NativeDatasets.from_config(os.environ['DOCSPEC_JOB_CONFIG'])
+    seeded = seeded_witness_rows()
+    cases = dict(seeded=seeded, no_matches=([], seeded[1], seeded[2]))
+    results = {}
+    for case, rows in cases.items():
+        directory = tmp_path_factory.mktemp(case)
+        results[case] = run_job(directory, engine, inputs=witness_key_inputs(directory, *rows),
+            steps=[dict(name=name, sql=sql, materialize=True) for name, sql in variants.items()], outputs=[],
+            queries=[dict(name=name, sql=f'SELECT component, witness_keys, witness_name FROM {name} ORDER BY component')
+                     for name in variants])
+    return results
+
+
+def test_document_witness_keys_with_no_matches_is_empty(witness_key_variants):
+    assert witness_key_variants['no_matches']['committed'] == []
+    assert witness_key_variants['no_matches']['oracle'] == []
+
+
+def test_document_witness_keys_equals_the_pre_2d76d689_aggregate_on_seeded_rows(witness_key_variants):
+    seeded = witness_key_variants['seeded']
+    named = [row for row in seeded['oracle'] if row['witness_name'] is not None]
+    # The seed reaches every branch: named and unnamed groups, several keys, a NULL key, a NULL component.
+    assert len(named) > 100 and len(seeded['oracle']) - len(named) > 100
+    assert any(len(row['witness_keys']) > 1 for row in named)
+    assert any(None in row['witness_keys'] for row in named)
+    assert any(row['component'] is None for row in seeded['oracle'])
+    assert seeded['committed'] == seeded['oracle']
+
+
+@pytest.mark.parametrize('plant', WITNESS_KEY_PLANTS)
+def test_seeded_rows_tell_each_wrong_witness_key_rewrite_from_the_oracle(witness_key_variants, plant):
+    assert plant in witness_key_variants['seeded'], f'{plant}: its replaced text is no longer in the SQL'
+    assert witness_key_variants['seeded'][plant] != witness_key_variants['seeded']['oracle']
 
 
 def test_senate_page_plan_is_linear_and_coverage_codes_and_generic_titles_hold(tmp_path):
