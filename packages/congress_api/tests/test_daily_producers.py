@@ -302,7 +302,7 @@ def test_native_daily_defers_receipts_past_the_budget_to_later_nights(tmp_path):
     keys=sorted(row['key'] for row in value['receipt_inventory'])
     first=produce_daily(value,engine=engine,raw_store=store)
     assert first['status']=='completed' and first['new_receipt_keys']==keys[:1]
-    assert first['receipt_budget']==dict(selected=2,kept=1,fresh_bodies=1,max_work_items=1)
+    assert first['receipt_budget']==dict(selected=2,kept=1,fresh_bodies=1,pending_bodies=0,max_work_items=1)
     assert first['producerreports']['readings']['work_items']==1
     second=produce_daily(dict(value,work=str(tmp_path/'second')),engine=engine,raw_store=store)
     assert second['status']=='completed' and second['new_receipt_keys']==keys[1:]
@@ -310,22 +310,33 @@ def test_native_daily_defers_receipts_past_the_budget_to_later_nights(tmp_path):
     assert third['status']=='completed' and third['new_receipt_keys']==[]
 
 
-def test_native_daily_budget_reports_backfill_before_body_or_filename_work(tmp_path):
+def test_native_daily_pending_backlog_fills_the_budget_before_any_new_receipt(tmp_path):
+    # Defect guarded: the receipt budget ignored bodies already pending in captures, so a night
+    # appended new bodies on top of them and then refused after the append (2026-11-04).
+    from congress_api.lake import tables
     from congress_api.lake.daily import produce_daily
     value,engine,store=native_fixture(tmp_path,2);value['max_work_items']=1
-    older=min(value['receipt_inventory'],key=lambda row:row['key'])
+    older,newer=sorted(value['receipt_inventory'],key=lambda row:row['key'])
     item=pq.read_table(value['body_inventory']).to_pylist()
-    # The older receipt's body stays pending, so tonight's one new body is a second work item.
     first_body=json.loads(gzip.open(older['path'],'rt').readline())['captures'][0]['sha256']
     missing=next(row for row in item if row['body_sha'].hex()==first_body)
     (tmp_path/'raw'/missing['relative_path']).rename(tmp_path/'held')
     pending=produce_daily(dict(value,receipt_inventory=[older]),engine=engine,raw_store=store)
     assert pending['status']=='pending'
+    head=lambda name:tables.resolve_tables(engine=engine,work=tmp_path/name,catalog_root=value['catalog_root'],
+        tables={'captures':TABLES['captures']})['captures']
+    before=head('before')
     result=produce_daily(dict(value,work=str(tmp_path/'second')),engine=engine,raw_store=store)
-    assert result['status']=='backfill_required' and result['pins'] is None
-    assert result['receipt_budget']['kept']==1 and result['producerreports']['readings']['work_items']==2
-    assert not (tmp_path/'second/readings/batch-000000').exists()
-    assert not (tmp_path/'second/filenames').exists() and not (tmp_path/'second/final-heads').exists()
+    assert result['status']=='pending' and result['pins'] is None
+    assert result['receipt_budget']==dict(selected=1,kept=0,fresh_bodies=0,pending_bodies=1,max_work_items=1)
+    assert result['new_receipt_keys']==[] and result['producerreports']['captures']==dict(stage=None,append=None)
+    assert head('after')==before and result['producerreports']['readings']['work_items']==1
+    (tmp_path/'held').rename(tmp_path/'raw'/missing['relative_path'])
+    drained=produce_daily(dict(value,work=str(tmp_path/'third')),engine=engine,raw_store=store)
+    assert drained['status']=='completed' and drained['new_receipt_keys']==[]
+    assert drained['producerreports']['readings']['work_items']==1
+    admitted=produce_daily(dict(value,work=str(tmp_path/'fourth')),engine=engine,raw_store=store)
+    assert admitted['status']=='completed' and admitted['new_receipt_keys']==[newer['key']]
 
 
 def test_budget_keeps_the_oldest_receipts_counting_each_new_body_once(tmp_path):

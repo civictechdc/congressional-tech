@@ -287,9 +287,12 @@ def test_maintenance_execute_verifies_runtime_before_storage_access_and_backfill
         def __enter__(self):return self
         def __exit__(self,*_):pass
         def verify_runtime(self):return dict(verified=True)
+    from types import SimpleNamespace
+    hooks=[]
     class EmptyPaginatedR2:
+        meta=SimpleNamespace(config=SimpleNamespace(retries={'total_max_attempts':1}),
+            events=SimpleNamespace(register_first=lambda *a,**k:hooks.append(k.get('unique_id'))))
         def get_paginator(self,op):
-            from types import SimpleNamespace
             assert op=='list_objects_v2'
             return SimpleNamespace(paginate=lambda **_: [dict(Contents=[],IsTruncated=False)])
     observed_daily={}
@@ -314,5 +317,6 @@ def test_maintenance_execute_verifies_runtime_before_storage_access_and_backfill
         producer=fake_producer,
     )
     assert report['status']=='executed' and report['production']['status']=='completed'
+    assert hooks==['r2-http-429']
     assert observed_daily['max_work_items']==200
     assert (tmp_path/'backfill-work/backfill-report.json').is_file()

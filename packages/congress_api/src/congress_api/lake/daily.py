@@ -1,9 +1,12 @@
 """Refresh the three phase-one lake tables before building a daily release."""
+from concurrent.futures import ThreadPoolExecutor
 import json
 from pathlib import Path
 import re
 import subprocess
+import time
 
+import pyarrow as pa
 import pyarrow.parquet as pq
 
 from congress_api.lake import appearance_records,capture_staging,captures,filenames,meeting_records,readings,tables
@@ -24,6 +27,10 @@ OPTIONAL_TABLE_NAMES=('meeting_records','appearance_records')
 ALL_TABLE_NAMES=TABLE_NAMES+OPTIONAL_TABLE_NAMES
 PROVENANCE_KINDS=('recoveries','reviews','unreadable')
 QUALIFIED_FIELDS={'key','etag','path','sha256','size'}
+LISTING_SCHEMA=pa.schema([('key',pa.string()),('size',pa.int64()),('etag',pa.string())])
+HEAD_WORKERS=16
+HEAD_ATTEMPTS=5
+HEAD_RETRY_STATUS={429,500,502,503,504}
 
 
 def _qualified(row,kind,*,check_file=True):
@@ -238,8 +245,8 @@ def _within_budget(stage,selected,captures_head,max_work_items,*,engine,work):
     Returns (kept, fresh bodies by kept receipt count); kept is a prefix of the selection in
     (day, key) order, so a deferred receipt is never older than a kept one of the same family
     and the next run's inclusive watermark still lists it. A body counts once, at the first
-    receipt naming it. Bodies already in captures are read or already pending, so they are
-    left to the readings budget check.
+    receipt naming it. Bodies already in captures are read or already pending; the caller
+    passes the night's budget less the pending ones (_pending_backlog).
     """
     rows=run_job(work,engine,inputs=[tables.table_input('staged',stage),
         tables.table_input('captures',captures_head)],steps=[],outputs=[],queries=[dict(name='fresh',
@@ -255,13 +262,100 @@ def _within_budget(stage,selected,captures_head,max_work_items,*,engine,work):
     return kept,len(seen)
 
 
-def _body_source(spec,raw_store,work):
+def _listed_reads(spec,raw_store):
+    return spec.get('body_inventory') is None and isinstance(raw_store.adapter,R2Adapter)
+
+
+def _pending_backlog(spec,engine,raw_store,heads,unreadable_snapshot,work):
+    """The readings work the current heads already hold, planned without opening a body.
+
+    Candidacy never reads the body source, so an R2 run plans over the recorded copies
+    before any listing exists. A head alone past the budget raises BackfillRequired.
+    """
+    source=(_body_source(spec,raw_store,work) if not _listed_reads(spec,raw_store)
+            else dict(body_inventory=None,captured_copies=True,local_root=Path(work)/'unopened'))
+    return readings.run(engine=engine,work=work,mode='daily',execute=False,max_work_items=spec['max_work_items'],
+        existing=heads['readings'],captures=heads['captures'],unreadable_files=unreadable_snapshot.files(),
+        decided_at=spec['decided_at'],**source)
+
+
+def _head(client,bucket,key):
+    """One exact-key HEAD: a listing row with the ETag as R2 returns it (quoted), or None.
+
+    A HEAD is safe to repeat, so throttling, server errors and dropped connections back off
+    and retry a bounded number of times; a server wait past a minute is not waited out.
+    """
+    from botocore.exceptions import ClientError,ConnectionClosedError,EndpointConnectionError,ReadTimeoutError
+    from congress_api.retention.r2 import _throttle_delay
+    for attempt in range(1,HEAD_ATTEMPTS+1):
+        try:
+            value=client.head_object(Bucket=bucket,Key=key)
+            return dict(key=key,size=value['ContentLength'],etag=value['ETag'])
+        except ClientError as error:
+            if error.response.get('Error',{}).get('Code') in {'404','NoSuchKey','NotFound'}:return None
+            metadata=error.response.get('ResponseMetadata',{})
+            if metadata.get('HTTPStatusCode') not in HEAD_RETRY_STATUS or attempt==HEAD_ATTEMPTS:raise
+            delay=_throttle_delay({k.lower():v for k,v in metadata.get('HTTPHeaders',{}).items()},attempt,time.time())
+            if delay is False:raise
+        except (ConnectionClosedError,EndpointConnectionError,ReadTimeoutError,ConnectionResetError):
+            if attempt==HEAD_ATTEMPTS:raise
+            delay=_throttle_delay({},attempt,time.time())
+        time.sleep(delay)
+
+
+def _listed_custody(spec,engine,raw_store,heads,backlog,stage,unreadable_snapshot,work):
+    """Raw custody, before captures move, for every body the readings run after the append reads.
+
+    The bodies are those already pending plus the staged bodies new to captures. Every copy
+    their captures record is HEADed at its exact key into a listing; an absent object has no
+    row. Readings then plans over every capture row, head and staged, of the pending and
+    staged bodies against that listing. Per body that is the plan the run after the append
+    makes, so its missing pins or conflicts are the refusal that run would raise. Cost is
+    one HEAD per recorded candidate copy, not a bucket LIST.
+    """
+    work=Path(work);work.mkdir(parents=True)
+    inputs=[tables.table_input('captures',heads['captures']),tables.table_input('backlog',backlog['work_list'])]
+    listed='SELECT body_sha AS sha256 FROM backlog'
+    scoped='SELECT sha256 FROM listed_shas'
+    rows='SELECT c.* FROM captures c JOIN scoped_shas k ON c.sha256=k.sha256'
+    if stage is not None:
+        inputs.append(tables.table_input('staged',stage))
+        names=pq.read_schema(stage).names
+        listed+=(' UNION SELECT s.sha256 FROM staged s WHERE s.sha256 IS NOT NULL'
+                 ' AND NOT EXISTS(SELECT 1 FROM captures c WHERE c.sha256=s.sha256)')
+        scoped+=' UNION SELECT sha256 FROM staged WHERE sha256 IS NOT NULL'
+        rows=('SELECT '+','.join('c."'+n+'"' for n in names)+' FROM captures c JOIN scoped_shas k ON c.sha256=k.sha256'
+              ' UNION ALL SELECT '+','.join('"'+n+'"' for n in names)+' FROM staged')
+    from congress_api.retention.provenance import parquet_output,run_job
+    keys=[row['key'] for row in run_job(work/'scope',engine,inputs=inputs,steps=[
+        dict(name='listed_shas',sql=listed,materialize=True),dict(name='scoped_shas',sql=scoped,materialize=True),
+        dict(name='scoped_captures',sql=rows,materialize=True)],
+        outputs=[parquet_output(work,'scoped-captures','SELECT * FROM scoped_captures',['receipt_key'])],
+        queries=[dict(name='keys',sql="""SELECT DISTINCT concat('bodies/sha256/',substr(encode(c.sha256,'hex'),1,2),'/',
+            encode(c.sha256,'hex'),coalesce(c.stored_suffix,'.gz')) AS key FROM scoped_captures c
+            JOIN listed_shas k ON c.sha256=k.sha256 ORDER BY key""")])['keys']]
+    for key in keys:validate_key(key)
+    client,bucket=raw_store.adapter.client,raw_store.adapter.bucket
+    with ThreadPoolExecutor(max_workers=max(1,min(HEAD_WORKERS,len(keys)))) as pool:
+        found=list(pool.map(lambda key:_head(client,bucket,key),keys))
+    listing=work/'body-listing.parquet'
+    pq.write_table(pa.Table.from_pylist([row for row in found if row is not None],schema=LISTING_SCHEMA),listing)
+    planned=readings.run(engine=engine,work=work/'readings',mode='daily',execute=False,
+        max_work_items=spec['max_work_items'],existing=heads['readings'],captures=work/'scoped-captures.parquet',
+        unreadable_files=unreadable_snapshot.files(),body_inventory=None,body_listing=listing,raw_ranges=True,
+        local_root=work/'unopened',decided_at=spec['decided_at'])
+    return dict(listing=listing,planned=planned,heads=len(keys),
+                absent=[key for key,row in zip(keys,found) if row is None])
+
+
+def _body_source(spec,raw_store,work,listing=None):
     """How readings reaches bodies: a pinned inventory under local_root, else the raw store.
 
     The raw store binding is the one producers already write to: a local root is read in place
     from each capture's recorded copy; R2 is read by ranges through the maintained R2Store,
-    conditional on each capture's recorded MD5 and size. Never an empty inventory, which
-    turns every body into a pending read.
+    against the exact-key listing of the candidates' recorded copies (_listed_custody). Each
+    read is conditional on the capture's recorded MD5 and size where it has them, else on the
+    listed ETag and size. Never an empty inventory, which turns every body into a pending read.
     """
     if spec.get('body_inventory') is not None:
         return dict(body_inventory=spec['body_inventory'],local_root=spec['local_root'])
@@ -270,7 +364,7 @@ def _body_source(spec,raw_store,work):
     from congress_api.retention.r2 import R2Store
     # The ranged cache must sit below the readings run's own work directory.
     cache=Path(work)/'raw-pages'
-    return dict(body_inventory=None,captured_copies=True,local_root=cache,
+    return dict(body_inventory=None,body_listing=listing,local_root=cache,
                 body_store=R2Store(raw_store.adapter.client,raw_store.adapter.bucket,cache_dir=cache))
 
 
@@ -319,6 +413,11 @@ def produce_daily(spec,*,engine,raw_store,producer_records=None):
     acknowledged imports, with no second LIST or GET. Native
     key anti-joins and sorted appends retain their existing O(N+M)/O(K log K) cost.
 
+    The receipt budget is the readings budget less the bodies the current heads already
+    leave unread. An R2 run settles raw custody for every body it will read before captures
+    move (status raw_custody_required otherwise), so a refusal never leaves appended,
+    unread captures behind.
+
     With `producer_records` (gate 5), every head must already have a record and every
     head this run moves gets one, whether the run completes, stops or fails.
     """
@@ -356,49 +455,79 @@ def _produce(spec,engine,raw_store,work,provenance,identities,unreadable_snapsho
         report.update(status='backfill_required')
         report['producerreports']['captures']=dict(status='backfill_required',stale_mappings=stale)
         return report
+    try:
+        backlog=_pending_backlog(spec,engine,raw_store,heads,unreadable_snapshot,work/'readings-backlog')
+    except readings.BackfillRequired as error:
+        # The heads alone hold more unread bodies than a night may read: admit no receipts.
+        report.update(status='backfill_required');report['producerreports']['readings']=error.as_dict()
+        return report
+    pending=backlog['work_items'];budget=spec['max_work_items']-pending
     if spec.get('receipt_families'):
         selected=_discovered_receipts(spec['receipt_families'],raw_store,heads['captures'],engine=engine,work=work)
         report['discovered_receipts']=len(selected)
     else:
         selected=select_receipts(spec['receipt_inventory'],heads['captures'],engine=engine,work=work/'receipt-selection')
+    stage=None
     if selected:
         stage=capture_staging.stage_captures(selected,engine=engine,work=work/'captures',
             validated_counter=spec.get('validated_counter'),
             source_qualifications=_source_qualifications(spec,selected))
-        kept,fresh=_within_budget(stage/'captures.parquet',selected,heads['captures'],spec['max_work_items'],
+        kept,fresh=_within_budget(stage/'captures.parquet',selected,heads['captures'],budget,
             engine=engine,work=work/'captures-budget')
         report['receipt_budget']=dict(selected=len(selected),kept=len(kept),fresh_bodies=fresh,
-            max_work_items=spec['max_work_items'])
-        if not kept:
+            pending_bodies=pending,max_work_items=spec['max_work_items'])
+        if not kept and not pending:
             # The oldest receipt alone holds more new bodies than a night may read.
             report.update(status='backfill_required')
             report['producerreports']['captures']=dict(status='backfill_required',
                 receipt=min(selected,key=_receipt_order)['key'])
             return report
-        if len(kept)<len(selected):
+        if not kept:stage=None
+        elif len(kept)<len(selected):
             stage=capture_staging.stage_captures(kept,engine=engine,work=work/'captures-kept',
                 validated_counter=spec.get('validated_counter'),
                 source_qualifications=_source_qualifications(spec,kept))
+    if stage is not None:
         manifest=json.loads((stage/'ingested-receipts.json').read_text())
         if manifest['mapping_digest']!=versions['captures']:
             raise ValueError('Captures producer changed during daily production')
         if not pq.ParquetFile(stage/'captures.parquet').metadata.num_rows:
             raise ValueError('Selected receipts produced no captures')
+    report['producerreports']['captures']=dict(stage=None if stage is None else str(stage),append=None)
+    listing=None
+    if _listed_reads(spec,raw_store):
+        try:
+            custody=_listed_custody(spec,engine,raw_store,heads,backlog,None if stage is None else stage/'captures.parquet',
+                unreadable_snapshot,work/'raw-custody')
+        except readings.BackfillRequired as error:
+            report.update(status='backfill_required');report['producerreports']['readings']=error.as_dict()
+            return report
+        planned=custody['planned']
+        report['raw_listing']=dict(heads=custody['heads'],absent=custody['absent'])
+        if planned['raw_custody']['missing_pins'] or planned['raw_custody']['conflicts']:
+            report.update(status='raw_custody_required')
+            report['producerreports']['readings']=dict(planned['raw_custody'],status='missing_raw_custody',
+                work_list=str(planned['work_list']))
+            return report
+        listing=custody['listing']
+    if stage is not None:
         appended=tables.append_rows(stage/'captures.parquet',**authority,work=work/'captures-append',
             table=spec['tables']['captures'],keys=['receipt_key'],definition=manifest['mapping_digest'])
         report['new_receipt_keys']=manifest['receipt_keys']
         report['producerreports']['captures']=dict(stage=str(stage),append=appended)
         heads.update(tables.resolve_tables(**authority,work=work/'captures-head',
             tables={'captures':spec['tables']['captures']}))
-    else:report['producerreports']['captures']=dict(stage=None,append=None)
     try:
         parsed=readings.run(engine=engine,work=work/'readings',mode='daily',execute=True,
             max_work_items=spec['max_work_items'],table=spec['tables']['readings'],
             catalog_root=spec['catalog_root'],unreadable_store=raw_store,
-            captures=heads['captures'],**_body_source(spec,raw_store,work/'readings'),
+            captures=heads['captures'],**_body_source(spec,raw_store,work/'readings',listing),
             decided_at=spec['decided_at'],unreadable_snapshot=unreadable_snapshot)
     except readings.BackfillRequired as error:
         report.update(status='backfill_required');report['producerreports']['readings']=error.as_dict()
+        return report
+    except readings.RawCustodyRequired as error:
+        report.update(status='raw_custody_required');report['producerreports']['readings']=error.as_dict()
         return report
     report['producerreports']['readings']=parsed
     versions.update(readings=parsed['parser_version'],parsers={p:readings.current_version(p)

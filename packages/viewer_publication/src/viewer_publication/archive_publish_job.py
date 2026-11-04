@@ -485,7 +485,7 @@ def main(argv=None):
             targets=spec['targets'],site_dist=spec['site_dist'])
         if not args.execute and 'daily' in spec:result['daily']=spec['daily']
     except (ValueError,OSError,subprocess.SubprocessError) as error:parser.error(str(error))
-    print(json.dumps(result,sort_keys=True));return 2 if result.get('status') in {'pending','backfill_required'} else 0
+    print(json.dumps(result,sort_keys=True));return 2 if result.get('status') in {'pending','backfill_required','raw_custody_required'} else 0
 
 
 if __name__=='__main__':raise SystemExit(main())

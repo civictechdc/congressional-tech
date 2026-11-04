@@ -8,7 +8,8 @@ commit (gate 5) in a tree with no other work. It then prepares what the hosted j
 prepare and runs `.github/scripts/run-archive-job.py publish` under its watchdog, with this
 Mac's remote runtime and its credentials from `<main>/.cache/archive-release/remote-runtime/`.
 When the daily step reports `backfill_required`, it runs the committed backfill job once and
-publishes again.
+publishes again. A daily stop (`pending`, `backfill_required`, `raw_custody_required`) fails
+the publish step, and the run's summary names that status.
 
 Each run keeps its log, watchdog report and the small JSON files the job wrote under
 `<main>/.cache/archive-release/nightly/<UTC stamp>/`. The ignored files under `output/` in the
@@ -104,9 +105,9 @@ def keep_evidence(worktree, evidence, name='output'):
             shutil.copy2(path, target)
 
 
-def backfill_required(worktree):
+def daily_status(worktree):
     report = worktree / 'output/archive-daily/daily-summary.json'
-    return report.is_file() and json.loads(report.read_text()).get('status') == 'backfill_required'
+    return json.loads(report.read_text()).get('status') if report.is_file() else None
 
 
 def run(worktree, prepare_only):
@@ -143,7 +144,8 @@ def run(worktree, prepare_only):
                 try:
                     step('publish', publish, cwd=worktree, env=env, log=log)
                 except StepFailed:
-                    if not backfill_required(worktree):
+                    summary['daily_status'] = daily_status(worktree)
+                    if summary['daily_status'] != 'backfill_required':
                         raise
                     # Producer work beyond the daily budget (for example, left by an interrupted run)
                     # never drains on its own: each night adds new bodies before it can clear.
@@ -151,7 +153,11 @@ def run(worktree, prepare_only):
                     step('clean output', ['git', 'clean', '-fdXq', '--', 'output'], cwd=worktree, env=env, log=log)
                     step('backfill', [python, '-I', '.github/scripts/run-archive-job.py', 'backfill'],
                          cwd=worktree, env=env, log=log)
-                    step('publish after backfill', publish, cwd=worktree, env=env, log=log)
+                    try:
+                        step('publish after backfill', publish, cwd=worktree, env=env, log=log)
+                    except StepFailed:
+                        summary['daily_status_after_backfill'] = daily_status(worktree)
+                        raise
             summary.update(status='prepared' if prepare_only else 'ok', exit=0)
         except StepFailed as failure:
             summary.update(status='failed', step=failure.name, exit=failure.code)

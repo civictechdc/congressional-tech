@@ -144,6 +144,7 @@ def execute(spec,*,runtime_factory=None,storage_factory=None,producer=None):
     from congress_api.lake.daily import produce_daily
     from congress_api.retention.body_store import BodyStore,R2Adapter
     from congress_api.retention.provenance_inventory import provenance_inventory
+    from congress_api.retention.r2 import configure_read_retries
     from congress_shared.storage import connect_r2
     from docspec_client.client import NativeDatasets
     runtime_factory=runtime_factory or NativeDatasets.from_config
@@ -152,7 +153,8 @@ def execute(spec,*,runtime_factory=None,storage_factory=None,producer=None):
     decided_at=spec.get('decided_at') or datetime.now(timezone.utc).strftime('%Y-%m-%dT%H:%M:%SZ')
     with runtime_factory(engine_config) as engine:
         engine.verify_runtime()
-        client=storage_factory(bucket=spec['bucket'],retries={'total_max_attempts':1})
+        # Body GETs retry transient R2 server errors and throttling; writes keep one attempt.
+        client=configure_read_retries(storage_factory(bucket=spec['bucket'],retries={'total_max_attempts':1}))
         raw_store=BodyStore(R2Adapter(client,spec['bucket']))
         snapshot=provenance_inventory(raw_store,work=work/'provenance')
         full={row['key']:row for row in snapshot.metadata()}
