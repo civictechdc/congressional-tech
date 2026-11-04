@@ -330,7 +330,7 @@ def _listed_custody(spec,engine,raw_store,heads,backlog,stage,unreadable_snapsho
     keys=[row['key'] for row in run_job(work/'scope',engine,inputs=inputs,steps=[
         dict(name='listed_shas',sql=listed,materialize=True),dict(name='scoped_shas',sql=scoped,materialize=True),
         dict(name='scoped_captures',sql=rows,materialize=True)],
-        outputs=[parquet_output(work,'scoped-captures','SELECT * FROM scoped_captures',['receipt_key'])],
+        outputs=[parquet_output(work,'scoped-captures','SELECT * FROM scoped_captures',['receipt_key','receipt_line','capture_index'])],
         queries=[dict(name='keys',sql="""SELECT DISTINCT concat('bodies/sha256/',substr(encode(c.sha256,'hex'),1,2),'/',
             encode(c.sha256,'hex'),coalesce(c.stored_suffix,'.gz')) AS key FROM scoped_captures c
             JOIN listed_shas k ON c.sha256=k.sha256 ORDER BY key""")])['keys']]

@@ -145,6 +145,26 @@ def test_unpinned_capture_is_read_through_its_listed_etag_and_listing_covers_onl
     assert again['status']=='completed' and again['producerreports']['readings']['work_items']==0
 
 
+def test_a_receipt_holding_several_candidate_captures_is_listed_and_read(tmp_path):
+    # Production receipts carry many lines; the scoped captures export is ordered by the
+    # captures key (receipt_key, receipt_line, capture_index), not by receipt alone.
+    import gzip
+    from capture_qualification_helpers import write_qualified_bytes
+    from congress_api.lake.daily import produce_daily
+    payloads=[payload(0),payload(1)]
+    value,engine,bucket,store=fixture(tmp_path,payloads,unpinned={0})
+    lines=b''.join(gzip.decompress(Path(r['path']).read_bytes()) for r in value['receipt_inventory'])
+    key='receipts/documents/2026-10-28/daily-000099.jsonl.gz';path=tmp_path/'raw'/key
+    qualification=write_qualified_bytes(path,gzip.compress(lines,mtime=0))
+    value['receipt_inventory']=[dict(key=key,path=str(path),qualification=qualification)]
+    result=produce_daily(value,engine=engine,raw_store=store)
+    assert result['status']=='completed' and result['new_receipt_keys']==[key]
+    assert result['raw_listing']==dict(heads=2,absent=[])
+    assert result['producerreports']['readings']['work_items']==2
+    scoped=pq.read_table(tmp_path/'work/raw-custody/scoped-captures.parquet',columns=['receipt_key','receipt_line']).to_pylist()
+    assert sorted(r['receipt_line'] for r in scoped)==[1,2] and {r['receipt_key'] for r in scoped}=={key}
+
+
 def test_capture_md5_is_the_read_condition_where_a_capture_recorded_one(tmp_path):
     from congress_api.lake.daily import produce_daily
     value,engine,bucket,store=fixture(tmp_path,[payload(0)])
