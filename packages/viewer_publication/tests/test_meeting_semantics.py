@@ -229,8 +229,9 @@ def facts(named=(), held=(DAY,), title=TITLE):
     return dict(named_meetings=list(named), held_dates=list(held), title=title)
 
 
-def resolve(tmp_path, records, links, prints, paths=(), meetings=((9001, DAY, TITLE),), pages=(), full=False, rows=False):
-    """Witness rows per name, from the maintained package-link and appearance SQL."""
+def resolve(tmp_path, records, links, prints, paths=(), meetings=((9001, DAY, TITLE),), pages=(), full=False, rows=False, keys=False):
+    """Witness rows per name, from the maintained package-link and appearance SQL; with keys, the
+    published rows and witness_key_map."""
     import json
     engine = NativeDatasets.from_config(os.environ['DOCSPEC_JOB_CONFIG'])
     ms_rows = [r for r in json.loads((ROOT / 'model/registries/meeting-sources.json').read_text()) if r['kind'] == 'appearance']
@@ -274,6 +275,12 @@ def resolve(tmp_path, records, links, prints, paths=(), meetings=((9001, DAY, TI
              dict(name='appearance_observations', sql=sql('appearance-observations'), materialize=True),
              dict(name='appearance_records_resolved', sql=sql('appearance-records-resolved'), materialize=True),
              dict(name='witness_precedence', sql=sql('witness-precedence'), materialize=True)]
+    if keys:
+        steps += [dict(name=name.replace('-', '_'), sql=sql(name), materialize=True)
+                  for name in ('witness-key-current', 'witness-key-priors', 'witness-key-map')]
+        return run_job(tmp_path, engine, inputs=inputs, steps=steps, outputs=[], queries=[
+            dict(name='witnesses', sql='SELECT witness_key,name,occasion,source_locator,record_sha_hex FROM appearance_records_resolved ORDER BY witness_key'),
+            dict(name='map', sql='SELECT * FROM witness_key_map ORDER BY old_key')])
     found = run_job(tmp_path, engine, inputs=inputs, steps=steps, outputs=[], queries=[
         dict(name='rows', sql='''SELECT r.name,r.occasion,r.event_id,r.witness_type,r.source,r.source_locator,s.name AS superseded_by FROM appearance_records_resolved r
             LEFT JOIN witness_precedence p ON p.witness_key=r.witness_key
@@ -396,6 +403,101 @@ def test_a_witness_listed_twice_in_one_print_is_shown_once(tmp_path):
     got = resolve(tmp_path, [printed], [], {}, rows=True)
     assert sorted((r['source_locator'], r['superseded_by'] is not None) for r in got) == [
         ('mods:witness[1]', False), ('mods:witness[2]', True), ('mods:witness[3]', False), ('mods:witness[4]', False)]
+
+
+# Witness key map (ct-kb4w): a re-fetched body gives every witness at its occasion a new key; the map
+# carries each key the earlier body published to the current witness, or states it ambiguous or unresolved.
+def listed(entries):
+    return [{**witness(name), 'source_locator': f'congress_gov:witness[{i}]', **attrs} for i, (name, attrs) in enumerate(entries, 1)]
+
+
+REFETCHED_BEFORE = listed([
+    ('Jane Doe', dict(position='Professor')),
+    ('John Roe', dict(organization='ACME')),
+    ('Mr. Jennifer Manner', dict(position='Chief Executive')),
+    ('Sam Lee', dict(position='Professor, MIT')),
+    ('John Smith', dict(position='Director')),
+    ('Pat Smith', {}),
+    ('Lynn Goldman', dict(position='Dean')),
+    ('Lynn Goldman', dict(position='Dean')),
+    ('Lynn Goldman', dict(position='Dean')),
+    ('Carl Other', dict(organization='Other Co')),
+])
+REFETCHED_AFTER = listed([
+    ('John Roe', dict(organization='ACME')),
+    ('Jane Doe', dict(position='Professor')),
+    ('Ms. Jennifer Manner', dict(position='Chief Executive')),
+    ('Sam Lee', dict(position='Mayor of Springfield')),
+    ('Joan Smith', dict(position='Director')),
+    ('Lynn Goldman', dict(position='Dean')),
+    ('Lynn Goldman', dict(position='Dean')),
+    ('Pat Smith', {}),
+])
+
+
+@pytest.fixture(scope='module')
+def refetched(tmp_path_factory):
+    """The keys a release published from the earlier body, and the map once a re-fetched body replaces it."""
+    # With no update date or capture time, the lower record SHA is the current body.
+    newer, older = sorted(['body-1', 'body-2'], key=lambda tag: hashlib.sha256(tag.encode()).hexdigest())
+    before = record(older, 'congress_gov', REFETCHED_BEFORE, event_id=9001)
+    base = resolve(tmp_path_factory.mktemp('base'), [before], [], {}, keys=True)['witnesses']
+    found = resolve(tmp_path_factory.mktemp('candidate'), [before, record(newer, 'congress_gov', REFETCHED_AFTER, event_id=9001)],
+                    [], {}, keys=True)
+    current = {w['witness_key']: (w['name'], w['source_locator']) for w in found['witnesses']}
+    mapped = {row['old_key']: row for row in found['map']}
+    by_old = {}
+    for w in base:
+        row = mapped.get(w['witness_key'])
+        by_old[(w['name'], w['source_locator'])] = row and dict(
+            row, successor=current.get(row['witness_key']), candidates=sorted(current[k] for k in row['candidate_keys']))
+    return by_old, current, found['map']
+
+
+def test_a_refetched_body_publishes_none_of_the_earlier_keys(refetched):
+    by_old, current, rows = refetched
+    assert not set(current) & {row['old_key'] for row in rows}
+    assert all(row is not None for row in by_old.values()), 'every key the earlier body published has a map row'
+
+
+@pytest.mark.parametrize('old,successor,basis', [
+    (('Jane Doe', 'congress_gov:witness[1]'), ('Jane Doe', 'congress_gov:witness[2]'), 'content'),
+    (('John Roe', 'congress_gov:witness[2]'), ('John Roe', 'congress_gov:witness[1]'), 'content'),
+    (('Lynn Goldman', 'congress_gov:witness[7]'), ('Lynn Goldman', 'congress_gov:witness[6]'), 'content'),
+    (('Lynn Goldman', 'congress_gov:witness[8]'), ('Lynn Goldman', 'congress_gov:witness[7]'), 'content'),
+    # An edited honorific at the same place, with the same position: one person.
+    (('Mr. Jennifer Manner', 'congress_gov:witness[3]'), ('Ms. Jennifer Manner', 'congress_gov:witness[3]'), 'locator'),
+])
+def test_an_unambiguous_successor_maps(refetched, old, successor, basis):
+    row = refetched[0][old]
+    assert (row['status'], row['successor'], row['basis'], row['candidate_keys']) == ('unambiguous', successor, basis, [])
+
+
+def test_a_repeat_with_no_partner_is_ambiguous_and_lists_its_candidates(refetched):
+    row = refetched[0][('Lynn Goldman', 'congress_gov:witness[9]')]
+    assert (row['status'], row['witness_key'], row['basis']) == ('ambiguous', None, 'content')
+    assert row['candidates'] == [('Lynn Goldman', 'congress_gov:witness[6]'), ('Lynn Goldman', 'congress_gov:witness[7]')]
+
+
+@pytest.mark.parametrize('old', [
+    ('Carl Other', 'congress_gov:witness[10]'),  # no longer listed
+    ('Sam Lee', 'congress_gov:witness[4]'),  # the same name with another position: another person
+    ('John Smith', 'congress_gov:witness[5]'),  # Joan Smith now holds the place and the position
+    ('Pat Smith', 'congress_gov:witness[6]'),  # a name alone, at another place
+])
+def test_a_name_alone_or_a_vanished_witness_is_unresolved(refetched, old):
+    row = refetched[0][old]
+    assert (row['status'], row['witness_key'], row['basis'], row['candidate_keys']) == ('unresolved', None, None, [])
+
+
+def test_a_print_key_from_before_its_meeting_link_maps_to_the_linked_row(tmp_path):
+    printed = record('a', 'mods', [witness('A')], package_id='CHRG-a')
+    (tmp_path / 'base').mkdir(), (tmp_path / 'candidate').mkdir()
+    base = resolve(tmp_path / 'base', [printed], [], {}, keys=True)['witnesses']
+    found = resolve(tmp_path / 'candidate', [printed], [('CHRG-a', 9001)], {'CHRG-a': facts()}, keys=True)
+    assert [w['occasion'] for w in base] == ['package:CHRG-a'] and [w['occasion'] for w in found['witnesses']] == ['meeting:9001']
+    assert [(r['old_key'], r['witness_key'], r['status'], r['basis']) for r in found['map']] == [
+        (base[0]['witness_key'], found['witnesses'][0]['witness_key'], 'unambiguous', 'occurrence')]
 
 
 @pytest.mark.parametrize('created,shown', [('2021-04-07T11:07:59.340', True), ('2021-05-01T09:00:00', False)])

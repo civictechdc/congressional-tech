@@ -969,6 +969,71 @@
       "nullability": "Nullability transcribes the phase-2 annex \u00a73 file table (docs/plans/phase-2-annex-20261028.md): a type without \"nullable\" there is required."
     },
     {
+      "name": "witness_key_map.parquet",
+      "columns": [
+        {
+          "name": "old_key",
+          "type": "string",
+          "nullable": false,
+          "meaning": "A witness_key that an earlier body or capture context held for an occasion produces and this release does not publish in witnesses"
+        },
+        {
+          "name": "witness_key",
+          "type": "string",
+          "nullable": true,
+          "meaning": "The current witnesses.witness_key the old key resolves to; null when status is ambiguous or unresolved"
+        },
+        {
+          "name": "status",
+          "type": "dict",
+          "nullable": false,
+          "meaning": "unambiguous (one successor), ambiguous (several candidates, listed in candidate_keys, none chosen) or unresolved (no candidate)"
+        },
+        {
+          "name": "basis",
+          "type": "dict",
+          "nullable": true,
+          "meaning": "The strongest evidence found: occurrence (the same body and locator, published under another occasion or capture context), content (the same occasion, source and print, with an equal name and equal other attributes, at least one of them stated or the same locator; repeats of one person pair in list order) or locator (the same locator, occasion, source and print, an edited name of the same family and given name, every other attribute equal and a position, organization or Bioguide ID stated); null when unresolved"
+        },
+        {
+          "name": "candidate_keys",
+          "type": "list<string>",
+          "nullable": false,
+          "meaning": "With status ambiguous: the current witness keys the old key could resolve to, sorted; empty otherwise"
+        },
+        {
+          "name": "occasion",
+          "type": "dict",
+          "nullable": false,
+          "meaning": "The occasion the old key's body is filed under in this release (meeting:{event_id}, package:{package_id}, or page:{sha256_prefix})"
+        },
+        {
+          "name": "source",
+          "type": "dict",
+          "nullable": false,
+          "meaning": "Observation source family of the old key (house_xml, congress_gov, senate_page, or mods)"
+        }
+      ],
+      "gaps": [
+        "Derived from earlier bodies the lake still holds, not from earlier releases: a key published only from a body no longer held has no row"
+      ],
+      "purpose": "Earlier witness keys and the current witness each resolves to",
+      "row_meaning": "One witness key this release no longer publishes, with its successor, its candidates, or neither",
+      "identity": {
+        "fields": [
+          "old_key"
+        ],
+        "scope": "published identifier",
+        "validation": "native publication key checks",
+        "kind": "primary_key"
+      },
+      "notes": {
+        "old_key": "Disjoint from witnesses.witness_key. A re-fetched body, a newly bound capture context, or a meeting link that moves a print or Senate page off its package or page occasion gives each witness a new key (witness-occurrence-v2 is unchanged); the earlier keys are listed here. A name alone never maps (ct-30fp).",
+        "witness_key": "The successor can itself be superseded_by a higher-ranked row of the same person; follow witnesses.superseded_by to the row to show."
+      },
+      "nullability": "witness_key is set exactly when status is unambiguous; basis is null exactly when status is unresolved (ct-kb4w)."
+    },
+    {
       "name": "recordings.parquet",
       "columns": [
         {
@@ -2962,6 +3027,48 @@
       "scope": "external identifier or retained object; no local entity table implied"
     },
     {
+      "id": "witness_key_map_successor",
+      "source": {
+        "table": "witness_key_map",
+        "fields": [
+          "witness_key"
+        ]
+      },
+      "target": {
+        "table": "witnesses",
+        "fields": [
+          "witness_key"
+        ]
+      },
+      "meaning": "The current appearance an earlier witness key resolves to; a saved link to the old key opens this row.",
+      "cardinality": "many-to-one",
+      "nullable": true,
+      "resolution": "required",
+      "match": "equal",
+      "scope": "selected release"
+    },
+    {
+      "id": "witness_key_map_candidates",
+      "source": {
+        "table": "witness_key_map",
+        "fields": [
+          "candidate_keys[]"
+        ]
+      },
+      "target": {
+        "table": "witnesses",
+        "fields": [
+          "witness_key"
+        ]
+      },
+      "meaning": "Current appearances an ambiguous earlier key could resolve to; none is chosen.",
+      "cardinality": "many-to-many",
+      "nullable": true,
+      "resolution": "required",
+      "match": "equal",
+      "scope": "selected release"
+    },
+    {
       "id": "meeting_video_address",
       "source": {
         "table": "meetings",
@@ -3399,6 +3506,30 @@
       "notes": [
         "No package_id on the appearance or on the rows it supersedes means no published package association; submitted documents use a different relationship.",
         "Follows superseded_by: a current appearance from a source without package_id reaches the package its superseded source row carries."
+      ]
+    },
+    {
+      "id": "witness_by_any_key",
+      "title": "A witness appearance by its current or an earlier key",
+      "dialect": "duckdb",
+      "requires": [
+        "witnesses",
+        "witness_key_map"
+      ],
+      "relationships": [
+        "witness_key_map_successor"
+      ],
+      "parameters": [
+        {
+          "name": "witness_key",
+          "example": "0001497931f99cd1"
+        }
+      ],
+      "sql": "WITH k AS (SELECT ? AS key)\nSELECT w.witness_key,w.name,w.occasion,w.superseded_by,m.old_key,m.status\nFROM k LEFT JOIN witness_key_map m ON m.old_key=k.key\nJOIN witnesses w ON w.witness_key=coalesce(m.witness_key,k.key)",
+      "result_row": "The current appearance for the key, with the earlier key it was reached through",
+      "notes": [
+        "No row: the key is unknown, or witness_key_map states it ambiguous (candidate_keys) or unresolved.",
+        "Never resolves by name."
       ]
     },
     {

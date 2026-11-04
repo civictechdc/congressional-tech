@@ -13,7 +13,7 @@ def test_reference_matches_registry_and_nested_paths_are_explicit():
     schema = build_schema()
     assert REFERENCE.read_text() == render_reference(schema)
     tables = {f['name'].removesuffix('.parquet'): f for f in schema['files']}
-    assert len(tables) == 22
+    assert len(tables) == 23
     assert tables['rosters']['identity']['fields'] == ['congress', 'system_code', 'bioguide_id']
     assert tables['urls']['identity']['scope'] == 'release'
     assert field_types(tables['members'])['cross_ids.fec[]'] == 'string'
@@ -114,6 +114,39 @@ def test_native_checks_detect_duplicates_nulls_and_missing_nested_targets(tmp_pa
     assert result['relationship_invariants'] == [dict(missing_primary_link=2, duplicate_document_key=1, null_sources_url=1, null_members_bioguide_id=1, invalid_members_key=2,
         invalid_meetings_key=0, invalid_witnesses_key=0, missing_document_meeting=2,
         missing_transcript_document=1, missing_document_witness=1)]
+
+
+def test_native_checks_refuse_a_witness_key_map_that_breaks_its_own_rules(tmp_path):
+    from congress_api.retention.provenance import run_job
+    from docspec_client.client import NativeDatasets
+    engine = NativeDatasets.from_config(os.environ['DOCSPEC_JOB_CONFIG'])
+    row = "SELECT '{}' AS old_key,{} AS witness_key,'{}' AS status,{} AS basis,{} AS candidate_keys,'meeting:1' AS occasion,'congress_gov' AS source"
+    none, empty = "arrow_cast(NULL,'Utf8')", "arrow_cast(array_slice(make_array(cast(NULL AS VARCHAR)),1,0),'List(Utf8)')"
+    rows = [
+        row.format('old-1', "'current'", 'unambiguous', "'content'", empty),  # sound
+        row.format('old-2', none, 'ambiguous', "'content'", "make_array('current','other')"),  # sound
+        row.format('old-3', none, 'unresolved', none, empty),  # sound
+        row.format('current', "'current'", 'unambiguous', "'content'", empty),  # an old key that is still published
+        row.format('old-4', "'gone'", 'unambiguous', "'locator'", empty),  # a successor that is not published
+        row.format('old-5', none, 'ambiguous', "'content'", "make_array('current','vanished')"),  # a candidate that is not
+        row.format('old-6', "'current'", 'ambiguous', "'content'", "make_array('current','other')"),  # ambiguous yet chosen
+        row.format('old-7', none, 'unresolved', "'content'", empty),  # unresolved with a basis
+    ]
+    steps = [dict(name='ordered', sql="SELECT 0 AS list_row,arrow_cast(make_array(),'List(Utf8)') AS witness_keys"),
+             dict(name='details', sql="SELECT 0 AS list_row,cast(NULL AS VARCHAR) AS link_key"),
+             dict(name='links', sql="SELECT 0 AS list_row,'present-link' AS link_key"),
+             dict(name='witnesses_export', sql="SELECT 'current' AS witness_key UNION ALL SELECT 'other'"),
+             dict(name='witness_key_map_export', sql=' UNION ALL '.join(rows))]
+    schema = build_schema()
+    schema['files'] = [t for t in schema['files'] if t['name'] in ('witnesses.parquet', 'witness_key_map.parquet')]
+    for column in schema['files'][0]['columns']:  # This fixture writes only the witness key.
+        column['nullable'] = column['name'] != 'witness_key'
+    result = run_job(tmp_path, engine, inputs=[], steps=steps, outputs=[],
+                     queries=publication_checks(schema, {'witnesses', 'witness_key_map'}, keyed_documents=False))
+    found = result['relationship_invariants'][0]
+    assert {k: found[k] for k in ('witness_old_key_still_published', 'missing_witness_successor', 'inconsistent_witness_key_map',
+                                  'invalid_witness_key_map_key')} == dict(
+        witness_old_key_still_published=1, missing_witness_successor=2, inconsistent_witness_key_map=2, invalid_witness_key_map_key=0)
 
 
 def test_every_registry_column_declares_nullability():

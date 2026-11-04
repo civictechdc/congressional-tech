@@ -133,6 +133,8 @@ WITH candidate_appearance_shas AS (
   coalesce(cc.source_url,r.context_url) AS source_url,
   cc.member_path,
   encode(sha256(json_array(coalesce(cc.source_url,r.context_url),cc.member_path)),'hex') AS context_key,
+  -- The context key before any capture context was bound: earlier witness keys hashed it (ct-kb4w).
+  encode(sha256(json_array(r.context_url,cast(NULL AS VARCHAR))),'hex') AS free_context_key,
   coalesce(
    try_cast(r.event_id AS BIGINT),
    try_cast((regexp_match(coalesce(cc.source_url,r.context_url,''),'(?i)/committee-meeting/[0-9]+/(?:house|senate|joint|nochamber)/([0-9]+)'))[1] AS BIGINT),
@@ -183,6 +185,12 @@ WITH candidate_appearance_shas AS (
    WHEN b.source='senate_page' AND pk.url_key IS NOT NULL
     THEN 'page:'||substr(encode(sha256(pk.url_key),'hex'),1,16)
   END AS occasion,
+  -- Where a print or Senate page is filed while no meeting link holds it, so a witness key made before
+  -- the link maps to the linked row (ct-kb4w).
+  CASE
+   WHEN b.source='mods' AND b.package_id IS NOT NULL THEN 'package:'||b.package_id
+   WHEN b.source='senate_page' AND pk.url_key IS NOT NULL THEN 'page:'||substr(encode(sha256(pk.url_key),'hex'),1,16)
+  END AS fallback_occasion,
   CASE
    WHEN b.source IN ('house_xml','congress_gov') THEN b.raw_event_id
    WHEN b.source='mods' THEN spm.event_id

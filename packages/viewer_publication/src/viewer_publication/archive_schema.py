@@ -274,6 +274,19 @@ def publication_checks(schema, auxiliary, published=None, *, keyed_documents=Tru
     if 'witnesses' in auxiliary:
         checks.append('''(SELECT count(*) FROM (SELECT unnest(witness_keys) AS key FROM ordered) refs
             WHERE key IS NOT NULL AND NOT EXISTS (SELECT 1 FROM witnesses_export w WHERE w.witness_key=refs.key)) AS missing_document_witness''')
+    if 'witnesses' in auxiliary and 'witness_key_map' in auxiliary:
+        # An earlier key is never also published, every key it resolves to is, and the status says which
+        # columns are set (ct-kb4w).
+        checks.append('''(SELECT count(*) FROM witness_key_map_export m
+            WHERE EXISTS (SELECT 1 FROM witnesses_export w WHERE w.witness_key=m.old_key)) AS witness_old_key_still_published''')
+        checks.append('''(SELECT count(*) FROM witness_key_map_export m WHERE m.witness_key IS NOT NULL
+            AND NOT EXISTS (SELECT 1 FROM witnesses_export w WHERE w.witness_key=m.witness_key))
+            +(SELECT count(*) FROM (SELECT unnest(candidate_keys) AS candidate_key FROM witness_key_map_export) candidates
+            WHERE NOT EXISTS (SELECT 1 FROM witnesses_export w WHERE w.witness_key=candidates.candidate_key)) AS missing_witness_successor''')
+        checks.append('''(SELECT count(*) FROM witness_key_map_export
+            WHERE (status='unambiguous') <> (witness_key IS NOT NULL) OR (status='unresolved') <> (basis IS NULL)
+            OR (status='ambiguous') <> (coalesce(cardinality(candidate_keys),0)>1)
+            OR status NOT IN ('unambiguous','ambiguous','unresolved')) AS inconsistent_witness_key_map''')
     return [dict(name='relationship_invariants', sql='SELECT ' + ',\n'.join(checks))] if checks else []
 
 

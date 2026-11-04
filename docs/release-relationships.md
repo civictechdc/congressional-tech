@@ -317,7 +317,34 @@ Nullability: Nullability transcribes the phase-2 annex §3 file table (docs/plan
 
 Outgoing: `witness_meeting`, `witness_transcript_documents`, `witness_member`, `witness_package`, `witness_page`.
 
-Incoming: `witness_submitted_documents`.
+Incoming: `witness_submitted_documents`, `witness_key_map_successor`, `witness_key_map_candidates`.
+
+## `witness_key_map` — Earlier witness keys and the current witness each resolves to
+
+One witness key this release no longer publishes, with its successor, its candidates, or neither.
+
+Identity: `old_key` (primary_key; published identifier).
+
+Coverage: Derived from earlier bodies the lake still holds, not from earlier releases: a key published only from a body no longer held has no row.
+
+| Field | Published type | Nullable | Meaning |
+| --- | --- | --- | --- |
+| `old_key` | `string` | no | A witness_key that an earlier body or capture context held for an occasion produces and this release does not publish in witnesses |
+| `witness_key` | `string` | yes | The current witnesses.witness_key the old key resolves to; null when status is ambiguous or unresolved |
+| `status` | `dict` | no | unambiguous (one successor), ambiguous (several candidates, listed in candidate_keys, none chosen) or unresolved (no candidate) |
+| `basis` | `dict` | yes | The strongest evidence found: occurrence (the same body and locator, published under another occasion or capture context), content (the same occasion, source and print, with an equal name and equal other attributes, at least one of them stated or the same locator; repeats of one person pair in list order) or locator (the same locator, occasion, source and print, an edited name of the same family and given name, every other attribute equal and a position, organization or Bioguide ID stated); null when unresolved |
+| `candidate_keys` | `list<string>` | no | With status ambiguous: the current witness keys the old key could resolve to, sorted; empty otherwise |
+| `occasion` | `dict` | no | The occasion the old key's body is filed under in this release (meeting:{event_id}, package:{package_id}, or page:{sha256_prefix}) |
+| `source` | `dict` | no | Observation source family of the old key (house_xml, congress_gov, senate_page, or mods) |
+
+Nullability: witness_key is set exactly when status is unambiguous; basis is null exactly when status is unresolved (ct-kb4w). A required column is refused at write time.
+
+- `old_key`: Disjoint from witnesses.witness_key. A re-fetched body, a newly bound capture context, or a meeting link that moves a print or Senate page off its package or page occasion gives each witness a new key (witness-occurrence-v2 is unchanged); the earlier keys are listed here. A name alone never maps (ct-30fp).
+- `witness_key`: The successor can itself be superseded_by a higher-ranked row of the same person; follow witnesses.superseded_by to the row to show.
+
+Outgoing: `witness_key_map_successor`, `witness_key_map_candidates`.
+
+Incoming: none.
 
 ## `recordings` — Meeting recordings and captured tracks
 
@@ -983,6 +1010,18 @@ many-to-one; match: `identifier`; nullable: true; resolution: `external`. Scope:
 
 many-to-one; match: `identifier`; nullable: true; resolution: `external`. Scope: external identifier or retained object; no local entity table implied.
 
+### `witness_key_map_successor`
+
+`witness_key_map.witness_key` → `witnesses.witness_key`. The current appearance an earlier witness key resolves to; a saved link to the old key opens this row.
+
+many-to-one; match: `equal`; nullable: true; resolution: `required`. Scope: selected release.
+
+### `witness_key_map_candidates`
+
+`witness_key_map.candidate_keys[]` → `witnesses.witness_key`. Current appearances an ambiguous earlier key could resolve to; none is chosen.
+
+many-to-many; match: `equal`; nullable: true; resolution: `required`. Scope: selected release.
+
 ### `meeting_video_address`
 
 `meetings.videos[].url` → web URL. Published URL, not proof of a locally retained document. Use the fixed urls lookup for document address searches.
@@ -1203,6 +1242,25 @@ WHERE NOT coalesce(l.hidden,false) ORDER BY l.list_row LIMIT 100
 No package_id on the appearance or on the rows it supersedes means no published package association; submitted documents use a different relationship.
 
 Follows superseded_by: a current appearance from a source without package_id reaches the package its superseded source row carries.
+
+### `witness_by_any_key` — A witness appearance by its current or an earlier key
+
+Requires: `witnesses`, `witness_key_map`.
+
+Result: The current appearance for the key, with the earlier key it was reached through.
+
+Parameters, in order: `witness_key` (example `0001497931f99cd1`).
+
+```sql
+WITH k AS (SELECT ? AS key)
+SELECT w.witness_key,w.name,w.occasion,w.superseded_by,m.old_key,m.status
+FROM k LEFT JOIN witness_key_map m ON m.old_key=k.key
+JOIN witnesses w ON w.witness_key=coalesce(m.witness_key,k.key)
+```
+
+No row: the key is unknown, or witness_key_map states it ambiguous (candidate_keys) or unresolved.
+
+Never resolves by name.
 
 ### `committee_roster` — Committee members for a published Congress
 
