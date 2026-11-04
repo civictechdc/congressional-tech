@@ -17,7 +17,7 @@ WITH latest AS (
   JOIN row_of r ON r.link_key=s.link_key
 ), by_sibling AS (
   SELECT link_key,min(successor_key) AS successor_key FROM sibling_rows
-  GROUP BY link_key HAVING count(DISTINCT successor_key)=1
+  GROUP BY link_key HAVING min(successor_key)=max(successor_key)
 ), address_rows AS (
   -- Third rule: a candidate document at one of the prior row's exact addresses (url, member_path).
   SELECT g.link_key,d.link_key AS successor_key FROM gone g
@@ -36,7 +36,7 @@ WITH latest AS (
   SELECT a.link_key,min(a.successor_key) AS successor_key FROM address_rows a
   JOIN old_prints o ON o.link_key=a.link_key
   JOIN document_prints d ON d.primary_key=a.successor_key AND d.fingerprint=o.fingerprint
-  GROUP BY a.link_key HAVING count(DISTINCT a.successor_key)=1
+  GROUP BY a.link_key HAVING min(a.successor_key)=max(a.successor_key)
 ), address_versions AS (
   SELECT link_key,array_sort(array_agg(DISTINCT successor_key)) AS versions FROM address_rows GROUP BY link_key
 ), fresh AS (

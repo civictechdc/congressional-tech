@@ -7,4 +7,4 @@ SELECT k.url_key,max(n.body_sha) AS body_sha,
 FROM source_url_keys k JOIN capture_source_names n ON k.url=n.source_url
 WHERE k.error IS NULL AND k.url_key IS NOT NULL AND n.is_real_file
  AND n.sha256 IS NOT NULL AND n.member_path IS NULL
-GROUP BY k.url_key HAVING count(DISTINCT n.body_sha)=1
+GROUP BY k.url_key HAVING min(n.body_sha)=max(n.body_sha)

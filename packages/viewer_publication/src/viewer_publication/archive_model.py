@@ -426,7 +426,7 @@ def grouping_steps(*,node_limit=10_000_000,root=ROOT,review_edges=False,recovere
         dict(name='recovered_copy_members',sql="""SELECT r.source_id,min(g.component) AS component
             FROM (SELECT DISTINCT source_id,body_sha FROM recovered_copy_links) r
             JOIN source_files s ON s.body_sha=r.body_sha AND s.is_real_file JOIN graph_labels g ON g.source_id=s.source_id
-            GROUP BY r.source_id HAVING count(DISTINCT g.component)=1""",materialize=True),
+            GROUP BY r.source_id HAVING min(g.component)=max(g.component)""",materialize=True),
         dict(name='source_labels',sql="""SELECT g.source_id,coalesce(m.component,g.component) AS component
             FROM recovered_copy_members m RIGHT JOIN graph_labels g ON m.source_id=g.source_id""",materialize=True)]
 

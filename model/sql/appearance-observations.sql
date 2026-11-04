@@ -119,7 +119,7 @@ WITH candidate_appearance_shas AS (
 ), list_events AS (
  -- One event only: links or paths that disagree state no event.
  SELECT record_sha_hex,min(event_id) AS event_id FROM stated_list_events WHERE event_id IS NOT NULL
- GROUP BY record_sha_hex HAVING count(DISTINCT event_id)=1
+ GROUP BY record_sha_hex HAVING min(event_id)=max(event_id)
 ), bound_contexts AS (
  SELECT
   r.record_sha_hex,

@@ -30,7 +30,7 @@ WITH hhrg_slugs AS (
  SELECT event_id,norm_family
  FROM document_witness_meeting_witnesses
  GROUP BY event_id,norm_family
- HAVING count(DISTINCT witness_key)=1
+ HAVING min(witness_key)=max(witness_key)
 ), witness_slug_candidates AS (
  SELECT event_id,witness_key,norm_family_init AS norm_slug
  FROM document_witness_meeting_witnesses
@@ -44,7 +44,7 @@ WITH hhrg_slugs AS (
  SELECT event_id,norm_slug,min(witness_key) AS witness_key
  FROM witness_slug_candidates
  GROUP BY event_id,norm_slug
- HAVING count(DISTINCT witness_key)=1
+ HAVING min(witness_key)=max(witness_key)
 ), slug_matched_members AS (
  SELECT DISTINCT h.component,u.witness_key
  FROM hhrg_slugs h

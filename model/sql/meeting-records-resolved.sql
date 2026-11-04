@@ -57,7 +57,7 @@ WITH sitting_rows AS (
  SELECT sys_code,meeting_date,min(event_id) AS event_id,min(congress) AS congress
  FROM held_meeting_committees
  GROUP BY sys_code,meeting_date
- HAVING count(DISTINCT event_id)=1
+ HAVING min(event_id)=max(event_id)
 ), normalized_bill_activities AS (
  SELECT
   lower(trim(a.bill_id)) AS bill_id,

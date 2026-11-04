@@ -36,7 +36,7 @@ WITH people AS (
  FROM pairs
  GROUP BY witness_key
  -- An open given name names nobody in particular when the higher rows hold several distinct people of that family.
- HAVING NOT bool_or(open_given) OR count(DISTINCT higher_person_key)=1
+ HAVING NOT bool_or(open_given) OR min(higher_person_key)=max(higher_person_key)
 )
 SELECT a.witness_key,coalesce(b.superseded_by,a.superseded_by) AS superseded_by
 FROM direct_precedence a
