@@ -1,8 +1,8 @@
 ---
 id: ct-itcg
-status: open
+status: closed
 deps: []
-links: [ct-v8y0, ct-5f3e, ct-kunv, ct-m104, ct-8cno]
+links: [ct-v8y0, ct-5f3e, ct-kunv, ct-m104, ct-8cno, ct-fd16]
 created: 2026-11-01T20:08:13Z
 type: task
 priority: 1
@@ -70,3 +70,7 @@ Closed 2026-11-03 after full D1-D4 + model build, Gates 1-5 pass (model/jobs/rel
 **2026-11-04T02:21:36Z**
 
 Reopened 2026-11-03 (post-release acceptance test). Remaining: model/jobs/publish-model.json still pins placeholder archive.* tables with snapshot null. publish.json's empty receipt_keys/provenance are correct by design: it is the daily spec, and load_spec refuses both when 'daily' is set, so that part of the criterion is superseded. Found: the daily job (publish-daily.json) appends to canonical archive.*, which still holds the v21 snapshot; live e4538f00 was built from ct-archive-v2/archive_r1b.* (7 tables; pins in .cache/archive-release/r1b-run/candidate-8addb2dc/after-video/final-run-pinned/basin-import/basin-pins.json). Owner decision 2026-11-03: import the 7 archive_r1b snapshots into canonical archive.* as its next snapshot, then pin publish-model.json to those snapshots (video_records and committee_records with their recording decisions).
+
+**2026-11-04T02:29:12Z**
+
+2026-11-03: publish-model.json is pinned to the live e4538f00 snapshots in ct-archive-v2/archive_r1b (all 7 tables, plus the 8addb2dc recording decisions); publish-daily, backfill and maintenance specs target archive_r1b; publish.json re-pinned. Owner chose this over canonical archive.* because no job or engine operation can replace a non-empty table's contents (follow-up ct-fd16). Verified: load_spec for all specs; a simulated completed_daily_inputs keeps video/committee pins when the bucket's provenance/recording_decisions/8addb2dc.jsonl record is present (it is, in the live release's 35 provenance entries); test_archive_model_job 45, test_archive_publish_job 90, test_senate_listing_rows 20, test_archive_maintenance 35, test_phase2_release_pruning 25, test_archive_workflows 18 passed.

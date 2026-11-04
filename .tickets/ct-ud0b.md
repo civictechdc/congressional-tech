@@ -1,7 +1,7 @@
 ---
 id: ct-ud0b
 status: open
-deps: [ct-itcg, ct-r8jd]
+deps: [ct-itcg]
 links: [ct-4jms, ct-tk10]
 created: 2026-11-02T13:59:14Z
 type: feature
@@ -51,3 +51,7 @@ Closed 2026-11-03 after full D1-D4 + model build, Gates 1-5 pass (model/jobs/rel
 **2026-11-04T02:21:36Z**
 
 Reopened 2026-11-03 (post-release acceptance test): automatic causes work, but the hosted nightly path cannot publish yet. Blocked by ct-r8jd (rss_gb) and ct-itcg (the daily job's canonical archive.* tables still hold v21, not the live release's inputs, so Gate 1 would refuse every nightly candidate).
+
+**2026-11-04T02:29:12Z**
+
+2026-11-03: ct-itcg closed (specs pinned to archive_r1b); publish binding admits with rss_gb 14. Dropped the ct-r8jd dependency: what remains there is maintenance only. Remaining here: one hosted nightly run that builds from the archive_r1b base, passes Gates 1-5 and publishes (or refuses with a recorded reason).
