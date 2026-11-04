@@ -17,3 +17,9 @@ ct-717p trace (2026-11-04, .cache/archive-release/investigations/ct-717p-event-1
 
 Selection rule covers events with committee documents that only the House XML carries; a plan-only run lists the affected events; the 49 House-XML-without-records events are traced to a cause; fetched bodies flow through the nightly within its budget.
 
+
+## Notes
+
+**2026-11-04T16:55:20Z**
+
+Reusable completeness check for this work (from the ct-717p independent review, .cache/archive-release/investigations/ct-717p-event-118300-review-20261104.md): match on the event-specific link or body hash, not the document file name (Rules CA names repeat across meetings: Amdt-7 in 7 events, Amdt-1 in 53), emit a pass/fail status, and fail on any bill key derived from an amendment ordinal. The review's plant harness shows the name-only check misses a wrong-event link, a wrong-event body hash and an ordinal-derived bill key.
