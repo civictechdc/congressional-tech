@@ -20,6 +20,8 @@ Identity: `list_row` (row_position; release).
 
 list_row is virtual: zero-based physical row position, continued across manifest shard row ranges. Never reuse it across releases.
 
+Coverage: Date bounds span accepted document dates only and Congress bounds skip suspect-dated documents; document_dates counts accepted, suspect and undated documents. Bounds are observed values, not evidence of complete coverage.
+
 | Field | Published type | Nullable | Meaning |
 | --- | --- | --- | --- |
 | `filename` | `string` | no | Displayed filename |
@@ -30,7 +32,7 @@ list_row is virtual: zero-based physical row position, continued across manifest
 | `chambers` | `list<dict>` | no | Chambers associated with the document |
 | `congress` | `int16` | yes | Congress number when unambiguous |
 | `format` | `dict` | no | Original file format |
-| `document_date` | `date32` | yes | Date of the document |
+| `document_date` | `date32` | yes | Date of the document as read; detail.document_date_status says whether it is accepted or suspect |
 | `first_captured` | `date32` | yes | First good fetch date |
 | `date_kind` | `dict` | no | Basis of the archive date |
 | `saved_kind` | `dict` | no | Original file or recovery |
@@ -60,6 +62,8 @@ Identity: `link_key` (primary_key; release; a recovery-only document's key can m
 
 list_row stays virtual: zero-based physical row position, continued across manifest shard row ranges; never reuse it across releases. Older releases carry only the detail columns; their rows pair with list by list_row.
 
+Coverage: Date bounds span accepted document dates only and Congress bounds skip suspect-dated documents; document_dates counts accepted, suspect and undated documents. Bounds are observed values, not evidence of complete coverage.
+
 | Field | Published type | Nullable | Meaning |
 | --- | --- | --- | --- |
 | `link_key` | `fixed[8]` | no | Stable public body or original-link key |
@@ -68,6 +72,7 @@ list_row stays virtual: zero-based physical row position, continued across manif
 | `saved_media_type` | `dict` | no | Media type of the saved file |
 | `saved_bytes` | `int64` | no | Size of original bytes before storage compression |
 | `document_date_source` | `dict` | yes | Filename, content or meeting date basis |
+| `document_date_status` | `dict` | yes | accepted, or suspect for a filename date more than 30 days after first_captured or outside the tagged Congress's years (one year of margin); document_date keeps the literal reading either way; null when undated |
 | `in_archive_since` | `date32` | yes | Earliest known archive import date |
 | `removed_on` | `date32` | yes | Date the publisher removed the document |
 | `review_note` | `string` | yes | Review explanation |
@@ -87,7 +92,7 @@ list_row stays virtual: zero-based physical row position, continued across manif
 | `chambers` | `list<dict>` | no | Chambers associated with the document |
 | `congress` | `int16` | yes | Congress number when unambiguous |
 | `format` | `dict` | no | Original file format |
-| `document_date` | `date32` | yes | Date of the document |
+| `document_date` | `date32` | yes | Date of the document as read; detail.document_date_status says whether it is accepted or suspect |
 | `first_captured` | `date32` | yes | First good fetch date |
 | `date_kind` | `dict` | no | Basis of the archive date |
 | `saved_kind` | `dict` | no | Original file or recovery |

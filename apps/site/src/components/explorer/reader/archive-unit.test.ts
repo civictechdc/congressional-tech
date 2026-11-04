@@ -46,6 +46,9 @@ test('capture, import, document and removal dates retain their meaning',()=>{
   assert.deepEqual(dateLabels({date_kind:'captured',first_captured:new Date('2024-01-02Z'),document_date:'2023-12-01'},
     {document_date_source:'publisher',removed_on:'2024-03-04'}),{
       capture:'Captured 2024-01-02',document:'2023-12-01 (publisher)',removed:'Removed from the hearing page by the committee on 2024-03-04'});
+  assert.equal(dateLabels({document_date:'2303-05-04'},{document_date_source:'filename',document_date_status:'suspect'}).document,
+    '2303-05-04 (read from the filename; likely misread)');
+  assert.equal(dateLabels({document_date:'2023-05-04'},{document_date_source:'filename',document_date_status:'accepted'}).document,'2023-05-04');
   assert.equal(dateLabels({date_kind:'import_day'},{in_archive_since:'2020-01-02'}).capture,'In our archive since 2020-01-02 (original capture date not recorded)');
   assert.equal(dateLabels({date_kind:'unknown'},{}).capture,'Capture date not recorded');
   assert.equal(recoveryLabel('recovered_document'),'Recovered document');

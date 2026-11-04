@@ -58,6 +58,9 @@ def test_dates_bioguide_and_all_facets_keep_ambiguity():
     assert row['package_id'] is None
     ambiguous = reader().read_filename('01-02-2003.pdf', '', catalog_version='v')
     assert ambiguous['filename_date'] is None
+    short_year = reader().read_filename('02 27 19 Assessing The Role Of The United States In The World2.pdf', '', catalog_version='v')
+    assert short_year['filename_date'] is None
+    assert {'field': 'date_token', 'value': '02 27 19'} in short_year['fields']
     empty = reader().read_filename('', '', catalog_version='v')
     assert empty['status'] == 'completed' and not empty['valid']
 

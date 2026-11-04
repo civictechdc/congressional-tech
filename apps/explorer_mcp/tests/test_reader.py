@@ -2,6 +2,7 @@ import json
 import shutil
 
 import duckdb
+import pyarrow as pa
 import pyarrow.parquet as pq
 import pytest
 
@@ -300,6 +301,24 @@ def test_upstream_relations_are_published_as_stated(reader, tmp_path, phase2):
 def test_document_dates_carry_their_basis(reader):
     row = reader.search_documents({'limit': 1})['rows'][0]
     assert {'document_date', 'document_date_source', 'first_captured', 'date_kind'} <= row.keys()
+    assert 'document_date_status' not in row
+
+
+def test_document_summaries_carry_a_published_date_status(phase2, tmp_path):
+    detail = pq.read_table(phase2.parent / 'detail.parquet')
+    status = pa.array(['suspect', *[None] * (detail.num_rows - 1)], pa.string())
+    detail = detail.add_column(detail.schema.get_field_index('document_date_source') + 1, 'document_date_status', status)
+    def declare(value):
+        columns = next(f for f in value['files'] if f['name'] == 'detail.parquet')['columns']
+        at = next(i for i, c in enumerate(columns) if c['name'] == 'document_date_source') + 1
+        columns.insert(at, dict(name='document_date_status', type='string', meaning='accepted or suspect', nullable=True))
+    reader = edited_release(phase2, tmp_path, files=[('detail.parquet', detail)], schema=declare)
+    try:
+        assert reader.search_documents({'limit': 1})['rows'][0]['document_date_status'] == 'suspect'
+        documents = reader.get_entity({'table': 'meetings', 'id': 118001, 'section': 'documents'})['rows']
+        assert documents[0]['document_date_status'] == 'suspect'
+    finally:
+        reader.close()
 
 
 @pytest.mark.parametrize('shape', ['row_position_detail', 'retired_links'])

@@ -76,6 +76,8 @@ class Reader:
             self.db.execute('SET lock_configuration=true')
             self.schemas = {table: {row[0]: row[1] for row in self.db.execute(f'DESCRIBE {quote(table)}').fetchall()}
                             for table in [*selection['tables'], 'documents']}
+            self.document_summary = DOCUMENT_SUMMARY_COLUMNS + (
+                ',d.document_date_status' if 'document_date_status' in self.schemas['detail'] else '')
             self.entity_keys, self.document_links = published_entities(selection['controls']['schema'])
         except BaseException:
             self.close()
@@ -251,7 +253,7 @@ class Reader:
             if (value := getattr(query, parameter)) is not None:
                 conditions.append(f'list_contains(l.{column},?)'); args.append(value)
         return self.document_rows(self.page(query,
-            f'SELECT {DOCUMENT_SUMMARY_COLUMNS} '
+            f'SELECT {self.document_summary} '
             'FROM "list" l JOIN detail d USING(list_row) WHERE ' + (' AND '.join(conditions) or 'true'), args, order='l.list_row'))
 
     def _resolve_document(self, query):
@@ -398,7 +400,7 @@ class Reader:
             else:
                 raise ExplorerError('This entity has no published document relationship')
             return self.document_rows(self.page(query,
-                f'SELECT {DOCUMENT_SUMMARY_COLUMNS} '
+                f'SELECT {self.document_summary} '
                 'FROM "list" l JOIN detail d USING(list_row) WHERE NOT coalesce(l.hidden,false) AND ' + sql,
                 [str(query.id)], order='l.list_row'))
         if query.cursor:

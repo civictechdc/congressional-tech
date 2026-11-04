@@ -43,8 +43,19 @@ LIST_COLUMNS = ['filename', 'title', 'document_kind', 'document_family', 'commit
 
 
 DETAIL_COLUMNS = ['link_key', 'saved_body', 'saved_suffix', 'saved_media_type', 'saved_bytes',
-    'document_date_source', 'in_archive_since', 'removed_on', 'review_note', 'review_decided_at',
+    'document_date_source', 'document_date_status', 'in_archive_since', 'removed_on', 'review_note', 'review_decided_at',
     'src_start', 'src_len', 'rec_start', 'rec_len', 'alternates', 'package_id', 'facts']
+
+
+# A filename date is suspect when it is more than 30 days after the archive's first capture
+# (committees post hearing documents ahead of the hearing date), or its year falls outside the
+# tagged Congress's two years with one year of margin (Congress n begins in 1789+2(n-1)).
+# Content and meeting dates are always accepted. The literal date stays in document_date.
+DOCUMENT_DATE_STATUS = """CASE WHEN document_date IS NULL THEN NULL
+    WHEN document_date_source='filename' AND (document_date>first_captured+INTERVAL '30 days' OR (congress IS NOT NULL AND (
+        date_part('year',document_date)<1789+2*(cast(congress AS INT)-1)-1
+        OR date_part('year',document_date)>1789+2*(cast(congress AS INT)-1)+3)))
+    THEN 'suspect' ELSE 'accepted' END"""
 
 
 # The keyed document table: detail-only columns, then the list projection. A new
@@ -55,7 +66,7 @@ DOCUMENT_COLUMNS = [*DETAIL_COLUMNS, *LIST_COLUMNS]
 LIST_DICTIONARY = [*(f'{name}.list.item' for name in ['document_kind', 'document_family', 'committee_keys', 'chambers', 'meeting_keys', 'measure_keys', 'bioguide_ids', 'witness_keys', 'version_keys']), 'format', 'date_kind', 'saved_kind']
 
 
-DETAIL_DICTIONARY = ['saved_suffix', 'saved_media_type', 'document_date_source', 'alternates.list.item.format', 'alternates.list.item.suffix', 'facts.list.item.field']
+DETAIL_DICTIONARY = ['saved_suffix', 'saved_media_type', 'document_date_source', 'document_date_status', 'alternates.list.item.format', 'alternates.list.item.suffix', 'facts.list.item.field']
 
 
 MEETING_DICTIONARY = ['chamber', 'meeting_type', 'status', 'congress_gov_meeting_type', 'access', 'access_basis', 'rescheduled_basis', 'committees.list.item.system_code', 'committees.list.item.role', 'subject_keys.list.item', 'transcripts.list.item.source', 'transcripts.list.item.language', 'transcripts.list.item.production']
@@ -111,9 +122,9 @@ CORE_RELATIONS = {'list': 'ordered', 'detail': 'details', 'links': 'links', 'url
 def _core(steps, output,*,lookup_extra=None):
     order = ['filename', 'document_date', 'first_captured', 'doc_key']
     detail_inputs = ','.join('o.'+name for name in dict.fromkeys([*order,*LIST_COLUMNS,'list_row',
-        'document_date_source','in_archive_since','removed_on','review_note','review_decided_at',
+        'document_date_source','document_date_status','in_archive_since','removed_on','review_note','review_decided_at',
         'alternates','package_id','facts']))
-    steps += [_step('ordered', "SELECT *,cast(row_number() OVER(ORDER BY filename,document_date NULLS LAST,first_captured NULLS LAST,doc_key)-1 AS INT) AS list_row FROM normalized", materialize=True),
+    steps += [_step('ordered', f"SELECT *,{DOCUMENT_DATE_STATUS} AS document_date_status,cast(row_number() OVER(ORDER BY filename,document_date NULLS LAST,first_captured NULLS LAST,doc_key)-1 AS INT) AS list_row FROM normalized", materialize=True),
         _step('source_rows', """SELECT o.list_row,s.*,cast(row_number() OVER(PARTITION BY o.list_row ORDER BY s.is_saved DESC,s.first_seen NULLS LAST,s.url,s.member_path NULLS LAST)-1 AS INT) AS ordinal,
             cast(row_number() OVER(ORDER BY o.list_row,s.is_saved DESC,s.first_seen NULLS LAST,s.url,s.member_path NULLS LAST)-1 AS INT) AS source_index
             FROM (SELECT doc_key,list_row FROM ordered) o JOIN source_input s ON s.doc_key=o.doc_key""", materialize=True),
@@ -228,7 +239,11 @@ def _execute(inputs, steps, *, output, scratch, engine, origin, auxiliary=None, 
     coverage_parts = []
     for name, relation in [('list', None), ('detail', None), ('links', 'links'), ('urls', 'url_keys'), ('sources', 'source_rows'), ('recoveries', 'recovery_rows')]:
         source = 'ordered o' if relation is None else f'ordered o JOIN (SELECT DISTINCT list_row FROM {relation}) r ON o.list_row=r.list_row'
-        coverage_parts.append(f"SELECT '{name}.parquet' AS file,min(o.congress) AS congress_start,max(o.congress) AS congress_end,min(o.document_date) AS date_start,max(o.document_date) AS date_end FROM {source}")
+        coverage_parts.append(f"""SELECT '{name}.parquet' AS file,
+            min(CASE WHEN o.document_date_status IS DISTINCT FROM 'suspect' THEN o.congress END) AS congress_start,
+            max(CASE WHEN o.document_date_status IS DISTINCT FROM 'suspect' THEN o.congress END) AS congress_end,
+            min(CASE WHEN o.document_date_status='accepted' THEN o.document_date END) AS date_start,
+            max(CASE WHEN o.document_date_status='accepted' THEN o.document_date END) AS date_end FROM {source}""")
     if 'meetings_resolved' in step_names:
         coverage_parts.append("""SELECT 'meetings.parquet' AS file,
             min(coalesce(cast(r.congress AS SMALLINT),o.congress_min)) AS congress_start,
@@ -252,11 +267,13 @@ def _execute(inputs, steps, *, output, scratch, engine, origin, auxiliary=None, 
             FROM witnesses_export w
             LEFT JOIN meetings_resolved m ON w.event_id=m.event_id
             LEFT JOIN (
-                SELECT unnest(witness_keys) AS witness_key,min(congress) AS congress_min,max(congress) AS congress_max,min(document_date) AS date_min,max(document_date) AS date_max
+                SELECT unnest(witness_keys) AS witness_key,min(congress) AS congress_min,max(congress) AS congress_max,
+                    min(CASE WHEN document_date_status='accepted' THEN document_date END) AS date_min,max(CASE WHEN document_date_status='accepted' THEN document_date END) AS date_max
                 FROM ordered WHERE witness_keys IS NOT NULL GROUP BY 1
             ) o ON w.witness_key=o.witness_key
             LEFT JOIN (
-                SELECT package_id,min(congress) AS congress_min,max(congress) AS congress_max,min(document_date) AS date_min,max(document_date) AS date_max
+                SELECT package_id,min(congress) AS congress_min,max(congress) AS congress_max,
+                    min(CASE WHEN document_date_status='accepted' THEN document_date END) AS date_min,max(CASE WHEN document_date_status='accepted' THEN document_date END) AS date_max
                 FROM ordered WHERE package_id IS NOT NULL GROUP BY 1
             ) p ON w.package_id=p.package_id""")
     if 'committees' in aux_names:
@@ -270,6 +287,10 @@ def _execute(inputs, steps, *, output, scratch, engine, origin, auxiliary=None, 
     if 'nominations' in aux_names:
         coverage_parts.append("SELECT 'nominations.parquet' AS file,min(try_cast(split_part(nomination_id,'-',1) AS SMALLINT)) AS congress_start,max(try_cast(split_part(nomination_id,'-',1) AS SMALLINT)) AS congress_end,min(received) AS date_start,max(received) AS date_end FROM nominations_export")
     queries.append(dict(name='coverage', sql=' UNION ALL '.join(coverage_parts)))
+    queries.append(dict(name='document_dates', sql="""SELECT
+        sum(CASE WHEN document_date_status='accepted' THEN 1 ELSE 0 END) AS accepted,
+        sum(CASE WHEN document_date_status='suspect' THEN 1 ELSE 0 END) AS suspect,
+        sum(CASE WHEN document_date IS NULL THEN 1 ELSE 0 END) AS undated FROM ordered"""))
     spec = retire_relations(dict(scratch=str(scratch / 'native'), inputs=inputs, steps=steps, outputs=outputs, queries=queries))
     spec_path = scratch / 'job.json'
     spec_path.write_text(json.dumps(spec, ensure_ascii=False, separators=(',', ':')))
@@ -286,6 +307,10 @@ def _execute(inputs, steps, *, output, scratch, engine, origin, auxiliary=None, 
         raise ValueError('Release key invariant failed; native results retained in scratch')
     schema_files = {item['name']: item for item in schema['files']}
     coverage = {row['file']: {key: value for key, value in row.items() if key != 'file'} for row in reports['coverage']}
+    document_dates = {key: int(value or 0) for key, value in reports['document_dates'][0].items()}
+    for name in ('list.parquet', 'detail.parquet'):
+        if name in coverage:
+            coverage[name]['document_dates'] = document_dates
     files = []
     for entry in result['outputs']:
         if entry['name'] in {item['name'] for item in extra_outputs}:

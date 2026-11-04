@@ -55,7 +55,7 @@
         {
           "name": "document_date",
           "type": "date32",
-          "meaning": "Date of the document",
+          "meaning": "Date of the document as read; detail.document_date_status says whether it is accepted or suspect",
           "nullable": true
         },
         {
@@ -113,7 +113,9 @@
           "nullable": false
         }
       ],
-      "gaps": [],
+      "gaps": [
+        "Date bounds span accepted document dates only and Congress bounds skip suspect-dated documents; document_dates counts accepted, suspect and undated documents. Bounds are observed values, not evidence of complete coverage"
+      ],
       "purpose": "Searchable documents",
       "row_meaning": "One document edition in this release",
       "identity": {
@@ -177,6 +179,12 @@
           "name": "document_date_source",
           "type": "dict",
           "meaning": "Filename, content or meeting date basis",
+          "nullable": true
+        },
+        {
+          "name": "document_date_status",
+          "type": "dict",
+          "meaning": "accepted, or suspect for a filename date more than 30 days after first_captured or outside the tagged Congress's years (one year of margin); document_date keeps the literal reading either way; null when undated",
           "nullable": true
         },
         {
@@ -296,7 +304,7 @@
         {
           "name": "document_date",
           "type": "date32",
-          "meaning": "Date of the document",
+          "meaning": "Date of the document as read; detail.document_date_status says whether it is accepted or suspect",
           "nullable": true
         },
         {
@@ -354,7 +362,9 @@
           "nullable": false
         }
       ],
-      "gaps": [],
+      "gaps": [
+        "Date bounds span accepted document dates only and Congress bounds skip suspect-dated documents; document_dates counts accepted, suspect and undated documents. Bounds are observed values, not evidence of complete coverage"
+      ],
       "purpose": "The keyed document table: one row per document with its stable link_key, files and every list field; list is its no-ID browser projection",
       "row_meaning": "One document edition, in exactly the same order as list",
       "identity": {

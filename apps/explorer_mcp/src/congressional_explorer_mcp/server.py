@@ -69,7 +69,9 @@ def create_server(selection=None, *, timeout=10.0, data_dir=None, publication=PU
 
         Text matches metadata, not full document text. Hidden documents are excluded by default.
         document_date is the document's own date; document_date_source says whether it came from the filename, content or the
-        meeting date (null: no date). first_captured is when the archive first fetched it, and date_kind its basis
+        meeting date (null: no date). Where published, document_date_status 'suspect' marks a filename date that is far
+        later than first capture or outside the document's Congress; treat it as a likely misreading, not the document's date.
+        first_captured is when the archive first fetched it, and date_kind its basis
         (captured, import_day, unknown). Neither is a page-update date, and only a meeting-sourced date is the hearing date.
         measure_key and witness_key match direct list.<col>[] document annotations (list.measure_keys holds bill_ids);
         use the bill_hearing_transcripts, nomination_transcripts, and witness_transcripts recipes for package_id-linked hearing transcripts.

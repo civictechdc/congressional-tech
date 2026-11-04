@@ -75,6 +75,40 @@ def test_recovery_without_an_import_record_keeps_an_unknown_date(engine, tmp_pat
     assert imported['type']=='date32' and imported['nullable'] is True
 
 
+def test_suspect_filename_dates_keep_their_reading_and_leave_coverage(engine, tmp_path):
+    from viewer_publication.archive_fixture import build_fixture_release
+    value=json.loads((ROOT/'model/fixtures/hand-release.json').read_text())
+    def document(name,date,captured,source,congress):
+        return dict(name=name,filename=name+'.pdf',title=name,body_byte=100+len(value['documents']),format='pdf',
+            document_date=date,first_captured=captured,document_date_source=source,congress=congress,hidden=False,
+            source_url=f'https://fixture.test/{name}.pdf')
+    for case in [('after-capture','2024-06-01','2023-05-10','filename',118),
+            ('outside-congress','2001-02-20','2020-03-01','filename',116),
+            ('mistagged-congress','2012-03-01','2012-03-05','filename',12),
+            ('filename-in-congress','2019-02-27','2019-03-01','filename',116),
+            ('posted-before-hearing','2026-10-23','2026-10-15','filename',119),
+            ('content-after-capture','2031-01-19','2026-01-10','content',119),
+            ('meeting-outside-congress','2001-05-01','2026-01-10','meeting',119)]:
+        value['documents'].append(document(*case))
+    fixture=tmp_path/'dates.json';fixture.write_text(json.dumps(value))
+    output=tmp_path/'release'
+    manifest=build_fixture_release(fixture,output=output,scratch=tmp_path/'jobs',engine=engine)
+    detail={row['filename']:row for row in pq.read_table(output/'detail.parquet').to_pylist()}
+    assert {name:detail[name+'.pdf']['document_date_status'] for name in ['after-capture','outside-congress',
+        'mistagged-congress','filename-in-congress','posted-before-hearing','content-after-capture','meeting-outside-congress']} == {
+        'after-capture':'suspect','outside-congress':'suspect','mistagged-congress':'suspect',
+        'filename-in-congress':'accepted','posted-before-hearing':'accepted','content-after-capture':'accepted',
+        'meeting-outside-congress':'accepted'}
+    assert str(detail['after-capture.pdf']['document_date'])=='2024-06-01'
+    assert detail['Hidden.pdf']['document_date'] is None and detail['Hidden.pdf']['document_date_status'] is None
+    coverage=next(item['coverage'] for item in manifest['files'] if item['name']=='list.parquet')
+    assert (coverage['congress_start'],coverage['congress_end'],coverage['date_start'],coverage['date_end'])==(
+        116,119,'2001-05-01','2031-01-19')
+    assert coverage['document_dates']==dict(accepted=8,suspect=3,undated=3)
+    assert next(item['coverage'] for item in manifest['files'] if item['name']=='detail.parquet')==coverage
+    assert 'document_dates' not in next(item['coverage'] for item in manifest['files'] if item['name']=='links.parquet')
+
+
 def test_hand_release_covers_the_reader_outcomes(engine, tmp_path):
     from viewer_publication.archive_fixture import build_fixture_release
 

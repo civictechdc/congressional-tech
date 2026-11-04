@@ -424,7 +424,8 @@ const dateSourceLabels:Record<string,string>={
 export function dateLabels(document: any,detail: any){
   const captured=date(document.first_captured),imported=date(detail.in_archive_since),day=date(document.document_date);
   const rawSource=detail.document_date_source?String(detail.document_date_source).trim():'';
-  const source=rawSource&&rawSource!=='filename'?` (${dateSourceLabels[rawSource]??rawSource})`:'';
+  const source=detail.document_date_status==='suspect'?' (read from the filename; likely misread)':
+    rawSource&&rawSource!=='filename'?` (${dateSourceLabels[rawSource]??rawSource})`:'';
   return {capture:document.date_kind==='captured'&&captured?`Captured ${captured}`:
     document.date_kind==='import_day'&&imported?`In our archive since ${imported} (original capture date not recorded)`:'Capture date not recorded',
     document:day?`${day}${source}`:null,
