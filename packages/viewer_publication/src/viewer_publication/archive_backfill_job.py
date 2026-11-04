@@ -11,7 +11,7 @@ from congress_api.lake.daily import ALL_TABLE_NAMES
 from viewer_publication.archive_model_job import _local,provenance_record_kind
 
 FIELDS={'version','bucket','catalog_root','work','tables','batch_size','max_batches'}
-OPTIONAL={'engine_config','decided_at','max_work_items','body_inventory','receipt_inventory','local_root','selective','resume','through'}
+OPTIONAL={'engine_config','decided_at','max_work_items','body_inventory','receipt_inventory','local_root','selective','resume','through','producers'}
 
 
 def _bucket(value):
@@ -107,6 +107,14 @@ def load_spec(path):
         from viewer_publication.archive_selective import THROUGH
         if value['through'] not in THROUGH:raise ValueError('Selective through must be tables or model')
         result['through']=value['through']
+    if 'producers' in value:
+        from viewer_publication.archive_publish_job import _metadata_pin
+        if not isinstance(value['producers'],dict) or not value['producers']:
+            raise ValueError('Backfill producers must map each anchored table to its record pin')
+        result['producers']={name:_metadata_pin(pin,base) for name,pin in value['producers'].items()}
+    elif catalog_root is None and 'selective' not in value:
+        # Gate 5: a head this job moves without a record refuses every later publish.
+        raise ValueError('A daily backfill of the R2 lake requires the producer anchors the publisher pins')
     return result
 
 
@@ -181,7 +189,15 @@ def execute(spec,*,runtime_factory=None,storage_factory=None,producer=None):
             # A pinned inventory only if the spec names one; otherwise bodies come from raw_store.
             **{k:spec[k] for k in ('body_inventory','local_root') if spec.get(k) is not None},
         )
-        production=producer(daily_spec,engine=engine,raw_store=raw_store)
+        records=None
+        if 'producers' in spec:
+            from congress_api.lake.producer_records import ProducerRecords
+            from viewer_publication.archive_publish_job import _verify_metadata
+            anchors={}
+            for name,pin in spec['producers'].items():
+                identity=_verify_metadata(pin);anchors[name]=Path(pin['path']).read_bytes();identity.require(pin['path'])
+            records=ProducerRecords(anchors,client=client,bucket=spec['bucket'])
+        production=producer(daily_spec,engine=engine,raw_store=raw_store,producer_records=records)
     work.mkdir(parents=True,exist_ok=True)
     report=dict(
         status='executed',

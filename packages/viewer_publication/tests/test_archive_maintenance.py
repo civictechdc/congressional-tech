@@ -1,7 +1,9 @@
 """Derived retention validates kept evidence and never addresses raw objects."""
 from copy import deepcopy
 from datetime import datetime,timedelta,timezone
+import hashlib
 import json
+from pathlib import Path
 from uuid import NAMESPACE_URL,uuid5
 
 import pytest
@@ -250,6 +252,21 @@ def test_maintenance_and_backfill_cli_plan_and_execute_specs(tmp_path,capsys):
     backfill_plan=json.loads(capsys.readouterr().out)
     assert backfill_plan['status']=='planned' and backfill_plan['executed'] is False
     assert set(backfill_plan['tables'])==set(ALL_TABLE_NAMES)
+    committed=archive_backfill_job.load_spec(root/'model/jobs/backfill.json')
+    publisher=json.loads((root/'model/jobs/publish.json').read_text())['producers']
+    assert {name:(Path(pin['path']).name,pin['sha256']) for name,pin in committed['producers'].items()}=={
+        name:(Path(pin['path']).name,pin['sha256']) for name,pin in publisher.items()}
+
+
+def test_a_daily_backfill_of_the_r2_lake_refuses_without_producer_anchors(tmp_path):
+    from viewer_publication import archive_backfill_job
+    root=Path(__file__).resolve().parents[3]
+    value=json.loads((root/'model/jobs/backfill.json').read_text())
+    del value['producers']
+    spec=tmp_path/'backfill.json';spec.write_text(json.dumps(value))
+    with pytest.raises(ValueError,match='producer anchors'):archive_backfill_job.load_spec(spec)
+    spec.write_text(json.dumps(dict(value,catalog_root=str(tmp_path/'catalog'))))
+    assert 'producers' not in archive_backfill_job.load_spec(spec)
 
 
 def test_maintenance_execute_verifies_runtime_before_storage_access_and_backfill_reads_through_raw_store(tmp_path):
@@ -296,8 +313,9 @@ def test_maintenance_execute_verifies_runtime_before_storage_access_and_backfill
             assert op=='list_objects_v2'
             return SimpleNamespace(paginate=lambda **_: [dict(Contents=[],IsTruncated=False)])
     observed_daily={}
-    def fake_producer(daily_spec,*,engine,raw_store):
-        observed_daily.update(daily_spec)
+    anchor=tmp_path/'appearance_records.json';anchor.write_bytes(b'{"selector":{}}\n')
+    def fake_producer(daily_spec,*,engine,raw_store,producer_records):
+        observed_daily.update(daily_spec,producer_records=producer_records)
         assert 'body_inventory' not in daily_spec and 'local_root' not in daily_spec
         readings=dict(work_list=tmp_path/'work-list.parquet',batches=[dict(readings=tmp_path/'readings.parquet')])
         return dict(status='completed',pins={},producerreports=dict(readings=readings))
@@ -310,6 +328,8 @@ def test_maintenance_execute_verifies_runtime_before_storage_access_and_backfill
         batch_size=100,
         max_batches=2,
         engine_config=str(tmp_path/'runtime.json'),
+        producers=dict(appearance_records=dict(path=str(anchor),sha256=hashlib.sha256(anchor.read_bytes()).hexdigest(),
+            size=anchor.stat().st_size)),
     )
     report=archive_backfill_job.execute(
         backfill_spec,
@@ -320,6 +340,7 @@ def test_maintenance_execute_verifies_runtime_before_storage_access_and_backfill
     assert report['status']=='executed' and report['production']['status']=='completed'
     assert hooks==['r2-http-429']
     assert observed_daily['max_work_items']==200
+    assert observed_daily['producer_records'].anchors==dict(appearance_records=anchor.read_bytes())
     written=json.loads((tmp_path/'backfill-work/backfill-report.json').read_text())
     assert written['production']['producerreports']['readings']==dict(
         work_list=str(tmp_path/'work-list.parquet'),batches=[dict(readings=str(tmp_path/'readings.parquet'))])

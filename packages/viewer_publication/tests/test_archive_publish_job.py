@@ -216,13 +216,24 @@ def test_strict_spec_refuses_before_effects(tmp_path,capsys,change,match):
     assert not (tmp_path/'publish').exists()
 
 
-@pytest.mark.parametrize('status',['pending','backfill_required','raw_custody_required'])
+@pytest.mark.parametrize('status',['pending','backfill_required','raw_custody_required','producer_unrecorded','running'])
 def test_a_daily_stop_exits_nonzero_so_the_nightly_records_it(tmp_path,capsys,monkeypatch,status):
     from viewer_publication import archive_publish_job
     monkeypatch.setattr(archive_publish_job,'load_spec',lambda path:{})
     monkeypatch.setattr(archive_publish_job,'execute',lambda spec:dict(status=status,daily=dict(status=status)))
     assert archive_publish_job.main(['--spec',str(tmp_path/'unread.json'),'--execute'])==2
     assert json.loads(capsys.readouterr().out)['status']==status
+
+
+@pytest.mark.parametrize('result,code',[
+    (dict(status='published',daily=dict(status='completed')),0),
+    (dict(status='published'),0),
+])
+def test_a_completed_daily_or_no_daily_exits_zero(tmp_path,capsys,monkeypatch,result,code):
+    from viewer_publication import archive_publish_job
+    monkeypatch.setattr(archive_publish_job,'load_spec',lambda path:{})
+    monkeypatch.setattr(archive_publish_job,'execute',lambda spec:result)
+    assert archive_publish_job.main(['--spec',str(tmp_path/'unread.json'),'--execute'])==code
 
 
 @pytest.mark.parametrize('which',['publisher','model'])
