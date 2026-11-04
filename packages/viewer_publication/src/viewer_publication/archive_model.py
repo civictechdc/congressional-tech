@@ -637,7 +637,8 @@ def witness_key_steps(*,root=ROOT):
     """The engine re-runs a CTE at every reference, so the relations document_witness_keys reads more
     than once are materialized first; as one query it set the whole build's peak memory."""
     return _sql_steps(['document-witness-url-keys','document-witness-chrg-components','document-witness-url-matches',
-        'document-witness-meeting-witnesses','document-witness-keys'],root=root)
+        'document-witness-meeting-witnesses','document-witness-single-meeting-components','document-witness-raw-matches',
+        'document-witness-keys'],root=root)
 
 
 def explorer_settled_sql(table):

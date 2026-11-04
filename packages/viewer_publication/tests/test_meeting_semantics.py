@@ -643,6 +643,40 @@ def test_two_way_witness_precedence_and_hmtg_sha_prefixed_slugs_in_document_witn
     ]
 
 
+def test_document_witness_keys_counts_each_witness_once_per_document(tmp_path):
+    # witness_name: the one current witness's name, else the one witness's name, else NULL. Name rows
+    # and precedence rows fan the join out; neither may count a witness twice, and a NULL key is no witness.
+    engine = NativeDatasets.from_config(os.environ['DOCSPEC_JOB_CONFIG'])
+    matches = [('c_superseded', 'k_old'), ('c_two_current', 'k_a'), ('c_two_current', 'k_b'),
+               ('c_name_rows', 'k_two'), ('c_precedence_rows', 'k_dup'), ('c_self', 'k_self'),
+               ('c_null', None), ('c_null', 'k_named'), ('c_nameless', 'k_noname')]
+    names = [('k_cur', 'Current Name'), ('k_old', 'Aardvark Old'), ('k_a', 'Bea'), ('k_b', 'Al'),
+             ('k_two', 'Zed'), ('k_two', 'Abe'), ('k_dup', 'Zz Dup'), ('k_dup2', 'Dup Two'),
+             ('k_self', 'Self'), ('k_named', 'Named')]
+    precedence = [('k_old', 'k_cur'), ('k_dup', None), ('k_dup', 'k_dup2'), ('k_dup2', 'k_dup'), ('k_self', 'k_self')]
+    inputs = [
+        json_input(tmp_path, 'document_witness_raw_matches', [dict(component=c, witness_key=k) for c, k in matches],
+                   component='Utf8', witness_key='Utf8'),
+        json_input(tmp_path, 'appearance_records_resolved', [dict(witness_key=k, name=n) for k, n in names],
+                   witness_key='Utf8', name='Utf8'),
+        json_input(tmp_path, 'witness_precedence', [dict(witness_key=k, superseded_by=s) for k, s in precedence],
+                   witness_key='Utf8', superseded_by='Utf8'),
+    ]
+    steps = [step for step in witness_key_steps(root=ROOT) if step['name'] == 'document_witness_keys']
+    res = run_job(tmp_path, engine, inputs=inputs, steps=steps, outputs=[], queries=[
+        dict(name='dwk', sql='SELECT component, witness_keys, witness_name FROM document_witness_keys ORDER BY component')
+    ])['dwk']
+    assert res == [
+        dict(component='c_name_rows', witness_keys=['k_two'], witness_name='Abe'),
+        dict(component='c_nameless', witness_keys=['k_noname'], witness_name=None),
+        dict(component='c_null', witness_keys=[None, 'k_named'], witness_name='Named'),
+        dict(component='c_precedence_rows', witness_keys=['k_dup', 'k_dup2'], witness_name='Zz Dup'),
+        dict(component='c_self', witness_keys=['k_self'], witness_name='Self'),
+        dict(component='c_superseded', witness_keys=['k_cur', 'k_old'], witness_name='Current Name'),
+        dict(component='c_two_current', witness_keys=['k_a', 'k_b'], witness_name=None),
+    ]
+
+
 def test_senate_page_plan_is_linear_and_coverage_codes_and_generic_titles_hold(tmp_path):
     # F1, F7, F9:
     # 1. senate-page-meeting-links.sql physical plan has 1 scan of selected_appearance_records,
