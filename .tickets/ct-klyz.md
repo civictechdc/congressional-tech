@@ -1,6 +1,6 @@
 ---
 id: ct-klyz
-status: open
+status: closed
 deps: [ct-4jms]
 links: [cef-96wc]
 created: 2026-10-30T14:32:31Z
@@ -28,3 +28,7 @@ Reopened 2026-11-01: update-data.yml still runs congress-meetings on its weekly 
 **2026-11-04T12:46:09Z**
 
 Owner decision 2026-11-04: remove the legacy weekly meeting job from update-data.yml now, without waiting for B14's first live run or capture enablement.
+
+**2026-11-04T12:51:49Z**
+
+Removed in update-data.yml with its boundary test (owner decision 2026-11-04); capture-schedule takes no weekly seed inventories, so nothing else consumes the job.
