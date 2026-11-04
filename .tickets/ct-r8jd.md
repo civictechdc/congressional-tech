@@ -52,3 +52,7 @@ Reopened 2026-11-03 (post-release acceptance test): .github/archive-jobs.json ha
 **2026-11-04T12:46:09Z**
 
 Owner decision 2026-11-04: hosted runner capacity is moot: the nightly runs on the Mac. Bind the Mac's memory and spill limits from the model measurement (investigation running 2026-11-04).
+
+**2026-11-04T16:12:39Z**
+
+2026-11-04: publish (14 GiB) and backfill (12 GiB) run under the checked-in watchdog via .github/scripts/run-archive-job.py, peak recorded per run. Eight full model builds at 0140912e peak 11.30-12.23 GiB (worst margin 1.77 GiB; .cache/archive-release/investigations/model-memory-20261104.md). Still open: maintenance has no rss_gb in .github/archive-jobs.json, and the document_witness_keys fix (branch witness-agg) should lower the peak to about 10.2 GiB.
