@@ -1012,36 +1012,45 @@ def build_prepared_release(prepared,*,engine,output,root=ROOT):
                 WHERE g.mode='fetch' AND g.complete AND g.outcome IN ('stored','unchanged') AND g.http_status BETWEEN 200 AND 299
                  AND g.sha256 IS NOT NULL AND coalesce(g.url,g.requested_url,g.context_url) IS NOT NULL
                  AND regexp_like(coalesce(g.url,g.requested_url,g.context_url),'(?i)(?:youtube|youtu[.]be|senate)')""",materialize=True),
-            dict(name='recording_track_candidates',sql="""WITH matched_fetches AS (
-                SELECT cf.*,
-                 regexp_replace((regexp_match(cf.fetch_url,vu.pattern))[1],'^(.+)$',vu.key_template) AS extracted_key,
+            # Every regex runs once per distinct fetch URL (a third of the fetches), and each registry is the
+            # left input of its regex join: a nested-loop join buffers its left input whole, on one partition.
+            dict(name='recording_track_candidates',sql="""WITH fetch_urls AS (
+                SELECT DISTINCT fetch_url FROM recording_fetch_candidates
+            ), url_keys AS (
+                SELECT u.fetch_url,
+                 regexp_replace((regexp_match(u.fetch_url,vu.pattern))[1],'^(.+)$',vu.key_template) AS extracted_key,
                  vu.format AS vu_format,
                  vu.default_language AS vu_default_language,
                  vu.default_production AS vu_default_production
                 FROM recording_url_sources vu
-                JOIN recording_fetch_candidates cf ON regexp_like(cf.fetch_url,vu.pattern)
-            )
-            SELECT mf.receipt_key,mf.receipt_line,mf.capture_index,mf.sha256,mf.suffix,mf.fetch_url,mf.retrieved_at,
-                mf.extracted_key,
+                JOIN fetch_urls u ON regexp_like(u.fetch_url,vu.pattern)
+            ), kept_keys AS (
+                SELECT k.* FROM recording_segment_exclusions ex
+                RIGHT ANTI JOIN url_keys k ON regexp_like(k.fetch_url,ex.pattern)
+            ), url_tracks AS (
+                SELECT k.fetch_url,k.extracted_key,k.vu_format,tf.format AS tf_format,
                 coalesce(
-                 CASE WHEN mf.body_format IN ('vtt','srt','m3u8','ttml') THEN mf.body_format END,
-                 tf.format,
-                 mf.vu_format
-                ) AS format,
-                coalesce(
-                 lower(nullif((regexp_match(mf.fetch_url,'(?i)[?&](?:t?lang)=([a-z]{2,3}(?:-[a-z0-9]+)?)'))[1],'')),
-                 lower(nullif((regexp_match(mf.fetch_url,'(?i)/(?:subtitles|captions|cc)/([a-z]{2,3})(?:/|[._-])'))[1],'')),
-                 mf.vu_default_language,tf.default_language,'en'
+                 lower(nullif((regexp_match(k.fetch_url,'(?i)[?&](?:t?lang)=([a-z]{2,3}(?:-[a-z0-9]+)?)'))[1],'')),
+                 lower(nullif((regexp_match(k.fetch_url,'(?i)/(?:subtitles|captions|cc)/([a-z]{2,3})(?:/|[._-])'))[1],'')),
+                 k.vu_default_language,tf.default_language,'en'
                 ) AS language,
                 coalesce(
-                 CASE WHEN regexp_like(mf.fetch_url,'(?i)[?&](?:kind|caps)=asr(?:[&#]|$)') THEN 'asr' END,
-                 mf.vu_default_production,tf.default_production,'caption'
+                 CASE WHEN regexp_like(k.fetch_url,'(?i)[?&](?:kind|caps)=asr(?:[&#]|$)') THEN 'asr' END,
+                 k.vu_default_production,tf.default_production,'caption'
                 ) AS production
-            FROM matched_fetches mf
-            LEFT JOIN recording_track_formats tf ON regexp_like(mf.fetch_url,tf.pattern)
-            WHERE NOT EXISTS (
-                SELECT 1 FROM recording_segment_exclusions ex WHERE regexp_like(mf.fetch_url,ex.pattern)
-            )""",materialize=True),
+                FROM recording_track_formats tf
+                RIGHT JOIN kept_keys k ON regexp_like(k.fetch_url,tf.pattern)
+            )
+            SELECT cf.receipt_key,cf.receipt_line,cf.capture_index,cf.sha256,cf.suffix,cf.fetch_url,cf.retrieved_at,
+                t.extracted_key,
+                coalesce(
+                 CASE WHEN cf.body_format IN ('vtt','srt','m3u8','ttml') THEN cf.body_format END,
+                 t.tf_format,
+                 t.vu_format
+                ) AS format,
+                t.language,t.production
+            FROM url_tracks t
+            JOIN recording_fetch_candidates cf ON cf.fetch_url=t.fetch_url""",materialize=True),
         ]
         # A step, not only an export: meetings read it to list caption tracks among their transcripts.
         steps += [dict(name='recording_tracks',sql=(Path(root)/'model/sql/recording-tracks.sql').read_text(),materialize=True),
