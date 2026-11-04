@@ -1,10 +1,8 @@
 name: Archive publish, backfill and maintenance
 
+# The nightly publish runs on the owner's Mac (scripts/nightly_publish.py, owner decision
+# 2026-11-04); a hosted publish is a manual dispatch only, so the two never write together.
 on:
-  workflow_run:
-    workflows: ["Capture archive sources"]
-    types: [completed]
-    branches: [main]
   schedule:
     - cron: '17 7 * * 0'
   workflow_dispatch:
@@ -27,10 +25,7 @@ concurrency:
 
 jobs:
   publish:
-    if: >-
-      (github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main' && inputs.operation == 'publish') ||
-      (github.event_name == 'workflow_run' && github.event.workflow_run.conclusion == 'success' &&
-       github.event.workflow_run.head_branch == 'main' && github.event.workflow_run.head_repository.full_name == github.repository)
+    if: github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main' && inputs.operation == 'publish'
     runs-on: ubuntu-24.04
     timeout-minutes: 180
     environment: archive-publish

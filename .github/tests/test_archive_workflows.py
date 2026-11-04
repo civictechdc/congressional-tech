@@ -56,7 +56,8 @@ def test_new_capture_uses_scheduler_and_common_lock_with_explicit_switch():
     assert 'doctor' in (ROOT / '.github/scripts/setup-local-job-runtime.py').read_text()
     assert job['steps'][effect]['env']['DATA_GOV_API_KEY'] == '${{ secrets.DATA_GOV_API_KEY }}'
     publisher = workflow('archive-jobs.yml')
-    assert publisher['on']['workflow_run']['workflows'] == [value['name']]
+    assert 'workflow_run' not in publisher['on']
+    assert publisher['jobs']['publish']['if'].startswith("github.event_name == 'workflow_dispatch'")
 
 
 def test_obsolete_viewer_workflow_and_thirty_minute_cron_are_absent():
