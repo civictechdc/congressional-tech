@@ -388,11 +388,11 @@ Incoming: `document_members`, `witness_member`, `roster_member`, `bill_sponsor`,
 
 ## `rosters` — Committee and subcommittee seats across published Congresses
 
-One member assignment to a committee or subcommittee in a Congress (keyed by congress, system_code, bioguide_id for 113th–119th Congresses as upstream committee_assignments snapshots are populated; currently 119th Congress in the pinned snapshot).
+One member assignment to a committee or subcommittee in a Congress (keyed by congress, system_code, bioguide_id; only Congresses populated in the pinned upstream committee_assignments snapshot appear).
 
 Identity: `congress, system_code, bioguide_id` (primary_key; published identifier).
 
-Coverage: Committee seats cover only the Congresses populated in the pinned upstream committee_assignments snapshot; congress_start and congress_end give the published range.
+Coverage: Committee seats cover only the Congresses populated in the pinned upstream committee_assignments snapshot; congress_start and congress_end bound the published Congresses, and any Congress without roster rows, including every Congress when both are null, is unavailable, not zero seats.
 
 | Field | Published type | Nullable | Meaning |
 | --- | --- | --- | --- |
@@ -405,7 +405,7 @@ Coverage: Committee seats cover only the Congresses populated in the pinned upst
 
 Nullability: Nullability transcribes the phase-2 annex §3 file table (docs/plans/phase-2-annex-20261028.md): a type without "nullable" there is required. A required column is refused at write time.
 
-- `congress`: Keyed by (congress, system_code, bioguide_id) for 113th–119th Congresses; populated from upstream committee_assignments (currently 119th Congress in the pinned snapshot until historical backfill).
+- `congress`: Keyed by (congress, system_code, bioguide_id); populated from the pinned upstream committee_assignments snapshot, whose populated Congresses the coverage congress_start and congress_end bound. Earlier Congresses appear only after an upstream backfill is pinned.
 
 Outgoing: `roster_committee`, `roster_member`.
 
@@ -1079,7 +1079,7 @@ Held upstream and never mirrored here. A release names a relation’s generation
 | `roll_call_votes` | `roll-call-votes/roll_call_votes` | `vote_id` | `bills.floor_votes[].vote_id`, `nominations.floor_votes[].vote_id` | One roll-call vote | Includes votes not tied to a local bill or nomination. |
 | `amendments` | `amendments/amendments` | `amendment_id` | `bills.amendments[].amendment_id` | One floor amendment | Coverage is limited by upstream; committee_records holds different, committee-stage documents. |
 | `nominations` | `nominations/nominations` | `congress, number, part_number` | none | One nomination part | Coverage is limited by upstream; local nominations cover what that generation holds. |
-| `committee_assignments` | `committee-rosters/committee_assignments` | `congress, system_code, bioguide_id` | `rosters.system_code`, `members.bioguide_id` | One committee assignment | Schema supports 113th–119th Congress committee and subcommittee assignments; currently populated for the 119th Congress in the pinned upstream snapshot. |
+| `committee_assignments` | `committee-rosters/committee_assignments` | `congress, system_code, bioguide_id` | `rosters.system_code`, `members.bioguide_id` | One committee assignment | Schema supports 113th–119th Congress committee and subcommittee assignments; populated only for the Congresses the pinned generation holds, which rosters.parquet coverage congress_start and congress_end bound. |
 
 ## Query recipes (DuckDB)
 

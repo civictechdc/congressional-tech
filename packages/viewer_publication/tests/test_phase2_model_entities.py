@@ -1,10 +1,12 @@
 """Phase-2 entity resolution, spicy-regs projections, and generation pinning."""
+from copy import deepcopy
 from datetime import date
 import gzip
 import hashlib
 import json
 import os
 from pathlib import Path
+import re
 
 import pyarrow as pa
 import pyarrow.parquet as pq
@@ -684,7 +686,9 @@ def test_phase2_entities_meetings_witnesses_recordings_and_spicy_projections(tmp
     assert files_by_name['rosters.parquet']['coverage']['congress_end'] == 118
     assert files_by_name['rosters.parquet']['coverage']['gaps'] == [
         'Committee seats cover only the Congresses populated in the pinned upstream committee_assignments snapshot; '
-        'congress_start and congress_end give the published range']
+        'congress_start and congress_end bound the published Congresses, and any Congress without roster rows, '
+        'including every Congress when both are null, is unavailable, not zero seats']
+    assert roster_coverage_disagreements(*read_roster_release(release_dir)) == []
     assert files_by_name['bills.parquet']['generations'] == {'bill-family': '3' * 64, 'roll-call-votes': '5' * 64, 'amendments': '6' * 64}
     assert files_by_name['bills.parquet']['coverage']['gaps'] == ['Amendments cover the 119th Congress only until spicy-regs backfills']
     assert files_by_name['nominations.parquet']['generations'] == {'nominations': '4' * 64, 'roll-call-votes': '5' * 64}
@@ -2654,4 +2658,152 @@ def test_subject_key_reconciliation_and_historical_rosters(tmp_path):
     assert committees['hlig01']['committee_type'] == 'subcommittee'
     assert committees['hlig01']['parent_system_code'] == 'hlig00'
     assert committees['hlig01']['is_current'] is False
+    assert roster_coverage_disagreements(*read_roster_release(release_dir)) == []
+
+
+CONGRESS_ORDINALS = re.compile(r'(\d{1,3})(?:st|nd|rd|th)\b(?:\s*[–-]\s*(\d{1,3})(?:st|nd|rd|th)\b)?')
+SCHEMA_SUPPORT = re.compile(r'[Ss]chema supports (\d{1,3})(?:st|nd|rd|th)\s*[–-]\s*(\d{1,3})(?:st|nd|rd|th)')
+
+
+def read_roster_release(release_dir):
+    """The Congresses the published roster rows hold, and the metadata emitted beside them."""
+    congresses = sorted(set(pq.read_table(release_dir / 'rosters.parquet', columns=['congress']).column('congress').to_pylist()))
+    return (congresses, json.loads((release_dir / 'manifest.json').read_text()),
+            json.loads((release_dir / 'schema.json').read_text()))
+
+
+def roster_coverage_disagreements(congresses, manifest, schema):
+    """List what emitted roster metadata says that the published roster rows contradict.
+
+    ``congresses`` comes from the rows, not from the coverage query, so a range or
+    a note can be wrong in either direction: naming Congresses the rows lack, or
+    leaving out ones they hold. Every text describing rosters is read: the table's
+    own entry, relationships with a rosters endpoint, and upstream relations that
+    join rosters. A "Schema supports X–Y" span is a support bound and must contain
+    every published Congress; any other Congress a text names is a coverage claim
+    and must equal the published range. The range only bounds the rows: when it
+    has Congresses without rows, or is null because the history is empty, the note
+    must say such a Congress is unavailable rather than zero seats.
+    """
+    published = (congresses[0], congresses[-1]) if congresses else (None, None)
+    coverage = next(f for f in manifest['files'] if f['name'] == 'rosters.parquet')['coverage']
+    table = next(t for t in schema['files'] if t['name'] == 'rosters.parquet')
+    problems = []
+    stated = (coverage['congress_start'], coverage['congress_end'])
+    if stated != published:
+        problems.append(f'coverage states {stated}; rows publish {published}')
+    if coverage['gaps'] != table['gaps']:
+        problems.append('manifest coverage gaps differ from schema.json gaps')
+    texts = [*coverage['gaps'], *table['gaps'], table['purpose'], table['row_meaning'],
+             *table.get('notes', {}).values(), *(column['meaning'] for column in table['columns'])]
+    texts += [r[key] for r in schema['relationships'] if 'rosters' in (r['source'].get('table'), r['target'].get('table'))
+              for key in ('meaning', 'scope')]
+    texts += [u[key] for u in schema.get('upstream_relations', ()) if any(j['table'] == 'rosters' for j in u['joins'])
+              for key in ('row_meaning', 'limits')]
+    for text in texts:
+        for support in SCHEMA_SUPPORT.finditer(text):
+            low, high = int(support[1]), int(support[2])
+            if any(not low <= congress <= high for congress in congresses):
+                problems.append(f'{text!r} supports {low}-{high}; rows publish {congresses}')
+        for claim in CONGRESS_ORDINALS.finditer(SCHEMA_SUPPORT.sub('', text)):
+            named = (int(claim[1]), int(claim[2] or claim[1]))
+            if named != published:
+                problems.append(f'{text!r} names {named}; rows publish {published}')
+    if not congresses and not any('null' in gap and 'unavailable' in gap for gap in coverage['gaps']):
+        problems.append('a null roster range has no note saying it is unavailable, not zero seats')
+    elif congresses and len(congresses) <= congresses[-1] - congresses[0] and not any(
+            'without roster rows' in gap and 'unavailable' in gap for gap in coverage['gaps']):
+        problems.append(f'range {published} has Congresses without rows and no note saying they are unavailable, not zero seats')
+    return problems
+
+
+def _roster_release(tmp_path, congresses):
+    """A compact model release whose committee_assignments snapshot holds exactly ``congresses``."""
+    from viewer_publication.archive_model import build_release
+    engine = NativeDatasets.from_config(os.environ['DOCSPEC_JOB_CONFIG'])
+    staged = _stage_raw_fixture(tmp_path, engine, [dict(
+        url='https://www.govinfo.gov/content/pkg/CHRG-119shrg58025/pdf/CHRG-119shrg58025.pdf',
+        data=b'%PDF-1.4\n% roster coverage fixture\n1 0 obj <<>> endobj\ntrailer <<>>\n%%EOF\n', format='pdf')])
+    committee = dict(name='Committee on Banking, Housing, and Urban Affairs', chamber='Senate', committee_type='Standing',
+                     parent_system_code=None, website_url=None, is_current=True,
+                     history=[dict(officialName='Committee on Banking', startDate='2013-01-03T05:00:00Z', endDate=None)])
+    member = dict(lis_id=None, opensecrets_id=None, govtrack_id=None, icpsr_id=None, wikidata_id=None, fec_ids=[])
+    spicy_regs = spicy_input(
+        spicy_committees=[dict(system_code='SSBK00', **committee)],
+        spicy_members=[dict(bioguide_id='A000001', name_first='Alma', name_last='Adams', **member),
+                       dict(bioguide_id='B000002', name_first='Bob', name_last='Baker', **member)],
+        spicy_member_terms=[dict(bioguide_id=bioguide, term_type='sen', term_state='NC', term_district=None,
+                                 term_party=party, term_start='2013-01-03', term_end='2027-01-03')
+                            for bioguide, party in (('A000001', 'Democrat'), ('B000002', 'Republican'))],
+        spicy_committee_assignments=[dict(congress=congress, session='1', chamber='Senate', system_code='SSBK00',
+                                          bioguide_id=bioguide, position=position, rank=1, party=party)
+                                     for congress in congresses
+                                     for bioguide, position, party in (('A000001', 'Chair', 'Democrat'),
+                                                                       ('B000002', 'Ranking Member', 'Republican'))],
+    )
+    release_dir = tmp_path / 'release'
+    build_release(**staged, meeting_records=[], appearance_records=[], spicy_regs=spicy_regs,
+                  engine=engine, output=release_dir, scratch=tmp_path / 'model')
+    return release_dir
+
+
+def _with(document, path, value):
+    """A copy of emitted metadata with one planted value at ``path`` (keys, or a name to match in a list)."""
+    planted = deepcopy(document)
+    target = planted
+    for step in path[:-1]:
+        target = next(item for item in target if item.get('name') == step) if isinstance(target, list) else target[step]
+    target[path[-1]] = value
+    return planted
+
+
+OLD_ROSTER_NOTE = 'Committee seats cover the 113th–119th Congresses only'
+PINNED_119_MEANING = 'One member assignment to a committee or subcommittee in a Congress (currently 119th Congress in the pinned snapshot)'
+
+
+@pytest.mark.parametrize('congresses,published', [
+    ((119,), (119, 119)),
+    ((113, 116, 119), (113, 119)),
+    ((), (None, None)),
+], ids=['119-only', 'multi-congress', 'empty-history'])
+def test_roster_coverage_metadata_agrees_with_published_rows(tmp_path, congresses, published):
+    """ct-mx3g: the emitted rosters range and note agree with the rows, for any snapshot."""
+    release_dir = _roster_release(tmp_path, congresses)
+    rows, manifest, schema = read_roster_release(release_dir)
+    assert rows == list(congresses)
+    coverage = next(f for f in manifest['files'] if f['name'] == 'rosters.parquet')['coverage']
+    assert (coverage['congress_start'], coverage['congress_end']) == published
+    assert roster_coverage_disagreements(rows, manifest, schema) == []
+
+    def noted(gaps):
+        return (_with(manifest, ['files', 'rosters.parquet', 'coverage', 'gaps'], gaps),
+                _with(schema, ['files', 'rosters.parquet', 'gaps'], gaps))
+
+    old_note = noted([OLD_ROSTER_NOTE])
+    silent = noted(['Committee seats cover only the Congresses populated in the pinned upstream committee_assignments '
+                    'snapshot; congress_start and congress_end give the published range'])
+    pinned_119 = _with(schema, ['files', 'rosters.parquet', 'row_meaning'], PINNED_119_MEANING)
+    if congresses == (119,):
+        assert roster_coverage_disagreements(rows, *old_note) == [
+            f'{OLD_ROSTER_NOTE!r} names (113, 119); rows publish (119, 119)'] * 2
+        assert roster_coverage_disagreements(rows, manifest, pinned_119) == []
+        assert roster_coverage_disagreements(rows, *silent) == []
+        widened = _with(manifest, ['files', 'rosters.parquet', 'coverage', 'congress_start'], 113)
+        assert roster_coverage_disagreements(rows, widened, schema) == ['coverage states (113, 119); rows publish (119, 119)']
+    elif congresses:
+        assert roster_coverage_disagreements(rows, manifest, pinned_119) == [
+            f'{PINNED_119_MEANING!r} names (119, 119); rows publish (113, 119)']
+        assert roster_coverage_disagreements(rows, *silent) == [
+            'range (113, 119) has Congresses without rows and no note saying they are unavailable, not zero seats']
+        assert 'range (113, 119) has Congresses without rows and no note saying they are unavailable, not zero seats' \
+            in roster_coverage_disagreements(rows, *old_note)
+        narrowed = _with(manifest, ['files', 'rosters.parquet', 'coverage', 'congress_start'], 119)
+        assert roster_coverage_disagreements(rows, narrowed, schema) == ['coverage states (119, 119); rows publish (113, 119)']
+    else:
+        assert f'{OLD_ROSTER_NOTE!r} names (113, 119); rows publish (None, None)' in roster_coverage_disagreements(rows, *old_note)
+        zero = _with(_with(manifest, ['files', 'rosters.parquet', 'coverage', 'congress_start'], 0),
+                     ['files', 'rosters.parquet', 'coverage', 'congress_end'], 0)
+        assert 'coverage states (0, 0); rows publish (None, None)' in roster_coverage_disagreements(rows, zero, schema)
+        assert roster_coverage_disagreements(rows, *silent) == [
+            'a null roster range has no note saying it is unavailable, not zero seats']
 
