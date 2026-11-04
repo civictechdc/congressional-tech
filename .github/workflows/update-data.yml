@@ -1,7 +1,7 @@
 name: Update committee data
 
-# Weekly pipeline. Raw caches (YouTube TinyDBs, Congress.gov meeting records)
-# and compact parsed committee-source state
+# Weekly pipeline. Raw caches (YouTube TinyDBs, the last saved Congress.gov
+# meeting records) and compact parsed committee-source state
 # live on the bot-owned `pipeline-data` branch, replaced by a single snapshot
 # commit each run so history doesn't grow; each save also keeps that snapshot in
 # the raw bucket (create-only bodies and a receipt). main only gets the small derived
@@ -107,14 +107,8 @@ jobs:
           DATA_GOV_API_KEY: ${{ secrets.DATA_GOV_API_KEY }}
         run: gpo-fetch --output-path "$DATA_DIR/gpo_hearings.csv" --evidence-path pipeline-data/gpo-evidence.jsonl.gz --refresh-limit 100
 
-      - name: Fetch Congress.gov meeting records
-        id: meetings
-        # A GPO package failure must not stop independent meeting captures.
-        if: ${{ !cancelled() && (steps.gpo.outcome == 'success' || steps.gpo.outcome == 'failure') }}
-        env:
-          DATA_GOV_API_KEY: ${{ secrets.DATA_GOV_API_KEY }}
-        run: congress-meetings --output-path pipeline-data/congress_meetings.jsonl.gz
-
+      # Meeting records are no longer fetched here (ct-klyz); the archive's meeting
+      # fetchers own them, and these steps read the last saved inventory.
       - name: Match hearings to videos
         run: |
           gpo-match --tinydb_dir pipeline-data/youtube --channels-csv-path "$CHANNELS_CSV" \
@@ -129,7 +123,7 @@ jobs:
           CLOUDFLARE_ACCOUNT_ID: "174055408ff1560e60601c4d12c561c4"
           R2_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
           R2_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
-        run: .github/scripts/save-pipeline-data.sh "Congress.gov meetings and retained evidence"
+        run: .github/scripts/save-pipeline-data.sh "GPO evidence"
 
       - name: Commit completed GPO hearings after partial failure
         # gpo-fetch flushes accepted rows before reporting package failures.

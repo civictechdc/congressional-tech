@@ -24,3 +24,7 @@ B14 meeting fetchers have completed a live run, the weekly meeting inventory job
 **2026-11-01T20:08:14Z**
 
 Reopened 2026-11-01: update-data.yml still runs congress-meetings on its weekly schedule (ran 2026-11-01T04:36Z). Owner decision: keep it until new capture is enabled, because it is the only meeting capture still running. Remove it after ct-4jms passes.
+
+**2026-11-04T12:46:09Z**
+
+Owner decision 2026-11-04: remove the legacy weekly meeting job from update-data.yml now, without waiting for B14's first live run or capture enablement.
