@@ -1,6 +1,6 @@
 ---
 id: ct-5w9u
-status: open
+status: closed
 deps: [ct-73oe]
 links: [ct-kthe, ct-j2yo, ct-x78c, ct-dx22, ct-egg6]
 created: 2026-10-30T14:10:02Z
@@ -38,3 +38,7 @@ Listing dates guide discovery, not final event identity. Keep the separate heari
 **2026-11-02T04:01:45Z**
 
 Code on worktree-agent-ae42a8cf7a429ba24 @ 180a49b1. Review verdict: merge. Raw replay 49/49, 0 wrong days of 1,223 rows.
+
+**2026-11-04T00:09:09Z**
+
+Resolved and verified live in release e4538f0064e18168089a77891c93a16e175af18ed75eb7a3ac8039aa1a8db9fd (2026-11-03): merged into release-train, validated by full production-offline lane (10,968 passed), Basin import, and live publication.

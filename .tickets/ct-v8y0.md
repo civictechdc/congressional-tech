@@ -1,6 +1,6 @@
 ---
 id: ct-v8y0
-status: open
+status: closed
 deps: []
 links: [ct-itcg, ct-d0o0, ct-kunv]
 created: 2026-11-01T22:50:29Z
@@ -32,3 +32,7 @@ Measured by impl-d-jobs in the local receipt mirror: previous_receipt.body_compl
 **2026-11-02T04:01:45Z**
 
 Code on worktree-agent-a5550c04138214670 @ b3c4aa3c (0043edfe). Review verdict: merge and close once merged. Correction: 16 values on 9 lines, all mapping true, not 13 lines.
+
+**2026-11-04T00:09:09Z**
+
+Resolved and verified live in release e4538f0064e18168089a77891c93a16e175af18ed75eb7a3ac8039aa1a8db9fd (2026-11-03): merged into release-train, validated by full production-offline lane (10,968 passed), Basin import, and live publication.

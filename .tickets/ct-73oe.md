@@ -1,6 +1,6 @@
 ---
 id: ct-73oe
-status: open
+status: closed
 deps: []
 links: []
 created: 2026-10-30T14:10:02Z
@@ -46,3 +46,7 @@ Owner decision 2026-11-01, replacing the earlier note: pin extruct exactly in uv
 **2026-11-02T04:01:45Z**
 
 Code on worktree-agent-ae42a8cf7a429ba24 @ 180a49b1. Review verdict: merge, with a gate: no deployment until the re-stamp is approved. Lock adds 11 packages, no upgrades. All ten parser pins move.
+
+**2026-11-04T00:09:09Z**
+
+Resolved and verified live in release e4538f0064e18168089a77891c93a16e175af18ed75eb7a3ac8039aa1a8db9fd (2026-11-03): merged into release-train, validated by full production-offline lane (10,968 passed), Basin import, and live publication.
