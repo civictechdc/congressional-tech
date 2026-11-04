@@ -633,6 +633,25 @@ def _sql_steps(names,*,root=ROOT):
     return [dict(name=name.replace('-','_'),sql=(Path(root)/'model/sql'/(name+'.sql')).read_text(),materialize=True) for name in names]
 
 
+def url_normalized_steps(*,root=ROOT):
+    """Normalize only the literals source_url_normalized has not; copy its rows for the rest (ct-6v77 R8).
+
+    Both apply url-normalized.sql, whose bytes the capture profile pins, and each policy row depends on its
+    literal and url_rules alone. So the text is split where its literal set ends and the policy CTEs after
+    that run unchanged over the remaining literals. url_literals is a step because both halves read it."""
+    text=(Path(root)/'model/sql/url-normalized.sql').read_text()
+    literals,cut,policy=text.partition('\n), first_matches AS (')
+    if not cut or 'WITH literals AS (' not in literals or not policy.endswith('\nSELECT * FROM base_keys\n'):
+        raise ValueError('url-normalized.sql no longer has the literal set and final select this split expects')
+    split=literals[literals.index('WITH literals AS ('):]+"""
+)
+SELECT l.url,s.url IS NOT NULL AS reused,s.error,s.still_wrapped,s.base_key
+FROM source_url_normalized s RIGHT JOIN literals l ON s.url=l.url"""
+    normalize=('WITH literals AS (\n SELECT url FROM url_literals WHERE NOT reused'+cut+policy.rstrip('\n')
+        +'\nUNION ALL SELECT url,error,still_wrapped,base_key FROM url_literals WHERE reused')
+    return [dict(name='url_literals',sql=split,materialize=True),dict(name='url_normalized',sql=normalize,materialize=True)]
+
+
 def witness_key_steps(*,root=ROOT):
     """The engine re-runs a CTE at every reference, so the relations document_witness_keys reads more
     than once are materialized first; as one query it set the whole build's peak memory."""
@@ -931,7 +950,7 @@ def build_prepared_release(prepared,*,engine,output,root=ROOT):
     # Meetings read only prelude inputs; the documents they list feed URL keys and annotations.
     steps += meeting_steps(root=root)+_sql_steps(['meeting-document-urls'],root=root)
     steps += [dict(name='url_inputs',sql=(Path(root)/'model/sql/model-url-inputs.sql').read_text(),materialize=True)]
-    steps += _sql_steps(['url-normalized'],root=root)
+    steps += url_normalized_steps(root=root)
     steps += [dict(name='model_url_keys',sql=(Path(root)/'model/sql/url-keys.sql').read_text(),materialize=True)]
     steps += _sql_steps(['source-endpoints','copy-url-keys','publisher-links'],root=root)
     steps += [dict(name='resolved_link_targets',sql="SELECT DISTINCT page_body,context_url,member_path,target_url,cast(NULL AS VARCHAR) AS target_member_path FROM resolved_links WHERE target_member_path IS NULL",materialize=True)]
