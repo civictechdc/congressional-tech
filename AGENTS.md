@@ -117,3 +117,17 @@ extraction semantics. When a parser change is intentional, update
   code normalization (`hs*` → `hl*`/`ht*`); r1b-f removed the SQL copy of the
   select-committee rule (ct-p3ff). Don't re-add one.
   The gate is `missing_committee_keys = 0` against `committees.parquet`.
+- **A CTE runs once per reference:** the pinned DataFusion re-plans every CTE
+  and view reference and ignores `AS MATERIALIZED`, so a CTE read inside other
+  CTEs runs once per path (`single_meeting_components` ran 8 times in
+  `document_witness_keys`). Compute anything read more than once, directly or
+  through nesting, in its own model step; only steps materialize.
+- **No grouped `count(DISTINCT <string>)` over many groups:** each group holds
+  its own distinct set, about 14 KB allocated, so 127,659 groups cost about
+  6 GiB. Group by `(group, key)` first, then `count(key)` (not `count(*)`,
+  which counts a NULL key) and `bool_or`/`min` over the per-key rows.
+- **Joins build on the left:** with no statistics the engine builds the hash
+  table from the left input, and `IN`/`EXISTS`/`NOT EXISTS` build on the outer
+  query. Put the small side first (`RIGHT SEMI`/`RIGHT ANTI` where needed).
+  Measurements and the ranked follow-ups: ct-6v77 and
+  `.cache/archive-release/investigations/model-step-theory-20261104.md`.
