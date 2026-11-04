@@ -43,7 +43,7 @@ One row per input and parser version: a Congress.gov meeting record, inline in a
 | `source` | string | `congress_gov` or `house_xml`. |
 | `meetings` | list<struct> | One element per meeting the input gives, usually one; empty when it gives none. Fields below. |
 
-Each `meetings` element:
+Each `meetings` element (the types below are the meanings; the lake struct stores `event_id`, `updated`, `meeting_date` and each sitting's `start` and `end` as the source's literal strings, and the model casts them, as in `meeting-records-current.sql`; each `committees` element also keeps the source's `name` and `chamber`):
 
 | Field | Type | Notes |
 |---|---|---|
@@ -64,7 +64,7 @@ Each `meetings` element:
 
 - **Sources:** Congress.gov meeting records for both chambers (18,140 meetings, about 11 identical inline copies each, which `record_sha` collapses) and House `committee-meeting` XML. Senate committee pages carry no meeting ID; they give documents and appearances (§1.3).
 - **Work list:** good-fetched bodies and inline records whose URL matches the meeting-source registry ([[DATA-MODEL]] §7.1) with no row at the pinned version. Inline records are read once from the four `congress/meetings` receipt files (77 MB, 199,156 lines) by their `captures` pointers, and `record_sha` is computed then.
-- **PK:** `(record_sha, parser_version)`; tens of thousands of rows. The model unnests `meetings`.
+- **PK:** `(record_sha, source, parser_version)`, since parser versions are source-scoped (ct-h1nd); tens of thousands of rows. The model unnests `meetings`.
 - **Current records:** first filter the selected source/parser versions; then, per `(event_id, source)`, choose the latest by `(updated desc nulls last, latest good fetch's retrieved_at desc nulls last, record_sha)`. Each replacement field comes from the current `house_xml` record when that explicitly states it, else its current `congress_gov` record. Replacement collections carry `present`, `empty`, `absent` or `unrecognized` state: an explicitly empty higher-precedence list replaces the old list and is not filled from another source. Only an absent declaration permits normal fallback; failed or unrecognized extraction remains an explicit coverage problem. **Sittings differ:** `sittings` come from the current `congress_gov` record when it states any, else from `house_xml`, whose times convert from Eastern local to an instant. Congress.gov states instants and places; House XML states unzoned local times and its parsed sittings carry no place. An explicit `empty` or `unrecognized` House state still replaces the list without fallback. Fields deliberately combining assertions, such as `subject_keys` under `ct-h1nd`, keep their separately stated union policy and provenance.
 
 ### 1.3 `appearance_records`
@@ -85,6 +85,8 @@ An appearance is a source observation, not a person identified by normalized nam
 | `declared_base` | string, nullable | Literal base address declared by the body, if any; resolve it per source context, never against an arbitrary selected capture URL. |
 | `collection_state` | string, nullable | `present` for a recognized nonempty collection; `empty` for a recognized explicit zero; `absent` when the supported input makes no collection declaration; `unrecognized` when its collection layout cannot be interpreted. Failed reads retain their `status`/`error_type`, not an invented empty list. |
 | `appearances` | list<struct> | One element per source occurrence in source order, including repeated names. Empty lists do not erase subject identity or collection state. Fields below. |
+| `held_dates`, `title` | list<string> nullable, string nullable | For a MODS record: its `heldDate` values and title, which decide whether a print records a meeting ([[DATA-MODEL]] §7.11 Packages). |
+| `created` | string, nullable | For a House witness list: its `create-date`, so an empty list made before its hearing reads as a placeholder, not as no one testifying. |
 
 Each `appearances` element:
 
@@ -111,6 +113,32 @@ Each `appearances` element:
 - **PK:** `(record_sha, source, parser_version)`. The row remains even with no appearances. Source classification and parser identity are inputs to reuse; neither may be lost in a body-only anti-join.
 - **Context binding:** the model joins readings to every eligible capture/inline context, assigns URL-derived subject facts and `page_url`, and resolves literal links. `context_key` is the lowercase hex SHA-256 of compact JSON `[source_url, member_path]` for that context (null members retained); the referenced input and raw locator remain available. Repeated captures of the same body at the same context reuse one observation. A new context adds observations without re-parsing unchanged bytes. Current-record ordering uses retrieval evidence for that subject/context; a later capture of the same body elsewhere must not refresh an older observation at this address.
 - **Replacement:** choose the current record for each source/subject/context before unnesting. A current explicit empty list suppresses that source's older list. An absent declaration may use the documented lower-precedence source; unrecognized/failed extraction produces an explicit unresolved state, not silent stale fallback. Preserve candidates and reasons in evidence even when they are not selected for display.
+
+### 1.4 `video_records`
+
+One row per body, source and parser version: a retained YouTube channel cache (`source = youtube_cache`, the newest good fetch of each `pipeline-data` `youtube/youtube_<n>.json`) or a retained YouTube Data API `videoListResponse` body (`youtube_api`). Upstream API JSON stays in the body, which `record_sha` references (about 231 MB of 267 MB); it is evidence, not a queryable fact.
+
+| Column | Type | Notes |
+|---|---|---|
+| `record_sha`, `parser_version`, `source`, `status`, `error_type` | — | As §1.2. |
+| `channels` | list<struct<handle, channel_id, title, custom_url string; uploads_scan_complete bool>> | The cache's channel rows. |
+| `videos` | list<struct<handle, video_id, channel_id, channel_title, title, description, published_at, video_published_at string; duration_seconds int; available, has_caption bool; details_checked_at string; stated_event_ids list<long>>> | One per upload; `stated_event_ids` are event IDs the video's own text names, which are claims, since committees mistag. Times are the source's literal strings. |
+
+- **PK:** `(record_sha, source, parser_version)`. **Work list:** `youtube-cache-bodies.sql` and `youtube-api-bodies.sql` candidates with no row at the pinned version.
+- **Release:** `videos.parquet`, and with the curated channel directory (`youtube-accounts.csv`, the one authority `youtube-fetch` also reads) `channels.parquet`; with meeting records and provenance `recording_decisions`, `recording_matches.parquet` (§3).
+
+### 1.5 `committee_records`
+
+One row per House `committee-meeting` XML body and parser version: the amendment and committee-vote document links the record lists, as the publisher lists them, never ballots or tallies.
+
+| Column | Type | Notes |
+|---|---|---|
+| `record_sha`, `parser_version`, `source` (`house_xml`), `status`, `error_type` | — | As §1.2. |
+| `event_id`, `updated` | string, nullable | The record's meeting ID (prefix dropped) and update date, literally. |
+| `records` | list<struct<ordinal int; kind string (amendment or vote); bill, number, sponsor_bioguide, amendment_type, enbloc, description, url string>> | In record order; `ordinal` keeps duplicate links distinct. |
+
+- **PK:** `(record_sha, source, parser_version)`. **Work list:** good-fetched House meeting XML with no row at the pinned version.
+- **Release:** `committee_records.parquet` (§3).
 
 ## 2. Hearings, Witnesses and Reference Entities
 
@@ -139,8 +167,10 @@ transcripts    := per meeting, every transcript the archive holds, each labelled
                   the sources; unresolved and unknown keep their meanings
 occasion       := 'meeting:{event_id}' for a House witness list or Congress.gov record;
                   for a MODS appearance, the meeting whose transcripts hold its package
-                  when exactly one does, else 'package:{package_id}'; for a Senate page,
-                  'page:' and the hex of the first 8 bytes of sha256(url_key(page_url))
+                  when exactly one does, else 'package:{package_id}'; for a Senate page
+                  that lists witnesses and states or links to a meeting,
+                  'meeting:{event_id}', else 'page:' and the hex of the first 8 bytes
+                  of sha256(url_key(page_url))
 witness_key    := the lowercase hex of the first 8 bytes of the SHA-256 of compact JSON
                   ["witness-occurrence-v2", occasion, source, record_sha_hex,
                    source_locator, context_key]; an observation key, not a person key
@@ -205,19 +235,26 @@ with the native producer and release registry; this document does not claim the
 currently published release already contains them.
 
 `meetings.parquet` ([[DATA-MODEL]] §8.1) gains `congress`, `congress_gov_updated`,
-`house_xml_updated` and `congress_gov_meeting_type`, and each sitting gains `room`,
-`building` and `address`. Publisher updates remain distinct from hearing dates and
-capture times; `congress` is null when no record states it.
+`house_xml_updated`, `congress_gov_meeting_type`, `access`, `access_basis`, `not_held`,
+`rescheduled_to` and `rescheduled_basis`, its `transcripts` carry their source, and each
+sitting gains `room`, `building` and `address`. Publisher updates remain distinct from
+hearing dates and capture times; `congress` is null when no record states it. Each
+file's column meanings are in the release's `schema.json`, from the release-schema registry.
 
 | File | Columns | Order | Writer settings | Size |
 |---|---|---|---|---|
-| `witnesses.parquet` | `witness_key` string (v2 source-occurrence identity), `occasion` dict, `source` dict, `record_sha` fsb(32), `source_locator`, `context_key` strings, `event_id` int64 nullable, `package_id` string nullable, `page_url` string nullable, `name` string nullable, `position`, `organization`, `on_behalf_of`, `location`, `panel` (strings, nullable), `panel_order`, `display_order` int16 nullable, `witness_type` dict nullable, `testified` bool nullable, `bioguide_id` dict nullable | `(occasion, panel_order, display_order, witness_key)` | Whole | Re-measure after occurrence preservation; historical few-MB estimate is not an acceptance bound |
+| `witnesses.parquet` | `witness_key` string (v2 source-occurrence identity), `occasion` dict, `source` dict, `record_sha` fsb(32), `source_locator`, `context_key` strings, `event_id` int64 nullable, `package_id` string nullable, `page_url` string nullable, `name` string nullable, `position`, `organization`, `on_behalf_of`, `location`, `panel` (strings, nullable), `panel_order`, `display_order` int16 nullable, `witness_type` dict nullable, `testified` bool nullable, `bioguide_id` dict nullable, `superseded_by` string nullable (the `witness_key` of the same person stated on the same meeting by a higher-ranked source, [[DATA-MODEL]] §7.11; null on the row to show) | `(occasion, panel_order, display_order, witness_key)` | Whole | Re-measure after occurrence preservation; historical few-MB estimate is not an acceptance bound |
 | `recordings.parquet` | `video_key` string, `event_ids` List<int64>, `tracks` List<Struct<body fsb(32), suffix dict, format dict, language dict nullable, production dict nullable>> | `video_key` | Whole | *est.*, measured with S2 |
 | `committees.parquet` | `system_code` string, `name` string, `chamber` dict, `committee_type` dict nullable, `parent_system_code` dict nullable, `names` List<Struct<name string, start date32, end date32>>, `website` string nullable, `is_current` bool nullable | `system_code` | Whole | Under 1 MB |
 | `members.parquet` | `bioguide_id` string, `name` string, `terms` List<Struct<chamber dict, state dict, district int16, party dict, start date32, end date32>>, latest first, `cross_ids` Struct<lis, opensecrets, govtrack, icpsr, wikidata string; fec List<string>> | `bioguide_id` | Whole | *est.* about 2 MB |
 | `rosters.parquet` | `congress` int16, `system_code` dict, `bioguide_id` dict, `title` dict nullable, `rank` int16 nullable, `party` dict nullable | `(congress, system_code, rank, bioguide_id)` | Whole | Under 1 MB |
-| `bills.parquet` | `bill_id` string, `title` string nullable, `short_title` string nullable, `sponsor_bioguide_id` dict nullable, `introduced`, `latest_action_date` date32 nullable, `latest_action_text` string nullable, `stage` dict nullable, `policy_area` dict nullable, `committees` List<dict> (system codes), `cbo_estimates` List<Struct<publication_id string, date date32, description string>>, `floor_votes` List<Struct<vote_id string, basis dict, chamber dict, date date32, question string, result string, yea int16, nay int16>>, `amendments` List<Struct<amendment_id string, purpose string, sponsor_bioguide_id dict, latest_action_date date32, latest_action_text string>>, `committee_activities` List<Struct<system_code dict, activity dict, date date32>> | `bill_id` | Whole | *est.* a few MB |
+| `bills.parquet` | `bill_id` string, `title` string nullable, `short_title` string nullable, `sponsor_bioguide_id` dict nullable, `introduced`, `latest_action_date` date32 nullable, `latest_action_text` string nullable, `stage` dict nullable, `policy_area` dict nullable, `public_law_number` string nullable (when enacted), `cosponsor_count` int32 nullable, `related_bills` List<Struct<bill_id string, title string, relationship_types List<dict>>>, `committees` List<dict> (system codes), `cbo_estimates` List<Struct<publication_id string, date date32, description string>>, `floor_votes` List<Struct<vote_id string, basis dict, chamber dict, date date32, question string, result string, yea int16, nay int16>>, `amendments` List<Struct<amendment_id string, purpose string, sponsor_bioguide_id dict, latest_action_date date32, latest_action_text string>>, `committee_activities` List<Struct<system_code dict, activity dict, date date32>> | `bill_id` | Whole | *est.* a few MB |
 | `nominations.parquet` | `nomination_id` string, `description` string nullable (military promotion lists have none upstream; ct-tk10 gate 4, 2026-11-02), `organization` string nullable, `received` date32 nullable, `latest_action_date` date32 nullable, `latest_action_text` string nullable (the outcome, such as a voice vote), `committees` List<dict>, `transcripts` List<string> (package IDs), `floor_votes` List<Struct<vote_id string, date date32, question string, result string, yea int16, nay int16>> (cloture, then confirmation, as cast) | `nomination_id` | Whole | Under 1 MB |
+| `videos.parquet` | `video_key` string (`youtube:{id}`), `handle` dict, `channel_id` string nullable, `system_code` dict nullable (the curated channel's committee; membership does not make a video a hearing), `title`, `source_description` strings nullable, `published_at`, `video_published_at` ts nullable, `duration_seconds` int32 nullable, `available`, `has_caption` bool nullable, `details_checked_at` ts nullable, `stated_event_ids` List<int64> (claims), `record_sha` fsb(32) (§1.4) | `video_key` | Whole | 8.6 MB (67,391 rows, e4538f00) |
+| `channels.parquet` | `handle` string, `channel_id` string nullable, `system_code` dict, `committee_label` string, `role` dict (`primary`, `secondary`, `member`), `title`, `custom_url` strings nullable, `uploads_scan_complete` bool nullable, `mapping_basis` dict (`curated_directory`), `record_sha` fsb(32) nullable | `handle` | Whole | Under 1 MB |
+| `recording_matches.parquet` | `match_id` string (hex SHA-256 of `[subject_kind, subject_id, video ref, basis]`), `subject_kind` dict (`event`, `package`), `event_id` int64 nullable, `package_id` string nullable, `video_key` string nullable, `url` string nullable, `basis` dict (`publisher_link`, `video_states_event_id`, `curated`), `decision` dict, `score` int16 nullable (100 publisher link, 95 stated event ID), `recording_scope` dict, `status` dict (`asserted`, `claimed`, `decided`, `conflicting`, `unresolved`), `note`, `source_ref` strings | `match_id` | Whole | 2.2 MB |
+| `committee_records.parquet` | `record_key` string (hex SHA-256 of `[record_sha hex, ordinal]`), `event_id` int64, `kind` dict (`amendment`, `vote`), `bill`, `number` strings nullable, `sponsor_bioguide` dict nullable, `amendment_type` dict nullable, `enbloc`, `source_description`, `url` strings nullable, `record_sha` fsb(32), `ordinal` int32 (§1.5) | `record_key` | Whole | 1.5 MB |
+| `meeting_coverage.parquet` | `event_id` int64, `aspect` dict (`recording`, `transcript`, `documents`, `witnesses`, `captions`), `state` dict (ranked as [[DATA-MODEL]] §7.11 Coverage; states never merge), `basis` dict, `count` int32 nullable, `reason` dict nullable | `(event_id, aspect)` | Whole | Under 1 MB |
 
 ## 4. Plan Items
 
@@ -225,14 +262,14 @@ capture times; `congress` is null when no record states it.
 
 Phase 2 is done when, beyond [[IMPLEMENTATION-PLAN]] §6.6's phase-1 checklist:
 - the accepted review corrections and transition fixtures in §4.7 pass; prior shape/count/query checks do not substitute for their semantic checks;
-- the PDF-copy job (B13) and full re-hash (B10) are running or scheduled out of band. Owner decision, 2026-11-01: they no longer gate this exit. A damaged PDF they find leaves the list in a following release, so their findings still need a recorded owner after Phase 2 closes;
+- the PDF-copy job (B13) and full re-hash (B10) do not gate this exit (owner decisions, 2026-11-01 and 2026-11-04): both are post-switch work with no date, recorded on `cef-96wc`. When they run, a damaged PDF they find leaves the list in a following release;
 - the actual production jobs use lake meeting/witness records and pinned SpicyRegs inputs, and all retained Explorer field families have the destinations and parity evidence required by §4.6 (`ct-gi01`, F3);
 - site entity browsing and Congress MCP consume the shared release; `/dashboard/` is replaced/redirected or serves only Coverage/Gaps from that release (`ct-t915`, `ct-m104`);
 - after the replacement is verified live, the separate Explorer publishing route and `pipeline-data/committee-explorer/public` staging are retired (`ct-5kto`) right after live acceptance, with no overlap period (owner decision, 2026-11-02); preservation and rollback references remain; old dashboard links that name a record by UUID show a removal notice, with no ID mapping;
 - every publish passes the five gates (`ct-tk10`, owner decision 2026-11-02): a key-by-key comparison with the live release in which every difference has a recorded cause; the link rule, under which a published link key never vanishes: it redirects only to a document holding the same body or the same text fingerprint, and otherwise shows a removal notice listing the address's current versions; one end-to-end test from receipts to release; refusal at write of a missing required field; and a producer version on every input row;
-- after the fixed release, the daily job publishes without a person only when every difference from the live release is an added row traced to receipts newer than it; any changed or removed value waits for a reviewed cause record (`ct-ud0b`);
+- after the fixed release, the daily job publishes without a person only when every difference from the live release is an added row traced to receipts newer than it; any changed or removed value waits for a reviewed cause record (`ct-ud0b`). It runs on the owner's Mac on a schedule, not a hosted runner (owner decision, 2026-11-04), discovers new receipts in raw by family, and appends each night only the oldest receipts whose new bodies fit its readings budget;
 - spicy-regs' retention plan keeps every generation a kept release pins (F4);
-- the weekly meeting job is gone, after B14's first run;
+- the weekly meeting job is gone (removed 2026-11-04 by owner decision, without waiting for B14's first run; `ct-klyz`); the weekly GPO match and committee refresh read the last saved meeting inventory;
 - C3's export is byte-identical across threads, batch sizes and a forced spill, so the profile no longer pins the runner class;
 - the native relationship metadata and consumer checks in §4.4 pass. This is follow-through added on 2026-10-30 after the first phase 2 entity deployment.
 

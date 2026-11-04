@@ -48,3 +48,7 @@ Reopened 2026-11-03 (post-release acceptance test): .github/archive-jobs.json ha
 **2026-11-04T02:46:36Z**
 
 2026-11-03: owner chose plan-then-real-run, but maintenance cannot run as specified (ct-3szv): its raw-verification inputs are never produced, --plan lists no deletions, and the dry run applies staged results. No local R2 credentials in this environment either. Blocked on ct-3szv.
+
+**2026-11-04T12:46:09Z**
+
+Owner decision 2026-11-04: hosted runner capacity is moot: the nightly runs on the Mac. Bind the Mac's memory and spill limits from the model measurement (investigation running 2026-11-04).

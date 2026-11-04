@@ -84,3 +84,7 @@ Owner decision 2026-11-02: retire the old Explorer right after live acceptance, 
 **2026-11-02T14:50:56Z**
 
 2026-11-02 (lead): r3-retire paused at 0b462cfe (G19 inventory, workflows, lock, Python deletions, page_metadata in its own commit). Removing workspace members regenerates uv.lock, which every parser_version hashes, so all six pins move with no parser change; fix by narrowing parser-version hashing to imported dependencies (greybeard advisory) before retirement merges.
+
+**2026-11-04T12:46:09Z**
+
+Owner decision 2026-11-04: retire the old Explorer route and staging as soon as /dashboard/ moves to the release (ct-t915); no overlap period.
