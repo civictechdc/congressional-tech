@@ -1,0 +1,45 @@
+{
+ "commit": "9a42246188b448fdf19825ba1bc01d48f0df4bbd",
+ "input": "committee_records",
+ "job": "packages/viewer_publication/src/viewer_publication/archive_import_job.py",
+ "lockfile_digest": "adc74b4f60c7665b68d8a30387f0066bd80e62ba6fc772d9433f68870a3af779",
+ "origin": {
+  "pin": {
+   "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/r1b-run/candidate-8addb2dc/after-video/final-run-pinned/work/producers/committee_records.json",
+   "sha256": "6b51489646eb002c51156efd1553d36958a821b19dd2ca9e256c186b93e4bf86",
+   "size": 821
+  },
+  "record": {
+   "appended": 6186,
+   "commit": "8addb2dc9c803a91640db8b7258cfe576c4fbc8e",
+   "input": "committee_records",
+   "job": "packages/viewer_publication/src/viewer_publication/archive_backfill_job.py",
+   "lockfile_digest": "adc74b4f60c7665b68d8a30387f0066bd80e62ba6fc772d9433f68870a3af779",
+   "recorded": "with production",
+   "reused_rows": 0,
+   "run_identity": "9aee10becdd5f6ef4f847eb97cc44df79442074c52aafac3e7d6a2b33ae2d3ce",
+   "selector": {
+    "kind": "native_table",
+    "metadata_location": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/r1b-run/candidate-8addb2dc/after-video/final-run-pinned/lake/committee_records/metadata/00001-5f783639-3b90-49b6-9c96-6d9590a864b6.metadata.json",
+    "schema_id": 0,
+    "snapshot": 3318493156913002839,
+    "table_uuid": "01a1a24b-206f-77d2-b59e-a1abcaa978da"
+   },
+   "version": 1
+  }
+ },
+ "selector": {
+  "kind": "native_table",
+  "metadata_location": "s3://congressional-tech-raw/__r2_data_catalog/ct-archive-v2/archive_r1b/committee_records/metadata/00001-01a1a35d-b011-7091-9486-b49871d34349.gz.metadata.json",
+  "schema_id": 0,
+  "snapshot": 5973198633862248223,
+  "table_uuid": "01a1a35d-a001-7361-b21d-e1f164695502"
+ },
+ "source": {
+  "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/r1b-run/candidate-8addb2dc/after-video/final-run-pinned/basin-import/committee_records.parquet",
+  "sha256": "d1f470ca21012f37fe84c934b3ca66cb5201b2a4efbd5686010696e8e292f0d1",
+  "size": 862453
+ },
+ "verified": "EXCEPT ALL both ways against the source file",
+ "version": 1
+}

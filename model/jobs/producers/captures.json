@@ -1,0 +1,45 @@
+{
+ "commit": "9a42246188b448fdf19825ba1bc01d48f0df4bbd",
+ "input": "captures",
+ "job": "packages/viewer_publication/src/viewer_publication/archive_import_job.py",
+ "lockfile_digest": "adc74b4f60c7665b68d8a30387f0066bd80e62ba6fc772d9433f68870a3af779",
+ "origin": {
+  "pin": {
+   "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/r1b-run/candidate-8addb2dc/after-video/final-run-pinned/work/producers/captures.json",
+   "sha256": "d3da2a40cf6a0d754ec320684de7d3535b3ea597925335aa39cc605df947ab4d",
+   "size": 809
+  },
+  "record": {
+   "appended": null,
+   "commit": "8addb2dc9c803a91640db8b7258cfe576c4fbc8e",
+   "input": "captures",
+   "job": "packages/viewer_publication/src/viewer_publication/archive_backfill_job.py",
+   "lockfile_digest": "adc74b4f60c7665b68d8a30387f0066bd80e62ba6fc772d9433f68870a3af779",
+   "recorded": "with production",
+   "reused_rows": 4147132,
+   "run_identity": "9aee10becdd5f6ef4f847eb97cc44df79442074c52aafac3e7d6a2b33ae2d3ce",
+   "selector": {
+    "kind": "native_table",
+    "metadata_location": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/r1b-run/candidate-8addb2dc/after-video/final-run-pinned/lake/captures/metadata/00001-fec7aa6f-7c98-4979-812f-dd180caeacec.metadata.json",
+    "schema_id": 0,
+    "snapshot": 1388205369643777207,
+    "table_uuid": "01a1a24a-3735-760b-85ab-4e814e82d5e7"
+   },
+   "version": 1
+  }
+ },
+ "selector": {
+  "kind": "native_table",
+  "metadata_location": "s3://congressional-tech-raw/__r2_data_catalog/ct-archive-v2/archive_r1b/captures/metadata/00001-01a1a35d-1ab7-7d73-8e11-8e45571baba7.gz.metadata.json",
+  "schema_id": 0,
+  "snapshot": 3886600029866317702,
+  "table_uuid": "01a1a35c-8940-77f2-a48f-c52881d2ccb2"
+ },
+ "source": {
+  "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/r1b-run/candidate-8addb2dc/after-video/final-run-pinned/basin-import/captures.parquet",
+  "sha256": "c150a24fa5ab7a6415f8ba409c3ff90b0264cfd443fa42844aba1cd23d677db6",
+  "size": 163552469
+ },
+ "verified": "EXCEPT ALL both ways against the source file",
+ "version": 1
+}

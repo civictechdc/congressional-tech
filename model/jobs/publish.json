@@ -24,5 +24,42 @@
     "sha256": "b1d9fe06445d131974bcb2833be3e27de901ac30b43db282ee3a2f927f1353d4",
     "size": 332
   },
-  "automatic_causes": true
+  "automatic_causes": true,
+  "producers": {
+    "appearance_records": {
+      "path": "producers/appearance_records.json",
+      "sha256": "93fd28b255c36e8528bf62f49d233678f2a251378e818b16acd4f92fb76a318c",
+      "size": 2138
+    },
+    "captures": {
+      "path": "producers/captures.json",
+      "sha256": "5f1b11c58b3fdffb3458e3953697da231e659a8eb01fab68add2cb59ca786865",
+      "size": 2084
+    },
+    "committee_records": {
+      "path": "producers/committee_records.json",
+      "sha256": "e2b015cae7b95a91e0aed40851f8bcb47e4898ecd623bcb346c6d59bb6d95bee",
+      "size": 2129
+    },
+    "filename_readings": {
+      "path": "producers/filename_readings.json",
+      "sha256": "64e8d518f27bb9e8bc014842a4ee458db287a96bf099fad15b144945661687cc",
+      "size": 2137
+    },
+    "meeting_records": {
+      "path": "producers/meeting_records.json",
+      "sha256": "522a721073ab75ea30bc431bf7002291786801ab3fe4fa80928e06670343386f",
+      "size": 2118
+    },
+    "readings": {
+      "path": "producers/readings.json",
+      "sha256": "c9e66be04bf72eb172dece783c8d026c177807fb7cfb8a3f6b3591fa908083ee",
+      "size": 2084
+    },
+    "video_records": {
+      "path": "producers/video_records.json",
+      "sha256": "5a5a8bb9c7095c9ebd6f4a8fcee848548294e9736674b0d42e01d5e1633ac065",
+      "size": 2105
+    }
+  }
 }

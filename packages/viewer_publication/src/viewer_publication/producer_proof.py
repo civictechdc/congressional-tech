@@ -20,8 +20,9 @@ has a producer record, pinned in the publish spec as `producers: {table: {path, 
 size}}`, holding {version: 1, input, selector, job, commit}. The selector must equal the
 pinned one, `job` must be a file checked in at `commit`, and `commit` must be reachable from
 the publishing HEAD (the publish checkout fetches full history). `record` writes one through
-writer_identity, which refuses a dirty tree. A daily publication has no records yet, so it
-refuses until its producer writes them.
+writer_identity, which refuses a dirty tree. The publish spec's records are anchors; a daily
+run records each head it moves in the raw bucket (congress_api.lake.producer_records), naming
+the base it appended onto, and the chain is checked back to an anchor.
 
 Runs in archive_publish_job.execute on the qualified runtime, before run_publish builds
 or publishes anything. One native job: one filtered count per table, O(rows), no GROUP BY.
@@ -199,13 +200,71 @@ def _record_reasons(name, record, model, mapping_current, root, *, label, select
     return reasons
 
 
-def snapshot_reasons(model, records, *, root=ROOT, mapping_current=None):
+def _import_reasons(name, record, model, mapping_current, root, *, label, versions=True):
+    origin = record.get('origin')
+    if not isinstance(origin, dict) or not isinstance(origin.get('record'), dict):
+        return [f'producer proof: {label}: an import record needs the origin record of the job that produced the rows']
+    if origin['record'].get('job') == IMPORT:
+        return [f'producer proof: {label}: an import cannot name another import as its origin']
+    return _record_reasons(name, origin['record'], model, mapping_current, root, label=f'{label} origin', versions=versions)
+
+
+def _chain_reasons(name, record, model, mapping_current, root, ledger, *, label):
+    """A daily record's bases, back to a checked-in anchor or the table's first snapshot.
+
+    Each link: the base is the same table, an ancestor of the head reached by appends only
+    (the head's Iceberg metadata), and its record is the one pinned by hash. Older links
+    are not version-checked: their rows' versions are the row rule's concern.
+    """
+    from congress_api.lake.producer_records import appended_from, pin_of
+    if ledger is None:
+        return [f'producer proof: {label}: a daily record\'s base cannot be read without the producer record store']
+    head = record['selector']
+    lineage = ledger.lineage(head['metadata_location'])
+    current, seen = record, set()
+    while True:
+        base = current.get('base')
+        if not isinstance(base, dict) or not isinstance(base.get('selector'), dict):
+            return [f'producer proof: {label}: a daily record must name the base snapshot it appended onto']
+        selector, pinned = base['selector'], base.get('record')
+        if selector.get('table_uuid') != head.get('table_uuid'):
+            return [f'producer proof: {label}: the base snapshot belongs to another table']
+        if not appended_from(lineage, current['selector']['snapshot'], selector.get('snapshot')):
+            return [f'producer proof: {label}: base snapshot {selector.get("snapshot")} is not an ancestor reached by appends only']
+        if selector.get('snapshot') is None:
+            return [] if pinned is None else [f'producer proof: {label}: an empty base has no record']
+        if selector['snapshot'] in seen:
+            return [f'producer proof: {label}: the base chain repeats a snapshot']
+        seen.add(selector['snapshot'])
+        found = ledger.find(name, selector)
+        if (found is None or not isinstance(pinned, dict)
+                or {k: found[1].get(k) for k in ('sha256', 'size')} != {k: pinned.get(k) for k in ('sha256', 'size')}):
+            return [f'producer proof: {label}: the record of base snapshot {selector["snapshot"]} is missing or differs from its pin']
+        prior, reference = found
+        if pin_of(prior.get('selector') or {}) != pin_of(selector):
+            return [f'producer proof: {label}: the base record names another snapshot']
+        link = f'{label} base {selector["snapshot"]}'
+        if prior.get('job') == IMPORT:
+            if 'anchor' not in reference:
+                return [f'producer proof: {link}: an import record in the chain must be checked in beside the publish spec']
+            return (_record_reasons(name, prior, model, mapping_current, root, label=link, versions=False)
+                    or _import_reasons(name, prior, model, mapping_current, root, label=link, versions=False))
+        found_reasons = _record_reasons(name, prior, model, mapping_current, root, label=link, versions=False)
+        if found_reasons:
+            return found_reasons
+        if prior.get('job') != DAILY:
+            return [f'producer proof: {link}: only daily records chain to a base']
+        current = prior
+
+
+def snapshot_reasons(model, records, *, root=ROOT, mapping_current=None, ledger=None):
     """Refusals for the per-snapshot rule: one record per pinned table, bound to its selector.
 
     An import (archive_import_job) copies rows it did not produce, so its record must carry
     `origin`, the record of the job that did; the origin is checked like any producer (its
     commit reachable, its versions equal to the rows') except for its selector, which names
     the source snapshot the import copied and verified. An import cannot be its own origin.
+    A daily record appended onto a base; its chain is checked through `ledger`.
     """
     reasons = []
     for name in [n for n in ('captures', *ROW_VERSIONED) if model.get(n) is not None]:
@@ -217,15 +276,26 @@ def snapshot_reasons(model, records, *, root=ROOT, mapping_current=None):
         imported = record.get('job') == IMPORT
         found = _record_reasons(name, record, model, mapping_current, root, label=name, selector=selector, versions=not imported)
         reasons += found
-        if imported and not found:
-            origin = record.get('origin')
-            if not isinstance(origin, dict) or not isinstance(origin.get('record'), dict):
-                reasons.append(f'producer proof: {name}: an import record needs the origin record of the job that produced the rows')
-            elif origin['record'].get('job') == IMPORT:
-                reasons.append(f'producer proof: {name}: an import cannot name another import as its origin')
-            else:
-                reasons += _record_reasons(name, origin['record'], model, mapping_current, root, label=f'{name} origin')
+        if found:
+            continue
+        if imported:
+            reasons += _import_reasons(name, record, model, mapping_current, root, label=name)
+        elif record.get('job') == DAILY and selector.get('kind') == 'native_table':
+            reasons += _chain_reasons(name, record, model, mapping_current, root, ledger, label=name)
     return reasons
+
+
+def find_records(model, ledger, anchors):
+    """The record for each pinned snapshot: from the ledger, else the table's anchor (which then
+    reports its own selector mismatch)."""
+    records = {}
+    for name in [n for n in ('captures', *ROW_VERSIONED) if model.get(n) is not None]:
+        found = ledger.find(name, model[name]) if ledger is not None else None
+        if found is not None:
+            records[name] = found[0]
+        elif name in anchors:
+            records[name] = json.loads(anchors[name])
+    return records
 
 
 def record(path, *, input, selector, job, root=ROOT):
@@ -238,7 +308,7 @@ def record(path, *, input, selector, job, root=ROOT):
     return value
 
 
-def require_producers(model, *, engine, work, mapping_current=None, records=None, root=ROOT):
+def require_producers(model, *, engine, work, mapping_current=None, records=None, root=ROOT, ledger=None):
     """Refuse unless every consumed row of every pinned table names a current or compatible producer.
 
     Returns the per-table report, including retained-history counts that do not refuse.
@@ -253,7 +323,7 @@ def require_producers(model, *, engine, work, mapping_current=None, records=None
         selector = model[name]
         source = selector['path'] if selector.get('kind') == 'parquet' else {k: v for k, v in selector.items() if k != 'kind'}
         inputs.append(table_input(name, source))
-    report, reasons = {}, snapshot_reasons(model, records, root=root, mapping_current=mapping_current)
+    report, reasons = {}, snapshot_reasons(model, records, root=root, mapping_current=mapping_current, ledger=ledger)
     for query in proof_queries(model, present, mapping_current=mapping_current):
         try:
             rows = run_job(Path(work) / query['name'], engine, inputs=[i for i in inputs if i['name'] == query['name']],

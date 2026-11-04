@@ -129,6 +129,64 @@ def test_snapshot_without_a_valid_producer_record_refuses(spec, tmp_path, change
         run(mapped, tmp_path, 'records', records=records)
 
 
+def daily_chain(tmp_path, lineage, *, anchor_in_store=False):
+    """An anchor import at snapshot 1, a daily record at 2 on it, a daily head at 3 on 2."""
+    from congress_api.lake import meeting_records
+    from congress_api.lake.producer_records import ProducerRecords, encode
+    from viewer_publication.producer_proof import IMPORT
+    metadata = tmp_path / 'm.metadata.json'
+    metadata.write_text(json.dumps({'snapshots': [{'snapshot-id': s, 'parent-snapshot-id': p, 'summary': {'operation': o}}
+                                                  for s, (p, o) in lineage.items()]}))
+    pin = lambda s: {'kind': 'native_table', 'metadata_location': str(metadata), 'table_uuid': 'abcdef01', 'snapshot': s, 'schema_id': 0}
+    origin = dict(version=1, input='meeting_records', selector={'kind': 'native_table', 'snapshot': 9}, job=JOB, commit=head())
+    anchor = encode(dict(version=1, input='meeting_records', selector=pin(1), job=IMPORT, commit=head(), origin=dict(record=origin)))
+    ledger = ProducerRecords({} if anchor_in_store else {'meeting_records': anchor}, root=tmp_path / 'ledger')
+    if anchor_in_store:
+        path = tmp_path / 'ledger/lake/producers/abcdef01/1.json'
+        path.parent.mkdir(parents=True)
+        path.write_bytes(anchor)
+    base = ledger.find('meeting_records', pin(1))[1]
+    daily = lambda s, b, ref: dict(version=1, input='meeting_records', selector=pin(s), job=JOB, commit=head(),
+                                   base=dict(selector=pin(b), record=ref))
+    middle = ledger.write(daily(2, 1, base))
+    model = {'meeting_records': pin(3), 'parser_versions': {'meeting_records': meeting_records.current_versions()}}
+    return model, ledger, daily(3, 2, middle)
+
+
+APPENDS = {3: (2, 'append'), 2: (1, 'append'), 1: (None, 'append')}
+
+
+def test_a_daily_chain_back_to_a_checked_in_anchor_passes(tmp_path):
+    from viewer_publication.producer_proof import snapshot_reasons
+    model, ledger, record = daily_chain(tmp_path, APPENDS)
+    assert snapshot_reasons(model, {'meeting_records': record}, ledger=ledger) == []
+
+
+@pytest.mark.parametrize('lineage,change,rule', [
+    ({3: (1, 'append'), 1: (None, 'append')}, None, 'base snapshot 2 is not an ancestor reached by appends only'),
+    ({3: (2, 'overwrite'), 2: (1, 'append'), 1: (None, 'append')}, None, 'base snapshot 2 is not an ancestor reached by appends only'),
+    (APPENDS, lambda r: r['base']['record'].update(sha256='0' * 64), 'the record of base snapshot 2 is missing or differs from its pin'),
+    (APPENDS, lambda r: r['base']['selector'].update(table_uuid='other'), 'the base snapshot belongs to another table'),
+    (APPENDS, lambda r: r.pop('base'), "no producer record|must name the base"),
+    (APPENDS, lambda r: r['base'].update(selector=dict(r['base']['selector'], snapshot=None)), 'an empty base has no record'),
+])
+def test_a_broken_daily_chain_refuses(tmp_path, lineage, change, rule):
+    from viewer_publication.producer_proof import snapshot_reasons
+    model, ledger, record = daily_chain(tmp_path, lineage)
+    if change is not None:
+        change(record)
+    reasons = snapshot_reasons(model, {'meeting_records': record}, ledger=ledger) or ['no producer record']
+    assert len(reasons) == 1 and __import__('re').search(rule, reasons[0])
+
+
+def test_an_import_in_the_chain_must_be_checked_in_and_the_chain_needs_its_store(tmp_path):
+    from viewer_publication.producer_proof import snapshot_reasons
+    model, ledger, record = daily_chain(tmp_path, APPENDS, anchor_in_store=True)
+    assert snapshot_reasons(model, {'meeting_records': record}, ledger=ledger) == [
+        'producer proof: meeting_records base 1: an import record in the chain must be checked in beside the publish spec']
+    assert 'cannot be read without the producer record store' in snapshot_reasons(model, {'meeting_records': record})[0]
+
+
 def test_an_import_record_passes_only_through_a_valid_origin():
     """Basin copies: the import's commit is checked, and the rows' versions through the origin."""
     from viewer_publication.producer_proof import IMPORT, snapshot_reasons

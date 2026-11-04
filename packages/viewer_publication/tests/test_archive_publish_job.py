@@ -468,13 +468,14 @@ def test_raw_startup_refuses_unqualified_or_unmeasured_targets_before_sdk(tmp_pa
 
 
 @pytest.mark.parametrize('outcome',['completed','pending','backfill_required'])
-def test_actual_execute_daily_path_publishes_only_completed_work(tmp_path,outcome,producers_recorded):
+def test_actual_execute_daily_path_publishes_only_completed_work(tmp_path,outcome,producers_recorded,monkeypatch):
     """Only external catalog storage, SDK and browser execution are adapted."""
     from copy import deepcopy
     import pyarrow.parquet as pq
     from test_daily_producers import native_fixture
     from docspec_client.client import NativeDatasets
-    from congress_api.lake import tables
+    from congress_api.lake import daily as daily_module,tables
+    monkeypatch.setattr(daily_module,'writer_identity',lambda root,job:dict(job=job,commit='c'*40,lockfile_digest='d'*64))
     from test_archive_publish import Store,Native
     from viewer_publication.archive_publish_job import load_spec,execute
     count=2 if outcome=='backfill_required' else 1
@@ -539,6 +540,9 @@ def test_actual_execute_daily_path_publishes_only_completed_work(tmp_path,outcom
             dict(status='passed',releaseId=manifest['release_id'],targets='owner-approved')))
     result=execute(spec,runtime_factory=runtime_factory,storage_factory=lambda **_:store,process_runner=process_runner,end_to_end_runner=END_TO_END_PASSED)
     assert catalog_calls and result['status']==('published' if outcome=='completed' else outcome)
+    # Gate 5: each head the run moved has its record in the bucket, even when the run stopped.
+    recorded={json.loads(body)['input'] for key,body in store.objects.items() if key.startswith('lake/producers/')}
+    assert recorded==set(result['daily']['producers']) and 'captures' in recorded
     if outcome=='completed':
         assert len(commands)==2 and 'viewer-publications/manifest.json' in store.objects
         assert result['daily']['receipt_keys']==sorted(row['key'] for row in daily['receipt_inventory'])

@@ -95,7 +95,7 @@ def completed_daily_inputs(template,production,records):
     return validate_model_spec(value,base=Path.cwd()),list(keys)
 
 
-def produce_daily_inputs(template,daily,*,engine,raw_store):
+def produce_daily_inputs(template,daily,*,engine,raw_store,producer_records=None):
     """Run the maintained producer once against one complete raw snapshot."""
     from congress_api.lake.daily import produce_daily,_validate as validate_daily
     from congress_api.retention.provenance_inventory import provenance_inventory
@@ -113,8 +113,8 @@ def produce_daily_inputs(template,daily,*,engine,raw_store):
     # inventory made every new body a pending read, so daily publication never got past readings.
     if selected.get('body_inventory') is not None and not Path(selected['body_inventory']).exists():
         raise ValueError('The pinned daily body inventory is absent: '+str(selected['body_inventory']))
-    production=produce_daily(selected,engine=engine,raw_store=raw_store)
-    summary={key:production.get(key) for key in ['status','pins','receipt_keys','new_receipt_keys','currentversions']}
+    production=produce_daily(selected,engine=engine,raw_store=raw_store,producer_records=producer_records)
+    summary={key:production.get(key) for key in ['status','pins','receipt_keys','new_receipt_keys','currentversions','producers']}
     with (work/'daily-summary.json').open('x') as target:json.dump(summary,target,sort_keys=True)
     if production['status']!='completed':return dict(status=production['status'],daily=summary)
     records=snapshot.rows()
@@ -419,19 +419,24 @@ def execute(spec,*,runtime_factory=None,storage_factory=None,process_runner=None
             target_identity.require(spec['targets']['path'])
             client=storage_factory(bucket=spec['bucket'],endpoint_url=endpoint,retries={'total_max_attempts':1})
             selected_model=spec['_model'];keys=spec['receipt_keys'];provenance=spec['provenance'];verified=None;daily=None
+            from congress_api.lake.producer_records import ProducerRecords
+            anchors={}
+            for name,pin in spec.get('producers',{}).items():
+                identity=_verify_metadata(pin);anchors[name]=Path(pin['path']).read_bytes();identity.require(pin['path'])
+            ledger=ProducerRecords(anchors,client=client,bucket=spec['bucket'])
             if '_daily' in spec:
                 from congress_api.retention.body_store import BodyStore,R2Adapter
                 spec['_daily_identity'].require(spec['daily']['path'])
                 daily=produce_daily_inputs(selected_model,spec['_daily'],engine=model,
-                    raw_store=BodyStore(R2Adapter(client,spec['bucket'])))
+                    raw_store=BodyStore(R2Adapter(client,spec['bucket'])),producer_records=ledger)
                 spec['_daily_identity'].require(spec['daily']['path'])
                 spec['_model_identity'].require(spec['model_spec']['path']);require_configuration()
                 if daily['status']!='ready':return daily
                 selected_model=daily['model'];keys=daily['receipt_keys'];provenance=daily['provenance'];verified=daily['verified_files']
             # Gate 5: every pinned derived row names a current or compatible producer, before any build.
-            from viewer_publication.producer_proof import require_producers
+            from viewer_publication.producer_proof import find_records,require_producers
             require_producers(selected_model,engine=model,work=directory/'producer-proof',
-                records={name:_read_metadata(pin)[0] for name,pin in spec.get('producers',{}).items()})
+                records=find_records(selected_model,ledger,anchors),ledger=ledger)
             def probe(name,context):
                 target_identity.require(spec['targets']['path']);require_configuration()
                 probe_spec=spec

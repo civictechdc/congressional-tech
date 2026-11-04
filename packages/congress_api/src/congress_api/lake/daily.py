@@ -2,11 +2,14 @@
 import json
 from pathlib import Path
 import re
+import subprocess
 
 import pyarrow.parquet as pq
 
 from congress_api.lake import appearance_records,capture_staging,captures,filenames,meeting_records,readings,tables
+from congress_api.lake.producer_records import DAILY_JOB
 from congress_api.lake.receipt_inventory import select_receipts
+from congress_api.retention.writer_identity import writer_identity
 from congress_api.retention.body_store import BodyStore,LocalAdapter,R2Adapter,validate_key
 from congress_shared.storage import single_put_md5
 from congress_api.retention.provenance import file_pin,instant,local_unreadable_inventory,run_job
@@ -14,6 +17,7 @@ from congress_api.retention.provenance_inventory import UnreadableInventory,unre
 from congress_shared.custody import custody_identity,VerifiedFile
 
 
+ROOT=Path(__file__).resolve().parents[5]
 TABLE_NAMES=('captures','readings','filename_readings')
 OPTIONAL_TABLE_NAMES=('meeting_records','appearance_records')
 ALL_TABLE_NAMES=TABLE_NAMES+OPTIONAL_TABLE_NAMES
@@ -217,7 +221,41 @@ def _body_source(spec,raw_store,work):
                 body_store=R2Store(raw_store.adapter.client,raw_store.adapter.bucket,cache_dir=cache))
 
 
-def produce_daily(spec,*,engine,raw_store):
+def _producer_bases(records,heads):
+    """Gate 5 preflight: the commit that will append, and each head's own record.
+
+    Refuses before any append: a head without a record would leave every later
+    snapshot of that table unprovable.
+    """
+    try:writer=writer_identity(ROOT,DAILY_JOB)
+    except (ValueError,OSError,subprocess.CalledProcessError) as error:
+        return None,dict(unavailable='the checkout was not clean, so no commit can be named: '+str(error))
+    bases={};missing=[]
+    for name,pin in heads.items():
+        if pin['snapshot'] is None:bases[name]=None;continue
+        found=records.find(name,pin)
+        if found is None:missing.append(name)
+        else:bases[name]=found[1]
+    if missing:return None,dict(missing=sorted(missing))
+    return dict(writer=writer,bases=bases),None
+
+
+def _record_moved(records,chain,initial,*,authority,work,tables_spec,decided_at):
+    """One record per table whose head moved during this run, written before returning."""
+    final=tables.resolve_tables(**authority,work=work,tables=tables_spec)
+    if writer_identity(ROOT,DAILY_JOB)['commit']!=chain['writer']['commit']:
+        raise ValueError('Application commit changed during daily production')
+    written={}
+    for name,pin in sorted(final.items()):
+        if pin==initial[name]:continue
+        record=dict(version=1,input=name,selector=dict(kind='native_table',**pin),job=DAILY_JOB,
+            commit=chain['writer']['commit'],lockfile_digest=chain['writer']['lockfile_digest'],decided_at=decided_at,
+            base=dict(selector=dict(kind='native_table',**initial[name]),record=chain['bases'][name]))
+        written[name]=records.write(record)
+    return written
+
+
+def produce_daily(spec,*,engine,raw_store,producer_records=None):
     """D1 then budgeted D2 then D3, returning fresh pins only after completion.
 
     Native jobs own table scans, joins, sorting and appends. Each producer builds
@@ -227,6 +265,9 @@ def produce_daily(spec,*,engine,raw_store):
     decisions reuse the controller's complete qualified initial snapshot plus
     acknowledged imports, with no second LIST or GET. Native
     key anti-joins and sorted appends retain their existing O(N+M)/O(K log K) cost.
+
+    With `producer_records` (gate 5), every head must already have a record and every
+    head this run moves gets one, whether the run completes, stops or fails.
     """
     work,provenance,identities=_validate(spec,engine,raw_store)
     work.mkdir(parents=True,exist_ok=False)
@@ -239,6 +280,22 @@ def produce_daily(spec,*,engine,raw_store):
     versions=dict(captures=captures.current_version())
     report=dict(status='running',pins=None,receipt_keys=None,new_receipt_keys=[],provenance=provenance,
                 currentversions=versions,producerreports={})
+    if producer_records is None:
+        return _produce(spec,engine,raw_store,work,provenance,identities,unreadable_snapshot,authority,heads,versions,report)
+    chain,refusal=_producer_bases(producer_records,heads)
+    if chain is None:
+        report.update(status='producer_unrecorded',producers=refusal)
+        return report
+    initial=dict(heads)
+    try:
+        _produce(spec,engine,raw_store,work,provenance,identities,unreadable_snapshot,authority,heads,versions,report)
+    finally:
+        report['producers']=_record_moved(producer_records,chain,initial,authority=authority,
+            work=work/'producer-heads',tables_spec=spec['tables'],decided_at=spec['decided_at'])
+    return report
+
+
+def _produce(spec,engine,raw_store,work,provenance,identities,unreadable_snapshot,authority,heads,versions,report):
     stale=_stale_mapping_receipts(heads['captures'],versions['captures'],engine=engine,work=work/'mapping-check')
     if stale:
         # The receipt anti-join would count these receipts as present forever, and re-staging
