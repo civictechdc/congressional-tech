@@ -488,7 +488,10 @@ def test_actual_execute_daily_path_publishes_only_completed_work(tmp_path,outcom
     if outcome=='pending':
         row=pq.read_table(daily['body_inventory']).to_pylist()[0]
         (Path(daily['local_root'])/row['relative_path']).unlink()
-    elif outcome=='backfill_required':daily['max_work_items']=1
+    elif outcome=='backfill_required':
+        # Keep every receipt past the nightly cut so the readings budget itself refuses.
+        daily['max_work_items']=1
+        monkeypatch.setattr(daily_module,'_within_budget',lambda stage,selected,*a,**k:(list(selected),0))
     value=publish_spec(tmp_path);remote=remote_config(tmp_path)
     runtime=tmp_path/'remote-runtime.json';settings=json.loads(Path(os.environ['DOCSPEC_JOB_CONFIG']).read_text())
     base=Path(os.environ['DOCSPEC_JOB_CONFIG']).parent

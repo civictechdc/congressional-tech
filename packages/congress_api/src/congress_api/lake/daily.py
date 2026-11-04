@@ -8,7 +8,8 @@ import pyarrow.parquet as pq
 
 from congress_api.lake import appearance_records,capture_staging,captures,filenames,meeting_records,readings,tables
 from congress_api.lake.producer_records import DAILY_JOB
-from congress_api.lake.receipt_inventory import select_receipts
+from congress_api.lake.receipt_inventory import (LocalReceiptStore,R2ReceiptStore,copy_receipts,
+    discover_receipts,select_receipts)
 from congress_api.retention.writer_identity import writer_identity
 from congress_api.retention.body_store import BodyStore,LocalAdapter,R2Adapter,validate_key
 from congress_shared.storage import single_put_md5
@@ -53,7 +54,7 @@ def _qualify_path(path):
 def _validate(spec,engine,raw_store):
     required={'work','decided_at','catalog_root','tables','receipt_inventory','max_work_items','provenance'}
     # Without a pinned body inventory, bodies are read from the raw store itself (_body_source).
-    optional={'validated_counter','source_qualifications','vocabularies','body_inventory','local_root'}
+    optional={'validated_counter','source_qualifications','vocabularies','body_inventory','local_root','receipt_families'}
     if not isinstance(spec,dict) or not required<=spec.keys() or spec.keys()-(required|optional):
         raise ValueError('Daily producer requires explicit receipt, body, table and provenance inputs')
     readings._positive(spec['max_work_items'],'max_work_items')
@@ -82,6 +83,13 @@ def _validate(spec,engine,raw_store):
         raise ValueError('Daily tables must name three or five distinct explicit targets')
     if not isinstance(spec['receipt_inventory'],list) or any(not isinstance(r,dict) for r in spec['receipt_inventory']):
         raise ValueError('Daily receipt inventory must contain original receipt metadata')
+    families=spec.get('receipt_families')
+    if families is not None:
+        if (not isinstance(families,list) or not families or len(set(families))!=len(families)
+                or any(not isinstance(f,str) or not f or f.startswith('/') or '..' in f.split('/') for f in families)):
+            raise ValueError('Daily receipt families must be distinct relative family names')
+        if spec['receipt_inventory'] or spec.get('validated_counter') is not None or spec.get('source_qualifications') is not None:
+            raise ValueError('Daily receipt families discover receipts; they take no pinned inventory, counter or qualifications')
     if not isinstance(raw_store,BodyStore) or not isinstance(raw_store.adapter,(LocalAdapter,R2Adapter)):
         raise ValueError('Daily producer requires an explicit durable raw store')
     tables.validate_catalog_authority(engine,spec['catalog_root'])
@@ -202,6 +210,51 @@ def _stale_mapping_receipts(captures_pin,current,*,engine,work):
     return sorted(rows,key=lambda row:str(row['mapping_version']))
 
 
+def _discovered_receipts(families,raw_store,captures_head,*,engine,work):
+    """Receipts in the raw store that captures lacks, copied and qualified under work.
+
+    Lists each family's dated prefixes from its newest captured date on (inclusive), so a
+    run costs one listing per new day, not the whole history; the native anti-join drops
+    keys already in captures.
+    """
+    adapter=raw_store.adapter
+    store=(R2ReceiptStore(adapter.client,adapter.bucket) if isinstance(adapter,R2Adapter)
+           else LocalReceiptStore(adapter.root))
+    rows=discover_receipts(store,families,existing=captures_head,engine=engine,work=work/'receipt-discovery')
+    return copy_receipts(store,rows,work/'receipts')
+
+
+RECEIPT_DAY=re.compile(r'/(\d{4}-\d{2}-\d{2})/')
+
+
+def _receipt_order(row):
+    day=RECEIPT_DAY.search(row['key'])
+    return (day.group(1) if day else '',row['key'])
+
+
+def _within_budget(stage,selected,captures_head,max_work_items,*,engine,work):
+    """The oldest selected receipts whose bodies new to captures fit one night's readings budget.
+
+    Returns (kept, fresh bodies by kept receipt count); kept is a prefix of the selection in
+    (day, key) order, so a deferred receipt is never older than a kept one of the same family
+    and the next run's inclusive watermark still lists it. A body counts once, at the first
+    receipt naming it. Bodies already in captures are read or already pending, so they are
+    left to the readings budget check.
+    """
+    rows=run_job(work,engine,inputs=[tables.table_input('staged',stage),
+        tables.table_input('captures',captures_head)],steps=[],outputs=[],queries=[dict(name='fresh',
+        sql="SELECT DISTINCT s.receipt_key,lower(encode(s.sha256,'hex')) AS sha FROM staged s "
+            "WHERE s.sha256 IS NOT NULL AND NOT EXISTS(SELECT 1 FROM captures c WHERE c.sha256=s.sha256)")])['fresh']
+    bodies={}
+    for row in rows:bodies.setdefault(row['receipt_key'],set()).add(row['sha'])
+    kept=[];seen=set()
+    for row in sorted(selected,key=_receipt_order):
+        new=bodies.get(row['key'],set())-seen
+        if len(seen)+len(new)>max_work_items:break
+        kept.append(row);seen|=new
+    return kept,len(seen)
+
+
 def _body_source(spec,raw_store,work):
     """How readings reaches bodies: a pinned inventory under local_root, else the raw store.
 
@@ -303,11 +356,29 @@ def _produce(spec,engine,raw_store,work,provenance,identities,unreadable_snapsho
         report.update(status='backfill_required')
         report['producerreports']['captures']=dict(status='backfill_required',stale_mappings=stale)
         return report
-    selected=select_receipts(spec['receipt_inventory'],heads['captures'],engine=engine,work=work/'receipt-selection')
+    if spec.get('receipt_families'):
+        selected=_discovered_receipts(spec['receipt_families'],raw_store,heads['captures'],engine=engine,work=work)
+        report['discovered_receipts']=len(selected)
+    else:
+        selected=select_receipts(spec['receipt_inventory'],heads['captures'],engine=engine,work=work/'receipt-selection')
     if selected:
         stage=capture_staging.stage_captures(selected,engine=engine,work=work/'captures',
             validated_counter=spec.get('validated_counter'),
             source_qualifications=_source_qualifications(spec,selected))
+        kept,fresh=_within_budget(stage/'captures.parquet',selected,heads['captures'],spec['max_work_items'],
+            engine=engine,work=work/'captures-budget')
+        report['receipt_budget']=dict(selected=len(selected),kept=len(kept),fresh_bodies=fresh,
+            max_work_items=spec['max_work_items'])
+        if not kept:
+            # The oldest receipt alone holds more new bodies than a night may read.
+            report.update(status='backfill_required')
+            report['producerreports']['captures']=dict(status='backfill_required',
+                receipt=min(selected,key=_receipt_order)['key'])
+            return report
+        if len(kept)<len(selected):
+            stage=capture_staging.stage_captures(kept,engine=engine,work=work/'captures-kept',
+                validated_counter=spec.get('validated_counter'),
+                source_qualifications=_source_qualifications(spec,kept))
         manifest=json.loads((stage/'ingested-receipts.json').read_text())
         if manifest['mapping_digest']!=versions['captures']:
             raise ValueError('Captures producer changed during daily production')

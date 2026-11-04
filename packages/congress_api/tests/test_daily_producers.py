@@ -1,4 +1,5 @@
 """The daily producer refreshes all three lake inputs before publication."""
+import gzip
 import hashlib
 import json
 import os
@@ -295,14 +296,72 @@ def replace_spec(value,**changes):
     return dict(value,**changes)
 
 
+def test_native_daily_defers_receipts_past_the_budget_to_later_nights(tmp_path):
+    from congress_api.lake.daily import produce_daily
+    value,engine,store=native_fixture(tmp_path,2);value['max_work_items']=1
+    keys=sorted(row['key'] for row in value['receipt_inventory'])
+    first=produce_daily(value,engine=engine,raw_store=store)
+    assert first['status']=='completed' and first['new_receipt_keys']==keys[:1]
+    assert first['receipt_budget']==dict(selected=2,kept=1,fresh_bodies=1,max_work_items=1)
+    assert first['producerreports']['readings']['work_items']==1
+    second=produce_daily(dict(value,work=str(tmp_path/'second')),engine=engine,raw_store=store)
+    assert second['status']=='completed' and second['new_receipt_keys']==keys[1:]
+    third=produce_daily(dict(value,work=str(tmp_path/'third')),engine=engine,raw_store=store)
+    assert third['status']=='completed' and third['new_receipt_keys']==[]
+
+
 def test_native_daily_budget_reports_backfill_before_body_or_filename_work(tmp_path):
     from congress_api.lake.daily import produce_daily
     value,engine,store=native_fixture(tmp_path,2);value['max_work_items']=1
-    result=produce_daily(value,engine=engine,raw_store=store)
+    older=min(value['receipt_inventory'],key=lambda row:row['key'])
+    item=pq.read_table(value['body_inventory']).to_pylist()
+    # The older receipt's body stays pending, so tonight's one new body is a second work item.
+    first_body=json.loads(gzip.open(older['path'],'rt').readline())['captures'][0]['sha256']
+    missing=next(row for row in item if row['body_sha'].hex()==first_body)
+    (tmp_path/'raw'/missing['relative_path']).rename(tmp_path/'held')
+    pending=produce_daily(dict(value,receipt_inventory=[older]),engine=engine,raw_store=store)
+    assert pending['status']=='pending'
+    result=produce_daily(dict(value,work=str(tmp_path/'second')),engine=engine,raw_store=store)
     assert result['status']=='backfill_required' and result['pins'] is None
-    assert result['producerreports']['readings']['work_items']==2
-    assert not (tmp_path/'work/readings/batch-000000').exists()
-    assert not (tmp_path/'work/filenames').exists() and not (tmp_path/'work/final-heads').exists()
+    assert result['receipt_budget']['kept']==1 and result['producerreports']['readings']['work_items']==2
+    assert not (tmp_path/'second/readings/batch-000000').exists()
+    assert not (tmp_path/'second/filenames').exists() and not (tmp_path/'second/final-heads').exists()
+
+
+def test_budget_keeps_the_oldest_receipts_counting_each_new_body_once(tmp_path):
+    from congress_api.lake.daily import _within_budget
+    from docspec_client.client import NativeDatasets
+    engine=NativeDatasets.from_config(os.environ['DOCSPEC_JOB_CONFIG'])
+    sha=lambda n:hashlib.sha256(bytes([n])).digest()
+    staged=[('receipts/meetings/2026-10-31/m.jsonl.gz',sha(1)),('receipts/meetings/2026-10-31/m.jsonl.gz',sha(2)),
+            ('receipts/documents/2026-10-30/d.jsonl.gz',sha(3)),('receipts/documents/2026-10-30/d.jsonl.gz',sha(9)),
+            ('receipts/documents/2026-11-01/e.jsonl.gz',sha(1)),('receipts/documents/2026-11-01/e.jsonl.gz',sha(4)),
+            ('receipts/house/2026-11-01/f.jsonl.gz',None)]
+    schema=pa.schema([('receipt_key',pa.string()),('sha256',pa.binary(32))])
+    pq.write_table(pa.Table.from_pylist([dict(receipt_key=k,sha256=s) for k,s in staged],schema=schema),tmp_path/'staged.parquet')
+    pq.write_table(pa.Table.from_pylist([dict(receipt_key='receipts/documents/2026-10-01/old.jsonl.gz',sha256=sha(9))],
+        schema=schema),tmp_path/'captures.parquet')
+    selected=[dict(key=k) for k in sorted({k for k,_ in staged},reverse=True)]
+    run=lambda budget,name:_within_budget(tmp_path/'staged.parquet',selected,tmp_path/'captures.parquet',budget,
+        engine=engine,work=tmp_path/name)
+    kept,fresh=run(3,'three')
+    # d (10-30) adds 3 (9 is in captures), m (10-31) adds 1 and 2; e would add 4, a fourth.
+    assert [r['key'] for r in kept]==['receipts/documents/2026-10-30/d.jsonl.gz','receipts/meetings/2026-10-31/m.jsonl.gz']
+    assert fresh==3
+    kept,fresh=run(4,'four')
+    assert [r['key'] for r in kept][-2:]==['receipts/documents/2026-11-01/e.jsonl.gz','receipts/house/2026-11-01/f.jsonl.gz']
+    assert fresh==4
+    assert run(1,'one')==([dict(key='receipts/documents/2026-10-30/d.jsonl.gz')],1)
+
+
+def test_native_daily_refuses_a_receipt_that_alone_exceeds_the_budget(tmp_path,monkeypatch):
+    from congress_api.lake import daily
+    value,engine,store=native_fixture(tmp_path,2);value['max_work_items']=1
+    monkeypatch.setattr(daily,'_within_budget',lambda *a,**k:([],0))
+    result=daily.produce_daily(value,engine=engine,raw_store=store)
+    assert result['status']=='backfill_required' and result['pins'] is None
+    assert result['producerreports']['captures']['receipt']==min(r['key'] for r in value['receipt_inventory'])
+    assert not (tmp_path/'work/captures-append').exists() and not (tmp_path/'work/readings').exists()
 
 
 def test_native_daily_pending_body_stops_before_filename_or_publisher_pins(tmp_path):

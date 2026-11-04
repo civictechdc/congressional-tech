@@ -116,10 +116,99 @@ def discover_receipts(adapter,families,*,existing,engine,work,mode='incremental'
     return select_receipts(files,existing,engine=engine,work=work/'selection')
 
 
+def copy_receipts(store,rows,directory,*,workers=16):
+    """Copy selected receipts into `directory`, each with the qualification staging requires.
+
+    The store verifies each copy against what its listing named (R2: the single-PUT MD5
+    ETag, read with If-Match); SHA-256 and size are taken from the bytes copied, once.
+    Copies run on `workers` threads; the result keeps the selection's order.
+    """
+    from concurrent.futures import ThreadPoolExecutor
+    directory=Path(directory).resolve()
+    def one(row):
+        key=_receipt_key(row['key'])
+        path=(directory/key).resolve()
+        if not path.is_relative_to(directory):raise ValueError('Receipt copy escapes its directory')
+        path.parent.mkdir(parents=True,exist_ok=True)
+        digest,size=store.copy(row,path)
+        authority=path.with_name(path.name+'.qualification.json')
+        authority.write_text(json.dumps(dict(path=str(path),sha256=digest,size=size,
+            producer=store.describe(row)),sort_keys=True))
+        return dict(key=key,path=str(path),qualification=str(authority))
+    with ThreadPoolExecutor(max_workers=workers) as pool:
+        return list(pool.map(one,rows))
+
+
+def _copy_stream(read,path):
+    import hashlib
+    sha=hashlib.sha256();md5=hashlib.md5();size=0
+    with path.open('xb') as target:
+        while chunk:=read(1<<20):
+            sha.update(chunk);md5.update(chunk);size+=len(chunk);target.write(chunk)
+    return sha.hexdigest(),md5.hexdigest(),size
+
+
+class R2ReceiptStore:
+    """Read-only R2 listing and verified receipt copies, under the same raw-key boundary."""
+    def __init__(self,client,bucket):
+        self.client,self.bucket=client,bucket
+
+    def _pages(self,**request):
+        token=None
+        while True:
+            page=self.client.list_objects_v2(Bucket=self.bucket,**request,**({'ContinuationToken':token} if token else {}))
+            yield page
+            if not page.get('IsTruncated'):return
+            following=page.get('NextContinuationToken')
+            if not following or following==token:raise ValueError('Receipt listing did not advance')
+            token=following
+
+    def prefixes(self,prefix):
+        _receipt_key(prefix.rstrip('/'))
+        for page in self._pages(Prefix=prefix,Delimiter='/'):
+            for item in page.get('CommonPrefixes',[]):
+                yield item['Prefix']
+
+    def files(self,prefix):
+        _receipt_key(prefix.rstrip('/'))
+        for page in self._pages(Prefix=prefix):
+            for item in page.get('Contents',[]):
+                yield dict(key=item['Key'],size=item['Size'],etag=item['ETag'])
+
+    def describe(self,row):
+        return f"R2 {self.bucket}/{row['key']} read with If-Match {row['etag']}; MD5 and size verified on copy"
+
+    def copy(self,row,path):
+        from botocore.exceptions import IncompleteReadError,ReadTimeoutError,ResponseStreamingError
+        from congress_shared.storage import single_put_md5
+        expected=single_put_md5(row['etag'])
+        for attempt in (1,2,3):
+            try:
+                body=self.client.get_object(Bucket=self.bucket,Key=row['key'],IfMatch='"'+expected+'"')['Body']
+                digest,md5,size=_copy_stream(body.read,path)
+                break
+            except (IncompleteReadError,ReadTimeoutError,ResponseStreamingError):
+                path.unlink(missing_ok=True)
+                if attempt==3:raise
+        if md5!=expected or size!=row['size']:
+            path.unlink()
+            raise ValueError('Receipt copy differs from its listed MD5 or size: '+row['key'])
+        return digest,size
+
+
 class LocalReceiptStore:
     """Read-only local listing/read adapter with the same raw-key boundary."""
     def __init__(self,root):
         self.root=Path(root).resolve()
+
+    def describe(self,row):
+        return f"local raw root {self.root} file {row['key']}; size verified on copy"
+
+    def copy(self,row,path):
+        with self.open(row['key']) as source:
+            digest,_,size=_copy_stream(source.read,path)
+        if size!=row['size']:raise ValueError('Receipt copy differs from its listed size: '+row['key'])
+        return digest,size
 
     def _path(self,key,prefix=False):
         _receipt_key(key.rstrip('/') if prefix else key)
