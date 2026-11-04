@@ -1,0 +1,110 @@
+{
+  "generations": {
+    "amendments": "75c96edc20e43499f45efb19c135344cb849a801ce0f0abec1d0861b755698e2",
+    "bill-family": "f719442c6a814666c5747624ef8a52da002bc2982f4ebd7f2be990f86bc38d42",
+    "committee-rosters": "5f031073f8329cd49c5a6c43470e26178de5ef21362ad6d43a85ead6fab39da3",
+    "members": "29718daf2daec8dd84dfcbfdb1f4bc7ed5daa439e6567294ef4b59cee3b58764",
+    "nominations": "d17c43e1bc6773cff17dc3ac6c7d79f5938ba9fa105a837e96deda23c91255f3",
+    "roll-call-votes": "e7cdd80d9eecbf13ce172ce076c9a5df77fd418c97fb80d13393ce6ab595ace0"
+  },
+  "source": "https://pub-72e95c0c20a84508b42b03a6ff6d55f8.r2.dev",
+  "tables": {
+    "spicy_amendments": {
+      "family": "amendments",
+      "key": "amendments.parquet",
+      "path": "generations/amendments/75c96edc20e43499f45efb19c135344cb849a801ce0f0abec1d0861b755698e2/amendments.parquet",
+      "rows": 7119,
+      "sha256": "00d56d0b694f66bafd10df8c88999d8fbc9dffca62507ee2e7c2a4f2409c1a09",
+      "size": 143880
+    },
+    "spicy_bill_committee_activities": {
+      "family": "bill-family",
+      "key": "bill_committee_activities.parquet",
+      "path": "generations/bill-family/f719442c6a814666c5747624ef8a52da002bc2982f4ebd7f2be990f86bc38d42/bill_committee_activities.parquet",
+      "rows": 341157,
+      "sha256": "d748ad8a48e3c039e12f74dd0629574776adbbb9b9f306757eb758e049823422",
+      "size": 3266366
+    },
+    "spicy_bill_committees": {
+      "family": "bill-family",
+      "key": "bill_committees.parquet",
+      "path": "generations/bill-family/f719442c6a814666c5747624ef8a52da002bc2982f4ebd7f2be990f86bc38d42/bill_committees.parquet",
+      "rows": 286771,
+      "sha256": "1095c541e6943146f3a4a41f14d5ad5d202e357db8368767ca7428f7236d45c6",
+      "size": 2131507
+    },
+    "spicy_bill_vote_references": {
+      "family": "bill-family",
+      "key": "bill_vote_references.parquet",
+      "path": "generations/bill-family/f719442c6a814666c5747624ef8a52da002bc2982f4ebd7f2be990f86bc38d42/bill_vote_references.parquet",
+      "rows": 19766,
+      "sha256": "25abe460b4571b41c49c1f1fca85bb32d7d5de57421f8657e603be5bc5108f0b",
+      "size": 204179
+    },
+    "spicy_cbo_cost_estimates": {
+      "family": "bill-family",
+      "key": "cbo_cost_estimates.parquet",
+      "path": "generations/bill-family/f719442c6a814666c5747624ef8a52da002bc2982f4ebd7f2be990f86bc38d42/cbo_cost_estimates.parquet",
+      "rows": 14843,
+      "sha256": "9bd62ada710f2d3884bc3c72daf0a372723c266d6f74b77da1fe1741a665c234",
+      "size": 982842
+    },
+    "spicy_committee_assignments": {
+      "family": "committee-rosters",
+      "key": "committee_assignments.parquet",
+      "path": "generations/committee-rosters/5f031073f8329cd49c5a6c43470e26178de5ef21362ad6d43a85ead6fab39da3/committee_assignments.parquet",
+      "rows": 2973,
+      "sha256": "e0cdb2ebc07c418a4730111bd964304759cc3d161d61f208961b7f8557d4ce48",
+      "size": 40433
+    },
+    "spicy_committees": {
+      "family": "committee-rosters",
+      "key": "committees.parquet",
+      "path": "generations/committee-rosters/5f031073f8329cd49c5a6c43470e26178de5ef21362ad6d43a85ead6fab39da3/committees.parquet",
+      "rows": 817,
+      "sha256": "75f27be725db2f4aeeab48c5b8d04bd2876a96877f65fe3c50445f1569abc577",
+      "size": 90551
+    },
+    "spicy_congress_bills": {
+      "family": "bill-family",
+      "key": "congress_bills.parquet",
+      "path": "generations/bill-family/f719442c6a814666c5747624ef8a52da002bc2982f4ebd7f2be990f86bc38d42/congress_bills.parquet",
+      "rows": 422024,
+      "sha256": "4b7ae92b7e706934dccbc090cd562c6d5c938d125e6d96aa7e35f7a367ee209d",
+      "size": 35016544
+    },
+    "spicy_member_terms": {
+      "family": "members",
+      "key": "member_terms.parquet",
+      "path": "generations/members/29718daf2daec8dd84dfcbfdb1f4bc7ed5daa439e6567294ef4b59cee3b58764/member_terms.parquet",
+      "rows": 45535,
+      "sha256": "dc8fd9f024f60a29f61bbb01ebddc28418d8f6c1d680fe09eca4d283a9887fb6",
+      "size": 234901
+    },
+    "spicy_members": {
+      "family": "members",
+      "key": "members.parquet",
+      "path": "generations/members/29718daf2daec8dd84dfcbfdb1f4bc7ed5daa439e6567294ef4b59cee3b58764/members.parquet",
+      "rows": 12770,
+      "sha256": "ef0dace053bd888bc5f696e1cd8dceaed06f4d1ba379807bf835a0b2ff175579",
+      "size": 395401
+    },
+    "spicy_nominations": {
+      "family": "nominations",
+      "key": "nominations.parquet",
+      "path": "generations/nominations/d17c43e1bc6773cff17dc3ac6c7d79f5938ba9fa105a837e96deda23c91255f3/nominations.parquet",
+      "rows": 2287,
+      "sha256": "55df655f456f0ef2844e967a079a648d56210f45630c20983147ffe1a344cf67",
+      "size": 95904
+    },
+    "spicy_roll_call_votes": {
+      "family": "roll-call-votes",
+      "key": "roll_call_votes.parquet",
+      "path": "generations/roll-call-votes/e7cdd80d9eecbf13ce172ce076c9a5df77fd418c97fb80d13393ce6ab595ace0/roll_call_votes.parquet",
+      "rows": 30702,
+      "sha256": "f6a12daa839ad21b5ae7683f244b827f64730add5b4782b8d35924cb0d62887f",
+      "size": 1725008
+    }
+  },
+  "version": 1
+}

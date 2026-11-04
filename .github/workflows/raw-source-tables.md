@@ -35,6 +35,7 @@ The `capture` job runs in the `archive-capture` environment on `ubuntu-24.04` wi
 
 1. **Publish (`publish`)**:
    - Runs `.github/scripts/run-archive-job.py publish --check-binding --github-output "$GITHUB_OUTPUT"` to validate the committed publish specification and export the planned `publisher_work` directory without opening the runtime.
+   - Runs `python -I -m viewer_publication.spicy_regs_inputs --model-spec model/jobs/publish-model.json`, which downloads each spicy-regs table the checked-in manifest (`model/jobs/spicy-regs/spicy-regs.json`) pins from the manifest's `source` and refuses any file whose sha256 or size differs.
    - Installs the pinned `docspec` runtime, Node project dependencies, and the publication browser, then builds `apps/site` (`npm run build`) once.
    - Invokes `.github/scripts/run-archive-job.py publish` (`python -I -m viewer_publication.archive_publish_job --spec <spec> --execute`), which executes the native model release build, verifies the release manifest (`origin.kind == "model"`, `display_only == false`) and Parquet tables, runs the local Playwright archive contract against the built site and candidate release, uploads the release objects, runs the HTTPS canary gate, and performs an `If-Match` conditional pointer update.
    - Uploads `outgoing-pointer.json`, `outgoing-pointer.response.json`, `contract.json`, and `canary.json` from `publisher_work` as `archive-publish-evidence-<run_id>-<run_attempt>`.

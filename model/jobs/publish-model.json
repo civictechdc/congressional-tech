@@ -51,7 +51,7 @@
     "table_uuid": "01a1a35d-a001-7361-b21d-e1f164695502"
   },
   "spicy_regs": {
-    "path": "../../.cache/archive-release/r1b/inputs/spicy_regs/spicy-regs.json",
+    "path": "spicy-regs/spicy-regs.json",
     "sha256": "7188109eff68ea6268751a5ff2c53c80ae8c92bfcbdf83e7e0e3cc07dc87b61e",
     "size": 5042
   },
