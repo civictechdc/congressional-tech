@@ -202,6 +202,60 @@ def test_witness_value_rewritten_on_a_matched_key_is_a_group(tmp_path):
     assert counts(result, 'witnesses') == {('changed organization', 'value differs on matched key'): 1}
 
 
+REKEY_SCHEMAS = {**SCHEMAS, 'list': [('filename', S), ('witness_keys', pa.list_(S))],
+                 'witnesses': [('witness_key', S), ('occasion', S), ('record_sha', S), ('name', S), ('organization', S), ('superseded_by', S)],
+                 'witness_key_map': [('old_key', S), ('witness_key', S), ('status', S), ('basis', S), ('candidate_keys', pa.list_(S))]}
+
+
+def rekey_release(directory, witnesses, keys, mapped):
+    """One document listing `keys`; witnesses are (key, record, name, organization, superseded_by)."""
+    return release(directory, documents=['A'], schemas=REKEY_SCHEMAS,
+                   list=[{'filename': 'A', 'witness_keys': keys}],
+                   witnesses=[dict(zip(('witness_key', 'record_sha', 'name', 'organization', 'superseded_by'), w), occasion='meeting:1')
+                              for w in witnesses],
+                   witness_key_map=[dict(zip(('old_key', 'witness_key', 'status', 'basis'), m),
+                                         candidate_keys=list(m[4]) if len(m) > 4 else []) for m in mapped])
+
+
+def test_witnesses_re_keyed_through_the_published_map_are_explained(tmp_path):
+    """ct-kb4w: a re-fetched body re-keys its witnesses; only what the map does not carry needs a cause."""
+    prev = rekey_release(tmp_path / 'prev', [('w1', 'r0', 'Ann', 'GAO', None), ('w2', 'r0', 'Ann', 'GAO', 'w1'),
+                                             ('w3', 'r0', 'Bob', 'CBO', None), ('w4', 'r0', 'Cy', None, None)],
+                         ['w1', 'w3'], [('o1', 'w1', 'unambiguous', 'content')])
+    live = rekey_release(tmp_path / 'live', [('n1', 'r1', 'Ann', 'GAO', None), ('n2', 'r1', 'Ann', 'GAO', 'n1'),
+                                             ('n3', 'r1', 'Bob', 'Budget Office', None), ('n5', 'r1', 'Dee', None, None)],
+                         ['n1', 'n3'], [('o1', 'n1', 'unambiguous', 'content'), ('w1', 'n1', 'unambiguous', 'content'),
+                                        ('w2', 'n2', 'unambiguous', 'content'), ('w3', 'n3', 'unambiguous', 'locator'),
+                                        ('w4', None, 'unresolved', None)])
+    code, result = run(tmp_path, prev, live)
+    assert counts(result, 'witnesses') == {
+        ('removed keys', 're-keyed: witness_key_map names the published successor'): -3,
+        ('removed keys', 'witness_key_map states the key unresolved'): -1,
+        ('added keys', 'successor of a re-keyed witness'): 3,
+        ('added keys', 'no evidence given'): 1,
+        ('changed organization', 'value differs on matched key'): 1,  # the re-keyed pair is compared too
+    }
+    assert counts(result, 'list') == {('changed witness_keys', 're-keyed through witness_key_map'): 1}
+    assert counts(result, 'witness_key_map') == {('added keys', 'key retired from witnesses in this release'): 4}
+    assert code == 1 and {(g['file'], g['group']) for g in result['failing']} == {
+        ('witnesses.parquet', 'removed keys'), ('witnesses.parquet', 'added keys'), ('witnesses.parquet', 'changed organization')}
+
+
+def test_a_map_that_names_the_wrong_successor_is_not_explained(tmp_path):
+    """The planted case: an unambiguous row whose successor is not published, and a key the map dropped."""
+    prev = rekey_release(tmp_path / 'prev', [('w1', 'r0', 'Ann', 'GAO', None), ('w2', 'r0', 'Bob', None, None)], ['w1'],
+                         [('o1', 'w1', 'unambiguous', 'content'), ('o2', 'w2', 'unambiguous', 'content')])
+    live = rekey_release(tmp_path / 'live', [('n1', 'r1', 'Ann', 'GAO', None), ('n2', 'r1', 'Bob', None, None)], ['n2'],
+                         [('w1', 'gone', 'unambiguous', 'content'), ('o2', 'n2', 'unambiguous', 'content'),
+                          ('w2', 'n2', 'unambiguous', 'content')])
+    code, result = run(tmp_path, prev, live)
+    assert code == 1
+    assert counts(result, 'witnesses')[('removed keys', 'unexplained')] == -1
+    assert counts(result, 'list')[('changed witness_keys', 'value differs on matched key')] == 1  # w1 listed, n2 now
+    assert counts(result, 'witness_key_map') == {('removed keys', 'no longer resolves'): -1,
+                                                 ('added keys', 'key retired from witnesses in this release'): 2}
+
+
 def test_source_address_moved_to_another_document_is_a_group(tmp_path):
     """red-h probe 2: the same address now on document B, at equal multiplicity."""
     prev = release(tmp_path / 'prev', documents=['A', 'B'], sources=[(0, 'https://x/a', None), (1, 'https://x/b', None)])

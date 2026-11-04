@@ -13,7 +13,8 @@ recorded cause of the exact count.
 Cannot see: a defect present in both releases (no difference); content of split, merged
 or added rows (no matched partner); a second cause hiding inside one column group of the
 same count; whether a recorded cause is true. Witnesses compare by witness_key, which
-448651e7 redefined, so against c94bfedc every key appears removed and added.
+448651e7 redefined, so against c94bfedc every key appears removed and added; a candidate
+that publishes witness_key_map pairs re-keyed rows through it (ct-kb4w).
 """
 from __future__ import annotations
 
@@ -55,6 +56,7 @@ class Diff:
             self.view(name, f"SELECT * FROM read_parquet('{Path(directory) / 'links.parquet'}')")
             self.history.append(name)
         self.link_causes = False
+        self.witness_rekey = None  # set by rekeyed()
 
     def has(self, side, table):
         return bool(self.rows(f"SELECT 1 FROM duckdb_views() WHERE view_name='{side}_{table}'"))
@@ -245,11 +247,37 @@ def documents(d: Diff):
     return out, shape
 
 
+def rekeyed(d: Diff):
+    """The candidate's unambiguous witness_key_map rows (ct-kb4w) as table `witness_rekey` and one MAP
+    value `witness_rekey_map`; False when the candidate publishes no map.
+
+    A current key is never an old key (a relationship invariant), so mapping both sides through it
+    changes only base keys that the candidate re-keyed.
+    """
+    if d.witness_rekey is None:
+        d.witness_rekey = d.has('candidate', 'witness_key_map') and d.has('candidate', 'witnesses')
+        if d.witness_rekey:
+            d.table('witness_rekey', """SELECT old_key,witness_key FROM candidate_witness_key_map
+              WHERE status='unambiguous' AND witness_key IN (SELECT witness_key FROM candidate_witnesses)""")
+            d.table('witness_rekey_map', 'SELECT map(list(old_key),list(witness_key)) AS m FROM witness_rekey')
+    return d.witness_rekey
+
+
 def document_file(table):
     def run(d: Diff):
         groups, shape = d.documents
         join = f'one_to_one JOIN base_{table} p ON p.file_row_number=pr JOIN candidate_{table} l ON l.file_row_number=lr'
-        return [*groups, *d.changed(table, join, exclude=OFFSETS | {'file_row_number'})], shape if table == 'list' else {}
+        compare, rekeys = None, []
+        if rekeyed(d) and 'witness_keys' in set(d.columns('base', table)) & set(d.columns('candidate', table)):
+            # Keys re-keyed through the candidate's witness_key_map count as the same witness.
+            join += ' CROSS JOIN witness_rekey_map r'
+            mapped = 'list_sort(list_distinct(list_transform(X.{c},k->coalesce(r.m[k],k))))'
+            compare = {'witness_keys': mapped}
+            left, right = (mapped.replace('X', s).format(c='"witness_keys"') for s in 'pl')
+            n = d.one(f'SELECT count(*) FROM {join} WHERE p.witness_keys IS DISTINCT FROM l.witness_keys AND {left} IS NOT DISTINCT FROM {right}')
+            if n:
+                rekeys = [dict(group('changed witness_keys', 're-keyed through witness_key_map', n, 'verified'), value=True)]
+        return [*groups, *rekeys, *d.changed(table, join, compare, exclude=OFFSETS | {'file_row_number'})], shape if table == 'list' else {}
     return run
 
 
@@ -407,6 +435,72 @@ def recordings(d: Diff):
     return groups + d.changed('recordings', 'base_recordings p JOIN candidate_recordings l USING(video_key)', tracks, set()), {}
 
 
+OCCURRENCE = {'witness_key', 'record_sha', 'source_locator', 'context_key'}  # what witness_key hashes, besides occasion and source
+
+
+def witnesses(d: Diff):
+    """Witness keys by identity, and through the candidate's witness_key_map (ct-kb4w).
+
+    Verified: a removed key whose unambiguous map row names a published witness (a re-key), and an
+    added key that is such a successor. A removed key the map states ambiguous or unresolved, or
+    does not list, and any other added key, stay unverified. Rows pair by key or through the map;
+    value groups skip the occurrence the key hashes, which a direct match makes equal and a re-key
+    changes by definition, and compare superseded_by through the map. Cannot see whether the map
+    chose the right successor: the model's matching rules and their fixtures own that.
+    """
+    if not rekeyed(d):
+        return generic('witnesses')(d)
+    out = []
+    for status, mapped, n in d.rows("""SELECT coalesce(m.status,''),x.old_key IS NOT NULL,count(*)
+          FROM (SELECT witness_key FROM base_witnesses ANTI JOIN candidate_witnesses USING(witness_key)) b
+          LEFT JOIN candidate_witness_key_map m ON m.old_key=b.witness_key LEFT JOIN witness_rekey x ON x.old_key=b.witness_key
+          GROUP BY ALL ORDER BY ALL"""):
+        if mapped:
+            out.append(group('removed keys', 're-keyed: witness_key_map names the published successor', -n, 'verified'))
+        elif status in ('ambiguous', 'unresolved'):
+            out.append(group('removed keys', f'witness_key_map states the key {status}', -n))
+        elif status:
+            out.append(group('removed keys', 'unexplained', -n))  # an unambiguous row whose successor is not published
+        else:
+            out.append(group('removed keys', 'no evidence given', -n))
+    for successor, n in d.rows("""SELECT witness_key IN (SELECT x.witness_key FROM witness_rekey x JOIN base_witnesses p ON p.witness_key=x.old_key),
+          count(*) FROM candidate_witnesses ANTI JOIN base_witnesses USING(witness_key) GROUP BY 1 ORDER BY 1"""):
+        out.append(group('added keys', 'successor of a re-keyed witness', n, 'verified') if successor
+                   else group('added keys', 'no evidence given', n))
+    d.view('base_witnesses_paired', """SELECT p.* REPLACE (coalesce(x.witness_key,p.witness_key) AS witness_key,
+          coalesce(s.witness_key,p.superseded_by) AS superseded_by)
+        FROM base_witnesses p LEFT JOIN witness_rekey x ON x.old_key=p.witness_key LEFT JOIN witness_rekey s ON s.old_key=p.superseded_by""")
+    d.view('candidate_witnesses_paired', 'SELECT * FROM candidate_witnesses')
+    return out + d.changed('witnesses_paired', 'base_witnesses_paired p JOIN candidate_witnesses_paired l USING(witness_key)',
+                           exclude=OCCURRENCE), {}
+
+
+def witness_key_map(d: Diff):
+    """Old keys added to or dropped from the map; successors compare through the map.
+
+    Verified: an added old key the base published in witnesses (retired in this release) or never
+    published (it resolves no key a base reader could hold), and a dropped old key the candidate
+    publishes again. A dropped key the candidate does not publish no longer resolves: unverified.
+    A successor that moved is the same witness when the base successor itself maps to it.
+    """
+    if not d.has('base', 'witness_key_map'):
+        return generic('witness_key_map')(d)
+    rekeyed(d)
+    out = []
+    for published, n in d.rows("""SELECT old_key IN (SELECT witness_key FROM base_witnesses),count(*)
+          FROM candidate_witness_key_map ANTI JOIN base_witness_key_map USING(old_key) GROUP BY 1 ORDER BY 1"""):
+        out.append(group('added keys', 'key retired from witnesses in this release' if published
+                         else 'a key no base witness carries', n, 'verified'))
+    for again, n in d.rows("""SELECT old_key IN (SELECT witness_key FROM candidate_witnesses),count(*)
+          FROM base_witness_key_map ANTI JOIN candidate_witness_key_map USING(old_key) GROUP BY 1 ORDER BY 1"""):
+        out.append(group('removed keys', 'published again in witnesses', -n, 'verified') if again
+                   else group('removed keys', 'no longer resolves', -n))
+    compare = {'witness_key': 'coalesce(r.m[X.{c}],X.{c})',
+               'candidate_keys': 'list_sort(list_distinct(list_transform(X.{c},k->coalesce(r.m[k],k))))'}
+    return out + d.changed('witness_key_map', 'base_witness_key_map p JOIN candidate_witness_key_map l USING(old_key) CROSS JOIN witness_rekey_map r',
+                           compare, exclude={'old_key'}), {}
+
+
 def url_state(d: Diff):
     scope = json.loads((d.dirs['candidate'] / 'capture_scope.json').read_text())
     patterns = {re.compile(p) for e in scope['entries'] for p in e.get('exclusions', [])}
@@ -426,7 +520,7 @@ def url_state(d: Diff):
 
 HANDLERS = {'list': document_file('list'), 'detail': document_file('detail'), 'links': links, 'urls': urls, 'sources': sources, 'meetings': meetings,
             'recoveries': recoveries,
-            'recordings': recordings, 'bills': bills, 'url_state': url_state}
+            'recordings': recordings, 'bills': bills, 'url_state': url_state, 'witnesses': witnesses, 'witness_key_map': witness_key_map}
 
 
 def account(d: Diff):
