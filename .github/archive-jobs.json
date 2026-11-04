@@ -4,14 +4,16 @@
     "spec": "model/jobs/publish.json",
     "argv": [
       "--execute"
-    ]
+    ],
+    "rss_gb": 14
   },
   "backfill": {
     "module": "viewer_publication.archive_backfill_job",
     "spec": "model/jobs/backfill.json",
     "argv": [
       "--execute"
-    ]
+    ],
+    "rss_gb": 12
   },
   "maintenance": {
     "module": "viewer_publication.archive_maintenance",
